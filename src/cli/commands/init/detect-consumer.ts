@@ -1,0 +1,210 @@
+/**
+ * Detect the consumer repo that `ak init` is running against.
+ *
+ * Walks for a `.git` directory (the consumer is not required to use pnpm
+ * workspaces — single-package projects are fine). Reads `package.json` and
+ * `pnpm-workspace.yaml` when present to power downstream template rendering.
+ */
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import path from 'node:path'
+
+export interface ConsumerPackageInfo {
+  name: string
+  version?: string
+  dependencies: Record<string, string>
+  devDependencies: Record<string, string>
+}
+
+export interface WorkspacePackageInfo {
+  name: string
+  relativePath: string
+  absolutePath: string
+  shortName: string
+}
+
+export interface ConsumerContext {
+  repoRoot: string
+  packageJsonPath: string | null
+  packageJson: ConsumerPackageInfo | null
+  hasPnpmWorkspace: boolean
+  workspacePackages: WorkspacePackageInfo[]
+}
+
+export function findGitRoot(startDir: string = process.cwd()): string | null {
+  let current = path.resolve(startDir)
+  for (;;) {
+    if (existsSync(path.join(current, '.git'))) return current
+    const parent = path.dirname(current)
+    if (parent === current) return null
+    current = parent
+  }
+}
+
+export function readPackageJson(repoRoot: string): {
+  path: string | null
+  info: ConsumerPackageInfo | null
+} {
+  const candidate = path.join(repoRoot, 'package.json')
+  if (!existsSync(candidate)) return { path: null, info: null }
+  try {
+    const raw = readFileSync(candidate, 'utf8')
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    const name = typeof parsed['name'] === 'string' ? parsed['name'] : path.basename(repoRoot)
+    const version = typeof parsed['version'] === 'string' ? parsed['version'] : undefined
+    const deps = (parsed['dependencies'] ?? {}) as Record<string, string>
+    const devDeps = (parsed['devDependencies'] ?? {}) as Record<string, string>
+    return {
+      path: candidate,
+      info: { name, version, dependencies: deps, devDependencies: devDeps },
+    }
+  } catch {
+    return { path: candidate, info: null }
+  }
+}
+
+/**
+ * Parse `pnpm-workspace.yaml` enough to extract the `packages:` glob list.
+ * We avoid pulling in a YAML dep for this — the file format is stable and
+ * we only need the `packages:` block.
+ */
+export function parseWorkspaceGlobs(repoRoot: string): string[] | null {
+  const wsPath = path.join(repoRoot, 'pnpm-workspace.yaml')
+  if (!existsSync(wsPath)) return null
+  try {
+    const raw = readFileSync(wsPath, 'utf8')
+    const globs: string[] = []
+    let inPackages = false
+    for (const rawLine of raw.split('\n')) {
+      const line = rawLine.replace(/\r$/, '')
+      if (/^packages:\s*$/.test(line)) {
+        inPackages = true
+        continue
+      }
+      if (inPackages) {
+        const trimmed = line.trim()
+        // Stop at a new top-level key
+        if (
+          line.length > 0 &&
+          !line.startsWith(' ') &&
+          !line.startsWith('-') &&
+          !line.startsWith('\t')
+        ) {
+          inPackages = false
+          continue
+        }
+        const match = /^-\s*['"]?([^'"\s#]+)['"]?/.exec(trimmed)
+        if (match && match[1]) globs.push(match[1])
+      }
+    }
+    return globs
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Expand a pnpm workspace glob against `repoRoot`, returning resolved
+ * package directories that contain a `package.json`.
+ *
+ * Supports: `pkg/foo`, `pkg/*`, `pkg/**`. Globs are applied at directory
+ * boundaries; we don't need full glob semantics.
+ */
+function safeReaddir(dir: string): string[] {
+  try {
+    return readdirSync(dir)
+  } catch {
+    return []
+  }
+}
+
+function isDirectory(full: string): boolean {
+  try {
+    return statSync(full).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+function expandGlob(repoRoot: string, glob: string): string[] {
+  const segments = glob.split('/').filter((s) => s.length > 0)
+  let frontier: string[] = [repoRoot]
+
+  for (const segment of segments) {
+    const next: string[] = []
+    for (const dir of frontier) {
+      if (!existsSync(dir)) continue
+      if (segment === '**') {
+        const stack: string[] = [dir]
+        while (stack.length > 0) {
+          const popped = stack.pop()
+          if (popped === undefined) break
+          next.push(popped)
+          for (const entry of safeReaddir(popped)) {
+            if (entry === 'node_modules' || entry.startsWith('.')) continue
+            const full = path.join(popped, entry)
+            if (isDirectory(full)) stack.push(full)
+          }
+        }
+      } else if (segment === '*') {
+        for (const entry of safeReaddir(dir)) {
+          if (entry === 'node_modules' || entry.startsWith('.')) continue
+          const full = path.join(dir, entry)
+          if (isDirectory(full)) next.push(full)
+        }
+      } else {
+        const full = path.join(dir, segment)
+        if (isDirectory(full)) next.push(full)
+      }
+    }
+    frontier = next
+  }
+
+  return frontier
+}
+
+export function discoverWorkspacePackages(
+  repoRoot: string,
+  globs: string[] | null,
+): WorkspacePackageInfo[] {
+  if (!globs || globs.length === 0) return []
+  const seen = new Set<string>()
+  const out: WorkspacePackageInfo[] = []
+  for (const glob of globs) {
+    for (const dir of expandGlob(repoRoot, glob)) {
+      const pkgPath = path.join(dir, 'package.json')
+      if (seen.has(dir)) continue
+      if (!existsSync(pkgPath)) continue
+      seen.add(dir)
+      try {
+        const raw = readFileSync(pkgPath, 'utf8')
+        const parsed = JSON.parse(raw) as { name?: string }
+        const fullName = typeof parsed.name === 'string' ? parsed.name : path.basename(dir)
+        const shortName = fullName.includes('/') ? (fullName.split('/')[1] ?? fullName) : fullName
+        out.push({
+          name: fullName,
+          relativePath: path.relative(repoRoot, dir) || '.',
+          absolutePath: dir,
+          shortName,
+        })
+      } catch {
+        /* skip malformed package */
+      }
+    }
+  }
+  return out.toSorted((a, b) => a.name.localeCompare(b.name))
+}
+
+export function detectConsumer(startDir: string = process.cwd()): ConsumerContext | null {
+  const repoRoot = findGitRoot(startDir)
+  if (!repoRoot) return null
+  const { path: pkgPath, info } = readPackageJson(repoRoot)
+  const globs = parseWorkspaceGlobs(repoRoot)
+  const workspacePackages = discoverWorkspacePackages(repoRoot, globs)
+  return {
+    repoRoot,
+    packageJsonPath: pkgPath,
+    packageJson: info,
+    hasPnpmWorkspace: globs !== null,
+    workspacePackages,
+  }
+}

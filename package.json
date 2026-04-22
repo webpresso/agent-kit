@@ -1,0 +1,146 @@
+{
+  "name": "@webpresso/agent-kit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Toolkit for agent-driven development: Blueprint runtime, agent-surface symlinker, skills catalog, and the `ak` CLI that ties them together.",
+  "keywords": [
+    "agent",
+    "agent-kit",
+    "blueprint",
+    "claude-code",
+    "gemini-cli",
+    "implementation-plan",
+    "skills"
+  ],
+  "license": "MIT",
+  "bin": {
+    "ak": "./dist/esm/cli/cli.js"
+  },
+  "files": [
+    "dist",
+    "catalog",
+    "docs",
+    "README.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "imports": {
+    "#symlinker": "./src/symlinker/index.ts",
+    "#cli/*": "./src/cli/*.ts",
+    "#audit/*": "./src/audit/*.ts",
+    "#docs-linter/*": "./src/docs-linter/*.ts",
+    "#*": "./src/blueprint/*.ts"
+  },
+  "exports": {
+    "./blueprint": {
+      "import": {
+        "types": "./dist/esm/blueprint/index.d.ts",
+        "default": "./dist/esm/blueprint/index.js"
+      }
+    },
+    "./blueprint/local": {
+      "import": {
+        "types": "./dist/esm/blueprint/local.d.ts",
+        "default": "./dist/esm/blueprint/local.js"
+      }
+    },
+    "./blueprint/dag": {
+      "import": {
+        "types": "./dist/esm/blueprint/dag/index.d.ts",
+        "default": "./dist/esm/blueprint/dag/index.js"
+      }
+    },
+    "./blueprint/dag/local": {
+      "import": {
+        "types": "./dist/esm/blueprint/dag/local/index.d.ts",
+        "default": "./dist/esm/blueprint/dag/local/index.js"
+      }
+    },
+    "./blueprint/validation": {
+      "import": {
+        "types": "./dist/esm/blueprint/core/validation/index.d.ts",
+        "default": "./dist/esm/blueprint/core/validation/index.js"
+      }
+    },
+    "./blueprint/tech-debt": {
+      "import": {
+        "types": "./dist/esm/blueprint/tech-debt/index.d.ts",
+        "default": "./dist/esm/blueprint/tech-debt/index.js"
+      }
+    },
+    "./blueprint/tracked-document": {
+      "import": {
+        "types": "./dist/esm/blueprint/tracked-document/index.d.ts",
+        "default": "./dist/esm/blueprint/tracked-document/index.js"
+      }
+    },
+    "./blueprint/test-utils": {
+      "import": {
+        "types": "./dist/esm/blueprint/test-utils/blueprint-mocks.d.ts",
+        "default": "./dist/esm/blueprint/test-utils/blueprint-mocks.js"
+      }
+    },
+    "./symlinker": {
+      "import": {
+        "types": "./dist/esm/symlinker/index.d.ts",
+        "default": "./dist/esm/symlinker/index.js"
+      }
+    },
+    "./docs-linter": {
+      "import": {
+        "types": "./dist/esm/docs-linter/index.d.ts",
+        "default": "./dist/esm/docs-linter/index.js"
+      }
+    },
+    "./catalog/*": "./catalog/*"
+  },
+  "scripts": {
+    "build": "tshy && chmod +x dist/esm/cli/cli.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint:pkg": "publint && attw --pack .",
+    "qa": "bun run typecheck && bun run test && bun run lint:pkg",
+    "prepublishOnly": "bun run build && bun run lint:pkg"
+  },
+  "dependencies": {
+    "cac": "^6.7.14",
+    "gray-matter": "^4.0.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.2",
+    "@types/bun": "^1.1.14",
+    "@types/node": "^22.0.0",
+    "publint": "^0.3.18",
+    "tshy": "^4.1.1",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "tshy": {
+    "dialects": [
+      "esm"
+    ],
+    "exclude": [
+      "src/**/*.test.ts",
+      "src/**/*.integration.test.ts",
+      "src/**/__fixtures__/**"
+    ],
+    "exports": {
+      "./blueprint": "./src/blueprint/index.ts",
+      "./blueprint/dag": "./src/blueprint/dag/index.ts",
+      "./blueprint/dag/local": "./src/blueprint/dag/local/index.ts",
+      "./blueprint/local": "./src/blueprint/local.ts",
+      "./blueprint/tech-debt": "./src/blueprint/tech-debt/index.ts",
+      "./blueprint/test-utils": "./src/blueprint/test-utils/blueprint-mocks.ts",
+      "./blueprint/tracked-document": "./src/blueprint/tracked-document/index.ts",
+      "./blueprint/validation": "./src/blueprint/core/validation/index.ts",
+      "./catalog/*": "./catalog/*",
+      "./docs-linter": "./src/docs-linter/index.ts",
+      "./symlinker": "./src/symlinker/index.ts"
+    },
+    "selfLink": false
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

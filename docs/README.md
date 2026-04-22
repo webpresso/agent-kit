@@ -1,0 +1,60 @@
+# `@webpresso/agent-kit` documentation
+
+Agentkit is a toolkit for agent-driven development. It ships four things:
+
+1. **Blueprint runtime** — Markdown + YAML-frontmatter implementation-plan
+   format with lifecycle states (`draft → planned → in-progress →
+   completed/archived`), a parser, DAG/task-graph executor, and audit
+   tooling. See [`blueprint-format.md`](./blueprint-format.md) and
+   [`lifecycle.md`](./lifecycle.md).
+
+2. **Symlinker** — keeps `.claude/commands/`, `.claude/skills/`, and
+   `.gemini/commands/*.toml` in sync with a canonical `.agent/` source
+   of truth. Runtime-agnostic (Claude Code, Gemini CLI, Cursor, Windsurf).
+   See [`symlinker.md`](./symlinker.md).
+
+3. **Skills catalog** — a curated set of generalized slash-commands,
+   skills, workflows, rules, guides, and doc templates. `ak init` copies
+   them into consumer repos as a starting set. See
+   [`skills-catalog.md`](./skills-catalog.md).
+
+4. **`ak` CLI** — umbrella binary that drives everything:
+
+   ```bash
+   ak blueprint new "<goal>" --complexity M
+   ak blueprint audit --all --strict
+   ak symlink sync
+   ak init --with monorepo-navigation,tanstack-query
+   ak audit tph
+   ak skills list
+   ak docs lint docs/research/<path>.md
+   ```
+
+## Getting started
+
+New to agent-kit? Read [`getting-started.md`](./getting-started.md).
+
+## Migration from webpresso's internal blueprint
+
+Webpresso is adopter zero — it replaces its internal `@webpresso/blueprint`
+package, `blueprint-plan` validator, `audit-tph` scripts, and `symlinker`
+maintenance script with the corresponding agent-kit surfaces. See
+[`migration-from-webpresso.md`](./migration-from-webpresso.md).
+
+## Design invariants
+
+- **Zero `@webpresso/*` runtime or dev dependencies.** Agentkit is
+  self-contained so it's cheap to extract to its own GitHub repo later
+  without rewrites.
+- **Catalog content is canonical once shipped.** Consumers run `ak init`
+  once, then own their copy. `ak skills refresh` (future) re-pulls
+  upstream when an official registry is identified.
+- **OMX skills stay in OMX.** Anything `[OMX]`-marked in webpresso's
+  `.agent/skills/` is deliberately excluded from agent-kit's catalog.
+  Install OMX separately if you want `/plan`, `/ralph`, `/ralplan`,
+  `/ultrawork`, `/team`, `/autopilot`.
+
+## Versioning
+
+Agentkit is pre-1.0. Public API may change across minor releases.
+Breaking changes ship in Changesets entries with migration notes.
