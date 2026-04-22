@@ -38,22 +38,10 @@
         "default": "./dist/esm/index.js"
       }
     },
-    "./local": {
-      "import": {
-        "types": "./dist/esm/local.d.ts",
-        "default": "./dist/esm/local.js"
-      }
-    },
     "./blueprint": {
       "import": {
         "types": "./dist/esm/blueprint/index.d.ts",
         "default": "./dist/esm/blueprint/index.js"
-      }
-    },
-    "./blueprint/local": {
-      "import": {
-        "types": "./dist/esm/blueprint/local.d.ts",
-        "default": "./dist/esm/blueprint/local.js"
       }
     },
     "./blueprint/dag": {
@@ -68,10 +56,10 @@
         "default": "./dist/esm/blueprint/dag/local/index.js"
       }
     },
-    "./blueprint/validation": {
+    "./blueprint/local": {
       "import": {
-        "types": "./dist/esm/blueprint/core/validation/index.d.ts",
-        "default": "./dist/esm/blueprint/core/validation/index.js"
+        "types": "./dist/esm/blueprint/local.d.ts",
+        "default": "./dist/esm/blueprint/local.js"
       }
     },
     "./blueprint/tech-debt": {
@@ -80,16 +68,35 @@
         "default": "./dist/esm/blueprint/tech-debt/index.js"
       }
     },
+    "./blueprint/test-utils": {
+      "import": {
+        "types": "./dist/esm/blueprint/test-utils/blueprint-mocks.d.ts",
+        "default": "./dist/esm/blueprint/test-utils/blueprint-mocks.js"
+      }
+    },
     "./blueprint/tracked-document": {
       "import": {
         "types": "./dist/esm/blueprint/tracked-document/index.d.ts",
         "default": "./dist/esm/blueprint/tracked-document/index.js"
       }
     },
-    "./blueprint/test-utils": {
+    "./blueprint/validation": {
       "import": {
-        "types": "./dist/esm/blueprint/test-utils/blueprint-mocks.d.ts",
-        "default": "./dist/esm/blueprint/test-utils/blueprint-mocks.js"
+        "types": "./dist/esm/blueprint/core/validation/index.d.ts",
+        "default": "./dist/esm/blueprint/core/validation/index.js"
+      }
+    },
+    "./catalog/*": "./catalog/*",
+    "./docs-linter": {
+      "import": {
+        "types": "./dist/esm/docs-linter/index.d.ts",
+        "default": "./dist/esm/docs-linter/index.js"
+      }
+    },
+    "./local": {
+      "import": {
+        "types": "./dist/esm/local.d.ts",
+        "default": "./dist/esm/local.js"
       }
     },
     "./symlinker": {
@@ -97,14 +104,7 @@
         "types": "./dist/esm/symlinker/index.d.ts",
         "default": "./dist/esm/symlinker/index.js"
       }
-    },
-    "./docs-linter": {
-      "import": {
-        "types": "./dist/esm/docs-linter/index.d.ts",
-        "default": "./dist/esm/docs-linter/index.js"
-      }
-    },
-    "./catalog/*": "./catalog/*"
+    }
   },
   "scripts": {
     "build": "tshy && chmod +x dist/esm/cli/cli.js",
@@ -156,5 +156,6 @@
   },
   "engines": {
     "node": ">=20"
-  }
+  },
+  "module": "./dist/esm/index.js"
 }
