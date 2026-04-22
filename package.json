@@ -1,0 +1,78 @@
+{
+  "name": "@webpresso/agent-kit",
+  "version": "0.0.0",
+  "description": "Toolkit for agent-driven development: Blueprint runtime, agent-surface symlinker, skills catalog, and the `ak` CLI that ties them together.",
+  "keywords": [
+    "agent",
+    "agent-kit",
+    "blueprint",
+    "claude-code",
+    "gemini-cli",
+    "implementation-plan",
+    "skills"
+  ],
+  "license": "MIT",
+  "bin": {
+    "ak": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "catalog",
+    "docs",
+    "README.md"
+  ],
+  "type": "module",
+  "imports": {
+    "#*": "./src/blueprint/*.ts"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./local": {
+      "types": "./src/local.ts",
+      "default": "./src/local.ts"
+    },
+    "./blueprint": {
+      "types": "./src/blueprint/index.ts",
+      "default": "./src/blueprint/index.ts"
+    },
+    "./blueprint/local": {
+      "types": "./src/blueprint/local.ts",
+      "default": "./src/blueprint/local.ts"
+    },
+    "./symlinker": {
+      "types": "./src/symlinker/index.ts",
+      "default": "./src/symlinker/index.ts"
+    },
+    "./docs-linter": {
+      "types": "./src/docs-linter/index.ts",
+      "default": "./src/docs-linter/index.ts"
+    },
+    "./catalog/*": "./catalog/*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "bun run scripts/build.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "qa": "bun run typecheck && bun run test"
+  },
+  "dependencies": {
+    "cac": "^6.7.14",
+    "gray-matter": "^4.0.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.14",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
