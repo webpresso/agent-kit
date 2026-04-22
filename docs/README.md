@@ -34,6 +34,14 @@ Agentkit is a toolkit for agent-driven development. It ships four things:
 
 New to agent-kit? Read [`getting-started.md`](./getting-started.md).
 
+## How the pieces fit together
+
+The catalog, `.agent/`, and the IDE-specific directories (`.claude/`,
+`.gemini/`, …) are **three separate layers** with different ownership
+and lifecycle. Editing the wrong one silently loses your change. See
+[`architecture.md`](./architecture.md) for the three-layer model and
+the lifecycle flow.
+
 ## Migration from webpresso's internal blueprint
 
 Webpresso is adopter zero — it replaces its internal `@webpresso/blueprint`
