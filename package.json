@@ -32,6 +32,18 @@
     "#*": "./src/blueprint/*.ts"
   },
   "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      }
+    },
+    "./local": {
+      "import": {
+        "types": "./dist/esm/local.d.ts",
+        "default": "./dist/esm/local.js"
+      }
+    },
     "./blueprint": {
       "import": {
         "types": "./dist/esm/blueprint/index.d.ts",
@@ -126,6 +138,7 @@
       "src/**/__fixtures__/**"
     ],
     "exports": {
+      ".": "./src/index.ts",
       "./blueprint": "./src/blueprint/index.ts",
       "./blueprint/dag": "./src/blueprint/dag/index.ts",
       "./blueprint/dag/local": "./src/blueprint/dag/local/index.ts",
@@ -136,6 +149,7 @@
       "./blueprint/validation": "./src/blueprint/core/validation/index.ts",
       "./catalog/*": "./catalog/*",
       "./docs-linter": "./src/docs-linter/index.ts",
+      "./local": "./src/local.ts",
       "./symlinker": "./src/symlinker/index.ts"
     },
     "selfLink": false
