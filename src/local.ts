@@ -8,3 +8,11 @@
  */
 
 export type __AgentKitLocalEntrypointReserved = never
+
+export {
+  analyzeViteDistBundleBudget,
+  bundleBudgetCliHelp,
+  parseBundleBudgetCliArgs,
+  runBundleBudgetCli,
+} from './vite/local.js'
+export type { AnalyzeViteDistBundleBudgetOptions, BundleBudgetCliOptions } from './vite/local.js'

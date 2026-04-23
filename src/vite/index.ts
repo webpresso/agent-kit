@@ -1,0 +1,19 @@
+export {
+  analyzeBundleBudget,
+  extractHtmlEagerJsReferences,
+  formatBundleBudgetReport,
+  formatBytes,
+  type AnalyzeBundleBudgetOptions,
+  type BundleBudgetAsset,
+  type BundleBudgetLimits,
+  type BundleBudgetResult,
+  type BundleBudgetViolation,
+  type BundleBudgetViolationKind,
+} from './bundle-budget.js'
+export {
+  installChunkLoadRecovery,
+  type ChunkLoadRecoveryEvent,
+  type ChunkLoadRecoveryStorage,
+  type ChunkLoadRecoveryTarget,
+  type InstallChunkLoadRecoveryOptions,
+} from './chunk-load-recovery.js'

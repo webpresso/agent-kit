@@ -81,6 +81,14 @@
     "./symlinker": {
       "types": "./src/symlinker/index.ts",
       "default": "./src/symlinker/index.ts"
+    },
+    "./vite": {
+      "types": "./src/vite/index.ts",
+      "default": "./src/vite/index.ts"
+    },
+    "./vite/local": {
+      "types": "./src/vite/local.ts",
+      "default": "./src/vite/local.ts"
     }
   },
   "scripts": {
@@ -127,7 +135,9 @@
       "./catalog/*": "./catalog/*",
       "./docs-linter": "./src/docs-linter/index.ts",
       "./local": "./src/local.ts",
-      "./symlinker": "./src/symlinker/index.ts"
+      "./symlinker": "./src/symlinker/index.ts",
+      "./vite": "./src/vite/index.ts",
+      "./vite/local": "./src/vite/local.ts"
     },
     "selfLink": false
   },

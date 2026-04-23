@@ -24,7 +24,7 @@ const ROOT_HELP = [
   'Commands:',
   '  blueprint    Manage blueprints (list, new, show, exec, audit, ...)',
   '  symlink      Sync agent-surface files (sync, check)',
-  '  audit        Run packaged audits (tph, tph-e2e)',
+  '  audit        Run packaged audits (tph, tph-e2e, bundle-budget)',
   '  skills       Manage agent skills (list, install, refresh)',
   '  docs         Documentation tooling (lint)',
   '  init         Scaffold a consumer repo with the agent surface',

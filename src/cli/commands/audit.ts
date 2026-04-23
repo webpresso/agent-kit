@@ -1,5 +1,5 @@
 /**
- * `ak audit tph|tph-e2e` — Testing Philosophy Helper audits.
+ * `ak audit tph|tph-e2e|bundle-budget` — packaged repository audits.
  *
  * The underlying audit scripts (`src/audit/audit-tph.ts`,
  * `src/audit/audit-tph-e2e.ts`) are Bun-native entrypoints that anchor
@@ -17,8 +17,14 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 
 interface AuditActionOptions {
+  dist?: string
   fix?: boolean
+  htmlEntry?: string
+  ignore?: string | string[]
   json?: boolean
+  maxHtmlEagerJsAssetBytes?: string
+  maxHtmlEagerJsTotalBytes?: string
+  maxJsAssetBytes?: string
 }
 
 function resolveAuditScript(name: 'audit-tph.ts' | 'audit-tph-e2e.ts'): string {
@@ -62,11 +68,38 @@ async function runAuditScript(script: string, extraArgs: readonly string[]): Pro
   })
 }
 
+function buildBundleBudgetArgs(target: string | undefined, options: AuditActionOptions): string[] {
+  const args: string[] = []
+  if (target) args.push(target)
+  if (options.dist) args.push('--dist', String(options.dist))
+  if (options.htmlEntry) args.push('--html-entry', String(options.htmlEntry))
+  if (options.maxJsAssetBytes) args.push('--max-js-asset-bytes', String(options.maxJsAssetBytes))
+  if (options.maxHtmlEagerJsAssetBytes) {
+    args.push('--max-html-eager-js-asset-bytes', String(options.maxHtmlEagerJsAssetBytes))
+  }
+  if (options.maxHtmlEagerJsTotalBytes) {
+    args.push('--max-html-eager-js-total-bytes', String(options.maxHtmlEagerJsTotalBytes))
+  }
+  const ignore = Array.isArray(options.ignore)
+    ? options.ignore
+    : options.ignore
+      ? [options.ignore]
+      : []
+  for (const ignoredPath of ignore) args.push('--ignore', String(ignoredPath))
+  return args
+}
+
 export function registerAuditCommand(cli: CAC): void {
   cli
-    .command('audit <kind> [target]', 'Run a packaged audit (tph, tph-e2e)')
-    .option('--fix', 'Attempt to auto-fix violations (forwarded to audit)')
-    .option('--json', 'Emit JSON output (forwarded to audit)')
+    .command('audit <kind> [target]', 'Run a packaged audit (tph, tph-e2e, bundle-budget)')
+    .option('--fix', 'Attempt to auto-fix violations (forwarded to supported audits)')
+    .option('--json', 'Emit JSON output (forwarded to supported audits)')
+    .option('--dist <dir>', 'Built Vite dist directory for bundle-budget')
+    .option('--html-entry <file>', 'HTML entry relative to dist for bundle-budget')
+    .option('--max-js-asset-bytes <bytes>', 'Max size for any generated JS asset')
+    .option('--max-html-eager-js-asset-bytes <bytes>', 'Max size for any HTML-eager JS asset')
+    .option('--max-html-eager-js-total-bytes <bytes>', 'Max total size for HTML-eager JS assets')
+    .option('--ignore <substring>', 'Ignore matching bundle-budget asset path; repeatable')
     .action(async (kind: string, target: string | undefined, options: AuditActionOptions) => {
       const forwarded: string[] = []
       if (options.fix) forwarded.push('--fix')
@@ -84,8 +117,14 @@ export function registerAuditCommand(cli: CAC): void {
           const code = await runAuditScript(script, forwarded)
           process.exit(code)
         }
+        case 'bundle-budget': {
+          const { runBundleBudgetCli } = await import('../../vite/local.js')
+          const bundleBudgetArgs = buildBundleBudgetArgs(target, options)
+          const code = await runBundleBudgetCli(bundleBudgetArgs)
+          process.exit(code)
+        }
         default: {
-          console.error(`Unknown audit kind: ${kind}. Use 'tph' or 'tph-e2e'.`)
+          console.error(`Unknown audit kind: ${kind}. Use 'tph', 'tph-e2e', or 'bundle-budget'.`)
           process.exit(1)
         }
       }

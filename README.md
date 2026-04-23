@@ -12,6 +12,8 @@ Toolkit for agent-driven development. Ships:
   (Codex + Amp + OpenCode-fallback).
 - **Skills catalog** — a curated set of generalized slash-commands, skills,
   workflows, rules, guides, and doc templates that any repo can adopt.
+- **Vite guardrails** — reusable bundle-budget analysis and a tiny
+  `vite:preloadError` recovery helper for Vite-built clients.
 - **`ak` CLI** — umbrella command that drives everything:
 
 ```bash
@@ -20,6 +22,7 @@ ak blueprint audit --all --strict
 ak symlink sync
 ak init --with monorepo-navigation,tanstack-query
 ak audit tph
+ak audit bundle-budget apps/client/dist --max-js-asset-bytes 512000
 ak skills list
 ak docs lint docs/research/my-doc.md
 ```
@@ -50,3 +53,25 @@ context.
 ## License
 
 MIT
+
+## Vite guardrails
+
+Agent Kit exposes the reusable parts of Vite client-performance guardrails while
+leaving app-specific routing decisions in each consuming app:
+
+```ts
+import { installChunkLoadRecovery } from "@webpresso/agent-kit/vite";
+
+installChunkLoadRecovery();
+```
+
+```bash
+ak audit bundle-budget apps/client/dist \
+  --max-js-asset-bytes 512000 \
+  --max-html-eager-js-asset-bytes 262144 \
+  --max-html-eager-js-total-bytes 393216
+```
+
+The analyzer checks generated asset sizes and HTML-eager JavaScript references.
+It intentionally does not inspect route names or generated chunk filename
+prefixes.

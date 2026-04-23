@@ -9,3 +9,23 @@
  */
 
 export type __AgentKitEntrypointReserved = never
+
+export {
+  analyzeBundleBudget,
+  extractHtmlEagerJsReferences,
+  formatBundleBudgetReport,
+  formatBytes,
+  installChunkLoadRecovery,
+} from './vite/index.js'
+export type {
+  AnalyzeBundleBudgetOptions,
+  BundleBudgetAsset,
+  BundleBudgetLimits,
+  BundleBudgetResult,
+  BundleBudgetViolation,
+  BundleBudgetViolationKind,
+  ChunkLoadRecoveryEvent,
+  ChunkLoadRecoveryStorage,
+  ChunkLoadRecoveryTarget,
+  InstallChunkLoadRecoveryOptions,
+} from './vite/index.js'
