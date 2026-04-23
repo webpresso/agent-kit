@@ -24,6 +24,7 @@
   ],
   "type": "module",
   "sideEffects": false,
+  "module": "./dist/esm/index.js",
   "imports": {
     "#symlinker": "./src/symlinker/index.ts",
     "#cli/*": "./src/cli/*.ts",
@@ -33,77 +34,53 @@
   },
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/index.js"
-      }
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
     },
     "./blueprint": {
-      "import": {
-        "types": "./dist/esm/blueprint/index.d.ts",
-        "default": "./dist/esm/blueprint/index.js"
-      }
+      "types": "./src/blueprint/index.ts",
+      "default": "./src/blueprint/index.ts"
     },
     "./blueprint/dag": {
-      "import": {
-        "types": "./dist/esm/blueprint/dag/index.d.ts",
-        "default": "./dist/esm/blueprint/dag/index.js"
-      }
+      "types": "./src/blueprint/dag/index.ts",
+      "default": "./src/blueprint/dag/index.ts"
     },
     "./blueprint/dag/local": {
-      "import": {
-        "types": "./dist/esm/blueprint/dag/local/index.d.ts",
-        "default": "./dist/esm/blueprint/dag/local/index.js"
-      }
+      "types": "./src/blueprint/dag/local/index.ts",
+      "default": "./src/blueprint/dag/local/index.ts"
     },
     "./blueprint/local": {
-      "import": {
-        "types": "./dist/esm/blueprint/local.d.ts",
-        "default": "./dist/esm/blueprint/local.js"
-      }
+      "types": "./src/blueprint/local.ts",
+      "default": "./src/blueprint/local.ts"
     },
     "./blueprint/tech-debt": {
-      "import": {
-        "types": "./dist/esm/blueprint/tech-debt/index.d.ts",
-        "default": "./dist/esm/blueprint/tech-debt/index.js"
-      }
+      "types": "./src/blueprint/tech-debt/index.ts",
+      "default": "./src/blueprint/tech-debt/index.ts"
     },
     "./blueprint/test-utils": {
-      "import": {
-        "types": "./dist/esm/blueprint/test-utils/blueprint-mocks.d.ts",
-        "default": "./dist/esm/blueprint/test-utils/blueprint-mocks.js"
-      }
+      "types": "./src/blueprint/test-utils/blueprint-mocks.ts",
+      "default": "./src/blueprint/test-utils/blueprint-mocks.ts"
     },
     "./blueprint/tracked-document": {
-      "import": {
-        "types": "./dist/esm/blueprint/tracked-document/index.d.ts",
-        "default": "./dist/esm/blueprint/tracked-document/index.js"
-      }
+      "types": "./src/blueprint/tracked-document/index.ts",
+      "default": "./src/blueprint/tracked-document/index.ts"
     },
     "./blueprint/validation": {
-      "import": {
-        "types": "./dist/esm/blueprint/core/validation/index.d.ts",
-        "default": "./dist/esm/blueprint/core/validation/index.js"
-      }
+      "types": "./src/blueprint/core/validation/index.ts",
+      "default": "./src/blueprint/core/validation/index.ts"
     },
     "./catalog/*": "./catalog/*",
     "./docs-linter": {
-      "import": {
-        "types": "./dist/esm/docs-linter/index.d.ts",
-        "default": "./dist/esm/docs-linter/index.js"
-      }
+      "types": "./src/docs-linter/index.ts",
+      "default": "./src/docs-linter/index.ts"
     },
     "./local": {
-      "import": {
-        "types": "./dist/esm/local.d.ts",
-        "default": "./dist/esm/local.js"
-      }
+      "types": "./src/local.ts",
+      "default": "./src/local.ts"
     },
     "./symlinker": {
-      "import": {
-        "types": "./dist/esm/symlinker/index.d.ts",
-        "default": "./dist/esm/symlinker/index.js"
-      }
+      "types": "./src/symlinker/index.ts",
+      "default": "./src/symlinker/index.ts"
     }
   },
   "scripts": {
@@ -156,6 +133,5 @@
   },
   "engines": {
     "node": ">=20"
-  },
-  "module": "./dist/esm/index.js"
+  }
 }
