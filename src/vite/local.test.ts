@@ -2,9 +2,14 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { analyzeViteDistBundleBudget, parseBundleBudgetCliArgs } from './local.js'
+import {
+  analyzeViteDistBundleBudget,
+  bundleBudgetCliHelp,
+  parseBundleBudgetCliArgs,
+  runBundleBudgetCli,
+} from './local.js'
 
 const tempDirs: string[] = []
 
@@ -69,5 +74,91 @@ describe('parseBundleBudgetCliArgs', () => {
       maxHtmlEagerJsTotalBytes: 393_216,
       maxJsAssetBytes: 512_000,
     })
+  })
+
+  it('accepts a positional dist argument', () => {
+    expect(parseBundleBudgetCliArgs(['my-dist'])).toMatchObject({ distDir: 'my-dist' })
+  })
+
+  it('stacks multiple --ignore values', () => {
+    expect(parseBundleBudgetCliArgs(['--ignore', 'legacy', '--ignore', 'vendor'])).toMatchObject({
+      ignore: ['legacy', 'vendor'],
+    })
+  })
+
+  it('uses defaults for empty argv', () => {
+    expect(parseBundleBudgetCliArgs([])).toEqual({
+      distDir: 'dist',
+      htmlEntry: 'index.html',
+      ignore: [],
+    })
+  })
+
+  it('throws on --help', () => {
+    expect(() => parseBundleBudgetCliArgs(['--help'])).toThrow(bundleBudgetCliHelp())
+    expect(() => parseBundleBudgetCliArgs(['-h'])).toThrow(bundleBudgetCliHelp())
+  })
+
+  it('throws on unknown flag', () => {
+    expect(() => parseBundleBudgetCliArgs(['--unknown'])).toThrow(
+      'Unknown bundle-budget option: --unknown',
+    )
+  })
+
+  it('throws on missing value for a flag', () => {
+    expect(() => parseBundleBudgetCliArgs(['--dist'])).toThrow('Missing value for --dist')
+    expect(() => parseBundleBudgetCliArgs(['--max-js-asset-bytes'])).toThrow(
+      'Missing value for --max-js-asset-bytes',
+    )
+  })
+
+  it('throws on non-integer byte limit', () => {
+    expect(() => parseBundleBudgetCliArgs(['--max-js-asset-bytes', 'abc'])).toThrow(
+      '--max-js-asset-bytes must be a non-negative integer',
+    )
+  })
+})
+
+describe('runBundleBudgetCli', () => {
+  it('returns 0 when dist passes all budgets', async () => {
+    const distDir = await createDist()
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    try {
+      const code = await runBundleBudgetCli(['--dist', distDir])
+      expect(code).toBe(0)
+    } finally {
+      log.mockRestore()
+    }
+  })
+
+  it('returns 1 when a budget is violated', async () => {
+    const distDir = await createDist()
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    try {
+      const code = await runBundleBudgetCli(['--dist', distDir, '--max-js-asset-bytes', '1'])
+      expect(code).toBe(1)
+    } finally {
+      log.mockRestore()
+    }
+  })
+
+  it('returns 0 for --help', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      const code = await runBundleBudgetCli(['--help'])
+      expect(code).toBe(0)
+    } finally {
+      err.mockRestore()
+    }
+  })
+
+  it('returns 1 on an unexpected error', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      const code = await runBundleBudgetCli(['--dist', '/nonexistent-path-xyzzy'])
+      expect(code).toBe(1)
+    } finally {
+      err.mockRestore()
+    }
   })
 })

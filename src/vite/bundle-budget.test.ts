@@ -4,6 +4,7 @@ import {
   analyzeBundleBudget,
   extractHtmlEagerJsReferences,
   formatBundleBudgetReport,
+  formatBytes,
 } from './bundle-budget.js'
 
 describe('analyzeBundleBudget', () => {
@@ -112,5 +113,24 @@ describe('extractHtmlEagerJsReferences', () => {
         <link rel="stylesheet" href="/assets/index.css">
       `),
     ).toEqual(['assets/index.js', 'assets/vendor.js'])
+  })
+})
+
+describe('formatBytes', () => {
+  it('formats sub-KiB values as bytes', () => {
+    expect(formatBytes(0)).toBe('0 B')
+    expect(formatBytes(512)).toBe('512 B')
+    expect(formatBytes(1023)).toBe('1023 B')
+  })
+
+  it('formats KiB range with one decimal place', () => {
+    expect(formatBytes(1024)).toBe('1.0 KiB')
+    expect(formatBytes(1536)).toBe('1.5 KiB')
+    expect(formatBytes(1024 * 512)).toBe('512.0 KiB')
+  })
+
+  it('formats MiB range with two decimal places', () => {
+    expect(formatBytes(1024 * 1024)).toBe('1.00 MiB')
+    expect(formatBytes(1024 * 1024 * 2.5)).toBe('2.50 MiB')
   })
 })
