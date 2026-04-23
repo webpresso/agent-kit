@@ -75,7 +75,7 @@ export function isAgentOrConsumerFile(file: string): boolean {
     if (file.startsWith(`${linkPath}/`)) return true
   }
 
-  // Per-skill consumer directories (e.g. .codex/skills/<skill>/...)
+  // Per-skill consumer directories (e.g. .agents/skills/<skill>/...)
   for (const { dir } of DEFAULT_PER_SKILL_CONSUMERS) {
     if (file.startsWith(`${dir}/`)) return true
   }

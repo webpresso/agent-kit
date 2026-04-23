@@ -49,12 +49,7 @@ For each markdown file at `.agent/commands/<name>.md` or
 symlink** at each consumer's command directory pointing back at the
 `.agent/` source. Example: `.claude/commands/<name>.md` →
 `../../.agent/commands/<name>.md`. Same pattern for `.cursor/commands/`,
-`.windsurf/commands/`, `.opencode/commands/`, and `.codex/prompts/`.
-
-`.codex/prompts/` is the only consumer where the **directory name
-differs** from the source (`commands` → `prompts`), to match Codex's native
-slash-command convention. The filenames still match one-to-one with
-`.agent/commands/` and `.agent/workflows/`.
+`.windsurf/commands/`, and `.opencode/commands/`.
 
 ### Skill symlinks — two modes
 
@@ -63,16 +58,18 @@ picked per consumer:
 
 **Directory mode** — one symlink at `.claude/skills` pointing at the whole
 `../.agent/skills` directory. Cheapest, but assumes the consumer owns the
-entire skills directory (no coexistence with third-party skills).
+entire skills directory (no coexistence with third-party skills). This
+single symlink also serves OpenCode, which reads `.claude/skills/` as a
+project-local fallback.
 
-**Per-skill mode** — one symlink per skill, e.g. `.codex/skills/<name>` →
-`../../.agent/skills/<name>`. Used for Codex and OpenCode because those
-tools may ship bundled skills (or be extended by plugins like oh-my-codex)
-under the same `.{tool}/skills/` directory; per-skill mode creates links
-only for names that exist in `.agent/skills/`, leaving consumer-owned
-directories alone. If a consumer-owned directory collides with an
-agent-kit skill name, the symlinker warns and skips rather than clobbering
-it.
+**Per-skill mode** — one symlink per skill, e.g. `.agents/skills/<name>`
+→ `../../.agent/skills/<name>`. Used for the convergent `.agents/skills/`
+directory that Codex + Amp + OpenCode-fallback all read, because that
+directory may already contain third-party or consumer-owned skills;
+per-skill mode creates links only for names that exist in
+`.agent/skills/`, leaving consumer-owned directories alone. If a
+consumer-owned directory collides with an agent-kit skill name, the
+symlinker warns and skips rather than clobbering it.
 
 Editors on macOS and Linux follow symlinks natively. Windows requires
 Developer Mode or admin privileges for `CreateSymbolicLink`; consumers on
