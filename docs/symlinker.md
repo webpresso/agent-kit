@@ -1,19 +1,40 @@
 # Symlinker
 
 The symlinker keeps per-IDE command/skill surfaces in sync with a canonical
-`.agent/` source of truth. Agentkit currently knows about four consumers —
-Claude Code, Cursor, Windsurf, and Gemini CLI — and is designed so new
+`.agent/` source of truth. It ships defaults for Claude Code, Cursor,
+Windsurf, OpenCode, Codex, Amp, and Gemini CLI, and is designed so new
 consumers plug in via configuration.
 
 ## Why
 
-Each AI-coding tool has its own file layout for slash-commands and skills:
+Each AI-coding tool has its own file layout for slash-commands and skills.
+The good news in 2026: skills are converging. Anthropic open-standardized
+`SKILL.md` in December 2025, OpenAI adopted it for Codex, and OpenCode
+implemented it with compatibility fallbacks into `.claude/skills/` and
+`.agents/skills/`. Practical directory map:
 
-- **Claude Code:** `.claude/commands/*.md`, `.claude/skills/<name>/SKILL.md`
-- **Cursor:** `.cursor/commands/*.md`
-- **Windsurf:** `.windsurf/commands/*.md`
+- **Claude Code:** `.claude/commands/*.md`, `.claude/skills/<name>/SKILL.md`.
+- **Codex CLI:** `.agents/skills/<name>/SKILL.md` (scanned from CWD up to
+  repo root per [OpenAI's "Where to save skills"](https://developers.openai.com/codex/skills)).
+  Codex's older `.codex/prompts/*.md` custom-prompt surface is deprecated
+  and was home-only (`~/.codex/prompts/`) — the symlinker deliberately
+  does not target it.
+- **OpenCode:** `.opencode/commands/*.md`, `.opencode/skills/<name>/SKILL.md`,
+  with fallback discovery into `.claude/skills/` and `.agents/skills/`.
+- **Amp (Sourcegraph):** `.agents/skills/<name>/SKILL.md`.
+- **Cursor:** `.cursor/commands/*.md`. Cursor's skills-analogous surface
+  is `.cursor/rules/*.mdc` (always-applied rules, different semantics) —
+  not a target for agent-kit skills.
+- **Windsurf:** `.windsurf/commands/*.md`. Same story as Cursor for rules.
 - **Gemini CLI:** `.gemini/commands/*.toml` (TOML, not markdown — with
-  `{{args}}` templating instead of `$ARGUMENTS`)
+  `{{args}}` templating instead of `$ARGUMENTS`).
+
+Because Codex + Amp + OpenCode-fallback all converge on `.agents/skills/`,
+the symlinker ships **two skill surfaces that cover four tools**:
+`.claude/skills` (directory-symlink for Claude + OpenCode-fallback) and
+`.agents/skills/<name>` (per-skill symlinks for Codex + Amp +
+OpenCode-fallback). No per-tool `.codex/skills/` or `.opencode/skills/`
+entries are needed.
 
 Without a sync layer, contributors hand-maintain N copies of every
 command. The symlinker makes `.agent/` the one place to edit, and keeps
@@ -21,17 +42,37 @@ the consumer-specific surfaces derived.
 
 ## How
 
-### Symlink consumers (`.claude`, `.cursor`, `.windsurf`)
+### Per-file command/workflow symlinks
 
 For each markdown file at `.agent/commands/<name>.md` or
-`.agent/workflows/<name>.md`, the symlinker creates a **relative
-filesystem symlink** at `.claude/commands/<name>.md` →
-`../../.agent/commands/<name>.md` (and the same pattern for
-`.cursor/commands/` and `.windsurf/commands/`).
+`.agent/workflows/<name>.md`, the symlinker creates a **relative filesystem
+symlink** at each consumer's command directory pointing back at the
+`.agent/` source. Example: `.claude/commands/<name>.md` →
+`../../.agent/commands/<name>.md`. Same pattern for `.cursor/commands/`,
+`.windsurf/commands/`, `.opencode/commands/`, and `.codex/prompts/`.
 
-Skills under `.agent/skills/<name>/` get the same treatment —
-`.claude/skills/<name>` is a symlink pointing at
-`../../.agent/skills/<name>`.
+`.codex/prompts/` is the only consumer where the **directory name
+differs** from the source (`commands` → `prompts`), to match Codex's native
+slash-command convention. The filenames still match one-to-one with
+`.agent/commands/` and `.agent/workflows/`.
+
+### Skill symlinks — two modes
+
+Skills under `.agent/skills/<name>/` are published in one of two modes,
+picked per consumer:
+
+**Directory mode** — one symlink at `.claude/skills` pointing at the whole
+`../.agent/skills` directory. Cheapest, but assumes the consumer owns the
+entire skills directory (no coexistence with third-party skills).
+
+**Per-skill mode** — one symlink per skill, e.g. `.codex/skills/<name>` →
+`../../.agent/skills/<name>`. Used for Codex and OpenCode because those
+tools may ship bundled skills (or be extended by plugins like oh-my-codex)
+under the same `.{tool}/skills/` directory; per-skill mode creates links
+only for names that exist in `.agent/skills/`, leaving consumer-owned
+directories alone. If a consumer-owned directory collides with an
+agent-kit skill name, the symlinker warns and skips rather than clobbering
+it.
 
 Editors on macOS and Linux follow symlinks natively. Windows requires
 Developer Mode or admin privileges for `CreateSymbolicLink`; consumers on
@@ -102,17 +143,29 @@ export const DEFAULT_CONSUMERS: ConsumerConfig[] = [
   { dir: '.claude/commands',   sourcePrefix: '../../.agent/' },
   { dir: '.cursor/commands',   sourcePrefix: '../../.agent/' },
   { dir: '.windsurf/commands', sourcePrefix: '../../.agent/' },
+  { dir: '.opencode/commands', sourcePrefix: '../../.agent/' },
 ]
 
+// Directory-mode: one whole-directory symlink per consumer.
+// Serves Claude Code + OpenCode-fallback discovery.
 export const DEFAULT_SKILLS_CONSUMERS: SkillsConsumerConfig[] = [
-  { dir: '.claude/skills', sourcePrefix: '../../.agent/skills/' },
+  { linkPath: '.claude/skills', target: '../.agent/skills' },
+]
+
+// Per-skill mode: one symlink per skill. `.agents/skills/` is the
+// convergent project path shared by Codex (official), Amp (official),
+// and OpenCode (fallback) — one entry covers three tools.
+export const DEFAULT_PER_SKILL_CONSUMERS: PerSkillConsumerConfig[] = [
+  { dir: '.agents/skills', sourcePrefix: '../../.agent/skills/' },
 ]
 ```
 
 To add a new consumer (e.g., a future CLI tool), either:
 
-- Send a PR to agent-kit adding an entry to `DEFAULT_CONSUMERS` so all
-  repos pick it up.
+- Send a PR to agent-kit adding an entry to `DEFAULT_CONSUMERS`,
+  `DEFAULT_SKILLS_CONSUMERS`, or `DEFAULT_PER_SKILL_CONSUMERS` (pick the
+  mode that matches the tool's skill-directory semantics) so all repos
+  pick it up.
 - Or override in your `.agent-kitrc.json` for a repo-local customization
   (planned).
 
@@ -155,12 +208,17 @@ import {
   syncAll,
   syncConsumer,
   syncSkills,
+  syncSkillsConsumer,
+  syncPerSkillConsumer,
+  syncPerSkillConsumers,
   syncGeminiCommands,
   isAgentOrConsumerFile,
   type ConsumerConfig,
   type SkillsConsumerConfig,
+  type PerSkillConsumerConfig,
   DEFAULT_CONSUMERS,
   DEFAULT_SKILLS_CONSUMERS,
+  DEFAULT_PER_SKILL_CONSUMERS,
 } from '@webpresso/agent-kit/symlinker'
 
 const fixes = syncAll(repoRoot)

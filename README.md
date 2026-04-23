@@ -4,9 +4,12 @@ Toolkit for agent-driven development. Ships:
 
 - **Blueprint runtime** — Markdown-based implementation-plan format with
   lifecycle states, parser, validator, DAG executor, and lifecycle engine.
-- **Symlinker** — keeps `.claude/commands/`, `.claude/skills/`, and
-  `.gemini/commands/*.toml` in sync with a canonical `.agent/` source of
-  truth. Agent-runtime agnostic (Claude Code, Gemini CLI, Cursor, Windsurf).
+- **Symlinker** — keeps each IDE's native command/skill surface in sync
+  with a canonical `.agent/` source of truth. Ships defaults for Claude
+  Code, Cursor, Windsurf, OpenCode, Codex CLI, and Amp (Sourcegraph),
+  plus Gemini CLI via TOML transform. Skills converge on two surfaces:
+  `.claude/skills` (Claude + OpenCode-fallback) and `.agents/skills/`
+  (Codex + Amp + OpenCode-fallback).
 - **Skills catalog** — a curated set of generalized slash-commands, skills,
   workflows, rules, guides, and doc templates that any repo can adopt.
 - **`ak` CLI** — umbrella command that drives everything:

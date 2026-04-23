@@ -8,10 +8,12 @@ Agentkit is a toolkit for agent-driven development. It ships four things:
    tooling. See [`blueprint-format.md`](./blueprint-format.md) and
    [`lifecycle.md`](./lifecycle.md).
 
-2. **Symlinker** — keeps `.claude/commands/`, `.claude/skills/`, and
-   `.gemini/commands/*.toml` in sync with a canonical `.agent/` source
-   of truth. Runtime-agnostic (Claude Code, Gemini CLI, Cursor, Windsurf).
-   See [`symlinker.md`](./symlinker.md).
+2. **Symlinker** — keeps each IDE's native command/skill surface in sync
+   with a canonical `.agent/` source of truth. Ships defaults for Claude
+   Code, Cursor, Windsurf, OpenCode, Codex CLI, Amp, and Gemini CLI.
+   Skills converge on two surfaces: `.claude/skills` (Claude +
+   OpenCode-fallback) and `.agents/skills/` (Codex + Amp +
+   OpenCode-fallback). See [`symlinker.md`](./symlinker.md).
 
 3. **Skills catalog** — a curated set of generalized slash-commands,
    skills, workflows, rules, guides, and doc templates. `ak init` copies

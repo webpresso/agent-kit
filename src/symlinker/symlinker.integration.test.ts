@@ -15,7 +15,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   ALLOWED_REAL_FILES,
   type ConsumerConfig,
+  DEFAULT_PER_SKILL_CONSUMERS,
   DEFAULT_SKILLS_CONSUMERS,
+  type PerSkillConsumerConfig,
   type SkillsConsumerConfig,
   createMissingSymlinks,
   fixExistingFile,
@@ -24,6 +26,8 @@ import {
   syncAll,
   syncConsumer,
   syncGeminiCommands,
+  syncPerSkillConsumer,
+  syncPerSkillConsumers,
   syncSkills,
   syncSkillsConsumer,
 } from './index.js'
@@ -583,6 +587,116 @@ describe('symlinker', () => {
     })
   })
 
+  describe('syncPerSkillConsumer', () => {
+    const CONFIG: PerSkillConsumerConfig = {
+      dir: '.test-codex/skills',
+      sourcePrefix: '../../.agent/skills/',
+    }
+
+    it('creates per-skill symlinks for each .agent/skills/* directory', () => {
+      mkdirSync(join(root, '.agent/skills/pll'), { recursive: true })
+      mkdirSync(join(root, '.agent/skills/verify'), { recursive: true })
+
+      const fixCount = syncPerSkillConsumer(root, CONFIG)
+
+      expect(fixCount).toBe(2)
+      expect(readTarget(join(root, '.test-codex/skills/pll'))).toBe('../../.agent/skills/pll')
+      expect(readTarget(join(root, '.test-codex/skills/verify'))).toBe(
+        '../../.agent/skills/verify',
+      )
+    })
+
+    it('preserves consumer-owned directories (non-symlinks)', () => {
+      mkdirSync(join(root, '.agent/skills/pll'), { recursive: true })
+      mkdirSync(join(root, '.test-codex/skills/consumer-only'), { recursive: true })
+      writeFile(join(root, '.test-codex/skills/consumer-only/SKILL.md'), '# kept')
+
+      syncPerSkillConsumer(root, CONFIG)
+
+      expect(isSymlink(join(root, '.test-codex/skills/consumer-only'))).toBe(false)
+      expect(existsSync(join(root, '.test-codex/skills/consumer-only/SKILL.md'))).toBe(true)
+    })
+
+    it('is idempotent — second run returns 0', () => {
+      mkdirSync(join(root, '.agent/skills/pll'), { recursive: true })
+
+      expect(syncPerSkillConsumer(root, CONFIG)).toBe(1)
+      expect(syncPerSkillConsumer(root, CONFIG)).toBe(0)
+    })
+
+    it('fixes broken symlink pointing into .agent/skills/', () => {
+      mkdirSync(join(root, '.agent/skills/pll'), { recursive: true })
+      mkdirSync(join(root, '.test-codex/skills'), { recursive: true })
+      symlinkSync('../../.agent/skills/nonexistent', join(root, '.test-codex/skills/pll'))
+
+      const fixCount = syncPerSkillConsumer(root, CONFIG)
+
+      expect(fixCount).toBe(1)
+      expect(readTarget(join(root, '.test-codex/skills/pll'))).toBe('../../.agent/skills/pll')
+    })
+
+    it('removes stale symlinks for skills that no longer exist in .agent/', () => {
+      mkdirSync(join(root, '.agent/skills/pll'), { recursive: true })
+      mkdirSync(join(root, '.test-codex/skills'), { recursive: true })
+      // Orphan symlink pointing to a skill that doesn't exist any more.
+      symlinkSync('../../.agent/skills/retired', join(root, '.test-codex/skills/retired'))
+
+      const fixCount = syncPerSkillConsumer(root, CONFIG)
+
+      // 1 fix: create `pll` symlink. Orphan removal counts as a second fix.
+      expect(fixCount).toBe(2)
+      expect(existsSync(join(root, '.test-codex/skills/retired'))).toBe(false)
+    })
+
+    it('skips real directory with same name as an agent skill (collision warning)', () => {
+      mkdirSync(join(root, '.agent/skills/pll'), { recursive: true })
+      mkdirSync(join(root, '.test-codex/skills/pll'), { recursive: true })
+
+      const fixCount = syncPerSkillConsumer(root, CONFIG)
+
+      expect(fixCount).toBe(0)
+      expect(isSymlink(join(root, '.test-codex/skills/pll'))).toBe(false)
+    })
+
+    it('returns 0 when .agent/skills does not exist', () => {
+      expect(syncPerSkillConsumer(root, CONFIG)).toBe(0)
+    })
+  })
+
+  describe('syncPerSkillConsumers', () => {
+    it('DEFAULT_PER_SKILL_CONSUMERS targets the convergent .agents/skills path', () => {
+      // `.agents/skills/` covers Codex (official), Amp (official), and
+      // OpenCode (fallback) in a single per-skill entry. Codex's `.codex/
+      // skills/` and OpenCode's `.opencode/skills/` are deliberately NOT
+      // included — Codex doesn't read its namespaced dir (see OpenAI's
+      // "Where to save skills" docs), and OpenCode falls back to
+      // `.claude/skills/` and `.agents/skills/` so a dedicated entry is
+      // redundant.
+      expect(DEFAULT_PER_SKILL_CONSUMERS).toEqual([
+        { dir: '.agents/skills', sourcePrefix: '../../.agent/skills/' },
+      ])
+    })
+
+    it('fans out to all consumers', () => {
+      mkdirSync(join(root, '.agent/skills/pll'), { recursive: true })
+
+      const consumers: PerSkillConsumerConfig[] = [
+        { dir: '.consumer-a/skills', sourcePrefix: '../../.agent/skills/' },
+        { dir: '.consumer-b/skills', sourcePrefix: '../../.agent/skills/' },
+      ]
+
+      const fixCount = syncPerSkillConsumers(root, consumers)
+
+      expect(fixCount).toBe(2)
+      expect(isSymlink(join(root, '.consumer-a/skills/pll'))).toBe(true)
+      expect(isSymlink(join(root, '.consumer-b/skills/pll'))).toBe(true)
+    })
+
+    it('returns 0 when .agent/skills does not exist', () => {
+      expect(syncPerSkillConsumers(root)).toBe(0)
+    })
+  })
+
   describe('isAgentOrConsumerFile (pre-commit trigger)', () => {
     const shouldMatch = [
       '.agent/commands/audit.md',
@@ -596,6 +710,10 @@ describe('symlinker', () => {
       '.windsurf/commands/soa.md',
       '.windsurf/commands/brainstorm.md',
       '.claude/skills/debugging/SKILL.md',
+      '.agents/skills/pll/SKILL.md',
+      '.agents/skills/verify/SKILL.md',
+      '.opencode/commands/verify.md',
+      '.opencode/commands/pll.md',
       '.gemini/commands/verify.toml',
       '.gemini/commands/soa.toml',
     ]
@@ -609,9 +727,12 @@ describe('symlinker', () => {
       '.claude/settings.json',
       '.windsurf/rules/quality-logs.md',
       'README.md',
-      '.opencode/skills',
       '.gemini/commands/config.json',
       '.gemini/settings.toml',
+      // Deliberately unmapped — see consumers.ts for rationale.
+      '.codex/prompts/verify.md',
+      '.codex/skills/pll/SKILL.md',
+      '.opencode/skills/pll/SKILL.md',
     ]
 
     it.each(shouldMatch)('matches %s', (file) => {

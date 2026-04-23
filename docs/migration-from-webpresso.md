@@ -56,8 +56,8 @@ If you happen to have forked or vendored webpresso's blueprint code:
 3. Codemod: find/replace your vendored imports with
    `@webpresso/agent-kit/blueprint`.
 4. Delete the vendored code.
-5. Run `ak symlink sync` and commit the resulting `.claude/`,
-   `.gemini/`, `.cursor/`, `.windsurf/` files.
+5. Run `ak symlink sync` and commit the resulting `.claude/`, `.cursor/`,
+   `.windsurf/`, `.opencode/`, `.agents/skills/`, and `.gemini/` files.
 
 ## Invariants preserved during webpresso's migration
 

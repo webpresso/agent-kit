@@ -38,7 +38,9 @@ import {
   ALLOWED_REAL_FILES,
   type ConsumerConfig,
   DEFAULT_CONSUMERS,
+  DEFAULT_PER_SKILL_CONSUMERS,
   DEFAULT_SKILLS_CONSUMERS,
+  type PerSkillConsumerConfig,
   type SkillsConsumerConfig,
 } from './consumers.js'
 import { parseMarkdownFrontmatter } from './frontmatter.js'
@@ -48,7 +50,9 @@ export {
   ALLOWED_REAL_FILES,
   type ConsumerConfig,
   DEFAULT_CONSUMERS,
+  DEFAULT_PER_SKILL_CONSUMERS,
   DEFAULT_SKILLS_CONSUMERS,
+  type PerSkillConsumerConfig,
   type SkillsConsumerConfig,
 }
 
@@ -69,6 +73,11 @@ export function isAgentOrConsumerFile(file: string): boolean {
   // Mirrored consumer skill directories (nested under skill subdirs)
   for (const { linkPath } of DEFAULT_SKILLS_CONSUMERS) {
     if (file.startsWith(`${linkPath}/`)) return true
+  }
+
+  // Per-skill consumer directories (e.g. .codex/skills/<skill>/...)
+  for (const { dir } of DEFAULT_PER_SKILL_CONSUMERS) {
+    if (file.startsWith(`${dir}/`)) return true
   }
 
   return false
@@ -149,6 +158,107 @@ export function syncSkills(
   let fixCount = 0
   for (const consumer of consumers) {
     fixCount += syncSkillsConsumer(repoRoot, consumer)
+  }
+  return fixCount
+}
+
+export function syncPerSkillConsumer(
+  repoRoot: string,
+  config: PerSkillConsumerConfig,
+): number {
+  const skillsSource = join(repoRoot, '.agent/skills')
+  if (!existsSync(skillsSource)) return 0
+
+  const consumerDir = join(repoRoot, config.dir)
+  mkdirSync(consumerDir, { recursive: true })
+
+  console.log(`\n📁 ${config.dir} (per-skill)`)
+
+  const agentSkills = readdirSync(skillsSource).filter((name) => {
+    try {
+      return lstatSync(join(skillsSource, name)).isDirectory()
+    } catch {
+      return false
+    }
+  })
+
+  let fixCount = 0
+
+  for (const skill of agentSkills) {
+    const linkPath = join(consumerDir, skill)
+    const expectedTarget = `${config.sourcePrefix}${skill}`
+    const stats = (() => {
+      try {
+        return lstatSync(linkPath)
+      } catch {
+        return null
+      }
+    })()
+
+    if (stats) {
+      if (stats.isSymbolicLink()) {
+        const target = readlinkSync(linkPath)
+        const resolvedTarget = resolve(consumerDir, target)
+        const isBroken = !existsSync(resolvedTarget)
+        const isCorrect = target.replace(/\\/g, '/') === expectedTarget
+
+        if (!isBroken && isCorrect) continue
+
+        unlinkSync(linkPath)
+        const reason = isBroken ? 'broken' : `wrong target (${target})`
+        console.log(`  🔧 ${skill}: removed ${reason} symlink`)
+      } else {
+        console.log(
+          `  ⚠️  ${skill}: real directory collides with .agent/skills/${skill} — skipped (remove manually)`,
+        )
+        continue
+      }
+    }
+
+    createSymlinkWithType(expectedTarget, linkPath, 'dir', `${config.dir}/${skill}`)
+    console.log(`  ✅ ${skill} → ${expectedTarget}`)
+    fixCount++
+  }
+
+  // Remove stale symlinks pointing into .agent/skills/ for skills that no
+  // longer exist. Leaves consumer-owned directories (non-symlinks, and
+  // symlinks pointing elsewhere) untouched.
+  for (const entry of readdirSync(consumerDir)) {
+    const entryPath = join(consumerDir, entry)
+    const stats = (() => {
+      try {
+        return lstatSync(entryPath)
+      } catch {
+        return null
+      }
+    })()
+    if (!stats || !stats.isSymbolicLink()) continue
+
+    const target = readlinkSync(entryPath).replace(/\\/g, '/')
+    if (!target.includes('.agent/skills/')) continue
+
+    const resolvedTarget = resolve(consumerDir, target)
+    if (!existsSync(resolvedTarget)) {
+      unlinkSync(entryPath)
+      console.log(`  🗑️  ${entry}: removed stale symlink (source gone)`)
+      fixCount++
+    }
+  }
+
+  if (fixCount === 0) console.log('  ✅ All symlinks correct')
+  return fixCount
+}
+
+export function syncPerSkillConsumers(
+  repoRoot: string,
+  consumers: PerSkillConsumerConfig[] = DEFAULT_PER_SKILL_CONSUMERS,
+): number {
+  const skillsSource = join(repoRoot, '.agent/skills')
+  if (!existsSync(skillsSource)) return 0
+
+  let fixCount = 0
+  for (const consumer of consumers) {
+    fixCount += syncPerSkillConsumer(repoRoot, consumer)
   }
   return fixCount
 }
@@ -383,6 +493,7 @@ export function syncAll(repoRoot: string, consumers: ConsumerConfig[] = DEFAULT_
   }
 
   totalFixes += syncSkills(repoRoot, DEFAULT_SKILLS_CONSUMERS)
+  totalFixes += syncPerSkillConsumers(repoRoot, DEFAULT_PER_SKILL_CONSUMERS)
   totalFixes += syncGeminiCommands(repoRoot)
 
   console.log()

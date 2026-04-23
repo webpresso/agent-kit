@@ -33,9 +33,12 @@ npx ak init
 1. Creates `.agent/{commands,skills,workflows,rules,guides}/` and populates
    them with the catalog's Tier-1 blueprint-native + Tier-2 methodology
    content.
-2. Creates `.claude/commands/` + `.claude/skills/` as **symlinks** pointing
-   at `.agent/`. Also `.cursor/commands/` and `.windsurf/commands/` if
-   you use those tools.
+2. Creates IDE surfaces as **symlinks** pointing at `.agent/`:
+   - `.claude/commands/` + `.claude/skills/` (directory-mode skills link
+     — also serves OpenCode via its `.claude/skills/` fallback)
+   - `.cursor/commands/`, `.windsurf/commands/`, `.opencode/commands/`
+   - `.agents/skills/<name>/` (per-skill links — covers Codex CLI +
+     Amp + OpenCode's `.agents/skills/` fallback in one surface)
 3. Generates `.gemini/commands/*.toml` by transforming each `.agent/commands/*.md`
    (Gemini CLI wants TOML, not markdown).
 4. Creates `docs/templates/{blueprint,guide,research,postmortem,system,adr,runbook,tech-debt}.md`
@@ -104,8 +107,9 @@ See [`lifecycle.md`](./lifecycle.md) for the full state machine.
 
 ## Keep the agent surface in sync
 
-When you edit `.agent/commands/<foo>.md`, the `.claude/`, `.gemini/`,
-`.cursor/`, and `.windsurf/` consumer surfaces drift. Run:
+When you edit `.agent/commands/<foo>.md`, the `.claude/`, `.cursor/`,
+`.windsurf/`, `.opencode/`, `.agents/`, and `.gemini/` consumer surfaces
+drift. Run:
 
 ```bash
 npx ak symlink sync
@@ -145,8 +149,13 @@ npx ak symlink sync
 ```
 
 Claude Code picks it up via `.claude/commands/my-command.md` (the
-symlink). Gemini CLI picks it up via `.gemini/commands/my-command.toml`
-(the transformed artifact).
+symlink). OpenCode picks it up via `.opencode/commands/my-command.md`.
+Gemini CLI picks it up via `.gemini/commands/my-command.toml` (the
+transformed artifact). All point back at the same
+`.agent/commands/my-command.md` source. For skills, Codex and Amp
+discover them via `.agents/skills/<name>/SKILL.md`; Claude Code discovers
+them via `.claude/skills/<name>/SKILL.md`; OpenCode discovers them via
+either of those fallbacks.
 
 ## Next steps
 
