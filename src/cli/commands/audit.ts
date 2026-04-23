@@ -1,15 +1,12 @@
 /**
- * `ak audit tph|tph-e2e|bundle-budget` — packaged repository audits.
+ * `ak audit <kind>` — packaged repository audits.
  *
- * The underlying audit scripts (`src/audit/audit-tph.ts`,
- * `src/audit/audit-tph-e2e.ts`) are Bun-native entrypoints that anchor
- * themselves at repo-root and emit formatted reports. Rather than
- * refactor them into library functions (Phase 2 scope is CLI wiring,
- * not audit logic), we spawn them as child processes and forward
- * stdout/stderr/exit-code. This preserves their behaviour exactly and
- * keeps the CLI a thin facade.
+ * TPH audits remain script-backed for now because they are Bun-native
+ * entrypoints. Repo guardrail audits are library-backed so consumers can
+ * use the same logic from the CLI and from `@webpresso/agent-kit/local`.
  */
 
+import type { RepoAuditResult } from '#audit/repo-guardrails'
 import type { CAC } from 'cac'
 
 import { spawn } from 'node:child_process'
@@ -18,13 +15,18 @@ import path from 'node:path'
 
 interface AuditActionOptions {
   dist?: string
+  docsRoot?: string
   fix?: boolean
   htmlEntry?: string
   ignore?: string | string[]
   json?: boolean
+  legacyOmx?: boolean
   maxHtmlEagerJsAssetBytes?: string
   maxHtmlEagerJsTotalBytes?: string
   maxJsAssetBytes?: string
+  messageFile?: string
+  requireLore?: boolean
+  root?: string
 }
 
 function resolveAuditScript(name: 'audit-tph.ts' | 'audit-tph-e2e.ts'): string {
@@ -91,10 +93,18 @@ function buildBundleBudgetArgs(target: string | undefined, options: AuditActionO
 
 export function registerAuditCommand(cli: CAC): void {
   cli
-    .command('audit <kind> [target]', 'Run a packaged audit (tph, tph-e2e, bundle-budget)')
+    .command(
+      'audit <kind> [target]',
+      'Run a packaged audit (tph, tph-e2e, bundle-budget, catalog-drift, commit-message, docs-frontmatter, blueprint-lifecycle)',
+    )
     .option('--fix', 'Attempt to auto-fix violations (forwarded to supported audits)')
     .option('--json', 'Emit JSON output (forwarded to supported audits)')
     .option('--dist <dir>', 'Built Vite dist directory for bundle-budget')
+    .option('--root <dir>', 'Repository root for repo guardrail audits')
+    .option('--docs-root <dir>', 'Docs directory for docs-frontmatter')
+    .option('--message-file <file>', 'Commit message file for commit-message')
+    .option('--require-lore', 'Require Lore trailers even without [lore] in the commit subject')
+    .option('--legacy-omx', 'Include legacy .omx plan checks for blueprint-lifecycle')
     .option('--html-entry <file>', 'HTML entry relative to dist for bundle-budget')
     .option('--max-js-asset-bytes <bytes>', 'Max size for any generated JS asset')
     .option('--max-html-eager-js-asset-bytes <bytes>', 'Max size for any HTML-eager JS asset')
@@ -123,10 +133,68 @@ export function registerAuditCommand(cli: CAC): void {
           const code = await runBundleBudgetCli(bundleBudgetArgs)
           process.exit(code)
         }
+        case 'catalog-drift': {
+          const { auditCatalogDrift } = await import('#audit/repo-guardrails')
+          await exitWithRepoAudit(
+            auditCatalogDrift(options.root ?? target ?? process.cwd()),
+            options,
+          )
+          return
+        }
+        case 'commit-message': {
+          const { auditCommitMessageFile } = await import('#audit/repo-guardrails')
+          const messageFile = options.messageFile ?? target
+          if (!messageFile) {
+            console.error('commit-message requires a message file target or --message-file <file>.')
+            process.exit(1)
+          }
+          await exitWithRepoAudit(
+            auditCommitMessageFile(messageFile, {
+              requireLore: options.requireLore,
+            }),
+            options,
+          )
+          return
+        }
+        case 'docs-frontmatter': {
+          const { auditDocsFrontmatter } = await import('#audit/repo-guardrails')
+          await exitWithRepoAudit(
+            auditDocsFrontmatter(options.root ?? target ?? process.cwd(), {
+              docsRoot: options.docsRoot,
+            }),
+            options,
+          )
+          return
+        }
+        case 'blueprint-lifecycle': {
+          const { auditBlueprintLifecycle } = await import('#audit/repo-guardrails')
+          await exitWithRepoAudit(
+            auditBlueprintLifecycle(options.root ?? target ?? process.cwd(), {
+              includeLegacyOmx: options.legacyOmx,
+            }),
+            options,
+          )
+          return
+        }
         default: {
-          console.error(`Unknown audit kind: ${kind}. Use 'tph', 'tph-e2e', or 'bundle-budget'.`)
+          console.error(
+            `Unknown audit kind: ${kind}. Use 'tph', 'tph-e2e', 'bundle-budget', 'catalog-drift', 'commit-message', 'docs-frontmatter', or 'blueprint-lifecycle'.`,
+          )
           process.exit(1)
         }
       }
     })
+}
+
+async function exitWithRepoAudit(
+  auditResult: RepoAuditResult,
+  options: AuditActionOptions,
+): Promise<void> {
+  const { formatRepoAuditReport } = await import('#audit/repo-guardrails')
+  if (options.json) {
+    console.log(JSON.stringify(auditResult, null, 2))
+  } else {
+    console.log(formatRepoAuditReport(auditResult))
+  }
+  process.exit(auditResult.ok ? 0 : 1)
 }

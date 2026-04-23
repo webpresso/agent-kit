@@ -10,6 +10,23 @@
 export type __AgentKitLocalEntrypointReserved = never
 
 export {
+  auditBlueprintLifecycle,
+  auditCatalogDrift,
+  auditCommitMessageFile,
+  auditDocsFrontmatter,
+  formatRepoAuditReport,
+  validateCommitMessage,
+} from './audit/repo-guardrails.js'
+export type {
+  BlueprintLifecycleOptions,
+  CatalogDriftOptions,
+  CommitMessageOptions,
+  DocsFrontmatterOptions,
+  RepoAuditResult,
+  RepoAuditViolation,
+} from './audit/repo-guardrails.js'
+
+export {
   analyzeViteDistBundleBudget,
   bundleBudgetCliHelp,
   parseBundleBudgetCliArgs,

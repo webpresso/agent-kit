@@ -1,7 +1,7 @@
 {
   "name": "@webpresso/agent-kit",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "description": "Toolkit for agent-driven development: Blueprint runtime, agent-surface symlinker, skills catalog, and the `ak` CLI that ties them together.",
   "keywords": [
     "agent",
@@ -34,61 +34,89 @@
   },
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      }
     },
     "./blueprint": {
-      "types": "./src/blueprint/index.ts",
-      "default": "./src/blueprint/index.ts"
+      "import": {
+        "types": "./dist/esm/blueprint/index.d.ts",
+        "default": "./dist/esm/blueprint/index.js"
+      }
     },
     "./blueprint/dag": {
-      "types": "./src/blueprint/dag/index.ts",
-      "default": "./src/blueprint/dag/index.ts"
+      "import": {
+        "types": "./dist/esm/blueprint/dag/index.d.ts",
+        "default": "./dist/esm/blueprint/dag/index.js"
+      }
     },
     "./blueprint/dag/local": {
-      "types": "./src/blueprint/dag/local/index.ts",
-      "default": "./src/blueprint/dag/local/index.ts"
+      "import": {
+        "types": "./dist/esm/blueprint/dag/local/index.d.ts",
+        "default": "./dist/esm/blueprint/dag/local/index.js"
+      }
     },
     "./blueprint/local": {
-      "types": "./src/blueprint/local.ts",
-      "default": "./src/blueprint/local.ts"
+      "import": {
+        "types": "./dist/esm/blueprint/local.d.ts",
+        "default": "./dist/esm/blueprint/local.js"
+      }
     },
     "./blueprint/tech-debt": {
-      "types": "./src/blueprint/tech-debt/index.ts",
-      "default": "./src/blueprint/tech-debt/index.ts"
+      "import": {
+        "types": "./dist/esm/blueprint/tech-debt/index.d.ts",
+        "default": "./dist/esm/blueprint/tech-debt/index.js"
+      }
     },
     "./blueprint/test-utils": {
-      "types": "./src/blueprint/test-utils/blueprint-mocks.ts",
-      "default": "./src/blueprint/test-utils/blueprint-mocks.ts"
+      "import": {
+        "types": "./dist/esm/blueprint/test-utils/blueprint-mocks.d.ts",
+        "default": "./dist/esm/blueprint/test-utils/blueprint-mocks.js"
+      }
     },
     "./blueprint/tracked-document": {
-      "types": "./src/blueprint/tracked-document/index.ts",
-      "default": "./src/blueprint/tracked-document/index.ts"
+      "import": {
+        "types": "./dist/esm/blueprint/tracked-document/index.d.ts",
+        "default": "./dist/esm/blueprint/tracked-document/index.js"
+      }
     },
     "./blueprint/validation": {
-      "types": "./src/blueprint/core/validation/index.ts",
-      "default": "./src/blueprint/core/validation/index.ts"
+      "import": {
+        "types": "./dist/esm/blueprint/core/validation/index.d.ts",
+        "default": "./dist/esm/blueprint/core/validation/index.js"
+      }
     },
     "./catalog/*": "./catalog/*",
     "./docs-linter": {
-      "types": "./src/docs-linter/index.ts",
-      "default": "./src/docs-linter/index.ts"
+      "import": {
+        "types": "./dist/esm/docs-linter/index.d.ts",
+        "default": "./dist/esm/docs-linter/index.js"
+      }
     },
     "./local": {
-      "types": "./src/local.ts",
-      "default": "./src/local.ts"
+      "import": {
+        "types": "./dist/esm/local.d.ts",
+        "default": "./dist/esm/local.js"
+      }
     },
     "./symlinker": {
-      "types": "./src/symlinker/index.ts",
-      "default": "./src/symlinker/index.ts"
+      "import": {
+        "types": "./dist/esm/symlinker/index.d.ts",
+        "default": "./dist/esm/symlinker/index.js"
+      }
     },
     "./vite": {
-      "types": "./src/vite/index.ts",
-      "default": "./src/vite/index.ts"
+      "import": {
+        "types": "./dist/esm/vite/index.d.ts",
+        "default": "./dist/esm/vite/index.js"
+      }
     },
     "./vite/local": {
-      "types": "./src/vite/local.ts",
-      "default": "./src/vite/local.ts"
+      "import": {
+        "types": "./dist/esm/vite/local.d.ts",
+        "default": "./dist/esm/vite/local.js"
+      }
     }
   },
   "scripts": {
