@@ -145,14 +145,14 @@ export function formatBundleBudgetReport(result: BundleBudgetResult): string {
   lines.push(result.ok ? '✓ Bundle budget passed' : '✗ Bundle budget failed')
   lines.push('')
   lines.push('JS assets:')
-  for (const asset of [...result.jsAssets].sort(compareAssetPath)) {
+  for (const asset of [...result.jsAssets].toSorted(compareAssetPath)) {
     lines.push(`  ${formatBytes(asset.bytes).padStart(10)}  ${asset.path}`)
   }
   if (!result.jsAssets.length) lines.push('  (none)')
 
   lines.push('')
   lines.push(`HTML-eager JS total: ${formatBytes(result.htmlEagerJsTotalBytes)}`)
-  for (const asset of [...result.htmlEagerJsAssets].sort(compareAssetPath)) {
+  for (const asset of [...result.htmlEagerJsAssets].toSorted(compareAssetPath)) {
     lines.push(`  ${formatBytes(asset.bytes).padStart(10)}  ${asset.path}`)
   }
   if (!result.htmlEagerJsAssets.length) lines.push('  (none)')

@@ -17,8 +17,10 @@ class FakeTarget {
 function createStorage() {
   const values = new Map<string, string>()
   return {
-    getItem: vi.fn((key: string) => values.get(key) ?? null),
-    setItem: vi.fn((key: string, value: string) => values.set(key, value)),
+    getItem: vi.fn<(key: string) => string | null>((key: string) => values.get(key) ?? null),
+    setItem: vi.fn<(key: string, value: string) => void>((key: string, value: string) => {
+      values.set(key, value)
+    }),
   }
 }
 
@@ -34,8 +36,8 @@ describe('installChunkLoadRecovery', () => {
   it('prevents the Vite preload error and reloads once per storage key', () => {
     const target = new FakeTarget()
     const storage = createStorage()
-    const reload = vi.fn()
-    const preventDefault = vi.fn()
+    const reload = vi.fn<() => void>()
+    const preventDefault = vi.fn<() => void>()
 
     installChunkLoadRecovery({ key: 'test-key', reload, storage, target })
     target.dispatch({ preventDefault })

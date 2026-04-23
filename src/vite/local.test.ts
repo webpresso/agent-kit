@@ -37,7 +37,7 @@ describe('analyzeViteDistBundleBudget', () => {
     })
 
     expect(result.ok).toBe(true)
-    expect(result.jsAssets.map((asset) => asset.path).sort()).toEqual([
+    expect(result.jsAssets.map((asset) => asset.path).toSorted()).toEqual([
       'assets/index.js',
       'assets/route.js',
     ])
