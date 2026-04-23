@@ -7,7 +7,29 @@ import type { BlueprintTaskStatus } from '#core/schema'
 
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+// Hoist the mock flag so it is available before module evaluation.
+const mockWriteFileError = { active: false }
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  return {
+    ...actual,
+    writeFile: vi.fn<typeof actual.writeFile>((...args: Parameters<typeof actual.writeFile>) => {
+      if (mockWriteFileError.active) {
+        return Promise.reject(
+          Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' }),
+        )
+      }
+      return (
+        actual.writeFile as unknown as (
+          ...a: Parameters<typeof actual.writeFile>
+        ) => ReturnType<typeof actual.writeFile>
+      )(...args)
+    }),
+  }
+})
 
 import { archiveBlueprint, validateAllTasksDone } from './archive.js'
 
@@ -436,16 +458,17 @@ created: 2026-02-01
       const filePath = path.join(planPath, '_overview.md')
       await fs.writeFile(filePath, COMPLETE_PLAN)
 
-      // Make the file read-only so writeFile fails during updateBlueprintStatus
-      await fs.chmod(filePath, 0o444)
-
+      // Activate the mock error so the next writeFile call inside archiveBlueprint
+      // fails with EACCES. This works cross-module because vi.mock hoists the
+      // module-level mock above, replacing the named import used by archive.ts.
+      // We cannot use chmod 0o444 here because this process runs as root and root
+      // bypasses filesystem permission checks.
+      mockWriteFileError.active = true
       const result = await archiveBlueprint('readonly-plan', projectPath)
+      mockWriteFileError.active = false
 
       expect(result.success).toBe(false)
       expect(result.error).toMatch(/Failed to update status/)
-
-      // Restore permissions for cleanup
-      await fs.chmod(filePath, 0o644)
     })
   })
 
