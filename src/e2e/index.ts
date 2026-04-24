@@ -1,6 +1,14 @@
 export { defineAgentKitConfig, type AgentKitConfig } from './config.js'
 export { buildE2eCommand } from './command-builder.js'
 export {
+  cloneE2eStepDefinition,
+  cloneE2eSuiteDefinition,
+  createCommandE2eHostAdapter,
+  type CommandHostAdapterGroupDefinition,
+  type CommandHostAdapterRunDefinition,
+  type CreateCommandE2eHostAdapterOptions,
+} from './command-host-adapter.js'
+export {
   findAgentKitConfigPath,
   getAgentKitConfigPath,
   loadAgentKitConfig,

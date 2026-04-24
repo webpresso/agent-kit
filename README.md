@@ -84,7 +84,11 @@ Agent Kit now exports reusable test and E2E helpers in addition to the CLI:
 
 ```ts
 import { createAkTestCommandConfig } from "@webpresso/agent-kit/test";
-import { defineAgentKitConfig, planE2eRun } from "@webpresso/agent-kit/e2e";
+import {
+  createCommandE2eHostAdapter,
+  defineAgentKitConfig,
+  planE2eRun,
+} from "@webpresso/agent-kit/e2e";
 ```
 
 `ak test` provides a portable Vite+/Vitest command surface for package and file
@@ -117,3 +121,30 @@ ak e2e --suite platform-api --reuse-reset
 
 Host adapters should prefer exporting `agentKitE2eHostAdapter`. The legacy
 `webpressoE2eHostAdapter` export name remains supported as a fallback.
+
+For repos that want a single host-owned command entrypoint, build the adapter
+from the shared helper and keep only suite manifest / file routing logic local:
+
+```ts
+import { createCommandE2eHostAdapter } from "@webpresso/agent-kit/e2e";
+
+export const agentKitE2eHostAdapter = createCommandE2eHostAdapter({
+  listSuites,
+  resolveSuiteId,
+  normalizeFilePath,
+  resolveSuiteForFile,
+  defaultSuiteId: "foundation",
+  buildCommandGroup(request) {
+    return {
+      batchKey: "repo-e2e-host",
+      env: { E2E_BASE_URL: process.env.E2E_BASE_URL ?? "http://127.0.0.1:8787" },
+      run: {
+        batchKey: "repo-e2e-host",
+        logName: "repo-e2e-host",
+        command: "pnpm",
+        args: ["--dir", "apps/e2e", "run", "e2e:run", "--", "--suite", request.suite ?? "foundation"],
+      },
+    };
+  },
+});
+```
