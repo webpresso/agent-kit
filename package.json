@@ -106,7 +106,7 @@
     },
     "./e2e": {
       "import": {
-        "types": "./dist/esm/e2e/index.d.ts",
+        "types": "./src/e2e/index.ts",
         "default": "./dist/esm/e2e/index.js"
       }
     },
