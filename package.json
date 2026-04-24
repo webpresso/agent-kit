@@ -143,6 +143,7 @@
   },
   "scripts": {
     "build": "tshy && chmod +x dist/esm/cli/cli.js",
+    "prepare": "tshy && chmod +x dist/esm/cli/cli.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint:pkg": "publint && attw --pack .",
