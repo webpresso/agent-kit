@@ -20,6 +20,7 @@
     "dist",
     "catalog",
     "docs",
+    "just",
     "README.md"
   ],
   "type": "module",
@@ -30,6 +31,8 @@
     "#cli/*": "./src/cli/*.ts",
     "#audit/*": "./src/audit/*.ts",
     "#docs-linter/*": "./src/docs-linter/*.ts",
+    "#e2e": "./src/e2e/index.ts",
+    "#test": "./src/test/index.ts",
     "#*": "./src/blueprint/*.ts"
   },
   "exports": {
@@ -94,6 +97,12 @@
         "default": "./dist/esm/docs-linter/index.js"
       }
     },
+    "./e2e": {
+      "import": {
+        "types": "./dist/esm/e2e/index.d.ts",
+        "default": "./dist/esm/e2e/index.js"
+      }
+    },
     "./local": {
       "import": {
         "types": "./dist/esm/local.d.ts",
@@ -104,6 +113,12 @@
       "import": {
         "types": "./dist/esm/symlinker/index.d.ts",
         "default": "./dist/esm/symlinker/index.js"
+      }
+    },
+    "./test": {
+      "import": {
+        "types": "./dist/esm/test/index.d.ts",
+        "default": "./dist/esm/test/index.js"
       }
     },
     "./vite": {
@@ -162,8 +177,10 @@
       "./blueprint/validation": "./src/blueprint/core/validation/index.ts",
       "./catalog/*": "./catalog/*",
       "./docs-linter": "./src/docs-linter/index.ts",
+      "./e2e": "./src/e2e/index.ts",
       "./local": "./src/local.ts",
       "./symlinker": "./src/symlinker/index.ts",
+      "./test": "./src/test/index.ts",
       "./vite": "./src/vite/index.ts",
       "./vite/local": "./src/vite/local.ts"
     },

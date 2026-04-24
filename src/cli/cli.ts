@@ -16,7 +16,16 @@ import { formatUnknownCommandError, normalizeArgv, readPackageVersion } from './
 
 const VERSION = readPackageVersion(import.meta.url)
 
-const SUPPORTED_COMMANDS = ['blueprint', 'symlink', 'audit', 'skills', 'docs', 'init'] as const
+const SUPPORTED_COMMANDS = [
+  'blueprint',
+  'symlink',
+  'audit',
+  'skills',
+  'docs',
+  'init',
+  'test',
+  'e2e',
+] as const
 
 const ROOT_HELP = [
   'Usage: ak [command] [options]',
@@ -28,6 +37,8 @@ const ROOT_HELP = [
   '  skills       Manage agent skills (list, install, refresh)',
   '  docs         Documentation tooling (lint)',
   '  init         Scaffold a consumer repo with the agent surface',
+  '  test         Run portable package/file test commands',
+  '  e2e          Run portable E2E suite/file commands',
   '',
   'Options:',
   '  -h, --help     Display this message',
@@ -93,6 +104,16 @@ export async function main(): Promise<number> {
     case 'init': {
       const { registerInitCommand } = await import('./commands/init/index.js')
       registerInitCommand(cli)
+      break
+    }
+    case 'test': {
+      const { registerTestCommand } = await import('./commands/test.js')
+      registerTestCommand(cli)
+      break
+    }
+    case 'e2e': {
+      const { registerE2eCommand } = await import('./commands/e2e.js')
+      registerE2eCommand(cli)
       break
     }
     default: {
