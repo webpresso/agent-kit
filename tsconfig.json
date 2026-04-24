@@ -20,6 +20,8 @@
     "verbatimModuleSyntax": true,
     "outDir": "./dist",
     "paths": {
+      "#e2e": ["./src/e2e/index.ts"],
+      "#test": ["./src/test/index.ts"],
       "#symlinker": ["./src/symlinker/index.ts"],
       "#cli/*": ["./src/cli/*.ts"],
       "#dev/*": ["./src/dev/*.ts"],

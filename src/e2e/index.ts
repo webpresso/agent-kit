@@ -1,32 +1,45 @@
-import { spawn } from 'node:child_process'
-
-export interface AgentKitE2eRunOptions {
-  file?: string
-  suite?: string
-  passthrough?: readonly string[]
-}
-
-function runJust(args: readonly string[]): Promise<number> {
-  return new Promise<number>((resolve) => {
-    const child = spawn('just', args, { stdio: 'inherit' })
-    child.on('error', (error) => {
-      console.error(`Failed to spawn just: ${error.message}`)
-      resolve(1)
-    })
-    child.on('exit', (code) => resolve(code ?? 1))
-  })
-}
-
-export function buildE2eArgs(options: AgentKitE2eRunOptions): string[] {
-  const suite = options.suite ?? 'e2e'
-  const args = [suite]
-  if (options.file) {
-    args.push('--file', options.file)
-  }
-  args.push(...(options.passthrough ?? []))
-  return args
-}
-
-export async function runAgentKitE2e(options: AgentKitE2eRunOptions): Promise<number> {
-  return runJust(buildE2eArgs(options))
-}
+export { defineAgentKitConfig, type AgentKitConfig } from './config.js'
+export { buildE2eCommand } from './command-builder.js'
+export {
+  findAgentKitConfigPath,
+  getAgentKitConfigPath,
+  loadAgentKitConfig,
+  loadAgentKitConfigSafe,
+  loadConfiguredHostAdapter,
+  loadHostAdapter,
+  resolveAgentKitConfigPath,
+  type LoadedHostAdapter,
+} from './load-host-adapter.js'
+export {
+  DEFAULT_HOST_ADAPTER_EXPORT_NAME,
+  FALLBACK_HOST_ADAPTER_EXPORT_NAMES,
+  isE2eHostAdapter,
+} from './host-adapter.js'
+export {
+  defineE2eSuite,
+  normalizeE2ePath,
+  resolveE2eSuiteForPath,
+  resolveE2eSuiteId,
+  type NormalizeE2ePathOptions,
+} from './suite-registry.js'
+export {
+  groupPlannedE2eRuns,
+  normalizeRequestedFiles,
+  planE2eRun,
+  planGenericE2eRun,
+  type GenericE2ePlanInput,
+} from './run-planner.js'
+export type {
+  CommandConfig,
+  E2eCommandRequest,
+  E2eExecutionRequest,
+  E2eHostAdapter,
+  E2eRunPlannerOptions,
+  E2eRunnerKind,
+  E2eStepCommandOptions,
+  E2eStepDefinition,
+  E2eSuiteDefinition,
+  PlannedE2eRunGroup,
+  PlannedE2eRunStep,
+  ResolvedE2eFile,
+} from './types.js'

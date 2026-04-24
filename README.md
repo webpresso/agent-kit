@@ -21,6 +21,8 @@ ak blueprint new "<goal>" --complexity M
 ak blueprint audit --all --strict
 ak symlink sync
 ak init --with monorepo-navigation,tanstack-query
+ak test --package cli2
+ak e2e --suite smoke --config playwright.config.ts
 ak audit tph
 ak audit bundle-budget apps/client/dist --max-js-asset-bytes 512000
 ak skills list
@@ -75,3 +77,38 @@ ak audit bundle-budget apps/client/dist \
 The analyzer checks generated asset sizes and HTML-eager JavaScript references.
 It intentionally does not inspect route names or generated chunk filename
 prefixes.
+
+## Portable Test Surfaces
+
+Agent Kit now exports reusable test and E2E helpers in addition to the CLI:
+
+```ts
+import { createAkTestCommandConfig } from "@webpresso/agent-kit/test";
+import { defineAgentKitConfig, planE2eRun } from "@webpresso/agent-kit/e2e";
+```
+
+`ak test` provides a portable Vite+/Vitest command surface for package and file
+targets:
+
+```bash
+ak test --package cli2
+ak test --file apps/cli2/src/commands/target.test.ts
+```
+
+`ak e2e` supports both generic runner usage and host-owned adapter usage via a
+root `agent-kit.config.ts`:
+
+```ts
+import { defineAgentKitConfig } from "./packages/cli/agent-kit/dist/esm/e2e/index.js";
+
+export const agentKitConfig = defineAgentKitConfig({
+  e2e: {
+    hostAdapterModule: "./apps/e2e/src/agent-kit-host-adapter.ts",
+  },
+});
+```
+
+```bash
+ak e2e --runner vitest --config packages/logger/vitest.config.ts --file packages/logger/src/tests/log.test.ts
+ak e2e --suite platform-api --reuse-reset
+```
