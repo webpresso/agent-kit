@@ -27,8 +27,6 @@
       "#dev/*": ["./src/dev/*.ts"],
       "#audit/*": ["./src/audit/*.ts"],
       "#docs-linter/*": ["./src/docs-linter/*.ts"],
-      "#e2e": ["./src/e2e/index.ts"],
-      "#test": ["./src/test/index.ts"],
       "#*": ["./src/blueprint/*"]
     }
   },
