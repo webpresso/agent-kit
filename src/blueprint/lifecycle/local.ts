@@ -5,6 +5,7 @@ import path from 'node:path'
 
 import { applyBlueprintLifecycle } from '#lifecycle/engine'
 import { scanBlueprintDirectory } from '#service/scanner'
+import { resolveBlueprintRoot } from '#utils/blueprint-root'
 
 export interface ResolvedBlueprintFile {
   path: string
@@ -64,7 +65,7 @@ export async function resolveBlueprintFile(
 ): Promise<ResolvedBlueprintFile> {
   assertValidBlueprintSlug(slug)
 
-  const baseDir = path.join(projectRoot, 'webpresso', 'blueprints')
+  const baseDir = resolveBlueprintRoot(projectRoot)
   const scanned = scanBlueprintDirectory({
     baseDir,
     includeSpecialFolders: true,
@@ -113,14 +114,13 @@ export async function applyBlueprintLifecycleToFile(
   slug: string,
   intent: BlueprintLifecycleIntent,
 ): Promise<BlueprintLifecycleWriteResult> {
+  const baseDir = resolveBlueprintRoot(projectRoot)
   const location = await resolveBlueprintFile(projectRoot, slug)
   const raw = await readFile(location.path, 'utf-8')
   const mutation = applyBlueprintLifecycle(raw, location.slug, intent)
   const sourceDir = path.dirname(location.path)
   const targetDir = path.join(
-    projectRoot,
-    'webpresso',
-    'blueprints',
+    baseDir,
     mutation.targetStatus,
     relativeBlueprintSlug(location.slug),
   )

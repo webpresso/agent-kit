@@ -47,12 +47,12 @@ not a user-visible change.
 ## For other repos migrating to agent-kit
 
 Most repos aren't coming from webpresso's internal blueprint — they're
-fresh installs. Use `ak init` and follow `getting-started.md`.
+fresh installs. Use `ak setup` and follow `getting-started.md`.
 
 If you happen to have forked or vendored webpresso's blueprint code:
 
 1. `pnpm add -D @webpresso/agent-kit`.
-2. `npx ak init` (or `ak init --dry-run` to preview).
+2. `npx ak setup` (or `ak setup --dry-run` to preview).
 3. Codemod: find/replace your vendored imports with
    `@webpresso/agent-kit/blueprint`.
 4. Delete the vendored code.

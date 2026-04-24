@@ -73,8 +73,8 @@ symlinker warns and skips rather than clobbering it.
 
 Editors on macOS and Linux follow symlinks natively. Windows requires
 Developer Mode or admin privileges for `CreateSymbolicLink`; consumers on
-Windows who run into this can use `ak symlink sync --copy` instead
-(planned — see [limitations](#limitations)).
+Windows who run into this should run from a shell with symlink privileges or
+use `ak symlink check` in CI to detect drift before committing.
 
 ### TOML consumer (`.gemini`)
 
@@ -126,10 +126,6 @@ npx ak symlink check
 ```
 
 If the check fails, run `ak symlink sync` locally and commit the output.
-
-### `ak symlink sync --dry-run` *(planned)*
-
-Previews changes without writing.
 
 ## Consumers & their defaults
 

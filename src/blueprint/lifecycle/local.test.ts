@@ -37,6 +37,14 @@ function writeBlueprint(projectRoot: string, status: string, slug: string): stri
   return filePath
 }
 
+function writeConsumerBlueprint(projectRoot: string, status: string, slug: string): string {
+  const dir = path.join(projectRoot, 'blueprints', status, slug)
+  mkdirSync(dir, { recursive: true })
+  const filePath = path.join(dir, '_overview.md')
+  writeFileSync(filePath, BLUEPRINT_TEMPLATE.replace('status: planned', `status: ${status}`))
+  return filePath
+}
+
 describe('applyBlueprintLifecycleToFile', () => {
   const tempDirs: string[] = []
 
@@ -80,6 +88,26 @@ describe('applyBlueprintLifecycleToFile', () => {
       '_overview.md',
     )
     expect(existsSync(newPath)).toBe(true)
+  })
+
+  it('moves generic consumer blueprints within top-level blueprints/', async () => {
+    const projectRoot = await mkdtemp(path.join(tmpdir(), 'ak-lifecycle-generic-'))
+    tempDirs.push(projectRoot)
+    writeFileSync(path.join(projectRoot, 'package.json'), '{"name":"consumer"}')
+    writeConsumerBlueprint(projectRoot, 'in-progress', 'test-blueprint')
+
+    const result = await applyBlueprintLifecycleToFile(projectRoot, 'test-blueprint', {
+      type: 'finalize',
+    })
+
+    expect(result.moved).toBe(true)
+    expect(existsSync(path.join(projectRoot, 'blueprints', 'in-progress', 'test-blueprint'))).toBe(
+      false,
+    )
+    expect(
+      existsSync(path.join(projectRoot, 'blueprints', 'completed', 'test-blueprint', '_overview.md')),
+    ).toBe(true)
+    expect(existsSync(path.join(projectRoot, 'webpresso'))).toBe(false)
   })
 
   it('preserves source parent directory when other blueprints remain', async () => {

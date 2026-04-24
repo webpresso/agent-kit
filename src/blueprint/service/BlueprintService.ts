@@ -2,7 +2,7 @@
  * Plan Service
  *
  * Manages implementation plans stored in git.
- * Scans webpresso/blueprints recursively for _overview.md files.
+ * Scans resolved blueprint roots recursively for _overview.md files.
  */
 
 import type { BlueprintLifecycleIntent } from '#lifecycle/engine'
@@ -63,9 +63,7 @@ export class BlueprintService extends TrackedDocumentService<
   BlueprintQueryResult
 > {
   constructor(projectPath?: string) {
-    // If projectPath is provided, use it; otherwise let scanner find monorepo root.
-    // Prefers `webpresso/blueprints/` when present (webpresso legacy),
-    // falls back to `blueprints/` for generic consumers.
+    // Resolve generic consumer layout first, with Webpresso's legacy layout as fallback.
     const plansDir = resolveBlueprintRoot(projectPath)
     super(plansDir, '_overview.md', projectPath)
   }

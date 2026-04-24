@@ -1,7 +1,7 @@
 import type { CAC } from 'cac'
 
 /**
- * `ak init` — scaffolds the agent-kit catalog into a consumer repo.
+ * `ak setup` / `ak init` — scaffolds the agent-kit catalog into a consumer repo.
  *
  * Idempotent: re-runs reconcile against `.agent-kitrc.json`.
  * Safe-by-default: if a target file exists with different content, writes
@@ -183,9 +183,16 @@ export async function runInit(flags: InitFlags): Promise<number> {
   }
 }
 
-export function registerInitCommand(cli: CAC): void {
+export type InitCommandName = 'setup' | 'init'
+
+export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'init'): void {
+  const description =
+    commandName === 'setup'
+      ? 'Scaffold agent-kit catalog into the current repo'
+      : 'Compatibility alias for ak setup'
+
   cli
-    .command('init', 'Scaffold agent-kit catalog into the current repo')
+    .command(commandName, description)
     .option('--with <skills>', 'Comma-separated Tier-3 skills to install (non-interactive)')
     .option('--all', 'Install every skill (Tier-1 + Tier-2 + all Tier-3)')
     .option(

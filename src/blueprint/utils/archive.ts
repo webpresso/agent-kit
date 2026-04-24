@@ -7,8 +7,11 @@
 import type { Blueprint, Task } from '#core/parser'
 
 import { access, readFile, writeFile } from 'node:fs/promises'
+import path from 'node:path'
 
 import { parseBlueprint } from '#core/parser'
+
+import { resolveBlueprintRoot } from './blueprint-root.js'
 
 export interface IncompleteTask {
   id: string
@@ -189,10 +192,9 @@ interface PlanPaths {
  * @returns Path information
  */
 function buildPlanPaths(projectPath: string, slug: string): PlanPaths {
-  const plansDir = `${projectPath}/webpresso/blueprints`
-
-  const sourcePath = `${plansDir}/${slug}/_overview.md`
-  const sourceDir = sourcePath.substring(0, sourcePath.lastIndexOf('/'))
+  const plansDir = resolveBlueprintRoot(projectPath)
+  const sourcePath = path.join(plansDir, slug, '_overview.md')
+  const sourceDir = path.dirname(sourcePath)
   const targetDir = sourceDir
 
   return { sourcePath, sourceDir, targetDir, planName: slug }

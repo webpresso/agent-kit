@@ -20,7 +20,7 @@ Toolkit for agent-driven development. Ships:
 ak blueprint new "<goal>" --complexity M
 ak blueprint audit --all --strict
 ak symlink sync
-ak init --with monorepo-navigation,tanstack-query
+ak setup --with monorepo-navigation,tanstack-query
 ak test --package cli2
 ak e2e --suite smoke --config playwright.config.ts
 ak audit tph
@@ -33,24 +33,24 @@ ak docs lint docs/research/my-doc.md
 
 ```bash
 pnpm add -D @webpresso/agent-kit
-npx ak init
+npx ak setup
 ```
 
 ## Status
 
-**Experimental (v0.x).** Public API may change. See
-[docs/getting-started.md](./docs/getting-started.md) and the root plan in
-the webpresso repo's `blueprints/planned/adopt-webpresso-agent-kit/` for
-context.
+**Experimental (v0.x).** Public API may change. The package is maintained as
+the standalone public Agent Kit repo and is intentionally free of Webpresso
+workspace dependencies. See [docs/getting-started.md](./docs/getting-started.md)
+for setup and migration notes.
 
 ## Design invariants
 
 - **Zero `@webpresso/*` runtime or dev dependencies.** The package ships
-  self-contained so it's cheap to extract to its own GitHub repo later
-  without rewrites.
-- **Catalog content is canonical once shipped.** Consumers run `ak init`
-  once, then own their copy. `ak skills refresh` can re-pull upstream
-  content in a future version.
+  self-contained and published from its own public Git repository without
+  depending on the Webpresso monorepo.
+- **Catalog content is canonical once shipped.** Consumers run `ak setup`
+  once, then own their copy. Additional skills are installed explicitly
+  with `ak skills install <name>`; no implicit upstream refresh is exposed.
 
 ## License
 

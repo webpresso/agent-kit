@@ -2,7 +2,7 @@
  * TechDebtService
  *
  * Manages technical debt items stored in git.
- * Scans webpresso/tech-debt recursively for markdown files.
+ * Scans tech-debt documents recursively from the resolved repo layout.
  * Extends TrackedDocumentService to provide filtering, sorting, and query capabilities.
  */
 
@@ -24,6 +24,7 @@ import {
   type TechDebtSortOptions,
 } from '#tech-debt/index'
 import { resolveBlueprintRoot } from '#utils/blueprint-root'
+import { resolveTechDebtRoot } from '#utils/tech-debt-root'
 import { calculateFreshness } from '#utils/freshness'
 
 import { toBlueprintRecord } from './blueprint-records.js'
@@ -61,10 +62,8 @@ export class TechDebtService extends TrackedDocumentService<
   TechDebtQueryResult
 > {
   constructor(projectPath?: string) {
-    // If projectPath is provided, use it; otherwise let scanner find monorepo root
-    const techDebtDir = projectPath
-      ? path.join(projectPath, 'webpresso/tech-debt')
-      : 'webpresso/tech-debt'
+    // Resolve generic consumer layout first, with Webpresso's legacy layout as fallback.
+    const techDebtDir = resolveTechDebtRoot(projectPath)
     super(techDebtDir, 'README.md', projectPath)
   }
 

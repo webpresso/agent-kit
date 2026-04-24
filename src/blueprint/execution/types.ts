@@ -1,10 +1,16 @@
 import { z } from 'zod'
 
-const BLUEPRINT_ROOT_SEGMENT = 'webpresso/blueprints/'
+const LEGACY_BLUEPRINT_ROOT_SEGMENT = 'webpresso/blueprints/'
+const GENERIC_BLUEPRINT_ROOT_SEGMENT = 'blueprints/'
 const DEFAULT_RUNTIME_STATE_ROOT = '.omx/state'
 
 function isBlueprintPath(path: string): boolean {
-  return path.includes(BLUEPRINT_ROOT_SEGMENT) || path.startsWith(BLUEPRINT_ROOT_SEGMENT)
+  return (
+    path.includes(LEGACY_BLUEPRINT_ROOT_SEGMENT) ||
+    path.startsWith(LEGACY_BLUEPRINT_ROOT_SEGMENT) ||
+    path.includes(`/${GENERIC_BLUEPRINT_ROOT_SEGMENT}`) ||
+    path.startsWith(GENERIC_BLUEPRINT_ROOT_SEGMENT)
+  )
 }
 
 function isOmxStatePath(path: string): boolean {
@@ -51,7 +57,7 @@ export const blueprintLaunchSpecSchema = z.object({
   blueprintPath: z
     .string()
     .min(1)
-    .refine(isBlueprintPath, 'blueprintPath must point at webpresso/blueprints'),
+    .refine(isBlueprintPath, 'blueprintPath must point at blueprints/ or webpresso/blueprints'),
   blueprintSlug: z.string().min(1),
   mode: blueprintExecutionModeSchema,
   policy: blueprintExecutionPolicySchema,

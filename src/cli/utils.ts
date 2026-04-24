@@ -15,8 +15,7 @@ import path from 'node:path'
 
 /**
  * The canonical config marker used to identify an agent-kit/webpresso project
- * root. Blueprint filesystem layout (`webpresso/blueprints/<status>/...`) is
- * anchored here. Matches the upstream `CANONICAL_CONFIG_PATH`.
+ * root. Matches the upstream `CANONICAL_CONFIG_PATH`.
  */
 /**
  * Webpresso's historical project-root sentinel. Kept for backwards compat
@@ -30,10 +29,10 @@ export const CANONICAL_CONFIG_PATH = 'webpresso/config.yaml'
  * consumer repo. Checked in priority order; first hit wins.
  */
 export const PROJECT_ROOT_MARKERS = [
-  CANONICAL_CONFIG_PATH,
   '.agent-kitrc.json',
   'pnpm-workspace.yaml',
   'package.json',
+  CANONICAL_CONFIG_PATH,
 ] as const
 
 export interface GetProjectRootOptions {
@@ -50,8 +49,8 @@ function findMarker(rootDir: string): string | null {
 
 /**
  * Walks upward from startDir looking for a project-root marker. Tries
- * `webpresso/config.yaml` (webpresso legacy), `.agent-kitrc.json`,
- * `pnpm-workspace.yaml`, and `package.json` in priority order. Throws if
+ * `.agent-kitrc.json`, `pnpm-workspace.yaml`, `package.json`, and
+ * `webpresso/config.yaml` (webpresso legacy) in priority order. Throws if
  * nothing is found.
  */
 export function findProjectRoot(startDir: string = process.cwd()): string {

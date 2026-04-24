@@ -1,6 +1,6 @@
 # `@webpresso/agent-kit` documentation
 
-Agentkit is a toolkit for agent-driven development. It ships four things:
+Agentkit is a standalone toolkit for agent-driven development. It ships four public surfaces:
 
 1. **Blueprint runtime** — Markdown + YAML-frontmatter implementation-plan
    format with lifecycle states (`draft → planned → in-progress →
@@ -16,7 +16,7 @@ Agentkit is a toolkit for agent-driven development. It ships four things:
    OpenCode-fallback). See [`symlinker.md`](./symlinker.md).
 
 3. **Skills catalog** — a curated set of generalized slash-commands,
-   skills, workflows, rules, guides, and doc templates. `ak init` copies
+   skills, workflows, rules, guides, and doc templates. `ak setup` copies
    them into consumer repos as a starting set. See
    [`skills-catalog.md`](./skills-catalog.md).
 
@@ -26,7 +26,7 @@ Agentkit is a toolkit for agent-driven development. It ships four things:
    ak blueprint new "<goal>" --complexity M
    ak blueprint audit --all --strict
    ak symlink sync
-   ak init --with monorepo-navigation,tanstack-query
+   ak setup --with monorepo-navigation,tanstack-query
    ak audit tph
    ak skills list
    ak docs lint docs/research/<path>.md
@@ -54,11 +54,10 @@ maintenance script with the corresponding agent-kit surfaces. See
 ## Design invariants
 
 - **Zero `@webpresso/*` runtime or dev dependencies.** Agentkit is
-  self-contained so it's cheap to extract to its own GitHub repo later
-  without rewrites.
-- **Catalog content is canonical once shipped.** Consumers run `ak init`
-  once, then own their copy. `ak skills refresh` (future) re-pulls
-  upstream when an official registry is identified.
+  self-contained and maintained outside the Webpresso monorepo.
+- **Catalog content is canonical once shipped.** Consumers run `ak setup`
+  once, then own their copy. `ak skills install <name>` is explicit;
+  there is no public `ak skills refresh` placeholder.
 - **OMX skills stay in OMX.** Anything `[OMX]`-marked in webpresso's
   `.agent/skills/` is deliberately excluded from agent-kit's catalog.
   Install OMX separately if you want `/plan`, `/ralph`, `/ralplan`,

@@ -1,11 +1,10 @@
 /**
- * `ak skills list|install|refresh` — manage agent skills against the
+ * `ak skills list|install` — manage agent skills against the
  * bundled catalog at `<packageRoot>/catalog/agent/skills/`.
  *
  *   list                        Enumerate bundled catalog skills.
  *   list --installed            Enumerate skills present at <cwd>/.agent/skills.
  *   install <name>              Copy a catalog skill into <cwd>/.agent/skills.
- *   refresh [--source <ref>]    Placeholder for upstream registry refresh.
  *
  * The bundled catalog ships inside this package's `catalog/` directory and
  * is enumerated lazily — empty catalog is reported, not an error.
@@ -18,10 +17,6 @@ import path from 'node:path'
 
 interface SkillsListOptions {
   installed?: boolean
-}
-
-interface SkillsRefreshOptions {
-  source?: string
 }
 
 /**
@@ -69,6 +64,12 @@ function installedSkillsDir(): string {
   return path.join(process.cwd(), '.agent', 'skills')
 }
 
+function commandError(message: string, exitCode = 1): Error & { exitCode: number } {
+  const error = new Error(message) as Error & { exitCode: number }
+  error.exitCode = exitCode
+  return error
+}
+
 function printSkillsList(skills: string[], header: string): void {
   console.log(header)
   if (!skills.length) {
@@ -82,59 +83,46 @@ function printSkillsList(skills: string[], header: string): void {
 
 export function registerSkillsCommand(cli: CAC): void {
   cli
-    .command('skills <action> [name]', 'Manage agent skills (list|install|refresh)')
+    .command('skills <action> [name]', 'Manage agent skills (list|install)')
     .option('--installed', 'List skills installed under <cwd>/.agent/skills (with `list`)')
-    .option('--source <ref>', 'Upstream source for refresh (e.g. github:org/repo)')
     .action(
       async (
         action: string,
         name: string | undefined,
-        options: SkillsListOptions & SkillsRefreshOptions,
+        options: SkillsListOptions,
       ) => {
         switch (action) {
           case 'list': {
             if (options.installed) {
               const dir = installedSkillsDir()
               printSkillsList(listSkillDirectories(dir), `Installed skills (${dir}):`)
-              return
+              return 0
             }
             const dir = resolveCatalogSkillsDir()
             printSkillsList(listSkillDirectories(dir), `Bundled catalog skills (${dir}):`)
-            return
+            return 0
           }
           case 'install': {
             if (!name) {
-              console.error('Usage: ak skills install <name>')
-              process.exit(1)
+              throw commandError('Usage: ak skills install <name>')
             }
             const catalogDir = resolveCatalogSkillsDir()
             const source = path.join(catalogDir, name)
             if (!existsSync(source)) {
-              console.error(
+              throw commandError(
                 `Skill not found in bundled catalog: ${name}\nTried: ${source}\n` +
                   `Run \`ak skills list\` to see available skills.`,
               )
-              process.exit(1)
             }
             const targetRoot = installedSkillsDir()
             const target = path.join(targetRoot, name)
             mkdirSync(targetRoot, { recursive: true })
             cpSync(source, target, { recursive: true })
             console.log(`Installed skill ${name} → ${target}`)
-            return
-          }
-          case 'refresh': {
-            const sourceLabel = options.source ?? '<bundled catalog>'
-            console.log(
-              `ak skills refresh: upstream refresh not yet wired (source=${sourceLabel}).\n` +
-                'Skills currently ship with the agent-kit package; pull a newer release of\n' +
-                '@webpresso/agent-kit to refresh the bundled catalog.',
-            )
-            process.exit(0)
+            return 0
           }
           default: {
-            console.error(`Unknown skills action: ${action}. Use 'list', 'install', or 'refresh'.`)
-            process.exit(1)
+            throw commandError(`Unknown skills action: ${action}. Use 'list' or 'install'.`)
           }
         }
       },

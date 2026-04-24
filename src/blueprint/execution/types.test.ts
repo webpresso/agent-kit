@@ -42,7 +42,7 @@ describe('blueprintExecutionPolicySchema', () => {
 })
 
 describe('blueprintLaunchSpecSchema', () => {
-  it('accepts a blueprint-backed launch spec', () => {
+  it('accepts a legacy Webpresso blueprint-backed launch spec', () => {
     const result = blueprintLaunchSpecSchema.parse({
       backend: 'omx-team',
       blueprintPath: 'webpresso/blueprints/in-progress/test-plan/_overview.md',
@@ -62,6 +62,21 @@ describe('blueprintLaunchSpecSchema', () => {
     expect(result.policy.runtimeStateRoot).toBe(DEFAULT_BLUEPRINT_RUNTIME_STATE_ROOT)
   })
 
+
+
+  it('accepts a generic consumer blueprint-backed launch spec', () => {
+    const result = blueprintLaunchSpecSchema.parse({
+      backend: 'omx-team',
+      blueprintPath: 'blueprints/in-progress/test-plan/_overview.md',
+      blueprintSlug: 'in-progress/test-plan',
+      mode: 'durable',
+      policy: {},
+      tasks: [],
+    })
+
+    expect(result.blueprintPath).toBe('blueprints/in-progress/test-plan/_overview.md')
+  })
+
   it('rejects launch specs rooted in .omx/plans', () => {
     expect(() =>
       blueprintLaunchSpecSchema.parse({
@@ -72,7 +87,7 @@ describe('blueprintLaunchSpecSchema', () => {
         policy: {},
         tasks: [],
       }),
-    ).toThrow(/blueprintPath must point at webpresso\/blueprints/)
+    ).toThrow(/blueprintPath must point at blueprints\/ or webpresso\/blueprints/)
   })
 })
 

@@ -25,10 +25,10 @@ pnpm exec ak --version
 ## Scaffold your repo
 
 ```bash
-npx ak init
+npx ak setup
 ```
 
-`ak init` is idempotent. It:
+`ak setup` is idempotent (`ak init` remains a compatibility alias). It:
 
 1. Creates `.agent/{commands,skills,workflows,rules,guides}/` and populates
    them with the catalog's Tier-1 blueprint-native + Tier-2 methodology
@@ -54,7 +54,7 @@ npx ak init
 ### Opt into tech-specific skills
 
 ```bash
-npx ak init --with tanstack-query,better-auth-best-practices
+npx ak setup --with tanstack-query,better-auth-best-practices
 ```
 
 Tier-3 tech skills are opt-in because they only apply if your stack
@@ -72,10 +72,10 @@ includes those libraries. Available:
 ### Preview without writing
 
 ```bash
-npx ak init --dry-run
+npx ak setup --dry-run
 ```
 
-Shows the diff `ak init` would write, then exits. Useful before your
+Shows the diff `ak setup` would write, then exits. Useful before your
 first real run.
 
 ## Write your first blueprint
@@ -94,7 +94,7 @@ Edit the file, then:
 # Harden the plan (fact-check, split coarse tasks, align deps)
 npx ak blueprint refine add-real-time-notifications-via-sse
 # Or invoke /plan-refine inside Claude Code — the skill lives at
-# .agent/skills/plan-refine/SKILL.md (installed by ak init).
+# .agent/skills/plan-refine/SKILL.md (installed by ak setup).
 
 # Move draft → planned once it's execution-ready
 npx ak blueprint move add-real-time-notifications-via-sse planned

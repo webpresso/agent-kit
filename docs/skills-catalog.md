@@ -1,7 +1,7 @@
 # Skills catalog
 
 Agentkit ships a curated set of slash-commands, skills, workflows, rules,
-guides, and doc templates at `packages/cli/agent-kit/catalog/`. `ak init`
+guides, and doc templates at `packages/cli/agent-kit/catalog/`. `ak setup`
 copies the selected subset into your repo's `.agent/` tree. This doc
 enumerates what's in the catalog and explains the tiers.
 
@@ -9,7 +9,7 @@ enumerates what's in the catalog and explains the tiers.
 
 ### Tier 1 — Blueprint-native (always installed)
 
-Core to the agent-kit operating model. Every `ak init` installs these.
+Core to the agent-kit operating model. Every `ak setup` installs these.
 
 **Commands** (`.agent/commands/`):
 
@@ -54,7 +54,7 @@ Apply only if your stack includes the corresponding library/framework.
 Install with:
 
 ```bash
-ak init --with tanstack-query,better-auth-best-practices,react-doctor
+ak setup --with tanstack-query,better-auth-best-practices,react-doctor
 # Or after initial install:
 ak skills install tanstack-query
 ```
@@ -67,7 +67,7 @@ ak skills install tanstack-query
 | `frontend-design/` | Design-quality methodology for frontend work. |
 | `web-design-guidelines/` | General web-UI guidelines. |
 | `vercel-react-best-practices/` | Vercel / React deployment hygiene, server-cache patterns, edge-runtime considerations. |
-| `monorepo-navigation/` | **Template-based.** Scaffolded from `pnpm-workspace.yaml` + `package.json` during `ak init`. Placeholders (`{{PACKAGES_TABLE}}`, `{{KEY_LOCATIONS}}`, …) fill what the tool can infer; `{{TODO: ...}}` markers flag fields that need human judgment. Also ships `examples/webpresso.md` as a reference. |
+| `monorepo-navigation/` | **Template-based.** Scaffolded from `pnpm-workspace.yaml` + `package.json` during `ak setup`. Placeholders (`{{PACKAGES_TABLE}}`, `{{KEY_LOCATIONS}}`, …) fill what the tool can infer; `{{TODO: ...}}` markers flag fields that need human judgment. Also ships `examples/webpresso.md` as a reference. |
 
 Two skills from webpresso's `.agent/skills/` that are `[OMX]`-marked
 and therefore **not** in the catalog: `visual-verdict`, `web-clone`.
@@ -125,7 +125,7 @@ consumers who scaffold new docs by hand.
 ## `AGENTS.md` template
 
 `catalog/AGENTS.md.tpl` is the base Operating Contract — rendered into
-your repo's `AGENTS.md` during `ak init` (only if none exists).
+your repo's `AGENTS.md` during `ak setup` (only if none exists).
 Placeholders:
 
 - `{{REPOSITORY_MAP}}` — bulleted list of workspace packages inferred
@@ -137,27 +137,18 @@ Placeholders:
   via `.agent-kitrc.json`.
 
 After rendering, the `AGENTS.md` is the consumer's to own — agent-kit
-never rewrites it unless `ak init --overwrite` is used.
+never rewrites it unless `ak setup --overwrite` is used.
 
-## Upstream refresh
+## Catalog updates
 
-Each Tier-3 skill carries `upstream` frontmatter:
+Tier-1 and Tier-2 skills are agent-kit-owned and update with the package.
+Consumers bring new catalog content into `.agent/` explicitly with
+`ak setup --overwrite` (or by manually merging the `.new` sidecars).
 
-```yaml
-upstream:
-  source: null          # 'github:org/repo' or 'url:https://...' once wired
-  last_synced: "2026-04-22"
-```
-
-`ak skills refresh [--source <...>]` will re-pull skill content from an
-upstream registry. Currently a no-op placeholder — the command exits
-cleanly with a "no upstream configured" message. Implementation lands
-once an official source is identified (Anthropic's claude-code skills
-tree is a candidate).
-
-Tier-1 and Tier-2 skills don't carry `upstream` frontmatter because
-they're agent-kit's own — they get updated via `pnpm update
-@webpresso/agent-kit` and `ak init --overwrite` (or manual merge).
+Tier-3 skills are installed one at a time with `ak skills install <name>`
+or selected during setup with `ak setup --with <name>`. Agent Kit does not
+ship a public `ak skills refresh` placeholder; registry refresh can be
+added later when there is a concrete upstream contract.
 
 ## Counts
 
@@ -203,8 +194,8 @@ The catalog is versioned alongside the package. To add a skill:
 2. Apply the generalization rules (no `@webpresso/*` refs, no `[OMX]`,
    no `wp blueprint`, no hardcoded repo paths).
 3. If it should be opt-in, document it in the Tier-3 list and update
-   `ak init`'s `--with` allowlist.
+   `ak setup`'s `--with` allowlist.
 4. Ship with a Changesets entry.
 
 Consumers pick it up on their next `pnpm update @webpresso/agent-kit &&
-npx ak init --overwrite` cycle.
+npx ak setup --overwrite` cycle.

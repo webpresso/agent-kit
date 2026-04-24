@@ -54,7 +54,7 @@ parked_reason: >-
 completed_at: 2026-04-22
 
 # Optional — execution hints
-execution_backend: local-worktree    # or omx-team | omx-pll-interactive if OMX installed
+# execution_backend is omitted for package-core lifecycle; optional runtimes may set their adapter name
 max_parallel_agents: 3
 ---
 ```

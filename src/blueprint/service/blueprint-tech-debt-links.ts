@@ -2,6 +2,8 @@ import matter from 'gray-matter'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 
+import { resolveTechDebtRoot } from '#utils/tech-debt-root'
+
 export async function linkBlueprintToTechDebt(
   baseDir: string,
   projectPath: string | undefined,
@@ -11,7 +13,7 @@ export async function linkBlueprintToTechDebt(
   const blueprintPath = path.join(baseDir, bpSlug, '_overview.md')
   await updateLinkedSlugs(blueprintPath, 'linked_tech_debt_slugs', (linked) => [...linked, tdSlug])
 
-  const tdPath = path.join(projectPath ?? '', 'webpresso/tech-debt', tdSlug, 'README.md')
+  const tdPath = path.join(resolveTechDebtRoot(projectPath), tdSlug, 'README.md')
   await updateLinkedSlugs(tdPath, 'linked_blueprints', (linked) => [...linked, bpSlug])
 }
 
@@ -26,7 +28,7 @@ export async function unlinkBlueprintFromTechDebt(
     linked.filter((slug) => slug !== tdSlug),
   )
 
-  const tdPath = path.join(projectPath ?? '', 'webpresso/tech-debt', tdSlug, 'README.md')
+  const tdPath = path.join(resolveTechDebtRoot(projectPath), tdSlug, 'README.md')
   try {
     await updateLinkedSlugs(tdPath, 'linked_blueprints', (linked) =>
       linked.filter((slug) => slug !== bpSlug),

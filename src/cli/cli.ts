@@ -22,6 +22,7 @@ const SUPPORTED_COMMANDS = [
   'audit',
   'skills',
   'docs',
+  'setup',
   'init',
   'dev',
   'test',
@@ -35,9 +36,10 @@ const ROOT_HELP = [
   '  blueprint    Manage blueprints (list, new, show, exec, audit, ...)',
   '  symlink      Sync agent-surface files (sync, check)',
   '  audit        Run packaged audits (bundle budgets, repo guardrails, TPH)',
-  '  skills       Manage agent skills (list, install, refresh)',
+  '  skills       Manage agent skills (list, install)',
   '  docs         Documentation tooling (lint)',
-  '  init         Scaffold a consumer repo with the agent surface',
+  '  setup        Scaffold a consumer repo with the agent surface',
+  '  init         Compatibility alias for setup',
   '  dev          Run a manifest-backed development target',
   '  test         Run tests through the portable agent-kit surface',
   '  e2e          Build and run E2E commands through the portable agent-kit surface',
@@ -103,9 +105,10 @@ export async function main(): Promise<number> {
       registerDocsCommand(cli)
       break
     }
+    case 'setup':
     case 'init': {
       const { registerInitCommand } = await import('./commands/init/index.js')
-      registerInitCommand(cli)
+      registerInitCommand(cli, command)
       break
     }
     case 'dev': {

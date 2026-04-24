@@ -183,9 +183,17 @@ describe('ak init end-to-end', () => {
     const windsurfVerify = join(repo, '.windsurf', 'commands', 'verify.md')
     expect(lstatSync(windsurfVerify).isSymbolicLink()).toBe(true)
 
+    const opencodeVerify = join(repo, '.opencode', 'commands', 'verify.md')
+    expect(lstatSync(opencodeVerify).isSymbolicLink()).toBe(true)
+
+    const agentsVerifySkill = join(repo, '.agents', 'skills', 'verify')
+    expect(lstatSync(agentsVerifySkill).isSymbolicLink()).toBe(true)
+
     const geminiToml = join(repo, '.gemini', 'commands', 'verify.toml')
     expect(existsSync(geminiToml)).toBe(true)
     expect(lstatSync(geminiToml).isFile()).toBe(true)
+
+    expect(existsSync(join(repo, '.codex'))).toBe(false)
   })
 
   it('is idempotent: second run reports identical results', async () => {

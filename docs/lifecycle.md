@@ -67,7 +67,7 @@ tags:
 parked_reason: >-
   Waiting on upstream decision about <X>. Resume when <Y> lands.
 completed_at: 2026-04-22
-execution_backend: local-worktree   # or omx-team | omx-pll-interactive when OMX is installed
+# execution_backend is omitted for the package-core lifecycle; optional runtimes may set their adapter name
 max_parallel_agents: 3
 ```
 
@@ -138,5 +138,7 @@ ak blueprint diff <slug>                         # history
 ak blueprint graph <slug>                        # render task DAG as mermaid
 ```
 
-For the DAG executor and parallel lane launch (`/pll`), see the
-`pll` skill at `.agent/skills/pll/SKILL.md` (copied in by `ak init`).
+For parallel lane launch, Agent Kit exposes the Blueprint DAG and lifecycle
+primitives. Runtime-specific adapters such as OMX `/pll` are optional layers
+that may consume those primitives, but they are not required for the public
+package core.
