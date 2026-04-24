@@ -1,7 +1,7 @@
 import type { E2eHostAdapter } from './types.js'
 
 import { existsSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { dirname, resolve, parse } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import {
@@ -84,17 +84,25 @@ export function getAgentKitConfigPath(cwd: string = process.cwd()): string {
   return resolve(cwd, AGENT_KIT_CONFIG_FILE_NAME)
 }
 
-export const resolveAgentKitConfigPath = getAgentKitConfigPath
+export function resolveAgentKitConfigPath(cwd: string = process.cwd()): string {
+  return findAgentKitConfigPath(cwd) ?? getAgentKitConfigPath(cwd)
+}
 
 export function findAgentKitConfigPath(cwd: string = process.cwd()): string | null {
-  const configPath = getAgentKitConfigPath(cwd)
-  return existsSync(configPath) ? configPath : null
+  for (const searchDir of getSearchDirectories(cwd)) {
+    const configPath = getAgentKitConfigPath(searchDir)
+    if (existsSync(configPath)) {
+      return configPath
+    }
+  }
+
+  return null
 }
 
 export async function loadAgentKitConfig(
   options: LoadAgentKitConfigOptions = {},
 ): Promise<LoadedAgentKitConfig> {
-  const configPath = getAgentKitConfigPath(options.cwd)
+  const configPath = resolveAgentKitConfigPath(options.cwd)
   const configModule = await loadModuleNamespace(pathToFileURL(configPath).href, (cause) => {
     throw new AgentKitConfigLoadError(configPath, cause)
   })
@@ -117,7 +125,7 @@ export async function loadAgentKitConfigSafe(
     return null
   }
 
-  return loadAgentKitConfig(options)
+  return loadAgentKitConfig({ cwd: dirname(configPath) })
 }
 
 export async function loadHostAdapter(
@@ -166,6 +174,22 @@ function getHostAdapterExportLookupOrder(explicitExportName?: string): string[] 
   return explicitExportName
     ? [explicitExportName, ...FALLBACK_HOST_ADAPTER_EXPORT_NAMES]
     : [...FALLBACK_HOST_ADAPTER_EXPORT_NAMES]
+}
+
+function getSearchDirectories(cwd: string): string[] {
+  const absoluteStart = resolve(cwd)
+  const rootDir = parse(absoluteStart).root
+  const directories: string[] = []
+  let current = absoluteStart
+
+  while (true) {
+    directories.push(current)
+    if (current === rootDir) {
+      return directories
+    }
+
+    current = dirname(current)
+  }
 }
 
 function resolveModuleSpecifier(moduleSpecifier: string, configPath: string): string {

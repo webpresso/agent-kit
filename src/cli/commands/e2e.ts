@@ -43,7 +43,7 @@ export function createAkE2eCommandConfig(input: AkE2eCommandInput): CommandConfi
     passthrough: input.passthrough,
   })
 
-  const command = flattenPlannedGroups(groups)[0]
+  const command = plannedGroupsToCommandConfigs(groups)[0]
   if (!command) {
     throw new Error('No E2E command could be planned.')
   }
@@ -130,7 +130,7 @@ export function registerE2eCommand(cli: CAC): void {
         passthrough: getPassthroughArgs(process.argv.slice(2)),
       })
 
-      const commands = flattenPlannedGroups(groups)
+      const commands = plannedGroupsToCommandConfigs(groups)
       if (flags.printCommand) {
         console.log(commands.map(formatShellCommand).join('\n'))
         return 0
@@ -155,11 +155,14 @@ function runCommands(commands: readonly CommandConfig[]): number {
   return 0
 }
 
-function flattenPlannedGroups(groups: readonly PlannedE2eRunGroup[]): CommandConfig[] {
+export function plannedGroupsToCommandConfigs(
+  groups: readonly PlannedE2eRunGroup[],
+): CommandConfig[] {
   return groups.flatMap((group) =>
     group.runs.map((run) => ({
       command: run.command,
       args: run.args,
+      env: normalizeEnv({ ...group.env, ...run.env }),
     })),
   )
 }
@@ -180,4 +183,12 @@ function shellQuote(value: string): string {
 function toArray(value: readonly string[] | string | undefined): string[] {
   if (value === undefined) return []
   return typeof value === 'string' ? [value] : [...value]
+}
+
+function normalizeEnv(env?: Record<string, string>): Record<string, string> | undefined {
+  if (!env || Object.keys(env).length === 0) {
+    return undefined
+  }
+
+  return env
 }

@@ -18,6 +18,7 @@ export interface E2eStepDefinition {
   batchKey?: string
   envProfile?: string
   reportDir?: string
+  env?: Record<string, string>
 }
 
 export interface E2eSuiteDefinition {
@@ -27,6 +28,7 @@ export interface E2eSuiteDefinition {
   batchKey: string
   envProfile?: string
   steps: readonly E2eStepDefinition[]
+  env?: Record<string, string>
 }
 
 export interface ResolvedE2eFile {
@@ -78,10 +80,12 @@ export interface PlannedE2eRunStep {
   reportDir?: string
   command: string
   args: string[]
+  env?: Record<string, string>
 }
 
 export interface PlannedE2eRunGroup {
   batchKey: string
   envProfile?: string
   runs: PlannedE2eRunStep[]
+  env?: Record<string, string>
 }

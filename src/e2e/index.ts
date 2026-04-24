@@ -13,6 +13,7 @@ export {
 export {
   DEFAULT_HOST_ADAPTER_EXPORT_NAME,
   FALLBACK_HOST_ADAPTER_EXPORT_NAMES,
+  LEGACY_HOST_ADAPTER_EXPORT_NAME,
   isE2eHostAdapter,
 } from './host-adapter.js'
 export {

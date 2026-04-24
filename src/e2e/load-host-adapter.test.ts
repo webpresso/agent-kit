@@ -36,6 +36,40 @@ describe('load-host-adapter', () => {
     await expect(loadHostAdapter({ cwd: testDir })).resolves.toBeNull()
   })
 
+  it('walks upward to find agent-kit.config.ts from nested package directories', async () => {
+    const nestedDir = join(testDir, 'apps', 'e2e')
+    mkdirSync(nestedDir, { recursive: true })
+
+    writeFileSync(
+      join(testDir, AGENT_KIT_CONFIG_FILE_NAME),
+      [
+        'export const agentKitConfig = {',
+        "  e2e: { hostAdapterModule: './adapter.ts' },",
+        '}',
+        '',
+      ].join('\n'),
+      'utf8',
+    )
+    writeFileSync(
+      join(testDir, 'adapter.ts'),
+      [
+        'export const agentKitE2eHostAdapter = {',
+        "  listSuites: () => [{ id: 'nested', fileMatchers: ['tests/'], batchKey: 'nested', steps: [] }],",
+        "  resolveSuiteId: (name) => name === 'nested' ? 'nested' : null,",
+        '  normalizeFilePath: (file) => file,',
+        "  resolveSuiteForFile: (file) => ({ normalizedPath: file, suiteId: 'nested' }),",
+        '}',
+        '',
+      ].join('\n'),
+      'utf8',
+    )
+
+    expect(findAgentKitConfigPath(nestedDir)).toBe(join(testDir, AGENT_KIT_CONFIG_FILE_NAME))
+    const loadedAdapter = await loadHostAdapter({ cwd: nestedDir })
+    expect(loadedAdapter?.configPath).toBe(join(testDir, AGENT_KIT_CONFIG_FILE_NAME))
+    expect(loadedAdapter?.exportName).toBe('agentKitE2eHostAdapter')
+  })
+
   it('fails when the root config file does not export agentKitConfig', async () => {
     writeFileSync(
       join(testDir, AGENT_KIT_CONFIG_FILE_NAME),
@@ -85,7 +119,7 @@ describe('load-host-adapter', () => {
         "  resolveSuiteForFile: (file) => ({ normalizedPath: file, suiteId: 'custom' }),",
         '}',
         '',
-        'export const webpressoE2eHostAdapter = {',
+        'export const agentKitE2eHostAdapter = {',
         "  listSuites: () => [{ id: 'fallback', fileMatchers: ['fallback/'], batchKey: 'fallback', steps: [] }],",
         "  resolveSuiteId: (name) => name === 'fallback' ? 'fallback' : null,",
         '  normalizeFilePath: (file) => file,',
@@ -106,25 +140,73 @@ describe('load-host-adapter', () => {
     expect(loadedAdapter?.moduleSpecifier).toBe(pathToFileURL(join(testDir, 'adapter.ts')).href)
   })
 
-  it('falls back to webpressoE2eHostAdapter and default exports', async () => {
+  it('falls back to generic, legacy webpresso, and default exports', async () => {
+    const createCaseDir = (name: string) => {
+      const caseDir = join(testDir, name)
+      mkdirSync(caseDir, { recursive: true })
+      return caseDir
+    }
+
+    const writeConfig = (caseDir: string, moduleName: string) =>
+      writeFileSync(
+        join(caseDir, AGENT_KIT_CONFIG_FILE_NAME),
+        [
+          'export const agentKitConfig = {',
+          `  e2e: { hostAdapterModule: './${moduleName}' },`,
+          '}',
+          '',
+        ].join('\n'),
+        'utf8',
+      )
+
+    const genericDir = createCaseDir('generic')
+    writeConfig(genericDir, 'adapter.ts')
     writeFileSync(
-      join(testDir, AGENT_KIT_CONFIG_FILE_NAME),
+      join(genericDir, 'adapter.ts'),
       [
-        'export const agentKitConfig = {',
-        "  e2e: { hostAdapterModule: './adapter.ts' },",
+        'export const agentKitE2eHostAdapter = {',
+        "  listSuites: () => [{ id: 'generic', fileMatchers: ['tests/'], batchKey: 'generic', steps: [] }],",
+        "  resolveSuiteId: (name) => name === 'generic' ? 'generic' : null,",
+        '  normalizeFilePath: (file) => file,',
+        "  resolveSuiteForFile: (file) => ({ normalizedPath: file, suiteId: 'generic' }),",
         '}',
         '',
       ].join('\n'),
       'utf8',
     )
+    await expect(loadHostAdapter({ cwd: genericDir })).resolves.toMatchObject({
+      exportName: 'agentKitE2eHostAdapter',
+    })
+
+    const legacyDir = createCaseDir('legacy')
+    writeConfig(legacyDir, 'adapter.ts')
     writeFileSync(
-      join(testDir, 'adapter.ts'),
+      join(legacyDir, 'adapter.ts'),
+      [
+        'export const webpressoE2eHostAdapter = {',
+        "  listSuites: () => [{ id: 'legacy', fileMatchers: ['tests/'], batchKey: 'legacy', steps: [] }],",
+        "  resolveSuiteId: (name) => name === 'legacy' ? 'legacy' : null,",
+        '  normalizeFilePath: (file) => file,',
+        "  resolveSuiteForFile: (file) => ({ normalizedPath: file, suiteId: 'legacy' }),",
+        '}',
+        '',
+      ].join('\n'),
+      'utf8',
+    )
+    await expect(loadHostAdapter({ cwd: legacyDir })).resolves.toMatchObject({
+      exportName: 'webpressoE2eHostAdapter',
+    })
+
+    const defaultDir = createCaseDir('default')
+    writeConfig(defaultDir, 'adapter.ts')
+    writeFileSync(
+      join(defaultDir, 'adapter.ts'),
       [
         'const adapter = {',
-        "  listSuites: () => [{ id: 'fallback', fileMatchers: ['tests/'], batchKey: 'fallback', steps: [] }],",
-        "  resolveSuiteId: (name) => name === 'fallback' ? 'fallback' : null,",
+        "  listSuites: () => [{ id: 'default-fallback', fileMatchers: ['tests/'], batchKey: 'fallback', steps: [] }],",
+        "  resolveSuiteId: (name) => name === 'default-fallback' ? 'default-fallback' : null,",
         '  normalizeFilePath: (file) => file,',
-        "  resolveSuiteForFile: (file) => ({ normalizedPath: file, suiteId: 'fallback' }),",
+        "  resolveSuiteForFile: (file) => ({ normalizedPath: file, suiteId: 'default-fallback' }),",
         '}',
         '',
         'export default adapter',
@@ -133,9 +215,8 @@ describe('load-host-adapter', () => {
       'utf8',
     )
 
-    const loadedAdapter = await loadHostAdapter({ cwd: testDir })
-
+    const loadedAdapter = await loadHostAdapter({ cwd: defaultDir })
     expect(loadedAdapter?.exportName).toBe('default')
-    expect(loadedAdapter?.adapter.resolveSuiteId('fallback')).toBe('fallback')
+    expect(loadedAdapter?.adapter.resolveSuiteId('default-fallback')).toBe('default-fallback')
   })
 })

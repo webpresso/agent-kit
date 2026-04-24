@@ -11,6 +11,7 @@ const hostSuites: readonly E2eSuiteDefinition[] = [
     fileMatchers: ['smoke/'],
     batchKey: 'journeys',
     envProfile: 'journeys',
+    env: { PLAYWRIGHT_BASE_URL: 'http://127.0.0.1:4173' },
     steps: [
       {
         runner: 'playwright',
@@ -18,6 +19,7 @@ const hostSuites: readonly E2eSuiteDefinition[] = [
         configPath: 'apps/e2e/playwright.config.ts',
         supportsHeaded: true,
         supportsDebug: true,
+        env: { E2E_SUITE: 'smoke' },
       },
     ],
   },
@@ -76,6 +78,7 @@ describe('planGenericE2eRun', () => {
       {
         batchKey: 'smoke',
         envProfile: undefined,
+        env: undefined,
         runs: [
           {
             suiteId: 'smoke',
@@ -94,6 +97,7 @@ describe('planGenericE2eRun', () => {
               '--headed',
               'tests/smoke.spec.ts',
             ],
+            env: undefined,
           },
         ],
       },
@@ -120,6 +124,48 @@ describe('planE2eRun', () => {
     ])
   })
 
+  it('merges suite and step env into planned runs', () => {
+    const groups = planE2eRun({
+      hostAdapter,
+      suite: 'smoke',
+    })
+
+    expect(groups).toEqual([
+      {
+        batchKey: 'journeys',
+        envProfile: 'journeys',
+        env: {
+          E2E_SUITE: 'smoke',
+          PLAYWRIGHT_BASE_URL: 'http://127.0.0.1:4173',
+        },
+        runs: [
+          {
+            suiteId: 'smoke',
+            batchKey: 'journeys',
+            envProfile: 'journeys',
+            runner: 'playwright',
+            logName: 'smoke',
+            reportDir: undefined,
+            command: 'pnpm',
+            args: [
+              '--dir',
+              'apps/e2e',
+              'exec',
+              'playwright',
+              'test',
+              '--config',
+              'playwright.config.ts',
+            ],
+            env: {
+              E2E_SUITE: 'smoke',
+              PLAYWRIGHT_BASE_URL: 'http://127.0.0.1:4173',
+            },
+          },
+        ],
+      },
+    ])
+  })
+
   it('filters fixed files out of the main lane when a serial step claims them', () => {
     const groups = planE2eRun({
       hostAdapter,
@@ -130,6 +176,7 @@ describe('planE2eRun', () => {
       {
         batchKey: 'platform-chef-serial',
         envProfile: 'platform-chef-serial',
+        env: undefined,
         runs: [
           {
             suiteId: 'platform-api',
@@ -149,6 +196,7 @@ describe('planE2eRun', () => {
               'vitest.serial.config.ts',
               'serial/graphql-schema-generation.e2e.ts',
             ],
+            env: undefined,
           },
         ],
       },
@@ -157,7 +205,7 @@ describe('planE2eRun', () => {
 })
 
 describe('groupPlannedE2eRuns', () => {
-  it('groups steps by batch key and env profile', () => {
+  it('groups steps by batch key, env profile, and shared env', () => {
     expect(
       groupPlannedE2eRuns([
         {
@@ -168,6 +216,7 @@ describe('groupPlannedE2eRuns', () => {
           logName: 'one',
           command: 'vitest',
           args: ['run'],
+          env: { FOO: 'one' },
         },
         {
           suiteId: 'two',
@@ -177,12 +226,14 @@ describe('groupPlannedE2eRuns', () => {
           logName: 'two',
           command: 'vitest',
           args: ['run', '--changed'],
+          env: { FOO: 'one' },
         },
       ]),
     ).toEqual([
       {
         batchKey: 'shared',
         envProfile: 'alpha',
+        env: { FOO: 'one' },
         runs: [
           {
             suiteId: 'one',
@@ -192,6 +243,7 @@ describe('groupPlannedE2eRuns', () => {
             logName: 'one',
             command: 'vitest',
             args: ['run'],
+            env: { FOO: 'one' },
           },
           {
             suiteId: 'two',
@@ -201,9 +253,37 @@ describe('groupPlannedE2eRuns', () => {
             logName: 'two',
             command: 'vitest',
             args: ['run', '--changed'],
+            env: { FOO: 'one' },
           },
         ],
       },
     ])
+  })
+
+  it('splits grouped runs when the effective env differs', () => {
+    expect(
+      groupPlannedE2eRuns([
+        {
+          suiteId: 'one',
+          batchKey: 'shared',
+          envProfile: 'alpha',
+          runner: 'vitest',
+          logName: 'one',
+          command: 'vitest',
+          args: ['run'],
+          env: { FOO: 'one' },
+        },
+        {
+          suiteId: 'two',
+          batchKey: 'shared',
+          envProfile: 'alpha',
+          runner: 'vitest',
+          logName: 'two',
+          command: 'vitest',
+          args: ['run', '--changed'],
+          env: { FOO: 'two' },
+        },
+      ]),
+    ).toHaveLength(2)
   })
 })

@@ -32,7 +32,7 @@ describe('validateAgentKitConfig', () => {
       validateAgentKitConfig(
         {
           e2e: {
-            hostAdapterExport: 'webpressoE2eHostAdapter',
+            hostAdapterExport: 'agentKitE2eHostAdapter',
           },
         },
         '/repo/agent-kit.config.ts',

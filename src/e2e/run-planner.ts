@@ -112,6 +112,7 @@ function planE2eRunsFromSuites(options: {
         reportDir: step.reportDir,
         command: command.command,
         args: command.args,
+        env: normalizeEnv({ ...suite.env, ...step.env, ...command.env }),
       })
     }
   }
@@ -202,7 +203,7 @@ export function groupPlannedE2eRuns(runs: readonly PlannedE2eRunStep[]): Planned
   const groups = new Map<string, PlannedE2eRunGroup>()
 
   for (const run of runs) {
-    const key = `${run.batchKey}::${run.envProfile ?? 'none'}`
+    const key = `${run.batchKey}::${run.envProfile ?? 'none'}::${stableEnvKey(run.env)}`
     const existing = groups.get(key)
     if (existing) {
       existing.runs.push(run)
@@ -212,6 +213,7 @@ export function groupPlannedE2eRuns(runs: readonly PlannedE2eRunStep[]): Planned
     groups.set(key, {
       batchKey: run.batchKey,
       envProfile: run.envProfile,
+      env: normalizeEnv(run.env),
       runs: [run],
     })
   }
@@ -226,4 +228,24 @@ export function normalizeRequestedFiles(
   return hostAdapter
     ? files.map((file) => hostAdapter.normalizeFilePath(file))
     : files.map((file) => normalizeE2ePath(file))
+}
+
+function stableEnvKey(env?: Record<string, string>): string {
+  if (!env || Object.keys(env).length === 0) {
+    return 'none'
+  }
+
+  return JSON.stringify(
+    Object.keys(env)
+      .toSorted()
+      .map((key) => [key, env[key]]),
+  )
+}
+
+function normalizeEnv(env?: Record<string, string>): Record<string, string> | undefined {
+  if (!env || Object.keys(env).length === 0) {
+    return undefined
+  }
+
+  return env
 }

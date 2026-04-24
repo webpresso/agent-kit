@@ -96,7 +96,8 @@ ak test --file apps/cli2/src/commands/target.test.ts
 ```
 
 `ak e2e` supports both generic runner usage and host-owned adapter usage via a
-root `agent-kit.config.ts`:
+repo-root `agent-kit.config.ts` that can be discovered from nested package/app
+directories:
 
 ```ts
 import { defineAgentKitConfig } from "./packages/cli/agent-kit/dist/esm/e2e/index.js";
@@ -104,6 +105,7 @@ import { defineAgentKitConfig } from "./packages/cli/agent-kit/dist/esm/e2e/inde
 export const agentKitConfig = defineAgentKitConfig({
   e2e: {
     hostAdapterModule: "./apps/e2e/src/agent-kit-host-adapter.ts",
+    hostAdapterExport: "agentKitE2eHostAdapter",
   },
 });
 ```
@@ -112,3 +114,6 @@ export const agentKitConfig = defineAgentKitConfig({
 ak e2e --runner vitest --config packages/logger/vitest.config.ts --file packages/logger/src/tests/log.test.ts
 ak e2e --suite platform-api --reuse-reset
 ```
+
+Host adapters should prefer exporting `agentKitE2eHostAdapter`. The legacy
+`webpressoE2eHostAdapter` export name remains supported as a fallback.

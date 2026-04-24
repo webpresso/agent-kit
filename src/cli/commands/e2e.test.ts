@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { createAkE2eCommandConfig, E2E_COMMAND_HELP } from './e2e.js'
+import { createAkE2eCommandConfig, E2E_COMMAND_HELP, plannedGroupsToCommandConfigs } from './e2e.js'
 
 describe('ak e2e command helpers', () => {
   it('documents the generic E2E flag surface', () => {
@@ -35,5 +35,45 @@ describe('ak e2e command helpers', () => {
         'tests/smoke.spec.ts',
       ],
     })
+  })
+
+  it('merges group and run env into executable commands', () => {
+    expect(
+      plannedGroupsToCommandConfigs([
+        {
+          batchKey: 'platform',
+          envProfile: 'platform',
+          env: {
+            DATABASE_URL: 'postgres://suite',
+            SHARED: 'group',
+          },
+          runs: [
+            {
+              suiteId: 'platform-api',
+              batchKey: 'platform',
+              envProfile: 'platform',
+              runner: 'command',
+              logName: 'platform-api',
+              command: 'pnpm',
+              args: ['exec', 'vitest', 'run'],
+              env: {
+                SHARED: 'run',
+                E2E_SUITE: 'platform-api',
+              },
+            },
+          ],
+        },
+      ]),
+    ).toEqual([
+      {
+        command: 'pnpm',
+        args: ['exec', 'vitest', 'run'],
+        env: {
+          DATABASE_URL: 'postgres://suite',
+          SHARED: 'run',
+          E2E_SUITE: 'platform-api',
+        },
+      },
+    ])
   })
 })
