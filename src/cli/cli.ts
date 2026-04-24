@@ -16,7 +16,15 @@ import { formatUnknownCommandError, normalizeArgv, readPackageVersion } from './
 
 const VERSION = readPackageVersion(import.meta.url)
 
-const SUPPORTED_COMMANDS = ['blueprint', 'symlink', 'audit', 'skills', 'docs', 'init'] as const
+const SUPPORTED_COMMANDS = [
+  'blueprint',
+  'symlink',
+  'audit',
+  'skills',
+  'docs',
+  'init',
+  'dev',
+] as const
 
 const ROOT_HELP = [
   'Usage: ak [command] [options]',
@@ -28,6 +36,7 @@ const ROOT_HELP = [
   '  skills       Manage agent skills (list, install, refresh)',
   '  docs         Documentation tooling (lint)',
   '  init         Scaffold a consumer repo with the agent surface',
+  '  dev          Run a manifest-backed development target',
   '',
   'Options:',
   '  -h, --help     Display this message',
@@ -93,6 +102,11 @@ export async function main(): Promise<number> {
     case 'init': {
       const { registerInitCommand } = await import('./commands/init/index.js')
       registerInitCommand(cli)
+      break
+    }
+    case 'dev': {
+      const { registerDevCommand } = await import('./commands/dev.js')
+      registerDevCommand(cli)
       break
     }
     default: {

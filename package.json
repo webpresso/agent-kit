@@ -19,6 +19,7 @@
   "files": [
     "dist",
     "catalog",
+    "just",
     "docs",
     "README.md"
   ],
@@ -28,6 +29,7 @@
   "imports": {
     "#symlinker": "./src/symlinker/index.ts",
     "#cli/*": "./src/cli/*.ts",
+    "#dev/*": "./src/dev/*.ts",
     "#audit/*": "./src/audit/*.ts",
     "#docs-linter/*": "./src/docs-linter/*.ts",
     "#*": "./src/blueprint/*.ts"
@@ -92,6 +94,12 @@
       "import": {
         "types": "./dist/esm/docs-linter/index.d.ts",
         "default": "./dist/esm/docs-linter/index.js"
+      }
+    },
+    "./dev": {
+      "import": {
+        "types": "./dist/esm/dev/index.d.ts",
+        "default": "./dist/esm/dev/index.js"
       }
     },
     "./local": {
@@ -161,6 +169,7 @@
       "./blueprint/tracked-document": "./src/blueprint/tracked-document/index.ts",
       "./blueprint/validation": "./src/blueprint/core/validation/index.ts",
       "./catalog/*": "./catalog/*",
+      "./dev": "./src/dev/index.ts",
       "./docs-linter": "./src/docs-linter/index.ts",
       "./local": "./src/local.ts",
       "./symlinker": "./src/symlinker/index.ts",

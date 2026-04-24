@@ -22,6 +22,7 @@
     "paths": {
       "#symlinker": ["./src/symlinker/index.ts"],
       "#cli/*": ["./src/cli/*.ts"],
+      "#dev/*": ["./src/dev/*.ts"],
       "#audit/*": ["./src/audit/*.ts"],
       "#docs-linter/*": ["./src/docs-linter/*.ts"],
       "#*": ["./src/blueprint/*"]

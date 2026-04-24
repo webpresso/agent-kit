@@ -1,0 +1,40 @@
+version: 1
+name: dev-two-process
+
+defaults:
+  target: full-stack
+
+services:
+  api:
+    command: pnpm
+    args:
+      - run
+      - dev:api
+    cwd: .
+    env:
+      PORT: "4010"
+    readiness:
+      type: http
+      path: /health
+      timeoutMs: 30000
+      intervalMs: 1000
+
+  web:
+    command: pnpm
+    args:
+      - run
+      - dev:web
+    cwd: .
+    env:
+      PORT: "3010"
+    dependsOn:
+      - api
+    readiness:
+      type: log
+      pattern: web ready
+      timeoutMs: 30000
+
+groups:
+  full-stack:
+    services:
+      - web
