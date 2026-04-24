@@ -1,0 +1,33 @@
+{
+  "name": "@webpresso/stryker-config",
+  "version": "0.0.1",
+  "private": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./stryker.base.mjs"
+    },
+    "./webpresso": {
+      "types": "./webpresso.d.ts",
+      "default": "./stryker.webpresso.mjs"
+    }
+  },
+  "peerDependencies": {
+    "@stryker-mutator/core": ">=9 <10",
+    "@stryker-mutator/vitest-runner": ">=9 <10"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
+  },
+  "files": [
+    "README.md",
+    "index.d.ts",
+    "stryker.base.mjs",
+    "stryker.webpresso.mjs",
+    "webpresso.d.ts"
+  ]
+}

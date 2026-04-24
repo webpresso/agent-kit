@@ -1,0 +1,34 @@
+{
+  "name": "@webpresso/typescript-config",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Shared TypeScript configurations for Webpresso monorepo",
+  "files": [
+    "base.json",
+    "cloudflare.json",
+    "library.json",
+    "react-library.json",
+    "react-router.json",
+    "webpresso.json"
+  ],
+  "type": "module",
+  "exports": {
+    "./base.json": "./base.json",
+    "./cloudflare.json": "./cloudflare.json",
+    "./library.json": "./library.json",
+    "./react-library.json": "./react-library.json",
+    "./react-router.json": "./react-router.json",
+    "./webpresso.json": "./webpresso.json"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "qa": "vp run typecheck && vp run test"
+  },
+  "devDependencies": {
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "@webpresso/vitest-config": "workspace:*",
+    "vite-plus": "catalog:"
+  }
+}

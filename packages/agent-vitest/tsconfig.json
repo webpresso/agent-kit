@@ -1,0 +1,11 @@
+{
+  "extends": "@webpresso/typescript-config/webpresso.json",
+  "include": ["*.ts", "src/**/*.ts"],
+  "compilerOptions": {
+    "noEmit": true,
+    "paths": {
+      "#*": ["./src/*"]
+    }
+  },
+  "exclude": ["dist", "vitest.config.ts"]
+}
