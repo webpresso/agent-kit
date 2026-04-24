@@ -23,6 +23,7 @@ const SUPPORTED_COMMANDS = [
   'skills',
   'docs',
   'init',
+  'dev',
   'test',
   'e2e',
 ] as const
@@ -37,6 +38,7 @@ const ROOT_HELP = [
   '  skills       Manage agent skills (list, install, refresh)',
   '  docs         Documentation tooling (lint)',
   '  init         Scaffold a consumer repo with the agent surface',
+  '  dev          Run a manifest-backed development target',
   '  test         Run portable package/file test commands',
   '  e2e          Run portable E2E suite/file commands',
   '',
@@ -104,6 +106,11 @@ export async function main(): Promise<number> {
     case 'init': {
       const { registerInitCommand } = await import('./commands/init/index.js')
       registerInitCommand(cli)
+      break
+    }
+    case 'dev': {
+      const { registerDevCommand } = await import('./commands/dev.js')
+      registerDevCommand(cli)
       break
     }
     case 'test': {

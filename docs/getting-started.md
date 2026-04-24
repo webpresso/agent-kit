@@ -128,6 +128,37 @@ npx ak symlink check   # exits 1 if drift detected
 the `.md` source on every sync). See [`symlinker.md`](./symlinker.md)
 for details.
 
+## Add the dev command drop-in
+
+Repos that define an agent-kit dev manifest can import the packaged just
+wrappers:
+
+```just
+import 'node_modules/@webpresso/agent-kit/just/dev-kit.just'
+```
+
+The drop-in exposes:
+
+- `just dev [target]` -> `ak dev [target]`
+- `just dev-doctor [target]` ->
+  `ak dev [target] --doctor`
+- `just dev-clean [target]` ->
+  `ak dev [target] --clean`
+- `just dev-restart [target]` ->
+  `ak dev [target] --restart`
+
+Manifest resolution is intentionally explicit:
+
+1. `ak dev --manifest <path>`
+2. `AK_APP_MANIFEST`
+3. `./app-manifest.yaml`
+4. error
+
+Consumer manifests own service commands, service groups, dependencies,
+readiness metadata, and any plain env passthrough values. Agent-kit does
+not read Webpresso host config, inject secrets, or assume a PM2-specific
+public contract.
+
 ## Add a custom command or skill
 
 Drop a file under `.agent/`:
@@ -159,7 +190,9 @@ either of those fallbacks.
 
 ## Next steps
 
-- [`blueprint-format.md`](./blueprint-format.md) — the markdown + frontmatter spec for blueprints.
+- [`blueprint-format.md`](./blueprint-format.md) — the markdown +
+  frontmatter spec for blueprints.
 - [`lifecycle.md`](./lifecycle.md) — state machine + transitions.
 - [`symlinker.md`](./symlinker.md) — how cross-IDE sync works.
-- [`skills-catalog.md`](./skills-catalog.md) — what ships in the catalog + upstream refresh plan.
+- [`skills-catalog.md`](./skills-catalog.md) — what ships in the catalog +
+  upstream refresh plan.

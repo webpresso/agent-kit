@@ -1,0 +1,9 @@
+{
+  "name": "@webpresso/dev-two-process-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:api": "node -e \"console.log('api ready')\"",
+    "dev:web": "node -e \"console.log('web ready')\""
+  }
+}
