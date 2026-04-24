@@ -1,5 +1,5 @@
 {
-  "extends": "@webpresso/typescript-config/webpresso.json",
+  "extends": "../typescript-config/webpresso.json",
   "include": ["*.ts", "src/**/*.ts"],
   "compilerOptions": {
     "noEmit": true,

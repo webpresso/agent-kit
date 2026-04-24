@@ -18,7 +18,8 @@
     "./library.json": "./library.json",
     "./react-library.json": "./react-library.json",
     "./react-router.json": "./react-router.json",
-    "./webpresso.json": "./webpresso.json"
+    "./webpresso.json": "./webpresso.json",
+    "./webpresso": "./webpresso.json"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

@@ -55,11 +55,15 @@
     "test": "pnpm run build && vitest run",
     "typecheck": "tsc --noEmit",
     "qa": "pnpm run typecheck && pnpm run test",
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json",
+    "prepare": "tsc -p tsconfig.build.json"
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@webpresso/typescript-config": "workspace:*"
+    "@webpresso/typescript-config": "workspace:*",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:",
+    "@vitejs/plugin-react": "catalog:"
   },
   "peerDependencies": {
     "@cloudflare/vitest-pool-workers": ">=0.14 <1",
