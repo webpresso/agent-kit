@@ -1,6 +1,9 @@
 /**
- * `ak symlink sync|check` — re-sync .claude/ .gemini/ .cursor/ .windsurf/
- * from the canonical .agent/ tree.
+ * `ak symlink sync|check` — re-sync .agents/skills/ and .gemini/commands/
+ * from the canonical .agent/ tree (Codex, Amp, and Gemini CLI only).
+ *
+ * Primary IDEs (Claude Code, Cursor, Windsurf, OpenCode) distribute skills
+ * via native channels and are no longer managed by the symlinker.
  *
  * Thin wrapper around `syncAll` from the symlinker module. `check` runs the
  * same logic as `sync` and exits non-zero if any drift was repaired —

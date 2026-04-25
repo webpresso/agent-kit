@@ -169,26 +169,21 @@ describe('ak init end-to-end', () => {
     expect(body).toContain('Operating Contract')
   })
 
-  it('generates symlinks for .claude/.cursor/.windsurf and TOML for .gemini', async () => {
+  it('generates .agents/skills symlinks and Gemini TOML — does NOT write to primary IDEs', async () => {
     const code = await runInit({ cwd: repo, yes: true })
     expect(code).toBe(0)
 
-    const claudeVerify = join(repo, '.claude', 'commands', 'verify.md')
-    expect(existsSync(claudeVerify)).toBe(true)
-    expect(lstatSync(claudeVerify).isSymbolicLink()).toBe(true)
+    // Primary IDEs removed from symlinker — distributed via native channels.
+    expect(existsSync(join(repo, '.claude'))).toBe(false)
+    expect(existsSync(join(repo, '.cursor'))).toBe(false)
+    expect(existsSync(join(repo, '.windsurf'))).toBe(false)
+    expect(existsSync(join(repo, '.opencode'))).toBe(false)
 
-    const cursorVerify = join(repo, '.cursor', 'commands', 'verify.md')
-    expect(lstatSync(cursorVerify).isSymbolicLink()).toBe(true)
-
-    const windsurfVerify = join(repo, '.windsurf', 'commands', 'verify.md')
-    expect(lstatSync(windsurfVerify).isSymbolicLink()).toBe(true)
-
-    const opencodeVerify = join(repo, '.opencode', 'commands', 'verify.md')
-    expect(lstatSync(opencodeVerify).isSymbolicLink()).toBe(true)
-
+    // Codex / Amp: per-skill symlinks in .agents/skills/
     const agentsVerifySkill = join(repo, '.agents', 'skills', 'verify')
     expect(lstatSync(agentsVerifySkill).isSymbolicLink()).toBe(true)
 
+    // Gemini CLI: TOML transform
     const geminiToml = join(repo, '.gemini', 'commands', 'verify.toml')
     expect(existsSync(geminiToml)).toBe(true)
     expect(lstatSync(geminiToml).isFile()).toBe(true)

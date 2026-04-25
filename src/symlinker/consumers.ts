@@ -1,15 +1,19 @@
 /**
  * Default consumer configurations for the symlinker.
  *
- * Consumers are tool-specific directories (e.g. `.claude/commands/`) that
- * mirror the canonical source of truth under `.agent/` via symlinks. Each
- * consumer entry describes a single directory and the relative prefix used
- * when creating symlinks from that directory back into `.agent/`.
+ * Consumers are tool-specific directories that mirror the canonical source of
+ * truth under `.agent/` via symlinks. Each consumer entry describes a single
+ * directory and the relative prefix used when creating symlinks from that
+ * directory back into `.agent/`.
  *
- * These defaults are intentionally conservative: only tools whose command
- * surface accepts the same markdown symlink pattern as Claude Code are
- * included. Gemini's TOML surface is handled separately by
- * `syncGeminiCommands` (not symlink-based).
+ * Primary IDEs (Claude Code, Cursor, Windsurf, OpenCode) are no longer handled
+ * by the symlinker — they distribute skills via native channels:
+ *   - Claude Code: agent-kit-as-claude-code-plugin (marketplace plugin)
+ *   - Cursor / Windsurf: agent-kit-localskills-distribution (localskills.sh)
+ *   - OpenCode: falls back to `.claude/skills/` covered by the Claude Code plugin
+ *
+ * Gemini's TOML surface is handled separately by `syncGeminiCommands`
+ * (not symlink-based).
  */
 
 export interface ConsumerConfig {
@@ -18,14 +22,7 @@ export interface ConsumerConfig {
 }
 
 export const DEFAULT_CONSUMERS: ConsumerConfig[] = [
-  { dir: '.claude/commands', sourcePrefix: '../../.agent/' },
-  // Cursor and Windsurf support .md files under .{tool}/commands/
-  // (same symlink pattern as Claude Code). Safe to add by default.
-  { dir: '.cursor/commands', sourcePrefix: '../../.agent/' },
-  { dir: '.windsurf/commands', sourcePrefix: '../../.agent/' },
-  // OpenCode uses `.opencode/commands/*.md` (plural) for project-level
-  // slash commands — same markdown + YAML-frontmatter shape as Claude.
-  { dir: '.opencode/commands', sourcePrefix: '../../.agent/' },
+  // Primary IDEs removed — distributed via native channels (plugin / localskills.sh).
   // Intentionally NOT mapped: `.codex/prompts/`. OpenAI deprecated Codex
   // custom prompts in favour of skills, and the surface was home-only
   // (~/.codex/prompts/) even before deprecation — project-local
@@ -41,7 +38,7 @@ export interface SkillsConsumerConfig {
 }
 
 export const DEFAULT_SKILLS_CONSUMERS: SkillsConsumerConfig[] = [
-  { linkPath: '.claude/skills', target: '../.agent/skills' },
+  // .claude/skills removed — covered by the Claude Code plugin (primary channel).
 ]
 
 /**
