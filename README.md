@@ -4,12 +4,24 @@ Toolkit for agent-driven development. Ships:
 
 - **Blueprint runtime** — Markdown-based implementation-plan format with
   lifecycle states, parser, validator, DAG executor, and lifecycle engine.
-- **Symlinker** — keeps each IDE's native command/skill surface in sync
-  with a canonical `.agent/` source of truth. Ships defaults for Claude
-  Code, Cursor, Windsurf, OpenCode, Codex CLI, and Amp (Sourcegraph),
-  plus Gemini CLI via TOML transform. Skills converge on two surfaces:
-  `.claude/skills` (Claude + OpenCode-fallback) and `.agents/skills/`
-  (Codex + Amp + OpenCode-fallback).
+- **Symlinker** — keeps tail-IDE command/skill surfaces in sync with the
+  canonical `.agent/` source of truth. Covers Codex CLI and Amp via
+  `.agents/skills/` (per-skill symlinks), and Gemini CLI via TOML
+  transform to `.gemini/commands/`. Primary IDEs use native distribution:
+
+  | IDE family | Distribution channel |
+  |---|---|
+  | Claude Code | agent-kit-as-claude-code-plugin (marketplace plugin) |
+  | Cursor / Windsurf | localskills.sh registry (agent-kit-localskills-distribution) |
+  | Codex / Amp | Symlinker → `.agents/skills/` |
+  | Gemini CLI | Symlinker + TOML transform → `.gemini/commands/` |
+
+  **Migration note:** If you previously ran `ak symlink sync` and have
+  `.claude/commands/agent-kit/` or `.claude/skills/agent-kit/` directories,
+  remove them after installing the Claude Code plugin:
+  ```bash
+  rm -rf .claude/commands/agent-kit .claude/skills/agent-kit
+  ```
 - **Skills catalog** — a curated set of generalized slash-commands, skills,
   workflows, rules, guides, and doc templates that any repo can adopt.
 - **Vite guardrails** — reusable bundle-budget analysis and a tiny

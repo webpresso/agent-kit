@@ -456,18 +456,15 @@ describe('symlinker', () => {
       writeFile(join(root, '.agent/commands/verify.md'))
 
       const consumers: ConsumerConfig[] = [
-        { dir: '.claude/commands', sourcePrefix: '../../.agent/' },
-        { dir: '.cursor/commands', sourcePrefix: '../../.agent/' },
-        { dir: '.windsurf/commands', sourcePrefix: '../../.agent/' },
+        { dir: '.consumer-a/commands', sourcePrefix: '../../.agent/' },
+        { dir: '.consumer-b/commands', sourcePrefix: '../../.agent/' },
       ]
 
       expect(syncAll(root, consumers)).toBeGreaterThan(0)
-      expect(existsSync(join(root, '.claude/commands/plan-write.md'))).toBe(true)
-      expect(existsSync(join(root, '.claude/commands/plan-refine.md'))).toBe(true)
-      expect(existsSync(join(root, '.cursor/commands/plan-write.md'))).toBe(true)
-      expect(existsSync(join(root, '.cursor/commands/plan-refine.md'))).toBe(true)
-      expect(existsSync(join(root, '.windsurf/commands/plan-write.md'))).toBe(true)
-      expect(existsSync(join(root, '.windsurf/commands/plan-refine.md'))).toBe(true)
+      expect(existsSync(join(root, '.consumer-a/commands/plan-write.md'))).toBe(true)
+      expect(existsSync(join(root, '.consumer-a/commands/plan-refine.md'))).toBe(true)
+      expect(existsSync(join(root, '.consumer-b/commands/plan-write.md'))).toBe(true)
+      expect(existsSync(join(root, '.consumer-b/commands/plan-refine.md'))).toBe(true)
       expect(existsSync(join(root, '.gemini/commands/plan-write.toml'))).toBe(true)
       expect(existsSync(join(root, '.gemini/commands/plan-refine.toml'))).toBe(true)
 
@@ -476,18 +473,28 @@ describe('symlinker', () => {
 
       const fixCount = syncAll(root, consumers)
       expect(fixCount).toBeGreaterThan(0)
-      expect(existsSync(join(root, '.claude/commands/plan-write.md'))).toBe(false)
-      expect(existsSync(join(root, '.claude/commands/plan-refine.md'))).toBe(false)
-      expect(existsSync(join(root, '.cursor/commands/plan-write.md'))).toBe(false)
-      expect(existsSync(join(root, '.cursor/commands/plan-refine.md'))).toBe(false)
-      expect(existsSync(join(root, '.windsurf/commands/plan-write.md'))).toBe(false)
-      expect(existsSync(join(root, '.windsurf/commands/plan-refine.md'))).toBe(false)
-      expect(existsSync(join(root, '.claude/commands/verify.md'))).toBe(true)
-      expect(existsSync(join(root, '.cursor/commands/verify.md'))).toBe(true)
-      expect(existsSync(join(root, '.windsurf/commands/verify.md'))).toBe(true)
+      expect(existsSync(join(root, '.consumer-a/commands/plan-write.md'))).toBe(false)
+      expect(existsSync(join(root, '.consumer-a/commands/plan-refine.md'))).toBe(false)
+      expect(existsSync(join(root, '.consumer-b/commands/plan-write.md'))).toBe(false)
+      expect(existsSync(join(root, '.consumer-b/commands/plan-refine.md'))).toBe(false)
+      expect(existsSync(join(root, '.consumer-a/commands/verify.md'))).toBe(true)
+      expect(existsSync(join(root, '.consumer-b/commands/verify.md'))).toBe(true)
       expect(existsSync(join(root, '.gemini/commands/plan-write.toml'))).toBe(false)
       expect(existsSync(join(root, '.gemini/commands/plan-refine.toml'))).toBe(false)
       expect(existsSync(join(root, '.gemini/commands/verify.toml'))).toBe(true)
+    })
+
+    it('symlinker claude — syncAll does NOT write to .claude/, .cursor/, .windsurf/, .opencode/', () => {
+      // Verification gate: no primary-IDE writes after slimming.
+      writeFile(join(root, '.agent/commands/audit.md'))
+      writeFile(join(root, '.agent/skills/pll'), '# pll')
+
+      syncAll(root)
+
+      expect(existsSync(join(root, '.claude'))).toBe(false)
+      expect(existsSync(join(root, '.cursor'))).toBe(false)
+      expect(existsSync(join(root, '.windsurf'))).toBe(false)
+      expect(existsSync(join(root, '.opencode'))).toBe(false)
     })
   })
 
@@ -580,10 +587,8 @@ describe('symlinker', () => {
       expect(syncSkills(root, consumers)).toBe(0)
     })
 
-    it('DEFAULT_SKILLS_CONSUMERS targets Claude skills', () => {
-      expect(DEFAULT_SKILLS_CONSUMERS).toEqual([
-        { linkPath: '.claude/skills', target: '../.agent/skills' },
-      ])
+    it('DEFAULT_SKILLS_CONSUMERS is empty — primary IDEs use native channels', () => {
+      expect(DEFAULT_SKILLS_CONSUMERS).toEqual([])
     })
   })
 
@@ -704,16 +709,8 @@ describe('symlinker', () => {
       '.agent/workflows/debug.md',
       '.agent/workflows/conf.md',
       '.agent/skills/debugging/SKILL.md',
-      '.claude/commands/audit.md',
-      '.claude/commands/verify.md',
-      '.cursor/commands/audit.md',
-      '.windsurf/commands/soa.md',
-      '.windsurf/commands/brainstorm.md',
-      '.claude/skills/debugging/SKILL.md',
       '.agents/skills/pll/SKILL.md',
       '.agents/skills/verify/SKILL.md',
-      '.opencode/commands/verify.md',
-      '.opencode/commands/pll.md',
       '.gemini/commands/verify.toml',
       '.gemini/commands/soa.toml',
     ]
@@ -729,6 +726,15 @@ describe('symlinker', () => {
       'README.md',
       '.gemini/commands/config.json',
       '.gemini/settings.toml',
+      // Primary IDEs removed from symlinker — handled by native channels.
+      '.claude/commands/audit.md',
+      '.claude/commands/verify.md',
+      '.cursor/commands/audit.md',
+      '.windsurf/commands/soa.md',
+      '.windsurf/commands/brainstorm.md',
+      '.claude/skills/debugging/SKILL.md',
+      '.opencode/commands/verify.md',
+      '.opencode/commands/pll.md',
       // Deliberately unmapped — see consumers.ts for rationale.
       '.codex/prompts/verify.md',
       '.codex/skills/pll/SKILL.md',
