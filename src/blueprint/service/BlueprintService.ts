@@ -266,7 +266,7 @@ export class BlueprintService extends TrackedDocumentService<
       targetStatus === 'completed' ? { type: 'finalize' } : { type: 'start' }
     const result = await applyBlueprintLifecycleToFile(projectRoot, slug, intent)
 
-    const trace = generateBlueprintLifecycleTrace(projectRoot, slug, 'move', {
+    const trace = generateBlueprintLifecycleTrace(slug, 'move', {
       from: slug,
       to: `${result.targetStatus}/${slug}`,
       moved: result.moved,
@@ -278,7 +278,7 @@ export class BlueprintService extends TrackedDocumentService<
     const projectRoot = this.projectPath ?? process.cwd()
     const result = await applyBlueprintLifecycleToFile(projectRoot, slug, intent)
 
-    const trace = generateBlueprintLifecycleTrace(projectRoot, slug, 'status_change', {
+    const trace = generateBlueprintLifecycleTrace(slug, 'status_change', {
       intent: intent.type,
       targetStatus: result.targetStatus,
       moved: result.moved,

@@ -356,9 +356,8 @@ export class ParallelExecutor<T = unknown, R = unknown> {
   }
 
   private createTimeoutPromise(taskId: string): Promise<never> {
-    let _timeoutId: NodeJS.Timeout
     return new Promise<void>((resolve) => {
-      _timeoutId = setTimeout(() => resolve(), this.taskTimeoutMs)
+      setTimeout(() => resolve(), this.taskTimeoutMs)
     }).then(() => {
       throw new Error(`Task "${taskId}" timed out after ${this.taskTimeoutMs}ms`)
     })

@@ -40,7 +40,6 @@ export function emitTraceArtifact(projectRoot: string, artifact: DecisionTraceAr
 }
 
 export function generateBlueprintLifecycleTrace(
-  projectRoot: string,
   blueprintSlug: string,
   action: string,
   details: Record<string, unknown>,
