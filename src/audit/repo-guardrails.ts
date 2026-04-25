@@ -80,6 +80,7 @@ const DEFAULT_DOC_FOLDER_TYPES: Readonly<Record<string, string>> = {
 }
 
 const DEFAULT_BLUEPRINT_STATUSES = [
+  'draft',
   'planned',
   'in-progress',
   'parked',
