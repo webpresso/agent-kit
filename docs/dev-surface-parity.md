@@ -1,3 +1,8 @@
+---
+type: research
+last_updated: '2026-04-25'
+---
+
 # `ak dev` parity report
 
 Status: Phase 4 complete. External consumer adoption is explicitly parked.

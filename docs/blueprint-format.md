@@ -1,3 +1,8 @@
+---
+type: system
+last_updated: '2026-04-25'
+---
+
 # Blueprint format specification
 
 A blueprint is a single Markdown file at `blueprints/<state>/<slug>/_overview.md`

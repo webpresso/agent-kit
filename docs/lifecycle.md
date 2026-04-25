@@ -1,3 +1,8 @@
+---
+type: guide
+last_updated: '2026-04-25'
+---
+
 # Blueprint lifecycle
 
 A blueprint is a Markdown + YAML-frontmatter implementation plan that

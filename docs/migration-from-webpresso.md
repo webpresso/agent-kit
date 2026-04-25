@@ -1,3 +1,8 @@
+---
+type: migration
+last_updated: '2026-04-25'
+---
+
 # Migrating from webpresso's internal blueprint package
 
 Webpresso is adopter zero of agent-kit. Before agent-kit existed, the

@@ -1,3 +1,8 @@
+---
+type: guide
+last_updated: '2026-04-25'
+---
+
 # Skills catalog
 
 Agentkit ships a curated set of slash-commands, skills, workflows, rules,

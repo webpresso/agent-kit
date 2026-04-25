@@ -1,3 +1,8 @@
+---
+type: docs-index
+last_updated: '2026-04-25'
+---
+
 # `@webpresso/agent-kit` documentation
 
 Agentkit is a standalone toolkit for agent-driven development. It ships four public surfaces:

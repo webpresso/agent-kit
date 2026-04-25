@@ -1,3 +1,8 @@
+---
+type: guide
+last_updated: '2026-04-25'
+---
+
 # Symlinker
 
 The symlinker keeps per-IDE command/skill surfaces in sync with a canonical

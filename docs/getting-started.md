@@ -1,3 +1,8 @@
+---
+type: guide
+last_updated: '2026-04-25'
+---
+
 # Getting started with `@webpresso/agent-kit`
 
 This guide takes a fresh repo from zero to a fully wired blueprint +

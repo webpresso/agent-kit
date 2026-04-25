@@ -1,3 +1,8 @@
+---
+type: system
+last_updated: '2026-04-25'
+---
+
 # Architecture: the three-layer model
 
 Agent-kit splits the agent surface into three layers with different

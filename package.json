@@ -151,7 +151,11 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint:pkg": "publint && attw --pack .",
-    "qa": "bun run typecheck && bun run test && bun run lint:pkg",
+    "blueprints:check": "node ./dist/esm/cli/cli.js audit blueprint-lifecycle",
+    "docs:check": "node ./dist/esm/cli/cli.js audit docs-frontmatter",
+    "catalog:check": "node ./dist/esm/cli/cli.js audit catalog-drift",
+    "audits:check": "pnpm blueprints:check && pnpm docs:check && pnpm catalog:check",
+    "qa": "bun run typecheck && bun run test && bun run lint:pkg && bun run audits:check",
     "prepublishOnly": "bun run build && bun run lint:pkg"
   },
   "dependencies": {
@@ -167,7 +171,8 @@
     "tshy": "^4.1.1",
     "tsx": "^4.19.3",
     "typescript": "^5.6.0",
-    "vitest": "^2.1.0"
+    "vitest": "^2.1.0",
+    "husky": "^9.0.0"
   },
   "tshy": {
     "dialects": [
@@ -201,6 +206,7 @@
     "selfLink": false
   },
   "engines": {
-    "node": ">=20"
-  }
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@10.33.0"
 }
