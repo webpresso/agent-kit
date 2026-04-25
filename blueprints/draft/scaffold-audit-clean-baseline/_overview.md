@@ -112,6 +112,19 @@ Per user directive 2026-04-25 ("installing agent-kit should install omx too" + c
 
 Out of scope here: full implementation of all four — OMX is the tracer-bullet implementation; gstack/bun/vp follow the same pattern in subsequent passes.
 
+### Surface `claude install-plugin` in post-setup output
+
+`ak setup` scaffolds files but never tells the user that Claude Code skills (`/pll`, `/verify`, etc.) require the plugin to be registered with their Claude Code instance. The gap was found live: `/pll` exists in `skills/pll/SKILL.md` and is correctly included in the plugin manifest, but was not available in Claude Code because nobody ran `claude install-plugin @webpresso/agent-kit`.
+
+Fix: at the end of every `ak setup` run, print a one-time hint:
+
+```
+  Claude Code plugin: run `claude install-plugin @webpresso/agent-kit`
+  to register /pll, /verify, and other skills in Claude Code sessions.
+```
+
+Also add `--with claude-plugin` preset (or include in `--with base-kit`) that chains `claude install-plugin @webpresso/agent-kit` automatically. The `claude` CLI must be on PATH; if not, print the manual instruction instead. Add this detection to `ak doctor` output as well.
+
 ### Fix `ak setup` idempotency
 
 Re-running `ak setup --with base-kit --yes` on an already-set-up tree is non-idempotent. Verified during the post-dogfood verification sweep on 2026-04-25:
