@@ -10,7 +10,7 @@
  * Fixtures live under __fixtures__/{fake-tools,fake-home}.
  */
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -55,6 +55,17 @@ function makeRepo(): string {
   return dir
 }
 
+/**
+ * Copy the fake-home fixture to a fresh tmp dir so tools that write
+ * HOME-relative cache state (vite-plus, etc.) can't pollute the
+ * source-tracked fixture across runs.
+ */
+function makeIsolatedFakeHome(): string {
+  const dir = mkdtempSync(path.join(tmpdir(), 'ak-fake-home-'))
+  cpSync(FAKE_HOME, dir, { recursive: true })
+  return dir
+}
+
 /** A PATH that contains only the omx-ok fixture, no real omx. */
 function pathWithFakeOmxOk(): string {
   return `${OMX_OK_BIN}:/usr/bin:/bin`
@@ -74,13 +85,16 @@ describe.skipIf(!existsSync(CLI_PATH))(
   'ak setup — live e2e via subprocess',
   () => {
     let repo: string
+    let fakeHome: string
 
     beforeEach(() => {
       repo = makeRepo()
+      fakeHome = makeIsolatedFakeHome()
     })
 
     afterEach(() => {
       rmSync(repo, { recursive: true, force: true })
+      rmSync(fakeHome, { recursive: true, force: true })
     })
 
     it('baseline: ak setup --yes scaffolds the agent surface and exits 0', () => {
@@ -123,17 +137,17 @@ describe.skipIf(!existsSync(CLI_PATH))(
 
     it('--with gstack + fake HOME with gstack pre-installed: exits 0, "already installed"', () => {
       const r = runAk(['setup', '--yes', '--with', 'gstack', '--cwd', repo], {
-        HOME: FAKE_HOME,
+        HOME: fakeHome,
       })
       expect(r.code).toBe(0)
       expect(r.stdout).toContain('gstack: ✓ already installed')
-      expect(r.stdout).toContain(path.join(FAKE_HOME, '.claude', 'skills', 'gstack'))
+      expect(r.stdout).toContain(path.join(fakeHome, '.claude', 'skills', 'gstack'))
     })
 
     it('--with omx,gstack combined: both presets execute against fixtures', () => {
       const r = runAk(['setup', '--yes', '--with', 'omx,gstack', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
-        HOME: FAKE_HOME,
+        HOME: fakeHome,
       })
       expect(r.code).toBe(0)
       expect(r.stdout).toContain('omx setup: ✓ ran successfully')
@@ -143,7 +157,7 @@ describe.skipIf(!existsSync(CLI_PATH))(
     it('presets run independently: omx failure does NOT skip gstack, exit code reflects worst failure', () => {
       const r = runAk(['setup', '--yes', '--with', 'omx,gstack', '--cwd', repo], {
         PATH: pathWithoutOmx(),
-        HOME: FAKE_HOME,
+        HOME: fakeHome,
       })
       // omx fails (not on PATH) → contributes EXIT_SETUP_FAIL = 1
       expect(r.code).toBe(1)
