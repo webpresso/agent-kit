@@ -1,0 +1,116 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`generateDoc snapshots > should generate consistent document with code blocks 1`] = `
+"---
+type: guide
+last_updated: 2026-02-05
+---
+
+## Overview
+
+Learn how to use the API.
+
+## Code Example
+
+Here is a basic example:
+
+\`\`\`typescript
+import { generateDoc } from "@webpresso/docs-generator"
+
+const result = generateDoc({
+  template: "guide",
+  ssot: { frontmatter: {}, sections: {} },
+  llmBlocks: []
+})
+\`\`\`
+"
+`;
+
+exports[`generateDoc snapshots > should generate consistent document with nested lists 1`] = `
+"---
+type: guide
+last_updated: 2026-02-05
+---
+
+## Overview
+
+Configuration options:
+
+## Options
+
+- **Option A**
+  - Sub-option 1
+  - Sub-option 2
+- **Option B**
+  - Sub-option 3
+"
+`;
+
+exports[`generateDoc snapshots > should generate consistent guide document 1`] = `
+"---
+type: guide
+last_updated: 2026-02-05
+---
+
+## Overview
+
+This is a comprehensive guide for testing the docs generator.
+
+## Prerequisites
+
+- Node.js 20+
+- pnpm 9+
+
+## Getting Started
+
+Follow these steps to get started:
+
+1. Install dependencies
+2. Configure environment
+3. Run tests
+"
+`;
+
+exports[`generateDoc snapshots > should generate consistent implementation-plan document 1`] = `
+"---
+type: blueprint
+status: in-progress
+complexity: M
+last_updated: 2026-02-05
+---
+
+## Overview
+
+This plan describes the implementation of feature X.
+
+## Problem & Goal
+
+Users need feature X to accomplish Y.
+
+## Solution
+
+We will implement feature X using approach Z.
+
+## Acceptance Criteria
+
+- \\[ ] Criterion 1
+- \\[ ] Criterion 2
+- \\[ ] Criterion 3
+"
+`;
+
+exports[`generateDoc snapshots > should produce identical output across multiple runs 1`] = `
+"---
+type: guide
+last_updated: 2026-02-05
+---
+
+## Overview
+
+Deterministic content for stability testing.
+
+## Details
+
+Additional LLM-generated content.
+"
+`;
