@@ -190,5 +190,18 @@ describe.skipIf(!existsSync(CLI_PATH))(
       const r = runAk(['setup', '--yes', '--with', 'definitely-not-a-skill', '--cwd', repo])
       expect(r.code).toBe(1)
     })
+
+    it('--help text auto-lists every preset (data-driven from PRESETS const)', () => {
+      const r = runAk(['setup', '--help'])
+      expect(r.code).toBe(0)
+      // Locks in the auto-generated help so adding a preset to PRESETS
+      // automatically surfaces in --help and docs/code can't drift
+      // (the original gap that prompted docs/presets.md to exist).
+      expect(r.stdout).toContain('Presets:')
+      expect(r.stdout).toContain('lore-commits')
+      expect(r.stdout).toContain('omx')
+      expect(r.stdout).toContain('gstack')
+      expect(r.stdout).toContain("'ak skills list'")
+    })
   },
 )

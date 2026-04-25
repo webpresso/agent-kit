@@ -32,6 +32,7 @@ Agentkit is a standalone toolkit for agent-driven development. It ships four pub
    ak blueprint audit --all --strict
    ak symlink sync
    ak setup --with monorepo-navigation,tanstack-query
+   ak setup --with omx,gstack    # presets — see presets.md
    ak audit tph
    ak skills list
    ak docs lint docs/research/<path>.md
@@ -40,6 +41,10 @@ Agentkit is a standalone toolkit for agent-driven development. It ships four pub
 ## Getting started
 
 New to agent-kit? Read [`getting-started.md`](./getting-started.md).
+
+## `--with` presets
+
+`ak setup --with` accepts both Tier-3 skills and named presets (`lore-commits`, `omx`, `gstack`). For when to use each, what they touch, and failure semantics, see [`presets.md`](./presets.md).
 
 ## How the pieces fit together
 
@@ -65,8 +70,10 @@ maintenance script with the corresponding agent-kit surfaces. See
   there is no public `ak skills refresh` placeholder.
 - **OMX skills stay in OMX.** Anything `[OMX]`-marked in webpresso's
   `.agent/skills/` is deliberately excluded from agent-kit's catalog.
-  Install OMX separately if you want `/plan`, `/ralph`, `/ralplan`,
-  `/ultrawork`, `/team`, `/autopilot`.
+  To install OMX alongside agent-kit, run `ak setup --with omx`
+  (chains `omx setup --yes` for you) — see
+  [`presets.md`](./presets.md). To install OMX manually, run
+  `omx setup --yes` separately.
 
 ## Versioning
 

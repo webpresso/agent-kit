@@ -289,9 +289,17 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
       ? 'Scaffold agent-kit catalog into the current repo'
       : 'Compatibility alias for ak setup'
 
+  // Help text is data-driven so adding a preset (PRESETS) automatically
+  // updates --help. Prevents the docs/code drift we discovered when
+  // omx + gstack landed without surfacing in --help.
+  const withHelp =
+    `Comma-separated Tier-3 skills and/or presets to install ` +
+    `(non-interactive). Presets: ${PRESETS.join(', ')}. ` +
+    `Tier-3 skills are listed by 'ak skills list'.`
+
   cli
     .command(commandName, description)
-    .option('--with <skills>', 'Comma-separated Tier-3 skills to install (non-interactive)')
+    .option('--with <skills>', withHelp)
     .option('--all', 'Install every skill (Tier-1 + Tier-2 + all Tier-3)')
     .option(
       '--overwrite',

@@ -39,7 +39,8 @@ The plugin manifest lives at `.claude-plugin/plugin.json`. Skills are generated 
 | `ak blueprint audit --all --strict` | Audit all blueprints for structural issues |
 | `ak blueprint list` | List blueprints by status |
 | `ak symlink sync` | Sync skill surfaces across all configured IDEs |
-| `ak setup --with monorepo-navigation,tanstack-query` | Scaffold agent surfaces and install named skills |
+| `ak setup --with monorepo-navigation,tanstack-query` | Scaffold agent surfaces and install named Tier-3 skills |
+| `ak setup --with omx,gstack` | Scaffold + bundle external tooling presets ([docs/presets.md](docs/presets.md)) |
 | `ak skills list` | List available skills in the catalog |
 | `ak skills install <name>` | Install a named skill into the active IDE surfaces |
 | `ak audit tph` | Run tech-debt phase health audit |
