@@ -21,6 +21,8 @@
     "catalog",
     "just",
     "docs",
+    "skills",
+    ".claude-plugin",
     "README.md"
   ],
   "type": "module",
@@ -143,6 +145,8 @@
   },
   "scripts": {
     "build": "tshy && chmod +x dist/esm/cli/cli.js",
+    "postbuild": "pnpm run generate-skills",
+    "generate-skills": "tsx src/build/generate-skills-dir.ts",
     "prepare": "tshy && chmod +x dist/esm/cli/cli.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -161,6 +165,7 @@
     "@types/node": "^22.0.0",
     "publint": "^0.3.18",
     "tshy": "^4.1.1",
+    "tsx": "^4.19.3",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
   },
