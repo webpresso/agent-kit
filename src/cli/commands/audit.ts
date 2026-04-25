@@ -21,6 +21,7 @@ interface AuditActionOptions {
   ignore?: string | string[]
   json?: boolean
   legacyOmx?: boolean
+  loreWarn?: boolean
   maxHtmlEagerJsAssetBytes?: string
   maxHtmlEagerJsTotalBytes?: string
   maxJsAssetBytes?: string
@@ -95,7 +96,7 @@ export function registerAuditCommand(cli: CAC): void {
   cli
     .command(
       'audit <kind> [target]',
-      'Run a packaged audit (tph, tph-e2e, bundle-budget, catalog-drift, commit-message, docs-frontmatter, blueprint-lifecycle)',
+      'Run a packaged audit (tph, tph-e2e, bundle-budget, catalog-drift, commit-message, docs-frontmatter, blueprint-lifecycle, tech-debt)',
     )
     .option('--fix', 'Attempt to auto-fix violations (forwarded to supported audits)')
     .option('--json', 'Emit JSON output (forwarded to supported audits)')
@@ -103,7 +104,8 @@ export function registerAuditCommand(cli: CAC): void {
     .option('--root <dir>', 'Repository root for repo guardrail audits')
     .option('--docs-root <dir>', 'Docs directory for docs-frontmatter')
     .option('--message-file <file>', 'Commit message file for commit-message')
-    .option('--require-lore', 'Require Lore trailers even without [lore] in the commit subject')
+    .option('--require-lore', 'Require Lore trailers (hard-fail on missing/malformed trailers)')
+    .option('--lore-warn', 'Warn about missing Lore trailers but always exit 0 (soft adoption mode)')
     .option('--legacy-omx', 'Include legacy .omx plan checks for blueprint-lifecycle')
     .option('--html-entry <file>', 'HTML entry relative to dist for bundle-budget')
     .option('--max-js-asset-bytes <bytes>', 'Max size for any generated JS asset')
@@ -151,6 +153,7 @@ export function registerAuditCommand(cli: CAC): void {
           await exitWithRepoAudit(
             auditCommitMessageFile(messageFile, {
               requireLore: options.requireLore,
+              loreWarn: options.loreWarn,
             }),
             options,
           )
@@ -176,9 +179,17 @@ export function registerAuditCommand(cli: CAC): void {
           )
           return
         }
+        case 'tech-debt': {
+          const { auditTechDebt } = await import('#audit/tech-debt')
+          await exitWithRepoAudit(
+            auditTechDebt(options.root ?? target ?? process.cwd()),
+            options,
+          )
+          return
+        }
         default: {
           console.error(
-            `Unknown audit kind: ${kind}. Use 'tph', 'tph-e2e', 'bundle-budget', 'catalog-drift', 'commit-message', 'docs-frontmatter', or 'blueprint-lifecycle'.`,
+            `Unknown audit kind: ${kind}. Use 'tph', 'tph-e2e', 'bundle-budget', 'catalog-drift', 'commit-message', 'docs-frontmatter', 'blueprint-lifecycle', or 'tech-debt'.`,
           )
           process.exit(1)
         }

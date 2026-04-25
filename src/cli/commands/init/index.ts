@@ -28,6 +28,18 @@ import { scaffoldAgentsMd } from './scaffold-agents-md.js'
 import { scaffoldBlueprints } from './scaffold-blueprints.js'
 import { scaffoldDocs } from './scaffold-docs.js'
 import { scaffoldMonorepoNav } from './scaffold-monorepo-nav.js'
+import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
+
+const PRESETS = ['lore-commits'] as const
+type Preset = (typeof PRESETS)[number]
+
+function parsePresets(withFlag: string | undefined): Preset[] {
+  if (!withFlag) return []
+  return withFlag
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s): s is Preset => (PRESETS as readonly string[]).includes(s))
+}
 
 export interface InitFlags {
   with?: string
@@ -81,11 +93,18 @@ export async function runInit(flags: InitFlags): Promise<number> {
   }
 
   const existingConfig = readConfig(consumer.repoRoot)
+  const presets = parsePresets(flags.with)
+  // Extract tier3 skills portion of --with (non-preset values)
+  const withFlagWithoutPresets = flags.with
+    ?.split(',')
+    .map((s) => s.trim())
+    .filter((s) => !(PRESETS as readonly string[]).includes(s))
+    .join(',') || undefined
 
   let tier3Selection: string[]
   try {
     const selection = await resolveTier3Selection({
-      withFlag: flags.with,
+      withFlag: withFlagWithoutPresets,
       allFlag: flags.all,
       yesFlag: flags.yes,
       existing: existingConfig?.installed.tier3Skills,
@@ -143,12 +162,21 @@ export async function runInit(flags: InitFlags): Promise<number> {
       writeConfig(consumer.repoRoot, config)
     }
 
+    // Apply scaffolder presets
+    const presetResults = []
+    if (presets.includes('lore-commits')) {
+      presetResults.push(
+        scaffoldLoreCommits({ repoRoot: consumer.repoRoot, options }),
+      )
+    }
+
     const all = [
       ...agentReport.results,
       ...docsResults,
       ...blueprintResults,
       ...monorepoResults,
       ...(agentsMdResult ? [agentsMdResult] : []),
+      ...presetResults,
     ]
     const summary = summarizeResults(all)
 

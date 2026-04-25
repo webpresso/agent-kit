@@ -1,0 +1,65 @@
+# tech-debt
+
+Manage the tech-debt lifecycle using `ak tech-debt` commands.
+
+## Usage
+
+```bash
+# Create a new tech-debt item (written to webpresso/tech-debt/<status>/h-NNN-<kebab-title>.md)
+ak tech-debt new "Legacy CLI complexity" \
+  --severity medium \
+  --category complexity \
+  --review-cadence quarterly \
+  --status accepted
+
+# Preview without writing
+ak tech-debt new "Performance bottleneck" --severity high --category mutation --dry-run
+
+# List all tech-debt items (optional filters)
+ak tech-debt list
+ak tech-debt list --status accepted
+ak tech-debt list --status needs-remediation --severity high
+ak tech-debt list --category security
+
+# Review: show items past their review date (exits non-zero if any are overdue)
+ak tech-debt review
+
+# Audit tech-debt files against the schema (CI gate)
+ak audit tech-debt --root .
+```
+
+## File naming
+
+Files are named `h-NNN-<kebab-title>.md` where `NNN` is auto-incremented across all status directories.
+
+## Status lifecycle
+
+```
+accepted → needs-remediation → monitoring → resolved
+```
+
+## Severity + cadence rules
+
+| Severity | Minimum cadence |
+|----------|----------------|
+| critical | weekly (required) |
+| high     | biweekly or more frequent |
+| medium   | monthly |
+| low      | quarterly |
+
+## Categories
+
+`complexity`, `testing`, `mutation`, `duplication`, `dependency`, `security`, `documentation`
+
+## Frontmatter schema (required fields)
+
+```yaml
+---
+type: tech-debt
+status: accepted          # accepted | needs-remediation | monitoring | resolved
+severity: medium          # critical | high | medium | low
+category: complexity      # see categories above
+review_cadence: quarterly # weekly | biweekly | monthly | quarterly
+last_reviewed: '2026-01-15'
+---
+```
