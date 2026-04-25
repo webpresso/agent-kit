@@ -65,6 +65,47 @@ Today the audit demands `pnpm-workspace.yaml` even when a repo is a single packa
 
 Currently `--dry-run` writes files (observed during this pass — `blueprints/`, `AGENTS.md`, `.agent/`, etc. all created despite the flag). True dry-run must print intent only.
 
+### Bring up the full agent-kit toolchain via `ak setup`
+
+Per user directive 2026-04-25 ("installing agent-kit should install omx too" + corrections expanding to gstack, bun, vp, vitest): `ak setup` should bootstrap not just agent-kit itself but the **full sister-tool stack** that agent-kit assumes downstream. Today a fresh consumer who runs `ak setup` then `pnpm test` hits "vitest not found"; runs an `/qa` skill and hits "gstack missing"; runs `ak blueprint exec` and hits "omx not found." The audit harness can't enforce against a runtime that isn't installed.
+
+#### Skill systems — chain their own setup (idempotent, side-effect via spawn)
+
+| Tool | Install model | What `ak setup` should do |
+|---|---|---|
+| **OMX** (oh-my-codex) | Has `omx setup` CLI on PATH | `spawnSync('omx', ['setup', '--yes'], { cwd, stdio: 'inherit' })` after the agent-kit scaffold completes. Already used downstream at `agent-kit/src/cli/commands/blueprint/execution.ts:251` for `omx team`. |
+| **gstack** | Clone-and-setup at `~/.claude/skills/gstack/`, then `./setup --team` | If dir missing, clone `https://github.com/garrytan/gstack.git --depth 1`; then run `./setup --team`. Both ingest-lens and webpresso CLAUDE.md mark gstack as **required** for any AI-assisted work in those repos. |
+
+#### Runtimes — check, install if missing
+
+| Tool | Detect | Remediation |
+|---|---|---|
+| **bun** | `bun --version` | If missing: `curl -fsSL https://bun.sh/install \| bash` (or `brew install oven-sh/bun/bun`). Hint in summary, ask before running curl-pipe. |
+| **vp** (vite-plus) | `command vp --version` (vp is a shell function wrapping the binary) | If missing: install via the same channel as bun. |
+
+#### Test runtime
+
+- **vitest** (especially for e2e) — confirm it's a transitive devDep via `@webpresso/vitest-config` (already required by ingest-lens). When `--with base-kit` runs, ensure the consumer's package.json has the appropriate `vitest` script wiring. The `@webpresso/agent-kit/e2e` subpath export already provides e2e helpers; just need to wire them.
+
+#### Implementation outline
+
+1. Add `'omx'` to the `PRESETS` array at `src/cli/commands/init/index.ts:24` (currently `['lore-commits']`).
+2. After the scaffolder pass (around line 175), if `presets.includes('omx')`: spawn `omx setup --yes`. Hint via `console.error` + non-zero exit if `omx` is not on PATH.
+3. Same spawn pattern for `--with gstack`, `--with bun`, `--with vp` — each guarded by a "found on PATH?" check first.
+4. New `--all-tools` shorthand that activates all four presets at once.
+5. **Default behavior is opt-in.** Don't run another tool's setup unless the user asked. (User directive note: "installing agent-kit should install omx too" reads as "make this easy to opt into," not "silently run a curl pipe on every consumer's machine." Confirm this calibration before defaulting.)
+6. Auto-detection: when any of these tools is on PATH but its corresponding `--with <tool>` was not passed, print a single line in the summary suggesting it.
+
+#### Verification
+
+- `ak setup --with omx` on a fresh repo where `omx` is on PATH → omx setup runs, exits clean.
+- `ak setup --with omx` where `omx` is NOT on PATH → exits non-zero with install hint.
+- Idempotency: `ak setup --with omx` re-run → omx setup re-runs (omx is responsible for its own idempotency).
+- Same matrix for gstack, bun, vp.
+- Regression test in `agent-kit/__fixtures__/` that mocks the spawn boundary and asserts the right command line is invoked.
+
+Out of scope here: full implementation of all four — OMX is the tracer-bullet implementation; gstack/bun/vp follow the same pattern in subsequent passes.
+
 ### Fix `ak setup` idempotency
 
 Re-running `ak setup --with base-kit --yes` on an already-set-up tree is non-idempotent. Verified during the post-dogfood verification sweep on 2026-04-25:

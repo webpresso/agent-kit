@@ -30,8 +30,9 @@ import { scaffoldDocs } from './scaffold-docs.js'
 import { scaffoldBaseKit } from './scaffold-base-kit.js'
 import { scaffoldMonorepoNav } from './scaffold-monorepo-nav.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
+import { scaffoldOmx } from './scaffolders/omx/index.js'
 
-const PRESETS = ['lore-commits'] as const
+const PRESETS = ['lore-commits', 'omx'] as const
 type Preset = (typeof PRESETS)[number]
 
 function parsePresets(withFlag: string | undefined): Preset[] {
@@ -176,6 +177,27 @@ export async function runInit(flags: InitFlags): Promise<number> {
       )
     }
 
+    let omxFailure: 'not-found' | 'spawn-failed' | null = null
+    if (presets.includes('omx')) {
+      const omxResult = scaffoldOmx({ repoRoot: consumer.repoRoot, options })
+      switch (omxResult.kind) {
+        case 'omx-ok':
+          console.log('  omx setup: ✓ ran successfully')
+          break
+        case 'omx-skipped-dry-run':
+          console.log('  omx setup: skipped (--dry-run)')
+          break
+        case 'omx-not-found':
+          console.error(`  omx setup: ✗ ${omxResult.hint}`)
+          omxFailure = 'not-found'
+          break
+        case 'omx-spawn-failed':
+          console.error(`  omx setup: ✗ exited with ${omxResult.exitCode}`)
+          omxFailure = 'spawn-failed'
+          break
+      }
+    }
+
     const all = [
       ...agentReport.results,
       ...baseKitResults,
@@ -209,6 +231,8 @@ export async function runInit(flags: InitFlags): Promise<number> {
     }
 
     console.log('\nak init: done.')
+    if (omxFailure === 'not-found') return EXIT_SETUP_FAIL
+    if (omxFailure === 'spawn-failed') return EXIT_WRITE_FAIL
     return EXIT_SUCCESS
   } catch (error) {
     console.error(
