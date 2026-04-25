@@ -152,7 +152,12 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(omxCalls).toHaveLength(2)
     })
 
-    it('omx failure aborts before gstack would run', async () => {
+    it('presets run independently: omx failure does NOT skip gstack, but exit code reflects omx failure', async () => {
+      // Independent presets aren't coupled — gstack runs even when omx
+      // failed. The aggregate exit code reflects the worst failure
+      // (EXIT_SETUP_FAIL from omx wins over gstack's success). Verified
+      // live in init.e2e.test.ts using PATH manipulation; here we only
+      // verify the exit-code aggregation since spawn is fully mocked.
       spawnSyncMock.mockImplementation((cmd: string, args: string[]) => {
         if (cmd === 'omx' && args[0] === '--version') {
           return {
@@ -164,10 +169,10 @@ describe('runInit() — omx + gstack presets (integration)', () => {
         return okSpawnResult
       })
       const code = await runInit({ cwd: repo, yes: true, with: 'omx,gstack' })
-      // Failure-mode design choice: omx-not-found returns EXIT_SETUP_FAIL
-      // even if subsequent presets would have succeeded. Documented here so a
-      // future change has to consciously re-evaluate it.
       expect(code).toBe(EXIT_SETUP_FAIL)
+      // gstack still ran — we don't assert on specific spawn calls because
+      // gstack might be already-installed at the host's real $HOME during
+      // this test run.
     })
   })
 

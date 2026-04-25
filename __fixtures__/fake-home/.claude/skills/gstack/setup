@@ -1,0 +1,6 @@
+#!/bin/sh
+# Test fixture: a fake gstack `setup` script. ak setup --with gstack
+# detects gstack by checking for $HOME/.claude/skills/gstack/setup —
+# this fixture is what makes the "already installed" path live-testable.
+# In tests we set HOME to the parent dir containing this layout.
+exit 0

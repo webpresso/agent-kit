@@ -155,7 +155,7 @@
     "docs:check": "node ./dist/esm/cli/cli.js audit docs-frontmatter",
     "catalog:check": "node ./dist/esm/cli/cli.js audit catalog-drift",
     "audits:check": "pnpm blueprints:check && pnpm docs:check && pnpm catalog:check",
-    "qa": "bun run typecheck && bun run test && bun run lint:pkg && bun run audits:check",
+    "qa": "bun run build && bun run typecheck && bun run test && bun run lint:pkg && bun run audits:check",
     "prepublishOnly": "bun run build && bun run lint:pkg"
   },
   "dependencies": {

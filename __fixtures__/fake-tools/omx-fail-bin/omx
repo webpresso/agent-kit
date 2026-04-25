@@ -1,0 +1,17 @@
+#!/bin/sh
+# Test fixture: omx-fail responds OK to --version (so probe passes) but
+# exits non-zero on `setup`. Lets us live-verify that ak setup --with omx
+# returns EXIT_WRITE_FAIL when the chained omx setup itself fails.
+case "$1" in
+  --version)
+    echo "omx-fail-fixture 1.0.0"
+    exit 0
+    ;;
+  setup)
+    echo "omx-fail-fixture: setup intentionally failing for tests" >&2
+    exit 5
+    ;;
+  *)
+    exit 64
+    ;;
+esac
