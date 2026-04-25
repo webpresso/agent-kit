@@ -9,6 +9,7 @@
 import { createInterface } from 'node:readline/promises'
 
 export const TIER3_SKILLS = [
+  'base-kit',
   'tanstack-query',
   'better-auth-best-practices',
   'react-doctor',

@@ -27,6 +27,7 @@ import { scaffoldAgent } from './scaffold-agent.js'
 import { scaffoldAgentsMd } from './scaffold-agents-md.js'
 import { scaffoldBlueprints } from './scaffold-blueprints.js'
 import { scaffoldDocs } from './scaffold-docs.js'
+import { scaffoldBaseKit } from './scaffold-base-kit.js'
 import { scaffoldMonorepoNav } from './scaffold-monorepo-nav.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
 
@@ -135,6 +136,11 @@ export async function runInit(flags: InitFlags): Promise<number> {
       selectedTier3: tier3Selection,
       options,
     })
+
+    const baseKitResults = tier3Selection.includes('base-kit')
+      ? scaffoldBaseKit({ catalogDir, repoRoot: consumer.repoRoot, options })
+      : []
+
     const docsResults = scaffoldDocs({ catalogDir, repoRoot: consumer.repoRoot, options })
     const blueprintResults = scaffoldBlueprints({ repoRoot: consumer.repoRoot, options })
     const monorepoResults = scaffoldMonorepoNav({
@@ -172,6 +178,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
 
     const all = [
       ...agentReport.results,
+      ...baseKitResults,
       ...docsResults,
       ...blueprintResults,
       ...monorepoResults,

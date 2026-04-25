@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+.output/
+.vercel/
+.netlify/
+
+# TypeScript
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Testing
+coverage/
+.nyc_output/
+
+# E2E Testing
+playwright-report/
+test-results/
+*.auth.json
+
+# Environment files
+.env
+.env.local
+.env.*.local
+!.env.example
+.dev.vars
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE — JetBrains
+.idea/
+*.iml
+*.iws
+
+# IDE — VS Code (keep settings, ignore personal)
+.vscode/*.log
+
+# Misc
+*.backup
+*.bak
+.cache/
+tmp/
+.tmp/
+
+# Agent runtime files (generated during agent execution)
+**/.agent/tasks.jsonl
+**/.agent/summary.md
+.claude/worktrees/
