@@ -43,6 +43,12 @@ A separate gap surfaced: discovering which `--with` mode would fix a given audit
 
 This closes the legacy-doc gap so the dogfood pass becomes one command, not eight Edits.
 
+### Fix `audit blueprint-lifecycle` silently skipping `draft/`
+
+Verified during the validation sweep on 2026-04-25: `DEFAULT_BLUEPRINT_STATUSES` at `src/audit/repo-guardrails.ts:82` is `['planned', 'in-progress', 'parked', 'completed', 'archived']` — `draft` is missing. Effect: blueprints in `draft/` (including this one and `promote-parent-roadmaps`) are **never audited**, so frontmatter regressions in drafts ship silently.
+
+Same class of issue as the parent-roadmap silent filter (already covered by `promote-parent-roadmaps`). Fix: add `'draft'` to the constant; verify the audit now reports `3 checked` against agent-kit's current state. One-line change + a regression test asserting `auditBlueprintLifecycle({ blueprintsRoot: 'fixtures-with-drafts' }).checked === <expected>`.
+
 ### `ak doctor`
 
 New top-level command:
