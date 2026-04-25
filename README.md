@@ -36,6 +36,17 @@ pnpm add -D @webpresso/agent-kit
 npx ak setup
 ```
 
+## Distribution
+
+| IDE / Surface | Install command | Notes |
+|---|---|---|
+| Claude Code | `ak setup` | Skills land in `.claude/commands/` and `.claude/skills/` via symlinker |
+| Cursor | `ak cursor-windsurf-sync` | Copies skills to `.cursor/rules/` |
+| Windsurf | `ak cursor-windsurf-sync` | Copies skills to `.windsurf/skills/` |
+| Codex CLI / Amp | `ak symlink sync --tail-ides` | Symlinks to `.agents/skills/` |
+| Gemini CLI | `ak symlink sync --tail-ides` | Generates TOML files in `.gemini/commands/` |
+| All IDEs | `ak symlink sync` | Runs both primary (Cursor/Windsurf) and tail (Codex/Amp/Gemini) paths |
+
 ## Status
 
 **Experimental (v0.x).** Public API may change. The package is maintained as
