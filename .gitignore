@@ -3,3 +3,5 @@ dist/
 .tshy-build/
 node_modules/
 *.tsbuildinfo
+.worktrees/
+src/cli/commands/__tmp-*/
