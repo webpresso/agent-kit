@@ -29,10 +29,12 @@ import { scaffoldBlueprints } from './scaffold-blueprints.js'
 import { scaffoldDocs } from './scaffold-docs.js'
 import { scaffoldBaseKit } from './scaffold-base-kit.js'
 import { scaffoldMonorepoNav } from './scaffold-monorepo-nav.js'
+import { scaffoldGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
 import { scaffoldOmx } from './scaffolders/omx/index.js'
+import { checkRuntimes } from './scaffolders/runtime-check/index.js'
 
-const PRESETS = ['lore-commits', 'omx'] as const
+const PRESETS = ['lore-commits', 'omx', 'gstack'] as const
 type Preset = (typeof PRESETS)[number]
 
 function parsePresets(withFlag: string | undefined): Preset[] {
@@ -198,6 +200,30 @@ export async function runInit(flags: InitFlags): Promise<number> {
       }
     }
 
+    let gstackFailure: 'clone-failed' | 'setup-failed' | null = null
+    if (presets.includes('gstack')) {
+      const gstackResult = scaffoldGstack({ repoRoot: consumer.repoRoot, options })
+      switch (gstackResult.kind) {
+        case 'gstack-already-installed':
+          console.log(`  gstack: ✓ already installed at ${gstackResult.root}`)
+          break
+        case 'gstack-installed':
+          console.log(`  gstack: ✓ cloned + setup --team at ${gstackResult.root}`)
+          break
+        case 'gstack-skipped-dry-run':
+          console.log('  gstack: skipped (--dry-run)')
+          break
+        case 'gstack-clone-failed':
+          console.error(`  gstack: ✗ git clone exited with ${gstackResult.exitCode}`)
+          gstackFailure = 'clone-failed'
+          break
+        case 'gstack-setup-failed':
+          console.error(`  gstack: ✗ ./setup --team exited with ${gstackResult.exitCode}`)
+          gstackFailure = 'setup-failed'
+          break
+      }
+    }
+
     const all = [
       ...agentReport.results,
       ...baseKitResults,
@@ -230,9 +256,22 @@ export async function runInit(flags: InitFlags): Promise<number> {
       syncAll(consumer.repoRoot)
     }
 
+    if (!options.dryRun) {
+      const runtimes = checkRuntimes()
+      if (runtimes.length > 0) {
+        console.log('\nRuntime check:')
+        for (const r of runtimes) {
+          if (r.version) console.log(`  ${r.name}: ✓ ${r.version}`)
+          else console.log(`  ${r.name}: ✗ not on PATH — ${r.hint}`)
+        }
+      }
+    }
+
     console.log('\nak init: done.')
     if (omxFailure === 'not-found') return EXIT_SETUP_FAIL
     if (omxFailure === 'spawn-failed') return EXIT_WRITE_FAIL
+    if (gstackFailure === 'clone-failed') return EXIT_WRITE_FAIL
+    if (gstackFailure === 'setup-failed') return EXIT_WRITE_FAIL
     return EXIT_SUCCESS
   } catch (error) {
     console.error(
