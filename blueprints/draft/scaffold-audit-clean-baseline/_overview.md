@@ -65,6 +65,16 @@ Today the audit demands `pnpm-workspace.yaml` even when a repo is a single packa
 
 Currently `--dry-run` writes files (observed during this pass — `blueprints/`, `AGENTS.md`, `.agent/`, etc. all created despite the flag). True dry-run must print intent only.
 
+### Fix `ak setup` idempotency
+
+Re-running `ak setup --with base-kit --yes` on an already-set-up tree is non-idempotent. Verified during the post-dogfood verification sweep on 2026-04-25:
+
+1. **Self-destructive catalog stub.** `cleanupUnusedCatalogs: true` is written into `pnpm-workspace.yaml` alongside a 30-line catalog stub (typescript, vitest, eslint, prettier, etc.). On the **second** run, the cleanup pass sees no consumer of those catalog entries and prunes them all — leaving only `cleanupUnusedCatalogs: true`. So the scaffolder writes content its own cleanup pass then deletes. Either drop the catalog stub at write time, or skip the cleanup pass on first install.
+2. **Persistent sidecar storm.** Files customized by the consumer (`.gitignore` with project-specific patterns, `docs/templates/blueprint.md` adapted to `ak` instead of generic `wp`, `docs/templates/tech-debt.md` extended with `last_updated:`, `pnpm-workspace.yaml` with consumer catalog) trigger a `.new` sidecar on every subsequent run. The setup never converges. Needs either: (a) merge semantics for `.new` reconciliation, (b) a checksum/marker that records "consumer accepted this divergence", or (c) `--accept-sidecars` flag that promotes `.new` → canonical.
+3. **`lastInit` timestamp churn.** `.agent-kitrc.json` is rewritten with a fresh `lastInit` ISO timestamp every run. Either move the timestamp out of the tracked file (e.g. into `.agent/.lastInit` and gitignore it) or drop the field entirely (it's not load-bearing for any audit).
+
+These three together make `ak setup` produce noise on every run, which trains consumers to ignore its output — exactly the opposite of "scaffolder is the audit-remediation source of truth."
+
 ## Out of scope
 
 - New audit categories (covered by `agent-kit-parity-pass`).
@@ -74,7 +84,7 @@ Currently `--dry-run` writes files (observed during this pass — `blueprints/`,
 ## Verification Gates
 
 - `ak setup --with base-kit` on a fresh repo → all four audits pass without manual edits.
-- `ak setup --with base-kit` on agent-kit (re-run) → idempotent, no churn.
+- `ak setup --with base-kit` on agent-kit (re-run) → idempotent: no working-tree changes, no `.new` sidecars, no `lastInit` timestamp churn, no catalog stub erased by cleanup.
 - `ak doctor` on a clean repo → exits 0.
 - `ak doctor` on a seeded broken repo (delete a frontmatter field) → exits 1 with a remediation line.
 - `ak doctor --fix` on the same → returns the repo to clean.
