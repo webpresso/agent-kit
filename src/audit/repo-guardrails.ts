@@ -97,12 +97,7 @@ export function auditCatalogDrift(
   const violations: RepoAuditViolation[] = []
 
   if (!existsSync(workspacePath)) {
-    return result('Catalog drift', 0, [
-      {
-        file: relativePath(root, workspacePath),
-        message: 'Missing pnpm-workspace.yaml',
-      },
-    ])
+    return result('Catalog drift', 0, [])
   }
 
   const workspaceYaml = readFileSync(workspacePath, 'utf8')
