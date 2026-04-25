@@ -1,0 +1,5 @@
+version: 1
+services:
+  api:
+    command: node
+    args: ["api.js"]

@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, relative, resolve, sep } from 'node:path'
 
+import { validateLoreTrailers } from './commit-message-lore.js'
+
 export interface RepoAuditViolation {
   file?: string
   message: string
@@ -31,6 +33,7 @@ export interface BlueprintLifecycleOptions {
 
 export interface CommitMessageOptions {
   allowedTypes?: readonly string[]
+  loreWarn?: boolean
   requireLore?: boolean
   subjectMaxLength?: number
 }
@@ -183,17 +186,18 @@ export function validateCommitMessage(
     })
   }
 
-  const shouldEnforceLore = options.requireLore === true || subject.includes('[lore]')
+  const shouldEnforceLore =
+    options.requireLore === true || options.loreWarn === true || subject.includes('[lore]')
   if (shouldEnforceLore) {
-    if (!message.includes('Confidence:')) {
-      violations.push({ message: 'Lore commits must include Confidence:' })
+    const loreResult = validateLoreTrailers(message, {
+      requireLore: options.requireLore === true || subject.includes('[lore]'),
+      loreWarn: options.loreWarn === true && !(options.requireLore === true || subject.includes('[lore]')),
+    })
+    for (const violation of loreResult.violations) {
+      violations.push({ message: violation })
     }
-
-    if (!/(^|\n)(Constraint|Rejected|Directive):/.test(message)) {
-      violations.push({
-        message:
-          'Lore commits must include at least one Constraint:, Rejected:, or Directive: trailer',
-      })
+    for (const warning of loreResult.warnings) {
+      console.warn(`[lore-warn] ${warning}`)
     }
   }
 

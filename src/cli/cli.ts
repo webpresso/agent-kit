@@ -27,6 +27,7 @@ const SUPPORTED_COMMANDS = [
   'dev',
   'test',
   'e2e',
+  'tech-debt',
 ] as const
 
 const ROOT_HELP = [
@@ -35,7 +36,7 @@ const ROOT_HELP = [
   'Commands:',
   '  blueprint    Manage blueprints (list, new, show, exec, audit, ...)',
   '  symlink      Sync agent-surface files (sync, check)',
-  '  audit        Run packaged audits (bundle budgets, repo guardrails, TPH)',
+  '  audit        Run packaged audits (bundle budgets, repo guardrails, TPH, tech-debt)',
   '  skills       Manage agent skills (list, install)',
   '  docs         Documentation tooling (lint)',
   '  setup        Scaffold a consumer repo with the agent surface',
@@ -43,6 +44,7 @@ const ROOT_HELP = [
   '  dev          Run a manifest-backed development target',
   '  test         Run tests through the portable agent-kit surface',
   '  e2e          Build and run E2E commands through the portable agent-kit surface',
+  '  tech-debt    Manage tech-debt lifecycle (new, list, review)',
   '',
   'Options:',
   '  -h, --help     Display this message',
@@ -124,6 +126,11 @@ export async function main(): Promise<number> {
     case 'e2e': {
       const { registerE2eCommand } = await import('./commands/e2e.js')
       registerE2eCommand(cli)
+      break
+    }
+    case 'tech-debt': {
+      const { registerTechDebtRouter } = await import('./commands/tech-debt/router.js')
+      registerTechDebtRouter(cli)
       break
     }
     default: {

@@ -1,0 +1,10 @@
+version: 1
+services:
+  api:
+    command: node
+    args: ["api.js"]
+groups:
+  full:
+    services: [api]
+defaults:
+  target: full
