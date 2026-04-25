@@ -33,9 +33,9 @@ describe('ak root command surface', () => {
     const result = await runAk(['--help'])
 
     expect(result.code).toBe(0)
-    expect(result.stdout.join('\n')).toContain('setup        Scaffold a consumer repo')
-    expect(result.stdout.join('\n')).toContain('init         Compatibility alias for setup')
-    expect(result.stdout.join('\n')).toContain('skills       Manage agent skills (list, install)')
+    expect(result.stdout.join('\n')).toContain('setup                 Scaffold a consumer repo')
+    expect(result.stdout.join('\n')).toContain('init                  Compatibility alias for setup')
+    expect(result.stdout.join('\n')).toContain('skills                Manage agent skills (list, install)')
     expect(result.stdout.join('\n')).not.toContain('refresh')
   })
 

@@ -19,6 +19,7 @@ const VERSION = readPackageVersion(import.meta.url)
 const SUPPORTED_COMMANDS = [
   'blueprint',
   'symlink',
+  'cursor-windsurf-sync',
   'audit',
   'skills',
   'docs',
@@ -34,17 +35,18 @@ const ROOT_HELP = [
   'Usage: ak [command] [options]',
   '',
   'Commands:',
-  '  blueprint    Manage blueprints (list, new, show, exec, audit, ...)',
-  '  symlink      Sync agent-surface files (sync, check)',
-  '  audit        Run packaged audits (bundle budgets, repo guardrails, TPH, tech-debt)',
-  '  skills       Manage agent skills (list, install)',
-  '  docs         Documentation tooling (lint)',
-  '  setup        Scaffold a consumer repo with the agent surface',
-  '  init         Compatibility alias for setup',
-  '  dev          Run a manifest-backed development target',
-  '  test         Run tests through the portable agent-kit surface',
-  '  e2e          Build and run E2E commands through the portable agent-kit surface',
-  '  tech-debt    Manage tech-debt lifecycle (new, list, review)',
+  '  blueprint             Manage blueprints (list, new, show, exec, audit, ...)',
+  '  symlink               Sync agent-surface files (sync, check)',
+  '  cursor-windsurf-sync  Copy skills to .cursor/rules/ and .windsurf/skills/',
+  '  audit                 Run packaged audits (bundle budgets, repo guardrails, TPH, tech-debt)',
+  '  skills                Manage agent skills (list, install)',
+  '  docs                  Documentation tooling (lint)',
+  '  setup                 Scaffold a consumer repo with the agent surface',
+  '  init                  Compatibility alias for setup',
+  '  dev                   Run a manifest-backed development target',
+  '  test                  Run tests through the portable agent-kit surface',
+  '  e2e                   Build and run E2E commands through the portable agent-kit surface',
+  '  tech-debt             Manage tech-debt lifecycle (new, list, review)',
   '',
   'Options:',
   '  -h, --help     Display this message',
@@ -90,6 +92,13 @@ export async function main(): Promise<number> {
     case 'symlink': {
       const { registerSymlinkCommand } = await import('./commands/symlink.js')
       registerSymlinkCommand(cli)
+      break
+    }
+    case 'cursor-windsurf-sync': {
+      const { registerCursorWindsurfSyncCommand } = await import(
+        './commands/cursor-windsurf-sync.js'
+      )
+      registerCursorWindsurfSyncCommand(cli)
       break
     }
     case 'audit': {
