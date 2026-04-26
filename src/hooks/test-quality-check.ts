@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { resolveActiveWorktreeRoot } from './shared/worktree-root.js'
-import { readFileSync } from 'node:fs'
+import { readFileSync, realpathSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { isAbsolute, join } from 'node:path'
 
 import {
@@ -63,6 +64,6 @@ export function runTestQualityCheck(argv: string[] = process.argv.slice(2), cwd 
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
   runTestQualityCheck()
 }

@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import { globSync } from 'glob'
 import { execSync } from 'node:child_process'
+import { realpathSync } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { isLintableFile, isSkippedPath } from '#hooks/post-tool/lint-after-edit'
 
@@ -96,6 +98,6 @@ async function main(): Promise<void> {
   process.exit(0)
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
   main()
 }

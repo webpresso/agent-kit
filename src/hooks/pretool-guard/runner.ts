@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 import type { ToolInput, ValidationResult } from '#hooks/shared/types'
 
+import { realpathSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+
 import { isGuardEnabled } from '#hooks/guard-switch/state'
 import { getCommand, getFilePath, isBashInput, parseToolInput } from '#hooks/shared/types'
 
@@ -115,6 +118,6 @@ export async function main(): Promise<void> {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
   main()
 }

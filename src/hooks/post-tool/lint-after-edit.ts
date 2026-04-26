@@ -2,8 +2,9 @@
 import type { ToolInput } from '#hooks/shared/types'
 
 import { execSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, realpathSync } from 'node:fs'
 import { extname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { getFilePath } from '#hooks/shared/types'
 
@@ -62,6 +63,6 @@ async function main(): Promise<void> {
   process.exit(0)
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
   main()
 }

@@ -9,7 +9,8 @@
  * Output contract (per Claude Code hooks docs):
  *   {"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<contents>"}}
  */
-import { readFileSync, statSync } from 'node:fs'
+import { readFileSync, realpathSync, statSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 
 export const MAX_BYTES = 200 * 1024
@@ -89,6 +90,6 @@ export async function main(): Promise<void> {
   process.exit(0)
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
   void main()
 }
