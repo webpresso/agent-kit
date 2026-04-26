@@ -20,7 +20,6 @@
     "ak-stop-qa": "./dist/esm/hooks/stop/qa-changed-files.js",
     "ak-guard-switch": "./dist/esm/hooks/guard-switch/index.js",
     "ak-test-quality-check": "./dist/esm/hooks/test-quality-check.js",
-    "ak-mcp": "./dist/esm/mcp/cli.js",
     "ak-sessionstart-routing": "./dist/esm/hooks/sessionstart/index.js"
   },
   "files": [
@@ -154,7 +153,7 @@
   "scripts": {
     "build": "tshy && pnpm run chmod-bins",
     "postbuild": "pnpm run generate-skills",
-    "chmod-bins": "chmod +x dist/esm/cli/cli.js dist/esm/hooks/pretool-guard/index.js dist/esm/hooks/post-tool/lint-after-edit.js dist/esm/hooks/stop/qa-changed-files.js dist/esm/hooks/guard-switch/index.js dist/esm/hooks/test-quality-check.js dist/esm/mcp/cli.js dist/esm/hooks/sessionstart/index.js",
+    "chmod-bins": "chmod +x dist/esm/cli/cli.js dist/esm/hooks/pretool-guard/index.js dist/esm/hooks/post-tool/lint-after-edit.js dist/esm/hooks/stop/qa-changed-files.js dist/esm/hooks/guard-switch/index.js dist/esm/hooks/test-quality-check.js dist/esm/hooks/sessionstart/index.js",
     "generate-skills": "tsx src/build/generate-skills-dir.ts",
     "prepare": "tshy && pnpm run chmod-bins",
     "typecheck": "tsc --noEmit",
