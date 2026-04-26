@@ -29,6 +29,7 @@ const SUPPORTED_COMMANDS = [
   'test',
   'e2e',
   'tech-debt',
+  'mcp',
 ] as const
 
 const ROOT_HELP = [
@@ -47,6 +48,7 @@ const ROOT_HELP = [
   '  test                  Run tests through the portable agent-kit surface',
   '  e2e                   Build and run E2E commands through the portable agent-kit surface',
   '  tech-debt             Manage tech-debt lifecycle (new, list, review)',
+  '  mcp                   Run the agent-kit MCP server over stdio',
   '',
   'Options:',
   '  -h, --help     Display this message',
@@ -140,6 +142,11 @@ export async function main(): Promise<number> {
     case 'tech-debt': {
       const { registerTechDebtRouter } = await import('./commands/tech-debt/router.js')
       registerTechDebtRouter(cli)
+      break
+    }
+    case 'mcp': {
+      const { registerMcpCommand } = await import('./commands/mcp.js')
+      registerMcpCommand(cli)
       break
     }
     default: {
