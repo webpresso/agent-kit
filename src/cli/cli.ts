@@ -30,6 +30,7 @@ const SUPPORTED_COMMANDS = [
   'e2e',
   'tech-debt',
   'mcp',
+  'hooks',
 ] as const
 
 const ROOT_HELP = [
@@ -49,6 +50,7 @@ const ROOT_HELP = [
   '  e2e                   Build and run E2E commands through the portable agent-kit surface',
   '  tech-debt             Manage tech-debt lifecycle (new, list, review)',
   '  mcp                   Run the agent-kit MCP server over stdio',
+  '  hooks                 Verify plugin hook installation health',
   '',
   'Options:',
   '  -h, --help     Display this message',
@@ -147,6 +149,11 @@ export async function main(): Promise<number> {
     case 'mcp': {
       const { registerMcpCommand } = await import('./commands/mcp.js')
       registerMcpCommand(cli)
+      break
+    }
+    case 'hooks': {
+      const { registerHooksCommand } = await import('./commands/hooks.js')
+      registerHooksCommand(cli)
       break
     }
     default: {

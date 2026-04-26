@@ -166,7 +166,9 @@
     "docs:check": "pnpm exec ak audit docs-frontmatter",
     "catalog:check": "pnpm exec ak audit catalog-drift",
     "imports:check": "pnpm exec ak audit no-relative-parent-imports",
-    "audits:check": "pnpm blueprints:check && pnpm docs:check && pnpm catalog:check && pnpm imports:check",
+    "audits:check": "pnpm blueprints:check && pnpm docs:check && pnpm catalog:check && pnpm imports:check && pnpm hooks:doctor:ci",
+    "hooks:doctor": "node ./dist/esm/cli/cli.js hooks doctor",
+    "hooks:doctor:ci": "node ./dist/esm/cli/cli.js hooks doctor --skip-mcp",
     "qa": "bun run build && bun run typecheck && bun run test && bun run lint:pkg && bun run audits:check",
     "release": "node scripts/release.mjs",
     "prepublishOnly": "bun run build && bun run lint:pkg"
