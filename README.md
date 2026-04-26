@@ -4,32 +4,88 @@ Toolkit for agent-driven development on the Webpresso stack. Ships a **Blueprint
 
 ## Install & Quickstart
 
+Agent-kit ships through **two coexisting distribution channels** — mirrors the [context-mode pattern](https://github.com/mksglu/context-mode). Choose either or both; they're additive and idempotent.
+
+### Path A — Claude Code plugin (zero-config)
+
+```bash
+/plugin marketplace add webpresso/agent-kit
+/plugin install agent-kit@webpresso
+```
+
+What you get: **hooks** (PreToolUse, PostToolUse, Stop, SessionStart), **`ak mcp` server** with 6 tools (`ak_test`, `ak_lint`, `ak_typecheck`, `ak_qa`, `ak_audit`, `ak_blueprint`), **slash commands** (`/ak:test`, `/ak:qa`, `/ak:audit`, `/ak:blueprint`), and the **skill catalog**. Manifest at `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json`. Pin to release tags (`v<version>`) — `main` does not have `dist/` checked in; only release tags do (see [CONTRIBUTING.md](./CONTRIBUTING.md#releases)).
+
+### Path B — npm + `ak setup` (Codex CLI, OpenCode, Cursor, Gemini, …)
+
 ```bash
 pnpm add -D @webpresso/agent-kit
 npx ak setup
 ```
 
-`ak setup` scaffolds `.agent/`, `.claude/`, and `.agents/` surfaces and installs the skill catalog into your IDE's native skill directory.
+What you get: the **same hooks**, idempotently scaffolded into `.claude/settings.json` AND `.codex/hooks.json`, plus the per-IDE skill surfaces (`.agent/`, `.agents/skills/`, `.cursor/`, `.gemini/commands/` via TOML transform). Required for Codex CLI, OpenCode, Cursor, Gemini, and any non-Claude IDE — none of those have a Claude-Code-style `/plugin install` path. Library imports (e.g. `defineAgentKitConfig` from `@webpresso/agent-kit/e2e`) also flow through this path.
+
+### Why two paths
+
+Codex CLI ([config docs](https://github.com/openai/codex/blob/main/docs/config.md)) ships MCP servers via `~/.codex/config.toml` and hooks via `~/.codex/hooks.json` but has no plugin marketplace as of 2026-04. The `ak setup` scaffolder is the canonical install path for Codex and any other IDE without a Claude-Code-style plugin marketplace. When Codex's plugin story matures, the two paths can converge — tracked at [`tech-debt/accepted/h-001-track-codex-cli-plugin-marketplace-maturity.md`](./tech-debt/accepted/h-001-track-codex-cli-plugin-marketplace-maturity.md).
 
 ## Claude Code Plugin
 
-Agent Kit ships as a native Claude Code plugin. The skills appear namespaced as `/webpresso-agent-kit:<skill-name>` in any Claude Code session.
+Agent Kit ships as a native Claude Code plugin. The skills appear as `/webpresso-agent-kit:<skill-name>` (or short-names like `/pll` once the plugin is registered).
 
-**Local dev (confirmed):**
+**Per-session setup (works today):**
 
 ```bash
 claude --plugin-dir ./node_modules/@webpresso/agent-kit
 ```
 
-**Marketplace install** (once the Webpresso marketplace is live):
+**Persistent setup (one-time, survives restarts):**
 
+```bash
+# The .claude-plugin/marketplace.json in the package makes this work
+claude plugin marketplace add ./node_modules/@webpresso/agent-kit --scope local
+claude install-plugin @agent-kit@local
 ```
-/plugin install webpresso-agent-kit@webpresso
-```
 
-> **Note:** `claude install-plugin @webpresso/agent-kit` is not in the official Claude Code CLI reference. Use `--plugin-dir` for local dev. Marketplace-based install is the supported remote path.
+> Verified working 2026-04-25 — `claude install-plugin @agent-kit@local` succeeds on a machine with agent-kit consumed via `git+ssh://git@github.com/webpresso/agent-kit.git#main`. Skills persist across restarts.
 
-The plugin manifest lives at `.claude-plugin/plugin.json`. Skills are generated into `skills/<name>/SKILL.md` at build time from `catalog/agent/skills/`.
+The plugin manifest lives at `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json`. Skills are generated into `skills/<name>/SKILL.md` at build time from `catalog/agent/skills/`.
+
+## Codex CLI
+
+Codex CLI doesn't have a plugin marketplace — `~/.codex/config.toml` registers MCP servers and `~/.codex/hooks.json` registers hooks, both via direct file edits ([config reference](https://developers.openai.com/codex/config-reference)). Path B above (`pnpm add -D @webpresso/agent-kit && npx ak setup`) is the canonical install for Codex.
+
+What `ak setup` does for Codex:
+- Skills: per-skill symlinks under `.agents/skills/` → `../../.agent/skills/<name>` (project-local, OpenAI/Amp/OpenCode convergent path).
+- Hooks: idempotent patch of `.codex/hooks.json` adding `ak-pretool-guard`, `ak-post-tool`, `ak-stop-qa`, `ak-sessionstart-routing` entries (additive — won't clobber existing user hooks).
+- MCP server: register `agent-kit` via `~/.codex/config.toml`:
+
+  ```toml
+  [mcp_servers.agent-kit]
+  command = "npx"
+  args = ["@webpresso/agent-kit", "mcp"]
+  ```
+
+  (`ak setup` does not edit `~/.codex/config.toml` automatically — that's a global file outside the project. Add the entry yourself once per machine.)
+
+Convergence with Claude Code's plugin path is tracked at [`tech-debt/accepted/h-001-track-codex-cli-plugin-marketplace-maturity.md`](./tech-debt/accepted/h-001-track-codex-cli-plugin-marketplace-maturity.md) — when Codex ships a plugin marketplace, this section folds into the Path A flow.
+
+## OpenCode
+
+OpenCode reads skills from `.agents/skills/` (convergent) and `.claude/skills/` (fallback). Both are covered by `ak setup`:
+- `.agents/skills/<name>/` → symlinked to `.agent/skills/<name>/`
+- `.claude/skills/<name>/` → symlinked to `.agent/skills/<name>/`
+
+No plugin install or marketplace registration needed.
+
+## IDE Support Matrix
+
+| IDE | Skills path | Plugin manifest | Setup needed |
+|-----|-------------|----------------|--------------|
+| Claude Code | `.claude/skills/` | `.claude-plugin/plugin.json` + `marketplace.json` | `claude plugin marketplace add` + `install-plugin` |
+| Codex CLI | `.agents/skills/` | none (no marketplace) — `.codex/hooks.json` patched by `ak setup` | `ak setup` (Path B); add `~/.codex/config.toml` MCP entry once |
+| OpenCode | `.agents/skills/` + `.claude/skills/` (fallback) | none | `ak symlink sync` (done) |
+| Cursor / Windsurf | `.cursor/skills/` / `.windsurf/skills/` | localskills.sh distribution | via `ak setup` scaffolder |
+| Gemini CLI | `.gemini/commands/*.toml` (transformed from `.agent/`) | none | `ak symlink sync` (done) |
 
 ## `ak` CLI Reference
 
@@ -45,6 +101,7 @@ The plugin manifest lives at `.claude-plugin/plugin.json`. Skills are generated 
 | `ak skills install <name>` | Install a named skill into the active IDE surfaces |
 | `ak audit tph` | Run tech-debt phase health audit |
 | `ak audit bundle-budget apps/client/dist --max-js-asset-bytes 512000` | Check Vite bundle against budget |
+| `ak audit no-relative-parent-imports` | Enforce `#alias` imports — fail if any `../` parent imports exist in `src/` |
 | `ak docs lint docs/research/my-doc.md` | Lint a research or blueprint doc |
 
 ## Distribution

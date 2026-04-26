@@ -42,6 +42,34 @@ Use this repo's task runner or package scripts instead of guessing commands from
 memory. If a wrapped command exists, prefer it over direct tool invocation so the
 repo can apply its environment, caching, and policy consistently.
 
+### Invoking the `ak` CLI in this repo
+
+Run the CLI as **`pnpm exec ak <subcommand>`** (or bare `ak <subcommand>`
+inside any pnpm script — pnpm prepends `node_modules/.bin` to PATH there).
+Do **not** invoke `node ./dist/esm/cli/cli.js …` directly: the path is an
+implementation detail; the bin is the contract.
+
+```bash
+pnpm exec ak blueprint show <slug>
+pnpm exec ak blueprint task complete <slug> <task-id>
+pnpm exec ak audit blueprint-lifecycle
+pnpm exec ak symlink sync
+pnpm exec ak tech-debt new "<title>" --severity low --category documentation
+```
+
+This works because `prepare` (run automatically on every `pnpm install`)
+chains `pnpm run link-self-bins`, which symlinks every entry in
+`package.json#bin` into `node_modules/.bin/`. pnpm itself does not self-link
+the package's own bin — it only links bins of dependencies — so this script
+fills the dev-loop gap. Adding a new bin entry to `package.json` is a
+single source of truth: the link script reads it and extends automatically.
+
+In a consumer repo that has installed `@webpresso/agent-kit`, the `ak`
+binary is on `node_modules/.bin/ak` directly via pnpm's normal dep-bin
+linking — no extra step needed. Catalog docs, blueprint specs, and skill
+files all use `ak <subcommand>` (the post-install form), and `pnpm exec ak`
+is the dev-time-in-this-repo equivalent.
+
 Before large edits, inspect nearby patterns and reuse existing utilities. Avoid
 new dependencies unless the task explicitly requires them.
 
