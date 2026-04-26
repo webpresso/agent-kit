@@ -96,7 +96,7 @@ export function registerAuditCommand(cli: CAC): void {
   cli
     .command(
       'audit <kind> [target]',
-      'Run a packaged audit (tph, tph-e2e, bundle-budget, catalog-drift, commit-message, docs-frontmatter, blueprint-lifecycle, tech-debt)',
+      'Run a packaged audit (tph, tph-e2e, bundle-budget, catalog-drift, commit-message, docs-frontmatter, blueprint-lifecycle, tech-debt, no-relative-parent-imports)',
     )
     .option('--fix', 'Attempt to auto-fix violations (forwarded to supported audits)')
     .option('--json', 'Emit JSON output (forwarded to supported audits)')
@@ -187,9 +187,17 @@ export function registerAuditCommand(cli: CAC): void {
           )
           return
         }
+        case 'no-relative-parent-imports': {
+          const { auditNoRelativeParentImports } = await import('#audit/repo-guardrails')
+          await exitWithRepoAudit(
+            auditNoRelativeParentImports(options.root ?? target ?? process.cwd()),
+            options,
+          )
+          return
+        }
         default: {
           console.error(
-            `Unknown audit kind: ${kind}. Use 'tph', 'tph-e2e', 'bundle-budget', 'catalog-drift', 'commit-message', 'docs-frontmatter', 'blueprint-lifecycle', or 'tech-debt'.`,
+            `Unknown audit kind: ${kind}. Use 'tph', 'tph-e2e', 'bundle-budget', 'catalog-drift', 'commit-message', 'docs-frontmatter', 'blueprint-lifecycle', 'tech-debt', or 'no-relative-parent-imports'.`,
           )
           process.exit(1)
         }

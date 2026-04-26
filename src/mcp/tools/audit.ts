@@ -20,7 +20,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
 
-import type { ToolDescriptor } from '../auto-discover.js'
+import type { ToolDescriptor } from '#mcp/auto-discover'
 
 const KINDS = [
   'tph',

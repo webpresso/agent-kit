@@ -21,7 +21,7 @@
 
 import { z } from 'zod'
 
-import type { ToolDescriptor, ToolHandlerResult } from '../auto-discover.js'
+import type { ToolDescriptor, ToolHandlerResult } from '#mcp/auto-discover'
 import lintTool from './lint.js'
 import testTool from './test.js'
 import typecheckTool from './typecheck.js'

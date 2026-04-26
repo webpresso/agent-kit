@@ -647,6 +647,66 @@ function readTextIfExists(file: string): string | undefined {
   return existsSync(file) ? readFileSync(file, 'utf8') : undefined
 }
 
+export interface NoRelativeParentImportsOptions {
+  srcDir?: string
+  extensions?: readonly string[]
+}
+
+/**
+ * Fail if any source file contains relative parent imports (`../`).
+ * Use `#alias` package imports instead.
+ */
+export function auditNoRelativeParentImports(
+  root: string,
+  options: NoRelativeParentImportsOptions = {},
+): RepoAuditResult {
+  const srcDir = resolve(root, options.srcDir ?? 'src')
+  const extensions = options.extensions ?? ['.ts', '.tsx', '.js', '.jsx']
+  const violations: RepoAuditViolation[] = []
+  let checked = 0
+
+  function walk(dir: string): void {
+    if (!existsSync(dir)) return
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        if (entry.name === 'node_modules' || entry.name === 'dist') continue
+        walk(full)
+        continue
+      }
+      if (!extensions.some((ext) => entry.name.endsWith(ext))) continue
+      if (entry.name.endsWith('.test.ts') || entry.name.endsWith('.test.tsx')) continue
+      if (entry.name.endsWith('.integration.test.ts')) continue
+
+      checked++
+      const content = readFileSync(full, 'utf-8')
+      const rel = relativePath(root, full)
+      const lines = content.split('\n')
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i] ?? ''
+        // Skip comment lines
+        if (/^\s*(\/\/|\/\*)/.test(line)) continue
+        if (/(?:from|export\s+\*\s+from)\s+['"]\.\.\//.test(line)) {
+          violations.push({
+            file: rel,
+            message: `Line ${i + 1}: relative parent import detected — use a \`#\` alias instead: ${line.trim()}`,
+          })
+        }
+      }
+    }
+  }
+
+  walk(srcDir)
+
+  return {
+    ok: violations.length === 0,
+    title: 'no-relative-parent-imports',
+    checked,
+    violations,
+  }
+}
+
 function withFilePrefix(file: string, auditResult: RepoAuditResult): RepoAuditResult {
   return {
     ...auditResult,

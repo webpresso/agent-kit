@@ -10,7 +10,7 @@
  */
 import { spawnSync } from 'node:child_process'
 
-import type { MergeOptions } from '../../merge.js'
+import type { MergeOptions } from '#cli/commands/init/merge'
 
 export interface ScaffoldOmxInput {
   repoRoot: string

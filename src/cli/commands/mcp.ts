@@ -1,6 +1,6 @@
 import type { CAC } from 'cac'
 
-import { runStdioServer } from '../../mcp/cli.js'
+import { runStdioServer } from '#mcp/cli'
 
 export const MCP_COMMAND_HELP = [
   'Run the agent-kit MCP server (stdio transport).',

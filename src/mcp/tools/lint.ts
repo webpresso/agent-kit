@@ -21,7 +21,7 @@
 import { spawn } from 'node:child_process'
 import { z } from 'zod'
 
-import type { ToolDescriptor } from '../auto-discover.js'
+import type { ToolDescriptor } from '#mcp/auto-discover'
 
 const inputSchema = z.object({
   files: z.array(z.string()).optional(),

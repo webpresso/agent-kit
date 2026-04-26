@@ -20,7 +20,7 @@ import {
   listBlueprints,
 } from '#cli/commands/blueprint/router'
 
-import type { ToolDescriptor } from '../auto-discover.js'
+import type { ToolDescriptor } from '#mcp/auto-discover'
 
 const inputSchema = z.discriminatedUnion('action', [
   z.object({

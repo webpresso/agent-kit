@@ -9,7 +9,7 @@
  */
 import path from 'node:path'
 
-import { type MergeOptions, type MergeResult, writeFileMerged } from '../../merge.js'
+import { type MergeOptions, type MergeResult, writeFileMerged } from '#cli/commands/init/merge'
 
 const HOOK_CONTENT = `#!/bin/sh
 ak audit commit-message --require-lore --message-file "$1"

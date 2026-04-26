@@ -10,7 +10,7 @@
  */
 import { join } from 'node:path'
 
-import { type MergeOptions, type MergeResult, patchJsonFile } from '../../merge.js'
+import { type MergeOptions, type MergeResult, patchJsonFile } from '#cli/commands/init/merge'
 
 // Claude Code uses $CLAUDE_PROJECT_DIR; Codex runs from repo root so relative path works.
 const CC_BIN = (name: string) => `"$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}"`

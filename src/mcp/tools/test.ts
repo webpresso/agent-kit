@@ -11,9 +11,9 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { z } from 'zod'
 
-import type { ToolDescriptor } from '../auto-discover.js'
-import * as justBackend from '../backends/just.js'
-import * as pnpmBackend from '../backends/pnpm.js'
+import type { ToolDescriptor } from '#mcp/auto-discover'
+import * as justBackend from '#mcp/backends/just'
+import * as pnpmBackend from '#mcp/backends/pnpm'
 
 const inputSchema = z.object({
   packages: z.array(z.string()).optional(),

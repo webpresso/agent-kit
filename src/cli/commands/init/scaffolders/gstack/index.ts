@@ -17,7 +17,7 @@ import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 
-import type { MergeOptions } from '../../merge.js'
+import type { MergeOptions } from '#cli/commands/init/merge'
 
 export interface ScaffoldGstackInput {
   repoRoot: string

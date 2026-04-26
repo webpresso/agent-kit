@@ -15,7 +15,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { z } from 'zod'
 
-import type { ToolDescriptor } from '../auto-discover.js'
+import type { ToolDescriptor } from '#mcp/auto-discover'
 
 const inputSchema = z.object({
   packages: z.array(z.string()).optional(),
