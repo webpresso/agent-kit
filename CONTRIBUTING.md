@@ -1,5 +1,41 @@
 # Contributing to `@webpresso/agent-kit`
 
+## Local development
+
+Run the CLI as **`pnpm exec ak <subcommand>`** (or bare `ak <subcommand>` from
+inside any pnpm script — pnpm prepends `node_modules/.bin` to `PATH`). Don't
+shell out to `node ./dist/esm/cli/cli.js …`: that path is an implementation
+detail; the bin is the contract.
+
+```bash
+pnpm exec ak blueprint show <slug>
+pnpm exec ak blueprint task complete <slug> <task-id>
+pnpm exec ak audit blueprint-lifecycle
+pnpm exec ak symlink sync
+pnpm exec ak tech-debt new "<title>" --severity low --category documentation
+```
+
+This works because `prepare` (run automatically on every `pnpm install`) chains
+`pnpm run link-self-bins`, which symlinks every entry in `package.json#bin`
+into `node_modules/.bin/`. pnpm itself does **not** self-link the package's
+own bin during dev — it only links bins of dependencies — so this script
+fills the gap for in-repo development. Adding a new bin entry to
+`package.json` is a single source of truth: the link script reads it and
+extends automatically.
+
+In a consumer repo (e.g. `ozby/ingest-lens`) that has installed
+`@webpresso/agent-kit`, the `ak` binary is on `node_modules/.bin/ak`
+directly via pnpm's normal dependency-bin linking — no extra step needed
+there. **The link-self-bins script is only relevant when working inside this
+repo.** Consumers don't have the gap because pnpm symlinks the bins of
+every dependency automatically.
+
+If a future webpresso package adds its own `bin` field and wants the same
+dev-time `pnpm exec` ergonomics, copy `scripts/link-self-bins.ts` verbatim —
+it's generic (reads `package.json#bin`, hardcodes nothing).
+
+See [`AGENTS.md`](./AGENTS.md) for the full operating contract.
+
 ## Releases
 
 `agent-kit` ships as both an npm package and a Claude Code plugin distributed via
