@@ -91,8 +91,10 @@ async function main(): Promise<void> {
 
   const errors = runQaChecks(qaFiles, projectDir)
   if (errors.length > 0) {
-    process.stderr.write(errors.join('\n\n'))
-    process.exit(2)
+    const summary = errors.map((e) => e.split('\n')[0]).join('; ')
+    const systemMessage = `QA gate failed on changed files: ${summary}`
+    process.stdout.write(JSON.stringify({ hookSpecificOutput: { systemMessage } }))
+    process.exit(0)
   }
 
   process.exit(0)

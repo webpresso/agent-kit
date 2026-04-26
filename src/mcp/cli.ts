@@ -9,6 +9,8 @@
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 
+import { deleteSentinel, writeSentinel } from '#hooks/shared/mcp-sentinel'
+
 import { createServer } from './server.js'
 
 export async function runStdioServer(): Promise<void> {
@@ -19,6 +21,7 @@ export async function runStdioServer(): Promise<void> {
   const shutdown = async (): Promise<void> => {
     if (shuttingDown) return
     shuttingDown = true
+    deleteSentinel()
     try {
       await server.close()
     } catch {
@@ -33,12 +36,16 @@ export async function runStdioServer(): Promise<void> {
   })
 
   await server.connect(transport)
+  writeSentinel()
 }
+
+import { realpathSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 
 const isDirectInvocation =
   typeof process !== 'undefined' &&
   process.argv[1] !== undefined &&
-  import.meta.url === `file://${process.argv[1]}`
+  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
 
 if (isDirectInvocation) {
   runStdioServer().catch((err: unknown) => {
