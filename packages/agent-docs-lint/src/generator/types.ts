@@ -22,14 +22,6 @@ export interface TemplateSchema {
     description?: string
     notes?: string
   }
-  task_format?: {
-    heading?: {
-      canonical?: string[]
-      notes?: string[]
-    }
-    required_metadata?: string[]
-    notes?: string[]
-  }
 }
 
 export interface FrontmatterField {
