@@ -3,7 +3,7 @@ import { globSync } from 'glob'
 import { execSync } from 'node:child_process'
 import { basename, dirname, extname, join } from 'node:path'
 
-import { isLintableFile, isSkippedPath } from '../post-tool/lint-after-edit.js'
+import { isLintableFile, isSkippedPath } from '#hooks/post-tool/lint-after-edit'
 
 const TYPECHECKABLE_EXTENSIONS = new Set(['.ts', '.tsx'])
 

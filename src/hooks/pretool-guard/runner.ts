@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import type { ToolInput, ValidationResult } from '../shared/types.js'
+import type { ToolInput, ValidationResult } from '#hooks/shared/types'
 
-import { isGuardEnabled } from '../guard-switch/state.js'
-import { getCommand, getFilePath, isBashInput, parseToolInput } from '../shared/types.js'
+import { isGuardEnabled } from '#hooks/guard-switch/state'
+import { getCommand, getFilePath, isBashInput, parseToolInput } from '#hooks/shared/types'
 
 import { logRun } from './logger.js'
 import { VALIDATORS } from './validators/index.js'

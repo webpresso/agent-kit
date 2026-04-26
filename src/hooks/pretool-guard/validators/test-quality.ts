@@ -1,6 +1,6 @@
-import type { ToolInput, ValidationResult } from '../../shared/types.js'
+import type { ToolInput, ValidationResult } from '#hooks/shared/types'
 
-import { getContent, getFilePath } from '../../shared/types.js'
+import { getContent, getFilePath } from '#hooks/shared/types'
 
 export const MUTATION_GAMING_PATTERNS: Array<{ pattern: RegExp; description: string; fileLevel?: boolean }> = [
   { pattern: /mutation[_-]kill/i, description: 'File name suggests mutation gaming', fileLevel: true },

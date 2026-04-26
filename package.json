@@ -43,6 +43,7 @@
     "#dev/*": "./src/dev/*.ts",
     "#audit/*": "./src/audit/*.ts",
     "#docs-linter/*": "./src/docs-linter/*.ts",
+    "#hooks/*": "./src/hooks/*.ts",
     "#*": "./src/blueprint/*.ts"
   },
   "exports": {

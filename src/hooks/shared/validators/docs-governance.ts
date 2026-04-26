@@ -1,6 +1,6 @@
-import type { ToolInput, ValidationResult } from '../types.js'
+import type { ToolInput, ValidationResult } from '#hooks/shared/types'
 
-import { getFilePath } from '../types.js'
+import { getFilePath } from '#hooks/shared/types'
 
 const ALLOWED_ROOT_FILES = new Set(['docs/README.md', 'docs/FILE-TYPE-TAXONOMY.md'])
 

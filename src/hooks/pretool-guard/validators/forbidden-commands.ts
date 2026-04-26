@@ -1,6 +1,6 @@
-import type { ToolInput, ValidationResult } from '../../shared/types.js'
+import type { ToolInput, ValidationResult } from '#hooks/shared/types'
 
-import { getCommand, isBashInput } from '../../shared/types.js'
+import { getCommand, isBashInput } from '#hooks/shared/types'
 import { createSkipResult } from './skip-result.js'
 
 export type CommandCategory = 'test' | 'lint' | 'typecheck' | 'unknown'

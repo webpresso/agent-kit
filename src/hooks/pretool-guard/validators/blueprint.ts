@@ -1,7 +1,7 @@
-import type { ToolInput, ValidationResult } from '../../shared/types.js'
+import type { ToolInput, ValidationResult } from '#hooks/shared/types'
 
-import { getFilePath } from '../../shared/types.js'
-import { validateBlueprint as validateBlueprintShared } from '../../shared/validators/blueprint.js'
+import { getFilePath } from '#hooks/shared/types'
+import { validateBlueprint as validateBlueprintShared } from '#hooks/shared/validators/blueprint'
 
 export function validateBlueprint(input: ToolInput): ValidationResult {
   const filePath = getFilePath(input)

@@ -1,8 +1,8 @@
-import type { ToolInput, ValidationResult } from '../../shared/types.js'
+import type { ToolInput, ValidationResult } from '#hooks/shared/types'
 
 import jsYaml from 'js-yaml'
 
-import { getContent, getFilePath } from '../../shared/types.js'
+import { getContent, getFilePath } from '#hooks/shared/types'
 import { getNonCanonicalPlanningPathViolation, isBlueprintPath } from './path-contract.js'
 import { createSkipResult } from './skip-result.js'
 

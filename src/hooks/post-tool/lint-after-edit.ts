@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-import type { ToolInput } from '../shared/types.js'
+import type { ToolInput } from '#hooks/shared/types'
 
 import { execSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { extname } from 'node:path'
 
-import { getFilePath } from '../shared/types.js'
+import { getFilePath } from '#hooks/shared/types'
 
 export const LINTABLE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.json', '.css'] as const
 

@@ -1,1 +1,1 @@
-export { validateDocsGovernance } from '../../shared/validators/docs-governance.js'
+export { validateDocsGovernance } from '#hooks/shared/validators/docs-governance'

@@ -1,6 +1,6 @@
-import type { ToolInput, ValidationResult } from '../../shared/types.js'
+import type { ToolInput, ValidationResult } from '#hooks/shared/types'
 
-import { getContent, getFilePath } from '../../shared/types.js'
+import { getContent, getFilePath } from '#hooks/shared/types'
 import { createSkipResult } from './skip-result.js'
 
 const MAX_FILE_LINES = 500
