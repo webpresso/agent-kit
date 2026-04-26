@@ -45,12 +45,12 @@ export function discoverTestFiles(changedFiles: string[], projectDir: string): s
 
 export function buildTypecheckCommand(files: string[]): string | null {
   if (files.length === 0) return null
-  return `just typecheck ${files.map((f) => `--file "${f}"`).join(' ')}`
+  return `just typecheck ${files.map((f) => `--file '${f}'`).join(' ')}`
 }
 
 export function buildTestCommand(files: string[]): string | null {
   if (files.length === 0) return null
-  return `just test ${files.map((f) => `--file "${f}"`).join(' ')}`
+  return `just test ${files.map((f) => `--file '${f}'`).join(' ')}`
 }
 
 function runCommand(cmd: string, projectDir: string): { success: boolean; stderr: string } {
