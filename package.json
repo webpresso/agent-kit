@@ -20,8 +20,7 @@
     "ak-stop-qa": "./dist/esm/hooks/stop/qa-changed-files.js",
     "ak-guard-switch": "./dist/esm/hooks/guard-switch/index.js",
     "ak-test-quality-check": "./dist/esm/hooks/test-quality-check.js",
-    "ak-sessionstart-routing": "./dist/esm/hooks/sessionstart/index.js",
-    "ak-mcp": "./dist/esm/mcp/cli.js"
+    "ak-sessionstart-routing": "./dist/esm/hooks/sessionstart/index.js"
   },
   "files": [
     "dist",
