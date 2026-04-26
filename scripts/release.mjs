@@ -164,7 +164,7 @@ function main() {
 
     // 6. Commit.
     log('[release] step 6/8: creating release commit')
-    run('git', ['commit', '-m', `release: ${tag} dist artifacts`])
+    run('git', ['commit', '-m', `chore(release): ${tag} dist artifacts`])
 
     // 7. Tag.
     log(`[release] step 7/8: tagging ${tag}`)
