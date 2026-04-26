@@ -29,6 +29,7 @@ import { scaffoldBlueprints } from './scaffold-blueprints.js'
 import { scaffoldDocs } from './scaffold-docs.js'
 import { scaffoldBaseKit } from './scaffold-base-kit.js'
 import { scaffoldMonorepoNav } from './scaffold-monorepo-nav.js'
+import { scaffoldAgentHooks } from './scaffolders/agent-hooks/index.js'
 import { scaffoldGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
 import { scaffoldOmx } from './scaffolders/omx/index.js'
@@ -159,6 +160,8 @@ export async function runInit(flags: InitFlags): Promise<number> {
       lastInit: new Date().toISOString(),
     })
 
+    const agentHooksResult = scaffoldAgentHooks({ repoRoot: consumer.repoRoot, options })
+
     const agentsMdResult = scaffoldAgentsMd({
       catalogDir,
       repoRoot: consumer.repoRoot,
@@ -231,6 +234,8 @@ export async function runInit(flags: InitFlags): Promise<number> {
       ...blueprintResults,
       ...monorepoResults,
       ...(agentsMdResult ? [agentsMdResult] : []),
+      agentHooksResult.claude,
+      agentHooksResult.codex,
       ...presetResults,
     ]
     const summary = summarizeResults(all)
@@ -254,6 +259,31 @@ export async function runInit(flags: InitFlags): Promise<number> {
     if (!options.dryRun) {
       console.log('\nWiring tool-specific surfaces (.claude/, .cursor/, .windsurf/, .gemini/)…')
       syncAll(consumer.repoRoot)
+    }
+
+    // Surface claude plugin install hint if agent-kit is in node_modules
+    try {
+      const pluginJsonPath = join(
+        consumer.repoRoot,
+        'node_modules',
+        '@webpresso',
+        'agent-kit',
+        '.claude-plugin',
+        'plugin.json',
+      )
+      if (existsSync(pluginJsonPath)) {
+        console.log(
+          '\nClaude Code plugin: to enable /pll, /verify, and other skills,\n' +
+            '  run: claude --plugin-dir ' +
+            join(consumer.repoRoot, 'node_modules', '@webpresso', 'agent-kit') +
+            '\n' +
+            '  (or start Claude Code from this directory with the --plugin-dir flag,\n' +
+            '   then add it permanently via: claude plugin marketplace add ...\n' +
+            '   see docs/presets.md for the full procedure)',
+        )
+      }
+    } catch {
+      // non-fatal — plugin hint is best-effort
     }
 
     if (!options.dryRun) {

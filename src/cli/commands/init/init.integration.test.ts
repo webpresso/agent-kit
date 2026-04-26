@@ -136,7 +136,7 @@ describe('ak init end-to-end', () => {
     const rc = JSON.parse(readFileSync(join(repo, '.agent-kitrc.json'), 'utf8')) as {
       installed: { tier3Skills: string[] }
     }
-    expect(rc.installed.tier3Skills.toSorted()).toEqual(['react-doctor', 'tanstack-query'])
+    expect([...rc.installed.tier3Skills].sort()).toEqual(['react-doctor', 'tanstack-query'])
   })
 
   it('rejects unknown Tier-3 names with exit code 1', async () => {
@@ -173,22 +173,30 @@ describe('ak init end-to-end', () => {
     const code = await runInit({ cwd: repo, yes: true })
     expect(code).toBe(0)
 
-    // Primary IDEs removed from symlinker — distributed via native channels.
-    expect(existsSync(join(repo, '.claude'))).toBe(false)
+    // Symlinker does NOT populate primary IDE dirs — distributed via native channels.
+    // (.claude/settings.json IS written by the agent-hooks scaffolder, but no symlinked commands/skills)
+    expect(existsSync(join(repo, '.claude', 'commands'))).toBe(false)
+    expect(existsSync(join(repo, '.claude', 'skills'))).toBe(false)
     expect(existsSync(join(repo, '.cursor'))).toBe(false)
     expect(existsSync(join(repo, '.windsurf'))).toBe(false)
     expect(existsSync(join(repo, '.opencode'))).toBe(false)
+    // agent-hooks scaffolder writes hook config
+    expect(existsSync(join(repo, '.claude', 'settings.json'))).toBe(true)
+    expect(existsSync(join(repo, '.codex', 'hooks.json'))).toBe(true)
 
-    // Codex / Amp: per-skill symlinks in .agents/skills/
+    // Codex / Amp: real dir with file symlinks in .agents/skills/ (rg traverses real dirs)
     const agentsVerifySkill = join(repo, '.agents', 'skills', 'verify')
-    expect(lstatSync(agentsVerifySkill).isSymbolicLink()).toBe(true)
+    expect(lstatSync(agentsVerifySkill).isDirectory()).toBe(true)
+    expect(lstatSync(agentsVerifySkill).isSymbolicLink()).toBe(false)
+    expect(lstatSync(join(agentsVerifySkill, 'SKILL.md')).isSymbolicLink()).toBe(true)
 
     // Gemini CLI: TOML transform
     const geminiToml = join(repo, '.gemini', 'commands', 'verify.toml')
     expect(existsSync(geminiToml)).toBe(true)
     expect(lstatSync(geminiToml).isFile()).toBe(true)
 
-    expect(existsSync(join(repo, '.codex'))).toBe(false)
+    // agent-hooks scaffolder writes .codex/hooks.json
+    expect(existsSync(join(repo, '.codex', 'hooks.json'))).toBe(true)
   })
 
   it('is idempotent: second run reports identical results', async () => {

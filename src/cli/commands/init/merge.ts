@@ -102,6 +102,25 @@ export function copyDirectoryMerged(
   return results
 }
 
+/**
+ * Read, patch, and write a JSON file. The patcher receives the parsed object
+ * (or `{}` if the file doesn't exist) and returns the new object to write.
+ * Always writes — callers decide whether the result changed.
+ */
+export function patchJsonFile(
+  targetPath: string,
+  patcher: (existing: Record<string, unknown>) => Record<string, unknown>,
+  opts: MergeOptions = {},
+): MergeResult {
+  const exists = existsSync(targetPath)
+  const existing: Record<string, unknown> = exists
+    ? (JSON.parse(readFileSync(targetPath, 'utf8')) as Record<string, unknown>)
+    : {}
+  const patched = patcher(existing)
+  const incoming = `${JSON.stringify(patched, null, 2)}\n`
+  return writeFileMerged(targetPath, incoming, opts)
+}
+
 export function summarizeResults(results: readonly MergeResult[]): Record<MergeAction, number> {
   const summary: Record<MergeAction, number> = {
     created: 0,
