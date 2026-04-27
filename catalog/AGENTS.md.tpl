@@ -21,6 +21,23 @@ This is the shared working agreement for contributors and coding agents in this
 repo. Prefer repo-local instructions when they are more specific than this
 starter template, and keep changes small, reviewable, and verified.
 
+## Setup after clone
+
+The `.codex/` and `.opencode/` directories are gitignored — they contain
+machine-local, regenerable agent surfaces. After cloning, bootstrap them:
+
+```bash
+ak setup                          # scaffolds .agent/, AGENTS.md, hooks
+omx setup --scope project         # installs OMX agents/prompts/skills to .codex/
+ak symlink sync                   # regenerates .agents/skills/ + .gemini/commands/
+```
+
+Agent-kit owns `.agent/` (canonical source — commit this), `.agents/skills/`
+(per-skill symlinks), `.gemini/commands/` (TOML transforms), and hook configs
+(`.claude/settings.json`, `.codex/hooks.json`). OMX owns `.codex/{agents,prompts,
+skills,commands,workflows}/`. The `--with omx` preset chains `omx setup --yes`
+during `ak setup`.
+
 ## Plan
 
 Use blueprints for non-trivial work. Blueprint specs live in
