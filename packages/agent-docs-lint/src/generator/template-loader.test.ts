@@ -1,3 +1,4 @@
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 // Inlined from agent-kit blueprint schema (not a dependency of this public package).
@@ -84,10 +85,13 @@ describe('loadTemplate', () => {
     })
 
     it('should provide actionable error with path hint', () => {
-      const result = loadTemplate('invalid')
+      const templateName = 'invalid'
+      const result = loadTemplate(templateName)
+      const expectedPath = resolve(import.meta.dirname, '..', '..', 'templates', `${templateName}.yaml`)
 
       expect(result.success).toBe(false)
-      expect(result.errors![0].message).toContain('docs/templates')
+      expect(result.errors![0].message).toContain(expectedPath)
+      expect(result.errors![0].message).toContain('templates/')
     })
   })
 })

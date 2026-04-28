@@ -1,19 +1,18 @@
 import type { TemplateSchema, ValidationError } from './types'
 
-import { findRootSync } from '@manypkg/find-root'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseYaml } from 'yaml'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+const packageRootDir = resolve(__dirname, '../..')
 
 /**
  * Resolves the templates directory path
  */
 function getTemplatesDir(): string {
-  const root = findRootSync(__dirname).rootDir
-  return resolve(root, 'docs/templates')
+  return resolve(packageRootDir, 'templates')
 }
 
 /**
@@ -26,7 +25,7 @@ export interface LoadTemplateResult {
 }
 
 /**
- * Loads a template schema from docs/templates/{name}.yaml
+ * Loads a template schema from templates/{name}.yaml
  */
 export function loadTemplate(templateName: string): LoadTemplateResult {
   const templatesDir = getTemplatesDir()
@@ -38,7 +37,7 @@ export function loadTemplate(templateName: string): LoadTemplateResult {
       errors: [
         {
           code: 'TEMPLATE_NOT_FOUND',
-          message: `Template '${templateName}' not found at ${templatePath}. Available templates are in docs/templates/`,
+          message: `Template '${templateName}' not found at ${templatePath}. Available templates are in templates/`,
           field: 'template',
           expected: 'valid template name',
           actual: templateName,
@@ -78,7 +77,6 @@ export function getAvailableTemplates(): string[] {
     return []
   }
 
-  const { readdirSync } = require('node:fs')
   const files = readdirSync(templatesDir) as string[]
   return files.filter((f: string) => f.endsWith('.yaml')).map((f: string) => f.replace('.yaml', ''))
 }

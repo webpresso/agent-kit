@@ -1,19 +1,8 @@
-import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
-import { resolve } from 'node:path'
-
-// Resolve from cwd (the consuming package) so version detection finds
-// the package's own vitest, not the hoisted root version.
-const require = createRequire(new URL(`file://${process.cwd()}/package.json`))
-
-const readPackageJson = (packagePath: string): { name?: string } => {
-  const fullPath = resolve(process.cwd(), packagePath)
-  return require(fullPath) as { name?: string }
-}
+import { readConsumerPackageJson, requireFromConsumer } from './consumer-package.js'
 
 const getVitestVersion = (): string => {
   try {
-    return (require('vitest/package.json') as { version: string }).version
+    return (requireFromConsumer('vitest/package.json') as { version: string }).version
   } catch (error) {
     const wrapped = new Error(
       `[vitest] Unable to resolve local vitest version. ` +
@@ -32,31 +21,19 @@ const getVitestMajor = (): number => {
 }
 
 const hasWorkersPool = (): boolean => {
-  // Check the consuming package's package.json for @cloudflare/vitest-pool-workers
-  // in devDependencies. This is more reliable than require.resolve (which fails
-  // due to the package's exports restrictions) or existsSync on node_modules paths
-  // (which is fragile across package managers and hoisting strategies).
-  try {
-    const pkgPath = resolve(process.cwd(), 'package.json')
-    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as {
-      devDependencies?: Record<string, string>
-      dependencies?: Record<string, string>
-    }
-    return (
-      '@cloudflare/vitest-pool-workers' in (pkg.devDependencies ?? {}) ||
-      '@cloudflare/vitest-pool-workers' in (pkg.dependencies ?? {})
-    )
-  } catch {
-    return false
-  }
+  const pkg = readConsumerPackageJson<{
+    devDependencies?: Record<string, string>
+    dependencies?: Record<string, string>
+  }>()
+
+  return !!pkg && (
+    '@cloudflare/vitest-pool-workers' in (pkg.devDependencies ?? {}) ||
+    '@cloudflare/vitest-pool-workers' in (pkg.dependencies ?? {})
+  )
 }
 
 const getPackageName = (): string => {
-  try {
-    return readPackageJson('package.json')?.name ?? 'this package'
-  } catch {
-    return 'this package'
-  }
+  return readConsumerPackageJson<{ name?: string }>()?.name ?? 'this package'
 }
 
 export const assertVitest4 = ({ caller }: { caller?: string } = {}): void => {

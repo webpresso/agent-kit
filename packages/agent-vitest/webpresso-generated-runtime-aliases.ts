@@ -1,8 +1,7 @@
 import { existsSync } from 'node:fs'
-import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 
-const requireFromConsumer = createRequire(join(process.cwd(), 'package.json'))
+import { consumerPackageRoot, requireFromConsumer } from './consumer-package.js'
 
 const GENERATED_RUNTIME_DEP_NAMES = [
   '@tanstack/react-query',
@@ -32,7 +31,7 @@ function resolveConsumerDependency(name: string): string | undefined {
   }
 }
 
-const generatedPackageRoot = findGeneratedPackageRoot(process.cwd())
+const generatedPackageRoot = findGeneratedPackageRoot(consumerPackageRoot ?? process.cwd())
 
 export const webpressoGeneratedRuntimeAliases = [
   {

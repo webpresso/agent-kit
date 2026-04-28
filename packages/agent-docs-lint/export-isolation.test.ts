@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
-import { readdir, readFile } from 'node:fs/promises'
+import { cp, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -125,5 +126,28 @@ describe('export isolation', () => {
       undefinedExports,
       `These exports from dist/index.js are undefined: ${undefinedExports.join(', ')}`,
     ).toHaveLength(0)
+  })
+
+  it('built template loader works from a detached package copy', async () => {
+    const tempRoot = await mkdtemp(join(tmpdir(), 'docs-linter-detached-'))
+    const detachedPackageDir = join(tempRoot, 'package')
+
+    try {
+      await cp(join(import.meta.dirname, 'dist'), join(detachedPackageDir, 'dist'), { recursive: true })
+      await cp(join(import.meta.dirname, 'templates'), join(detachedPackageDir, 'templates'), { recursive: true })
+      await writeFile(
+        join(detachedPackageDir, 'package.json'),
+        JSON.stringify({ name: '@test/docs-linter-detached', type: 'module' }),
+        'utf-8',
+      )
+
+      const templateLoader = await import(join(detachedPackageDir, 'dist', 'generator', 'template-loader.js'))
+      const result = templateLoader.loadTemplate('guide')
+
+      expect(result.success).toBe(true)
+      expect(result.schema?.name).toBe('guide')
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true })
+    }
   })
 })

@@ -17,6 +17,15 @@ describe('export isolation', () => {
     expect(text).not.toContain('@webpresso/')
   })
 
+  it('keeps portable stryker base hardened against common generated agent/runtime directories', () => {
+    const text = readFileSync(join(ROOT, 'stryker.base.mjs'), 'utf8')
+    expect(text).toContain('**/.agents/**')
+    expect(text).toContain('**/.agent/**')
+    expect(text).toContain('**/.codex/**')
+    expect(text).toContain('**/.stryker-tmp/**')
+    expect(text).toContain('**/*.d.ts')
+  })
+
   it('keeps Webpresso-only ignore behavior in the webpresso preset', () => {
     const text = readFileSync(join(ROOT, 'stryker.webpresso.mjs'), 'utf8')
     expect(text).toContain('.webpresso')

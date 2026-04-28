@@ -19,6 +19,23 @@ export const baseConfig = {
   packageManager: 'pnpm',
   testRunner: 'vitest',
   plugins: ['@stryker-mutator/vitest-runner'],
+  ignorePatterns: [
+    '**/.git/**',
+    '**/node_modules/**',
+    '**/.stryker-tmp/**',
+    '**/.agent/**',
+    '**/.agents/**',
+    '**/.claude/**',
+    '**/.codex/**',
+    '**/.cursor/**',
+    '**/.gemini/**',
+    '**/.windsurf/**',
+    '**/.opencode/**',
+    '**/.omx/**',
+    '**/dist/**',
+    '**/coverage/**',
+    '**/*.d.ts',
+  ],
 
   // Default mutate patterns - exclude all test files
   // Individual packages can override or extend these patterns

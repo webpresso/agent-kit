@@ -1,5 +1,5 @@
 /**
- * Template schema types loaded from docs/templates/*.yaml
+ * Template schema types loaded from templates/*.yaml
  */
 export interface TemplateSchema {
   name: string
@@ -68,7 +68,7 @@ export interface LlmBlock {
  * Input for generateDoc function
  */
 export interface GenerateDocInput {
-  /** Template name (matches docs/templates/{name}.yaml) */
+  /** Template name (matches templates/{name}.yaml) */
   template: string
   /** SSOT data for deterministic sections */
   ssot: SsotData
