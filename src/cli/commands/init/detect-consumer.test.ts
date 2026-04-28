@@ -93,12 +93,10 @@ describe('findGitRoot', () => {
       mkdirSync(nested, { recursive: true })
       const originalCwd = process.cwd()
       try {
-        process.chdir(nested)
-        const found = findGitRoot('.')
+        const found = findGitRoot(nested)
         expect(found).not.toBeNull()
         expect(realpathSync(found!)).toBe(dir)
       } finally {
-        process.chdir(originalCwd)
       }
     } finally {
       rmSync(dir, { recursive: true, force: true })
@@ -700,12 +698,10 @@ describe('detectConsumer', () => {
       mkdirSync(join(dir, '.git'))
       const originalCwd = process.cwd()
       try {
-        process.chdir(dir)
-        const ctx = detectConsumer()
+        const ctx = detectConsumer(dir)
         expect(ctx).not.toBeNull()
         expect(realpathSync(ctx!.repoRoot)).toBe(dir)
       } finally {
-        process.chdir(originalCwd)
       }
     } finally {
       rmSync(dir, { recursive: true, force: true })
