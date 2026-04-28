@@ -4,14 +4,10 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { findRepoRoot } from '#utils/repo-root'
-
 import { BlueprintCreationService } from './BlueprintCreationService.js'
 
 describe('BlueprintCreationService integration', () => {
   let projectRoot: string
-  const repoRoot = findRepoRoot()
-  const templatePath = path.join(repoRoot, 'docs', 'templates', 'blueprint.md')
 
   beforeEach(async () => {
     projectRoot = path.join(
@@ -20,19 +16,13 @@ describe('BlueprintCreationService integration', () => {
       `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     )
     await mkdir(path.join(projectRoot, 'webpresso', 'blueprints'), { recursive: true })
-    await mkdir(path.join(projectRoot, 'docs', 'templates'), { recursive: true })
-    await writeFile(
-      path.join(projectRoot, 'docs', 'templates', 'blueprint.md'),
-      await readFile(templatePath, 'utf-8'),
-      'utf-8',
-    )
   })
 
   afterEach(async () => {
     await rm(projectRoot, { recursive: true, force: true })
   })
 
-  it('creates a draft blueprint atomically on disk', async () => {
+  it('creates a draft blueprint atomically on disk from the bundled default template', async () => {
     const service = new BlueprintCreationService(projectRoot)
 
     const created = await service.create({

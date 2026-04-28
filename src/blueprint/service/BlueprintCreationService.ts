@@ -8,7 +8,6 @@ import { fileURLToPath } from 'node:url'
 
 import { type Blueprint, parseBlueprint } from '#core/parser'
 import { scanBlueprintDirectory } from '#service/scanner'
-import { findRepoRoot } from '#utils/repo-root'
 
 const RESERVED_BLUEPRINT_SLUGS = new Set([
   'draft',
@@ -19,8 +18,25 @@ const RESERVED_BLUEPRINT_SLUGS = new Set([
   'archived',
 ])
 const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url))
-const REPO_ROOT = findRepoRoot(MODULE_DIR)
-const DEFAULT_TEMPLATE_PATH = path.join(REPO_ROOT, 'docs', 'templates', 'blueprint.md')
+
+function resolveBundledBlueprintTemplatePath(): string {
+  const candidates = [
+    path.resolve(MODULE_DIR, '../../../catalog/docs/templates/blueprint.md'),
+    path.resolve(MODULE_DIR, '../../../docs/templates/blueprint.md'),
+    path.resolve(MODULE_DIR, '../../../../catalog/docs/templates/blueprint.md'),
+    path.resolve(MODULE_DIR, '../../../../docs/templates/blueprint.md'),
+  ] as const
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate
+    }
+  }
+
+  return candidates[0]
+}
+
+const DEFAULT_TEMPLATE_PATH = resolveBundledBlueprintTemplatePath()
 
 export interface CreateBlueprintDraftInput {
   complexity: PlanComplexity
