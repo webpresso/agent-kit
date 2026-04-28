@@ -598,69 +598,98 @@ describe('symlinker', () => {
       sourcePrefix: '../../.agent/skills/',
     }
 
-    it('creates per-skill symlinks for each .agent/skills/* directory', () => {
-      mkdirSync(join(root, '.agent/skills/pll'), { recursive: true })
-      mkdirSync(join(root, '.agent/skills/verify'), { recursive: true })
+    it('creates real dirs with file symlinks for each .agent/skills/* directory', () => {
+      writeFile(join(root, '.agent/skills/pll/SKILL.md'), '# pll')
+      writeFile(join(root, '.agent/skills/verify/SKILL.md'), '# verify')
 
       const fixCount = syncPerSkillConsumer(root, CONFIG)
 
+      // 2 file symlinks created
       expect(fixCount).toBe(2)
-      expect(readTarget(join(root, '.test-codex/skills/pll'))).toBe('../../.agent/skills/pll')
-      expect(readTarget(join(root, '.test-codex/skills/verify'))).toBe(
-        '../../.agent/skills/verify',
+      // Directories are real, not symlinks
+      expect(lstatSync(join(root, '.test-codex/skills/pll')).isDirectory()).toBe(true)
+      expect(lstatSync(join(root, '.test-codex/skills/pll')).isSymbolicLink()).toBe(false)
+      expect(lstatSync(join(root, '.test-codex/skills/verify')).isDirectory()).toBe(true)
+      expect(lstatSync(join(root, '.test-codex/skills/verify')).isSymbolicLink()).toBe(false)
+      // SKILL.md entries are file symlinks
+      expect(lstatSync(join(root, '.test-codex/skills/pll/SKILL.md')).isSymbolicLink()).toBe(true)
+      expect(lstatSync(join(root, '.test-codex/skills/verify/SKILL.md')).isSymbolicLink()).toBe(true)
+    })
+
+    it('uses sourceRootDir when configured — symlink targets resolve through it', () => {
+      writeFile(join(root, '.agent/skills/pll/SKILL.md'), '# pll')
+      mkdirSync(join(root, 'node_modules/@webpresso/agent-kit/skills/pll'), { recursive: true })
+      writeFile(join(root, 'node_modules/@webpresso/agent-kit/skills/pll/SKILL.md'), '# pll src')
+
+      const configWithSource: PerSkillConsumerConfig = {
+        dir: '.test-codex/skills',
+        sourcePrefix: '../../.agent/skills/',
+        sourceRootDir: 'node_modules/@webpresso/agent-kit/skills',
+      }
+      const fixCount = syncPerSkillConsumer(root, configWithSource)
+
+      expect(fixCount).toBe(1)
+      expect(readTarget(join(root, '.test-codex/skills/pll/SKILL.md'))).toContain(
+        'node_modules/@webpresso/agent-kit/skills/pll/SKILL.md',
       )
     })
 
-    it('preserves consumer-owned directories (non-symlinks)', () => {
+    it('preserves consumer-owned directories (empty, no source files match)', () => {
       mkdirSync(join(root, '.agent/skills/pll'), { recursive: true })
       mkdirSync(join(root, '.test-codex/skills/consumer-only'), { recursive: true })
       writeFile(join(root, '.test-codex/skills/consumer-only/SKILL.md'), '# kept')
 
+      // pll has no files so nothing to symlink; consumer-only is preserved
       syncPerSkillConsumer(root, CONFIG)
 
-      expect(isSymlink(join(root, '.test-codex/skills/consumer-only'))).toBe(false)
+      expect(lstatSync(join(root, '.test-codex/skills/consumer-only')).isDirectory()).toBe(true)
       expect(existsSync(join(root, '.test-codex/skills/consumer-only/SKILL.md'))).toBe(true)
     })
 
     it('is idempotent — second run returns 0', () => {
-      mkdirSync(join(root, '.agent/skills/pll'), { recursive: true })
+      writeFile(join(root, '.agent/skills/pll/SKILL.md'), '# pll')
 
-      expect(syncPerSkillConsumer(root, CONFIG)).toBe(1)
+      expect(syncPerSkillConsumer(root, CONFIG)).toBeGreaterThan(0)
       expect(syncPerSkillConsumer(root, CONFIG)).toBe(0)
     })
 
-    it('fixes broken symlink pointing into .agent/skills/', () => {
-      mkdirSync(join(root, '.agent/skills/pll'), { recursive: true })
+    it('fixes old-style directory symlink by replacing with real dir + file symlinks', () => {
+      writeFile(join(root, '.agent/skills/pll/SKILL.md'), '# pll')
       mkdirSync(join(root, '.test-codex/skills'), { recursive: true })
-      symlinkSync('../../.agent/skills/nonexistent', join(root, '.test-codex/skills/pll'))
+      // Old-style: directory symlink
+      symlinkSync('../../.agent/skills/pll', join(root, '.test-codex/skills/pll'))
 
       const fixCount = syncPerSkillConsumer(root, CONFIG)
 
-      expect(fixCount).toBe(1)
-      expect(readTarget(join(root, '.test-codex/skills/pll'))).toBe('../../.agent/skills/pll')
+      // 1: removed old directory symlink
+      // 2: created file symlink inside new real directory
+      expect(fixCount).toBe(2)
+      expect(lstatSync(join(root, '.test-codex/skills/pll')).isDirectory()).toBe(true)
+      expect(lstatSync(join(root, '.test-codex/skills/pll')).isSymbolicLink()).toBe(false)
+      expect(lstatSync(join(root, '.test-codex/skills/pll/SKILL.md')).isSymbolicLink()).toBe(true)
     })
 
-    it('removes stale symlinks for skills that no longer exist in .agent/', () => {
-      mkdirSync(join(root, '.agent/skills/pll'), { recursive: true })
-      mkdirSync(join(root, '.test-codex/skills'), { recursive: true })
-      // Orphan symlink pointing to a skill that doesn't exist any more.
-      symlinkSync('../../.agent/skills/retired', join(root, '.test-codex/skills/retired'))
+    it('removes stale empty directories for skills that no longer exist in .agent/', () => {
+      writeFile(join(root, '.agent/skills/pll/SKILL.md'), '# pll')
+      mkdirSync(join(root, '.test-codex/skills/retired'), { recursive: true })
 
       const fixCount = syncPerSkillConsumer(root, CONFIG)
 
-      // 1 fix: create `pll` symlink. Orphan removal counts as a second fix.
+      // 1 fix: SKILL.md symlink for pll. retired dir removal counts as another fix.
       expect(fixCount).toBe(2)
       expect(existsSync(join(root, '.test-codex/skills/retired'))).toBe(false)
     })
 
-    it('skips real directory with same name as an agent skill (collision warning)', () => {
-      mkdirSync(join(root, '.agent/skills/pll'), { recursive: true })
-      mkdirSync(join(root, '.test-codex/skills/pll'), { recursive: true })
+    it('removes stale old-style directory symlinks that no longer exist in .agent/', () => {
+      writeFile(join(root, '.agent/skills/pll/SKILL.md'), '# pll')
+      mkdirSync(join(root, '.test-codex/skills'), { recursive: true })
+      symlinkSync('../../.agent/skills/retired', join(root, '.test-codex/skills/retired'))
 
       const fixCount = syncPerSkillConsumer(root, CONFIG)
 
-      expect(fixCount).toBe(0)
-      expect(isSymlink(join(root, '.test-codex/skills/pll'))).toBe(false)
+      // 1 fix: pll/SKILL.md symlink. 1 fix: removed stale retired symlink.
+      expect(fixCount).toBe(2)
+      expect(existsSync(join(root, '.test-codex/skills/retired'))).toBe(false)
     })
 
     it('returns 0 when .agent/skills does not exist', () => {
@@ -678,12 +707,16 @@ describe('symlinker', () => {
       // `.claude/skills/` and `.agents/skills/` so a dedicated entry is
       // redundant.
       expect(DEFAULT_PER_SKILL_CONSUMERS).toEqual([
-        { dir: '.agents/skills', sourcePrefix: '../../.agent/skills/' },
+        {
+          dir: '.agents/skills',
+          sourcePrefix: '../../.agent/skills/',
+          sourceRootDir: 'node_modules/@webpresso/agent-kit/skills',
+        },
       ])
     })
 
     it('fans out to all consumers', () => {
-      mkdirSync(join(root, '.agent/skills/pll'), { recursive: true })
+      writeFile(join(root, '.agent/skills/pll/SKILL.md'), '# pll')
 
       const consumers: PerSkillConsumerConfig[] = [
         { dir: '.consumer-a/skills', sourcePrefix: '../../.agent/skills/' },
@@ -692,9 +725,12 @@ describe('symlinker', () => {
 
       const fixCount = syncPerSkillConsumers(root, consumers)
 
+      // 1 SKILL.md symlink in each consumer = 2 fixes
       expect(fixCount).toBe(2)
-      expect(isSymlink(join(root, '.consumer-a/skills/pll'))).toBe(true)
-      expect(isSymlink(join(root, '.consumer-b/skills/pll'))).toBe(true)
+      expect(lstatSync(join(root, '.consumer-a/skills/pll')).isDirectory()).toBe(true)
+      expect(lstatSync(join(root, '.consumer-a/skills/pll/SKILL.md')).isSymbolicLink()).toBe(true)
+      expect(lstatSync(join(root, '.consumer-b/skills/pll')).isDirectory()).toBe(true)
+      expect(lstatSync(join(root, '.consumer-b/skills/pll/SKILL.md')).isSymbolicLink()).toBe(true)
     })
 
     it('returns 0 when .agent/skills does not exist', () => {

@@ -26,11 +26,12 @@ import {
   readdirSync,
   readFileSync,
   readlinkSync,
+  rmSync,
   symlinkSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { dirname, join, relative, resolve } from 'node:path'
 
 import { findRepoRoot } from '#utils/repo-root'
 
@@ -172,7 +173,7 @@ export function syncPerSkillConsumer(
   const consumerDir = join(repoRoot, config.dir)
   mkdirSync(consumerDir, { recursive: true })
 
-  console.log(`\n📁 ${config.dir} (per-skill)`)
+  console.log(`\n📁 ${config.dir} (per-skill, file symlinks)`)
 
   const agentSkills = readdirSync(skillsSource).filter((name) => {
     try {
@@ -185,11 +186,22 @@ export function syncPerSkillConsumer(
   let fixCount = 0
 
   for (const skill of agentSkills) {
-    const linkPath = join(consumerDir, skill)
-    const expectedTarget = `${config.sourcePrefix}${skill}`
+    const skillLinkDir = join(consumerDir, skill)
+
+    // Resolve the source directory for this skill. When sourceRootDir is
+    // configured, symlink targets resolve through that directory so they
+    // trace back to the installed node_modules copy rather than a locally
+    // copied .agent/skills/ mirror.
+    const srcBaseDir = config.sourceRootDir
+      ? join(repoRoot, config.sourceRootDir, skill)
+      : join(skillsSource, skill)
+
+    // Handle existing entry at the skill path — replace old directory-symlinks
+    // with real directories.
+    let dirFixed = false
     const stats = (() => {
       try {
-        return lstatSync(linkPath)
+        return lstatSync(skillLinkDir)
       } catch {
         return null
       }
@@ -197,51 +209,127 @@ export function syncPerSkillConsumer(
 
     if (stats) {
       if (stats.isSymbolicLink()) {
-        const target = readlinkSync(linkPath)
-        const resolvedTarget = resolve(consumerDir, target)
-        const isBroken = !existsSync(resolvedTarget)
-        const isCorrect = target.replace(/\\/g, '/') === expectedTarget
-
-        if (!isBroken && isCorrect) continue
-
-        unlinkSync(linkPath)
-        const reason = isBroken ? 'broken' : `wrong target (${target})`
-        console.log(`  🔧 ${skill}: removed ${reason} symlink`)
-      } else {
-        console.log(
-          `  ⚠️  ${skill}: real directory collides with .agent/skills/${skill} — skipped (remove manually)`,
-        )
+        unlinkSync(skillLinkDir)
+        mkdirSync(skillLinkDir, { recursive: true })
+        dirFixed = true
+      } else if (!stats.isDirectory()) {
         continue
       }
+    } else {
+      mkdirSync(skillLinkDir, { recursive: true })
     }
 
-    createSymlinkWithType(expectedTarget, linkPath, 'dir', `${config.dir}/${skill}`)
-    console.log(`  ✅ ${skill} → ${expectedTarget}`)
-    fixCount++
+    // Read source files to discover what to symlink. When the configured
+    // sourceRootDir does not exist (test environments), fall back to listing
+    // from .agent/skills/ so we still produce the correct structure.
+    const readSourceDir = existsSync(srcBaseDir)
+      ? srcBaseDir
+      : join(skillsSource, skill)
+    const sourceEntries = (() => {
+      try {
+        return readdirSync(readSourceDir)
+      } catch {
+        return [] as string[]
+      }
+    })()
+    const sourceFiles = sourceEntries.filter((f) => {
+      try {
+        return lstatSync(join(readSourceDir, f)).isFile()
+      } catch {
+        return false
+      }
+    })
+
+    // Create / validate file symlinks inside the real directory.
+    for (const fileName of sourceFiles) {
+      const sourcePath = join(srcBaseDir, fileName)
+      const linkPath = join(skillLinkDir, fileName)
+
+      const linkStats = (() => {
+        try {
+          return lstatSync(linkPath)
+        } catch {
+          return null
+        }
+      })()
+
+      if (linkStats) {
+        if (linkStats.isSymbolicLink()) {
+          const target = readlinkSync(linkPath)
+          const resolvedTarget = resolve(skillLinkDir, target)
+          const resolvedExpected = resolve(sourcePath)
+          if (resolvedTarget === resolvedExpected) continue
+          unlinkSync(linkPath)
+        } else {
+          // Real file — user-owned, skip
+          continue
+        }
+      }
+
+      const relativeTarget = relative(skillLinkDir, sourcePath)
+      createSymlinkWithType(
+        relativeTarget,
+        linkPath,
+        'file',
+        `${config.dir}/${skill}/${fileName}`,
+      )
+      console.log(`  ✅ ${skill}/${fileName} → ${relativeTarget}`)
+      fixCount++
+    }
+
+    // Clean up stale file symlinks that have no source counterpart.
+    const existingSourceFiles = new Set(sourceFiles)
+    for (const entry of readdirSync(skillLinkDir)) {
+      if (existingSourceFiles.has(entry)) continue
+      const entryPath = join(skillLinkDir, entry)
+      const entryStats = (() => {
+        try {
+          return lstatSync(entryPath)
+        } catch {
+          return null
+        }
+      })()
+      if (!entryStats || !entryStats.isSymbolicLink()) continue
+      unlinkSync(entryPath)
+      console.log(`  🗑️  ${skill}/${entry}: removed stale file symlink`)
+      fixCount++
+    }
+
+    if (dirFixed) fixCount++
   }
 
-  // Remove stale symlinks pointing into .agent/skills/ for skills that no
-  // longer exist. Leaves consumer-owned directories (non-symlinks, and
-  // symlinks pointing elsewhere) untouched.
+  // Remove stale entries in the consumer directory that no longer map to a
+  // skill under .agent/skills/.  Handles both old-style directory symlinks
+  // and new-style real directories (only when the directory is empty — a
+  // non-empty real directory is assumed to be user-owned).
   for (const entry of readdirSync(consumerDir)) {
+    if (agentSkills.includes(entry)) continue
     const entryPath = join(consumerDir, entry)
-    const stats = (() => {
+    const entryStats = (() => {
       try {
         return lstatSync(entryPath)
       } catch {
         return null
       }
     })()
-    if (!stats || !stats.isSymbolicLink()) continue
+    if (!entryStats) continue
 
-    const target = readlinkSync(entryPath).replace(/\\/g, '/')
-    if (!target.includes('.agent/skills/')) continue
-
-    const resolvedTarget = resolve(consumerDir, target)
-    if (!existsSync(resolvedTarget)) {
+    if (entryStats.isSymbolicLink()) {
       unlinkSync(entryPath)
-      console.log(`  🗑️  ${entry}: removed stale symlink (source gone)`)
+      console.log(`  🗑️  ${entry}: removed stale directory symlink (skill gone)`)
       fixCount++
+    } else if (entryStats.isDirectory()) {
+      let isEmpty = false
+      try {
+        isEmpty = readdirSync(entryPath).length === 0
+      } catch {
+        continue
+      }
+      if (isEmpty) {
+        rmSync(entryPath, { recursive: true, force: true })
+        console.log(`  🗑️  ${entry}: removed empty stale directory (skill gone)`)
+        fixCount++
+      }
     }
   }
 
