@@ -27,19 +27,33 @@ export function hasGenericProjectMarker(projectPath: string): boolean {
   return GENERIC_PROJECT_MARKERS.some((marker) => existsSync(path.join(projectPath, marker)))
 }
 
-export function resolveBlueprintRoot(projectPath?: string): string {
+interface ResolveConsumerRootOptions {
+  defaultDir: string
+  webpressoDir: string
+  projectPath?: string
+}
+
+export function resolveConsumerRoot({
+  defaultDir,
+  webpressoDir,
+  projectPath,
+}: ResolveConsumerRootOptions): string {
   if (projectPath === undefined) {
-    // Prefer generic consumer layout when the caller relies on cwd-relative
-    // scanning. Fall back to Webpresso's historical relative path.
-    if (existsSync(path.resolve(DEFAULT_BLUEPRINTS_DIR))) return DEFAULT_BLUEPRINTS_DIR
-    if (existsSync(path.resolve(WEBPRESSO_BLUEPRINTS_DIR))) return WEBPRESSO_BLUEPRINTS_DIR
-    return WEBPRESSO_BLUEPRINTS_DIR
+    if (hasWebpressoProjectMarker(process.cwd()) && existsSync(path.resolve(webpressoDir))) {
+      return webpressoDir
+    }
+    if (existsSync(path.resolve(defaultDir))) return defaultDir
+    if (existsSync(path.resolve(webpressoDir))) return webpressoDir
+    return webpressoDir
   }
 
-  const genericPath = path.join(projectPath, DEFAULT_BLUEPRINTS_DIR)
-  if (existsSync(genericPath)) return genericPath
+  const webpressoPath = path.join(projectPath, webpressoDir)
+  if (hasWebpressoProjectMarker(projectPath) && existsSync(webpressoPath)) {
+    return webpressoPath
+  }
 
-  const webpressoPath = path.join(projectPath, WEBPRESSO_BLUEPRINTS_DIR)
+  const genericPath = path.join(projectPath, defaultDir)
+  if (existsSync(genericPath)) return genericPath
   if (existsSync(webpressoPath)) return webpressoPath
 
   if (hasGenericProjectMarker(projectPath) && !hasWebpressoProjectMarker(projectPath)) {
@@ -47,4 +61,12 @@ export function resolveBlueprintRoot(projectPath?: string): string {
   }
 
   return webpressoPath
+}
+
+export function resolveBlueprintRoot(projectPath?: string): string {
+  return resolveConsumerRoot({
+    defaultDir: DEFAULT_BLUEPRINTS_DIR,
+    webpressoDir: WEBPRESSO_BLUEPRINTS_DIR,
+    projectPath,
+  })
 }

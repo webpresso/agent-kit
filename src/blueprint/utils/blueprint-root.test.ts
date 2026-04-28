@@ -50,4 +50,17 @@ describe('consumer layout root resolution', () => {
     expect(resolveBlueprintRoot(root)).toBe(path.join(root, 'blueprints'))
     expect(resolveTechDebtRoot(root)).toBe(path.join(root, 'tech-debt'))
   })
+
+  it('prefers Webpresso directories when both layouts exist in a Webpresso repo', async () => {
+    const root = await tempRoot('ak-webpresso-both-root-')
+    mkdirSync(path.join(root, 'blueprints'), { recursive: true })
+    mkdirSync(path.join(root, 'webpresso', 'blueprints'), { recursive: true })
+    mkdirSync(path.join(root, 'tech-debt'), { recursive: true })
+    mkdirSync(path.join(root, 'webpresso', 'tech-debt'), { recursive: true })
+    writeFileSync(path.join(root, 'webpresso', 'config.yaml'), 'project:\n  name: webpresso\n')
+    writeFileSync(path.join(root, 'package.json'), '{"name":"webpresso"}')
+
+    expect(resolveBlueprintRoot(root)).toBe(path.join(root, 'webpresso', 'blueprints'))
+    expect(resolveTechDebtRoot(root)).toBe(path.join(root, 'webpresso', 'tech-debt'))
+  })
 })
