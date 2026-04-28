@@ -161,6 +161,7 @@
     "prepare": "tshy && pnpm run chmod-bins && pnpm run link-self-bins",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:mutation": "stryker run",
     "lint:pkg": "publint && attw --pack . && (command -v claude >/dev/null 2>&1 && claude plugin validate . || true)",
     "blueprints:check": "pnpm exec ak audit blueprint-lifecycle",
     "docs:check": "pnpm exec ak audit docs-frontmatter",
@@ -191,6 +192,10 @@
     "husky": "^9.0.0",
     "publint": "^0.3.18",
     "tshy": "^4.1.1",
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/typescript-checker": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
+    "@webpresso/stryker-config": "git+ssh://git@github.com/webpresso/tooling.git#main&path:packages/stryker-config",
     "tsx": "^4.19.3",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"

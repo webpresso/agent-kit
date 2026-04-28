@@ -20,6 +20,9 @@ tsconfig.tsbuildinfo
 # Testing
 coverage/
 .nyc_output/
+.stryker-tmp/
+reports/
+stryker-setup-*.js
 
 # E2E Testing
 playwright-report/
