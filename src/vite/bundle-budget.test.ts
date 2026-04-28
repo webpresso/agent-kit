@@ -92,6 +92,90 @@ describe('analyzeBundleBudget', () => {
     expect(result.htmlEagerJsReferences).toEqual(['assets/a-random-hash-name.js'])
   })
 
+  it('filters out ignored assets by string', () => {
+    const result = analyzeBundleBudget({
+      assets: [
+        { path: 'assets/app.js', bytes: 100 },
+        { path: 'assets/vendor.js', bytes: 999_999 },
+      ],
+      ignore: ['vendor'],
+      maxJsAssetBytes: 1_000,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.jsAssets).toHaveLength(1)
+    expect(result.jsAssets[0].path).toBe('assets/app.js')
+  })
+
+  it('filters out ignored assets by regex', () => {
+    const result = analyzeBundleBudget({
+      assets: [
+        { path: 'assets/chunk-abc123.js', bytes: 100 },
+        { path: 'assets/vendor.js', bytes: 100 },
+      ],
+      ignore: [/^assets\/chunk-/],
+      maxJsAssetBytes: 100,
+    })
+
+    expect(result.jsAssets).toHaveLength(1)
+    expect(result.jsAssets[0].path).toBe('assets/vendor.js')
+  })
+
+  it('passes when limits are undefined', () => {
+    const result = analyzeBundleBudget({
+      assets: [
+        { path: 'assets/huge.js', bytes: 9_999_999 },
+      ],
+    })
+
+    expect(result.ok).toBe(true)
+  })
+
+  it('reports asset exactly at limit as passing', () => {
+    const result = analyzeBundleBudget({
+      assets: [{ path: 'assets/exact.js', bytes: 1024 }],
+      maxJsAssetBytes: 1024,
+    })
+
+    expect(result.ok).toBe(true)
+  })
+
+  it('reports missing html references when limits are not set', () => {
+    const result = analyzeBundleBudget({
+      assets: [],
+      html: '<script type="module" src="/assets/missing.js"></script>',
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.violations[0].kind).toBe('html-referenced-asset-missing')
+  })
+
+  it('reports html eager js asset exactly at limit as passing', () => {
+    const result = analyzeBundleBudget({
+      assets: [{ path: 'assets/index.js', bytes: 100 }],
+      html: '<script type="module" src="/assets/index.js"></script>',
+      maxHtmlEagerJsAssetBytes: 100,
+    })
+
+    expect(result.ok).toBe(true)
+  })
+
+  it('reports html eager total exactly at limit as passing', () => {
+    const result = analyzeBundleBudget({
+      assets: [
+        { path: 'assets/a.js', bytes: 50 },
+        { path: 'assets/b.js', bytes: 50 },
+      ],
+      html: [
+        '<script type="module" src="/assets/a.js"></script>',
+        '<script type="module" src="/assets/b.js"></script>',
+      ].join('\n'),
+      maxHtmlEagerJsTotalBytes: 100,
+    })
+
+    expect(result.ok).toBe(true)
+  })
+
   it('formats a readable report with violations', () => {
     const result = analyzeBundleBudget({
       assets: [{ path: 'assets/too-large.js', bytes: 2_048 }],
@@ -100,6 +184,17 @@ describe('analyzeBundleBudget', () => {
 
     expect(formatBundleBudgetReport(result)).toContain('✗ Bundle budget failed')
     expect(formatBundleBudgetReport(result)).toContain('assets/too-large.js')
+  })
+
+  it('formats readable report for passing budget', () => {
+    const result = analyzeBundleBudget({
+      assets: [{ path: 'assets/app.js', bytes: 100 }],
+      maxJsAssetBytes: 200,
+    })
+
+    const report = formatBundleBudgetReport(result)
+    expect(report).toContain('JS assets')
+    expect(report).not.toContain('Violations')
   })
 })
 

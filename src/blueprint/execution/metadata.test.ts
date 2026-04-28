@@ -75,4 +75,104 @@ describe('execution metadata helpers', () => {
 
     expect(readBlueprintExecutionMetadata(clearBlueprintExecutionMetadata(updated))).toBeNull()
   })
+
+  it('returns null when updatedAt is an empty string', () => {
+    const blueprint = `---
+type: blueprint
+status: in-progress
+complexity: M
+created: 2026-04-10
+last_updated: 2026-04-10
+execution_backend: omx-team
+execution_status: running
+execution_id: test-team
+execution_updated_at: '  '
+---
+
+# test
+
+#### Task 1.1: Example
+**Status:** todo
+
+**Depends:** None
+
+- [ ] a
+`
+    expect(readBlueprintExecutionMetadata(blueprint)).toBeNull()
+  })
+
+  it('returns null when executionId is missing', () => {
+    const blueprint = `---
+type: blueprint
+status: in-progress
+complexity: M
+created: 2026-04-10
+last_updated: 2026-04-10
+execution_backend: omx-team
+execution_status: running
+execution_updated_at: '2026-04-10T10:00:00Z'
+---
+
+# test
+
+#### Task 1.1: Example
+**Status:** todo
+
+**Depends:** None
+
+- [ ] a
+`
+    expect(readBlueprintExecutionMetadata(blueprint)).toBeNull()
+  })
+
+  it('returns null when backend parse fails', () => {
+    const blueprint = `---
+type: blueprint
+status: in-progress
+complexity: M
+created: 2026-04-10
+last_updated: 2026-04-10
+execution_backend: invalid
+execution_status: running
+execution_id: test-team
+execution_updated_at: '2026-04-10T10:00:00Z'
+---
+
+# test
+
+#### Task 1.1: Example
+**Status:** todo
+
+**Depends:** None
+
+- [ ] a
+`
+    expect(readBlueprintExecutionMetadata(blueprint)).toBeNull()
+  })
+
+  it('returns null when status parse fails', () => {
+    const blueprint = `---
+type: blueprint
+status: in-progress
+complexity: M
+created: 2026-04-10
+last_updated: 2026-04-10
+execution_backend: omx-team
+execution_status: broken
+execution_id: test-team
+execution_updated_at: '2026-04-10T10:00:00Z'
+---
+
+# test
+
+#### Task 1.1: Example
+**Status:** todo
+
+**Depends:** None
+
+- [ ] a
+`
+    expect(readBlueprintExecutionMetadata(blueprint)).toBeNull()
+  })
+
 })

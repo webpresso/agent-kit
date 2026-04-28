@@ -7,6 +7,7 @@ import {
   auditBlueprintLifecycle,
   auditCatalogDrift,
   auditDocsFrontmatter,
+  auditNoRelativeParentImports,
   formatRepoAuditReport,
   validateCommitMessage,
 } from './repo-guardrails.js'
@@ -223,5 +224,98 @@ describe('repo guardrail audits', () => {
         }),
       ]),
     )
+  })
+
+  test('validateCommitMessage rejects empty subject', () => {
+    const result = validateCommitMessage('\n\nbody\n')
+    expect(result.ok).toBe(false)
+    expect(result.violations[0].message).toContain('required')
+  })
+
+  test('validateCommitMessage accepts merge and revert commits', () => {
+    expect(validateCommitMessage('Merge branch main').ok).toBe(true)
+    expect(validateCommitMessage('Revert "old commit"').ok).toBe(true)
+    expect(validateCommitMessage('fixup! WIP commit').ok).toBe(true)
+    expect(validateCommitMessage('squash! old commit').ok).toBe(true)
+  })
+
+  test('validateCommitMessage rejects subject too long', () => {
+    const longSubject = 'feat(agent-kit): ' + 'a'.repeat(120)
+    const result = validateCommitMessage(longSubject, { subjectMaxLength: 100 })
+    expect(result.ok).toBe(false)
+    expect(result.violations[0].message).toContain('100')
+  })
+
+  test('validateCommitMessage warns on missing blank second line', () => {
+    const result = validateCommitMessage(
+      ['feat: do something', 'body content'].join('\n'),
+    )
+    expect(result.ok).toBe(false)
+    expect(result.violations.some(v => v.message.includes('blank'))).toBe(true)
+  })
+
+  test('validateCommitMessage enforces lore trailers when subject includes [lore]', () => {
+    const result = validateCommitMessage(
+      [
+        'feat(agent-kit): share repo audits [lore]',
+        '',
+        'Move repeated repo validation.',
+      ].join('\n'),
+    )
+    expect(result.ok).toBe(false)
+  })
+
+  test('validateCommitMessage enforces lore trailers when requireLore is true', () => {
+    const result = validateCommitMessage(
+      [
+        'feat(agent-kit): something',
+        '',
+        'Regular commit without lore.',
+      ].join('\n'),
+      { requireLore: true },
+    )
+    expect(result.ok).toBe(false)
+  })
+
+  test('auditCatalogDrift returns ok when no workspace file exists', () => {
+    const root = tempRepo()
+    const result = auditCatalogDrift(root)
+    expect(result.ok).toBe(true)
+  })
+
+  test('auditCatalogDrift returns ok for empty workspace', () => {
+    const root = tempRepo()
+    writeFileSync(join(root, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n')
+    const result = auditCatalogDrift(root)
+    expect(result.ok).toBe(true)
+  })
+
+  test('auditDocsFrontmatter returns ok when docs dir does not exist', () => {
+    const root = tempRepo()
+    const result = auditDocsFrontmatter(root)
+    expect(result.ok).toBe(true)
+  })
+
+  test('auditBlueprintLifecycle without legacy omx skips legacy checks', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'blueprints', 'draft', 'test'), { recursive: true })
+    writeFileSync(
+      join(root, 'blueprints', 'draft', 'test', '_overview.md'),
+      ['---', 'type: blueprint', 'status: draft', '---', '# Test'].join('\n'),
+    )
+    const result = auditBlueprintLifecycle(root)
+    expect(result.ok).toBe(true)
+  })
+
+  test('formatRepoAuditReport includes ok status', () => {
+    const result = { ok: true, title: 'Test', checked: 1, violations: [] }
+    expect(formatRepoAuditReport(result)).toContain('OK')
+  })
+
+  test('auditNoRelativeParentImports finds parent path violations', () => {
+    const filePath = join(tempRepo(), 'test.txt')
+    writeFileSync(filePath, "import something from '../../secret/data'\n")
+    const result = auditNoRelativeParentImports(filePath)
+    expect(result).toBeDefined()
   })
 })

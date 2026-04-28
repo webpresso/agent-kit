@@ -398,5 +398,185 @@ describe('TaskGraph', () => {
       expect(ids).toEqual(expect.arrayContaining(['a', 'b']))
       expect(ids.length).toBe(2)
     })
+
+    it('removeDependency returns true for existing dependency', () => {
+      const graph = new TaskGraph()
+      graph.addTask({ id: 'a', dependencies: [] })
+      graph.addTask({ id: 'b', dependencies: ['a'] })
+      graph.addDependency('a', 'b')
+
+      expect(graph.removeDependency('a', 'b')).toBe(true)
+      expect(graph.getInDegree('b')).toBe(0)
+    })
+
+    it('removeDependency returns false for nonexistent dependency', () => {
+      const graph = new TaskGraph()
+      graph.addTask({ id: 'a', dependencies: [] })
+      graph.addTask({ id: 'b', dependencies: [] })
+
+      expect(graph.removeDependency('a', 'b')).toBe(false)
+    })
+
+    it('removeDependency handles dangling reverse edge', () => {
+      const graph = new TaskGraph()
+      graph.addTask({ id: 'a', dependencies: [] })
+      graph.addTask({ id: 'b', dependencies: ['a'] })
+      graph.addTask({ id: 'c', dependencies: ['a'] })
+      graph.addDependency('a', 'b')
+      graph.addDependency('a', 'c')
+
+      // Remove one dependency, the other should still exist
+      expect(graph.removeDependency('a', 'b')).toBe(true)
+      expect(graph.getOutDegree('a')).toBe(1)
+      expect(graph.removeDependency('a', 'c')).toBe(true)
+      expect(graph.getOutDegree('a')).toBe(0)
+    })
+
+    it('edgeCount returns number of edges', () => {
+      const graph = new TaskGraph()
+      graph.addTask({ id: 'a', dependencies: [] })
+      graph.addTask({ id: 'b', dependencies: ['a'] })
+      graph.addDependency('a', 'b')
+
+      expect(graph.edgeCount).toBe(1)
+    })
+
+    it('edgeCount returns 0 for empty graph', () => {
+      const graph = new TaskGraph()
+      expect(graph.edgeCount).toBe(0)
+    })
+
+    it('size returns number of nodes', () => {
+      const graph = new TaskGraph()
+      graph.addTask({ id: 'a', dependencies: [] })
+      graph.addTask({ id: 'b', dependencies: [] })
+
+      expect(graph.size).toBe(2)
+    })
+
+    it('getDependencies returns direct dependencies', () => {
+      const graph = new TaskGraph()
+      graph.addTask({ id: 'a', dependencies: [] })
+      graph.addTask({ id: 'b', dependencies: ['a'] })
+      graph.addDependency('a', 'b')
+
+      expect(graph.getDependencies('b')).toEqual(['a'])
+      expect(graph.getDependencies('a')).toEqual([])
+      expect(graph.getDependencies('nonexistent')).toEqual([])
+    })
+
+    it('getDependents returns direct dependents', () => {
+      const graph = new TaskGraph()
+      graph.addTask({ id: 'a', dependencies: [] })
+      graph.addTask({ id: 'b', dependencies: ['a'] })
+      graph.addDependency('a', 'b')
+
+      expect(graph.getDependents('a')).toEqual(['b'])
+      expect(graph.getDependents('b')).toEqual([])
+      expect(graph.getDependents('nonexistent')).toEqual([])
+    })
+
+    it('getTransitiveDependencies returns all ancestors', () => {
+      const graph = new TaskGraph()
+      graph.addTask({ id: 'a', dependencies: [] })
+      graph.addTask({ id: 'b', dependencies: ['a'] })
+      graph.addTask({ id: 'c', dependencies: ['b'] })
+      graph.addDependency('a', 'b')
+      graph.addDependency('b', 'c')
+
+      const deps = graph.getTransitiveDependencies('c')
+      expect(deps.sort()).toEqual(['a', 'b'])
+    })
+
+    it('getTransitiveDependencies returns empty for root', () => {
+      const graph = new TaskGraph()
+      graph.addTask({ id: 'a', dependencies: [] })
+      expect(graph.getTransitiveDependencies('a')).toEqual([])
+    })
+
+    it('getTransitiveDependents returns all descendants', () => {
+      const graph = new TaskGraph()
+      graph.addTask({ id: 'a', dependencies: [] })
+      graph.addTask({ id: 'b', dependencies: ['a'] })
+      graph.addTask({ id: 'c', dependencies: ['b'] })
+      graph.addDependency('a', 'b')
+      graph.addDependency('b', 'c')
+
+      const deps = graph.getTransitiveDependents('a')
+      expect(deps.sort()).toEqual(['b', 'c'])
+    })
+
+    it('getTransitiveDependents returns empty for leaf', () => {
+      const graph = new TaskGraph()
+      graph.addTask({ id: 'a', dependencies: [] })
+      graph.addTask({ id: 'b', dependencies: ['a'] })
+      graph.addDependency('a', 'b')
+      expect(graph.getTransitiveDependents('b')).toEqual([])
+    })
+
+    it('subgraph returns correct subset', () => {
+      const graph = new TaskGraph()
+      graph.addTask({ id: 'a', dependencies: [] })
+      graph.addTask({ id: 'b', dependencies: ['a'] })
+      graph.addTask({ id: 'c', dependencies: [] })
+      graph.addDependency('a', 'b')
+
+      const sub = graph.subgraph(['a', 'b'])
+      expect(sub.size).toBe(2)
+      expect(sub.hasTask('a')).toBe(true)
+      expect(sub.hasTask('b')).toBe(true)
+      expect(sub.hasTask('c')).toBe(false)
+    })
+
+    it('clone creates independent copy', () => {
+      const graph = new TaskGraph()
+      graph.addTask({ id: 'a', dependencies: [] })
+      graph.addTask({ id: 'b', dependencies: ['a'] })
+      graph.addDependency('a', 'b')
+
+      const cloned = graph.clone()
+      expect(cloned.size).toBe(2)
+      expect(cloned.getInDegree('b')).toBe(1)
+
+      // Mutate original, clone should be unchanged
+      graph.addTask({ id: 'c', dependencies: [] })
+      expect(cloned.size).toBe(2)
+    })
+
+    it('addTask throws on duplicate', () => {
+      const graph = new TaskGraph()
+      graph.addTask({ id: 'a', dependencies: [] })
+      expect(() => graph.addTask({ id: 'a', dependencies: [] })).toThrow(/already exists/)
+    })
+
+    it('addTaskWithDependencies throws on missing dependency', () => {
+      const graph = new TaskGraph()
+      expect(() =>
+        graph.addTaskWithDependencies({ id: 'a', dependencies: ['nonexistent'] }),
+      ).toThrow(/does not exist/)
+    })
+
+    it('addTasksWithDependencies adds in correct order', () => {
+      const graph = new TaskGraph()
+      graph.addTasksWithDependencies([
+        { id: 'c', dependencies: ['b'] },
+        { id: 'b', dependencies: ['a'] },
+        { id: 'a', dependencies: [] },
+      ])
+
+      expect(graph.size).toBe(3)
+      expect(graph.getInDegree('b')).toBe(1)
+      expect(graph.getInDegree('c')).toBe(1)
+    })
+
+    it('validate returns no errors for valid graph', () => {
+      const graph = new TaskGraph()
+      graph.addTask({ id: 'a', dependencies: [] })
+      graph.addTask({ id: 'b', dependencies: ['a'] })
+      graph.addDependency('a', 'b')
+
+      const result = graph.validate()
+      expect(result.valid).toBe(true)
+    })
   })
 })

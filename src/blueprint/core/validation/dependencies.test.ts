@@ -184,5 +184,76 @@ describe('validateTaskDependencies', () => {
       expect(result.details?.danglingRefs?.[0]).toContain('Task 1.1')
       expect(result.details?.danglingRefs?.[0]).toContain('Task 9.9')
     })
+
+    it('should detect multiple dangling references', () => {
+      const md =
+        FRONTMATTER +
+        `# Blueprint
+
+#### Task 1.1: Task A
+
+**Depends:** Task 9.9, Task 9.10
+`
+      const result = validateTaskDependencies(md)
+      expect(result.valid).toBe(false)
+      expect(result.details?.danglingRefs?.length).toBeGreaterThanOrEqual(2)
+    })
+  })
+
+  describe('combined violations', () => {
+    it('reports both cycle and dangling ref in same error', () => {
+      const md =
+        FRONTMATTER +
+        `# Blueprint
+
+#### Task 1.1: Task A
+
+**Depends:** Task 1.2, Task 9.9
+
+#### Task 1.2: Task B
+
+**Depends:** Task 1.1
+`
+      const result = validateTaskDependencies(md)
+      expect(result.valid).toBe(false)
+      expect(result.error).toContain('Circular')
+      expect(result.error).toContain('Dangling')
+    })
+
+    it('returns details with both cycles and dangling refs', () => {
+      const md =
+        FRONTMATTER +
+        `# Blueprint
+
+#### Task 1.1: Task A
+
+**Depends:** Task 1.2, Task 9.9
+
+#### Task 1.2: Task B
+
+**Depends:** Task 1.1
+`
+      const result = validateTaskDependencies(md)
+      expect(result.valid).toBe(false)
+      expect(result.details?.cycles).toBeDefined()
+      expect(result.details?.danglingRefs).toBeDefined()
+    })
+
+    it('passes for tasks with empty Depends block', () => {
+      const md =
+        FRONTMATTER +
+        `# Blueprint
+
+#### Task 1.1: Task A
+
+**Depends:** 
+
+#### Task 1.2: Task B
+
+**Depends:** None
+`
+      const result = validateTaskDependencies(md)
+      expect(result.valid).toBe(true)
+    })
   })
 })

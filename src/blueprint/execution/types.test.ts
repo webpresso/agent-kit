@@ -39,6 +39,30 @@ describe('blueprintExecutionPolicySchema', () => {
       }),
     ).toThrow(/runtimeStateRoot must stay under \.omx\/state/)
   })
+
+  it('accepts a bare .omx/state as the runtime root', () => {
+    const result = blueprintExecutionPolicySchema.parse({
+      runtimeStateRoot: '.omx/state',
+    })
+
+    expect(result.runtimeStateRoot).toBe('.omx/state')
+  })
+
+  it('accepts subdirectories under .omx/state', () => {
+    const result = blueprintExecutionPolicySchema.parse({
+      runtimeStateRoot: '.omx/state/custom',
+    })
+
+    expect(result.runtimeStateRoot).toBe('.omx/state/custom')
+  })
+
+  it('rejects paths that are prefixed with .omx/state but not actually under it', () => {
+    expect(() =>
+      blueprintExecutionPolicySchema.parse({
+        runtimeStateRoot: '.omx/statecraft',
+      }),
+    ).toThrow(/runtimeStateRoot must stay under \.omx\/state/)
+  })
 })
 
 describe('blueprintLaunchSpecSchema', () => {
@@ -88,6 +112,58 @@ describe('blueprintLaunchSpecSchema', () => {
         tasks: [],
       }),
     ).toThrow(/blueprintPath must point at blueprints\/ or webpresso\/blueprints/)
+  })
+
+  it('rejects blueprint paths not in blueprints directories', () => {
+    expect(() =>
+      blueprintLaunchSpecSchema.parse({
+        backend: 'omx-team',
+        blueprintPath: 'src/some-code.ts',
+        blueprintSlug: 'prd-test',
+        mode: 'durable',
+        policy: {},
+        tasks: [],
+      }),
+    ).toThrow(/blueprintPath must point at blueprints\/ or webpresso\/blueprints/)
+  })
+
+  it('accepts blueprint paths starting with blueprints/', () => {
+    const result = blueprintLaunchSpecSchema.parse({
+      backend: 'omx-team',
+      blueprintPath: 'blueprints/some-path/_overview.md',
+      blueprintSlug: 'in-progress/some-path',
+      mode: 'durable',
+      policy: {},
+      tasks: [],
+    })
+
+    expect(result.blueprintPath).toBe('blueprints/some-path/_overview.md')
+  })
+
+  it('rejects blueprint paths ending strangely', () => {
+    expect(() =>
+      blueprintLaunchSpecSchema.parse({
+        backend: 'omx-team',
+        blueprintPath: 'src/blueprints-fake/test.md',
+        blueprintSlug: 'test',
+        mode: 'durable',
+        policy: {},
+        tasks: [],
+      }),
+    ).toThrow(/blueprintPath must point at blueprints\/ or webpresso\/blueprints/)
+  })
+
+  it('accepts paths containing blueprints/ in a nested path', () => {
+    const result = blueprintLaunchSpecSchema.parse({
+      backend: 'omx-team',
+      blueprintPath: 'src/blueprints/in-progress/test-plan/_overview.md',
+      blueprintSlug: 'in-progress/test-plan',
+      mode: 'durable',
+      policy: {},
+      tasks: [],
+    })
+
+    expect(result.blueprintPath).toBe('src/blueprints/in-progress/test-plan/_overview.md')
   })
 })
 

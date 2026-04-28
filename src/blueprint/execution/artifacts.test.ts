@@ -48,4 +48,140 @@ describe('execution artifact helpers', () => {
 
     expect(readBlueprintExecutionArtifacts(clearBlueprintExecutionArtifacts(updated))).toBeNull()
   })
+
+  it('returns null when frontmatter has empty string artifacts', () => {
+    const blueprint = `---
+type: blueprint
+status: in-progress
+complexity: M
+created: 2026-04-10
+last_updated: 2026-04-10
+execution_artifacts:
+  - ''
+  - ' '
+execution_verifications: []
+execution_log_path: ''
+---
+
+# test
+
+#### Task 1.1: Example
+**Status:** todo
+
+**Depends:** None
+
+- [ ] a
+`
+    expect(readBlueprintExecutionArtifacts(blueprint)).toBeNull()
+  })
+
+  it('reads partial artifact data when only some fields are present', () => {
+    const blueprint = `---
+type: blueprint
+status: in-progress
+complexity: M
+created: 2026-04-10
+last_updated: 2026-04-10
+execution_artifacts:
+  - build.log
+---
+
+# test
+
+#### Task 1.1: Example
+**Status:** todo
+
+**Depends:** None
+
+- [ ] a
+`
+    expect(readBlueprintExecutionArtifacts(blueprint)).toEqual({
+      artifacts: ['build.log'],
+      logPath: undefined,
+      verifications: [],
+    })
+  })
+
+  it('handles non-string values in artifact arrays gracefully', () => {
+    const blueprint = `---
+type: blueprint
+status: in-progress
+complexity: M
+created: 2026-04-10
+last_updated: 2026-04-10
+execution_artifacts:
+  - valid.log
+  - 42
+  - ''
+  - null
+execution_verifications: []
+---
+
+# test
+
+#### Task 1.1: Example
+**Status:** todo
+
+**Depends:** None
+
+- [ ] a
+`
+    expect(readBlueprintExecutionArtifacts(blueprint)).toEqual({
+      artifacts: ['valid.log'],
+      logPath: undefined,
+      verifications: [],
+    })
+  })
+
+  it('returns null when only logPath is an empty string', () => {
+    const blueprint = `---
+type: blueprint
+status: in-progress
+complexity: M
+created: 2026-04-10
+last_updated: 2026-04-10
+execution_artifacts: []
+execution_verifications: []
+execution_log_path: ' '
+---
+
+# test
+
+#### Task 1.1: Example
+**Status:** todo
+
+**Depends:** None
+
+- [ ] a
+`
+    expect(readBlueprintExecutionArtifacts(blueprint)).toBeNull()
+  })
+
+  it('returns result when only logPath is present', () => {
+    const blueprint = `---
+type: blueprint
+status: in-progress
+complexity: M
+created: 2026-04-10
+last_updated: 2026-04-10
+execution_artifacts: []
+execution_verifications: []
+execution_log_path: path/to/log.json
+---
+
+# test
+
+#### Task 1.1: Example
+**Status:** todo
+
+**Depends:** None
+
+- [ ] a
+`
+    expect(readBlueprintExecutionArtifacts(blueprint)).toEqual({
+      artifacts: [],
+      logPath: 'path/to/log.json',
+      verifications: [],
+    })
+  })
 })
