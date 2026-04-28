@@ -3,11 +3,13 @@ type: blueprint
 status: planned
 complexity: M
 created: 2026-04-26
-last_updated: 2026-04-26
+last_updated: 2026-04-28
 progress: '0% (0 of 4 tasks completed)'
 depends_on:
   - harden-plugin-hooks-suppress-stderr-and-mcp-readiness-sentinel
   - sessionstart-routing-block-inject-ak-tool-routing-rules-at-session-start
+superseded_by:
+  - coordinated-pre-tool-hook-unified-hook-process-for-context-mode-agent-kit
 tags:
   - plugin
   - hooks
@@ -16,6 +18,8 @@ tags:
 ---
 
 # PreToolUse Dev-Command Routing: Intercept just/pnpm Commands → ak MCP Tools
+
+> **2026-04-28 update:** Tasks 1.1 (routing table), 1.2 (formatter), and 1.3 (runner integration) are absorbed into [`coordinated-pre-tool-hook`](../coordinated-pre-tool-hook-unified-hook-process-for-context-mode-agent-kit/_overview.md) which merges context-mode + agent-kit routing into one hook process. Task 1.4 (integration tests) remains here as verification. See the coordinated blueprint for the merged routing table including context-mode sandbox rules.
 
 When Claude runs `just test`, `pnpm test`, `just lint`, `just qa`, etc., the PreToolUse hook intercepts and either denies with one-time guidance pointing to `ak_test`/`ak_qa`, or passes through. The result: Claude gets structured `{passed, summary}` JSON with no build log in context, instead of thousands of lines of raw output.
 

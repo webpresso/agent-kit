@@ -3,8 +3,11 @@ type: blueprint
 status: planned
 complexity: XS
 created: 2026-04-26
-last_updated: 2026-04-26
+last_updated: 2026-04-28
 progress: '0% (0 of 2 tasks completed)'
+depends_on: []
+superseded_by:
+  - coordinated-pre-tool-hook-unified-hook-process-for-context-mode-agent-kit
 tags:
   - plugin
   - hooks
@@ -12,6 +15,8 @@ tags:
 ---
 
 # Harden Plugin Hooks: suppress-stderr and MCP Readiness Sentinel
+
+> **2026-04-28 update:** Task 1.1 (stderr suppression) is absorbed into the coordinated blueprint's [Task 1.2](../coordinated-pre-tool-hook-unified-hook-process-for-context-mode-agent-kit/_overview.md#infra-task-12-shared-stderr-suppression-and-hook-entry-bootstrapping) which provides a shared `hook-bootstrap.ts` used by all hook entry points. Task 1.2 (MCP readiness sentinel) remains here.
 
 Foundational hardening for all agent-kit hook entry points. Two issues cause silent plugin failures today: (1) native module initialization writes to fd2 directly, which Claude Code interprets as hook errors, and (2) when the MCP server hasn't started, routing decisions in PreToolUse have no liveness check. This blueprint fixes both.
 

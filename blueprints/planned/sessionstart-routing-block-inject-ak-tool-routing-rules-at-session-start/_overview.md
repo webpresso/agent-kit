@@ -3,15 +3,19 @@ type: blueprint
 status: planned
 complexity: S
 created: 2026-04-26
-last_updated: 2026-04-26
+last_updated: 2026-04-28
 progress: '0% (0 of 2 tasks completed)'
 depends_on:
   - harden-plugin-hooks-suppress-stderr-and-mcp-readiness-sentinel
+  - coordinated-pre-tool-hook-unified-hook-process-for-context-mode-agent-kit
 tags:
   - plugin
   - hooks
   - routing
+  - context-mode
 ---
+
+> **2026-04-28 update:** Task 1.1 (routing-block.ts) must now include context-mode tool references in the `<ak_routing>` XML block — a coordinated decision table showing when to use `ak_*` vs `ctx_*` tools. The coordinated blueprint eliminates the PreToolUse conflict this blueprint relied on; the routing block should reflect the unified routing table from the coordinated blueprint.
 
 # SessionStart Routing Block: Inject ak_* Tool Routing Rules at Session Start
 
@@ -59,9 +63,11 @@ Two tasks: (1) define the routing block content, (2) integrate it into the sessi
   - Create: `src/hooks/shared/routing-block.ts`
 - **Change:** Export `AK_ROUTING_BLOCK: string` — an XML string injected into every session. Content:
   - Which tools to prefer (`ak_test`, `ak_lint`, `ak_typecheck`, `ak_qa`, `ak_audit`)
+  - Context-mode tools and when to use them (`ctx_execute` for data-heavy shell commands, `ctx_search` for indexed content, `ctx_fetch_and_index` for web, `ctx_batch_execute` for combined research)
+  - Decision table: dev-workflow commands → `ak_*` MCP tools; data-processing commands → `ctx_*` sandbox tools
   - Which commands are forbidden as alternatives (`just test`, `pnpm test`, `just lint`, `just qa`, `vitest`, `oxlint`, `tsc`)
   - Response format guidance: return `{passed, summary}` shape, not raw output
-  - Output constraint: keep responses under 200 words, cite file paths not logs
+  - Output constraint: keep responses under 200 words, cite file paths not logs; follow context-mode's caveman output style
   - Fallback: when MCP unavailable, use `just` recipes and expect output to be brief
 - **Steps (TDD):**
   1. Write failing test: import `AK_ROUTING_BLOCK` and assert it is non-empty, contains `<ak_routing>`, and is parseable as XML

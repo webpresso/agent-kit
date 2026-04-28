@@ -3,18 +3,22 @@ type: blueprint
 status: planned
 complexity: S
 created: 2026-04-26
-last_updated: 2026-04-26
+last_updated: 2026-04-28
 progress: '0% (0 of 3 tasks completed)'
 depends_on:
   - harden-plugin-hooks-suppress-stderr-and-mcp-readiness-sentinel
+  - coordinated-pre-tool-hook-unified-hook-process-for-context-mode-agent-kit
 tags:
   - plugin
   - hooks
   - dx
   - verification
+  - context-mode
 ---
 
 # ak-hooks-doctor: Post-Install Verification Skill for Plugin Hook Health
+
+> **2026-04-28 update:** After the coordinated hook ships, the doctor must also verify: (1) the single coordinated hook process is active (not the old 2-process setup), (2) context-mode MCP server is reachable via `ctx_doctor` tool, (3) the coordinated routing table covers all expected command patterns. Added as Task 2.1 in the coordinated blueprint scope.
 
 Add `ak hooks doctor` CLI command and `/webpresso-agent-kit:hooks-doctor` skill that verifies the plugin installation is healthy: all hook bins exist, are executable, respond correctly to empty stdin, and the MCP server starts and responds. Mirrors context-mode's `/ctx-doctor` pattern — the single most effective way to surface silent plugin failures immediately.
 
