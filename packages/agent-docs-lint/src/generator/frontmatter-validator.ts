@@ -1,4 +1,4 @@
-import type { FrontmatterField, SsotData, TemplateSchema, ValidationError } from './types'
+import type { FrontmatterField, SsotData, TemplateSchema, ValidationError } from './types.js'
 
 /**
  * Creates a missing field error

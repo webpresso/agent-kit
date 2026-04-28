@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { baseFrontmatter } from './common';
+import { baseFrontmatter } from './common.js';
 /**
  * Schema for Rule documents in docs/rules/
  */

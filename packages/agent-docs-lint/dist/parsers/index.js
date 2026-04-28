@@ -1,2 +1,2 @@
-export * from './bold-metadata';
-export * from './frontmatter';
+export * from './bold-metadata.js';
+export * from './frontmatter.js';

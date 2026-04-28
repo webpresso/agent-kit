@@ -1,4 +1,4 @@
-import type { GenerateDocInput, GenerateDocResult } from './types';
+import type { GenerateDocInput, GenerateDocResult } from './types.js';
 /**
  * Main document generation function using unified/remark
  */

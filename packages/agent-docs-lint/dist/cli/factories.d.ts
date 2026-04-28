@@ -2,7 +2,7 @@
  * Test factories for CLI dependency mocking.
  * Provides factory functions for creating mocked dependencies in tests.
  */
-import type { FileSystem, GlobFunction, Logger, MigratorDeps, ProcessEnv, ValidatorDeps } from './interfaces';
+import type { FileSystem, GlobFunction, Logger, MigratorDeps, ProcessEnv, ValidatorDeps } from './interfaces.js';
 /**
  * Creates a fake FileSystem with mock implementations.
  * @param overrides - Optional partial overrides for specific methods

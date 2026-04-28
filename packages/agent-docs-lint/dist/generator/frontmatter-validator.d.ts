@@ -1,4 +1,4 @@
-import type { SsotData, TemplateSchema, ValidationError } from './types';
+import type { SsotData, TemplateSchema, ValidationError } from './types.js';
 /**
  * Validates frontmatter against template schema
  */

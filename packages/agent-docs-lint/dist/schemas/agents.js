@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { baseFrontmatter, dateString } from './common';
+import { baseFrontmatter, dateString } from './common.js';
 /**
  * Frontmatter schema for agent-guide.md (Single Source of Truth, formerly AGENTS.md)
  */

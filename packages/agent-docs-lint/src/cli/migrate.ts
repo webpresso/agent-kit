@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 import { defineCommand, runMain } from 'citty'
 
-import { createMigrateCommand, type MigrateOptions } from './commands/migrate-command'
+import { createMigrateCommand, type MigrateOptions } from './commands/migrate-command.js'
 
 const main = defineCommand({
   meta: {

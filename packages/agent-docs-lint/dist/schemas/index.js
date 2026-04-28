@@ -1,10 +1,10 @@
 import { BLUEPRINTS_ROOT } from '#path-contract';
-import { baseFrontmatter } from './common';
-import { decisionFrontmatter } from './decision';
-import { implementationPlanFrontmatter, implementationPlanSections } from './implementation-plan';
-export { baseFrontmatter } from './common';
-export { decisionFrontmatter } from './decision';
-export { implementationPlanFrontmatter, implementationPlanSections } from './implementation-plan';
+import { baseFrontmatter } from './common.js';
+import { decisionFrontmatter } from './decision.js';
+import { implementationPlanFrontmatter, implementationPlanSections } from './implementation-plan.js';
+export { baseFrontmatter } from './common.js';
+export { decisionFrontmatter } from './decision.js';
+export { implementationPlanFrontmatter, implementationPlanSections } from './implementation-plan.js';
 /**
  * Simplified schema registry - only 6 types.
  * guide, system, research, and unknown all use baseFrontmatter (all fields optional).

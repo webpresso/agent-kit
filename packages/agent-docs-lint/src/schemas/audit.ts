@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { baseFrontmatter, dateString } from './common'
+import { baseFrontmatter, dateString } from './common.js'
 
 /**
  * Frontmatter schema for audit documents.

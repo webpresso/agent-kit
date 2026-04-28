@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { baseFrontmatter, dateString } from './common';
+import { baseFrontmatter, dateString } from './common.js';
 /**
  * Frontmatter schema for adaptation documents.
  * Located in docs/adaptations/

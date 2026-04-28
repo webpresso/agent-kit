@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { baseFrontmatter } from './common'
+import { baseFrontmatter } from './common.js'
 
 /**
  * Frontmatter schema for cookbook patterns.

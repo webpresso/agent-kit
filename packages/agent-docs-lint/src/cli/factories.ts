@@ -10,7 +10,7 @@ import type {
   MigratorDeps,
   ProcessEnv,
   ValidatorDeps,
-} from './interfaces'
+} from './interfaces.js'
 
 import { vi } from 'vitest'
 

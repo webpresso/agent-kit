@@ -1,12 +1,12 @@
 #!/usr/bin/env tsx
-import { findRepoRoot } from './repo-root'
+import { findRepoRoot } from './repo-root.js'
 /**
  * Batch fix script to apply code block language inference to all docs
  */
 import { lstatSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { fixCodeBlockLanguages } from './fixers/code-language'
+import { fixCodeBlockLanguages } from './fixers/code-language.js'
 
 const DOCS_DIR = join(findRepoRoot(), 'docs')
 const MAX_FILES = 200 // Limit to prevent infinite loops on large dirs

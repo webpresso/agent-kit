@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { baseFrontmatter, complexity, dateString, implementationStatus } from './common'
+import { baseFrontmatter, complexity, dateString, implementationStatus } from './common.js'
 
 /**
  * Frontmatter schema for implementation plans.

@@ -1,3 +1,3 @@
-export * from './parsers';
-export * from './schemas';
-export * from './types';
+export * from './parsers/index.js';
+export * from './schemas/index.js';
+export * from './types.js';

@@ -3,8 +3,8 @@ import remarkParse from 'remark-parse';
 import remarkStringify from 'remark-stringify';
 import { unified } from 'unified';
 import { stringify as yamlStringify } from 'yaml';
-import { validateFrontmatter } from './frontmatter-validator';
-import { loadTemplate } from './template-loader';
+import { validateFrontmatter } from './frontmatter-validator.js';
+import { loadTemplate } from './template-loader.js';
 /**
  * Generates YAML frontmatter string
  */

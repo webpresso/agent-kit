@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { baseFrontmatter, dateString } from './common'
+import { baseFrontmatter, dateString } from './common.js'
 
 /**
  * Schema for ongoing-initiative documents

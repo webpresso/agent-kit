@@ -1,4 +1,4 @@
-import type { TemplateSchema, ValidationError } from './types';
+import type { TemplateSchema, ValidationError } from './types.js';
 /**
  * Result of loading a template
  */

@@ -1,8 +1,8 @@
 import type { DocType, DocTypeConfig } from '#types';
 import type { ZodSchema } from 'zod';
-export { baseFrontmatter } from './common';
-export { decisionFrontmatter } from './decision';
-export { implementationPlanFrontmatter, implementationPlanSections } from './implementation-plan';
+export { baseFrontmatter } from './common.js';
+export { decisionFrontmatter } from './decision.js';
+export { implementationPlanFrontmatter, implementationPlanSections } from './implementation-plan.js';
 /**
  * Simplified schema registry - only 6 types.
  * guide, system, research, and unknown all use baseFrontmatter (all fields optional).

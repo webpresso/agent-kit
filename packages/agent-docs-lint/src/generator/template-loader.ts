@@ -1,4 +1,4 @@
-import type { TemplateSchema, ValidationError } from './types'
+import type { TemplateSchema, ValidationError } from './types.js'
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'

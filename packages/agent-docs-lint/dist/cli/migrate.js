@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import { defineCommand, runMain } from 'citty';
-import { createMigrateCommand } from './commands/migrate-command';
+import { createMigrateCommand } from './commands/migrate-command.js';
 const main = defineCommand({
     meta: {
         name: 'docs-migrate',

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { baseFrontmatter, dateString, implementationStatus } from './common'
+import { baseFrontmatter, dateString, implementationStatus } from './common.js'
 
 /**
  * Frontmatter schema for parent roadmaps (group-level planning documents).

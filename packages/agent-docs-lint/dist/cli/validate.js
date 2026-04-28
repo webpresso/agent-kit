@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import { defineCommand, runMain } from 'citty';
-import { createValidateCommand } from './commands/validate-command';
+import { createValidateCommand } from './commands/validate-command.js';
 // Track exit code from the command
 let commandExitCode = 0;
 const main = defineCommand({

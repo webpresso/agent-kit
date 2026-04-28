@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { dateString } from './common'
+import { dateString } from './common.js'
 
 /**
  * Status values for draft documents
