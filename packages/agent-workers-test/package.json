@@ -19,6 +19,7 @@
     "build": "tshy",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:mutation": "stryker run",
     "lint:pkg": "attw --pack .",
     "qa": "pnpm typecheck && pnpm test && pnpm lint:pkg",
     "prepublishOnly": "pnpm build && pnpm lint:pkg"
@@ -30,6 +31,10 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
     "@cloudflare/workers-types": "^4.20250525.0",
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/typescript-checker": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
+    "@webpresso/stryker-config": "git+ssh://git@github.com/webpresso/tooling.git#main&path:packages/stryker-config",
     "@webpresso/typescript-config": "github:webpresso/tooling#main&path:/packages/typescript-config",
     "tshy": "^4.1.1",
     "typescript": "^5.8.3",
