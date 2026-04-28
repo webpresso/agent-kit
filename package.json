@@ -158,7 +158,6 @@
     "chmod-bins": "chmod +x dist/esm/cli/cli.js dist/esm/hooks/pretool-guard/index.js dist/esm/hooks/post-tool/lint-after-edit.js dist/esm/hooks/stop/qa-changed-files.js dist/esm/hooks/guard-switch/index.js dist/esm/hooks/test-quality-check.js dist/esm/hooks/sessionstart/index.js dist/esm/mcp/cli.js",
     "link-self-bins": "tsx scripts/link-self-bins.ts",
     "generate-skills": "tsx src/build/generate-skills-dir.ts",
-    "prepare": "tshy && pnpm run chmod-bins && pnpm run link-self-bins",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:mutation": "stryker run",
