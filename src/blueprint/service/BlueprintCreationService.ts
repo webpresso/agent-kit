@@ -4,10 +4,10 @@ import type { ValidationResult } from '#core/types'
 import { existsSync } from 'node:fs'
 import { mkdtemp, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { type Blueprint, parseBlueprint } from '#core/parser'
 import { scanBlueprintDirectory } from '#service/scanner'
+import { resolvePackageAsset } from '#utils/package-assets'
 
 const RESERVED_BLUEPRINT_SLUGS = new Set([
   'draft',
@@ -17,26 +17,8 @@ const RESERVED_BLUEPRINT_SLUGS = new Set([
   'completed',
   'archived',
 ])
-const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url))
 
-function resolveBundledBlueprintTemplatePath(): string {
-  const candidates = [
-    path.resolve(MODULE_DIR, '../../../catalog/docs/templates/blueprint.md'),
-    path.resolve(MODULE_DIR, '../../../docs/templates/blueprint.md'),
-    path.resolve(MODULE_DIR, '../../../../catalog/docs/templates/blueprint.md'),
-    path.resolve(MODULE_DIR, '../../../../docs/templates/blueprint.md'),
-  ] as const
-
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) {
-      return candidate
-    }
-  }
-
-  return candidates[0]
-}
-
-const DEFAULT_TEMPLATE_PATH = resolveBundledBlueprintTemplatePath()
+const DEFAULT_TEMPLATE_PATH = resolvePackageAsset('docs/templates/blueprint.md')
 
 export interface CreateBlueprintDraftInput {
   complexity: PlanComplexity

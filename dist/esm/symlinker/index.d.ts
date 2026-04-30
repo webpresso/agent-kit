@@ -31,5 +31,30 @@ export declare function fixExistingFile(repoRoot: string, config: ConsumerConfig
 export declare function createMissingSymlinks(repoRoot: string, config: ConsumerConfig, existingFiles: Set<string>, agentSources: Map<string, string>): number;
 export declare function syncConsumer(repoRoot: string, config: ConsumerConfig, agentSources: Map<string, string>): number;
 export declare function syncGeminiCommands(repoRoot: string): number;
+/**
+ * Sync repo-root AGENTS.md from canonical .agent/AGENTS.md.
+ * Returns 1 if a write occurred, 0 if already up to date.
+ */
+export declare function syncAgentsMd(repoRoot: string): number;
+/**
+ * Fan out .agent/mcp.json to canonical MCP consumer paths:
+ *   .mcp.json, .cursor/mcp.json
+ * Returns the number of files written/updated.
+ */
+export declare function syncMcpJson(repoRoot: string): number;
 export declare function syncAll(repoRoot: string, consumers?: ConsumerConfig[]): number;
+/**
+ * Import an existing IDE rule file into the canonical .agent/ directory.
+ *
+ * Supported sources: .cursorrules, CLAUDE.md, .github/copilot-instructions.md
+ *
+ * The source file is copied to .agent/AGENTS.md (if it does not already
+ * exist), leaving the original in place so that a subsequent `ak symlink sync`
+ * can fan it back out.  Returns the destination path on success, or null when
+ * the source file does not exist.
+ */
+export declare function importAgentFile(repoRoot: string, fromPath: string): {
+    source: string;
+    dest: string;
+} | null;
 //# sourceMappingURL=index.d.ts.map

@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { getProjectRoot } from '#cli/utils';
 import { applyBlueprintLifecycleToFile, BlueprintCreationService, BlueprintService, complexitySchema, relativeBlueprintSlug, parseBlueprint, planStatusSchema, runBlueprintAudit, resolveBlueprintFile, serializeBlueprint, validateAllTasksDone, } from '#local';
+import { resolvePackageAsset } from '#utils/package-assets';
 import { findRepoRoot } from '#utils/repo-root';
 import { describeBlueprintExecutionRuntime, buildBlueprintLaunchSpec, buildStoppedRuntimeEvidence, controlBlueprintExecution, initializeBlueprintExecutionProgressBridge, launchBlueprintExecution, persistBlueprintExecutionArtifacts, persistBlueprintExecutionMetadata, recordLaunchFailure, reconcileBlueprintRuntimeSnapshot, readBlueprintExecutionState, syncBlueprintExecutionProgress, writeBlueprintRuntimeSnapshot, } from './execution.js';
 import { executeBlueprintSubcommand } from './router-dispatch.js';
@@ -40,8 +41,7 @@ function resolveRepoBlueprintTemplatePath() {
         return path.join(findRepoRoot(import.meta.dirname), 'docs', 'templates', 'blueprint.md');
     }
     catch {
-        // Fall back to the bundled template. src/cli/commands/blueprint/ → ../../../catalog/...
-        return new URL('../../../../catalog/docs/templates/blueprint.md', import.meta.url).pathname;
+        return resolvePackageAsset('docs/templates/blueprint.md');
     }
 }
 function todayIsoDate() {

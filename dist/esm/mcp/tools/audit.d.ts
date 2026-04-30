@@ -19,12 +19,12 @@ import type { ToolDescriptor } from '#mcp/auto-discover';
 declare const inputSchema: z.ZodObject<{
     kind: z.ZodEnum<{
         "tech-debt": "tech-debt";
+        "catalog-drift": "catalog-drift";
+        "blueprint-lifecycle": "blueprint-lifecycle";
+        "docs-frontmatter": "docs-frontmatter";
         tph: "tph";
         "bundle-budget": "bundle-budget";
-        "catalog-drift": "catalog-drift";
         "commit-message": "commit-message";
-        "docs-frontmatter": "docs-frontmatter";
-        "blueprint-lifecycle": "blueprint-lifecycle";
     }>;
     directory: z.ZodOptional<z.ZodString>;
     messageFile: z.ZodOptional<z.ZodString>;

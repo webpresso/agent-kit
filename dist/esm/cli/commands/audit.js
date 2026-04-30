@@ -8,6 +8,64 @@
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+/**
+ * Run `stryker run` in the given directory and return its exit code.
+ * Looks for a local `stryker` binary via npx/node_modules before
+ * falling back to a globally-installed stryker.
+ */
+async function runStryker(cwd) {
+    return new Promise((resolve) => {
+        // Prefer the locally installed stryker via npx so consumers don't need a
+        // global install.  The '--yes' flag ensures npx installs on first run when
+        // not already cached.
+        const child = spawn('npx', ['--yes', 'stryker', 'run'], {
+            cwd,
+            stdio: 'inherit',
+            shell: false,
+        });
+        child.on('error', (error) => {
+            const reason = error instanceof Error ? error.message : String(error);
+            console.error(`Failed to spawn stryker: ${reason}`);
+            resolve(1);
+        });
+        child.on('exit', (code) => {
+            resolve(code ?? 1);
+        });
+    });
+}
+/**
+ * Composite quality gate — runs all repo-health audits sequentially and
+ * exits non-zero on the first failure (fast-fail) so CI surfaces the most
+ * actionable signal quickly.
+ */
+async function runQualityGate(root, options) {
+    const { auditCatalogDrift, auditBlueprintLifecycle, auditDocsFrontmatter } = await import('#audit/repo-guardrails');
+    const checks = [
+        { name: 'catalog-drift', result: auditCatalogDrift(root) },
+        {
+            name: 'blueprint-lifecycle',
+            result: auditBlueprintLifecycle(root, { includeLegacyOmx: options.legacyOmx }),
+        },
+        {
+            name: 'docs-frontmatter',
+            result: auditDocsFrontmatter(root, { docsRoot: options.docsRoot }),
+        },
+    ];
+    const { formatRepoAuditReport } = await import('#audit/repo-guardrails');
+    let allOk = true;
+    for (const { name, result } of checks) {
+        if (options.json) {
+            console.log(JSON.stringify({ audit: name, ...result }, null, 2));
+        }
+        else {
+            console.log(formatRepoAuditReport(result));
+        }
+        if (!result.ok) {
+            allOk = false;
+        }
+    }
+    return allOk ? 0 : 1;
+}
 function resolveAuditScript(name) {
     // Source layout: `src/cli/commands/audit.ts` → `../../audit/<name>`.
     // After `bun build` the whole CLI is bundled into `dist/cli.js`, so the
@@ -70,7 +128,7 @@ function buildBundleBudgetArgs(target, options) {
 }
 export function registerAuditCommand(cli) {
     cli
-        .command('audit <kind> [target]', 'Run a packaged audit (tph, tph-e2e, bundle-budget, catalog-drift, commit-message, docs-frontmatter, blueprint-lifecycle, tech-debt, no-relative-parent-imports)')
+        .command('audit <kind> [target]', 'Run a packaged audit (tph, tph-e2e, bundle-budget, catalog-drift, commit-message, docs-frontmatter, blueprint-lifecycle, tech-debt, no-relative-parent-imports, mutation, quality)')
         .option('--fix', 'Attempt to auto-fix violations (forwarded to supported audits)')
         .option('--json', 'Emit JSON output (forwarded to supported audits)')
         .option('--dist <dir>', 'Built Vite dist directory for bundle-budget')
@@ -152,8 +210,18 @@ export function registerAuditCommand(cli) {
                 await exitWithRepoAudit(auditNoRelativeParentImports(options.root ?? target ?? process.cwd()), options);
                 return;
             }
+            case 'mutation': {
+                const cwd = options.root ?? target ?? process.cwd();
+                const code = await runStryker(cwd);
+                process.exit(code);
+            }
+            case 'quality': {
+                const root = options.root ?? target ?? process.cwd();
+                const code = await runQualityGate(root, options);
+                process.exit(code);
+            }
             default: {
-                console.error(`Unknown audit kind: ${kind}. Use 'tph', 'tph-e2e', 'bundle-budget', 'catalog-drift', 'commit-message', 'docs-frontmatter', 'blueprint-lifecycle', 'tech-debt', or 'no-relative-parent-imports'.`);
+                console.error(`Unknown audit kind: ${kind}. Use 'tph', 'tph-e2e', 'bundle-budget', 'catalog-drift', 'commit-message', 'docs-frontmatter', 'blueprint-lifecycle', 'tech-debt', 'no-relative-parent-imports', 'mutation', or 'quality'.`);
                 process.exit(1);
             }
         }

@@ -25,6 +25,7 @@ import {
   serializeBlueprint,
   validateAllTasksDone,
 } from '#local'
+import { resolvePackageAsset } from '#utils/package-assets'
 import { findRepoRoot } from '#utils/repo-root'
 
 import {
@@ -187,8 +188,7 @@ function resolveRepoBlueprintTemplatePath(): string {
   try {
     return path.join(findRepoRoot(import.meta.dirname), 'docs', 'templates', 'blueprint.md')
   } catch {
-    // Fall back to the bundled template. src/cli/commands/blueprint/ → ../../../catalog/...
-    return new URL('../../../../catalog/docs/templates/blueprint.md', import.meta.url).pathname
+    return resolvePackageAsset('docs/templates/blueprint.md')
   }
 }
 

@@ -312,10 +312,53 @@ describe('repo guardrail audits', () => {
     expect(formatRepoAuditReport(result)).toContain('OK')
   })
 
-  test('auditNoRelativeParentImports finds parent path violations', () => {
-    const filePath = join(tempRepo(), 'test.txt')
-    writeFileSync(filePath, "import something from '../../secret/data'\n")
-    const result = auditNoRelativeParentImports(filePath)
-    expect(result).toBeDefined()
+  test('auditNoRelativeParentImports finds relative parent import violations', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'))
+    writeFileSync(join(root, 'src', 'foo.ts'), "import something from '../../secret/data'\n")
+    const result = auditNoRelativeParentImports(root)
+    expect(result.ok).toBe(false)
+    expect(result.violations).toHaveLength(1)
+    expect(result.violations[0]?.message).toContain('relative parent import')
+  })
+
+  test('auditNoRelativeParentImports finds deep string traversal (new URL, path.resolve with ../../..)', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'))
+    writeFileSync(
+      join(root, 'src', 'service.ts'),
+      `const t = new URL('../../../../catalog/docs/templates/blueprint.md', import.meta.url)\n`,
+    )
+    const result = auditNoRelativeParentImports(root)
+    expect(result.ok).toBe(false)
+    expect(result.violations[0]?.message).toContain('fixed-depth path traversal')
+  })
+
+  test('auditNoRelativeParentImports finds deep argument traversal (join/resolve with 3+ ".." args)', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'))
+    writeFileSync(
+      join(root, 'src', 'service.ts'),
+      `const p = path.resolve(bundleDir, '..', '..', '..')\n`,
+    )
+    const result = auditNoRelativeParentImports(root)
+    expect(result.ok).toBe(false)
+    expect(result.violations[0]?.message).toContain('fixed-depth path traversal')
+  })
+
+  test('auditNoRelativeParentImports does not flag shallow traversal or legitimate uses', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'))
+    writeFileSync(
+      join(root, 'src', 'service.ts'),
+      [
+        `const parentDir = join(fullPath, '..')`,
+        `const fromSource = new URL('../../audit/name', import.meta.url)`,
+        `const p = path.resolve(bundleDir, '..')`,
+      ].join('\n') + '\n',
+    )
+    const result = auditNoRelativeParentImports(root)
+    expect(result.ok).toBe(true)
+    expect(result.violations).toHaveLength(0)
   })
 })

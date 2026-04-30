@@ -540,6 +540,16 @@ export function auditNoRelativeParentImports(root, options = {}) {
                         message: `Line ${i + 1}: relative parent import detected — use a \`#\` alias instead: ${line.trim()}`,
                     });
                 }
+                // Detect 3+ level fixed-depth path traversal in runtime code.
+                // These break when src/ vs dist/esm/ depth differs. Use resolvePackageAsset() instead.
+                const hasDeepStringTraversal = /['"`][^'"`\n]*(?:\.\.\/){3,}[^'"`\n]*['"`]/.test(line);
+                const hasDeepArgTraversal = (line.match(/['"]\.\.['"]/g)?.length ?? 0) >= 3;
+                if (hasDeepStringTraversal || hasDeepArgTraversal) {
+                    violations.push({
+                        file: rel,
+                        message: `Line ${i + 1}: fixed-depth path traversal (3+ levels) — use resolvePackageAsset() to locate package assets portably: ${line.trim()}`,
+                    });
+                }
             }
         }
     }

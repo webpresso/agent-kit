@@ -10,24 +10,15 @@
  */
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { basename, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolvePackageAsset } from '#utils/package-assets';
 import { findRepoRoot } from '#utils/repo-root';
 function resolveCatalogSkillsDir() {
-    // Walk up from this file to find the catalog/agent/skills directory bundled
-    // with the package. Works from src/ (dev) and dist/ (installed).
-    const thisFile = fileURLToPath(import.meta.url);
-    // src/cli/commands/cursor-windsurf-sync.ts → package root is 3 levels up
-    // dist/esm/cli/commands/cursor-windsurf-sync.js → package root is 4 levels up
-    const candidates = [
-        join(thisFile, '..', '..', '..', '..', 'catalog', 'agent', 'skills'),
-        join(thisFile, '..', '..', '..', '..', '..', 'catalog', 'agent', 'skills'),
-    ];
-    for (const candidate of candidates) {
-        if (existsSync(candidate))
-            return candidate;
+    const dir = resolvePackageAsset('catalog/agent/skills');
+    if (!existsSync(dir)) {
+        throw new Error(`Could not locate catalog/agent/skills directory. ` +
+            'Ensure @webpresso/agent-kit is installed correctly.');
     }
-    throw new Error(`Could not locate catalog/agent/skills directory from ${thisFile}. ` +
-        'Ensure @webpresso/agent-kit is installed correctly.');
+    return dir;
 }
 function copySkillsToIde(skillsDir, destDir, ideName) {
     mkdirSync(destDir, { recursive: true });

@@ -19,7 +19,8 @@
 
 import type { CAC } from 'cac'
 
-import { syncAll } from '#symlinker'
+import { importAgentFile, syncAll } from '#symlinker'
+import { resolvePackageAsset } from '#utils/package-assets'
 import { findRepoRoot } from '#utils/repo-root'
 
 function commandError(message: string, exitCode = 1): Error & { exitCode: number } {
@@ -30,6 +31,7 @@ function commandError(message: string, exitCode = 1): Error & { exitCode: number
 
 interface SymlinkOptions {
   dryRun?: boolean
+  from?: string
   primaryIdes?: boolean
   tailIdes?: boolean
 }
@@ -39,23 +41,9 @@ async function runPrimaryIdes(repoRoot: string): Promise<number> {
   // but runs in-process so errors propagate cleanly.
   const { copyFileSync, existsSync, mkdirSync, readdirSync } = await import('node:fs')
   const { join } = await import('node:path')
-  const { fileURLToPath } = await import('node:url')
 
-  // Resolve catalog skills directory relative to this file at runtime.
-  const thisFile = fileURLToPath(import.meta.url)
-  const candidates = [
-    join(thisFile, '..', '..', '..', '..', 'catalog', 'agent', 'skills'),
-    join(thisFile, '..', '..', '..', '..', '..', 'catalog', 'agent', 'skills'),
-  ]
-  let skillsDir: string | undefined
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) {
-      skillsDir = candidate
-      break
-    }
-  }
-
-  if (!skillsDir) {
+  const skillsDir = resolvePackageAsset('catalog/agent/skills')
+  if (!existsSync(skillsDir)) {
     console.error(
       'cursor-windsurf-sync: Could not locate catalog/agent/skills directory. ' +
         'Ensure @webpresso/agent-kit is installed correctly.',
@@ -91,6 +79,7 @@ export function registerSymlinkCommand(cli: CAC): void {
     .command('symlink <action>', 'Sync agent-surface files across IDE consumers')
     .option('--primary-ides', 'Only sync primary IDEs (Cursor/Windsurf via cursor-windsurf-sync)')
     .option('--tail-ides', 'Only sync tail IDEs (Codex/Amp/Gemini via symlinker)')
+    .option('--from <file>', 'Source file to import (for `symlink import`)')
     .action(async (action: string, options: SymlinkOptions = {}) => {
       if (options.dryRun) {
         throw commandError(
@@ -103,6 +92,24 @@ export function registerSymlinkCommand(cli: CAC): void {
       const runTail = options.tailIdes === true || (!options.primaryIdes && !options.tailIdes)
 
       const repoRoot = findRepoRoot(process.cwd())
+
+      if (action === 'import') {
+        const from = options.from
+        if (!from) {
+          throw commandError(
+            '`ak symlink import` requires --from <file>. Supported: .cursorrules, CLAUDE.md, .github/copilot-instructions.md',
+          )
+        }
+        const result = importAgentFile(repoRoot, from)
+        if (result === null) {
+          const msg = `Could not import '${from}': file not found or source not recognised.`
+          console.error(msg)
+          process.exit(1)
+        }
+        console.log(`✅ Imported ${result.source} → ${result.dest}`)
+        console.log('   Run `ak symlink sync` to fan the canonical source back out.')
+        return 0
+      }
 
       if (action === 'sync') {
         if (runPrimary) {
@@ -136,6 +143,6 @@ export function registerSymlinkCommand(cli: CAC): void {
         return 0
       }
 
-      throw commandError(`Unknown symlink action: ${action}. Use 'sync' or 'check'.`)
+      throw commandError(`Unknown symlink action: ${action}. Use 'sync', 'check', or 'import'.`)
     })
 }

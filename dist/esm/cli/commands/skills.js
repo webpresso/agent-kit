@@ -11,29 +11,9 @@
  */
 import { cpSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
-/**
- * Resolve the bundled catalog/agent/skills directory.
- *
- * Source layout: `src/cli/commands/skills.ts` → `../../../catalog/agent/skills/`
- * Bundled layout: `dist/cli.js` → `../catalog/agent/skills/`
- *
- * Walk upward from the current module until we find a `catalog/agent/skills`
- * directory. This works for both layouts without hard-coding `..` counts.
- */
+import { resolvePackageAsset } from '#utils/package-assets';
 function resolveCatalogSkillsDir() {
-    let dir = path.dirname(new URL(import.meta.url).pathname);
-    for (let i = 0; i < 6; i++) {
-        const candidate = path.join(dir, 'catalog', 'agent', 'skills');
-        if (existsSync(candidate))
-            return candidate;
-        const parent = path.dirname(dir);
-        if (parent === dir)
-            break;
-        dir = parent;
-    }
-    // Fall back to a conventional path under cwd; lets `ak skills list` print
-    // a clean "no skills" message rather than throw at startup.
-    return path.join(process.cwd(), 'catalog', 'agent', 'skills');
+    return resolvePackageAsset('catalog/agent/skills');
 }
 function listSkillDirectories(root) {
     if (!existsSync(root))

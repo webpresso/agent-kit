@@ -16,8 +16,8 @@
  */
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import path from 'node:path';
 import { z } from 'zod';
+import { resolvePackageAsset } from '#utils/package-assets';
 const KINDS = [
     'tph',
     'catalog-drift',
@@ -38,9 +38,7 @@ function resolveAuditScript(name) {
     if (existsSync(fromSource)) {
         return fromSource.pathname;
     }
-    const bundleDir = path.dirname(new URL(import.meta.url).pathname);
-    const packageRoot = path.resolve(bundleDir, '..', '..', '..');
-    return path.join(packageRoot, 'src', 'audit', name);
+    return resolvePackageAsset(`src/audit/${name}`);
 }
 async function runScript(script) {
     return new Promise((resolve) => {

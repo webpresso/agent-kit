@@ -569,6 +569,62 @@ export function syncGeminiCommands(repoRoot: string): number {
   return fixCount
 }
 
+/**
+ * Sync repo-root AGENTS.md from canonical .agent/AGENTS.md.
+ * Returns 1 if a write occurred, 0 if already up to date.
+ */
+export function syncAgentsMd(repoRoot: string): number {
+  const source = join(repoRoot, '.agent', 'AGENTS.md')
+  if (!existsSync(source)) return 0
+
+  const dest = join(repoRoot, 'AGENTS.md')
+  const content = readFileSync(source, 'utf8')
+
+  if (existsSync(dest)) {
+    const existing = readFileSync(dest, 'utf8')
+    if (existing === content) {
+      console.log('\n📄 AGENTS.md — up to date')
+      return 0
+    }
+  }
+
+  writeFileSync(dest, content)
+  console.log('\n📄 AGENTS.md — written from .agent/AGENTS.md')
+  return 1
+}
+
+/**
+ * Fan out .agent/mcp.json to canonical MCP consumer paths:
+ *   .mcp.json, .cursor/mcp.json
+ * Returns the number of files written/updated.
+ */
+export function syncMcpJson(repoRoot: string): number {
+  const source = join(repoRoot, '.agent', 'mcp.json')
+  if (!existsSync(source)) return 0
+
+  const content = readFileSync(source, 'utf8')
+  const targets = [join(repoRoot, '.mcp.json'), join(repoRoot, '.cursor', 'mcp.json')]
+
+  let writeCount = 0
+  console.log('\n🔌 MCP server registration fan-out')
+  for (const dest of targets) {
+    mkdirSync(dirname(dest), { recursive: true })
+    if (existsSync(dest)) {
+      const existing = readFileSync(dest, 'utf8')
+      if (existing === content) {
+        const rel = relative(repoRoot, dest)
+        console.log(`  ✅ ${rel} — up to date`)
+        continue
+      }
+    }
+    writeFileSync(dest, content)
+    const rel = relative(repoRoot, dest)
+    console.log(`  ✅ ${rel} — written from .agent/mcp.json`)
+    writeCount++
+  }
+  return writeCount
+}
+
 export function syncAll(repoRoot: string, consumers: ConsumerConfig[] = DEFAULT_CONSUMERS): number {
   console.log('🔗 Syncing agent command/workflow symlinks...')
 
@@ -583,6 +639,8 @@ export function syncAll(repoRoot: string, consumers: ConsumerConfig[] = DEFAULT_
   totalFixes += syncSkills(repoRoot, DEFAULT_SKILLS_CONSUMERS)
   totalFixes += syncPerSkillConsumers(repoRoot, DEFAULT_PER_SKILL_CONSUMERS)
   totalFixes += syncGeminiCommands(repoRoot)
+  totalFixes += syncAgentsMd(repoRoot)
+  totalFixes += syncMcpJson(repoRoot)
 
   console.log()
   if (totalFixes > 0) {
@@ -591,6 +649,48 @@ export function syncAll(repoRoot: string, consumers: ConsumerConfig[] = DEFAULT_
     console.log('✅ All agent command/workflow/skill symlinks are properly configured')
   }
   return totalFixes
+}
+
+/**
+ * Import an existing IDE rule file into the canonical .agent/ directory.
+ *
+ * Supported sources: .cursorrules, CLAUDE.md, .github/copilot-instructions.md
+ *
+ * The source file is copied to .agent/AGENTS.md (if it does not already
+ * exist), leaving the original in place so that a subsequent `ak symlink sync`
+ * can fan it back out.  Returns the destination path on success, or null when
+ * the source file does not exist.
+ */
+export function importAgentFile(
+  repoRoot: string,
+  fromPath: string,
+): { source: string; dest: string } | null {
+  const KNOWN_SOURCES: Readonly<Record<string, string>> = {
+    '.cursorrules': 'AGENTS.md',
+    'CLAUDE.md': 'AGENTS.md',
+    '.github/copilot-instructions.md': 'AGENTS.md',
+  }
+
+  // Normalise: strip leading ./ for map lookup
+  const normalised = fromPath.replace(/^\.\//, '')
+  const destName = KNOWN_SOURCES[normalised]
+  if (destName === undefined) {
+    return null
+  }
+
+  const sourcePath = join(repoRoot, normalised)
+  if (!existsSync(sourcePath)) {
+    return null
+  }
+
+  const agentDir = join(repoRoot, '.agent')
+  mkdirSync(agentDir, { recursive: true })
+
+  const destPath = join(agentDir, destName)
+  const content = readFileSync(sourcePath, 'utf8')
+  writeFileSync(destPath, content)
+
+  return { source: normalised, dest: `.agent/${destName}` }
 }
 
 // CLI entrypoint — executes when the module is run directly.

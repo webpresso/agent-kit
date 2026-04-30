@@ -17,9 +17,9 @@
 
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import path from 'node:path'
 import { z } from 'zod'
 
+import { resolvePackageAsset } from '#utils/package-assets'
 import type { ToolDescriptor } from '#mcp/auto-discover'
 
 const KINDS = [
@@ -59,9 +59,7 @@ function resolveAuditScript(name: string): string {
   if (existsSync(fromSource)) {
     return fromSource.pathname
   }
-  const bundleDir = path.dirname(new URL(import.meta.url).pathname)
-  const packageRoot = path.resolve(bundleDir, '..', '..', '..')
-  return path.join(packageRoot, 'src', 'audit', name)
+  return resolvePackageAsset(`src/audit/${name}`)
 }
 
 async function runScript(script: string): Promise<number> {

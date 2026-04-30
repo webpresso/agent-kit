@@ -16,7 +16,8 @@
  *                    Gemini). Skips Cursor/Windsurf direct-copy.
  *   (no flags)       Run both paths — equivalent to passing both flags.
  */
-import { syncAll } from '#symlinker';
+import { importAgentFile, syncAll } from '#symlinker';
+import { resolvePackageAsset } from '#utils/package-assets';
 import { findRepoRoot } from '#utils/repo-root';
 function commandError(message, exitCode = 1) {
     const error = new Error(message);
@@ -28,21 +29,8 @@ async function runPrimaryIdes(repoRoot) {
     // but runs in-process so errors propagate cleanly.
     const { copyFileSync, existsSync, mkdirSync, readdirSync } = await import('node:fs');
     const { join } = await import('node:path');
-    const { fileURLToPath } = await import('node:url');
-    // Resolve catalog skills directory relative to this file at runtime.
-    const thisFile = fileURLToPath(import.meta.url);
-    const candidates = [
-        join(thisFile, '..', '..', '..', '..', 'catalog', 'agent', 'skills'),
-        join(thisFile, '..', '..', '..', '..', '..', 'catalog', 'agent', 'skills'),
-    ];
-    let skillsDir;
-    for (const candidate of candidates) {
-        if (existsSync(candidate)) {
-            skillsDir = candidate;
-            break;
-        }
-    }
-    if (!skillsDir) {
+    const skillsDir = resolvePackageAsset('catalog/agent/skills');
+    if (!existsSync(skillsDir)) {
         console.error('cursor-windsurf-sync: Could not locate catalog/agent/skills directory. ' +
             'Ensure @webpresso/agent-kit is installed correctly.');
         return 1;
@@ -73,6 +61,7 @@ export function registerSymlinkCommand(cli) {
         .command('symlink <action>', 'Sync agent-surface files across IDE consumers')
         .option('--primary-ides', 'Only sync primary IDEs (Cursor/Windsurf via cursor-windsurf-sync)')
         .option('--tail-ides', 'Only sync tail IDEs (Codex/Amp/Gemini via symlinker)')
+        .option('--from <file>', 'Source file to import (for `symlink import`)')
         .action(async (action, options = {}) => {
         if (options.dryRun) {
             throw commandError('Unknown option: --dry-run. Use `ak symlink check` to detect drift without advertising a no-op dry run.');
@@ -81,6 +70,21 @@ export function registerSymlinkCommand(cli) {
         const runPrimary = options.primaryIdes === true || (!options.primaryIdes && !options.tailIdes);
         const runTail = options.tailIdes === true || (!options.primaryIdes && !options.tailIdes);
         const repoRoot = findRepoRoot(process.cwd());
+        if (action === 'import') {
+            const from = options.from;
+            if (!from) {
+                throw commandError('`ak symlink import` requires --from <file>. Supported: .cursorrules, CLAUDE.md, .github/copilot-instructions.md');
+            }
+            const result = importAgentFile(repoRoot, from);
+            if (result === null) {
+                const msg = `Could not import '${from}': file not found or source not recognised.`;
+                console.error(msg);
+                process.exit(1);
+            }
+            console.log(`✅ Imported ${result.source} → ${result.dest}`);
+            console.log('   Run `ak symlink sync` to fan the canonical source back out.');
+            return 0;
+        }
         if (action === 'sync') {
             if (runPrimary) {
                 const code = await runPrimaryIdes(repoRoot);
@@ -107,7 +111,7 @@ export function registerSymlinkCommand(cli) {
             console.log('\n✓ Agent surface in sync.');
             return 0;
         }
-        throw commandError(`Unknown symlink action: ${action}. Use 'sync' or 'check'.`);
+        throw commandError(`Unknown symlink action: ${action}. Use 'sync', 'check', or 'import'.`);
     });
 }
 //# sourceMappingURL=symlink.js.map

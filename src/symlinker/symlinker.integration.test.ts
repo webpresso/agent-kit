@@ -22,10 +22,13 @@ import {
   createMissingSymlinks,
   fixExistingFile,
   getAgentSources,
+  importAgentFile,
   isAgentOrConsumerFile,
+  syncAgentsMd,
   syncAll,
   syncConsumer,
   syncGeminiCommands,
+  syncMcpJson,
   syncPerSkillConsumer,
   syncPerSkillConsumers,
   syncSkills,
@@ -893,6 +896,157 @@ describe('symlinker', () => {
     it('returns 0 when no sources exist', () => {
       const fixCount = syncGeminiCommands(root)
       expect(fixCount).toBe(0)
+    })
+  })
+
+  describe('syncAgentsMd', () => {
+    it('returns 0 when .agent/AGENTS.md does not exist', () => {
+      const count = syncAgentsMd(root)
+      expect(count).toBe(0)
+      expect(existsSync(join(root, 'AGENTS.md'))).toBe(false)
+    })
+
+    it('writes AGENTS.md at repo root from .agent/AGENTS.md', () => {
+      const content = '# AGENTS\n\nThis is the canonical agents file.'
+      mkdirSync(join(root, '.agent'), { recursive: true })
+      writeFileSync(join(root, '.agent', 'AGENTS.md'), content)
+
+      const count = syncAgentsMd(root)
+
+      expect(count).toBe(1)
+      expect(existsSync(join(root, 'AGENTS.md'))).toBe(true)
+      expect(readFileSync(join(root, 'AGENTS.md'), 'utf8')).toBe(content)
+    })
+
+    it('returns 0 (idempotent) when AGENTS.md already matches', () => {
+      const content = '# AGENTS\n\nalready in sync'
+      mkdirSync(join(root, '.agent'), { recursive: true })
+      writeFileSync(join(root, '.agent', 'AGENTS.md'), content)
+      writeFileSync(join(root, 'AGENTS.md'), content)
+
+      const count = syncAgentsMd(root)
+
+      expect(count).toBe(0)
+      expect(readFileSync(join(root, 'AGENTS.md'), 'utf8')).toBe(content)
+    })
+
+    it('overwrites repo-root AGENTS.md when content differs', () => {
+      mkdirSync(join(root, '.agent'), { recursive: true })
+      writeFileSync(join(root, '.agent', 'AGENTS.md'), '# Updated content')
+      writeFileSync(join(root, 'AGENTS.md'), '# Old content')
+
+      const count = syncAgentsMd(root)
+
+      expect(count).toBe(1)
+      expect(readFileSync(join(root, 'AGENTS.md'), 'utf8')).toBe('# Updated content')
+    })
+  })
+
+  describe('syncMcpJson', () => {
+    it('returns 0 when .agent/mcp.json does not exist', () => {
+      const count = syncMcpJson(root)
+      expect(count).toBe(0)
+    })
+
+    it('writes .mcp.json and .cursor/mcp.json from .agent/mcp.json', () => {
+      const content = JSON.stringify({ mcpServers: { example: { command: 'node' } } }, null, 2)
+      mkdirSync(join(root, '.agent'), { recursive: true })
+      writeFileSync(join(root, '.agent', 'mcp.json'), content)
+
+      const count = syncMcpJson(root)
+
+      expect(count).toBe(2)
+      expect(readFileSync(join(root, '.mcp.json'), 'utf8')).toBe(content)
+      expect(readFileSync(join(root, '.cursor', 'mcp.json'), 'utf8')).toBe(content)
+    })
+
+    it('is idempotent — returns 0 when all targets already match', () => {
+      const content = JSON.stringify({ mcpServers: {} }, null, 2)
+      mkdirSync(join(root, '.agent'), { recursive: true })
+      writeFileSync(join(root, '.agent', 'mcp.json'), content)
+      writeFileSync(join(root, '.mcp.json'), content)
+      mkdirSync(join(root, '.cursor'), { recursive: true })
+      writeFileSync(join(root, '.cursor', 'mcp.json'), content)
+
+      const count = syncMcpJson(root)
+
+      expect(count).toBe(0)
+    })
+  })
+
+  describe('importAgentFile', () => {
+    it('returns null when source file does not exist', () => {
+      const result = importAgentFile(root, '.cursorrules')
+      expect(result).toBeNull()
+    })
+
+    it('returns null for unrecognised source paths', () => {
+      writeFileSync(join(root, 'unknown.md'), '# unknown')
+      const result = importAgentFile(root, 'unknown.md')
+      expect(result).toBeNull()
+    })
+
+    it('imports .cursorrules into .agent/AGENTS.md', () => {
+      const content = '# rules\n\nFollow these rules.'
+      writeFileSync(join(root, '.cursorrules'), content)
+
+      const result = importAgentFile(root, '.cursorrules')
+
+      expect(result).not.toBeNull()
+      expect(result?.source).toBe('.cursorrules')
+      expect(result?.dest).toBe('.agent/AGENTS.md')
+      expect(readFileSync(join(root, '.agent', 'AGENTS.md'), 'utf8')).toBe(content)
+    })
+
+    it('imports CLAUDE.md into .agent/AGENTS.md', () => {
+      const content = '# CLAUDE\n\nThis is the claude instructions.'
+      writeFileSync(join(root, 'CLAUDE.md'), content)
+
+      const result = importAgentFile(root, 'CLAUDE.md')
+
+      expect(result).not.toBeNull()
+      expect(result?.source).toBe('CLAUDE.md')
+      expect(result?.dest).toBe('.agent/AGENTS.md')
+      expect(readFileSync(join(root, '.agent', 'AGENTS.md'), 'utf8')).toBe(content)
+    })
+
+    it('imports .github/copilot-instructions.md into .agent/AGENTS.md', () => {
+      const content = '# Copilot\n\nThese are copilot instructions.'
+      mkdirSync(join(root, '.github'), { recursive: true })
+      writeFileSync(join(root, '.github', 'copilot-instructions.md'), content)
+
+      const result = importAgentFile(root, '.github/copilot-instructions.md')
+
+      expect(result).not.toBeNull()
+      expect(result?.source).toBe('.github/copilot-instructions.md')
+      expect(result?.dest).toBe('.agent/AGENTS.md')
+      expect(readFileSync(join(root, '.agent', 'AGENTS.md'), 'utf8')).toBe(content)
+    })
+
+    it('strips leading ./ from the source path for matching', () => {
+      const content = '# rules'
+      writeFileSync(join(root, '.cursorrules'), content)
+
+      const result = importAgentFile(root, './.cursorrules')
+
+      expect(result).not.toBeNull()
+      expect(result?.source).toBe('.cursorrules')
+    })
+
+    it('round-trips: import → syncAgentsMd produces byte-identical AGENTS.md', () => {
+      const content = '# Source rules\n\nFollow these.'
+      writeFileSync(join(root, '.cursorrules'), content)
+
+      importAgentFile(root, '.cursorrules')
+      const syncCount = syncAgentsMd(root)
+
+      // First sync should write AGENTS.md at root
+      expect(syncCount).toBe(1)
+      expect(readFileSync(join(root, 'AGENTS.md'), 'utf8')).toBe(content)
+
+      // Second sync is idempotent
+      const syncCount2 = syncAgentsMd(root)
+      expect(syncCount2).toBe(0)
     })
   })
 })
