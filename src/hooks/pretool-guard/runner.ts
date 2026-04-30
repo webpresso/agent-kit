@@ -5,9 +5,12 @@ import { realpathSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import { isGuardEnabled } from '#hooks/guard-switch/state'
+import { isMcpReady } from '#hooks/shared/mcp-sentinel'
 import { getCommand, getFilePath, isBashInput, parseToolInput } from '#hooks/shared/types'
 
 import { logRun } from './logger.js'
+import { routeDevCommand } from './dev-routing.js'
+import { formatRoutingDecision } from './routing-formatter.js'
 import { VALIDATORS } from './validators/index.js'
 
 const RED = '\x1b[31m'
@@ -93,6 +96,16 @@ export function processValidation(inputJson: string): void {
   }
 
   const input = parseToolInput(inputJson)
+
+  if (isBashInput(input) && isMcpReady()) {
+    const command = getCommand(input) ?? ''
+    const decision = routeDevCommand(command)
+    if (decision !== null) {
+      console.log(formatRoutingDecision(decision))
+      process.exit(0)
+    }
+  }
+
   const target = getTarget(input)
   const tool = getToolType(input)
   const result = runAllValidators(input)

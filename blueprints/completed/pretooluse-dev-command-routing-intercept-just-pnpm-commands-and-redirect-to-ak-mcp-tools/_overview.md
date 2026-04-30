@@ -1,10 +1,10 @@
 ---
 type: blueprint
-status: planned
+status: completed
 complexity: M
 created: 2026-04-26
-last_updated: 2026-04-28
-progress: '0% (0 of 4 tasks completed)'
+last_updated: 2026-04-30
+progress: '100% (4 of 4 tasks completed)'
 depends_on:
   - harden-plugin-hooks-suppress-stderr-and-mcp-readiness-sentinel
   - sessionstart-routing-block-inject-ak-tool-routing-rules-at-session-start
@@ -60,7 +60,7 @@ Four tasks in three waves. Wave 0 (parallel): routing logic + formatter. Wave 1 
 
 #### [routing] Task 1.1: Dev-command routing rules and guidance throttle
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends on:** —
 - **Files:**
   - Create: `src/hooks/pretool-guard/dev-routing.ts`
@@ -83,16 +83,16 @@ Four tasks in three waves. Wave 0 (parallel): routing logic + formatter. Wave 1 
   5. Manual: `pnpm run build && echo '{"tool_input":{"command":"just test"}}' | node dist/esm/hooks/pretool-guard/index.js`
 - **Verify:** Unit tests cover routing table, throttle behavior, and edge cases (empty command, unknown command).
 - **Acceptance:** all of the following:
-  - [ ] `routeDevCommand` exported with correct type — NO `modify` variant
-  - [ ] All 4 dev command categories covered with `deny` action only
-  - [ ] Guidance shown at most once per session per type (O_EXCL throttle)
-  - [ ] Non-EEXIST O_EXCL errors → always-deny (NFS fallback)
-  - [ ] Unknown commands return `null`
-  - [ ] Unit tests pass for routing table and throttle
+  - [x] `routeDevCommand` exported with correct type — NO `modify` variant
+  - [x] All 4 dev command categories covered with `deny` action only
+  - [x] Guidance shown at most once per session per type (O_EXCL throttle)
+  - [x] Non-EEXIST O_EXCL errors → always-deny (NFS fallback)
+  - [x] Unknown commands return `null`
+  - [x] Unit tests pass for routing table and throttle
 
 #### [routing] Task 1.2: Platform formatter for routing decisions
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends on:** —
 - **Files:**
   - Create: `src/hooks/pretool-guard/routing-formatter.ts`
@@ -108,14 +108,14 @@ Four tasks in three waves. Wave 0 (parallel): routing logic + formatter. Wave 1 
   4. `pnpm test` — green
 - **Verify:** Output is valid JSON parseable by `JSON.parse`.
 - **Acceptance:** all of the following:
-  - [ ] `formatRoutingDecision` exported and typed
-  - [ ] Deny output has correct `permissionDecision: 'deny'` shape
-  - [ ] No `modify`/`updatedInput` handling — removed entirely
-  - [ ] Unit tests for deny and null decision types
+  - [x] `formatRoutingDecision` exported and typed
+  - [x] Deny output has correct `permissionDecision: 'deny'` shape
+  - [x] No `modify`/`updatedInput` handling — removed entirely
+  - [x] Unit tests for deny and null decision types
 
 #### [integration] Task 1.3: Integrate routing into pretool-guard runner
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends on:** Task 1.1, Task 1.2
 - **Files:**
   - Modify: `src/hooks/pretool-guard/runner.ts`
@@ -128,16 +128,16 @@ Four tasks in three waves. Wave 0 (parallel): routing logic + formatter. Wave 1 
   5. Manual: `pnpm run build && echo '{"tool_input":{"command":"just test"}}' | node dist/esm/hooks/pretool-guard/index.js`
 - **Verify:** Run `echo '{"tool_input":{"command":"just test"}}' | node dist/esm/hooks/pretool-guard/index.js` with MCP sentinel present — should output deny JSON. Without sentinel — should pass through to validators.
 - **Acceptance:** all of the following:
-  - [ ] Routing inserted after `if (!isGuardEnabled())`, before `runAllValidators()`
-  - [ ] Routing fires before validators when MCP ready and command matches
-  - [ ] Falls through to validators when MCP not ready
-  - [ ] Falls through to validators for non-matching commands
-  - [ ] `pnpm test` green
-  - [ ] Integration test covering both code paths
+  - [x] Routing inserted after `if (!isGuardEnabled())`, before `runAllValidators()`
+  - [x] Routing fires before validators when MCP ready and command matches
+  - [x] Falls through to validators when MCP not ready
+  - [x] Falls through to validators for non-matching commands
+  - [x] `pnpm test` green
+  - [x] Integration test covering both code paths
 
 #### [tests] Task 1.4: Integration tests for full routing pipeline
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends on:** Task 1.3
 - **Files:**
   - Create: `src/hooks/pretool-guard/dev-routing.test.ts`
@@ -145,9 +145,9 @@ Four tasks in three waves. Wave 0 (parallel): routing logic + formatter. Wave 1 
 - **Change:** Add test cases: (a) `just test` with MCP ready → deny output, (b) `just test` without MCP ready → validator output, (c) `git status` → validator output (passthrough), (d) guidance throttle — second `just test` call passes through after first showed guidance.
 - **Verify:** `pnpm test` green across all new cases.
 - **Acceptance:** all of the following:
-  - [ ] 4 test cases above implemented and passing
-  - [ ] Throttle behavior verified in tests (not just smoke-tested)
-  - [ ] `pnpm test` green
+  - [x] 4 test cases above implemented and passing
+  - [x] Throttle behavior verified in tests (not just smoke-tested)
+  - [x] `pnpm test` green
 
 ## Non-goals
 
