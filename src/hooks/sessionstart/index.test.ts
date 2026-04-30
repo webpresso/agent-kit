@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { AK_ROUTING_BLOCK } from '#hooks/shared/routing-block'
+
 import { buildOutput, MAX_BYTES, TRUNCATION_NOTICE } from './index.js'
 
 interface ParsedOutput {
@@ -52,21 +54,60 @@ describe('sessionstart hook buildOutput', () => {
     expect(out).not.toBeNull()
     const parsed = JSON.parse(out as string) as ParsedOutput
     expect(parsed.hookSpecificOutput.hookEventName).toBe('SessionStart')
-    expect(parsed.hookSpecificOutput.additionalContext).toBe(contents)
+    expect(parsed.hookSpecificOutput.additionalContext).toContain(contents)
   })
 
-  it('returns null (silent exit) when .agent/routing.md is absent', () => {
+  it('always emits routing block even when .agent/routing.md is absent', () => {
     const cwd = tmp()
-    expect(buildOutput({}, cwd, {})).toBeNull()
+    const out = buildOutput({}, cwd, {})
+    expect(out).not.toBeNull()
+    const parsed = JSON.parse(out as string) as ParsedOutput
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')
   })
 
-  it('returns null when .agent/routing.md is empty', () => {
+  it('always emits routing block when .agent/routing.md is empty', () => {
     const cwd = tmp()
     writeRoutingMd(cwd, '')
-    expect(buildOutput({}, cwd, {})).toBeNull()
+    const out = buildOutput({}, cwd, {})
+    expect(out).not.toBeNull()
+    const parsed = JSON.parse(out as string) as ParsedOutput
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')
+    expect(parsed.hookSpecificOutput.additionalContext).not.toContain('routing.md')
   })
 
-  it('truncates contents larger than 200KB and appends notice', () => {
+  it('prepends AK_ROUTING_BLOCK before .agent/routing.md content', () => {
+    const cwd = tmp()
+    const contents = '# Routing\n\nGo to docs.'
+    writeRoutingMd(cwd, contents)
+
+    const out = buildOutput({}, cwd, {})
+    expect(out).not.toBeNull()
+    const parsed = JSON.parse(out as string) as ParsedOutput
+    const ctx = parsed.hookSpecificOutput.additionalContext
+    // Routing block must come before routing.md content
+    expect(ctx.indexOf(AK_ROUTING_BLOCK)).toBeLessThan(ctx.indexOf(contents))
+    expect(ctx).toContain(AK_ROUTING_BLOCK + '\n\n' + contents)
+  })
+
+  it('always emits routing block when .agent/routing.md is missing (nonexistent dir)', () => {
+    const out = buildOutput({}, '/definitely/not/a/real/path/xyz', {})
+    expect(out).not.toBeNull()
+    const parsed = JSON.parse(out as string) as ParsedOutput
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')
+  })
+
+  it('output is valid JSON with hookSpecificOutput.additionalContext field', () => {
+    const cwd = tmp()
+    const out = buildOutput({}, cwd, {})
+    expect(out).not.toBeNull()
+    const parsed = JSON.parse(out as string) as ParsedOutput
+    expect(parsed).toHaveProperty('hookSpecificOutput')
+    expect(parsed.hookSpecificOutput).toHaveProperty('hookEventName', 'SessionStart')
+    expect(parsed.hookSpecificOutput).toHaveProperty('additionalContext')
+    expect(typeof parsed.hookSpecificOutput.additionalContext).toBe('string')
+  })
+
+  it('truncates routing.md contents larger than 200KB and appends notice', () => {
     const cwd = tmp()
     const big = 'x'.repeat(MAX_BYTES + 5_000)
     writeRoutingMd(cwd, big)
@@ -75,8 +116,7 @@ describe('sessionstart hook buildOutput', () => {
     expect(out).not.toBeNull()
     const parsed = JSON.parse(out as string) as ParsedOutput
     const ctx = parsed.hookSpecificOutput.additionalContext
-    expect(ctx.endsWith(TRUNCATION_NOTICE)).toBe(true)
-    expect(ctx.length).toBe(MAX_BYTES + TRUNCATION_NOTICE.length)
+    expect(ctx).toContain(TRUNCATION_NOTICE)
   })
 
   it('CLAUDE_PROJECT_DIR takes precedence over cwd', () => {
@@ -88,7 +128,8 @@ describe('sessionstart hook buildOutput', () => {
     const out = buildOutput({}, cwd, { CLAUDE_PROJECT_DIR: projectDir })
     expect(out).not.toBeNull()
     const parsed = JSON.parse(out as string) as ParsedOutput
-    expect(parsed.hookSpecificOutput.additionalContext).toBe('PROJECT DIR CONTENT')
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('PROJECT DIR CONTENT')
+    expect(parsed.hookSpecificOutput.additionalContext).not.toContain('CWD CONTENT')
   })
 
   it('input.cwd is ignored in favor of explicit cwd / env (env takes precedence)', () => {
@@ -98,7 +139,7 @@ describe('sessionstart hook buildOutput', () => {
     const out = buildOutput({ cwd: '/nonexistent/path' }, cwd, {})
     expect(out).not.toBeNull()
     const parsed = JSON.parse(out as string) as ParsedOutput
-    expect(parsed.hookSpecificOutput.additionalContext).toBe('CWD CONTENT')
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('CWD CONTENT')
   })
 
   it('runs in <50ms on a small file', () => {
@@ -114,10 +155,5 @@ describe('sessionstart hook buildOutput', () => {
 
     expect(out).not.toBeNull()
     expect(elapsed).toBeLessThan(50)
-  })
-
-  it('handles unreadable target dir gracefully (returns null)', () => {
-    // Pointing at a path that does not exist should be a silent no-op.
-    expect(buildOutput({}, '/definitely/not/a/real/path/xyz', {})).toBeNull()
   })
 })

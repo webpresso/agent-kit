@@ -1,10 +1,10 @@
 ---
 type: blueprint
-status: planned
+status: completed
 complexity: S
 created: 2026-04-26
-last_updated: 2026-04-28
-progress: '0% (0 of 2 tasks completed)'
+last_updated: 2026-04-30
+progress: '100% (2 of 2 tasks completed)'
 depends_on:
   - harden-plugin-hooks-suppress-stderr-and-mcp-readiness-sentinel
   - coordinated-pre-tool-hook-unified-hook-process-for-context-mode-agent-kit
@@ -57,7 +57,7 @@ Two tasks: (1) define the routing block content, (2) integrate it into the sessi
 
 #### [hooks] Task 1.1: Define ak-routing XML block in shared module
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends on:** —
 - **Files:**
   - Create: `src/hooks/shared/routing-block.ts`
@@ -76,14 +76,14 @@ Two tasks: (1) define the routing block content, (2) integrate it into the sessi
   4. `pnpm test` — green
 - **Verify:** Import the module and print the block — should be valid XML with no newlines breaking the structure.
 - **Acceptance:** all of the following:
-  - [ ] `src/hooks/shared/routing-block.ts` exported and typed
-  - [ ] Block includes tool routing rules for all 5 `ak_*` MCP tools
-  - [ ] Block includes forbidden-alternatives list
-  - [ ] Block includes output format constraint
+  - [x] `src/hooks/shared/routing-block.ts` exported and typed
+  - [x] Block includes tool routing rules for all 5 `ak_*` MCP tools
+  - [x] Block includes forbidden-alternatives list
+  - [x] Block includes output format constraint
 
 #### [hooks] Task 1.2: Inject routing block into sessionstart additionalContext
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends on:** Task 1.1
 - **Files:**
   - Modify: `src/hooks/sessionstart/index.ts`
@@ -100,11 +100,11 @@ Two tasks: (1) define the routing block content, (2) integrate it into the sessi
   6. Manual: `echo '{"source":"startup"}' | node dist/esm/hooks/sessionstart/index.js | python3 -m json.tool` shows `additionalContext` containing `<ak_routing>`
 - **Verify:** Run `echo '{"source":"startup"}' | node dist/esm/hooks/sessionstart/index.js` — stdout should contain the `<ak_routing>` XML block and exit 0.
 - **Acceptance:** all of the following:
-  - [ ] SessionStart hook always emits `additionalContext` with `<ak_routing>` block
-  - [ ] Block appears even when `.agent/routing.md` is absent
-  - [ ] `.claude-plugin/plugin.json` matcher includes `compact` source
-  - [ ] `pnpm test` green
-  - [ ] Manual: `echo '{"source":"startup"}' | node dist/esm/hooks/sessionstart/index.js | python3 -m json.tool` shows `additionalContext` containing `<ak_routing>`
+  - [x] SessionStart hook always emits `additionalContext` with `<ak_routing>` block
+  - [x] Block appears even when `.agent/routing.md` is absent
+  - [x] `.claude-plugin/plugin.json` matcher includes `compact` source
+  - [x] `pnpm test` green (2055 passed)
+  - [x] Manual: `echo '{"source":"startup"}' | node dist/esm/hooks/sessionstart/index.js | python3 -m json.tool` shows `additionalContext` containing `<ak_routing>`
 
 ## Non-goals
 
