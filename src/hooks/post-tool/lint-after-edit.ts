@@ -6,6 +6,7 @@ import { existsSync, realpathSync } from 'node:fs'
 import { extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { readStdinJson, suppressStderr } from '#hooks/shared/hook-bootstrap'
 import { getFilePath } from '#hooks/shared/types'
 
 export const LINTABLE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.json', '.css'] as const
@@ -51,9 +52,8 @@ export function processPostToolUse(input: ToolInput, projectDir: string): boolea
 }
 
 async function main(): Promise<void> {
-  const chunks: Buffer[] = []
-  for await (const chunk of process.stdin) chunks.push(chunk as Buffer)
-  const inputJson = Buffer.concat(chunks).toString('utf-8')
+  suppressStderr()
+  const inputJson = await readStdinJson()
 
   if (!inputJson.trim()) process.exit(0)
 
