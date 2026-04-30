@@ -3,8 +3,8 @@ type: blueprint
 status: planned
 complexity: XS
 created: 2026-04-26
-last_updated: 2026-04-28
-progress: '0% (0 of 2 tasks completed)'
+last_updated: 2026-04-30
+progress: '50% (1 of 2 tasks completed)'
 depends_on: []
 superseded_by:
   - coordinated-pre-tool-hook-unified-hook-process-for-context-mode-agent-kit
@@ -81,7 +81,7 @@ Both tasks are independent and can be applied in any order. Neither changes obse
 
 #### [hooks] Task 1.2: MCP readiness sentinel — write on server start, check before routing
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends on:** —
 - **Files:**
   - Create: `src/hooks/shared/mcp-sentinel.ts`
@@ -98,11 +98,11 @@ Both tasks are independent and can be applied in any order. Neither changes obse
   6. Manual verify: `echo '{}' | node dist/esm/hooks/pretool-guard/index.js` with and without MCP server
 - **Verify:** Run pretool-guard without MCP server active — all tool calls pass through (no false blocks). Run with MCP server — sentinel present, routing decisions work.
 - **Acceptance:** all of the following:
-  - [ ] `mcp-sentinel.ts` exports `sentinelPath` and `isMcpReady`
-  - [ ] `isMcpReady()` returns false on `process.platform === 'win32'`
-  - [ ] `isMcpReady()` catches ESRCH and returns false (not throw)
-  - [ ] `src/mcp/cli.ts` writes/deletes sentinel on connect/exit
-  - [ ] `pnpm test` green
+  - [x] `mcp-sentinel.ts` exports `sentinelPath` and `isMcpReady`
+  - [x] `isMcpReady()` returns false on `process.platform === 'win32'`
+  - [x] `isMcpReady()` catches ESRCH and returns false (not throw)
+  - [x] `src/mcp/cli.ts` writes/deletes sentinel on connect/exit
+  - [x] `pnpm test` green
 
 ## Non-goals
 
