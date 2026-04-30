@@ -1,10 +1,10 @@
 ---
 type: blueprint
-status: planned
+status: completed
 complexity: S
 created: 2026-04-26
-last_updated: 2026-04-28
-progress: '0% (0 of 3 tasks completed)'
+last_updated: 2026-04-30
+progress: '100% (3 of 3 tasks completed)'
 depends_on:
   - harden-plugin-hooks-suppress-stderr-and-mcp-readiness-sentinel
   - coordinated-pre-tool-hook-unified-hook-process-for-context-mode-agent-kit
@@ -60,7 +60,7 @@ Three tasks: (1) `ak hooks doctor` CLI command checking all hook bins + MCP, (2)
 
 #### [cli] Task 1.1: Implement ak hooks doctor audit logic
 
-- [ ] **Status:** todo
+- [x] **Status:** completed
 - **Depends on:** —
 - **Files:**
   - Create: `src/hooks/doctor.ts`
@@ -85,20 +85,20 @@ Three tasks: (1) `ak hooks doctor` CLI command checking all hook bins + MCP, (2)
   5. Manual: `pnpm run build && node dist/esm/cli/cli.js hooks doctor`
 - **Verify:** Run `node dist/esm/cli/cli.js hooks doctor` in a healthy install — all checks show `[x]`. Remove a bin and re-run — relevant check shows `[ ]` with detail.
 - **Acceptance:** all of the following:
-  - [ ] All 5 check categories implemented with correct bin paths (F6)
-  - [ ] `post-tool` bin is `lint-after-edit.js`, `stop` bin is `qa-changed-files.js`
-  - [ ] `test-quality-check.js` checked as flat file at `dist/esm/hooks/test-quality-check.js`
-  - [ ] Executable check skipped on Windows
-  - [ ] MCP timeout is 5s, overridable via `AK_DOCTOR_MCP_TIMEOUT_MS`
-  - [ ] MCP check is soft-fail (warning only, does not set `ok: false`)
-  - [ ] `isMcpReady()` fast-path skips cold-spawn when sentinel present
-  - [ ] Exits 0 on full-pass, 1 on any non-MCP failure
-  - [ ] Output is `[x]` / `[ ]` format per check
-  - [ ] Unit tests for check logic (mock fs/spawn)
+  - [x] All 5 check categories implemented with correct bin paths (F6)
+  - [x] `post-tool` bin is `lint-after-edit.js`, `stop` bin is `qa-changed-files.js`
+  - [x] `test-quality-check.js` checked as flat file at `dist/esm/hooks/test-quality-check.js`
+  - [x] Executable check skipped on Windows
+  - [x] MCP timeout is 5s, overridable via `AK_DOCTOR_MCP_TIMEOUT_MS`
+  - [x] MCP check is soft-fail (warning only, does not set `ok: false`)
+  - [x] `isMcpReady()` fast-path skips cold-spawn when sentinel present
+  - [x] Exits 0 on full-pass, 1 on any non-MCP failure
+  - [x] Output is `[x]` / `[ ]` format per check
+  - [x] Unit tests for check logic (mock fs/spawn)
 
 #### [cli] Task 1.2: Wire `ak hooks doctor` into the CLI
 
-- [ ] **Status:** todo
+- [x] **Status:** completed
 - **Depends on:** Task 1.1
 - **Files:**
   - Modify: `src/cli/cli.ts`
@@ -111,15 +111,15 @@ Three tasks: (1) `ak hooks doctor` CLI command checking all hook bins + MCP, (2)
   5. Manual: `pnpm hooks:doctor` exits 0 in a healthy repo
 - **Verify:** `pnpm hooks:doctor` exits 0 in a healthy repo.
 - **Acceptance:** all of the following:
-  - [ ] `ak hooks doctor` registered in CLI help text
-  - [ ] `hooks:doctor` npm script present
-  - [ ] `hooks:doctor:ci` npm script present with `--skip-mcp` flag
-  - [ ] `audits:check` uses `hooks:doctor:ci` (not `hooks:doctor`)
-  - [ ] `pnpm test` green
+  - [x] `ak hooks doctor` registered in CLI help text
+  - [x] `hooks:doctor` npm script present
+  - [x] `hooks:doctor:ci` npm script present with `--skip-mcp` flag
+  - [x] `audits:check` uses `hooks:doctor:ci` (not `hooks:doctor`)
+  - [x] `pnpm test` green
 
 #### [skill] Task 1.3: Add hooks-doctor slash-command skill
 
-- [ ] **Status:** todo
+- [x] **Status:** completed
 - **Depends on:** — (independent of Task 1.2)
 - **Files:**
   - Create: `catalog/agent/skills/hooks-doctor/SKILL.md`
@@ -132,10 +132,10 @@ Three tasks: (1) `ak hooks doctor` CLI command checking all hook bins + MCP, (2)
   3. Run `ak skills list` — verify `hooks-doctor` appears
 - **Verify:** `ak skills list` shows `hooks-doctor`. Invoking `/webpresso-agent-kit:hooks-doctor` in Claude Code runs the audit.
 - **Acceptance:** all of the following:
-  - [ ] `catalog/agent/skills/hooks-doctor/SKILL.md` present with correct frontmatter (NOT `catalog/skills/`)
-  - [ ] `ak skills list` shows `hooks-doctor`
-  - [ ] Skill file includes remediation guidance for each failure type
-  - [ ] `pnpm build` regenerates `skills/` directory including new skill
+  - [x] `catalog/agent/skills/hooks-doctor/SKILL.md` present with correct frontmatter (NOT `catalog/skills/`)
+  - [x] `ak skills list` shows `hooks-doctor`
+  - [x] Skill file includes remediation guidance for each failure type
+  - [x] `pnpm build` regenerates `skills/` directory including new skill
 
 ## Non-goals
 
