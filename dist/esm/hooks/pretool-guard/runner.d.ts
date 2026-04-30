@@ -11,6 +11,6 @@ export declare function getToolType(input: ToolInput): 'Bash' | 'Write' | 'Edit'
 export declare function getTarget(input: ToolInput): string;
 export declare function logValidationResult(result: AggregateResult, target: string, tool: 'Bash' | 'Write' | 'Edit'): void;
 export declare function handleParseError(error: unknown, inputJson: string): never;
-export declare function processValidation(inputJson: string): void;
+export declare function processValidation(inputJson: string, mcpReadyFn?: () => boolean): void;
 export declare function main(): Promise<void>;
 //# sourceMappingURL=runner.d.ts.map

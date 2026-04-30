@@ -3,6 +3,7 @@ import { execSync } from 'node:child_process';
 import { existsSync, realpathSync } from 'node:fs';
 import { extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readStdinJson, suppressStderr } from '#hooks/shared/hook-bootstrap';
 import { getFilePath } from '#hooks/shared/types';
 export const LINTABLE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.json', '.css'];
 export const SKIP_PATTERNS = [
@@ -46,10 +47,8 @@ export function processPostToolUse(input, projectDir) {
     return lintFile(filePath, projectDir);
 }
 async function main() {
-    const chunks = [];
-    for await (const chunk of process.stdin)
-        chunks.push(chunk);
-    const inputJson = Buffer.concat(chunks).toString('utf-8');
+    suppressStderr();
+    const inputJson = await readStdinJson();
     if (!inputJson.trim())
         process.exit(0);
     const input = JSON.parse(inputJson);

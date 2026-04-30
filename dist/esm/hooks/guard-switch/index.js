@@ -1,13 +1,9 @@
 #!/usr/bin/env node
+import { readStdinJson, suppressStderr } from '#hooks/shared/hook-bootstrap';
 import { setGuardEnabled } from './state.js';
-async function readStdin() {
-    const chunks = [];
-    for await (const chunk of process.stdin)
-        chunks.push(chunk);
-    return Buffer.concat(chunks).toString('utf-8');
-}
 async function main() {
-    const inputJson = await readStdin();
+    suppressStderr();
+    const inputJson = await readStdinJson();
     if (!inputJson.trim()) {
         console.log('{}');
         process.exit(0);
