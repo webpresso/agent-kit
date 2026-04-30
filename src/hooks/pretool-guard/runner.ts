@@ -5,9 +5,12 @@ import { realpathSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import { isGuardEnabled } from '#hooks/guard-switch/state'
+import { isMcpReady } from '#hooks/shared/mcp-sentinel'
+import { suppressStderr } from '#hooks/shared/hook-bootstrap'
 import { getCommand, getFilePath, isBashInput, parseToolInput } from '#hooks/shared/types'
 
 import { logRun } from './logger.js'
+import { routeCommand } from './dev-routing.js'
 import { VALIDATORS } from './validators/index.js'
 
 const RED = '\x1b[31m'
@@ -86,13 +89,44 @@ export function handleParseError(error: unknown, inputJson: string): never {
   process.exit(2)
 }
 
-export function processValidation(inputJson: string): void {
+function writeDenyDecision(permissionDecisionReason: string): void {
+  process.stdout.write(
+    JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+        permissionDecisionReason,
+      },
+    }),
+  )
+}
+
+export function processValidation(inputJson: string, mcpReadyFn: () => boolean = isMcpReady): void {
   if (!isGuardEnabled()) {
     console.log('{}')
     process.exit(0)
   }
 
   const input = parseToolInput(inputJson)
+  const command = isBashInput(input) ? getCommand(input) : null
+
+  if (command) {
+    const decision = routeCommand(command)
+    if (decision !== null) {
+      if (decision.action.action === 'deny' && mcpReadyFn()) {
+        // Phase 1: Dev-workflow routing — only when MCP ready
+        writeDenyDecision(decision.action.guidance)
+        process.exit(0)
+      } else if (decision.action.action === 'sandbox') {
+        // Phase 2: Context-mode sandbox routing — always fires
+        writeDenyDecision(decision.action.guidance)
+        process.exit(0)
+      }
+      // 'passthrough' → fall through to Phase 3
+    }
+  }
+
+  // Phase 3: Security validators (existing pipeline)
   const target = getTarget(input)
   const tool = getToolType(input)
   const result = runAllValidators(input)
@@ -102,6 +136,7 @@ export function processValidation(inputJson: string): void {
 }
 
 export async function main(): Promise<void> {
+  suppressStderr()
   const chunks: Buffer[] = []
   for await (const chunk of process.stdin) chunks.push(chunk as Buffer)
   const inputJson = Buffer.concat(chunks).toString('utf-8')

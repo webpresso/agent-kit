@@ -1,10 +1,10 @@
 ---
 type: blueprint
-status: planned
+status: completed
 complexity: L
 created: 2026-04-28
-last_updated: 2026-04-28
-progress: '0% (0 of 7 tasks completed)'
+last_updated: 2026-04-30
+progress: '100% (7 of 7 tasks completed)'
 depends_on:
   - pretooluse-dev-command-routing-intercept-just-pnpm-commands-and-redirect-to-ak-mcp-tools
   - sessionstart-routing-block-inject-ak-tool-routing-rules-at-session-start
@@ -126,7 +126,7 @@ The key principle: **dev-workflow commands win**. If the command is a dev-workfl
 
 #### [routing] Task 1.1: Dev-workflow routing table with context-mode awareness
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends:** —
 - **Files:**
   - Modify: `src/hooks/pretool-guard/dev-routing.ts`
@@ -172,18 +172,18 @@ The `sandbox` action is NEW — it means context-mode should rewrite this to ctx
 4. `pnpm test` — green
 
 **Acceptance:**
-- [ ] `routeCommand` exported with correct union type
-- [ ] All 12+ command patterns covered
-- [ ] dev-workflow commands → deny action with correct tool name
-- [ ] data-heavy commands → sandbox action
-- [ ] git-safe + navigation → passthrough
-- [ ] Unknown commands → null (passthrough)
-- [ ] Unit tests pass for all routing table entries
-- [ ] dev-workflow commands tested before sandbox commands (priority order)
+- [x] `routeCommand` exported with correct union type
+- [x] All 12+ command patterns covered
+- [x] dev-workflow commands → deny action with correct tool name
+- [x] data-heavy commands → sandbox action
+- [x] git-safe + navigation → passthrough
+- [x] Unknown commands → null (passthrough)
+- [x] Unit tests pass for all routing table entries
+- [x] dev-workflow commands tested before sandbox commands (priority order)
 
 #### [infra] Task 1.2: Shared stderr suppression and hook-entry bootstrapping
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends:** —
 - **Files:**
   - Create: `src/hooks/shared/hook-bootstrap.ts`
@@ -215,16 +215,16 @@ export async function runHook<T>(
 4. `pnpm test` — green
 
 **Acceptance:**
-- [ ] `hook-bootstrap.ts` created and exported
-- [ ] `suppressStderr()` handles cross-platform (macOS/Linux/Windows)
-- [ ] `runHook()` handles null handler result (passthrough → `{}`)
-- [ ] Unit tests pass
+- [x] `hook-bootstrap.ts` created and exported
+- [x] `suppressStderr()` handles cross-platform (macOS/Linux/Windows)
+- [x] `runHook()` handles null handler result (passthrough → `{}`)
+- [x] Unit tests pass
 
 ### Phase 2: Integration (Wave 1)
 
 #### [integration] Task 1.3: Wire coordinated routing into pretool-guard runner
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends:** Task 1.1, Task 1.2
 - **Files:**
   - Modify: `src/hooks/pretool-guard/runner.ts`
@@ -281,15 +281,15 @@ This absorbs what was planned in `pretooluse-dev-command-routing` Task 1.3 AND a
 5. Manual: `echo '{"tool_input":{"command":"just test"}}' | node dist/esm/hooks/pretool-guard/index.js` → deny JSON
 
 **Acceptance:**
-- [ ] Phase 1 (dev-routing) fires before Phase 2 (sandbox)
-- [ ] Phase 2 (sandbox) fires only when Phase 1 passes through
-- [ ] Phase 3 (security) fires only when Phases 1+2 pass through
-- [ ] MCP readiness sentinel gates Phases 1+2 (no `ak_test` redirect when MCP not ready)
-- [ ] `pnpm test` green
+- [x] Phase 1 (dev-routing) fires before Phase 2 (sandbox)
+- [x] Phase 2 (sandbox) fires only when Phase 1 passes through
+- [x] Phase 3 (security) fires only when Phases 1+2 pass through
+- [x] MCP readiness sentinel gates Phases 1+2 (no `ak_test` redirect when MCP not ready)
+- [x] `pnpm test` green
 
 #### [infra] Task 1.4: Context-mode pretooluse hook passthrough when coordinated hook active
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends:** Task 1.1
 - **Files:**
   - Create: `src/hooks/shared/coordinated-sentinel.ts`
@@ -315,13 +315,13 @@ Updated scope:
 1. Skip — re-evaluated below in Fact-Check Updates
 
 **Acceptance:**
-- [ ] N/A — task removed
+- [x] N/A — task removed (coordination achieved via hook execution order)
 
 ### Phase 3: Entry point and verification (Wave 2)
 
 #### [integration] Task 1.5: Coordinated hook entry point pointing to existing pretool-guard
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends:** Task 1.3
 - **Files:**
   - Modify: `.claude-plugin/plugin.json` (update PreToolUse matcher to include `WebFetch|Read|Grep`)
@@ -339,13 +339,13 @@ Updated scope:
 5. `pnpm test` — green
 
 **Acceptance:**
-- [ ] PreToolUse matcher covers `Bash|Edit|Write|WebFetch|Read|Grep`
-- [ ] `WebFetch` and `Read` inputs pass through Phase 1+2 and reach Phase 3 validators
-- [ ] `pnpm test` green
+- [x] PreToolUse matcher covers `Bash|Edit|Write|WebFetch|Read|Grep`
+- [x] `WebFetch` and `Read` inputs pass through Phase 1+2 and reach Phase 3 validators
+- [x] `pnpm test` green
 
 #### [tests] Task 1.6: Integration tests for the full coordinated pipeline
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends:** Task 1.3
 - **Files:**
   - Create: `src/hooks/pretool-guard/coordinated-routing.test.ts`
@@ -365,15 +365,15 @@ Updated scope:
 3. `pnpm test` — green
 
 **Acceptance:**
-- [ ] All 7 test categories pass
-- [ ] Throttle behavior: second `just test` call passes through (guidance already shown)
-- [ ] MCP-not-ready: dev-commands fall through to validators
+- [x] All 7 test categories pass
+- [x] Throttle behavior: second `just test` call passes through (guidance already shown)
+- [x] MCP-not-ready: dev-commands fall through to validators
 
 ### Phase 4: Cleanup (Wave 3)
 
 #### [infra] Task 1.7: Remove redundant boilerplate from individual hook scripts
 
-- [ ] **Status:** todo
+- [x] **Status:** done
 - **Depends:** Task 1.5, Task 1.6
 - **Files:**
   - Modify: `src/hooks/pretool-guard/index.ts` (simplify — use bootstrap)
@@ -391,10 +391,10 @@ Updated scope:
 5. `pnpm test` — green
 
 **Acceptance:**
-- [ ] All 5 hook entry points use `runHook()` bootstrap
-- [ ] No inline stderr suppression duplicates
-- [ ] All existing hook tests pass (no regression)
-- [ ] Hook bundle sizes ≤ current (not larger)
+- [x] All 5 hook entry points use `runHook()` bootstrap (suppressStderr + readStdinJson)
+- [x] No inline stderr suppression duplicates
+- [x] All existing hook tests pass (no regression)
+- [x] Hook bundle sizes ≤ current (not larger)
 
 ## Verification Gates
 

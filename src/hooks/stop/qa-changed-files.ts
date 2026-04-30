@@ -5,6 +5,7 @@ import { realpathSync } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { readStdinJson, suppressStderr } from '#hooks/shared/hook-bootstrap'
 import { isLintableFile, isSkippedPath } from '#hooks/post-tool/lint-after-edit'
 
 const TYPECHECKABLE_EXTENSIONS = new Set(['.ts', '.tsx'])
@@ -80,9 +81,8 @@ export function runQaChecks(qaFiles: string[], projectDir: string): string[] {
 }
 
 async function main(): Promise<void> {
-  const chunks: Buffer[] = []
-  for await (const chunk of process.stdin) chunks.push(chunk as Buffer)
-  // consume stdin but don't need content
+  suppressStderr()
+  await readStdinJson() // consume stdin but don't need content
 
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd()
   const qaFiles = filterQaFiles(getChangedFiles(projectDir))
