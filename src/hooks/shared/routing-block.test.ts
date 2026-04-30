@@ -42,4 +42,30 @@ describe('AK_ROUTING_BLOCK', () => {
     expect(AK_ROUTING_BLOCK).toContain('oxlint')
     expect(AK_ROUTING_BLOCK).toContain('tsc')
   })
+
+  it('mentions ctx_execute context-mode tool', () => {
+    expect(AK_ROUTING_BLOCK).toContain('ctx_execute')
+  })
+
+  it('mentions ctx_search context-mode tool', () => {
+    expect(AK_ROUTING_BLOCK).toContain('ctx_search')
+  })
+
+  it('mentions ctx_fetch_and_index context-mode tool', () => {
+    expect(AK_ROUTING_BLOCK).toContain('ctx_fetch_and_index')
+  })
+
+  it('mentions ctx_batch_execute context-mode tool', () => {
+    expect(AK_ROUTING_BLOCK).toContain('ctx_batch_execute')
+  })
+
+  it('includes a decision table separating dev-workflow from data-processing tools', () => {
+    expect(AK_ROUTING_BLOCK).toContain('<decision_table>')
+    expect(AK_ROUTING_BLOCK).toContain('</decision_table>')
+  })
+
+  it('includes output format constraint', () => {
+    expect(AK_ROUTING_BLOCK).toContain('<output_format>')
+    expect(AK_ROUTING_BLOCK).toContain('{passed, summary}')
+  })
 })
