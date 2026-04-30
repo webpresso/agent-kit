@@ -7,7 +7,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|Edit|Write",
+        "matcher": "Bash|Edit|Write|WebFetch|Read|Grep",
         "hooks": [
           {
             "type": "command",
@@ -50,7 +50,7 @@
     ],
     "SessionStart": [
       {
-        "matcher": "startup|resume",
+        "matcher": "startup|resume|compact",
         "hooks": [
           {
             "type": "command",
