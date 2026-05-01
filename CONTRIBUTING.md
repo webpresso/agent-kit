@@ -54,7 +54,8 @@ tagged. Marketplace consumers must pin to a release tag, not to `main`.
 1. Make sure `main` is green and your working tree is clean (commit, stash,
    or discard everything first — the script aborts if anything is dirty).
 2. Bump `package.json#version` in a normal commit on `main`.
-3. Dry-run the release first (this is the safe default — no remote is contacted):
+3. Update `CHANGELOG.md`: move items from `[Unreleased]` to the new version section, add a human-readable summary, note any breaking changes.
+4. Dry-run the release first (this is the safe default — no remote is contacted):
 
    ```bash
    pnpm release
@@ -75,7 +76,7 @@ tagged. Marketplace consumers must pin to a release tag, not to `main`.
    Inspect the local branch and tag (`git log release/v<version>`,
    `git show v<version>`) and confirm `dist/` is present at the tag.
 
-4. When the dry-run looks correct, push for real:
+5. When the dry-run looks correct, push for real:
 
    ```bash
    pnpm release --no-dry-run
@@ -89,7 +90,7 @@ tagged. Marketplace consumers must pin to a release tag, not to `main`.
    first (`git branch -D release/v<version>` and `git tag -d v<version>`)
    before re-running, or the second invocation will fail on the already-existing refs.
 
-5. Update `.claude-plugin/marketplace.json` (if it pins a specific ref) so
+6. Update `.claude-plugin/marketplace.json` (if it pins a specific ref) so
    that consumers picking up the marketplace pull the new tag.
 
 ### Why `dist/` is not on `main`

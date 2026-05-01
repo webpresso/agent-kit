@@ -4,10 +4,10 @@ import { printHooksDoctor } from '#hooks/doctor'
 
 export function registerHooksCommand(cli: CAC): void {
   cli
-    .command('hooks doctor', 'Verify plugin hook installation health')
+    .command('hooks [action]', 'Verify plugin hook installation health (run: doctor)')
     .option('--skip-mcp', 'Skip MCP server liveness check (for CI)')
-    .action(async (options: { skipMcp?: boolean }) => {
+    .action(async (_action: string | undefined, options: { skipMcp?: boolean }) => {
       const code = await printHooksDoctor({ skipMcp: options.skipMcp })
-      process.exit(code)
+      return code
     })
 }
