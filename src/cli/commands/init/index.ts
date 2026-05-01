@@ -30,9 +30,9 @@ import { scaffoldDocs } from './scaffold-docs.js'
 import { scaffoldBaseKit } from './scaffold-base-kit.js'
 import { scaffoldMonorepoNav } from './scaffold-monorepo-nav.js'
 import { scaffoldAgentHooks } from './scaffolders/agent-hooks/index.js'
-import { scaffoldGstack, updateGstack } from './scaffolders/gstack/index.js'
+import { ensureGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
-import { scaffoldOmx, updateOmx } from './scaffolders/omx/index.js'
+import { ensureOmx } from './scaffolders/omx/index.js'
 import { checkRuntimes } from './scaffolders/runtime-check/index.js'
 
 const PRESETS = ['lore-commits', 'omx', 'gstack'] as const
@@ -53,7 +53,6 @@ export interface InitFlags {
   'dry-run'?: boolean
   yes?: boolean
   cwd?: string
-  update?: boolean
 }
 
 export const EXIT_SUCCESS = 0
@@ -185,14 +184,10 @@ export async function runInit(flags: InitFlags): Promise<number> {
 
     let omxFailure: 'not-found' | 'spawn-failed' | null = null
     if (presets.includes('omx')) {
-      const omxInput = { repoRoot: consumer.repoRoot, options }
-      const omxResult = flags.update ? updateOmx(omxInput) : scaffoldOmx(omxInput)
+      const omxResult = ensureOmx({ repoRoot: consumer.repoRoot, options })
       switch (omxResult.kind) {
         case 'omx-ok':
-          console.log('  omx setup: ✓ ran successfully')
-          break
-        case 'omx-updated':
-          console.log('  omx setup: ✓ re-ran successfully (updated)')
+          console.log('  omx setup: ✓')
           break
         case 'omx-skipped-dry-run':
           console.log('  omx setup: skipped (--dry-run)')
@@ -210,19 +205,13 @@ export async function runInit(flags: InitFlags): Promise<number> {
 
     let gstackFailure: 'clone-failed' | 'pull-failed' | 'setup-failed' | null = null
     if (presets.includes('gstack')) {
-      const gstackInput = { repoRoot: consumer.repoRoot, options }
-      const gstackResult = flags.update
-        ? updateGstack(gstackInput)
-        : scaffoldGstack(gstackInput)
+      const gstackResult = ensureGstack({ repoRoot: consumer.repoRoot, options })
       switch (gstackResult.kind) {
-        case 'gstack-already-installed':
-          console.log(`  gstack: ✓ already installed at ${gstackResult.root} (run with --update to pull latest)`)
-          break
         case 'gstack-installed':
-          console.log(`  gstack: ✓ cloned + setup --team at ${gstackResult.root}`)
+          console.log(`  gstack: ✓ installed at ${gstackResult.root}`)
           break
         case 'gstack-updated':
-          console.log(`  gstack: ✓ pulled latest main + setup --team at ${gstackResult.root}`)
+          console.log(`  gstack: ✓ updated at ${gstackResult.root}`)
           break
         case 'gstack-skipped-dry-run':
           console.log('  gstack: skipped (--dry-run)')
@@ -352,7 +341,6 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
     )
     .option('--dry-run', 'Show what would change without writing anything')
     .option('--yes', 'Accept defaults, skip interactive prompts')
-    .option('--update', 'Pull latest for installed presets (gstack, omx) and re-run setup')
     .option('--cwd <dir>', 'Working tree to scaffold into (default: process.cwd())')
     .action(async (flags: InitFlags) => {
       const code = await runInit(flags)
