@@ -20,7 +20,10 @@
  */
 import { z } from 'zod';
 import type { ToolDescriptor } from '#mcp/auto-discover';
-declare const inputSchema: z.ZodObject<{}, z.core.$strip>;
+declare const inputSchema: z.ZodObject<{
+    files: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    packages: z.ZodOptional<z.ZodArray<z.ZodString>>;
+}, z.core.$strip>;
 export type AkQaInput = z.infer<typeof inputSchema>;
 declare const tool: ToolDescriptor;
 export default tool;

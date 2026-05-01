@@ -18,8 +18,8 @@ declare const inputSchema: z.ZodObject<{
     }>>;
     backend: z.ZodDefault<z.ZodOptional<z.ZodEnum<{
         pnpm: "pnpm";
-        just: "just";
         auto: "auto";
+        just: "just";
     }>>>;
 }, z.core.$strip>;
 export type AkTestInput = z.infer<typeof inputSchema>;

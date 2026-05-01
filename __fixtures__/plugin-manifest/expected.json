@@ -22,7 +22,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/dist/esm/hooks/post-tool/lint-after-edit.js"
+            "command": "${CLAUDE_PLUGIN_ROOT}/dist/esm/hooks/post-tool/lint-after-edit.js",
+            "timeout": 15
           }
         ]
       }

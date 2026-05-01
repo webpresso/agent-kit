@@ -35,6 +35,15 @@ const tool: ToolDescriptor = {
   description:
     'Run tests via the project test backend. Auto-detects `just` (when a justfile is present) or `pnpm` (workspace fallback); supports an explicit override via `backend`.',
   inputSchema,
+  // Tests SHOULD be deterministic + side-effect-free, but we can't prove it
+  // for arbitrary user code, so leave `idempotentHint` unset (defaults false)
+  // and set `readOnlyHint: false`. Tests can mutate dev DBs, write fixtures,
+  // etc. — clients should treat invocation as observable side effects.
+  annotations: {
+    title: 'Test',
+    destructiveHint: false,
+    openWorldHint: false,
+  },
   handler: async (raw): Promise<{ content: { type: string; text: string }[] }> => {
     const input = inputSchema.parse(raw ?? {})
     const cwd = process.cwd()

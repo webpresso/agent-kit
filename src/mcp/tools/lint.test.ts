@@ -184,4 +184,89 @@ describe('ak_lint tool', () => {
     expect(payload.backend).toBe('pnpm')
     expect(payload.output).toContain('lint ok')
   })
+
+  // Regression: parseOxlintIssues used to silently return [] on JSON parse
+  // failure. Caller saw `{passed:false, issues:[]}` and concluded "lint failed
+  // with no specific issues" — masking the parse bug. Now annotated.
+  it('annotates `parseError` when oxlint stdout is not valid JSON', async () => {
+    spawnMock.mockReturnValue(fakeChild({ stdout: '{not json', exitCode: 1 }))
+
+    const result = await akLintTool.handler({})
+    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      passed: boolean
+      issues: unknown[]
+      parseError?: string
+    }
+    expect(payload.passed).toBe(false)
+    expect(payload.issues).toEqual([])
+    expect(payload.parseError).toMatch(/oxlint JSON\.parse failed/)
+  })
+
+  it('annotates `parseError` when oxlint stdout is JSON but not an array', async () => {
+    spawnMock.mockReturnValue(fakeChild({ stdout: '{"x": 1}', exitCode: 1 }))
+
+    const result = await akLintTool.handler({})
+    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      parseError?: string
+    }
+    expect(payload.parseError).toMatch(/not a JSON array/)
+  })
+
+  // Regression: every spawn error used to be conflated with "binary missing"
+  // and silently routed to pnpm. Non-ENOENT spawn errors must surface, not
+  // hide as a fallback masquerading as success.
+  it('does NOT fall back to pnpm when oxlint spawn fails with a non-ENOENT error', async () => {
+    const eperm = new Error('spawn oxlint EPERM') as NodeJS.ErrnoException
+    eperm.code = 'EPERM'
+    spawnMock.mockReturnValue(fakeChild({ error: eperm }))
+
+    const result = await akLintTool.handler({})
+    expect(spawnMock.mock.calls.length).toBe(1)
+    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      passed: boolean
+      backend: string
+      spawnError?: string
+    }
+    expect(payload.passed).toBe(false)
+    expect(payload.backend).toBe('oxlint')
+    expect(payload.spawnError).toMatch(/EPERM/)
+  })
+
+  // Regression: spawn-failure paths are real execution errors per MCP spec —
+  // the tool didn't run, the agent can't fix it by retrying with new inputs.
+  // Must set `isError: true` so MCP clients can distinguish from
+  // "lint genuinely found issues with passed=false".
+  it('sets `isError: true` when oxlint spawn fails (non-ENOENT)', async () => {
+    const eperm = new Error('spawn oxlint EPERM') as NodeJS.ErrnoException
+    eperm.code = 'EPERM'
+    spawnMock.mockReturnValue(fakeChild({ error: eperm }))
+
+    const result = await akLintTool.handler({})
+    expect(result.isError).toBe(true)
+  })
+
+  it('sets `isError: true` when both oxlint AND pnpm fall back fail to spawn', async () => {
+    const enoent = new Error('spawn oxlint ENOENT') as NodeJS.ErrnoException
+    enoent.code = 'ENOENT'
+    const pnpmEnoent = new Error('spawn pnpm ENOENT') as NodeJS.ErrnoException
+    pnpmEnoent.code = 'ENOENT'
+    spawnMock
+      .mockReturnValueOnce(fakeChild({ error: enoent }))
+      .mockReturnValueOnce(fakeChild({ error: pnpmEnoent }))
+
+    const result = await akLintTool.handler({})
+    expect(result.isError).toBe(true)
+  })
+
+  it('does NOT set `isError: true` when lint runs and reports issues normally', async () => {
+    spawnMock.mockReturnValue(
+      fakeChild({
+        stdout: '[{"filePath":"a.ts","messages":[{"line":1,"ruleId":"x","message":"y"}]}]',
+        exitCode: 1,
+      }),
+    )
+
+    const result = await akLintTool.handler({})
+    expect(result.isError).toBeUndefined()
+  })
 })

@@ -30,10 +30,16 @@ function fakeChild(opts: { stdout?: string; stderr?: string; exitCode?: number }
 }
 
 const originalCwd = process.cwd()
+const originalProjectDir = process.env.CLAUDE_PROJECT_DIR
 
 afterEach(() => {
   spawnMock.mockReset()
   process.chdir(originalCwd)
+  if (originalProjectDir === undefined) {
+    delete process.env.CLAUDE_PROJECT_DIR
+  } else {
+    process.env.CLAUDE_PROJECT_DIR = originalProjectDir
+  }
 })
 
 describe('ak_typecheck tool', () => {
@@ -49,6 +55,9 @@ describe('ak_typecheck tool', () => {
     beforeEach(() => {
       dir = mkdtempSync(join(tmpdir(), 'ak-mcp-typecheck-'))
       process.chdir(dir)
+      // Point project-root resolution at the tmpdir so we don't depend on
+      // marker-file existence inside the temp tree.
+      process.env.CLAUDE_PROJECT_DIR = dir
     })
 
     it('spawns once per package with `--noEmit -p <path>` when packages given', async () => {

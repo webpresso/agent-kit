@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * `ak` — agent-kit CLI entrypoint.
  *

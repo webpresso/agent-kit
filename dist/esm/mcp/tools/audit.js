@@ -49,9 +49,10 @@ async function runScript(script) {
         child.on('close', (code) => resolve(code ?? 1));
     });
 }
-function wrap(payload) {
+function wrap(payload, options = {}) {
     return {
         content: [{ type: 'text', text: JSON.stringify(payload) }],
+        ...(options.isError ? { isError: true } : {}),
     };
 }
 async function dispatch(input) {
@@ -112,6 +113,13 @@ const tool = {
     name: 'ak_audit',
     description: 'Run a packaged repo audit. `kind` selects the audit (tph, catalog-drift, docs-frontmatter, blueprint-lifecycle, bundle-budget, commit-message, tech-debt). Returns {passed, kind, details}.',
     inputSchema,
+    annotations: {
+        title: 'Audit',
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+    },
     handler: async (raw) => {
         let input;
         try {
@@ -122,7 +130,9 @@ const tool = {
             const kind = raw && typeof raw === 'object' && 'kind' in raw && typeof raw.kind === 'string'
                 ? raw.kind
                 : 'unknown';
-            return wrap({ passed: false, kind, details: message });
+            // Schema validation failure — agent supplied bad input; isError lets
+            // it distinguish "audit ran and found issues" from "audit didn't run".
+            return wrap({ passed: false, kind, details: message }, { isError: true });
         }
         try {
             const payload = await dispatch(input);
@@ -130,7 +140,7 @@ const tool = {
         }
         catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            return wrap({ passed: false, kind: input.kind, details: message });
+            return wrap({ passed: false, kind: input.kind, details: message }, { isError: true });
         }
     },
 };

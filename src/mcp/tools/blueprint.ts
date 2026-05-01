@@ -49,8 +49,14 @@ function toErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
-function jsonContent(payload: unknown): { content: { type: string; text: string }[] } {
-  return { content: [{ type: 'text', text: JSON.stringify(payload) }] }
+function jsonContent(
+  payload: unknown,
+  options: { isError?: boolean } = {},
+): { content: { type: string; text: string }[]; isError?: boolean } {
+  return {
+    content: [{ type: 'text', text: JSON.stringify(payload) }],
+    ...(options.isError ? { isError: true } : {}),
+  }
 }
 
 const tool: ToolDescriptor = {
@@ -58,16 +64,31 @@ const tool: ToolDescriptor = {
   description:
     'Manage agent-kit blueprints. `action: "new"` creates a draft blueprint, `action: "audit"` validates blueprints (returns {passed, errors}), `action: "list"` returns blueprint summaries. Returns a structured error envelope (no throw) on failure.',
   inputSchema,
+  // `action: "new"` writes a blueprint file (destructive). `audit` and `list`
+  // are read-only. We can't split the annotation per-action, so we declare
+  // the strictest applicable shape — clients gate the whole tool behind a
+  // confirmation prompt. Acceptable: blueprint creation is operator-driven
+  // and rare; lint/typecheck/qa/audit cover the high-frequency read-only
+  // surface where annotation savings matter most.
+  annotations: {
+    title: 'Blueprint',
+    destructiveHint: false,
+    openWorldHint: false,
+  },
   handler: async (raw): Promise<{ content: { type: string; text: string }[] }> => {
     let parsed: AkBlueprintInput
     try {
       parsed = inputSchema.parse(raw ?? {}) as AkBlueprintInput
     } catch (err) {
-      return jsonContent({
-        action: (raw as { action?: string } | null)?.action ?? 'unknown',
-        passed: false,
-        error: toErrorMessage(err),
-      })
+      // Schema validation failure → tool didn't run → isError per spec.
+      return jsonContent(
+        {
+          action: (raw as { action?: string } | null)?.action ?? 'unknown',
+          passed: false,
+          error: toErrorMessage(err),
+        },
+        { isError: true },
+      )
     }
 
     if (parsed.action === 'new') {
@@ -75,7 +96,10 @@ const tool: ToolDescriptor = {
         const created = await createBlueprint(parsed.goal, { complexity: parsed.complexity })
         return jsonContent({ action: 'new', path: created.path })
       } catch (err) {
-        return jsonContent({ action: 'new', passed: false, error: toErrorMessage(err) })
+        return jsonContent(
+          { action: 'new', passed: false, error: toErrorMessage(err) },
+          { isError: true },
+        )
       }
     }
 
@@ -91,9 +115,14 @@ const tool: ToolDescriptor = {
           issue.file ? `${issue.file}: ${issue.message}` : issue.message,
         )
         const passed = result.ok && errorIssues.length === 0
+        // `passed: false` here means "audit ran and found violations" —
+        // normal output the agent can act on, NOT isError.
         return jsonContent({ action: 'audit', passed, errors })
       } catch (err) {
-        return jsonContent({ action: 'audit', passed: false, error: toErrorMessage(err) })
+        return jsonContent(
+          { action: 'audit', passed: false, error: toErrorMessage(err) },
+          { isError: true },
+        )
       }
     }
 
@@ -108,7 +137,10 @@ const tool: ToolDescriptor = {
       }))
       return jsonContent({ action: 'list', blueprints })
     } catch (err) {
-      return jsonContent({ action: 'list', passed: false, error: toErrorMessage(err) })
+      return jsonContent(
+        { action: 'list', passed: false, error: toErrorMessage(err) },
+        { isError: true },
+      )
     }
   },
 }

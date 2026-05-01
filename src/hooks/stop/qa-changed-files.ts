@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { globSync } from 'glob'
 import { execSync } from 'node:child_process'
 import { realpathSync } from 'node:fs'

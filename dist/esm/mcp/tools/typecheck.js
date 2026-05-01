@@ -9,13 +9,16 @@
  * aggregated payload `{passed, errorCount, errors, output}` wrapped in MCP
  * `text` content blocks.
  */
-import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
+import { resolveProjectRoot } from './_shared/project-root.js';
+import { isRunFailure, runCommand } from './_shared/run-command.js';
 const inputSchema = z.object({
     packages: z.array(z.string()).optional(),
 });
+// Hard cap: a hung tsc invocation must surface as a timeout, never as a stall.
+const TYPECHECK_COMMAND_TIMEOUT_MS = 10 * 60 * 1_000;
 // Matches both standard tsc formats:
 //   src/foo.ts(5,12): error TS2304: Cannot find name 'bar'.
 //   src/foo.ts:5:12 - error TS2304: Cannot find name 'bar'.
@@ -61,30 +64,25 @@ function readWorkspaceGlobs(cwd) {
     }
     return globs;
 }
-function runCommand(cmd, args) {
-    return new Promise((resolve, reject) => {
-        const child = spawn(cmd, [...args]);
-        let stdout = '';
-        let stderr = '';
-        child.stdout.on('data', (chunk) => {
-            stdout += chunk.toString('utf8');
-        });
-        child.stderr.on('data', (chunk) => {
-            stderr += chunk.toString('utf8');
-        });
-        child.on('error', (err) => reject(err));
-        child.on('close', (code) => {
-            resolve({ stdout, stderr, exitCode: code ?? 0 });
-        });
-    });
-}
 const tool = {
     name: 'ak_typecheck',
     description: 'Run `tsc --noEmit` per resolved package (or at cwd) and return structured diagnostics parsed from tsc stdout.',
     inputSchema,
-    handler: async (raw) => {
+    annotations: {
+        title: 'Typecheck',
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+    },
+    handler: async (raw, extra) => {
         const input = inputSchema.parse(raw ?? {});
-        const cwd = process.cwd();
+        const cwd = resolveProjectRoot();
+        const runOptions = {
+            timeoutMs: TYPECHECK_COMMAND_TIMEOUT_MS,
+            signal: extra?.signal,
+            cwd,
+        };
         const targets = input.packages && input.packages.length > 0 ? input.packages : null;
         // Touch the workspace file so its presence is observable in tests/log; the
         // current resolution treats each entry as a relative path either way.
@@ -94,22 +92,36 @@ const tool = {
         if (targets) {
             for (const pkg of targets) {
                 const tsconfig = join(pkg, 'tsconfig.json');
-                runs.push(await runCommand('tsc', ['--noEmit', '-p', tsconfig]));
+                const outcome = await runCommand('tsc', ['--noEmit', '-p', tsconfig], runOptions);
+                if (isRunFailure(outcome)) {
+                    throw outcome.error;
+                }
+                runs.push(outcome);
             }
         }
         else {
-            runs.push(await runCommand('tsc', ['--noEmit']));
+            const outcome = await runCommand('tsc', ['--noEmit'], runOptions);
+            if (isRunFailure(outcome)) {
+                throw outcome.error;
+            }
+            runs.push(outcome);
         }
         const combinedStdout = runs.map((r) => r.stdout).join('');
         const combinedStderr = runs.map((r) => r.stderr).join('');
         const errors = parseTscOutput(combinedStdout);
         const passed = runs.every((r) => r.exitCode === 0);
+        const timedOut = runs.some((r) => r.timedOut);
+        const aborted = runs.some((r) => r.aborted);
         const payload = {
             passed,
             errorCount: errors.length,
             errors,
             output: [combinedStdout, combinedStderr].filter(Boolean).join(''),
         };
+        if (timedOut)
+            payload.timedOut = true;
+        if (aborted)
+            payload.aborted = true;
         return {
             content: [{ type: 'text', text: JSON.stringify(payload) }],
         };

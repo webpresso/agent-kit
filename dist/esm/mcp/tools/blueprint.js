@@ -36,24 +36,39 @@ const inputSchema = z.discriminatedUnion('action', [
 function toErrorMessage(err) {
     return err instanceof Error ? err.message : String(err);
 }
-function jsonContent(payload) {
-    return { content: [{ type: 'text', text: JSON.stringify(payload) }] };
+function jsonContent(payload, options = {}) {
+    return {
+        content: [{ type: 'text', text: JSON.stringify(payload) }],
+        ...(options.isError ? { isError: true } : {}),
+    };
 }
 const tool = {
     name: 'ak_blueprint',
     description: 'Manage agent-kit blueprints. `action: "new"` creates a draft blueprint, `action: "audit"` validates blueprints (returns {passed, errors}), `action: "list"` returns blueprint summaries. Returns a structured error envelope (no throw) on failure.',
     inputSchema,
+    // `action: "new"` writes a blueprint file (destructive). `audit` and `list`
+    // are read-only. We can't split the annotation per-action, so we declare
+    // the strictest applicable shape — clients gate the whole tool behind a
+    // confirmation prompt. Acceptable: blueprint creation is operator-driven
+    // and rare; lint/typecheck/qa/audit cover the high-frequency read-only
+    // surface where annotation savings matter most.
+    annotations: {
+        title: 'Blueprint',
+        destructiveHint: false,
+        openWorldHint: false,
+    },
     handler: async (raw) => {
         let parsed;
         try {
             parsed = inputSchema.parse(raw ?? {});
         }
         catch (err) {
+            // Schema validation failure → tool didn't run → isError per spec.
             return jsonContent({
                 action: raw?.action ?? 'unknown',
                 passed: false,
                 error: toErrorMessage(err),
-            });
+            }, { isError: true });
         }
         if (parsed.action === 'new') {
             try {
@@ -61,7 +76,7 @@ const tool = {
                 return jsonContent({ action: 'new', path: created.path });
             }
             catch (err) {
-                return jsonContent({ action: 'new', passed: false, error: toErrorMessage(err) });
+                return jsonContent({ action: 'new', passed: false, error: toErrorMessage(err) }, { isError: true });
             }
         }
         if (parsed.action === 'audit') {
@@ -74,10 +89,12 @@ const tool = {
                 const errorIssues = result.issues.filter((issue) => issue.level === 'error');
                 const errors = errorIssues.map((issue) => issue.file ? `${issue.file}: ${issue.message}` : issue.message);
                 const passed = result.ok && errorIssues.length === 0;
+                // `passed: false` here means "audit ran and found violations" —
+                // normal output the agent can act on, NOT isError.
                 return jsonContent({ action: 'audit', passed, errors });
             }
             catch (err) {
-                return jsonContent({ action: 'audit', passed: false, error: toErrorMessage(err) });
+                return jsonContent({ action: 'audit', passed: false, error: toErrorMessage(err) }, { isError: true });
             }
         }
         // parsed.action === 'list'
@@ -92,7 +109,7 @@ const tool = {
             return jsonContent({ action: 'list', blueprints });
         }
         catch (err) {
-            return jsonContent({ action: 'list', passed: false, error: toErrorMessage(err) });
+            return jsonContent({ action: 'list', passed: false, error: toErrorMessage(err) }, { isError: true });
         }
     },
 };

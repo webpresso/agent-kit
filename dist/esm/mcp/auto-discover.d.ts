@@ -20,6 +20,23 @@ export interface ToolHandlerResult {
     readonly content: readonly ContentBlock[];
     readonly isError?: boolean;
 }
+/**
+ * MCP tool annotations (spec 2025-03-26). Servers MUST opt into read-only /
+ * idempotent / closed-world; clients otherwise pessimize and gate every call
+ * behind a confirmation prompt. Set explicitly per tool — defaults are
+ * intentionally pessimistic.
+ */
+export interface ToolAnnotations {
+    readonly title?: string;
+    readonly readOnlyHint?: boolean;
+    readonly destructiveHint?: boolean;
+    readonly idempotentHint?: boolean;
+    readonly openWorldHint?: boolean;
+}
+export interface ToolHandlerExtra {
+    readonly signal?: AbortSignal;
+}
+export type ToolHandler = (input: unknown, extra?: ToolHandlerExtra) => Promise<ToolHandlerResult>;
 export interface ToolDescriptor {
     readonly name: string;
     readonly description: string;
@@ -27,7 +44,8 @@ export interface ToolDescriptor {
         _def: unknown;
         parse: (x: unknown) => unknown;
     };
-    readonly handler: (input: unknown) => Promise<ToolHandlerResult>;
+    readonly handler: ToolHandler;
+    readonly annotations?: ToolAnnotations;
 }
 /**
  * Minimal server contract used by the auto-discovery loop. The real MCP
@@ -36,7 +54,7 @@ export interface ToolDescriptor {
  * function trivially fakeable in tests.
  */
 export interface ToolRegistrar {
-    registerTool(name: string, description: string, jsonSchema: Record<string, unknown>, handler: (input: unknown) => Promise<ToolHandlerResult>): void;
+    registerTool(name: string, description: string, jsonSchema: Record<string, unknown>, handler: ToolHandler, annotations?: ToolAnnotations): void;
 }
 export declare function discoverTools(server: ToolRegistrar, toolsDir: string): Promise<ToolDescriptor[]>;
 //# sourceMappingURL=auto-discover.d.ts.map

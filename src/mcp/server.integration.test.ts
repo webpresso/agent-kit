@@ -134,4 +134,65 @@ describe('mcp server integration', () => {
       backend: expect.any(Object),
     })
   })
+
+  // Regression: Claude Code 2.1.x and OpenCode call prompts/list and
+  // resources/list during init. If the server returns -32601, the SDK
+  // transport gets poisoned and subsequent tools/list calls silently fail
+  // (anthropics/claude-code#36914, #42442, #45844). The workaround,
+  // mirrored from context-mode, is to register empty handlers for these
+  // methods. Without this fix, agent-kit tools never surface in
+  // Claude Code's deferred-tool registry.
+  it('responds to prompts/list and resources/list without -32601 (transport-poisoning workaround)', async () => {
+    const responses = await callServer(
+      {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {},
+          clientInfo: { name: 'agent-kit-test', version: '0.0.0' },
+        },
+      },
+      { jsonrpc: '2.0', id: 2, method: 'prompts/list' },
+      { jsonrpc: '2.0', id: 3, method: 'resources/list' },
+      { jsonrpc: '2.0', id: 4, method: 'resources/templates/list' },
+      { jsonrpc: '2.0', id: 5, method: 'tools/list' },
+    )
+
+    for (const id of [2, 3, 4, 5]) {
+      const r = responses.find((res) => res.id === id)
+      expect(r, `id=${id} response`).toBeDefined()
+      expect(r?.error, `id=${id} should not error`).toBeUndefined()
+    }
+    expect(responses.find((r) => r.id === 2)?.result).toEqual({ prompts: [] })
+    expect(responses.find((r) => r.id === 3)?.result).toEqual({ resources: [] })
+    expect(responses.find((r) => r.id === 4)?.result).toEqual({ resourceTemplates: [] })
+    // Most important: tools/list still works AFTER the prompts/resources calls.
+    const tools = (responses.find((r) => r.id === 5)?.result?.tools ?? []) as Array<{
+      name: string
+    }>
+    expect(tools.map((t) => t.name)).toEqual(
+      expect.arrayContaining(['ak_lint', 'ak_qa', 'ak_test', 'ak_typecheck', 'ak_audit']),
+    )
+  })
+
+  it('advertises prompts and resources capabilities so clients know to list them', async () => {
+    const responses = await callServer({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: {
+        protocolVersion: '2024-11-05',
+        capabilities: {},
+        clientInfo: { name: 'agent-kit-test', version: '0.0.0' },
+      },
+    })
+    const init = responses.find((r) => r.id === 1)
+    const caps = init?.result?.capabilities as Record<string, unknown> | undefined
+    expect(caps).toBeDefined()
+    expect(caps).toHaveProperty('tools')
+    expect(caps).toHaveProperty('prompts')
+    expect(caps).toHaveProperty('resources')
+  })
 })

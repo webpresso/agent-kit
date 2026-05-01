@@ -28,11 +28,35 @@ export interface ToolHandlerResult {
   readonly isError?: boolean
 }
 
+/**
+ * MCP tool annotations (spec 2025-03-26). Servers MUST opt into read-only /
+ * idempotent / closed-world; clients otherwise pessimize and gate every call
+ * behind a confirmation prompt. Set explicitly per tool — defaults are
+ * intentionally pessimistic.
+ */
+export interface ToolAnnotations {
+  readonly title?: string
+  readonly readOnlyHint?: boolean
+  readonly destructiveHint?: boolean
+  readonly idempotentHint?: boolean
+  readonly openWorldHint?: boolean
+}
+
+export interface ToolHandlerExtra {
+  readonly signal?: AbortSignal
+}
+
+export type ToolHandler = (
+  input: unknown,
+  extra?: ToolHandlerExtra,
+) => Promise<ToolHandlerResult>
+
 export interface ToolDescriptor {
   readonly name: string
   readonly description: string
   readonly inputSchema: ZodType<unknown> | { _def: unknown; parse: (x: unknown) => unknown }
-  readonly handler: (input: unknown) => Promise<ToolHandlerResult>
+  readonly handler: ToolHandler
+  readonly annotations?: ToolAnnotations
 }
 
 /**
@@ -46,7 +70,8 @@ export interface ToolRegistrar {
     name: string,
     description: string,
     jsonSchema: Record<string, unknown>,
-    handler: (input: unknown) => Promise<ToolHandlerResult>,
+    handler: ToolHandler,
+    annotations?: ToolAnnotations,
   ): void
 }
 
@@ -64,30 +89,65 @@ function shouldSkip(file: string): boolean {
   return false
 }
 
+type ZodToJsonSchemaInput = Parameters<typeof zodToJsonSchema>[0]
+
+function isPlainObjectSchema(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && Object.keys(value as object).length > 1
+}
+
+/**
+ * Convert a tool's zod input schema to a JSON Schema for MCP. Prefers zod v4's
+ * native `toJSONSchema` (the package pins ^4.3.6); falls through to the
+ * `zod-to-json-schema` v3 adapter; and finally throws — silent fallback to a
+ * permissive `{type:'object'}` would mask schema bugs by accepting any input.
+ *
+ * The lone permitted fallback is for *bare-shape* descriptors used by tests
+ * (`{ _def, parse }` ducks that aren't zod instances). Those cannot be
+ * auto-converted; we still mark them explicitly via `bareShape: true` rather
+ * than silently producing an empty schema, so the MCP client sees the
+ * limitation.
+ */
+// Real zod v4 schemas carry an internal `_zod` marker. The bare-shape ducks
+// used by `auto-discover.test.ts` (`{ _def, parse }`) do not — discriminate
+// on that to keep philosophy gates intact: bare shapes get an explicit
+// `bareShape: true` JSON Schema (no silent fallback), and neither input
+// reaches an exception-swallowing try/catch.
+function isZodV4Instance(schema: unknown): schema is ZodToJsonSchemaInput {
+  return Boolean(schema) && typeof schema === 'object' && '_zod' in (schema as object)
+}
+
+function isBareShapeDuck(schema: unknown): boolean {
+  return (
+    Boolean(schema) &&
+    typeof schema === 'object' &&
+    '_def' in (schema as object) &&
+    'parse' in (schema as object)
+  )
+}
+
 function toJsonSchema(schema: ToolDescriptor['inputSchema']): Record<string, unknown> {
-  // Prefer zod v4's native JSON-Schema export when available (project pins zod
-  // ^4.3.6). Fall back to `zod-to-json-schema` for v3-style schemas, then to a
-  // permissive `{type: "object"}` for fake/mock duck-typed inputs in tests.
-  const ztoj = (z as unknown as { toJSONSchema?: (s: unknown) => Record<string, unknown> })
-    .toJSONSchema
-  if (typeof ztoj === 'function') {
-    try {
+  if (isZodV4Instance(schema)) {
+    const ztoj = (z as unknown as { toJSONSchema?: (s: unknown) => Record<string, unknown> })
+      .toJSONSchema
+    if (typeof ztoj === 'function') {
       const result = ztoj(schema)
-      if (result && typeof result === 'object' && Object.keys(result).length > 1) {
-        return result
-      }
-    } catch {
-      /* fall through */
+      if (isPlainObjectSchema(result)) return result
     }
+
+    const v3Result = zodToJsonSchema(schema) as unknown
+    if (isPlainObjectSchema(v3Result)) return v3Result
+
+    throw new Error(
+      'Cannot derive JSON Schema from zod schema — ' +
+        'neither zod v4 toJSONSchema nor zod-to-json-schema produced a usable result',
+    )
   }
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = zodToJsonSchema(schema as any) as Record<string, unknown>
-    if (result && Object.keys(result).length > 1) return result
-  } catch {
-    /* fall through */
+
+  if (isBareShapeDuck(schema)) {
+    return { type: 'object', bareShape: true }
   }
-  return { type: 'object' }
+
+  throw new Error('Tool input schema is neither a zod schema nor a recognised bare shape')
 }
 
 export async function discoverTools(
@@ -105,11 +165,23 @@ export async function discoverTools(
     const moduleUrl = pathToFileURL(fullPath).href
     const mod = (await import(moduleUrl)) as { default?: ToolDescriptor }
     const descriptor = mod.default
-    if (!descriptor || typeof descriptor !== 'object') continue
-    if (typeof descriptor.name !== 'string' || typeof descriptor.handler !== 'function') continue
+    if (!descriptor || typeof descriptor !== 'object') {
+      throw new Error(`Tool file ${fullPath} has no default export`)
+    }
+    if (typeof descriptor.name !== 'string' || typeof descriptor.handler !== 'function') {
+      throw new Error(
+        `Tool file ${fullPath} default export is malformed (missing name or handler)`,
+      )
+    }
 
     const jsonSchema = toJsonSchema(descriptor.inputSchema)
-    server.registerTool(descriptor.name, descriptor.description, jsonSchema, descriptor.handler)
+    server.registerTool(
+      descriptor.name,
+      descriptor.description,
+      jsonSchema,
+      descriptor.handler,
+      descriptor.annotations,
+    )
     registered.push(descriptor)
   }
 

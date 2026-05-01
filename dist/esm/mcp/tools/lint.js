@@ -17,55 +17,40 @@
  * heterogeneous per-package linters whose stdout shapes differ. Raw output is
  * passed through in `output` for human inspection.
  */
-import { spawn } from 'node:child_process';
 import { z } from 'zod';
+import { resolveProjectRoot } from './_shared/project-root.js';
+import { isMissingBinary, isRunFailure, runCommand } from './_shared/run-command.js';
 const inputSchema = z.object({
     files: z.array(z.string()).optional(),
     fix: z.boolean().optional().default(false),
 });
-function isSpawnFailure(outcome) {
-    return outcome.error !== undefined;
-}
-function runCommand(cmd, args) {
-    return new Promise((resolve) => {
-        const child = spawn(cmd, [...args]);
-        let stdout = '';
-        let stderr = '';
-        child.stdout.on('data', (chunk) => {
-            stdout += chunk.toString('utf8');
-        });
-        child.stderr.on('data', (chunk) => {
-            stderr += chunk.toString('utf8');
-        });
-        child.on('error', (err) => {
-            resolve({ error: err });
-        });
-        child.on('close', (code) => {
-            resolve({ stdout, stderr, exitCode: code ?? 0 });
-        });
-    });
-}
+// Hard cap so a hung lint cannot hang the MCP tool. Lints over 5 minutes are
+// pathological; surface them as a timeout signal instead of a silent stall.
+const LINT_COMMAND_TIMEOUT_MS = 5 * 60 * 1_000;
 /**
  * Parse oxlint's `--format=json` output into our flattened issue list.
  *
  * oxlint emits an ESLint-compatible array: `[{filePath, messages: [...]}, ...]`.
- * If parsing fails (bad JSON, unexpected shape) we return an empty list rather
- * than throwing — the surrounding `passed` flag still reflects the exit code so
- * callers learn the lint failed even when the structured output is opaque.
+ * On JSON parse failure or unexpected shape we annotate the outcome with a
+ * concrete `parseError` instead of silently returning an empty list — the
+ * caller can then distinguish "lint passed cleanly" from "we couldn't read
+ * lint's output."
  */
 function parseOxlintIssues(stdout) {
     const trimmed = stdout.trim();
     if (!trimmed)
-        return [];
+        return { issues: [] };
     let parsed;
     try {
         parsed = JSON.parse(trimmed);
     }
-    catch {
-        return [];
+    catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        return { issues: [], parseError: `oxlint JSON.parse failed: ${reason}` };
     }
-    if (!Array.isArray(parsed))
-        return [];
+    if (!Array.isArray(parsed)) {
+        return { issues: [], parseError: 'oxlint output was not a JSON array' };
+    }
     const issues = [];
     for (const fileReport of parsed) {
         const file = fileReport?.filePath ?? '';
@@ -81,14 +66,27 @@ function parseOxlintIssues(stdout) {
             });
         }
     }
-    return issues;
+    return { issues };
 }
 const tool = {
     name: 'ak_lint',
     description: 'Run lint via `oxlint` (fast, structured JSON output) with `pnpm lint` as a fallback when oxlint is not on PATH. Returns `{passed, issues: [{file, line, rule, message}]}`.',
     inputSchema,
-    handler: async (raw) => {
+    annotations: {
+        title: 'Lint',
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+    },
+    handler: async (raw, extra) => {
         const input = inputSchema.parse(raw ?? {});
+        const cwd = resolveProjectRoot();
+        const runOptions = {
+            timeoutMs: LINT_COMMAND_TIMEOUT_MS,
+            signal: extra?.signal,
+            cwd,
+        };
         const oxlintArgs = ['--format=json'];
         if (input.fix)
             oxlintArgs.push('--fix');
@@ -98,28 +96,49 @@ const tool = {
         else {
             oxlintArgs.push('.');
         }
-        const oxlintOutcome = await runCommand('oxlint', oxlintArgs);
-        if (!isSpawnFailure(oxlintOutcome)) {
-            const issues = parseOxlintIssues(oxlintOutcome.stdout);
+        const oxlintOutcome = await runCommand('oxlint', oxlintArgs, runOptions);
+        if (!isRunFailure(oxlintOutcome)) {
+            const { issues, parseError } = parseOxlintIssues(oxlintOutcome.stdout);
             const payload = {
                 passed: oxlintOutcome.exitCode === 0,
                 issues,
                 backend: 'oxlint',
                 exitCode: oxlintOutcome.exitCode,
+                output: oxlintOutcome.stderr || undefined,
             };
+            if (parseError)
+                payload.parseError = parseError;
+            if (oxlintOutcome.timedOut)
+                payload.timedOut = true;
+            if (oxlintOutcome.aborted)
+                payload.aborted = true;
             return { content: [{ type: 'text', text: JSON.stringify(payload) }] };
         }
-        // ENOENT (or any spawn-time failure) → fall back to pnpm lint.
-        const pnpmOutcome = await runCommand('pnpm', ['lint']);
-        if (isSpawnFailure(pnpmOutcome)) {
+        // Only fall back to pnpm lint when oxlint is genuinely missing on PATH.
+        // Other spawn errors (EPERM, EAGAIN, ELOOP) are real failures and should
+        // surface — silently routing them to pnpm masks setup bugs.
+        if (!isMissingBinary(oxlintOutcome)) {
+            const payload = {
+                passed: false,
+                issues: [],
+                backend: 'oxlint',
+                exitCode: 1,
+                spawnError: `oxlint spawn failed: ${oxlintOutcome.error.code ?? 'unknown'} ${oxlintOutcome.error.message}`,
+            };
+            // `isError: true` per MCP spec — the tool didn't run, the agent can't
+            // resolve this by changing inputs. Distinct from "lint found issues."
+            return { content: [{ type: 'text', text: JSON.stringify(payload) }], isError: true };
+        }
+        const pnpmOutcome = await runCommand('pnpm', ['lint'], runOptions);
+        if (isRunFailure(pnpmOutcome)) {
             const payload = {
                 passed: false,
                 issues: [],
                 backend: 'pnpm',
                 exitCode: 1,
-                output: `oxlint missing and pnpm spawn failed: ${pnpmOutcome.error.message}`,
+                spawnError: `oxlint missing and pnpm spawn failed: ${pnpmOutcome.error.message}`,
             };
-            return { content: [{ type: 'text', text: JSON.stringify(payload) }] };
+            return { content: [{ type: 'text', text: JSON.stringify(payload) }], isError: true };
         }
         const payload = {
             passed: pnpmOutcome.exitCode === 0,
@@ -128,6 +147,10 @@ const tool = {
             exitCode: pnpmOutcome.exitCode,
             output: [pnpmOutcome.stdout, pnpmOutcome.stderr].filter(Boolean).join(''),
         };
+        if (pnpmOutcome.timedOut)
+            payload.timedOut = true;
+        if (pnpmOutcome.aborted)
+            payload.aborted = true;
         return { content: [{ type: 'text', text: JSON.stringify(payload) }] };
     },
 };

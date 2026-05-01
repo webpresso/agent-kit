@@ -163,4 +163,114 @@ describe('ak_qa tool', () => {
     expect(payload.test.passed).toBe(false)
     expect(payload.test.exitCode).toBe(1)
   })
+
+  // Regression: unwrap used to silently swallow JSON parse errors and
+  // non-text content blocks, returning `{passed:false, raw:...}` so a real
+  // composition bug looked indistinguishable from a sub-tool returning
+  // `passed:false` with empty issues. The unwrap now annotates the failure.
+  it('annotates `unwrapError` when a sub-tool returns invalid JSON', async () => {
+    lintHandler.mockReset()
+    typecheckHandler.mockReset()
+    testHandler.mockReset()
+
+    lintHandler.mockResolvedValue({ content: [{ type: 'text', text: '{not json' }] })
+    typecheckHandler.mockResolvedValue(
+      wrapPayload({ passed: true, errorCount: 0, errors: [], output: '' }),
+    )
+    testHandler.mockResolvedValue(
+      wrapPayload({ passed: true, output: '', exitCode: 0, backend: 'pnpm' }),
+    )
+
+    const result = await akQaTool.handler({})
+    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      passed: boolean
+      lint: { passed: boolean; unwrapError?: string }
+    }
+
+    expect(payload.passed).toBe(false)
+    expect(payload.lint.passed).toBe(false)
+    expect(payload.lint.unwrapError).toMatch(/JSON\.parse failed/)
+  })
+
+  it('annotates `unwrapError` when a sub-tool returns a non-text content block', async () => {
+    lintHandler.mockReset()
+    typecheckHandler.mockReset()
+    testHandler.mockReset()
+
+    lintHandler.mockResolvedValue({ content: [{ type: 'image', data: 'x' }] })
+    typecheckHandler.mockResolvedValue(
+      wrapPayload({ passed: true, errorCount: 0, errors: [], output: '' }),
+    )
+    testHandler.mockResolvedValue(
+      wrapPayload({ passed: true, output: '', exitCode: 0, backend: 'pnpm' }),
+    )
+
+    const result = await akQaTool.handler({})
+    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      passed: boolean
+      lint: { passed: boolean; unwrapError?: string }
+    }
+
+    expect(payload.passed).toBe(false)
+    expect(payload.lint.unwrapError).toMatch(/text content block/)
+  })
+
+  // Regression: `ak_qa` used to call sub-handlers with empty `{}`, blocking
+  // any scoped run. The new schema threads `files` (→ lint+test) and
+  // `packages` (→ typecheck+test) verbatim.
+  it('forwards `files` to lint and test, `packages` to typecheck and test', async () => {
+    lintHandler.mockReset()
+    typecheckHandler.mockReset()
+    testHandler.mockReset()
+    lintHandler.mockResolvedValue(wrapPayload({ passed: true, issues: [] }))
+    typecheckHandler.mockResolvedValue(
+      wrapPayload({ passed: true, errorCount: 0, errors: [], output: '' }),
+    )
+    testHandler.mockResolvedValue(
+      wrapPayload({ passed: true, output: '', exitCode: 0, backend: 'pnpm' }),
+    )
+
+    await akQaTool.handler({ files: ['a.ts'], packages: ['p1'] })
+
+    expect(lintHandler).toHaveBeenCalledWith({ files: ['a.ts'] }, undefined)
+    expect(typecheckHandler).toHaveBeenCalledWith({ packages: ['p1'] }, undefined)
+    expect(testHandler).toHaveBeenCalledWith({ files: ['a.ts'], packages: ['p1'] }, undefined)
+  })
+
+  // Regression: composition bugs (a sub-tool returning a non-text block or
+  // unparseable JSON) now flag `isError: true` so MCP clients can tell them
+  // apart from "lint legitimately found issues with passed=false".
+  it('marks the result `isError: true` when a sub-tool result cannot be unwrapped', async () => {
+    lintHandler.mockReset()
+    typecheckHandler.mockReset()
+    testHandler.mockReset()
+    lintHandler.mockResolvedValue({ content: [{ type: 'text', text: '{not json' }] })
+    typecheckHandler.mockResolvedValue(
+      wrapPayload({ passed: true, errorCount: 0, errors: [], output: '' }),
+    )
+    testHandler.mockResolvedValue(
+      wrapPayload({ passed: true, output: '', exitCode: 0, backend: 'pnpm' }),
+    )
+
+    const result = await akQaTool.handler({})
+    expect(result.isError).toBe(true)
+  })
+
+  it('does NOT mark `isError: true` when sub-tools simply report passed=false', async () => {
+    lintHandler.mockReset()
+    typecheckHandler.mockReset()
+    testHandler.mockReset()
+    lintHandler.mockResolvedValue(
+      wrapPayload({ passed: false, issues: [{ file: 'a.ts', line: 1, rule: 'x', message: 'y' }] }),
+    )
+    typecheckHandler.mockResolvedValue(
+      wrapPayload({ passed: true, errorCount: 0, errors: [], output: '' }),
+    )
+    testHandler.mockResolvedValue(
+      wrapPayload({ passed: true, output: '', exitCode: 0, backend: 'pnpm' }),
+    )
+
+    const result = await akQaTool.handler({})
+    expect(result.isError).toBeUndefined()
+  })
 })

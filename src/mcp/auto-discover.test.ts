@@ -129,4 +129,81 @@ describe('discoverTools', () => {
     }
     expect(descriptor.name).toBe('x')
   })
+
+  // Regression: tools that declare `annotations` (readOnlyHint, idempotentHint,
+  // openWorldHint) must have those values flow through the registrar so the
+  // server can include them in tools/list. Without this, MCP clients
+  // pessimize and gate every read-only call behind a confirmation prompt.
+  it('passes through `annotations` to the registrar', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ak-mcp-discover-annotations-'))
+    writeToolFile(
+      dir,
+      'annotated.js',
+      [
+        'const fakeShape = { _def: { typeName: "ZodObject", shape: () => ({}) }, parse: (x) => x }',
+        'export default {',
+        '  name: "annotated",',
+        '  description: "annotated",',
+        '  inputSchema: fakeShape,',
+        '  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },',
+        '  handler: async () => ({ content: [{ type: "text", text: "ok" }] }),',
+        '}',
+      ].join('\n'),
+    )
+
+    const calls: Array<{
+      name: string
+      annotations?: Record<string, unknown>
+    }> = []
+    const fakeServer = {
+      registerTool(
+        name: string,
+        _description: string,
+        _schema: Record<string, unknown>,
+        _handler: ToolDescriptor['handler'],
+        annotations?: Record<string, unknown>,
+      ): void {
+        calls.push({ name, annotations })
+      },
+    }
+    await discoverTools(fakeServer, dir)
+    const annotated = calls.find((c) => c.name === 'annotated')
+    expect(annotated?.annotations).toEqual({
+      readOnlyHint: true,
+      idempotentHint: true,
+      openWorldHint: false,
+    })
+  })
+
+  it('omits `annotations` when the descriptor has none', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ak-mcp-discover-noann-'))
+    writeToolFile(
+      dir,
+      'plain.js',
+      [
+        'const fakeShape = { _def: { typeName: "ZodObject", shape: () => ({}) }, parse: (x) => x }',
+        'export default {',
+        '  name: "plain",',
+        '  description: "plain",',
+        '  inputSchema: fakeShape,',
+        '  handler: async () => ({ content: [{ type: "text", text: "ok" }] }),',
+        '}',
+      ].join('\n'),
+    )
+    const calls: Array<{ name: string; annotations?: Record<string, unknown> }> = []
+    const fakeServer = {
+      registerTool(
+        name: string,
+        _description: string,
+        _schema: Record<string, unknown>,
+        _handler: ToolDescriptor['handler'],
+        annotations?: Record<string, unknown>,
+      ): void {
+        calls.push({ name, annotations })
+      },
+    }
+    await discoverTools(fakeServer, dir)
+    const plain = calls.find((c) => c.name === 'plain')
+    expect(plain?.annotations).toBeUndefined()
+  })
 })

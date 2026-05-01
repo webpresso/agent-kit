@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import type { ToolInput } from '#hooks/shared/types'
 
 import { execSync } from 'node:child_process'

@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { runHook } from '#hooks/shared/hook-bootstrap'
 import { setGuardEnabled } from './state.js'
 

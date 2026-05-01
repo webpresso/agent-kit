@@ -72,9 +72,10 @@ async function runScript(script: string): Promise<number> {
   })
 }
 
-function wrap(payload: AuditPayload) {
+function wrap(payload: AuditPayload, options: { isError?: boolean } = {}) {
   return {
     content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
+    ...(options.isError ? { isError: true } : {}),
   }
 }
 
@@ -140,6 +141,13 @@ const tool: ToolDescriptor = {
   description:
     'Run a packaged repo audit. `kind` selects the audit (tph, catalog-drift, docs-frontmatter, blueprint-lifecycle, bundle-budget, commit-message, tech-debt). Returns {passed, kind, details}.',
   inputSchema,
+  annotations: {
+    title: 'Audit',
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
   handler: async (raw): Promise<{ content: { type: string; text: string }[] }> => {
     let input: AkAuditInput
     try {
@@ -150,7 +158,9 @@ const tool: ToolDescriptor = {
         raw && typeof raw === 'object' && 'kind' in raw && typeof (raw as { kind: unknown }).kind === 'string'
           ? (raw as { kind: string }).kind
           : 'unknown'
-      return wrap({ passed: false, kind, details: message })
+      // Schema validation failure — agent supplied bad input; isError lets
+      // it distinguish "audit ran and found issues" from "audit didn't run".
+      return wrap({ passed: false, kind, details: message }, { isError: true })
     }
 
     try {
@@ -158,7 +168,7 @@ const tool: ToolDescriptor = {
       return wrap(payload)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      return wrap({ passed: false, kind: input.kind, details: message })
+      return wrap({ passed: false, kind: input.kind, details: message }, { isError: true })
     }
   },
 }

@@ -11,7 +11,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/dist/esm/hooks/pretool-guard/index.js"
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks-dist/pretool-guard.mjs"
           }
         ]
       }
@@ -22,7 +22,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/dist/esm/hooks/post-tool/lint-after-edit.js"
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks-dist/post-tool.mjs",
+            "timeout": 15
           }
         ]
       }
@@ -32,7 +33,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/dist/esm/hooks/stop/qa-changed-files.js"
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks-dist/stop-qa.mjs"
           }
         ]
       }
@@ -42,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/dist/esm/hooks/guard-switch/index.js",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks-dist/guard-switch.mjs",
             "timeout": 5
           }
         ]
@@ -54,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/dist/esm/hooks/sessionstart/index.js"
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks-dist/sessionstart.mjs"
           }
         ]
       }
