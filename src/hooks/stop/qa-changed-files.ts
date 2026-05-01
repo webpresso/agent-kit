@@ -80,6 +80,12 @@ export function runQaChecks(qaFiles: string[], projectDir: string): string[] {
   return errors
 }
 
+export type StopHookResult = { systemMessage: string }
+
+export function formatStopHookOutput(result: StopHookResult): string {
+  return JSON.stringify(result)
+}
+
 if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
   runHook(
     (_input) => {
@@ -91,6 +97,6 @@ if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpath
       const summary = errors.map((e) => e.split('\n')[0]).join('; ')
       return { systemMessage: `QA gate failed on changed files: ${summary}` }
     },
-    (result) => JSON.stringify({ hookSpecificOutput: result }),
+    formatStopHookOutput,
   )
 }

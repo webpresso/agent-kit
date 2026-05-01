@@ -7,4 +7,8 @@ export declare function discoverTestFiles(changedFiles: string[], projectDir: st
 export declare function buildTypecheckCommand(files: string[]): string | null;
 export declare function buildTestCommand(files: string[]): string | null;
 export declare function runQaChecks(qaFiles: string[], projectDir: string): string[];
+export type StopHookResult = {
+    systemMessage: string;
+};
+export declare function formatStopHookOutput(result: StopHookResult): string;
 //# sourceMappingURL=qa-changed-files.d.ts.map

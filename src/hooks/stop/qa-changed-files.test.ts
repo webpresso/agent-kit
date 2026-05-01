@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildTestCommand, buildTypecheckCommand } from './qa-changed-files.js'
+import { buildTestCommand, buildTypecheckCommand, formatStopHookOutput } from './qa-changed-files.js'
+
+describe('formatStopHookOutput', () => {
+  it('emits systemMessage at top level (not wrapped in hookSpecificOutput)', () => {
+    const json = formatStopHookOutput({ systemMessage: 'QA gate failed on changed files: Typecheck failed:' })
+    const output = JSON.parse(json)
+    expect(output.systemMessage).toContain('QA gate failed')
+    expect(output.hookSpecificOutput).toBeUndefined()
+  })
+})
 
 describe('buildTestCommand / buildTypecheckCommand', () => {
   it('returns null for empty file lists', () => {

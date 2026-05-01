@@ -79,6 +79,9 @@ export function runQaChecks(qaFiles, projectDir) {
         errors.push(testErr);
     return errors;
 }
+export function formatStopHookOutput(result) {
+    return JSON.stringify(result);
+}
 if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
     runHook((_input) => {
         const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
@@ -90,6 +93,6 @@ if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpath
             return null;
         const summary = errors.map((e) => e.split('\n')[0]).join('; ');
         return { systemMessage: `QA gate failed on changed files: ${summary}` };
-    }, (result) => JSON.stringify({ hookSpecificOutput: result }));
+    }, formatStopHookOutput);
 }
 //# sourceMappingURL=qa-changed-files.js.map
