@@ -39,9 +39,21 @@ function patchClaudeSettings(existing: Record<string, unknown>): Record<string, 
     ...existing,
     hooks: {
       ...hooks,
-      SessionStart: ensureGroup(hooks.SessionStart ?? [], {
-        hooks: [{ type: 'command', command: CC_BIN('ak-sessionstart-routing'), timeout: 5 }],
-      }),
+      SessionStart: ensureGroup(
+        ensureGroup(hooks.SessionStart ?? [], {
+          hooks: [{ type: 'command', command: CC_BIN('ak-sessionstart-routing'), timeout: 5 }],
+        }),
+        {
+          // Soft warning at session start — non-blocking, no network.
+          hooks: [
+            {
+              type: 'command',
+              command: '"$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack-session.sh"',
+              timeout: 2,
+            },
+          ],
+        },
+      ),
       PreToolUse: ensureGroup(
         ensureGroup(hooks.PreToolUse ?? [], {
           matcher: 'Bash|Write|Edit',
@@ -112,31 +124,42 @@ export interface ScaffoldAgentHooksResult {
   codex: MergeResult
 }
 
+// Fast existence check — no network, no install, sub-10ms.
+// Installation is handled by `ak setup --with gstack`, not at hook runtime.
 const GSTACK_CHECK_SH = `#!/bin/sh
-# Pre-skill hook: verify gstack is installed.
-# If missing, clone and set it up automatically, then allow.
-GSTACK_DIR="$HOME/.claude/skills/gstack"
-if [ -d "$GSTACK_DIR/bin" ]; then
+if [ -d "$HOME/.claude/skills/gstack/bin" ]; then
   exit 0
 fi
-echo "gstack not found — installing..." >&2
-if git clone --depth 1 https://github.com/garrytan/gstack.git "$GSTACK_DIR" 2>/dev/null; then
-  cd "$GSTACK_DIR" && ./setup --team 2>/dev/null && exit 0
-fi
-printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"gstack is required for skills but could not be auto-installed. Install manually:\\n  git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack\\n  cd ~/.claude/skills/gstack && ./setup --team\\nThen restart Claude Code."}}\\n'
+printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"gstack is not installed. Fix: run \`ak setup --with gstack\` then restart Claude Code."}}\\n'
 `
 
-function ensureGstackHook(repoRoot: string): void {
+// SessionStart soft warning — emits additionalContext, never blocks.
+const GSTACK_SESSION_SH = `#!/bin/sh
+if [ -d "$HOME/.claude/skills/gstack/bin" ]; then
+  exit 0
+fi
+printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"WARNING: gstack is not installed. Skills like /browse, /qa, /ship are unavailable. Fix: run \`ak setup --with gstack\` then restart."}}\n'
+`
+
+function ensureGstackHooks(repoRoot: string): void {
   const hooksDir = join(repoRoot, '.claude', 'hooks')
-  const hookPath = join(hooksDir, 'check-gstack.sh')
-  if (existsSync(hookPath)) return
   mkdirSync(hooksDir, { recursive: true })
-  writeFileSync(hookPath, GSTACK_CHECK_SH, 'utf8')
-  chmodSync(hookPath, 0o755)
+
+  const preToolPath = join(hooksDir, 'check-gstack.sh')
+  if (!existsSync(preToolPath)) {
+    writeFileSync(preToolPath, GSTACK_CHECK_SH, 'utf8')
+    chmodSync(preToolPath, 0o755)
+  }
+
+  const sessionPath = join(hooksDir, 'check-gstack-session.sh')
+  if (!existsSync(sessionPath)) {
+    writeFileSync(sessionPath, GSTACK_SESSION_SH, 'utf8')
+    chmodSync(sessionPath, 0o755)
+  }
 }
 
 export function scaffoldAgentHooks(input: ScaffoldAgentHooksInput): ScaffoldAgentHooksResult {
-  ensureGstackHook(input.repoRoot)
+  ensureGstackHooks(input.repoRoot)
   return {
     claude: patchJsonFile(join(input.repoRoot, '.claude', 'settings.json'), patchClaudeSettings, input.options),
     codex: patchJsonFile(join(input.repoRoot, '.codex', 'hooks.json'), patchCodexHooks, input.options),
