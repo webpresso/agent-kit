@@ -33,14 +33,44 @@ export interface ScaffoldGstackInput {
 export type ScaffoldGstackResult =
   | { kind: 'gstack-already-installed'; root: string }
   | { kind: 'gstack-installed'; root: string }
+  | { kind: 'gstack-updated'; root: string }
   | { kind: 'gstack-skipped-dry-run' }
   | { kind: 'gstack-clone-failed'; exitCode: number }
+  | { kind: 'gstack-pull-failed'; exitCode: number }
   | { kind: 'gstack-setup-failed'; exitCode: number }
 
 const GSTACK_REPO = 'https://github.com/garrytan/gstack.git'
 
 function defaultInstallRoot(): string {
   return path.join(homedir(), '.claude', 'skills', 'gstack')
+}
+
+/**
+ * Pull latest gstack from origin/main and re-run setup.
+ * No-op in dry-run. Fails fast if not installed (run scaffoldGstack first).
+ */
+export function updateGstack(input: ScaffoldGstackInput): ScaffoldGstackResult {
+  if (input.options.dryRun) {
+    return { kind: 'gstack-skipped-dry-run' }
+  }
+
+  const spawn = input.spawn ?? spawnSync
+  const root = input.installRoot ?? defaultInstallRoot()
+
+  const pull = spawn('git', ['pull', '--ff-only', 'origin', 'main'], {
+    cwd: root,
+    stdio: 'inherit',
+  })
+  if (pull.status !== 0) {
+    return { kind: 'gstack-pull-failed', exitCode: pull.status ?? -1 }
+  }
+
+  const setup = spawn('./setup', ['--team'], { cwd: root, stdio: 'inherit' })
+  if (setup.status !== 0) {
+    return { kind: 'gstack-setup-failed', exitCode: setup.status ?? -1 }
+  }
+
+  return { kind: 'gstack-updated', root }
 }
 
 /**
