@@ -166,7 +166,7 @@ function buildBundleBudgetArgs(target: string | undefined, options: AuditActionO
 export function registerAuditCommand(cli: CAC): void {
   cli
     .command(
-      'audit <kind> [target]',
+      'audit [kind] [target]',
       'Run a packaged audit (tph, tph-e2e, bundle-budget, catalog-drift, commit-message, docs-frontmatter, blueprint-lifecycle, tech-debt, no-relative-parent-imports, mutation, quality)',
     )
     .option('--fix', 'Attempt to auto-fix violations (forwarded to supported audits)')
@@ -183,7 +183,16 @@ export function registerAuditCommand(cli: CAC): void {
     .option('--max-html-eager-js-asset-bytes <bytes>', 'Max size for any HTML-eager JS asset')
     .option('--max-html-eager-js-total-bytes <bytes>', 'Max total size for HTML-eager JS assets')
     .option('--ignore <substring>', 'Ignore matching bundle-budget asset path; repeatable')
-    .action(async (kind: string, target: string | undefined, options: AuditActionOptions) => {
+    .action(async (kind: string | undefined, target: string | undefined, options: AuditActionOptions) => {
+      if (!kind) {
+        console.error(
+          `Usage: ak audit <kind> [target]\n` +
+          `Kinds: tph, tph-e2e, bundle-budget, catalog-drift, commit-message, ` +
+          `docs-frontmatter, blueprint-lifecycle, tech-debt, no-relative-parent-imports, ` +
+          `mutation, quality`
+        )
+        process.exit(1)
+      }
       const forwarded: string[] = []
       if (options.fix) forwarded.push('--fix')
       if (options.json) forwarded.push('--json')

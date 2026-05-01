@@ -34,12 +34,20 @@ async function runStryker(cwd) {
     });
 }
 /**
- * Composite quality gate — runs all repo-health audits sequentially and
- * exits non-zero on the first failure (fast-fail) so CI surfaces the most
- * actionable signal quickly.
+ * Composite quality gate: mutation + catalog-drift + blueprint-lifecycle + docs-frontmatter.
+ * Runs sequentially and exits non-zero on the first failure (fast-fail).
+ * bundle-budget and commit-message require caller-supplied paths and are run separately.
  */
 async function runQualityGate(root, options) {
-    const { auditCatalogDrift, auditBlueprintLifecycle, auditDocsFrontmatter } = await import('#audit/repo-guardrails');
+    // Phase 1: mutation score (Stryker)
+    console.log('\n[quality] running mutation tests...');
+    const mutationCode = await runStryker(root);
+    if (mutationCode !== 0) {
+        console.error('[quality] mutation: FAILED');
+        return mutationCode;
+    }
+    console.log('[quality] mutation: OK');
+    const { auditCatalogDrift, auditBlueprintLifecycle, auditDocsFrontmatter, formatRepoAuditReport } = await import('#audit/repo-guardrails');
     const checks = [
         { name: 'catalog-drift', result: auditCatalogDrift(root) },
         {
@@ -51,7 +59,6 @@ async function runQualityGate(root, options) {
             result: auditDocsFrontmatter(root, { docsRoot: options.docsRoot }),
         },
     ];
-    const { formatRepoAuditReport } = await import('#audit/repo-guardrails');
     let allOk = true;
     for (const { name, result } of checks) {
         if (options.json) {
@@ -128,7 +135,7 @@ function buildBundleBudgetArgs(target, options) {
 }
 export function registerAuditCommand(cli) {
     cli
-        .command('audit <kind> [target]', 'Run a packaged audit (tph, tph-e2e, bundle-budget, catalog-drift, commit-message, docs-frontmatter, blueprint-lifecycle, tech-debt, no-relative-parent-imports, mutation, quality)')
+        .command('audit [kind] [target]', 'Run a packaged audit (tph, tph-e2e, bundle-budget, catalog-drift, commit-message, docs-frontmatter, blueprint-lifecycle, tech-debt, no-relative-parent-imports, mutation, quality)')
         .option('--fix', 'Attempt to auto-fix violations (forwarded to supported audits)')
         .option('--json', 'Emit JSON output (forwarded to supported audits)')
         .option('--dist <dir>', 'Built Vite dist directory for bundle-budget')
@@ -144,6 +151,13 @@ export function registerAuditCommand(cli) {
         .option('--max-html-eager-js-total-bytes <bytes>', 'Max total size for HTML-eager JS assets')
         .option('--ignore <substring>', 'Ignore matching bundle-budget asset path; repeatable')
         .action(async (kind, target, options) => {
+        if (!kind) {
+            console.error(`Usage: ak audit <kind> [target]\n` +
+                `Kinds: tph, tph-e2e, bundle-budget, catalog-drift, commit-message, ` +
+                `docs-frontmatter, blueprint-lifecycle, tech-debt, no-relative-parent-imports, ` +
+                `mutation, quality`);
+            process.exit(1);
+        }
         const forwarded = [];
         if (options.fix)
             forwarded.push('--fix');
