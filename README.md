@@ -102,7 +102,7 @@ No plugin install or marketplace registration needed.
 | `ak skills install <name>` | Install a named skill into the active IDE surfaces |
 | `ak audit tph` | Run tech-debt phase health audit |
 | `ak audit mutation` | Run Stryker mutation testing; fails CI on threshold misses |
-| `ak audit quality` | Composite gate: mutation + bundle-budget + catalog-drift + docs-frontmatter + blueprint-lifecycle + commit-message |
+| `ak audit quality` | Composite gate: mutation + catalog-drift + docs-frontmatter + blueprint-lifecycle (bundle-budget and commit-message require explicit paths — run separately) |
 | `ak audit bundle-budget apps/client/dist --max-js-asset-bytes 512000` | Check Vite bundle against budget |
 | `ak audit no-relative-parent-imports` | Enforce `#alias` imports — fail if any `../` parent imports exist in `src/` |
 | `ak hooks doctor` | Verify plugin hook health: bins exist, executable, respond to stdin, MCP reachable |

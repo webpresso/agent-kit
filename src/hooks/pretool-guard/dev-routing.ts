@@ -5,8 +5,6 @@ import { join } from 'node:path'
 
 export type GuidanceType = 'test' | 'lint' | 'typecheck' | 'qa'
 
-export type DevRoutingDecision = { action: 'deny'; guidance: string }
-
 export type RouteAction =
   | { action: 'deny'; tool: string; guidance: string }
   | { action: 'sandbox'; guidance: string }
@@ -90,37 +88,16 @@ function markerPath(sessionId: string | undefined, guidanceType: GuidanceType): 
   return join(tmpdir(), `ak-routing-guidance-${key}-${guidanceType}`)
 }
 
-function shouldThrottle(sessionId: string | undefined, guidanceType: GuidanceType, guidance: string): DevRoutingDecision | null {
+function shouldThrottle(sessionId: string | undefined, guidanceType: GuidanceType, guidance: string): { guidance: string } | null {
   const path = markerPath(sessionId, guidanceType)
   try {
     const fd = openSync(path, O_CREAT | O_EXCL | O_WRONLY)
     closeSync(fd)
-    return { action: 'deny', guidance } // first time — show guidance
+    return { guidance } // first time — show guidance
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'EEXIST') return null // already shown this session
-    return { action: 'deny', guidance } // non-EEXIST (NFS etc) — always deny
+    return { guidance } // non-EEXIST (NFS etc) — always deny
   }
-}
-
-export function routeDevCommand(command: string, sessionId?: string): DevRoutingDecision | null {
-  const trimmed = command.trim()
-  if (!trimmed) return null
-
-  // Check explicit passthroughs first
-  for (const prefix of PASSTHROUGH_PREFIXES) {
-    if (matchesPrefix(trimmed, prefix)) return null
-  }
-
-  // Check routing rules
-  for (const rule of ROUTING_RULES) {
-    for (const prefix of rule.prefixes) {
-      if (matchesPrefix(trimmed, prefix)) {
-        return shouldThrottle(sessionId, rule.guidanceType, rule.guidance)
-      }
-    }
-  }
-
-  return null
 }
 
 export function routeCommand(command: string, sessionId?: string): RouteDecision | null {

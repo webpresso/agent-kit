@@ -5,7 +5,7 @@ import { realpathSync } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { readStdinJson, suppressStderr } from '#hooks/shared/hook-bootstrap'
+import { runHook } from '#hooks/shared/hook-bootstrap'
 import { isLintableFile, isSkippedPath } from '#hooks/post-tool/lint-after-edit'
 
 const TYPECHECKABLE_EXTENSIONS = new Set(['.ts', '.tsx'])
@@ -80,26 +80,17 @@ export function runQaChecks(qaFiles: string[], projectDir: string): string[] {
   return errors
 }
 
-async function main(): Promise<void> {
-  suppressStderr()
-  await readStdinJson() // consume stdin but don't need content
-
-  const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd()
-  const qaFiles = filterQaFiles(getChangedFiles(projectDir))
-
-  if (qaFiles.length === 0) process.exit(0)
-
-  const errors = runQaChecks(qaFiles, projectDir)
-  if (errors.length > 0) {
-    const summary = errors.map((e) => e.split('\n')[0]).join('; ')
-    const systemMessage = `QA gate failed on changed files: ${summary}`
-    process.stdout.write(JSON.stringify({ hookSpecificOutput: { systemMessage } }))
-    process.exit(0)
-  }
-
-  process.exit(0)
-}
-
 if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
-  main()
+  runHook(
+    (_input) => {
+      const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd()
+      const qaFiles = filterQaFiles(getChangedFiles(projectDir))
+      if (qaFiles.length === 0) return null
+      const errors = runQaChecks(qaFiles, projectDir)
+      if (errors.length === 0) return null
+      const summary = errors.map((e) => e.split('\n')[0]).join('; ')
+      return { systemMessage: `QA gate failed on changed files: ${summary}` }
+    },
+    (result) => JSON.stringify({ hookSpecificOutput: result }),
+  )
 }

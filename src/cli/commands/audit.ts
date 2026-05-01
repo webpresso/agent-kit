@@ -40,14 +40,22 @@ async function runStryker(cwd: string): Promise<number> {
 }
 
 /**
- * Composite quality gate — runs all repo-health audits sequentially and
- * exits non-zero on the first failure (fast-fail) so CI surfaces the most
- * actionable signal quickly.
+ * Composite quality gate: mutation + catalog-drift + blueprint-lifecycle + docs-frontmatter.
+ * Runs sequentially and exits non-zero on the first failure (fast-fail).
+ * bundle-budget and commit-message require caller-supplied paths and are run separately.
  */
 async function runQualityGate(root: string, options: AuditActionOptions): Promise<number> {
-  const { auditCatalogDrift, auditBlueprintLifecycle, auditDocsFrontmatter } = await import(
-    '#audit/repo-guardrails'
-  )
+  // Phase 1: mutation score (Stryker)
+  console.log('\n[quality] running mutation tests...')
+  const mutationCode = await runStryker(root)
+  if (mutationCode !== 0) {
+    console.error('[quality] mutation: FAILED')
+    return mutationCode
+  }
+  console.log('[quality] mutation: OK')
+
+  const { auditCatalogDrift, auditBlueprintLifecycle, auditDocsFrontmatter, formatRepoAuditReport } =
+    await import('#audit/repo-guardrails')
 
   const checks: Array<{ name: string; result: RepoAuditResult }> = [
     { name: 'catalog-drift', result: auditCatalogDrift(root) },
@@ -61,7 +69,6 @@ async function runQualityGate(root: string, options: AuditActionOptions): Promis
     },
   ]
 
-  const { formatRepoAuditReport } = await import('#audit/repo-guardrails')
   let allOk = true
   for (const { name, result } of checks) {
     if (options.json) {

@@ -639,8 +639,11 @@ export function syncAll(repoRoot: string, consumers: ConsumerConfig[] = DEFAULT_
   totalFixes += syncSkills(repoRoot, DEFAULT_SKILLS_CONSUMERS)
   totalFixes += syncPerSkillConsumers(repoRoot, DEFAULT_PER_SKILL_CONSUMERS)
   totalFixes += syncGeminiCommands(repoRoot)
-  totalFixes += syncAgentsMd(repoRoot)
-  totalFixes += syncMcpJson(repoRoot)
+
+  // Fan-out writes are tracked separately — they are not "broken symlinks",
+  // so they must not pollute totalFixes (which gates `ak symlink check`).
+  syncAgentsMd(repoRoot)
+  syncMcpJson(repoRoot)
 
   console.log()
   if (totalFixes > 0) {

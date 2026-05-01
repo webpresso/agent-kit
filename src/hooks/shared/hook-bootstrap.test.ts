@@ -89,6 +89,29 @@ describe('runHook', () => {
     expect(process.exit).toHaveBeenCalledWith(0)
   })
 
+  it('handler returns value → formatter is called and output written', async () => {
+    vi.stubGlobal('process', {
+      ...process,
+      platform: 'linux',
+      stdout: { write: vi.fn() },
+      exit: vi.fn(),
+      stdin: makeStdin('{"tool_name":"Bash"}'),
+    })
+    vi.mocked(closeSync).mockReturnValue(undefined)
+    vi.mocked(openSync).mockReturnValue(2)
+
+    const { runHook } = await import('#hooks/shared/hook-bootstrap')
+    await runHook(
+      (_input) => ({ decision: 'deny', reason: 'use ak_test' }),
+      (result) => JSON.stringify({ hookSpecificOutput: result }),
+    )
+
+    expect(process.stdout.write).toHaveBeenCalledWith(
+      '{"hookSpecificOutput":{"decision":"deny","reason":"use ak_test"}}',
+    )
+    expect(process.exit).toHaveBeenCalledWith(0)
+  })
+
   it('handler returns null → writes {} (passthrough)', async () => {
     vi.stubGlobal('process', {
       ...process,

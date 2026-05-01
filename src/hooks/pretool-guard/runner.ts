@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 import { isGuardEnabled } from '#hooks/guard-switch/state'
 import { isMcpReady } from '#hooks/shared/mcp-sentinel'
-import { suppressStderr } from '#hooks/shared/hook-bootstrap'
+import { readStdinJson, suppressStderr } from '#hooks/shared/hook-bootstrap'
 import { getCommand, getFilePath, isBashInput, parseToolInput } from '#hooks/shared/types'
 
 import { logRun } from './logger.js'
@@ -137,9 +137,7 @@ export function processValidation(inputJson: string, mcpReadyFn: () => boolean =
 
 export async function main(): Promise<void> {
   suppressStderr()
-  const chunks: Buffer[] = []
-  for await (const chunk of process.stdin) chunks.push(chunk as Buffer)
-  const inputJson = Buffer.concat(chunks).toString('utf-8')
+  const inputJson = await readStdinJson()
 
   if (!inputJson.trim()) {
     console.log('{}')

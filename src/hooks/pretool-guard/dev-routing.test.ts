@@ -10,7 +10,7 @@ vi.mock('node:os', () => ({ tmpdir: () => '/tmp' }))
 
 import { closeSync, openSync } from 'node:fs'
 
-describe('routeDevCommand', () => {
+describe('routeCommand', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     // Default: openSync succeeds (first call)
@@ -23,109 +23,102 @@ describe('routeDevCommand', () => {
   })
 
   async function getRoute() {
-    const { routeDevCommand } = await import('./dev-routing.js')
-    return routeDevCommand
+    const { routeCommand } = await import('./dev-routing.js')
+    return routeCommand
   }
 
   it('just test → deny, guidance mentions ak_test', async () => {
-    const routeDevCommand = await getRoute()
-    const result = routeDevCommand('just test')
+    const routeCommand = await getRoute()
+    const result = routeCommand('just test')
     expect(result).not.toBeNull()
-    expect(result?.action).toBe('deny')
-    expect(result?.guidance).toContain('ak_test')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_test')
   })
 
   it('pnpm test --filter foo → deny', async () => {
-    const routeDevCommand = await getRoute()
-    const result = routeDevCommand('pnpm test --filter foo')
-    expect(result).not.toBeNull()
-    expect(result?.action).toBe('deny')
+    const routeCommand = await getRoute()
+    const result = routeCommand('pnpm test --filter foo')
+    expect(result?.action.action).toBe('deny')
   })
 
   it('vitest run → deny', async () => {
-    const routeDevCommand = await getRoute()
-    const result = routeDevCommand('vitest run')
-    expect(result).not.toBeNull()
-    expect(result?.action).toBe('deny')
+    const routeCommand = await getRoute()
+    const result = routeCommand('vitest run')
+    expect(result?.action.action).toBe('deny')
   })
 
   it('just lint --package workers → deny, mentions ak_lint', async () => {
-    const routeDevCommand = await getRoute()
-    const result = routeDevCommand('just lint --package workers')
-    expect(result).not.toBeNull()
-    expect(result?.action).toBe('deny')
-    expect(result?.guidance).toContain('ak_lint')
+    const routeCommand = await getRoute()
+    const result = routeCommand('just lint --package workers')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_lint')
   })
 
   it('just typecheck → deny, mentions ak_typecheck', async () => {
-    const routeDevCommand = await getRoute()
-    const result = routeDevCommand('just typecheck')
-    expect(result).not.toBeNull()
-    expect(result?.action).toBe('deny')
-    expect(result?.guidance).toContain('ak_typecheck')
+    const routeCommand = await getRoute()
+    const result = routeCommand('just typecheck')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_typecheck')
   })
 
   it('just qa → deny, mentions ak_qa', async () => {
-    const routeDevCommand = await getRoute()
-    const result = routeDevCommand('just qa')
-    expect(result).not.toBeNull()
-    expect(result?.action).toBe('deny')
-    expect(result?.guidance).toContain('ak_qa')
+    const routeCommand = await getRoute()
+    const result = routeCommand('just qa')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_qa')
   })
 
-  it('just audit blueprint-lifecycle → null (passthrough)', async () => {
-    const routeDevCommand = await getRoute()
-    const result = routeDevCommand('just audit blueprint-lifecycle')
-    expect(result).toBeNull()
+  it('just audit blueprint-lifecycle → passthrough (not deny)', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('just audit blueprint-lifecycle')
+    expect(result?.action.action).toBe('passthrough')
   })
 
-  it('ak audit docs-frontmatter → null (passthrough)', async () => {
-    const routeDevCommand = await getRoute()
-    const result = routeDevCommand('ak audit docs-frontmatter')
-    expect(result).toBeNull()
+  it('ak audit docs-frontmatter → passthrough', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('ak audit docs-frontmatter')
+    expect(result?.action.action).toBe('passthrough')
   })
 
-  it('git status → null (passthrough)', async () => {
-    const routeDevCommand = await getRoute()
-    const result = routeDevCommand('git status')
-    expect(result).toBeNull()
+  it('git status → passthrough', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('git status')
+    expect(result?.action.action).toBe('passthrough')
   })
 
   it('empty string → null', async () => {
-    const routeDevCommand = await getRoute()
-    const result = routeDevCommand('')
+    const routeCommand = await getRoute()
+    const result = routeCommand('')
     expect(result).toBeNull()
   })
 
-  it('throttle: second call returns null when openSync throws EEXIST', async () => {
-    const routeDevCommand = await getRoute()
+  it('throttle: second call returns passthrough when openSync throws EEXIST', async () => {
+    const routeCommand = await getRoute()
 
-    // First call succeeds
+    // First call succeeds → deny
     vi.mocked(openSync).mockReturnValueOnce(3)
-    const first = routeDevCommand('just test', 'session-abc')
-    expect(first).not.toBeNull()
-    expect(first?.action).toBe('deny')
+    const first = routeCommand('just test', 'session-abc')
+    expect(first?.action.action).toBe('deny')
 
-    // Second call throws EEXIST
+    // Second call throws EEXIST → throttled, passthrough
     vi.mocked(openSync).mockImplementationOnce(() => {
       const err = new Error('EEXIST') as NodeJS.ErrnoException
       err.code = 'EEXIST'
       throw err
     })
-    const second = routeDevCommand('just test', 'session-abc')
-    expect(second).toBeNull()
+    const second = routeCommand('just test', 'session-abc')
+    expect(second?.action.action).toBe('passthrough')
   })
 
-  it('NFS fallback: openSync throws ENOTSUP → returns deny (not null)', async () => {
-    const routeDevCommand = await getRoute()
+  it('NFS fallback: openSync throws ENOTSUP → returns deny (not passthrough)', async () => {
+    const routeCommand = await getRoute()
 
     vi.mocked(openSync).mockImplementationOnce(() => {
       const err = new Error('ENOTSUP') as NodeJS.ErrnoException
       err.code = 'ENOTSUP'
       throw err
     })
-    const result = routeDevCommand('just test', 'session-nfs')
-    expect(result).not.toBeNull()
-    expect(result?.action).toBe('deny')
+    const result = routeCommand('just test', 'session-nfs')
+    expect(result?.action.action).toBe('deny')
   })
 })

@@ -6,7 +6,7 @@ import { existsSync, realpathSync } from 'node:fs'
 import { extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { readStdinJson, suppressStderr } from '#hooks/shared/hook-bootstrap'
+import { runHook } from '#hooks/shared/hook-bootstrap'
 import { getFilePath } from '#hooks/shared/types'
 
 export const LINTABLE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.json', '.css'] as const
@@ -51,18 +51,13 @@ export function processPostToolUse(input: ToolInput, projectDir: string): boolea
   return lintFile(filePath, projectDir)
 }
 
-async function main(): Promise<void> {
-  suppressStderr()
-  const inputJson = await readStdinJson()
-
-  if (!inputJson.trim()) process.exit(0)
-
-  const input = JSON.parse(inputJson) as ToolInput
-  const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd()
-  processPostToolUse(input, projectDir)
-  process.exit(0)
-}
-
 if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
-  main()
+  runHook(
+    (input) => {
+      const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd()
+      processPostToolUse(input as ToolInput, projectDir)
+      return null
+    },
+    () => '{}',
+  )
 }
