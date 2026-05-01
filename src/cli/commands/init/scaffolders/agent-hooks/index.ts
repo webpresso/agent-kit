@@ -65,6 +65,7 @@ function patchClaudeSettings(existing: Record<string, unknown>): Record<string, 
             {
               type: 'command',
               command: '"$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack.sh"',
+              timeout: 3,
             },
           ],
         },
