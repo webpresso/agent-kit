@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import { existsSync, realpathSync } from 'node:fs';
 import { extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readStdinJson, suppressStderr } from '#hooks/shared/hook-bootstrap';
+import { runHook } from '#hooks/shared/hook-bootstrap';
 import { getFilePath } from '#hooks/shared/types';
 export const LINTABLE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.json', '.css'];
 export const SKIP_PATTERNS = [
@@ -46,17 +46,11 @@ export function processPostToolUse(input, projectDir) {
     const filePath = input.tool_input.file_path;
     return lintFile(filePath, projectDir);
 }
-async function main() {
-    suppressStderr();
-    const inputJson = await readStdinJson();
-    if (!inputJson.trim())
-        process.exit(0);
-    const input = JSON.parse(inputJson);
-    const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-    processPostToolUse(input, projectDir);
-    process.exit(0);
-}
 if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
-    main();
+    runHook((input) => {
+        const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+        processPostToolUse(input, projectDir);
+        return null;
+    }, () => '{}');
 }
 //# sourceMappingURL=lint-after-edit.js.map

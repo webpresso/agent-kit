@@ -1,15 +1,8 @@
 #!/usr/bin/env node
-import { readStdinJson, suppressStderr } from '#hooks/shared/hook-bootstrap';
+import { runHook } from '#hooks/shared/hook-bootstrap';
 import { setGuardEnabled } from './state.js';
-async function main() {
-    suppressStderr();
-    const inputJson = await readStdinJson();
-    if (!inputJson.trim()) {
-        console.log('{}');
-        process.exit(0);
-    }
-    const input = JSON.parse(inputJson);
-    const normalized = input.prompt.toLowerCase().trim();
+runHook((input) => {
+    const normalized = (input.prompt ?? '').toLowerCase().trim();
     if (normalized === 'guard off') {
         setGuardEnabled(false);
         console.error('🛡️ Guard disabled — pretool validators will be skipped');
@@ -20,7 +13,6 @@ async function main() {
         console.error('🛡️ Guard enabled — pretool validators active');
         process.exit(2);
     }
-    console.log('{}');
-}
-main();
+    return null;
+}, () => '{}');
 //# sourceMappingURL=index.js.map

@@ -67,32 +67,13 @@ function shouldThrottle(sessionId, guidanceType, guidance) {
     try {
         const fd = openSync(path, O_CREAT | O_EXCL | O_WRONLY);
         closeSync(fd);
-        return { action: 'deny', guidance }; // first time — show guidance
+        return { guidance }; // first time — show guidance
     }
     catch (err) {
         if (err.code === 'EEXIST')
             return null; // already shown this session
-        return { action: 'deny', guidance }; // non-EEXIST (NFS etc) — always deny
+        return { guidance }; // non-EEXIST (NFS etc) — always deny
     }
-}
-export function routeDevCommand(command, sessionId) {
-    const trimmed = command.trim();
-    if (!trimmed)
-        return null;
-    // Check explicit passthroughs first
-    for (const prefix of PASSTHROUGH_PREFIXES) {
-        if (matchesPrefix(trimmed, prefix))
-            return null;
-    }
-    // Check routing rules
-    for (const rule of ROUTING_RULES) {
-        for (const prefix of rule.prefixes) {
-            if (matchesPrefix(trimmed, prefix)) {
-                return shouldThrottle(sessionId, rule.guidanceType, rule.guidance);
-            }
-        }
-    }
-    return null;
 }
 export function routeCommand(command, sessionId) {
     const trimmed = command.trim();

@@ -3,7 +3,7 @@ import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { isGuardEnabled } from '#hooks/guard-switch/state';
 import { isMcpReady } from '#hooks/shared/mcp-sentinel';
-import { suppressStderr } from '#hooks/shared/hook-bootstrap';
+import { readStdinJson, suppressStderr } from '#hooks/shared/hook-bootstrap';
 import { getCommand, getFilePath, isBashInput, parseToolInput } from '#hooks/shared/types';
 import { logRun } from './logger.js';
 import { routeCommand } from './dev-routing.js';
@@ -112,10 +112,7 @@ export function processValidation(inputJson, mcpReadyFn = isMcpReady) {
 }
 export async function main() {
     suppressStderr();
-    const chunks = [];
-    for await (const chunk of process.stdin)
-        chunks.push(chunk);
-    const inputJson = Buffer.concat(chunks).toString('utf-8');
+    const inputJson = await readStdinJson();
     if (!inputJson.trim()) {
         console.log('{}');
         process.exit(0);
