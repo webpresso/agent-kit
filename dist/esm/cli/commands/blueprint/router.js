@@ -361,7 +361,7 @@ export async function auditBlueprints(options = {}) {
 }
 export function registerBlueprintRouter(cli) {
     cli
-        .command('blueprint [subcommand] [...args]', 'Blueprint management')
+        .command('blueprint [subcommand] [...args]', 'Manage blueprints. Use: ak blueprint <action> --help for action-specific options (new, list, show, audit, exec, move, finalize, start, task)')
         .option('--json', 'Print JSON output')
         .option('--no-tui', 'Use plain terminal output')
         .option('--complexity <complexity>', 'Blueprint complexity (XS|S|M|L|XL)')

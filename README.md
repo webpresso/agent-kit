@@ -4,6 +4,9 @@ Toolkit for agent-driven development on the Webpresso stack. Ships a **Blueprint
 
 ## Install & Quickstart
 
+> **Claude Code users:** run `/plugin marketplace add webpresso/agent-kit` — done, zero config.  
+> **Codex CLI / Cursor / Windsurf users:** `pnpm add -D @webpresso/agent-kit && npx ak setup`
+
 Agent-kit ships through **two coexisting distribution channels** — mirrors the [context-mode pattern](https://github.com/mksglu/context-mode). Choose either or both; they're additive and idempotent.
 
 ### Path A — Claude Code plugin (zero-config)
