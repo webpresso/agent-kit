@@ -94,14 +94,18 @@ No plugin install or marketplace registration needed.
 | `ak blueprint new "<goal>" --complexity M` | Create a new blueprint with goal and complexity |
 | `ak blueprint audit --all --strict` | Audit all blueprints for structural issues |
 | `ak blueprint list` | List blueprints by status |
-| `ak symlink sync` | Sync skill surfaces across all configured IDEs |
+| `ak symlink sync` | Sync skill surfaces across all configured IDEs (fans out AGENTS.md + mcp.json) |
+| `ak symlink import --from .cursorrules` | Import existing IDE rules into canonical `.agent/` |
 | `ak setup --with monorepo-navigation,tanstack-query` | Scaffold agent surfaces and install named Tier-3 skills |
 | `ak setup --with omx,gstack` | Scaffold + bundle external tooling presets ([docs/presets.md](docs/presets.md)) |
 | `ak skills list` | List available skills in the catalog |
 | `ak skills install <name>` | Install a named skill into the active IDE surfaces |
 | `ak audit tph` | Run tech-debt phase health audit |
+| `ak audit mutation` | Run Stryker mutation testing; fails CI on threshold misses |
+| `ak audit quality` | Composite gate: mutation + bundle-budget + catalog-drift + docs-frontmatter + blueprint-lifecycle + commit-message |
 | `ak audit bundle-budget apps/client/dist --max-js-asset-bytes 512000` | Check Vite bundle against budget |
 | `ak audit no-relative-parent-imports` | Enforce `#alias` imports — fail if any `../` parent imports exist in `src/` |
+| `ak hooks doctor` | Verify plugin hook health: bins exist, executable, respond to stdin, MCP reachable |
 | `ak docs lint docs/research/my-doc.md` | Lint a research or blueprint doc |
 
 ## Distribution

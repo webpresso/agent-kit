@@ -96,7 +96,7 @@ describe('coordinated routing pipeline', () => {
         const output = getLastOutput()
         const parsed = JSON.parse(output) as { hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string } }
         expect(parsed.hookSpecificOutput?.permissionDecision).toBe('deny')
-        expect(parsed.hookSpecificOutput?.permissionDecisionReason).toBeTruthy()
+        expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain('ak_')
       })
     }
   })

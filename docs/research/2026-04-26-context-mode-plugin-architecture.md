@@ -3,6 +3,7 @@ type: research
 title: "Context-mode Plugin Architecture: Patterns for Agent-Kit Adoption"
 subject: "How context-mode prevents context bloat in Claude Code plugins — hook output control, MCP routing, FTS5 sandboxing"
 date: 2026-04-26
+last_updated: 2026-05-01
 confidence: high
 verdict: adopt
 ---
