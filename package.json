@@ -1,6 +1,6 @@
 {
   "name": "@webpresso/agent-kit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": false,
   "description": "Toolkit for agent-driven development: Blueprint runtime, agent-surface symlinker, skills catalog, and the `ak` CLI that ties them together.",
   "keywords": [
@@ -122,6 +122,12 @@
         "default": "./dist/esm/e2e/index.js"
       }
     },
+    "./lint": {
+      "import": {
+        "types": "./dist/esm/lint/index.d.ts",
+        "default": "./dist/esm/lint/index.js"
+      }
+    },
     "./local": {
       "import": {
         "types": "./dist/esm/local.d.ts",
@@ -138,6 +144,12 @@
       "import": {
         "types": "./dist/esm/test/index.d.ts",
         "default": "./dist/esm/test/index.js"
+      }
+    },
+    "./typecheck": {
+      "import": {
+        "types": "./dist/esm/typecheck/index.d.ts",
+        "default": "./dist/esm/typecheck/index.js"
       }
     },
     "./vite": {
@@ -223,9 +235,11 @@
       "./dev": "./src/dev/index.ts",
       "./docs-linter": "./src/docs-linter/index.ts",
       "./e2e": "./src/e2e/index.ts",
+      "./lint": "./src/lint/index.ts",
       "./local": "./src/local.ts",
       "./symlinker": "./src/symlinker/index.ts",
       "./test": "./src/test/index.ts",
+      "./typecheck": "./src/typecheck/index.ts",
       "./vite": "./src/vite/index.ts",
       "./vite/local": "./src/vite/local.ts"
     },
