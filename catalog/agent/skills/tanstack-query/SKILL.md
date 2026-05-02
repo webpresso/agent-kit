@@ -144,8 +144,20 @@ Do not hand-roll page accumulation when the TanStack primitive fits.
 Allowed only when justified in code comments / implementation notes:
 
 - `useQuery(...)` instead of suspense for polling, optimistic local reconciliation, or truly optional background data
-- per-mutation `throwOnError: false` for intentional inline form validation UX
+- per-mutation `throwOnError: false` for intentional inline form validation UX (see opt-out policy below)
 - a hand-written query module over a YAML-backed surface only with a D23 exception note
+
+### `throwOnError: false` opt-out policy
+
+Opting out per-call is allowed only for **inline-error UX** — surfaces that render their own toast / inline message and must not bubble to the route boundary (e.g. action buttons, optimistic mutations, form validation).
+
+When opting out:
+
+- Add a one-line `// inline-error UX: ...` comment explaining the local error path (toast, inline banner, status field)
+- Provide a local `onError` handler — silent failure is never acceptable
+- For **queries** (vs mutations), prefer `meta: { skipGlobalError: true }` over `throwOnError: false` so the global `QueryCache.onError` can still log / report
+
+Bare `throwOnError: false` without the comment + local handler is a code-review red flag.
 
 ## File guide
 
