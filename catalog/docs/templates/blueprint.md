@@ -117,6 +117,7 @@ reference "see above" or "as described in Task X.Y" — inline all context.]
 | Lint        | repo lint recipe (scoped)          | Zero violations  |
 | Tests       | repo test recipe (scoped)          | All pass         |
 | Full QA     | repo full-QA recipe                | All pass         |
+| Perf        | bundle / runtime measurement       | No regression vs baseline (or N/A — delete row) |
 
 ## Cross-Plan References
 

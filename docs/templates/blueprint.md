@@ -87,6 +87,7 @@ TODO: describe the second task.
 |------|---------|-----------------|
 | Type safety | `pnpm typecheck` | Zero errors |
 | Tests | `pnpm test` | All pass |
+| Perf | bundle / runtime measurement | No regression vs baseline (or N/A — delete row) |
 
 ## Non-goals
 
