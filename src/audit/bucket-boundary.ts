@@ -322,6 +322,24 @@ async function filterChangedPackages(
 }
 
 /**
+ * Load violation descriptions from .webpresso/baseline/bucket-violations.md.
+ * Any violation whose description appears in the baseline is treated as a warning
+ * (not an error) in non-strict mode.
+ */
+function loadBaselineDescriptions(root: string): Set<string> {
+  const baselinePath = join(root, '.webpresso/baseline/bucket-violations.md')
+  if (!existsSync(baselinePath)) return new Set()
+  const text = readFileSync(baselinePath, 'utf8')
+  const descriptions = new Set<string>()
+  for (const line of text.split('\n')) {
+    // Table rows: | `pkg` | rule | description |
+    const match = line.match(/^\|\s*`[^`]+`\s*\|\s*\S+\s*\|\s*(.+?)\s*\|/)
+    if (match?.[1]) descriptions.add(match[1].trim())
+  }
+  return descriptions
+}
+
+/**
  * Main audit entry point.
  */
 export async function auditBucketBoundary(
@@ -329,6 +347,7 @@ export async function auditBucketBoundary(
   options: BucketBoundaryOptions = {},
 ): Promise<RepoAuditResult> {
   const resolvedRoot = resolve(root)
+  const baselineDescriptions = options.strict ? new Set<string>() : loadBaselineDescriptions(resolvedRoot)
   let packages = collectPackages(resolvedRoot)
 
   const annotatedPackages = packages.filter((p) => p.bucket !== undefined)
@@ -356,7 +375,13 @@ export async function auditBucketBoundary(
   const codeViolations = checkCodeLevel(workingSet, bucketByName, options)
   const wranglerViolations = checkWranglerBindings(workingSet, bucketByWranglerName, options)
 
-  const allBucketViolations = [...codeViolations, ...wranglerViolations]
+  const allBucketViolations = [...codeViolations, ...wranglerViolations].map((v) => {
+    // Downgrade baseline violations to warnings in non-strict mode
+    if (v.severity === 'error' && baselineDescriptions.has(v.description)) {
+      return { ...v, severity: 'warning' as const }
+    }
+    return v
+  })
 
   // In non-strict mode, warning-severity violations don't fail the audit
   const hasErrors = allBucketViolations.some((v) => v.severity === 'error')
