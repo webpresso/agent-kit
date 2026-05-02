@@ -286,12 +286,15 @@ function checkWranglerBindings(
       if (targetBucket === pkg.bucket) continue // same bucket — OK
 
       const isAllowlisted = crossBucketAllowlist.includes(svc.service)
-      const severity: 'error' | 'warning' = options.strict || !isAllowlisted ? 'error' : 'warning'
+      // crossBucketBindings in wrangler.jsonc is an explicit developer declaration —
+      // always treated as a warning, even in --strict mode.
+      // --strict only controls whether the baseline file suppressions apply.
+      const severity: 'error' | 'warning' = isAllowlisted ? 'warning' : 'error'
 
       violations.push({
         package: pkg.name,
         rule: 'wrangler-binding',
-        description: `"${pkg.wranglerName}" (${pkg.bucket}) service-binds to "${svc.service}" (${targetBucket}) — cross-bucket Wrangler binding${isAllowlisted && !options.strict ? ' [allowlisted, warning only]' : ''}`,
+        description: `"${pkg.wranglerName}" (${pkg.bucket}) service-binds to "${svc.service}" (${targetBucket}) — cross-bucket Wrangler binding${isAllowlisted ? ' [allowlisted, warning only]' : ''}`,
         severity,
       })
     }

@@ -228,7 +228,7 @@ describe('auditBucketBoundary', () => {
     expect(errors).toHaveLength(0)
   })
 
-  it('--strict makes all violations errors regardless of allowlist', async () => {
+  it('--strict still respects crossBucketBindings allowlist (allowlisted = warning, audit passes)', async () => {
     await writePnpmWorkspace(tmpDir, ['apps/*'])
     await writePackageJson(join(tmpDir, 'apps/chef'), {
       name: '@test/chef',
@@ -249,7 +249,11 @@ describe('auditBucketBoundary', () => {
       JSON.stringify({ name: 'platform-api' }),
     )
     const result = await auditBucketBoundary(tmpDir, { strict: true })
-    expect(result.ok).toBe(false)
+    // allowlisted crossBucketBindings are always warnings, even in strict mode
+    expect(result.ok).toBe(true)
+    expect(result.violations).toHaveLength(1)
+    expect(result.violations[0].message).toMatch(/\[warning\]/)
+    expect(result.violations[0].message).toMatch(/allowlisted/)
   })
 
   it('checked count reflects number of annotated packages inspected', async () => {
