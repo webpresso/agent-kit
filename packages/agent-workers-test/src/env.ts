@@ -53,12 +53,12 @@ export function createMockDurableObjectNamespace(): DurableObjectNamespace {
       equals: () => false,
       name: undefined,
     })),
-    idFromName: vi.fn<(...args: unknown[]) => unknown>((name: string) => ({
+    idFromName: vi.fn((name: string) => ({
       toString: () => `do-${name}`,
       equals: () => false,
       name,
     })),
-    idFromString: vi.fn<(...args: unknown[]) => unknown>((id: string) => ({
+    idFromString: vi.fn((id: string) => ({
       toString: () => id,
       equals: () => false,
       name: undefined,
