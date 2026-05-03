@@ -2,6 +2,14 @@
   "name": "@webpresso/agent-kit",
   "version": "0.2.0",
   "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webpresso/agent-kit.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
   "description": "Toolkit for agent-driven development: Blueprint runtime, agent-surface symlinker, skills catalog, and the `ak` CLI that ties them together.",
   "keywords": [
     "agent",
@@ -184,7 +192,7 @@
     "hooks:doctor:ci": "bun ./src/cli/cli.ts hooks doctor --skip-mcp",
     "qa": "bun run build && bun run typecheck && bun run test && bun run lint:pkg && bun run audits:check",
     "release": "node scripts/release.mjs",
-    "prepublishOnly": "bun run build && bun run lint:pkg"
+    "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
     "@manypkg/find-root": "3.1.0",
@@ -204,7 +212,7 @@
     "@types/bun": "^1.1.14",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.0.0",
-    "@webpresso/stryker-config": "git+ssh://git@github.com/webpresso/tooling.git#main&path:packages/stryker-config",
+    "@webpresso/stryker-config": "^0.1.0",
     "husky": "^9.0.0",
     "publint": "^0.3.18",
     "tshy": "^4.1.1",
