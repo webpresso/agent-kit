@@ -18,6 +18,7 @@
     "allowSyntheticDefaultImports": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
+    "types": ["node"],
     "outDir": "./dist",
     "paths": {
       "#e2e": ["./src/e2e/index.ts"],
