@@ -10,11 +10,11 @@
   "exports": {
     ".": {
       "types": "./index.d.ts",
-      "default": "./stryker.base.mjs"
+      "default": "./stryker.base.ts"
     },
     "./webpresso": {
       "types": "./webpresso.d.ts",
-      "default": "./stryker.webpresso.mjs"
+      "default": "./stryker.webpresso.ts"
     }
   },
   "peerDependencies": {
@@ -30,8 +30,8 @@
   "files": [
     "README.md",
     "index.d.ts",
-    "stryker.base.mjs",
-    "stryker.webpresso.mjs",
+    "stryker.base.ts",
+    "stryker.webpresso.ts",
     "webpresso.d.ts"
   ],
   "repository": {
