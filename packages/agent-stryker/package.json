@@ -1,8 +1,12 @@
 {
   "name": "@webpresso/stryker-config",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": false,
   "type": "module",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
   "exports": {
     ".": {
       "types": "./index.d.ts",
@@ -29,5 +33,10 @@
     "stryker.base.mjs",
     "stryker.webpresso.mjs",
     "webpresso.d.ts"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webpresso/tooling.git",
+    "directory": "packages/stryker-config"
+  }
 }

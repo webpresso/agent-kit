@@ -2,6 +2,10 @@
   "name": "@webpresso/oxlint-plugins",
   "version": "0.1.0",
   "private": false,
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
   "type": "module",
   "description": "Custom Oxlint plugins for Webpresso monorepo policies",
   "main": "./src/index.js",
@@ -27,5 +31,10 @@
   },
   "devDependencies": {
     "vitest": "catalog:"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webpresso/tooling.git",
+    "directory": "packages/oxlint-plugins"
   }
 }

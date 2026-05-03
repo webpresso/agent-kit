@@ -2,6 +2,10 @@
   "name": "@webpresso/typescript-config",
   "version": "0.1.0",
   "private": false,
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
   "description": "Shared TypeScript configurations for Webpresso monorepo",
   "files": [
     "base.json",
@@ -31,5 +35,10 @@
     "vitest": "catalog:",
     "@webpresso/vitest-config": "workspace:*",
     "vite-plus": "catalog:"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webpresso/tooling.git",
+    "directory": "packages/typescript-config"
   }
 }

@@ -2,6 +2,10 @@
   "name": "@webpresso/docs-linter",
   "version": "0.1.0",
   "private": false,
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
   "description": "Documentation validation, linting, and enforcement for Webpresso",
   "bin": {
     "docs-check-internal-links": "./dist/cli/check-internal-links.js",
@@ -60,8 +64,13 @@
     "@webpresso/typescript-config": "workspace:*",
     "@webpresso/vitest-config": "workspace:*",
     "markdownlint-cli2": "^0.22.0",
-    "typescript": "^5.8.0",
+    "typescript": "^6.0.3",
     "vite-plus": "catalog:",
     "vitest": "catalog:"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webpresso/tooling.git",
+    "directory": "packages/docs-linter"
   }
 }

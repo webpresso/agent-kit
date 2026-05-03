@@ -1,7 +1,11 @@
 {
   "name": "@webpresso/vitest-config",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": false,
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
   "files": [
     "dist",
     "README.md"
@@ -77,5 +81,10 @@
     "@vitejs/plugin-react": {
       "optional": true
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webpresso/tooling.git",
+    "directory": "packages/vitest-config"
   }
 }
