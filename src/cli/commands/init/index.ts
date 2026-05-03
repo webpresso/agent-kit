@@ -305,6 +305,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
     if (omxFailure === 'not-found') return EXIT_SETUP_FAIL
     if (omxFailure === 'spawn-failed') return EXIT_WRITE_FAIL
     if (gstackFailure === 'clone-failed') return EXIT_WRITE_FAIL
+    if (gstackFailure === 'pull-failed') return EXIT_WRITE_FAIL
     if (gstackFailure === 'setup-failed') return EXIT_WRITE_FAIL
     return EXIT_SUCCESS
   } catch (error) {

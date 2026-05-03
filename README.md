@@ -18,6 +18,8 @@ Agent-kit ships through **two coexisting distribution channels** — mirrors the
 
 What you get: **hooks** (PreToolUse, PostToolUse, Stop, SessionStart), **`ak mcp` server** with 6 tools (`ak_test`, `ak_lint`, `ak_typecheck`, `ak_qa`, `ak_audit`, `ak_blueprint`), **slash commands** (`/ak:test`, `/ak:qa`, `/ak:audit`, `/ak:blueprint`), and the **skill catalog**. Manifest at `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json`. Pin to release tags (`v<version>`) — `main` does not have `dist/` checked in; only release tags do (see [CONTRIBUTING.md](./CONTRIBUTING.md#releases)).
 
+**Plugin runtime contract:** the Claude Code plugin executes with **Bun** and currently points at bundled `src/*.ts` entrypoints from the published package. The tarball intentionally ships both `src/` and `dist/`; `dist/esm/*` is a library/build artifact, not the current plugin execution path.
+
 ### Path B — npm + `ak setup` (Codex CLI, OpenCode, Cursor, Gemini, …)
 
 ```bash
@@ -34,6 +36,8 @@ Codex CLI ([config docs](https://github.com/openai/codex/blob/main/docs/config.m
 ## Claude Code Plugin
 
 Agent Kit ships as a native Claude Code plugin. The skills appear as `/webpresso-agent-kit:<skill-name>` (or short-names like `/pll` once the plugin is registered).
+
+**Runtime requirement:** Bun must be available on the machine that runs the Claude Code plugin, because the shipped manifest invokes hook and MCP entrypoints through `bun ${CLAUDE_PLUGIN_ROOT}/src/...`.
 
 **Per-session setup (works today):**
 

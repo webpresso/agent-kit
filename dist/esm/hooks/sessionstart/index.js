@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * SessionStart hook: injects AK_ROUTING_BLOCK and optionally `.agent/routing.md`
  * into Claude Code sessions.

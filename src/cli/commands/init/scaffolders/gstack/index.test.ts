@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { scaffoldGstack } from './index.js'
+import { ensureGstack } from './index.js'
 
 function makeSpawn(behaviors: Array<{ status: number | null; error?: Error }>) {
   let i = 0
@@ -16,29 +16,55 @@ function makeSpawn(behaviors: Array<{ status: number | null; error?: Error }>) {
       output: [],
       signal: null,
     }
-  }) as unknown as Parameters<typeof scaffoldGstack>[0]['spawn']
+  }) as unknown as Parameters<typeof ensureGstack>[0]['spawn']
 }
 
-describe('scaffoldGstack', () => {
-  it('returns gstack-already-installed when setup script exists', () => {
-    const spawn = makeSpawn([])
-    const exists = vi.fn(() => true)
-    const result = scaffoldGstack({
+describe('ensureGstack', () => {
+  it('returns gstack-updated when setup script exists and update succeeds', () => {
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    const exists = vi.fn((target: string) => target === '/fake/gstack/setup' || target === '/fake/gstack/.git')
+    const result = ensureGstack({
       repoRoot: '/tmp/repo',
       installRoot: '/fake/gstack',
       options: { overwrite: false, dryRun: false },
       spawn,
       exists,
     })
-    expect(result).toEqual({ kind: 'gstack-already-installed', root: '/fake/gstack' })
-    expect(spawn).not.toHaveBeenCalled()
+    expect(result).toEqual({ kind: 'gstack-updated', root: '/fake/gstack' })
+    expect(spawn).toHaveBeenCalledTimes(2)
     expect(exists).toHaveBeenCalledWith('/fake/gstack/setup')
+    expect(spawn).toHaveBeenNthCalledWith(1, 'git', ['pull', '--ff-only', 'origin', 'main'], {
+      cwd: '/fake/gstack',
+      stdio: 'inherit',
+    })
+    expect(spawn).toHaveBeenNthCalledWith(2, './setup', ['--team'], {
+      cwd: '/fake/gstack',
+      stdio: 'inherit',
+    })
+  })
+
+  it('returns gstack-updated for unmanaged existing install without .git', () => {
+    const spawn = makeSpawn([{ status: 0 }])
+    const exists = vi.fn((target: string) => target === '/fake/gstack/setup')
+    const result = ensureGstack({
+      repoRoot: '/tmp/repo',
+      installRoot: '/fake/gstack',
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      exists,
+    })
+    expect(result).toEqual({ kind: 'gstack-updated', root: '/fake/gstack' })
+    expect(spawn).toHaveBeenCalledTimes(1)
+    expect(spawn).toHaveBeenNthCalledWith(1, './setup', ['--team'], {
+      cwd: '/fake/gstack',
+      stdio: 'inherit',
+    })
   })
 
   it('returns gstack-skipped-dry-run without checking or spawning', () => {
     const spawn = makeSpawn([])
     const exists = vi.fn(() => false)
-    const result = scaffoldGstack({
+    const result = ensureGstack({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: true },
       spawn,
@@ -52,7 +78,7 @@ describe('scaffoldGstack', () => {
   it('clones and runs setup --team when missing', () => {
     const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
     const exists = vi.fn(() => false)
-    const result = scaffoldGstack({
+    const result = ensureGstack({
       repoRoot: '/tmp/repo',
       installRoot: '/fake/gstack',
       options: { overwrite: false, dryRun: false },
@@ -76,7 +102,7 @@ describe('scaffoldGstack', () => {
   it('returns gstack-clone-failed when clone exits non-zero', () => {
     const spawn = makeSpawn([{ status: 128 }])
     const exists = vi.fn(() => false)
-    const result = scaffoldGstack({
+    const result = ensureGstack({
       repoRoot: '/tmp/repo',
       installRoot: '/fake/gstack',
       options: { overwrite: false, dryRun: false },
@@ -87,10 +113,23 @@ describe('scaffoldGstack', () => {
     expect(spawn).toHaveBeenCalledTimes(1)
   })
 
+  it('returns gstack-pull-failed when update pull exits non-zero', () => {
+    const spawn = makeSpawn([{ status: 9 }])
+    const exists = vi.fn((target: string) => target === '/fake/gstack/setup' || target === '/fake/gstack/.git')
+    const result = ensureGstack({
+      repoRoot: '/tmp/repo',
+      installRoot: '/fake/gstack',
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      exists,
+    })
+    expect(result).toEqual({ kind: 'gstack-pull-failed', exitCode: 9 })
+  })
+
   it('returns gstack-setup-failed when ./setup exits non-zero', () => {
     const spawn = makeSpawn([{ status: 0 }, { status: 7 }])
     const exists = vi.fn(() => false)
-    const result = scaffoldGstack({
+    const result = ensureGstack({
       repoRoot: '/tmp/repo',
       installRoot: '/fake/gstack',
       options: { overwrite: false, dryRun: false },

@@ -63,15 +63,18 @@ export function ensureGstack(input: EnsureGstackInput): EnsureGstackResult {
   const spawn = input.spawn ?? spawnSync
   const exists = input.exists ?? existsSync
   const root = input.installRoot ?? defaultInstallRoot()
+  const hasSetup = exists(path.join(root, 'setup'))
+  const hasGitDir = exists(path.join(root, '.git'))
 
-  if (exists(path.join(root, 'setup'))) {
-    // Already installed — pull latest.
-    const pull = spawn('git', ['pull', '--ff-only', 'origin', 'main'], {
-      cwd: root,
-      stdio: 'inherit',
-    })
-    if (pull.status !== 0) return { kind: 'gstack-pull-failed', exitCode: pull.status ?? -1 }
-
+  if (hasSetup) {
+    if (hasGitDir) {
+      // Managed install — pull latest before rerunning setup.
+      const pull = spawn('git', ['pull', '--ff-only', 'origin', 'main'], {
+        cwd: root,
+        stdio: 'inherit',
+      })
+      if (pull.status !== 0) return { kind: 'gstack-pull-failed', exitCode: pull.status ?? -1 }
+    }
     const setup = runSetup(root, spawn)
     if (!setup.ok) return { kind: 'gstack-setup-failed', exitCode: setup.exitCode }
 

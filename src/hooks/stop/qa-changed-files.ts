@@ -88,15 +88,10 @@ export function formatStopHookOutput(result: StopHookResult): string {
 
 if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
   runHook(
-    (_input) => {
-      const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd()
-      const qaFiles = filterQaFiles(getChangedFiles(projectDir))
-      if (qaFiles.length === 0) return null
-      const errors = runQaChecks(qaFiles, projectDir)
-      if (errors.length === 0) return null
-      const summary = errors.map((e) => e.split('\n')[0]).join('; ')
-      return { systemMessage: `QA gate failed on changed files: ${summary}` }
-    },
+    // `Stop` is latency-sensitive and user-visible. Until agent-kit grows a
+    // deferred execution plane, broad typecheck/test sweeps stay off the hot
+    // path instead of shelling synchronously at turn end.
+    (_input) => null,
     formatStopHookOutput,
   )
 }

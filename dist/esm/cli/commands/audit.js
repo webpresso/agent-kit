@@ -135,11 +135,13 @@ function buildBundleBudgetArgs(target, options) {
 }
 export function registerAuditCommand(cli) {
     cli
-        .command('audit [kind] [target]', 'Run a packaged audit (tph, tph-e2e, bundle-budget, catalog-drift, commit-message, docs-frontmatter, blueprint-lifecycle, tech-debt, no-relative-parent-imports, mutation, quality)')
+        .command('audit [kind] [target]', 'Run a packaged audit (tph, tph-e2e, bundle-budget, catalog-drift, commit-message, docs-frontmatter, blueprint-lifecycle, tech-debt, no-relative-parent-imports, mutation, quality, bucket-boundary)')
         .option('--fix', 'Attempt to auto-fix violations (forwarded to supported audits)')
         .option('--json', 'Emit JSON output (forwarded to supported audits)')
         .option('--dist <dir>', 'Built Vite dist directory for bundle-budget')
         .option('--root <dir>', 'Repository root for repo guardrail audits')
+        .option('--strict', 'Zero-tolerance mode: all violations are errors (bucket-boundary)')
+        .option('--changed-only', 'Restrict to packages touched in git diff --name-only origin/main (bucket-boundary)')
         .option('--docs-root <dir>', 'Docs directory for docs-frontmatter')
         .option('--message-file <file>', 'Commit message file for commit-message')
         .option('--require-lore', 'Require Lore trailers (hard-fail on missing/malformed trailers)')
@@ -155,7 +157,7 @@ export function registerAuditCommand(cli) {
             console.error(`Usage: ak audit <kind> [target]\n` +
                 `Kinds: tph, tph-e2e, bundle-budget, catalog-drift, commit-message, ` +
                 `docs-frontmatter, blueprint-lifecycle, tech-debt, no-relative-parent-imports, ` +
-                `mutation, quality`);
+                `mutation, quality, bucket-boundary`);
             process.exit(1);
         }
         const forwarded = [];
@@ -224,6 +226,15 @@ export function registerAuditCommand(cli) {
                 await exitWithRepoAudit(auditNoRelativeParentImports(options.root ?? target ?? process.cwd()), options);
                 return;
             }
+            case 'bucket-boundary': {
+                const { auditBucketBoundary } = await import('#audit/bucket-boundary');
+                const auditResult = await auditBucketBoundary(options.root ?? target ?? process.cwd(), {
+                    changedOnly: options.changedOnly,
+                    strict: options.strict,
+                });
+                await exitWithRepoAudit(auditResult, options);
+                return;
+            }
             case 'mutation': {
                 const cwd = options.root ?? target ?? process.cwd();
                 const code = await runStryker(cwd);
@@ -235,7 +246,7 @@ export function registerAuditCommand(cli) {
                 process.exit(code);
             }
             default: {
-                console.error(`Unknown audit kind: ${kind}. Use 'tph', 'tph-e2e', 'bundle-budget', 'catalog-drift', 'commit-message', 'docs-frontmatter', 'blueprint-lifecycle', 'tech-debt', 'no-relative-parent-imports', 'mutation', or 'quality'.`);
+                console.error(`Unknown audit kind: ${kind}. Use 'tph', 'tph-e2e', 'bundle-budget', 'catalog-drift', 'commit-message', 'docs-frontmatter', 'blueprint-lifecycle', 'tech-debt', 'no-relative-parent-imports', 'mutation', 'quality', or 'bucket-boundary'.`);
                 process.exit(1);
             }
         }

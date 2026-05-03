@@ -8,6 +8,7 @@
  *
  * Runs by default on every `ak setup`.
  */
+import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { patchJsonFile } from '#cli/commands/init/merge';
 // Claude Code uses $CLAUDE_PROJECT_DIR; Codex runs from repo root so relative path works.
@@ -28,12 +29,30 @@ function patchClaudeSettings(existing) {
         ...existing,
         hooks: {
             ...hooks,
-            SessionStart: ensureGroup(hooks.SessionStart ?? [], {
+            SessionStart: ensureGroup(ensureGroup(hooks.SessionStart ?? [], {
                 hooks: [{ type: 'command', command: CC_BIN('ak-sessionstart-routing'), timeout: 5 }],
+            }), {
+                // Soft warning at session start — non-blocking, no network.
+                hooks: [
+                    {
+                        type: 'command',
+                        command: '"$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack-session.sh"',
+                        timeout: 2,
+                    },
+                ],
             }),
-            PreToolUse: ensureGroup(hooks.PreToolUse ?? [], {
+            PreToolUse: ensureGroup(ensureGroup(hooks.PreToolUse ?? [], {
                 matcher: 'Bash|Write|Edit',
                 hooks: [{ type: 'command', command: CC_BIN('ak-pretool-guard'), timeout: 5 }],
+            }), {
+                matcher: 'Skill',
+                hooks: [
+                    {
+                        type: 'command',
+                        command: '"$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack.sh"',
+                        timeout: 3,
+                    },
+                ],
             }),
             PostToolUse: ensureGroup(hooks.PostToolUse ?? [], {
                 matcher: 'Write|Edit',
@@ -74,7 +93,37 @@ function patchCodexHooks(existing) {
         }),
     };
 }
+// Fast existence check — no network, no install, sub-10ms.
+// Installation is handled by `ak setup --with gstack`, not at hook runtime.
+const GSTACK_CHECK_SH = `#!/bin/sh
+if [ -d "$HOME/.claude/skills/gstack/bin" ]; then
+  exit 0
+fi
+printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"gstack is not installed. Fix: run \`ak setup --with gstack\` then restart Claude Code."}}\\n'
+`;
+// SessionStart soft warning — emits additionalContext, never blocks.
+const GSTACK_SESSION_SH = `#!/bin/sh
+if [ -d "$HOME/.claude/skills/gstack/bin" ]; then
+  exit 0
+fi
+printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"WARNING: gstack is not installed. Skills like /browse, /qa, /ship are unavailable. Fix: run \`ak setup --with gstack\` then restart."}}\n'
+`;
+function ensureGstackHooks(repoRoot) {
+    const hooksDir = join(repoRoot, '.claude', 'hooks');
+    mkdirSync(hooksDir, { recursive: true });
+    const preToolPath = join(hooksDir, 'check-gstack.sh');
+    if (!existsSync(preToolPath)) {
+        writeFileSync(preToolPath, GSTACK_CHECK_SH, 'utf8');
+        chmodSync(preToolPath, 0o755);
+    }
+    const sessionPath = join(hooksDir, 'check-gstack-session.sh');
+    if (!existsSync(sessionPath)) {
+        writeFileSync(sessionPath, GSTACK_SESSION_SH, 'utf8');
+        chmodSync(sessionPath, 0o755);
+    }
+}
 export function scaffoldAgentHooks(input) {
+    ensureGstackHooks(input.repoRoot);
     return {
         claude: patchJsonFile(join(input.repoRoot, '.claude', 'settings.json'), patchClaudeSettings, input.options),
         codex: patchJsonFile(join(input.repoRoot, '.codex', 'hooks.json'), patchCodexHooks, input.options),

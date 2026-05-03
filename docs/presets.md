@@ -48,14 +48,14 @@ Ensures gstack — a Claude Code skill registry providing `/qa`, `/ship`, `/revi
 - `git clone` exits non-zero → `EXIT_WRITE_FAIL` (exit 3)
 - `./setup --team` exits non-zero → `EXIT_WRITE_FAIL` (exit 3)
 
-**Idempotency:** if gstack is already installed, the run is a no-op (`gstack: ✓ already installed`). Cloning happens at most once per host, then `./setup --team` runs.
+**Idempotency:** if gstack already has a usable install root, `ak setup --with gstack` refreshes it in place (`gstack: ✓ updated`). Managed installs with a `.git/` directory do a fast-forward pull before `./setup --team`; unmanaged-but-valid installs (a `setup` script without `.git/`) rerun `./setup --team` without forcing git metadata.
 **Side-effects outside the consumer repo:** writes to the user's home dir at `~/.claude/skills/gstack/`. This is intentional — gstack is global by design. Only opt in via `--with gstack` when you actually want gstack's skills available.
 
 ## Combining presets
 
 Presets run independently in the order: `lore-commits`, `omx`, `gstack`. A failure in one does **not** skip subsequent presets — every preset gets a chance to run. The aggregate exit code reflects the worst failure across all presets.
 
-Example: `ak setup --with omx,gstack` with `omx` not on PATH and gstack already installed → omx logs an error, gstack still detects + reports "already installed", overall exit code is 1 (the omx failure dominates).
+Example: `ak setup --with omx,gstack` with `omx` not on PATH and a reusable gstack install root already present → omx logs an error, gstack still detects + reports `updated`, overall exit code is 1 (the omx failure dominates).
 
 ## Runtime check (always-on)
 

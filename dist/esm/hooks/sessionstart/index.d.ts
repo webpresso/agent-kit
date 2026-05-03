@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { AK_ROUTING_BLOCK } from '#hooks/shared/routing-block';
 export { AK_ROUTING_BLOCK };
 export declare const MAX_BYTES: number;

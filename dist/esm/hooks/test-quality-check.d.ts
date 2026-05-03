@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 export declare function getTestQualityCheckCwd(): string;
 export declare function resolveTestFilePath(filePath: string, cwd?: string): string;
 export declare function runTestQualityCheck(argv?: string[], cwd?: string): void;

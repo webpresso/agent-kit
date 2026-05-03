@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 export declare function getChangedFiles(projectDir: string): string[];
 export declare function filterQaFiles(files: string[]): string[];
 export declare function getTypecheckFiles(files: string[]): string[];

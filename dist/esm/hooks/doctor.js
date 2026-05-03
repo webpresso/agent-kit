@@ -12,6 +12,7 @@ import { accessSync, constants, readFileSync, statSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { platform } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { isMcpReady } from './shared/mcp-sentinel.js';
 /** Hook bin definitions */
 const HOOK_BINS = [
@@ -23,27 +24,35 @@ const HOOK_BINS = [
     { name: 'test-quality-check', binName: 'ak-test-quality-check', checkStdin: false },
 ];
 /**
- * Find the real path of a bin by reading package.json and using require.resolve.
- * Works in all install contexts (global, workspace, direct dependency).
+ * Find the package root by walking upward from this module file.
+ *
+ * This is stable in both source (`src/hooks/doctor.ts`) and built
+ * (`dist/esm/hooks/doctor.js`) execution, and does not depend on
+ * Node/CommonJS `require.resolve` behavior.
+ */
+function resolvePackageRoot() {
+    let dir = dirname(fileURLToPath(import.meta.url));
+    while (dir !== dirname(dir)) {
+        if (tryAccess(join(dir, 'package.json')))
+            return dir;
+        dir = dirname(dir);
+    }
+    return null;
+}
+/**
+ * Find the real path of a bin by reading package.json relative to the current
+ * installed package root. Works in workspace, packed, and global installs.
  */
 function resolveHookBin(binName) {
     try {
-        const binDir = dirname(require.resolve('.'));
-        // Walk up from the doctor.ts location (src/hooks/) to find package.json
-        let dir = binDir;
-        while (dir !== dirname(dir)) {
-            if (tryAccess(join(dir, 'package.json'))) {
-                const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf-8'));
-                const binScript = pkg.bin?.[binName];
-                if (binScript) {
-                    // Resolve the bin entry relative to the package root
-                    const resolved = require.resolve(join(dir, binScript));
-                    return resolved;
-                }
-            }
-            dir = dirname(dir);
-        }
-        return null;
+        const root = resolvePackageRoot();
+        if (!root)
+            return null;
+        const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8'));
+        const binScript = pkg.bin?.[binName];
+        if (!binScript)
+            return null;
+        return resolve(root, binScript);
     }
     catch {
         return null;
@@ -51,6 +60,18 @@ function resolveHookBin(binName) {
 }
 function resolveMcpBin() {
     return resolveHookBin('ak');
+}
+function resolveMcpProbeCommand() {
+    const root = resolvePackageRoot();
+    if (root) {
+        const builtCli = join(root, 'dist', 'esm', 'mcp', 'cli.js');
+        if (tryAccess(builtCli))
+            return { command: 'node', args: [builtCli] };
+    }
+    const akBin = resolveMcpBin();
+    if (!akBin)
+        return null;
+    return { command: process.execPath, args: [akBin, 'mcp'] };
 }
 function resolvePluginRoot() {
     const akBin = resolveMcpBin();
@@ -100,8 +121,9 @@ async function probeHookBin(file, checkStdin) {
 }
 function probeExitZero(file) {
     return new Promise((resolve) => {
-        const child = spawn('node', [file], { stdio: ['pipe', 'pipe', 'pipe'] });
+        const child = spawn(file, [], { stdio: ['pipe', 'pipe', 'pipe'] });
         let stderr = '';
+        child.stdin.end();
         child.stderr?.on('data', (chunk) => {
             stderr += String(chunk);
         });
@@ -115,7 +137,7 @@ function probeExitZero(file) {
 }
 function probeJsonStdin(file) {
     return new Promise((resolve) => {
-        const child = spawn('node', [file], { stdio: ['pipe', 'pipe', 'pipe'] });
+        const child = spawn(file, [], { stdio: ['pipe', 'pipe', 'pipe'] });
         let stdout = '';
         let stderr = '';
         child.stdout.on('data', (chunk) => {
@@ -157,21 +179,41 @@ function checkPluginJson() {
     try {
         const content = readFileSync(pluginJsonPath, 'utf-8');
         const manifest = JSON.parse(content);
-        // Check required fields
-        if (!manifest.version || !manifest.agents || !Array.isArray(manifest.agents)) {
-            return { ok: false, detail: 'plugin.json missing version or agents array' };
+        if (!manifest.version) {
+            return { ok: false, detail: 'plugin.json missing version' };
         }
-        // Check each bin reference exists
-        const bins = [];
-        for (const agent of manifest.agents) {
-            if (agent.invocation?.command)
-                bins.push(agent.invocation.command);
+        const referencedPaths = new Set();
+        const collectFromCommand = (command) => {
+            if (typeof command !== 'string')
+                return;
+            for (const token of command.split(/\s+/)) {
+                if (!token.includes('${CLAUDE_PLUGIN_ROOT}/'))
+                    continue;
+                const relative = token.replace('${CLAUDE_PLUGIN_ROOT}/', '').replace(/^["']|["']$/g, '');
+                referencedPaths.add(relative);
+            }
+        };
+        for (const eventHooks of Object.values(manifest.hooks ?? {})) {
+            if (!Array.isArray(eventHooks))
+                continue;
+            for (const group of eventHooks) {
+                if (!Array.isArray(group?.hooks))
+                    continue;
+                for (const hook of group.hooks) {
+                    collectFromCommand(hook?.command);
+                }
+            }
         }
-        for (const bin of bins) {
-            // bin is like "./dist/esm/hooks/..." — resolve relative to root
-            const resolved = resolve(root, bin);
+        for (const server of Object.values(manifest.mcpServers ?? {})) {
+            if (Array.isArray(server.args)) {
+                for (const arg of server.args)
+                    collectFromCommand(arg);
+            }
+        }
+        for (const relative of referencedPaths) {
+            const resolved = resolve(root, relative);
             if (!tryAccess(resolved)) {
-                return { ok: false, detail: `bin referenced in plugin.json not found: ${bin}` };
+                return { ok: false, detail: `path referenced in plugin.json not found: ${relative}` };
             }
         }
         return { ok: true };
@@ -186,74 +228,90 @@ async function checkMcpServer() {
         return { ok: true, detail: 'MCP server already running (sentinel found)', skipped: true };
     }
     const timeoutMs = Number(process.env.AK_DOCTOR_MCP_TIMEOUT_MS ?? 5000);
-    const akMcpBin = resolveMcpBin();
-    if (!akMcpBin) {
+    const probeCommand = resolveMcpProbeCommand();
+    if (!probeCommand) {
         return { ok: false, detail: 'MCP server (ak) not found in .bin' };
     }
     return new Promise((resolve) => {
-        const child = spawn('node', [akMcpBin], {
+        const child = spawn(probeCommand.command, probeCommand.args, {
             stdio: ['pipe', 'pipe', 'pipe'],
             env: { ...process.env, AK_DOCTOR_MCP_TIMEOUT_MS: String(timeoutMs) },
         });
         let stdout = '';
         let stderr = '';
         let settled = false;
-        const timer = setTimeout(() => {
-            if (!settled) {
-                settled = true;
-                child.kill();
-                resolve({ ok: false, detail: `MCP server did not respond within ${timeoutMs}ms` });
-            }
-        }, timeoutMs);
-        child.stdout.on('data', (chunk) => {
-            stdout += String(chunk);
-        });
-        child.stderr?.on('data', (chunk) => {
-            stderr += String(chunk);
-        });
-        // Send tools/list JSON-RPC request
-        const toolsListRequest = JSON.stringify({
-            jsonrpc: '2.0',
-            id: 1,
-            method: 'tools/list',
-            params: {},
-        }) + '\n';
-        child.stdin.write(toolsListRequest, () => {
-            child.stdin.end();
-        });
-        child.on('error', (err) => {
-            if (!settled) {
-                settled = true;
-                clearTimeout(timer);
-                resolve({ ok: false, detail: String(err.message) });
-            }
-        });
-        child.on('close', (code) => {
+        const finish = (result) => {
             if (settled)
                 return;
             settled = true;
             clearTimeout(timer);
-            if (code !== 0 && code !== null) {
-                resolve({ ok: false, detail: `MCP server exited with code ${code}: ${stderr.trim().slice(0, 100) || '(no stderr)'}` });
-                return;
-            }
-            // Try to parse a valid JSON-RPC tools/list response
-            try {
-                const lines = stdout.trim().split('\n');
-                for (const line of lines) {
-                    if (!line.trim())
-                        continue;
-                    const parsed = JSON.parse(line);
-                    if (parsed.result && typeof parsed.result === 'object' && 'tools' in parsed.result) {
-                        resolve({ ok: true, detail: `MCP server responded with ${parsed.result.tools.length} tools` });
-                        return;
+            child.kill();
+            resolve(result);
+        };
+        const timer = setTimeout(() => {
+            finish({ ok: false, detail: `MCP server did not respond within ${timeoutMs}ms` });
+        }, timeoutMs);
+        child.stdout.on('data', (chunk) => {
+            stdout += String(chunk);
+            let newlineIndex = stdout.indexOf('\n');
+            while (newlineIndex !== -1) {
+                const line = stdout.slice(0, newlineIndex).trim();
+                stdout = stdout.slice(newlineIndex + 1);
+                if (line) {
+                    try {
+                        const parsed = JSON.parse(line);
+                        if (parsed.result && typeof parsed.result === 'object' && 'tools' in parsed.result) {
+                            finish({
+                                ok: true,
+                                detail: `MCP server responded with ${parsed.result.tools.length} tools`,
+                            });
+                            return;
+                        }
+                    }
+                    catch {
+                        // ignore non-JSON lines until close/timeout
                     }
                 }
-                resolve({ ok: false, detail: `MCP server responded but no valid tools/list result: ${stdout.trim().slice(0, 80)}` });
+                newlineIndex = stdout.indexOf('\n');
             }
-            catch {
-                resolve({ ok: false, detail: `MCP server produced invalid JSON-RPC response: ${stdout.trim().slice(0, 80)}` });
+        });
+        child.stderr?.on('data', (chunk) => {
+            stderr += String(chunk);
+        });
+        const initializeRequest = JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'initialize',
+            params: {
+                protocolVersion: '2024-11-05',
+                capabilities: {},
+                clientInfo: { name: 'agent-kit-hooks-doctor', version: '0.0.0' },
+            },
+        }) + '\n';
+        const toolsListRequest = JSON.stringify({
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'tools/list',
+            params: {},
+        }) + '\n';
+        child.stdin.write(initializeRequest, () => {
+            child.stdin.write(toolsListRequest, () => {
+                // Keep stdin open until we receive a response or time out. Closing
+                // immediately can terminate the stdio server before it flushes the
+                // initialize/tools-list responses.
+            });
+        });
+        child.on('error', (err) => {
+            finish({ ok: false, detail: String(err.message) });
+        });
+        child.on('close', (code) => {
+            if (settled)
+                return;
+            if (code !== 0 && code !== null) {
+                finish({ ok: false, detail: `MCP server exited with code ${code}: ${stderr.trim().slice(0, 100) || '(no stderr)'}` });
+                return;
             }
+            finish({ ok: false, detail: `MCP server responded but no valid tools/list result: ${stdout.trim().slice(0, 80)}` });
         });
     });
 }

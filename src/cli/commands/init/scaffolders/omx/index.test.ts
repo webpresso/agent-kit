@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { scaffoldOmx } from './index.js'
+import { ensureOmx } from './index.js'
 
 function makeSpawn(behaviors: Array<{ status: number | null; error?: Error }>) {
   let i = 0
@@ -16,13 +16,13 @@ function makeSpawn(behaviors: Array<{ status: number | null; error?: Error }>) {
       output: [],
       signal: null,
     }
-  }) as unknown as Parameters<typeof scaffoldOmx>[0]['spawn']
+  }) as unknown as Parameters<typeof ensureOmx>[0]['spawn']
 }
 
-describe('scaffoldOmx', () => {
+describe('ensureOmx', () => {
   it('returns omx-ok when probe and setup both succeed', () => {
     const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
-    const result = scaffoldOmx({
+    const result = ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
@@ -33,7 +33,7 @@ describe('scaffoldOmx', () => {
 
   it('returns omx-skipped-dry-run without spawning anything', () => {
     const spawn = makeSpawn([])
-    const result = scaffoldOmx({
+    const result = ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: true },
       spawn,
@@ -46,7 +46,7 @@ describe('scaffoldOmx', () => {
     const spawn = makeSpawn([
       { status: null, error: Object.assign(new Error('ENOENT'), { code: 'ENOENT' }) },
     ])
-    const result = scaffoldOmx({
+    const result = ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
@@ -59,7 +59,7 @@ describe('scaffoldOmx', () => {
 
   it('returns omx-not-found when probe exits non-zero', () => {
     const spawn = makeSpawn([{ status: 127 }])
-    const result = scaffoldOmx({
+    const result = ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
@@ -69,7 +69,7 @@ describe('scaffoldOmx', () => {
 
   it('returns omx-spawn-failed when setup itself fails', () => {
     const spawn = makeSpawn([{ status: 0 }, { status: 2 }])
-    const result = scaffoldOmx({
+    const result = ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
@@ -79,7 +79,7 @@ describe('scaffoldOmx', () => {
 
   it('passes --yes to the setup invocation', () => {
     const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
-    scaffoldOmx({
+    ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,

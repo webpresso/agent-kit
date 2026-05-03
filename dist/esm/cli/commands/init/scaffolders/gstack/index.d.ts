@@ -15,7 +15,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import type { MergeOptions } from '#cli/commands/init/merge';
-export interface ScaffoldGstackInput {
+export interface EnsureGstackInput {
     repoRoot: string;
     options: MergeOptions;
     /** Override gstack install root (defaults to ~/.claude/skills/gstack). Useful in tests. */
@@ -25,11 +25,11 @@ export interface ScaffoldGstackInput {
     /** DI seam for fs.existsSync. */
     exists?: typeof existsSync;
 }
-export type ScaffoldGstackResult = {
-    kind: 'gstack-already-installed';
+export type EnsureGstackResult = {
+    kind: 'gstack-installed';
     root: string;
 } | {
-    kind: 'gstack-installed';
+    kind: 'gstack-updated';
     root: string;
 } | {
     kind: 'gstack-skipped-dry-run';
@@ -37,12 +37,16 @@ export type ScaffoldGstackResult = {
     kind: 'gstack-clone-failed';
     exitCode: number;
 } | {
+    kind: 'gstack-pull-failed';
+    exitCode: number;
+} | {
     kind: 'gstack-setup-failed';
     exitCode: number;
 };
 /**
- * Ensure gstack is installed under the user's home dir. If it already is,
- * no-op. Otherwise clone the repo and run `./setup --team` once.
+ * Ensure gstack is installed and up-to-date.
+ * - Not present: clone from main + setup.
+ * - Already present: pull latest main + re-run setup.
  */
-export declare function scaffoldGstack(input: ScaffoldGstackInput): ScaffoldGstackResult;
+export declare function ensureGstack(input: EnsureGstackInput): EnsureGstackResult;
 //# sourceMappingURL=index.d.ts.map

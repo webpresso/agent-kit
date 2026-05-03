@@ -20,30 +20,47 @@ const GSTACK_REPO = 'https://github.com/garrytan/gstack.git';
 function defaultInstallRoot() {
     return path.join(homedir(), '.claude', 'skills', 'gstack');
 }
+function runSetup(root, spawn) {
+    const result = spawn('./setup', ['--team'], { cwd: root, stdio: 'inherit' });
+    return { ok: result.status === 0, exitCode: result.status ?? -1 };
+}
 /**
- * Ensure gstack is installed under the user's home dir. If it already is,
- * no-op. Otherwise clone the repo and run `./setup --team` once.
+ * Ensure gstack is installed and up-to-date.
+ * - Not present: clone from main + setup.
+ * - Already present: pull latest main + re-run setup.
  */
-export function scaffoldGstack(input) {
-    if (input.options.dryRun) {
+export function ensureGstack(input) {
+    if (input.options.dryRun)
         return { kind: 'gstack-skipped-dry-run' };
-    }
     const spawn = input.spawn ?? spawnSync;
     const exists = input.exists ?? existsSync;
     const root = input.installRoot ?? defaultInstallRoot();
-    if (exists(path.join(root, 'setup'))) {
-        return { kind: 'gstack-already-installed', root };
+    const hasSetup = exists(path.join(root, 'setup'));
+    const hasGitDir = exists(path.join(root, '.git'));
+    if (hasSetup) {
+        if (hasGitDir) {
+            // Managed install — pull latest before rerunning setup.
+            const pull = spawn('git', ['pull', '--ff-only', 'origin', 'main'], {
+                cwd: root,
+                stdio: 'inherit',
+            });
+            if (pull.status !== 0)
+                return { kind: 'gstack-pull-failed', exitCode: pull.status ?? -1 };
+        }
+        const setup = runSetup(root, spawn);
+        if (!setup.ok)
+            return { kind: 'gstack-setup-failed', exitCode: setup.exitCode };
+        return { kind: 'gstack-updated', root };
     }
+    // Fresh install.
     const clone = spawn('git', ['clone', '--depth', '1', GSTACK_REPO, root], {
         stdio: 'inherit',
     });
-    if (clone.status !== 0) {
+    if (clone.status !== 0)
         return { kind: 'gstack-clone-failed', exitCode: clone.status ?? -1 };
-    }
-    const setup = spawn('./setup', ['--team'], { cwd: root, stdio: 'inherit' });
-    if (setup.status !== 0) {
-        return { kind: 'gstack-setup-failed', exitCode: setup.status ?? -1 };
-    }
+    const setup = runSetup(root, spawn);
+    if (!setup.ok)
+        return { kind: 'gstack-setup-failed', exitCode: setup.exitCode };
     return { kind: 'gstack-installed', root };
 }
 //# sourceMappingURL=index.js.map

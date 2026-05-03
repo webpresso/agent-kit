@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
 import type { ToolInput } from '#hooks/shared/types'
 
-import { execSync } from 'node:child_process'
 import { existsSync, realpathSync } from 'node:fs'
 import { extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -35,13 +34,15 @@ export function shouldLintFile(input: ToolInput): boolean {
   return true
 }
 
-export function lintFile(filePath: string, projectDir: string): boolean {
+/**
+ * Hot-path compatibility shim.
+ *
+ * `PostToolUse` fires for every eligible edit/write, so broad shell-outs here
+ * add latency on the critical path. Until the deferred execution plane exists,
+ * the hook only classifies that a file would have been lint-eligible.
+ */
+export function lintFile(filePath: string, _projectDir: string): boolean {
   if (!existsSync(filePath)) return false
-  try {
-    execSync(`just lint --file "${filePath}"`, { cwd: projectDir, stdio: 'ignore' })
-  } catch {
-    // Non-blocking
-  }
   return true
 }
 

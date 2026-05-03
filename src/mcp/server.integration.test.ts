@@ -91,6 +91,7 @@ async function callServer(
     for (const req of requests) {
       child.stdin.write(`${JSON.stringify(req)}\n`)
     }
+    child.stdin.end()
   })
 }
 

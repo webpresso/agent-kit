@@ -7,11 +7,11 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|Edit|Write|WebFetch|Read|Grep",
+        "matcher": "Edit|Write|WebFetch|Read|Grep",
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/dist/esm/hooks/pretool-guard/index.js"
+            "command": "bun ${CLAUDE_PLUGIN_ROOT}/src/hooks/pretool-guard/index.ts"
           }
         ]
       }
@@ -22,7 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/dist/esm/hooks/post-tool/lint-after-edit.js",
+            "command": "bun ${CLAUDE_PLUGIN_ROOT}/src/hooks/post-tool/lint-after-edit.ts",
             "timeout": 15
           }
         ]
@@ -33,7 +33,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/dist/esm/hooks/stop/qa-changed-files.js"
+            "command": "bun ${CLAUDE_PLUGIN_ROOT}/src/hooks/stop/qa-changed-files.ts"
           }
         ]
       }
@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/dist/esm/hooks/guard-switch/index.js",
+            "command": "bun ${CLAUDE_PLUGIN_ROOT}/src/hooks/guard-switch/index.ts",
             "timeout": 5
           }
         ]
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/dist/esm/hooks/sessionstart/index.js"
+            "command": "bun ${CLAUDE_PLUGIN_ROOT}/src/hooks/sessionstart/index.ts"
           }
         ]
       }
@@ -63,8 +63,8 @@
   },
   "mcpServers": {
     "agent-kit": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/esm/mcp/cli.js"]
+      "command": "bun",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/src/mcp/cli.ts"]
     }
   }
 }

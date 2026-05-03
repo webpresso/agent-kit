@@ -12,11 +12,11 @@ import { spawnSync } from 'node:child_process';
 const NOT_FOUND_HINT = 'omx (oh-my-codex) is not on PATH. Install it and re-run, or omit `--with omx`.';
 /**
  * Probe for `omx` on PATH then run `omx setup --yes` in the consumer repo.
+ * Idempotent: safe to run on every `ak setup`.
  */
-export function scaffoldOmx(input) {
-    if (input.options.dryRun) {
+export function ensureOmx(input) {
+    if (input.options.dryRun)
         return { kind: 'omx-skipped-dry-run' };
-    }
     const spawn = input.spawn ?? spawnSync;
     const probe = spawn('omx', ['--version'], { encoding: 'utf8' });
     if (probe.error || (probe.status !== null && probe.status !== 0)) {

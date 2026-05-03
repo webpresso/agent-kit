@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { main as runMain } from './runner.js';

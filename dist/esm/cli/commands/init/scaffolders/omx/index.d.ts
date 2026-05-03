@@ -10,13 +10,13 @@
  */
 import { spawnSync } from 'node:child_process';
 import type { MergeOptions } from '#cli/commands/init/merge';
-export interface ScaffoldOmxInput {
+export interface EnsureOmxInput {
     repoRoot: string;
     options: MergeOptions;
     /** Dependency-injection seam for tests; defaults to node's child_process.spawnSync. */
     spawn?: typeof spawnSync;
 }
-export type ScaffoldOmxResult = {
+export type EnsureOmxResult = {
     kind: 'omx-ok';
 } | {
     kind: 'omx-skipped-dry-run';
@@ -29,6 +29,7 @@ export type ScaffoldOmxResult = {
 };
 /**
  * Probe for `omx` on PATH then run `omx setup --yes` in the consumer repo.
+ * Idempotent: safe to run on every `ak setup`.
  */
-export declare function scaffoldOmx(input: ScaffoldOmxInput): ScaffoldOmxResult;
+export declare function ensureOmx(input: EnsureOmxInput): EnsureOmxResult;
 //# sourceMappingURL=index.d.ts.map

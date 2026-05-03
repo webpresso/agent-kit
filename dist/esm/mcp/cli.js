@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * `ak mcp` — stdio MCP server entrypoint.
  *

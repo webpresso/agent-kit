@@ -20,9 +20,9 @@ import { scaffoldDocs } from './scaffold-docs.js';
 import { scaffoldBaseKit } from './scaffold-base-kit.js';
 import { scaffoldMonorepoNav } from './scaffold-monorepo-nav.js';
 import { scaffoldAgentHooks } from './scaffolders/agent-hooks/index.js';
-import { scaffoldGstack } from './scaffolders/gstack/index.js';
+import { ensureGstack } from './scaffolders/gstack/index.js';
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js';
-import { scaffoldOmx } from './scaffolders/omx/index.js';
+import { ensureOmx } from './scaffolders/omx/index.js';
 import { checkRuntimes } from './scaffolders/runtime-check/index.js';
 const PRESETS = ['lore-commits', 'omx', 'gstack'];
 function parsePresets(withFlag) {
@@ -143,10 +143,10 @@ export async function runInit(flags) {
         }
         let omxFailure = null;
         if (presets.includes('omx')) {
-            const omxResult = scaffoldOmx({ repoRoot: consumer.repoRoot, options });
+            const omxResult = ensureOmx({ repoRoot: consumer.repoRoot, options });
             switch (omxResult.kind) {
                 case 'omx-ok':
-                    console.log('  omx setup: ✓ ran successfully');
+                    console.log('  omx setup: ✓');
                     break;
                 case 'omx-skipped-dry-run':
                     console.log('  omx setup: skipped (--dry-run)');
@@ -163,13 +163,13 @@ export async function runInit(flags) {
         }
         let gstackFailure = null;
         if (presets.includes('gstack')) {
-            const gstackResult = scaffoldGstack({ repoRoot: consumer.repoRoot, options });
+            const gstackResult = ensureGstack({ repoRoot: consumer.repoRoot, options });
             switch (gstackResult.kind) {
-                case 'gstack-already-installed':
-                    console.log(`  gstack: ✓ already installed at ${gstackResult.root}`);
-                    break;
                 case 'gstack-installed':
-                    console.log(`  gstack: ✓ cloned + setup --team at ${gstackResult.root}`);
+                    console.log(`  gstack: ✓ installed at ${gstackResult.root}`);
+                    break;
+                case 'gstack-updated':
+                    console.log(`  gstack: ✓ updated at ${gstackResult.root}`);
                     break;
                 case 'gstack-skipped-dry-run':
                     console.log('  gstack: skipped (--dry-run)');
@@ -177,6 +177,10 @@ export async function runInit(flags) {
                 case 'gstack-clone-failed':
                     console.error(`  gstack: ✗ git clone exited with ${gstackResult.exitCode}`);
                     gstackFailure = 'clone-failed';
+                    break;
+                case 'gstack-pull-failed':
+                    console.error(`  gstack: ✗ git pull exited with ${gstackResult.exitCode}`);
+                    gstackFailure = 'pull-failed';
                     break;
                 case 'gstack-setup-failed':
                     console.error(`  gstack: ✗ ./setup --team exited with ${gstackResult.exitCode}`);
@@ -247,6 +251,8 @@ export async function runInit(flags) {
         if (omxFailure === 'spawn-failed')
             return EXIT_WRITE_FAIL;
         if (gstackFailure === 'clone-failed')
+            return EXIT_WRITE_FAIL;
+        if (gstackFailure === 'pull-failed')
             return EXIT_WRITE_FAIL;
         if (gstackFailure === 'setup-failed')
             return EXIT_WRITE_FAIL;

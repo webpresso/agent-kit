@@ -209,7 +209,7 @@
     "publint": "^0.3.18",
     "tshy": "^4.1.1",
     "tsx": "^4.19.3",
-    "typescript": "^5.6.0",
+    "typescript": "^6.0.3",
     "vitest": "^2.1.0"
   },
   "tshy": {

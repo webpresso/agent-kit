@@ -119,7 +119,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
 
   describe('--with gstack', () => {
     it('returns SUCCESS and clones + runs setup --team when missing', async () => {
-      // gstack not already installed: existsSync returns false (default tmpdir
+      // gstack install root absent: existsSync returns false (default tmpdir
       // doesn't contain ~/.claude/skills/gstack/setup unless the host happens
       // to have gstack — which is fine for local sweeps; in CI it's clean).
       // We mock spawn to succeed for both clone and ./setup.

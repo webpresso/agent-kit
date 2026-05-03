@@ -115,7 +115,7 @@ describe.skipIf(!existsSync(CLI_PATH))(
         PATH: pathWithFakeOmxOk(),
       })
       expect(r.code).toBe(0)
-      expect(r.stdout).toContain('omx setup: ✓ ran successfully')
+      expect(r.stdout).toContain('omx setup: ✓')
       expect(r.stdout).toContain('omx-fixture: setup --yes ran')
     })
 
@@ -135,12 +135,12 @@ describe.skipIf(!existsSync(CLI_PATH))(
       expect(r.stderr).toContain('exited with 5')
     })
 
-    it('--with gstack + fake HOME with gstack pre-installed: exits 0, "already installed"', () => {
+    it('--with gstack + fake HOME with gstack pre-installed: exits 0, "updated"', () => {
       const r = runAk(['setup', '--yes', '--with', 'gstack', '--cwd', repo], {
         HOME: fakeHome,
       })
       expect(r.code).toBe(0)
-      expect(r.stdout).toContain('gstack: ✓ already installed')
+      expect(r.stdout).toContain('gstack: ✓ updated')
       expect(r.stdout).toContain(path.join(fakeHome, '.claude', 'skills', 'gstack'))
     })
 
@@ -150,8 +150,8 @@ describe.skipIf(!existsSync(CLI_PATH))(
         HOME: fakeHome,
       })
       expect(r.code).toBe(0)
-      expect(r.stdout).toContain('omx setup: ✓ ran successfully')
-      expect(r.stdout).toContain('gstack: ✓ already installed')
+      expect(r.stdout).toContain('omx setup: ✓')
+      expect(r.stdout).toContain('gstack: ✓ updated')
     })
 
     it('presets run independently: omx failure does NOT skip gstack, exit code reflects worst failure', () => {
@@ -164,7 +164,7 @@ describe.skipIf(!existsSync(CLI_PATH))(
       expect(r.stderr).toContain('not on PATH')
       // gstack still runs after omx fails — independent presets aren't
       // coupled. Verify it succeeded against the fake-home fixture.
-      expect(r.stdout).toContain('gstack: ✓ already installed')
+      expect(r.stdout).toContain('gstack: ✓ updated')
     })
 
     it('runtime check: prints bun + vp status regardless of presets', () => {
