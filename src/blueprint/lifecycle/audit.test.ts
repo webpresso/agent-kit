@@ -435,4 +435,60 @@ last_updated: 2026-04-10
     const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
     expect(result.ok).toBe(true)
   })
+
+  it('demotes stage-coherence on shared hot files (package.json, lockfile, workspace) to non-blocking warnings', async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-shared-files-'))
+    tempDirs.push(projectRoot)
+
+    writeOverview(
+      projectRoot,
+      ['in-progress', 'cross-cutting-blueprint', '_overview.md'],
+      `---
+type: blueprint
+status: in-progress
+complexity: S
+created: 2026-05-03
+last_updated: 2026-05-03
+---
+
+# cross-cutting-blueprint
+
+**Files:** \`package.json\`, \`pnpm-workspace.yaml\`, \`pnpm-lock.yaml\`, \`apps/web/package.json\`, \`src/feature.ts\`
+
+#### Task 1.1: Active
+**Status:** in_progress
+
+**Depends:** None
+
+- [ ] a
+`,
+    )
+
+    const sharedOnly = await runBlueprintAudit({
+      projectRoot,
+      strict: true,
+      stagedFiles: ['package.json', 'pnpm-workspace.yaml', 'pnpm-lock.yaml', 'apps/web/package.json'],
+    })
+    expect(sharedOnly.ok).toBe(true)
+    expect(sharedOnly.issues.every((issue) => issue.level === 'warning')).toBe(true)
+    expect(sharedOnly.issues.map((issue) => issue.file).sort()).toEqual([
+      'apps/web/package.json',
+      'package.json',
+      'pnpm-lock.yaml',
+      'pnpm-workspace.yaml',
+    ])
+
+    const sharedAndScoped = await runBlueprintAudit({
+      projectRoot,
+      strict: true,
+      stagedFiles: ['package.json', 'src/feature.ts'],
+    })
+    expect(sharedAndScoped.ok).toBe(false)
+    expect(
+      sharedAndScoped.issues.find((issue) => issue.file === 'src/feature.ts')?.level,
+    ).toBe('error')
+    expect(
+      sharedAndScoped.issues.find((issue) => issue.file === 'package.json')?.level,
+    ).toBe('warning')
+  })
 })

@@ -298,15 +298,41 @@ async function auditStageCoherence(projectRoot, stagedFiles) {
         }
         const matchingPaths = matching.map((plan) => normalizePath(path.relative(projectRoot, plan.path)));
         const hasBlueprintUpdate = matchingPaths.some((planPath) => stagedBlueprints.has(planPath));
-        if (!hasBlueprintUpdate) {
+        if (hasBlueprintUpdate) {
+            continue;
+        }
+        if (isSharedHotFile(file)) {
+            // Shared/cross-cutting manifest files (package.json, lockfiles, workspace
+            // descriptors) are touched by many independent agents and routinely show
+            // up in active blueprints' filesTouched. Demote to a non-blocking warning
+            // so unrelated dep bumps and lockfile refreshes aren't gated on a
+            // blueprint they happen to overlap with.
             issues.push({
                 file,
-                level: 'error',
-                message: `Staged file ${file} matches blueprint filesTouched but no corresponding blueprint overview is staged.`,
+                level: 'warning',
+                message: `Shared file ${file} matches blueprint filesTouched (${matchingPaths.join(', ')}); cross-cutting changes don't require a blueprint overview update.`,
             });
+            continue;
         }
+        issues.push({
+            file,
+            level: 'error',
+            message: `Staged file ${file} matches blueprint filesTouched but no corresponding blueprint overview is staged.`,
+        });
     }
     return issues;
+}
+/**
+ * Files routinely touched by unrelated dep bumps, lockfile refreshes, and
+ * workspace-wide tooling changes. Stage-coherence on these never blocks.
+ */
+const SHARED_HOT_FILE_PATTERNS = [
+    /(?:^|\/)package\.json$/,
+    /^pnpm-workspace\.yaml$/,
+    /^pnpm-lock\.yaml$/,
+];
+function isSharedHotFile(file) {
+    return SHARED_HOT_FILE_PATTERNS.some((pattern) => pattern.test(file));
 }
 export async function runBlueprintAudit(options) {
     const issues = [];
