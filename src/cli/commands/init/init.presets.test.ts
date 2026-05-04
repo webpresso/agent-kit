@@ -8,7 +8,7 @@
  * against a tmpdir per test, so we also assert the agent surface is laid
  * down correctly when presets are active.
  */
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -53,14 +53,30 @@ const okSpawnResult = {
 
 describe('runInit() — omx + gstack presets (integration)', () => {
   let repo: string
+  let originalCodexHome: string | undefined
+  let originalHome: string | undefined
 
   beforeEach(() => {
     repo = makeRepo()
+    originalCodexHome = process.env.CODEX_HOME
+    originalHome = process.env.HOME
+    process.env.CODEX_HOME = join(repo, '.codex-home')
+    process.env.HOME = join(repo, '.home')
     spawnSyncMock.mockReset()
     spawnSyncMock.mockImplementation(() => okSpawnResult)
   })
 
   afterEach(() => {
+    if (originalCodexHome === undefined) {
+      delete process.env.CODEX_HOME
+    } else {
+      process.env.CODEX_HOME = originalCodexHome
+    }
+    if (originalHome === undefined) {
+      delete process.env.HOME
+    } else {
+      process.env.HOME = originalHome
+    }
     rmSync(repo, { recursive: true, force: true })
   })
 
@@ -72,6 +88,9 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(omxCalls).toHaveLength(2)
       expect(omxCalls[0]?.[1]).toEqual(['--version'])
       expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes'])
+      expect(readFileSync(join(repo, '.codex-home/config.toml'), 'utf8')).toContain(
+        '[mcp_servers.playwright]',
+      )
     })
 
     it('returns EXIT_SETUP_FAIL when probe errors with ENOENT (omx not on PATH)', async () => {
@@ -170,17 +189,21 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       })
       const code = await runInit({ cwd: repo, yes: true, with: 'omx,gstack' })
       expect(code).toBe(EXIT_SETUP_FAIL)
-      // gstack still ran — we don't assert on specific spawn calls because
-      // gstack might be already-installed at the host's real $HOME during
-      // this test run.
+      // gstack still ran; the aggregate exit code reflects the omx failure.
     })
   })
 
   describe('runtime check (always-on)', () => {
-    it('probes bun and vp regardless of --with flags', async () => {
+    it('runs default external presets and probes bun/vp without --with flags', async () => {
       await runInit({ cwd: repo, yes: true })
+      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
+      const gstackCloneCalls = spawnSyncMock.mock.calls.filter(
+        (c) => c[0] === 'git' && Array.isArray(c[1]) && c[1][0] === 'clone',
+      )
       const bunCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'bun')
       const vpCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'vp')
+      expect(omxCalls).toHaveLength(2)
+      expect(gstackCloneCalls).toHaveLength(1)
       expect(bunCalls).toHaveLength(1)
       expect(vpCalls).toHaveLength(1)
       expect(bunCalls[0]?.[1]).toEqual(['--version'])

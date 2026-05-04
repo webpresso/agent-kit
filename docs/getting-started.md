@@ -74,22 +74,23 @@ includes those libraries. Available:
 - `monorepo-navigation` — scaffolded per-repo from `pnpm-workspace.yaml`
   with `{{TODO}}` placeholders for fields needing human judgment.
 
-### Opt into bundled tooling (presets)
+### Bundled tooling installed by default
 
 ```bash
-npx ak setup --with omx,gstack,lore-commits
+npx ak setup
 ```
 
-Presets wire in tooling that lives outside the skill catalog:
+Default setup also wires in tooling that lives outside the skill catalog:
 
 - `omx` — chains `omx setup --yes` so the operator-workflow execution
-  layer is set up alongside agent-kit (`omx team` is invoked downstream
-  during blueprint execution).
+  layer is set up alongside agent-kit. If `omx` is missing, setup first
+  runs `npm install -g oh-my-codex` and then retries.
 - `gstack` — ensures the gstack skill registry is installed at
   `~/.claude/skills/gstack/` (clones + runs `./setup --team` if missing,
   no-op if already there). Provides `/qa`, `/ship`, `/review`, etc.
 - `lore-commits` — installs a `.husky/commit-msg` hook that enforces
-  Lore Commit Protocol trailers via `ak audit commit-message`.
+  Lore Commit Protocol trailers via `ak audit commit-message` when requested
+  with `--with lore-commits`.
 
 Presets and Tier-3 skills can be combined freely in the same `--with`
 flag. Full reference: [`presets.md`](./presets.md).

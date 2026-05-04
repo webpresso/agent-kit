@@ -1,7 +1,24 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const spawnSyncMock = vi.fn(() => ({
+  status: 0,
+  stdout: '',
+  stderr: '',
+  pid: 1,
+  output: [],
+  signal: null,
+}))
+
+vi.mock('node:child_process', async () => {
+  const actual = await vi.importActual<typeof import('node:child_process')>('node:child_process')
+  return {
+    ...actual,
+    spawnSync: (...args: unknown[]) => spawnSyncMock(...args),
+  }
+})
 
 import { resolveCatalogDir, runInit } from './index.js'
 
@@ -53,12 +70,29 @@ function makeTempRepo(): string {
 
 describe('ak init end-to-end', () => {
   let repo: string
+  let originalCodexHome: string | undefined
+  let originalHome: string | undefined
 
   beforeEach(() => {
     repo = makeTempRepo()
+    originalCodexHome = process.env.CODEX_HOME
+    originalHome = process.env.HOME
+    process.env.CODEX_HOME = join(repo, '.codex-home')
+    process.env.HOME = join(repo, '.home')
+    spawnSyncMock.mockClear()
   })
 
   afterEach(() => {
+    if (originalCodexHome === undefined) {
+      delete process.env.CODEX_HOME
+    } else {
+      process.env.CODEX_HOME = originalCodexHome
+    }
+    if (originalHome === undefined) {
+      delete process.env.HOME
+    } else {
+      process.env.HOME = originalHome
+    }
     rmSync(repo, { recursive: true, force: true })
   })
 

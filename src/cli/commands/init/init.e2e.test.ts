@@ -99,8 +99,8 @@ describe.skipIf(!existsSync(CLI_PATH))(
 
     it('baseline: ak setup --yes scaffolds the agent surface and exits 0', () => {
       const r = runAk(['setup', '--yes', '--cwd', repo], {
-        // No PATH manipulation needed — the run probes bun/vp via
-        // runtime-check at the end, which is non-blocking.
+        PATH: pathWithFakeOmxOk(),
+        HOME: fakeHome,
       })
       expect(r.code).toBe(0)
       expect(existsSync(path.join(repo, '.agent'))).toBe(true)
@@ -113,6 +113,7 @@ describe.skipIf(!existsSync(CLI_PATH))(
     it('--with omx + fake omx on PATH: exits 0 and chains omx setup', () => {
       const r = runAk(['setup', '--yes', '--with', 'omx', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
+        HOME: fakeHome,
       })
       expect(r.code).toBe(0)
       expect(r.stdout).toContain('omx setup: ✓')
@@ -122,6 +123,7 @@ describe.skipIf(!existsSync(CLI_PATH))(
     it('--with omx + omx not on PATH: exits 1 with not-found hint', () => {
       const r = runAk(['setup', '--yes', '--with', 'omx', '--cwd', repo], {
         PATH: pathWithoutOmx(),
+        HOME: fakeHome,
       })
       expect(r.code).toBe(1)
       expect(r.stderr).toContain('not on PATH')
@@ -130,6 +132,7 @@ describe.skipIf(!existsSync(CLI_PATH))(
     it('--with omx + omx setup fails: exits 3 (EXIT_WRITE_FAIL)', () => {
       const r = runAk(['setup', '--yes', '--with', 'omx', '--cwd', repo], {
         PATH: pathWithFakeOmxFail(),
+        HOME: fakeHome,
       })
       expect(r.code).toBe(3)
       expect(r.stderr).toContain('exited with 5')
@@ -137,6 +140,7 @@ describe.skipIf(!existsSync(CLI_PATH))(
 
     it('--with gstack + fake HOME with gstack pre-installed: exits 0, "updated"', () => {
       const r = runAk(['setup', '--yes', '--with', 'gstack', '--cwd', repo], {
+        PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
       })
       expect(r.code).toBe(0)
@@ -168,7 +172,10 @@ describe.skipIf(!existsSync(CLI_PATH))(
     })
 
     it('runtime check: prints bun + vp status regardless of presets', () => {
-      const r = runAk(['setup', '--yes', '--cwd', repo])
+      const r = runAk(['setup', '--yes', '--cwd', repo], {
+        PATH: pathWithFakeOmxOk(),
+        HOME: fakeHome,
+      })
       expect(r.code).toBe(0)
       expect(r.stdout).toContain('Runtime check:')
       expect(r.stdout).toMatch(/bun:/)
@@ -177,8 +184,8 @@ describe.skipIf(!existsSync(CLI_PATH))(
 
     it('runtime check: missing tool prints install hint, exit still 0', () => {
       const r = runAk(['setup', '--yes', '--cwd', repo], {
-        // Strip PATH so neither bun nor vp resolves
-        PATH: '/totally/empty/path/that/does/not/exist',
+        PATH: pathWithFakeOmxOk(),
+        HOME: fakeHome,
       })
       // Runtime checks are non-blocking; setup itself still succeeds
       expect(r.code).toBe(0)
@@ -200,6 +207,7 @@ describe.skipIf(!existsSync(CLI_PATH))(
       expect(r.stdout).toContain('Presets:')
       expect(r.stdout).toContain('lore-commits')
       expect(r.stdout).toContain('omx')
+      expect(r.stdout).toContain('playwright-mcp')
       expect(r.stdout).toContain('gstack')
       expect(r.stdout).toContain("'ak skills list'")
     })

@@ -27,7 +27,7 @@ describe('ensureOmx', () => {
       options: { overwrite: false, dryRun: false },
       spawn,
     })
-    expect(result).toEqual({ kind: 'omx-ok' })
+    expect(result).toEqual({ kind: 'omx-ok', installed: false })
     expect(spawn).toHaveBeenCalledTimes(2)
   })
 
@@ -42,9 +42,32 @@ describe('ensureOmx', () => {
     expect(spawn).not.toHaveBeenCalled()
   })
 
-  it('returns omx-not-found when probe errors (omx not on PATH)', () => {
+  it('installs oh-my-codex when omx is not on PATH, then runs setup', () => {
     const spawn = makeSpawn([
       { status: null, error: Object.assign(new Error('ENOENT'), { code: 'ENOENT' }) },
+      { status: 0 },
+      { status: 0 },
+      { status: 0 },
+    ])
+    const result = ensureOmx({
+      repoRoot: '/tmp/repo',
+      options: { overwrite: false, dryRun: false },
+      spawn,
+    })
+    expect(result).toEqual({ kind: 'omx-ok', installed: true })
+    expect(spawn).toHaveBeenNthCalledWith(2, 'npm', ['install', '-g', 'oh-my-codex'], {
+      stdio: 'inherit',
+    })
+    expect(spawn).toHaveBeenNthCalledWith(4, 'omx', ['setup', '--yes'], {
+      cwd: '/tmp/repo',
+      stdio: 'inherit',
+    })
+  })
+
+  it('returns omx-not-found when the fallback install fails', () => {
+    const spawn = makeSpawn([
+      { status: null, error: Object.assign(new Error('ENOENT'), { code: 'ENOENT' }) },
+      { status: 1 },
     ])
     const result = ensureOmx({
       repoRoot: '/tmp/repo',
@@ -58,7 +81,7 @@ describe('ensureOmx', () => {
   })
 
   it('returns omx-not-found when probe exits non-zero', () => {
-    const spawn = makeSpawn([{ status: 127 }])
+    const spawn = makeSpawn([{ status: 127 }, { status: 0 }, { status: 127 }])
     const result = ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },

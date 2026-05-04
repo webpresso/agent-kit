@@ -41,7 +41,7 @@ export type EnsureGstackResult =
 const GSTACK_REPO = 'https://github.com/garrytan/gstack.git'
 
 function defaultInstallRoot(): string {
-  return path.join(homedir(), '.claude', 'skills', 'gstack')
+  return path.join(process.env.HOME || homedir(), '.claude', 'skills', 'gstack')
 }
 
 function runSetup(

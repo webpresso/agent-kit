@@ -64,15 +64,21 @@ Codex CLI doesn't have a plugin marketplace — `~/.codex/config.toml` registers
 What `ak setup` does for Codex:
 - Skills: per-skill symlinks under `.agents/skills/` → `../../.agent/skills/<name>` (project-local, OpenAI/Amp/OpenCode convergent path).
 - Hooks: idempotent patch of `.codex/hooks.json` adding `ak-pretool-guard`, `ak-post-tool`, `ak-stop-qa`, `ak-sessionstart-routing` entries (additive — won't clobber existing user hooks).
-- MCP server: register `agent-kit` via `~/.codex/config.toml`:
+- MCP servers: register `agent-kit` manually once, and let the `omx` or `playwright-mcp` preset persist Playwright's MCP server in `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`):
 
   ```toml
   [mcp_servers.agent-kit]
   command = "npx"
   args = ["@webpresso/agent-kit", "mcp"]
+
+  [mcp_servers.playwright]
+  command = "npx"
+  args = ["-y", "@playwright/mcp@latest", "--caps=testing,storage,network,devtools"]
+  enabled = true
+  startup_timeout_sec = 30
   ```
 
-  (`ak setup` does not edit `~/.codex/config.toml` automatically — that's a global file outside the project. Add the entry yourself once per machine.)
+  `ak setup` installs/refreshes OMX and gstack by default, then writes only the owned Playwright block while preserving unrelated Codex config. Codex and OMX share the same persistent browser-testing MCP entry.
 
 Convergence with Claude Code's plugin path is tracked at [`tech-debt/accepted/h-001-track-codex-cli-plugin-marketplace-maturity.md`](./tech-debt/accepted/h-001-track-codex-cli-plugin-marketplace-maturity.md) — when Codex ships a plugin marketplace, this section folds into the Path A flow.
 
@@ -89,7 +95,7 @@ No plugin install or marketplace registration needed.
 | IDE | Skills path | Plugin manifest | Setup needed |
 |-----|-------------|----------------|--------------|
 | Claude Code | `.claude/skills/` | `.claude-plugin/plugin.json` + `marketplace.json` | `claude plugin marketplace add` + `install-plugin` |
-| Codex CLI | `.agents/skills/` | none (no marketplace) — `.codex/hooks.json` patched by `ak setup` | `ak setup` (Path B); add `~/.codex/config.toml` MCP entry once |
+| Codex CLI | `.agents/skills/` | none (no marketplace) — `.codex/hooks.json` patched by `ak setup` | `ak setup` (Path B); add `agent-kit` MCP once; use `--with playwright-mcp` or `--with omx` for Playwright MCP |
 | OpenCode | `.agents/skills/` + `.claude/skills/` (fallback) | none | `ak symlink sync` (done) |
 | Cursor / Windsurf | `.cursor/skills/` / `.windsurf/skills/` | localskills.sh distribution | via `ak setup` scaffolder |
 | Gemini CLI | `.gemini/commands/*.toml` (transformed from `.agent/`) | none | `ak symlink sync` (done) |
@@ -104,7 +110,8 @@ No plugin install or marketplace registration needed.
 | `ak symlink sync` | Sync skill surfaces across all configured IDEs (fans out AGENTS.md + mcp.json) |
 | `ak symlink import --from .cursorrules` | Import existing IDE rules into canonical `.agent/` |
 | `ak setup --with monorepo-navigation,tanstack-query` | Scaffold agent surfaces and install named Tier-3 skills |
-| `ak setup --with omx,gstack` | Scaffold + bundle external tooling presets ([docs/presets.md](docs/presets.md)) |
+| `ak setup` | Scaffold agent surfaces, install default external tooling presets (`omx`, `gstack`), and persist Playwright MCP for Codex/OMX |
+| `ak setup --with playwright-mcp` | Explicitly request the Playwright MCP Codex-config write; normally covered by default `omx` setup |
 | `ak skills list` | List available skills in the catalog |
 | `ak skills install <name>` | Install a named skill into the active IDE surfaces |
 | `ak audit tph` | Run tech-debt phase health audit |

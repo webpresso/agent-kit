@@ -8,7 +8,7 @@ last_updated: '2026-04-25'
 `--with <names>` accepts a comma-separated mix of two things:
 
 1. **Tier-3 skills** — opt-in skill packs from the agent-kit catalog (e.g. `tanstack-query`, `react-doctor`, `frontend-design`). Run `ak skills list` for the full list.
-2. **Presets** — named scaffolder modes that wire in additional tooling beyond the skill catalog. Each preset is documented below.
+2. **Presets** — named scaffolder modes that wire in additional tooling beyond the skill catalog. `omx` and `gstack` run by default on every `ak setup`; the rest are opt-in. Each preset is documented below.
 
 Presets and Tier-3 skills can be combined freely:
 
@@ -31,17 +31,26 @@ Writes `.husky/commit-msg` that enforces Lore Commit Protocol trailers via `ak a
 
 Chains `omx setup --yes` after the agent-kit scaffold completes. OMX (oh-my-codex) is the operator-workflow execution layer that complements agent-kit's plan/audit layer; agent-kit invokes `omx team` downstream during blueprint execution.
 
-**Detection:** `omx --version` on PATH.
+**Detection:** `omx --version` on PATH; if missing, setup runs `npm install -g oh-my-codex` and probes again.
 **Failure modes:**
-- omx not on PATH → `EXIT_SETUP_FAIL` (exit 1) with install hint in stderr
+- omx still not on PATH after the fallback install → `EXIT_SETUP_FAIL` (exit 1) with install hint in stderr
 - `omx setup --yes` itself errors → `EXIT_WRITE_FAIL` (exit 3) with the omx exit code surfaced
 
-**Idempotency:** OMX manages its own state — re-running `--with omx` re-invokes `omx setup --yes`, which is itself idempotent.
-**Side-effects:** OMX writes its own files into the consumer repo (`.codex/`, `.omx/`, scope-specific AGENTS.md additions). agent-kit doesn't predict or assert what OMX writes.
+**Idempotency:** OMX manages its own state — every `ak setup` re-invokes `omx setup --yes`, which is itself idempotent.
+**Codex/OMX MCP persistence:** after `omx setup --yes`, agent-kit upserts the owned `[mcp_servers.playwright]` block in `$CODEX_HOME/config.toml` or `~/.codex/config.toml`. This gives both Codex and OMX a persistent Playwright MCP server for browser testing without relying on session-local tool state.
+**Side-effects:** OMX writes its own files into the consumer repo (`.codex/`, `.omx/`, scope-specific AGENTS.md additions). agent-kit also writes the global Codex Playwright MCP block described above, preserving unrelated config.
+
+### `playwright-mcp`
+
+Upserts Playwright's MCP server into Codex's persistent MCP config. This is normally covered by default `omx` setup; the explicit preset remains available for callers that want to make the Codex-config write visible in `--with`.
+
+**Touches:** `$CODEX_HOME/config.toml` if `CODEX_HOME` is set, otherwise `~/.codex/config.toml`.
+**Idempotency:** replaces only the owned `[mcp_servers.playwright]` table, appends it when missing, and preserves unrelated tables/settings.
+**Why persistent:** Codex only exposes MCP servers that are present when the session starts, so writing the config makes the server survive restarts. Restart Codex after first setup.
 
 ### `gstack`
 
-Ensures gstack — a Claude Code skill registry providing `/qa`, `/ship`, `/review`, `/investigate`, `/browse`, etc. — is installed at `~/.claude/skills/gstack/`. If the directory is missing, clones from `https://github.com/garrytan/gstack.git` and runs `./setup --team`.
+Ensures gstack — a Claude Code skill registry providing `/qa`, `/ship`, `/review`, `/investigate`, `/browse`, etc. — is installed at `~/.claude/skills/gstack/`. This runs by default on every `ak setup`. If the directory is missing, setup clones from `https://github.com/garrytan/gstack.git` and runs `./setup --team`.
 
 **Detection:** path-based (`~/.claude/skills/gstack/setup` exists), NOT PATH-based.
 **Failure modes:**
@@ -53,9 +62,9 @@ Ensures gstack — a Claude Code skill registry providing `/qa`, `/ship`, `/revi
 
 ## Combining presets
 
-Presets run independently in the order: `lore-commits`, `omx`, `gstack`. A failure in one does **not** skip subsequent presets — every preset gets a chance to run. The aggregate exit code reflects the worst failure across all presets.
+Presets run independently in the order: `lore-commits`, `omx`, `playwright-mcp`, `gstack`. The default preset set is `omx,gstack`; `playwright-mcp` is also applied whenever `omx` runs. Specifying default presets explicitly is safe and idempotent. A failure in one does **not** skip subsequent presets — every preset gets a chance to run. The aggregate exit code reflects the worst failure across all presets.
 
-Example: `ak setup --with omx,gstack` with `omx` not on PATH and a reusable gstack install root already present → omx logs an error, gstack still detects + reports `updated`, overall exit code is 1 (the omx failure dominates).
+Example: `ak setup` with `omx` unavailable after the fallback install and a reusable gstack install root already present → omx logs an error, gstack still detects + reports `updated`, overall exit code is 1 (the omx failure dominates).
 
 ## Runtime check (always-on)
 

@@ -30,20 +30,24 @@ import { scaffoldDocs } from './scaffold-docs.js'
 import { scaffoldBaseKit } from './scaffold-base-kit.js'
 import { scaffoldMonorepoNav } from './scaffold-monorepo-nav.js'
 import { scaffoldAgentHooks } from './scaffolders/agent-hooks/index.js'
+import { ensureCodexPlaywrightMcp } from './scaffolders/codex-mcp/index.js'
 import { ensureGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
 import { ensureOmx } from './scaffolders/omx/index.js'
 import { checkRuntimes } from './scaffolders/runtime-check/index.js'
 
-const PRESETS = ['lore-commits', 'omx', 'gstack'] as const
+const PRESETS = ['lore-commits', 'omx', 'playwright-mcp', 'gstack'] as const
 type Preset = (typeof PRESETS)[number]
+const DEFAULT_PRESETS: readonly Preset[] = ['omx', 'gstack']
 
 function parsePresets(withFlag: string | undefined): Preset[] {
-  if (!withFlag) return []
-  return withFlag
-    .split(',')
-    .map((s) => s.trim())
-    .filter((s): s is Preset => (PRESETS as readonly string[]).includes(s))
+  const explicit = withFlag
+    ? withFlag
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s): s is Preset => (PRESETS as readonly string[]).includes(s))
+    : []
+  return [...new Set([...DEFAULT_PRESETS, ...explicit])]
 }
 
 export interface InitFlags {
@@ -187,7 +191,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
       const omxResult = ensureOmx({ repoRoot: consumer.repoRoot, options })
       switch (omxResult.kind) {
         case 'omx-ok':
-          console.log('  omx setup: ✓')
+          console.log(omxResult.installed ? '  omx setup: ✓ installed + configured' : '  omx setup: ✓')
           break
         case 'omx-skipped-dry-run':
           console.log('  omx setup: skipped (--dry-run)')
@@ -199,6 +203,21 @@ export async function runInit(flags: InitFlags): Promise<number> {
         case 'omx-spawn-failed':
           console.error(`  omx setup: ✗ exited with ${omxResult.exitCode}`)
           omxFailure = 'spawn-failed'
+          break
+      }
+    }
+
+    if (presets.includes('playwright-mcp') || presets.includes('omx')) {
+      const playwrightMcpResult = ensureCodexPlaywrightMcp({ options })
+      switch (playwrightMcpResult.kind) {
+        case 'codex-playwright-mcp-written':
+          console.log(`  codex playwright mcp: ✓ ${playwrightMcpResult.path}`)
+          break
+        case 'codex-playwright-mcp-unchanged':
+          console.log(`  codex playwright mcp: already configured at ${playwrightMcpResult.path}`)
+          break
+        case 'codex-playwright-mcp-skipped-dry-run':
+          console.log('  codex playwright mcp: skipped (--dry-run)')
           break
       }
     }
