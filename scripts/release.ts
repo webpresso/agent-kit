@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * scripts/release.mjs — agent-kit release engineering.
  *

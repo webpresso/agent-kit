@@ -49,36 +49,43 @@ describe('ak_qa tool', () => {
   })
 
   it('runs all three sub-tools concurrently (Promise.all parallelism)', async () => {
-    lintHandler.mockReset()
-    typecheckHandler.mockReset()
-    testHandler.mockReset()
+    // Fake timers make this deterministic: setTimeout callbacks never fire
+    // automatically, so we can assert the call order before advancing time.
+    // Wall-clock approach is inherently flaky under CPU load (CI runners).
+    vi.useFakeTimers()
+    try {
+      lintHandler.mockReset()
+      typecheckHandler.mockReset()
+      testHandler.mockReset()
 
-    const STEP_MS = 50
+      lintHandler.mockImplementation(() =>
+        delayedResolve(wrapPayload({ passed: true, issues: [] }), 100),
+      )
+      typecheckHandler.mockImplementation(() =>
+        delayedResolve(wrapPayload({ passed: true, errorCount: 0, errors: [], output: '' }), 100),
+      )
+      testHandler.mockImplementation(() =>
+        delayedResolve(
+          wrapPayload({ passed: true, output: '', exitCode: 0, backend: 'pnpm' }),
+          100,
+        ),
+      )
 
-    lintHandler.mockImplementation(() =>
-      delayedResolve(wrapPayload({ passed: true, issues: [] }), STEP_MS),
-    )
-    typecheckHandler.mockImplementation(() =>
-      delayedResolve(wrapPayload({ passed: true, errorCount: 0, errors: [], output: '' }), STEP_MS),
-    )
-    testHandler.mockImplementation(() =>
-      delayedResolve(
-        wrapPayload({ passed: true, output: '', exitCode: 0, backend: 'pnpm' }),
-        STEP_MS,
-      ),
-    )
+      const resultPromise = akQaTool.handler({})
 
-    const start = Date.now()
-    await akQaTool.handler({})
-    const elapsed = Date.now() - start
+      // handler() calls all three via Promise.all synchronously before the
+      // first await suspends. With frozen timers no setTimeout has fired yet,
+      // so if all three are already called it proves parallel fan-out.
+      // Sequential execution (await each) would only show lintHandler called here.
+      expect(lintHandler).toHaveBeenCalledOnce()
+      expect(typecheckHandler).toHaveBeenCalledOnce()
+      expect(testHandler).toHaveBeenCalledOnce()
 
-    expect(lintHandler).toHaveBeenCalledOnce()
-    expect(typecheckHandler).toHaveBeenCalledOnce()
-    expect(testHandler).toHaveBeenCalledOnce()
-
-    // If sequential, elapsed would be ~3 * STEP_MS = 150ms.
-    // Parallel via Promise.all should be ~STEP_MS (with a generous tolerance).
-    expect(elapsed).toBeLessThan(STEP_MS * 2.5)
+      await vi.runAllTimersAsync()
+      await resultPromise
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('aggregates passed=true when all three sub-results pass', async () => {

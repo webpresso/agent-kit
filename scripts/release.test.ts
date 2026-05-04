@@ -1,5 +1,5 @@
 /**
- * Integration test for `scripts/release.mjs`.
+ * Integration test for `scripts/release.ts`.
  *
  * Strategy: build a temp git repo on disk (with optional bare remote) and
  * execute the real release script against it. This exercises the actual git
@@ -17,7 +17,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-const SCRIPT_PATH = resolve(__dirname, 'release.mjs')
+const SCRIPT_PATH = resolve(__dirname, 'release.ts')
 
 interface Fixture {
   repoDir: string
@@ -35,7 +35,7 @@ function runScript(
 ): { stdout: string; stderr: string; status: number } {
   const argString = flags.join(' ')
   try {
-    const stdout = execSync(`node "${SCRIPT_PATH}" ${argString}`, {
+    const stdout = execSync(`bun "${SCRIPT_PATH}" ${argString}`, {
       cwd,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -106,7 +106,7 @@ function createFixture({ withRemote = false }: { withRemote?: boolean } = {}): F
   }
 }
 
-describe('scripts/release.mjs', () => {
+describe('scripts/release.ts', () => {
   let fixture: Fixture | undefined
 
   afterEach(() => {
@@ -193,7 +193,7 @@ describe('scripts/release.mjs', () => {
   })
 
   describe('script artifact', () => {
-    it('exists at scripts/release.mjs', () => {
+    it('exists at scripts/release.ts', () => {
       expect(existsSync(SCRIPT_PATH)).toBe(true)
     })
   })
