@@ -167,6 +167,30 @@ For separate client/server projects: `createAuthClient<typeof auth>()`.
 4. **Cookie cache** - Custom session fields NOT cached, always re-fetched
 5. **Stateless mode** - No DB = session in cookie only, logout on cache expiry
 6. **Change email flow** - Sends to current email first, then new email
+7. **Cloudflare Workers: never call `betterAuth()` per request** — `betterAuth()` initializes the plugin registry, Drizzle adapter, and JWKS cache. In Workers, the same isolate handles many requests; calling it per request is wasteful. Use a module-level `WeakMap` keyed on the stable `env` object:
+
+   ```ts
+   // ❌ Wrong — re-initializes on every request
+   app.all('/auth/*', async (c) => {
+     const auth = betterAuth(buildConfig(c.env))
+     return auth.handler(c.req.raw)
+   })
+
+   // ✅ Correct — one instance per isolate
+   const authInstances = new WeakMap<object, Auth<BetterAuthOptions>>()
+   app.all('/auth/*', async (c) => {
+     let auth = authInstances.get(c.env as object)
+     if (!auth) {
+       auth = betterAuth(buildConfig(c.env)) as Auth<BetterAuthOptions>
+       authInstances.set(c.env as object, auth)
+     }
+     return auth.handler(c.req.raw)
+   })
+   ```
+
+   The `WeakMap` is GC-safe: when the isolate is collected the map is collected with it. The cast to `Auth<BetterAuthOptions>` is required when `buildConfig` returns a narrower type (e.g. with required `basePath`).
+8. **`organization()` plugin + teams** — calling `organization()` with no options enables teams by default in v1.6.9+, which produces `Auth` generic type incompatible with `DefaultOrganizationPlugin<OrganizationOptions>`. Pass `{ teams: { enabled: false } }` explicitly to match the expected type.
+9. **`deviceAuthorization()` requires `schema: {}`** — Better Auth v1.6.9 Zod validates `schema` as non-optional. Call as `deviceAuthorization({ schema: {} })`; calling it bare throws at startup.
 
 ---
 
