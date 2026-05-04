@@ -14,7 +14,12 @@ import { join } from 'node:path'
 import { type MergeOptions, type MergeResult, patchJsonFile } from '#cli/commands/init/merge'
 
 // Claude Code uses $CLAUDE_PROJECT_DIR; Codex runs from repo root so relative path works.
-const CC_BIN = (name: string) => `"$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}"`
+//
+// CC_BIN wraps the command in a guard so it exits 0 gracefully when node_modules
+// hasn't been installed yet (e.g. a fresh worktree before `pnpm install` completes).
+// Without the guard every hook fires an error on first session start in new worktrees.
+const CC_BIN = (name: string) =>
+  `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}" || true`
 const CODEX_BIN = (name: string) => `./node_modules/.bin/${name}`
 
 type HookEntry = { type: string; command: string; timeout?: number }
@@ -22,7 +27,15 @@ type HookGroup = { matcher?: string; hooks: HookEntry[] }
 type HooksMap = Record<string, HookGroup[]>
 
 function hasCommand(groups: HookGroup[], command: string): boolean {
-  return groups.some((g) => g.hooks.some((h) => h.command === command))
+  // Match by binary name substring so both old exact-path and new guarded forms are detected.
+  const binName = command.match(/node_modules\/\.bin\/([\w-]+)/)?.[1]
+  return groups.some((g) =>
+    g.hooks.some((h) => {
+      if (h.command === command) return true
+      if (binName && h.command.includes(`/${binName}`)) return true
+      return false
+    }),
+  )
 }
 
 function ensureGroup(groups: HookGroup[], group: HookGroup): HookGroup[] {

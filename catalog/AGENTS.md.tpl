@@ -101,6 +101,33 @@ If work changes workspace ownership, build boundaries, or cross-package
 consumption mode, update the relevant boundary contract before claiming the plan
 is ready.
 
+## Releases
+
+All packages in the webpresso public umbrella use **Changesets**. Never push
+`v*` tags or manually bump `package.json#version`.
+
+To ship a change:
+1. `pnpm changeset` — describe the change and select the bump type.
+2. Commit the generated `.changeset/<name>.md` alongside your code.
+3. Merge to `main`. CI opens a **"Version Packages"** PR automatically.
+4. Merge that PR — CI publishes to GitHub Packages.
+
+```bash
+pnpm changeset:status   # see pending changesets
+```
+
+Full protocol: `.agent/rules/changeset-release.md`
+
+## Package conventions
+
+- No `../` parent-relative imports — use workspace deps + subpath exports.
+- No `.mjs` source files — write `.ts` (with Bun/Node shebang if needed).
+- `pnpm` only (`pnpm@10.x`). Run scripts via `pnpm run <script>`.
+- All packages: `"type": "module"`, `publishConfig` → GitHub Packages registry.
+- Auth: `GH_PACKAGES_TOKEN` env var consumed by `.npmrc`. Never hardcode tokens.
+
+Full details: `.agent/rules/package-conventions.md`
+
 ## Repository map
 
 {{REPOSITORY_MAP}}

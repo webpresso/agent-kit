@@ -1,0 +1,1 @@
+../../.agent/rules/generated-code-governance.md

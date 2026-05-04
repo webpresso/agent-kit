@@ -1,0 +1,1 @@
+../../.agent/rules/blueprint-scoping.md

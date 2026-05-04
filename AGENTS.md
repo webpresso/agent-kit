@@ -92,6 +92,20 @@ Commit messages, PR descriptions, and decision records should explain why the
 change exists, what tradeoffs were made, and what was verified. Record durable
 architecture decisions in this repo's ADR or planning location if one exists.
 
+## Releases
+
+Releases are Changesets-driven. Never manually bump `package.json#version` or
+push a `v*` tag.
+
+1. `pnpm changeset` — describe the change, select bump type.
+2. Commit the `.changeset/<name>.md` alongside your code.
+3. Merge to `main` → CI opens "Version Packages" PR.
+4. Merge that PR → CI publishes to GitHub Packages **and** creates a
+   `release/v<version>` branch with `dist/` committed for marketplace consumers.
+
+Marketplace consumers must pin to `release/v<version>` (has `dist/`), not
+`main`. Full details: `.agent/rules/changeset-release.md`.
+
 ## Safety boundaries
 
 - Do not commit secrets or credentials.

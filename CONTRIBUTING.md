@@ -44,54 +44,42 @@ of this repo at the marketplace ref, so the `dist/` build output **must** be
 present at any ref consumers install from — otherwise hook bins and the MCP
 server will fail to start with "file not found" errors.
 
-`dist/` is in `.gitignore` on `main` (see [F1 in the marketplace blueprint](./blueprints/in-progress/agent-kit-claude-plugin-marketplace/_overview.md)),
-which keeps day-to-day diffs clean. To bridge that, releases happen on a
-dedicated `release/v<version>` branch where `dist/` **is** committed and
-tagged. Marketplace consumers must pin to a release tag, not to `main`.
+`dist/` is in `.gitignore` on `main`, which keeps day-to-day diffs clean. Releases
+are driven by [Changesets](https://github.com/changesets/changesets): contributors
+describe their changes in a changeset file, CI opens a "Version Packages" PR to
+bump versions, and merging that PR publishes to GitHub Packages and creates a
+`release/v<version>` branch where `dist/` is committed for marketplace consumers.
 
-### Cutting a release
+### Describing a change (contributors)
 
-1. Make sure `main` is green and your working tree is clean (commit, stash,
-   or discard everything first — the script aborts if anything is dirty).
-2. Bump `package.json#version` in a normal commit on `main`.
-3. Update `CHANGELOG.md`: move items from `[Unreleased]` to the new version section, add a human-readable summary, note any breaking changes.
-4. Dry-run the release first (this is the safe default — no remote is contacted):
+On your feature branch, after your code change:
 
-   ```bash
-   pnpm release
-   # equivalent to: pnpm release --dry-run
-   ```
+```bash
+pnpm changeset
+```
 
-   The script will:
+Follow the prompts to select the bump type (`patch` / `minor` / `major`) and write
+a human-readable summary. This creates a `.changeset/<random-name>.md` file — commit
+it alongside your code change.
 
-   - verify the working tree is clean,
-   - run `pnpm build`,
-   - read the version from `package.json`,
-   - create a `release/v<version>` branch from `HEAD`,
-   - force-add `dist/` (overriding `.gitignore`),
-   - commit and annotate-tag the commit `v<version>`,
-   - print "[dry-run] would push …" instead of pushing,
-   - restore your original branch.
+### How releases happen (CI-driven)
 
-   Inspect the local branch and tag (`git log release/v<version>`,
-   `git show v<version>`) and confirm `dist/` is present at the tag.
+1. Your PR (including the `.changeset/*.md` file) is merged to `main`.
+2. The `Release` CI workflow detects pending changesets and opens/updates a
+   **"Version Packages"** PR that bumps `package.json#version` and updates
+   `CHANGELOG.md`.
+3. A maintainer reviews and merges the Version PR.
+4. CI detects no pending changesets and runs:
+   - `pnpm changeset publish` → builds, publishes to GitHub Packages, creates a
+     `v<version>` GitHub Release with the changeset summary as release notes.
+   - Creates a `release/v<version>` branch with `dist/` committed for marketplace
+     consumers.
 
-5. When the dry-run looks correct, push for real:
+### Checking pending changeset status
 
-   ```bash
-   pnpm release --no-dry-run
-   ```
-
-   This re-runs the same sequence and additionally pushes the tag and the
-   `release/v<version>` branch to `origin`. The script always restores you
-   to the branch you started on.
-
-   If the dry-run already created the local branch and tag, delete them
-   first (`git branch -D release/v<version>` and `git tag -d v<version>`)
-   before re-running, or the second invocation will fail on the already-existing refs.
-
-6. Update `.claude-plugin/marketplace.json` (if it pins a specific ref) so
-   that consumers picking up the marketplace pull the new tag.
+```bash
+pnpm changeset:status
+```
 
 ### Why `dist/` is not on `main`
 
@@ -101,15 +89,15 @@ Committing build output on `main` would:
 - guarantee merge conflicts in feature branches,
 - split developers between "rebuild and recommit" and "trust CI".
 
-Tag-only `dist/` commits sidestep all three: the day-to-day branch graph
-stays clean and only release tags carry the artifacts that marketplace
-install consumers need.
+The `release/v<version>` branch sidesteps all three: the day-to-day branch graph
+stays clean and only release branches carry the artifacts that marketplace
+consumers need.
 
-### Marketplace consumers: always pin to a tag
+### Marketplace consumers: always pin to a release branch
 
 When adding `webpresso/agent-kit` to a marketplace consumer, pin to a
-release tag — never to `main`. `main` does not contain `dist/` and the
-plugin will not function from there.
+`release/v<version>` branch — never to `main`. `main` does not contain `dist/`
+and the plugin will not function from there.
 
 ```jsonc
 // in the consumer's marketplace.json
@@ -117,7 +105,7 @@ plugin will not function from there.
   "source": {
     "source": "github",
     "repo": "webpresso/agent-kit",
-    "ref": "v0.1.0"  // <-- a release tag, not "main"
+    "ref": "release/v0.2.0"  // <-- a release branch, not "main"
   }
 }
 ```

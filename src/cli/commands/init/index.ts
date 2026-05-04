@@ -30,6 +30,7 @@ import { scaffoldDocs } from './scaffold-docs.js'
 import { scaffoldBaseKit } from './scaffold-base-kit.js'
 import { scaffoldMonorepoNav } from './scaffold-monorepo-nav.js'
 import { scaffoldAgentHooks } from './scaffolders/agent-hooks/index.js'
+import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js'
 import { ensureCodexPlaywrightMcp } from './scaffolders/codex-mcp/index.js'
 import { ensureGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
@@ -165,6 +166,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
     })
 
     const agentHooksResult = scaffoldAgentHooks({ repoRoot: consumer.repoRoot, options })
+    const claudeRulesResults = scaffoldClaudeRules({ repoRoot: consumer.repoRoot, options })
 
     const agentsMdResult = scaffoldAgentsMd({
       catalogDir,
@@ -259,6 +261,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
       ...(agentsMdResult ? [agentsMdResult] : []),
       agentHooksResult.claude,
       agentHooksResult.codex,
+      ...claudeRulesResults,
       ...presetResults,
     ]
     const summary = summarizeResults(all)

@@ -1,0 +1,1 @@
+../../.agent/rules/agent-guide.md

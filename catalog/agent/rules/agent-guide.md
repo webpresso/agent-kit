@@ -237,6 +237,11 @@ repo's secret manager wrapper (e.g. Doppler, 1Password, AWS Secrets Manager).
   an abstraction, not a hardcoded repo-wide assumption.
 - Do not tell the user to paste secrets onto disk or create local
   `.env` / `.dev.vars` fallbacks.
+- **Never cache credentials to disk for performance.** Source-of-truth tools
+  (`gh auth token`, `op read`, `doppler secrets get`, `aws sts ...`) are fast
+  enough; if a per-shell fork is too slow, the fix is upstream (lazy resolve,
+  daemon), not a plaintext cache file. User-level paths (`~/.cache/`,
+  `~/.config/<tool>/`, `/tmp/`) are still disk — same rule applies.
 
 ## File & Path Rules
 
