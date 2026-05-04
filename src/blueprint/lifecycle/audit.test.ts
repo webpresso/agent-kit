@@ -327,6 +327,94 @@ execution_updated_at: 2026-04-10T11:00:00Z
       result.issues.some((issue) => issue.message.includes('artifact or log identity is missing')),
     ).toBe(true)
   })
+
+  it('does not block staged files that only overlap planned blueprint filesTouched', async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-planned-overlap-'))
+    tempDirs.push(projectRoot)
+
+    writeOverview(
+      projectRoot,
+      ['planned', 'future-cli-work', '_overview.md'],
+      `---
+type: blueprint
+status: planned
+complexity: M
+created: 2026-05-04
+last_updated: 2026-05-04
+---
+
+# future-cli-work
+
+**Files:**
+- \`packages/cli/cli-utils/src/wrangler-launch-descriptor.ts\`
+
+#### Task 1.1: Plan
+**Status:** todo
+
+**Depends:** None
+
+- [ ] a
+`,
+    )
+
+    const result = await runBlueprintAudit({
+      projectRoot,
+      stagedFiles: ['packages/cli/cli-utils/src/wrangler-launch-descriptor.ts'],
+      strict: true,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({
+        level: 'warning',
+        message: expect.stringContaining('planned blueprint filesTouched'),
+      }),
+    )
+  })
+
+  it('still blocks staged files that overlap in-progress blueprint filesTouched', async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-in-progress-overlap-'))
+    tempDirs.push(projectRoot)
+
+    writeOverview(
+      projectRoot,
+      ['in-progress', 'active-cli-work', '_overview.md'],
+      `---
+type: blueprint
+status: in-progress
+complexity: M
+created: 2026-05-04
+last_updated: 2026-05-04
+---
+
+# active-cli-work
+
+**Files:**
+- \`packages/cli/cli-utils/src/wrangler-launch-descriptor.ts\`
+
+#### Task 1.1: Active
+**Status:** in_progress
+
+**Depends:** None
+
+- [ ] a
+`,
+    )
+
+    const result = await runBlueprintAudit({
+      projectRoot,
+      stagedFiles: ['packages/cli/cli-utils/src/wrangler-launch-descriptor.ts'],
+      strict: true,
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({
+        level: 'error',
+        message: expect.stringContaining('in-progress blueprint filesTouched'),
+      }),
+    )
+  })
 })
 
 describe('runBlueprintAudit — PLL doc truth checks', () => {

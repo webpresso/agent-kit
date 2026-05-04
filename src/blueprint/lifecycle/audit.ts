@@ -391,6 +391,17 @@ async function auditStageCoherence(
     if (hasBlueprintUpdate) {
       continue
     }
+
+    const blockingMatches = matching.filter((plan) => plan.status === 'in-progress')
+    if (!blockingMatches.length) {
+      issues.push({
+        file,
+        level: 'warning',
+        message: `Staged file ${file} matches planned blueprint filesTouched (${matchingPaths.join(', ')}); planned blueprints are advisory until implementation starts.`,
+      })
+      continue
+    }
+
     if (isSharedHotFile(file)) {
       // Shared/cross-cutting manifest files (package.json, lockfiles, workspace
       // descriptors) are touched by many independent agents and routinely show
@@ -404,10 +415,13 @@ async function auditStageCoherence(
       })
       continue
     }
+    const blockingPaths = blockingMatches.map((plan) =>
+      normalizePath(path.relative(projectRoot, plan.path)),
+    )
     issues.push({
       file,
       level: 'error',
-      message: `Staged file ${file} matches blueprint filesTouched but no corresponding blueprint overview is staged.`,
+      message: `Staged file ${file} matches in-progress blueprint filesTouched (${blockingPaths.join(', ')}) but no corresponding blueprint overview is staged.`,
     })
   }
 
