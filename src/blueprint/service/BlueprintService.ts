@@ -45,6 +45,7 @@ export interface BlueprintSummary {
   complexity: string
   taskCount: number
   progress: number
+  type: 'blueprint' | 'parent-roadmap'
   malformed?: string
 }
 
@@ -90,13 +91,6 @@ export class BlueprintService extends TrackedDocumentService<
   }): Promise<BlueprintSummary | null> {
     try {
       const content = await fs.readFile(scanned.path, 'utf-8')
-      const { data } = matter(content)
-
-      // Skip parent roadmaps - only include implementation plans
-      if (data.type === 'parent-roadmap') {
-        return null
-      }
-
       return this.parseSummary(content, scanned.slug)
     } catch (error) {
       return this.handleParseSummaryError(error, scanned)
@@ -113,6 +107,7 @@ export class BlueprintService extends TrackedDocumentService<
       complexity: plan.complexity,
       taskCount: plan.tasks.length,
       progress: plan.tasks.length > 0 ? Math.round((doneCount / plan.tasks.length) * 100) : 0,
+      type: plan.type,
     }
   }
 
@@ -128,6 +123,7 @@ export class BlueprintService extends TrackedDocumentService<
       complexity: (data.complexity as string) || 'unknown',
       taskCount: 0,
       progress: 0,
+      type: data.type === 'parent-roadmap' ? 'parent-roadmap' : 'blueprint',
       malformed: errorMessage,
     }
   }

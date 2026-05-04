@@ -62,6 +62,7 @@ type BlueprintStatus = (typeof planStatusSchema.options)[number]
 interface BlueprintListOptions {
   json?: boolean
   noTui?: boolean
+  onlyRoadmaps?: boolean
   projectRoot?: string
   status?: string
 }
@@ -297,15 +298,24 @@ export async function listBlueprints(
   const projectRoot = resolveProjectRoot(options.projectRoot)
   const service = new BlueprintService(projectRoot)
   const summaries = await service.list()
+  const filteredByType = options.onlyRoadmaps
+    ? summaries.filter((summary) => summary.type === 'parent-roadmap')
+    : summaries
 
   if (!options.status) {
-    return summaries.toSorted((left, right) => left.name.localeCompare(right.name))
+    return filteredByType.toSorted(compareBlueprintSummaries)
   }
 
   const status = normalizeBlueprintStatus(options.status)
-  return summaries
+  return filteredByType
     .filter((summary) => summary.status === status)
-    .toSorted((left, right) => left.name.localeCompare(right.name))
+    .toSorted(compareBlueprintSummaries)
+}
+
+function compareBlueprintSummaries(left: BlueprintSummary, right: BlueprintSummary): number {
+  const leftRank = left.type === 'parent-roadmap' ? 0 : 1
+  const rightRank = right.type === 'parent-roadmap' ? 0 : 1
+  return leftRank - rightRank || left.name.localeCompare(right.name)
 }
 
 export async function showBlueprint(

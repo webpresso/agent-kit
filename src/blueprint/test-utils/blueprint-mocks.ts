@@ -7,6 +7,7 @@ import type { Blueprint, Task } from '#core/parser'
 export interface MockBlueprintOptions {
   slug?: string
   name?: string
+  type?: Blueprint['type']
   status?: string
   complexity?: string
   lastUpdated?: string
@@ -33,6 +34,7 @@ export function createMockBlueprint(options: MockBlueprintOptions = {}): Bluepri
 
   return {
     name: blueprintName,
+    type: options.type ?? 'blueprint',
     title: options.name ?? options.slug ?? 'Test Plan',
     status: options.status ?? 'in-progress',
     complexity: options.complexity ?? 'S',

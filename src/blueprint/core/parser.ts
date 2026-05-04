@@ -55,6 +55,7 @@ export interface Phase {
 
 export interface Blueprint {
   name: string
+  type: 'blueprint' | 'parent-roadmap'
   title: string
   status: string
   complexity: string
@@ -109,6 +110,7 @@ export function parseBlueprint(markdown: string, name: string): Blueprint {
 
   return {
     name,
+    type: data.type,
     title,
     status: data.status,
     complexity: data.complexity,

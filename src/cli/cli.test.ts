@@ -27,6 +27,7 @@ describe('ak root command surface', () => {
   it('publishes setup as the primary scaffold command and keeps init as an alias', () => {
     expect(SUPPORTED_COMMANDS).toContain('setup')
     expect(SUPPORTED_COMMANDS).toContain('init')
+    expect(SUPPORTED_COMMANDS).toContain('roadmap')
   })
 
   it('advertises setup without the unavailable skills refresh action', async () => {
@@ -34,6 +35,7 @@ describe('ak root command surface', () => {
 
     expect(result.code).toBe(0)
     expect(result.stdout.join('\n')).toContain('setup                 Scaffold a consumer repo')
+    expect(result.stdout.join('\n')).toContain('roadmap               List or show parent roadmaps directly')
     expect(result.stdout.join('\n')).toContain('init                  Compatibility alias for setup')
     expect(result.stdout.join('\n')).toContain('skills                Manage agent skills (list, install)')
     expect(result.stdout.join('\n')).not.toContain('refresh')
@@ -45,6 +47,15 @@ describe('ak root command surface', () => {
     expect(result.code).toBe(0)
     expect(result.stdout.join('\n')).toContain('ak setup')
     expect(result.stdout.join('\n')).toContain('--with <skills>')
+  })
+
+  it('routes ak roadmap to roadmap help', async () => {
+    const result = await runAk(['roadmap', '--help'])
+
+    expect(result.code).toBe(0)
+    expect(result.stdout.join('\n')).toContain('ak roadmap')
+    expect(result.stdout.join('\n')).toContain('list [status]')
+    expect(result.stdout.join('\n')).toContain('show <slug>')
   })
 
   it('rejects the removed skills refresh action', async () => {

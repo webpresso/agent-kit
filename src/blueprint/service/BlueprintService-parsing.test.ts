@@ -23,7 +23,7 @@ describe('BlueprintService - parsing', () => {
   })
 
   describe('parent-roadmap filtering', () => {
-    it('should skip parent roadmaps in listPlans', async () => {
+    it('should include parent roadmaps in listPlans and mark their type', async () => {
       // Arrange - create both implementation plan and parent roadmap
       const implPlanDir = path.join(testDir, 'webpresso/blueprints/feature-plan')
       const roadmapDir = path.join(testDir, 'webpresso/blueprints/roadmap-2026')
@@ -62,10 +62,18 @@ This is a parent roadmap, not an implementation plan
       // Act
       const plans = await service.list()
 
-      // Assert - only implementation plan should be returned
-      expect(plans).toHaveLength(1)
-      expect(plans[0]?.name).toBe('feature-plan')
-      expect(plans[0]?.status).toBe('in-progress')
+      // Assert - both entries are returned and roadmap type is preserved
+      expect(plans).toHaveLength(2)
+      expect(plans.find((plan) => plan.name === 'feature-plan')).toMatchObject({
+        name: 'feature-plan',
+        status: 'in-progress',
+        type: 'blueprint',
+      })
+      expect(plans.find((plan) => plan.name === 'roadmap-2026')).toMatchObject({
+        name: 'roadmap-2026',
+        status: 'in-progress',
+        type: 'parent-roadmap',
+      })
     })
   })
 

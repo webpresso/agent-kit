@@ -18,6 +18,7 @@ const VERSION = readPackageVersion(import.meta.url)
 
 const SUPPORTED_COMMANDS = [
   'blueprint',
+  'roadmap',
   'symlink',
   'cursor-windsurf-sync',
   'audit',
@@ -38,6 +39,7 @@ const ROOT_HELP = [
   '',
   'Commands:',
   '  blueprint             Manage blueprints (list, new, show, exec, audit, ...)',
+  '  roadmap               List or show parent roadmaps directly',
   '  symlink               Sync agent-surface files (sync, check)',
   '  cursor-windsurf-sync  Copy skills to .cursor/rules/ and .windsurf/skills/',
   '  audit                 Run packaged audits (bundle budgets, repo guardrails, TPH, tech-debt)',
@@ -68,6 +70,7 @@ export async function main(): Promise<number> {
   const wantsVersion = argv.includes('--version') || argv.includes('-v')
   const wantsHelp = argv.includes('--help') || argv.includes('-h')
   const isNestedBlueprintHelp = command === 'blueprint' && wantsHelp && argv.length > 4
+  const isRoadmapHelp = command === 'roadmap' && wantsHelp
 
   if (wantsVersion && (!command || command.startsWith('-'))) {
     console.log(VERSION)
@@ -85,12 +88,23 @@ export async function main(): Promise<number> {
     return 0
   }
 
+  if (isRoadmapHelp) {
+    const { getRoadmapHelpText } = await import('./commands/roadmap.js')
+    console.log(getRoadmapHelpText())
+    return 0
+  }
+
   await bootstrapAk(argv)
 
   switch (command) {
     case 'blueprint': {
       const { registerBlueprintRouter } = await import('./commands/blueprint/router.js')
       registerBlueprintRouter(cli)
+      break
+    }
+    case 'roadmap': {
+      const { registerRoadmapCommand } = await import('./commands/roadmap.js')
+      registerRoadmapCommand(cli)
       break
     }
     case 'symlink': {

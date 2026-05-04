@@ -12,7 +12,7 @@ tags:
   - blueprint-hierarchy
   - dx
   - pll
-parent_roadmap: 'cross-repo: webpresso/monorepo → webpresso/blueprints/draft/webpresso-public-extraction-roadmap'
+parent_roadmap: 'cross-repo: webpresso/monorepo → webpresso/blueprints/completed/webpresso-public-extraction-roadmap'
 ---
 
 # Promote Parent Roadmaps to First-Class
@@ -77,7 +77,7 @@ CLI ergonomics need a sketch + dogfooding pass before this is locked. Specifical
 
 ## Related
 
-- Parent: `draft/webpresso-public-extraction-roadmap/_overview.md`
+- Parent: `completed/webpresso-public-extraction-roadmap/_overview.md`
 - Sibling: `planned/agent-kit-parity-pass` (rules-fanout work, kept separate)
 - Triggered by: discoverability gap audit on 2026-04-25 — `ak blueprint list` silently dropped a legitimate parent-roadmap
 - Source-of-bug: `webpresso/agent-kit/src/blueprint/service/BlueprintService.ts:86-94`

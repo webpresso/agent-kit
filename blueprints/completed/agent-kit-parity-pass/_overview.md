@@ -13,7 +13,7 @@ tags:
   - mcp
   - audit
   - quality-engine
-parent_roadmap: 'cross-repo: webpresso/monorepo → webpresso/blueprints/draft/webpresso-public-extraction-roadmap'
+parent_roadmap: 'cross-repo: webpresso/monorepo → webpresso/blueprints/completed/webpresso-public-extraction-roadmap'
 ---
 
 # Agent-Kit Parity Pass
@@ -57,7 +57,7 @@ External research (2026-04-25) — see roadmap Decision 3/4 — identified concr
 
 ## Related
 
-- Parent: `draft/webpresso-public-extraction-roadmap/_overview.md`
+- Parent: `completed/webpresso-public-extraction-roadmap/_overview.md`
 - Supersedes: `quality-engine` portion of `completed/extract-foundation-packages` Wave 1 plan
 - Sibling: `planned/consolidate-runtime-umbrella`, `planned/expand-tooling-umbrella`, `draft/promote-parent-roadmaps`
 - External reference: `dyoshikawa/rulesync` README, `agents.md` spec, `agentskills.io`

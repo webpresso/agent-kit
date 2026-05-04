@@ -44,8 +44,9 @@ export function formatBlueprintSummaries(summaries: BlueprintSummary[]): string 
 
   return summaries
     .map((summary) => {
+      const label = summary.type === 'parent-roadmap' ? 'ROADMAP' : 'BLUEPRINT'
       const malformedSuffix = summary.malformed ? ' malformed=yes' : ''
-      return `${summary.name} status=${summary.status} complexity=${summary.complexity} progress=${summary.progress}% tasks=${summary.taskCount}${malformedSuffix}`
+      return `${label} ${summary.name} status=${summary.status} complexity=${summary.complexity} progress=${summary.progress}% tasks=${summary.taskCount}${malformedSuffix}`
     })
     .join('\n')
 }
