@@ -24,6 +24,7 @@ import type { ToolDescriptor } from '#mcp/auto-discover'
 
 const KINDS = [
   'tph',
+  'tph-e2e',
   'catalog-drift',
   'docs-frontmatter',
   'blueprint-lifecycle',
@@ -128,6 +129,11 @@ async function dispatch(
       const exitCode = await runScript(script)
       return { passed: exitCode === 0, kind, details: { exitCode } }
     }
+    case 'tph-e2e': {
+      const script = resolveAuditScript('audit-tph-e2e.ts')
+      const exitCode = await runScript(script)
+      return { passed: exitCode === 0, kind, details: { exitCode } }
+    }
     default: {
       // Exhaustiveness check — z.enum should make this unreachable.
       const _exhaustive: never = kind
@@ -139,7 +145,7 @@ async function dispatch(
 const tool: ToolDescriptor = {
   name: 'ak_audit',
   description:
-    'Run a packaged repo audit. `kind` selects the audit (tph, catalog-drift, docs-frontmatter, blueprint-lifecycle, bundle-budget, commit-message, tech-debt). Returns {passed, kind, details}.',
+    'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-lifecycle, bundle-budget, commit-message, tech-debt). Returns {passed, kind, details}.',
   inputSchema,
   annotations: {
     title: 'Audit',

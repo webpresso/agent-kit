@@ -6,7 +6,10 @@ import { afterAll, describe, expect, it } from 'vitest'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(__dirname, '..', '..')
-const cliPath = resolve(repoRoot, 'dist/esm/mcp/cli.js')
+const sourceCliPath = resolve(repoRoot, 'src/mcp/cli.ts')
+const builtCliPath = resolve(repoRoot, 'dist/esm/mcp/cli.js')
+const cliPath = existsSync(sourceCliPath) ? sourceCliPath : builtCliPath
+const cliRuntime = cliPath.endsWith('.ts') ? 'bun' : 'node'
 
 interface JsonRpcRequest {
   jsonrpc: '2.0'
@@ -31,7 +34,7 @@ async function callServer(
   ...requests: JsonRpcRequest[]
 ): Promise<JsonRpcResponse[]> {
   return new Promise((res, rej) => {
-    const child = spawn('node', [cliPath], {
+    const child = spawn(cliRuntime, [cliPath], {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: { ...process.env, NODE_ENV: 'test' },
     })
@@ -97,7 +100,7 @@ async function callServer(
 
 describe('mcp server integration', () => {
   if (!existsSync(cliPath)) {
-    it.skip('skipped: dist/esm/mcp/cli.js missing — run `pnpm build` first', () => {
+    it.skip('skipped: MCP CLI entrypoint missing', () => {
       /* skip */
     })
     return
@@ -131,8 +134,16 @@ describe('mcp server integration', () => {
     expect(akTest?.inputSchema.properties).toMatchObject({
       packages: expect.any(Object),
       files: expect.any(Object),
-      suite: expect.any(Object),
       backend: expect.any(Object),
+    })
+    expect(akTest?.inputSchema.properties).not.toHaveProperty('suite')
+
+    const akE2e = tools.find((t) => t.name === 'ak_e2e')
+    expect(akE2e).toBeDefined()
+    expect(akE2e?.inputSchema.properties).toMatchObject({
+      suite: expect.any(Object),
+      files: expect.any(Object),
+      headed: expect.any(Object),
     })
   })
 
@@ -174,7 +185,7 @@ describe('mcp server integration', () => {
       name: string
     }>
     expect(tools.map((t) => t.name)).toEqual(
-      expect.arrayContaining(['ak_lint', 'ak_qa', 'ak_test', 'ak_typecheck', 'ak_audit']),
+      expect.arrayContaining(['ak_lint', 'ak_qa', 'ak_test', 'ak_e2e', 'ak_typecheck', 'ak_audit']),
     )
   })
 

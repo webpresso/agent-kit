@@ -17,6 +17,16 @@ describe('AK_ROUTING_BLOCK', () => {
     expect(AK_ROUTING_BLOCK).toContain('ak_test')
   })
 
+  it('mentions ak_e2e MCP tool', () => {
+    expect(AK_ROUTING_BLOCK).toContain('ak_e2e')
+  })
+
+  it('distinguishes e2e execution from the tph-e2e audit', () => {
+    expect(AK_ROUTING_BLOCK).toContain('running e2e test files')
+    expect(AK_ROUTING_BLOCK).toContain('ak_e2e')
+    expect(AK_ROUTING_BLOCK).toContain('E2E testing-philosophy audit')
+  })
+
   it('mentions ak_lint MCP tool', () => {
     expect(AK_ROUTING_BLOCK).toContain('ak_lint')
   })
@@ -31,6 +41,11 @@ describe('AK_ROUTING_BLOCK', () => {
 
   it('mentions ak_audit MCP tool', () => {
     expect(AK_ROUTING_BLOCK).toContain('ak_audit')
+  })
+
+  it('mentions tph-e2e as an ak_audit usage', () => {
+    expect(AK_ROUTING_BLOCK).toContain('tph-e2e')
+    expect(AK_ROUTING_BLOCK).toContain('ak_audit(kind="tph-e2e")')
   })
 
   it('lists forbidden alternatives', () => {

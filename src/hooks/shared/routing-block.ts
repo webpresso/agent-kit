@@ -17,6 +17,10 @@ export const AK_ROUTING_BLOCK: string = `<ak_routing>
       <tool>ak_test</tool>
     </row>
     <row>
+      <trigger>running e2e test files or package-scoped e2e execution</trigger>
+      <tool>ak_e2e</tool>
+    </row>
+    <row>
       <trigger>linting, code style checks, lint errors</trigger>
       <tool>ak_lint</tool>
     </row>
@@ -31,6 +35,10 @@ export const AK_ROUTING_BLOCK: string = `<ak_routing>
     <row>
       <trigger>auditing blueprints, catalog drift, bundle budget, docs frontmatter</trigger>
       <tool>ak_audit</tool>
+    </row>
+    <row>
+      <trigger>e2e testing philosophy audit, tph-e2e</trigger>
+      <tool>ak_audit(kind="tph-e2e")</tool>
     </row>
     <row>
       <trigger>data-heavy shell commands, log processing, computation</trigger>
@@ -56,6 +64,11 @@ export const AK_ROUTING_BLOCK: string = `<ak_routing>
       <trigger>running tests, verifying test suite, check if tests pass</trigger>
       <forbidden>just test, pnpm test, vitest</forbidden>
     </tool>
+    <tool name="ak_e2e">
+      <category>dev-workflow</category>
+      <trigger>running e2e test files, suite-aware e2e execution, host-adapter e2e flows</trigger>
+      <usage>Use for E2E execution. Supports suite-aware and host-adapter-backed planning.</usage>
+    </tool>
     <tool name="ak_lint">
       <category>dev-workflow</category>
       <trigger>linting, code style checks, lint errors</trigger>
@@ -75,6 +88,7 @@ export const AK_ROUTING_BLOCK: string = `<ak_routing>
       <category>dev-workflow</category>
       <trigger>auditing blueprints, catalog drift, bundle budget, docs frontmatter</trigger>
       <forbidden>just audit</forbidden>
+      <usage>Use kind="tph-e2e" for the E2E testing-philosophy audit. This audits E2E quality rules; it does not execute the E2E suite itself.</usage>
     </tool>
     <tool name="ctx_execute">
       <category>data-processing</category>

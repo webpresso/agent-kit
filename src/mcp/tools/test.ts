@@ -18,9 +18,8 @@ import * as pnpmBackend from '#mcp/backends/pnpm'
 const inputSchema = z.object({
   packages: z.array(z.string()).optional(),
   files: z.array(z.string()).optional(),
-  suite: z.enum(['unit', 'integration', 'e2e']).optional(),
   backend: z.enum(['just', 'pnpm', 'auto']).optional().default('auto'),
-})
+}).strict()
 
 export type AkTestInput = z.infer<typeof inputSchema>
 
@@ -33,7 +32,7 @@ function detectBackend(cwd: string, override: AkTestInput['backend']): 'just' | 
 const tool: ToolDescriptor = {
   name: 'ak_test',
   description:
-    'Run tests via the project test backend. Auto-detects `just` (when a justfile is present) or `pnpm` (workspace fallback); supports an explicit override via `backend`.',
+    'Run tests via the project test backend. Auto-detects `just` (when a justfile is present) or `pnpm` (workspace fallback); supports an explicit override via `backend`. Use `ak_e2e` for suite-aware E2E execution.',
   inputSchema,
   // Tests SHOULD be deterministic + side-effect-free, but we can't prove it
   // for arbitrary user code, so leave `idempotentHint` unset (defaults false)

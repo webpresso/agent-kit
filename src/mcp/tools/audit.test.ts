@@ -141,6 +141,17 @@ describe('ak_audit tool', () => {
       expect((args as string[]).some((a) => a.includes('audit-tph'))).toBe(true)
       expect(parsePayload(result).passed).toBe(true)
     })
+
+    it('tph-e2e -> spawns bun on the tph-e2e script', async () => {
+      spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
+      const result = await akAuditTool.handler({ kind: 'tph-e2e' })
+      expect(spawnMock).toHaveBeenCalledTimes(1)
+      const [cmd, args] = spawnMock.mock.calls[0]!
+      expect(cmd).toBe('bun')
+      expect(Array.isArray(args)).toBe(true)
+      expect((args as string[]).some((a) => a.includes('audit-tph-e2e'))).toBe(true)
+      expect(parsePayload(result).passed).toBe(true)
+    })
   })
 
   describe('failing audits', () => {
@@ -176,6 +187,14 @@ describe('ak_audit tool', () => {
       const payload = parsePayload(result)
       expect(payload.passed).toBe(false)
       expect(payload.kind).toBe('tph')
+    })
+
+    it('tph-e2e returns {passed:false} on non-zero exit', async () => {
+      spawnMock.mockReturnValue(fakeChild({ exitCode: 2 }))
+      const result = await akAuditTool.handler({ kind: 'tph-e2e' })
+      const payload = parsePayload(result)
+      expect(payload.passed).toBe(false)
+      expect(payload.kind).toBe('tph-e2e')
     })
   })
 

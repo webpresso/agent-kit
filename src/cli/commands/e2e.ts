@@ -1,9 +1,13 @@
 import type { CommandConfig, E2eRunnerKind, PlannedE2eRunGroup } from '#e2e'
 import type { CAC } from 'cac'
 
-import { spawnSync } from 'node:child_process'
-
-import { loadConfiguredHostAdapter, planE2eRun, planGenericE2eRun } from '#e2e'
+import { planGenericE2eRun } from '#e2e'
+import {
+  createE2eExecutionPlan,
+  formatShellCommand,
+  plannedGroupsToCommandConfigs,
+  runCommandConfigs,
+} from '../../e2e/execution.js'
 
 export const E2E_COMMAND_HELP = [
   'Build and run a portable E2E command from host-supplied suite metadata.',
@@ -55,15 +59,12 @@ export async function createAkE2eExecutionPlan(
   input: AkE2eCommandInput,
   cwd = process.cwd(),
 ): Promise<PlannedE2eRunGroup[]> {
-  const hostAdapter = await loadConfiguredHostAdapter(cwd)
-  const files = toArray(input.file)
-
-  if (!hostAdapter?.adapter) {
-    return planGenericE2eRun({
+  return createE2eExecutionPlan(
+    {
       suite: input.suite,
       runner: input.runner,
       config: input.config,
-      files,
+      files: toArray(input.file),
       headed: input.headed,
       debug: input.debug,
       reuseReset: input.reuseReset,
@@ -71,34 +72,9 @@ export async function createAkE2eExecutionPlan(
       workers: input.workers,
       testList: input.testList,
       passthrough: input.passthrough,
-    })
-  }
-
-  if (hostAdapter.adapter.buildExecutionPlan) {
-    return hostAdapter.adapter.buildExecutionPlan({
-      suite: input.suite,
-      file: files,
-      files,
-      headed: input.headed,
-      debug: input.debug,
-      reuseReset: input.reuseReset,
-      noSupervisor: input.noSupervisor,
-      workers: input.workers,
-      testList: input.testList,
-      passthrough: input.passthrough,
-    })
-  }
-
-  return planE2eRun({
-    hostAdapter: hostAdapter.adapter,
-    suite: input.suite,
-    file: files,
-    headed: input.headed,
-    debug: input.debug,
-    workers: input.workers,
-    testList: input.testList,
-    passthrough: input.passthrough,
-  })
+    },
+    cwd,
+  )
 }
 
 export function registerE2eCommand(cli: CAC): void {
@@ -140,55 +116,22 @@ export function registerE2eCommand(cli: CAC): void {
     })
 }
 
-function runCommands(commands: readonly CommandConfig[]): number {
-  for (const command of commands) {
-    const result = spawnSync(command.command, command.args, {
-      env: { ...process.env, ...command.env },
-      stdio: 'inherit',
-    })
-
-    if ((result.status ?? 1) !== 0) {
-      return result.status ?? 1
-    }
+async function runCommands(commands: readonly CommandConfig[]): Promise<number> {
+  const result = await runCommandConfigs(commands)
+  if (result.output) {
+    process.stdout.write(result.output)
   }
-
-  return 0
+  return result.exitCode
 }
 
-export function plannedGroupsToCommandConfigs(
-  groups: readonly PlannedE2eRunGroup[],
-): CommandConfig[] {
-  return groups.flatMap((group) =>
-    group.runs.map((run) => ({
-      command: run.command,
-      args: run.args,
-      env: normalizeEnv({ ...group.env, ...run.env }),
-    })),
-  )
-}
+export { plannedGroupsToCommandConfigs }
 
 function getPassthroughArgs(argv: readonly string[]): string[] {
   const separatorIndex = argv.indexOf('--')
   return separatorIndex === -1 ? [] : argv.slice(separatorIndex + 1)
 }
 
-function formatShellCommand(config: CommandConfig): string {
-  return [config.command, ...config.args].map(shellQuote).join(' ')
-}
-
-function shellQuote(value: string): string {
-  return /^[A-Za-z0-9_./:=@+-]+$/u.test(value) ? value : `'${value.replace(/'/gu, "'\\''")}'`
-}
-
 function toArray(value: readonly string[] | string | undefined): string[] {
   if (value === undefined) return []
   return typeof value === 'string' ? [value] : [...value]
-}
-
-function normalizeEnv(env?: Record<string, string>): Record<string, string> | undefined {
-  if (!env || Object.keys(env).length === 0) {
-    return undefined
-  }
-
-  return env
 }
