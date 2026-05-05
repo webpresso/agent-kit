@@ -19,5 +19,7 @@ export default {
     '!src/**/*.d.ts',
     '!src/**/__fixtures__/**',
   ],
+  // Exclude symlinked IDE skill dirs — Stryker's copyfile cannot handle symlinks to directories
+  ignorePatterns: ['.agents', '.gemini', '.cursor', '.windsurf', '__fixtures__/fake-home'],
   concurrency: 2,
 }
