@@ -3,8 +3,8 @@ node_modules/
 .pnpm-store/
 
 # Build outputs
-dist/
-build/
+/dist/
+/build/
 .next/
 out/
 .output/
@@ -37,6 +37,7 @@ test-results/
 .dev.vars
 
 # Logs
+/logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
