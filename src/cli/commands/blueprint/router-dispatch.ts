@@ -8,6 +8,19 @@ import type {
   ShowBlueprintResult,
 } from './router.js'
 
+/**
+ * Thrown by `executeBlueprintSubcommand` when `audit` finds issues and
+ * the caller should exit with a non-zero code.  Keeps `process.exit` out
+ * of the dispatch layer so tests can assert on it without spawning a
+ * subprocess.
+ */
+export class BlueprintAuditFailedError extends Error {
+  constructor(readonly result: BlueprintAuditResult) {
+    super('Blueprint audit failed.')
+    this.name = 'BlueprintAuditFailedError'
+  }
+}
+
 interface BlueprintCommandDependencies {
   auditBlueprints: (options: BlueprintCommandOptions) => Promise<BlueprintAuditResult>
   controlBlueprintExec: (
@@ -221,17 +234,13 @@ export async function executeBlueprintSubcommand(
     }
     case 'audit': {
       const result = await deps.auditBlueprints(options)
-      if (!result.ok) {
-        deps.printBlueprintOutput(
-          options.json ? result : deps.formatBlueprintAudit(result),
-          options.json,
-        )
-        process.exit(1)
-      }
       deps.printBlueprintOutput(
         options.json ? result : deps.formatBlueprintAudit(result),
         options.json,
       )
+      if (!result.ok) {
+        throw new BlueprintAuditFailedError(result)
+      }
       return
     }
     case 'task': {

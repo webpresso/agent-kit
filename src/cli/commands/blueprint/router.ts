@@ -2,7 +2,6 @@ import type { BlueprintExecutionSpec } from '#index'
 import type { CAC } from 'cac'
 
 import { execFileSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
@@ -27,6 +26,7 @@ import {
   validateAllTasksDone,
 } from '#local'
 import { resolvePackageAsset } from '#utils/package-assets'
+import { findRepoRoot } from '#utils/repo-root'
 
 import {
   describeBlueprintExecutionRuntime,
@@ -43,9 +43,8 @@ import {
   syncBlueprintExecutionProgress,
   writeBlueprintRuntimeSnapshot,
 } from './execution.js'
-import { executeBlueprintSubcommand } from './router-dispatch.js'
+import { BlueprintAuditFailedError, executeBlueprintSubcommand } from './router-dispatch.js'
 import {
-  BlueprintCliError,
   formatBlueprintAudit,
   formatBlueprintCreation,
   formatBlueprintDetails,
@@ -187,13 +186,11 @@ function assertBlueprintCanMoveToStatus(blueprint: Blueprint, nextStatus: Bluepr
  * when the lookup fails in unrelated contexts (e.g. `ak --help`).
  */
 function resolveRepoBlueprintTemplatePath(): string {
-  // Use URL-relative resolution from this file's location — safe when installed as npm package.
-  // Resolves to <packageRoot>/docs/templates/blueprint.md regardless of cwd.
-  const candidate = new URL('../../../docs/templates/blueprint.md', import.meta.url).pathname
-  if (existsSync(candidate)) {
-    return candidate
+  try {
+    return path.join(findRepoRoot(import.meta.dirname), 'docs', 'templates', 'blueprint.md')
+  } catch {
+    return resolvePackageAsset('docs/templates/blueprint.md')
   }
-  return resolvePackageAsset('docs/templates/blueprint.md')
 }
 
 function todayIsoDate(): string {
@@ -691,12 +688,10 @@ export function registerBlueprintRouter(cli: CAC): void {
             startBlueprint,
           })
         } catch (error) {
-          try {
-            handleBlueprintError(error)
-          } catch (e) {
-            if (e instanceof BlueprintCliError) process.exit(1)
-            throw e
+          if (error instanceof BlueprintAuditFailedError) {
+            process.exit(1)
           }
+          handleBlueprintError(error)
         }
       },
     )
