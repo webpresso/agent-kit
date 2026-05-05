@@ -4,6 +4,7 @@ paths:
   - '.github/workflows/*.yml'
   - 'package.json'
   - 'CHANGELOG.md'
+  - 'src/**'
 ---
 
 # Changesets Release Workflow
@@ -16,34 +17,105 @@ publishing. The legacy tag-push + `release-package.yml` pattern is retired.
 - **Never** push `v*` tags manually for release purposes.
 - **Never** bump `package.json#version` by hand.
 - **Never** run `git tag v<X.Y.Z>` to trigger a publish.
+- **Never** run `pnpm changeset publish` (or `changeset version`) without
+  committing the results first. `changeset version` modifies `package.json`,
+  `CHANGELOG.md`, and `.changeset/` — all three must be committed before
+  publishing. Unpublished version bumps in the working tree produce a valid
+  tarball but leave git history incoherent.
+- **Never** publish from a dirty working tree. Run `git status` first; commit
+  or stash everything before `changeset publish`.
+- **Never** call `pnpm publish` directly — always go through
+  `pnpm changeset publish` so the Changesets lifecycle is honoured.
 
-## How releases work (CI-driven)
+## Commit sequence — mandatory every release
 
-1. Write your code change on a feature branch.
-2. Run `pnpm changeset` — follow the prompts to select bump type
-   (`patch` / `minor` / `major`) and write a human-readable summary.
-3. Commit the generated `.changeset/<random-slug>.md` alongside your code.
-4. Merge your PR to `main`. CI (`release.yml`) opens/updates a
-   **"Version Packages"** PR that bumps `version` and updates `CHANGELOG.md`.
-5. A maintainer merges the Version PR. CI publishes to GitHub Packages and
-   creates a `v<version>` GitHub Release.
-
-## Local commands
-
-```bash
-pnpm changeset           # describe a change interactively
-pnpm changeset:status    # list pending (unpublished) changesets
+```
+1. Implement changes + commit code
+2. pnpm changeset          # creates .changeset/<slug>.md
+3. git add .changeset/<slug>.md && git commit -m "chore: add changeset"
+4. pnpm changeset version  # bumps version, generates CHANGELOG, removes slug
+5. git add package.json CHANGELOG.md .changeset/ && git commit -m "chore(release): @pkg@X.Y.Z"
+6. pnpm build              # ensure dist is fresh
+7. pnpm changeset publish  # publishes to GitHub Packages, creates git tag
 ```
 
-## Workflow mechanics
+Steps 2-3 and 4-5 must each be separate commits. Publishing without the
+version-bump commit means the git tag points at the wrong tree.
 
-The `release.yml` uses `changesets/action@v1.7.0`:
+## How releases work (CI-driven — established repos)
 
-- **Changeset files present** → action creates/updates the Version PR (no publish).
+For repos that already have CI (`release.yml` wired to `changesets/action`):
+
+1. Write code on a feature branch.
+2. `pnpm changeset` → commit the `.changeset/<slug>.md` with your code.
+3. Merge to `main`. CI opens a **"Version Packages"** PR (bumps version +
+   updates CHANGELOG).
+4. Merge the Version PR → CI runs `pnpm changeset publish`, publishes to
+   GitHub Packages, creates a `v<version>` GitHub Release.
+
+## First-time setup — new extracted repos
+
+For a freshly bootstrapped repo that has never been published:
+
+```bash
+# 1. Ensure @changesets/cli is in devDependencies
+grep -q '@changesets/cli' package.json || pnpm add -D @changesets/cli
+
+# 2. Initialise changeset
+pnpm changeset init                  # creates .changeset/config.json + README
+
+# 3. Enter prerelease mode (for alpha/beta dist-tags)
+pnpm changeset pre enter alpha       # creates .changeset/pre.json
+
+# 4. Create the initial changeset and commit it
+cat > .changeset/initial-release.md << 'EOF'
+---
+"@webpresso/<name>": minor
+---
+
+Initial public extraction from Webpresso monorepo.
+EOF
+git add .changeset/ && git commit -m "chore: add initial changeset"
+
+# 5. Version bump + commit
+pnpm changeset version
+git add package.json CHANGELOG.md .changeset/ && git commit -m "chore(release): @webpresso/<name>@<version>"
+
+# 6. Build + publish
+pnpm build
+pnpm changeset publish
+```
+
+**Do NOT skip steps 4-5.** Publishing without the committed version bump leaves
+the git history without a release commit — the package is on the registry but
+there is no corresponding tag or CHANGELOG commit.
+
+## Release workflow (self-contained Changesets)
+
+The active pattern for sibling repos (`webpresso/runtime/`, `webpresso/db-branching/`,
+`webpresso/i18n/`, `webpresso/utils/`, etc.) is a **self-contained `release.yml`**
+using `changesets/action` directly — **not** the legacy
+`release-package.yml@main` reusable workflow from the framework umbrella.
+Copy `webpresso/runtime/.github/workflows/release.yml` verbatim when
+bootstrapping a new extraction repo.
+
+The `release.yml` mechanics:
+- **Changeset files present** → action opens/updates a "Version Packages" PR.
 - **No changeset files** (after Version PR merge) → action runs
-  `pnpm changeset publish` which triggers `prepublishOnly` (builds) then
-  publishes to `npm.pkg.github.com`.
-- Auth: `GH_PACKAGES_TOKEN` env var consumed by the repo's `.npmrc`.
+  `pnpm changeset publish`.
+- Auth: `GH_PACKAGES_TOKEN` env var consumed by `.npmrc`.
+
+## Required repo files
+
+Every webpresso public package must have:
+```
+.npmrc               # @webpresso:registry=https://npm.pkg.github.com + auth token env-var
+.changeset/config.json   # access: "restricted", baseBranch: "main"
+@changesets/cli      # in devDependencies
+```
+
+Without `.npmrc`, CI publish fails auth. Without `@changesets/cli` in
+`devDependencies`, `pnpm changeset` is unavailable in CI.
 
 ## Changeset config
 
