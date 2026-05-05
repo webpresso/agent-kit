@@ -4,7 +4,7 @@ status: in-progress
 complexity: L
 created: 2026-05-04T00:00:00.000Z
 last_updated: '2026-05-04'
-progress: '0% (0/16 tasks done, 0 blocked, updated 2026-05-04)'
+progress: '0% (0/16 tasks done, 0 blocked, plan revalidated against current repo state on 2026-05-04)'
 depends_on: []
 tags:
   - agent-kit
@@ -19,8 +19,10 @@ tags:
 # Elegance Pass 2026: Bootstrap Reliability + Catalog Distribution
 
 > **Refinement note (2026-05-04):** Original plan included migrating global hooks (`ak-pretool-guard`) into per-skill SKILL.md hooks. **Critical finding** during refinement: skill `hooks:` are *scoped to skill lifecycle*, not session-wide. Migrating safety guardrails into skills would break the always-on guarantee. Phase 3 was rewritten to ADD skill-scoped hooks for skill-specific behavior, NOT migrate existing global hooks. See Risks table R1.
+>
+> **Repo reality check (2026-05-04):** Re-verified before this refinement pass: `git status --short` is clean, this repo has no root `justfile`, verification flows are `pnpm`/`bun`-script based, and the catalog namespace is `catalog/agent/*` rather than `catalog/agents/*`. Task file lists below were tightened to those current surfaces.
 
-Make `ak setup` the canonical, idempotent, single-command bootstrap for AI agent surfaces across Claude Code, Codex, Gemini CLI, and OpenCode. Eliminates regression classes (worktree hooks gap, missing `ak-pretool-guard`, stale `.claude/rules/` copies) by patching them into the scaffolder, and adds `ak audit agents` so CI catches drift before sessions degrade.
+Make `ak setup` the canonical, idempotent, single-command bootstrap for AI agent surfaces across Claude Code, Codex, Gemini CLI, and OpenCode. Eliminates regression classes (worktree hooks gap, missing `ak-pretool-guard`, stale `.claude/rules/` copies, missing `MultiEdit` coverage on Claude) by patching them into the scaffolder, and adds `ak audit agents` so CI catches drift before sessions degrade.
 
 ## Product wedge anchor
 
@@ -30,7 +32,7 @@ Make `ak setup` the canonical, idempotent, single-command bootstrap for AI agent
 
 ## Planning Summary
 
-16 tasks across 5 phases. **Shipping plan**: Phase 1+2 together as one PR (regression fix + enabler), then Phases 3, 4, 5 as separate PRs (net-new capabilities + redirect tightening). Phase 1 stops the regression bleeding (worktree hooks gap, missing `setup:agent` script, missing tests). Phase 2 simplifies the symlink chain by pointing `.claude/rules/` directly into `node_modules/@webpresso/agent-kit/catalog/agent/rules/` (auto-updates on `pnpm install`); **no `.agent/rules/` fallback** — `ak setup` fails fast if the devDep is missing. Phase 3 adds the *capability* for skills to declare scope-limited hooks. Phase 4 ships 4 canonical subagent definitions: code-reviewer, security-auditor, doc-writer, explorer. Phase 5 tightens forbidden-command deny reasons to lead with the `mcp__agent-kit__ak_*` MCP-tool template (universal across consumers regardless of `just` availability).
+16 tasks across 5 phases. **Shipping plan**: Phase 1+2 together as one PR (regression fix + enabler), then Phases 3, 4, 5 as separate PRs (net-new capabilities + redirect tightening). Phase 1 stops the regression bleeding (worktree hooks gap, missing `setup:agent` script, missing tests, missed `MultiEdit` path on Claude). Phase 2 simplifies the symlink chain by pointing `.claude/rules/` directly into `node_modules/@webpresso/agent-kit/catalog/agent/rules/` (auto-updates on `pnpm install`); **no `.agent/rules/` fallback** — `ak setup` fails fast if the devDep is missing. Phase 3 adds the *capability* for skills to declare scope-limited hooks. Phase 4 ships 4 canonical subagent definitions: code-reviewer, security-auditor, doc-writer, explorer. Phase 5 tightens forbidden-command deny reasons to lead with the `mcp__agent-kit__ak_*` MCP-tool template, removes duplicate context-mode routing ownership on Claude, and converts Codex hook claims from assumption to measured support.
 
 **Audit strictness (decided):** `ak audit agents` is **hard-fail everything**. Missing AGENTS.md, missing hooks, broken symlinks, hand-edited rule files, missing `setup:agent` script, missing devDep — all block CI. Legitimate overrides require an explicit allowlist entry in `.agent-kitrc.json#rules.overrides`.
 
@@ -47,7 +49,7 @@ Make `ak setup` the canonical, idempotent, single-command bootstrap for AI agent
 |------|-------|---------------|---------|
 | **Wave 0** | 1.1, 1.2, 1.3, 1.4, 4.1, 5.2 | 6 agents | XS-S |
 | **Wave 1** | 1.5, 2.1, 2.3, 4.2, 5.1 | 5 agents | S-M |
-| **Wave 2** | 2.2, 2.4, 3.1, 5.3 | 4 agents | S |
+| **Wave 2** | 2.2, 2.4, 3.1, 5.3 | 4 agents | S-M |
 | **Wave 3** | 3.2 | 1 agent | XS |
 | **Critical path** | 1.1 → 2.3 → 2.4 (or 1.1 → 3.1 → 3.2) | — | 4 waves |
 
@@ -68,11 +70,17 @@ Make `ak setup` the canonical, idempotent, single-command bootstrap for AI agent
 | F3 | HIGH | "Worktrees inherit `.claude/` cleanly via symlinkDirectories" | Symlink chain: `worktree/.claude` → `main/.claude` → `main/.agent/rules/`. Worktree reads MAIN's `.agent/rules/`, not its own. Catalog content is identical so functionally fine, but counter-intuitive. | Document in Task 1.5 + VISION.md. |
 | F4 | HIGH | "`scaffoldClaudeRules` symlinks to `node_modules/...`" | agent-kit's own repo has no `node_modules/@webpresso/agent-kit/`. Self-hosting case unhandled. | Task 2.1 adds **2-mode detection**: self / consumer (require devDep). No fallback — fail fast if devDep missing. |
 | F5 | HIGH | Implicit assumption that `prepare` hook could run `ak setup` | Race condition: `prepare` fires during `pnpm install` BEFORE agent-kit's own install completes in pnpm hoisted layout. | Task 1.5 documents anti-pattern: do NOT add `prepare: ak setup`. Use `pnpm install && pnpm setup:agent`. |
-| F6 | MEDIUM | Original 1+2+3 day estimates | 1.5-2x optimistic; missing test files and edge cases. | T-shirt sizing: Phase 1 = M, Phase 2 = L, Phase 3 = S, Phase 4 = M. |
+| F6 | MEDIUM | Original 1+2+3 day estimates | 1.5-2x optimistic; missing test files, hook-composition edge cases, and platform-compat proof work. | T-shirt sizing: Phase 1 = M, Phase 2 = L, Phase 3 = S, Phase 4 = M, Phase 5 = M. |
 | F7 | MEDIUM | "Plan structured for `/pll`" (original) | No Blueprint format, no Files lists, no TDD steps, no parallelization metrics. | This rewrite. |
 | F8 | MEDIUM | "cc-switch integration" | cc-switch is desktop-GUI for users; agent-kit is CLI for repos. Different audiences. | Dropped. Replaced with Phase 4 subagents (real value). |
 | F9 | LOW | VISION.md / plan inconsistency on subagents priority | VISION said "next frontier"; original plan put as stretch. | Promoted to Phase 4. |
 | F10 | LOW | Missing product-wedge anchor (per `blueprint-scoping.md`) | Standard requirement for blueprints. | Anchor added at top of this overview. |
+| F11 | MEDIUM | "Phase 4 catalog files live under `catalog/agents/*`" | Existing catalog namespace is singular `catalog/agent/*`; a top-level `catalog/agents/*` branch would break local conventions and source-resolution assumptions. | Retarget Phase 4 source files to `catalog/agent/agents/*` and keep `.claude/agents/` as the consumer-facing destination. |
+| F12 | MEDIUM | Blueprint `Files:` sections can use pseudo-paths or vague placeholders | Entries like `package.json#scripts.audits:check`, line-ranged file refs, and "corresponding test file" violate the Blueprint exact-path contract and hide file-conflict risk. | Tighten Tasks 1.1, 1.4, 2.1, 2.3, 2.4, 3.1, 3.2, 4.2, 5.1, and 5.2 to exact current file paths only. |
+| F13 | HIGH | "`Write|Edit` covers all Claude edit operations" | Official Claude hook docs list `MultiEdit` as a distinct tool matcher. Current matcher set misses it, so multi-edit flows can bypass both pre-tool guardrails and post-tool classification. | Expand Task 1.1 to add `MultiEdit` parity tests and matcher updates for Claude hook groups. |
+| F14 | HIGH | "agent-kit can layer SessionStart routing, project rules, and context-mode plugin routing without side effects" | Claude runs all matching hooks in parallel, keeps every `additionalContext`, and merges plugin + project + session hook sources. Three routing authorities can duplicate or conflict, especially around `ctx_*` guidance. | Expand Task 5.3 to collision-test full context-mode plugin installs, then collapse to one agent-kit-owned routing authority and one documented fallback path. |
+| F15 | HIGH | "Codex hook semantics are close enough to Claude to assume `Edit|Write` PostToolUse parity" | Public OpenAI docs are sparse; third-party compatibility matrices and open issues point to caveats around Codex hook surfaces, output mutation, and tool naming. Treat Codex edit/post-tool parity as unproven until measured on the currently shipped release. | Expand Task 5.3 with a Codex parity probe; downgrade docs/vision claims until smoke results exist. |
+| F16 | MEDIUM | "`ak-post-tool` already does lint-after-edit and docs-drift detection" | Current implementation is intentionally a hot-path classifier only: lint-eligible file detection + existence check, no shell-out, no `additionalContext`, no output rewrite. | Keep richer post-tool automation out of scope for this blueprint; Task 5.3 updates docs so they describe current behavior exactly. |
 
 ## Shipping Plan
 
@@ -81,7 +89,7 @@ Make `ak setup` the canonical, idempotent, single-command bootstrap for AI agent
 | **PR #1** (Land first) | Phase 1 + Phase 2 | 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4 | Phase 1 fixes the regression (worktree hooks gap, missing devDep auto-injection); Phase 2 simplifies the symlink chain and adds CI drift detection. They're paired: Phase 2.1 depends on Task 1.4's devDep guarantee. Shipping together gives the foundation in one merge. |
 | **PR #2** | Phase 3 | 3.1, 3.2 | Net-new capability (skill-scoped hooks). Independent of Phase 4 catalog content. |
 | **PR #3** | Phase 4 | 4.1, 4.2 | Subagent catalog. Independent ship; can be parallel with PR #2. |
-| **PR #4** | Phase 5 | 5.1, 5.2, 5.3 | MCP-shaped redirect format. Independent of Phases 3+4; can ship in parallel with PR #2 once PR #1 lands. |
+| **PR #4** | Phase 5 | 5.1, 5.2, 5.3 | MCP-shaped redirect format, single routing authority on Claude, and measured Codex parity. Independent of Phases 3+4; can ship in parallel with PR #2 once PR #1 lands. |
 
 **Why not one PR per phase:** Phase 1 alone leaves the symlink chain in the redundant 2-hop state; Phase 2 alone breaks without Task 1.4. They're a pair.
 
@@ -105,8 +113,11 @@ Make `ak setup` the canonical, idempotent, single-command bootstrap for AI agent
 | E12 | Existing consumer repo runs `ak audit agents` for the first time → fails with multiple drift findings | **Migration path:** run `ak setup --overwrite`. Re-runs scaffolders with overwrite mode: catalog-owned files (rules symlinks, hooks) updated to current state; consumer-customized files preserved with `.new` sidecar for manual merge; subsequent `ak audit agents` passes. Documented in audit failure messages and `docs/migration.md`. | 2.3 |
 | E13 | Consumer pinned `@webpresso/agent-kit` to a specific version, doesn't want `"latest"` | Task 1.4 preserves consumer-customized version field (test #4). The `"latest"` injection fires only when the dep is missing entirely, never when present. | 1.4 |
 | E14 | Agent runs `pnpm test` in `webpresso/runtime` (no justfile) | New redirect format leads with `mcp__agent-kit__ak_test(...)`. Fallback line mentions `just test...` but model picks the MCP path which works (Phase 5 V1+V2). Old format would have suggested `just test` and silently failed at execution. | 5.1 |
-| E15 | Agent-kit MCP server is briefly unavailable mid-session (sentinel cleared) | `buildRedirectMessage` checks `isMcpReady()` (V4) at call time. When false, output reverts to `just`-prefixed hint (V5 passthrough pattern). No agent-stuck state. | 5.1 |
+| E15 | Agent-kit MCP server is briefly unavailable mid-session (sentinel cleared) | `buildRedirectMessage` checks `isMcpReady()` (V4) at call time. When false, output reverts to `just`-prefixed hint (V5 routing-availability split). No agent-stuck state. | 5.1 |
 | E16 | Fork of agent-kit publishes under different MCP server name | Override via `.agent-kitrc.json#mcp.serverName`. `buildRedirectMessage` reads from `AgentkitConfig.mcp.serverName`, defaults to `'agent-kit'` (V1). | 5.2 |
+| E17 | Claude uses `MultiEdit` instead of `Edit` during a multi-file change | Task 1.1 widens the Claude matcher strings to include `MultiEdit`, so both pre-tool guardrails and post-tool classification still fire. | 1.1 |
+| E18 | Consumer has both the context-mode Claude plugin and agent-kit's project rules active | Task 5.3 collision-tests the combined stack, then keeps only one agent-kit-owned source of `ctx_*` routing guidance and documents the fallback path. | 5.3 |
+| E19 | Current Codex release emits different hook payloads or tool names than Claude | Treat Codex behavior as measured, not assumed. Task 5.3 captures current-release evidence and narrows docs/claims if `Edit|Write` parity is absent. | 5.3 |
 
 ## Risks
 
@@ -120,12 +131,17 @@ Make `ak setup` the canonical, idempotent, single-command bootstrap for AI agent
 | R6 | Phase 1+2 single PR is large | Each task is XS-S individually; PR is a ~10-task PR. Review burden manageable if each task has its own commit. CI's existing audit chain catches regressions per-commit. | LOW |
 | R7 | `"latest"` dist-tag in consumer devDep means `pnpm install` silently picks up new agent-kit majors | `ak audit agents` in CI catches catalog-format breaks immediately on next install (Task 2.3 hard-fails on schema drift). Consumers with tighter reproducibility needs can override the injected `"latest"` to a pinned version — Task 1.4 preserves consumer-customized version (test #4). | MEDIUM |
 | R8 | MCP tool names drift between Claude Code (matcher pattern), MCP server registration, and the `ak_*` source files | Phase 5 hardcodes the matcher format (`mcp__agent-kit__ak_<verb>`) with file:line references in V1+V2 of the blueprint. The `ak audit agents` check from Task 2.3 should be extended to verify the constants in `mcp-redirect.ts` match the actual `name:` literals in `src/mcp/tools/*.ts` (use AST or grep). Cited as follow-up in Task 5.3 acceptance. | LOW |
+| R9 | Claude with context-mode plugin + agent-kit routing sources active can double-inject routing guidance | Task 5.3 runs plugin-on collision smoke, then narrows agent-kit-owned routing to a single source and documents when context-mode owns `ctx_*` nudging. | HIGH |
+| R10 | Codex hook semantics stay under-documented or diverge from Claude assumptions | Task 5.3 adds an empirical parity probe on the current Codex release; docs and VISION must only claim behavior that the probe actually observed. | HIGH |
+| R11 | `MultiEdit` bypasses pre/post-tool hooks if matcher coverage regresses later | Task 1.1 adds dedicated matcher tests so future refactors fail loudly if `MultiEdit` drops out. | MEDIUM |
 
 ## Technology Choices
 
 | Choice | Rationale | Source |
 |--------|-----------|--------|
 | `worktree.symlinkDirectories` | Official Claude Code setting; documented + supports cross-tree inheritance | https://docs.anthropic.com/en/docs/claude-code/settings#worktree-settings |
+| Claude hook composition | All matching hooks run in parallel; the most restrictive decision wins; `additionalContext` from all matching hooks is accumulated. This is why duplicate routing authorities must be collapsed, not layered casually. | https://code.claude.com/docs/en/hooks-guide |
+| Claude `MultiEdit` matcher parity | `MultiEdit` is a distinct tool matcher alongside `Edit` and `Write`; hook configs that only match `Write\|Edit` leave a coverage gap. | https://code.claude.com/docs/en/hooks |
 | Skill `hooks:` frontmatter | Platform-supported; scoped semantics correct for skill-specific behavior | https://docs.anthropic.com/en/docs/claude-code/skills (frontmatter table) |
 | `.claude/rules/*.md` with `paths:` frontmatter | Already used by all our catalog rules; path-scoped loading keeps context lean | https://docs.anthropic.com/en/docs/claude-code/memory#path-specific-rules |
 | `require.resolve()` for cross-package path detection | Stable in pnpm hoisted + nested layouts; no hardcoded paths | Node.js built-in |
@@ -136,33 +152,36 @@ Make `ak setup` the canonical, idempotent, single-command bootstrap for AI agent
 
 Goal: every `ak setup` run produces correct settings. Stops the regression where the monorepo had to be hand-fixed for `symlinkDirectories`, `ak-pretool-guard`, and `ak-stop-qa`.
 
-#### [infra] Task 1.1: Patch `worktree.symlinkDirectories` in scaffold-agent-hooks
+#### [infra] Task 1.1: Patch `worktree.symlinkDirectories` + Claude `MultiEdit` matcher parity in scaffold-agent-hooks
 
 **Status:** todo
 
 **Depends:** None
 
-`scaffold-agent-hooks.ts` currently patches `.claude/settings.json#hooks` but never touches `worktree.symlinkDirectories`. Without this, new Claude Code worktrees get a fresh empty `.claude/` and inherit nothing — every hook reverts to silent failure on first session start. Extend `patchClaudeSettings` to ensure `worktree.symlinkDirectories` includes `.claude` (additive — preserve other entries like `node_modules`, `.cache`).
+`scaffold-agent-hooks.ts` currently patches `.claude/settings.json#hooks` but never touches `worktree.symlinkDirectories`. Without this, new Claude Code worktrees get a fresh empty `.claude/` and inherit nothing — every hook reverts to silent failure on first session start. Also, the Claude matcher set currently uses `Write|Edit`, but official Claude docs expose `MultiEdit` as a distinct tool event. Extend `patchClaudeSettings` to ensure `worktree.symlinkDirectories` includes `.claude` (additive — preserve other entries like `node_modules`, `.cache`) and widen Claude hook matchers to `Write|Edit|MultiEdit` where edit surfaces are intended.
 
 **Files:**
 - Modify: `src/cli/commands/init/scaffolders/agent-hooks/index.ts`
-- Modify: `src/cli/commands/init/scaffolders/agent-hooks/index.test.ts` (add test cases)
+- Create: `src/cli/commands/init/scaffolders/agent-hooks/index.test.ts`
 
 **Steps (TDD):**
 1. Write failing test: empty `settings.json` → after patch → `worktree.symlinkDirectories` contains `.claude`
 2. Write failing test: existing `worktree.symlinkDirectories: ["node_modules"]` → after patch → contains both `node_modules` AND `.claude` (additive, no duplicate)
 3. Write failing test: existing `worktree.symlinkDirectories: [".claude"]` → after patch → identical (idempotent)
-4. Run: `bun run test src/cli/commands/init/scaffolders/agent-hooks/index.test.ts` — verify FAIL
-5. Implement: extend `patchClaudeSettings` to merge `.claude` into `worktree.symlinkDirectories` array
-6. Add a comment block above the patch explaining: skill `hooks:` are scoped, NOT a substitute for centralized `ak-*` hooks (R1 mitigation)
-7. Run: same test command — verify PASS
-8. Run: `bun run lint:pkg` and `bun run typecheck` — both clean
+4. Write failing test: generated Claude `PreToolUse` matcher includes `MultiEdit` alongside `Bash|Write|Edit`
+5. Write failing test: generated Claude `PostToolUse` matcher includes `MultiEdit` alongside `Write|Edit`
+6. Run: `bun run test src/cli/commands/init/scaffolders/agent-hooks/index.test.ts` — verify FAIL
+7. Implement: extend `patchClaudeSettings` to merge `.claude` into `worktree.symlinkDirectories` array and widen the Claude edit matchers
+8. Add a comment block above the patch explaining: skill `hooks:` are scoped, NOT a substitute for centralized `ak-*` hooks (R1 mitigation)
+9. Run: same test command — verify PASS
+10. Run: `bun run lint:pkg` and `bun run typecheck` — both clean
 
 **Acceptance:**
-- [ ] All three tests pass
+- [ ] All symlinkDirectories + matcher parity tests pass
+- [ ] Claude `PreToolUse` / `PostToolUse` matcher strings include `MultiEdit`
 - [ ] R1 warning comment present in source
 - [ ] `bun run typecheck` clean
-- [ ] No regression in existing agent-hooks tests
+- [ ] No regression in existing init / hook-related tests
 
 #### [docs] Task 1.2: Single-command bootstrap in AGENTS.md.tpl
 
@@ -219,11 +238,11 @@ When `scaffolders/claude-rules/index.ts` was created earlier, no test file was a
 
 **Depends:** None
 
-Currently consumers must hand-add `@webpresso/agent-kit` as a devDep and the `setup:agent` script. We did this manually for 7 sibling repos in the prior session — this should be `ak setup`'s job. Extend `scaffold-base-kit.ts` (or split into a new `scaffold-self-install` scaffolder if it would bloat base-kit) to merge both into the consumer's `package.json`.
+Currently consumers must hand-add `@webpresso/agent-kit` as a devDep and the `setup:agent` script. We did this manually for 7 sibling repos in the prior session — this should be `ak setup`'s job. Extend `scaffold-base-kit.ts` to merge both into the consumer's `package.json`.
 
 **Files:**
-- Modify: `src/cli/commands/init/scaffold-base-kit.ts` (or new file `scaffolders/self-install/index.ts`)
-- Modify: corresponding test file
+- Modify: `src/cli/commands/init/scaffold-base-kit.ts`
+- Modify: `src/cli/commands/init/scaffold-base-kit.test.ts`
 
 **Steps (TDD):**
 1. Write failing test: consumer `package.json` without `@webpresso/agent-kit` → after scaffold → has `devDependencies["@webpresso/agent-kit"] = "latest"` (tracks dist-tag, not pinned to a specific version)
@@ -258,6 +277,7 @@ When `symlinkDirectories: [".claude"]` is set, new worktrees follow the symlink 
 1. Write `docs/worktrees.md` covering: how `symlinkDirectories` resolves, what reads MAIN vs worktree, when to diverge (rare), and how to opt out per-worktree
 2. Add "Anti-patterns" section to VISION.md:
    - Do NOT use `prepare: ak setup` in `package.json` (race condition during pnpm install)
+   - Remove the current "should provision" gap item that recommends a `prepare` hook for `ak setup`
    - Do NOT migrate `ak-*` global hooks into skill SKILL.md `hooks:` (scope mismatch)
 3. Run: `pnpm exec ak audit docs-frontmatter` — verify new doc passes
 4. Run: existing `pnpm docs:check` — no regressions
@@ -292,6 +312,7 @@ Use `require.resolve()` for path detection so pnpm hoisted/nested layouts both w
 **Files:**
 - Modify: `src/cli/commands/init/scaffolders/claude-rules/index.ts`
 - Modify: `src/cli/commands/init/scaffolders/claude-rules/index.test.ts`
+- Modify: `src/cli/commands/init/index.ts`
 
 **Steps (TDD):**
 1. Add helper `detectMode(repoRoot): { mode: 'self' | 'consumer', catalogPath: string } | { error: string }`
@@ -362,6 +383,7 @@ The `.agent-kitrc.json` allowlist mechanism extends the existing config schema. 
 - Create: `src/audit/agents.ts`
 - Create: `src/audit/agents.test.ts`
 - Modify: `src/cli/commands/init/config.ts` (extend `AgentkitConfig` with `rules.overrides`, `scripts.setup-agent`)
+- Modify: `src/cli/commands/init/config.test.ts`
 
 **Steps (TDD):**
 1. Define `AgentsAuditResult { ok: boolean, checks: AuditCheck[] }` matching existing `repo-guardrails` shape — every check uses `severity: 'error'`
@@ -392,7 +414,8 @@ Register the new audit in the `ak audit` CLI dispatcher and add to agent-kit's o
 **Files:**
 - Modify: `src/cli/commands/audit.ts` (add `agents` subcommand)
 - Modify: `src/mcp/tools/audit.ts` (expose via MCP)
-- Modify: `package.json#scripts.audits:check` (add `pnpm exec ak audit agents`)
+- Modify: `src/mcp/tools/audit.test.ts`
+- Modify: `package.json`
 
 **Steps (TDD):**
 1. Add `agents` to the audit subcommand list with help text
@@ -427,7 +450,7 @@ The merged hooks must be tagged so they can be removed cleanly when a skill is u
 **Files:**
 - Modify: `src/cli/commands/init/scaffolders/agent-hooks/index.ts`
 - Create: `src/cli/commands/init/scaffolders/agent-hooks/skill-hooks.ts` (helper to extract+merge)
-- Modify: `src/cli/commands/init/scaffolders/agent-hooks/index.test.ts`
+- Create: `src/cli/commands/init/scaffolders/agent-hooks/skill-hooks.test.ts`
 - Modify: `catalog/agent/skills/verify/SKILL.md` (add `hooks:` frontmatter — Stop hook running `ak audit agents`)
 
 **Steps (TDD):**
@@ -464,7 +487,7 @@ Validation rules:
 
 **Files:**
 - Modify: `src/cli/commands/init/scaffolders/agent-hooks/skill-hooks.ts` (add `validateSkillHooks`)
-- Modify: corresponding test file
+- Modify: `src/cli/commands/init/scaffolders/agent-hooks/skill-hooks.test.ts`
 
 **Steps (TDD):**
 1. Define Zod schema `SkillHooksSchema`
@@ -499,44 +522,46 @@ Subagents:
 - `explorer` — read-only codebase exploration with bounded budget (no edits, no shell); tools: Read, Grep, Glob; model: haiku (cheap, fast for read-only work)
 
 **Files:**
-- Create: `catalog/agents/code-reviewer.md`
-- Create: `catalog/agents/security-auditor.md`
-- Create: `catalog/agents/doc-writer.md`
-- Create: `catalog/agents/explorer.md`
-- Create: `catalog/agents/README.md`
+- Create: `catalog/agent/agents/code-reviewer.md`
+- Create: `catalog/agent/agents/security-auditor.md`
+- Create: `catalog/agent/agents/doc-writer.md`
+- Create: `catalog/agent/agents/explorer.md`
+- Create: `catalog/agent/agents/README.md`
 
 **Steps (TDD):**
 1. Write each subagent with full frontmatter + system prompt body (~50-150 lines each)
 2. `explorer` MUST exclude Bash, Edit, Write from `tools` (validates the read-only contract)
 3. Run: `pnpm exec ak audit docs-frontmatter` — verify all four pass frontmatter validation
 4. Manually invoke each in Claude Code (`Task agent: <name>`) — verify they work as expected
-5. Document each in `catalog/agents/README.md` (purpose, when to use, tools, example invocation)
+5. Document each in `catalog/agent/agents/README.md` (purpose, when to use, tools, example invocation)
 
 **Acceptance:**
 - [ ] 4 subagent files with correct frontmatter
 - [ ] `explorer` is verified read-only (no Bash/Edit/Write in tools)
-- [ ] `catalog/agents/README.md` documents purpose/usage for all 4
+- [ ] `catalog/agent/agents/README.md` documents purpose/usage for all 4
 - [ ] All 4 manually verified in Claude Code
 
-#### [infra] Task 4.2: scaffolders/subagents distributes catalog/agents to .claude/agents
+#### [infra] Task 4.2: scaffolders/subagents distributes `catalog/agent/agents` to `.claude/agents`
 
 **Status:** todo
 
 **Depends:** Task 4.1
 
-New scaffolder copies (or symlinks, depending on mode from Phase 2) `catalog/agents/*.md` to `.claude/agents/` in the consumer repo. Mirrors the `scaffoldClaudeRules` pattern.
+New scaffolder copies (or symlinks, depending on mode from Phase 2) `catalog/agent/agents/*.md` to `.claude/agents/` in the consumer repo. Mirrors the `scaffoldClaudeRules` pattern.
 
 **Files:**
 - Create: `src/cli/commands/init/scaffolders/subagents/index.ts`
 - Create: `src/cli/commands/init/scaffolders/subagents/index.test.ts`
 - Modify: `src/cli/commands/init/index.ts` (wire into setup flow)
+- Modify: `src/audit/agents.ts`
+- Modify: `src/audit/agents.test.ts`
 
 **Steps (TDD):**
-1. Write failing test: empty `.claude/agents/` → after scaffold → has 3 entries (code-reviewer, security-auditor, doc-writer)
+1. Write failing test: empty `.claude/agents/` → after scaffold → has 4 entries (code-reviewer, security-auditor, doc-writer, explorer)
 2. Write failing test: re-run → identical, idempotent
 3. Write failing test: consumer adds custom agent at `.claude/agents/custom.md` → preserved on re-run
 4. Write failing test: dry-run mode → no writes
-5. Write failing test: agent-kit self-hosting → uses `catalog/agents/` directly
+5. Write failing test: agent-kit self-hosting → uses `catalog/agent/agents/` directly
 6. Implement (mirroring `scaffoldClaudeRules`); run tests until clean
 7. Wire into `init/index.ts`; include results in summary
 8. Update `audit/agents.ts` from Task 2.3 to also check `.claude/agents/` (extend the audit)
@@ -547,9 +572,9 @@ New scaffolder copies (or symlinks, depending on mode from Phase 2) `catalog/age
 - [ ] `ak audit agents` extended to validate `.claude/agents/`
 - [ ] Consumer-owned subagents preserved across re-runs
 
-### Phase 5: MCP-shaped redirect format [Complexity: S]
+### Phase 5: MCP-shaped redirect format + routing ownership [Complexity: M]
 
-Goal: deny reasons for forbidden commands lead with the agent-kit MCP-tool template (`mcp__agent-kit__ak_*`) so they work universally — in `ozby/ingest-lens` (justfile + pnpm scripts), in `webpresso/monorepo` (justfile + pnpm-workspace), in `webpresso/runtime` (pnpm-only, no justfile). Mirrors context-mode's `mcpRedirect` readiness-guard pattern so the redirect only fires when the MCP server is actually responding.
+Goal: deny reasons for forbidden commands lead with the agent-kit MCP-tool template (`mcp__agent-kit__ak_*`) so they work universally — in `ozby/ingest-lens` (justfile + pnpm scripts), in `webpresso/monorepo` (justfile + pnpm-workspace), in `webpresso/runtime` (pnpm-only, no justfile). Mirrors context-mode's `mcpRedirect` readiness-guard pattern so the redirect only fires when the MCP server is actually responding, while also collapsing duplicate `ctx_*` routing ownership on Claude and turning Codex hook support from assumption into measured behavior.
 
 **Verified facts (file:line):**
 
@@ -559,7 +584,7 @@ Goal: deny reasons for forbidden commands lead with the agent-kit MCP-tool templ
 | V2 | Existing MCP tool names | `src/mcp/tools/test.ts:34` → `ak_test`; `src/mcp/tools/lint.ts:102` → `ak_lint`; `src/mcp/tools/typecheck.ts:83` → `ak_typecheck`; `src/mcp/tools/qa.ts:75` → `ak_qa`; `src/mcp/tools/audit.ts:140` → `ak_audit`; `src/mcp/tools/blueprint.ts:63` → `ak_blueprint` |
 | V3 | Current `forbidden-commands.ts` hints are `just`-prefixed | `src/hooks/pretool-guard/validators/forbidden-commands.ts:46-53` — `DB_HINT`, `LINT_BASE`, `TEST_HINT`, `MUTATION_HINT`, `TYPECHECK_HINT`, `ENV_HINT` constants all start with `'just '` |
 | V4 | `isMcpReady()` already exists and is wired into the runner | `src/hooks/shared/mcp-sentinel.ts` exports `isMcpReady` (camelCase, not `isMCPReady`); used at `src/hooks/pretool-guard/runner.ts:104` and `src/hooks/doctor.ts:18,246` |
-| V5 | context-mode's `mcpRedirect` pattern returns null (passthrough) when MCP not ready | `~/repos/ozby/context-mode/hooks/core/routing.mjs` (function `mcpRedirect`) — references issue #230 |
+| V5 | context-mode officially distinguishes full-plugin automatic routing from MCP-only install without automatic routing | `https://github.com/mksglu/context-mode/blob/main/README.md` — Claude plugin install says "Routing: Automatic"; MCP-only install says tools are available but the model "won't be nudged" automatically |
 | V6 | `AgentkitConfig` schema has no MCP field today | `src/cli/commands/init/config.ts:13-18` — interface has `version`, `installed.tier3Skills`, `durablePlanningRoot`, `lastInit` only |
 | V7 | ingest-lens has justfile (so `just`-redirects work there) | `/Users/ozby/repos/ozby/ingest-lens/justfile` exists |
 | V8 | runtime has no justfile (so `just`-redirects fail there silently) | No `justfile` in `/Users/ozby/repos/webpresso/runtime/` (sibling repo, pnpm-only) |
@@ -573,12 +598,12 @@ Goal: deny reasons for forbidden commands lead with the agent-kit MCP-tool templ
 
 **Depends:** Task 1.1 (no functional dep, but ordering keeps PR #1 cleanly scoped)
 
-New helper produces deny reasons that lead with the `mcp__agent-kit__ak_*` template, fall back to the existing `just`-prefixed hint when MCP is not ready (mirrors V5 pattern). `forbidden-commands.ts:46-53` switches from static `*_HINT` constants to calling the helper.
+New helper produces deny reasons that lead with the `mcp__agent-kit__ak_*` template, fall back to the existing `just`-prefixed hint when MCP is not ready (mirrors V5's routing-availability split). `forbidden-commands.ts:46-53` switches from static `*_HINT` constants to calling the helper.
 
 **Files:**
 - Create: `src/hooks/pretool-guard/validators/mcp-redirect.ts`
 - Create: `src/hooks/pretool-guard/validators/mcp-redirect.test.ts`
-- Modify: `src/hooks/pretool-guard/validators/forbidden-commands.ts:46-67` (replace constants with helper calls inside `BLOCKED_TOOLS` definitions)
+- Modify: `src/hooks/pretool-guard/validators/forbidden-commands.ts` (replace constants with helper calls inside `BLOCKED_TOOLS` definitions)
 - Modify: `src/hooks/pretool-guard/validators/forbidden-commands.test.ts` (update expected message format)
 
 **API:**
@@ -614,7 +639,7 @@ Returns {passed, summary}. Auto-saves logs.
 Fallback (MCP not ready): just test --package <name>
 ```
 
-When `mcpReady() === false`, output the existing `just`-prefixed hint as the primary suggestion (no MCP block) so consumers without an active MCP server fall back gracefully — matches V5's null-passthrough rule.
+When `mcpReady() === false`, output the existing `just`-prefixed hint as the primary suggestion (no MCP block) so consumers without an active MCP server fall back gracefully — matches V5's documented "tools available, no automatic nudging" split.
 
 **Steps (TDD):**
 1. Write failing tests for `buildRedirectMessage` covering all 4 categories × {mcp ready, mcp not ready} = 8 cases
@@ -631,7 +656,7 @@ When `mcpReady() === false`, output the existing `just`-prefixed hint as the pri
 - [ ] `forbidden-commands` integration tests pass with new format
 - [ ] Helper uses `isMcpReady` from `src/hooks/shared/mcp-sentinel.ts` (V4); injectable for tests
 - [ ] Format includes literal `mcp__agent-kit__ak_*` tool name (not `${prefix}` placeholder) when MCP is ready
-- [ ] Format falls back to `just`-prefixed hint when MCP is not ready (V5 pattern)
+- [ ] Format falls back to `just`-prefixed hint when MCP is not ready (V5 routing-availability split)
 - [ ] No regression in existing forbidden-commands DENY behavior (still denies; only the reason changes)
 
 #### [infra] Task 5.2: Extend AgentkitConfig with optional `mcp` field
@@ -643,8 +668,8 @@ When `mcpReady() === false`, output the existing `just`-prefixed hint as the pri
 `AgentkitConfig` (V6) currently has no MCP fields. Extend it so a fork or rebrand can override the server name and tool prefix without source edits. Defaults match the verified production values (V1, V2).
 
 **Files:**
-- Modify: `src/cli/commands/init/config.ts:13-18` (interface), and `defaultConfig()`/`readConfig()`/`mergeConfig()` (whole file is 71 lines — small surface)
-- Modify: `src/cli/commands/init/config.test.ts` (if exists; otherwise create)
+- Modify: `src/cli/commands/init/config.ts`
+- Modify: `src/cli/commands/init/config.test.ts`
 
 **Schema delta:**
 ```ts
@@ -679,13 +704,13 @@ export interface AgentkitConfig {
 - [ ] New tests cover present, absent, and malformed `mcp` field
 - [ ] `buildRedirectMessage` from Task 5.1 reads serverName/toolPrefix from config (passed in via `MCPRedirectContext`)
 
-#### [docs] Task 5.3: End-to-end smoke in 3 consumer profiles
+#### [docs] Task 5.3: Cross-platform smoke, single routing authority, and Codex parity proof
 
 **Status:** todo
 
-**Depends:** Task 5.1, Task 5.2
+**Depends:** Task 1.5, Task 5.1, Task 5.2
 
-Three consumer profiles cover the realistic distribution of agent-kit consumers. The redirect must work in all of them.
+Three consumer profiles cover the realistic distribution of agent-kit consumers. The redirect must work in all of them, and the combined Claude stack (agent-kit project hooks/rules + optional context-mode plugin) must not duplicate ownership of `ctx_*` routing guidance. This task also converts current Codex hook claims into measured support on the current shipped release before VISION or the audit/docs claim parity.
 
 | Consumer | Profile | Has justfile? | Path |
 |---|---|---|---|
@@ -699,26 +724,37 @@ Three consumer profiles cover the realistic distribution of agent-kit consumers.
 3. In a Claude Code session inside the consumer repo, run `pnpm test`
 4. Expected: hook denies; deny reason starts with `"pnpm test" denied — use agent-kit MCP tool: mcp__agent-kit__ak_test(...)`
 5. For `runtime` (no justfile): the fallback line should still mention `just test...`-style fallback (acceptable; the model uses the primary MCP suggestion)
-6. Capture each consumer's deny-reason output verbatim in a fixture file
+6. In one consumer (start with `runtime`), run the same smoke with the full context-mode Claude plugin enabled. Verify there is no contradictory or duplicated agent-kit-owned `ctx_*` routing guidance at SessionStart / PreToolUse time.
+7. Probe the current Codex CLI release with `.codex/hooks.json` enabled: log which events fire, which `tool_name` values appear, and whether edit flows surface as `Edit` / `Write` / `MultiEdit` or only as `Bash`.
+8. Capture the Claude deny-reason outputs and the Codex parity evidence verbatim in fixture files / docs.
 
 **Files:**
 - Create: `src/hooks/pretool-guard/validators/__fixtures__/redirect-format/ingest-lens.txt` (golden output)
 - Create: `src/hooks/pretool-guard/validators/__fixtures__/redirect-format/monorepo.txt`
 - Create: `src/hooks/pretool-guard/validators/__fixtures__/redirect-format/runtime.txt`
-- Modify: `VISION.md` — note in the "What 'fully wired' means" table that redirect format is MCP-shaped, not `just`-shaped, and works regardless of task runner
+- Create: `docs/hook-matrix.md` (documented-vs-measured platform matrix for Claude, Codex, Gemini, context-mode ownership)
+- Modify: `src/hooks/shared/routing-block.ts` (narrow agent-kit SessionStart routing to the single chosen ownership boundary)
+- Modify: `catalog/agent/rules/context-mode-routing.md` (trim or clarify fallback-only usage if needed)
+- Modify: `VISION.md` — note in the "What 'fully wired' means" table that redirect format is MCP-shaped, that context-mode owns its own hooks when installed, and that `.omx` is runtime/state rather than a direct hook surface
 
 **Steps (TDD):**
 1. Run the smoke sequence in each consumer; record verbatim output to fixture files
 2. Add a unit test that loads each fixture and asserts the new format invariants (starts with `"<cmd>" denied — use agent-kit MCP tool:`, contains `mcp__agent-kit__ak_*` literal)
-3. Update VISION.md with the redirect-format guarantee
-4. Run: `bun run test src/hooks/pretool-guard/` — all pass
-5. Run: `pnpm exec ak audit docs-frontmatter` — VISION.md edit doesn't break frontmatter
+3. Run a full-plugin collision smoke on Claude Code: agent-kit + context-mode plugin both active. Decide and implement one agent-kit-owned routing source for `ctx_*` guidance (preferred: remove duplicated `ctx_*` content from `AK_ROUTING_BLOCK` and leave context-mode/plugin or project rule as the fallback path).
+4. Probe Codex on the current shipped release; if `Edit|Write` parity is absent, update `docs/hook-matrix.md` and `VISION.md` to describe only the measured behavior and leave richer Codex post-edit automation out of scope.
+5. Update VISION.md + `docs/hook-matrix.md` with the redirect-format guarantee, routing ownership split, and current `ak-post-tool` scope (classifier only; no lint shell-out yet)
+6. Add / update unit tests around `AK_ROUTING_BLOCK` so the chosen ownership boundary is enforced in code review
+7. Run: `bun run test src/hooks/pretool-guard/` — all pass
+8. Run: `pnpm exec ak audit docs-frontmatter` — docs edits don't break frontmatter
 
 **Acceptance:**
 - [ ] 3 fixture files committed, verbatim deny reasons
 - [ ] Unit test loads fixtures + validates format
-- [ ] VISION.md updated with the universal-redirect guarantee
+- [ ] `AK_ROUTING_BLOCK` (or equivalent) owns only one clear routing boundary; no duplicate agent-kit-owned `ctx_*` guidance remains
+- [ ] VISION.md + `docs/hook-matrix.md` distinguish documented vs measured platform behavior
+- [ ] `.omx` is documented as runtime/state, not a direct hook surface
 - [ ] Manual verification: in `runtime`, the model successfully follows the MCP redirect (uses `ak_test` MCP tool) instead of failing on `just test`
+- [ ] Manual verification: Codex claims in docs match the observed current-release probe, not prior assumptions
 
 ## Verification
 
