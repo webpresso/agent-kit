@@ -19,7 +19,16 @@ export default {
     '!src/**/*.d.ts',
     '!src/**/__fixtures__/**',
   ],
-  // Exclude symlinked IDE skill dirs — Stryker's copyfile cannot handle symlinks to directories
-  ignorePatterns: ['.agents', '.gemini', '.cursor', '.windsurf', '__fixtures__/fake-home'],
+  // Stryker sandbox cannot copyfile directory symlinks (ENOTSUP on macOS).
+  // IDE-synced skill dirs (.agents, .cursor, .gemini, .windsurf) are generated
+  // by ak symlink sync; .claude/worktrees are temporary agent execution dirs.
+  ignorePatterns: [
+    '.agents/**',
+    '.gemini/**',
+    '.cursor/**',
+    '.windsurf/**',
+    '.claude/worktrees/**',
+    '__fixtures__/fake-home/**',
+  ],
   concurrency: 2,
 }
