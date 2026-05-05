@@ -25,6 +25,8 @@ export type {
   RepoAuditResult,
   RepoAuditViolation,
 } from './audit/repo-guardrails.js'
+export { auditVision } from './audit/vision-doc.js'
+export type { VisionOptions, VisionRequiredSection } from './audit/vision-doc.js'
 
 export {
   analyzeViteDistBundleBudget,

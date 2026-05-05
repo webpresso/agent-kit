@@ -16,7 +16,7 @@ Agent-kit ships through **two coexisting distribution channels** — mirrors the
 /plugin install agent-kit@webpresso
 ```
 
-What you get: **hooks** (PreToolUse, PostToolUse, Stop, SessionStart), **`ak mcp` server** with 6 tools (`ak_test`, `ak_lint`, `ak_typecheck`, `ak_qa`, `ak_audit`, `ak_blueprint`), **slash commands** (`/ak:test`, `/ak:qa`, `/ak:audit`, `/ak:blueprint`), and the **skill catalog**. Manifest at `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json`. Pin to release tags (`v<version>`) — `main` does not have `dist/` checked in; only release tags do (see [CONTRIBUTING.md](./CONTRIBUTING.md#releases)).
+What you get: **hooks** (PreToolUse, PostToolUse, Stop, SessionStart), **`ak mcp` server** with 7 tools (`ak_test`, `ak_e2e`, `ak_lint`, `ak_typecheck`, `ak_qa`, `ak_audit`, `ak_blueprint`), **slash commands** (`/ak:test`, `/ak:qa`, `/ak:audit`, `/ak:blueprint`), and the **skill catalog**. Manifest at `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json`. Pin to release tags (`v<version>`) — `main` does not have `dist/` checked in; only release tags do (see [CONTRIBUTING.md](./CONTRIBUTING.md#releases)).
 
 **Plugin runtime contract:** the Claude Code plugin executes with **Bun** and currently points at bundled `src/*.ts` entrypoints from the published package. The tarball intentionally ships both `src/` and `dist/`; `dist/esm/*` is a library/build artifact, not the current plugin execution path.
 
@@ -115,10 +115,12 @@ No plugin install or marketplace registration needed.
 | `ak skills list` | List available skills in the catalog |
 | `ak skills install <name>` | Install a named skill into the active IDE surfaces |
 | `ak audit tph` | Run tech-debt phase health audit |
+| `ak audit vision` | Enforce VISION.md exists at root with required structure (frontmatter, ≤100 lines, ≤1500 words, required sections) |
+| `ak audit guardrails` | Composite of every repo-level audit (catalog-drift, blueprint-lifecycle, docs-frontmatter, vision, tech-debt, no-relative-parent-imports, bucket-boundary). Wired into the scaffolded pre-commit hook and CI workflow — adding a repo audit to `REPO_AUDIT_REGISTRY` in `src/cli/commands/audit.ts` propagates to all three (standalone CLI, composite, ship gate). |
 | `ak audit mutation` | Run Stryker mutation testing; fails CI on threshold misses |
-| `ak audit quality` | Composite gate: mutation + catalog-drift + docs-frontmatter + blueprint-lifecycle (bundle-budget and commit-message require explicit paths — run separately) |
+| `ak audit quality` | Full ship gate: mutation + guardrails composite. (bundle-budget and commit-message take caller-supplied paths — run separately.) |
 | `ak audit bundle-budget apps/client/dist --max-js-asset-bytes 512000` | Check Vite bundle against budget |
-| `ak audit no-relative-parent-imports` | Enforce `#alias` imports — fail if any `../` parent imports exist in `src/` |
+| `ak audit no-relative-parent-imports` | Enforce `#alias` imports — fail if any `../` parent imports exist in `src/` (also runs as part of `guardrails`) |
 | `ak hooks doctor` | Verify plugin hook health: bins exist, executable, respond to stdin, MCP reachable |
 | `ak docs lint docs/research/my-doc.md` | Lint a research or blueprint doc |
 
@@ -180,7 +182,14 @@ import {
 ak test --package cli2
 ak test --file apps/cli2/src/commands/target.test.ts
 ak e2e --suite smoke --config playwright.config.ts
+ak audit tph-e2e
 ```
+
+MCP surface split:
+
+- `ak_test` — generic test execution by explicit `packages` or `files`
+- `ak_e2e` — suite-aware / host-adapter-aware E2E execution
+- `ak_audit(kind=\"tph-e2e\")` — E2E testing-philosophy audit only
 
 ## License
 

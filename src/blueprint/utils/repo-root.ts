@@ -13,14 +13,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 
 /** Markers that unambiguously identify a repo root. */
-export const REPO_ROOT_MARKERS = ['pnpm-workspace.yaml', '.git'] as const
-
-/**
- * Legacy single-marker export. Retained for backwards compat with callers
- * that still reference it; new code should use REPO_ROOT_MARKERS or
- * findRepoRoot().
- */
-export const REPO_ROOT_MARKER = REPO_ROOT_MARKERS[0]
+const REPO_ROOT_MARKERS = ['pnpm-workspace.yaml', '.git'] as const
 
 export function findRepoRoot(startDir: string = process.cwd()): string {
   let current = path.resolve(startDir)

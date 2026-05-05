@@ -18,7 +18,7 @@
 import { existsSync, lstatSync, mkdirSync, readdirSync, symlinkSync } from 'node:fs'
 import { join } from 'node:path'
 
-import type { MergeOptions, MergeResult } from '../../merge.js'
+import type { MergeOptions, MergeResult } from '#cli/commands/init/merge'
 
 export interface ScaffoldClaudeRulesInput {
   repoRoot: string

@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-04-25'
+last_updated: '2026-05-05'
 ---
 
 # `ak setup --with` presets
@@ -8,7 +8,7 @@ last_updated: '2026-04-25'
 `--with <names>` accepts a comma-separated mix of two things:
 
 1. **Tier-3 skills** — opt-in skill packs from the agent-kit catalog (e.g. `tanstack-query`, `react-doctor`, `frontend-design`). Run `ak skills list` for the full list.
-2. **Presets** — named scaffolder modes that wire in additional tooling beyond the skill catalog. `omx` and `gstack` run by default on every `ak setup`; the rest are opt-in. Each preset is documented below.
+2. **Presets** — named scaffolder modes that wire in additional tooling beyond the skill catalog. `omx`, `gstack`, and `vision` run by default on every `ak setup`; the rest are opt-in. Each preset is documented below.
 
 Presets and Tier-3 skills can be combined freely:
 
@@ -19,6 +19,19 @@ ak setup --with omx,gstack,tanstack-query --yes
 Unknown values fall through to Tier-3 skill resolution and are rejected with `EXIT_SETUP_FAIL` (exit code 1). Whitespace around commas is tolerated.
 
 ## Available presets
+
+### `vision`
+
+Drops a starter `VISION.md` at repo root from `catalog/vision/VISION.md.tmpl`, with `{{REPO_NAME}}` and `{{TODAY}}` substituted. Runs by default on every `ak setup`. The companion audit `ak audit vision` (part of the `guardrails` composite) enforces structure on the file from there on:
+
+- frontmatter `type: vision` + `last_updated: YYYY-MM-DD`
+- H1 contains "Vision"
+- required H2 sections: Problem, North star, Boundaries, Principles (synonyms accepted)
+- ≤ 100 body lines and ≤ 1500 body words
+- soft-warns when `last_updated` is older than 365 days
+
+**Touches:** `VISION.md` only; existing files are protected by the standard merge policy (`.new` sidecar unless `--overwrite`).
+**Requires nothing on PATH.**
 
 ### `lore-commits`
 
@@ -62,7 +75,7 @@ Ensures gstack — a Claude Code skill registry providing `/qa`, `/ship`, `/revi
 
 ## Combining presets
 
-Presets run independently in the order: `lore-commits`, `omx`, `playwright-mcp`, `gstack`. The default preset set is `omx,gstack`; `playwright-mcp` is also applied whenever `omx` runs. Specifying default presets explicitly is safe and idempotent. A failure in one does **not** skip subsequent presets — every preset gets a chance to run. The aggregate exit code reflects the worst failure across all presets.
+Presets run independently in the order: `lore-commits`, `vision`, `omx`, `playwright-mcp`, `gstack`. The default preset set is `omx,gstack,vision`; `playwright-mcp` is also applied whenever `omx` runs. Specifying default presets explicitly is safe and idempotent. A failure in one does **not** skip subsequent presets — every preset gets a chance to run. The aggregate exit code reflects the worst failure across all presets.
 
 Example: `ak setup` with `omx` unavailable after the fallback install and a reusable gstack install root already present → omx logs an error, gstack still detects + reports `updated`, overall exit code is 1 (the omx failure dominates).
 

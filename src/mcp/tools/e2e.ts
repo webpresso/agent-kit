@@ -18,7 +18,7 @@ import {
   createE2eExecutionPlan,
   plannedGroupsToCommandConfigs,
   runCommandConfigs,
-} from '../../e2e/execution.js'
+} from '#e2e/execution'
 import {
   clipRawOutput,
   createSummaryResult,

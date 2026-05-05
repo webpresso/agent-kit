@@ -14,19 +14,14 @@ import path from 'node:path'
 // ---------------------------------------------------------------------------
 
 /**
- * The canonical config marker used to identify an agent-kit/webpresso project
- * root. Matches the upstream `CANONICAL_CONFIG_PATH`.
+ * Webpresso framework layout marker — checked last so the webpresso repo
+ * itself resolves correctly when it has no `.agent-kitrc.json`. Generic
+ * consumers hit `package.json` first and never see this fallback.
  */
-/**
- * Webpresso's historical project-root sentinel. Kept for backwards compat
- * when agent-kit is consumed from inside webpresso — falls back to more
- * generic markers for other consumers.
- */
-export const CANONICAL_CONFIG_PATH = 'webpresso/config.yaml'
+const CANONICAL_CONFIG_PATH = 'webpresso/config.yaml'
 
 /**
- * Fallback markers used to detect an agent-kit-scoped project root in any
- * consumer repo. Checked in priority order; first hit wins.
+ * Markers used to detect a project root, in priority order; first hit wins.
  */
 export const PROJECT_ROOT_MARKERS = [
   '.agent-kitrc.json',
@@ -35,7 +30,7 @@ export const PROJECT_ROOT_MARKERS = [
   CANONICAL_CONFIG_PATH,
 ] as const
 
-export interface GetProjectRootOptions {
+interface GetProjectRootOptions {
   /** Directory to start searching from (default: process.cwd()) */
   startDir?: string
 }
@@ -48,10 +43,8 @@ function findMarker(rootDir: string): string | null {
 }
 
 /**
- * Walks upward from startDir looking for a project-root marker. Tries
- * `.agent-kitrc.json`, `pnpm-workspace.yaml`, `package.json`, and
- * `webpresso/config.yaml` (webpresso legacy) in priority order. Throws if
- * nothing is found.
+ * Walks upward from startDir looking for any marker in
+ * `PROJECT_ROOT_MARKERS` (priority order). Throws if nothing is found.
  */
 export function findProjectRoot(startDir: string = process.cwd()): string {
   let current = path.resolve(startDir)

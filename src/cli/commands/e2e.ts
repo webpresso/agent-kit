@@ -7,7 +7,7 @@ import {
   formatShellCommand,
   plannedGroupsToCommandConfigs,
   runCommandConfigs,
-} from '../../e2e/execution.js'
+} from '#e2e/execution'
 
 export const E2E_COMMAND_HELP = [
   'Build and run a portable E2E command from host-supplied suite metadata.',

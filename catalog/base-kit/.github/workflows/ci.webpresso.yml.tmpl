@@ -17,8 +17,8 @@ jobs:
         with:
           version: '10.33.0'
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -r run check-types 2>/dev/null || pnpm -r run typecheck 2>/dev/null || true
-      - run: pnpm -r run lint 2>/dev/null || true
+      - run: pnpm -r run check-types 2>/dev/null || pnpm -r run typecheck
+      - run: pnpm -r run lint
 
   test:
     runs-on: ubuntu-latest
@@ -46,6 +46,4 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: |
           which claude && claude install-plugin @webpresso/agent-kit || echo "Claude Code not installed, skipping plugin install"
-          npx ak audit blueprint-lifecycle 2>/dev/null || true
-          npx ak audit docs-frontmatter 2>/dev/null || true
-          npx ak audit catalog-drift 2>/dev/null || true
+      - run: npx ak audit guardrails

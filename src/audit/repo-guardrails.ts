@@ -444,7 +444,7 @@ function walkMarkdownFiles(root: string): string[] {
   return files.toSorted((left, right) => left.localeCompare(right))
 }
 
-function parseFrontmatter(markdown: string): Record<string, string> {
+export function parseFrontmatter(markdown: string): Record<string, string> {
   if (!markdown.startsWith('---')) return {}
 
   const end = markdown.indexOf('\n---', 3)

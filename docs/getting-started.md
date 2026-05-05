@@ -88,6 +88,10 @@ Default setup also wires in tooling that lives outside the skill catalog:
 - `gstack` — ensures the gstack skill registry is installed at
   `~/.claude/skills/gstack/` (clones + runs `./setup --team` if missing,
   no-op if already there). Provides `/qa`, `/ship`, `/review`, etc.
+- `vision` — drops a starter `VISION.md` at repo root from the agent-kit
+  template. Runs by default. Pairs with the `vision` audit (part of the
+  `guardrails` composite) so every consumer keeps a structured, ≤100-line
+  vision under enforcement.
 - `lore-commits` — installs a `.husky/commit-msg` hook that enforces
   Lore Commit Protocol trailers via `ak audit commit-message` when requested
   with `--with lore-commits`.

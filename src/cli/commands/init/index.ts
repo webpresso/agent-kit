@@ -36,10 +36,11 @@ import { ensureGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
 import { ensureOmx } from './scaffolders/omx/index.js'
 import { checkRuntimes } from './scaffolders/runtime-check/index.js'
+import { scaffoldVision } from './scaffolders/vision/index.js'
 
-const PRESETS = ['lore-commits', 'omx', 'playwright-mcp', 'gstack'] as const
+const PRESETS = ['lore-commits', 'omx', 'playwright-mcp', 'gstack', 'vision'] as const
 type Preset = (typeof PRESETS)[number]
-const DEFAULT_PRESETS: readonly Preset[] = ['omx', 'gstack']
+const DEFAULT_PRESETS: readonly Preset[] = ['omx', 'gstack', 'vision']
 
 function parsePresets(withFlag: string | undefined): Preset[] {
   const explicit = withFlag
@@ -185,6 +186,12 @@ export async function runInit(flags: InitFlags): Promise<number> {
     if (presets.includes('lore-commits')) {
       presetResults.push(
         scaffoldLoreCommits({ repoRoot: consumer.repoRoot, options }),
+      )
+    }
+
+    if (presets.includes('vision')) {
+      presetResults.push(
+        scaffoldVision({ catalogDir, repoRoot: consumer.repoRoot, options }),
       )
     }
 

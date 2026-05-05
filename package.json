@@ -46,6 +46,7 @@
   "module": "./dist/esm/index.js",
   "imports": {
     "#e2e": "./src/e2e/index.ts",
+    "#e2e/*": "./src/e2e/*.ts",
     "#test": "./src/test/index.ts",
     "#symlinker": "./src/symlinker/index.ts",
     "#cli/*": "./src/cli/*.ts",
@@ -176,7 +177,7 @@
   "scripts": {
     "build": "tshy && pnpm run chmod-bins && pnpm run link-self-bins",
     "postbuild": "pnpm run generate-skills",
-    "chmod-bins": "chmod +x src/cli/cli.ts src/mcp/cli.ts src/hooks/pretool-guard/index.ts src/hooks/post-tool/lint-after-edit.ts src/hooks/stop/qa-changed-files.ts src/hooks/guard-switch/index.ts src/hooks/test-quality-check.ts src/hooks/sessionstart/index.ts",
+    "chmod-bins": "tsx scripts/chmod-bins.ts",
     "link-self-bins": "tsx scripts/link-self-bins.ts",
     "generate-skills": "tsx src/build/generate-skills-dir.ts",
     "typecheck": "tsc --noEmit",
@@ -187,7 +188,7 @@
     "docs:check": "pnpm exec ak audit docs-frontmatter",
     "catalog:check": "pnpm exec ak audit catalog-drift",
     "imports:check": "pnpm exec ak audit no-relative-parent-imports",
-    "audits:check": "pnpm blueprints:check && pnpm docs:check && pnpm catalog:check && pnpm imports:check && pnpm hooks:doctor:ci",
+    "audits:check": "pnpm exec ak audit guardrails && pnpm hooks:doctor:ci",
     "hooks:doctor": "bun ./src/cli/cli.ts hooks doctor",
     "hooks:doctor:ci": "bun ./src/cli/cli.ts hooks doctor --skip-mcp",
     "qa": "bun run build && bun run typecheck && bun run test && bun run lint:pkg && bun run audits:check",

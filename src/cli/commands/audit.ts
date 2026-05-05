@@ -40,12 +40,80 @@ async function runStryker(cwd: string): Promise<number> {
 }
 
 /**
- * Composite quality gate: mutation + catalog-drift + blueprint-lifecycle + docs-frontmatter.
+ * Registry of repo-level (RepoAuditResult-shaped) audits — single source of
+ * truth. Adding an entry here surfaces the audit in three places at once:
+ *
+ *   1. `ak audit <kind>` standalone dispatch
+ *   2. `ak audit guardrails` composite (consumed by pre-commit + CI)
+ *   3. `ak audit quality` full ship gate (mutation + composite)
+ *
+ * Each runner closes over the option-mapping for its audit so the dispatcher
+ * stays generic. Audits with a different shape (script-backed: tph, tph-e2e;
+ * caller-paths: bundle-budget, commit-message; composites: mutation, quality)
+ * are dispatched separately.
+ */
+type RepoAuditRunner = (
+  root: string,
+  options: AuditActionOptions,
+) => Promise<RepoAuditResult> | RepoAuditResult
+
+const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
+  'catalog-drift': async (root) =>
+    (await import('#audit/repo-guardrails')).auditCatalogDrift(root),
+  'blueprint-lifecycle': async (root, options) =>
+    (await import('#audit/repo-guardrails')).auditBlueprintLifecycle(root, {
+      includeLegacyOmx: options.legacyOmx,
+    }),
+  'docs-frontmatter': async (root, options) =>
+    (await import('#audit/repo-guardrails')).auditDocsFrontmatter(root, {
+      docsRoot: options.docsRoot,
+    }),
+  vision: async (root, options) =>
+    (await import('#audit/vision-doc')).auditVision(root, {
+      visionPath: options.visionPath,
+    }),
+  'tech-debt': async (root) => (await import('#audit/tech-debt')).auditTechDebt(root),
+  'no-relative-parent-imports': async (root) =>
+    (await import('#audit/repo-guardrails')).auditNoRelativeParentImports(root),
+  'bucket-boundary': async (root, options) =>
+    (await import('#audit/bucket-boundary')).auditBucketBoundary(root, {
+      changedOnly: options.changedOnly,
+      strict: options.strict,
+    }),
+}
+
+const REPO_AUDIT_KINDS = Object.keys(REPO_AUDIT_REGISTRY)
+
+/**
+ * Run every audit in REPO_AUDIT_REGISTRY and report. Returns 0 only if all OK.
+ */
+async function runRepoGuardrailsGate(
+  root: string,
+  options: AuditActionOptions,
+): Promise<number> {
+  const { formatRepoAuditReport } = await import('#audit/repo-guardrails')
+
+  let allOk = true
+  for (const name of REPO_AUDIT_KINDS) {
+    const runner = REPO_AUDIT_REGISTRY[name]
+    if (!runner) continue
+    const result = await runner(root, options)
+    if (options.json) {
+      console.log(JSON.stringify({ audit: name, ...result }, null, 2))
+    } else {
+      console.log(formatRepoAuditReport(result))
+    }
+    if (!result.ok) allOk = false
+  }
+
+  return allOk ? 0 : 1
+}
+
+/**
+ * Composite quality gate: mutation + repo guardrails composite.
  * Runs sequentially and exits non-zero on the first failure (fast-fail).
- * bundle-budget and commit-message require caller-supplied paths and are run separately.
  */
 async function runQualityGate(root: string, options: AuditActionOptions): Promise<number> {
-  // Phase 1: mutation score (Stryker)
   console.log('\n[quality] running mutation tests...')
   const mutationCode = await runStryker(root)
   if (mutationCode !== 0) {
@@ -54,34 +122,7 @@ async function runQualityGate(root: string, options: AuditActionOptions): Promis
   }
   console.log('[quality] mutation: OK')
 
-  const { auditCatalogDrift, auditBlueprintLifecycle, auditDocsFrontmatter, formatRepoAuditReport } =
-    await import('#audit/repo-guardrails')
-
-  const checks: Array<{ name: string; result: RepoAuditResult }> = [
-    { name: 'catalog-drift', result: auditCatalogDrift(root) },
-    {
-      name: 'blueprint-lifecycle',
-      result: auditBlueprintLifecycle(root, { includeLegacyOmx: options.legacyOmx }),
-    },
-    {
-      name: 'docs-frontmatter',
-      result: auditDocsFrontmatter(root, { docsRoot: options.docsRoot }),
-    },
-  ]
-
-  let allOk = true
-  for (const { name, result } of checks) {
-    if (options.json) {
-      console.log(JSON.stringify({ audit: name, ...result }, null, 2))
-    } else {
-      console.log(formatRepoAuditReport(result))
-    }
-    if (!result.ok) {
-      allOk = false
-    }
-  }
-
-  return allOk ? 0 : 1
+  return runRepoGuardrailsGate(root, options)
 }
 
 interface AuditActionOptions {
@@ -101,6 +142,7 @@ interface AuditActionOptions {
   requireLore?: boolean
   root?: string
   strict?: boolean
+  visionPath?: string
 }
 
 function resolveAuditScript(name: 'audit-tph.ts' | 'audit-tph-e2e.ts'): string {
@@ -165,11 +207,34 @@ function buildBundleBudgetArgs(target: string | undefined, options: AuditActionO
   return args
 }
 
+/**
+ * Audit kinds the dispatcher recognizes, beyond the generic registry-driven
+ * ones. Repo-level audits are derived from REPO_AUDIT_REGISTRY and inserted
+ * automatically; this list only names the bespoke / composite kinds.
+ */
+const SCRIPT_AUDIT_KINDS = ['tph', 'tph-e2e'] as const
+const SPECIAL_AUDIT_KINDS = [
+  'bundle-budget',
+  'commit-message',
+  'mutation',
+  'guardrails',
+  'quality',
+] as const
+
+const AUDIT_KINDS = [
+  ...SCRIPT_AUDIT_KINDS,
+  ...SPECIAL_AUDIT_KINDS.slice(0, 2),
+  ...REPO_AUDIT_KINDS,
+  ...SPECIAL_AUDIT_KINDS.slice(2),
+]
+
+const AUDIT_KIND_LIST = AUDIT_KINDS.join(', ')
+
 export function registerAuditCommand(cli: CAC): void {
   cli
     .command(
       'audit [kind] [target]',
-      'Run a packaged audit (tph, tph-e2e, bundle-budget, catalog-drift, commit-message, docs-frontmatter, blueprint-lifecycle, tech-debt, no-relative-parent-imports, mutation, quality, bucket-boundary)',
+      `Run a packaged audit (${AUDIT_KIND_LIST})`,
     )
     .option('--fix', 'Attempt to auto-fix violations (forwarded to supported audits)')
     .option('--json', 'Emit JSON output (forwarded to supported audits)')
@@ -187,20 +252,26 @@ export function registerAuditCommand(cli: CAC): void {
     .option('--max-html-eager-js-asset-bytes <bytes>', 'Max size for any HTML-eager JS asset')
     .option('--max-html-eager-js-total-bytes <bytes>', 'Max total size for HTML-eager JS assets')
     .option('--ignore <substring>', 'Ignore matching bundle-budget asset path; repeatable')
+    .option('--vision-path <path>', "Path to VISION.md for the 'vision' audit (default: VISION.md)")
     .action(async (kind: string | undefined, target: string | undefined, options: AuditActionOptions) => {
       if (!kind) {
-        console.error(
-          `Usage: ak audit <kind> [target]\n` +
-          `Kinds: tph, tph-e2e, bundle-budget, catalog-drift, commit-message, ` +
-          `docs-frontmatter, blueprint-lifecycle, tech-debt, no-relative-parent-imports, ` +
-          `mutation, quality, bucket-boundary`
-        )
+        console.error(`Usage: ak audit <kind> [target]\nKinds: ${AUDIT_KIND_LIST}`)
         process.exit(1)
       }
       const forwarded: string[] = []
       if (options.fix) forwarded.push('--fix')
       if (options.json) forwarded.push('--json')
       if (target) forwarded.push(target)
+
+      // Generic dispatch for repo-level audits — entry per audit lives in
+      // REPO_AUDIT_REGISTRY (single source of truth). Keep the bespoke
+      // switch below for kinds with non-uniform shapes.
+      const repoAuditRunner = REPO_AUDIT_REGISTRY[kind]
+      if (repoAuditRunner) {
+        const root = options.root ?? target ?? process.cwd()
+        await exitWithRepoAudit(await repoAuditRunner(root, options), options)
+        return
+      }
 
       switch (kind) {
         case 'tph': {
@@ -219,14 +290,6 @@ export function registerAuditCommand(cli: CAC): void {
           const code = await runBundleBudgetCli(bundleBudgetArgs)
           process.exit(code)
         }
-        case 'catalog-drift': {
-          const { auditCatalogDrift } = await import('#audit/repo-guardrails')
-          await exitWithRepoAudit(
-            auditCatalogDrift(options.root ?? target ?? process.cwd()),
-            options,
-          )
-          return
-        }
         case 'commit-message': {
           const { auditCommitMessageFile } = await import('#audit/repo-guardrails')
           const messageFile = options.messageFile ?? target
@@ -243,54 +306,14 @@ export function registerAuditCommand(cli: CAC): void {
           )
           return
         }
-        case 'docs-frontmatter': {
-          const { auditDocsFrontmatter } = await import('#audit/repo-guardrails')
-          await exitWithRepoAudit(
-            auditDocsFrontmatter(options.root ?? target ?? process.cwd(), {
-              docsRoot: options.docsRoot,
-            }),
-            options,
-          )
-          return
-        }
-        case 'blueprint-lifecycle': {
-          const { auditBlueprintLifecycle } = await import('#audit/repo-guardrails')
-          await exitWithRepoAudit(
-            auditBlueprintLifecycle(options.root ?? target ?? process.cwd(), {
-              includeLegacyOmx: options.legacyOmx,
-            }),
-            options,
-          )
-          return
-        }
-        case 'tech-debt': {
-          const { auditTechDebt } = await import('#audit/tech-debt')
-          await exitWithRepoAudit(
-            auditTechDebt(options.root ?? target ?? process.cwd()),
-            options,
-          )
-          return
-        }
-        case 'no-relative-parent-imports': {
-          const { auditNoRelativeParentImports } = await import('#audit/repo-guardrails')
-          await exitWithRepoAudit(
-            auditNoRelativeParentImports(options.root ?? target ?? process.cwd()),
-            options,
-          )
-          return
-        }
-        case 'bucket-boundary': {
-          const { auditBucketBoundary } = await import('#audit/bucket-boundary')
-          const auditResult = await auditBucketBoundary(options.root ?? target ?? process.cwd(), {
-            changedOnly: options.changedOnly,
-            strict: options.strict,
-          })
-          await exitWithRepoAudit(auditResult, options)
-          return
-        }
         case 'mutation': {
           const cwd = options.root ?? target ?? process.cwd()
           const code = await runStryker(cwd)
+          process.exit(code)
+        }
+        case 'guardrails': {
+          const root = options.root ?? target ?? process.cwd()
+          const code = await runRepoGuardrailsGate(root, options)
           process.exit(code)
         }
         case 'quality': {
@@ -299,9 +322,7 @@ export function registerAuditCommand(cli: CAC): void {
           process.exit(code)
         }
         default: {
-          console.error(
-            `Unknown audit kind: ${kind}. Use 'tph', 'tph-e2e', 'bundle-budget', 'catalog-drift', 'commit-message', 'docs-frontmatter', 'blueprint-lifecycle', 'tech-debt', 'no-relative-parent-imports', 'mutation', 'quality', or 'bucket-boundary'.`,
-          )
+          console.error(`Unknown audit kind: ${kind}. Use one of: ${AUDIT_KIND_LIST}.`)
           process.exit(1)
         }
       }

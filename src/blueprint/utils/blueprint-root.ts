@@ -13,17 +13,17 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 
-export const WEBPRESSO_CONFIG_PATH = 'webpresso/config.yaml'
-export const WEBPRESSO_BLUEPRINTS_DIR = 'webpresso/blueprints'
-export const DEFAULT_BLUEPRINTS_DIR = 'blueprints'
+const WEBPRESSO_CONFIG_PATH = 'webpresso/config.yaml'
+const WEBPRESSO_BLUEPRINTS_DIR = 'webpresso/blueprints'
+const DEFAULT_BLUEPRINTS_DIR = 'blueprints'
 
 const GENERIC_PROJECT_MARKERS = ['.agent-kitrc.json', 'pnpm-workspace.yaml', 'package.json'] as const
 
-export function hasWebpressoProjectMarker(projectPath: string): boolean {
+function hasWebpressoProjectMarker(projectPath: string): boolean {
   return existsSync(path.join(projectPath, WEBPRESSO_CONFIG_PATH))
 }
 
-export function hasGenericProjectMarker(projectPath: string): boolean {
+function hasGenericProjectMarker(projectPath: string): boolean {
   return GENERIC_PROJECT_MARKERS.some((marker) => existsSync(path.join(projectPath, marker)))
 }
 
