@@ -1,6 +1,7 @@
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import akTypecheckTool from './typecheck.js'
@@ -53,11 +54,15 @@ describe('ak_typecheck tool', () => {
     let dir: string
 
     beforeEach(() => {
-      dir = mkdtempSync(join(tmpdir(), 'ak-mcp-typecheck-'))
+      dir = mkdtempSync(join(tmpdir(), `ak-mcp-typecheck-${randomUUID().slice(0, 8)}-`))
       process.chdir(dir)
       // Point project-root resolution at the tmpdir so we don't depend on
       // marker-file existence inside the temp tree.
       process.env.CLAUDE_PROJECT_DIR = dir
+    })
+
+    afterEach(() => {
+      rmSync(dir, { recursive: true, force: true })
     })
 
     it('spawns once per package with `--noEmit -p <path>` when packages given', async () => {

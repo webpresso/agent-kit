@@ -1,6 +1,7 @@
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import akTestTool from './test.js'
@@ -47,8 +48,12 @@ describe('ak_test tool', () => {
     let dir: string
 
     beforeEach(() => {
-      dir = mkdtempSync(join(tmpdir(), 'ak-mcp-test-tool-'))
+      dir = mkdtempSync(join(tmpdir(), `ak-mcp-test-tool-${randomUUID().slice(0, 8)}-`))
       process.chdir(dir)
+    })
+
+    afterEach(() => {
+      rmSync(dir, { recursive: true, force: true })
     })
 
     it('routes to `just` when justfile is present', async () => {
