@@ -33,8 +33,6 @@ import {
 } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 
-import { findRepoRoot } from '#utils/repo-root'
-
 import {
   ALLOWED_REAL_FILES,
   type ConsumerConfig,
@@ -707,6 +705,5 @@ const isMain =
     import.meta.url === `file://${process.argv[1]}`)
 
 if (isMain) {
-  const repoRoot = findRepoRoot()
-  syncAll(repoRoot)
+  syncAll(process.cwd())
 }

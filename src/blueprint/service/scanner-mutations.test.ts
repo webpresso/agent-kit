@@ -399,12 +399,15 @@ describe('scanBlueprintDirectory - relative path resolution (monorepo root)', ()
     expect(result[0]!.slug).toBe('my-plan')
   })
 
-  it('should resolve relative baseDir from a subdirectory of the monorepo', () => {
-    mkdirSync(`${testMonorepo}/packages/sub-pkg`, { recursive: true })
-    vi.spyOn(process, 'cwd').mockReturnValue(`${testMonorepo}/packages/sub-pkg`)
+  it('should resolve relative baseDir from process.cwd() directly (no root-walking)', () => {
+    // After Phase F: relative paths resolve from process.cwd(), not from a walked-up monorepo root.
+    // When cwd is a sub-package that does not contain the relative path, 0 results.
+    const subPkg = `${testMonorepo}/packages/sub-pkg`
+    mkdirSync(subPkg, { recursive: true })
+    vi.spyOn(process, 'cwd').mockReturnValue(subPkg)
     const result = scanBlueprintDirectory({ baseDir: 'webpresso/blueprints' })
-    expect(result.length).toBe(1)
-    expect(result[0]!.slug).toBe('my-plan')
+    // sub-pkg/webpresso/blueprints does not exist → 0 results
+    expect(result.length).toBe(0)
   })
 
   it('should use default baseDir when no options given', () => {

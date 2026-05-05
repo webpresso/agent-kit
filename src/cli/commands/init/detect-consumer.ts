@@ -30,7 +30,7 @@ export interface ConsumerContext {
   workspacePackages: WorkspacePackageInfo[]
 }
 
-export function findGitRoot(startDir: string = process.cwd()): string | null {
+export function findGitRoot(startDir: string): string | null {
   let current = path.resolve(startDir)
   for (;;) {
     if (existsSync(path.join(current, '.git'))) return current

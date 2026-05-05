@@ -16,11 +16,7 @@
 import { readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
-import { findRepoRoot } from '#utils/repo-root'
-
 import { runShell } from './shell.js'
-
-const REPO_ROOT = findRepoRoot()
 
 interface Violation {
   file: string
@@ -45,7 +41,7 @@ const DRY_RUN_PATTERN = /dryRun\s*:\s*true|dry-run\s*.*true/g
 const ERROR_TITLE_PATTERN = /(error|invalid|reject|fail|unauthorized)/i
 const MIXED_TITLE_PATTERN = /(mixed|partial|graceful|degradation)/i
 
-async function findE2eTestFiles(): Promise<string[]> {
+async function findE2eTestFiles(root: string): Promise<string[]> {
   const result = await runShell({
     command: 'find',
     args: [
@@ -72,7 +68,7 @@ async function findE2eTestFiles(): Promise<string[]> {
       '-path',
       '*/.stryker-tmp/*',
     ],
-    cwd: REPO_ROOT,
+    cwd: root,
   })
 
   return result.stdout
@@ -89,11 +85,11 @@ function hasTitlePattern(content: string, pattern: RegExp): boolean {
   return titleMatches.some((title) => pattern.test(title))
 }
 
-function auditFile(filePath: string): Violation[] {
+function auditFile(filePath: string, root: string): Violation[] {
   const violations: Violation[] = []
-  const fullPath = join(REPO_ROOT, filePath)
+  const fullPath = join(root, filePath)
   const content = readFileSync(fullPath, 'utf-8')
-  const rel = relative(REPO_ROOT, fullPath)
+  const rel = relative(root, fullPath)
 
   if (INTERNAL_API_PATTERN.test(content) || INTERNAL_HANDLER_PATTERN.test(content)) {
     violations.push({
@@ -199,11 +195,12 @@ function printResults(result: AuditResult): void {
 }
 
 async function main(): Promise<void> {
-  const files = await findE2eTestFiles()
+  const root = process.cwd()
+  const files = await findE2eTestFiles(root)
   const violations: Violation[] = []
 
   for (const file of files) {
-    violations.push(...auditFile(file))
+    violations.push(...auditFile(file, root))
   }
 
   const result: AuditResult = {

@@ -9,7 +9,6 @@ import { existsSync, readdirSync, statSync } from 'node:fs'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 
 import { resolveBlueprintRoot } from '#utils/blueprint-root'
-import { findRepoRoot } from '#utils/repo-root'
 
 /**
  * Represents a scanned plan with path and metadata extracted from directory structure.
@@ -281,14 +280,8 @@ export function scanDocumentDirectory(options: GenericScanOptions): ScannedBluep
     // Already absolute, use as-is
     absoluteBaseDir = baseDir
   } else {
-    // Relative path - resolve from monorepo root (not cwd, which may be a package dir)
-    let monorepoRoot: string | undefined
-    try {
-      monorepoRoot = findRepoRoot()
-    } catch {
-      // Not in a monorepo — fallback to cwd
-    }
-    absoluteBaseDir = resolve(monorepoRoot ?? process.cwd(), baseDir)
+    // Relative path - resolve from cwd
+    absoluteBaseDir = resolve(process.cwd(), baseDir)
   }
 
   if (!existsSync(absoluteBaseDir)) {

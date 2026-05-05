@@ -15,7 +15,6 @@ import { basename, join } from 'node:path'
 import type { CAC } from 'cac'
 
 import { resolvePackageAsset } from '#utils/package-assets'
-import { findRepoRoot } from '#utils/repo-root'
 
 function resolveCatalogSkillsDir(): string {
   const dir = resolvePackageAsset('catalog/agent/skills')
@@ -66,7 +65,7 @@ export function registerCursorWindsurfSyncCommand(cli: CAC): void {
       'Copy agent-kit skills to .cursor/rules/ and .windsurf/skills/',
     )
     .action(async () => {
-      const repoRoot = findRepoRoot(process.cwd())
+      const repoRoot = process.cwd()
 
       let skillsDir: string
       try {

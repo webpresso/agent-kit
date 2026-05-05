@@ -46,7 +46,7 @@ function findMarker(rootDir: string): string | null {
  * Walks upward from startDir looking for any marker in
  * `PROJECT_ROOT_MARKERS` (priority order). Throws if nothing is found.
  */
-export function findProjectRoot(startDir: string = process.cwd()): string {
+export function findProjectRoot(startDir: string): string {
   let current = path.resolve(startDir)
 
   for (;;) {
@@ -66,7 +66,7 @@ export function findProjectRoot(startDir: string = process.cwd()): string {
 }
 
 export function getProjectRoot(options?: GetProjectRootOptions): string {
-  return findProjectRoot(options?.startDir)
+  return findProjectRoot(options?.startDir ?? process.cwd())
 }
 
 // ---------------------------------------------------------------------------

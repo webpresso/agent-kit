@@ -11,12 +11,12 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { planStatusSchema } from '#core/schema'
 import { isValidBlueprintSlug } from '#lifecycle/local'
-import { findRepoRoot } from '#utils/repo-root'
 
 import { BlueprintCreationService } from './service/BlueprintCreationService.js'
 import { BlueprintService } from './service/BlueprintService.js'
 
-const PROJECT_ROOT = findRepoRoot()
+// Package root — two levels up from src/blueprint/ (this file's location)
+const PROJECT_ROOT = new URL('../../', import.meta.url).pathname
 const TEMP_PROJECT_ROOTS: string[] = []
 
 describe('BlueprintService e2e — real blueprints', () => {

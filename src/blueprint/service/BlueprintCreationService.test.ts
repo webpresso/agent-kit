@@ -4,14 +4,15 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { parseBlueprint } from '#index'
-import { findRepoRoot } from '#utils/repo-root'
 
 import { BlueprintCreationService } from './BlueprintCreationService.js'
 
+// Resolve package root relative to this test file's location (src/blueprint/service/ → ../../..)
+const packageRoot = new URL('../../../', import.meta.url).pathname
+
 describe('BlueprintCreationService', () => {
   let projectRoot: string
-  const repoRoot = findRepoRoot()
-  const templatePath = path.join(repoRoot, 'docs', 'templates', 'blueprint.md')
+  const templatePath = path.join(packageRoot, 'docs', 'templates', 'blueprint.md')
 
   beforeEach(async () => {
     projectRoot = path.join(

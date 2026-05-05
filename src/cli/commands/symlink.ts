@@ -21,7 +21,6 @@ import type { CAC } from 'cac'
 
 import { importAgentFile, syncAll } from '#symlinker'
 import { resolvePackageAsset } from '#utils/package-assets'
-import { findRepoRoot } from '#utils/repo-root'
 
 function commandError(message: string, exitCode = 1): Error & { exitCode: number } {
   const error = new Error(message) as Error & { exitCode: number }
@@ -91,7 +90,7 @@ export function registerSymlinkCommand(cli: CAC): void {
       const runPrimary = options.primaryIdes === true || (!options.primaryIdes && !options.tailIdes)
       const runTail = options.tailIdes === true || (!options.primaryIdes && !options.tailIdes)
 
-      const repoRoot = findRepoRoot(process.cwd())
+      const repoRoot = process.cwd()
 
       if (action === 'import') {
         const from = options.from

@@ -17,11 +17,7 @@
 import { readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
-import { findRepoRoot } from '#utils/repo-root'
-
 import { runShell } from './shell.js'
-
-const REPO_ROOT = findRepoRoot()
 
 interface Violation {
   file: string
@@ -160,7 +156,7 @@ function parseArgs(): { maxMocks: number } {
   return { maxMocks }
 }
 
-async function findTestFiles(): Promise<string[]> {
+async function findTestFiles(root: string): Promise<string[]> {
   const result = await runShell({
     command: 'find',
     args: [
@@ -199,7 +195,7 @@ async function findTestFiles(): Promise<string[]> {
       '-path',
       '*/.stryker-tmp/*',
     ],
-    cwd: REPO_ROOT,
+    cwd: root,
   })
 
   return result.stdout
@@ -349,11 +345,11 @@ function detectInlineYaml(content: string, rel: string): Violation | undefined {
   return undefined
 }
 
-function auditFile(filePath: string, maxMocks: number): Violation[] {
+function auditFile(filePath: string, maxMocks: number, root: string): Violation[] {
   const violations: Violation[] = []
-  const fullPath = join(REPO_ROOT, filePath)
+  const fullPath = join(root, filePath)
   const content = readFileSync(fullPath, 'utf-8')
-  const rel = relative(REPO_ROOT, fullPath)
+  const rel = relative(root, fullPath)
   const { total, internalMocks, externalMocks, localMocks } = countMocks(content)
 
   // Classify mocks to distinguish infra from service/external mocks
@@ -462,11 +458,12 @@ function printResults(result: AuditResult): void {
 
 async function main(): Promise<void> {
   const { maxMocks } = parseArgs()
-  const files = await findTestFiles()
+  const root = process.cwd()
+  const files = await findTestFiles(root)
   const violations: Violation[] = []
 
   for (const file of files) {
-    violations.push(...auditFile(file, maxMocks))
+    violations.push(...auditFile(file, maxMocks, root))
   }
 
   const result: AuditResult = {
