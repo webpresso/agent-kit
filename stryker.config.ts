@@ -3,13 +3,15 @@ import { baseConfig } from '@webpresso/stryker-config'
 export default {
   ...baseConfig,
   thresholds: {
-    ...baseConfig.thresholds,
-    high: 50,
-    low: 40,
-    break: 40,
+    high: 95,
+    low: 85,
+    break: 85,
+  },
+  mutator: {
+    excludedMutations: [],
   },
   vitest: {
-    configFile: 'vitest.stryker.config.ts',
+    configFile: 'vitest.config.ts',
   },
   mutate: [
     'src/**/*.ts',
@@ -17,6 +19,5 @@ export default {
     '!src/**/*.d.ts',
     '!src/**/__fixtures__/**',
   ],
-  inPlace: true,
   concurrency: 2,
 }
