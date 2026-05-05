@@ -1,0 +1,1 @@
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../../../../../../src/cli/commands/init/scaffolders/claude-rules/index.ts"],"names":[],"mappings":"AAQA,OAAO,KAAK,EAAE,YAAY,EAAE,WAAW,EAAE,MAAM,0BAA0B,CAAA;AAGzE,MAAM,WAAW,wBAAwB;IACvC,QAAQ,EAAE,MAAM,CAAA;IAChB,OAAO,EAAE,YAAY,CAAA;CACtB;AA2DD,wBAAgB,mBAAmB,CAAC,KAAK,EAAE,wBAAwB,GAAG,WAAW,EAAE,CA0DlF"}
