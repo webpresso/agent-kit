@@ -55,8 +55,8 @@ function resolvePackageRoot(): string | null {
 }
 
 /**
- * Find the real path of a bin by reading package.json relative to the current
- * installed package root. Works in workspace, packed, and global installs.
+ * Find the real path of a hook bin by reading package.json relative to the
+ * current installed package root. Works in workspace, packed, and global installs.
  */
 function resolveHookBin(binName: string): string | null {
   try {
@@ -71,8 +71,17 @@ function resolveHookBin(binName: string): string | null {
   }
 }
 
-function resolveMcpBin(): string | null {
-  return resolveHookBin('ak')
+function resolveAkCliPath(): string | null {
+  const root = resolvePackageRoot()
+  if (!root) return null
+
+  const builtCli = join(root, 'dist', 'esm', 'cli', 'cli.js')
+  if (tryAccess(builtCli)) return builtCli
+
+  const sourceCli = join(root, 'src', 'cli', 'cli.ts')
+  if (tryAccess(sourceCli)) return sourceCli
+
+  return null
 }
 
 function resolveMcpProbeCommand(): { command: string; args: string[] } | null {
@@ -82,20 +91,17 @@ function resolveMcpProbeCommand(): { command: string; args: string[] } | null {
     if (tryAccess(builtCli)) return { command: 'node', args: [builtCli] }
   }
 
-  const akBin = resolveMcpBin()
-  if (!akBin) return null
-  return { command: process.execPath, args: [akBin, 'mcp'] }
+  const akCli = resolveAkCliPath()
+  if (!akCli) return null
+
+  return akCli.endsWith('.ts')
+    ? { command: 'bun', args: [akCli, 'mcp'] }
+    : { command: 'node', args: [akCli, 'mcp'] }
 }
 
 function resolvePluginRoot(): string | null {
-  const akBin = resolveMcpBin()
-  if (!akBin) return null
-  let dir = dirname(akBin)
-  while (dir !== dirname(dir)) {
-    if (tryAccess(join(dir, '.claude-plugin', 'plugin.json'))) return dir
-    dir = dirname(dir)
-  }
-  return null
+  const root = resolvePackageRoot()
+  return root && tryAccess(join(root, '.claude-plugin', 'plugin.json')) ? root : null
 }
 
 function isExecutable(file: string): boolean {

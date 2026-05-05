@@ -124,7 +124,6 @@ describe('hooks/doctor', () => {
         if (String(path) === pkgJson) {
           return JSON.stringify({
             bin: {
-              ak: './src/cli/cli.ts',
               'ak-pretool-guard': './src/hooks/pretool-guard/index.ts',
               'ak-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
               'ak-stop-qa': './src/hooks/stop/qa-changed-files.ts',
@@ -181,7 +180,6 @@ describe('hooks/doctor', () => {
         if (String(path) === pkgJson) {
           return JSON.stringify({
             bin: {
-              ak: './src/cli/cli.ts',
               'ak-pretool-guard': './src/hooks/pretool-guard/index.ts',
               'ak-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
               'ak-stop-qa': './src/hooks/stop/qa-changed-files.ts',
