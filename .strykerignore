@@ -1,0 +1,8 @@
+# Symlinked IDE skill directories — Stryker sandbox cannot copyfile symlinks
+.agents/
+.gemini/
+.cursor/
+.windsurf/
+# Worktree and temp directories
+.claude/worktrees/
+__fixtures__/fake-home/
