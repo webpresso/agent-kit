@@ -103,6 +103,7 @@ describe('ak_typecheck tool', () => {
       const result = await akTypecheckTool.handler({})
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {
       passed: boolean
+      summary: string
       counts: { errorCount: number }
       details: { errors: { file: string; line: number; code: string; message: string }[] }
     }

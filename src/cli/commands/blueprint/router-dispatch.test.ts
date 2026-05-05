@@ -186,6 +186,12 @@ describe('executeBlueprintSubcommand', () => {
       title: 'My Feature',
       complexity: 'M',
       path: '/tmp/my-feature/_overview.md',
+      outputPath: '/tmp/my-feature/_overview.md',
+      projectRoot: '/tmp',
+      relativeFilePath: 'blueprints/draft/my-feature/_overview.md',
+      markdown: '# My Feature\n',
+      status: 'draft',
+      blueprint: { tasks: [], slug: 'my-feature', title: 'My Feature' } as unknown as CreateBlueprintResult['blueprint'],
       message: 'Created blueprint draft/my-feature.',
     }
     const deps = buildDeps({

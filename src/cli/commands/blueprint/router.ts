@@ -26,7 +26,6 @@ import {
   validateAllTasksDone,
 } from '#local'
 import { resolvePackageAsset } from '#utils/package-assets'
-import { findRepoRoot } from '#utils/repo-root'
 
 import {
   describeBlueprintExecutionRuntime,
@@ -186,11 +185,7 @@ function assertBlueprintCanMoveToStatus(blueprint: Blueprint, nextStatus: Bluepr
  * when the lookup fails in unrelated contexts (e.g. `ak --help`).
  */
 function resolveRepoBlueprintTemplatePath(): string {
-  try {
-    return path.join(findRepoRoot(import.meta.dirname), 'docs', 'templates', 'blueprint.md')
-  } catch {
-    return resolvePackageAsset('docs/templates/blueprint.md')
-  }
+  return resolvePackageAsset('docs/templates/blueprint.md')
 }
 
 function todayIsoDate(): string {

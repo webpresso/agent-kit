@@ -12,11 +12,9 @@ const TARGET_B = '/fake/repo/.windsurf/skills'
 // ---------------------------------------------------------------------------
 
 function makeDeps(sourceFiles: string[]) {
-  const readDir = vi.fn<[string], Promise<string[]>>().mockResolvedValue(sourceFiles)
-  const copyFile = vi.fn<[string, string], Promise<void>>().mockResolvedValue(undefined)
-  const mkdir = vi.fn<[string, { recursive: boolean }], Promise<void>>().mockResolvedValue(
-    undefined,
-  )
+  const readDir = vi.fn().mockResolvedValue(sourceFiles)
+  const copyFile = vi.fn().mockResolvedValue(undefined)
+  const mkdir = vi.fn().mockResolvedValue(undefined)
   return { readDir, copyFile, mkdir }
 }
 
