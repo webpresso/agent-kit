@@ -71,8 +71,9 @@ export function registerCursorWindsurfSyncCommand(cli: CAC): void {
       try {
         skillsDir = resolveCatalogSkillsDir()
       } catch (err) {
-        console.error(err instanceof Error ? err.message : String(err))
-        return 1
+        const msg = err instanceof Error ? err.message : String(err)
+        process.stderr.write(`Error: ${msg}\nRun 'npm install @webpresso/agent-kit' to fix.\n`)
+        process.exit(1)
       }
 
       console.log(`\nSyncing agent-kit skills to primary IDEs from ${skillsDir}\n`)
