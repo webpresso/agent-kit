@@ -43,7 +43,7 @@ import {
   syncBlueprintExecutionProgress,
   writeBlueprintRuntimeSnapshot,
 } from './execution.js'
-import { executeBlueprintSubcommand } from './router-dispatch.js'
+import { BlueprintAuditFailedError, executeBlueprintSubcommand } from './router-dispatch.js'
 import {
   formatBlueprintAudit,
   formatBlueprintCreation,
@@ -688,6 +688,9 @@ export function registerBlueprintRouter(cli: CAC): void {
             startBlueprint,
           })
         } catch (error) {
+          if (error instanceof BlueprintAuditFailedError) {
+            process.exit(1)
+          }
           handleBlueprintError(error)
         }
       },
