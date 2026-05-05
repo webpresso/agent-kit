@@ -45,6 +45,7 @@ import {
 } from './execution.js'
 import { executeBlueprintSubcommand } from './router-dispatch.js'
 import {
+  BlueprintCliError,
   formatBlueprintAudit,
   formatBlueprintCreation,
   formatBlueprintDetails,
@@ -690,7 +691,12 @@ export function registerBlueprintRouter(cli: CAC): void {
             startBlueprint,
           })
         } catch (error) {
-          handleBlueprintError(error)
+          try {
+            handleBlueprintError(error)
+          } catch (e) {
+            if (e instanceof BlueprintCliError) process.exit(1)
+            throw e
+          }
         }
       },
     )

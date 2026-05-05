@@ -6,7 +6,8 @@
  * use case the audit scripts need: spawn a command, capture stdout/stderr,
  * return an exit code.
  */
-import { spawn } from 'node:child_process'
+import { spawn as nodeSpawn } from 'node:child_process'
+import type { ChildProcess } from 'node:child_process'
 
 export interface RunShellOptions {
   command: string
@@ -20,8 +21,14 @@ export interface RunShellResult {
   exitCode: number
 }
 
-export function runShell(options: RunShellOptions): Promise<RunShellResult> {
-  return new Promise((resolve) => {
+export type SpawnFn = (
+  command: string,
+  args: string[],
+  options: { cwd?: string; stdio: ['ignore', 'pipe', 'pipe'] },
+) => ChildProcess
+
+export function runShell(options: RunShellOptions, spawn: SpawnFn = nodeSpawn): Promise<RunShellResult> {
+  return new Promise((resolve, reject) => {
     const child = spawn(options.command, options.args, {
       cwd: options.cwd,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -35,6 +42,10 @@ export function runShell(options: RunShellOptions): Promise<RunShellResult> {
     })
     child.stderr?.on('data', (chunk: Buffer) => {
       stderr += chunk.toString('utf-8')
+    })
+
+    child.on('error', (err) => {
+      reject(err)
     })
 
     child.on('close', (code) => {

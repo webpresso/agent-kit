@@ -28,7 +28,7 @@ const BLUEPRINT_HELP = [
   '  move <slug> <status> --force-recovery',
 ].join('\n')
 
-function formatTaskLine(task: Blueprint['tasks'][number]): string {
+export function formatTaskLine(task: Blueprint['tasks'][number]): string {
   const checkbox = task.status === 'done' ? 'x' : ' '
   return `- [${checkbox}] ${task.id} ${task.title}`
 }
@@ -127,8 +127,15 @@ export function printBlueprintOutput(value: object | string, asJson?: boolean): 
   console.log(typeof value === 'string' ? value : JSON.stringify(value, null, 2))
 }
 
+export class BlueprintCliError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'BlueprintCliError'
+  }
+}
+
 export function handleBlueprintError(error: unknown): never {
   const message = error instanceof Error ? error.message : String(error)
   console.error(message)
-  process.exit(1)
+  throw new BlueprintCliError(message)
 }
