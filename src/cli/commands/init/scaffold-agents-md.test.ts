@@ -1,5 +1,8 @@
 import type { ConsumerContext } from './detect-consumer.js'
 
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
 import { defaultConfig } from './config.js'
@@ -92,5 +95,23 @@ describe('renderAgentsMd', () => {
     const config = { ...defaultConfig(), durablePlanningRoot: 'custom/planning/' }
     const rendered = renderAgentsMd(template, makeConsumer(), config)
     expect(rendered).toBe('custom/planning/')
+  })
+
+  it('renders the catalog template with the single canonical bootstrap command', () => {
+    const template = readFileSync(join(process.cwd(), 'catalog', 'AGENTS.md.tpl'), 'utf8')
+    const rendered = renderAgentsMd(
+      template,
+      makeConsumer({
+        packageJson: { name: '@acme/app', dependencies: { react: '^18' }, devDependencies: {} },
+      }),
+      defaultConfig(),
+    )
+
+    expect(rendered).toContain('pnpm install && pnpm setup:agent')
+    expect(rendered).toContain(
+      'pnpm setup:agent runs ak setup, which scaffolds .agent/, AGENTS.md, hooks, and runs symlink sync',
+    )
+    expect(rendered).not.toContain('ak symlink sync')
+    expect(rendered).not.toContain('omx setup --scope project')
   })
 })

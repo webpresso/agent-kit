@@ -68,6 +68,7 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     (await import('#audit/repo-guardrails')).auditDocsFrontmatter(root, {
       docsRoot: options.docsRoot,
     }),
+  agents: async (root) => (await import('#audit/agents')).auditAgents(root),
   vision: async (root, options) =>
     (await import('#audit/vision-doc')).auditVision(root, {
       visionPath: options.visionPath,

@@ -156,6 +156,12 @@ describe('mcp server integration', () => {
       summary: expect.any(Object),
       details: expect.any(Object),
     })
+
+    const akAudit = tools.find((t) => t.name === 'ak_audit')
+    expect(akAudit).toBeDefined()
+    expect(
+      ((akAudit?.inputSchema.properties?.kind as { enum?: unknown[] } | undefined)?.enum ?? []),
+    ).toContain('agents')
   }, 20_000)
 
   // Regression: Claude Code 2.1.x and OpenCode call prompts/list and
@@ -198,7 +204,7 @@ describe('mcp server integration', () => {
     expect(tools.map((t) => t.name)).toEqual(
       expect.arrayContaining(['ak_lint', 'ak_qa', 'ak_test', 'ak_e2e', 'ak_typecheck', 'ak_audit']),
     )
-  })
+  }, 20_000)
 
   it('advertises prompts and resources capabilities so clients know to list them', async () => {
     const responses = await callServer({
@@ -288,5 +294,41 @@ describe('mcp server integration', () => {
     } finally {
       rmSync(filePath, { force: true })
     }
+  }, 20_000)
+
+  it('returns structuredContent for a real built-in tool with outputSchema', async () => {
+    const responses = await callServer(
+      {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {},
+          clientInfo: { name: 'agent-kit-test', version: '0.0.0' },
+        },
+      },
+      {
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: {
+          name: 'ak_audit',
+          arguments: { kind: 'docs-frontmatter', directory: process.cwd() },
+        },
+      },
+    )
+
+    const callResponse = responses.find((r) => r.id === 2)
+    expect(callResponse?.error).toBeUndefined()
+    expect(callResponse?.result?.structuredContent).toMatchObject({
+      passed: expect.any(Boolean),
+      summary: expect.any(String),
+      kind: 'docs-frontmatter',
+    })
+    const textBlock = callResponse?.result?.content?.[0] as { type?: string; text?: string } | undefined
+    expect(textBlock?.type).toBe('text')
+    expect(typeof textBlock?.text).toBe('string')
+    expect(JSON.parse(textBlock!.text!)).toEqual(callResponse?.result?.structuredContent)
   })
 })

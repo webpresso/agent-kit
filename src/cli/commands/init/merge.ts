@@ -11,6 +11,7 @@ import { dirname, join } from 'node:path'
 export type MergeAction =
   | 'created'
   | 'identical'
+  | 'drifted'
   | 'overwritten'
   | 'sidecar-written'
   | 'skipped-dry'
@@ -24,6 +25,7 @@ export interface MergeResult {
   targetPath: string
   action: MergeAction
   sidecarPath?: string
+  note?: string
 }
 
 export function writeFileMerged(
@@ -105,7 +107,10 @@ export function copyDirectoryMerged(
 /**
  * Read, patch, and write a JSON file. The patcher receives the parsed object
  * (or `{}` if the file doesn't exist) and returns the new object to write.
- * Always writes — callers decide whether the result changed.
+ *
+ * Unlike raw template files, structured JSON patch targets are merged in-place:
+ * the patcher already preserves unknown fields, so writing a `.new` sidecar
+ * would strand required hook/config updates behind an extra manual merge step.
  */
 export function patchJsonFile(
   targetPath: string,
@@ -118,13 +123,25 @@ export function patchJsonFile(
     : {}
   const patched = patcher(existing)
   const incoming = `${JSON.stringify(patched, null, 2)}\n`
-  return writeFileMerged(targetPath, incoming, opts)
+  const existingContent = exists ? readFileSync(targetPath, 'utf8') : null
+  if (existingContent === incoming) {
+    return { targetPath, action: 'identical' }
+  }
+
+  if (opts.dryRun) {
+    return { targetPath, action: 'skipped-dry' }
+  }
+
+  mkdirSync(dirname(targetPath), { recursive: true })
+  writeFileSync(targetPath, incoming)
+  return { targetPath, action: exists ? 'overwritten' : 'created' }
 }
 
 export function summarizeResults(results: readonly MergeResult[]): Record<MergeAction, number> {
   const summary: Record<MergeAction, number> = {
     created: 0,
     identical: 0,
+    drifted: 0,
     overwritten: 0,
     'sidecar-written': 0,
     'skipped-dry': 0,

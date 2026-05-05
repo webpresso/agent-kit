@@ -22,7 +22,7 @@
 import { z } from 'zod'
 
 import type { ToolDescriptor, ToolHandlerResult } from '#mcp/auto-discover'
-import { createSummaryResult, summaryFirstResultSchema } from './_shared/result.js'
+import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 import lintTool from './lint.js'
 import testTool from './test.js'
 import typecheckTool from './typecheck.js'
@@ -39,7 +39,7 @@ const inputSchema = z.object({
 
 export type AkQaInput = z.infer<typeof inputSchema>
 
-const outputSchema = summaryFirstResultSchema.extend({
+const outputSchema = createSummaryOutputSchema({
   details: z.object({
     lint: z.record(z.string(), z.unknown()),
     typecheck: z.record(z.string(), z.unknown()),

@@ -15,9 +15,9 @@ import * as justBackend from '#mcp/backends/just'
 import * as pnpmBackend from '#mcp/backends/pnpm'
 
 import {
+  createSummaryOutputSchema,
   clipRawOutput,
   createSummaryResult,
-  summaryFirstResultSchema,
 } from './_shared/result.js'
 
 const inputSchema = z.object({
@@ -28,14 +28,12 @@ const inputSchema = z.object({
 
 export type AkTestInput = z.infer<typeof inputSchema>
 
-const outputSchema = summaryFirstResultSchema.extend({
+const outputSchema = createSummaryOutputSchema({
   backend: z.enum(['just', 'pnpm']),
-  details: z
-    .object({
-      packages: z.array(z.string()).optional(),
-      files: z.array(z.string()).optional(),
-    })
-    .optional(),
+  details: z.object({
+    packages: z.array(z.string()).optional(),
+    files: z.array(z.string()).optional(),
+  }),
 })
 
 function detectBackend(cwd: string, override: AkTestInput['backend']): 'just' | 'pnpm' {

@@ -1,14 +1,14 @@
 /**
  * AK_ROUTING_BLOCK — XML routing instruction injected into every session
  * via SessionStart `additionalContext`. Tells Claude to prefer ak_* MCP tools
- * over raw shell commands for dev-workflow operations, and ctx_* sandbox tools
- * for data-heavy processing work.
+ * over raw shell commands for dev-workflow operations. Context-mode owns ctx_*
+ * nudging when that plugin is installed.
  */
 export const AK_ROUTING_BLOCK: string = `<ak_routing>
   <description>
     Use the ak_* MCP tools for all test, lint, typecheck, qa, and audit operations.
-    Use the ctx_* sandbox tools for data-heavy processing, log analysis, and web research.
-    These tools return structured results and keep output concise.
+    If context-mode plugin routing is present, let it own ctx_* data-processing nudges.
+    These tools return structured, summary-first results and keep output concise.
   </description>
 
   <decision_table>
@@ -39,22 +39,6 @@ export const AK_ROUTING_BLOCK: string = `<ak_routing>
     <row>
       <trigger>e2e testing philosophy audit, tph-e2e</trigger>
       <tool>ak_audit(kind="tph-e2e")</tool>
-    </row>
-    <row>
-      <trigger>data-heavy shell commands, log processing, computation</trigger>
-      <tool>ctx_execute</tool>
-    </row>
-    <row>
-      <trigger>searching previously indexed content, querying knowledge base</trigger>
-      <tool>ctx_search</tool>
-    </row>
-    <row>
-      <trigger>fetching web pages, indexing remote documentation</trigger>
-      <tool>ctx_fetch_and_index</tool>
-    </row>
-    <row>
-      <trigger>combined research: multiple commands plus search in one call</trigger>
-      <tool>ctx_batch_execute</tool>
     </row>
   </decision_table>
 
@@ -90,23 +74,12 @@ export const AK_ROUTING_BLOCK: string = `<ak_routing>
       <forbidden>just audit</forbidden>
       <usage>Use kind="tph-e2e" for the E2E testing-philosophy audit. This audits E2E quality rules; it does not execute the E2E suite itself.</usage>
     </tool>
-    <tool name="ctx_execute">
-      <category>data-processing</category>
-      <trigger>data-heavy shell commands producing more than 20 lines, log analysis, computation</trigger>
-    </tool>
-    <tool name="ctx_search">
-      <category>data-processing</category>
-      <trigger>searching indexed content, querying previously indexed sources</trigger>
-    </tool>
-    <tool name="ctx_fetch_and_index">
-      <category>data-processing</category>
-      <trigger>fetching web pages, indexing remote documentation or URLs</trigger>
-    </tool>
-    <tool name="ctx_batch_execute">
-      <category>data-processing</category>
-      <trigger>combined research: run multiple shell commands and search in one call</trigger>
-    </tool>
   </tools>
+
+  <ownership_boundary>
+    <rule>Agent-kit owns ak_* dev-workflow routing here.</rule>
+    <rule>Context-mode owns ctx_* routing when that plugin is installed.</rule>
+  </ownership_boundary>
 
   <forbidden_alternatives>
     <command>just test</command>
@@ -119,13 +92,14 @@ export const AK_ROUTING_BLOCK: string = `<ak_routing>
   </forbidden_alternatives>
 
   <output_format>
-    <rule>Return {passed, summary} shaped results — not raw shell output.</rule>
+    <rule>Return structured, summary-first results — not raw shell output.</rule>
     <rule>Keep summaries under 200 words.</rule>
-    <rule>Cite file paths, not log lines.</rule>
-    <rule>Follow context-mode caveman output style: short, direct, no fluff.</rule>
+    <rule>Cite file paths, not log lines; raw output is clipped and secondary.</rule>
+    <rule>Keep the style short, direct, and context-friendly.</rule>
   </output_format>
 
   <fallback>
     When MCP tools are unavailable, use just recipes directly and keep output brief.
+    .omx is runtime/state only; it is not a direct hook surface.
   </fallback>
 </ak_routing>`

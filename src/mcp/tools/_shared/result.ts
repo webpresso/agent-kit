@@ -19,6 +19,20 @@ export const summaryFirstResultSchema = z.object({
   logPath: z.string().optional(),
 })
 
+type SummaryShapeOptions = {
+  backend?: z.ZodTypeAny
+  counts?: z.ZodTypeAny
+  details?: z.ZodTypeAny
+}
+
+export function createSummaryOutputSchema(options: SummaryShapeOptions = {}) {
+  const shape: Record<string, z.ZodTypeAny> = {}
+  if (options.backend) shape.backend = options.backend
+  if (options.counts) shape.counts = options.counts.optional()
+  if (options.details) shape.details = options.details.optional()
+  return summaryFirstResultSchema.extend(shape)
+}
+
 export interface SummaryFirstPayload {
   readonly passed: boolean
   readonly summary: string

@@ -23,6 +23,19 @@ lives in tribal memory rather than code.
 No tribal knowledge. No per-repo drift. The catalog is the single source
 of truth; `ak setup --overwrite` re-syncs on every catalog release.
 
+The `ak_*` MCP tools are now summary-first and context-friendly: structured
+results are canonical, while raw logs are clipped and secondary.
+
+What "fully wired" means here: when MCP is ready, deny reasons lead with a
+literal `mcp__agent-kit__ak_*` tool name; context-mode owns its own `ctx_*`
+nudging when installed; and `.omx` remains runtime/state rather than a direct
+hook surface.
+
+Current documented-vs-measured hook support lives in
+[`/Users/ozby/repos/webpresso/agent-kit/docs/hook-matrix.md`](/Users/ozby/repos/webpresso/agent-kit/docs/hook-matrix.md).
+In particular, agent-kit currently claims Codex `Edit|Write` hook coverage, not
+full Claude-style `MultiEdit` parity.
+
 ## Boundaries
 
 **In scope**
@@ -57,3 +70,16 @@ of truth; `ak setup --overwrite` re-syncs on every catalog release.
   propagate to every IDE surface without per-repo edits.
 - **Fail loudly, never silently degrade.** If a surface can't be wired,
   report it; don't paper over.
+
+## Anti-patterns
+
+- Do **not** use `prepare: ak setup` to keep agent surfaces current. It fires
+  too early in install flows and creates bootstrap failures that look like
+  environment bugs instead of setup-order bugs.
+- Do **not** hand-edit generated `.claude/` or `.codex/` hook surfaces when
+  the catalog/scaffolder is the source of truth.
+- Do **not** assume worktree-local `.claude/` isolation when
+  `symlinkDirectories` is deliberately configured to inherit the main checkout's
+  agent surface.
+
+Worktree inheritance details live in [`/Users/ozby/repos/webpresso/agent-kit/docs/worktrees.md`](/Users/ozby/repos/webpresso/agent-kit/docs/worktrees.md).

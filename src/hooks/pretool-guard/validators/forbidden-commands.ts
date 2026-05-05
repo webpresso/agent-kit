@@ -1,7 +1,9 @@
 import type { ToolInput, ValidationResult } from '#hooks/shared/types'
 
+import { readConfig } from '#cli/commands/init/config'
 import { getCommand, isBashInput } from '#hooks/shared/types'
 import { createSkipResult } from './skip-result.js'
+import { buildRedirectMessage, type MCPRedirectConfig } from './mcp-redirect.js'
 
 export type CommandCategory = 'test' | 'lint' | 'typecheck' | 'unknown'
 
@@ -36,6 +38,11 @@ interface BlockedScriptSpec {
   script: string
   category: CommandCategory
   suggestion: string
+}
+
+interface RedirectOptions {
+  mcpReady?: boolean
+  mcp?: MCPRedirectConfig
 }
 
 export const VALIDATOR_NAME = 'forbidden-commands'
@@ -179,12 +186,27 @@ export function getCommandCategory(command: string): CommandCategory {
   return findMatchingRule(command)?.category ?? 'unknown'
 }
 
-export function createBlockedResult(command: string, rule: CommandRule): BlockedCommandResult {
+function loadRedirectConfig(): MCPRedirectConfig | undefined {
+  const repoRoot = process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
+  return readConfig(repoRoot)?.mcp
+}
+
+export function createBlockedResult(
+  command: string,
+  rule: CommandRule,
+  options: RedirectOptions = {},
+): BlockedCommandResult {
   const suggestion = applySuggestionModifiers(command, rule)
   return {
     validator: VALIDATOR_NAME,
     passed: false,
-    message: `"${command}" → Use: ${suggestion}`,
+    message: buildRedirectMessage({
+      category: rule.category,
+      command,
+      fallbackHint: suggestion,
+      ...(options.mcpReady !== undefined ? { mcpReady: options.mcpReady } : {}),
+      mcp: options.mcp ?? loadRedirectConfig(),
+    }),
     command,
     suggestion,
     category: rule.category,
@@ -193,12 +215,22 @@ export function createBlockedResult(command: string, rule: CommandRule): Blocked
   }
 }
 
-export function createAuditResult(command: string, rule: CommandRule): BlockedCommandResult {
+export function createAuditResult(
+  command: string,
+  rule: CommandRule,
+  options: RedirectOptions = {},
+): BlockedCommandResult {
   const suggestion = applySuggestionModifiers(command, rule)
   return {
     validator: VALIDATOR_NAME,
     passed: true,
-    message: `[AUDIT] Would block: "${command}" → ${suggestion}`,
+    message: `[AUDIT] Would block:\n${buildRedirectMessage({
+      category: rule.category,
+      command,
+      fallbackHint: suggestion,
+      ...(options.mcpReady !== undefined ? { mcpReady: options.mcpReady } : {}),
+      mcp: options.mcp ?? loadRedirectConfig(),
+    })}`,
     command,
     suggestion,
     category: rule.category,

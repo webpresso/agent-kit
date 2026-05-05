@@ -21,11 +21,12 @@ import { z } from 'zod'
 
 import { resolvePackageAsset } from '#utils/package-assets'
 import type { ToolDescriptor } from '#mcp/auto-discover'
-import { clipRawOutput, createSummaryResult, summaryFirstResultSchema } from './_shared/result.js'
+import { clipRawOutput, createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
 const KINDS = [
   'tph',
   'tph-e2e',
+  'agents',
   'catalog-drift',
   'docs-frontmatter',
   'blueprint-lifecycle',
@@ -73,9 +74,10 @@ const repoAuditSchema = z.object({
     .optional(),
 })
 
-const outputSchema = summaryFirstResultSchema.extend({
-  kind: z.enum(KINDS),
+const outputSchema = createSummaryOutputSchema({
   details: z.union([repoAuditSchema, z.object({ exitCode: z.number() }), z.string()]),
+}).extend({
+  kind: z.enum(KINDS),
 })
 
 function resolveAuditScript(name: string): string {
@@ -132,6 +134,11 @@ async function dispatch(
     case 'catalog-drift': {
       const { auditCatalogDrift } = await import('#audit/repo-guardrails')
       const auditResult = auditCatalogDrift(input.directory ?? process.cwd())
+      return { passed: auditResult.ok, summary: summarizeRepoAudit(kind, auditResult), kind, details: auditResult }
+    }
+    case 'agents': {
+      const { auditAgents } = await import('#audit/agents')
+      const auditResult = auditAgents(input.directory ?? process.cwd())
       return { passed: auditResult.ok, summary: summarizeRepoAudit(kind, auditResult), kind, details: auditResult }
     }
     case 'docs-frontmatter': {

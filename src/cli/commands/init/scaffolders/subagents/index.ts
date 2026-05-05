@@ -1,30 +1,35 @@
-/**
- * Create `.claude/rules/<name>.md` symlinks pointing to the canonical catalog
- * rules directory for the current mode.
- */
-import { existsSync, lstatSync, mkdirSync, readdirSync, readlinkSync, realpathSync, rmSync, symlinkSync } from 'node:fs'
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readdirSync,
+  readlinkSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+} from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import type { MergeOptions, MergeResult } from '#cli/commands/init/merge'
 import { readPackageJson } from '#cli/commands/init/detect-consumer'
 
-export interface ScaffoldClaudeRulesInput {
+export interface ScaffoldSubagentsInput {
   repoRoot: string
   options: MergeOptions
 }
 
-type ClaudeRulesMode =
+type SubagentsMode =
   | { mode: 'self'; sourceRoot: string }
   | { mode: 'consumer'; sourceRoot: string }
   | { mode: 'package-fallback'; sourceRoot: string }
 
-function detectMode(repoRoot: string): ClaudeRulesMode {
+function detectMode(repoRoot: string): SubagentsMode {
   const pkg = readPackageJson(repoRoot).info
   if (pkg?.name === '@webpresso/agent-kit') {
     return {
       mode: 'self',
-      sourceRoot: join(repoRoot, 'catalog', 'agent', 'rules'),
+      sourceRoot: join(repoRoot, 'catalog', 'agent', 'agents'),
     }
   }
 
@@ -35,26 +40,26 @@ function detectMode(repoRoot: string): ClaudeRulesMode {
     'agent-kit',
     'package.json',
   )
-  const installedRulesRoot = join(
+  const installedAgentsRoot = join(
     repoRoot,
     'node_modules',
     '@webpresso',
     'agent-kit',
     'catalog',
     'agent',
-    'rules',
+    'agents',
   )
 
-  if (existsSync(installedPackageJsonPath) && existsSync(installedRulesRoot)) {
+  if (existsSync(installedPackageJsonPath) && existsSync(installedAgentsRoot)) {
     return {
       mode: 'consumer',
-      sourceRoot: realpathSync.native(installedRulesRoot),
+      sourceRoot: realpathSync.native(installedAgentsRoot),
     }
   }
 
   return {
     mode: 'package-fallback',
-    sourceRoot: join(resolveCurrentPackageRoot(), 'catalog', 'agent', 'rules'),
+    sourceRoot: join(resolveCurrentPackageRoot(), 'catalog', 'agent', 'agents'),
   }
 }
 
@@ -68,34 +73,31 @@ function resolveCurrentPackageRoot(): string {
     if (parent === dir) break
     dir = parent
   }
-  throw new Error('ak init: could not locate the agent-kit package root for claude-rules fallback.')
+  throw new Error('ak init: could not locate the agent-kit package root for subagents fallback.')
 }
 
-export function scaffoldClaudeRules(input: ScaffoldClaudeRulesInput): MergeResult[] {
+export function scaffoldSubagents(input: ScaffoldSubagentsInput): MergeResult[] {
   const { repoRoot, options } = input
   const mode = detectMode(repoRoot)
-  const rulesSource = mode.sourceRoot
-  const rulesTarget = join(repoRoot, '.claude', 'rules')
+  const sourceRoot = mode.sourceRoot
+  const targetRoot = join(repoRoot, '.claude', 'agents')
   const results: MergeResult[] = []
 
-  if (!existsSync(rulesSource)) return results
+  if (!existsSync(sourceRoot)) return results
 
-  const entries = readdirSync(rulesSource).filter(
-    (f) => f.endsWith('.md') && f !== 'README.md' && f !== '.markdownlint.json',
-  )
-
+  const entries = readdirSync(sourceRoot).filter((f) => f.endsWith('.md') && f !== 'README.md')
   if (entries.length === 0) return results
 
   if (!options.dryRun) {
-    mkdirSync(rulesTarget, { recursive: true })
+    mkdirSync(targetRoot, { recursive: true })
   }
-  const resolvedRulesTarget = !options.dryRun ? realpathSync.native(rulesTarget) : rulesTarget
+  const resolvedTargetRoot = !options.dryRun ? realpathSync.native(targetRoot) : targetRoot
 
   for (const name of entries) {
-    const sourcePath = join(rulesSource, name)
-    const targetPath = join(rulesTarget, name)
+    const sourcePath = join(sourceRoot, name)
+    const targetPath = join(targetRoot, name)
     const symTarget = relative(
-      !options.dryRun ? resolvedRulesTarget : dirname(targetPath),
+      !options.dryRun ? resolvedTargetRoot : dirname(targetPath),
       !options.dryRun ? realpathSync.native(sourcePath) : sourcePath,
     )
 
@@ -118,11 +120,9 @@ export function scaffoldClaudeRules(input: ScaffoldClaudeRulesInput): MergeResul
           results.push({ targetPath, action: 'drifted' })
         }
       } else {
-        // Consumer-owned real file — preserve it
         results.push({ targetPath, action: 'identical' })
       }
     } catch {
-      // ENOENT — create the symlink
       symlinkSync(symTarget, targetPath)
       results.push({ targetPath, action: 'created' })
     }

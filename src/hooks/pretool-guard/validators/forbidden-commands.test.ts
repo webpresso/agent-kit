@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
 import type { ToolInput } from '#hooks/shared/types'
@@ -334,20 +337,21 @@ describe('getCommandCategory', () => {
 describe('createBlockedResult', () => {
   it('returns a failed validation result', () => {
     const rule = findMatchingRule('pnpm vitest')!
-    const result = createBlockedResult('pnpm vitest', rule)
+    const result = createBlockedResult('pnpm vitest', rule, { mcpReady: true })
     expect(result.validator).toBe(VALIDATOR_NAME)
     expect(result.passed).toBe(false)
     expect(result.command).toBe('pnpm vitest')
     expect(result.category).toBe('test')
     expect(result.message).toContain('pnpm vitest')
-    expect(result.message).toContain('just test')
+    expect(result.message).toContain('mcp__agent-kit__ak_test(...)')
+    expect(result.message).toContain('Fallback if MCP unavailable:')
     expect(result.docsRef).toBeDefined()
     expect(result.matchedPattern).toBeDefined()
   })
 
   it('includes suggestion in the message', () => {
     const rule = findMatchingRule('pnpm exec tsc')!
-    const result = createBlockedResult('pnpm exec tsc', rule)
+    const result = createBlockedResult('pnpm exec tsc', rule, { mcpReady: false })
     expect(result.suggestion).toContain('just typecheck')
     expect(result.message).toContain(result.suggestion)
   })
@@ -365,12 +369,12 @@ describe('createBlockedResult', () => {
 describe('createAuditResult', () => {
   it('returns a passed result with audit prefix', () => {
     const rule = findMatchingRule('pnpm vitest')!
-    const result = createAuditResult('pnpm vitest', rule)
+    const result = createAuditResult('pnpm vitest', rule, { mcpReady: true })
     expect(result.validator).toBe(VALIDATOR_NAME)
     expect(result.passed).toBe(true)
     expect(result.message).toContain('[AUDIT] Would block')
     expect(result.command).toBe('pnpm vitest')
-    expect(result.suggestion).toContain('just test')
+    expect(result.message).toContain('mcp__agent-kit__ak_test(...)')
     expect(result.docsRef).toBeDefined()
   })
 })
@@ -410,6 +414,53 @@ describe('validateForbiddenCommands', () => {
     expect(result.passed).toBe(false)
     expect('command' in result && result.command).toBe('pnpm vitest')
     expect('command' in result && result.suggestion).toContain('just test')
+  })
+
+  it('keeps the recorded redirect fixtures in MCP-shaped format', () => {
+    for (const fixture of ['ingest-lens.txt', 'monorepo.txt', 'runtime.txt']) {
+      const text = readFileSync(
+        join(import.meta.dirname, '__fixtures__', 'redirect-format', fixture),
+        'utf8',
+      ).trim()
+
+      expect(text.startsWith('"pnpm test" denied — use agent-kit MCP tool:')).toBe(true)
+      expect(text).toContain('mcp__agent-kit__ak_test(...)')
+      expect(text).toContain('Fallback if MCP unavailable:')
+    }
+  })
+
+  it('uses mcp config overrides when present in repo config', async () => {
+    const { mkdirSync, rmSync, writeFileSync } = await import('node:fs')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+
+    const dir = join(tmpdir(), `ak-forbidden-commands-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+    const sentinel = join(tmpdir(), `ak-mcp-ready-${process.ppid}`)
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(
+      join(dir, '.agent-kitrc.json'),
+      JSON.stringify({
+        version: '1',
+        installed: { tier3Skills: [] },
+        mcp: { serverName: 'custom-server', toolPrefix: 'tool_' },
+        rules: { overrides: [] },
+        scripts: {},
+        durablePlanningRoot: '.agent/planning/',
+      }),
+    )
+    writeFileSync(sentinel, String(process.pid))
+
+    const originalCwd = process.cwd()
+    try {
+      process.chdir(dir)
+      const result = validateForbiddenCommands(bashInput('pnpm vitest'))
+      expect(result.passed).toBe(false)
+      expect('message' in result && result.message).toContain('mcp__custom-server__tool_test(...)')
+    } finally {
+      process.chdir(originalCwd)
+      rmSync(sentinel, { force: true })
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 
   it('blocks pnpm run test', () => {

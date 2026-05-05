@@ -46,8 +46,21 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
   const existing = pkg['engines'] as Record<string, string> | undefined
   const alreadyHasEngines = existing?.node === engines.node
   const alreadyHasPm = pkg['packageManager'] === packageManager
+  const packageName = typeof pkg['name'] === 'string' ? pkg['name'] : undefined
 
-  if (alreadyHasEngines && alreadyHasPm) {
+  const scripts = (pkg['scripts'] ?? {}) as Record<string, string>
+  const hasSetupAgent = typeof scripts['setup:agent'] === 'string'
+
+  const devDeps = (pkg['devDependencies'] ?? {}) as Record<string, string>
+  const hasAgentKitDevDep = typeof devDeps['@webpresso/agent-kit'] === 'string'
+  const shouldSkipSelfInstall = packageName === '@webpresso/agent-kit'
+
+  if (
+    alreadyHasEngines &&
+    alreadyHasPm &&
+    (shouldSkipSelfInstall || hasAgentKitDevDep) &&
+    (shouldSkipSelfInstall || hasSetupAgent)
+  ) {
     return { targetPath: pkgPath, action: 'identical' }
   }
 
@@ -55,10 +68,22 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
   pkg['packageManager'] = packageManager
 
   // Ensure husky is in devDependencies so `pnpm exec husky init` works
-  const devDeps = (pkg['devDependencies'] ?? {}) as Record<string, string>
   if (!devDeps['husky']) {
     devDeps['husky'] = '^9.0.0'
-    pkg['devDependencies'] = devDeps
+  }
+  if (!shouldSkipSelfInstall && !hasAgentKitDevDep) {
+    // Keep consumers on the currently published dist-tag rather than a
+    // repo-internal path. Do not wire this through `prepare`: `ak` is not
+    // reliably on PATH during `pnpm install`, so `setup:agent` stays opt-in.
+    devDeps['@webpresso/agent-kit'] = 'latest'
+  }
+  pkg['devDependencies'] = devDeps
+
+  if (!shouldSkipSelfInstall && !hasSetupAgent) {
+    scripts['setup:agent'] = 'ak setup'
+  }
+  if (Object.keys(scripts).length > 0) {
+    pkg['scripts'] = scripts
   }
 
   mkdirSync(dirname(pkgPath), { recursive: true })

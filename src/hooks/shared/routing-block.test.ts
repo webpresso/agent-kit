@@ -58,29 +58,20 @@ describe('AK_ROUTING_BLOCK', () => {
     expect(AK_ROUTING_BLOCK).toContain('tsc')
   })
 
-  it('mentions ctx_execute context-mode tool', () => {
-    expect(AK_ROUTING_BLOCK).toContain('ctx_execute')
-  })
-
-  it('mentions ctx_search context-mode tool', () => {
-    expect(AK_ROUTING_BLOCK).toContain('ctx_search')
-  })
-
-  it('mentions ctx_fetch_and_index context-mode tool', () => {
-    expect(AK_ROUTING_BLOCK).toContain('ctx_fetch_and_index')
-  })
-
-  it('mentions ctx_batch_execute context-mode tool', () => {
-    expect(AK_ROUTING_BLOCK).toContain('ctx_batch_execute')
-  })
-
-  it('includes a decision table separating dev-workflow from data-processing tools', () => {
+  it('includes a decision table for ak_* dev-workflow tools', () => {
     expect(AK_ROUTING_BLOCK).toContain('<decision_table>')
     expect(AK_ROUTING_BLOCK).toContain('</decision_table>')
   })
 
+  it('defines a single routing ownership boundary for ctx_* nudges', () => {
+    expect(AK_ROUTING_BLOCK).toContain('<ownership_boundary>')
+    expect(AK_ROUTING_BLOCK).toContain('Context-mode owns ctx_* routing')
+    expect(AK_ROUTING_BLOCK).not.toContain('<tool name="ctx_execute">')
+  })
+
   it('includes output format constraint', () => {
     expect(AK_ROUTING_BLOCK).toContain('<output_format>')
-    expect(AK_ROUTING_BLOCK).toContain('{passed, summary}')
+    expect(AK_ROUTING_BLOCK).toContain('summary-first')
+    expect(AK_ROUTING_BLOCK).toContain('raw output is clipped and secondary')
   })
 })

@@ -18,9 +18,9 @@ import type { ToolDescriptor } from '#mcp/auto-discover'
 
 import { resolveProjectRoot } from './_shared/project-root.js'
 import {
+  createSummaryOutputSchema,
   clipRawOutput,
   createSummaryResult,
-  summaryFirstResultSchema,
 } from './_shared/result.js'
 import { isRunFailure, runCommand, type RunResult } from './_shared/run-command.js'
 
@@ -37,17 +37,13 @@ const tscErrorSchema = z.object({
   message: z.string(),
 })
 
-const outputSchema = summaryFirstResultSchema.extend({
-  counts: z
-    .object({
-      errorCount: z.number(),
-    })
-    .optional(),
-  details: z
-    .object({
-      errors: z.array(tscErrorSchema),
-    })
-    .optional(),
+const outputSchema = createSummaryOutputSchema({
+  counts: z.object({
+    errorCount: z.number(),
+  }),
+  details: z.object({
+    errors: z.array(tscErrorSchema),
+  }),
 })
 
 export interface TscError {

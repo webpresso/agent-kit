@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -12,6 +12,10 @@ describe('scaffoldBaseKit', () => {
   beforeEach(() => {
     repoRoot = join(tmpdir(), `ak-base-kit-test-${Date.now()}`)
     mkdirSync(repoRoot, { recursive: true })
+  })
+
+  afterEach(() => {
+    rmSync(repoRoot, { recursive: true, force: true })
   })
 
   it('writes all expected template files', () => {
@@ -47,6 +51,59 @@ describe('scaffoldBaseKit', () => {
     const pkg = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as Record<string, unknown>
     expect((pkg['engines'] as Record<string, string>)['node']).toBe('>=24')
     expect(pkg['packageManager']).toBe('pnpm@10.33.0')
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe('latest')
+    expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('ak setup')
+  })
+
+  it('adds only missing bootstrap fields for consumers', () => {
+    const pkgPath = join(repoRoot, 'package.json')
+    const initial = {
+      name: 'consumer-app',
+      scripts: { test: 'vitest' },
+      devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
+    }
+    writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
+
+    const catalogDir = resolveCatalogDir()
+    scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
+
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe('^0.2.0')
+    expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('ak setup')
+    expect((pkg['scripts'] as Record<string, string>)['test']).toBe('vitest')
+  })
+
+  it('preserves consumer-owned setup:agent and existing agent-kit devDependency', () => {
+    const pkgPath = join(repoRoot, 'package.json')
+    mkdirSync(repoRoot, { recursive: true })
+    const initial = {
+      name: 'consumer-app',
+      scripts: { 'setup:agent': 'pnpm exec ak setup' },
+      devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
+    }
+    writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
+
+    const catalogDir = resolveCatalogDir()
+    scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
+
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
+    expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('pnpm exec ak setup')
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe('^0.2.0')
+  })
+
+  it('skips self-install fields in the agent-kit repo itself', () => {
+    const pkgPath = join(repoRoot, 'package.json')
+    writeFileSync(
+      pkgPath,
+      JSON.stringify({ name: '@webpresso/agent-kit', private: true }, null, 2),
+    )
+
+    const catalogDir = resolveCatalogDir()
+    scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
+
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBeUndefined()
+    expect(pkg['scripts']).toBeUndefined()
   })
 
   it('identical run produces only identical/skipped results', () => {

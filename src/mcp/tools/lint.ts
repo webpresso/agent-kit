@@ -24,9 +24,9 @@ import type { ToolDescriptor } from '#mcp/auto-discover'
 
 import { resolveProjectRoot } from './_shared/project-root.js'
 import {
+  createSummaryOutputSchema,
   clipRawOutput,
   createSummaryResult,
-  summaryFirstResultSchema,
 } from './_shared/result.js'
 import { isMissingBinary, isRunFailure, runCommand } from './_shared/run-command.js'
 
@@ -44,20 +44,16 @@ const lintIssueSchema = z.object({
   message: z.string(),
 })
 
-const outputSchema = summaryFirstResultSchema.extend({
+const outputSchema = createSummaryOutputSchema({
   backend: z.enum(['oxlint', 'pnpm']),
-  counts: z
-    .object({
-      issueCount: z.number(),
-    })
-    .optional(),
-  details: z
-    .object({
-      issues: z.array(lintIssueSchema),
-      parseError: z.string().optional(),
-      spawnError: z.string().optional(),
-    })
-    .optional(),
+  counts: z.object({
+    issueCount: z.number(),
+  }),
+  details: z.object({
+    issues: z.array(lintIssueSchema),
+    parseError: z.string().optional(),
+    spawnError: z.string().optional(),
+  }),
 })
 
 // Hard cap so a hung lint cannot hang the MCP tool. Lints over 5 minutes are

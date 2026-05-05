@@ -12,6 +12,7 @@ import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { type MergeOptions, type MergeResult, patchJsonFile } from '#cli/commands/init/merge'
+import { buildSkillTag, extractSkillHooks, isTaggedSkillHook, type SkillHook } from './skill-hooks.js'
 
 // Claude Code uses $CLAUDE_PROJECT_DIR; Codex runs from repo root so relative path works.
 //
@@ -43,17 +44,74 @@ function ensureGroup(groups: HookGroup[], group: HookGroup): HookGroup[] {
   return [...groups, group]
 }
 
+function stripSkillManagedHooks(groups: HookGroup[] | undefined): HookGroup[] {
+  return (groups ?? [])
+    .map((group) => ({
+      ...group,
+      hooks: group.hooks.filter((hook) => !isTaggedSkillHook(hook.command)),
+    }))
+    .filter((group) => group.hooks.length > 0)
+}
+
+function materializeClaudeSkillCommand(skillHook: SkillHook): string {
+  const tag = buildSkillTag(skillHook.skillName)
+  if (skillHook.command.startsWith('ak ')) {
+    const args = skillHook.command.slice(3)
+    return `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/ak" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/ak" ${args} || true ${tag}`
+  }
+  return `${skillHook.command} ${tag}`
+}
+
+function mergeSkillHooks(
+  hooks: HooksMap,
+  skillHooks: readonly SkillHook[],
+): HooksMap {
+  const nextHooks = Object.fromEntries(
+    Object.entries(hooks).map(([event, groups]) => [event, stripSkillManagedHooks(groups)]),
+  ) as HooksMap
+
+  for (const skillHook of skillHooks) {
+    const groups = nextHooks[skillHook.event] ?? []
+    nextHooks[skillHook.event] = ensureGroup(groups, {
+      ...(skillHook.matcher ? { matcher: skillHook.matcher } : {}),
+      hooks: [
+        {
+          type: 'command',
+          command: materializeClaudeSkillCommand(skillHook),
+          ...(skillHook.timeout ? { timeout: skillHook.timeout } : {}),
+        },
+      ],
+    })
+  }
+
+  return nextHooks
+}
+
 // ── Claude Code (.claude/settings.json) ──────────────────────────────────────
 
-function patchClaudeSettings(existing: Record<string, unknown>): Record<string, unknown> {
-  const hooks = (existing.hooks ?? {}) as HooksMap
+function patchClaudeSettings(
+  existing: Record<string, unknown>,
+  skillHooks: readonly SkillHook[],
+): Record<string, unknown> {
+  const mergedHooks = mergeSkillHooks((existing.hooks ?? {}) as HooksMap, skillHooks)
+  const worktree = existing.worktree as Record<string, unknown> | undefined
+  const symlinkDirectories = Array.isArray(worktree?.symlinkDirectories)
+    ? worktree?.symlinkDirectories.filter((value): value is string => typeof value === 'string')
+    : []
+  const normalizedSymlinkDirectories = symlinkDirectories.includes('.claude')
+    ? symlinkDirectories
+    : [...symlinkDirectories, '.claude']
 
   return {
     ...existing,
+    worktree: {
+      ...(worktree ?? {}),
+      symlinkDirectories: normalizedSymlinkDirectories,
+    },
     hooks: {
-      ...hooks,
+      ...mergedHooks,
       SessionStart: ensureGroup(
-        ensureGroup(hooks.SessionStart ?? [], {
+        ensureGroup(mergedHooks.SessionStart ?? [], {
           hooks: [{ type: 'command', command: CC_BIN('ak-sessionstart-routing'), timeout: 5 }],
         }),
         {
@@ -67,9 +125,11 @@ function patchClaudeSettings(existing: Record<string, unknown>): Record<string, 
           ],
         },
       ),
+      // Keep the centralized ak-* hooks session-wide. Skill hooks are scoped
+      // to a skill lifecycle and are not a substitute for these guardrails.
       PreToolUse: ensureGroup(
-        ensureGroup(hooks.PreToolUse ?? [], {
-          matcher: 'Bash|Write|Edit',
+        ensureGroup(mergedHooks.PreToolUse ?? [], {
+          matcher: 'Bash|Write|Edit|MultiEdit',
           hooks: [{ type: 'command', command: CC_BIN('ak-pretool-guard'), timeout: 5 }],
         }),
         {
@@ -83,14 +143,14 @@ function patchClaudeSettings(existing: Record<string, unknown>): Record<string, 
           ],
         },
       ),
-      PostToolUse: ensureGroup(hooks.PostToolUse ?? [], {
-        matcher: 'Write|Edit',
+      PostToolUse: ensureGroup(mergedHooks.PostToolUse ?? [], {
+        matcher: 'Write|Edit|MultiEdit',
         hooks: [{ type: 'command', command: CC_BIN('ak-post-tool'), timeout: 15 }],
       }),
-      UserPromptSubmit: ensureGroup(hooks.UserPromptSubmit ?? [], {
+      UserPromptSubmit: ensureGroup(mergedHooks.UserPromptSubmit ?? [], {
         hooks: [{ type: 'command', command: CC_BIN('ak-guard-switch'), timeout: 5 }],
       }),
-      Stop: ensureGroup(hooks.Stop ?? [], {
+      Stop: ensureGroup(mergedHooks.Stop ?? [], {
         hooks: [{ type: 'command', command: CC_BIN('ak-stop-qa') }],
       }),
     },
@@ -174,8 +234,13 @@ function ensureGstackHooks(repoRoot: string): void {
 
 export function scaffoldAgentHooks(input: ScaffoldAgentHooksInput): ScaffoldAgentHooksResult {
   ensureGstackHooks(input.repoRoot)
+  const skillHooks = extractSkillHooks(join(input.repoRoot, '.agent', 'skills'))
   return {
-    claude: patchJsonFile(join(input.repoRoot, '.claude', 'settings.json'), patchClaudeSettings, input.options),
+    claude: patchJsonFile(
+      join(input.repoRoot, '.claude', 'settings.json'),
+      (existing) => patchClaudeSettings(existing, skillHooks),
+      input.options,
+    ),
     codex: patchJsonFile(join(input.repoRoot, '.codex', 'hooks.json'), patchCodexHooks, input.options),
   }
 }

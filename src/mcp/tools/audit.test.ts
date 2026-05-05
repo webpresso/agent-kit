@@ -18,6 +18,10 @@ const repoGuardrailsMock = vi.hoisted(() => ({
   formatRepoAuditReport: vi.fn(() => 'formatted report'),
 }))
 
+const agentsAuditMock = vi.hoisted(() => ({
+  auditAgents: vi.fn(),
+}))
+
 const techDebtMock = vi.hoisted(() => ({
   auditTechDebt: vi.fn(),
 }))
@@ -29,6 +33,7 @@ const viteLocalMock = vi.hoisted(() => ({
 const spawnMock = vi.hoisted(() => vi.fn())
 
 vi.mock('#audit/repo-guardrails', () => repoGuardrailsMock)
+vi.mock('#audit/agents', () => agentsAuditMock)
 vi.mock('#audit/tech-debt', () => techDebtMock)
 vi.mock('../../vite/local.js', () => viteLocalMock)
 vi.mock('node:child_process', () => ({ spawn: spawnMock }))
@@ -74,6 +79,7 @@ beforeEach(() => {
   for (const fn of Object.values(repoGuardrailsMock)) {
     if (typeof fn === 'function' && 'mockReset' in fn) (fn as { mockReset: () => void }).mockReset()
   }
+  agentsAuditMock.auditAgents.mockReset()
   techDebtMock.auditTechDebt.mockReset()
   viteLocalMock.runBundleBudgetCli.mockReset()
   spawnMock.mockReset()
@@ -104,6 +110,15 @@ describe('ak_audit tool', () => {
       const result = await akAuditTool.handler({ kind: 'docs-frontmatter' })
       expect(repoGuardrailsMock.auditDocsFrontmatter).toHaveBeenCalledTimes(1)
       expect(parsePayload(result).passed).toBe(true)
+    })
+
+    it('agents -> auditAgents', async () => {
+      agentsAuditMock.auditAgents.mockReturnValue(passingAudit())
+      const result = await akAuditTool.handler({ kind: 'agents' })
+      expect(agentsAuditMock.auditAgents).toHaveBeenCalledTimes(1)
+      const payload = parsePayload(result)
+      expect(payload.passed).toBe(true)
+      expect(payload.kind).toBe('agents')
     })
 
     it('blueprint-lifecycle -> auditBlueprintLifecycle', async () => {

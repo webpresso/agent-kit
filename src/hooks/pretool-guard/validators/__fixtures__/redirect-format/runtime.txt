@@ -1,0 +1,4 @@
+"pnpm test" denied — use agent-kit MCP tool:
+  mcp__agent-kit__ak_test(...)
+Returns structured, summary-first results. Raw output is clipped; overflow may include a log path for deeper investigation.
+Fallback if MCP unavailable: just test --package <name> (or --file <path>)

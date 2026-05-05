@@ -20,9 +20,9 @@ import {
   runCommandConfigs,
 } from '#e2e/execution'
 import {
+  createSummaryOutputSchema,
   clipRawOutput,
   createSummaryResult,
-  summaryFirstResultSchema,
 } from './_shared/result.js'
 
 const inputSchema = z.object({
@@ -47,26 +47,22 @@ interface E2eCommandShape {
   env?: Record<string, string>
 }
 
-const outputSchema = summaryFirstResultSchema.extend({
-  counts: z
-    .object({
-      suiteCount: z.number(),
-      commandCount: z.number(),
-    })
-    .optional(),
-  details: z
-    .object({
-      commands: z.array(
-        z.object({
-          command: z.string(),
-          args: z.array(z.string()),
-          env: z.record(z.string(), z.string()).optional(),
-        }),
-      ),
-      suiteIds: z.array(z.string()),
-      runnerSummary: z.record(z.string(), z.number()),
-    })
-    .optional(),
+const outputSchema = createSummaryOutputSchema({
+  counts: z.object({
+    suiteCount: z.number(),
+    commandCount: z.number(),
+  }),
+  details: z.object({
+    commands: z.array(
+      z.object({
+        command: z.string(),
+        args: z.array(z.string()),
+        env: z.record(z.string(), z.string()).optional(),
+      }),
+    ),
+    suiteIds: z.array(z.string()),
+    runnerSummary: z.record(z.string(), z.number()),
+  }),
 })
 
 function summarizeRunners(groups: readonly PlannedE2eRunGroup[]): Record<string, number> {

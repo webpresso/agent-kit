@@ -1,6 +1,6 @@
-import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const spawnSyncMock = vi.fn(() => ({
@@ -27,6 +27,7 @@ import { resolveCatalogDir, runInit } from './index.js'
 // isn't present yet — the install path itself is exercised, just not against
 // a non-existent source dir.
 const CATALOG_DIR = resolveCatalogDir()
+const PACKAGE_ROOT = dirname(CATALOG_DIR)
 const HAS_TANSTACK = existsSync(join(CATALOG_DIR, 'agent', 'skills', 'tanstack-query'))
 const HAS_REACT_DOCTOR = existsSync(join(CATALOG_DIR, 'agent', 'skills', 'react-doctor'))
 
@@ -65,6 +66,8 @@ function makeTempRepo(): string {
     join(dir, 'packages', 'ui', 'package.json'),
     JSON.stringify({ name: '@acme/ui', version: '0.1.0' }),
   )
+  mkdirSync(join(dir, 'node_modules', '@webpresso'), { recursive: true })
+  symlinkSync(PACKAGE_ROOT, join(dir, 'node_modules', '@webpresso', 'agent-kit'))
   return dir
 }
 
@@ -148,6 +151,8 @@ describe('ak init end-to-end', () => {
     expect(agents).toContain('@acme/api')
     expect(agents).toContain('React')
     expect(agents).toContain('.agent/planning/')
+    expect(agents).toContain('pnpm install && pnpm setup:agent')
+    expect(agents).not.toContain('ak symlink sync')
 
     // Config
     const rc = JSON.parse(readFileSync(join(repo, '.agent-kitrc.json'), 'utf8')) as {
@@ -186,6 +191,14 @@ describe('ak init end-to-end', () => {
     expect(existsSync(join(repo, '.agent-kitrc.json'))).toBe(false)
   })
 
+  it('falls back to the currently executing package when the consumer package is not installed yet', async () => {
+    rmSync(join(repo, 'node_modules', '@webpresso', 'agent-kit'), { force: true })
+
+    const code = await runInit({ cwd: repo, yes: true })
+
+    expect(code).toBe(0)
+  })
+
   it('preserves existing AGENTS.md with a .new sidecar by default', async () => {
     writeFileSync(join(repo, 'AGENTS.md'), '# Custom already-owned content')
     const code = await runInit({ cwd: repo, yes: true })
@@ -217,6 +230,23 @@ describe('ak init end-to-end', () => {
     // agent-hooks scaffolder writes hook config
     expect(existsSync(join(repo, '.claude', 'settings.json'))).toBe(true)
     expect(existsSync(join(repo, '.codex', 'hooks.json'))).toBe(true)
+    expect(existsSync(join(repo, '.claude', 'agents', 'code-reviewer.md'))).toBe(true)
+    expect(existsSync(join(repo, '.claude', 'agents', 'security-auditor.md'))).toBe(true)
+    expect(existsSync(join(repo, '.claude', 'agents', 'doc-writer.md'))).toBe(true)
+    expect(existsSync(join(repo, '.claude', 'agents', 'explorer.md'))).toBe(true)
+    const claudeSettings = JSON.parse(
+      readFileSync(join(repo, '.claude', 'settings.json'), 'utf8'),
+    ) as {
+      hooks: {
+        Stop: Array<{ hooks: Array<{ command: string }> }>
+      }
+    }
+    const stopCommands = claudeSettings.hooks.Stop.flatMap((group) =>
+      group.hooks.map((hook) => hook.command),
+    )
+    expect(stopCommands.some((command) => command.includes('ak-stop-qa'))).toBe(true)
+    expect(stopCommands.some((command) => command.includes('"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak" audit agents'))).toBe(true)
+    expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
 
     // Codex / Amp: real dir with file symlinks in .agents/skills/ (rg traverses real dirs)
     const agentsVerifySkill = join(repo, '.agents', 'skills', 'verify')

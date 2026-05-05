@@ -18,6 +18,8 @@ Agent-kit ships through **two coexisting distribution channels** — mirrors the
 
 What you get: **hooks** (PreToolUse, PostToolUse, Stop, SessionStart), **`ak mcp` server** with 7 tools (`ak_test`, `ak_e2e`, `ak_lint`, `ak_typecheck`, `ak_qa`, `ak_audit`, `ak_blueprint`), **slash commands** (`/ak:test`, `/ak:qa`, `/ak:audit`, `/ak:blueprint`), and the **skill catalog**. Manifest at `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json`. Pin to release tags (`v<version>`) — `main` does not have `dist/` checked in; only release tags do (see [CONTRIBUTING.md](./CONTRIBUTING.md#releases)).
 
+Long-running MCP tools are now **summary-first**: they return canonical `structuredContent`, keep JSON text `content` for compatibility, clip oversized `rawOutput`, and may include a `logPath` when overflow is persisted for later investigation.
+
 **Plugin runtime contract:** the Claude Code plugin executes with **Bun** and currently points at bundled `src/*.ts` entrypoints from the published package. The tarball intentionally ships both `src/` and `dist/`; `dist/esm/*` is a library/build artifact, not the current plugin execution path.
 
 ### Path B — npm + `ak setup` (Codex CLI, OpenCode, Cursor, Gemini, …)
@@ -190,6 +192,8 @@ MCP surface split:
 - `ak_test` — generic test execution by explicit `packages` or `files`
 - `ak_e2e` — suite-aware / host-adapter-aware E2E execution
 - `ak_audit(kind=\"tph-e2e\")` — E2E testing-philosophy audit only
+
+For long-running MCP calls, expect a compact `summary` first, structured `details` second, and bounded `rawOutput` only when needed.
 
 ## License
 

@@ -21,7 +21,7 @@ import {
   writeConfig,
 } from './config.js'
 import { detectConsumer } from './detect-consumer.js'
-import { type MergeOptions, summarizeResults } from './merge.js'
+import { type MergeOptions, type MergeResult, summarizeResults } from './merge.js'
 import { resolveTier3Selection } from './prompts.js'
 import { scaffoldAgent } from './scaffold-agent.js'
 import { scaffoldAgentsMd } from './scaffold-agents-md.js'
@@ -36,6 +36,7 @@ import { ensureGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
 import { ensureOmx } from './scaffolders/omx/index.js'
 import { checkRuntimes } from './scaffolders/runtime-check/index.js'
+import { scaffoldSubagents } from './scaffolders/subagents/index.js'
 import { scaffoldVision } from './scaffolders/vision/index.js'
 
 const PRESETS = ['lore-commits', 'omx', 'playwright-mcp', 'gstack', 'vision'] as const
@@ -167,7 +168,20 @@ export async function runInit(flags: InitFlags): Promise<number> {
     })
 
     const agentHooksResult = scaffoldAgentHooks({ repoRoot: consumer.repoRoot, options })
-    const claudeRulesResults = scaffoldClaudeRules({ repoRoot: consumer.repoRoot, options })
+    let claudeRulesResults: MergeResult[] = []
+    try {
+      claudeRulesResults = scaffoldClaudeRules({ repoRoot: consumer.repoRoot, options })
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes('@webpresso/agent-kit not found in node_modules')
+      ) {
+        console.error(`ak init: setup failed — ${error.message}`)
+        return EXIT_SETUP_FAIL
+      }
+      throw error
+    }
+    const subagentResults = scaffoldSubagents({ repoRoot: consumer.repoRoot, options })
 
     const agentsMdResult = scaffoldAgentsMd({
       catalogDir,
@@ -269,6 +283,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
       agentHooksResult.claude,
       agentHooksResult.codex,
       ...claudeRulesResults,
+      ...subagentResults,
       ...presetResults,
     ]
     const summary = summarizeResults(all)
