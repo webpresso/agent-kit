@@ -21,21 +21,23 @@ describe('formatTaskLine', () => {
 
 describe('formatBlueprintAudit', () => {
   it('returns passed message when no issues', () => {
-    expect(formatBlueprintAudit({ issues: [] })).toEqual('Blueprint audit passed.')
+    expect(formatBlueprintAudit({ ok: true, issues: [] })).toEqual('Blueprint audit passed.')
   })
 
   it('formats error issues with file', () => {
     const result = formatBlueprintAudit({
+      ok: false,
       issues: [{ level: 'error', message: 'bad', file: 'x.md' }],
     })
     expect(result).toContain('[error] x.md: bad')
   })
 
-  it('formats warn issues without file', () => {
+  it('formats warning issues without file', () => {
     const result = formatBlueprintAudit({
-      issues: [{ level: 'warn', message: 'hmm' }],
+      ok: false,
+      issues: [{ level: 'warning', message: 'hmm' }],
     })
-    expect(result).toContain('[warn] hmm')
+    expect(result).toContain('[warning] hmm')
   })
 })
 

@@ -451,13 +451,18 @@ describe('validateForbiddenCommands', () => {
     writeFileSync(sentinel, String(process.pid))
 
     const originalCwd = process.cwd()
+    const originalProjectDir = process.env.CLAUDE_PROJECT_DIR
     try {
       process.chdir(dir)
+      delete process.env.CLAUDE_PROJECT_DIR
       const result = validateForbiddenCommands(bashInput('pnpm vitest'))
       expect(result.passed).toBe(false)
       expect('message' in result && result.message).toContain('mcp__custom-server__tool_test(...)')
     } finally {
       process.chdir(originalCwd)
+      if (originalProjectDir !== undefined) {
+        process.env.CLAUDE_PROJECT_DIR = originalProjectDir
+      }
       rmSync(sentinel, { force: true })
       rmSync(dir, { recursive: true, force: true })
     }

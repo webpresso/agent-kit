@@ -202,16 +202,13 @@ export function registerAuditCommand(cli: CAC): void {
                 : `Usage: ak audit <kind> [target]\nKinds: ${AUDIT_KIND_LIST}`,
             )
             process.exit(1)
-            break
           }
           case 'unknown-kind': {
             console.error(`Unknown audit kind: ${outcome.auditKind}. Use one of: ${AUDIT_KIND_LIST}.`)
             process.exit(1)
-            break
           }
           case 'script-exit': {
             process.exit(outcome.code)
-            break
           }
           case 'repo-result': {
             await printAndExitRepoAudit(outcome.result, options)
@@ -224,7 +221,6 @@ export function registerAuditCommand(cli: CAC): void {
               console.log('[quality] mutation: OK')
             }
             process.exit(outcome.code)
-            break
           }
         }
       },
