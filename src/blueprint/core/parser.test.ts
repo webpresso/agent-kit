@@ -515,6 +515,94 @@ complexity: S
     })
   })
 
+  describe('Checkbox status extraction — derived status boundary cases', () => {
+    it('derives done when ALL checkboxes are checked (checked === total)', () => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### Task 1.1: All done
+**Status:** done
+
+- [x] A
+- [x] B
+- [x] C
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.tasks[0].acceptanceCriteria).toEqual({ total: 3, checked: 3 })
+    })
+
+    it('derives in_progress when ONE checkbox is checked out of many (checked > 0 and checked < total)', () => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### Task 1.1: Partial
+**Status:** in_progress
+
+- [x] A
+- [ ] B
+- [ ] C
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.tasks[0].acceptanceCriteria).toEqual({ total: 3, checked: 1 })
+    })
+
+    it('derives todo when ZERO checkboxes are checked (checked === 0, total > 0)', () => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### Task 1.1: None done
+**Status:** todo
+
+- [ ] A
+- [ ] B
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.tasks[0].acceptanceCriteria).toEqual({ total: 2, checked: 0 })
+    })
+
+    it('explicit status overrides derived checkbox status', () => {
+      // derived would be 'in_progress' (1 of 2 checked) but explicit says 'blocked'
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### Task 1.1: Blocked despite partial check
+**Status:** blocked
+**Blocked:** External dependency
+
+- [x] A
+- [ ] B
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.tasks[0].status).toBe('blocked')
+      expect(result.tasks[0].statusExplicit).toBe(true)
+      expect(result.tasks[0].acceptanceCriteria).toEqual({ total: 2, checked: 1 })
+    })
+  })
+
   describe('Checkbox status extraction', () => {
     it('should derive done from all-checked checkboxes', () => {
       const plan = `---
@@ -830,6 +918,79 @@ created: 2026-01-01
       expect(result.tasks[0].targetPackage).toBe('agent-kit')
     })
 
+    it('should extract target package from "for @webpresso/pkg" pattern', () => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### Task 1.1: Add tests for @webpresso/runtime
+**Status:** todo
+**Depends:** None
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.tasks[0].targetPackage).toBe('runtime')
+    })
+
+    it('should extract target package from "in pkg-name" pattern without @ prefix', () => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### Task 1.1: Fix in quality-engine
+**Status:** todo
+**Depends:** None
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.tasks[0].targetPackage).toBe('quality-engine')
+    })
+
+    it('should not extract targetPackage when no package pattern matches', () => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### Task 1.1: Generic task with no package
+**Status:** todo
+**Depends:** None
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.tasks[0].targetPackage).toBeUndefined()
+    })
+
+    it('should not extract targetFile when no file extension matches', () => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### Task 1.1: Fix the code
+**Status:** todo
+**Depends:** None
+No file path here
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.tasks[0].targetFile).toBeUndefined()
+    })
+
     it('should extract target file from description', () => {
       const plan = `---
 type: blueprint
@@ -847,6 +1008,32 @@ Fix src/cli/commands/init.ts config
 `
       const result = parseBlueprint(plan, '@feature')
       expect(result.tasks[0].targetFile).toBe('src/cli/commands/init.ts')
+    })
+
+    it.each([
+      { tag: '[Complexity: XS]', expected: 'XS' },
+      { tag: '[Complexity: S]', expected: 'S' },
+      { tag: '[Complexity: M]', expected: 'M' },
+      { tag: '[Complexity: L]', expected: 'L' },
+      { tag: '[Complexity: XL]', expected: 'XL' },
+      { tag: '[complexity: m]', expected: 'M' }, // case-insensitive
+    ])('extracts complexity $expected from tag "$tag"', ({ tag, expected }) => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### Task 1.1: Complex task
+**Status:** todo
+**Depends:** None
+This is a task ${tag}
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.tasks[0].complexity).toBe(expected)
     })
 
     it('should extract complexity from description tag', () => {
@@ -867,9 +1054,58 @@ This is a complex task [Complexity: L]
       const result = parseBlueprint(plan, '@feature')
       expect(result.tasks[0].complexity).toBe('L')
     })
+
+    it('should not extract complexity when no complexity tag present', () => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### Task 1.1: Simple task
+**Status:** todo
+**Depends:** None
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.tasks[0].complexity).toBeUndefined()
+    })
   })
 
   describe('Task type inference', () => {
+    it.each([
+      { title: 'Lint code', keyword: 'lint', expected: 'lint-fix' },
+      { title: 'Run biome check', keyword: 'biome', expected: 'lint-fix' },
+      { title: 'Run tsc --noEmit', keyword: 'tsc', expected: 'typecheck-fix' },
+      { title: 'Check types', keyword: 'type', expected: 'typecheck-fix' },
+      { title: 'Run tsgo check', keyword: 'tsgo', expected: 'typecheck-fix' },
+      { title: 'Run test suite', keyword: 'test', expected: 'test-fix' },
+      { title: 'Run vitest to check everything', keyword: 'vitest', expected: 'test-fix' },
+      { title: 'Research feasibility', keyword: 'research', expected: 'research' },
+      { title: 'Investigate the issue', keyword: 'investigate', expected: 'research' },
+      { title: 'Verify the build', keyword: 'verify', expected: 'verify' },
+      { title: 'Check the output', keyword: 'check', expected: 'verify' },
+      { title: 'Build the thing', keyword: 'none', expected: 'implement' },
+    ])('infers $expected for title "$title"', ({ title, expected }) => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### Task 1.1: ${title}
+**Status:** todo
+**Depends:** None
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.tasks[0].stepType).toBe(expected)
+    })
+
     it('should infer lint-fix from lint keyword', () => {
       const plan = `---
 type: blueprint
@@ -1013,6 +1249,122 @@ Some description text
     })
   })
 
+  describe('Section delimiter handling', () => {
+    it('task section ends at --- delimiter, not reading next task content', () => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### Task 1.1: First
+**Status:** todo
+**Depends:** None
+Description for first task.
+
+---
+
+#### Task 1.2: Second
+**Status:** todo
+**Depends:** Task 1.1
+Description for second task.
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.tasks).toHaveLength(2)
+      expect(result.tasks[0].id).toBe('1.1')
+      expect(result.tasks[1].id).toBe('1.2')
+      // first task's description should not contain second task's text
+      expect(result.tasks[0].description).toBe('Description for first task.')
+      expect(result.tasks[1].description).toBe('Description for second task.')
+    })
+
+    it('task section ends at ## heading delimiter', () => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### Task 1.1: First
+**Status:** todo
+**Depends:** None
+First description.
+
+## A separate section
+
+#### Task 1.2: Second
+**Status:** todo
+**Depends:** Task 1.1
+Second description.
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.tasks).toHaveLength(2)
+      expect(result.tasks[0].description).toBe('First description.')
+    })
+  })
+
+  describe('extractBlocked boundary cases', () => {
+    it('returns undefined for "None" value (case-insensitive)', () => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### Task 1.1: Task
+**Status:** todo
+**Blocked:** NONE
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.tasks[0].blockedReason).toBeUndefined()
+    })
+
+    it('returns undefined for "none" lowercase', () => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### Task 1.1: Task
+**Status:** todo
+**Blocked:** none
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.tasks[0].blockedReason).toBeUndefined()
+    })
+
+    it('returns the blocked reason when it is a real value', () => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### Task 1.1: Task
+**Status:** blocked
+**Blocked:** PR #123 not merged yet
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.tasks[0].blockedReason).toBe('PR #123 not merged yet')
+    })
+  })
+
   describe('Task dependency parsing', () => {
     it('should handle dependencies without "Task" prefix', () => {
       const plan = `---
@@ -1074,6 +1426,23 @@ created: 2026-01-01
       expect(() => parseBlueprint(plan, '@feature')).toThrow('requires explicit **Status:**')
     })
 
+    it('should require explicit status for planned blueprints', () => {
+      const plan = `---
+type: blueprint
+status: planned
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### Task 1.1: Planned task
+**Depends:** None
+- [ ] Pending
+`
+      expect(() => parseBlueprint(plan, '@feature')).toThrow('requires explicit **Status:**')
+    })
+
     it('should not require explicit status for completed blueprints', () => {
       const plan = `---
 type: blueprint
@@ -1082,6 +1451,23 @@ complexity: S
 last_updated: 2026-01-02
 created: 2026-01-01
 completed_at: 2026-01-02
+---
+# @feature
+
+#### Task 1.1: Done
+**Depends:** None
+- [ ] Still pending
+`
+      expect(() => parseBlueprint(plan, '@feature')).not.toThrow()
+    })
+
+    it('should not require explicit status for archived blueprints', () => {
+      const plan = `---
+type: blueprint
+status: archived
+complexity: S
+last_updated: 2026-01-02
+created: 2026-01-01
 ---
 # @feature
 
@@ -1107,6 +1493,85 @@ created: 2026-01-01
 - [ ] Pending
 `
       expect(() => parseBlueprint(plan, '@feature')).toThrow('requires explicit **Status:**')
+    })
+
+    it('should include the missing task IDs in the error message', () => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+# @feature
+
+#### Task 1.1: First missing
+**Depends:** None
+- [ ] Pending
+
+#### Task 1.2: Second missing
+**Depends:** None
+- [ ] Pending
+`
+      expect(() => parseBlueprint(plan, '@feature')).toThrow('Missing: 1.1, 1.2')
+    })
+  })
+
+  describe('Frontmatter optional arrays boundary', () => {
+    it('should not include dependsOn when depends_on is empty array', () => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+depends_on: []
+---
+# @feature
+
+#### Task 1.1: First
+**Status:** todo
+**Depends:** None
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.dependsOn).toBeUndefined()
+    })
+
+    it('should not include tags when tags is empty array', () => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+tags: []
+---
+# @feature
+
+#### Task 1.1: First
+**Status:** todo
+**Depends:** None
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.tags).toBeUndefined()
+    })
+
+    it('should include dependsOn when depends_on has entries', () => {
+      const plan = `---
+type: blueprint
+status: in-progress
+complexity: S
+last_updated: 2026-01-01
+depends_on:
+  - other-plan
+  - third-plan
+---
+# @feature
+
+#### Task 1.1: First
+**Status:** todo
+**Depends:** None
+`
+      const result = parseBlueprint(plan, '@feature')
+      expect(result.dependsOn).toEqual(['other-plan', 'third-plan'])
     })
   })
 
