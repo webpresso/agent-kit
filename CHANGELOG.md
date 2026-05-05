@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+### Minor Changes
+
+- Finish the elegance-pass bootstrap work so fresh repos get the right agent
+  surfaces and routing by default. This release adds hard-fail agent audits,
+  scoped skill hooks, canonical subagent distribution, and MCP-shaped forbidden
+  command redirects with cleaner routing ownership.
+
 All notable changes to `@webpresso/agent-kit` are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
@@ -8,12 +17,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [0.2.0] — 2026-05-02
 
 ### Added
+
 - `@webpresso/agent-kit/lint` subpath export: `runLint(options): Promise<LintResult>` plus `parseOxlintIssues` helper for framework-level lint orchestration without the MCP transport.
 - `@webpresso/agent-kit/typecheck` subpath export: `runTypecheck(options): Promise<TypecheckResult>` plus `parseTscOutput` helper for framework-level typecheck orchestration without the MCP transport.
 
 ## [0.1.0] — 2026-04-25
 
 ### Added
+
 - Blueprint runtime: `ak blueprint new/list/show/audit/exec/move/finalize/start/task`
 - Agent-surface symlinker: `ak symlink sync/check/import`
 - Skills catalog with 13 bundled skills
