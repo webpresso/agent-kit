@@ -17,6 +17,11 @@ import { z } from 'zod'
 import type { ToolDescriptor } from '#mcp/auto-discover'
 
 import { resolveProjectRoot } from './_shared/project-root.js'
+import {
+  clipRawOutput,
+  createSummaryResult,
+  summaryFirstResultSchema,
+} from './_shared/result.js'
 import { isRunFailure, runCommand, type RunResult } from './_shared/run-command.js'
 
 const inputSchema = z.object({
@@ -24,6 +29,26 @@ const inputSchema = z.object({
 })
 
 export type AkTypecheckInput = z.infer<typeof inputSchema>
+
+const tscErrorSchema = z.object({
+  file: z.string(),
+  line: z.number(),
+  code: z.string(),
+  message: z.string(),
+})
+
+const outputSchema = summaryFirstResultSchema.extend({
+  counts: z
+    .object({
+      errorCount: z.number(),
+    })
+    .optional(),
+  details: z
+    .object({
+      errors: z.array(tscErrorSchema),
+    })
+    .optional(),
+})
 
 export interface TscError {
   readonly file: string
@@ -79,11 +104,24 @@ function readWorkspaceGlobs(cwd: string): string[] | null {
   return globs
 }
 
+function summarizeTypecheckResult(options: {
+  passed: boolean
+  errorCount: number
+  timedOut: boolean
+  aborted: boolean
+}): string {
+  if (options.timedOut) return 'typecheck timed out'
+  if (options.aborted) return 'typecheck aborted'
+  if (options.passed) return 'typecheck passed'
+  return `typecheck failed with ${options.errorCount} error${options.errorCount === 1 ? '' : 's'}`
+}
+
 const tool: ToolDescriptor = {
   name: 'ak_typecheck',
   description:
     'Run `tsc --noEmit` per resolved package (or at cwd) and return structured diagnostics parsed from tsc stdout.',
   inputSchema,
+  outputSchema,
   annotations: {
     title: 'Typecheck',
     readOnlyHint: true,
@@ -132,18 +170,19 @@ const tool: ToolDescriptor = {
     const timedOut = runs.some((r) => r.timedOut)
     const aborted = runs.some((r) => r.aborted)
 
-    const payload: Record<string, unknown> = {
+    const payload = {
       passed,
-      errorCount: errors.length,
-      errors,
-      output: [combinedStdout, combinedStderr].filter(Boolean).join(''),
+      summary: summarizeTypecheckResult({ passed, errorCount: errors.length, timedOut, aborted }),
+      counts: { errorCount: errors.length },
+      details: { errors },
+      ...clipRawOutput([combinedStdout, combinedStderr].filter(Boolean).join(''), undefined, {
+        toolName: 'ak_typecheck',
+      }),
+      timedOut: timedOut || undefined,
+      aborted: aborted || undefined,
     }
-    if (timedOut) payload.timedOut = true
-    if (aborted) payload.aborted = true
 
-    return {
-      content: [{ type: 'text', text: JSON.stringify(payload) }],
-    }
+    return createSummaryResult(payload)
   },
 }
 

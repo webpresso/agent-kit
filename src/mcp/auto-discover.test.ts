@@ -10,6 +10,7 @@ interface RegisteredCall {
   name: string
   description: string
   inputSchema: Record<string, unknown>
+  outputSchema?: Record<string, unknown>
   handler: ToolDescriptor['handler']
 }
 
@@ -22,9 +23,10 @@ function makeFakeServer() {
         name: string,
         description: string,
         inputSchema: Record<string, unknown>,
+        outputSchema: Record<string, unknown> | undefined,
         handler: ToolDescriptor['handler'],
       ): void {
-        calls.push({ name, description, inputSchema, handler })
+        calls.push({ name, description, inputSchema, outputSchema, handler })
       },
     },
   }
@@ -119,6 +121,34 @@ describe('discoverTools', () => {
     expect(result.content[0]).toMatchObject({ type: 'text', text: '{"hi":"there"}' })
   })
 
+  it('passes through `outputSchema` to the registrar when present', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ak-mcp-discover-output-schema-'))
+    writeToolFile(
+      dir,
+      'typed.js',
+      [
+        'const fakeShape = { _def: { typeName: "ZodObject", shape: () => ({}) }, parse: (x) => x }',
+        'export default {',
+        '  name: "typed",',
+        '  description: "typed",',
+        '  inputSchema: fakeShape,',
+        '  outputSchema: fakeShape,',
+        '  handler: async () => ({',
+        '    content: [{ type: "text", text: "{\\"ok\\":true}" }],',
+        '    structuredContent: { ok: true },',
+        '  }),',
+        '}',
+      ].join('\n'),
+    )
+
+    const fake = makeFakeServer()
+    await discoverTools(fake.server, dir)
+    const typed = fake.calls.find((c) => c.name === 'typed')
+    expect(typed?.outputSchema).toEqual({ type: 'object', bareShape: true })
+    const result = await typed!.handler({})
+    expect(result.structuredContent).toEqual({ ok: true })
+  })
+
   it('keeps the descriptor type permissive enough for real zod schemas', () => {
     // Compile-time / runtime sanity: ensure ToolDescriptor allows a real z.object schema.
     const descriptor: ToolDescriptor = {
@@ -160,6 +190,7 @@ describe('discoverTools', () => {
         name: string,
         _description: string,
         _schema: Record<string, unknown>,
+        _outputSchema: Record<string, unknown> | undefined,
         _handler: ToolDescriptor['handler'],
         annotations?: Record<string, unknown>,
       ): void {
@@ -196,6 +227,7 @@ describe('discoverTools', () => {
         name: string,
         _description: string,
         _schema: Record<string, unknown>,
+        _outputSchema: Record<string, unknown> | undefined,
         _handler: ToolDescriptor['handler'],
         annotations?: Record<string, unknown>,
       ): void {

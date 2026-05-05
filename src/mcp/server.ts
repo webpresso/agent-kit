@@ -58,6 +58,7 @@ interface RegisteredTool {
   name: string
   description: string
   inputSchema: Record<string, unknown>
+  outputSchema?: Record<string, unknown>
   handler: ToolHandler
   annotations?: ToolAnnotations
 }
@@ -94,8 +95,8 @@ export async function createServer(options: CreateServerOptions = {}): Promise<S
 
   const tools = new Map<string, RegisteredTool>()
   const registrar: ToolRegistrar = {
-    registerTool(name, description, inputSchema, handler, annotations) {
-      tools.set(name, { name, description, inputSchema, handler, annotations })
+    registerTool(name, description, inputSchema, outputSchema, handler, annotations) {
+      tools.set(name, { name, description, inputSchema, outputSchema, handler, annotations })
     },
   }
 
@@ -119,6 +120,7 @@ export async function createServer(options: CreateServerOptions = {}): Promise<S
         name: t.name,
         description: t.description,
         inputSchema: t.inputSchema,
+        ...(t.outputSchema ? { outputSchema: t.outputSchema } : {}),
         ...(t.annotations ? { annotations: t.annotations } : {}),
       })),
     }
@@ -143,6 +145,7 @@ export async function createServer(options: CreateServerOptions = {}): Promise<S
       const result = await tool.handler(args ?? {}, handlerExtra)
       return {
         content: result.content as ContentBlock[],
+        ...(result.structuredContent ? { structuredContent: result.structuredContent } : {}),
         isError: result.isError,
       }
     } catch (error) {

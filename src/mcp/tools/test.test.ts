@@ -65,7 +65,12 @@ describe('ak_test tool', () => {
         string,
         unknown
       >
-      expect(payload).toMatchObject({ passed: true, exitCode: 0 })
+      expect(result.structuredContent).toEqual(payload)
+      expect(payload).toMatchObject({
+        passed: true,
+        summary: 'tests passed via just for 1 package',
+        exitCode: 0,
+      })
     })
 
     it('routes to `pnpm` when only pnpm-workspace.yaml is present', async () => {
@@ -100,6 +105,25 @@ describe('ak_test tool', () => {
         )
       })
       expect(spawnMock).not.toHaveBeenCalled()
+    })
+
+    it('clips long raw test output and marks it truncated', async () => {
+      writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n')
+      spawnMock.mockReturnValue(fakeChild({ stdout: 'x'.repeat(5_000), exitCode: 1 }))
+
+      const result = await akTestTool.handler({ packages: ['x'] })
+      const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+        passed: boolean
+        summary: string
+        rawOutput?: string
+        truncated?: boolean
+        logPath?: string
+      }
+      expect(payload.passed).toBe(false)
+      expect(payload.summary).toMatch(/tests failed via pnpm/)
+      expect(payload.rawOutput).toHaveLength(4_000)
+      expect(payload.truncated).toBe(true)
+      expect(payload.logPath).toMatch(/^logs\//)
     })
   })
 })

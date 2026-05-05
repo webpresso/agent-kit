@@ -34,7 +34,10 @@ vi.mock('./test.js', () => ({
 import akQaTool from './qa.js'
 
 function wrapPayload(payload: unknown): { content: { type: string; text: string }[] } {
-  return { content: [{ type: 'text', text: JSON.stringify(payload) }] }
+  return {
+    content: [{ type: 'text', text: JSON.stringify(payload) }],
+    structuredContent: payload as Record<string, unknown>,
+  }
 }
 
 function delayedResolve<T>(value: T, ms: number): Promise<T> {
@@ -59,14 +62,17 @@ describe('ak_qa tool', () => {
       testHandler.mockReset()
 
       lintHandler.mockImplementation(() =>
-        delayedResolve(wrapPayload({ passed: true, issues: [] }), 100),
+        delayedResolve(wrapPayload({ passed: true, summary: 'lint passed', issues: [] }), 100),
       )
       typecheckHandler.mockImplementation(() =>
-        delayedResolve(wrapPayload({ passed: true, errorCount: 0, errors: [], output: '' }), 100),
+        delayedResolve(
+          wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
+          100,
+        ),
       )
       testHandler.mockImplementation(() =>
         delayedResolve(
-          wrapPayload({ passed: true, output: '', exitCode: 0, backend: 'pnpm' }),
+          wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
           100,
         ),
       )
@@ -93,9 +99,9 @@ describe('ak_qa tool', () => {
     typecheckHandler.mockReset()
     testHandler.mockReset()
 
-    const lintPayload = { passed: true, issues: [] }
-    const typecheckPayload = { passed: true, errorCount: 0, errors: [], output: '' }
-    const testPayload = { passed: true, output: '', exitCode: 0, backend: 'pnpm' }
+    const lintPayload = { passed: true, summary: 'lint passed', issues: [] }
+    const typecheckPayload = { passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }
+    const testPayload = { passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }
 
     lintHandler.mockResolvedValue(wrapPayload(lintPayload))
     typecheckHandler.mockResolvedValue(wrapPayload(typecheckPayload))
@@ -104,15 +110,20 @@ describe('ak_qa tool', () => {
     const result = await akQaTool.handler({})
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {
       passed: boolean
-      lint: typeof lintPayload
-      typecheck: typeof typecheckPayload
-      test: typeof testPayload
+      summary: string
+      details: {
+        lint: typeof lintPayload
+        typecheck: typeof typecheckPayload
+        test: typeof testPayload
+      }
     }
+    expect(result.structuredContent).toEqual(payload)
 
     expect(payload.passed).toBe(true)
-    expect(payload.lint).toEqual(lintPayload)
-    expect(payload.typecheck).toEqual(typecheckPayload)
-    expect(payload.test).toEqual(testPayload)
+    expect(payload.summary).toBe('qa passed')
+    expect(payload.details.lint).toEqual(lintPayload)
+    expect(payload.details.typecheck).toEqual(typecheckPayload)
+    expect(payload.details.test).toEqual(testPayload)
   })
 
   it('aggregates passed=false when lint fails', async () => {
@@ -123,28 +134,33 @@ describe('ak_qa tool', () => {
     lintHandler.mockResolvedValue(
       wrapPayload({
         passed: false,
+        summary: 'lint failed',
         issues: [{ file: 'a.ts', line: 1, rule: 'x', message: 'y' }],
       }),
     )
     typecheckHandler.mockResolvedValue(
-      wrapPayload({ passed: true, errorCount: 0, errors: [], output: '' }),
+      wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [], rawOutput: '' }),
     )
     testHandler.mockResolvedValue(
-      wrapPayload({ passed: true, output: '', exitCode: 0, backend: 'pnpm' }),
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
     )
 
     const result = await akQaTool.handler({})
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {
       passed: boolean
-      lint: { passed: boolean }
-      typecheck: { passed: boolean }
-      test: { passed: boolean }
+      summary: string
+      details: {
+        lint: { passed: boolean }
+        typecheck: { passed: boolean }
+        test: { passed: boolean }
+      }
     }
 
     expect(payload.passed).toBe(false)
-    expect(payload.lint.passed).toBe(false)
-    expect(payload.typecheck.passed).toBe(true)
-    expect(payload.test.passed).toBe(true)
+    expect(payload.summary).toBe('qa failed: lint')
+    expect(payload.details.lint.passed).toBe(false)
+    expect(payload.details.typecheck.passed).toBe(true)
+    expect(payload.details.test.passed).toBe(true)
   })
 
   it('aggregates passed=false when test fails', async () => {
@@ -152,23 +168,27 @@ describe('ak_qa tool', () => {
     typecheckHandler.mockReset()
     testHandler.mockReset()
 
-    lintHandler.mockResolvedValue(wrapPayload({ passed: true, issues: [] }))
+    lintHandler.mockResolvedValue(wrapPayload({ passed: true, summary: 'lint passed', issues: [] }))
     typecheckHandler.mockResolvedValue(
-      wrapPayload({ passed: true, errorCount: 0, errors: [], output: '' }),
+      wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
     )
     testHandler.mockResolvedValue(
-      wrapPayload({ passed: false, output: 'boom', exitCode: 1, backend: 'pnpm' }),
+      wrapPayload({ passed: false, summary: 'tests failed', rawOutput: 'boom', exitCode: 1, backend: 'pnpm' }),
     )
 
     const result = await akQaTool.handler({})
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {
       passed: boolean
-      test: { passed: boolean; exitCode: number }
+      summary: string
+      details: {
+        test: { passed: boolean; exitCode: number }
+      }
     }
 
     expect(payload.passed).toBe(false)
-    expect(payload.test.passed).toBe(false)
-    expect(payload.test.exitCode).toBe(1)
+    expect(payload.summary).toBe('qa failed: test')
+    expect(payload.details.test.passed).toBe(false)
+    expect(payload.details.test.exitCode).toBe(1)
   })
 
   // Regression: unwrap used to silently swallow JSON parse errors and
@@ -182,21 +202,23 @@ describe('ak_qa tool', () => {
 
     lintHandler.mockResolvedValue({ content: [{ type: 'text', text: '{not json' }] })
     typecheckHandler.mockResolvedValue(
-      wrapPayload({ passed: true, errorCount: 0, errors: [], output: '' }),
+      wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
     )
     testHandler.mockResolvedValue(
-      wrapPayload({ passed: true, output: '', exitCode: 0, backend: 'pnpm' }),
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
     )
 
     const result = await akQaTool.handler({})
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {
       passed: boolean
-      lint: { passed: boolean; unwrapError?: string }
+      details: {
+        lint: { passed: boolean; unwrapError?: string }
+      }
     }
 
     expect(payload.passed).toBe(false)
-    expect(payload.lint.passed).toBe(false)
-    expect(payload.lint.unwrapError).toMatch(/JSON\.parse failed/)
+    expect(payload.details.lint.passed).toBe(false)
+    expect(payload.details.lint.unwrapError).toMatch(/JSON\.parse failed/)
   })
 
   it('annotates `unwrapError` when a sub-tool returns a non-text content block', async () => {
@@ -206,20 +228,22 @@ describe('ak_qa tool', () => {
 
     lintHandler.mockResolvedValue({ content: [{ type: 'image', data: 'x' }] })
     typecheckHandler.mockResolvedValue(
-      wrapPayload({ passed: true, errorCount: 0, errors: [], output: '' }),
+      wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
     )
     testHandler.mockResolvedValue(
-      wrapPayload({ passed: true, output: '', exitCode: 0, backend: 'pnpm' }),
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
     )
 
     const result = await akQaTool.handler({})
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {
       passed: boolean
-      lint: { passed: boolean; unwrapError?: string }
+      details: {
+        lint: { passed: boolean; unwrapError?: string }
+      }
     }
 
     expect(payload.passed).toBe(false)
-    expect(payload.lint.unwrapError).toMatch(/text content block/)
+    expect(payload.details.lint.unwrapError).toMatch(/text content block/)
   })
 
   // Regression: `ak_qa` used to call sub-handlers with empty `{}`, blocking
@@ -229,12 +253,12 @@ describe('ak_qa tool', () => {
     lintHandler.mockReset()
     typecheckHandler.mockReset()
     testHandler.mockReset()
-    lintHandler.mockResolvedValue(wrapPayload({ passed: true, issues: [] }))
+    lintHandler.mockResolvedValue(wrapPayload({ passed: true, summary: 'lint passed', issues: [] }))
     typecheckHandler.mockResolvedValue(
-      wrapPayload({ passed: true, errorCount: 0, errors: [], output: '' }),
+      wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
     )
     testHandler.mockResolvedValue(
-      wrapPayload({ passed: true, output: '', exitCode: 0, backend: 'pnpm' }),
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
     )
 
     await akQaTool.handler({ files: ['a.ts'], packages: ['p1'] })
@@ -253,10 +277,10 @@ describe('ak_qa tool', () => {
     testHandler.mockReset()
     lintHandler.mockResolvedValue({ content: [{ type: 'text', text: '{not json' }] })
     typecheckHandler.mockResolvedValue(
-      wrapPayload({ passed: true, errorCount: 0, errors: [], output: '' }),
+      wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
     )
     testHandler.mockResolvedValue(
-      wrapPayload({ passed: true, output: '', exitCode: 0, backend: 'pnpm' }),
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
     )
 
     const result = await akQaTool.handler({})
@@ -268,13 +292,17 @@ describe('ak_qa tool', () => {
     typecheckHandler.mockReset()
     testHandler.mockReset()
     lintHandler.mockResolvedValue(
-      wrapPayload({ passed: false, issues: [{ file: 'a.ts', line: 1, rule: 'x', message: 'y' }] }),
+      wrapPayload({
+        passed: false,
+        summary: 'lint failed',
+        issues: [{ file: 'a.ts', line: 1, rule: 'x', message: 'y' }],
+      }),
     )
     typecheckHandler.mockResolvedValue(
-      wrapPayload({ passed: true, errorCount: 0, errors: [], output: '' }),
+      wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
     )
     testHandler.mockResolvedValue(
-      wrapPayload({ passed: true, output: '', exitCode: 0, backend: 'pnpm' }),
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
     )
 
     const result = await akQaTool.handler({})

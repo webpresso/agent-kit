@@ -22,6 +22,7 @@
 import { z } from 'zod'
 
 import type { ToolDescriptor, ToolHandlerResult } from '#mcp/auto-discover'
+import { createSummaryResult, summaryFirstResultSchema } from './_shared/result.js'
 import lintTool from './lint.js'
 import testTool from './test.js'
 import typecheckTool from './typecheck.js'
@@ -37,6 +38,14 @@ const inputSchema = z.object({
 })
 
 export type AkQaInput = z.infer<typeof inputSchema>
+
+const outputSchema = summaryFirstResultSchema.extend({
+  details: z.object({
+    lint: z.record(z.string(), z.unknown()),
+    typecheck: z.record(z.string(), z.unknown()),
+    test: z.record(z.string(), z.unknown()),
+  }),
+})
 
 interface SubResultShape {
   readonly passed?: boolean
@@ -54,6 +63,10 @@ interface SubResultShape {
  * silent collapse hid composition bugs as fake lint failures.
  */
 function unwrap(result: ToolHandlerResult): SubResultShape {
+  const structured = (result as ToolHandlerResult & { structuredContent?: unknown }).structuredContent
+  if (structured && typeof structured === 'object') {
+    return structured as SubResultShape
+  }
   const block = result.content[0]
   if (!block || block.type !== 'text' || typeof block.text !== 'string') {
     return { passed: false, unwrapError: 'sub-tool did not return a text content block', raw: result }
@@ -71,11 +84,20 @@ function unwrap(result: ToolHandlerResult): SubResultShape {
   return parsed as SubResultShape
 }
 
+function summarizeQa(lint: SubResultShape, typecheck: SubResultShape, test: SubResultShape): string {
+  const failed: string[] = []
+  if (lint.passed !== true) failed.push('lint')
+  if (typecheck.passed !== true) failed.push('typecheck')
+  if (test.passed !== true) failed.push('test')
+  return failed.length === 0 ? 'qa passed' : `qa failed: ${failed.join(', ')}`
+}
+
 const tool: ToolDescriptor = {
   name: 'ak_qa',
   description:
     'Run `ak_lint`, `ak_typecheck`, and `ak_test` in parallel via `Promise.all`. Returns `{passed, lint, typecheck, test}` where the top-level `passed` is the AND of the three sub-results.',
   inputSchema,
+  outputSchema,
   annotations: {
     title: 'QA (lint + typecheck + test)',
     readOnlyHint: true,
@@ -105,11 +127,12 @@ const tool: ToolDescriptor = {
       typeof typecheck.unwrapError === 'string' ||
       typeof test.unwrapError === 'string'
 
-    const payload = { passed, lint, typecheck, test }
-    return {
-      content: [{ type: 'text', text: JSON.stringify(payload) }],
-      ...(composeError ? { isError: true } : {}),
+    const payload = {
+      passed,
+      summary: summarizeQa(lint, typecheck, test),
+      details: { lint, typecheck, test },
     }
+    return createSummaryResult(payload, composeError ? { isError: true } : {})
   },
 }
 

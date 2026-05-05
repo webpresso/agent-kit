@@ -1,11 +1,12 @@
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, describe, expect, it } from 'vitest'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(__dirname, '..', '..')
+const sourceToolsDir = resolve(repoRoot, 'src/mcp/tools')
 const sourceCliPath = resolve(repoRoot, 'src/mcp/cli.ts')
 const builtCliPath = resolve(repoRoot, 'dist/esm/mcp/cli.js')
 const cliPath = existsSync(sourceCliPath) ? sourceCliPath : builtCliPath
@@ -54,7 +55,7 @@ async function callServer(
           ),
         )
       }
-    }, 8000)
+    }, 15000)
 
     child.stdout.on('data', (chunk: Buffer) => {
       stdoutBuf += chunk.toString('utf8')
@@ -127,6 +128,7 @@ describe('mcp server integration', () => {
       name: string
       description?: string
       inputSchema: { type: string; properties?: Record<string, unknown> }
+      outputSchema?: { type: string; properties?: Record<string, unknown> }
     }>
     const akTest = tools.find((t) => t.name === 'ak_test')
     expect(akTest).toBeDefined()
@@ -137,6 +139,10 @@ describe('mcp server integration', () => {
       backend: expect.any(Object),
     })
     expect(akTest?.inputSchema.properties).not.toHaveProperty('suite')
+    expect(akTest?.outputSchema?.properties).toMatchObject({
+      passed: expect.any(Object),
+      summary: expect.any(Object),
+    })
 
     const akE2e = tools.find((t) => t.name === 'ak_e2e')
     expect(akE2e).toBeDefined()
@@ -145,7 +151,12 @@ describe('mcp server integration', () => {
       files: expect.any(Object),
       headed: expect.any(Object),
     })
-  })
+    expect(akE2e?.outputSchema?.properties).toMatchObject({
+      passed: expect.any(Object),
+      summary: expect.any(Object),
+      details: expect.any(Object),
+    })
+  }, 20_000)
 
   // Regression: Claude Code 2.1.x and OpenCode call prompts/list and
   // resources/list during init. If the server returns -32601, the SDK
@@ -206,5 +217,76 @@ describe('mcp server integration', () => {
     expect(caps).toHaveProperty('tools')
     expect(caps).toHaveProperty('prompts')
     expect(caps).toHaveProperty('resources')
+  })
+
+  it('passes through tool outputSchema in tools/list and structuredContent in tools/call', async () => {
+    const filePath = resolve(sourceToolsDir, '__structured-content-plumbing-fixture.js')
+    writeFileSync(
+      filePath,
+      [
+        'const fakeShape = { _def: { typeName: "ZodObject", shape: () => ({}) }, parse: (x) => x }',
+        'export default {',
+        '  name: "zz_structured_content_plumbing",',
+        '  description: "fixture for MCP structured plumbing",',
+        '  inputSchema: fakeShape,',
+        '  outputSchema: fakeShape,',
+        '  handler: async (input) => {',
+        '    const payload = { ok: true, echoed: input }',
+        '    return {',
+        '      content: [{ type: "text", text: JSON.stringify(payload) }],',
+        '      structuredContent: payload,',
+        '    }',
+        '  },',
+        '}',
+      ].join('\n'),
+    )
+
+    try {
+      const responses = await callServer(
+        {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'initialize',
+          params: {
+            protocolVersion: '2024-11-05',
+            capabilities: {},
+            clientInfo: { name: 'agent-kit-test', version: '0.0.0' },
+          },
+        },
+        { jsonrpc: '2.0', id: 2, method: 'tools/list' },
+        {
+          jsonrpc: '2.0',
+          id: 3,
+          method: 'tools/call',
+          params: {
+            name: 'zz_structured_content_plumbing',
+            arguments: { value: 'hi' },
+          },
+        },
+      )
+
+      const listResponse = responses.find((r) => r.id === 2)
+      const tools = (listResponse?.result?.tools ?? []) as Array<{
+        name: string
+        outputSchema?: Record<string, unknown>
+      }>
+      const fixture = tools.find((t) => t.name === 'zz_structured_content_plumbing')
+      expect(fixture?.outputSchema).toEqual({ type: 'object', bareShape: true })
+
+      const callResponse = responses.find((r) => r.id === 3)
+      expect(callResponse?.error).toBeUndefined()
+      expect(callResponse?.result?.structuredContent).toEqual({
+        ok: true,
+        echoed: { value: 'hi' },
+      })
+      expect(callResponse?.result?.content).toEqual([
+        {
+          type: 'text',
+          text: '{"ok":true,"echoed":{"value":"hi"}}',
+        },
+      ])
+    } finally {
+      rmSync(filePath, { force: true })
+    }
   })
 })

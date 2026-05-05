@@ -23,6 +23,11 @@ import { z } from 'zod'
 import type { ToolDescriptor } from '#mcp/auto-discover'
 
 import { resolveProjectRoot } from './_shared/project-root.js'
+import {
+  clipRawOutput,
+  createSummaryResult,
+  summaryFirstResultSchema,
+} from './_shared/result.js'
 import { isMissingBinary, isRunFailure, runCommand } from './_shared/run-command.js'
 
 const inputSchema = z.object({
@@ -31,6 +36,29 @@ const inputSchema = z.object({
 })
 
 export type AkLintInput = z.infer<typeof inputSchema>
+
+const lintIssueSchema = z.object({
+  file: z.string(),
+  line: z.number(),
+  rule: z.string(),
+  message: z.string(),
+})
+
+const outputSchema = summaryFirstResultSchema.extend({
+  backend: z.enum(['oxlint', 'pnpm']),
+  counts: z
+    .object({
+      issueCount: z.number(),
+    })
+    .optional(),
+  details: z
+    .object({
+      issues: z.array(lintIssueSchema),
+      parseError: z.string().optional(),
+      spawnError: z.string().optional(),
+    })
+    .optional(),
+})
 
 // Hard cap so a hung lint cannot hang the MCP tool. Lints over 5 minutes are
 // pathological; surface them as a timeout signal instead of a silent stall.
@@ -98,11 +126,31 @@ function parseOxlintIssues(stdout: string): ParseOutcome {
   return { issues }
 }
 
+function summarizeLintResult(options: {
+  passed: boolean
+  backend: 'oxlint' | 'pnpm'
+  issueCount: number
+  exitCode: number
+  parseError?: string
+  timedOut?: boolean
+  aborted?: boolean
+}): string {
+  if (options.timedOut) return `lint timed out via ${options.backend}`
+  if (options.aborted) return `lint aborted via ${options.backend}`
+  if (options.parseError) return `lint failed: could not parse ${options.backend} output`
+  if (options.passed) return `lint passed via ${options.backend}`
+  if (options.issueCount > 0) {
+    return `lint failed with ${options.issueCount} issue${options.issueCount === 1 ? '' : 's'} via ${options.backend}`
+  }
+  return `lint failed via ${options.backend} (exit ${options.exitCode})`
+}
+
 const tool: ToolDescriptor = {
   name: 'ak_lint',
   description:
     'Run lint via `oxlint` (fast, structured JSON output) with `pnpm lint` as a fallback when oxlint is not on PATH. Returns `{passed, issues: [{file, line, rule, message}]}`.',
   inputSchema,
+  outputSchema,
   annotations: {
     title: 'Lint',
     readOnlyHint: true,
@@ -131,17 +179,29 @@ const tool: ToolDescriptor = {
 
     if (!isRunFailure(oxlintOutcome)) {
       const { issues, parseError } = parseOxlintIssues(oxlintOutcome.stdout)
-      const payload: Record<string, unknown> = {
+      const payload = {
         passed: oxlintOutcome.exitCode === 0,
-        issues,
+        summary: summarizeLintResult({
+          passed: oxlintOutcome.exitCode === 0,
+          backend: 'oxlint',
+          issueCount: issues.length,
+          exitCode: oxlintOutcome.exitCode,
+          parseError,
+          timedOut: oxlintOutcome.timedOut,
+          aborted: oxlintOutcome.aborted,
+        }),
         backend: 'oxlint' as const,
         exitCode: oxlintOutcome.exitCode,
-        output: oxlintOutcome.stderr || undefined,
+        counts: { issueCount: issues.length },
+        details: {
+          issues,
+          parseError,
+        },
+        ...clipRawOutput(oxlintOutcome.stderr, undefined, { toolName: 'ak_lint' }),
+        timedOut: oxlintOutcome.timedOut || undefined,
+        aborted: oxlintOutcome.aborted || undefined,
       }
-      if (parseError) payload.parseError = parseError
-      if (oxlintOutcome.timedOut) payload.timedOut = true
-      if (oxlintOutcome.aborted) payload.aborted = true
-      return { content: [{ type: 'text', text: JSON.stringify(payload) }] }
+      return createSummaryResult(payload)
     }
 
     // Only fall back to pnpm lint when oxlint is genuinely missing on PATH.
@@ -150,38 +210,59 @@ const tool: ToolDescriptor = {
     if (!isMissingBinary(oxlintOutcome)) {
       const payload = {
         passed: false,
-        issues: [] as LintIssue[],
+        summary: 'lint could not start: oxlint spawn failed',
         backend: 'oxlint' as const,
         exitCode: 1,
-        spawnError: `oxlint spawn failed: ${oxlintOutcome.error.code ?? 'unknown'} ${oxlintOutcome.error.message}`,
+        counts: { issueCount: 0 },
+        details: {
+          issues: [] as LintIssue[],
+          spawnError: `oxlint spawn failed: ${oxlintOutcome.error.code ?? 'unknown'} ${oxlintOutcome.error.message}`,
+        },
       }
       // `isError: true` per MCP spec — the tool didn't run, the agent can't
       // resolve this by changing inputs. Distinct from "lint found issues."
-      return { content: [{ type: 'text', text: JSON.stringify(payload) }], isError: true }
+      return createSummaryResult(payload, { isError: true })
     }
 
     const pnpmOutcome = await runCommand('pnpm', ['lint'], runOptions)
     if (isRunFailure(pnpmOutcome)) {
       const payload = {
         passed: false,
-        issues: [] as LintIssue[],
+        summary: 'lint could not start: pnpm lint spawn failed',
         backend: 'pnpm' as const,
         exitCode: 1,
-        spawnError: `oxlint missing and pnpm spawn failed: ${pnpmOutcome.error.message}`,
+        counts: { issueCount: 0 },
+        details: {
+          issues: [] as LintIssue[],
+          spawnError: `oxlint missing and pnpm spawn failed: ${pnpmOutcome.error.message}`,
+        },
       }
-      return { content: [{ type: 'text', text: JSON.stringify(payload) }], isError: true }
+      return createSummaryResult(payload, { isError: true })
     }
 
-    const payload: Record<string, unknown> = {
+    const payload = {
       passed: pnpmOutcome.exitCode === 0,
-      issues: [] as LintIssue[],
+      summary: summarizeLintResult({
+        passed: pnpmOutcome.exitCode === 0,
+        backend: 'pnpm',
+        issueCount: 0,
+        exitCode: pnpmOutcome.exitCode,
+        timedOut: pnpmOutcome.timedOut,
+        aborted: pnpmOutcome.aborted,
+      }),
       backend: 'pnpm' as const,
       exitCode: pnpmOutcome.exitCode,
-      output: [pnpmOutcome.stdout, pnpmOutcome.stderr].filter(Boolean).join(''),
+      counts: { issueCount: 0 },
+      details: {
+        issues: [] as LintIssue[],
+      },
+      ...clipRawOutput([pnpmOutcome.stdout, pnpmOutcome.stderr].filter(Boolean).join(''), undefined, {
+        toolName: 'ak_lint',
+      }),
+      timedOut: pnpmOutcome.timedOut || undefined,
+      aborted: pnpmOutcome.aborted || undefined,
     }
-    if (pnpmOutcome.timedOut) payload.timedOut = true
-    if (pnpmOutcome.aborted) payload.aborted = true
-    return { content: [{ type: 'text', text: JSON.stringify(payload) }] }
+    return createSummaryResult(payload)
   },
 }
 

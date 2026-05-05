@@ -92,7 +92,13 @@ describe('ak_lint tool', () => {
       string,
       unknown
     >
-    expect(payload).toMatchObject({ passed: true, issues: [] })
+    expect(result.structuredContent).toEqual(payload)
+    expect(payload).toMatchObject({
+      passed: true,
+      summary: 'lint passed via oxlint',
+      counts: { issueCount: 0 },
+      details: { issues: [] },
+    })
   })
 
   it('parses oxlint JSON output into structured issues', async () => {
@@ -134,24 +140,27 @@ describe('ak_lint tool', () => {
     const result = await akLintTool.handler({ files: ['a.ts', 'b.ts'] })
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {
       passed: boolean
-      issues: Array<{ file: string; line: number; rule: string; message: string }>
+      details: {
+        issues: Array<{ file: string; line: number; rule: string; message: string }>
+      }
     }
 
     expect(payload.passed).toBe(false)
-    expect(payload.issues).toHaveLength(3)
-    expect(payload.issues[0]).toEqual({
+    expect(payload.summary).toBe('lint failed with 3 issues via oxlint')
+    expect(payload.details.issues).toHaveLength(3)
+    expect(payload.details.issues[0]).toEqual({
       file: '/abs/path/a.ts',
       line: 12,
       rule: 'no-unused-vars',
       message: 'unused variable: x',
     })
-    expect(payload.issues[1]).toEqual({
+    expect(payload.details.issues[1]).toEqual({
       file: '/abs/path/a.ts',
       line: 30,
       rule: 'no-console',
       message: 'unexpected console statement',
     })
-    expect(payload.issues[2]).toEqual({
+    expect(payload.details.issues[2]).toEqual({
       file: '/abs/path/b.ts',
       line: 5,
       rule: 'eqeqeq',
@@ -175,14 +184,17 @@ describe('ak_lint tool', () => {
 
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {
       passed: boolean
-      issues: unknown[]
+      counts?: { issueCount: number }
+      details?: { issues: unknown[] }
       output?: string
       backend?: string
     }
     expect(payload.passed).toBe(true)
-    expect(payload.issues).toEqual([])
+    expect(payload.counts?.issueCount).toBe(0)
+    expect(payload.details?.issues).toEqual([])
     expect(payload.backend).toBe('pnpm')
-    expect(payload.output).toContain('lint ok')
+    expect(payload.summary).toBe('lint passed via pnpm')
+    expect(payload.rawOutput).toContain('lint ok')
   })
 
   // Regression: parseOxlintIssues used to silently return [] on JSON parse
@@ -194,12 +206,12 @@ describe('ak_lint tool', () => {
     const result = await akLintTool.handler({})
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {
       passed: boolean
-      issues: unknown[]
-      parseError?: string
+      details?: { issues: unknown[]; parseError?: string }
     }
     expect(payload.passed).toBe(false)
-    expect(payload.issues).toEqual([])
-    expect(payload.parseError).toMatch(/oxlint JSON\.parse failed/)
+    expect(payload.details?.issues).toEqual([])
+    expect(payload.summary).toBe('lint failed: could not parse oxlint output')
+    expect(payload.details?.parseError).toMatch(/oxlint JSON\.parse failed/)
   })
 
   it('annotates `parseError` when oxlint stdout is JSON but not an array', async () => {
@@ -207,9 +219,9 @@ describe('ak_lint tool', () => {
 
     const result = await akLintTool.handler({})
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {
-      parseError?: string
+      details?: { parseError?: string }
     }
-    expect(payload.parseError).toMatch(/not a JSON array/)
+    expect(payload.details?.parseError).toMatch(/not a JSON array/)
   })
 
   // Regression: every spawn error used to be conflated with "binary missing"
@@ -225,11 +237,12 @@ describe('ak_lint tool', () => {
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {
       passed: boolean
       backend: string
-      spawnError?: string
+      details?: { spawnError?: string }
     }
     expect(payload.passed).toBe(false)
     expect(payload.backend).toBe('oxlint')
-    expect(payload.spawnError).toMatch(/EPERM/)
+    expect(payload.summary).toBe('lint could not start: oxlint spawn failed')
+    expect(payload.details?.spawnError).toMatch(/EPERM/)
   })
 
   // Regression: spawn-failure paths are real execution errors per MCP spec —
@@ -268,5 +281,19 @@ describe('ak_lint tool', () => {
 
     const result = await akLintTool.handler({})
     expect(result.isError).toBeUndefined()
+  })
+
+  it('clips long raw fallback output and marks it truncated', async () => {
+    spawnMock
+      .mockReturnValueOnce(fakeChild({ error: enoent() }))
+      .mockReturnValueOnce(fakeChild({ stdout: 'x'.repeat(5_000), exitCode: 1 }))
+
+    const result = await akLintTool.handler({})
+    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      rawOutput?: string
+      truncated?: boolean
+    }
+    expect(payload.rawOutput).toHaveLength(4_000)
+    expect(payload.truncated).toBe(true)
   })
 })

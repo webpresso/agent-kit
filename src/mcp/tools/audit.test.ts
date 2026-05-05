@@ -62,8 +62,11 @@ function failingAudit() {
 function parsePayload(result: { content: ReadonlyArray<{ type: string; text?: string }> }) {
   return JSON.parse((result.content[0] as { text: string }).text) as {
     passed: boolean
+    summary: string
     kind: string
     details: unknown
+    rawOutput?: string
+    truncated?: boolean
   }
 }
 
@@ -90,7 +93,9 @@ describe('ak_audit tool', () => {
       const result = await akAuditTool.handler({ kind: 'catalog-drift' })
       expect(repoGuardrailsMock.auditCatalogDrift).toHaveBeenCalledTimes(1)
       const payload = parsePayload(result)
+      expect(result.structuredContent).toEqual(payload)
       expect(payload.passed).toBe(true)
+      expect(payload.summary).toBe('catalog-drift audit passed (1 checked)')
       expect(payload.kind).toBe('catalog-drift')
     })
 
@@ -112,6 +117,7 @@ describe('ak_audit tool', () => {
       const result = await akAuditTool.handler({ kind: 'commit-message' })
       const payload = parsePayload(result)
       expect(payload.passed).toBe(false)
+      expect(payload.summary).toBe('commit-message audit could not run: message file missing')
       expect(payload.kind).toBe('commit-message')
     })
 
@@ -160,6 +166,7 @@ describe('ak_audit tool', () => {
       const result = await akAuditTool.handler({ kind: 'catalog-drift' })
       const payload = parsePayload(result)
       expect(payload.passed).toBe(false)
+      expect(payload.summary).toBe('catalog-drift audit failed with 1 violation')
       expect(payload.kind).toBe('catalog-drift')
       expect(payload.details).toBeDefined()
     })
@@ -171,6 +178,7 @@ describe('ak_audit tool', () => {
       const result = await akAuditTool.handler({ kind: 'docs-frontmatter' })
       const payload = parsePayload(result)
       expect(payload.passed).toBe(false)
+      expect(payload.summary).toBe('docs-frontmatter audit crashed')
       expect(payload.kind).toBe('docs-frontmatter')
       expect(String(payload.details)).toContain('disk on fire')
     })
@@ -187,6 +195,7 @@ describe('ak_audit tool', () => {
       const payload = parsePayload(result)
       expect(payload.passed).toBe(false)
       expect(payload.kind).toBe('tph')
+      expect(payload.summary).toBe('tph audit failed (exit 2)')
     })
 
     it('tph-e2e returns {passed:false} on non-zero exit', async () => {
@@ -195,6 +204,7 @@ describe('ak_audit tool', () => {
       const payload = parsePayload(result)
       expect(payload.passed).toBe(false)
       expect(payload.kind).toBe('tph-e2e')
+      expect(payload.summary).toBe('tph-e2e audit failed (exit 2)')
     })
   })
 
@@ -203,6 +213,15 @@ describe('ak_audit tool', () => {
       const result = await akAuditTool.handler({ kind: 'not-a-kind' })
       const payload = parsePayload(result)
       expect(payload.passed).toBe(false)
+      expect(payload.summary).toMatch(/Invalid/)
     })
+  })
+
+  it('clips long script audit output and marks it truncated', async () => {
+    spawnMock.mockReturnValue(fakeChild({ stdout: 'x'.repeat(5_000), exitCode: 1 }))
+    const result = await akAuditTool.handler({ kind: 'tph-e2e' })
+    const payload = parsePayload(result)
+    expect(payload.rawOutput).toHaveLength(4_000)
+    expect(payload.truncated).toBe(true)
   })
 })

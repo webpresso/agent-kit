@@ -96,16 +96,18 @@ describe('ak_typecheck tool', () => {
       )
 
       const result = await akTypecheckTool.handler({})
-      const payload = JSON.parse((result.content[0] as { text: string }).text) as {
-        passed: boolean
-        errorCount: number
-        errors: { file: string; line: number; code: string; message: string }[]
-      }
+    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      passed: boolean
+      counts: { errorCount: number }
+      details: { errors: { file: string; line: number; code: string; message: string }[] }
+    }
+    expect(result.structuredContent).toEqual(payload)
 
-      expect(payload.passed).toBe(false)
-      expect(payload.errorCount).toBe(1)
-      expect(payload.errors).toHaveLength(1)
-      expect(payload.errors[0]).toEqual({
+    expect(payload.passed).toBe(false)
+    expect(payload.summary).toBe('typecheck failed with 1 error')
+    expect(payload.counts.errorCount).toBe(1)
+    expect(payload.details.errors).toHaveLength(1)
+    expect(payload.details.errors[0]).toEqual({
         file: 'src/foo.ts',
         line: 5,
         code: '2304',
@@ -119,11 +121,29 @@ describe('ak_typecheck tool', () => {
       const result = await akTypecheckTool.handler({})
       const payload = JSON.parse((result.content[0] as { text: string }).text) as {
         passed: boolean
-        errorCount: number
-        errors: unknown[]
+        summary: string
+        counts: { errorCount: number }
+        details: { errors: unknown[] }
       }
 
-      expect(payload).toMatchObject({ passed: true, errorCount: 0, errors: [] })
+      expect(payload).toMatchObject({
+        passed: true,
+        summary: 'typecheck passed',
+        counts: { errorCount: 0 },
+        details: { errors: [] },
+      })
+    })
+
+    it('clips long raw typecheck output and marks it truncated', async () => {
+      spawnMock.mockReturnValue(fakeChild({ stdout: 'x'.repeat(5_000), exitCode: 1 }))
+
+      const result = await akTypecheckTool.handler({})
+      const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+        rawOutput?: string
+        truncated?: boolean
+      }
+      expect(payload.rawOutput).toHaveLength(4_000)
+      expect(payload.truncated).toBe(true)
     })
   })
 })

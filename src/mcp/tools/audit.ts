@@ -21,6 +21,7 @@ import { z } from 'zod'
 
 import { resolvePackageAsset } from '#utils/package-assets'
 import type { ToolDescriptor } from '#mcp/auto-discover'
+import { clipRawOutput, createSummaryResult, summaryFirstResultSchema } from './_shared/result.js'
 
 const KINDS = [
   'tph',
@@ -50,9 +51,32 @@ interface RepoAuditLikeResult {
 
 type AuditPayload = {
   passed: boolean
+  summary: string
   kind: string
   details: string | RepoAuditLikeResult | { exitCode: number }
+  rawOutput?: string
+  truncated?: true
+  logPath?: string
 }
+
+const repoAuditSchema = z.object({
+  ok: z.boolean(),
+  title: z.string().optional(),
+  checked: z.number().optional(),
+  violations: z
+    .array(
+      z.object({
+        message: z.string(),
+        file: z.string().optional(),
+      }),
+    )
+    .optional(),
+})
+
+const outputSchema = summaryFirstResultSchema.extend({
+  kind: z.enum(KINDS),
+  details: z.union([repoAuditSchema, z.object({ exitCode: z.number() }), z.string()]),
+})
 
 function resolveAuditScript(name: string): string {
   // Source layout: `src/mcp/tools/audit.ts` → `../../audit/<name>`.
@@ -63,21 +87,41 @@ function resolveAuditScript(name: string): string {
   return resolvePackageAsset(`src/audit/${name}`)
 }
 
-async function runScript(script: string): Promise<number> {
-  return new Promise<number>((resolve) => {
+async function runScript(script: string): Promise<{ exitCode: number; output: string }> {
+  return new Promise<{ exitCode: number; output: string }>((resolve) => {
     const child = spawn('bun', [script], { stdio: 'pipe' })
-    child.stdout?.on('data', () => {})
-    child.stderr?.on('data', () => {})
-    child.on('error', () => resolve(1))
-    child.on('close', (code) => resolve(code ?? 1))
+    let stdout = ''
+    let stderr = ''
+    child.stdout?.on('data', (chunk: Buffer) => {
+      stdout += chunk.toString('utf8')
+    })
+    child.stderr?.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString('utf8')
+    })
+    child.on('error', (error) =>
+      resolve({ exitCode: 1, output: [stdout, stderr, error.message].filter(Boolean).join('') }),
+    )
+    child.on('close', (code) =>
+      resolve({ exitCode: code ?? 1, output: [stdout, stderr].filter(Boolean).join('') }),
+    )
   })
 }
 
 function wrap(payload: AuditPayload, options: { isError?: boolean } = {}) {
-  return {
-    content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
-    ...(options.isError ? { isError: true } : {}),
+  return createSummaryResult(payload, options)
+}
+
+function summarizeRepoAudit(kind: string, result: RepoAuditLikeResult): string {
+  const violationCount = result.violations?.length ?? 0
+  if (result.ok) {
+    const checked = typeof result.checked === 'number' ? ` (${result.checked} checked)` : ''
+    return `${kind} audit passed${checked}`
   }
+  return `${kind} audit failed with ${violationCount} violation${violationCount === 1 ? '' : 's'}`
+}
+
+function summarizeExitCode(kind: string, exitCode: number): string {
+  return exitCode === 0 ? `${kind} audit passed` : `${kind} audit failed (exit ${exitCode})`
 }
 
 async function dispatch(
@@ -88,56 +132,69 @@ async function dispatch(
     case 'catalog-drift': {
       const { auditCatalogDrift } = await import('#audit/repo-guardrails')
       const auditResult = auditCatalogDrift(input.directory ?? process.cwd())
-      return { passed: auditResult.ok, kind, details: auditResult }
+      return { passed: auditResult.ok, summary: summarizeRepoAudit(kind, auditResult), kind, details: auditResult }
     }
     case 'docs-frontmatter': {
       const { auditDocsFrontmatter } = await import('#audit/repo-guardrails')
       const auditResult = auditDocsFrontmatter(input.directory ?? process.cwd())
-      return { passed: auditResult.ok, kind, details: auditResult }
+      return { passed: auditResult.ok, summary: summarizeRepoAudit(kind, auditResult), kind, details: auditResult }
     }
     case 'blueprint-lifecycle': {
       const { auditBlueprintLifecycle } = await import('#audit/repo-guardrails')
       const auditResult = auditBlueprintLifecycle(input.directory ?? process.cwd())
-      return { passed: auditResult.ok, kind, details: auditResult }
+      return { passed: auditResult.ok, summary: summarizeRepoAudit(kind, auditResult), kind, details: auditResult }
     }
     case 'commit-message': {
       const messageFile = input.messageFile ?? input.directory
       if (!messageFile) {
         return {
           passed: false,
+          summary: 'commit-message audit could not run: message file missing',
           kind,
           details: 'commit-message requires a message file via `messageFile` or `directory`.',
         }
       }
       const { auditCommitMessageFile } = await import('#audit/repo-guardrails')
       const auditResult = auditCommitMessageFile(messageFile)
-      return { passed: auditResult.ok, kind, details: auditResult }
+      return { passed: auditResult.ok, summary: summarizeRepoAudit(kind, auditResult), kind, details: auditResult }
     }
     case 'tech-debt': {
       const { auditTechDebt } = await import('#audit/tech-debt')
       const auditResult = auditTechDebt(input.directory ?? process.cwd())
-      return { passed: auditResult.ok, kind, details: auditResult }
+      return { passed: auditResult.ok, summary: summarizeRepoAudit(kind, auditResult), kind, details: auditResult }
     }
     case 'bundle-budget': {
       const { runBundleBudgetCli } = await import('../../vite/local.js')
       const args = input.directory ? [input.directory] : []
       const exitCode = await runBundleBudgetCli(args)
-      return { passed: exitCode === 0, kind, details: { exitCode } }
+      return { passed: exitCode === 0, summary: summarizeExitCode(kind, exitCode), kind, details: { exitCode } }
     }
     case 'tph': {
       const script = resolveAuditScript('audit-tph.ts')
-      const exitCode = await runScript(script)
-      return { passed: exitCode === 0, kind, details: { exitCode } }
+      const { exitCode, output } = await runScript(script)
+      return {
+        passed: exitCode === 0,
+        summary: summarizeExitCode(kind, exitCode),
+        kind,
+        details: { exitCode },
+        ...clipRawOutput(output, undefined, { toolName: `ak_audit-${kind}` }),
+      }
     }
     case 'tph-e2e': {
       const script = resolveAuditScript('audit-tph-e2e.ts')
-      const exitCode = await runScript(script)
-      return { passed: exitCode === 0, kind, details: { exitCode } }
+      const { exitCode, output } = await runScript(script)
+      return {
+        passed: exitCode === 0,
+        summary: summarizeExitCode(kind, exitCode),
+        kind,
+        details: { exitCode },
+        ...clipRawOutput(output, undefined, { toolName: `ak_audit-${kind}` }),
+      }
     }
     default: {
       // Exhaustiveness check — z.enum should make this unreachable.
       const _exhaustive: never = kind
-      return { passed: false, kind: String(_exhaustive), details: 'unreachable' }
+      return { passed: false, summary: 'audit dispatch hit unreachable case', kind: String(_exhaustive), details: 'unreachable' }
     }
   }
 }
@@ -147,6 +204,7 @@ const tool: ToolDescriptor = {
   description:
     'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-lifecycle, bundle-budget, commit-message, tech-debt). Returns {passed, kind, details}.',
   inputSchema,
+  outputSchema,
   annotations: {
     title: 'Audit',
     readOnlyHint: true,
@@ -166,7 +224,10 @@ const tool: ToolDescriptor = {
           : 'unknown'
       // Schema validation failure — agent supplied bad input; isError lets
       // it distinguish "audit ran and found issues" from "audit didn't run".
-      return wrap({ passed: false, kind, details: message }, { isError: true })
+      return wrap(
+        { passed: false, summary: `Invalid ak_audit input for ${kind}`, kind, details: message },
+        { isError: true },
+      )
     }
 
     try {
@@ -174,7 +235,10 @@ const tool: ToolDescriptor = {
       return wrap(payload)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      return wrap({ passed: false, kind: input.kind, details: message }, { isError: true })
+      return wrap(
+        { passed: false, summary: `${input.kind} audit crashed`, kind: input.kind, details: message },
+        { isError: true },
+      )
     }
   },
 }

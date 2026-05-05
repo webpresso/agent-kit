@@ -25,6 +25,7 @@ export interface ContentBlock {
 
 export interface ToolHandlerResult {
   readonly content: readonly ContentBlock[]
+  readonly structuredContent?: Record<string, unknown>
   readonly isError?: boolean
 }
 
@@ -55,6 +56,9 @@ export interface ToolDescriptor {
   readonly name: string
   readonly description: string
   readonly inputSchema: ZodType<unknown> | { _def: unknown; parse: (x: unknown) => unknown }
+  readonly outputSchema?:
+    | ZodType<unknown>
+    | { _def: unknown; parse: (x: unknown) => unknown }
   readonly handler: ToolHandler
   readonly annotations?: ToolAnnotations
 }
@@ -70,6 +74,7 @@ export interface ToolRegistrar {
     name: string,
     description: string,
     jsonSchema: Record<string, unknown>,
+    outputSchema: Record<string, unknown> | undefined,
     handler: ToolHandler,
     annotations?: ToolAnnotations,
   ): void
@@ -175,10 +180,14 @@ export async function discoverTools(
     }
 
     const jsonSchema = toJsonSchema(descriptor.inputSchema)
+    const outputSchema = descriptor.outputSchema
+      ? toJsonSchema(descriptor.outputSchema)
+      : undefined
     server.registerTool(
       descriptor.name,
       descriptor.description,
       jsonSchema,
+      outputSchema,
       descriptor.handler,
       descriptor.annotations,
     )

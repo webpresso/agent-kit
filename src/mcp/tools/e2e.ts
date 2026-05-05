@@ -19,6 +19,11 @@ import {
   plannedGroupsToCommandConfigs,
   runCommandConfigs,
 } from '../../e2e/execution.js'
+import {
+  clipRawOutput,
+  createSummaryResult,
+  summaryFirstResultSchema,
+} from './_shared/result.js'
 
 const inputSchema = z.object({
   suite: z.string().optional(),
@@ -41,6 +46,28 @@ interface E2eCommandShape {
   args: string[]
   env?: Record<string, string>
 }
+
+const outputSchema = summaryFirstResultSchema.extend({
+  counts: z
+    .object({
+      suiteCount: z.number(),
+      commandCount: z.number(),
+    })
+    .optional(),
+  details: z
+    .object({
+      commands: z.array(
+        z.object({
+          command: z.string(),
+          args: z.array(z.string()),
+          env: z.record(z.string(), z.string()).optional(),
+        }),
+      ),
+      suiteIds: z.array(z.string()),
+      runnerSummary: z.record(z.string(), z.number()),
+    })
+    .optional(),
+})
 
 function summarizeRunners(groups: readonly PlannedE2eRunGroup[]): Record<string, number> {
   const counts = new Map<string, number>()
@@ -66,11 +93,26 @@ function toSerializableCommands(commands: readonly CommandConfig[]): E2eCommandS
   }))
 }
 
+function summarizeRun(
+  passed: boolean,
+  exitCode: number,
+  suiteIds: readonly string[],
+  commandCount: number,
+): string {
+  const suiteLabel = `${suiteIds.length} suite${suiteIds.length === 1 ? '' : 's'}`
+  const commandLabel = `${commandCount} command${commandCount === 1 ? '' : 's'}`
+  if (passed) {
+    return `e2e passed: ${suiteLabel}, ${commandLabel}`
+  }
+  return `e2e failed: ${suiteLabel}, ${commandLabel} (exit ${exitCode})`
+}
+
 const tool: ToolDescriptor = {
   name: 'ak_e2e',
   description:
     'Run E2E execution through the portable agent-kit planner. Suite-aware and host-adapter-aware; returns `{passed, exitCode, commands, output}` plus suite and runner summaries.',
   inputSchema,
+  outputSchema,
   annotations: {
     title: 'E2E',
     destructiveHint: false,
@@ -93,19 +135,25 @@ const tool: ToolDescriptor = {
     })
     const commands = plannedGroupsToCommandConfigs(groups)
     const result = await runCommandConfigs(commands, { signal: extra?.signal })
+    const suiteIds = collectSuiteIds(groups)
 
     const payload = {
       passed: result.passed,
+      summary: summarizeRun(result.passed, result.exitCode, suiteIds, commands.length),
       exitCode: result.exitCode,
-      commands: toSerializableCommands(commands),
-      output: result.output,
-      suiteIds: collectSuiteIds(groups),
-      runnerSummary: summarizeRunners(groups),
+      counts: {
+        suiteCount: suiteIds.length,
+        commandCount: commands.length,
+      },
+      details: {
+        commands: toSerializableCommands(commands),
+        suiteIds,
+        runnerSummary: summarizeRunners(groups),
+      },
+      ...clipRawOutput(result.output, undefined, { toolName: 'ak_e2e' }),
     }
 
-    return {
-      content: [{ type: 'text', text: JSON.stringify(payload) }],
-    }
+    return createSummaryResult(payload)
   },
 }
 

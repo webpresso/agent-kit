@@ -77,14 +77,19 @@ describe('ak_e2e tool', () => {
     expect(runCommandConfigs).toHaveBeenCalledWith(commands, { signal: undefined })
 
     const payload = parsePayload(result)
+    expect(result.structuredContent).toEqual(payload)
     expect(payload).toMatchObject({
       passed: true,
+      summary: 'e2e passed: 1 suite, 1 command',
       exitCode: 0,
-      output: 'ok\n',
-      suiteIds: ['smoke'],
-      runnerSummary: { playwright: 1 },
+      counts: { suiteCount: 1, commandCount: 1 },
+      details: {
+        suiteIds: ['smoke'],
+        runnerSummary: { playwright: 1 },
+      },
+      rawOutput: 'ok\n',
     })
-    expect(payload.commands).toEqual(commands)
+    expect((payload.details as { commands: unknown[] }).commands).toEqual(commands)
   })
 
   it('propagates non-zero execution as passed=false with command metadata intact', async () => {
@@ -110,14 +115,48 @@ describe('ak_e2e tool', () => {
 
     const result = await akE2eTool.handler({ suite: 'platform-api' })
     const payload = parsePayload(result)
+    expect(result.structuredContent).toEqual(payload)
 
     expect(payload).toMatchObject({
       passed: false,
+      summary: 'e2e failed: 1 suite, 1 command (exit 1)',
       exitCode: 1,
-      output: 'boom\n',
-      suiteIds: ['platform-api'],
-      runnerSummary: { command: 1 },
+      counts: { suiteCount: 1, commandCount: 1 },
+      details: {
+        suiteIds: ['platform-api'],
+        runnerSummary: { command: 1 },
+      },
+      rawOutput: 'boom\n',
     })
-    expect(payload.commands).toEqual(commands)
+    expect((payload.details as { commands: unknown[] }).commands).toEqual(commands)
+  })
+
+  it('clips long E2E output and marks it truncated', async () => {
+    const groups = [
+      {
+        batchKey: 'smoke',
+        runs: [
+          {
+            suiteId: 'smoke',
+            batchKey: 'smoke',
+            runner: 'playwright',
+            logName: 'smoke',
+            command: 'pnpm',
+            args: ['exec', 'playwright', 'test'],
+          },
+        ],
+      },
+    ]
+    const commands = [{ command: 'pnpm', args: ['exec', 'playwright', 'test'] }]
+    createE2eExecutionPlan.mockResolvedValue(groups)
+    plannedGroupsToCommandConfigs.mockReturnValue(commands)
+    runCommandConfigs.mockResolvedValue({ passed: false, exitCode: 1, output: 'x'.repeat(5_000) })
+
+    const result = await akE2eTool.handler({ suite: 'smoke' })
+    const payload = parsePayload(result)
+    expect(result.structuredContent).toEqual(payload)
+    expect(payload.rawOutput).toHaveLength(4_000)
+    expect(payload.truncated).toBe(true)
+    expect(payload.logPath).toMatch(/^logs\//)
   })
 })
