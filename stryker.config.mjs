@@ -11,11 +11,11 @@ export default {
     // Evaluate ALL mutator types — no exclusions
     excludedMutations: [],
   },
-  // 'perTest' crashes in Stryker 9.6.1 + vitest 2.1.9 with IPC serialization error
-  // ("Cannot convert object to primitive value") in VitestTestRunner.dryRun.
-  // 'off' runs all tests for every mutant — matches how the April 2026 baseline
-  // was produced (command runner mode) and avoids the crash entirely.
-  coverageAnalysis: 'off',
+  // 'perTest' crashes in Stryker 9.6.1 + vitest 2.1.9 with IPC serialization error.
+  // 'all' collects joint coverage then runs only tests that cover each mutant.
+  coverageAnalysis: 'all',
+  // ignoreStatic requires 'perTest'; disable it so 'all' mode works.
+  ignoreStatic: false,
   vitest: {
     // Excludes dist-binary integration tests (runner.test.ts, init.e2e.test.ts)
     configFile: 'vitest.stryker.config.ts',
