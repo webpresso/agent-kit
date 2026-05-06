@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { detectTphViolations } from './audit-tph-detect.js'
+import { type Violation, detectTphViolations } from './audit-tph-detect.js'
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -84,7 +84,7 @@ describe('detectTphViolations', () => {
   it('returns over-mocking WARNING when non-infra mock count exceeds maxMocks', () => {
     const result = detectTphViolations([OVER_MOCKED_FILE], { maxMocks: 3 })
 
-    const overMockViolation = result.violations.find((v) => v.rule === 'over-mocking')
+    const overMockViolation = result.violations.find((v: Violation) => v.rule === 'over-mocking')
     expect(overMockViolation).toBeDefined()
     expect(overMockViolation?.severity).toBe('WARNING')
     expect(result.warningCount).toBeGreaterThanOrEqual(1)
@@ -94,14 +94,14 @@ describe('detectTphViolations', () => {
     // 4 mocks, maxMocks=4 — exactly at threshold, no violation
     const result = detectTphViolations([OVER_MOCKED_FILE], { maxMocks: 4 })
 
-    const overMockViolation = result.violations.find((v) => v.rule === 'over-mocking')
+    const overMockViolation = result.violations.find((v: Violation) => v.rule === 'over-mocking')
     expect(overMockViolation).toBeUndefined()
   })
 
   it('returns service-mock-in-unit-test ERROR for internal mock in .test.ts', () => {
     const result = detectTphViolations([INTERNAL_MOCK_UNIT_FILE])
 
-    const violation = result.violations.find((v) => v.rule === 'service-mock-in-unit-test')
+    const violation = result.violations.find((v: Violation) => v.rule === 'service-mock-in-unit-test')
     expect(violation).toBeDefined()
     expect(violation?.severity).toBe('ERROR')
     expect(result.errorCount).toBeGreaterThanOrEqual(1)
@@ -110,7 +110,7 @@ describe('detectTphViolations', () => {
   it('does NOT flag internal mock in .integration.test.ts', () => {
     const result = detectTphViolations([INTEGRATION_MOCK_FILE])
 
-    const violation = result.violations.find((v) => v.rule === 'service-mock-in-unit-test')
+    const violation = result.violations.find((v: Violation) => v.rule === 'service-mock-in-unit-test')
     expect(violation).toBeUndefined()
     expect(result.errorCount).toBe(0)
   })
@@ -118,7 +118,7 @@ describe('detectTphViolations', () => {
   it('does NOT flag allowlisted @myorg/* mock as service mock', () => {
     const result = detectTphViolations([ALLOWLISTED_MOCK_UNIT_FILE])
 
-    const serviceViolation = result.violations.find((v) => v.rule === 'service-mock-in-unit-test')
+    const serviceViolation = result.violations.find((v: Violation) => v.rule === 'service-mock-in-unit-test')
     expect(serviceViolation).toBeUndefined()
     expect(result.errorCount).toBe(0)
   })
@@ -126,14 +126,14 @@ describe('detectTphViolations', () => {
   it('does NOT flag [TPH-INFRA]-tagged mock as service mock', () => {
     const result = detectTphViolations([INFRA_TAGGED_MOCK_FILE])
 
-    const serviceViolation = result.violations.find((v) => v.rule === 'service-mock-in-unit-test')
+    const serviceViolation = result.violations.find((v: Violation) => v.rule === 'service-mock-in-unit-test')
     expect(serviceViolation).toBeUndefined()
   })
 
   it('returns inline-yaml ERROR for multiline YAML string in writeFileSync', () => {
     const result = detectTphViolations([INLINE_YAML_FILE])
 
-    const violation = result.violations.find((v) => v.rule === 'inline-yaml')
+    const violation = result.violations.find((v: Violation) => v.rule === 'inline-yaml')
     expect(violation).toBeDefined()
     expect(violation?.severity).toBe('ERROR')
   })
@@ -148,7 +148,7 @@ describe('detectTphViolations', () => {
     const result = detectTphViolations([INTERNAL_MOCK_UNIT_FILE, OVER_MOCKED_FILE], { maxMocks: 3 })
 
     expect(result.violations.length).toBeGreaterThan(0)
-    const files = new Set(result.violations.map((v) => v.file))
+    const files = new Set(result.violations.map((v: Violation) => v.file))
     expect(files.size).toBeGreaterThanOrEqual(2)
   })
 

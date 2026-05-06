@@ -107,12 +107,12 @@ describe('syncCursorWindsurfSkills', () => {
 
       const report = await syncCursorWindsurfSkills(SOURCE, [TARGET_A], deps)
 
-      const badSkipped = report.skipped.find((s) => s.path.endsWith('bad.md'))
+      const badSkipped = report.skipped.find((s: {src: string; dst: string}) => s.path.endsWith('bad.md'))
       expect(badSkipped).toBeDefined()
       expect(badSkipped?.reason).toContain('permission denied')
 
       // good.md still copied
-      const goodCopied = report.copied.find((c) => c.src.endsWith('good.md'))
+      const goodCopied = report.copied.find((c: {src: string; dst: string}) => c.src.endsWith('good.md'))
       expect(goodCopied).toBeDefined()
     })
 
