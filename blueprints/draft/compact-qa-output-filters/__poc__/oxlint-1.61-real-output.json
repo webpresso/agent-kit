@@ -1,0 +1,8 @@
+{ "diagnostics": [{"message": "Unexpected console statement.","code": "eslint(no-console)","severity": "warning","causes": [],"url": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-console.html","help": "Delete this console statement.","filename": "src/bad.ts","labels": [{"span": {"offset": 10,"length": 11,"line": 2,"column": 1}}],"related": []},
+{"message": "`debugger` statement is not allowed","code": "eslint(no-debugger)","severity": "error","causes": [],"url": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-debugger.html","help": "Remove the debugger statement","filename": "src/bad.ts","labels": [{"span": {"offset": 0,"length": 9,"line": 1,"column": 1}}],"related": []}],
+              "number_of_files": 1,
+              "number_of_rules": 94,
+              "threads_count": 8,
+              "start_time": 0.044570459
+            }
+            
