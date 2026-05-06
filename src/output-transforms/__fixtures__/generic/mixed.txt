@@ -1,0 +1,10 @@
+booting
+plain output
+info: still working
+warn: harmless
+step one
+ERROR: compact this line
+noise after
+summary ok
+done
+trailing

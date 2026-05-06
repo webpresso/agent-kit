@@ -1,0 +1,14 @@
+{
+  "files": [
+    {
+      "file": "src/component.test.ts",
+      "tasks": [
+        {
+          "name": "renders",
+          "state": "failed",
+          "failureMessages": ["expected true to be false\n    at src/component.test.ts:4:1"]
+        }
+      ]
+    }
+  ]
+}

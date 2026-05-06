@@ -27,6 +27,15 @@ Use the narrowest scope that proves your change:
 | Tests      | `test --file <paths...>` / `--package <name>` |
 | Typecheck  | `typecheck --package <name>`         |
 
+When this repo exposes the agent-kit quality MCP/CLI surface, prefer
+`ak_qa`/`ak_lint`/`ak_typecheck`/`ak_test` leaves (or the equivalent wrapped
+`ak qa` surface) for local-dev agent runs. Their compact output filters return
+summary-first payloads with `failures`, `tier`, `bytes`, and `tokensSaved`, so
+agents can reason over the error set without dumping full test/lint logs into
+context. Use `ak err <cmd>` only for ad hoc commands that do not yet have a
+specific wrapper; it strips non-failure-looking lines and preserves the
+subcommand exit code.
+
 **Multi-target:** `--file` and `--package` typically accept multiple
 space-separated values. Check your repo's task runner for the exact flag
 surface.
@@ -65,4 +74,5 @@ breaks auto-logging and hides real output.
 - Prefer the repo's recipe surface over raw package-manager execution when
   the repo expects a wrapped CLI invocation.
 - Never pipe quality commands at all — they typically auto-log (and piping
-  may be blocked by pretool hooks).
+  may be blocked by pretool hooks). Use compact wrappers such as `ak err`
+  instead of piping through `grep`/`tail`.

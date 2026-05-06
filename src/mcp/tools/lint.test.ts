@@ -186,15 +186,17 @@ describe('ak_lint tool', () => {
       passed: boolean
       counts?: { issueCount: number }
       details?: { issues: unknown[] }
-      output?: string
+      rawOutput?: string
       backend?: string
+      tier?: number
     }
     expect(payload.passed).toBe(true)
     expect(payload.counts?.issueCount).toBe(0)
     expect(payload.details?.issues).toEqual([])
     expect(payload.backend).toBe('pnpm')
     expect(payload.summary).toBe('lint passed via pnpm')
-    expect(payload.rawOutput).toContain('lint ok')
+    expect(payload.rawOutput).toBe('')
+    expect(payload.tier).toBe(3)
   })
 
   // Regression: parseOxlintIssues used to silently return [] on JSON parse
@@ -222,6 +224,40 @@ describe('ak_lint tool', () => {
       details?: { parseError?: string }
     }
     expect(payload.details?.parseError).toMatch(/not a JSON array/)
+  })
+
+  it('parses wrapped oxlint object output with a non-json prelude', async () => {
+    spawnMock.mockReturnValue(
+      fakeChild({
+        stdout:
+          'No files found to lint. Please check your paths and ignore patterns.\\n' +
+          JSON.stringify({
+            diagnostics: [
+              {
+                filePath: 'a.ts',
+                messages: [{ line: 1, ruleId: 'parse', message: 'Unexpected token' }],
+              },
+            ],
+          }),
+        exitCode: 1,
+      }),
+    )
+
+    const result = await akLintTool.handler({ files: ['a.ts'] })
+    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      passed: boolean
+      counts?: { issueCount: number }
+      details?: { issues: Array<{ file: string; rule: string; message: string }>; parseError?: string }
+    }
+
+    expect(payload.passed).toBe(false)
+    expect(payload.counts?.issueCount).toBe(1)
+    expect(payload.details?.parseError).toBeUndefined()
+    expect(payload.details?.issues[0]).toMatchObject({
+      file: 'a.ts',
+      rule: 'parse',
+      message: 'Unexpected token',
+    })
   })
 
   // Regression: every spawn error used to be conflated with "binary missing"
@@ -283,10 +319,10 @@ describe('ak_lint tool', () => {
     expect(result.isError).toBeUndefined()
   })
 
-  it('clips long raw fallback output and marks it truncated', async () => {
+  it('clips long generic fallback error output and marks it truncated', async () => {
     spawnMock
       .mockReturnValueOnce(fakeChild({ error: enoent() }))
-      .mockReturnValueOnce(fakeChild({ stdout: 'x'.repeat(5_000), exitCode: 1 }))
+      .mockReturnValueOnce(fakeChild({ stdout: `ERROR ${'x'.repeat(5_000)}`, exitCode: 1 }))
 
     const result = await akLintTool.handler({})
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {

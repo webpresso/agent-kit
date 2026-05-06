@@ -73,9 +73,34 @@ Ensures gstack — a Claude Code skill registry providing `/qa`, `/ship`, `/revi
 **Idempotency:** if gstack already has a usable install root, `ak setup --with gstack` refreshes it in place (`gstack: ✓ updated`). Managed installs with a `.git/` directory do a fast-forward pull before `./setup --team`; unmanaged-but-valid installs (a `setup` script without `.git/`) rerun `./setup --team` without forcing git metadata.
 **Side-effects outside the consumer repo:** writes to the user's home dir at `~/.claude/skills/gstack/`. This is intentional — gstack is global by design. Only opt in via `--with gstack` when you actually want gstack's skills available.
 
+### `rtk`
+
+Ensures [rtk](https://github.com/rtk-ai/rtk) is available, then runs
+`rtk init -g --auto-patch`. Agent-kit treats RTK as a peer plugin: RTK owns
+long-tail shell-tool filtering, while agent-kit keeps `ak_*` quality routing.
+
+**Detection:** `rtk --version` on PATH. If missing on macOS, setup falls back to
+the official current install hint: `brew install rtk`.
+**Failure modes:**
+- RTK still not on PATH after the fallback install path or on non-macOS without
+  RTK already installed → `EXIT_SETUP_FAIL` (exit 1)
+- `rtk init -g --auto-patch` exits non-zero → `EXIT_WRITE_FAIL` (exit 3)
+
+**Telemetry / config:** agent-kit invokes RTK with
+`RTK_TELEMETRY_DISABLED=1` and a prefilled `RTK_HOOK_EXCLUDE_COMMANDS` list so
+RTK skips commands already owned by `ak-pretool-guard`.
+
+**Current upstream nuance (May 2026):**
+- Claude-style hook surfaces compose via `.claude/settings.json`
+- Codex is treated as a prompt/instructions lane upstream, not a hook-rewrite
+  lane, so agent-kit does **not** add RTK to `.codex/hooks.json`
+
+**Marker:** `ak setup --with rtk` writes `.agent/.rtk-requested` so `ak doctor`
+can report RTK only for repos that opted in.
+
 ## Combining presets
 
-Presets run independently in the order: `lore-commits`, `vision`, `omx`, `playwright-mcp`, `gstack`. The default preset set is `omx,gstack,vision`; `playwright-mcp` is also applied whenever `omx` runs. Specifying default presets explicitly is safe and idempotent. A failure in one does **not** skip subsequent presets — every preset gets a chance to run. The aggregate exit code reflects the worst failure across all presets.
+Presets run independently in the order: `gstack`, `lore-commits`, `omx`, `playwright-mcp`, `rtk`, `vision`. The default preset set is `omx,gstack,vision`; `playwright-mcp` is also applied whenever `omx` runs. Specifying default presets explicitly is safe and idempotent. A failure in one does **not** skip subsequent presets — every preset gets a chance to run. The aggregate exit code reflects the worst failure across all presets.
 
 Example: `ak setup` with `omx` unavailable after the fallback install and a reusable gstack install root already present → omx logs an error, gstack still detects + reports `updated`, overall exit code is 1 (the omx failure dominates).
 

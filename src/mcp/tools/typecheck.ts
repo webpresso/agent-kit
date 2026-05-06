@@ -15,11 +15,11 @@ import { join } from 'node:path'
 import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
+import { applyOutputTransform } from '../../output-transforms/index.js'
 
 import { resolveProjectRoot } from './_shared/project-root.js'
 import {
   createSummaryOutputSchema,
-  clipRawOutput,
   createSummaryResult,
 } from './_shared/result.js'
 import { isRunFailure, runCommand, type RunResult } from './_shared/run-command.js'
@@ -166,14 +166,18 @@ const tool: ToolDescriptor = {
     const timedOut = runs.some((r) => r.timedOut)
     const aborted = runs.some((r) => r.aborted)
 
+    const { transform: _transform, ...compact } = applyOutputTransform(
+      [combinedStdout, combinedStderr].filter(Boolean).join(''),
+      {
+        toolName: 'ak_typecheck',
+      },
+    )
     const payload = {
       passed,
       summary: summarizeTypecheckResult({ passed, errorCount: errors.length, timedOut, aborted }),
       counts: { errorCount: errors.length },
       details: { errors },
-      ...clipRawOutput([combinedStdout, combinedStderr].filter(Boolean).join(''), undefined, {
-        toolName: 'ak_typecheck',
-      }),
+      ...compact,
       timedOut: timedOut || undefined,
       aborted: aborted || undefined,
     }

@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const lintHandler = vi.hoisted(() => vi.fn())
 const typecheckHandler = vi.hoisted(() => vi.fn())
@@ -32,6 +35,8 @@ vi.mock('./test.js', () => ({
 }))
 
 import akQaTool from './qa.js'
+
+const fixtureDir = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__')
 
 function wrapPayload(payload: unknown): { content: { type: string; text: string }[] } {
   return {
@@ -124,6 +129,29 @@ describe('ak_qa tool', () => {
     expect(payload.details.lint).toEqual(lintPayload)
     expect(payload.details.typecheck).toEqual(typecheckPayload)
     expect(payload.details.test).toEqual(testPayload)
+  })
+
+  it('preserves the qa envelope while carrying additive compact-output leaf metadata', async () => {
+    lintHandler.mockReset()
+    typecheckHandler.mockReset()
+    testHandler.mockReset()
+
+    const expected = JSON.parse(readFileSync(join(fixtureDir, 'qa-snapshot.json'), 'utf8')) as {
+      details: {
+        lint: Record<string, unknown>
+        typecheck: Record<string, unknown>
+        test: Record<string, unknown>
+      }
+    }
+
+    lintHandler.mockResolvedValue(wrapPayload(expected.details.lint))
+    typecheckHandler.mockResolvedValue(wrapPayload(expected.details.typecheck))
+    testHandler.mockResolvedValue(wrapPayload(expected.details.test))
+
+    const result = await akQaTool.handler({})
+    const payload = JSON.parse((result.content[0] as { text: string }).text)
+
+    expect(payload).toEqual(expected)
   })
 
   it('aggregates passed=false when lint fails', async () => {

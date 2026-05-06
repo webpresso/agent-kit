@@ -1,0 +1,17 @@
+vp run test
+loaded env
+{
+  "files": [
+    {
+      "file": "src/wrapped.test.ts",
+      "tasks": [
+        {
+          "name": "wrapped fails",
+          "state": "failed",
+          "failureMessages": ["boom\n    at src/wrapped.test.ts:9:1"]
+        }
+      ]
+    }
+  ]
+}
+done

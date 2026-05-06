@@ -5,6 +5,11 @@ paths:
 
 # Context-Mode Tool Routing
 
+Fallback-only note: if SessionStart already injected `AK_ROUTING_BLOCK`, or the
+context-mode plugin already injected its own ctx_* guidance, follow that and do
+not duplicate it. This rule exists to preserve the same routing in plain repo
+contexts where no injected routing block is present.
+
 Use `ctx_*` MCP tools (context-mode) instead of raw Bash/Read for any operation
 that produces or processes large output. Keeps the context window clean.
 
@@ -36,3 +41,11 @@ Never pull raw output into context to reason over it manually.
 ## Forbidden alternatives (use ak_* instead)
 
 `just test`, `pnpm test`, `just lint`, `just qa`, `vitest`, `oxlint`, `tsc`
+
+## Ownership boundary
+
+- agent-kit owns `ak_*` dev-workflow routing and MCP-shaped deny wording
+- context-mode owns its own `ctx_*` nudging when that plugin is installed
+- rtk owns `rtk *` shell-tool filtering for the long-tail command surface
+- this rule is fallback-only; it should not compete with SessionStart routing
+- `.omx` is runtime/state, not a direct hook surface

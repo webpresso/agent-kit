@@ -7,7 +7,7 @@ import type { CAC } from 'cac'
  * Safe-by-default: if a target file exists with different content, writes
  * to `<name>.new` unless `--overwrite` is passed.
  */
-import { existsSync } from 'node:fs'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -35,13 +35,15 @@ import { ensureCodexPlaywrightMcp } from './scaffolders/codex-mcp/index.js'
 import { ensureGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
 import { ensureOmx } from './scaffolders/omx/index.js'
+import { ensureRtk } from './scaffolders/rtk/index.js'
 import { checkRuntimes } from './scaffolders/runtime-check/index.js'
 import { scaffoldSubagents } from './scaffolders/subagents/index.js'
 import { scaffoldVision } from './scaffolders/vision/index.js'
 
-const PRESETS = ['lore-commits', 'omx', 'playwright-mcp', 'gstack', 'vision'] as const
+const PRESETS = ['gstack', 'lore-commits', 'omx', 'playwright-mcp', 'rtk', 'vision'] as const
 type Preset = (typeof PRESETS)[number]
 const DEFAULT_PRESETS: readonly Preset[] = ['omx', 'gstack', 'vision']
+const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested')
 
 function parsePresets(withFlag: string | undefined): Preset[] {
   const explicit = withFlag
@@ -273,6 +275,31 @@ export async function runInit(flags: InitFlags): Promise<number> {
       }
     }
 
+    let rtkFailure: 'not-found' | 'init-failed' | null = null
+    if (presets.includes('rtk')) {
+      if (!options.dryRun) {
+        mkdirSync(join(consumer.repoRoot, '.agent'), { recursive: true })
+        writeFileSync(join(consumer.repoRoot, RTK_REQUESTED_MARKER), 'requested via `ak setup --with rtk`\n')
+      }
+      const rtkResult = ensureRtk({ repoRoot: consumer.repoRoot, options })
+      switch (rtkResult.kind) {
+        case 'rtk-ok':
+          console.log(rtkResult.installed ? '  rtk: ✓ installed + configured' : '  rtk: ✓')
+          break
+        case 'rtk-skipped-dry-run':
+          console.log('  rtk: skipped (--dry-run)')
+          break
+        case 'rtk-not-found':
+          console.error(`  rtk: ✗ ${rtkResult.hint}`)
+          rtkFailure = 'not-found'
+          break
+        case 'rtk-init-failed':
+          console.error(`  rtk: ✗ rtk init exited with ${rtkResult.exitCode}`)
+          rtkFailure = 'init-failed'
+          break
+      }
+    }
+
     const all = [
       ...agentReport.results,
       ...baseKitResults,
@@ -351,6 +378,8 @@ export async function runInit(flags: InitFlags): Promise<number> {
     if (gstackFailure === 'clone-failed') return EXIT_WRITE_FAIL
     if (gstackFailure === 'pull-failed') return EXIT_WRITE_FAIL
     if (gstackFailure === 'setup-failed') return EXIT_WRITE_FAIL
+    if (rtkFailure === 'not-found') return EXIT_SETUP_FAIL
+    if (rtkFailure === 'init-failed') return EXIT_WRITE_FAIL
     return EXIT_SUCCESS
   } catch (error) {
     console.error(

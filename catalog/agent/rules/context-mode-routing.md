@@ -50,5 +50,6 @@ Never pull raw output into context to reason over it manually.
 
 - agent-kit owns `ak_*` dev-workflow routing and MCP-shaped deny wording
 - context-mode owns its own `ctx_*` nudging when that plugin is installed
+- rtk owns `rtk *` shell-tool filtering for the long-tail command surface
 - this rule is fallback-only; it should not compete with SessionStart routing
 - `.omx` is runtime/state, not a direct hook surface

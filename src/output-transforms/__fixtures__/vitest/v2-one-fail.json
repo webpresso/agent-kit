@@ -1,0 +1,14 @@
+{
+  "testResults": [
+    {
+      "name": "src/a.test.ts",
+      "assertionResults": [
+        {
+          "fullName": "adds numbers",
+          "status": "failed",
+          "failureMessages": ["expected 1 to be 2\n    at src/a.test.ts:2:1"]
+        }
+      ]
+    }
+  ]
+}

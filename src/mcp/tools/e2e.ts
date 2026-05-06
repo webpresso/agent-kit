@@ -19,9 +19,9 @@ import {
   plannedGroupsToCommandConfigs,
   runCommandConfigs,
 } from '#e2e/execution'
+import { applyOutputTransform } from '../../output-transforms/index.js'
 import {
   createSummaryOutputSchema,
-  clipRawOutput,
   createSummaryResult,
 } from './_shared/result.js'
 
@@ -146,7 +146,7 @@ const tool: ToolDescriptor = {
         suiteIds,
         runnerSummary: summarizeRunners(groups),
       },
-      ...clipRawOutput(result.output, undefined, { toolName: 'ak_e2e' }),
+      ...applyOutputTransform(result.output, { toolName: 'ak_e2e' }),
     }
 
     return createSummaryResult(payload)

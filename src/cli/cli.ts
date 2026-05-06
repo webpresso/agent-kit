@@ -27,6 +27,7 @@ const SUPPORTED_COMMANDS = [
   'setup',
   'init',
   'dev',
+  'err',
   'test',
   'e2e',
   'tech-debt',
@@ -48,6 +49,7 @@ const ROOT_HELP = [
   '  setup                 Scaffold a consumer repo with the agent surface',
   '  init                  Compatibility alias for setup',
   '  dev                   Run a manifest-backed development target',
+  '  err                   Run a command and print only failure-looking lines',
   '  test                  Run tests through the portable agent-kit surface',
   '  e2e                   Build and run E2E commands through the portable agent-kit surface',
   '  tech-debt             Manage tech-debt lifecycle (new, list, review)',
@@ -143,6 +145,11 @@ export async function main(): Promise<number> {
     case 'dev': {
       const { registerDevCommand } = await import('./commands/dev.js')
       registerDevCommand(cli)
+      break
+    }
+    case 'err': {
+      const { registerErrCommand } = await import('./commands/err.js')
+      registerErrCommand(cli)
       break
     }
     case 'test': {

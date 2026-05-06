@@ -45,7 +45,7 @@ External research (2026-04-25) — see roadmap Decision 3/4 — identified concr
 - New audit categories beyond what `quality-engine` already implements.
 - Authoring additional skills.
 - Symlinker rewrite — only adds new targets/behaviors, doesn't restructure.
-- **Parent-roadmap promotion in `ak blueprint list`** — separate blueprint at `draft/promote-parent-roadmaps`. Different problem (internal hierarchy DX vs ecosystem rules-fanout), different urgency, different code surface (blueprint service + `/pll` dispatcher vs symlinker).
+- **Parent-roadmap promotion in `ak blueprint list`** — separate blueprint at `planned/promote-parent-roadmaps`. Different problem (internal hierarchy DX vs ecosystem rules-fanout), different urgency, different code surface (blueprint service + `/pll` dispatcher vs symlinker).
 
 ## Verification Gates
 
@@ -59,5 +59,5 @@ External research (2026-04-25) — see roadmap Decision 3/4 — identified concr
 
 - Parent: `completed/webpresso-public-extraction-roadmap/_overview.md`
 - Supersedes: `quality-engine` portion of `completed/extract-foundation-packages` Wave 1 plan
-- Sibling: `planned/consolidate-runtime-umbrella`, `planned/expand-tooling-umbrella`, `draft/promote-parent-roadmaps`
+- Sibling: `planned/consolidate-runtime-umbrella`, `planned/expand-tooling-umbrella`, `planned/promote-parent-roadmaps`
 - External reference: `dyoshikawa/rulesync` README, `agents.md` spec, `agentskills.io`

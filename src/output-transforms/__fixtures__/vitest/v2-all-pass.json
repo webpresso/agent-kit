@@ -1,0 +1,13 @@
+{
+  "testResults": [
+    {
+      "name": "src/a.test.ts",
+      "assertionResults": [
+        {
+          "fullName": "adds numbers",
+          "status": "passed"
+        }
+      ]
+    }
+  ]
+}

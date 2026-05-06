@@ -1,0 +1,27 @@
+[
+  {
+    "filePath": "a.ts",
+    "messages": [
+      {
+        "line": 2,
+        "ruleId": "no-console",
+        "message": "unexpected console"
+      },
+      {
+        "line": 4,
+        "ruleId": "eqeqeq",
+        "message": "expected ==="
+      }
+    ]
+  },
+  {
+    "filePath": "b.ts",
+    "messages": [
+      {
+        "line": 9,
+        "ruleId": "no-debugger",
+        "message": "unexpected debugger"
+      }
+    ]
+  }
+]

@@ -28,6 +28,9 @@ export interface DoctorResult {
   checks: DoctorCheck[]
 }
 
+const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested')
+const RTK_INSTALL_HINT = 'rtk requested via --with rtk but not on PATH; brew install rtk'
+
 /** Hook bin definitions */
 const HOOK_BINS: { name: string; binName: string; checkStdin: boolean }[] = [
   { name: 'pretool-guard', binName: 'ak-pretool-guard', checkStdin: true },
@@ -120,6 +123,37 @@ function tryAccess(file: string): boolean {
   } catch {
     return false
   }
+}
+
+function wasRtkRequested(cwd = process.cwd()): boolean {
+  return tryAccess(join(cwd, RTK_REQUESTED_MARKER))
+}
+
+function checkRtkOnPath(): Promise<DoctorCheck | null> {
+  if (!wasRtkRequested()) return Promise.resolve(null)
+
+  return new Promise<DoctorCheck>((resolve) => {
+    const child = spawn('rtk', ['--version'], { stdio: ['ignore', 'pipe', 'pipe'] })
+    let stdout = ''
+    let stderr = ''
+    child.stdout.on('data', (chunk) => {
+      stdout += String(chunk)
+    })
+    child.stderr?.on('data', (chunk) => {
+      stderr += String(chunk)
+    })
+    child.on('error', () => {
+      resolve({ name: 'rtk on PATH', ok: false, detail: RTK_INSTALL_HINT })
+    })
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve({ name: 'rtk on PATH', ok: true, detail: stdout.trim() || 'rtk present' })
+        return
+      }
+      const suffix = stderr.trim().length > 0 ? ` (${stderr.trim()})` : ''
+      resolve({ name: 'rtk on PATH', ok: false, detail: `${RTK_INSTALL_HINT}${suffix}` })
+    })
+  })
 }
 
 /**
@@ -400,6 +434,9 @@ export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<
           : `WARNING: ${mcpResult.detail}`,
     })
   }
+
+  const rtkCheck = await checkRtkOnPath()
+  if (rtkCheck) checks.push(rtkCheck)
 
   // Non-MCP checks must all pass
   const nonMcpChecks = checks.filter((c) => !c.name.startsWith('MCP '))

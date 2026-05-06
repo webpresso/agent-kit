@@ -479,8 +479,8 @@ Add `scripts/release.mjs` that: runs `pnpm build`; force-adds `dist/` (overridin
 
 - **Parent:** `cross-repo: webpresso/monorepo → webpresso/blueprints/draft/webpresso-public-extraction-roadmap` (verified: directory exists at `/Users/ozby/repos/webpresso/monorepo/webpresso/blueprints/draft/webpresso-public-extraction-roadmap`).
 - **Sibling — `planned/agent-kit-parity-pass`:** That blueprint plans `.agent/mcp.json` → `.cursor/mcp.json` fan-out for non-Claude IDEs (Cursor, Aider, Cline). This blueprint ships `mcpServers` inside `plugin.json` for Claude Code. Both coexist; same MCP server may be referenced from both places. **Coordination:** when `agent-kit` ships its own MCP server (this blueprint), the `.agent/mcp.json` template in parity-pass should include an entry for it pointing to `npx -y @webpresso/agent-kit mcp` (npm-installed path, since non-Claude IDEs don't use `${CLAUDE_PLUGIN_ROOT}`).
-- **Sibling — `draft/promote-parent-roadmaps`:** Different domain (internal blueprint hierarchy DX). No conflict.
-- **Sibling — `draft/scaffold-audit-clean-baseline`:** Different domain (audit baseline scaffolding). No conflict.
+- **Sibling — `planned/promote-parent-roadmaps`:** Different domain (internal blueprint hierarchy DX). No conflict.
+- **Sibling — `planned/scaffold-audit-clean-baseline`:** Different domain (audit baseline scaffolding). No conflict.
 - **Supersedes:** `agent-hooks` scaffolder under `src/cli/commands/init/scaffolders/agent-hooks/` (removed in Task 4.2).
 
 ## Alternatives Considered

@@ -1,0 +1,53 @@
+#!/bin/sh
+set -eu
+
+case "${1:-}" in
+  --version)
+    echo "rtk-fixture 0.37.2"
+    exit 0
+    ;;
+  init)
+    mkdir -p .claude/hooks
+    cat > .claude/hooks/rtk-rewrite.sh <<'EOF'
+#!/bin/sh
+set -eu
+payload="$(cat)"
+case "$payload" in
+  *'"command":"git status"'*|*'"command": "git status"'*)
+    printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"rtk git status"}}\n'
+    ;;
+  *)
+    printf '{}\n'
+    ;;
+esac
+EOF
+    chmod +x .claude/hooks/rtk-rewrite.sh
+    node <<'NODE'
+const fs = require('node:fs')
+const path = require('node:path')
+const file = path.join(process.cwd(), '.claude', 'settings.json')
+const existing = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {}
+existing.hooks ??= {}
+existing.hooks.PreToolUse ??= []
+const command =
+  `RTK_TELEMETRY_DISABLED=${process.env.RTK_TELEMETRY_DISABLED ?? ''} ` +
+  `RTK_HOOK_EXCLUDE_COMMANDS="${process.env.RTK_HOOK_EXCLUDE_COMMANDS ?? ''}" ` +
+  `"$CLAUDE_PROJECT_DIR/.claude/hooks/rtk-rewrite.sh"`
+if (!existing.hooks.PreToolUse.some((group) =>
+  Array.isArray(group?.hooks) && group.hooks.some((hook) => String(hook?.command ?? '').includes('rtk-rewrite.sh')),
+)) {
+  existing.hooks.PreToolUse.push({
+    matcher: 'Bash',
+    hooks: [{ type: 'command', command, timeout: 5 }],
+  })
+}
+fs.writeFileSync(file, JSON.stringify(existing, null, 2))
+NODE
+    echo "rtk-fixture: init -g --auto-patch ran"
+    exit 0
+    ;;
+  *)
+    echo "rtk-fixture: unknown subcommand: ${1:-}" >&2
+    exit 64
+    ;;
+esac

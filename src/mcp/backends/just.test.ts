@@ -1,4 +1,7 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { runTests } from './just.js'
 
@@ -33,8 +36,22 @@ function fakeChild(opts: {
   }
 }
 
+const originalProjectDir = process.env.CLAUDE_PROJECT_DIR
+let defaultRoot: string | undefined
+
+beforeEach(() => {
+  defaultRoot = mkdtempSync(join(tmpdir(), 'ak-just-default-'))
+  process.env.CLAUDE_PROJECT_DIR = defaultRoot
+})
+
 afterEach(() => {
   spawnMock.mockReset()
+  if (defaultRoot) rmSync(defaultRoot, { recursive: true, force: true })
+  if (originalProjectDir === undefined) {
+    delete process.env.CLAUDE_PROJECT_DIR
+  } else {
+    process.env.CLAUDE_PROJECT_DIR = originalProjectDir
+  }
 })
 
 describe('just backend', () => {
@@ -71,5 +88,39 @@ describe('just backend', () => {
     const [cmd, args] = spawnMock.mock.calls[0]!
     expect(cmd).toBe('just')
     expect(args).toEqual(['test'])
+  })
+
+  it('passes extra args after `--` for recipes that forward args', async () => {
+    spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
+    await runTests({ extraArgs: ['--reporter=json', '--no-color'] })
+    const [, args] = spawnMock.mock.calls[0]!
+    expect(args).toEqual(['test', '--', '--reporter=json', '--no-color'])
+  })
+
+  it('forwards vitest reporter args for vitest package targets', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ak-just-vitest-'))
+    try {
+      process.env.CLAUDE_PROJECT_DIR = root
+      mkdirSync(join(root, 'packages', 'cli'), { recursive: true })
+      writeFileSync(
+        join(root, 'packages', 'cli', 'package.json'),
+        JSON.stringify({ devDependencies: { vitest: '^4.0.0' } }),
+      )
+      spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
+
+      await runTests({ packages: ['cli'] })
+
+      const [, args] = spawnMock.mock.calls[0]!
+      expect(args).toEqual([
+        'test',
+        '--package',
+        'cli',
+        '--',
+        '--reporter=json',
+        '--no-color',
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 })

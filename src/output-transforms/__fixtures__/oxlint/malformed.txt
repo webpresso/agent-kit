@@ -1,0 +1,3 @@
+info: scanning
+error: a.ts:2 unexpected console
+warning: b.ts:7 unused

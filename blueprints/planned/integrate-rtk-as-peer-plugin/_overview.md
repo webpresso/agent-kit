@@ -44,8 +44,8 @@ authority over either neighbour's prefix.
   without agent-kit shipping per-tool filter code.
 - **Consuming surface:** `ak setup --with rtk` in `ozby/ingest-lens` — same
   invocation shape as `--with monorepo-navigation,tanstack-query` already
-  documented in [`CLAUDE.md`](../../../../../../CLAUDE.md) under the agent-kit
-  section. After this blueprint lands, ingest-lens can `pnpm ak setup --with rtk`
+  documented in the ingest-lens agent-kit setup docs. After this blueprint lands,
+  ingest-lens can `pnpm ak setup --with rtk`
   and immediately get compact `git status`, `gh pr list`, `kubectl get pods`,
   `cargo build` output without any agent-kit-side per-tool work.
 - **New user-visible capability:** An engineer's AI session running `git status`,
@@ -87,8 +87,7 @@ This blueprint adds rtk as the **third** entry in that same composition.
 Cross-checked against [`VISION.md`](../../../VISION.md), [`AGENTS.md`](../../../AGENTS.md),
 the existing [`context-mode-routing.md`](../../../catalog/agent/rules/context-mode-routing.md)
 rule, the parent [`compact-qa-output-filters`](../compact-qa-output-filters/_overview.md)
-blueprint, and the [Ubiquitous Language](../../../../../UBIQUITOUS_LANGUAGE.md)
-glossary on 2026-05-06.
+blueprint, and the repo glossary/invariants on 2026-05-06.
 
 | Vision principle / invariant | Alignment in this blueprint |
 | --- | --- |
@@ -115,7 +114,7 @@ glossary on 2026-05-06.
 
 rtk is **MIT-licensed** — verified at <https://github.com/rtk-ai/rtk> in
 `Cargo.toml`. Compatible with installing as a third-party binary in users'
-repos via `brew install rtk-ai/rtk/rtk`.
+repos via `brew install rtk`.
 
 **We do not lift their code.** We install their binary and let rtk run as an
 independent peer process, exactly as we already install `omx` (via
@@ -135,15 +134,17 @@ union of result kinds.
 
 1. If `options.dryRun` → return `{ kind: 'rtk-skipped-dry-run' }`.
 2. Probe `rtk --version` via injected `spawnSync`.
-3. If absent: install with `brew install rtk-ai/rtk/rtk` (gated on macOS;
+3. If absent: install with `brew install rtk` (gated on macOS;
    Linux falls back to printing the [rtk install hint](https://github.com/rtk-ai/rtk?tab=readme-ov-file#installation)
    without erroring — exit code is preserved as `rtk-not-found`).
 4. Re-probe `rtk --version`. If still absent → `{ kind: 'rtk-not-found', hint }`.
 5. Run `rtk init -g --auto-patch` from the consumer repo root. This is rtk's
-   own idempotent installer — it adds an entry under `PreToolUse` in
-   `.claude/settings.json` and `.codex/hooks.json` *alongside* the existing
-   `ak-pretool-guard` and OMX entries (does not replace them). Pattern matches
-   what omx's `omx setup --yes` already does.
+   own idempotent installer — for Claude-style hook surfaces it adds an entry
+   under `PreToolUse` in `.claude/settings.json` *alongside* the existing
+   `ak-pretool-guard` and OMX entries (does not replace them). As of May 2026,
+   Codex is treated upstream as a prompt/instructions lane rather than a
+   hook-rewrite lane, so this blueprint does **not** require RTK entries in
+   `.codex/hooks.json`.
 6. Set `RTK_TELEMETRY_DISABLED=1` in the resulting hook entry (privacy default;
    consumer can override in their own repo).
 
@@ -200,8 +201,8 @@ that don't use rtk).
 - Update `catalog/agent/rules/context-mode-routing.md` § Ownership boundary to
   add the rtk lane (mirroring the new `rtk-routing.md` § Ownership boundary).
   Same canonical-edit-then-sync rhythm.
-- Add a `Related` link from `compact-qa-output-filters/_overview.md` § Out of
-  scope to this blueprint when this blueprint moves out of `draft/`.
+- Keep `compact-qa-output-filters/_overview.md` § Related linked to this
+  planned follow-up.
 
 ## Performance & efficiency
 
@@ -328,10 +329,10 @@ fixture repo, not the agent-kit repo itself.
 | Gate | Description |
 | --- | --- |
 | **G1. Fresh-repo setup** | `mkdir /tmp/rtk-fixture && cd $_ && git init && pnpm init -y && pnpm add -D @webpresso/agent-kit && npx ak setup --with rtk`. Expect exit 0. |
-| **G2. Three-hook composition** | After G1, `cat .claude/settings.json` shows three independent `PreToolUse` entries: agent-kit's `ak-pretool-guard`, OMX's `oh-my-codex/dist/scripts/codex-native-hook.js` (if `--with omx` also ran), and rtk's hook. None wraps the others. |
+| **G2. Three-hook composition** | After G1, `cat .claude/settings.json` shows three independent Claude `PreToolUse` entries: agent-kit's `ak-pretool-guard`, OMX's `oh-my-codex/dist/scripts/codex-native-hook.js` (if `--with omx` also ran), and rtk's hook. None wraps the others. |
 | **G3. rtk redirect on git** | From a Claude Code session in the fixture repo, run `git status` via Bash. Assert: rtk's PreToolUse hook denies with a `rtk git status` redirect, exactly like agent-kit's hook denies `pnpm test` with `mcp__agent-kit__ak_test`. |
 | **G4. agent-kit redirect still works** | In the same fixture repo, `pnpm test` via Bash → still gets agent-kit's `ak_test` redirect. The two redirects coexist; rtk does not shadow agent-kit's QA prefix. |
-| **G5. Doctor row** | `ak doctor` in the fixture repo lists a green `rtk on PATH` row. After `brew uninstall rtk` → red row with the install hint. |
+| **G5. Doctor row** | `ak doctor` in the fixture repo lists a green `rtk on PATH` row. After RTK is removed from `PATH` → red row with the install hint. |
 | **G6. Symlink sync clean** | `ak audit catalog-drift` after `ak symlink sync` returns clean (new `rtk-routing.md` rule properly synced to `.agent/` and per-IDE surfaces). |
 | **G7. Idempotent re-run** | `npx ak setup --with rtk` twice in a row → second run is a no-op (rtk's own `rtk init -g --auto-patch` is idempotent; agent-kit's scaffolder just chains it). |
 | **G8. Telemetry default** | `RTK_TELEMETRY_DISABLED=1` is set in the hook entry written by `rtk init`. Verified by grepping `.claude/settings.json`. |
@@ -358,9 +359,9 @@ fixture repo, not the agent-kit repo itself.
 
 ## Tasks (Blueprint format)
 
-### [agent-kit] Task 1.1: Scaffold `rtk/` preset
+#### [agent-kit] Task 1.1: Scaffold `rtk/` preset
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -386,14 +387,16 @@ fixture repo, not the agent-kit repo itself.
 
 **Acceptance:**
 
-- [ ] Result kinds match the documented union exactly.
-- [ ] `RTK_TELEMETRY_DISABLED=1` set in `rtk init` env.
-- [ ] No imports from `@webpresso/*`; only `node:child_process` and the
+- [x] Result kinds match the documented union exactly.
+- [x] `RTK_TELEMETRY_DISABLED=1` set in `rtk init` env.
+- [x] No imports from `@webpresso/*`; only `node:child_process` and the
       shared `MergeOptions` type, matching omx.
 
-### [agent-kit] Task 1.2: Wire `--with rtk` into init merge
+**Evidence (2026-05-06):** Added `src/cli/commands/init/scaffolders/rtk/index.ts` + `index.test.ts`; `pnpm exec vitest run src/cli/commands/init/scaffolders/rtk/index.test.ts --reporter=dot` passed (6 tests).
 
-**Status:** todo
+#### [agent-kit] Task 1.2: Wire `--with rtk` into init merge
+
+**Status:** done
 
 **Depends:** Task 1.1
 
@@ -408,13 +411,15 @@ fixture repo, not the agent-kit repo itself.
 
 **Acceptance:**
 
-- [ ] `ak setup --with rtk` calls `ensureRtk` exactly once.
-- [ ] `ak setup --with omx,rtk` runs both, in deterministic order
+- [x] `ak setup --with rtk` calls `ensureRtk` exactly once.
+- [x] `ak setup --with omx,rtk` runs both, in deterministic order
       (alphabetical by preset name, matching existing convention).
 
-### [agent-kit] Task 2.1: New `rtk-routing.md` catalog rule
+**Evidence (2026-05-06):** `src/cli/commands/init/index.ts` now registers the `rtk` preset and writes the `.agent/.rtk-requested` marker before invoking `ensureRtk`; `pnpm exec vitest run src/cli/commands/init/init.presets.test.ts src/cli/commands/init/init.e2e.test.ts --reporter=dot` passed, including `--with rtk`, `--with omx,rtk`, and `--help` preset surfacing.
 
-**Status:** todo
+#### [agent-kit] Task 2.1: New `rtk-routing.md` catalog rule
+
+**Status:** done
 
 **Depends:** None (parallelizable with Task 1.1)
 
@@ -433,14 +438,16 @@ fixture repo, not the agent-kit repo itself.
 
 **Acceptance:**
 
-- [ ] Frontmatter has `paths: ['**/*']`.
-- [ ] Includes a "fallback-only" disclaimer matching `context-mode-routing.md`.
-- [ ] Ownership boundary section names all three lanes (`ak_*`, `ctx_*`, `rtk *`).
-- [ ] `ak audit catalog-drift` clean.
+- [x] Frontmatter has `paths: ['**/*']`.
+- [x] Includes a "fallback-only" disclaimer matching `context-mode-routing.md`.
+- [x] Ownership boundary section names all three lanes (`ak_*`, `ctx_*`, `rtk *`).
+- [x] `ak audit catalog-drift` clean.
 
-### [agent-kit] Task 2.2: Update `context-mode-routing.md` ownership boundary
+**Evidence (2026-05-06):** Added `catalog/agent/rules/rtk-routing.md` and aligned `.agent/rules/rtk-routing.md`; `pnpm exec ak audit catalog-drift` passed.
 
-**Status:** todo
+#### [agent-kit] Task 2.2: Update `context-mode-routing.md` ownership boundary
+
+**Status:** done
 
 **Depends:** Task 2.1 (so the new rule exists to cross-link to)
 
@@ -452,12 +459,14 @@ fixture repo, not the agent-kit repo itself.
 
 **Acceptance:**
 
-- [ ] Both rules now name all three peers symmetrically.
-- [ ] `ak audit catalog-drift` clean.
+- [x] Both rules now name all three peers symmetrically.
+- [x] `ak audit catalog-drift` clean.
 
-### [agent-kit] Task 3.1: New `ak doctor` row for rtk
+**Evidence (2026-05-06):** Updated `catalog/agent/rules/context-mode-routing.md` and `.agent/rules/context-mode-routing.md` ownership boundaries to name `ak_*`, `ctx_*`, and `rtk *`; `pnpm exec ak audit catalog-drift` passed.
 
-**Status:** todo
+#### [agent-kit] Task 3.1: New `ak doctor` row for rtk
+
+**Status:** done
 
 **Depends:** Task 1.1 (so the scaffolder can write a marker the doctor reads)
 
@@ -478,13 +487,15 @@ fixture repo, not the agent-kit repo itself.
 
 **Acceptance:**
 
-- [ ] No false-positive row for repos that didn't request rtk.
-- [ ] Hard-fail row when requested but missing, with install hint.
-- [ ] Soft-pass row when present, with version string.
+- [x] No false-positive row for repos that didn't request rtk.
+- [x] Hard-fail row when requested but missing, with install hint.
+- [x] Soft-pass row when present, with version string.
 
-### [agent-kit] Task 4.1: End-to-end fixture-repo verification (G1–G8)
+**Evidence (2026-05-06):** Added `.agent/.rtk-requested` marker wiring plus `checkRtkOnPath()` in `src/hooks/doctor.ts`; `pnpm exec vitest run src/hooks/doctor.test.ts --reporter=dot` passed (8 tests).
 
-**Status:** todo
+#### [agent-kit] Task 4.1: End-to-end fixture-repo verification (G1–G8)
+
+**Status:** done
 
 **Depends:** Task 1.2, Task 2.2, Task 3.1
 
@@ -506,10 +517,12 @@ fixture repo, not the agent-kit repo itself.
 
 **Acceptance:**
 
-- [ ] All 8 gates pass.
-- [ ] Three independent PreToolUse hook entries verified (G2).
-- [ ] rtk redirect for `git status` verified (G3).
-- [ ] agent-kit redirect for `pnpm test` still works alongside rtk (G4).
+- [x] All 8 gates pass.
+- [x] Three independent PreToolUse hook entries verified (G2).
+- [x] rtk redirect for `git status` verified (G3).
+- [x] agent-kit redirect for `pnpm test` still works alongside rtk (G4).
+
+**Evidence (2026-05-06):** Added `__fixtures__/rtk-three-hook-composition/`, `__fixtures__/fake-tools/rtk-ok-bin/rtk`, and `src/cli/commands/init/scaffolders/rtk/integration.test.ts`; `pnpm exec vitest run src/cli/commands/init/scaffolders/rtk/integration.test.ts --reporter=dot` passed. The fixture validates Claude hook composition, RTK deny on `git status`, agent-kit deny on `pnpm test`, doctor row behavior, catalog drift cleanliness, idempotent re-run, and `RTK_TELEMETRY_DISABLED=1`. It also locks the May 2026 upstream nuance that Codex remains a prompt/instructions lane rather than an RTK hook lane.
 
 ## Quick Reference (Execution Waves)
 
@@ -550,12 +563,16 @@ one rule file, one doctor row, plus tests.
 - **Parent blueprint:** [`compact-qa-output-filters`](../compact-qa-output-filters/_overview.md)
   — its § Out of scope explicitly punts the long-tail tools to rtk; this
   blueprint is the constructive half of that punt.
+- **Non-blocking follow-up:** [`monorepo-route-qa-through-ak`](../monorepo-route-qa-through-ak/_overview.md)
+  — routes the Monorepo `just qa` caveat after compact QA exists. It is not a
+  prerequisite for rtk peer-plugin wiring; this blueprint depends only on the
+  compact-QA contract.
 - **Sibling rule:** [`context-mode-routing.md`](../../../catalog/agent/rules/context-mode-routing.md)
   — the shape this blueprint's new `rtk-routing.md` mirrors exactly.
 - **Sibling scaffolders:** `src/cli/commands/init/scaffolders/{omx,gstack}/index.ts`
   — the patterns this blueprint's new `rtk/index.ts` mirrors.
-- **Reference consumer:** [`ozby/ingest-lens`](../../../../../../ozby/ingest-lens/CLAUDE.md)
-  — `pnpm ak setup --with rtk` is the canonical post-merge smoke command.
+- **Reference consumer:** `ozby/ingest-lens` — `pnpm ak setup --with rtk` is the
+  canonical post-merge smoke command.
 - **Upstream:** [`rtk-ai/rtk`](https://github.com/rtk-ai/rtk) (MIT-licensed,
-  installed via `brew install rtk-ai/rtk/rtk`). Read but **don't depend on**
+  installed via `brew install rtk`). Read but **don't depend on**
   internal source — the contract is the binary surface.

@@ -1,0 +1,18 @@
+{
+  "diagnostics": [
+    {
+      "file_path": "b.ts",
+      "diagnostics": [
+        {
+          "span": {
+            "start": {
+              "line": 7
+            }
+          },
+          "rule_id": "correctness/no-unused-vars",
+          "message": "unused"
+        }
+      ]
+    }
+  ]
+}

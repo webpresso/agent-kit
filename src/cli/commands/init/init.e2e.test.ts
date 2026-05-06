@@ -19,7 +19,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(HERE, '..', '..', '..', '..')
-const CLI_PATH = path.join(REPO_ROOT, 'dist', 'esm', 'cli', 'cli.js')
+const DIST_CLI_PATH = path.join(REPO_ROOT, 'dist', 'esm', 'cli', 'cli.js')
+const SOURCE_CLI_PATH = path.join(REPO_ROOT, 'src', 'cli', 'cli.ts')
+const TSX_PATH = path.join(REPO_ROOT, 'node_modules', 'tsx', 'dist', 'cli.mjs')
 const FIXTURES = path.join(REPO_ROOT, '__fixtures__')
 const OMX_OK_BIN = path.join(FIXTURES, 'fake-tools', 'omx-ok-bin')
 const OMX_FAIL_BIN = path.join(FIXTURES, 'fake-tools', 'omx-fail-bin')
@@ -32,9 +34,13 @@ interface RunResult {
 }
 
 function runAk(args: string[], extraEnv: Record<string, string> = {}): RunResult {
-  // Use process.execPath (absolute path to the current node) so PATH
-  // overrides in extraEnv don't accidentally hide node itself.
-  const result = spawnSync(process.execPath, [CLI_PATH, ...args], {
+  const command = existsSync(SOURCE_CLI_PATH) && existsSync(TSX_PATH) ? process.execPath : process.execPath
+  const commandArgs =
+    existsSync(SOURCE_CLI_PATH) && existsSync(TSX_PATH)
+      ? [TSX_PATH, SOURCE_CLI_PATH, ...args]
+      : [DIST_CLI_PATH, ...args]
+  // Use process.execPath so PATH overrides in extraEnv don't hide node itself.
+  const result = spawnSync(command, commandArgs, {
     encoding: 'utf8',
     env: {
       ...process.env,
@@ -81,7 +87,7 @@ function pathWithoutOmx(): string {
   return '/usr/bin:/bin'
 }
 
-describe.skipIf(!existsSync(CLI_PATH))(
+describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
   'ak setup — live e2e via subprocess',
   () => {
     let repo: string
@@ -208,6 +214,7 @@ describe.skipIf(!existsSync(CLI_PATH))(
       expect(r.stdout).toContain('lore-commits')
       expect(r.stdout).toContain('omx')
       expect(r.stdout).toContain('playwright-mcp')
+      expect(r.stdout).toContain('rtk')
       expect(r.stdout).toContain('gstack')
       expect(r.stdout).toContain("'ak skills list'")
     })

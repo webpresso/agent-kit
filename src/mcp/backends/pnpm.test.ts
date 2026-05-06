@@ -1,4 +1,7 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { runTests } from './pnpm.js'
 
@@ -26,7 +29,23 @@ function fakeChild(opts: { stdout?: string; stderr?: string; exitCode?: number }
   }
 }
 
-afterEach(() => spawnMock.mockReset())
+const originalProjectDir = process.env.CLAUDE_PROJECT_DIR
+let defaultRoot: string | undefined
+
+beforeEach(() => {
+  defaultRoot = mkdtempSync(join(tmpdir(), 'ak-pnpm-default-'))
+  process.env.CLAUDE_PROJECT_DIR = defaultRoot
+})
+
+afterEach(() => {
+  spawnMock.mockReset()
+  if (defaultRoot) rmSync(defaultRoot, { recursive: true, force: true })
+  if (originalProjectDir === undefined) {
+    delete process.env.CLAUDE_PROJECT_DIR
+  } else {
+    process.env.CLAUDE_PROJECT_DIR = originalProjectDir
+  }
+})
 
 describe('pnpm backend', () => {
   it('runs `pnpm -F <p> test` once per package', async () => {
@@ -40,6 +59,33 @@ describe('pnpm backend', () => {
     expect(spawnMock.mock.calls[1]![1]).toEqual(['-F', 'b', 'test'])
     expect(result.passed).toBe(true)
     expect(result.exitCode).toBe(0)
+  })
+
+  it('runs vitest directly for package targets that declare vitest', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ak-pnpm-vitest-'))
+    try {
+      process.env.CLAUDE_PROJECT_DIR = root
+      mkdirSync(join(root, 'packages', 'a'), { recursive: true })
+      writeFileSync(
+        join(root, 'packages', 'a', 'package.json'),
+        JSON.stringify({ devDependencies: { vitest: '^4.0.0' } }),
+      )
+      spawnMock.mockReturnValueOnce(fakeChild({ stdout: '{}\n', exitCode: 0 }))
+
+      await runTests({ packages: ['a'] })
+
+      expect(spawnMock.mock.calls[0]![1]).toEqual([
+        '-F',
+        'a',
+        'exec',
+        'vitest',
+        'run',
+        '--reporter=json',
+        '--no-color',
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 
   it('aggregates failure when one package fails', async () => {

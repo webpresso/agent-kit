@@ -1,0 +1,12 @@
+[
+  {
+    "filePath": "a.ts",
+    "messages": [
+      {
+        "line": 2,
+        "ruleId": "no-console",
+        "message": "unexpected console"
+      }
+    ]
+  }
+]

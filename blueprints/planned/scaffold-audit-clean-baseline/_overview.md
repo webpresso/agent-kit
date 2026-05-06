@@ -1,10 +1,10 @@
 ---
 type: blueprint
-status: draft
+status: planned
 complexity: M
 created: '2026-04-25'
-last_updated: '2026-04-25'
-progress: '0% (draft — captured during agent-kit dogfood pass)'
+last_updated: '2026-05-06'
+progress: '0% (planned — refined into audit, doctor, setup idempotency, dry-run, and toolchain tasks)'
 depends_on: []
 tags:
   - agent-kit
@@ -45,7 +45,7 @@ This closes the legacy-doc gap so the dogfood pass becomes one command, not eigh
 
 ### Fix `audit blueprint-lifecycle` silently skipping `draft/`
 
-Verified during the validation sweep on 2026-04-25: `DEFAULT_BLUEPRINT_STATUSES` at `src/audit/repo-guardrails.ts:82` is `['planned', 'in-progress', 'parked', 'completed', 'archived']` — `draft` is missing. Effect: blueprints in `draft/` (including this one and `promote-parent-roadmaps`) are **never audited**, so frontmatter regressions in drafts ship silently.
+Verified during the validation sweep on 2026-04-25: `DEFAULT_BLUEPRINT_STATUSES` at `src/audit/repo-guardrails.ts:82` is `['planned', 'in-progress', 'parked', 'completed', 'archived']` — `draft` is missing. Effect: blueprints in `draft/` (including these specs before promotion) are **never audited**, so frontmatter regressions in drafts ship silently.
 
 Same class of issue as the parent-roadmap silent filter (already covered by `promote-parent-roadmaps`). Fix: add `'draft'` to the constant; verify the audit now reports `3 checked` against agent-kit's current state. One-line change + a regression test asserting `auditBlueprintLifecycle({ blueprintsRoot: 'fixtures-with-drafts' }).checked === <expected>`.
 
@@ -140,6 +140,291 @@ These three together make `ak setup` produce noise on every run, which trains co
 - New audit categories (covered by `agent-kit-parity-pass`).
 - Symlinker rewrite.
 - Rewriting `ak blueprint new` to support `--type parent-roadmap` (covered by `promote-parent-roadmaps` once it moves into agent-kit).
+
+## Tasks (Blueprint format)
+
+#### [agent-kit] Task 1.1: Include `draft/` in blueprint lifecycle audit
+
+**Status:** done
+
+**Depends:** None
+
+Close the silent-audit gap first because it protects the rest of the blueprint tree.
+
+**Files:**
+
+- Modify: `src/audit/repo-guardrails.ts`
+- Modify: `src/audit/audit-no-ambient-root.test.ts` or create focused lifecycle regression test
+
+**Steps (TDD):**
+
+1. Add a fixture with a malformed draft blueprint.
+2. Assert `auditBlueprintLifecycle` counts draft files and reports the malformed draft.
+3. Add `'draft'` to the lifecycle status set.
+4. Run: `ak test --file <changed audit test>`.
+
+**Acceptance:**
+
+- [x] Draft blueprints are checked by lifecycle audit.
+- [x] Current repo audit count includes draft/planned lifecycle directories.
+- [x] No existing non-draft lifecycle behavior changes.
+
+**Evidence (2026-05-06):** `DEFAULT_BLUEPRINT_STATUSES` includes `draft`; `src/audit/repo-guardrails.test.ts` has malformed-draft coverage; `pnpm exec vitest run src/audit/repo-guardrails.test.ts --reporter=dot` → 104 tests passed.
+
+#### [agent-kit] Task 1.2: Fix single-package `catalog-drift` behavior
+
+**Status:** todo
+
+**Depends:** None
+
+Stop requiring an empty `pnpm-workspace.yaml` for single-package repos.
+
+**Files:**
+
+- Modify: `src/audit/agents.ts` or current catalog-drift implementation
+- Modify: catalog-drift tests under `src/audit/`
+
+**Steps (TDD):**
+
+1. Add fixture: package repo with no `pnpm-workspace.yaml` and no workspaces.
+2. Assert `ak audit catalog-drift` returns OK with "single package" wording.
+3. Preserve existing failure behavior when workspaces/catalog surfaces exist but drift.
+4. Run affected audit tests.
+
+**Acceptance:**
+
+- [ ] Single-package repo with no workspace file passes.
+- [ ] Workspace repos still enforce catalog drift.
+- [ ] Message explains why the audit skipped catalog enforcement.
+
+#### [agent-kit] Task 2.1: Auto-frontmatter fixer for existing docs
+
+**Status:** todo
+
+**Depends:** None
+
+Make docs-frontmatter remediation automatic and idempotent.
+
+**Files:**
+
+- Modify: `src/audit/agents.ts` or docs-frontmatter audit implementation
+- Modify: `src/cli/audit.ts`
+- Create/modify: docs-frontmatter fixer tests
+
+**Steps (TDD):**
+
+1. Add fixtures for missing frontmatter, existing frontmatter, and dry-run.
+2. Add `ak audit docs-frontmatter --fix` path.
+3. Prepend `type: guide` and `last_updated: <today>` only when missing.
+4. Add `--no-fix-docs` passthrough for setup.
+5. Run affected docs-frontmatter tests.
+
+**Acceptance:**
+
+- [ ] Existing frontmatter is never overwritten.
+- [ ] Missing docs receive valid frontmatter plus TODO classification marker.
+- [ ] Fix mode is idempotent.
+
+#### [agent-kit] Task 2.2: True `ak setup --dry-run`
+
+**Status:** todo
+
+**Depends:** None
+
+Make dry-run print intent only.
+
+**Files:**
+
+- Modify: `src/cli/commands/init/index.ts`
+- Modify: `src/cli/commands/init/*.test.ts`
+
+**Steps (TDD):**
+
+1. Add a temp-repo test that runs setup with `--dry-run`.
+2. Assert `git status --short` or filesystem snapshot remains unchanged.
+3. Route every write operation through the existing dry-run guard.
+4. Run init command tests.
+
+**Acceptance:**
+
+- [ ] No files/directories are created in dry-run.
+- [ ] Output lists intended changes.
+- [ ] Normal setup still writes expected files.
+
+#### [agent-kit] Task 2.3: `ak setup` idempotency cleanup
+
+**Status:** todo
+
+**Depends:** Task 2.2
+
+Eliminate repeat-run noise from setup.
+
+**Files:**
+
+- Modify: `src/cli/commands/init/index.ts`
+- Modify: init scaffold/merge helpers
+- Modify: init idempotency tests
+
+**Steps (TDD):**
+
+1. Add regression for second `ak setup --with base-kit --yes` producing no diff.
+2. Stop writing catalog stubs that cleanup immediately prunes, or skip first-run cleanup for seeded catalogs.
+3. Stop rewriting tracked `lastInit` timestamps.
+4. Add accepted-sidecar behavior or suppress repeated identical sidecars.
+5. Run init command tests.
+
+**Acceptance:**
+
+- [ ] Second setup run is clean.
+- [ ] No `.new` sidecar storm.
+- [ ] `.agent-kitrc.json` does not churn solely due to timestamp changes.
+
+#### [agent-kit] Task 3.1: Top-level `ak doctor`
+
+**Status:** todo
+
+**Depends:** Tasks 1.1, 1.2, 2.1
+
+Add audit-layer diagnostics and remediation hints.
+
+**Files:**
+
+- Create: `src/cli/commands/doctor.ts` or extend existing doctor command surface
+- Create: `src/cli/commands/doctor.test.ts`
+- Modify: `src/cli/cli.ts`
+
+**Steps (TDD):**
+
+1. Test clean repo exit code 0.
+2. Test seeded docs-frontmatter failure exit code 1 with remediation command.
+3. Test `--fix` chains known safe remediations.
+4. Test unknown failure exits 2.
+5. Preserve existing `ak dev --doctor` behavior.
+
+**Acceptance:**
+
+- [ ] `ak doctor` runs all current audits plus symlink check.
+- [ ] Each known failure prints an actionable remediation.
+- [ ] `ak doctor --fix` returns a seeded repo to clean.
+
+#### [agent-kit] Task 4.1: Toolchain setup preset tracer bullet (`omx`)
+
+**Status:** todo
+
+**Depends:** Task 2.2
+
+Implement the first sister-tool setup preset with mocked spawn boundaries.
+
+**Files:**
+
+- Modify: `src/cli/commands/init/index.ts`
+- Create: `src/cli/commands/init/tool-presets.test.ts`
+
+**Steps (TDD):**
+
+1. Add `--with omx` parser/preset support.
+2. Mock PATH-present case: assert `spawnSync('omx', ['setup', '--yes'], ...)`.
+3. Mock PATH-missing case: assert non-zero exit and install hint.
+4. Assert dry-run prints command and does not spawn.
+5. Run init preset tests.
+
+**Acceptance:**
+
+- [ ] `ak setup --with omx` chains `omx setup --yes` when available.
+- [ ] Missing `omx` fails clearly.
+- [ ] Dry-run never spawns external tools.
+
+#### [agent-kit] Task 4.2: Toolchain setup follow-ups (`gstack`, `bun`, `vp`, `--all-tools`)
+
+**Status:** todo
+
+**Depends:** Task 4.1
+
+Extend the preset pattern after the OMX tracer bullet is green.
+
+**Files:**
+
+- Modify: `src/cli/commands/init/index.ts`
+- Modify: `src/cli/commands/init/tool-presets.test.ts`
+
+**Steps (TDD):**
+
+1. Add parser support for `--with gstack`, `--with bun`, `--with vp`, and `--all-tools`.
+2. Mock detection and remediation for each tool.
+3. Ensure curl-pipe or clone operations are opt-in only and dry-run safe.
+4. Add summary suggestions when tools are detected but not requested.
+5. Run init preset tests.
+
+**Acceptance:**
+
+- [ ] All tool presets have PATH checks and clear hints.
+- [ ] `--all-tools` activates all four.
+- [ ] No external installer runs without explicit opt-in.
+
+#### [agent-kit] Task 5.1: Claude plugin setup hint and preset
+
+**Status:** todo
+
+**Depends:** Task 3.1
+
+Make post-setup Claude Code registration discoverable.
+
+**Files:**
+
+- Modify: `src/cli/commands/init/index.ts`
+- Modify: `src/cli/commands/doctor.ts`
+- Modify: relevant init/doctor tests
+
+**Steps (TDD):**
+
+1. Assert setup summary prints `claude install-plugin @webpresso/agent-kit` hint once.
+2. Add `--with claude-plugin` preset that runs the command only when `claude` is on PATH.
+3. Add doctor row for Claude plugin registration.
+4. Run init and doctor tests.
+
+**Acceptance:**
+
+- [ ] Users see the Claude plugin registration hint after setup.
+- [ ] `--with claude-plugin` is explicit and PATH-guarded.
+- [ ] `ak doctor` reports missing Claude registration guidance.
+
+#### [agent-kit] Task 6.1: End-to-end audit-clean baseline verification
+
+**Status:** todo
+
+**Depends:** Tasks 2.1, 2.3, 3.1, 4.2, 5.1
+
+Run the gates against fresh and existing repos.
+
+**Files:**
+
+- Create/modify: `src/e2e/setup-audit-clean.test.ts`
+- Create/modify: fixtures under `__fixtures__/`
+
+**Steps (TDD):**
+
+1. Add fresh-repo `ak setup --with base-kit` e2e.
+2. Add agent-kit re-run idempotency e2e.
+3. Add doctor clean/broken/fix e2e.
+4. Add dry-run e2e.
+5. Run the narrow e2e suite plus lifecycle/catalog audits.
+
+**Acceptance:**
+
+- [ ] Fresh setup passes all baseline audits without manual edits.
+- [ ] Re-run is idempotent.
+- [ ] Doctor gates match Verification Gates.
+
+## Quick Reference (Execution Waves)
+
+| Wave | Tasks | Dependencies | Parallelizable | Effort |
+| --- | --- | --- | --- | --- |
+| Wave 0 | 1.1, 1.2, 2.1, 2.2 | None | yes | S-M |
+| Wave 1 | 2.3, 3.1, 4.1 | Wave 0 subset | yes | M |
+| Wave 2 | 4.2, 5.1 | Tasks 3.1/4.1 | yes | S-M |
+| Wave 3 | 6.1 | Tasks 2.3, 3.1, 4.2, 5.1 | no | M |
+
+Critical path: 2.2 → 2.3 → 6.1, with doctor/toolchain work parallel after Wave 0.
 
 ## Verification Gates
 

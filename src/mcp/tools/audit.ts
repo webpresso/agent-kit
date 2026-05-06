@@ -21,7 +21,8 @@ import { z } from 'zod'
 
 import { resolvePackageAsset } from '#utils/package-assets'
 import type { ToolDescriptor } from '#mcp/auto-discover'
-import { clipRawOutput, createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
+import { applyOutputTransform } from '../../output-transforms/index.js'
+import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
 const KINDS = [
   'tph',
@@ -184,7 +185,7 @@ async function dispatch(
         summary: summarizeExitCode(kind, exitCode),
         kind,
         details: { exitCode },
-        ...clipRawOutput(output, undefined, { toolName: `ak_audit-${kind}` }),
+        ...applyOutputTransform(output, { toolName: `ak_audit-${kind}` }),
       }
     }
     case 'tph-e2e': {
@@ -195,7 +196,7 @@ async function dispatch(
         summary: summarizeExitCode(kind, exitCode),
         kind,
         details: { exitCode },
-        ...clipRawOutput(output, undefined, { toolName: `ak_audit-${kind}` }),
+        ...applyOutputTransform(output, { toolName: `ak_audit-${kind}` }),
       }
     }
     default: {

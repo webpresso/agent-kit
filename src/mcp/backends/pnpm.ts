@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 import type { TestResult, TestRunInput } from './just.js'
 
@@ -14,11 +16,14 @@ export type { TestResult, TestRunInput } from './just.js'
  *   - `pnpm test` otherwise.
  */
 export async function runTests(input: TestRunInput): Promise<TestResult> {
+  const cwd = process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
   if (input.packages && input.packages.length > 0) {
     let combinedOutput = ''
     let firstFailure = 0
     for (const pkg of input.packages) {
-      const result = await runCommand('pnpm', ['-F', pkg, 'test'])
+      const result = usesVitest(cwd, pkg)
+        ? await runCommand('pnpm', ['-F', pkg, 'exec', 'vitest', 'run', '--reporter=json', '--no-color'])
+        : await runCommand('pnpm', ['-F', pkg, 'test'])
       combinedOutput += result.output
       if (!result.passed && firstFailure === 0) firstFailure = result.exitCode
     }
@@ -30,10 +35,58 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
   }
 
   if (input.files && input.files.length > 0) {
+    if (usesVitest(cwd)) {
+      return runCommand('pnpm', [
+        'exec',
+        'vitest',
+        'run',
+        '--reporter=json',
+        '--no-color',
+        ...input.files,
+      ])
+    }
     return runCommand('pnpm', ['test', '--', ...input.files])
   }
 
+  if (usesVitest(cwd)) {
+    return runCommand('pnpm', ['exec', 'vitest', 'run', '--reporter=json', '--no-color'])
+  }
+
   return runCommand('pnpm', ['test'])
+}
+
+function usesVitest(cwd: string, packageName?: string): boolean {
+  const packageJson = findPackageJson(cwd, packageName)
+  if (!packageJson) return false
+  const pkg = readPackage(packageJson)
+  const sections = ['dependencies', 'devDependencies', 'optionalDependencies'] as const
+  return sections.some((section) => {
+    const deps = pkg[section]
+    return Boolean(deps && typeof deps === 'object' && !Array.isArray(deps) && 'vitest' in deps)
+  })
+}
+
+function findPackageJson(cwd: string, packageName?: string): string | undefined {
+  const candidates = packageName
+    ? [
+        join(cwd, 'packages', packageName, 'package.json'),
+        join(cwd, 'apps', packageName, 'package.json'),
+        join(cwd, packageName, 'package.json'),
+        join(cwd, 'package.json'),
+      ]
+    : [join(cwd, 'package.json')]
+
+  return candidates.find((candidate) => existsSync(candidate))
+}
+
+function readPackage(file: string): Record<string, unknown> {
+  try {
+    const value = JSON.parse(readFileSync(file, 'utf8')) as unknown
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+    return value as Record<string, unknown>
+  } catch {
+    return {}
+  }
 }
 
 function runCommand(cmd: string, args: readonly string[]): Promise<TestResult> {

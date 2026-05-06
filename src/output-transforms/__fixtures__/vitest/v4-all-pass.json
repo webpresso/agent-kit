@@ -1,0 +1,13 @@
+{
+  "files": [
+    {
+      "file": "src/component.test.ts",
+      "tasks": [
+        {
+          "name": "renders",
+          "state": "passed"
+        }
+      ]
+    }
+  ]
+}

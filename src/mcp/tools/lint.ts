@@ -21,11 +21,11 @@
 import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
+import { applyOutputTransform } from '../../output-transforms/index.js'
 
 import { resolveProjectRoot } from './_shared/project-root.js'
 import {
   createSummaryOutputSchema,
-  clipRawOutput,
   createSummaryResult,
 } from './_shared/result.js'
 import { isMissingBinary, isRunFailure, runCommand } from './_shared/run-command.js'
@@ -71,6 +71,12 @@ interface OxlintMessage {
   readonly line?: number
   readonly ruleId?: string | null
   readonly message?: string
+  readonly filename?: string
+  readonly labels?: readonly {
+    readonly span?: {
+      readonly line?: number
+    }
+  }[]
 }
 
 interface OxlintFileReport {
@@ -95,18 +101,20 @@ interface ParseOutcome {
 function parseOxlintIssues(stdout: string): ParseOutcome {
   const trimmed = stdout.trim()
   if (!trimmed) return { issues: [] }
+  const jsonText = extractJsonObjectOrArray(trimmed) ?? trimmed
   let parsed: unknown
   try {
-    parsed = JSON.parse(trimmed)
+    parsed = JSON.parse(jsonText)
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
     return { issues: [], parseError: `oxlint JSON.parse failed: ${reason}` }
   }
-  if (!Array.isArray(parsed)) {
-    return { issues: [], parseError: 'oxlint output was not a JSON array' }
-  }
+  const reports = Array.isArray(parsed)
+    ? (parsed as OxlintFileReport[])
+    : normalizeWrappedOxlintReports(parsed)
+  if (!Array.isArray(reports)) return { issues: [], parseError: 'oxlint output was not a JSON array' }
   const issues: LintIssue[] = []
-  for (const fileReport of parsed as OxlintFileReport[]) {
+  for (const fileReport of reports) {
     const file = fileReport?.filePath ?? ''
     const messages = fileReport?.messages
     if (!Array.isArray(messages)) continue
@@ -120,6 +128,56 @@ function parseOxlintIssues(stdout: string): ParseOutcome {
     }
   }
   return { issues }
+}
+
+function normalizeWrappedOxlintReports(parsed: unknown): OxlintFileReport[] | undefined {
+  if (!parsed || typeof parsed !== 'object') return undefined
+  const wrapper = parsed as {
+    diagnostics?: unknown[]
+    results?: unknown[]
+  }
+  const reports = wrapper.diagnostics ?? wrapper.results
+  if (!Array.isArray(reports)) return undefined
+  if (reports.every((report) => report && typeof report === 'object' && 'message' in report)) {
+    return reports.map((report) => {
+      const message = report as OxlintMessage
+      return {
+        filePath: message.filename ?? '',
+        messages: [
+          {
+            line: message.line ?? message.labels?.[0]?.span?.line ?? 0,
+            ruleId: message.ruleId ?? 'parse',
+            message: message.message ?? '',
+          },
+        ],
+      }
+    })
+  }
+  return reports as OxlintFileReport[]
+}
+
+function extractJsonObjectOrArray(raw: string): string | undefined {
+  const start = raw.search(/[\[{]/u)
+  if (start < 0) return undefined
+  const open = raw[start]
+  const close = open === '{' ? '}' : ']'
+  let depth = 0
+  let inString = false
+  let escaped = false
+  for (let index = start; index < raw.length; index += 1) {
+    const char = raw[index]
+    if (inString) {
+      if (escaped) escaped = false
+      else if (char === '\\') escaped = true
+      else if (char === '"') inString = false
+      continue
+    }
+    if (char === '"') inString = true
+    if (char === open) depth += 1
+    if (char === close) depth -= 1
+    if (depth === 0) return raw.slice(start, index + 1)
+  }
+  return undefined
 }
 
 function summarizeLintResult(options: {
@@ -175,6 +233,12 @@ const tool: ToolDescriptor = {
 
     if (!isRunFailure(oxlintOutcome)) {
       const { issues, parseError } = parseOxlintIssues(oxlintOutcome.stdout)
+      const { transform: _transform, ...compact } = applyOutputTransform(
+        oxlintOutcome.stdout || oxlintOutcome.stderr,
+        {
+          toolName: 'ak_lint-oxlint',
+        },
+      )
       const payload = {
         passed: oxlintOutcome.exitCode === 0,
         summary: summarizeLintResult({
@@ -193,7 +257,7 @@ const tool: ToolDescriptor = {
           issues,
           parseError,
         },
-        ...clipRawOutput(oxlintOutcome.stderr, undefined, { toolName: 'ak_lint' }),
+        ...compact,
         timedOut: oxlintOutcome.timedOut || undefined,
         aborted: oxlintOutcome.aborted || undefined,
       }
@@ -236,6 +300,12 @@ const tool: ToolDescriptor = {
       return createSummaryResult(payload, { isError: true })
     }
 
+    const { transform: _transform, ...compact } = applyOutputTransform(
+      [pnpmOutcome.stdout, pnpmOutcome.stderr].filter(Boolean).join(''),
+      {
+        toolName: 'ak_lint-pnpm',
+      },
+    )
     const payload = {
       passed: pnpmOutcome.exitCode === 0,
       summary: summarizeLintResult({
@@ -252,9 +322,7 @@ const tool: ToolDescriptor = {
       details: {
         issues: [] as LintIssue[],
       },
-      ...clipRawOutput([pnpmOutcome.stdout, pnpmOutcome.stderr].filter(Boolean).join(''), undefined, {
-        toolName: 'ak_lint',
-      }),
+      ...compact,
       timedOut: pnpmOutcome.timedOut || undefined,
       aborted: pnpmOutcome.aborted || undefined,
     }

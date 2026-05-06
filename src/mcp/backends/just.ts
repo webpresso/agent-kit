@@ -1,8 +1,11 @@
 import { spawn } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 export interface TestRunInput {
   readonly packages?: readonly string[]
   readonly files?: readonly string[]
+  readonly extraArgs?: readonly string[]
 }
 
 export interface TestResult {
@@ -23,14 +26,60 @@ export interface TestResult {
  * spawned process's exit code.
  */
 export async function runTests(input: TestRunInput): Promise<TestResult> {
+  const cwd = process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
   const args: string[] = ['test']
   if (input.packages && input.packages.length > 0) {
     args.push('--package', ...input.packages)
   } else if (input.files && input.files.length > 0) {
     args.push('--file', ...input.files)
   }
+  const extraArgs = input.extraArgs ?? inferExtraArgs(cwd, input)
+  if (extraArgs.length > 0) {
+    args.push('--', ...extraArgs)
+  }
 
   return runCommand('just', args)
+}
+
+function inferExtraArgs(cwd: string, input: TestRunInput): readonly string[] {
+  if (input.packages?.some((pkg) => usesVitest(cwd, pkg)) || (!input.packages?.length && usesVitest(cwd))) {
+    return ['--reporter=json', '--no-color']
+  }
+  return []
+}
+
+function usesVitest(cwd: string, packageName?: string): boolean {
+  const packageJson = findPackageJson(cwd, packageName)
+  if (!packageJson) return false
+  const pkg = readPackage(packageJson)
+  const sections = ['dependencies', 'devDependencies', 'optionalDependencies'] as const
+  return sections.some((section) => {
+    const deps = pkg[section]
+    return Boolean(deps && typeof deps === 'object' && !Array.isArray(deps) && 'vitest' in deps)
+  })
+}
+
+function findPackageJson(cwd: string, packageName?: string): string | undefined {
+  const candidates = packageName
+    ? [
+        join(cwd, 'packages', packageName, 'package.json'),
+        join(cwd, 'apps', packageName, 'package.json'),
+        join(cwd, packageName, 'package.json'),
+        join(cwd, 'package.json'),
+      ]
+    : [join(cwd, 'package.json')]
+
+  return candidates.find((candidate) => existsSync(candidate))
+}
+
+function readPackage(file: string): Record<string, unknown> {
+  try {
+    const value = JSON.parse(readFileSync(file, 'utf8')) as unknown
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+    return value as Record<string, unknown>
+  } catch {
+    return {}
+  }
 }
 
 function runCommand(cmd: string, args: readonly string[]): Promise<TestResult> {

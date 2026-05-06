@@ -13,10 +13,10 @@ import { z } from 'zod'
 import type { ToolDescriptor } from '#mcp/auto-discover'
 import * as justBackend from '#mcp/backends/just'
 import * as pnpmBackend from '#mcp/backends/pnpm'
+import { applyOutputTransform } from '../../output-transforms/index.js'
 
 import {
   createSummaryOutputSchema,
-  clipRawOutput,
   createSummaryResult,
 } from './_shared/result.js'
 
@@ -76,6 +76,9 @@ const tool: ToolDescriptor = {
       packages: input.packages,
       files: input.files,
     })
+    const { transform: _transform, ...compact } = applyOutputTransform(result.output, {
+      toolName: 'ak_test',
+    })
     const payload = {
       passed: result.passed,
       summary: result.passed
@@ -87,7 +90,7 @@ const tool: ToolDescriptor = {
         packages: input.packages,
         files: input.files,
       },
-      ...clipRawOutput(result.output, undefined, { toolName: 'ak_test' }),
+      ...compact,
     }
     return createSummaryResult(payload)
   },

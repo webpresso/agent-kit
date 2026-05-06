@@ -1,0 +1,45 @@
+{
+  "passed": false,
+  "summary": "qa failed: lint, test",
+  "details": {
+    "lint": {
+      "passed": false,
+      "summary": "lint failed",
+      "failures": [
+        {
+          "file": "src/a.ts",
+          "line": 1,
+          "code": "no-console",
+          "message": "Unexpected console"
+        }
+      ],
+      "tier": 1,
+      "bytes": 42,
+      "tokensSaved": 120,
+      "rawOutput": "src/a.ts:1 no-console Unexpected console"
+    },
+    "typecheck": {
+      "passed": true,
+      "summary": "typecheck passed",
+      "failures": [],
+      "tier": 1,
+      "bytes": 0,
+      "tokensSaved": 88,
+      "rawOutput": ""
+    },
+    "test": {
+      "passed": false,
+      "summary": "tests failed",
+      "failures": [
+        {
+          "file": "src/a.test.ts",
+          "message": "adds numbers: expected 1 to be 2"
+        }
+      ],
+      "tier": 1,
+      "bytes": 55,
+      "tokensSaved": 220,
+      "rawOutput": "src/a.test.ts adds numbers: expected 1 to be 2"
+    }
+  }
+}

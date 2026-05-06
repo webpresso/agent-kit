@@ -163,6 +163,32 @@ describe('runInit() — omx + gstack presets (integration)', () => {
     })
   })
 
+  describe('--with rtk', () => {
+    it('returns SUCCESS and invokes rtk --version then rtk init -g --auto-patch', async () => {
+      const code = await runInit({ cwd: repo, yes: true, with: 'rtk' })
+      expect(code).toBe(EXIT_SUCCESS)
+      const rtkCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'rtk')
+      expect(rtkCalls).toHaveLength(2)
+      expect(rtkCalls[0]?.[1]).toEqual(['--version'])
+      expect(rtkCalls[1]?.[1]).toEqual(['init', '-g', '--auto-patch'])
+      expect(rtkCalls[1]?.[2]).toEqual(
+        expect.objectContaining({
+          cwd: repo,
+          stdio: 'inherit',
+          env: expect.objectContaining({
+            RTK_TELEMETRY_DISABLED: '1',
+          }),
+        }),
+      )
+    })
+
+    it('--dry-run does not invoke rtk at all', async () => {
+      await runInit({ cwd: repo, yes: true, with: 'rtk', 'dry-run': true })
+      const rtkCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'rtk')
+      expect(rtkCalls).toHaveLength(0)
+    })
+  })
+
   describe('--with omx,gstack (combined)', () => {
     it('invokes both presets when separated by comma', async () => {
       const code = await runInit({ cwd: repo, yes: true, with: 'omx,gstack' })
@@ -190,6 +216,17 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       const code = await runInit({ cwd: repo, yes: true, with: 'omx,gstack' })
       expect(code).toBe(EXIT_SETUP_FAIL)
       // gstack still ran; the aggregate exit code reflects the omx failure.
+    })
+  })
+
+  describe('--with omx,rtk (combined)', () => {
+    it('invokes both presets in deterministic order', async () => {
+      const code = await runInit({ cwd: repo, yes: true, with: 'omx,rtk' })
+      expect(code).toBe(EXIT_SUCCESS)
+      const calledTools = spawnSyncMock.mock.calls
+        .map((call) => call[0])
+        .filter((name) => name === 'omx' || name === 'rtk')
+      expect(calledTools).toEqual(['omx', 'omx', 'rtk', 'rtk'])
     })
   })
 

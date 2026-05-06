@@ -5,6 +5,20 @@ import { z } from 'zod'
 
 const DEFAULT_RAW_OUTPUT_LIMIT = 4_000
 
+export const failureSchema = z.object({
+  file: z.string().optional(),
+  line: z.number().optional(),
+  code: z.string().optional(),
+  message: z.string(),
+})
+
+export const transformMetadataSchema = z.object({
+  toolName: z.string(),
+  normalizedToolName: z.string(),
+  tier: z.enum(['passthrough', 'registered']),
+  rawBytes: z.number(),
+})
+
 export const summaryFirstResultSchema = z.object({
   passed: z.boolean(),
   summary: z.string(),
@@ -17,6 +31,11 @@ export const summaryFirstResultSchema = z.object({
   timedOut: z.boolean().optional(),
   aborted: z.boolean().optional(),
   logPath: z.string().optional(),
+  failures: z.array(failureSchema).optional(),
+  tier: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+  bytes: z.number().optional(),
+  tokensSaved: z.number().optional(),
+  transform: transformMetadataSchema.optional(),
 })
 
 type SummaryShapeOptions = {
