@@ -57,7 +57,7 @@ function clearThrottleMarkers(): void {
   }
 }
 
-describe('pretool-guard binary integration', () => {
+describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
   beforeEach(() => {
     clearMcpSentinel()
     clearThrottleMarkers()
