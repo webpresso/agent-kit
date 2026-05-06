@@ -19,16 +19,8 @@ export default {
     '!src/**/*.d.ts',
     '!src/**/__fixtures__/**',
   ],
-  // Stryker sandbox cannot copyfile directory symlinks (ENOTSUP on macOS).
-  // IDE-synced skill dirs (.agents, .cursor, .gemini, .windsurf) are generated
-  // by ak symlink sync; .claude/worktrees are temporary agent execution dirs.
-  ignorePatterns: [
-    '.agents/**',
-    '.gemini/**',
-    '.cursor/**',
-    '.windsurf/**',
-    '.claude/worktrees/**',
-    '__fixtures__/fake-home/**',
-  ],
+  // inPlace avoids sandbox copy (which crashes on directory symlinks from ak symlink sync).
+  // Stryker keeps backups of originals in tempDirName before mutating.
+  inPlace: true,
   concurrency: 2,
 }
