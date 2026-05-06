@@ -181,7 +181,7 @@
     "generate-skills": "tsx src/build/generate-skills-dir.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:mutation": "stryker run",
+    "test:mutation": "bun stryker run --configFile stryker.config.ts",
     "lint:pkg": "publint && attw --pack . && (command -v claude >/dev/null 2>&1 && claude plugin validate . || true)",
     "blueprints:check": "bun ./src/cli/cli.ts audit blueprint-lifecycle",
     "docs:check": "bun ./src/cli/cli.ts audit docs-frontmatter",
