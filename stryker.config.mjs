@@ -28,6 +28,12 @@ export default {
     '!src/**/*.d.ts',
     '!src/**/__fixtures__/**',
   ],
-  inPlace: true,
+  // sandbox mode (inPlace:false) — avoids double-instrumentation when killed mid-run.
+  // inPlace:true caused RangeError: Maximum call stack size exceeded because a pkill
+  // left source files in instrumented state; the next run re-instrumented them and
+  // stryMutAct_9fa48 ended up calling itself infinitely.
+  // The old blocker (ENOTSUP copyfile of .agents/ symlinks) is gone — .agents/ was
+  // removed from disk and from git.
+  inPlace: false,
   concurrency: 6, // 8 CPUs; leave 2 for OS + Stryker orchestrator
 }
