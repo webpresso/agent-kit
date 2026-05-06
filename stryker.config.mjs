@@ -20,6 +20,7 @@ export default {
     command: 'pnpm test',
   },
   coverageAnalysis: 'off',
+  ignoreStatic: false, // ignoreStatic requires perTest; off/command mode doesn't support it
   mutate: [
     'src/**/*.ts',
     '!src/**/*.test.ts',
