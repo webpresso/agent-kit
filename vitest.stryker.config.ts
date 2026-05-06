@@ -10,9 +10,6 @@ import vitestConfig from './vitest.config.js'
  */
 export default mergeConfig(vitestConfig, defineConfig({
   test: {
-    // Force forks pool — perTest coverage plugin causes "Cannot convert object
-    // to primitive value" serialization errors in vmThreads (Stryker's default).
-    pool: 'forks',
     exclude: [
       ...(vitestConfig.test?.exclude ?? ['**/node_modules/**', '**/dist/**']),
       'src/hooks/pretool-guard/runner.test.ts',
