@@ -13,11 +13,12 @@ export default {
   },
   // Use 'command' runner — the vitest runner (perTest/all) crashes in Stryker 9.6.1
   // + vitest 2.1.9 with 'TypeError: Cannot convert object to primitive value' in
-  // VitestTestRunner.errorToString during the dry run. The command runner delegates
-  // to 'pnpm test' which uses vitest.config.ts with pool:forks (same as April 2026).
+  // VitestTestRunner.errorToString during the dry run.
   testRunner: 'command',
   commandRunner: {
-    command: 'pnpm test',
+    // Use vitest directly with dot reporter + stryker config (excludes slow tests)
+    // to minimize per-mutant overhead vs full pnpm test invocation.
+    command: 'pnpm exec vitest run --reporter=dot --config vitest.stryker.config.ts',
   },
   coverageAnalysis: 'off',
   ignoreStatic: false, // ignoreStatic requires perTest; off/command mode doesn't support it
@@ -28,5 +29,5 @@ export default {
     '!src/**/__fixtures__/**',
   ],
   inPlace: true,
-  concurrency: 2,
+  concurrency: 6, // 8 CPUs; leave 2 for OS + Stryker orchestrator
 }
