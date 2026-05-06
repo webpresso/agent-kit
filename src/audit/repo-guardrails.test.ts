@@ -2,6 +2,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
+import type { RepoAuditViolation } from './repo-guardrails.js'
 
 import {
   auditBlueprintLifecycle,
@@ -75,9 +76,9 @@ describe('repo guardrail audits', () => {
         }),
       ]),
     )
-    expect(result.violations.some((violation) => violation.message.includes('zod'))).toBe(false)
-    expect(result.violations.some((violation) => violation.message.includes('file:'))).toBe(false)
-    expect(result.violations.some((violation) => violation.message.includes('>=19'))).toBe(false)
+    expect(result.violations.some((violation: RepoAuditViolation) => violation.message.includes('zod'))).toBe(false)
+    expect(result.violations.some((violation: RepoAuditViolation) => violation.message.includes('file:'))).toBe(false)
+    expect(result.violations.some((violation: RepoAuditViolation) => violation.message.includes('>=19'))).toBe(false)
   })
 
   test('commit message audit keeps conventional commits loose but enforces lore trailers when requested by subject', () => {
@@ -375,7 +376,7 @@ describe('validateCommitMessage — branch coverage', () => {
 
   test('single-char subject does not trigger empty-subject violation', () => {
     const result = validateCommitMessage('x')
-    expect(result.violations.every((v) => !v.message.includes('required'))).toBe(true)
+    expect(result.violations.every((v: RepoAuditViolation) => !v.message.includes('required'))).toBe(true)
   })
 
   // ConditionalExpression: /^(Merge|Revert|fixup!|squash!)/ — each keyword
@@ -400,35 +401,35 @@ describe('validateCommitMessage — branch coverage', () => {
     ['123feat: stuff', 'type must start with lowercase letter'],
   ])('conventional format near-miss: %s', (subject, _desc) => {
     const result = validateCommitMessage(subject)
-    expect(result.violations.some((v) => v.message.includes('conventional'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('conventional'))).toBe(true)
   })
 
   test('conventional match with scope passes', () => {
     const result = validateCommitMessage('feat(scope): do something')
-    expect(result.violations.every((v) => !v.message.includes('conventional'))).toBe(true)
+    expect(result.violations.every((v: RepoAuditViolation) => !v.message.includes('conventional'))).toBe(true)
   })
 
   test('conventional match with breaking marker passes', () => {
     const result = validateCommitMessage('feat!: breaking change')
-    expect(result.violations.every((v) => !v.message.includes('conventional'))).toBe(true)
+    expect(result.violations.every((v: RepoAuditViolation) => !v.message.includes('conventional'))).toBe(true)
   })
 
   test('conventional match with scope and breaking marker passes', () => {
     const result = validateCommitMessage('feat(scope)!: breaking')
-    expect(result.violations.every((v) => !v.message.includes('conventional'))).toBe(true)
+    expect(result.violations.every((v: RepoAuditViolation) => !v.message.includes('conventional'))).toBe(true)
   })
 
   // EqualityOperator: subject.length > subjectMaxLength boundary
   test('subject at exactly subjectMaxLength does not violate', () => {
     const subject = 'feat: ' + 'a'.repeat(94) // total 100 chars
     const result = validateCommitMessage(subject, { subjectMaxLength: 100 })
-    expect(result.violations.every((v) => !v.message.includes('100'))).toBe(true)
+    expect(result.violations.every((v: RepoAuditViolation) => !v.message.includes('100'))).toBe(true)
   })
 
   test('subject at subjectMaxLength + 1 violates', () => {
     const subject = 'feat: ' + 'a'.repeat(95) // total 101 chars
     const result = validateCommitMessage(subject, { subjectMaxLength: 100 })
-    expect(result.violations.some((v) => v.message.includes('100'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('100'))).toBe(true)
   })
 
   test('custom subjectMaxLength is used instead of default', () => {
@@ -440,12 +441,12 @@ describe('validateCommitMessage — branch coverage', () => {
   // ConditionalExpression: lines.length > 1 && lines[1] !== ''
   test('single-line commit does not trigger blank-second-line violation', () => {
     const result = validateCommitMessage('feat: single line')
-    expect(result.violations.every((v) => !v.message.includes('blank'))).toBe(true)
+    expect(result.violations.every((v: RepoAuditViolation) => !v.message.includes('blank'))).toBe(true)
   })
 
   test('two lines where second is blank is valid', () => {
     const result = validateCommitMessage('feat: subject\n\nbody')
-    expect(result.violations.every((v) => !v.message.includes('blank'))).toBe(true)
+    expect(result.violations.every((v: RepoAuditViolation) => !v.message.includes('blank'))).toBe(true)
   })
 
   // LogicalOperator: shouldEnforceLore branches
@@ -464,14 +465,14 @@ describe('validateCommitMessage — branch coverage', () => {
     )
     // Invalid Confidence enum → violation even with loreWarn (not requireLore)
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.toLowerCase().includes('confidence'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.toLowerCase().includes('confidence'))).toBe(true)
   })
 
   test('neither requireLore nor loreWarn nor [lore] — lore not enforced', () => {
     const result = validateCommitMessage(
       ['feat: something', '', 'body without trailers'].join('\n'),
     )
-    expect(result.violations.every((v) => !v.message.includes('Confidence'))).toBe(true)
+    expect(result.violations.every((v: RepoAuditViolation) => !v.message.includes('Confidence'))).toBe(true)
   })
 
   // ConditionalExpression: options.requireLore === true || subject.includes('[lore]') in loreResult call
@@ -480,24 +481,24 @@ describe('validateCommitMessage — branch coverage', () => {
       ['feat: something [lore]', '', 'body without trailers'].join('\n'),
     )
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.includes('Confidence'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('Confidence'))).toBe(true)
   })
 
   // allowedTypes — custom list
   test('custom allowedTypes accepts only listed types', () => {
     const result = validateCommitMessage('chore: some task', { allowedTypes: ['feat', 'fix'] })
-    expect(result.violations.some((v) => v.message.includes('conventional'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('conventional'))).toBe(true)
   })
 
   test('custom allowedTypes permits type in list', () => {
     const result = validateCommitMessage('feat: something', { allowedTypes: ['feat', 'fix'] })
-    expect(result.violations.every((v) => !v.message.includes('conventional'))).toBe(true)
+    expect(result.violations.every((v: RepoAuditViolation) => !v.message.includes('conventional'))).toBe(true)
   })
 
   // CRLF normalization
   test('CRLF line endings are normalised correctly', () => {
     const result = validateCommitMessage('feat: something\r\n\r\nbody')
-    expect(result.violations.every((v) => !v.message.includes('blank'))).toBe(true)
+    expect(result.violations.every((v: RepoAuditViolation) => !v.message.includes('blank'))).toBe(true)
   })
 })
 
@@ -690,7 +691,7 @@ describe('auditDocsFrontmatter — branch coverage', () => {
     )
     const result = auditDocsFrontmatter(root)
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.includes('type'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('type'))).toBe(true)
   })
 
   test('file with invalid type (not in allowedTypes) produces invalid-type violation', () => {
@@ -702,7 +703,7 @@ describe('auditDocsFrontmatter — branch coverage', () => {
     )
     const result = auditDocsFrontmatter(root)
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.includes('Invalid type'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('Invalid type'))).toBe(true)
   })
 
   test('file without last_updated produces missing-last_updated violation', () => {
@@ -714,7 +715,7 @@ describe('auditDocsFrontmatter — branch coverage', () => {
     )
     const result = auditDocsFrontmatter(root)
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.includes('last_updated'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('last_updated'))).toBe(true)
   })
 
   // ConditionalExpression: folder === 'templates' skips type validation
@@ -751,8 +752,8 @@ describe('auditDocsFrontmatter — branch coverage', () => {
     )
     const result = auditDocsFrontmatter(root)
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.includes('adrs/'))).toBe(true)
-    expect(result.violations.some((v) => v.message.includes('adr'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('adrs/'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('adr'))).toBe(true)
   })
 
   test('custom docsRoot option is respected', () => {
@@ -777,7 +778,7 @@ describe('auditDocsFrontmatter — branch coverage', () => {
     // guide is a default type but not in our custom list
     const result = auditDocsFrontmatter(root, { allowedTypes: ['adr', 'research'] })
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.includes('Invalid type'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('Invalid type'))).toBe(true)
   })
 
   test('returns correct checked count', () => {
@@ -818,7 +819,7 @@ describe('auditBlueprintLifecycle — branch coverage', () => {
     )
     const result = auditBlueprintLifecycle(root)
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.includes('type: blueprint'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('type: blueprint'))).toBe(true)
   })
 
   test('custom statuses option filters which folders are checked', () => {
@@ -904,7 +905,7 @@ describe('auditLegacyOmxPlans — branch coverage via auditBlueprintLifecycle', 
     const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
     expect(result.ok).toBe(false)
     expect(
-      result.violations.some((v) => v.message.includes('# Workspace boundary contract')),
+      result.violations.some((v: RepoAuditViolation) => v.message.includes('# Workspace boundary contract')),
     ).toBe(true)
   })
 
@@ -918,7 +919,7 @@ describe('auditLegacyOmxPlans — branch coverage via auditBlueprintLifecycle', 
     const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
     expect(result.ok).toBe(false)
     expect(
-      result.violations.some((v) => v.message.includes('## Workspace classifications')),
+      result.violations.some((v: RepoAuditViolation) => v.message.includes('## Workspace classifications')),
     ).toBe(true)
   })
 
@@ -928,7 +929,7 @@ describe('auditLegacyOmxPlans — branch coverage via auditBlueprintLifecycle', 
     writeFileSync(join(root, '.omx', 'plans', 'prd-feature.md'), '# Not a PRD heading\n')
     const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.includes('missing a PRD heading'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('missing a PRD heading'))).toBe(true)
   })
 
   test('test-spec file missing "# Test Spec:" heading produces violation', () => {
@@ -938,7 +939,7 @@ describe('auditLegacyOmxPlans — branch coverage via auditBlueprintLifecycle', 
     const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
     expect(result.ok).toBe(false)
     expect(
-      result.violations.some((v) => v.message.includes('missing a test spec heading')),
+      result.violations.some((v: RepoAuditViolation) => v.message.includes('missing a test spec heading')),
     ).toBe(true)
   })
 
@@ -951,7 +952,7 @@ describe('auditLegacyOmxPlans — branch coverage via auditBlueprintLifecycle', 
     )
     const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.includes('requires a slug'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('requires a slug'))).toBe(true)
   })
 
   test('lifecycle JSON with empty slug produces slug violation', () => {
@@ -963,7 +964,7 @@ describe('auditLegacyOmxPlans — branch coverage via auditBlueprintLifecycle', 
     )
     const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.includes('requires a slug'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('requires a slug'))).toBe(true)
   })
 
   test('lifecycle JSON with no status produces status violation', () => {
@@ -975,7 +976,7 @@ describe('auditLegacyOmxPlans — branch coverage via auditBlueprintLifecycle', 
     )
     const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.includes('requires a status'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('requires a status'))).toBe(true)
   })
 
   test('lifecycle JSON with no artifacts object produces artifacts violation', () => {
@@ -987,7 +988,7 @@ describe('auditLegacyOmxPlans — branch coverage via auditBlueprintLifecycle', 
     )
     const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.includes('requires an artifacts object'))).toBe(
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('requires an artifacts object'))).toBe(
       true,
     )
   })
@@ -1001,7 +1002,7 @@ describe('auditLegacyOmxPlans — branch coverage via auditBlueprintLifecycle', 
     )
     const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.includes('requires an artifacts object'))).toBe(
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('requires an artifacts object'))).toBe(
       true,
     )
   })
@@ -1012,7 +1013,7 @@ describe('auditLegacyOmxPlans — branch coverage via auditBlueprintLifecycle', 
     writeFileSync(join(root, '.omx', 'state', 'lifecycle', 'feature.json'), 'not valid json')
     const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.includes('JSON is invalid'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('JSON is invalid'))).toBe(true)
   })
 
   // Slug cross-reference: prd exists but test-spec is missing → "Missing legacy test spec plan"
@@ -1023,7 +1024,7 @@ describe('auditLegacyOmxPlans — branch coverage via auditBlueprintLifecycle', 
     writeFileSync(join(root, '.omx', 'plans', 'prd-orphan.md'), '# PRD: Orphan\n')
     const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.includes('Missing legacy test spec plan'))).toBe(
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('Missing legacy test spec plan'))).toBe(
       true,
     )
   })
@@ -1035,7 +1036,7 @@ describe('auditLegacyOmxPlans — branch coverage via auditBlueprintLifecycle', 
     writeFileSync(join(root, '.omx', 'plans', 'test-spec-orphan.md'), '# Test Spec: Orphan\n')
     const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.includes('Missing legacy PRD plan'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('Missing legacy PRD plan'))).toBe(true)
   })
 })
 
@@ -1192,8 +1193,8 @@ describe('parseFrontmatter — branch coverage', () => {
     const result = auditDocsFrontmatter(root)
     // Without frontmatter, type and last_updated are both missing
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.includes('type'))).toBe(true)
-    expect(result.violations.some((v) => v.message.includes('last_updated'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('type'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('last_updated'))).toBe(true)
   })
 
   test('frontmatter block not closed (no closing ---) returns empty record', () => {
@@ -1205,6 +1206,6 @@ describe('parseFrontmatter — branch coverage', () => {
     )
     const result = auditDocsFrontmatter(root)
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => v.message.includes('type'))).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('type'))).toBe(true)
   })
 })
