@@ -69,7 +69,7 @@ const tool: ToolDescriptor = {
   },
   handler: async (raw) => {
     const input = inputSchema.parse(raw ?? {})
-    const cwd = process.cwd()
+    const cwd = process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
     const backend = detectBackend(cwd, input.backend)
     const runner = backend === 'just' ? justBackend : pnpmBackend
     const result = await runner.runTests({

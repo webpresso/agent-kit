@@ -30,11 +30,15 @@ function fakeChild(opts: { stdout?: string; stderr?: string; exitCode?: number }
   }
 }
 
-const originalCwd = process.cwd()
+const originalProjectDir = process.env.CLAUDE_PROJECT_DIR
 
 afterEach(() => {
   spawnMock.mockReset()
-  process.chdir(originalCwd)
+  if (originalProjectDir === undefined) {
+    delete process.env.CLAUDE_PROJECT_DIR
+  } else {
+    process.env.CLAUDE_PROJECT_DIR = originalProjectDir
+  }
 })
 
 describe('ak_test tool', () => {
@@ -49,7 +53,7 @@ describe('ak_test tool', () => {
 
     beforeEach(() => {
       dir = mkdtempSync(join(tmpdir(), `ak-mcp-test-tool-${randomUUID().slice(0, 8)}-`))
-      process.chdir(dir)
+      process.env.CLAUDE_PROJECT_DIR = dir
     })
 
     afterEach(() => {
