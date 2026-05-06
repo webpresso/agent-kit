@@ -8,6 +8,7 @@ export default {
     break: 85,
   },
   mutator: {
+    // Evaluate ALL mutator types — no exclusions
     excludedMutations: [],
   },
   vitest: {
@@ -19,8 +20,6 @@ export default {
     '!src/**/*.d.ts',
     '!src/**/__fixtures__/**',
   ],
-  // inPlace avoids sandbox copy (which crashes on directory symlinks from ak symlink sync).
-  // Stryker keeps backups of originals in tempDirName before mutating.
   inPlace: true,
   concurrency: 2,
 }
