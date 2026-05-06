@@ -1,10 +1,10 @@
 ---
 type: blueprint
-status: planned
+status: completed
 complexity: S
 created: '2026-05-06'
 last_updated: '2026-05-06'
-progress: '0% (planned — peer-plugin scaffolder spec + perf budget tightened from peer-plugin-architecture.md analysis)'
+progress: '100% (6/6 tasks done, updated 2026-05-06)'
 depends_on:
   - compact-qa-output-filters
 tags:
