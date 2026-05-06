@@ -12,7 +12,8 @@ export default {
     excludedMutations: [],
   },
   vitest: {
-    configFile: 'vitest.config.ts',
+    // Excludes dist-binary integration tests that can't run in vmThreads workers
+    configFile: 'vitest.stryker.config.ts',
   },
   mutate: [
     'src/**/*.ts',
