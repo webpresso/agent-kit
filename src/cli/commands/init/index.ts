@@ -45,7 +45,7 @@ import { scaffoldVision } from './scaffolders/vision/index.js'
 
 const PRESETS = ['gstack', 'lore-commits', 'omx', 'playwright-mcp', 'rtk', 'vision'] as const
 type Preset = (typeof PRESETS)[number]
-const DEFAULT_PRESETS: readonly Preset[] = ['omx', 'gstack', 'vision']
+const DEFAULT_PRESETS: readonly Preset[] = ['omx', 'gstack', 'vision', 'rtk']
 const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested')
 
 function parsePresets(withFlag: string | undefined): Preset[] {
@@ -343,12 +343,16 @@ export async function runInit(flags: InitFlags): Promise<number> {
     }
 
     let rtkFailure: 'not-found' | 'init-failed' | null = null
-    if (presets.includes('rtk')) {
+    if (process.env.AK_SKIP_RTK === '1') {
+      console.warn(
+        '  rtk: ⚠ AK_SKIP_RTK=1 — skipping. RTK provides shell-tool output filtering for git/gh/kubectl/etc.',
+      )
+    } else if (presets.includes('rtk')) {
       if (!options.dryRun) {
         mkdirSync(join(consumer.repoRoot, '.agent'), { recursive: true })
         writeFileSync(
           join(consumer.repoRoot, RTK_REQUESTED_MARKER),
-          'requested via `ak setup --with rtk`\n',
+          'managed by ak setup (default-on)\n',
         )
       }
       const rtkResult = ensureRtk({ repoRoot: consumer.repoRoot, options })

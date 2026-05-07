@@ -96,12 +96,14 @@ RTK skips commands already owned by `ak-pretool-guard`.
 - Codex is treated as a prompt/instructions lane upstream, not a hook-rewrite
   lane, so agent-kit does **not** add RTK to `.codex/hooks.json`
 
-**Marker:** `ak setup --with rtk` writes `.agent/.rtk-requested` so `ak hooks doctor`
-can report RTK only for repos that opted in.
+**Marker:** every `ak setup` writes `.agent/.rtk-requested` so `ak hooks doctor`
+can report RTK status for the repo.
+**Opt-out:** set `AK_SKIP_RTK=1` in the environment to skip (CI / sandboxed
+environments without `brew` access, or platforms where RTK isn't yet packaged).
 
 ## Combining presets
 
-Presets run independently in the order: `gstack`, `lore-commits`, `omx`, `playwright-mcp`, `rtk`, `vision`. The default preset set is `omx,gstack,vision`; `playwright-mcp` is also applied whenever `omx` runs. Specifying default presets explicitly is safe and idempotent. A failure in one does **not** skip subsequent presets — every preset gets a chance to run. The aggregate exit code reflects the worst failure across all presets.
+Presets run independently in the order: `gstack`, `lore-commits`, `omx`, `playwright-mcp`, `rtk`, `vision`. The default preset set is `omx,gstack,vision,rtk`; `playwright-mcp` is also applied whenever `omx` runs. Specifying default presets explicitly is safe and idempotent. A failure in one does **not** skip subsequent presets — every preset gets a chance to run. The aggregate exit code reflects the worst failure across all presets.
 
 Example: `ak setup` with `omx` unavailable after the fallback install and a reusable gstack install root already present → omx logs an error, gstack still detects + reports `updated`, overall exit code is 1 (the omx failure dominates).
 
