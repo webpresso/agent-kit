@@ -60,9 +60,9 @@ describe('plugin.json manifest', () => {
   })
 
   describe('hooks', () => {
-    it('PreToolUse matches Edit|Write|WebFetch|Read|Grep and points at pretool-guard via bun + ${CLAUDE_PLUGIN_ROOT}', () => {
+    it('PreToolUse matches Bash|Edit|Write|MultiEdit|WebFetch|Read|Grep and points at pretool-guard via bun + ${CLAUDE_PLUGIN_ROOT}', () => {
       const [entry] = readManifest().hooks.PreToolUse
-      expect(entry.matcher).toBe('Edit|Write|WebFetch|Read|Grep')
+      expect(entry.matcher).toBe('Bash|Edit|Write|MultiEdit|WebFetch|Read|Grep')
       const [handler] = entry.hooks
       expect(handler.type).toBe('command')
       expect(handler.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/pretool-guard/index.ts`)
