@@ -22,7 +22,7 @@ Long-running MCP tools are now **summary-first**: they return canonical `structu
 
 **Plugin runtime contract:** the Claude Code plugin executes with **Bun** and currently points at bundled `src/*.ts` entrypoints from the published package. The tarball intentionally ships both `src/` and `dist/`; `dist/esm/*` is a library/build artifact, not the current plugin execution path.
 
-**Plugin dev mode (working on agent-kit itself):** `pnpm dev:link` symlinks the cache install at `~/.claude/plugins/cache/agent-kit/agent-kit/edge-local` to your local clone, so every hook fires from live source — edit `src/hooks/**` and the next call uses it. No build, no Changesets, no reinstall. See [CONTRIBUTING.md → Edge-local plugin link](./CONTRIBUTING.md#edge-local-plugin-link-hot-reload-hooks-from-source).
+**Plugin dev mode (working on agent-kit itself):** `pnpm dev:link` installs an `edge-local` symlink at `~/.claude/plugins/cache/agent-kit/agent-kit/edge-local` AND mirrors every top-level repo entry (e.g. `.claude-plugin/`, `src/`) into the plugin root as symlinks, so every hook + MCP invocation resolves into the live working tree. Edit `src/hooks/**` or `src/mcp/**` and the next call uses it. No build, no Changesets, no reinstall. Idempotent — re-run after any marketplace upgrade. See [CONTRIBUTING.md → Edge-local plugin link](./CONTRIBUTING.md#edge-local-plugin-link-hot-reload-hooks-from-source).
 
 ### Path B — npm + `ak setup` (Codex CLI, OpenCode, Cursor, Gemini, …)
 

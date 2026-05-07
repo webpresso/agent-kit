@@ -25,17 +25,22 @@ new env-var is for CI / sandboxed environments without network. Most
 consumer repos treat gstack as a hard prerequisite — opt out only when you
 must.
 
-**MCP readiness sentinel — project-anchored key.** The pretool-guard hook
-routes dev-workflow commands (`pnpm test`, `just lint`, `ak ...`) to the
-agent-kit MCP tool surface when MCP is alive, falling back to a `just <task>`
-recipe otherwise. Earlier the readiness sentinel was keyed to `process.ppid`
-— this only worked when the IDE host was the direct parent of BOTH the hook
-and the MCP server. Codex CLI's hook spawn topology routes through worker
-processes, so the hook's `process.ppid` diverged from the MCP server's
-`process.ppid`; the sentinel filename never matched and every dev-workflow
-command got the wrong "MCP not ready" denial.
+**MCP readiness sentinel — decoupled scan-based reader.** The pretool-guard
+hook routes dev-workflow commands (`pnpm test`, `just lint`, `ak ...`) to
+the agent-kit MCP tool surface when MCP is alive, falling back to a
+`just <task>` recipe otherwise. Earlier the readiness sentinel filename was
+derived from a value (`process.ppid`, then briefly a project-anchor hash)
+that BOTH writer and reader had to agree on. Both approaches break under
+real IDE topologies: PPID assumes the IDE host is the direct parent of
+both processes (Codex CLI routes hooks through workers), and cwd-derived
+keys assume the IDE spawns the MCP server with the project root as cwd
+(Codex spawns it with the script's directory).
 
-Now keyed to a project anchor (git toplevel containing `process.cwd()`,
-falling back to cwd) hashed via SHA-256 → 16-char hex. Both processes resolve
-the same anchor independently — works regardless of process tree topology.
-Tests use `AK_MCP_SENTINEL_KEY` to pin the key deterministically.
+The fix decouples the two halves. The writer claims a unique filename
+(`ak-mcp-ready-${process.pid}` by default, overridable via
+`AK_MCP_SENTINEL_KEY` for tests). The reader scans `tmpdir` for ALL
+`ak-mcp-ready-*` files and returns true if any contains a live PID
+(verified via `process.kill(pid, 0)`). Reader and writer no longer need
+to agree on a key — only on a stable filename pattern. The agent-kit MCP
+tool surface is functionally global, so "any agent-kit MCP is alive" is
+sufficient signal to enable MCP-tool routing on the hook side.
