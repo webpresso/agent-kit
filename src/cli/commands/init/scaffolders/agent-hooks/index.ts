@@ -186,9 +186,7 @@ function mergeAgentKitGroups(existing: HooksMap, addition: HooksMap): HooksMap {
  * keys into `json.hooks`, deduping via `ensureGroup`, and delete the
  * legacy top-level keys. Idempotent.
  */
-export function hoistTopLevelEvents(
-  json: Record<string, unknown>,
-): Record<string, unknown> {
+export function hoistTopLevelEvents(json: Record<string, unknown>): Record<string, unknown> {
   const next: Record<string, unknown> = { ...json }
   const wrapped: HooksMap = { ...((next.hooks ?? {}) as HooksMap) }
   let changed = false

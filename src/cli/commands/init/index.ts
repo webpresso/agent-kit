@@ -34,10 +34,7 @@ import { scaffoldBaseKit } from './scaffold-base-kit.js'
 import { scaffoldMonorepoNav } from './scaffold-monorepo-nav.js'
 import { scaffoldAgentHooks } from './scaffolders/agent-hooks/index.js'
 import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js'
-import {
-  ensureCodexAgentKitMcp,
-  ensureCodexPlaywrightMcp,
-} from './scaffolders/codex-mcp/index.js'
+import { ensureCodexAgentKitMcp, ensureCodexPlaywrightMcp } from './scaffolders/codex-mcp/index.js'
 import { ensureGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
 import { ensureOmx } from './scaffolders/omx/index.js'
@@ -296,7 +293,9 @@ export async function runInit(flags: InitFlags): Promise<number> {
     const agentKitMcpResult = ensureCodexAgentKitMcp({ options })
     switch (agentKitMcpResult.kind) {
       case 'codex-agent-kit-mcp-written':
-        console.log(`  codex agent-kit mcp: ✓ ${agentKitMcpResult.path} → ${agentKitMcpResult.entryPath}`)
+        console.log(
+          `  codex agent-kit mcp: ✓ ${agentKitMcpResult.path} → ${agentKitMcpResult.entryPath}`,
+        )
         break
       case 'codex-agent-kit-mcp-unchanged':
         console.log(`  codex agent-kit mcp: already configured at ${agentKitMcpResult.path}`)

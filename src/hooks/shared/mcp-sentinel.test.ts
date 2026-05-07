@@ -93,9 +93,9 @@ describe('mcp-sentinel', () => {
   })
 
   it('isMcpReady skips files with unparsable PIDs', async () => {
-    vi.mocked(readdirSync).mockReturnValue([
-      'ak-mcp-ready-bogus',
-    ] as unknown as ReturnType<typeof readdirSync>)
+    vi.mocked(readdirSync).mockReturnValue(['ak-mcp-ready-bogus'] as unknown as ReturnType<
+      typeof readdirSync
+    >)
     vi.mocked(readFileSync).mockReturnValue('not-a-pid' as unknown as Buffer)
     const { isMcpReady } = await import('#hooks/shared/mcp-sentinel')
     expect(isMcpReady()).toBe(false)

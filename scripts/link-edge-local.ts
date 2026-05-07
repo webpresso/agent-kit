@@ -6,7 +6,15 @@
  * Idempotent. Backs up any pre-existing non-symlink directory before
  * replacing it. Run after a marketplace update to restore the dev link.
  */
-import { existsSync, lstatSync, mkdirSync, readlinkSync, renameSync, symlinkSync, unlinkSync } from 'node:fs'
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readlinkSync,
+  renameSync,
+  symlinkSync,
+  unlinkSync,
+} from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'

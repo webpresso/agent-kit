@@ -224,9 +224,7 @@ hooks:
       ),
     ).toBe(true)
     expect(
-      hooks.PreToolUse.some((g) =>
-        g.hooks.some((h) => h.command.includes('ak-pretool-guard')),
-      ),
+      hooks.PreToolUse.some((g) => g.hooks.some((h) => h.command.includes('ak-pretool-guard'))),
     ).toBe(true)
   })
 
@@ -338,9 +336,7 @@ describe('hoistTopLevelEvents', () => {
   it('leaves already-wrapped input unchanged in shape (idempotent)', () => {
     const input = {
       hooks: {
-        SessionStart: [
-          { hooks: [{ type: 'command', command: 'node /opt/omx/hook.js' }] },
-        ],
+        SessionStart: [{ hooks: [{ type: 'command', command: 'node /opt/omx/hook.js' }] }],
       },
     }
 
@@ -364,16 +360,18 @@ describe('hoistTopLevelEvents', () => {
     const result = hoistTopLevelEvents(input)
 
     const hooks = result.hooks as Record<string, Array<{ hooks: Array<{ command: string }> }>>
-    const akCount = hooks.SessionStart.flatMap((g) =>
-      g.hooks.map((h) => h.command),
-    ).filter((c) => c.includes('ak-sessionstart-routing')).length
+    const akCount = hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command)).filter((c) =>
+      c.includes('ak-sessionstart-routing'),
+    ).length
     expect(akCount).toBe(1)
   })
 
   it('passes through non-event top-level keys untouched', () => {
     const input = {
       $schema: 'https://example.com/schema.json',
-      SessionStart: [{ hooks: [{ type: 'command', command: './node_modules/.bin/ak-sessionstart-routing' }] }],
+      SessionStart: [
+        { hooks: [{ type: 'command', command: './node_modules/.bin/ak-sessionstart-routing' }] },
+      ],
     }
 
     const result = hoistTopLevelEvents(input)

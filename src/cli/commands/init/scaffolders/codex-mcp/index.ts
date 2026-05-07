@@ -169,7 +169,10 @@ function probeNpmGlobalRoot(): string | null {
 
 function runQuiet(cmd: string, args: readonly string[]): string | null {
   try {
-    const output = execFileSync(cmd, [...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+    const output = execFileSync(cmd, [...args], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
     const trimmed = output.trim()
     return trimmed.length > 0 ? trimmed : null
   } catch {
@@ -204,7 +207,10 @@ export function upsertAgentKitMcpServer(raw: string, entryPath: string): string 
     }
   }
 
-  return [...lines.slice(0, start), ...block.trimEnd().split('\n'), ...lines.slice(end)].join('\n') + '\n'
+  return (
+    [...lines.slice(0, start), ...block.trimEnd().split('\n'), ...lines.slice(end)].join('\n') +
+    '\n'
+  )
 }
 
 export interface EnsureCodexAgentKitMcpInput {

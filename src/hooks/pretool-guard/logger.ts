@@ -35,7 +35,8 @@ const DEFAULT_MAX_LINES = 250
 // override via PRETOOL_LOG_DIR or disable via PRETOOL_LOG=0.
 
 export function createLogConfig(cwd: string = process.cwd()): LogConfig {
-  const logDir = process.env.PRETOOL_LOG_DIR || join(homedir(), '.webpresso', 'cache', 'agent-kit', 'hooks')
+  const logDir =
+    process.env.PRETOOL_LOG_DIR || join(homedir(), '.webpresso', 'cache', 'agent-kit', 'hooks')
   const repoSlug = basename(cwd).replace(/[^a-zA-Z0-9_-]/g, '_') || 'unknown'
   return {
     logDir,
