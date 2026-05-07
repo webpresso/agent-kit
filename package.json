@@ -188,7 +188,7 @@
     "generate-skills": "tsx src/build/generate-skills-dir.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:mutation": "bun stryker run --configFile stryker.config.ts",
+    "test:mutation": "bun stryker run stryker.config.ts",
     "lint": "bun ./src/cli/cli.ts lint",
     "lint:fix": "bun ./src/cli/cli.ts lint --fix",
     "format": "bun ./src/cli/cli.ts format",
