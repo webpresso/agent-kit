@@ -131,6 +131,12 @@
         "default": "./dist/esm/e2e/index.js"
       }
     },
+    "./format": {
+      "import": {
+        "types": "./dist/esm/format/index.d.ts",
+        "default": "./dist/esm/format/index.js"
+      }
+    },
     "./lint": {
       "import": {
         "types": "./dist/esm/lint/index.d.ts",
@@ -183,6 +189,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:mutation": "bun stryker run --configFile stryker.config.ts",
+    "lint": "bun ./src/cli/cli.ts lint",
+    "lint:fix": "bun ./src/cli/cli.ts lint --fix",
+    "format": "bun ./src/cli/cli.ts format",
+    "format:check": "bun ./src/cli/cli.ts format --check",
     "lint:pkg": "publint && attw --pack . && (command -v claude >/dev/null 2>&1 && claude plugin validate . || true)",
     "blueprints:check": "bun ./src/cli/cli.ts audit blueprint-lifecycle",
     "docs:check": "bun ./src/cli/cli.ts audit docs-frontmatter",
@@ -191,7 +201,7 @@
     "audits:check": "bun ./src/cli/cli.ts audit guardrails && pnpm hooks:doctor:ci",
     "hooks:doctor": "bun ./src/cli/cli.ts hooks doctor",
     "hooks:doctor:ci": "bun ./src/cli/cli.ts hooks doctor --skip-mcp",
-    "qa": "bun run build && bun run typecheck && bun run test && bun run lint:pkg && bun run audits:check",
+    "qa": "bun run build && bun run typecheck && bun run lint && bun run format:check && bun run test && bun run lint:pkg && bun run audits:check",
     "changeset": "changeset",
     "changeset:status": "changeset status",
     "prepublishOnly": "pnpm run build"
@@ -207,8 +217,8 @@
     "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.31.0",
     "@arethetypeswrong/cli": "^0.18.2",
+    "@changesets/cli": "^2.31.0",
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/typescript-checker": "^9.6.1",
     "@stryker-mutator/vitest-runner": "^9.6.1",
@@ -217,6 +227,8 @@
     "@types/node": "^22.0.0",
     "@webpresso/stryker-config": "^0.1.0",
     "husky": "^9.0.0",
+    "oxfmt": "^0.48.0",
+    "oxlint": "^1.63.0",
     "publint": "^0.3.18",
     "tshy": "^4.1.1",
     "tsx": "^4.19.3",
@@ -246,6 +258,7 @@
       "./dev": "./src/dev/index.ts",
       "./docs-linter": "./src/docs-linter/index.ts",
       "./e2e": "./src/e2e/index.ts",
+      "./format": "./src/format/index.ts",
       "./lint": "./src/lint/index.ts",
       "./local": "./src/local.ts",
       "./symlinker": "./src/symlinker/index.ts",

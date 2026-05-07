@@ -6,6 +6,11 @@ Consumer-rule + consumer-skill primitives, unified `ak sync` command, and remova
 
 **New primitives**
 
+- `ak lint [--fix] [--no-pnpm-fallback]` — wraps `oxlint` (with `pnpm lint` fallback) and prints structured issues. Mirrors the `ak_lint` MCP tool. Exit code matches lint result.
+- `ak format [--check]` — wraps `oxfmt` to format the workspace in place; `--check` exits 1 on any unformatted file (CI / pre-commit friendly). No fallback — `oxfmt` must be installed.
+- `ak_format` MCP tool — same shape as `ak_lint`, returns the standard summary-first payload, sets `isError: true` when `oxfmt` is missing on PATH.
+- `@webpresso/agent-kit/format` subpath export — `runFormat({ cwd, files?, check?, signal? })` for programmatic use by scaffolders / CI orchestrators.
+- agent-kit dogfoods both: `pnpm qa` now runs `pnpm lint` + `pnpm format:check` between typecheck and test; `.husky/pre-commit` calls `ak format --check` then `ak lint`; CI's `check` job runs `pnpm run format:check` + `pnpm run lint` (replacing the silent `pnpm -r run lint 2>/dev/null || true`).
 - `ak rule new|list|show|deprecate <slug>` — consumer-owned rules at `<repo>/agent-rules/<slug>.md`. Slug-only filenames; frontmatter validated by Zod (`type`, `slug`, `title`, `status`, `scope`, `applies_to`, `related`, `created`, `last_reviewed`, optional `deprecation_date`).
 - `ak skill new|list|show|deprecate <slug>` — consumer-owned skills at `<repo>/agent-skills/<slug>/SKILL.md` (dirs bundle SKILL.md + arbitrary assets).
 - `ak audit rules` and `ak audit skills` — schema validation, slug-collision detection (consumer + catalog hard-fail), broken-`related` ref detection, stale-review warnings (>180 days). Wired into `REPO_AUDIT_REGISTRY`.

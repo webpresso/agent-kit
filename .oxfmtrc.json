@@ -1,0 +1,24 @@
+{
+  "singleQuote": true,
+  "semi": false,
+  "ignorePatterns": [
+    "dist",
+    "node_modules",
+    "logs",
+    "reports",
+    "**/__tmp-*",
+    "**/__fixtures__/**",
+    "**/test-fixtures/**",
+    "**/fixtures/**",
+    "src/output-transforms/__fixtures__/**",
+    "**/*.md",
+    "**/*.mdx",
+    "**/*.json",
+    "**/*.jsonc",
+    "**/*.yaml",
+    "**/*.yml",
+    "**/*.toml",
+    "**/*.html",
+    "**/*.css"
+  ]
+}

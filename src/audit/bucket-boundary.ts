@@ -37,9 +37,8 @@ interface PackageInfo {
 function parseJsonc(text: string): unknown {
   // Remove single-line comments (// ...) — but not inside strings
   // Simple two-pass approach: safe for wrangler configs (no unusual strings)
-  const withoutComments = text.replace(
-    /("(?:[^"\\]|\\.)*")|\/\/[^\n]*/g,
-    (match, quoted) => (quoted !== undefined ? quoted : ''),
+  const withoutComments = text.replace(/("(?:[^"\\]|\\.)*")|\/\/[^\n]*/g, (match, quoted) =>
+    quoted !== undefined ? quoted : '',
   )
   // Remove trailing commas before } or ]
   const withoutTrailingCommas = withoutComments.replace(/,(\s*[}\]])/g, '$1')
@@ -186,7 +185,7 @@ function collectPackages(root: string): PackageInfo[] {
 function checkCodeLevel(
   packages: PackageInfo[],
   bucketByName: Map<string, BucketName>,
-  options: BucketBoundaryOptions,
+  _options: BucketBoundaryOptions,
 ): BucketViolation[] {
   const violations: BucketViolation[] = []
 
@@ -219,9 +218,10 @@ interface WranglerServiceEntry {
   service: string
 }
 
-function readWranglerServices(
-  dir: string,
-): { services: WranglerServiceEntry[]; crossBucketAllowlist: string[] } {
+function readWranglerServices(dir: string): {
+  services: WranglerServiceEntry[]
+  crossBucketAllowlist: string[]
+} {
   // Try wrangler.jsonc
   const jsoncPath = join(dir, 'wrangler.jsonc')
   let parsed: Record<string, unknown> | null = null
@@ -253,7 +253,11 @@ function readWranglerServices(
   // Read optional crossBucketBindings allowlist from webpresso config in wrangler
   const wranglerWebpresso = parsed['webpresso']
   let crossBucketAllowlist: string[] = []
-  if (wranglerWebpresso && typeof wranglerWebpresso === 'object' && !Array.isArray(wranglerWebpresso)) {
+  if (
+    wranglerWebpresso &&
+    typeof wranglerWebpresso === 'object' &&
+    !Array.isArray(wranglerWebpresso)
+  ) {
     const list = (wranglerWebpresso as Record<string, unknown>)['crossBucketBindings']
     if (Array.isArray(list)) {
       crossBucketAllowlist = list.filter((x): x is string => typeof x === 'string')
@@ -270,7 +274,7 @@ function readWranglerServices(
 function checkWranglerBindings(
   packages: PackageInfo[],
   bucketByWranglerName: Map<string, BucketName>,
-  options: BucketBoundaryOptions,
+  _options: BucketBoundaryOptions,
 ): BucketViolation[] {
   const violations: BucketViolation[] = []
 
@@ -314,7 +318,10 @@ async function filterChangedPackages(
   let changedFiles: string[]
   try {
     const output = execSync('git diff --name-only origin/main', { cwd: root, encoding: 'utf8' })
-    changedFiles = output.split('\n').filter(Boolean).map((f) => resolve(root, f))
+    changedFiles = output
+      .split('\n')
+      .filter(Boolean)
+      .map((f) => resolve(root, f))
   } catch {
     return packages
   }
@@ -350,7 +357,9 @@ export async function auditBucketBoundary(
   options: BucketBoundaryOptions = {},
 ): Promise<RepoAuditResult> {
   const resolvedRoot = resolve(root)
-  const baselineDescriptions = options.strict ? new Set<string>() : loadBaselineDescriptions(resolvedRoot)
+  const baselineDescriptions = options.strict
+    ? new Set<string>()
+    : loadBaselineDescriptions(resolvedRoot)
   let packages = collectPackages(resolvedRoot)
 
   const annotatedPackages = packages.filter((p) => p.bucket !== undefined)

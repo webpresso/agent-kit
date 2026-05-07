@@ -18,8 +18,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
         env:
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+      - run: pnpm run format:check
+      - run: pnpm run lint
       - run: pnpm -r run check-types 2>/dev/null || pnpm -r run typecheck 2>/dev/null || true
-      - run: pnpm -r run lint 2>/dev/null || true
 
   test:
     runs-on: ubuntu-latest

@@ -32,6 +32,8 @@ const SUPPORTED_COMMANDS = [
   'err',
   'test',
   'e2e',
+  'lint',
+  'format',
   'tech-debt',
   'mcp',
   'hooks',
@@ -55,6 +57,8 @@ const ROOT_HELP = [
   '  err                   Run a command and print only failure-looking lines',
   '  test                  Run tests through the portable agent-kit surface',
   '  e2e                   Build and run E2E commands through the portable agent-kit surface',
+  '  lint                  Lint via oxlint (with pnpm fallback)',
+  '  format                Format via oxfmt (--check for CI/husky)',
   '  tech-debt             Manage tech-debt lifecycle (new, list, review)',
   '  mcp                   Run the agent-kit MCP server over stdio',
   '  hooks                 Verify plugin hook installation health',
@@ -171,6 +175,16 @@ export async function main(): Promise<number> {
     case 'e2e': {
       const { registerE2eCommand } = await import('./commands/e2e.js')
       registerE2eCommand(cli)
+      break
+    }
+    case 'lint': {
+      const { registerLintCommand } = await import('./commands/lint.js')
+      registerLintCommand(cli)
+      break
+    }
+    case 'format': {
+      const { registerFormatCommand } = await import('./commands/format.js')
+      registerFormatCommand(cli)
       break
     }
     case 'tech-debt': {

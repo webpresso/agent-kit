@@ -1,0 +1,22 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {},
+  "env": {
+    "builtin": true,
+    "node": true
+  },
+  "ignorePatterns": [
+    "dist",
+    "node_modules",
+    "logs",
+    "reports",
+    "stryker.log",
+    ".stryker-tmp",
+    "src/**/__tmp-*",
+    "src/cli/commands/__tmp-*"
+  ]
+}

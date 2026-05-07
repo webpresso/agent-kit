@@ -1,5 +1,3 @@
-import type { Blueprint } from './core/parser.js'
-
 export interface RoadmapLike {
   name: string
   type: 'blueprint' | 'parent-roadmap'
@@ -34,7 +32,9 @@ export function buildRoadmapModel<T extends RoadmapLike>(blueprints: readonly T[
     roadmapByKey.set(lastSegment(roadmap.name), roadmap)
   }
 
-  const children = blueprints.filter((blueprint) => blueprint.type !== 'parent-roadmap' && blueprint.parentRoadmap)
+  const children = blueprints.filter(
+    (blueprint) => blueprint.type !== 'parent-roadmap' && blueprint.parentRoadmap,
+  )
   const childrenByRoadmap = new Map<string, T[]>()
   const orphanChildren: T[] = []
 
@@ -52,8 +52,8 @@ export function buildRoadmapModel<T extends RoadmapLike>(blueprints: readonly T[
   return {
     roadmaps: roadmaps
       .map((roadmap) => {
-        const attachedChildren = (childrenByRoadmap.get(roadmap.name) ?? []).toSorted((left, right) =>
-          left.name.localeCompare(right.name),
+        const attachedChildren = (childrenByRoadmap.get(roadmap.name) ?? []).toSorted(
+          (left, right) => left.name.localeCompare(right.name),
         )
         return {
           roadmap,
@@ -100,7 +100,10 @@ function parentRoadmapCandidates(parentRoadmap: string): string[] {
   const trimmed = parentRoadmap.trim()
   if (!trimmed) return []
   const candidates = new Set<string>([trimmed, lastSegment(trimmed)])
-  const arrowMatch = trimmed.split(/->|→/u).map((part) => part.trim()).filter(Boolean)
+  const arrowMatch = trimmed
+    .split(/->|→/u)
+    .map((part) => part.trim())
+    .filter(Boolean)
   const tail = arrowMatch.at(-1)
   if (tail) {
     candidates.add(tail)
