@@ -8,7 +8,12 @@ export function validateBlueprint(input: ToolInput): ValidationResult {
   const result = validateBlueprintShared(filePath)
 
   if (result.details?.skipReason) {
-    return { validator: 'blueprint', passed: true, skipped: true, skipReason: result.details.skipReason }
+    return {
+      validator: 'blueprint',
+      passed: true,
+      skipped: true,
+      skipReason: result.details.skipReason,
+    }
   }
 
   return { validator: 'blueprint', passed: result.valid }

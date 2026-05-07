@@ -109,7 +109,10 @@ function handleUninstall(name: string, cwd: string): void {
 
 export function registerSkillCommand(cli: CAC): void {
   cli
-    .command('skill <subcommand> [...args]', 'Manage consumer skills (new|list|show|deprecate|install|uninstall)')
+    .command(
+      'skill <subcommand> [...args]',
+      'Manage consumer skills (new|list|show|deprecate|install|uninstall)',
+    )
     .option('--source <s>', 'Filter list by source: canonical | consumer')
     .option('--scope <s>', 'Scope for new: repo | package:<name> | path:<glob>')
     .option('--title <text>', 'Title for new')

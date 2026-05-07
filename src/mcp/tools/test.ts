@@ -15,16 +15,15 @@ import * as justBackend from '#mcp/backends/just'
 import * as pnpmBackend from '#mcp/backends/pnpm'
 import { applyOutputTransform } from '../../output-transforms/index.js'
 
-import {
-  createSummaryOutputSchema,
-  createSummaryResult,
-} from './_shared/result.js'
+import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
-const inputSchema = z.object({
-  packages: z.array(z.string()).optional(),
-  files: z.array(z.string()).optional(),
-  backend: z.enum(['just', 'pnpm', 'auto']).optional().default('auto'),
-}).strict()
+const inputSchema = z
+  .object({
+    packages: z.array(z.string()).optional(),
+    files: z.array(z.string()).optional(),
+    backend: z.enum(['just', 'pnpm', 'auto']).optional().default('auto'),
+  })
+  .strict()
 
 export type AkTestInput = z.infer<typeof inputSchema>
 

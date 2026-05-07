@@ -76,7 +76,9 @@ function parseOxlintJson(rawOutput: string): OxlintFileReport[] | undefined {
       const wrapper = parsed as OxlintWrapper
       const reports = wrapper.diagnostics ?? wrapper.results
       if (Array.isArray(reports)) {
-        if (reports.every((report) => report && typeof report === 'object' && 'message' in report)) {
+        if (
+          reports.every((report) => report && typeof report === 'object' && 'message' in report)
+        ) {
           return reports.map((report) => {
             const message = report as OxlintMessage
             return {

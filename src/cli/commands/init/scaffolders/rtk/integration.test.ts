@@ -1,4 +1,4 @@
-import { chmodSync, cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -21,7 +21,10 @@ const tsxCli = join(agentKitRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs')
 function makeRepo(): string {
   const dir = mkdtempSync(join(tmpdir(), 'ak-rtk-integration-'))
   spawnSync('git', ['init', '-q'], { cwd: dir })
-  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: '@acme/rtk-fixture', private: true }))
+  writeFileSync(
+    join(dir, 'package.json'),
+    JSON.stringify({ name: '@acme/rtk-fixture', private: true }),
+  )
   cpSync(hookFixture, dir, { recursive: true })
   return dir
 }
@@ -88,7 +91,11 @@ describe('rtk scaffolder integration', () => {
     )
 
     expect(preToolCommands.some((command) => command.includes('ak-pretool-guard'))).toBe(true)
-    expect(preToolCommands.some((command) => command.includes('oh-my-codex/dist/scripts/codex-native-hook.js'))).toBe(true)
+    expect(
+      preToolCommands.some((command) =>
+        command.includes('oh-my-codex/dist/scripts/codex-native-hook.js'),
+      ),
+    ).toBe(true)
     expect(preToolCommands.some((command) => command.includes('rtk-rewrite.sh'))).toBe(true) // G2
 
     const rtkHook = runHook(
@@ -115,7 +122,9 @@ describe('rtk scaffolder integration', () => {
 
     process.env.PATH = [fakeOmxBin, previousPath ?? ''].filter(Boolean).join(':')
     const doctorMissing = await runHooksDoctor({ skipMcp: true })
-    expect(doctorMissing.checks.find((check) => check.name === 'rtk on PATH')?.detail).toContain('brew install rtk')
+    expect(doctorMissing.checks.find((check) => check.name === 'rtk on PATH')?.detail).toContain(
+      'brew install rtk',
+    )
     process.env.PATH = [fakeRtkBin, fakeOmxBin, previousPath ?? ''].filter(Boolean).join(':')
 
     const drift = spawnSync(process.execPath, [tsxCli, sourceCli, 'audit', 'catalog-drift'], {

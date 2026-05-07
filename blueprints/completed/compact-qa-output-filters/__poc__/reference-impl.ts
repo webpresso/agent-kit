@@ -82,17 +82,35 @@ export function runTiers(
   const t1 = parsers.parseStructured(ctx.stdout)
   if (t1 !== null) {
     const rendered = renderFailures(t1)
-    return { ok: t1.length === 0, failures: t1, bytes: rendered.length, tier: 1, logPath: ctx.logPath }
+    return {
+      ok: t1.length === 0,
+      failures: t1,
+      bytes: rendered.length,
+      tier: 1,
+      logPath: ctx.logPath,
+    }
   }
 
   const t2 = parsers.parseRegex(ctx.stdout, ctx.stderr)
   if (t2 !== null) {
     const rendered = renderFailures(t2)
-    return { ok: t2.length === 0, failures: t2, bytes: rendered.length, tier: 2, logPath: ctx.logPath }
+    return {
+      ok: t2.length === 0,
+      failures: t2,
+      bytes: rendered.length,
+      tier: 2,
+      logPath: ctx.logPath,
+    }
   }
 
   const fallback = passthrough(ctx)
-  return { ok: ctx.exitCode === 0, failures: [], bytes: fallback.length, tier: 3, logPath: ctx.logPath }
+  return {
+    ok: ctx.exitCode === 0,
+    failures: [],
+    bytes: fallback.length,
+    tier: 3,
+    logPath: ctx.logPath,
+  }
 }
 
 function renderFailures(failures: readonly Failure[]): string {
@@ -188,11 +206,13 @@ export const vitestParsers: TransformParsers = {
     return parsed.testResults.flatMap((tr: VitestTestResult) =>
       tr.assertionResults
         .filter((a: VitestAssertion) => a.status === 'failed')
-        .map((a: VitestAssertion): Failure => ({
-          location: tr.name,
-          what: a.fullName,
-          reason: firstStackLine(a.failureMessages[0] ?? '(no message)'),
-        })),
+        .map(
+          (a: VitestAssertion): Failure => ({
+            location: tr.name,
+            what: a.fullName,
+            reason: firstStackLine(a.failureMessages[0] ?? '(no message)'),
+          }),
+        ),
     )
   },
   parseRegex(stdout: string): readonly Failure[] | null {
@@ -202,7 +222,13 @@ export const vitestParsers: TransformParsers = {
     if (!m) return null
     const failed = Number(m[1])
     return failed > 0
-      ? [{ location: '<vitest>', what: 'tests', reason: `${failed} failed (regex fallback; JSON unavailable)` }]
+      ? [
+          {
+            location: '<vitest>',
+            what: 'tests',
+            reason: `${failed} failed (regex fallback; JSON unavailable)`,
+          },
+        ]
       : []
   },
   isClean(ctx: TransformContext): boolean {
@@ -281,7 +307,10 @@ function collapseCascades(errors: readonly TscError[]): readonly Failure[] {
       seen.set(key, entry)
     }
     for (const entry of seen.values()) {
-      const lineLabel = entry.lines.length === 1 ? String(entry.lines[0]) : `${entry.lines.join(',')} (×${entry.lines.length})`
+      const lineLabel =
+        entry.lines.length === 1
+          ? String(entry.lines[0])
+          : `${entry.lines.join(',')} (×${entry.lines.length})`
       out.push({
         location: `${file}:${lineLabel}`,
         what: `TS${entry.code}`,
@@ -353,7 +382,13 @@ export function applyTransform(
   const parsers = TRANSFORMS[key]
   if (!parsers) {
     const out = passthrough(ctx)
-    return { ok: ctx.exitCode === 0, failures: [], bytes: out.length, tier: 3, logPath: ctx.logPath }
+    return {
+      ok: ctx.exitCode === 0,
+      failures: [],
+      bytes: out.length,
+      tier: 3,
+      logPath: ctx.logPath,
+    }
   }
   return runTiers(parsers, ctx, passthrough)
 }

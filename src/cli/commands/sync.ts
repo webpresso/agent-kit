@@ -38,9 +38,7 @@ function parseKind(input: string | undefined): readonly ContentKind[] | undefine
 }
 
 function formatMismatches(mismatches: readonly UnifiedSyncMismatch[]): string {
-  return mismatches
-    .map((m) => `  - [${m.consumerId}] ${m.targetPath}: ${m.reason}`)
-    .join('\n')
+  return mismatches.map((m) => `  - [${m.consumerId}] ${m.targetPath}: ${m.reason}`).join('\n')
 }
 
 export function registerSyncCommand(cli: CAC): void {

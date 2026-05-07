@@ -105,7 +105,12 @@ describe('ak_qa tool', () => {
     testHandler.mockReset()
 
     const lintPayload = { passed: true, summary: 'lint passed', issues: [] }
-    const typecheckPayload = { passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }
+    const typecheckPayload = {
+      passed: true,
+      summary: 'typecheck passed',
+      errorCount: 0,
+      errors: [],
+    }
     const testPayload = { passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }
 
     lintHandler.mockResolvedValue(wrapPayload(lintPayload))
@@ -167,7 +172,13 @@ describe('ak_qa tool', () => {
       }),
     )
     typecheckHandler.mockResolvedValue(
-      wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [], rawOutput: '' }),
+      wrapPayload({
+        passed: true,
+        summary: 'typecheck passed',
+        errorCount: 0,
+        errors: [],
+        rawOutput: '',
+      }),
     )
     testHandler.mockResolvedValue(
       wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
@@ -201,7 +212,13 @@ describe('ak_qa tool', () => {
       wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
     )
     testHandler.mockResolvedValue(
-      wrapPayload({ passed: false, summary: 'tests failed', rawOutput: 'boom', exitCode: 1, backend: 'pnpm' }),
+      wrapPayload({
+        passed: false,
+        summary: 'tests failed',
+        rawOutput: 'boom',
+        exitCode: 1,
+        backend: 'pnpm',
+      }),
     )
 
     const result = await akQaTool.handler({})

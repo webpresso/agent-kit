@@ -56,7 +56,10 @@ describe('scaffoldSubagents', () => {
       'agents',
     )
     mkdirSync(sourceRoot, { recursive: true })
-    writeFileSync(join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
+    writeFileSync(
+      join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'package.json'),
+      JSON.stringify({ name: '@webpresso/agent-kit' }),
+    )
     for (const name of ['code-reviewer', 'security-auditor', 'doc-writer', 'explorer']) {
       writeFileSync(join(sourceRoot, `${name}.md`), `# ${name}\n`)
     }
@@ -84,7 +87,10 @@ describe('scaffoldSubagents', () => {
       'agents',
     )
     mkdirSync(sourceRoot, { recursive: true })
-    writeFileSync(join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
+    writeFileSync(
+      join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'package.json'),
+      JSON.stringify({ name: '@webpresso/agent-kit' }),
+    )
     writeFileSync(join(sourceRoot, 'code-reviewer.md'), '# code reviewer\n')
 
     scaffoldSubagents({ repoRoot, options: {} })
@@ -104,7 +110,9 @@ describe('scaffoldSubagents', () => {
     const results = scaffoldSubagents({ repoRoot, options: {} })
     const targetPath = join(repoRoot, '.claude', 'agents', 'code-reviewer.md')
 
-    expect(results.some((result) => result.targetPath === targetPath && result.action === 'created')).toBe(true)
+    expect(
+      results.some((result) => result.targetPath === targetPath && result.action === 'created'),
+    ).toBe(true)
     expect(lstatSync(targetPath).isSymbolicLink()).toBe(true)
     expect(readlinkSync(targetPath)).toContain('catalog/agent/agents/code-reviewer.md')
   })
@@ -113,7 +121,10 @@ describe('scaffoldSubagents', () => {
     writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
     mkdirSync(join(repoRoot, 'catalog', 'agent', 'agents'), { recursive: true })
     mkdirSync(join(repoRoot, '.claude', 'agents'), { recursive: true })
-    writeFileSync(join(repoRoot, 'catalog', 'agent', 'agents', 'code-reviewer.md'), '# code reviewer\n')
+    writeFileSync(
+      join(repoRoot, 'catalog', 'agent', 'agents', 'code-reviewer.md'),
+      '# code reviewer\n',
+    )
 
     const targetPath = join(repoRoot, '.claude', 'agents', 'code-reviewer.md')
     symlinkSync(join('..', '..', '.agent', 'agents', 'code-reviewer.md'), targetPath)
@@ -124,7 +135,9 @@ describe('scaffoldSubagents', () => {
   })
 
   it('keeps the canonical explorer agent read-only and fast', () => {
-    const parsed = matter(readFileSync(join(process.cwd(), 'catalog', 'agent', 'agents', 'explorer.md'), 'utf8'))
+    const parsed = matter(
+      readFileSync(join(process.cwd(), 'catalog', 'agent', 'agents', 'explorer.md'), 'utf8'),
+    )
     const tools = Array.isArray(parsed.data.tools) ? parsed.data.tools : []
 
     expect(parsed.data.model).toBe('haiku')

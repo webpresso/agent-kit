@@ -90,60 +90,46 @@ describe('contentFrontmatterSchema — required fields', () => {
 
 describe('contentFrontmatterSchema — value constraints', () => {
   it('rejects invalid status', () => {
-    expect(() =>
-      contentFrontmatterSchema.parse({ ...baseRule, status: 'archived' }),
-    ).toThrow()
+    expect(() => contentFrontmatterSchema.parse({ ...baseRule, status: 'archived' })).toThrow()
   })
 
   it('rejects invalid type', () => {
-    expect(() =>
-      contentFrontmatterSchema.parse({ ...baseRule, type: 'guide' }),
-    ).toThrow(/type/i)
+    expect(() => contentFrontmatterSchema.parse({ ...baseRule, type: 'guide' })).toThrow(/type/i)
   })
 
   it('rejects empty applies_to', () => {
-    expect(() =>
-      contentFrontmatterSchema.parse({ ...baseRule, applies_to: [] }),
-    ).toThrow()
+    expect(() => contentFrontmatterSchema.parse({ ...baseRule, applies_to: [] })).toThrow()
   })
 
   it('accepts kebab-case slug', () => {
-    expect(
-      contentFrontmatterSchema.parse({ ...baseRule, slug: 'foo-bar-baz' }).slug,
-    ).toBe('foo-bar-baz')
+    expect(contentFrontmatterSchema.parse({ ...baseRule, slug: 'foo-bar-baz' }).slug).toBe(
+      'foo-bar-baz',
+    )
   })
 
   it('rejects slug with spaces', () => {
-    expect(() =>
-      contentFrontmatterSchema.parse({ ...baseRule, slug: 'foo bar' }),
-    ).toThrow()
+    expect(() => contentFrontmatterSchema.parse({ ...baseRule, slug: 'foo bar' })).toThrow()
   })
 
   it('rejects slug with uppercase', () => {
-    expect(() =>
-      contentFrontmatterSchema.parse({ ...baseRule, slug: 'FooBar' }),
-    ).toThrow()
+    expect(() => contentFrontmatterSchema.parse({ ...baseRule, slug: 'FooBar' })).toThrow()
   })
 
   it('accepts scope variants: repo, package:<name>, path:<glob>', () => {
-    expect(
-      contentFrontmatterSchema.parse({ ...baseRule, scope: 'package:agent-kit' }).scope,
-    ).toBe('package:agent-kit')
-    expect(
-      contentFrontmatterSchema.parse({ ...baseRule, scope: 'path:**/*.ts' }).scope,
-    ).toBe('path:**/*.ts')
+    expect(contentFrontmatterSchema.parse({ ...baseRule, scope: 'package:agent-kit' }).scope).toBe(
+      'package:agent-kit',
+    )
+    expect(contentFrontmatterSchema.parse({ ...baseRule, scope: 'path:**/*.ts' }).scope).toBe(
+      'path:**/*.ts',
+    )
   })
 
   it('rejects malformed scope', () => {
-    expect(() =>
-      contentFrontmatterSchema.parse({ ...baseRule, scope: 'global' }),
-    ).toThrow()
+    expect(() => contentFrontmatterSchema.parse({ ...baseRule, scope: 'global' })).toThrow()
   })
 
   it('rejects malformed ISO date', () => {
-    expect(() =>
-      contentFrontmatterSchema.parse({ ...baseRule, created: '05/01/2026' }),
-    ).toThrow()
+    expect(() => contentFrontmatterSchema.parse({ ...baseRule, created: '05/01/2026' })).toThrow()
   })
 })
 

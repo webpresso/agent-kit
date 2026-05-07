@@ -135,7 +135,10 @@ describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
     expect(status).toBe(0)
     const parsed = JSON.parse(stdout) as Record<string, unknown>
     // Must be passthrough — no permissionDecision: deny
-    expect((parsed.hookSpecificOutput as { permissionDecision?: string } | undefined)?.permissionDecision).not.toBe('deny')
+    expect(
+      (parsed.hookSpecificOutput as { permissionDecision?: string } | undefined)
+        ?.permissionDecision,
+    ).not.toBe('deny')
   })
 
   // ── MCP not ready passthrough ─────────────────────────────────────────────
@@ -174,7 +177,9 @@ describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
     // Second call: throttle file exists → routeDevCommand returns null → falls through to validators
     const second = runBinary(payload)
     const secondParsed = JSON.parse(second.stdout.trim() || '{}') as Record<string, unknown>
-    const secondHook = secondParsed.hookSpecificOutput as { permissionDecision?: string } | undefined
+    const secondHook = secondParsed.hookSpecificOutput as
+      | { permissionDecision?: string }
+      | undefined
     expect(secondHook?.permissionDecision).not.toBe('deny')
     expect([0, 2]).toContain(second.status)
   })

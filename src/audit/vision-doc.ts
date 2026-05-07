@@ -44,14 +44,7 @@ const DEFAULT_REQUIRED_SECTIONS: readonly VisionRequiredSection[] = [
   { label: 'North star', synonyms: ['north star', 'vision', 'goal'] },
   {
     label: 'Boundaries',
-    synonyms: [
-      'boundaries',
-      'out of scope',
-      'non-goals',
-      'non goals',
-      'scope',
-      'in scope',
-    ],
+    synonyms: ['boundaries', 'out of scope', 'non-goals', 'non goals', 'scope', 'in scope'],
   },
   { label: 'Principles', synonyms: ['design principles', 'principles'] },
 ]
@@ -154,9 +147,7 @@ export function auditVision(
 
   const requiredSections = options.requiredSections ?? DEFAULT_REQUIRED_SECTIONS
   const presentH2s = new Set(
-    [...body.matchAll(/^##\s+(.+?)\s*$/gm)].map((match) =>
-      (match[1] ?? '').trim().toLowerCase(),
-    ),
+    [...body.matchAll(/^##\s+(.+?)\s*$/gm)].map((match) => (match[1] ?? '').trim().toLowerCase()),
   )
 
   for (const section of requiredSections) {

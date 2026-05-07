@@ -21,7 +21,10 @@ export function resolveTestFilePath(filePath: string, cwd = getTestQualityCheckC
   return isAbsolute(filePath) ? filePath : join(cwd, filePath)
 }
 
-export function runTestQualityCheck(argv: string[] = process.argv.slice(2), cwd = getTestQualityCheckCwd()): void {
+export function runTestQualityCheck(
+  argv: string[] = process.argv.slice(2),
+  cwd = getTestQualityCheckCwd(),
+): void {
   const testFiles = argv.filter((filePath) => testFileRegex.test(filePath))
   if (testFiles.length === 0) return
 
@@ -40,7 +43,11 @@ export function runTestQualityCheck(argv: string[] = process.argv.slice(2), cwd 
         hasFailures = true
         failureLines.push(`❌ ${filePath}`)
         for (const match of gamingMatches) {
-          failureLines.push(match.line === 0 ? `  File path: ${match.pattern}` : `  Line ${match.line}: ${match.pattern}`)
+          failureLines.push(
+            match.line === 0
+              ? `  File path: ${match.pattern}`
+              : `  Line ${match.line}: ${match.pattern}`,
+          )
         }
       }
 
@@ -58,12 +65,17 @@ export function runTestQualityCheck(argv: string[] = process.argv.slice(2), cwd 
   }
 
   if (hasFailures) {
-    console.error(`Test quality issues detected (${MUTATION_GAMING_PATTERNS.length} gaming patterns + ${TAUTOLOGICAL_PATTERNS.length} tautology patterns checked):`)
+    console.error(
+      `Test quality issues detected (${MUTATION_GAMING_PATTERNS.length} gaming patterns + ${TAUTOLOGICAL_PATTERNS.length} tautology patterns checked):`,
+    )
     for (const line of failureLines) console.error(line)
     process.exit(1)
   }
 }
 
-if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
+if (
+  process.argv[1] &&
+  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
+) {
   runTestQualityCheck()
 }

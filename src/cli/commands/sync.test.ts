@@ -4,13 +4,7 @@
  * cwd changes.
  */
 
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -109,10 +103,7 @@ describe('runUnifiedSync (sync command core)', () => {
 
   it('aborts on slug collision before any write', () => {
     writeFile(join(catalogDir, 'rules', 'dup.md'), RULE_FM.replace('SLUG', 'dup'))
-    writeFile(
-      join(consumerRoot, 'agent-rules', 'dup.md'),
-      RULE_FM.replace('SLUG', 'dup'),
-    )
+    writeFile(join(consumerRoot, 'agent-rules', 'dup.md'), RULE_FM.replace('SLUG', 'dup'))
 
     expect(() => runUnifiedSync({ catalogDir, consumerRoot })).toThrow(/slug collision/i)
     // Verify nothing was written

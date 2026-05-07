@@ -1,6 +1,11 @@
 import type { CAC } from 'cac'
 
-import { auditBlueprintLifecycle, auditCatalogDrift, auditDocsFrontmatter, formatRepoAuditReport } from '#audit/repo-guardrails'
+import {
+  auditBlueprintLifecycle,
+  auditCatalogDrift,
+  auditDocsFrontmatter,
+  formatRepoAuditReport,
+} from '#audit/repo-guardrails'
 
 export interface RunDoctorOptions {
   root?: string
@@ -35,7 +40,9 @@ export async function runDoctor(options: RunDoctorOptions = {}): Promise<number>
       console.log(formatRepoAuditReport(result))
       if (!result.ok) {
         failed = true
-        const remediation = REMEDIATIONS[result.title] ?? `ak audit ${result.title.toLowerCase().replace(/\s+/g, '-')}`
+        const remediation =
+          REMEDIATIONS[result.title] ??
+          `ak audit ${result.title.toLowerCase().replace(/\s+/g, '-')}`
         console.log(`→ remediation: ${remediation}`)
       }
       console.log('')
@@ -52,7 +59,10 @@ export async function runDoctor(options: RunDoctorOptions = {}): Promise<number>
 
 export function registerDoctorCommand(cli: CAC): void {
   cli
-    .command('doctor', 'Run repo audit health checks (hook/plugin health stays under `ak hooks doctor`)')
+    .command(
+      'doctor',
+      'Run repo audit health checks (hook/plugin health stays under `ak hooks doctor`)',
+    )
     .option('--root <dir>', 'Repository root to inspect')
     .option('--docs-root <dir>', 'Docs directory for docs-frontmatter')
     .option('--fix', 'Apply supported safe fixes during doctor (currently docs-frontmatter)')

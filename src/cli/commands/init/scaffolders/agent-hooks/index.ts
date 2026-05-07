@@ -12,7 +12,12 @@ import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { type MergeOptions, type MergeResult, patchJsonFile } from '#cli/commands/init/merge'
-import { buildSkillTag, extractSkillHooks, isTaggedSkillHook, type SkillHook } from './skill-hooks.js'
+import {
+  buildSkillTag,
+  extractSkillHooks,
+  isTaggedSkillHook,
+  type SkillHook,
+} from './skill-hooks.js'
 
 // Claude Code uses $CLAUDE_PROJECT_DIR; Codex runs from repo root so relative path works.
 //
@@ -79,10 +84,7 @@ function materializeClaudeSkillCommand(skillHook: SkillHook): string {
   return `${skillHook.command} ${tag}`
 }
 
-function mergeSkillHooks(
-  hooks: HooksMap,
-  skillHooks: readonly SkillHook[],
-): HooksMap {
+function mergeSkillHooks(hooks: HooksMap, skillHooks: readonly SkillHook[]): HooksMap {
   const nextHooks = Object.fromEntries(
     Object.entries(hooks).map(([event, groups]) => [event, stripSkillManagedHooks(groups)]),
   ) as HooksMap
@@ -122,7 +124,7 @@ function patchClaudeSettings(
   return {
     ...existing,
     worktree: {
-      ...(worktree ?? {}),
+      ...worktree,
       symlinkDirectories: normalizedSymlinkDirectories,
     },
     hooks: {
@@ -261,6 +263,10 @@ export function scaffoldAgentHooks(input: ScaffoldAgentHooksInput): ScaffoldAgen
       (existing) => patchClaudeSettings(existing, skillHooks),
       input.options,
     ),
-    codex: patchJsonFile(join(input.repoRoot, '.codex', 'hooks.json'), patchCodexHooks, input.options),
+    codex: patchJsonFile(
+      join(input.repoRoot, '.codex', 'hooks.json'),
+      patchCodexHooks,
+      input.options,
+    ),
   }
 }

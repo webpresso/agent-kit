@@ -144,7 +144,13 @@ describe('hooks/doctor', () => {
           return JSON.stringify({
             version: '0.1.0',
             hooks: {
-              PreToolUse: [{ hooks: [{ command: 'bun ${CLAUDE_PLUGIN_ROOT}/src/hooks/pretool-guard/index.ts' }] }],
+              PreToolUse: [
+                {
+                  hooks: [
+                    { command: 'bun ${CLAUDE_PLUGIN_ROOT}/src/hooks/pretool-guard/index.ts' },
+                  ],
+                },
+              ],
             },
             mcpServers: {
               'agent-kit': { args: ['${CLAUDE_PLUGIN_ROOT}/src/cli/cli.ts'] },
@@ -221,8 +227,14 @@ describe('hooks/doctor', () => {
             const isMcpProbe = command === 'node' && args?.[0] === builtMcpCli
             if (isMcpProbe && writes.length === 2) {
               queueMicrotask(() => {
-                child.stdout.emit('data', Buffer.from('{"jsonrpc":"2.0","id":1,"result":{"capabilities":{"tools":{}}}}\n'))
-                child.stdout.emit('data', Buffer.from('{"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"ak_test"}]}}\n'))
+                child.stdout.emit(
+                  'data',
+                  Buffer.from('{"jsonrpc":"2.0","id":1,"result":{"capabilities":{"tools":{}}}}\n'),
+                )
+                child.stdout.emit(
+                  'data',
+                  Buffer.from('{"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"ak_test"}]}}\n'),
+                )
               })
             }
             cb?.()
@@ -255,7 +267,9 @@ describe('hooks/doctor', () => {
         '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"agent-kit-hooks-doctor","version":"0.0.0"}}}\n',
         '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}\n',
       ])
-      expect(result.checks.find((c) => c.name === 'MCP server liveness')?.detail).toContain('responded with 1 tools')
+      expect(result.checks.find((c) => c.name === 'MCP server liveness')?.detail).toContain(
+        'responded with 1 tools',
+      )
     })
 
     it('adds a green rtk row when requested and present', async () => {
@@ -289,7 +303,8 @@ describe('hooks/doctor', () => {
             },
           })
         }
-        if (String(path) === pluginJson) return JSON.stringify({ version: '0.1.0', hooks: {}, mcpServers: {} })
+        if (String(path) === pluginJson)
+          return JSON.stringify({ version: '0.1.0', hooks: {}, mcpServers: {} })
         throw new Error(`unexpected read: ${String(path)}`)
       }) as typeof readFileSync)
       mockSpawn.mockImplementation((command, args) => {
@@ -364,7 +379,8 @@ describe('hooks/doctor', () => {
             },
           })
         }
-        if (String(path) === pluginJson) return JSON.stringify({ version: '0.1.0', hooks: {}, mcpServers: {} })
+        if (String(path) === pluginJson)
+          return JSON.stringify({ version: '0.1.0', hooks: {}, mcpServers: {} })
         throw new Error(`unexpected read: ${String(path)}`)
       }) as typeof readFileSync)
       mockSpawn.mockImplementation((command, args) => {
@@ -401,7 +417,9 @@ describe('hooks/doctor', () => {
       const { runHooksDoctor } = await import('#hooks/doctor')
       const result = await runHooksDoctor({ skipMcp: true })
       expect(result.ok).toBe(false)
-      expect(result.checks.find((c) => c.name === 'rtk on PATH')?.detail).toContain('brew install rtk')
+      expect(result.checks.find((c) => c.name === 'rtk on PATH')?.detail).toContain(
+        'brew install rtk',
+      )
     })
 
     it('omits the rtk row when the repo did not request rtk', async () => {
@@ -434,7 +452,8 @@ describe('hooks/doctor', () => {
             },
           })
         }
-        if (String(path) === pluginJson) return JSON.stringify({ version: '0.1.0', hooks: {}, mcpServers: {} })
+        if (String(path) === pluginJson)
+          return JSON.stringify({ version: '0.1.0', hooks: {}, mcpServers: {} })
         throw new Error(`unexpected read: ${String(path)}`)
       }) as typeof readFileSync)
       mockHealthyHookProbe()

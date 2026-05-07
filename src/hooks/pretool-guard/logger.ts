@@ -32,7 +32,12 @@ const DEFAULT_MAX_LINES = 250
 
 export function createLogConfig(cwd: string = process.cwd()): LogConfig {
   const logDir = process.env.PRETOOL_LOG_DIR || join(cwd, 'logs')
-  return { logDir, logFile: join(logDir, 'pretool-guard.log'), enabled: process.env.PRETOOL_LOG !== '0', maxLines: DEFAULT_MAX_LINES }
+  return {
+    logDir,
+    logFile: join(logDir, 'pretool-guard.log'),
+    enabled: process.env.PRETOOL_LOG !== '0',
+    maxLines: DEFAULT_MAX_LINES,
+  }
 }
 
 export function formatLogLine(entry: LogEntry, timestamp: string): string {
@@ -92,5 +97,7 @@ export function logRun(entry: LogEntry, config: LogConfig = createLogConfig()): 
 }
 
 export function readLogs(config: LogConfig = createLogConfig()): ParsedLogLine[] {
-  return readLogLines(config.logFile).map(parseLogLine).filter((e): e is ParsedLogLine => e !== null)
+  return readLogLines(config.logFile)
+    .map(parseLogLine)
+    .filter((e): e is ParsedLogLine => e !== null)
 }

@@ -22,7 +22,15 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
     let firstFailure = 0
     for (const pkg of input.packages) {
       const result = usesVitest(cwd, pkg)
-        ? await runCommand('pnpm', ['-F', pkg, 'exec', 'vitest', 'run', '--reporter=json', '--no-color'])
+        ? await runCommand('pnpm', [
+            '-F',
+            pkg,
+            'exec',
+            'vitest',
+            'run',
+            '--reporter=json',
+            '--no-color',
+          ])
         : await runCommand('pnpm', ['-F', pkg, 'test'])
       combinedOutput += result.output
       if (!result.passed && firstFailure === 0) firstFailure = result.exitCode

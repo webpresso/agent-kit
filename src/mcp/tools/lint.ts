@@ -24,10 +24,7 @@ import type { ToolDescriptor } from '#mcp/auto-discover'
 import { applyOutputTransform } from '../../output-transforms/index.js'
 
 import { resolveProjectRoot } from './_shared/project-root.js'
-import {
-  createSummaryOutputSchema,
-  createSummaryResult,
-} from './_shared/result.js'
+import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 import { isMissingBinary, isRunFailure, runCommand } from './_shared/run-command.js'
 
 const inputSchema = z.object({
@@ -112,7 +109,8 @@ function parseOxlintIssues(stdout: string): ParseOutcome {
   const reports = Array.isArray(parsed)
     ? (parsed as OxlintFileReport[])
     : normalizeWrappedOxlintReports(parsed)
-  if (!Array.isArray(reports)) return { issues: [], parseError: 'oxlint output was not a JSON array' }
+  if (!Array.isArray(reports))
+    return { issues: [], parseError: 'oxlint output was not a JSON array' }
   const issues: LintIssue[] = []
   for (const fileReport of reports) {
     const file = fileReport?.filePath ?? ''
@@ -157,7 +155,7 @@ function normalizeWrappedOxlintReports(parsed: unknown): OxlintFileReport[] | un
 }
 
 function extractJsonObjectOrArray(raw: string): string | undefined {
-  const start = raw.search(/[\[{]/u)
+  const start = raw.search(/[[{]/u)
   if (start < 0) return undefined
   const open = raw[start]
   const close = open === '{' ? '}' : ']'

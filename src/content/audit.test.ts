@@ -188,7 +188,8 @@ describe('auditContent', () => {
     expect(result.passed).toBe(false)
     expect(
       result.findings.some(
-        (f) => f.severity === 'error' && /related/i.test(f.message) && /nonexistent/.test(f.message),
+        (f) =>
+          f.severity === 'error' && /related/i.test(f.message) && /nonexistent/.test(f.message),
       ),
     ).toBe(true)
   })
@@ -278,11 +279,7 @@ describe('auditContent', () => {
     const today = new Date()
     const past = new Date(today.getTime() - 100 * 24 * 60 * 60 * 1000)
     const iso = past.toISOString().slice(0, 10)
-    writeRule(
-      join(fx.consumer, 'agent-rules'),
-      'r.md',
-      validRuleFm('r', { last_reviewed: iso }),
-    )
+    writeRule(join(fx.consumer, 'agent-rules'), 'r.md', validRuleFm('r', { last_reviewed: iso }))
     const stale = auditContent({
       catalogDir: fx.catalog,
       consumerRoot: fx.consumer,

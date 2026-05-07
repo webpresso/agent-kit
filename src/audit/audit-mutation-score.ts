@@ -49,12 +49,24 @@ export interface MutationScoreSummary {
 }
 
 export function computeMutationScores(report: MutationReport): MutationScoreSummary & {
-  perFile: Array<{ path: string; killed: number; survived: number; noCoverage: number; score: number }>
+  perFile: Array<{
+    path: string
+    killed: number
+    survived: number
+    noCoverage: number
+    score: number
+  }>
 } {
   let totalKilled = 0
   let totalSurvived = 0
   let totalNoCoverage = 0
-  const perFile: Array<{ path: string; killed: number; survived: number; noCoverage: number; score: number }> = []
+  const perFile: Array<{
+    path: string
+    killed: number
+    survived: number
+    noCoverage: number
+    score: number
+  }> = []
 
   for (const [path, fileData] of Object.entries(report.files)) {
     let killed = 0
@@ -68,7 +80,13 @@ export function computeMutationScores(report: MutationReport): MutationScoreSumm
     totalKilled += killed
     totalSurvived += survived
     totalNoCoverage += noCoverage
-    perFile.push({ path, killed, survived, noCoverage, score: pct(killed, killed + survived + noCoverage) })
+    perFile.push({
+      path,
+      killed,
+      survived,
+      noCoverage,
+      score: pct(killed, killed + survived + noCoverage),
+    })
   }
 
   return {

@@ -616,7 +616,9 @@ describe('symlinker', () => {
       expect(lstatSync(join(root, '.test-codex/skills/verify')).isSymbolicLink()).toBe(false)
       // SKILL.md entries are file symlinks
       expect(lstatSync(join(root, '.test-codex/skills/pll/SKILL.md')).isSymbolicLink()).toBe(true)
-      expect(lstatSync(join(root, '.test-codex/skills/verify/SKILL.md')).isSymbolicLink()).toBe(true)
+      expect(lstatSync(join(root, '.test-codex/skills/verify/SKILL.md')).isSymbolicLink()).toBe(
+        true,
+      )
     })
 
     it('uses sourceRootDir when configured — symlink targets resolve through it', () => {

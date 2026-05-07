@@ -15,10 +15,7 @@ afterEach(async () => {
   await rm(tmpDir, { recursive: true, force: true })
 })
 
-async function writePackageJson(
-  pkgDir: string,
-  content: Record<string, unknown>,
-): Promise<void> {
+async function writePackageJson(pkgDir: string, content: Record<string, unknown>): Promise<void> {
   await mkdir(pkgDir, { recursive: true })
   await writeFile(join(pkgDir, 'package.json'), JSON.stringify(content, null, 2))
 }
@@ -164,10 +161,7 @@ describe('auditBucketBoundary', () => {
         services: [{ binding: 'DISPATCH', service: 'dispatch' }],
       }),
     )
-    await writeWranglerJsonc(
-      join(tmpDir, 'apps/dispatch'),
-      JSON.stringify({ name: 'dispatch' }),
-    )
+    await writeWranglerJsonc(join(tmpDir, 'apps/dispatch'), JSON.stringify({ name: 'dispatch' }))
     const result = await auditBucketBoundary(tmpDir)
     expect(result.ok).toBe(true)
   })

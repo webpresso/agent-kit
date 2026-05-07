@@ -1,3 +1,4 @@
 #!/usr/bin/env sh
 set -eu
-pnpm exec vp staged 2>/dev/null || true
+pnpm exec ak format --check
+pnpm exec ak lint

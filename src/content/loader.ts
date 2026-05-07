@@ -82,9 +82,7 @@ export function loadContent(options: LoadOptions): LoadResult {
   // Absorb pnpm `.pnpm/<version>/` instability — pin to the realpath once.
   const resolvedCatalog = realpathSync(catalogDir)
   const resolvedConsumer =
-    consumerRoot !== undefined && existsSync(consumerRoot)
-      ? realpathSync(consumerRoot)
-      : undefined
+    consumerRoot !== undefined && existsSync(consumerRoot) ? realpathSync(consumerRoot) : undefined
 
   const records: ContentRecord[] = []
   const collisions: ContentCollision[] = []

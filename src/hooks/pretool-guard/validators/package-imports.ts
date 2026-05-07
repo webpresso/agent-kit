@@ -34,7 +34,12 @@ export const SHARED_FUNCTIONS: SharedFunction[] = [
   { name: 'countWords', package: '@webpresso/utils', source: 'string', category: 'string' },
   { name: 'containsIgnoreCase', package: '@webpresso/utils', source: 'string', category: 'string' },
   { name: 'randomString', package: '@webpresso/utils', source: 'string', category: 'string' },
-  { name: 'levenshteinDistance', package: '@webpresso/utils', source: 'string', category: 'string' },
+  {
+    name: 'levenshteinDistance',
+    package: '@webpresso/utils',
+    source: 'string',
+    category: 'string',
+  },
   { name: 'closestMatch', package: '@webpresso/utils', source: 'string', category: 'string' },
   { name: 'findClosestMatch', package: '@webpresso/utils', source: 'string', category: 'string' },
   { name: 'escapeRegex', package: '@webpresso/utils', source: 'string', category: 'string' },
@@ -62,9 +67,14 @@ export const SHARED_FUNCTIONS: SharedFunction[] = [
 ]
 
 const IMPL_PATTERN = (name: string) =>
-  new RegExp(`(?:function\\s+${name}\\s*\\(|(?:const|let|var)\\s+${name}\\s*=\\s*(?:function|\\())`,'m')
+  new RegExp(
+    `(?:function\\s+${name}\\s*\\(|(?:const|let|var)\\s+${name}\\s*=\\s*(?:function|\\())`,
+    'm',
+  )
 
-export function validatePackageImports(input: ToolInput): ValidationResult | DuplicateFunctionResult {
+export function validatePackageImports(
+  input: ToolInput,
+): ValidationResult | DuplicateFunctionResult {
   if (process.env[SKIP_ENV_VAR] === '1') return createSkipResult(VALIDATOR_NAME)
 
   const filePath = getFilePath(input)
@@ -74,7 +84,13 @@ export function validatePackageImports(input: ToolInput): ValidationResult | Dup
   if (!/\.(ts|tsx|js|jsx)$/.test(filePath)) return { validator: VALIDATOR_NAME, passed: true }
 
   // Skip the package itself to avoid false positives
-  if (SHARED_FUNCTIONS.some((fn) => filePath.includes(`/${fn.source}/`) || filePath.includes(`/${fn.package.replace('@', '').replace('/', '-')}/`))) {
+  if (
+    SHARED_FUNCTIONS.some(
+      (fn) =>
+        filePath.includes(`/${fn.source}/`) ||
+        filePath.includes(`/${fn.package.replace('@', '').replace('/', '-')}/`),
+    )
+  ) {
     return { validator: VALIDATOR_NAME, passed: true }
   }
 

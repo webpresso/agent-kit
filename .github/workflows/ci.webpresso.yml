@@ -15,11 +15,15 @@ jobs:
         with:
           node-version: '24'
           cache: 'pnpm'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - run: pnpm install --frozen-lockfile
         env:
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+      - run: pnpm run format:check
+      - run: pnpm run lint
       - run: pnpm -r run check-types 2>/dev/null || pnpm -r run typecheck 2>/dev/null || true
-      - run: pnpm -r run lint 2>/dev/null || true
 
   test:
     runs-on: ubuntu-latest
@@ -30,6 +34,9 @@ jobs:
         with:
           node-version: '24'
           cache: 'pnpm'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - run: pnpm install --frozen-lockfile
         env:
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
@@ -44,6 +51,9 @@ jobs:
         with:
           node-version: '24'
           cache: 'pnpm'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - run: pnpm install --frozen-lockfile
         env:
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
@@ -64,6 +74,9 @@ jobs:
         with:
           node-version: '24'
           cache: 'pnpm'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - run: pnpm install --frozen-lockfile
         env:
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}

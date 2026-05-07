@@ -35,7 +35,8 @@ type EnvLike = Record<string, string | undefined>
  * prepended; `.agent/routing.md` content is appended when present and non-empty.
  */
 export function buildOutput(_input: StartInput, cwd: string, env: EnvLike): string {
-  const projectDir = env.CLAUDE_PROJECT_DIR && env.CLAUDE_PROJECT_DIR.length > 0 ? env.CLAUDE_PROJECT_DIR : cwd
+  const projectDir =
+    env.CLAUDE_PROJECT_DIR && env.CLAUDE_PROJECT_DIR.length > 0 ? env.CLAUDE_PROJECT_DIR : cwd
   const target = join(projectDir, '.agent', 'routing.md')
 
   let routingMd: string | null = null
@@ -56,7 +57,9 @@ export function buildOutput(_input: StartInput, cwd: string, env: EnvLike): stri
     const code = (err as NodeJS.ErrnoException).code
     if (code !== 'ENOENT' && code !== 'ENOTDIR') {
       // Permission or other read errors: surface to stderr but continue.
-      process.stderr.write(`ak-sessionstart-routing: failed to read ${target}: ${(err as Error).message}\n`)
+      process.stderr.write(
+        `ak-sessionstart-routing: failed to read ${target}: ${(err as Error).message}\n`,
+      )
     }
     // ENOENT / ENOTDIR: no routing.md, that's fine — emit routing block alone.
   }
@@ -105,6 +108,9 @@ export async function main(): Promise<void> {
   process.exit(0)
 }
 
-if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
+if (
+  process.argv[1] &&
+  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
+) {
   void main()
 }

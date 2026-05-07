@@ -9,7 +9,9 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-async function runAk(args: string[]): Promise<{ code: number; stdout: string[]; stderr: string[] }> {
+async function runAk(
+  args: string[],
+): Promise<{ code: number; stdout: string[]; stderr: string[] }> {
   const stdout: string[] = []
   const stderr: string[] = []
   vi.spyOn(console, 'log').mockImplementation((message?: unknown) => {
@@ -35,9 +37,13 @@ describe('ak root command surface', () => {
 
     expect(result.code).toBe(0)
     expect(result.stdout.join('\n')).toContain('setup                 Scaffold a consumer repo')
-    expect(result.stdout.join('\n')).toContain('roadmap               List or show parent roadmaps directly')
+    expect(result.stdout.join('\n')).toContain(
+      'roadmap               List or show parent roadmaps directly',
+    )
     expect(result.stdout.join('\n')).toContain('doctor                Run repo audit health checks')
-    expect(result.stdout.join('\n')).toContain('init                  Compatibility alias for setup')
+    expect(result.stdout.join('\n')).toContain(
+      'init                  Compatibility alias for setup',
+    )
     expect(result.stdout.join('\n')).toContain('skill                 Manage consumer skills')
     expect(result.stdout.join('\n')).toContain('rule                  Manage consumer rules')
     expect(result.stdout.join('\n')).not.toContain('refresh')

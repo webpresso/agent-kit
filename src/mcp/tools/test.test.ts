@@ -104,15 +104,15 @@ describe('ak_test tool', () => {
     it('rejects `suite` as an unknown input key', async () => {
       writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n')
 
-      await expect(
-        akTestTool.handler({ suite: 'e2e', packages: ['x'] }),
-      ).rejects.toSatisfy((error: unknown) => {
-        return (
-          error instanceof Error &&
-          /suite/i.test(error.message) &&
-          /unrecognized key/i.test(error.message)
-        )
-      })
+      await expect(akTestTool.handler({ suite: 'e2e', packages: ['x'] })).rejects.toSatisfy(
+        (error: unknown) => {
+          return (
+            error instanceof Error &&
+            /suite/i.test(error.message) &&
+            /unrecognized key/i.test(error.message)
+          )
+        },
+      )
       expect(spawnMock).not.toHaveBeenCalled()
     })
 

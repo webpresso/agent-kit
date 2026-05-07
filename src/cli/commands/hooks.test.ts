@@ -9,7 +9,9 @@ vi.mock('#hooks/doctor', () => ({
 import { registerHooksCommand } from './hooks.js'
 
 function buildFakeCli() {
-  let registeredAction: ((_action: string | undefined, options: { skipMcp?: boolean }) => Promise<number>) | undefined
+  let registeredAction:
+    | ((_action: string | undefined, options: { skipMcp?: boolean }) => Promise<number>)
+    | undefined
 
   const cli = {
     command: (_name: string, _desc: string) => ({

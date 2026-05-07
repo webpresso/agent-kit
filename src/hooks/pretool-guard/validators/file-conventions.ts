@@ -2,15 +2,32 @@ import type { ToolInput, ValidationResult } from '#hooks/shared/types'
 
 import { getFilePath } from '#hooks/shared/types'
 import { createSkipResult } from './skip-result.js'
-import { getBlueprintPathViolation, getNonCanonicalPlanningPathViolation, isBlueprintPath } from './path-contract.js'
+import {
+  getBlueprintPathViolation,
+  getNonCanonicalPlanningPathViolation,
+  isBlueprintPath,
+} from './path-contract.js'
 
-const SYSTEM_PATH_PREFIXES = ['/etc/', '/usr/', '/bin/', '/sbin/', '/var/', '/sys/', '/proc/', '/dev/']
+const SYSTEM_PATH_PREFIXES = [
+  '/etc/',
+  '/usr/',
+  '/bin/',
+  '/sbin/',
+  '/var/',
+  '/sys/',
+  '/proc/',
+  '/dev/',
+]
 
 function validateNotSystemPath(filePath: string): ValidationResult | undefined {
   if (!filePath.startsWith('/')) return undefined
   for (const prefix of SYSTEM_PATH_PREFIXES) {
     if (filePath.startsWith(prefix) || filePath === prefix.slice(0, -1)) {
-      return { validator: 'file-conventions', passed: false, message: `Cannot write to system path: ${filePath}` }
+      return {
+        validator: 'file-conventions',
+        passed: false,
+        message: `Cannot write to system path: ${filePath}`,
+      }
     }
   }
   return undefined

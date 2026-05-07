@@ -13,10 +13,7 @@ vi.mock('./run-planner.js', () => ({
   planE2eRun,
 }))
 
-import {
-  createE2eExecutionPlan,
-  plannedGroupsToCommandConfigs,
-} from './execution.js'
+import { createE2eExecutionPlan, plannedGroupsToCommandConfigs } from './execution.js'
 
 beforeEach(() => {
   loadConfiguredHostAdapter.mockReset()

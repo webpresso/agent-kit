@@ -54,7 +54,15 @@ describe('auditRoadmapLinks', () => {
       root,
       'planned',
       'roadmap-a',
-      roadmap(['## Quick Reference (Execution Waves)', '', '| Wave | Blueprints |', '| --- | --- |', '| Wave 0 | [child-a](../planned/child-a/_overview.md) |'].join('\n')),
+      roadmap(
+        [
+          '## Quick Reference (Execution Waves)',
+          '',
+          '| Wave | Blueprints |',
+          '| --- | --- |',
+          '| Wave 0 | [child-a](../planned/child-a/_overview.md) |',
+        ].join('\n'),
+      ),
     )
     writeOverview(root, 'planned', 'child-a', child('roadmap-a'))
 
@@ -87,8 +95,18 @@ describe('auditRoadmapLinks', () => {
 
   test('fails when listed child does not point back to the roadmap', () => {
     const root = tempRepo()
-    writeOverview(root, 'planned', 'roadmap-a', roadmap('| Wave 0 | planned/child-a/_overview.md |'))
-    writeOverview(root, 'planned', 'other-roadmap', roadmap('| Wave 0 | planned/child-a/_overview.md |'))
+    writeOverview(
+      root,
+      'planned',
+      'roadmap-a',
+      roadmap('| Wave 0 | planned/child-a/_overview.md |'),
+    )
+    writeOverview(
+      root,
+      'planned',
+      'other-roadmap',
+      roadmap('| Wave 0 | planned/child-a/_overview.md |'),
+    )
     writeOverview(root, 'planned', 'child-a', child('other-roadmap'))
 
     const result = auditRoadmapLinks(root)
@@ -121,7 +139,12 @@ describe('auditRoadmapLinks', () => {
 
   test('fails when a local child points to a roadmap but is absent from its wave map', () => {
     const root = tempRepo()
-    writeOverview(root, 'planned', 'roadmap-a', roadmap('| Wave 0 | planned/other-child/_overview.md |'))
+    writeOverview(
+      root,
+      'planned',
+      'roadmap-a',
+      roadmap('| Wave 0 | planned/other-child/_overview.md |'),
+    )
     writeOverview(root, 'planned', 'other-child', child('roadmap-a'))
     writeOverview(root, 'planned', 'child-a', child('roadmap-a'))
 

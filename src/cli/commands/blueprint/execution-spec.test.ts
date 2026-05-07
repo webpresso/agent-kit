@@ -254,9 +254,9 @@ describe('parseOmxTeamApiResponse', () => {
   })
 
   it('throws when data is absent on ok response', () => {
-    expect(() =>
-      parseOmxTeamApiResponse(JSON.stringify({ ok: true }), 'list-tasks'),
-    ).toThrow(/returned no data/)
+    expect(() => parseOmxTeamApiResponse(JSON.stringify({ ok: true }), 'list-tasks')).toThrow(
+      /returned no data/,
+    )
   })
 
   it('throws on malformed JSON', () => {

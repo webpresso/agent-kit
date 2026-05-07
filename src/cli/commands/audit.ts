@@ -30,8 +30,7 @@ type RepoAuditRunner = (
 ) => Promise<RepoAuditResult> | RepoAuditResult
 
 const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
-  'catalog-drift': async (root) =>
-    (await import('#audit/repo-guardrails')).auditCatalogDrift(root),
+  'catalog-drift': async (root) => (await import('#audit/repo-guardrails')).auditCatalogDrift(root),
   'blueprint-lifecycle': async (root, options) =>
     (await import('#audit/repo-guardrails')).auditBlueprintLifecycle(root, {
       includeLegacyOmx: options.legacyOmx,
@@ -61,10 +60,7 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
   skills: async (root) => runContentAudit(root, 'skill'),
 }
 
-async function runContentAudit(
-  root: string,
-  kind: 'rule' | 'skill',
-): Promise<RepoAuditResult> {
+async function runContentAudit(root: string, kind: 'rule' | 'skill'): Promise<RepoAuditResult> {
   const { auditContent } = await import('../../content/audit.js')
   const { resolvePackageAsset } = await import('#utils/package-assets')
   const catalogDir = resolvePackageAsset('catalog/agent')
@@ -193,47 +189,42 @@ export function registerAuditCommand(cli: CAC): void {
     .option('--vision-path <path>', "Path to VISION.md for the 'vision' audit (default: VISION.md)")
     .action(
       async (kind: string | undefined, target: string | undefined, options: AuditActionOptions) => {
-        const outcome = await runAuditDispatch(
-          kind,
-          target ? [target] : [],
-          options,
-          {
-            root: process.cwd(),
-            runStryker: (cwd) => runStryker(cwd),
-            runScript: (script, args) => runAuditScript(script, args),
-            runRepoAudit: async (name, root, opts) => {
-              const runner = REPO_AUDIT_REGISTRY[name]
-              if (!runner) throw new Error(`Unknown repo audit kind: ${name}`)
-              return runner(root, opts)
-            },
-            runBundleBudget: async (args) => {
-              const { runBundleBudgetCli } = await import('../../vite/local.js')
-              return runBundleBudgetCli(args)
-            },
-            runCommitMessageAudit: async (messageFile, opts) => {
-              const { auditCommitMessageFile } = await import('#audit/repo-guardrails')
-              return auditCommitMessageFile(messageFile, {
-                requireLore: opts.requireLore,
-                loreWarn: opts.loreWarn,
-              })
-            },
-            resolveScript: resolveAuditScript,
-            buildBundleBudgetArgs,
-            knownRepoKinds: REPO_AUDIT_KINDS,
+        const outcome = await runAuditDispatch(kind, target ? [target] : [], options, {
+          root: process.cwd(),
+          runStryker: (cwd) => runStryker(cwd),
+          runScript: (script, args) => runAuditScript(script, args),
+          runRepoAudit: async (name, root, opts) => {
+            const runner = REPO_AUDIT_REGISTRY[name]
+            if (!runner) throw new Error(`Unknown repo audit kind: ${name}`)
+            return runner(root, opts)
           },
-        )
+          runBundleBudget: async (args) => {
+            const { runBundleBudgetCli } = await import('../../vite/local.js')
+            return runBundleBudgetCli(args)
+          },
+          runCommitMessageAudit: async (messageFile, opts) => {
+            const { auditCommitMessageFile } = await import('#audit/repo-guardrails')
+            return auditCommitMessageFile(messageFile, {
+              requireLore: opts.requireLore,
+              loreWarn: opts.loreWarn,
+            })
+          },
+          resolveScript: resolveAuditScript,
+          buildBundleBudgetArgs,
+          knownRepoKinds: REPO_AUDIT_KINDS,
+        })
 
         switch (outcome.kind) {
           case 'invalid-usage': {
             console.error(
-              kind
-                ? outcome.message
-                : `Usage: ak audit <kind> [target]\nKinds: ${AUDIT_KIND_LIST}`,
+              kind ? outcome.message : `Usage: ak audit <kind> [target]\nKinds: ${AUDIT_KIND_LIST}`,
             )
             process.exit(1)
           }
           case 'unknown-kind': {
-            console.error(`Unknown audit kind: ${outcome.auditKind}. Use one of: ${AUDIT_KIND_LIST}.`)
+            console.error(
+              `Unknown audit kind: ${outcome.auditKind}. Use one of: ${AUDIT_KIND_LIST}.`,
+            )
             process.exit(1)
           }
           case 'script-exit': {

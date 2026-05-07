@@ -34,7 +34,8 @@ interface RunResult {
 }
 
 function runAk(args: string[], extraEnv: Record<string, string> = {}): RunResult {
-  const command = existsSync(SOURCE_CLI_PATH) && existsSync(TSX_PATH) ? process.execPath : process.execPath
+  const command =
+    existsSync(SOURCE_CLI_PATH) && existsSync(TSX_PATH) ? process.execPath : process.execPath
   const commandArgs =
     existsSync(SOURCE_CLI_PATH) && existsSync(TSX_PATH)
       ? [TSX_PATH, SOURCE_CLI_PATH, ...args]

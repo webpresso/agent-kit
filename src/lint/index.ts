@@ -9,11 +9,7 @@
  * without reaching through the MCP transport.
  */
 
-import {
-  isMissingBinary,
-  isRunFailure,
-  runCommand,
-} from '#mcp/tools/_shared/run-command'
+import { isMissingBinary, isRunFailure, runCommand } from '#mcp/tools/_shared/run-command'
 import { resolveProjectRoot } from '#mcp/tools/_shared/project-root'
 
 export interface LintIssue {
@@ -83,11 +79,16 @@ export function parseOxlintIssues(stdout: string): ParseOutcome {
     const reason = error instanceof Error ? error.message : String(error)
     return { issues: [], parseError: `oxlint JSON.parse failed: ${reason}` }
   }
-  if (!Array.isArray(parsed)) {
+  // Newer oxlint emits a wrapped object `{ diagnostics: [...] }` rather than
+  // an ESLint-shaped array. Normalize both shapes so callers see one issue list.
+  const reports = Array.isArray(parsed)
+    ? (parsed as OxlintFileReport[])
+    : normalizeWrappedReports(parsed)
+  if (!reports) {
     return { issues: [], parseError: 'oxlint output was not a JSON array' }
   }
   const issues: LintIssue[] = []
-  for (const fileReport of parsed as OxlintFileReport[]) {
+  for (const fileReport of reports) {
     const file = fileReport?.filePath ?? ''
     const messages = fileReport?.messages
     if (!Array.isArray(messages)) continue
@@ -101,6 +102,35 @@ export function parseOxlintIssues(stdout: string): ParseOutcome {
     }
   }
   return { issues }
+}
+
+interface OxlintWrappedDiagnostic {
+  readonly filename?: string
+  readonly message?: string
+  readonly code?: string
+  readonly ruleId?: string | null
+  readonly line?: number
+  readonly labels?: readonly { readonly span?: { readonly line?: number } }[]
+}
+
+function normalizeWrappedReports(parsed: unknown): OxlintFileReport[] | null {
+  if (!parsed || typeof parsed !== 'object') return null
+  const wrapper = parsed as { diagnostics?: unknown; results?: unknown }
+  const reports = wrapper.diagnostics ?? wrapper.results
+  if (!Array.isArray(reports)) return null
+  return reports.map((report) => {
+    const d = report as OxlintWrappedDiagnostic
+    return {
+      filePath: d.filename ?? '',
+      messages: [
+        {
+          line: d.line ?? d.labels?.[0]?.span?.line ?? 0,
+          ruleId: d.ruleId ?? d.code ?? 'parse',
+          message: d.message ?? '',
+        },
+      ],
+    }
+  })
 }
 
 /**

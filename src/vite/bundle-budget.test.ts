@@ -123,9 +123,7 @@ describe('analyzeBundleBudget', () => {
 
   it('passes when limits are undefined', () => {
     const result = analyzeBundleBudget({
-      assets: [
-        { path: 'assets/huge.js', bytes: 9_999_999 },
-      ],
+      assets: [{ path: 'assets/huge.js', bytes: 9_999_999 }],
     })
 
     expect(result.ok).toBe(true)

@@ -37,7 +37,7 @@ function parseJsonish(rawOutput: string): unknown {
 }
 
 function extractJson(rawOutput: string): string | undefined {
-  const start = rawOutput.search(/[\[{]/u)
+  const start = rawOutput.search(/[[{]/u)
   if (start < 0) return undefined
   const open = rawOutput[start]
   const close = open === '{' ? '}' : ']'
@@ -78,7 +78,13 @@ function visit(value: unknown, inheritedFile: string | undefined, failures: Vite
   }
 
   const record = value as Record<string, unknown>
-  const file = firstString(record.file, record.filepath, record.filePath, record.name?.toString().endsWith('.ts') ? record.name : undefined) ?? inheritedFile
+  const file =
+    firstString(
+      record.file,
+      record.filepath,
+      record.filePath,
+      record.name?.toString().endsWith('.ts') ? record.name : undefined,
+    ) ?? inheritedFile
   const status = firstString(record.status, record.state)
   const failureMessages = Array.isArray(record.failureMessages)
     ? record.failureMessages.filter((item): item is string => typeof item === 'string')
@@ -102,7 +108,12 @@ function firstString(...values: unknown[]): string | undefined {
 }
 
 function firstStackLine(message: string): string {
-  return message.split(/\r?\n/u).find((line) => line.trim().length > 0)?.trim() ?? message
+  return (
+    message
+      .split(/\r?\n/u)
+      .find((line) => line.trim().length > 0)
+      ?.trim() ?? message
+  )
 }
 
 function regexFallback(rawOutput: string): VitestFailure[] {
@@ -126,7 +137,9 @@ function compact(
   return createTransformResult(
     rawOutput,
     failures
-      .map((failure) => `${failure.file ? `${failure.file} ` : ''}${failure.name}: ${failure.message}`)
+      .map(
+        (failure) => `${failure.file ? `${failure.file} ` : ''}${failure.name}: ${failure.message}`,
+      )
       .join('\n'),
     context,
     {

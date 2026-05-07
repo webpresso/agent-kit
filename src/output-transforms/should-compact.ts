@@ -8,9 +8,7 @@ export function shouldCompact(options: ShouldCompactOptions = {}): boolean {
   if (options.flag !== undefined) return options.flag
 
   const sourceEnv = options.env ?? process.env
-  const envValue =
-    sourceEnv.QUALITY_ENGINE_COMPACT ??
-    sourceEnv.AK_COMPACT
+  const envValue = sourceEnv.QUALITY_ENGINE_COMPACT ?? sourceEnv.AK_COMPACT
   if (envValue !== undefined) return parseBooleanEnv(envValue)
 
   const isTTY = options.isTTY ?? process.stdout.isTTY ?? false

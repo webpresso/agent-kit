@@ -84,9 +84,7 @@ describe('validateDangerousCommands', () => {
     })
 
     it('blocks piping a secret-source command through dd', () => {
-      const result = validateDangerousCommands(
-        bash('op read op://vault/item | dd of=/tmp/secret'),
-      )
+      const result = validateDangerousCommands(bash('op read op://vault/item | dd of=/tmp/secret'))
       expect(result.passed).toBe(false)
     })
 
@@ -111,9 +109,7 @@ describe('validateDangerousCommands', () => {
     })
 
     it('blocks `>>` (append) redirects of secret env vars', () => {
-      const result = validateDangerousCommands(
-        bash('echo "$ANTHROPIC_API_KEY" >> ~/.cache/keys'),
-      )
+      const result = validateDangerousCommands(bash('echo "$ANTHROPIC_API_KEY" >> ~/.cache/keys'))
       expect(result.passed).toBe(false)
     })
 
@@ -133,9 +129,9 @@ describe('validateDangerousCommands', () => {
 
     it('passes secret-source commands that read into a file (input redirect, not output)', () => {
       // < is input redirect, not output — should not match the > pattern
-      expect(
-        validateDangerousCommands(bash('gh auth status < /dev/null > /dev/null')).passed,
-      ).toBe(true)
+      expect(validateDangerousCommands(bash('gh auth status < /dev/null > /dev/null')).passed).toBe(
+        true,
+      )
     })
   })
 

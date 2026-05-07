@@ -1,7 +1,7 @@
-import { existsSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import {
   detectConsumer,
@@ -91,7 +91,7 @@ describe('findGitRoot', () => {
       mkdirSync(join(dir, '.git'))
       const nested = join(dir, 'sub')
       mkdirSync(nested, { recursive: true })
-      const originalCwd = process.cwd()
+      const _originalCwd = process.cwd()
       try {
         const found = findGitRoot(nested)
         expect(found).not.toBeNull()
@@ -230,12 +230,7 @@ describe('parseWorkspaceGlobs', () => {
     try {
       writeFileSync(
         join(dir, 'pnpm-workspace.yaml'),
-        [
-          'packages:',
-          "  - 'packages/*'",
-          "  - 'apps/*'",
-          "  - 'libs/util'",
-        ].join('\n'),
+        ['packages:', "  - 'packages/*'", "  - 'apps/*'", "  - 'libs/util'"].join('\n'),
       )
       const globs = parseWorkspaceGlobs(dir)
       expect(globs).toEqual(['packages/*', 'apps/*', 'libs/util'])
@@ -249,12 +244,7 @@ describe('parseWorkspaceGlobs', () => {
     try {
       writeFileSync(
         join(dir, 'pnpm-workspace.yaml'),
-        [
-          'packages:',
-          '  - packages/*',
-          "  - 'apps/*'",
-          '  - "tools/*-kit"',
-        ].join('\n'),
+        ['packages:', '  - packages/*', "  - 'apps/*'", '  - "tools/*-kit"'].join('\n'),
       )
       const globs = parseWorkspaceGlobs(dir)
       expect(globs).toEqual(['packages/*', 'apps/*', 'tools/*-kit'])
@@ -287,10 +277,7 @@ describe('parseWorkspaceGlobs', () => {
   it('returns empty array when packages section exists but has no globs', () => {
     const dir = makeTempDir()
     try {
-      writeFileSync(
-        join(dir, 'pnpm-workspace.yaml'),
-        'packages:\n# no entries yet\n',
-      )
+      writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'packages:\n# no entries yet\n')
       const globs = parseWorkspaceGlobs(dir)
       expect(globs).toEqual([])
     } finally {
@@ -303,11 +290,7 @@ describe('parseWorkspaceGlobs', () => {
     try {
       writeFileSync(
         join(dir, 'pnpm-workspace.yaml'),
-        [
-          'packages:',
-          "  - 'packages/*' # all library packages",
-          "  - 'apps/*'",
-        ].join('\n'),
+        ['packages:', "  - 'packages/*' # all library packages", "  - 'apps/*'"].join('\n'),
       )
       const globs = parseWorkspaceGlobs(dir)
       expect(globs).toEqual(['packages/*', 'apps/*'])
@@ -349,10 +332,7 @@ describe('parseWorkspaceGlobs', () => {
   it('handles tab-indented globs', () => {
     const dir = makeTempDir()
     try {
-      writeFileSync(
-        join(dir, 'pnpm-workspace.yaml'),
-        'packages:\n\t- packages/*\n\t- apps/*\n',
-      )
+      writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'packages:\n\t- packages/*\n\t- apps/*\n')
       const globs = parseWorkspaceGlobs(dir)
       expect(globs).toEqual(['packages/*', 'apps/*'])
     } finally {
@@ -696,7 +676,7 @@ describe('detectConsumer', () => {
     const dir = realpathSync(makeTempDir())
     try {
       mkdirSync(join(dir, '.git'))
-      const originalCwd = process.cwd()
+      const _originalCwd = process.cwd()
       try {
         const ctx = detectConsumer(dir)
         expect(ctx).not.toBeNull()

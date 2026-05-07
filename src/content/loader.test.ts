@@ -7,9 +7,7 @@ import { describe, expect, it } from 'vitest'
 
 import { loadContent } from './loader.js'
 
-const FIXTURE_ROOT = resolve(
-  fileURLToPath(new URL('./__fixtures__/loader/', import.meta.url)),
-)
+const FIXTURE_ROOT = resolve(fileURLToPath(new URL('./__fixtures__/loader/', import.meta.url)))
 
 const CATALOG = join(FIXTURE_ROOT, 'catalog')
 const CONSUMER_CLEAN = join(FIXTURE_ROOT, 'consumer-clean')
@@ -80,9 +78,7 @@ describe('loadContent', () => {
       consumerRoot: CONSUMER_COLLIDE,
     })
 
-    const ruleCollision = result.collisions.find(
-      (c) => c.kind === 'rule' && c.slug === 'alpha',
-    )
+    const ruleCollision = result.collisions.find((c) => c.kind === 'rule' && c.slug === 'alpha')
     const skillCollision = result.collisions.find(
       (c) => c.kind === 'skill' && c.slug === 'skill-with-asset',
     )
@@ -90,13 +86,8 @@ describe('loadContent', () => {
     expect(skillCollision).toBeDefined()
 
     // Both records should still be present — caller decides resolution.
-    const alphaRules = result.records.filter(
-      (r) => r.kind === 'rule' && r.slug === 'alpha',
-    )
-    expect(alphaRules.map((r) => r.source).sort()).toEqual([
-      'canonical',
-      'consumer',
-    ])
+    const alphaRules = result.records.filter((r) => r.kind === 'rule' && r.slug === 'alpha')
+    expect(alphaRules.map((r) => r.source).sort()).toEqual(['canonical', 'consumer'])
   })
 
   it('throws a clear error when catalogDir is missing', () => {

@@ -216,13 +216,19 @@ describe('findMutationGamingPatterns', () => {
     it('detects mutation-kill in describe', () => {
       const result = findMutationGamingPatterns("describe('mutation-kill suite', () => {})")
       expect(result).toHaveLength(1)
-      expect(result[0]).toMatchObject({ line: 1, pattern: 'Test suite name suggests mutation gaming' })
+      expect(result[0]).toMatchObject({
+        line: 1,
+        pattern: 'Test suite name suggests mutation gaming',
+      })
     })
 
     it('detects kill_mutant in describe', () => {
       const result = findMutationGamingPatterns("describe('kill_mutant suite', () => {})")
       expect(result).toHaveLength(1)
-      expect(result[0]).toMatchObject({ line: 1, pattern: 'Test suite name suggests mutation gaming' })
+      expect(result[0]).toMatchObject({
+        line: 1,
+        pattern: 'Test suite name suggests mutation gaming',
+      })
     })
 
     it('detects "kill the mutant" in it()', () => {

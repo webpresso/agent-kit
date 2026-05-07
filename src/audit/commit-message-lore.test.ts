@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { validateLoreTrailers, type LoreValidationResult } from './commit-message-lore.js'
+import { validateLoreTrailers } from './commit-message-lore.js'
 
 const FULL_LORE_COMMIT = `Prevent silent session drops during long-running operations
 

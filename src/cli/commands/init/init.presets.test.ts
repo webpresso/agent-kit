@@ -24,12 +24,7 @@ vi.mock('node:child_process', async () => {
   }
 })
 
-import {
-  EXIT_SETUP_FAIL,
-  EXIT_SUCCESS,
-  EXIT_WRITE_FAIL,
-  runInit,
-} from './index.js'
+import { EXIT_SETUP_FAIL, EXIT_SUCCESS, EXIT_WRITE_FAIL, runInit } from './index.js'
 
 function makeRepo(): string {
   const dir = mkdtempSync(join(tmpdir(), 'ak-init-presets-'))

@@ -59,9 +59,7 @@ Just a markdown file.
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeFs(
-  files: Record<string, string>,
-): {
+function makeFs(files: Record<string, string>): {
   readFile: (p: string) => Promise<string>
   glob: (pattern: string, options: { cwd: string }) => Promise<string[]>
 } {
@@ -133,7 +131,7 @@ describe('runDocsLint', () => {
       expect(result.files).toBe(1)
       expect(result.violations.length).toBeGreaterThan(0)
       const taskFormatViolation = result.violations.find(
-        (v: {file?: string; message: string; rule: string}) => v.rule === 'blueprint-task-format',
+        (v: { file?: string; message: string; rule: string }) => v.rule === 'blueprint-task-format',
       )
       expect(taskFormatViolation).toBeDefined()
       expect(taskFormatViolation?.file).toBe('/tmp/blueprints/bad.md')
@@ -149,7 +147,9 @@ describe('runDocsLint', () => {
       const result = await runDocsLint('/tmp/blueprints', deps)
 
       expect(result.files).toBe(1)
-      const statusViolation = result.violations.find((v: {file?:string;message:string;rule:string}) => v.rule === 'blueprint-status')
+      const statusViolation = result.violations.find(
+        (v: { file?: string; message: string; rule: string }) => v.rule === 'blueprint-status',
+      )
       expect(statusViolation).toBeDefined()
       expect(result.exitCode).toBe(1)
     })
@@ -165,7 +165,9 @@ describe('runDocsLint', () => {
 
       expect(result.files).toBe(2)
       expect(result.violations.length).toBeGreaterThan(0)
-      const files = result.violations.map((v: {file?: string; message: string; rule: string}) => v.file)
+      const files = result.violations.map(
+        (v: { file?: string; message: string; rule: string }) => v.file,
+      )
       expect(files).toContain('/tmp/mix/invalid.md')
       expect(result.exitCode).toBe(1)
     })

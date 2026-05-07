@@ -131,10 +131,7 @@ describe('assertCompletionEvidence', () => {
 
   it('throws when verifications is empty', () => {
     expect(() =>
-      assertCompletionEvidence(
-        { artifacts: ['dist/app.js'], verifications: [] },
-        'exec-123',
-      ),
+      assertCompletionEvidence({ artifacts: ['dist/app.js'], verifications: [] }, 'exec-123'),
     ).toThrow(/cannot record completion without named verification output/)
   })
 
@@ -146,10 +143,7 @@ describe('assertCompletionEvidence', () => {
 
   it('throws when no artifacts and no logPath', () => {
     expect(() =>
-      assertCompletionEvidence(
-        { artifacts: [], verifications: ['pnpm test'] },
-        'exec-123',
-      ),
+      assertCompletionEvidence({ artifacts: [], verifications: ['pnpm test'] }, 'exec-123'),
     ).toThrow(/cannot record completion without artifact or log identity/)
   })
 
@@ -163,8 +157,6 @@ describe('assertCompletionEvidence', () => {
   })
 
   it('includes executionId in error message', () => {
-    expect(() =>
-      assertCompletionEvidence(null, 'my-exec-id'),
-    ).toThrow(/my-exec-id/)
+    expect(() => assertCompletionEvidence(null, 'my-exec-id')).toThrow(/my-exec-id/)
   })
 })

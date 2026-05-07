@@ -28,9 +28,12 @@ describe('plugin manifest', () => {
 })
 
 describe('skills directory', () => {
-  it.skipIf(!skillsDirExists)('skills/ directory exists (run pnpm generate-skills if missing)', () => {
-    expect(existsSync(SKILLS_DIR)).toBe(true)
-  })
+  it.skipIf(!skillsDirExists)(
+    'skills/ directory exists (run pnpm generate-skills if missing)',
+    () => {
+      expect(existsSync(SKILLS_DIR)).toBe(true)
+    },
+  )
 
   it.skipIf(!skillsDirExists)('skills/ has at least 6 subdirectories', () => {
     const skillDirs = readdirSync(SKILLS_DIR)

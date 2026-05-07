@@ -11,15 +11,28 @@ import { executeTechDebtSubcommand, type TechDebtCommandOptions } from './router
 
 export function registerTechDebtRouter(cli: CAC): void {
   cli
-    .command('tech-debt [subcommand] [...args]', 'Tech-debt lifecycle management (new, list, review)')
+    .command(
+      'tech-debt [subcommand] [...args]',
+      'Tech-debt lifecycle management (new, list, review)',
+    )
     .option('--severity <severity>', 'Severity level: critical|high|medium|low (for new)')
-    .option('--category <category>', 'Category: complexity|testing|mutation|duplication|dependency|security|documentation (for new)')
-    .option('--review-cadence <cadence>', 'Review cadence: weekly|biweekly|monthly|quarterly (for new)')
+    .option(
+      '--category <category>',
+      'Category: complexity|testing|mutation|duplication|dependency|security|documentation (for new)',
+    )
+    .option(
+      '--review-cadence <cadence>',
+      'Review cadence: weekly|biweekly|monthly|quarterly (for new)',
+    )
     .option('--status <status>', 'Status: accepted|needs-remediation|monitoring|resolved')
     .option('--dry-run', 'Print would-be path without writing (for new)')
     .option('--cwd <dir>', 'Consumer repo root (default: process.cwd())')
     .action(
-      async (subcommand: string | undefined, args: string[], options: TechDebtCommandOptions & { '--': string[] }) => {
+      async (
+        subcommand: string | undefined,
+        args: string[],
+        options: TechDebtCommandOptions & { '--': string[] },
+      ) => {
         if (!subcommand) {
           console.log(
             [

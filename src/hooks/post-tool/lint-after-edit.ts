@@ -52,7 +52,10 @@ export function processPostToolUse(input: ToolInput, projectDir: string): boolea
   return lintFile(filePath, projectDir)
 }
 
-if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
+if (
+  process.argv[1] &&
+  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
+) {
   runHook(
     (input) => {
       const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd()

@@ -26,9 +26,7 @@ export function scaffoldVision(input: ScaffoldVisionInput): MergeResult {
   const template = readFileSync(templatePath, 'utf8')
   const today = new Date().toISOString().slice(0, 10)
   const repoName = path.basename(input.repoRoot)
-  const rendered = template
-    .replaceAll('{{REPO_NAME}}', repoName)
-    .replaceAll('{{TODAY}}', today)
+  const rendered = template.replaceAll('{{REPO_NAME}}', repoName).replaceAll('{{TODAY}}', today)
 
   const target = path.join(input.repoRoot, 'VISION.md')
   return writeFileMerged(target, rendered, input.options)

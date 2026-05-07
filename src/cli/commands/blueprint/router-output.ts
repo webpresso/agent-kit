@@ -70,7 +70,8 @@ export function formatBlueprintSummaries(summaries: BlueprintSummary[]): string 
   const lines: string[] = []
 
   for (const roadmap of model.roadmaps) {
-    const malformedSuffix = 'malformed' in roadmap.roadmap && roadmap.roadmap.malformed ? ' malformed=yes' : ''
+    const malformedSuffix =
+      'malformed' in roadmap.roadmap && roadmap.roadmap.malformed ? ' malformed=yes' : ''
     lines.push(
       `ROADMAP ${roadmap.roadmap.name} status=${roadmap.roadmap.status} complexity=${(roadmap.roadmap as BlueprintSummary).complexity} children=${roadmap.rollup.children} done=${roadmap.rollup.done} in-progress=${roadmap.rollup.inProgress} planned=${roadmap.rollup.planned} draft=${roadmap.rollup.draft}${malformedSuffix}`,
     )

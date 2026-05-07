@@ -11,11 +11,13 @@ vi.mock('node:child_process', () => ({
   spawn: spawnMock,
 }))
 
-function fakeChild(opts: {
-  stdout?: string
-  stderr?: string
-  exitCode?: number
-} = {}): unknown {
+function fakeChild(
+  opts: {
+    stdout?: string
+    stderr?: string
+    exitCode?: number
+  } = {},
+): unknown {
   return {
     stdout: {
       on: (event: string, fn: (data: Buffer) => void) => {
@@ -111,14 +113,7 @@ describe('just backend', () => {
       await runTests({ packages: ['cli'] })
 
       const [, args] = spawnMock.mock.calls[0]!
-      expect(args).toEqual([
-        'test',
-        '--package',
-        'cli',
-        '--',
-        '--reporter=json',
-        '--no-color',
-      ])
+      expect(args).toEqual(['test', '--package', 'cli', '--', '--reporter=json', '--no-color'])
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

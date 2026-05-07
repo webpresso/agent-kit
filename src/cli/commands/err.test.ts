@@ -4,9 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import { ERR_COMMAND_HELP, runErrCommand } from './err.js'
 
-function spawnResult(
-  overrides: Partial<SpawnSyncReturns<string>> = {},
-): SpawnSyncReturns<string> {
+function spawnResult(overrides: Partial<SpawnSyncReturns<string>> = {}): SpawnSyncReturns<string> {
   return {
     pid: 123,
     output: [],

@@ -105,7 +105,9 @@ describe('applyBlueprintLifecycleToFile', () => {
       false,
     )
     expect(
-      existsSync(path.join(projectRoot, 'blueprints', 'completed', 'test-blueprint', '_overview.md')),
+      existsSync(
+        path.join(projectRoot, 'blueprints', 'completed', 'test-blueprint', '_overview.md'),
+      ),
     ).toBe(true)
     expect(existsSync(path.join(projectRoot, 'webpresso'))).toBe(false)
   })

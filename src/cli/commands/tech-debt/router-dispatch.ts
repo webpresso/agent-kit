@@ -46,7 +46,9 @@ export interface TechDebtReviewOptions {
   cwd?: string
 }
 
-export type TechDebtCommandOptions = TechDebtNewOptions & TechDebtListOptions & TechDebtReviewOptions
+export type TechDebtCommandOptions = TechDebtNewOptions &
+  TechDebtListOptions &
+  TechDebtReviewOptions
 
 const STATUS_DIRS = ['accepted', 'needs-remediation', 'monitoring', 'resolved'] as const
 
@@ -184,7 +186,9 @@ function scanTechDebtItems(techDebtRoot: string): ScannedItem[] {
             severity: (parsed.data?.['severity'] as string) || 'unknown',
             category: parsed.data?.['category'] as string | undefined,
             filePath,
-            malformed: firstError ? `${firstError.path.join('.')}: ${firstError.message}` : 'Invalid frontmatter',
+            malformed: firstError
+              ? `${firstError.path.join('.')}: ${firstError.message}`
+              : 'Invalid frontmatter',
           })
           continue
         }
@@ -221,22 +225,30 @@ async function handleNew(title: string, options: TechDebtNewOptions): Promise<vo
   // Validate inputs
   const severityResult = severitySchema.safeParse(options.severity ?? 'medium')
   if (!severityResult.success) {
-    throw new Error(`Invalid severity: ${options.severity}. Must be one of: critical, high, medium, low`)
+    throw new Error(
+      `Invalid severity: ${options.severity}. Must be one of: critical, high, medium, low`,
+    )
   }
 
   const categoryResult = categorySchema.safeParse(options.category ?? 'complexity')
   if (!categoryResult.success) {
-    throw new Error(`Invalid category: ${options.category}. Must be one of: complexity, testing, mutation, duplication, dependency, security, documentation`)
+    throw new Error(
+      `Invalid category: ${options.category}. Must be one of: complexity, testing, mutation, duplication, dependency, security, documentation`,
+    )
   }
 
   const cadenceResult = reviewCadenceSchema.safeParse(options.reviewCadence ?? 'quarterly')
   if (!cadenceResult.success) {
-    throw new Error(`Invalid review-cadence: ${options.reviewCadence}. Must be one of: weekly, biweekly, monthly, quarterly`)
+    throw new Error(
+      `Invalid review-cadence: ${options.reviewCadence}. Must be one of: weekly, biweekly, monthly, quarterly`,
+    )
   }
 
   const statusResult = techDebtStatusSchema.safeParse(options.status ?? 'accepted')
   if (!statusResult.success) {
-    throw new Error(`Invalid status: ${options.status}. Must be one of: accepted, needs-remediation, monitoring, resolved`)
+    throw new Error(
+      `Invalid status: ${options.status}. Must be one of: accepted, needs-remediation, monitoring, resolved`,
+    )
   }
 
   const severity = severityResult.data
@@ -312,7 +324,9 @@ async function handleReview(options: TechDebtReviewOptions): Promise<void> {
 
   console.log(`Overdue tech-debt reviews (${overdueItems.length}):`)
   for (const item of overdueItems) {
-    console.log(`  ${item.slug} [${item.status}] [${item.severity}] next review: ${item.nextReview ?? 'unknown'}`)
+    console.log(
+      `  ${item.slug} [${item.status}] [${item.severity}] next review: ${item.nextReview ?? 'unknown'}`,
+    )
     console.log(`    ${item.title}`)
   }
 

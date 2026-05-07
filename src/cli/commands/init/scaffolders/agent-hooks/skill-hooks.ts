@@ -90,7 +90,9 @@ export function validateSkillHooks(
 ): Record<SkillHookEvent, Array<z.infer<typeof SkillHookEntrySchema>>> {
   const parsed = SkillHooksSchema.safeParse(hooks ?? {})
   if (!parsed.success) {
-    throw new Error(`Invalid hooks frontmatter in skill ${skillName}: ${formatIssues(parsed.error)}`)
+    throw new Error(
+      `Invalid hooks frontmatter in skill ${skillName}: ${formatIssues(parsed.error)}`,
+    )
   }
   return parsed.data as Record<SkillHookEvent, Array<z.infer<typeof SkillHookEntrySchema>>>
 }

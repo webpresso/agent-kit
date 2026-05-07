@@ -1,4 +1,13 @@
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -303,7 +312,11 @@ describe('ak init end-to-end', () => {
       group.hooks.map((hook) => hook.command),
     )
     expect(stopCommands.some((command) => command.includes('ak-stop-qa'))).toBe(true)
-    expect(stopCommands.some((command) => command.includes('"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak" audit agents'))).toBe(true)
+    expect(
+      stopCommands.some((command) =>
+        command.includes('"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak" audit agents'),
+      ),
+    ).toBe(true)
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
 
     // Codex / Amp: real dir with file symlinks in .agents/skills/ (rg traverses real dirs)

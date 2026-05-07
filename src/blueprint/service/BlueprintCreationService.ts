@@ -157,7 +157,7 @@ function buildParentRoadmapMarkdown(input: {
     `- Complexity: \`${input.complexity}\``,
     `- Draft slug: \`${input.slug}\``,
     `- Output path: \`${input.outputPath}\``,
-    `- Creation command: \`ak blueprint new \"${input.goal}\" --complexity ${input.complexity} --type parent-roadmap\``,
+    `- Creation command: \`ak blueprint new "${input.goal}" --complexity ${input.complexity} --type parent-roadmap\``,
     '',
     '## Architecture Overview',
     '',
@@ -262,9 +262,7 @@ export class BlueprintCreationService {
     const relativeFilePath = toPortableRelativePath(this.projectRoot, outputPath)
     const date = formatDate(this.now())
     const template =
-      type === 'blueprint'
-        ? prepareTemplate(await readFile(this.templatePath, 'utf-8'))
-        : undefined
+      type === 'blueprint' ? prepareTemplate(await readFile(this.templatePath, 'utf-8')) : undefined
     const markdown =
       type === 'parent-roadmap'
         ? buildParentRoadmapMarkdown({
@@ -275,14 +273,16 @@ export class BlueprintCreationService {
             slug,
             title,
           })
-        : ([
-            ['{{date}}', date],
-            ['{{complexity}}', input.complexity],
-            ['{{title}}', title],
-            ['{{description}}', goal],
-            ['{{slug}}', slug],
-            ['{{output_path}}', relativeFilePath],
-          ] as const).reduce(
+        : (
+            [
+              ['{{date}}', date],
+              ['{{complexity}}', input.complexity],
+              ['{{title}}', title],
+              ['{{description}}', goal],
+              ['{{slug}}', slug],
+              ['{{output_path}}', relativeFilePath],
+            ] as const
+          ).reduce(
             (currentTemplate, [placeholder, value]) =>
               replacePlaceholder(currentTemplate, placeholder, value),
             template ?? '',

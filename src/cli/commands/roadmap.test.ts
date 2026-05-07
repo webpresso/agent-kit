@@ -4,7 +4,8 @@ import type { ShowBlueprintResult } from './blueprint/router.js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('./blueprint/router.js', async () => {
-  const actual = await vi.importActual<typeof import('./blueprint/router.js')>('./blueprint/router.js')
+  const actual =
+    await vi.importActual<typeof import('./blueprint/router.js')>('./blueprint/router.js')
   return {
     ...actual,
     listBlueprints: vi.fn(),
@@ -43,9 +44,7 @@ describe('assertParentRoadmap', () => {
   })
 
   it('rejects non-roadmap blueprint results', () => {
-    expect(() => assertParentRoadmap(buildResult('blueprint'))).toThrow(
-      /not type=parent-roadmap/,
-    )
+    expect(() => assertParentRoadmap(buildResult('blueprint'))).toThrow(/not type=parent-roadmap/)
   })
 })
 

@@ -285,9 +285,7 @@ async function ensureBlueprintExecutionProgressBridge(
     }
   }
 
-  const raw = await import('node:fs/promises').then((fs) =>
-    fs.readFile(blueprintPath, 'utf-8'),
-  )
+  const raw = await import('node:fs/promises').then((fs) => fs.readFile(blueprintPath, 'utf-8'))
   const blueprint = parseBlueprint(raw, slug)
   const spec = buildBlueprintLaunchSpec({
     blueprint,

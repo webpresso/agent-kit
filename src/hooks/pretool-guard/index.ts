@@ -15,6 +15,9 @@ export {
 } from './runner.js'
 export { VALIDATORS } from './validators/index.js'
 
-if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
+if (
+  process.argv[1] &&
+  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
+) {
   runMain()
 }

@@ -14,11 +14,7 @@
 
 import { z } from 'zod'
 
-import {
-  auditBlueprints,
-  createBlueprint,
-  listBlueprints,
-} from '#cli/commands/blueprint/router'
+import { auditBlueprints, createBlueprint, listBlueprints } from '#cli/commands/blueprint/router'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
 

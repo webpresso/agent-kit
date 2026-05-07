@@ -112,11 +112,12 @@ export async function runInit(flags: InitFlags): Promise<number> {
   const existingConfig = readConfig(consumer.repoRoot)
   const presets = parsePresets(flags.with)
   // Extract tier3 skills portion of --with (non-preset values)
-  const withFlagWithoutPresets = flags.with
-    ?.split(',')
-    .map((s) => s.trim())
-    .filter((s) => !(PRESETS as readonly string[]).includes(s))
-    .join(',') || undefined
+  const withFlagWithoutPresets =
+    flags.with
+      ?.split(',')
+      .map((s) => s.trim())
+      .filter((s) => !(PRESETS as readonly string[]).includes(s))
+      .join(',') || undefined
 
   let tier3Selection: string[]
   try {
@@ -240,15 +241,11 @@ export async function runInit(flags: InitFlags): Promise<number> {
     // Apply scaffolder presets
     const presetResults = []
     if (presets.includes('lore-commits')) {
-      presetResults.push(
-        scaffoldLoreCommits({ repoRoot: consumer.repoRoot, options }),
-      )
+      presetResults.push(scaffoldLoreCommits({ repoRoot: consumer.repoRoot, options }))
     }
 
     if (presets.includes('vision')) {
-      presetResults.push(
-        scaffoldVision({ catalogDir, repoRoot: consumer.repoRoot, options }),
-      )
+      presetResults.push(scaffoldVision({ catalogDir, repoRoot: consumer.repoRoot, options }))
     }
 
     let omxFailure: 'not-found' | 'spawn-failed' | null = null
@@ -256,7 +253,9 @@ export async function runInit(flags: InitFlags): Promise<number> {
       const omxResult = ensureOmx({ repoRoot: consumer.repoRoot, options })
       switch (omxResult.kind) {
         case 'omx-ok':
-          console.log(omxResult.installed ? '  omx setup: ✓ installed + configured' : '  omx setup: ✓')
+          console.log(
+            omxResult.installed ? '  omx setup: ✓ installed + configured' : '  omx setup: ✓',
+          )
           break
         case 'omx-skipped-dry-run':
           console.log('  omx setup: skipped (--dry-run)')
@@ -319,7 +318,10 @@ export async function runInit(flags: InitFlags): Promise<number> {
     if (presets.includes('rtk')) {
       if (!options.dryRun) {
         mkdirSync(join(consumer.repoRoot, '.agent'), { recursive: true })
-        writeFileSync(join(consumer.repoRoot, RTK_REQUESTED_MARKER), 'requested via `ak setup --with rtk`\n')
+        writeFileSync(
+          join(consumer.repoRoot, RTK_REQUESTED_MARKER),
+          'requested via `ak setup --with rtk`\n',
+        )
       }
       const rtkResult = ensureRtk({ repoRoot: consumer.repoRoot, options })
       switch (rtkResult.kind) {

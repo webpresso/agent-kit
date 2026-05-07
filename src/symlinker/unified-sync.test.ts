@@ -87,10 +87,7 @@ describe('runUnifiedSync', () => {
   })
 
   it('projects a canonical rule into all rule consumers', () => {
-    writeFile(
-      join(catalogDir, 'rules', 'foo.md'),
-      RULE_FRONTMATTER.replace('SLUG', 'foo'),
-    )
+    writeFile(join(catalogDir, 'rules', 'foo.md'), RULE_FRONTMATTER.replace('SLUG', 'foo'))
 
     const result = runUnifiedSync({ catalogDir, consumerRoot })
     expect(result.fixCount).toBeGreaterThan(0)
@@ -111,10 +108,7 @@ describe('runUnifiedSync', () => {
   })
 
   it('projects a consumer rule (agent-rules/) alongside catalog rules', () => {
-    writeFile(
-      join(catalogDir, 'rules', 'cat.md'),
-      RULE_FRONTMATTER.replace('SLUG', 'cat'),
-    )
+    writeFile(join(catalogDir, 'rules', 'cat.md'), RULE_FRONTMATTER.replace('SLUG', 'cat'))
     writeFile(
       join(consumerRoot, 'agent-rules', 'mine.md'),
       RULE_FRONTMATTER.replace('SLUG', 'mine'),
@@ -171,10 +165,7 @@ describe('runUnifiedSync', () => {
   })
 
   it('is idempotent — second run reports zero writes', () => {
-    writeFile(
-      join(catalogDir, 'rules', 'idem.md'),
-      RULE_FRONTMATTER.replace('SLUG', 'idem'),
-    )
+    writeFile(join(catalogDir, 'rules', 'idem.md'), RULE_FRONTMATTER.replace('SLUG', 'idem'))
     writeFile(
       join(consumerRoot, 'agent-skills', 'idem-skill', 'SKILL.md'),
       RULE_FRONTMATTER.replace('SLUG', 'idem-skill').replace('type: rule', 'type: skill'),
@@ -188,10 +179,7 @@ describe('runUnifiedSync', () => {
   })
 
   it('--check flags drift without writing', () => {
-    writeFile(
-      join(catalogDir, 'rules', 'drift.md'),
-      RULE_FRONTMATTER.replace('SLUG', 'drift'),
-    )
+    writeFile(join(catalogDir, 'rules', 'drift.md'), RULE_FRONTMATTER.replace('SLUG', 'drift'))
 
     const dryFirst = runUnifiedSync({ catalogDir, consumerRoot, check: true })
     expect(dryFirst.fixCount).toBeGreaterThan(0)
@@ -212,14 +200,8 @@ describe('runUnifiedSync', () => {
   })
 
   it('throws on slug collision between catalog and consumer', () => {
-    writeFile(
-      join(catalogDir, 'rules', 'dup.md'),
-      RULE_FRONTMATTER.replace('SLUG', 'dup'),
-    )
-    writeFile(
-      join(consumerRoot, 'agent-rules', 'dup.md'),
-      RULE_FRONTMATTER.replace('SLUG', 'dup'),
-    )
+    writeFile(join(catalogDir, 'rules', 'dup.md'), RULE_FRONTMATTER.replace('SLUG', 'dup'))
+    writeFile(join(consumerRoot, 'agent-rules', 'dup.md'), RULE_FRONTMATTER.replace('SLUG', 'dup'))
 
     expect(() => runUnifiedSync({ catalogDir, consumerRoot })).toThrowError(/slug collision/i)
     // No writes happened
@@ -227,10 +209,7 @@ describe('runUnifiedSync', () => {
   })
 
   it('respects --kind rules filter', () => {
-    writeFile(
-      join(catalogDir, 'rules', 'r.md'),
-      RULE_FRONTMATTER.replace('SLUG', 'r'),
-    )
+    writeFile(join(catalogDir, 'rules', 'r.md'), RULE_FRONTMATTER.replace('SLUG', 'r'))
     writeFile(
       join(catalogDir, 'skills', 's', 'SKILL.md'),
       RULE_FRONTMATTER.replace('SLUG', 's').replace('type: rule', 'type: skill'),
@@ -248,10 +227,7 @@ describe('runUnifiedSync', () => {
   it('catalogDir resolves through a symlink (realpathSync)', () => {
     // Create a symlinked alias to the catalog and pass that to runUnifiedSync.
     const realCatalog = catalogDir
-    writeFile(
-      join(realCatalog, 'rules', 'sym.md'),
-      RULE_FRONTMATTER.replace('SLUG', 'sym'),
-    )
+    writeFile(join(realCatalog, 'rules', 'sym.md'), RULE_FRONTMATTER.replace('SLUG', 'sym'))
 
     const aliasParent = join(realCatalog, '..', '..', 'alias-pkg')
     mkdirSync(join(aliasParent, '..'), { recursive: true })

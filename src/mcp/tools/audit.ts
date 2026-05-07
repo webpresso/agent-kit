@@ -128,35 +128,58 @@ function summarizeExitCode(kind: string, exitCode: number): string {
   return exitCode === 0 ? `${kind} audit passed` : `${kind} audit failed (exit ${exitCode})`
 }
 
-async function dispatch(
-  input: AkAuditInput,
-): Promise<AuditPayload> {
+async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
   const { kind } = input
   switch (kind) {
     case 'catalog-drift': {
       const { auditCatalogDrift } = await import('#audit/repo-guardrails')
       const auditResult = auditCatalogDrift(input.directory ?? process.cwd())
-      return { passed: auditResult.ok, summary: summarizeRepoAudit(kind, auditResult), kind, details: auditResult }
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
     }
     case 'agents': {
       const { auditAgents } = await import('#audit/agents')
       const auditResult = auditAgents(input.directory ?? process.cwd())
-      return { passed: auditResult.ok, summary: summarizeRepoAudit(kind, auditResult), kind, details: auditResult }
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
     }
     case 'docs-frontmatter': {
       const { auditDocsFrontmatter } = await import('#audit/repo-guardrails')
       const auditResult = auditDocsFrontmatter(input.directory ?? process.cwd())
-      return { passed: auditResult.ok, summary: summarizeRepoAudit(kind, auditResult), kind, details: auditResult }
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
     }
     case 'blueprint-lifecycle': {
       const { auditBlueprintLifecycle } = await import('#audit/repo-guardrails')
       const auditResult = auditBlueprintLifecycle(input.directory ?? process.cwd())
-      return { passed: auditResult.ok, summary: summarizeRepoAudit(kind, auditResult), kind, details: auditResult }
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
     }
     case 'roadmap-links': {
       const { auditRoadmapLinks } = await import('#audit/roadmap-links')
       const auditResult = auditRoadmapLinks(input.directory ?? process.cwd())
-      return { passed: auditResult.ok, summary: summarizeRepoAudit(kind, auditResult), kind, details: auditResult }
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
     }
     case 'commit-message': {
       const messageFile = input.messageFile ?? input.directory
@@ -170,18 +193,33 @@ async function dispatch(
       }
       const { auditCommitMessageFile } = await import('#audit/repo-guardrails')
       const auditResult = auditCommitMessageFile(messageFile)
-      return { passed: auditResult.ok, summary: summarizeRepoAudit(kind, auditResult), kind, details: auditResult }
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
     }
     case 'tech-debt': {
       const { auditTechDebt } = await import('#audit/tech-debt')
       const auditResult = auditTechDebt(input.directory ?? process.cwd())
-      return { passed: auditResult.ok, summary: summarizeRepoAudit(kind, auditResult), kind, details: auditResult }
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
     }
     case 'bundle-budget': {
       const { runBundleBudgetCli } = await import('../../vite/local.js')
       const args = input.directory ? [input.directory] : []
       const exitCode = await runBundleBudgetCli(args)
-      return { passed: exitCode === 0, summary: summarizeExitCode(kind, exitCode), kind, details: { exitCode } }
+      return {
+        passed: exitCode === 0,
+        summary: summarizeExitCode(kind, exitCode),
+        kind,
+        details: { exitCode },
+      }
     }
     case 'tph': {
       const script = resolveAuditScript('audit-tph.ts')
@@ -208,7 +246,12 @@ async function dispatch(
     default: {
       // Exhaustiveness check — z.enum should make this unreachable.
       const _exhaustive: never = kind
-      return { passed: false, summary: 'audit dispatch hit unreachable case', kind: String(_exhaustive), details: 'unreachable' }
+      return {
+        passed: false,
+        summary: 'audit dispatch hit unreachable case',
+        kind: String(_exhaustive),
+        details: 'unreachable',
+      }
     }
   }
 }
@@ -233,7 +276,10 @@ const tool: ToolDescriptor = {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       const kind =
-        raw && typeof raw === 'object' && 'kind' in raw && typeof (raw as { kind: unknown }).kind === 'string'
+        raw &&
+        typeof raw === 'object' &&
+        'kind' in raw &&
+        typeof (raw as { kind: unknown }).kind === 'string'
           ? (raw as { kind: string }).kind
           : 'unknown'
       // Schema validation failure — agent supplied bad input; isError lets
@@ -250,7 +296,12 @@ const tool: ToolDescriptor = {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       return wrap(
-        { passed: false, summary: `${input.kind} audit crashed`, kind: input.kind, details: message },
+        {
+          passed: false,
+          summary: `${input.kind} audit crashed`,
+          kind: input.kind,
+          details: message,
+        },
         { isError: true },
       )
     }

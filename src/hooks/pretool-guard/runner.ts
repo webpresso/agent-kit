@@ -40,7 +40,9 @@ export function formatOutput(aggregate: AggregateResult, input: ToolInput): void
     console.error(`${RED}   File: ${filePath}${NC}`)
     console.error(`${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}`)
     for (const result of failed) {
-      console.error(`${RED}   • [${result.validator}] ${result.message || 'Validation failed'}${NC}`)
+      console.error(
+        `${RED}   • [${result.validator}] ${result.message || 'Validation failed'}${NC}`,
+      )
     }
     console.error(`${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}`)
     return
@@ -72,18 +74,37 @@ export function getTarget(input: ToolInput): string {
   return getFilePath(input) || getCommand(input) || 'unknown'
 }
 
-export function logValidationResult(result: AggregateResult, target: string, tool: 'Bash' | 'Write' | 'Edit'): void {
+export function logValidationResult(
+  result: AggregateResult,
+  target: string,
+  tool: 'Bash' | 'Write' | 'Edit',
+): void {
   if (!result.passed) {
     const failed = result.results.filter((r) => !r.passed)
-    logRun({ status: 'BLOCK', target: target.slice(0, 100), tool, failures: failed.map((f) => f.validator) })
+    logRun({
+      status: 'BLOCK',
+      target: target.slice(0, 100),
+      tool,
+      failures: failed.map((f) => f.validator),
+    })
     return
   }
   const warnings = result.results.filter((r) => r.passed && r.message)
-  logRun({ status: warnings.length > 0 ? 'WARN' : 'PASS', target: target.slice(0, 100), tool, failures: warnings.length > 0 ? warnings.map((w) => w.validator) : undefined })
+  logRun({
+    status: warnings.length > 0 ? 'WARN' : 'PASS',
+    target: target.slice(0, 100),
+    tool,
+    failures: warnings.length > 0 ? warnings.map((w) => w.validator) : undefined,
+  })
 }
 
 export function handleParseError(error: unknown, inputJson: string): never {
-  logRun({ status: 'ERROR', target: inputJson.slice(0, 50).replace(/\n/g, ' '), tool: 'Bash', error: error instanceof Error ? error.message : String(error) })
+  logRun({
+    status: 'ERROR',
+    target: inputJson.slice(0, 50).replace(/\n/g, ' '),
+    tool: 'Bash',
+    error: error instanceof Error ? error.message : String(error),
+  })
   console.error(`${RED}❌ Pretool Guard: Error parsing input${NC}`)
   console.error(`${RED}   ${error instanceof Error ? error.message : 'Unknown error'}${NC}`)
   process.exit(2)
@@ -151,6 +172,9 @@ export async function main(): Promise<void> {
   }
 }
 
-if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
+if (
+  process.argv[1] &&
+  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
+) {
   main()
 }

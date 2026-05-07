@@ -62,7 +62,10 @@ export function auditTechDebt(root: string): RepoAuditResult {
       try {
         raw = readFileSync(filePath, 'utf8')
       } catch (err) {
-        violations.push({ file: rel, message: `Cannot read file: ${err instanceof Error ? err.message : String(err)}` })
+        violations.push({
+          file: rel,
+          message: `Cannot read file: ${err instanceof Error ? err.message : String(err)}`,
+        })
         continue
       }
 
@@ -71,7 +74,10 @@ export function auditTechDebt(root: string): RepoAuditResult {
         const parsed = matter(raw)
         data = parsed.data as Record<string, unknown>
       } catch (err) {
-        violations.push({ file: rel, message: `Cannot parse frontmatter: ${err instanceof Error ? err.message : String(err)}` })
+        violations.push({
+          file: rel,
+          message: `Cannot parse frontmatter: ${err instanceof Error ? err.message : String(err)}`,
+        })
         continue
       }
 
