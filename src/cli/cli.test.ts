@@ -17,6 +17,11 @@ async function runAk(
   vi.spyOn(console, 'log').mockImplementation((message?: unknown) => {
     stdout.push(String(message ?? ''))
   })
+  // cac 7 switched help/version output from `console.log` to `console.info`
+  // — capture both so the subcommand-help assertions still see the text.
+  vi.spyOn(console, 'info').mockImplementation((message?: unknown) => {
+    stdout.push(String(message ?? ''))
+  })
   vi.spyOn(console, 'error').mockImplementation((message?: unknown) => {
     stderr.push(String(message ?? ''))
   })

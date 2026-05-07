@@ -77,8 +77,11 @@ describe('hooks/doctor', () => {
     })
 
     it('skips executable check on win32', async () => {
-      vi.mock('node:os', () => ({ platform: () => 'win32' }))
-
+      // `node:os` is mocked at the top level of the file (linux). For this
+      // test the win32 branch is gated by `process.platform`, set via the
+      // stubGlobal call below — no per-test re-mock of `node:os` needed
+      // (and vitest 4 deprecates nested vi.mock anyway, since it gets
+      // hoisted to module top regardless of where it appears).
       mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
         if (String(path) === rtkMarker) throw new Error('ENOENT')
         return true
