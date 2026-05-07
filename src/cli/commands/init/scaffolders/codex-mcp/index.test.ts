@@ -131,7 +131,11 @@ describe('findAgentKitMcpEntry', () => {
     const expected = makeFakeAgentKitInstall(join(pnpmRoot, '@webpresso', 'agent-kit'))
 
     const found = findAgentKitMcpEntry({
-      candidates: [join(dir, 'no-claude'), join(dir, 'no-bun'), join(pnpmRoot, '@webpresso', 'agent-kit')],
+      candidates: [
+        join(dir, 'no-claude'),
+        join(dir, 'no-bun'),
+        join(pnpmRoot, '@webpresso', 'agent-kit'),
+      ],
     })
 
     expect(found).toBe(expected)
