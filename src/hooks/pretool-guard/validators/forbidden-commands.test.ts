@@ -460,7 +460,8 @@ describe('validateForbiddenCommands', () => {
       tmpdir(),
       `ak-forbidden-commands-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     )
-    const sentinel = join(tmpdir(), `ak-mcp-ready-${process.ppid}`)
+    const sentinelKey = `forbidden-commands-test-${Date.now()}`
+    const sentinel = join(tmpdir(), `ak-mcp-ready-${sentinelKey}`)
     mkdirSync(dir, { recursive: true })
     writeFileSync(
       join(dir, '.agent-kitrc.json'),
@@ -476,10 +477,16 @@ describe('validateForbiddenCommands', () => {
     writeFileSync(sentinel, String(process.pid))
 
     const originalProjectDir = process.env.CLAUDE_PROJECT_DIR
+    const originalSentinelKey = process.env.AK_MCP_SENTINEL_KEY
     try {
       // Use CLAUDE_PROJECT_DIR instead of process.chdir() — chdir is not
       // supported in vitest worker threads (breaks Stryker perTest coverage).
       process.env.CLAUDE_PROJECT_DIR = dir
+      // Pin sentinel key so the readiness check finds the file we just wrote
+      // regardless of the test runner's cwd.
+      process.env.AK_MCP_SENTINEL_KEY = sentinelKey
+      const sentinelMod = await import('#hooks/shared/mcp-sentinel')
+      sentinelMod._resetProjectKeyCache()
       const result = validateForbiddenCommands(bashInput('pnpm vitest'))
       expect(result.passed).toBe(false)
       expect('message' in result && result.message).toContain('mcp__custom-server__tool_test(...)')
@@ -489,6 +496,13 @@ describe('validateForbiddenCommands', () => {
       } else {
         delete process.env.CLAUDE_PROJECT_DIR
       }
+      if (originalSentinelKey !== undefined) {
+        process.env.AK_MCP_SENTINEL_KEY = originalSentinelKey
+      } else {
+        delete process.env.AK_MCP_SENTINEL_KEY
+      }
+      const sentinelMod = await import('#hooks/shared/mcp-sentinel')
+      sentinelMod._resetProjectKeyCache()
       rmSync(sentinel, { force: true })
       rmSync(dir, { recursive: true, force: true })
     }

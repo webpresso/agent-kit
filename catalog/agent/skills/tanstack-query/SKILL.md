@@ -1,11 +1,18 @@
 ---
+type: skill
+slug: tanstack-query
+title: TanStack Query hard-cut contract
+status: active
+scope: repo
+applies_to: [agents]
+related: []
+created: '2026-05-07'
+last_reviewed: '2026-05-07'
 name: tanstack-query
 description: |
   Apply a canonical TanStack Query v5 contract: SDK-first query and mutation factories, suspense-first route data, QueryClient defaults with throwOnError, prefetch-aware loaders, infinite-query primitives, and generator-first CRUD guidance.
-
-  Use when implementing or reviewing TanStack Query usage in a React app, especially when replacing ad-hoc hooks, wiring clientLoader prefetch, or standardizing query/mutation patterns.
 user-invocable: true
-upstream:
+upstream: 
   source: null
   last_synced: "2026-04-22"
 ---

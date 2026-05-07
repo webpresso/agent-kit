@@ -1,4 +1,13 @@
 ---
+type: skill
+slug: pll
+title: PLL Skill — Blueprint-Aware Parallel Execution
+status: active
+scope: repo
+applies_to: [agents]
+related: []
+created: '2026-05-07'
+last_reviewed: '2026-05-07'
 name: pll
 description: Blueprint-aware parallel execution adapter over ultrawork/subagents. If OMX isn't installed, the skill uses the `local-worktree` backend (default for repos without OMX).
 ---

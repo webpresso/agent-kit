@@ -1,6 +1,6 @@
 import type { CAC } from 'cac'
 
-import { runLint } from '../../lint/index.js'
+import { runLint } from '#lint/index'
 
 export const LINT_COMMAND_HELP = [
   'Lint via `oxlint` (fast, structured output) with `pnpm lint` as a fallback.',

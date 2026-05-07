@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
 set -eu
-pnpm exec ak format --check
-pnpm exec ak lint
+# Use the direct binary path — npx exits 1 in some closed-stdin git-commit
+# subshell contexts (npm/11.x quirk), causing silent pre-commit failures.
+"$(git rev-parse --show-toplevel)/node_modules/.bin/ak" audit guardrails

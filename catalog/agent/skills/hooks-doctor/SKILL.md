@@ -1,4 +1,13 @@
 ---
+type: skill
+slug: hooks-doctor
+title: Hooks Doctor
+status: active
+scope: repo
+applies_to: [agents]
+related: []
+created: '2026-05-07'
+last_reviewed: '2026-05-07'
 name: hooks-doctor
 description: Verify the agent-kit plugin hooks installation is healthy. Run after install, when hooks seem broken, or when debugging plugin integration issues. Triggers on `/webpresso-agent-kit:hooks-doctor`, "doctor", "verify hooks", "check plugin", "hooks broken", "plugin not working", "ak hooks doctor".
 argument-hint: '[--skip-mcp]'

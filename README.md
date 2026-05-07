@@ -22,6 +22,8 @@ Long-running MCP tools are now **summary-first**: they return canonical `structu
 
 **Plugin runtime contract:** the Claude Code plugin executes with **Bun** and currently points at bundled `src/*.ts` entrypoints from the published package. The tarball intentionally ships both `src/` and `dist/`; `dist/esm/*` is a library/build artifact, not the current plugin execution path.
 
+**Plugin dev mode (working on agent-kit itself):** `pnpm dev:link` installs an `edge-local` symlink at `~/.claude/plugins/cache/agent-kit/agent-kit/edge-local` AND mirrors every top-level repo entry (e.g. `.claude-plugin/`, `src/`) into the plugin root as symlinks, so every hook + MCP invocation resolves into the live working tree. Edit `src/hooks/**` or `src/mcp/**` and the next call uses it. No build, no Changesets, no reinstall. Idempotent — re-run after any marketplace upgrade. See [CONTRIBUTING.md → Edge-local plugin link](./CONTRIBUTING.md#edge-local-plugin-link-hot-reload-hooks-from-source).
+
 ### Path B — npm + `ak setup` (Codex CLI, OpenCode, Cursor, Gemini, …)
 
 ```bash
@@ -29,7 +31,9 @@ pnpm add -D @webpresso/agent-kit
 npx ak setup
 ```
 
-What you get: the **same hooks**, idempotently scaffolded into `.claude/settings.json` AND `.codex/hooks.json`, plus the per-IDE skill surfaces (`.agent/`, `.agents/skills/`, `.cursor/`, `.gemini/commands/` via TOML transform). Required for Codex CLI, OpenCode, Cursor, Gemini, and any non-Claude IDE — none of those have a Claude-Code-style `/plugin install` path. Library imports (e.g. `defineAgentKitConfig` from `@webpresso/agent-kit/e2e`) also flow through this path.
+What you get: the **same hooks**, idempotently scaffolded into `.claude/settings.json` AND `.codex/hooks.json` (both wrapped under the canonical `hooks` key per Codex docs — legacy flat-form entries are migrated automatically on the next `ak setup`), plus the per-IDE skill surfaces (`.agent/`, `.agents/skills/`, `.cursor/`, `.gemini/commands/` via TOML transform). Required for Codex CLI, OpenCode, Cursor, Gemini, and any non-Claude IDE — none of those have a Claude-Code-style `/plugin install` path. Library imports (e.g. `defineAgentKitConfig` from `@webpresso/agent-kit/e2e`) also flow through this path.
+
+**Gstack auto-orchestration:** `ak setup` installs and keeps `~/.claude/skills/gstack/` current on every run (clone-if-missing, fast-forward pull + `./setup --team` otherwise). Set `AK_SKIP_GSTACK=1` to opt out — CI / sandboxed environments only.
 
 ### Why two paths
 

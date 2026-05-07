@@ -1,4 +1,13 @@
 ---
+type: skill
+slug: testing-philosophy
+title: Testing Philosophy
+status: active
+scope: repo
+applies_to: [agents]
+related: []
+created: '2026-05-07'
+last_reviewed: '2026-05-07'
 name: testing-philosophy
 description: Codifies the integration-first, anti-mocking testing philosophy with an 85% mutation-score target. Prevents low-quality "bullshit tests" that give false confidence. Use when writing ANY test, reviewing test quality, or when tests pass but production fails.
 ---

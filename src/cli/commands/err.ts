@@ -3,7 +3,7 @@ import type { SpawnSyncReturns } from 'node:child_process'
 
 import { spawnSync } from 'node:child_process'
 
-import { genericTransform } from '../../output-transforms/generic.js'
+import { genericTransform } from '#output-transforms/generic'
 
 export const ERR_COMMAND_HELP = [
   'Run a command and print only failure-looking output lines.',

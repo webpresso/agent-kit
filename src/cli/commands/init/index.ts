@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 
 import { syncAll } from '#symlinker'
 
-import { runUnifiedSync } from '../../../symlinker/unified-sync.js'
+import { runUnifiedSync } from '#symlinker/unified-sync'
 import {
   type AgentkitConfig,
   defaultConfig,
@@ -34,7 +34,10 @@ import { scaffoldBaseKit } from './scaffold-base-kit.js'
 import { scaffoldMonorepoNav } from './scaffold-monorepo-nav.js'
 import { scaffoldAgentHooks } from './scaffolders/agent-hooks/index.js'
 import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js'
-import { ensureCodexPlaywrightMcp } from './scaffolders/codex-mcp/index.js'
+import {
+  ensureCodexAgentKitMcp,
+  ensureCodexPlaywrightMcp,
+} from './scaffolders/codex-mcp/index.js'
 import { ensureGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
 import { ensureOmx } from './scaffolders/omx/index.js'
@@ -286,8 +289,34 @@ export async function runInit(flags: InitFlags): Promise<number> {
       }
     }
 
+    // Always upsert agent-kit's MCP entry into the user's codex config when
+    // an install root is discoverable. Codex's config.toml is user-global, so
+    // we resolve to whatever absolute install path exists today (Claude
+    // plugin / bun global / pnpm global / npm global) and write that.
+    const agentKitMcpResult = ensureCodexAgentKitMcp({ options })
+    switch (agentKitMcpResult.kind) {
+      case 'codex-agent-kit-mcp-written':
+        console.log(`  codex agent-kit mcp: ✓ ${agentKitMcpResult.path} → ${agentKitMcpResult.entryPath}`)
+        break
+      case 'codex-agent-kit-mcp-unchanged':
+        console.log(`  codex agent-kit mcp: already configured at ${agentKitMcpResult.path}`)
+        break
+      case 'codex-agent-kit-mcp-skipped-dry-run':
+        console.log('  codex agent-kit mcp: skipped (--dry-run)')
+        break
+      case 'codex-agent-kit-mcp-not-installed':
+        console.log(
+          `  codex agent-kit mcp: ⚠ no install root found (checked ${agentKitMcpResult.checked.length} paths). Install agent-kit globally (\`bun add -g @webpresso/agent-kit\`) or via the Claude plugin to wire up codex MCP.`,
+        )
+        break
+    }
+
     let gstackFailure: 'clone-failed' | 'pull-failed' | 'setup-failed' | null = null
-    if (presets.includes('gstack')) {
+    if (process.env.AK_SKIP_GSTACK === '1') {
+      console.warn(
+        '  gstack: ⚠ AK_SKIP_GSTACK=1 — skipping. Most consumer repos treat gstack as a hard prerequisite.',
+      )
+    } else if (presets.includes('gstack')) {
       const gstackResult = ensureGstack({ repoRoot: consumer.repoRoot, options })
       switch (gstackResult.kind) {
         case 'gstack-installed':

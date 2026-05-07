@@ -36,7 +36,7 @@ import {
 } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 
-import { type ContentKind, type ContentRecord, loadContent } from '../content/loader.js'
+import { type ContentKind, type ContentRecord, loadContent } from '#content/loader'
 
 import {
   DEFAULT_UNIFIED_CONSUMERS,

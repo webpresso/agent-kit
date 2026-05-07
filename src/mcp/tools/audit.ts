@@ -21,7 +21,7 @@ import { z } from 'zod'
 
 import { resolvePackageAsset } from '#utils/package-assets'
 import type { ToolDescriptor } from '#mcp/auto-discover'
-import { applyOutputTransform } from '../../output-transforms/index.js'
+import { applyOutputTransform } from '#output-transforms/index'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
 const KINDS = [

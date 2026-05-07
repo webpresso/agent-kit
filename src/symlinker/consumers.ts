@@ -23,7 +23,7 @@
  *                  resulting bytes (used for Gemini TOML)
  */
 
-import type { ContentKind, ContentRecord } from '../content/loader.js'
+import type { ContentKind, ContentRecord } from '#content/loader'
 
 export interface ConsumerConfig {
   dir: string

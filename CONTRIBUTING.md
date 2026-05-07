@@ -34,6 +34,49 @@ If a future webpresso package adds its own `bin` field and wants the same
 dev-time `pnpm exec` ergonomics, copy `scripts/link-self-bins.ts` verbatim —
 it's generic (reads `package.json#bin`, hardcodes nothing).
 
+### Edge-local plugin link (hot-reload hooks from source)
+
+By default, the Claude Code plugin install resolves to a frozen
+`~/.claude/plugins/cache/agent-kit/agent-kit/<version>/` snapshot. Iterating
+on hooks then requires a Changesets release + plugin reinstall every time —
+high friction.
+
+`pnpm dev:link` does two things:
+
+1. Installs `~/.claude/plugins/cache/agent-kit/agent-kit/edge-local` as a
+   symlink to **this** working copy.
+2. Mirrors every top-level repo entry (`.claude-plugin/`, `src/`,
+   `catalog/`, `dist/`, `commands/`, `skills/`, …) into the plugin root
+   as symlinks, so `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` and
+   `${CLAUDE_PLUGIN_ROOT}/src/mcp/cli.ts` resolve into the live tree even
+   though the marketplace install only knows about `<version>.bak.<ts>/`.
+
+```bash
+pnpm dev:link
+# → ~/.claude/plugins/cache/agent-kit/agent-kit/edge-local
+#       → /Users/<you>/repos/webpresso/agent-kit
+# → ~/.claude/plugins/cache/agent-kit/agent-kit/{src,.claude-plugin,…}
+#       → /Users/<you>/repos/webpresso/agent-kit/{src,.claude-plugin,…}
+```
+
+After linking, every hook + MCP invocation fires from live source via
+`bun ${CLAUDE_PLUGIN_ROOT}/src/...` — edit `src/hooks/**` or `src/mcp/**`
+and the next call uses the change. No `pnpm build`, no Changesets, no
+reinstall.
+
+Restart your Claude Code session once after first linking (plugin manifests
+are read at session boot).
+
+The script is idempotent: re-running it is a no-op when symlinks are
+already correct, and it backs up any non-symlink directory it finds at
+the target before replacing it. Run it again any time a marketplace
+update overwrites the symlinks.
+
+To go back to a real release install, remove the mirrored symlinks
+under `~/.claude/plugins/cache/agent-kit/agent-kit/` and
+`/plugin install agent-kit@webpresso` (or restore one of the `*.bak.*`
+backups if present).
+
 See [`AGENTS.md`](./AGENTS.md) for the full operating contract.
 
 ## Releases

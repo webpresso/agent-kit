@@ -21,7 +21,21 @@ const HERE = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(HERE, '..', '..', '..', '..')
 const DIST_CLI_PATH = path.join(REPO_ROOT, 'dist', 'esm', 'cli', 'cli.js')
 const SOURCE_CLI_PATH = path.join(REPO_ROOT, 'src', 'cli', 'cli.ts')
-const TSX_PATH = path.join(REPO_ROOT, 'node_modules', 'tsx', 'dist', 'cli.mjs')
+
+// Resolve `bun` to an absolute path once. Tests below override PATH for
+// isolation, which would hide a bare `bun` lookup. Spawn via the absolute
+// path instead so PATH overrides never break the runner itself.
+function resolveBunPath(): string {
+  const fromEnv = process.env.BUN_PATH
+  if (fromEnv && existsSync(fromEnv)) return fromEnv
+  const probe = spawnSync('which', ['bun'], { encoding: 'utf8' })
+  const trimmed = probe.stdout?.trim()
+  if (trimmed && existsSync(trimmed)) return trimmed
+  // Last-resort fallback (homebrew install path on macOS); existsSync below
+  // still gates the suite, so a wrong guess just causes a clean skip.
+  return '/opt/homebrew/bin/bun'
+}
+const BUN_PATH = resolveBunPath()
 const FIXTURES = path.join(REPO_ROOT, '__fixtures__')
 const OMX_OK_BIN = path.join(FIXTURES, 'fake-tools', 'omx-ok-bin')
 const OMX_FAIL_BIN = path.join(FIXTURES, 'fake-tools', 'omx-fail-bin')
@@ -34,13 +48,11 @@ interface RunResult {
 }
 
 function runAk(args: string[], extraEnv: Record<string, string> = {}): RunResult {
-  const command =
-    existsSync(SOURCE_CLI_PATH) && existsSync(TSX_PATH) ? process.execPath : process.execPath
-  const commandArgs =
-    existsSync(SOURCE_CLI_PATH) && existsSync(TSX_PATH)
-      ? [TSX_PATH, SOURCE_CLI_PATH, ...args]
-      : [DIST_CLI_PATH, ...args]
-  // Use process.execPath so PATH overrides in extraEnv don't hide node itself.
+  // Prefer running source via `bun` (matches every other repo-owned script);
+  // fall back to the built dist CLI under `node` if the source isn't there.
+  const useSource = existsSync(SOURCE_CLI_PATH)
+  const command = useSource ? BUN_PATH : process.execPath
+  const commandArgs = useSource ? [SOURCE_CLI_PATH, ...args] : [DIST_CLI_PATH, ...args]
   const result = spawnSync(command, commandArgs, {
     encoding: 'utf8',
     env: {

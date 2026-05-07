@@ -3,15 +3,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('node:fs')
 vi.mock('node:os', () => ({ tmpdir: () => '/tmp' }))
 
-import { readFileSync, unlinkSync, writeFileSync } from 'node:fs'
+import { readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 
 describe('mcp-sentinel', () => {
   beforeEach(() => {
     vi.resetAllMocks()
-    vi.stubEnv('PPID', '1234')
+    vi.stubEnv('AK_MCP_SENTINEL_KEY', 'test-fixture-key')
   })
   afterEach(() => {
     vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
   })
 
   it('isMcpReady returns false on win32', async () => {
@@ -20,18 +21,30 @@ describe('mcp-sentinel', () => {
     expect(isMcpReady()).toBe(false)
   })
 
-  it('isMcpReady returns false when sentinel file is missing', async () => {
-    vi.mocked(readFileSync).mockImplementation(() => {
-      const err = new Error('ENOENT') as NodeJS.ErrnoException
-      err.code = 'ENOENT'
-      throw err
+  it('isMcpReady returns false when no sentinel files exist', async () => {
+    vi.mocked(readdirSync).mockReturnValue([] as unknown as ReturnType<typeof readdirSync>)
+    const { isMcpReady } = await import('#hooks/shared/mcp-sentinel')
+    expect(isMcpReady()).toBe(false)
+  })
+
+  it('isMcpReady returns false when readdirSync throws', async () => {
+    vi.mocked(readdirSync).mockImplementation(() => {
+      throw new Error('EACCES')
     })
     const { isMcpReady } = await import('#hooks/shared/mcp-sentinel')
     expect(isMcpReady()).toBe(false)
   })
 
-  it('isMcpReady returns false when PID is dead (ESRCH)', async () => {
-    vi.mocked(readFileSync).mockReturnValue('99999' as unknown as Buffer)
+  it('isMcpReady returns false when only stale (dead PID) sentinels exist', async () => {
+    vi.mocked(readdirSync).mockReturnValue([
+      'ak-mcp-ready-99999',
+      'ak-mcp-ready-88888',
+    ] as unknown as ReturnType<typeof readdirSync>)
+    vi.mocked(readFileSync).mockImplementation((path) => {
+      if (typeof path === 'string' && path.endsWith('99999')) return '99999' as unknown as Buffer
+      if (typeof path === 'string' && path.endsWith('88888')) return '88888' as unknown as Buffer
+      throw new Error('unexpected path')
+    })
     const killSpy = vi.spyOn(process, 'kill').mockImplementation(() => {
       const err = new Error('ESRCH') as NodeJS.ErrnoException
       err.code = 'ESRCH'
@@ -42,20 +55,77 @@ describe('mcp-sentinel', () => {
     killSpy.mockRestore()
   })
 
-  it('writeSentinel writes own PID to sentinel path', async () => {
+  it('isMcpReady returns true when ANY sentinel contains a live PID (cross-cwd resilient)', async () => {
+    vi.mocked(readdirSync).mockReturnValue([
+      'ak-mcp-ready-99999', // dead
+      'unrelated-file',
+      'ak-mcp-ready-12345', // alive
+    ] as unknown as ReturnType<typeof readdirSync>)
+    vi.mocked(readFileSync).mockImplementation((path) => {
+      if (typeof path === 'string' && path.endsWith('99999')) return '99999' as unknown as Buffer
+      if (typeof path === 'string' && path.endsWith('12345')) return '12345' as unknown as Buffer
+      throw new Error('unexpected path')
+    })
+    const killSpy = vi.spyOn(process, 'kill').mockImplementation((pid) => {
+      if (pid === 99999) {
+        const err = new Error('ESRCH') as NodeJS.ErrnoException
+        err.code = 'ESRCH'
+        throw err
+      }
+      return true
+    })
+    const { isMcpReady } = await import('#hooks/shared/mcp-sentinel')
+    expect(isMcpReady()).toBe(true)
+    killSpy.mockRestore()
+  })
+
+  it('isMcpReady ignores non-sentinel filenames in tmpdir', async () => {
+    vi.mocked(readdirSync).mockReturnValue([
+      'random.log',
+      'something-else',
+      'ak-mcp-readyish-12345', // wrong prefix (no trailing dash)
+    ] as unknown as ReturnType<typeof readdirSync>)
+    const killSpy = vi.spyOn(process, 'kill')
+    const { isMcpReady } = await import('#hooks/shared/mcp-sentinel')
+    expect(isMcpReady()).toBe(false)
+    expect(killSpy).not.toHaveBeenCalled()
+    killSpy.mockRestore()
+  })
+
+  it('isMcpReady skips files with unparsable PIDs', async () => {
+    vi.mocked(readdirSync).mockReturnValue([
+      'ak-mcp-ready-bogus',
+    ] as unknown as ReturnType<typeof readdirSync>)
+    vi.mocked(readFileSync).mockReturnValue('not-a-pid' as unknown as Buffer)
+    const { isMcpReady } = await import('#hooks/shared/mcp-sentinel')
+    expect(isMcpReady()).toBe(false)
+  })
+
+  it('writeSentinel writes own PID to its own keyed sentinel path', async () => {
     const { writeSentinel } = await import('#hooks/shared/mcp-sentinel')
     writeSentinel()
     expect(vi.mocked(writeFileSync)).toHaveBeenCalledWith(
-      expect.stringContaining('ak-mcp-ready-'),
+      '/tmp/ak-mcp-ready-test-fixture-key',
       String(process.pid),
       'utf-8',
     )
   })
 
-  it('deleteSentinel removes sentinel file silently', async () => {
+  it('writeSentinel uses process.pid as key when AK_MCP_SENTINEL_KEY is unset', async () => {
+    vi.stubEnv('AK_MCP_SENTINEL_KEY', '')
+    const { writeSentinel } = await import('#hooks/shared/mcp-sentinel')
+    writeSentinel()
+    expect(vi.mocked(writeFileSync)).toHaveBeenCalledWith(
+      `/tmp/ak-mcp-ready-${process.pid}`,
+      String(process.pid),
+      'utf-8',
+    )
+  })
+
+  it('deleteSentinel removes its own sentinel file silently', async () => {
     const { deleteSentinel } = await import('#hooks/shared/mcp-sentinel')
     deleteSentinel()
-    expect(vi.mocked(unlinkSync)).toHaveBeenCalledWith(expect.stringContaining('ak-mcp-ready-'))
+    expect(vi.mocked(unlinkSync)).toHaveBeenCalledWith('/tmp/ak-mcp-ready-test-fixture-key')
   })
 
   it('deleteSentinel is silent when file does not exist', async () => {

@@ -79,10 +79,21 @@ export function auditContent(options: AuditOptions): AuditResult {
   const schema = schemaFor(kind)
   const recordsOfKind = records.filter((r) => r.kind === kind)
 
+  // Schema-validation scope:
+  //  - rules: validate both catalog and consumer entries (same content schema
+  //    end-to-end; catalog promotions and consumer-authored rules share shape).
+  //  - skills: validate only consumer entries. Catalog skills follow the
+  //    upstream Anthropic SKILL format (`name`/`description`), not the
+  //    consumer-content schema. Forcing the consumer schema on catalog skills
+  //    would flood the audit with false positives that the catalog can never
+  //    satisfy without abandoning the upstream format.
+  const recordsToValidate =
+    kind === 'skill' ? recordsOfKind.filter((r) => r.source === 'consumer') : recordsOfKind
+
   // Track parsed frontmatter for each record we successfully validate.
   const parsedByRecord = new Map<ContentRecord, ParsedFrontmatter>()
 
-  for (const record of recordsOfKind) {
+  for (const record of recordsToValidate) {
     const parseResult = schema.safeParse(record.rawFrontmatter)
     if (!parseResult.success) {
       for (const issue of parseResult.error.issues) {

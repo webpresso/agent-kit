@@ -13,7 +13,7 @@ vi.mock('node:constants', () => ({
   O_EXCL: 0o200,
   O_WRONLY: 1,
 }))
-vi.mock('node:os', () => ({ tmpdir: () => '/tmp' }))
+vi.mock('node:os', () => ({ tmpdir: () => '/tmp', homedir: () => '/home/test' }))
 
 import { closeSync, openSync } from 'node:fs'
 

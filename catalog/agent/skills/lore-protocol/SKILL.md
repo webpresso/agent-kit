@@ -1,3 +1,15 @@
+---
+type: skill
+slug: lore-protocol
+title: lore-protocol
+status: active
+scope: repo
+applies_to: [agents]
+related: []
+created: '2026-05-07'
+last_reviewed: '2026-05-07'
+---
+
 # lore-protocol
 
 Enforce Lore commit-message trailers using `ak audit commit-message`.

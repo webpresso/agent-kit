@@ -23,6 +23,11 @@ export type AuditOutcome =
   | { kind: 'unknown-kind'; auditKind: string }
   | { kind: 'script-exit'; code: number }
   | { kind: 'repo-result'; name: string; result: RepoAuditResult }
+  | {
+      kind: 'aggregate-result'
+      code: number
+      results: ReadonlyArray<{ name: string; result: RepoAuditResult }>
+    }
   | { kind: 'quality-exit'; code: number; mutationCode: number; guardrailsCode: number }
 
 export interface AuditActionOptions {
@@ -123,19 +128,18 @@ export async function runAuditDispatch(
     case 'guardrails': {
       const root = options.root ?? target ?? deps.root
       // Run every known repo audit kind and aggregate
+      const results: Array<{ name: string; result: RepoAuditResult }> = []
       let allOk = true
-      let lastResult: RepoAuditResult | null = null
       for (const name of deps.knownRepoKinds) {
         const result = await deps.runRepoAudit(name, root, options)
         if (!result.ok) allOk = false
-        lastResult = result
+        results.push({ name, result })
       }
-      // Return aggregated exit code as script-exit so shell can map it
-      const code = allOk ? 0 : 1
-      if (lastResult) {
-        return { kind: 'script-exit', code }
-      }
-      return { kind: 'script-exit', code }
+      // Surface every per-audit result so the shell can print failures —
+      // previously this returned a bare `script-exit` and `ak audit guardrails`
+      // would exit 1 with zero output, hiding the actual cause from the
+      // pre-commit hook output.
+      return { kind: 'aggregate-result', code: allOk ? 0 : 1, results }
     }
     case 'quality': {
       const root = options.root ?? target ?? deps.root
