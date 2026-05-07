@@ -1,7 +1,16 @@
 ---
+type: skill
+slug: better-auth-best-practices
+title: Better Auth Integration Guide
+status: active
+scope: repo
+applies_to: [agents]
+related: []
+created: '2026-05-07'
+last_reviewed: '2026-05-07'
 name: better-auth-best-practices
 description: Skill for integrating Better Auth - the comprehensive TypeScript authentication framework.
-upstream:
+upstream: 
   source: null
   last_synced: "2026-04-22"
 ---

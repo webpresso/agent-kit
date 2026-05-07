@@ -1,5 +1,14 @@
 ---
-paths:
+type: rule
+slug: changeset-release
+title: Changesets Release Workflow
+status: active
+scope: repo
+applies_to: [agents]
+related: []
+created: '2026-05-07'
+last_reviewed: '2026-05-07'
+paths: 
   - '.changeset/**'
   - '.github/workflows/*.yml'
   - 'package.json'

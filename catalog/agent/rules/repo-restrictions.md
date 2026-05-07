@@ -1,5 +1,14 @@
 ---
-paths:
+type: rule
+slug: repo-restrictions
+title: Repository Restriction Guide
+status: active
+scope: repo
+applies_to: [agents]
+related: []
+created: '2026-05-07'
+last_reviewed: '2026-05-07'
+paths: 
   - '**/*.ts'
   - '**/*.tsx'
   - '**/*.test.ts'
