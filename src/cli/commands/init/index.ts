@@ -8,7 +8,7 @@ import type { CAC } from 'cac'
  * to `<name>.new` unless `--overwrite` is passed.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { syncAll } from '#symlinker'
@@ -41,6 +41,7 @@ import { ensureOmx } from './scaffolders/omx/index.js'
 import { ensureRtk } from './scaffolders/rtk/index.js'
 import { checkRuntimes } from './scaffolders/runtime-check/index.js'
 import { scaffoldSubagents } from './scaffolders/subagents/index.js'
+import { maybeRunVisionInterview } from './scaffolders/vision/interview.js'
 import { scaffoldVision } from './scaffolders/vision/index.js'
 
 const PRESETS = ['gstack', 'lore-commits', 'omx', 'playwright-mcp', 'rtk', 'vision'] as const
@@ -245,7 +246,31 @@ export async function runInit(flags: InitFlags): Promise<number> {
     }
 
     if (presets.includes('vision')) {
-      presetResults.push(scaffoldVision({ catalogDir, repoRoot: consumer.repoRoot, options }))
+      // Only interview the operator when VISION.md is being scaffolded fresh
+      // (preserves --yes, non-TTY, and existing-VISION non-clobber semantics).
+      const visionPath = join(consumer.repoRoot, 'VISION.md')
+      const visionAnswers = await maybeRunVisionInterview({
+        repoName: basename(consumer.repoRoot),
+        isTTY: Boolean(process.stdin.isTTY),
+        yesFlag: flags.yes,
+        visionExists: existsSync(visionPath),
+      })
+      const visionResult = scaffoldVision({
+        catalogDir,
+        repoRoot: consumer.repoRoot,
+        options,
+        answers: visionAnswers,
+      })
+      if (visionResult.action === 'created') {
+        if (visionAnswers) {
+          console.log('  vision: ✓ scaffolded VISION.md from your answers')
+        } else {
+          console.log(
+            `  vision: ✓ scaffolded ${visionPath} (template stub — fill it in, then \`ak audit vision\`)`,
+          )
+        }
+      }
+      presetResults.push(visionResult)
     }
 
     let omxFailure: 'not-found' | 'spawn-failed' | null = null
