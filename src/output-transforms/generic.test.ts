@@ -40,13 +40,14 @@ describe('genericTransform', () => {
     })
   })
 
-  it('returns transform metadata even when there are no matching lines', () => {
+  it('falls back to passthrough when there are no matching lines', () => {
     const result = genericTransform('all good\nstill fine', {
       toolName: 'ak_err',
       normalizedToolName: 'err',
     })
 
-    expect(result.rawOutput).toBe('')
+    expect(result.rawOutput).toBe('all good\nstill fine')
     expect(result.transform?.rawBytes).toBe(19)
+    expect(result.transform?.tier).toBe('passthrough')
   })
 })

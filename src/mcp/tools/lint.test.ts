@@ -195,7 +195,9 @@ describe('ak_lint tool', () => {
     expect(payload.details?.issues).toEqual([])
     expect(payload.backend).toBe('pnpm')
     expect(payload.summary).toBe('lint passed via pnpm')
-    expect(payload.rawOutput).toBe('')
+    // Passthrough fallback: when no oxlint JSON issues are parsed, the raw
+    // command output flows through unchanged (clipped only if >4000 chars).
+    expect(payload.rawOutput).toBe('lint ok\n')
     expect(payload.tier).toBe(3)
   })
 
