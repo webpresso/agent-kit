@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 
 import { syncAll } from '#symlinker'
 
-import { runUnifiedSync } from '../../../symlinker/unified-sync.js'
+import { runUnifiedSync } from '#symlinker/unified-sync'
 import {
   type AgentkitConfig,
   defaultConfig,

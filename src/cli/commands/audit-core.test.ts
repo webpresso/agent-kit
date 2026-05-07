@@ -137,22 +137,32 @@ describe('runAuditDispatch', () => {
   })
 
   describe('guardrails', () => {
-    test('all ok → script-exit 0', async () => {
+    test('all ok → aggregate-result with code 0 and per-audit results', async () => {
       const deps = makeDeps()
       ;(deps.runRepoAudit as ReturnType<typeof vi.fn>).mockResolvedValue(okResult('test'))
       const result = await runAuditDispatch('guardrails', [], noOptions, deps)
-      expect(result).toStrictEqual({ kind: 'script-exit', code: 0 })
-      expect(deps.runRepoAudit).toHaveBeenCalledTimes(3) // 3 known kinds
+      expect(result.kind).toBe('aggregate-result')
+      if (result.kind !== 'aggregate-result') return
+      expect(result.code).toBe(0)
+      expect(result.results).toHaveLength(3) // 3 known kinds
+      expect(deps.runRepoAudit).toHaveBeenCalledTimes(3)
     })
 
-    test('one failure → script-exit 1', async () => {
+    test('one failure → aggregate-result with code 1 and the failed audit reported', async () => {
       const deps = makeDeps()
       ;(deps.runRepoAudit as ReturnType<typeof vi.fn>)
         .mockResolvedValueOnce(okResult('catalog-drift'))
         .mockResolvedValueOnce(failResult('blueprint-lifecycle'))
         .mockResolvedValueOnce(okResult('docs-frontmatter'))
       const result = await runAuditDispatch('guardrails', [], noOptions, deps)
-      expect(result).toStrictEqual({ kind: 'script-exit', code: 1 })
+      expect(result.kind).toBe('aggregate-result')
+      if (result.kind !== 'aggregate-result') return
+      expect(result.code).toBe(1)
+      expect(result.results.map((r) => ({ name: r.name, ok: r.result.ok }))).toStrictEqual([
+        { name: 'catalog-drift', ok: true },
+        { name: 'blueprint-lifecycle', ok: false },
+        { name: 'docs-frontmatter', ok: true },
+      ])
     })
 
     test('calls runRepoAudit for each registry entry', async () => {

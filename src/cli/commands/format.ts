@@ -1,6 +1,6 @@
 import type { CAC } from 'cac'
 
-import { runFormat } from '../../format/index.js'
+import { runFormat } from '#format/index'
 
 export const FORMAT_COMMAND_HELP = [
   'Format the workspace via `oxfmt`. Writes in place by default.',

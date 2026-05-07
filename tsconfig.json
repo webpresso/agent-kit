@@ -32,6 +32,10 @@
       "#hooks/*": ["./src/hooks/*"],
       "#mcp/*": ["./src/mcp/*"],
       "#content/*": ["./src/content/*"],
+      "#output-transforms/*": ["./src/output-transforms/*"],
+      "#lint/*": ["./src/lint/*"],
+      "#format/*": ["./src/format/*"],
+      "#symlinker/*": ["./src/symlinker/*"],
       "#*": ["./src/blueprint/*"]
     }
   },

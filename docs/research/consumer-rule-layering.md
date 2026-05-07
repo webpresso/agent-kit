@@ -1,6 +1,8 @@
 ---
-date: 2026-05-06
+type: research
 status: draft
+date: 2026-05-06
+last_updated: '2026-05-06'
 audience: agent-kit maintainers
 related:
   - webpresso/monorepo/package.json (postinstall: ak setup --overwrite)

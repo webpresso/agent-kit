@@ -16,7 +16,7 @@ import {
   plannedGroupsToCommandConfigs,
   runCommandConfigs,
 } from '#e2e/execution'
-import { applyOutputTransform } from '../../output-transforms/index.js'
+import { applyOutputTransform } from '#output-transforms/index'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
 const inputSchema = z.object({

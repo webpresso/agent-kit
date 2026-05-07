@@ -55,6 +55,10 @@
     "#hooks/*": "./src/hooks/*.ts",
     "#mcp/*": "./src/mcp/*.ts",
     "#content/*": "./src/content/*.ts",
+    "#output-transforms/*": "./src/output-transforms/*.ts",
+    "#lint/*": "./src/lint/*.ts",
+    "#format/*": "./src/format/*.ts",
+    "#symlinker/*": "./src/symlinker/*.ts",
     "#*": "./src/blueprint/*.ts"
   },
   "exports": {
@@ -183,10 +187,10 @@
   "scripts": {
     "build": "tshy && pnpm run chmod-bins && pnpm run link-self-bins",
     "postbuild": "pnpm run generate-skills",
-    "chmod-bins": "tsx scripts/chmod-bins.ts",
-    "link-self-bins": "tsx scripts/link-self-bins.ts",
-    "dev:link": "tsx scripts/link-edge-local.ts",
-    "generate-skills": "tsx src/build/generate-skills-dir.ts",
+    "chmod-bins": "bun scripts/chmod-bins.ts",
+    "link-self-bins": "bun scripts/link-self-bins.ts",
+    "dev:link": "bun scripts/link-edge-local.ts",
+    "generate-skills": "bun src/build/generate-skills-dir.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:mutation": "bun stryker run stryker.config.ts",
@@ -232,7 +236,6 @@
     "oxlint": "^1.63.0",
     "publint": "^0.3.18",
     "tshy": "^4.1.1",
-    "tsx": "^4.19.3",
     "typescript": "^6.0.3",
     "vitest": "^2.1.0"
   },

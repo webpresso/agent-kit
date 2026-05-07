@@ -15,7 +15,7 @@
 import type { CAC } from 'cac'
 
 import { syncAll } from '#symlinker'
-import { runUnifiedSync, type UnifiedSyncMismatch } from '../../symlinker/unified-sync.js'
+import { runUnifiedSync, type UnifiedSyncMismatch } from '#symlinker/unified-sync'
 import type { ContentKind } from '#content/loader'
 import { resolvePackageAsset } from '#utils/package-assets'
 

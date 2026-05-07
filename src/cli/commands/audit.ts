@@ -234,6 +234,23 @@ export function registerAuditCommand(cli: CAC): void {
             await printAndExitRepoAudit(outcome.result, options)
             break
           }
+          case 'aggregate-result': {
+            const { formatRepoAuditReport } = await import('#audit/repo-guardrails')
+            for (const { name, result } of outcome.results) {
+              if (result.ok) continue
+              console.log(`\n[${name}]`)
+              console.log(formatRepoAuditReport(result))
+            }
+            const failed = outcome.results.filter(({ result }) => !result.ok)
+            if (failed.length > 0) {
+              console.error(
+                `\nguardrails: ${failed.length}/${outcome.results.length} audits failed: ${failed
+                  .map(({ name }) => name)
+                  .join(', ')}`,
+              )
+            }
+            process.exit(outcome.code)
+          }
           case 'quality-exit': {
             if (outcome.mutationCode !== 0) {
               console.error('[quality] mutation: FAILED')

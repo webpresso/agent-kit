@@ -16,7 +16,6 @@ const fakeRtkBin = join(fixtureRoot, 'fake-tools', 'rtk-ok-bin')
 const fakeOmxBin = join(fixtureRoot, 'fake-tools', 'omx-ok-bin')
 const hookFixture = join(fixtureRoot, 'rtk-three-hook-composition')
 const sourceCli = join(agentKitRoot, 'src', 'cli', 'cli.ts')
-const tsxCli = join(agentKitRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs')
 
 function makeRepo(): string {
   const dir = mkdtempSync(join(tmpdir(), 'ak-rtk-integration-'))
@@ -127,7 +126,7 @@ describe('rtk scaffolder integration', () => {
     )
     process.env.PATH = [fakeRtkBin, fakeOmxBin, previousPath ?? ''].filter(Boolean).join(':')
 
-    const drift = spawnSync(process.execPath, [tsxCli, sourceCli, 'audit', 'catalog-drift'], {
+    const drift = spawnSync('bun', [sourceCli, 'audit', 'catalog-drift'], {
       cwd: agentKitRoot,
       encoding: 'utf8',
       env: process.env,
