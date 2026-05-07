@@ -88,3 +88,17 @@ tmp/
 
 # ak setup safe-default scaffolder outputs — never commit
 *.new
+
+# tshy build cache — regenerated on every build
+.tshy/
+
+# Generated reports (mutation, coverage summaries, audit dumps)
+reports/
+
+# Stryker scratch — written next to stryker.config when running locally
+stryker-setup-*.js
+
+# Test sandbox: __fixtures__/fake-home/ exposes a fake $HOME for test runs.
+# Anything under .vite-plus/ is a runtime install with absolute symlinks
+# that won't transfer between machines — keep tracked fixtures elsewhere.
+__fixtures__/fake-home/.vite-plus/
