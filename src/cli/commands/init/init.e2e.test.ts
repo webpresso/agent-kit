@@ -57,6 +57,9 @@ function runAk(args: string[], extraEnv: Record<string, string> = {}): RunResult
     encoding: 'utf8',
     env: {
       ...process.env,
+      // rtk is default-on but isn't packaged in the test fixture's PATH —
+      // skip it unless the individual test explicitly opts in.
+      AK_SKIP_RTK: '1',
       ...extraEnv,
     },
   })
