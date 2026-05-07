@@ -72,6 +72,7 @@ describe('ak_e2e tool', () => {
         files: ['tests/smoke.spec.ts'],
         headed: true,
       }),
+      undefined,
     )
     expect(plannedGroupsToCommandConfigs).toHaveBeenCalledWith(groups)
     expect(runCommandConfigs).toHaveBeenCalledWith(commands, { signal: undefined })

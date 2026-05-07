@@ -39,6 +39,8 @@ const KINDS = [
 
 const inputSchema = z.object({
   kind: z.enum(KINDS),
+  /** Working tree to run the audit against. Alias kept as `directory` for back-compat. */
+  cwd: z.string().optional(),
   directory: z.string().optional(),
   messageFile: z.string().optional(),
 })
@@ -133,7 +135,7 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
   switch (kind) {
     case 'catalog-drift': {
       const { auditCatalogDrift } = await import('#audit/repo-guardrails')
-      const auditResult = auditCatalogDrift(input.directory ?? process.cwd())
+      const auditResult = auditCatalogDrift(input.cwd ?? input.directory ?? process.cwd())
       return {
         passed: auditResult.ok,
         summary: summarizeRepoAudit(kind, auditResult),
@@ -143,7 +145,7 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
     }
     case 'agents': {
       const { auditAgents } = await import('#audit/agents')
-      const auditResult = auditAgents(input.directory ?? process.cwd())
+      const auditResult = auditAgents(input.cwd ?? input.directory ?? process.cwd())
       return {
         passed: auditResult.ok,
         summary: summarizeRepoAudit(kind, auditResult),
@@ -153,7 +155,7 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
     }
     case 'docs-frontmatter': {
       const { auditDocsFrontmatter } = await import('#audit/repo-guardrails')
-      const auditResult = auditDocsFrontmatter(input.directory ?? process.cwd())
+      const auditResult = auditDocsFrontmatter(input.cwd ?? input.directory ?? process.cwd())
       return {
         passed: auditResult.ok,
         summary: summarizeRepoAudit(kind, auditResult),
@@ -163,7 +165,7 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
     }
     case 'blueprint-lifecycle': {
       const { auditBlueprintLifecycle } = await import('#audit/repo-guardrails')
-      const auditResult = auditBlueprintLifecycle(input.directory ?? process.cwd())
+      const auditResult = auditBlueprintLifecycle(input.cwd ?? input.directory ?? process.cwd())
       return {
         passed: auditResult.ok,
         summary: summarizeRepoAudit(kind, auditResult),
@@ -173,7 +175,7 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
     }
     case 'roadmap-links': {
       const { auditRoadmapLinks } = await import('#audit/roadmap-links')
-      const auditResult = auditRoadmapLinks(input.directory ?? process.cwd())
+      const auditResult = auditRoadmapLinks(input.cwd ?? input.directory ?? process.cwd())
       return {
         passed: auditResult.ok,
         summary: summarizeRepoAudit(kind, auditResult),
@@ -182,7 +184,7 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
       }
     }
     case 'commit-message': {
-      const messageFile = input.messageFile ?? input.directory
+      const messageFile = input.messageFile ?? input.cwd ?? input.directory
       if (!messageFile) {
         return {
           passed: false,
@@ -202,7 +204,7 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
     }
     case 'tech-debt': {
       const { auditTechDebt } = await import('#audit/tech-debt')
-      const auditResult = auditTechDebt(input.directory ?? process.cwd())
+      const auditResult = auditTechDebt(input.cwd ?? input.directory ?? process.cwd())
       return {
         passed: auditResult.ok,
         summary: summarizeRepoAudit(kind, auditResult),
@@ -212,7 +214,7 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
     }
     case 'bundle-budget': {
       const { runBundleBudgetCli } = await import('../../vite/local.js')
-      const args = input.directory ? [input.directory] : []
+      const args = input.cwd ?? input.directory ? [input.cwd ?? input.directory!] : []
       const exitCode = await runBundleBudgetCli(args)
       return {
         passed: exitCode === 0,

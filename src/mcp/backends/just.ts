@@ -3,6 +3,8 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 export interface TestRunInput {
+  /** Working tree to run from. Defaults to `CLAUDE_PROJECT_DIR` or `process.cwd()`. */
+  readonly cwd?: string
   readonly packages?: readonly string[]
   readonly files?: readonly string[]
   readonly extraArgs?: readonly string[]
@@ -26,7 +28,7 @@ export interface TestResult {
  * spawned process's exit code.
  */
 export async function runTests(input: TestRunInput): Promise<TestResult> {
-  const cwd = process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
+  const cwd = input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
   const args: string[] = ['test']
   if (input.packages && input.packages.length > 0) {
     args.push('--package', ...input.packages)
@@ -38,7 +40,7 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
     args.push('--', ...extraArgs)
   }
 
-  return runCommand('just', args)
+  return runCommand('just', args, cwd)
 }
 
 function inferExtraArgs(cwd: string, input: TestRunInput): readonly string[] {
@@ -85,9 +87,9 @@ function readPackage(file: string): Record<string, unknown> {
   }
 }
 
-function runCommand(cmd: string, args: readonly string[]): Promise<TestResult> {
+function runCommand(cmd: string, args: readonly string[], cwd?: string): Promise<TestResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, [...args])
+    const child = spawn(cmd, [...args], cwd ? { cwd } : {})
     let stdout = ''
     let stderr = ''
 

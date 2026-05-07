@@ -28,6 +28,7 @@ import { createSummaryOutputSchema, createSummaryResult } from './_shared/result
 import { isMissingBinary, isRunFailure, runCommand } from './_shared/run-command.js'
 
 const inputSchema = z.object({
+  cwd: z.string().optional(),
   files: z.array(z.string()).optional(),
   fix: z.boolean().optional().default(false),
 })
@@ -212,7 +213,7 @@ const tool: ToolDescriptor = {
   },
   handler: async (raw, extra) => {
     const input = inputSchema.parse(raw ?? {})
-    const cwd = resolveProjectRoot()
+    const cwd = resolveProjectRoot(input.cwd ? { cwd: input.cwd } : {})
     const runOptions = {
       timeoutMs: LINT_COMMAND_TIMEOUT_MS,
       signal: extra?.signal,

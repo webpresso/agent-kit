@@ -22,6 +22,7 @@ import { createSummaryOutputSchema, createSummaryResult } from './_shared/result
 import { isRunFailure, runCommand, type RunResult } from './_shared/run-command.js'
 
 const inputSchema = z.object({
+  cwd: z.string().optional(),
   packages: z.array(z.string()).optional(),
 })
 
@@ -124,7 +125,7 @@ const tool: ToolDescriptor = {
   },
   handler: async (raw, extra) => {
     const input = inputSchema.parse(raw ?? {})
-    const cwd = resolveProjectRoot()
+    const cwd = resolveProjectRoot(input.cwd ? { cwd: input.cwd } : {})
     const runOptions = {
       timeoutMs: TYPECHECK_COMMAND_TIMEOUT_MS,
       signal: extra?.signal,

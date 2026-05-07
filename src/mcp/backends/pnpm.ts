@@ -16,22 +16,18 @@ export type { TestResult, TestRunInput } from './just.js'
  *   - `pnpm test` otherwise.
  */
 export async function runTests(input: TestRunInput): Promise<TestResult> {
-  const cwd = process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
+  const cwd = input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
   if (input.packages && input.packages.length > 0) {
     let combinedOutput = ''
     let firstFailure = 0
     for (const pkg of input.packages) {
       const result = usesVitest(cwd, pkg)
-        ? await runCommand('pnpm', [
-            '-F',
-            pkg,
-            'exec',
-            'vitest',
-            'run',
-            '--reporter=json',
-            '--no-color',
-          ])
-        : await runCommand('pnpm', ['-F', pkg, 'test'])
+        ? await runCommand(
+            'pnpm',
+            ['-F', pkg, 'exec', 'vitest', 'run', '--reporter=json', '--no-color'],
+            cwd,
+          )
+        : await runCommand('pnpm', ['-F', pkg, 'test'], cwd)
       combinedOutput += result.output
       if (!result.passed && firstFailure === 0) firstFailure = result.exitCode
     }
@@ -44,23 +40,20 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
 
   if (input.files && input.files.length > 0) {
     if (usesVitest(cwd)) {
-      return runCommand('pnpm', [
-        'exec',
-        'vitest',
-        'run',
-        '--reporter=json',
-        '--no-color',
-        ...input.files,
-      ])
+      return runCommand(
+        'pnpm',
+        ['exec', 'vitest', 'run', '--reporter=json', '--no-color', ...input.files],
+        cwd,
+      )
     }
-    return runCommand('pnpm', ['test', '--', ...input.files])
+    return runCommand('pnpm', ['test', '--', ...input.files], cwd)
   }
 
   if (usesVitest(cwd)) {
-    return runCommand('pnpm', ['exec', 'vitest', 'run', '--reporter=json', '--no-color'])
+    return runCommand('pnpm', ['exec', 'vitest', 'run', '--reporter=json', '--no-color'], cwd)
   }
 
-  return runCommand('pnpm', ['test'])
+  return runCommand('pnpm', ['test'], cwd)
 }
 
 function usesVitest(cwd: string, packageName?: string): boolean {
@@ -97,9 +90,9 @@ function readPackage(file: string): Record<string, unknown> {
   }
 }
 
-function runCommand(cmd: string, args: readonly string[]): Promise<TestResult> {
+function runCommand(cmd: string, args: readonly string[], cwd?: string): Promise<TestResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, [...args])
+    const child = spawn(cmd, [...args], cwd ? { cwd } : {})
     let stdout = ''
     let stderr = ''
     child.stdout.on('data', (chunk: Buffer) => {

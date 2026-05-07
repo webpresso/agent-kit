@@ -15,10 +15,12 @@ import * as justBackend from '#mcp/backends/just'
 import * as pnpmBackend from '#mcp/backends/pnpm'
 import { applyOutputTransform } from '#output-transforms/index'
 
+import { resolveProjectRoot } from './_shared/project-root.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
 const inputSchema = z
   .object({
+    cwd: z.string().optional(),
     packages: z.array(z.string()).optional(),
     files: z.array(z.string()).optional(),
     backend: z.enum(['just', 'pnpm', 'auto']).optional().default('auto'),
@@ -68,10 +70,15 @@ const tool: ToolDescriptor = {
   },
   handler: async (raw) => {
     const input = inputSchema.parse(raw ?? {})
-    const cwd = process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
+    // `input.cwd` is treated as the walk-start so the resolver still finds
+    // the workspace root from any subdir (e.g. `cwd: '<repo>/src/cli'`
+    // resolves to `<repo>` if it has pnpm-workspace.yaml). Callers wanting
+    // to bypass walking should pass the repo root directly.
+    const cwd = resolveProjectRoot(input.cwd ? { cwd: input.cwd } : {})
     const backend = detectBackend(cwd, input.backend)
     const runner = backend === 'just' ? justBackend : pnpmBackend
     const result = await runner.runTests({
+      cwd,
       packages: input.packages,
       files: input.files,
     })

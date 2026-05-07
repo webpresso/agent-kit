@@ -20,6 +20,7 @@ import { applyOutputTransform } from '#output-transforms/index'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
 const inputSchema = z.object({
+  cwd: z.string().optional(),
   suite: z.string().optional(),
   runner: z.enum(['playwright', 'vitest', 'command'] satisfies readonly E2eRunnerKind[]).optional(),
   config: z.string().optional(),
@@ -110,19 +111,22 @@ const tool: ToolDescriptor = {
   },
   handler: async (raw, extra) => {
     const input = inputSchema.parse(raw ?? {})
-    const groups = await createE2eExecutionPlan({
-      suite: input.suite,
-      runner: input.runner,
-      config: input.config,
-      files: input.files,
-      headed: input.headed,
-      debug: input.debug,
-      reuseReset: input.reuseReset,
-      noSupervisor: input.noSupervisor,
-      workers: input.workers,
-      testList: input.testList,
-      passthrough: input.passthrough,
-    })
+    const groups = await createE2eExecutionPlan(
+      {
+        suite: input.suite,
+        runner: input.runner,
+        config: input.config,
+        files: input.files,
+        headed: input.headed,
+        debug: input.debug,
+        reuseReset: input.reuseReset,
+        noSupervisor: input.noSupervisor,
+        workers: input.workers,
+        testList: input.testList,
+        passthrough: input.passthrough,
+      },
+      input.cwd,
+    )
     const commands = plannedGroupsToCommandConfigs(groups)
     const result = await runCommandConfigs(commands, { signal: extra?.signal })
     const suiteIds = collectSuiteIds(groups)

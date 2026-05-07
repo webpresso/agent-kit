@@ -28,6 +28,9 @@ import testTool from './test.js'
 import typecheckTool from './typecheck.js'
 
 const inputSchema = z.object({
+  // Forwarded to all three sub-tools so cross-repo invocation works (e.g.
+  // run agent-kit's QA from a session launched in monorepo).
+  cwd: z.string().optional(),
   // Forwarded to `ak_lint.files` and `ak_test.files` so a scoped QA on
   // changed files is possible. `ak_typecheck` ignores files (it operates on
   // tsconfig projects).
@@ -118,9 +121,12 @@ const tool: ToolDescriptor = {
     const input = inputSchema.parse(raw ?? {})
 
     const [lintResult, typecheckResult, testResult] = await Promise.all([
-      lintTool.handler({ files: input.files }, extra),
-      typecheckTool.handler({ packages: input.packages }, extra),
-      testTool.handler({ files: input.files, packages: input.packages }, extra),
+      lintTool.handler({ cwd: input.cwd, files: input.files }, extra),
+      typecheckTool.handler({ cwd: input.cwd, packages: input.packages }, extra),
+      testTool.handler(
+        { cwd: input.cwd, files: input.files, packages: input.packages },
+        extra,
+      ),
     ])
 
     const lint = unwrap(lintResult)
