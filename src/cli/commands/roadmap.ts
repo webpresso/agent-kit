@@ -1,5 +1,6 @@
 import type { CAC } from 'cac'
 
+import { buildRoadmapModel } from '#local'
 import type { ShowBlueprintResult } from './blueprint/router.js'
 
 import { listBlueprints, showBlueprint } from './blueprint/router.js'
@@ -25,6 +26,35 @@ export function assertParentRoadmap(result: ShowBlueprintResult): ShowBlueprintR
   }
 
   return result
+}
+
+export function formatRoadmapDetails(
+  result: ShowBlueprintResult,
+  childResults: readonly ShowBlueprintResult[],
+): string {
+  const childLines =
+    childResults.length > 0
+      ? childResults.map(
+          (child) =>
+            `- ${child.slug} status=${child.blueprint.status} tasks=${child.blueprint.tasks.filter((task) => task.status === 'done').length}/${child.blueprint.tasks.length} done`,
+        )
+      : ['- No child blueprints declared']
+
+  const blockerLines = childResults.flatMap((child) =>
+    child.blueprint.tasks
+      .filter((task) => task.status === 'blocked')
+      .map((task) => `- ${child.slug} Task ${task.id}: ${task.blockedReason ?? task.title}`),
+  )
+
+  return [
+    formatBlueprintDetails(result),
+    '',
+    'children:',
+    ...childLines,
+    '',
+    'blockers:',
+    ...(blockerLines.length > 0 ? blockerLines : ['- None']),
+  ].join('\n')
 }
 
 export function registerRoadmapCommand(cli: CAC): void {
@@ -68,8 +98,20 @@ export function registerRoadmapCommand(cli: CAC): void {
             const result = assertParentRoadmap(
               await showBlueprint(slug, { json: options.json, projectRoot: options.projectRoot }),
             )
+            const summaries = await listBlueprints({ projectRoot: options.projectRoot })
+            const model = buildRoadmapModel(summaries)
+            const roadmapNode = model.roadmaps.find(
+              (entry) =>
+                entry.roadmap.name === result.slug ||
+                entry.roadmap.name === result.blueprint.name ||
+                entry.roadmap.name.endsWith(`/${result.slug}`),
+            )
+            const childResults = []
+            for (const child of roadmapNode?.children ?? []) {
+              childResults.push(await showBlueprint(child.name, { projectRoot: options.projectRoot }))
+            }
             printBlueprintOutput(
-              options.json ? result : formatBlueprintDetails(result),
+              options.json ? { ...result, children: childResults } : formatRoadmapDetails(result, childResults),
               options.json,
             )
             return

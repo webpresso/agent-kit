@@ -46,6 +46,7 @@ export interface BlueprintSummary {
   taskCount: number
   progress: number
   type: 'blueprint' | 'parent-roadmap'
+  parentRoadmap?: string
   malformed?: string
 }
 
@@ -108,6 +109,7 @@ export class BlueprintService extends TrackedDocumentService<
       taskCount: plan.tasks.length,
       progress: plan.tasks.length > 0 ? Math.round((doneCount / plan.tasks.length) * 100) : 0,
       type: plan.type,
+      ...(plan.parentRoadmap ? { parentRoadmap: plan.parentRoadmap } : {}),
     }
   }
 

@@ -107,18 +107,22 @@ No plugin install or marketplace registration needed.
 | Command | Description |
 |---------|-------------|
 | `ak blueprint new "<goal>" --complexity M` | Create a new blueprint with goal and complexity |
+| `ak blueprint new "<goal>" --complexity M --type parent-roadmap` | Create a parent roadmap stub for grouping child blueprints |
 | `ak blueprint audit --all --strict` | Audit all blueprints for structural issues |
 | `ak blueprint list` | List blueprints by status |
+| `ak roadmap list` / `ak roadmap show <slug>` | Inspect first-class parent roadmaps and their child lanes |
 | `ak symlink sync` | Sync skill surfaces across all configured IDEs (fans out AGENTS.md + mcp.json) |
 | `ak symlink import --from .cursorrules` | Import existing IDE rules into canonical `.agent/` |
 | `ak setup --with monorepo-navigation,tanstack-query` | Scaffold agent surfaces and install named Tier-3 skills |
 | `ak setup` | Scaffold agent surfaces, install default external tooling presets (`omx`, `gstack`), and persist Playwright MCP for Codex/OMX |
 | `ak setup --with playwright-mcp` | Explicitly request the Playwright MCP Codex-config write; normally covered by default `omx` setup |
+| `ak doctor` | Run repo audit health checks with remediation hints; keep hook/plugin health under `ak hooks doctor` |
 | `ak skills list` | List available skills in the catalog |
 | `ak skills install <name>` | Install a named skill into the active IDE surfaces |
 | `ak audit tph` | Run tech-debt phase health audit |
 | `ak audit vision` | Enforce VISION.md exists at root with required structure (frontmatter, ≤100 lines, ≤1500 words, required sections) |
-| `ak audit guardrails` | Composite of every repo-level audit (catalog-drift, blueprint-lifecycle, docs-frontmatter, vision, tech-debt, no-relative-parent-imports, bucket-boundary). Wired into the scaffolded pre-commit hook and CI workflow — adding a repo audit to `REPO_AUDIT_REGISTRY` in `src/cli/commands/audit.ts` propagates to all three (standalone CLI, composite, ship gate). |
+| `ak audit roadmap-links` | Check bidirectional parent-roadmap ↔ child blueprint links; use `--strict` to fail unresolved/orphan parent references |
+| `ak audit guardrails` | Composite of every repo-level audit (catalog-drift, blueprint-lifecycle, roadmap-links, docs-frontmatter, vision, tech-debt, no-relative-parent-imports, bucket-boundary). Wired into the scaffolded pre-commit hook and CI workflow — adding a repo audit to `REPO_AUDIT_REGISTRY` in `src/cli/commands/audit.ts` propagates to all three (standalone CLI, composite, ship gate). |
 | `ak audit mutation` | Run Stryker mutation testing; fails CI on threshold misses |
 | `ak audit quality` | Full ship gate: mutation + guardrails composite. (bundle-budget and commit-message take caller-supplied paths — run separately.) |
 | `ak audit bundle-budget apps/client/dist --max-js-asset-bytes 512000` | Check Vite bundle against budget |
@@ -145,6 +149,23 @@ Skills are namespaced after plugin install: `/webpresso-agent-kit:plan-refine`, 
 
 For detailed skill docs, see [`catalog/agent/skills/`](./catalog/agent/skills/).
 For blueprint format spec, see [`docs/`](./docs/).
+
+## Parent roadmaps vs blueprints
+
+Use `type: parent-roadmap` when the file is a strategic queue that groups child
+blueprints. Use `type: blueprint` for executable tactical work with concrete
+tasks and verification gates.
+
+`ak blueprint list` renders roadmaps first as `ROADMAP` rows, with child
+blueprints indented as `CHILD` rows and unlinked work under `ORPHANS`. `/pll`
+uses that shape to choose the next planned child of an active roadmap before
+falling back to orphan blueprints.
+
+```bash
+ak blueprint new "Q2 platform roadmap" --complexity M --type parent-roadmap
+ak roadmap list
+ak audit roadmap-links
+```
 
 ## Design Invariants
 

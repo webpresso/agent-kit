@@ -6,6 +6,7 @@ export type AuditKind =
   | 'bundle-budget'
   | 'commit-message'
   | 'blueprint-lifecycle'
+  | 'roadmap-links'
   | 'docs-frontmatter'
   | 'catalog-drift'
   | 'agents'

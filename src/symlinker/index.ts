@@ -27,6 +27,7 @@ import {
   readFileSync,
   readlinkSync,
   rmSync,
+  statSync,
   symlinkSync,
   unlinkSync,
   writeFileSync,
@@ -175,7 +176,9 @@ export function syncPerSkillConsumer(
 
   const agentSkills = readdirSync(skillsSource).filter((name) => {
     try {
-      return lstatSync(join(skillsSource, name)).isDirectory()
+      // Wave-3: `.agent/skills/<slug>` may be a symlink (catalog projection
+      // via unified-sync). statSync follows symlinks, lstatSync would not.
+      return statSync(join(skillsSource, name)).isDirectory()
     } catch {
       return false
     }

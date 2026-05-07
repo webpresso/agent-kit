@@ -19,14 +19,16 @@ const VERSION = readPackageVersion(import.meta.url)
 const SUPPORTED_COMMANDS = [
   'blueprint',
   'roadmap',
-  'symlink',
-  'cursor-windsurf-sync',
+  'sync',
   'audit',
+  'rule',
+  'skill',
   'skills',
   'docs',
   'setup',
   'init',
   'dev',
+  'doctor',
   'err',
   'test',
   'e2e',
@@ -41,14 +43,15 @@ const ROOT_HELP = [
   'Commands:',
   '  blueprint             Manage blueprints (list, new, show, exec, audit, ...)',
   '  roadmap               List or show parent roadmaps directly',
-  '  symlink               Sync agent-surface files (sync, check)',
-  '  cursor-windsurf-sync  Copy skills to .cursor/rules/ and .windsurf/skills/',
+  '  sync                  Sync agent rules + skills across IDE surfaces (--kind, --check)',
   '  audit                 Run packaged audits (bundle budgets, repo guardrails, TPH, tech-debt)',
-  '  skills                Manage agent skills (list, install)',
+  '  rule                  Manage consumer rules (new, list, show, deprecate)',
+  '  skill                 Manage consumer skills (new, list, show, deprecate, install, uninstall)',
   '  docs                  Documentation tooling (lint)',
   '  setup                 Scaffold a consumer repo with the agent surface',
   '  init                  Compatibility alias for setup',
   '  dev                   Run a manifest-backed development target',
+  '  doctor                Run repo audit health checks (hook/plugin health stays under hooks doctor)',
   '  err                   Run a command and print only failure-looking lines',
   '  test                  Run tests through the portable agent-kit surface',
   '  e2e                   Build and run E2E commands through the portable agent-kit surface',
@@ -109,16 +112,9 @@ export async function main(): Promise<number> {
       registerRoadmapCommand(cli)
       break
     }
-    case 'symlink': {
-      const { registerSymlinkCommand } = await import('./commands/symlink.js')
-      registerSymlinkCommand(cli)
-      break
-    }
-    case 'cursor-windsurf-sync': {
-      const { registerCursorWindsurfSyncCommand } = await import(
-        './commands/cursor-windsurf-sync.js'
-      )
-      registerCursorWindsurfSyncCommand(cli)
+    case 'sync': {
+      const { registerSyncCommand } = await import('./commands/sync.js')
+      registerSyncCommand(cli)
       break
     }
     case 'audit': {
@@ -126,9 +122,19 @@ export async function main(): Promise<number> {
       registerAuditCommand(cli)
       break
     }
+    case 'rule': {
+      const { registerRuleCommand } = await import('./commands/rule.js')
+      registerRuleCommand(cli)
+      break
+    }
+    case 'skill': {
+      const { registerSkillCommand } = await import('./commands/skill.js')
+      registerSkillCommand(cli)
+      break
+    }
     case 'skills': {
-      const { registerSkillsCommand } = await import('./commands/skills.js')
-      registerSkillsCommand(cli)
+      const { registerSkillsRenameStub } = await import('./commands/skill.js')
+      registerSkillsRenameStub(cli)
       break
     }
     case 'docs': {
@@ -145,6 +151,11 @@ export async function main(): Promise<number> {
     case 'dev': {
       const { registerDevCommand } = await import('./commands/dev.js')
       registerDevCommand(cli)
+      break
+    }
+    case 'doctor': {
+      const { registerDoctorCommand } = await import('./commands/doctor.js')
+      registerDoctorCommand(cli)
       break
     }
     case 'err': {

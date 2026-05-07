@@ -33,15 +33,32 @@ function hasCommand(groups: HookGroup[], command: string): boolean {
   return groups.some((g) =>
     g.hooks.some((h) => {
       if (h.command === command) return true
-      if (binName && h.command.includes(`/${binName}`)) return true
+      if (binName && commandInvokesBin(h.command, binName)) return true
       return false
     }),
   )
 }
 
+function commandInvokesBin(command: string, binName: string): boolean {
+  const escaped = binName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const binPattern = new RegExp(`node_modules/\\.bin/${escaped}(?=$|["'\\s])`, 'u')
+  return binPattern.test(command)
+}
+
 function ensureGroup(groups: HookGroup[], group: HookGroup): HookGroup[] {
   if (hasCommand(groups, group.hooks[0]!.command)) return groups
   return [...groups, group]
+}
+
+function orderStopGroups(groups: HookGroup[]): HookGroup[] {
+  return [...groups].sort((left, right) => {
+    const leftCommand = left.hooks[0]?.command ?? ''
+    const rightCommand = right.hooks[0]?.command ?? ''
+    const leftIsGlobalStop = leftCommand.includes('ak-stop-qa')
+    const rightIsGlobalStop = rightCommand.includes('ak-stop-qa')
+    if (leftIsGlobalStop === rightIsGlobalStop) return 0
+    return leftIsGlobalStop ? 1 : -1
+  })
 }
 
 function stripSkillManagedHooks(groups: HookGroup[] | undefined): HookGroup[] {
@@ -150,9 +167,11 @@ function patchClaudeSettings(
       UserPromptSubmit: ensureGroup(mergedHooks.UserPromptSubmit ?? [], {
         hooks: [{ type: 'command', command: CC_BIN('ak-guard-switch'), timeout: 5 }],
       }),
-      Stop: ensureGroup(mergedHooks.Stop ?? [], {
-        hooks: [{ type: 'command', command: CC_BIN('ak-stop-qa') }],
-      }),
+      Stop: orderStopGroups(
+        ensureGroup(mergedHooks.Stop ?? [], {
+          hooks: [{ type: 'command', command: CC_BIN('ak-stop-qa') }],
+        }),
+      ),
     },
   }
 }
@@ -215,7 +234,8 @@ fi
 printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"WARNING: gstack is not installed. Skills like /browse, /qa, /ship are unavailable. Fix: run \`ak setup --with gstack\` then restart."}}\n'
 `
 
-function ensureGstackHooks(repoRoot: string): void {
+function ensureGstackHooks(repoRoot: string, options: MergeOptions = {}): void {
+  if (options.dryRun) return
   const hooksDir = join(repoRoot, '.claude', 'hooks')
   mkdirSync(hooksDir, { recursive: true })
 
@@ -233,7 +253,7 @@ function ensureGstackHooks(repoRoot: string): void {
 }
 
 export function scaffoldAgentHooks(input: ScaffoldAgentHooksInput): ScaffoldAgentHooksResult {
-  ensureGstackHooks(input.repoRoot)
+  ensureGstackHooks(input.repoRoot, input.options)
   const skillHooks = extractSkillHooks(join(input.repoRoot, '.agent', 'skills'))
   return {
     claude: patchJsonFile(

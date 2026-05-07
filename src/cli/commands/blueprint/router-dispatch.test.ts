@@ -183,6 +183,7 @@ describe('executeBlueprintSubcommand', () => {
   it('routes "new" with goal args', async () => {
     const created: CreateBlueprintResult = {
       slug: 'my-feature',
+      type: 'blueprint',
       title: 'My Feature',
       complexity: 'M',
       path: '/tmp/my-feature/_overview.md',
@@ -202,6 +203,32 @@ describe('executeBlueprintSubcommand', () => {
     await executeBlueprintSubcommand('new', ['my', 'feature', 'goal'], { '--': [], complexity: 'M' }, deps)
     expect(deps.createBlueprint).toHaveBeenCalledWith('my feature goal', expect.objectContaining({ complexity: 'M' }))
     expect(deps.printBlueprintOutput).toHaveBeenCalledWith('created', undefined)
+  })
+
+  it('passes --type parent-roadmap for new', async () => {
+    const created: CreateBlueprintResult = {
+      slug: 'roadmap-a',
+      type: 'parent-roadmap',
+      title: 'Roadmap A',
+      complexity: 'M',
+      path: '/tmp/roadmap-a/_overview.md',
+      outputPath: '/tmp/roadmap-a/_overview.md',
+      projectRoot: '/tmp',
+      relativeFilePath: 'blueprints/draft/roadmap-a/_overview.md',
+      markdown: '# Roadmap A\n',
+      status: 'draft',
+      blueprint: { tasks: [], slug: 'roadmap-a', title: 'Roadmap A' } as unknown as CreateBlueprintResult['blueprint'],
+      message: 'Created parent-roadmap draft/roadmap-a.',
+    }
+    const deps = buildDeps({
+      createBlueprint: vi.fn(async () => created),
+    })
+
+    await executeBlueprintSubcommand('new', ['roadmap', 'a'], { '--': [], complexity: 'M', type: 'parent-roadmap' }, deps)
+    expect(deps.createBlueprint).toHaveBeenCalledWith(
+      'roadmap a',
+      expect.objectContaining({ complexity: 'M', type: 'parent-roadmap' }),
+    )
   })
 
   it('throws when "new" receives no goal', async () => {

@@ -134,3 +134,10 @@ export {
   runtimeSnapshotPathForExecution,
   type RuntimeProgressBridgeResult,
 } from './execution/progress-bridge.js'
+export {
+  buildRoadmapModel,
+  type RoadmapLike,
+  type RoadmapModel,
+  type RoadmapNode,
+  type RoadmapRollup,
+} from './roadmap.js'

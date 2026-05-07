@@ -36,8 +36,10 @@ describe('ak root command surface', () => {
     expect(result.code).toBe(0)
     expect(result.stdout.join('\n')).toContain('setup                 Scaffold a consumer repo')
     expect(result.stdout.join('\n')).toContain('roadmap               List or show parent roadmaps directly')
+    expect(result.stdout.join('\n')).toContain('doctor                Run repo audit health checks')
     expect(result.stdout.join('\n')).toContain('init                  Compatibility alias for setup')
-    expect(result.stdout.join('\n')).toContain('skills                Manage agent skills (list, install)')
+    expect(result.stdout.join('\n')).toContain('skill                 Manage consumer skills')
+    expect(result.stdout.join('\n')).toContain('rule                  Manage consumer rules')
     expect(result.stdout.join('\n')).not.toContain('refresh')
   })
 
@@ -58,18 +60,32 @@ describe('ak root command surface', () => {
     expect(result.stdout.join('\n')).toContain('show <slug>')
   })
 
-  it('rejects the removed skills refresh action', async () => {
+  it("redirects 'ak skills' to 'ak skill' with a helpful rename error", async () => {
     const result = await runAk(['skills', 'refresh'])
 
     expect(result.code).toBe(1)
-    expect(result.stderr.join('\n')).toContain("Unknown skills action: refresh")
-    expect(result.stderr.join('\n')).toContain("Use 'list' or 'install'")
+    expect(result.stderr.join('\n')).toContain("'ak skills' was renamed to 'ak skill' in 0.4.0")
+    expect(result.stderr.join('\n')).toContain('ak skill <subcommand>')
   })
 
-  it('rejects symlink sync --dry-run instead of advertising a no-op', async () => {
-    const result = await runAk(['symlink', 'sync', '--dry-run'])
+  it('rejects legacy `ak symlink` with unknown command error', async () => {
+    const result = await runAk(['symlink', 'sync'])
 
     expect(result.code).toBe(1)
-    expect(result.stderr.join('\n')).toContain('Unknown option `--dryRun`')
+    expect(result.stderr.join('\n').toLowerCase()).toContain('unknown command')
+  })
+
+  it('rejects legacy `ak cursor-windsurf-sync` with unknown command error', async () => {
+    const result = await runAk(['cursor-windsurf-sync'])
+
+    expect(result.code).toBe(1)
+    expect(result.stderr.join('\n').toLowerCase()).toContain('unknown command')
+  })
+
+  it('exposes `ak sync` in help', async () => {
+    const result = await runAk(['--help'])
+
+    expect(result.code).toBe(0)
+    expect(result.stdout.join('\n')).toContain('sync                  Sync agent rules')
   })
 })

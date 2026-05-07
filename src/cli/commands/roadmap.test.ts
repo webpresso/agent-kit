@@ -13,26 +13,26 @@ vi.mock('./blueprint/router.js', async () => {
 })
 
 import { listBlueprints, showBlueprint } from './blueprint/router.js'
-import { assertParentRoadmap, registerRoadmapCommand } from './roadmap.js'
+import { assertParentRoadmap, formatRoadmapDetails, registerRoadmapCommand } from './roadmap.js'
 
-function buildResult(type: 'blueprint' | 'parent-roadmap'): ShowBlueprintResult {
+function buildResult(type: 'blueprint' | 'parent-roadmap', slug = 'demo'): ShowBlueprintResult {
   return {
     blueprint: {
       type,
-      name: 'demo',
-      title: 'Demo',
+      name: slug,
+      title: slug,
       status: 'draft',
       complexity: 'S',
       lastUpdated: '2026-05-04',
       tasks: [],
       phases: [],
-      raw: '# Demo',
+      raw: `# ${slug}`,
     },
     location: {
       path: '/tmp/demo/_overview.md',
       projectRoot: '/tmp',
     },
-    slug: 'demo',
+    slug,
   }
 }
 
@@ -46,6 +46,31 @@ describe('assertParentRoadmap', () => {
     expect(() => assertParentRoadmap(buildResult('blueprint'))).toThrow(
       /not type=parent-roadmap/,
     )
+  })
+})
+
+describe('formatRoadmapDetails', () => {
+  it('includes child rows and blocker callouts', () => {
+    const parent = buildResult('parent-roadmap', 'roadmap-a')
+    const child = buildResult('blueprint', 'child-a')
+    child.blueprint.status = 'in-progress'
+    child.blueprint.tasks = [
+      {
+        acceptanceCriteria: { checked: 0, total: 1 },
+        blockedReason: 'waiting on API',
+        id: '1.1',
+        status: 'blocked',
+        title: 'Wire child',
+        stepType: 'task',
+      },
+    ]
+
+    const output = formatRoadmapDetails(parent, [child])
+
+    expect(output).toContain('children:')
+    expect(output).toContain('- child-a status=in-progress tasks=0/1 done')
+    expect(output).toContain('blockers:')
+    expect(output).toContain('- child-a Task 1.1: waiting on API')
   })
 })
 
@@ -83,6 +108,17 @@ describe('registerRoadmapCommand', () => {
 
   it('routes roadmap show for parent roadmaps', async () => {
     vi.mocked(showBlueprint).mockResolvedValue(buildResult('parent-roadmap'))
+    vi.mocked(listBlueprints).mockResolvedValue([
+      {
+        name: 'demo',
+        title: 'Demo',
+        status: 'draft',
+        complexity: 'S',
+        progress: 0,
+        taskCount: 0,
+        type: 'parent-roadmap',
+      },
+    ])
     const cli = cac('ak')
     registerRoadmapCommand(cli)
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -91,6 +127,7 @@ describe('registerRoadmapCommand', () => {
     await cli.runMatchedCommand()
 
     expect(showBlueprint).toHaveBeenCalledWith('demo', { json: undefined, projectRoot: undefined })
+    expect(listBlueprints).toHaveBeenCalledWith({ projectRoot: undefined })
     expect(logSpy).toHaveBeenCalled()
   })
 

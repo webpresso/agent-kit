@@ -84,3 +84,11 @@ src/cli/commands/__tmp-*/
 # E2E fixtures must stay clean; vite-plus caches HOME-relative state
 __fixtures__/fake-home/.vite-plus/
 __fixtures__/fake-home/.cache/
+.codex/*
+!.codex/agents/
+!.codex/agents/**
+!.codex/skills/
+!.codex/skills/**
+.codex/skills/.system/**
+!.codex/prompts/
+!.codex/prompts/**

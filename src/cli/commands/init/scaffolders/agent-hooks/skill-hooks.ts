@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 import matter from 'gray-matter'
@@ -99,8 +99,19 @@ export function extractSkillHooks(skillsDir: string): SkillHook[] {
   if (!existsSync(skillsDir)) return []
 
   const hooks: SkillHook[] = []
+  // Wave-3: `.agent/skills/<slug>` may be a symlink (catalog projection via
+  // unified-sync) — `withFileTypes` reports isDirectory()=false for those, so
+  // we stat-resolve through symlinks before filtering.
   const skillNames = readdirSync(skillsDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
+    .filter((entry) => {
+      if (entry.isDirectory()) return true
+      if (!entry.isSymbolicLink()) return false
+      try {
+        return statSync(join(skillsDir, entry.name)).isDirectory()
+      } catch {
+        return false
+      }
+    })
     .map((entry) => entry.name)
     .sort()
 

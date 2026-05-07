@@ -95,7 +95,7 @@ RTK skips commands already owned by `ak-pretool-guard`.
 - Codex is treated as a prompt/instructions lane upstream, not a hook-rewrite
   lane, so agent-kit does **not** add RTK to `.codex/hooks.json`
 
-**Marker:** `ak setup --with rtk` writes `.agent/.rtk-requested` so `ak doctor`
+**Marker:** `ak setup --with rtk` writes `.agent/.rtk-requested` so `ak hooks doctor`
 can report RTK only for repos that opted in.
 
 ## Combining presets

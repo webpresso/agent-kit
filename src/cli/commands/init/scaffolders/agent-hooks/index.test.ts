@@ -58,6 +58,12 @@ describe('scaffoldAgentHooks', () => {
     expect(settings.worktree.symlinkDirectories).toEqual(['.claude'])
   })
 
+  it('does not create .claude/hooks in dry-run mode', () => {
+    scaffoldAgentHooks({ repoRoot, options: { dryRun: true } })
+
+    expect(() => readFileSync(join(repoRoot, '.claude', 'hooks', 'check-gstack.sh'), 'utf8')).toThrow()
+  })
+
   it('uses MultiEdit in Claude PreToolUse and PostToolUse matchers', () => {
     scaffoldAgentHooks({ repoRoot, options: {} })
 
@@ -99,6 +105,37 @@ hooks:
     const stopCommands = settings.hooks.Stop.flatMap((group) => group.hooks.map((hook) => hook.command))
     expect(stopCommands.some((command) => command.includes('ak-stop-qa'))).toBe(true)
     expect(stopCommands.some((command) => command.includes('"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak" audit agents'))).toBe(true)
+    expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
+  })
+
+  it('preserves verify skill Stop hooks on a second run', () => {
+    const verifySkillDir = join(repoRoot, '.agent', 'skills', 'verify')
+    mkdirSync(verifySkillDir, { recursive: true })
+    writeFileSync(
+      join(verifySkillDir, 'SKILL.md'),
+      `---
+name: verify
+hooks:
+  Stop:
+    - command: ak audit agents
+      timeout: 20
+---
+
+# Verify
+`,
+    )
+
+    scaffoldAgentHooks({ repoRoot, options: {} })
+    scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const settings = JSON.parse(readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8')) as {
+      hooks: {
+        Stop: Array<{ hooks: Array<{ command: string }> }>
+      }
+    }
+
+    const stopCommands = settings.hooks.Stop.flatMap((group) => group.hooks.map((hook) => hook.command))
+    expect(stopCommands.some((command) => command.includes('ak-stop-qa'))).toBe(true)
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
   })
 

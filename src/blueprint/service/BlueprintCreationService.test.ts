@@ -57,6 +57,25 @@ describe('BlueprintCreationService', () => {
     expect(parsed.complexity).toBe('L')
   })
 
+  it('renders a parent-roadmap stub when type is parent-roadmap', async () => {
+    const service = new BlueprintCreationService(projectRoot, { templatePath })
+
+    const draft = await service.compileDraft({
+      complexity: 'M',
+      goal: 'Roadmap for launch sequencing',
+      type: 'parent-roadmap',
+    })
+
+    expect(draft.type).toBe('parent-roadmap')
+    expect(draft.markdown).toContain('type: parent-roadmap')
+    expect(draft.markdown).toContain('# Roadmap for launch sequencing')
+    expect(draft.markdown).toContain('--type parent-roadmap')
+
+    const parsed = parseBlueprint(draft.markdown, `draft/${draft.slug}`)
+    expect(parsed.type).toBe('parent-roadmap')
+    expect(parsed.tasks).toEqual([])
+  })
+
   it('suffixes the slug when a blueprint with the same tail already exists', async () => {
     const service = new BlueprintCreationService(projectRoot, { templatePath })
     const existingDir = path.join(

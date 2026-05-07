@@ -31,6 +31,7 @@ const KINDS = [
   'catalog-drift',
   'docs-frontmatter',
   'blueprint-lifecycle',
+  'roadmap-links',
   'bundle-budget',
   'commit-message',
   'tech-debt',
@@ -152,6 +153,11 @@ async function dispatch(
       const auditResult = auditBlueprintLifecycle(input.directory ?? process.cwd())
       return { passed: auditResult.ok, summary: summarizeRepoAudit(kind, auditResult), kind, details: auditResult }
     }
+    case 'roadmap-links': {
+      const { auditRoadmapLinks } = await import('#audit/roadmap-links')
+      const auditResult = auditRoadmapLinks(input.directory ?? process.cwd())
+      return { passed: auditResult.ok, summary: summarizeRepoAudit(kind, auditResult), kind, details: auditResult }
+    }
     case 'commit-message': {
       const messageFile = input.messageFile ?? input.directory
       if (!messageFile) {
@@ -210,7 +216,7 @@ async function dispatch(
 const tool: ToolDescriptor = {
   name: 'ak_audit',
   description:
-    'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-lifecycle, bundle-budget, commit-message, tech-debt). Returns {passed, kind, details}.',
+    'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-lifecycle, roadmap-links, bundle-budget, commit-message, tech-debt). Returns {passed, kind, details}.',
   inputSchema,
   outputSchema,
   annotations: {

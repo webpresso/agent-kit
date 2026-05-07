@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 
 import { syncAll } from '#symlinker'
 
+import { runUnifiedSync } from '../../../symlinker/unified-sync.js'
 import {
   type AgentkitConfig,
   defaultConfig,
@@ -23,7 +24,9 @@ import {
 import { detectConsumer } from './detect-consumer.js'
 import { type MergeOptions, type MergeResult, summarizeResults } from './merge.js'
 import { resolveTier3Selection } from './prompts.js'
-import { scaffoldAgent } from './scaffold-agent.js'
+import { scaffoldAgent, RENDERED_SKILLS, TIER1_SKILLS, TIER2_SKILLS } from './scaffold-agent.js'
+import { scaffoldAgentRules } from './scaffold-agent-rules.js'
+import { scaffoldAgentSkills } from './scaffold-agent-skills.js'
 import { scaffoldAgentsMd } from './scaffold-agents-md.js'
 import { scaffoldBlueprints } from './scaffold-blueprints.js'
 import { scaffoldDocs } from './scaffold-docs.js'
@@ -146,8 +149,23 @@ export async function runInit(flags: InitFlags): Promise<number> {
     const agentReport = scaffoldAgent({
       catalogDir,
       repoRoot: consumer.repoRoot,
-      selectedTier3: tier3Selection,
       options,
+    })
+
+    // Wave-3: rules + skills are no longer copied. They flow through
+    // consumer-owned `agent-rules/` / `agent-skills/` directories projected
+    // into per-IDE surfaces by `runUnifiedSync` below. The scaffolders below
+    // create those canonical directories with .gitkeep + README + .gitignore
+    // patches so the source-of-truth surface exists before sync runs.
+    const agentRulesReport = scaffoldAgentRules({
+      cwd: consumer.repoRoot,
+      dryRun: options.dryRun,
+      overwrite: options.overwrite,
+    })
+    const agentSkillsReport = scaffoldAgentSkills({
+      cwd: consumer.repoRoot,
+      dryRun: options.dryRun,
+      overwrite: options.overwrite,
     })
 
     const baseKitResults = tier3Selection.includes('base-kit')
@@ -156,6 +174,29 @@ export async function runInit(flags: InitFlags): Promise<number> {
 
     const docsResults = scaffoldDocs({ catalogDir, repoRoot: consumer.repoRoot, options })
     const blueprintResults = scaffoldBlueprints({ repoRoot: consumer.repoRoot, options })
+
+    // Unified sync runs BEFORE the downstream scaffolders that read from
+    // `.agent/skills/` (agent-hooks needs SKILL.md frontmatter to extract
+    // hook entries) and BEFORE scaffoldMonorepoNav (which writes the
+    // rendered `.agent/skills/monorepo-navigation/` skill — preserved by
+    // `preserveSkillSlugs` so the prune step doesn't remove it).
+    const allowedSkillSlugs = new Set<string>([
+      ...TIER1_SKILLS,
+      ...TIER2_SKILLS,
+      ...RENDERED_SKILLS,
+      ...tier3Selection,
+    ])
+    if (!options.dryRun) {
+      runUnifiedSync({
+        catalogDir: join(catalogDir, 'agent'),
+        consumerRoot: consumer.repoRoot,
+        kinds: ['rule', 'skill'],
+        check: false,
+        allowedSkillSlugs,
+        preserveSkillSlugs: new Set<string>(RENDERED_SKILLS),
+      })
+    }
+
     const monorepoResults = scaffoldMonorepoNav({
       catalogDir,
       repoRoot: consumer.repoRoot,
@@ -166,7 +207,6 @@ export async function runInit(flags: InitFlags): Promise<number> {
     const config: AgentkitConfig = mergeConfig(existingConfig, {
       ...defaultConfig(),
       installed: { tier3Skills: [...tier3Selection].toSorted() },
-      lastInit: new Date().toISOString(),
     })
 
     const agentHooksResult = scaffoldAgentHooks({ repoRoot: consumer.repoRoot, options })
@@ -302,6 +342,8 @@ export async function runInit(flags: InitFlags): Promise<number> {
 
     const all = [
       ...agentReport.results,
+      ...agentRulesReport.results,
+      ...agentSkillsReport.results,
       ...baseKitResults,
       ...docsResults,
       ...blueprintResults,
@@ -321,7 +363,6 @@ export async function runInit(flags: InitFlags): Promise<number> {
     console.log(`  overwritten:     ${summary.overwritten}`)
     console.log(`  sidecar (.new):  ${summary['sidecar-written']}`)
     if (options.dryRun) console.log(`  would-change:    ${summary['skipped-dry']}`)
-    console.log(`  installed skills: ${agentReport.installedSkills.length}`)
 
     if (summary['sidecar-written'] > 0) {
       console.log(
@@ -403,7 +444,7 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
   const withHelp =
     `Comma-separated Tier-3 skills and/or presets to install ` +
     `(non-interactive). Presets: ${PRESETS.join(', ')}. ` +
-    `Tier-3 skills are listed by 'ak skills list'.`
+    `Tier-3 skills are listed by 'ak skill list'.`
 
   cli
     .command(commandName, description)

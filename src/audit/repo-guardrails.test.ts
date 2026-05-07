@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
@@ -282,6 +282,46 @@ describe('repo guardrail audits', () => {
     const root = tempRepo()
     const result = auditCatalogDrift(root)
     expect(result.ok).toBe(true)
+    expect(result.title).toContain('single package')
+  })
+
+  test('auditDocsFrontmatter --fix prepends missing frontmatter for bare docs', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'docs'), { recursive: true })
+    const file = join(root, 'docs', 'guide.md')
+    writeFileSync(file, '# Hello\n')
+
+    const result = auditDocsFrontmatter(root, { fix: true, today: '2026-05-06' })
+
+    expect(result.ok).toBe(true)
+    expect(readFileSync(file, 'utf8')).toContain("# TODO: classify type — auto-set by ak\ntype: guide\nlast_updated: '2026-05-06'")
+  })
+
+  test('auditDocsFrontmatter --fix adds only missing fields inside existing frontmatter', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'docs', 'research'), { recursive: true })
+    const file = join(root, 'docs', 'research', 'note.md')
+    writeFileSync(file, "---\ntype: research\n---\n\nBody\n")
+
+    const result = auditDocsFrontmatter(root, { fix: true, today: '2026-05-06' })
+
+    expect(result.ok).toBe(true)
+    expect(readFileSync(file, 'utf8')).toContain("type: research\nlast_updated: '2026-05-06'")
+    expect(readFileSync(file, 'utf8')).not.toContain('type: guide')
+  })
+
+  test('auditDocsFrontmatter --fix is idempotent', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'docs'), { recursive: true })
+    const file = join(root, 'docs', 'guide.md')
+    writeFileSync(file, '# Hello\n')
+
+    auditDocsFrontmatter(root, { fix: true, today: '2026-05-06' })
+    const once = readFileSync(file, 'utf8')
+    auditDocsFrontmatter(root, { fix: true, today: '2026-05-06' })
+    const twice = readFileSync(file, 'utf8')
+
+    expect(twice).toBe(once)
   })
 
   test('auditCatalogDrift returns ok for empty workspace', () => {

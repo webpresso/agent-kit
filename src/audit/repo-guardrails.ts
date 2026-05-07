@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join, relative, resolve, sep } from 'node:path'
 
 import { validateLoreTrailers } from './commit-message-lore.js'
@@ -23,6 +23,8 @@ export interface DocsFrontmatterOptions {
   docsRoot?: string
   allowedTypes?: readonly string[]
   folderTypes?: Readonly<Record<string, string>>
+  fix?: boolean
+  today?: string
 }
 
 export interface BlueprintLifecycleOptions {
@@ -97,7 +99,7 @@ export function auditCatalogDrift(
   const violations: RepoAuditViolation[] = []
 
   if (!existsSync(workspacePath)) {
-    return result('Catalog drift', 0, [])
+    return result('Catalog drift — single package (no workspace file)', 0, [])
   }
 
   const workspaceYaml = readFileSync(workspacePath, 'utf8')
@@ -219,6 +221,7 @@ export function auditDocsFrontmatter(
   const allowedTypes = new Set(options.allowedTypes ?? DEFAULT_DOC_TYPES)
   const folderTypes = options.folderTypes ?? DEFAULT_DOC_FOLDER_TYPES
   const violations: RepoAuditViolation[] = []
+  const today = options.today ?? new Date().toISOString().slice(0, 10)
 
   if (!existsSync(docsRoot)) {
     return result('Docs frontmatter', 0, [])
@@ -226,12 +229,25 @@ export function auditDocsFrontmatter(
 
   const markdownFiles = walkMarkdownFiles(docsRoot)
   for (const file of markdownFiles) {
-    const frontmatter = parseFrontmatter(readFileSync(file, 'utf8'))
+    let markdown = readFileSync(file, 'utf8')
+    const folder = relativePath(docsRoot, file).split('/')[0] ?? ''
+    const inferredType = folderTypes[folder] ?? 'guide'
+
+    if (options.fix) {
+      const fixed = applyDocsFrontmatterFix(markdown, {
+        inferredType,
+        today,
+      })
+      if (fixed !== markdown) {
+        writeFileSync(file, fixed, 'utf8')
+        markdown = fixed
+      }
+    }
+
+    const frontmatter = parseFrontmatter(markdown)
     const relativeFile = relativePath(root, file)
     const type = frontmatter.type
     const lastUpdated = frontmatter.last_updated
-
-    const folder = relativePath(docsRoot, file).split('/')[0] ?? ''
 
     if (!type) {
       violations.push({
@@ -292,10 +308,10 @@ export function auditBlueprintLifecycle(
       }
 
       const frontmatter = parseFrontmatter(readFileSync(overviewPath, 'utf8'))
-      if (frontmatter.type !== 'blueprint') {
+      if (frontmatter.type !== 'blueprint' && frontmatter.type !== 'parent-roadmap') {
         violations.push({
           file: relativePath(root, overviewPath),
-          message: 'Blueprint overview must use type: blueprint',
+          message: 'Blueprint overview must use type: blueprint or parent-roadmap',
         })
       }
 
@@ -459,6 +475,33 @@ export function parseFrontmatter(markdown: string): Record<string, string> {
   }
 
   return data
+}
+
+function applyDocsFrontmatterFix(
+  markdown: string,
+  options: { inferredType: string; today: string },
+): string {
+  const frontmatter = parseFrontmatter(markdown)
+  const needsType = !frontmatter.type
+  const needsLastUpdated = !frontmatter.last_updated
+  if (!needsType && !needsLastUpdated) return markdown
+
+  const lines: string[] = []
+  if (needsType) {
+    lines.push('# TODO: classify type — auto-set by ak')
+    lines.push(`type: ${options.inferredType}`)
+  }
+  if (needsLastUpdated) {
+    lines.push(`last_updated: '${options.today}'`)
+  }
+
+  if (!markdown.startsWith('---')) {
+    return `---\n${lines.join('\n')}\n---\n\n${markdown}`
+  }
+
+  const end = markdown.indexOf('\n---', 3)
+  if (end === -1) return markdown
+  return `${markdown.slice(0, end)}\n${lines.join('\n')}${markdown.slice(end)}`
 }
 
 function auditLegacyOmxPlans(root: string): {

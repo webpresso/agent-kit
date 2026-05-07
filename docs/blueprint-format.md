@@ -31,7 +31,7 @@ alongside as `research/*.md`, `data/*.json`, etc.
 ```yaml
 ---
 # Required
-type: blueprint                    # must be literal "blueprint"
+type: blueprint                    # "blueprint" or "parent-roadmap"
 status: planned                    # state (see lifecycle.md)
 complexity: M                      # XS | S | M | L | XL
 
@@ -67,6 +67,50 @@ max_parallel_agents: 3
 Full schema lives in `@webpresso/agent-kit/blueprint` as a Zod schema
 (`planFrontmatterSchema`). The CLI validates frontmatter on every
 `ak blueprint audit` run.
+
+## Blueprint vs parent-roadmap
+
+`type: blueprint` is the executable unit: it owns tasks, acceptance checks,
+implementation scope, and verification evidence.
+
+`type: parent-roadmap` is the strategic grouping unit: it gives `/pll` and
+operators a queue of child blueprints to choose from. Parent roadmaps should
+not hide executable work inside themselves; they should point to child
+blueprints in their execution-wave map and let each child own its detailed
+task list.
+
+```yaml
+---
+type: parent-roadmap
+status: planned
+complexity: M
+created: 2026-05-06
+last_updated: 2026-05-06
+---
+```
+
+```markdown
+## Quick Reference (Execution Waves)
+
+| Wave | Blueprints | Dependencies |
+| --- | --- | --- |
+| Wave 0 | [api-hardening](../planned/api-hardening/_overview.md) | None |
+| Wave 1 | [ui-polish](../planned/ui-polish/_overview.md) | api-hardening |
+```
+
+Child blueprints link back with `parent_roadmap:`:
+
+```yaml
+parent_roadmap: q2-platform-roadmap
+```
+
+Validation and discovery surfaces:
+
+- `ak blueprint new "<goal>" --complexity M --type parent-roadmap` scaffolds a roadmap stub.
+- `ak blueprint list` shows `ROADMAP`, nested `CHILD`, and fallback `ORPHANS` rows.
+- `ak roadmap list` lists only roadmap-layer entries.
+- `ak roadmap show <slug>` shows a single parent-roadmap.
+- `ak audit roadmap-links` checks bidirectional roadmap/child references; add `--strict` to fail unresolved orphan parents.
 
 ## Body structure
 

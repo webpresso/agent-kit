@@ -54,6 +54,7 @@
     "#docs-linter/*": "./src/docs-linter/*.ts",
     "#hooks/*": "./src/hooks/*.ts",
     "#mcp/*": "./src/mcp/*.ts",
+    "#content/*": "./src/content/*.ts",
     "#*": "./src/blueprint/*.ts"
   },
   "exports": {

@@ -38,6 +38,16 @@ Use this skill when the user invokes `/pll` or asks for Blueprint-aware parallel
    - Treat `/pll` as the interactive/manual front door for the same control-plane contract that `ak blueprint exec` uses.
    - Reuse the same backend names, progress bridge semantics, and truthfulness rules.
 
+
+## Roadmap-Aware Lane Picking
+
+When no explicit task list is supplied, ground lane selection in `ak blueprint list` before inventing work:
+
+1. Prefer active `ROADMAP` rows and pick the next `planned` `CHILD` row whose `depends_on:` chain is satisfied.
+2. Treat `ORPHANS` as fallback work only when no roadmap child is actionable.
+3. Keep the heuristic discoverable and auditable: `ak audit roadmap-links` checks bidirectional roadmap/child links, while `ak audit blueprint-lifecycle` checks lifecycle placement.
+4. If command output changes, update `/pll` guidance and the shared blueprint output contract together.
+
 ## Concurrency Limits
 
 | Scope | Guidance |

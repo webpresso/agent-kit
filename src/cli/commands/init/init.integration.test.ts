@@ -1,6 +1,6 @@
-import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, relative } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const spawnSyncMock = vi.fn(() => ({
@@ -30,6 +30,41 @@ const CATALOG_DIR = resolveCatalogDir()
 const PACKAGE_ROOT = dirname(CATALOG_DIR)
 const HAS_TANSTACK = existsSync(join(CATALOG_DIR, 'agent', 'skills', 'tanstack-query'))
 const HAS_REACT_DOCTOR = existsSync(join(CATALOG_DIR, 'agent', 'skills', 'react-doctor'))
+
+/**
+ * Walk the repo (skipping node_modules + .git) and return any `.new` sidecar
+ * paths. Wave-3 expects ZERO sidecars from rule/skill surfaces.
+ */
+function findSidecars(root: string): string[] {
+  const out: string[] = []
+  const stack: string[] = [root]
+  while (stack.length > 0) {
+    const dir = stack.pop() as string
+    let entries: string[]
+    try {
+      entries = readdirSync(dir)
+    } catch {
+      continue
+    }
+    for (const name of entries) {
+      if (name === 'node_modules' || name === '.git') continue
+      const abs = join(dir, name)
+      let st: ReturnType<typeof lstatSync>
+      try {
+        st = lstatSync(abs)
+      } catch {
+        continue
+      }
+      if (st.isSymbolicLink()) continue
+      if (st.isDirectory()) {
+        stack.push(abs)
+      } else if (st.isFile() && name.endsWith('.new')) {
+        out.push(relative(root, abs))
+      }
+    }
+  }
+  return out.toSorted()
+}
 
 function makeTempRepo(): string {
   const dir = join(
@@ -114,7 +149,8 @@ describe('ak init end-to-end', () => {
     const code = await runInit({ cwd: repo, yes: true })
     expect(code).toBe(0)
 
-    // .agent structure
+    // .agent structure (existsSync follows symlinks; .agent/skills entries
+    // are now symlinks into the catalog populated by runUnifiedSync)
     expect(existsSync(join(repo, '.agent', 'commands', 'verify.md'))).toBe(true)
     expect(existsSync(join(repo, '.agent', 'skills', 'verify', 'SKILL.md'))).toBe(true)
     expect(existsSync(join(repo, '.agent', 'skills', 'testing-philosophy', 'SKILL.md'))).toBe(true)
@@ -125,7 +161,24 @@ describe('ak init end-to-end', () => {
     expect(existsSync(join(repo, '.agent', 'rules'))).toBe(true)
     expect(existsSync(join(repo, '.agent', 'guides'))).toBe(true)
 
-    // No tier-3 skills installed by default
+    // .agent/rules/ is populated as symlinks (one per catalog rule)
+    const ruleEntries = readdirSync(join(repo, '.agent', 'rules'))
+    expect(ruleEntries.some((n) => n.endsWith('.md'))).toBe(true)
+    const sampleRule = ruleEntries.find((n) => n.endsWith('.md')) as string
+    const sampleRuleAbs = join(repo, '.agent', 'rules', sampleRule)
+    expect(lstatSync(sampleRuleAbs).isSymbolicLink()).toBe(true)
+
+    // Wave-3: consumer-owned canonical dirs
+    expect(existsSync(join(repo, 'agent-rules', '.gitkeep'))).toBe(true)
+    expect(existsSync(join(repo, 'agent-rules', 'README.md'))).toBe(true)
+    expect(existsSync(join(repo, 'agent-skills', '.gitkeep'))).toBe(true)
+    expect(existsSync(join(repo, 'agent-skills', 'README.md'))).toBe(true)
+
+    // Wave-3: zero `.new` sidecars under derived rule/skill surfaces
+    const sidecars = findSidecars(repo)
+    expect(sidecars).toEqual([])
+
+    // No tier-3 skills installed by default — unified sync filters by allowedSkillSlugs
     expect(existsSync(join(repo, '.agent', 'skills', 'tanstack-query'))).toBe(false)
 
     // monorepo-navigation is rendered from the template
@@ -189,6 +242,7 @@ describe('ak init end-to-end', () => {
     expect(existsSync(join(repo, '.agent'))).toBe(false)
     expect(existsSync(join(repo, 'AGENTS.md'))).toBe(false)
     expect(existsSync(join(repo, '.agent-kitrc.json'))).toBe(false)
+    expect(existsSync(join(repo, '.claude', 'hooks'))).toBe(false)
   })
 
   it('falls back to the currently executing package when the consumer package is not installed yet', async () => {
@@ -220,12 +274,16 @@ describe('ak init end-to-end', () => {
     const code = await runInit({ cwd: repo, yes: true })
     expect(code).toBe(0)
 
-    // Symlinker does NOT populate primary IDE dirs — distributed via native channels.
-    // (.claude/settings.json IS written by the agent-hooks scaffolder, but no symlinked commands/skills)
+    // Wave-3: unified sync now populates per-IDE rule/skill surfaces.
+    // Commands surfaces (`.claude/commands`) remain unwritten — covered by
+    // the Claude Code plugin, not by ak setup.
     expect(existsSync(join(repo, '.claude', 'commands'))).toBe(false)
-    expect(existsSync(join(repo, '.claude', 'skills'))).toBe(false)
-    expect(existsSync(join(repo, '.cursor'))).toBe(false)
-    expect(existsSync(join(repo, '.windsurf'))).toBe(false)
+    // .claude/skills now hosts symlinked rules + skills via unified sync
+    expect(existsSync(join(repo, '.claude', 'skills'))).toBe(true)
+    // .cursor/rules now hosts copied rules (.mdc)
+    expect(existsSync(join(repo, '.cursor', 'rules'))).toBe(true)
+    // .windsurf/skills now hosts copied skills
+    expect(existsSync(join(repo, '.windsurf', 'skills'))).toBe(true)
     expect(existsSync(join(repo, '.opencode'))).toBe(false)
     // agent-hooks scaffolder writes hook config
     expect(existsSync(join(repo, '.claude', 'settings.json'))).toBe(true)
@@ -265,13 +323,20 @@ describe('ak init end-to-end', () => {
 
   it('is idempotent: second run reports identical results', async () => {
     await runInit({ cwd: repo, yes: true, with: 'tanstack-query' })
+    const firstConfig = readFileSync(join(repo, '.agent-kitrc.json'), 'utf8')
     const code = await runInit({ cwd: repo, yes: true })
     expect(code).toBe(0)
+    const secondConfig = readFileSync(join(repo, '.agent-kitrc.json'), 'utf8')
+    expect(secondConfig).toBe(firstConfig)
     // Second run reads config and re-applies — config should still list the
     // Tier-3 skill the first run opted into.
-    const rc = JSON.parse(readFileSync(join(repo, '.agent-kitrc.json'), 'utf8')) as {
+    const rc = JSON.parse(secondConfig) as {
       installed: { tier3Skills: string[] }
     }
     expect(rc.installed.tier3Skills).toContain('tanstack-query')
+
+    // Wave-3: second invocation produces no `.new` sidecars under
+    // any rule/skill surface.
+    expect(findSidecars(repo)).toEqual([])
   })
 })

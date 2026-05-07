@@ -22,6 +22,7 @@ interface BlueprintFrontmatter {
   created?: string | Date
   progress?: string
   completed_at?: string | Date
+  parent_roadmap?: string
   depends_on?: string[]
   tags?: string[]
 }
@@ -64,6 +65,7 @@ export interface Blueprint {
   created?: string
   progress?: string
   completedAt?: string
+  parentRoadmap?: string
   dependsOn?: string[]
   tags?: string[]
   tasks: Task[]
@@ -119,6 +121,8 @@ export function parseBlueprint(markdown: string, name: string): Blueprint {
     ...(created && { created }),
     ...(typeof data.progress === 'string' && data.progress.trim() && { progress: data.progress }),
     ...(completedAt && { completedAt }),
+    ...(typeof data.parent_roadmap === 'string' &&
+      data.parent_roadmap.trim() && { parentRoadmap: data.parent_roadmap.trim() }),
     ...(data.depends_on && data.depends_on.length > 0 && { dependsOn: data.depends_on }),
     ...(data.tags && data.tags.length > 0 && { tags: data.tags }),
     tasks,

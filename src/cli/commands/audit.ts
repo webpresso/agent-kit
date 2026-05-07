@@ -36,6 +36,10 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     (await import('#audit/repo-guardrails')).auditBlueprintLifecycle(root, {
       includeLegacyOmx: options.legacyOmx,
     }),
+  'roadmap-links': async (root, options) =>
+    (await import('#audit/roadmap-links')).auditRoadmapLinks(root, {
+      failOrphans: options.strict,
+    }),
   'docs-frontmatter': async (root, options) =>
     (await import('#audit/repo-guardrails')).auditDocsFrontmatter(root, {
       docsRoot: options.docsRoot,
@@ -53,6 +57,31 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
       changedOnly: options.changedOnly,
       strict: options.strict,
     }),
+  rules: async (root) => runContentAudit(root, 'rule'),
+  skills: async (root) => runContentAudit(root, 'skill'),
+}
+
+async function runContentAudit(
+  root: string,
+  kind: 'rule' | 'skill',
+): Promise<RepoAuditResult> {
+  const { auditContent } = await import('../../content/audit.js')
+  const { resolvePackageAsset } = await import('#utils/package-assets')
+  const catalogDir = resolvePackageAsset('catalog/agent')
+  const result = auditContent({ catalogDir, consumerRoot: root, kind })
+  const violations = result.findings.map((f) => ({
+    file: f.filePath,
+    message:
+      f.severity === 'warning'
+        ? `[warn] ${kind}:${f.slug} — ${f.message}`
+        : `${kind}:${f.slug} — ${f.message}`,
+  }))
+  return {
+    ok: result.passed,
+    title: kind === 'rule' ? 'Consumer rules audit' : 'Consumer skills audit',
+    checked: result.findings.length,
+    violations,
+  }
 }
 
 const REPO_AUDIT_KINDS = Object.keys(REPO_AUDIT_REGISTRY)

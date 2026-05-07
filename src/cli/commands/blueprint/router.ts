@@ -90,7 +90,10 @@ interface BlueprintNewOptions {
   json?: boolean
   projectRoot?: string
   templatePath?: string
+  type?: string
 }
+
+type BlueprintDocumentType = 'blueprint' | 'parent-roadmap'
 
 export interface BlueprintCommandOptions
   extends BlueprintAuditOptions, BlueprintMoveOptions, BlueprintListOptions, BlueprintNewOptions {
@@ -336,15 +339,22 @@ export async function createBlueprint(
 ): Promise<CreateBlueprintResult> {
   const projectRoot = resolveProjectRoot(options.projectRoot)
   const complexity = normalizeBlueprintComplexity(options.complexity)
+  const type = normalizeBlueprintType(options.type)
   const service = new BlueprintCreationService(projectRoot, {
     templatePath: options.templatePath ?? resolveRepoBlueprintTemplatePath(),
   })
-  const created = await service.create({ complexity, goal })
+  const created = await service.create({ complexity, goal, type })
 
   return {
     ...created,
-    message: `Created blueprint draft/${created.slug}.`,
+    message: `Created ${created.type} draft/${created.slug}.`,
   }
+}
+
+function normalizeBlueprintType(type?: string): BlueprintDocumentType {
+  if (!type) return 'blueprint'
+  if (type === 'blueprint' || type === 'parent-roadmap') return type
+  throw new Error(`Invalid blueprint type: ${type}. Valid types: blueprint, parent-roadmap`)
 }
 
 export async function executeBlueprint(
@@ -653,6 +663,7 @@ export function registerBlueprintRouter(cli: CAC): void {
     .option('--json', 'Print JSON output')
     .option('--no-tui', 'Use plain terminal output')
     .option('--complexity <complexity>', 'Blueprint complexity (XS|S|M|L|XL)')
+    .option('--type <type>', 'Blueprint type (blueprint|parent-roadmap)')
     .option('--force-recovery', 'Bypass lifecycle guards for blueprint move')
     .option('--reason <text>', 'Blocked reason for task block')
     .option('--staged', 'Audit only staged files')

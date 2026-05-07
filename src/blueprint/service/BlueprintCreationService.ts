@@ -9,6 +9,8 @@ import { type Blueprint, parseBlueprint } from '#core/parser'
 import { scanBlueprintDirectory } from '#service/scanner'
 import { resolvePackageAsset } from '#utils/package-assets'
 
+type BlueprintDocumentType = 'blueprint' | 'parent-roadmap'
+
 const RESERVED_BLUEPRINT_SLUGS = new Set([
   'draft',
   'planned',
@@ -23,6 +25,7 @@ const DEFAULT_TEMPLATE_PATH = resolvePackageAsset('docs/templates/blueprint.md')
 export interface CreateBlueprintDraftInput {
   complexity: PlanComplexity
   goal: string
+  type?: BlueprintDocumentType
 }
 
 export interface CompiledBlueprintDraft {
@@ -35,6 +38,7 @@ export interface CompiledBlueprintDraft {
   slug: string
   status: 'draft'
   title: string
+  type: BlueprintDocumentType
 }
 
 export interface CreatedBlueprintDraft extends CompiledBlueprintDraft {
@@ -126,9 +130,51 @@ function prepareTemplate(template: string): string {
   )
 }
 
+function buildParentRoadmapMarkdown(input: {
+  complexity: PlanComplexity
+  date: string
+  goal: string
+  outputPath: string
+  slug: string
+  title: string
+}): string {
+  return [
+    '---',
+    'type: parent-roadmap',
+    'status: draft',
+    `complexity: ${input.complexity}`,
+    `created: '${input.date}'`,
+    `last_updated: '${input.date}'`,
+    '---',
+    '',
+    `# ${input.title}`,
+    '',
+    `**Goal:** ${input.goal}`,
+    '',
+    '## Planning Summary',
+    '',
+    `- Goal input: \`${input.goal}\``,
+    `- Complexity: \`${input.complexity}\``,
+    `- Draft slug: \`${input.slug}\``,
+    `- Output path: \`${input.outputPath}\``,
+    `- Creation command: \`ak blueprint new \"${input.goal}\" --complexity ${input.complexity} --type parent-roadmap\``,
+    '',
+    '## Architecture Overview',
+    '',
+    '- Parent roadmap scaffold. Add child blueprints and sequencing after creation.',
+    '',
+    '## Verification Gates',
+    '',
+    '- Parses as `type: parent-roadmap`.',
+    '- Surfaces in roadmap-aware list/show commands.',
+    '',
+  ].join('\n')
+}
+
 function validateGeneratedDraft(
   markdown: string,
   slug: string,
+  type: BlueprintDocumentType,
 ): ValidationResult & { blueprint?: Blueprint } {
   let blueprint: Blueprint
 
@@ -155,7 +201,7 @@ function validateGeneratedDraft(
     }
   }
 
-  if (blueprint.tasks.length === 0) {
+  if (type === 'blueprint' && blueprint.tasks.length === 0) {
     return {
       error: 'Generated blueprint must include at least one executable task.',
       valid: false,
@@ -199,6 +245,7 @@ export class BlueprintCreationService {
 
   async compileDraft(input: CreateBlueprintDraftInput): Promise<CompiledBlueprintDraft> {
     const goal = normalizeGoal(input.goal)
+    const type = input.type ?? 'blueprint'
     const baseSlug = deriveSlug(goal)
     assertGoalProducesUsableSlug(goal, baseSlug)
 
@@ -213,22 +260,33 @@ export class BlueprintCreationService {
       '_overview.md',
     )
     const relativeFilePath = toPortableRelativePath(this.projectRoot, outputPath)
-    const template = prepareTemplate(await readFile(this.templatePath, 'utf-8'))
     const date = formatDate(this.now())
-
-    const replacements: ReadonlyArray<readonly [string, string]> = [
-      ['{{date}}', date],
-      ['{{complexity}}', input.complexity],
-      ['{{title}}', title],
-      ['{{description}}', goal],
-      ['{{slug}}', slug],
-      ['{{output_path}}', relativeFilePath],
-    ]
-    const markdown = replacements.reduce(
-      (currentTemplate, [placeholder, value]) =>
-        replacePlaceholder(currentTemplate, placeholder, value),
-      template,
-    )
+    const template =
+      type === 'blueprint'
+        ? prepareTemplate(await readFile(this.templatePath, 'utf-8'))
+        : undefined
+    const markdown =
+      type === 'parent-roadmap'
+        ? buildParentRoadmapMarkdown({
+            complexity: input.complexity,
+            date,
+            goal,
+            outputPath: relativeFilePath,
+            slug,
+            title,
+          })
+        : ([
+            ['{{date}}', date],
+            ['{{complexity}}', input.complexity],
+            ['{{title}}', title],
+            ['{{description}}', goal],
+            ['{{slug}}', slug],
+            ['{{output_path}}', relativeFilePath],
+          ] as const).reduce(
+            (currentTemplate, [placeholder, value]) =>
+              replacePlaceholder(currentTemplate, placeholder, value),
+            template ?? '',
+          )
 
     parseBlueprint(markdown, slug)
 
@@ -242,6 +300,7 @@ export class BlueprintCreationService {
       slug,
       status: 'draft',
       title,
+      type,
     }
   }
 
@@ -260,7 +319,7 @@ export class BlueprintCreationService {
       await writeFile(tempPath, draft.markdown, 'utf-8')
 
       const writtenMarkdown = await readFile(tempPath, 'utf-8')
-      const validation = validateGeneratedDraft(writtenMarkdown, draft.slug)
+      const validation = validateGeneratedDraft(writtenMarkdown, draft.slug, draft.type)
       if (!validation.valid || !validation.blueprint) {
         throw new Error(validation.error ?? 'Generated blueprint failed validation.')
       }

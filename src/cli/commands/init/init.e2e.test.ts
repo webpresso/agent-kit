@@ -216,7 +216,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.stdout).toContain('playwright-mcp')
       expect(r.stdout).toContain('rtk')
       expect(r.stdout).toContain('gstack')
-      expect(r.stdout).toContain("'ak skills list'")
+      expect(r.stdout).toContain("'ak skill list'")
     })
   },
 )

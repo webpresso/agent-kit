@@ -112,6 +112,9 @@ npx ak setup --dry-run
 Shows the diff `ak setup` would write, then exits. Useful before your
 first real run.
 
+This preview mode is write-free: it does not create scaffold files, helper hook
+scripts, IDE config files, or spawn external preset installers.
+
 ## Write your first blueprint
 
 ```bash

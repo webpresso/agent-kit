@@ -19,6 +19,7 @@ export { createMockFileSystem, PackageGraph, realFileSystem } from './dag/local/
 export {
   type AcceptanceCriteria,
   type Blueprint,
+  buildRoadmapModel,
   buildBlueprintProgressBridgeState,
   type BlueprintStatus,
   type BlueprintTaskStatus,
@@ -44,6 +45,10 @@ export {
   planStatusSchema,
   projectBlueprintLifecycleFromRuntime,
   resolveBlueprintProgressBridgePath,
+  type RoadmapModel,
+  type RoadmapNode,
+  type RoadmapRollup,
+  type RoadmapLike,
   serializeBlueprint,
   type Task,
   taskStatusSchema,

@@ -1,4 +1,5 @@
 import type { Blueprint, BlueprintAuditResult, BlueprintSummary } from '#local'
+import { buildRoadmapModel } from '#local'
 import type {
   CreateBlueprintResult,
   ExecuteBlueprintResult,
@@ -10,7 +11,7 @@ const BLUEPRINT_HELP = [
   '',
   'Commands:',
   '  list [status]',
-  '  new <goal> --complexity <XS|S|M|L|XL>',
+  '  new <goal> --complexity <XS|S|M|L|XL> [--type <blueprint|parent-roadmap>]',
   '  show <slug>',
   '  exec <slug>',
   '  exec status <slug>',
@@ -42,13 +43,65 @@ export function formatBlueprintSummaries(summaries: BlueprintSummary[]): string 
     return 'No blueprints found.'
   }
 
-  return summaries
-    .map((summary) => {
-      const label = summary.type === 'parent-roadmap' ? 'ROADMAP' : 'BLUEPRINT'
+  const hasRoadmaps = summaries.some((summary) => summary.type === 'parent-roadmap')
+  if (!hasRoadmaps) {
+    return summaries
+      .map((summary) => {
+        const label = summary.type === 'parent-roadmap' ? 'ROADMAP' : 'BLUEPRINT'
+        const malformedSuffix = summary.malformed ? ' malformed=yes' : ''
+        return `${label} ${summary.name} status=${summary.status} complexity=${summary.complexity} progress=${summary.progress}% tasks=${summary.taskCount}${malformedSuffix}`
+      })
+      .join('\n')
+  }
+
+  const model = buildRoadmapModel(summaries)
+  const attachedChildren = new Set(
+    model.roadmaps.flatMap((roadmap) => roadmap.children.map((child) => child.name)),
+  )
+  const standaloneBlueprints = summaries
+    .filter(
+      (summary) =>
+        summary.type !== 'parent-roadmap' &&
+        !summary.parentRoadmap &&
+        !attachedChildren.has(summary.name),
+    )
+    .toSorted((left, right) => left.name.localeCompare(right.name))
+
+  const lines: string[] = []
+
+  for (const roadmap of model.roadmaps) {
+    const malformedSuffix = 'malformed' in roadmap.roadmap && roadmap.roadmap.malformed ? ' malformed=yes' : ''
+    lines.push(
+      `ROADMAP ${roadmap.roadmap.name} status=${roadmap.roadmap.status} complexity=${(roadmap.roadmap as BlueprintSummary).complexity} children=${roadmap.rollup.children} done=${roadmap.rollup.done} in-progress=${roadmap.rollup.inProgress} planned=${roadmap.rollup.planned} draft=${roadmap.rollup.draft}${malformedSuffix}`,
+    )
+    for (const child of roadmap.children) {
+      const summary = child as BlueprintSummary
+      const childMalformed = summary.malformed ? ' malformed=yes' : ''
+      lines.push(
+        `  CHILD ${summary.name} status=${summary.status} complexity=${summary.complexity} progress=${summary.progress}% tasks=${summary.taskCount} parent=${roadmap.roadmap.name}${childMalformed}`,
+      )
+    }
+  }
+
+  for (const summary of standaloneBlueprints) {
+    const malformedSuffix = summary.malformed ? ' malformed=yes' : ''
+    lines.push(
+      `BLUEPRINT ${summary.name} status=${summary.status} complexity=${summary.complexity} progress=${summary.progress}% tasks=${summary.taskCount}${malformedSuffix}`,
+    )
+  }
+
+  if (model.orphanChildren.length > 0) {
+    lines.push('ORPHANS')
+    for (const orphan of model.orphanChildren) {
+      const summary = orphan as BlueprintSummary
       const malformedSuffix = summary.malformed ? ' malformed=yes' : ''
-      return `${label} ${summary.name} status=${summary.status} complexity=${summary.complexity} progress=${summary.progress}% tasks=${summary.taskCount}${malformedSuffix}`
-    })
-    .join('\n')
+      lines.push(
+        `  BLUEPRINT ${summary.name} status=${summary.status} complexity=${summary.complexity} progress=${summary.progress}% tasks=${summary.taskCount} parent=${summary.parentRoadmap}${malformedSuffix}`,
+      )
+    }
+  }
+
+  return lines.join('\n')
 }
 
 export function formatBlueprintDetails(result: ShowBlueprintResult): string {

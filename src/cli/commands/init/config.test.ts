@@ -46,7 +46,7 @@ describe('config', () => {
     expect(readBack?.scripts['setup-agent']).toBe('pnpm exec ak setup')
   })
 
-  it('mergeConfig unions allowlists and keeps latest timestamp', () => {
+  it('mergeConfig unions allowlists and tolerates optional legacy lastInit', () => {
     const existing = {
       ...defaultConfig(),
       installed: { tier3Skills: ['react-doctor'] },
