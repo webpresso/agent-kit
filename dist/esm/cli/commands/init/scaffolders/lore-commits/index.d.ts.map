@@ -1,0 +1,1 @@
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../../../../../../src/cli/commands/init/scaffolders/lore-commits/index.ts"],"names":[],"mappings":"AAWA,OAAO,EAAE,KAAK,YAAY,EAAE,KAAK,WAAW,EAAmB,MAAM,0BAA0B,CAAA;AAM/F,MAAM,WAAW,wBAAwB;IACvC,QAAQ,EAAE,MAAM,CAAA;IAChB,OAAO,EAAE,YAAY,CAAA;CACtB;AAED;;;;GAIG;AACH,wBAAgB,mBAAmB,CAAC,KAAK,EAAE,wBAAwB,GAAG,WAAW,CAGhF"}
