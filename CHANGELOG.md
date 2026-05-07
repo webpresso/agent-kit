@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.7.0
+
+### Minor Changes
+
+- 2db1b01: Add optional `cwd` param to all MCP dev-workflow tools: `ak_test`, `ak_lint`,
+  `ak_typecheck`, `ak_qa`, `ak_e2e`, `ak_audit`.
+
+  The MCP server inherits the cwd of the Claude Code session that spawned it.
+  When a session was opened in one repo and called an `ak_*` tool against a
+  sibling repo, the backend ran against the session's cwd and failed (e.g.
+  `pnpm test` in a yarn-configured tree returned "This project is configured
+  to use yarn"; `tsc --noEmit` with no tsconfig at cwd dumped `--help`).
+
+  `cwd` is a walk-start: the resolver still walks up to find the workspace
+  root (pnpm-workspace.yaml / package.json / Justfile), so callers can pass
+  any subdir of the target repo and get correct backend selection. `ak_qa`
+  forwards `cwd` to all three sub-tools so a composite QA run from the wrong
+  session cwd works in one call. `ak_audit` accepts `cwd` as an alias for the
+  existing `directory` param.
+
+  Backwards-compatible: omitting `cwd` preserves prior behavior
+  (`process.cwd()`).
+
+### Patch Changes
+
+- 2db1b01: Fix the rtk scaffolder so `ak setup` actually installs rtk.
+
+  The previous scaffolder shipped two unverified guesses:
+
+  1. `brew install rtk-ai/rtk/rtk` via `tap "rtk-ai/rtk"` — that tap does not
+     exist (`https://github.com/rtk-ai/homebrew-rtk` returns 404), so every
+     `ak setup` on macOS hit `rtk-not-found` and silently degraded. The real
+     formula is in homebrew-core: `brew install rtk` (verified against
+     `Formula/r/rtk.rb` v0.39.0). Brewfile entries in consumer repos that
+     followed the same wrong path also failed `brew bundle install`.
+  2. `RTK_HOOK_EXCLUDE_COMMANDS` env var passed to `rtk init` — rtk does not
+     read this env var (verified against the rtk binary's strings table). The
+     env var was a no-op. Real exclusion needs the proper rtk mechanism (TOML
+     filters or hook matcher) and is left as a follow-up.
+
+  Also fixes an integration-test PATH leak that masked the bug on machines
+  where rtk was not installed locally.
+
 ## 0.6.0
 
 ### Minor Changes
