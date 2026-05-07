@@ -1,0 +1,1 @@
+../../.agent/rules/ts-coding-conventions.md

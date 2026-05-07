@@ -1,0 +1,1 @@
+../../catalog/agent/rules/repo-restrictions.md
