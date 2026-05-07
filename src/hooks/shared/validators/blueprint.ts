@@ -96,7 +96,10 @@ export function parseFrontmatter(content: string): Record<string, unknown> | nul
     const colonIndex = line.indexOf(':')
     if (colonIndex === -1) continue
     const key = line.slice(0, colonIndex).trim()
-    const value = line.slice(colonIndex + 1).trim().replace(/^["']|["']$/g, '')
+    const value = line
+      .slice(colonIndex + 1)
+      .trim()
+      .replace(/^["']|["']$/g, '')
     result[key] = value
   }
   return Object.keys(result).length > 0 ? result : null

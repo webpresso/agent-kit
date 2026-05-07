@@ -186,9 +186,7 @@ async function handleShow(args: HandlerArgs): Promise<DispatchResult> {
   const chosen = matches.find((r) => r.source === 'consumer') ?? matches[0]!
 
   const fm = chosen.rawFrontmatter as Record<string, unknown>
-  const fmLines = Object.entries(fm).map(
-    ([key, value]) => `${key}: ${JSON.stringify(value)}`,
-  )
+  const fmLines = Object.entries(fm).map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
   const stdout = [
     `# Source: ${chosen.source} (${chosen.filePath})`,
     '---',

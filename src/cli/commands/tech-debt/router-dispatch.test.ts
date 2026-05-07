@@ -17,7 +17,10 @@ afterEach(async () => {
 })
 
 async function mkTmpDir(): Promise<string> {
-  const dir = path.join(os.tmpdir(), `ak-tech-debt-test-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  const dir = path.join(
+    os.tmpdir(),
+    `ak-tech-debt-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  )
   await mkdir(dir, { recursive: true })
   return dir
 }
@@ -40,17 +43,13 @@ describe('executeTechDebtSubcommand', () => {
       const statusDir = path.join(tdRoot, 'accepted')
       await mkdir(statusDir, { recursive: true })
 
-      await executeTechDebtSubcommand(
-        'new',
-        ['Legacy CLI complexity'],
-        {
-          severity: 'medium',
-          category: 'complexity',
-          reviewCadence: 'quarterly',
-          status: 'accepted',
-          cwd: tmpDir,
-        },
-      )
+      await executeTechDebtSubcommand('new', ['Legacy CLI complexity'], {
+        severity: 'medium',
+        category: 'complexity',
+        reviewCadence: 'quarterly',
+        status: 'accepted',
+        cwd: tmpDir,
+      })
 
       const files = await readdir(statusDir)
       expect(files).toHaveLength(1)
@@ -81,17 +80,13 @@ describe('executeTechDebtSubcommand', () => {
         '---\ntype: tech-debt\nstatus: monitoring\n---\n',
       )
 
-      await executeTechDebtSubcommand(
-        'new',
-        ['New item'],
-        {
-          severity: 'low',
-          category: 'testing',
-          reviewCadence: 'monthly',
-          status: 'accepted',
-          cwd: tmpDir,
-        },
-      )
+      await executeTechDebtSubcommand('new', ['New item'], {
+        severity: 'low',
+        category: 'testing',
+        reviewCadence: 'monthly',
+        status: 'accepted',
+        cwd: tmpDir,
+      })
 
       const { readdir } = await import('node:fs/promises')
       const files = await readdir(acceptedDir)
@@ -101,17 +96,13 @@ describe('executeTechDebtSubcommand', () => {
 
     it('exits non-zero on invalid severity', async () => {
       await expect(
-        executeTechDebtSubcommand(
-          'new',
-          ['Test'],
-          {
-            severity: 'wat' as 'medium',
-            category: 'testing',
-            reviewCadence: 'monthly',
-            status: 'accepted',
-            cwd: tmpDir,
-          },
-        ),
+        executeTechDebtSubcommand('new', ['Test'], {
+          severity: 'wat' as 'medium',
+          category: 'testing',
+          reviewCadence: 'monthly',
+          status: 'accepted',
+          cwd: tmpDir,
+        }),
       ).rejects.toThrow(/invalid severity/i)
     })
 
@@ -122,20 +113,18 @@ describe('executeTechDebtSubcommand', () => {
 
       const logs: string[] = []
       const origLog = console.log
-      console.log = (...args: unknown[]) => { logs.push(args.join(' ')) }
+      console.log = (...args: unknown[]) => {
+        logs.push(args.join(' '))
+      }
       try {
-        await executeTechDebtSubcommand(
-          'new',
-          ['Dry run item'],
-          {
-            severity: 'high',
-            category: 'security',
-            reviewCadence: 'weekly',
-            status: 'accepted',
-            dryRun: true,
-            cwd: tmpDir,
-          },
-        )
+        await executeTechDebtSubcommand('new', ['Dry run item'], {
+          severity: 'high',
+          category: 'security',
+          reviewCadence: 'weekly',
+          status: 'accepted',
+          dryRun: true,
+          cwd: tmpDir,
+        })
       } finally {
         console.log = origLog
       }
@@ -151,7 +140,9 @@ describe('executeTechDebtSubcommand', () => {
     it('returns message when no tech-debt files exist', async () => {
       const logs: string[] = []
       const origLog = console.log
-      console.log = (...args: unknown[]) => { logs.push(args.join(' ')) }
+      console.log = (...args: unknown[]) => {
+        logs.push(args.join(' '))
+      }
       try {
         await executeTechDebtSubcommand('list', [], { cwd: tmpDir })
       } finally {
@@ -178,7 +169,9 @@ describe('executeTechDebtSubcommand', () => {
 
       const logs: string[] = []
       const origLog = console.log
-      console.log = (...args: unknown[]) => { logs.push(args.join(' ')) }
+      console.log = (...args: unknown[]) => {
+        logs.push(args.join(' '))
+      }
       try {
         await executeTechDebtSubcommand('list', [], { cwd: tmpDir, status: 'accepted' })
       } finally {
@@ -202,16 +195,18 @@ describe('executeTechDebtSubcommand', () => {
         `---\ntype: tech-debt\nstatus: accepted\nseverity: medium\ncategory: complexity\nreview_cadence: quarterly\nlast_reviewed: '2020-01-01'\n---\n# Overdue item\n`,
       )
 
-      await expect(
-        executeTechDebtSubcommand('review', [], { cwd: tmpDir }),
-      ).rejects.toThrow(/overdue/i)
+      await expect(executeTechDebtSubcommand('review', [], { cwd: tmpDir })).rejects.toThrow(
+        /overdue/i,
+      )
     })
 
     it('resolves path relative to --cwd', async () => {
       // With no tech-debt directory, should not throw
       const logs: string[] = []
       const origLog = console.log
-      console.log = (...args: unknown[]) => { logs.push(args.join(' ')) }
+      console.log = (...args: unknown[]) => {
+        logs.push(args.join(' '))
+      }
       try {
         await executeTechDebtSubcommand('review', [], { cwd: tmpDir })
       } finally {

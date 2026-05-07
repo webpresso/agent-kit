@@ -86,8 +86,6 @@ describe('blueprintLaunchSpecSchema', () => {
     expect(result.policy.runtimeStateRoot).toBe(DEFAULT_BLUEPRINT_RUNTIME_STATE_ROOT)
   })
 
-
-
   it('accepts a generic consumer blueprint-backed launch spec', () => {
     const result = blueprintLaunchSpecSchema.parse({
       backend: 'omx-team',

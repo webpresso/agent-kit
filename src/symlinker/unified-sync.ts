@@ -36,11 +36,7 @@ import {
 } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 
-import {
-  type ContentKind,
-  type ContentRecord,
-  loadContent,
-} from '../content/loader.js'
+import { type ContentKind, type ContentRecord, loadContent } from '../content/loader.js'
 
 import {
   DEFAULT_UNIFIED_CONSUMERS,
@@ -417,16 +413,13 @@ export function runUnifiedSync(options: UnifiedSyncOptions): UnifiedSyncResult {
 
   const filteredRecords = options.allowedSkillSlugs
     ? loaded.records.filter(
-        (r) =>
-          r.kind !== 'skill' ||
-          (options.allowedSkillSlugs as ReadonlySet<string>).has(r.slug),
+        (r) => r.kind !== 'skill' || (options.allowedSkillSlugs as ReadonlySet<string>).has(r.slug),
       )
     : loaded.records
 
   if (loaded.collisions.length > 0) {
     const lines = loaded.collisions.map(
-      (c) =>
-        `  - ${c.kind}/${c.slug}: canonical=${c.canonical} consumer=${c.consumer}`,
+      (c) => `  - ${c.kind}/${c.slug}: canonical=${c.canonical} consumer=${c.consumer}`,
     )
     throw new Error(
       `ak sync: slug collisions between catalog and consumer (rename consumer copy):\n${lines.join('\n')}`,

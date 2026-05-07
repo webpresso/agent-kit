@@ -9,7 +9,7 @@ export const ERR_COMMAND_HELP = [
   'Run a command and print only failure-looking output lines.',
   '',
   'Examples:',
-  "  ak err sh -c 'echo a; echo \"ERROR: x\"; echo b'",
+  '  ak err sh -c \'echo a; echo "ERROR: x"; echo b\'',
   '  ak err pnpm test',
 ].join('\n')
 
@@ -63,7 +63,10 @@ function defaultRun(command: string, args: readonly string[]): SpawnSyncReturns<
   })
 }
 
-function combineOutput(stdout: string | null | undefined, stderr: string | null | undefined): string {
+function combineOutput(
+  stdout: string | null | undefined,
+  stderr: string | null | undefined,
+): string {
   const parts = [stdout ?? '', stderr ?? ''].filter((part) => part.length > 0)
   if (parts.length === 0) return ''
   if (parts.length === 1) return parts[0] ?? ''

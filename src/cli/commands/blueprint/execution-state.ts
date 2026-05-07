@@ -45,10 +45,7 @@ export function mergeExecutionArtifacts(
   return {
     artifacts: uniqueStrings([...(current?.artifacts ?? []), ...normalized.artifacts]),
     logPath: normalized.logPath ?? current?.logPath,
-    verifications: uniqueStrings([
-      ...(current?.verifications ?? []),
-      ...normalized.verifications,
-    ]),
+    verifications: uniqueStrings([...(current?.verifications ?? []), ...normalized.verifications]),
   }
 }
 

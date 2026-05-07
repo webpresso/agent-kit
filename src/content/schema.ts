@@ -45,9 +45,7 @@ const slugSchema = z
  */
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/
 
-const isoDateSchema = z
-  .string()
-  .regex(isoDatePattern, 'date must be ISO YYYY-MM-DD')
+const isoDateSchema = z.string().regex(isoDatePattern, 'date must be ISO YYYY-MM-DD')
 
 /**
  * Scope shape — `repo`, `package:<name>`, or `path:<glob>`.
@@ -100,10 +98,9 @@ function normalizeLegacyPaths(input: unknown): unknown {
 /**
  * Cross-field check for `deprecation_date` ↔ `status`.
  */
-function refineDeprecationInterlock<T extends { status: 'active' | 'deprecated'; deprecation_date?: string }>(
-  data: T,
-  ctx: z.RefinementCtx,
-): void {
+function refineDeprecationInterlock<
+  T extends { status: 'active' | 'deprecated'; deprecation_date?: string },
+>(data: T, ctx: z.RefinementCtx): void {
   if (data.status === 'deprecated' && !data.deprecation_date) {
     ctx.addIssue({
       code: 'custom',
@@ -124,20 +121,14 @@ function refineDeprecationInterlock<T extends { status: 'active' | 'deprecated';
  * Rule frontmatter — `type: 'rule'` plus the shared shape.
  */
 export const ruleFrontmatterSchema = z
-  .preprocess(
-    normalizeLegacyPaths,
-    z.object({ type: z.literal('rule'), ...baseShape }),
-  )
+  .preprocess(normalizeLegacyPaths, z.object({ type: z.literal('rule'), ...baseShape }))
   .superRefine((data, ctx) => refineDeprecationInterlock(data, ctx))
 
 /**
  * Skill frontmatter — `type: 'skill'` plus the shared shape.
  */
 export const skillFrontmatterSchema = z
-  .preprocess(
-    normalizeLegacyPaths,
-    z.object({ type: z.literal('skill'), ...baseShape }),
-  )
+  .preprocess(normalizeLegacyPaths, z.object({ type: z.literal('skill'), ...baseShape }))
   .superRefine((data, ctx) => refineDeprecationInterlock(data, ctx))
 
 /**

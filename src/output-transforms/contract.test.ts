@@ -52,11 +52,7 @@ const TOOL_NAMES_HITTING_GENERIC = [
 ] as const
 
 // Tool names with built-in transforms (different fallback path).
-const TOOL_NAMES_HITTING_BUILTIN = [
-  'ak_typecheck',
-  'ak_test',
-  'ak_lint-oxlint',
-] as const
+const TOOL_NAMES_HITTING_BUILTIN = ['ak_typecheck', 'ak_test', 'ak_lint-oxlint'] as const
 
 describe('output-transform contract — empty input', () => {
   for (const toolName of [...TOOL_NAMES_HITTING_GENERIC, ...TOOL_NAMES_HITTING_BUILTIN]) {
@@ -93,10 +89,7 @@ describe('output-transform contract — short output, with error patterns', () =
     const result = transformFor('ak_custom', raw)
 
     expect(result.rawOutput).toBe('ERROR one\nFAIL two')
-    expect(result.failures).toEqual([
-      { message: 'ERROR one' },
-      { message: 'FAIL two' },
-    ])
+    expect(result.failures).toEqual([{ message: 'ERROR one' }, { message: 'FAIL two' }])
     expect(result.transform?.rawBytes).toBe(Buffer.byteLength(raw))
   })
 })

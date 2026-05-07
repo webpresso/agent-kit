@@ -88,7 +88,11 @@ function markerPath(sessionId: string | undefined, guidanceType: GuidanceType): 
   return join(tmpdir(), `ak-routing-guidance-${key}-${guidanceType}`)
 }
 
-function shouldThrottle(sessionId: string | undefined, guidanceType: GuidanceType, guidance: string): { guidance: string } | null {
+function shouldThrottle(
+  sessionId: string | undefined,
+  guidanceType: GuidanceType,
+  guidance: string,
+): { guidance: string } | null {
   const path = markerPath(sessionId, guidanceType)
   try {
     const fd = openSync(path, O_CREAT | O_EXCL | O_WRONLY)

@@ -64,7 +64,7 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
     return { targetPath: pkgPath, action: 'identical' }
   }
 
-  pkg['engines'] = { ...(existing ?? {}), node: engines.node }
+  pkg['engines'] = { ...existing, node: engines.node }
   pkg['packageManager'] = packageManager
 
   // Ensure husky is in devDependencies so `pnpm exec husky init` works
@@ -110,7 +110,11 @@ export function scaffoldBaseKit(input: ScaffoldBaseKitInput): MergeResult[] {
       if (tmplRel.startsWith('.husky/')) {
         const targetPath = join(repoRoot, targetRel)
         if (existsSync(targetPath)) {
-          try { chmodSync(targetPath, 0o755) } catch { /* non-fatal */ }
+          try {
+            chmodSync(targetPath, 0o755)
+          } catch {
+            /* non-fatal */
+          }
         }
       }
     }

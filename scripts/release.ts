@@ -88,9 +88,7 @@ function capture(cmd, args) {
     encoding: 'utf8',
   })
   if (result.status !== 0) {
-    throw new Error(
-      `${cmd} ${args.join(' ')} failed: ${result.stderr ?? ''}`,
-    )
+    throw new Error(`${cmd} ${args.join(' ')} failed: ${result.stderr ?? ''}`)
   }
   return (result.stdout ?? '').toString().trim()
 }
@@ -172,7 +170,9 @@ function main() {
 
     // 8. Push (or pretend to).
     if (dryRun) {
-      log(`[release] step 8/8: [dry-run] would push tag ${tag} and branch ${releaseBranch} to origin`)
+      log(
+        `[release] step 8/8: [dry-run] would push tag ${tag} and branch ${releaseBranch} to origin`,
+      )
       log('[release] [dry-run] no remote was contacted. Re-run with --no-dry-run to push.')
     } else {
       log(`[release] step 8/8: pushing tag ${tag} to origin`)

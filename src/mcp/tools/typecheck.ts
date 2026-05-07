@@ -18,10 +18,7 @@ import type { ToolDescriptor } from '#mcp/auto-discover'
 import { applyOutputTransform } from '../../output-transforms/index.js'
 
 import { resolveProjectRoot } from './_shared/project-root.js'
-import {
-  createSummaryOutputSchema,
-  createSummaryResult,
-} from './_shared/result.js'
+import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 import { isRunFailure, runCommand, type RunResult } from './_shared/run-command.js'
 
 const inputSchema = z.object({

@@ -162,10 +162,7 @@ export function syncSkills(
   return fixCount
 }
 
-export function syncPerSkillConsumer(
-  repoRoot: string,
-  config: PerSkillConsumerConfig,
-): number {
+export function syncPerSkillConsumer(repoRoot: string, config: PerSkillConsumerConfig): number {
   const skillsSource = join(repoRoot, '.agent/skills')
   if (!existsSync(skillsSource)) return 0
 
@@ -223,9 +220,7 @@ export function syncPerSkillConsumer(
     // Read source files to discover what to symlink. When the configured
     // sourceRootDir does not exist (test environments), fall back to listing
     // from .agent/skills/ so we still produce the correct structure.
-    const readSourceDir = existsSync(srcBaseDir)
-      ? srcBaseDir
-      : join(skillsSource, skill)
+    const readSourceDir = existsSync(srcBaseDir) ? srcBaseDir : join(skillsSource, skill)
     const sourceEntries = (() => {
       try {
         return readdirSync(readSourceDir)
@@ -268,12 +263,7 @@ export function syncPerSkillConsumer(
       }
 
       const relativeTarget = relative(skillLinkDir, sourcePath)
-      createSymlinkWithType(
-        relativeTarget,
-        linkPath,
-        'file',
-        `${config.dir}/${skill}/${fileName}`,
-      )
+      createSymlinkWithType(relativeTarget, linkPath, 'file', `${config.dir}/${skill}/${fileName}`)
       console.log(`  ✅ ${skill}/${fileName} → ${relativeTarget}`)
       fixCount++
     }

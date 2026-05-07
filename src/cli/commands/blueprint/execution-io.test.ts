@@ -92,7 +92,12 @@ describe('persistBlueprintExecutionMetadata', () => {
     const { fn: writer, written } = makeWriter()
     await persistBlueprintExecutionMetadata(
       '/project/blueprints/in-progress/plan/_overview.md',
-      { backend: 'omx-team', executionId: 'exec-xyz', status: 'running', updatedAt: '2024-01-01T00:00:00.000Z' },
+      {
+        backend: 'omx-team',
+        executionId: 'exec-xyz',
+        status: 'running',
+        updatedAt: '2024-01-01T00:00:00.000Z',
+      },
       writer,
       makeReader(makeBaseMarkdown()),
     )
@@ -104,7 +109,12 @@ describe('persistBlueprintExecutionMetadata', () => {
     const { fn: writer, written } = makeWriter()
     await persistBlueprintExecutionMetadata(
       '/project/plan.md',
-      { backend: 'omx-team', executionId: 'exec-xyz', status: 'running', updatedAt: '2024-01-01T00:00:00.000Z' },
+      {
+        backend: 'omx-team',
+        executionId: 'exec-xyz',
+        status: 'running',
+        updatedAt: '2024-01-01T00:00:00.000Z',
+      },
       writer,
       makeReader(makeBaseMarkdown()),
     )
@@ -339,7 +349,12 @@ describe('writeBlueprintRuntimeSnapshot', () => {
 
     await writeBlueprintRuntimeSnapshot(
       '/project',
-      { backend: 'omx-team', executionId: 'snap-abc', status: 'running' as RuntimeStateStatus, updatedAt: '2024-01-01T00:00:00.000Z' },
+      {
+        backend: 'omx-team',
+        executionId: 'snap-abc',
+        status: 'running' as RuntimeStateStatus,
+        updatedAt: '2024-01-01T00:00:00.000Z',
+      },
       undefined,
       writer,
       dirMaker,
@@ -354,7 +369,12 @@ describe('writeBlueprintRuntimeSnapshot', () => {
     const { fn: writer, written } = makeWriter()
     await writeBlueprintRuntimeSnapshot(
       '/project',
-      { backend: 'omx-team', executionId: 'snap-json', status: 'running' as RuntimeStateStatus, updatedAt: '2024-01-01T00:00:00.000Z' },
+      {
+        backend: 'omx-team',
+        executionId: 'snap-json',
+        status: 'running' as RuntimeStateStatus,
+        updatedAt: '2024-01-01T00:00:00.000Z',
+      },
       undefined,
       writer,
       makeDirMaker(),
@@ -368,7 +388,12 @@ describe('writeBlueprintRuntimeSnapshot', () => {
   it('returns snapshot path', async () => {
     const p = await writeBlueprintRuntimeSnapshot(
       '/project',
-      { backend: 'omx-team', executionId: 'snap-ret', status: 'running' as RuntimeStateStatus, updatedAt: '2024-01-01T00:00:00.000Z' },
+      {
+        backend: 'omx-team',
+        executionId: 'snap-ret',
+        status: 'running' as RuntimeStateStatus,
+        updatedAt: '2024-01-01T00:00:00.000Z',
+      },
       undefined,
       makeWriter().fn,
       makeDirMaker(),
@@ -453,7 +478,15 @@ describe('moveBlueprintDirectory', () => {
       throw new Error('rename failed')
     }
     await expect(
-      moveBlueprintDirectory('/old', '/new', '/new/_overview.md', '', makeWriter().fn, makeDirMaker(), renamer),
+      moveBlueprintDirectory(
+        '/old',
+        '/new',
+        '/new/_overview.md',
+        '',
+        makeWriter().fn,
+        makeDirMaker(),
+        renamer,
+      ),
     ).rejects.toThrow('rename failed')
   })
 })

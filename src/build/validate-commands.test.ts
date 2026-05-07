@@ -14,9 +14,7 @@ describe('plugin commands directory', () => {
 
   it('contains exactly 4 *.md command files', () => {
     const files = readdirSync(COMMANDS_DIR).filter((f) => f.endsWith('.md'))
-    expect(files.sort()).toEqual(
-      EXPECTED_COMMANDS.map((c) => `${c}.md`).sort(),
-    )
+    expect(files.sort()).toEqual(EXPECTED_COMMANDS.map((c) => `${c}.md`).sort())
   })
 
   for (const cmd of EXPECTED_COMMANDS) {

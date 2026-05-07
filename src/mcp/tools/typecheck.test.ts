@@ -96,19 +96,19 @@ describe('ak_typecheck tool', () => {
       )
 
       const result = await akTypecheckTool.handler({})
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
-      passed: boolean
-      summary: string
-      counts: { errorCount: number }
-      details: { errors: { file: string; line: number; code: string; message: string }[] }
-    }
-    expect(result.structuredContent).toEqual(payload)
+      const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+        passed: boolean
+        summary: string
+        counts: { errorCount: number }
+        details: { errors: { file: string; line: number; code: string; message: string }[] }
+      }
+      expect(result.structuredContent).toEqual(payload)
 
-    expect(payload.passed).toBe(false)
-    expect(payload.summary).toBe('typecheck failed with 1 error')
-    expect(payload.counts.errorCount).toBe(1)
-    expect(payload.details.errors).toHaveLength(1)
-    expect(payload.details.errors[0]).toEqual({
+      expect(payload.passed).toBe(false)
+      expect(payload.summary).toBe('typecheck failed with 1 error')
+      expect(payload.counts.errorCount).toBe(1)
+      expect(payload.details.errors).toHaveLength(1)
+      expect(payload.details.errors[0]).toEqual({
         file: 'src/foo.ts',
         line: 5,
         code: '2304',

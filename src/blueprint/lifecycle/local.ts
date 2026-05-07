@@ -119,11 +119,7 @@ export async function applyBlueprintLifecycleToFile(
   const raw = await readFile(location.path, 'utf-8')
   const mutation = applyBlueprintLifecycle(raw, location.slug, intent)
   const sourceDir = path.dirname(location.path)
-  const targetDir = path.join(
-    baseDir,
-    mutation.targetStatus,
-    relativeBlueprintSlug(location.slug),
-  )
+  const targetDir = path.join(baseDir, mutation.targetStatus, relativeBlueprintSlug(location.slug))
   const targetPath = path.join(targetDir, '_overview.md')
 
   if (sourceDir !== targetDir) {

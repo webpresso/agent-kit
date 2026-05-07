@@ -34,10 +34,7 @@ import {
   normalizeCompletionEvidence,
   type BlueprintExecutionCompletionEvidence,
 } from './execution-state.js'
-import {
-  resolveBridgeAbsolutePath,
-  resolveRuntimeSnapshotAbsolutePath,
-} from './execution-spec.js'
+import { resolveBridgeAbsolutePath, resolveRuntimeSnapshotAbsolutePath } from './execution-spec.js'
 
 // ---------------------------------------------------------------------------
 // Injected I/O types

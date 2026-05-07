@@ -519,9 +519,10 @@ last_updated: 2026-04-02
     // This will throw at parseBlueprint level since in-progress requires explicit status
     // We need to test that audit surface catches it at the audit layer; since parseBlueprint
     // will throw, we test that audit result is not-ok
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true }).catch(
-      () => ({ ok: false, issues: [{ level: 'error' as const, message: 'parse error' }] }),
-    )
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true }).catch(() => ({
+      ok: false,
+      issues: [{ level: 'error' as const, message: 'parse error' }],
+    }))
     expect(result.ok).toBe(false)
   })
 
@@ -552,9 +553,10 @@ last_updated: 2026-04-02
     )
 
     // parseBlueprint throws on invalid task status value
-    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true }).catch(
-      () => ({ ok: false, issues: [{ level: 'error' as const, message: 'invalid status' }] }),
-    )
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true }).catch(() => ({
+      ok: false,
+      issues: [{ level: 'error' as const, message: 'invalid status' }],
+    }))
     expect(result.ok).toBe(false)
   })
 
@@ -626,7 +628,8 @@ last_updated: 2026-04-02
     expect(result.ok).toBe(false)
     expect(
       result.issues.some(
-        (i) => i.message.includes('folder=planned') && i.message.includes('frontmatter=in-progress'),
+        (i) =>
+          i.message.includes('folder=planned') && i.message.includes('frontmatter=in-progress'),
       ),
     ).toBe(true)
   })
@@ -793,8 +796,7 @@ execution_updated_at: 2026-04-10T11:00:00Z
     expect(result.ok).toBe(false)
     expect(
       result.issues.some(
-        (i) =>
-          i.message.includes('execution is stopped') && i.message.includes('marked completed'),
+        (i) => i.message.includes('execution is stopped') && i.message.includes('marked completed'),
       ),
     ).toBe(true)
   })
@@ -1131,8 +1133,16 @@ last_updated: 2026-04-10
       '# /pll\n\njust wp blueprint move <slug> in-progress\n',
       'utf-8',
     )
-    writeFileSync(path.join(projectRoot, '.agent', 'skills', 'pll', 'SKILL.md'), '# skill\n', 'utf-8')
-    writeFileSync(path.join(projectRoot, '.agent', 'guides', 'parallel-execution.md'), '# guide\n', 'utf-8')
+    writeFileSync(
+      path.join(projectRoot, '.agent', 'skills', 'pll', 'SKILL.md'),
+      '# skill\n',
+      'utf-8',
+    )
+    writeFileSync(
+      path.join(projectRoot, '.agent', 'guides', 'parallel-execution.md'),
+      '# guide\n',
+      'utf-8',
+    )
 
     const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
     expect(result.ok).toBe(false)
@@ -1177,8 +1187,16 @@ last_updated: 2026-04-10
       '# /pll\n\nRun blueprint plans to see everything.\n',
       'utf-8',
     )
-    writeFileSync(path.join(projectRoot, '.agent', 'skills', 'pll', 'SKILL.md'), '# skill\n', 'utf-8')
-    writeFileSync(path.join(projectRoot, '.agent', 'guides', 'parallel-execution.md'), '# guide\n', 'utf-8')
+    writeFileSync(
+      path.join(projectRoot, '.agent', 'skills', 'pll', 'SKILL.md'),
+      '# skill\n',
+      'utf-8',
+    )
+    writeFileSync(
+      path.join(projectRoot, '.agent', 'guides', 'parallel-execution.md'),
+      '# guide\n',
+      'utf-8',
+    )
 
     const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
     expect(result.ok).toBe(false)
@@ -1219,7 +1237,11 @@ last_updated: 2026-04-10
     mkdirSync(path.join(projectRoot, '.agent', 'skills', 'pll'), { recursive: true })
     mkdirSync(path.join(projectRoot, '.agent', 'guides'), { recursive: true })
     writeFileSync(path.join(projectRoot, '.agent', 'commands', 'pll.md'), '# /pll\n', 'utf-8')
-    writeFileSync(path.join(projectRoot, '.agent', 'skills', 'pll', 'SKILL.md'), '# skill\n', 'utf-8')
+    writeFileSync(
+      path.join(projectRoot, '.agent', 'skills', 'pll', 'SKILL.md'),
+      '# skill\n',
+      'utf-8',
+    )
     writeFileSync(
       path.join(projectRoot, '.agent', 'guides', 'parallel-execution.md'),
       '# guide\n\nTaskUpdate(taskId=task.id, status="completed")\n',
@@ -1315,7 +1337,12 @@ last_updated: 2026-05-03
     const sharedOnly = await runBlueprintAudit({
       projectRoot,
       strict: true,
-      stagedFiles: ['package.json', 'pnpm-workspace.yaml', 'pnpm-lock.yaml', 'apps/web/package.json'],
+      stagedFiles: [
+        'package.json',
+        'pnpm-workspace.yaml',
+        'pnpm-lock.yaml',
+        'apps/web/package.json',
+      ],
     })
     expect(sharedOnly.ok).toBe(true)
     expect(sharedOnly.issues.every((issue) => issue.level === 'warning')).toBe(true)
@@ -1332,11 +1359,11 @@ last_updated: 2026-05-03
       stagedFiles: ['package.json', 'src/feature.ts'],
     })
     expect(sharedAndScoped.ok).toBe(false)
-    expect(
-      sharedAndScoped.issues.find((issue) => issue.file === 'src/feature.ts')?.level,
-    ).toBe('error')
-    expect(
-      sharedAndScoped.issues.find((issue) => issue.file === 'package.json')?.level,
-    ).toBe('warning')
+    expect(sharedAndScoped.issues.find((issue) => issue.file === 'src/feature.ts')?.level).toBe(
+      'error',
+    )
+    expect(sharedAndScoped.issues.find((issue) => issue.file === 'package.json')?.level).toBe(
+      'warning',
+    )
   })
 })

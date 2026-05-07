@@ -174,5 +174,4 @@ execution_updated_at: '2026-04-10T10:00:00Z'
 `
     expect(readBlueprintExecutionMetadata(blueprint)).toBeNull()
   })
-
 })

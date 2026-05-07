@@ -192,7 +192,11 @@ describe('executeBlueprintSubcommand', () => {
       relativeFilePath: 'blueprints/draft/my-feature/_overview.md',
       markdown: '# My Feature\n',
       status: 'draft',
-      blueprint: { tasks: [], slug: 'my-feature', title: 'My Feature' } as unknown as CreateBlueprintResult['blueprint'],
+      blueprint: {
+        tasks: [],
+        slug: 'my-feature',
+        title: 'My Feature',
+      } as unknown as CreateBlueprintResult['blueprint'],
       message: 'Created blueprint draft/my-feature.',
     }
     const deps = buildDeps({
@@ -200,8 +204,16 @@ describe('executeBlueprintSubcommand', () => {
         (goal: string, options: BlueprintCommandOptions) => Promise<CreateBlueprintResult>
       >(async () => created),
     })
-    await executeBlueprintSubcommand('new', ['my', 'feature', 'goal'], { '--': [], complexity: 'M' }, deps)
-    expect(deps.createBlueprint).toHaveBeenCalledWith('my feature goal', expect.objectContaining({ complexity: 'M' }))
+    await executeBlueprintSubcommand(
+      'new',
+      ['my', 'feature', 'goal'],
+      { '--': [], complexity: 'M' },
+      deps,
+    )
+    expect(deps.createBlueprint).toHaveBeenCalledWith(
+      'my feature goal',
+      expect.objectContaining({ complexity: 'M' }),
+    )
     expect(deps.printBlueprintOutput).toHaveBeenCalledWith('created', undefined)
   })
 
@@ -217,14 +229,23 @@ describe('executeBlueprintSubcommand', () => {
       relativeFilePath: 'blueprints/draft/roadmap-a/_overview.md',
       markdown: '# Roadmap A\n',
       status: 'draft',
-      blueprint: { tasks: [], slug: 'roadmap-a', title: 'Roadmap A' } as unknown as CreateBlueprintResult['blueprint'],
+      blueprint: {
+        tasks: [],
+        slug: 'roadmap-a',
+        title: 'Roadmap A',
+      } as unknown as CreateBlueprintResult['blueprint'],
       message: 'Created parent-roadmap draft/roadmap-a.',
     }
     const deps = buildDeps({
       createBlueprint: vi.fn(async () => created),
     })
 
-    await executeBlueprintSubcommand('new', ['roadmap', 'a'], { '--': [], complexity: 'M', type: 'parent-roadmap' }, deps)
+    await executeBlueprintSubcommand(
+      'new',
+      ['roadmap', 'a'],
+      { '--': [], complexity: 'M', type: 'parent-roadmap' },
+      deps,
+    )
     expect(deps.createBlueprint).toHaveBeenCalledWith(
       'roadmap a',
       expect.objectContaining({ complexity: 'M', type: 'parent-roadmap' }),
@@ -243,7 +264,17 @@ describe('executeBlueprintSubcommand', () => {
   it('routes "show <slug>"', async () => {
     const showResult: ShowBlueprintResult = {
       slug: 'my-feature',
-      blueprint: { title: 'T', status: 'planned', complexity: 'M', tasks: [], name: 'T', lastUpdated: '2024-01-01', type: 'blueprint', phases: [], raw: '' },
+      blueprint: {
+        title: 'T',
+        status: 'planned',
+        complexity: 'M',
+        tasks: [],
+        name: 'T',
+        lastUpdated: '2024-01-01',
+        type: 'blueprint',
+        phases: [],
+        raw: '',
+      },
       location: { path: '/tmp/p', projectRoot: '/tmp' },
     }
     const deps = buildDeps({
@@ -347,9 +378,9 @@ describe('executeBlueprintSubcommand', () => {
 
   it('throws when "exec status" receives no slug', async () => {
     const deps = buildDeps()
-    await expect(executeBlueprintSubcommand('exec', ['status'], { '--': [] }, deps)).rejects.toThrow(
-      /Usage: ak blueprint exec status/,
-    )
+    await expect(
+      executeBlueprintSubcommand('exec', ['status'], { '--': [] }, deps),
+    ).rejects.toThrow(/Usage: ak blueprint exec status/)
   })
 
   // ── logs ─────────────────────────────────────────────────────────────
@@ -418,7 +449,11 @@ describe('executeBlueprintSubcommand', () => {
     }
     const deps = buildDeps({
       moveBlueprint: vi.fn<
-        (slug: string, status: string, options: BlueprintCommandOptions) => Promise<MoveBlueprintResult>
+        (
+          slug: string,
+          status: string,
+          options: BlueprintCommandOptions,
+        ) => Promise<MoveBlueprintResult>
       >(async () => moveResult),
     })
     await executeBlueprintSubcommand('move', ['my-feature', 'completed'], { '--': [] }, deps)
@@ -428,9 +463,9 @@ describe('executeBlueprintSubcommand', () => {
 
   it('throws when "move" is missing slug or status', async () => {
     const deps = buildDeps()
-    await expect(executeBlueprintSubcommand('move', ['my-feature'], { '--': [] }, deps)).rejects.toThrow(
-      /Usage: ak blueprint move/,
-    )
+    await expect(
+      executeBlueprintSubcommand('move', ['my-feature'], { '--': [] }, deps),
+    ).rejects.toThrow(/Usage: ak blueprint move/)
   })
 
   // ── audit ─────────────────────────────────────────────────────────────
@@ -524,16 +559,19 @@ describe('executeBlueprintSubcommand', () => {
     ['block', 'blueprints/foo', '1.1'],
     ['unblock', 'blueprints/bar', '2.3'],
     ['complete', 'blueprints/baz', '3.1'],
-  ] as const)('routes "task %s <slug> <taskId>" (wp-compatible form)', async (action, slug, taskId) => {
-    const deps = buildDeps()
-    await executeBlueprintSubcommand('task', [action, slug, taskId], { '--': [] }, deps)
-    expect(deps.mutateBlueprintTask).toHaveBeenCalledWith(
-      action,
-      slug,
-      taskId,
-      expect.objectContaining({ '--': [] }),
-    )
-  })
+  ] as const)(
+    'routes "task %s <slug> <taskId>" (wp-compatible form)',
+    async (action, slug, taskId) => {
+      const deps = buildDeps()
+      await executeBlueprintSubcommand('task', [action, slug, taskId], { '--': [] }, deps)
+      expect(deps.mutateBlueprintTask).toHaveBeenCalledWith(
+        action,
+        slug,
+        taskId,
+        expect.objectContaining({ '--': [] }),
+      )
+    },
+  )
 
   it('passes --reason option for task block', async () => {
     const deps = buildDeps()

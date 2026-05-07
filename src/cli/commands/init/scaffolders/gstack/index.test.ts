@@ -22,7 +22,9 @@ function makeSpawn(behaviors: Array<{ status: number | null; error?: Error }>) {
 describe('ensureGstack', () => {
   it('returns gstack-updated when setup script exists and update succeeds', () => {
     const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
-    const exists = vi.fn((target: string) => target === '/fake/gstack/setup' || target === '/fake/gstack/.git')
+    const exists = vi.fn(
+      (target: string) => target === '/fake/gstack/setup' || target === '/fake/gstack/.git',
+    )
     const result = ensureGstack({
       repoRoot: '/tmp/repo',
       installRoot: '/fake/gstack',
@@ -115,7 +117,9 @@ describe('ensureGstack', () => {
 
   it('returns gstack-pull-failed when update pull exits non-zero', () => {
     const spawn = makeSpawn([{ status: 9 }])
-    const exists = vi.fn((target: string) => target === '/fake/gstack/setup' || target === '/fake/gstack/.git')
+    const exists = vi.fn(
+      (target: string) => target === '/fake/gstack/setup' || target === '/fake/gstack/.git',
+    )
     const result = ensureGstack({
       repoRoot: '/tmp/repo',
       installRoot: '/fake/gstack',

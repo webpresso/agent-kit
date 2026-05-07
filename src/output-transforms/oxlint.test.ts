@@ -9,10 +9,10 @@ describe('oxlintTransform', () => {
     readFileSync(join(process.cwd(), 'src/output-transforms/__fixtures__/oxlint', name), 'utf8')
 
   it('compacts oxlint JSON output into file-line-rule messages', () => {
-    const result = oxlintTransform(
-      fixture('one-error.json'),
-      { toolName: 'ak_lint-oxlint', normalizedToolName: 'lint-oxlint' },
-    )
+    const result = oxlintTransform(fixture('one-error.json'), {
+      toolName: 'ak_lint-oxlint',
+      normalizedToolName: 'lint-oxlint',
+    })
 
     expect(result.rawOutput).toBe('a.ts:2 no-console unexpected console')
     expect(result.transform).toMatchObject({
@@ -31,10 +31,10 @@ describe('oxlintTransform', () => {
   })
 
   it('accepts diagnostics wrapper output', () => {
-    const result = oxlintTransform(
-      fixture('tsgolint-one-error.json'),
-      { toolName: 'ak_lint-oxlint', normalizedToolName: 'lint-oxlint' },
-    )
+    const result = oxlintTransform(fixture('tsgolint-one-error.json'), {
+      toolName: 'ak_lint-oxlint',
+      normalizedToolName: 'lint-oxlint',
+    })
 
     expect(result.rawOutput).toBe('b.ts:7 correctness/no-unused-vars unused')
   })

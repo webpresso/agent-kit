@@ -44,10 +44,7 @@ function defaultInstallRoot(): string {
   return path.join(process.env.HOME || homedir(), '.claude', 'skills', 'gstack')
 }
 
-function runSetup(
-  root: string,
-  spawn: typeof spawnSync,
-): { ok: boolean; exitCode: number } {
+function runSetup(root: string, spawn: typeof spawnSync): { ok: boolean; exitCode: number } {
   const result = spawn('./setup', ['--team'], { cwd: root, stdio: 'inherit' })
   return { ok: result.status === 0, exitCode: result.status ?? -1 }
 }

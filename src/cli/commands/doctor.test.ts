@@ -14,7 +14,14 @@ function tempRepo(): string {
 }
 
 function buildFakeCli() {
-  let registeredAction: ((options: { root?: string; docsRoot?: string; fix?: boolean; legacyOmx?: boolean }) => Promise<number>) | undefined
+  let registeredAction:
+    | ((options: {
+        root?: string
+        docsRoot?: string
+        fix?: boolean
+        legacyOmx?: boolean
+      }) => Promise<number>)
+    | undefined
 
   const cli = {
     command: (_name: string, _desc: string) => ({
@@ -53,7 +60,9 @@ describe('runDoctor', () => {
 
       expect(code).toBe(0)
       expect(logs.join('\n')).toContain('Catalog drift — single package (no workspace file): OK')
-      expect(logs.join('\n')).toContain('Hook/plugin health remains separate: run `ak hooks doctor`.')
+      expect(logs.join('\n')).toContain(
+        'Hook/plugin health remains separate: run `ak hooks doctor`.',
+      )
     } finally {
       rmSync(repo, { recursive: true, force: true })
     }
@@ -85,7 +94,7 @@ describe('runDoctor', () => {
     const code = await runDoctor({ root: repo, fix: true })
 
     expect(code).toBe(0)
-    expect(readFileSync(doc, 'utf8')).toContain("last_updated:")
+    expect(readFileSync(doc, 'utf8')).toContain('last_updated:')
     rmSync(repo, { recursive: true, force: true })
   })
 })

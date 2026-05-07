@@ -47,18 +47,13 @@ export interface ToolHandlerExtra {
   readonly signal?: AbortSignal
 }
 
-export type ToolHandler = (
-  input: unknown,
-  extra?: ToolHandlerExtra,
-) => Promise<ToolHandlerResult>
+export type ToolHandler = (input: unknown, extra?: ToolHandlerExtra) => Promise<ToolHandlerResult>
 
 export interface ToolDescriptor {
   readonly name: string
   readonly description: string
   readonly inputSchema: ZodType<unknown> | { _def: unknown; parse: (x: unknown) => unknown }
-  readonly outputSchema?:
-    | ZodType<unknown>
-    | { _def: unknown; parse: (x: unknown) => unknown }
+  readonly outputSchema?: ZodType<unknown> | { _def: unknown; parse: (x: unknown) => unknown }
   readonly handler: ToolHandler
   readonly annotations?: ToolAnnotations
 }
@@ -174,15 +169,11 @@ export async function discoverTools(
       throw new Error(`Tool file ${fullPath} has no default export`)
     }
     if (typeof descriptor.name !== 'string' || typeof descriptor.handler !== 'function') {
-      throw new Error(
-        `Tool file ${fullPath} default export is malformed (missing name or handler)`,
-      )
+      throw new Error(`Tool file ${fullPath} default export is malformed (missing name or handler)`)
     }
 
     const jsonSchema = toJsonSchema(descriptor.inputSchema)
-    const outputSchema = descriptor.outputSchema
-      ? toJsonSchema(descriptor.outputSchema)
-      : undefined
+    const outputSchema = descriptor.outputSchema ? toJsonSchema(descriptor.outputSchema) : undefined
     server.registerTool(
       descriptor.name,
       descriptor.description,

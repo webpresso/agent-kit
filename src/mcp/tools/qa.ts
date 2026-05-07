@@ -63,13 +63,18 @@ interface SubResultShape {
  * silent collapse hid composition bugs as fake lint failures.
  */
 function unwrap(result: ToolHandlerResult): SubResultShape {
-  const structured = (result as ToolHandlerResult & { structuredContent?: unknown }).structuredContent
+  const structured = (result as ToolHandlerResult & { structuredContent?: unknown })
+    .structuredContent
   if (structured && typeof structured === 'object') {
     return structured as SubResultShape
   }
   const block = result.content[0]
   if (!block || block.type !== 'text' || typeof block.text !== 'string') {
-    return { passed: false, unwrapError: 'sub-tool did not return a text content block', raw: result }
+    return {
+      passed: false,
+      unwrapError: 'sub-tool did not return a text content block',
+      raw: result,
+    }
   }
   let parsed: unknown
   try {
@@ -84,7 +89,11 @@ function unwrap(result: ToolHandlerResult): SubResultShape {
   return parsed as SubResultShape
 }
 
-function summarizeQa(lint: SubResultShape, typecheck: SubResultShape, test: SubResultShape): string {
+function summarizeQa(
+  lint: SubResultShape,
+  typecheck: SubResultShape,
+  test: SubResultShape,
+): string {
   const failed: string[] = []
   if (lint.passed !== true) failed.push('lint')
   if (typecheck.passed !== true) failed.push('typecheck')

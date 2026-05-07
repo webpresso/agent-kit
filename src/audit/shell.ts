@@ -27,7 +27,10 @@ export type SpawnFn = (
   options: { cwd?: string; stdio: ['ignore', 'pipe', 'pipe'] },
 ) => ChildProcess
 
-export function runShell(options: RunShellOptions, spawn: SpawnFn = nodeSpawn): Promise<RunShellResult> {
+export function runShell(
+  options: RunShellOptions,
+  spawn: SpawnFn = nodeSpawn,
+): Promise<RunShellResult> {
   return new Promise((resolve, reject) => {
     const child = spawn(options.command, options.args, {
       cwd: options.cwd,

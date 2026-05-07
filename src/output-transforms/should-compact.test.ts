@@ -42,7 +42,11 @@ describe('shouldCompact', () => {
   it('lets explicit flags override env and TTY', () => {
     expect(shouldCompact({ flag: true, isTTY: true, env: { AK_COMPACT: '0' } })).toBe(true)
     expect(shouldCompact({ flag: false, isTTY: false, env: { AK_COMPACT: '1' } })).toBe(false)
-    expect(shouldCompact({ flag: true, isTTY: true, env: { QUALITY_ENGINE_COMPACT: '0' } })).toBe(true)
-    expect(shouldCompact({ flag: false, isTTY: false, env: { QUALITY_ENGINE_COMPACT: '1' } })).toBe(false)
+    expect(shouldCompact({ flag: true, isTTY: true, env: { QUALITY_ENGINE_COMPACT: '0' } })).toBe(
+      true,
+    )
+    expect(shouldCompact({ flag: false, isTTY: false, env: { QUALITY_ENGINE_COMPACT: '1' } })).toBe(
+      false,
+    )
   })
 })

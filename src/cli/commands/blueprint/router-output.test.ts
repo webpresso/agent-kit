@@ -12,11 +12,19 @@ import {
 
 describe('formatTaskLine', () => {
   it('formats a done task with checked checkbox', () => {
-    expect(formatTaskLine({ status: 'done', id: 'T1', title: 'foo' } as Parameters<typeof formatTaskLine>[0])).toEqual('- [x] T1 foo')
+    expect(
+      formatTaskLine({ status: 'done', id: 'T1', title: 'foo' } as Parameters<
+        typeof formatTaskLine
+      >[0]),
+    ).toEqual('- [x] T1 foo')
   })
 
   it('formats a todo task with empty checkbox', () => {
-    expect(formatTaskLine({ status: 'todo', id: 'T2', title: 'bar' } as Parameters<typeof formatTaskLine>[0])).toEqual('- [ ] T2 bar')
+    expect(
+      formatTaskLine({ status: 'todo', id: 'T2', title: 'bar' } as Parameters<
+        typeof formatTaskLine
+      >[0]),
+    ).toEqual('- [ ] T2 bar')
   })
 })
 
@@ -71,10 +79,16 @@ describe('formatBlueprintSummaries', () => {
       },
     ])
 
-    expect(output).toContain('ROADMAP roadmap-2026 status=in-progress complexity=L children=1 done=0 in-progress=0 planned=1 draft=0')
-    expect(output).toContain('  CHILD child-a status=planned complexity=S progress=0% tasks=1 parent=roadmap-2026')
+    expect(output).toContain(
+      'ROADMAP roadmap-2026 status=in-progress complexity=L children=1 done=0 in-progress=0 planned=1 draft=0',
+    )
+    expect(output).toContain(
+      '  CHILD child-a status=planned complexity=S progress=0% tasks=1 parent=roadmap-2026',
+    )
     expect(output).toContain('ORPHANS')
-    expect(output).toContain('  BLUEPRINT orphan-a status=draft complexity=S progress=0% tasks=1 parent=missing-roadmap')
+    expect(output).toContain(
+      '  BLUEPRINT orphan-a status=draft complexity=S progress=0% tasks=1 parent=missing-roadmap',
+    )
   })
 })
 

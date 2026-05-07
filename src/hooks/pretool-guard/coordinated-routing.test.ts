@@ -94,7 +94,9 @@ describe('coordinated routing pipeline', () => {
           // process.exit throws
         }
         const output = getLastOutput()
-        const parsed = JSON.parse(output) as { hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string } }
+        const parsed = JSON.parse(output) as {
+          hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string }
+        }
         expect(parsed.hookSpecificOutput?.permissionDecision).toBe('deny')
         expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain('ak_')
       })
@@ -121,9 +123,13 @@ describe('coordinated routing pipeline', () => {
           // process.exit throws
         }
         const output = getLastOutput()
-        const parsed = JSON.parse(output) as { hookSpecificOutput?: { permissionDecision?: string } }
+        const parsed = JSON.parse(output) as {
+          hookSpecificOutput?: { permissionDecision?: string }
+        }
         expect(parsed.hookSpecificOutput?.permissionDecision).toBe('deny')
-        const reason = (parsed.hookSpecificOutput as { permissionDecisionReason?: string } | undefined)?.permissionDecisionReason
+        const reason = (
+          parsed.hookSpecificOutput as { permissionDecisionReason?: string } | undefined
+        )?.permissionDecisionReason
         expect(reason).toContain('ctx_')
       })
     }
@@ -194,7 +200,9 @@ describe('coordinated routing pipeline', () => {
         // process.exit throws
       }
       const firstOutput = getLastOutput()
-      const firstParsed = JSON.parse(firstOutput) as { hookSpecificOutput?: { permissionDecision?: string } }
+      const firstParsed = JSON.parse(firstOutput) as {
+        hookSpecificOutput?: { permissionDecision?: string }
+      }
       expect(firstParsed.hookSpecificOutput?.permissionDecision).toBe('deny')
 
       stdoutOutput = []

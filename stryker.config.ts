@@ -26,12 +26,7 @@ const config = {
   incremental: true,
   incrementalFile: 'reports/stryker-incremental.json',
   concurrency: 6,
-  mutate: [
-    'src/**/*.ts',
-    '!src/**/*.test.ts',
-    '!src/**/*.d.ts',
-    '!src/**/__fixtures__/**',
-  ],
+  mutate: ['src/**/*.ts', '!src/**/*.test.ts', '!src/**/*.d.ts', '!src/**/__fixtures__/**'],
 }
 
 export default config

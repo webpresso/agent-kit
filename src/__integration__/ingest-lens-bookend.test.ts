@@ -10,10 +10,9 @@ import { seededTypeErrorSource } from './fixtures/seeded-type-error.js'
 
 const fixtureDir = join(dirname(fileURLToPath(import.meta.url)), 'fixtures')
 const fallbackIngestLensPath = '/Users/ozby/repos/ozby/ingest-lens'
-const ingestLensPath = (
+const ingestLensPath =
   process.env.INGEST_LENS_PATH?.trim() ??
   (existsSync(fallbackIngestLensPath) ? fallbackIngestLensPath : undefined)
-)
 const describeIfIngestLens = ingestLensPath ? describe : describe.skip
 
 const fixtureRoot = 'src/agentkit-qa'

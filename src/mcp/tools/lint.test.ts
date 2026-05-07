@@ -8,12 +8,14 @@ vi.mock('node:child_process', () => ({
   spawn: spawnMock,
 }))
 
-function fakeChild(opts: {
-  stdout?: string
-  stderr?: string
-  exitCode?: number
-  error?: NodeJS.ErrnoException
-} = {}): unknown {
+function fakeChild(
+  opts: {
+    stdout?: string
+    stderr?: string
+    exitCode?: number
+    error?: NodeJS.ErrnoException
+  } = {},
+): unknown {
   return {
     stdout: {
       on: (event: string, fn: (data: Buffer) => void) => {
@@ -249,7 +251,10 @@ describe('ak_lint tool', () => {
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {
       passed: boolean
       counts?: { issueCount: number }
-      details?: { issues: Array<{ file: string; rule: string; message: string }>; parseError?: string }
+      details?: {
+        issues: Array<{ file: string; rule: string; message: string }>
+        parseError?: string
+      }
     }
 
     expect(payload.passed).toBe(false)

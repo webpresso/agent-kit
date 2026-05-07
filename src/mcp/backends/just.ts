@@ -42,7 +42,10 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
 }
 
 function inferExtraArgs(cwd: string, input: TestRunInput): readonly string[] {
-  if (input.packages?.some((pkg) => usesVitest(cwd, pkg)) || (!input.packages?.length && usesVitest(cwd))) {
+  if (
+    input.packages?.some((pkg) => usesVitest(cwd, pkg)) ||
+    (!input.packages?.length && usesVitest(cwd))
+  ) {
     return ['--reporter=json', '--no-color']
   }
   return []

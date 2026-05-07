@@ -160,7 +160,10 @@ function checkRtkOnPath(): Promise<DoctorCheck | null> {
  * Run a hook binary with `echo '{}' | node <bin>` and check it exits 0
  * and produces valid JSON on stdout.
  */
-async function probeHookBin(file: string, checkStdin: boolean): Promise<{ ok: boolean; detail?: string }> {
+async function probeHookBin(
+  file: string,
+  checkStdin: boolean,
+): Promise<{ ok: boolean; detail?: string }> {
   if (!tryAccess(file)) {
     return { ok: false, detail: 'file not found' }
   }
@@ -188,7 +191,11 @@ function probeExitZero(file: string): Promise<{ ok: boolean; detail?: string }> 
       resolve({ ok: false, detail: String(err.message) })
     })
     child.on('close', (code) => {
-      resolve(code === 0 ? { ok: true } : { ok: false, detail: `exit ${code}${stderr ? `: ${stderr.trim()}` : ''}` })
+      resolve(
+        code === 0
+          ? { ok: true }
+          : { ok: false, detail: `exit ${code}${stderr ? `: ${stderr.trim()}` : ''}` },
+      )
     })
   })
 }
@@ -343,23 +350,25 @@ async function checkMcpServer(): Promise<{ ok: boolean; detail?: string; skipped
       stderr += String(chunk)
     })
 
-    const initializeRequest = JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'initialize',
-      params: {
-        protocolVersion: '2024-11-05',
-        capabilities: {},
-        clientInfo: { name: 'agent-kit-hooks-doctor', version: '0.0.0' },
-      },
-    }) + '\n'
+    const initializeRequest =
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {},
+          clientInfo: { name: 'agent-kit-hooks-doctor', version: '0.0.0' },
+        },
+      }) + '\n'
 
-    const toolsListRequest = JSON.stringify({
-      jsonrpc: '2.0',
-      id: 2,
-      method: 'tools/list',
-      params: {},
-    }) + '\n'
+    const toolsListRequest =
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/list',
+        params: {},
+      }) + '\n'
 
     child.stdin.write(initializeRequest, () => {
       child.stdin.write(toolsListRequest, () => {
@@ -377,11 +386,17 @@ async function checkMcpServer(): Promise<{ ok: boolean; detail?: string; skipped
       if (settled) return
 
       if (code !== 0 && code !== null) {
-        finish({ ok: false, detail: `MCP server exited with code ${code}: ${stderr.trim().slice(0, 100) || '(no stderr)'}` })
+        finish({
+          ok: false,
+          detail: `MCP server exited with code ${code}: ${stderr.trim().slice(0, 100) || '(no stderr)'}`,
+        })
         return
       }
 
-      finish({ ok: false, detail: `MCP server responded but no valid tools/list result: ${stdout.trim().slice(0, 80)}` })
+      finish({
+        ok: false,
+        detail: `MCP server responded but no valid tools/list result: ${stdout.trim().slice(0, 80)}`,
+      })
     })
   })
 }

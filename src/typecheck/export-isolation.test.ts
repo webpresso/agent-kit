@@ -54,7 +54,7 @@ describe('@webpresso/agent-kit/typecheck export surface', () => {
     const raw = [
       '',
       'Compiling...',
-      'src/foo.ts(5,12): error TS2304: Cannot find name \'bar\'.',
+      "src/foo.ts(5,12): error TS2304: Cannot find name 'bar'.",
       'Found 1 error.',
     ].join('\n')
     const errors = parseTscOutput(raw)
@@ -63,10 +63,7 @@ describe('@webpresso/agent-kit/typecheck export surface', () => {
   })
 
   it('parseTscOutput accumulates multiple diagnostics', () => {
-    const raw = [
-      'src/a.ts(1,1): error TS1: msg a',
-      'src/b.ts:2:2 - error TS22: msg b',
-    ].join('\n')
+    const raw = ['src/a.ts(1,1): error TS1: msg a', 'src/b.ts:2:2 - error TS22: msg b'].join('\n')
     const errors = parseTscOutput(raw)
     expect(errors).toEqual([
       { file: 'src/a.ts', line: 1, code: '1', message: 'msg a' },

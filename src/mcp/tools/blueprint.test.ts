@@ -12,7 +12,9 @@ vi.mock('#cli/commands/blueprint/router', () => ({
 
 import akBlueprintTool from './blueprint.js'
 
-function readPayload(result: { content: readonly { type: string; text?: string }[] }): Record<string, unknown> {
+function readPayload(result: {
+  content: readonly { type: string; text?: string }[]
+}): Record<string, unknown> {
   const block = result.content[0]
   if (!block || block.type !== 'text' || typeof block.text !== 'string') {
     throw new Error('Expected MCP text content block')
@@ -49,7 +51,10 @@ describe('ak_blueprint tool', () => {
       })
 
       expect(createBlueprintMock).toHaveBeenCalledTimes(1)
-      const [goalArg, optsArg] = createBlueprintMock.mock.calls[0] as [string, { complexity: string }]
+      const [goalArg, optsArg] = createBlueprintMock.mock.calls[0] as [
+        string,
+        { complexity: string },
+      ]
       expect(goalArg).toBe('My goal')
       expect(optsArg.complexity).toBe('M')
 
@@ -94,7 +99,9 @@ describe('ak_blueprint tool', () => {
       const result = await akBlueprintTool.handler({ action: 'audit', all: true })
 
       expect(auditBlueprintsMock).toHaveBeenCalledTimes(1)
-      const [opts] = auditBlueprintsMock.mock.calls[0] as [{ all?: boolean; strict?: boolean; staged?: boolean }]
+      const [opts] = auditBlueprintsMock.mock.calls[0] as [
+        { all?: boolean; strict?: boolean; staged?: boolean },
+      ]
       expect(opts.all).toBe(true)
 
       const payload = readPayload(result)

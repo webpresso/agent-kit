@@ -55,11 +55,13 @@ export function upsertPlaywrightMcpServer(raw: string): string {
     }
   }
 
-  return [
-    ...lines.slice(0, start),
-    ...PLAYWRIGHT_MCP_BLOCK.trimEnd().split('\n'),
-    ...lines.slice(end),
-  ].join('\n') + '\n'
+  return (
+    [
+      ...lines.slice(0, start),
+      ...PLAYWRIGHT_MCP_BLOCK.trimEnd().split('\n'),
+      ...lines.slice(end),
+    ].join('\n') + '\n'
+  )
 }
 
 export function ensureCodexPlaywrightMcp(

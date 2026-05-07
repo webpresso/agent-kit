@@ -59,15 +59,17 @@ export function readConfig(repoRoot: string): AgentkitConfig | null {
     const durablePlanningRoot = readOptionalString(parsed.durablePlanningRoot)
     const serverName = readOptionalString(mcp?.serverName)
     const toolPrefix = readOptionalString(mcp?.toolPrefix)
-    const normalizedMcp = serverName || toolPrefix ? { ...(serverName ? { serverName } : {}), ...(toolPrefix ? { toolPrefix } : {}) } : undefined
+    const normalizedMcp =
+      serverName || toolPrefix
+        ? { ...(serverName ? { serverName } : {}), ...(toolPrefix ? { toolPrefix } : {}) }
+        : undefined
     return {
       version: typeof parsed.version === 'string' ? parsed.version : CONFIG_VERSION,
       installed: { tier3Skills: tier3.filter((s): s is string => typeof s === 'string') },
       ...(normalizedMcp ? { mcp: normalizedMcp } : {}),
       rules: { overrides: overrides.filter((s): s is string => typeof s === 'string') },
       scripts: {
-        'setup-agent':
-          readOptionalString(scripts?.['setup-agent']),
+        'setup-agent': readOptionalString(scripts?.['setup-agent']),
       },
       durablePlanningRoot: durablePlanningRoot ?? DEFAULT_DURABLE_PLANNING_ROOT,
       lastInit: readOptionalString(parsed.lastInit),
@@ -91,8 +93,8 @@ export function mergeConfig(
   const mergedMcp =
     existing.mcp || incoming.mcp
       ? {
-          ...(existing.mcp ?? {}),
-          ...(incoming.mcp ?? {}),
+          ...existing.mcp,
+          ...incoming.mcp,
         }
       : undefined
   return {

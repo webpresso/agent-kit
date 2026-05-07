@@ -78,7 +78,9 @@ export function patchGitignore(
       next = `${rendered}\n`
     } else {
       const sep = original.endsWith('\n') ? '\n' : '\n\n'
-      next = original.endsWith('\n') ? `${original}\n${rendered}\n` : `${original}${sep}${rendered}\n`
+      next = original.endsWith('\n')
+        ? `${original}\n${rendered}\n`
+        : `${original}${sep}${rendered}\n`
     }
     action = exists ? 'overwritten' : 'created'
   }

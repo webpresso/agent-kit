@@ -101,7 +101,9 @@ describe('detectTphViolations', () => {
   it('returns service-mock-in-unit-test ERROR for internal mock in .test.ts', () => {
     const result = detectTphViolations([INTERNAL_MOCK_UNIT_FILE])
 
-    const violation = result.violations.find((v: Violation) => v.rule === 'service-mock-in-unit-test')
+    const violation = result.violations.find(
+      (v: Violation) => v.rule === 'service-mock-in-unit-test',
+    )
     expect(violation).toBeDefined()
     expect(violation?.severity).toBe('ERROR')
     expect(result.errorCount).toBeGreaterThanOrEqual(1)
@@ -110,7 +112,9 @@ describe('detectTphViolations', () => {
   it('does NOT flag internal mock in .integration.test.ts', () => {
     const result = detectTphViolations([INTEGRATION_MOCK_FILE])
 
-    const violation = result.violations.find((v: Violation) => v.rule === 'service-mock-in-unit-test')
+    const violation = result.violations.find(
+      (v: Violation) => v.rule === 'service-mock-in-unit-test',
+    )
     expect(violation).toBeUndefined()
     expect(result.errorCount).toBe(0)
   })
@@ -118,7 +122,9 @@ describe('detectTphViolations', () => {
   it('does NOT flag allowlisted @myorg/* mock as service mock', () => {
     const result = detectTphViolations([ALLOWLISTED_MOCK_UNIT_FILE])
 
-    const serviceViolation = result.violations.find((v: Violation) => v.rule === 'service-mock-in-unit-test')
+    const serviceViolation = result.violations.find(
+      (v: Violation) => v.rule === 'service-mock-in-unit-test',
+    )
     expect(serviceViolation).toBeUndefined()
     expect(result.errorCount).toBe(0)
   })
@@ -126,7 +132,9 @@ describe('detectTphViolations', () => {
   it('does NOT flag [TPH-INFRA]-tagged mock as service mock', () => {
     const result = detectTphViolations([INFRA_TAGGED_MOCK_FILE])
 
-    const serviceViolation = result.violations.find((v: Violation) => v.rule === 'service-mock-in-unit-test')
+    const serviceViolation = result.violations.find(
+      (v: Violation) => v.rule === 'service-mock-in-unit-test',
+    )
     expect(serviceViolation).toBeUndefined()
   })
 

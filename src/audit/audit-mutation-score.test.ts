@@ -4,12 +4,13 @@ import { auditMutationScore } from './audit-mutation-score.js'
 import type { MutationReport } from './audit-mutation-score.js'
 
 function makeReport(
-  files: Record<string, Array<{ status: 'Killed' | 'Survived' | 'NoCoverage' | 'Timeout' | 'Ignored' }>>,
+  files: Record<
+    string,
+    Array<{ status: 'Killed' | 'Survived' | 'NoCoverage' | 'Timeout' | 'Ignored' }>
+  >,
 ): MutationReport {
   return {
-    files: Object.fromEntries(
-      Object.entries(files).map(([path, mutants]) => [path, { mutants }]),
-    ),
+    files: Object.fromEntries(Object.entries(files).map(([path, mutants]) => [path, { mutants }])),
   }
 }
 
@@ -61,22 +62,33 @@ describe('auditMutationScore', () => {
         ...Array(15).fill({ status: 'Survived' as const }),
       ],
     })
-    const result = auditMutationScore(report, { minCovered: 0, minRaw: 0, minFile: 85, minMutantsForFileGate: 10 })
+    const result = auditMutationScore(report, {
+      minCovered: 0,
+      minRaw: 0,
+      minFile: 85,
+      minMutantsForFileGate: 10,
+    })
     expect(result.ok).toBe(false)
-    const fileViolation = result.violations.find((v) => v.message.includes('mutation-score-per-file'))
+    const fileViolation = result.violations.find((v) =>
+      v.message.includes('mutation-score-per-file'),
+    )
     expect(fileViolation?.file).toBe('src/bad.ts')
     expect(fileViolation?.message).toContain('25.0%')
   })
 
   it('skips file gate for files with fewer mutants than minMutantsForFileGate', () => {
     const report = makeReport({
-      'src/tiny.ts': [
-        { status: 'Survived' as const },
-        { status: 'Survived' as const },
-      ],
+      'src/tiny.ts': [{ status: 'Survived' as const }, { status: 'Survived' as const }],
     })
-    const result = auditMutationScore(report, { minCovered: 0, minRaw: 0, minFile: 85, minMutantsForFileGate: 10 })
-    expect(result.violations.filter((v) => v.message.includes('mutation-score-per-file'))).toHaveLength(0)
+    const result = auditMutationScore(report, {
+      minCovered: 0,
+      minRaw: 0,
+      minFile: 85,
+      minMutantsForFileGate: 10,
+    })
+    expect(
+      result.violations.filter((v) => v.message.includes('mutation-score-per-file')),
+    ).toHaveLength(0)
   })
 
   it('reports no-coverage mutants as a violation', () => {

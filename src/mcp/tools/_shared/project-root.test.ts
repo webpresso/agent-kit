@@ -18,9 +18,7 @@ afterEach(() => {
 describe('resolveProjectRoot', () => {
   it('honors CLAUDE_PROJECT_DIR when set', () => {
     const dir = mkdtempSync(join(tmpdir(), 'ak-pr-env-'))
-    expect(
-      resolveProjectRoot({ env: { CLAUDE_PROJECT_DIR: dir }, cwd: '/nowhere' }),
-    ).toBe(dir)
+    expect(resolveProjectRoot({ env: { CLAUDE_PROJECT_DIR: dir }, cwd: '/nowhere' })).toBe(dir)
   })
 
   it('returns the closest ancestor containing .git', () => {
@@ -31,18 +29,21 @@ describe('resolveProjectRoot', () => {
     expect(resolveProjectRoot({ env: {}, cwd: nested })).toBe(root)
   })
 
-  it('anchors at workspace root: strong marker (pnpm-workspace.yaml) ' +
-    'higher up wins over a closer weak marker (package.json)', () => {
-    const root = mkdtempSync(join(tmpdir(), 'ak-pr-strong-'))
-    writeFileSync(join(root, 'pnpm-workspace.yaml'), '')
-    const nested = join(root, 'pkg-with-package-json')
-    mkdirSync(nested)
-    writeFileSync(join(nested, 'package.json'), '{}')
-    // The whole point of the strong-marker pass is to skip nested package
-    // dirs in monorepos — without it, walking up from a sub-package would
-    // anchor at the sub-package's package.json instead of the workspace.
-    expect(resolveProjectRoot({ env: {}, cwd: nested })).toBe(root)
-  })
+  it(
+    'anchors at workspace root: strong marker (pnpm-workspace.yaml) ' +
+      'higher up wins over a closer weak marker (package.json)',
+    () => {
+      const root = mkdtempSync(join(tmpdir(), 'ak-pr-strong-'))
+      writeFileSync(join(root, 'pnpm-workspace.yaml'), '')
+      const nested = join(root, 'pkg-with-package-json')
+      mkdirSync(nested)
+      writeFileSync(join(nested, 'package.json'), '{}')
+      // The whole point of the strong-marker pass is to skip nested package
+      // dirs in monorepos — without it, walking up from a sub-package would
+      // anchor at the sub-package's package.json instead of the workspace.
+      expect(resolveProjectRoot({ env: {}, cwd: nested })).toBe(root)
+    },
+  )
 
   it('falls back to package.json when no strong markers exist', () => {
     const root = mkdtempSync(join(tmpdir(), 'ak-pr-pkg-'))

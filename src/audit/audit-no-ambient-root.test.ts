@@ -23,9 +23,7 @@ describe('detectAmbientRoot', () => {
     })
 
     it('flags findRepoRoot at top-level const (two patterns fire)', () => {
-      const result = detectAmbientRoot([
-        file('src/foo.ts', 'const repoRoot = findRepoRoot()'),
-      ])
+      const result = detectAmbientRoot([file('src/foo.ts', 'const repoRoot = findRepoRoot()')])
       // Both findRepoRoot( AND top-level const Root pattern fire
       const patterns = result.violations.map((v) => v.pattern)
       expect(patterns).toContain('findRepoRoot(')
@@ -42,7 +40,9 @@ describe('detectAmbientRoot', () => {
 
   describe('findRootSync( detection', () => {
     it('flags direct call to findRootSync()', () => {
-      const result = detectAmbientRoot([file('src/state.ts', 'const { rootDir } = findRootSync(process.cwd())')])
+      const result = detectAmbientRoot([
+        file('src/state.ts', 'const { rootDir } = findRootSync(process.cwd())'),
+      ])
       expect(result.violations.some((v) => v.pattern === 'findRootSync(')).toBe(true)
     })
 
@@ -95,23 +95,26 @@ describe('detectAmbientRoot', () => {
 
     it('does not flag const that does not contain Root', () => {
       const result = detectAmbientRoot([file('src/foo.ts', 'const config = loadConfig()')])
-      expect(result.violations.filter((v) => v.pattern === 'const <X> = ...Root...()')).toHaveLength(0)
+      expect(
+        result.violations.filter((v) => v.pattern === 'const <X> = ...Root...()'),
+      ).toHaveLength(0)
     })
   })
 
   describe('= process.cwd() default parameter', () => {
     it('flags default cwd param in function signature', () => {
       const result = detectAmbientRoot([
-        file('src/cli/utils.ts', 'export function findProjectRoot(startDir: string = process.cwd()): string {'),
+        file(
+          'src/cli/utils.ts',
+          'export function findProjectRoot(startDir: string = process.cwd()): string {',
+        ),
       ])
       const patterns = result.violations.map((v) => v.pattern)
       expect(patterns).toContain('= process.cwd()')
     })
 
     it('does not flag process.cwd() as a plain call expression (not default param)', () => {
-      const result = detectAmbientRoot([
-        file('src/cli/cli.ts', 'const root = process.cwd()'),
-      ])
+      const result = detectAmbientRoot([file('src/cli/cli.ts', 'const root = process.cwd()')])
       expect(result.violations.filter((v) => v.pattern === '= process.cwd()')).toHaveLength(0)
     })
   })

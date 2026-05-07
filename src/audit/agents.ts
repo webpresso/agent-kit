@@ -37,7 +37,12 @@ export function auditAgents(rootDirectory: string = process.cwd()): RepoAuditRes
   const config = readConfig(root)
 
   checked += 1
-  checkNonEmptyFile(root, 'AGENTS.md', violations, 'AGENTS.md is required at repo root and must be non-empty.')
+  checkNonEmptyFile(
+    root,
+    'AGENTS.md',
+    violations,
+    'AGENTS.md is required at repo root and must be non-empty.',
+  )
 
   if (isSelfHost) {
     checked += 1
@@ -113,8 +118,7 @@ function checkClaudeAgents(root: string, violations: RepoAuditViolation[]): void
     const resolvedTarget = resolve(dirname(targetPath), linkTarget)
     const expectedSuffix = `/catalog/agent/agents/${file}`
     const looksLikeCanonicalTarget =
-      linkTarget.endsWith(expectedSuffix) ||
-      basename(resolvedTarget) === file
+      linkTarget.endsWith(expectedSuffix) || basename(resolvedTarget) === file
 
     if (!looksLikeCanonicalTarget) {
       violations.push({
@@ -196,12 +200,17 @@ function checkClaudeWorktree(root: string, violations: RepoAuditViolation[]): vo
   if (!symlinkDirectories.includes('.claude')) {
     violations.push({
       file: CLAUDE_SETTINGS_PATH,
-      message: 'worktree.symlinkDirectories must include `.claude` so worktrees inherit agent surfaces.',
+      message:
+        'worktree.symlinkDirectories must include `.claude` so worktrees inherit agent surfaces.',
     })
   }
 }
 
-function checkClaudeRules(root: string, overrides: readonly string[], violations: RepoAuditViolation[]): void {
+function checkClaudeRules(
+  root: string,
+  overrides: readonly string[],
+  violations: RepoAuditViolation[],
+): void {
   const rulesSource = join(root, '.agent', 'rules')
   const rulesTarget = join(root, '.claude', 'rules')
   const overrideSet = new Set(overrides)
@@ -327,7 +336,8 @@ function checkAgentKitDevDependency(
   if (typeof version !== 'string' || version.trim().length === 0) {
     violations.push({
       file: 'package.json',
-      message: 'Missing devDependency `@webpresso/agent-kit`. Run `pnpm add -D @webpresso/agent-kit` then `pnpm install`.',
+      message:
+        'Missing devDependency `@webpresso/agent-kit`. Run `pnpm add -D @webpresso/agent-kit` then `pnpm install`.',
     })
   }
 }

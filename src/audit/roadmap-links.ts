@@ -42,7 +42,9 @@ export function auditRoadmapLinks(
   const roadmaps = records.filter((record) => record.type === 'parent-roadmap')
   const localChildrenByRoadmap = new Map<string, BlueprintLinkRecord[]>()
 
-  for (const child of records.filter((record) => record.type !== 'parent-roadmap' && record.parentRoadmap)) {
+  for (const child of records.filter(
+    (record) => record.type !== 'parent-roadmap' && record.parentRoadmap,
+  )) {
     const parent = resolveParentRoadmap(child.parentRoadmap ?? '', byKey)
     if (!parent) {
       if (options.failOrphans === true) {
@@ -95,7 +97,11 @@ export function auditRoadmapLinks(
     }
 
     for (const child of localChildren) {
-      if (!waveMapChildren.has(child.key) && !waveMapChildren.has(child.name) && !waveMapChildren.has(child.slug)) {
+      if (
+        !waveMapChildren.has(child.key) &&
+        !waveMapChildren.has(child.name) &&
+        !waveMapChildren.has(child.slug)
+      ) {
         violations.push({
           file: child.file,
           message: `Child blueprint declares parent_roadmap ${roadmap.slug} but is not listed in the roadmap wave map`,
@@ -149,7 +155,9 @@ function readBlueprintRecords(root: string, blueprintsRoot: string): BlueprintLi
   return records.toSorted((left, right) => left.slug.localeCompare(right.slug))
 }
 
-function indexBlueprints(records: readonly BlueprintLinkRecord[]): ReadonlyMap<string, BlueprintLinkRecord> {
+function indexBlueprints(
+  records: readonly BlueprintLinkRecord[],
+): ReadonlyMap<string, BlueprintLinkRecord> {
   const byKey = new Map<string, BlueprintLinkRecord>()
   for (const record of records) {
     byKey.set(record.key, record)
@@ -203,7 +211,11 @@ function parentRoadmapCandidates(parentRoadmap: string): string[] {
   if (!trimmed) return []
 
   const candidates = new Set<string>([trimmed, lastSegment(trimmed)])
-  const tail = trimmed.split(/->|→/u).map((part) => part.trim()).filter(Boolean).at(-1)
+  const tail = trimmed
+    .split(/->|→/u)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .at(-1)
   if (tail) {
     const normalizedTail = normalizeReference(tail)
     candidates.add(normalizedTail)

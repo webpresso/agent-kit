@@ -23,7 +23,10 @@ function collectAlertViolations(content: string): Violation[] {
   const violations: Violation[] = []
   for (const match of content.matchAll(ALERT_PATTERN)) {
     const text = match[0] === 'window.alert(' ? 'window.alert()' : 'alert()'
-    violations.push({ line: getLineNumber(content, match.index ?? 0), message: `Avoid ${text}; use non-blocking UI feedback instead.` })
+    violations.push({
+      line: getLineNumber(content, match.index ?? 0),
+      message: `Avoid ${text}; use non-blocking UI feedback instead.`,
+    })
   }
   return violations
 }
@@ -31,7 +34,10 @@ function collectAlertViolations(content: string): Violation[] {
 function collectCatchViolations(content: string): Violation[] {
   const violations: Violation[] = []
   for (const match of content.matchAll(CATCH_CONSOLE_ERROR_ONLY_PATTERN)) {
-    violations.push({ line: getLineNumber(content, match.index ?? 0), message: 'catch block only logs with console.error; add user-facing handling and recovery.' })
+    violations.push({
+      line: getLineNumber(content, match.index ?? 0),
+      message: 'catch block only logs with console.error; add user-facing handling and recovery.',
+    })
   }
   return violations
 }
@@ -50,11 +56,17 @@ function collectUseQueryViolations(content: string): Violation[] {
     const hasIsPending = /\bisPending\b/.test(fields)
     const hasIsError = /\bisError\b/.test(fields)
     if (!hasIsPending || !hasIsError) {
-      violations.push({ line: getLineNumber(content, match.index ?? 0), message: buildMissingFieldsMessage(hasIsPending, hasIsError) })
+      violations.push({
+        line: getLineNumber(content, match.index ?? 0),
+        message: buildMissingFieldsMessage(hasIsPending, hasIsError),
+      })
     }
   }
   for (const match of content.matchAll(USE_QUERY_ASSIGNMENT_PATTERN)) {
-    violations.push({ line: getLineNumber(content, match.index ?? 0), message: 'useQuery result must handle isPending and isError states.' })
+    violations.push({
+      line: getLineNumber(content, match.index ?? 0),
+      message: 'useQuery result must handle isPending and isError states.',
+    })
   }
   return violations
 }

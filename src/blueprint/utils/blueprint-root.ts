@@ -17,7 +17,11 @@ const WEBPRESSO_CONFIG_PATH = 'webpresso/config.yaml'
 const WEBPRESSO_BLUEPRINTS_DIR = 'webpresso/blueprints'
 const DEFAULT_BLUEPRINTS_DIR = 'blueprints'
 
-const GENERIC_PROJECT_MARKERS = ['.agent-kitrc.json', 'pnpm-workspace.yaml', 'package.json'] as const
+const GENERIC_PROJECT_MARKERS = [
+  '.agent-kitrc.json',
+  'pnpm-workspace.yaml',
+  'package.json',
+] as const
 
 function hasWebpressoProjectMarker(projectPath: string): boolean {
   return existsSync(path.join(projectPath, WEBPRESSO_CONFIG_PATH))

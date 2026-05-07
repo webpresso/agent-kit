@@ -14,8 +14,16 @@ function findRepoRoot(startDir: string): string {
 
 export function resolveActiveWorktreeRoot(cwd: string = process.cwd()): string {
   try {
-    const gitDir = execFileSync('git', ['rev-parse', '--git-dir'], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
-    const gitCommonDir = execFileSync('git', ['rev-parse', '--git-common-dir'], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+    const gitDir = execFileSync('git', ['rev-parse', '--git-dir'], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+    const gitCommonDir = execFileSync('git', ['rev-parse', '--git-common-dir'], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
 
     if (gitDir && gitCommonDir && gitDir !== gitCommonDir) {
       const gitDirAbs = isAbsolute(gitDir) ? gitDir : resolve(cwd, gitDir)
@@ -23,7 +31,11 @@ export function resolveActiveWorktreeRoot(cwd: string = process.cwd()): string {
       if (worktreeGitPath.length > 0) return dirname(worktreeGitPath)
     }
 
-    const gitRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+    const gitRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
     if (gitRoot.length > 0) return gitRoot
   } catch {
     // fall through

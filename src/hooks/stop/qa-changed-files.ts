@@ -12,7 +12,10 @@ const TYPECHECKABLE_EXTENSIONS = new Set(['.ts', '.tsx'])
 
 export function getChangedFiles(projectDir: string): string[] {
   const unstaged = execSync('git diff --name-only', { cwd: projectDir, encoding: 'utf-8' }).trim()
-  const staged = execSync('git diff --cached --name-only', { cwd: projectDir, encoding: 'utf-8' }).trim()
+  const staged = execSync('git diff --cached --name-only', {
+    cwd: projectDir,
+    encoding: 'utf-8',
+  }).trim()
   const all = new Set<string>()
   for (const line of unstaged.split('\n')) if (line) all.add(line)
   for (const line of staged.split('\n')) if (line) all.add(line)
@@ -86,7 +89,10 @@ export function formatStopHookOutput(result: StopHookResult): string {
   return JSON.stringify(result)
 }
 
-if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
+if (
+  process.argv[1] &&
+  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
+) {
   runHook(
     // `Stop` is latency-sensitive and user-visible. Until agent-kit grows a
     // deferred execution plane, broad typecheck/test sweeps stay off the hot

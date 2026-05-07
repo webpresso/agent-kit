@@ -14,7 +14,8 @@ export function validateComplexity(input: ToolInput): ValidationResult {
   if (!content || !filePath) return { validator: 'complexity', passed: true }
 
   const hasExtension = /\.[^/]+$/.test(filePath)
-  if (hasExtension && !/\.(ts|tsx|js|jsx)$/.test(filePath)) return { validator: 'complexity', passed: true }
+  if (hasExtension && !/\.(ts|tsx|js|jsx)$/.test(filePath))
+    return { validator: 'complexity', passed: true }
 
   const lines = content.split('\n').length
   if (lines > MAX_FILE_LINES) {

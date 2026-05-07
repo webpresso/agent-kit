@@ -79,7 +79,9 @@ describe('parseFrontmatter', () => {
 // ---------------------------------------------------------------------------
 describe('collectFieldViolations', () => {
   it('returns no violations when all fields are valid', () => {
-    expect(collectFieldViolations({ type: 'blueprint', status: 'draft', complexity: 'M' })).toEqual([])
+    expect(collectFieldViolations({ type: 'blueprint', status: 'draft', complexity: 'M' })).toEqual(
+      [],
+    )
   })
 
   it('returns violations for missing type', () => {
@@ -104,7 +106,11 @@ describe('collectFieldViolations', () => {
   })
 
   it('returns violations for invalid status', () => {
-    const violations = collectFieldViolations({ type: 'blueprint', status: 'bogus', complexity: 'M' })
+    const violations = collectFieldViolations({
+      type: 'blueprint',
+      status: 'bogus',
+      complexity: 'M',
+    })
     expect(violations).toHaveLength(1)
     expect(violations[0]!.field).toBe('status')
     expect(violations[0]!.message).toContain('Invalid status')
@@ -117,7 +123,11 @@ describe('collectFieldViolations', () => {
   })
 
   it('returns violations for invalid complexity', () => {
-    const violations = collectFieldViolations({ type: 'blueprint', status: 'draft', complexity: 'XXL' })
+    const violations = collectFieldViolations({
+      type: 'blueprint',
+      status: 'draft',
+      complexity: 'XXL',
+    })
     expect(violations).toHaveLength(1)
     expect(violations[0]!.field).toBe('complexity')
     expect(violations[0]!.message).toContain('Invalid complexity')
@@ -129,8 +139,12 @@ describe('collectFieldViolations', () => {
   })
 
   it('accepts all valid type values', () => {
-    expect(collectFieldViolations({ type: 'blueprint', status: 'draft', complexity: 'S' })).toEqual([])
-    expect(collectFieldViolations({ type: 'parent-roadmap', status: 'draft', complexity: 'S' })).toEqual([])
+    expect(collectFieldViolations({ type: 'blueprint', status: 'draft', complexity: 'S' })).toEqual(
+      [],
+    )
+    expect(
+      collectFieldViolations({ type: 'parent-roadmap', status: 'draft', complexity: 'S' }),
+    ).toEqual([])
   })
 
   it('accepts all valid status values', () => {
@@ -146,7 +160,11 @@ describe('collectFieldViolations', () => {
   })
 
   it('treats undefined fields as missing', () => {
-    const violations = collectFieldViolations({ type: undefined, status: undefined, complexity: undefined })
+    const violations = collectFieldViolations({
+      type: undefined,
+      status: undefined,
+      complexity: undefined,
+    })
     expect(violations).toHaveLength(3)
     expect(violations[0]!.message).toContain('Missing required field')
     expect(violations[1]!.message).toContain('Missing required field')
@@ -246,7 +264,9 @@ describe('validatePlanFrontmatter', () => {
   })
 
   it('passes when tool_input has old_string (edit, not write) on a valid path', () => {
-    const input: ToolInput = { tool_input: { file_path: validBlueprintPath, old_string: 'old', new_string: 'new' } }
+    const input: ToolInput = {
+      tool_input: { file_path: validBlueprintPath, old_string: 'old', new_string: 'new' },
+    }
     const result = validatePlanFrontmatter(input)
     expect(result.passed).toBe(true)
   })
@@ -264,27 +284,35 @@ describe('validatePlanFrontmatter', () => {
   })
 
   it('fails when YAML is invalid on a valid path', () => {
-    const result = validatePlanFrontmatter(writeInput(validBlueprintPath, '---\ntype: [bad yaml\n---\nbody'))
+    const result = validatePlanFrontmatter(
+      writeInput(validBlueprintPath, '---\ntype: [bad yaml\n---\nbody'),
+    )
     expect(result.passed).toBe(false)
     expect(result.message).toContain('Invalid YAML')
   })
 
   it('fails when type is missing from frontmatter', () => {
-    const result = validatePlanFrontmatter(writeInput(validBlueprintPath, '---\nstatus: draft\ncomplexity: M\n---\nbody'))
+    const result = validatePlanFrontmatter(
+      writeInput(validBlueprintPath, '---\nstatus: draft\ncomplexity: M\n---\nbody'),
+    )
     expect(result.passed).toBe(false)
     expect(result.message).toContain('Missing required field: type')
   })
 
   it('fails when status has an invalid value', () => {
     const result = validatePlanFrontmatter(
-      writeInput(validBlueprintPath, '---\ntype: blueprint\nstatus: invalid\ncomplexity: M\n---\nbody'),
+      writeInput(
+        validBlueprintPath,
+        '---\ntype: blueprint\nstatus: invalid\ncomplexity: M\n---\nbody',
+      ),
     )
     expect(result.passed).toBe(false)
     expect(result.message).toContain('Invalid status')
   })
 
   it('fails when wrong-format task headings exist', () => {
-    const content = '---\ntype: blueprint\nstatus: draft\ncomplexity: M\n---\n### Task 1.1: Wrong format'
+    const content =
+      '---\ntype: blueprint\nstatus: draft\ncomplexity: M\n---\n### Task 1.1: Wrong format'
     const result = validatePlanFrontmatter(writeInput(validBlueprintPath, content))
     expect(result.passed).toBe(false)
     expect(result.message).toContain('wrong format')
@@ -300,7 +328,9 @@ describe('validatePlanFrontmatter', () => {
   })
 
   it('shows all violations when there are exactly 4 (no truncation)', () => {
-    const content = '---\ntype: bad\nstatus: bad\n---\n' + Array.from({ length: 1 }, (_, i) => `### Task 1.${i + 1}: Wrong`).join('\n')
+    const content =
+      '---\ntype: bad\nstatus: bad\n---\n' +
+      Array.from({ length: 1 }, (_, i) => `### Task 1.${i + 1}: Wrong`).join('\n')
     const result = validatePlanFrontmatter(writeInput(validBlueprintPath, content))
     expect(result.passed).toBe(false)
     // With 3 field violations + 1 task_format = 4, all are shown without "...and" overflow
@@ -341,20 +371,26 @@ describe('validatePlanFrontmatter', () => {
   })
 
   it('passes for non-overview blueprint files', () => {
-    const input: ToolInput = { tool_input: { file_path: 'webpresso/blueprints/in-progress/my-blueprint/support.md' } }
+    const input: ToolInput = {
+      tool_input: { file_path: 'webpresso/blueprints/in-progress/my-blueprint/support.md' },
+    }
     const result = validatePlanFrontmatter(input)
     expect(result.passed).toBe(true)
   })
 
   it('handles README.md as a valid overview filename', () => {
     const content = '---\ntype: blueprint\nstatus: draft\ncomplexity: M\n---\n# Plan'
-    const result = validatePlanFrontmatter(writeInput('webpresso/blueprints/planned/my-feat/README.md', content))
+    const result = validatePlanFrontmatter(
+      writeInput('webpresso/blueprints/planned/my-feat/README.md', content),
+    )
     expect(result.passed).toBe(true)
   })
 
   it('handles tech-debt paths', () => {
     const content = '---\ntype: blueprint\nstatus: draft\ncomplexity: M\n---\n# Plan'
-    const result = validatePlanFrontmatter(writeInput('webpresso/tech-debt/my-ticket/_overview.md', content))
+    const result = validatePlanFrontmatter(
+      writeInput('webpresso/tech-debt/my-ticket/_overview.md', content),
+    )
     expect(result.passed).toBe(true)
   })
 })

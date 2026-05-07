@@ -4,12 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 const PACKAGE_ROOT = resolve(import.meta.dirname, '..', '..')
 const PLUGIN_JSON = join(PACKAGE_ROOT, '.claude-plugin', 'plugin.json')
-const FIXTURE = join(
-  PACKAGE_ROOT,
-  '__fixtures__',
-  'plugin-manifest',
-  'expected.json',
-)
+const FIXTURE = join(PACKAGE_ROOT, '__fixtures__', 'plugin-manifest', 'expected.json')
 
 const PLUGIN_ROOT_VAR = '${CLAUDE_PLUGIN_ROOT}'
 
@@ -70,9 +65,7 @@ describe('plugin.json manifest', () => {
       expect(entry.matcher).toBe('Edit|Write|WebFetch|Read|Grep')
       const [handler] = entry.hooks
       expect(handler.type).toBe('command')
-      expect(handler.command).toBe(
-        `bun ${PLUGIN_ROOT_VAR}/src/hooks/pretool-guard/index.ts`,
-      )
+      expect(handler.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/pretool-guard/index.ts`)
     })
 
     it('PostToolUse matches Edit|Write and points at lint-after-edit', () => {
@@ -80,9 +73,7 @@ describe('plugin.json manifest', () => {
       expect(entry.matcher).toBe('Edit|Write')
       const [handler] = entry.hooks
       expect(handler.type).toBe('command')
-      expect(handler.command).toBe(
-        `bun ${PLUGIN_ROOT_VAR}/src/hooks/post-tool/lint-after-edit.ts`,
-      )
+      expect(handler.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/post-tool/lint-after-edit.ts`)
     })
 
     it('Stop has no matcher and points at qa-changed-files', () => {
@@ -90,9 +81,7 @@ describe('plugin.json manifest', () => {
       expect(entry.matcher).toBeUndefined()
       const [handler] = entry.hooks
       expect(handler.type).toBe('command')
-      expect(handler.command).toBe(
-        `bun ${PLUGIN_ROOT_VAR}/src/hooks/stop/qa-changed-files.ts`,
-      )
+      expect(handler.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/stop/qa-changed-files.ts`)
     })
 
     it('UserPromptSubmit points at guard-switch', () => {
@@ -100,9 +89,7 @@ describe('plugin.json manifest', () => {
       expect(entry.matcher).toBeUndefined()
       const [handler] = entry.hooks
       expect(handler.type).toBe('command')
-      expect(handler.command).toBe(
-        `bun ${PLUGIN_ROOT_VAR}/src/hooks/guard-switch/index.ts`,
-      )
+      expect(handler.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/guard-switch/index.ts`)
     })
 
     it('SessionStart matches startup|resume|compact and points at sessionstart/index.ts', () => {
@@ -110,9 +97,7 @@ describe('plugin.json manifest', () => {
       expect(entry.matcher).toBe('startup|resume|compact')
       const [handler] = entry.hooks
       expect(handler.type).toBe('command')
-      expect(handler.command).toBe(
-        `bun ${PLUGIN_ROOT_VAR}/src/hooks/sessionstart/index.ts`,
-      )
+      expect(handler.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/sessionstart/index.ts`)
     })
   })
 

@@ -174,9 +174,9 @@ describe('buildVitestCommand', () => {
   })
 
   it('throws when multiple vitest config files are passed', () => {
-    expect(() =>
-      buildVitestCommand(['vitest.config.ts', 'vitest.node.config.ts']),
-    ).toThrow(/at most one/i)
+    expect(() => buildVitestCommand(['vitest.config.ts', 'vitest.node.config.ts'])).toThrow(
+      /at most one/i,
+    )
   })
 
   it('passes coverage and passthrough opts to vitest', () => {

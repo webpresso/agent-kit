@@ -4,15 +4,13 @@ import { buildRoadmapModel } from '#local'
 import type { ShowBlueprintResult } from './blueprint/router.js'
 
 import { listBlueprints, showBlueprint } from './blueprint/router.js'
-import { formatBlueprintDetails, formatBlueprintSummaries, printBlueprintOutput } from './blueprint/router-output.js'
+import {
+  formatBlueprintDetails,
+  formatBlueprintSummaries,
+  printBlueprintOutput,
+} from './blueprint/router-output.js'
 
-const ROADMAP_HELP = [
-  'ak roadmap',
-  '',
-  'Commands:',
-  '  list [status]',
-  '  show <slug>',
-].join('\n')
+const ROADMAP_HELP = ['ak roadmap', '', 'Commands:', '  list [status]', '  show <slug>'].join('\n')
 
 export function getRoadmapHelpText(): string {
   return ROADMAP_HELP
@@ -108,10 +106,14 @@ export function registerRoadmapCommand(cli: CAC): void {
             )
             const childResults = []
             for (const child of roadmapNode?.children ?? []) {
-              childResults.push(await showBlueprint(child.name, { projectRoot: options.projectRoot }))
+              childResults.push(
+                await showBlueprint(child.name, { projectRoot: options.projectRoot }),
+              )
             }
             printBlueprintOutput(
-              options.json ? { ...result, children: childResults } : formatRoadmapDetails(result, childResults),
+              options.json
+                ? { ...result, children: childResults }
+                : formatRoadmapDetails(result, childResults),
               options.json,
             )
             return

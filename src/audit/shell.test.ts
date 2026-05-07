@@ -53,7 +53,11 @@ describe('runShell', () => {
 
   it('captures stdout and stderr from fake spawn', async () => {
     const fakeSpawn: SpawnFn = () =>
-      makeFakeProcess({ exitCode: 0, stdout: 'out data', stderr: 'err data' }) as ReturnType<SpawnFn>
+      makeFakeProcess({
+        exitCode: 0,
+        stdout: 'out data',
+        stderr: 'err data',
+      }) as ReturnType<SpawnFn>
 
     const result = await runShell({ command: 'cmd', args: [] }, fakeSpawn)
 
@@ -65,6 +69,8 @@ describe('runShell', () => {
     const fakeSpawn: SpawnFn = () =>
       makeFakeProcess({ errorToEmit: new Error('spawn ENOENT') }) as ReturnType<SpawnFn>
 
-    await expect(runShell({ command: 'nonexistent', args: [] }, fakeSpawn)).rejects.toThrow('spawn ENOENT')
+    await expect(runShell({ command: 'nonexistent', args: [] }, fakeSpawn)).rejects.toThrow(
+      'spawn ENOENT',
+    )
   })
 })

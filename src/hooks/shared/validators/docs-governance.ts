@@ -11,7 +11,12 @@ export function validateDocsGovernance(
   const filePath = getFilePath(input)
 
   if (typeof process !== 'undefined' && process.env?.[skipEnvVar] === '1') {
-    return { validator: 'docs-governance', passed: true, skipped: true, skipReason: 'Bypass enabled' }
+    return {
+      validator: 'docs-governance',
+      passed: true,
+      skipped: true,
+      skipReason: 'Bypass enabled',
+    }
   }
 
   if (!filePath) return { validator: 'docs-governance', passed: true }

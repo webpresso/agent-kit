@@ -50,10 +50,7 @@ const TOP_LEVEL_ROOT_CONST_RE = /^(?:export\s+)?const\s+\w+\s*=\s*[^(]*Root[^(]*
 // Default parameter `= process.cwd()` in function signatures
 const DEFAULT_CWD_PARAM_RE = /=\s*process\.cwd\(\)\s*[,)]/
 
-function detectInFile(
-  filePath: string,
-  contents: string,
-): AmbientRootViolation[] {
+function detectInFile(filePath: string, contents: string): AmbientRootViolation[] {
   const violations: AmbientRootViolation[] = []
   const lines = contents.split('\n')
 

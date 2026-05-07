@@ -11,18 +11,29 @@ interface DangerousPattern {
 }
 
 const DANGEROUS_PATTERNS: DangerousPattern[] = [
-  { pattern: /\bgit\s+push\s+.*--force\b/, description: 'git push --force can overwrite remote history' },
+  {
+    pattern: /\bgit\s+push\s+.*--force\b/,
+    description: 'git push --force can overwrite remote history',
+  },
   { pattern: /\bgit\s+push\s+-f\b/, description: 'git push -f can overwrite remote history' },
   {
-    pattern: /\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|--recursive\b.*--force|-[a-zA-Z]*f[a-zA-Z]*r)\s+\/(?:\s|$)/,
+    pattern:
+      /\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|--recursive\b.*--force|-[a-zA-Z]*f[a-zA-Z]*r)\s+\/(?:\s|$)/,
     description: 'rm -rf / is catastrophically destructive',
   },
   {
-    pattern: /\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|--recursive\b.*--force|-[a-zA-Z]*f[a-zA-Z]*r)\s+~(?:\s|$|\/\s)/,
+    pattern:
+      /\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|--recursive\b.*--force|-[a-zA-Z]*f[a-zA-Z]*r)\s+~(?:\s|$|\/\s)/,
     description: 'rm -rf ~ deletes entire home directory',
   },
-  { pattern: /\bgit\s+reset\s+--hard\b/, description: 'git reset --hard discards uncommitted changes' },
-  { pattern: /\bgit\s+clean\s+.*-f/, description: 'git clean -f deletes untracked files permanently' },
+  {
+    pattern: /\bgit\s+reset\s+--hard\b/,
+    description: 'git reset --hard discards uncommitted changes',
+  },
+  {
+    pattern: /\bgit\s+clean\s+.*-f/,
+    description: 'git clean -f deletes untracked files permanently',
+  },
   { pattern: /\bmkfs\b/, description: 'mkfs formats filesystems' },
   { pattern: /\bdd\s+.*of=\/dev\//, description: 'dd to device can overwrite disk' },
   // Secret-to-disk patterns. See `.agent/rules/agent-guide.md` §

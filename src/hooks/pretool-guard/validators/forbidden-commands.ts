@@ -58,20 +58,36 @@ const TEST_HINT = 'just test --package <name> (or --file <path>)'
 const MUTATION_HINT = 'just test --mutation --package <name>'
 const TYPECHECK_HINT = 'just typecheck --package <name> (or --file <path>)'
 const ENV_HINT = 'just run <cmd> (injects secrets/env automatically)'
-const JUST_TASK_TARGET_HINT = 'just <task> [target] — check justfile for existing recipes, or add a new one'
+const JUST_TASK_TARGET_HINT =
+  'just <task> [target] — check justfile for existing recipes, or add a new one'
 
 const EXEC_RUNNERS = ['pnpm exec', 'pnpx', 'bunx'] as const
 const DIRECT_RUNNERS = ['pnpm', 'bun run', 'bun'] as const
 const SCRIPT_RUNNERS = ['pnpm run', 'pnpm', 'npm run', 'npm', 'bun run', 'bun'] as const
 
 export const BLOCKED_TOOLS: BlockedToolSpec[] = [
-  { tool: 'drizzle-kit', category: 'unknown', suggestion: DB_HINT, runners: ['exec', 'direct', 'bare'] },
+  {
+    tool: 'drizzle-kit',
+    category: 'unknown',
+    suggestion: DB_HINT,
+    runners: ['exec', 'direct', 'bare'],
+  },
   { tool: 'vitest', category: 'test', suggestion: TEST_HINT, runners: ['exec', 'direct', 'bare'] },
   { tool: 'oxlint', category: 'lint', suggestion: LINT_HINT, runners: ['exec', 'direct', 'bare'] },
   { tool: 'oxfmt', category: 'lint', suggestion: FORMAT_HINT, runners: ['exec', 'direct', 'bare'] },
   { tool: 'stryker', category: 'test', suggestion: MUTATION_HINT, runners: ['exec', 'bare'] },
-  { tool: 'tsc', category: 'typecheck', suggestion: TYPECHECK_HINT, runners: ['exec', 'direct', 'bare'] },
-  { tool: 'tsgo', category: 'typecheck', suggestion: TYPECHECK_HINT, runners: ['exec', 'direct', 'bare'] },
+  {
+    tool: 'tsc',
+    category: 'typecheck',
+    suggestion: TYPECHECK_HINT,
+    runners: ['exec', 'direct', 'bare'],
+  },
+  {
+    tool: 'tsgo',
+    category: 'typecheck',
+    suggestion: TYPECHECK_HINT,
+    runners: ['exec', 'direct', 'bare'],
+  },
 ]
 
 export const BLOCKED_SCRIPTS: BlockedScriptSpec[] = [
@@ -95,22 +111,38 @@ export function generateRules(): CommandRule[] {
   for (const spec of BLOCKED_TOOLS) {
     if (spec.runners.includes('exec')) {
       for (const runner of EXEC_RUNNERS) {
-        rules.push({ pattern: buildToolPattern(runner, spec.tool), category: spec.category, suggestion: spec.suggestion })
+        rules.push({
+          pattern: buildToolPattern(runner, spec.tool),
+          category: spec.category,
+          suggestion: spec.suggestion,
+        })
       }
     }
     if (spec.runners.includes('direct')) {
       for (const runner of DIRECT_RUNNERS) {
-        rules.push({ pattern: buildToolPattern(runner, spec.tool), category: spec.category, suggestion: spec.suggestion })
+        rules.push({
+          pattern: buildToolPattern(runner, spec.tool),
+          category: spec.category,
+          suggestion: spec.suggestion,
+        })
       }
     }
     if (spec.runners.includes('bare')) {
-      rules.push({ pattern: buildToolPattern('', spec.tool), category: spec.category, suggestion: spec.suggestion })
+      rules.push({
+        pattern: buildToolPattern('', spec.tool),
+        category: spec.category,
+        suggestion: spec.suggestion,
+      })
     }
   }
 
   for (const spec of BLOCKED_SCRIPTS) {
     for (const runner of SCRIPT_RUNNERS) {
-      rules.push({ pattern: buildToolPattern(runner, spec.script), category: spec.category, suggestion: spec.suggestion })
+      rules.push({
+        pattern: buildToolPattern(runner, spec.script),
+        category: spec.category,
+        suggestion: spec.suggestion,
+      })
     }
   }
 
@@ -133,7 +165,11 @@ export function generateRules(): CommandRule[] {
 export const COMMAND_RULES: CommandRule[] = generateRules()
 
 export const SUGGESTION_MODIFIERS: SuggestionModifier[] = [
-  { pattern: /--fix-dangerous|--write.*--unsafe|--unsafe.*--write/, category: 'lint', suggestion: `${LINT_BASE} --fix-unsafe` },
+  {
+    pattern: /--fix-dangerous|--write.*--unsafe|--unsafe.*--write/,
+    category: 'lint',
+    suggestion: `${LINT_BASE} --fix-unsafe`,
+  },
   { pattern: /--fix|--write/, category: 'lint', suggestion: `${LINT_BASE} --fix` },
 ]
 
@@ -150,7 +186,8 @@ export function findMatchingRule(command: string): CommandRule | undefined {
 
 export function applySuggestionModifiers(command: string, rule: CommandRule): string {
   for (const modifier of SUGGESTION_MODIFIERS) {
-    if (modifier.category === rule.category && modifier.pattern.test(command)) return modifier.suggestion
+    if (modifier.category === rule.category && modifier.pattern.test(command))
+      return modifier.suggestion
   }
   return rule.suggestion
 }
@@ -166,14 +203,21 @@ export function getCommandVariants(command: string): string[] {
   const variants = normalized ? [normalized] : []
 
   if (normalized.startsWith('just ')) {
-    const logicalSegments = normalized.split(LOGICAL_OPERATOR_REGEX).map((s) => s.trim()).filter(Boolean)
+    const logicalSegments = normalized
+      .split(LOGICAL_OPERATOR_REGEX)
+      .map((s) => s.trim())
+      .filter(Boolean)
     for (const segment of logicalSegments) {
       const beforePipe = segment.split(/\s*\|\s*/)[0]?.trim()
-      if (beforePipe && beforePipe !== segment && !variants.includes(beforePipe)) variants.push(beforePipe)
+      if (beforePipe && beforePipe !== segment && !variants.includes(beforePipe))
+        variants.push(beforePipe)
       if (segment !== normalized && !variants.includes(segment)) variants.push(segment)
     }
   } else {
-    const segments = normalized.split(COMMAND_DELIMITER_REGEX).map((s) => s.trim()).filter(Boolean)
+    const segments = normalized
+      .split(COMMAND_DELIMITER_REGEX)
+      .map((s) => s.trim())
+      .filter(Boolean)
     for (const segment of segments) {
       if (!variants.includes(segment)) variants.push(segment)
     }
@@ -239,7 +283,9 @@ export function createAuditResult(
   }
 }
 
-export function validateForbiddenCommands(input: ToolInput): ValidationResult | BlockedCommandResult {
+export function validateForbiddenCommands(
+  input: ToolInput,
+): ValidationResult | BlockedCommandResult {
   if (process.env[SKIP_ENV_VAR] === '1') return createSkipResult(VALIDATOR_NAME)
   if (!isBashInput(input)) return createSkipResult(VALIDATOR_NAME, 'Not a Bash command')
 

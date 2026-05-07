@@ -59,7 +59,11 @@ describe('auditTechDebt', () => {
 
     const result = auditTechDebt(tmpDir)
     expect(result.ok).toBe(false)
-    expect(result.violations.some((v) => /wrong status directory|misplaced|status mismatch/i.test(v.message))).toBe(true)
+    expect(
+      result.violations.some((v) =>
+        /wrong status directory|misplaced|status mismatch/i.test(v.message),
+      ),
+    ).toBe(true)
   })
 
   it('reports violation for missing required frontmatter fields', async () => {

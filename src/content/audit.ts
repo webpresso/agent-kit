@@ -17,11 +17,7 @@ import { basename, dirname } from 'node:path'
 
 import { z } from 'zod'
 
-import {
-  loadContent,
-  type ContentKind,
-  type ContentRecord,
-} from './loader.js'
+import { loadContent, type ContentKind, type ContentRecord } from './loader.js'
 import {
   ruleFrontmatterSchema,
   skillFrontmatterSchema,
@@ -55,7 +51,9 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000
 type ParsedFrontmatter = RuleFrontmatter | SkillFrontmatter
 
 function schemaFor(kind: ContentKind): z.ZodType<ParsedFrontmatter> {
-  return (kind === 'rule' ? ruleFrontmatterSchema : skillFrontmatterSchema) as z.ZodType<ParsedFrontmatter>
+  return (
+    kind === 'rule' ? ruleFrontmatterSchema : skillFrontmatterSchema
+  ) as z.ZodType<ParsedFrontmatter>
 }
 
 function diskSlug(record: ContentRecord): string {

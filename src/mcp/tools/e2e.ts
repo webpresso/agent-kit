@@ -9,10 +9,7 @@
 import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
-import {
-  type E2eRunnerKind,
-  type PlannedE2eRunGroup,
-} from '#e2e'
+import { type E2eRunnerKind, type PlannedE2eRunGroup } from '#e2e'
 import type { CommandConfig } from '#e2e'
 import {
   createE2eExecutionPlan,
@@ -20,10 +17,7 @@ import {
   runCommandConfigs,
 } from '#e2e/execution'
 import { applyOutputTransform } from '../../output-transforms/index.js'
-import {
-  createSummaryOutputSchema,
-  createSummaryResult,
-} from './_shared/result.js'
+import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
 const inputSchema = z.object({
   suite: z.string().optional(),

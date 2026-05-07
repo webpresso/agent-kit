@@ -71,10 +71,7 @@ describe('runAuditDispatch', () => {
   describe('bundle-budget', () => {
     test('calls buildBundleBudgetArgs + runBundleBudget', async () => {
       const deps = makeDeps()
-      ;(deps.buildBundleBudgetArgs as ReturnType<typeof vi.fn>).mockReturnValue([
-        '--dist',
-        'dist',
-      ])
+      ;(deps.buildBundleBudgetArgs as ReturnType<typeof vi.fn>).mockReturnValue(['--dist', 'dist'])
       ;(deps.runBundleBudget as ReturnType<typeof vi.fn>).mockResolvedValue(0)
       const result = await runAuditDispatch('bundle-budget', ['dist'], noOptions, deps)
       expect(result).toStrictEqual({ kind: 'script-exit', code: 0 })
@@ -133,12 +130,7 @@ describe('runAuditDispatch', () => {
 
     test('uses --root option as cwd', async () => {
       const deps = makeDeps()
-      const result = await runAuditDispatch(
-        'mutation',
-        [],
-        { root: '/custom/root' },
-        deps,
-      )
+      const result = await runAuditDispatch('mutation', [], { root: '/custom/root' }, deps)
       expect(result.kind).toBe('script-exit')
       expect(deps.runStryker).toHaveBeenCalledWith('/custom/root')
     })
@@ -226,7 +218,11 @@ describe('runAuditDispatch', () => {
       const auditResult = okResult('Catalog drift')
       ;(deps.runRepoAudit as ReturnType<typeof vi.fn>).mockResolvedValue(auditResult)
       const result = await runAuditDispatch('catalog-drift', [], noOptions, deps)
-      expect(result).toStrictEqual({ kind: 'repo-result', name: 'catalog-drift', result: auditResult })
+      expect(result).toStrictEqual({
+        kind: 'repo-result',
+        name: 'catalog-drift',
+        result: auditResult,
+      })
       expect(deps.runRepoAudit).toHaveBeenCalledWith('catalog-drift', '/repo', noOptions)
     })
 

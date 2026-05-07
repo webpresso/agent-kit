@@ -31,9 +31,7 @@ afterAll(() => {
   for (const child of startedChildren) child.kill('SIGTERM')
 })
 
-async function callServer(
-  ...requests: JsonRpcRequest[]
-): Promise<JsonRpcResponse[]> {
+async function callServer(...requests: JsonRpcRequest[]): Promise<JsonRpcResponse[]> {
   return new Promise((res, rej) => {
     const child = spawn(cliRuntime, [cliPath], {
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -160,7 +158,7 @@ describe('mcp server integration', () => {
     const akAudit = tools.find((t) => t.name === 'ak_audit')
     expect(akAudit).toBeDefined()
     expect(
-      ((akAudit?.inputSchema.properties?.kind as { enum?: unknown[] } | undefined)?.enum ?? []),
+      (akAudit?.inputSchema.properties?.kind as { enum?: unknown[] } | undefined)?.enum ?? [],
     ).toContain('agents')
   }, 20_000)
 
@@ -326,7 +324,9 @@ describe('mcp server integration', () => {
       summary: expect.any(String),
       kind: 'docs-frontmatter',
     })
-    const textBlock = callResponse?.result?.content?.[0] as { type?: string; text?: string } | undefined
+    const textBlock = callResponse?.result?.content?.[0] as
+      | { type?: string; text?: string }
+      | undefined
     expect(textBlock?.type).toBe('text')
     expect(typeof textBlock?.text).toBe('string')
     expect(JSON.parse(textBlock!.text!)).toEqual(callResponse?.result?.structuredContent)

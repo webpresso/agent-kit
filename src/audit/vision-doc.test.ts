@@ -64,10 +64,7 @@ describe('VISION.md audit', () => {
 
   test('fails on wrong frontmatter type', () => {
     const root = tempRepo()
-    writeFileSync(
-      join(root, 'VISION.md'),
-      validVision.replace('type: vision', 'type: research'),
-    )
+    writeFileSync(join(root, 'VISION.md'), validVision.replace('type: vision', 'type: research'))
     expect(auditVision(root).violations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -79,10 +76,7 @@ describe('VISION.md audit', () => {
 
   test('fails on missing last_updated', () => {
     const root = tempRepo()
-    writeFileSync(
-      join(root, 'VISION.md'),
-      validVision.replace(/^last_updated: .*$/m, ''),
-    )
+    writeFileSync(join(root, 'VISION.md'), validVision.replace(/^last_updated: .*$/m, ''))
     expect(auditVision(root).violations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ message: expect.stringContaining('last_updated') }),

@@ -64,7 +64,11 @@ export interface PerSkillConsumerConfig {
 }
 
 export const DEFAULT_PER_SKILL_CONSUMERS: PerSkillConsumerConfig[] = [
-  { dir: '.agents/skills', sourcePrefix: '../../.agent/skills/', sourceRootDir: 'node_modules/@webpresso/agent-kit/skills' },
+  {
+    dir: '.agents/skills',
+    sourcePrefix: '../../.agent/skills/',
+    sourceRootDir: 'node_modules/@webpresso/agent-kit/skills',
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -145,7 +149,13 @@ export const DEFAULT_UNIFIED_CONSUMERS: readonly UnifiedConsumerConfig[] = [
   { id: 'agent-rules', dir: '.agent/rules', acceptsKind: 'rule', strategy: 'symlink' },
   { id: 'agent-skills', dir: '.agent/skills', acceptsKind: 'skill', strategy: 'symlink' },
   // Cursor: rules only, copy, .mdc extension
-  { id: 'cursor-rules', dir: '.cursor/rules', acceptsKind: 'rule', strategy: 'copy', ruleExtension: '.mdc' },
+  {
+    id: 'cursor-rules',
+    dir: '.cursor/rules',
+    acceptsKind: 'rule',
+    strategy: 'copy',
+    ruleExtension: '.mdc',
+  },
   // Windsurf: skills only, copy
   { id: 'windsurf-skills', dir: '.windsurf/skills', acceptsKind: 'skill', strategy: 'copy' },
   // Claude: rules wrapped (symlinked) + skills (symlinked) — both under .claude/skills/

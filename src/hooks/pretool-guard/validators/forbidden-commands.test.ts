@@ -197,22 +197,40 @@ describe('applySuggestionModifiers', () => {
   })
 
   it('returns the modifier suggestion when --write flag is present for lint', () => {
-    const rule = { pattern: /^pnpm exec oxlint/, category: 'lint' as const, suggestion: 'just lint' }
+    const rule = {
+      pattern: /^pnpm exec oxlint/,
+      category: 'lint' as const,
+      suggestion: 'just lint',
+    }
     expect(applySuggestionModifiers('pnpm exec oxlint --write', rule)).toContain('--fix')
   })
 
   it('returns the modifier suggestion for --fix-dangerous flag', () => {
-    const rule = { pattern: /^pnpm exec oxfmt/, category: 'lint' as const, suggestion: 'just format' }
-    expect(applySuggestionModifiers('pnpm exec oxfmt --fix-dangerous', rule)).toContain('--fix-unsafe')
+    const rule = {
+      pattern: /^pnpm exec oxfmt/,
+      category: 'lint' as const,
+      suggestion: 'just format',
+    }
+    expect(applySuggestionModifiers('pnpm exec oxfmt --fix-dangerous', rule)).toContain(
+      '--fix-unsafe',
+    )
   })
 
   it('returns default suggestion when modifier does not match category', () => {
-    const rule = { pattern: /^pnpm exec stryker/, category: 'test' as const, suggestion: 'just test --mutation' }
+    const rule = {
+      pattern: /^pnpm exec stryker/,
+      category: 'test' as const,
+      suggestion: 'just test --mutation',
+    }
     expect(applySuggestionModifiers('pnpm exec stryker run', rule)).toBe('just test --mutation')
   })
 
   it('returns default suggestion when no modifier pattern matches', () => {
-    const rule = { pattern: /^pnpm exec tsc/, category: 'typecheck' as const, suggestion: 'just typecheck' }
+    const rule = {
+      pattern: /^pnpm exec tsc/,
+      category: 'typecheck' as const,
+      suggestion: 'just typecheck',
+    }
     expect(applySuggestionModifiers('pnpm exec tsc --noEmit', rule)).toBe('just typecheck')
   })
 })
@@ -357,7 +375,11 @@ describe('createBlockedResult', () => {
   })
 
   it('filters through suggestion modifiers', () => {
-    const rule = { pattern: /^pnpm exec oxfmt/, category: 'lint' as const, suggestion: 'just format' }
+    const rule = {
+      pattern: /^pnpm exec oxfmt/,
+      category: 'lint' as const,
+      suggestion: 'just format',
+    }
     const result = createBlockedResult('pnpm exec oxfmt --fix-dangerous', rule)
     expect(result.suggestion).toContain('--fix-unsafe')
   })
@@ -434,7 +456,10 @@ describe('validateForbiddenCommands', () => {
     const { tmpdir } = await import('node:os')
     const { join } = await import('node:path')
 
-    const dir = join(tmpdir(), `ak-forbidden-commands-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+    const dir = join(
+      tmpdir(),
+      `ak-forbidden-commands-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    )
     const sentinel = join(tmpdir(), `ak-mcp-ready-${process.ppid}`)
     mkdirSync(dir, { recursive: true })
     writeFileSync(
@@ -493,7 +518,9 @@ describe('validateForbiddenCommands', () => {
   })
 
   it('blocks DATABASE_URL= prefix commands', () => {
-    const result = validateForbiddenCommands(bashInput('DATABASE_URL=postgres://... pnpm exec drizzle-kit push'))
+    const result = validateForbiddenCommands(
+      bashInput('DATABASE_URL=postgres://... pnpm exec drizzle-kit push'),
+    )
     expect(result.passed).toBe(false)
   })
 

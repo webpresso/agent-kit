@@ -189,7 +189,8 @@ export function validateCommitMessage(
   if (shouldEnforceLore) {
     const loreResult = validateLoreTrailers(message, {
       requireLore: options.requireLore === true || subject.includes('[lore]'),
-      loreWarn: options.loreWarn === true && !(options.requireLore === true || subject.includes('[lore]')),
+      loreWarn:
+        options.loreWarn === true && !(options.requireLore === true || subject.includes('[lore]')),
     })
     for (const violation of loreResult.violations) {
       violations.push({ message: violation })

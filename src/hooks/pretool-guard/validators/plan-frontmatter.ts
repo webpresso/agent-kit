@@ -40,9 +40,13 @@ export function parseFrontmatter(yamlBlock: string): Record<string, unknown> | n
 }
 
 function validateField(value: unknown, fieldName: string, validValues: string[]): Violation | null {
-  if (value === undefined) return { field: fieldName, message: `Missing required field: ${fieldName}` }
+  if (value === undefined)
+    return { field: fieldName, message: `Missing required field: ${fieldName}` }
   if (typeof value !== 'string' || !validValues.includes(value)) {
-    return { field: fieldName, message: `Invalid ${fieldName}: "${value}". Valid values: ${validValues.join(', ')}` }
+    return {
+      field: fieldName,
+      message: `Invalid ${fieldName}: "${value}". Valid values: ${validValues.join(', ')}`,
+    }
   }
   return null
 }
@@ -74,41 +78,62 @@ export function validatePlanFrontmatter(input: ToolInput): ValidationResult {
   if (!filePath || !shouldValidatePath(filePath)) {
     if (filePath) {
       const planningPathViolation = getNonCanonicalPlanningPathViolation(filePath)
-      if (planningPathViolation) return { validator: 'plan-frontmatter', passed: false, message: planningPathViolation }
+      if (planningPathViolation)
+        return { validator: 'plan-frontmatter', passed: false, message: planningPathViolation }
     }
     return { validator: 'plan-frontmatter', passed: true }
   }
 
-  if (input.tool_input?.old_string !== undefined) return { validator: 'plan-frontmatter', passed: true }
+  if (input.tool_input?.old_string !== undefined)
+    return { validator: 'plan-frontmatter', passed: true }
 
   const content = getContent(input)
   if (!content) return { validator: 'plan-frontmatter', passed: true }
 
   const yamlBlock = extractFrontmatterBlock(content)
   if (!yamlBlock) {
-    return { validator: 'plan-frontmatter', passed: false, message: 'Missing YAML frontmatter block (expected --- at start of file)' }
+    return {
+      validator: 'plan-frontmatter',
+      passed: false,
+      message: 'Missing YAML frontmatter block (expected --- at start of file)',
+    }
   }
 
   const data = parseFrontmatter(yamlBlock)
   if (!data) {
-    return { validator: 'plan-frontmatter', passed: false, message: 'Invalid YAML in frontmatter block' }
+    return {
+      validator: 'plan-frontmatter',
+      passed: false,
+      message: 'Invalid YAML in frontmatter block',
+    }
   }
 
   const violations = [...collectFieldViolations(data)]
   const wrongFormatCount = detectWrongTaskFormat(content)
   if (wrongFormatCount > 0) {
-    violations.push({ field: 'task_format', message: `Found ${wrongFormatCount} task heading(s) with wrong format (use "#### Task X.Y:" not "### Task X.Y:")` })
+    violations.push({
+      field: 'task_format',
+      message: `Found ${wrongFormatCount} task heading(s) with wrong format (use "#### Task X.Y:" not "### Task X.Y:")`,
+    })
   }
 
   if (violations.length > 0) {
     const preview = violations.slice(0, 4).map((v) => `  ${v.field}: ${v.message}`)
     const overflow = violations.length > 4 ? `\n  ...and ${violations.length - 4} more issues` : ''
-    return { validator: 'plan-frontmatter', passed: false, message: `Blueprint validation failed:\n${preview.join('\n')}${overflow}` }
+    return {
+      validator: 'plan-frontmatter',
+      passed: false,
+      message: `Blueprint validation failed:\n${preview.join('\n')}${overflow}`,
+    }
   }
 
   const taskCount = countTaskHeadings(content)
   if (taskCount === 0) {
-    return { validator: 'plan-frontmatter', passed: true, message: 'Warning: no task headings found (expected "#### Task X.Y:" format)' }
+    return {
+      validator: 'plan-frontmatter',
+      passed: true,
+      message: 'Warning: no task headings found (expected "#### Task X.Y:" format)',
+    }
   }
 
   return { validator: 'plan-frontmatter', passed: true }

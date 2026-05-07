@@ -4,7 +4,12 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { buildSkillTag, extractSkillHooks, isTaggedSkillHook, validateSkillHooks } from './skill-hooks.js'
+import {
+  buildSkillTag,
+  extractSkillHooks,
+  isTaggedSkillHook,
+  validateSkillHooks,
+} from './skill-hooks.js'
 
 describe('skill-hooks', () => {
   let root: string
@@ -104,7 +109,11 @@ hooks:
   it('tags skill-managed commands for clean removal', () => {
     const tag = buildSkillTag('verify')
     expect(tag).toBe('# from-skill: verify')
-    expect(isTaggedSkillHook(`[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/ak" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/ak" audit agents || true # from-skill: verify`)).toBe(true)
+    expect(
+      isTaggedSkillHook(
+        `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/ak" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/ak" audit agents || true # from-skill: verify`,
+      ),
+    ).toBe(true)
     expect(isTaggedSkillHook('./node_modules/.bin/ak-stop-qa')).toBe(false)
   })
 })
