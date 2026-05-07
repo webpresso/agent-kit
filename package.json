@@ -185,6 +185,7 @@
     "postbuild": "pnpm run generate-skills",
     "chmod-bins": "tsx scripts/chmod-bins.ts",
     "link-self-bins": "tsx scripts/link-self-bins.ts",
+    "dev:link": "tsx scripts/link-edge-local.ts",
     "generate-skills": "tsx src/build/generate-skills-dir.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

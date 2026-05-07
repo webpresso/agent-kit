@@ -5,14 +5,16 @@
  * and feed it synthetic stdin payloads, asserting exit code and stdout JSON shape.
  *
  * MCP-ready is signalled by writing a sentinel file at
- * `${tmpdir()}/ak-mcp-ready-${process.pid}` (the child's ppid equals our test process pid).
+ * `${tmpdir()}/ak-mcp-ready-${SENTINEL_KEY}` and passing
+ * `AK_MCP_SENTINEL_KEY=${SENTINEL_KEY}` to the spawned binary so reader and
+ * writer agree on the filename without relying on PPID inheritance.
  * Throttle markers are written to `${tmpdir()}/ak-routing-guidance-${process.pid}-<type>`.
  * Both are cleaned up after each test.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { spawnSync } from 'node:child_process'
-import { existsSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -20,13 +22,19 @@ import { dirname } from 'node:path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const BINARY = join(__dirname, '../../../dist/esm/hooks/pretool-guard/index.js')
+const SENTINEL_KEY = `runner-test-${process.pid}`
+
+// Per-test isolated TMPDIR — the binary's sentinel reader scans tmpdir for any
+// `ak-mcp-ready-*` files, so without isolation real running MCP servers on the
+// host machine would leak into the test and fool the readiness check.
+let testTmpDir: string
 
 function sentinelPath(): string {
-  return join(tmpdir(), `ak-mcp-ready-${process.pid}`)
+  return join(testTmpDir, `ak-mcp-ready-${SENTINEL_KEY}`)
 }
 
 function throttleMarker(type: string): string {
-  return join(tmpdir(), `ak-routing-guidance-${process.pid}-${type}`)
+  return join(testTmpDir, `ak-routing-guidance-${process.pid}-${type}`)
 }
 
 function runBinary(stdin: string): { stdout: string; stderr: string; status: number } {
@@ -34,6 +42,15 @@ function runBinary(stdin: string): { stdout: string; stderr: string; status: num
     input: stdin,
     encoding: 'utf-8',
     timeout: 8000,
+    env: {
+      ...process.env,
+      AK_MCP_SENTINEL_KEY: SENTINEL_KEY,
+      // TMPDIR=tested directory so the binary's `os.tmpdir()` resolves to our
+      // isolated dir on macOS/Linux. Node honours TMPDIR > TMP > TEMP > /tmp.
+      TMPDIR: testTmpDir,
+      TMP: testTmpDir,
+      TEMP: testTmpDir,
+    },
   })
   return {
     stdout: result.stdout ?? '',
@@ -59,6 +76,7 @@ function clearThrottleMarkers(): void {
 
 describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
   beforeEach(() => {
+    testTmpDir = mkdtempSync(join(tmpdir(), 'ak-runner-test-'))
     clearMcpSentinel()
     clearThrottleMarkers()
   })
@@ -66,6 +84,7 @@ describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
   afterEach(() => {
     clearMcpSentinel()
     clearThrottleMarkers()
+    rmSync(testTmpDir, { recursive: true, force: true })
   })
 
   // ── Deny cases (MCP ready, first intercept) ───────────────────────────────

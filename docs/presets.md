@@ -70,8 +70,9 @@ Ensures gstack — a Claude Code skill registry providing `/qa`, `/ship`, `/revi
 - `git clone` exits non-zero → `EXIT_WRITE_FAIL` (exit 3)
 - `./setup --team` exits non-zero → `EXIT_WRITE_FAIL` (exit 3)
 
-**Idempotency:** if gstack already has a usable install root, `ak setup --with gstack` refreshes it in place (`gstack: ✓ updated`). Managed installs with a `.git/` directory do a fast-forward pull before `./setup --team`; unmanaged-but-valid installs (a `setup` script without `.git/`) rerun `./setup --team` without forcing git metadata.
-**Side-effects outside the consumer repo:** writes to the user's home dir at `~/.claude/skills/gstack/`. This is intentional — gstack is global by design. Only opt in via `--with gstack` when you actually want gstack's skills available.
+**Idempotency:** every `ak setup` checks gstack and refreshes in place if needed (`gstack: ✓ updated`). Managed installs with a `.git/` directory do a fast-forward pull before `./setup --team`; unmanaged-but-valid installs (a `setup` script without `.git/`) rerun `./setup --team` without forcing git metadata.
+**Side-effects outside the consumer repo:** writes to the user's home dir at `~/.claude/skills/gstack/`. This is intentional — gstack is global by design.
+**Opt-out:** set `AK_SKIP_GSTACK=1` in the environment to skip (CI / sandboxed environments only — most consumer repos treat gstack as a hard prerequisite for AI-assisted work).
 
 ### `rtk`
 

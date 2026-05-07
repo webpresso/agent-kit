@@ -124,7 +124,7 @@ function prepareTemplate(template: string): string {
       '- Complexity: `{{complexity}}`',
       '- Draft slug: `{{slug}}`',
       '- Output path: `{{output_path}}`',
-      '- Creation command: `wp blueprint new "{{description}}" --complexity {{complexity}}`',
+      '- Generated command: `wp blueprint new "{{description}}" --complexity {{complexity}}`',
       '- Validation scope: parser compliance before write',
     ].join('\n'),
   )

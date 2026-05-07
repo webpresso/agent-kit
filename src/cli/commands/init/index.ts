@@ -287,7 +287,11 @@ export async function runInit(flags: InitFlags): Promise<number> {
     }
 
     let gstackFailure: 'clone-failed' | 'pull-failed' | 'setup-failed' | null = null
-    if (presets.includes('gstack')) {
+    if (process.env.AK_SKIP_GSTACK === '1') {
+      console.warn(
+        '  gstack: ⚠ AK_SKIP_GSTACK=1 — skipping. Most consumer repos treat gstack as a hard prerequisite.',
+      )
+    } else if (presets.includes('gstack')) {
       const gstackResult = ensureGstack({ repoRoot: consumer.repoRoot, options })
       switch (gstackResult.kind) {
         case 'gstack-installed':

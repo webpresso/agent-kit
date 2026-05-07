@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { scaffoldAgentHooks } from './index.js'
+import { buildAgentKitHookGroups, hoistTopLevelEvents, scaffoldAgentHooks } from './index.js'
 
 describe('scaffoldAgentHooks', () => {
   let repoRoot: string
@@ -200,5 +200,221 @@ hooks:
 
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(false)
     expect(stopCommands.some((command) => command.includes('ak-stop-qa'))).toBe(true)
+  })
+
+  it('writes Codex hooks under the canonical wrapped `hooks` key, not at top level', () => {
+    scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const codex = JSON.parse(
+      readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8'),
+    ) as Record<string, unknown>
+
+    expect(codex).toHaveProperty('hooks')
+    expect(codex).not.toHaveProperty('SessionStart')
+    expect(codex).not.toHaveProperty('PreToolUse')
+    expect(codex).not.toHaveProperty('PostToolUse')
+
+    const hooks = codex.hooks as {
+      SessionStart: Array<{ hooks: Array<{ command: string }> }>
+      PreToolUse: Array<{ matcher?: string; hooks: Array<{ command: string }> }>
+    }
+    expect(
+      hooks.SessionStart.some((g) =>
+        g.hooks.some((h) => h.command.includes('ak-sessionstart-routing')),
+      ),
+    ).toBe(true)
+    expect(
+      hooks.PreToolUse.some((g) =>
+        g.hooks.some((h) => h.command.includes('ak-pretool-guard')),
+      ),
+    ).toBe(true)
+  })
+
+  it('migrates legacy flat-form Codex hooks.json into the wrapped `hooks` key', () => {
+    const codexPath = join(repoRoot, '.codex', 'hooks.json')
+    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
+    writeFileSync(
+      codexPath,
+      JSON.stringify(
+        {
+          SessionStart: [
+            {
+              hooks: [
+                {
+                  type: 'command',
+                  command: './node_modules/.bin/ak-sessionstart-routing',
+                  timeout: 5,
+                },
+              ],
+            },
+          ],
+          PreToolUse: [
+            {
+              matcher: 'Bash|Edit|Write',
+              hooks: [
+                { type: 'command', command: './node_modules/.bin/ak-pretool-guard', timeout: 5 },
+              ],
+            },
+          ],
+        },
+        null,
+        2,
+      ),
+    )
+
+    scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const codex = JSON.parse(readFileSync(codexPath, 'utf8')) as Record<string, unknown>
+    expect(codex).not.toHaveProperty('SessionStart')
+    expect(codex).not.toHaveProperty('PreToolUse')
+    expect(codex).toHaveProperty('hooks')
+
+    const hooks = codex.hooks as {
+      SessionStart: Array<{ hooks: Array<{ command: string }> }>
+      PreToolUse: Array<{ hooks: Array<{ command: string }> }>
+    }
+    // No duplication — ensureGroup deduped the migrated entries with what we re-add.
+    const sessionCmds = hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))
+    const sessionAkCount = sessionCmds.filter((c) => c.includes('ak-sessionstart-routing')).length
+    expect(sessionAkCount).toBe(1)
+  })
+
+  it('preserves wrapped Codex hooks (e.g. OMX entries) and adds ak-* alongside', () => {
+    const codexPath = join(repoRoot, '.codex', 'hooks.json')
+    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
+    writeFileSync(
+      codexPath,
+      JSON.stringify(
+        {
+          hooks: {
+            SessionStart: [
+              {
+                matcher: 'startup|resume',
+                hooks: [{ type: 'command', command: 'node /opt/omx/codex-native-hook.js' }],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+
+    scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const codex = JSON.parse(readFileSync(codexPath, 'utf8')) as {
+      hooks: { SessionStart: Array<{ hooks: Array<{ command: string }> }> }
+    }
+    const sessionCmds = codex.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))
+    expect(sessionCmds.some((c) => c.includes('omx/codex-native-hook'))).toBe(true)
+    expect(sessionCmds.some((c) => c.includes('ak-sessionstart-routing'))).toBe(true)
+  })
+})
+
+describe('hoistTopLevelEvents', () => {
+  it('moves top-level event keys into the wrapped `hooks` key', () => {
+    const input = {
+      SessionStart: [
+        { hooks: [{ type: 'command', command: './node_modules/.bin/ak-sessionstart-routing' }] },
+      ],
+      PreToolUse: [
+        {
+          matcher: 'Bash',
+          hooks: [{ type: 'command', command: './node_modules/.bin/ak-pretool-guard' }],
+        },
+      ],
+    }
+
+    const result = hoistTopLevelEvents(input)
+
+    expect(result).not.toHaveProperty('SessionStart')
+    expect(result).not.toHaveProperty('PreToolUse')
+    expect(result).toHaveProperty('hooks')
+    const hooks = result.hooks as Record<string, Array<{ hooks: Array<{ command: string }> }>>
+    expect(hooks.SessionStart[0]?.hooks[0]?.command).toContain('ak-sessionstart-routing')
+    expect(hooks.PreToolUse[0]?.hooks[0]?.command).toContain('ak-pretool-guard')
+  })
+
+  it('leaves already-wrapped input unchanged in shape (idempotent)', () => {
+    const input = {
+      hooks: {
+        SessionStart: [
+          { hooks: [{ type: 'command', command: 'node /opt/omx/hook.js' }] },
+        ],
+      },
+    }
+
+    const result = hoistTopLevelEvents(input)
+
+    expect(result).toStrictEqual(input)
+  })
+
+  it('dedupes when both top-level and wrapped contain the same ak-* command', () => {
+    const input = {
+      SessionStart: [
+        { hooks: [{ type: 'command', command: './node_modules/.bin/ak-sessionstart-routing' }] },
+      ],
+      hooks: {
+        SessionStart: [
+          { hooks: [{ type: 'command', command: './node_modules/.bin/ak-sessionstart-routing' }] },
+        ],
+      },
+    }
+
+    const result = hoistTopLevelEvents(input)
+
+    const hooks = result.hooks as Record<string, Array<{ hooks: Array<{ command: string }> }>>
+    const akCount = hooks.SessionStart.flatMap((g) =>
+      g.hooks.map((h) => h.command),
+    ).filter((c) => c.includes('ak-sessionstart-routing')).length
+    expect(akCount).toBe(1)
+  })
+
+  it('passes through non-event top-level keys untouched', () => {
+    const input = {
+      $schema: 'https://example.com/schema.json',
+      SessionStart: [{ hooks: [{ type: 'command', command: './node_modules/.bin/ak-sessionstart-routing' }] }],
+    }
+
+    const result = hoistTopLevelEvents(input)
+
+    expect(result.$schema).toBe('https://example.com/schema.json')
+    expect(result).not.toHaveProperty('SessionStart')
+  })
+})
+
+describe('buildAgentKitHookGroups', () => {
+  it('returns the canonical 5 ak-* event groups with the supplied bin resolver', () => {
+    const result = buildAgentKitHookGroups({
+      resolveBin: (name) => `./node_modules/.bin/${name}`,
+      matchers: { preToolUse: 'Bash|Edit|Write', postToolUse: 'Edit|Write' },
+    })
+
+    expect(Object.keys(result).sort()).toStrictEqual(
+      ['PostToolUse', 'PreToolUse', 'SessionStart', 'Stop', 'UserPromptSubmit'].sort(),
+    )
+    expect(result.SessionStart[0]?.hooks[0]?.command).toBe(
+      './node_modules/.bin/ak-sessionstart-routing',
+    )
+    expect(result.PreToolUse[0]?.matcher).toBe('Bash|Edit|Write')
+    expect(result.PreToolUse[0]?.hooks[0]?.command).toBe('./node_modules/.bin/ak-pretool-guard')
+    expect(result.PostToolUse[0]?.matcher).toBe('Edit|Write')
+    expect(result.PostToolUse[0]?.hooks[0]?.command).toBe('./node_modules/.bin/ak-post-tool')
+    expect(result.UserPromptSubmit[0]?.hooks[0]?.command).toBe(
+      './node_modules/.bin/ak-guard-switch',
+    )
+    expect(result.Stop[0]?.hooks[0]?.command).toBe('./node_modules/.bin/ak-stop-qa')
+  })
+
+  it('substitutes the Claude bin resolver for guarded $CLAUDE_PROJECT_DIR commands', () => {
+    const result = buildAgentKitHookGroups({
+      resolveBin: (name) =>
+        `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}" || true`,
+      matchers: { preToolUse: 'Bash|Write|Edit|MultiEdit', postToolUse: 'Write|Edit|MultiEdit' },
+    })
+
+    expect(result.SessionStart[0]?.hooks[0]?.command).toContain('$CLAUDE_PROJECT_DIR')
+    expect(result.SessionStart[0]?.hooks[0]?.command).toContain('ak-sessionstart-routing')
+    expect(result.PreToolUse[0]?.matcher).toBe('Bash|Write|Edit|MultiEdit')
   })
 })

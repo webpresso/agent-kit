@@ -19,7 +19,7 @@ tags: []
 - Complexity: `{{complexity}}`
 - Draft slug: `{{slug}}`
 - Output path: `{{output_path}}`
-- Generated command: `ak blueprint new "{{description}}" --complexity {{complexity}}`
+- Generated command: `wp blueprint new "{{description}}" --complexity {{complexity}}`
 - Validation scope: parser compliance before write
 
 ## Architecture Overview
