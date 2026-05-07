@@ -18,28 +18,50 @@ import { auditBlueprints, createBlueprint, listBlueprints } from '#cli/commands/
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
 
-const inputSchema = z.discriminatedUnion('action', [
-  z.object({
-    action: z.literal('new'),
-    goal: z.string(),
-    complexity: z.enum(['XS', 'S', 'M', 'L', 'XL']).default('M'),
-  }),
-  z.object({
-    action: z.literal('audit'),
+/**
+ * Flat-object schema with handler-side per-action validation.
+ *
+ * MCP spec (`ToolSchema` in @modelcontextprotocol/sdk) REQUIRES the tool's
+ * `inputSchema.type` to be `"object"` at the root. A `z.discriminatedUnion`
+ * would serialize to `{ oneOf: [...] }` with no root `type` and the MCP
+ * client rejects the tool list with:
+ *   `"path": ["tools", N, "inputSchema", "type"], "message": "expected 'object'"`.
+ *
+ * We keep the discriminated semantics (per-action required fields) inside
+ * `superRefine` so JSON-schema clients see one valid object shape while
+ * the runtime still enforces the dispatch contract.
+ */
+const ACTIONS = ['new', 'audit', 'list'] as const
+
+const inputSchema = z
+  .object({
+    action: z.enum(ACTIONS),
+    // `new`-only:
+    goal: z.string().optional(),
+    complexity: z.enum(['XS', 'S', 'M', 'L', 'XL']).optional(),
+    // `audit`-only:
     path: z.string().optional(),
-    all: z.boolean().optional().default(false),
-    strict: z.boolean().optional().default(false),
-    staged: z.boolean().optional().default(false),
-  }),
-  z.object({
-    action: z.literal('list'),
+    all: z.boolean().optional(),
+    strict: z.boolean().optional(),
+    staged: z.boolean().optional(),
+    // `list`-only:
     status: z
       .enum(['draft', 'planned', 'parked', 'in-progress', 'completed', 'archived'])
       .optional(),
-  }),
-])
+  })
+  .superRefine((data, ctx) => {
+    if (data.action === 'new' && !data.goal) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['goal'],
+        message: '`goal` is required when action is "new"',
+      })
+    }
+  })
 
 export type AkBlueprintInput = z.infer<typeof inputSchema>
+
+const DEFAULT_COMPLEXITY = 'M' as const
 
 function toErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
@@ -89,7 +111,11 @@ const tool: ToolDescriptor = {
 
     if (parsed.action === 'new') {
       try {
-        const created = await createBlueprint(parsed.goal, { complexity: parsed.complexity })
+        // `superRefine` already guarantees `goal` is present when action is "new";
+        // narrow + apply the default complexity that the discriminated union used to inline.
+        const goal = parsed.goal as string
+        const complexity = parsed.complexity ?? DEFAULT_COMPLEXITY
+        const created = await createBlueprint(goal, { complexity })
         return jsonContent({ action: 'new', path: created.path })
       } catch (err) {
         return jsonContent(
