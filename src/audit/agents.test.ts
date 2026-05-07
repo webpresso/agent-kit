@@ -56,26 +56,30 @@ function seedConsumerRepo(root: string): void {
       Stop: [{ hooks: [{ type: 'command', command: './node_modules/.bin/ak-stop-qa' }] }],
     },
   })
+  // Canonical Codex schema is wrapped under "hooks" — matches what the
+  // agent-hooks scaffolder writes via hoistTopLevelEvents.
   writeJson(join(root, '.codex', 'hooks.json'), {
-    SessionStart: [
-      { hooks: [{ type: 'command', command: './node_modules/.bin/ak-sessionstart-routing' }] },
-    ],
-    PreToolUse: [
-      {
-        matcher: 'Bash|Edit|Write',
-        hooks: [{ type: 'command', command: './node_modules/.bin/ak-pretool-guard' }],
-      },
-    ],
-    PostToolUse: [
-      {
-        matcher: 'Edit|Write',
-        hooks: [{ type: 'command', command: './node_modules/.bin/ak-post-tool' }],
-      },
-    ],
-    UserPromptSubmit: [
-      { hooks: [{ type: 'command', command: './node_modules/.bin/ak-guard-switch' }] },
-    ],
-    Stop: [{ hooks: [{ type: 'command', command: './node_modules/.bin/ak-stop-qa' }] }],
+    hooks: {
+      SessionStart: [
+        { hooks: [{ type: 'command', command: './node_modules/.bin/ak-sessionstart-routing' }] },
+      ],
+      PreToolUse: [
+        {
+          matcher: 'Bash|Edit|Write',
+          hooks: [{ type: 'command', command: './node_modules/.bin/ak-pretool-guard' }],
+        },
+      ],
+      PostToolUse: [
+        {
+          matcher: 'Edit|Write',
+          hooks: [{ type: 'command', command: './node_modules/.bin/ak-post-tool' }],
+        },
+      ],
+      UserPromptSubmit: [
+        { hooks: [{ type: 'command', command: './node_modules/.bin/ak-guard-switch' }] },
+      ],
+      Stop: [{ hooks: [{ type: 'command', command: './node_modules/.bin/ak-stop-qa' }] }],
+    },
   })
 
   writeFileSync(join(root, '.agent', 'rules', 'repo-restrictions.md'), '# rule\n')

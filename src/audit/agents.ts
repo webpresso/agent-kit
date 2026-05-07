@@ -345,11 +345,15 @@ function checkAgentKitDevDependency(
 function parseHooks(raw: string, host: 'claude' | 'codex'): HooksMap {
   const parsed = readJsonContent<Record<string, unknown> | null>(raw)
   if (!parsed || typeof parsed !== 'object') return {}
-  if (host === 'claude') {
-    const hooks = parsed.hooks
-    return hooks && typeof hooks === 'object' ? (hooks as HooksMap) : {}
-  }
-  return parsed as HooksMap
+  // Both Claude and Codex use the wrapped form `{ "hooks": { Event: [...] } }`
+  // per their canonical docs (https://developers.openai.com/codex/hooks).
+  // The agent-hooks scaffolder writes wrapped via `hoistTopLevelEvents`; the
+  // audit must read it the same way or it will report false negatives.
+  // For Codex, fall back to the parsed root if `hooks` is absent so legacy
+  // pre-migration flat-form files still audit cleanly.
+  const hooks = parsed.hooks
+  if (hooks && typeof hooks === 'object') return hooks as HooksMap
+  return host === 'codex' ? (parsed as HooksMap) : {}
 }
 
 function readJsonFile<T>(path: string): T {
