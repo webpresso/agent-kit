@@ -72,7 +72,7 @@ describe('ensureRtk', () => {
     })
 
     expect(result).toEqual({ kind: 'rtk-ok', installed: true })
-    expect(spawn).toHaveBeenNthCalledWith(2, 'brew', ['install', 'rtk-ai/rtk/rtk'], {
+    expect(spawn).toHaveBeenNthCalledWith(2, 'brew', ['install', 'rtk'], {
       stdio: 'inherit',
     })
     platform.mockRestore()

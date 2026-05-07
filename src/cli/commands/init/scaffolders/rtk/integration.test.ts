@@ -119,7 +119,9 @@ describe('rtk scaffolder integration', () => {
     const doctorOk = await runHooksDoctor({ skipMcp: true })
     expect(doctorOk.checks.find((check) => check.name === 'rtk on PATH')?.ok).toBe(true) // G5
 
-    process.env.PATH = [fakeOmxBin, previousPath ?? ''].filter(Boolean).join(':')
+    // Mask rtk by isolating PATH to fakeOmxBin only — including previousPath
+    // would leak `/opt/homebrew/bin/rtk` on machines where rtk is installed.
+    process.env.PATH = fakeOmxBin
     const doctorMissing = await runHooksDoctor({ skipMcp: true })
     expect(doctorMissing.checks.find((check) => check.name === 'rtk on PATH')?.detail).toContain(
       'brew install rtk',

@@ -17,20 +17,6 @@ export type EnsureRtkResult =
 const NOT_FOUND_HINT =
   'rtk is not on PATH. Install it manually (macOS: `brew install rtk`) and re-run.'
 
-const RTK_HOOK_EXCLUDE_COMMANDS = [
-  'pnpm test',
-  'vitest',
-  'oxlint',
-  'tsc --noEmit',
-  'pnpm qa',
-  'just qa',
-  'pnpm lint',
-  'just lint',
-  'pnpm typecheck',
-  'just typecheck',
-  'pnpm check-types',
-].join(',')
-
 export function ensureRtk(input: EnsureRtkInput): EnsureRtkResult {
   if (input.options.dryRun) return { kind: 'rtk-skipped-dry-run' }
 
@@ -43,7 +29,7 @@ export function ensureRtk(input: EnsureRtkInput): EnsureRtkResult {
       return { kind: 'rtk-not-found', hint: NOT_FOUND_HINT }
     }
 
-    const install = spawn('brew', ['install', 'rtk-ai/rtk/rtk'], { stdio: 'inherit' })
+    const install = spawn('brew', ['install', 'rtk'], { stdio: 'inherit' })
     if (install.status !== 0) {
       return { kind: 'rtk-not-found', hint: NOT_FOUND_HINT }
     }
@@ -61,7 +47,6 @@ export function ensureRtk(input: EnsureRtkInput): EnsureRtkResult {
     env: {
       ...process.env,
       RTK_TELEMETRY_DISABLED: '1',
-      RTK_HOOK_EXCLUDE_COMMANDS,
     },
   })
 
