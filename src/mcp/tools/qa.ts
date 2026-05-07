@@ -123,10 +123,7 @@ const tool: ToolDescriptor = {
     const [lintResult, typecheckResult, testResult] = await Promise.all([
       lintTool.handler({ cwd: input.cwd, files: input.files }, extra),
       typecheckTool.handler({ cwd: input.cwd, packages: input.packages }, extra),
-      testTool.handler(
-        { cwd: input.cwd, files: input.files, packages: input.packages },
-        extra,
-      ),
+      testTool.handler({ cwd: input.cwd, files: input.files, packages: input.packages }, extra),
     ])
 
     const lint = unwrap(lintResult)

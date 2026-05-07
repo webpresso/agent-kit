@@ -214,7 +214,7 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
     }
     case 'bundle-budget': {
       const { runBundleBudgetCli } = await import('../../vite/local.js')
-      const args = input.cwd ?? input.directory ? [input.cwd ?? input.directory!] : []
+      const args = (input.cwd ?? input.directory) ? [input.cwd ?? input.directory!] : []
       const exitCode = await runBundleBudgetCli(args)
       return {
         passed: exitCode === 0,

@@ -50,7 +50,7 @@ const STUB = {
   inScope: ['- Things this repo owns.', '- Surfaces it presents to consumers.'].join('\n'),
   outOfScope: [
     '- Things that look related but belong elsewhere — name where they belong.',
-    "- Hypothetical \"could fit here\" scope that isn't earning its keep.",
+    '- Hypothetical "could fit here" scope that isn\'t earning its keep.',
   ].join('\n'),
   principles: [
     '- Principle 1 — short rationale.',
