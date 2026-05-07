@@ -1,5 +1,76 @@
 # Changelog
 
+## 0.5.0
+
+### Minor Changes
+
+- 25c065c: Codex hooks scaffolder + gstack opt-out
+
+  **Codex hooks schema fix.** `ak setup` now writes `.codex/hooks.json` under the
+  canonical wrapped `hooks` key (`{ "hooks": { "SessionStart": [...] } }`) per
+  Codex's official schema at `developers.openai.com/codex/hooks`. Previous
+  versions wrote event keys at the top level, which Codex silently ignored —
+  agent-kit hooks were never actually firing in any Codex session. Stale
+  flat-form entries are migrated automatically: the next `ak setup` hoists any
+  top-level `SessionStart`/`PreToolUse`/`PostToolUse`/`UserPromptSubmit`/`Stop`
+  keys into the wrapped `hooks` block, deduping with `ensureGroup`.
+
+  **DRY refactor.** The 5-event ak-_ hook list now lives in a single
+  `buildAgentKitHookGroups({ resolveBin, matchers })` helper consumed by both
+  `patchClaudeSettings` and `patchCodexHooks`. Adding a new ak-_ hook is a
+  one-line append and propagates to both surfaces.
+
+  **Gstack opt-out.** `AK_SKIP_GSTACK=1 ak setup` now skips the gstack
+  scaffolder with a stderr warning. `gstack` remains in `DEFAULT_PRESETS` so
+  `ak setup` (no flags) still installs and refreshes gstack on every run; the
+  new env-var is for CI / sandboxed environments without network. Most
+  consumer repos treat gstack as a hard prerequisite — opt out only when you
+  must.
+
+  **MCP readiness sentinel — decoupled scan-based reader.** The pretool-guard
+  hook routes dev-workflow commands (`pnpm test`, `just lint`, `ak ...`) to
+  the agent-kit MCP tool surface when MCP is alive, falling back to a
+  `just <task>` recipe otherwise. Earlier the readiness sentinel filename was
+  derived from a value (`process.ppid`, then briefly a project-anchor hash)
+  that BOTH writer and reader had to agree on. Both approaches break under
+  real IDE topologies: PPID assumes the IDE host is the direct parent of
+  both processes (Codex CLI routes hooks through workers), and cwd-derived
+  keys assume the IDE spawns the MCP server with the project root as cwd
+  (Codex spawns it with the script's directory).
+
+  The fix decouples the two halves. The writer claims a unique filename
+  (`ak-mcp-ready-${process.pid}` by default, overridable via
+  `AK_MCP_SENTINEL_KEY` for tests). The reader scans `tmpdir` for ALL
+  `ak-mcp-ready-*` files and returns true if any contains a live PID
+  (verified via `process.kill(pid, 0)`). Reader and writer no longer need
+  to agree on a key — only on a stable filename pattern. The agent-kit MCP
+  tool surface is functionally global, so "any agent-kit MCP is alive" is
+  sufficient signal to enable MCP-tool routing on the hook side.
+
+### Patch Changes
+
+- 25c065c: `ak setup` now upserts `[mcp_servers.agent-kit]` into Codex's `config.toml`.
+
+  The codex-mcp scaffolder previously only managed the Playwright MCP block; users who wanted agent-kit's MCP server reachable from Codex had to hand-edit `~/.codex/config.toml`. The Claude Code side was always self-registered via the plugin manifest, so this gap was Codex-only.
+
+  The new `ensureCodexAgentKitMcp` helper probes for an agent-kit install at scaffold time:
+
+  1. Claude plugin install (`~/.claude/plugins/cache/agent-kit/agent-kit/`)
+  2. bun global (`~/.bun/install/global/node_modules/@webpresso/agent-kit/`)
+  3. pnpm global (`$(pnpm root -g)/@webpresso/agent-kit/`)
+  4. npm global (`$(npm root -g)/@webpresso/agent-kit/`)
+
+  Whichever exists first becomes the absolute path written into the codex config block. If none are found, the scaffolder logs a clear warning telling the user to install agent-kit globally — no broken config is written.
+
+  Migration note: when the unified-cli sibling cutover lands and `webpresso mcp serve` becomes the canonical entrypoint, this scaffolder collapses to writing a fixed `command = "webpresso", args = ["mcp", "serve"]` block — the install-detection probe goes away.
+
+  New exports from `@webpresso/agent-kit`'s codex-mcp scaffolder for downstream consumers:
+
+  - `ensureCodexAgentKitMcp({ options, configPath?, entryPath?, probe? })`
+  - `findAgentKitMcpEntry({ candidates?, pnpmGlobalRoot?, npmGlobalRoot? })`
+  - `agentKitMcpBlock(entryPath)`, `upsertAgentKitMcpServer(raw, entryPath)`
+  - `AGENT_KIT_MCP_SERVER_NAME`, `AGENT_KIT_MCP_HEADER`
+
 ## 0.4.0
 
 ### Minor Changes
