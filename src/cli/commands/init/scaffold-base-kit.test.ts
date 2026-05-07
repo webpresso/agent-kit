@@ -100,6 +100,29 @@ describe('scaffoldBaseKit', () => {
     )
   })
 
+  it('does NOT overwrite an existing .gitignore even with --overwrite', () => {
+    const gitignorePath = join(repoRoot, '.gitignore')
+    const consumerOwned = '# consumer rules\n.test-reports/\n.webpresso/generated/\n**/.wrangler/\n'
+    writeFileSync(gitignorePath, consumerOwned)
+
+    const catalogDir = resolveCatalogDir()
+    scaffoldBaseKit({ catalogDir, repoRoot, options: { overwrite: true } })
+
+    expect(readFileSync(gitignorePath, 'utf8')).toBe(consumerOwned)
+  })
+
+  it('does NOT overwrite an existing pnpm-workspace.yaml even with --overwrite', () => {
+    const wsPath = join(repoRoot, 'pnpm-workspace.yaml')
+    const consumerOwned =
+      "packages:\n  - packages/*\ncatalog:\n  '@neondatabase/serverless': ^1.0.2\n"
+    writeFileSync(wsPath, consumerOwned)
+
+    const catalogDir = resolveCatalogDir()
+    scaffoldBaseKit({ catalogDir, repoRoot, options: { overwrite: true } })
+
+    expect(readFileSync(wsPath, 'utf8')).toBe(consumerOwned)
+  })
+
   it('skips self-install fields in the agent-kit repo itself', () => {
     const pkgPath = join(repoRoot, 'package.json')
     writeFileSync(pkgPath, JSON.stringify({ name: '@webpresso/agent-kit', private: true }, null, 2))

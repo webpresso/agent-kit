@@ -11,14 +11,35 @@ export interface ScaffoldBaseKitInput {
 
 /** Template files relative to `catalog/base-kit/`, and their target paths relative to repoRoot. */
 const TEMPLATE_MAP: Array<[string, string]> = [
-  ['.gitignore.tmpl', '.gitignore'],
   ['.editorconfig.tmpl', '.editorconfig'],
-  ['pnpm-workspace.yaml.tmpl', 'pnpm-workspace.yaml'],
   ['.secretlintrc.json.tmpl', '.secretlintrc.json'],
   ['commitlint.config.ts.tmpl', 'commitlint.config.ts'],
   ['.husky/pre-commit.tmpl', '.husky/pre-commit'],
   ['.husky/commit-msg.tmpl', '.husky/commit-msg'],
   ['.github/workflows/ci.webpresso.yml.tmpl', '.github/workflows/ci.webpresso.yml'],
+]
+
+/**
+ * Bootstrap-only templates: the scaffolder writes them when absent (so a
+ * fresh repo gets sane defaults) but NEVER overwrites them once they exist
+ * — even under `--overwrite`. These files are consumer-owned and grow with
+ * project-specific content (catalog entries, ignore patterns) that the
+ * generic template can't reproduce. Clobbering them on every `ak setup`
+ * deletes that content silently, breaks `pnpm install`, and pollutes git
+ * status with thousands of newly-tracked artifacts.
+ *
+ * Verified failure mode (webpresso/monorepo, 2026-05-07): the postinstall
+ * `ak setup --overwrite` reduced pnpm-workspace.yaml from 221 lines (full
+ * catalog) to 34 lines (generic template), removing every catalog entry
+ * referenced by `pnpm.overrides` (`@neondatabase/serverless` etc.) and
+ * making subsequent `pnpm install` fail with ERR_PNPM_CATALOG_IN_OVERRIDES.
+ * The same overwrite stripped monorepo-specific .gitignore rules
+ * (.test-reports/, .webpresso/generated/, all-paths/.wrangler/, etc.),
+ * unmasking 23k+ generated artifacts to git status.
+ */
+const BOOTSTRAP_ONLY_MAP: Array<[string, string]> = [
+  ['.gitignore.tmpl', '.gitignore'],
+  ['pnpm-workspace.yaml.tmpl', 'pnpm-workspace.yaml'],
 ]
 
 /** Merge `engines` and `packageManager` into the consumer repo's package.json. */
@@ -102,6 +123,27 @@ export function scaffoldBaseKit(input: ScaffoldBaseKitInput): MergeResult[] {
     const content = readFileSync(tmplPath, 'utf8')
     const targetPath = join(repoRoot, targetRel)
     results.push(writeFileMerged(targetPath, content, options))
+  }
+
+  // Bootstrap-only: write template only when target is absent. Never
+  // overwrite (even under --overwrite) and never produce a `.new` sidecar
+  // — the consumer's existing file is the source of truth once it exists.
+  for (const [tmplRel, targetRel] of BOOTSTRAP_ONLY_MAP) {
+    const tmplPath = join(baseKitDir, tmplRel)
+    if (!existsSync(tmplPath)) continue
+    const targetPath = join(repoRoot, targetRel)
+    if (existsSync(targetPath)) {
+      results.push({ targetPath, action: 'identical' })
+      continue
+    }
+    const content = readFileSync(tmplPath, 'utf8')
+    if (options.dryRun) {
+      results.push({ targetPath, action: 'skipped-dry' })
+      continue
+    }
+    mkdirSync(dirname(targetPath), { recursive: true })
+    writeFileSync(targetPath, content)
+    results.push({ targetPath, action: 'created' })
   }
 
   // Make husky hook files executable
