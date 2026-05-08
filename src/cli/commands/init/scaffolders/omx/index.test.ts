@@ -143,9 +143,9 @@ describe('ensureOmx', () => {
 
 describe('migrateDeprecatedCodexHooksFeatureFlag', () => {
   it('rewrites codex_hooks to hooks inside the [features] table', () => {
-    expect(migrateDeprecatedCodexHooksFeatureFlag('[features]\ncodex_hooks = true\ngoals = true\n')).toBe(
-      '[features]\nhooks = true\ngoals = true\n',
-    )
+    expect(
+      migrateDeprecatedCodexHooksFeatureFlag('[features]\ncodex_hooks = true\ngoals = true\n'),
+    ).toBe('[features]\nhooks = true\ngoals = true\n')
   })
 
   it('removes codex_hooks when hooks already exists and preserves the deprecated value', () => {

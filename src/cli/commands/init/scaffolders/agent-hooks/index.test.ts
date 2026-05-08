@@ -360,9 +360,9 @@ describe('hoistTopLevelEvents', () => {
     const result = hoistTopLevelEvents(input)
 
     const hooks = result.hooks as Record<string, Array<{ hooks: Array<{ command: string }> }>>
-    const akCount = (hooks.SessionStart ?? []).flatMap((g) => g.hooks.map((h) => h.command)).filter((c) =>
-      c.includes('ak-sessionstart-routing'),
-    ).length
+    const akCount = (hooks.SessionStart ?? [])
+      .flatMap((g) => g.hooks.map((h) => h.command))
+      .filter((c) => c.includes('ak-sessionstart-routing')).length
     expect(akCount).toBe(1)
   })
 

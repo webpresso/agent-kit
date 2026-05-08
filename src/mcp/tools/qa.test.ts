@@ -38,7 +38,10 @@ import akQaTool from './qa.js'
 
 const fixtureDir = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__')
 
-function wrapPayload(payload: unknown): { content: { type: string; text: string }[]; structuredContent: Record<string, unknown> } {
+function wrapPayload(payload: unknown): {
+  content: { type: string; text: string }[]
+  structuredContent: Record<string, unknown>
+} {
   return {
     content: [{ type: 'text', text: JSON.stringify(payload) }],
     structuredContent: payload as Record<string, unknown>,
@@ -124,7 +127,13 @@ describe('ak_qa tool', () => {
       details: {
         lint: { passed: boolean; summary: string; failures: unknown[] }
         typecheck: { passed: boolean; summary: string; failures: unknown[] }
-        test: { passed: boolean; summary: string; exitCode: number; backend: string; failures: unknown[] }
+        test: {
+          passed: boolean
+          summary: string
+          exitCode: number
+          backend: string
+          failures: unknown[]
+        }
       }
     }
     expect(result.structuredContent).toEqual(payload)

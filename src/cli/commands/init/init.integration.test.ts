@@ -363,10 +363,7 @@ describe('warnIfNonLocalCli (DX2)', () => {
   beforeEach(() => {
     repo = join(tmpdir(), `ak-warn-cli-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
     mkdirSync(repo, { recursive: true })
-    writeFileSync(
-      join(repo, 'package.json'),
-      JSON.stringify({ name: '@acme/demo', private: true }),
-    )
+    writeFileSync(join(repo, 'package.json'), JSON.stringify({ name: '@acme/demo', private: true }))
     captured = []
     originalError = console.error
     console.error = (msg: unknown): void => {

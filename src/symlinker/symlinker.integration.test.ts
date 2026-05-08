@@ -674,7 +674,11 @@ describe('symlinker', () => {
         console.error = origError
       }
 
-      expect(errors.some((line) => line.includes('Removed unexpected directory') && line.includes('orphan'))).toBe(true)
+      expect(
+        errors.some(
+          (line) => line.includes('Removed unexpected directory') && line.includes('orphan'),
+        ),
+      ).toBe(true)
     })
 
     it('is idempotent — second run wrote=0', () => {
