@@ -129,7 +129,7 @@ function safeRemove(path: string): void {
   }
 }
 
-function isSymlinkPointingTo(linkPath: string, expectedAbs: string): boolean {
+export function isSymlinkPointingTo(linkPath: string, expectedAbs: string): boolean {
   try {
     const st = lstatSync(linkPath)
     if (!st.isSymbolicLink()) return false

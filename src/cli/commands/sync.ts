@@ -52,12 +52,23 @@ export function registerSyncCommand(cli: CAC): void {
       const catalogDir = resolvePackageAsset('catalog/agent')
       const check = options.check === true
 
-      const result = runUnifiedSync({
-        catalogDir,
-        consumerRoot: repoRoot,
-        ...(kinds ? { kinds } : {}),
-        check,
-      })
+      let result: ReturnType<typeof runUnifiedSync>
+      try {
+        result = runUnifiedSync({
+          catalogDir,
+          consumerRoot: repoRoot,
+          ...(kinds ? { kinds } : {}),
+          check,
+        })
+      } catch (error) {
+        if (error instanceof Error && /catalogDir does not exist/.test(error.message)) {
+          throw commandError(
+            'ak sync: @webpresso/agent-kit not installed in node_modules. ' +
+              'Run `pnpm install` first.',
+          )
+        }
+        throw error
+      }
 
       if (check) {
         if (result.fixCount > 0) {
@@ -87,7 +98,17 @@ export function registerSyncCommand(cli: CAC): void {
       if (kinds === undefined) {
         // Only run tail surfaces for the full sync; --kind filters skip it
         // because they target a specific content kind only.
-        tailFixes = syncAll(repoRoot)
+        try {
+          tailFixes = syncAll(repoRoot)
+        } catch (error) {
+          if (error instanceof Error && /catalogDir does not exist/.test(error.message)) {
+            throw commandError(
+              'ak sync: @webpresso/agent-kit not installed in node_modules. ' +
+                'Run `pnpm install` first.',
+            )
+          }
+          throw error
+        }
       }
 
       const totalWrites = result.fixCount + tailFixes

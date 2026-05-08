@@ -45,6 +45,7 @@ import {
 } from './consumers.js'
 import { parseMarkdownFrontmatter } from './frontmatter.js'
 import { toToml } from './toml.js'
+import { isSymlinkPointingTo } from './unified-sync.js'
 
 export {
   ALLOWED_REAL_FILES,
@@ -162,9 +163,39 @@ export function syncSkills(
   return fixCount
 }
 
-export function syncPerSkillConsumer(repoRoot: string, config: PerSkillConsumerConfig): number {
+export interface SyncSkillFanoutResult {
+  readonly wrote: number
+}
+
+/**
+ * File-level skill projection from `.agent/skills/<slug>/` into a per-IDE
+ * consumer dir (e.g. `.agents/skills/<slug>/`). Each file under the source
+ * skill dir — including nested asset files (per `collectSkillAssets`) —
+ * lands as an individual symlink so the consumer dir can host both
+ * agent-kit skills and user-owned files side by side.
+ *
+ * Source-of-truth: `.agent/skills/<slug>/` (the consumer projection
+ * produced by `runUnifiedSync` + scaffolders). NOT `node_modules/.../skills/`
+ * (the legacy `sourceRootDir` semantic was dropped — the bug class was
+ * an asymmetric fallback where listing succeeded against `.agent/skills/`
+ * but symlink targets pointed at the missing `node_modules/.../skills/`).
+ *
+ * Contract:
+ * - `.agents/skills/<slug>/` is owned by agent-kit. Top-level dirs that
+ *   don't correspond to a skill in `.agent/skills/` are removed
+ *   recursively (per the post-D2 destructive-cleanup contract).
+ * - INSIDE an expected slug dir, real files are preserved (user-owned);
+ *   only file symlinks are pruned when their source counterpart is gone.
+ *
+ * Throws (synchronously) on any file-op error so callers see fail-loud
+ * exit codes instead of `console.log('✅')` followed by broken state.
+ */
+export function syncSkillFanout(
+  repoRoot: string,
+  config: PerSkillConsumerConfig,
+): SyncSkillFanoutResult {
   const skillsSource = join(repoRoot, '.agent/skills')
-  if (!existsSync(skillsSource)) return 0
+  if (!existsSync(skillsSource)) return { wrote: 0 }
 
   const consumerDir = join(repoRoot, config.dir)
   mkdirSync(consumerDir, { recursive: true })
@@ -173,43 +204,29 @@ export function syncPerSkillConsumer(repoRoot: string, config: PerSkillConsumerC
 
   const agentSkills = readdirSync(skillsSource).filter((name) => {
     try {
-      // Wave-3: `.agent/skills/<slug>` may be a symlink (catalog projection
-      // via unified-sync). statSync follows symlinks, lstatSync would not.
+      // `.agent/skills/<slug>` may be a symlink (catalog projection via
+      // unified-sync). statSync follows symlinks, lstatSync would not.
       return statSync(join(skillsSource, name)).isDirectory()
     } catch {
       return false
     }
   })
 
-  let fixCount = 0
+  let wrote = 0
 
   for (const skill of agentSkills) {
     const skillLinkDir = join(consumerDir, skill)
+    const srcDir = join(skillsSource, skill)
 
-    // Resolve the source directory for this skill. When sourceRootDir is
-    // configured, symlink targets resolve through that directory so they
-    // trace back to the installed node_modules copy rather than a locally
-    // copied .agent/skills/ mirror.
-    const srcBaseDir = config.sourceRootDir
-      ? join(repoRoot, config.sourceRootDir, skill)
-      : join(skillsSource, skill)
-
-    // Handle existing entry at the skill path — replace old directory-symlinks
-    // with real directories.
-    let dirFixed = false
-    const stats = (() => {
-      try {
-        return lstatSync(skillLinkDir)
-      } catch {
-        return null
-      }
-    })()
-
+    // Realize the target as a real directory: replace dir-symlinks with mkdir
+    // so file symlinks can land inside. Non-dir entries (regular files) at
+    // the slug path are anomalous; skip the slug rather than clobber.
+    const stats = lstatNullable(skillLinkDir)
     if (stats) {
       if (stats.isSymbolicLink()) {
         unlinkSync(skillLinkDir)
         mkdirSync(skillLinkDir, { recursive: true })
-        dirFixed = true
+        wrote++
       } else if (!stats.isDirectory()) {
         continue
       }
@@ -217,129 +234,145 @@ export function syncPerSkillConsumer(repoRoot: string, config: PerSkillConsumerC
       mkdirSync(skillLinkDir, { recursive: true })
     }
 
-    // Read source files to discover what to symlink. When the configured
-    // sourceRootDir does not exist (test environments), fall back to listing
-    // from .agent/skills/ so we still produce the correct structure.
-    const readSourceDir = existsSync(srcBaseDir) ? srcBaseDir : join(skillsSource, skill)
-    const sourceEntries = (() => {
-      try {
-        return readdirSync(readSourceDir)
-      } catch {
-        return [] as string[]
-      }
-    })()
-    const sourceFiles = sourceEntries.filter((f) => {
-      try {
-        return lstatSync(join(readSourceDir, f)).isFile()
-      } catch {
-        return false
-      }
-    })
+    // Walk the source skill dir recursively to discover every file that
+    // needs to be projected. `collectSkillAssets`-shaped: relative paths
+    // from srcDir, excluding directories themselves.
+    const sourceRelFiles = collectFilesRecursive(srcDir)
 
-    // Create / validate file symlinks inside the real directory.
-    for (const fileName of sourceFiles) {
-      const sourcePath = join(srcBaseDir, fileName)
-      const linkPath = join(skillLinkDir, fileName)
+    // Project each source file into the consumer slug dir.
+    for (const relPath of sourceRelFiles) {
+      const sourcePath = join(srcDir, relPath)
+      const linkPath = join(skillLinkDir, relPath)
 
-      const linkStats = (() => {
-        try {
-          return lstatSync(linkPath)
-        } catch {
-          return null
-        }
-      })()
+      // Ensure parent dir exists (handles nested asset paths like
+      // `references/foo.md` or `templates/x.txt`).
+      mkdirSync(dirname(linkPath), { recursive: true })
 
+      const expectedAbs = resolve(sourcePath)
+      if (isSymlinkPointingTo(linkPath, expectedAbs)) continue
+      const linkStats = lstatNullable(linkPath)
       if (linkStats) {
         if (linkStats.isSymbolicLink()) {
-          const target = readlinkSync(linkPath)
-          const resolvedTarget = resolve(skillLinkDir, target)
-          const resolvedExpected = resolve(sourcePath)
-          if (resolvedTarget === resolvedExpected) continue
           unlinkSync(linkPath)
         } else {
-          // Real file — user-owned, skip
+          // Real file at the same path — user-owned, preserve.
           continue
         }
       }
 
-      const relativeTarget = relative(skillLinkDir, sourcePath)
-      createSymlinkWithType(relativeTarget, linkPath, 'file', `${config.dir}/${skill}/${fileName}`)
-      console.log(`  ✅ ${skill}/${fileName} → ${relativeTarget}`)
-      fixCount++
+      const relativeTarget = relative(dirname(linkPath), sourcePath)
+      createSymlinkWithType(relativeTarget, linkPath, 'file', `${config.dir}/${skill}/${relPath}`)
+      console.log(`  ✅ ${skill}/${relPath} → ${relativeTarget}`)
+      wrote++
     }
 
-    // Clean up stale file symlinks that have no source counterpart.
-    const existingSourceFiles = new Set(sourceFiles)
-    for (const entry of readdirSync(skillLinkDir)) {
-      if (existingSourceFiles.has(entry)) continue
-      const entryPath = join(skillLinkDir, entry)
-      const entryStats = (() => {
-        try {
-          return lstatSync(entryPath)
-        } catch {
-          return null
-        }
-      })()
-      if (!entryStats || !entryStats.isSymbolicLink()) continue
-      unlinkSync(entryPath)
-      console.log(`  🗑️  ${skill}/${entry}: removed stale file symlink`)
-      fixCount++
-    }
-
-    if (dirFixed) fixCount++
+    // Recursively prune stale file symlinks inside the slug dir whose
+    // relative path is not in the current source set. Real (non-symlink)
+    // files are preserved.
+    const expectedRelSet = new Set(sourceRelFiles)
+    wrote += pruneStaleFileSymlinks(skillLinkDir, '', expectedRelSet)
   }
 
-  // Remove stale entries in the consumer directory that no longer map to a
-  // skill under .agent/skills/.  Handles both old-style directory symlinks
-  // and new-style real directories (only when the directory is empty — a
-  // non-empty real directory is assumed to be user-owned).
+  // Top-level prune: remove any consumer-dir entry that doesn't correspond
+  // to a current skill. Aggressive: real non-empty dirs are removed
+  // recursively (per the documented `.agents/skills/` ownership contract).
+  // Stderr line per removal so the destructive action is never silent.
+  const expectedSlugs = new Set(agentSkills)
   for (const entry of readdirSync(consumerDir)) {
-    if (agentSkills.includes(entry)) continue
+    if (expectedSlugs.has(entry)) continue
     const entryPath = join(consumerDir, entry)
-    const entryStats = (() => {
-      try {
-        return lstatSync(entryPath)
-      } catch {
-        return null
-      }
-    })()
+    const entryStats = lstatNullable(entryPath)
     if (!entryStats) continue
 
     if (entryStats.isSymbolicLink()) {
       unlinkSync(entryPath)
-      console.log(`  🗑️  ${entry}: removed stale directory symlink (skill gone)`)
-      fixCount++
+      console.error(`Removed unexpected directory: ${config.dir}/${entry}`)
+      wrote++
     } else if (entryStats.isDirectory()) {
-      let isEmpty = false
-      try {
-        isEmpty = readdirSync(entryPath).length === 0
-      } catch {
-        continue
-      }
-      if (isEmpty) {
-        rmSync(entryPath, { recursive: true, force: true })
-        console.log(`  🗑️  ${entry}: removed empty stale directory (skill gone)`)
-        fixCount++
-      }
+      rmSync(entryPath, { recursive: true, force: true })
+      console.error(`Removed unexpected directory: ${config.dir}/${entry}`)
+      wrote++
     }
   }
 
-  if (fixCount === 0) console.log('  ✅ All symlinks correct')
-  return fixCount
+  if (wrote === 0) console.log('  ✅ All symlinks correct')
+  return { wrote }
 }
 
-export function syncPerSkillConsumers(
+export function syncSkillFanouts(
   repoRoot: string,
   consumers: PerSkillConsumerConfig[] = DEFAULT_PER_SKILL_CONSUMERS,
-): number {
+): SyncSkillFanoutResult {
   const skillsSource = join(repoRoot, '.agent/skills')
-  if (!existsSync(skillsSource)) return 0
+  if (!existsSync(skillsSource)) return { wrote: 0 }
 
-  let fixCount = 0
+  let wrote = 0
   for (const consumer of consumers) {
-    fixCount += syncPerSkillConsumer(repoRoot, consumer)
+    wrote += syncSkillFanout(repoRoot, consumer).wrote
   }
-  return fixCount
+  return { wrote }
+}
+
+function lstatNullable(path: string): ReturnType<typeof lstatSync> | null {
+  try {
+    return lstatSync(path)
+  } catch {
+    return null
+  }
+}
+
+function collectFilesRecursive(dir: string): string[] {
+  const out: string[] = []
+  walkFiles(dir, '', out)
+  out.sort()
+  return out
+}
+
+function walkFiles(absDir: string, relPrefix: string, out: string[]): void {
+  let entries
+  try {
+    entries = readdirSync(absDir, { withFileTypes: true })
+  } catch {
+    return
+  }
+  for (const entry of entries) {
+    const rel = relPrefix ? `${relPrefix}/${entry.name}` : entry.name
+    const abs = join(absDir, entry.name)
+    if (entry.isDirectory()) {
+      walkFiles(abs, rel, out)
+    } else if (entry.isFile() || entry.isSymbolicLink()) {
+      out.push(rel)
+    }
+  }
+}
+
+function pruneStaleFileSymlinks(
+  rootDir: string,
+  relPrefix: string,
+  expected: ReadonlySet<string>,
+): number {
+  const absDir = relPrefix ? join(rootDir, relPrefix) : rootDir
+  let entries
+  try {
+    entries = readdirSync(absDir, { withFileTypes: true })
+  } catch {
+    return 0
+  }
+  let removed = 0
+  for (const entry of entries) {
+    const rel = relPrefix ? `${relPrefix}/${entry.name}` : entry.name
+    const abs = join(absDir, entry.name)
+    if (entry.isDirectory()) {
+      removed += pruneStaleFileSymlinks(rootDir, rel, expected)
+      continue
+    }
+    if (!entry.isSymbolicLink()) continue
+    if (expected.has(rel)) continue
+    unlinkSync(abs)
+    console.log(`  🗑️  ${rel}: removed stale file symlink`)
+    removed++
+  }
+  return removed
 }
 
 /**
@@ -628,7 +661,7 @@ export function syncAll(repoRoot: string, consumers: ConsumerConfig[] = DEFAULT_
   }
 
   totalFixes += syncSkills(repoRoot, DEFAULT_SKILLS_CONSUMERS)
-  totalFixes += syncPerSkillConsumers(repoRoot, DEFAULT_PER_SKILL_CONSUMERS)
+  totalFixes += syncSkillFanouts(repoRoot, DEFAULT_PER_SKILL_CONSUMERS).wrote
   totalFixes += syncGeminiCommands(repoRoot)
 
   // Fan-out writes are tracked separately — they are not "broken symlinks",

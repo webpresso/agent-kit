@@ -354,3 +354,66 @@ describe('ak init end-to-end', () => {
     expect(findSidecars(repo)).toEqual([])
   })
 })
+
+describe('warnIfNonLocalCli (DX2)', () => {
+  let repo: string
+  let originalError: typeof console.error
+  let captured: string[]
+
+  beforeEach(() => {
+    repo = join(tmpdir(), `ak-warn-cli-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+    mkdirSync(repo, { recursive: true })
+    writeFileSync(
+      join(repo, 'package.json'),
+      JSON.stringify({ name: '@acme/demo', private: true }),
+    )
+    captured = []
+    originalError = console.error
+    console.error = (msg: unknown): void => {
+      captured.push(String(msg))
+    }
+  })
+
+  afterEach(() => {
+    console.error = originalError
+    rmSync(repo, { recursive: true, force: true })
+  })
+
+  it('warns when CLI lives outside <repoRoot>/node_modules/', async () => {
+    const { warnIfNonLocalCli } = await import('./detect-consumer.js')
+    // Simulate a global CLI: file:// URL pointing at /opt/homebrew/lib/...
+    warnIfNonLocalCli(repo, 'file:///opt/homebrew/lib/agent-kit/dist/cli/cli.js')
+
+    expect(
+      captured.some(
+        (line) =>
+          line.includes('warning: ak running from a non-local install') &&
+          line.includes('/opt/homebrew/lib/agent-kit/dist/cli/cli.js'),
+      ),
+    ).toBe(true)
+  })
+
+  it('stays silent when CLI lives under <repoRoot>/node_modules/', async () => {
+    const { warnIfNonLocalCli } = await import('./detect-consumer.js')
+    const cliFile = join(repo, 'node_modules', '@webpresso', 'agent-kit', 'dist', 'cli', 'cli.js')
+    mkdirSync(dirname(cliFile), { recursive: true })
+    writeFileSync(cliFile, '// stub')
+
+    warnIfNonLocalCli(repo, `file://${cliFile}`)
+
+    expect(captured).toEqual([])
+  })
+
+  it('self-mode short-circuits (consumer IS @webpresso/agent-kit)', async () => {
+    writeFileSync(
+      join(repo, 'package.json'),
+      JSON.stringify({ name: '@webpresso/agent-kit', private: true }),
+    )
+    const { warnIfNonLocalCli } = await import('./detect-consumer.js')
+
+    // Even with a clearly-non-local CLI path, self-mode skips the warning.
+    warnIfNonLocalCli(repo, 'file:///opt/homebrew/lib/agent-kit/dist/cli/cli.js')
+
+    expect(captured).toEqual([])
+  })
+})

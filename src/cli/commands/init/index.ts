@@ -21,7 +21,7 @@ import {
   readConfig,
   writeConfig,
 } from './config.js'
-import { detectConsumer } from './detect-consumer.js'
+import { detectConsumer, warnIfNonLocalCli } from './detect-consumer.js'
 import { type MergeOptions, type MergeResult, summarizeResults } from './merge.js'
 import { resolveTier3Selection } from './prompts.js'
 import { scaffoldAgent, RENDERED_SKILLS, TIER1_SKILLS, TIER2_SKILLS } from './scaffold-agent.js'
@@ -103,6 +103,8 @@ export async function runInit(flags: InitFlags): Promise<number> {
     )
     return EXIT_SETUP_FAIL
   }
+
+  warnIfNonLocalCli(consumer.repoRoot)
 
   const catalogDir = resolveCatalogDir()
   const options: MergeOptions = {
@@ -482,6 +484,13 @@ export async function runInit(flags: InitFlags): Promise<number> {
     if (rtkFailure === 'init-failed') return EXIT_WRITE_FAIL
     return EXIT_SUCCESS
   } catch (error) {
+    if (error instanceof Error && /catalogDir does not exist/.test(error.message)) {
+      console.error(
+        'ak init: @webpresso/agent-kit not installed in node_modules. ' +
+          'Run `pnpm install` first.',
+      )
+      return EXIT_SETUP_FAIL
+    }
     console.error(
       `ak init: write failed — ${error instanceof Error ? error.message : String(error)}`,
     )

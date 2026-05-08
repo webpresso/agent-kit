@@ -7,6 +7,7 @@
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 export interface ConsumerPackageInfo {
   name: string
@@ -192,6 +193,37 @@ export function discoverWorkspacePackages(
     }
   }
   return out.toSorted((a, b) => a.name.localeCompare(b.name))
+}
+
+/**
+ * Soft warning when the running CLI does not live under the consumer's
+ * `node_modules/`. Catches the global-install / pnpm-link / npx case where
+ * `ak setup` succeeds against the executing CLI's catalog but produces a
+ * non-reproducible `.agents/skills/` tree (symlinks point outside the project
+ * tree; lockfile irrelevant). Self-mode short-circuits when the consumer
+ * IS `@webpresso/agent-kit` (running setup from agent-kit's own checkout).
+ *
+ * Non-blocking: prints to stderr and returns. The bc88-class failure
+ * (catalog truly missing) is caught by the catch-wrap in `runInit` via
+ * `loadContent`'s throw — this is the orthogonal silent-non-determinism
+ * class that the catch-wrap doesn't surface.
+ */
+export function warnIfNonLocalCli(repoRoot: string, cliUrl: string = import.meta.url): void {
+  const ourPkg = readPackageJson(repoRoot).info
+  if (ourPkg?.name === '@webpresso/agent-kit') return
+  let cliPath: string
+  try {
+    cliPath = fileURLToPath(cliUrl)
+  } catch {
+    return
+  }
+  const localBin = path.join(repoRoot, 'node_modules')
+  if (!cliPath.startsWith(localBin + path.sep) && cliPath !== localBin) {
+    console.error(
+      `warning: ak running from a non-local install (${cliPath}). ` +
+        'Pin `@webpresso/agent-kit` as a local dep for reproducible setup.',
+    )
+  }
 }
 
 export function detectConsumer(startDir: string = process.cwd()): ConsumerContext | null {

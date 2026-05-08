@@ -138,4 +138,19 @@ describe('runUnifiedSync (sync command core)', () => {
     // Verify the user-visible content was actually written by the first run.
     expect(readFileSync(join(consumerRoot, '.cursor', 'rules', 'x.mdc'), 'utf8')).toContain('Body.')
   })
+
+  // Bc88 regression — the kernel layer's contract that the catch-wrap in
+  // src/cli/commands/sync.ts (and src/cli/commands/init/index.ts) relies on:
+  // when the catalog dir doesn't exist on disk, loadContent throws with a
+  // message matching /catalogDir does not exist/. The CLI catches that
+  // shape and rewrites it to the actionable
+  // "ak {init,sync}: @webpresso/agent-kit not installed in node_modules"
+  // message. If this throw shape ever changes, the catch-wrap stops firing
+  // and the silent-non-determinism class returns.
+  it('throws "catalogDir does not exist" when the catalog path is missing', () => {
+    const ghostCatalog = join(root, 'no-such-pkg', 'catalog', 'agent')
+    expect(() => runUnifiedSync({ catalogDir: ghostCatalog, consumerRoot })).toThrow(
+      /catalogDir does not exist/,
+    )
+  })
 })

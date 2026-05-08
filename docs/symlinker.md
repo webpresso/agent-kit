@@ -150,11 +150,13 @@ export const DEFAULT_SKILLS_CONSUMERS: SkillsConsumerConfig[] = [
   { linkPath: '.claude/skills', target: '../.agent/skills' },
 ]
 
-// Per-skill mode: one symlink per skill. `.agents/skills/` is the
-// convergent project path shared by Codex (official), Amp (official),
-// and OpenCode (fallback) — one entry covers three tools.
+// Per-skill mode: one symlink per file under each skill. `.agents/skills/`
+// is the convergent project path shared by Codex (official), Amp (official),
+// and OpenCode (fallback) — one entry covers three tools. Source-of-truth
+// is `.agent/skills/<slug>/` (the consumer projection produced by
+// `runUnifiedSync` + scaffolders), not `node_modules/...`.
 export const DEFAULT_PER_SKILL_CONSUMERS: PerSkillConsumerConfig[] = [
-  { dir: '.agents/skills', sourcePrefix: '../../.agent/skills/' },
+  { dir: '.agents/skills' },
 ]
 ```
 
@@ -207,13 +209,14 @@ import {
   syncConsumer,
   syncSkills,
   syncSkillsConsumer,
-  syncPerSkillConsumer,
-  syncPerSkillConsumers,
+  syncSkillFanout,
+  syncSkillFanouts,
   syncGeminiCommands,
   isAgentOrConsumerFile,
   type ConsumerConfig,
   type SkillsConsumerConfig,
   type PerSkillConsumerConfig,
+  type SyncSkillFanoutResult,
   DEFAULT_CONSUMERS,
   DEFAULT_SKILLS_CONSUMERS,
   DEFAULT_PER_SKILL_CONSUMERS,
@@ -221,6 +224,13 @@ import {
 
 const fixes = syncAll(repoRoot)
 if (fixes > 0) console.log(`Fixed ${fixes} symlinks`)
+
+// Per-skill fanout returns a structured result (replaces the legacy bare-number
+// `syncPerSkillConsumer`/`syncPerSkillConsumers` API; renamed to fix the
+// dangling-symlink class — see CHANGELOG entry "Eliminate the dangling-symlink
+// class in .agents/skills/").
+const result: SyncSkillFanoutResult = syncSkillFanouts(repoRoot)
+console.log(`syncSkillFanouts: wrote ${result.wrote} entries`)
 ```
 
 ## Limitations

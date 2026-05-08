@@ -51,23 +51,22 @@ export const DEFAULT_SKILLS_CONSUMERS: SkillsConsumerConfig[] = [
 ]
 
 /**
- * Per-skill consumer — creates one symlink per entry in `.agent/skills/`,
+ * Per-skill consumer — creates file-level symlinks per skill in `.agent/skills/`,
  * instead of a single directory-symlink. Use this for consumers whose
- * skills directory mixes agent-kit skills with third-party skills that
+ * skills directory mixes agent-kit skills with user-owned files that
  * must be preserved.
+ *
+ * Source-of-truth is `.agent/skills/<slug>/` — the consumer projection
+ * produced by `runUnifiedSync` + scaffolders (e.g. `scaffoldMonorepoNav`,
+ * which writes locally-rendered skills not present in the published catalog).
  */
 export interface PerSkillConsumerConfig {
   dir: string
-  sourcePrefix: string
-  /** Absolute or repoRoot-relative path to the source skill files (e.g. 'node_modules/@webpresso/agent-kit/skills'). When set, symlink targets resolve through this directory instead of `.agent/skills/`. */
-  sourceRootDir?: string
 }
 
 export const DEFAULT_PER_SKILL_CONSUMERS: PerSkillConsumerConfig[] = [
   {
     dir: '.agents/skills',
-    sourcePrefix: '../../.agent/skills/',
-    sourceRootDir: 'node_modules/@webpresso/agent-kit/skills',
   },
 ]
 
