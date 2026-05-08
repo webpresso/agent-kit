@@ -142,6 +142,7 @@ describe('ak_lint tool', () => {
     const result = await akLintTool.handler({ files: ['a.ts', 'b.ts'] })
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {
       passed: boolean
+      summary?: string
       details: {
         issues: Array<{ file: string; line: number; rule: string; message: string }>
       }
@@ -186,6 +187,7 @@ describe('ak_lint tool', () => {
 
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {
       passed: boolean
+      summary?: string
       counts?: { issueCount: number }
       details?: { issues: unknown[] }
       rawOutput?: string
@@ -212,6 +214,7 @@ describe('ak_lint tool', () => {
     const result = await akLintTool.handler({})
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {
       passed: boolean
+      summary?: string
       details?: { issues: unknown[]; parseError?: string }
     }
     expect(payload.passed).toBe(false)
@@ -279,6 +282,7 @@ describe('ak_lint tool', () => {
     expect(spawnMock.mock.calls.length).toBe(1)
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {
       passed: boolean
+      summary?: string
       backend: string
       details?: { spawnError?: string }
     }

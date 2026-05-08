@@ -2,7 +2,7 @@
  * Archive Operations Tests
  */
 
-import type { Task } from '#core/parser'
+import type { Blueprint, Task } from '#core/parser'
 import type { BlueprintTaskStatus } from '#core/schema'
 
 import * as fs from 'node:fs/promises'
@@ -47,6 +47,7 @@ function createTask(
     id,
     title,
     status,
+    stepType: 'task',
     acceptanceCriteria: { total, checked },
   }
 }
@@ -54,9 +55,11 @@ function createTask(
 /**
  * Creates a mock plan for testing.
  */
-function createPlan(tasks: Task[]): Plan {
+function createPlan(tasks: Task[]): Blueprint {
   return {
-    slug: 'test-plan',
+    name: 'test-plan',
+    type: 'blueprint',
+    title: 'Test Plan',
     status: 'in-progress',
     complexity: 'M',
     lastUpdated: '2026-02-01',

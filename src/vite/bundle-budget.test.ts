@@ -104,7 +104,7 @@ describe('analyzeBundleBudget', () => {
 
     expect(result.ok).toBe(true)
     expect(result.jsAssets).toHaveLength(1)
-    expect(result.jsAssets[0].path).toBe('assets/app.js')
+    expect(result.jsAssets[0]!.path).toBe('assets/app.js')
   })
 
   it('filters out ignored assets by regex', () => {
@@ -118,7 +118,7 @@ describe('analyzeBundleBudget', () => {
     })
 
     expect(result.jsAssets).toHaveLength(1)
-    expect(result.jsAssets[0].path).toBe('assets/vendor.js')
+    expect(result.jsAssets[0]!.path).toBe('assets/vendor.js')
   })
 
   it('passes when limits are undefined', () => {
@@ -145,7 +145,7 @@ describe('analyzeBundleBudget', () => {
     })
 
     expect(result.ok).toBe(false)
-    expect(result.violations[0].kind).toBe('html-referenced-asset-missing')
+    expect(result.violations[0]!.kind).toBe('html-referenced-asset-missing')
   })
 
   it('reports html eager js asset exactly at limit as passing', () => {

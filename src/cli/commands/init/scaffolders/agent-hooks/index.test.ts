@@ -329,8 +329,8 @@ describe('hoistTopLevelEvents', () => {
     expect(result).not.toHaveProperty('PreToolUse')
     expect(result).toHaveProperty('hooks')
     const hooks = result.hooks as Record<string, Array<{ hooks: Array<{ command: string }> }>>
-    expect(hooks.SessionStart[0]?.hooks[0]?.command).toContain('ak-sessionstart-routing')
-    expect(hooks.PreToolUse[0]?.hooks[0]?.command).toContain('ak-pretool-guard')
+    expect(hooks.SessionStart?.[0]?.hooks[0]?.command).toContain('ak-sessionstart-routing')
+    expect(hooks.PreToolUse?.[0]?.hooks[0]?.command).toContain('ak-pretool-guard')
   })
 
   it('leaves already-wrapped input unchanged in shape (idempotent)', () => {
@@ -360,7 +360,7 @@ describe('hoistTopLevelEvents', () => {
     const result = hoistTopLevelEvents(input)
 
     const hooks = result.hooks as Record<string, Array<{ hooks: Array<{ command: string }> }>>
-    const akCount = hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command)).filter((c) =>
+    const akCount = (hooks.SessionStart ?? []).flatMap((g) => g.hooks.map((h) => h.command)).filter((c) =>
       c.includes('ak-sessionstart-routing'),
     ).length
     expect(akCount).toBe(1)
@@ -391,17 +391,17 @@ describe('buildAgentKitHookGroups', () => {
     expect(Object.keys(result).sort()).toStrictEqual(
       ['PostToolUse', 'PreToolUse', 'SessionStart', 'Stop', 'UserPromptSubmit'].sort(),
     )
-    expect(result.SessionStart[0]?.hooks[0]?.command).toBe(
+    expect(result.SessionStart?.[0]?.hooks[0]?.command).toBe(
       './node_modules/.bin/ak-sessionstart-routing',
     )
-    expect(result.PreToolUse[0]?.matcher).toBe('Bash|Edit|Write')
-    expect(result.PreToolUse[0]?.hooks[0]?.command).toBe('./node_modules/.bin/ak-pretool-guard')
-    expect(result.PostToolUse[0]?.matcher).toBe('Edit|Write')
-    expect(result.PostToolUse[0]?.hooks[0]?.command).toBe('./node_modules/.bin/ak-post-tool')
-    expect(result.UserPromptSubmit[0]?.hooks[0]?.command).toBe(
+    expect(result.PreToolUse?.[0]?.matcher).toBe('Bash|Edit|Write')
+    expect(result.PreToolUse?.[0]?.hooks[0]?.command).toBe('./node_modules/.bin/ak-pretool-guard')
+    expect(result.PostToolUse?.[0]?.matcher).toBe('Edit|Write')
+    expect(result.PostToolUse?.[0]?.hooks[0]?.command).toBe('./node_modules/.bin/ak-post-tool')
+    expect(result.UserPromptSubmit?.[0]?.hooks[0]?.command).toBe(
       './node_modules/.bin/ak-guard-switch',
     )
-    expect(result.Stop[0]?.hooks[0]?.command).toBe('./node_modules/.bin/ak-stop-qa')
+    expect(result.Stop?.[0]?.hooks[0]?.command).toBe('./node_modules/.bin/ak-stop-qa')
   })
 
   it('substitutes the Claude bin resolver for guarded $CLAUDE_PROJECT_DIR commands', () => {
@@ -411,8 +411,8 @@ describe('buildAgentKitHookGroups', () => {
       matchers: { preToolUse: 'Bash|Write|Edit|MultiEdit', postToolUse: 'Write|Edit|MultiEdit' },
     })
 
-    expect(result.SessionStart[0]?.hooks[0]?.command).toContain('$CLAUDE_PROJECT_DIR')
-    expect(result.SessionStart[0]?.hooks[0]?.command).toContain('ak-sessionstart-routing')
-    expect(result.PreToolUse[0]?.matcher).toBe('Bash|Write|Edit|MultiEdit')
+    expect(result.SessionStart?.[0]?.hooks[0]?.command).toContain('$CLAUDE_PROJECT_DIR')
+    expect(result.SessionStart?.[0]?.hooks[0]?.command).toContain('ak-sessionstart-routing')
+    expect(result.PreToolUse?.[0]?.matcher).toBe('Bash|Write|Edit|MultiEdit')
   })
 })

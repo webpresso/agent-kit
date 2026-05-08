@@ -20,17 +20,17 @@ const fixtureRoot = 'src/agentkit-qa'
 const seededFiles = [
   {
     source: 'seeded-lint-error.ts',
-    target: `${fixtureRoot}/seeded-lint-error.compact-qa.ts`,
+    target: `${fixtureRoot}/seeded-lint-error-compact-qa.ts`,
     contents: seededLintErrorSource,
   },
   {
     source: 'seeded-type-error.ts',
-    target: `${fixtureRoot}/seeded-type-error.compact-qa.ts`,
+    target: `${fixtureRoot}/seeded-type-error-compact-qa.ts`,
     contents: seededTypeErrorSource,
   },
   {
     source: 'seeded-failing-test.ts',
-    target: `${fixtureRoot}/seeded-failing-test.compact-qa.test.ts`,
+    target: `${fixtureRoot}/seeded-failing-test-compact-qa.test.ts`,
   },
 ] as const
 
@@ -88,12 +88,12 @@ describeIfIngestLens('ingest-lens BOOKEND compact QA integration', () => {
 
       expect(payload.passed).toBe(false)
       expect(Buffer.byteLength(JSON.stringify(payload))).toBeLessThanOrEqual(2_048)
-      expect(payload.details.lint.failures?.length).toBeGreaterThan(0)
-      expect(payload.details.typecheck.failures?.length).toBeGreaterThan(0)
-      expect(payload.details.test.failures?.length).toBeGreaterThan(0)
-      expect(payload.details.lint.bytes ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(800)
-      expect(payload.details.typecheck.bytes ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(800)
-      expect(payload.details.test.bytes ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(800)
+      expect(payload.details.lint!.failures?.length).toBeGreaterThan(0)
+      expect(payload.details.typecheck!.failures?.length).toBeGreaterThan(0)
+      expect(payload.details.test!.failures?.length).toBeGreaterThan(0)
+      expect(payload.details.lint!.bytes ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(800)
+      expect(payload.details.typecheck!.bytes ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(800)
+      expect(payload.details.test!.bytes ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(800)
     } finally {
       for (const file of seededFiles) {
         rmSync(join(workerRoot, file.target), { force: true })

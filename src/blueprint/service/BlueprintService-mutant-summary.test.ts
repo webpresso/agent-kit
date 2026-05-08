@@ -149,9 +149,9 @@ created: 2024-01-01
       const plans = await service.list()
 
       expect(plans).toHaveLength(1)
-      expect(plans[0].name).toBe('zero-progress')
-      expect(plans[0].taskCount).toBe(3)
-      expect(plans[0].progress).toBe(0)
+      expect(plans[0]!.name).toBe('zero-progress')
+      expect(plans[0]!.taskCount).toBe(3)
+      expect(plans[0]!.progress).toBe(0)
     })
 
     it('should compute progress as exactly 100 when all tasks are completed', async () => {
@@ -181,9 +181,9 @@ created: 2024-01-01
       const plans = await service.list()
 
       expect(plans).toHaveLength(1)
-      expect(plans[0].name).toBe('full-progress')
-      expect(plans[0].taskCount).toBe(2)
-      expect(plans[0].progress).toBe(100)
+      expect(plans[0]!.name).toBe('full-progress')
+      expect(plans[0]!.taskCount).toBe(2)
+      expect(plans[0]!.progress).toBe(100)
     })
 
     it('should compute progress as exactly 33 for 1 of 3 tasks completed (rounded)', async () => {
@@ -217,10 +217,10 @@ created: 2024-01-01
       const plans = await service.list()
 
       expect(plans).toHaveLength(1)
-      expect(plans[0].name).toBe('partial-progress')
-      expect(plans[0].taskCount).toBe(3)
+      expect(plans[0]!.name).toBe('partial-progress')
+      expect(plans[0]!.taskCount).toBe(3)
       // Math.round((1/3) * 100) = Math.round(33.333) = 33
-      expect(plans[0].progress).toBe(33)
+      expect(plans[0]!.progress).toBe(33)
     })
 
     it('should compute progress as exactly 0 when plan has zero tasks', async () => {
@@ -242,10 +242,10 @@ created: 2024-01-01
       const plans = await service.list()
 
       expect(plans).toHaveLength(1)
-      expect(plans[0].name).toBe('no-tasks-progress')
-      expect(plans[0].taskCount).toBe(0)
+      expect(plans[0]!.name).toBe('no-tasks-progress')
+      expect(plans[0]!.taskCount).toBe(0)
       // When !tasks.length, progress should be 0 (not divide by zero)
-      expect(plans[0].progress).toBe(0)
+      expect(plans[0]!.progress).toBe(0)
     })
 
     it('should return exact status and complexity strings from parseBlueprintSummary', async () => {
@@ -270,9 +270,9 @@ created: 2024-01-01
       const plans = await service.list()
 
       expect(plans).toHaveLength(1)
-      expect(plans[0].status).toBe('draft')
-      expect(plans[0].complexity).toBe('XL')
-      expect(plans[0].name).toBe('exact-fields')
+      expect(plans[0]!.status).toBe('draft')
+      expect(plans[0]!.complexity).toBe('XL')
+      expect(plans[0]!.name).toBe('exact-fields')
     })
 
     it('should compute progress as exactly 50 for 1 of 2 tasks completed', async () => {
@@ -302,7 +302,7 @@ created: 2024-01-01
       const plans = await service.list()
 
       expect(plans).toHaveLength(1)
-      expect(plans[0].progress).toBe(50)
+      expect(plans[0]!.progress).toBe(50)
     })
   })
 
@@ -329,7 +329,7 @@ created: 2024-01-01
       const plans = await service.list()
 
       expect(plans).toHaveLength(1)
-      expect(plans[0].name).toBe('@special-plan')
+      expect(plans[0]!.name).toBe('@special-plan')
     })
   })
 
@@ -385,7 +385,7 @@ created: 2024-01-01
       const result = await service.query()
 
       expect(result.plans).toHaveLength(1)
-      expect(result.plans[0].status).toBe('planned')
+      expect(result.plans[0]!.status).toBe('planned')
     })
 
     it('should have tasksCompleted count equal to completed tasks exactly', async () => {
@@ -423,8 +423,8 @@ created: 2024-01-01
       const result = await service.query()
 
       expect(result.plans).toHaveLength(1)
-      expect(result.plans[0].taskCount).toBe(4)
-      expect(result.plans[0].tasksCompleted).toBe(2)
+      expect(result.plans[0]!.taskCount).toBe(4)
+      expect(result.plans[0]!.tasksCompleted).toBe(2)
     })
   })
 
@@ -453,7 +453,7 @@ created: 2024-01-01
       const result = await service.query()
 
       expect(result.plans).toHaveLength(1)
-      const files = result.plans[0].filesTouched
+      const files = result.plans[0]!.filesTouched
       // The path should be clean without backticks or leading dash
       expect(files).toContain('src/clean/path.ts')
       // Verify it does NOT contain backtick prefixes/suffixes
@@ -487,7 +487,7 @@ created: 2024-01-01
       const result = await service.query()
 
       expect(result.plans).toHaveLength(1)
-      const files = result.plans[0].filesTouched
+      const files = result.plans[0]!.filesTouched
       // Verify no empty strings in the result
       for (const f of files) {
         expect(f.length).toBeGreaterThan(0)

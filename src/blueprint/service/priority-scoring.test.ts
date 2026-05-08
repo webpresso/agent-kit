@@ -7,6 +7,7 @@
 
 import type { BlueprintRecord } from '#query/types'
 import type { TechDebtRecord } from '#tech-debt/index'
+import type { TechDebtSeverity } from '#tech-debt/schema'
 
 import { describe, expect, it } from 'vitest'
 
@@ -40,7 +41,7 @@ describe('computePriorityScore', () => {
 
     it('should default to 10 points for unknown severity', () => {
       // Testing edge case where severity doesn't match expected values
-      const item = createMockTechDebt({ severity: 'unknown' })
+      const item = createMockTechDebt({ severity: 'unknown' as TechDebtSeverity })
       const score = computePriorityScore(item, [])
       expect(score).toBe(10)
     })
@@ -237,7 +238,7 @@ describe('computePriorityScore', () => {
   describe('boundary cases', () => {
     it('should handle score of exactly 0 (if all defaults)', () => {
       const item = createMockTechDebt({
-        severity: 'unknown', // Falls back to 10, but testing the concept
+        severity: 'unknown' as TechDebtSeverity, // Falls back to 10, but testing the concept
         lastReviewed: undefined,
         nextReview: undefined,
         category: undefined,
@@ -309,7 +310,7 @@ function createMockTechDebt(overrides: Partial<TechDebtRecord> = {}): TechDebtRe
 
 function createMockBlueprint(overrides: Partial<BlueprintRecord> = {}): BlueprintRecord {
   return {
-    slug: 'test-blueprint',
+    name: 'test-blueprint',
     title: 'Test Blueprint',
     status: 'draft',
     complexity: 'M',

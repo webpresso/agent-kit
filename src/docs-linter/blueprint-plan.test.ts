@@ -404,7 +404,7 @@ status: in-progress
     const content = `### Task 1.1: Wrong`
     const customPath = 'custom/path/plan.md'
     const errors = validateBlueprintPlan(customPath, content, 'blueprint')
-    expect(errors[0].file).toBe(customPath)
+    expect(errors[0]!.file).toBe(customPath)
   })
 
   it('handles complex plan with correct format', () => {
@@ -444,13 +444,13 @@ status: in-progress
 ### Task 2.1: Third
 `
     const errors = validateBlueprintPlan(filePath, content, 'blueprint')
-    expect(errors[0].message).toContain('3 task(s)')
+    expect(errors[0]!.message).toContain('3 task(s)')
   })
 
   it('includes reference to docs template in error message', () => {
     const content = `### Task 1.1: Wrong`
     const errors = validateBlueprintPlan(filePath, content, 'blueprint')
-    expect(errors[0].message).toContain('docs/templates/blueprint.md')
+    expect(errors[0]!.message).toContain('docs/templates/blueprint.md')
   })
 })
 
@@ -871,7 +871,7 @@ created: 2026-02-16
 No completion summary`
     const errors = validateBlueprintPlan(filePath, content, 'blueprint')
     expect(errors).toHaveLength(1)
-    expect(errors[0].ruleId).toBe('blueprint-completion-summary')
+    expect(errors[0]!.ruleId).toBe('blueprint-completion-summary')
   })
 
   it('does not treat global sections after the final task as part of that task', () => {

@@ -55,6 +55,18 @@ interface SubResultShape {
   readonly [key: string]: unknown
 }
 
+interface CompactLeafResult {
+  readonly passed: boolean
+  readonly summary: string
+  readonly exitCode?: number
+  readonly backend?: string
+  readonly failures: unknown[]
+  readonly tier?: number
+  readonly bytes?: number
+  readonly tokensSaved?: number
+  readonly unwrapError?: string
+}
+
 /**
  * Sub-tool handlers return MCP `{content: [{type: 'text', text: <json>}]}`.
  * To aggregate into a single structured payload we re-parse the JSON.
@@ -92,10 +104,43 @@ function unwrap(result: ToolHandlerResult): SubResultShape {
   return parsed as SubResultShape
 }
 
+function toCompactLeaf(result: SubResultShape): CompactLeafResult {
+  const details = result.details
+  const failures: unknown[] = Array.isArray(result.failures)
+    ? result.failures
+    : details && typeof details === 'object'
+      ? Array.isArray((details as { failures?: unknown[] }).failures)
+        ? ((details as { failures?: unknown[] }).failures ?? [])
+        : Array.isArray((details as { issues?: unknown[] }).issues)
+          ? ((details as { issues?: unknown[] }).issues ?? [])
+          : Array.isArray((details as { errors?: unknown[] }).errors)
+            ? ((details as { errors?: unknown[] }).errors ?? [])
+            : []
+      : []
+  const normalizedFailures =
+    failures.length > 0
+      ? failures
+      : result.passed === false
+        ? [{ message: typeof result.summary === 'string' ? result.summary : 'failed' }]
+        : []
+
+  return {
+    passed: result.passed === true,
+    summary: typeof result.summary === 'string' ? result.summary : '',
+    ...(typeof result.exitCode === 'number' ? { exitCode: result.exitCode } : {}),
+    ...(typeof result.backend === 'string' ? { backend: result.backend } : {}),
+    failures: normalizedFailures,
+    ...(typeof result.tier === 'number' ? { tier: result.tier } : {}),
+    ...(typeof result.bytes === 'number' ? { bytes: result.bytes } : {}),
+    ...(typeof result.tokensSaved === 'number' ? { tokensSaved: result.tokensSaved } : {}),
+    ...(typeof result.unwrapError === 'string' ? { unwrapError: result.unwrapError } : {}),
+  }
+}
+
 function summarizeQa(
-  lint: SubResultShape,
-  typecheck: SubResultShape,
-  test: SubResultShape,
+  lint: CompactLeafResult,
+  typecheck: CompactLeafResult,
+  test: CompactLeafResult,
 ): string {
   const failed: string[] = []
   if (lint.passed !== true) failed.push('lint')
@@ -126,9 +171,9 @@ const tool: ToolDescriptor = {
       testTool.handler({ cwd: input.cwd, files: input.files, packages: input.packages }, extra),
     ])
 
-    const lint = unwrap(lintResult)
-    const typecheck = unwrap(typecheckResult)
-    const test = unwrap(testResult)
+    const lint = toCompactLeaf(unwrap(lintResult))
+    const typecheck = toCompactLeaf(unwrap(typecheckResult))
+    const test = toCompactLeaf(unwrap(testResult))
 
     const passed = lint.passed === true && typecheck.passed === true && test.passed === true
     // `isError: true` only fires when we couldn't even READ a sub-tool's

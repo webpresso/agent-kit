@@ -82,7 +82,7 @@ describe('auditBucketBoundary', () => {
     const result = await auditBucketBoundary(tmpDir)
     expect(result.ok).toBe(false)
     expect(result.violations).toHaveLength(1)
-    expect(result.violations[0].message).toMatch(/tenant-orchestration.*platform|cross-bucket/)
+    expect(result.violations[0]!.message).toMatch(/tenant-orchestration.*platform|cross-bucket/)
   })
 
   it('reports violation in devDependencies too', async () => {
@@ -98,7 +98,7 @@ describe('auditBucketBoundary', () => {
     })
     const result = await auditBucketBoundary(tmpDir)
     expect(result.ok).toBe(false)
-    expect(result.violations[0].message).toMatch(/@test\/platform-lib/)
+    expect(result.violations[0]!.message).toMatch(/@test\/platform-lib/)
   })
 
   it('does not flag platform depending on tenant-orchestration (only one direction is forbidden)', async () => {
@@ -246,8 +246,8 @@ describe('auditBucketBoundary', () => {
     // allowlisted crossBucketBindings are always warnings, even in strict mode
     expect(result.ok).toBe(true)
     expect(result.violations).toHaveLength(1)
-    expect(result.violations[0].message).toMatch(/\[warning\]/)
-    expect(result.violations[0].message).toMatch(/allowlisted/)
+    expect(result.violations[0]!.message).toMatch(/\[warning\]/)
+    expect(result.violations[0]!.message).toMatch(/allowlisted/)
   })
 
   it('checked count reflects number of annotated packages inspected', async () => {

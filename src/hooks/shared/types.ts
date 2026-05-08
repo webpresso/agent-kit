@@ -1,4 +1,9 @@
 export interface ToolInput {
+  session_id?: string
+  transcript_path?: string
+  cwd?: string
+  hook_event_name?: string
+  tool_name?: string
   tool_input?: Record<string, unknown>
 }
 

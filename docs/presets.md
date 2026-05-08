@@ -49,9 +49,9 @@ Chains `omx setup --yes` after the agent-kit scaffold completes. OMX (oh-my-code
 - omx still not on PATH after the fallback install → `EXIT_SETUP_FAIL` (exit 1) with install hint in stderr
 - `omx setup --yes` itself errors → `EXIT_WRITE_FAIL` (exit 3) with the omx exit code surfaced
 
-**Idempotency:** OMX manages its own state — every `ak setup` re-invokes `omx setup --yes`, which is itself idempotent.
+**Idempotency:** OMX manages its own state — every `ak setup` re-invokes `omx setup --yes`, which is itself idempotent. After OMX finishes, agent-kit also migrates deprecated Codex config entries from `[features].codex_hooks` to `[features].hooks` in `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`) so older OMX releases do not keep re-triggering Codex's deprecation warning.
 **Codex/OMX MCP persistence:** after `omx setup --yes`, agent-kit upserts the owned `[mcp_servers.playwright]` block in `$CODEX_HOME/config.toml` or `~/.codex/config.toml`. This gives both Codex and OMX a persistent Playwright MCP server for browser testing without relying on session-local tool state.
-**Side-effects:** OMX writes its own files into the consumer repo (`.codex/`, `.omx/`, scope-specific AGENTS.md additions). agent-kit also writes the global Codex Playwright MCP block described above, preserving unrelated config.
+**Side-effects:** OMX writes its own files into the consumer repo (`.codex/`, `.omx/`, scope-specific AGENTS.md additions). agent-kit also writes the global Codex Playwright MCP block described above and the one-line `codex_hooks` → `hooks` feature-flag migration when needed, preserving unrelated config.
 
 ### `playwright-mcp`
 

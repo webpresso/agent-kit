@@ -1,3 +1,5 @@
+import type { BlueprintLaunchSpec } from './types.js'
+
 import { describe, expect, it } from 'vitest'
 
 import { parseBlueprint } from '#core/parser'
@@ -63,7 +65,7 @@ const LAUNCH_SPEC = {
       verificationCommands: [],
     },
   ],
-} as const
+} satisfies BlueprintLaunchSpec
 
 describe('buildBlueprintProgressBridgeState', () => {
   it('maps OMX team tasks back to blueprint task ids using Task <id> prefixes', () => {

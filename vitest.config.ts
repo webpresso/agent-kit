@@ -7,5 +7,8 @@ export default defineConfig({
     exclude: ['**/node_modules/**', '**/dist/**'],
     globals: false,
     testTimeout: 10_000,
+    typecheck: {
+      tsconfig: './tsconfig.test.json',
+    },
   },
 })

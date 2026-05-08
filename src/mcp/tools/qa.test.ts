@@ -38,7 +38,7 @@ import akQaTool from './qa.js'
 
 const fixtureDir = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__')
 
-function wrapPayload(payload: unknown): { content: { type: string; text: string }[] } {
+function wrapPayload(payload: unknown): { content: { type: string; text: string }[]; structuredContent: Record<string, unknown> } {
   return {
     content: [{ type: 'text', text: JSON.stringify(payload) }],
     structuredContent: payload as Record<string, unknown>,
@@ -122,18 +122,28 @@ describe('ak_qa tool', () => {
       passed: boolean
       summary: string
       details: {
-        lint: typeof lintPayload
-        typecheck: typeof typecheckPayload
-        test: typeof testPayload
+        lint: { passed: boolean; summary: string; failures: unknown[] }
+        typecheck: { passed: boolean; summary: string; failures: unknown[] }
+        test: { passed: boolean; summary: string; exitCode: number; backend: string; failures: unknown[] }
       }
     }
     expect(result.structuredContent).toEqual(payload)
 
     expect(payload.passed).toBe(true)
     expect(payload.summary).toBe('qa passed')
-    expect(payload.details.lint).toEqual(lintPayload)
-    expect(payload.details.typecheck).toEqual(typecheckPayload)
-    expect(payload.details.test).toEqual(testPayload)
+    expect(payload.details.lint).toEqual({ passed: true, summary: 'lint passed', failures: [] })
+    expect(payload.details.typecheck).toEqual({
+      passed: true,
+      summary: 'typecheck passed',
+      failures: [],
+    })
+    expect(payload.details.test).toEqual({
+      passed: true,
+      summary: 'tests passed',
+      exitCode: 0,
+      backend: 'pnpm',
+      failures: [],
+    })
   })
 
   it('preserves the qa envelope while carrying additive compact-output leaf metadata', async () => {

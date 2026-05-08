@@ -40,9 +40,9 @@ describe('mcp-sentinel', () => {
       'ak-mcp-ready-99999',
       'ak-mcp-ready-88888',
     ] as unknown as ReturnType<typeof readdirSync>)
-    vi.mocked(readFileSync).mockImplementation((path) => {
-      if (typeof path === 'string' && path.endsWith('99999')) return '99999' as unknown as Buffer
-      if (typeof path === 'string' && path.endsWith('88888')) return '88888' as unknown as Buffer
+    vi.mocked(readFileSync).mockImplementation((path): ReturnType<typeof readFileSync> => {
+      if (typeof path === 'string' && path.endsWith('99999')) return '99999' as unknown as ReturnType<typeof readFileSync>
+      if (typeof path === 'string' && path.endsWith('88888')) return '88888' as unknown as ReturnType<typeof readFileSync>
       throw new Error('unexpected path')
     })
     const killSpy = vi.spyOn(process, 'kill').mockImplementation(() => {
@@ -61,9 +61,9 @@ describe('mcp-sentinel', () => {
       'unrelated-file',
       'ak-mcp-ready-12345', // alive
     ] as unknown as ReturnType<typeof readdirSync>)
-    vi.mocked(readFileSync).mockImplementation((path) => {
-      if (typeof path === 'string' && path.endsWith('99999')) return '99999' as unknown as Buffer
-      if (typeof path === 'string' && path.endsWith('12345')) return '12345' as unknown as Buffer
+    vi.mocked(readFileSync).mockImplementation((path): ReturnType<typeof readFileSync> => {
+      if (typeof path === 'string' && path.endsWith('99999')) return '99999' as unknown as ReturnType<typeof readFileSync>
+      if (typeof path === 'string' && path.endsWith('12345')) return '12345' as unknown as ReturnType<typeof readFileSync>
       throw new Error('unexpected path')
     })
     const killSpy = vi.spyOn(process, 'kill').mockImplementation((pid) => {
@@ -96,7 +96,7 @@ describe('mcp-sentinel', () => {
     vi.mocked(readdirSync).mockReturnValue(['ak-mcp-ready-bogus'] as unknown as ReturnType<
       typeof readdirSync
     >)
-    vi.mocked(readFileSync).mockReturnValue('not-a-pid' as unknown as Buffer)
+    vi.mocked(readFileSync).mockReturnValue('not-a-pid' as unknown as ReturnType<typeof readFileSync>)
     const { isMcpReady } = await import('#hooks/shared/mcp-sentinel')
     expect(isMcpReady()).toBe(false)
   })

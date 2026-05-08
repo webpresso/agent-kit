@@ -72,7 +72,7 @@ created: 2024-01-01
       })
 
       expect(result.plans).toHaveLength(1)
-      expect(result.plans[0].complexity).toBe('L')
+      expect(result.plans[0]!.complexity).toBe('L')
 
       // Also verify filtering by a different complexity excludes it
       const resultMismatch = await service.query({
@@ -110,8 +110,8 @@ created: ${criticalDate.toISOString().split('T')[0]}
       })
 
       expect(result.plans).toHaveLength(1)
-      expect(result.plans[0].name).toBe('critical-plan')
-      expect(result.plans[0].freshness.status).toBe('critical')
+      expect(result.plans[0]!.name).toBe('critical-plan')
+      expect(result.plans[0]!.freshness.status).toBe('critical')
     })
 
     it('should NOT include aging or fresh plans when stale filter is true', async () => {
@@ -213,17 +213,17 @@ created: 2024-01-01
       const ascResult = await service.query({
         sort: { field: 'taskCount', direction: 'asc' },
       })
-      expect(ascResult.plans[0].taskCount).toBe(1)
-      expect(ascResult.plans[1].taskCount).toBe(2)
-      expect(ascResult.plans[2].taskCount).toBe(3)
+      expect(ascResult.plans[0]!.taskCount).toBe(1)
+      expect(ascResult.plans[1]!.taskCount).toBe(2)
+      expect(ascResult.plans[2]!.taskCount).toBe(3)
 
       // Test descending: 3, 2, 1 tasks
       const descResult = await service.query({
         sort: { field: 'taskCount', direction: 'desc' },
       })
-      expect(descResult.plans[0].taskCount).toBe(3)
-      expect(descResult.plans[1].taskCount).toBe(2)
-      expect(descResult.plans[2].taskCount).toBe(1)
+      expect(descResult.plans[0]!.taskCount).toBe(3)
+      expect(descResult.plans[1]!.taskCount).toBe(2)
+      expect(descResult.plans[2]!.taskCount).toBe(1)
     })
   })
 
@@ -372,8 +372,8 @@ created: ${todayStr}
       // Both plans updated today, so each has score close to 1.0
       // Average of two identical scores should equal each individual score
       expect(result.plans).toHaveLength(2)
-      const score1 = result.plans[0].freshness.score
-      const score2 = result.plans[1].freshness.score
+      const score1 = result.plans[0]!.freshness.score
+      const score2 = result.plans[1]!.freshness.score
       const expectedAvg = (score1 + score2) / 2
       expect(result.summary.avgFreshness).toBeCloseTo(expectedAvg, 5)
     })

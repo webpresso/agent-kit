@@ -324,9 +324,9 @@ describe('mcp server integration', () => {
       summary: expect.any(String),
       kind: 'docs-frontmatter',
     })
-    const textBlock = callResponse?.result?.content?.[0] as
-      | { type?: string; text?: string }
-      | undefined
+    const textBlock = (
+      callResponse?.result?.content as Array<{ type?: string; text?: string }> | undefined
+    )?.[0]
     expect(textBlock?.type).toBe('text')
     expect(typeof textBlock?.text).toBe('string')
     expect(JSON.parse(textBlock!.text!)).toEqual(callResponse?.result?.structuredContent)

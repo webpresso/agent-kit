@@ -62,42 +62,42 @@ describe('plugin.json manifest', () => {
   describe('hooks', () => {
     it('PreToolUse matches Bash|Edit|Write|MultiEdit|WebFetch|Read|Grep and points at pretool-guard via bun + ${CLAUDE_PLUGIN_ROOT}', () => {
       const [entry] = readManifest().hooks.PreToolUse
-      expect(entry.matcher).toBe('Bash|Edit|Write|MultiEdit|WebFetch|Read|Grep')
-      const [handler] = entry.hooks
-      expect(handler.type).toBe('command')
-      expect(handler.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/pretool-guard/index.ts`)
+      expect(entry!.matcher).toBe('Bash|Edit|Write|MultiEdit|WebFetch|Read|Grep')
+      const [handler] = entry!.hooks
+      expect(handler!.type).toBe('command')
+      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/pretool-guard/index.ts`)
     })
 
     it('PostToolUse matches Edit|Write and points at lint-after-edit', () => {
       const [entry] = readManifest().hooks.PostToolUse
-      expect(entry.matcher).toBe('Edit|Write')
-      const [handler] = entry.hooks
-      expect(handler.type).toBe('command')
-      expect(handler.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/post-tool/lint-after-edit.ts`)
+      expect(entry!.matcher).toBe('Edit|Write')
+      const [handler] = entry!.hooks
+      expect(handler!.type).toBe('command')
+      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/post-tool/lint-after-edit.ts`)
     })
 
     it('Stop has no matcher and points at qa-changed-files', () => {
       const [entry] = readManifest().hooks.Stop
-      expect(entry.matcher).toBeUndefined()
-      const [handler] = entry.hooks
-      expect(handler.type).toBe('command')
-      expect(handler.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/stop/qa-changed-files.ts`)
+      expect(entry!.matcher).toBeUndefined()
+      const [handler] = entry!.hooks
+      expect(handler!.type).toBe('command')
+      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/stop/qa-changed-files.ts`)
     })
 
     it('UserPromptSubmit points at guard-switch', () => {
       const [entry] = readManifest().hooks.UserPromptSubmit
-      expect(entry.matcher).toBeUndefined()
-      const [handler] = entry.hooks
-      expect(handler.type).toBe('command')
-      expect(handler.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/guard-switch/index.ts`)
+      expect(entry!.matcher).toBeUndefined()
+      const [handler] = entry!.hooks
+      expect(handler!.type).toBe('command')
+      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/guard-switch/index.ts`)
     })
 
     it('SessionStart matches startup|resume|compact and points at sessionstart/index.ts', () => {
       const [entry] = readManifest().hooks.SessionStart
-      expect(entry.matcher).toBe('startup|resume|compact')
-      const [handler] = entry.hooks
-      expect(handler.type).toBe('command')
-      expect(handler.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/sessionstart/index.ts`)
+      expect(entry!.matcher).toBe('startup|resume|compact')
+      const [handler] = entry!.hooks
+      expect(handler!.type).toBe('command')
+      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/sessionstart/index.ts`)
     })
   })
 
@@ -105,8 +105,8 @@ describe('plugin.json manifest', () => {
     it('declares the agent-kit stdio server via bun + ${CLAUDE_PLUGIN_ROOT}', () => {
       const server = readManifest().mcpServers['agent-kit']
       expect(server).toBeDefined()
-      expect(server.command).toBe('bun')
-      expect(server.args).toEqual([`${PLUGIN_ROOT_VAR}/src/mcp/cli.ts`])
+      expect(server!.command).toBe('bun')
+      expect(server!.args).toEqual([`${PLUGIN_ROOT_VAR}/src/mcp/cli.ts`])
     })
   })
 

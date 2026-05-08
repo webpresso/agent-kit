@@ -25,7 +25,8 @@ vi.mock('node:child_process', async () => {
   const actual = await vi.importActual<typeof import('node:child_process')>('node:child_process')
   return {
     ...actual,
-    spawnSync: (...args: unknown[]) => spawnSyncMock(...args),
+    spawnSync: (..._args: Parameters<typeof import('node:child_process').spawnSync>) =>
+      spawnSyncMock(),
   }
 })
 

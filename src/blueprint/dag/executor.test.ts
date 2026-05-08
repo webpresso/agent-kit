@@ -180,8 +180,8 @@ describe('ParallelExecutor', () => {
       await executor.execute()
 
       expect(capturedProgress).not.toBeNull()
-      expect(capturedProgress?.totalTasks).toBe(2)
-      expect(capturedProgress?.totalWaves).toBe(1)
+      expect(capturedProgress!.totalTasks).toBe(2)
+      expect(capturedProgress!.totalWaves).toBe(1)
     })
   })
 

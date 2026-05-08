@@ -15,8 +15,7 @@
       ],
       "tier": 1,
       "bytes": 42,
-      "tokensSaved": 120,
-      "rawOutput": "src/a.ts:1 no-console Unexpected console"
+      "tokensSaved": 120
     },
     "typecheck": {
       "passed": true,
@@ -24,8 +23,7 @@
       "failures": [],
       "tier": 1,
       "bytes": 0,
-      "tokensSaved": 88,
-      "rawOutput": ""
+      "tokensSaved": 88
     },
     "test": {
       "passed": false,
@@ -38,8 +36,7 @@
       ],
       "tier": 1,
       "bytes": 55,
-      "tokensSaved": 220,
-      "rawOutput": "src/a.test.ts adds numbers: expected 1 to be 2"
+      "tokensSaved": 220
     }
   }
 }

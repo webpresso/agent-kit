@@ -468,16 +468,16 @@ describe('TaskGraph dependencies', () => {
 
       // Before removal: b is in wave 2
       const wavesBefore = graph.getWaves()
-      expect(wavesBefore[0].map((t) => t.id)).toEqual(['a'])
-      expect(wavesBefore[1].map((t) => t.id)).toEqual(['b'])
-      expect(wavesBefore[2].map((t) => t.id)).toEqual(['c'])
+      expect(wavesBefore[0]!.map((t) => t.id)).toEqual(['a'])
+      expect(wavesBefore[1]!.map((t) => t.id)).toEqual(['b'])
+      expect(wavesBefore[2]!.map((t) => t.id)).toEqual(['c'])
 
       // Remove a -> b
       graph.removeDependency('a', 'b')
 
       // After removal: b should be in wave 1 (first wave) since it has no deps
       const wavesAfter = graph.getWaves()
-      const firstWaveIds = wavesAfter[0].map((t) => t.id).toSorted()
+      const firstWaveIds = wavesAfter[0]!.map((t) => t.id).toSorted()
       expect(firstWaveIds).toContain('a')
       expect(firstWaveIds).toContain('b')
     })

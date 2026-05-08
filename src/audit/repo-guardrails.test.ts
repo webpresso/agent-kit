@@ -238,7 +238,7 @@ describe('repo guardrail audits', () => {
   test('validateCommitMessage rejects empty subject', () => {
     const result = validateCommitMessage('\n\nbody\n')
     expect(result.ok).toBe(false)
-    expect(result.violations[0].message).toContain('required')
+    expect(result.violations[0]!.message).toContain('required')
   })
 
   test('validateCommitMessage accepts merge and revert commits', () => {
@@ -252,7 +252,7 @@ describe('repo guardrail audits', () => {
     const longSubject = 'feat(agent-kit): ' + 'a'.repeat(120)
     const result = validateCommitMessage(longSubject, { subjectMaxLength: 100 })
     expect(result.ok).toBe(false)
-    expect(result.violations[0].message).toContain('100')
+    expect(result.violations[0]!.message).toContain('100')
   })
 
   test('validateCommitMessage warns on missing blank second line', () => {

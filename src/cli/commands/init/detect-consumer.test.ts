@@ -370,10 +370,10 @@ describe('discoverWorkspacePackages', () => {
       writeJson(join(pkgDir, 'package.json'), { name: '@scope/mylib' })
       const pkgs = discoverWorkspacePackages(dir, ['packages/mylib'])
       expect(pkgs).toHaveLength(1)
-      expect(pkgs[0].name).toBe('@scope/mylib')
-      expect(pkgs[0].shortName).toBe('mylib')
-      expect(pkgs[0].relativePath).toBe('packages/mylib')
-      expect(pkgs[0].absolutePath).toBe(pkgDir)
+      expect(pkgs[0]!.name).toBe('@scope/mylib')
+      expect(pkgs[0]!.shortName).toBe('mylib')
+      expect(pkgs[0]!.relativePath).toBe('packages/mylib')
+      expect(pkgs[0]!.absolutePath).toBe(pkgDir)
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -419,7 +419,7 @@ describe('discoverWorkspacePackages', () => {
       writeJson(join(pkgA, 'package.json'), { name: 'a' })
       const pkgs = discoverWorkspacePackages(dir, ['packages/*'])
       expect(pkgs).toHaveLength(1)
-      expect(pkgs[0].name).toBe('a')
+      expect(pkgs[0]!.name).toBe('a')
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -433,7 +433,7 @@ describe('discoverWorkspacePackages', () => {
       writeJson(join(pkgA, 'package.json'), { name: 'a' })
       const pkgs = discoverWorkspacePackages(dir, ['packages/*'])
       expect(pkgs).toHaveLength(1)
-      expect(pkgs[0].name).toBe('a')
+      expect(pkgs[0]!.name).toBe('a')
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -449,7 +449,7 @@ describe('discoverWorkspacePackages', () => {
       writeJson(join(dir, 'packages/.hidden', 'package.json'), { name: 'hidden' })
       const pkgs = discoverWorkspacePackages(dir, ['packages/*'])
       expect(pkgs).toHaveLength(1)
-      expect(pkgs[0].name).toBe('a')
+      expect(pkgs[0]!.name).toBe('a')
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -490,8 +490,8 @@ describe('discoverWorkspacePackages', () => {
       writeJson(join(pkgDir, 'package.json'), { version: '1.0.0' })
       const pkgs = discoverWorkspacePackages(dir, ['packages/*'])
       expect(pkgs).toHaveLength(1)
-      expect(pkgs[0].name).toBe('unnamed')
-      expect(pkgs[0].shortName).toBe('unnamed')
+      expect(pkgs[0]!.name).toBe('unnamed')
+      expect(pkgs[0]!.shortName).toBe('unnamed')
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -515,7 +515,7 @@ describe('discoverWorkspacePackages', () => {
       writeJson(join(dir, 'package.json'), { name: 'root-pkg' })
       const pkgs = discoverWorkspacePackages(dir, ['.'])
       expect(pkgs).toHaveLength(1)
-      expect(pkgs[0].relativePath).toBe('.')
+      expect(pkgs[0]!.relativePath).toBe('.')
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -547,8 +547,8 @@ describe('discoverWorkspacePackages', () => {
       const pkgDir = makeDir(dir, 'packages/scoped')
       writeJson(join(pkgDir, 'package.json'), { name: '@my-org/my-package' })
       const pkgs = discoverWorkspacePackages(dir, ['packages/scoped'])
-      expect(pkgs[0].name).toBe('@my-org/my-package')
-      expect(pkgs[0].shortName).toBe('my-package')
+      expect(pkgs[0]!.name).toBe('@my-org/my-package')
+      expect(pkgs[0]!.shortName).toBe('my-package')
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
@@ -666,7 +666,7 @@ describe('detectConsumer', () => {
       expect(ctx!.packageJson).toBeNull()
       expect(ctx!.hasPnpmWorkspace).toBe(true)
       expect(ctx!.workspacePackages).toHaveLength(1)
-      expect(ctx!.workspacePackages[0].name).toBe('foo')
+      expect(ctx!.workspacePackages[0]!.name).toBe('foo')
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }

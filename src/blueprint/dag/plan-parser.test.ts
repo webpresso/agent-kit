@@ -374,8 +374,8 @@ describe('planTasksToGraphTasks', () => {
     const graphTasks = planTasksToGraphTasks(planTasks)
 
     expect(graphTasks[0]?.task.data).toEqual(planTasks[0])
-    expect(graphTasks[0]?.task.data.type).toBe('lint-fix')
-    expect(graphTasks[0]?.task.data.package).toBe('cli2')
+    expect(graphTasks[0]!.task.data!.type).toBe('lint-fix')
+    expect(graphTasks[0]!.task.data!.package).toBe('cli2')
   })
 
   it('sets dependencies array in task data', () => {

@@ -70,6 +70,7 @@ Codex CLI doesn't have a plugin marketplace — `~/.codex/config.toml` registers
 What `ak setup` does for Codex:
 - Skills: per-skill symlinks under `.agents/skills/` → `../../.agent/skills/<name>` (project-local, OpenAI/Amp/OpenCode convergent path).
 - Hooks: idempotent patch of `.codex/hooks.json` adding `ak-pretool-guard`, `ak-post-tool`, `ak-stop-qa`, `ak-sessionstart-routing` entries (additive — won't clobber existing user hooks).
+- OMX compatibility: after the default `omx` preset runs `omx setup --yes`, `ak setup` also migrates deprecated `[features].codex_hooks` entries in `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`) to `[features].hooks` so older OMX releases do not keep emitting Codex's deprecation warning.
 - MCP servers: register `agent-kit` manually once, and let the `omx` or `playwright-mcp` preset persist Playwright's MCP server in `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`):
 
   ```toml

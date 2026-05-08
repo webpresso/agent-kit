@@ -50,8 +50,8 @@ created: 2024-01-01
 
       // Assert
       expect(plans).toHaveLength(1)
-      expect(plans[0].name).toBe('@test-feature')
-      expect(plans[0].status).toBe('in-progress')
+      expect(plans[0]!.name).toBe('@test-feature')
+      expect(plans[0]!.status).toBe('in-progress')
     })
   })
 
@@ -89,7 +89,7 @@ created: 2024-01-01
       expect(plan.name).toBe('@my-feature')
       expect(plan.tasks).toHaveLength(2)
       expect(plan.phases).toHaveLength(1)
-      expect(plan.tasks[1].depends).toEqual(['1.1'])
+      expect(plan.tasks[1]!.depends).toEqual(['1.1'])
     })
   })
 

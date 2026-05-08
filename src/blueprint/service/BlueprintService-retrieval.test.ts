@@ -423,8 +423,8 @@ last_updated: 2024-01-01
 
       // Assert - should preserve 'completed' status
       expect(result.plans).toHaveLength(1)
-      expect(result.plans[0].name).toBe('new-completed-plan')
-      expect(result.plans[0].status).toBe('completed')
+      expect(result.plans[0]!.name).toBe('new-completed-plan')
+      expect(result.plans[0]!.status).toBe('completed')
     })
 
     it('should reject invalid status values during Zod validation', async () => {

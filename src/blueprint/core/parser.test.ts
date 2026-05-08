@@ -62,10 +62,10 @@ describe('PlanParser', () => {
 
       // Assert
       expect(plan.tasks).toHaveLength(2)
-      expect(plan.tasks[0].id).toBe('1.1')
-      expect(plan.tasks[0].title).toBe('Create schema')
-      expect(plan.tasks[1].id).toBe('1.2')
-      expect(plan.tasks[1].title).toBe('Add endpoint')
+      expect(plan.tasks[0]!.id).toBe('1.1')
+      expect(plan.tasks[0]!.title).toBe('Create schema')
+      expect(plan.tasks[1]!.id).toBe('1.2')
+      expect(plan.tasks[1]!.title).toBe('Add endpoint')
     })
 
     it('should extract task dependencies', () => {
@@ -73,8 +73,8 @@ describe('PlanParser', () => {
       const plan = parseBlueprint(PLAN_WITH_TASKS, '@feature')
 
       // Assert
-      expect(plan.tasks[0].depends).toBe(undefined) // "None"
-      expect(plan.tasks[1].depends).toEqual(['1.1'])
+      expect(plan.tasks[0]!.depends).toBe(undefined) // "None"
+      expect(plan.tasks[1]!.depends).toEqual(['1.1'])
     })
 
     it('should extract multiple dependencies with various formats', () => {
@@ -108,10 +108,10 @@ created: 2026-01-01
       const plan = parseBlueprint(planWithMultipleDeps, '@feature')
 
       // Assert
-      expect(plan.tasks[0].depends).toBe(undefined) // "None"
-      expect(plan.tasks[1].depends).toEqual(['1.1']) // "Task 1.1"
-      expect(plan.tasks[2].depends).toEqual(['1.1', '1.2']) // "Tasks 1.1, 1.2"
-      expect(plan.tasks[3].depends).toEqual(['1.1', '1.2', '2.1']) // "Tasks 1.1, 1.2, 2.1"
+      expect(plan.tasks[0]!.depends).toBe(undefined) // "None"
+      expect(plan.tasks[1]!.depends).toEqual(['1.1']) // "Task 1.1"
+      expect(plan.tasks[2]!.depends).toEqual(['1.1', '1.2']) // "Tasks 1.1, 1.2"
+      expect(plan.tasks[3]!.depends).toEqual(['1.1', '1.2', '2.1']) // "Tasks 1.1, 1.2, 2.1"
     })
 
     it('should extract blocked reason from task section', () => {
@@ -147,9 +147,9 @@ No blocked status here
       const plan = parseBlueprint(planWithBlocked, '@feature')
 
       // Assert
-      expect(plan.tasks[0].blockedReason).toBe('Waiting for API approval')
-      expect(plan.tasks[1].blockedReason).toBe('Database migration pending')
-      expect(plan.tasks[2].blockedReason).toBe(undefined)
+      expect(plan.tasks[0]!.blockedReason).toBe('Waiting for API approval')
+      expect(plan.tasks[1]!.blockedReason).toBe('Database migration pending')
+      expect(plan.tasks[2]!.blockedReason).toBe(undefined)
     })
 
     it('should handle "None" as no blocked reason', () => {
@@ -173,7 +173,7 @@ created: 2026-01-01
       const plan = parseBlueprint(planWithNone, '@feature')
 
       // Assert
-      expect(plan.tasks[0].blockedReason).toBe(undefined)
+      expect(plan.tasks[0]!.blockedReason).toBe(undefined)
     })
 
     it('should handle empty blocked reason gracefully', () => {
@@ -203,8 +203,8 @@ created: 2026-01-01
       const plan = parseBlueprint(planWithEmpty, '@feature')
 
       // Assert - empty or whitespace-only reasons should be treated as undefined
-      expect(plan.tasks[0].blockedReason).toBe(undefined)
-      expect(plan.tasks[1].blockedReason).toBe(undefined)
+      expect(plan.tasks[0]!.blockedReason).toBe(undefined)
+      expect(plan.tasks[1]!.blockedReason).toBe(undefined)
     })
 
     it('should extract phases with their tasks', () => {
@@ -213,11 +213,11 @@ created: 2026-01-01
 
       // Assert
       expect(plan.phases).toHaveLength(1)
-      expect(plan.phases[0].number).toBe(1)
-      expect(plan.phases[0].title).toBe('Foundation')
-      expect(plan.phases[0].complexity).toBe('S')
-      expect(plan.phases[0].tasks).toHaveLength(2)
-      expect(plan.phases[0].tasks[0].id).toBe('1.1')
+      expect(plan.phases[0]!.number).toBe(1)
+      expect(plan.phases[0]!.title).toBe('Foundation')
+      expect(plan.phases[0]!.complexity).toBe('S')
+      expect(plan.phases[0]!.tasks).toHaveLength(2)
+      expect(plan.phases[0]!.tasks[0]!.id).toBe('1.1')
     })
 
     it('requires explicit task status for executable blueprints', () => {
@@ -276,9 +276,9 @@ created: 2026-01-01
 
       const plan = parseBlueprint(planWithExplicitStatus, '@feature')
 
-      expect(plan.tasks[0].status).toBe('blocked')
-      expect(plan.tasks[0].statusExplicit).toBe(true)
-      expect(plan.tasks[0].blockedReason).toBe('Waiting on API')
+      expect(plan.tasks[0]!.status).toBe('blocked')
+      expect(plan.tasks[0]!.statusExplicit).toBe(true)
+      expect(plan.tasks[0]!.blockedReason).toBe('Waiting on API')
     })
 
     it('still parses explicit status when no checkboxes exist', () => {
@@ -303,9 +303,9 @@ created: 2026-01-01
       const plan = parseBlueprint(planNoCheckboxes, '@feature')
 
       // Assert
-      expect(plan.tasks[0].status).toBe('todo')
-      expect(plan.tasks[0].acceptanceCriteria).toEqual({ total: 0, checked: 0 })
-      expect(plan.tasks[1].status).toBe('blocked')
+      expect(plan.tasks[0]!.status).toBe('todo')
+      expect(plan.tasks[0]!.acceptanceCriteria).toEqual({ total: 0, checked: 0 })
+      expect(plan.tasks[1]!.status).toBe('blocked')
     })
   })
 
@@ -323,7 +323,7 @@ created: 2026-01-01
       expect(reparsed.status).toBe(original.status)
       expect(reparsed.complexity).toBe(original.complexity)
       expect(reparsed.tasks.length).toBe(original.tasks.length)
-      expect(reparsed.tasks[0].id).toBe(original.tasks[0].id)
+      expect(reparsed.tasks[0]!.id).toBe(original.tasks[0]!.id)
     })
 
     it('should validate required frontmatter fields', () => {
@@ -336,14 +336,14 @@ created: 2026-01-01
 
     it('should NOT persist task status to frontmatter', () => {
       const plan = parseBlueprint(PLAN_WITH_TASKS, '@feature')
-      plan.tasks[0].status = 'done' // This change won't persist
+      plan.tasks[0]!.status = 'done' // This change won't persist
 
       // Act
       const serialized = serializeBlueprint(plan)
       const reparsed = parseBlueprint(serialized, '@feature')
 
-      expect(reparsed.tasks[0].status).toBe('todo')
-      expect(reparsed.tasks[1].status).toBe('todo')
+      expect(reparsed.tasks[0]!.status).toBe('todo')
+      expect(reparsed.tasks[1]!.status).toBe('todo')
 
       // Also verify no 'tasks' key in frontmatter
       expect(serialized).not.toContain('tasks:')
@@ -469,7 +469,7 @@ last_updated: 2026-01-01
       expect(() => parseBlueprint(planWithCorrectFormat, '@feature')).not.toThrow()
       const plan = parseBlueprint(planWithCorrectFormat, '@feature')
       expect(plan.tasks).toHaveLength(1)
-      expect(plan.tasks[0].id).toBe('1.1')
+      expect(plan.tasks[0]!.id).toBe('1.1')
     })
 
     it('should ignore ### headings that are not tasks', () => {
@@ -534,7 +534,7 @@ created: 2026-01-01
 - [x] C
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].acceptanceCriteria).toEqual({ total: 3, checked: 3 })
+      expect(result.tasks[0]!.acceptanceCriteria).toEqual({ total: 3, checked: 3 })
     })
 
     it('derives in_progress when ONE checkbox is checked out of many (checked > 0 and checked < total)', () => {
@@ -555,7 +555,7 @@ created: 2026-01-01
 - [ ] C
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].acceptanceCriteria).toEqual({ total: 3, checked: 1 })
+      expect(result.tasks[0]!.acceptanceCriteria).toEqual({ total: 3, checked: 1 })
     })
 
     it('derives todo when ZERO checkboxes are checked (checked === 0, total > 0)', () => {
@@ -575,7 +575,7 @@ created: 2026-01-01
 - [ ] B
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].acceptanceCriteria).toEqual({ total: 2, checked: 0 })
+      expect(result.tasks[0]!.acceptanceCriteria).toEqual({ total: 2, checked: 0 })
     })
 
     it('explicit status overrides derived checkbox status', () => {
@@ -597,9 +597,9 @@ created: 2026-01-01
 - [ ] B
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].status).toBe('blocked')
-      expect(result.tasks[0].statusExplicit).toBe(true)
-      expect(result.tasks[0].acceptanceCriteria).toEqual({ total: 2, checked: 1 })
+      expect(result.tasks[0]!.status).toBe('blocked')
+      expect(result.tasks[0]!.statusExplicit).toBe(true)
+      expect(result.tasks[0]!.acceptanceCriteria).toEqual({ total: 2, checked: 1 })
     })
   })
 
@@ -622,8 +622,8 @@ created: 2026-01-01
 - [x] Item B
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].status).toBe('todo')
-      expect(result.tasks[0].acceptanceCriteria).toEqual({ total: 2, checked: 2 })
+      expect(result.tasks[0]!.status).toBe('todo')
+      expect(result.tasks[0]!.acceptanceCriteria).toEqual({ total: 2, checked: 2 })
     })
 
     it('handles mixed checkbox states correctly', () => {
@@ -645,7 +645,7 @@ created: 2026-01-01
 - [x] Another done
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].acceptanceCriteria).toEqual({ total: 3, checked: 2 })
+      expect(result.tasks[0]!.acceptanceCriteria).toEqual({ total: 3, checked: 2 })
     })
 
     it('handles task with no checkboxes at all', () => {
@@ -666,7 +666,7 @@ created: 2026-01-01
 2. Step two
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].acceptanceCriteria).toEqual({ total: 0, checked: 0 })
+      expect(result.tasks[0]!.acceptanceCriteria).toEqual({ total: 0, checked: 0 })
     })
 
     it('derives in_progress when some checkboxes are checked', () => {
@@ -686,7 +686,7 @@ created: 2026-01-01
 - [ ] Second
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].acceptanceCriteria).toEqual({ total: 2, checked: 1 })
+      expect(result.tasks[0]!.acceptanceCriteria).toEqual({ total: 2, checked: 1 })
     })
   })
 
@@ -771,8 +771,8 @@ created: 2026-01-01
 `
       const result = parseBlueprint(plan, '@feature')
       expect(result.tasks).toHaveLength(1)
-      expect(result.tasks[0].id).toBe('1.1')
-      expect(result.tasks[0].title).toBe('With status prefix')
+      expect(result.tasks[0]!.id).toBe('1.1')
+      expect(result.tasks[0]!.title).toBe('With status prefix')
     })
 
     it('should parse task with bracketed prefix containing special chars', () => {
@@ -791,7 +791,7 @@ created: 2026-01-01
 `
       const result = parseBlueprint(plan, '@feature')
       expect(result.tasks).toHaveLength(1)
-      expect(result.tasks[0].title).toBe('Special chars')
+      expect(result.tasks[0]!.title).toBe('Special chars')
     })
 
     it('should extract title from markdown heading when frontmatter title is missing', () => {
@@ -852,12 +852,12 @@ created: 2026-01-01
 `
       const result = parseBlueprint(plan, '@feature')
       expect(result.phases).toHaveLength(2)
-      expect(result.phases[0].number).toBe(1)
-      expect(result.phases[0].complexity).toBe('S')
-      expect(result.phases[1].number).toBe(2)
-      expect(result.phases[1].complexity).toBe('M')
-      expect(result.phases[0].tasks).toHaveLength(1)
-      expect(result.phases[1].tasks).toHaveLength(1)
+      expect(result.phases[0]!.number).toBe(1)
+      expect(result.phases[0]!.complexity).toBe('S')
+      expect(result.phases[1]!.number).toBe(2)
+      expect(result.phases[1]!.complexity).toBe('M')
+      expect(result.phases[0]!.tasks).toHaveLength(1)
+      expect(result.phases[1]!.tasks).toHaveLength(1)
     })
 
     it('should handle phases with XL complexity', () => {
@@ -876,7 +876,7 @@ created: 2026-01-01
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.phases[0].complexity).toBe('XL')
+      expect(result.phases[0]!.complexity).toBe('XL')
     })
 
     it('should handle phase with numbered title', () => {
@@ -895,7 +895,7 @@ created: 2026-01-01
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.phases[0].number).toBe(2)
+      expect(result.phases[0]!.number).toBe(2)
     })
   })
 
@@ -915,7 +915,7 @@ created: 2026-01-01
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].targetPackage).toBe('agent-kit')
+      expect(result.tasks[0]!.targetPackage).toBe('agent-kit')
     })
 
     it('should extract target package from "for @webpresso/pkg" pattern', () => {
@@ -933,7 +933,7 @@ created: 2026-01-01
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].targetPackage).toBe('runtime')
+      expect(result.tasks[0]!.targetPackage).toBe('runtime')
     })
 
     it('should extract target package from "in pkg-name" pattern without @ prefix', () => {
@@ -951,7 +951,7 @@ created: 2026-01-01
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].targetPackage).toBe('quality-engine')
+      expect(result.tasks[0]!.targetPackage).toBe('quality-engine')
     })
 
     it('should not extract targetPackage when no package pattern matches', () => {
@@ -969,7 +969,7 @@ created: 2026-01-01
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].targetPackage).toBeUndefined()
+      expect(result.tasks[0]!.targetPackage).toBeUndefined()
     })
 
     it('should not extract targetFile when no file extension matches', () => {
@@ -988,7 +988,7 @@ created: 2026-01-01
 No file path here
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].targetFile).toBeUndefined()
+      expect(result.tasks[0]!.targetFile).toBeUndefined()
     })
 
     it('should extract target file from description', () => {
@@ -1007,7 +1007,7 @@ created: 2026-01-01
 Fix src/cli/commands/init.ts config
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].targetFile).toBe('src/cli/commands/init.ts')
+      expect(result.tasks[0]!.targetFile).toBe('src/cli/commands/init.ts')
     })
 
     it.each([
@@ -1033,7 +1033,7 @@ created: 2026-01-01
 This is a task ${tag}
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].complexity).toBe(expected)
+      expect(result.tasks[0]!.complexity).toBe(expected)
     })
 
     it('should extract complexity from description tag', () => {
@@ -1052,7 +1052,7 @@ created: 2026-01-01
 This is a complex task [Complexity: L]
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].complexity).toBe('L')
+      expect(result.tasks[0]!.complexity).toBe('L')
     })
 
     it('should not extract complexity when no complexity tag present', () => {
@@ -1070,7 +1070,7 @@ created: 2026-01-01
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].complexity).toBeUndefined()
+      expect(result.tasks[0]!.complexity).toBeUndefined()
     })
   })
 
@@ -1103,7 +1103,7 @@ created: 2026-01-01
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].stepType).toBe(expected)
+      expect(result.tasks[0]!.stepType).toBe(expected)
     })
 
     it('should infer lint-fix from lint keyword', () => {
@@ -1121,7 +1121,7 @@ created: 2026-01-01
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].stepType).toBe('lint-fix')
+      expect(result.tasks[0]!.stepType).toBe('lint-fix')
     })
 
     it('should infer verify from check keyword', () => {
@@ -1139,7 +1139,7 @@ created: 2026-01-01
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].stepType).toBe('verify')
+      expect(result.tasks[0]!.stepType).toBe('verify')
     })
 
     it('should infer test-fix from vitest in description', () => {
@@ -1158,7 +1158,7 @@ created: 2026-01-01
 Run vitest to check everything
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].stepType).toBe('test-fix')
+      expect(result.tasks[0]!.stepType).toBe('test-fix')
     })
 
     it('should default to implement when no keyword matches', () => {
@@ -1176,7 +1176,7 @@ created: 2026-01-01
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].stepType).toBe('implement')
+      expect(result.tasks[0]!.stepType).toBe('implement')
     })
   })
 
@@ -1202,8 +1202,8 @@ description for the task.
 - Item 1
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].description).toContain('This is a multiline')
-      expect(result.tasks[0].description).toContain('description for the task')
+      expect(result.tasks[0]!.description).toContain('This is a multiline')
+      expect(result.tasks[0]!.description).toContain('description for the task')
     })
 
     it('should skip leading blank lines before description content', () => {
@@ -1224,7 +1224,7 @@ created: 2026-01-01
 Actual description starts here.
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].description).toBe('Actual description starts here.')
+      expect(result.tasks[0]!.description).toBe('Actual description starts here.')
     })
 
     it('should not include checklist items in description', () => {
@@ -1245,7 +1245,7 @@ Some description text
 - [ ] Second item
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].description).toBe('Some description text')
+      expect(result.tasks[0]!.description).toBe('Some description text')
     })
   })
 
@@ -1274,11 +1274,11 @@ Description for second task.
 `
       const result = parseBlueprint(plan, '@feature')
       expect(result.tasks).toHaveLength(2)
-      expect(result.tasks[0].id).toBe('1.1')
-      expect(result.tasks[1].id).toBe('1.2')
+      expect(result.tasks[0]!.id).toBe('1.1')
+      expect(result.tasks[1]!.id).toBe('1.2')
       // first task's description should not contain second task's text
-      expect(result.tasks[0].description).toBe('Description for first task.')
-      expect(result.tasks[1].description).toBe('Description for second task.')
+      expect(result.tasks[0]!.description).toBe('Description for first task.')
+      expect(result.tasks[1]!.description).toBe('Description for second task.')
     })
 
     it('task section ends at ## heading delimiter', () => {
@@ -1305,7 +1305,7 @@ Second description.
 `
       const result = parseBlueprint(plan, '@feature')
       expect(result.tasks).toHaveLength(2)
-      expect(result.tasks[0].description).toBe('First description.')
+      expect(result.tasks[0]!.description).toBe('First description.')
     })
   })
 
@@ -1325,7 +1325,7 @@ created: 2026-01-01
 **Blocked:** NONE
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].blockedReason).toBeUndefined()
+      expect(result.tasks[0]!.blockedReason).toBeUndefined()
     })
 
     it('returns undefined for "none" lowercase', () => {
@@ -1343,7 +1343,7 @@ created: 2026-01-01
 **Blocked:** none
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].blockedReason).toBeUndefined()
+      expect(result.tasks[0]!.blockedReason).toBeUndefined()
     })
 
     it('returns the blocked reason when it is a real value', () => {
@@ -1361,7 +1361,7 @@ created: 2026-01-01
 **Blocked:** PR #123 not merged yet
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].blockedReason).toBe('PR #123 not merged yet')
+      expect(result.tasks[0]!.blockedReason).toBe('PR #123 not merged yet')
     })
   })
 
@@ -1385,7 +1385,7 @@ created: 2026-01-01
 **Depends:** 1.1
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[1].depends).toEqual(['1.1'])
+      expect(result.tasks[1]!.depends).toEqual(['1.1'])
     })
 
     it('should handle blocked reason with leading whitespace', () => {
@@ -1404,7 +1404,7 @@ created: 2026-01-01
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0].blockedReason).toBe('Waiting with leading whitespace')
+      expect(result.tasks[0]!.blockedReason).toBe('Waiting with leading whitespace')
     })
   })
 

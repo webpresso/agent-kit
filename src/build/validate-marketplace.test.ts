@@ -55,14 +55,14 @@ describe('marketplace.json', () => {
     expect(Array.isArray(marketplace.plugins)).toBe(true)
     expect(marketplace.plugins.length).toBeGreaterThan(0)
     const [plugin] = marketplace.plugins
-    expect(plugin.name).toBe('agent-kit')
-    expect(plugin.source).toBe('./')
+    expect(plugin!.name).toBe('agent-kit')
+    expect(plugin!.source).toBe('./')
   })
 
   it('plugin description matches plugin.json#description when present', () => {
     if (pluginManifest.description) {
       const [plugin] = marketplace.plugins
-      expect(plugin.description).toBe(pluginManifest.description)
+      expect(plugin!.description).toBe(pluginManifest.description)
     }
   })
 })

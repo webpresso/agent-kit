@@ -1,6 +1,10 @@
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { describe, expect, it, vi } from 'vitest'
 
-import { ensureOmx } from './index.js'
+import { ensureOmx, migrateDeprecatedCodexHooksFeatureFlag } from './index.js'
 
 function makeSpawn(behaviors: Array<{ status: number | null; error?: Error }>) {
   let i = 0
@@ -111,5 +115,44 @@ describe('ensureOmx', () => {
       cwd: '/tmp/repo',
       stdio: 'inherit',
     })
+  })
+
+  it('migrates deprecated codex_hooks to hooks in the Codex config after omx setup', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ak-omx-'))
+    const configPath = join(dir, 'config.toml')
+    writeFileSync(
+      configPath,
+      '[features]\ncodex_hooks = true\ngoals = true\n\n[mcp_servers.playwright]\nenabled = true\n',
+      'utf8',
+    )
+
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    const result = ensureOmx({
+      repoRoot: '/tmp/repo',
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      configPath,
+    })
+
+    expect(result).toEqual({ kind: 'omx-ok', installed: false })
+    expect(readFileSync(configPath, 'utf8')).toBe(
+      '[features]\nhooks = true\ngoals = true\n\n[mcp_servers.playwright]\nenabled = true\n',
+    )
+  })
+})
+
+describe('migrateDeprecatedCodexHooksFeatureFlag', () => {
+  it('rewrites codex_hooks to hooks inside the [features] table', () => {
+    expect(migrateDeprecatedCodexHooksFeatureFlag('[features]\ncodex_hooks = true\ngoals = true\n')).toBe(
+      '[features]\nhooks = true\ngoals = true\n',
+    )
+  })
+
+  it('removes codex_hooks when hooks already exists and preserves the deprecated value', () => {
+    expect(
+      migrateDeprecatedCodexHooksFeatureFlag(
+        '[features]\nhooks = false\ncodex_hooks = true\ngoals = true\n',
+      ),
+    ).toBe('[features]\nhooks = true\ngoals = true\n')
   })
 })
