@@ -102,7 +102,8 @@ export function ensureCodexPlaywrightMcp(
 // Agent-kit MCP server registration
 // ────────────────────────────────────────────────────────────────────────────
 
-const MCP_ENTRY_RELATIVE = join('src', 'mcp', 'cli.ts')
+const SOURCE_MCP_ENTRY_RELATIVE = join('src', 'mcp', 'cli.ts')
+const BUILT_MCP_ENTRY_RELATIVE = join('dist', 'esm', 'mcp', 'cli.js')
 
 export interface AgentKitInstallProbe {
   /** Test seam — override the candidate roots. Default: probe in fixed order. */
@@ -131,8 +132,10 @@ export function findAgentKitMcpEntry(probe: AgentKitInstallProbe = {}): string |
   const candidates = probe.candidates ?? defaultCandidates(probe)
   for (const root of candidates) {
     if (!root) continue
-    const entry = join(root, MCP_ENTRY_RELATIVE)
-    if (existsSync(entry)) return entry
+    const sourceEntry = join(root, SOURCE_MCP_ENTRY_RELATIVE)
+    if (existsSync(sourceEntry)) return sourceEntry
+    const builtEntry = join(root, BUILT_MCP_ENTRY_RELATIVE)
+    if (existsSync(builtEntry)) return builtEntry
   }
   return null
 }
@@ -180,10 +183,20 @@ function runQuiet(cmd: string, args: readonly string[]): string | null {
   }
 }
 
+export function agentKitMcpLaunchCommand(entryPath: string): {
+  command: 'bun' | 'node'
+  args: string[]
+} {
+  return entryPath.endsWith('.ts')
+    ? { command: 'bun', args: [entryPath] }
+    : { command: 'node', args: [entryPath] }
+}
+
 export function agentKitMcpBlock(entryPath: string): string {
+  const launch = agentKitMcpLaunchCommand(entryPath)
   return `${AGENT_KIT_MCP_HEADER}
-command = "bun"
-args = ["${entryPath}"]
+command = "${launch.command}"
+args = [${launch.args.map((arg) => `"${arg}"`).join(', ')}]
 enabled = true
 `
 }

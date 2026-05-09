@@ -138,6 +138,12 @@ function shouldRequireHost(mode: HostCheckMode): boolean {
   return mode === 'required'
 }
 
+const ANSI_ESCAPE_PATTERN = new RegExp(String.raw`\u001B\[[0-9;]*m`, 'g')
+
+function stripAnsi(text: string): string {
+  return text.replace(ANSI_ESCAPE_PATTERN, '')
+}
+
 function resolveRequestedHosts(
   mode: HostCheckMode,
   hostNames?: Array<'codex' | 'opencode' | 'claude'>,
@@ -472,18 +478,30 @@ async function checkOpenCodeHost(cwd = process.cwd()): Promise<DoctorCheck> {
     }
   }
 
-  const hasAgentKit = result.stdout.includes('agent-kit')
-  const hasContextMode = result.stdout.includes('context-mode')
-  return hasAgentKit && hasContextMode
+  const stdout = stripAnsi(result.stdout)
+  const hasAgentKit = stdout.includes('agent-kit')
+  const hasContextMode = stdout.includes('context-mode')
+  const agentKitConnected = /✓\s+agent-kit\b/.test(stdout)
+  const contextModeConnected = /✓\s+context-mode\b/.test(stdout)
+
+  if (!hasAgentKit || !hasContextMode) {
+    return {
+      name: 'OpenCode host integration',
+      ok: false,
+      detail: `missing MCP entries (agent-kit=${hasAgentKit}, context-mode=${hasContextMode})`,
+    }
+  }
+
+  return agentKitConnected && contextModeConnected
     ? {
         name: 'OpenCode host integration',
         ok: true,
-        detail: 'agent-kit + context-mode MCP visible',
+        detail: 'agent-kit + context-mode MCP connected',
       }
     : {
         name: 'OpenCode host integration',
         ok: false,
-        detail: `missing MCP entries (agent-kit=${hasAgentKit}, context-mode=${hasContextMode})`,
+        detail: `MCP not connected (agent-kit=${agentKitConnected}, context-mode=${contextModeConnected})`,
       }
 }
 

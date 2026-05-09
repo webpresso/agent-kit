@@ -45,7 +45,7 @@ describe('context-mode preset', () => {
   })
 
   it('patches OpenCode config with mcp + plugin entries', () => {
-    const next = patchOpenCodeContextModeConfig({})
+    const next = patchOpenCodeContextModeConfig({}, ['bun', '/tmp/agent-kit/src/mcp/cli.ts'])
     expect(next.$schema).toBe('https://opencode.ai/config.json')
     expect(next.mcp).toEqual({
       'context-mode': {
@@ -54,7 +54,7 @@ describe('context-mode preset', () => {
       },
       'agent-kit': {
         type: 'local',
-        command: ['pnpm', 'exec', 'ak', 'mcp'],
+        command: ['bun', '/tmp/agent-kit/src/mcp/cli.ts'],
       },
     })
     expect(next.plugin).toEqual(['context-mode'])

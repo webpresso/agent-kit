@@ -5,6 +5,10 @@ import { dirname, join } from 'node:path'
 
 import { patchJsonFile, type MergeOptions, type MergeResult } from '#cli/commands/init/merge'
 import { hoistTopLevelEvents } from '#cli/commands/init/scaffolders/agent-hooks/index'
+import {
+  agentKitMcpLaunchCommand,
+  findAgentKitMcpEntry,
+} from '#cli/commands/init/scaffolders/codex-mcp/index'
 
 export interface EnsureContextModeInput {
   repoRoot: string
@@ -118,6 +122,7 @@ export function patchCodexContextModeHooks(
 
 export function patchOpenCodeContextModeConfig(
   existing: Record<string, unknown>,
+  agentKitCommand: string[] = ['pnpm', 'exec', 'ak', 'mcp'],
 ): Record<string, unknown> {
   const currentMcp =
     existing.mcp && typeof existing.mcp === 'object' && !Array.isArray(existing.mcp)
@@ -129,7 +134,7 @@ export function patchOpenCodeContextModeConfig(
   }
   currentMcp['agent-kit'] = {
     type: 'local',
-    command: ['pnpm', 'exec', 'ak', 'mcp'],
+    command: agentKitCommand,
   }
 
   const currentPlugins = Array.isArray(existing.plugin)
@@ -145,6 +150,14 @@ export function patchOpenCodeContextModeConfig(
     mcp: currentMcp,
     plugin: plugins,
   }
+}
+
+function resolveOpenCodeAgentKitCommand(repoRoot: string): string[] {
+  const repoLocalRoot = join(repoRoot, 'node_modules', '@webpresso', 'agent-kit')
+  const entryPath = findAgentKitMcpEntry({ candidates: [repoLocalRoot] }) ?? findAgentKitMcpEntry()
+  if (!entryPath) return ['pnpm', 'exec', 'ak', 'mcp']
+  const launch = agentKitMcpLaunchCommand(entryPath)
+  return [launch.command, ...launch.args]
 }
 
 function ensureCodexContextModeMcp(configPath: string, options: MergeOptions): MergeResult {
@@ -193,7 +206,8 @@ export function ensureContextMode(input: EnsureContextModeInput): EnsureContextM
     codexHooks: patchJsonFile(codexHooksPath, patchCodexContextModeHooks, input.options),
     opencodeConfig: patchJsonFile(
       opencodeConfigPath,
-      patchOpenCodeContextModeConfig,
+      (existing) =>
+        patchOpenCodeContextModeConfig(existing, resolveOpenCodeAgentKitCommand(input.repoRoot)),
       input.options,
     ),
     installed,

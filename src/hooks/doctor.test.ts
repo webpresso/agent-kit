@@ -516,9 +516,9 @@ describe('hooks/doctor', () => {
         const finish = () => {
           queueMicrotask(() => {
             if (command === 'codex' && args?.[0] === 'mcp') {
-              child.stdout.emit('data', Buffer.from('agent-kit\ncontext-mode\n'))
+              child.stdout.emit('data', Buffer.from('✓ agent-kit\n✓ context-mode\n'))
             } else if (command === 'opencode' && args?.[0] === 'mcp') {
-              child.stdout.emit('data', Buffer.from('agent-kit\ncontext-mode\n'))
+              child.stdout.emit('data', Buffer.from('✓ agent-kit\n✓ context-mode\n'))
             } else if (command === 'claude' && args?.[0] === 'plugin') {
               child.stdout.emit('data', Buffer.from('ok\n'))
             } else {
@@ -594,7 +594,7 @@ describe('hooks/doctor', () => {
         const finish = () => {
           queueMicrotask(() => {
             if (command === 'opencode' && args?.[0] === 'mcp') {
-              child.stdout.emit('data', Buffer.from('context7\nexa\n'))
+              child.stdout.emit('data', Buffer.from('✗ agent-kit\n✓ context-mode\n'))
             } else {
               child.stdout.emit('data', Buffer.from('{}'))
             }
@@ -617,7 +617,7 @@ describe('hooks/doctor', () => {
       const result = await runHooksDoctor({ skipMcp: true, hosts: 'auto', hostNames: ['opencode'] })
       expect(result.ok).toBe(false)
       expect(result.checks.find((c) => c.name === 'OpenCode host integration')?.detail).toContain(
-        'missing MCP entries',
+        'MCP not connected',
       )
     })
   })

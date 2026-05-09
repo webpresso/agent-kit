@@ -21,6 +21,12 @@ const RUN_HOST_SMOKE = process.env.AK_RUN_HOST_SMOKE === '1'
 const REQUIRE_CODEX = process.env.AK_REQUIRE_CODEX === '1'
 const REQUIRE_OPENCODE = process.env.AK_REQUIRE_OPENCODE === '1'
 
+const ANSI_ESCAPE_PATTERN = new RegExp(String.raw`\u001B\[[0-9;]*m`, 'g')
+
+function stripAnsi(text: string): string {
+  return text.replace(ANSI_ESCAPE_PATTERN, '')
+}
+
 function run(
   cmd: string,
   args: string[],
@@ -133,8 +139,11 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
 
     const list = run('opencode', ['mcp', 'list'], repo, {})
     expect(list.code).toBe(0)
-    expect(list.stdout).toContain('agent-kit')
-    expect(list.stdout).toContain('context-mode')
+    const stdout = stripAnsi(list.stdout)
+    expect(stdout).toContain('agent-kit')
+    expect(stdout).toContain('context-mode')
+    expect(stdout).toContain('✓ agent-kit')
+    expect(stdout).toContain('✓ context-mode')
   }, 240_000)
 
   it('hooks doctor passes host checks for installed hosts', () => {
@@ -148,7 +157,7 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
     })
     expect(setup.code).toBe(0)
 
-    const doctor = run('pnpm', ['exec', 'ak', 'hooks', '--hosts', 'auto'], repo, {
+    const doctor = run('pnpm', ['exec', 'ak', 'hooks', 'doctor', '--hosts', 'auto'], repo, {
       CODEX_HOME: codexHome,
     })
     expect(doctor.code).toBe(0)
