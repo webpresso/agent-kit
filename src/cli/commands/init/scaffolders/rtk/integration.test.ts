@@ -15,7 +15,6 @@ const fakeHomeSource = join(fixtureRoot, 'fake-home')
 const fakeRtkBin = join(fixtureRoot, 'fake-tools', 'rtk-ok-bin')
 const fakeOmxBin = join(fixtureRoot, 'fake-tools', 'omx-ok-bin')
 const hookFixture = join(fixtureRoot, 'rtk-three-hook-composition')
-const sourceCli = join(agentKitRoot, 'src', 'cli', 'cli.ts')
 
 function makeRepo(): string {
   const dir = mkdtempSync(join(tmpdir(), 'ak-rtk-integration-'))
@@ -128,11 +127,11 @@ describe('rtk scaffolder integration', () => {
     )
     process.env.PATH = [fakeRtkBin, fakeOmxBin, previousPath ?? ''].filter(Boolean).join(':')
 
-    const drift = spawnSync('bun', [sourceCli, 'audit', 'catalog-drift'], {
-      cwd: agentKitRoot,
-      encoding: 'utf8',
-      env: process.env,
-    })
+    const drift = spawnSync(
+      'bun',
+      ['--eval', `import { auditCatalogDrift } from './src/audit/repo-guardrails.ts'; process.exit(auditCatalogDrift('.').ok ? 0 : 1)`],
+      { cwd: agentKitRoot, encoding: 'utf8' },
+    )
     expect(drift.status).toBe(0) // G6
 
     const second = await runInit({ cwd: repo, yes: true, with: 'rtk' })
