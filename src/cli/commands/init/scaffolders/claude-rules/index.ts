@@ -8,7 +8,6 @@ import {
   mkdirSync,
   readdirSync,
   readlinkSync,
-  realpathSync,
   rmSync,
   symlinkSync,
 } from 'node:fs'
@@ -57,7 +56,7 @@ function detectMode(repoRoot: string): ClaudeRulesMode {
   if (existsSync(installedPackageJsonPath) && existsSync(installedRulesRoot)) {
     return {
       mode: 'consumer',
-      sourceRoot: realpathSync.native(installedRulesRoot),
+      sourceRoot: installedRulesRoot,
     }
   }
 
@@ -98,15 +97,10 @@ export function scaffoldClaudeRules(input: ScaffoldClaudeRulesInput): MergeResul
   if (!options.dryRun) {
     mkdirSync(rulesTarget, { recursive: true })
   }
-  const resolvedRulesTarget = !options.dryRun ? realpathSync.native(rulesTarget) : rulesTarget
-
   for (const name of entries) {
     const sourcePath = join(rulesSource, name)
     const targetPath = join(rulesTarget, name)
-    const symTarget = relative(
-      !options.dryRun ? resolvedRulesTarget : dirname(targetPath),
-      !options.dryRun ? realpathSync.native(sourcePath) : sourcePath,
-    )
+    const symTarget = relative(dirname(targetPath), sourcePath)
 
     if (options.dryRun) {
       results.push({ targetPath, action: 'created' })

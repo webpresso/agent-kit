@@ -4,7 +4,6 @@ import {
   mkdirSync,
   readdirSync,
   readlinkSync,
-  realpathSync,
   rmSync,
   symlinkSync,
 } from 'node:fs'
@@ -53,7 +52,7 @@ function detectMode(repoRoot: string): SubagentsMode {
   if (existsSync(installedPackageJsonPath) && existsSync(installedAgentsRoot)) {
     return {
       mode: 'consumer',
-      sourceRoot: realpathSync.native(installedAgentsRoot),
+      sourceRoot: installedAgentsRoot,
     }
   }
 
@@ -91,15 +90,10 @@ export function scaffoldSubagents(input: ScaffoldSubagentsInput): MergeResult[] 
   if (!options.dryRun) {
     mkdirSync(targetRoot, { recursive: true })
   }
-  const resolvedTargetRoot = !options.dryRun ? realpathSync.native(targetRoot) : targetRoot
-
   for (const name of entries) {
     const sourcePath = join(sourceRoot, name)
     const targetPath = join(targetRoot, name)
-    const symTarget = relative(
-      !options.dryRun ? resolvedTargetRoot : dirname(targetPath),
-      !options.dryRun ? realpathSync.native(sourcePath) : sourcePath,
-    )
+    const symTarget = relative(dirname(targetPath), sourcePath)
 
     if (options.dryRun) {
       results.push({ targetPath, action: 'created' })

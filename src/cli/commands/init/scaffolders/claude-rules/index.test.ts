@@ -138,7 +138,9 @@ describe('scaffoldClaudeRules', () => {
     const targetPath = join(repoRoot, '.claude', 'rules', 'rule-a.md')
 
     expect(results).toContainEqual({ targetPath, action: 'created' })
-    expect(readlinkSync(targetPath)).toContain('catalog/agent/rules/rule-a.md')
+    expect(readlinkSync(targetPath)).toBe(
+      join('..', '..', 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'rules', 'rule-a.md'),
+    )
     expect(readFileSync(targetPath, 'utf8')).toBe('# Rule A\n')
   })
 
@@ -180,7 +182,9 @@ describe('scaffoldClaudeRules', () => {
     const targetPath = join(repoRoot, '.claude', 'rules', 'rule-a.md')
 
     expect(results).toContainEqual({ targetPath, action: 'created' })
-    expect(readlinkSync(targetPath)).toContain('.pnpm')
+    expect(readlinkSync(targetPath)).toBe(
+      join('..', '..', 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'rules', 'rule-a.md'),
+    )
     expect(lstatSync(targetPath).isSymbolicLink()).toBe(true)
     expect(readFileSync(targetPath, 'utf8')).toBe('# Rule A\n')
   })
