@@ -127,6 +127,10 @@ export function patchOpenCodeContextModeConfig(
     type: 'local',
     command: ['context-mode'],
   }
+  currentMcp['agent-kit'] = {
+    type: 'local',
+    command: ['pnpm', 'exec', 'ak', 'mcp'],
+  }
 
   const currentPlugins = Array.isArray(existing.plugin)
     ? existing.plugin.filter((value): value is string => typeof value === 'string')

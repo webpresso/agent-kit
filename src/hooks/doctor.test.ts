@@ -467,5 +467,158 @@ describe('hooks/doctor', () => {
       const result = await runHooksDoctor({ skipMcp: true })
       expect(result.checks.find((c) => c.name === 'rtk on PATH')).toBeUndefined()
     })
+
+    it('reports installed Codex/OpenCode/Claude host integrations as healthy when the expected surfaces are visible', async () => {
+      const knownPaths = new Set([
+        pkgJson,
+        pluginJson,
+        join(repoRoot, 'src/hooks/pretool-guard/index.ts'),
+        join(repoRoot, 'src/hooks/post-tool/lint-after-edit.ts'),
+        join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
+        join(repoRoot, 'src/hooks/guard-switch/index.ts'),
+        join(repoRoot, 'src/hooks/sessionstart/index.ts'),
+        join(repoRoot, 'src/hooks/test-quality-check.ts'),
+      ])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (String(path) === rtkMarker) throw new Error('ENOENT')
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockStatSync.mockReturnValue({ mode: 0o755 } as unknown as ReturnType<typeof statSync>)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === pkgJson) {
+          return JSON.stringify({
+            bin: {
+              'ak-pretool-guard': './src/hooks/pretool-guard/index.ts',
+              'ak-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'ak-stop-qa': './src/hooks/stop/qa-changed-files.ts',
+              'ak-guard-switch': './src/hooks/guard-switch/index.ts',
+              'ak-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'ak-test-quality-check': './src/hooks/test-quality-check.ts',
+            },
+          })
+        }
+        if (String(path) === pluginJson) {
+          return JSON.stringify({ version: '0.1.0', hooks: {}, mcpServers: {} })
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+      mockSpawn.mockImplementation((command, args) => {
+        const child = new EventEmitter() as EventEmitter & {
+          stdout: EventEmitter
+          stderr: EventEmitter
+          stdin: { write: (chunk: string, cb?: () => void) => void; end: () => void }
+          kill: () => boolean
+        }
+        child.stdout = new EventEmitter()
+        child.stderr = new EventEmitter()
+        const finish = () => {
+          queueMicrotask(() => {
+            if (command === 'codex' && args?.[0] === 'mcp') {
+              child.stdout.emit('data', Buffer.from('agent-kit\ncontext-mode\n'))
+            } else if (command === 'opencode' && args?.[0] === 'mcp') {
+              child.stdout.emit('data', Buffer.from('agent-kit\ncontext-mode\n'))
+            } else if (command === 'claude' && args?.[0] === 'plugin') {
+              child.stdout.emit('data', Buffer.from('ok\n'))
+            } else {
+              child.stdout.emit('data', Buffer.from('{}'))
+            }
+            child.emit('close', 0)
+          })
+        }
+        child.stdin = {
+          write: (_chunk: string, cb?: () => void) => cb?.(),
+          end: finish,
+        }
+        if (command === 'codex' || command === 'opencode' || command === 'claude') finish()
+        child.kill = () => true
+        return child as unknown as ReturnType<typeof spawn>
+      })
+
+      vi.stubEnv('AK_RUN_HOST_SMOKE', '1')
+      vi.stubGlobal('process', fakeProcess({ cwd: () => repoRoot }))
+
+      const { runHooksDoctor } = await import('#hooks/doctor')
+      const result = await runHooksDoctor({ skipMcp: true, hosts: 'auto' })
+      expect(result.checks.find((c) => c.name === 'Codex host integration')?.ok).toBe(true)
+      expect(result.checks.find((c) => c.name === 'OpenCode host integration')?.ok).toBe(true)
+      expect(result.checks.find((c) => c.name === 'Claude host integration')?.ok).toBe(true)
+    })
+
+    it('fails when an installed host is missing required MCP entries', async () => {
+      const knownPaths = new Set([
+        pkgJson,
+        pluginJson,
+        join(repoRoot, 'src/hooks/pretool-guard/index.ts'),
+        join(repoRoot, 'src/hooks/post-tool/lint-after-edit.ts'),
+        join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
+        join(repoRoot, 'src/hooks/guard-switch/index.ts'),
+        join(repoRoot, 'src/hooks/sessionstart/index.ts'),
+        join(repoRoot, 'src/hooks/test-quality-check.ts'),
+      ])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (String(path) === rtkMarker) throw new Error('ENOENT')
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockStatSync.mockReturnValue({ mode: 0o755 } as unknown as ReturnType<typeof statSync>)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === pkgJson) {
+          return JSON.stringify({
+            bin: {
+              'ak-pretool-guard': './src/hooks/pretool-guard/index.ts',
+              'ak-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'ak-stop-qa': './src/hooks/stop/qa-changed-files.ts',
+              'ak-guard-switch': './src/hooks/guard-switch/index.ts',
+              'ak-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'ak-test-quality-check': './src/hooks/test-quality-check.ts',
+            },
+          })
+        }
+        if (String(path) === pluginJson) {
+          return JSON.stringify({ version: '0.1.0', hooks: {}, mcpServers: {} })
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+      mockSpawn.mockImplementation((command, args) => {
+        const child = new EventEmitter() as EventEmitter & {
+          stdout: EventEmitter
+          stderr: EventEmitter
+          stdin: { write: (chunk: string, cb?: () => void) => void; end: () => void }
+          kill: () => boolean
+        }
+        child.stdout = new EventEmitter()
+        child.stderr = new EventEmitter()
+        const finish = () => {
+          queueMicrotask(() => {
+            if (command === 'opencode' && args?.[0] === 'mcp') {
+              child.stdout.emit('data', Buffer.from('context7\nexa\n'))
+            } else {
+              child.stdout.emit('data', Buffer.from('{}'))
+            }
+            child.emit('close', 0)
+          })
+        }
+        child.stdin = {
+          write: (_chunk: string, cb?: () => void) => cb?.(),
+          end: finish,
+        }
+        if (command === 'opencode') finish()
+        child.kill = () => true
+        return child as unknown as ReturnType<typeof spawn>
+      })
+
+      vi.stubEnv('AK_RUN_HOST_SMOKE', '1')
+      vi.stubGlobal('process', fakeProcess({ cwd: () => repoRoot }))
+
+      const { runHooksDoctor } = await import('#hooks/doctor')
+      const result = await runHooksDoctor({ skipMcp: true, hosts: 'auto', hostNames: ['opencode'] })
+      expect(result.ok).toBe(false)
+      expect(result.checks.find((c) => c.name === 'OpenCode host integration')?.detail).toContain(
+        'missing MCP entries',
+      )
+    })
   })
 })

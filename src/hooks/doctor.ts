@@ -7,6 +7,7 @@
  * - bins respond to empty stdin with exit 0 + JSON
  * - plugin.json exists and references only paths that exist
  * - MCP server starts and responds to tools/list (soft-fail)
+ * - installed host CLIs (Codex/OpenCode/Claude) can see the expected surfaces
  */
 
 import { accessSync, constants, readFileSync, statSync } from 'node:fs'
@@ -30,6 +31,7 @@ export interface DoctorResult {
 
 const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested')
 const RTK_INSTALL_HINT = 'rtk requested via --with rtk but not on PATH; brew install rtk'
+const HOST_SMOKE_ENV = 'AK_RUN_HOST_SMOKE'
 
 /** Hook bin definitions */
 const HOOK_BINS: { name: string; binName: string; checkStdin: boolean }[] = [
@@ -41,13 +43,14 @@ const HOOK_BINS: { name: string; binName: string; checkStdin: boolean }[] = [
   { name: 'test-quality-check', binName: 'ak-test-quality-check', checkStdin: false },
 ]
 
-/**
- * Find the package root by walking upward from this module file.
- *
- * This is stable in both source (`src/hooks/doctor.ts`) and built
- * (`dist/esm/hooks/doctor.js`) execution, and does not depend on
- * Node/CommonJS `require.resolve` behavior.
- */
+type HostCheckMode = 'auto' | 'skip' | 'required'
+
+export interface RunHooksDoctorOptions {
+  skipMcp?: boolean
+  hosts?: HostCheckMode
+  hostNames?: Array<'codex' | 'opencode' | 'claude'>
+}
+
 function resolvePackageRoot(): string | null {
   let dir = dirname(fileURLToPath(import.meta.url))
   while (dir !== dirname(dir)) {
@@ -57,10 +60,6 @@ function resolvePackageRoot(): string | null {
   return null
 }
 
-/**
- * Find the real path of a hook bin by reading package.json relative to the
- * current installed package root. Works in workspace, packed, and global installs.
- */
 function resolveHookBin(binName: string): string | null {
   try {
     const root = resolvePackageRoot()
@@ -129,6 +128,24 @@ function wasRtkRequested(cwd = process.cwd()): boolean {
   return tryAccess(join(cwd, RTK_REQUESTED_MARKER))
 }
 
+function shouldRunHostChecks(mode: HostCheckMode): boolean {
+  if (mode === 'skip') return false
+  if (mode === 'required') return true
+  return process.env[HOST_SMOKE_ENV] === '1'
+}
+
+function shouldRequireHost(mode: HostCheckMode): boolean {
+  return mode === 'required'
+}
+
+function resolveRequestedHosts(
+  mode: HostCheckMode,
+  hostNames?: Array<'codex' | 'opencode' | 'claude'>,
+) {
+  const defaults: Array<'codex' | 'opencode' | 'claude'> = ['codex', 'opencode', 'claude']
+  return mode === 'skip' ? [] : hostNames && hostNames.length > 0 ? hostNames : defaults
+}
+
 function checkRtkOnPath(): Promise<DoctorCheck | null> {
   if (!wasRtkRequested()) return Promise.resolve(null)
 
@@ -156,10 +173,6 @@ function checkRtkOnPath(): Promise<DoctorCheck | null> {
   })
 }
 
-/**
- * Run a hook binary with `echo '{}' | node <bin>` and check it exits 0
- * and produces valid JSON on stdout.
- */
 async function probeHookBin(
   file: string,
   checkStdin: boolean,
@@ -289,7 +302,6 @@ function checkPluginJson(): { ok: boolean; detail?: string } {
 }
 
 async function checkMcpServer(): Promise<{ ok: boolean; detail?: string; skipped?: boolean }> {
-  // Fast path: if sentinel exists and PID is alive, MCP is already running
   if (isMcpReady()) {
     return { ok: true, detail: 'MCP server already running (sentinel found)', skipped: true }
   }
@@ -339,9 +351,7 @@ async function checkMcpServer(): Promise<{ ok: boolean; detail?: string; skipped
               })
               return
             }
-          } catch {
-            // ignore non-JSON lines until close/timeout
-          }
+          } catch {}
         }
         newlineIndex = stdout.indexOf('\n')
       }
@@ -371,11 +381,7 @@ async function checkMcpServer(): Promise<{ ok: boolean; detail?: string; skipped
       }) + '\n'
 
     child.stdin.write(initializeRequest, () => {
-      child.stdin.write(toolsListRequest, () => {
-        // Keep stdin open until we receive a response or time out. Closing
-        // immediately can terminate the stdio server before it flushes the
-        // initialize/tools-list responses.
-      })
+      child.stdin.write(toolsListRequest, () => {})
     })
 
     child.on('error', (err) => {
@@ -401,15 +407,115 @@ async function checkMcpServer(): Promise<{ ok: boolean; detail?: string; skipped
   })
 }
 
-export interface RunHooksDoctorOptions {
-  skipMcp?: boolean
+function runCommand(
+  command: string,
+  args: string[],
+  cwd = process.cwd(),
+): Promise<{ ok: boolean; stdout: string; stderr: string; code: number | null }> {
+  return new Promise((resolve) => {
+    const child = spawn(command, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
+    let stdout = ''
+    let stderr = ''
+    child.stdout.on('data', (chunk) => {
+      stdout += String(chunk)
+    })
+    child.stderr.on('data', (chunk) => {
+      stderr += String(chunk)
+    })
+    child.on('error', (err) => {
+      resolve({ ok: false, stdout, stderr: err.message, code: null })
+    })
+    child.on('close', (code) => {
+      resolve({ ok: code === 0, stdout, stderr, code })
+    })
+  })
+}
+
+async function checkCodexHost(): Promise<DoctorCheck> {
+  const available = await runCommand('codex', ['--version'])
+  if (!available.ok) {
+    return { name: 'Codex host integration', ok: true, detail: 'skipped (codex not on PATH)' }
+  }
+
+  const result = await runCommand('codex', ['mcp', 'list'])
+  if (!result.ok) {
+    return {
+      name: 'Codex host integration',
+      ok: false,
+      detail: result.stderr.trim() || `exit ${result.code}`,
+    }
+  }
+
+  const hasAgentKit = result.stdout.includes('agent-kit')
+  const hasContextMode = result.stdout.includes('context-mode')
+  return hasAgentKit && hasContextMode
+    ? { name: 'Codex host integration', ok: true, detail: 'agent-kit + context-mode MCP visible' }
+    : {
+        name: 'Codex host integration',
+        ok: false,
+        detail: `missing MCP entries (agent-kit=${hasAgentKit}, context-mode=${hasContextMode})`,
+      }
+}
+
+async function checkOpenCodeHost(cwd = process.cwd()): Promise<DoctorCheck> {
+  const available = await runCommand('opencode', ['--version'])
+  if (!available.ok) {
+    return { name: 'OpenCode host integration', ok: true, detail: 'skipped (opencode not on PATH)' }
+  }
+
+  const result = await runCommand('opencode', ['mcp', 'list'], cwd)
+  if (!result.ok) {
+    return {
+      name: 'OpenCode host integration',
+      ok: false,
+      detail: result.stderr.trim() || `exit ${result.code}`,
+    }
+  }
+
+  const hasAgentKit = result.stdout.includes('agent-kit')
+  const hasContextMode = result.stdout.includes('context-mode')
+  return hasAgentKit && hasContextMode
+    ? {
+        name: 'OpenCode host integration',
+        ok: true,
+        detail: 'agent-kit + context-mode MCP visible',
+      }
+    : {
+        name: 'OpenCode host integration',
+        ok: false,
+        detail: `missing MCP entries (agent-kit=${hasAgentKit}, context-mode=${hasContextMode})`,
+      }
+}
+
+async function checkClaudeHost(): Promise<DoctorCheck> {
+  const available = await runCommand('claude', ['--version'])
+  if (!available.ok) {
+    return { name: 'Claude host integration', ok: true, detail: 'skipped (claude not on PATH)' }
+  }
+
+  const root = resolvePluginRoot()
+  if (!root) {
+    return {
+      name: 'Claude host integration',
+      ok: true,
+      detail: 'skipped (plugin root not available in this repo)',
+    }
+  }
+
+  const result = await runCommand('claude', ['plugin', 'validate', root])
+  return result.ok
+    ? { name: 'Claude host integration', ok: true, detail: 'plugin validate passed' }
+    : {
+        name: 'Claude host integration',
+        ok: false,
+        detail: result.stderr.trim() || result.stdout.trim() || `exit ${result.code}`,
+      }
 }
 
 export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<DoctorResult> {
   const checks: DoctorCheck[] = []
   const isWin = platform() === 'win32'
 
-  // 1. Bin existence + executable checks
   for (const bin of HOOK_BINS) {
     const file = resolveHookBin(bin.binName)
     const exists = file && tryAccess(file)
@@ -424,24 +530,19 @@ export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<
       continue
     }
 
-    // 2. stdin response check (exit 0 + JSON for interactive bins)
     const probe = await probeHookBin(file!, bin.checkStdin)
     checks.push({ name: bin.name, ok: probe.ok, detail: probe.detail })
   }
 
-  // 3. plugin.json integrity
   checks.push({ name: 'plugin.json integrity', ...checkPluginJson() })
 
-  // 4. MCP server liveness (soft-fail)
   if (opts.skipMcp) {
     checks.push({ name: 'MCP server liveness', ok: true, detail: 'skipped (--skip-mcp)' })
   } else {
     const mcpResult = await checkMcpServer()
-    // Soft-fail: MCP check never sets ok: false in the final result,
-    // but we record it so the output can show a warning.
     checks.push({
       name: 'MCP server liveness',
-      ok: true, // always pass — MCP failures are soft
+      ok: true,
       detail: mcpResult.skipped
         ? mcpResult.detail
         : mcpResult.ok
@@ -453,7 +554,54 @@ export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<
   const rtkCheck = await checkRtkOnPath()
   if (rtkCheck) checks.push(rtkCheck)
 
-  // Non-MCP checks must all pass
+  const hostMode = opts.hosts ?? 'auto'
+  if (shouldRunHostChecks(hostMode)) {
+    for (const host of resolveRequestedHosts(hostMode, opts.hostNames)) {
+      if (host === 'codex') {
+        checks.push(await checkCodexHost())
+      }
+      if (host === 'opencode') {
+        checks.push(await checkOpenCodeHost())
+      }
+      if (host === 'claude') {
+        checks.push(await checkClaudeHost())
+      }
+    }
+  }
+
+  const requiredHosts = shouldRequireHost(hostMode)
+  if (requiredHosts) {
+    for (const host of resolveRequestedHosts(hostMode, opts.hostNames)) {
+      if (host === 'codex') {
+        const available = await runCommand('codex', ['--version'])
+        if (!available.ok)
+          checks.push({
+            name: 'Codex host integration',
+            ok: false,
+            detail: 'codex required but not on PATH',
+          })
+      }
+      if (host === 'opencode') {
+        const available = await runCommand('opencode', ['--version'])
+        if (!available.ok)
+          checks.push({
+            name: 'OpenCode host integration',
+            ok: false,
+            detail: 'opencode required but not on PATH',
+          })
+      }
+      if (host === 'claude') {
+        const available = await runCommand('claude', ['--version'])
+        if (!available.ok)
+          checks.push({
+            name: 'Claude host integration',
+            ok: false,
+            detail: 'claude required but not on PATH',
+          })
+      }
+    }
+  }
+
   const nonMcpChecks = checks.filter((c) => !c.name.startsWith('MCP '))
   const overallOk = nonMcpChecks.every((c) => c.ok)
 
@@ -466,7 +614,6 @@ export async function printHooksDoctor(opts: RunHooksDoctorOptions = {}): Promis
   for (const check of result.checks) {
     const icon = check.ok ? '[x]' : '[ ]'
     const detail = check.detail ? `: ${check.detail}` : ''
-    // Use stderr so skill output doesn't pollute stdout (which is JSON for hooks)
     console.error(`${icon} ${check.name}${detail}`)
   }
 

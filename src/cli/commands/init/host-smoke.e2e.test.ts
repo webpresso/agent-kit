@@ -1,0 +1,156 @@
+import { spawnSync } from 'node:child_process'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
+const HERE = path.dirname(fileURLToPath(import.meta.url))
+const REPO_ROOT = path.resolve(HERE, '..', '..', '..', '..')
+const SOURCE_CLI_PATH = path.join(REPO_ROOT, 'src', 'cli', 'cli.ts')
+const DIST_CLI_PATH = path.join(REPO_ROOT, 'dist', 'esm', 'cli', 'cli.js')
+const CLI_PATH = existsSync(SOURCE_CLI_PATH) ? SOURCE_CLI_PATH : DIST_CLI_PATH
+const CLI_RUNTIME = CLI_PATH.endsWith('.ts') ? '/opt/homebrew/bin/bun' : process.execPath
+
+function hasCommand(command: string): boolean {
+  return spawnSync('which', [command], { stdio: 'ignore' }).status === 0
+}
+
+const RUN_HOST_SMOKE = process.env.AK_RUN_HOST_SMOKE === '1'
+const REQUIRE_CODEX = process.env.AK_REQUIRE_CODEX === '1'
+const REQUIRE_OPENCODE = process.env.AK_REQUIRE_OPENCODE === '1'
+
+function run(
+  cmd: string,
+  args: string[],
+  cwd: string,
+  env: Record<string, string>,
+): { code: number; stdout: string; stderr: string } {
+  const result = spawnSync(cmd, args, {
+    cwd,
+    env: { ...process.env, ...env },
+    encoding: 'utf8',
+  })
+  return { code: result.status ?? -1, stdout: result.stdout ?? '', stderr: result.stderr ?? '' }
+}
+
+function makeRepo(): string {
+  const dir = mkdtempSync(path.join(tmpdir(), 'ak-host-smoke-'))
+  spawnSync('git', ['init', '-q'], { cwd: dir })
+  spawnSync('git', ['commit', '--allow-empty', '-q', '-m', 'bootstrap'], { cwd: dir })
+  writeFileSync(
+    path.join(dir, 'package.json'),
+    JSON.stringify(
+      {
+        name: 'ak-host-smoke',
+        private: true,
+        packageManager: 'pnpm@10.33.0',
+        devDependencies: {
+          '@webpresso/agent-kit': `file:${REPO_ROOT}`,
+        },
+      },
+      null,
+      2,
+    ) + '\n',
+  )
+  return dir
+}
+
+describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
+  let repo: string
+  let codexHome: string
+
+  beforeEach(() => {
+    repo = makeRepo()
+    codexHome = mkdtempSync(path.join(tmpdir(), 'ak-codex-home-'))
+  })
+
+  afterEach(() => {
+    rmSync(repo, { recursive: true, force: true })
+    rmSync(codexHome, { recursive: true, force: true })
+  })
+
+  it('installs locally and setup generates healthy host configs', () => {
+    const install = run('pnpm', ['install', '--ignore-scripts'], repo, {})
+    expect(install.code).toBe(0)
+
+    const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
+      CODEX_HOME: codexHome,
+      AK_SKIP_GSTACK: '1',
+      AK_SKIP_RTK: '1',
+    })
+    expect(setup.code).toBe(0)
+    expect(existsSync(path.join(repo, 'opencode.json'))).toBe(true)
+    expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).toContain('context-mode')
+    expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).toContain('agent-kit')
+    expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).toContain(
+      '[mcp_servers.context-mode]',
+    )
+    expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).toContain(
+      '[mcp_servers.agent-kit]',
+    )
+    expect(readFileSync(path.join(codexHome, 'hooks.json'), 'utf8')).toContain(
+      'context-mode hook codex pretooluse',
+    )
+  }, 240_000)
+
+  it('Codex host sees agent-kit + context-mode MCP entries when installed', () => {
+    if (!hasCommand('codex')) {
+      if (REQUIRE_CODEX) throw new Error('codex required but not on PATH')
+      return
+    }
+
+    const install = run('pnpm', ['install', '--ignore-scripts'], repo, {})
+    expect(install.code).toBe(0)
+    const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
+      CODEX_HOME: codexHome,
+      AK_SKIP_GSTACK: '1',
+      AK_SKIP_RTK: '1',
+    })
+    expect(setup.code).toBe(0)
+
+    const list = run('codex', ['mcp', 'list'], repo, { CODEX_HOME: codexHome })
+    expect(list.code).toBe(0)
+    expect(list.stdout).toContain('agent-kit')
+    expect(list.stdout).toContain('context-mode')
+  }, 240_000)
+
+  it('OpenCode host sees agent-kit + context-mode MCP entries when installed', () => {
+    if (!hasCommand('opencode')) {
+      if (REQUIRE_OPENCODE) throw new Error('opencode required but not on PATH')
+      return
+    }
+
+    const install = run('pnpm', ['install', '--ignore-scripts'], repo, {})
+    expect(install.code).toBe(0)
+    const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
+      CODEX_HOME: codexHome,
+      AK_SKIP_GSTACK: '1',
+      AK_SKIP_RTK: '1',
+    })
+    expect(setup.code).toBe(0)
+
+    const list = run('opencode', ['mcp', 'list'], repo, {})
+    expect(list.code).toBe(0)
+    expect(list.stdout).toContain('agent-kit')
+    expect(list.stdout).toContain('context-mode')
+  }, 240_000)
+
+  it('hooks doctor passes host checks for installed hosts', () => {
+    const install = run('pnpm', ['install', '--ignore-scripts'], repo, {})
+    expect(install.code).toBe(0)
+    const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
+      CODEX_HOME: codexHome,
+      AK_SKIP_GSTACK: '1',
+      AK_SKIP_RTK: '1',
+      AK_RUN_HOST_SMOKE: '1',
+    })
+    expect(setup.code).toBe(0)
+
+    const doctor = run('pnpm', ['exec', 'ak', 'hooks', '--hosts', 'auto'], repo, {
+      CODEX_HOME: codexHome,
+    })
+    expect(doctor.code).toBe(0)
+  }, 240_000)
+})

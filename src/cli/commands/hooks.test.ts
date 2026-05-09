@@ -10,17 +10,25 @@ import { registerHooksCommand } from './hooks.js'
 
 function buildFakeCli() {
   let registeredAction:
-    | ((_action: string | undefined, options: { skipMcp?: boolean }) => Promise<number>)
+    | ((
+        _action: string | undefined,
+        options: {
+          skipMcp?: boolean
+          hosts?: 'auto' | 'skip' | 'required'
+          host?: Array<'codex' | 'opencode' | 'claude'>
+        },
+      ) => Promise<number>)
     | undefined
 
+  const chain = {
+    option: (_flag: string, _desc: string, _config?: unknown) => chain,
+    action: (fn: typeof registeredAction) => {
+      registeredAction = fn
+    },
+  }
+
   const cli = {
-    command: (_name: string, _desc: string) => ({
-      option: (_flag: string, _desc: string) => ({
-        action: (fn: typeof registeredAction) => {
-          registeredAction = fn
-        },
-      }),
-    }),
+    command: (_name: string, _desc: string) => chain,
     getAction: () => registeredAction,
   }
 
@@ -28,7 +36,7 @@ function buildFakeCli() {
 }
 
 describe('registerHooksCommand', () => {
-  it('calls printHooksDoctor with skipMcp undefined when not provided', async () => {
+  it('calls printHooksDoctor with defaults when not provided', async () => {
     printHooksDoctor.mockResolvedValue(0)
     const cli = buildFakeCli()
     registerHooksCommand(cli as never)
@@ -37,18 +45,26 @@ describe('registerHooksCommand', () => {
     expect(action).toBeDefined()
     await action!(undefined, {})
 
-    expect(printHooksDoctor).toHaveBeenCalledWith({ skipMcp: undefined })
+    expect(printHooksDoctor).toHaveBeenCalledWith({
+      skipMcp: undefined,
+      hosts: undefined,
+      hostNames: undefined,
+    })
   })
 
-  it('calls printHooksDoctor with skipMcp true when flag is set', async () => {
+  it('passes through skipMcp, hosts, and host filters', async () => {
     printHooksDoctor.mockResolvedValue(0)
     const cli = buildFakeCli()
     registerHooksCommand(cli as never)
 
     const action = cli.getAction()
-    await action!(undefined, { skipMcp: true })
+    await action!(undefined, { skipMcp: true, hosts: 'required', host: ['codex', 'opencode'] })
 
-    expect(printHooksDoctor).toHaveBeenCalledWith({ skipMcp: true })
+    expect(printHooksDoctor).toHaveBeenCalledWith({
+      skipMcp: true,
+      hosts: 'required',
+      hostNames: ['codex', 'opencode'],
+    })
   })
 
   it('returns the exit code from printHooksDoctor', async () => {

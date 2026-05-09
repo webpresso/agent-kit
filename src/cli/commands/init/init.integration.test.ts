@@ -294,7 +294,7 @@ describe('ak init end-to-end', () => {
     expect(existsSync(join(repo, '.cursor', 'rules'))).toBe(true)
     // .windsurf/skills now hosts copied skills
     expect(existsSync(join(repo, '.windsurf', 'skills'))).toBe(true)
-    expect(existsSync(join(repo, '.opencode'))).toBe(false)
+    expect(existsSync(join(repo, 'opencode.json'))).toBe(true)
     // agent-hooks scaffolder writes hook config
     expect(existsSync(join(repo, '.claude', 'settings.json'))).toBe(true)
     expect(existsSync(join(repo, '.codex', 'hooks.json'))).toBe(true)

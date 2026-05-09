@@ -52,6 +52,10 @@ describe('context-mode preset', () => {
         type: 'local',
         command: ['context-mode'],
       },
+      'agent-kit': {
+        type: 'local',
+        command: ['pnpm', 'exec', 'ak', 'mcp'],
+      },
     })
     expect(next.plugin).toEqual(['context-mode'])
   })
