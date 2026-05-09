@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.2
+
+### Patch Changes
+
+- dfae682: Add a `context-mode` setup preset that patches Codex's `config.toml` and `hooks.json` plus project-local `opencode.json`, so `ak setup --with context-mode` wires context-mode for both Codex CLI and OpenCode.
+
 ## 0.8.1
 
 ### Patch Changes
