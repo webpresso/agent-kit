@@ -3,7 +3,7 @@ import { baseConfig } from '@webpresso/stryker-config'
 const config = {
   ...baseConfig,
   thresholds: {
-    high: 95,
+    high: 85,
     low: 85,
     break: 85,
   },
