@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.4
+
+### Patch Changes
+
+- b504a77: Fix OpenCode agent-kit MCP wiring to launch the MCP entry directly, and make host verification fail when OpenCode lists an MCP server but cannot connect to it.
+- 0f8620b: Keep the Claude marketplace manifest version in sync during Changesets versioning so published release metadata does not drift from `package.json`.
+
 ## 0.8.3
 
 ### Patch Changes
