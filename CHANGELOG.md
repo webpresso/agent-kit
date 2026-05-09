@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1
+
+### Patch Changes
+
+- d230932: Keep consumer Claude scaffolds stable across reinstalls by linking rule/subagent files through `node_modules/@webpresso/agent-kit` aliases instead of resolved pnpm store paths, and materialize allowlisted `.claude/rules/*` overrides as real consumer-owned files instead of symlinks.
+
 ## 0.8.0
 
 ### Minor Changes
