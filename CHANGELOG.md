@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.3
+
+### Patch Changes
+
+- 35f243d: Teach `ak hooks doctor` to verify installed Codex/OpenCode/Claude host surfaces, add a gated real-host smoke suite for Codex/OpenCode, and include `agent-kit` alongside `context-mode` in generated `opencode.json` MCP config.
+
 ## 0.8.2
 
 ### Patch Changes
