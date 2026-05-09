@@ -193,6 +193,7 @@
     "dev:link": "bun scripts/link-edge-local.ts",
     "generate-skills": "bun src/build/generate-skills-dir.ts",
     "sync-marketplace-version": "bun scripts/sync-marketplace-version.ts",
+    "version": "changeset version && pnpm run sync-marketplace-version",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:mutation": "bun stryker run stryker.config.ts",

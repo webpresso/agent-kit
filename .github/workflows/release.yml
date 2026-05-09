@@ -53,7 +53,7 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != true }}
         with:
           publish: pnpm changeset publish
-          version: pnpm changeset version && pnpm run sync-marketplace-version
+          version: pnpm run version
           commit: "chore: version packages"
           title: "chore: version packages"
         env:
