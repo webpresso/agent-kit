@@ -72,7 +72,17 @@ describe('scaffoldSubagents', () => {
       expect(existsSync(targetPath)).toBe(true)
       expect(lstatSync(targetPath).isSymbolicLink()).toBe(true)
       expect(readlinkSync(targetPath)).toBe(
-        join('..', '..', 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'agents', `${name}.md`),
+        join(
+          '..',
+          '..',
+          'node_modules',
+          '@webpresso',
+          'agent-kit',
+          'catalog',
+          'agent',
+          'agents',
+          `${name}.md`,
+        ),
       )
       expect(readFileSync(targetPath, 'utf8')).toBe(`# ${name}\n`)
     }

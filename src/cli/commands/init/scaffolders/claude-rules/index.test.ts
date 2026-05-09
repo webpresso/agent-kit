@@ -139,7 +139,17 @@ describe('scaffoldClaudeRules', () => {
 
     expect(results).toContainEqual({ targetPath, action: 'created' })
     expect(readlinkSync(targetPath)).toBe(
-      join('..', '..', 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'rules', 'rule-a.md'),
+      join(
+        '..',
+        '..',
+        'node_modules',
+        '@webpresso',
+        'agent-kit',
+        'catalog',
+        'agent',
+        'rules',
+        'rule-a.md',
+      ),
     )
     expect(readFileSync(targetPath, 'utf8')).toBe('# Rule A\n')
   })
@@ -183,18 +193,37 @@ describe('scaffoldClaudeRules', () => {
 
     expect(results).toContainEqual({ targetPath, action: 'created' })
     expect(readlinkSync(targetPath)).toBe(
-      join('..', '..', 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'rules', 'rule-a.md'),
+      join(
+        '..',
+        '..',
+        'node_modules',
+        '@webpresso',
+        'agent-kit',
+        'catalog',
+        'agent',
+        'rules',
+        'rule-a.md',
+      ),
     )
     expect(lstatSync(targetPath).isSymbolicLink()).toBe(true)
     expect(readFileSync(targetPath, 'utf8')).toBe('# Rule A\n')
   })
 
-
   it('materializes allowlisted override rules as real files instead of symlinks', () => {
     writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: 'consumer-app' }))
     writeFileSync(
       join(repoRoot, '.agent-kitrc.json'),
-      JSON.stringify({ version: '1', installed: { tier3Skills: [] }, rules: { overrides: ['rule-a'] }, scripts: {}, durablePlanningRoot: '.agent/planning/' }, null, 2),
+      JSON.stringify(
+        {
+          version: '1',
+          installed: { tier3Skills: [] },
+          rules: { overrides: ['rule-a'] },
+          scripts: {},
+          durablePlanningRoot: '.agent/planning/',
+        },
+        null,
+        2,
+      ),
     )
     mkdirSync(
       join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'rules'),
@@ -205,7 +234,16 @@ describe('scaffoldClaudeRules', () => {
       JSON.stringify({ name: '@webpresso/agent-kit', exports: { './catalog/*': './catalog/*' } }),
     )
     writeFileSync(
-      join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'rules', 'rule-a.md'),
+      join(
+        repoRoot,
+        'node_modules',
+        '@webpresso',
+        'agent-kit',
+        'catalog',
+        'agent',
+        'rules',
+        'rule-a.md',
+      ),
       '# Rule A\n',
     )
 
@@ -221,7 +259,17 @@ describe('scaffoldClaudeRules', () => {
     writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: 'consumer-app' }))
     writeFileSync(
       join(repoRoot, '.agent-kitrc.json'),
-      JSON.stringify({ version: '1', installed: { tier3Skills: [] }, rules: { overrides: ['rule-a'] }, scripts: {}, durablePlanningRoot: '.agent/planning/' }, null, 2),
+      JSON.stringify(
+        {
+          version: '1',
+          installed: { tier3Skills: [] },
+          rules: { overrides: ['rule-a'] },
+          scripts: {},
+          durablePlanningRoot: '.agent/planning/',
+        },
+        null,
+        2,
+      ),
     )
     mkdirSync(
       join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'rules'),
@@ -232,12 +280,31 @@ describe('scaffoldClaudeRules', () => {
       JSON.stringify({ name: '@webpresso/agent-kit', exports: { './catalog/*': './catalog/*' } }),
     )
     writeFileSync(
-      join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'rules', 'rule-a.md'),
+      join(
+        repoRoot,
+        'node_modules',
+        '@webpresso',
+        'agent-kit',
+        'catalog',
+        'agent',
+        'rules',
+        'rule-a.md',
+      ),
       '# Rule A\n',
     )
     mkdirSync(join(repoRoot, '.claude', 'rules'), { recursive: true })
     symlinkSync(
-      join('..', '..', 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'rules', 'rule-a.md'),
+      join(
+        '..',
+        '..',
+        'node_modules',
+        '@webpresso',
+        'agent-kit',
+        'catalog',
+        'agent',
+        'rules',
+        'rule-a.md',
+      ),
       join(repoRoot, '.claude', 'rules', 'rule-a.md'),
     )
 

@@ -69,7 +69,6 @@ function detectMode(repoRoot: string): ClaudeRulesMode {
   }
 }
 
-
 function writeOverrideRule(
   targetPath: string,
   sourcePath: string,
