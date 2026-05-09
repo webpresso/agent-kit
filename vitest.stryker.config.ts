@@ -15,6 +15,9 @@ export default mergeConfig(
         // spawns bun subprocess to run full CLI TypeScript on-the-fly; cold-start
         // exceeds the unit-test timeout in the forks pool
         'src/cli/commands/init/scaffolders/rtk/integration.test.ts',
+        // spawns a long-lived bun CLI process for JSON-RPC MCP communication;
+        // same cold-start problem, not suitable for Stryker mutation runner
+        'src/mcp/server.integration.test.ts',
       ],
     },
   }),
