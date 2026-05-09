@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-04-25'
+last_updated: '2026-05-09'
 ---
 
 # Getting started with `@webpresso/agent-kit`
@@ -10,7 +10,9 @@ agent-surface setup in five minutes.
 
 ## Prerequisites
 
-- Node.js ≥20 or Bun ≥1.
+- Node.js ≥24 (matches `package.json#engines`). Bun ≥1 is required if
+  you also install the Claude Code plugin — its hook + MCP entrypoints
+  run under `bun`.
 - pnpm (or npm/bun — examples use pnpm).
 - A git repo.
 
@@ -149,14 +151,14 @@ When you edit `.agent/commands/<foo>.md`, the `.claude/`, `.cursor/`,
 drift. Run:
 
 ```bash
-npx ak symlink sync
+npx ak sync
 ```
 
 or add it to your pre-commit:
 
 ```bash
 # .husky/pre-commit
-npx ak symlink check   # exits 1 if drift detected
+npx ak sync --check    # exits 1 if drift detected
 ```
 
 `.claude/commands/` + `.claude/skills/` use real filesystem symlinks
@@ -213,7 +215,7 @@ allowed-tools: Bash, Read
 …
 EOF
 
-npx ak symlink sync
+npx ak sync
 ```
 
 Claude Code picks it up via `.claude/commands/my-command.md` (the

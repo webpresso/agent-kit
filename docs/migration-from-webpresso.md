@@ -1,6 +1,6 @@
 ---
 type: migration
-last_updated: '2026-04-25'
+last_updated: '2026-05-09'
 ---
 
 # Migrating from webpresso's internal blueprint package
@@ -16,7 +16,7 @@ validator, and `audit-tph` scripts as separate internal concerns:
 | `packages/foundation/docs-linter/src/validators/blueprint-plan.ts` | `packages/cli/agent-kit/src/docs-linter/blueprint-plan.ts` | Import from `@webpresso/agent-kit/docs-linter` |
 | `apps/scripts/src/audit/audit-tph.ts` | `packages/cli/agent-kit/src/audit/audit-tph.ts` | Invoke via `ak audit tph` CLI |
 | `apps/scripts/src/audit/audit-tph-e2e.ts` | `packages/cli/agent-kit/src/audit/audit-tph-e2e.ts` | Invoke via `ak audit tph-e2e` |
-| `apps/scripts/src/maintenance/symlinker.ts` | `packages/cli/agent-kit/src/symlinker/` | Invoke via `ak symlink sync`/`check` |
+| `apps/scripts/src/maintenance/symlinker.ts` | `packages/cli/agent-kit/src/symlinker/` | Invoke via `ak sync` (use `ak sync --check` for drift) |
 
 ## The migration plan
 
@@ -30,7 +30,7 @@ It's split into four phases:
    tree green during transition. ~20 files.
 2. **Cut pre-commit hooks + `just` recipes** — rewire the Husky pre-commit
    that invoked `apps/scripts/src/maintenance/symlinker.ts` to use
-   `ak symlink check` instead. Same for the `just audit-tph` recipe.
+   `ak sync --check` instead. Same for the `just audit-tph` recipe.
 3. **Delete the internal originals** — `packages/cli/blueprint/`,
    `blueprint-plan.ts`, `audit-tph*.ts`, `symlinker.ts` + its test.
 4. **Validation** — `wp blueprint list` + `wp blueprint audit --strict`
@@ -61,7 +61,7 @@ If you happen to have forked or vendored webpresso's blueprint code:
 3. Codemod: find/replace your vendored imports with
    `@webpresso/agent-kit/blueprint`.
 4. Delete the vendored code.
-5. Run `ak symlink sync` and commit the resulting `.claude/`, `.cursor/`,
+5. Run `ak sync` and commit the resulting `.claude/`, `.cursor/`,
    `.windsurf/`, `.opencode/`, `.agents/skills/`, and `.gemini/` files.
 
 ## Invariants preserved during webpresso's migration

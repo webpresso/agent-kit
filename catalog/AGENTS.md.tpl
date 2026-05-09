@@ -26,7 +26,7 @@ starter template, and keep changes small, reviewable, and verified.
 No agent surfaces are tracked in git — everything is regenerated. After cloning:
 
 ```bash
-pnpm install && pnpm setup:agent  # pnpm setup:agent runs ak setup, which scaffolds .agent/, AGENTS.md, hooks, and runs symlink sync
+pnpm install && pnpm setup:agent  # pnpm setup:agent runs ak setup, which scaffolds .agent/, AGENTS.md, hooks, and runs ak sync
 ```
 
 Agent-kit is the single source of truth. To customize skills, commands, or
@@ -63,7 +63,7 @@ behavior and any broader checks this repo requires. Typical gates are:
 - lint / format check
 - affected tests
 - docs or blueprint validation when docs/plans changed
-- `ak symlink check` after `ak setup` to verify surfaces are in sync
+- `ak sync --check` after `ak setup` to verify surfaces are in sync
 
 If a gate fails, fix the root cause or record the blocker with evidence.
 

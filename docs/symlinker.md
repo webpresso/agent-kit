@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-04-25'
+last_updated: '2026-05-09'
 ---
 
 # Symlinker
@@ -79,7 +79,7 @@ symlinker warns and skips rather than clobbering it.
 Editors on macOS and Linux follow symlinks natively. Windows requires
 Developer Mode or admin privileges for `CreateSymbolicLink`; consumers on
 Windows who run into this should run from a shell with symlink privileges or
-use `ak symlink check` in CI to detect drift before committing.
+use `ak sync --check` in CI to detect drift before committing.
 
 ### TOML consumer (`.gemini`)
 
@@ -100,7 +100,7 @@ the symlinker:
 
 ## Commands
 
-### `ak symlink sync`
+### `ak sync`
 
 Writes symlinks and regenerates TOML. Idempotent — safe to run
 repeatedly. Reports:
@@ -114,23 +114,23 @@ repeatedly. Reports:
   ✅ All agent command/workflow/skill symlinks are properly configured
 ```
 
-### `ak symlink check`
+### `ak sync --check`
 
 Same work as `sync`, but **exits non-zero** if anything was out of sync.
 Use in pre-commit / CI to fail loudly on drift:
 
 ```bash
 # .husky/pre-commit
-npx ak symlink check
+npx ak sync --check
 ```
 
 ```yaml
 # .github/workflows/ci.yml
 - name: Agent surface sync check
-  run: npx ak symlink check
+  run: npx ak sync --check
 ```
 
-If the check fails, run `ak symlink sync` locally and commit the output.
+If the check fails, run `ak sync` locally and commit the output.
 
 ## Consumers & their defaults
 
@@ -182,7 +182,7 @@ The symlinker flags drift when:
 - `.claude/commands/<x>.md` exists and is a regular file (not a symlink) —
   the symlinker removes it and re-links. **Warning:** if you've manually
   edited the file thinking you were editing the source, those edits get
-  lost. `ak symlink check` catches this before it happens.
+  lost. `ak sync --check` catches this before it happens.
 - `.claude/commands/<x>.md` exists as a symlink pointing at the wrong
   target (e.g., after restructuring `.agent/`).
 - `.claude/commands/<x>.md` exists but no corresponding `.agent/` source

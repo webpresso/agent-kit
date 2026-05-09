@@ -1,246 +1,174 @@
 # @webpresso/agent-kit
 
-Toolkit for agent-driven development on the Webpresso stack. Ships a **Blueprint runtime** (Markdown-based implementation-plan format with lifecycle engine and DAG executor), a **Symlinker** that keeps each IDE's native command/skill surface in sync with a canonical `.agent/` source of truth, a curated **Skills catalog** of generalized slash-commands and workflows, a **Lore commit protocol** for tracing decisions to code, a **Tech-Debt lifecycle** manager, and the **`ak` CLI** that ties all of it together — one install, all IDEs covered.
+> One command scaffolds a repo so every AI coding agent — Claude Code, Codex CLI, Cursor, Windsurf, Gemini, OpenCode — shares the same context, hooks, and quality gates. Edit a canonical `.agent/` once; `ak sync` propagates everywhere. MIT. Experimental (v0.x).
 
-## Install & Quickstart
+## The problem
 
-> **Claude Code users:** run `/plugin marketplace add webpresso/agent-kit` — done, zero config.  
-> **Codex CLI / Cursor / Windsurf users:** `pnpm add -D @webpresso/agent-kit && npx ak setup`
+Every repo using AI coding agents needs the same scaffolding: an `AGENTS.md` operating contract, scoped rules, lifecycle hooks, slash-command skills, quality gates. Today each team hand-crafts this from scratch, surfaces drift across tools and repos, and the knowledge of *what to configure and why* lives in tribal memory rather than code.
 
-Agent-kit ships through **two coexisting distribution channels** — mirrors the [context-mode pattern](https://github.com/mksglu/context-mode). Choose either or both; they're additive and idempotent.
+agent-kit is the catalog and the `ak` CLI that fixes that.
 
-### Path A — Claude Code plugin (zero-config)
+## Quick start
+
+```bash
+# npm install (Codex CLI / Cursor / Windsurf / Gemini / OpenCode):
+pnpm add -D @webpresso/agent-kit && npx ak setup
+
+# Claude Code plugin:
+/plugin marketplace add webpresso/agent-kit
+/plugin install agent-kit@webpresso
+```
+
+Requires Node `>=24` and Bun on the machine that runs the Claude Code plugin.
+
+## What changes after `ak setup`
+
+### 1. Multi-IDE rule sync — no more drift
+
+| Before | After |
+| --- | --- |
+| Edit `.cursor/rules/foo.md`. Then `.claude/skills/foo/SKILL.md`. Then `.gemini/commands/foo.toml`. Then `.windsurf/rules/foo.md`. Four files for one rule. They drift. | Edit `.agent/skills/foo/SKILL.md` once. `ak sync` propagates to every IDE surface. `ak audit catalog-drift` fails CI if anything diverges. |
+
+### 2. Repo bootstrap — one command, idempotent
+
+```bash
+# Before: copy AGENTS.md, wire .codex/hooks.json, patch .claude/settings.json,
+#         install Husky, configure commitlint + secretlint, bolt on bundle-budget,
+#         blueprint-lifecycle, catalog-drift checks. Hours, drifts.
+
+# After:
+npx ak setup
+```
+
+`ak setup` is re-runnable. Existing files get a `<name>.new` sidecar by default; `--overwrite` replaces them. Hooks are patched additively into `.claude/settings.json` and `.codex/hooks.json` — your custom hooks survive.
+
+### 3. Implementation plans that don't rot
+
+| Before | After |
+| --- | --- |
+| Paste a plan into chat. Lose it on `/clear`. No way to track which agent worked on which task. | `ak blueprint new "<goal>"` writes a markdown plan to `blueprints/in-progress/`. Lifecycle states (`draft` / `planned` / `in-progress` / `completed`) are CI-gated by `ak audit blueprint-lifecycle`. |
+
+### 4. Commit messages that survive six months
+
+Lore Commit Protocol uses native git trailers — `git log` becomes a queryable decision log:
+
+```
+feat(auth): prevent silent session drops [lore]
+
+Long sessions sometimes lost their auth token mid-flight. The fix
+re-checks the cookie before every privileged call.
+
+Confidence: high
+Constraint: cannot break existing session cookies on rolling deploy
+Rejected: refresh-token rotation (too invasive for the symptom)
+Scope-risk: narrow
+Reversibility: clean
+Tested: tests/auth/session-drop.test.ts
+```
+
+Required trailers: `Confidence:` (`low|medium|high`) and at least one of `Constraint:` / `Rejected:` / `Directive:`. Audit-gated by `ak audit commit-message --require-lore`. Soft-adoption with `--lore-warn`.
+
+### 5. Tech-debt that gets reviewed, not buried
+
+| Before | After |
+| --- | --- |
+| 47 `TODO` comments, no owner, no triage, no review cadence. | `ak tech-debt new --severity high --category complexity` creates `tech-debt/<status>/h-NNN-slug.md` with a status (`accepted` / `needs-remediation` / `monitoring` / `resolved`) and a review cadence. `ak audit tech-debt` keeps the inventory honest. |
+
+### 6. One audit gate, every check
+
+```bash
+# Before: 8 separate pre-commit hooks, each in its own config file.
+# After:  one composite, same registry powers pre-commit + CI + ship gate.
+ak audit guardrails
+# composes: catalog-drift + blueprint-lifecycle + docs-frontmatter
+#         + no-relative-parent-imports + vision + commit-message
+#         + tech-debt + bucket-boundary
+```
+
+Add a new audit kind to `REPO_AUDIT_REGISTRY` and it propagates to all three call sites — pre-commit, CI, ship gate — automatically.
+
+## Install paths
+
+Two paths exist because Codex CLI doesn't ship a plugin marketplace yet ([config docs](https://github.com/openai/codex/blob/main/docs/config.md)). They're additive — pick either or both.
+
+### Path A — Claude Code plugin
 
 ```bash
 /plugin marketplace add webpresso/agent-kit
 /plugin install agent-kit@webpresso
 ```
 
-What you get: **hooks** (PreToolUse, PostToolUse, Stop, SessionStart), **`ak mcp` server** with 7 tools (`ak_test`, `ak_e2e`, `ak_lint`, `ak_typecheck`, `ak_qa`, `ak_audit`, `ak_blueprint`), **slash commands** (`/ak:test`, `/ak:qa`, `/ak:audit`, `/ak:blueprint`), and the **skill catalog**. Manifest at `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json`. Pin to release tags (`v<version>`) — `main` does not have `dist/` checked in; only release tags do (see [CONTRIBUTING.md](./CONTRIBUTING.md#releases)).
+You get: hooks (PreToolUse, PostToolUse, Stop, SessionStart), the `ak` MCP server with seven tools (`ak_test`, `ak_e2e`, `ak_lint`, `ak_typecheck`, `ak_qa`, `ak_audit`, `ak_blueprint`), slash commands, and the skills catalog. Pin to release tags — `main` does not ship `dist/`. Hot-reload from source: see [CONTRIBUTING.md](./CONTRIBUTING.md#edge-local-plugin-link-hot-reload-hooks-from-source).
 
-Long-running MCP tools are now **summary-first**: they return canonical `structuredContent`, keep JSON text `content` for compatibility, clip oversized `rawOutput`, and may include a `logPath` when overflow is persisted for later investigation.
-
-**Plugin runtime contract:** the Claude Code plugin executes with **Bun** and currently points at bundled `src/*.ts` entrypoints from the published package. The tarball intentionally ships both `src/` and `dist/`; `dist/esm/*` is a library/build artifact, not the current plugin execution path.
-
-**Plugin dev mode (working on agent-kit itself):** `pnpm dev:link` installs an `edge-local` symlink at `~/.claude/plugins/cache/agent-kit/agent-kit/edge-local` AND mirrors every top-level repo entry (e.g. `.claude-plugin/`, `src/`) into the plugin root as symlinks, so every hook + MCP invocation resolves into the live working tree. Edit `src/hooks/**` or `src/mcp/**` and the next call uses it. No build, no Changesets, no reinstall. Idempotent — re-run after any marketplace upgrade. See [CONTRIBUTING.md → Edge-local plugin link](./CONTRIBUTING.md#edge-local-plugin-link-hot-reload-hooks-from-source).
-
-### Path B — npm + `ak setup` (Codex CLI, OpenCode, Cursor, Gemini, …)
+### Path B — npm + `ak setup`
 
 ```bash
 pnpm add -D @webpresso/agent-kit
 npx ak setup
 ```
 
-What you get: the **same hooks**, idempotently scaffolded into `.claude/settings.json` AND `.codex/hooks.json` (both wrapped under the canonical `hooks` key per Codex docs — legacy flat-form entries are migrated automatically on the next `ak setup`), plus the per-IDE skill surfaces (`.agent/`, `.agents/skills/`, `.cursor/`, `.gemini/commands/` via TOML transform). Default presets also wire peer tooling such as context-mode for Codex CLI and OpenCode. Required for Codex CLI, OpenCode, Cursor, Gemini, and any non-Claude IDE — none of those have a Claude-Code-style `/plugin install` path. Library imports (e.g. `defineAgentKitConfig` from `@webpresso/agent-kit/e2e`) also flow through this path.
+Required for Codex CLI, OpenCode, Cursor, Gemini, and any IDE without a plugin marketplace. Same hooks, scaffolded into `.claude/settings.json` AND `.codex/hooks.json`. Library imports (`defineAgentKitConfig`, `createAkTestCommandConfig`) flow through this path too. See [`docs/getting-started.md`](./docs/getting-started.md) for the full setup matrix and [`docs/presets.md`](./docs/presets.md) for `--with` presets (`omx`, `gstack`, `context-mode`, `playwright-mcp`, `vision`, `lore-commits`, `rtk`, `base-kit`).
 
-**Gstack auto-orchestration:** `ak setup` installs and keeps `~/.claude/skills/gstack/` current on every run (clone-if-missing, fast-forward pull + `./setup --team` otherwise). Set `AK_SKIP_GSTACK=1` to opt out — CI / sandboxed environments only.
+## IDE support matrix
 
-### Why two paths
+| IDE | Skills surface | Setup path |
+| --- | --- | --- |
+| Claude Code | `.claude/skills/` | Path A (plugin marketplace) |
+| Codex CLI | `.agents/skills/` + `.codex/hooks.json` | Path B (`ak setup`) |
+| OpenCode | `.agents/skills/` + `.claude/skills/` | Path B (`ak setup`) |
+| Cursor / Windsurf | `.cursor/skills/` / `.windsurf/skills/` | Path B (`ak setup`) |
+| Gemini CLI | `.gemini/commands/*.toml` (TOML transform) | Path B (`ak setup`) |
 
-Codex CLI ([config docs](https://github.com/openai/codex/blob/main/docs/config.md)) ships MCP servers via `~/.codex/config.toml` and hooks via `~/.codex/hooks.json` but has no plugin marketplace as of 2026-04. The `ak setup` scaffolder is the canonical install path for Codex and any other IDE without a Claude-Code-style plugin marketplace. When Codex's plugin story matures, the two paths can converge — tracked at [`tech-debt/accepted/h-001-track-codex-cli-plugin-marketplace-maturity.md`](./tech-debt/accepted/h-001-track-codex-cli-plugin-marketplace-maturity.md).
+## `ak` CLI reference
 
-## Claude Code Plugin
+| Command | What it does |
+| --- | --- |
+| `ak setup` | Scaffold every IDE surface, install presets, idempotent |
+| `ak setup --with <preset>` | Comma-separated presets: `omx`, `gstack`, `context-mode`, `playwright-mcp`, `lore-commits`, `vision`, `rtk`, `base-kit` |
+| `ak sync` | Propagate canonical `.agent/` rules + skills to every IDE surface (`--check` for drift, no writes) |
+| `ak blueprint new "<goal>" --complexity M` | Create a new blueprint under `blueprints/draft/` |
+| `ak blueprint audit --all --strict` | Audit blueprint lifecycle states |
+| `ak blueprint list` / `ak roadmap list` | List blueprints / parent roadmaps |
+| `ak tech-debt new --severity <s> --category <c>` | Create a tech-debt record with lifecycle status |
+| `ak skill list` / `ak skill install <name>` | Browse and install catalog skills into the active IDE surfaces |
+| `ak audit guardrails` | Composite audit (8 checks) — wired into pre-commit, CI, ship gate |
+| `ak audit quality` | `guardrails` + Stryker mutation testing |
+| `ak audit commit-message --require-lore` | Enforce Lore trailers on commit messages |
+| `ak audit bundle-budget <dir> --max-js-asset-bytes 512000` | Vite bundle budget guard |
+| `ak audit vision` | Enforce `VISION.md` structure (frontmatter, ≤100 lines, ≤1500 words, required sections) |
+| `ak test`, `ak e2e`, `ak lint`, `ak typecheck`, `ak format` | Portable command surface — same flags work in every consumer repo |
+| `ak err <cmd>` | Run a command and print only failure-looking lines |
+| `ak hooks doctor` | Verify hook bins are installed, executable, MCP reachable |
+| `ak doctor` | Repo audit health check with remediation hints |
+| `ak mcp` | Run the agent-kit MCP server over stdio |
+| `ak docs lint <file>` | Lint a research or blueprint doc |
 
-Agent Kit ships as a native Claude Code plugin. The skills appear as `/webpresso-agent-kit:<skill-name>` (or short-names like `/pll` once the plugin is registered).
+Run `ak <command> --help` for full flags.
 
-**Runtime requirement:** Bun must be available on the machine that runs the Claude Code plugin, because the shipped manifest invokes hook and MCP entrypoints through `bun ${CLAUDE_PLUGIN_ROOT}/src/...`.
+## Skills catalog
 
-**Per-session setup (works today):**
+18 curated skills live at [`catalog/agent/skills/`](./catalog/agent/skills/). They ship as `skills/<name>/SKILL.md` in the published package and become `/webpresso-agent-kit:<skill>` after plugin install.
 
-```bash
-claude --plugin-dir ./node_modules/@webpresso/agent-kit
-```
+`better-auth-best-practices` · `deep-research` · `frontend-design` · `hooks-doctor` · `logging-best-practices` · `lore-protocol` · `monorepo-navigation` · `plan-refine` · `pll` · `react-doctor` · `systematic-debugging` · `tanstack-query` · `tech-debt` · `test-driven-development` · `testing-philosophy` · `vercel-react-best-practices` · `verify` · `web-design-guidelines`
 
-**Persistent setup (one-time, survives restarts):**
+Opinionated baseline, not a registry. Extend with your own under `.agent/skills/` and they ride the same `ak sync` distribution.
 
-```bash
-# The .claude-plugin/marketplace.json in the package makes this work
-claude plugin marketplace add ./node_modules/@webpresso/agent-kit --scope local
-claude install-plugin @agent-kit@local
-```
+## Non-goals
 
-> Verified working 2026-04-25 — `claude install-plugin @agent-kit@local` succeeds on a machine with agent-kit consumed via `git+ssh://git@github.com/webpresso/agent-kit.git#main`. Skills persist across restarts.
+- **Running AI agents themselves** — that's Claude Code / Codex / Cursor / etc.
+- **Repo-specific rule content** — consumers extend via local `.agent/`. The catalog is for the parts everyone needs.
+- **Authoring prompts, system messages, or model selection.**
+- **Application or runtime code** — agent-kit is dev-time scaffolding only.
 
-The plugin manifest lives at `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json`. Skills are generated into `skills/<name>/SKILL.md` at build time from `catalog/agent/skills/`.
+## Design invariants
 
-## Codex CLI
-
-Codex CLI doesn't have a plugin marketplace — `~/.codex/config.toml` registers MCP servers and `~/.codex/hooks.json` registers hooks, both via direct file edits ([config reference](https://developers.openai.com/codex/config-reference)). Path B above (`pnpm add -D @webpresso/agent-kit && npx ak setup`) is the canonical install for Codex.
-
-What `ak setup` does for Codex:
-- Skills: per-skill symlinks under `.agents/skills/` → `../../.agent/skills/<name>` (project-local, OpenAI/Amp/OpenCode convergent path).
-- Hooks: idempotent patch of `.codex/hooks.json` adding `ak-pretool-guard`, `ak-post-tool`, `ak-stop-qa`, `ak-sessionstart-routing` entries (additive — won't clobber existing user hooks).
-- OMX compatibility: after the default `omx` preset runs `omx setup --yes`, `ak setup` also migrates deprecated `[features].codex_hooks` entries in `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`) to `[features].hooks` so older OMX releases do not keep emitting Codex's deprecation warning.
-- MCP servers: register `agent-kit` manually once, and let the `omx` or `playwright-mcp` preset persist Playwright's MCP server in `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`):
-
-  ```toml
-  [mcp_servers.agent-kit]
-  command = "npx"
-  args = ["@webpresso/agent-kit", "mcp"]
-
-  [mcp_servers.playwright]
-  command = "npx"
-  args = ["-y", "@playwright/mcp@latest", "--caps=testing,storage,network,devtools"]
-  enabled = true
-  startup_timeout_sec = 30
-  ```
-
-  `ak setup` installs/refreshes OMX and gstack by default, then writes only the owned Playwright block while preserving unrelated Codex config. Codex and OMX share the same persistent browser-testing MCP entry.
-
-Convergence with Claude Code's plugin path is tracked at [`tech-debt/accepted/h-001-track-codex-cli-plugin-marketplace-maturity.md`](./tech-debt/accepted/h-001-track-codex-cli-plugin-marketplace-maturity.md) — when Codex ships a plugin marketplace, this section folds into the Path A flow.
-
-
-### `context-mode`
-
-Configures the [context-mode](https://github.com/mksglu/context-mode) peer tool for both
-Codex CLI and OpenCode. This preset runs by default and ensures `context-mode` is available on `PATH`; if missing, agent-kit installs it with `npm install -g context-mode` before patching the config surfaces.
-
-**Writes:**
-- `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`)
-  - upserts `[mcp_servers.context-mode]` with `command = "context-mode"`
-- `$CODEX_HOME/hooks.json` (or `~/.codex/hooks.json`)
-  - adds the `context-mode hook codex <event>` chain for `PreToolUse`, `PostToolUse`,
-    `SessionStart`, `UserPromptSubmit`, and `Stop`
-- `<repoRoot>/opencode.json`
-  - adds the `context-mode` MCP entry and enables the `context-mode` plugin
-
-**Notes:**
-- OpenCode routing awareness still depends on your repo's AGENTS/CLAUDE guidance. The
-  preset does not overwrite `AGENTS.md` with context-mode's upstream template.
-- If `context-mode` is missing from `PATH`, `ak setup --with context-mode` fails fast
-  with an actionable install hint.
-
-## OpenCode
-
-OpenCode reads skills from `.agents/skills/` (convergent) and `.claude/skills/` (fallback). Both are covered by `ak setup`:
-- `.agents/skills/<name>/` → symlinked to `.agent/skills/<name>/`
-- `.claude/skills/<name>/` → symlinked to `.agent/skills/<name>/`
-
-No plugin install or marketplace registration needed.
-
-## IDE Support Matrix
-
-| IDE | Skills path | Plugin manifest | Setup needed |
-|-----|-------------|----------------|--------------|
-| Claude Code | `.claude/skills/` | `.claude-plugin/plugin.json` + `marketplace.json` | `claude plugin marketplace add` + `install-plugin` |
-| Codex CLI | `.agents/skills/` | none (no marketplace) — `.codex/hooks.json` patched by `ak setup` | `ak setup` (Path B); add `agent-kit` MCP once; use `--with playwright-mcp` or `--with omx` for Playwright MCP |
-| OpenCode | `.agents/skills/` + `.claude/skills/` (fallback) | none | `ak symlink sync` (done) |
-| Cursor / Windsurf | `.cursor/skills/` / `.windsurf/skills/` | localskills.sh distribution | via `ak setup` scaffolder |
-| Gemini CLI | `.gemini/commands/*.toml` (transformed from `.agent/`) | none | `ak symlink sync` (done) |
-
-## `ak` CLI Reference
-
-| Command | Description |
-|---------|-------------|
-| `ak blueprint new "<goal>" --complexity M` | Create a new blueprint with goal and complexity |
-| `ak blueprint new "<goal>" --complexity M --type parent-roadmap` | Create a parent roadmap stub for grouping child blueprints |
-| `ak blueprint audit --all --strict` | Audit all blueprints for structural issues |
-| `ak blueprint list` | List blueprints by status |
-| `ak roadmap list` / `ak roadmap show <slug>` | Inspect first-class parent roadmaps and their child lanes |
-| `ak symlink sync` | Sync skill surfaces across all configured IDEs (fans out AGENTS.md + mcp.json) |
-| `ak symlink import --from .cursorrules` | Import existing IDE rules into canonical `.agent/` |
-| `ak setup --with monorepo-navigation,tanstack-query` | Scaffold agent surfaces and install named Tier-3 skills |
-| `ak setup` | Scaffold agent surfaces, install default external tooling presets (`omx`, `gstack`), and persist Playwright MCP for Codex/OMX |
-| `ak setup --with playwright-mcp` | Explicitly request the Playwright MCP Codex-config write; normally covered by default `omx` setup |
-| `ak doctor` | Run repo audit health checks with remediation hints; keep hook/plugin health under `ak hooks doctor` |
-| `ak skills list` | List available skills in the catalog |
-| `ak skills install <name>` | Install a named skill into the active IDE surfaces |
-| `ak audit tph` | Run tech-debt phase health audit |
-| `ak audit vision` | Enforce VISION.md exists at root with required structure (frontmatter, ≤100 lines, ≤1500 words, required sections) |
-| `ak audit roadmap-links` | Check bidirectional parent-roadmap ↔ child blueprint links; use `--strict` to fail unresolved/orphan parent references |
-| `ak audit guardrails` | Composite of every repo-level audit (catalog-drift, blueprint-lifecycle, roadmap-links, docs-frontmatter, vision, tech-debt, no-relative-parent-imports, bucket-boundary). Wired into the scaffolded pre-commit hook and CI workflow — adding a repo audit to `REPO_AUDIT_REGISTRY` in `src/cli/commands/audit.ts` propagates to all three (standalone CLI, composite, ship gate). |
-| `ak audit mutation` | Run Stryker mutation testing; fails CI on threshold misses |
-| `ak audit quality` | Full ship gate: mutation + guardrails composite. (bundle-budget and commit-message take caller-supplied paths — run separately.) |
-| `ak audit bundle-budget apps/client/dist --max-js-asset-bytes 512000` | Check Vite bundle against budget |
-| `ak audit no-relative-parent-imports` | Enforce `#alias` imports — fail if any `../` parent imports exist in `src/` (also runs as part of `guardrails`) |
-| `ak hooks doctor` | Verify plugin hook health: bins exist, executable, respond to stdin, MCP reachable |
-| `ak docs lint docs/research/my-doc.md` | Lint a research or blueprint doc |
-
-## Distribution
-
-| IDE / Runtime | How skills reach it | Command surface |
-|---------------|--------------------|--------------------|
-| Claude Code | Native plugin (`--plugin-dir` or marketplace) | `/webpresso-agent-kit:<skill>` |
-| Cursor / Windsurf | `ak setup` → `localskills.sh` | `.cursor/skills/` / `.windsurf/skills/` |
-| Codex CLI / Amp | `ak symlink sync` → Symlinker | `.agents/skills/` |
-| Gemini CLI | `ak symlink sync` → Symlinker + TOML transform | `.gemini/skills/` |
-
-## Skills Catalog
-
-Catalog lives at `catalog/agent/skills/`. Each skill ships as `skills/<name>/SKILL.md` in the published package (generated at build time).
-
-Current skills: `better-auth-best-practices`, `deep-research`, `frontend-design`, `plan-refine`, `pll`, `react-doctor`, `systematic-debugging`, `tanstack-query`, `test-driven-development`, `testing-philosophy`, `vercel-react-best-practices`, `verify`, `web-design-guidelines`.
-
-Skills are namespaced after plugin install: `/webpresso-agent-kit:plan-refine`, `/webpresso-agent-kit:verify`, etc.
-
-For detailed skill docs, see [`catalog/agent/skills/`](./catalog/agent/skills/).
-For blueprint format spec, see [`docs/`](./docs/).
-
-## Parent roadmaps vs blueprints
-
-Use `type: parent-roadmap` when the file is a strategic queue that groups child
-blueprints. Use `type: blueprint` for executable tactical work with concrete
-tasks and verification gates.
-
-`ak blueprint list` renders roadmaps first as `ROADMAP` rows, with child
-blueprints indented as `CHILD` rows and unlinked work under `ORPHANS`. `/pll`
-uses that shape to choose the next planned child of an active roadmap before
-falling back to orphan blueprints.
-
-```bash
-ak blueprint new "Q2 platform roadmap" --complexity M --type parent-roadmap
-ak roadmap list
-ak audit roadmap-links
-```
-
-## Design Invariants
-
-- **Zero `@webpresso/*` runtime or dev dependencies.** Ships self-contained from its own public Git repo without depending on the Webpresso monorepo.
-- **Catalog content is canonical once shipped.** Consumers run `ak setup` once, then own their copy. Additional skills are installed explicitly with `ak skills install <name>`; no implicit upstream refresh.
+- **Zero `@webpresso/*` runtime or dev dependencies.** agent-kit is standalone — does not depend on the Webpresso monorepo.
+- **The catalog is canonical.** Consumers run `ak setup` once, then own their copy. Edit the catalog → publish → consumers pull. Don't hand-edit generated `.cursor/`, `.gemini/`, `.codex/` files; `ak audit catalog-drift` will catch it.
+- **Fail loudly, never silently degrade.** If a surface can't be wired, `ak setup` reports it.
 
 ## Status
 
-**Experimental (v0.x).** Public API may change. See [docs/getting-started.md](./docs/getting-started.md) for setup and migration notes.
-
-## Vite Guardrails
-
-```ts
-import { installChunkLoadRecovery } from "@webpresso/agent-kit/vite";
-installChunkLoadRecovery();
-```
-
-```bash
-ak audit bundle-budget apps/client/dist \
-  --max-js-asset-bytes 512000 \
-  --max-html-eager-js-asset-bytes 262144 \
-  --max-html-eager-js-total-bytes 393216
-```
-
-## Portable Test & E2E Surfaces
-
-```ts
-import { createAkTestCommandConfig } from "@webpresso/agent-kit/test";
-import {
-  createCommandE2eHostAdapter,
-  defineAgentKitConfig,
-  planE2eRun,
-} from "@webpresso/agent-kit/e2e";
-```
-
-```bash
-ak test --package cli2
-ak test --file apps/cli2/src/commands/target.test.ts
-ak e2e --suite smoke --config playwright.config.ts
-ak audit tph-e2e
-```
-
-MCP surface split:
-
-- `ak_test` — generic test execution by explicit `packages` or `files`
-- `ak_e2e` — suite-aware / host-adapter-aware E2E execution
-- `ak_audit(kind=\"tph-e2e\")` — E2E testing-philosophy audit only
-
-For long-running MCP calls, expect a compact `summary` first, structured `details` second, and bounded `rawOutput` only when needed.
+**Experimental (v0.x).** Public API may change between minor versions. Pin to a release tag if you need stability. See [`docs/getting-started.md`](./docs/getting-started.md) for migration notes and [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the release process.
 
 ## License
 

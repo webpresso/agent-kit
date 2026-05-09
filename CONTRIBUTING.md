@@ -11,7 +11,7 @@ detail; the bin is the contract.
 pnpm exec ak blueprint show <slug>
 pnpm exec ak blueprint task complete <slug> <task-id>
 pnpm exec ak audit blueprint-lifecycle
-pnpm exec ak symlink sync
+pnpm exec ak sync
 pnpm exec ak tech-debt new "<title>" --severity low --category documentation
 ```
 

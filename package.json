@@ -10,7 +10,7 @@
     "registry": "https://npm.pkg.github.com",
     "access": "restricted"
   },
-  "description": "Toolkit for agent-driven development: Blueprint runtime, agent-surface symlinker, skills catalog, and the `ak` CLI that ties them together.",
+  "description": "One command scaffolds a repo so every AI coding agent (Claude Code, Codex CLI, Cursor, Windsurf, Gemini, OpenCode) shares the same context, hooks, and quality gates. The `ak` CLI: blueprints, skills catalog, lore commits, tech-debt lifecycle, audit composite.",
   "keywords": [
     "agent",
     "agent-kit",
