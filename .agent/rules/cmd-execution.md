@@ -63,6 +63,20 @@ results.
 **Forbidden:** Never pipe quality commands (e.g., `test | grep`). Piping
 breaks auto-logging and hides real output.
 
+## Formatting
+
+Use the `ak_format` MCP tool (or `bun ./src/cli/cli.ts format` as direct
+fallback). **Never invoke `oxfmt` directly** — it requires `--ignore-path
+.gitignore` to skip `.prettierignore` (which contains `*` and would silently
+exclude every file), and it must be resolved via `node_modules/.bin/oxfmt`, not
+a global install. The `ak_format` / `runFormat` path handles both automatically.
+
+If `ak_format` is unavailable:
+
+```bash
+cd <repo-root> && ./node_modules/.bin/oxfmt --write --ignore-path .gitignore
+```
+
 ## Other Rules
 
 - Always use the repo-owned command wrappers (`just`, `pnpm`, `turbo`, etc.)

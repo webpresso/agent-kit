@@ -129,7 +129,10 @@ describe('rtk scaffolder integration', () => {
 
     const drift = spawnSync(
       'bun',
-      ['--eval', `import { auditCatalogDrift } from './src/audit/repo-guardrails.ts'; process.exit(auditCatalogDrift('.').ok ? 0 : 1)`],
+      [
+        '--eval',
+        `import { auditCatalogDrift } from './src/audit/repo-guardrails.ts'; process.exit(auditCatalogDrift('.').ok ? 0 : 1)`,
+      ],
       { cwd: agentKitRoot, encoding: 'utf8' },
     )
     expect(drift.status).toBe(0) // G6

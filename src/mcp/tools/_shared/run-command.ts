@@ -16,6 +16,7 @@
  */
 
 import { spawn } from 'node:child_process'
+import { join } from 'node:path'
 
 export interface RunResult {
   readonly stdout: string
@@ -57,13 +58,29 @@ function exitCodeFromSignal(signal: NodeJS.Signals | null): number {
   return 128 + (COMMON_SIGNAL_NUMBERS[signal] ?? 15)
 }
 
+// Mirrors npm/pnpm script execution: project-local binaries (oxfmt, oxlint,
+// tsc) are devDependencies resolved via node_modules/.bin, not global installs.
+const PATH_SEP = process.platform === 'win32' ? ';' : ':'
+
+function buildEnv(cwd: string): NodeJS.ProcessEnv {
+  const localBin = join(cwd, 'node_modules', '.bin')
+  return {
+    ...process.env,
+    PATH: [localBin, process.env.PATH].filter(Boolean).join(PATH_SEP),
+  }
+}
+
 export function runCommand(
   cmd: string,
   args: readonly string[],
   options: RunOptions,
 ): Promise<RunOutcome> {
   return new Promise((resolve) => {
-    const child = spawn(cmd, [...args], options.cwd ? { cwd: options.cwd } : undefined)
+    const child = spawn(
+      cmd,
+      [...args],
+      options.cwd ? { cwd: options.cwd, env: buildEnv(options.cwd) } : undefined,
+    )
     let stdout = ''
     let stderr = ''
     let timedOut = false
