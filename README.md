@@ -31,7 +31,7 @@ pnpm add -D @webpresso/agent-kit
 npx ak setup
 ```
 
-What you get: the **same hooks**, idempotently scaffolded into `.claude/settings.json` AND `.codex/hooks.json` (both wrapped under the canonical `hooks` key per Codex docs — legacy flat-form entries are migrated automatically on the next `ak setup`), plus the per-IDE skill surfaces (`.agent/`, `.agents/skills/`, `.cursor/`, `.gemini/commands/` via TOML transform). Optional presets can also wire peer tooling such as OpenCode context-mode. Required for Codex CLI, OpenCode, Cursor, Gemini, and any non-Claude IDE — none of those have a Claude-Code-style `/plugin install` path. Library imports (e.g. `defineAgentKitConfig` from `@webpresso/agent-kit/e2e`) also flow through this path.
+What you get: the **same hooks**, idempotently scaffolded into `.claude/settings.json` AND `.codex/hooks.json` (both wrapped under the canonical `hooks` key per Codex docs — legacy flat-form entries are migrated automatically on the next `ak setup`), plus the per-IDE skill surfaces (`.agent/`, `.agents/skills/`, `.cursor/`, `.gemini/commands/` via TOML transform). Default presets also wire peer tooling such as context-mode for Codex CLI and OpenCode. Required for Codex CLI, OpenCode, Cursor, Gemini, and any non-Claude IDE — none of those have a Claude-Code-style `/plugin install` path. Library imports (e.g. `defineAgentKitConfig` from `@webpresso/agent-kit/e2e`) also flow through this path.
 
 **Gstack auto-orchestration:** `ak setup` installs and keeps `~/.claude/skills/gstack/` current on every run (clone-if-missing, fast-forward pull + `./setup --team` otherwise). Set `AK_SKIP_GSTACK=1` to opt out — CI / sandboxed environments only.
 
@@ -93,8 +93,7 @@ Convergence with Claude Code's plugin path is tracked at [`tech-debt/accepted/h-
 ### `context-mode`
 
 Configures the [context-mode](https://github.com/mksglu/context-mode) peer tool for both
-Codex CLI and OpenCode. This preset expects `context-mode` to already be on `PATH`;
-agent-kit patches the config surfaces but does not install the binary itself.
+Codex CLI and OpenCode. This preset runs by default and ensures `context-mode` is available on `PATH`; if missing, agent-kit installs it with `npm install -g context-mode` before patching the config surfaces.
 
 **Writes:**
 - `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`)

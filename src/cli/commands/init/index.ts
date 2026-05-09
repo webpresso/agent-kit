@@ -45,9 +45,17 @@ import { scaffoldSubagents } from './scaffolders/subagents/index.js'
 import { maybeRunVisionInterview } from './scaffolders/vision/interview.js'
 import { scaffoldVision } from './scaffolders/vision/index.js'
 
-const PRESETS = ['context-mode', 'gstack', 'lore-commits', 'omx', 'playwright-mcp', 'rtk', 'vision'] as const
+const PRESETS = [
+  'context-mode',
+  'gstack',
+  'lore-commits',
+  'omx',
+  'playwright-mcp',
+  'rtk',
+  'vision',
+] as const
 type Preset = (typeof PRESETS)[number]
-const DEFAULT_PRESETS: readonly Preset[] = ['omx', 'gstack', 'vision', 'rtk']
+const DEFAULT_PRESETS: readonly Preset[] = ['context-mode', 'omx', 'gstack', 'vision', 'rtk']
 const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested')
 
 function parsePresets(withFlag: string | undefined): Preset[] {
@@ -276,12 +284,17 @@ export async function runInit(flags: InitFlags): Promise<number> {
       presetResults.push(visionResult)
     }
 
-
     if (presets.includes('context-mode')) {
       const contextModeResult = ensureContextMode({ repoRoot: consumer.repoRoot, options })
-      console.log(`  context-mode codex mcp: ${contextModeResult.codexMcp.action === 'identical' ? 'already configured' : contextModeResult.codexMcp.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.codexMcp.targetPath}`)
-      console.log(`  context-mode codex hooks: ${contextModeResult.codexHooks.action === 'identical' ? 'already configured' : contextModeResult.codexHooks.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.codexHooks.targetPath}`)
-      console.log(`  context-mode opencode config: ${contextModeResult.opencodeConfig.action === 'identical' ? 'already configured' : contextModeResult.opencodeConfig.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.opencodeConfig.targetPath}`)
+      console.log(
+        `  context-mode codex mcp: ${contextModeResult.codexMcp.action === 'identical' ? 'already configured' : contextModeResult.codexMcp.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.codexMcp.targetPath}`,
+      )
+      console.log(
+        `  context-mode codex hooks: ${contextModeResult.codexHooks.action === 'identical' ? 'already configured' : contextModeResult.codexHooks.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.codexHooks.targetPath}`,
+      )
+      console.log(
+        `  context-mode opencode config: ${contextModeResult.opencodeConfig.action === 'identical' ? 'already configured' : contextModeResult.opencodeConfig.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.opencodeConfig.targetPath}`,
+      )
     }
 
     let omxFailure: 'not-found' | 'spawn-failed' | null = null

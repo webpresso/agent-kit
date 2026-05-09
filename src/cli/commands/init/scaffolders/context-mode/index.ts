@@ -19,6 +19,7 @@ export type EnsureContextModeResult = {
   codexMcp: MergeResult
   codexHooks: MergeResult
   opencodeConfig: MergeResult
+  installed: boolean
 }
 
 const CONTEXT_MODE_MCP_SERVER_NAME = 'context-mode'
@@ -51,8 +52,10 @@ function defaultOpenCodeConfigPath(repoRoot: string): string {
 function ensureGroup(groups: HookGroup[], group: HookGroup): HookGroup[] {
   const command = group.hooks[0]?.command
   if (!command) return groups
-  const exists = groups.some((candidate) =>
-    candidate.matcher === group.matcher && candidate.hooks.some((hook) => hook.command === command),
+  const exists = groups.some(
+    (candidate) =>
+      candidate.matcher === group.matcher &&
+      candidate.hooks.some((hook) => hook.command === command),
   )
   return exists ? groups : [...groups, group]
 }
@@ -76,12 +79,17 @@ export function upsertContextModeMcpServer(raw: string): string {
   }
 
   return (
-    [...lines.slice(0, start), ...CONTEXT_MODE_MCP_BLOCK.trimEnd().split('\n'), ...lines.slice(end)].join('\n') +
-    '\n'
+    [
+      ...lines.slice(0, start),
+      ...CONTEXT_MODE_MCP_BLOCK.trimEnd().split('\n'),
+      ...lines.slice(end),
+    ].join('\n') + '\n'
   )
 }
 
-export function patchCodexContextModeHooks(existing: Record<string, unknown>): Record<string, unknown> {
+export function patchCodexContextModeHooks(
+  existing: Record<string, unknown>,
+): Record<string, unknown> {
   const migrated = hoistTopLevelEvents(existing)
   const hooks = { ...((migrated.hooks ?? {}) as HooksMap) }
 
@@ -108,7 +116,9 @@ export function patchCodexContextModeHooks(existing: Record<string, unknown>): R
   }
 }
 
-export function patchOpenCodeContextModeConfig(existing: Record<string, unknown>): Record<string, unknown> {
+export function patchOpenCodeContextModeConfig(
+  existing: Record<string, unknown>,
+): Record<string, unknown> {
   const currentMcp =
     existing.mcp && typeof existing.mcp === 'object' && !Array.isArray(existing.mcp)
       ? { ...(existing.mcp as Record<string, unknown>) }
@@ -144,16 +154,31 @@ function ensureCodexContextModeMcp(configPath: string, options: MergeOptions): M
   return { targetPath: configPath, action: existed ? 'overwritten' : 'created' }
 }
 
-function verifyContextModeAvailable(spawn: typeof spawnSync): void {
-  const result = spawn('context-mode', ['--help'], { stdio: 'ignore' })
-  if (result.error || (result.status !== null && result.status !== 0)) {
-    throw new Error('context-mode is not on PATH. Install it first, then rerun `ak setup --with context-mode`.')
+const CONTEXT_MODE_NOT_FOUND_HINT =
+  'context-mode is not on PATH after `npm install -g context-mode`. Install it manually and re-run.'
+
+function ensureContextModeBinary(spawn: typeof spawnSync): boolean {
+  let installed = false
+  let probe = spawn('context-mode', ['--help'], { stdio: 'ignore' })
+  if (probe.error || (probe.status !== null && probe.status !== 0)) {
+    const install = spawn('npm', ['install', '-g', 'context-mode'], { stdio: 'inherit' })
+    if (install.status !== 0) {
+      throw new Error(CONTEXT_MODE_NOT_FOUND_HINT)
+    }
+
+    installed = true
+    probe = spawn('context-mode', ['--help'], { stdio: 'ignore' })
+    if (probe.error || (probe.status !== null && probe.status !== 0)) {
+      throw new Error(CONTEXT_MODE_NOT_FOUND_HINT)
+    }
   }
+
+  return installed
 }
 
 export function ensureContextMode(input: EnsureContextModeInput): EnsureContextModeResult {
   const spawn = input.spawn ?? spawnSync
-  verifyContextModeAvailable(spawn)
+  const installed = ensureContextModeBinary(spawn)
 
   const codexConfigPath = input.codexConfigPath ?? defaultCodexConfigPath()
   const codexHooksPath = input.codexHooksPath ?? defaultCodexHooksPath()
@@ -162,6 +187,11 @@ export function ensureContextMode(input: EnsureContextModeInput): EnsureContextM
   return {
     codexMcp: ensureCodexContextModeMcp(codexConfigPath, input.options),
     codexHooks: patchJsonFile(codexHooksPath, patchCodexContextModeHooks, input.options),
-    opencodeConfig: patchJsonFile(opencodeConfigPath, patchOpenCodeContextModeConfig, input.options),
+    opencodeConfig: patchJsonFile(
+      opencodeConfigPath,
+      patchOpenCodeContextModeConfig,
+      input.options,
+    ),
+    installed,
   }
 }

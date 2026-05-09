@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Webpresso agent-kit Claude Code plugin: blueprints, skills, hooks, MCP server",
-    "version": "0.7.3"
+    "version": "0.8.1"
   },
   "plugins": [
     {
@@ -14,7 +14,14 @@
       "source": "./",
       "description": "Webpresso agent-kit: blueprints, skills, lore commit protocol, tech-debt lifecycle",
       "category": "development",
-      "keywords": ["agent", "blueprint", "claude-code", "skills", "mcp"]
+      "keywords": [
+        "agent",
+        "blueprint",
+        "claude-code",
+        "skills",
+        "mcp"
+      ]
     }
-  ]
+  ],
+  "version": "0.8.1"
 }

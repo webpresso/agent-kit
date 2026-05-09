@@ -8,7 +8,7 @@ last_updated: '2026-05-05'
 `--with <names>` accepts a comma-separated mix of two things:
 
 1. **Tier-3 skills** — opt-in skill packs from the agent-kit catalog (e.g. `tanstack-query`, `react-doctor`, `frontend-design`). Run `ak skills list` for the full list.
-2. **Presets** — named scaffolder modes that wire in additional tooling beyond the skill catalog. `omx`, `gstack`, and `vision` run by default on every `ak setup`; the rest are opt-in. Each preset is documented below.
+2. **Presets** — named scaffolder modes that wire in additional tooling beyond the skill catalog. `context-mode`, `omx`, `gstack`, and `vision` run by default on every `ak setup`; the rest are opt-in. Each preset is documented below.
 
 Presets and Tier-3 skills can be combined freely:
 
@@ -65,8 +65,7 @@ Upserts Playwright's MCP server into Codex's persistent MCP config. This is norm
 ### `context-mode`
 
 Configures the [context-mode](https://github.com/mksglu/context-mode) peer tool for
-Codex CLI and OpenCode. This preset assumes `context-mode` is already installed and
-available on `PATH`; agent-kit patches config files but does not install the binary.
+Codex CLI and OpenCode. This preset runs by default and ensures `context-mode` is available on `PATH`; if missing, agent-kit installs it with `npm install -g context-mode` before patching config files.
 
 **Touches:**
 - `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`)
@@ -80,7 +79,7 @@ available on `PATH`; agent-kit patches config files but does not install the bin
   without clobbering unrelated config
 
 **Failure modes:**
-- `context-mode` missing from `PATH` → `EXIT_SETUP_FAIL` with install hint
+- `context-mode` missing from `PATH` and automatic `npm install -g context-mode` fails → `EXIT_SETUP_FAIL` with install hint
 
 **OpenCode note:**
 - The preset wires `opencode.json` only. If you want upstream context-mode routing
@@ -129,7 +128,7 @@ environments without `brew` access, or platforms where RTK isn't yet packaged).
 
 ## Combining presets
 
-Presets run independently in the order: `context-mode`, `gstack`, `lore-commits`, `omx`, `playwright-mcp`, `rtk`, `vision`. The default preset set is `omx,gstack,vision,rtk`; `playwright-mcp` is also applied whenever `omx` runs. Specifying default presets explicitly is safe and idempotent. A failure in one does **not** skip subsequent presets — every preset gets a chance to run. The aggregate exit code reflects the worst failure across all presets.
+Presets run independently in the order: `context-mode`, `gstack`, `lore-commits`, `omx`, `playwright-mcp`, `rtk`, `vision`. The default preset set is `context-mode,omx,gstack,vision,rtk`; `playwright-mcp` is also applied whenever `omx` runs. Specifying default presets explicitly is safe and idempotent. A failure in one does **not** skip subsequent presets — every preset gets a chance to run. The aggregate exit code reflects the worst failure across all presets.
 
 Example: `ak setup` with `omx` unavailable after the fallback install and a reusable gstack install root already present → omx logs an error, gstack still detects + reports `updated`, overall exit code is 1 (the omx failure dominates).
 

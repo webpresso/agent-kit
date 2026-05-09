@@ -40,6 +40,7 @@ const FIXTURES = path.join(REPO_ROOT, '__fixtures__')
 const OMX_OK_BIN = path.join(FIXTURES, 'fake-tools', 'omx-ok-bin')
 const OMX_FAIL_BIN = path.join(FIXTURES, 'fake-tools', 'omx-fail-bin')
 const FAKE_HOME = path.join(FIXTURES, 'fake-home')
+const CONTEXT_MODE_BIN = path.join(FIXTURES, 'fake-tools', 'context-mode-bin')
 
 interface RunResult {
   code: number
@@ -90,17 +91,17 @@ function makeIsolatedFakeHome(): string {
 
 /** A PATH that contains only the omx-ok fixture, no real omx. */
 function pathWithFakeOmxOk(): string {
-  return `${OMX_OK_BIN}:/usr/bin:/bin`
+  return `${CONTEXT_MODE_BIN}:${OMX_OK_BIN}:/usr/bin:/bin`
 }
 
 /** A PATH that contains the omx-fail fixture (probe ok, setup fails). */
 function pathWithFakeOmxFail(): string {
-  return `${OMX_FAIL_BIN}:/usr/bin:/bin`
+  return `${CONTEXT_MODE_BIN}:${OMX_FAIL_BIN}:/usr/bin:/bin`
 }
 
 /** A PATH with no omx anywhere. */
 function pathWithoutOmx(): string {
-  return '/usr/bin:/bin'
+  return `${CONTEXT_MODE_BIN}:/usr/bin:/bin`
 }
 
 describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
@@ -227,6 +228,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       // automatically surfaces in --help and docs/code can't drift
       // (the original gap that prompted docs/presets.md to exist).
       expect(r.stdout).toContain('Presets:')
+      expect(r.stdout).toContain('context-mode')
       expect(r.stdout).toContain('lore-commits')
       expect(r.stdout).toContain('omx')
       expect(r.stdout).toContain('playwright-mcp')
