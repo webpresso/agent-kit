@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.6
+
+### Patch Changes
+
+- 0b29818: fix: doctor.test hardcoded local path and node_modules bin resolution
+
 ## 0.8.5
 
 ### Patch Changes
