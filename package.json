@@ -60,6 +60,8 @@
     "#lint/*": "./src/lint/*.ts",
     "#format/*": "./src/format/*.ts",
     "#symlinker/*": "./src/symlinker/*.ts",
+    "#quality-engine": "./src/quality-engine/index.ts",
+    "#quality-engine/*": "./src/quality-engine/*.ts",
     "#*": "./src/blueprint/*.ts"
   },
   "exports": {
@@ -154,6 +156,12 @@
         "default": "./dist/esm/local.js"
       }
     },
+    "./quality-engine": {
+      "import": {
+        "types": "./dist/esm/quality-engine/index.d.ts",
+        "default": "./dist/esm/quality-engine/index.js"
+      }
+    },
     "./symlinker": {
       "import": {
         "types": "./dist/esm/symlinker/index.d.ts",
@@ -221,6 +229,7 @@
     "glob": "^13.0.6",
     "gray-matter": "^4.0.3",
     "js-yaml": "^4.1.0",
+    "yaml": "^2.8.1",
     "zod": "^4.4.3",
     "zod-to-json-schema": "^3.25.2"
   },
@@ -269,6 +278,7 @@
       "./format": "./src/format/index.ts",
       "./lint": "./src/lint/index.ts",
       "./local": "./src/local.ts",
+      "./quality-engine": "./src/quality-engine/index.ts",
       "./symlinker": "./src/symlinker/index.ts",
       "./test": "./src/test/index.ts",
       "./typecheck": "./src/typecheck/index.ts",

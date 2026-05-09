@@ -1,8 +1,17 @@
 ---
+type: skill
+slug: logging-best-practices
+title: Logging Best Practices Skill
+status: active
+scope: repo
+applies_to: [agents]
+related: []
+created: '2026-05-07'
+last_reviewed: '2026-05-07'
 name: logging-best-practices
 description: Logging best practices focused on wide events (canonical log lines) for powerful debugging and analytics
 license: MIT
-metadata:
+metadata: 
   author: boristane
   version: '1.0.0'
 ---

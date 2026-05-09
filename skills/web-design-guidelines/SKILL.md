@@ -1,11 +1,20 @@
 ---
+type: skill
+slug: web-design-guidelines
+title: Web Interface Guidelines
+status: active
+scope: repo
+applies_to: [agents]
+related: []
+created: '2026-05-07'
+last_reviewed: '2026-05-07'
 name: web-design-guidelines
 description: Review UI code for Web Interface Guidelines compliance. Use when asked to "review my UI", "check accessibility", "audit design", "review UX", or "check my site against best practices".
-metadata:
+metadata: 
   author: vercel
   version: '1.0.0'
   argument-hint: <file-or-pattern>
-upstream:
+upstream: 
   source: null
   last_synced: "2026-04-22"
 ---

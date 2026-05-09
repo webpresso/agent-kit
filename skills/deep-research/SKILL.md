@@ -1,4 +1,13 @@
 ---
+type: skill
+slug: deep-research
+title: Deep Research
+status: active
+scope: repo
+applies_to: [agents]
+related: []
+created: '2026-05-07'
+last_reviewed: '2026-05-07'
 name: deep-research
 description: Deep web research with credible pro/con sentiment, 2026 best practices, project vision alignment analysis, and timestamped output to docs/research/
 argument-hint: "<subject or question to research>"

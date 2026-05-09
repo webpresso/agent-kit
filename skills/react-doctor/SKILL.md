@@ -1,8 +1,17 @@
 ---
+type: skill
+slug: react-doctor
+title: React Doctor
+status: active
+scope: repo
+applies_to: [agents]
+related: []
+created: '2026-05-07'
+last_reviewed: '2026-05-07'
 name: react-doctor
 description: Diagnose and fix React codebase health issues. Use when reviewing React code, fixing performance problems, auditing security, or improving code quality.
 version: 1.0.0
-upstream:
+upstream: 
   source: null
   last_synced: "2026-04-22"
 ---

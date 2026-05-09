@@ -1,3 +1,15 @@
+---
+type: skill
+slug: tech-debt
+title: tech-debt
+status: active
+scope: repo
+applies_to: [agents]
+related: []
+created: '2026-05-07'
+last_reviewed: '2026-05-07'
+---
+
 # tech-debt
 
 Manage the tech-debt lifecycle using `ak tech-debt` commands.

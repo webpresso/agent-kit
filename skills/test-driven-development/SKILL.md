@@ -1,4 +1,13 @@
 ---
+type: skill
+slug: test-driven-development
+title: Test-Driven Development (TDD)
+status: active
+scope: repo
+applies_to: [agents]
+related: []
+created: '2026-05-07'
+last_reviewed: '2026-05-07'
 name: test-driven-development
 description: Provides test-driven development methodology for implementing features and bugfixes. Requires writing tests before implementation code
 ---

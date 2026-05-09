@@ -1,7 +1,15 @@
 ---
+type: skill
+slug: plan-refine
+title: Plan Refinement Methodology
+status: active
+scope: repo
+applies_to: [agents]
+related: []
+created: '2026-05-07'
+last_reviewed: '2026-05-07'
 name: plan-refine
 description: Methodology for refining, fact-checking, and hardening implementation blueprints. Enforces Blueprint format for maximum parallel execution via /pll, verifies technology claims, aligns cross-plan dependencies, and hardens architecture against edge cases.
-status: production-ready
 ---
 
 > **Implementation Status: Production-Ready**

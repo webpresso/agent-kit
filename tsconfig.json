@@ -36,6 +36,8 @@
       "#lint/*": ["./src/lint/*"],
       "#format/*": ["./src/format/*"],
       "#symlinker/*": ["./src/symlinker/*"],
+      "#quality-engine": ["./src/quality-engine/index.ts"],
+      "#quality-engine/*": ["./src/quality-engine/*.ts"],
       "#*": ["./src/blueprint/*"]
     }
   },
