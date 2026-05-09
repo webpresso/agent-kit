@@ -405,3 +405,37 @@ the source files they test.
 - Pre-commit hook prevents new `__tests__/` directories.
 - Policy documented alongside this file.
 - Vitest automatically discovers colocated tests via `**/*.test.{ts,tsx}`.
+
+## Stryker mutation dry-run exclusions
+
+Integration tests that spawn heavyweight subprocesses (cold-start bun + TypeScript
+transpilation, long-lived MCP server processes, etc.) must be excluded from
+`vitest.stryker.config.ts`. They are covered by the regular `test` job; running
+them inside Stryker's forks pool pushes them past the 10 s unit-test timeout.
+
+**When to add an exclusion:**
+
+- The test calls `spawnSync('bun', [someSourceFile.ts, ...])` — bun cold-start
+  is ~5–11 s depending on the module graph.
+- The test spawns a long-lived child process (e.g. MCP server over JSON-RPC).
+- The test file is `*.integration.test.ts` or `*.e2e.test.ts` **and** it
+  spawns any external process that loads a significant module tree.
+
+**How to add one** (in `vitest.stryker.config.ts`):
+
+```ts
+exclude: [
+  ...,
+  // <one-line reason>
+  'src/path/to/heavy.integration.test.ts',
+]
+```
+
+**Current exclusions:** `init.e2e.test.ts`, `runner.test.ts`,
+`rtk/integration.test.ts`, `mcp/server.integration.test.ts`.
+
+After adding an exclusion, verify the Stryker suite still passes:
+
+```bash
+pnpm exec vitest run --config vitest.stryker.config.ts
+```

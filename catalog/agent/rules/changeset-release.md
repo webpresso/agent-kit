@@ -145,3 +145,20 @@ committed. Claude Code marketplace consumers **must** pin to
 // marketplace.json consumer reference
 { "source": { "repo": "webpresso/agent-kit", "ref": "release/v0.2.0" } }
 ```
+
+### marketplace.json version sync (automated)
+
+`.claude-plugin/marketplace.json` must always mirror `package.json#version`.
+This is automated: the `version` npm script runs `changeset version &&
+pnpm run sync-marketplace-version`, so the "Version Packages" PR opened by CI
+already includes the updated manifest.
+
+**Never manually edit `marketplace.json#version`** — let the release script
+do it. If you see a drift (e.g. after a hotfix that bypasses the script), run:
+
+```bash
+bun scripts/sync-marketplace-version.ts
+```
+
+The drift gate in `src/build/validate-marketplace.test.ts` catches any
+desync during the regular test run.
