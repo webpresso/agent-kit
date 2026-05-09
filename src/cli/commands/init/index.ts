@@ -38,13 +38,14 @@ import { ensureCodexAgentKitMcp, ensureCodexPlaywrightMcp } from './scaffolders/
 import { ensureGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
 import { ensureOmx } from './scaffolders/omx/index.js'
+import { ensureContextMode } from './scaffolders/context-mode/index.js'
 import { ensureRtk } from './scaffolders/rtk/index.js'
 import { checkRuntimes } from './scaffolders/runtime-check/index.js'
 import { scaffoldSubagents } from './scaffolders/subagents/index.js'
 import { maybeRunVisionInterview } from './scaffolders/vision/interview.js'
 import { scaffoldVision } from './scaffolders/vision/index.js'
 
-const PRESETS = ['gstack', 'lore-commits', 'omx', 'playwright-mcp', 'rtk', 'vision'] as const
+const PRESETS = ['context-mode', 'gstack', 'lore-commits', 'omx', 'playwright-mcp', 'rtk', 'vision'] as const
 type Preset = (typeof PRESETS)[number]
 const DEFAULT_PRESETS: readonly Preset[] = ['omx', 'gstack', 'vision', 'rtk']
 const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested')
@@ -273,6 +274,14 @@ export async function runInit(flags: InitFlags): Promise<number> {
         }
       }
       presetResults.push(visionResult)
+    }
+
+
+    if (presets.includes('context-mode')) {
+      const contextModeResult = ensureContextMode({ repoRoot: consumer.repoRoot, options })
+      console.log(`  context-mode codex mcp: ${contextModeResult.codexMcp.action === 'identical' ? 'already configured' : contextModeResult.codexMcp.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.codexMcp.targetPath}`)
+      console.log(`  context-mode codex hooks: ${contextModeResult.codexHooks.action === 'identical' ? 'already configured' : contextModeResult.codexHooks.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.codexHooks.targetPath}`)
+      console.log(`  context-mode opencode config: ${contextModeResult.opencodeConfig.action === 'identical' ? 'already configured' : contextModeResult.opencodeConfig.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.opencodeConfig.targetPath}`)
     }
 
     let omxFailure: 'not-found' | 'spawn-failed' | null = null

@@ -31,7 +31,7 @@ pnpm add -D @webpresso/agent-kit
 npx ak setup
 ```
 
-What you get: the **same hooks**, idempotently scaffolded into `.claude/settings.json` AND `.codex/hooks.json` (both wrapped under the canonical `hooks` key per Codex docs — legacy flat-form entries are migrated automatically on the next `ak setup`), plus the per-IDE skill surfaces (`.agent/`, `.agents/skills/`, `.cursor/`, `.gemini/commands/` via TOML transform). Required for Codex CLI, OpenCode, Cursor, Gemini, and any non-Claude IDE — none of those have a Claude-Code-style `/plugin install` path. Library imports (e.g. `defineAgentKitConfig` from `@webpresso/agent-kit/e2e`) also flow through this path.
+What you get: the **same hooks**, idempotently scaffolded into `.claude/settings.json` AND `.codex/hooks.json` (both wrapped under the canonical `hooks` key per Codex docs — legacy flat-form entries are migrated automatically on the next `ak setup`), plus the per-IDE skill surfaces (`.agent/`, `.agents/skills/`, `.cursor/`, `.gemini/commands/` via TOML transform). Optional presets can also wire peer tooling such as OpenCode context-mode. Required for Codex CLI, OpenCode, Cursor, Gemini, and any non-Claude IDE — none of those have a Claude-Code-style `/plugin install` path. Library imports (e.g. `defineAgentKitConfig` from `@webpresso/agent-kit/e2e`) also flow through this path.
 
 **Gstack auto-orchestration:** `ak setup` installs and keeps `~/.claude/skills/gstack/` current on every run (clone-if-missing, fast-forward pull + `./setup --team` otherwise). Set `AK_SKIP_GSTACK=1` to opt out — CI / sandboxed environments only.
 
@@ -88,6 +88,28 @@ What `ak setup` does for Codex:
   `ak setup` installs/refreshes OMX and gstack by default, then writes only the owned Playwright block while preserving unrelated Codex config. Codex and OMX share the same persistent browser-testing MCP entry.
 
 Convergence with Claude Code's plugin path is tracked at [`tech-debt/accepted/h-001-track-codex-cli-plugin-marketplace-maturity.md`](./tech-debt/accepted/h-001-track-codex-cli-plugin-marketplace-maturity.md) — when Codex ships a plugin marketplace, this section folds into the Path A flow.
+
+
+### `context-mode`
+
+Configures the [context-mode](https://github.com/mksglu/context-mode) peer tool for both
+Codex CLI and OpenCode. This preset expects `context-mode` to already be on `PATH`;
+agent-kit patches the config surfaces but does not install the binary itself.
+
+**Writes:**
+- `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`)
+  - upserts `[mcp_servers.context-mode]` with `command = "context-mode"`
+- `$CODEX_HOME/hooks.json` (or `~/.codex/hooks.json`)
+  - adds the `context-mode hook codex <event>` chain for `PreToolUse`, `PostToolUse`,
+    `SessionStart`, `UserPromptSubmit`, and `Stop`
+- `<repoRoot>/opencode.json`
+  - adds the `context-mode` MCP entry and enables the `context-mode` plugin
+
+**Notes:**
+- OpenCode routing awareness still depends on your repo's AGENTS/CLAUDE guidance. The
+  preset does not overwrite `AGENTS.md` with context-mode's upstream template.
+- If `context-mode` is missing from `PATH`, `ak setup --with context-mode` fails fast
+  with an actionable install hint.
 
 ## OpenCode
 

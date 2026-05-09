@@ -61,6 +61,32 @@ Upserts Playwright's MCP server into Codex's persistent MCP config. This is norm
 **Idempotency:** replaces only the owned `[mcp_servers.playwright]` table, appends it when missing, and preserves unrelated tables/settings.
 **Why persistent:** Codex only exposes MCP servers that are present when the session starts, so writing the config makes the server survive restarts. Restart Codex after first setup.
 
+
+### `context-mode`
+
+Configures the [context-mode](https://github.com/mksglu/context-mode) peer tool for
+Codex CLI and OpenCode. This preset assumes `context-mode` is already installed and
+available on `PATH`; agent-kit patches config files but does not install the binary.
+
+**Touches:**
+- `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`)
+- `$CODEX_HOME/hooks.json` (or `~/.codex/hooks.json`)
+- `<repoRoot>/opencode.json`
+
+**Idempotency:**
+- Replaces only the owned `[mcp_servers.context-mode]` table in Codex config
+- Merges the Codex hook chain additively into the wrapped `hooks` schema
+- Merges OpenCode's `mcp.context-mode` entry and `plugin: ["context-mode"]`
+  without clobbering unrelated config
+
+**Failure modes:**
+- `context-mode` missing from `PATH` → `EXIT_SETUP_FAIL` with install hint
+
+**OpenCode note:**
+- The preset wires `opencode.json` only. If you want upstream context-mode routing
+  prose in the repo contract, copy its `configs/opencode/AGENTS.md` manually or fold
+  equivalent guidance into your existing `AGENTS.md`.
+
 ### `gstack`
 
 Ensures gstack — a Claude Code skill registry providing `/qa`, `/ship`, `/review`, `/investigate`, `/browse`, etc. — is installed at `~/.claude/skills/gstack/`. This runs by default on every `ak setup`. If the directory is missing, setup clones from `https://github.com/garrytan/gstack.git` and runs `./setup --team`.
@@ -103,7 +129,7 @@ environments without `brew` access, or platforms where RTK isn't yet packaged).
 
 ## Combining presets
 
-Presets run independently in the order: `gstack`, `lore-commits`, `omx`, `playwright-mcp`, `rtk`, `vision`. The default preset set is `omx,gstack,vision,rtk`; `playwright-mcp` is also applied whenever `omx` runs. Specifying default presets explicitly is safe and idempotent. A failure in one does **not** skip subsequent presets — every preset gets a chance to run. The aggregate exit code reflects the worst failure across all presets.
+Presets run independently in the order: `context-mode`, `gstack`, `lore-commits`, `omx`, `playwright-mcp`, `rtk`, `vision`. The default preset set is `omx,gstack,vision,rtk`; `playwright-mcp` is also applied whenever `omx` runs. Specifying default presets explicitly is safe and idempotent. A failure in one does **not** skip subsequent presets — every preset gets a chance to run. The aggregate exit code reflects the worst failure across all presets.
 
 Example: `ak setup` with `omx` unavailable after the fallback install and a reusable gstack install root already present → omx logs an error, gstack still detects + reports `updated`, overall exit code is 1 (the omx failure dominates).
 
