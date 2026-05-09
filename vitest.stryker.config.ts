@@ -12,6 +12,9 @@ export default mergeConfig(
         ...(vitestConfig.test?.exclude ?? ['**/node_modules/**', '**/dist/**']),
         'src/hooks/pretool-guard/runner.test.ts',
         'src/cli/commands/init/init.e2e.test.ts',
+        // spawns bun subprocess to run full CLI TypeScript on-the-fly; cold-start
+        // exceeds the unit-test timeout in the forks pool
+        'src/cli/commands/init/scaffolders/rtk/integration.test.ts',
       ],
     },
   }),
