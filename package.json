@@ -14,10 +14,13 @@
   "keywords": [
     "agent",
     "agent-kit",
+    "audits",
     "blueprint",
     "claude-code",
     "gemini-cli",
     "implementation-plan",
+    "mutation",
+    "quality-engine",
     "skills"
   ],
   "license": "MIT",

@@ -87,6 +87,8 @@ ak audit guardrails
 
 Add a new audit kind to `REPO_AUDIT_REGISTRY` and it propagates to all three call sites — pre-commit, CI, ship gate — automatically.
 
+Audit + mutation harness ships in-package: `@webpresso/agent-kit/quality-engine` for programmatic access; `ak audit mutation` / `ak audit quality` for the CLI.
+
 ## Install paths
 
 Two paths exist because Codex CLI doesn't ship a plugin marketplace yet ([config docs](https://github.com/openai/codex/blob/main/docs/config.md)). They're additive — pick either or both.
