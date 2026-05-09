@@ -49,6 +49,8 @@ export interface RunHooksDoctorOptions {
   skipMcp?: boolean
   hosts?: HostCheckMode
   hostNames?: Array<'codex' | 'opencode' | 'claude'>
+  /** Override the working directory used to detect RTK marker files. Defaults to process.cwd(). */
+  cwd?: string
 }
 
 function resolvePackageRoot(): string | null {
@@ -152,8 +154,8 @@ function resolveRequestedHosts(
   return mode === 'skip' ? [] : hostNames && hostNames.length > 0 ? hostNames : defaults
 }
 
-function checkRtkOnPath(): Promise<DoctorCheck | null> {
-  if (!wasRtkRequested()) return Promise.resolve(null)
+function checkRtkOnPath(cwd?: string): Promise<DoctorCheck | null> {
+  if (!wasRtkRequested(cwd)) return Promise.resolve(null)
 
   return new Promise<DoctorCheck>((resolve) => {
     const child = spawn('rtk', ['--version'], { stdio: ['ignore', 'pipe', 'pipe'] })
@@ -569,7 +571,7 @@ export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<
     })
   }
 
-  const rtkCheck = await checkRtkOnPath()
+  const rtkCheck = await checkRtkOnPath(opts.cwd)
   if (rtkCheck) checks.push(rtkCheck)
 
   const hostMode = opts.hosts ?? 'auto'

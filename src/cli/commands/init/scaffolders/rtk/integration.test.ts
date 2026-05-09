@@ -49,7 +49,6 @@ describe('rtk scaffolder integration', () => {
   let previousHome: string | undefined
   let previousPath: string | undefined
   let previousCodeHome: string | undefined
-  let previousCwd = process.cwd()
 
   beforeEach(() => {
     repo = makeRepo()
@@ -57,16 +56,13 @@ describe('rtk scaffolder integration', () => {
     previousHome = process.env.HOME
     previousPath = process.env.PATH
     previousCodeHome = process.env.CODEX_HOME
-    previousCwd = process.cwd()
     process.env.HOME = fakeHome
     process.env.CODEX_HOME = join(repo, '.codex-home')
     process.env.PATH = [fakeRtkBin, fakeOmxBin, previousPath ?? ''].filter(Boolean).join(':')
     chmodSync(join(fakeRtkBin, 'rtk'), 0o755)
-    process.chdir(repo)
   })
 
   afterEach(() => {
-    if (previousCwd) process.chdir(previousCwd)
     if (previousHome === undefined) delete process.env.HOME
     else process.env.HOME = previousHome
     if (previousPath === undefined) delete process.env.PATH
@@ -115,13 +111,13 @@ describe('rtk scaffolder integration', () => {
     expect(agentKitRoute?.action.action).toBe('deny')
     if (agentKitRoute?.action.action === 'deny') expect(agentKitRoute.action.tool).toBe('ak_test') // G4
 
-    const doctorOk = await runHooksDoctor({ skipMcp: true })
+    const doctorOk = await runHooksDoctor({ skipMcp: true, cwd: repo })
     expect(doctorOk.checks.find((check) => check.name === 'rtk on PATH')?.ok).toBe(true) // G5
 
     // Mask rtk by isolating PATH to fakeOmxBin only — including previousPath
     // would leak `/opt/homebrew/bin/rtk` on machines where rtk is installed.
     process.env.PATH = fakeOmxBin
-    const doctorMissing = await runHooksDoctor({ skipMcp: true })
+    const doctorMissing = await runHooksDoctor({ skipMcp: true, cwd: repo })
     expect(doctorMissing.checks.find((check) => check.name === 'rtk on PATH')?.detail).toContain(
       'brew install rtk',
     )
