@@ -189,6 +189,66 @@ describe('scaffoldClaudeRules', () => {
     expect(readFileSync(targetPath, 'utf8')).toBe('# Rule A\n')
   })
 
+
+  it('materializes allowlisted override rules as real files instead of symlinks', () => {
+    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: 'consumer-app' }))
+    writeFileSync(
+      join(repoRoot, '.agent-kitrc.json'),
+      JSON.stringify({ version: '1', installed: { tier3Skills: [] }, rules: { overrides: ['rule-a'] }, scripts: {}, durablePlanningRoot: '.agent/planning/' }, null, 2),
+    )
+    mkdirSync(
+      join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'rules'),
+      { recursive: true },
+    )
+    writeFileSync(
+      join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'package.json'),
+      JSON.stringify({ name: '@webpresso/agent-kit', exports: { './catalog/*': './catalog/*' } }),
+    )
+    writeFileSync(
+      join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'rules', 'rule-a.md'),
+      '# Rule A\n',
+    )
+
+    const targetPath = join(repoRoot, '.claude', 'rules', 'rule-a.md')
+    const results = scaffoldClaudeRules({ repoRoot, options: {} })
+
+    expect(results).toContainEqual({ targetPath, action: 'created' })
+    expect(lstatSync(targetPath).isFile()).toBe(true)
+    expect(readFileSync(targetPath, 'utf8')).toBe('# Rule A\n')
+  })
+
+  it('replaces allowlisted override symlinks with real files on rerun', () => {
+    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: 'consumer-app' }))
+    writeFileSync(
+      join(repoRoot, '.agent-kitrc.json'),
+      JSON.stringify({ version: '1', installed: { tier3Skills: [] }, rules: { overrides: ['rule-a'] }, scripts: {}, durablePlanningRoot: '.agent/planning/' }, null, 2),
+    )
+    mkdirSync(
+      join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'rules'),
+      { recursive: true },
+    )
+    writeFileSync(
+      join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'package.json'),
+      JSON.stringify({ name: '@webpresso/agent-kit', exports: { './catalog/*': './catalog/*' } }),
+    )
+    writeFileSync(
+      join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'rules', 'rule-a.md'),
+      '# Rule A\n',
+    )
+    mkdirSync(join(repoRoot, '.claude', 'rules'), { recursive: true })
+    symlinkSync(
+      join('..', '..', 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'rules', 'rule-a.md'),
+      join(repoRoot, '.claude', 'rules', 'rule-a.md'),
+    )
+
+    const targetPath = join(repoRoot, '.claude', 'rules', 'rule-a.md')
+    const results = scaffoldClaudeRules({ repoRoot, options: {} })
+
+    expect(results).toContainEqual({ targetPath, action: 'overwritten' })
+    expect(lstatSync(targetPath).isFile()).toBe(true)
+    expect(readFileSync(targetPath, 'utf8')).toBe('# Rule A\n')
+  })
+
   it('reports drift for wrong-target symlinks without overwriting by default', () => {
     writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
     mkdirSync(join(repoRoot, 'catalog', 'agent', 'rules'), { recursive: true })

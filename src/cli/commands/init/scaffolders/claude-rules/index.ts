@@ -7,14 +7,17 @@ import {
   lstatSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
   readlinkSync,
   rmSync,
   symlinkSync,
+  writeFileSync,
 } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import type { MergeOptions, MergeResult } from '#cli/commands/init/merge'
+import { readConfig } from '#cli/commands/init/config'
 import { readPackageJson } from '#cli/commands/init/detect-consumer'
 
 export interface ScaffoldClaudeRulesInput {
@@ -66,6 +69,42 @@ function detectMode(repoRoot: string): ClaudeRulesMode {
   }
 }
 
+
+function writeOverrideRule(
+  targetPath: string,
+  sourcePath: string,
+  options: MergeOptions,
+): MergeResult {
+  const incoming = readFileSync(sourcePath, 'utf8')
+
+  if (!existsSync(targetPath)) {
+    if (options.dryRun) return { targetPath, action: 'created' }
+    writeFileSync(targetPath, incoming)
+    return { targetPath, action: 'created' }
+  }
+
+  const stat = lstatSync(targetPath)
+  if (stat.isSymbolicLink()) {
+    if (options.dryRun) return { targetPath, action: 'overwritten' }
+    rmSync(targetPath)
+    writeFileSync(targetPath, incoming)
+    return { targetPath, action: 'overwritten' }
+  }
+
+  const existing = readFileSync(targetPath, 'utf8')
+  if (existing === incoming) return { targetPath, action: 'identical' }
+  if (options.overwrite) {
+    if (options.dryRun) return { targetPath, action: 'overwritten' }
+    writeFileSync(targetPath, incoming)
+    return { targetPath, action: 'overwritten' }
+  }
+
+  const sidecarPath = `${targetPath}.new`
+  if (options.dryRun) return { targetPath, action: 'sidecar-written', sidecarPath }
+  writeFileSync(sidecarPath, incoming)
+  return { targetPath, action: 'sidecar-written', sidecarPath }
+}
+
 function resolveCurrentPackageRoot(): string {
   let dir = dirname(fileURLToPath(import.meta.url))
   for (let depth = 0; depth < 8; depth++) {
@@ -91,6 +130,7 @@ export function scaffoldClaudeRules(input: ScaffoldClaudeRulesInput): MergeResul
   const entries = readdirSync(rulesSource).filter(
     (f) => f.endsWith('.md') && f !== 'README.md' && f !== '.markdownlint.json',
   )
+  const overrideSet = new Set(readConfig(repoRoot)?.rules.overrides ?? [])
 
   if (entries.length === 0) return results
 
@@ -100,6 +140,12 @@ export function scaffoldClaudeRules(input: ScaffoldClaudeRulesInput): MergeResul
   for (const name of entries) {
     const sourcePath = join(rulesSource, name)
     const targetPath = join(rulesTarget, name)
+
+    if (overrideSet.has(name.replace(/\.md$/u, ''))) {
+      results.push(writeOverrideRule(targetPath, sourcePath, options))
+      continue
+    }
+
     const symTarget = relative(dirname(targetPath), sourcePath)
 
     if (options.dryRun) {
@@ -121,11 +167,9 @@ export function scaffoldClaudeRules(input: ScaffoldClaudeRulesInput): MergeResul
           results.push({ targetPath, action: 'drifted' })
         }
       } else {
-        // Consumer-owned real file — preserve it
         results.push({ targetPath, action: 'identical' })
       }
     } catch {
-      // ENOENT — create the symlink
       symlinkSync(symTarget, targetPath)
       results.push({ targetPath, action: 'created' })
     }
