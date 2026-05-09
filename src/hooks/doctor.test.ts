@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { EventEmitter } from 'node:events'
-import { join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 vi.mock('node:fs')
 vi.mock('node:os', () => ({ platform: () => 'linux' }))
@@ -31,7 +32,7 @@ describe('hooks/doctor', () => {
     ...overrides,
   })
 
-  const repoRoot = '/Users/ozby/repos/webpresso/agent-kit'
+  const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
   const pkgJson = join(repoRoot, 'package.json')
   const pluginJson = join(repoRoot, '.claude-plugin', 'plugin.json')
   const builtMcpCli = join(repoRoot, 'dist/esm/mcp/cli.js')
@@ -265,7 +266,7 @@ describe('hooks/doctor', () => {
       const result = await runHooksDoctor()
 
       expect(result.ok).toBe(true)
-      const mcpKey = 'node /Users/ozby/repos/webpresso/agent-kit/dist/esm/mcp/cli.js'
+      const mcpKey = `node ${builtMcpCli}`
       expect(writesByCommand.get(mcpKey)).toEqual([
         '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"agent-kit-hooks-doctor","version":"0.0.0"}}}\n',
         '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}\n',
