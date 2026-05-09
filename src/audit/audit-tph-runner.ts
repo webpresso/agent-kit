@@ -102,6 +102,9 @@ async function findTestFiles(root: string): Promise<string[]> {
       '-not',
       '-path',
       '*/.stryker-tmp/*',
+      '-not',
+      '-name',
+      'audit-tph-detect.test.ts',
     ],
     cwd: root,
   })
