@@ -88,6 +88,77 @@ describe('scaffoldAgentHooks', () => {
     expect(codexCommands).toContain('./node_modules/.bin/ak-check-dev-link')
   })
 
+  it('dedupes pre-existing wrapped script hooks against the raw incoming form', () => {
+    // Regression: hasCommand previously only extracted node_modules/.bin/<name>
+    // identifiers. Script paths like .claude/hooks/check-gstack-session.sh
+    // fell through to exact-string match, so the wrapped form
+    // `[ -x X ] && X || true` did not match the raw incoming `X`. ak setup
+    // accumulated a duplicate gstack entry on every run.
+    const settingsPath = join(repoRoot, '.claude', 'settings.json')
+    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
+    const wrappedGstack =
+      '[ -x "$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack-session.sh" ] && "$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack-session.sh" || true'
+    writeFileSync(
+      settingsPath,
+      JSON.stringify(
+        {
+          hooks: {
+            SessionStart: [
+              { hooks: [{ type: 'command', command: wrappedGstack, timeout: 2 }] },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+
+    scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const settings = JSON.parse(readFileSync(settingsPath, 'utf8')) as {
+      hooks: { SessionStart: Array<{ hooks: Array<{ command: string }> }> }
+    }
+    const gstackMatches = settings.hooks.SessionStart.flatMap((g) =>
+      g.hooks.map((h) => h.command),
+    ).filter((cmd) => cmd.includes('check-gstack-session.sh'))
+    expect(gstackMatches).toHaveLength(1)
+    expect(gstackMatches[0]).toBe(wrappedGstack)
+  })
+
+  it('dedupes pre-existing wrapped Skill matcher hooks against the raw incoming form', () => {
+    const settingsPath = join(repoRoot, '.claude', 'settings.json')
+    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
+    const wrappedGstackSkill =
+      '[ -x "$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack.sh" ] && "$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack.sh" || true'
+    writeFileSync(
+      settingsPath,
+      JSON.stringify(
+        {
+          hooks: {
+            PreToolUse: [
+              {
+                matcher: 'Skill',
+                hooks: [{ type: 'command', command: wrappedGstackSkill, timeout: 3 }],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+
+    scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const settings = JSON.parse(readFileSync(settingsPath, 'utf8')) as {
+      hooks: { PreToolUse: Array<{ matcher?: string; hooks: Array<{ command: string }> }> }
+    }
+    const gstackSkillMatches = settings.hooks.PreToolUse.flatMap((g) =>
+      g.hooks.map((h) => h.command),
+    ).filter((cmd) => cmd.includes('check-gstack.sh'))
+    expect(gstackSkillMatches).toHaveLength(1)
+  })
+
   it('does not duplicate the ak-check-dev-link entry on a second scaffold', () => {
     scaffoldAgentHooks({ repoRoot, options: {} })
     scaffoldAgentHooks({ repoRoot, options: {} })

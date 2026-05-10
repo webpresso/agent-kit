@@ -47,22 +47,52 @@ export type MatcherSet = {
   postToolUse: string
 }
 
+/**
+ * Detect whether `groups` already contain a hook that invokes the same target
+ * as `command`. The "target" is whatever uniquely identifies the script being
+ * launched, regardless of shell-wrapping (e.g. `[ -x X ] && X || true` vs the
+ * raw `X` invocation).
+ *
+ * Two extractors run in order; the first match wins:
+ *   1. `node_modules/.bin/<name>` — installed bin (existing precedent).
+ *   2. `<basename>.<sh|ts|js|mjs|cjs|py>` — script file (covers
+ *      `.claude/hooks/check-gstack-session.sh`, `bun apps/scripts/foo.ts`,
+ *      etc.). Both wrapped and raw forms map to the same basename so dedup
+ *      catches them.
+ *
+ * Falls back to exact-string match when neither extractor applies.
+ */
 function hasCommand(groups: HookGroup[], command: string): boolean {
-  // Match by binary name substring so both old exact-path and new guarded forms are detected.
-  const binName = command.match(/node_modules\/\.bin\/([\w-]+)/)?.[1]
+  const targetId = extractCommandTarget(command)
   return groups.some((g) =>
     g.hooks.some((h) => {
       if (h.command === command) return true
-      if (binName && commandInvokesBin(h.command, binName)) return true
+      if (targetId !== null && extractCommandTarget(h.command) === targetId) return true
       return false
     }),
   )
 }
 
-function commandInvokesBin(command: string, binName: string): boolean {
-  const escaped = binName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const binPattern = new RegExp(`node_modules/\\.bin/${escaped}(?=$|["'\\s])`, 'u')
-  return binPattern.test(command)
+const SCRIPT_EXTENSIONS = ['sh', 'ts', 'js', 'mjs', 'cjs', 'py'] as const
+const BIN_NAME_PATTERN = /node_modules\/\.bin\/([\w-]+)/u
+// Capture the basename of any path that ends in a known script extension.
+// Handles trailing chars (quote, space, end-of-string).
+const SCRIPT_BASENAME_PATTERN = new RegExp(
+  String.raw`([\w-]+\.(?:${SCRIPT_EXTENSIONS.join('|')}))(?=$|["'\s])`,
+  'u',
+)
+
+/**
+ * Return a stable identifier for the script that `command` invokes, or null
+ * when none can be extracted (e.g. an opaque shell expression). Used by
+ * `hasCommand` for dedup across wrapped/raw invocation forms.
+ */
+function extractCommandTarget(command: string): string | null {
+  const binMatch = BIN_NAME_PATTERN.exec(command)
+  if (binMatch !== null) return `bin:${binMatch[1]}`
+  const scriptMatch = SCRIPT_BASENAME_PATTERN.exec(command)
+  if (scriptMatch !== null) return `script:${scriptMatch[1]}`
+  return null
 }
 
 function ensureGroup(groups: HookGroup[], group: HookGroup): HookGroup[] {
