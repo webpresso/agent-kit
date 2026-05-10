@@ -15,8 +15,8 @@ importers:
         specifier: ^1.29.0
         version: 1.29.0(zod@4.4.3)
       '@webpresso/utils':
-        specifier: 0.1.0-alpha.0
-        version: 0.1.0-alpha.0
+        specifier: 0.1.0-alpha.1
+        version: 0.1.0-alpha.1
       cac:
         specifier: ^7.0.0
         version: 7.0.0
@@ -1045,8 +1045,8 @@ packages:
       '@stryker-mutator/core': '>=9 <10'
       '@stryker-mutator/vitest-runner': '>=9 <10'
 
-  '@webpresso/utils@0.1.0-alpha.0':
-    resolution: {integrity: sha512-05wYyIY5nJWuZmpkB3ra35+THhjpmiFmDbi5nOVxXT8fb0xk1McCe1dlDTC0plaQS5f2A0sPKicxEAVYjvLe0A==, tarball: https://npm.pkg.github.com/download/@webpresso/utils/0.1.0-alpha.0/74f63ed0d73cdbe91c0083f0cfa5b0307b18f7d5}
+  '@webpresso/utils@0.1.0-alpha.1':
+    resolution: {integrity: sha512-lNj/L769VTGf6vKIk8wNZd8KMKbRIPe/JE7AIEaD/Ql8A8JEfFoRR3y0dMMvNlzEnSkzxr9rv/TGTKcMu92Uaw==, tarball: https://npm.pkg.github.com/download/@webpresso/utils/0.1.0-alpha.1/620b2352fb1fc6a4ba294bab40abebb499b330a8}
     engines: {node: '>=24'}
 
   accepts@2.0.0:
@@ -3430,7 +3430,7 @@ snapshots:
       '@stryker-mutator/core': 9.6.1(@types/node@25.6.2)
       '@stryker-mutator/vitest-runner': 9.6.1(@stryker-mutator/core@9.6.1(@types/node@25.6.2))(vitest@4.1.5(@types/node@25.6.2)(vite@8.0.11(@types/node@25.6.2)(yaml@2.8.4)))
 
-  '@webpresso/utils@0.1.0-alpha.0':
+  '@webpresso/utils@0.1.0-alpha.1':
     dependencies:
       zod: 4.4.3
 

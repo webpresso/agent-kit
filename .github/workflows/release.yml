@@ -1,12 +1,12 @@
-# Changesets-driven release workflow.
+# Changesets-driven release workflow — publishes directly on push to main,
+# no intermediate Version PR. Also creates a release/v<N> branch with
+# compiled dist/ for marketplace consumers.
 #
 # Flow:
 #   1. Contributor runs `pnpm changeset` on their branch and commits the file.
-#   2. On merge to main, this workflow opens/updates a "Version Packages" PR.
-#   3. Merging the Version PR publishes to GitHub Packages and creates a
-#      release/v<version> branch with dist/ committed for marketplace consumers.
+#   2. On merge to main, this workflow bumps versions, commits, publishes,
+#      and creates the dist branch.
 #
-# To release: merge the "Version Packages" PR created by this workflow.
 # To dry-run: gh workflow run release.yml -f dry-run=true
 
 name: Release
@@ -18,10 +18,10 @@ on:
   workflow_dispatch:
     inputs:
       dry-run:
-        description: "Skip publish (version PR only)"
+        description: "Skip publish (version bump only)"
         type: boolean
         required: false
-        default: true
+        default: false
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
@@ -34,7 +34,6 @@ jobs:
     permissions:
       contents: write
       packages: write
-      pull-requests: write
     steps:
       - uses: actions/checkout@v5
         with:
@@ -48,23 +47,25 @@ jobs:
         with:
           bun-version: latest
       - run: pnpm install
-      - uses: changesets/action@v1.7.0
-        id: changesets
+      - name: Version packages
+        run: |
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          pnpm run version
+          git add -A
+          git diff --staged --quiet || (git commit -m "chore: version packages" && git push)
+      - name: Publish
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != true }}
-        with:
-          publish: pnpm changeset publish
-          version: pnpm run version
-          commit: "chore: version packages"
-          title: "chore: version packages"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PUBLISH_OUTPUT=$(pnpm changeset publish 2>&1)
+          echo "$PUBLISH_OUTPUT"
+          echo "published=$(echo "$PUBLISH_OUTPUT" | grep -c 'New tag' || true)" >> "$GITHUB_OUTPUT"
+        id: publish
       - name: Create marketplace release branch
-        if: steps.changesets.outputs.published == 'true'
+        if: ${{ steps.publish.outputs.published != '0' && (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
           BRANCH="release/v${VERSION}"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
           git checkout -b "$BRANCH"
           pnpm build
           git add -f dist/
