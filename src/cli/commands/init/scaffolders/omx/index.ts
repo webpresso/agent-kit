@@ -38,6 +38,55 @@ function defaultCodexConfigPath(): string {
   return join(codexHome, 'config.toml')
 }
 
+/** Matches any `[hooks.state."<key>"]` TOML section header written by OMX. */
+const HOOK_STATE_SECTION_RE = /^\[hooks\.state\.".+"\]$/
+
+/**
+ * Removes ALL hook trust state blocks when duplicate `[hooks.state."..."]` keys
+ * are detected.
+ *
+ * The TOML spec forbids duplicate keys; Codex CLI rejects the config outright.
+ * Older OMX versions wrote blocks terminated by `# End OMX-owned Codex hook
+ * trust state` but without a leading start marker. OMX's own
+ * `stripManagedCodexHookTrustState` only strips START→END bounded blocks, so
+ * legacy entries accumulate on every `ak setup` run.
+ *
+ * Detection contract: count unique vs total `[hooks.state."..."]` section
+ * headers. If any key appears more than once the file is TOML-invalid. When
+ * duplicates exist we strip all hook trust content (entries + OMX block marker
+ * comments) so `omx setup --yes` can rewrite exactly one clean managed block.
+ */
+export function deduplicateCodexHookTrustState(config: string): string {
+  const allKeys = [...config.matchAll(/^\[hooks\.state\.".+"\]$/gm)].map((m) => m[0])
+  if (allKeys.length === new Set(allKeys).size) return config
+
+  const lines = config.split(/\r?\n/)
+  const kept: string[] = []
+  let i = 0
+  while (i < lines.length) {
+    const trimmed = lines[i]!.trim()
+    if (HOOK_STATE_SECTION_RE.test(trimmed)) {
+      i += 1
+      if (i < lines.length && /^trusted_hash\s*=/.test(lines[i]?.trim() ?? '')) {
+        i += 1
+      }
+      continue
+    }
+    // Strip OMX block-marker comment lines by prefix — resilient to minor wording changes.
+    if (
+      trimmed.startsWith('# OMX-owned Codex hook trust state') ||
+      trimmed.startsWith('# End OMX-owned Codex hook trust state') ||
+      trimmed === '# Trusts only setup-managed codex-native-hook.js wrappers.'
+    ) {
+      i += 1
+      continue
+    }
+    kept.push(lines[i]!)
+    i += 1
+  }
+  return kept.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n'
+}
+
 export function migrateDeprecatedCodexHooksFeatureFlag(raw: string): string {
   const lines = raw.split(/\r?\n/)
   const featuresStart = lines.findIndex((line) => /^\s*\[features\]\s*$/.test(line))
@@ -110,6 +159,17 @@ export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
   if (input.options.dryRun) return { kind: 'omx-skipped-dry-run' }
 
   const spawn = input.spawn ?? spawnSync
+  const configPath = input.configPath ?? defaultCodexConfigPath()
+
+  // Pre-repair: remove legacy duplicate hook trust blocks before omx setup runs.
+  if (existsSync(configPath)) {
+    const existing = readFileSync(configPath, 'utf8')
+    const repaired = deduplicateCodexHookTrustState(existing)
+    if (repaired !== existing) {
+      mkdirSync(dirname(configPath), { recursive: true })
+      writeFileSync(configPath, repaired, 'utf8')
+    }
+  }
 
   let installed = false
   let probe = spawn('omx', ['--version'], { encoding: 'utf8' })
@@ -135,7 +195,7 @@ export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
     return { kind: 'omx-spawn-failed', exitCode: result.status ?? -1 }
   }
 
-  migrateDeprecatedCodexHooksFeatureFlagInConfig(input.configPath ?? defaultCodexConfigPath())
+  migrateDeprecatedCodexHooksFeatureFlagInConfig(configPath)
 
   return { kind: 'omx-ok', installed }
 }
