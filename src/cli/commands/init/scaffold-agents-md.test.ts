@@ -109,7 +109,7 @@ describe('renderAgentsMd', () => {
 
     expect(rendered).toContain('pnpm install && pnpm setup:agent')
     expect(rendered).toContain(
-      'pnpm setup:agent runs ak setup, which scaffolds .agent/, AGENTS.md, hooks, and runs symlink sync',
+      'pnpm setup:agent runs ak setup, which scaffolds .agent/, AGENTS.md, hooks, and runs ak sync',
     )
     expect(rendered).not.toContain('ak symlink sync')
     expect(rendered).not.toContain('omx setup --scope project')
