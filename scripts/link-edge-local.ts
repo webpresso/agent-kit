@@ -1,50 +1,101 @@
 /**
- * Link the Claude Code plugin cache entry at
- * `~/.claude/plugins/cache/agent-kit/agent-kit/edge-local` to this repo so
- * every hook fires from live source via `bun ${CLAUDE_PLUGIN_ROOT}/src/...`.
+ * Link agent-kit so every hook fires from live source.
  *
- * Idempotent. Backs up any pre-existing non-symlink directory before
- * replacing it. Run after a marketplace update to restore the dev link.
+ * Default (no args):
+ *   ~/.claude/plugins/cache/agent-kit/agent-kit/edge-local → this repo
+ *
+ * With --consumer <path> [--consumer <path> ...]:
+ *   Also repoints <consumer>/node_modules/@webpresso/agent-kit → this repo,
+ *   so project-level hook binaries (ak-pretool-guard, ak-sessionstart-routing,
+ *   etc.) run from live source instead of the pnpm-store snapshot.
+ *   Writes <consumer>/.webpresso/agent-kit-dev-link.json so the consumer's
+ *   postinstall can auto-restore the symlink after `pnpm install`.
+ *   Delete that state file to opt out of auto-restore.
+ *
+ * Usage:
+ *   pnpm dev:link
+ *   pnpm dev:link --consumer ~/repos/webpresso/monorepo
  */
 import {
   existsSync,
   lstatSync,
   mkdirSync,
+  readFileSync,
   readlinkSync,
   renameSync,
   symlinkSync,
   unlinkSync,
+  writeFileSync,
 } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
+
+const pkg = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as {
+  name: string
+  version: string
+}
+
+const STATE_FILE_REL = '.webpresso/agent-kit-dev-link.json'
+
+// ---------------------------------------------------------------------------
+// Plugin-cache link (existing behaviour)
+// ---------------------------------------------------------------------------
 const cacheDir = join(homedir(), '.claude', 'plugins', 'cache', 'agent-kit', 'agent-kit')
 const linkPath = join(cacheDir, 'edge-local')
 
 mkdirSync(cacheDir, { recursive: true })
+ensureSymlink(linkPath, repoRoot, 'plugin cache')
 
-if (existsSync(linkPath) || lstatExists(linkPath)) {
-  const stat = lstatSync(linkPath)
-  if (stat.isSymbolicLink()) {
-    const current = readlinkSync(linkPath)
-    if (current === repoRoot) {
-      console.log(`edge-local already → ${repoRoot}`)
-      process.exit(0)
-    }
-    unlinkSync(linkPath)
-    console.log(`replaced stale symlink (was → ${current})`)
-  } else {
-    const backup = `${linkPath}.bak.${timestamp()}`
-    renameSync(linkPath, backup)
-    console.log(`backed up real dir → ${backup}`)
+// ---------------------------------------------------------------------------
+// Optional consumer-repo node_modules links
+// ---------------------------------------------------------------------------
+const args = process.argv.slice(2)
+const consumerPaths: string[] = []
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--consumer' && args[i + 1]) {
+    consumerPaths.push(resolve(args[++i].replace(/^~/, homedir())))
   }
 }
 
-symlinkSync(repoRoot, linkPath, 'dir')
-console.log(`linked ${linkPath} → ${repoRoot}`)
+for (const consumerPath of consumerPaths) {
+  const target = join(consumerPath, 'node_modules', '@webpresso', 'agent-kit')
+  if (!existsSync(join(consumerPath, 'node_modules'))) {
+    console.warn(`skip ${consumerPath} — node_modules not found (run pnpm install first)`)
+    continue
+  }
+  mkdirSync(join(consumerPath, 'node_modules', '@webpresso'), { recursive: true })
+  ensureSymlink(target, repoRoot, `consumer ${consumerPath}`)
+  writeStateFile(consumerPath)
+}
+
 console.log('Restart Claude Code session to pick up the change.')
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function ensureSymlink(linkAt: string, target: string, label: string): void {
+  if (existsSync(linkAt) || lstatExists(linkAt)) {
+    const stat = lstatSync(linkAt)
+    if (stat.isSymbolicLink()) {
+      const current = readlinkSync(linkAt)
+      if (current === target) {
+        console.log(`${label}: already → ${target}`)
+        return
+      }
+      unlinkSync(linkAt)
+      console.log(`${label}: replaced stale symlink (was → ${current})`)
+    } else {
+      const backup = `${linkAt}.bak.${timestamp()}`
+      renameSync(linkAt, backup)
+      console.log(`${label}: backed up real dir → ${backup}`)
+    }
+  }
+  symlinkSync(target, linkAt, 'dir')
+  console.log(`${label}: linked ${linkAt} → ${target}`)
+}
 
 function lstatExists(p: string): boolean {
   try {
@@ -53,6 +104,20 @@ function lstatExists(p: string): boolean {
   } catch {
     return false
   }
+}
+
+function writeStateFile(consumerPath: string): void {
+  const statePath = join(consumerPath, STATE_FILE_REL)
+  mkdirSync(dirname(statePath), { recursive: true })
+  const payload = {
+    package: pkg.name,
+    linkedFrom: repoRoot,
+    linkedAt: new Date().toISOString(),
+    agentKitVersion: pkg.version,
+    note: 'Read by monorepo postinstall (restore-dev-links.ts) to re-establish the symlink after pnpm install. Delete this file to disable the dev link.',
+  }
+  writeFileSync(statePath, `${JSON.stringify(payload, null, 2)}\n`)
+  console.log(`consumer ${consumerPath}: wrote ${STATE_FILE_REL}`)
 }
 
 function timestamp(): string {
