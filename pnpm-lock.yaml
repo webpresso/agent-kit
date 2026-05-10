@@ -14,6 +14,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.4.3)
+      '@webpresso/utils':
+        specifier: 0.1.0-alpha.0
+        version: 0.1.0-alpha.0
       cac:
         specifier: ^7.0.0
         version: 7.0.0
@@ -26,6 +29,9 @@ importers:
       js-yaml:
         specifier: ^4.1.0
         version: 4.1.1
+      ts-pattern:
+        specifier: ^5.9.0
+        version: 5.9.0
       yaml:
         specifier: ^2.8.1
         version: 2.8.4
@@ -1038,6 +1044,10 @@ packages:
     peerDependencies:
       '@stryker-mutator/core': '>=9 <10'
       '@stryker-mutator/vitest-runner': '>=9 <10'
+
+  '@webpresso/utils@0.1.0-alpha.0':
+    resolution: {integrity: sha512-05wYyIY5nJWuZmpkB3ra35+THhjpmiFmDbi5nOVxXT8fb0xk1McCe1dlDTC0plaQS5f2A0sPKicxEAVYjvLe0A==, tarball: https://npm.pkg.github.com/download/@webpresso/utils/0.1.0-alpha.0/74f63ed0d73cdbe91c0083f0cfa5b0307b18f7d5}
+    engines: {node: '>=24'}
 
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
@@ -2224,6 +2234,9 @@ packages:
   tree-kill@1.2.2:
     resolution: {integrity: sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==}
     hasBin: true
+
+  ts-pattern@5.9.0:
+    resolution: {integrity: sha512-6s5V71mX8qBUmlgbrfL33xDUwO0fq48rxAu2LBE11WBeGdpCPOsXksQbZJHvHwhrd3QjUusd3mAOM5Gg0mFBLg==}
 
   tshy@4.1.2:
     resolution: {integrity: sha512-pOXcuOznFx65bKGYBue4PaJ561tARAmCTm2RgImKPtad24PNmkXClVzF/x7GI2LLs+niJpehR/K+ngBhvqq6Sg==}
@@ -3417,6 +3430,10 @@ snapshots:
       '@stryker-mutator/core': 9.6.1(@types/node@25.6.2)
       '@stryker-mutator/vitest-runner': 9.6.1(@stryker-mutator/core@9.6.1(@types/node@25.6.2))(vitest@4.1.5(@types/node@25.6.2)(vite@8.0.11(@types/node@25.6.2)(yaml@2.8.4)))
 
+  '@webpresso/utils@0.1.0-alpha.0':
+    dependencies:
+      zod: 4.4.3
+
   accepts@2.0.0:
     dependencies:
       mime-types: 3.0.2
@@ -4529,6 +4546,8 @@ snapshots:
   toidentifier@1.0.1: {}
 
   tree-kill@1.2.2: {}
+
+  ts-pattern@5.9.0: {}
 
   tshy@4.1.2:
     dependencies:

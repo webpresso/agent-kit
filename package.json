@@ -65,6 +65,9 @@
     "#symlinker/*": "./src/symlinker/*.ts",
     "#quality-engine": "./src/quality-engine/index.ts",
     "#quality-engine/*": "./src/quality-engine/*.ts",
+    "#ai-memory/checkpoint/*": "./src/ai-memory/checkpoint/*.ts",
+    "#ai-memory/facts/*": "./src/ai-memory/facts/*.ts",
+    "#ai-memory/hierarchy/*": "./src/ai-memory/hierarchy/*.ts",
     "#*": "./src/blueprint/*.ts"
   },
   "exports": {
@@ -228,10 +231,12 @@
   "dependencies": {
     "@manypkg/find-root": "3.1.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@webpresso/utils": "0.1.0-alpha.0",
     "cac": "^7.0.0",
     "glob": "^13.0.6",
     "gray-matter": "^4.0.3",
     "js-yaml": "^4.1.0",
+    "ts-pattern": "^5.9.0",
     "yaml": "^2.8.1",
     "zod": "^4.4.3",
     "zod-to-json-schema": "^3.25.2"
@@ -286,7 +291,13 @@
       "./test": "./src/test/index.ts",
       "./typecheck": "./src/typecheck/index.ts",
       "./vite": "./src/vite/index.ts",
-      "./vite/local": "./src/vite/local.ts"
+      "./vite/local": "./src/vite/local.ts",
+      "./ai-memory": "./src/ai-memory/index.ts",
+      "./ai-memory/checkpoint/*": "./src/ai-memory/checkpoint/*.ts",
+      "./ai-memory/facts/*": "./src/ai-memory/facts/*.ts",
+      "./ai-memory/hierarchy/*": "./src/ai-memory/hierarchy/*.ts",
+      "./ai-prompts": "./src/ai-prompts/index.ts",
+      "./ai-tools": "./src/ai-tools/index.ts"
     },
     "selfLink": false
   },
