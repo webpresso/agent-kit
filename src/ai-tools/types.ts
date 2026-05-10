@@ -1,42 +1,5 @@
-// StorageAdapter and SearchMatch are re-exported here until
-// @webpresso/utils/storage-adapter is available in a published release.
-// When @webpresso/utils ships a version that includes ./storage-adapter,
-// replace these inline definitions with:
-//   import type { StorageAdapter, SearchMatch } from '@webpresso/utils/storage-adapter'
-
-export interface SearchMatch {
-  path: string
-  line: number
-  content: string
-  matchStart: number
-  matchEnd: number
-}
-
-export interface StorageAdapter {
-  readFile(path: string, options?: { startLine?: number; endLine?: number }): Promise<string>
-  writeFile(path: string, content: string): Promise<void>
-  deleteFile(path: string): Promise<void>
-  listFiles(
-    path: string,
-    options?: { recursive?: boolean; pattern?: string },
-  ): Promise<Array<{ path: string; type: string; size?: number }>>
-  searchFiles(
-    pattern: string,
-    options?: {
-      path?: string
-      filePattern?: string
-      caseSensitive?: boolean
-      maxResults?: number
-    },
-  ): Promise<SearchMatch[]>
-  exists(path: string): Promise<boolean>
-  stat(path: string): Promise<{ path: string; type: 'file' | 'directory'; size?: number } | null>
-  lockFile(path: string, lockerId: string): Promise<boolean>
-  unlockFile(path: string, lockerId: string): Promise<boolean>
-  isLocked(
-    path: string,
-  ): Promise<{ locked: boolean; lockerId?: string; lockedAt?: Date }>
-}
+import type { StorageAdapter, SearchMatch } from '@webpresso/utils/storage-adapter'
+export type { StorageAdapter, SearchMatch }
 
 export type JSONSchema7TypeName =
   | 'string'
