@@ -1,0 +1,29 @@
+{
+  "name": "@webpresso/launch-engine",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Contract-safe launch engine primitives extracted from the Webpresso monorepo.",
+  "type": "module",
+  "sideEffects": false,
+  "publishConfig": { "registry": "https://npm.pkg.github.com", "access": "restricted" },
+  "files": ["dist"],
+  "imports": {
+    "#*": "./src/*.ts"
+  },
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@webpresso/typescript-config": "workspace:*",
+    "@webpresso/vitest-config": "workspace:*",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "repository": { "type": "git", "url": "git+https://github.com/webpresso/tooling.git", "directory": "packages/launch-engine" }
+}
