@@ -31,7 +31,9 @@
     "ak-stop-qa": "./src/hooks/stop/qa-changed-files.ts",
     "ak-guard-switch": "./src/hooks/guard-switch/index.ts",
     "ak-test-quality-check": "./src/hooks/test-quality-check.ts",
-    "ak-sessionstart-routing": "./src/hooks/sessionstart/index.ts"
+    "ak-sessionstart-routing": "./src/hooks/sessionstart/index.ts",
+    "ak-check-dev-link": "./src/hooks/check-dev-link/index.ts",
+    "ak-restore-dev-links": "./src/dev/restore-dev-links/index.ts"
   },
   "files": [
     "dist",

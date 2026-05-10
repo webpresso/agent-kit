@@ -138,6 +138,9 @@ export function buildAgentKitHookGroups(input: {
       {
         hooks: [{ type: 'command', command: resolveBin('ak-sessionstart-routing'), timeout: 5 }],
       },
+      {
+        hooks: [{ type: 'command', command: resolveBin('ak-check-dev-link'), timeout: 5 }],
+      },
     ],
     PreToolUse: [
       {

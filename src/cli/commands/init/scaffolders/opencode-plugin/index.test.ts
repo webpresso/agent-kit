@@ -1,0 +1,103 @@
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, describe, expect, it } from 'vitest'
+
+import {
+  OPENCODE_PLUGIN_CONTENT,
+  OPENCODE_PLUGIN_RELATIVE_PATH,
+  scaffoldOpencodePlugin,
+} from './index'
+
+const tempRoots: string[] = []
+
+function createTempRoot(): string {
+  const root = mkdtempSync(join(tmpdir(), 'opencode-plugin-scaffolder-'))
+  tempRoots.push(root)
+  return root
+}
+
+afterEach(() => {
+  for (const root of tempRoots.splice(0)) {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+describe('scaffoldOpencodePlugin', () => {
+  it('creates the plugin file under .opencode/plugins on first run', () => {
+    const repoRoot = createTempRoot()
+    const result = scaffoldOpencodePlugin({ repoRoot, options: {} })
+
+    expect(result.action).toBe('created')
+    const targetPath = join(repoRoot, OPENCODE_PLUGIN_RELATIVE_PATH)
+    expect(result.targetPath).toBe(targetPath)
+    expect(readFileSync(targetPath, 'utf8')).toBe(OPENCODE_PLUGIN_CONTENT)
+  })
+
+  it('is idempotent — re-running on identical content returns identical', () => {
+    const repoRoot = createTempRoot()
+    scaffoldOpencodePlugin({ repoRoot, options: {} })
+    const second = scaffoldOpencodePlugin({ repoRoot, options: {} })
+
+    expect(second.action).toBe('identical')
+  })
+
+  it('writes a sidecar (.new) when consumer-modified content is present', () => {
+    const repoRoot = createTempRoot()
+    const targetPath = join(repoRoot, OPENCODE_PLUGIN_RELATIVE_PATH)
+    mkdirSync(join(repoRoot, '.opencode/plugins'), { recursive: true })
+    writeFileSync(targetPath, '// consumer custom content\n', 'utf8')
+
+    const result = scaffoldOpencodePlugin({ repoRoot, options: {} })
+
+    expect(result.action).toBe('sidecar-written')
+    expect(result.sidecarPath).toBe(`${targetPath}.new`)
+    expect(readFileSync(targetPath, 'utf8')).toBe('// consumer custom content\n')
+    expect(readFileSync(`${targetPath}.new`, 'utf8')).toBe(OPENCODE_PLUGIN_CONTENT)
+  })
+
+  it('overwrites consumer content when --overwrite is set', () => {
+    const repoRoot = createTempRoot()
+    const targetPath = join(repoRoot, OPENCODE_PLUGIN_RELATIVE_PATH)
+    mkdirSync(join(repoRoot, '.opencode/plugins'), { recursive: true })
+    writeFileSync(targetPath, '// consumer custom content\n', 'utf8')
+
+    const result = scaffoldOpencodePlugin({ repoRoot, options: { overwrite: true } })
+
+    expect(result.action).toBe('overwritten')
+    expect(readFileSync(targetPath, 'utf8')).toBe(OPENCODE_PLUGIN_CONTENT)
+  })
+
+  it('skips writes in --dry-run mode', () => {
+    const repoRoot = createTempRoot()
+    const result = scaffoldOpencodePlugin({ repoRoot, options: { dryRun: true } })
+
+    expect(result.action).toBe('skipped-dry')
+    const targetPath = join(repoRoot, OPENCODE_PLUGIN_RELATIVE_PATH)
+    expect(() => readFileSync(targetPath, 'utf8')).toThrow()
+  })
+})
+
+describe('OPENCODE_PLUGIN_CONTENT', () => {
+  it('exports an async plugin function as required by opencode plugin contract', () => {
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('export const AgentKitDevLinkPlugin')
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('async ({ $, directory })')
+  })
+
+  it('shells out to the agent-kit-shipped ak-check-dev-link bin', () => {
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('./node_modules/.bin/ak-check-dev-link')
+  })
+
+  it('subscribes to session.created for first-run detection', () => {
+    expect(OPENCODE_PLUGIN_CONTENT).toContain("event?.type === 'session.created'")
+  })
+
+  it('uses experimental.session.compacting for context survival across compaction', () => {
+    expect(OPENCODE_PLUGIN_CONTENT).toContain("'experimental.session.compacting'")
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('output.context.push(message)')
+  })
+
+  it('routes the warning to stderr (visible in opencode TUI)', () => {
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('process.stderr.write')
+  })
+})

@@ -31,14 +31,14 @@ import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { STATE_FILE_RELATIVE_PATH } from '#dev/dev-link-state'
+
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 const pkg = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as {
   name: string
   version: string
 }
-
-const STATE_FILE_REL = '.webpresso/agent-kit-dev-link.json'
 
 // ---------------------------------------------------------------------------
 // Plugin-cache link (existing behaviour)
@@ -107,17 +107,17 @@ function lstatExists(p: string): boolean {
 }
 
 function writeStateFile(consumerPath: string): void {
-  const statePath = join(consumerPath, STATE_FILE_REL)
+  const statePath = join(consumerPath, STATE_FILE_RELATIVE_PATH)
   mkdirSync(dirname(statePath), { recursive: true })
   const payload = {
     package: pkg.name,
     linkedFrom: repoRoot,
     linkedAt: new Date().toISOString(),
     agentKitVersion: pkg.version,
-    note: 'Read by monorepo postinstall (restore-dev-links.ts) to re-establish the symlink after pnpm install. Delete this file to disable the dev link.',
+    note: 'Read by ak-restore-dev-links (consumer postinstall) to re-establish the symlink after pnpm install, and by ak-check-dev-link (SessionStart hook) to warn when the link is broken. Delete this file to disable the dev link.',
   }
   writeFileSync(statePath, `${JSON.stringify(payload, null, 2)}\n`)
-  console.log(`consumer ${consumerPath}: wrote ${STATE_FILE_REL}`)
+  console.log(`consumer ${consumerPath}: wrote ${STATE_FILE_RELATIVE_PATH}`)
 }
 
 function timestamp(): string {

@@ -39,6 +39,7 @@ import { ensureGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
 import { ensureOmx } from './scaffolders/omx/index.js'
 import { ensureContextMode } from './scaffolders/context-mode/index.js'
+import { scaffoldOpencodePlugin } from './scaffolders/opencode-plugin/index.js'
 import { ensureRtk } from './scaffolders/rtk/index.js'
 import { checkRuntimes } from './scaffolders/runtime-check/index.js'
 import { scaffoldSubagents } from './scaffolders/subagents/index.js'
@@ -223,6 +224,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
     })
 
     const agentHooksResult = scaffoldAgentHooks({ repoRoot: consumer.repoRoot, options })
+    const opencodePluginResult = scaffoldOpencodePlugin({ repoRoot: consumer.repoRoot, options })
     let claudeRulesResults: MergeResult[] = []
     try {
       claudeRulesResults = scaffoldClaudeRules({ repoRoot: consumer.repoRoot, options })
@@ -434,6 +436,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
       ...(agentsMdResult ? [agentsMdResult] : []),
       agentHooksResult.claude,
       agentHooksResult.codex,
+      opencodePluginResult,
       ...claudeRulesResults,
       ...subagentResults,
       ...presetResults,

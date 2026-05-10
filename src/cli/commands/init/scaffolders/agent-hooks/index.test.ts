@@ -68,6 +68,40 @@ describe('scaffoldAgentHooks', () => {
     ).toThrow()
   })
 
+  it('wires ak-check-dev-link as a SessionStart hook in both Claude and Codex', () => {
+    scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const claude = JSON.parse(
+      readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8'),
+    ) as {
+      hooks: { SessionStart: Array<{ hooks: Array<{ command: string }> }> }
+    }
+    const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
+      hooks: { SessionStart: Array<{ hooks: Array<{ command: string }> }> }
+    }
+
+    const claudeCommands = claude.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))
+    const codexCommands = codex.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))
+
+    expect(claudeCommands.some((cmd) => cmd.includes('ak-check-dev-link'))).toBe(true)
+    expect(claudeCommands.some((cmd) => cmd.includes('$CLAUDE_PROJECT_DIR'))).toBe(true)
+    expect(codexCommands).toContain('./node_modules/.bin/ak-check-dev-link')
+  })
+
+  it('does not duplicate the ak-check-dev-link entry on a second scaffold', () => {
+    scaffoldAgentHooks({ repoRoot, options: {} })
+    scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
+      hooks: { SessionStart: Array<{ hooks: Array<{ command: string }> }> }
+    }
+
+    const matches = codex.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command)).filter(
+      (cmd) => cmd.includes('ak-check-dev-link'),
+    )
+    expect(matches).toHaveLength(1)
+  })
+
   it('uses MultiEdit in Claude PreToolUse and PostToolUse matchers', () => {
     scaffoldAgentHooks({ repoRoot, options: {} })
 
