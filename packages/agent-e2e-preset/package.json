@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
     "@webpresso/typescript-config": "workspace:*",
     "@webpresso/vitest-config": "workspace:*",
     "typescript": "catalog:",
