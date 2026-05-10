@@ -1,27 +1,45 @@
 {
   "name": "@webpresso/test-preset",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": false,
   "description": "Portable Vitest preset helpers for agent-kit consumer repos.",
   "type": "module",
   "sideEffects": false,
-  "publishConfig": { "registry": "https://npm.pkg.github.com", "access": "restricted" },
-  "files": ["dist", "README.md"],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-    "./vitest": { "types": "./dist/vitest.d.ts", "default": "./dist/vitest.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./vitest": {
+      "types": "./dist/vitest.d.ts",
+      "default": "./dist/vitest.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
-  "peerDependencies": { "vitest": "catalog:" },
+  "peerDependencies": {
+    "vitest": "catalog:"
+  },
   "devDependencies": {
     "@webpresso/typescript-config": "workspace:*",
     "@webpresso/vitest-config": "workspace:*",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
-  "repository": { "type": "git", "url": "git+https://github.com/webpresso/tooling.git", "directory": "packages/test-preset" }
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webpresso/tooling.git",
+    "directory": "packages/test-preset"
+  }
 }
