@@ -17,6 +17,8 @@ import { dispatchContent, type ContentSubcommand } from '#content/dispatch'
 import { loadContent } from '#content/loader'
 import { resolvePackageAsset } from '#utils/package-assets'
 
+import { findOrphanedSkills, removeOrphanedSkills } from '#compiler/orphans'
+
 import {
   defaultConfig,
   mergeConfig,
@@ -31,13 +33,14 @@ interface SkillCommandOptions {
   title?: string
   reason?: string
   dryRun?: boolean
+  fix?: boolean
 }
 
-type SkillSubcommand = ContentSubcommand | 'install' | 'uninstall'
+type SkillSubcommand = ContentSubcommand | 'install' | 'uninstall' | 'orphans'
 
 const SHARED_SUBS: readonly ContentSubcommand[] = ['new', 'list', 'show', 'deprecate']
 const REGISTRY_SUBS = ['install', 'uninstall'] as const
-const VALID_SUBS: readonly SkillSubcommand[] = [...SHARED_SUBS, ...REGISTRY_SUBS]
+const VALID_SUBS: readonly SkillSubcommand[] = [...SHARED_SUBS, ...REGISTRY_SUBS, 'orphans']
 
 function isValidSub(value: string): value is SkillSubcommand {
   return (VALID_SUBS as readonly string[]).includes(value)
@@ -45,6 +48,26 @@ function isValidSub(value: string): value is SkillSubcommand {
 
 function isContentSub(value: SkillSubcommand): value is ContentSubcommand {
   return (SHARED_SUBS as readonly SkillSubcommand[]).includes(value)
+}
+
+async function handleOrphans(cwd: string, fix: boolean, dryRun: boolean): Promise<void> {
+  const orphans = findOrphanedSkills(cwd)
+  if (orphans.length === 0) {
+    console.log('No orphaned skills found.')
+    return
+  }
+  console.log(`Found ${orphans.length} orphaned skill(s):`)
+  for (const o of orphans) {
+    console.log(`  ${o.runtimeDir}/${o.name}  (${o.path})`)
+  }
+  if (fix) {
+    await removeOrphanedSkills(orphans, dryRun)
+    if (dryRun) {
+      console.log(`[dry-run] Would remove ${orphans.length} orphaned skill(s).`)
+    } else {
+      console.log(`Removed ${orphans.length} orphaned skill(s).`)
+    }
+  }
 }
 
 function isValidSource(value: string | undefined): value is 'canonical' | 'consumer' | undefined {
@@ -111,13 +134,14 @@ export function registerSkillCommand(cli: CAC): void {
   cli
     .command(
       'skill <subcommand> [...args]',
-      'Manage consumer skills (new|list|show|deprecate|install|uninstall)',
+      'Manage consumer skills (new|list|show|deprecate|install|uninstall|orphans)',
     )
     .option('--source <s>', 'Filter list by source: canonical | consumer')
     .option('--scope <s>', 'Scope for new: repo | package:<name> | path:<glob>')
     .option('--title <text>', 'Title for new')
     .option('--reason <text>', 'Reason for deprecate')
     .option('--dry-run', 'Plan without writing')
+    .option('--fix', 'Remove orphaned generated skills (for orphans subcommand)')
     .action(async (subcommand: string, args: string[], options: SkillCommandOptions) => {
       if (!isValidSub(subcommand)) {
         throw commandError(
@@ -130,6 +154,11 @@ export function registerSkillCommand(cli: CAC): void {
 
       const cwd = process.cwd()
       const catalogDir = resolvePackageAsset('catalog/agent')
+
+      if (subcommand === 'orphans') {
+        await handleOrphans(cwd, options.fix ?? false, options.dryRun ?? false)
+        return
+      }
 
       if (subcommand === 'install') {
         handleInstall(args[0] ?? '', catalogDir, cwd)

@@ -77,6 +77,12 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     (await import('#audit/memory-rotation')).auditMemoryRotationAsRepoResult(root, {
       strict: options.strict,
     }),
+  'gitignore-agent-surfaces': async (root) =>
+    (await import('#audit/gitignore-agent-surfaces')).auditGitignoreAgentSurfaces(root),
+  'memory-unified': async (root) =>
+    (await import('#audit/memory-unified')).auditMemoryUnified(root),
+  'compile-drift': async (root) =>
+    (await import('#audit/compile-drift')).auditCompileDrift(root),
   rules: async (root) => runContentAudit(root, 'rule'),
   skills: async (root) => runContentAudit(root, 'skill'),
 }
