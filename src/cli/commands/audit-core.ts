@@ -12,6 +12,7 @@ export type AuditKind =
   | 'agents'
   | 'tech-debt'
   | 'no-relative-parent-imports'
+  | 'no-link-protocol'
   | 'vision'
   | 'bucket-boundary'
   | 'mutation'

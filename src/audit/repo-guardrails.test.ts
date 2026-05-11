@@ -8,6 +8,7 @@ import {
   auditBlueprintLifecycle,
   auditCatalogDrift,
   auditDocsFrontmatter,
+  auditNoLinkProtocol,
   auditNoRelativeParentImports,
   formatRepoAuditReport,
   validateCommitMessage,
@@ -1309,5 +1310,82 @@ describe('parseFrontmatter — branch coverage', () => {
     const result = auditDocsFrontmatter(root)
     expect(result.ok).toBe(false)
     expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('type'))).toBe(true)
+  })
+})
+
+describe('auditNoLinkProtocol', () => {
+  test('flags link: values in dependencies, devDependencies, optionalDependencies', () => {
+    const root = tempRepo()
+    writeJson(join(root, 'package.json'), {
+      name: 'root',
+      dependencies: { '@scope/a': 'link:../a' },
+      devDependencies: { '@scope/b': 'link:./b' },
+      optionalDependencies: { '@scope/c': 'link:../../c' },
+    })
+
+    const result = auditNoLinkProtocol(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toHaveLength(3)
+    expect(result.violations.every((v) => v.file === 'package.json')).toBe(true)
+    expect(result.violations[0]?.message).toContain('dependencies.@scope/a')
+    expect(result.violations[1]?.message).toContain('devDependencies.@scope/b')
+    expect(result.violations[2]?.message).toContain('optionalDependencies.@scope/c')
+  })
+
+  test('flags link: inside pnpm.overrides', () => {
+    const root = tempRepo()
+    writeJson(join(root, 'package.json'), {
+      name: 'root',
+      pnpm: { overrides: { '@scope/x': 'link:../x' } },
+    })
+
+    const result = auditNoLinkProtocol(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toHaveLength(1)
+    expect(result.violations[0]?.message).toContain('pnpm.overrides.@scope/x')
+  })
+
+  test('accepts catalog:, workspace:, file:, and explicit versions', () => {
+    const root = tempRepo()
+    writeJson(join(root, 'package.json'), {
+      name: 'root',
+      dependencies: {
+        '@scope/a': 'catalog:',
+        '@scope/b': 'workspace:*',
+        '@scope/c': 'file:./local-tgz/c.tgz',
+        '@scope/d': '^1.2.3',
+      },
+      pnpm: { overrides: { foo: '8.18.0' } },
+    })
+
+    const result = auditNoLinkProtocol(root)
+
+    expect(result.ok).toBe(true)
+    expect(result.checked).toBe(1)
+  })
+
+  test('discovers workspace package.json files via globs', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'packages', 'a'), { recursive: true })
+    writeFileSync(join(root, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n')
+    writeJson(join(root, 'package.json'), { name: 'root' })
+    writeJson(join(root, 'packages', 'a', 'package.json'), {
+      name: '@scope/a',
+      dependencies: { '@scope/b': 'link:../b' },
+    })
+
+    const result = auditNoLinkProtocol(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations[0]?.file).toBe('packages/a/package.json')
+  })
+
+  test('returns ok when no package.json exists', () => {
+    const root = tempRepo()
+    const result = auditNoLinkProtocol(root)
+    expect(result.ok).toBe(true)
+    expect(result.checked).toBe(0)
   })
 })

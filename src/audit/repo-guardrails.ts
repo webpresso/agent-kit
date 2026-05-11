@@ -691,6 +691,78 @@ function readTextIfExists(file: string): string | undefined {
   return existsSync(file) ? readFileSync(file, 'utf8') : undefined
 }
 
+export interface NoLinkProtocolOptions {
+  workspaceFile?: string
+  extraPackageGlobs?: readonly string[]
+}
+
+/**
+ * Fail if any package.json (root, workspaces, or named extras) declares a
+ * `link:<filesystem-path>` value in `dependencies`, `devDependencies`,
+ * `optionalDependencies`, or `pnpm.overrides`. `link:` filesystem-couples
+ * consumer clones to a maintainer's directory layout and hides version-pin
+ * drift; use `catalog:` (cross-repo) or `workspace:*` (intra-repo) instead.
+ */
+export function auditNoLinkProtocol(
+  rootDirectory: string = process.cwd(),
+  options: NoLinkProtocolOptions = {},
+): RepoAuditResult {
+  const root = resolve(rootDirectory)
+  const workspacePath = resolve(root, options.workspaceFile ?? 'pnpm-workspace.yaml')
+  const violations: RepoAuditViolation[] = []
+
+  const packageFiles = new Set<string>()
+  const rootPackageFile = resolve(root, 'package.json')
+  if (existsSync(rootPackageFile)) packageFiles.add(rootPackageFile)
+
+  if (existsSync(workspacePath)) {
+    const workspaceGlobs = parseWorkspacePackageGlobs(readFileSync(workspacePath, 'utf8'))
+    for (const discovered of discoverWorkspacePackageFiles(root, workspaceGlobs)) {
+      packageFiles.add(discovered)
+    }
+  }
+
+  for (const extraGlob of options.extraPackageGlobs ?? []) {
+    for (const discovered of discoverWorkspacePackageFiles(root, [extraGlob])) {
+      packageFiles.add(discovered)
+    }
+  }
+
+  const sortedPackageFiles = [...packageFiles].toSorted((left, right) => left.localeCompare(right))
+
+  for (const packageFile of sortedPackageFiles) {
+    const pkg = readJsonObject(packageFile)
+    const file = relativePath(root, packageFile)
+
+    const directSections = ['dependencies', 'devDependencies', 'optionalDependencies'] as const
+    for (const section of directSections) {
+      for (const [name, value] of Object.entries(readStringRecord(pkg[section]))) {
+        if (value.startsWith('link:')) {
+          violations.push({
+            file,
+            message: `${section}.${name}: ${JSON.stringify(value)} — replace with "catalog:" (cross-repo) or "workspace:*" (intra-repo)`,
+          })
+        }
+      }
+    }
+
+    const pnpm = pkg.pnpm
+    if (pnpm && typeof pnpm === 'object' && !Array.isArray(pnpm)) {
+      const overrides = readStringRecord((pnpm as Record<string, unknown>).overrides)
+      for (const [name, value] of Object.entries(overrides)) {
+        if (value.startsWith('link:')) {
+          violations.push({
+            file,
+            message: `pnpm.overrides.${name}: ${JSON.stringify(value)} — link: in overrides filesystem-couples the consumer; remove the override or pin to a published version`,
+          })
+        }
+      }
+    }
+  }
+
+  return result('no-link-protocol', sortedPackageFiles.length, violations)
+}
+
 export interface NoRelativeParentImportsOptions {
   srcDir?: string
   extensions?: readonly string[]

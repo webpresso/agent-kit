@@ -51,6 +51,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
   'tech-debt': async (root) => (await import('#audit/tech-debt')).auditTechDebt(root),
   'no-relative-parent-imports': async (root) =>
     (await import('#audit/repo-guardrails')).auditNoRelativeParentImports(root),
+  'no-link-protocol': async (root) =>
+    (await import('#audit/repo-guardrails')).auditNoLinkProtocol(root),
   'bucket-boundary': async (root, options) =>
     (await import('#audit/bucket-boundary')).auditBucketBoundary(root, {
       changedOnly: options.changedOnly,
