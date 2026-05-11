@@ -1,0 +1,53 @@
+import { auditBlueprintLifecycle, auditCatalogDrift, auditDocsFrontmatter, formatRepoAuditReport, } from '#audit/repo-guardrails';
+const REMEDIATIONS = {
+    'Catalog drift': 'ak audit catalog-drift',
+    'Catalog drift — single package (no workspace file)': 'none needed',
+    'Docs frontmatter': 'ak audit docs-frontmatter --fix',
+    'Blueprint lifecycle': 'ak audit blueprint-lifecycle',
+};
+export async function runDoctor(options = {}) {
+    try {
+        const root = options.root ?? process.cwd();
+        const results = [
+            auditCatalogDrift(root),
+            auditDocsFrontmatter(root, {
+                docsRoot: options.docsRoot,
+                fix: options.fix,
+            }),
+            auditBlueprintLifecycle(root, {
+                includeLegacyOmx: options.legacyOmx,
+            }),
+        ];
+        let failed = false;
+        for (const result of results) {
+            console.log(formatRepoAuditReport(result));
+            if (!result.ok) {
+                failed = true;
+                const remediation = REMEDIATIONS[result.title] ??
+                    `ak audit ${result.title.toLowerCase().replace(/\s+/g, '-')}`;
+                console.log(`→ remediation: ${remediation}`);
+            }
+            console.log('');
+        }
+        console.log('Hook/plugin health remains separate: run `ak hooks doctor`.');
+        return failed ? 1 : 0;
+    }
+    catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`ak doctor failed: ${message}`);
+        return 2;
+    }
+}
+export function registerDoctorCommand(cli) {
+    cli
+        .command('doctor', 'Run repo audit health checks (hook/plugin health stays under `ak hooks doctor`)')
+        .option('--root <dir>', 'Repository root to inspect')
+        .option('--docs-root <dir>', 'Docs directory for docs-frontmatter')
+        .option('--fix', 'Apply supported safe fixes during doctor (currently docs-frontmatter)')
+        .option('--legacy-omx', 'Include legacy .omx plan checks for blueprint-lifecycle')
+        .action(async (options) => {
+        const code = await runDoctor(options);
+        return code;
+    });
+}
+//# sourceMappingURL=doctor.js.map
