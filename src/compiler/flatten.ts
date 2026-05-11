@@ -51,7 +51,7 @@ export function flattenAgentDir(agentDir: string): FlattenedAssets {
     // Extract skill name from path: .agent/skills/<name>/SKILL.md
     const parts = filePath.split('/')
     const skillIdx = parts.lastIndexOf('skills')
-    const name = skillIdx !== -1 && parts[skillIdx + 1] ? parts[skillIdx + 1] : 'unknown'
+    const name = (skillIdx !== -1 ? parts[skillIdx + 1] : undefined) ?? 'unknown'
     skills[name] = raw
   }
 

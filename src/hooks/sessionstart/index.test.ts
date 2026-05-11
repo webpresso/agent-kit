@@ -189,7 +189,7 @@ describe('sessionstart hook gstack block (opt-in)', () => {
     const cwd = tmp()
     // Create a temp dir to act as a non-existent gstack location.
     // We rely on a path that provably does not exist.
-    const fakeHome = join(tmp(), 'fakehome')
+    const _fakeHome = join(tmp(), 'fakehome')
     // No gstack dir under fakeHome — homedir() won't point there, but we can
     // verify the negative: no block when gstack dir doesn't exist at homedir.
     const gstackDir = join(homedir(), '.claude', 'skills', 'gstack')

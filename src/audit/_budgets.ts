@@ -16,7 +16,7 @@ const budgetEntrySchema = z.object({
 })
 
 const budgetFileSchema = z.object({
-  budgets: z.record(budgetEntrySchema),
+  budgets: z.record(z.string(), budgetEntrySchema),
 })
 
 export const DEFAULT_BUDGETS = {
