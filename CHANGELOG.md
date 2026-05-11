@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.13.1
+
+### Patch Changes
+
+- 3b32d9a: `blueprint-root`: make blueprint directory configurable and consistent across all commands.
+
+  `BlueprintCreationService` hardcoded `webpresso/blueprints` while `resolveBlueprintRoot`
+  (used by list, lifecycle moves, audit, execution) was context-aware, causing creation and
+  reads to point at different directories in non-webpresso consumer repos.
+
+  - Add `blueprintsDir?: string` to `.agent-kitrc.json` / `AgentkitConfig` as the
+    highest-priority override — bypasses all directory detection.
+  - `resolveBlueprintRoot` now reads `.agent-kitrc.json#blueprintsDir` first.
+  - All blueprint commands (`new`, `list`, `audit`, `start`, `finalize`, `move`,
+    execution progress sync) now route through `resolveBlueprintRoot`.
+  - `ak setup` blueprint scaffolding respects the same resolution.
+  - Pretool hook validators (`isBlueprintPath`, `isCanonicalBlueprintOverviewPath`,
+    `getBlueprintPathViolation`, `getNonCanonicalPlanningPathViolation`) accept both
+    `blueprints/` and `webpresso/blueprints/` as canonical by default; accept an explicit
+    `blueprintsRoot` parameter for strict per-repo enforcement.
+
+- 3b32d9a: `ak lint` and `ak format` now anchor to `process.cwd()` when invoked from the terminal.
+
+  `resolveProjectRoot` in the shared MCP module checks `CLAUDE_PROJECT_DIR` first.
+  When these CLI commands were run from a terminal inside Claude Code, that env var
+  pointed at the session's project root (the workspace parent) rather than the terminal's
+  CWD, causing `ak format --check` to fail with a missing `.gitignore` error and
+  `ak lint` to scan unrelated sibling repos.
+
+  Both CLI command handlers now pass `cwd: process.cwd()` explicitly, which bypasses the
+  `CLAUDE_PROJECT_DIR` path. The env-var behaviour in `resolveProjectRoot` is intentional
+  for MCP tool invocations where no reliable CWD is set; it must not leak into direct
+  CLI invocations.
+
 ## 0.13.0
 
 ### Minor Changes
