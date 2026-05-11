@@ -1,7 +1,8 @@
 import type { CAC } from 'cac'
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, openSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { existsSync, mkdtempSync, openSync, readFileSync, readdirSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -9,12 +10,20 @@ import { flattenAgentDir, writeFlattenedAssets } from '#compiler/flatten'
 
 const PINNED_RULESYNC_VERSION = '8.15.1'
 const DEFAULT_TARGETS = 'claude,codex,cursor,gemini,opencode,windsurf'
+const COMPILE_MANIFEST_VERSION = 1
 
 export interface CompileResult {
   readonly ok: boolean
   readonly targets: readonly string[]
   readonly noOp: boolean
   readonly message: string
+}
+
+export interface CompileManifest {
+  readonly version: number
+  readonly timestamp: string
+  readonly sourceHash: string
+  readonly outputHashes: Readonly<Record<string, string>>
 }
 
 function resolveRulesyncBin(cwd: string): string {
@@ -45,12 +54,60 @@ function readHashFile(p: string): string | null {
   try { return readFileSync(p, 'utf-8').trim() } catch { return null }
 }
 
+/** SHA-256 hash of all .md files under agentDir, recursively (content only). */
+export function hashAgentDir(agentDir: string): string {
+  const h = createHash('sha256')
+  const collected: string[] = []
+
+  function walk(dir: string): void {
+    if (!existsSync(dir)) return
+    for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const full = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        walk(full)
+      } else if (entry.isFile() && entry.name.endsWith('.md')) {
+        collected.push(full)
+      }
+    }
+  }
+
+  walk(agentDir)
+
+  for (const filePath of collected) {
+    try {
+      h.update(readFileSync(filePath))
+    } catch { /* skip unreadable files */ }
+  }
+
+  return h.digest('hex')
+}
+
+/** SHA-256 hash of a single file. Returns empty string if file is missing. */
+function hashFile(filePath: string): string {
+  if (!existsSync(filePath)) return ''
+  try {
+    return createHash('sha256').update(readFileSync(filePath)).digest('hex')
+  } catch { return '' }
+}
+
+function readCompileManifest(manifestPath: string): CompileManifest | null {
+  if (!existsSync(manifestPath)) return null
+  try {
+    return JSON.parse(readFileSync(manifestPath, 'utf-8')) as CompileManifest
+  } catch { return null }
+}
+
+function writeCompileManifest(manifestPath: string, manifest: CompileManifest): void {
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2))
+}
+
 export async function runCompile(options: { cwd: string; targets: string }): Promise<CompileResult> {
   const { cwd, targets } = options
   const targetList = targets.split(',').map((t) => t.trim()).filter(Boolean)
   const agentDir = join(cwd, '.agent')
   const lockPath = join(agentDir, '.compile.lock')
   const hashPath = join(agentDir, '.compile.hash')
+  const manifestPath = join(agentDir, '.compile-manifest.json')
   const rulesyncBin = resolveRulesyncBin(cwd)
 
   if (!existsSync(rulesyncBin)) {
@@ -77,11 +134,20 @@ export async function runCompile(options: { cwd: string; targets: string }): Pro
   try {
     const assets = flattenAgentDir(agentDir)
     const hash = contentHash(assets)
-    if (readHashFile(hashPath) === hash) {
+    const sourceHash = hashAgentDir(agentDir)
+
+    // Check compile manifest for idempotent no-op
+    const existingManifest = readCompileManifest(manifestPath)
+    if (existingManifest !== null && existingManifest.sourceHash === sourceHash) {
+      return { ok: true, targets: targetList, noOp: true, message: 'No changes (manifest matches)' }
+    }
+
+    // Legacy hash file check (pre-manifest path)
+    if (existingManifest === null && readHashFile(hashPath) === hash) {
       return { ok: true, targets: targetList, noOp: true, message: 'ak compile: no-op (content unchanged)' }
     }
 
-    // Write flattened assets to tmpdir then atomically rename to .rulesync/
+    // Step 1+2: Write flattened assets to tmpdir then atomically rename to .rulesync/
     const tmpOut = mkdtempSync(join(tmpdir(), 'ak-compile-'))
     try {
       await writeFlattenedAssets(assets, tmpOut)
@@ -93,6 +159,7 @@ export async function runCompile(options: { cwd: string; targets: string }): Pro
       throw err
     }
 
+    // Step 3: Run rulesync generate
     const result = spawnSync(rulesyncBin, ['generate', '--targets', targets], { cwd, stdio: 'inherit' })
     if (result.error) {
       return { ok: false, targets: targetList, noOp: false, message: `ak compile: rulesync failed to start — ${result.error.message}` }
@@ -102,11 +169,81 @@ export async function runCompile(options: { cwd: string; targets: string }): Pro
       return { ok: false, targets: targetList, noOp: false, message: `ak compile: rulesync exited with code ${exitCode}` }
     }
 
+    // Step 4: Emit plugin manifests in parallel
+    const skillNames = Object.keys(assets.skills)
+    const commandNames = Object.keys(assets.commands)
+    const pkgVersion = readPackageVersion(cwd)
+    const manifestOpts = {
+      agentDir,
+      outDir: cwd,
+      version: pkgVersion,
+      skills: skillNames,
+      commands: commandNames,
+    }
+    await Promise.all([
+      import('#compiler/manifests/claude').then((m) => m.emitManifest(manifestOpts)),
+      import('#compiler/manifests/codex').then((m) => m.emitManifest(manifestOpts)),
+      import('#compiler/manifests/cursor').then((m) => m.emitManifest(manifestOpts)),
+      import('#compiler/manifests/gemini').then((m) => m.emitManifest(manifestOpts)),
+    ])
+
+    // Step 5: Run mergeAgentsMd to produce AGENTS.md at repo root
+    const agentsLayers = collectAgentsLayers(agentDir)
+    if (agentsLayers.length > 0) {
+      const { mergeAgentsMd } = await import('#compiler/memory/merger')
+      const mergeResult = await mergeAgentsMd({
+        layers: agentsLayers,
+        outPath: join(cwd, 'AGENTS.md'),
+        cwd,
+      })
+      if (!mergeResult.content) {
+        process.stderr.write('ak compile: warning — mergeAgentsMd produced empty content\n')
+      } else {
+        writeFileSync(join(cwd, 'AGENTS.md'), mergeResult.content)
+      }
+    }
+
+    // Step 6: Write .compile-manifest.json with content-hash sentinels
+    const outputHashes: Record<string, string> = {
+      'AGENTS.md': hashFile(join(cwd, 'AGENTS.md')),
+      '.claude-plugin/plugin.json': hashFile(join(cwd, '.claude-plugin', 'plugin.json')),
+      '.codex-plugin/plugin.json': hashFile(join(cwd, '.codex-plugin', 'plugin.json')),
+      '.cursor-plugin/plugin.json': hashFile(join(cwd, '.cursor-plugin', 'plugin.json')),
+      'gemini-extension.json': hashFile(join(cwd, 'gemini-extension.json')),
+    }
+    const compileManifest: CompileManifest = {
+      version: COMPILE_MANIFEST_VERSION,
+      timestamp: new Date().toISOString(),
+      sourceHash,
+      outputHashes,
+    }
+    writeCompileManifest(manifestPath, compileManifest)
+
     writeFileSync(hashPath, hash)
     return { ok: true, targets: targetList, noOp: false, message: `ak compile: generated for targets [${targetList.join(', ')}]` }
   } finally {
     cleanup()
   }
+}
+
+function readPackageVersion(cwd: string): string {
+  const pkgPath = join(cwd, 'package.json')
+  if (!existsSync(pkgPath)) return '0.0.0'
+  try {
+    const parsed = JSON.parse(readFileSync(pkgPath, 'utf-8')) as Record<string, unknown>
+    return typeof parsed.version === 'string' ? parsed.version : '0.0.0'
+  } catch { return '0.0.0' }
+}
+
+function collectAgentsLayers(agentDir: string): string[] {
+  const agentsDir = join(agentDir, 'agents')
+  if (!existsSync(agentsDir)) return []
+  try {
+    return readdirSync(agentsDir)
+      .filter((f) => f.endsWith('.md'))
+      .sort()
+      .map((f) => join(agentsDir, f))
+  } catch { return [] }
 }
 
 export function registerCompileCommand(cli: CAC): void {
