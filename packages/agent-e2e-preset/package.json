@@ -1,6 +1,6 @@
 {
   "name": "@webpresso/agent-e2e-preset",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": false,
   "description": "Portable E2E preset helpers and suite manifest utilities for agent-kit consumers.",
   "type": "module",

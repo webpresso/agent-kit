@@ -1,6 +1,6 @@
 {
   "name": "@webpresso/agent-workers-test",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/webpresso/workers-test-kit.git"
@@ -9,7 +9,7 @@
     "registry": "https://npm.pkg.github.com",
     "access": "restricted"
   },
-  "description": "Production-ready Cloudflare Workers test mocks \u2014 BaseWorkerEnv, ExecutionContext, Hyperdrive, Durable Objects, Containers",
+  "description": "Production-ready Cloudflare Workers test mocks — BaseWorkerEnv, ExecutionContext, Hyperdrive, Durable Objects, Containers",
   "files": [
     "dist"
   ],

@@ -1,6 +1,6 @@
-# @webpresso/launch-engine
+# @webpresso/agent-tsconfig
 
-## 0.3.0
+## 0.2.0
 
 ### Minor Changes
 
@@ -24,9 +24,3 @@
 
   Consumers (monorepo, ingest-lens) update their imports + catalog entries
   to the new names in their respective cut-over PRs (Wave 2).
-
-## 0.2.0
-
-### Minor Changes
-
-- b1ae49f: Add @webpresso/launch-engine package — contract-safe launch engine primitives extracted from the Webpresso monorepo.
