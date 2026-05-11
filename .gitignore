@@ -60,6 +60,7 @@ Thumbs.db
 *.backup
 *.bak
 .cache/
+.context/
 tmp/
 .tmp/
 
