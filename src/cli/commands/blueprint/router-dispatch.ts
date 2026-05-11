@@ -3,6 +3,7 @@ import type {
   BlueprintCommandOptions,
   BlueprintLifecycleMutationResult,
   CreateBlueprintResult,
+  ExportBlueprintResult,
   ExecuteBlueprintResult,
   MoveBlueprintResult,
   ShowBlueprintResult,
@@ -68,6 +69,11 @@ interface BlueprintCommandDependencies {
     taskId: string,
     options: BlueprintCommandOptions & { reason?: string },
   ) => Promise<BlueprintLifecycleMutationResult>
+  exportBlueprint: (
+    slug: string,
+    format: string,
+    options: BlueprintCommandOptions,
+  ) => Promise<ExportBlueprintResult>
   printBlueprintOutput: (value: object | string, asJson?: boolean) => void
   showBlueprint: (slug: string, options: BlueprintCommandOptions) => Promise<ShowBlueprintResult>
   startBlueprint: (
@@ -299,9 +305,22 @@ export async function executeBlueprintSubcommand(
       )
       return
     }
+    case 'export': {
+      const format = options['format'] as string | undefined
+      const slug = args[0]
+      if (!format || !slug) {
+        throw new Error('Usage: ak blueprint export --format spec-kit <slug>')
+      }
+      if (format !== 'spec-kit') {
+        throw new Error(`Unknown export format: ${format}. Supported formats: spec-kit`)
+      }
+      const result = await deps.exportBlueprint(slug, format, options)
+      deps.printBlueprintOutput(options.json ? result : result.message, options.json)
+      return
+    }
     default: {
       throw new Error(
-        `Unknown blueprint subcommand: ${subcommand}\n\nUse one of: list, new, show, exec, start, park, task, finalize, audit, move, control, logs, db`,
+        `Unknown blueprint subcommand: ${subcommand}\n\nUse one of: list, new, show, exec, start, park, task, finalize, audit, move, control, logs, db, export`,
       )
     }
   }
