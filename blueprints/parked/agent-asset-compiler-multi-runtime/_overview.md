@@ -1,7 +1,8 @@
 ---
 type: blueprint
 title: Agent-asset compiler — rulesync wrap + plugin manifests + AGENTS.md merger
-status: planned
+status: parked
+parked-reason: "No task breakdown; parked until a concrete product-wedge is identified."
 complexity: M
 owner: ozby
 created: 2026-05-11
@@ -23,7 +24,7 @@ reviews:
   - codex_outside_voice: 2026-05-11
   - plan_refine: 2026-05-11
 lifecycle:
-  state: planned
+  state: parked
 ---
 
 # Agent-asset compiler — multi-runtime (revised post-CEO-review 2026-05-11)
