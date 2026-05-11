@@ -101,12 +101,17 @@ there is no corresponding tag or CHANGELOG commit.
 
 ## Release workflow (self-contained Changesets)
 
-The active pattern for sibling repos (`webpresso/runtime/`, `webpresso/db-branching/`,
-`webpresso/i18n/`, `webpresso/utils/`, etc.) is a **self-contained `release.yml`**
-using `changesets/action` directly — **not** the legacy
-`release-package.yml@main` reusable workflow from the framework umbrella.
-Copy `webpresso/runtime/.github/workflows/release.yml` verbatim when
-bootstrapping a new extraction repo.
+The active pattern for the three public repos (`webpresso/framework/`,
+`webpresso/ui-kit/`, `webpresso/agent-kit/`) is a **self-contained
+`release.yml`** using `changesets/action` directly — **not** the legacy
+`release-package.yml@main` reusable workflow from a previous era.
+Copy `webpresso/framework/.github/workflows/release.yml` verbatim when
+bootstrapping a new public repo. (The pre-consolidation siblings
+`webpresso/runtime/`, `webpresso/i18n/`, `webpresso/utils/`,
+`webpresso/db-branching/`, `webpresso/tooling/`, and
+`webpresso/workers-test-kit/` were absorbed into framework/ui-kit/agent-kit
+and archived in the consolidate-11-public-... cycle; their packages now
+live in those three repos.)
 
 The `release.yml` mechanics:
 - **Changeset files present** → action opens/updates a "Version Packages" PR.
