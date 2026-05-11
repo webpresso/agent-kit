@@ -21,6 +21,7 @@ const SUPPORTED_COMMANDS = [
   'roadmap',
   'sync',
   'audit',
+  'compile',
   'rule',
   'skill',
   'skills',
@@ -47,6 +48,7 @@ const ROOT_HELP = [
   '  roadmap               List or show parent roadmaps directly',
   '  sync                  Sync agent rules + skills across IDE surfaces (--kind, --check)',
   '  audit                 Run packaged audits (bundle budgets, repo guardrails, TPH, tech-debt)',
+  '  compile               Compile .agent/ assets and run rulesync generate for target IDEs',
   '  rule                  Manage consumer rules (new, list, show, deprecate)',
   '  skill                 Manage consumer skills (new, list, show, deprecate, install, uninstall)',
   '  docs                  Documentation tooling (lint)',
@@ -124,6 +126,11 @@ export async function main(): Promise<number> {
     case 'audit': {
       const { registerAuditCommand } = await import('./commands/audit.js')
       registerAuditCommand(cli)
+      break
+    }
+    case 'compile': {
+      const { registerCompileCommand } = await import('./commands/compile.js')
+      registerCompileCommand(cli)
       break
     }
     case 'rule': {

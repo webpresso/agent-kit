@@ -65,6 +65,7 @@
     "#lint/*": "./src/lint/*.ts",
     "#format/*": "./src/format/*.ts",
     "#symlinker/*": "./src/symlinker/*.ts",
+    "#compiler/*": "./src/compiler/*.ts",
     "#quality-engine": "./src/quality-engine/index.ts",
     "#quality-engine/*": "./src/quality-engine/*.ts",
     "#ai-memory/checkpoint/*": "./src/ai-memory/checkpoint/*.ts",
