@@ -1,10 +1,12 @@
 import type { BlueprintAuditResult, BlueprintSummary } from '#local'
 import type {
+  AdvanceTaskResult,
   BlueprintCommandOptions,
   BlueprintLifecycleMutationResult,
   CreateBlueprintResult,
   ExecuteBlueprintResult,
   MoveBlueprintResult,
+  PromoteBlueprintResult,
   ShowBlueprintResult,
 } from './router.js'
 
@@ -24,8 +26,31 @@ const mutationStub: BlueprintLifecycleMutationResult = {
   status: 'todo',
 }
 
+const promoteStub: PromoteBlueprintResult = {
+  message: 'promoted',
+  moved: true,
+  newPath: '/tmp/blueprints/in-progress/s/_overview.md',
+  newState: 'in-progress',
+  oldState: 'planned',
+  slug: 's',
+}
+
 function buildDeps(overrides: Partial<Deps> = {}): Deps {
   const base: Deps = {
+    advanceBlueprintTask: vi.fn<
+      (
+        slug: string,
+        taskId: string,
+        toStatus: string,
+        options: BlueprintCommandOptions,
+      ) => Promise<AdvanceTaskResult>
+    >(async () => ({
+      blueprintSlug: 's',
+      taskId: '1.1',
+      oldStatus: 'todo',
+      newStatus: 'in-progress',
+      message: 'Task 1.1 of s: todo → in-progress',
+    })),
     auditBlueprints: vi.fn<(options: BlueprintCommandOptions) => Promise<BlueprintAuditResult>>(
       async () => ({ ok: true, issues: [] }) as BlueprintAuditResult,
     ),
@@ -49,6 +74,16 @@ function buildDeps(overrides: Partial<Deps> = {}): Deps {
     finalizeBlueprint: vi.fn<
       (slug: string, options: BlueprintCommandOptions) => Promise<BlueprintLifecycleMutationResult>
     >(async () => mutationStub),
+    finalizeBlueprintBySlug: vi.fn<
+      (slug: string, options: BlueprintCommandOptions) => Promise<PromoteBlueprintResult>
+    >(async () => ({ ...promoteStub, newState: 'completed' })),
+    promoteBlueprintToState: vi.fn<
+      (
+        slug: string,
+        toState: string,
+        options: BlueprintCommandOptions,
+      ) => Promise<PromoteBlueprintResult>
+    >(async () => promoteStub),
     formatBlueprintAudit: vi.fn<(result: BlueprintAuditResult) => string>(() => 'audit ok'),
     formatBlueprintCreation: vi.fn<(result: CreateBlueprintResult) => string>(() => 'created'),
     formatBlueprintDetails: vi.fn<(result: ShowBlueprintResult) => string>(() => 'details'),
@@ -423,8 +458,8 @@ describe('executeBlueprintSubcommand', () => {
   it('routes "finalize <slug>"', async () => {
     const deps = buildDeps()
     await executeBlueprintSubcommand('finalize', ['my-feature'], { '--': [] }, deps)
-    expect(deps.finalizeBlueprint).toHaveBeenCalledWith('my-feature', { '--': [] })
-    expect(deps.printBlueprintOutput).toHaveBeenCalledWith('updated', undefined)
+    expect(deps.finalizeBlueprintBySlug).toHaveBeenCalledWith('my-feature', { '--': [] })
+    expect(deps.printBlueprintOutput).toHaveBeenCalledWith('promoted', undefined)
   })
 
   it('throws when "finalize" receives no slug', async () => {

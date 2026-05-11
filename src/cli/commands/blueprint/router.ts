@@ -46,6 +46,13 @@ import {
   syncBlueprintExecutionProgress,
   writeBlueprintRuntimeSnapshot,
 } from './execution.js'
+import {
+  advanceTask as advanceTaskMutation,
+  finalizeBlueprint as finalizeBlueprintMutation,
+  promoteBlueprint as promoteBlueprintMutation,
+  type AdvanceTaskResult,
+  type PromoteBlueprintResult,
+} from './mutations.js'
 import { BlueprintAuditFailedError, executeBlueprintSubcommand } from './router-dispatch.js'
 import {
   formatBlueprintAudit,
@@ -104,8 +111,11 @@ export interface BlueprintCommandOptions
   format?: string
   params?: string
   reason?: string
+  to?: string
   '--': string[]
 }
+
+export type { AdvanceTaskResult, PromoteBlueprintResult }
 
 interface ResolvedBlueprintLocation {
   blueprint: Blueprint
@@ -705,6 +715,51 @@ export async function exportBlueprint(
   }
 }
 
+export async function advanceBlueprintTask(
+  slug: string,
+  taskId: string,
+  toStatus: string,
+  options: BlueprintMoveOptions = {},
+): Promise<AdvanceTaskResult> {
+  const projectRoot = resolveProjectRoot(options.projectRoot)
+  const VALID_STATUSES = ['todo', 'in-progress', 'blocked', 'done', 'dropped'] as const
+  type ValidStatus = (typeof VALID_STATUSES)[number]
+  const isValid = (s: string): s is ValidStatus =>
+    (VALID_STATUSES as readonly string[]).includes(s)
+  if (!isValid(toStatus)) {
+    throw new Error(
+      `Invalid task status: ${toStatus}. Valid values: ${VALID_STATUSES.join(', ')}`,
+    )
+  }
+  return advanceTaskMutation(projectRoot, slug, taskId, toStatus)
+}
+
+export async function promoteBlueprintToState(
+  slug: string,
+  toState: string,
+  options: BlueprintMoveOptions = {},
+): Promise<PromoteBlueprintResult> {
+  const projectRoot = resolveProjectRoot(options.projectRoot)
+  const VALID_STATES = ['planned', 'in-progress', 'completed', 'parked'] as const
+  type ValidState = (typeof VALID_STATES)[number]
+  const isValid = (s: string): s is ValidState =>
+    (VALID_STATES as readonly string[]).includes(s)
+  if (!isValid(toState)) {
+    throw new Error(
+      `Invalid blueprint state: ${toState}. Valid values: ${VALID_STATES.join(', ')}`,
+    )
+  }
+  return promoteBlueprintMutation(projectRoot, slug, toState)
+}
+
+export async function finalizeBlueprintBySlug(
+  slug: string,
+  options: BlueprintMoveOptions = {},
+): Promise<PromoteBlueprintResult> {
+  const projectRoot = resolveProjectRoot(options.projectRoot)
+  return finalizeBlueprintMutation(projectRoot, slug)
+}
+
 export function registerBlueprintRouter(cli: CAC): void {
   cli
     .command(
@@ -719,6 +774,7 @@ export function registerBlueprintRouter(cli: CAC): void {
     .option('--force-recovery', 'Bypass lifecycle guards for blueprint move')
     .option('--reason <text>', 'Blocked reason for task block')
     .option('--params <json>', 'JSON params for ak blueprint db query')
+    .option('--to <status>', 'Target status for task advance (todo|in-progress|blocked|done|dropped)')
     .option('--staged', 'Audit only staged files')
     .option('--all', 'Audit all blueprints')
     .option('--strict', 'Enable strict audit mode')
@@ -726,12 +782,14 @@ export function registerBlueprintRouter(cli: CAC): void {
       async (subcommand: string | undefined, args: string[], options: BlueprintCommandOptions) => {
         try {
           await executeBlueprintSubcommand(subcommand, args, options, {
+            advanceBlueprintTask,
             auditBlueprints,
             createBlueprint,
             controlBlueprintExec,
             executeBlueprint,
             exportBlueprint,
             finalizeBlueprint,
+            finalizeBlueprintBySlug,
             formatBlueprintAudit,
             formatBlueprintCreation,
             formatBlueprintDetails,
@@ -743,6 +801,7 @@ export function registerBlueprintRouter(cli: CAC): void {
             mutateBlueprintTask,
             parkBlueprint,
             printBlueprintOutput,
+            promoteBlueprintToState,
             readBlueprintExecutionLogs,
             showBlueprint,
             startBlueprint,
