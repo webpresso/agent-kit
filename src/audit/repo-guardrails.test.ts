@@ -405,6 +405,62 @@ describe('repo guardrail audits', () => {
     expect(result.ok).toBe(true)
     expect(result.violations).toHaveLength(0)
   })
+
+  test('auditNoRelativeParentImports skips _sandbox/ directory', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'))
+    mkdirSync(join(root, '_sandbox', 'stale-project', 'src'), { recursive: true })
+    // violation inside _sandbox — must be ignored
+    writeFileSync(
+      join(root, '_sandbox', 'stale-project', 'src', 'bad.ts'),
+      "import foo from '../../../secret'\n",
+    )
+    // clean canonical source
+    writeFileSync(join(root, 'src', 'good.ts'), "export const x = 1\n")
+    const result = auditNoRelativeParentImports(root)
+    expect(result.ok).toBe(true)
+    expect(result.violations).toHaveLength(0)
+  })
+
+  test('auditDocsFrontmatter skips _sandbox/ directory', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'docs', 'guides'), { recursive: true })
+    mkdirSync(join(root, '_sandbox', 'old-docs', 'research'), { recursive: true })
+    // valid doc in canonical tree
+    writeFileSync(
+      join(root, 'docs', 'guides', 'valid.md'),
+      '---\ntype: guide\nlast_updated: 2026-01-01\n---\n# Valid\n',
+    )
+    // invalid doc inside _sandbox — missing frontmatter, must be ignored
+    writeFileSync(
+      join(root, '_sandbox', 'old-docs', 'research', 'stale.md'),
+      '# No frontmatter at all\n',
+    )
+    // auditDocsFrontmatter only walks the docs/ subtree, but walkMarkdownFiles
+    // must skip _sandbox/ if it appears inside docs/
+    mkdirSync(join(root, 'docs', '_sandbox', 'junk'), { recursive: true })
+    writeFileSync(join(root, 'docs', '_sandbox', 'junk', 'bad.md'), '# also no frontmatter\n')
+    const result = auditDocsFrontmatter(root)
+    expect(result.ok).toBe(true)
+    expect(result.violations).toHaveLength(0)
+  })
+
+  test('walkTsconfigParentPaths (via auditNoRelativeParentImports) skips _sandbox/ tsconfigs', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'))
+    mkdirSync(join(root, '_sandbox', 'old-pkg'), { recursive: true })
+    writeFileSync(join(root, 'src', 'index.ts'), 'export const x = 1\n')
+    // tsconfig inside _sandbox uses a parent-relative extends — must not surface
+    writeFileSync(
+      join(root, '_sandbox', 'old-pkg', 'tsconfig.json'),
+      JSON.stringify({ extends: '../../../tsconfig.base.json' }),
+    )
+    // clean root tsconfig
+    writeFileSync(join(root, 'tsconfig.json'), JSON.stringify({ compilerOptions: {} }))
+    const result = auditNoRelativeParentImports(root)
+    expect(result.ok).toBe(true)
+    expect(result.violations).toHaveLength(0)
+  })
 })
 
 describe('validateCommitMessage — branch coverage', () => {

@@ -445,12 +445,15 @@ function readStringRecord(value: unknown): Record<string, string> {
   )
 }
 
+const MARKDOWN_SKIP_DIRS = new Set(['node_modules', 'dist', '.git', '_sandbox'])
+
 function walkMarkdownFiles(root: string): string[] {
   const files: string[] = []
 
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     const path = join(root, entry.name)
     if (entry.isDirectory()) {
+      if (MARKDOWN_SKIP_DIRS.has(entry.name)) continue
       files.push(...walkMarkdownFiles(path))
       continue
     }
@@ -796,7 +799,7 @@ export function auditNoRelativeParentImports(
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const full = join(dir, entry.name)
       if (entry.isDirectory()) {
-        if (entry.name === 'node_modules' || entry.name === 'dist') continue
+        if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name === '_sandbox') continue
         walk(full)
         continue
       }
@@ -867,6 +870,9 @@ const TSCONFIG_SKIP_DIRS = new Set([
   // customer's source tree, not ours. Parent paths inside template
   // tsconfigs reference the scaffolded layout, not the repo layout.
   'template',
+  // Workspace-level scratch/archive space — stale trees produce false
+  // positives; consumers without this directory see no behaviour change.
+  '_sandbox',
 ])
 
 /**
