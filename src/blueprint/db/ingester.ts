@@ -7,6 +7,7 @@ import { glob } from 'glob'
 
 import { parseBlueprintForDb } from './parser/blueprint-db-parser.js'
 import { parseTechDebtForDb } from './parser/tech-debt-db-parser.js'
+import { resolvesCrossRepo } from '#cross-repo/resolver.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
 import { resolveTechDebtRoot } from '#utils/tech-debt-root.js'
 
@@ -65,17 +66,21 @@ function existingTechDebtHash(
 // Cross-org redaction logic
 // ---------------------------------------------------------------------------
 
+/**
+ * Returns true when the cross-org dependency should be allowed (not redacted).
+ * Delegates to `resolvesCrossRepo` which enforces the both-sides allowlist rule.
+ */
 function isAllowedCrossOrg(
   db: Database.Database,
   sourceOrg: string,
   targetOrg: string,
 ): boolean {
-  const row = db
-    .prepare<[string, string], { source_org: string }>(
-      'SELECT source_org FROM correlate_allowlist WHERE source_org = ? AND permitted_org = ?',
+  const rows = db
+    .prepare<[], { source_org: string; permitted_org: string }>(
+      'SELECT source_org, permitted_org FROM correlate_allowlist',
     )
-    .get(sourceOrg, targetOrg)
-  return row !== undefined
+    .all()
+  return resolvesCrossRepo(sourceOrg, targetOrg, rows)
 }
 
 // ---------------------------------------------------------------------------

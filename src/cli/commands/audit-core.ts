@@ -24,6 +24,7 @@ export type AuditKind =
   | 'blueprint-db-consistency'
   | 'blueprint-lifecycle-sql'
   | 'tech-debt-cadence'
+  | 'cross-repo-correlation'
   | 'mutation'
   | 'quality'
   | 'guardrails'
