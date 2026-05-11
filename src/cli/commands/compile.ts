@@ -4,13 +4,32 @@ import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdtempSync, openSync, readFileSync, readdirSync, renameSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
+import { createRequire } from 'node:module'
 
 import { flattenAgentDir, writeFlattenedAssets } from '#compiler/flatten'
 
 const PINNED_RULESYNC_VERSION = '8.15.1'
 const DEFAULT_TARGETS = 'claude,codex,cursor,gemini,opencode,windsurf'
 const COMPILE_MANIFEST_VERSION = 1
+
+// Resolve rulesync bin — checks consumer's node_modules first,
+// then falls back to agent-kit's own bundled rulesync.
+const _require = createRequire(import.meta.url)
+function resolveRulesyncBinFromAgentKit(): string | null {
+  try {
+    const pkgPath = _require.resolve('rulesync/package.json')
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as Record<string, unknown>
+    const binField = pkg.bin
+    const rel = typeof binField === 'string'
+      ? binField
+      : (typeof binField === 'object' && binField !== null && 'rulesync' in binField)
+        ? String((binField as Record<string, string>)['rulesync'])
+        : null
+    if (!rel) return null
+    return join(dirname(pkgPath), rel)
+  } catch { return null }
+}
 
 export interface CompileResult {
   readonly ok: boolean
@@ -26,8 +45,11 @@ export interface CompileManifest {
   readonly outputHashes: Readonly<Record<string, string>>
 }
 
-function resolveRulesyncBin(cwd: string): string {
-  return join(cwd, 'node_modules', '.bin', 'rulesync')
+function resolveRulesyncBin(cwd: string): string | null {
+  // Prefer consumer-local install (supports overrides), fall back to agent-kit's bundled copy.
+  const consumerBin = join(cwd, 'node_modules', '.bin', 'rulesync')
+  if (existsSync(consumerBin)) return consumerBin
+  return resolveRulesyncBinFromAgentKit()
 }
 
 function readRulesyncVersion(cwd: string): string | null {
@@ -110,7 +132,7 @@ export async function runCompile(options: { cwd: string; targets: string }): Pro
   const manifestPath = join(agentDir, '.compile-manifest.json')
   const rulesyncBin = resolveRulesyncBin(cwd)
 
-  if (!existsSync(rulesyncBin)) {
+  if (!rulesyncBin || !existsSync(rulesyncBin)) {
     return { ok: false, targets: targetList, noOp: false, message: 'rulesync is not installed — run `pnpm add rulesync@8.15.1`' }
   }
 
