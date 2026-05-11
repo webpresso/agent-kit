@@ -49,6 +49,7 @@ import { checkRuntimes } from './scaffolders/runtime-check/index.js'
 import { scaffoldSubagents } from './scaffolders/subagents/index.js'
 import { maybeRunVisionInterview } from './scaffolders/vision/interview.js'
 import { scaffoldVision } from './scaffolders/vision/index.js'
+import { scaffoldWorkspaceConfig } from './scaffolders/workspace-config/index.js'
 
 const PRESETS = [
   'context-mode',
@@ -164,6 +165,14 @@ export async function runInit(flags: InitFlags): Promise<number> {
   console.log(
     `  Tier-3 skills: ${tier3Selection.length > 0 ? tier3Selection.join(', ') : '(none)'}`,
   )
+
+  // Unconditional: workspace config is always needed for cross-repo correlation.
+  if (!options.dryRun) {
+    const workspaceConfigResult = await scaffoldWorkspaceConfig()
+    if (workspaceConfigResult.action === 'created') {
+      console.log('  workspace config: ✓ created ~/.agent/workspace.yaml')
+    }
+  }
 
   try {
     const agentReport = scaffoldAgent({
