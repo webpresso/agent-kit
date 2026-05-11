@@ -863,6 +863,10 @@ const TSCONFIG_SKIP_DIRS = new Set([
   // Per-worktree clones (Claude Code Agent isolation) — not part of the
   // canonical source tree, audit them via their own root if needed.
   '.claude',
+  // Scaffolding templates: content under `template/` becomes a downstream
+  // customer's source tree, not ours. Parent paths inside template
+  // tsconfigs reference the scaffolded layout, not the repo layout.
+  'template',
 ])
 
 /**
