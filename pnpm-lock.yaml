@@ -30,6 +30,12 @@ catalogs:
     '@vitejs/plugin-react':
       specifier: ^6.0.1
       version: 6.0.1
+    '@webpresso/runtime-format':
+      specifier: ^0.1.2
+      version: 0.1.2
+    '@webpresso/runtime-storage':
+      specifier: ^0.1.2
+      version: 0.1.2
     gray-matter:
       specifier: ^4.0.3
       version: 4.0.3
@@ -65,9 +71,12 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.4.3)
-      '@webpresso/utils':
-        specifier: 0.1.0-alpha.1
-        version: 0.1.0-alpha.1
+      '@webpresso/runtime-format':
+        specifier: 'catalog:'
+        version: 0.1.2
+      '@webpresso/runtime-storage':
+        specifier: 'catalog:'
+        version: 0.1.2
       cac:
         specifier: ^7.0.0
         version: 7.0.0
@@ -2148,8 +2157,12 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@webpresso/utils@0.1.0-alpha.1':
-    resolution: {integrity: sha512-lNj/L769VTGf6vKIk8wNZd8KMKbRIPe/JE7AIEaD/Ql8A8JEfFoRR3y0dMMvNlzEnSkzxr9rv/TGTKcMu92Uaw==, tarball: https://npm.pkg.github.com/download/@webpresso/utils/0.1.0-alpha.1/620b2352fb1fc6a4ba294bab40abebb499b330a8}
+  '@webpresso/runtime-format@0.1.2':
+    resolution: {integrity: sha512-PBhpSm1McG3Qu9S92RvLCc2pM3kUp+aZEusG+DvC5lFX0df2FczyBrxZvZPAeOkbJACwf614dQzPDChFpoHHaQ==, tarball: https://npm.pkg.github.com/download/@webpresso/runtime-format/0.1.2/03e743bdaf61a09c38bcf2ed3b83f495fe360b0e}
+    engines: {node: '>=24'}
+
+  '@webpresso/runtime-storage@0.1.2':
+    resolution: {integrity: sha512-oDC0eSIvH6eZbn6y40cmJCrvo5C1cGWuCRIEFLVFLyCtLoLTXlsuPN0ttpk9zQH5abAwfu9xT0sVwvkwksnUAA==, tarball: https://npm.pkg.github.com/download/@webpresso/runtime-storage/0.1.2/d608992f020fca5877461e8484090ba154a4dc4a}
     engines: {node: '>=24'}
 
   accepts@2.0.0:
@@ -5446,9 +5459,9 @@ snapshots:
   '@voidzero-dev/vite-plus-win32-x64-msvc@0.1.20':
     optional: true
 
-  '@webpresso/utils@0.1.0-alpha.1':
-    dependencies:
-      zod: 4.4.3
+  '@webpresso/runtime-format@0.1.2': {}
+
+  '@webpresso/runtime-storage@0.1.2': {}
 
   accepts@2.0.0:
     dependencies:

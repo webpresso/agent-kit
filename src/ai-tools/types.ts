@@ -1,4 +1,4 @@
-import type { StorageAdapter, SearchMatch } from '@webpresso/utils/storage-adapter'
+import type { StorageAdapter, SearchMatch } from '@webpresso/runtime-storage/storage-adapter'
 export type { StorageAdapter, SearchMatch }
 
 export type JSONSchema7TypeName =

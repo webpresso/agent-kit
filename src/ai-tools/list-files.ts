@@ -1,5 +1,5 @@
-import { getErrorMessage } from '@webpresso/utils/errors'
-import { formatBytes } from '@webpresso/utils/format'
+import { getErrorMessage } from '@webpresso/runtime-format/errors'
+import { formatBytes } from '@webpresso/runtime-format/format'
 
 import type { AgentTool } from './types.js'
 

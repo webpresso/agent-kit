@@ -269,7 +269,8 @@
   "dependencies": {
     "@manypkg/find-root": "catalog:",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@webpresso/utils": "0.1.0-alpha.1",
+    "@webpresso/runtime-format": "catalog:",
+    "@webpresso/runtime-storage": "catalog:",
     "cac": "^7.0.0",
     "glob": "^13.0.6",
     "gray-matter": "catalog:",

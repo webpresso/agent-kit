@@ -1,4 +1,4 @@
-import { getErrorMessage } from '@webpresso/utils/errors'
+import { getErrorMessage } from '@webpresso/runtime-format/errors'
 
 import type { AgentTool, ChunkMetadata, RAGRetriever, ToolResult } from './types.js'
 
