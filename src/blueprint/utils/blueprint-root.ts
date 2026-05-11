@@ -2,6 +2,7 @@
  * Resolves the blueprints directory for a consumer repo.
  *
  * Checks in priority order:
+ *   0. `.agent-kitrc.json#blueprintsDir`     — explicit config override
  *   1. `<projectPath>/blueprints/`           — generic consumer layout
  *   2. `<projectPath>/webpresso/blueprints/` — webpresso legacy fallback
  *
@@ -10,7 +11,7 @@
  * the legacy fallback so older callers that mkdir after service construction
  * still work.
  */
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 const WEBPRESSO_CONFIG_PATH = 'webpresso/config.yaml'
@@ -22,6 +23,16 @@ const GENERIC_PROJECT_MARKERS = [
   'pnpm-workspace.yaml',
   'package.json',
 ] as const
+
+function readConfiguredBlueprintsDir(projectPath: string): string | undefined {
+  try {
+    const raw = readFileSync(path.join(projectPath, '.agent-kitrc.json'), 'utf-8')
+    const v = (JSON.parse(raw) as { blueprintsDir?: unknown }).blueprintsDir
+    return typeof v === 'string' && v.trim() ? v.trim() : undefined
+  } catch {
+    return undefined
+  }
+}
 
 function hasWebpressoProjectMarker(projectPath: string): boolean {
   return existsSync(path.join(projectPath, WEBPRESSO_CONFIG_PATH))
@@ -68,6 +79,10 @@ export function resolveConsumerRoot({
 }
 
 export function resolveBlueprintRoot(projectPath?: string): string {
+  if (projectPath !== undefined) {
+    const configured = readConfiguredBlueprintsDir(projectPath)
+    if (configured) return path.join(projectPath, configured)
+  }
   return resolveConsumerRoot({
     defaultDir: DEFAULT_BLUEPRINTS_DIR,
     webpressoDir: WEBPRESSO_BLUEPRINTS_DIR,

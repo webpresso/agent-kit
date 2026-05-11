@@ -6,7 +6,26 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { resolveBlueprintRoot } from '#utils/blueprint-root'
+
 import { type MergeOptions, type MergeResult, writeFileMerged } from './merge.js'
+
+/**
+ * For scaffolding (first-time setup), `resolveBlueprintRoot` falls back to
+ * `webpresso/blueprints` for repos with no project markers at all.  A fresh
+ * generic repo should get `blueprints/` instead.  We correct this by only
+ * accepting the webpresso fallback when there is an actual webpresso marker on
+ * disk.
+ */
+function resolveScaffoldBlueprintsDir(repoRoot: string): string {
+  const resolved = resolveBlueprintRoot(repoRoot)
+  const webpressoBlueprints = join(repoRoot, 'webpresso', 'blueprints')
+  const isWebpressoRepo = existsSync(join(repoRoot, 'webpresso', 'config.yaml'))
+  if (!isWebpressoRepo && resolved === webpressoBlueprints) {
+    return join(repoRoot, 'blueprints')
+  }
+  return resolved
+}
 
 export const BLUEPRINT_STATES = [
   'draft',
@@ -54,7 +73,7 @@ export interface ScaffoldBlueprintsInput {
 
 export function scaffoldBlueprints(input: ScaffoldBlueprintsInput): MergeResult[] {
   const { repoRoot, options } = input
-  const blueprintsDir = join(repoRoot, 'blueprints')
+  const blueprintsDir = resolveScaffoldBlueprintsDir(repoRoot)
   const results: MergeResult[] = []
 
   for (const state of BLUEPRINT_STATES) {

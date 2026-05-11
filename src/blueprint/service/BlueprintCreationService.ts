@@ -7,6 +7,7 @@ import path from 'node:path'
 
 import { type Blueprint, parseBlueprint } from '#core/parser'
 import { scanBlueprintDirectory } from '#service/scanner'
+import { resolveBlueprintRoot } from '#utils/blueprint-root'
 import { resolvePackageAsset } from '#utils/package-assets'
 
 type BlueprintDocumentType = 'blueprint' | 'parent-roadmap'
@@ -219,6 +220,8 @@ export class BlueprintCreationService {
 
   private readonly projectRoot: string
 
+  private readonly blueprintsRoot: string
+
   private readonly templatePath: string
 
   constructor(projectRoot: string, options?: BlueprintCreationServiceOptions)
@@ -235,6 +238,7 @@ export class BlueprintCreationService {
       typeof projectRootOrOptions === 'string' ? options : projectRootOrOptions
 
     this.projectRoot = resolvedProjectRoot
+    this.blueprintsRoot = resolveBlueprintRoot(resolvedProjectRoot)
     this.templatePath = resolvedOptions.templatePath ?? DEFAULT_TEMPLATE_PATH
     this.now = resolvedOptions.now ?? (() => new Date())
   }
@@ -251,14 +255,7 @@ export class BlueprintCreationService {
 
     const slug = this.resolveCollisionSafeSlug(baseSlug)
     const title = sentenceCase(goal)
-    const outputPath = path.join(
-      this.projectRoot,
-      'webpresso',
-      'blueprints',
-      'draft',
-      slug,
-      '_overview.md',
-    )
+    const outputPath = path.join(this.blueprintsRoot, 'draft', slug, '_overview.md')
     const relativeFilePath = toPortableRelativePath(this.projectRoot, outputPath)
     const date = formatDate(this.now())
     const template =
@@ -306,7 +303,7 @@ export class BlueprintCreationService {
 
   async create(input: CreateBlueprintDraftInput): Promise<CreatedBlueprintDraft> {
     const draft = await this.compileDraft(input)
-    const draftRoot = path.join(this.projectRoot, 'webpresso', 'blueprints', 'draft')
+    const draftRoot = path.join(this.blueprintsRoot, 'draft')
     const finalDir = path.dirname(draft.outputPath)
 
     await mkdir(draftRoot, { recursive: true })
@@ -338,7 +335,7 @@ export class BlueprintCreationService {
   }
 
   private resolveCollisionSafeSlug(baseSlug: string): string {
-    const blueprintsRoot = path.join(this.projectRoot, 'webpresso', 'blueprints')
+    const blueprintsRoot = this.blueprintsRoot
     const existing = new Set(
       scanBlueprintDirectory({
         baseDir: blueprintsRoot,

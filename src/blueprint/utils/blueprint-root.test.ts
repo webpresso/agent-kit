@@ -63,4 +63,22 @@ describe('consumer layout root resolution', () => {
     expect(resolveBlueprintRoot(root)).toBe(path.join(root, 'webpresso', 'blueprints'))
     expect(resolveTechDebtRoot(root)).toBe(path.join(root, 'webpresso', 'tech-debt'))
   })
+
+  it('uses blueprintsDir from .agent-kitrc.json as highest-priority override', async () => {
+    const root = await tempRoot('ak-config-override-')
+    writeFileSync(path.join(root, 'package.json'), '{"name":"consumer"}')
+    writeFileSync(path.join(root, '.agent-kitrc.json'), JSON.stringify({ blueprintsDir: 'plans' }))
+
+    expect(resolveBlueprintRoot(root)).toBe(path.join(root, 'plans'))
+  })
+
+  it('config override takes priority over an existing webpresso/blueprints directory', async () => {
+    const root = await tempRoot('ak-config-override-webpresso-')
+    mkdirSync(path.join(root, 'webpresso', 'blueprints'), { recursive: true })
+    writeFileSync(path.join(root, 'webpresso', 'config.yaml'), 'project:\n  name: webpresso\n')
+    writeFileSync(path.join(root, 'package.json'), '{"name":"webpresso"}')
+    writeFileSync(path.join(root, '.agent-kitrc.json'), JSON.stringify({ blueprintsDir: 'webpresso/blueprints' }))
+
+    expect(resolveBlueprintRoot(root)).toBe(path.join(root, 'webpresso', 'blueprints'))
+  })
 })

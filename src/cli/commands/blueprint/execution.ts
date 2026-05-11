@@ -323,13 +323,9 @@ export async function reconcileBlueprintRuntimeSnapshot(
   const result = applyRuntimeProgressSnapshot(raw, slug, parsedSnapshot)
   const nextStatus = result.blueprint.status
   const currentDir = path.dirname(blueprintPath)
-  const currentStatus =
-    currentDir
-      .split(`${path.sep}webpresso${path.sep}blueprints${path.sep}`)[1]
-      ?.split(path.sep)[0] ??
-    currentDir.split(`${path.sep}blueprints${path.sep}`)[1]?.split(path.sep)[0]
-  const relativeSlug = slug.replace(/^[^/]+\//u, '')
   const blueprintsRoot = resolveBlueprintRoot(projectRoot)
+  const currentStatus = currentDir.split(blueprintsRoot + path.sep)[1]?.split(path.sep)[0]
+  const relativeSlug = slug.replace(/^[^/]+\//u, '')
   const targetDir = path.join(blueprintsRoot, nextStatus, relativeSlug)
   const targetPath = path.join(targetDir, '_overview.md')
   const nextMarkdown = completionEvidence

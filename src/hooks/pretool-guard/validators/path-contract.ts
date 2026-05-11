@@ -1,5 +1,7 @@
 export const BLUEPRINTS_ROOT = 'webpresso/blueprints'
+const DEFAULT_BLUEPRINTS_ROOT = 'blueprints'
 export const TECH_DEBT_ROOT = 'webpresso/tech-debt'
+const DEFAULT_TECH_DEBT_ROOT = 'tech-debt'
 const BLUEPRINT_STATUSES = new Set([
   'draft',
   'planned',
@@ -10,23 +12,41 @@ const BLUEPRINT_STATUSES = new Set([
 ])
 const KEBAB_CASE_SEGMENT = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
+// Both canonical blueprint-root layouts accepted by default.
+const CANONICAL_BLUEPRINTS_ROOTS = [BLUEPRINTS_ROOT, DEFAULT_BLUEPRINTS_ROOT] as const
+const CANONICAL_TECH_DEBT_ROOTS = [TECH_DEBT_ROOT, DEFAULT_TECH_DEBT_ROOT] as const
+
 function normalizePlanningPath(filePath: string): string {
   return filePath.replace(/\\/g, '/').replace(/^\//, '')
 }
 
-export function isBlueprintPath(filePath: string): boolean {
-  const normalized = normalizePlanningPath(filePath)
-  return normalized === BLUEPRINTS_ROOT || normalized.startsWith(`${BLUEPRINTS_ROOT}/`)
+function matchesRoot(normalized: string, root: string): boolean {
+  return normalized === root || normalized.startsWith(`${root}/`)
 }
 
-export function getNonCanonicalPlanningPathViolation(filePath: string): string | null {
+/**
+ * Returns true if the path is under any accepted blueprints root.
+ * Pass `blueprintsRoot` to restrict to a single configured root.
+ */
+export function isBlueprintPath(filePath: string, blueprintsRoot?: string): boolean {
+  const normalized = normalizePlanningPath(filePath)
+  if (blueprintsRoot !== undefined) return matchesRoot(normalized, blueprintsRoot)
+  return CANONICAL_BLUEPRINTS_ROOTS.some((root) => matchesRoot(normalized, root))
+}
+
+export function getNonCanonicalPlanningPathViolation(
+  filePath: string,
+  blueprintsRoot?: string,
+  techDebtRoot?: string,
+): string | null {
   const normalized = normalizePlanningPath(filePath)
 
+  const bpRoots = blueprintsRoot ? [blueprintsRoot] : CANONICAL_BLUEPRINTS_ROOTS
+  const tdRoots = techDebtRoot ? [techDebtRoot] : CANONICAL_TECH_DEBT_ROOTS
+
   if (
-    normalized === BLUEPRINTS_ROOT ||
-    normalized.startsWith(`${BLUEPRINTS_ROOT}/`) ||
-    normalized === TECH_DEBT_ROOT ||
-    normalized.startsWith(`${TECH_DEBT_ROOT}/`)
+    bpRoots.some((r) => matchesRoot(normalized, r)) ||
+    tdRoots.some((r) => matchesRoot(normalized, r))
   ) {
     return null
   }
@@ -42,47 +62,70 @@ export function getNonCanonicalPlanningPathViolation(filePath: string): string |
     secondSegment === 'tech-debt' ||
     secondSegment === 'plan-history'
   ) {
-    return `Planning markdown must live under ${BLUEPRINTS_ROOT}/ or ${TECH_DEBT_ROOT}/. Got: ${normalized}`
+    const bpLabel = blueprintsRoot
+      ? `${blueprintsRoot}/`
+      : `${DEFAULT_BLUEPRINTS_ROOT}/ or ${BLUEPRINTS_ROOT}/`
+    const tdLabel = techDebtRoot
+      ? `${techDebtRoot}/`
+      : `${DEFAULT_TECH_DEBT_ROOT}/ or ${TECH_DEBT_ROOT}/`
+    return `Planning markdown must live under ${bpLabel} or ${tdLabel}. Got: ${normalized}`
   }
 
   if (parts[0] === 'platform') {
-    return `Legacy planning paths under platform/* are no longer supported. Move blueprints to ${BLUEPRINTS_ROOT}/.`
+    const expectedBp = blueprintsRoot ?? BLUEPRINTS_ROOT
+    return `Legacy planning paths under platform/* are no longer supported. Move blueprints to ${expectedBp}/.`
   }
 
   return null
 }
 
-export function isCanonicalBlueprintOverviewPath(filePath: string): boolean {
+/**
+ * Returns true if the path is the canonical `_overview.md` location for any
+ * accepted blueprints root layout (or the explicitly provided root).
+ */
+export function isCanonicalBlueprintOverviewPath(filePath: string, blueprintsRoot?: string): boolean {
   const normalized = normalizePlanningPath(filePath)
-  const parts = normalized.split('/')
-  return (
-    parts.length === 5 &&
-    parts[0] === 'webpresso' &&
-    parts[1] === 'blueprints' &&
-    BLUEPRINT_STATUSES.has(parts[2] ?? '') &&
-    KEBAB_CASE_SEGMENT.test(parts[3] ?? '') &&
-    parts[4] === '_overview.md'
-  )
+  const roots = blueprintsRoot ? [blueprintsRoot] : CANONICAL_BLUEPRINTS_ROOTS
+  return roots.some((root) => {
+    const rootParts = root.split('/')
+    const parts = normalized.split('/')
+    const n = rootParts.length
+    return (
+      parts.length === n + 3 &&
+      parts.slice(0, n).join('/') === root &&
+      BLUEPRINT_STATUSES.has(parts[n] ?? '') &&
+      KEBAB_CASE_SEGMENT.test(parts[n + 1] ?? '') &&
+      parts[n + 2] === '_overview.md'
+    )
+  })
 }
 
-export function getBlueprintPathViolation(filePath: string): string | null {
+export function getBlueprintPathViolation(filePath: string, blueprintsRoot?: string): string | null {
   const normalized = normalizePlanningPath(filePath)
 
-  if (!isBlueprintPath(normalized)) return null
+  if (!isBlueprintPath(normalized, blueprintsRoot)) return null
 
-  if (normalized.endsWith('/_overview.md') && !isCanonicalBlueprintOverviewPath(normalized)) {
-    return `Blueprint overview files must live at webpresso/blueprints/<status>/<slug>/_overview.md. Got: ${normalized}`
+  if (
+    normalized.endsWith('/_overview.md') &&
+    !isCanonicalBlueprintOverviewPath(normalized, blueprintsRoot)
+  ) {
+    const root = blueprintsRoot ?? BLUEPRINTS_ROOT
+    return `Blueprint overview files must live at ${root}/<status>/<slug>/_overview.md. Got: ${normalized}`
   }
 
-  const parts = normalized.split('/')
-  if (
-    parts.length === 4 &&
-    parts[0] === 'webpresso' &&
-    parts[1] === 'blueprints' &&
-    BLUEPRINT_STATUSES.has(parts[2] ?? '') &&
-    normalized.endsWith('.md')
-  ) {
-    return `Blueprint markdown files cannot live directly under a status directory. Move this file to webpresso/blueprints/${parts[2]}/<slug>/_overview.md or place supporting docs inside webpresso/blueprints/${parts[2]}/<slug>/. Got: ${normalized}`
+  const roots = blueprintsRoot ? [blueprintsRoot] : CANONICAL_BLUEPRINTS_ROOTS
+  for (const root of roots) {
+    const rootParts = root.split('/')
+    const parts = normalized.split('/')
+    const n = rootParts.length
+    if (
+      parts.length === n + 2 &&
+      parts.slice(0, n).join('/') === root &&
+      BLUEPRINT_STATUSES.has(parts[n] ?? '') &&
+      normalized.endsWith('.md')
+    ) {
+      return `Blueprint markdown files cannot live directly under a status directory. Move this file to ${root}/${parts[n]}/<slug>/_overview.md or place supporting docs inside ${root}/${parts[n]}/<slug>/. Got: ${normalized}`
+    }
   }
 
   return null

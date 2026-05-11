@@ -9,6 +9,7 @@ import { readBlueprintExecutionArtifacts } from '#execution/artifacts'
 import { readBlueprintExecutionMetadata } from '#execution/metadata'
 import { BlueprintService } from '#service/BlueprintService'
 import { scanBlueprintDirectory } from '#service/scanner'
+import { resolveBlueprintRoot } from '#utils/blueprint-root'
 
 import { relativeBlueprintSlug } from './local.js'
 
@@ -447,7 +448,7 @@ export async function runBlueprintAudit(
 ): Promise<BlueprintAuditResult> {
   const issues: BlueprintAuditIssue[] = []
   const scanned = scanBlueprintDirectory({
-    baseDir: path.join(options.projectRoot, 'webpresso', 'blueprints'),
+    baseDir: resolveBlueprintRoot(options.projectRoot),
     includeSpecialFolders: true,
   })
 

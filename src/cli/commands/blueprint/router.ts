@@ -6,6 +6,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 import { getProjectRoot } from '#cli/utils'
+import { resolveBlueprintRoot } from '#utils/blueprint-root'
 import {
   applyBlueprintLifecycleToFile,
   BlueprintCreationService,
@@ -553,9 +554,7 @@ export async function moveBlueprint(
   const location = await resolveBlueprintLocation(slug, projectRoot)
   const sourceDir = path.dirname(location.path)
   const targetDir = path.join(
-    projectRoot,
-    'webpresso',
-    'blueprints',
+    resolveBlueprintRoot(projectRoot),
     nextStatus,
     relativeBlueprintSlug(location.slug),
   )

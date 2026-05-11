@@ -31,6 +31,7 @@ export interface AgentkitConfig {
     'setup-agent'?: string
   }
   durablePlanningRoot: string
+  blueprintsDir?: string
   lastInit?: string
 }
 
@@ -57,6 +58,7 @@ export function readConfig(repoRoot: string): AgentkitConfig | null {
     const tier3 = Array.isArray(installed?.tier3Skills) ? installed.tier3Skills : []
     const overrides = Array.isArray(rules?.overrides) ? rules.overrides : []
     const durablePlanningRoot = readOptionalString(parsed.durablePlanningRoot)
+    const blueprintsDir = readOptionalString((parsed as { blueprintsDir?: unknown }).blueprintsDir)
     const serverName = readOptionalString(mcp?.serverName)
     const toolPrefix = readOptionalString(mcp?.toolPrefix)
     const normalizedMcp =
@@ -72,6 +74,7 @@ export function readConfig(repoRoot: string): AgentkitConfig | null {
         'setup-agent': readOptionalString(scripts?.['setup-agent']),
       },
       durablePlanningRoot: durablePlanningRoot ?? DEFAULT_DURABLE_PLANNING_ROOT,
+      ...(blueprintsDir ? { blueprintsDir } : {}),
       lastInit: readOptionalString(parsed.lastInit),
     }
   } catch {
@@ -106,6 +109,7 @@ export function mergeConfig(
       'setup-agent': incoming.scripts['setup-agent'] ?? existing.scripts['setup-agent'],
     },
     durablePlanningRoot: incoming.durablePlanningRoot || existing.durablePlanningRoot,
+    blueprintsDir: incoming.blueprintsDir ?? existing.blueprintsDir,
     lastInit: incoming.lastInit ?? existing.lastInit,
   }
 }
