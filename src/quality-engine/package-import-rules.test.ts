@@ -20,7 +20,7 @@ describe('findDuplicateFunctions', () => {
       const results = findDuplicateFunctions(content)
       expect(results).toHaveLength(1)
       expect(results[0]?.name).toBe('capitalize')
-      expect(results[0]?.package).toBe('@webpresso/utils')
+      expect(results[0]?.package).toBe('@webpresso/runtime-format')
       expect(results[0]?.source).toBe('string')
     })
 
@@ -113,7 +113,7 @@ describe('createBlockedResult', () => {
   it('should include the violating function name', () => {
     const sharedFunc = {
       name: 'capitalize',
-      package: '@webpresso/utils',
+      package: '@webpresso/runtime-format',
       source: 'string',
       category: 'string' as const,
     }
@@ -124,36 +124,36 @@ describe('createBlockedResult', () => {
   it('should produce a correct import suggestion', () => {
     const sharedFunc = {
       name: 'capitalize',
-      package: '@webpresso/utils',
+      package: '@webpresso/runtime-format',
       source: 'string',
       category: 'string' as const,
     }
     const result = createBlockedResult(sharedFunc)
-    expect(result.suggestion).toBe("import { capitalize } from '@webpresso/utils/string'")
+    expect(result.suggestion).toBe("import { capitalize } from '@webpresso/runtime-format/string'")
   })
 
   it('should include package and source in the result', () => {
     const sharedFunc = {
       name: 'formatBytes',
-      package: '@webpresso/utils',
+      package: '@webpresso/runtime-format',
       source: 'format',
       category: 'format' as const,
     }
     const result = createBlockedResult(sharedFunc)
-    expect(result.package).toBe('@webpresso/utils')
+    expect(result.package).toBe('@webpresso/runtime-format')
     expect(result.source).toBe('format')
   })
 
   it('should include a descriptive message', () => {
     const sharedFunc = {
       name: 'slugify',
-      package: '@webpresso/utils',
+      package: '@webpresso/runtime-format',
       source: 'string',
       category: 'string' as const,
     }
     const result = createBlockedResult(sharedFunc)
     expect(result.message).toContain('slugify')
-    expect(result.message).toContain('@webpresso/utils')
+    expect(result.message).toContain('@webpresso/runtime-format')
   })
 
   it('should produce suggestion for error-responses source', () => {
