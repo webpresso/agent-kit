@@ -5,6 +5,9 @@ import { execFileSync } from 'node:child_process'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
+import { parseBlueprintForDb } from '#db/parser/blueprint-db-parser'
+import { blueprintToSpecKit } from '#export/spec-kit/index'
+
 import { getProjectRoot } from '#cli/utils'
 import { resolveBlueprintRoot } from '#utils/blueprint-root'
 import {
@@ -98,6 +101,7 @@ type BlueprintDocumentType = 'blueprint' | 'parent-roadmap'
 
 export interface BlueprintCommandOptions
   extends BlueprintAuditOptions, BlueprintMoveOptions, BlueprintListOptions, BlueprintNewOptions {
+  format?: string
   reason?: string
   '--': string[]
 }
@@ -139,6 +143,13 @@ export interface BlueprintLifecycleMutationResult {
 
 export interface CreateBlueprintResult extends CreatedBlueprint {
   message: string
+}
+
+export interface ExportBlueprintResult {
+  format: string
+  message: string
+  outputDir: string
+  files: Record<string, number>
 }
 
 export interface ExecuteBlueprintResult {
@@ -656,6 +667,43 @@ export async function auditBlueprints(
   })
 }
 
+export async function exportBlueprint(
+  slug: string,
+  format: string,
+  options: BlueprintMoveOptions = {},
+): Promise<ExportBlueprintResult> {
+  const projectRoot = resolveProjectRoot(options.projectRoot)
+  const location = await resolveBlueprintLocation(slug, projectRoot)
+  const raw = await readFile(location.path, 'utf-8')
+  const parsed = parseBlueprintForDb(raw, location.path, location.slug)
+
+  const bundle = blueprintToSpecKit(parsed, projectRoot)
+  const outDir = path.join(path.dirname(location.path), 'spec-kit')
+  await mkdir(outDir, { recursive: true })
+
+  const fileMap: Record<string, string> = {
+    'spec.md': bundle.spec,
+    'plan.md': bundle.plan,
+    'tasks.md': bundle.tasks,
+    'constitution.md': bundle.constitution,
+  }
+
+  const sizes: Record<string, number> = {}
+  for (const [name, content] of Object.entries(fileMap)) {
+    const dest = path.join(outDir, name)
+    await writeFile(dest, content, 'utf-8')
+    sizes[name] = Buffer.byteLength(content, 'utf-8')
+  }
+
+  const rel = path.relative(projectRoot, outDir)
+  return {
+    format,
+    message: `Exported to ${rel}/`,
+    outputDir: outDir,
+    files: sizes,
+  }
+}
+
 export function registerBlueprintRouter(cli: CAC): void {
   cli
     .command(
@@ -666,6 +714,7 @@ export function registerBlueprintRouter(cli: CAC): void {
     .option('--no-tui', 'Use plain terminal output')
     .option('--complexity <complexity>', 'Blueprint complexity (XS|S|M|L|XL)')
     .option('--type <type>', 'Blueprint type (blueprint|parent-roadmap)')
+    .option('--format <format>', 'Export format (spec-kit)')
     .option('--force-recovery', 'Bypass lifecycle guards for blueprint move')
     .option('--reason <text>', 'Blocked reason for task block')
     .option('--staged', 'Audit only staged files')
@@ -679,6 +728,7 @@ export function registerBlueprintRouter(cli: CAC): void {
             createBlueprint,
             controlBlueprintExec,
             executeBlueprint,
+            exportBlueprint,
             finalizeBlueprint,
             formatBlueprintAudit,
             formatBlueprintCreation,
