@@ -104,3 +104,20 @@ stryker-setup-*.js
 # Anything under .vite-plus/ is a runtime install with absolute symlinks
 # that won't transfer between machines — keep tracked fixtures elsewhere.
 __fixtures__/fake-home/.vite-plus/
+
+# === agent-kit: generated (do not edit between these markers)
+.claude/skills/
+.codex/skills/
+.cursor/rules/
+.windsurf/rules/
+.gemini/commands/
+.opencode/agents/
+.opencode/commands/
+.agents/skills/
+.agent/.merged.provenance.json
+.agent/.compile-manifest.json
+.agent/.rotation-log.jsonl
+.agent/.blueprints.db
+.agent/.blueprints.lock
+.agent/.tail-hint-history.jsonl
+# === agent-kit: generated end
