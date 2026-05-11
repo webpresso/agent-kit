@@ -858,6 +858,8 @@ const TSCONFIG_SKIP_DIRS = new Set([
   '.next',
   '.turbo',
   '.omx',
+  // Mutation-testing sandbox (gitignored, generated per package).
+  '.stryker-tmp',
   // Per-worktree clones (Claude Code Agent isolation) — not part of the
   // canonical source tree, audit them via their own root if needed.
   '.claude',
