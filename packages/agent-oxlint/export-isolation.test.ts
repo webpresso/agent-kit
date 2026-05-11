@@ -45,8 +45,8 @@ const FORBIDDEN_IMPORT_PATTERNS = [
 
 // Plugin names must not reference private internal package namespaces.
 const FORBIDDEN_PLUGIN_NAME_PATTERNS = [
-  { pattern: /@webpresso\//, label: "@webpresso/ in plugin meta.name" },
-  { pattern: /@repo\//, label: "@repo/ in plugin meta.name" },
+  { pattern: /@webpresso\//, label: '@webpresso/ in plugin meta.name' },
+  { pattern: /@repo\//, label: '@repo/ in plugin meta.name' },
 ]
 
 describe('export-isolation: plugin files must not import from @webpresso/ or @repo/', () => {
@@ -56,10 +56,7 @@ describe('export-isolation: plugin files must not import from @webpresso/ or @re
       const content = readFileSync(filePath, 'utf-8')
 
       for (const { pattern, label } of FORBIDDEN_IMPORT_PATTERNS) {
-        expect(
-          pattern.test(content),
-          `${file} contains forbidden pattern: ${label}`,
-        ).toBe(false)
+        expect(pattern.test(content), `${file} contains forbidden pattern: ${label}`).toBe(false)
       }
     })
   }
@@ -69,9 +66,7 @@ describe('export-isolation: plugin files must export a valid oxlint plugin shape
   // tier-boundaries uses a top-level await dynamic import (package-boundaries.js),
   // which cannot be loaded directly in this test context.
   // It is excluded from the shape check but still covered by the import-pattern test above.
-  const SHAPE_TESTABLE_PLUGIN_FILES = PLUGIN_FILES.filter(
-    (f) => f !== 'src/tier-boundaries.js',
-  )
+  const SHAPE_TESTABLE_PLUGIN_FILES = PLUGIN_FILES.filter((f) => f !== 'src/tier-boundaries.js')
 
   for (const file of SHAPE_TESTABLE_PLUGIN_FILES) {
     it(`${file} default export has valid plugin shape (meta.name + rules)`, async () => {
@@ -86,34 +81,17 @@ describe('export-isolation: plugin files must export a valid oxlint plugin shape
       ).toBe(true)
 
       // Valid oxlint plugin shape: meta.name (string) + rules (object)
-      expect(
-        plugin.meta,
-        `${file}: plugin must have a .meta property`,
-      ).toBeTruthy()
-      expect(
-        typeof plugin.meta.name,
-        `${file}: plugin.meta.name must be a string`,
-      ).toBe('string')
-      expect(
-        plugin.meta.name.length > 0,
-        `${file}: plugin.meta.name must be non-empty`,
-      ).toBe(true)
-      expect(
-        plugin.rules,
-        `${file}: plugin must have a .rules property`,
-      ).toBeTruthy()
-      expect(
-        typeof plugin.rules,
-        `${file}: plugin.rules must be an object`,
-      ).toBe('object')
+      expect(plugin.meta, `${file}: plugin must have a .meta property`).toBeTruthy()
+      expect(typeof plugin.meta.name, `${file}: plugin.meta.name must be a string`).toBe('string')
+      expect(plugin.meta.name.length > 0, `${file}: plugin.meta.name must be non-empty`).toBe(true)
+      expect(plugin.rules, `${file}: plugin must have a .rules property`).toBeTruthy()
+      expect(typeof plugin.rules, `${file}: plugin.rules must be an object`).toBe('object')
     })
   }
 })
 
 describe('export-isolation: plugin meta.name must not reference private packages', () => {
-  const SHAPE_TESTABLE_PLUGIN_FILES = PLUGIN_FILES.filter(
-    (f) => f !== 'src/tier-boundaries.js',
-  )
+  const SHAPE_TESTABLE_PLUGIN_FILES = PLUGIN_FILES.filter((f) => f !== 'src/tier-boundaries.js')
 
   for (const file of SHAPE_TESTABLE_PLUGIN_FILES) {
     it(`${file} plugin meta.name contains no private package references`, async () => {

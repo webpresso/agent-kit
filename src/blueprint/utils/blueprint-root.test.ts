@@ -77,7 +77,10 @@ describe('consumer layout root resolution', () => {
     mkdirSync(path.join(root, 'webpresso', 'blueprints'), { recursive: true })
     writeFileSync(path.join(root, 'webpresso', 'config.yaml'), 'project:\n  name: webpresso\n')
     writeFileSync(path.join(root, 'package.json'), '{"name":"webpresso"}')
-    writeFileSync(path.join(root, '.agent-kitrc.json'), JSON.stringify({ blueprintsDir: 'webpresso/blueprints' }))
+    writeFileSync(
+      path.join(root, '.agent-kitrc.json'),
+      JSON.stringify({ blueprintsDir: 'webpresso/blueprints' }),
+    )
 
     expect(resolveBlueprintRoot(root)).toBe(path.join(root, 'webpresso', 'blueprints'))
   })

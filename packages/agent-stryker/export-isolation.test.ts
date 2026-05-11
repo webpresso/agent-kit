@@ -5,9 +5,7 @@ import { describe, expect, it } from 'vitest'
 const ROOT = import.meta.dirname
 
 function stripComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^\s*\/\/.*$/gm, '')
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 }
 
 describe('export isolation', () => {

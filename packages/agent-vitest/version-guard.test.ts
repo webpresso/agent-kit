@@ -82,12 +82,20 @@ const createWorkspaceFixture = ({
   )
   writeFileSync(
     join(workspaceDir, 'package.json'),
-    JSON.stringify({ name: '@repo/root', private: true, devDependencies: { vitest: `^${rootVitestVersion}` } }, null, 2),
+    JSON.stringify(
+      { name: '@repo/root', private: true, devDependencies: { vitest: `^${rootVitestVersion}` } },
+      null,
+      2,
+    ),
   )
   mkdirSync(packageDir, { recursive: true })
   writeFileSync(
     join(packageDir, 'package.json'),
-    JSON.stringify({ name: packageName, private: true, devDependencies: { vitest: `^${packageVitestVersion}` } }, null, 2),
+    JSON.stringify(
+      { name: packageName, private: true, devDependencies: { vitest: `^${packageVitestVersion}` } },
+      null,
+      2,
+    ),
   )
   writeFileSync(configPath, 'export default {};\n')
 
@@ -142,9 +150,7 @@ describe.sequential('version guard', () => {
       assertNonWorkersVitest4: ({ caller }: { caller?: string }) => void
     }>(versionGuardModuleUrl)
 
-    expect(() => assertNonWorkersVitest4({ caller: 'test' })).toThrow(
-      /requires vitest 4\.x/i,
-    )
+    expect(() => assertNonWorkersVitest4({ caller: 'test' })).toThrow(/requires vitest 4\.x/i)
   })
 
   it('prefers npm_package_json over cwd when resolving the consumer package', async () => {

@@ -64,10 +64,14 @@ export function createMockDurableObjectNamespace(): DurableObjectNamespace {
       name: undefined,
     })),
     get: vi.fn<(...args: unknown[]) => unknown>(async () => ({
-      fetch: vi.fn<(...args: unknown[]) => unknown>(async () => new Response(JSON.stringify({ data: {} }))),
+      fetch: vi.fn<(...args: unknown[]) => unknown>(
+        async () => new Response(JSON.stringify({ data: {} })),
+      ),
     })),
     getByName: vi.fn<(...args: unknown[]) => unknown>(async () => ({
-      fetch: vi.fn<(...args: unknown[]) => unknown>(async () => new Response(JSON.stringify({ data: {} }))),
+      fetch: vi.fn<(...args: unknown[]) => unknown>(
+        async () => new Response(JSON.stringify({ data: {} })),
+      ),
     })),
   } as unknown as DurableObjectNamespace
 }

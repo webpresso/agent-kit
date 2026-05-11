@@ -6,7 +6,11 @@ import type { MockExecutionContext } from './execution-context.js'
 import { createMockEnv } from './env.js'
 import { createMockExecutionContext } from './execution-context.js'
 import { createCloudflareRuntimeMocks } from './durable-objects.js'
-import { createAuthenticatedRequest, createUnauthenticatedRequest, createCorsRequest } from './requests.js'
+import {
+  createAuthenticatedRequest,
+  createUnauthenticatedRequest,
+  createCorsRequest,
+} from './requests.js'
 
 // ============================================================================
 // Type Definitions

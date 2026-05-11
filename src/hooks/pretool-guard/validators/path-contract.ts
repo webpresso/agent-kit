@@ -83,7 +83,10 @@ export function getNonCanonicalPlanningPathViolation(
  * Returns true if the path is the canonical `_overview.md` location for any
  * accepted blueprints root layout (or the explicitly provided root).
  */
-export function isCanonicalBlueprintOverviewPath(filePath: string, blueprintsRoot?: string): boolean {
+export function isCanonicalBlueprintOverviewPath(
+  filePath: string,
+  blueprintsRoot?: string,
+): boolean {
   const normalized = normalizePlanningPath(filePath)
   const roots = blueprintsRoot ? [blueprintsRoot] : CANONICAL_BLUEPRINTS_ROOTS
   return roots.some((root) => {
@@ -100,7 +103,10 @@ export function isCanonicalBlueprintOverviewPath(filePath: string, blueprintsRoo
   })
 }
 
-export function getBlueprintPathViolation(filePath: string, blueprintsRoot?: string): string | null {
+export function getBlueprintPathViolation(
+  filePath: string,
+  blueprintsRoot?: string,
+): string | null {
   const normalized = normalizePlanningPath(filePath)
 
   if (!isBlueprintPath(normalized, blueprintsRoot)) return null

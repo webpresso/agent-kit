@@ -28,7 +28,13 @@ describe('findRepoRoot', () => {
   })
 
   it('should find root from a temp directory nested inside the repo', () => {
-    const tmpInRepo = join(process.cwd(), 'packages', 'foundation', 'docs-linter', '__tmp_test_dir__')
+    const tmpInRepo = join(
+      process.cwd(),
+      'packages',
+      'foundation',
+      'docs-linter',
+      '__tmp_test_dir__',
+    )
     mkdirSync(tmpInRepo, { recursive: true })
     try {
       const root = findRepoRoot(tmpInRepo)

@@ -10,10 +10,14 @@ type DropConsoleTerserOptions = {
   keep?: string[]
 }
 
-type RolldownMinify = {
-  compress?: Record<string, unknown>
-  [key: string]: unknown
-} | string | false | undefined
+type RolldownMinify =
+  | {
+      compress?: Record<string, unknown>
+      [key: string]: unknown
+    }
+  | string
+  | false
+  | undefined
 
 type RolldownOutputEntry = {
   minify?: RolldownMinify
@@ -60,7 +64,9 @@ const CONSOLE_METHODS = [
 function getDroppedConsoleCalls(keep: readonly string[]): string[] {
   const keepSet = new Set(keep)
 
-  return CONSOLE_METHODS.filter((method) => !keepSet.has(method)).map((method) => `console.${method}`)
+  return CONSOLE_METHODS.filter((method) => !keepSet.has(method)).map(
+    (method) => `console.${method}`,
+  )
 }
 
 function mergeRolldownOutputMinify(
@@ -80,10 +86,7 @@ function mergeRolldownOutputMinify(
   }
 }
 
-function mergeRolldownMinify(
-  current: RolldownMinify,
-  patch: RolldownMinify,
-): RolldownMinify {
+function mergeRolldownMinify(current: RolldownMinify, patch: RolldownMinify): RolldownMinify {
   if (
     typeof current === 'object' &&
     current !== null &&
@@ -94,7 +97,9 @@ function mergeRolldownMinify(
       ...current,
       ...patch,
       compress: {
-        ...(typeof current.compress === 'object' && current.compress !== null ? current.compress : {}),
+        ...(typeof current.compress === 'object' && current.compress !== null
+          ? current.compress
+          : {}),
         ...(typeof patch.compress === 'object' && patch.compress !== null ? patch.compress : {}),
       },
     }

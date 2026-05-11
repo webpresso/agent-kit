@@ -84,7 +84,12 @@ export function deduplicateCodexHookTrustState(config: string): string {
     kept.push(lines[i]!)
     i += 1
   }
-  return kept.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n'
+  return (
+    kept
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trimEnd() + '\n'
+  )
 }
 
 export function migrateDeprecatedCodexHooksFeatureFlag(raw: string): string {

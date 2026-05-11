@@ -36,7 +36,9 @@ function runConfigHook(plugin: Plugin, config: UserConfig = {}): UserConfig | un
 }
 
 function getTerserCompress(config: UserConfig | undefined): Record<string, unknown> | undefined {
-  const terserOptions = config?.build?.terserOptions as { compress?: Record<string, unknown> } | undefined
+  const terserOptions = config?.build?.terserOptions as
+    | { compress?: Record<string, unknown> }
+    | undefined
   return terserOptions?.compress
 }
 

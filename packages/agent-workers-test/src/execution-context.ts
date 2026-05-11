@@ -30,7 +30,9 @@ export type MockExecutionContext = ExecutionContext<unknown> & {
  */
 export function createMockExecutionContext(): MockExecutionContext {
   return {
-    waitUntil: vi.fn<(...args: unknown[]) => unknown>() as unknown as (promise: Promise<unknown>) => void,
+    waitUntil: vi.fn<(...args: unknown[]) => unknown>() as unknown as (
+      promise: Promise<unknown>,
+    ) => void,
     passThroughOnException: vi.fn<(...args: unknown[]) => unknown>() as unknown as () => void,
     props: {},
   } as MockExecutionContext

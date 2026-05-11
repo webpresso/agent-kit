@@ -501,9 +501,7 @@ function matchCategoryPackage(pkg: PackageInfo, query: string): boolean {
   }
 
   return (
-    shortName === `${query}-web` ||
-    shortName === `${query}-api` ||
-    shortName === `${query}-worker`
+    shortName === `${query}-web` || shortName === `${query}-api` || shortName === `${query}-worker`
   )
 }
 

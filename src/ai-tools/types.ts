@@ -334,4 +334,3 @@ export interface AgentTool {
   inputSchema: JSONSchema7
   execute: (input: Record<string, unknown>, context: ToolContext) => Promise<ToolResult>
 }
-

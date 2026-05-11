@@ -18,6 +18,7 @@ export function registerFormatCommand(cli: CAC): void {
       const result = await runFormatSafely({
         files: files && files.length > 0 ? files : undefined,
         check: Boolean(flags.check),
+        cwd: process.cwd(),
       })
 
       if (!result.ok) {

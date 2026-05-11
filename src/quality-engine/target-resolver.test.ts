@@ -64,8 +64,14 @@ function createMockFs(
   return {
     existsSync: (p) => files.has(p) || dirs.has(p),
     statSync: (p) => {
-      if (files.has(p)) return { isFile: () => true, isDirectory: () => false } as ReturnType<FileSystem['statSync']>
-      if (dirs.has(p)) return { isFile: () => false, isDirectory: () => true } as ReturnType<FileSystem['statSync']>
+      if (files.has(p))
+        return { isFile: () => true, isDirectory: () => false } as ReturnType<
+          FileSystem['statSync']
+        >
+      if (dirs.has(p))
+        return { isFile: () => false, isDirectory: () => true } as ReturnType<
+          FileSystem['statSync']
+        >
       throw new Error(`ENOENT: ${p}`)
     },
     readdirSync: (p) => {
@@ -77,7 +83,9 @@ function createMockFs(
           const name = dir.slice(prefix.length)
           if (name && !seen.has(name)) {
             seen.add(name)
-            entries.push({ name, isDirectory: () => true, isFile: () => false } as ReturnType<FileSystem['readdirSync']>[number])
+            entries.push({ name, isDirectory: () => true, isFile: () => false } as ReturnType<
+              FileSystem['readdirSync']
+            >[number])
           }
         }
       }
@@ -130,7 +138,10 @@ describe('resolveTargetStrict', () => {
     })
 
     expect(
-      resolveTargetStrict('@webpresso/control-plane-client', { fs: mockFs, repoRoot: MOCK_REPO_ROOT }),
+      resolveTargetStrict('@webpresso/control-plane-client', {
+        fs: mockFs,
+        repoRoot: MOCK_REPO_ROOT,
+      }),
     ).toEqual({
       type: 'package',
       value: ['--filter=@webpresso/control-plane-client'],
@@ -145,7 +156,10 @@ describe('resolveTargetStrict', () => {
   })
 
   it('resolves short names and deduplicates filters', () => {
-    const result = resolveTargetStrict('cli2, config cli2', { fs: mockFs, repoRoot: MOCK_REPO_ROOT })
+    const result = resolveTargetStrict('cli2, config cli2', {
+      fs: mockFs,
+      repoRoot: MOCK_REPO_ROOT,
+    })
 
     expect(result.type).toBe('package')
     expect(result.value).toEqual(
@@ -201,7 +215,11 @@ describe('findMatchingPackages', () => {
   })
 
   it('matches non-webpresso scoped packages by short name', () => {
-    const genericFs = createMockFs(GENERIC_PACKAGES, MOCK_REPO_ROOT, ['apps/*', 'packages/*', 'infra'])
+    const genericFs = createMockFs(GENERIC_PACKAGES, MOCK_REPO_ROOT, [
+      'apps/*',
+      'packages/*',
+      'infra',
+    ])
     const packages = getWorkspacePackages(MOCK_REPO_ROOT, genericFs)
     const matches = findMatchingPackages(packages, 'client')
 
@@ -211,7 +229,11 @@ describe('findMatchingPackages', () => {
 
 describe('getWorkspacePackages', () => {
   it('respects workspace patterns from pnpm-workspace.yaml', () => {
-    const genericFs = createMockFs(GENERIC_PACKAGES, MOCK_REPO_ROOT, ['apps/*', 'packages/*', 'infra'])
+    const genericFs = createMockFs(GENERIC_PACKAGES, MOCK_REPO_ROOT, [
+      'apps/*',
+      'packages/*',
+      'infra',
+    ])
 
     expect(getWorkspacePackages(MOCK_REPO_ROOT, genericFs)).toEqual(
       expect.arrayContaining([
@@ -344,15 +366,15 @@ describe('resolveCommandTargets', () => {
   })
 
   it('throws when combining positional target with --package flag', () => {
-    expect(() =>
-      resolveCommandTargets('test', ['cli2'], { package: ['cli2'] }),
-    ).toThrow('Cannot combine positional target')
+    expect(() => resolveCommandTargets('test', ['cli2'], { package: ['cli2'] })).toThrow(
+      'Cannot combine positional target',
+    )
   })
 
   it('throws when combining positional target with --file flag', () => {
-    expect(() =>
-      resolveCommandTargets('test', ['foo.ts'], { file: ['foo.ts'] }),
-    ).toThrow('Cannot combine positional target')
+    expect(() => resolveCommandTargets('test', ['foo.ts'], { file: ['foo.ts'] })).toThrow(
+      'Cannot combine positional target',
+    )
   })
 
   it('throws on multiple positional targets', () => {
@@ -466,12 +488,16 @@ describe('readPackageInfo', () => {
       },
       statSync: (p: string) => {
         if (p.includes('no-name') && p.endsWith('package.json'))
-          return { isFile: () => true, isDirectory: () => false } as ReturnType<FileSystem['statSync']>
+          return { isFile: () => true, isDirectory: () => false } as ReturnType<
+            FileSystem['statSync']
+          >
         return noNameFs.statSync(p)
       },
       readdirSync: (p: string) => {
         if (p.includes('test')) {
-          return [{ name: 'no-name', isDirectory: () => true, isFile: () => false }] as ReturnType<FileSystem['readdirSync']>
+          return [{ name: 'no-name', isDirectory: () => true, isFile: () => false }] as ReturnType<
+            FileSystem['readdirSync']
+          >
         }
         return noNameFs.readdirSync(p)
       },
@@ -593,10 +619,11 @@ describe('findMatchingPackages', () => {
   })
 
   it('resolves category query "platform"', () => {
-    const mockFsWithPlatform = createMockFs([
-      ...MOCK_PACKAGES,
-      { dir: 'apps/agile-vibe/platform-api', name: '@webpresso/platform-api' },
-    ], '/repo', ['packages/**', 'apps/agile-vibe/*'])
+    const mockFsWithPlatform = createMockFs(
+      [...MOCK_PACKAGES, { dir: 'apps/agile-vibe/platform-api', name: '@webpresso/platform-api' }],
+      '/repo',
+      ['packages/**', 'apps/agile-vibe/*'],
+    )
     const packages = getWorkspacePackages('/repo', mockFsWithPlatform)
     const matches = findMatchingPackages(packages, 'platform')
     expect(matches.length).toBeGreaterThan(0)
@@ -673,10 +700,11 @@ describe('resolvePartialPath', () => {
 
 describe('findMatchingPackages with category query', () => {
   it('resolves admin category query matching admin-web packages', () => {
-    const mockFs2 = createMockFs([
-      ...MOCK_PACKAGES,
-      { dir: 'apps/web/admin-web', name: '@webpresso/admin-web' },
-    ], '/repo', ['packages/**', 'apps/web/*'])
+    const mockFs2 = createMockFs(
+      [...MOCK_PACKAGES, { dir: 'apps/web/admin-web', name: '@webpresso/admin-web' }],
+      '/repo',
+      ['packages/**', 'apps/web/*'],
+    )
     const packages = getWorkspacePackages('/repo', mockFs2)
     const matches = findMatchingPackages(packages, 'admin')
     const names = matches.map((p) => p.name)
@@ -684,10 +712,11 @@ describe('findMatchingPackages with category query', () => {
   })
 
   it('resolves website category query matching website exactly', () => {
-    const mockFs2 = createMockFs([
-      ...MOCK_PACKAGES,
-      { dir: 'apps/web/website', name: '@webpresso/website' },
-    ], '/repo', ['packages/**', 'apps/web/*'])
+    const mockFs2 = createMockFs(
+      [...MOCK_PACKAGES, { dir: 'apps/web/website', name: '@webpresso/website' }],
+      '/repo',
+      ['packages/**', 'apps/web/*'],
+    )
     const packages = getWorkspacePackages('/repo', mockFs2)
     const matches = findMatchingPackages(packages, 'website')
     const names = matches.map((p) => p.name)

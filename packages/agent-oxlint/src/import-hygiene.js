@@ -12,16 +12,13 @@ function isRelativeParentPath(source) {
 
 function isRelativeGeneratedImport(source) {
   return (
-    typeof source === 'string' &&
-    source.startsWith('.') &&
-    source.includes('.webpresso/generated/')
+    typeof source === 'string' && source.startsWith('.') && source.includes('.webpresso/generated/')
   )
 }
 
 function isGeneratedPathsSourceImport(source) {
   return (
-    typeof source === 'string' &&
-    source.includes('/packages/cli/cli-utils/src/generated-paths')
+    typeof source === 'string' && source.includes('/packages/cli/cli-utils/src/generated-paths')
   )
 }
 

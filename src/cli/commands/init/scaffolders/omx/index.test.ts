@@ -4,7 +4,11 @@ import { join } from 'node:path'
 
 import { describe, expect, it, vi } from 'vitest'
 
-import { ensureOmx, migrateDeprecatedCodexHooksFeatureFlag, deduplicateCodexHookTrustState } from './index.js'
+import {
+  ensureOmx,
+  migrateDeprecatedCodexHooksFeatureFlag,
+  deduplicateCodexHookTrustState,
+} from './index.js'
 
 function makeSpawn(behaviors: Array<{ status: number | null; error?: Error }>) {
   let i = 0
@@ -207,12 +211,22 @@ describe('ensureOmx — deduplication of legacy hook trust state', () => {
     const dir = mkdtempSync(join(tmpdir(), 'ak-omx-dedup-'))
     const configPath = join(dir, 'config.toml')
     const END = '# End OMX-owned Codex hook trust state'
-    const ENTRY = '[hooks.state."/home/.codex/hooks.json:post_tool_use:0:0"]\ntrusted_hash = "sha256:abc"'
+    const ENTRY =
+      '[hooks.state."/home/.codex/hooks.json:post_tool_use:0:0"]\ntrusted_hash = "sha256:abc"'
     // Two duplicate end-marker blocks simulating accumulated legacy state
-    writeFileSync(configPath, `[features]\nhooks = true\n\n${ENTRY}\n${END}\n\n${ENTRY}\n${END}\n`, 'utf8')
+    writeFileSync(
+      configPath,
+      `[features]\nhooks = true\n\n${ENTRY}\n${END}\n\n${ENTRY}\n${END}\n`,
+      'utf8',
+    )
 
     const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
-    ensureOmx({ repoRoot: '/tmp/repo', options: { overwrite: false, dryRun: false }, spawn, configPath })
+    ensureOmx({
+      repoRoot: '/tmp/repo',
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      configPath,
+    })
 
     const written = readFileSync(configPath, 'utf8')
     expect(written).not.toContain('[hooks.state.')

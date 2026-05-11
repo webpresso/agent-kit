@@ -114,7 +114,8 @@ describe('extractLogContext', () => {
         value: ['--filter=@repo/client', '--filter=@scope/shared-ui'],
       },
       {
-        packageContext: (filters) => filters.map((filter) => extractPackageLogContext(filter)).join(','),
+        packageContext: (filters) =>
+          filters.map((filter) => extractPackageLogContext(filter)).join(','),
       },
     )
 

@@ -31,7 +31,11 @@ export function getNonCanonicalPlanningPathViolation(filePath: string): string |
   }
 
   const secondSegment = parts[1]
-  if (secondSegment === 'blueprints' || secondSegment === 'tech-debt' || secondSegment === 'plan-history') {
+  if (
+    secondSegment === 'blueprints' ||
+    secondSegment === 'tech-debt' ||
+    secondSegment === 'plan-history'
+  ) {
     return `Planning markdown must live under ${BLUEPRINTS_ROOT}/ or ${TECH_DEBT_ROOT}/. Got: ${normalized}`
   }
 

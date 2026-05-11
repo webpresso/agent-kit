@@ -91,10 +91,8 @@ export function extractLogContext(
   resolved: ResolvedTarget,
   options: ExtractLogContextOptions = {},
 ): string | undefined {
-  const {
-    packageContext = defaultPackageLogContext,
-    fileContext = () => String(Date.now()),
-  } = options
+  const { packageContext = defaultPackageLogContext, fileContext = () => String(Date.now()) } =
+    options
 
   if (resolved.type === 'package' && resolved.value.length > 0) {
     return packageContext(resolved.value)

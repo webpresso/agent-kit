@@ -71,9 +71,7 @@ describe('scaffoldAgentHooks', () => {
   it('wires ak-check-dev-link as a SessionStart hook in both Claude and Codex', () => {
     scaffoldAgentHooks({ repoRoot, options: {} })
 
-    const claude = JSON.parse(
-      readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8'),
-    ) as {
+    const claude = JSON.parse(readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8')) as {
       hooks: { SessionStart: Array<{ hooks: Array<{ command: string }> }> }
     }
     const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
@@ -103,9 +101,7 @@ describe('scaffoldAgentHooks', () => {
       JSON.stringify(
         {
           hooks: {
-            SessionStart: [
-              { hooks: [{ type: 'command', command: wrappedGstack, timeout: 2 }] },
-            ],
+            SessionStart: [{ hooks: [{ type: 'command', command: wrappedGstack, timeout: 2 }] }],
           },
         },
         null,

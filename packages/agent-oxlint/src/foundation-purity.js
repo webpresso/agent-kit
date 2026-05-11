@@ -9,9 +9,7 @@ function isForbiddenImport(source) {
 
 function isFoundationFile(context) {
   const filename =
-    typeof context.getFilename === 'function'
-      ? context.getFilename()
-      : context.filename
+    typeof context.getFilename === 'function' ? context.getFilename() : context.filename
 
   return filename.replaceAll('\\', '/').includes('/packages/foundation/')
 }

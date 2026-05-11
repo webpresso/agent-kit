@@ -3,7 +3,14 @@ import { describe, expect, it } from 'vitest'
 
 // Inlined from agent-kit blueprint schema (not a dependency of this public package).
 // Kept in sync manually. See: webpresso/agent-kit src/blueprint/core/schema.ts
-const LIFECYCLE_BLUEPRINT_STATUS_OPTIONS = ['draft', 'planned', 'parked', 'in-progress', 'completed', 'archived'] as const
+const LIFECYCLE_BLUEPRINT_STATUS_OPTIONS = [
+  'draft',
+  'planned',
+  'parked',
+  'in-progress',
+  'completed',
+  'archived',
+] as const
 const TASK_STATUS_OPTIONS = ['todo', 'in_progress', 'blocked', 'done'] as const
 
 import { getAvailableTemplates, loadTemplate } from './template-loader'
@@ -54,9 +61,9 @@ describe('loadTemplate', () => {
       const result = loadTemplate('blueprint')
 
       expect(result.success).toBe(true)
-      expect(result.schema!.frontmatter.required.status.enum).toEqual(
-        [...LIFECYCLE_BLUEPRINT_STATUS_OPTIONS],
-      )
+      expect(result.schema!.frontmatter.required.status.enum).toEqual([
+        ...LIFECYCLE_BLUEPRINT_STATUS_OPTIONS,
+      ])
       expect(result.schema!.task_format?.required_metadata).toContain(
         `**Status:** ${[...TASK_STATUS_OPTIONS].join('|')}`,
       )
@@ -87,7 +94,13 @@ describe('loadTemplate', () => {
     it('should provide actionable error with path hint', () => {
       const templateName = 'invalid'
       const result = loadTemplate(templateName)
-      const expectedPath = resolve(import.meta.dirname, '..', '..', 'templates', `${templateName}.yaml`)
+      const expectedPath = resolve(
+        import.meta.dirname,
+        '..',
+        '..',
+        'templates',
+        `${templateName}.yaml`,
+      )
 
       expect(result.success).toBe(false)
       expect(result.errors![0].message).toContain(expectedPath)

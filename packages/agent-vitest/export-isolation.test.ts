@@ -3,8 +3,20 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const ROOT = import.meta.dirname
-const PORTABLE_FILES = ['generated-runtime-aliases.ts', 'node.ts', 'react.ts', 'react-router.ts', 'workers.ts']
-const WEBPRESSO_FILES = ['webpresso-generated-runtime-aliases.ts', 'webpresso-node.ts', 'webpresso-react.ts', 'webpresso-react-router.ts', 'webpresso-workers.ts']
+const PORTABLE_FILES = [
+  'generated-runtime-aliases.ts',
+  'node.ts',
+  'react.ts',
+  'react-router.ts',
+  'workers.ts',
+]
+const WEBPRESSO_FILES = [
+  'webpresso-generated-runtime-aliases.ts',
+  'webpresso-node.ts',
+  'webpresso-react.ts',
+  'webpresso-react-router.ts',
+  'webpresso-workers.ts',
+]
 const FORBIDDEN = ['.webpresso', '@webpresso/', '@webpresso\\/', '@webpresso/source']
 
 function read(name: string): string {
@@ -12,9 +24,7 @@ function read(name: string): string {
 }
 
 function stripComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/^\s*\/\/.*$/gm, '')
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 }
 
 describe('export isolation', () => {

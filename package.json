@@ -199,6 +199,42 @@
         "types": "./dist/esm/vite/local.d.ts",
         "default": "./dist/esm/vite/local.js"
       }
+    },
+    "./ai-memory": {
+      "import": {
+        "types": "./dist/esm/ai-memory/index.d.ts",
+        "default": "./dist/esm/ai-memory/index.js"
+      }
+    },
+    "./ai-memory/checkpoint/*": {
+      "import": {
+        "types": "./dist/esm/ai-memory/checkpoint/*.d.ts",
+        "default": "./dist/esm/ai-memory/checkpoint/*.js"
+      }
+    },
+    "./ai-memory/facts/*": {
+      "import": {
+        "types": "./dist/esm/ai-memory/facts/*.d.ts",
+        "default": "./dist/esm/ai-memory/facts/*.js"
+      }
+    },
+    "./ai-memory/hierarchy/*": {
+      "import": {
+        "types": "./dist/esm/ai-memory/hierarchy/*.d.ts",
+        "default": "./dist/esm/ai-memory/hierarchy/*.js"
+      }
+    },
+    "./ai-prompts": {
+      "import": {
+        "types": "./dist/esm/ai-prompts/index.d.ts",
+        "default": "./dist/esm/ai-prompts/index.js"
+      }
+    },
+    "./ai-tools": {
+      "import": {
+        "types": "./dist/esm/ai-tools/index.d.ts",
+        "default": "./dist/esm/ai-tools/index.js"
+      }
     }
   },
   "scripts": {

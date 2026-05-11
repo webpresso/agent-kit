@@ -13,7 +13,9 @@ export function findRepoRoot(startDir: string = process.cwd()): string {
 
     const parent = path.dirname(current)
     if (parent === current) {
-      throw new Error(`Could not find repo root with ${REPO_ROOT_MARKER}. Started from: ${startDir}`)
+      throw new Error(
+        `Could not find repo root with ${REPO_ROOT_MARKER}. Started from: ${startDir}`,
+      )
     }
 
     current = parent

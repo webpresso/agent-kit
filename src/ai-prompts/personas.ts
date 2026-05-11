@@ -1,4 +1,3 @@
-
 export const BAZIL_PROMPT = `<persona>
 <name>Steve</name>
 <title>Business Strategist & Investor</title>

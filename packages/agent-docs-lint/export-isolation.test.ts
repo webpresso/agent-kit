@@ -50,7 +50,10 @@ describe('export isolation', () => {
       }
     }
 
-    expect(violations, `Files importing from @webpresso/agent-kit: ${violations.join(', ')}`).toHaveLength(0)
+    expect(
+      violations,
+      `Files importing from @webpresso/agent-kit: ${violations.join(', ')}`,
+    ).toHaveLength(0)
   })
 
   /**
@@ -86,7 +89,10 @@ describe('export isolation', () => {
       }
     }
 
-    expect(violations, `Files importing from @webpresso/generated: ${violations.join(', ')}`).toHaveLength(0)
+    expect(
+      violations,
+      `Files importing from @webpresso/generated: ${violations.join(', ')}`,
+    ).toHaveLength(0)
   })
 
   it('no src file uses ../../../ (monorepo-relative paths)', async () => {
@@ -119,7 +125,10 @@ describe('export isolation', () => {
     const mod = await import(distIndex)
     const exportedNames = Object.keys(mod)
 
-    expect(exportedNames.length, 'dist/index.js should export at least one named export').toBeGreaterThan(0)
+    expect(
+      exportedNames.length,
+      'dist/index.js should export at least one named export',
+    ).toBeGreaterThan(0)
 
     const undefinedExports = exportedNames.filter((name) => mod[name] === undefined)
     expect(
@@ -133,15 +142,21 @@ describe('export isolation', () => {
     const detachedPackageDir = join(tempRoot, 'package')
 
     try {
-      await cp(join(import.meta.dirname, 'dist'), join(detachedPackageDir, 'dist'), { recursive: true })
-      await cp(join(import.meta.dirname, 'templates'), join(detachedPackageDir, 'templates'), { recursive: true })
+      await cp(join(import.meta.dirname, 'dist'), join(detachedPackageDir, 'dist'), {
+        recursive: true,
+      })
+      await cp(join(import.meta.dirname, 'templates'), join(detachedPackageDir, 'templates'), {
+        recursive: true,
+      })
       await writeFile(
         join(detachedPackageDir, 'package.json'),
         JSON.stringify({ name: '@test/docs-linter-detached', type: 'module' }),
         'utf-8',
       )
 
-      const templateLoader = await import(join(detachedPackageDir, 'dist', 'generator', 'template-loader.js'))
+      const templateLoader = await import(
+        join(detachedPackageDir, 'dist', 'generator', 'template-loader.js')
+      )
       const result = templateLoader.loadTemplate('guide')
 
       expect(result.success).toBe(true)

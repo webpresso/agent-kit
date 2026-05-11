@@ -49,7 +49,6 @@ export const baseConfig = {
     '!src/**/*.d.ts',
   ],
 
-
   // Performance settings
   concurrency: 4,
   timeoutMS: 60000,

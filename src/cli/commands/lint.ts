@@ -20,6 +20,7 @@ export function registerLintCommand(cli: CAC): void {
       const result = await runLint({
         files: files && files.length > 0 ? files : undefined,
         fix: Boolean(flags.fix),
+        cwd: process.cwd(),
       })
 
       if (flags.pnpmFallback === false && result.backend === 'pnpm') {

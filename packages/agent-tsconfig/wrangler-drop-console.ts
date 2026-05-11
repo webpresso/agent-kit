@@ -37,7 +37,9 @@ const CONSOLE_METHODS = [
 function getDroppedConsoleCalls(keep: readonly string[]): string[] {
   const keepSet = new Set(keep)
 
-  return CONSOLE_METHODS.filter((method) => !keepSet.has(method)).map((method) => `console.${method}`)
+  return CONSOLE_METHODS.filter((method) => !keepSet.has(method)).map(
+    (method) => `console.${method}`,
+  )
 }
 
 /**
@@ -82,7 +84,10 @@ function getDroppedConsoleCalls(keep: readonly string[]): string[] {
  * @param options.exclude - Array of console methods to keep (e.g., ['error', 'warn'])
  * @returns esbuild plugin
  */
-export function dropConsolePlugin(options?: { enabled?: boolean; exclude?: string[] }): EsbuildLikePlugin {
+export function dropConsolePlugin(options?: {
+  enabled?: boolean
+  exclude?: string[]
+}): EsbuildLikePlugin {
   const enabled = options?.enabled ?? process.env.NODE_ENV === 'production'
   const exclude = options?.exclude ?? []
 

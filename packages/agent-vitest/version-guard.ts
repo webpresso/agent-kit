@@ -26,9 +26,10 @@ const hasWorkersPool = (): boolean => {
     dependencies?: Record<string, string>
   }>()
 
-  return !!pkg && (
-    '@cloudflare/vitest-pool-workers' in (pkg.devDependencies ?? {}) ||
-    '@cloudflare/vitest-pool-workers' in (pkg.dependencies ?? {})
+  return (
+    !!pkg &&
+    ('@cloudflare/vitest-pool-workers' in (pkg.devDependencies ?? {}) ||
+      '@cloudflare/vitest-pool-workers' in (pkg.dependencies ?? {}))
   )
 }
 

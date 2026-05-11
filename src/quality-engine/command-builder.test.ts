@@ -223,9 +223,9 @@ describe('buildVitestCommand', () => {
   })
 
   it('throws when multiple vitest config files are provided', () => {
-    expect(() =>
-      buildVitestCommand(['vitest.config.ts', 'vitest.unit.config.ts'], {}),
-    ).toThrow('Expected at most one vitest config file')
+    expect(() => buildVitestCommand(['vitest.config.ts', 'vitest.unit.config.ts'], {})).toThrow(
+      'Expected at most one vitest config file',
+    )
   })
 
   it('passes --root when test files array is empty', () => {
@@ -427,10 +427,7 @@ describe('normalizeCacInputs', () => {
 })
 
 describe('filePathsToPackageFilters', () => {
-  const mockResolve: (
-    target: string,
-    deps: { repoRoot: string },
-  ) => ResolvedTarget = (target) => ({
+  const mockResolve: (target: string, deps: { repoRoot: string }) => ResolvedTarget = (target) => ({
     type: 'package',
     value: [`--filter=@webpresso/${target.replace(/^packages\//, '').replace(/\//g, '-')}`],
   })

@@ -4,9 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite-plus/test/config'
 
 import { createFlakinessReporter } from './flakiness-reporter.js'
-import {
-  webpressoGeneratedRuntimeAliases,
-} from './webpresso-generated-runtime-aliases.js'
+import { webpressoGeneratedRuntimeAliases } from './webpresso-generated-runtime-aliases.js'
 import { resolvedExecArgv, resolvedMaxWorkers, resolvedPool } from './pool-defaults.js'
 import { assertNonWorkersVitest4 } from './version-guard.js'
 
