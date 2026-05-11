@@ -8,6 +8,8 @@ import type {
   ShowBlueprintResult,
 } from './router.js'
 
+import { executeBlueprintDbSubcommand } from './db-commands.js'
+
 /**
  * Thrown by `executeBlueprintSubcommand` when `audit` finds issues and
  * the caller should exit with a non-zero code.  Keeps `process.exit` out
@@ -282,9 +284,24 @@ export async function executeBlueprintSubcommand(
       deps.printBlueprintOutput(options.json ? result : result.message, options.json)
       return
     }
+    case 'db': {
+      const verb = args[0]
+      const verbArgs = args.slice(1)
+      await executeBlueprintDbSubcommand(
+        verb,
+        verbArgs,
+        {
+          params: (options as BlueprintCommandOptions & { params?: string }).params,
+          projectRoot: options.projectRoot,
+          json: options.json,
+        },
+        deps.printBlueprintOutput,
+      )
+      return
+    }
     default: {
       throw new Error(
-        `Unknown blueprint subcommand: ${subcommand}\n\nUse one of: list, new, show, exec, start, park, task, finalize, audit, move, control, logs`,
+        `Unknown blueprint subcommand: ${subcommand}\n\nUse one of: list, new, show, exec, start, park, task, finalize, audit, move, control, logs, db`,
       )
     }
   }

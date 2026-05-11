@@ -98,6 +98,7 @@ type BlueprintDocumentType = 'blueprint' | 'parent-roadmap'
 
 export interface BlueprintCommandOptions
   extends BlueprintAuditOptions, BlueprintMoveOptions, BlueprintListOptions, BlueprintNewOptions {
+  params?: string
   reason?: string
   '--': string[]
 }
@@ -668,6 +669,7 @@ export function registerBlueprintRouter(cli: CAC): void {
     .option('--type <type>', 'Blueprint type (blueprint|parent-roadmap)')
     .option('--force-recovery', 'Bypass lifecycle guards for blueprint move')
     .option('--reason <text>', 'Blocked reason for task block')
+    .option('--params <json>', 'JSON params for ak blueprint db query')
     .option('--staged', 'Audit only staged files')
     .option('--all', 'Audit all blueprints')
     .option('--strict', 'Enable strict audit mode')
