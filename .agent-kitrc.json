@@ -8,11 +8,6 @@
   "durablePlanningRoot": ".agent/planning/",
   "lastInit": "2026-04-25T19:21:03.361Z",
   "rules": {
-    "overrides": [
-      "extraction-parity",
-      "no-timeout-as-fix",
-      "pre-implementation",
-      "ts-coding-conventions"
-    ]
+    "overrides": []
   }
 }
