@@ -1,0 +1,57 @@
+# Changesets-driven release workflow.
+#
+# Flow:
+#   1. Contributor runs `pnpm changeset` on their branch and commits the file.
+#   2. On merge to main, this workflow opens/updates a "Version Packages" PR.
+#   3. Merging the Version PR publishes to GitHub Packages.
+#
+# To release: merge the "Version Packages" PR created by this workflow.
+# To dry-run: gh workflow run release.yml -f dry-run=true
+
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Skip publish (version PR only)"
+        type: boolean
+        required: false
+        default: true
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    env:
+      GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+    permissions:
+      contents: write
+      packages: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_PACKAGES_TOKEN }}
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: pnpm install
+      - uses: changesets/action@v1.7.0
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != true }}
+        with:
+          publish: pnpm changeset publish
+          version: pnpm changeset version
+          commit: "chore: version packages"
+          title: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
