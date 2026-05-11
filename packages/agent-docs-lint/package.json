@@ -51,7 +51,7 @@
     "consola": "^3.4.0",
     "gray-matter": "catalog:",
     "markdownlint": "0.40.0",
-    "remark-frontmatter": "^5.0.0",
+    "remark-frontmatter": "catalog:",
     "remark-parse": "^11.0.0",
     "remark-stringify": "^11.0.0",
     "tinyglobby": "^0.2.12",

@@ -33,6 +33,7 @@ import { scaffoldDocs } from './scaffold-docs.js'
 import { scaffoldBaseKit } from './scaffold-base-kit.js'
 import { scaffoldMonorepoNav } from './scaffold-monorepo-nav.js'
 import { scaffoldAgentHooks } from './scaffolders/agent-hooks/index.js'
+import { scaffoldAuditHooks } from './scaffolders/audit-hooks/index.js'
 import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js'
 import { ensureCodexAgentKitMcp, ensureCodexPlaywrightMcp } from './scaffolders/codex-mcp/index.js'
 import { ensureGstack } from './scaffolders/gstack/index.js'
@@ -224,6 +225,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
     })
 
     const agentHooksResult = scaffoldAgentHooks({ repoRoot: consumer.repoRoot, options })
+    const auditHooksResult = scaffoldAuditHooks({ repoRoot: consumer.repoRoot, options })
     const opencodePluginResult = scaffoldOpencodePlugin({ repoRoot: consumer.repoRoot, options })
     let claudeRulesResults: MergeResult[] = []
     try {
@@ -436,6 +438,10 @@ export async function runInit(flags: InitFlags): Promise<number> {
       ...(agentsMdResult ? [agentsMdResult] : []),
       agentHooksResult.claude,
       agentHooksResult.codex,
+      {
+        targetPath: auditHooksResult.preCommitPath,
+        action: auditHooksResult.action === 'appended' ? 'overwritten' : auditHooksResult.action,
+      } satisfies import('./merge.js').MergeResult,
       opencodePluginResult,
       ...claudeRulesResults,
       ...subagentResults,

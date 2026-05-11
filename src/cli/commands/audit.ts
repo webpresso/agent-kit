@@ -58,6 +58,25 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
       changedOnly: options.changedOnly,
       strict: options.strict,
     }),
+  'skill-sizes': async (root, options) =>
+    (await import('#audit/skill-sizes')).auditSkillSizesAsRepoResult(root, {
+      staged: options.staged,
+    }),
+  'broken-refs': async (root, options) => {
+    const result = (await import('#audit/broken-refs')).auditBrokenRefsAsRepoResult(root, {
+      staged: options.staged,
+    })
+    return {
+      ok: result.ok,
+      title: result.title,
+      checked: result.checked,
+      violations: result.violations,
+    }
+  },
+  'memory-rotation': async (root, options) =>
+    (await import('#audit/memory-rotation')).auditMemoryRotationAsRepoResult(root, {
+      strict: options.strict,
+    }),
   rules: async (root) => runContentAudit(root, 'rule'),
   skills: async (root) => runContentAudit(root, 'skill'),
 }
@@ -189,6 +208,7 @@ export function registerAuditCommand(cli: CAC): void {
     .option('--max-html-eager-js-total-bytes <bytes>', 'Max total size for HTML-eager JS assets')
     .option('--ignore <substring>', 'Ignore matching bundle-budget asset path; repeatable')
     .option('--vision-path <path>', "Path to VISION.md for the 'vision' audit (default: VISION.md)")
+    .option('--staged', 'Only audit git-staged files (fast pre-commit mode)')
     .action(
       async (kind: string | undefined, target: string | undefined, options: AuditActionOptions) => {
         const outcome = await runAuditDispatch(kind, target ? [target] : [], options, {
