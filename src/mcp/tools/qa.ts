@@ -23,6 +23,7 @@ import { z } from 'zod'
 
 import type { ToolDescriptor, ToolHandlerResult } from '#mcp/auto-discover'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
+import { detectUiChanges } from './_shared/ui-detection.js'
 import lintTool from './lint.js'
 import testTool from './test.js'
 import typecheckTool from './typecheck.js'
@@ -137,16 +138,20 @@ function toCompactLeaf(result: SubResultShape): CompactLeafResult {
   }
 }
 
+const UI_QA_HINT = 'Static QA passed. For visual/UX QA, run /qa (gstack).'
+
 function summarizeQa(
   lint: CompactLeafResult,
   typecheck: CompactLeafResult,
   test: CompactLeafResult,
+  hasUiChanges = false,
 ): string {
   const failed: string[] = []
   if (lint.passed !== true) failed.push('lint')
   if (typecheck.passed !== true) failed.push('typecheck')
   if (test.passed !== true) failed.push('test')
-  return failed.length === 0 ? 'qa passed' : `qa failed: ${failed.join(', ')}`
+  if (failed.length > 0) return `qa failed: ${failed.join(', ')}`
+  return hasUiChanges ? `qa passed. ${UI_QA_HINT}` : 'qa passed'
 }
 
 const tool: ToolDescriptor = {
@@ -184,9 +189,11 @@ const tool: ToolDescriptor = {
       typeof typecheck.unwrapError === 'string' ||
       typeof test.unwrapError === 'string'
 
+    const hasUiChanges = passed && input.cwd ? detectUiChanges(input.cwd) : false
+
     const payload = {
       passed,
-      summary: summarizeQa(lint, typecheck, test),
+      summary: summarizeQa(lint, typecheck, test, hasUiChanges),
       details: { lint, typecheck, test },
     }
     return createSummaryResult(payload, composeError ? { isError: true } : {})

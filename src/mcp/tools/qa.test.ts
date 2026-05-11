@@ -6,6 +6,11 @@ import { fileURLToPath } from 'node:url'
 const lintHandler = vi.hoisted(() => vi.fn())
 const typecheckHandler = vi.hoisted(() => vi.fn())
 const testHandler = vi.hoisted(() => vi.fn())
+const detectUiChangesMock = vi.hoisted(() => vi.fn<[string], boolean>())
+
+vi.mock('./_shared/ui-detection.js', () => ({
+  detectUiChanges: detectUiChangesMock,
+}))
 
 vi.mock('./lint.js', () => ({
   default: {
@@ -371,5 +376,85 @@ describe('ak_qa tool', () => {
 
     const result = await akQaTool.handler({})
     expect(result.isError).toBeUndefined()
+  })
+
+  it('appends the UI tail-hint to summary when QA passes and UI files are detected', async () => {
+    lintHandler.mockReset()
+    typecheckHandler.mockReset()
+    testHandler.mockReset()
+    detectUiChangesMock.mockReturnValue(true)
+
+    lintHandler.mockResolvedValue(wrapPayload({ passed: true, summary: 'lint passed', issues: [] }))
+    typecheckHandler.mockResolvedValue(
+      wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
+    )
+    testHandler.mockResolvedValue(
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
+    )
+
+    const result = await akQaTool.handler({ cwd: '/some/repo' })
+    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      passed: boolean
+      summary: string
+    }
+
+    expect(payload.passed).toBe(true)
+    expect(payload.summary).toContain('qa passed')
+    expect(payload.summary).toContain('Static QA passed. For visual/UX QA, run /qa (gstack).')
+  })
+
+  it('does NOT append the UI tail-hint when QA fails even with UI files', async () => {
+    lintHandler.mockReset()
+    typecheckHandler.mockReset()
+    testHandler.mockReset()
+    detectUiChangesMock.mockReturnValue(true)
+
+    lintHandler.mockResolvedValue(
+      wrapPayload({
+        passed: false,
+        summary: 'lint failed',
+        issues: [{ file: 'Button.tsx', line: 1, rule: 'x', message: 'y' }],
+      }),
+    )
+    typecheckHandler.mockResolvedValue(
+      wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
+    )
+    testHandler.mockResolvedValue(
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
+    )
+
+    const result = await akQaTool.handler({ cwd: '/some/repo' })
+    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      passed: boolean
+      summary: string
+    }
+
+    expect(payload.passed).toBe(false)
+    expect(payload.summary).not.toContain('Static QA passed')
+    expect(payload.summary).toBe('qa failed: lint')
+  })
+
+  it('does NOT append the UI tail-hint when QA passes but no UI files detected', async () => {
+    lintHandler.mockReset()
+    typecheckHandler.mockReset()
+    testHandler.mockReset()
+    detectUiChangesMock.mockReturnValue(false)
+
+    lintHandler.mockResolvedValue(wrapPayload({ passed: true, summary: 'lint passed', issues: [] }))
+    typecheckHandler.mockResolvedValue(
+      wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
+    )
+    testHandler.mockResolvedValue(
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
+    )
+
+    const result = await akQaTool.handler({ cwd: '/some/repo' })
+    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      passed: boolean
+      summary: string
+    }
+
+    expect(payload.passed).toBe(true)
+    expect(payload.summary).toBe('qa passed')
   })
 })

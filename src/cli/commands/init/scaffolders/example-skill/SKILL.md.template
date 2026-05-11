@@ -1,0 +1,16 @@
+---
+name: hello-webpresso
+description: Say hello and demonstrate agent-kit is wired correctly. Run this to verify your setup.
+when_to_use: When you want to verify agent-kit is installed and skills are discoverable.
+user-invocable: true
+---
+
+# hello-webpresso
+
+Verifies agent-kit setup is complete.
+
+## Steps
+
+1. Confirm `.agent/skills/hello-webpresso/SKILL.md` exists
+2. Confirm `ak compile` has been run (check `.claude/skills/` exists)
+3. Say: "agent-kit is ready. Run `ak compile` to sync to all IDEs."

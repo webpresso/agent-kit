@@ -36,6 +36,7 @@ import { scaffoldAgentHooks } from './scaffolders/agent-hooks/index.js'
 import { scaffoldAuditHooks } from './scaffolders/audit-hooks/index.js'
 import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js'
 import { ensureCodexAgentKitMcp, ensureCodexPlaywrightMcp } from './scaffolders/codex-mcp/index.js'
+import { scaffoldExampleSkill } from './scaffolders/example-skill/index.js'
 import { ensureGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
 import { ensureOmx } from './scaffolders/omx/index.js'
@@ -49,6 +50,7 @@ import { scaffoldVision } from './scaffolders/vision/index.js'
 
 const PRESETS = [
   'context-mode',
+  'example-skill',
   'gstack',
   'lore-commits',
   'omx',
@@ -258,6 +260,11 @@ export async function runInit(flags: InitFlags): Promise<number> {
     const presetResults = []
     if (presets.includes('lore-commits')) {
       presetResults.push(scaffoldLoreCommits({ repoRoot: consumer.repoRoot, options }))
+    }
+
+    if (presets.includes('example-skill') && !options.dryRun) {
+      await scaffoldExampleSkill(consumer.repoRoot)
+      console.log('  example-skill: ✓ scaffolded .agent/skills/hello-webpresso/SKILL.md')
     }
 
     if (presets.includes('vision')) {
