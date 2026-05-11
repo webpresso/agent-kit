@@ -1,0 +1,9 @@
+\x1b[31m FAIL \x1b[0m src/example.test.ts
+\x1b[31m● example › adds numbers\x1b[0m
+
+  \x1b[31mexpected 1 to be 2\x1b[0m
+
+  at Object.<anonymous> (src/example.test.ts:5:3)
+
+\x1b[32m PASS \x1b[0m src/other.test.ts
+\x1b[2m Tests  \x1b[22m\x1b[31m1 failed\x1b[0m\x1b[2m, 1 passed (2)\x1b[22m

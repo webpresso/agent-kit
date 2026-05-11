@@ -1,0 +1,4 @@
+# Stand-in fixture — actual 50KB blob is generated programmatically in tests
+# via: 'x'.repeat(50_000) or 'all good\n'.repeat(3000)
+# This file exists to document the fixture; the test builds the blob in memory.
+x
