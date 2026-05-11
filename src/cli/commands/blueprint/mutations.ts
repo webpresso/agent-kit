@@ -90,17 +90,6 @@ async function reIngestDb(cwd: string): Promise<void> {
 }
 
 /**
- * Parse `status:` from YAML frontmatter (between `---` fences).
- * Returns the current status value, or null if not found.
- */
-function parseFrontmatterStatus(content: string): string | null {
-  const fmMatch = /^---\r?\n([\s\S]*?)\r?\n---/.exec(content)
-  if (!fmMatch) return null
-  const fm = fmMatch[1] ?? ''
-  const statusMatch = /^status:\s*['"]?([^'"\r\n]+?)['"]?\s*$/m.exec(fm)
-  return statusMatch?.[1] ?? null
-}
-
 /**
  * Update `status:` in YAML frontmatter. Preserves everything else verbatim.
  */
