@@ -127,6 +127,11 @@ Creates `blueprints/draft/add-real-time-notifications-via-sse/_overview.md`
 from `docs/templates/blueprint.md`, with frontmatter filled in
 (`status: draft`, `complexity: M`, `created:` today, etc.).
 
+> **Blueprint root** — generic repos use `blueprints/` at the repo root;
+> repos with a `webpresso/config.yaml` sentinel use `webpresso/blueprints/`.
+> Override either default by setting `"blueprintsDir": "<path>"` in
+> `.agent-kitrc.json`.
+
 Edit the file, then:
 
 ```bash

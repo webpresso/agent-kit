@@ -98,7 +98,17 @@ surface split into three bands:
 
 Fresh consumer repos default to top-level `blueprints/` and `tech-debt/`.
 The historical `webpresso/blueprints/` and `webpresso/tech-debt/` layouts
-remain a compatibility fallback when the Webpresso sentinel exists.
+remain a compatibility fallback when the Webpresso sentinel (`webpresso/config.yaml`) exists.
+
+To pin the location explicitly — bypassing directory detection — set `blueprintsDir` in
+`.agent-kitrc.json`:
+
+```json
+{ "blueprintsDir": "webpresso/blueprints" }
+```
+
+This is the highest-priority override; all blueprint commands (`new`, `list`, `audit`,
+`start`, `finalize`, `move`) and the pretool hook validator read from the same source.
 
 Future `agent-kit-hooks` candidates are tracked in `docs/research/quality-audits/agent-kit-hooks-candidate-matrix.md`; only generic validators should move into that optional package.
 
