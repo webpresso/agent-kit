@@ -1,8 +1,7 @@
 ---
 type: blueprint
 title: Agent-asset minimal audit slice — three audit verbs + tech-debt loop
-status: parked
-parked-reason: "No task breakdown; parked until a concrete product-wedge is identified."
+status: planned
 complexity: S
 owner: ozby
 created: 2026-05-11
@@ -25,7 +24,7 @@ reviews:
   - codex_outside_voice: 2026-05-11
   - plan_refine: 2026-05-11
 lifecycle:
-  state: parked
+  state: planned
 ---
 
 # Agent-asset minimal audit slice (revised — full KG deferred behind concrete gates)

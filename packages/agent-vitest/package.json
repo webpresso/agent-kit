@@ -84,7 +84,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/webpresso/tooling.git",
-    "directory": "packages/vitest-config"
+    "url": "git+https://github.com/webpresso/agent-kit.git",
+    "directory": "packages/agent-vitest"
   }
 }

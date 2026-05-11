@@ -1,8 +1,7 @@
 ---
 type: blueprint
 title: Blueprint structured store — custom MCP over SQLite + cross-repo correlation (permission-aware)
-status: parked
-parked-reason: "No task breakdown; parked until a concrete product-wedge is identified."
+status: planned
 complexity: L
 owner: ozby
 created: 2026-05-11
@@ -28,7 +27,7 @@ reviews:
   - codex_outside_voice: 2026-05-11
   - plan_refine: 2026-05-11
 lifecycle:
-  state: parked
+  state: planned
 ---
 
 # Blueprint structured store (revised post-CEO-review 2026-05-11)
