@@ -6,5 +6,13 @@
     ]
   },
   "durablePlanningRoot": ".agent/planning/",
-  "lastInit": "2026-04-25T19:21:03.361Z"
+  "lastInit": "2026-04-25T19:21:03.361Z",
+  "rules": {
+    "overrides": [
+      "no-timeout-as-fix",
+      "pre-implementation",
+      "ts-coding-conventions",
+      "extraction-parity"
+    ]
+  }
 }

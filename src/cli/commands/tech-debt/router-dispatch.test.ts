@@ -223,4 +223,144 @@ describe('executeTechDebtSubcommand', () => {
       ).rejects.toThrow(/Unknown tech-debt subcommand/i)
     })
   })
+
+  describe('new --from-audit', () => {
+    // Helper: seed a package.json so resolveTechDebtRoot picks <tmpDir>/tech-debt
+    async function initTechDebtRoot(): Promise<string> {
+      await writeFile(
+        path.join(tmpDir, 'package.json'),
+        JSON.stringify({ name: 'test-pkg', version: '0.0.1' }),
+        'utf8',
+      )
+      return path.join(tmpDir, 'tech-debt')
+    }
+
+    it('auto-files a tech-debt item from skill-sizes audit', async () => {
+      const { readFile, readdir } = await import('node:fs/promises')
+      const tdRoot = await initTechDebtRoot()
+
+      // Create a skill with oversized description to trigger a violation
+      const skillDir = path.join(tmpDir, '.agent', 'skills', 'big-skill')
+      await mkdir(skillDir, { recursive: true })
+      const bigDesc = 'x'.repeat(900)
+      await writeFile(
+        path.join(skillDir, 'SKILL.md'),
+        `---\ndescription: "${bigDesc}"\n---\n# Big Skill\n`,
+        'utf8',
+      )
+
+      await executeTechDebtSubcommand('new', [], {
+        cwd: tmpDir,
+        fromAudit: 'skill-sizes',
+      })
+
+      const statusDir = path.join(tdRoot, 'needs-remediation')
+      const files = await readdir(statusDir)
+      expect(files.length).toBeGreaterThanOrEqual(1)
+
+      const content = await readFile(path.join(statusDir, files[0]!), 'utf8')
+      expect(content).toContain('type: tech-debt')
+      expect(content).toContain('status: needs-remediation')
+      expect(content).toContain('auto_filed_hash:')
+      expect(content).toContain('category: documentation')
+    })
+
+    it('is idempotent — does not re-file when hash already exists', async () => {
+      const { readdir } = await import('node:fs/promises')
+      const tdRoot = await initTechDebtRoot()
+
+      // Create a skill with oversized description
+      const skillDir = path.join(tmpDir, '.agent', 'skills', 'dup-skill')
+      await mkdir(skillDir, { recursive: true })
+      const bigDesc = 'y'.repeat(900)
+      await writeFile(
+        path.join(skillDir, 'SKILL.md'),
+        `---\ndescription: "${bigDesc}"\n---\n# Dup Skill\n`,
+        'utf8',
+      )
+
+      // First run
+      await executeTechDebtSubcommand('new', [], { cwd: tmpDir, fromAudit: 'skill-sizes' })
+
+      // Second run — should not create another file
+      const logs: string[] = []
+      const origLog = console.log
+      console.log = (...args: unknown[]) => {
+        logs.push(args.join(' '))
+      }
+      try {
+        await executeTechDebtSubcommand('new', [], { cwd: tmpDir, fromAudit: 'skill-sizes' })
+      } finally {
+        console.log = origLog
+      }
+
+      const statusDir = path.join(tdRoot, 'needs-remediation')
+      const files = await readdir(statusDir)
+      expect(files).toHaveLength(1)
+      expect(logs.some((l) => l.includes('Already filed:'))).toBe(true)
+    })
+
+    it('dry-run mode with --from-audit prints path without writing', async () => {
+      const { existsSync: fsExistsSync } = await import('node:fs')
+      await initTechDebtRoot()
+
+      const skillDir = path.join(tmpDir, '.agent', 'skills', 'dry-skill')
+      await mkdir(skillDir, { recursive: true })
+      const bigDesc = 'z'.repeat(900)
+      await writeFile(
+        path.join(skillDir, 'SKILL.md'),
+        `---\ndescription: "${bigDesc}"\n---\n# Dry Skill\n`,
+        'utf8',
+      )
+
+      const logs: string[] = []
+      const origLog = console.log
+      console.log = (...args: unknown[]) => {
+        logs.push(args.join(' '))
+      }
+      try {
+        await executeTechDebtSubcommand('new', [], {
+          cwd: tmpDir,
+          fromAudit: 'skill-sizes',
+          dryRun: true,
+        })
+      } finally {
+        console.log = origLog
+      }
+
+      // dry-run: no needs-remediation dir should exist
+      expect(fsExistsSync(path.join(tmpDir, 'tech-debt', 'needs-remediation'))).toBe(false)
+      expect(logs.some((l) => l.includes('Would create:'))).toBe(true)
+    })
+
+    it('fails for unknown audit name', async () => {
+      await expect(
+        executeTechDebtSubcommand('new', [], {
+          cwd: tmpDir,
+          fromAudit: 'nonexistent-audit',
+        }),
+      ).rejects.toThrow(/Unknown audit name/)
+    })
+
+    it('creates file from broken-refs audit', async () => {
+      const { readdir } = await import('node:fs/promises')
+      const tdRoot = await initTechDebtRoot()
+
+      // Create AGENTS.md with a broken link
+      await writeFile(
+        path.join(tmpDir, 'AGENTS.md'),
+        '# Agents\n\nSee [missing](./this-does-not-exist.md).\n',
+        'utf8',
+      )
+
+      await executeTechDebtSubcommand('new', [], { cwd: tmpDir, fromAudit: 'broken-refs' })
+
+      const statusDir = path.join(tdRoot, 'needs-remediation')
+      const files = await readdir(statusDir)
+      expect(files.length).toBeGreaterThanOrEqual(1)
+      const { readFile } = await import('node:fs/promises')
+      const content = await readFile(path.join(statusDir, files[0]!), 'utf8')
+      expect(content).toContain('severity: high')
+    })
+  })
 })

@@ -15,6 +15,9 @@ export type AuditKind =
   | 'no-link-protocol'
   | 'vision'
   | 'bucket-boundary'
+  | 'skill-sizes'
+  | 'broken-refs'
+  | 'memory-rotation'
   | 'mutation'
   | 'quality'
   | 'guardrails'
@@ -47,6 +50,7 @@ export interface AuditActionOptions {
   messageFile?: string
   requireLore?: boolean
   root?: string
+  staged?: boolean
   strict?: boolean
   visionPath?: string
 }

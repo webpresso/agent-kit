@@ -26,6 +26,10 @@ export function registerTechDebtRouter(cli: CAC): void {
     )
     .option('--status <status>', 'Status: accepted|needs-remediation|monitoring|resolved')
     .option('--dry-run', 'Print would-be path without writing (for new)')
+    .option(
+      '--from-audit <audit>',
+      'Auto-file from audit findings: skill-sizes|broken-refs|memory-rotation (for new)',
+    )
     .option('--cwd <dir>', 'Consumer repo root (default: process.cwd())')
     .action(
       async (
