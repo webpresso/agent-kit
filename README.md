@@ -177,13 +177,27 @@ Required for Codex CLI, OpenCode, Cursor, Gemini, and any IDE without a plugin m
 | `ak blueprint new "<goal>" --complexity M` | Create a new blueprint under `blueprints/draft/` |
 | `ak blueprint audit --all --strict` | Audit blueprint lifecycle states |
 | `ak blueprint list` / `ak roadmap list` | List blueprints / parent roadmaps |
+| `ak blueprint db build` | Cold-start rebuild of the SQLite projection from markdown |
+| `ak blueprint db query <template>` | Run a pre-registered query (e.g. `next-ready-task`) |
+| `ak blueprint db verify` | Check the SQLite DB matches markdown on disk |
+| `ak blueprint db browse` | Open Datasette UI (requires `pip install datasette`) |
+| `ak blueprint export --format spec-kit <slug>` | Export a blueprint to spec-kit 4-file format |
 | `ak tech-debt new --severity <s> --category <c>` | Create a tech-debt record with lifecycle status |
+| `ak tech-debt new --from-audit <audit-name>` | Auto-file audit findings as tech-debt items |
 | `ak skill list` / `ak skill install <name>` | Browse and install catalog skills into the active IDE surfaces |
 | `ak audit guardrails` | Composite audit (8 checks) — wired into pre-commit, CI, ship gate |
 | `ak audit quality` | `guardrails` + Stryker mutation testing |
 | `ak audit commit-message --require-lore` | Enforce Lore trailers on commit messages |
 | `ak audit bundle-budget <dir> --max-js-asset-bytes 512000` | Vite bundle budget guard |
 | `ak audit vision` | Enforce `VISION.md` structure (frontmatter, ≤100 lines, ≤1500 words, required sections) |
+| `ak audit skill-sizes` | Check that skill files don't exceed size budget |
+| `ak audit broken-refs` | Detect dead links and missing file references in agent surfaces |
+| `ak audit memory-rotation` | Verify memory files are rotated per retention policy |
+| `ak audit gitignore-agent-surfaces` | Check that generated IDE surfaces are gitignored |
+| `ak audit memory-unified` | Unified memory consistency check across IDE surfaces |
+| `ak audit compile-drift` | Detect drift between `.agent/` source and compiled IDE outputs |
+| `ak skills orphans --fix` | List (and optionally remove) stale IDE skill outputs with no `.agent/` source |
+| `ak compile` | Compile `.agent/` to all 6 IDE surfaces (wraps rulesync) |
 | `ak test`, `ak e2e`, `ak lint`, `ak typecheck`, `ak format` | Portable command surface — same flags work in every consumer repo |
 | `ak err <cmd>` | Run a command and print only failure-looking lines |
 | `ak hooks doctor` | Verify hook bins are installed, executable, MCP reachable |
@@ -192,6 +206,35 @@ Required for Codex CLI, OpenCode, Cursor, Gemini, and any IDE without a plugin m
 | `ak docs lint <file>` | Lint a research or blueprint doc |
 
 Run `ak <command> --help` for full flags.
+
+## Blueprint structured store
+
+`ak blueprint db` gives agents and humans a queryable SQLite view of all blueprints and tech-debt.
+
+```bash
+ak blueprint db build           # cold-start rebuild from markdown
+ak blueprint db query next-ready-task   # what should I work on next?
+ak blueprint db verify          # check DB matches markdown on disk
+ak blueprint db browse          # open Datasette UI (requires pip install datasette)
+```
+
+Nine pre-registered query templates. See `docs/blueprint-db-cookbook.md`.
+
+Mutation verbs:
+```bash
+ak blueprint task advance <slug> <task-id> --to in-progress
+ak blueprint promote <slug> planned
+ak blueprint finalize <slug>
+ak blueprint export --format spec-kit <slug>   # export to github/spec-kit format
+```
+
+### Tech-debt lifecycle
+
+```bash
+ak tech-debt new --from-audit skill-sizes   # auto-file findings as h-NNN-*.md
+ak tech-debt list
+ak tech-debt review
+```
 
 ## Skills catalog
 

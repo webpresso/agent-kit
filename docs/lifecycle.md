@@ -147,3 +147,16 @@ For parallel lane launch, Agent Kit exposes the Blueprint DAG and lifecycle
 primitives. Runtime-specific adapters such as OMX `/pll` are optional layers
 that may consume those primitives, but they are not required for the public
 package core.
+
+## SQLite projection
+
+Run `ak blueprint db build` after any lifecycle state change to keep the SQLite
+projection in sync with the markdown on disk. Agents can query it directly via
+MCP tools (see `docs/blueprint-db-cookbook.md` for the nine pre-registered query
+templates, e.g. `next-ready-task`).
+
+```bash
+ak blueprint db build    # rebuild after state changes
+ak blueprint db verify   # confirm DB matches markdown (suitable for CI)
+ak blueprint db browse   # open Datasette UI for human exploration
+```

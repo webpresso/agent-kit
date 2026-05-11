@@ -1,0 +1,90 @@
+---
+type: rule
+slug: gstack-routing
+title: gstack routing — lane 4 interactive/browser workflows
+applies_to:
+  - agents
+  - humans
+created: '2026-05-11'
+last_reviewed: '2026-05-11'
+---
+
+# gstack routing — lane 4: interactive/browser workflows
+
+Fallback-only note: if SessionStart already injected `AK_ROUTING_BLOCK`, or
+any other routing block is already present, follow that and do not duplicate
+it. This rule exists to preserve the same routing in plain repo contexts.
+
+gstack owns interactive/browser workflows: slash-skill invocation
+(`/qa`, `/ship`, `/review`, `/investigate`, `/browse`, `/plan-ceo-review`,
+etc.), AskUserQuestion-gated decisions, browser automation, and design
+tooling. It is **lane 4** in the agent-kit ownership model:
+
+| Lane | Owner | Surface |
+| ---- | ----- | ------- |
+| 1 | agent-kit | `ak_*` dev-workflow (blueprint execution, audits, quality) |
+| 2 | context-mode | `ctx_*` (context reduction, knowledge-base indexing) |
+| 3 | rtk | shell-tool output filtering for non-quality-engine commands |
+| **4** | **gstack** | **interactive/browser workflows, skill UX, CEO/design reviews** |
+
+## When to invoke gstack
+
+Use gstack skills when the workflow is:
+
+- **Interactive** — requires AskUserQuestion gates, multi-step human
+  collaboration, or visual review.
+- **Browser-backed** — uses the browse daemon, Playwright, or screenshot
+  capture.
+- **Role-based** — `/plan-ceo-review`, `/plan-eng-review`, `/plan-design
+  -review`, `/qa`, `/ship`, `/investigate` — each skill plays a specific
+  expert role.
+- **Agent-to-browser** — `/browse`, `/design-review`, `/qa-only`, etc.
+
+## When NOT to use gstack
+
+Do not invoke gstack for:
+
+- Running tests, lint, typecheck, or audits → use `ak_test`, `ak_lint`,
+  `ak_typecheck`, `ak_qa`, `ak_audit`.
+- Searching previously indexed content → use `ctx_search`.
+- Shell output filtering → use `rtk`.
+
+## How gstack is installed
+
+gstack is **not bundled or redistributed by agent-kit**. It lives at
+`~/.claude/skills/gstack/`, cloned from Garry Tan's repo at
+https://github.com/garrytan/gstack. `ak setup` prints a recommend-install
+line but never clones on the user's behalf.
+
+This is intentional: gstack is Garry Tan's project. Redistributing it
+would bypass the upstream update path and violate the lane-4 boundary.
+
+To install: run `cd ~/.claude/skills && git clone https://github.com/garrytan/gstack`
+and follow the setup instructions.
+
+## Hard rules
+
+- Never implement or replicate gstack skills inside agent-kit.
+- Never import gstack internals from `ak` CLI code.
+- Never wire gstack into agent-kit's hook chain as a first-class hook
+  (gstack has its own lifecycle; hooks are installed by `./setup --team`).
+- Keep lanes 1-3 (`ak_*`, `ctx_*`, `rtk *`) as independent routing
+  surfaces; lane 4 is advisory, not the primary control surface for
+  dev-workflow operations.
+
+## Ownership boundary
+
+- agent-kit owns `ak_*` dev-workflow routing.
+- context-mode owns `ctx_*` nudges when that plugin is installed.
+- rtk owns shell-tool output filtering for the long-tail command surface.
+- **gstack owns lane 4.** agent-kit defers to it there; it does not
+  compete, replicate, or absorb it.
+- `.omx` is runtime/state, not a direct hook surface.
+
+## Subprocess coverage note
+
+`ak_*` tools shelling out via `child_process.spawn` own their own
+filtering; `rtk` PreToolUse hook only fires for top-level Bash calls and
+does NOT reach into `ak_*` internals. CLI verbs (`ak <verb>` from a shell)
+ARE rewritten by rtk. gstack skill invocations from within Claude Code
+are NOT filtered by rtk (they go through the Claude Code plugin lifecycle).

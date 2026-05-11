@@ -172,6 +172,35 @@ npx ak sync --check    # exits 1 if drift detected
 the `.md` source on every sync). See [`symlinker.md`](./symlinker.md)
 for details.
 
+## Compile to all IDE surfaces
+
+After `ak setup`, run:
+
+```bash
+npx ak compile
+```
+
+This reads `.agent/skills/`, `.agent/commands/`, `.agent/agents/`, and `.agent/memory/` and emits:
+- `.claude/skills/` — Claude Code skills
+- `.codex/skills/` — Codex CLI skills
+- `.cursor/rules/` — Cursor rules
+- `.windsurf/rules/` — Windsurf rules
+- `.gemini/commands/` — Gemini CLI commands
+- `.opencode/agents/` — OpenCode agents
+
+Outputs are gitignored (regeneratable). `ak compile` is idempotent — re-running with no source changes is a no-op.
+
+**First-time setup with example skill:**
+
+```bash
+ak setup --with base-kit --with example-skill
+ak compile
+# → .agent/skills/hello-webpresso/SKILL.md created
+# → all 6 IDE surfaces populated
+```
+
+Use `ak audit compile-drift` in CI to catch any surfaces that diverge from the `.agent/` source.
+
 ## Add the dev command drop-in
 
 Repos that define an agent-kit dev manifest can import the packaged just
