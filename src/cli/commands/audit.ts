@@ -89,6 +89,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     (await import('#audit/blueprint-lifecycle-sql')).auditBlueprintLifecycleSql(root),
   'tech-debt-cadence': async (root) =>
     (await import('#audit/tech-debt-cadence')).auditTechDebtCadence(root),
+  'cross-repo-correlation': async (root) =>
+    (await import('#audit/cross-repo-correlation')).auditCrossRepoCorrelationAsRepoResult(root),
   rules: async (root) => runContentAudit(root, 'rule'),
   skills: async (root) => runContentAudit(root, 'skill'),
 }
