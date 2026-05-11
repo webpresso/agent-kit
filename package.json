@@ -278,6 +278,7 @@
     "remark": "^15.0.1",
     "remark-frontmatter": "catalog:",
     "remark-validate-links": "^13.1.0",
+    "rulesync": "8.15.1",
     "ts-pattern": "^5.9.0",
     "yaml": "catalog:",
     "zod": "catalog:",
