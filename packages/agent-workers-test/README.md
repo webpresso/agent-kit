@@ -1,11 +1,11 @@
-# @webpresso/workers-test-kit
+# @webpresso/agent-workers-test
 
 Production-ready Cloudflare Workers test mocks. Drop in `BaseWorkerEnv`, `ExecutionContext`, `Hyperdrive`, Durable Object, and Container mocks for any Cloudflare Workers project without recreating them per-app.
 
 ## Installation
 
 ```bash
-npm install --save-dev @webpresso/workers-test-kit
+npm install --save-dev @webpresso/agent-workers-test
 # peer dependencies
 npm install --save-dev vitest @cloudflare/workers-types
 ```
@@ -17,7 +17,7 @@ import {
   createMockEnv,
   createMockExecutionContext,
   createAuthenticatedRequest,
-} from '@webpresso/workers-test-kit'
+} from '@webpresso/agent-workers-test'
 
 it('should handle a request', async () => {
   const env = createMockEnv()
@@ -33,7 +33,7 @@ it('should handle a request', async () => {
 `BaseWorkerEnv` is intentionally minimal. Extend it with your app-specific bindings:
 
 ```typescript
-import type { BaseWorkerEnv } from '@webpresso/workers-test-kit'
+import type { BaseWorkerEnv } from '@webpresso/agent-workers-test'
 import type { DurableObjectNamespace } from '@cloudflare/workers-types'
 
 // Example: Webpresso's internal env

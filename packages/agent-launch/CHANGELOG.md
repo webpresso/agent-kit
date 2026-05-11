@@ -1,4 +1,4 @@
-# @webpresso/launch-engine
+# @webpresso/agent-launch
 
 ## 0.3.0
 
@@ -9,15 +9,15 @@
 
   Renames:
 
-  - `@webpresso/typescript-config` → `@webpresso/agent-tsconfig`
-  - `@webpresso/vitest-config` → `@webpresso/agent-vitest`
-  - `@webpresso/stryker-config` → `@webpresso/agent-stryker`
-  - `@webpresso/test-preset` → `@webpresso/agent-test-preset`
-  - `@webpresso/e2e-preset` → `@webpresso/agent-e2e-preset`
-  - `@webpresso/oxlint-plugins` → `@webpresso/agent-oxlint`
-  - `@webpresso/docs-linter` → `@webpresso/agent-docs-lint`
-  - `@webpresso/launch-engine` → `@webpresso/agent-launch`
-  - `@webpresso/workers-test-kit` → `@webpresso/agent-workers-test`
+  - `@webpresso/agent-tsconfig` → `@webpresso/agent-tsconfig`
+  - `@webpresso/agent-vitest` → `@webpresso/agent-vitest`
+  - `@webpresso/agent-stryker` → `@webpresso/agent-stryker`
+  - `@webpresso/agent-test-preset` → `@webpresso/agent-test-preset`
+  - `@webpresso/agent-e2e-preset` → `@webpresso/agent-e2e-preset`
+  - `@webpresso/agent-oxlint` → `@webpresso/agent-oxlint`
+  - `@webpresso/agent-docs-lint` → `@webpresso/agent-docs-lint`
+  - `@webpresso/agent-launch` → `@webpresso/agent-launch`
+  - `@webpresso/agent-workers-test` → `@webpresso/agent-workers-test`
 
   Hard-cut migration — old names are unpublished, no compat aliases. The old
   package names will be deleted from GH Packages in Wave 3 cleanup.
@@ -29,4 +29,4 @@
 
 ### Minor Changes
 
-- b1ae49f: Add @webpresso/launch-engine package — contract-safe launch engine primitives extracted from the Webpresso monorepo.
+- b1ae49f: Add @webpresso/agent-launch package — contract-safe launch engine primitives extracted from the Webpresso monorepo.

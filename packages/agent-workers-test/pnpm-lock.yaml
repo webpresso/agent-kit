@@ -23,10 +23,10 @@ importers:
       '@stryker-mutator/vitest-runner':
         specifier: ^9.6.1
         version: 9.6.1(@stryker-mutator/core@9.6.1)(vitest@3.2.4)
-      '@webpresso/stryker-config':
+      '@webpresso/agent-stryker':
         specifier: git+ssh://git@github.com/webpresso/tooling.git#main&path:packages/stryker-config
         version: git+https://git@github.com:webpresso/tooling.git#5405f42c6d4153c5c4d0809293ab227383f494d6&path:packages/stryker-config(@stryker-mutator/core@9.6.1)(@stryker-mutator/vitest-runner@9.6.1(@stryker-mutator/core@9.6.1)(vitest@3.2.4))
-      '@webpresso/typescript-config':
+      '@webpresso/agent-tsconfig':
         specifier: github:webpresso/tooling#main&path:/packages/typescript-config
         version: git+https://git@github.com:webpresso/tooling.git#05ba190fe36864f708c4eb769f867c1588b212af&path:/packages/typescript-config
       tshy:
@@ -789,14 +789,14 @@ packages:
   '@vitest/utils@3.2.4':
     resolution: {integrity: sha512-fB2V0JFrQSMsCo9HiSq3Ezpdv4iYaXRG1Sx8edX3MwxfyNn83mKiGzOcH+Fkxt4MHxr3y42fQi1oeAInqgX2QA==}
 
-  '@webpresso/stryker-config@git+https://git@github.com:webpresso/tooling.git#5405f42c6d4153c5c4d0809293ab227383f494d6&path:packages/stryker-config':
+  '@webpresso/agent-stryker@git+https://git@github.com:webpresso/tooling.git#5405f42c6d4153c5c4d0809293ab227383f494d6&path:packages/stryker-config':
     resolution: {commit: 5405f42c6d4153c5c4d0809293ab227383f494d6, path: packages/stryker-config, repo: git@github.com:webpresso/tooling.git, type: git}
     version: 0.0.1
     peerDependencies:
       '@stryker-mutator/core': '>=9 <10'
       '@stryker-mutator/vitest-runner': '>=9 <10'
 
-  '@webpresso/typescript-config@git+https://git@github.com:webpresso/tooling.git#05ba190fe36864f708c4eb769f867c1588b212af&path:/packages/typescript-config':
+  '@webpresso/agent-tsconfig@git+https://git@github.com:webpresso/tooling.git#05ba190fe36864f708c4eb769f867c1588b212af&path:/packages/typescript-config':
     resolution: {commit: 05ba190fe36864f708c4eb769f867c1588b212af, path: /packages/typescript-config, repo: git@github.com:webpresso/tooling.git, type: git}
     version: 0.1.0
 
@@ -2309,12 +2309,12 @@ snapshots:
       loupe: 3.2.1
       tinyrainbow: 2.0.0
 
-  '@webpresso/stryker-config@git+https://git@github.com:webpresso/tooling.git#5405f42c6d4153c5c4d0809293ab227383f494d6&path:packages/stryker-config(@stryker-mutator/core@9.6.1)(@stryker-mutator/vitest-runner@9.6.1(@stryker-mutator/core@9.6.1)(vitest@3.2.4))':
+  '@webpresso/agent-stryker@git+https://git@github.com:webpresso/tooling.git#5405f42c6d4153c5c4d0809293ab227383f494d6&path:packages/stryker-config(@stryker-mutator/core@9.6.1)(@stryker-mutator/vitest-runner@9.6.1(@stryker-mutator/core@9.6.1)(vitest@3.2.4))':
     dependencies:
       '@stryker-mutator/core': 9.6.1
       '@stryker-mutator/vitest-runner': 9.6.1(@stryker-mutator/core@9.6.1)(vitest@3.2.4)
 
-  '@webpresso/typescript-config@git+https://git@github.com:webpresso/tooling.git#05ba190fe36864f708c4eb769f867c1588b212af&path:/packages/typescript-config': {}
+  '@webpresso/agent-tsconfig@git+https://git@github.com:webpresso/tooling.git#05ba190fe36864f708c4eb769f867c1588b212af&path:/packages/typescript-config': {}
 
   ajv@8.18.0:
     dependencies:

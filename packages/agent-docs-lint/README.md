@@ -1,4 +1,4 @@
-# @webpresso/docs-linter
+# @webpresso/agent-docs-lint
 
 Documentation validation, linting, and enforcement for Webpresso. Validates markdown frontmatter, structure, command safety, imports, broken links, filename conventions, and more.
 
@@ -37,13 +37,13 @@ docs-lint --verbose
 
 ```ts
 // Main entry — parsers, schemas, types
-import { parseFrontmatter, getSchema, detectDocType } from '@webpresso/docs-linter'
+import { parseFrontmatter, getSchema, detectDocType } from '@webpresso/agent-docs-lint'
 
 // Schemas only
-import { implementationPlanSchema, ruleSchema } from '@webpresso/docs-linter/schemas'
+import { implementationPlanSchema, ruleSchema } from '@webpresso/agent-docs-lint/schemas'
 
 // Generator utilities
-import { loadTemplate, getAvailableTemplates } from '@webpresso/docs-linter/generator'
+import { loadTemplate, getAvailableTemplates } from '@webpresso/agent-docs-lint/generator'
 ```
 
 ## Build

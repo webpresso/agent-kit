@@ -10,7 +10,7 @@
  * launch-engine orchestrates them into a {@link LaunchRegistration}
  * without depending on any host-specific package.
  *
- * @module @webpresso/launch-engine/provision-stack
+ * @module @webpresso/agent-launch/provision-stack
  */
 
 import type { LaunchProfile, LaunchRegistration, ProvisionedDatabaseHandle } from './contracts'

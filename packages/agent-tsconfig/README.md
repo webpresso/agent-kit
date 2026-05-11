@@ -1,4 +1,4 @@
-# @webpresso/typescript-config
+# @webpresso/agent-tsconfig
 
 Shared TypeScript configuration package.
 

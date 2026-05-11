@@ -7,7 +7,7 @@
  * slug. Host adapters are responsible for mapping their internal types
  * into these contracts before calling launch-engine.
  *
- * @module @webpresso/launch-engine/contracts
+ * @module @webpresso/agent-launch/contracts
  */
 
 /**

@@ -1,4 +1,4 @@
-// @webpresso/oxlint-plugins — re-exports all plugins
+// @webpresso/agent-oxlint — re-exports all plugins
 export { default as codeSafety } from './code-safety.js'
 export { default as foundationPurity } from './foundation-purity.js'
 export { default as graphqlConventions } from './graphql-conventions.js'

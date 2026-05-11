@@ -1,5 +1,5 @@
 {
-  "extends": "@webpresso/typescript-config/library.json",
+  "extends": "@webpresso/agent-tsconfig/library.json",
   "compilerOptions": {
     "allowJs": true,
     "checkJs": false,

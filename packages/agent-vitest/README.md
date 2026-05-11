@@ -1,4 +1,4 @@
-# @webpresso/vitest-config
+# @webpresso/agent-vitest
 
 Shared Vitest configuration package.
 

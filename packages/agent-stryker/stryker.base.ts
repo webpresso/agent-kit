@@ -5,7 +5,7 @@
  * Import and extend this in individual package stryker.config.mjs files.
  *
  * @example
- * import { baseConfig } from '@webpresso/stryker-config'
+ * import { baseConfig } from '@webpresso/agent-stryker'
  *
  * export default {
  *   ...baseConfig,

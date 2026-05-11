@@ -1,4 +1,4 @@
-import { createNodeProjects, nodeConfig } from '@webpresso/vitest-config/node'
+import { createNodeProjects, nodeConfig } from '@webpresso/agent-vitest/node'
 import { mergeConfig } from 'vite-plus/test/config'
 
 // Add CLI shell exclusions to the base exclude list

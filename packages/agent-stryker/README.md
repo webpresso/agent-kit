@@ -1,4 +1,4 @@
-# @webpresso/stryker-config
+# @webpresso/agent-stryker
 
 Shared Stryker configuration package.
 
@@ -12,7 +12,7 @@ Create package-root mutation config and run it from the package root, not a mono
 
 ```js
 // stryker.config.mjs
-import { baseConfig } from '@webpresso/stryker-config'
+import { baseConfig } from '@webpresso/agent-stryker'
 
 export default {
   ...baseConfig,
@@ -25,7 +25,7 @@ export default {
 
 ```ts
 // vitest.stryker.config.ts
-import { nodeConfig } from '@webpresso/vitest-config/node'
+import { nodeConfig } from '@webpresso/agent-vitest/node'
 import { defineConfig, mergeConfig } from 'vite-plus/test/config'
 
 export default mergeConfig(

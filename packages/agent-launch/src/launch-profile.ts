@@ -6,7 +6,7 @@
  * effective environment-variable bundle a spawn will use. No wrangler,
  * vite, or host-specific logic lives here.
  *
- * @module @webpresso/launch-engine/launch-profile
+ * @module @webpresso/agent-launch/launch-profile
  */
 
 import type { DatabaseUrlSelector, ProvisionedDatabaseHandle } from './contracts'
