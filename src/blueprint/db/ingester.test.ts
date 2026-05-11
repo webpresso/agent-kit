@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { openDb } from './connection.js'
-import { ingestBlueprints, ingestTechDebt, ingestAll } from './ingester.js'
+import { ingestBlueprints, ingestAll } from './ingester.js'
 import { coldStartIfNeeded } from './cold-start.js'
 
 // ---------------------------------------------------------------------------

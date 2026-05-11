@@ -7,7 +7,6 @@
  * All outputs honour the summary-first envelope: { summary, failures, bytes, tokensSaved }
  */
 
-import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
@@ -17,6 +16,7 @@ import { z } from 'zod'
 import { coldStartIfNeeded } from '#db/cold-start.js'
 import { openDb } from '#db/connection.js'
 import { ingestAll } from '#db/ingester.js'
+import { findTemplate } from '#db/templates.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
 import { maybeHint } from './_tail-hints.js'
 import type { ToolHandlerResult, ToolRegistrar } from './auto-discover.js'
@@ -170,22 +170,17 @@ function runValidate(filePath: string): { valid: boolean; gaps: string[] } {
 // Tool handlers
 // ---------------------------------------------------------------------------
 
-const querySchema = z.object({ template_id: z.string(), params: z.record(z.unknown()).default({}) })
+const querySchema = z.object({ template_id: z.string(), params: z.record(z.string(), z.unknown()).default({}) })
 async function handleQuery(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = querySchema.safeParse(raw)
   if (!p.success) return err('ak_blueprint_query validation error', p.error.message)
   const { template_id, params } = p.data
-  let templates: Record<string, string> = {}
-  try {
-    const m = (await import('./blueprint-query-templates.js')) as { QUERY_TEMPLATES?: Record<string, string> }
-    templates = m.QUERY_TEMPLATES ?? {}
-  } catch { /* not yet generated */ }
-  const sql = templates[template_id]
-  if (!sql) return err(`Unknown query template: ${template_id}`, `Template "${template_id}" not found. Available: ${Object.keys(templates).join(', ') || 'none'}`)
+  const tmpl = findTemplate(template_id)
+  if (!tmpl) return err(`Unknown query template: ${template_id}`, `Template "${template_id}" not found.`)
   try {
     const conn = openDbRW(cwd)
     let rows: unknown[]
-    try { rows = conn.db.prepare(sql).all(...Object.values(params)) as unknown[] } finally { conn.close() }
+    try { rows = conn.db.prepare(tmpl.sql).all(...Object.values(params)) as unknown[] } finally { conn.close() }
     const capped = rows.slice(0, ROWS_CAP)
     const text = JSON.stringify(capped)
     const b = bytes(text)

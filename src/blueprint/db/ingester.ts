@@ -92,8 +92,8 @@ function upsertBlueprint(db: Database.Database, filePath: string, _cwd: string):
   const upsertBp = db.prepare<
     [
       string, string, string, string | null, string | null, string | null,
-      string | null, string | null, string | null, number | null,
-      string | null, string, number, string, number, string, string,
+      string | null, string | null, number | null, string | null,
+      string, number, string, number, string, string,
     ]
   >(
     `INSERT INTO blueprints
