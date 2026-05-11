@@ -1,5 +1,5 @@
 {
-  "name": "@webpresso/oxlint-plugins",
+  "name": "@webpresso/agent-oxlint",
   "version": "0.1.0",
   "private": false,
   "publishConfig": {

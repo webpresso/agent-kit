@@ -1,5 +1,5 @@
 {
-  "name": "@webpresso/typescript-config",
+  "name": "@webpresso/agent-tsconfig",
   "version": "0.1.0",
   "private": false,
   "publishConfig": {
@@ -33,7 +33,7 @@
   "devDependencies": {
     "vite": "catalog:",
     "vitest": "catalog:",
-    "@webpresso/vitest-config": "workspace:*",
+    "@webpresso/agent-vitest": "workspace:*",
     "vite-plus": "catalog:"
   },
   "repository": {

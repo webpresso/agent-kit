@@ -1,5 +1,5 @@
 {
-  "name": "@webpresso/stryker-config",
+  "name": "@webpresso/agent-stryker",
   "version": "0.1.0",
   "private": false,
   "type": "module",
@@ -18,8 +18,8 @@
     }
   },
   "peerDependencies": {
-    "@stryker-mutator/core": ">=9 <10",
-    "@stryker-mutator/vitest-runner": ">=9 <10"
+    "@stryker-mutator/core": "catalog:",
+    "@stryker-mutator/vitest-runner": "catalog:"
   },
   "scripts": {
     "test": "vitest run"

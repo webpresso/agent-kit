@@ -1,5 +1,5 @@
 {
-  "name": "@webpresso/e2e-preset",
+  "name": "@webpresso/agent-e2e-preset",
   "version": "0.2.0",
   "private": false,
   "description": "Portable E2E preset helpers and suite manifest utilities for agent-kit consumers.",
@@ -34,8 +34,8 @@
   "devDependencies": {
     "@playwright/test": "catalog:",
     "@types/node": "catalog:",
-    "@webpresso/typescript-config": "workspace:*",
-    "@webpresso/vitest-config": "workspace:*",
+    "@webpresso/agent-tsconfig": "workspace:*",
+    "@webpresso/agent-vitest": "workspace:*",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

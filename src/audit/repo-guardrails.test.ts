@@ -42,7 +42,7 @@ describe('repo guardrail audits', () => {
     writeJson(join(root, 'packages', 'api', 'package.json'), {
       name: '@repo/api',
       dependencies: {
-        '@webpresso/typescript-config': 'file:/Users/example/webpresso-typescript-config-0.1.0.tgz',
+        '@webpresso/agent-tsconfig': 'file:/Users/example/webpresso-typescript-config-0.1.0.tgz',
         react: '^19.0.0',
         zod: 'workspace:*',
       },
@@ -50,7 +50,7 @@ describe('repo guardrail audits', () => {
     writeJson(join(root, 'packages', 'ui', 'package.json'), {
       name: '@repo/ui',
       dependencies: {
-        '@webpresso/typescript-config': 'file:/Users/example/webpresso-typescript-config-0.1.0.tgz',
+        '@webpresso/agent-tsconfig': 'file:/Users/example/webpresso-typescript-config-0.1.0.tgz',
         react: 'catalog:',
         zod: 'workspace:*',
       },

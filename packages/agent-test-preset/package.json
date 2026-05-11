@@ -1,5 +1,5 @@
 {
-  "name": "@webpresso/test-preset",
+  "name": "@webpresso/agent-test-preset",
   "version": "0.2.0",
   "private": false,
   "description": "Portable Vitest preset helpers for agent-kit consumer repos.",
@@ -33,8 +33,8 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@webpresso/typescript-config": "workspace:*",
-    "@webpresso/vitest-config": "workspace:*",
+    "@webpresso/agent-tsconfig": "workspace:*",
+    "@webpresso/agent-vitest": "workspace:*",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

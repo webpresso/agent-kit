@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { createRequire } from 'node:module'
 import { describe, expect, it } from 'vitest'
 
 // Isolation semantics for plugin packages (non-preset):

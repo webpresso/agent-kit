@@ -1,5 +1,5 @@
 {
-  "name": "@webpresso/vitest-config",
+  "name": "@webpresso/agent-vitest",
   "version": "0.1.0",
   "private": false,
   "publishConfig": {
@@ -63,7 +63,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@webpresso/typescript-config": "workspace:*",
+    "@webpresso/agent-tsconfig": "workspace:*",
     "vite-plus": "catalog:",
     "vitest": "catalog:",
     "@vitejs/plugin-react": "catalog:"
@@ -72,7 +72,7 @@
     "@cloudflare/vitest-pool-workers": ">=0.14 <1",
     "@vitejs/plugin-react": ">=5 <7",
     "vite-plus": ">=0.1.19 <1",
-    "vitest": ">=4 <5"
+    "vitest": "catalog:"
   },
   "peerDependenciesMeta": {
     "@cloudflare/vitest-pool-workers": {

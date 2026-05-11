@@ -1,5 +1,5 @@
 {
-  "name": "@webpresso/workers-test-kit",
+  "name": "@webpresso/agent-workers-test",
   "version": "0.1.0",
   "repository": {
     "type": "git",
@@ -9,7 +9,7 @@
     "registry": "https://npm.pkg.github.com",
     "access": "restricted"
   },
-  "description": "Production-ready Cloudflare Workers test mocks — BaseWorkerEnv, ExecutionContext, Hyperdrive, Durable Objects, Containers",
+  "description": "Production-ready Cloudflare Workers test mocks \u2014 BaseWorkerEnv, ExecutionContext, Hyperdrive, Durable Objects, Containers",
   "files": [
     "dist"
   ],
@@ -34,19 +34,19 @@
   },
   "peerDependencies": {
     "@cloudflare/workers-types": ">=4.0.0",
-    "vitest": ">=1.0.0"
+    "vitest": "catalog:"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.18.2",
+    "@arethetypeswrong/cli": "catalog:",
     "@cloudflare/workers-types": "^4.20250525.0",
-    "@stryker-mutator/core": "^9.6.1",
-    "@stryker-mutator/typescript-checker": "^9.6.1",
-    "@stryker-mutator/vitest-runner": "^9.6.1",
-    "@webpresso/stryker-config": "^0.1.0",
-    "@webpresso/typescript-config": "^0.1.0",
-    "tshy": "^4.1.1",
-    "typescript": "^5.8.3",
-    "vitest": "^3.2.0"
+    "@stryker-mutator/core": "catalog:",
+    "@stryker-mutator/typescript-checker": "catalog:",
+    "@stryker-mutator/vitest-runner": "catalog:",
+    "@webpresso/agent-stryker": "workspace:*",
+    "@webpresso/agent-tsconfig": "workspace:*",
+    "tshy": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "tshy": {
     "dialects": [

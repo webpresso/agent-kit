@@ -1,5 +1,5 @@
 {
-  "name": "@webpresso/launch-engine",
+  "name": "@webpresso/agent-launch",
   "version": "0.2.0",
   "private": false,
   "description": "Contract-safe launch engine primitives extracted from the Webpresso monorepo.",
@@ -28,8 +28,8 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@webpresso/typescript-config": "workspace:*",
-    "@webpresso/vitest-config": "workspace:*",
+    "@webpresso/agent-tsconfig": "workspace:*",
+    "@webpresso/agent-vitest": "workspace:*",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },

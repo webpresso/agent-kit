@@ -1,5 +1,5 @@
 {
-  "name": "@webpresso/docs-linter",
+  "name": "@webpresso/agent-docs-lint",
   "version": "0.1.0",
   "private": false,
   "publishConfig": {
@@ -46,25 +46,25 @@
     "qa": "pnpm run typecheck && pnpm run test"
   },
   "dependencies": {
-    "@manypkg/find-root": "^3.1.0",
+    "@manypkg/find-root": "catalog:",
     "citty": "^0.1.6",
     "consola": "^3.4.0",
-    "gray-matter": "^4.0.3",
+    "gray-matter": "catalog:",
     "markdownlint": "0.40.0",
     "remark-frontmatter": "^5.0.0",
     "remark-parse": "^11.0.0",
     "remark-stringify": "^11.0.0",
     "tinyglobby": "^0.2.12",
     "unified": "^11.0.5",
-    "yaml": "^2.8.1",
-    "zod": "^3.25.0"
+    "yaml": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^24.10.9",
-    "@webpresso/typescript-config": "workspace:*",
-    "@webpresso/vitest-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@webpresso/agent-tsconfig": "workspace:*",
+    "@webpresso/agent-vitest": "workspace:*",
     "markdownlint-cli2": "^0.22.0",
-    "typescript": "^6.0.3",
+    "typescript": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:"
   },
