@@ -71,7 +71,7 @@ function insertBlueprintRow(
 
 let cwd: string
 let dbPath: string
-const savedEnv: string | undefined = undefined
+const _savedEnv: string | undefined = undefined
 
 beforeEach(() => {
   const repo = makeTempRepo()

@@ -20,7 +20,7 @@ import { glob } from 'glob'
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 
 const DB_PATH = path.join('.agent', '.blueprints.db')
-const DISABLED_RESULT: RepoAuditResult = {
+const _DISABLED_RESULT: RepoAuditResult = {
   ok: true,
   title: 'Blueprint DB consistency (SQL)',
   checked: 0,

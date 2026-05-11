@@ -3,14 +3,10 @@ import { execSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { glob } from 'glob'
-
 import { coldStartIfNeeded } from '#db/cold-start.js'
 import { openDb } from '#db/connection.js'
 import { ingestAll } from '#db/ingester.js'
 import { runTemplate } from '#db/template-runner.js'
-import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
-import { resolveTechDebtRoot } from '#utils/tech-debt-root.js'
 
 // ---------------------------------------------------------------------------
 // Constants
