@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-05-09'
+last_updated: '2026-05-11'
 ---
 
 # Getting started with `@webpresso/agent-kit`
@@ -261,11 +261,26 @@ discover them via `.agents/skills/<name>/SKILL.md`; Claude Code discovers
 them via `.claude/skills/<name>/SKILL.md`; OpenCode discovers them via
 either of those fallbacks.
 
+## Blueprint structured store
+
+Once you have blueprints, agents can query them via SQLite instead of reading raw markdown:
+
+```bash
+ak blueprint db build                        # cold-start: projects all markdown → SQLite
+ak blueprint db query next-ready-task        # what's the next unblocked task?
+ak blueprint db browse                       # Datasette UI (pip install datasette first)
+```
+
+The store is rebuilt from markdown on demand — it's never the source of truth, just
+a fast query layer. See [`blueprint-db-cookbook.md`](./blueprint-db-cookbook.md) for
+all nine pre-registered query templates.
+
 ## Next steps
 
 - [`blueprint-format.md`](./blueprint-format.md) — the markdown +
   frontmatter spec for blueprints.
 - [`lifecycle.md`](./lifecycle.md) — state machine + transitions.
-- [`symlinker.md`](./symlinker.md) — how cross-IDE sync works.
+- [`architecture.md`](./architecture.md) — three-layer model + `ak compile` pipeline.
+- [`blueprint-db-cookbook.md`](./blueprint-db-cookbook.md) — SQLite query templates.
 - [`skills-catalog.md`](./skills-catalog.md) — what ships in the catalog +
   upstream refresh plan.
