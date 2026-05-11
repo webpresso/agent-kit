@@ -7,7 +7,7 @@
 
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 
 import { parseBlueprintForDb } from './blueprint-db-parser'
 

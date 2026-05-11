@@ -80,7 +80,7 @@ export interface ParsedBlueprintForDb {
 // Gstack-recognized skill names — treated as plain text, no validation needed.
 // These appear in acceptance criteria lines and must parse cleanly.
 // ---------------------------------------------------------------------------
-const GSTACK_SKILL_PATTERN = /\/(?:qa|design-review|investigate|review|ship|browse|autoplan|plan-eng-review|plan-ceo-review|plan-design-review|design-consultation|canary|land-and-deploy|retro|codex|cso|devex-review|plan-devex-review|careful|freeze|guard|unfreeze|gstack-upgrade|learn|document-release|design-shotgun|design-html|context-save|context-restore)/g
+const _GSTACK_SKILL_PATTERN = /\/(?:qa|design-review|investigate|review|ship|browse|autoplan|plan-eng-review|plan-ceo-review|plan-design-review|design-consultation|canary|land-and-deploy|retro|codex|cso|devex-review|plan-devex-review|careful|freeze|guard|unfreeze|gstack-upgrade|learn|document-release|design-shotgun|design-html|context-save|context-restore)/g
 
 // ---------------------------------------------------------------------------
 // Internal helpers
