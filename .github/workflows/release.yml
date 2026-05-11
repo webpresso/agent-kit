@@ -56,11 +56,13 @@ jobs:
           git diff --staged --quiet || (git commit -m "chore: version packages" && git push)
       - name: Publish
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != true }}
-        run: |
-          PUBLISH_OUTPUT=$(pnpm changeset publish 2>&1)
-          echo "$PUBLISH_OUTPUT"
-          echo "published=$(echo "$PUBLISH_OUTPUT" | grep -c 'New tag' || true)" >> "$GITHUB_OUTPUT"
         id: publish
+        run: |
+          set -o pipefail
+          pnpm changeset publish 2>&1 | tee /tmp/publish.log
+          status=${PIPESTATUS[0]}
+          echo "published=$(grep -c 'New tag' /tmp/publish.log || true)" >> "$GITHUB_OUTPUT"
+          exit $status
       - name: Create marketplace release branch
         if: ${{ steps.publish.outputs.published != '0' && (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) }}
         run: |
