@@ -83,6 +83,12 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     (await import('#audit/memory-unified')).auditMemoryUnified(root),
   'compile-drift': async (root) =>
     (await import('#audit/compile-drift')).auditCompileDrift(root),
+  'blueprint-db-consistency': async (root) =>
+    (await import('#audit/blueprint-db-consistency')).auditBlueprintDbConsistency(root),
+  'blueprint-lifecycle-sql': async (root) =>
+    (await import('#audit/blueprint-lifecycle-sql')).auditBlueprintLifecycleSql(root),
+  'tech-debt-cadence': async (root) =>
+    (await import('#audit/tech-debt-cadence')).auditTechDebtCadence(root),
   rules: async (root) => runContentAudit(root, 'rule'),
   skills: async (root) => runContentAudit(root, 'skill'),
 }
