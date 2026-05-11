@@ -1,0 +1,13 @@
+{
+  "extends": "@webpresso/typescript-config/library.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "paths": {
+      "#schemas": ["./src/schemas/index.ts"],
+      "#path-contract": ["./src/path-contract.ts"],
+      "#*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+}

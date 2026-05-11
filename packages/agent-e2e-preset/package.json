@@ -1,0 +1,47 @@
+{
+  "name": "@webpresso/e2e-preset",
+  "version": "0.2.0",
+  "private": false,
+  "description": "Portable E2E preset helpers and suite manifest utilities for agent-kit consumers.",
+  "type": "module",
+  "sideEffects": false,
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./playwright": {
+      "types": "./dist/playwright.d.ts",
+      "default": "./dist/playwright.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@playwright/test": "catalog:"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "@webpresso/typescript-config": "workspace:*",
+    "@webpresso/vitest-config": "workspace:*",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webpresso/tooling.git",
+    "directory": "packages/e2e-preset"
+  }
+}

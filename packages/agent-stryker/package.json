@@ -1,0 +1,42 @@
+{
+  "name": "@webpresso/stryker-config",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./stryker.base.ts"
+    },
+    "./webpresso": {
+      "types": "./webpresso.d.ts",
+      "default": "./stryker.webpresso.ts"
+    }
+  },
+  "peerDependencies": {
+    "@stryker-mutator/core": ">=9 <10",
+    "@stryker-mutator/vitest-runner": ">=9 <10"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
+  },
+  "files": [
+    "README.md",
+    "index.d.ts",
+    "stryker.base.ts",
+    "stryker.webpresso.ts",
+    "webpresso.d.ts"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webpresso/tooling.git",
+    "directory": "packages/stryker-config"
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "name": "@webpresso/vitest-config",
+  "version": "0.1.0",
+  "private": false,
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "type": "module",
+  "exports": {
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "default": "./dist/node.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "default": "./dist/react.js"
+    },
+    "./react-setup": {
+      "default": "./dist/react-setup.js"
+    },
+    "./react-setup.ts": {
+      "default": "./dist/react-setup.js"
+    },
+    "./react-router": {
+      "types": "./dist/react-router.d.ts",
+      "default": "./dist/react-router.js"
+    },
+    "./workers": {
+      "types": "./dist/workers.d.ts",
+      "default": "./dist/workers.js"
+    },
+    "./flakiness-reporter": {
+      "types": "./dist/flakiness-reporter.d.ts",
+      "default": "./dist/flakiness-reporter.js"
+    },
+    "./webpresso/node": {
+      "types": "./dist/webpresso-node.d.ts",
+      "default": "./dist/webpresso-node.js"
+    },
+    "./webpresso/react": {
+      "types": "./dist/webpresso-react.d.ts",
+      "default": "./dist/webpresso-react.js"
+    },
+    "./webpresso/react-router": {
+      "types": "./dist/webpresso-react-router.d.ts",
+      "default": "./dist/webpresso-react-router.js"
+    },
+    "./webpresso/workers": {
+      "types": "./dist/webpresso-workers.d.ts",
+      "default": "./dist/webpresso-workers.js"
+    }
+  },
+  "scripts": {
+    "test": "pnpm run build && vitest run",
+    "typecheck": "tsc --noEmit",
+    "qa": "pnpm run typecheck && pnpm run test",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@webpresso/typescript-config": "workspace:*",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:",
+    "@vitejs/plugin-react": "catalog:"
+  },
+  "peerDependencies": {
+    "@cloudflare/vitest-pool-workers": ">=0.14 <1",
+    "@vitejs/plugin-react": ">=5 <7",
+    "vite-plus": ">=0.1.19 <1",
+    "vitest": ">=4 <5"
+  },
+  "peerDependenciesMeta": {
+    "@cloudflare/vitest-pool-workers": {
+      "optional": true
+    },
+    "@vitejs/plugin-react": {
+      "optional": true
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webpresso/tooling.git",
+    "directory": "packages/vitest-config"
+  }
+}

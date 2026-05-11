@@ -1,0 +1,10 @@
+{
+  "extends": "@webpresso/typescript-config/library.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "rootDir": "."
+  },
+  "include": ["*.ts", "*.js"],
+  "exclude": ["node_modules", "dist"]
+}

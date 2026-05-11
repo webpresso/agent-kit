@@ -1,0 +1,40 @@
+{
+  "name": "@webpresso/oxlint-plugins",
+  "version": "0.1.0",
+  "private": false,
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "type": "module",
+  "description": "Custom Oxlint plugins for Webpresso monorepo policies",
+  "main": "./src/index.js",
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./src/index.js",
+    "./import-hygiene": "./src/import-hygiene.js",
+    "./monorepo-paths": "./src/monorepo-paths.js",
+    "./foundation-purity": "./src/foundation-purity.js",
+    "./tier-boundaries": "./src/tier-boundaries.js",
+    "./query-patterns": "./src/query-patterns.js",
+    "./graphql-conventions": "./src/graphql-conventions.js",
+    "./testing-quality": "./src/testing-quality.js",
+    "./code-safety": "./src/code-safety.js",
+    "./*": "./src/*.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "echo 'no TS to check'"
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webpresso/tooling.git",
+    "directory": "packages/oxlint-plugins"
+  }
+}
