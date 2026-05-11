@@ -316,3 +316,7 @@ From debugging sessions:
 - Random fixes approach: 2-3 hours of thrashing
 - First-time fix rate: 95% vs 40%
 - New bugs introduced: Near zero vs common
+
+## See also
+
+- `/investigate` (gstack) — interactive variant with live browser controls, freeze hooks, and human-in-the-loop debugging. Choose `/investigate` when you need to interact with a running UI. Use this skill for headless agent runs without a human in the loop.

@@ -45,6 +45,27 @@ function findBlock(content: string, id: string): { start: number; end: number } 
   return { start: startLine, end: endLine }
 }
 
+/** Canonical gitignore block for agent-kit generated/transient paths. */
+export const GENERATED_PATHS_BLOCK: GitignoreBlock = {
+  id: 'generated',
+  patterns: [
+    '.claude/skills/',
+    '.codex/skills/',
+    '.cursor/rules/',
+    '.windsurf/rules/',
+    '.gemini/commands/',
+    '.opencode/agents/',
+    '.opencode/commands/',
+    '.agents/skills/',
+    '.agent/.merged.provenance.json',
+    '.agent/.compile-manifest.json',
+    '.agent/.rotation-log.jsonl',
+    '.agent/.blueprints.db',
+    '.agent/.blueprints.lock',
+    '.agent/.tail-hint-history.jsonl',
+  ],
+}
+
 export function patchGitignore(
   targetPath: string,
   block: GitignoreBlock,

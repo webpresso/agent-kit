@@ -15,8 +15,9 @@
  * Always emits — never returns null. AK_ROUTING_BLOCK is always prepended.
  * If `.agent/routing.md` exists and is non-empty, it is appended after the block.
  */
-import { readFileSync, realpathSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import { AK_ROUTING_BLOCK } from '#hooks/shared/routing-block'
@@ -64,8 +65,19 @@ export function buildOutput(_input: StartInput, cwd: string, env: EnvLike): stri
     // ENOENT / ENOTDIR: no routing.md, that's fine — emit routing block alone.
   }
 
-  const additionalContext =
-    routingMd !== null ? AK_ROUTING_BLOCK + '\n\n' + routingMd : AK_ROUTING_BLOCK
+  let gstackBlock: string | null = null
+  if (env.AK_GSTACK_ROUTING === '1') {
+    const gstackDir = join(homedir(), '.claude', 'skills', 'gstack')
+    if (existsSync(gstackDir)) {
+      gstackBlock =
+        '\n\n## Interactive skills (gstack)\nSkills like /browse, /qa, /ship, /investigate, /review available. Use /browse for all web browsing.'
+    }
+  }
+
+  let additionalContext = routingMd !== null ? AK_ROUTING_BLOCK + '\n\n' + routingMd : AK_ROUTING_BLOCK
+  if (gstackBlock !== null) {
+    additionalContext += gstackBlock
+  }
 
   return JSON.stringify({
     hookSpecificOutput: {
