@@ -38,6 +38,7 @@ export function createWebpressoNodeProjects(
   const sharedResolve = {
     alias: [...webpressoGeneratedRuntimeAliases],
     tsconfigPaths: true,
+    conditions: ['@webpresso/source'],
   } as unknown as UserWorkspaceConfig['resolve']
   const sharedServer = {
     deps: {
@@ -98,6 +99,11 @@ export const webpressoNodeConfig = defineConfig({
   resolve: {
     alias: [...webpressoGeneratedRuntimeAliases],
     tsconfigPaths: true,
+    // Honor workspace packages' `@webpresso/source` export condition so
+    // vitest resolves to .ts source instead of dist artifacts. Without
+    // this, fresh-clone tests fail with "Cannot find module" against
+    // packages that haven't been built yet.
+    conditions: ['@webpresso/source'],
   },
   test: {
     globals: true,
