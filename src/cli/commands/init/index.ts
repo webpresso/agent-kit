@@ -12,6 +12,8 @@ import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { syncAll } from '#symlinker'
+import { isTelemetryEnabled, reportTthw } from '#telemetry/setup-tthw'
+import { readPackageVersion } from '#cli/utils'
 
 import { runUnifiedSync } from '#symlinker/unified-sync'
 import {
@@ -107,6 +109,7 @@ export function resolveCatalogDir(): string {
 }
 
 export async function runInit(flags: InitFlags): Promise<number> {
+  const startMs = Date.now()
   const cwd = flags.cwd ?? process.cwd()
   const consumer = detectConsumer(cwd)
   if (!consumer) {
@@ -520,6 +523,18 @@ export async function runInit(flags: InitFlags): Promise<number> {
     if (gstackFailure === 'setup-failed') return EXIT_WRITE_FAIL
     if (rtkFailure === 'not-found') return EXIT_SETUP_FAIL
     if (rtkFailure === 'init-failed') return EXIT_WRITE_FAIL
+
+    if (isTelemetryEnabled(process.env as Record<string, string | undefined>)) {
+      const payload = {
+        event: 'setup-complete' as const,
+        durationMs: Date.now() - startMs,
+        agentKitVersion: readPackageVersion(import.meta.url),
+        os: process.platform,
+        nodeVersion: process.version,
+      }
+      await Promise.race([reportTthw(payload), new Promise<void>((r) => setTimeout(r, 100))])
+    }
+
     return EXIT_SUCCESS
   } catch (error) {
     if (error instanceof Error && /catalogDir does not exist/.test(error.message)) {

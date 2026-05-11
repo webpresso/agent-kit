@@ -172,6 +172,15 @@ Opinionated baseline, not a registry. Extend with your own under `.agent/skills/
 
 **Experimental (v0.x).** Public API may change between minor versions. Pin to a release tag if you need stability. See [`docs/getting-started.md`](./docs/getting-started.md) for migration notes and [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the release process.
 
+## Telemetry
+
+`ak setup` can optionally collect anonymous wall-clock timing to help improve the
+developer experience. No PII, no repo identifiers, no file paths are ever collected.
+
+**Off by default** for third-party adopters. Opt in: `AK_TELEMETRY=1 npx ak setup`.
+**Always on** for internal consumers (`AK_INTERNAL=1`).
+**Always off**: `AK_TELEMETRY=0 npx ak setup`.
+
 ## License
 
 MIT
