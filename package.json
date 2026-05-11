@@ -1,6 +1,6 @@
 {
   "name": "@webpresso/agent-kit",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "private": false,
   "repository": {
     "type": "git",
@@ -11,7 +11,9 @@
     "access": "restricted"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["better-sqlite3"]
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
   },
   "description": "One command scaffolds a repo so every AI coding agent (Claude Code, Codex CLI, Cursor, Windsurf, Gemini, OpenCode) shares the same context, hooks, and quality gates. The `ak` CLI: blueprints, skills catalog, lore commits, tech-debt lifecycle, audit composite.",
   "keywords": [
