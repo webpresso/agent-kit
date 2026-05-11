@@ -766,11 +766,21 @@ export function auditNoLinkProtocol(
 export interface NoRelativeParentImportsOptions {
   srcDir?: string
   extensions?: readonly string[]
+  /**
+   * Skip the tsconfig*.json scan entirely. Off by default — tsconfig parent
+   * paths (`extends`, `paths`, `references`, `include`, `outDir`, etc.) are
+   * audited alongside source imports.
+   */
+  skipTsconfig?: boolean
+  /** Directory to start the tsconfig scan from. Defaults to the repo root. */
+  tsconfigRoot?: string
 }
 
 /**
- * Fail if any source file contains relative parent imports (`../`).
- * Use `#alias` package imports instead.
+ * Fail if any source file contains relative parent imports (`../`) or if any
+ * `tsconfig*.json` declares a parent-relative path. Use `#alias` package
+ * imports for source code and a workspace path mapping / package alias for
+ * tsconfig `extends`, `paths`, `references`, etc.
  */
 export function auditNoRelativeParentImports(
   root: string,
@@ -825,12 +835,87 @@ export function auditNoRelativeParentImports(
 
   walk(srcDir)
 
+  if (options.skipTsconfig !== true) {
+    const tsconfigRoot = resolve(root, options.tsconfigRoot ?? '.')
+    const tsconfigChecked = walkTsconfigParentPaths(tsconfigRoot, root, violations)
+    checked += tsconfigChecked
+  }
+
   return {
     ok: violations.length === 0,
     title: 'no-relative-parent-imports',
     checked,
     violations,
   }
+}
+
+const TSCONFIG_SKIP_DIRS = new Set([
+  'node_modules',
+  'dist',
+  'build',
+  '.git',
+  '.cache',
+  '.next',
+  '.turbo',
+  '.omx',
+  // Per-worktree clones (Claude Code Agent isolation) — not part of the
+  // canonical source tree, audit them via their own root if needed.
+  '.claude',
+])
+
+/**
+ * Walk the repo for `tsconfig*.json` files and flag any value that uses a
+ * parent-relative path (`../`). Covers `extends`, `paths`, `references`,
+ * `include`, `exclude`, `files`, `baseUrl`, `rootDir`, `outDir`, etc., by
+ * scanning every string value recursively. tsconfig.json supports JSONC
+ * (trailing commas + comments), but we only need to inspect string-shaped
+ * values — a defensive line-level scan tolerates the comment syntax.
+ */
+function walkTsconfigParentPaths(
+  startDir: string,
+  reportRoot: string,
+  violations: RepoAuditViolation[],
+): number {
+  if (!existsSync(startDir)) return 0
+  let checked = 0
+
+  function walk(dir: string): void {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        if (TSCONFIG_SKIP_DIRS.has(entry.name)) continue
+        walk(full)
+        continue
+      }
+      if (!entry.isFile()) continue
+      if (!/^tsconfig(\.[^.]+)*\.json$/.test(entry.name)) continue
+
+      checked += 1
+      const content = readFileSync(full, 'utf-8')
+      const rel = relativePath(reportRoot, full)
+      const lines = content.split('\n')
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i] ?? ''
+        const trimmed = line.trim()
+        // Skip blank lines, line comments, and block-comment-only lines.
+        if (trimmed === '' || trimmed.startsWith('//') || trimmed.startsWith('/*')) continue
+
+        // Any `"../` inside a JSON string value is a parent reference. We
+        // match `"` followed by zero or more non-quote chars then `../`
+        // (handles both `"../foo"` and `"./foo/../bar"`).
+        if (/"[^"]*\.\.\/[^"]*"/.test(line)) {
+          violations.push({
+            file: rel,
+            message: `Line ${i + 1}: tsconfig parent-relative path detected — use a workspace path mapping or package alias instead: ${trimmed}`,
+          })
+        }
+      }
+    }
+  }
+
+  walk(startDir)
+  return checked
 }
 
 function withFilePrefix(file: string, auditResult: RepoAuditResult): RepoAuditResult {

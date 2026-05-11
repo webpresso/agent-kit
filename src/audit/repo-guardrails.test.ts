@@ -1313,6 +1313,91 @@ describe('parseFrontmatter — branch coverage', () => {
   })
 })
 
+describe('auditNoRelativeParentImports — tsconfig coverage', () => {
+  test('flags tsconfig.json extends with parent path', () => {
+    const root = tempRepo()
+    writeFileSync(join(root, 'tsconfig.json'), '{\n  "extends": "../base.json"\n}\n')
+
+    const result = auditNoRelativeParentImports(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations[0]?.file).toBe('tsconfig.json')
+    expect(result.violations[0]?.message).toContain('tsconfig parent-relative path')
+  })
+
+  test('flags tsconfig parent paths in compilerOptions.paths', () => {
+    const root = tempRepo()
+    writeFileSync(
+      join(root, 'tsconfig.json'),
+      JSON.stringify(
+        {
+          compilerOptions: { paths: { '@scope/*': ['../../packages/scope/*'] } },
+        },
+        null,
+        2,
+      ) + '\n',
+    )
+
+    const result = auditNoRelativeParentImports(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations.some((v) => v.message.includes('../../packages/scope/*'))).toBe(true)
+  })
+
+  test('flags tsconfig parent paths in references[].path', () => {
+    const root = tempRepo()
+    writeFileSync(
+      join(root, 'tsconfig.build.json'),
+      JSON.stringify({ references: [{ path: '../other' }] }, null, 2) + '\n',
+    )
+
+    const result = auditNoRelativeParentImports(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations[0]?.file).toBe('tsconfig.build.json')
+  })
+
+  test('accepts package-aliased extends without parent paths', () => {
+    const root = tempRepo()
+    writeFileSync(
+      join(root, 'tsconfig.json'),
+      JSON.stringify(
+        {
+          extends: '@webpresso/agent-tsconfig/library.json',
+          compilerOptions: { rootDir: './src', outDir: './dist' },
+        },
+        null,
+        2,
+      ) + '\n',
+    )
+
+    const result = auditNoRelativeParentImports(root)
+
+    expect(result.ok).toBe(true)
+  })
+
+  test('skipTsconfig disables the tsconfig scan', () => {
+    const root = tempRepo()
+    writeFileSync(join(root, 'tsconfig.json'), '{ "extends": "../base.json" }\n')
+
+    const result = auditNoRelativeParentImports(root, { skipTsconfig: true })
+
+    expect(result.ok).toBe(true)
+  })
+
+  test('does not descend into node_modules or dist', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'node_modules', 'pkg'), { recursive: true })
+    mkdirSync(join(root, 'dist'), { recursive: true })
+    writeFileSync(join(root, 'node_modules', 'pkg', 'tsconfig.json'), '{ "extends": "../x" }\n')
+    writeFileSync(join(root, 'dist', 'tsconfig.json'), '{ "extends": "../y" }\n')
+
+    const result = auditNoRelativeParentImports(root)
+
+    expect(result.ok).toBe(true)
+  })
+})
+
 describe('auditNoLinkProtocol', () => {
   test('flags link: values in dependencies, devDependencies, optionalDependencies', () => {
     const root = tempRepo()
