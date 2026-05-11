@@ -46,6 +46,9 @@ export interface ScaffoldAgentReport {
 
 const ALWAYS_COPY_SUBDIRS = ['commands', 'workflows', 'guides'] as const
 
+/** Top-level catalog files emitted once on fresh setup (never overwritten). */
+const FRESH_COPY_FILES = ['correlate.allow.yaml'] as const
+
 export function scaffoldAgent(input: ScaffoldAgentInput): ScaffoldAgentReport {
   const { catalogDir, repoRoot, options } = input
   const catalogAgent = join(catalogDir, 'agent')
@@ -64,6 +67,16 @@ export function scaffoldAgent(input: ScaffoldAgentInput): ScaffoldAgentReport {
   const topReadme = join(catalogAgent, 'README.md')
   if (existsSync(topReadme)) {
     results.push(copyFileMerged(topReadme, join(targetAgent, 'README.md'), options))
+  }
+
+  // Fresh-only top-level files — emitted once to the consumer's .agent/.
+  // These are committed to the consumer repo (not gitignored) so cloud agents
+  // and CI can read them. Only written on first setup (absent = fresh).
+  for (const file of FRESH_COPY_FILES) {
+    const src = join(catalogAgent, file)
+    if (existsSync(src)) {
+      results.push(copyFileMerged(src, join(targetAgent, file), options))
+    }
   }
 
   return { results }

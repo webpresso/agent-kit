@@ -62,6 +62,7 @@ export const GENERATED_PATHS_BLOCK: GitignoreBlock = {
     '.agent/.rotation-log.jsonl',
     '.agent/.blueprints.db',
     '.agent/.blueprints.lock',
+    '.agent/.blueprints.snapshot.sql',
     '.agent/.tail-hint-history.jsonl',
   ],
 }
