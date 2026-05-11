@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-05-05'
+last_updated: '2026-05-11'
 ---
 
 # `ak setup --with` presets
@@ -139,6 +139,39 @@ After the scaffolder pass, every non-`--dry-run` `ak setup` runs a runtime check
 ## Why `--with` mixes skills and presets
 
 Tier-3 skills install **catalog content** (markdown files, SKILL.md, rules); presets run **scaffolder logic** (write hook files, spawn external CLIs). Conceptually different, but from the consumer's perspective both are "things you opt into during setup." Keeping them on a single flag avoids `--with-skills` / `--with-presets` proliferation. The name on each side is unambiguous because the namespaces don't collide.
+
+### `example-skill`
+
+Scaffolds a working `.agent/skills/hello-webpresso/SKILL.md` and then runs
+`ak compile` as the final step. Designed for first-time setup: gives the
+consumer an immediately invokable skill to verify that IDE skill discovery
+is working end-to-end.
+
+```bash
+ak setup --with base-kit --with example-skill
+# → .agent/skills/hello-webpresso/SKILL.md created
+# → ak compile runs: all 6 IDE surfaces populated
+# → /hello-webpresso is now available in Claude Code / Codex / Cursor / etc.
+```
+
+**Idempotency:** if `.agent/skills/hello-webpresso/SKILL.md` already exists,
+the scaffolder skips the write. `ak compile` still runs to ensure surfaces are
+current.
+**Requires:** nothing beyond Node/Bun on PATH. rulesync is bundled with agent-kit.
+
+### `audit-hooks`
+
+Extends `.husky/pre-commit` (after `base-kit`) with two staged-mode audit hooks:
+
+```bash
+ak audit skill-sizes --staged
+ak audit broken-refs --staged
+```
+
+`--staged` mode scans only the files in the current git staging area, so the
+pre-commit check typically runs in under a second.
+
+**Requires:** `base-kit` (runs `ak setup --with husky` first if not already set up).
 
 ## Adding new presets
 
