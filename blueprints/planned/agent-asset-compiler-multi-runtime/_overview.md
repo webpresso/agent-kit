@@ -195,7 +195,7 @@ Implementation: `webpresso/agent-kit-action` invokes `ak audit --all --json`, fo
 
 | Decision | Choice | Reasoning |
 |---|---|---|
-| Multi-runtime emitter | **`rulesync@^8.15`** (npm dep) | 175k weekly dl, MIT, covers all 6 targets + 11 more; we wrap not reimplement |
+| Multi-runtime emitter | **`rulesync@8.15.1`** (npm dep, exact pin) | 175k weekly dl, MIT, covers all 6 targets + 11 more; we wrap not reimplement |
 | Schema flatten step | ~50 LOC in `src/compiler/flatten.ts` | Maps our `.agent/{skills,commands,agents,memory}/` to rulesync's `.rulesync/` source shape |
 | AGENTS.md merger | **In-tree** (remark + remark-frontmatter + remark-gfm) | Option C hybrid per research; no upstream does section-keyed merging |
 | Memory rotation | **In-tree** (`op: rotate` directive) | Solves real monorepo pain (29KB AGENTS.md); shares parser with merger |
@@ -229,7 +229,7 @@ Implementation: `webpresso/agent-kit-action` invokes `ak audit --all --json`, fo
 | R1 | HIGH | `rulesync` single-maintainer truck factor (~70% commits by dyoshikawa) | MIT + small surface + active external PRs → forkable in 1 day if abandoned; we own only ~50 LOC of flatten glue |
 | R2 | MEDIUM | Plugin marketplace volatility (Cursor + Codex are new in 2026) | Version-pin each manifest's schema; monthly audit doc check |
 | R3 | MEDIUM | Memory rotation could surprise consumers (lost context) | Strong defaults, opt-in directive, every rotation logged + auditable |
-| R4 | MEDIUM | "No backwards compat" means consumers coordinate the bump | Land in agent-kit first; create one PR per consumer (monorepo + ingest-lens) that runs `ak skills migrate-legacy` + bumps pin in same commit |
+| R4 | MEDIUM | "No backwards compat" means consumers coordinate the bump | Land in agent-kit first; create one PR per consumer (monorepo + ingest-lens) with one-time hand-commit cleanup (delete symlinks, legacy rules files) + bump pin in same commit. No `migrate-legacy` verb — per Technology Choices table. |
 | R5 | LOW | `webpresso/agent-kit-action` GitHub Action needs CI testing of the action itself | Single repo, ~100 lines, fixture-based test; minimal maintenance burden |
 
 ## Tasks (revised — ~10 tasks, was 25)
@@ -278,7 +278,7 @@ Extend `ak setup --with base-kit`'s `.gitignore` template. Block delimited by `#
 Address the 6/9 GAPS verdict from filter coverage audit AND D6 from DX review (extend coverage to `rulesync` subprocess output emitted by `ak compile`). Land before any new `ak_*` MCP tool ships in v0.11.0.
 
 - **Create:** `src/output-transforms/edge-cases.test.ts` — 32-case matrix: 5 transforms (vitest, oxlint, tsc, generic, **rulesync**) × 7 edges (empty, ANSI escape codes, 1MB blob, mid-truncation, stderr-only, summary-key collision, mixed-success-fail). Skip 3 N/A cells per transform/edge combinatorics. Each case asserts envelope shape valid, `bytes <= 4000`, `rawBytes` correct, `tokensSaved >= 0`, no thrown exceptions.
-- **Create:** `src/output-transforms/rulesync.ts` — new transform for `ak compile`'s rulesync subprocess. Parses rulesync's per-target generation output into the summary-first envelope: count of skills/commands/agents emitted per runtime, failures with file:line, byte budget per runtime. Pinned to `rulesync@^8.15`. **Required by D6 from DX review** — without this, `ak compile` UX is inconsistent with `ak qa`/`ak test`/`ak lint`.
+- **Create:** `src/output-transforms/rulesync.ts` — new transform for `ak compile`'s rulesync subprocess. Parses rulesync's per-target generation output into the summary-first envelope: count of skills/commands/agents emitted per runtime, failures with file:line, byte budget per runtime. Pinned to `rulesync@8.15.1` (exact pin, matches package.json). **Required by D6 from DX review** — without this, `ak compile` UX is inconsistent with `ak qa`/`ak test`/`ak lint`.
 - **Create:** `src/output-transforms/__fixtures__/edge/` — committed real-world fixtures (ANSI-colored vitest, oxlint with stack traces, huge tsc output, rulesync v8.15 success + failure outputs).
 - **Land 3 PoC tests proving current gaps** before fixing them:
   1. ANSI shift in `extractJson` (`vitest.ts:33`) — feed `'[31m['+JSON.stringify(sample)+'[0m'` to vitestTransform; verify regex fallback hits.
@@ -479,5 +479,6 @@ All open questions from prior revision resolved by CEO review 2026-05-11:
 5. ✅ **Zero backwards compat for any integration** — applied recursively.
 6. ✅ **GitHub Action + PR comment** — yes (D3 + D6).
 7. ✅ **Memory rotation** — yes (D7) via `op: rotate` directive.
+8. ✅ **AGENTS.md root ownership semantics (explicit decision — 2026-05-11 post-Codex audit)** — Root `AGENTS.md` is classified as **payload** (committed, generated). This is a deliberate semantic change from the prior convention where AGENTS.md was consumer-owned and not rewritten by tooling. Decision: `ak compile` writes and owns root `AGENTS.md`; consumers MUST NOT hand-edit it (use `.agent/memory/AGENTS.md` or `memory.merge.yaml` directives instead). The generated-file policy table in Architecture is the single source of truth. `ak audit memory-unified` warns if CLAUDE.md does not import `@AGENTS.md`. This decision is load-bearing — implementors must not soften it to "ak compile writes it if missing" or any partial-generation path.
 
 Blueprint ready to promote `draft/` → `planned/`.
