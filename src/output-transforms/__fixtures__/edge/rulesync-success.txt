@@ -1,0 +1,4 @@
+✓ Claude Code: 3 skills, 2 commands, 1 agent
+✓ Codex: 3 skills, 2 commands, 1 agent
+✓ Gemini: 3 skills, 2 commands, 1 agent
+Generated in 120ms
