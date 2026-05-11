@@ -1,10 +1,12 @@
 import type { BlueprintAuditResult, BlueprintSummary } from '#local'
 import type {
+  AdvanceTaskResult,
   BlueprintCommandOptions,
   BlueprintLifecycleMutationResult,
   CreateBlueprintResult,
   ExecuteBlueprintResult,
   MoveBlueprintResult,
+  PromoteBlueprintResult,
   ShowBlueprintResult,
 } from './router.js'
 
@@ -22,6 +24,12 @@ export class BlueprintAuditFailedError extends Error {
 }
 
 interface BlueprintCommandDependencies {
+  advanceBlueprintTask: (
+    slug: string,
+    taskId: string,
+    toStatus: string,
+    options: BlueprintCommandOptions,
+  ) => Promise<AdvanceTaskResult>
   auditBlueprints: (options: BlueprintCommandOptions) => Promise<BlueprintAuditResult>
   controlBlueprintExec: (
     action: 'status' | 'resume' | 'stop',
@@ -48,6 +56,15 @@ interface BlueprintCommandDependencies {
     slug: string,
     options: BlueprintCommandOptions,
   ) => Promise<BlueprintLifecycleMutationResult>
+  finalizeBlueprintBySlug: (
+    slug: string,
+    options: BlueprintCommandOptions,
+  ) => Promise<PromoteBlueprintResult>
+  promoteBlueprintToState: (
+    slug: string,
+    toState: string,
+    options: BlueprintCommandOptions,
+  ) => Promise<PromoteBlueprintResult>
   formatBlueprintAudit: (result: BlueprintAuditResult) => string
   formatBlueprintCreation: (result: CreateBlueprintResult) => string
   formatBlueprintDetails: (result: ShowBlueprintResult) => string
@@ -228,7 +245,19 @@ export async function executeBlueprintSubcommand(
       if (!slug) {
         throw new Error('Usage: ak blueprint finalize <slug>')
       }
-      const result = await deps.finalizeBlueprint(slug, options)
+      // Use the DB-backed mutation finalizer if available; fall through to lifecycle engine
+      const result = await deps.finalizeBlueprintBySlug(slug, options)
+      deps.printBlueprintOutput(options.json ? result : result.message, options.json)
+      return
+    }
+    case 'promote': {
+      // ak blueprint promote <slug> <to-state>
+      const slug = args[0]
+      const toState = args[1]
+      if (!slug || !toState) {
+        throw new Error('Usage: ak blueprint promote <slug> <planned|in-progress|completed|parked>')
+      }
+      const result = await deps.promoteBlueprintToState(slug, toState, options)
       deps.printBlueprintOutput(options.json ? result : result.message, options.json)
       return
     }
@@ -244,15 +273,32 @@ export async function executeBlueprintSubcommand(
       return
     }
     case 'task': {
-      // Two usage forms:
+      const first = args[0]
+
+      // Handle: ak blueprint task advance <slug> <taskId> --to <status>
+      if (first === 'advance') {
+        const slug = args[1]
+        const taskId = args[2]
+        const toStatus = options.to
+        if (!slug || !taskId || !toStatus) {
+          throw new Error(
+            'Usage: ak blueprint task advance <slug> <task-id> --to <todo|in-progress|blocked|done|dropped>',
+          )
+        }
+        const result = await deps.advanceBlueprintTask(slug, taskId, toStatus, options)
+        deps.printBlueprintOutput(options.json ? result : result.message, options.json)
+        return
+      }
+
+      // Two legacy usage forms:
       //   ak blueprint task <action> <slug> <taskId>               (wp-compatible)
       //   ak blueprint task <slug> <taskId> <action> [--reason X]  (ak-native, per spec)
-      const first = args[0]
       const second = args[1]
       const third = args[2]
       if (!first || !second || !third) {
         throw new Error(
-          'Usage: ak blueprint task <slug> <taskId> <start|complete|unblock|block --reason <x>>',
+          'Usage: ak blueprint task advance <slug> <task-id> --to <status>\n' +
+          '       ak blueprint task <slug> <taskId> <start|complete|unblock|block --reason <x>>',
         )
       }
       const ACTIONS = ['start', 'block', 'unblock', 'complete'] as const
@@ -272,7 +318,7 @@ export async function executeBlueprintSubcommand(
         taskId = second
         action = third
       } else {
-        throw new Error(`Unknown blueprint task action. Use one of: ${ACTIONS.join(', ')}`)
+        throw new Error(`Unknown blueprint task action. Use one of: advance, ${ACTIONS.join(', ')}`)
       }
 
       const result = await deps.mutateBlueprintTask(action, slug, taskId, {
@@ -284,7 +330,7 @@ export async function executeBlueprintSubcommand(
     }
     default: {
       throw new Error(
-        `Unknown blueprint subcommand: ${subcommand}\n\nUse one of: list, new, show, exec, start, park, task, finalize, audit, move, control, logs`,
+        `Unknown blueprint subcommand: ${subcommand}\n\nUse one of: list, new, show, exec, start, park, task, finalize, promote, audit, move, control, logs`,
       )
     }
   }
