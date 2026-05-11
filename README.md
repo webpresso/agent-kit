@@ -2,6 +2,52 @@
 
 > One command scaffolds a repo so every AI coding agent — Claude Code, Codex CLI, Cursor, Windsurf, Gemini, OpenCode — shares the same context, hooks, and quality gates. Edit a canonical `.agent/` once; `ak sync` propagates everywhere. MIT. Experimental (v0.x).
 
+## Registry setup
+
+agent-kit publishes to GitHub Packages. Add to your `.npmrc`:
+
+```
+@webpresso:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
+
+Then: `pnpm add -D @webpresso/agent-kit`
+
+## First 5 minutes
+
+```bash
+# 1. Install and set up
+pnpm add -D @webpresso/agent-kit
+npx ak setup --with base-kit --with example-skill
+
+# 2. Compile to all 6 IDE surfaces
+npx ak compile
+
+# 3. Verify no drift
+npx ak audit skill-sizes
+npx ak audit broken-refs
+
+# 4. Open in your IDE — the hello-webpresso skill is now available
+```
+
+## How agent-kit relates to rulesync
+
+agent-kit uses [rulesync](https://github.com/dyoshikawa/rulesync) as a substrate
+for multi-runtime emission (17 runtimes, MIT, 175k weekly downloads).
+
+| Capability | rulesync | agent-kit |
+|---|---|---|
+| Emit to 17 runtimes | ✅ | ✅ (via rulesync) |
+| AGENTS.md section-keyed merger | ❌ | ✅ |
+| Blueprint lifecycle (plan→in-progress→done) | ❌ | ✅ |
+| Drift detection (broken refs, size budgets) | ❌ | ✅ |
+| Tech-debt lifecycle (auto-file from audit) | ❌ | ✅ |
+| Cross-repo correlation (permission-aware) | ❌ | ✅ (v0.13+) |
+| Structured MCP tools for agents | ❌ | ✅ |
+| GitHub Action (CI audit + PR comments) | ❌ | ✅ |
+
+**agent-kit does not reimplement what rulesync does well.** It adds the integration layer that rulesync doesn't own: blueprint lifecycle, drift audits, tech-debt compounding, and structured MCP surfaces.
+
 ## The problem
 
 Every repo using AI coding agents needs the same scaffolding: an `AGENTS.md` operating contract, scoped rules, lifecycle hooks, slash-command skills, quality gates. Today each team hand-crafts this from scratch, surfaces drift across tools and repos, and the knowledge of *what to configure and why* lives in tribal memory rather than code.
