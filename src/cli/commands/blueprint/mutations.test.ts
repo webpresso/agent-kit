@@ -2,12 +2,18 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { openDb } from '#db/connection.js'
 import { ingestBlueprints } from '#db/ingester.js'
 
-import { advanceTask, finalizeBlueprint, promoteBlueprint } from './mutations.js'
+import {
+  _setSyncAdapterForCli,
+  advanceTask,
+  finalizeBlueprint,
+  promoteBlueprint,
+  type SyncAdapter,
+} from './mutations.js'
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -362,5 +368,191 @@ describe('atomic write', () => {
 
     const contentAfter = readOverview(tmpRepoDir, 'my-feature', 'planned')
     expect(contentAfter).toBe(originalContent)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Platform-first sync — advanceTask (Task 2.7)
+// ---------------------------------------------------------------------------
+
+function makeMockAdapter(): { adapter: SyncAdapter; pushEvent: ReturnType<typeof vi.fn>; ensureFresh: ReturnType<typeof vi.fn> } {
+  const pushEvent = vi.fn<SyncAdapter['pushEvent']>().mockResolvedValue(undefined)
+  const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockResolvedValue(undefined)
+  const adapter: SyncAdapter = { pushEvent, ensureFresh }
+  return { adapter, pushEvent, ensureFresh }
+}
+
+describe('advanceTask — platform-first sync', () => {
+  beforeEach(async () => {
+    tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
+    await seedDb(tmpRepoDir)
+  })
+
+  afterEach(() => {
+    _setSyncAdapterForCli(null)
+    delete process.env['AK_BLUEPRINT_PLATFORM_DISABLED']
+  })
+
+  it('calls pushEvent with task.status_changed and ensureFresh when adapter is available', async () => {
+    const { adapter, pushEvent, ensureFresh } = makeMockAdapter()
+    _setSyncAdapterForCli(() => adapter)
+
+    await advanceTask(tmpRepoDir, 'my-feature', '1.1', 'in-progress')
+
+    expect(pushEvent).toHaveBeenCalledOnce()
+    const call = pushEvent.mock.calls[0]?.[0]
+    expect(call).toStrictEqual(
+      expect.objectContaining({
+        type: 'task.status_changed',
+        payload: expect.objectContaining({
+          type: 'task.status_changed',
+          blueprintSlug: 'my-feature',
+          taskId: '1.1',
+          fromStatus: 'todo',
+          toStatus: 'in-progress',
+        }),
+      }),
+    )
+    expect(ensureFresh).toHaveBeenCalledOnce()
+    expect(ensureFresh).toHaveBeenCalledWith({ slug: 'my-feature' })
+  })
+
+  it('still updates markdown when adapter is available', async () => {
+    const { adapter } = makeMockAdapter()
+    _setSyncAdapterForCli(() => adapter)
+
+    await advanceTask(tmpRepoDir, 'my-feature', '1.1', 'done')
+
+    const content = readOverview(tmpRepoDir, 'my-feature', 'planned')
+    expect(content).toContain('**Status:** done')
+  })
+
+  it('does not call pushEvent when AK_BLUEPRINT_PLATFORM_DISABLED=1', async () => {
+    process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+    const { adapter, pushEvent } = makeMockAdapter()
+    _setSyncAdapterForCli(() => adapter)
+
+    await advanceTask(tmpRepoDir, 'my-feature', '1.1', 'in-progress')
+
+    expect(pushEvent).not.toHaveBeenCalled()
+  })
+
+  it('disabled path produces byte-identical output to pre-migration — markdown unchanged', async () => {
+    const before = readOverview(tmpRepoDir, 'my-feature', 'planned')
+
+    // With disabled flag, markdown-canonical path runs
+    process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+    await advanceTask(tmpRepoDir, 'my-feature', '1.1', 'in-progress')
+
+    const afterDisabled = readOverview(tmpRepoDir, 'my-feature', 'planned')
+    expect(afterDisabled).toContain('**Status:** in-progress')
+
+    // Reset and run without adapter at all — same result expected
+    const tmpRepoDir2 = makeRepo('my-feature', before, 'planned')
+    await seedDb(tmpRepoDir2)
+    delete process.env['AK_BLUEPRINT_PLATFORM_DISABLED']
+    _setSyncAdapterForCli(() => null)
+
+    await advanceTask(tmpRepoDir2, 'my-feature', '1.1', 'in-progress')
+    const afterNullAdapter = readOverview(tmpRepoDir2, 'my-feature', 'planned')
+
+    expect(afterDisabled).toStrictEqual(afterNullAdapter)
+    rmSync(tmpRepoDir2, { recursive: true, force: true })
+  })
+
+  it('does not call pushEvent when already at target status (idempotent path)', async () => {
+    const { adapter, pushEvent } = makeMockAdapter()
+    _setSyncAdapterForCli(() => adapter)
+
+    // Task 1.1 is already 'todo' — idempotent path, should not push event
+    await advanceTask(tmpRepoDir, 'my-feature', '1.1', 'todo')
+
+    expect(pushEvent).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Platform-first sync — promoteBlueprint (Task 2.6)
+// ---------------------------------------------------------------------------
+
+describe('promoteBlueprint — platform-first sync', () => {
+  afterEach(() => {
+    _setSyncAdapterForCli(null)
+    delete process.env['AK_BLUEPRINT_PLATFORM_DISABLED']
+  })
+
+  it('calls pushEvent with blueprint.status_changed and ensureFresh when adapter is available', async () => {
+    tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
+    await seedDb(tmpRepoDir)
+
+    const { adapter, pushEvent, ensureFresh } = makeMockAdapter()
+    _setSyncAdapterForCli(() => adapter)
+
+    await promoteBlueprint(tmpRepoDir, 'my-feature', 'in-progress')
+
+    expect(pushEvent).toHaveBeenCalledOnce()
+    const call = pushEvent.mock.calls[0]?.[0]
+    expect(call).toStrictEqual(
+      expect.objectContaining({
+        type: 'blueprint.status_changed',
+        payload: expect.objectContaining({
+          type: 'blueprint.status_changed',
+          slug: 'my-feature',
+          fromStatus: 'planned',
+          toStatus: 'in-progress',
+        }),
+      }),
+    )
+    expect(ensureFresh).toHaveBeenCalledOnce()
+    expect(ensureFresh).toHaveBeenCalledWith({ slug: 'my-feature' })
+  })
+
+  it('still moves the directory and updates frontmatter when adapter is available', async () => {
+    tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
+    await seedDb(tmpRepoDir)
+
+    const { adapter } = makeMockAdapter()
+    _setSyncAdapterForCli(() => adapter)
+
+    const result = await promoteBlueprint(tmpRepoDir, 'my-feature', 'in-progress')
+
+    expect(result.newState).toBe('in-progress')
+    const content = readFileSync(result.newPath, 'utf8')
+    expect(content).toContain('status: in-progress')
+  })
+
+  it('does not call pushEvent when AK_BLUEPRINT_PLATFORM_DISABLED=1', async () => {
+    tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
+    await seedDb(tmpRepoDir)
+
+    process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+    const { adapter, pushEvent } = makeMockAdapter()
+    _setSyncAdapterForCli(() => adapter)
+
+    await promoteBlueprint(tmpRepoDir, 'my-feature', 'in-progress')
+
+    expect(pushEvent).not.toHaveBeenCalled()
+  })
+
+  it('disabled path produces byte-identical frontmatter output', async () => {
+    // Run with platform disabled — uses markdown-canonical path
+    tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
+    await seedDb(tmpRepoDir)
+    process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+
+    const result1 = await promoteBlueprint(tmpRepoDir, 'my-feature', 'in-progress')
+    const contentDisabled = readFileSync(result1.newPath, 'utf8')
+
+    // Run with null adapter — same path
+    delete process.env['AK_BLUEPRINT_PLATFORM_DISABLED']
+    const tmpRepoDir2 = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
+    await seedDb(tmpRepoDir2)
+    _setSyncAdapterForCli(() => null)
+
+    const result2 = await promoteBlueprint(tmpRepoDir2, 'my-feature', 'in-progress')
+    const contentNullAdapter = readFileSync(result2.newPath, 'utf8')
+
+    expect(contentDisabled).toStrictEqual(contentNullAdapter)
+    rmSync(tmpRepoDir2, { recursive: true, force: true })
   })
 })

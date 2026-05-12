@@ -374,7 +374,7 @@ They are independent of each other and run in parallel.
 
 #### [mcp] Task 2.2: Migrate `ak_blueprint_promote`
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 2.1
 
 Swap `ak_blueprint_promote`'s mutation path. Promote moves a blueprint
@@ -395,7 +395,7 @@ between lifecycle directories (e.g., `planned/` → `in-progress/`).
 
 #### [mcp] Task 2.3: Migrate `ak_blueprint_finalize`
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 2.1
 
 **Files:**
@@ -411,7 +411,7 @@ between lifecycle directories (e.g., `planned/` → `in-progress/`).
 
 #### [mcp] Task 2.4: Migrate `ak_blueprint_new`
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 2.1
 
 `ak_blueprint_new` creates a new blueprint scaffold. After this task,
@@ -430,7 +430,7 @@ markdown-first creation).
 
 #### [mcp] Task 2.5: Migrate `ak_blueprint_task_next` (read tool with replica refresh)
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 2.1
 
 `ak_blueprint_task_next` is a read-only tool that returns the next ready
@@ -451,7 +451,7 @@ replica refresh into the read path.
 
 #### [mcp] Task 2.6: Migrate `ak blueprint start` CLI
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 2.1
 
 `ak blueprint start` is the CLI entry point for beginning a blueprint.
@@ -471,7 +471,7 @@ this task, it writes to the platform first.
 
 #### [mcp] Task 2.7: Migrate `ak blueprint task complete` CLI
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 2.1
 
 **Files:**

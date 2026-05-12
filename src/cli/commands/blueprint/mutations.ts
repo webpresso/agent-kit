@@ -4,15 +4,125 @@
  * All mutations:
  *   1. Edit the canonical _overview.md on disk (atomic tmp+rename)
  *   2. Re-ingest into the structured-store DB via ingestAll
+ *
+ * Platform-first sync (Tasks 2.6 + 2.7):
+ *   When a SyncAdapter is available (credentials present, not disabled), mutations
+ *   push a BlueprintPlatformEvent before updating local markdown/SQLite.
+ *   Iron rule: AK_BLUEPRINT_PLATFORM_DISABLED=1 skips the adapter entirely — the
+ *   markdown-canonical path runs byte-identically to the pre-migration behaviour.
  */
 
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 import { openDb } from '#db/connection.js'
 import { ingestAll } from '#db/ingester.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
+
+// ---------------------------------------------------------------------------
+// Platform-first sync adapter (injectable for tests, Tasks 2.6 + 2.7)
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal platform sync surface needed by CLI mutation handlers.
+ *
+ * The production factory creates a BlueprintSyncClient + ReplicaManager pair.
+ * Tests inject a mock via `_setSyncAdapterForCli`.
+ *
+ * Intentionally mirrors the SyncAdapter in blueprint-server.ts to keep the
+ * two surfaces in sync without introducing a shared module dependency.
+ */
+export interface SyncAdapter {
+  pushEvent(event:
+    | {
+        readonly eventId: string
+        readonly repoId: string
+        readonly occurredAt: string
+        readonly type: 'task.status_changed'
+        readonly payload: {
+          readonly type: 'task.status_changed'
+          readonly blueprintSlug: string
+          readonly taskId: string
+          readonly fromStatus: string
+          readonly toStatus: string
+        }
+      }
+    | {
+        readonly eventId: string
+        readonly repoId: string
+        readonly occurredAt: string
+        readonly type: 'blueprint.status_changed'
+        readonly payload: {
+          readonly type: 'blueprint.status_changed'
+          readonly slug: string
+          readonly fromStatus: string
+          readonly toStatus: string
+        }
+      }
+  ): Promise<void>
+  ensureFresh(opts?: { readonly slug?: string }): Promise<void>
+}
+
+type SyncAdapterFactory = () => SyncAdapter | null
+
+/**
+ * Module-level factory.  `null` = use the production default (loadSyncCredentials
+ * from auth.ts + BlueprintSyncClient + ReplicaManager — lazy-imported so that
+ * mutations.ts never statically depends on the HTTP client).
+ */
+let _syncAdapterFactory: SyncAdapterFactory | null = null
+
+/**
+ * Override the adapter factory — for tests only.
+ * Pass `null` to restore the production default.
+ *
+ * @internal
+ */
+export function _setSyncAdapterForCli(factory: SyncAdapterFactory | null): void {
+  _syncAdapterFactory = factory
+}
+
+/**
+ * Resolve the sync adapter for the current CLI mutation.
+ *
+ * Iron rule: returns `null` when `AK_BLUEPRINT_PLATFORM_DISABLED=1` regardless
+ * of any injected factory — the caller must skip all platform operations.
+ *
+ * @param cwd - repo working directory, used to locate the replica DB file.
+ */
+export async function resolveSyncAdapterForCli(cwd: string): Promise<SyncAdapter | null> {
+  if (process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] === '1') return null
+
+  if (_syncAdapterFactory !== null) {
+    return _syncAdapterFactory()
+  }
+
+  // Production default: lazy-import to avoid coupling the module to the HTTP client.
+  const [{ BlueprintSyncClient }, { loadSyncCredentials }, { ReplicaManager }, { openDb: openDbForReplica }] =
+    await Promise.all([
+      import('#sync/client.js'),
+      import('#sync/auth.js'),
+      import('#sync/replica.js'),
+      import('#db/connection.js'),
+    ])
+
+  const creds = loadSyncCredentials()
+  if (creds === null) return null
+
+  const client = new BlueprintSyncClient(creds)
+
+  // ReplicaManager needs a db handle; store the replica DB alongside the blueprint DB.
+  const replicaDbPath = path.join(cwd, '.agent', '.replica.db')
+  const conn = openDbForReplica(replicaDbPath)
+  const manager = new ReplicaManager({ client, db: conn.db })
+
+  return {
+    pushEvent: (event) => client.pushEvent(event),
+    ensureFresh: (opts) => manager.ensureFresh(opts),
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -197,6 +307,28 @@ export async function advanceTask(
     }
   }
 
+  // Platform-first path: push event + pull fresh replica before local update.
+  // Iron rule: resolveSyncAdapterForCli() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
+  const adapter = await resolveSyncAdapterForCli(cwd)
+  if (adapter !== null) {
+    await adapter.pushEvent({
+      eventId: randomUUID(),
+      repoId: process.env['AK_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
+      occurredAt: new Date().toISOString(),
+      type: 'task.status_changed',
+      payload: {
+        type: 'task.status_changed',
+        blueprintSlug,
+        taskId,
+        fromStatus: currentStatus,
+        toStatus,
+      },
+    })
+    await adapter.ensureFresh({ slug: blueprintSlug })
+  }
+
+  // Always update local markdown + SQLite.
+  // Platform-first: these become derived artifacts; disabled: these are canonical.
   const updatedLines = [...lines]
   updatedLines[lineIndex] = `**Status:** ${toStatus}`
   const newContent = updatedLines.join('\n')
@@ -267,6 +399,27 @@ export async function promoteBlueprint(
     }
   }
 
+  // Platform-first path: push event + pull fresh replica before local move.
+  // Iron rule: resolveSyncAdapterForCli() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
+  const adapter = await resolveSyncAdapterForCli(cwd)
+  if (adapter !== null) {
+    await adapter.pushEvent({
+      eventId: randomUUID(),
+      repoId: process.env['AK_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
+      occurredAt: new Date().toISOString(),
+      type: 'blueprint.status_changed',
+      payload: {
+        type: 'blueprint.status_changed',
+        slug,
+        fromStatus: currentState,
+        toStatus: toState,
+      },
+    })
+    await adapter.ensureFresh({ slug })
+  }
+
+  // Always update local markdown + SQLite.
+  // Platform-first: these become derived artifacts; disabled: these are canonical.
   // Update frontmatter in the current location first, then move
   let content = readFileSync(overviewPath, 'utf8')
   content = updateFrontmatterStatus(content, toState)

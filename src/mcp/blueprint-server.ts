@@ -43,19 +43,56 @@ import type { ToolHandlerResult, ToolRegistrar } from './auto-discover.js'
  * keeps the module testable without live credentials.
  */
 export interface SyncAdapter {
-  pushEvent(event: {
-    readonly eventId: string
-    readonly repoId: string
-    readonly occurredAt: string
-    readonly type: 'task.status_changed'
-    readonly payload: {
-      readonly type: 'task.status_changed'
-      readonly blueprintSlug: string
-      readonly taskId: string
-      readonly fromStatus: string
-      readonly toStatus: string
-    }
-  }): Promise<void>
+  pushEvent(event:
+    | {
+        readonly eventId: string
+        readonly repoId: string
+        readonly occurredAt: string
+        readonly type: 'task.status_changed'
+        readonly payload: {
+          readonly type: 'task.status_changed'
+          readonly blueprintSlug: string
+          readonly taskId: string
+          readonly fromStatus: string
+          readonly toStatus: string
+        }
+      }
+    | {
+        readonly eventId: string
+        readonly repoId: string
+        readonly occurredAt: string
+        readonly type: 'blueprint.status_changed'
+        readonly payload: {
+          readonly type: 'blueprint.status_changed'
+          readonly slug: string
+          readonly fromStatus: string
+          readonly toStatus: string
+        }
+      }
+    | {
+        readonly eventId: string
+        readonly repoId: string
+        readonly occurredAt: string
+        readonly type: 'blueprint.finalized'
+        readonly payload: {
+          readonly type: 'blueprint.finalized'
+          readonly slug: string
+        }
+      }
+    | {
+        readonly eventId: string
+        readonly repoId: string
+        readonly occurredAt: string
+        readonly type: 'blueprint.created'
+        readonly payload: {
+          readonly type: 'blueprint.created'
+          readonly slug: string
+          readonly title: string
+          readonly complexity: string
+          readonly status: string
+        }
+      }
+  ): Promise<void>
   ensureFresh(opts?: { readonly slug?: string }): Promise<void>
 }
 
@@ -306,7 +343,28 @@ async function handleNew(cwd: string, raw: unknown): Promise<ToolHandlerResult> 
     } catch { /* non-fatal */ }
   }
   const b = bytes(template)
-  const targetPath = path.join(resolveBlueprintRoot(cwd), 'draft', titleToSlug(title), '_overview.md')
+  const slug = titleToSlug(title)
+  const targetPath = path.join(resolveBlueprintRoot(cwd), 'draft', slug, '_overview.md')
+
+  // Platform-first path: push event to register the blueprint before returning the scaffold.
+  // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
+  const adapter = await resolveSyncAdapter(cwd)
+  if (adapter !== null) {
+    await adapter.pushEvent({
+      eventId: randomUUID(),
+      repoId: process.env['AK_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
+      occurredAt: new Date().toISOString(),
+      type: 'blueprint.created',
+      payload: {
+        type: 'blueprint.created',
+        slug,
+        title,
+        complexity,
+        status: 'draft',
+      },
+    })
+  }
+
   return jsonContent({ summary: `Blueprint bundle for "${title}" (complexity ${complexity})`, target_path: targetPath, template, rules_context: rulesContext, examples, lifecycle_advice: LIFECYCLE_ADVICE, validation_required: true, failures: [], bytes: b, tokensSaved: 0 })
 }
 
@@ -330,6 +388,14 @@ async function handleTaskNext(cwd: string, raw: unknown): Promise<ToolHandlerRes
   const p = taskNextSchema.safeParse(raw)
   if (!p.success) return err('ak_blueprint_task_next validation error', p.error.message)
   const { blueprint } = p.data
+
+  // Platform-first: refresh local replica before reading so the result reflects remote state.
+  // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
+  const adapter = await resolveSyncAdapter(cwd)
+  if (adapter !== null) {
+    await adapter.ensureFresh(blueprint !== undefined ? { slug: blueprint } : undefined)
+  }
+
   const target = dbPath(cwd)
   if (!existsSync(target)) return jsonContent({ summary: 'No blueprint DB found', task: null, failures: [], bytes: 0, tokensSaved: 0 })
   try {
@@ -428,6 +494,25 @@ async function handlePromote(cwd: string, raw: unknown): Promise<ToolHandlerResu
   const ts = readVt(cwd)
   const mtime = existsSync(overviewPath) ? statSync(overviewPath).mtimeMs : 0
   if ((ts[slug] ?? 0) < mtime) return err('ak_blueprint_promote refused', `Blueprint "${slug}" not validated since last write. Run ak_blueprint_validate first.`)
+  // Platform-first path: push event + pull fresh replica before local move.
+  // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
+  const adapter = await resolveSyncAdapter(cwd)
+  if (adapter !== null) {
+    await adapter.pushEvent({
+      eventId: randomUUID(),
+      repoId: process.env['AK_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
+      occurredAt: new Date().toISOString(),
+      type: 'blueprint.status_changed',
+      payload: {
+        type: 'blueprint.status_changed',
+        slug,
+        fromStatus: currentState,
+        toStatus: to_state,
+      },
+    })
+    await adapter.ensureFresh({ slug })
+  }
+
   const { renameSync } = await import('node:fs')
   const destDir = path.join(root, to_state, slug)
   mkdirSync(path.dirname(destDir), { recursive: true })
@@ -464,6 +549,24 @@ async function handleFinalize(cwd: string, raw: unknown): Promise<ToolHandlerRes
     if (existsSync(alreadyDone)) return jsonContent({ summary: `Blueprint "${slug}" is already in completed`, slug, failures: [], bytes: 0, tokensSaved: 0 })
     return err('ak_blueprint_finalize failed', `Blueprint "${slug}" not found`)
   }
+
+  // Platform-first path: push event + pull fresh replica before local move.
+  // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
+  const adapter = await resolveSyncAdapter(cwd)
+  if (adapter !== null) {
+    await adapter.pushEvent({
+      eventId: randomUUID(),
+      repoId: process.env['AK_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
+      occurredAt: new Date().toISOString(),
+      type: 'blueprint.finalized',
+      payload: {
+        type: 'blueprint.finalized',
+        slug,
+      },
+    })
+    await adapter.ensureFresh({ slug })
+  }
+
   const { renameSync } = await import('node:fs')
   const destDir = path.join(root, 'completed', slug)
   mkdirSync(path.dirname(destDir), { recursive: true })
