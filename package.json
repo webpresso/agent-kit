@@ -29,9 +29,11 @@
     "skills"
   ],
   "license": "MIT",
-  "deprecated": "Renamed to 'webpresso' on public npm. Run: npm i -g webpresso  See: https://github.com/webpresso/agent-kit/blob/main/MIGRATION.md",
   "preferGlobal": true,
   "bin": {
+    "wp": "./src/cli/cli.ts",
+    "webpresso": "./src/cli/cli.ts",
+    "ak": "./src/cli/cli.ts",
     "ak-pretool-guard": "./src/hooks/pretool-guard/index.ts",
     "ak-post-tool": "./src/hooks/post-tool/lint-after-edit.ts",
     "ak-stop-qa": "./src/hooks/stop/qa-changed-files.ts",
