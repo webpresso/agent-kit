@@ -3,12 +3,9 @@ import { join } from 'node:path'
 
 const GENERATED_SKILL_DIRS = [
   '.claude/skills',
-  '.codex/skills',
-  '.cursor/skills',
+  '.codex/agents',
   '.windsurf/skills',
-  '.gemini/skills',
   '.agents/skills',
-  '.opencode/skills',
 ] as const
 
 export interface OrphanedSkill {

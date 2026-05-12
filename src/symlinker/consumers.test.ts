@@ -60,16 +60,22 @@ describe('Codex consumer contract', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Gemini consumer contract (regression guard)
+// Claude + Gemini consumer contracts (regression guards)
 // ---------------------------------------------------------------------------
 
-describe('Gemini consumer contract', () => {
-  it('DEFAULT_UNIFIED_CONSUMERS includes gemini-commands targeting .gemini/commands with transform strategy', () => {
-    const geminiEntry = DEFAULT_UNIFIED_CONSUMERS.find(
-      (c) => c.id === 'gemini-commands',
-    )
-    expect(geminiEntry).not.toStrictEqual(undefined)
-    expect(geminiEntry?.dir).toStrictEqual('.gemini/commands')
-    expect(geminiEntry?.strategy).toStrictEqual('transform')
+describe('Claude + Gemini consumer contracts', () => {
+  it('DEFAULT_UNIFIED_CONSUMERS maps claude-rules to .claude/rules and claude-skills to .claude/skills', () => {
+    const claudeRules = DEFAULT_UNIFIED_CONSUMERS.find((c) => c.id === 'claude-rules')
+    const claudeSkills = DEFAULT_UNIFIED_CONSUMERS.find((c) => c.id === 'claude-skills')
+
+    expect(claudeRules?.dir).toStrictEqual('.claude/rules')
+    expect(claudeRules?.strategy).toStrictEqual('symlink')
+    expect(claudeSkills?.dir).toStrictEqual('.claude/skills')
+    expect(claudeSkills?.strategy).toStrictEqual('symlink')
+  })
+
+  it('DEFAULT_UNIFIED_CONSUMERS does not include gemini-commands (Gemini is handled by legacy syncAll TOML generation)', () => {
+    const geminiEntry = DEFAULT_UNIFIED_CONSUMERS.find((c) => c.id === 'gemini-commands')
+    expect(geminiEntry).toStrictEqual(undefined)
   })
 })

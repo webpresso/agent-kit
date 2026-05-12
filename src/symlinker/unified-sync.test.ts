@@ -97,12 +97,8 @@ describe('runUnifiedSync', () => {
     // .cursor/rules/foo.mdc — copied (.mdc extension)
     expect(existsSync(join(consumerRoot, '.cursor', 'rules', 'foo.mdc'))).toBe(true)
     expect(isSymlink(join(consumerRoot, '.cursor', 'rules', 'foo.mdc'))).toBe(false)
-    // .claude/skills/foo.md — symlinked rule
-    expect(isSymlink(join(consumerRoot, '.claude', 'skills', 'foo.md'))).toBe(true)
-    // .gemini/commands/foo.toml — transformed
-    const tomlPath = join(consumerRoot, '.gemini', 'commands', 'foo.toml')
-    expect(existsSync(tomlPath)).toBe(true)
-    expect(readFileSync(tomlPath, 'utf8')).toContain('description = "Sample description"')
+    // .claude/rules/foo.md — symlinked rule
+    expect(isSymlink(join(consumerRoot, '.claude', 'rules', 'foo.md'))).toBe(true)
     // .codex/agents/foo.md — symlinked
     expect(isSymlink(join(consumerRoot, '.codex', 'agents', 'foo.md'))).toBe(true)
   })

@@ -181,12 +181,12 @@ npx ak compile
 ```
 
 This reads `.agent/skills/`, `.agent/commands/`, `.agent/agents/`, and `.agent/memory/` and emits:
+- `.claude/rules/` — Claude Code rule symlinks
 - `.claude/skills/` — Claude Code skills
-- `.codex/skills/` — Codex CLI skills
+- `.codex/agents/` — Codex CLI rule + skill surfaces
 - `.cursor/rules/` — Cursor rules
-- `.windsurf/rules/` — Windsurf rules
+- `.windsurf/skills/` — Windsurf skills
 - `.gemini/commands/` — Gemini CLI commands
-- `.opencode/agents/` — OpenCode agents
 
 Outputs are gitignored (regeneratable). `ak compile` is idempotent — re-running with no source changes is a no-op.
 

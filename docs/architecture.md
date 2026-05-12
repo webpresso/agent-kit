@@ -38,8 +38,8 @@ in git, editable, divergence-allowed.
 
 ### Layer 3 — IDE-derived surfaces (regenerable)
 
-**Location:** `.claude/skills/`, `.codex/skills/`, `.cursor/rules/`,
-`.windsurf/rules/`, `.gemini/commands/`, `.opencode/agents/`, `.agents/skills/`
+**Location:** `.claude/rules/`, `.claude/skills/`, `.codex/agents/`,
+`.cursor/rules/`, `.windsurf/skills/`, `.gemini/commands/`, `.agents/skills/`
 
 Generated from `.agent/` by **`ak compile`** (v0.15+):
 

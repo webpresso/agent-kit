@@ -33,7 +33,7 @@ For monorepo and ingest-lens to adopt v0.15.0:
 
 1. Delete legacy outputs (one-time, before bumping):
    ```bash
-   rm -rf .claude/skills/ .codex/skills/ .cursor/rules/ .windsurf/rules/
+   rm -rf .claude/rules/ .claude/skills/ .codex/agents/ .cursor/rules/ .windsurf/skills/
    rm -f .windsurfrules .cursorrules
    # Remove ak cursor-windsurf-sync from package.json scripts if present
    ```

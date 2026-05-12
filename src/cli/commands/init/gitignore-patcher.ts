@@ -49,12 +49,12 @@ function findBlock(content: string, id: string): { start: number; end: number } 
 export const GENERATED_PATHS_BLOCK: GitignoreBlock = {
   id: 'generated',
   patterns: [
+    '.claude/rules/',
     '.claude/skills/',
-    '.codex/skills/',
+    '.codex/agents/',
     '.cursor/rules/',
-    '.windsurf/rules/',
+    '.windsurf/skills/',
     '.gemini/commands/',
-    '.opencode/agents/',
     '.opencode/commands/',
     '.agents/skills/',
     '.agent/.merged.provenance.json',

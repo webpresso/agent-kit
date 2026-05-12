@@ -55,11 +55,11 @@ describe('findOrphanedSkills', () => {
   it('detects orphans across multiple runtime dirs', () => {
     const cwd = tmp()
     makeGeneratedSkill(cwd, '.claude/skills', 'gone-skill')
-    makeGeneratedSkill(cwd, '.codex/skills', 'gone-skill')
+    makeGeneratedSkill(cwd, '.codex/agents', 'gone-skill')
 
     const orphans = findOrphanedSkills(cwd)
     expect(orphans).toHaveLength(2)
-    expect(orphans.map((o) => o.runtimeDir).sort()).toStrictEqual(['.claude/skills', '.codex/skills'])
+    expect(orphans.map((o) => o.runtimeDir).sort()).toStrictEqual(['.claude/skills', '.codex/agents'])
   })
 
   it('does not flag canonical-only skill as orphan', () => {

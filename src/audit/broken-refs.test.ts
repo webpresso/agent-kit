@@ -71,8 +71,15 @@ describe('auditBrokenRefs', () => {
     expect(result.violations).toHaveLength(0)
   })
 
-  it('skips generated path refs (.codex/skills/)', async () => {
-    await writeAgentMd('AGENTS.md', '# A\n\nSee [generated](.codex/skills/foo.md).\n')
+  it('skips generated path refs (.claude/rules/)', async () => {
+    await writeAgentMd('AGENTS.md', '# A\n\nSee [generated](.claude/rules/foo.md).\n')
+    const result = auditBrokenRefs(tmpDir)
+    expect(result.pass).toBe(true)
+    expect(result.violations).toHaveLength(0)
+  })
+
+  it('skips generated path refs (.codex/agents/)', async () => {
+    await writeAgentMd('AGENTS.md', '# A\n\nSee [generated](.codex/agents/foo.md).\n')
     const result = auditBrokenRefs(tmpDir)
     expect(result.pass).toBe(true)
   })

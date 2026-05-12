@@ -7,7 +7,8 @@
  *   - `AGENTS.md` (repo root)
  *   - `CLAUDE.md` (repo root)
  *
- * Skips refs to generated paths (`.claude/skills/`, `.codex/skills/`, etc.)
+ * Skips refs to generated paths (`.claude/rules/`, `.claude/skills/`,
+ * `.codex/agents/`, etc.)
  * since those are gitignored generated outputs.
  *
  * Uses `remark` + `remark-validate-links` to find unresolved relative links.
@@ -38,11 +39,12 @@ export interface BrokenRefsOptions {
  * Patterns for generated/gitignored output paths — these refs are skipped.
  */
 const GENERATED_PATH_PATTERNS = [
+  /^\.claude\/rules\//,
   /^\.claude\/skills\//,
-  /^\.codex\/skills\//,
-  /^\.cursor\/commands\//,
+  /^\.codex\/agents\//,
+  /^\.cursor\/rules\//,
   /^\.gemini\/commands\//,
-  /^\.windsurf\/commands\//,
+  /^\.windsurf\/skills\//,
   /^\.opencode\/commands\//,
   /^node_modules\//,
 ]
