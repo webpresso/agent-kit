@@ -264,6 +264,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:mutation": "bun stryker run stryker.config.ts",
+    "eval": "bun src/runners/evals/index.ts",
     "lint": "bun ./src/cli/cli.ts lint",
     "lint:fix": "bun ./src/cli/cli.ts lint --fix",
     "format": "bun ./src/cli/cli.ts format",

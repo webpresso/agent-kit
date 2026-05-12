@@ -96,6 +96,22 @@ export async function auditAgentCost(cwd: string): Promise<RepoAuditResult> {
     }
   }
 
+  // ─── Check 4: .ignore present (OpenCode / ripgrep) ───────────────────────
+  // OpenCode uses ripgrep and respects .gitignore automatically for build
+  // artifacts. But tracked directories (e.g. blueprints/completed/) need
+  // a separate .ignore (ripgrep-native) to be excluded from agent sessions.
+  checked++
+  if (!existsSync(join(cwd, '.ignore'))) {
+    violations.push({
+      file: '.ignore',
+      message:
+        'Missing .ignore — OpenCode uses ripgrep and respects .gitignore for build artifacts, ' +
+        'but tracked directories (e.g. webpresso/blueprints/completed/) are still traversed. ' +
+        'Create .ignore with any large tracked dirs to exclude from agent sessions. ' +
+        'Does not affect git. See: opencode.ai/docs/tools/#ignore-patterns',
+    })
+  }
+
   // Advisory audit — violations are warnings, not blocking errors.
   // Cost config is a recommendation, not a hard correctness gate.
   return {

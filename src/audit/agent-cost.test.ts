@@ -67,10 +67,30 @@ describe('auditAgentCost', () => {
     ).toBe(true)
   })
 
+  it('reports violation when .ignore is missing', async () => {
+    setup({
+      '.claudeignore': 'node_modules/\n',
+      '.claude/settings.json': JSON.stringify({ effortLevel: 'medium' }),
+    })
+    const result = await auditAgentCost(TMP)
+    expect(result.ok).toBe(true)
+    expect(result.violations.some((v) => v.file === '.ignore')).toBe(true)
+  })
+
+  it('no .ignore violation when file exists', async () => {
+    setup({
+      '.claudeignore': 'node_modules/\n',
+      '.claude/settings.json': JSON.stringify({ effortLevel: 'medium' }),
+      '.ignore': 'webpresso/blueprints/completed/\n',
+    })
+    const result = await auditAgentCost(TMP)
+    expect(result.violations.some((v) => v.file === '.ignore')).toBe(false)
+  })
+
   it('reports title and checked count', async () => {
     setup({ '.claudeignore': 'node_modules/\n' })
     const result = await auditAgentCost(TMP)
     expect(result.title).toBe('agent cost config')
-    expect(result.checked).toBeGreaterThanOrEqual(3) // .claudeignore + effortLevel + 2 LSP checks
+    expect(result.checked).toBeGreaterThanOrEqual(4) // .claudeignore + effortLevel + 2 LSP checks + .ignore
   })
 })

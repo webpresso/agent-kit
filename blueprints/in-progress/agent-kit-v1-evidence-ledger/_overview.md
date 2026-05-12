@@ -992,7 +992,7 @@ versions install + spinner output non-garbled + lane-4 framing appears.
 
 #### [tests] Task 4.1: Iron-rule regression test (against Task 0.0 fixture)
 
-**Status:** todo
+**Status:** done
 **Depends:** Tasks 0.0, 2.1, 3.2
 
 **Revised per B1 + B2:** load the golden fixture from Task 0.0; feed the
@@ -1022,7 +1022,7 @@ real-subagent behavior, without invoking a real subagent in PR CI.
 
 #### [evals] Task 4.2: Eval suite scaffold + Eval 1 (add-function)
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 2.1
 
 **Revised per B3:** scaffold the eval suite at `src/runners/evals/` (not
