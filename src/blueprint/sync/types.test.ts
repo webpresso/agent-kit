@@ -299,7 +299,7 @@ describe('BlueprintTemplateEntry', () => {
       url: 'https://raw.githubusercontent.com/webpresso/templates/main/saas-feature.md',
     }
     expect(entry.name).toStrictEqual('SaaS Feature')
-    expect(entry.description).toBeUndefined()
+    expect(entry.description).toStrictEqual(undefined)
 
     const entryWithDesc: BlueprintTemplateEntry = {
       name: 'Auth Flow',
