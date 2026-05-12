@@ -336,7 +336,7 @@ test file so it ships in the repo.
 
 #### [schema] Task 0.1: Deduplicate executionBackendSchema
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 
 The enum `z.enum(['omx-team', 'omx-pll-interactive'])` is defined in two
@@ -371,7 +371,7 @@ extend the enum without diverging.
 
 #### [setup] Task 0.2: Preflight pattern check in `ak setup`
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 
 Add a soft compatibility preflight to `src/cli/commands/init/index.ts` that
@@ -506,7 +506,7 @@ the delta for Task 1.8.
 
 #### [cli] Task 0.11: `ak gain` — token savings summary command
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 
 DX review (2026-05-12) found: the chosen magical moment for first-user adoption is
@@ -537,7 +537,7 @@ RTK exposes `rtk gain` with full analytics. `ak gain` wraps it.
 
 #### [cli] Task 0.12: `ak --help` progressive disclosure
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 
 DX review found: 20+ commands on first `ak --help` is cognitive overload. New users
