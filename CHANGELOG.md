@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.2
+
+### Patch Changes
+
+- 4874e24: Fix setup host visibility for Codex, Claude Code, and OpenCode, remove unsupported `.codex/agents` projections, and persist required core skill checks for `verify` and `plan-refine`.
+
 ## 0.15.1
 
 ### Patch Changes
