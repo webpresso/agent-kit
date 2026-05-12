@@ -16,8 +16,7 @@ function hasFilesWithExtension(root: string, ext: string): boolean {
   }
 }
 
-function readProjectSettings(cwd: string): Record<string, unknown> | null {
-  const path = join(cwd, '.claude', 'settings.json')
+function readJson(path: string): Record<string, unknown> | null {
   if (!existsSync(path)) return null
   try {
     const parsed: unknown = JSON.parse(readFileSync(path, 'utf-8'))
@@ -25,6 +24,19 @@ function readProjectSettings(cwd: string): Record<string, unknown> | null {
   } catch {
     return null
   }
+}
+
+function isLspDisabled(pluginKey: string): boolean {
+  // Check user-global settings first, then fall back to false (assume not disabled).
+  const homeDir = process.env['HOME'] ?? process.env['USERPROFILE'] ?? ''
+  const globalSettings = homeDir ? readJson(join(homeDir, '.claude', 'settings.json')) : null
+  const plugins = globalSettings?.['enabledPlugins']
+  if (plugins !== null && typeof plugins === 'object') {
+    const pluginsMap = plugins as Record<string, unknown>
+    const fullKey = `${pluginKey}@claude-plugins-official`
+    if (fullKey in pluginsMap) return pluginsMap[fullKey] === false
+  }
+  return false
 }
 
 export async function auditAgentCost(cwd: string): Promise<RepoAuditResult> {
@@ -46,7 +58,7 @@ export async function auditAgentCost(cwd: string): Promise<RepoAuditResult> {
 
   // ─── Check 2: effortLevel in project .claude/settings.json ────────────────
   checked++
-  const settings = readProjectSettings(cwd)
+  const settings = readJson(join(cwd, '.claude', 'settings.json'))
   if (settings === null) {
     violations.push({
       file: '.claude/settings.json',
@@ -74,7 +86,7 @@ export async function auditAgentCost(cwd: string): Promise<RepoAuditResult> {
 
   for (const { plugin, ext, lang } of lspChecks) {
     checked++
-    if (!hasFilesWithExtension(cwd, ext)) {
+    if (!hasFilesWithExtension(cwd, ext) && !isLspDisabled(plugin)) {
       violations.push({
         message:
           `No .${ext} (${lang}) files found — ${plugin} is likely unused. ` +
