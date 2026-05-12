@@ -24,6 +24,7 @@ import {
   writeConfig,
 } from './config.js'
 import { detectConsumer, warnIfNonLocalCli } from './detect-consumer.js'
+import { runPreflight, DOCS_URL } from './preflight.js'
 import { type MergeOptions, type MergeResult, summarizeResults } from './merge.js'
 import { resolveTier3Selection } from './prompts.js'
 import { scaffoldAgent, RENDERED_SKILLS, TIER1_SKILLS, TIER2_SKILLS } from './scaffold-agent.js'
@@ -82,6 +83,7 @@ export interface InitFlags {
   'dry-run'?: boolean
   yes?: boolean
   cwd?: string
+  strict?: boolean
 }
 
 export const EXIT_SUCCESS = 0
@@ -122,6 +124,29 @@ export async function runInit(flags: InitFlags): Promise<number> {
   }
 
   warnIfNonLocalCli(consumer.repoRoot)
+
+  // Run the 5-point compatibility preflight before any scaffolders fire.
+  const preflightResult = await runPreflight(consumer.repoRoot, flags.strict ?? false)
+  if (preflightResult.warnings.length > 0) {
+    if (!preflightResult.ok) {
+      // strict mode: abort
+      for (const warning of preflightResult.warnings) {
+        console.error(`  preflight: ✗ ${warning}`)
+      }
+      console.error(
+        `\nak setup: aborting — ${preflightResult.warnings.length} compatibility check(s) failed.\n` +
+          `See ${DOCS_URL}`,
+      )
+      return EXIT_SETUP_FAIL
+    }
+    // non-strict: warn and continue
+    for (const warning of preflightResult.warnings) {
+      console.warn(`  preflight: ⚠ ${warning}`)
+    }
+    console.warn(`  See ${DOCS_URL}`)
+  } else {
+    console.log(`  preflight: ✓ all 5 compatibility checks passed`)
+  }
 
   const catalogDir = resolveCatalogDir()
   const options: MergeOptions = {
@@ -587,6 +612,10 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
     .option('--dry-run', 'Show what would change without writing anything')
     .option('--yes', 'Accept defaults, skip interactive prompts')
     .option('--cwd <dir>', 'Working tree to scaffold into (default: process.cwd())')
+    .option(
+      '--strict',
+      'Abort if any compatibility check fails (default: warn and continue)',
+    )
     .action(async (flags: InitFlags) => {
       const code = await runInit(flags)
       if (code !== EXIT_SUCCESS) {

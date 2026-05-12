@@ -1,5 +1,10 @@
 import { z } from 'zod'
 
+import {
+  executionBackendSchema as blueprintExecutionBackendSchema,
+  type BlueprintExecutionBackend,
+} from '#types/execution-backend.js'
+
 const LEGACY_BLUEPRINT_ROOT_SEGMENT = 'webpresso/blueprints/'
 const GENERIC_BLUEPRINT_ROOT_SEGMENT = 'blueprints/'
 const DEFAULT_RUNTIME_STATE_ROOT = '.omx/state'
@@ -17,8 +22,10 @@ function isOmxStatePath(path: string): boolean {
   return path === DEFAULT_RUNTIME_STATE_ROOT || path.startsWith(`${DEFAULT_RUNTIME_STATE_ROOT}/`)
 }
 
-export const blueprintExecutionBackendSchema = z.enum(['omx-team', 'omx-pll-interactive'])
-export type BlueprintExecutionBackend = z.infer<typeof blueprintExecutionBackendSchema>
+export {
+  executionBackendSchema as blueprintExecutionBackendSchema,
+  type BlueprintExecutionBackend,
+} from '#types/execution-backend.js'
 
 export const blueprintExecutionModeSchema = z.enum(['durable', 'interactive'])
 export type BlueprintExecutionMode = z.infer<typeof blueprintExecutionModeSchema>

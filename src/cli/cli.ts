@@ -38,6 +38,7 @@ const SUPPORTED_COMMANDS = [
   'tech-debt',
   'mcp',
   'hooks',
+  'gain',
 ] as const
 
 const ROOT_HELP = [
@@ -64,6 +65,7 @@ const ROOT_HELP = [
   '  tech-debt             Manage tech-debt lifecycle (new, list, review)',
   '  mcp                   Run the agent-kit MCP server over stdio',
   '  hooks                 Verify plugin hook installation health',
+  '  gain                  Show token savings from RTK (Rust Token Killer)',
   '',
   'Options:',
   '  -h, --help     Display this message',
@@ -207,6 +209,11 @@ export async function main(): Promise<number> {
     case 'hooks': {
       const { registerHooksCommand } = await import('./commands/hooks.js')
       registerHooksCommand(cli)
+      break
+    }
+    case 'gain': {
+      const { registerGainCommand } = await import('./commands/gain/index.js')
+      registerGainCommand(cli)
       break
     }
     default: {

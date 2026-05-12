@@ -8,6 +8,13 @@
 import { z } from 'zod'
 
 /**
+ * Execution backend values for Blueprint-backed execution.
+ * Canonical definition lives in src/blueprint/types/execution-backend.ts.
+ */
+import { executionBackendSchema } from '#types/execution-backend.js'
+export { executionBackendSchema } from '#types/execution-backend.js'
+
+/**
  * Valid plan status values.
  * Maps to plan lifecycle: draft/planned/parked → in-progress → completed/archived.
  */
@@ -41,11 +48,6 @@ export const taskStatusSchema = z.enum(['todo', 'in_progress', 'blocked', 'done'
  * Valid complexity values using t-shirt sizing.
  */
 export const complexitySchema = z.enum(['XS', 'S', 'M', 'L', 'XL'])
-
-/**
- * Execution backend values for Blueprint-backed execution.
- */
-export const executionBackendSchema = z.enum(['omx-team', 'omx-pll-interactive'])
 
 /**
  * Execution status values persisted in Blueprint frontmatter.

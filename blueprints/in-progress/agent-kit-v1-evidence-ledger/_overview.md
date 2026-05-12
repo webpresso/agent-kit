@@ -400,7 +400,7 @@ one-line green confirmation.
 
 #### [docs] Task 0.3: "Is agent-kit for me?" public docs page
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 
 `docs/is-agent-kit-for-me.md` describing the webpresso pattern; leads with
@@ -423,7 +423,7 @@ the X1 evidence-ledger wedge framing.
 
 #### [rules] Task 0.4: gstack lane-4 routing rule
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 
 Codify the lane-4 boundary into `catalog/agent/rules/gstack-routing.md`,
