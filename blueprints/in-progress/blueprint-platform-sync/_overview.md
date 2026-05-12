@@ -261,7 +261,7 @@ env var.
 
 #### [sync] Task 1.1: Implement `BlueprintSyncClient`
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 0.2
 
 Implement the agent-kit-side sync client using `fetch` (Node 24+ built-in).
@@ -307,7 +307,7 @@ Tests mock using `vi.stubGlobal('fetch', vi.fn())` — NOT MSW.
 
 #### [sync] Task 1.2: Pull-on-demand replica refresh
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 0.2
 
 Before any MCP mutation tool reads from local SQLite, check replica
