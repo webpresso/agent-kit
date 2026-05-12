@@ -5,7 +5,7 @@ status: planned
 complexity: L
 owner: ozby
 created: 2026-05-12
-last_updated: 2026-05-12
+last_updated: '2026-05-12'
 tags:
   - blueprints
   - sqlite
@@ -120,17 +120,26 @@ Pull-on-demand for v1.x: replica is refreshed before every MCP query
 that cares about freshness (mutations always refresh; reads use a
 configurable TTL). Polling and SSE are deferred to v2.x.
 
-## Open questions (must resolve in Task 0.1 before Phase 1)
+## Design decisions (resolved 2026-05-12, platform team design session)
 
-| # | Question | Stakes |
+| # | Question | Decision |
 |---|---|---|
-| Q1 | **Offline mutation strategy:** buffer locally or reject? | UX on planes / flaky networks |
-| Q2 | **Auth model:** how does agent-kit authenticate to platform API? Service token? PAT? | Security posture |
-| Q3 | **Replica freshness SLA:** configurable TTL default for read-only MCP tools | Consistency vs. latency |
-| Q4 | **Markdown generation:** does the platform or agent-kit generate the derived markdown? | Platform-api scope |
-| Q5 | **Template catalog:** platform-side entity (served via API) or hybrid? | `ak blueprint new --template` implementation |
-| Q6 | **Monorepo boundary:** which code lives in agent-kit (public) vs. platform-api (private monorepo)? | Open-source vs. proprietary |
-| Q7 | **Migration:** how do existing blueprints get history imported into the platform? | Data continuity |
+| Q1 | **Offline mutation strategy** | **A — Buffer locally, push when reconnected.** Mutations write to local SQLite outbox first. Sync queue flushes when network is available. Conflict: last-write-wins on reconnect (idempotent eventId). |
+| Q2 | **Auth model** | **C — OAuth device flow.** `ak setup --login` opens browser → OAuth consent → token stored in OS keychain. Same UX as `gh auth login`. No manual token management. |
+| Q3 | **Replica freshness SLA** | **B — 30 second TTL.** Reads within 30s use local replica (near-zero latency). After 30s, one background refresh fires before responding. Tunable via `AK_REPLICA_TTL` env var. |
+| Q4 | **Markdown generation** | **C — No markdown. Agents read SQLite/MCP only.** The `blueprints/` directory becomes a legacy/migration artifact. Platform users have no markdown files on disk; all blueprint access goes through SQLite replica + MCP tools. Human-readable view is a future platform UI concern. |
+| Q5 | **Template catalog** | **C — GitHub-hosted, fetched by URL.** `ak blueprint new --template <slug>` resolves to a public GitHub repo (e.g. `webpresso/blueprint-templates`). No platform API dependency for templates. Community can submit PRs. |
+| Q6 | **Monorepo boundary** | **A — Types + client in agent-kit (OSS); implementation in webpresso monorepo (private).** agent-kit ships: `PlatformApiClient` interface, TypeScript event types, sync engine logic. webpresso monorepo ships: the actual API endpoints, auth handler, platform database. |
+| Q7 | **Migration** | **A — `ak setup --sync` idempotent import on first auth.** On first OAuth login, agent-kit scans `blueprints/` and pushes all existing blueprints to the platform in the background. Idempotent — safe to re-run. After migration, markdown is archived (moved to `.blueprints-archive/`). |
+
+### Q4 architectural implication
+
+Q4:C is a breaking change from the current `blueprint-structured-store` design. The `blueprints/` directory, lifecycle audit, and markdown-based task tracking are replaced by SQLite replica + MCP tools as the primary surface. This affects:
+
+- `ak audit blueprint-lifecycle` — Task 3.3 must migrate this audit to read from SQLite, not markdown (risk R3).
+- `ak blueprint finalize` CLI — continues to work but writes to platform, not markdown files.
+- `/pll` skill — already reads via MCP tools; no change needed.
+- `blueprints/` directory — becomes archive after `ak setup --sync` migration.
 
 ## Technology Choices
 
