@@ -53,7 +53,7 @@ export async function readCanonicalPackageJson(): Promise<CanonicalPackageJson> 
  * All other fields are copied verbatim from the canonical package.json.
  */
 export function buildStagingPackageJson(canonical: CanonicalPackageJson): Record<string, unknown> {
-  const { name: _name, publishConfig: _pc, ...rest } = canonical
+  const { name: _name, publishConfig: _pc, scripts: canonicalScripts, ...rest } = canonical as CanonicalPackageJson & { scripts?: Record<string, string> }
 
   const binEntries: Record<string, string> = {
     wp: './src/cli/cli.ts',
@@ -69,9 +69,14 @@ export function buildStagingPackageJson(canonical: CanonicalPackageJson): Record
     binEntries[hookBin] = canonicalBinPath
   }
 
+  // Strip postinstall — the migration notice only belongs on @webpresso/agent-kit
+  // (the deprecated package), not on the new canonical webpresso public package.
+  const { postinstall: _pi, ...stagingScripts } = canonicalScripts ?? {}
+
   return {
     ...rest,
     name: 'webpresso',
+    scripts: stagingScripts,
     publishConfig: {
       registry: 'https://registry.npmjs.org',
       access: 'public',

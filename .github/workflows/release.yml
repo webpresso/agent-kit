@@ -70,7 +70,9 @@ jobs:
         if: ${{ vars.ENABLE_NPM_PUBLISH == 'true' && (github.event_name != 'workflow_dispatch' || inputs.dry-run != 'true') }}
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: bun scripts/publish-webpresso.ts 2>&1 | tee /tmp/publish-public.log
+        run: |
+          set -o pipefail
+          bun scripts/publish-webpresso.ts 2>&1 | tee /tmp/publish-public.log
       - name: Create marketplace release branch
         if: ${{ steps.publish.outputs.published != '0' && (github.event_name != 'workflow_dispatch' || inputs.dry-run != 'true') }}
         run: |

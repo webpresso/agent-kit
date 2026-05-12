@@ -57,7 +57,7 @@ export async function runUpdateFlow(version: string): Promise<void> {
       return
     }
 
-    const plan = detect(process.env, process.argv[0] ?? '')
+    const plan = detect(process.env, process.argv[1] ?? '')
     if ('abort' in plan) {
       logUpdateError(new Error(plan.abort))
       return

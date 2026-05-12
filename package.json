@@ -52,6 +52,7 @@
     "skills",
     "commands",
     ".claude-plugin",
+    "scripts/migration-notice.ts",
     "README.md"
   ],
   "type": "module",

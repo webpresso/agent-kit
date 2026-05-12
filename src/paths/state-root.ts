@@ -57,7 +57,7 @@ export function getRepoKey(): string {
   if (cachedRepoKey !== null) return cachedRepoKey
   const cwd = resolveCwd()
   const commonDir = runGit(['rev-parse', '--git-common-dir'], cwd)
-  const absolute = realpathSync(commonDir)
+  const absolute = realpathSync(commonDir.startsWith('/') ? commonDir : join(cwd, commonDir))
   cachedRepoKey = sha256Hex(absolute).slice(0, 16)
   return cachedRepoKey
 }
