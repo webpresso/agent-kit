@@ -10,7 +10,11 @@
  * by the symlinker — they distribute skills via native channels:
  *   - Claude Code: agent-kit-as-claude-code-plugin (marketplace plugin)
  *   - Cursor / Windsurf: agent-kit-localskills-distribution (localskills.sh)
- *   - OpenCode: falls back to `.claude/skills/` covered by the Claude Code plugin
+ *   - OpenCode: skills surface is `.agents/skills/` covered by DEFAULT_PER_SKILL_CONSUMERS
+ *              (verified: antigravity-awesome-skills installs to `.agents/skills` for opencode;
+ *              opencode does NOT read `.claude/skills/` — that claim was unverified).
+ *              Rules surface: opencode reads `AGENTS.md` directly from the repo root; no
+ *              symlinker consumer needed.
  *
  * Gemini's TOML surface is handled separately by `syncGeminiCommands`
  * (not symlink-based).

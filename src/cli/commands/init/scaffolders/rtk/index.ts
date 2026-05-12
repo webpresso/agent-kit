@@ -1,11 +1,15 @@
 import { spawnSync } from 'node:child_process'
+import { join } from 'node:path'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
+import { checkVersionPin } from '#cli/commands/init/scaffolders/version-pin'
 
 export interface EnsureRtkInput {
   repoRoot: string
   options: MergeOptions
   spawn?: typeof spawnSync
+  pinFilePath?: string
+  strict?: boolean
 }
 
 export type EnsureRtkResult =
@@ -39,6 +43,19 @@ export function ensureRtk(input: EnsureRtkInput): EnsureRtkResult {
     if (probe.error || (probe.status !== null && probe.status !== 0)) {
       return { kind: 'rtk-not-found', hint: NOT_FOUND_HINT }
     }
+  }
+
+  const installedVersion = String(probe.stdout ?? '').trim()
+  const pinCheck = checkVersionPin(
+    'rtk',
+    installedVersion,
+    input.pinFilePath ?? join(input.repoRoot, 'compatible-versions.json'),
+  )
+  if (!pinCheck.ok) {
+    if (input.strict) {
+      return { kind: 'rtk-init-failed', exitCode: -1 }
+    }
+    console.warn(pinCheck.warning)
   }
 
   const result = spawn('rtk', ['init', '-g', '--auto-patch'], {

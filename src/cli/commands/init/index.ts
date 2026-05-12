@@ -569,6 +569,32 @@ export async function runInit(flags: InitFlags): Promise<number> {
       await Promise.race([reportTthw(payload), new Promise<void>((r) => setTimeout(r, 100))])
     }
 
+    // Lane-4 framing — printed once on every successful completion so users
+    // know which tool owns which part of the dev-workflow surface.
+    console.log(
+      [
+        '',
+        'Ownership lanes:',
+        '  Lane 1 ak_*   blueprint · audit · quality',
+        '  Lane 2 ctx_*  context-mode (context reduction)',
+        '  Lane 3 rtk    shell-tool token filtering',
+        '  Lane 4 gstack interactive workflows',
+      ].join('\n'),
+    )
+
+    // Next-steps block — only when not in dry-run (real writes happened).
+    if (!options.dryRun) {
+      console.log(
+        [
+          '',
+          '✅ Setup complete.',
+          '',
+          '  Next: ak blueprint new "your first task"',
+          '        ak gain          # token savings after your first session',
+        ].join('\n'),
+      )
+    }
+
     return EXIT_SUCCESS
   } catch (error) {
     if (error instanceof Error && /catalogDir does not exist/.test(error.message)) {

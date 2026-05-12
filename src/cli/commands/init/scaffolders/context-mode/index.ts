@@ -9,6 +9,7 @@ import {
   agentKitMcpLaunchCommand,
   findAgentKitMcpEntry,
 } from '#cli/commands/init/scaffolders/codex-mcp/index'
+import { checkVersionPin } from '#cli/commands/init/scaffolders/version-pin'
 
 export interface EnsureContextModeInput {
   repoRoot: string
@@ -17,6 +18,8 @@ export interface EnsureContextModeInput {
   codexConfigPath?: string
   codexHooksPath?: string
   opencodeConfigPath?: string
+  pinFilePath?: string
+  strict?: boolean
 }
 
 export type EnsureContextModeResult = {
@@ -174,7 +177,7 @@ function ensureCodexContextModeMcp(configPath: string, options: MergeOptions): M
 const CONTEXT_MODE_NOT_FOUND_HINT =
   'context-mode is not on PATH after `npm install -g context-mode`. Install it manually and re-run.'
 
-function ensureContextModeBinary(spawn: typeof spawnSync): boolean {
+function ensureContextModeBinary(spawn: typeof spawnSync): { installed: boolean; version: string } {
   let installed = false
   let probe = spawn('context-mode', ['--help'], { stdio: 'ignore' })
   if (probe.error || (probe.status !== null && probe.status !== 0)) {
@@ -190,12 +193,28 @@ function ensureContextModeBinary(spawn: typeof spawnSync): boolean {
     }
   }
 
-  return installed
+  // Detect installed version for pin check
+  const versionProbe = spawn('context-mode', ['--version'], { encoding: 'utf8' })
+  const version = String(versionProbe.stdout ?? '').trim()
+
+  return { installed, version }
 }
 
 export function ensureContextMode(input: EnsureContextModeInput): EnsureContextModeResult {
   const spawn = input.spawn ?? spawnSync
-  const installed = ensureContextModeBinary(spawn)
+  const { installed, version } = ensureContextModeBinary(spawn)
+
+  const pinCheck = checkVersionPin(
+    'context_mode',
+    version,
+    input.pinFilePath ?? join(input.repoRoot, 'compatible-versions.json'),
+  )
+  if (!pinCheck.ok) {
+    if (input.strict) {
+      throw new Error(pinCheck.warning)
+    }
+    console.warn(pinCheck.warning)
+  }
 
   const codexConfigPath = input.codexConfigPath ?? defaultCodexConfigPath()
   const codexHooksPath = input.codexHooksPath ?? defaultCodexHooksPath()

@@ -355,6 +355,73 @@ describe('ak init end-to-end', () => {
   })
 })
 
+describe('DX output: lane framing and next-steps block', () => {
+  let repo: string
+  let originalCodexHome: string | undefined
+  let originalHome: string | undefined
+  let logLines: string[]
+  let originalLog: typeof console.log
+
+  beforeEach(() => {
+    repo = makeTempRepo()
+    originalCodexHome = process.env.CODEX_HOME
+    originalHome = process.env.HOME
+    process.env.CODEX_HOME = join(repo, '.codex-home')
+    process.env.HOME = join(repo, '.home')
+    spawnSyncMock.mockClear()
+    logLines = []
+    originalLog = console.log
+    console.log = (...args: unknown[]): void => {
+      logLines.push(args.map(String).join(' '))
+    }
+  })
+
+  afterEach(() => {
+    console.log = originalLog
+    if (originalCodexHome === undefined) {
+      delete process.env.CODEX_HOME
+    } else {
+      process.env.CODEX_HOME = originalCodexHome
+    }
+    if (originalHome === undefined) {
+      delete process.env.HOME
+    } else {
+      process.env.HOME = originalHome
+    }
+    rmSync(repo, { recursive: true, force: true })
+  })
+
+  it('prints lane framing after a successful run', async () => {
+    await runInit({ cwd: repo, yes: true })
+    const allOutput = logLines.join('\n')
+    expect(allOutput).toContain('ak_*')
+    expect(allOutput).toContain('ctx_*')
+    expect(allOutput).toContain('rtk')
+    expect(allOutput).toContain('gstack')
+  })
+
+  it('prints next-steps block (ak blueprint new, ak gain) on non-dry-run', async () => {
+    await runInit({ cwd: repo, yes: true })
+    const allOutput = logLines.join('\n')
+    expect(allOutput).toContain('ak blueprint new')
+    expect(allOutput).toContain('ak gain')
+  })
+
+  it('omits next-steps block in --dry-run mode', async () => {
+    await runInit({ cwd: repo, yes: true, 'dry-run': true })
+    const allOutput = logLines.join('\n')
+    expect(allOutput).not.toContain('ak blueprint new')
+    expect(allOutput).not.toContain('ak gain')
+  })
+
+  it('lane framing is present even in --dry-run mode', async () => {
+    await runInit({ cwd: repo, yes: true, 'dry-run': true })
+    const allOutput = logLines.join('\n')
+    expect(allOutput).toContain('ak_*')
+    expect(allOutput).toContain('ctx_*')
+  })
+})
+
 describe('warnIfNonLocalCli (DX2)', () => {
   let repo: string
   let originalError: typeof console.error

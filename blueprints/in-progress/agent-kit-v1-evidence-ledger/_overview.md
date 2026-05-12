@@ -567,7 +567,7 @@ don't know which 3 commands matter. Group into Core / Quality / Advanced section
 
 #### [schema] Task 1.1: Extend executionBackendSchema with runner ids
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 0.1
 
 Extend the deduplicated enum from Task 0.1 with three new Runner ids:
@@ -672,7 +672,7 @@ in `package.json#exports` + `tshy.exports` per Decision 2A.
 
 #### [bundle] Task 1.5: compatible-versions.json + scaffolder pinning
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 
 `compatible-versions.json` at repo root pins context-mode + rtk version
@@ -695,7 +695,7 @@ ranges. context-mode and rtk scaffolders read it and enforce pin/range.
 
 #### [setup] Task 1.6: Lane-4 framing + post-install "what to do next" in `ak setup` output
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 0.4, Task 0.11 (gain must exist before it can be referenced)
 
 `ak setup` summary line frames lanes 2/3/4 explicitly (per Decision 1D). Also
@@ -762,7 +762,7 @@ available rather than requiring a fixed 5.
 
 #### [symlinker] Task 1.8: opencode skill-sync target
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 0.10
 
 Per Task 0.10's audit, extend `src/symlinker/consumers.ts` or
