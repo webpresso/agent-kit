@@ -29,7 +29,7 @@ The header comment claims:
 > Primary IDEs (Claude Code, Cursor, Windsurf, OpenCode) are no longer
 > handled by the symlinker — they distribute skills via native channels:
 > ...
-> OpenCode: falls back to `.claude/skills/` covered by the Claude Code
+> OpenCode: falls back to Claude-local generated surfaces covered by the Claude Code
 > plugin
 
 `DEFAULT_UNIFIED_CONSUMERS` (line 146-175) covers:
@@ -37,8 +37,9 @@ The header comment claims:
 - `.agent/{rules,skills}/` (working dir source-of-truth, symlinked)
 - `.cursor/rules/` (copy, `.mdc` extension)
 - `.windsurf/skills/` (copy)
-- `.claude/skills/` (symlink, claude-rules + claude-skills)
-- `.gemini/commands/` (transform to TOML)
+- `.claude/rules/` (symlink, claude-rules)
+- `.claude/skills/` (symlink, claude-skills)
+- `.gemini/commands/` (generated separately by legacy `syncAll`, not unified sync)
 - `.codex/agents/` (symlink, codex-rules + codex-skills)
 
 No `.opencode/skills/`, no `~/.config/opencode/skills/`, no
@@ -46,9 +47,9 @@ No `.opencode/skills/`, no `~/.config/opencode/skills/`, no
 
 ## The unproven claim
 
-The codebase's stated theory is: **opencode reads `.claude/skills/`
-as a fall-back, so the existing `claude-rules` and `claude-skills`
-consumer entries cover opencode automatically.**
+The codebase's stated theory is: **opencode reads Claude-local generated
+surfaces as a fall-back, so the existing Claude consumer entries cover
+opencode automatically.**
 
 Codex's outside-voice pass on 2026-05-11 flagged this as unverified:
 
@@ -68,8 +69,8 @@ Two paths forward, depending on what opencode actually does:
 ### Path A: opencode genuinely reads `.claude/skills/` as fall-back
 
 If verified via opencode docs or behavior test, Task 1.8 is a **NO-OP**.
-The current `claude-rules` and `claude-skills` consumer entries in
-`DEFAULT_UNIFIED_CONSUMERS` already cover opencode users, transitively.
+The current `claude-rules` and `claude-skills` consumer entries already
+cover opencode users, transitively.
 
 Acceptance: update the comment in `consumers.ts:10-13` from "falls back
 to ... covered" to "verified to read ... covered" with a citation.

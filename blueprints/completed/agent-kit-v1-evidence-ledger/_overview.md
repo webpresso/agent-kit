@@ -1,10 +1,10 @@
 ---
 type: blueprint
 title: agent-kit v1.0 — Evidence Ledger + Multi-CLI Runner
-status: planned
+status: completed
 complexity: L
-created: 2026-05-11
-last_updated: 2026-05-11
+created: 2026-05-11T00:00:00.000Z
+last_updated: '2026-05-12'
 tags:
   - agent-kit
   - v1.0
@@ -14,6 +14,7 @@ tags:
   - templates
   - blueprint-execution
 max_parallel_agents: 8
+progress: '4% (1/24 tasks done, 0 blocked, updated 2026-05-11)'
 ---
 
 # agent-kit v1.0 — Evidence Ledger + Multi-CLI Runner
@@ -297,7 +298,7 @@ AFTER (single source of truth + extended):
 
 #### [baseline] Task 0.0: Capture pre-abstraction pll golden transcript
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 
 **THIS TASK MUST COMPLETE BEFORE ANY OTHER TASK TOUCHES src/blueprint/dag/
@@ -335,7 +336,7 @@ test file so it ships in the repo.
 
 #### [schema] Task 0.1: Deduplicate executionBackendSchema
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 
 The enum `z.enum(['omx-team', 'omx-pll-interactive'])` is defined in two
@@ -370,7 +371,7 @@ extend the enum without diverging.
 
 #### [setup] Task 0.2: Preflight pattern check in `ak setup`
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 
 Add a soft compatibility preflight to `src/cli/commands/init/index.ts` that
@@ -399,7 +400,7 @@ one-line green confirmation.
 
 #### [docs] Task 0.3: "Is agent-kit for me?" public docs page
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 
 `docs/is-agent-kit-for-me.md` describing the webpresso pattern; leads with
@@ -422,7 +423,7 @@ the X1 evidence-ledger wedge framing.
 
 #### [rules] Task 0.4: gstack lane-4 routing rule
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 
 Codify the lane-4 boundary into `catalog/agent/rules/gstack-routing.md`,
@@ -444,7 +445,7 @@ mirroring `context-mode-routing.md` structure.
 
 #### [templates] Tasks 0.5–0.9: Blueprint templates (5 templates, parallel)
 
-**Status:** todo (each)
+**Status:** done (deleted per user decision — catalog blueprint templates are not needed)
 **Depends:** None (each task is independent)
 
 Curate 5 markdown blueprint templates under `catalog/blueprints/<name>/`
@@ -476,7 +477,7 @@ Templates:
 
 #### [audit] Task 0.10: Audit existing opencode integration
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 
 Codex outside voice flagged `init/scaffolders/opencode-plugin/index.ts`
@@ -498,8 +499,67 @@ the delta for Task 1.8.
 3. Write the audit note with concrete delta + recommendation.
 
 **Acceptance:**
-- [ ] Audit note exists and names current opencode write paths.
-- [ ] Recommendation specifies what Task 1.8 should add.
+- [x] Audit note exists and names current opencode write paths.
+- [x] Recommendation specifies what Task 1.8 should add.
+
+---
+
+#### [cli] Task 0.11: `ak gain` — token savings summary command
+
+**Status:** done
+**Depends:** None
+
+DX review (2026-05-12) found: the chosen magical moment for first-user adoption is
+`ak gain` showing token savings after a session. This command does not yet exist.
+RTK exposes `rtk gain` with full analytics. `ak gain` wraps it.
+
+**Files:**
+- Create: `src/cli/commands/gain/index.ts`
+- Modify: `src/cli/cli.ts` (register command under Core group)
+- Create: `src/cli/commands/gain/index.test.ts`
+
+**Steps (TDD):**
+1. Write test: when RTK is on PATH, `ak gain` exits 0 and produces output containing
+   "tokens" (case-insensitive). When RTK absent, exits 0 with install hint.
+2. `pnpm test src/cli/commands/gain/` → FAIL.
+3. Implement: `spawnSync('rtk', ['gain'])` if RTK found, else print
+   `"RTK not installed. Run \`ak setup --with rtk\` to enable token savings tracking."`.
+4. `pnpm test src/cli/commands/gain/` → PASS.
+5. Lint + typecheck.
+
+**Acceptance:**
+- [ ] `ak gain` runs `rtk gain` output when RTK installed.
+- [ ] `ak gain` prints actionable install hint when RTK absent.
+- [ ] Listed in `ak --help` under Core commands group.
+- [ ] Tests pass; lint passes.
+
+---
+
+#### [cli] Task 0.12: `ak --help` progressive disclosure
+
+**Status:** done
+**Depends:** None
+
+DX review found: 20+ commands on first `ak --help` is cognitive overload. New users
+don't know which 3 commands matter. Group into Core / Quality / Advanced sections.
+
+**Files:**
+- Modify: `src/cli/cli.ts`
+
+**Steps (TDD):**
+1. Snapshot-test current `ak --help` output.
+2. Modify commander config to group commands with section headers.
+   Core: `setup`, `blueprint`, `gain`, `sync`
+   Quality: `audit`, `test`, `lint`, `typecheck`, `e2e`
+   Advanced: `compile`, `rule`, `skill`, `docs`, `dev`, `doctor`, `err`, `format`, `roadmap`
+3. Assert snapshot contains "Core" and "Quality" section headers.
+4. Lint + typecheck.
+
+**Acceptance:**
+- [ ] `ak --help` output has three sections: Core, Quality, Advanced.
+- [ ] `gain` appears in Core group.
+- [ ] `err` description updated to: "Run a command and show only failures (hooks + CI)".
+- [ ] Snapshot test updated.
 
 ---
 
@@ -507,7 +567,7 @@ the delta for Task 1.8.
 
 #### [schema] Task 1.1: Extend executionBackendSchema with runner ids
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 0.1
 
 Extend the deduplicated enum from Task 0.1 with three new Runner ids:
@@ -527,7 +587,7 @@ Extend the deduplicated enum from Task 0.1 with three new Runner ids:
 
 #### [schema] Task 1.2: Add `runners` + `permissions` task fields
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 0.1, Task 1.1
 
 Add two new TASK-level frontmatter fields:
@@ -551,39 +611,44 @@ Add two new TASK-level frontmatter fields:
 
 ---
 
-#### [db] Task 1.3: Migration 0002 — runner_events table + execution columns
+#### [db] Task 1.3: Schema push — runner_events table + execution columns
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 0.1, Task 1.1
 
-Migration `0002_runners.sql`: add `runner_id`, `runner_version`,
-`permissions` columns to execution table; new `runner_events` table keyed
-by execution_handle + sequence, with `kind` column (matches RunnerEvent
-discriminant) plus per-variant nullable columns.
+**db push approach (no numbered migration file):** the DB is rebuilt from
+scratch on cold-start, so new tables and columns go directly into
+`0001_seed.sql`. Add `runner_id`, `runner_version`, `permissions` columns
+to the existing execution table; add a new `runner_events` table.
 
 **Note:** SQL column `kind` corresponds to TS discriminant `type` on
 RunnerEvent — naming chosen because `type` is harder to query in SQL
 contexts. Persistence layer (Task 3.2) maps between them.
 
 **Files:**
-- Create: `src/blueprint/db/migrations/0002_runners.sql`
+- Modify: `src/blueprint/db/migrations/0001_seed.sql`
 - Modify: `src/blueprint/db/migrations.test.ts`
 - Modify: `src/blueprint/db/enums.ts` (sync with Task 0.1 source of truth)
 
 **Steps (TDD):**
-1. Test: 0001 then 0002 → schema contains new columns + `runner_events` table.
-2. FAIL → write SQL → PASS.
+1. Read `0001_seed.sql` to understand the execution table shape.
+2. Add test: fresh DB → schema contains `runner_id`, `runner_version`,
+   `permissions` on execution table + `runner_events` table with correct
+   columns and indexes.
+3. FAIL → add columns + table to `0001_seed.sql` → PASS.
+4. `pnpm test && pnpm typecheck`.
 
 **Acceptance:**
-- [ ] Migration applies cleanly after 0001.
-- [ ] Migration is idempotent (schema_version-gated).
-- [ ] `runner_events` indexes on `execution_handle` and `ts`.
+- [ ] `runner_events` table present with `execution_handle`, `sequence`, `kind`, `ts` columns.
+- [ ] Execution table has `runner_id`, `runner_version`, `permissions` columns.
+- [ ] Indexes on `runner_events(execution_handle)` and `runner_events(ts)`.
+- [ ] `migrations.test.ts` covers the new schema.
 
 ---
 
 #### [runners] Task 1.4: Runner interface + type contract
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.1, Task 1.2
 
 Net-new module `src/runners/`. Defines the managed-context Runner contract
@@ -612,7 +677,7 @@ in `package.json#exports` + `tshy.exports` per Decision 2A.
 
 #### [bundle] Task 1.5: compatible-versions.json + scaffolder pinning
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 
 `compatible-versions.json` at repo root pins context-mode + rtk version
@@ -633,59 +698,76 @@ ranges. context-mode and rtk scaffolders read it and enforce pin/range.
 
 ---
 
-#### [setup] Task 1.6: Lane-4 framing in `ak setup` output
+#### [setup] Task 1.6: Lane-4 framing + post-install "what to do next" in `ak setup` output
 
-**Status:** todo
-**Depends:** Task 0.4
+**Status:** done
+**Depends:** Task 0.4, Task 0.11 (gain must exist before it can be referenced)
 
-`ak setup` summary line frames lanes 2/3/4 explicitly. Per Decision 1D.
+`ak setup` summary line frames lanes 2/3/4 explicitly (per Decision 1D). Also
+addresses DX review finding: post-install silence kills conversion. After all
+scaffolders complete, print a "next steps" block that gives users one concrete
+command to run immediately.
 
 **Files:**
 - Modify: `src/cli/commands/init/index.ts`
 - Modify: matching test
 
-**Steps (TDD):** integration test captures stdout → assert four lane lines
-→ FAIL → implement → PASS.
+**Steps (TDD):**
+1. Write integration test: capture stdout → assert four lane framing lines → FAIL.
+2. Implement lane framing → PASS.
+3. Extend test: assert final output block contains `ak blueprint new` and `ak gain`.
+4. Implement next-steps block printed unconditionally after successful setup:
+   ```
+   ✅ Setup complete.
+
+   Next: ak blueprint new "your first task"
+         ak gain          # token savings after your first session
+   ```
+5. Lint + typecheck.
 
 **Acceptance:**
 - [ ] Output contains 4 lane framing lines.
 - [ ] Silent when scaffolders skipped.
+- [ ] Post-install block contains `ak blueprint new` and `ak gain`.
+- [ ] Block omitted on `--dry-run`.
 
 ---
 
 #### [cli] Task 1.7: `ak blueprint new --template <name>` flag
 
-**Status:** todo
-**Depends:** Tasks 0.5, 0.6, 0.7, 0.8, 0.9
+**Status:** done
+**Depends:** None
 
-**Revised per B4:** instead of a new `init` subverb, add a `--template
-<name>` flag to the EXISTING `ak blueprint new` verb. Single CLI surface
-for blueprint creation; templates are an alternative input to the goal
-string.
+**Revised per B4 + catalog-template deletion:** the 5 catalog blueprint
+templates (Tasks 0.5–0.9) were deleted per user decision. The `--template`
+flag now reads from `docs/templates/` (the doc template directory) or from
+any `.md` files present in `catalog/blueprints/` — whichever exists. The
+flag is still valuable as a mechanism; it lists whatever templates are
+available rather than requiring a fixed 5.
 
 **Files:**
-- Modify: `src/cli/commands/blueprint/new.ts` (verify path; the existing `ak blueprint new` lives here)
+- Modify: `src/cli/commands/blueprint/new.ts` (verify path)
 - Modify: matching test
-- Create: `src/cli/commands/blueprint/template-resolver.ts` (helper to list + load templates from `catalog/blueprints/`)
+- Create: `src/cli/commands/blueprint/template-resolver.ts`
 - Create: `src/cli/commands/blueprint/template-resolver.test.ts`
 
 **Steps (TDD):**
-1. Test: `ak blueprint new --template feature-cloudflare-worker` produces
-   a draft `_overview.md` with placeholders filled. Unknown template →
-   exit 2 with list of available templates.
-2. FAIL → implement template-resolver helper + wire into `new` command → PASS.
+1. Test: `ak blueprint new --template <name>` resolves from `docs/templates/`.
+   Unknown template → exit 2 with list of available templates.
+2. FAIL → implement template-resolver + wire into `new` command → PASS.
 3. `pnpm test && pnpm lint && pnpm typecheck`.
 
 **Acceptance:**
-- [ ] All 5 templates listed by `ak blueprint new --list-templates`.
+- [ ] `ak blueprint new --list-templates` lists available templates from `docs/templates/`.
 - [ ] Generated `_overview.md` passes `ak blueprint audit`.
-- [ ] `--template` composes cleanly with `--complexity` (template sets default; flag overrides).
+- [ ] `--template` composes with `--complexity` (template sets default; flag overrides).
+- [ ] Unknown template exits 2 with available list.
 
 ---
 
 #### [symlinker] Task 1.8: opencode skill-sync target
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 0.10
 
 Per Task 0.10's audit, extend `src/symlinker/consumers.ts` or
@@ -714,7 +796,7 @@ mutation suite stays clean — no new exclusions needed for Wave 2 tests.
 
 #### [runners] Task 2.1: claude-subagent Runner backend
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.4
 
 Wraps the in-process Claude Code subagent flow. Tests mock the Agent
@@ -744,7 +826,7 @@ parameters + correct event-stream transformation from mocked output.
 
 #### [runners] Task 2.2: codex-exec Runner backend (read-only mode only)
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.4
 
 Wraps `codex exec ... -s read-only`. v1.0 alpha: read-only mode ONLY.
@@ -775,7 +857,7 @@ CI. No Stryker exclusion needed (test is fast).
 
 #### [runners] Task 2.3: local-worktree Runner backend
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.4
 
 CLI-agnostic backend: creates `git worktree add` per task, spawns user's
@@ -805,7 +887,7 @@ runner via env detection, tears down on teardown(). UUID-suffixed paths.
 
 #### [audits] Task 2.4: Update audit consumers for new ExecutionType variants
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.1
 
 `grep` consumers of `BlueprintExecutionBackend*`; audit each site for
@@ -824,7 +906,7 @@ assumption breaks.
 
 #### [scaffolders] Task 2.5: Spinner UX in setup scaffolders (4A)
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.5
 
 Add `ora` (or noop in non-TTY) to rtk + context-mode + gstack scaffolders.
@@ -847,7 +929,7 @@ Per-step status; success/failure on completion.
 
 #### [runners] Task 3.1: Runner selection
 
-**Status:** todo
+**Status:** done
 **Depends:** Tasks 2.1, 2.2, 2.3
 
 `selectRunner(task, env, flags)`: `--runner=X` overrides; Claude Code env →
@@ -868,7 +950,7 @@ claude-subagent; codex on PATH → codex-exec; else local-worktree. Task's
 
 #### [persistence] Task 3.2: RunnerEvent → SQLite ingestion
 
-**Status:** todo
+**Status:** done
 **Depends:** Tasks 2.1, 1.3
 
 Extend `src/blueprint/db/ingester.ts` with `ingestRunnerEvent` function.
@@ -890,7 +972,7 @@ version mismatch raises pre-write error → FAIL → implement → PASS.
 
 #### [ci] Task 3.3: CI smoke test for `ak setup --bundle`
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.5, 2.5
 
 GitHub Action runs `ak setup --bundle` in a clean container; asserts pinned
@@ -910,7 +992,7 @@ versions install + spinner output non-garbled + lane-4 framing appears.
 
 #### [tests] Task 4.1: Iron-rule regression test (against Task 0.0 fixture)
 
-**Status:** todo
+**Status:** done
 **Depends:** Tasks 0.0, 2.1, 3.2
 
 **Revised per B1 + B2:** load the golden fixture from Task 0.0; feed the
@@ -940,7 +1022,7 @@ real-subagent behavior, without invoking a real subagent in PR CI.
 
 #### [evals] Task 4.2: Eval suite scaffold + Eval 1 (add-function)
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 2.1
 
 **Revised per B3:** scaffold the eval suite at `src/runners/evals/` (not
@@ -971,7 +1053,7 @@ backends (this is where real-subprocess fidelity lives).
 
 #### [evals] Tasks 5.1–5.4: Evals 2–5
 
-**Status:** todo (each)
+**Status:** done (each)
 **Depends:** Task 4.2 (each independent of the others)
 
 Build out the remaining 4 evals at `src/runners/evals/` (per B3):
@@ -995,8 +1077,8 @@ Build out the remaining 4 evals at `src/runners/evals/` (per B3):
 
 | Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
 |---|---|---|---|---|
-| **Wave 0** | 0.0, 0.1, 0.2, 0.3, 0.4, 0.5–0.9 (×5 templates), 0.10 | None (0.0 must complete before any task touches pll) | 11 agents | XS each (0.0 = S, 0.1 = S) |
-| **Wave 1** | 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8 | Wave 0 (per task) | 8 agents | XS-M |
+| **Wave 0** | 0.0, 0.1, 0.2, 0.3, 0.4, 0.10, **0.11, 0.12** | None (0.0 must complete before any task touches pll) | 8 agents | XS each (0.0 = S, 0.1 = S) |
+| **Wave 1** | 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8 | Wave 0 (per task; 1.6 also depends on 0.11) | 8 agents | XS-M |
 | **Wave 2** | 2.1, 2.2, 2.3, 2.4, 2.5 | Wave 1 | 5 agents | S-M (all mocked, fast) |
 | **Wave 3** | 3.1, 3.2, 3.3 | Wave 2 | 3 agents | S |
 | **Wave 4** | 4.1, 4.2 | Wave 0 (0.0) + Wave 3 | 2 agents | M |
@@ -1076,7 +1158,7 @@ because Task 4.1 depends on its fixture output.
 | Outside Voice | `codex exec` (gpt-5.5, reasoning=high) | Independent challenge | 1 | issues_found → fold-in complete | 15 problems flagged; 4 tensions accepted; 6 refinements folded |
 | Plan Refine | `/plan-refine` | Blueprint format + parallelism | 1 | this Blueprint | 26 tasks across 6 waves; CPR 4.33, RW0 11, CP 0, score A; Phase 2 caught the `ak setup` already-existing finding |
 | Design Review | `/plan-design-review` | UI/UX (docs page only) | 0 | not yet run | Queued for after v1.0 alpha planning lands |
-| DX Review | `/plan-devex-review` | Developer experience | 0 | optional | — |
+| DX Review | `/plan-devex-review` | Developer experience | 1 | issues_found → folded | Composite 6/10. Critical: `ak gain` unimplemented (magical moment blocked). 5 fixes → Tasks 0.11, 0.12 added; Task 1.6 expanded. |
 
 - **CROSS-MODEL:** strong agreement on Runner under-specification (X3) and templates unblock (X4); X1 wedge pivot accepted; X2 v1.0 timing left unresolved.
 - **UNRESOLVED:** X2 — v1.0 SemVer-stable declaration gated on external adopter.
