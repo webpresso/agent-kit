@@ -341,6 +341,40 @@ describe('BlueprintSyncClient', () => {
   })
 
   // -------------------------------------------------------------------------
+  // getSnapshot — error cases
+  // -------------------------------------------------------------------------
+
+  describe('getSnapshot — error cases', () => {
+    it('throws on 404 response', async () => {
+      const fetchFn = makeFetchStatus(404)
+      const client = new BlueprintSyncClient(TEST_CREDS, fetchFn)
+      await expect(client.getSnapshot()).rejects.toThrow()
+    })
+
+    it('throws on 5xx response without retrying (uses fetchOnce, not retryFetch)', async () => {
+      const fetchFn = makeFetchStatus(503)
+      const client = new BlueprintSyncClient(TEST_CREDS, fetchFn)
+      await expect(client.getSnapshot()).rejects.toThrow()
+      // getSnapshot uses fetchOnce — exactly one attempt, no retry
+      expect(fetchFn).toHaveBeenCalledTimes(1)
+    })
+
+    it('throws on network error (ECONNREFUSED)', async () => {
+      const fetchFn = makeFetchNetworkError('ECONNREFUSED')
+      const client = new BlueprintSyncClient(TEST_CREDS, fetchFn)
+      await expect(client.getSnapshot()).rejects.toThrow(/ECONNREFUSED|offline|network/i)
+    })
+
+    it('throws on JSON parse failure', async () => {
+      const fetchFn = vi.fn<() => Promise<Response>>().mockResolvedValue(
+        new Response('not-json{{{{', { status: 200, headers: { 'Content-Type': 'application/json' } }),
+      )
+      const client = new BlueprintSyncClient(TEST_CREDS, fetchFn)
+      await expect(client.getSnapshot()).rejects.toThrow()
+    })
+  })
+
+  // -------------------------------------------------------------------------
   // healthCheck
   // -------------------------------------------------------------------------
 

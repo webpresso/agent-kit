@@ -982,6 +982,36 @@ describe('executeBlueprintSubcommand', () => {
     )
   })
 
+  it('throws when platform template URL fetch fails mid-stream (network error)', async () => {
+    // Platform returns a matching template entry, but fetching its URL throws
+    const platformEntries: readonly BlueprintTemplateEntry[] = [
+      { name: 'remote-tpl', slug: 'remote-tpl', url: 'https://example.com/template.md' },
+    ]
+    _setPlatformTemplatesFetcher(async () => platformEntries)
+
+    // Stub globalThis.fetch to throw when fetching the template content URL
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+
+    const deps = buildDeps()
+
+    // The platform match is found → fetchPlatformTemplateToTmpFile is called →
+    // fetch throws → error propagates out of executeBlueprintSubcommand
+    await expect(
+      executeBlueprintSubcommand(
+        'new',
+        ['my feature'],
+        { '--': [], template: 'remote-tpl' },
+        deps,
+      ),
+    ).rejects.toThrow('ECONNREFUSED')
+
+    expect(deps.createBlueprint).not.toHaveBeenCalled()
+
+    fetchSpy.mockRestore()
+  })
+
   it('--template not found in platform or local shows combined error listing both', async () => {
     const platformEntries: readonly BlueprintTemplateEntry[] = [
       { name: 'platform-tpl', slug: 'platform-tpl', url: 'https://example.com/platform-tpl.md' },

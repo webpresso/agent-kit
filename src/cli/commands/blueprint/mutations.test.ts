@@ -472,6 +472,45 @@ describe('advanceTask — platform-first sync', () => {
 })
 
 // ---------------------------------------------------------------------------
+// resolveSyncAdapterForCli — production default path
+// ---------------------------------------------------------------------------
+
+describe('resolveSyncAdapterForCli — production default path', () => {
+  beforeEach(async () => {
+    tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
+    await seedDb(tmpRepoDir)
+  })
+
+  afterEach(() => {
+    _setSyncAdapterForCli(null) // restore default (null factory = production path)
+    delete process.env['AK_BLUEPRINT_PLATFORM_TOKEN']
+    delete process.env['AK_BLUEPRINT_PLATFORM_DISABLED']
+  })
+
+  it('returns null when no factory is injected and AK_BLUEPRINT_PLATFORM_TOKEN is absent', async () => {
+    // Do NOT call _setSyncAdapterForCli — let it use the production default
+    delete process.env['AK_BLUEPRINT_PLATFORM_TOKEN']
+    delete process.env['AK_BLUEPRINT_PLATFORM_DISABLED']
+
+    // advanceTask with production path → no token → adapter null → markdown-canonical
+    await advanceTask(tmpRepoDir, 'my-feature', '1.1', 'in-progress')
+
+    const content = readOverview(tmpRepoDir, 'my-feature', 'planned')
+    expect(content).toContain('**Status:** in-progress')
+  })
+
+  it('returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1 even if token is present', async () => {
+    process.env['AK_BLUEPRINT_PLATFORM_TOKEN'] = 'some-token'
+    process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+
+    await advanceTask(tmpRepoDir, 'my-feature', '1.1', 'blocked')
+
+    const content = readOverview(tmpRepoDir, 'my-feature', 'planned')
+    expect(content).toContain('**Status:** blocked')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Platform-first sync — promoteBlueprint (Task 2.6)
 // ---------------------------------------------------------------------------
 

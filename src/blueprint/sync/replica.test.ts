@@ -156,6 +156,38 @@ describe('ReplicaManager', () => {
     expect(manager.getState().pullCount).toStrictEqual(1)
   })
 
+  // ── 9. offline throws, not buffers — contract test ──────────────────────
+  it('throws when getSnapshot fails — does not buffer offline mutations', async () => {
+    const failingGetSnapshot = vi.fn<() => Promise<BlueprintSnapshot>>().mockRejectedValue(
+      new Error('ECONNREFUSED'),
+    )
+    const failingClient = makeClient({ getSnapshot: failingGetSnapshot })
+    const manager = new ReplicaManager({ client: failingClient, db: makeDb(), ttlSeconds: 0 })
+
+    // ensureFresh → scheduleWithSingleFlight → doActualPull re-throws on failure
+    await expect(manager.ensureFresh()).rejects.toThrow('ECONNREFUSED')
+    expect(manager.getState().consecutiveFailures).toStrictEqual(1)
+  })
+
+  // ── 10. consecutiveFailures resets to 0 after success following failure ──
+  it('resets consecutiveFailures to 0 after a successful pull following failures', async () => {
+    const snapshot = makeSnapshot()
+    const failThenSucceedGetSnapshot = vi.fn<() => Promise<BlueprintSnapshot>>()
+      .mockRejectedValueOnce(new Error('timeout'))
+      .mockResolvedValue(snapshot)
+
+    const failingClient = makeClient({ getSnapshot: failThenSucceedGetSnapshot })
+    const manager = new ReplicaManager({ client: failingClient, db: makeDb(), ttlSeconds: 0 })
+
+    // First call fails → consecutiveFailures = 1
+    await expect(manager.ensureFresh()).rejects.toThrow('timeout')
+    expect(manager.getState().consecutiveFailures).toStrictEqual(1)
+
+    // Second call succeeds → consecutiveFailures resets to 0
+    await manager.ensureFresh()
+    expect(manager.getState().consecutiveFailures).toStrictEqual(0)
+  })
+
   // ── env TTL override ─────────────────────────────────────────────────────
   it('uses AK_BLUEPRINT_REPLICA_TTL_S env var when ttlSeconds is not provided', async () => {
     vi.stubEnv('AK_BLUEPRINT_REPLICA_TTL_S', '3600')
