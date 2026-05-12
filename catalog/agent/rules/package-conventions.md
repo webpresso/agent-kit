@@ -50,6 +50,14 @@ tooling, webpresso framework, and derivatives.
 - Run `pnpm lint:pkg` (publint / attw) before releasing to catch broken export
   maps.
 
+**Exception — user-facing globally-installed CLIs:** The `webpresso` CLI
+package (`webpresso` on public npmjs.org) is unscoped and published to the
+public registry with `access: "public"`. This is necessary because globally
+installed CLIs require frictionless install (`npm i -g webpresso` without
+`.npmrc` auth setup). The dual-publish is handled by
+`scripts/publish-webpresso.ts` (see `changeset-release.md` § Dual-publish
+pattern). All other `@webpresso/*` packages continue to use GitHub Packages.
+
 ## Module format
 
 - Prefer `tshy` for dual CJS/ESM output when broad compatibility is needed;

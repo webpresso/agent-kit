@@ -1,21 +1,22 @@
-import { findRootSync } from '@manypkg/find-root'
+import { mkdirSync } from 'node:fs'
 import { readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname } from 'node:path'
+
+import { getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
 
 export function getStateFilePath(): string {
   try {
-    const { rootDir } = findRootSync(process.cwd())
-    return join(rootDir, '.claude', '.guard-state.json')
-  } catch {
-    return '/tmp/webpresso-guard-state.json'
+    return getSurfacePath('worktree/guard-state.json', 'worktree')
+  } catch (err) {
+    if (err instanceof NotInGitRepoError) return '/tmp/webpresso-guard-state.json'
+    throw err
   }
 }
 
-const STATE_FILE = getStateFilePath()
-
 export function isGuardEnabled(): boolean {
   try {
-    const data = JSON.parse(readFileSync(STATE_FILE, 'utf-8'))
+    const stateFile = getStateFilePath()
+    const data = JSON.parse(readFileSync(stateFile, 'utf-8'))
     return data.guardEnabled !== false
   } catch {
     return true
@@ -23,5 +24,7 @@ export function isGuardEnabled(): boolean {
 }
 
 export function setGuardEnabled(enabled: boolean): void {
-  writeFileSync(STATE_FILE, JSON.stringify({ guardEnabled: enabled }))
+  const stateFile = getStateFilePath()
+  mkdirSync(dirname(stateFile), { recursive: true })
+  writeFileSync(stateFile, JSON.stringify({ guardEnabled: enabled }))
 }

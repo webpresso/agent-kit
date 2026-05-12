@@ -3,39 +3,55 @@ type: guide
 last_updated: '2026-05-11'
 ---
 
-# Getting started with `@webpresso/agent-kit`
+# Getting started with `webpresso`
 
 This guide takes a fresh repo from zero to a fully wired blueprint +
 agent-surface setup in five minutes.
 
 ## Prerequisites
 
-- Node.js ≥24 (matches `package.json#engines`). Bun ≥1 is required if
-  you also install the Claude Code plugin — its hook + MCP entrypoints
-  run under `bun`.
+- **Bun ≥1** — required. The CLI bins ship as TypeScript with `#!/usr/bin/env bun`
+  shebangs. Install bun first:
+  ```bash
+  curl -fsSL https://bun.sh/install | bash
+  ```
+- Node.js ≥24 (matches `package.json#engines`).
 - pnpm (or npm/bun — examples use pnpm).
 - A git repo.
 
 ## Install
 
 ```bash
-pnpm add -D @webpresso/agent-kit
+npm install -g webpresso
 ```
 
-The `ak` binary is now available via:
+pnpm / yarn / bun equivalents:
 
 ```bash
-pnpm exec ak --version
-# or: npx ak --version
+pnpm add -g webpresso
+# yarn global add webpresso
+# bun add -g webpresso
 ```
+
+The `wp`, `webpresso`, and `ak` bins are now available globally:
+
+```bash
+wp --version
+ak --version   # alias — same binary
+```
+
+> **Pinned-version devDependency path** (library imports, CI with reproducible
+> lockfiles): `pnpm add -D webpresso && npx wp setup`. The legacy
+> `@webpresso/agent-kit` package on GitHub Packages is frozen — use `webpresso`
+> from public npmjs.org for all new installs.
 
 ## Scaffold your repo
 
 ```bash
-npx ak setup
+wp setup
 ```
 
-`ak setup` is idempotent (`ak init` remains a compatibility alias). It:
+`wp setup` (alias: `ak setup`, `ak init`) is idempotent. It:
 
 1. Creates `.agent/{commands,skills,workflows,rules,guides}/` and populates
    them with the catalog's Tier-1 blueprint-native + Tier-2 methodology
@@ -61,7 +77,7 @@ npx ak setup
 ### Opt into tech-specific skills
 
 ```bash
-npx ak setup --with tanstack-query,better-auth-best-practices
+wp setup --with tanstack-query,better-auth-best-practices
 ```
 
 Tier-3 tech skills are opt-in because they only apply if your stack
@@ -79,7 +95,7 @@ includes those libraries. Available:
 ### Bundled tooling installed by default
 
 ```bash
-npx ak setup
+wp setup
 ```
 
 Default setup also wires in tooling that lives outside the skill catalog:
@@ -108,10 +124,10 @@ informational, never blocks the run.
 ### Preview without writing
 
 ```bash
-npx ak setup --dry-run
+wp setup --dry-run
 ```
 
-Shows the diff `ak setup` would write, then exits. Useful before your
+Shows the diff `wp setup` would write, then exits. Useful before your
 first real run.
 
 This preview mode is write-free: it does not create scaffold files, helper hook
@@ -120,7 +136,7 @@ scripts, IDE config files, or spawn external preset installers.
 ## Write your first blueprint
 
 ```bash
-npx ak blueprint new "Add real-time notifications via SSE" --complexity M
+wp blueprint new "Add real-time notifications via SSE" --complexity M
 ```
 
 Creates `blueprints/draft/add-real-time-notifications-via-sse/_overview.md`
@@ -136,15 +152,15 @@ Edit the file, then:
 
 ```bash
 # Harden the plan (fact-check, split coarse tasks, align deps)
-npx ak blueprint refine add-real-time-notifications-via-sse
+wp blueprint refine add-real-time-notifications-via-sse
 # Or invoke /plan-refine inside Claude Code — the skill lives at
 # .agent/skills/plan-refine/SKILL.md (installed by ak setup).
 
 # Move draft → planned once it's execution-ready
-npx ak blueprint move add-real-time-notifications-via-sse planned
+wp blueprint move add-real-time-notifications-via-sse planned
 
 # Audit format and lifecycle state
-npx ak blueprint audit --strict
+wp blueprint audit --strict
 ```
 
 See [`lifecycle.md`](./lifecycle.md) for the full state machine.
@@ -156,14 +172,14 @@ When you edit `.agent/commands/<foo>.md`, the `.claude/`, `.cursor/`,
 drift. Run:
 
 ```bash
-npx ak sync
+wp sync
 ```
 
 or add it to your pre-commit:
 
 ```bash
 # .husky/pre-commit
-npx ak sync --check    # exits 1 if drift detected
+wp sync --check    # exits 1 if drift detected
 ```
 
 `.claude/commands/` + `.claude/skills/` use real filesystem symlinks
@@ -174,10 +190,10 @@ for details.
 
 ## Compile to all IDE surfaces
 
-After `ak setup`, run:
+After `wp setup`, run:
 
 ```bash
-npx ak compile
+wp compile
 ```
 
 This reads `.agent/skills/`, `.agent/commands/`, `.agent/agents/`, and `.agent/memory/` and emits:
@@ -188,18 +204,18 @@ This reads `.agent/skills/`, `.agent/commands/`, `.agent/agents/`, and `.agent/m
 - `.windsurf/skills/` — Windsurf skills
 - `.gemini/commands/` — Gemini CLI commands
 
-Outputs are gitignored (regeneratable). `ak compile` is idempotent — re-running with no source changes is a no-op.
+Outputs are gitignored (regeneratable). `wp compile` is idempotent — re-running with no source changes is a no-op.
 
 **First-time setup with example skill:**
 
 ```bash
-ak setup --with base-kit --with example-skill
-ak compile
+wp setup --with base-kit --with example-skill
+wp compile
 # → .agent/skills/hello-webpresso/SKILL.md created
 # → all 6 IDE surfaces populated
 ```
 
-Use `ak audit compile-drift` in CI to catch any surfaces that diverge from the `.agent/` source.
+Use `wp audit compile-drift` in CI to catch any surfaces that diverge from the `.agent/` source.
 
 ## Add the dev command drop-in
 
@@ -207,7 +223,7 @@ Repos that define an agent-kit dev manifest can import the packaged just
 wrappers:
 
 ```just
-import 'node_modules/@webpresso/agent-kit/just/dev-kit.just'
+import 'node_modules/webpresso/just/dev-kit.just'
 ```
 
 The drop-in exposes:
@@ -249,7 +265,7 @@ allowed-tools: Bash, Read
 …
 EOF
 
-npx ak sync
+wp sync
 ```
 
 Claude Code picks it up via `.claude/commands/my-command.md` (the
@@ -266,9 +282,9 @@ either of those fallbacks.
 Once you have blueprints, agents can query them via SQLite instead of reading raw markdown:
 
 ```bash
-ak blueprint db build                        # cold-start: projects all markdown → SQLite
-ak blueprint db query next-ready-task        # what's the next unblocked task?
-ak blueprint db browse                       # Datasette UI (pip install datasette first)
+wp blueprint db build                        # cold-start: projects all markdown → SQLite
+wp blueprint db query next-ready-task        # what's the next unblocked task?
+wp blueprint db browse                       # Datasette UI (pip install datasette first)
 ```
 
 The store is rebuilt from markdown on demand — it's never the source of truth, just

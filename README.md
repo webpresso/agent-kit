@@ -1,31 +1,48 @@
-# @webpresso/agent-kit
+# webpresso
 
 > One command scaffolds a repo so every AI coding agent — Claude Code, Codex CLI, Cursor, Windsurf, Gemini, OpenCode — shares the same context, hooks, and quality gates. Edit a canonical `.agent/` once; `ak sync` propagates everywhere. MIT. Experimental (v0.x).
 
-## Registry setup
+## Requires bun
 
-agent-kit publishes to GitHub Packages. Add to your `.npmrc`:
+webpresso CLI bins ship as TypeScript source with `#!/usr/bin/env bun`. Install
+bun globally before running `wp`, `webpresso`, or `ak`:
 
+```bash
+curl -fsSL https://bun.sh/install | bash
 ```
-@webpresso:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+
+## Install
+
+```bash
+npm install -g webpresso
 ```
 
-Then: `pnpm add -D @webpresso/agent-kit`
+pnpm / yarn / bun equivalents also work:
+
+```bash
+pnpm add -g webpresso
+# yarn global add webpresso
+# bun add -g webpresso
+```
+
+> **Pinned-version / devDependency path** (Codex CLI, library consumers):
+> `pnpm add -D webpresso`. See [docs/getting-started.md](./docs/getting-started.md)
+> for the full setup matrix. The legacy `@webpresso/agent-kit` package on GitHub
+> Packages is frozen — new releases are published to `webpresso` on public npmjs.org only.
 
 ## First 5 minutes
 
 ```bash
 # 1. Install and set up
-pnpm add -D @webpresso/agent-kit
-npx ak setup --with base-kit --with example-skill
+npm install -g webpresso
+wp setup --with base-kit --with example-skill
 
 # 2. Compile to all 6 IDE surfaces
-npx ak compile
+wp compile
 
 # 3. Verify no drift
-npx ak audit skill-sizes
-npx ak audit broken-refs
+wp audit skill-sizes
+wp audit broken-refs
 
 # 4. Open in your IDE — the hello-webpresso skill is now available
 ```
@@ -57,15 +74,15 @@ agent-kit is the catalog and the `ak` CLI that fixes that.
 ## Quick start
 
 ```bash
-# npm install (Codex CLI / Cursor / Windsurf / Gemini / OpenCode):
-pnpm add -D @webpresso/agent-kit && npx ak setup
+# Global install (recommended — Claude Code, Codex CLI, Cursor, Windsurf, Gemini, OpenCode):
+npm install -g webpresso && wp setup
 
 # Claude Code plugin:
 /plugin marketplace add webpresso/agent-kit
 /plugin install agent-kit@webpresso
 ```
 
-Requires Node `>=24` and Bun on the machine that runs the Claude Code plugin.
+Requires Node `>=24` and bun on the machine that runs the CLI or Claude Code plugin.
 
 ## What changes after `ak setup`
 
@@ -83,16 +100,16 @@ Requires Node `>=24` and Bun on the machine that runs the Claude Code plugin.
 #         blueprint-lifecycle, catalog-drift checks. Hours, drifts.
 
 # After:
-npx ak setup
+wp setup
 ```
 
-`ak setup` is re-runnable. Existing files get a `<name>.new` sidecar by default; `--overwrite` replaces them. Hooks are patched additively into `.claude/settings.json` and `.codex/hooks.json` — your custom hooks survive.
+`wp setup` (alias: `ak setup`) is re-runnable. Existing files get a `<name>.new` sidecar by default; `--overwrite` replaces them. Hooks are patched additively into `.claude/settings.json` and `.codex/hooks.json` — your custom hooks survive.
 
 ### 3. Implementation plans that don't rot
 
 | Before | After |
 | --- | --- |
-| Paste a plan into chat. Lose it on `/clear`. No way to track which agent worked on which task. | `ak blueprint new "<goal>"` writes a markdown plan to `blueprints/in-progress/`. Lifecycle states (`draft` / `planned` / `in-progress` / `completed`) are CI-gated by `ak audit blueprint-lifecycle`. |
+| Paste a plan into chat. Lose it on `/clear`. No way to track which agent worked on which task. | `wp blueprint new "<goal>"` writes a markdown plan to `blueprints/in-progress/`. Lifecycle states (`draft` / `planned` / `in-progress` / `completed`) are CI-gated by `wp audit blueprint-lifecycle`. |
 
 ### 4. Commit messages that survive six months
 
@@ -125,7 +142,7 @@ Required trailers: `Confidence:` (`low|medium|high`) and at least one of `Constr
 ```bash
 # Before: 8 separate pre-commit hooks, each in its own config file.
 # After:  one composite, same registry powers pre-commit + CI + ship gate.
-ak audit guardrails
+wp audit guardrails
 # composes: catalog-drift + blueprint-lifecycle + docs-frontmatter
 #         + no-relative-parent-imports + vision + commit-message
 #         + tech-debt + bucket-boundary
@@ -148,14 +165,16 @@ Two paths exist because Codex CLI doesn't ship a plugin marketplace yet ([config
 
 You get: hooks (PreToolUse, PostToolUse, Stop, SessionStart), the `ak` MCP server with seven tools (`ak_test`, `ak_e2e`, `ak_lint`, `ak_typecheck`, `ak_qa`, `ak_audit`, `ak_blueprint`), slash commands, and the skills catalog. Pin to release tags — `main` does not ship `dist/`. Hot-reload from source: see [CONTRIBUTING.md](./CONTRIBUTING.md#edge-local-plugin-link-hot-reload-hooks-from-source).
 
-### Path B — npm + `ak setup`
+### Path B — global install + `wp setup`
 
 ```bash
-pnpm add -D @webpresso/agent-kit
-npx ak setup
+npm install -g webpresso
+wp setup
 ```
 
 Required for Codex CLI, OpenCode, Cursor, Gemini, and any IDE without a plugin marketplace. Same hooks, scaffolded into `.claude/settings.json` AND `.codex/hooks.json`. Library imports (`defineAgentKitConfig`, `createAkTestCommandConfig`) flow through this path too. See [`docs/getting-started.md`](./docs/getting-started.md) for the full setup matrix and [`docs/presets.md`](./docs/presets.md) for `--with` presets (`omx`, `gstack`, `context-mode`, `playwright-mcp`, `vision`, `lore-commits`, `rtk`, `base-kit`).
+
+> **Pinned-version devDependency:** `pnpm add -D webpresso && npx wp setup`. `ak` is a working alias for all `wp` commands.
 
 ## IDE support matrix
 
@@ -167,7 +186,9 @@ Required for Codex CLI, OpenCode, Cursor, Gemini, and any IDE without a plugin m
 | Cursor / Windsurf | `.cursor/skills/` / `.windsurf/skills/` | Path B (`ak setup`) |
 | Gemini CLI | `.gemini/commands/*.toml` (TOML transform) | Path B (`ak setup`) |
 
-## `ak` CLI reference
+## `wp` / `ak` CLI reference
+
+`wp` is the primary bin alias. `webpresso` and `ak` are working aliases for all commands.
 
 | Command | What it does |
 | --- | --- |
@@ -207,7 +228,7 @@ Required for Codex CLI, OpenCode, Cursor, Gemini, and any IDE without a plugin m
 | `ak mcp` | Run the agent-kit MCP server over stdio |
 | `ak docs lint <file>` | Lint a research or blueprint doc |
 
-Run `ak <command> --help` for full flags.
+Run `wp <command> --help` (or `ak <command> --help`) for full flags.
 
 ## Blueprint structured store
 
@@ -261,16 +282,16 @@ Opinionated baseline, not a registry. Extend with your own under `.agent/skills/
 
 ## Status
 
-**Experimental (v0.x).** Public API may change between minor versions. Pin to a release tag if you need stability. See [`docs/getting-started.md`](./docs/getting-started.md) for migration notes and [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the release process.
+**Experimental (v0.x).** Public API may change between minor versions. Pin to a release tag if you need stability. See [`MIGRATION.md`](./MIGRATION.md) for upgrading from `@webpresso/agent-kit`, [`docs/getting-started.md`](./docs/getting-started.md) for the full onboarding guide, and [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the release process.
 
 ## Telemetry
 
 `ak setup` can optionally collect anonymous wall-clock timing to help improve the
 developer experience. No PII, no repo identifiers, no file paths are ever collected.
 
-**Off by default** for third-party adopters. Opt in: `AK_TELEMETRY=1 npx ak setup`.
+**Off by default** for third-party adopters. Opt in: `AK_TELEMETRY=1 wp setup`.
 **Always on** for internal consumers (`AK_INTERNAL=1`).
-**Always off**: `AK_TELEMETRY=0 npx ak setup`.
+**Always off**: `AK_TELEMETRY=0 wp setup`.
 
 ## License
 

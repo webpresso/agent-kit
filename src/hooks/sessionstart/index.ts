@@ -22,6 +22,8 @@ import { join } from 'node:path'
 
 import { AK_ROUTING_BLOCK } from '#hooks/shared/routing-block'
 
+import { readUpdateBanner } from './update-banner.js'
+
 export { AK_ROUTING_BLOCK }
 export const MAX_BYTES = 200 * 1024
 export const TRUNCATION_NOTICE = '\n\n[truncated: file exceeded 200KB limit]'
@@ -78,6 +80,11 @@ export function buildOutput(_input: StartInput, cwd: string, env: EnvLike): stri
     routingMd !== null ? AK_ROUTING_BLOCK + '\n\n' + routingMd : AK_ROUTING_BLOCK
   if (gstackBlock !== null) {
     additionalContext += gstackBlock
+  }
+
+  const updateBanner = readUpdateBanner(env as NodeJS.ProcessEnv)
+  if (updateBanner !== null) {
+    additionalContext += '\n\n' + updateBanner
   }
 
   return JSON.stringify({

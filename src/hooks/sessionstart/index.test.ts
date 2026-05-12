@@ -2,11 +2,20 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { performance } from 'node:perf_hooks'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AK_ROUTING_BLOCK } from '#hooks/shared/routing-block'
 
+// Mock update-banner so state-root (which requires env-paths/proper-lockfile) is
+// never imported in the index test environment.
+vi.mock('./update-banner.js', () => ({
+  readUpdateBanner: vi.fn(() => null),
+}))
+
+import { readUpdateBanner } from './update-banner.js'
 import { buildOutput, MAX_BYTES, TRUNCATION_NOTICE } from './index.js'
+
+const mockReadUpdateBanner = vi.mocked(readUpdateBanner)
 
 interface ParsedOutput {
   hookSpecificOutput: {
@@ -227,5 +236,47 @@ describe('sessionstart hook gstack block (opt-in)', () => {
     const routingIdx = ctx.indexOf('<ak_routing>')
     const gstackIdx = ctx.indexOf('Interactive skills (gstack)')
     expect(routingIdx).toBeLessThan(gstackIdx)
+  })
+})
+
+describe('sessionstart hook update banner', () => {
+  let dirs: string[] = []
+
+  beforeEach(() => {
+    dirs = []
+    mockReadUpdateBanner.mockReturnValue(null)
+  })
+
+  afterEach(() => {
+    for (const d of dirs) rmSync(d, { recursive: true, force: true })
+    vi.clearAllMocks()
+  })
+
+  function tmp(): string {
+    const d = mkdtempSync(join(tmpdir(), 'ak-sessionstart-banner-'))
+    dirs.push(d)
+    return d
+  }
+
+  it('appends <wp_update> to additionalContext when readUpdateBanner returns a banner', () => {
+    const cwd = tmp()
+    const banner =
+      '<wp_update>webpresso 2.0.0 available (current 1.0.0). Auto-install runs on the next `wp` invocation, or set AK_SKIP_AUTO_INSTALL=1 to opt out.</wp_update>'
+    mockReadUpdateBanner.mockReturnValue(banner)
+
+    const out = buildOutput({}, cwd, {})
+    const parsed = JSON.parse(out) as ParsedOutput
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('<wp_update>')
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('webpresso 2.0.0 available')
+  })
+
+  it('does not include <wp_update> when readUpdateBanner returns null', () => {
+    const cwd = tmp()
+    mockReadUpdateBanner.mockReturnValue(null)
+
+    const out = buildOutput({}, cwd, {})
+    const parsed = JSON.parse(out) as ParsedOutput
+    expect(parsed.hookSpecificOutput.additionalContext).not.toContain('<wp_update>')
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')
   })
 })

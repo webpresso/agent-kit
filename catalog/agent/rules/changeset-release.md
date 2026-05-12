@@ -7,7 +7,7 @@ scope: repo
 applies_to: [agents]
 related: []
 created: '2026-05-07'
-last_reviewed: '2026-05-07'
+last_reviewed: '2026-05-12'
 paths: 
   - '.changeset/**'
   - '.github/workflows/*.yml'
@@ -33,8 +33,8 @@ publishing. The legacy tag-push + `release-package.yml` pattern is retired.
   tarball but leave git history incoherent.
 - **Never** publish from a dirty working tree. Run `git status` first; commit
   or stash everything before `changeset publish`.
-- **Never** call `pnpm publish` directly — always go through
-  `pnpm changeset publish` so the Changesets lifecycle is honoured.
+- **Never** call `pnpm publish` directly — always go through the CI workflow
+  so the Changesets lifecycle and dual-publish step are both honoured.
 
 ## Commit sequence — mandatory every release
 
@@ -42,25 +42,65 @@ publishing. The legacy tag-push + `release-package.yml` pattern is retired.
 1. Implement changes + commit code
 2. pnpm changeset          # creates .changeset/<slug>.md
 3. git add .changeset/<slug>.md && git commit -m "chore: add changeset"
-4. pnpm changeset version  # bumps version, generates CHANGELOG, removes slug
-5. git add package.json CHANGELOG.md .changeset/ && git commit -m "chore(release): @pkg@X.Y.Z"
-6. pnpm build              # ensure dist is fresh
-7. pnpm changeset publish  # publishes to GitHub Packages, creates git tag
+4. Merge to main           # CI runs version bump + both publish steps automatically
 ```
 
-Steps 2-3 and 4-5 must each be separate commits. Publishing without the
-version-bump commit means the git tag points at the wrong tree.
+Steps 2-3 happen on the feature branch alongside the code change. There is
+no manual `pnpm changeset version` or `pnpm changeset publish` step for
+established repos — CI owns those entirely.
 
-## How releases work (CI-driven — established repos)
+## How releases work (CI-driven, direct-publish on push to main)
 
-For repos that already have CI (`release.yml` wired to `changesets/action`):
+**This repo uses a direct-publish flow — there is no "Version Packages" PR.**
 
-1. Write code on a feature branch.
-2. `pnpm changeset` → commit the `.changeset/<slug>.md` with your code.
-3. Merge to `main`. CI opens a **"Version Packages"** PR (bumps version +
-   updates CHANGELOG).
-4. Merge the Version PR → CI runs `pnpm changeset publish`, publishes to
-   GitHub Packages, creates a `v<version>` GitHub Release.
+When a feature branch with a `.changeset/<slug>.md` file merges to `main`,
+`release.yml` runs the following sequence automatically:
+
+1. `pnpm run version` — runs `changeset version &&
+   pnpm run sync-marketplace-version`. This bumps `package.json`, updates
+   `CHANGELOG.md`, removes the consumed `.changeset/<slug>.md` files, and
+   syncs `.claude-plugin/marketplace.json` to match the new version.
+2. `git push` — commits the version bump directly to `main`.
+3. `pnpm changeset publish` — publishes `@webpresso/agent-kit` to GitHub
+   Packages (legacy stub, frozen after the `webpresso` rename).
+4. `bun scripts/publish-webpresso.ts` — publishes `webpresso` to public
+   npmjs.org (see Dual-publish pattern below).
+5. CI creates a `release/v<version>` branch with compiled `dist/` committed
+   for Claude Code marketplace consumers.
+
+The workflow supports a manual dry-run trigger:
+```bash
+gh workflow run release.yml -f dry-run=true
+```
+
+## Dual-publish pattern
+
+`@webpresso/agent-kit` (GitHub Packages) and `webpresso` (public npmjs.org)
+carry the same version and the same code. Changesets has no native
+dual-registry support, so the second publish is driven by
+`scripts/publish-webpresso.ts`:
+
+1. Reads the just-bumped `package.json#version`.
+2. Builds a staging directory at `dist-publish/` containing a swapped
+   `package.json`:
+   - `name: "webpresso"`
+   - `publishConfig: { registry: "https://registry.npmjs.org", access: "public" }`
+   - `bin: { wp, webpresso, ak, ...hook bins }`
+   - `preferGlobal: true`
+   — plus copies of `dist/`, `src/`, `catalog/`, `just/`, `docs/`,
+   `skills/`, `commands/`, `.claude-plugin/`, and `README.md`.
+3. Writes a temporary `.npmrc` in the staging directory authenticated via
+   `NPM_TOKEN`.
+4. Runs `pnpm publish dist-publish --no-git-checks --access public`.
+5. Cleans up the staging directory in a `try/finally` block — cleanup runs
+   on both success and failure.
+
+`package.json#name` remains `@webpresso/agent-kit` throughout; the staging
+directory is an ephemeral build artifact, never committed.
+
+After the `webpresso` rename ships, the `pnpm changeset publish` step (step 3
+above) will be removed in a follow-up PR, leaving `publish-webpresso.ts` as
+the sole publish step.
 
 ## First-time setup — new extracted repos
 
@@ -86,38 +126,21 @@ Initial public extraction from Webpresso monorepo.
 EOF
 git add .changeset/ && git commit -m "chore: add initial changeset"
 
-# 5. Version bump + commit
-pnpm changeset version
-git add package.json CHANGELOG.md .changeset/ && git commit -m "chore(release): @webpresso/<name>@<version>"
-
-# 6. Build + publish
-pnpm build
-pnpm changeset publish
+# 5. Merge to main — CI runs version bump + publish automatically
 ```
 
-**Do NOT skip steps 4-5.** Publishing without the committed version bump leaves
-the git history without a release commit — the package is on the registry but
-there is no corresponding tag or CHANGELOG commit.
+**Do NOT run `pnpm changeset version` or `pnpm changeset publish` manually**
+for established repos — CI owns both steps. Manual execution bypasses the
+`sync-marketplace-version` script and the dual-publish step.
 
 ## Release workflow (self-contained Changesets)
 
 The active pattern for the three public repos (`webpresso/framework/`,
 `webpresso/ui-kit/`, `webpresso/agent-kit/`) is a **self-contained
-`release.yml`** using `changesets/action` directly — **not** the legacy
+`release.yml`** that calls the Changesets CLI directly — **not** the legacy
 `release-package.yml@main` reusable workflow from a previous era.
-Copy `webpresso/framework/.github/workflows/release.yml` verbatim when
-bootstrapping a new public repo. (The pre-consolidation siblings
-`webpresso/runtime/`, `webpresso/i18n/`, `webpresso/utils/`,
-`webpresso/db-branching/`, `webpresso/tooling/`, and
-`webpresso/workers-test-kit/` were absorbed into framework/ui-kit/agent-kit
-and archived in the consolidate-11-public-... cycle; their packages now
-live in those three repos.)
-
-The `release.yml` mechanics:
-- **Changeset files present** → action opens/updates a "Version Packages" PR.
-- **No changeset files** (after Version PR merge) → action runs
-  `pnpm changeset publish`.
-- Auth: `GH_PACKAGES_TOKEN` env var consumed by `.npmrc`.
+Copy `webpresso/agent-kit/.github/workflows/release.yml` verbatim when
+bootstrapping a new public repo.
 
 ## Required repo files
 
@@ -155,8 +178,8 @@ committed. Claude Code marketplace consumers **must** pin to
 
 `.claude-plugin/marketplace.json` must always mirror `package.json#version`.
 This is automated: the `version` npm script runs `changeset version &&
-pnpm run sync-marketplace-version`, so the "Version Packages" PR opened by CI
-already includes the updated manifest.
+pnpm run sync-marketplace-version`, so the version bump that CI commits to
+`main` already includes the updated manifest.
 
 **Never manually edit `marketplace.json#version`** — let the release script
 do it. If you see a drift (e.g. after a hotfix that bypasses the script), run:

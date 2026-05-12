@@ -37,9 +37,9 @@ For monorepo and ingest-lens to adopt v0.15.0:
    rm -f .windsurfrules .cursorrules
    # Remove ak cursor-windsurf-sync from package.json scripts if present
    ```
-2. Bump `@webpresso/agent-kit` to `0.15.0`
-3. Run `ak setup --with base-kit --with example-skill`
-4. Run `ak compile`
-5. Run `ak audit --all` (verify clean)
+2. Bump `webpresso` to `0.15.0` (or `@webpresso/agent-kit` if still on the legacy package)
+3. Run `wp setup --with base-kit --with example-skill`
+4. Run `wp compile`
+5. Run `wp audit --all` (verify clean)
 6. Add `.github/workflows/agent-kit.yml` with the action above
 7. Commit with lore-protocol message

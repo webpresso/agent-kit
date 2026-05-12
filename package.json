@@ -29,8 +29,9 @@
     "skills"
   ],
   "license": "MIT",
+  "deprecated": "Renamed to 'webpresso' on public npm. Run: npm i -g webpresso  See: https://github.com/webpresso/agent-kit/blob/main/MIGRATION.md",
+  "preferGlobal": true,
   "bin": {
-    "ak": "./src/cli/cli.ts",
     "ak-pretool-guard": "./src/hooks/pretool-guard/index.ts",
     "ak-post-tool": "./src/hooks/post-tool/lint-after-edit.ts",
     "ak-stop-qa": "./src/hooks/stop/qa-changed-files.ts",
@@ -59,6 +60,8 @@
     "#e2e/*": "./src/e2e/*.ts",
     "#test": "./src/test/index.ts",
     "#symlinker": "./src/symlinker/index.ts",
+    "#paths/*": "./src/paths/*.ts",
+    "#cli/auto-update/*": "./src/cli/auto-update/*.ts",
     "#cli/*": "./src/cli/*.ts",
     "#dev/*": "./src/dev/*.ts",
     "#audit/*": "./src/audit/*.ts",
@@ -289,10 +292,14 @@
     "qa": "bun run build && bun run typecheck && bun run lint && bun run format:check && bun run test && bun run lint:pkg && bun run audits:check",
     "changeset": "changeset",
     "changeset:status": "changeset status",
+    "postinstall": "bun scripts/migration-notice.ts",
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
     "@manypkg/find-root": "catalog:",
+    "env-paths": "^4.0.0",
+    "proper-lockfile": "^4.1.2",
+    "update-notifier": "^7.3.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "ora": "^8.2.0",
     "@webpresso/runtime-format": "catalog:",

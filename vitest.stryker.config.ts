@@ -18,6 +18,12 @@ export default mergeConfig(
         // spawns a long-lived bun CLI process for JSON-RPC MCP communication;
         // same cold-start problem, not suitable for Stryker mutation runner
         'src/mcp/server.integration.test.ts',
+        // spawns bun subprocess (publish-webpresso.ts --dry-run); cold-start
+        // exceeds the unit-test timeout in the forks pool
+        'scripts/publish-webpresso.integration.test.ts',
+        // spawns a real detached `node -e` child to verify the installer end-to-end;
+        // Node cold-start under Stryker's forks pool exceeds the unit-test timeout
+        'src/cli/auto-update/installer.integration.test.ts',
       ],
     },
   }),

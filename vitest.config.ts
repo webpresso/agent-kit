@@ -10,6 +10,7 @@ export default defineConfig({
       { find: /^#utils\/(.*)/, replacement: resolve(__dirname, 'src/blueprint/utils/$1') },
       { find: /^#local/, replacement: resolve(__dirname, 'src/blueprint/index.ts') },
       { find: /^#index/, replacement: resolve(__dirname, 'src/blueprint/index.ts') },
+      { find: /^#paths\/(.*)/, replacement: resolve(__dirname, 'src/paths/$1') },
       { find: /^#cli\/(.*)/, replacement: resolve(__dirname, 'src/cli/$1') },
       { find: /^#dev\/(.*)/, replacement: resolve(__dirname, 'src/dev/$1') },
       { find: /^#audit\/(.*)/, replacement: resolve(__dirname, 'src/audit/$1') },

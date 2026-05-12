@@ -43,7 +43,9 @@ const SUPPORTED_COMMANDS = [
 ] as const
 
 const ROOT_HELP = [
-  'Usage: ak [command] [options]',
+  'Usage: wp [command] [options]',
+  '       webpresso [command] [options]  (alias)',
+  '       ak [command] [options]         (deprecated alias)',
   '',
   'Core:',
   '  setup                 Scaffold a consumer repo with the agent surface',
@@ -77,7 +79,7 @@ const ROOT_HELP = [
   '  -h, --help     Display this message',
   '  -v, --version  Display version number',
   '',
-  'Run `ak <command> --help` for command-specific help.',
+  'Run `wp <command> --help` for command-specific help.',
 ].join('\n')
 
 export { SUPPORTED_COMMANDS }
@@ -113,7 +115,7 @@ export async function main(): Promise<number> {
     return 0
   }
 
-  await bootstrapAk(argv)
+  await bootstrapAk(VERSION, argv)
 
   switch (command) {
     case 'blueprint': {

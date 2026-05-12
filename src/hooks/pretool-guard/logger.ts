@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { basename, join } from 'node:path'
+import { dirname } from 'node:path'
+
+import { getSurfacePath } from '#paths/state-root.js'
 
 export type LogStatus = 'PASS' | 'BLOCK' | 'WARN' | 'ERROR'
 export type ToolType = 'Bash' | 'Write' | 'Edit'
@@ -31,18 +32,19 @@ export interface ParsedLogLine {
 
 const DEFAULT_MAX_LINES = 250
 
-// Logs default to ~/.webpresso/cache/agent-kit/hooks/<repo>.pretool-guard.log;
-// override via PRETOOL_LOG_DIR or disable via PRETOOL_LOG=0.
-
-export function createLogConfig(cwd: string = process.cwd()): LogConfig {
-  const logDir =
-    process.env.PRETOOL_LOG_DIR || join(homedir(), '.webpresso', 'cache', 'agent-kit', 'hooks')
-  const repoSlug = basename(cwd).replace(/[^a-zA-Z0-9_-]/g, '_') || 'unknown'
-  return {
-    logDir,
-    logFile: join(logDir, `${repoSlug}.pretool-guard.log`),
-    enabled: process.env.PRETOOL_LOG !== '0',
-    maxLines: DEFAULT_MAX_LINES,
+export function createLogConfig(): LogConfig {
+  try {
+    const logFile = process.env.PRETOOL_LOG_DIR
+      ? `${process.env.PRETOOL_LOG_DIR}/pretool-guard.log`
+      : getSurfacePath('hooks/worktree/pretool-guard.log', 'worktree')
+    return {
+      logDir: dirname(logFile),
+      logFile,
+      enabled: process.env.PRETOOL_LOG !== '0',
+      maxLines: DEFAULT_MAX_LINES,
+    }
+  } catch {
+    return { logDir: '', logFile: '', enabled: false, maxLines: DEFAULT_MAX_LINES }
   }
 }
 

@@ -31,6 +31,7 @@ jobs:
     runs-on: ubicloud-standard-2
     env:
       GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     permissions:
       contents: write
       packages: write
@@ -55,7 +56,7 @@ jobs:
           git add -A
           git diff --staged --quiet || (git commit -m "chore: version packages" && git push)
       - name: Publish
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != true }}
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != 'true' }}
         id: publish
         run: |
           set -o pipefail
@@ -63,8 +64,13 @@ jobs:
           status=${PIPESTATUS[0]}
           echo "published=$(grep -c 'New tag' /tmp/publish.log || true)" >> "$GITHUB_OUTPUT"
           exit $status
+      - name: Publish webpresso to public npm
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != 'true' }}
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: bun scripts/publish-webpresso.ts 2>&1 | tee /tmp/publish-public.log
       - name: Create marketplace release branch
-        if: ${{ steps.publish.outputs.published != '0' && (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) }}
+        if: ${{ steps.publish.outputs.published != '0' && (github.event_name != 'workflow_dispatch' || inputs.dry-run != 'true') }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
           BRANCH="release/v${VERSION}"
