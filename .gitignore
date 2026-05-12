@@ -107,9 +107,12 @@ stryker-setup-*.js
 __fixtures__/fake-home/.vite-plus/
 
 # === agent-kit: generated (do not edit between these markers)
+.claude/rules/
 .claude/skills/
+.codex/agents/
 .codex/skills/
 .cursor/rules/
+.windsurf/skills/
 .windsurf/rules/
 .gemini/commands/
 .opencode/agents/

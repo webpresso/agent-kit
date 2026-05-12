@@ -6,12 +6,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { auditGitignoreAgentSurfaces } from './gitignore-agent-surfaces.js'
 
 const EXPECTED_PATHS = [
+  '.claude/rules/',
   '.claude/skills/',
-  '.codex/skills/',
+  '.codex/agents/',
   '.cursor/rules/',
-  '.windsurf/rules/',
+  '.windsurf/skills/',
   '.gemini/commands/',
-  '.opencode/agents/',
   '.opencode/commands/',
   '.agents/skills/',
   '.agent/.merged.provenance.json',

@@ -6,6 +6,12 @@ import type { RunnerEvent } from '#runners/types'
 import { ClaudeSubagentRunner } from '#runners/claude-subagent/index'
 import type { SubagentFn } from '#runners/claude-subagent/types'
 import { assertEval1 } from './eval-1-add-function/assert.js'
+import { assertEval2 } from './eval-2-multi-file-refactor/assert.js'
+import { assertEval3 } from './eval-3-test-addition/assert.js'
+import { assertEval4 } from './eval-4-dependency-bump/assert.js'
+import { assertEval5 } from './eval-5-extract-package/assert.js'
+
+const STUB_ERROR = 'not implemented — inject subagentFn'
 
 // ---------------------------------------------------------------------------
 // Eval shape
@@ -20,6 +26,7 @@ export interface Eval {
 export interface EvalResult {
   readonly name: string
   readonly passed: boolean
+  readonly skipped: boolean
   readonly events: readonly RunnerEvent[]
   readonly error?: string
 }
@@ -34,25 +41,25 @@ export interface EvalResult {
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-function makeEval1(subagentFn?: SubagentFn): Eval {
-  const name = 'eval-1-add-function'
-  const blueprintPath = resolve(__dirname, 'eval-1-add-function', 'blueprint.md')
+type AssertFn = (events: readonly RunnerEvent[]) => Promise<{ passed: boolean; reason?: string }>
 
+function makeEval(
+  name: string,
+  description: string,
+  assertFn: AssertFn,
+  subagentFn?: SubagentFn,
+): Eval {
+  const blueprintPath = resolve(__dirname, name, 'blueprint.md')
   return {
     name,
     blueprintPath,
     async run(): Promise<EvalResult> {
-      const runner = subagentFn !== undefined
-        ? new ClaudeSubagentRunner('evals', subagentFn)
-        : new ClaudeSubagentRunner('evals')
+      const runner =
+        subagentFn !== undefined
+          ? new ClaudeSubagentRunner('evals', subagentFn)
+          : new ClaudeSubagentRunner('evals')
 
-      const task = {
-        id: name,
-        description:
-          'Add src/add.ts exporting add(a, b) that returns a + b. Add src/add.test.ts asserting add(2,3)===5. pnpm test src/add.test.ts exits 0.',
-        permissions: 'workspace-write' as const,
-      }
-
+      const task = { id: name, description, permissions: 'workspace-write' as const }
       const ctx = { cwd: process.cwd() }
       const exec = runner.prepare(task, ctx)
       const events: RunnerEvent[] = []
@@ -63,16 +70,12 @@ function makeEval1(subagentFn?: SubagentFn): Eval {
         }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err)
-        return { name, passed: false, events, error: message }
+        const skipped = message === STUB_ERROR
+        return { name, passed: false, skipped, events, error: message }
       }
 
-      const assertion = await assertEval1(events)
-      return {
-        name,
-        passed: assertion.passed,
-        events,
-        error: assertion.reason,
-      }
+      const assertion = await assertFn(events)
+      return { name, passed: assertion.passed, skipped: false, events, error: assertion.reason }
     },
   }
 }
@@ -82,7 +85,38 @@ function makeEval1(subagentFn?: SubagentFn): Eval {
 // ---------------------------------------------------------------------------
 
 function builtinEvals(subagentFn?: SubagentFn): readonly Eval[] {
-  return [makeEval1(subagentFn)]
+  return [
+    makeEval(
+      'eval-1-add-function',
+      'Add src/add.ts exporting add(a,b). Add src/add.test.ts asserting add(2,3)===5. pnpm test exits 0.',
+      assertEval1,
+      subagentFn,
+    ),
+    makeEval(
+      'eval-2-multi-file-refactor',
+      'Extract duplicated clamp() from src/a.ts and src/b.ts into src/utils/clamp.ts. Update imports.',
+      assertEval2,
+      subagentFn,
+    ),
+    makeEval(
+      'eval-3-test-addition',
+      'Add src/multiply.test.ts asserting multiply(3,4)===12 via toStrictEqual.',
+      assertEval3,
+      subagentFn,
+    ),
+    makeEval(
+      'eval-4-dependency-bump',
+      'Bump zod from ^3.22.0 to ^3.23.0 in package.json. Verify pnpm install succeeds.',
+      assertEval4,
+      subagentFn,
+    ),
+    makeEval(
+      'eval-5-extract-package',
+      'Extract src/math/ to packages/math/. Verify byte identity via diff -ru and mutation parity.',
+      assertEval5,
+      subagentFn,
+    ),
+  ]
 }
 
 // ---------------------------------------------------------------------------
@@ -124,28 +158,28 @@ async function main(): Promise<void> {
 
   let anyFailed = false
   for (const result of results) {
-    const status = result.passed ? '✓ PASS' : '✗ FAIL'
+    const status = result.passed ? '✓ PASS' : result.skipped ? '⚠ SKIP' : '✗ FAIL'
     console.log(`${status}  ${result.name}`)
 
-    if (!result.passed) {
+    if (result.skipped) {
+      console.log('       (no real backend — set ANTHROPIC_API_KEY to run evals)')
+    } else if (!result.passed) {
       anyFailed = true
       if (result.error !== undefined) {
         console.log(`       reason: ${result.error}`)
       }
-      const failureEvents = result.events.filter(
-        (e) => e.type === 'failed' || e.type === 'stderr',
-      )
+      const failureEvents = result.events.filter((e) => e.type === 'failed' || e.type === 'stderr')
       for (const ev of failureEvents) {
-        if (ev.type === 'failed') {
-          console.log(`       error:  ${ev.error}`)
-        } else if (ev.type === 'stderr') {
-          console.log(`       stderr: ${ev.line}`)
-        }
+        if (ev.type === 'failed') console.log(`       error:  ${ev.error}`)
+        else if (ev.type === 'stderr') console.log(`       stderr: ${ev.line}`)
       }
     }
   }
 
-  console.log(`\n${results.filter((r) => r.passed).length}/${results.length} evals passed`)
+  const passed = results.filter((r) => r.passed).length
+  const skipped = results.filter((r) => r.skipped).length
+  const failed = results.filter((r) => !r.passed && !r.skipped).length
+  console.log(`\n${passed} passed, ${skipped} skipped, ${failed} failed`)
 
   if (anyFailed) {
     process.exit(1)
