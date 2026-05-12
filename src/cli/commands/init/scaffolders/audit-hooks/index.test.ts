@@ -57,11 +57,7 @@ describe('scaffoldAuditHooks', () => {
 
   it('appends missing lines to existing hook without removing existing content', async () => {
     await mkdir(path.join(tmpDir, '.husky'), { recursive: true })
-    await writeFile(
-      preCommitPath(tmpDir),
-      '#!/bin/sh\npnpm lint\n',
-      'utf8',
-    )
+    await writeFile(preCommitPath(tmpDir), '#!/bin/sh\npnpm lint\n', 'utf8')
 
     const result = scaffoldAuditHooks({ repoRoot: tmpDir, options: {} })
     expect(result.action).toBe('appended')
@@ -74,11 +70,7 @@ describe('scaffoldAuditHooks', () => {
 
   it('only appends the missing subset when some lines already present', async () => {
     await mkdir(path.join(tmpDir, '.husky'), { recursive: true })
-    await writeFile(
-      preCommitPath(tmpDir),
-      '#!/bin/sh\nak audit skill-sizes --staged\n',
-      'utf8',
-    )
+    await writeFile(preCommitPath(tmpDir), '#!/bin/sh\nak audit skill-sizes --staged\n', 'utf8')
 
     const result = scaffoldAuditHooks({ repoRoot: tmpDir, options: {} })
     expect(result.action).toBe('appended')

@@ -39,10 +39,7 @@ function deriveSlugFromTechDebtPath(filePath: string): string {
   return path.basename(filePath, '.md')
 }
 
-function existingBlueprintHash(
-  db: Database.Database,
-  slug: string,
-): string | null {
+function existingBlueprintHash(db: Database.Database, slug: string): string | null {
   const row = db
     .prepare<[string], { content_hash: string }>(
       'SELECT content_hash FROM blueprints WHERE slug = ?',
@@ -51,10 +48,7 @@ function existingBlueprintHash(
   return row?.content_hash ?? null
 }
 
-function existingTechDebtHash(
-  db: Database.Database,
-  slug: string,
-): string | null {
+function existingTechDebtHash(db: Database.Database, slug: string): string | null {
   const row = db
     .prepare<[string], { content_hash: string }>(
       'SELECT content_hash FROM tech_debt_items WHERE slug = ?',
@@ -71,11 +65,7 @@ function existingTechDebtHash(
  * Returns true when the cross-org dependency should be allowed (not redacted).
  * Delegates to `resolvesCrossRepo` which enforces the both-sides allowlist rule.
  */
-function isAllowedCrossOrg(
-  db: Database.Database,
-  sourceOrg: string,
-  targetOrg: string,
-): boolean {
+function isAllowedCrossOrg(db: Database.Database, sourceOrg: string, targetOrg: string): boolean {
   const rows = db
     .prepare<[], { source_org: string; permitted_org: string }>(
       'SELECT source_org, permitted_org FROM correlate_allowlist',
@@ -97,9 +87,22 @@ function upsertBlueprint(db: Database.Database, filePath: string, _cwd: string):
 
   const upsertBp = db.prepare<
     [
-      string, string, string, string | null, string | null, string | null,
-      string | null, string | null, number | null, string | null,
-      string, number, string, number, string, string,
+      string,
+      string,
+      string,
+      string | null,
+      string | null,
+      string | null,
+      string | null,
+      string | null,
+      number | null,
+      string | null,
+      string,
+      number,
+      string,
+      number,
+      string,
+      string,
     ]
   >(
     `INSERT INTO blueprints
@@ -146,7 +149,17 @@ function upsertBlueprint(db: Database.Database, filePath: string, _cwd: string):
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
   )
   const insertTask = db.prepare<
-    [string, string, string | null, string, string, string | null, string | null, string | null, number | null]
+    [
+      string,
+      string,
+      string | null,
+      string,
+      string,
+      string | null,
+      string | null,
+      string | null,
+      number | null,
+    ]
   >(
     `INSERT INTO tasks
        (blueprint_slug, task_id, wave, title, status, description,
@@ -178,8 +191,8 @@ function upsertBlueprint(db: Database.Database, filePath: string, _cwd: string):
       parsed.created,
       parsed.lastUpdated,
       parsed.completedAt,
-      null,         // progress_pct
-      null,         // progress_text
+      null, // progress_pct
+      null, // progress_text
       parsed.filePath,
       parsed.byteSize,
       parsed.contentHash,
@@ -241,11 +254,9 @@ function upsertBlueprint(db: Database.Database, filePath: string, _cwd: string):
         task.title,
         task.status,
         task.description,
-        null,  // steps_tdd
-        task.acceptanceCriteria.length > 0
-          ? JSON.stringify(task.acceptanceCriteria)
-          : null,
-        null,  // byte_size
+        null, // steps_tdd
+        task.acceptanceCriteria.length > 0 ? JSON.stringify(task.acceptanceCriteria) : null,
+        null, // byte_size
       )
       const rowId = Number(info.lastInsertRowid)
       taskDbIdMap.set(task.taskId, rowId)
@@ -283,9 +294,20 @@ function upsertTechDebt(db: Database.Database, filePath: string, _cwd: string): 
 
   const upsertItem = db.prepare<
     [
-      string, string, string, string, string, string | null, string | null,
-      string | null, number | null, string, number | null, string | null,
-      string, string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string | null,
+      string | null,
+      string | null,
+      number | null,
+      string,
+      number | null,
+      string | null,
+      string,
+      string,
     ]
   >(
     `INSERT INTO tech_debt_items

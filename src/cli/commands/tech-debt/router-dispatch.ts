@@ -166,9 +166,7 @@ async function runAuditForTechDebt(
  * Compute a content-hash idempotency key: sha256(auditName + JSON.stringify(sortedFindings)).
  */
 function computeAutoFiledHash(auditName: string, findings: AuditFinding[]): string {
-  const sorted = [...findings].sort((a, b) =>
-    JSON.stringify(a).localeCompare(JSON.stringify(b)),
-  )
+  const sorted = [...findings].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))
   const input = auditName + JSON.stringify(sorted)
   return createHash('sha256').update(input).digest('hex').slice(0, 16)
 }
@@ -242,7 +240,8 @@ function generateFromAuditContent(
     .map((f) => `- ${f.file ? `\`${f.file}\`: ` : ''}${f.message}`)
     .join('\n')
 
-  const moreCount = options.findings.length > 10 ? `\n…and ${options.findings.length - 10} more` : ''
+  const moreCount =
+    options.findings.length > 10 ? `\n…and ${options.findings.length - 10} more` : ''
 
   return [
     '---',
@@ -254,9 +253,7 @@ function generateFromAuditContent(
     `last_reviewed: '${today}'`,
     `created: '${today}'`,
     `auto_filed_hash: ${options.autoFiledHash}`,
-    linkedBlueprintsYaml
-      ? `linked_blueprints:\n${linkedBlueprintsYaml}`
-      : 'linked_blueprints: []',
+    linkedBlueprintsYaml ? `linked_blueprints:\n${linkedBlueprintsYaml}` : 'linked_blueprints: []',
     'affected_modules: []',
     '---',
     '',

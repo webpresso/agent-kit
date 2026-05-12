@@ -157,9 +157,9 @@ describe('ingestBlueprints', () => {
       expect(result.blueprintsIngested).toBe(2)
       expect(result.errors).toHaveLength(0)
 
-      const rows = conn.db
-        .prepare('SELECT slug FROM blueprints ORDER BY slug')
-        .all() as Array<{ slug: string }>
+      const rows = conn.db.prepare('SELECT slug FROM blueprints ORDER BY slug').all() as Array<{
+        slug: string
+      }>
       expect(rows.map((r) => r.slug)).toStrictEqual(['my-feature', 'old-task'])
     } finally {
       conn.close()
@@ -210,16 +210,16 @@ describe('ingestAll', () => {
     try {
       await ingestAll({ db: conn.db, cwd: tmpRepoDir })
 
-      const countAfterFirst = (conn.db
-        .prepare('SELECT COUNT(*) as n FROM blueprints')
-        .get() as { n: number }).n
+      const countAfterFirst = (
+        conn.db.prepare('SELECT COUNT(*) as n FROM blueprints').get() as { n: number }
+      ).n
 
       // Second run — hashes match, nothing re-ingested
       await ingestAll({ db: conn.db, cwd: tmpRepoDir })
 
-      const countAfterSecond = (conn.db
-        .prepare('SELECT COUNT(*) as n FROM blueprints')
-        .get() as { n: number }).n
+      const countAfterSecond = (
+        conn.db.prepare('SELECT COUNT(*) as n FROM blueprints').get() as { n: number }
+      ).n
 
       expect(countAfterSecond).toBe(countAfterFirst)
     } finally {
@@ -310,7 +310,7 @@ describe('transactional error isolation', () => {
     mkdirSync(path.join(tmpRepoDir, 'blueprints', 'planned', 'bad-bp'), { recursive: true })
     writeFileSync(
       path.join(tmpRepoDir, 'blueprints', 'planned', 'bad-bp', '_overview.md'),
-      Buffer.from([0xff, 0xfe, 0x00, 0x01]),  // invalid UTF-8 — still a Buffer, parseable
+      Buffer.from([0xff, 0xfe, 0x00, 0x01]), // invalid UTF-8 — still a Buffer, parseable
     )
     // Actually parseBlueprintForDb is fault-tolerant; to force an error we make
     // the ingester see an unreadable file by overriding it to a directory.
@@ -326,9 +326,8 @@ describe('transactional error isolation', () => {
       const result = await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir })
       // bad-bp has invalid UTF-8; parseBlueprintForDb handles it gracefully.
       // The key assertion: at least the 2 good blueprints are present.
-      const count = (conn.db
-        .prepare('SELECT COUNT(*) as n FROM blueprints')
-        .get() as { n: number }).n
+      const count = (conn.db.prepare('SELECT COUNT(*) as n FROM blueprints').get() as { n: number })
+        .n
       expect(count).toBeGreaterThanOrEqual(2)
       // No fatal crash — function returned an object (didn't throw)
       expect(result).not.toStrictEqual(undefined)
@@ -356,7 +355,13 @@ describe('ingestRunnerEvent', () => {
       })
       const row = conn.db
         .prepare('SELECT * FROM runner_events WHERE execution_handle = ?')
-        .get('h-001') as { kind: string; message: string | null; exit_code: number | null; ts: string; file_path: string | null }
+        .get('h-001') as {
+        kind: string
+        message: string | null
+        exit_code: number | null
+        ts: string
+        file_path: string | null
+      }
       expect(row.kind).toStrictEqual('started')
       expect(row.message).toStrictEqual(null)
       expect(row.exit_code).toStrictEqual(null)
@@ -370,7 +375,12 @@ describe('ingestRunnerEvent', () => {
   it('persists a stdout event with message set to line', () => {
     const conn = openDb(':memory:')
     try {
-      const event: RunnerEvent = { type: 'stdout', ts: '2026-05-12T10:01:00Z', handle: 'h-001', line: 'Hello, world!' }
+      const event: RunnerEvent = {
+        type: 'stdout',
+        ts: '2026-05-12T10:01:00Z',
+        handle: 'h-001',
+        line: 'Hello, world!',
+      }
       ingestRunnerEvent({
         db: conn.db,
         executionHandle: 'h-001',
@@ -392,7 +402,12 @@ describe('ingestRunnerEvent', () => {
   it('persists a completed event with exit_code', () => {
     const conn = openDb(':memory:')
     try {
-      const event: RunnerEvent = { type: 'completed', ts: '2026-05-12T10:02:00Z', handle: 'h-001', exitCode: 42 }
+      const event: RunnerEvent = {
+        type: 'completed',
+        ts: '2026-05-12T10:02:00Z',
+        handle: 'h-001',
+        exitCode: 42,
+      }
       ingestRunnerEvent({
         db: conn.db,
         executionHandle: 'h-001',
@@ -414,7 +429,12 @@ describe('ingestRunnerEvent', () => {
   it('persists a failed event with exit_code=0 and message set to error', () => {
     const conn = openDb(':memory:')
     try {
-      const event: RunnerEvent = { type: 'failed', ts: '2026-05-12T10:03:00Z', handle: 'h-001', error: 'something went wrong' }
+      const event: RunnerEvent = {
+        type: 'failed',
+        ts: '2026-05-12T10:03:00Z',
+        handle: 'h-001',
+        error: 'something went wrong',
+      }
       ingestRunnerEvent({
         db: conn.db,
         executionHandle: 'h-001',
@@ -446,7 +466,12 @@ describe('ingestRunnerEvent', () => {
       })
       const row = conn.db
         .prepare('SELECT * FROM runner_events WHERE execution_handle = ?')
-        .get('h-001') as { kind: string; message: string | null; exit_code: number | null; file_path: string | null }
+        .get('h-001') as {
+        kind: string
+        message: string | null
+        exit_code: number | null
+        file_path: string | null
+      }
       expect(row.kind).toStrictEqual('cancelled')
       expect(row.message).toStrictEqual(null)
       expect(row.exit_code).toStrictEqual(null)
@@ -470,9 +495,9 @@ describe('ingestRunnerEvent', () => {
         }),
       ).toThrow()
       // No row should have been written
-      const count = (conn.db
-        .prepare('SELECT COUNT(*) as n FROM runner_events')
-        .get() as { n: number }).n
+      const count = (
+        conn.db.prepare('SELECT COUNT(*) as n FROM runner_events').get() as { n: number }
+      ).n
       expect(count).toStrictEqual(0)
     } finally {
       conn.close()
@@ -483,11 +508,30 @@ describe('ingestRunnerEvent', () => {
     const conn = openDb(':memory:')
     try {
       const event1: RunnerEvent = { type: 'started', ts: '2026-05-12T10:00:00Z', handle: 'h-002' }
-      const event2: RunnerEvent = { type: 'stdout', ts: '2026-05-12T10:00:01Z', handle: 'h-002', line: 'output line' }
-      ingestRunnerEvent({ db: conn.db, executionHandle: 'h-002', sequence: 1, event: event1, runnerVersion: '1.0.0' })
-      ingestRunnerEvent({ db: conn.db, executionHandle: 'h-002', sequence: 2, event: event2, runnerVersion: '1.0.0' })
+      const event2: RunnerEvent = {
+        type: 'stdout',
+        ts: '2026-05-12T10:00:01Z',
+        handle: 'h-002',
+        line: 'output line',
+      }
+      ingestRunnerEvent({
+        db: conn.db,
+        executionHandle: 'h-002',
+        sequence: 1,
+        event: event1,
+        runnerVersion: '1.0.0',
+      })
+      ingestRunnerEvent({
+        db: conn.db,
+        executionHandle: 'h-002',
+        sequence: 2,
+        event: event2,
+        runnerVersion: '1.0.0',
+      })
       const rows = conn.db
-        .prepare('SELECT sequence, kind FROM runner_events WHERE execution_handle = ? ORDER BY sequence')
+        .prepare(
+          'SELECT sequence, kind FROM runner_events WHERE execution_handle = ? ORDER BY sequence',
+        )
         .all('h-002') as Array<{ sequence: number; kind: string }>
       expect(rows).toHaveLength(2)
       expect(rows[0]).toStrictEqual({ sequence: 1, kind: 'started' })
@@ -543,12 +587,12 @@ describe('coldStartIfNeeded', () => {
     // Verify rows by opening the DB we just built
     const conn = openDb(target)
     try {
-      const bpCount = (conn.db
-        .prepare('SELECT COUNT(*) as n FROM blueprints')
-        .get() as { n: number }).n
-      const tdCount = (conn.db
-        .prepare('SELECT COUNT(*) as n FROM tech_debt_items')
-        .get() as { n: number }).n
+      const bpCount = (
+        conn.db.prepare('SELECT COUNT(*) as n FROM blueprints').get() as { n: number }
+      ).n
+      const tdCount = (
+        conn.db.prepare('SELECT COUNT(*) as n FROM tech_debt_items').get() as { n: number }
+      ).n
       expect(bpCount).toBe(2)
       expect(tdCount).toBe(1)
     } finally {

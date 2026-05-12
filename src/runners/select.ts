@@ -18,12 +18,8 @@ function defaultWhich(cmd: string): boolean {
   return result.status === 0
 }
 
-function detect(
-  env: Readonly<Record<string, string>>,
-  which: (cmd: string) => boolean,
-): RunnerId {
-  const isClaudeEnv =
-    env['CLAUDE_CODE'] !== undefined || env['ANTHROPIC_API_KEY'] !== undefined
+function detect(env: Readonly<Record<string, string>>, which: (cmd: string) => boolean): RunnerId {
+  const isClaudeEnv = env['CLAUDE_CODE'] !== undefined || env['ANTHROPIC_API_KEY'] !== undefined
 
   if (isClaudeEnv && !which('codex')) {
     return 'claude-subagent'
@@ -42,18 +38,12 @@ function assertAllowed(candidate: RunnerId, task: RunnerTask): void {
     return
   }
   if (!runners.includes(candidate)) {
-    throw new Error(
-      `Runner ${candidate} not in task's allowed runners: ${runners.join(', ')}`,
-    )
+    throw new Error(`Runner ${candidate} not in task's allowed runners: ${runners.join(', ')}`)
   }
 }
 
-export function selectRunner(
-  task: RunnerTask,
-  opts?: SelectRunnerOptions,
-): RunnerId {
-  const env: Readonly<Record<string, string>> =
-    opts?.env ?? (process.env as Record<string, string>)
+export function selectRunner(task: RunnerTask, opts?: SelectRunnerOptions): RunnerId {
+  const env: Readonly<Record<string, string>> = opts?.env ?? (process.env as Record<string, string>)
   const which = opts?.which ?? defaultWhich
 
   let candidate: RunnerId

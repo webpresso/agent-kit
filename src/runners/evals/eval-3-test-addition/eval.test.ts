@@ -74,9 +74,7 @@ describe('eval-3: test-addition (mocked subagent)', () => {
     // Last event is 'completed' with exitCode 0
     const last = events.at(-1)
     expect(last?.type).toStrictEqual('completed')
-    expect(last).toStrictEqual(
-      expect.objectContaining({ type: 'completed', exitCode: 0 }),
-    )
+    expect(last).toStrictEqual(expect.objectContaining({ type: 'completed', exitCode: 0 }))
   })
 
   it('assertEval3 returns passed=false when no completed event', async () => {
@@ -123,8 +121,6 @@ describe('eval-3: test-addition (mocked subagent)', () => {
     ])
 
     expect(result.passed).toStrictEqual(false)
-    expect(result.reason).toStrictEqual(
-      "no stdout or progress event mentions 'test' or 'multiply'",
-    )
+    expect(result.reason).toStrictEqual("no stdout or progress event mentions 'test' or 'multiply'")
   })
 })

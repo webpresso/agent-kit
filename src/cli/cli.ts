@@ -36,6 +36,7 @@ const SUPPORTED_COMMANDS = [
   'lint',
   'format',
   'tech-debt',
+  'worktree',
   'mcp',
   'hooks',
   'gain',
@@ -67,6 +68,7 @@ const ROOT_HELP = [
   '  doctor                Run repo audit health checks (hook/plugin health stays under hooks doctor)',
   '  err                   Run a command and show only failures (hooks + CI)',
   '  tech-debt             Manage tech-debt lifecycle (new, list, review)',
+  '  worktree              Git worktree management with .agent/ seeding (new, list, remove)',
   '  mcp                   Run the agent-kit MCP server over stdio',
   '  hooks                 Verify plugin hook installation health',
   '  init                  Compatibility alias for setup',
@@ -218,6 +220,11 @@ export async function main(): Promise<number> {
     case 'gain': {
       const { registerGainCommand } = await import('./commands/gain/index.js')
       registerGainCommand(cli)
+      break
+    }
+    case 'worktree': {
+      const { registerWorktreeRouter } = await import('./commands/worktree/router.js')
+      registerWorktreeRouter(cli)
       break
     }
     default: {

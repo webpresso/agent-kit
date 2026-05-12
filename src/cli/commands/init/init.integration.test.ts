@@ -116,6 +116,11 @@ function makeTempRepo(): string {
   return dir
 }
 
+function markAsWebpressoRepo(repoRoot: string): void {
+  mkdirSync(join(repoRoot, 'webpresso'), { recursive: true })
+  writeFileSync(join(repoRoot, 'webpresso', 'config.yaml'), 'name: webpresso-monorepo\n')
+}
+
 describe('ak init end-to-end', () => {
   let repo: string
   let originalCodexHome: string | undefined
@@ -239,6 +244,24 @@ describe('ak init end-to-end', () => {
       installed: { tier3Skills: string[] }
     }
     expect([...rc.installed.tier3Skills].sort()).toEqual(['react-doctor', 'tanstack-query'])
+  })
+
+  it('persists webpresso/blueprints in config and scaffolds that layout for webpresso repos', async () => {
+    markAsWebpressoRepo(repo)
+
+    const code = await runInit({ cwd: repo, yes: true })
+    expect(code).toBe(0)
+
+    expect(existsSync(join(repo, 'webpresso', 'blueprints', 'planned', '.gitkeep'))).toBe(true)
+    expect(existsSync(join(repo, 'webpresso', 'blueprints', 'README.md'))).toBe(true)
+    expect(existsSync(join(repo, 'blueprints'))).toBe(false)
+
+    const rc = JSON.parse(readFileSync(join(repo, '.agent-kitrc.json'), 'utf8')) as {
+      blueprintsDir?: string
+      installed: { tier3Skills: string[] }
+    }
+    expect(rc.blueprintsDir).toBe('webpresso/blueprints')
+    expect(rc.installed.tier3Skills).toEqual([])
   })
 
   it('rejects unknown Tier-3 names with exit code 1', async () => {

@@ -60,10 +60,7 @@ describe('loadAllowlist', () => {
   })
 
   it('parses single permitted org', () => {
-    writeFileSync(
-      path.join(tmpDir, '.agent', 'correlate.allow.yaml'),
-      makeAllowYaml(['other-org']),
-    )
+    writeFileSync(path.join(tmpDir, '.agent', 'correlate.allow.yaml'), makeAllowYaml(['other-org']))
     const result = loadAllowlist(tmpDir)
     expect(result).toStrictEqual([allow('acme-corp', 'other-org')])
   })
@@ -94,10 +91,7 @@ describe('loadAllowlist', () => {
   })
 
   it('returns empty array when schema validation fails (non-array permits)', () => {
-    writeFileSync(
-      path.join(tmpDir, '.agent', 'correlate.allow.yaml'),
-      'permits: "not-an-array"\n',
-    )
+    writeFileSync(path.join(tmpDir, '.agent', 'correlate.allow.yaml'), 'permits: "not-an-array"\n')
     expect(loadAllowlist(tmpDir)).toStrictEqual([])
   })
 })
@@ -112,9 +106,9 @@ describe('bothSidesAllowlist', () => {
   })
 
   it('returns false with one-side-only entry', () => {
-    expect(
-      bothSidesAllowlist('acme-corp', 'other-org', [allow('acme-corp', 'other-org')]),
-    ).toBe(false)
+    expect(bothSidesAllowlist('acme-corp', 'other-org', [allow('acme-corp', 'other-org')])).toBe(
+      false,
+    )
   })
 
   it('returns true with mutual entries', () => {
@@ -123,10 +117,7 @@ describe('bothSidesAllowlist', () => {
   })
 
   it('4-org fixture: trusted-partner resolves, random-stranger does not', () => {
-    const list = [
-      allow('acme-corp', 'trusted-partner'),
-      allow('trusted-partner', 'acme-corp'),
-    ]
+    const list = [allow('acme-corp', 'trusted-partner'), allow('trusted-partner', 'acme-corp')]
     expect(bothSidesAllowlist('acme-corp', 'trusted-partner', list)).toBe(true)
     expect(bothSidesAllowlist('acme-corp', 'random-stranger', list)).toBe(false)
     expect(bothSidesAllowlist('acme-corp', 'other-org', list)).toBe(false)

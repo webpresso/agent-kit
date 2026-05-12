@@ -48,9 +48,7 @@ function makeFetchOk(body: unknown = {}, status = 200): ReturnType<typeof vi.fn>
 }
 
 function makeFetchStatus(status: number): ReturnType<typeof vi.fn> {
-  return vi.fn<() => Promise<Response>>().mockResolvedValue(
-    new Response('Error', { status }),
-  )
+  return vi.fn<() => Promise<Response>>().mockResolvedValue(new Response('Error', { status }))
 }
 
 function makeFetchNetworkError(message = 'ECONNREFUSED'): ReturnType<typeof vi.fn> {
@@ -157,7 +155,8 @@ describe('BlueprintSyncClient', () => {
 
   describe('pushEvent — 5xx retry', () => {
     it('retries on 500 and succeeds on the third attempt', async () => {
-      const fetchFn = vi.fn<() => Promise<Response>>()
+      const fetchFn = vi
+        .fn<() => Promise<Response>>()
         .mockResolvedValueOnce(new Response('', { status: 500 }))
         .mockResolvedValueOnce(new Response('', { status: 503 }))
         .mockResolvedValueOnce(new Response('', { status: 200 }))
@@ -227,7 +226,8 @@ describe('BlueprintSyncClient', () => {
 
   describe('pushEvent — 429', () => {
     it('retries after 429 and succeeds', async () => {
-      const fetchFn = vi.fn<() => Promise<Response>>()
+      const fetchFn = vi
+        .fn<() => Promise<Response>>()
         .mockResolvedValueOnce(new Response('', { status: 429 }))
         .mockResolvedValueOnce(new Response('', { status: 200 }))
 
@@ -300,9 +300,7 @@ describe('BlueprintSyncClient', () => {
             title: 'My BP',
             status: 'planned',
             complexity: 'M',
-            tasks: [
-              { id: 't1', title: 'Task 1', status: 'todo', dependsOn: [] },
-            ],
+            tasks: [{ id: 't1', title: 'Task 1', status: 'todo', dependsOn: [] }],
           },
         ],
         fetchedAt: '2026-05-12T00:00:00.000Z',
@@ -367,7 +365,10 @@ describe('BlueprintSyncClient', () => {
 
     it('throws on JSON parse failure', async () => {
       const fetchFn = vi.fn<() => Promise<Response>>().mockResolvedValue(
-        new Response('not-json{{{{', { status: 200, headers: { 'Content-Type': 'application/json' } }),
+        new Response('not-json{{{{', {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
       )
       const client = new BlueprintSyncClient(TEST_CREDS, fetchFn)
       await expect(client.getSnapshot()).rejects.toThrow()

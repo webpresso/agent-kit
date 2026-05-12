@@ -8,7 +8,6 @@ import { auditGitignoreAgentSurfaces } from './gitignore-agent-surfaces.js'
 const EXPECTED_PATHS = [
   '.claude/rules/',
   '.claude/skills/',
-  '.codex/agents/',
   '.cursor/rules/',
   '.windsurf/skills/',
   '.gemini/commands/',
@@ -26,8 +25,12 @@ function makeCompleteGitignore(): string {
 describe('auditGitignoreAgentSurfaces', () => {
   let dirs: string[] = []
 
-  beforeEach(() => { dirs = [] })
-  afterEach(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }) })
+  beforeEach(() => {
+    dirs = []
+  })
+  afterEach(() => {
+    for (const d of dirs) rmSync(d, { recursive: true, force: true })
+  })
 
   function tmp(): string {
     const d = mkdtempSync(join(tmpdir(), 'ak-gitignore-audit-'))
@@ -81,13 +84,7 @@ describe('auditGitignoreAgentSurfaces', () => {
 
   it('passes when .gitignore has additional unrelated entries', async () => {
     const cwd = tmp()
-    const content = [
-      'node_modules/',
-      'dist/',
-      ...EXPECTED_PATHS,
-      '*.log',
-      '.DS_Store',
-    ].join('\n')
+    const content = ['node_modules/', 'dist/', ...EXPECTED_PATHS, '*.log', '.DS_Store'].join('\n')
     writeFileSync(join(cwd, '.gitignore'), content)
 
     const result = await auditGitignoreAgentSurfaces(cwd)

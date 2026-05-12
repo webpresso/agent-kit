@@ -144,10 +144,7 @@ describe('checkVersionPin', () => {
     })
 
     it('returns ok when the range field is missing', () => {
-      writeFileSync(
-        pinFile,
-        JSON.stringify({ agent_kit_version: '0.14.0', pins: { rtk: {} } }),
-      )
+      writeFileSync(pinFile, JSON.stringify({ agent_kit_version: '0.14.0', pins: { rtk: {} } }))
       const result = checkVersionPin('rtk', '1.0.0', pinFile)
       expect(result).toStrictEqual({ ok: true })
     })

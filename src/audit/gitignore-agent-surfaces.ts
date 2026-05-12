@@ -6,7 +6,6 @@ import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 const EXPECTED_PATHS = [
   '.claude/rules/',
   '.claude/skills/',
-  '.codex/agents/',
   '.cursor/rules/',
   '.windsurf/skills/',
   '.gemini/commands/',
@@ -26,7 +25,9 @@ export async function auditGitignoreAgentSurfaces(cwd: string): Promise<RepoAudi
       ok: false,
       title: 'gitignore agent surfaces',
       checked: EXPECTED_PATHS.length,
-      violations: [{ file: '.gitignore', message: '.gitignore not found — run `ak setup` to scaffold it' }],
+      violations: [
+        { file: '.gitignore', message: '.gitignore not found — run `ak setup` to scaffold it' },
+      ],
     }
   }
 
@@ -42,7 +43,12 @@ export async function auditGitignoreAgentSurfaces(cwd: string): Promise<RepoAudi
     }
   }
 
-  const lines = new Set(content.split('\n').map((l) => l.trim()).filter(Boolean))
+  const lines = new Set(
+    content
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean),
+  )
 
   for (const expected of EXPECTED_PATHS) {
     if (!lines.has(expected)) {

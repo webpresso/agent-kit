@@ -694,9 +694,17 @@ describe('ak_blueprint_finalize — platform-first (Task 2.3)', () => {
   }> {
     const localTmpDir = mkdtempSync(path.join(tmpdir(), 'ak-bs-fin-'))
     mkdirSync(path.join(localTmpDir, '.agent'), { recursive: true })
-    mkdirSync(path.join(localTmpDir, 'blueprints', 'in-progress', FINALIZE_SLUG), { recursive: true })
+    mkdirSync(path.join(localTmpDir, 'blueprints', 'in-progress', FINALIZE_SLUG), {
+      recursive: true,
+    })
     writeFileSync(path.join(localTmpDir, 'package.json'), JSON.stringify({ name: 'test' }), 'utf8')
-    const overviewPath = path.join(localTmpDir, 'blueprints', 'in-progress', FINALIZE_SLUG, '_overview.md')
+    const overviewPath = path.join(
+      localTmpDir,
+      'blueprints',
+      'in-progress',
+      FINALIZE_SLUG,
+      '_overview.md',
+    )
     writeFileSync(overviewPath, FINALIZE_BLUEPRINT, 'utf8')
     const { registrar, tools: t } = makeRegistrar()
     await registerBlueprintTools(registrar, localTmpDir)

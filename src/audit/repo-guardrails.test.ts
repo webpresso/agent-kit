@@ -416,7 +416,7 @@ describe('repo guardrail audits', () => {
       "import foo from '../../../secret'\n",
     )
     // clean canonical source
-    writeFileSync(join(root, 'src', 'good.ts'), "export const x = 1\n")
+    writeFileSync(join(root, 'src', 'good.ts'), 'export const x = 1\n')
     const result = auditNoRelativeParentImports(root)
     expect(result.ok).toBe(true)
     expect(result.violations).toHaveLength(0)

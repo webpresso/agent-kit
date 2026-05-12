@@ -91,9 +91,9 @@ describe('migrations', () => {
     db.pragma('foreign_keys = ON')
     runMigrations(db)
     runMigrations(db)
-    const rows = db
-      .prepare('SELECT version FROM schema_version')
-      .all() as Array<{ version: number }>
+    const rows = db.prepare('SELECT version FROM schema_version').all() as Array<{
+      version: number
+    }>
     expect(rows).toHaveLength(1)
     db.close()
   })
@@ -101,9 +101,12 @@ describe('migrations', () => {
   it('executions table has runner_id, runner_version, and permissions columns', () => {
     const conn = openDb(dbPath)
     try {
-      const cols = conn.db
-        .prepare('PRAGMA table_info(executions)')
-        .all() as Array<{ name: string; type: string; notnull: number; dflt_value: string | null }>
+      const cols = conn.db.prepare('PRAGMA table_info(executions)').all() as Array<{
+        name: string
+        type: string
+        notnull: number
+        dflt_value: string | null
+      }>
       const colNames = cols.map((c) => c.name)
       expect(colNames).toContain('runner_id')
       expect(colNames).toContain('runner_version')
@@ -118,9 +121,12 @@ describe('migrations', () => {
   it('runner_events table exists with correct columns and indexes', () => {
     const conn = openDb(dbPath)
     try {
-      const cols = conn.db
-        .prepare('PRAGMA table_info(runner_events)')
-        .all() as Array<{ name: string; type: string; notnull: number; dflt_value: string | null }>
+      const cols = conn.db.prepare('PRAGMA table_info(runner_events)').all() as Array<{
+        name: string
+        type: string
+        notnull: number
+        dflt_value: string | null
+      }>
       const colNames = cols.map((c) => c.name)
       expect(colNames).toStrictEqual([
         'id',

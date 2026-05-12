@@ -756,11 +756,11 @@ describe('executeBlueprintSubcommand', () => {
       { name: 'guide', path: '/tmp/docs/templates/guide.md' },
     ])
 
-    const processExitSpy = vi.spyOn(process, 'exit').mockImplementationOnce(
-      (code?: number | string | null) => {
+    const processExitSpy = vi
+      .spyOn(process, 'exit')
+      .mockImplementationOnce((code?: number | string | null) => {
         throw new Error(`process.exit(${code ?? ''})`)
-      },
-    )
+      })
 
     const deps = buildDeps()
 
@@ -855,9 +855,7 @@ describe('executeBlueprintSubcommand', () => {
     // a fetcher that returns [] to simulate no-credentials / disabled
     _setPlatformTemplatesFetcher(async () => [])
 
-    vi.mocked(listTemplates).mockReturnValueOnce([
-      { name: 'local-tpl', path: '/tmp/local-tpl.md' },
-    ])
+    vi.mocked(listTemplates).mockReturnValueOnce([{ name: 'local-tpl', path: '/tmp/local-tpl.md' }])
 
     const deps = buildDeps()
     await executeBlueprintSubcommand('new', [], { '--': [], listTemplates: true }, deps)
@@ -870,9 +868,7 @@ describe('executeBlueprintSubcommand', () => {
       throw new Error('Network error')
     })
 
-    vi.mocked(listTemplates).mockReturnValueOnce([
-      { name: 'local-tpl', path: '/tmp/local-tpl.md' },
-    ])
+    vi.mocked(listTemplates).mockReturnValueOnce([{ name: 'local-tpl', path: '/tmp/local-tpl.md' }])
 
     const deps = buildDeps()
     await executeBlueprintSubcommand('new', [], { '--': [], listTemplates: true }, deps)
@@ -895,9 +891,9 @@ describe('executeBlueprintSubcommand', () => {
     _setPlatformTemplatesFetcher(async () => platformEntries)
 
     // Mock global fetch for the template content download
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(markdownContent, { status: 200 }),
-    )
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(markdownContent, { status: 200 }))
 
     const created: CreateBlueprintResult = {
       slug: 'my-feature',
@@ -990,21 +986,14 @@ describe('executeBlueprintSubcommand', () => {
     _setPlatformTemplatesFetcher(async () => platformEntries)
 
     // Stub globalThis.fetch to throw when fetching the template content URL
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('ECONNREFUSED'))
 
     const deps = buildDeps()
 
     // The platform match is found → fetchPlatformTemplateToTmpFile is called →
     // fetch throws → error propagates out of executeBlueprintSubcommand
     await expect(
-      executeBlueprintSubcommand(
-        'new',
-        ['my feature'],
-        { '--': [], template: 'remote-tpl' },
-        deps,
-      ),
+      executeBlueprintSubcommand('new', ['my feature'], { '--': [], template: 'remote-tpl' }, deps),
     ).rejects.toThrow('ECONNREFUSED')
 
     expect(deps.createBlueprint).not.toHaveBeenCalled()
@@ -1019,15 +1008,13 @@ describe('executeBlueprintSubcommand', () => {
     _setPlatformTemplatesFetcher(async () => platformEntries)
 
     vi.mocked(resolveTemplate).mockReturnValueOnce(null)
-    vi.mocked(listTemplates).mockReturnValueOnce([
-      { name: 'local-tpl', path: '/tmp/local-tpl.md' },
-    ])
+    vi.mocked(listTemplates).mockReturnValueOnce([{ name: 'local-tpl', path: '/tmp/local-tpl.md' }])
 
-    const processExitSpy = vi.spyOn(process, 'exit').mockImplementationOnce(
-      (code?: number | string | null) => {
+    const processExitSpy = vi
+      .spyOn(process, 'exit')
+      .mockImplementationOnce((code?: number | string | null) => {
         throw new Error(`process.exit(${code ?? ''})`)
-      },
-    )
+      })
 
     const deps = buildDeps()
 

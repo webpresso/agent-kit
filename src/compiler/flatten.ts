@@ -79,10 +79,7 @@ export function flattenAgentDir(agentDir: string): FlattenedAssets {
 }
 
 /** Writes flattened assets to a directory structure mirroring rulesync's expected layout. */
-export async function writeFlattenedAssets(
-  assets: FlattenedAssets,
-  outDir: string,
-): Promise<void> {
+export async function writeFlattenedAssets(assets: FlattenedAssets, outDir: string): Promise<void> {
   const subdirs = ['skills', 'commands', 'agents'] as const
   for (const sub of subdirs) {
     mkdirSync(join(outDir, sub), { recursive: true })

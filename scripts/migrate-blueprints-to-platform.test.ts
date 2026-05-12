@@ -144,9 +144,9 @@ describe('slugFromPath', () => {
   })
 
   it('handles Windows-style paths', () => {
-    expect(
-      slugFromPath('C:\\repo\\blueprints\\planned\\my-feature\\_overview.md'),
-    ).toStrictEqual('my-feature')
+    expect(slugFromPath('C:\\repo\\blueprints\\planned\\my-feature\\_overview.md')).toStrictEqual(
+      'my-feature',
+    )
   })
 })
 
@@ -350,9 +350,9 @@ describe('migrate', () => {
   it('handles 409 (idempotent duplicate) without throwing', async () => {
     createBlueprintFixture(tmpRoot, 'completed', 'bp-dup', VALID_FRONTMATTER)
 
-    const fetchFn = vi.fn<() => Promise<Response>>().mockResolvedValue(
-      new Response('', { status: 409 }),
-    )
+    const fetchFn = vi
+      .fn<() => Promise<Response>>()
+      .mockResolvedValue(new Response('', { status: 409 }))
     await expect(migrate(tmpRoot, fetchFn)).resolves.toStrictEqual(undefined)
     expect(fetchFn).toHaveBeenCalledTimes(1)
   })

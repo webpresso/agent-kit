@@ -83,6 +83,10 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(omxCalls).toHaveLength(2)
       expect(omxCalls[0]?.[1]).toEqual(['--version'])
       expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes'])
+      expect(omxCalls[1]?.[2]).toMatchObject({
+        cwd: repo,
+        stdio: ['ignore', 'inherit', 'inherit'],
+      })
       expect(readFileSync(join(repo, '.codex-home/config.toml'), 'utf8')).toContain(
         '[mcp_servers.playwright]',
       )

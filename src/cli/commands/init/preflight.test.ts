@@ -56,6 +56,28 @@ describe('runPreflight', () => {
 
       expect(result).toStrictEqual({ ok: true, score: 5, warnings: [] })
     })
+
+    it('accepts webpresso/blueprints when the webpresso sentinel is present', async () => {
+      mockExistsSync.mockImplementation((p) => {
+        const s = String(p)
+        return (
+          s.endsWith('tsconfig.json') ||
+          s.endsWith('wrangler.toml') ||
+          s.endsWith('webpresso/config.yaml') ||
+          s.endsWith('webpresso/blueprints') ||
+          s.endsWith('.agent')
+        )
+      })
+      const originalVersion = process.version
+      Object.defineProperty(process, 'version', { value: 'v24.0.0', configurable: true })
+      mockSpawnSync.mockReturnValue(makeSpawnResult('10.33.0'))
+
+      const result = await runPreflight('/fake/repo', false)
+
+      Object.defineProperty(process, 'version', { value: originalVersion, configurable: true })
+
+      expect(result).toStrictEqual({ ok: true, score: 5, warnings: [] })
+    })
   })
 
   describe('missing tsconfig.json', () => {
@@ -63,11 +85,7 @@ describe('runPreflight', () => {
       mockExistsSync.mockImplementation((p) => {
         const s = String(p)
         // tsconfig missing
-        return (
-          s.endsWith('wrangler.toml') ||
-          s.endsWith('blueprints') ||
-          s.endsWith('.agent')
-        )
+        return s.endsWith('wrangler.toml') || s.endsWith('blueprints') || s.endsWith('.agent')
       })
       const originalVersion = process.version
       Object.defineProperty(process, 'version', { value: 'v24.0.0', configurable: true })
@@ -165,11 +183,7 @@ describe('runPreflight', () => {
     it('returns score 4 with workers/vite warning', async () => {
       mockExistsSync.mockImplementation((p) => {
         const s = String(p)
-        return (
-          s.endsWith('tsconfig.json') ||
-          s.endsWith('blueprints') ||
-          s.endsWith('.agent')
-        )
+        return s.endsWith('tsconfig.json') || s.endsWith('blueprints') || s.endsWith('.agent')
       })
       const originalVersion = process.version
       Object.defineProperty(process, 'version', { value: 'v24.0.0', configurable: true })
@@ -189,11 +203,7 @@ describe('runPreflight', () => {
     it('returns score 4 with blueprints warning', async () => {
       mockExistsSync.mockImplementation((p) => {
         const s = String(p)
-        return (
-          s.endsWith('tsconfig.json') ||
-          s.endsWith('wrangler.toml') ||
-          s.endsWith('.agent')
-        )
+        return s.endsWith('tsconfig.json') || s.endsWith('wrangler.toml') || s.endsWith('.agent')
       })
       const originalVersion = process.version
       Object.defineProperty(process, 'version', { value: 'v24.0.0', configurable: true })
@@ -207,6 +217,30 @@ describe('runPreflight', () => {
       expect(result.score).toStrictEqual(4)
       expect(result.warnings[0]).toContain('blueprints')
     })
+
+    it('mentions webpresso/blueprints when the webpresso sentinel selects that layout', async () => {
+      mockExistsSync.mockImplementation((p) => {
+        const s = String(p)
+        return (
+          s.endsWith('tsconfig.json') ||
+          s.endsWith('wrangler.toml') ||
+          s.endsWith('webpresso/config.yaml') ||
+          s.endsWith('.agent')
+        )
+      })
+      const originalVersion = process.version
+      Object.defineProperty(process, 'version', { value: 'v24.0.0', configurable: true })
+      mockSpawnSync.mockReturnValue(makeSpawnResult('10.33.0'))
+
+      const result = await runPreflight('/fake/repo', false)
+
+      Object.defineProperty(process, 'version', { value: originalVersion, configurable: true })
+
+      expect(result.ok).toStrictEqual(true)
+      expect(result.score).toStrictEqual(4)
+      expect(result.warnings).toHaveLength(1)
+      expect(result.warnings[0]).toContain('webpresso/blueprints/')
+    })
   })
 
   describe('missing .agent/', () => {
@@ -214,9 +248,7 @@ describe('runPreflight', () => {
       mockExistsSync.mockImplementation((p) => {
         const s = String(p)
         return (
-          s.endsWith('tsconfig.json') ||
-          s.endsWith('wrangler.toml') ||
-          s.endsWith('blueprints')
+          s.endsWith('tsconfig.json') || s.endsWith('wrangler.toml') || s.endsWith('blueprints')
         )
       })
       const originalVersion = process.version

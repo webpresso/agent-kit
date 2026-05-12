@@ -5,6 +5,9 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import type { AgentHost, VisibilityStatus } from './host-visibility.js'
+import { REQUIRED_CORE_CAPABILITIES } from './host-visibility.js'
+
 export const CONFIG_VERSION = '1'
 export const CONFIG_FILENAME = '.agent-kitrc.json'
 export const DEFAULT_DURABLE_PLANNING_ROOT = '.agent/planning/'
@@ -19,6 +22,11 @@ export interface AgentkitConfig {
   version: string
   installed: {
     tier3Skills: string[]
+  }
+  hosts?: {
+    selected: AgentHost[]
+    requiredCapabilities: string[]
+    visibility?: Record<string, Record<string, VisibilityStatus>>
   }
   mcp?: {
     serverName?: string
@@ -39,6 +47,10 @@ export function defaultConfig(): AgentkitConfig {
   return {
     version: CONFIG_VERSION,
     installed: { tier3Skills: [] },
+    hosts: {
+      selected: [],
+      requiredCapabilities: [...REQUIRED_CORE_CAPABILITIES],
+    },
     rules: { overrides: [] },
     scripts: {},
     durablePlanningRoot: DEFAULT_DURABLE_PLANNING_ROOT,
@@ -53,6 +65,7 @@ export function readConfig(repoRoot: string): AgentkitConfig | null {
     const parsed = JSON.parse(raw) as Partial<AgentkitConfig>
     const installed = parsed.installed as Partial<AgentkitConfig['installed']> | undefined
     const mcp = parsed.mcp as Partial<NonNullable<AgentkitConfig['mcp']>> | undefined
+    const hosts = parsed.hosts as Partial<NonNullable<AgentkitConfig['hosts']>> | undefined
     const rules = parsed.rules as Partial<AgentkitConfig['rules']> | undefined
     const scripts = parsed.scripts as Partial<AgentkitConfig['scripts']> | undefined
     const tier3 = Array.isArray(installed?.tier3Skills) ? installed.tier3Skills : []
@@ -65,9 +78,26 @@ export function readConfig(repoRoot: string): AgentkitConfig | null {
       serverName || toolPrefix
         ? { ...(serverName ? { serverName } : {}), ...(toolPrefix ? { toolPrefix } : {}) }
         : undefined
+    const selectedHosts = Array.isArray(hosts?.selected)
+      ? hosts.selected.filter((s): s is AgentHost =>
+          ['codex', 'claude', 'opencode'].includes(String(s)),
+        )
+      : []
+    const requiredCapabilities = Array.isArray(hosts?.requiredCapabilities)
+      ? hosts.requiredCapabilities.filter((s): s is string => typeof s === 'string')
+      : [...REQUIRED_CORE_CAPABILITIES]
+    const visibility =
+      hosts?.visibility && typeof hosts.visibility === 'object'
+        ? (hosts.visibility as Record<string, Record<string, VisibilityStatus>>)
+        : undefined
     return {
       version: typeof parsed.version === 'string' ? parsed.version : CONFIG_VERSION,
       installed: { tier3Skills: tier3.filter((s): s is string => typeof s === 'string') },
+      hosts: {
+        selected: selectedHosts,
+        requiredCapabilities,
+        ...(visibility ? { visibility } : {}),
+      },
       ...(normalizedMcp ? { mcp: normalizedMcp } : {}),
       rules: { overrides: overrides.filter((s): s is string => typeof s === 'string') },
       scripts: {
@@ -103,6 +133,7 @@ export function mergeConfig(
   return {
     version: incoming.version,
     installed: { tier3Skills: tier3 },
+    hosts: incoming.hosts ?? existing.hosts,
     ...(mergedMcp ? { mcp: mergedMcp } : {}),
     rules: { overrides },
     scripts: {

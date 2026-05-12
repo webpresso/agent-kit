@@ -62,8 +62,7 @@ export function loadSyncCredentials(): SyncCredentials | null {
     return null
   }
 
-  const platformUrl =
-    process.env['AK_BLUEPRINT_PLATFORM_URL'] ?? DEFAULT_PLATFORM_URL
+  const platformUrl = process.env['AK_BLUEPRINT_PLATFORM_URL'] ?? DEFAULT_PLATFORM_URL
 
   return {
     token,

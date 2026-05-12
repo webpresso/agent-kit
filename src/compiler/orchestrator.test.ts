@@ -13,12 +13,20 @@ function makeTmpDir(): string {
   return mkdtempSync(join(tmpdir(), 'ak-orchestrator-test-'))
 }
 
-function writeSkill(agentDir: string, name: string, content = `---\nname: ${name}\ndescription: Test skill\n---\n# ${name}\n`): void {
+function writeSkill(
+  agentDir: string,
+  name: string,
+  content = `---\nname: ${name}\ndescription: Test skill\n---\n# ${name}\n`,
+): void {
   mkdirSync(join(agentDir, 'skills', name), { recursive: true })
   writeFileSync(join(agentDir, 'skills', name, 'SKILL.md'), content)
 }
 
-function writeRule(agentDir: string, name: string, content = `# Rule ${name}\nDo something.`): void {
+function writeRule(
+  agentDir: string,
+  name: string,
+  content = `# Rule ${name}\nDo something.`,
+): void {
   mkdirSync(join(agentDir, 'rules'), { recursive: true })
   writeFileSync(join(agentDir, 'rules', `${name}.md`), content)
 }
@@ -30,8 +38,12 @@ function writeRule(agentDir: string, name: string, content = `# Rule ${name}\nDo
 describe('hashAgentDir', () => {
   let dirs: string[] = []
 
-  beforeEach(() => { dirs = [] })
-  afterEach(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }) })
+  beforeEach(() => {
+    dirs = []
+  })
+  afterEach(() => {
+    for (const d of dirs) rmSync(d, { recursive: true, force: true })
+  })
 
   function tmp(): string {
     const d = makeTmpDir()
@@ -125,8 +137,12 @@ describe('hashAgentDir', () => {
 describe('compile idempotency via manifest sourceHash', () => {
   let dirs: string[] = []
 
-  beforeEach(() => { dirs = [] })
-  afterEach(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }) })
+  beforeEach(() => {
+    dirs = []
+  })
+  afterEach(() => {
+    for (const d of dirs) rmSync(d, { recursive: true, force: true })
+  })
 
   function tmp(): string {
     const d = makeTmpDir()

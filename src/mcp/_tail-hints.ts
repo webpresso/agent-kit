@@ -37,7 +37,9 @@ function historyPath(cwd: string): string {
 function readHistory(cwd: string): HintRecord[] {
   const file = historyPath(cwd)
   if (!existsSync(file)) return []
-  const lines = readFileSync(file, 'utf8').split('\n').filter((l) => l.trim().length > 0)
+  const lines = readFileSync(file, 'utf8')
+    .split('\n')
+    .filter((l) => l.trim().length > 0)
   const records: HintRecord[] = []
   for (const line of lines) {
     try {

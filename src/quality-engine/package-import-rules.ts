@@ -51,32 +51,102 @@ export interface BlockedResult {
  */
 export const SHARED_FUNCTIONS: SharedFunction[] = [
   // String utilities (@webpresso/runtime-format/string)
-  { name: 'capitalize', package: '@webpresso/runtime-format', source: 'string', category: 'string' },
+  {
+    name: 'capitalize',
+    package: '@webpresso/runtime-format',
+    source: 'string',
+    category: 'string',
+  },
   { name: 'truncate', package: '@webpresso/runtime-format', source: 'string', category: 'string' },
   { name: 'slugify', package: '@webpresso/runtime-format', source: 'string', category: 'string' },
-  { name: 'toTitleCase', package: '@webpresso/runtime-format', source: 'string', category: 'string' },
-  { name: 'toKebabCase', package: '@webpresso/runtime-format', source: 'string', category: 'string' },
-  { name: 'toCamelCase', package: '@webpresso/runtime-format', source: 'string', category: 'string' },
-  { name: 'toSnakeCase', package: '@webpresso/runtime-format', source: 'string', category: 'string' },
-  { name: 'removeSpecialChars', package: '@webpresso/runtime-format', source: 'string', category: 'string' },
-  { name: 'getInitials', package: '@webpresso/runtime-format', source: 'string', category: 'string' },
+  {
+    name: 'toTitleCase',
+    package: '@webpresso/runtime-format',
+    source: 'string',
+    category: 'string',
+  },
+  {
+    name: 'toKebabCase',
+    package: '@webpresso/runtime-format',
+    source: 'string',
+    category: 'string',
+  },
+  {
+    name: 'toCamelCase',
+    package: '@webpresso/runtime-format',
+    source: 'string',
+    category: 'string',
+  },
+  {
+    name: 'toSnakeCase',
+    package: '@webpresso/runtime-format',
+    source: 'string',
+    category: 'string',
+  },
+  {
+    name: 'removeSpecialChars',
+    package: '@webpresso/runtime-format',
+    source: 'string',
+    category: 'string',
+  },
+  {
+    name: 'getInitials',
+    package: '@webpresso/runtime-format',
+    source: 'string',
+    category: 'string',
+  },
   { name: 'maskEmail', package: '@webpresso/runtime-format', source: 'string', category: 'string' },
-  { name: 'countWords', package: '@webpresso/runtime-format', source: 'string', category: 'string' },
-  { name: 'containsIgnoreCase', package: '@webpresso/runtime-format', source: 'string', category: 'string' },
-  { name: 'randomString', package: '@webpresso/runtime-format', source: 'string', category: 'string' },
+  {
+    name: 'countWords',
+    package: '@webpresso/runtime-format',
+    source: 'string',
+    category: 'string',
+  },
+  {
+    name: 'containsIgnoreCase',
+    package: '@webpresso/runtime-format',
+    source: 'string',
+    category: 'string',
+  },
+  {
+    name: 'randomString',
+    package: '@webpresso/runtime-format',
+    source: 'string',
+    category: 'string',
+  },
   {
     name: 'levenshteinDistance',
     package: '@webpresso/runtime-format',
     source: 'string',
     category: 'string',
   },
-  { name: 'closestMatch', package: '@webpresso/runtime-format', source: 'string', category: 'string' },
-  { name: 'findClosestMatch', package: '@webpresso/runtime-format', source: 'string', category: 'string' },
-  { name: 'escapeRegex', package: '@webpresso/runtime-format', source: 'string', category: 'string' },
+  {
+    name: 'closestMatch',
+    package: '@webpresso/runtime-format',
+    source: 'string',
+    category: 'string',
+  },
+  {
+    name: 'findClosestMatch',
+    package: '@webpresso/runtime-format',
+    source: 'string',
+    category: 'string',
+  },
+  {
+    name: 'escapeRegex',
+    package: '@webpresso/runtime-format',
+    source: 'string',
+    category: 'string',
+  },
 
   // Date utilities (@webpresso/runtime-format/date)
   { name: 'formatDate', package: '@webpresso/runtime-format', source: 'date', category: 'date' },
-  { name: 'formatRelativeTime', package: '@webpresso/runtime-format', source: 'date', category: 'date' },
+  {
+    name: 'formatRelativeTime',
+    package: '@webpresso/runtime-format',
+    source: 'date',
+    category: 'date',
+  },
   { name: 'isToday', package: '@webpresso/runtime-format', source: 'date', category: 'date' },
   { name: 'isWithinDays', package: '@webpresso/runtime-format', source: 'date', category: 'date' },
   { name: 'addDays', package: '@webpresso/runtime-format', source: 'date', category: 'date' },
@@ -85,7 +155,12 @@ export const SHARED_FUNCTIONS: SharedFunction[] = [
   { name: 'endOfDay', package: '@webpresso/runtime-format', source: 'date', category: 'date' },
 
   // Duration utilities (@webpresso/runtime-format/duration)
-  { name: 'formatDuration', package: '@webpresso/runtime-format', source: 'duration', category: 'duration' },
+  {
+    name: 'formatDuration',
+    package: '@webpresso/runtime-format',
+    source: 'duration',
+    category: 'duration',
+  },
   {
     name: 'formatDurationSeconds',
     package: '@webpresso/runtime-format',
@@ -94,27 +169,72 @@ export const SHARED_FUNCTIONS: SharedFunction[] = [
   },
 
   // Format utilities (@webpresso/runtime-format/format)
-  { name: 'formatNumber', package: '@webpresso/runtime-format', source: 'format', category: 'format' },
-  { name: 'formatPercentage', package: '@webpresso/runtime-format', source: 'format', category: 'format' },
+  {
+    name: 'formatNumber',
+    package: '@webpresso/runtime-format',
+    source: 'format',
+    category: 'format',
+  },
+  {
+    name: 'formatPercentage',
+    package: '@webpresso/runtime-format',
+    source: 'format',
+    category: 'format',
+  },
   {
     name: 'formatCompactNumber',
     package: '@webpresso/runtime-format',
     source: 'format',
     category: 'format',
   },
-  { name: 'formatBytes', package: '@webpresso/runtime-format', source: 'format', category: 'format' },
-  { name: 'formatPhoneNumber', package: '@webpresso/runtime-format', source: 'format', category: 'format' },
+  {
+    name: 'formatBytes',
+    package: '@webpresso/runtime-format',
+    source: 'format',
+    category: 'format',
+  },
+  {
+    name: 'formatPhoneNumber',
+    package: '@webpresso/runtime-format',
+    source: 'format',
+    category: 'format',
+  },
 
   // ID utilities (@webpresso/runtime/utils/id)
   { name: 'generateId', package: '@webpresso/runtime', source: 'utils/id', category: 'id' },
   { name: 'generateSlug', package: '@webpresso/runtime', source: 'utils/id', category: 'id' },
-  { name: 'generateSlugUnderscore', package: '@webpresso/runtime', source: 'utils/id', category: 'id' },
+  {
+    name: 'generateSlugUnderscore',
+    package: '@webpresso/runtime',
+    source: 'utils/id',
+    category: 'id',
+  },
 
   // Error utilities (@webpresso/runtime-format/errors)
-  { name: 'createErrorContext', package: '@webpresso/runtime-format', source: 'errors', category: 'error' },
-  { name: 'getErrorMessage', package: '@webpresso/runtime-format', source: 'errors', category: 'error' },
-  { name: 'isRetryableError', package: '@webpresso/runtime-format', source: 'errors', category: 'error' },
-  { name: 'serializeError', package: '@webpresso/runtime-format', source: 'errors', category: 'error' },
+  {
+    name: 'createErrorContext',
+    package: '@webpresso/runtime-format',
+    source: 'errors',
+    category: 'error',
+  },
+  {
+    name: 'getErrorMessage',
+    package: '@webpresso/runtime-format',
+    source: 'errors',
+    category: 'error',
+  },
+  {
+    name: 'isRetryableError',
+    package: '@webpresso/runtime-format',
+    source: 'errors',
+    category: 'error',
+  },
+  {
+    name: 'serializeError',
+    package: '@webpresso/runtime-format',
+    source: 'errors',
+    category: 'error',
+  },
   {
     name: 'serializeUnknownError',
     package: '@webpresso/runtime-format',

@@ -99,8 +99,9 @@ describe('runUnifiedSync', () => {
     expect(isSymlink(join(consumerRoot, '.cursor', 'rules', 'foo.mdc'))).toBe(false)
     // .claude/rules/foo.md — symlinked rule
     expect(isSymlink(join(consumerRoot, '.claude', 'rules', 'foo.md'))).toBe(true)
-    // .codex/agents/foo.md — symlinked
-    expect(isSymlink(join(consumerRoot, '.codex', 'agents', 'foo.md'))).toBe(true)
+    // Codex skills are discovered from .agents/skills; rules are not projected
+    // to unsupported .codex/agents.
+    expect(existsSync(join(consumerRoot, '.codex', 'agents', 'foo.md'))).toBe(false)
   })
 
   it('projects a consumer rule (agent-rules/) alongside catalog rules', () => {
@@ -115,9 +116,9 @@ describe('runUnifiedSync', () => {
     // Both rules land in cursor/.mdc
     expect(existsSync(join(consumerRoot, '.cursor', 'rules', 'cat.mdc'))).toBe(true)
     expect(existsSync(join(consumerRoot, '.cursor', 'rules', 'mine.mdc'))).toBe(true)
-    // Both rules land in codex agents (symlinked)
-    expect(isSymlink(join(consumerRoot, '.codex', 'agents', 'cat.md'))).toBe(true)
-    expect(isSymlink(join(consumerRoot, '.codex', 'agents', 'mine.md'))).toBe(true)
+    // No unsupported Codex agents projection.
+    expect(existsSync(join(consumerRoot, '.codex', 'agents', 'cat.md'))).toBe(false)
+    expect(existsSync(join(consumerRoot, '.codex', 'agents', 'mine.md'))).toBe(false)
   })
 
   it('projects a consumer skill dir into windsurf (copy) and claude (symlink)', () => {
@@ -150,7 +151,7 @@ describe('runUnifiedSync', () => {
 
     runUnifiedSync({ catalogDir, consumerRoot })
     expect(existsSync(join(consumerRoot, '.cursor', 'rules', 'gone.mdc'))).toBe(true)
-    expect(isSymlink(join(consumerRoot, '.codex', 'agents', 'gone.md'))).toBe(true)
+    expect(existsSync(join(consumerRoot, '.codex', 'agents', 'gone.md'))).toBe(false)
 
     rmSync(join(consumerRoot, 'agent-rules', 'gone.md'))
     runUnifiedSync({ catalogDir, consumerRoot })

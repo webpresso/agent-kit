@@ -51,7 +51,6 @@ export const GENERATED_PATHS_BLOCK: GitignoreBlock = {
   patterns: [
     '.claude/rules/',
     '.claude/skills/',
-    '.codex/agents/',
     '.cursor/rules/',
     '.windsurf/skills/',
     '.gemini/commands/',

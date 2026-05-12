@@ -183,7 +183,7 @@ npx ak compile
 This reads `.agent/skills/`, `.agent/commands/`, `.agent/agents/`, and `.agent/memory/` and emits:
 - `.claude/rules/` — Claude Code rule symlinks
 - `.claude/skills/` — Claude Code skills
-- `.codex/agents/` — Codex CLI rule + skill surfaces
+- `.agents/skills/` — Codex CLI and OpenCode skill surfaces
 - `.cursor/rules/` — Cursor rules
 - `.windsurf/skills/` — Windsurf skills
 - `.gemini/commands/` — Gemini CLI commands

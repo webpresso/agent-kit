@@ -29,10 +29,7 @@ interface InsertTechDebtOpts {
   created?: string | null
 }
 
-function insertTechDebtItem(
-  db: ReturnType<typeof openDb>['db'],
-  opts: InsertTechDebtOpts,
-): void {
+function insertTechDebtItem(db: ReturnType<typeof openDb>['db'], opts: InsertTechDebtOpts): void {
   db.prepare(
     `INSERT INTO tech_debt_items
        (slug, status, severity, category, review_cadence,

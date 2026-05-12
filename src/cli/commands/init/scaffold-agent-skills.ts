@@ -45,7 +45,7 @@ const SKILL_IGNORE_PATTERNS = [
   '.windsurf/skills/',
   '.claude/skills/',
   '.gemini/commands/',
-  '.codex/agents/',
+  '.agents/skills/',
 ] as const
 
 export function scaffoldAgentSkills(opts: ScaffoldAgentSkillsOptions): ScaffoldAgentSkillsResult {

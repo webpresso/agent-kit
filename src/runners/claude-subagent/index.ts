@@ -1,4 +1,11 @@
-import type { Runner, RunnerContext, RunnerEvent, RunnerExecution, RunnerSnapshot, RunnerTask } from '#runners/types'
+import type {
+  Runner,
+  RunnerContext,
+  RunnerEvent,
+  RunnerExecution,
+  RunnerSnapshot,
+  RunnerTask,
+} from '#runners/types'
 import type { SubagentFn } from './types.js'
 
 // ---------------------------------------------------------------------------
@@ -31,14 +38,22 @@ class ClaudeSubagentExecution implements RunnerExecution {
 
   async *run(signal?: AbortSignal): AsyncIterable<RunnerEvent> {
     if (signal?.aborted === true) {
-      const event: RunnerEvent = { type: 'cancelled', ts: new Date().toISOString(), handle: this.handle }
+      const event: RunnerEvent = {
+        type: 'cancelled',
+        ts: new Date().toISOString(),
+        handle: this.handle,
+      }
       this.collectedEvents.push(event)
       this.status = 'cancelled'
       yield event
       return
     }
 
-    const startedEvent: RunnerEvent = { type: 'started', ts: new Date().toISOString(), handle: this.handle }
+    const startedEvent: RunnerEvent = {
+      type: 'started',
+      ts: new Date().toISOString(),
+      handle: this.handle,
+    }
     this.collectedEvents.push(startedEvent)
     yield startedEvent
 
@@ -53,18 +68,33 @@ class ClaudeSubagentExecution implements RunnerExecution {
         if (line.length === 0) {
           continue
         }
-        const stdoutEvent: RunnerEvent = { type: 'stdout', ts: new Date().toISOString(), handle: this.handle, line }
+        const stdoutEvent: RunnerEvent = {
+          type: 'stdout',
+          ts: new Date().toISOString(),
+          handle: this.handle,
+          line,
+        }
         this.collectedEvents.push(stdoutEvent)
         yield stdoutEvent
       }
 
-      const completedEvent: RunnerEvent = { type: 'completed', ts: new Date().toISOString(), handle: this.handle, exitCode: 0 }
+      const completedEvent: RunnerEvent = {
+        type: 'completed',
+        ts: new Date().toISOString(),
+        handle: this.handle,
+        exitCode: 0,
+      }
       this.collectedEvents.push(completedEvent)
       this.status = 'completed'
       yield completedEvent
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
-      const failedEvent: RunnerEvent = { type: 'failed', ts: new Date().toISOString(), handle: this.handle, error: message }
+      const failedEvent: RunnerEvent = {
+        type: 'failed',
+        ts: new Date().toISOString(),
+        handle: this.handle,
+        error: message,
+      }
       this.collectedEvents.push(failedEvent)
       this.status = 'failed'
       yield failedEvent

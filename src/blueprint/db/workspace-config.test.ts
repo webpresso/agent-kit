@@ -30,11 +30,9 @@ describe('loadWorkspaceConfig', () => {
     const configPath = tmpConfig()
     writeFileSync(
       configPath,
-      [
-        'repos:',
-        '  - path: ~/repos/webpresso/agent-kit',
-        '  - path: /absolute/path/to/repo',
-      ].join('\n'),
+      ['repos:', '  - path: ~/repos/webpresso/agent-kit', '  - path: /absolute/path/to/repo'].join(
+        '\n',
+      ),
       'utf8',
     )
     const result = loadWorkspaceConfig(configPath)
@@ -73,22 +71,14 @@ describe('getWorkspaceRepos', () => {
 
   it('expands ~ to homedir in repo paths', () => {
     const configPath = tmpConfig()
-    writeFileSync(
-      configPath,
-      ['repos:', '  - path: ~/repos/my-project'].join('\n'),
-      'utf8',
-    )
+    writeFileSync(configPath, ['repos:', '  - path: ~/repos/my-project'].join('\n'), 'utf8')
     const result = getWorkspaceRepos(configPath)
     expect(result).toStrictEqual([path.join(homedir(), 'repos/my-project')])
   })
 
   it('leaves absolute paths unchanged', () => {
     const configPath = tmpConfig()
-    writeFileSync(
-      configPath,
-      ['repos:', '  - path: /absolute/path/to/repo'].join('\n'),
-      'utf8',
-    )
+    writeFileSync(configPath, ['repos:', '  - path: /absolute/path/to/repo'].join('\n'), 'utf8')
     const result = getWorkspaceRepos(configPath)
     expect(result).toStrictEqual(['/absolute/path/to/repo'])
   })

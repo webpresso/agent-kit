@@ -115,12 +115,7 @@ describe('auditMemoryRotation', () => {
   it('skips malformed JSONL lines', async () => {
     const agentDir = path.join(tmpDir, '.agent')
     await mkdir(agentDir, { recursive: true })
-    const lines = [
-      'not-json',
-      JSON.stringify(recentEntry()),
-      '{"incomplete":',
-      '',
-    ].join('\n')
+    const lines = ['not-json', JSON.stringify(recentEntry()), '{"incomplete":', ''].join('\n')
     await writeFile(path.join(agentDir, '.rotation-log.jsonl'), lines, 'utf8')
     const result = auditMemoryRotation(tmpDir)
     // Only the valid entry should appear

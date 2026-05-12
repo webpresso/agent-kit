@@ -6,15 +6,18 @@
  * directory and the relative prefix used when creating symlinks from that
  * directory back into `.agent/`.
  *
- * Primary IDEs (Claude Code, Cursor, Windsurf, OpenCode) are no longer handled
- * by the symlinker — they distribute skills via native channels:
- *   - Claude Code: agent-kit-as-claude-code-plugin (marketplace plugin)
+ * Primary IDEs (Claude Code, Codex, Cursor, Windsurf, OpenCode) are handled by
+ * their documented native surfaces:
+ *   - Codex skills: `.agents/skills/` (plus user/global roots), covered by
+ *     DEFAULT_PER_SKILL_CONSUMERS. `.codex/agents/` is not a skill root.
+ *   - Claude Code skills: `.claude/skills/` and plugin distribution.
  *   - Cursor / Windsurf: agent-kit-localskills-distribution (localskills.sh)
- *   - OpenCode: skills surface is `.agents/skills/` covered by DEFAULT_PER_SKILL_CONSUMERS
- *              (verified: antigravity-awesome-skills installs to `.agents/skills` for opencode;
- *              opencode does NOT read `.claude/skills/` — that claim was unverified).
- *              Rules surface: opencode reads `AGENTS.md` directly from the repo root; no
- *              symlinker consumer needed.
+ *     plus copied rules/skills below where the tools need project files.
+ *   - OpenCode skills: `.opencode/skills/`, `.claude/skills/`, and
+ *     `.agents/skills/`. Agent-kit writes `.agents/skills/` and `.claude/skills/`
+ *     so OpenCode sees the same core capabilities without extra aliases.
+ *     Rules surface: opencode reads `AGENTS.md` directly from the repo root; no
+ *     symlinker consumer needed.
  *
  * Gemini's TOML surface is handled separately by `syncGeminiCommands`
  * (not symlink-based), so it is intentionally excluded from
@@ -125,7 +128,8 @@ export function unifiedRuleFilename(consumer: UnifiedConsumerConfig, slug: strin
  *   - `.windsurf/skills/`: copy, accepts skill
  *   - `.claude/rules/`: symlink, accepts rule
  *   - `.claude/skills/`: symlink, accepts skill
- *   - `.codex/agents/`: symlink, accepts rule + skill
+ * Codex intentionally has no `.codex/agents/` consumer. Official Codex skill
+ * discovery is `.agents/skills/`, `~/.agents/skills`, and `/etc/codex/skills`.
  */
 export const DEFAULT_UNIFIED_CONSUMERS: readonly UnifiedConsumerConfig[] = [
   // Working dir: split into rules/ and skills/ siblings under .agent/
@@ -144,7 +148,4 @@ export const DEFAULT_UNIFIED_CONSUMERS: readonly UnifiedConsumerConfig[] = [
   // Claude: rules are scaffolded to .claude/rules; skills remain under .claude/skills.
   { id: 'claude-rules', dir: '.claude/rules', acceptsKind: 'rule', strategy: 'symlink' },
   { id: 'claude-skills', dir: '.claude/skills', acceptsKind: 'skill', strategy: 'symlink' },
-  // Codex: rules + skills, symlinked
-  { id: 'codex-rules', dir: '.codex/agents', acceptsKind: 'rule', strategy: 'symlink' },
-  { id: 'codex-skills', dir: '.codex/agents', acceptsKind: 'skill', strategy: 'symlink' },
 ] as const

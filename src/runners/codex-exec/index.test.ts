@@ -63,9 +63,7 @@ describe('CodexExecRunner', () => {
     it('throws for workspace-write tasks with tech-debt mention', () => {
       const runner = new CodexExecRunner()
 
-      expect(() =>
-        runner.prepare(makeTask({ permissions: 'workspace-write' }), makeCtx()),
-      ).toThrow(
+      expect(() => runner.prepare(makeTask({ permissions: 'workspace-write' }), makeCtx())).toThrow(
         'codex-exec backend only supports read-only tasks in v1.0 alpha. See tech-debt item h-002 for workspace-write support.',
       )
     })
@@ -80,8 +78,16 @@ describe('CodexExecRunner', () => {
       const events = await collect(execution.run())
 
       expect(events[0]).toMatchObject({ type: 'started', handle: execution.handle })
-      expect(events[1]).toMatchObject({ type: 'stdout', line: 'line one', handle: execution.handle })
-      expect(events[2]).toMatchObject({ type: 'stdout', line: 'line two', handle: execution.handle })
+      expect(events[1]).toMatchObject({
+        type: 'stdout',
+        line: 'line one',
+        handle: execution.handle,
+      })
+      expect(events[2]).toMatchObject({
+        type: 'stdout',
+        line: 'line two',
+        handle: execution.handle,
+      })
       expect(events[3]).toMatchObject({ type: 'completed', exitCode: 0, handle: execution.handle })
       expect(events).toHaveLength(4)
     })

@@ -80,7 +80,8 @@ export interface ParsedBlueprintForDb {
 // Gstack-recognized skill names — treated as plain text, no validation needed.
 // These appear in acceptance criteria lines and must parse cleanly.
 // ---------------------------------------------------------------------------
-const _GSTACK_SKILL_PATTERN = /\/(?:qa|design-review|investigate|review|ship|browse|autoplan|plan-eng-review|plan-ceo-review|plan-design-review|design-consultation|canary|land-and-deploy|retro|codex|cso|devex-review|plan-devex-review|careful|freeze|guard|unfreeze|gstack-upgrade|learn|document-release|design-shotgun|design-html|context-save|context-restore)/g
+const _GSTACK_SKILL_PATTERN =
+  /\/(?:qa|design-review|investigate|review|ship|browse|autoplan|plan-eng-review|plan-ceo-review|plan-design-review|design-consultation|canary|land-and-deploy|retro|codex|cso|devex-review|plan-devex-review|careful|freeze|guard|unfreeze|gstack-upgrade|learn|document-release|design-shotgun|design-html|context-save|context-restore)/g
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -143,8 +144,7 @@ function parseCrossRepoDeps(value: unknown): CrossRepoDependency[] {
       result.push({
         repo: typeof obj['repo'] === 'string' ? obj['repo'] : String(obj['repo'] ?? ''),
         slug: typeof obj['slug'] === 'string' ? obj['slug'] : null,
-        requireStatus:
-          typeof obj['require_status'] === 'string' ? obj['require_status'] : null,
+        requireStatus: typeof obj['require_status'] === 'string' ? obj['require_status'] : null,
       })
     }
   }
@@ -440,8 +440,7 @@ export function parseBlueprintForDb(
 
   // Extract title from first # heading in body, fall back to frontmatter, then slug
   const titleMatch = bodyContent.match(/^# (.+)$/m)
-  const title =
-    safeString(frontmatter['title']) ?? titleMatch?.[1]?.trim() ?? slug
+  const title = safeString(frontmatter['title']) ?? titleMatch?.[1]?.trim() ?? slug
 
   const status = safeString(frontmatter['status']) ?? 'draft'
   const complexity = safeString(frontmatter['complexity'])

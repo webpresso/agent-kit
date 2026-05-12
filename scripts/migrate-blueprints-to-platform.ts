@@ -189,10 +189,7 @@ export function discoverBlueprints(repoRoot: string): readonly DiscoveredBluepri
 // Event builder
 // ---------------------------------------------------------------------------
 
-export function buildEvent(
-  blueprint: DiscoveredBlueprint,
-  repoId: string,
-): BlueprintPlatformEvent {
+export function buildEvent(blueprint: DiscoveredBlueprint, repoId: string): BlueprintPlatformEvent {
   const eventId = deriveEventId(blueprint.slug)
   const { title, status, complexity } = blueprint.frontmatter
 
@@ -215,10 +212,7 @@ export function buildEvent(
 // Main
 // ---------------------------------------------------------------------------
 
-export async function migrate(
-  repoRoot: string,
-  fetchFn?: typeof fetch,
-): Promise<void> {
+export async function migrate(repoRoot: string, fetchFn?: typeof fetch): Promise<void> {
   const creds = loadSyncCredentials()
   if (creds === null) {
     console.log(
@@ -229,9 +223,8 @@ export async function migrate(
     return
   }
 
-  const client = fetchFn !== undefined
-    ? new BlueprintSyncClient(creds, fetchFn)
-    : new BlueprintSyncClient(creds)
+  const client =
+    fetchFn !== undefined ? new BlueprintSyncClient(creds, fetchFn) : new BlueprintSyncClient(creds)
 
   const blueprints = discoverBlueprints(repoRoot)
   console.log(`[migrate] Found ${blueprints.length} blueprint(s) to migrate.`)

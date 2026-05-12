@@ -3,7 +3,13 @@ import path from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { dbBuild, dbVerify, dbQuery, dbBrowse, executeBlueprintDbSubcommand } from './db-commands.js'
+import {
+  dbBuild,
+  dbVerify,
+  dbQuery,
+  dbBrowse,
+  executeBlueprintDbSubcommand,
+} from './db-commands.js'
 import { openDb } from '#db/connection.js'
 
 // ---------------------------------------------------------------------------
@@ -196,12 +202,7 @@ describe('dbVerify', () => {
   it('reports stale entry when a tech-debt file changes after build', async () => {
     await dbBuild(tmpRepoDir)
 
-    const tdPath = path.join(
-      tmpRepoDir,
-      'tech-debt',
-      'needs-remediation',
-      'h-001-test.md',
-    )
+    const tdPath = path.join(tmpRepoDir, 'tech-debt', 'needs-remediation', 'h-001-test.md')
     writeFileSync(tdPath, TECH_DEBT + '\n<!-- mutated -->\n', 'utf8')
 
     const result = await dbVerify(tmpRepoDir)
@@ -238,9 +239,7 @@ describe('dbQuery', () => {
 
   it('throws on unknown template id', async () => {
     await dbBuild(tmpRepoDir)
-    await expect(dbQuery(tmpRepoDir, 'no-such-template', {})).rejects.toThrow(
-      'Unknown template id',
-    )
+    await expect(dbQuery(tmpRepoDir, 'no-such-template', {})).rejects.toThrow('Unknown template id')
   })
 })
 
@@ -270,7 +269,9 @@ describe('dbBrowse', () => {
     }
 
     try {
-      expect(() => dbBrowse(tmpRepoDir, fakeExecSync as typeof import('node:child_process').execSync)).toThrow('process.exit called')
+      expect(() =>
+        dbBrowse(tmpRepoDir, fakeExecSync as typeof import('node:child_process').execSync),
+      ).toThrow('process.exit called')
       expect(stderr.join('')).toContain('pip install datasette')
     } finally {
       stderrSpy.mockRestore()
@@ -291,7 +292,9 @@ describe('dbBrowse', () => {
     const fakeExecSync = (_cmd: string): Buffer => Buffer.from('')
 
     try {
-      expect(() => dbBrowse(tmpRepoDir, fakeExecSync as typeof import('node:child_process').execSync)).toThrow('process.exit called')
+      expect(() =>
+        dbBrowse(tmpRepoDir, fakeExecSync as typeof import('node:child_process').execSync),
+      ).toThrow('process.exit called')
       expect(stderr.join('')).toContain('ak blueprint db build')
     } finally {
       stderrSpy.mockRestore()

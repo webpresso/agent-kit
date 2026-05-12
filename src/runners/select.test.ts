@@ -85,7 +85,7 @@ describe('selectRunner', () => {
           env: {},
           which: noCodex,
         }),
-      ).toThrow('Runner codex-exec not in task\'s allowed runners: local-worktree')
+      ).toThrow("Runner codex-exec not in task's allowed runners: local-worktree")
     })
 
     it('throws when env-detected runner is not in task.runners', () => {
@@ -98,29 +98,23 @@ describe('selectRunner', () => {
           env: {},
           which: noCodex,
         }),
-      ).toThrow('Runner local-worktree not in task\'s allowed runners: codex-exec')
+      ).toThrow("Runner local-worktree not in task's allowed runners: codex-exec")
     })
   })
 
   describe('task.runners filter — allowed cases', () => {
     it('does not throw when task.runners is undefined', () => {
-      expect(() =>
-        selectRunner(baseTask, { env: {}, which: noCodex }),
-      ).not.toThrow()
+      expect(() => selectRunner(baseTask, { env: {}, which: noCodex })).not.toThrow()
     })
 
     it('does not throw when task.runners is empty', () => {
       const task: RunnerTask = { ...baseTask, runners: [] }
-      expect(() =>
-        selectRunner(task, { env: {}, which: noCodex }),
-      ).not.toThrow()
+      expect(() => selectRunner(task, { env: {}, which: noCodex })).not.toThrow()
     })
 
     it('does not throw when selected runner is in task.runners', () => {
       const task: RunnerTask = { ...baseTask, runners: ['local-worktree', 'codex-exec'] }
-      expect(() =>
-        selectRunner(task, { env: {}, which: noCodex }),
-      ).not.toThrow()
+      expect(() => selectRunner(task, { env: {}, which: noCodex })).not.toThrow()
     })
   })
 })

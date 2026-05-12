@@ -110,11 +110,7 @@ A blueprint with one incomplete task.
 function makeRepo(blueprintSlug: string, content: string, state = 'planned'): string {
   const dir = mkdtempSync(path.join(tmpdir(), 'ak-mutations-test-'))
   mkdirSync(path.join(dir, 'blueprints', state, blueprintSlug), { recursive: true })
-  writeFileSync(
-    path.join(dir, 'blueprints', state, blueprintSlug, '_overview.md'),
-    content,
-    'utf8',
-  )
+  writeFileSync(path.join(dir, 'blueprints', state, blueprintSlug, '_overview.md'), content, 'utf8')
   // Minimal package.json so resolveBlueprintRoot works
   writeFileSync(path.join(dir, 'package.json'), '{"name":"test-consumer"}', 'utf8')
   return dir
@@ -133,10 +129,7 @@ async function seedDb(repoDir: string): Promise<void> {
 }
 
 function readOverview(repoDir: string, slug: string, state: string): string {
-  return readFileSync(
-    path.join(repoDir, 'blueprints', state, slug, '_overview.md'),
-    'utf8',
-  )
+  return readFileSync(path.join(repoDir, 'blueprints', state, slug, '_overview.md'), 'utf8')
 }
 
 function queryTaskStatus(repoDir: string, blueprintSlug: string, taskId: string): string | null {
@@ -159,9 +152,7 @@ function queryBlueprintStatus(repoDir: string, slug: string): string | null {
   const conn = openDb(dbFilePath)
   try {
     const row = conn.db
-      .prepare<[string], { status: string }>(
-        'SELECT status FROM blueprints WHERE slug = ?',
-      )
+      .prepare<[string], { status: string }>('SELECT status FROM blueprints WHERE slug = ?')
       .get(slug) as { status: string } | undefined
     return row?.status ?? null
   } finally {
@@ -375,7 +366,11 @@ describe('atomic write', () => {
 // Platform-first sync — advanceTask (Task 2.7)
 // ---------------------------------------------------------------------------
 
-function makeMockAdapter(): { adapter: SyncAdapter; pushEvent: ReturnType<typeof vi.fn>; ensureFresh: ReturnType<typeof vi.fn> } {
+function makeMockAdapter(): {
+  adapter: SyncAdapter
+  pushEvent: ReturnType<typeof vi.fn>
+  ensureFresh: ReturnType<typeof vi.fn>
+} {
   const pushEvent = vi.fn<SyncAdapter['pushEvent']>().mockResolvedValue(undefined)
   const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockResolvedValue(undefined)
   const adapter: SyncAdapter = { pushEvent, ensureFresh }

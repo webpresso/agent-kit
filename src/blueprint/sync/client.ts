@@ -112,21 +112,25 @@ export class BlueprintSyncClient implements BlueprintPlatformClient {
     const body: BlueprintPlatformEvent = { ...payload, eventId }
     const url = `${this.creds.platformUrl}/v1/blueprint-events`
 
-    await this.retryFetch(url, {
-      method: 'POST',
-      headers: this.authHeaders(),
-      body: JSON.stringify(body),
-    }, (status, durationMs) => {
-      console.log(
-        JSON.stringify({
-          level: 'info',
-          eventType: payload.type,
-          eventId,
-          httpStatus: status,
-          durationMs,
-        }),
-      )
-    })
+    await this.retryFetch(
+      url,
+      {
+        method: 'POST',
+        headers: this.authHeaders(),
+        body: JSON.stringify(body),
+      },
+      (status, durationMs) => {
+        console.log(
+          JSON.stringify({
+            level: 'info',
+            eventType: payload.type,
+            eventId,
+            httpStatus: status,
+            durationMs,
+          }),
+        )
+      },
+    )
   }
 
   // -------------------------------------------------------------------------
@@ -136,9 +140,10 @@ export class BlueprintSyncClient implements BlueprintPlatformClient {
   async getSnapshot(opts?: { readonly slug?: string }): Promise<BlueprintSnapshot> {
     if (isDisabled()) return emptySnapshot()
 
-    const path = opts?.slug != null && opts.slug.length > 0
-      ? `/v1/blueprints/${encodeURIComponent(opts.slug)}`
-      : '/v1/blueprints'
+    const path =
+      opts?.slug != null && opts.slug.length > 0
+        ? `/v1/blueprints/${encodeURIComponent(opts.slug)}`
+        : '/v1/blueprints'
 
     const url = `${this.creds.platformUrl}${path}`
 
@@ -147,7 +152,7 @@ export class BlueprintSyncClient implements BlueprintPlatformClient {
       headers: this.authHeaders(),
     })
 
-    const json = await response.json() as BlueprintSnapshot
+    const json = (await response.json()) as BlueprintSnapshot
     return json
   }
 
@@ -163,7 +168,7 @@ export class BlueprintSyncClient implements BlueprintPlatformClient {
     try {
       const response = await this.fetchFn(url, { method: 'GET' })
       if (!response.ok) return []
-      const json = await response.json() as BlueprintTemplateEntry[]
+      const json = (await response.json()) as BlueprintTemplateEntry[]
       return json
     } catch {
       return []
@@ -198,7 +203,7 @@ export class BlueprintSyncClient implements BlueprintPlatformClient {
 
   private authHeaders(): Record<string, string> {
     return {
-      'Authorization': `Bearer ${this.creds.token}`,
+      Authorization: `Bearer ${this.creds.token}`,
       'Content-Type': 'application/json',
     }
   }
@@ -207,10 +212,7 @@ export class BlueprintSyncClient implements BlueprintPlatformClient {
    * Perform a single fetch without retry logic.
    * Throws on non-ok responses (except 409 which is treated as success).
    */
-  private async fetchOnce(
-    url: string,
-    init: RequestInit,
-  ): Promise<Response> {
+  private async fetchOnce(url: string, init: RequestInit): Promise<Response> {
     const response = await this.fetchFn(url, init)
 
     if (response.status === 401) {
@@ -294,9 +296,7 @@ export class BlueprintSyncClient implements BlueprintPlatformClient {
         const isNetworkError = !msg.startsWith('HTTP ')
 
         if (isNetworkError) {
-          throw new Error(
-            `Network error (offline?): ${msg}. Check connectivity and retry.`,
-          )
+          throw new Error(`Network error (offline?): ${msg}. Check connectivity and retry.`)
         }
 
         throw error

@@ -45,13 +45,19 @@ async function acquireLock(lockFile: string): Promise<() => void> {
 
   if (fd === null) {
     // Advisory: could not acquire — proceed without lock
-    return () => { /* no-op */ }
+    return () => {
+      /* no-op */
+    }
   }
 
   closeSync(fd)
   const { unlinkSync } = await import('node:fs')
   return () => {
-    try { unlinkSync(lockFile) } catch { /* already gone */ }
+    try {
+      unlinkSync(lockFile)
+    } catch {
+      /* already gone */
+    }
   }
 }
 

@@ -8,8 +8,12 @@ import { auditMemoryUnified } from './memory-unified.js'
 describe('auditMemoryUnified', () => {
   let dirs: string[] = []
 
-  beforeEach(() => { dirs = [] })
-  afterEach(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }) })
+  beforeEach(() => {
+    dirs = []
+  })
+  afterEach(() => {
+    for (const d of dirs) rmSync(d, { recursive: true, force: true })
+  })
 
   function tmp(): string {
     const d = mkdtempSync(join(tmpdir(), 'ak-memory-unified-audit-'))

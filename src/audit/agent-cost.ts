@@ -20,7 +20,9 @@ function readJson(path: string): Record<string, unknown> | null {
   if (!existsSync(path)) return null
   try {
     const parsed: unknown = JSON.parse(readFileSync(path, 'utf-8'))
-    return parsed !== null && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null
+    return parsed !== null && typeof parsed === 'object'
+      ? (parsed as Record<string, unknown>)
+      : null
   } catch {
     return null
   }

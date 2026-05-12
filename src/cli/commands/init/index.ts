@@ -8,12 +8,13 @@ import type { CAC } from 'cac'
  * to `<name>.new` unless `--overwrite` is passed.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { basename, dirname, join } from 'node:path'
+import { basename, dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { syncAll } from '#symlinker'
 import { isTelemetryEnabled, reportTthw } from '#telemetry/setup-tthw'
 import { readPackageVersion } from '#cli/utils'
+import { resolveBlueprintRoot } from '#utils/blueprint-root'
 
 import { runUnifiedSync } from '#symlinker/unified-sync'
 import {
@@ -35,6 +36,13 @@ import { scaffoldBlueprints } from './scaffold-blueprints.js'
 import { scaffoldDocs } from './scaffold-docs.js'
 import { scaffoldBaseKit } from './scaffold-base-kit.js'
 import { scaffoldMonorepoNav } from './scaffold-monorepo-nav.js'
+import {
+  REQUIRED_CORE_CAPABILITIES,
+  auditHostSkillVisibility,
+  parseAgentHosts,
+  serializeHostVisibility,
+  summarizeHostVisibility,
+} from './host-visibility.js'
 import { scaffoldAgentHooks } from './scaffolders/agent-hooks/index.js'
 import { scaffoldAuditHooks } from './scaffolders/audit-hooks/index.js'
 import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js'
@@ -78,6 +86,7 @@ function parsePresets(withFlag: string | undefined): Preset[] {
 
 export interface InitFlags {
   with?: string
+  host?: string
   all?: boolean
   overwrite?: boolean
   'dry-run'?: boolean
@@ -109,6 +118,19 @@ export function resolveCatalogDir(): string {
   throw new Error(
     'ak init: could not locate the agent-kit catalog directory. The package may be broken.',
   )
+}
+
+function inferBlueprintsDirOverride(
+  repoRoot: string,
+  existingConfig: AgentkitConfig | null,
+): string | undefined {
+  if (existingConfig?.blueprintsDir) return existingConfig.blueprintsDir
+  const resolved = resolveBlueprintRoot(repoRoot)
+  const relativePath = relative(repoRoot, resolved).replaceAll('\\', '/')
+  if (relativePath.length === 0 || relativePath === '.' || relativePath === 'blueprints') {
+    return undefined
+  }
+  return relativePath
 }
 
 export async function runInit(flags: InitFlags): Promise<number> {
@@ -156,6 +178,13 @@ export async function runInit(flags: InitFlags): Promise<number> {
 
   const existingConfig = readConfig(consumer.repoRoot)
   const presets = parsePresets(flags.with)
+  let selectedHosts
+  try {
+    selectedHosts = parseAgentHosts(flags.host)
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error))
+    return EXIT_SETUP_FAIL
+  }
   // Extract tier3 skills portion of --with (non-preset values)
   const withFlagWithoutPresets =
     flags.with
@@ -258,9 +287,15 @@ export async function runInit(flags: InitFlags): Promise<number> {
       options,
     })
 
+    const blueprintsDir = inferBlueprintsDirOverride(consumer.repoRoot, existingConfig)
     const config: AgentkitConfig = mergeConfig(existingConfig, {
       ...defaultConfig(),
       installed: { tier3Skills: [...tier3Selection].toSorted() },
+      hosts: {
+        selected: selectedHosts,
+        requiredCapabilities: [...REQUIRED_CORE_CAPABILITIES],
+      },
+      ...(blueprintsDir ? { blueprintsDir } : {}),
     })
 
     const agentHooksResult = scaffoldAgentHooks({ repoRoot: consumer.repoRoot, options })
@@ -455,7 +490,9 @@ export async function runInit(flags: InitFlags): Promise<number> {
           gstackFailure = 'pull-failed'
           break
         case 'gstack-setup-failed':
-          console.error(`  gstack: ✗ ./setup ${gstackResult.command} exited with ${gstackResult.exitCode}`)
+          console.error(
+            `  gstack: ✗ ./setup ${gstackResult.command} exited with ${gstackResult.exitCode}`,
+          )
           gstackFailure = 'setup-failed'
           break
       }
@@ -533,6 +570,33 @@ export async function runInit(flags: InitFlags): Promise<number> {
     if (!options.dryRun) {
       console.log('\nWiring tool-specific surfaces (.claude/, .cursor/, .windsurf/, .gemini/)…')
       syncAll(consumer.repoRoot)
+
+      const visibilityAudit = auditHostSkillVisibility({
+        repoRoot: consumer.repoRoot,
+        hosts: selectedHosts,
+        requiredCapabilities: [...REQUIRED_CORE_CAPABILITIES],
+      })
+      config.hosts = {
+        selected: selectedHosts,
+        requiredCapabilities: [...REQUIRED_CORE_CAPABILITIES],
+        visibility: serializeHostVisibility(visibilityAudit),
+      }
+      writeConfig(consumer.repoRoot, config)
+
+      console.log('\nHost skill visibility:')
+      for (const line of summarizeHostVisibility(consumer.repoRoot, visibilityAudit)) {
+        console.log(line)
+      }
+
+      const missing = visibilityAudit.results.filter((result) => result.status === 'not-visible')
+      if (missing.length > 0) {
+        console.error(
+          `\nak setup: host visibility check failed for ${missing
+            .map((result) => `${result.host}/${result.capability}`)
+            .join(', ')}`,
+        )
+        return EXIT_SETUP_FAIL
+      }
     }
 
     // Surface claude plugin install hint if agent-kit is in node_modules
@@ -652,6 +716,7 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
   cli
     .command(commandName, description)
     .option('--with <skills>', withHelp)
+    .option('--host <hosts>', 'Comma-separated host targets: codex, claude, opencode, all')
     .option('--all', 'Install every skill (Tier-1 + Tier-2 + all Tier-3)')
     .option(
       '--overwrite',
@@ -660,10 +725,7 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
     .option('--dry-run', 'Show what would change without writing anything')
     .option('--yes', 'Accept defaults, skip interactive prompts')
     .option('--cwd <dir>', 'Working tree to scaffold into (default: process.cwd())')
-    .option(
-      '--strict',
-      'Abort if any compatibility check fails (default: warn and continue)',
-    )
+    .option('--strict', 'Abort if any compatibility check fails (default: warn and continue)')
     .action(async (flags: InitFlags) => {
       const code = await runInit(flags)
       if (code !== EXIT_SUCCESS) {

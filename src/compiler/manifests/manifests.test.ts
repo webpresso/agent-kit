@@ -26,8 +26,12 @@ const BASE_OPTS = {
 describe('claude manifest emitter', () => {
   let dirs: string[] = []
 
-  beforeEach(() => { dirs = [] })
-  afterEach(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }) })
+  beforeEach(() => {
+    dirs = []
+  })
+  afterEach(() => {
+    for (const d of dirs) rmSync(d, { recursive: true, force: true })
+  })
 
   function tmp(): string {
     const d = makeTmp()
@@ -70,8 +74,12 @@ describe('claude manifest emitter', () => {
 describe('codex manifest emitter', () => {
   let dirs: string[] = []
 
-  beforeEach(() => { dirs = [] })
-  afterEach(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }) })
+  beforeEach(() => {
+    dirs = []
+  })
+  afterEach(() => {
+    for (const d of dirs) rmSync(d, { recursive: true, force: true })
+  })
 
   function tmp(): string {
     const d = makeTmp()
@@ -104,8 +112,12 @@ describe('codex manifest emitter', () => {
 describe('cursor manifest emitter', () => {
   let dirs: string[] = []
 
-  beforeEach(() => { dirs = [] })
-  afterEach(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }) })
+  beforeEach(() => {
+    dirs = []
+  })
+  afterEach(() => {
+    for (const d of dirs) rmSync(d, { recursive: true, force: true })
+  })
 
   function tmp(): string {
     const d = makeTmp()
@@ -147,8 +159,12 @@ describe('cursor manifest emitter', () => {
 describe('gemini manifest emitter', () => {
   let dirs: string[] = []
 
-  beforeEach(() => { dirs = [] })
-  afterEach(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }) })
+  beforeEach(() => {
+    dirs = []
+  })
+  afterEach(() => {
+    for (const d of dirs) rmSync(d, { recursive: true, force: true })
+  })
 
   function tmp(): string {
     const d = makeTmp()

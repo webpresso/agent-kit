@@ -145,9 +145,7 @@ async function main(): Promise<void> {
   let evalDirs: string[] = []
   try {
     const entries = await readdir(evalsDir, { withFileTypes: true })
-    evalDirs = entries
-      .filter((e) => e.isDirectory())
-      .map((e) => e.name)
+    evalDirs = entries.filter((e) => e.isDirectory()).map((e) => e.name)
   } catch {
     // ignore — discovery is best-effort for the CLI summary
   }

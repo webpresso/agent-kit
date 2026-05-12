@@ -27,8 +27,7 @@ const CTX: RunnerContext = {
 // Returns a canned response simulating a successful add-function task
 // ---------------------------------------------------------------------------
 
-const MOCK_OUTPUT =
-  'Created src/add.ts and src/add.test.ts. add(2,3)===5. Tests pass.'
+const MOCK_OUTPUT = 'Created src/add.ts and src/add.test.ts. add(2,3)===5. Tests pass.'
 
 async function collectEvents(runner: ClaudeSubagentRunner) {
   const exec = runner.prepare(TASK, CTX)
@@ -74,9 +73,7 @@ describe('eval-1: add-function (mocked subagent)', () => {
     // Last event is 'completed' with exitCode 0
     const last = events.at(-1)
     expect(last?.type).toStrictEqual('completed')
-    expect(last).toStrictEqual(
-      expect.objectContaining({ type: 'completed', exitCode: 0 }),
-    )
+    expect(last).toStrictEqual(expect.objectContaining({ type: 'completed', exitCode: 0 }))
   })
 
   it('assertEval1 returns passed=false when no completed event', async () => {

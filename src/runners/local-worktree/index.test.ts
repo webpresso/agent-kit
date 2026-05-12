@@ -17,11 +17,27 @@ function makeCtx(cwd = '/repo'): RunnerContext {
 }
 
 function successSpawn(): SpawnSyncReturns<Buffer> {
-  return { status: 0, stdout: Buffer.from(''), stderr: Buffer.from(''), pid: 1, output: [], signal: null, error: undefined }
+  return {
+    status: 0,
+    stdout: Buffer.from(''),
+    stderr: Buffer.from(''),
+    pid: 1,
+    output: [],
+    signal: null,
+    error: undefined,
+  }
 }
 
 function failureSpawn(): SpawnSyncReturns<Buffer> {
-  return { status: 1, stdout: Buffer.from(''), stderr: Buffer.from('fatal: error'), pid: 1, output: [], signal: null, error: undefined }
+  return {
+    status: 1,
+    stdout: Buffer.from(''),
+    stderr: Buffer.from('fatal: error'),
+    pid: 1,
+    output: [],
+    signal: null,
+    error: undefined,
+  }
 }
 
 // ---------------------------------------------------------------------------

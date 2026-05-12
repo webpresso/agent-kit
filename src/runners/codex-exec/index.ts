@@ -65,9 +65,13 @@ class CodexExecExecution implements RunnerExecution {
       return
     }
 
-    const result = this._spawn('codex', ['exec', this._task.description, '-s', 'read-only', '-C', this._ctx.cwd], {
-      encoding: 'buffer',
-    })
+    const result = this._spawn(
+      'codex',
+      ['exec', this._task.description, '-s', 'read-only', '-C', this._ctx.cwd],
+      {
+        encoding: 'buffer',
+      },
+    )
 
     const stdoutStr = result.stdout.toString('utf8')
     for (const line of splitLines(stdoutStr)) {
@@ -125,9 +129,7 @@ class CodexExecExecution implements RunnerExecution {
 // ---------------------------------------------------------------------------
 
 function splitLines(text: string): string[] {
-  return text
-    .split('\n')
-    .filter((line) => line.length > 0)
+  return text.split('\n').filter((line) => line.length > 0)
 }
 
 // ---------------------------------------------------------------------------

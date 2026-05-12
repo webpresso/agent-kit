@@ -20,7 +20,12 @@ function makeSpawn(behaviors: Array<{ status: number | null; error?: Error }>) {
   }) as unknown as Parameters<typeof ensureRtk>[0]['spawn']
 }
 
-function makeSpinnerFactory(): { factory: SpinnerFactory; start: ReturnType<typeof vi.fn>; succeed: ReturnType<typeof vi.fn>; fail: ReturnType<typeof vi.fn> } {
+function makeSpinnerFactory(): {
+  factory: SpinnerFactory
+  start: ReturnType<typeof vi.fn>
+  succeed: ReturnType<typeof vi.fn>
+  fail: ReturnType<typeof vi.fn>
+} {
   const start = vi.fn()
   const succeed = vi.fn()
   const fail = vi.fn()

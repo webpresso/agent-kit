@@ -20,10 +20,7 @@ import { homedir } from 'node:os'
 import path from 'node:path'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
-import {
-  makeNoopSpinnerFactory,
-  type SpinnerFactory,
-} from '#cli/commands/init/scaffolders/spinner'
+import { makeNoopSpinnerFactory, type SpinnerFactory } from '#cli/commands/init/scaffolders/spinner'
 
 export interface EnsureGstackInput {
   repoRoot: string

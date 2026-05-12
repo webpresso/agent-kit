@@ -58,7 +58,8 @@ class LocalWorktreeExecution implements RunnerExecution {
     const result = this.spawnSync('git', ['worktree', 'add', this.worktreePath], { cwd: this.cwd })
 
     if (result.status !== 0) {
-      const stderr = result.stderr instanceof Buffer ? result.stderr.toString() : String(result.stderr)
+      const stderr =
+        result.stderr instanceof Buffer ? result.stderr.toString() : String(result.stderr)
       const failed: RunnerEvent = {
         type: 'failed',
         ts: new Date().toISOString(),

@@ -182,7 +182,9 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
 
       expect(r.code).toBe(0)
       expect(r.stdout).toContain('gstack: ✓ updated')
-      expect(r.stdout).toContain(`gstack (codex): ✓ installed at ${path.join(fakeHome, '.codex', 'skills')}`)
+      expect(r.stdout).toContain(
+        `gstack (codex): ✓ installed at ${path.join(fakeHome, '.codex', 'skills')}`,
+      )
     })
 
     it('--with omx,gstack combined: both presets execute against fixtures', () => {

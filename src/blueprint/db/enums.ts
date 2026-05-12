@@ -13,12 +13,7 @@ export const BLUEPRINT_COMPLEXITY = ['XS', 'S', 'M', 'L', 'XL'] as const
 
 export const TASK_STATUS = ['todo', 'in-progress', 'blocked', 'done', 'dropped'] as const
 
-export const TECH_DEBT_STATUS = [
-  'accepted',
-  'needs-remediation',
-  'monitoring',
-  'resolved',
-] as const
+export const TECH_DEBT_STATUS = ['accepted', 'needs-remediation', 'monitoring', 'resolved'] as const
 
 export const SEVERITY = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const
 

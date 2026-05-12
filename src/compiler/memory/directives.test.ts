@@ -136,11 +136,7 @@ describe('applyDirectives', () => {
   it('unknown slug in directive is a no-op', () => {
     const sections = new Map([['build', makeSection('Build', 'content')]])
     const ctx = makeContext()
-    const result = applyDirectives(
-      sections,
-      [{ heading: 'NonExistent', op: 'delete' }],
-      ctx,
-    )
+    const result = applyDirectives(sections, [{ heading: 'NonExistent', op: 'delete' }], ctx)
     expect(result.has('build')).toBe(true)
     expect(result.size).toBe(1)
   })

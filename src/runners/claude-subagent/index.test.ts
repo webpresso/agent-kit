@@ -24,7 +24,10 @@ function makeRunner(subagentFn: SubagentFn): ClaudeSubagentRunner {
   return new ClaudeSubagentRunner(VERSION, subagentFn)
 }
 
-async function collectEvents(execution: ReturnType<ClaudeSubagentRunner['prepare']>, signal?: AbortSignal) {
+async function collectEvents(
+  execution: ReturnType<ClaudeSubagentRunner['prepare']>,
+  signal?: AbortSignal,
+) {
   const events = []
   for await (const event of execution.run(signal)) {
     events.push(event)

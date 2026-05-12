@@ -6,7 +6,9 @@
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
+
+import { resolveBlueprintRoot } from '#utils/blueprint-root'
 
 export interface PreflightResult {
   ok: boolean
@@ -62,8 +64,10 @@ function checkWorkersOrVite(repoRoot: string): string | null {
 }
 
 function checkBlueprintLifecycle(repoRoot: string): string | null {
-  if (!existsSync(join(repoRoot, 'blueprints'))) {
-    return 'blueprints/ directory not found — blueprint lifecycle required (run `ak setup --with base-kit` to scaffold it)'
+  const blueprintRoot = resolveBlueprintRoot(repoRoot)
+  if (!existsSync(blueprintRoot)) {
+    const displayPath = relative(repoRoot, blueprintRoot).replaceAll('\\', '/') || 'blueprints'
+    return `${displayPath}/ directory not found — blueprint lifecycle required (run \`ak setup --with base-kit\` to scaffold it)`
   }
   return null
 }

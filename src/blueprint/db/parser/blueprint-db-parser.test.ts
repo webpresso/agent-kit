@@ -132,11 +132,7 @@ describe('parseBlueprintForDb', () => {
 
     it('produces different contentHash for different content', () => {
       const r1 = parseBlueprintForDb(FIXTURE_CONTENT, FIXTURE_PATH, FIXTURE_SLUG)
-      const r2 = parseBlueprintForDb(
-        FIXTURE_CONTENT + '\nextra line',
-        FIXTURE_PATH,
-        FIXTURE_SLUG,
-      )
+      const r2 = parseBlueprintForDb(FIXTURE_CONTENT + '\nextra line', FIXTURE_PATH, FIXTURE_SLUG)
       expect(r1.contentHash).not.toBe(r2.contentHash)
     })
 

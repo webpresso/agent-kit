@@ -75,9 +75,7 @@ export async function auditBlueprintDbConsistency(cwd: string): Promise<RepoAudi
     let checked = rows.length
 
     for (const row of rows) {
-      const absPath = path.isAbsolute(row.file_path)
-        ? row.file_path
-        : path.join(cwd, row.file_path)
+      const absPath = path.isAbsolute(row.file_path) ? row.file_path : path.join(cwd, row.file_path)
 
       if (!existsSync(absPath)) {
         violations.push({

@@ -147,15 +147,7 @@ describe('auditCrossRepoCorrelation', () => {
       insertBlueprint(conn.db, 'bp-public', 'acme-corp', 'public')
       insertWorkspaceRepo(conn.db, 'other-org/private-repo', 'other-org', 'private-repo', 'private')
       // is_redacted=0 but target is private
-      insertCrossRepoDep(
-        conn.db,
-        'bp-public',
-        'other-org/private-repo',
-        'secret-slug',
-        null,
-        1,
-        0,
-      )
+      insertCrossRepoDep(conn.db, 'bp-public', 'other-org/private-repo', 'secret-slug', null, 1, 0)
 
       const result = await auditCrossRepoCorrelation(tmpDir)
       expect(result.pass).toBe(false)
@@ -277,15 +269,7 @@ describe('fixCrossRepoLeak', () => {
 
   it('redacts an unredacted cross-repo dep and sets target_slug_hash', async () => {
     insertBlueprint(conn.db, 'bp-public', 'acme-corp', 'public')
-    insertCrossRepoDep(
-      conn.db,
-      'bp-public',
-      'other-org/private-repo',
-      'secret-slug',
-      null,
-      1,
-      0,
-    )
+    insertCrossRepoDep(conn.db, 'bp-public', 'other-org/private-repo', 'secret-slug', null, 1, 0)
 
     const result = await fixCrossRepoLeak(tmpDir, 'bp-public')
     expect(result.fixed).toBe(true)
@@ -296,10 +280,10 @@ describe('fixCrossRepoLeak', () => {
         'SELECT target_slug, target_slug_hash, is_redacted FROM cross_repo_dependencies WHERE blueprint_slug = ?',
       )
       .get('bp-public') as {
-        target_slug: string | null
-        target_slug_hash: string | null
-        is_redacted: number
-      }
+      target_slug: string | null
+      target_slug_hash: string | null
+      is_redacted: number
+    }
 
     expect(row.target_slug).toBeNull()
     expect(row.target_slug_hash).toBeTruthy()

@@ -12,7 +12,12 @@ import {
   upsertContextModeMcpServer,
 } from './index.js'
 
-function makeSpinnerFactory(): { factory: SpinnerFactory; start: ReturnType<typeof vi.fn>; succeed: ReturnType<typeof vi.fn>; fail: ReturnType<typeof vi.fn> } {
+function makeSpinnerFactory(): {
+  factory: SpinnerFactory
+  start: ReturnType<typeof vi.fn>
+  succeed: ReturnType<typeof vi.fn>
+  fail: ReturnType<typeof vi.fn>
+} {
   const start = vi.fn()
   const succeed = vi.fn()
   const fail = vi.fn()
@@ -150,7 +155,10 @@ describe('context-mode preset', () => {
     const spawn = (() => {
       calls += 1
       // First call (probe): fail; second call (npm install): fail
-      return { status: calls === 1 ? null : 1, error: calls === 1 ? new Error('ENOENT') : undefined }
+      return {
+        status: calls === 1 ? null : 1,
+        error: calls === 1 ? new Error('ENOENT') : undefined,
+      }
     }) as never
 
     expect(() =>

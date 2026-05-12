@@ -76,9 +76,7 @@ describe('eval-2: multi-file-refactor (mocked subagent)', () => {
     // Last event is 'completed' with exitCode 0
     const last = events.at(-1)
     expect(last?.type).toStrictEqual('completed')
-    expect(last).toStrictEqual(
-      expect.objectContaining({ type: 'completed', exitCode: 0 }),
-    )
+    expect(last).toStrictEqual(expect.objectContaining({ type: 'completed', exitCode: 0 }))
   })
 
   it('assertEval2 returns passed=false when no completed event', async () => {

@@ -35,32 +35,33 @@ import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
  * two surfaces in sync without introducing a shared module dependency.
  */
 export interface SyncAdapter {
-  pushEvent(event:
-    | {
-        readonly eventId: string
-        readonly repoId: string
-        readonly occurredAt: string
-        readonly type: 'task.status_changed'
-        readonly payload: {
+  pushEvent(
+    event:
+      | {
+          readonly eventId: string
+          readonly repoId: string
+          readonly occurredAt: string
           readonly type: 'task.status_changed'
-          readonly blueprintSlug: string
-          readonly taskId: string
-          readonly fromStatus: string
-          readonly toStatus: string
+          readonly payload: {
+            readonly type: 'task.status_changed'
+            readonly blueprintSlug: string
+            readonly taskId: string
+            readonly fromStatus: string
+            readonly toStatus: string
+          }
         }
-      }
-    | {
-        readonly eventId: string
-        readonly repoId: string
-        readonly occurredAt: string
-        readonly type: 'blueprint.status_changed'
-        readonly payload: {
+      | {
+          readonly eventId: string
+          readonly repoId: string
+          readonly occurredAt: string
           readonly type: 'blueprint.status_changed'
-          readonly slug: string
-          readonly fromStatus: string
-          readonly toStatus: string
-        }
-      }
+          readonly payload: {
+            readonly type: 'blueprint.status_changed'
+            readonly slug: string
+            readonly fromStatus: string
+            readonly toStatus: string
+          }
+        },
   ): Promise<void>
   ensureFresh(opts?: { readonly slug?: string }): Promise<void>
 }
@@ -100,13 +101,17 @@ export async function resolveSyncAdapterForCli(cwd: string): Promise<SyncAdapter
   }
 
   // Production default: lazy-import to avoid coupling the module to the HTTP client.
-  const [{ BlueprintSyncClient }, { loadSyncCredentials }, { ReplicaManager }, { openDb: openDbForReplica }] =
-    await Promise.all([
-      import('#sync/client.js'),
-      import('#sync/auth.js'),
-      import('#sync/replica.js'),
-      import('#db/connection.js'),
-    ])
+  const [
+    { BlueprintSyncClient },
+    { loadSyncCredentials },
+    { ReplicaManager },
+    { openDb: openDbForReplica },
+  ] = await Promise.all([
+    import('#sync/client.js'),
+    import('#sync/auth.js'),
+    import('#sync/replica.js'),
+    import('#db/connection.js'),
+  ])
 
   const creds = loadSyncCredentials()
   if (creds === null) return null
@@ -129,14 +134,7 @@ export async function resolveSyncAdapterForCli(cwd: string): Promise<SyncAdapter
 // ---------------------------------------------------------------------------
 
 const DB_FILENAME = '.blueprints.db'
-const ALL_STATES = [
-  'draft',
-  'planned',
-  'in-progress',
-  'parked',
-  'archived',
-  'completed',
-] as const
+const ALL_STATES = ['draft', 'planned', 'in-progress', 'parked', 'archived', 'completed'] as const
 
 type BlueprintState = (typeof ALL_STATES)[number]
 
@@ -183,7 +181,10 @@ function findBlueprintDir(
 }
 
 function atomicWriteFile(targetPath: string, content: string): void {
-  const tmpPath = path.join(tmpdir(), `ak-bp-mutation-${Date.now()}-${Math.random().toString(36).slice(2)}.tmp`)
+  const tmpPath = path.join(
+    tmpdir(),
+    `ak-bp-mutation-${Date.now()}-${Math.random().toString(36).slice(2)}.tmp`,
+  )
   writeFileSync(tmpPath, content, 'utf8')
   renameSync(tmpPath, targetPath)
 }
@@ -204,10 +205,7 @@ async function reIngestDb(cwd: string): Promise<void> {
  * Update `status:` in YAML frontmatter. Preserves everything else verbatim.
  */
 function updateFrontmatterStatus(content: string, newStatus: string): string {
-  return content.replace(
-    /^(status:\s*)(['"]?)[^'"\r\n]+?(['"]?)(\s*)$/m,
-    `$1${newStatus}$4`,
-  )
+  return content.replace(/^(status:\s*)(['"]?)[^'"\r\n]+?(['"]?)(\s*)$/m, `$1${newStatus}$4`)
 }
 
 /**
@@ -217,16 +215,10 @@ function updateFrontmatterStatus(content: string, newStatus: string): string {
 function upsertCompletedAt(content: string, isoDate: string): string {
   // If already present, update it
   if (/^completed_at:/m.test(content)) {
-    return content.replace(
-      /^(completed_at:\s*).*$/m,
-      `$1'${isoDate}'`,
-    )
+    return content.replace(/^(completed_at:\s*).*$/m, `$1'${isoDate}'`)
   }
   // Insert after status line
-  return content.replace(
-    /^(status:[^\r\n]*)(\r?\n)/m,
-    `$1$2completed_at: '${isoDate}'$2`,
-  )
+  return content.replace(/^(status:[^\r\n]*)(\r?\n)/m, `$1$2completed_at: '${isoDate}'$2`)
 }
 
 /**
@@ -279,7 +271,9 @@ export async function advanceTask(
   const blueprintRoot = resolveBlueprintRoot(cwd)
   const found = findBlueprintDir(blueprintRoot, blueprintSlug)
   if (!found) {
-    throw new Error(`Blueprint "${blueprintSlug}" not found in any state directory under ${blueprintRoot}`)
+    throw new Error(
+      `Blueprint "${blueprintSlug}" not found in any state directory under ${blueprintRoot}`,
+    )
   }
 
   const overviewPath = path.join(found.dir, '_overview.md')

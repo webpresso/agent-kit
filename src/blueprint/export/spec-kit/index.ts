@@ -16,10 +16,7 @@ export interface SpecKitBundle {
  * Convert a parsed blueprint to spec-kit's 4-file structure.
  * Each file is a non-empty string; no content is duplicated across files.
  */
-export function blueprintToSpecKit(
-  parsed: ParsedBlueprintForDb,
-  repoRoot: string,
-): SpecKitBundle {
+export function blueprintToSpecKit(parsed: ParsedBlueprintForDb, repoRoot: string): SpecKitBundle {
   return {
     spec: emitSpec(parsed),
     plan: emitPlan(parsed),

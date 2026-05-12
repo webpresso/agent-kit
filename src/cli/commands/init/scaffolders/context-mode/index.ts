@@ -9,10 +9,7 @@ import {
   agentKitMcpLaunchCommand,
   findAgentKitMcpEntry,
 } from '#cli/commands/init/scaffolders/codex-mcp/index'
-import {
-  makeNoopSpinnerFactory,
-  type SpinnerFactory,
-} from '#cli/commands/init/scaffolders/spinner'
+import { makeNoopSpinnerFactory, type SpinnerFactory } from '#cli/commands/init/scaffolders/spinner'
 import { checkVersionPin } from '#cli/commands/init/scaffolders/version-pin'
 
 export interface EnsureContextModeInput {

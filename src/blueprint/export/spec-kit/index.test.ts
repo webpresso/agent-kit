@@ -15,10 +15,7 @@ import { blueprintToSpecKit } from './index.js'
 // ---------------------------------------------------------------------------
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '../../../..')
-const FIXTURE_PATH = path.join(
-  REPO_ROOT,
-  'blueprints/completed/elegance-pass-2026/_overview.md',
-)
+const FIXTURE_PATH = path.join(REPO_ROOT, 'blueprints/completed/elegance-pass-2026/_overview.md')
 
 const FIXTURE_CONTENT = readFileSync(FIXTURE_PATH, 'utf-8')
 const FIXTURE_SLUG = 'elegance-pass-2026'

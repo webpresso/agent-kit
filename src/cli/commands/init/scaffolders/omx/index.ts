@@ -193,7 +193,7 @@ export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
 
   const result = spawn('omx', ['setup', '--yes'], {
     cwd: input.repoRoot,
-    stdio: 'inherit',
+    stdio: ['ignore', 'inherit', 'inherit'],
   })
 
   if (result.status !== 0) {

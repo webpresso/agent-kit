@@ -74,7 +74,8 @@ export function buildOutput(_input: StartInput, cwd: string, env: EnvLike): stri
     }
   }
 
-  let additionalContext = routingMd !== null ? AK_ROUTING_BLOCK + '\n\n' + routingMd : AK_ROUTING_BLOCK
+  let additionalContext =
+    routingMd !== null ? AK_ROUTING_BLOCK + '\n\n' + routingMd : AK_ROUTING_BLOCK
   if (gstackBlock !== null) {
     additionalContext += gstackBlock
   }

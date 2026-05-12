@@ -98,10 +98,7 @@ describe('mergeAgentsMd', () => {
 
   it('applies op: delete directive', async () => {
     const base = write('base-AGENTS.md', BASE_AGENTS)
-    const directives = write(
-      'memory.merge.yaml',
-      'sections:\n  - heading: Build\n    op: delete\n',
-    )
+    const directives = write('memory.merge.yaml', 'sections:\n  - heading: Build\n    op: delete\n')
     const result = await mergeAgentsMd({
       layers: [base],
       directivesPath: directives,

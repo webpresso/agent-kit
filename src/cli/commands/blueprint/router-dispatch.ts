@@ -111,9 +111,7 @@ function mergeTemplateNames(
 async function fetchPlatformTemplateToTmpFile(url: string): Promise<string> {
   const response = await fetch(url)
   if (!response.ok) {
-    throw new Error(
-      `Failed to fetch platform template from ${url}: HTTP ${response.status}`,
-    )
+    throw new Error(`Failed to fetch platform template from ${url}: HTTP ${response.status}`)
   }
   const content = await response.text()
   const tmpDir = path.join(tmpdir(), 'ak-templates')
@@ -465,7 +463,7 @@ export async function executeBlueprintSubcommand(
       if (!first || !second || !third) {
         throw new Error(
           'Usage: ak blueprint task advance <slug> <task-id> --to <status>\n' +
-          '       ak blueprint task <slug> <taskId> <start|complete|unblock|block --reason <x>>',
+            '       ak blueprint task <slug> <taskId> <start|complete|unblock|block --reason <x>>',
         )
       }
       const ACTIONS = ['start', 'block', 'unblock', 'complete'] as const

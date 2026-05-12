@@ -78,9 +78,7 @@ describe('eval-4: dependency-bump (mocked subagent)', () => {
     // Last event is 'completed' with exitCode 0
     const last = events.at(-1)
     expect(last?.type).toStrictEqual('completed')
-    expect(last).toStrictEqual(
-      expect.objectContaining({ type: 'completed', exitCode: 0 }),
-    )
+    expect(last).toStrictEqual(expect.objectContaining({ type: 'completed', exitCode: 0 }))
   })
 
   it('assertEval4 returns passed=false when no completed event', async () => {

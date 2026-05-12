@@ -43,7 +43,9 @@ function normalize(events: readonly RunnerEvent[]): NormalizedEvent[] {
   return events.map(({ ts: _ts, handle: _handle, ...rest }) => rest)
 }
 
-async function collectEvents(execution: ReturnType<ClaudeSubagentRunner['prepare']>): Promise<RunnerEvent[]> {
+async function collectEvents(
+  execution: ReturnType<ClaudeSubagentRunner['prepare']>,
+): Promise<RunnerEvent[]> {
   const events: RunnerEvent[] = []
   for await (const event of execution.run()) {
     events.push(event)

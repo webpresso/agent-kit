@@ -14,7 +14,8 @@ interface RulesyncTarget {
 }
 
 // Matches: ✓ Claude Code: 3 skills, 2 commands, 1 agent
-const SUCCESS_LINE_RE = /^[✓✔]\s+([\w\s]+?):\s+(\d+)\s+skills?,\s+(\d+)\s+commands?,\s+(\d+)\s+agents?/u
+const SUCCESS_LINE_RE =
+  /^[✓✔]\s+([\w\s]+?):\s+(\d+)\s+skills?,\s+(\d+)\s+commands?,\s+(\d+)\s+agents?/u
 // Matches: ✗ Cursor: failed to write .cursor/rules/foo.md: EACCES
 const FAILURE_LINE_RE = /^[✗✘]\s+([\w\s]+?):\s+(.+)$/u
 // Summary line: Generated in 120ms

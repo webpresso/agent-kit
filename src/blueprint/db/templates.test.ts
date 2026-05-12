@@ -35,7 +35,16 @@ function insertBlueprint(
         content_hash, ingested_at, organization, visibility, completed_at)
      VALUES
        (?, ?, ?, ?, ?, ?, 100, 'hash-' || ?, 1234567890, 'test-org', 'private', ?)`,
-  ).run(slug, title, status, complexity, owner, '/fake/' + slug + '/_overview.md', slug, completed_at)
+  ).run(
+    slug,
+    title,
+    status,
+    complexity,
+    owner,
+    '/fake/' + slug + '/_overview.md',
+    slug,
+    completed_at,
+  )
 }
 
 function insertTask(
@@ -131,7 +140,8 @@ describe('QUERY_TEMPLATES — SQL syntax validity', () => {
 
   it('every template maxRows is a positive integer', () => {
     for (const t of QUERY_TEMPLATES) {
-      expect(Number.isInteger(t.maxRows) && t.maxRows > 0,
+      expect(
+        Number.isInteger(t.maxRows) && t.maxRows > 0,
         `Template "${t.id}" maxRows invalid`,
       ).toBe(true)
     }
@@ -180,7 +190,11 @@ describe('next-ready-task', () => {
     const conn = openDb(':memory:')
     try {
       insertBlueprint(conn.db, { slug: 'blocked-bp', status: 'in-progress' })
-      const t1 = insertTask(conn.db, { blueprintSlug: 'blocked-bp', taskId: 'T1', status: 'in-progress' })
+      const t1 = insertTask(conn.db, {
+        blueprintSlug: 'blocked-bp',
+        taskId: 'T1',
+        status: 'in-progress',
+      })
       const t2 = insertTask(conn.db, { blueprintSlug: 'blocked-bp', taskId: 'T2', status: 'todo' })
       conn.db.prepare('INSERT INTO task_dependencies VALUES (?, ?)').run(t2, t1)
 
@@ -233,27 +247,35 @@ describe('tech-debt-due-soon', () => {
     const conn = openDb(':memory:')
     try {
       // tomorrow → due soon
-      insertTechDebt(conn.db, { slug: 'due-soon', status: 'accepted', nextReview: "date('now', '+1 day')" })
+      insertTechDebt(conn.db, {
+        slug: 'due-soon',
+        status: 'accepted',
+        nextReview: "date('now', '+1 day')",
+      })
       // Use a literal date instead
-      conn.db.prepare(
-        `INSERT INTO tech_debt_items
+      conn.db
+        .prepare(
+          `INSERT INTO tech_debt_items
            (slug, status, severity, category, review_cadence, next_review,
             file_path, byte_size, organization, visibility)
          VALUES
            ('near', 'accepted', 'high', 'testing', 'weekly',
             date('now', '+5 days'),
             '/fake/near.md', 100, 'test-org', 'private')`,
-      ).run()
+        )
+        .run()
 
-      conn.db.prepare(
-        `INSERT INTO tech_debt_items
+      conn.db
+        .prepare(
+          `INSERT INTO tech_debt_items
            (slug, status, severity, category, review_cadence, next_review,
             file_path, byte_size, organization, visibility)
          VALUES
            ('far', 'accepted', 'low', 'maintenance', 'quarterly',
             date('now', '+180 days'),
             '/fake/far.md', 100, 'test-org', 'private')`,
-      ).run()
+        )
+        .run()
 
       const result = runTemplate(conn.db, 'tech-debt-due-soon', { days: 14, limit: 100 })
       const slugs = (result.rows as Array<Record<string, unknown>>).map((r) => r['slug'])
@@ -267,15 +289,17 @@ describe('tech-debt-due-soon', () => {
   it('also returns overdue items (past next_review)', () => {
     const conn = openDb(':memory:')
     try {
-      conn.db.prepare(
-        `INSERT INTO tech_debt_items
+      conn.db
+        .prepare(
+          `INSERT INTO tech_debt_items
            (slug, status, severity, category, review_cadence, next_review,
             file_path, byte_size, organization, visibility)
          VALUES
            ('overdue', 'needs-remediation', 'critical', 'security', 'monthly',
             date('now', '-30 days'),
             '/fake/overdue.md', 100, 'test-org', 'private')`,
-      ).run()
+        )
+        .run()
 
       const result = runTemplate(conn.db, 'tech-debt-due-soon', { days: 14, limit: 100 })
       const slugs = (result.rows as Array<Record<string, unknown>>).map((r) => r['slug'])
@@ -288,15 +312,17 @@ describe('tech-debt-due-soon', () => {
   it('does not return resolved items', () => {
     const conn = openDb(':memory:')
     try {
-      conn.db.prepare(
-        `INSERT INTO tech_debt_items
+      conn.db
+        .prepare(
+          `INSERT INTO tech_debt_items
            (slug, status, severity, category, review_cadence, next_review,
             file_path, byte_size, organization, visibility)
          VALUES
            ('resolved-item', 'resolved', 'low', 'docs', 'monthly',
             date('now', '-1 day'),
             '/fake/resolved.md', 100, 'test-org', 'private')`,
-      ).run()
+        )
+        .run()
 
       const result = runTemplate(conn.db, 'tech-debt-due-soon', { days: 30, limit: 100 })
       const slugs = (result.rows as Array<Record<string, unknown>>).map((r) => r['slug'])
@@ -326,9 +352,11 @@ describe('blueprint-risk-profile', () => {
       const riskIds = (result.rows as Array<Record<string, unknown>>).map((r) => r['risk_id'])
       expect(riskIds).toContain('R1')
       expect(riskIds).toContain('R2')
-      expect(riskIds).not.toContain('R3')  // MEDIUM excluded
+      expect(riskIds).not.toContain('R3') // MEDIUM excluded
       // done-bp risks excluded
-      const bpSlugs = (result.rows as Array<Record<string, unknown>>).map((r) => r['blueprint_slug'])
+      const bpSlugs = (result.rows as Array<Record<string, unknown>>).map(
+        (r) => r['blueprint_slug'],
+      )
       expect(bpSlugs).not.toContain('done-bp')
     } finally {
       conn.close()
@@ -364,9 +392,9 @@ describe('runTemplate — error handling', () => {
   it('throws ZodError when param has wrong type', () => {
     const conn = openDb(':memory:')
     try {
-      expect(() =>
-        runTemplate(conn.db, 'next-ready-task', { limit: 'not-a-number' }),
-      ).toThrow(z.ZodError)
+      expect(() => runTemplate(conn.db, 'next-ready-task', { limit: 'not-a-number' })).toThrow(
+        z.ZodError,
+      )
     } finally {
       conn.close()
     }
@@ -453,25 +481,29 @@ describe('completed-this-month', () => {
     const conn = openDb(':memory:')
     try {
       // Use a completed_at that is the first of the current month
-      conn.db.prepare(
-        `INSERT INTO blueprints
+      conn.db
+        .prepare(
+          `INSERT INTO blueprints
            (slug, title, status, complexity, file_path, byte_size,
             content_hash, ingested_at, organization, visibility, completed_at)
          VALUES
            ('this-month', 'This Month', 'completed', 'S',
             '/fake/this-month/_overview.md', 100, 'hash1', 1234567890,
             'test-org', 'private', strftime('%Y-%m-01', 'now'))`,
-      ).run()
+        )
+        .run()
 
-      conn.db.prepare(
-        `INSERT INTO blueprints
+      conn.db
+        .prepare(
+          `INSERT INTO blueprints
            (slug, title, status, complexity, file_path, byte_size,
             content_hash, ingested_at, organization, visibility, completed_at)
          VALUES
            ('last-month', 'Last Month', 'completed', 'M',
             '/fake/last-month/_overview.md', 100, 'hash2', 1234567890,
             'test-org', 'private', date('now', '-40 days'))`,
-      ).run()
+        )
+        .run()
 
       const result = runTemplate(conn.db, 'completed-this-month', {})
       const slugs = (result.rows as Array<Record<string, unknown>>).map((r) => r['slug'])
@@ -491,32 +523,38 @@ describe('overdue-tech-debt', () => {
   it('returns only unresolved items past their review date', () => {
     const conn = openDb(':memory:')
     try {
-      conn.db.prepare(
-        `INSERT INTO tech_debt_items
+      conn.db
+        .prepare(
+          `INSERT INTO tech_debt_items
            (slug, status, severity, category, review_cadence, next_review,
             file_path, byte_size, organization, visibility)
          VALUES
            ('overdue-item', 'accepted', 'high', 'architecture', 'monthly',
             date('now', '-10 days'), '/fake/o.md', 100, 'test-org', 'private')`,
-      ).run()
+        )
+        .run()
 
-      conn.db.prepare(
-        `INSERT INTO tech_debt_items
+      conn.db
+        .prepare(
+          `INSERT INTO tech_debt_items
            (slug, status, severity, category, review_cadence, next_review,
             file_path, byte_size, organization, visibility)
          VALUES
            ('future-item', 'accepted', 'low', 'maintenance', 'monthly',
             date('now', '+30 days'), '/fake/f.md', 100, 'test-org', 'private')`,
-      ).run()
+        )
+        .run()
 
-      conn.db.prepare(
-        `INSERT INTO tech_debt_items
+      conn.db
+        .prepare(
+          `INSERT INTO tech_debt_items
            (slug, status, severity, category, review_cadence, next_review,
             file_path, byte_size, organization, visibility)
          VALUES
            ('resolved-overdue', 'resolved', 'critical', 'security', 'weekly',
             date('now', '-5 days'), '/fake/r.md', 100, 'test-org', 'private')`,
-      ).run()
+        )
+        .run()
 
       const result = runTemplate(conn.db, 'overdue-tech-debt', { limit: 100 })
       const slugs = (result.rows as Array<Record<string, unknown>>).map((r) => r['slug'])

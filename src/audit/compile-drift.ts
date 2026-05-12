@@ -15,7 +15,9 @@ function readManifest(manifestPath: string): StoredManifest | null {
   if (!existsSync(manifestPath)) return null
   try {
     return JSON.parse(readFileSync(manifestPath, 'utf-8')) as StoredManifest
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 export async function auditCompileDrift(cwd: string): Promise<RepoAuditResult> {

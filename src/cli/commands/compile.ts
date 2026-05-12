@@ -2,7 +2,17 @@ import type { CAC } from 'cac'
 
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdtempSync, openSync, readFileSync, readdirSync, renameSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { createRequire } from 'node:module'
@@ -21,14 +31,17 @@ function resolveRulesyncBinFromAgentKit(): string | null {
     const pkgPath = _require.resolve('rulesync/package.json')
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as Record<string, unknown>
     const binField = pkg.bin
-    const rel = typeof binField === 'string'
-      ? binField
-      : (typeof binField === 'object' && binField !== null && 'rulesync' in binField)
-        ? String((binField as Record<string, string>)['rulesync'])
-        : null
+    const rel =
+      typeof binField === 'string'
+        ? binField
+        : typeof binField === 'object' && binField !== null && 'rulesync' in binField
+          ? String((binField as Record<string, string>)['rulesync'])
+          : null
     if (!rel) return null
     return join(dirname(pkgPath), rel)
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 export interface CompileResult {
@@ -58,10 +71,16 @@ function readRulesyncVersion(cwd: string): string | null {
   try {
     const parsed = JSON.parse(readFileSync(pkgPath, 'utf-8')) as Record<string, unknown>
     return typeof parsed.version === 'string' ? parsed.version : null
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
-function contentHash(assets: { skills: Readonly<Record<string, string>>; commands: Readonly<Record<string, string>>; agents: Readonly<Record<string, string>> }): string {
+function contentHash(assets: {
+  skills: Readonly<Record<string, string>>
+  commands: Readonly<Record<string, string>>
+  agents: Readonly<Record<string, string>>
+}): string {
   const entries = [
     ...Object.entries(assets.skills).map(([k, v]) => `s:${k}:${v}`),
     ...Object.entries(assets.commands).map(([k, v]) => `c:${k}:${v}`),
@@ -73,7 +92,11 @@ function contentHash(assets: { skills: Readonly<Record<string, string>>; command
 
 function readHashFile(p: string): string | null {
   if (!existsSync(p)) return null
-  try { return readFileSync(p, 'utf-8').trim() } catch { return null }
+  try {
+    return readFileSync(p, 'utf-8').trim()
+  } catch {
+    return null
+  }
 }
 
 /** SHA-256 hash of all .md files under agentDir, recursively (content only). */
@@ -83,7 +106,9 @@ export function hashAgentDir(agentDir: string): string {
 
   function walk(dir: string): void {
     if (!existsSync(dir)) return
-    for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    )) {
       const full = join(dir, entry.name)
       if (entry.isDirectory()) {
         walk(full)
@@ -98,7 +123,9 @@ export function hashAgentDir(agentDir: string): string {
   for (const filePath of collected) {
     try {
       h.update(readFileSync(filePath))
-    } catch { /* skip unreadable files */ }
+    } catch {
+      /* skip unreadable files */
+    }
   }
 
   return h.digest('hex')
@@ -109,23 +136,33 @@ function hashFile(filePath: string): string {
   if (!existsSync(filePath)) return ''
   try {
     return createHash('sha256').update(readFileSync(filePath)).digest('hex')
-  } catch { return '' }
+  } catch {
+    return ''
+  }
 }
 
 function readCompileManifest(manifestPath: string): CompileManifest | null {
   if (!existsSync(manifestPath)) return null
   try {
     return JSON.parse(readFileSync(manifestPath, 'utf-8')) as CompileManifest
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 function writeCompileManifest(manifestPath: string, manifest: CompileManifest): void {
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2))
 }
 
-export async function runCompile(options: { cwd: string; targets: string }): Promise<CompileResult> {
+export async function runCompile(options: {
+  cwd: string
+  targets: string
+}): Promise<CompileResult> {
   const { cwd, targets } = options
-  const targetList = targets.split(',').map((t) => t.trim()).filter(Boolean)
+  const targetList = targets
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean)
   const agentDir = join(cwd, '.agent')
   const lockPath = join(agentDir, '.compile.lock')
   const hashPath = join(agentDir, '.compile.hash')
@@ -133,25 +170,49 @@ export async function runCompile(options: { cwd: string; targets: string }): Pro
   const rulesyncBin = resolveRulesyncBin(cwd)
 
   if (!rulesyncBin || !existsSync(rulesyncBin)) {
-    return { ok: false, targets: targetList, noOp: false, message: 'rulesync is not installed — run `pnpm add rulesync@8.15.1`' }
+    return {
+      ok: false,
+      targets: targetList,
+      noOp: false,
+      message: 'rulesync is not installed — run `pnpm add rulesync@8.15.1`',
+    }
   }
 
   const installedVersion = readRulesyncVersion(cwd)
   if (installedVersion !== null && installedVersion !== PINNED_RULESYNC_VERSION) {
-    process.stderr.write(`ak compile: warning — installed rulesync@${installedVersion} does not match pinned @${PINNED_RULESYNC_VERSION}\n`)
+    process.stderr.write(
+      `ak compile: warning — installed rulesync@${installedVersion} does not match pinned @${PINNED_RULESYNC_VERSION}\n`,
+    )
   }
 
   // Atomic lock via O_EXCL — fails if another compile is running
   try {
     writeFileSync(openSync(lockPath, 'ax'), String(process.pid))
   } catch {
-    return { ok: false, targets: targetList, noOp: false, message: `ak compile: lock file exists at ${lockPath} — another compile is running` }
+    return {
+      ok: false,
+      targets: targetList,
+      noOp: false,
+      message: `ak compile: lock file exists at ${lockPath} — another compile is running`,
+    }
   }
 
-  const cleanup = (): void => { try { if (existsSync(lockPath)) unlinkSync(lockPath) } catch { /* best-effort */ } }
+  const cleanup = (): void => {
+    try {
+      if (existsSync(lockPath)) unlinkSync(lockPath)
+    } catch {
+      /* best-effort */
+    }
+  }
   process.on('exit', cleanup)
-  process.on('SIGINT', () => { cleanup(); process.exit(130) })
-  process.on('SIGTERM', () => { cleanup(); process.exit(143) })
+  process.on('SIGINT', () => {
+    cleanup()
+    process.exit(130)
+  })
+  process.on('SIGTERM', () => {
+    cleanup()
+    process.exit(143)
+  })
 
   try {
     const assets = flattenAgentDir(agentDir)
@@ -166,7 +227,12 @@ export async function runCompile(options: { cwd: string; targets: string }): Pro
 
     // Legacy hash file check (pre-manifest path)
     if (existingManifest === null && readHashFile(hashPath) === hash) {
-      return { ok: true, targets: targetList, noOp: true, message: 'ak compile: no-op (content unchanged)' }
+      return {
+        ok: true,
+        targets: targetList,
+        noOp: true,
+        message: 'ak compile: no-op (content unchanged)',
+      }
     }
 
     // Step 1+2: Write flattened assets to tmpdir then atomically rename to .rulesync/
@@ -182,13 +248,26 @@ export async function runCompile(options: { cwd: string; targets: string }): Pro
     }
 
     // Step 3: Run rulesync generate
-    const result = spawnSync(rulesyncBin, ['generate', '--targets', targets], { cwd, stdio: 'inherit' })
+    const result = spawnSync(rulesyncBin, ['generate', '--targets', targets], {
+      cwd,
+      stdio: 'inherit',
+    })
     if (result.error) {
-      return { ok: false, targets: targetList, noOp: false, message: `ak compile: rulesync failed to start — ${result.error.message}` }
+      return {
+        ok: false,
+        targets: targetList,
+        noOp: false,
+        message: `ak compile: rulesync failed to start — ${result.error.message}`,
+      }
     }
     const exitCode = result.status ?? 1
     if (exitCode !== 0) {
-      return { ok: false, targets: targetList, noOp: false, message: `ak compile: rulesync exited with code ${exitCode}` }
+      return {
+        ok: false,
+        targets: targetList,
+        noOp: false,
+        message: `ak compile: rulesync exited with code ${exitCode}`,
+      }
     }
 
     // Step 4: Emit plugin manifests in parallel
@@ -242,7 +321,12 @@ export async function runCompile(options: { cwd: string; targets: string }): Pro
     writeCompileManifest(manifestPath, compileManifest)
 
     writeFileSync(hashPath, hash)
-    return { ok: true, targets: targetList, noOp: false, message: `ak compile: generated for targets [${targetList.join(', ')}]` }
+    return {
+      ok: true,
+      targets: targetList,
+      noOp: false,
+      message: `ak compile: generated for targets [${targetList.join(', ')}]`,
+    }
   } finally {
     cleanup()
   }
@@ -254,7 +338,9 @@ function readPackageVersion(cwd: string): string {
   try {
     const parsed = JSON.parse(readFileSync(pkgPath, 'utf-8')) as Record<string, unknown>
     return typeof parsed.version === 'string' ? parsed.version : '0.0.0'
-  } catch { return '0.0.0' }
+  } catch {
+    return '0.0.0'
+  }
 }
 
 function collectAgentsLayers(agentDir: string): string[] {
@@ -265,7 +351,9 @@ function collectAgentsLayers(agentDir: string): string[] {
       .filter((f) => f.endsWith('.md'))
       .sort()
       .map((f) => join(agentsDir, f))
-  } catch { return [] }
+  } catch {
+    return []
+  }
 }
 
 export function registerCompileCommand(cli: CAC): void {
@@ -275,7 +363,10 @@ export function registerCompileCommand(cli: CAC): void {
     .action(async (options: Record<string, unknown>) => {
       const targets = typeof options.targets === 'string' ? options.targets : DEFAULT_TARGETS
       const result = await runCompile({ cwd: resolve(process.cwd()), targets })
-      if (!result.ok) { console.error(result.message); return 1 }
+      if (!result.ok) {
+        console.error(result.message)
+        return 1
+      }
       console.log(result.message)
       return 0
     })

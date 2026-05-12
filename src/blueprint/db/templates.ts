@@ -40,7 +40,8 @@ export const QUERY_TEMPLATES: readonly QueryTemplate[] = [
   // -------------------------------------------------------------------------
   {
     id: 'next-ready-task',
-    description: 'Returns todo tasks in in-progress blueprints whose dependencies are all done, ordered by blueprint complexity then task_id.',
+    description:
+      'Returns todo tasks in in-progress blueprints whose dependencies are all done, ordered by blueprint complexity then task_id.',
     sql: `
 SELECT t.*, b.slug AS blueprint_slug, b.title AS blueprint_title
 FROM tasks t
@@ -95,7 +96,8 @@ HAVING done_tasks < total_tasks AND blocked_tasks = (total_tasks - done_tasks)
   // -------------------------------------------------------------------------
   {
     id: 'tech-debt-due-soon',
-    description: 'Unresolved tech-debt items whose next_review falls within the given number of days (default 14).',
+    description:
+      'Unresolved tech-debt items whose next_review falls within the given number of days (default 14).',
     sql: `
 SELECT * FROM tech_debt_items
 WHERE next_review IS NOT NULL
@@ -133,7 +135,8 @@ ORDER BY CASE r.severity WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 END, b.slug
   // -------------------------------------------------------------------------
   {
     id: 'cross-repo-blocked-on',
-    description: 'Cross-repo dependencies that are not yet completed, optionally filtered by target-repo prefix.',
+    description:
+      'Cross-repo dependencies that are not yet completed, optionally filtered by target-repo prefix.',
     sql: `
 SELECT crd.*, b.slug AS local_blueprint, b.title, b.status
 FROM cross_repo_dependencies crd
@@ -189,7 +192,8 @@ LIMIT :limit
   // -------------------------------------------------------------------------
   {
     id: 'overdue-tech-debt',
-    description: 'Unresolved tech-debt items that are past their next_review date, highest severity first.',
+    description:
+      'Unresolved tech-debt items that are past their next_review date, highest severity first.',
     sql: `
 SELECT *,
   CAST((julianday('now') - julianday(next_review)) AS INTEGER) AS days_overdue

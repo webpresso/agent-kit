@@ -307,9 +307,7 @@ describe('BlueprintTemplateEntry', () => {
       url: 'https://raw.githubusercontent.com/webpresso/templates/main/auth-flow.md',
       description: 'Standard OAuth2 authentication flow blueprint',
     }
-    expect(entryWithDesc.description).toStrictEqual(
-      'Standard OAuth2 authentication flow blueprint',
-    )
+    expect(entryWithDesc.description).toStrictEqual('Standard OAuth2 authentication flow blueprint')
   })
 })
 

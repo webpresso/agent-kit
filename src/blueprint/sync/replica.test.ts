@@ -88,7 +88,7 @@ describe('ReplicaManager', () => {
   it('coalesces concurrent ensureFresh calls into a single getSnapshot call', async () => {
     const manager = new ReplicaManager({ ttlSeconds: 0, client, db })
 
-    const [, ] = await Promise.all([manager.ensureFresh(), manager.ensureFresh()])
+    const [,] = await Promise.all([manager.ensureFresh(), manager.ensureFresh()])
 
     expect(client.getSnapshot).toHaveBeenCalledTimes(1)
   })
@@ -158,9 +158,9 @@ describe('ReplicaManager', () => {
 
   // ── 9. offline throws, not buffers — contract test ──────────────────────
   it('throws when getSnapshot fails — does not buffer offline mutations', async () => {
-    const failingGetSnapshot = vi.fn<() => Promise<BlueprintSnapshot>>().mockRejectedValue(
-      new Error('ECONNREFUSED'),
-    )
+    const failingGetSnapshot = vi
+      .fn<() => Promise<BlueprintSnapshot>>()
+      .mockRejectedValue(new Error('ECONNREFUSED'))
     const failingClient = makeClient({ getSnapshot: failingGetSnapshot })
     const manager = new ReplicaManager({ client: failingClient, db: makeDb(), ttlSeconds: 0 })
 
@@ -172,7 +172,8 @@ describe('ReplicaManager', () => {
   // ── 10. consecutiveFailures resets to 0 after success following failure ──
   it('resets consecutiveFailures to 0 after a successful pull following failures', async () => {
     const snapshot = makeSnapshot()
-    const failThenSucceedGetSnapshot = vi.fn<() => Promise<BlueprintSnapshot>>()
+    const failThenSucceedGetSnapshot = vi
+      .fn<() => Promise<BlueprintSnapshot>>()
       .mockRejectedValueOnce(new Error('timeout'))
       .mockResolvedValue(snapshot)
 

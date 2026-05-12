@@ -106,7 +106,10 @@ export class ReplicaManager {
 
   // ── Private ───────────────────────────────────────────────────────────────
 
-  private scheduleWithSingleFlight(slug: string | undefined, work: () => Promise<void>): Promise<void> {
+  private scheduleWithSingleFlight(
+    slug: string | undefined,
+    work: () => Promise<void>,
+  ): Promise<void> {
     const key = slug ?? '*'
     const existing = inflight.get(key)
     if (existing !== undefined) return existing

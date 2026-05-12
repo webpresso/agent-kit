@@ -727,12 +727,9 @@ export async function advanceBlueprintTask(
   const projectRoot = resolveProjectRoot(options.projectRoot)
   const VALID_STATUSES = ['todo', 'in-progress', 'blocked', 'done', 'dropped'] as const
   type ValidStatus = (typeof VALID_STATUSES)[number]
-  const isValid = (s: string): s is ValidStatus =>
-    (VALID_STATUSES as readonly string[]).includes(s)
+  const isValid = (s: string): s is ValidStatus => (VALID_STATUSES as readonly string[]).includes(s)
   if (!isValid(toStatus)) {
-    throw new Error(
-      `Invalid task status: ${toStatus}. Valid values: ${VALID_STATUSES.join(', ')}`,
-    )
+    throw new Error(`Invalid task status: ${toStatus}. Valid values: ${VALID_STATUSES.join(', ')}`)
   }
   return advanceTaskMutation(projectRoot, slug, taskId, toStatus)
 }
@@ -745,12 +742,9 @@ export async function promoteBlueprintToState(
   const projectRoot = resolveProjectRoot(options.projectRoot)
   const VALID_STATES = ['planned', 'in-progress', 'completed', 'parked'] as const
   type ValidState = (typeof VALID_STATES)[number]
-  const isValid = (s: string): s is ValidState =>
-    (VALID_STATES as readonly string[]).includes(s)
+  const isValid = (s: string): s is ValidState => (VALID_STATES as readonly string[]).includes(s)
   if (!isValid(toState)) {
-    throw new Error(
-      `Invalid blueprint state: ${toState}. Valid values: ${VALID_STATES.join(', ')}`,
-    )
+    throw new Error(`Invalid blueprint state: ${toState}. Valid values: ${VALID_STATES.join(', ')}`)
   }
   return promoteBlueprintMutation(projectRoot, slug, toState)
 }
@@ -777,11 +771,17 @@ export function registerBlueprintRouter(cli: CAC): void {
     .option('--force-recovery', 'Bypass lifecycle guards for blueprint move')
     .option('--reason <text>', 'Blocked reason for task block')
     .option('--params <json>', 'JSON params for ak blueprint db query')
-    .option('--to <status>', 'Target status for task advance (todo|in-progress|blocked|done|dropped)')
+    .option(
+      '--to <status>',
+      'Target status for task advance (todo|in-progress|blocked|done|dropped)',
+    )
     .option('--staged', 'Audit only staged files')
     .option('--all', 'Audit all blueprints')
     .option('--strict', 'Enable strict audit mode')
-    .option('--template <name>', 'Template name to scaffold new blueprint from (see --list-templates)')
+    .option(
+      '--template <name>',
+      'Template name to scaffold new blueprint from (see --list-templates)',
+    )
     .option('--list-templates', 'List available template names and exit')
     .option('--templates-dir <path>', 'Override the templates directory (default: docs/templates/)')
     .action(

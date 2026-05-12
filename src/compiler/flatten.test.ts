@@ -88,7 +88,11 @@ describe('flattenAgentDir', () => {
   it('reads multiple skills and keys them by dir name', () => {
     const agentDir = tmp()
     writeSkill(agentDir, 'debug', VALID_SKILL_MD)
-    writeSkill(agentDir, 'review', `---\nname: review\ndescription: Code review skill\n---\n# Review\n`)
+    writeSkill(
+      agentDir,
+      'review',
+      `---\nname: review\ndescription: Code review skill\n---\n# Review\n`,
+    )
 
     const result = flattenAgentDir(agentDir)
     expect(Object.keys(result.skills).sort()).toStrictEqual(['debug', 'review'])

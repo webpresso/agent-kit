@@ -103,10 +103,7 @@ function runAudit(db: InstanceType<typeof Database>): CrossRepoAuditResult {
   // 1. Load cross_repo_dependencies joined with blueprint visibility
   // -------------------------------------------------------------------------
   const rows = db
-    .prepare<
-      [],
-      CrossRepRow
-    >(
+    .prepare<[], CrossRepRow>(
       `SELECT crd.blueprint_slug,
               crd.target_repo,
               crd.target_slug,
@@ -124,7 +121,9 @@ function runAudit(db: InstanceType<typeof Database>): CrossRepoAuditResult {
   // 2. Load workspace_repos for target visibility lookup
   // -------------------------------------------------------------------------
   const workspaceRepos = db
-    .prepare<[], WorkspaceRepoRow>('SELECT repo_path, organization, repo_name, visibility FROM workspace_repos')
+    .prepare<[], WorkspaceRepoRow>(
+      'SELECT repo_path, organization, repo_name, visibility FROM workspace_repos',
+    )
     .all()
 
   const repoVisibility = new Map<string, string>()

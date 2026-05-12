@@ -18,10 +18,10 @@ export interface TemplateRunResult {
 // ---------------------------------------------------------------------------
 
 const PARAM_DEFAULTS: Record<string, Record<string, unknown>> = {
-  'next-ready-task':      { limit: 5 },
-  'tech-debt-due-soon':   { limit: 20, days: 14 },
+  'next-ready-task': { limit: 5 },
+  'tech-debt-due-soon': { limit: 20, days: 14 },
   'completed-this-month': { limit: 20 },
-  'overdue-tech-debt':    { limit: 20 },
+  'overdue-tech-debt': { limit: 20 },
 }
 
 // ---------------------------------------------------------------------------
@@ -52,9 +52,8 @@ export function runTemplate(
   const validatedParams = parsed.data as Record<string, unknown>
 
   // Enforce the template's row cap — use the lesser of caller's limit and maxRows
-  const callerLimit = typeof validatedParams['limit'] === 'number'
-    ? validatedParams['limit']
-    : template.maxRows
+  const callerLimit =
+    typeof validatedParams['limit'] === 'number' ? validatedParams['limit'] : template.maxRows
   const effectiveLimit = Math.min(callerLimit, template.maxRows)
 
   // Build the final param object with the effective limit substituted
@@ -89,10 +88,7 @@ export function runTemplate(
 // ---------------------------------------------------------------------------
 
 /** Strip keys from params that are not referenced as :name in the SQL. */
-function _filterParams(
-  params: Record<string, unknown>,
-  sql: string,
-): Record<string, unknown> {
+function _filterParams(params: Record<string, unknown>, sql: string): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(params)) {
     if (sql.includes(`:${key}`)) {

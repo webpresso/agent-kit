@@ -213,9 +213,7 @@ export function dbBrowse(projectRoot: string, _execSync: ExecSyncFn = execSync):
   const agentDir = path.dirname(dbPath)
 
   if (!existsSync(dbPath)) {
-    process.stderr.write(
-      `DB not found at ${dbPath}.\nRun \`ak blueprint db build\` first.\n`,
-    )
+    process.stderr.write(`DB not found at ${dbPath}.\nRun \`ak blueprint db build\` first.\n`)
     process.exit(1)
   }
 

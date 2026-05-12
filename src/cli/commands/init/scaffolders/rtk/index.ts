@@ -2,10 +2,7 @@ import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
-import {
-  makeNoopSpinnerFactory,
-  type SpinnerFactory,
-} from '#cli/commands/init/scaffolders/spinner'
+import { makeNoopSpinnerFactory, type SpinnerFactory } from '#cli/commands/init/scaffolders/spinner'
 import { checkVersionPin } from '#cli/commands/init/scaffolders/version-pin'
 
 export interface EnsureRtkInput {

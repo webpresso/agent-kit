@@ -1,12 +1,7 @@
 import { existsSync, readdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 
-const GENERATED_SKILL_DIRS = [
-  '.claude/skills',
-  '.codex/agents',
-  '.windsurf/skills',
-  '.agents/skills',
-] as const
+const GENERATED_SKILL_DIRS = ['.claude/skills', '.windsurf/skills', '.agents/skills'] as const
 
 export interface OrphanedSkill {
   readonly name: string
@@ -20,7 +15,9 @@ function listDirEntries(dir: string): string[] {
     return readdirSync(dir, { withFileTypes: true })
       .filter((e) => e.isDirectory() || e.isSymbolicLink())
       .map((e) => e.name)
-  } catch { return [] }
+  } catch {
+    return []
+  }
 }
 
 function listCanonicalSkills(cwd: string): Set<string> {
@@ -32,7 +29,9 @@ function listCanonicalSkills(cwd: string): Set<string> {
         .filter((e) => e.isDirectory() || e.isSymbolicLink())
         .map((e) => e.name),
     )
-  } catch { return new Set() }
+  } catch {
+    return new Set()
+  }
 }
 
 export function findOrphanedSkills(cwd: string): OrphanedSkill[] {

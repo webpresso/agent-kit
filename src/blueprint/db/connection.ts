@@ -18,9 +18,6 @@ export function openDb(dbPath: string): DbConnection {
   }
 }
 
-export function preparedQuery<T>(
-  db: Database.Database,
-  sql: string,
-): Database.Statement<T[]> {
+export function preparedQuery<T>(db: Database.Database, sql: string): Database.Statement<T[]> {
   return db.prepare<T[]>(sql)
 }

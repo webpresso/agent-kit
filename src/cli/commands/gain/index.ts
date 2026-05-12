@@ -11,9 +11,7 @@ export type ContextModeStats = {
   readonly compacts: number
 }
 
-export function queryContextModeStats(
-  sessionDirs?: readonly string[],
-): ContextModeStats | null {
+export function queryContextModeStats(sessionDirs?: readonly string[]): ContextModeStats | null {
   const home = homedir()
   const dirs = sessionDirs ?? [
     join(home, '.claude', 'context-mode', 'sessions'),
@@ -90,9 +88,7 @@ export function runGain(sessionDirs?: readonly string[]): number {
 }
 
 export function registerGainCommand(cli: CAC): void {
-  cli
-    .command('gain', 'Show RTK token savings + context-mode context savings')
-    .action(() => {
-      return runGain()
-    })
+  cli.command('gain', 'Show RTK token savings + context-mode context savings').action(() => {
+    return runGain()
+  })
 }

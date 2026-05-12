@@ -46,7 +46,6 @@ const RULE_IGNORE_PATTERNS = [
   '.windsurf/rules/',
   '.claude/rules/',
   '.gemini/commands/',
-  '.codex/agents/',
 ] as const
 
 export function scaffoldAgentRules(opts: ScaffoldAgentRulesOptions): ScaffoldAgentRulesResult {

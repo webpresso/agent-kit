@@ -68,7 +68,7 @@ describe('ensureOmx', () => {
     })
     expect(spawn).toHaveBeenNthCalledWith(4, 'omx', ['setup', '--yes'], {
       cwd: '/tmp/repo',
-      stdio: 'inherit',
+      stdio: ['ignore', 'inherit', 'inherit'],
     })
   })
 
@@ -117,7 +117,7 @@ describe('ensureOmx', () => {
     })
     expect(spawn).toHaveBeenNthCalledWith(2, 'omx', ['setup', '--yes'], {
       cwd: '/tmp/repo',
-      stdio: 'inherit',
+      stdio: ['ignore', 'inherit', 'inherit'],
     })
   })
 

@@ -1,9 +1,6 @@
 import { z } from 'zod'
 
-import {
-  executionBackendSchema,
-  type BlueprintExecutionBackend,
-} from '#types/execution-backend.js'
+import { executionBackendSchema, type BlueprintExecutionBackend } from '#types/execution-backend.js'
 
 const LEGACY_BLUEPRINT_ROOT_SEGMENT = 'webpresso/blueprints/'
 const GENERIC_BLUEPRINT_ROOT_SEGMENT = 'blueprints/'

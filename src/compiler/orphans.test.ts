@@ -8,19 +8,29 @@ import { findOrphanedSkills, removeOrphanedSkills } from './orphans.js'
 
 function makeCanonicalSkill(cwd: string, name: string): void {
   mkdirSync(join(cwd, '.agent', 'skills', name), { recursive: true })
-  writeFileSync(join(cwd, '.agent', 'skills', name, 'SKILL.md'), `---\nname: ${name}\ndescription: Test\n---\n`)
+  writeFileSync(
+    join(cwd, '.agent', 'skills', name, 'SKILL.md'),
+    `---\nname: ${name}\ndescription: Test\n---\n`,
+  )
 }
 
 function makeGeneratedSkill(cwd: string, runtimeDir: string, name: string): void {
   mkdirSync(join(cwd, runtimeDir, name), { recursive: true })
-  writeFileSync(join(cwd, runtimeDir, name, 'SKILL.md'), `---\nname: ${name}\ndescription: Generated\n---\n`)
+  writeFileSync(
+    join(cwd, runtimeDir, name, 'SKILL.md'),
+    `---\nname: ${name}\ndescription: Generated\n---\n`,
+  )
 }
 
 describe('findOrphanedSkills', () => {
   let dirs: string[] = []
 
-  beforeEach(() => { dirs = [] })
-  afterEach(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }) })
+  beforeEach(() => {
+    dirs = []
+  })
+  afterEach(() => {
+    for (const d of dirs) rmSync(d, { recursive: true, force: true })
+  })
 
   function tmp(): string {
     const d = mkdtempSync(join(tmpdir(), 'ak-orphans-test-'))
@@ -55,11 +65,14 @@ describe('findOrphanedSkills', () => {
   it('detects orphans across multiple runtime dirs', () => {
     const cwd = tmp()
     makeGeneratedSkill(cwd, '.claude/skills', 'gone-skill')
-    makeGeneratedSkill(cwd, '.codex/agents', 'gone-skill')
+    makeGeneratedSkill(cwd, '.agents/skills', 'gone-skill')
 
     const orphans = findOrphanedSkills(cwd)
     expect(orphans).toHaveLength(2)
-    expect(orphans.map((o) => o.runtimeDir).sort()).toStrictEqual(['.claude/skills', '.codex/agents'])
+    expect(orphans.map((o) => o.runtimeDir).sort()).toStrictEqual([
+      '.agents/skills',
+      '.claude/skills',
+    ])
   })
 
   it('does not flag canonical-only skill as orphan', () => {
@@ -84,8 +97,12 @@ describe('findOrphanedSkills', () => {
 describe('removeOrphanedSkills', () => {
   let dirs: string[] = []
 
-  beforeEach(() => { dirs = [] })
-  afterEach(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }) })
+  beforeEach(() => {
+    dirs = []
+  })
+  afterEach(() => {
+    for (const d of dirs) rmSync(d, { recursive: true, force: true })
+  })
 
   function tmp(): string {
     const d = mkdtempSync(join(tmpdir(), 'ak-orphans-remove-test-'))

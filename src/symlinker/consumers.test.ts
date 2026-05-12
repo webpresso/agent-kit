@@ -11,10 +11,7 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import {
-  DEFAULT_PER_SKILL_CONSUMERS,
-  DEFAULT_UNIFIED_CONSUMERS,
-} from './consumers.js'
+import { DEFAULT_PER_SKILL_CONSUMERS, DEFAULT_UNIFIED_CONSUMERS } from './consumers.js'
 
 // ---------------------------------------------------------------------------
 // OpenCode surface contract (Task 1.8 — verified path A)
@@ -22,9 +19,7 @@ import {
 
 describe('OpenCode consumer contract', () => {
   it('DEFAULT_UNIFIED_CONSUMERS does not contain an opencode-* entry (opencode is covered by per-skill consumer, not unified)', () => {
-    const opencodeEntries = DEFAULT_UNIFIED_CONSUMERS.filter((c) =>
-      c.id.startsWith('opencode'),
-    )
+    const opencodeEntries = DEFAULT_UNIFIED_CONSUMERS.filter((c) => c.id.startsWith('opencode'))
     expect(opencodeEntries).toHaveLength(0)
   })
 
@@ -33,13 +28,12 @@ describe('OpenCode consumer contract', () => {
     expect(dirs).toContain('.agents/skills')
   })
 
-  it('consumers.ts opencode comment is documented as verified (not an unverified fallback claim)', () => {
+  it('consumers.ts opencode comment documents official roots without the old fallback denial', () => {
     const src = readFileSync(join(import.meta.dirname, 'consumers.ts'), 'utf8')
-    // The comment must contain the word "verified" to confirm Task 1.8 resolved
-    // the unverified claim that opencode reads .claude/skills/.
-    expect(src).toMatch(/verified/)
-    // Must NOT still contain the old unverified fallback claim.
-    expect(src).not.toMatch(/falls back to `\.claude\/skills\/`/)
+    expect(src).toMatch(
+      /`\.opencode\/skills\/`, `\.claude\/skills\/`, and\s+ \*     `\.agents\/skills\/`/,
+    )
+    expect(src).not.toMatch(/opencode does NOT read `\.claude\/skills\/`/)
   })
 })
 
@@ -48,14 +42,15 @@ describe('OpenCode consumer contract', () => {
 // ---------------------------------------------------------------------------
 
 describe('Codex consumer contract', () => {
-  it('DEFAULT_UNIFIED_CONSUMERS includes codex-rules and codex-skills targeting .codex/agents', () => {
-    const codexEntries = DEFAULT_UNIFIED_CONSUMERS.filter((c) =>
-      c.id.startsWith('codex'),
-    )
-    expect(codexEntries).toHaveLength(2)
-    for (const entry of codexEntries) {
-      expect(entry.dir).toBe('.codex/agents')
-    }
+  it('does not project rules or skills into .codex/agents', () => {
+    const codexEntries = DEFAULT_UNIFIED_CONSUMERS.filter((c) => c.id.startsWith('codex'))
+    expect(codexEntries).toHaveLength(0)
+    expect(DEFAULT_UNIFIED_CONSUMERS.some((entry) => entry.dir === '.codex/agents')).toBe(false)
+  })
+
+  it('uses .agents/skills as the portable Codex skill projection', () => {
+    const dirs = DEFAULT_PER_SKILL_CONSUMERS.map((c) => c.dir)
+    expect(dirs).toContain('.agents/skills')
   })
 })
 

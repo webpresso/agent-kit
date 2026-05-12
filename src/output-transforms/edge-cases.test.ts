@@ -111,7 +111,8 @@ describe('output-transforms edge cases', () => {
     // summary-key-collision: N/A for oxlint (no summary key)
 
     it('handles mixed success and failure output', () => {
-      const raw = '[{"filePath":"ok.ts","messages":[]},{"filePath":"bad.ts","messages":[{"line":3,"ruleId":"no-console","message":"unexpected console"}]}]'
+      const raw =
+        '[{"filePath":"ok.ts","messages":[]},{"filePath":"bad.ts","messages":[{"line":3,"ruleId":"no-console","message":"unexpected console"}]}]'
       const result = oxlintTransform(raw, ctx('lint-oxlint'))
       expect(result.failures?.length).toBe(1)
     })

@@ -12,7 +12,7 @@ export function emitTasks(parsed: ParsedBlueprintForDb): string {
     const w = t.wave ?? 'Wave 1'
     m.set(w, [...(m.get(w) ?? []), t])
     return m
-  }, new Map<string, typeof parsed.tasks[number][]>())
+  }, new Map<string, (typeof parsed.tasks)[number][]>())
   let i = 0
   for (const [wave, tasks] of byWave) {
     const parallel = tasks.length > 1

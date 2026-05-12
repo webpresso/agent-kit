@@ -200,9 +200,9 @@ describe('buildBlueprintExecutionControlCommand', () => {
     (backend) => {
       // Runner backends intentionally do not map to the `omx team` CLI.
       // Each requires its own runner-specific control path.
-      expect(() =>
-        buildBlueprintExecutionControlCommand(backend, 'status', 'exec-123'),
-      ).toThrow(/Unsupported execution backend/)
+      expect(() => buildBlueprintExecutionControlCommand(backend, 'status', 'exec-123')).toThrow(
+        /Unsupported execution backend/,
+      )
     },
   )
 })

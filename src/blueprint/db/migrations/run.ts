@@ -43,9 +43,10 @@ export function runMigrations(db: Database.Database): void {
 
     db.transaction(() => {
       db.exec(sql)
-      db
-        .prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)')
-        .run(version, new Date().toISOString())
+      db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(
+        version,
+        new Date().toISOString(),
+      )
     })()
   }
 }
