@@ -60,7 +60,7 @@ Three tasks: (1) `ak hooks doctor` CLI command checking all hook bins + MCP, (2)
 
 #### [cli] Task 1.1: Implement ak hooks doctor audit logic
 
-- [x] **Status:** completed
+**Status:** done
 - **Depends on:** —
 - **Files:**
   - Create: `src/hooks/doctor.ts`
@@ -98,7 +98,7 @@ Three tasks: (1) `ak hooks doctor` CLI command checking all hook bins + MCP, (2)
 
 #### [cli] Task 1.2: Wire `ak hooks doctor` into the CLI
 
-- [x] **Status:** completed
+**Status:** done
 - **Depends on:** Task 1.1
 - **Files:**
   - Modify: `src/cli/cli.ts`
@@ -119,7 +119,7 @@ Three tasks: (1) `ak hooks doctor` CLI command checking all hook bins + MCP, (2)
 
 #### [skill] Task 1.3: Add hooks-doctor slash-command skill
 
-- [x] **Status:** completed
+**Status:** done
 - **Depends on:** — (independent of Task 1.2)
 - **Files:**
   - Create: `catalog/agent/skills/hooks-doctor/SKILL.md`
@@ -136,6 +136,19 @@ Three tasks: (1) `ak hooks doctor` CLI command checking all hook bins + MCP, (2)
   - [x] `ak skills list` shows `hooks-doctor`
   - [x] Skill file includes remediation guidance for each failure type
   - [x] `pnpm build` regenerates `skills/` directory including new skill
+
+## Completion Summary
+
+### Deliverables
+
+- `src/hooks/doctor.ts` — `runHooksDoctor()` with 5 check categories and soft-fail MCP check
+- `ak hooks doctor` CLI command wired into `src/cli/cli.ts`
+- `catalog/agent/skills/hooks-doctor/SKILL.md` — slash-command skill for Claude Code
+- `hooks:doctor` and `hooks:doctor:ci` npm scripts
+
+### Impact
+
+Post-install verification for agent-kit plugin hooks. Surfaces broken bin paths, missing executables, and MCP connectivity issues before they cause silent failures during agent sessions.
 
 ## Non-goals
 

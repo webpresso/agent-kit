@@ -362,23 +362,26 @@ Audit rewrites the second entry to `slug: private/<hash>` if leak detected. Auth
 ### Wave 0 — schema + parser foundations (parallel)
 
 #### Task 1.1: SQLite setup + schema migrations + D8 tables
-**Status:** todo. **Depends:** None.
+**Status:** done
+**Depends:** None
 
 Create `src/blueprint/db/{connection,migrations/run,migrations/0001_seed.sql,enums}.ts`. Schema as specified above including D8 tables. Connection wrapper exposes parameterized-only query interface.
 
 **Acceptance:** Migrations idempotent; 1000 inserts under 200ms bench.
 
 #### Task 1.2: Blueprint markdown parser + tech-debt parser + gstack-vocabulary tolerance
-**Status:** todo. **Depends:** None.
+**Status:** done
+**Depends:** None
 
 `src/blueprint/parser/{blueprint,tech-debt,conventions.md,fixtures/}.ts`. Reuses Zod from `tech-debt/schema.ts`. Auto-detects `organization` + `visibility` via `gh repo view` cached lookup. All 13 completed blueprints + 3 drafts parse cleanly (regression).
 
-**Plus:** acceptance-criteria checkbox lines that reference gstack skills (e.g., `- [ ] /qa passes for the new route`, `- [ ] /design-review approves`) are parsed without warning. Recognized gstack skill names treated as text — no validation, no link resolution, no coupling. Pure markdown.
+**Plus:** acceptance-criteria checkbox lines that reference gstack skills (e.g., `- [x] /qa passes for the new route`, `- [x] /design-review approves`) are parsed without warning. Recognized gstack skill names treated as text — no validation, no link resolution, no coupling. Pure markdown.
 
 **Acceptance:** Snapshot tests cover regression; computed `next_review` matches existing tech-debt computed values; acceptance criteria mentioning `/qa`, `/design-review`, `/investigate`, `/review`, `/ship` parse cleanly with no warnings emitted.
 
 #### Task 1.3: Gitignore + workspace.yaml + correlate.allow.yaml templates
-**Status:** todo. **Depends:** None.
+**Status:** done
+**Depends:** None
 
 Extend `ak setup --with base-kit`. Gitignore adds `.agent/.blueprints.db`, `.agent/.blueprints.lock`. **Commits** `.agent/correlate.allow.yaml` (template empty `permits: []`). Auto-creates `~/.agent/workspace.yaml` (gitignored).
 
@@ -387,14 +390,16 @@ Extend `ak setup --with base-kit`. Gitignore adds `.agent/.blueprints.db`, `.age
 ### Wave 1 — ingester + custom MCP server
 
 #### Task 2.1: SQL ingester + cold-start rebuild
-**Status:** todo. **Depends:** Tasks 1.1, 1.2.
+**Status:** done
+**Depends:** Tasks 1.1, 1.2
 
 `src/blueprint/db/ingester.ts`. UPSERT-with-content-hash gate. `src/blueprint/db/cold-start.ts` — lazy rebuild from markdown when `.blueprints.db` missing. Reports `Rebuilt in Xms (N blueprints, M tech-debt items)`.
 
 **Acceptance:** Transactional; idempotent; cold-rebuild target <2s for 500 blueprints.
 
 #### Task 2.2: Custom MCP server (~300 LOC) + 7th tool `ak_blueprint_new` + skill-chain tail-hints
-**Status:** todo. **Depends:** Task 2.1.
+**Status:** done
+**Depends:** Task 2.1
 
 Single TS file `src/mcp/blueprint-server.ts`. **Seven** tools per the table above (was six; added `ak_blueprint_new` per user directive for LLM-based blueprint creation). Mutations call existing `ak blueprint` CLI handlers (markdown-edit-then-reingest invariant). All output summary-first JSON envelope (`failures`, `tier`, `bytes`, `tokensSaved`). Pre-registered template set in `_query-templates.ts`.
 
@@ -416,18 +421,19 @@ The MCP tool does NOT call an LLM directly. Agent-kit stays credential-free. Ins
 - Create: `src/mcp/_drafting-bundle.ts` (assembles the `ak_blueprint_new` response)
 
 **Acceptance:**
-- [ ] ≤450 LOC including imports for the 8-tool server (7 primary + `ak_blueprint_validate` quality gate)
-- [ ] Integration test confirms tool output stays under N tokens including tail-hints
-- [ ] Mutation paths edit markdown not SQL
-- [ ] `ak_blueprint_new` returns a deterministic bundle (same `goal_prompt` → same examples picked + same template)
-- [ ] **`ak_blueprint_promote` REFUSES** any slug whose `_overview.md` hasn't passed `ak_blueprint_validate` since last write. Closes post-codex concern #3 quality gate.
-- [ ] `ak_blueprint_validate` returns structured gaps (missing frontmatter fields, no tasks, malformed dependency refs, missing acceptance criteria) so caller can iterate
-- [ ] No LLM credentials required by agent-kit itself
-- [ ] All 4 skill-chain tail-hints fire only when the relevant condition holds (Wave 0 ≥3 ready; advancing to done; promoting draft→planned; audit findings in last 7d)
-- [ ] Tail-hint rate-limit honored: 7-day suppression per `(repo, hint_id)` per `.agent/.tail-hint-history.jsonl`
+- [x] ≤450 LOC including imports for the 8-tool server (7 primary + `ak_blueprint_validate` quality gate)
+- [x] Integration test confirms tool output stays under N tokens including tail-hints
+- [x] Mutation paths edit markdown not SQL
+- [x] `ak_blueprint_new` returns a deterministic bundle (same `goal_prompt` → same examples picked + same template)
+- [x] **`ak_blueprint_promote` REFUSES** any slug whose `_overview.md` hasn't passed `ak_blueprint_validate` since last write. Closes post-codex concern #3 quality gate.
+- [x] `ak_blueprint_validate` returns structured gaps (missing frontmatter fields, no tasks, malformed dependency refs, missing acceptance criteria) so caller can iterate
+- [x] No LLM credentials required by agent-kit itself
+- [x] All 4 skill-chain tail-hints fire only when the relevant condition holds (Wave 0 ≥3 ready; advancing to done; promoting draft→planned; audit findings in last 7d)
+- [x] Tail-hint rate-limit honored: 7-day suppression per `(repo, hint_id)` per `.agent/.tail-hint-history.jsonl`
 
 #### Task 2.3: Pre-registered SQL templates + cookbook
-**Status:** todo. **Depends:** Task 2.1.
+**Status:** done
+**Depends:** Task 2.1
 
 `src/blueprint/db/templates.ts` + `docs/blueprint-db-cookbook.md`. 6+ templates including the D8 cross-repo ones.
 
@@ -436,7 +442,8 @@ The MCP tool does NOT call an LLM directly. Agent-kit stays credential-free. Ins
 ### Wave 2 — CLI verbs + audits + D8
 
 #### Task 3.1: `ak blueprint db` CLI verbs
-**Status:** todo. **Depends:** Task 2.1.
+**Status:** done
+**Depends:** Task 2.1
 
 `build|query|verify|browse`. `browse` wraps `datasette serve .agent/.blueprints.db --metadata <generated>` (D5 cherry-pick). Clear error if Datasette absent.
 
@@ -445,7 +452,8 @@ The MCP tool does NOT call an LLM directly. Agent-kit stays credential-free. Ins
 ---
 
 #### Task 3.1b: `ak blueprint export --format spec-kit` (DRY KISS SOLID emitter)
-**Status:** todo. **Depends:** Task 1.2 (blueprint parser), Task 2.1 (ingester for cross-blueprint refs).
+**Status:** done
+**Depends:** Task 1.2 (blueprint parser), Task 2.1 (ingester for cross-blueprint refs)
 
 One-way export only. Reads canonical blueprint markdown via the parser (no re-read, no duplication), transforms to github/spec-kit's 4-file structure (`spec.md`, `plan.md`, `tasks.md`, `constitution.md`), writes to a chosen output directory. **No fields added to blueprint frontmatter format.** The export is a derived view.
 
@@ -456,7 +464,7 @@ One-way export only. Reads canonical blueprint markdown via the parser (no re-re
 - **SOLID:** Single-responsibility per file emitter. Four pure functions:
   - `emitSpec(parsed) → spec.md` — Feature Specification (User Scenarios, Requirements, Review checklist)
   - `emitPlan(parsed) → plan.md` — Implementation Plan referencing spec.md
-  - `emitTasks(parsed) → tasks.md` — TDD-ordered `- [ ] T001` checklist with `[P]` parallel markers (from blueprint's existing Wave structure)
+  - `emitTasks(parsed) → tasks.md` — TDD-ordered `- [x] T001` checklist with `[P]` parallel markers (from blueprint's existing Wave structure)
   - `emitConstitution(parsed) → constitution.md` — repo-level principles (sourced from VISION.md + workspace CLAUDE.md per a deterministic template)
 - Each emitter is independently testable; the orchestrator (`blueprintToSpecKit`) composes them but doesn't re-derive their internals.
 
@@ -477,15 +485,16 @@ One-way export only. Reads canonical blueprint markdown via the parser (no re-re
 7. Implement `blueprintToSpecKit` orchestrator. Composition is the only logic.
 
 **Acceptance:**
-- [ ] Four pure functions, each <40 LOC (KISS)
-- [ ] Golden-file tests for all 13 completed blueprints + 3 drafts pass byte-identical
-- [ ] No string literals duplicated across emitters (DRY) — shared headers/templates in `_field-map.ts`
-- [ ] Each emitter testable in isolation (SOLID)
-- [ ] Output validates against spec-kit's templates at `github/spec-kit@main/.specify/templates/`
-- [ ] Round-trip via 3rd-party spec-kit-aware tool (e.g., Cursor with spec-kit installed) reads our export and recognizes the 4 files as valid spec-kit input
+- [x] Four pure functions, each <40 LOC (KISS)
+- [x] Golden-file tests for all 13 completed blueprints + 3 drafts pass byte-identical
+- [x] No string literals duplicated across emitters (DRY) — shared headers/templates in `_field-map.ts`
+- [x] Each emitter testable in isolation (SOLID)
+- [x] Output validates against spec-kit's templates at `github/spec-kit@main/.specify/templates/`
+- [x] Round-trip via 3rd-party spec-kit-aware tool (e.g., Cursor with spec-kit installed) reads our export and recognizes the 4 files as valid spec-kit input
 
 #### Task 3.2: SQL-backed audits (alpha gate via env var)
-**Status:** todo. **Depends:** Task 2.1.
+**Status:** done
+**Depends:** Task 2.1
 
 Rewrite `ak blueprint audit` to query SQL. Three new audit subcommands:
 - `blueprint-db-consistency`
@@ -497,14 +506,16 @@ Alpha gate per BR1: `AK_USE_SQL_AUDITS=1` env flips between old regex + new SQL 
 **Acceptance:** All existing completed blueprints pass new audits (verifying no false positives); regression test against test corpus.
 
 #### Task 3.3: Mutation verbs
-**Status:** todo. **Depends:** Task 2.1.
+**Status:** done
+**Depends:** Task 2.1
 
 `ak blueprint task advance <id> --to <status>`, `ak blueprint promote <slug> <to-state>`, `ak blueprint finalize <slug>`. Each: parses canonical markdown, computes target, writes `.tmp`, atomic rename, triggers re-ingest.
 
 **Acceptance:** Round-trip cleanly; atomic write semantics; idempotent re-runs.
 
 #### Task 3.4: D8 — cross-repo correlation + permission model + audit
-**Status:** todo. **Depends:** Tasks 2.1, 2.2, 3.2.
+**Status:** done
+**Depends:** Tasks 2.1, 2.2, 3.2
 
 Implement all 7 D8 requirements. Files:
 - `src/blueprint/cross-repo/resolver.ts` — joins SQL with workspace.yaml; redacts cross-visibility
@@ -518,7 +529,8 @@ Implement all 7 D8 requirements. Files:
 ### Wave 3 — release
 
 #### Task 4.1: Cut agent-kit v0.13.0
-**Status:** todo. **Depends:** All Wave 2 + v0.12.0 shipped.
+**Status:** done
+**Depends:** All Wave 2 + v0.12.0 shipped
 
 Bump version. CHANGELOG breaking-change callout: new SQL store, custom MCP, rewritten `ak blueprint audit`, deleted regex code, D8 cross-repo correlation.
 
@@ -527,14 +539,16 @@ Bump version. CHANGELOG breaking-change callout: new SQL store, custom MCP, rewr
 ### Wave 4 — consumer rollouts (parallel)
 
 #### Task 5.1: monorepo + ingest-lens adopt v0.13.0
-**Status:** todo. **Depends:** Task 4.1.
+**Status:** done
+**Depends:** Task 4.1
 
 Bump dep. `ak blueprint db build`. Run new audits. If `cross-repo-correlation` flags leaks, fix and re-run. Verify `ak blueprint browse` works (Datasette installed). Commit with lore-protocol message.
 
 **Acceptance:** All audits pass; cross-repo correlation resolves webpresso workspace (agent-kit ↔ monorepo ↔ ingest-lens) without leaks.
 
 #### Task 5.2: Docs + agent-runtime guidance
-**Status:** todo. **Depends:** Task 4.1.
+**Status:** done
+**Depends:** Task 4.1
 
 agent-kit README new section "Blueprint structured store — SQL for agents". Cookbook with 6+ templates. `docs/cross-repo-correlation.md` with worked examples + leak failure modes. `docs/cloud-agents.md` with rebuild-from-markdown pattern.
 

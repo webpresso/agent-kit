@@ -54,8 +54,8 @@ Both tasks are independent and can be applied in any order. Neither changes obse
 
 #### [hooks] Task 1.1: Add suppress-stderr as first import in all hook entry points
 
-- [ ] **Status:** todo
-- **Depends on:** —
+**Status:** done
+**Depends:** —
 - **Files:**
   - Create: `src/hooks/shared/suppress-stderr.ts`
   - Modify: `src/hooks/pretool-guard/index.ts`
@@ -74,10 +74,10 @@ Both tasks are independent and can be applied in any order. Neither changes obse
   6. Manual verify: `echo '{}' | node dist/esm/hooks/pretool-guard/index.js` exits 0 with no stderr
 - **Verify:** `echo '{}' | node dist/esm/hooks/pretool-guard/index.js` exits 0 with no stderr output even when native modules are present.
 - **Acceptance:** all of the following:
-  - [ ] `src/hooks/shared/suppress-stderr.ts` closes fd2 and reopens to `devNull`
-  - [ ] All 6 hook entry points have `import '#hooks/shared/suppress-stderr'` as first import
-  - [ ] `pnpm test` green
-  - [ ] Hook bins exit 0 with no stderr on empty stdin
+  - [x] `src/hooks/shared/suppress-stderr.ts` closes fd2 and reopens to `devNull`
+  - [x] All 6 hook entry points have `import '#hooks/shared/suppress-stderr'` as first import
+  - [x] `pnpm test` green
+  - [x] Hook bins exit 0 with no stderr on empty stdin
 
 #### [hooks] Task 1.2: MCP readiness sentinel — write on server start, check before routing
 

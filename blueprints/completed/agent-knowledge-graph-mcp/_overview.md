@@ -197,29 +197,33 @@ If any condition fails, the minimal slice is the permanent shape. If all three b
 
 ## Tasks (~4 tasks)
 
-### Task 1.1: Audit budgets + `.audit-budgets.yaml` template
-**Status:** todo. **Depends:** None.
+#### Task 1.1: Audit budgets + `.audit-budgets.yaml` template
+**Status:** done
+**Depends:** None
 
 Create `src/audits/_budgets.ts` (default budgets + loader). Add `catalog/agent/.audit-budgets.yaml` template emitted by `ak setup`. Zod schema for budget shape.
 
 **Acceptance:** Defaults work without consumer config; override via committed yaml.
 
-### Task 1.2: Three audit verbs
-**Status:** todo. **Depends:** Task 1.1.
+#### Task 1.2: Three audit verbs
+**Status:** done
+**Depends:** Task 1.1
 
 `src/cli/commands/audit/{skill-sizes,broken-refs,memory-rotation}.ts`. Each emits summary-first JSON. `skill-sizes` is pure regex/bytes. `broken-refs` wraps `remark-validate-links`. `memory-rotation` reads `.agent/.rotation-log.jsonl`. All three integrated into `ak audit --all`.
 
 **Acceptance:** Each audit on fixture data exits 0/1 correctly with JSON output; integrated test against monorepo's actual `.agent/` confirms the 4 oversized files are flagged.
 
-### Task 1.3: `ak tech-debt new --from-audit`
-**Status:** todo. **Depends:** Task 1.2.
+#### Task 1.3: `ak tech-debt new --from-audit`
+**Status:** done
+**Depends:** Task 1.2
 
 Extend `src/cli/commands/tech-debt/new.ts` with `--from-audit <name>` mode. Reads audit JSON, applies frontmatter defaults, writes `tech-debt/needs-remediation/h-NNN-<slug>.md`. Content-hash idempotency.
 
 **Acceptance:** Filed `.md` passes existing Zod validation; re-running is a no-op; `linked_blueprints` correctly populated.
 
-### Task 1.4: Pre-commit hook extension + consumer rollouts
-**Status:** todo. **Depends:** Task 1.2.
+#### Task 1.4: Pre-commit hook extension + consumer rollouts
+**Status:** done
+**Depends:** Task 1.2
 
 Extend `ak setup --with husky` to wire `ak audit skill-sizes --staged` + `ak audit broken-refs --staged` as pre-commit. Roll out to monorepo + ingest-lens.
 

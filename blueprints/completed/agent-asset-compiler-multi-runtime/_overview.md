@@ -238,14 +238,16 @@ Implementation: `webpresso/agent-kit-action` invokes `ak audit --all --json`, fo
 ### Wave 0 — foundations (parallel)
 
 #### Task 1.1: Canonical schema + rulesync flatten step
-**Status:** todo. **Depends:** None.
+**Status:** done
+**Depends:** None
 
 Create `src/compiler/schema.ts` (Zod for SKILL.md, command.md, agent.md frontmatter; reuses Appendix A schemas). Create `src/compiler/flatten.ts` that reads `.agent/{skills,commands,agents}/` and emits a `.rulesync/` directory shape that rulesync can consume. Pure function; no I/O beyond temp dir write.
 
 **Acceptance:** Schemas validate fixtures; flatten output passes `rulesync generate --dry-run`.
 
 #### Task 1.2: AGENTS.md section-keyed merger + `memory.merge.yaml` directive engine + rotation safeguards
-**Status:** todo. **Depends:** None.
+**Status:** done
+**Depends:** None
 
 Implement Option C hybrid in `src/compiler/memory/`. Files: `merger.ts`, `precedence.ts`, `provenance.ts`, `directives.ts`, `directives.schema.ts`. All 5 directive ops supported (replace/append/prepend/delete/rotate). Provenance JSON emitted. Deterministic.
 
@@ -258,14 +260,15 @@ Implement Option C hybrid in `src/compiler/memory/`. Files: `merger.ts`, `preced
 - **`ak audit memory-rotation --strict`** fails CI if any section was rotated within the last 30 days without an explicit `last_rotation_acked: <timestamp>` field in `memory.merge.yaml`. Forces human review of every rotation event.
 
 **Acceptance:**
-- [ ] All worked examples from research note parse correctly; deterministic output; rotation log captures every event
-- [ ] Rotation is opt-in (no auto-rotation surprises)
-- [ ] Shallow-clone detection prevents incorrect rotation decisions
-- [ ] `--dry-run` shows planned rotations without writing
-- [ ] `ak audit memory-rotation --strict` enforces post-rotation acknowledgement
+- [x] All worked examples from research note parse correctly; deterministic output; rotation log captures every event
+- [x] Rotation is opt-in (no auto-rotation surprises)
+- [x] Shallow-clone detection prevents incorrect rotation decisions
+- [x] `--dry-run` shows planned rotations without writing
+- [x] `ak audit memory-rotation --strict` enforces post-rotation acknowledgement
 
 #### Task 1.3: Gitignore template + opt-in gstack SessionStart routing
-**Status:** todo. **Depends:** None.
+**Status:** done
+**Depends:** None
 
 Extend `ak setup --with base-kit`'s `.gitignore` template. Block delimited by `# === agent-kit:` markers covering all generated paths (rulesync outputs + provenance JSON + manifests). Plus: extend `src/hooks/sessionstart/index.ts` to detect `~/.claude/skills/gstack/` presence (from `ak setup --with gstack`) and inject a small "interactive skills available" block alongside the existing `ak_*` / `ctx_*` routing block. **Opt-in only** — controlled by an explicit setup flag, never auto-enabled.
 
@@ -274,7 +277,8 @@ Extend `ak setup --with base-kit`'s `.gitignore` template. Block delimited by `#
 ---
 
 #### Task 1.4: rtk filter test harness (32-case matrix + 4 PoCs + runScript timeout + rulesync wrap)
-**Status:** todo. **Depends:** None. **Critical-path for "bulletproof 100% confidently" guarantee.**
+**Status:** done
+**Depends:** None. **Critical-path for "bulletproof 100% confidently" guarantee.**
 
 Address the 6/9 GAPS verdict from filter coverage audit AND D6 from DX review (extend coverage to `rulesync` subprocess output emitted by `ak compile`). Land before any new `ak_*` MCP tool ships in v0.11.0.
 
@@ -289,16 +293,17 @@ Address the 6/9 GAPS verdict from filter coverage audit AND D6 from DX review (e
 - **Fix:** `.agent/rules/rtk-routing.md` clarification block — append subprocess-vs-Bash-hook coverage note: "ak_* tools shelling out via `child_process.spawn` own their own filtering; rtk PreToolUse hook only fires for top-level Bash calls and does NOT reach into ak_* internals. CLI verbs (`ak <verb>` from a shell) ARE rewritten by rtk."
 
 **Acceptance:**
-- [ ] All 32 cases pass with current source (some via fix, some via existing transform)
-- [ ] 4 PoCs initially fail (proving gap), then pass after fix (PoC 4 = rulesync wrapping per D6)
-- [ ] `runScript` audit timeout test (5-min cap) added
-- [ ] `rulesync` transform wraps `ak compile` subprocess output; UX consistent with `ak qa`/`ak test`/`ak lint`
-- [ ] `rtk-routing.md` subprocess clarification block landed in both `.agent/rules/` and `catalog/agent/rules/` mirrors
+- [x] All 32 cases pass with current source (some via fix, some via existing transform)
+- [x] 4 PoCs initially fail (proving gap), then pass after fix (PoC 4 = rulesync wrapping per D6)
+- [x] `runScript` audit timeout test (5-min cap) added
+- [x] `rulesync` transform wraps `ak compile` subprocess output; UX consistent with `ak qa`/`ak test`/`ak lint`
+- [x] `rtk-routing.md` subprocess clarification block landed in both `.agent/rules/` and `catalog/agent/rules/` mirrors
 
 ---
 
 #### Task 1.5: gstack lane declaration + methodology cross-link
-**Status:** todo. **Depends:** None.
+**Status:** done
+**Depends:** None
 
 Two text-only changes per CEO review + eng review decisions (no code coupling):
 
@@ -317,21 +322,24 @@ Two text-only changes per CEO review + eng review decisions (no code coupling):
 ### Wave 1 — wrappers + manifest emitters (parallel; depend on 1.1)
 
 #### Task 2.1: `ak compile` wrapper
-**Status:** todo. **Depends:** Task 1.1.
+**Status:** done
+**Depends:** Task 1.1
 
 `src/cli/commands/compile.ts` — thin wrapper spawning `rulesync generate --targets <list>` after `flatten.ts`. Handles failure modes (rulesync missing, version mismatch). Idempotent. Atomic via tmp+rename.
 
 **Acceptance:** Roundtrip fixture → all six runtime outputs match expected (golden-file tests).
 
 #### Task 2.2: Four plugin manifest emitters
-**Status:** todo. **Depends:** Task 1.1.
+**Status:** done
+**Depends:** Task 1.1
 
 `src/compiler/manifests/{claude,codex,cursor,gemini}.ts` — each ~30 LOC JSON emitter pointing at the shared `skills/` tree. Manifests version-pinned via `_versions.ts`.
 
 **Acceptance:** Each manifest validates against current official schema (verified per-manifest at test time).
 
 #### Task 2.3: `ak setup --with example-skill` scaffold (DX-review D5)
-**Status:** todo. **Depends:** Task 1.1, Task 2.1.
+**Status:** done
+**Depends:** Task 1.1, Task 2.1
 
 Per DX review D5: fix the empathy-narrative T+1:30 dead-end where first-time consumers run `ak compile` on an empty `.agent/skills/` and get a useless error. New scaffolder flag emits a working `.agent/skills/hello-webpresso/SKILL.md` + auto-runs `ak compile` as the final setup step. Chained with existing `--with base-kit` and `--with gstack` flags. TTHW for OSS-adopter persona: install → IDE skill discovery in ~90s without leaving terminal.
 
@@ -345,7 +353,8 @@ Per DX review D5: fix the empathy-narrative T+1:30 dead-end where first-time con
 ---
 
 #### Task 2.4: `ak_qa` advisory tail-hint for UI changesets
-**Status:** todo. **Depends:** Task 1.4 (filter test harness must precede MCP output changes).
+**Status:** done
+**Depends:** Task 1.4 (filter test harness must precede MCP output changes)
 
 When `ak_qa` returns success AND the changeset detected by `git diff --name-only HEAD` includes UI files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `apps/client/**`, `apps/web/**`), append a single advisory line to the `ak_qa` summary output: `"Static QA passed. For visual/UX QA, run /qa (gstack)."` Static text only — no skill discovery, no auto-invocation, no MCP coupling. Detection logic lives in `src/mcp/tools/_shared/ui-detection.ts`.
 
@@ -356,7 +365,8 @@ Tail-hint must respect the 4000-char `clipRawOutput` cap (cannot extend the enve
 ---
 
 #### Task 2.6: OSS-positioning + WEDGE EXPERIENCE (DX-review D9 + post-codex concern #1)
-**Status:** todo. **Depends:** Task 2.1, Task 2.3 (example-skill scaffolder).
+**Status:** done
+**Depends:** Task 2.1, Task 2.3 (example-skill scaffolder)
 
 Per DX-review D9: trilogy scope stays as-drafted; add the OSS-positioning work to make v0.11.0 legible to 3rd-party adopters comparing against rulesync (175k weekly downloads). **Plus post-codex concern #1:** docs alone don't substitute for a wedge experience. This task ships BOTH the positioning docs AND a runnable wedge-demonstration.
 
@@ -371,16 +381,17 @@ Per DX-review D9: trilogy scope stays as-drafted; add the OSS-positioning work t
 - Add registry auth-setup section to the top-of-README (per DX-review D10 / codex #2) so OSS adopters discover `@webpresso:registry=https://npm.pkg.github.com` configuration BEFORE first install failure.
 
 **Acceptance:**
-- [ ] README opens with: (a) registry+auth setup, (b) first-5-min tour, (c) "how agent-kit relates to rulesync"
-- [ ] `docs/wedge-experience/demo.sh` is runnable + reproducible against a fresh clone
-- [ ] Demo proves at least 3 concrete value-adds beyond rulesync (drift catch, AGENTS.md merge, audit-to-tech-debt loop)
-- [ ] Docs cross-link `docs/positioning-vs-rulesync.md`
-- [ ] OSS adopter first-week signal monitored via Task 2.5 telemetry: setup completion rate, demo-run rate
+- [x] README opens with: (a) registry+auth setup, (b) first-5-min tour, (c) "how agent-kit relates to rulesync"
+- [x] `docs/wedge-experience/demo.sh` is runnable + reproducible against a fresh clone
+- [x] Demo proves at least 3 concrete value-adds beyond rulesync (drift catch, AGENTS.md merge, audit-to-tech-debt loop)
+- [x] Docs cross-link `docs/positioning-vs-rulesync.md`
+- [x] OSS adopter first-week signal monitored via Task 2.5 telemetry: setup completion rate, demo-run rate
 
 ---
 
 #### Task 2.5: Anonymous opt-in TTHW telemetry in `ak setup` (DX-review D8)
-**Status:** todo. **Depends:** Task 2.3.
+**Status:** done
+**Depends:** Task 2.3
 
 Per DX review D8: instrument `ak setup` to measure wall-clock from install to first successful `ak compile`. Anonymous, opt-in only (`--telemetry` flag at setup time or interactive prompt; defaults OFF for 3rd-party adopters, ON only for internal monorepo + ingest-lens consumers via a config flag). Posts a minimal payload (timestamp, duration_ms, agent-kit version, OS, no PII, no repo identifiers) to webpresso analytics endpoint. Reuses the gstack telemetry pattern (`gstack-telemetry-log` shape) so consumers see familiar UX. Enables the `/devex-review` boomerang to measure plan-vs-reality TTHW.
 
@@ -396,14 +407,16 @@ Per DX review D8: instrument `ak setup` to measure wall-clock from install to fi
 ### Wave 2 — orchestrator, audits, integrations (depend on Wave 1)
 
 #### Task 3.1: Compile orchestrator + manifest
-**Status:** todo. **Depends:** Tasks 2.1, 2.2.
+**Status:** done
+**Depends:** Tasks 2.1, 2.2
 
 Wire flatten → rulesync → manifests → merger into a single `ak compile` transactional run. Writes `.agent/.compile-manifest.json` with content-hash sentinels for drift detection.
 
 **Acceptance:** Re-running with no source changes is a no-op (manifest match); drift detection works.
 
 #### Task 3.2: `ak skills orphans --fix` + `ak audit gitignore-agent-surfaces` + `ak audit memory-unified`
-**Status:** todo. **Depends:** Task 3.1.
+**Status:** done
+**Depends:** Task 3.1
 
 The three audits + the orphans verb. Each emits summary-first JSON (`failures`, `tier`, `bytes`, `tokensSaved`) per the `cmd-execution.md` contract.
 
@@ -412,7 +425,8 @@ The three audits + the orphans verb. Each emits summary-first JSON (`failures`, 
 ### Wave 3 — GitHub Action + PR comment (separate repo)
 
 #### Task 4.1: `webpresso/agent-kit-action` repo
-**Status:** todo. **Depends:** v0.11.0 of agent-kit shipped.
+**Status:** done
+**Depends:** v0.11.0 of agent-kit shipped
 
 Create new repo `webpresso/agent-kit-action`. Reusable workflow `.github/workflows/audit.yml` that runs `ak audit --all --json` and posts a PR comment (D6) if `pr-comment: true`. Fixture-based test harness for the action itself.
 
@@ -421,14 +435,16 @@ Create new repo `webpresso/agent-kit-action`. Reusable workflow `.github/workflo
 ### Wave 4 — release + consumer rollouts
 
 #### Task 5.1: Cut agent-kit v0.11.0
-**Status:** todo. **Depends:** All prior.
+**Status:** done
+**Depends:** All prior
 
 `pnpm version 0.11.0`, CHANGELOG with explicit breaking-change callout (symlink-era removed, `ak cursor-windsurf-sync` deleted, rulesync wrap is new architecture). Tag + push.
 
 **Acceptance:** Published to GitHub Packages; SHA captured for ingest-lens pin.
 
 #### Task 5.2: monorepo + ingest-lens adopt v0.11.0 (clean-state, no migration)
-**Status:** todo. **Depends:** Task 5.1.
+**Status:** done
+**Depends:** Task 5.1
 
 Per "we are not live yet" decision (DX review D7): no public migration commands. Internal consumers get a **one-time pre-release cleanup** before v0.11.0 ships:
 

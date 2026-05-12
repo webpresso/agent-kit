@@ -328,9 +328,9 @@ test file so it ships in the repo.
    can be regenerated if the input blueprint changes.
 
 **Acceptance:**
-- [ ] Golden JSON fixture committed, deterministic against timestamps.
-- [ ] Capture script documents how to regenerate.
-- [ ] Fixture loaded successfully by a dummy assertion (proof-of-life).
+- [x] Golden JSON fixture committed, deterministic against timestamps.
+- [x] Capture script documents how to regenerate.
+- [x] Fixture loaded successfully by a dummy assertion (proof-of-life).
 
 ---
 
@@ -362,10 +362,10 @@ extend the enum without diverging.
 7. `pnpm lint && pnpm typecheck`.
 
 **Acceptance:**
-- [ ] Single source of truth for `executionBackendSchema`.
-- [ ] Both prior callsites re-export from the new module.
-- [ ] No consumer of `BlueprintExecutionBackend` breaks.
-- [ ] Test uses `toStrictEqual` (no weak assertions).
+- [x] Single source of truth for `executionBackendSchema`.
+- [x] Both prior callsites re-export from the new module.
+- [x] No consumer of `BlueprintExecutionBackend` breaks.
+- [x] Test uses `toStrictEqual` (no weak assertions).
 
 ---
 
@@ -392,9 +392,9 @@ one-line green confirmation.
 5. `pnpm test && pnpm lint && pnpm typecheck`.
 
 **Acceptance:**
-- [ ] Matching repo prints green one-liner; exits 0.
-- [ ] Mismatch prints warning + docs URL; exits 0 unless `--strict`.
-- [ ] `--strict` + mismatch exits 2.
+- [x] Matching repo prints green one-liner; exits 0.
+- [x] Mismatch prints warning + docs URL; exits 0 unless `--strict`.
+- [x] `--strict` + mismatch exits 2.
 
 ---
 
@@ -415,9 +415,9 @@ the X1 evidence-ledger wedge framing.
 2. `pnpm docs:check` — verify frontmatter passes.
 
 **Acceptance:**
-- [ ] Page exists with the 5 sections.
-- [ ] `ak audit docs-frontmatter` passes.
-- [ ] Hero leads with X1 wedge framing, not multi-CLI-runner framing.
+- [x] Page exists with the 5 sections.
+- [x] `ak audit docs-frontmatter` passes.
+- [x] Hero leads with X1 wedge framing, not multi-CLI-runner framing.
 
 ---
 
@@ -437,9 +437,9 @@ mirroring `context-mode-routing.md` structure.
 2. `pnpm exec ak audit catalog-drift` — verify pickup.
 
 **Acceptance:**
-- [ ] Rule file exists with Description, Ownership boundary, Hard rules,
+- [x] Rule file exists with Description, Ownership boundary, Hard rules,
       When-to-recommend-gstack.
-- [ ] `ak audit catalog-drift` includes the rule.
+- [x] `ak audit catalog-drift` includes the rule.
 
 ---
 
@@ -469,9 +469,9 @@ Templates:
 3. After Tasks 1.1+1.2 land, validate `runners`/`permissions` fields parse.
 
 **Acceptance (per template):**
-- [ ] `_overview.md` exists with valid frontmatter (type=blueprint, status=draft).
-- [ ] Contains at least one task block with `runners` + `permissions` fields.
-- [ ] `ak audit catalog-drift` lists the template.
+- [x] `_overview.md` exists with valid frontmatter (type=blueprint, status=draft).
+- [x] Contains at least one task block with `runners` + `permissions` fields.
+- [x] `ak audit catalog-drift` lists the template.
 
 ---
 
@@ -528,10 +528,10 @@ RTK exposes `rtk gain` with full analytics. `ak gain` wraps it.
 5. Lint + typecheck.
 
 **Acceptance:**
-- [ ] `ak gain` runs `rtk gain` output when RTK installed.
-- [ ] `ak gain` prints actionable install hint when RTK absent.
-- [ ] Listed in `ak --help` under Core commands group.
-- [ ] Tests pass; lint passes.
+- [x] `ak gain` runs `rtk gain` output when RTK installed.
+- [x] `ak gain` prints actionable install hint when RTK absent.
+- [x] Listed in `ak --help` under Core commands group.
+- [x] Tests pass; lint passes.
 
 ---
 
@@ -556,10 +556,10 @@ don't know which 3 commands matter. Group into Core / Quality / Advanced section
 4. Lint + typecheck.
 
 **Acceptance:**
-- [ ] `ak --help` output has three sections: Core, Quality, Advanced.
-- [ ] `gain` appears in Core group.
-- [ ] `err` description updated to: "Run a command and show only failures (hooks + CI)".
-- [ ] Snapshot test updated.
+- [x] `ak --help` output has three sections: Core, Quality, Advanced.
+- [x] `gain` appears in Core group.
+- [x] `err` description updated to: "Run a command and show only failures (hooks + CI)".
+- [x] Snapshot test updated.
 
 ---
 
@@ -580,8 +580,8 @@ Extend the deduplicated enum from Task 0.1 with three new Runner ids:
 **Steps (TDD):** add test → FAIL → extend enum → PASS → full suite.
 
 **Acceptance:**
-- [ ] Enum contains 5 values.
-- [ ] Existing consumers compile and pass tests.
+- [x] Enum contains 5 values.
+- [x] Existing consumers compile and pass tests.
 
 ---
 
@@ -605,9 +605,9 @@ Add two new TASK-level frontmatter fields:
 3. `pnpm test && pnpm lint && pnpm typecheck`.
 
 **Acceptance:**
-- [ ] Valid task block parses.
-- [ ] Invalid runner id surfaces precise Zod error.
-- [ ] Default permission is `workspace-write`.
+- [x] Valid task block parses.
+- [x] Invalid runner id surfaces precise Zod error.
+- [x] Default permission is `workspace-write`.
 
 ---
 
@@ -639,10 +639,10 @@ contexts. Persistence layer (Task 3.2) maps between them.
 4. `pnpm test && pnpm typecheck`.
 
 **Acceptance:**
-- [ ] `runner_events` table present with `execution_handle`, `sequence`, `kind`, `ts` columns.
-- [ ] Execution table has `runner_id`, `runner_version`, `permissions` columns.
-- [ ] Indexes on `runner_events(execution_handle)` and `runner_events(ts)`.
-- [ ] `migrations.test.ts` covers the new schema.
+- [x] `runner_events` table present with `execution_handle`, `sequence`, `kind`, `ts` columns.
+- [x] Execution table has `runner_id`, `runner_version`, `permissions` columns.
+- [x] Indexes on `runner_events(execution_handle)` and `runner_events(ts)`.
+- [x] `migrations.test.ts` covers the new schema.
 
 ---
 
@@ -668,10 +668,10 @@ in `package.json#exports` + `tshy.exports` per Decision 2A.
 4. `pnpm build && pnpm lint:pkg && pnpm test && pnpm typecheck`.
 
 **Acceptance:**
-- [ ] `import { Runner, RunnerEvent } from '@webpresso/agent-kit/runners'` works.
-- [ ] Invalid RunnerEvent fails Zod with descriptive error.
-- [ ] `pnpm lint:pkg` (publint + attw) passes.
-- [ ] Per-function cognitive complexity ≤ 8.
+- [x] `import { Runner, RunnerEvent } from '@webpresso/agent-kit/runners'` works.
+- [x] Invalid RunnerEvent fails Zod with descriptive error.
+- [x] `pnpm lint:pkg` (publint + attw) passes.
+- [x] Per-function cognitive complexity ≤ 8.
 
 ---
 
@@ -692,9 +692,9 @@ ranges. context-mode and rtk scaffolders read it and enforce pin/range.
 **Steps (TDD):** test → FAIL → implement pin-reading helper → PASS.
 
 **Acceptance:**
-- [ ] Pin file exists with `$schema` link.
-- [ ] Scaffolders share a single pin-reading helper (DRY).
-- [ ] Out-of-range = warning (non-strict); error (strict).
+- [x] Pin file exists with `$schema` link.
+- [x] Scaffolders share a single pin-reading helper (DRY).
+- [x] Out-of-range = warning (non-strict); error (strict).
 
 ---
 
@@ -726,10 +726,10 @@ command to run immediately.
 5. Lint + typecheck.
 
 **Acceptance:**
-- [ ] Output contains 4 lane framing lines.
-- [ ] Silent when scaffolders skipped.
-- [ ] Post-install block contains `ak blueprint new` and `ak gain`.
-- [ ] Block omitted on `--dry-run`.
+- [x] Output contains 4 lane framing lines.
+- [x] Silent when scaffolders skipped.
+- [x] Post-install block contains `ak blueprint new` and `ak gain`.
+- [x] Block omitted on `--dry-run`.
 
 ---
 
@@ -758,10 +758,10 @@ available rather than requiring a fixed 5.
 3. `pnpm test && pnpm lint && pnpm typecheck`.
 
 **Acceptance:**
-- [ ] `ak blueprint new --list-templates` lists available templates from `docs/templates/`.
-- [ ] Generated `_overview.md` passes `ak blueprint audit`.
-- [ ] `--template` composes with `--complexity` (template sets default; flag overrides).
-- [ ] Unknown template exits 2 with available list.
+- [x] `ak blueprint new --list-templates` lists available templates from `docs/templates/`.
+- [x] Generated `_overview.md` passes `ak blueprint audit`.
+- [x] `--template` composes with `--complexity` (template sets default; flag overrides).
+- [x] Unknown template exits 2 with available list.
 
 ---
 
@@ -781,8 +781,8 @@ into opencode's expected layout. Scope: skill-sync only.
 **Steps (TDD):** fixture test → FAIL → implement → PASS.
 
 **Acceptance:**
-- [ ] `ak sync` writes opencode skills to the identified location.
-- [ ] Codex + Gemini sync regression-checked.
+- [x] `ak sync` writes opencode skills to the identified location.
+- [x] Codex + Gemini sync regression-checked.
 
 ---
 
@@ -816,11 +816,11 @@ parameters + correct event-stream transformation from mocked output.
 3. `pnpm test && pnpm lint && pnpm typecheck`.
 
 **Acceptance:**
-- [ ] Implements Runner contract from Task 1.4.
-- [ ] All tests use mocked subagent (no real Agent invocation).
-- [ ] `capabilities.permissions === new Set(['read', 'workspace-write'])`.
-- [ ] `capabilities.resumable === false`.
-- [ ] AbortSignal yields `cancelled`; teardown cleans state.
+- [x] Implements Runner contract from Task 1.4.
+- [x] All tests use mocked subagent (no real Agent invocation).
+- [x] `capabilities.permissions === new Set(['read', 'workspace-write'])`.
+- [x] `capabilities.resumable === false`.
+- [x] AbortSignal yields `cancelled`; teardown cleans state.
 
 ---
 
@@ -848,10 +848,10 @@ CI. No Stryker exclusion needed (test is fast).
 3. `pnpm test && pnpm lint && pnpm typecheck`.
 
 **Acceptance:**
-- [ ] read-only tasks execute end-to-end against mocked codex.
-- [ ] workspace-write tasks fail-fast at prepare() with named tech-debt link.
-- [ ] AbortSignal terminates mocked subprocess; no orphans.
-- [ ] DI seam allows real codex invocation under `pnpm eval`.
+- [x] read-only tasks execute end-to-end against mocked codex.
+- [x] workspace-write tasks fail-fast at prepare() with named tech-debt link.
+- [x] AbortSignal terminates mocked subprocess; no orphans.
+- [x] DI seam allows real codex invocation under `pnpm eval`.
 
 ---
 
@@ -879,9 +879,9 @@ runner via env detection, tears down on teardown(). UUID-suffixed paths.
 3. `pnpm test && pnpm lint && pnpm typecheck`.
 
 **Acceptance:**
-- [ ] Mocked worktree creation + removal flows pass.
-- [ ] Idempotent teardown verified.
-- [ ] Two parallel prepare calls produce different paths.
+- [x] Mocked worktree creation + removal flows pass.
+- [x] Idempotent teardown verified.
+- [x] Two parallel prepare calls produce different paths.
 
 ---
 
@@ -899,8 +899,8 @@ assumption breaks.
 **Steps:** find → audit → fix → test.
 
 **Acceptance:**
-- [ ] No consumer breaks on new enum variants.
-- [ ] Audits explicitly distinguish "omx-*" vs Runner backends where it matters.
+- [x] No consumer breaks on new enum variants.
+- [x] Audits explicitly distinguish "omx-*" vs Runner backends where it matters.
 
 ---
 
@@ -919,9 +919,9 @@ Per-step status; success/failure on completion.
 **Steps (TDD):** test with injected noop spinner → FAIL → implement → PASS.
 
 **Acceptance:**
-- [ ] Each scaffolder shows progress.
-- [ ] CI logs clean (no ANSI when `process.stdout.isTTY === false`).
-- [ ] DI seam for testing.
+- [x] Each scaffolder shows progress.
+- [x] CI logs clean (no ANSI when `process.stdout.isTTY === false`).
+- [x] DI seam for testing.
 
 ---
 
@@ -943,8 +943,8 @@ claude-subagent; codex on PATH → codex-exec; else local-worktree. Task's
 **Steps (TDD):** 6 selection paths → FAIL → implement → PASS.
 
 **Acceptance:**
-- [ ] All paths covered, including filter cases.
-- [ ] No-match raises clear error.
+- [x] All paths covered, including filter cases.
+- [x] No-match raises clear error.
 
 ---
 
@@ -964,9 +964,9 @@ Maps RunnerEvent.type → SQL `kind`. Validates Runner.version at write time.
 version mismatch raises pre-write error → FAIL → implement → PASS.
 
 **Acceptance:**
-- [ ] Full event sequence persists.
-- [ ] Version mismatch raises pre-write error.
-- [ ] AbortSignal path persists `cancelled` event before teardown.
+- [x] Full event sequence persists.
+- [x] Version mismatch raises pre-write error.
+- [x] AbortSignal path persists `cancelled` event before teardown.
 
 ---
 
@@ -983,8 +983,8 @@ versions install + spinner output non-garbled + lane-4 framing appears.
 - Create: `test-fixtures/bundle-smoke/`
 
 **Acceptance:**
-- [ ] CI passes against pinned versions.
-- [ ] CI fails fast on pin unsatisfiable.
+- [x] CI passes against pinned versions.
+- [x] CI fails fast on pin unsatisfiable.
 
 ---
 
@@ -1014,9 +1014,9 @@ real-subagent behavior, without invoking a real subagent in PR CI.
 2. Runner correctness → PASS; behavior divergence → useful diff.
 
 **Acceptance:**
-- [ ] Identical event sequence (timestamps ignored).
-- [ ] Identical artifact diff.
-- [ ] Failure mode produces readable diff (which event differs and how).
+- [x] Identical event sequence (timestamps ignored).
+- [x] Identical artifact diff.
+- [x] Failure mode produces readable diff (which event differs and how).
 
 ---
 
@@ -1043,9 +1043,9 @@ backends (this is where real-subprocess fidelity lives).
 3. `pnpm eval` — verify passes against current Runner.
 
 **Acceptance:**
-- [ ] `pnpm eval` runs the eval suite.
-- [ ] Eval-1 passes against current backend.
-- [ ] Failure surfaces with clear expected-vs-actual diff.
+- [x] `pnpm eval` runs the eval suite.
+- [x] Eval-1 passes against current backend.
+- [x] Failure surfaces with clear expected-vs-actual diff.
 
 ---
 
@@ -1068,8 +1068,8 @@ Build out the remaining 4 evals at `src/runners/evals/` (per B3):
 - Create: `src/runners/evals/eval-N-<name>/eval.test.ts`
 
 **Acceptance (per eval):**
-- [ ] Eval passes on current Runner backend.
-- [ ] Failure mode debuggable.
+- [x] Eval passes on current Runner backend.
+- [x] Failure mode debuggable.
 
 ---
 
@@ -1101,22 +1101,22 @@ because Task 4.1 depends on its fixture output.
 
 ## Acceptance criteria for v1.0 alpha
 
-- [ ] All 26 tasks marked done.
-- [ ] `pnpm qa` green (build + typecheck + lint + test + audits + hooks doctor).
-- [ ] Iron-rule regression test (Task 4.1) passes against Task 0.0 fixture.
-- [ ] All 5 evals (Tasks 4.2, 5.1–5.4) pass via `pnpm eval`.
-- [ ] Bundle smoke CI step (Task 3.3) green.
-- [ ] `pnpm lint:pkg` (publint + attw) clean for `./runners/*` exports.
-- [ ] CEO plan errata section points at this Blueprint.
-- [ ] Five tech-debt items filed:
+- [x] All 26 tasks marked done.
+- [x] `pnpm qa` green (build + typecheck + lint + test + audits + hooks doctor).
+- [x] Iron-rule regression test (Task 4.1) passes against Task 0.0 fixture.
+- [x] All 5 evals (Tasks 4.2, 5.1–5.4) pass via `pnpm eval`.
+- [x] Bundle smoke CI step (Task 3.3) green.
+- [x] `pnpm lint:pkg` (publint + attw) clean for `./runners/*` exports.
+- [x] CEO plan errata section points at this Blueprint.
+- [x] Five tech-debt items filed:
   - `h-NNN-codex-exec-workspace-write`
   - `h-NNN-opencode-runner-backend`
   - `h-NNN-real-codex-nightly-smoke`
   - `h-NNN-resumable-runner`
   - `h-NNN-public-distribution-flip` (C4 deferred)
-- [ ] Each cherry-pick lands as its own changeset; C3 (Runner abstraction)
+- [x] Each cherry-pick lands as its own changeset; C3 (Runner abstraction)
       under alpha dist-tag for one cycle.
-- [ ] v1.0 declaration deferred until X2 resolves (external adopter validates
+- [x] v1.0 declaration deferred until X2 resolves (external adopter validates
       two backends + one failure-recovery path).
 
 ## Refinement Summary
