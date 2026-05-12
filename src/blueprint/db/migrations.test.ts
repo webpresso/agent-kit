@@ -23,6 +23,8 @@ const EXPECTED_TABLES = [
   'workspace_repos',
   'cross_repo_dependencies',
   'correlate_allowlist',
+  'executions',
+  'runner_events',
 ] as const
 
 function getTableNames(db: Database.Database): string[] {
@@ -47,7 +49,7 @@ afterEach(() => {
 })
 
 describe('migrations', () => {
-  it('creates all 15 expected tables', () => {
+  it('creates all 17 expected tables', () => {
     const conn = openDb(dbPath)
     try {
       const tables = getTableNames(conn.db)
@@ -94,6 +96,66 @@ describe('migrations', () => {
       .all() as Array<{ version: number }>
     expect(rows).toHaveLength(1)
     db.close()
+  })
+
+  it('executions table has runner_id, runner_version, and permissions columns', () => {
+    const conn = openDb(dbPath)
+    try {
+      const cols = conn.db
+        .prepare('PRAGMA table_info(executions)')
+        .all() as Array<{ name: string; type: string; notnull: number; dflt_value: string | null }>
+      const colNames = cols.map((c) => c.name)
+      expect(colNames).toContain('runner_id')
+      expect(colNames).toContain('runner_version')
+      expect(colNames).toContain('permissions')
+      const permissionsCol = cols.find((c) => c.name === 'permissions')
+      expect(permissionsCol?.dflt_value).toStrictEqual("'workspace-write'")
+    } finally {
+      conn.close()
+    }
+  })
+
+  it('runner_events table exists with correct columns and indexes', () => {
+    const conn = openDb(dbPath)
+    try {
+      const cols = conn.db
+        .prepare('PRAGMA table_info(runner_events)')
+        .all() as Array<{ name: string; type: string; notnull: number; dflt_value: string | null }>
+      const colNames = cols.map((c) => c.name)
+      expect(colNames).toStrictEqual([
+        'id',
+        'execution_handle',
+        'sequence',
+        'kind',
+        'ts',
+        'message',
+        'exit_code',
+        'file_path',
+      ])
+
+      const idCol = cols.find((c) => c.name === 'id')
+      expect(idCol?.type).toStrictEqual('INTEGER')
+
+      const handleCol = cols.find((c) => c.name === 'execution_handle')
+      expect(handleCol?.notnull).toStrictEqual(1)
+
+      const sequenceCol = cols.find((c) => c.name === 'sequence')
+      expect(sequenceCol?.notnull).toStrictEqual(1)
+
+      const kindCol = cols.find((c) => c.name === 'kind')
+      expect(kindCol?.notnull).toStrictEqual(1)
+
+      const indexes = conn.db
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='runner_events' ORDER BY name",
+        )
+        .all() as Array<{ name: string }>
+      const indexNames = indexes.map((i) => i.name)
+      expect(indexNames).toContain('idx_runner_events_handle')
+      expect(indexNames).toContain('idx_runner_events_ts')
+    } finally {
+      conn.close()
+    }
   })
 
   it('inserts 1000 blueprints and 1000 tasks in under 200ms', () => {

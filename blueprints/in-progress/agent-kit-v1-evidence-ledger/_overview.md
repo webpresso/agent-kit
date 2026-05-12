@@ -587,7 +587,7 @@ Extend the deduplicated enum from Task 0.1 with three new Runner ids:
 
 #### [schema] Task 1.2: Add `runners` + `permissions` task fields
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 0.1, Task 1.1
 
 Add two new TASK-level frontmatter fields:
@@ -613,7 +613,7 @@ Add two new TASK-level frontmatter fields:
 
 #### [db] Task 1.3: Schema push — runner_events table + execution columns
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 0.1, Task 1.1
 
 **db push approach (no numbered migration file):** the DB is rebuilt from

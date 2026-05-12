@@ -131,3 +131,34 @@ CREATE TABLE correlate_allowlist (
   permitted_org     TEXT NOT NULL,
   PRIMARY KEY (source_org, permitted_org)
 );
+
+CREATE TABLE executions (
+  handle            TEXT PRIMARY KEY,
+  blueprint_slug    TEXT NOT NULL REFERENCES blueprints(slug) ON DELETE CASCADE,
+  backend           TEXT NOT NULL,
+  status            TEXT NOT NULL CHECK (status IN ('queued','running','completed','failed','cancelled')),
+  created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+  started_at        TEXT,
+  finished_at       TEXT,
+  exit_code         INTEGER,
+  error_message     TEXT,
+  runner_id         TEXT,
+  runner_version    TEXT,
+  permissions       TEXT DEFAULT 'workspace-write'
+);
+CREATE INDEX idx_executions_blueprint ON executions(blueprint_slug);
+CREATE INDEX idx_executions_status    ON executions(status);
+
+CREATE TABLE runner_events (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  execution_handle  TEXT NOT NULL,
+  sequence          INTEGER NOT NULL,
+  kind              TEXT NOT NULL,
+  ts                TEXT NOT NULL DEFAULT (datetime('now')),
+  message           TEXT,
+  exit_code         INTEGER,
+  file_path         TEXT,
+  UNIQUE(execution_handle, sequence)
+);
+CREATE INDEX IF NOT EXISTS idx_runner_events_handle ON runner_events(execution_handle);
+CREATE INDEX IF NOT EXISTS idx_runner_events_ts ON runner_events(ts);

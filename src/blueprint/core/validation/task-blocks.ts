@@ -1,9 +1,26 @@
+import { z } from 'zod'
+
+import { executionBackendSchema } from '#types/execution-backend'
+
 const TASK_HEADING_REGEX = /^####\s+Task\s+(\d+\.\d+):/
 
 export interface TaskBlock {
   taskId: string
   block: string
 }
+
+/**
+ * Zod schema for optional TASK-level frontmatter fields.
+ *
+ * - `runners`: optional list of execution backend ids; absent/empty means all runners allowed.
+ * - `permissions`: access level the task requires; defaults to `'workspace-write'` when absent.
+ */
+export const taskFrontmatterSchema = z.object({
+  runners: executionBackendSchema.array().optional(),
+  permissions: z.enum(['read', 'workspace-write']).default('workspace-write'),
+})
+
+export type TaskFrontmatter = z.infer<typeof taskFrontmatterSchema>
 
 export function parseTaskBlocks(markdown: string): TaskBlock[] {
   const taskBlocks: TaskBlock[] = []
