@@ -28,7 +28,7 @@ import { scheduleDeferredInstall } from './installer.js'
 import { logUpdateError } from './log.js'
 import { shouldSkipAutoInstall } from './skip.js'
 
-const GH_RELEASES_URL = 'https://api.github.com/repos/webpresso/agent-kit/releases/latest'
+const GH_NPM_URL = 'https://npm.pkg.github.com/@webpresso%2fagent-kit'
 const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000 // 24 hours
 const CACHE_FILENAME = 'update-notifier-cache.json'
 
@@ -65,12 +65,18 @@ async function writeCache(cachePath: string, data: UpdateCache): Promise<void> {
 }
 
 export async function fetchLatestRelease(): Promise<string | null> {
-  const res = await fetch(GH_RELEASES_URL, {
-    headers: { 'User-Agent': 'webpresso-agent-kit', Accept: 'application/vnd.github+json' },
+  const token = process.env.GH_PACKAGES_TOKEN ?? process.env.GITHUB_TOKEN
+  if (token === undefined) return null
+
+  const res = await fetch(GH_NPM_URL, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+    },
   })
   if (!res.ok) return null
-  const data = (await res.json()) as { tag_name?: string }
-  return data.tag_name?.replace(/^v/, '') ?? null
+  const data = (await res.json()) as { 'dist-tags'?: { latest?: string } }
+  return data['dist-tags']?.latest ?? null
 }
 
 function isNewerVersion(latest: string, current: string): boolean {
