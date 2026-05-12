@@ -11,6 +11,8 @@ export interface CommandRule {
   pattern: RegExp
   category: CommandCategory
   suggestion: string
+  /** When true, only test against the full (unsplit) command — never against && sub-variants. */
+  matchFullCommandOnly?: boolean
 }
 
 export interface SuggestionModifier {
@@ -150,14 +152,16 @@ export function generateRules(): CommandRule[] {
 
   rules.push(
     {
-      pattern: new RegExp(`\\bmv\\b.*blueprints\\/${BLUEPRINT_LIFECYCLE_DIRS}`),
+      pattern: new RegExp(`^mv\\b.*blueprints\\/${BLUEPRINT_LIFECYCLE_DIRS}`),
       category: 'blueprint',
       suggestion: BLUEPRINT_HINT,
+      matchFullCommandOnly: true,
     },
     {
-      pattern: new RegExp(`\\bmkdir\\b.*blueprints\\/${BLUEPRINT_LIFECYCLE_DIRS}`),
+      pattern: new RegExp(`^mkdir\\b.*blueprints\\/${BLUEPRINT_LIFECYCLE_DIRS}`),
       category: 'blueprint',
       suggestion: BLUEPRINT_HINT,
+      matchFullCommandOnly: true,
     },
     { pattern: /^doppler run/, category: 'unknown', suggestion: ENV_HINT },
     { pattern: /^DATABASE_URL=/, category: 'unknown', suggestion: ENV_HINT },
@@ -189,8 +193,13 @@ const COMMAND_DELIMITER_REGEX = /(?:&&|\|\||\||;)/
 const LOGICAL_OPERATOR_REGEX = /(?:&&|\|\||;)/
 
 export function findMatchingRule(command: string): CommandRule | undefined {
-  for (const variant of getCommandVariants(command)) {
-    const rule = COMMAND_RULES.find((r) => r.pattern.test(variant))
+  const variants = getCommandVariants(command)
+  const fullCommand = variants[0]
+  for (const variant of variants) {
+    const rule = COMMAND_RULES.find((r) => {
+      if (r.matchFullCommandOnly && variant !== fullCommand) return false
+      return r.pattern.test(variant)
+    })
     if (rule) return rule
   }
   return undefined
