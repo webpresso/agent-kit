@@ -225,7 +225,7 @@ is written until all 7 questions are answered. Output is
 
 #### [design] Task 0.2: Define `BlueprintPlatformClient` TypeScript interface
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 0.1
 
 Write the TypeScript interface that agent-kit exposes. This is the

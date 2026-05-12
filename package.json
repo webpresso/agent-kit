@@ -130,6 +130,12 @@
         "default": "./dist/esm/blueprint/tracked-document/index.js"
       }
     },
+    "./blueprint/sync/types": {
+      "import": {
+        "types": "./dist/esm/blueprint/sync/types.d.ts",
+        "default": "./dist/esm/blueprint/sync/types.js"
+      }
+    },
     "./blueprint/validation": {
       "import": {
         "types": "./dist/esm/blueprint/core/validation/index.d.ts",
@@ -340,6 +346,7 @@
       "./blueprint/tech-debt": "./src/blueprint/tech-debt/index.ts",
       "./blueprint/test-utils": "./src/blueprint/test-utils/blueprint-mocks.ts",
       "./blueprint/tracked-document": "./src/blueprint/tracked-document/index.ts",
+      "./blueprint/sync/types": "./src/blueprint/sync/types.ts",
       "./blueprint/validation": "./src/blueprint/core/validation/index.ts",
       "./catalog/*": "./catalog/*",
       "./dev": "./src/dev/index.ts",
