@@ -109,8 +109,11 @@ type BlueprintDocumentType = 'blueprint' | 'parent-roadmap'
 export interface BlueprintCommandOptions
   extends BlueprintAuditOptions, BlueprintMoveOptions, BlueprintListOptions, BlueprintNewOptions {
   format?: string
+  listTemplates?: boolean
   params?: string
   reason?: string
+  template?: string
+  templatesDir?: string
   to?: string
   '--': string[]
 }
@@ -778,6 +781,9 @@ export function registerBlueprintRouter(cli: CAC): void {
     .option('--staged', 'Audit only staged files')
     .option('--all', 'Audit all blueprints')
     .option('--strict', 'Enable strict audit mode')
+    .option('--template <name>', 'Template name to scaffold new blueprint from (see --list-templates)')
+    .option('--list-templates', 'List available template names and exit')
+    .option('--templates-dir <path>', 'Override the templates directory (default: docs/templates/)')
     .action(
       async (subcommand: string | undefined, args: string[], options: BlueprintCommandOptions) => {
         try {

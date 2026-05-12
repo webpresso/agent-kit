@@ -13,6 +13,13 @@ import type {
 import { describe, expect, it, vi } from 'vitest'
 
 import { BlueprintAuditFailedError, executeBlueprintSubcommand } from './router-dispatch.js'
+import { listTemplates, resolveTemplate } from './template-resolver.js'
+import type { TemplateEntry } from './template-resolver.js'
+
+vi.mock('./template-resolver.js', () => ({
+  listTemplates: vi.fn<(dir?: string) => readonly TemplateEntry[]>(() => []),
+  resolveTemplate: vi.fn<(name: string, dir?: string) => string | null>(() => null),
+}))
 
 type Deps = Parameters<typeof executeBlueprintSubcommand>[3]
 
@@ -668,5 +675,145 @@ describe('executeBlueprintSubcommand', () => {
     await expect(
       executeBlueprintSubcommand('list', ['planned', 'extra'], { '--': [] }, deps),
     ).rejects.toThrow(/Usage: ak blueprint list/)
+  })
+
+  // ── --list-templates ──────────────────────────────────────────────────
+
+  it('prints template names and returns when --list-templates is set', async () => {
+    vi.mocked(listTemplates).mockReturnValueOnce([
+      { name: 'blueprint', path: '/tmp/docs/templates/blueprint.md' },
+      { name: 'guide', path: '/tmp/docs/templates/guide.md' },
+    ])
+    const deps = buildDeps()
+    await executeBlueprintSubcommand('new', [], { '--': [], listTemplates: true }, deps)
+    expect(deps.printBlueprintOutput).toHaveBeenCalledWith('blueprint\nguide', false)
+    expect(deps.createBlueprint).not.toHaveBeenCalled()
+  })
+
+  it('prints "No templates found." when --list-templates and directory is empty', async () => {
+    vi.mocked(listTemplates).mockReturnValueOnce([])
+    const deps = buildDeps()
+    await executeBlueprintSubcommand('new', [], { '--': [], listTemplates: true }, deps)
+    expect(deps.printBlueprintOutput).toHaveBeenCalledWith('No templates found.', false)
+  })
+
+  // ── --template <name> ─────────────────────────────────────────────────
+
+  it('passes resolvedPath as templatePath when --template matches a known template', async () => {
+    const resolvedPath = '/tmp/docs/templates/blueprint.md'
+    vi.mocked(resolveTemplate).mockReturnValueOnce(resolvedPath)
+
+    const created: CreateBlueprintResult = {
+      slug: 'my-feature',
+      type: 'blueprint',
+      title: 'My Feature',
+      complexity: 'M',
+      path: '/tmp/my-feature/_overview.md',
+      outputPath: '/tmp/my-feature/_overview.md',
+      projectRoot: '/tmp',
+      relativeFilePath: 'blueprints/draft/my-feature/_overview.md',
+      markdown: '# My Feature\n',
+      status: 'draft',
+      blueprint: {
+        tasks: [],
+        slug: 'my-feature',
+        title: 'My Feature',
+      } as unknown as CreateBlueprintResult['blueprint'],
+      message: 'Created blueprint draft/my-feature.',
+    }
+    const deps = buildDeps({
+      createBlueprint: vi.fn<
+        (goal: string, options: BlueprintCommandOptions) => Promise<CreateBlueprintResult>
+      >(async () => created),
+    })
+
+    await executeBlueprintSubcommand(
+      'new',
+      ['my feature'],
+      { '--': [], complexity: 'M', template: 'blueprint' },
+      deps,
+    )
+
+    expect(deps.createBlueprint).toHaveBeenCalledWith(
+      'my feature',
+      expect.objectContaining({ templatePath: resolvedPath, complexity: 'M' }),
+    )
+  })
+
+  it('prints available templates and calls process.exit(2) when --template is unknown', async () => {
+    vi.mocked(resolveTemplate).mockReturnValueOnce(null)
+    vi.mocked(listTemplates).mockReturnValueOnce([
+      { name: 'blueprint', path: '/tmp/docs/templates/blueprint.md' },
+      { name: 'guide', path: '/tmp/docs/templates/guide.md' },
+    ])
+
+    const processExitSpy = vi.spyOn(process, 'exit').mockImplementationOnce(
+      (code?: number | string | null) => {
+        throw new Error(`process.exit(${code ?? ''})`)
+      },
+    )
+
+    const deps = buildDeps()
+
+    await expect(
+      executeBlueprintSubcommand(
+        'new',
+        ['my feature'],
+        { '--': [], template: 'nonexistent' },
+        deps,
+      ),
+    ).rejects.toThrow(/process\.exit\(2\)/)
+
+    expect(deps.printBlueprintOutput).toHaveBeenCalledWith(
+      expect.stringContaining('nonexistent'),
+      false,
+    )
+    expect(deps.printBlueprintOutput).toHaveBeenCalledWith(
+      expect.stringContaining('blueprint'),
+      false,
+    )
+
+    processExitSpy.mockRestore()
+  })
+
+  it('--complexity flag overrides when --template is used', async () => {
+    const resolvedPath = '/tmp/docs/templates/blueprint.md'
+    vi.mocked(resolveTemplate).mockReturnValueOnce(resolvedPath)
+
+    const created: CreateBlueprintResult = {
+      slug: 'my-feature',
+      type: 'blueprint',
+      title: 'My Feature',
+      complexity: 'L',
+      path: '/tmp/my-feature/_overview.md',
+      outputPath: '/tmp/my-feature/_overview.md',
+      projectRoot: '/tmp',
+      relativeFilePath: 'blueprints/draft/my-feature/_overview.md',
+      markdown: '# My Feature\n',
+      status: 'draft',
+      blueprint: {
+        tasks: [],
+        slug: 'my-feature',
+        title: 'My Feature',
+      } as unknown as CreateBlueprintResult['blueprint'],
+      message: 'Created blueprint draft/my-feature.',
+    }
+    const deps = buildDeps({
+      createBlueprint: vi.fn<
+        (goal: string, options: BlueprintCommandOptions) => Promise<CreateBlueprintResult>
+      >(async () => created),
+    })
+
+    await executeBlueprintSubcommand(
+      'new',
+      ['my feature'],
+      { '--': [], complexity: 'L', template: 'blueprint' },
+      deps,
+    )
+
+    expect(deps.createBlueprint).toHaveBeenCalledWith(
+      'my feature',
+      expect.objectContaining({ complexity: 'L', templatePath: resolvedPath }),
+    )
   })
 })

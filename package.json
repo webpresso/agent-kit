@@ -242,6 +242,12 @@
         "types": "./dist/esm/ai-tools/index.d.ts",
         "default": "./dist/esm/ai-tools/index.js"
       }
+    },
+    "./runners": {
+      "import": {
+        "types": "./dist/esm/runners/index.d.ts",
+        "default": "./dist/esm/runners/index.js"
+      }
     }
   },
   "scripts": {
@@ -349,7 +355,8 @@
       "./ai-memory/facts/*": "./src/ai-memory/facts/*.ts",
       "./ai-memory/hierarchy/*": "./src/ai-memory/hierarchy/*.ts",
       "./ai-prompts": "./src/ai-prompts/index.ts",
-      "./ai-tools": "./src/ai-tools/index.ts"
+      "./ai-tools": "./src/ai-tools/index.ts",
+      "./runners": "./src/runners/index.ts"
     },
     "selfLink": false
   },

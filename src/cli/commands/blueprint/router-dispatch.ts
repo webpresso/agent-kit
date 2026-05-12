@@ -12,6 +12,7 @@ import type {
 } from './router.js'
 
 import { executeBlueprintDbSubcommand } from './db-commands.js'
+import { listTemplates, resolveTemplate } from './template-resolver.js'
 
 /**
  * Thrown by `executeBlueprintSubcommand` when `audit` finds issues and
@@ -126,9 +127,43 @@ export async function executeBlueprintSubcommand(
       return
     }
     case 'new': {
+      // ak blueprint new --list-templates
+      if (options.listTemplates) {
+        const templates = listTemplates(options.templatesDir)
+        if (templates.length === 0) {
+          deps.printBlueprintOutput('No templates found.', false)
+        } else {
+          deps.printBlueprintOutput(templates.map((t) => t.name).join('\n'), false)
+        }
+        return
+      }
+
       const goal = args.join(' ').trim()
       if (!goal) {
         throw new Error('Usage: ak blueprint new "<goal>" --complexity <XS|S|M|L|XL>')
+      }
+
+      // ak blueprint new --template <name> "<goal>"
+      const templateName = options.template
+      if (templateName !== undefined) {
+        const resolvedPath = resolveTemplate(templateName, options.templatesDir)
+        if (resolvedPath === null) {
+          const available = listTemplates(options.templatesDir)
+          const availableList =
+            available.length > 0 ? available.map((t) => t.name).join(', ') : '(none)'
+          deps.printBlueprintOutput(
+            `Unknown template: "${templateName}". Available templates: ${availableList}`,
+            false,
+          )
+          process.exit(2)
+          return
+        }
+        const result = await deps.createBlueprint(goal, { ...options, templatePath: resolvedPath })
+        deps.printBlueprintOutput(
+          options.json ? result : deps.formatBlueprintCreation(result),
+          options.json,
+        )
+        return
       }
 
       const result = await deps.createBlueprint(goal, options)

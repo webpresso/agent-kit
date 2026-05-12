@@ -1,0 +1,59 @@
+import { readdirSync } from 'node:fs'
+import path from 'node:path'
+
+import { resolvePackageAsset } from '#utils/package-assets.js'
+
+export type TemplateEntry = { name: string; path: string }
+
+/**
+ * Default templates directory: docs/templates/ resolved relative to the
+ * package root (same strategy as resolveRepoBlueprintTemplatePath in router.ts).
+ */
+function defaultTemplatesDir(): string {
+  return path.dirname(resolvePackageAsset('docs/templates/blueprint.md'))
+}
+
+/**
+ * List available templates from `templatesDir` (defaults to docs/templates/).
+ *
+ * Only `.md` files are returned; names are deduplicated so that both
+ * `blueprint.md` and `blueprint.yaml` produce a single entry named "blueprint".
+ * Each entry carries the absolute path to the `.md` file.
+ */
+export function listTemplates(templatesDir?: string): readonly TemplateEntry[] {
+  const dir = templatesDir ?? defaultTemplatesDir()
+  let entries: string[]
+  try {
+    entries = readdirSync(dir)
+  } catch {
+    return []
+  }
+
+  const seen = new Set<string>()
+  const result: TemplateEntry[] = []
+
+  for (const entry of entries) {
+    if (!entry.endsWith('.md')) continue
+    const name = path.basename(entry, '.md')
+    if (seen.has(name)) continue
+    seen.add(name)
+    result.push({ name, path: path.join(dir, entry) })
+  }
+
+  return result
+}
+
+/**
+ * Resolve the absolute path to the `.md` template file for `name`.
+ *
+ * Returns `null` if no matching template exists in `templatesDir`.
+ */
+export function resolveTemplate(name: string, templatesDir?: string): string | null {
+  const dir = templatesDir ?? defaultTemplatesDir()
+  const candidate = path.join(dir, `${name}.md`)
+  const templates = listTemplates(dir)
+  const found = templates.find((t) => t.name === name)
+  if (!found) return null
+  // Confirm the path matches what we computed (extra safety)
+  return candidate
+}

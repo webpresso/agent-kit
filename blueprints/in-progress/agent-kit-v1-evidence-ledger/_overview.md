@@ -648,7 +648,7 @@ contexts. Persistence layer (Task 3.2) maps between them.
 
 #### [runners] Task 1.4: Runner interface + type contract
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.1, Task 1.2
 
 Net-new module `src/runners/`. Defines the managed-context Runner contract
@@ -735,7 +735,7 @@ command to run immediately.
 
 #### [cli] Task 1.7: `ak blueprint new --template <name>` flag
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 
 **Revised per B4 + catalog-template deletion:** the 5 catalog blueprint
