@@ -64,8 +64,10 @@ jobs:
           status=${PIPESTATUS[0]}
           echo "published=$(grep -c 'New tag' /tmp/publish.log || true)" >> "$GITHUB_OUTPUT"
           exit $status
+      # Public npm publish is gated — enable when ready to ship by setting
+      # the ENABLE_NPM_PUBLISH repo variable to 'true' and adding NPM_TOKEN secret.
       - name: Publish webpresso to public npm
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != 'true' }}
+        if: ${{ vars.ENABLE_NPM_PUBLISH == 'true' && (github.event_name != 'workflow_dispatch' || inputs.dry-run != 'true') }}
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: bun scripts/publish-webpresso.ts 2>&1 | tee /tmp/publish-public.log
