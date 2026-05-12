@@ -929,7 +929,7 @@ Per-step status; success/failure on completion.
 
 #### [runners] Task 3.1: Runner selection
 
-**Status:** todo
+**Status:** done
 **Depends:** Tasks 2.1, 2.2, 2.3
 
 `selectRunner(task, env, flags)`: `--runner=X` overrides; Claude Code env →
@@ -950,7 +950,7 @@ claude-subagent; codex on PATH → codex-exec; else local-worktree. Task's
 
 #### [persistence] Task 3.2: RunnerEvent → SQLite ingestion
 
-**Status:** todo
+**Status:** done
 **Depends:** Tasks 2.1, 1.3
 
 Extend `src/blueprint/db/ingester.ts` with `ingestRunnerEvent` function.
@@ -972,7 +972,7 @@ version mismatch raises pre-write error → FAIL → implement → PASS.
 
 #### [ci] Task 3.3: CI smoke test for `ak setup --bundle`
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.5, 2.5
 
 GitHub Action runs `ak setup --bundle` in a clean container; asserts pinned

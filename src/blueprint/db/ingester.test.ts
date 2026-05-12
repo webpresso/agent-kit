@@ -4,8 +4,9 @@ import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { openDb } from './connection.js'
-import { ingestBlueprints, ingestAll } from './ingester.js'
+import { ingestBlueprints, ingestAll, ingestRunnerEvent } from './ingester.js'
 import { coldStartIfNeeded } from './cold-start.js'
+import type { RunnerEvent } from '#runners/types'
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -331,6 +332,166 @@ describe('transactional error isolation', () => {
       expect(count).toBeGreaterThanOrEqual(2)
       // No fatal crash
       expect(result).toBeDefined()
+    } finally {
+      conn.close()
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// ingestRunnerEvent
+// ---------------------------------------------------------------------------
+
+describe('ingestRunnerEvent', () => {
+  it('persists a started event with null message and exit_code', () => {
+    const conn = openDb(':memory:')
+    try {
+      const event: RunnerEvent = { type: 'started', ts: '2026-05-12T10:00:00Z', handle: 'h-001' }
+      ingestRunnerEvent({
+        db: conn.db,
+        executionHandle: 'h-001',
+        sequence: 1,
+        event,
+        runnerVersion: '1.0.0',
+      })
+      const row = conn.db
+        .prepare('SELECT * FROM runner_events WHERE execution_handle = ?')
+        .get('h-001') as { kind: string; message: string | null; exit_code: number | null; ts: string; file_path: string | null }
+      expect(row.kind).toStrictEqual('started')
+      expect(row.message).toStrictEqual(null)
+      expect(row.exit_code).toStrictEqual(null)
+      expect(row.file_path).toStrictEqual(null)
+      expect(row.ts).toStrictEqual('2026-05-12T10:00:00Z')
+    } finally {
+      conn.close()
+    }
+  })
+
+  it('persists a stdout event with message set to line', () => {
+    const conn = openDb(':memory:')
+    try {
+      const event: RunnerEvent = { type: 'stdout', ts: '2026-05-12T10:01:00Z', handle: 'h-001', line: 'Hello, world!' }
+      ingestRunnerEvent({
+        db: conn.db,
+        executionHandle: 'h-001',
+        sequence: 2,
+        event,
+        runnerVersion: '1.0.0',
+      })
+      const row = conn.db
+        .prepare('SELECT * FROM runner_events WHERE execution_handle = ?')
+        .get('h-001') as { kind: string; message: string | null; exit_code: number | null }
+      expect(row.kind).toStrictEqual('stdout')
+      expect(row.message).toStrictEqual('Hello, world!')
+      expect(row.exit_code).toStrictEqual(null)
+    } finally {
+      conn.close()
+    }
+  })
+
+  it('persists a completed event with exit_code', () => {
+    const conn = openDb(':memory:')
+    try {
+      const event: RunnerEvent = { type: 'completed', ts: '2026-05-12T10:02:00Z', handle: 'h-001', exitCode: 42 }
+      ingestRunnerEvent({
+        db: conn.db,
+        executionHandle: 'h-001',
+        sequence: 3,
+        event,
+        runnerVersion: '1.0.0',
+      })
+      const row = conn.db
+        .prepare('SELECT * FROM runner_events WHERE execution_handle = ?')
+        .get('h-001') as { kind: string; message: string | null; exit_code: number | null }
+      expect(row.kind).toStrictEqual('completed')
+      expect(row.exit_code).toStrictEqual(42)
+      expect(row.message).toStrictEqual(null)
+    } finally {
+      conn.close()
+    }
+  })
+
+  it('persists a failed event with exit_code=0 and message set to error', () => {
+    const conn = openDb(':memory:')
+    try {
+      const event: RunnerEvent = { type: 'failed', ts: '2026-05-12T10:03:00Z', handle: 'h-001', error: 'something went wrong' }
+      ingestRunnerEvent({
+        db: conn.db,
+        executionHandle: 'h-001',
+        sequence: 4,
+        event,
+        runnerVersion: '1.0.0',
+      })
+      const row = conn.db
+        .prepare('SELECT * FROM runner_events WHERE execution_handle = ?')
+        .get('h-001') as { kind: string; message: string | null; exit_code: number | null }
+      expect(row.kind).toStrictEqual('failed')
+      expect(row.exit_code).toStrictEqual(0)
+      expect(row.message).toStrictEqual('something went wrong')
+    } finally {
+      conn.close()
+    }
+  })
+
+  it('persists a cancelled event', () => {
+    const conn = openDb(':memory:')
+    try {
+      const event: RunnerEvent = { type: 'cancelled', ts: '2026-05-12T10:04:00Z', handle: 'h-001' }
+      ingestRunnerEvent({
+        db: conn.db,
+        executionHandle: 'h-001',
+        sequence: 5,
+        event,
+        runnerVersion: '1.0.0',
+      })
+      const row = conn.db
+        .prepare('SELECT * FROM runner_events WHERE execution_handle = ?')
+        .get('h-001') as { kind: string; message: string | null; exit_code: number | null; file_path: string | null }
+      expect(row.kind).toStrictEqual('cancelled')
+      expect(row.message).toStrictEqual(null)
+      expect(row.exit_code).toStrictEqual(null)
+      expect(row.file_path).toStrictEqual(null)
+    } finally {
+      conn.close()
+    }
+  })
+
+  it('throws when runnerVersion is an empty string', () => {
+    const conn = openDb(':memory:')
+    try {
+      const event: RunnerEvent = { type: 'started', ts: '2026-05-12T10:00:00Z', handle: 'h-001' }
+      expect(() =>
+        ingestRunnerEvent({
+          db: conn.db,
+          executionHandle: 'h-001',
+          sequence: 1,
+          event,
+          runnerVersion: '',
+        }),
+      ).toThrow()
+      // No row should have been written
+      const count = (conn.db
+        .prepare('SELECT COUNT(*) as n FROM runner_events')
+        .get() as { n: number }).n
+      expect(count).toStrictEqual(0)
+    } finally {
+      conn.close()
+    }
+  })
+
+  it('persists two events with the same handle but different sequences', () => {
+    const conn = openDb(':memory:')
+    try {
+      const event1: RunnerEvent = { type: 'started', ts: '2026-05-12T10:00:00Z', handle: 'h-002' }
+      const event2: RunnerEvent = { type: 'stdout', ts: '2026-05-12T10:00:01Z', handle: 'h-002', line: 'output line' }
+      ingestRunnerEvent({ db: conn.db, executionHandle: 'h-002', sequence: 1, event: event1, runnerVersion: '1.0.0' })
+      ingestRunnerEvent({ db: conn.db, executionHandle: 'h-002', sequence: 2, event: event2, runnerVersion: '1.0.0' })
+      const rows = conn.db
+        .prepare('SELECT sequence, kind FROM runner_events WHERE execution_handle = ? ORDER BY sequence')
+        .all('h-002') as Array<{ sequence: number; kind: string }>
+      expect(rows).toHaveLength(2)
+      expect(rows[0]).toStrictEqual({ sequence: 1, kind: 'started' })
+      expect(rows[1]).toStrictEqual({ sequence: 2, kind: 'stdout' })
     } finally {
       conn.close()
     }

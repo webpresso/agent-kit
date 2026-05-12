@@ -88,14 +88,16 @@ Codex CLI and OpenCode. This preset runs by default and ensures `context-mode` i
 
 ### `gstack`
 
-Ensures gstack — a Claude Code skill registry providing `/qa`, `/ship`, `/review`, `/investigate`, `/browse`, etc. — is installed at `~/.claude/skills/gstack/`. This runs by default on every `ak setup`. If the directory is missing, setup clones from `https://github.com/garrytan/gstack.git` and runs `./setup --team`.
+Ensures gstack's **canonical checkout** exists at `~/.claude/skills/gstack/`. This runs by default on every `ak setup`. If the directory is missing, setup clones from `https://github.com/garrytan/gstack.git` and runs `./setup --team`. When Codex is detected, agent-kit then runs gstack's official host-specific setup flow (`./setup --host codex`) from that same checkout so Codex skills materialize under `~/.codex/skills/`.
 
 **Detection:** path-based (`~/.claude/skills/gstack/setup` exists), NOT PATH-based.
 **Failure modes:**
 - `git clone` exits non-zero → `EXIT_WRITE_FAIL` (exit 3)
 - `./setup --team` exits non-zero → `EXIT_WRITE_FAIL` (exit 3)
+- `./setup --host codex` exits non-zero after Codex is detected → `EXIT_WRITE_FAIL` (exit 3)
 
-**Idempotency:** every `ak setup` checks gstack and refreshes in place if needed (`gstack: ✓ updated`). Managed installs with a `.git/` directory do a fast-forward pull before `./setup --team`; unmanaged-but-valid installs (a `setup` script without `.git/`) rerun `./setup --team` without forcing git metadata.
+**Codex detection:** Codex is considered present when either `~/.codex/config.toml` exists or `codex --version` succeeds on `PATH`.
+**Idempotency:** every `ak setup` checks gstack and refreshes in place if needed (`gstack: ✓ updated`). Managed installs with a `.git/` directory do a fast-forward pull before `./setup --team`; unmanaged-but-valid installs (a `setup` script without `.git/`) rerun `./setup --team` without forcing git metadata. Codex materialization is also refreshed in place when Codex is detected (`gstack (codex): ✓ updated`).
 **Side-effects outside the consumer repo:** writes to the user's home dir at `~/.claude/skills/gstack/`. This is intentional — gstack is global by design.
 **Opt-out:** set `AK_SKIP_GSTACK=1` in the environment to skip (CI / sandboxed environments only — most consumer repos treat gstack as a hard prerequisite for AI-assisted work).
 

@@ -10,6 +10,7 @@ import { parseTechDebtForDb } from './parser/tech-debt-db-parser.js'
 import { resolvesCrossRepo } from '#cross-repo/resolver.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
 import { resolveTechDebtRoot } from '#utils/tech-debt-root.js'
+import type { RunnerEvent } from '#runners/types'
 
 export interface IngestOptions {
   readonly db: Database.Database
@@ -427,4 +428,58 @@ export async function ingestAll(opts: IngestOptions): Promise<IngestResult> {
     durationMs: Date.now() - start,
     errors: [...bp.errors, ...td.errors],
   }
+}
+
+// ---------------------------------------------------------------------------
+// Runner event ingester
+// ---------------------------------------------------------------------------
+
+export interface IngestRunnerEventInput {
+  readonly db: Database.Database
+  readonly executionHandle: string
+  readonly sequence: number
+  readonly event: RunnerEvent
+  readonly runnerVersion: string
+}
+
+export function ingestRunnerEvent(input: IngestRunnerEventInput): void {
+  const { db, executionHandle, sequence, event, runnerVersion } = input
+
+  if (runnerVersion === '') {
+    throw new Error('runnerVersion must not be empty')
+  }
+
+  let message: string | null = null
+  let exitCode: number | null = null
+  let filePath: string | null = null
+
+  switch (event.type) {
+    case 'progress':
+      message = event.message
+      break
+    case 'stdout':
+    case 'stderr':
+      message = event.line
+      break
+    case 'completed':
+      exitCode = event.exitCode
+      break
+    case 'failed':
+      exitCode = 0
+      message = event.error
+      break
+    case 'artifact':
+      filePath = event.path
+      break
+    case 'started':
+    case 'cancelled':
+      // no extra columns
+      break
+  }
+
+  db.prepare<[string, number, string, string, string | null, number | null, string | null]>(
+    `INSERT INTO runner_events
+       (execution_handle, sequence, kind, ts, message, exit_code, file_path)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(executionHandle, sequence, event.type, event.ts, message, exitCode, filePath)
 }

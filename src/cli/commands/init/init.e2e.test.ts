@@ -10,7 +10,7 @@
  * Fixtures live under __fixtures__/{fake-tools,fake-home}.
  */
 import { spawnSync } from 'node:child_process'
-import { cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -169,6 +169,20 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.code).toBe(0)
       expect(r.stdout).toContain('gstack: ✓ updated')
       expect(r.stdout).toContain(path.join(fakeHome, '.claude', 'skills', 'gstack'))
+    })
+
+    it('--with gstack + detected codex: materializes codex skills from the canonical checkout', () => {
+      mkdirSync(path.join(fakeHome, '.codex'), { recursive: true })
+      writeFileSync(path.join(fakeHome, '.codex', 'config.toml'), 'model = "gpt-5.4"\n')
+
+      const r = runAk(['setup', '--yes', '--with', 'gstack', '--cwd', repo], {
+        PATH: pathWithFakeOmxOk(),
+        HOME: fakeHome,
+      })
+
+      expect(r.code).toBe(0)
+      expect(r.stdout).toContain('gstack: ✓ updated')
+      expect(r.stdout).toContain(`gstack (codex): ✓ installed at ${path.join(fakeHome, '.codex', 'skills')}`)
     })
 
     it('--with omx,gstack combined: both presets execute against fixtures', () => {

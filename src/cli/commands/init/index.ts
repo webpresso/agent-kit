@@ -417,9 +417,31 @@ export async function runInit(flags: InitFlags): Promise<number> {
       switch (gstackResult.kind) {
         case 'gstack-installed':
           console.log(`  gstack: ✓ installed at ${gstackResult.root}`)
+          switch (gstackResult.codex.kind) {
+            case 'gstack-codex-installed':
+              console.log(`  gstack (codex): ✓ installed at ${gstackResult.codex.skillsRoot}`)
+              break
+            case 'gstack-codex-updated':
+              console.log(`  gstack (codex): ✓ updated at ${gstackResult.codex.skillsRoot}`)
+              break
+            case 'gstack-codex-skipped':
+              console.log(`  gstack (codex): - skipped (${gstackResult.codex.reason})`)
+              break
+          }
           break
         case 'gstack-updated':
           console.log(`  gstack: ✓ updated at ${gstackResult.root}`)
+          switch (gstackResult.codex.kind) {
+            case 'gstack-codex-installed':
+              console.log(`  gstack (codex): ✓ installed at ${gstackResult.codex.skillsRoot}`)
+              break
+            case 'gstack-codex-updated':
+              console.log(`  gstack (codex): ✓ updated at ${gstackResult.codex.skillsRoot}`)
+              break
+            case 'gstack-codex-skipped':
+              console.log(`  gstack (codex): - skipped (${gstackResult.codex.reason})`)
+              break
+          }
           break
         case 'gstack-skipped-dry-run':
           console.log('  gstack: skipped (--dry-run)')
@@ -433,7 +455,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
           gstackFailure = 'pull-failed'
           break
         case 'gstack-setup-failed':
-          console.error(`  gstack: ✗ ./setup --team exited with ${gstackResult.exitCode}`)
+          console.error(`  gstack: ✗ ./setup ${gstackResult.command} exited with ${gstackResult.exitCode}`)
           gstackFailure = 'setup-failed'
           break
       }
