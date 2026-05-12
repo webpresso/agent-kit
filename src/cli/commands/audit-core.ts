@@ -21,6 +21,7 @@ export type AuditKind =
   | 'gitignore-agent-surfaces'
   | 'memory-unified'
   | 'compile-drift'
+  | 'agent-cost'
   | 'blueprint-db-consistency'
   | 'blueprint-lifecycle-sql'
   | 'tech-debt-cadence'
