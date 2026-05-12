@@ -52,6 +52,10 @@ export async function bootstrapAk(
   // D8 — skip update check when in CI, mcp mode, or explicitly opted out.
   if (shouldSkipUpdateCheck(process.env, argv)) return
 
-  // D13 — fire-and-forget; errors are caught and written to auto-update.log.
-  runUpdateFlow(version).catch(logUpdateError)
+  // D13 — awaited so cache write + deferred install spawn complete before exit.
+  try {
+    await runUpdateFlow(version)
+  } catch (err) {
+    logUpdateError(err)
+  }
 }

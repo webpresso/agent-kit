@@ -5,7 +5,7 @@ import { getCommand, isBashInput } from '#hooks/shared/types'
 import { createSkipResult } from './skip-result.js'
 import { buildRedirectMessage, type MCPRedirectConfig } from './mcp-redirect.js'
 
-export type CommandCategory = 'test' | 'lint' | 'typecheck' | 'unknown'
+export type CommandCategory = 'test' | 'lint' | 'typecheck' | 'blueprint' | 'unknown'
 
 export interface CommandRule {
   pattern: RegExp
@@ -51,6 +51,8 @@ export const AUDIT_MODE_ENV = 'FORBIDDEN_COMMANDS_AUDIT'
 export const DOCS_REF = 'AGENTS.md "Forbidden Commands (CRITICAL)" section'
 
 const DB_HINT = 'just db-push (or just db-migrate, just db-generate)'
+const BLUEPRINT_HINT = 'ak blueprint new|list|audit — use ak_blueprint MCP tool for lifecycle transitions'
+const BLUEPRINT_LIFECYCLE_DIRS = '(draft|planned|in-progress|completed|archived)'
 const LINT_BASE = 'just lint --package <name> (or --file <path>)'
 const LINT_HINT = `${LINT_BASE} [--fix] [--fix-unsafe]`
 const FORMAT_HINT = 'just format (or just format-check)'
@@ -147,6 +149,16 @@ export function generateRules(): CommandRule[] {
   }
 
   rules.push(
+    {
+      pattern: new RegExp(`\\bmv\\b.*blueprints\\/${BLUEPRINT_LIFECYCLE_DIRS}`),
+      category: 'blueprint',
+      suggestion: BLUEPRINT_HINT,
+    },
+    {
+      pattern: new RegExp(`\\bmkdir\\b.*blueprints\\/${BLUEPRINT_LIFECYCLE_DIRS}`),
+      category: 'blueprint',
+      suggestion: BLUEPRINT_HINT,
+    },
     { pattern: /^doppler run/, category: 'unknown', suggestion: ENV_HINT },
     { pattern: /^DATABASE_URL=/, category: 'unknown', suggestion: ENV_HINT },
     { pattern: /^pnpm exec\b/, category: 'unknown', suggestion: JUST_TASK_TARGET_HINT },

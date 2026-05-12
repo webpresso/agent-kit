@@ -7,6 +7,7 @@ describe('buildRedirectMessage', () => {
     ['test', 'mcp__agent-kit__ak_test(...)'],
     ['lint', 'mcp__agent-kit__ak_lint(...)'],
     ['typecheck', 'mcp__agent-kit__ak_typecheck(...)'],
+    ['blueprint', 'mcp__agent-kit__ak_blueprint(...)'],
     ['unknown', 'mcp__agent-kit__ak_qa(...)'],
   ] as const)('uses MCP tool format for %s when MCP is ready', (category, matcher) => {
     const message = buildRedirectMessage({

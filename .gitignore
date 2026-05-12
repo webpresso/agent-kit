@@ -126,3 +126,4 @@ __fixtures__/fake-home/.vite-plus/
 .agent/.blueprints.snapshot.sql
 .agent/.tail-hint-history.jsonl
 # === agent-kit: generated end
+.gstack/

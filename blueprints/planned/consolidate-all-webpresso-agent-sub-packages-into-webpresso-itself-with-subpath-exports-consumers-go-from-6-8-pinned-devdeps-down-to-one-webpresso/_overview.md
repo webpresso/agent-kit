@@ -4,7 +4,7 @@ status: planned
 complexity: M
 created: '2026-05-12'
 last_updated: '2026-05-12'
-progress: '0% (drafted)'
+progress: 'refined and ready for planned execution (0/16 tasks complete)'
 depends_on: []
 tags:
   - consolidation
@@ -12,682 +12,767 @@ tags:
   - package-design
 ---
 
-# Consolidate @webpresso/agent-* sub-packages into webpresso subpath exports
+# Consolidate `@webpresso/agent-*` sub-packages into `webpresso` subpath exports
 
-**Goal:** Consumers go from 6–8 pinned devDeps (`@webpresso/agent-tsconfig`,
-`@webpresso/agent-vitest`, `@webpresso/agent-stryker`, …) down to ONE:
-`webpresso`. Everything is a subpath export. `pnpm add -D webpresso` + `wp setup`
-is the complete onboarding story.
+**Goal:** consumers replace 6–8 pinned `@webpresso/agent-*` devDependencies with
+one install: `webpresso`. Configs, presets, runtime helpers, and docs-lint APIs
+are exposed as `webpresso/*` subpaths while existing hook bins and `ak_*` MCP
+tool routing remain unchanged.
 
-## Context
+This plan is a **prep + release-gate** blueprint:
 
-The `@webpresso/agent-*` family ships 9 sub-packages today. A consumer like
-`ingest-lens` pins all of them separately, which creates version-drift risk and
-forces consumers to track internal package splits. The `webpresso` name is
-already reserved on public npm (`0.0.0-placeholder`). This blueprint folds the
-sub-packages into `webpresso` itself, making the package both the global CLI
-**and** the single devDep for config/preset access.
+- **ready lane:** source folds, tests, docs, manifest/staging validation.
+- **prep-only lane:** final deprecated package metadata and migration guidance.
+- **sibling repo lane:** consumer proof in a separate repo/PR; do not edit a
+  sibling repo from this blueprint unless the operator explicitly checks it out.
+- **release gate:** credential-gated publish and `npm deprecate` operations only
+  after QA passes.
 
-Prior art: `@epic-web/config` (ESLint + Prettier + TypeScript in one package,
-subpath exports). Pattern is production-proven.
+## Verified Context
+
+| Claim | Verification | Blueprint impact |
+| --- | --- | --- |
+| `webpresso` is reserved on public npm | `npm view webpresso` returns `0.0.0-placeholder` with `latest` pointing at the placeholder. | Keep public-package identity as `webpresso`; release remains credential-gated. |
+| Repo source package is still `@webpresso/agent-kit` | Root `package.json` is `@webpresso/agent-kit`; `scripts/publish-webpresso.ts` stages a swapped `webpresso` package for public npm. | Implement source changes in the repo root, not `packages/webpresso/`. Validate with the staging script. |
+| `@webpresso/agent-*` packages exist locally | 9 packages live under `packages/agent-*`; `agent-vitest`, `agent-stryker`, `agent-oxlint`, and `agent-tsconfig` are not uniformly `src/`-based. | Each fold task names its source layout; do not assume a `src/` directory exists. |
+| TypeScript config inheritance from packages is supported, but JSON config files must be physically present for the target path. | TypeScript docs describe `extends` resolving package configs from `node_modules`; TS module docs separately scope `exports` handling to module resolution. | Ship literal `src/config/tsconfig/*.json` files and verify staged-package filesystem paths. Do not rely on `package.json#exports` alone for `tsconfig extends`. |
+| Oxlint package-based shared config requires `oxlint.config.ts`. | Oxlint docs say `.oxlintrc.json` extends paths are relative and package imports are not supported there; TypeScript config files support imported config objects and require Node v22.18+ or v24+. | Migrate consumers from `.oxlintrc.json` to `oxlint.config.ts`; repo already requires Node `>=24`. |
+| `npm deprecate` is registry state, not a workspace file-only change. | npm docs specify `npm deprecate <package-spec> <message>`, owner permission, and note the command is unaware of workspaces. | Split deprecated metadata prep from the final credential-gated registry deprecation gate. |
+
+Sources checked: TypeScript docs via Context7, Oxlint config docs, Node package
+exports docs, npm deprecate docs, local `package.json`, `scripts/publish-webpresso.ts`,
+and package source layouts.
 
 ## Architecture Overview
 
-```
-BEFORE                                  AFTER
-──────────────────────────────────────  ──────────────────────────────────────
-consumer devDependencies:               consumer devDependencies:
-  @webpresso/agent-tsconfig             webpresso (single entry, catalog:)
+```text
+BEFORE (consumer)                         AFTER (consumer)
+──────────────────────────────────────    ────────────────────────────────────
+devDependencies:                          devDependencies:
+  @webpresso/agent-tsconfig                 webpresso
   @webpresso/agent-vitest
-  @webpresso/agent-stryker
-  @webpresso/agent-oxlint               tsconfig.json:
-  @webpresso/agent-workers-test           "extends": "webpresso/tsconfig/base"
-  @webpresso/agent-docs-lint
-                                        vitest.config.ts:
-tsconfig.json:                            import { nodeConfig } from
-  "extends": "@webpresso/agent-             'webpresso/vitest/node'
-              tsconfig/base.json"
-                                        oxlint.config.ts (migrated from .json):
-vitest.config.ts:                         import config from
-  import { nodeConfig } from               'webpresso/oxlint'
-    '@webpresso/agent-vitest/node'
-                                        stryker.config.ts:
-.oxlintrc.json:                           import base from 'webpresso/stryker'
-  (can't extend from packages)
-                                        import { BaseWorkerEnv } from
-                                          'webpresso/workers-test'
+  @webpresso/agent-stryker                 tsconfig.json:
+  @webpresso/agent-oxlint                    "extends": "webpresso/tsconfig/base.json"
+  @webpresso/agent-workers-test
+  @webpresso/agent-docs-lint               vitest.config.ts:
+                                             import { nodeConfig } from
+                                               "webpresso/vitest/node"
+tsconfig.json:
+  "extends":                               oxlint.config.ts:
+    "@webpresso/agent-tsconfig/base.json"    import { config } from "webpresso/oxlint"
+
+vitest.config.ts:                          stryker.config.ts:
+  import { nodeConfig } from                 import base from "webpresso/stryker"
+    "@webpresso/agent-vitest/node"
+                                           workers tests:
+.oxlintrc.json                               import { BaseWorkerEnv } from
+  package imports unsupported                  "webpresso/workers-test"
 ```
 
 ## Key Decisions
 
 | Decision | Choice | Rationale |
-|---|---|---|
-| tsconfig extends mechanism | Ship actual `.json` files at literal paths in `webpresso/tsconfig/*.json` | TypeScript `extends` does NOT consult `package.json#exports`. Verified against TS 5.x source + `@epic-web/config` implementation. Files must exist at exact filesystem paths. |
-| oxlint config format | Migrate consumers to `oxlint.config.ts` (TypeScript format) | `.oxlintrc.json` `extends` only accepts relative file paths — package imports not supported. The TS format supports `import config from 'webpresso/oxlint'`. Node ≥24 required; repo already enforces this. |
-| vitest/stryker imports | Standard exports map resolution | `import from 'webpresso/vitest/node'` resolves via `package.json#exports` normally. No workaround needed. |
-| Sub-package lifecycle | Deprecate + archive, keep on GH Packages for one minor window | Consumers have time to migrate. `@webpresso/agent-*` packages publish one final version with a `deprecated` field pointing at the new path. |
-| Package name | `webpresso` (public npm) | Already reserved. Global CLI + devDep config is one install. |
-| Runtime packages | Subpath exports of `webpresso` | `workers-test`, `docs-lint`, `launch`, `test-preset`, `e2e-preset` become `webpresso/workers-test`, etc. Same compile output, different import path. |
+| --- | --- | --- |
+| Package source | Continue editing repo-root `@webpresso/agent-kit`; publish `webpresso` through `scripts/publish-webpresso.ts` staging. | Local package identity and public package identity intentionally differ today. |
+| `tsconfig` delivery | Copy literal JSON files into `src/config/tsconfig/*.json`; include them in packed files and optionally expose `./tsconfig/*`. | `tsconfig extends` must work from physical package paths. |
+| Config/runtime folds | Copy source into root `src/config/*`; avoid `../../packages/*` re-export shims. | New code must not introduce parent-relative imports, and archived sub-packages must not remain runtime dependencies. |
+| Manifest integration | One task owns root `package.json`, `package.json#tshy.exports`, `package.json#exports`, `files`, `bin`, and `tsconfig.json` aliases. | Prevents same-file conflicts in parallel Wave 0 tasks. |
+| Oxlint migration | Consumers move from `.oxlintrc.json` to `oxlint.config.ts`. | Package imports are supported in the TypeScript config form, not JSON extends. |
+| Sub-package lifecycle | Keep sub-packages installable, publish one final notice version, then run `npm deprecate` in the release gate. | Avoids breaking old consumers and keeps irreversible registry operations isolated. |
+| Consumer proof | Treat `ozby/ingest-lens` or another dogfood consumer as a sibling repo PR. | This repo can prepare the recipe; sibling repos are referenced, not silently edited. |
+
+## Refinement Findings
+
+| ID | Severity | Finding | Applied fix |
+| --- | --- | --- | --- |
+| F1 | HIGH | Original Wave 0 had multiple tasks modifying `package.json`, causing parallel file conflicts. | Centralized manifest/export/bin work in Task 2.6. |
+| F2 | HIGH | Original examples used `../../packages/*` re-export shims, violating the no-parent-relative-import convention and keeping archived packages on the runtime path. | Fold source or inline config; use package-local `#` aliases if imports are needed. |
+| F3 | HIGH | Original plan mixed reversible prep with publish/deprecation release operations. | Split prep tasks from Task 4.2 release gate. |
+| F4 | HIGH | `agent-vitest`, `agent-stryker`, `agent-oxlint`, and `agent-tsconfig` source layouts differ; not all have `src/`. | Each task names exact source package layout and parity checks. |
+| F5 | MEDIUM | `ingest-lens` was not present locally during refinement. | Consumer migration is a sibling repo lane with a generated checklist and external PR proof. |
+| F6 | MEDIUM | Docs-lint is large (~12k source lines); one coarse task would be hard to review. | Split docs-lint into API/schema fold and CLI/template fold. |
+| F7 | MEDIUM | `tsconfig extends` and `package.json#exports` claims needed sharper wording. | Plan now requires literal filesystem JSON plus a fixture against the staged `webpresso` package. |
+| F8 | MEDIUM | `npm deprecate` cannot be represented solely by a package file diff. | Add explicit registry deprecation release step with owner/OTP requirements. |
 
 ## Quick Reference (Execution Waves)
 
-| Wave | Tasks | Dependencies | Parallelizable |
-|---|---|---|---|
-| **Wave 0** | 1.1 (scaffold), 1.2 (tsconfig files), 1.3 (vitest/stryker exports), 1.4 (oxlint export), 1.5 (routing-block + agent-rules update) | None | 5 agents |
-| **Wave 1** | 2.1 (workers-test fold), 2.2 (docs-lint fold), 2.3 (runtime folds), 2.4 (package.json exports map) | Wave 0 | 4 agents |
-| **Wave 2** | 3.1 (consumer migration: ingest-lens), 3.2 (sub-package deprecation) | Wave 1 | 2 agents |
-| **Wave 3** | 4.1 (full QA gate), 4.2 (changeset + publish) | Wave 2 | 2 agents |
-| **Critical path** | 1.1 → 2.4 → 3.1 → 4.2 | — | 4 waves |
+| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
+| --- | --- | --- | --- | --- |
+| **Wave 0** | 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5 | None | 10 agents | XS-S |
+| **Wave 1** | 2.6 | Wave 0 source/config folds except 1.5 | 1 agent | S |
+| **Wave 2** | 3.1, 3.2, 3.3 | 2.6 | 3 agents | XS-S |
+| **Wave 3** | 4.1 | 1.5, 3.1, 3.2, 3.3 | 1 agent | S |
+| **Wave 4** | 4.2 | 4.1 | 1 operator | XS release gate |
+| **Critical path** | Wave 0 fold → 2.6 → 3.x proof/prep → 4.1 → 4.2 | — | 5 waves | M |
 
-**Parallel metrics snapshot:**
+### Parallel Metrics Snapshot
 
-| Metric | Value | Target |
-|---|---|---|
-| RW0 (tasks in Wave 0) | 5 | ≥ 3 |
-| CPR (13 tasks / 4 waves) | 3.25 | ≥ 2.5 |
-| CP (file conflicts per wave) | 0 | 0 |
+| Metric | Formula / Meaning | Target | Actual |
+| --- | --- | --- | --- |
+| RW0 | Ready tasks in Wave 0 | ≥ planned agents / 2 | 10 |
+| CPR | total tasks / critical path length | ≥ 2.5 | 16 / 5 = 3.2 |
+| DD | dependency edges / total tasks | ≤ 2.0 | 17 / 16 = 1.06 |
+| CP | same-file overlaps per wave | 0 | 0 |
+
+**Parallelization score:** A. The manifest fan-in is intentional and isolated in
+Task 2.6 to avoid `package.json` contention.
 
 ---
 
-## Phase 1: Scaffold webpresso subpath structure [Complexity: S]
+## Phase 1: Config package folds [Complexity: S]
 
-#### Task 1.1: Scaffold the subpath directory skeleton in webpresso package
+#### [config] Task 1.1: Fold `@webpresso/agent-tsconfig`
 
 **Status:** todo
 
 **Depends:** None
 
-Create the directory skeleton inside `packages/webpresso/` (the future
-`webpresso` public package, currently `@webpresso/agent-kit`'s primary
-publishing target). Add subdirectories for each sub-package type so subsequent
-tasks have a landing zone.
-
-The directory layout:
-```
-packages/webpresso/         (or root if agent-kit IS webpresso)
-  tsconfig/                 ← JSON files shipped at literal paths
-  vitest/                   ← re-exported vitest presets
-  stryker/                  ← re-exported stryker configs
-  oxlint/                   ← re-exported oxlint plugin + config
-  workers-test/             ← folded from @webpresso/agent-workers-test
-  docs-lint/                ← folded from @webpresso/agent-docs-lint
-  test-preset/              ← folded from @webpresso/agent-test-preset
-  e2e-preset/               ← folded from @webpresso/agent-e2e-preset
-```
-
-Note: the canonical package.json name will be `webpresso` (public npm) for the
-published package. Internally in the monorepo the source lives under
-`agent-kit/`. The `publish-webpresso.ts` staging script already handles the
-name swap.
+Copy the six published JSON config files from `packages/agent-tsconfig/` into
+literal package paths under `src/config/tsconfig/`. This task does not edit the
+manifest; Task 2.6 owns `package.json` and staged publish validation.
 
 **Files:**
-- Create: `src/config/tsconfig/.gitkeep` (placeholder until 1.2 fills it)
-- Create: `src/config/vitest/.gitkeep`
-- Create: `src/config/stryker/.gitkeep`
-- Create: `src/config/oxlint/.gitkeep`
 
-**Steps (TDD):** This task is scaffolding — no test needed. Verify with
-`ls -R src/config/`.
-
-**Acceptance:**
-- [ ] Directory structure created
-- [ ] `pnpm lint` passes (no new lint issues)
-
----
-
-#### Task 1.2: Add tsconfig JSON files at literal filesystem paths
-
-**Status:** todo
-
-**Depends:** Task 1.1
-
-**CRITICAL FINDING:** TypeScript `extends` does NOT use `package.json#exports`.
-It resolves via the legacy Node.js file lookup: `node_modules/webpresso/tsconfig/base.json`
-must be a real file. Verified against TS 5.x source + `@epic-web/config` which
-ships `node_modules/@epic-web/config/typescript.json` as a literal file.
-
-Copy (then maintain) the 6 tsconfig JSON files from `packages/agent-tsconfig/`
-into `src/config/tsconfig/`:
-- `base.json`, `cloudflare.json`, `library.json`, `react-library.json`,
-  `react-router.json`, `webpresso.json`
-
-These files must be included in the published package via `"files"` in
-`package.json`:
-```json
-"files": ["dist", "src", "src/config/tsconfig", ...]
-```
-
-Consumer migration: `"extends": "@webpresso/agent-tsconfig/base.json"`
-→ `"extends": "webpresso/tsconfig/base.json"`.
-
-The `/tsconfig/base.json` subpath **does not** need an `exports` entry — the
-literal file path is what TypeScript uses. But add exports entries anyway for
-completeness and for tools that do use them:
-```json
-"./tsconfig/*": "./src/config/tsconfig/*.json"
-```
-
-**Files:**
 - Create: `src/config/tsconfig/base.json`
 - Create: `src/config/tsconfig/cloudflare.json`
 - Create: `src/config/tsconfig/library.json`
 - Create: `src/config/tsconfig/react-library.json`
 - Create: `src/config/tsconfig/react-router.json`
 - Create: `src/config/tsconfig/webpresso.json`
-- Modify: `package.json` — add `src/config/tsconfig` to `files` array
+- Create: `src/config/tsconfig/tsconfig-parity.test.ts`
 
 **Steps (TDD):**
-1. Copy JSON files from `packages/agent-tsconfig/` 
-2. Write a test: resolve `require.resolve('webpresso/tsconfig/base.json')` from
-   a temp project with `webpresso` installed — verify the file exists at the
-   resolved path
-3. Verify the content matches the source package exactly (byte-diff)
-4. Run `mcp__plugin_webpresso-agent-kit_agent-kit__ak_typecheck` — zero errors
+
+1. Write a failing parity test that byte-compares each new JSON file with its
+   source in `packages/agent-tsconfig/`.
+2. Run `ak_test` scoped to `src/config/tsconfig/tsconfig-parity.test.ts` — verify FAIL.
+3. Copy the JSON files without semantic edits.
+4. Run `ak_test` scoped to `src/config/tsconfig/tsconfig-parity.test.ts` — verify PASS.
+5. Refactor only if needed; preserve byte parity.
+6. Run `ak_lint` and `ak_typecheck` for the changed files.
 
 **Acceptance:**
-- [ ] 6 JSON files present at `src/config/tsconfig/`
-- [ ] `package.json#files` includes the tsconfig dir
-- [ ] Byte-identical to source packages (extraction-parity rule)
-- [ ] Typecheck passes
 
----
+- [ ] Six JSON configs exist at literal `src/config/tsconfig/*.json` paths.
+- [ ] Parity test proves byte-identical content against `packages/agent-tsconfig/`.
+- [ ] No `package.json` edit in this task.
+- [ ] `ak_lint` and `ak_typecheck` pass for changed files.
 
-#### Task 1.3: Add vitest and stryker subpath exports
+#### [config] Task 1.2: Fold `@webpresso/agent-vitest`
 
 **Status:** todo
 
-**Depends:** Task 1.1
+**Depends:** None
 
-Vitest and stryker configs use standard `package.json#exports` resolution
-(unlike tsconfig). Create thin re-export barrel files:
-
-**vitest**: `src/config/vitest/node.ts`, `react.ts`, `react-router.ts`,
-`workers.ts`, `react-setup.ts` — each does:
-```ts
-export { nodeConfig } from '../../packages/agent-vitest/src/node.js'
-// or inline the config if agent-vitest is being folded wholesale
-```
-
-**stryker**: `src/config/stryker/index.ts`, `webpresso.ts` — re-export from
-`@webpresso/agent-stryker`.
-
-Add to `package.json#exports`:
-```json
-"./vitest/*": "./src/config/vitest/*.ts",
-"./stryker": "./src/config/stryker/index.ts",
-"./stryker/*": "./src/config/stryker/*.ts"
-```
-
-Consumer migration:
-- `import { nodeConfig } from '@webpresso/agent-vitest/node'`
-  → `import { nodeConfig } from 'webpresso/vitest/node'`
-- `import base from '@webpresso/agent-stryker'`
-  → `import base from 'webpresso/stryker'`
+Fold the `agent-vitest` package root files into `src/config/vitest/`. This
+package does not use a `src/` directory; source files live at package root.
+Preserve existing exports such as `node`, `react`, `react-router`, `workers`,
+`react-setup`, `flakiness-reporter`, and `webpresso/*` aliases where still
+needed. Do not implement this as a parent-relative re-export into `packages/`.
 
 **Files:**
-- Create: `src/config/vitest/node.ts` (and react, react-router, workers, react-setup)
-- Create: `src/config/stryker/index.ts`, `src/config/stryker/webpresso.ts`
-- Modify: `package.json` exports map
+
+- Create: `src/config/vitest/node.ts`
+- Create: `src/config/vitest/react.ts`
+- Create: `src/config/vitest/react-router.ts`
+- Create: `src/config/vitest/workers.ts`
+- Create: `src/config/vitest/react-setup.ts`
+- Create: `src/config/vitest/flakiness-reporter.ts`
+- Create: `src/config/vitest/version-guard.ts`
+- Create: `src/config/vitest/vitest-parity.test.ts`
 
 **Steps (TDD):**
-1. Write import test: `import { nodeConfig } from 'webpresso/vitest/node'` in
-   a temp fixture → verify the config object has expected keys
-2. Implement the re-export files
-3. Run `mcp__plugin_webpresso-agent-kit_agent-kit__ak_test` scoped to the vitest
-   config fixtures
+
+1. Write failing tests that import the new local modules and compare key exports
+   with `packages/agent-vitest/*`.
+2. Run `ak_test` scoped to `src/config/vitest/vitest-parity.test.ts` — verify FAIL.
+3. Copy/fold the package root source files, updating only import paths needed
+   for the new root package.
+4. Run the scoped `ak_test` — verify PASS.
+5. Refactor to use package-local aliases instead of parent-relative imports.
+6. Run `ak_lint` and `ak_typecheck` for changed files.
 
 **Acceptance:**
-- [ ] All vitest subpath exports resolve correctly
-- [ ] Stryker re-export works
-- [ ] Tests pass
-- [ ] Typecheck passes
 
----
+- [ ] All current `@webpresso/agent-vitest` subpath behaviors have local equivalents.
+- [ ] New files do not import from `../../packages/*`.
+- [ ] Parity tests pass.
+- [ ] `ak_lint` and `ak_typecheck` pass for changed files.
 
-#### Task 1.4: Add oxlint subpath export + document config.ts migration
+#### [config] Task 1.3: Fold `@webpresso/agent-stryker`
 
 **Status:** todo
 
-**Depends:** Task 1.1
+**Depends:** None
 
-**FINDING:** `.oxlintrc.json` format's `extends` only accepts relative file
-paths — package imports not supported. Consumers MUST migrate to
-`oxlint.config.ts`. This is supported on Node ≥22.18 / ≥24. The repo enforces
-Node ≥24 (`engines: { node: ">=24" }`), so this is safe.
-
-Create `src/config/oxlint/index.ts`:
-```ts
-export { rules, config } from '../../packages/agent-oxlint/src/index.js'
-export * from '../../packages/agent-oxlint/src/import-hygiene.js'
-export * from '../../packages/agent-oxlint/src/monorepo-paths.js'
-```
-
-Add to `package.json#exports`:
-```json
-"./oxlint": "./src/config/oxlint/index.ts",
-"./oxlint/*": "./src/config/oxlint/*.ts"
-```
-
-Consumer migration guide (document in MIGRATION.md):
-```
-# Before (.oxlintrc.json — cannot extend packages)
-{}
-
-# After (oxlint.config.ts)
-import { config } from 'webpresso/oxlint'
-export default config
-```
+Fold the Stryker base and webpresso configs into `src/config/stryker/`, keeping
+default export behavior compatible with current consumers.
 
 **Files:**
+
+- Create: `src/config/stryker/index.ts`
+- Create: `src/config/stryker/webpresso.ts`
+- Create: `src/config/stryker/stryker-parity.test.ts`
+
+**Steps (TDD):**
+
+1. Write failing tests that import `src/config/stryker/index.ts` and
+   `src/config/stryker/webpresso.ts` and compare normalized config output with
+   `packages/agent-stryker/`.
+2. Run `ak_test` scoped to `src/config/stryker/stryker-parity.test.ts` — verify FAIL.
+3. Fold the config source without changing Stryker semantics.
+4. Run the scoped `ak_test` — verify PASS.
+5. Remove parent-relative imports introduced during the fold.
+6. Run `ak_lint` and `ak_typecheck` for changed files.
+
+**Acceptance:**
+
+- [ ] `webpresso/stryker` and `webpresso/stryker/webpresso` can be mapped by Task 2.6.
+- [ ] Parity tests pass.
+- [ ] `ak_lint` and `ak_typecheck` pass for changed files.
+
+#### [config] Task 1.4: Fold `@webpresso/agent-oxlint`
+
+**Status:** todo
+
+**Depends:** None
+
+Fold the Oxlint config/plugin modules into `src/config/oxlint/`. The consumer
+API must be usable from `oxlint.config.ts` by importing config objects from
+`webpresso/oxlint`; `.oxlintrc.json` package imports are out of scope.
+
+**Files:**
+
 - Create: `src/config/oxlint/index.ts`
-- Modify: `package.json` exports map
-- Modify: `MIGRATION.md` — add oxlint migration section
+- Create: `src/config/oxlint/import-hygiene.ts`
+- Create: `src/config/oxlint/monorepo-paths.ts`
+- Create: `src/config/oxlint/foundation-purity.ts`
+- Create: `src/config/oxlint/tier-boundaries.ts`
+- Create: `src/config/oxlint/query-patterns.ts`
+- Create: `src/config/oxlint/graphql-conventions.ts`
+- Create: `src/config/oxlint/testing-quality.ts`
+- Create: `src/config/oxlint/code-safety.ts`
+- Create: `src/config/oxlint/oxlint-parity.test.ts`
 
 **Steps (TDD):**
-1. Write test: `import { config } from 'webpresso/oxlint'` — verify `config`
-   has the expected rule structure
-2. Implement the re-export
-3. Test that `oxlint --config oxlint.config.ts` accepts the imported config in
-   a fixture project
+
+1. Write failing tests that import the folded config and assert the same rule
+   keys as `packages/agent-oxlint/src/index.js`.
+2. Run `ak_test` scoped to `src/config/oxlint/oxlint-parity.test.ts` — verify FAIL.
+3. Fold the modules into TypeScript-compatible source, preserving exported names.
+4. Run the scoped `ak_test` — verify PASS.
+5. Add a fixture `oxlint.config.ts` import smoke test if one does not already exist.
+6. Run `ak_lint` and `ak_typecheck` for changed files.
 
 **Acceptance:**
-- [ ] `webpresso/oxlint` export resolves
-- [ ] MIGRATION.md documents the `.oxlintrc.json` → `oxlint.config.ts` change
-- [ ] Tests pass
 
----
+- [ ] `webpresso/oxlint` can export an object usable from `oxlint.config.ts`.
+- [ ] `.oxlintrc.json` package-import support is not promised.
+- [ ] Parity tests pass.
+- [ ] `ak_lint` and `ak_typecheck` pass for changed files.
 
-## Phase 2: Fold runtime packages into webpresso [Complexity: M]
-
-#### Task 2.1: Fold @webpresso/agent-workers-test
+#### [docs] Task 1.5: Update routing block and agent rules for new import paths
 
 **Status:** todo
 
-**Depends:** Task 1.1
+**Depends:** None
 
-Move the 729-line `@webpresso/agent-workers-test` source into
-`src/config/workers-test/`. This package is a runtime library (test utilities
-for Cloudflare Workers), not a config-only package, so it needs `tshy` build
-output.
-
-Steps: copy source, add to `tshy#exports`, add to `package.json#exports`.
-
-Consumer migration: `import { BaseWorkerEnv } from '@webpresso/agent-workers-test'`
-→ `import { BaseWorkerEnv } from 'webpresso/workers-test'`
-
-Apply the extraction-parity rule: `diff -ru packages/agent-workers-test/src src/config/workers-test/` must be empty (or only import-path changes).
+Update agent-facing docs and injected routing context so future agents do not
+recommend adding the retired `@webpresso/agent-*` packages. MCP tool names and
+hook bin names stay unchanged; only package import/install guidance changes.
 
 **Files:**
-- Create: `src/config/workers-test/*.ts` (source fold)
-- Modify: `package.json` exports + tshy config
-- Modify: `src/config/workers-test` test files (path updates only)
+
+- Modify: `src/hooks/shared/routing-block.ts`
+- Modify: `catalog/agent/rules/package-conventions.md`
+- Modify: `catalog/agent/rules/changeset-release.md`
+- Modify: `AGENTS.md`
+
+**Steps (TDD):**
+
+1. Write or update a text assertion test that searches routing/rule surfaces for
+   stale `@webpresso/agent-` install guidance.
+2. Run `ak_test` scoped to that assertion — verify FAIL if stale references exist.
+3. Replace stale package guidance with `webpresso/*` subpath guidance, keeping
+   `ak_test`, `ak_lint`, `ak_typecheck`, `ak_qa`, and `ak_audit` names unchanged.
+4. Run the scoped assertion — verify PASS.
+5. Refactor wording for clarity only.
+6. Run `ak_lint` and `ak_typecheck` for changed files.
 
 **Acceptance:**
-- [ ] Mutation score ≥ old score − 2 (extraction-parity rule)
-- [ ] Byte-diff shows only import-path changes
-- [ ] All existing workers-test tests pass under the new path
+
+- [ ] No routing/rule surface tells consumers to install `@webpresso/agent-*`.
+- [ ] `ak_*` MCP tool names are unchanged.
+- [ ] Hook bin names in `package.json#bin` are unchanged.
+- [ ] `ak_lint` and `ak_typecheck` pass for changed files.
 
 ---
 
-#### Task 2.2: Fold @webpresso/agent-docs-lint
+## Phase 2: Runtime package folds and manifest integration [Complexity: M]
+
+#### [runtime] Task 2.1: Fold `@webpresso/agent-workers-test`
 
 **Status:** todo
 
-**Depends:** Task 1.1
+**Depends:** None
 
-Move the 11,769-line `@webpresso/agent-docs-lint` into `src/config/docs-lint/`.
-This is the largest fold — it includes CLI bins (docs-lint, docs-check-*).
-
-The CLI bins from `@webpresso/agent-docs-lint` join the `webpresso` bin map:
-```json
-"docs-lint": "./src/config/docs-lint/bin/docs-lint.ts"
-```
-
-Consumer migration: `import { auditDocsFrontmatter } from '@webpresso/agent-docs-lint'`
-→ `import { auditDocsFrontmatter } from 'webpresso/docs-lint'`
+Fold the Cloudflare Workers test helper runtime from
+`packages/agent-workers-test/src/` into `src/config/workers-test/`. Preserve
+runtime behavior and tests; only import paths should change.
 
 **Files:**
-- Create: `src/config/docs-lint/**` (source fold)
-- Modify: `package.json` bin map + exports + tshy
+
+- Create: `src/config/workers-test/index.ts`
+- Create: `src/config/workers-test/**/*.ts`
+- Create: `src/config/workers-test/workers-test-parity.test.ts`
+
+**Steps (TDD):**
+
+1. Write a failing parity test that imports the folded `BaseWorkerEnv` and key
+   helpers from `src/config/workers-test/index.ts`.
+2. Run `ak_test` scoped to `src/config/workers-test/workers-test-parity.test.ts` — verify FAIL.
+3. Copy/fold source from `packages/agent-workers-test/src/`.
+4. Run the scoped `ak_test` — verify PASS.
+5. Refactor only import paths; keep logic diffs minimal.
+6. Run `ak_lint` and `ak_typecheck` for changed files.
 
 **Acceptance:**
-- [ ] Extraction parity verified
-- [ ] All docs-lint tests pass
-- [ ] CLI bins work: `wp docs-lint --help` (docs-lint bin is now part of wp)
 
----
+- [ ] Workers-test parity test passes.
+- [ ] Diff against source package is empty or import-path-only.
+- [ ] `ak_lint` and `ak_typecheck` pass for changed files.
 
-#### Task 2.3: Fold remaining runtime packages (launch, test-preset, e2e-preset)
+#### [runtime] Task 2.2: Fold docs-lint API, schemas, parsers, and generator
 
 **Status:** todo
 
-**Depends:** Task 1.1
+**Depends:** None
 
-Fold three smaller packages in one task (all are ≤ 200 lines):
-- `@webpresso/agent-launch` (1,161 lines) → `src/config/launch/`
-- `@webpresso/agent-test-preset` (87 lines) → `src/config/test-preset/`
-- `@webpresso/agent-e2e-preset` (131 lines) → `src/config/e2e-preset/`
-
-Consumer migrations:
-- `from '@webpresso/agent-launch'` → `from 'webpresso/launch'`
-- `from '@webpresso/agent-test-preset'` → `from 'webpresso/test-preset'`
-- `from '@webpresso/agent-e2e-preset'` → `from 'webpresso/e2e-preset'`
+Fold the reusable `@webpresso/agent-docs-lint` library surface into
+`src/config/docs-lint/` without moving CLI entrypoints yet. This task owns
+schemas, parsers, generator APIs, validators, and their fixtures/tests.
 
 **Files:**
-- Create: `src/config/{launch,test-preset,e2e-preset}/*.ts`
-- Modify: `package.json` exports + tshy
+
+- Create: `src/config/docs-lint/index.ts`
+- Create: `src/config/docs-lint/schemas/**`
+- Create: `src/config/docs-lint/parsers/**`
+- Create: `src/config/docs-lint/generator/**`
+- Create: `src/config/docs-lint/__fixtures__/**`
+- Create: `src/config/docs-lint/docs-lint-api-parity.test.ts`
+
+**Steps (TDD):**
+
+1. Write failing API parity tests for `schemas`, `generator`, and main
+   docs-lint exports.
+2. Run `ak_test` scoped to `src/config/docs-lint/docs-lint-api-parity.test.ts` — verify FAIL.
+3. Fold the API/schema/parser/generator source.
+4. Run the scoped `ak_test` — verify PASS.
+5. Refactor path imports without changing lint semantics.
+6. Run `ak_lint` and `ak_typecheck` for changed files.
 
 **Acceptance:**
-- [ ] Extraction parity for each fold
-- [ ] All three test suites pass
 
----
+- [ ] Public docs-lint APIs resolve locally.
+- [ ] Existing docs-lint unit tests have folded equivalents or are moved intact.
+- [ ] `ak_lint` and `ak_typecheck` pass for changed files.
 
-#### Task 2.4: Update package.json exports map + tshy config
+#### [runtime] Task 2.3: Fold docs-lint CLI, templates, and bin entrypoints
 
 **Status:** todo
 
-**Depends:** Tasks 2.1, 2.2, 2.3
+**Depends:** None
 
-Consolidate all new subpath exports into the canonical `package.json#exports`
-and `package.json#imports` maps. Update `tshy.json` (or `package.json#tshy`) to
-include all the new source entry points.
-
-Full exports map after this task:
-```json
-"./tsconfig/*": "./src/config/tsconfig/*.json",
-"./vitest/*":   "./src/config/vitest/*.ts",
-"./stryker":    "./src/config/stryker/index.ts",
-"./stryker/*":  "./src/config/stryker/*.ts",
-"./oxlint":     "./src/config/oxlint/index.ts",
-"./oxlint/*":   "./src/config/oxlint/*.ts",
-"./workers-test": "./src/config/workers-test/index.ts",
-"./docs-lint":  "./src/config/docs-lint/index.ts",
-"./launch":     "./src/config/launch/index.ts",
-"./test-preset":"./src/config/test-preset/index.ts",
-"./e2e-preset": "./src/config/e2e-preset/index.ts"
-```
-
-Also update `#` import aliases in tsconfig.json:
-```json
-"#config/*": ["./src/config/*"]
-```
-
-Run `pnpm lint:pkg` (publint + attw) to catch any broken export map entries.
+Fold docs-lint CLI entrypoints, command helpers, and templates into
+`src/config/docs-lint/cli/` and `src/config/docs-lint/templates/`. This task
+does not edit `package.json#bin`; Task 2.6 wires bins after all CLI files exist.
 
 **Files:**
+
+- Create: `src/config/docs-lint/cli/**`
+- Create: `src/config/docs-lint/templates/**`
+- Create: `src/config/docs-lint/docs-lint-cli-parity.test.ts`
+
+**Steps (TDD):**
+
+1. Write failing CLI smoke tests for the folded CLI modules using the current
+   `packages/agent-docs-lint` behavior as oracle.
+2. Run `ak_test` scoped to `src/config/docs-lint/docs-lint-cli-parity.test.ts` — verify FAIL.
+3. Fold CLI and template files into the new paths.
+4. Run the scoped `ak_test` — verify PASS.
+5. Refactor only path/import wiring.
+6. Run `ak_lint` and `ak_typecheck` for changed files.
+
+**Acceptance:**
+
+- [ ] Folded CLI modules run help/validation smoke tests.
+- [ ] Templates are included for package staging by Task 2.6.
+- [ ] `ak_lint` and `ak_typecheck` pass for changed files.
+
+#### [runtime] Task 2.4: Fold `@webpresso/agent-launch`
+
+**Status:** todo
+
+**Depends:** None
+
+Fold `packages/agent-launch/src/` into `src/config/launch/`, preserving launch
+APIs and tests.
+
+**Files:**
+
+- Create: `src/config/launch/index.ts`
+- Create: `src/config/launch/**/*.ts`
+- Create: `src/config/launch/launch-parity.test.ts`
+
+**Steps (TDD):**
+
+1. Write failing parity tests for the launch public API.
+2. Run `ak_test` scoped to `src/config/launch/launch-parity.test.ts` — verify FAIL.
+3. Fold source from `packages/agent-launch/src/`.
+4. Run the scoped `ak_test` — verify PASS.
+5. Refactor import paths only.
+6. Run `ak_lint` and `ak_typecheck` for changed files.
+
+**Acceptance:**
+
+- [ ] Launch parity tests pass.
+- [ ] Logic diff is empty or justified in the task notes.
+- [ ] `ak_lint` and `ak_typecheck` pass for changed files.
+
+#### [runtime] Task 2.5: Fold test and e2e presets
+
+**Status:** todo
+
+**Depends:** None
+
+Fold the small preset packages into `src/config/test-preset/` and
+`src/config/e2e-preset/`. Keep `./vitest` and `./playwright` equivalents
+available for Task 2.6 to expose.
+
+**Files:**
+
+- Create: `src/config/test-preset/index.ts`
+- Create: `src/config/test-preset/vitest.ts`
+- Create: `src/config/test-preset/test-preset-parity.test.ts`
+- Create: `src/config/e2e-preset/index.ts`
+- Create: `src/config/e2e-preset/playwright.ts`
+- Create: `src/config/e2e-preset/e2e-preset-parity.test.ts`
+
+**Steps (TDD):**
+
+1. Write failing parity tests for both preset packages.
+2. Run `ak_test` scoped to the new preset parity tests — verify FAIL.
+3. Fold source from `packages/agent-test-preset/src/` and
+   `packages/agent-e2e-preset/src/`.
+4. Run the scoped `ak_test` — verify PASS.
+5. Refactor path imports only.
+6. Run `ak_lint` and `ak_typecheck` for changed files.
+
+**Acceptance:**
+
+- [ ] Test-preset and e2e-preset parity tests pass.
+- [ ] `webpresso/test-preset/vitest` and `webpresso/e2e-preset/playwright` can be mapped.
+- [ ] `ak_lint` and `ak_typecheck` pass for changed files.
+
+#### [package] Task 2.6: Wire manifest, exports, bins, and staging package
+
+**Status:** todo
+
+**Depends:** Task 1.1, Task 1.2, Task 1.3, Task 1.4, Task 2.1, Task 2.2, Task 2.3, Task 2.4, Task 2.5
+
+Own the shared manifest files after all source folds exist. Update
+`package.json#tshy.exports`, generated/public `package.json#exports` source map,
+`files`, docs-lint bin entries, and `tsconfig.json` aliases. Validate the
+public `webpresso` package through `scripts/publish-webpresso.ts --dry-run`.
+
+**Files:**
+
 - Modify: `package.json`
 - Modify: `tsconfig.json`
+- Create: `src/config/export-resolution.test.ts`
 
-**Steps:**
-1. Apply the export map
-2. Run `pnpm lint:pkg` — verify publint + attw both pass
-3. Run `mcp__plugin_webpresso-agent-kit_agent-kit__ak_typecheck`
+**Steps (TDD):**
+
+1. Write failing export-resolution tests that stage or link the package and
+   import/resolve `webpresso/tsconfig/base.json`, `webpresso/vitest/node`,
+   `webpresso/stryker`, `webpresso/oxlint`, `webpresso/workers-test`,
+   `webpresso/docs-lint`, `webpresso/launch`, `webpresso/test-preset`, and
+   `webpresso/e2e-preset`.
+2. Run `ak_test` scoped to `src/config/export-resolution.test.ts` — verify FAIL.
+3. Update `package.json#tshy.exports`, `package.json#files`, `package.json#bin`,
+   and `tsconfig.json` aliases.
+4. Run the scoped `ak_test` — verify PASS.
+5. Run `bun scripts/publish-webpresso.ts --dry-run` and inspect that staged
+   `webpresso` includes JSON files, templates, and bin targets.
+6. Run `pnpm lint:pkg`, `ak_typecheck`, and `ak_lint`.
 
 **Acceptance:**
-- [ ] `pnpm lint:pkg` passes (publint + attw)
-- [ ] Typecheck passes
-- [ ] All subpath imports resolve from a test fixture project
+
+- [ ] All `webpresso/*` subpaths resolve from the staged public package.
+- [ ] `package.json` is modified only in this task for the fold.
+- [ ] Hook bins remain present.
+- [ ] `pnpm lint:pkg`, `ak_typecheck`, and `ak_lint` pass.
 
 ---
 
-## Phase 3: Consumer migration + sub-package deprecation [Complexity: S]
+## Phase 3: Migration proof and deprecation prep [Complexity: S]
 
-#### Task 3.1: Migrate ingest-lens to single webpresso devDep
-
-**Status:** todo
-
-**Depends:** Task 2.4
-
-Update `ozby/ingest-lens` to use `webpresso` instead of the 6 sub-packages:
-
-1. Remove from `devDependencies`: `@webpresso/agent-tsconfig`,
-   `@webpresso/agent-vitest`, `@webpresso/agent-stryker`, `@webpresso/agent-oxlint`,
-   `@webpresso/agent-workers-test`, `@webpresso/agent-docs-lint`.
-2. Add `webpresso: catalog:` to devDependencies.
-3. Update `pnpm-workspace.yaml` catalog to pin `webpresso` instead of the
-   6 separate entries.
-4. Update all config files:
-   - `tsconfig.json`: `@webpresso/agent-tsconfig/base.json` → `webpresso/tsconfig/base.json`
-   - `vitest.config.ts`: `@webpresso/agent-vitest/node` → `webpresso/vitest/node`
-   - `stryker.config.ts`: `@webpresso/agent-stryker` → `webpresso/stryker`
-   - Migrate `.oxlintrc.json` → `oxlint.config.ts` using `from 'webpresso/oxlint'`
-5. Run ingest-lens full QA.
-
-**Files (ingest-lens repo):**
-- Modify: `package.json`
-- Modify: `pnpm-workspace.yaml`
-- Modify: `tsconfig.json` (all extends)
-- Modify: `vitest.config.ts` (all apps)
-- Modify: `stryker.config.ts`
-- Delete: `.oxlintrc.json`
-- Create: `oxlint.config.ts`
-
-**Acceptance:**
-- [ ] `pnpm install` clean (no resolution errors)
-- [ ] `pnpm typecheck` passes
-- [ ] `pnpm test` passes
-- [ ] `pnpm lint` passes with new oxlint.config.ts
-
----
-
-#### Task 3.2: Deprecate and archive @webpresso/agent-* sub-packages
+#### [docs] Task 3.1: Document migration and create consolidation changeset
 
 **Status:** todo
 
-**Depends:** Task 3.1
+**Depends:** Task 2.6
 
-For each of the 9 sub-packages:
-1. Add `"deprecated"` field to their `package.json`:
-   ```
-   "Moved to webpresso subpath exports. See: https://…/MIGRATION.md"
-   ```
-2. Publish one final version with the deprecation notice.
-3. Move the packages from `packages/` to `packages/deprecated/` (or archive
-   in the monorepo if they're not standalone).
-
-Do NOT unpublish — deprecated packages remain installable for the transition
-window. Old consumers see the deprecation warning on every install.
+Update operator and consumer docs with exact import path migrations. Include
+the Oxlint `.oxlintrc.json` to `oxlint.config.ts` migration and the public npm
+staging caveat. Create the reversible changeset for the consolidated `webpresso`
+package; publishing is deferred to Task 4.2.
 
 **Files:**
-- Modify: `packages/agent-*/package.json` (deprecated field)
-- Create: `.changeset/deprecate-agent-subpackages.md`
+
+- Modify: `MIGRATION.md`
+- Modify: `README.md`
+- Create: `.changeset/consolidate-agent-subpackages.md`
+
+**Steps (TDD):**
+
+1. Write failing docs assertions for old/new import mapping examples and the
+   Oxlint TypeScript config requirement.
+2. Run `ak_test` scoped to docs assertions — verify FAIL.
+3. Update docs and add the changeset.
+4. Run scoped docs assertions — verify PASS.
+5. Refactor docs for shortest clear migration path.
+6. Run `ak_lint` and `ak_audit(kind="docs-frontmatter")`.
 
 **Acceptance:**
-- [ ] Each sub-package has `deprecated` in its package.json
-- [ ] Changeset created for the final release
-- [ ] `npm view @webpresso/agent-tsconfig deprecated` returns the message after publish
 
----
+- [ ] Migration table covers tsconfig, vitest, stryker, oxlint, workers-test,
+  docs-lint, launch, test-preset, and e2e-preset.
+- [ ] Changeset is present but no publish occurs.
+- [ ] Docs checks pass.
 
-## Phase 4: QA gates + publish [Complexity: XS]
-
-#### Task 4.1: Full QA gate
+#### [sibling-repo] Task 3.2: Prove consumer migration in a sibling PR
 
 **Status:** todo
 
-**Depends:** Tasks 3.1, 3.2
+**Depends:** Task 2.6
 
-Run full `pnpm qa` in agent-kit and full QA in ingest-lens. Verify:
-- Zero typecheck errors in both repos
-- Zero lint errors in both repos
-- All tests passing in both repos
-- `pnpm lint:pkg` (publint + attw) clean on `webpresso` package
+Prepare and execute a sibling-repo migration proof for `ozby/ingest-lens` or
+the operator-selected dogfood consumer. Do not edit sibling repo files from this
+repo silently; create a checklist and capture the PR/branch reference.
+
+**Files:**
+
+- Create: `blueprints/planned/consolidate-all-webpresso-agent-sub-packages-into-webpresso-itself-with-subpath-exports-consumers-go-from-6-8-pinned-devdeps-down-to-one-webpresso/consumer-migration-checklist.md`
+- External: sibling consumer repo `package.json`, `pnpm-workspace.yaml`,
+  `tsconfig*.json`, `vitest.config.ts`, `stryker.config.ts` if present,
+  `.oxlintrc.json` or `oxlint.config.ts`
+
+**Steps (TDD):**
+
+1. Write the checklist with expected before/after import and dependency changes.
+2. In the sibling repo/PR, first run its existing typecheck/test/lint gates and
+   record baseline status.
+3. Replace `@webpresso/agent-*` devDependencies with `webpresso` and update
+   config imports.
+4. Run the same sibling gates — verify PASS.
+5. Record the sibling branch/PR and any deviations in the checklist.
+6. Do not merge or publish from this task.
 
 **Acceptance:**
-- [ ] `mcp__plugin_webpresso-agent-kit_agent-kit__ak_qa` passes
-- [ ] ingest-lens QA passes
+
+- [ ] Consumer checklist exists in this blueprint directory.
+- [ ] Sibling PR/branch reference is recorded.
+- [ ] Consumer typecheck, tests, and lint pass with `webpresso`.
+- [ ] No sibling repo edits are hidden inside this repo diff.
+
+#### [release-prep] Task 3.3: Prepare sub-package deprecation metadata
+
+**Status:** todo
+
+**Depends:** Task 2.6
+
+Prepare the reversible repo-side deprecation notice for the 9 `packages/agent-*`
+packages. This does not run `npm deprecate` and does not unpublish anything.
+
+**Files:**
+
+- Modify: `packages/agent-tsconfig/package.json`
+- Modify: `packages/agent-vitest/package.json`
+- Modify: `packages/agent-stryker/package.json`
+- Modify: `packages/agent-oxlint/package.json`
+- Modify: `packages/agent-workers-test/package.json`
+- Modify: `packages/agent-docs-lint/package.json`
+- Modify: `packages/agent-launch/package.json`
+- Modify: `packages/agent-test-preset/package.json`
+- Modify: `packages/agent-e2e-preset/package.json`
+- Create: `.changeset/deprecate-agent-subpackages.md`
+
+**Steps (TDD):**
+
+1. Write failing metadata assertions that every `packages/agent-*` package has
+   the same migration notice.
+2. Run `ak_test` scoped to the metadata assertions — verify FAIL.
+3. Add the deprecation notice metadata and changeset.
+4. Run scoped metadata assertions — verify PASS.
+5. Refactor notice wording only if the migration URL changes.
+6. Run `ak_lint` and `ak_typecheck`.
+
+**Acceptance:**
+
+- [ ] All 9 sub-package manifests carry the migration notice.
+- [ ] Changeset for final deprecated package versions exists.
+- [ ] No registry deprecation command runs in this task.
+- [ ] `ak_lint` and `ak_typecheck` pass.
 
 ---
 
-#### Task 4.2: Changeset + publish webpresso with subpath exports
+## Phase 4: QA and release gate [Complexity: XS]
+
+#### [qa] Task 4.1: Full QA gate
+
+**Status:** todo
+
+**Depends:** Task 1.5, Task 3.1, Task 3.2, Task 3.3
+
+Run the complete local and dogfood verification suite before any irreversible
+publish/deprecation work.
+
+**Files:**
+
+- No planned source changes; update only task notes/checklist evidence if needed.
+
+**Steps (TDD):**
+
+1. Verify all task-specific tests have already failed then passed in their tasks.
+2. Run `ak_typecheck`.
+3. Run `ak_lint`.
+4. Run `ak_test`.
+5. Run `ak_qa`.
+6. Run `pnpm lint:pkg` and `bun scripts/publish-webpresso.ts --dry-run`.
+
+**Acceptance:**
+
+- [ ] `ak_typecheck` passes.
+- [ ] `ak_lint` passes.
+- [ ] `ak_test` passes.
+- [ ] `ak_qa` passes.
+- [ ] `pnpm lint:pkg` passes.
+- [ ] Staged `webpresso` dry-run package contains all subpaths and non-code assets.
+- [ ] Sibling consumer proof is attached.
+
+#### [release-gate] Task 4.2: Publish `webpresso` and deprecate old packages
 
 **Status:** todo
 
 **Depends:** Task 4.1
 
-Create a `minor` changeset for `webpresso` describing the sub-package
-consolidation. The release pipeline publishes `webpresso` to GH Packages (and
-eventually public npm once `ENABLE_NPM_PUBLISH` is set).
-
-```markdown
----
-"@webpresso/agent-kit": minor
----
-Consolidate @webpresso/agent-* sub-packages into webpresso subpath exports.
-Consumers replace 6–8 devDeps with a single `webpresso` devDep.
-See MIGRATION.md for the import path changes.
-```
+Credential-gated terminal task. Publish the staged public `webpresso` package
+and then deprecate old `@webpresso/agent-*` versions with registry commands.
+Keep this task separate from reversible code prep.
 
 **Files:**
-- Create: `.changeset/consolidate-subpackages.md`
+
+- No source file changes expected after release notes are already committed.
+
+**Steps (TDD):**
+
+1. Confirm `NPM_TOKEN`/OTP and package ownership for `webpresso` and the
+   `@webpresso/agent-*` packages.
+2. Run the release pipeline or `bun scripts/publish-webpresso.ts` according to
+   repo release instructions.
+3. Verify `npm view webpresso version` and packed exports after publish.
+4. Run `npm deprecate <package-spec> "<migration message>"` for the old package
+   ranges only after the replacement package is visible.
+5. Verify `npm view <old-package> deprecated` returns the migration message.
+6. Record release evidence in the final report.
 
 **Acceptance:**
-- [ ] CI publishes new version
-- [ ] `npm view webpresso exports` shows all subpaths
+
+- [ ] `webpresso` is published with the consolidated subpaths.
+- [ ] Old packages remain installable but show deprecation warnings.
+- [ ] No `v*` tags are pushed manually.
+- [ ] Release evidence is recorded.
 
 ---
 
 ## Verification Gates
 
-| Gate | Command | Success Criteria |
-|---|---|---|
-| Type safety | `mcp__plugin_webpresso-agent-kit_agent-kit__ak_typecheck` | Zero errors |
-| Lint | `mcp__plugin_webpresso-agent-kit_agent-kit__ak_lint` | Zero violations |
-| Tests | `mcp__plugin_webpresso-agent-kit_agent-kit__ak_test` | All pass |
-| Pkg validation | `pnpm lint:pkg` (publint + attw) | Zero broken export map entries |
-| Full QA | `mcp__plugin_webpresso-agent-kit_agent-kit__ak_qa` | All pass |
-| Extraction parity | `diff -ru packages/agent-<name>/src src/config/<name>/` | Empty or import-path-only diff |
-| Consumer QA | ingest-lens full QA recipe | All pass |
-
----
-
-## MCP Tool Routing and Hook Wiring
-
-This consolidation must preserve seamless `ak_*` MCP tool routing and
-SessionStart hook injection. Here is the invariant surface:
-
-```
-Claude Code session
-  └── plugin.json (webpresso-agent-kit marketplace plugin)
-        ├── SessionStart hook → ak-sessionstart-routing
-        │     └── emits AK_ROUTING_BLOCK into additionalContext
-        │           (teaches agents which ak_* MCP tools to use)
-        ├── PreToolUse hook  → ak-pretool-guard
-        ├── PostToolUse hook → ak-post-tool
-        ├── Stop hook        → ak-stop-qa
-        └── MCP server       → src/mcp/cli.ts
-              └── ak_test, ak_lint, ak_typecheck, ak_qa, ak_audit tools
-```
-
-**What changes:** Nothing in the hooks layer. The 8 hook bins (`ak-pretool-guard`,
-`ak-post-tool`, `ak-stop-qa`, `ak-guard-switch`, `ak-test-quality-check`,
-`ak-sessionstart-routing`, `ak-check-dev-link`, `ak-restore-dev-links`) stay
-in `package.json#bin` unchanged. The MCP server at `src/mcp/cli.ts` is
-unaffected.
-
-**What needs updating:** The `AK_ROUTING_BLOCK` injected by
-`src/hooks/sessionstart/index.ts` and the routing rules in
-`catalog/agent/rules/*.md` may reference `@webpresso/agent-*` import paths.
-These should be updated to `webpresso/*` in the same PR so agents automatically
-get correct guidance for new consumers.
-
-**Task to add:** Task 1.5 below covers this update.
-
----
-
-#### Task 1.5: Update AK_ROUTING_BLOCK and agent rules for new import paths
-
-**Status:** todo
-
-**Depends:** Task 1.1
-
-The `src/hooks/shared/routing-block.ts` (or wherever `AK_ROUTING_BLOCK` is
-assembled) and the routing rules in `catalog/agent/rules/` may reference
-sub-package names. After this consolidation, any agent reading the routing
-block should see `webpresso/*` import paths, not `@webpresso/agent-*` paths.
-
-1. Search for `@webpresso/agent-` in:
-   - `src/hooks/shared/routing-block.ts`
-   - `catalog/agent/rules/*.md`
-   - `.agent/routing.md` (if present in consumer repos)
-   - Any `AGENTS.md` or `CLAUDE.md` that references the sub-package paths
-2. Update references to the new `webpresso/*` subpath form.
-3. Ensure the routing block's `ak_*` tool guidance is still accurate — the
-   MCP tools (`ak_test`, `ak_lint`, `ak_typecheck`, `ak_qa`, `ak_audit`) are
-   provided by the plugin, not the npm package, so they're unaffected.
-
-This is a low-risk docs update; the underlying hook wiring is unchanged.
-
-**Files:**
-- Modify: `src/hooks/shared/routing-block.ts` (if it references sub-packages)
-- Modify: `catalog/agent/rules/package-conventions.md` (references to sub-packages)
-- Modify: `catalog/agent/rules/changeset-release.md` (if it references sub-packages)
-- Modify: `AGENTS.md` (if it references sub-packages)
-
-**Steps:**
-1. `rg "@webpresso/agent-" src/hooks/ catalog/ AGENTS.md --include="*.ts" --include="*.md"`
-2. For each match, replace with the `webpresso/*` equivalent or remove if
-   the reference was just version-pinning guidance
-3. Run `mcp__plugin_webpresso-agent-kit_agent-kit__ak_lint` scoped to
-   modified files
-
-**Acceptance:**
-- [ ] No `@webpresso/agent-` references remain in routing blocks or agent rules
-- [ ] `ak_*` MCP tool names unchanged (they come from plugin, not package)
-- [ ] Hook bin names unchanged (`ak-pretool-guard` etc. still in `package.json#bin`)
-- [ ] Lint passes on modified files
-
----
+| Gate | Command / tool | Success Criteria |
+| --- | --- | --- |
+| Task tests | `ak_test` scoped to changed tests | Failing-before/passing-after evidence per implementation task |
+| Type safety | `ak_typecheck` | Zero diagnostics |
+| Lint | `ak_lint` | Zero violations |
+| QA | `ak_qa` | Full quality pass |
+| Package validation | `pnpm lint:pkg` | `publint` + `attw` pass |
+| Public package staging | `bun scripts/publish-webpresso.ts --dry-run` | Staged `webpresso` contains expected exports, bins, JSON, templates |
+| Blueprint lifecycle | `ak_audit(kind="blueprint-lifecycle")` | Planned blueprint is valid |
+| Consumer proof | Sibling repo gates | Typecheck, test, and lint pass in dogfood consumer |
 
 ## Cross-Plan References
 
-| Type | Blueprint | Relationship |
-|---|---|---|
-| Upstream | `webpresso-launch.md` (rename + global install) | This blueprint builds on the renamed `webpresso` package identity |
-| Downstream | None | |
-
----
+| Type | Reference | Relationship |
+| --- | --- | --- |
+| Upstream | Public `webpresso` staging/publish path in `scripts/publish-webpresso.ts` | This blueprint depends on the staged name swap to publish `webpresso`. |
+| Related completed | `fold-webpresso-quality-engine-into-webpresso-agent-kit` pattern (referenced by prior plan) | Reuse extraction-parity and staged package verification discipline. |
+| Sibling | `ozby/ingest-lens` or operator-selected consumer PR | Provides external migration proof; do not edit from this repo without explicit checkout. |
 
 ## Edge Cases and Error Handling
 
 | Edge Case | Risk | Solution | Task |
-|---|---|---|---|
-| tsconfig `extends` not resolving | HIGH — TypeScript ignores exports map | Ship JSON files at literal paths, not just in exports map | 1.2 |
-| oxlint `.json` format can't extend packages | HIGH — consumers blocked on migration | Document `oxlint.config.ts` migration path in MIGRATION.md | 1.4 |
-| Sub-package peer deps not satisfied | MEDIUM — vitest/workers peer deps | Check each consumer installs required peers independently | 2.1, 2.3 |
-| Circular imports (agent-vitest uses agent-tsconfig) | MEDIUM | Inline the tsconfig content instead of importing it | 1.3 |
-| `pnpm link` from global install can't resolve devDep subpaths | LOW — only for local dev symlink install | devDep install is the canonical path; symlink users need the devDep anyway | — |
-| tshy doesn't include `.json` files in dist | MEDIUM — tshy only compiles `.ts` | Explicitly add `src/config/tsconfig/**/*.json` to `"files"` in package.json | 2.4 |
-
----
+| --- | --- | --- | --- |
+| `tsconfig extends` cannot find staged JSON | HIGH — consumers fail typecheck immediately | Literal `src/config/tsconfig/*.json` files plus staged-package fixture resolution | 1.1, 2.6 |
+| Multiple parallel tasks edit `package.json` | HIGH — merge conflicts and broken exports | Single manifest fan-in task | 2.6 |
+| Parent-relative re-export to `packages/agent-*` survives | HIGH — archived packages remain runtime dependencies | Source fold with parity tests; no `../../packages/*` imports | 1.2-2.5 |
+| Oxlint JSON config cannot import package config | HIGH — lint migration blocked | Document and test `oxlint.config.ts` import path | 1.4, 3.1 |
+| Docs-lint template assets omitted from package | MEDIUM — CLI works locally but fails after publish | Include templates in `files`/staging validation | 2.3, 2.6 |
+| Hook or MCP routing names accidentally change | HIGH — agent workflow regression | Routing update task preserves bin/tool names and tests stale package guidance only | 1.5 |
+| Sibling consumer unavailable locally | MEDIUM — no dogfood proof | Checklist + external PR reference; block release gate without proof | 3.2, 4.1 |
+| Registry deprecation happens before replacement is visible | HIGH — consumers get warning without migration target | Release gate verifies `webpresso` first, then runs `npm deprecate` | 4.2 |
 
 ## Non-goals
 
-- Removing the workspace packages entirely before the deprecation window ends
-- Migrating the private monorepo (`webpresso/monorepo/`) in this blueprint
-- Changing any consumer's vitest version or test configuration beyond the import path
-- Creating a mega-barrel `import * from 'webpresso'` that re-exports everything
-
----
+- Removing old packages from the repository before the transition window ends.
+- Migrating every possible downstream consumer in this repo-local blueprint.
+- Changing Vitest, Stryker, Oxlint, Workers, or docs-lint behavior beyond import paths.
+- Creating a mega-barrel `import * from "webpresso"` API.
+- Manually pushing version tags or bypassing Changesets/release automation.
 
 ## Risks
 
 | Risk | Impact | Mitigation |
-|---|---|---|
-| TypeScript `extends` resolution changes in TS 6+ | LOW — the literal-path behavior is intentional by design | Monitor TS release notes; the fix is adding exports entries if behavior changes |
-| oxlint drops support for `oxlint.config.ts` (regression) | LOW — it's the recommended format | Pin oxlint version; file a bug upstream if it regresses |
-| Extraction-parity fails for docs-lint (11k lines) | MEDIUM — large fold has higher diff risk | Apply extraction-parity rule strictly; any logic diff = reject and investigate |
-| Consumer ecosystem has undocumented `@webpresso/agent-*` consumers | MEDIUM — silent breakage | Search GitHub for usage before archiving sub-packages |
-
----
+| --- | --- | --- |
+| Staged public package diverges from root package tests | HIGH | Run export-resolution tests against staged `webpresso`, not just root `@webpresso/agent-kit`. |
+| Docs-lint fold introduces subtle logic changes | MEDIUM | Split API/CLI tasks and require parity tests plus import-path-only diffs. |
+| Public npm and GitHub Packages release flows diverge | MEDIUM | Keep Task 4.2 credential-gated and verify registry target before deprecating old packages. |
+| Unknown consumers still use old packages | MEDIUM | Deprecate rather than unpublish; keep migration docs and transition window. |
+| TS 6 changes config resolution behavior | LOW | Literal files remain compatible; optional exports map can be adjusted later. |
 
 ## Technology Choices
 
-| Component | Technology | Version | Why |
-|---|---|---|---|
-| tsconfig delivery | Literal `.json` files at filesystem paths | — | TypeScript `extends` doesn't use exports map — verified against TS 5.x source and `@epic-web/config` prior art |
-| vitest/stryker delivery | `package.json#exports` subpath entries | — | Standard ESM resolution; works via exports map |
-| oxlint delivery | `oxlint.config.ts` + exports map | oxlint ≥0.9 | The `.json` format doesn't support package extends. TS format supported on Node ≥24 (repo enforces this) |
-| sub-package fold strategy | Source copy + extraction-parity verification | — | Same pattern used in `fold-webpresso-quality-engine-into-webpresso-agent-kit` blueprint |
-| Prior art | `@epic-web/config` | Current | Production-proven pattern for single-package multi-config delivery with subpath exports |
+| Component | Technology | Version / constraint | Why |
+| --- | --- | --- | --- |
+| Package publishing | Root `@webpresso/agent-kit` + `scripts/publish-webpresso.ts` staging | Current repo | Matches existing source/publish split. |
+| Build/export generation | `tshy` via `package.json#tshy.exports` | Current repo | Existing build path for ESM exports. |
+| TypeScript config delivery | Literal JSON files | TS 5.x/6-ready | Robust for `tsconfig extends` filesystem lookup. |
+| Oxlint config delivery | `oxlint.config.ts` importing `webpresso/oxlint` | Node `>=24` | Official config supports package-imported config objects only through TS config. |
+| Registry deprecation | `npm deprecate` | npm CLI v11 docs | Produces install-time registry warnings; not just a repo diff. |
+
+## Refinement Summary
+
+| Metric | Value |
+| --- | --- |
+| Findings total | 8 |
+| Critical | 0 |
+| High | 4 |
+| Medium | 4 |
+| Low | 0 |
+| Fixes applied | 8/8 |
+| Cross-plans updated | 0 |
+| Edge cases documented | 8 |
+| Risks documented | 5 |
+| Parallelization score | A |
+| Critical path | 5 waves |
+| Max parallel agents | 10 |
+| Total tasks | 16 |
+| Blueprint compliant | 16/16 |

@@ -636,6 +636,86 @@ describe('validateForbiddenCommands', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Blueprint lifecycle enforcement
+// ---------------------------------------------------------------------------
+describe('blueprint lifecycle enforcement', () => {
+  function bashInput(command: string): ToolInput {
+    return { tool_input: { command } }
+  }
+
+  it('blocks mv targeting blueprints/planned', () => {
+    const result = validateForbiddenCommands(
+      bashInput('mv blueprints/draft/my-bp blueprints/planned/my-bp'),
+    )
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.category).toBe('blueprint')
+  })
+
+  it('blocks mv targeting blueprints/in-progress', () => {
+    const result = validateForbiddenCommands(
+      bashInput('mv blueprints/planned/my-bp blueprints/in-progress/my-bp'),
+    )
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.category).toBe('blueprint')
+  })
+
+  it('blocks mv targeting blueprints/completed', () => {
+    const result = validateForbiddenCommands(
+      bashInput('mv blueprints/in-progress/my-bp blueprints/completed/my-bp'),
+    )
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.category).toBe('blueprint')
+  })
+
+  it('blocks mv with absolute paths to blueprint lifecycle dirs', () => {
+    const result = validateForbiddenCommands(
+      bashInput(
+        'mv /Users/oz/repos/agent-kit/blueprints/draft/foo /Users/oz/repos/agent-kit/blueprints/planned/',
+      ),
+    )
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.category).toBe('blueprint')
+  })
+
+  it('blocks mkdir creating a blueprint lifecycle dir', () => {
+    const result = validateForbiddenCommands(
+      bashInput('mkdir -p /Users/oz/repos/agent-kit/blueprints/planned'),
+    )
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.category).toBe('blueprint')
+  })
+
+  it('blocks chained mkdir && mv targeting blueprint dirs', () => {
+    const result = validateForbiddenCommands(
+      bashInput('mkdir -p blueprints/planned && mv blueprints/draft/foo blueprints/planned/'),
+    )
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.category).toBe('blueprint')
+  })
+
+  it('redirect message points to ak_blueprint MCP tool', () => {
+    const rule = findMatchingRule('mv blueprints/draft/foo blueprints/planned/')!
+    expect(rule).toBeDefined()
+    const result = createBlockedResult(
+      'mv blueprints/draft/foo blueprints/planned/',
+      rule,
+      { mcpReady: true },
+    )
+    expect(result.message).toContain('mcp__agent-kit__ak_blueprint(...)')
+  })
+
+  it('allows mv that does not touch blueprint lifecycle dirs', () => {
+    const result = validateForbiddenCommands(bashInput('mv src/foo.ts src/bar.ts'))
+    expect(result.passed).toBe(true)
+  })
+
+  it('allows mkdir for non-blueprint dirs', () => {
+    const result = validateForbiddenCommands(bashInput('mkdir -p src/new-module'))
+    expect(result.passed).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Edge cases
 // ---------------------------------------------------------------------------
 describe('forbidden-commands edge cases', () => {
