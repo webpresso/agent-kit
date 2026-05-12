@@ -159,6 +159,12 @@ export function generateRules(): CommandRule[] {
       category: 'blueprint',
       suggestion: BLUEPRINT_HINT,
     },
+    {
+      // git mv is an alternative to bare mv for tracked files — same bypass vector.
+      pattern: new RegExp(`^git\\s+mv\\b.*blueprints\\/${BLUEPRINT_LIFECYCLE_DIRS}`),
+      category: 'blueprint',
+      suggestion: BLUEPRINT_HINT,
+    },
     { pattern: /^doppler run/, category: 'unknown', suggestion: ENV_HINT },
     { pattern: /^DATABASE_URL=/, category: 'unknown', suggestion: ENV_HINT },
     { pattern: /^pnpm exec\b/, category: 'unknown', suggestion: JUST_TASK_TARGET_HINT },

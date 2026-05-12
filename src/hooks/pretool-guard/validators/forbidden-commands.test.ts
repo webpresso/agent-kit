@@ -705,6 +705,27 @@ describe('blueprint lifecycle enforcement', () => {
     expect(result.message).toContain('mcp__agent-kit__ak_blueprint(...)')
   })
 
+  it('blocks git mv targeting blueprint lifecycle dirs', () => {
+    const result = validateForbiddenCommands(
+      bashInput('git mv blueprints/draft/my-bp blueprints/planned/my-bp'),
+    )
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.category).toBe('blueprint')
+  })
+
+  it('blocks echo && git mv blueprints/... (git mv as sub-variant)', () => {
+    const result = validateForbiddenCommands(
+      bashInput('echo info && git mv blueprints/draft/foo blueprints/planned/foo'),
+    )
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.category).toBe('blueprint')
+  })
+
+  it('allows git mv that does not touch blueprint lifecycle dirs', () => {
+    const result = validateForbiddenCommands(bashInput('git mv src/foo.ts src/bar.ts'))
+    expect(result.passed).toBe(true)
+  })
+
   it('allows mv that does not touch blueprint lifecycle dirs', () => {
     const result = validateForbiddenCommands(bashInput('mv src/foo.ts src/bar.ts'))
     expect(result.passed).toBe(true)
@@ -716,9 +737,8 @@ describe('blueprint lifecycle enforcement', () => {
   })
 
   it('does not block git commit whose message body contains blueprint lifecycle paths', () => {
-    // This is the false-positive that matchFullCommandOnly prevents: the &&-splitter
-    // used to extract "mv blueprints/draft/foo blueprints/planned/" from the heredoc
-    // content of a git commit -m "..." and treat it as a standalone mv command.
+    // The heredoc body is inside $(...) so splitTopLevelCommands keeps depth > 0
+    // throughout and never extracts "mv blueprints/..." as a top-level segment.
     const body = [
       'git commit -m "$(cat <<\'EOF\'',
       'feat: block blueprint lifecycle mv',
@@ -802,6 +822,39 @@ describe('splitTopLevelCommands', () => {
 
   it('returns empty array for empty string', () => {
     expect(splitTopLevelCommands('')).toStrictEqual([])
+  })
+
+  it('does not split && inside double-quoted string (no subshell)', () => {
+    // double-quote with && but no $() — still must not split
+    expect(splitTopLevelCommands('echo "hello && world"')).toStrictEqual(['echo "hello && world"'])
+  })
+
+  it('splits && at top level when command follows a double-quoted string', () => {
+    expect(
+      splitTopLevelCommands('echo "hello && world" && mv blueprints/draft/foo blueprints/planned/'),
+    ).toStrictEqual(['echo "hello && world"', 'mv blueprints/draft/foo blueprints/planned/'])
+  })
+
+  it('does not split && inside $(...) even without surrounding double-quotes', () => {
+    // $() at top level (no wrapping double-quote) — depth tracking still applies
+    expect(splitTopLevelCommands('echo $(grep foo bar && true) && echo done')).toStrictEqual([
+      'echo $(grep foo bar && true)',
+      'echo done',
+    ])
+  })
+
+  it('does not split heredoc body that appears as raw text inside $(...)', () => {
+    // Simulates git commit body where mv blueprints/ appears as plain prose lines,
+    // NOT wrapped in backticks — the && is still inside $() so must not split.
+    const cmd = [
+      "git commit -m \"$(cat <<'EOF'",
+      'chore: move blueprint',
+      '',
+      'blueprints/planned/my-bp && mv blueprints/draft/my-bp blueprints/planned/',
+      'EOF',
+      ')"',
+    ].join('\n')
+    expect(splitTopLevelCommands(cmd)).toStrictEqual([cmd])
   })
 })
 

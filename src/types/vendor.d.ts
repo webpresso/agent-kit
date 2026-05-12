@@ -27,34 +27,21 @@ declare module 'proper-lockfile' {
   export default { lock, unlock, check, lockSync, unlockSync, checkSync }
 }
 
-declare module 'update-notifier' {
-  interface Package {
-    name: string
-    version: string
+declare module 'bun:sqlite' {
+  interface DatabaseOptions {
+    readonly?: boolean
+    create?: boolean
+    readwrite?: boolean
   }
-  interface Options {
-    pkg: Package
-    updateCheckInterval?: number
-    shouldNotifyInNpmScript?: boolean
-    distTag?: string
+  interface Statement<ReturnType> {
+    get(...params: unknown[]): ReturnType | null
+    all(...params: unknown[]): ReturnType[]
+    run(...params: unknown[]): void
   }
-  interface NotifyOptions {
-    defer?: boolean
-    isGlobal?: boolean
-    message?: string
+  class Database {
+    constructor(filename: string, options?: DatabaseOptions)
+    prepare<ReturnType = Record<string, unknown>, _Params = unknown[]>(sql: string): Statement<ReturnType>
+    close(): void
   }
-  interface UpdateInfo {
-    current: string
-    latest: string
-    type: 'latest' | 'major' | 'minor' | 'patch' | 'prerelease' | 'build'
-    name: string
-  }
-  interface Notifier {
-    notify(opts?: NotifyOptions): void
-    fetchInfo(): Promise<UpdateInfo | null>
-    update: UpdateInfo | null
-  }
-
-  function updateNotifier(options: Options): Notifier
-  export = updateNotifier
+  export { Database }
 }

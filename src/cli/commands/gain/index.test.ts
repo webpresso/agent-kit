@@ -2,6 +2,9 @@ import type { SpawnSyncReturns } from 'node:child_process'
 
 import { describe, expect, it, vi } from 'vitest'
 
+// bun:sqlite is a Bun built-in — stub it for the Node.js/vitest environment
+vi.mock('bun:sqlite', () => ({ Database: vi.fn() }))
+
 const spawnSync = vi.hoisted(() => vi.fn<() => SpawnSyncReturns<Buffer>>())
 
 vi.mock('node:child_process', () => ({
