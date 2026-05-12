@@ -611,33 +611,38 @@ Add two new TASK-level frontmatter fields:
 
 ---
 
-#### [db] Task 1.3: Migration 0002 — runner_events table + execution columns
+#### [db] Task 1.3: Schema push — runner_events table + execution columns
 
 **Status:** todo
 **Depends:** Task 0.1, Task 1.1
 
-Migration `0002_runners.sql`: add `runner_id`, `runner_version`,
-`permissions` columns to execution table; new `runner_events` table keyed
-by execution_handle + sequence, with `kind` column (matches RunnerEvent
-discriminant) plus per-variant nullable columns.
+**db push approach (no numbered migration file):** the DB is rebuilt from
+scratch on cold-start, so new tables and columns go directly into
+`0001_seed.sql`. Add `runner_id`, `runner_version`, `permissions` columns
+to the existing execution table; add a new `runner_events` table.
 
 **Note:** SQL column `kind` corresponds to TS discriminant `type` on
 RunnerEvent — naming chosen because `type` is harder to query in SQL
 contexts. Persistence layer (Task 3.2) maps between them.
 
 **Files:**
-- Create: `src/blueprint/db/migrations/0002_runners.sql`
+- Modify: `src/blueprint/db/migrations/0001_seed.sql`
 - Modify: `src/blueprint/db/migrations.test.ts`
 - Modify: `src/blueprint/db/enums.ts` (sync with Task 0.1 source of truth)
 
 **Steps (TDD):**
-1. Test: 0001 then 0002 → schema contains new columns + `runner_events` table.
-2. FAIL → write SQL → PASS.
+1. Read `0001_seed.sql` to understand the execution table shape.
+2. Add test: fresh DB → schema contains `runner_id`, `runner_version`,
+   `permissions` on execution table + `runner_events` table with correct
+   columns and indexes.
+3. FAIL → add columns + table to `0001_seed.sql` → PASS.
+4. `pnpm test && pnpm typecheck`.
 
 **Acceptance:**
-- [ ] Migration applies cleanly after 0001.
-- [ ] Migration is idempotent (schema_version-gated).
-- [ ] `runner_events` indexes on `execution_handle` and `ts`.
+- [ ] `runner_events` table present with `execution_handle`, `sequence`, `kind`, `ts` columns.
+- [ ] Execution table has `runner_id`, `runner_version`, `permissions` columns.
+- [ ] Indexes on `runner_events(execution_handle)` and `runner_events(ts)`.
+- [ ] `migrations.test.ts` covers the new schema.
 
 ---
 
