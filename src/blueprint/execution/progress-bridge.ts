@@ -9,7 +9,7 @@ import { applyBlueprintLifecycle } from '#lifecycle/engine'
 
 import { writeBlueprintExecutionMetadata } from './metadata.js'
 import {
-  blueprintExecutionBackendSchema,
+  executionBackendSchema,
   type BlueprintExecutionBackend,
   type BlueprintLaunchSpec,
   DEFAULT_BLUEPRINT_RUNTIME_STATE_ROOT,
@@ -48,7 +48,7 @@ export type BlueprintProgressBridgeTaskBinding = z.infer<
 >
 
 export const blueprintProgressBridgeStateSchema = z.object({
-  backend: blueprintExecutionBackendSchema,
+  backend: executionBackendSchema,
   blueprintPath: z.string().min(1),
   blueprintSlug: z.string().min(1),
   executionId: z.string().min(1),

@@ -81,7 +81,7 @@ export { BlueprintNotFoundError } from './utils/errors.js'
 // Utilities (pure functions)
 export { calculateFreshness, type FreshnessScore } from './utils/freshness.js'
 export {
-  blueprintExecutionBackendSchema,
+  executionBackendSchema,
   type BlueprintExecutionAdapter,
   type BlueprintExecutionBackend,
   blueprintExecutionModeSchema,

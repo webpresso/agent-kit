@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import {
-  executionBackendSchema as blueprintExecutionBackendSchema,
+  executionBackendSchema,
   type BlueprintExecutionBackend,
 } from '#types/execution-backend.js'
 
@@ -22,10 +22,7 @@ function isOmxStatePath(path: string): boolean {
   return path === DEFAULT_RUNTIME_STATE_ROOT || path.startsWith(`${DEFAULT_RUNTIME_STATE_ROOT}/`)
 }
 
-export {
-  executionBackendSchema as blueprintExecutionBackendSchema,
-  type BlueprintExecutionBackend,
-} from '#types/execution-backend.js'
+export { executionBackendSchema, type BlueprintExecutionBackend } from '#types/execution-backend.js'
 
 export const blueprintExecutionModeSchema = z.enum(['durable', 'interactive'])
 export type BlueprintExecutionMode = z.infer<typeof blueprintExecutionModeSchema>
@@ -60,7 +57,7 @@ export const blueprintExecutionPolicySchema = z.object({
 export type BlueprintExecutionPolicy = z.infer<typeof blueprintExecutionPolicySchema>
 
 export const blueprintLaunchSpecSchema = z.object({
-  backend: blueprintExecutionBackendSchema,
+  backend: executionBackendSchema,
   blueprintPath: z
     .string()
     .min(1)
@@ -85,7 +82,7 @@ export const runtimeStateStatusSchema = z.enum([
 export type RuntimeStateStatus = z.infer<typeof runtimeStateStatusSchema>
 
 export const runtimeStateSnapshotSchema = z.object({
-  backend: blueprintExecutionBackendSchema,
+  backend: executionBackendSchema,
   executionId: z.string().min(1),
   status: runtimeStateStatusSchema,
   taskId: z.string().optional(),
