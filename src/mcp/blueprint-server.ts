@@ -150,8 +150,16 @@ async function resolveSyncAdapter(cwd: string): Promise<SyncAdapter | null> {
 
   const client = new BlueprintSyncClient(creds)
 
-  // ReplicaManager needs a db handle; store the replica DB alongside the blueprint DB.
-  const replicaDbPath = path.join(cwd, '.agent', '.replica.db')
+  // ReplicaManager needs a db handle; store the replica DB in the state root.
+  const { getSurfacePath, NotInGitRepoError } = await import('#paths/state-root.js')
+  const replicaDbPath = (() => {
+    try {
+      return getSurfacePath('blueprints/replica.db', 'repo', cwd)
+    } catch (err) {
+      if (err instanceof NotInGitRepoError) return path.join(cwd, '.agent', '.replica.db')
+      throw err
+    }
+  })()
   const conn = openDbForReplica(replicaDbPath)
   const manager = new ReplicaManager({ client, db: conn.db })
 

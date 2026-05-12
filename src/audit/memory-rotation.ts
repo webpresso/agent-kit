@@ -12,6 +12,8 @@
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
+import { getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
+
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 
@@ -111,7 +113,14 @@ export function auditMemoryRotation(
 ): MemoryRotationResult {
   const windowDays = options.windowDays ?? DEFAULT_WINDOW_DAYS
   const strict = options.strict ?? false
-  const logPath = path.join(cwd, '.agent', '.rotation-log.jsonl')
+  const logPath = (() => {
+    try {
+      return getSurfacePath('audit/rotation-log.jsonl', 'repo', cwd)
+    } catch (err) {
+      if (err instanceof NotInGitRepoError) return path.join(cwd, '.agent', '.rotation-log.jsonl')
+      throw err
+    }
+  })()
 
   const allEntries = parseRotationLog(logPath)
   const now = Date.now()

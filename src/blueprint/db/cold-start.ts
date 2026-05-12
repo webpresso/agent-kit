@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, openSync, closeSync, constants } from 'node:fs'
 import path from 'node:path'
 
+import { getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
 import { openDb } from './connection.js'
 import { ingestAll } from './ingester.js'
 
@@ -11,15 +12,22 @@ export interface ColdStartResult {
   durationMs: number
 }
 
-const DB_FILENAME = '.blueprints.db'
-const LOCK_FILENAME = '.blueprints.lock'
-
 function dbPath(cwd: string): string {
-  return path.join(cwd, '.agent', DB_FILENAME)
+  try {
+    return getSurfacePath('blueprints/blueprints.db', 'repo', cwd)
+  } catch (err) {
+    if (err instanceof NotInGitRepoError) return path.join(cwd, '.agent', '.blueprints.db')
+    throw err
+  }
 }
 
 function lockPath(cwd: string): string {
-  return path.join(cwd, '.agent', LOCK_FILENAME)
+  try {
+    return getSurfacePath('blueprints/.lock', 'repo', cwd)
+  } catch (err) {
+    if (err instanceof NotInGitRepoError) return path.join(cwd, '.agent', '.blueprints.lock')
+    throw err
+  }
 }
 
 /** Advisory lock using an exclusive open on the lock file.

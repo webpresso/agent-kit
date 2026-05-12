@@ -71,14 +71,37 @@ export function getWorktreeKey(): string {
   return cachedWorktreeKey
 }
 
-export function getSurfacePath(name: string, scope: LockScope): string {
+function computeRepoKey(cwd: string): string {
+  const commonDir = runGit(['rev-parse', '--git-common-dir'], cwd)
+  const absolute = realpathSync(commonDir.startsWith('/') ? commonDir : join(cwd, commonDir))
+  return sha256Hex(absolute).slice(0, 16)
+}
+
+function computeWorktreeKey(cwd: string): string {
+  const topLevel = runGit(['rev-parse', '--show-toplevel'], cwd)
+  const absolute = realpathSync(topLevel)
+  return sha256Hex(absolute).slice(0, 8)
+}
+
+/**
+ * Resolve the on-disk path for a named state surface.
+ *
+ * @param cwd  Optional project directory. When provided, git context is
+ *             derived from that directory instead of process.cwd()/
+ *             CLAUDE_PROJECT_DIR. Callers that receive a `cwd` parameter
+ *             (e.g. coldStartIfNeeded, auditMemoryRotation) should forward
+ *             it here so each project's state lands under its own key.
+ *             If `cwd` is not a git repo, NotInGitRepoError is thrown and
+ *             the caller falls back to the cwd-relative legacy path.
+ */
+export function getSurfacePath(name: string, scope: LockScope, cwd?: string): string {
   const root = getStateRoot()
   if (scope === 'user') {
     return join(root, name)
   }
-  const repoKey = getRepoKey()
+  const repoKey = cwd !== undefined ? computeRepoKey(cwd) : getRepoKey()
   if (scope === 'worktree') {
-    const wtKey = getWorktreeKey()
+    const wtKey = cwd !== undefined ? computeWorktreeKey(cwd) : getWorktreeKey()
     return join(root, repoKey, 'worktree', wtKey, name)
   }
   return join(root, repoKey, name)

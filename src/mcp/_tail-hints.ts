@@ -12,6 +12,8 @@
 import { appendFileSync, existsSync, readFileSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 
+import { getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
+
 
 export const TAIL_HINTS = {
   PLL_PARALLEL: 'Consider /pll for parallel execution.',
@@ -32,7 +34,12 @@ interface HintRecord {
 }
 
 function historyPath(cwd: string): string {
-  return path.join(cwd, '.agent', HINT_HISTORY_FILENAME)
+  try {
+    return getSurfacePath('hints/tail-history.jsonl', 'repo', cwd)
+  } catch (err) {
+    if (err instanceof NotInGitRepoError) return path.join(cwd, '.agent', HINT_HISTORY_FILENAME)
+    throw err
+  }
 }
 
 function readHistory(cwd: string): HintRecord[] {
