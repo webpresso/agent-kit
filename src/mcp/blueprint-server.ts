@@ -5,9 +5,16 @@
  * It calls `coldStartIfNeeded` once then registers all 8 tools.
  *
  * All outputs honour the summary-first envelope: { summary, failures, bytes, tokensSaved }
+ *
+ * Platform-first sync (Task 2.1):
+ *   When a SyncAdapter is available (credentials present, not disabled), mutations
+ *   push a BlueprintPlatformEvent before updating local markdown/SQLite.
+ *   Iron rule: AK_BLUEPRINT_PLATFORM_DISABLED=1 skips the adapter entirely — the
+ *   markdown-canonical path runs byte-identically to the pre-migration behaviour.
  */
 
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 
 import matter from 'gray-matter'
@@ -20,6 +27,97 @@ import { findTemplate } from '#db/templates.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
 import { maybeHint } from './_tail-hints.js'
 import type { ToolHandlerResult, ToolRegistrar } from './auto-discover.js'
+
+// ---------------------------------------------------------------------------
+// Platform-first sync adapter (injectable for tests, Task 2.1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal platform sync surface needed by blueprint-server handlers.
+ *
+ * The production factory creates a BlueprintSyncClient + ReplicaManager pair.
+ * Tests inject a mock via `_setSyncAdapterFactory`.
+ *
+ * Keeping this interface here (rather than importing BlueprintPlatformClient
+ * directly) avoids coupling blueprint-server to the client implementation and
+ * keeps the module testable without live credentials.
+ */
+export interface SyncAdapter {
+  pushEvent(event: {
+    readonly eventId: string
+    readonly repoId: string
+    readonly occurredAt: string
+    readonly type: 'task.status_changed'
+    readonly payload: {
+      readonly type: 'task.status_changed'
+      readonly blueprintSlug: string
+      readonly taskId: string
+      readonly fromStatus: string
+      readonly toStatus: string
+    }
+  }): Promise<void>
+  ensureFresh(opts?: { readonly slug?: string }): Promise<void>
+}
+
+type SyncAdapterFactory = () => SyncAdapter | null
+
+/**
+ * Module-level factory.  `null` = use the production default (loadSyncCredentials
+ * from auth.ts + BlueprintSyncClient + ReplicaManager — lazy-imported so that
+ * blueprint-server.ts never statically depends on the HTTP client).
+ */
+let _syncAdapterFactory: SyncAdapterFactory | null = null
+
+/**
+ * Override the adapter factory — for tests only.
+ * Pass `null` to restore the production default.
+ *
+ * @internal
+ */
+export function _setSyncAdapterFactory(factory: SyncAdapterFactory | null): void {
+  _syncAdapterFactory = factory
+}
+
+/**
+ * Resolve the sync adapter for the current request.
+ *
+ * Iron rule: returns `null` when `AK_BLUEPRINT_PLATFORM_DISABLED=1` regardless
+ * of any injected factory — the caller must skip all platform operations.
+ *
+ * @param cwd - repo working directory, used to locate the replica DB file.
+ */
+async function resolveSyncAdapter(cwd: string): Promise<SyncAdapter | null> {
+  if (process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] === '1') return null
+
+  if (_syncAdapterFactory !== null) {
+    return _syncAdapterFactory()
+  }
+
+  // Production default: lazy-import to avoid coupling the module to the HTTP client.
+  // #sync/* resolves via the fallback "#*" → "./src/blueprint/*.ts" mapping.
+  const [{ BlueprintSyncClient }, { loadSyncCredentials }, { ReplicaManager }, { openDb: openDbForReplica }] =
+    await Promise.all([
+      import('#sync/client.js'),
+      import('#sync/auth.js'),
+      import('#sync/replica.js'),
+      import('#db/connection.js'),
+    ])
+
+  const creds = loadSyncCredentials()
+  if (creds === null) return null
+
+  const client = new BlueprintSyncClient(creds)
+
+  // ReplicaManager needs a db handle; store the replica DB alongside the blueprint DB.
+  const replicaDbPath = path.join(cwd, '.agent', '.replica.db')
+  const conn = openDbForReplica(replicaDbPath)
+  const manager = new ReplicaManager({ client, db: conn.db })
+
+  return {
+    pushEvent: (event) => client.pushEvent(event),
+    ensureFresh: (opts) => manager.ensureFresh(opts),
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -267,13 +365,38 @@ async function handleTaskAdvance(cwd: string, raw: unknown): Promise<ToolHandler
     const conn = openDb(target)
     let oldStatus: string | null = null
     let filePath: string | null = null
+    let blueprintSlug: string | null = null
     try {
       const row = conn.db.prepare<[string], { status: string; blueprint_slug: string }>('SELECT status, blueprint_slug FROM tasks WHERE task_id = ? LIMIT 1').get(task_id) as { status: string; blueprint_slug: string } | undefined
       if (!row) return err('ak_blueprint_task_advance failed', `Task "${task_id}" not found in DB`)
       oldStatus = row.status
+      blueprintSlug = row.blueprint_slug
       const bp = conn.db.prepare<[string], { file_path: string }>('SELECT file_path FROM blueprints WHERE slug = ?').get(row.blueprint_slug) as { file_path: string } | undefined
       if (bp?.file_path) filePath = bp.file_path
     } finally { conn.close() }
+
+    // Platform-first path: push event + pull fresh replica before local update.
+    // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
+    const adapter = await resolveSyncAdapter(cwd)
+    if (adapter !== null && blueprintSlug !== null && oldStatus !== null) {
+      await adapter.pushEvent({
+        eventId: randomUUID(),
+        repoId: process.env['AK_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
+        occurredAt: new Date().toISOString(),
+        type: 'task.status_changed',
+        payload: {
+          type: 'task.status_changed',
+          blueprintSlug,
+          taskId: task_id,
+          fromStatus: oldStatus,
+          toStatus: to,
+        },
+      })
+      await adapter.ensureFresh({ slug: blueprintSlug })
+    }
+
+    // Always update local markdown + SQLite.
+    // Platform-first: these become derived artifacts; disabled: these are canonical.
     if (filePath && existsSync(filePath)) {
       const lines = readFileSync(filePath, 'utf8').split('\n')
       let inBlock = false

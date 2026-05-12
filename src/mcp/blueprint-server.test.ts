@@ -1,20 +1,25 @@
 /**
- * Tests for the blueprint MCP server (Task 2.2).
+ * Tests for the blueprint MCP server (Task 2.1 + Task 2.2).
  *
- * These tests exercise `ak_blueprint_validate` (primary structural-check tool),
+ * Task 2.2 tests exercise `ak_blueprint_validate` (primary structural-check tool),
  * `ak_blueprint_new` (drafting bundle), and `ak_blueprint_task_next` (next-task
  * query against an empty DB) — the minimum required by the task spec.
+ *
+ * Task 2.1 tests exercise `ak_blueprint_task_advance` with platform-first path,
+ * iron rule regression (AK_BLUEPRINT_PLATFORM_DISABLED=1), and null-credentials
+ * fallback — all patterns established here for Wave 2 tasks 2.2-2.7 to copy.
  *
  * All tests use an in-memory DB via a temp directory so they leave no state.
  */
 
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import { tmpdir } from 'node:os'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ToolRegistrar, ToolHandler, ToolHandlerResult } from './auto-discover.js'
-import { registerBlueprintTools } from './blueprint-server.js'
+import { registerBlueprintTools, _setSyncAdapterFactory } from './blueprint-server.js'
+import type { SyncAdapter } from './blueprint-server.js'
 
 // ---------------------------------------------------------------------------
 // Minimal ToolRegistrar implementation for testing
@@ -327,6 +332,188 @@ describe('ak_blueprint_task_next', () => {
 
     expect(result.isError).toBeFalsy()
     expect(data.task).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// ak_blueprint_task_advance — platform-first path (Task 2.1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fixture blueprint with one todo task used by all task-advance tests.
+ * Lives in blueprints/in-progress/<slug>/_overview.md so the DB ingester
+ * can pick it up.
+ */
+const ADVANCE_BLUEPRINT = `---
+type: blueprint
+title: Advance Test Blueprint
+status: in-progress
+complexity: S
+owner: tester
+created: '2026-01-01'
+last_updated: '2026-05-01'
+---
+
+## Product wedge anchor
+
+- **Stage outcome:** Phase 1 — ship advance feature
+- **Consuming surface:** /advance route
+- **New user-visible capability:** Users can advance tasks.
+
+## Summary
+
+Blueprint used to test task advance.
+
+#### Task 1.1: The advance task
+
+**Status:** todo
+**Wave:** 0
+**Files:**
+- src/foo.ts
+
+**Acceptance:**
+- [ ] The task is advanced
+`
+
+describe('ak_blueprint_task_advance', () => {
+  const BLUEPRINT_SLUG = 'advance-test-blueprint'
+
+  /** Write the fixture blueprint and return its path. */
+  function writeBlueprintFixture(dir: string): string {
+    const bpDir = path.join(dir, 'blueprints', 'in-progress', BLUEPRINT_SLUG)
+    mkdirSync(bpDir, { recursive: true })
+    const overviewPath = path.join(bpDir, '_overview.md')
+    writeFileSync(overviewPath, ADVANCE_BLUEPRINT, 'utf8')
+    return overviewPath
+  }
+
+  /** Re-register tools after writing the fixture so the DB is cold-started with it. */
+  async function setupWithBlueprint(): Promise<{
+    overviewPath: string
+    localTools: Map<string, { name: string; handler: ToolHandler }>
+  }> {
+    const localTmpDir = mkdtempSync(path.join(tmpdir(), 'ak-bs-adv-'))
+    mkdirSync(path.join(localTmpDir, '.agent'), { recursive: true })
+    mkdirSync(path.join(localTmpDir, 'blueprints', 'draft'), { recursive: true })
+    writeFileSync(path.join(localTmpDir, 'package.json'), JSON.stringify({ name: 'test' }), 'utf8')
+    const overviewPath = writeBlueprintFixture(localTmpDir)
+    const { registrar, tools: t } = makeRegistrar()
+    await registerBlueprintTools(registrar, localTmpDir)
+    return { overviewPath, localTools: t }
+  }
+
+  afterEach(() => {
+    // Reset the injectable factory to production default after each test
+    _setSyncAdapterFactory(null)
+    vi.unstubAllEnvs()
+  })
+
+  it('calls pushEvent + ensureFresh when platform adapter is available', async () => {
+    const pushEvent = vi.fn<SyncAdapter['pushEvent']>().mockResolvedValue(undefined)
+    const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockResolvedValue(undefined)
+    const mockAdapter: SyncAdapter = { pushEvent, ensureFresh }
+    _setSyncAdapterFactory(() => mockAdapter)
+
+    const { overviewPath, localTools } = await setupWithBlueprint()
+
+    const result = await callTool(localTools, 'ak_blueprint_task_advance', {
+      task_id: '1.1',
+      to: 'in-progress',
+    })
+    const data = parseResult(result) as {
+      summary: string
+      task_id: string
+      old_status: string
+      new_status: string
+      failures: string[]
+    }
+
+    expect(result.isError).toBeFalsy()
+    expect(data.task_id).toStrictEqual('1.1')
+    expect(data.new_status).toStrictEqual('in-progress')
+
+    // Platform-first: pushEvent must be called with task.status_changed payload
+    expect(pushEvent).toHaveBeenCalledOnce()
+    const [eventArg] = pushEvent.mock.calls[0] ?? []
+    expect(eventArg?.type).toStrictEqual('task.status_changed')
+    expect(eventArg?.payload).toMatchObject({
+      type: 'task.status_changed',
+      taskId: '1.1',
+      toStatus: 'in-progress',
+    })
+    expect(typeof eventArg?.eventId).toStrictEqual('string')
+    expect(eventArg?.eventId.length).toBeGreaterThan(0)
+
+    // ensureFresh must be called to pull updated state
+    expect(ensureFresh).toHaveBeenCalledOnce()
+
+    // Markdown must still be updated (derived artifact)
+    const md = readFileSync(overviewPath, 'utf8')
+    expect(md).toContain('**Status:** in-progress')
+  })
+
+  it('does NOT call pushEvent when AK_BLUEPRINT_PLATFORM_DISABLED=1 (iron rule)', async () => {
+    vi.stubEnv('AK_BLUEPRINT_PLATFORM_DISABLED', '1')
+
+    const pushEvent = vi.fn<SyncAdapter['pushEvent']>().mockResolvedValue(undefined)
+    const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockResolvedValue(undefined)
+    const mockAdapter: SyncAdapter = { pushEvent, ensureFresh }
+    // Even if someone injects an adapter, DISABLED must win
+    _setSyncAdapterFactory(() => mockAdapter)
+
+    const { overviewPath, localTools } = await setupWithBlueprint()
+
+    const result = await callTool(localTools, 'ak_blueprint_task_advance', {
+      task_id: '1.1',
+      to: 'done',
+    })
+    const data = parseResult(result) as { new_status: string; failures: string[] }
+
+    // Iron rule: result must be successful (markdown-canonical path)
+    expect(result.isError).toBeFalsy()
+    expect(data.new_status).toStrictEqual('done')
+    expect(data.failures).toHaveLength(0)
+
+    // Iron rule: platform calls must NOT happen when disabled
+    expect(pushEvent).not.toHaveBeenCalled()
+    expect(ensureFresh).not.toHaveBeenCalled()
+
+    // Markdown must still be updated via the canonical path
+    const md = readFileSync(overviewPath, 'utf8')
+    expect(md).toContain('**Status:** done')
+  })
+
+  it('falls back to markdown-canonical path when factory returns null (no credentials)', async () => {
+    // Factory returns null = no credentials available
+    _setSyncAdapterFactory(() => null)
+
+    const { overviewPath, localTools } = await setupWithBlueprint()
+
+    const result = await callTool(localTools, 'ak_blueprint_task_advance', {
+      task_id: '1.1',
+      to: 'blocked',
+    })
+    const data = parseResult(result) as { new_status: string; failures: string[] }
+
+    expect(result.isError).toBeFalsy()
+    expect(data.new_status).toStrictEqual('blocked')
+    expect(data.failures).toHaveLength(0)
+
+    // Markdown canonical path must have run
+    const md = readFileSync(overviewPath, 'utf8')
+    expect(md).toContain('**Status:** blocked')
+  })
+
+  it('returns error when task_id does not exist in DB', async () => {
+    _setSyncAdapterFactory(() => null)
+
+    const result = await callTool(tools, 'ak_blueprint_task_advance', {
+      task_id: 'nonexistent.99',
+      to: 'done',
+    })
+    expect(result.isError).toBe(true)
+    const data = parseResult(result) as { failures: string[] }
+    expect(data.failures.length).toBeGreaterThan(0)
   })
 })
 

@@ -335,7 +335,7 @@ via `AK_BLUEPRINT_REPLICA_TTL_S` (default: 30).
 
 #### [mcp] Task 2.1: Migrate `ak_blueprint_task_advance` to platform write
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.1, Task 1.2
 
 `ak_blueprint_task_advance` is the highest-traffic mutation tool. Swap its
