@@ -731,30 +731,32 @@ command to run immediately.
 #### [cli] Task 1.7: `ak blueprint new --template <name>` flag
 
 **Status:** todo
-**Depends:** Tasks 0.5, 0.6, 0.7, 0.8, 0.9
+**Depends:** None
 
-**Revised per B4:** instead of a new `init` subverb, add a `--template
-<name>` flag to the EXISTING `ak blueprint new` verb. Single CLI surface
-for blueprint creation; templates are an alternative input to the goal
-string.
+**Revised per B4 + catalog-template deletion:** the 5 catalog blueprint
+templates (Tasks 0.5–0.9) were deleted per user decision. The `--template`
+flag now reads from `docs/templates/` (the doc template directory) or from
+any `.md` files present in `catalog/blueprints/` — whichever exists. The
+flag is still valuable as a mechanism; it lists whatever templates are
+available rather than requiring a fixed 5.
 
 **Files:**
-- Modify: `src/cli/commands/blueprint/new.ts` (verify path; the existing `ak blueprint new` lives here)
+- Modify: `src/cli/commands/blueprint/new.ts` (verify path)
 - Modify: matching test
-- Create: `src/cli/commands/blueprint/template-resolver.ts` (helper to list + load templates from `catalog/blueprints/`)
+- Create: `src/cli/commands/blueprint/template-resolver.ts`
 - Create: `src/cli/commands/blueprint/template-resolver.test.ts`
 
 **Steps (TDD):**
-1. Test: `ak blueprint new --template feature-cloudflare-worker` produces
-   a draft `_overview.md` with placeholders filled. Unknown template →
-   exit 2 with list of available templates.
-2. FAIL → implement template-resolver helper + wire into `new` command → PASS.
+1. Test: `ak blueprint new --template <name>` resolves from `docs/templates/`.
+   Unknown template → exit 2 with list of available templates.
+2. FAIL → implement template-resolver + wire into `new` command → PASS.
 3. `pnpm test && pnpm lint && pnpm typecheck`.
 
 **Acceptance:**
-- [ ] All 5 templates listed by `ak blueprint new --list-templates`.
+- [ ] `ak blueprint new --list-templates` lists available templates from `docs/templates/`.
 - [ ] Generated `_overview.md` passes `ak blueprint audit`.
-- [ ] `--template` composes cleanly with `--complexity` (template sets default; flag overrides).
+- [ ] `--template` composes with `--complexity` (template sets default; flag overrides).
+- [ ] Unknown template exits 2 with available list.
 
 ---
 
