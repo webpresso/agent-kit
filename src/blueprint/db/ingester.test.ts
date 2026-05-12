@@ -330,8 +330,8 @@ describe('transactional error isolation', () => {
         .prepare('SELECT COUNT(*) as n FROM blueprints')
         .get() as { n: number }).n
       expect(count).toBeGreaterThanOrEqual(2)
-      // No fatal crash
-      expect(result).toBeDefined()
+      // No fatal crash — function returned an object (didn't throw)
+      expect(result).not.toStrictEqual(undefined)
     } finally {
       conn.close()
     }
