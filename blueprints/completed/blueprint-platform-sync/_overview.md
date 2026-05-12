@@ -1,7 +1,8 @@
 ---
 type: blueprint
 title: Blueprint platform sync — make platform-synced SQLite the canonical store
-status: in-progress
+status: completed
+completed_at: '2026-05-12'
 complexity: L
 owner: ozby
 created: 2026-05-12
