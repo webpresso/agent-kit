@@ -59,10 +59,9 @@ export const DEFAULT_SKILLS_CONSUMERS: SkillsConsumerConfig[] = [
 ]
 
 /**
- * Per-skill consumer — creates file-level symlinks per skill in `.agent/skills/`,
- * instead of a single directory-symlink. Use this for consumers whose
- * skills directory mixes agent-kit skills with user-owned files that
- * must be preserved.
+ * Per-skill consumer — creates one directory symlink per skill in
+ * `.agent/skills/`, instead of a single skills-root symlink. Codex documents
+ * symlinked skill folders as a supported discovery shape.
  *
  * Source-of-truth is `.agent/skills/<slug>/` — the consumer projection
  * produced by `runUnifiedSync` + scaffolders (e.g. `scaffoldMonorepoNav`,

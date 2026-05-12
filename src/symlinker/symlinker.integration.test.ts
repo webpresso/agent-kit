@@ -5,6 +5,7 @@ import {
   readFileSync,
   readlinkSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs'
@@ -601,20 +602,18 @@ describe('symlinker', () => {
       dir: '.test-codex/skills',
     }
 
-    it('creates real dirs with file symlinks for each .agent/skills/* directory', () => {
+    it('creates directory symlinks for each .agent/skills/* directory', () => {
       writeFile(join(root, '.agent/skills/pll/SKILL.md'), '# pll')
       writeFile(join(root, '.agent/skills/verify/SKILL.md'), '# verify')
 
       const result = syncSkillFanout(root, CONFIG)
 
-      // 2 file symlinks created
       expect(result.wrote).toBe(2)
-      // Directories are real, not symlinks
-      expect(lstatSync(join(root, '.test-codex/skills/pll')).isDirectory()).toBe(true)
-      expect(lstatSync(join(root, '.test-codex/skills/pll')).isSymbolicLink()).toBe(false)
-      expect(lstatSync(join(root, '.test-codex/skills/verify')).isDirectory()).toBe(true)
-      expect(lstatSync(join(root, '.test-codex/skills/verify')).isSymbolicLink()).toBe(false)
-      // SKILL.md entries are file symlinks AND they resolve to real files (bc88 invariant).
+      expect(statSync(join(root, '.test-codex/skills/pll')).isDirectory()).toBe(true)
+      expect(lstatSync(join(root, '.test-codex/skills/pll')).isSymbolicLink()).toBe(true)
+      expect(statSync(join(root, '.test-codex/skills/verify')).isDirectory()).toBe(true)
+      expect(lstatSync(join(root, '.test-codex/skills/verify')).isSymbolicLink()).toBe(true)
+      // Skill dirs are symlinked and SKILL.md resolves to real files.
       assertSymlinkResolves(join(root, '.test-codex/skills/pll/SKILL.md'))
       assertSymlinkResolves(join(root, '.test-codex/skills/verify/SKILL.md'))
     })
@@ -626,25 +625,22 @@ describe('symlinker', () => {
 
       const result = syncSkillFanout(root, CONFIG)
 
-      expect(result.wrote).toBe(3)
+      expect(result.wrote).toBe(1)
       assertSymlinkResolves(join(root, '.test-codex/skills/tanstack/SKILL.md'))
       assertSymlinkResolves(join(root, '.test-codex/skills/tanstack/references/factory.ts'))
       assertSymlinkResolves(join(root, '.test-codex/skills/tanstack/templates/route.ts'))
     })
 
-    it('preserves user-owned real files inside an expected slug (D2 inside-slug semantic)', () => {
+    it('replaces old file-level projections inside an expected slug', () => {
       writeFile(join(root, '.agent/skills/pll/SKILL.md'), '# pll')
       mkdirSync(join(root, '.test-codex/skills/pll'), { recursive: true })
       writeFile(join(root, '.test-codex/skills/pll/USER_NOTES.md'), '# user owns this')
 
       syncSkillFanout(root, CONFIG)
 
-      // SKILL.md projected as symlink; USER_NOTES.md preserved.
-      expect(lstatSync(join(root, '.test-codex/skills/pll/SKILL.md')).isSymbolicLink()).toBe(true)
-      expect(lstatSync(join(root, '.test-codex/skills/pll/USER_NOTES.md')).isFile()).toBe(true)
-      expect(readFileSync(join(root, '.test-codex/skills/pll/USER_NOTES.md'), 'utf8')).toBe(
-        '# user owns this',
-      )
+      expect(lstatSync(join(root, '.test-codex/skills/pll')).isSymbolicLink()).toBe(true)
+      expect(existsSync(join(root, '.test-codex/skills/pll/USER_NOTES.md'))).toBe(false)
+      assertSymlinkResolves(join(root, '.test-codex/skills/pll/SKILL.md'))
     })
 
     it('top-level prune is aggressive: removes unexpected slug dirs recursively (D2 contract)', () => {
@@ -688,17 +684,16 @@ describe('symlinker', () => {
       expect(syncSkillFanout(root, CONFIG).wrote).toBe(0)
     })
 
-    it('fixes old-style directory symlink by replacing with real dir + file symlinks', () => {
+    it('keeps an existing correct directory symlink', () => {
       writeFile(join(root, '.agent/skills/pll/SKILL.md'), '# pll')
       mkdirSync(join(root, '.test-codex/skills'), { recursive: true })
       symlinkSync('../../.agent/skills/pll', join(root, '.test-codex/skills/pll'))
 
       const result = syncSkillFanout(root, CONFIG)
 
-      // 1: replaced dir symlink with real dir; 1: created file symlink inside.
-      expect(result.wrote).toBe(2)
-      expect(lstatSync(join(root, '.test-codex/skills/pll')).isDirectory()).toBe(true)
-      expect(lstatSync(join(root, '.test-codex/skills/pll')).isSymbolicLink()).toBe(false)
+      expect(result.wrote).toBe(0)
+      expect(statSync(join(root, '.test-codex/skills/pll')).isDirectory()).toBe(true)
+      expect(lstatSync(join(root, '.test-codex/skills/pll')).isSymbolicLink()).toBe(true)
       assertSymlinkResolves(join(root, '.test-codex/skills/pll/SKILL.md'))
     })
 
@@ -729,7 +724,7 @@ describe('symlinker', () => {
 
       // 1 SKILL.md symlink in each consumer = 2 fixes
       expect(result.wrote).toBe(2)
-      expect(lstatSync(join(root, '.consumer-a/skills/pll')).isDirectory()).toBe(true)
+      expect(statSync(join(root, '.consumer-a/skills/pll')).isDirectory()).toBe(true)
       assertSymlinkResolves(join(root, '.consumer-a/skills/pll/SKILL.md'))
       assertSymlinkResolves(join(root, '.consumer-b/skills/pll/SKILL.md'))
     })

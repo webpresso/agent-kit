@@ -168,11 +168,10 @@ export interface SyncSkillFanoutResult {
 }
 
 /**
- * File-level skill projection from `.agent/skills/<slug>/` into a per-IDE
- * consumer dir (e.g. `.agents/skills/<slug>/`). Each file under the source
- * skill dir — including nested asset files (per `collectSkillAssets`) —
- * lands as an individual symlink so the consumer dir can host both
- * agent-kit skills and user-owned files side by side.
+ * Directory-level skill projection from `.agent/skills/<slug>/` into a
+ * per-IDE consumer dir (e.g. `.agents/skills/<slug>`). Codex documents support
+ * for symlinked skill folders; file-level `SKILL.md` symlinks inside real
+ * folders are not a documented discovery shape and can be skipped by hosts.
  *
  * Source-of-truth: `.agent/skills/<slug>/` (the consumer projection
  * produced by `runUnifiedSync` + scaffolders). NOT `node_modules/.../skills/`
@@ -180,12 +179,11 @@ export interface SyncSkillFanoutResult {
  * an asymmetric fallback where listing succeeded against `.agent/skills/`
  * but symlink targets pointed at the missing `node_modules/.../skills/`).
  *
- * Contract:
- * - `.agents/skills/<slug>/` is owned by agent-kit. Top-level dirs that
- *   don't correspond to a skill in `.agent/skills/` are removed
- *   recursively (per the post-D2 destructive-cleanup contract).
- * - INSIDE an expected slug dir, real files are preserved (user-owned);
- *   only file symlinks are pruned when their source counterpart is gone.
+ * Contract: `.agents/skills/<slug>` is an agent-kit-owned generated symlink.
+ * Top-level entries that do not correspond to a skill in `.agent/skills/` are
+ * removed recursively. Real directories for expected slugs are also replaced
+ * so stale file-level projections cannot mask the official directory-symlink
+ * discovery surface.
  *
  * Throws (synchronously) on any file-op error so callers see fail-loud
  * exit codes instead of `console.log('✅')` followed by broken state.
@@ -200,7 +198,7 @@ export function syncSkillFanout(
   const consumerDir = join(repoRoot, config.dir)
   mkdirSync(consumerDir, { recursive: true })
 
-  console.log(`\n📁 ${config.dir} (per-skill, file symlinks)`)
+  console.log(`\n📁 ${config.dir} (per-skill, directory symlinks)`)
 
   const agentSkills = readdirSync(skillsSource).filter((name) => {
     try {
@@ -217,60 +215,20 @@ export function syncSkillFanout(
   for (const skill of agentSkills) {
     const skillLinkDir = join(consumerDir, skill)
     const srcDir = join(skillsSource, skill)
+    const expectedAbs = resolve(srcDir)
 
-    // Realize the target as a real directory: replace dir-symlinks with mkdir
-    // so file symlinks can land inside. Non-dir entries (regular files) at
-    // the slug path are anomalous; skip the slug rather than clobber.
     const stats = lstatNullable(skillLinkDir)
-    if (stats) {
-      if (stats.isSymbolicLink()) {
-        unlinkSync(skillLinkDir)
-        mkdirSync(skillLinkDir, { recursive: true })
-        wrote++
-      } else if (!stats.isDirectory()) {
-        continue
-      }
-    } else {
-      mkdirSync(skillLinkDir, { recursive: true })
+    if (stats && stats.isSymbolicLink() && isSymlinkPointingTo(skillLinkDir, expectedAbs)) {
+      continue
     }
-
-    // Walk the source skill dir recursively to discover every file that
-    // needs to be projected. `collectSkillAssets`-shaped: relative paths
-    // from srcDir, excluding directories themselves.
-    const sourceRelFiles = collectFilesRecursive(srcDir)
-
-    // Project each source file into the consumer slug dir.
-    for (const relPath of sourceRelFiles) {
-      const sourcePath = join(srcDir, relPath)
-      const linkPath = join(skillLinkDir, relPath)
-
-      // Ensure parent dir exists (handles nested asset paths like
-      // `references/foo.md` or `templates/x.txt`).
-      mkdirSync(dirname(linkPath), { recursive: true })
-
-      const expectedAbs = resolve(sourcePath)
-      if (isSymlinkPointingTo(linkPath, expectedAbs)) continue
-      const linkStats = lstatNullable(linkPath)
-      if (linkStats) {
-        if (linkStats.isSymbolicLink()) {
-          unlinkSync(linkPath)
-        } else {
-          // Real file at the same path — user-owned, preserve.
-          continue
-        }
-      }
-
-      const relativeTarget = relative(dirname(linkPath), sourcePath)
-      createSymlinkWithType(relativeTarget, linkPath, 'file', `${config.dir}/${skill}/${relPath}`)
-      console.log(`  ✅ ${skill}/${relPath} → ${relativeTarget}`)
+    if (stats) {
+      rmSync(skillLinkDir, { recursive: true, force: true })
       wrote++
     }
-
-    // Recursively prune stale file symlinks inside the slug dir whose
-    // relative path is not in the current source set. Real (non-symlink)
-    // files are preserved.
-    const expectedRelSet = new Set(sourceRelFiles)
-    wrote += pruneStaleFileSymlinks(skillLinkDir, '', expectedRelSet)
+    const relativeTarget = relative(consumerDir, srcDir)
+    createSymlinkWithType(relativeTarget, skillLinkDir, 'dir', `${config.dir}/${skill}`)
+    console.log(`  ✅ ${skill}/ → ${relativeTarget}`)
+    wrote++
   }
 
   // Top-level prune: remove any consumer-dir entry that doesn't correspond
@@ -319,60 +277,6 @@ function lstatNullable(path: string): ReturnType<typeof lstatSync> | null {
   } catch {
     return null
   }
-}
-
-function collectFilesRecursive(dir: string): string[] {
-  const out: string[] = []
-  walkFiles(dir, '', out)
-  out.sort()
-  return out
-}
-
-function walkFiles(absDir: string, relPrefix: string, out: string[]): void {
-  let entries
-  try {
-    entries = readdirSync(absDir, { withFileTypes: true })
-  } catch {
-    return
-  }
-  for (const entry of entries) {
-    const rel = relPrefix ? `${relPrefix}/${entry.name}` : entry.name
-    const abs = join(absDir, entry.name)
-    if (entry.isDirectory()) {
-      walkFiles(abs, rel, out)
-    } else if (entry.isFile() || entry.isSymbolicLink()) {
-      out.push(rel)
-    }
-  }
-}
-
-function pruneStaleFileSymlinks(
-  rootDir: string,
-  relPrefix: string,
-  expected: ReadonlySet<string>,
-): number {
-  const absDir = relPrefix ? join(rootDir, relPrefix) : rootDir
-  let entries
-  try {
-    entries = readdirSync(absDir, { withFileTypes: true })
-  } catch {
-    return 0
-  }
-  let removed = 0
-  for (const entry of entries) {
-    const rel = relPrefix ? `${relPrefix}/${entry.name}` : entry.name
-    const abs = join(absDir, entry.name)
-    if (entry.isDirectory()) {
-      removed += pruneStaleFileSymlinks(rootDir, rel, expected)
-      continue
-    }
-    if (!entry.isSymbolicLink()) continue
-    if (expected.has(rel)) continue
-    unlinkSync(abs)
-    console.log(`  🗑️  ${rel}: removed stale file symlink`)
-    removed++
-  }
-  return removed
 }
 
 /**

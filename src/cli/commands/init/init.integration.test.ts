@@ -5,6 +5,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs'
@@ -343,11 +344,12 @@ describe('ak init end-to-end', () => {
     ).toBe(true)
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
 
-    // Codex / Amp: real dir with file symlinks in .agents/skills/ (rg traverses real dirs)
+    // Codex: skill folders are symlinked because official docs guarantee
+    // symlinked skill folder discovery.
     const agentsVerifySkill = join(repo, '.agents', 'skills', 'verify')
-    expect(lstatSync(agentsVerifySkill).isDirectory()).toBe(true)
-    expect(lstatSync(agentsVerifySkill).isSymbolicLink()).toBe(false)
-    expect(lstatSync(join(agentsVerifySkill, 'SKILL.md')).isSymbolicLink()).toBe(true)
+    expect(statSync(agentsVerifySkill).isDirectory()).toBe(true)
+    expect(lstatSync(agentsVerifySkill).isSymbolicLink()).toBe(true)
+    expect(existsSync(join(agentsVerifySkill, 'SKILL.md'))).toBe(true)
 
     // Gemini CLI: TOML transform
     const geminiToml = join(repo, '.gemini', 'commands', 'verify.toml')
