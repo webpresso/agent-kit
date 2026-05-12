@@ -47,6 +47,10 @@
       "#blueprint/sync/types.js": ["./src/blueprint/sync/types.ts"],
       "#blueprint/sync/auth.js": ["./src/blueprint/sync/auth.ts"],
       "#blueprint/sync/client.js": ["./src/blueprint/sync/client.ts"],
+      "#types/*.js": ["./src/blueprint/types/*.ts"],
+      "#types/*": ["./src/blueprint/types/*"],
+      "#cross-repo/*.js": ["./src/blueprint/cross-repo/*.ts"],
+      "#cross-repo/*": ["./src/blueprint/cross-repo/*"],
       "#*": ["./src/blueprint/*"]
     }
   },
