@@ -68,8 +68,8 @@ describe('Gemini consumer contract', () => {
     const geminiEntry = DEFAULT_UNIFIED_CONSUMERS.find(
       (c) => c.id === 'gemini-commands',
     )
-    expect(geminiEntry).toBeDefined()
-    expect(geminiEntry?.dir).toBe('.gemini/commands')
-    expect(geminiEntry?.strategy).toBe('transform')
+    expect(geminiEntry).not.toStrictEqual(undefined)
+    expect(geminiEntry?.dir).toStrictEqual('.gemini/commands')
+    expect(geminiEntry?.strategy).toStrictEqual('transform')
   })
 })
