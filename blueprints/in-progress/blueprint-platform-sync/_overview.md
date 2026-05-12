@@ -1,7 +1,7 @@
 ---
 type: blueprint
 title: Blueprint platform sync — make platform-synced SQLite the canonical store
-status: planned
+status: in-progress
 complexity: L
 owner: ozby
 created: 2026-05-12
@@ -195,7 +195,7 @@ Q4:C is a breaking change from the current `blueprint-structured-store` design. 
 
 #### [design] Task 0.1: Resolve open questions Q1-Q7
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 
 This task is a design session with the Webpresso platform team. No code
