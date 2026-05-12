@@ -14,22 +14,34 @@ vi.mock('node:fs', async () => {
   }
 })
 
+vi.mock('node:child_process', async () => {
+  const actual = await vi.importActual<typeof import('node:child_process')>('node:child_process')
+  return { ...actual, execFileSync: vi.fn() }
+})
+
+import { execFileSync } from 'node:child_process'
 import { realpathSync } from 'node:fs'
 
 import {
   confirmInstalledGlobally,
   detect,
+  detectGitInstall,
   detectShim,
   matchStoreMarker,
   parseUserAgent,
 } from './detect-pm.js'
 
 const realpathSyncMock = vi.mocked(realpathSync)
+const execFileSyncMock = vi.mocked(execFileSync)
 
 beforeEach(() => {
   realpathSyncMock.mockReset()
-  // Default: realpath is identity (path exists, no symlinks).
+  execFileSyncMock.mockReset()
+  // Default: realpath is identity; git commands throw (not a git install).
   realpathSyncMock.mockImplementation((p) => String(p))
+  execFileSyncMock.mockImplementation(() => {
+    throw new Error('not a git repo')
+  })
 })
 
 describe('parseUserAgent', () => {
@@ -188,12 +200,53 @@ describe('confirmInstalledGlobally', () => {
   })
 })
 
+describe('detectGitInstall', () => {
+  it('returns the repo dir when argv1 resolves into the webpresso/agent-kit clone', () => {
+    realpathSyncMock.mockReturnValue('/Users/me/repos/webpresso/agent-kit/src/cli/cli.ts')
+    execFileSyncMock
+      .mockReturnValueOnce('/Users/me/repos/webpresso/agent-kit\n')
+      .mockReturnValueOnce('git@github.com:webpresso/agent-kit.git\n')
+    expect(detectGitInstall('/Users/me/.local/bin/wp')).toStrictEqual(
+      '/Users/me/repos/webpresso/agent-kit',
+    )
+  })
+
+  it('returns null when the remote is not webpresso/agent-kit', () => {
+    realpathSyncMock.mockReturnValue('/Users/me/other-repo/cli.ts')
+    execFileSyncMock
+      .mockReturnValueOnce('/Users/me/other-repo\n')
+      .mockReturnValueOnce('git@github.com:other/repo.git\n')
+    expect(detectGitInstall('/Users/me/.local/bin/wp')).toStrictEqual(null)
+  })
+
+  it('returns null when realpath throws', () => {
+    realpathSyncMock.mockImplementation(() => {
+      throw new Error('ENOENT')
+    })
+    expect(detectGitInstall('/missing/path')).toStrictEqual(null)
+  })
+})
+
+describe('detect — priority 0: git/source install', () => {
+  it('returns git pull command when argv1 is inside the agent-kit clone', () => {
+    realpathSyncMock.mockReturnValue('/Users/me/repos/webpresso/agent-kit/src/cli/cli.ts')
+    execFileSyncMock
+      .mockReturnValueOnce('/Users/me/repos/webpresso/agent-kit\n')
+      .mockReturnValueOnce('git@github.com:webpresso/agent-kit.git\n')
+    const result = detect({}, '/Users/me/.local/bin/wp')
+    expect(result).toStrictEqual({
+      manager: 'git',
+      command: ['git', '-C', '/Users/me/repos/webpresso/agent-kit', 'pull'],
+    })
+  })
+})
+
 describe('detect — priority 1: npm_config_user_agent', () => {
   it('returns pnpm + install command from user-agent', () => {
     const result = detect({ npm_config_user_agent: 'pnpm/10.33.0 node/v22' }, '/path/to/bin')
     expect(result).toStrictEqual({
       manager: 'pnpm',
-      command: ['pnpm', 'add', '-g', 'webpresso'],
+      command: ['pnpm', 'add', '-g', '@webpresso/agent-kit', '--registry', 'https://npm.pkg.github.com'],
     })
   })
 
@@ -201,7 +254,7 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     const result = detect({ npm_config_user_agent: 'npm/10.2.4 node/v22' }, '/path/to/bin')
     expect(result).toStrictEqual({
       manager: 'npm',
-      command: ['npm', 'install', '-g', 'webpresso'],
+      command: ['npm', 'install', '-g', '@webpresso/agent-kit', '--registry', 'https://npm.pkg.github.com'],
     })
   })
 
@@ -209,7 +262,7 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     const result = detect({ npm_config_user_agent: 'yarn/1.22.22 node/v22' }, '/path/to/bin')
     expect(result).toStrictEqual({
       manager: 'yarn',
-      command: ['yarn', 'global', 'add', 'webpresso'],
+      command: ['yarn', 'global', 'add', '@webpresso/agent-kit'],
     })
   })
 
@@ -217,7 +270,7 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     const result = detect({ npm_config_user_agent: 'bun/1.1.0 node/v22' }, '/path/to/bin')
     expect(result).toStrictEqual({
       manager: 'bun',
-      command: ['bun', 'add', '-g', 'webpresso'],
+      command: ['bun', 'add', '-g', '@webpresso/agent-kit'],
     })
   })
 
@@ -229,7 +282,7 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     )
     expect(result).toStrictEqual({
       manager: 'npm',
-      command: ['npm', 'install', '-g', 'webpresso'],
+      command: ['npm', 'install', '-g', '@webpresso/agent-kit', '--registry', 'https://npm.pkg.github.com'],
     })
   })
 })
@@ -240,7 +293,7 @@ describe('detect — priority 2: realpath walk', () => {
     const result = detect({}, '/Users/me/bin/webpresso')
     expect(result).toStrictEqual({
       manager: 'pnpm',
-      command: ['pnpm', 'add', '-g', 'webpresso'],
+      command: ['pnpm', 'add', '-g', '@webpresso/agent-kit', '--registry', 'https://npm.pkg.github.com'],
     })
   })
 
@@ -249,7 +302,7 @@ describe('detect — priority 2: realpath walk', () => {
     const result = detect({}, '/Users/me/.bun/bin/webpresso')
     expect(result).toStrictEqual({
       manager: 'bun',
-      command: ['bun', 'add', '-g', 'webpresso'],
+      command: ['bun', 'add', '-g', '@webpresso/agent-kit'],
     })
   })
 
@@ -260,7 +313,7 @@ describe('detect — priority 2: realpath walk', () => {
     const result = detect({}, '/opt/homebrew/bin/webpresso')
     expect(result).toStrictEqual({
       manager: 'npm',
-      command: ['npm', 'install', '-g', 'webpresso'],
+      command: ['npm', 'install', '-g', '@webpresso/agent-kit', '--registry', 'https://npm.pkg.github.com'],
     })
   })
 })

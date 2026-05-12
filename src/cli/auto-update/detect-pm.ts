@@ -2,11 +2,13 @@
  * Package-manager detection for the auto-update installer.
  *
  * Returns the `{manager, command}` tuple that the installer can use to
- * re-install `webpresso` globally, OR returns `{abort: <reason>}` when no
- * safe install command can be inferred (e.g. devDep install, Volta shim,
- * unknown manager). The caller turns `abort` into a notify-only outcome.
+ * re-install `@webpresso/agent-kit` globally, OR returns `{abort: <reason>}`
+ * when no safe install command can be inferred (e.g. devDep install, Volta
+ * shim, unknown manager). The caller turns `abort` into a notify-only outcome.
  *
- * Detection priority (per plan Architecture decision 3):
+ * Detection priority:
+ *   0. Source/git install — argv1 resolves into the webpresso/agent-kit clone
+ *      → `git -C <repo> pull` (works for symlink dev installs).
  *   1. `process.env.npm_config_user_agent` — most reliable; set by the
  *      manager whenever the CLI is launched via the manager's run wrapper.
  *   2. Realpath walk of `argv0` looking for store markers (`.pnpm-store`,
@@ -16,10 +18,11 @@
  *   5. Unknown → abort.
  */
 
+import { execFileSync } from 'node:child_process'
 import { realpathSync } from 'node:fs'
-import { delimiter, sep } from 'node:path'
+import { delimiter, dirname, sep } from 'node:path'
 
-export type ManagerName = 'npm' | 'pnpm' | 'yarn' | 'bun'
+export type ManagerName = 'npm' | 'pnpm' | 'yarn' | 'bun' | 'git'
 
 export interface DetectSuccess {
   manager: ManagerName
@@ -32,20 +35,52 @@ export interface DetectAbort {
 
 export type DetectResult = DetectSuccess | DetectAbort
 
-export const PACKAGE_NAME = 'webpresso'
+export const GH_PACKAGE_NAME = '@webpresso/agent-kit'
+export const GH_PACKAGES_REGISTRY = 'https://npm.pkg.github.com'
 
-const INSTALL_COMMANDS: Record<ManagerName, string[]> = {
-  npm: ['npm', 'install', '-g', PACKAGE_NAME],
-  pnpm: ['pnpm', 'add', '-g', PACKAGE_NAME],
-  yarn: ['yarn', 'global', 'add', PACKAGE_NAME],
-  bun: ['bun', 'add', '-g', PACKAGE_NAME],
+const INSTALL_COMMANDS: Record<Exclude<ManagerName, 'git'>, string[]> = {
+  npm: ['npm', 'install', '-g', GH_PACKAGE_NAME, '--registry', GH_PACKAGES_REGISTRY],
+  pnpm: ['pnpm', 'add', '-g', GH_PACKAGE_NAME, '--registry', GH_PACKAGES_REGISTRY],
+  yarn: ['yarn', 'global', 'add', GH_PACKAGE_NAME],
+  bun: ['bun', 'add', '-g', GH_PACKAGE_NAME],
+}
+
+/**
+ * Detect whether argv1 is a symlink pointing into the webpresso/agent-kit
+ * source clone. Returns the git worktree root if so, null otherwise.
+ * Exported for testability.
+ */
+export function detectGitInstall(argv1: string): string | null {
+  const real = safeRealpath(argv1)
+  if (real === null) return null
+  try {
+    const topLevel = execFileSync('git', ['-C', dirname(real), 'rev-parse', '--show-toplevel'], {
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+    const remote = execFileSync('git', ['-C', topLevel, 'remote', 'get-url', 'origin'], {
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+    if (remote.includes('webpresso/agent-kit')) return topLevel
+  } catch {
+    // not inside a git repo or not the right repo
+  }
+  return null
 }
 
 /**
  * Detect the package manager that owns the running `webpresso` binary.
- * Pure function modulo `realpathSync` — call sites mock that for tests.
+ * Pure function modulo `realpathSync` and `execFileSync` — call sites mock
+ * those for tests.
  */
 export function detect(env: NodeJS.ProcessEnv, argv0: string): DetectResult {
+  // Priority 0 — source/git install (symlink → repo clone).
+  const gitDir = detectGitInstall(argv0)
+  if (gitDir !== null) {
+    return { manager: 'git', command: ['git', '-C', gitDir, 'pull'] }
+  }
+
   // Priority 1 — user-agent string set by the package manager.
   const userAgent = env.npm_config_user_agent
   if (userAgent !== undefined && userAgent !== '') {
@@ -91,7 +126,7 @@ export function detect(env: NodeJS.ProcessEnv, argv0: string): DetectResult {
  * Returns the manager name if the leading token matches a known manager.
  * Exported for testability.
  */
-export function parseUserAgent(userAgent: string): ManagerName | null {
+export function parseUserAgent(userAgent: string): Exclude<ManagerName, 'git'> | null {
   const trimmed = userAgent.trim()
   if (trimmed.length === 0) return null
   const head = trimmed.split(/\s+/, 1)[0]
@@ -110,7 +145,7 @@ export function parseUserAgent(userAgent: string): ManagerName | null {
  * directory names.
  * Exported for testability.
  */
-export function matchStoreMarker(realpath: string): ManagerName | null {
+export function matchStoreMarker(realpath: string): Exclude<ManagerName, 'git'> | null {
   const segments = splitPathSegments(realpath)
   // pnpm: any path under `<store>/.pnpm/...` or containing `.pnpm-store`.
   if (segments.some((seg) => seg === '.pnpm' || seg === '.pnpm-store' || seg === 'pnpm-global')) {

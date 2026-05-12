@@ -302,7 +302,6 @@
     "@manypkg/find-root": "catalog:",
     "env-paths": "^4.0.0",
     "proper-lockfile": "^4.1.2",
-    "update-notifier": "^7.3.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "ora": "^8.2.0",
     "@webpresso/runtime-format": "catalog:",
