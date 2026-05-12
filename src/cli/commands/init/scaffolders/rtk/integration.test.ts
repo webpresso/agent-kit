@@ -1,10 +1,11 @@
-import { chmodSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
+import { chmodSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { auditCatalogDrift } from '#audit/repo-guardrails'
 import { resolveCatalogDir, runInit } from '#cli/commands/init/index'
 import { runHooksDoctor } from '#hooks/doctor'
 import { routeCommand } from '#hooks/pretool-guard/dev-routing'
@@ -123,15 +124,9 @@ describe('rtk scaffolder integration', () => {
     )
     process.env.PATH = [fakeRtkBin, fakeOmxBin, previousPath ?? ''].filter(Boolean).join(':')
 
-    const drift = spawnSync(
-      'bun',
-      [
-        '--eval',
-        `import { auditCatalogDrift } from './src/audit/repo-guardrails.ts'; process.exit(auditCatalogDrift('.').ok ? 0 : 1)`,
-      ],
-      { cwd: agentKitRoot, encoding: 'utf8' },
-    )
-    expect(drift.status).toBe(0) // G6
+    // G6: catalog drift — import directly instead of bun cold-start subprocess
+    // (bun --eval spawns a 5-11s cold-start that causes flaky parallel failures)
+    expect(auditCatalogDrift(agentKitRoot).ok).toStrictEqual(true) // G6
 
     const second = await runInit({ cwd: repo, yes: true, with: 'rtk' })
     expect(second).toBe(0)
