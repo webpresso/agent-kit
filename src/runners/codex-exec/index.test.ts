@@ -167,9 +167,9 @@ describe('CodexExecRunner', () => {
       const runner = new CodexExecRunner()
       const execution = runner.prepare(makeTask(), makeCtx())
 
-      await expect(execution.teardown()).resolves.toBeUndefined()
-      await expect(execution.teardown()).resolves.toBeUndefined()
-      await expect(execution.teardown()).resolves.toBeUndefined()
+      await expect(execution.teardown()).resolves.toStrictEqual(undefined)
+      await expect(execution.teardown()).resolves.toStrictEqual(undefined)
+      await expect(execution.teardown()).resolves.toStrictEqual(undefined)
     })
   })
 })

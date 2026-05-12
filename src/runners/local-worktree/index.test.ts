@@ -102,6 +102,6 @@ describe('LocalWorktreeRunner', () => {
     }
 
     await execution.teardown()
-    await expect(execution.teardown()).resolves.toBeUndefined()
+    await expect(execution.teardown()).resolves.toStrictEqual(undefined)
   })
 })

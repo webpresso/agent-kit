@@ -189,12 +189,12 @@ describe('run() with already-aborted AbortSignal', () => {
 describe('teardown()', () => {
   it('resolves without error', async () => {
     const exec = makeRunner(vi.fn()).prepare(TASK, CTX)
-    await expect(exec.teardown()).resolves.toBeUndefined()
+    await expect(exec.teardown()).resolves.toStrictEqual(undefined)
   })
 
   it('is idempotent — calling twice does not throw', async () => {
     const exec = makeRunner(vi.fn()).prepare(TASK, CTX)
     await exec.teardown()
-    await expect(exec.teardown()).resolves.toBeUndefined()
+    await expect(exec.teardown()).resolves.toStrictEqual(undefined)
   })
 })
