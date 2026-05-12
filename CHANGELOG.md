@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.16.1
+
+### Patch Changes
+
+- 9b53651: Project `.agents/skills` as symlinked skill folders so Codex can discover repo-scoped skills such as `verify` and `plan-refine`.
+
 ## 0.16.0
 
 ### Minor Changes
