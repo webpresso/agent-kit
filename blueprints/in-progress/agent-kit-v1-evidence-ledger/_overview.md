@@ -298,7 +298,7 @@ AFTER (single source of truth + extended):
 
 #### [baseline] Task 0.0: Capture pre-abstraction pll golden transcript
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 
 **THIS TASK MUST COMPLETE BEFORE ANY OTHER TASK TOUCHES src/blueprint/dag/
@@ -445,7 +445,7 @@ mirroring `context-mode-routing.md` structure.
 
 #### [templates] Tasks 0.5–0.9: Blueprint templates (5 templates, parallel)
 
-**Status:** todo (each)
+**Status:** done (deleted per user decision — catalog blueprint templates are not needed)
 **Depends:** None (each task is independent)
 
 Curate 5 markdown blueprint templates under `catalog/blueprints/<name>/`
