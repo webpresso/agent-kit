@@ -2,9 +2,9 @@ import { readdir } from 'node:fs/promises'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import type { RunnerEvent } from '../types.js'
-import { ClaudeSubagentRunner } from '../claude-subagent/index.js'
-import type { SubagentFn } from '../claude-subagent/types.js'
+import type { RunnerEvent } from '#runners/types'
+import { ClaudeSubagentRunner } from '#runners/claude-subagent/index'
+import type { SubagentFn } from '#runners/claude-subagent/types'
 import { assertEval1 } from './eval-1-add-function/assert.js'
 
 // ---------------------------------------------------------------------------

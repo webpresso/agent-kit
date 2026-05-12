@@ -1,4 +1,4 @@
-import type { RunnerEvent } from '../../types.js'
+import type { RunnerEvent } from '#runners/types'
 
 // ---------------------------------------------------------------------------
 // assertEval1 — verifies the add-function eval outcome
