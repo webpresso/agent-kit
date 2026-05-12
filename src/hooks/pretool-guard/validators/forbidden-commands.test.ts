@@ -20,6 +20,7 @@ import {
   SKIP_ENV_VAR,
   AUDIT_MODE_ENV,
   SUGGESTION_MODIFIERS,
+  splitTopLevelCommands,
   VALIDATOR_NAME,
   validateForbiddenCommands,
 } from './forbidden-commands.js'
@@ -737,17 +738,70 @@ describe('blueprint lifecycle enforcement', () => {
     expect(result.passed).toBe(true)
   })
 
-  it('matchFullCommandOnly: allows other-cmd && mv blueprints/... (not first command)', () => {
-    // The mv here is a sub-variant; matchFullCommandOnly means the blueprint rule
-    // only fires when mv is the first command in the chain. This is an accepted
-    // limitation — standalone mv blueprints/... is the primary attack surface.
+  it('blocks other-cmd && mv blueprints/... (mv in sub-variant)', () => {
+    // splitTopLevelCommands extracts "mv blueprints/..." as a top-level segment,
+    // so the blueprint rule fires even when mv is not the first command.
     const result = validateForbiddenCommands(
       bashInput('echo info && mv blueprints/draft/foo blueprints/planned/foo'),
     )
-    // The full command starts with "echo", not "mv", so the blueprint rule does not fire.
-    // This is documented behavior, not a bug — compound commands starting with a non-mv
-    // prefix fall outside the pattern's scope.
-    expect(result.passed).toBe(true)
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.category).toBe('blueprint')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// splitTopLevelCommands
+// ---------------------------------------------------------------------------
+describe('splitTopLevelCommands', () => {
+  it('splits simple && chain', () => {
+    expect(splitTopLevelCommands('echo a && echo b')).toStrictEqual(['echo a', 'echo b'])
+  })
+
+  it('splits || chain', () => {
+    expect(splitTopLevelCommands('cmd1 || cmd2')).toStrictEqual(['cmd1', 'cmd2'])
+  })
+
+  it('splits pipe', () => {
+    expect(splitTopLevelCommands('pnpm vitest | grep FAIL')).toStrictEqual([
+      'pnpm vitest',
+      'grep FAIL',
+    ])
+  })
+
+  it('splits semicolon', () => {
+    expect(splitTopLevelCommands('ls; echo done')).toStrictEqual(['ls', 'echo done'])
+  })
+
+  it('does not split && inside single-quoted string', () => {
+    expect(splitTopLevelCommands("echo '&& not split'")).toStrictEqual(["echo '&& not split'"])
+  })
+
+  it('does not split && inside $(...) subshell', () => {
+    const cmd = "git commit -m \"$(cat <<'EOF'\nfoo && bar\nEOF\n)\""
+    expect(splitTopLevelCommands(cmd)).toStrictEqual([cmd])
+  })
+
+  it('does not split && inside nested $($(...))', () => {
+    expect(splitTopLevelCommands('echo $(echo $(cat /dev/null) && true)')).toStrictEqual([
+      'echo $(echo $(cat /dev/null) && true)',
+    ])
+  })
+
+  it('splits && at top level even when command contains a quoted string with &&', () => {
+    expect(splitTopLevelCommands("echo 'safe' && mv foo bar")).toStrictEqual([
+      "echo 'safe'",
+      'mv foo bar',
+    ])
+  })
+
+  it('returns single-element array for a plain command', () => {
+    expect(splitTopLevelCommands('mv blueprints/draft/foo blueprints/planned/foo')).toStrictEqual([
+      'mv blueprints/draft/foo blueprints/planned/foo',
+    ])
+  })
+
+  it('returns empty array for empty string', () => {
+    expect(splitTopLevelCommands('')).toStrictEqual([])
   })
 })
 

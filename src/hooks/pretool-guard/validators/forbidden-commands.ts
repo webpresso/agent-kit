@@ -11,8 +11,6 @@ export interface CommandRule {
   pattern: RegExp
   category: CommandCategory
   suggestion: string
-  /** When true, only test against the full (unsplit) command — never against && sub-variants. */
-  matchFullCommandOnly?: boolean
 }
 
 export interface SuggestionModifier {
@@ -155,13 +153,11 @@ export function generateRules(): CommandRule[] {
       pattern: new RegExp(`^mv\\b.*blueprints\\/${BLUEPRINT_LIFECYCLE_DIRS}`),
       category: 'blueprint',
       suggestion: BLUEPRINT_HINT,
-      matchFullCommandOnly: true,
     },
     {
       pattern: new RegExp(`^mkdir\\b.*blueprints\\/${BLUEPRINT_LIFECYCLE_DIRS}`),
       category: 'blueprint',
       suggestion: BLUEPRINT_HINT,
-      matchFullCommandOnly: true,
     },
     { pattern: /^doppler run/, category: 'unknown', suggestion: ENV_HINT },
     { pattern: /^DATABASE_URL=/, category: 'unknown', suggestion: ENV_HINT },
@@ -189,17 +185,140 @@ export const SUGGESTION_MODIFIERS: SuggestionModifier[] = [
   { pattern: /--fix|--write/, category: 'lint', suggestion: `${LINT_BASE} --fix` },
 ]
 
-const COMMAND_DELIMITER_REGEX = /(?:&&|\|\||\||;)/
 const LOGICAL_OPERATOR_REGEX = /(?:&&|\|\||;)/
 
+/**
+ * Split a shell command string on top-level operators (&&, ||, |, ;) while
+ * correctly skipping operators that appear inside:
+ *   - single-quoted strings:  '...'
+ *   - double-quoted strings:  "..."
+ *   - $(...) command substitutions (handles nesting)
+ *   - backtick subshells: `...`
+ *
+ * This prevents heredoc or subshell content from being mistaken for real
+ * command segments (e.g. git commit -m "$(cat <<'EOF'\n...&&...\nEOF\n)").
+ */
+export function splitTopLevelCommands(command: string): string[] {
+  const segments: string[] = []
+  let current = ''
+  let depth = 0
+  let inSingleQuote = false
+  let inDoubleQuote = false
+  let inBacktick = false
+  let i = 0
+
+  while (i < command.length) {
+    const ch = command[i]
+    const next = i + 1 < command.length ? command[i + 1] : ''
+
+    if (inSingleQuote) {
+      current += ch
+      if (ch === "'") inSingleQuote = false
+      i++
+      continue
+    }
+
+    if (inBacktick) {
+      current += ch
+      if (ch === '`') inBacktick = false
+      i++
+      continue
+    }
+
+    if (depth > 0) {
+      if (ch === '$' && next === '(') {
+        depth++
+        current += ch + next
+        i += 2
+      } else if (ch === ')') {
+        depth--
+        current += ch
+        i++
+      } else if (ch === "'") {
+        inSingleQuote = true
+        current += ch
+        i++
+      } else if (ch === '`') {
+        inBacktick = true
+        current += ch
+        i++
+      } else {
+        current += ch
+        i++
+      }
+      continue
+    }
+
+    if (inDoubleQuote) {
+      if (ch === '"') {
+        inDoubleQuote = false
+        current += ch
+        i++
+      } else if (ch === '$' && next === '(') {
+        depth++
+        current += ch + next
+        i += 2
+      } else if (ch === '\\') {
+        current += ch + next
+        i += 2
+      } else {
+        current += ch
+        i++
+      }
+      continue
+    }
+
+    // Top-level context — check for operators before recording the character.
+    if (ch === "'") {
+      inSingleQuote = true
+      current += ch
+      i++
+    } else if (ch === '"') {
+      inDoubleQuote = true
+      current += ch
+      i++
+    } else if (ch === '`') {
+      inBacktick = true
+      current += ch
+      i++
+    } else if (ch === '$' && next === '(') {
+      depth++
+      current += ch + next
+      i += 2
+    } else if (ch === '&' && next === '&') {
+      const seg = current.trim()
+      if (seg) segments.push(seg)
+      current = ''
+      i += 2
+    } else if (ch === '|' && next === '|') {
+      const seg = current.trim()
+      if (seg) segments.push(seg)
+      current = ''
+      i += 2
+    } else if (ch === '|') {
+      const seg = current.trim()
+      if (seg) segments.push(seg)
+      current = ''
+      i++
+    } else if (ch === ';') {
+      const seg = current.trim()
+      if (seg) segments.push(seg)
+      current = ''
+      i++
+    } else {
+      current += ch
+      i++
+    }
+  }
+
+  const last = current.trim()
+  if (last) segments.push(last)
+  return segments
+}
+
 export function findMatchingRule(command: string): CommandRule | undefined {
-  const variants = getCommandVariants(command)
-  const fullCommand = variants[0]
-  for (const variant of variants) {
-    const rule = COMMAND_RULES.find((r) => {
-      if (r.matchFullCommandOnly && variant !== fullCommand) return false
-      return r.pattern.test(variant)
-    })
+  for (const variant of getCommandVariants(command)) {
+    const rule = COMMAND_RULES.find((r) => r.pattern.test(variant))
     if (rule) return rule
   }
   return undefined
@@ -235,11 +354,7 @@ export function getCommandVariants(command: string): string[] {
       if (segment !== normalized && !variants.includes(segment)) variants.push(segment)
     }
   } else {
-    const segments = normalized
-      .split(COMMAND_DELIMITER_REGEX)
-      .map((s) => s.trim())
-      .filter(Boolean)
-    for (const segment of segments) {
+    for (const segment of splitTopLevelCommands(normalized)) {
       if (!variants.includes(segment)) variants.push(segment)
     }
   }
