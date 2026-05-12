@@ -1053,7 +1053,7 @@ backends (this is where real-subprocess fidelity lives).
 
 #### [evals] Tasks 5.1–5.4: Evals 2–5
 
-**Status:** todo (each)
+**Status:** done (each)
 **Depends:** Task 4.2 (each independent of the others)
 
 Build out the remaining 4 evals at `src/runners/evals/` (per B3):
