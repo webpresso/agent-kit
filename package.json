@@ -79,6 +79,9 @@
     "#ai-memory/hierarchy/*": "./src/ai-memory/hierarchy/*.ts",
     "#runners": "./src/runners/index.ts",
     "#runners/*": "./src/runners/*.ts",
+    "#blueprint/sync/types.js": "./src/blueprint/sync/types.ts",
+    "#blueprint/sync/auth.js": "./src/blueprint/sync/auth.ts",
+    "#blueprint/sync/client.js": "./src/blueprint/sync/client.ts",
     "#*": "./src/blueprint/*.ts"
   },
   "exports": {

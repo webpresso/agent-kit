@@ -1,4 +1,5 @@
 import type { BlueprintAuditResult, BlueprintSummary } from '#local'
+import type { BlueprintTemplateEntry } from '#sync/types.js'
 import type {
   AdvanceTaskResult,
   BlueprintCommandOptions,
@@ -10,9 +11,13 @@ import type {
   ShowBlueprintResult,
 } from './router.js'
 
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, afterEach } from 'vitest'
 
-import { BlueprintAuditFailedError, executeBlueprintSubcommand } from './router-dispatch.js'
+import {
+  BlueprintAuditFailedError,
+  executeBlueprintSubcommand,
+  _setPlatformTemplatesFetcher,
+} from './router-dispatch.js'
 import { listTemplates, resolveTemplate } from './template-resolver.js'
 import type { TemplateEntry } from './template-resolver.js'
 
@@ -133,6 +138,10 @@ function buildDeps(overrides: Partial<Deps> = {}): Deps {
 }
 
 describe('executeBlueprintSubcommand', () => {
+  afterEach(() => {
+    _setPlatformTemplatesFetcher(null)
+  })
+
   it('prints help when no subcommand is provided', async () => {
     const deps = buildDeps()
     await executeBlueprintSubcommand(undefined, [], { '--': [] }, deps)
@@ -815,5 +824,206 @@ describe('executeBlueprintSubcommand', () => {
       'my feature',
       expect.objectContaining({ complexity: 'L', templatePath: resolvedPath }),
     )
+  })
+
+  // ── platform templates: --list-templates ──────────────────────────────
+
+  it('--list-templates merges platform and local templates (platform first)', async () => {
+    const platformEntries: readonly BlueprintTemplateEntry[] = [
+      { name: 'platform-tpl', slug: 'platform-tpl', url: 'https://example.com/platform-tpl.md' },
+      { name: 'shared', slug: 'shared', url: 'https://example.com/shared.md' },
+    ]
+    _setPlatformTemplatesFetcher(async () => platformEntries)
+
+    vi.mocked(listTemplates).mockReturnValueOnce([
+      { name: 'shared', path: '/tmp/shared.md' },
+      { name: 'local-only', path: '/tmp/local-only.md' },
+    ])
+
+    const deps = buildDeps()
+    await executeBlueprintSubcommand('new', [], { '--': [], listTemplates: true }, deps)
+
+    expect(deps.printBlueprintOutput).toHaveBeenCalledWith(
+      'platform-tpl\nshared\nlocal-only',
+      false,
+    )
+    expect(deps.createBlueprint).not.toHaveBeenCalled()
+  })
+
+  it('--list-templates uses local only when platform fetcher returns null (no credentials)', async () => {
+    // No _setPlatformTemplatesFetcher call → production path; but we inject
+    // a fetcher that returns [] to simulate no-credentials / disabled
+    _setPlatformTemplatesFetcher(async () => [])
+
+    vi.mocked(listTemplates).mockReturnValueOnce([
+      { name: 'local-tpl', path: '/tmp/local-tpl.md' },
+    ])
+
+    const deps = buildDeps()
+    await executeBlueprintSubcommand('new', [], { '--': [], listTemplates: true }, deps)
+
+    expect(deps.printBlueprintOutput).toHaveBeenCalledWith('local-tpl', false)
+  })
+
+  it('--list-templates falls back to local only when platform fetcher throws (offline)', async () => {
+    _setPlatformTemplatesFetcher(async () => {
+      throw new Error('Network error')
+    })
+
+    vi.mocked(listTemplates).mockReturnValueOnce([
+      { name: 'local-tpl', path: '/tmp/local-tpl.md' },
+    ])
+
+    const deps = buildDeps()
+    await executeBlueprintSubcommand('new', [], { '--': [], listTemplates: true }, deps)
+
+    // Should not throw; should fall back to local
+    expect(deps.printBlueprintOutput).toHaveBeenCalledWith('local-tpl', false)
+  })
+
+  // ── platform templates: --template <name> ────────────────────────────
+
+  it('--template matching a platform template fetches content from URL', async () => {
+    const markdownContent = '# Platform Template\n\nContent here.\n'
+    const platformEntries: readonly BlueprintTemplateEntry[] = [
+      {
+        name: 'platform-tpl',
+        slug: 'platform-tpl',
+        url: 'https://example.com/platform-tpl.md',
+      },
+    ]
+    _setPlatformTemplatesFetcher(async () => platformEntries)
+
+    // Mock global fetch for the template content download
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(markdownContent, { status: 200 }),
+    )
+
+    const created: CreateBlueprintResult = {
+      slug: 'my-feature',
+      type: 'blueprint',
+      title: 'My Feature',
+      complexity: 'M',
+      path: '/tmp/my-feature/_overview.md',
+      outputPath: '/tmp/my-feature/_overview.md',
+      projectRoot: '/tmp',
+      relativeFilePath: 'blueprints/draft/my-feature/_overview.md',
+      markdown: '# My Feature\n',
+      status: 'draft',
+      blueprint: {
+        tasks: [],
+        slug: 'my-feature',
+        title: 'My Feature',
+      } as unknown as CreateBlueprintResult['blueprint'],
+      message: 'Created blueprint draft/my-feature.',
+    }
+    const deps = buildDeps({
+      createBlueprint: vi.fn<
+        (goal: string, options: BlueprintCommandOptions) => Promise<CreateBlueprintResult>
+      >(async () => created),
+    })
+
+    await executeBlueprintSubcommand(
+      'new',
+      ['my feature'],
+      { '--': [], complexity: 'M', template: 'platform-tpl' },
+      deps,
+    )
+
+    expect(fetchSpy).toHaveBeenCalledWith('https://example.com/platform-tpl.md')
+    expect(deps.createBlueprint).toHaveBeenCalledWith(
+      'my feature',
+      expect.objectContaining({ templatePath: expect.stringContaining('.md') as string }),
+    )
+
+    fetchSpy.mockRestore()
+  })
+
+  it('--template falls back to local when platform is offline (empty platform list)', async () => {
+    _setPlatformTemplatesFetcher(async () => [])
+
+    const resolvedPath = '/tmp/docs/templates/local-tpl.md'
+    vi.mocked(resolveTemplate).mockReturnValueOnce(resolvedPath)
+
+    const created: CreateBlueprintResult = {
+      slug: 'my-feature',
+      type: 'blueprint',
+      title: 'My Feature',
+      complexity: 'M',
+      path: '/tmp/my-feature/_overview.md',
+      outputPath: '/tmp/my-feature/_overview.md',
+      projectRoot: '/tmp',
+      relativeFilePath: 'blueprints/draft/my-feature/_overview.md',
+      markdown: '# My Feature\n',
+      status: 'draft',
+      blueprint: {
+        tasks: [],
+        slug: 'my-feature',
+        title: 'My Feature',
+      } as unknown as CreateBlueprintResult['blueprint'],
+      message: 'Created blueprint draft/my-feature.',
+    }
+    const deps = buildDeps({
+      createBlueprint: vi.fn<
+        (goal: string, options: BlueprintCommandOptions) => Promise<CreateBlueprintResult>
+      >(async () => created),
+    })
+
+    await executeBlueprintSubcommand(
+      'new',
+      ['my feature'],
+      { '--': [], complexity: 'M', template: 'local-tpl' },
+      deps,
+    )
+
+    expect(deps.createBlueprint).toHaveBeenCalledWith(
+      'my feature',
+      expect.objectContaining({ templatePath: resolvedPath }),
+    )
+  })
+
+  it('--template not found in platform or local shows combined error listing both', async () => {
+    const platformEntries: readonly BlueprintTemplateEntry[] = [
+      { name: 'platform-tpl', slug: 'platform-tpl', url: 'https://example.com/platform-tpl.md' },
+    ]
+    _setPlatformTemplatesFetcher(async () => platformEntries)
+
+    vi.mocked(resolveTemplate).mockReturnValueOnce(null)
+    vi.mocked(listTemplates).mockReturnValueOnce([
+      { name: 'local-tpl', path: '/tmp/local-tpl.md' },
+    ])
+
+    const processExitSpy = vi.spyOn(process, 'exit').mockImplementationOnce(
+      (code?: number | string | null) => {
+        throw new Error(`process.exit(${code ?? ''})`)
+      },
+    )
+
+    const deps = buildDeps()
+
+    await expect(
+      executeBlueprintSubcommand(
+        'new',
+        ['my feature'],
+        { '--': [], template: 'nonexistent' },
+        deps,
+      ),
+    ).rejects.toThrow(/process\.exit\(2\)/)
+
+    expect(deps.printBlueprintOutput).toHaveBeenCalledWith(
+      expect.stringContaining('nonexistent'),
+      false,
+    )
+    // Both platform and local template names should appear in the error message
+    expect(deps.printBlueprintOutput).toHaveBeenCalledWith(
+      expect.stringContaining('platform-tpl'),
+      false,
+    )
+    expect(deps.printBlueprintOutput).toHaveBeenCalledWith(
+      expect.stringContaining('local-tpl'),
+      false,
+    )
+
+    processExitSpy.mockRestore()
   })
 })

@@ -2,10 +2,10 @@
  * `ak audit blueprint-lifecycle-sql` — SQL-backed rewrite of the existing
  * blueprint-lifecycle audit.
  *
- * Alpha gate: only runs SQL queries when AK_USE_SQL_AUDITS=1.
- * Without the flag falls back to the existing regex-based audit.
+ * Uses the SQLite replica as the primary source when the DB file exists.
+ * Falls back to the markdown-based audit when the DB has not been built yet.
  *
- * SQL checks (when enabled):
+ * SQL checks (when DB exists):
  * 1. Blueprints with status='in-progress' that have 0 tasks (invalid).
  * 2. Blueprints whose `status` column doesn't match the directory segment
  *    derived from `file_path` (e.g. stored in completed/ but status=in-progress).
@@ -35,20 +35,11 @@ interface TaskInProgressRow {
 }
 
 export async function auditBlueprintLifecycleSql(cwd: string): Promise<RepoAuditResult> {
-  if (!process.env['AK_USE_SQL_AUDITS']) {
-    // Fall back to existing regex-based audit
-    const { auditBlueprintLifecycle } = await import('./repo-guardrails.js')
-    return auditBlueprintLifecycle(cwd)
-  }
-
   const dbFile = path.join(cwd, DB_PATH)
   if (!existsSync(dbFile)) {
-    return {
-      ok: true,
-      title: 'Blueprint lifecycle (SQL)',
-      checked: 0,
-      violations: [],
-    }
+    // DB not yet built — fall back to markdown-based audit
+    const { auditBlueprintLifecycle } = await import('./repo-guardrails.js')
+    return auditBlueprintLifecycle(cwd)
   }
 
   const Database = (await import('better-sqlite3')).default

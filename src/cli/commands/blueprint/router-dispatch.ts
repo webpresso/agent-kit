@@ -1,4 +1,5 @@
 import type { BlueprintAuditResult, BlueprintSummary } from '#local'
+import type { BlueprintTemplateEntry } from '#sync/types.js'
 import type {
   AdvanceTaskResult,
   BlueprintCommandOptions,
@@ -11,8 +12,116 @@ import type {
   ShowBlueprintResult,
 } from './router.js'
 
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { randomUUID } from 'node:crypto'
+import path from 'node:path'
+
 import { executeBlueprintDbSubcommand } from './db-commands.js'
 import { listTemplates, resolveTemplate } from './template-resolver.js'
+
+// ---------------------------------------------------------------------------
+// Platform template fetcher (injectable for tests)
+// ---------------------------------------------------------------------------
+
+/**
+ * Module-level override. `null` = use the production default (lazy-import
+ * BlueprintSyncClient + loadSyncCredentials so this module never statically
+ * depends on the HTTP client).
+ *
+ * @internal
+ */
+let _platformTemplatesFetcher: (() => Promise<readonly BlueprintTemplateEntry[]>) | null = null
+
+/**
+ * Override the platform template fetcher — for tests only.
+ * Pass `null` to restore the production default.
+ *
+ * @internal
+ */
+export function _setPlatformTemplatesFetcher(
+  fetcher: (() => Promise<readonly BlueprintTemplateEntry[]>) | null,
+): void {
+  _platformTemplatesFetcher = fetcher
+}
+
+/**
+ * Fetch platform templates using injected fetcher or production default.
+ *
+ * Returns an empty array when:
+ *  - platform is disabled / no credentials
+ *  - network is unavailable
+ *  - injected fetcher throws
+ *
+ * Never throws.
+ */
+async function fetchPlatformTemplates(): Promise<readonly BlueprintTemplateEntry[]> {
+  if (_platformTemplatesFetcher !== null) {
+    return _platformTemplatesFetcher().catch(() => [])
+  }
+
+  // Production path: lazy-import to avoid static dep on HTTP client
+  try {
+    const { loadSyncCredentials } = await import('#sync/auth.js')
+    const creds = loadSyncCredentials()
+    if (creds === null) return []
+
+    const { BlueprintSyncClient } = await import('#sync/client.js')
+    const client = new BlueprintSyncClient(creds)
+    return await client.listTemplates()
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Merge platform + local template names, platform names first.
+ * Local templates with the same name take precedence (dedup by name).
+ */
+function mergeTemplateNames(
+  platform: readonly BlueprintTemplateEntry[],
+  local: readonly { name: string; path: string }[],
+): readonly string[] {
+  const seen = new Set<string>()
+  const result: string[] = []
+
+  for (const t of platform) {
+    if (!seen.has(t.name)) {
+      seen.add(t.name)
+      result.push(t.name)
+    }
+  }
+
+  for (const t of local) {
+    if (!seen.has(t.name)) {
+      seen.add(t.name)
+      result.push(t.name)
+    }
+  }
+
+  return result
+}
+
+/**
+ * Fetch a platform template's markdown content from `url` and write it to a
+ * temporary file. Returns the absolute path to the temp file.
+ *
+ * Throws if the network request fails or returns a non-ok status.
+ */
+async function fetchPlatformTemplateToTmpFile(url: string): Promise<string> {
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch platform template from ${url}: HTTP ${response.status}`,
+    )
+  }
+  const content = await response.text()
+  const tmpDir = path.join(tmpdir(), 'ak-templates')
+  mkdirSync(tmpDir, { recursive: true })
+  const tmpFile = path.join(tmpDir, `${randomUUID()}.md`)
+  writeFileSync(tmpFile, content, 'utf8')
+  return tmpFile
+}
 
 /**
  * Thrown by `executeBlueprintSubcommand` when `audit` finds issues and
@@ -129,11 +238,13 @@ export async function executeBlueprintSubcommand(
     case 'new': {
       // ak blueprint new --list-templates
       if (options.listTemplates) {
-        const templates = listTemplates(options.templatesDir)
-        if (templates.length === 0) {
+        const platformTemplates = await fetchPlatformTemplates()
+        const localTemplates = listTemplates(options.templatesDir)
+        const merged = mergeTemplateNames(platformTemplates, localTemplates)
+        if (merged.length === 0) {
           deps.printBlueprintOutput('No templates found.', false)
         } else {
-          deps.printBlueprintOutput(templates.map((t) => t.name).join('\n'), false)
+          deps.printBlueprintOutput(merged.join('\n'), false)
         }
         return
       }
@@ -146,11 +257,24 @@ export async function executeBlueprintSubcommand(
       // ak blueprint new --template <name> "<goal>"
       const templateName = options.template
       if (templateName !== undefined) {
+        const platformTemplates = await fetchPlatformTemplates()
+        const platformMatch = platformTemplates.find((t) => t.name === templateName)
+
+        if (platformMatch !== undefined) {
+          const templatePath = await fetchPlatformTemplateToTmpFile(platformMatch.url)
+          const result = await deps.createBlueprint(goal, { ...options, templatePath })
+          deps.printBlueprintOutput(
+            options.json ? result : deps.formatBlueprintCreation(result),
+            options.json,
+          )
+          return
+        }
+
         const resolvedPath = resolveTemplate(templateName, options.templatesDir)
         if (resolvedPath === null) {
-          const available = listTemplates(options.templatesDir)
-          const availableList =
-            available.length > 0 ? available.map((t) => t.name).join(', ') : '(none)'
+          const localTemplates = listTemplates(options.templatesDir)
+          const allNames = mergeTemplateNames(platformTemplates, localTemplates)
+          const availableList = allNames.length > 0 ? allNames.join(', ') : '(none)'
           deps.printBlueprintOutput(
             `Unknown template: "${templateName}". Available templates: ${availableList}`,
             false,

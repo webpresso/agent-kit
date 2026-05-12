@@ -489,7 +489,7 @@ this task, it writes to the platform first.
 
 #### [migration] Task 3.1: Import existing blueprints to platform
 
-**Status:** todo
+**Status:** done
 **Depends:** Tasks 2.2-2.7 (all Wave 4 complete)
 
 One-shot migration script: reads all 18+ markdown blueprints and
@@ -506,15 +506,15 @@ Idempotent: safe to re-run.
 3. FAIL → implement → PASS.
 
 **Acceptance:**
-- [ ] All 18+ blueprints imported.
-- [ ] Script idempotent.
-- [ ] `ak audit blueprint-lifecycle` passes after migration.
+- [x] All 18+ blueprints imported.
+- [x] Script idempotent.
+- [x] `ak audit blueprint-lifecycle` passes after migration.
 
 ---
 
 #### [audit] Task 3.2: Migrate `ak audit blueprint-lifecycle` to SQLite replica (F3 fix)
 
-**Status:** todo
+**Status:** done
 **Depends:** Tasks 2.2-2.7 (markdown is now derived, not canonical)
 
 `ak audit blueprint-lifecycle` currently reads markdown files. After this
@@ -531,15 +531,15 @@ state) instead. Markdown is no longer the audit source of truth.
 3. `pnpm lint && pnpm typecheck`.
 
 **Acceptance:**
-- [ ] Audit reads from SQLite replica.
-- [ ] Audit produces the same result as before for a fully-migrated repo.
-- [ ] `ak audit blueprint-lifecycle` passes in CI.
+- [x] Audit reads from SQLite replica.
+- [x] Audit produces the same result as before for a fully-migrated repo.
+- [x] `ak audit blueprint-lifecycle` passes in CI.
 
 ---
 
 #### [templates] Task 3.3: `ak blueprint new --template` queries platform catalog
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 3.1
 
 Replace the local-catalog-file approach with a platform API query.
@@ -551,8 +551,8 @@ Falls back to a minimal skeleton when offline.
 - Modify: matching test
 
 **Acceptance:**
-- [ ] `ak blueprint new --template feature-cloudflare-worker` fetches template from platform.
-- [ ] Offline fallback: minimal skeleton + clear notice that platform templates are unavailable.
+- [x] `ak blueprint new --template feature-cloudflare-worker` fetches template from platform.
+- [x] Offline fallback: minimal skeleton + clear notice that platform templates are unavailable.
 
 ---
 

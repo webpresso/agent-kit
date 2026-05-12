@@ -29,6 +29,10 @@ export default defineConfig({
       { find: /^#ai-memory\/checkpoint\/(.*)/, replacement: resolve(__dirname, 'src/ai-memory/checkpoint/$1') },
       { find: /^#ai-memory\/facts\/(.*)/, replacement: resolve(__dirname, 'src/ai-memory/facts/$1') },
       { find: /^#ai-memory\/hierarchy\/(.*)/, replacement: resolve(__dirname, 'src/ai-memory/hierarchy/$1') },
+      // Explicit sync aliases — must precede the #* catch-all to avoid doubling the path
+      { find: /^#blueprint\/sync\/types\.js$/, replacement: resolve(__dirname, 'src/blueprint/sync/types.ts') },
+      { find: /^#blueprint\/sync\/auth\.js$/, replacement: resolve(__dirname, 'src/blueprint/sync/auth.ts') },
+      { find: /^#blueprint\/sync\/client\.js$/, replacement: resolve(__dirname, 'src/blueprint/sync/client.ts') },
       { find: /^#test/, replacement: resolve(__dirname, 'src/test/index.ts') },
       { find: /^#e2e$/, replacement: resolve(__dirname, 'src/e2e/index.ts') },
       { find: /^#e2e\/(.*)/, replacement: resolve(__dirname, 'src/e2e/$1') },

@@ -78,13 +78,11 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(cwd, { recursive: true, force: true })
-  delete process.env['AK_USE_SQL_AUDITS']
 })
 
-describe('auditBlueprintLifecycleSql — env gate', () => {
-  it('falls back to regex audit when AK_USE_SQL_AUDITS is not set', async () => {
-    delete process.env['AK_USE_SQL_AUDITS']
-    // No blueprints directory — regex audit returns ok with 0 checked
+describe('auditBlueprintLifecycleSql — DB file gate', () => {
+  it('falls back to markdown audit when DB file does not exist', async () => {
+    // No DB file, no blueprints directory — markdown audit returns ok with 0 checked
     const result = await auditBlueprintLifecycleSql(cwd)
     expect(result.ok).toBe(true)
     // Title comes from the fallback audit
@@ -92,11 +90,7 @@ describe('auditBlueprintLifecycleSql — env gate', () => {
   })
 })
 
-describe('auditBlueprintLifecycleSql — with AK_USE_SQL_AUDITS=1', () => {
-  beforeEach(() => {
-    process.env['AK_USE_SQL_AUDITS'] = '1'
-  })
-
+describe('auditBlueprintLifecycleSql — with DB present', () => {
   it('returns ok when DB is empty', async () => {
     openDb(dbPath).close()
     const result = await auditBlueprintLifecycleSql(cwd)

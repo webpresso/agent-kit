@@ -31,10 +31,8 @@ type RepoAuditRunner = (
 
 const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
   'catalog-drift': async (root) => (await import('#audit/repo-guardrails')).auditCatalogDrift(root),
-  'blueprint-lifecycle': async (root, options) =>
-    (await import('#audit/repo-guardrails')).auditBlueprintLifecycle(root, {
-      includeLegacyOmx: options.legacyOmx,
-    }),
+  'blueprint-lifecycle': async (root, _options) =>
+    (await import('#audit/blueprint-lifecycle-sql')).auditBlueprintLifecycleSql(root),
   'roadmap-links': async (root, options) =>
     (await import('#audit/roadmap-links')).auditRoadmapLinks(root, {
       failOrphans: options.strict,
