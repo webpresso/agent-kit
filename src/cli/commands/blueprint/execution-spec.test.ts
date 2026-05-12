@@ -194,6 +194,17 @@ describe('buildBlueprintExecutionControlCommand', () => {
       ),
     ).toThrow(/Unsupported execution backend/)
   })
+
+  it.each(['omx-pll-interactive', 'claude-subagent', 'codex-exec', 'local-worktree'] as const)(
+    'throws for Runner backend %s (no OMX CLI surface)',
+    (backend) => {
+      // Runner backends intentionally do not map to the `omx team` CLI.
+      // Each requires its own runner-specific control path.
+      expect(() =>
+        buildBlueprintExecutionControlCommand(backend, 'status', 'exec-123'),
+      ).toThrow(/Unsupported execution backend/)
+    },
+  )
 })
 
 // ---------------------------------------------------------------------------

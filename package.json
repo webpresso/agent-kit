@@ -77,7 +77,9 @@
     "#ai-memory/checkpoint/*": "./src/ai-memory/checkpoint/*.ts",
     "#ai-memory/facts/*": "./src/ai-memory/facts/*.ts",
     "#ai-memory/hierarchy/*": "./src/ai-memory/hierarchy/*.ts",
-    "#*": "./src/blueprint/*.ts"
+    "#runners": "./src/runners/index.ts",
+  "#runners/*": "./src/runners/*.ts",
+  "#*": "./src/blueprint/*.ts"
   },
   "exports": {
     ".": {
@@ -282,6 +284,7 @@
   "dependencies": {
     "@manypkg/find-root": "catalog:",
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "ora": "^8.2.0",
     "@webpresso/runtime-format": "catalog:",
     "@webpresso/runtime-storage": "catalog:",
     "better-sqlite3": "^12.9.0",

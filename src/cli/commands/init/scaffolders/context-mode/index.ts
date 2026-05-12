@@ -9,6 +9,10 @@ import {
   agentKitMcpLaunchCommand,
   findAgentKitMcpEntry,
 } from '#cli/commands/init/scaffolders/codex-mcp/index'
+import {
+  makeNoopSpinnerFactory,
+  type SpinnerFactory,
+} from '#cli/commands/init/scaffolders/spinner'
 import { checkVersionPin } from '#cli/commands/init/scaffolders/version-pin'
 
 export interface EnsureContextModeInput {
@@ -20,6 +24,7 @@ export interface EnsureContextModeInput {
   opencodeConfigPath?: string
   pinFilePath?: string
   strict?: boolean
+  spinnerFactory?: SpinnerFactory
 }
 
 export type EnsureContextModeResult = {
@@ -177,18 +182,24 @@ function ensureCodexContextModeMcp(configPath: string, options: MergeOptions): M
 const CONTEXT_MODE_NOT_FOUND_HINT =
   'context-mode is not on PATH after `npm install -g context-mode`. Install it manually and re-run.'
 
-function ensureContextModeBinary(spawn: typeof spawnSync): { installed: boolean; version: string } {
+function ensureContextModeBinary(
+  spawn: typeof spawnSync,
+  spinner: { start(): void; succeed(t?: string): void; fail(t?: string): void },
+): { installed: boolean; version: string } {
   let installed = false
+  spinner.start()
   let probe = spawn('context-mode', ['--help'], { stdio: 'ignore' })
   if (probe.error || (probe.status !== null && probe.status !== 0)) {
     const install = spawn('npm', ['install', '-g', 'context-mode'], { stdio: 'inherit' })
     if (install.status !== 0) {
+      spinner.fail('context-mode install failed')
       throw new Error(CONTEXT_MODE_NOT_FOUND_HINT)
     }
 
     installed = true
     probe = spawn('context-mode', ['--help'], { stdio: 'ignore' })
     if (probe.error || (probe.status !== null && probe.status !== 0)) {
+      spinner.fail('context-mode not found after install')
       throw new Error(CONTEXT_MODE_NOT_FOUND_HINT)
     }
   }
@@ -197,12 +208,14 @@ function ensureContextModeBinary(spawn: typeof spawnSync): { installed: boolean;
   const versionProbe = spawn('context-mode', ['--version'], { encoding: 'utf8' })
   const version = String(versionProbe.stdout ?? '').trim()
 
+  spinner.succeed('context-mode ready')
   return { installed, version }
 }
 
 export function ensureContextMode(input: EnsureContextModeInput): EnsureContextModeResult {
   const spawn = input.spawn ?? spawnSync
-  const { installed, version } = ensureContextModeBinary(spawn)
+  const spinner = (input.spinnerFactory ?? makeNoopSpinnerFactory())('context-mode')
+  const { installed, version } = ensureContextModeBinary(spawn, spinner)
 
   const pinCheck = checkVersionPin(
     'context_mode',

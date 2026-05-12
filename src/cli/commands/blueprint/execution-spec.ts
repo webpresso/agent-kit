@@ -209,6 +209,11 @@ export function buildBlueprintExecutionControlCommand(
   args: string[]
   command: string
 } {
+  // Only 'omx-team' maps to the `omx team` CLI surface (status / resume / shutdown).
+  // The Runner backends ('omx-pll-interactive', 'claude-subagent', 'codex-exec',
+  // 'local-worktree') do not use the OMX CLI and have no equivalent control command
+  // at this layer — callers must dispatch them through their own runner-specific
+  // control path. Throwing here is intentional and correct for all non-omx-team values.
   if (backend !== 'omx-team') {
     throw new Error(`Unsupported execution backend for control command: ${backend}`)
   }

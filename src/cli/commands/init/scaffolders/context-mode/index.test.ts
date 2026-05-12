@@ -2,14 +2,23 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { SpinnerFactory } from '../spinner.js'
 import {
   ensureContextMode,
   patchCodexContextModeHooks,
   patchOpenCodeContextModeConfig,
   upsertContextModeMcpServer,
 } from './index.js'
+
+function makeSpinnerFactory(): { factory: SpinnerFactory; start: ReturnType<typeof vi.fn>; succeed: ReturnType<typeof vi.fn>; fail: ReturnType<typeof vi.fn> } {
+  const start = vi.fn()
+  const succeed = vi.fn()
+  const fail = vi.fn()
+  const factory: SpinnerFactory = (_text: string) => ({ start, succeed, fail })
+  return { factory, start, succeed, fail }
+}
 
 describe('context-mode preset', () => {
   let repoRoot: string
@@ -108,5 +117,73 @@ describe('context-mode preset', () => {
 
     expect(result.installed).toBe(true)
     expect(readFileSync(codexConfigPath, 'utf8')).toContain('[mcp_servers.context-mode]')
+  })
+
+  it('calls spinner.start() then spinner.succeed() when context-mode is available', () => {
+    const codexConfigPath = join(repoRoot, '.codex', 'config.toml')
+    const codexHooksPath = join(repoRoot, '.codex', 'hooks.json')
+    const opencodeConfigPath = join(repoRoot, 'opencode.json')
+    const { factory, start, succeed, fail } = makeSpinnerFactory()
+
+    ensureContextMode({
+      repoRoot,
+      options: {},
+      codexConfigPath,
+      codexHooksPath,
+      opencodeConfigPath,
+      spawn: (() => ({ status: 0, error: undefined })) as never,
+      spinnerFactory: factory,
+    })
+
+    expect(start).toHaveBeenCalledTimes(1)
+    expect(succeed).toHaveBeenCalledTimes(1)
+    expect(fail).not.toHaveBeenCalled()
+  })
+
+  it('calls spinner.fail() when context-mode install fails', () => {
+    const codexConfigPath = join(repoRoot, '.codex', 'config.toml')
+    const codexHooksPath = join(repoRoot, '.codex', 'hooks.json')
+    const opencodeConfigPath = join(repoRoot, 'opencode.json')
+    const { factory, start, fail, succeed } = makeSpinnerFactory()
+
+    let calls = 0
+    const spawn = (() => {
+      calls += 1
+      // First call (probe): fail; second call (npm install): fail
+      return { status: calls === 1 ? null : 1, error: calls === 1 ? new Error('ENOENT') : undefined }
+    }) as never
+
+    expect(() =>
+      ensureContextMode({
+        repoRoot,
+        options: {},
+        codexConfigPath,
+        codexHooksPath,
+        opencodeConfigPath,
+        spawn,
+        spinnerFactory: factory,
+      }),
+    ).toThrow()
+
+    expect(start).toHaveBeenCalledTimes(1)
+    expect(fail).toHaveBeenCalledTimes(1)
+    expect(succeed).not.toHaveBeenCalled()
+  })
+
+  it('uses noop spinner (no real ora) when spinnerFactory is not provided', () => {
+    const codexConfigPath = join(repoRoot, '.codex', 'config.toml')
+    const codexHooksPath = join(repoRoot, '.codex', 'hooks.json')
+    const opencodeConfigPath = join(repoRoot, 'opencode.json')
+
+    const result = ensureContextMode({
+      repoRoot,
+      options: {},
+      codexConfigPath,
+      codexHooksPath,
+      opencodeConfigPath,
+      spawn: (() => ({ status: 0, error: undefined })) as never,
+    })
+
+    expect(result.installed).toBe(false)
   })
 })

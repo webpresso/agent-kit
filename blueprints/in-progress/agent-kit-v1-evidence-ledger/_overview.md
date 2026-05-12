@@ -796,7 +796,7 @@ mutation suite stays clean — no new exclusions needed for Wave 2 tests.
 
 #### [runners] Task 2.1: claude-subagent Runner backend
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.4
 
 Wraps the in-process Claude Code subagent flow. Tests mock the Agent
@@ -826,7 +826,7 @@ parameters + correct event-stream transformation from mocked output.
 
 #### [runners] Task 2.2: codex-exec Runner backend (read-only mode only)
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.4
 
 Wraps `codex exec ... -s read-only`. v1.0 alpha: read-only mode ONLY.
@@ -857,7 +857,7 @@ CI. No Stryker exclusion needed (test is fast).
 
 #### [runners] Task 2.3: local-worktree Runner backend
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.4
 
 CLI-agnostic backend: creates `git worktree add` per task, spawns user's
@@ -887,7 +887,7 @@ runner via env detection, tears down on teardown(). UUID-suffixed paths.
 
 #### [audits] Task 2.4: Update audit consumers for new ExecutionType variants
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.1
 
 `grep` consumers of `BlueprintExecutionBackend*`; audit each site for
@@ -906,7 +906,7 @@ assumption breaks.
 
 #### [scaffolders] Task 2.5: Spinner UX in setup scaffolders (4A)
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.5
 
 Add `ora` (or noop in non-TTY) to rtk + context-mode + gstack scaffolders.

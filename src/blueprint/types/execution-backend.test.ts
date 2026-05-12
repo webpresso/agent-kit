@@ -9,7 +9,22 @@ describe('executionBackendSchema', () => {
     expect(executionBackendSchema.parse('codex-exec')).toStrictEqual('codex-exec')
     expect(executionBackendSchema.parse('local-worktree')).toStrictEqual('local-worktree')
   })
+
   it('rejects unknown backends', () => {
     expect(() => executionBackendSchema.parse('unknown')).toThrow()
+  })
+
+  // Regression guard: if a new variant is added to the enum, this test fails
+  // until tests for the new variant are also added. Prevents silent "all backends"
+  // assumption drift across consumers.
+  it('has exactly 5 variants (omx-team, omx-pll-interactive, claude-subagent, codex-exec, local-worktree)', () => {
+    expect(executionBackendSchema.options).toStrictEqual([
+      'omx-team',
+      'omx-pll-interactive',
+      'claude-subagent',
+      'codex-exec',
+      'local-worktree',
+    ])
+    expect(executionBackendSchema.options).toHaveLength(5)
   })
 })

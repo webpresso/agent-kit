@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import type { SpinnerFactory } from '../spinner.js'
 import { ensureGstack } from './index.js'
 
 function makeSpawn(behaviors: Array<{ status: number | null; error?: Error }>) {
@@ -17,6 +18,14 @@ function makeSpawn(behaviors: Array<{ status: number | null; error?: Error }>) {
       signal: null,
     }
   }) as unknown as Parameters<typeof ensureGstack>[0]['spawn']
+}
+
+function makeSpinnerFactory(): { factory: SpinnerFactory; start: ReturnType<typeof vi.fn>; succeed: ReturnType<typeof vi.fn>; fail: ReturnType<typeof vi.fn> } {
+  const start = vi.fn()
+  const succeed = vi.fn()
+  const fail = vi.fn()
+  const factory: SpinnerFactory = (_text: string) => ({ start, succeed, fail })
+  return { factory, start, succeed, fail }
 }
 
 describe('ensureGstack', () => {
@@ -146,5 +155,102 @@ describe('ensureGstack', () => {
       exists,
     })
     expect(result).toEqual({ kind: 'gstack-setup-failed', exitCode: 7 })
+  })
+
+  it('calls spinner.start() then spinner.succeed() on successful install', () => {
+    const { factory, start, succeed, fail } = makeSpinnerFactory()
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    const exists = vi.fn(() => false)
+    const result = ensureGstack({
+      repoRoot: '/tmp/repo',
+      installRoot: '/fake/gstack',
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      exists,
+      spinnerFactory: factory,
+    })
+
+    expect(result).toEqual({ kind: 'gstack-installed', root: '/fake/gstack' })
+    expect(start).toHaveBeenCalled()
+    expect(succeed).toHaveBeenCalledTimes(1)
+    expect(fail).not.toHaveBeenCalled()
+  })
+
+  it('calls spinner.start() then spinner.succeed() on successful update', () => {
+    const { factory, start, succeed, fail } = makeSpinnerFactory()
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    const exists = vi.fn(
+      (target: string | import('node:buffer').Buffer | URL) =>
+        String(target) === '/fake/gstack/setup' || String(target) === '/fake/gstack/.git',
+    )
+    const result = ensureGstack({
+      repoRoot: '/tmp/repo',
+      installRoot: '/fake/gstack',
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      exists,
+      spinnerFactory: factory,
+    })
+
+    expect(result).toEqual({ kind: 'gstack-updated', root: '/fake/gstack' })
+    expect(start).toHaveBeenCalled()
+    expect(succeed).toHaveBeenCalledTimes(1)
+    expect(fail).not.toHaveBeenCalled()
+  })
+
+  it('calls spinner.fail() when clone fails', () => {
+    const { factory, start, succeed, fail } = makeSpinnerFactory()
+    const spawn = makeSpawn([{ status: 128 }])
+    const exists = vi.fn(() => false)
+    const result = ensureGstack({
+      repoRoot: '/tmp/repo',
+      installRoot: '/fake/gstack',
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      exists,
+      spinnerFactory: factory,
+    })
+
+    expect(result).toEqual({ kind: 'gstack-clone-failed', exitCode: 128 })
+    expect(start).toHaveBeenCalled()
+    expect(fail).toHaveBeenCalledTimes(1)
+    expect(succeed).not.toHaveBeenCalled()
+  })
+
+  it('calls spinner.fail() when pull fails', () => {
+    const { factory, start, succeed, fail } = makeSpinnerFactory()
+    const spawn = makeSpawn([{ status: 9 }])
+    const exists = vi.fn(
+      (target: string | import('node:buffer').Buffer | URL) =>
+        String(target) === '/fake/gstack/setup' || String(target) === '/fake/gstack/.git',
+    )
+    const result = ensureGstack({
+      repoRoot: '/tmp/repo',
+      installRoot: '/fake/gstack',
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      exists,
+      spinnerFactory: factory,
+    })
+
+    expect(result).toEqual({ kind: 'gstack-pull-failed', exitCode: 9 })
+    expect(start).toHaveBeenCalled()
+    expect(fail).toHaveBeenCalledTimes(1)
+    expect(succeed).not.toHaveBeenCalled()
+  })
+
+  it('uses noop spinner (no real ora) when spinnerFactory is not provided', () => {
+    // Verifies no real ora is attempted in a non-TTY test environment.
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    const exists = vi.fn(() => false)
+    const result = ensureGstack({
+      repoRoot: '/tmp/repo',
+      installRoot: '/fake/gstack',
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      exists,
+    })
+
+    expect(result).toEqual({ kind: 'gstack-installed', root: '/fake/gstack' })
   })
 })

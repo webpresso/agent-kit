@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import type { SpinnerFactory } from '../spinner.js'
 import { ensureRtk } from './index.js'
 
 function makeSpawn(behaviors: Array<{ status: number | null; error?: Error }>) {
@@ -17,6 +18,14 @@ function makeSpawn(behaviors: Array<{ status: number | null; error?: Error }>) {
       signal: null,
     }
   }) as unknown as Parameters<typeof ensureRtk>[0]['spawn']
+}
+
+function makeSpinnerFactory(): { factory: SpinnerFactory; start: ReturnType<typeof vi.fn>; succeed: ReturnType<typeof vi.fn>; fail: ReturnType<typeof vi.fn> } {
+  const start = vi.fn()
+  const succeed = vi.fn()
+  const fail = vi.fn()
+  const factory: SpinnerFactory = (_text: string) => ({ start, succeed, fail })
+  return { factory, start, succeed, fail }
 }
 
 describe('ensureRtk', () => {
@@ -124,5 +133,50 @@ describe('ensureRtk', () => {
     })
 
     expect(result).toEqual({ kind: 'rtk-init-failed', exitCode: 9 })
+  })
+
+  it('calls spinner.start() then spinner.succeed() on success', () => {
+    const { factory, start, succeed, fail } = makeSpinnerFactory()
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    const result = ensureRtk({
+      repoRoot: '/tmp/repo',
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      spinnerFactory: factory,
+    })
+
+    expect(result.kind).toBe('rtk-ok')
+    expect(start).toHaveBeenCalledTimes(1)
+    expect(succeed).toHaveBeenCalledTimes(1)
+    expect(fail).not.toHaveBeenCalled()
+  })
+
+  it('calls spinner.fail() when init exits non-zero', () => {
+    const { factory, start, succeed, fail } = makeSpinnerFactory()
+    const spawn = makeSpawn([{ status: 0 }, { status: 1 }])
+    const result = ensureRtk({
+      repoRoot: '/tmp/repo',
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      spinnerFactory: factory,
+    })
+
+    expect(result.kind).toBe('rtk-init-failed')
+    expect(start).toHaveBeenCalledTimes(1)
+    expect(fail).toHaveBeenCalledTimes(1)
+    expect(succeed).not.toHaveBeenCalled()
+  })
+
+  it('uses noop spinner (no real ora) when spinnerFactory is not provided', () => {
+    // Verify that no real ora is invoked — the noop factory is used by default.
+    // If ora were called it would error in a non-TTY test environment.
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    const result = ensureRtk({
+      repoRoot: '/tmp/repo',
+      options: { overwrite: false, dryRun: false },
+      spawn,
+    })
+
+    expect(result.kind).toBe('rtk-ok')
   })
 })
