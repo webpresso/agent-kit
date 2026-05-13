@@ -4,7 +4,7 @@ status: in-progress
 complexity: M
 created: '2026-05-13'
 last_updated: '2026-05-13'
-progress: '0% (planned, refinement-applied — needs manual git mv from draft/ to planned/)'
+progress: '100% (all 13 tasks done; output sandboxing added post-blueprint)'
 depends_on: []
 tags:
   - session-memory
@@ -155,7 +155,7 @@ All metrics meet target. Plan is `/pll`-ready.
 
 #### [backend] Task 1.1: SQLite store with three-tier search
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -181,15 +181,15 @@ Performance pragmas applied at open: `journal_mode=WAL`, `synchronous=NORMAL`, `
 
 **Acceptance:**
 
-- [ ] All 5 test cases pass
-- [ ] `ak_lint` clean
-- [ ] `ak_typecheck` clean
-- [ ] No `any` types
-- [ ] better-sqlite3 dep added to package.json (or confirmed present)
+- [x] All 5 test cases pass
+- [x] `ak_lint` clean
+- [x] `ak_typecheck` clean
+- [x] No `any` types
+- [x] better-sqlite3 dep added to package.json (or confirmed present)
 
 #### [backend] Task 1.2: Session capture + snapshot + restore primitives
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -221,14 +221,14 @@ Methods:
 
 **Acceptance:**
 
-- [ ] All tests pass including concurrent-capture
-- [ ] `ak_lint` + `ak_typecheck` clean
-- [ ] Snapshot timeout produces partial gracefully
-- [ ] repoHash is deterministic and short
+- [x] All tests pass including concurrent-capture
+- [x] `ak_lint` + `ak_typecheck` clean
+- [x] Snapshot timeout produces partial gracefully
+- [x] repoHash is deterministic and short
 
 #### [backend] Task 1.3: HTTP fetch + index (for ak_fetch_index parity)
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -253,13 +253,13 @@ For HTML→Markdown: use `node-html-markdown` or similar minimal dep for v1. v2 
 
 **Acceptance:**
 
-- [ ] All test cases pass
-- [ ] Uses native fetch, no undici dep added
-- [ ] Cache key is normalized URL
+- [x] All test cases pass
+- [x] Uses native fetch, no undici dep added
+- [x] Cache key is normalized URL
 
 #### [docs] Task 1.4: README + session-memory guide
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -274,15 +274,15 @@ Create `docs/guides/session-memory.md` with the mental model: how event capture 
 
 **Acceptance:**
 
-- [ ] README has "Session memory" section
-- [ ] Guide explains the schema + event flow
-- [ ] `ak_audit kind=docs-frontmatter` passes
+- [x] README has "Session memory" section
+- [x] Guide explains the schema + event flow
+- [x] `ak_audit kind=docs-frontmatter` passes
 
 ### Phase 2: Hook wiring [Complexity: S-M]
 
 #### [backend] Task 2.1: Create `src/hooks/post-tool/index.ts` dispatcher + wire session-capture
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.2
 
@@ -313,14 +313,14 @@ Update `package.json` `bin` field: `"ak-post-tool": "./src/hooks/post-tool/index
 
 **Acceptance:**
 
-- [ ] Dispatcher tested with both modules
-- [ ] Failure isolation verified (one module breaks ≠ others fail)
-- [ ] package.json bin updated and verified
-- [ ] `ak_lint` + `ak_typecheck` clean
+- [x] Dispatcher tested with both modules
+- [x] Failure isolation verified (one module breaks ≠ others fail)
+- [x] package.json bin updated and verified
+- [x] `ak_lint` + `ak_typecheck` clean
 
 #### [backend] Task 2.2: Create `src/hooks/pre-compact/index.ts` + register PreCompact
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.2
 
@@ -345,13 +345,13 @@ The hook reads stdin, calls `session-memory.snapshot({ repoHash, capMs: 5000 })`
 
 **Acceptance:**
 
-- [ ] Tests pass including timeout
-- [ ] PreCompact registered in `.claude/settings.json` template
-- [ ] Bin entry verified
+- [x] Tests pass including timeout
+- [x] PreCompact registered in `.claude/settings.json` template
+- [x] Bin entry verified
 
 #### [backend] Task 2.3: Extend `src/hooks/sessionstart/index.ts` with compact-source restore
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.2
 
@@ -372,15 +372,15 @@ The current `src/hooks/sessionstart/index.ts` (refinement F4 v1: not `sessionsta
 
 **Acceptance:**
 
-- [ ] All branches tested
-- [ ] `<session_knowledge>` block format documented in code comment
-- [ ] `ak_lint` + `ak_typecheck` clean
+- [x] All branches tested
+- [x] `<session_knowledge>` block format documented in code comment
+- [x] `ak_lint` + `ak_typecheck` clean
 
 ### Phase 3: MCP tools [Complexity: S]
 
 #### [backend] Task 3.1: ak_session_search MCP tool
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1, 1.2
 
@@ -395,13 +395,13 @@ Input schema: `{ query: string, limit?: number, source?: string }`. Output: arra
 
 **Acceptance:**
 
-- [ ] Auto-discovered by MCP server (no manual register edit)
-- [ ] Returns structured results, not raw store payloads
-- [ ] `ak_lint` + `ak_typecheck` clean
+- [x] Auto-discovered by MCP server (no manual register edit)
+- [x] Returns structured results, not raw store payloads
+- [x] `ak_lint` + `ak_typecheck` clean
 
 #### [backend] Task 3.2: ak_session_snapshot MCP tool (manual snapshot)
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.2
 
@@ -414,12 +414,12 @@ Manual snapshot tool for agents to call before branch switches or risky operatio
 
 **Acceptance:**
 
-- [ ] Tool returns snapshot id usable by ak_session_restore
-- [ ] `ak_lint` + `ak_typecheck` clean
+- [x] Tool returns snapshot id usable by ak_session_restore
+- [x] `ak_lint` + `ak_typecheck` clean
 
 #### [backend] Task 3.3: ak_session_restore MCP tool
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.2
 
@@ -432,12 +432,12 @@ Manual restore tool. Input: `{ snapshotId?, query? }`. Either restore from a spe
 
 **Acceptance:**
 
-- [ ] Both restore modes tested
-- [ ] `ak_lint` + `ak_typecheck` clean
+- [x] Both restore modes tested
+- [x] `ak_lint` + `ak_typecheck` clean
 
 #### [backend] Task 3.4: ak_session_capture MCP tool (manual event capture)
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.2
 
@@ -450,14 +450,14 @@ Lets agents record their own decisions/notes outside tool-call events. Input: `{
 
 **Acceptance:**
 
-- [ ] Manual events visible via ak_session_search
-- [ ] `ak_lint` + `ak_typecheck` clean
+- [x] Manual events visible via ak_session_search
+- [x] `ak_lint` + `ak_typecheck` clean
 
 ### Phase 4: Setup orchestration + migration [Complexity: M]
 
 #### [infra] Task 4.1: scaffold-session-memory.ts (init step) + migration
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 2.1, 2.2, 2.3, 3.1
 
@@ -486,13 +486,13 @@ Responsibilities:
 
 **Acceptance:**
 
-- [ ] All 5 test cases pass
-- [ ] Migration documented in README
-- [ ] Backup restore command documented
+- [x] All 5 test cases pass
+- [x] Migration documented in README
+- [x] Backup restore command documented
 
 #### [qa] Task 4.2: gstack-routing + context-mode-routing rule updates
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 4.1
 
@@ -511,9 +511,9 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 
 **Acceptance:**
 
-- [ ] Both rules updated and cross-link
-- [ ] `ak_audit kind=docs-frontmatter` passes
-- [ ] Old context-mode references replaced with ak_session_* recommendations
+- [x] Both rules updated and cross-link
+- [x] `ak_audit kind=docs-frontmatter` passes
+- [x] Old context-mode references replaced with ak_session_* recommendations
 
 ---
 
