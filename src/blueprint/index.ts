@@ -163,3 +163,33 @@ export {
   type RoadmapNode,
   type RoadmapRollup,
 } from './roadmap.js'
+// Context chunk assembler (consumed by ak_blueprint_context, Task 1.3).
+export {
+  assembleBlueprintContext,
+  type AssembleContextInput,
+  type ContextChunk,
+  type ContextChunkKind,
+  type ContextResult,
+  type ContextScope,
+  CONTEXT_CHUNK_MAX_BYTES,
+  TASK_DEP_CONE_LIMIT,
+  VERIFICATION_RECENT_LIMIT,
+} from './context.js'
+// HEAD-pinned freshness for projection DB (Task 1.3 + F11).
+export {
+  type BlueprintProjectLike,
+  checkFreshness,
+  type FreshnessResult,
+  type ProjectionMetadata,
+  readProjectionMetadata,
+  recordProjectionMetadata,
+  type RecordProjectionMetadataInput,
+} from './freshness.js'
+// NextAction discriminated union (F18).
+export {
+  isNextAction,
+  makeNextAction,
+  type NextAction,
+  type NextActionKind,
+  NEXT_ACTION_KINDS,
+} from './next-action.js'

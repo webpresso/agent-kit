@@ -332,7 +332,7 @@ Create one small resolver module that owns project identity, selector disambigua
 
 #### [context] Task 1.3: Build reusable blueprint context chunk assembler with HEAD-pinned freshness
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -360,12 +360,12 @@ Create a pure helper that turns existing SQLite rows plus markdown task extracti
 
 **Acceptance:**
 
-- [ ] Chunks are deterministic for the same DB + markdown + HEAD input.
-- [ ] Chunks include `content_hash`, `ingested_at`, and `head_at_ingest` freshness metadata.
-- [ ] Missing task/slug returns a typed failure result, not a thrown raw error.
-- [ ] Branch HEAD mismatch returns `{ ok: false, next_action: { kind: 'reingest_project', ... } }` from `checkFreshness`.
-- [ ] `NextAction` is a single source of truth; tests assert exhaustiveness via a switch over `kind`.
-- [ ] Helper is usable by MCP without importing CLI modules.
+- [x] Chunks are deterministic for the same DB + markdown + HEAD input.
+- [x] Chunks include `content_hash`, `ingested_at`, and `head_at_ingest` freshness metadata.
+- [x] Missing task/slug returns a typed failure result, not a thrown raw error.
+- [x] Branch HEAD mismatch returns `{ ok: false, next_action: { kind: 'reingest_project', ... } }` from `checkFreshness`.
+- [x] `NextAction` is a single source of truth; tests assert exhaustiveness via a switch over `kind`.
+- [x] Helper is usable by MCP without importing CLI modules.
 
 #### [markdown] Task 1.4: Add verification block markdown helper with enforced Evidence Contract
 
