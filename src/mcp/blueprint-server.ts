@@ -25,6 +25,8 @@ import { openDb } from '#db/connection.js'
 import { ingestAll } from '#db/ingester.js'
 import { findTemplate } from '#db/templates.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
+import { evidenceListSchema, canonicalizeEvidenceList } from '#evidence.js'
+import { applyVerification, parseVerificationBlock } from '#verification.js'
 import { makeNextAction } from '#next-action.js'
 import { resolveBlueprintProjects } from '#projects.js'
 import { maybeHint } from './_tail-hints.js'
@@ -591,6 +593,27 @@ async function handleTaskAdvance(cwd: string, raw: unknown): Promise<ToolHandler
   const p = advanceSchema.safeParse(raw)
   if (!p.success) return err('ak_blueprint_task_advance validation error', p.error.message)
   const { task_id, to } = p.data
+
+  // Task 3.2 guard: refuse to mark done via advance — require evidence via ak_blueprint_task_verify
+  if (to === 'done') {
+    return jsonContent(
+      {
+        summary: 'Use ak_blueprint_task_verify to mark tasks done with evidence',
+        failures: [
+          'Use ak_blueprint_task_verify to mark tasks done with evidence',
+        ],
+        error: 'Use ak_blueprint_task_verify to mark tasks done with evidence',
+        next_action: makeNextAction(
+          'verify_task',
+          'Call ak_blueprint_task_verify with evidence items',
+        ),
+        bytes: 0,
+        tokensSaved: 0,
+      },
+      true,
+    )
+  }
+
   const target = dbPath(cwd)
   if (!existsSync(target)) return err('ak_blueprint_task_advance failed', 'Blueprint DB not found')
   try {
@@ -665,11 +688,94 @@ async function handleTaskAdvance(cwd: string, raw: unknown): Promise<ToolHandler
       bytes: 0,
       tokensSaved: 0,
     }
-    if (to === 'done') appendHint(payload, cwd, 'VERIFY_DONE')
     return finishPayload(payload)
   } catch (e) {
     return err('ak_blueprint_task_advance failed', toStr(e))
   }
+}
+
+// Task 3.2 — ak_blueprint_task_verify
+const taskVerifySchema = z.object({
+  project_id: z.string(),
+  slug: z.string(),
+  task_id: z.string(),
+  evidence: evidenceListSchema,
+})
+
+async function handleTaskVerify(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
+  const p = taskVerifySchema.safeParse(raw)
+  if (!p.success) return err('ak_blueprint_task_verify validation error', p.error.message)
+  const { slug, task_id, evidence } = p.data
+
+  // Locate the blueprint markdown file on disk
+  const root = resolveBlueprintRoot(cwd)
+  const found = findBlueprintDir(root, slug, ALL_STATES)
+  if (!found) {
+    return err(
+      'ak_blueprint_task_verify failed',
+      `Blueprint "${slug}" not found in any state directory`,
+    )
+  }
+  const filePath = path.join(found.dir, '_overview.md')
+  if (!existsSync(filePath)) {
+    return err('ak_blueprint_task_verify failed', `Blueprint overview not found at ${filePath}`)
+  }
+
+  const markdownBefore = readFileSync(filePath, 'utf8')
+
+  // Idempotency check: if the task already has the same canonical evidence block, skip write.
+  // We check this BEFORE calling applyVerification to avoid whitespace normalization drift
+  // making `result.markdown !== markdownBefore` always true even for identical evidence.
+  const incomingCanonical = canonicalizeEvidenceList(evidence)
+  const existingEvidence = parseVerificationBlock(markdownBefore)
+  if (existingEvidence !== null && canonicalizeEvidenceList(existingEvidence) === incomingCanonical) {
+    const b = bytes(markdownBefore)
+    return jsonContent({
+      summary: `Task "${task_id}" verification is already recorded (idempotent)`,
+      status: 'done',
+      idempotent: true,
+      failures: [],
+      bytes: b,
+      tokensSaved: 0,
+    })
+  }
+
+  // Apply verification (pure function — no FS side effects)
+  const result = applyVerification(markdownBefore, task_id, evidence)
+
+  if (!result.ok) {
+    return jsonContent(
+      {
+        summary: 'Verification failed',
+        failures: result.failures,
+        next_action: makeNextAction('verify_task', result.failures[0] ?? 'Verification failed'),
+        bytes: 0,
+        tokensSaved: 0,
+      },
+      true,
+    )
+  }
+
+  // Write updated markdown back to disk
+  writeFileSync(filePath, result.markdown, 'utf8')
+
+  // Re-ingest so the DB projection reflects the completed status
+  try {
+    await reIngest(cwd)
+  } catch {
+    /* non-fatal */
+  }
+
+  const b = bytes(result.markdown)
+  const payload: Record<string, unknown> = {
+    summary: `Task "${task_id}" verified and marked done`,
+    status: 'done',
+    idempotent: false,
+    failures: [],
+    bytes: b,
+    tokensSaved: 0,
+  }
+  return finishPayload(payload)
 }
 
 const promoteSchema = z.object({
@@ -965,7 +1071,7 @@ async function handleBlueprintList(cwd: string, raw: unknown): Promise<ToolHandl
         status
           ? conn.db.prepare(sql).all(status, limit)
           : conn.db.prepare(sql).all(limit)
-      ) as BpRow[]
+      ) as unknown as BpRow[]
     } finally {
       conn.close()
     }
@@ -1435,6 +1541,36 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
     undefined,
     (r) => handleBlueprintCreate(cwd, r),
     { title: 'Blueprint Create', destructiveHint: false, openWorldHint: false },
+  )
+
+  registrar.registerTool(
+    'ak_blueprint_task_verify',
+    'Mark a task done with an Evidence Contract. Requires at least one pass evidence item. Re-ingests DB on success. Returns { status, idempotent, next_action? }.',
+    {
+      type: 'object',
+      properties: {
+        project_id: { type: 'string' },
+        slug: { type: 'string' },
+        task_id: { type: 'string' },
+        evidence: {
+          type: 'array',
+          minItems: 1,
+          items: {
+            type: 'object',
+            properties: {
+              kind: { type: 'string', enum: ['test', 'integration', 'audit', 'manual'] },
+              result: { type: 'string', enum: ['pass', 'fail'] },
+              ts: { type: 'string' },
+            },
+            required: ['kind', 'result', 'ts'],
+          },
+        },
+      },
+      required: ['project_id', 'slug', 'task_id', 'evidence'],
+    },
+    undefined,
+    (r) => handleTaskVerify(cwd, r),
+    { title: 'Blueprint Task Verify', destructiveHint: false, openWorldHint: false },
   )
 }
 

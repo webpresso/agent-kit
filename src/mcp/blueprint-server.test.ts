@@ -467,15 +467,17 @@ describe('ak_blueprint_task_advance', () => {
 
     const { overviewPath, localTools } = await setupWithBlueprint()
 
+    // Use 'blocked' instead of 'done' — 'done' is now forbidden via ak_blueprint_task_advance
+    // (Task 3.2: done requires evidence via ak_blueprint_task_verify)
     const result = await callTool(localTools, 'ak_blueprint_task_advance', {
       task_id: '1.1',
-      to: 'done',
+      to: 'blocked',
     })
     const data = parseResult(result) as { new_status: string; failures: string[] }
 
     // Iron rule: result must be successful (markdown-canonical path)
     expect(result.isError).toStrictEqual(false)
-    expect(data.new_status).toStrictEqual('done')
+    expect(data.new_status).toStrictEqual('blocked')
     expect(data.failures).toHaveLength(0)
 
     // Iron rule: platform calls must NOT happen when disabled
@@ -484,7 +486,7 @@ describe('ak_blueprint_task_advance', () => {
 
     // Markdown must still be updated via the canonical path
     const md = readFileSync(overviewPath, 'utf8')
-    expect(md).toContain('**Status:** done')
+    expect(md).toContain('**Status:** blocked')
   })
 
   it('falls back to markdown-canonical path when factory returns null (no credentials)', async () => {
@@ -918,7 +920,7 @@ describe('ak_blueprint_task_next — ensureFresh-before-read (Task 2.5)', () => 
 // ---------------------------------------------------------------------------
 
 describe('registerBlueprintTools', () => {
-  it('registers all 12 blueprint tools', () => {
+  it('registers all 13 blueprint tools', () => {
     const expectedTools = [
       'ak_blueprint_query',
       'ak_blueprint_new',
@@ -933,6 +935,8 @@ describe('registerBlueprintTools', () => {
       'ak_blueprint_get',
       'ak_blueprint_context',
       'ak_blueprint_create',
+      // Task 3.2 addition
+      'ak_blueprint_task_verify',
     ]
     for (const name of expectedTools) {
       expect(tools.has(name), `${name} should be registered`).toBe(true)
@@ -1198,5 +1202,250 @@ describe('ak_blueprint_create', () => {
       // scope must not appear in the parsed output
       expect('scope' in parsed.data).toBe(false)
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Task 3.2 — ak_blueprint_task_advance refuses to: done
+// ---------------------------------------------------------------------------
+
+describe('ak_blueprint_task_advance — refuses to:done (Task 3.2)', () => {
+  afterEach(() => {
+    _setSyncAdapterFactory(null)
+    vi.unstubAllEnvs()
+  })
+
+  it('returns error with next_action verify_task when to is done', async () => {
+    _setSyncAdapterFactory(() => null)
+
+    const result = await callTool(tools, 'ak_blueprint_task_advance', {
+      task_id: '1.1',
+      to: 'done',
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseResult(result) as {
+      failures: string[]
+      next_action: { kind: string; hint: string }
+    }
+    expect(data.failures.length).toBeGreaterThan(0)
+    expect(data.failures[0]).toMatch(/ak_blueprint_task_verify/i)
+    expect(data.next_action.kind).toBe('verify_task')
+  })
+
+  it('still allows other valid transitions like in-progress', async () => {
+    _setSyncAdapterFactory(() => null)
+
+    // This uses the global tools which has an empty DB; expect task-not-found error (not the done guard)
+    const result = await callTool(tools, 'ak_blueprint_task_advance', {
+      task_id: 'nonexistent.99',
+      to: 'in-progress',
+    })
+    // Should fail because task not found, not because of the done guard
+    expect(result.isError).toBe(true)
+    const data = parseResult(result) as { failures: string[] }
+    expect(data.failures[0]).toMatch(/not found/i)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Task 3.2 — ak_blueprint_task_verify (Task 3.2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fixture blueprint with one todo task for verification tests.
+ */
+const VERIFY_BLUEPRINT = `---
+type: blueprint
+title: Verify Test Blueprint
+status: in-progress
+complexity: S
+owner: tester
+created: '2026-01-01'
+last_updated: '2026-05-01'
+---
+
+## Product wedge anchor
+
+- **Stage outcome:** Phase 1 — ship verify feature
+- **Consuming surface:** /verify route
+- **New user-visible capability:** Users can verify tasks with evidence.
+
+## Summary
+
+Blueprint used to test task verification.
+
+#### Task 1.1: The verify task
+
+**Status:** todo
+**Wave:** 0
+**Files:**
+- src/foo.ts
+
+**Acceptance:**
+- [ ] The task is verified
+`
+
+describe('ak_blueprint_task_verify — Task 3.2', () => {
+  const VERIFY_SLUG = 'verify-test-blueprint'
+
+  async function setupWithVerifyBlueprint(): Promise<{
+    overviewPath: string
+    localTmpDir: string
+    localTools: Map<string, { name: string; handler: ToolHandler }>
+  }> {
+    const localTmpDir = mkdtempSync(path.join(tmpdir(), 'ak-bs-ver-'))
+    mkdirSync(path.join(localTmpDir, '.agent'), { recursive: true })
+    mkdirSync(path.join(localTmpDir, 'blueprints', 'in-progress', VERIFY_SLUG), { recursive: true })
+    writeFileSync(path.join(localTmpDir, 'package.json'), JSON.stringify({ name: 'test' }), 'utf8')
+    const overviewPath = path.join(
+      localTmpDir,
+      'blueprints',
+      'in-progress',
+      VERIFY_SLUG,
+      '_overview.md',
+    )
+    writeFileSync(overviewPath, VERIFY_BLUEPRINT, 'utf8')
+    const { registrar: lr, tools: lt } = makeRegistrar()
+    await registerBlueprintTools(lr, localTmpDir)
+    return { overviewPath, localTmpDir, localTools: lt }
+  }
+
+  afterEach(() => {
+    _setSyncAdapterFactory(null)
+    vi.unstubAllEnvs()
+  })
+
+  it('tool is registered', async () => {
+    expect(tools.has('ak_blueprint_task_verify')).toBe(true)
+  })
+
+  it('input schema rejects inputs containing scope field at the zod level', () => {
+    const VerifyInputSchema = z.object({
+      project_id: z.string(),
+      slug: z.string(),
+      task_id: z.string(),
+      evidence: z.array(z.unknown()).min(1),
+    })
+    // scope field should not be in schema — parsed data should not contain it
+    const parsed = VerifyInputSchema.safeParse({
+      project_id: 'test',
+      slug: 'my-slug',
+      task_id: '1.1',
+      evidence: [
+        {
+          kind: 'test',
+          result: 'pass',
+          ts: '2026-01-01T00:00:00Z',
+          command: 'pnpm test',
+          exit_code: 0,
+        },
+      ],
+      scope: 'all',
+    })
+    expect(parsed.success).toBe(true)
+    if (parsed.success) {
+      expect('scope' in parsed.data).toBe(false)
+    }
+  })
+
+  it('returns validation error for missing required fields', async () => {
+    const result = await callTool(tools, 'ak_blueprint_task_verify', {
+      project_id: tmpDir,
+    })
+    expect(result.isError).toBe(true)
+  })
+
+  it('fails when evidence has zero pass items (all fail items)', async () => {
+    const { localTools } = await setupWithVerifyBlueprint()
+
+    const result = await callTool(localTools, 'ak_blueprint_task_verify', {
+      project_id: localTools.size > 0 ? 'test' : 'test', // placeholder, handler uses cwd
+      slug: VERIFY_SLUG,
+      task_id: '1.1',
+      evidence: [
+        {
+          kind: 'test',
+          result: 'fail',
+          ts: '2026-01-01T00:00:00Z',
+          command: 'pnpm test',
+          exit_code: 1,
+        },
+      ],
+    })
+
+    expect(result.isError).toBe(true)
+    const data = parseResult(result) as { failures: string[] }
+    expect(data.failures.length).toBeGreaterThan(0)
+  })
+
+  it('succeeds and writes markdown + re-ingests when valid evidence provided', async () => {
+    _setSyncAdapterFactory(() => null)
+    const { overviewPath, localTools } = await setupWithVerifyBlueprint()
+
+    const result = await callTool(localTools, 'ak_blueprint_task_verify', {
+      project_id: 'test',
+      slug: VERIFY_SLUG,
+      task_id: '1.1',
+      evidence: [
+        {
+          kind: 'test',
+          result: 'pass',
+          ts: '2026-01-01T00:00:00Z',
+          command: 'pnpm test',
+          exit_code: 0,
+        },
+      ],
+    })
+
+    expect(result.isError).toStrictEqual(false)
+    const data = parseResult(result) as {
+      status: string
+      failures: string[]
+    }
+    expect(data.status).toBe('done')
+    expect(data.failures).toStrictEqual([])
+
+    // Markdown should be updated with the verification block and status=done
+    const md = readFileSync(overviewPath, 'utf8')
+    expect(md).toContain('**Status:** done')
+    expect(md).toContain('**Verification:**')
+    expect(md).toContain('agent-kit-evidence-v1')
+  })
+
+  it('is idempotent: second call with same canonical evidence returns idempotent: true', async () => {
+    _setSyncAdapterFactory(() => null)
+    const { localTools } = await setupWithVerifyBlueprint()
+
+    const evidence = [
+      {
+        kind: 'test',
+        result: 'pass',
+        ts: '2026-01-01T00:00:00Z',
+        command: 'pnpm test',
+        exit_code: 0,
+      },
+    ]
+
+    // First call
+    const first = await callTool(localTools, 'ak_blueprint_task_verify', {
+      project_id: 'test',
+      slug: VERIFY_SLUG,
+      task_id: '1.1',
+      evidence,
+    })
+    expect(first.isError).toStrictEqual(false)
+
+    // Second call with identical evidence
+    const second = await callTool(localTools, 'ak_blueprint_task_verify', {
+      project_id: 'test',
+      slug: VERIFY_SLUG,
+      task_id: '1.1',
+      evidence,
+    })
+    expect(second.isError).toStrictEqual(false)
+    const data = parseResult(second) as { status: string; idempotent?: boolean }
+    expect(data.status).toBe('done')
+    expect(data.idempotent).toBe(true)
   })
 })
