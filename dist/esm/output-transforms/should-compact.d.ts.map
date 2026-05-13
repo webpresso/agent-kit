@@ -1,0 +1,1 @@
+{"version":3,"file":"should-compact.d.ts","sourceRoot":"","sources":["../../../src/output-transforms/should-compact.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,oBAAoB;IACnC,QAAQ,CAAC,IAAI,CAAC,EAAE,OAAO,CAAA;IACvB,QAAQ,CAAC,GAAG,CAAC,EAAE,MAAM,CAAC,UAAU,CAAA;IAChC,QAAQ,CAAC,KAAK,CAAC,EAAE,OAAO,CAAA;CACzB;AAED,wBAAgB,aAAa,CAAC,OAAO,GAAE,oBAAyB,GAAG,OAAO,CASzE"}
