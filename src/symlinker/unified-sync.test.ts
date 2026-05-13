@@ -121,7 +121,7 @@ describe('runUnifiedSync', () => {
     expect(existsSync(join(consumerRoot, '.codex', 'agents', 'mine.md'))).toBe(false)
   })
 
-  it('projects a consumer skill dir into windsurf (copy) and claude (symlink)', () => {
+  it('projects a consumer skill dir into windsurf (copy), claude (symlink), and portable skills (symlink)', () => {
     writeFile(
       join(consumerRoot, 'agent-skills', 'mine', 'SKILL.md'),
       RULE_FRONTMATTER.replace('SLUG', 'mine').replace('type: rule', 'type: skill'),
@@ -141,6 +141,11 @@ describe('runUnifiedSync', () => {
     expect(existsSync(wsDir)).toBe(true)
     expect(isSymlink(wsDir)).toBe(false)
     expect(readFileSync(join(wsDir, 'asset.txt'), 'utf8')).toBe('hello')
+
+    // .agents/skills/mine — portable Codex/OpenCode symlink to dir
+    const portableDir = join(consumerRoot, '.agents', 'skills', 'mine')
+    expect(isSymlink(portableDir)).toBe(true)
+    expect(readFileSync(join(portableDir, 'asset.txt'), 'utf8')).toBe('hello')
   })
 
   it('prunes per-IDE files when consumer rule is deleted', () => {
@@ -219,6 +224,23 @@ describe('runUnifiedSync', () => {
     // Skill NOT projected (filtered out)
     expect(existsSync(join(consumerRoot, '.windsurf', 'skills', 's'))).toBe(false)
     expect(existsSync(join(consumerRoot, '.claude', 'skills', 's'))).toBe(false)
+    expect(existsSync(join(consumerRoot, '.agents', 'skills', 's'))).toBe(false)
+  })
+
+  it('--kind rules does not prune existing skill projections', () => {
+    writeFile(join(catalogDir, 'rules', 'r.md'), RULE_FRONTMATTER.replace('SLUG', 'r'))
+    writeFile(
+      join(catalogDir, 'skills', 's', 'SKILL.md'),
+      RULE_FRONTMATTER.replace('SLUG', 's').replace('type: rule', 'type: skill'),
+    )
+
+    runUnifiedSync({ catalogDir, consumerRoot })
+    expect(existsSync(join(consumerRoot, '.agents', 'skills', 's'))).toBe(true)
+
+    runUnifiedSync({ catalogDir, consumerRoot, kinds: ['rule'] })
+
+    expect(existsSync(join(consumerRoot, '.agents', 'skills', 's'))).toBe(true)
+    expect(existsSync(join(consumerRoot, '.claude', 'skills', 's'))).toBe(true)
   })
 
   it('catalogDir resolves through a symlink (realpathSync)', () => {

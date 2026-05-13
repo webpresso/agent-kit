@@ -64,7 +64,7 @@ export interface UnifiedSyncOptions {
    * Optional set of skill slugs that must NOT be pruned even though they are
    * absent from the projected record set. Used by `ak setup` for skills that
    * are produced by separate scaffolders (e.g. the rendered
-   * `monorepo-navigation` skill written into `.agent/skills/`).
+   * generated skills that are produced outside the catalog.
    */
   readonly preserveSkillSlugs?: ReadonlySet<string>
 }
@@ -388,8 +388,11 @@ function pruneStale(
  * Main entrypoint. See module docstring.
  */
 export function runUnifiedSync(options: UnifiedSyncOptions): UnifiedSyncResult {
-  const consumers = options.consumers ?? DEFAULT_UNIFIED_CONSUMERS
   const kinds = options.kinds ?? (['rule', 'skill'] as const)
+  const kindSet = new Set<ContentKind>(kinds)
+  const consumers = (options.consumers ?? DEFAULT_UNIFIED_CONSUMERS).filter((consumer) =>
+    kindSet.has(consumer.acceptsKind),
+  )
 
   // Realpath both roots so symlink target paths (computed via `relative()`)
   // stay in a single realm. Without this, on macOS where tmpdir() resolves

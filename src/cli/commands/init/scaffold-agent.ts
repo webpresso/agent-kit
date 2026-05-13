@@ -9,7 +9,7 @@
  * Tier exports remain because the init orchestrator uses them to compute
  * the allowed-skill set passed to the unified sync filter.
  *
- * - Tier-1 (verify, testing-philosophy, plan-refine, pll) — always.
+ * - Tier-1 (fix, verify, testing-philosophy, plan-refine, pll) — always.
  * - Tier-2 (systematic-debugging, test-driven-development, deep-research) — always.
  * - monorepo-navigation — always (rendered via a separate scaffold step).
  * - Tier-3 — only on opt-in via --with / --all / interactive prompt.
@@ -24,7 +24,7 @@ import {
   type MergeResult,
 } from './merge.js'
 
-export const TIER1_SKILLS = ['verify', 'testing-philosophy', 'plan-refine', 'pll'] as const
+export const TIER1_SKILLS = ['fix', 'verify', 'testing-philosophy', 'plan-refine', 'pll'] as const
 export const TIER2_SKILLS = [
   'systematic-debugging',
   'test-driven-development',

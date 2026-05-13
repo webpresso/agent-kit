@@ -9,7 +9,7 @@
  * Primary IDEs (Claude Code, Codex, Cursor, Windsurf, OpenCode) are handled by
  * their documented native surfaces:
  *   - Codex skills: `.agents/skills/` (plus user/global roots), covered by
- *     DEFAULT_PER_SKILL_CONSUMERS. `.codex/agents/` is not a skill root.
+ *     DEFAULT_UNIFIED_CONSUMERS. `.codex/agents/` is not a skill root.
  *   - Claude Code skills: `.claude/skills/` and plugin distribution.
  *   - Cursor / Windsurf: agent-kit-localskills-distribution (localskills.sh)
  *     plus copied rules/skills below where the tools need project files.
@@ -18,10 +18,6 @@
  *     so OpenCode sees the same core capabilities without extra aliases.
  *     Rules surface: opencode reads `AGENTS.md` directly from the repo root; no
  *     symlinker consumer needed.
- *
- * Gemini's TOML surface is handled separately by `syncGeminiCommands`
- * (not symlink-based), so it is intentionally excluded from
- * `DEFAULT_UNIFIED_CONSUMERS`.
  *
  * The `UNIFIED_CONSUMERS` registry below describes per-IDE projection of the
  * unified rule/skill content kinds (catalog ∪ consumer). Strategies:
@@ -64,8 +60,7 @@ export const DEFAULT_SKILLS_CONSUMERS: SkillsConsumerConfig[] = [
  * symlinked skill folders as a supported discovery shape.
  *
  * Source-of-truth is `.agent/skills/<slug>/` — the consumer projection
- * produced by `runUnifiedSync` + scaffolders (e.g. `scaffoldMonorepoNav`,
- * which writes locally-rendered skills not present in the published catalog).
+ * produced by `runUnifiedSync`.
  */
 export interface PerSkillConsumerConfig {
   dir: string
@@ -127,6 +122,7 @@ export function unifiedRuleFilename(consumer: UnifiedConsumerConfig, slug: strin
  *   - `.windsurf/skills/`: copy, accepts skill
  *   - `.claude/rules/`: symlink, accepts rule
  *   - `.claude/skills/`: symlink, accepts skill
+ *   - `.agents/skills/`: symlink, accepts skill (Codex/OpenCode portable root)
  * Codex intentionally has no `.codex/agents/` consumer. Official Codex skill
  * discovery is `.agents/skills/`, `~/.agents/skills`, and `/etc/codex/skills`.
  */
@@ -147,4 +143,6 @@ export const DEFAULT_UNIFIED_CONSUMERS: readonly UnifiedConsumerConfig[] = [
   // Claude: rules are scaffolded to .claude/rules; skills remain under .claude/skills.
   { id: 'claude-rules', dir: '.claude/rules', acceptsKind: 'rule', strategy: 'symlink' },
   { id: 'claude-skills', dir: '.claude/skills', acceptsKind: 'skill', strategy: 'symlink' },
+  // Portable Codex/OpenCode skill root.
+  { id: 'portable-skills', dir: '.agents/skills', acceptsKind: 'skill', strategy: 'symlink' },
 ] as const

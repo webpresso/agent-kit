@@ -11,7 +11,6 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { syncAll } from '#symlinker'
 import { isTelemetryEnabled, reportTthw } from '#telemetry/setup-tthw'
 import { readPackageVersion } from '#cli/utils'
 import { resolveBlueprintRoot } from '#utils/blueprint-root'
@@ -258,11 +257,18 @@ export async function runInit(flags: InitFlags): Promise<number> {
     const docsResults = scaffoldDocs({ catalogDir, repoRoot: consumer.repoRoot, options })
     const blueprintResults = scaffoldBlueprints({ repoRoot: consumer.repoRoot, options })
 
-    // Unified sync runs BEFORE the downstream scaffolders that read from
+    const monorepoResults = scaffoldMonorepoNav({
+      catalogDir,
+      repoRoot: consumer.repoRoot,
+      consumer,
+      options,
+    })
+
+    // Unified sync runs before downstream scaffolders that read from
     // `.agent/skills/` (agent-hooks needs SKILL.md frontmatter to extract
-    // hook entries) and BEFORE scaffoldMonorepoNav (which writes the
-    // rendered `.agent/skills/monorepo-navigation/` skill — preserved by
-    // `preserveSkillSlugs` so the prune step doesn't remove it).
+    // hook entries). Rendered repo-local skills are written into the
+    // consumer-owned `agent-skills/` tree first, then projected like every
+    // other skill.
     const allowedSkillSlugs = new Set<string>([
       ...TIER1_SKILLS,
       ...TIER2_SKILLS,
@@ -276,16 +282,8 @@ export async function runInit(flags: InitFlags): Promise<number> {
         kinds: ['rule', 'skill'],
         check: false,
         allowedSkillSlugs,
-        preserveSkillSlugs: new Set<string>(RENDERED_SKILLS),
       })
     }
-
-    const monorepoResults = scaffoldMonorepoNav({
-      catalogDir,
-      repoRoot: consumer.repoRoot,
-      consumer,
-      options,
-    })
 
     const blueprintsDir = inferBlueprintsDirOverride(consumer.repoRoot, existingConfig)
     const config: AgentkitConfig = mergeConfig(existingConfig, {
@@ -568,9 +566,6 @@ export async function runInit(flags: InitFlags): Promise<number> {
     }
 
     if (!options.dryRun) {
-      console.log('\nWiring tool-specific surfaces (.claude/, .cursor/, .windsurf/, .gemini/)…')
-      syncAll(consumer.repoRoot)
-
       const visibilityAudit = auditHostSkillVisibility({
         repoRoot: consumer.repoRoot,
         hosts: selectedHosts,

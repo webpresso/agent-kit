@@ -1,9 +1,10 @@
 import type { ConsumerContext, WorkspacePackageInfo } from './detect-consumer.js'
 
 /**
- * Render `catalog/agent/skills/monorepo-navigation/SKILL.md.tpl` into
- * `.agent/skills/monorepo-navigation/SKILL.md`, filling in placeholders
- * with workspace introspection. Copy the `examples/` directory verbatim.
+ * Render `catalog/agent/skills/monorepo-navigation/SKILL.md.tpl` into the
+ * consumer-owned `agent-skills/monorepo-navigation/SKILL.md`, filling in
+ * placeholders with workspace introspection. Unified sync projects it into
+ * generated host surfaces. Copy the `examples/` directory verbatim.
  */
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { basename, join } from 'node:path'
@@ -113,7 +114,7 @@ export function renderTemplate(template: string, consumer: ConsumerContext): str
 export function scaffoldMonorepoNav(input: ScaffoldMonorepoNavInput): MergeResult[] {
   const { catalogDir, repoRoot, consumer, options } = input
   const skillSrc = join(catalogDir, 'agent', 'skills', 'monorepo-navigation')
-  const skillDst = join(repoRoot, '.agent', 'skills', 'monorepo-navigation')
+  const skillDst = join(repoRoot, 'agent-skills', 'monorepo-navigation')
   const results: MergeResult[] = []
 
   const tplPath = join(skillSrc, 'SKILL.md.tpl')

@@ -11,7 +11,7 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { DEFAULT_PER_SKILL_CONSUMERS, DEFAULT_UNIFIED_CONSUMERS } from './consumers.js'
+import { DEFAULT_UNIFIED_CONSUMERS } from './consumers.js'
 
 // ---------------------------------------------------------------------------
 // OpenCode surface contract (Task 1.8 — verified path A)
@@ -23,8 +23,8 @@ describe('OpenCode consumer contract', () => {
     expect(opencodeEntries).toHaveLength(0)
   })
 
-  it('DEFAULT_PER_SKILL_CONSUMERS includes .agents/skills (the verified opencode skill surface)', () => {
-    const dirs = DEFAULT_PER_SKILL_CONSUMERS.map((c) => c.dir)
+  it('DEFAULT_UNIFIED_CONSUMERS includes .agents/skills (the verified opencode skill surface)', () => {
+    const dirs = DEFAULT_UNIFIED_CONSUMERS.map((c) => c.dir)
     expect(dirs).toContain('.agents/skills')
   })
 
@@ -49,7 +49,7 @@ describe('Codex consumer contract', () => {
   })
 
   it('uses .agents/skills as the portable Codex skill projection', () => {
-    const dirs = DEFAULT_PER_SKILL_CONSUMERS.map((c) => c.dir)
+    const dirs = DEFAULT_UNIFIED_CONSUMERS.map((c) => c.dir)
     expect(dirs).toContain('.agents/skills')
   })
 })
@@ -69,7 +69,7 @@ describe('Claude + Gemini consumer contracts', () => {
     expect(claudeSkills?.strategy).toStrictEqual('symlink')
   })
 
-  it('DEFAULT_UNIFIED_CONSUMERS does not include gemini-commands (Gemini is handled by legacy syncAll TOML generation)', () => {
+  it('DEFAULT_UNIFIED_CONSUMERS does not include gemini-commands', () => {
     const geminiEntry = DEFAULT_UNIFIED_CONSUMERS.find((c) => c.id === 'gemini-commands')
     expect(geminiEntry).toStrictEqual(undefined)
   })

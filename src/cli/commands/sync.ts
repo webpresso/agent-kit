@@ -1,11 +1,9 @@
 /**
- * `ak sync` — single sync command that replaces the legacy
- * `ak symlink sync` and `ak cursor-windsurf-sync`.
+ * `ak sync` — projects the canonical agent-kit rule/skill catalog into the
+ * supported host surfaces.
  *
  * Projects unified rule + skill content (catalog ∪ consumer) into per-IDE
- * surfaces according to `DEFAULT_UNIFIED_CONSUMERS`. Also runs the existing
- * `syncAll` (commands, workflows, AGENTS.md, mcp.json, tail-IDE skill
- * fan-out) so the one command covers every surface.
+ * surfaces according to `DEFAULT_UNIFIED_CONSUMERS`.
  *
  * Flags:
  *   --kind rules|skills   Filter to a single kind (default: both).
@@ -14,7 +12,6 @@
 
 import type { CAC } from 'cac'
 
-import { syncAll } from '#symlinker'
 import { runUnifiedSync, type UnifiedSyncMismatch } from '#symlinker/unified-sync'
 import type { ContentKind } from '#content/loader'
 import { resolvePackageAsset } from '#utils/package-assets'
@@ -43,7 +40,7 @@ function formatMismatches(mismatches: readonly UnifiedSyncMismatch[]): string {
 
 export function registerSyncCommand(cli: CAC): void {
   cli
-    .command('sync', 'Sync agent rules + skills (and tail surfaces) across all IDEs')
+    .command('sync', 'Sync agent rules + skills across all supported host surfaces')
     .option('--kind <kind>', 'Filter: rules | skills (default: both)')
     .option('--check', 'Exit 1 on drift; no writes')
     .action(async (options: SyncCommandOptions = {}) => {
@@ -91,33 +88,12 @@ export function registerSyncCommand(cli: CAC): void {
         return 0
       }
 
-      // Non-check mode: also run the legacy tail-surface fan-out.
-      // syncAll handles commands/workflows/AGENTS.md/mcp.json and the
-      // existing `.agents/skills/` per-skill projection. It's idempotent.
-      let tailFixes = 0
-      if (kinds === undefined) {
-        // Only run tail surfaces for the full sync; --kind filters skip it
-        // because they target a specific content kind only.
-        try {
-          tailFixes = syncAll(repoRoot)
-        } catch (error) {
-          if (error instanceof Error && /catalogDir does not exist/.test(error.message)) {
-            throw commandError(
-              'ak sync: @webpresso/agent-kit not installed in node_modules. ' +
-                'Run `pnpm install` first.',
-            )
-          }
-          throw error
-        }
-      }
-
-      const totalWrites = result.fixCount + tailFixes
-      if (totalWrites === 0) {
+      if (result.fixCount === 0) {
         console.log('Already up to date.')
         return 0
       }
 
-      console.log(`ak sync: wrote ${totalWrites} entries.`)
+      console.log(`ak sync: wrote ${result.fixCount} entries.`)
       console.log('Synced. Restart your IDE to load new rules/skills.')
       return 0
     })

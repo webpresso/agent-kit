@@ -168,7 +168,11 @@ describe('ak init end-to-end', () => {
     // .agent structure (existsSync follows symlinks; .agent/skills entries
     // are now symlinks into the catalog populated by runUnifiedSync)
     expect(existsSync(join(repo, '.agent', 'commands', 'verify.md'))).toBe(true)
+    expect(existsSync(join(repo, '.agent', 'skills', 'fix', 'SKILL.md'))).toBe(true)
     expect(existsSync(join(repo, '.agent', 'skills', 'verify', 'SKILL.md'))).toBe(true)
+    expect(existsSync(join(repo, '.agent', 'skills', 'pll', 'SKILL.md'))).toBe(true)
+    expect(existsSync(join(repo, '.agents', 'skills', 'fix', 'SKILL.md'))).toBe(true)
+    expect(existsSync(join(repo, '.agents', 'skills', 'pll', 'SKILL.md'))).toBe(true)
     expect(existsSync(join(repo, '.agent', 'skills', 'testing-philosophy', 'SKILL.md'))).toBe(true)
     expect(existsSync(join(repo, '.agent', 'skills', 'systematic-debugging', 'SKILL.md'))).toBe(
       true,
@@ -197,14 +201,19 @@ describe('ak init end-to-end', () => {
     // No tier-3 skills installed by default — unified sync filters by allowedSkillSlugs
     expect(existsSync(join(repo, '.agent', 'skills', 'tanstack-query'))).toBe(false)
 
-    // monorepo-navigation is rendered from the template
-    const navSkill = join(repo, '.agent', 'skills', 'monorepo-navigation', 'SKILL.md')
+    // monorepo-navigation is rendered into the canonical consumer-owned skill
+    // tree, then projected into generated host surfaces.
+    const navSkill = join(repo, 'agent-skills', 'monorepo-navigation', 'SKILL.md')
     expect(existsSync(navSkill)).toBe(true)
     const navBody = readFileSync(navSkill, 'utf8')
     expect(navBody).toContain('@acme/demo')
     expect(navBody).toContain('@acme/api')
     expect(navBody).toContain('@acme/ui')
     expect(navBody).not.toContain('{{PROJECT_NAME}}')
+    expect(existsSync(join(repo, '.agent', 'skills', 'monorepo-navigation', 'SKILL.md'))).toBe(true)
+    expect(existsSync(join(repo, '.agents', 'skills', 'monorepo-navigation', 'SKILL.md'))).toBe(
+      true,
+    )
 
     // Docs
     expect(existsSync(join(repo, 'docs', 'templates', 'blueprint.md'))).toBe(true)
@@ -304,7 +313,7 @@ describe('ak init end-to-end', () => {
     expect(body).toContain('Operating Contract')
   })
 
-  it('generates .agents/skills symlinks and Gemini TOML — does NOT write to primary IDEs', async () => {
+  it('generates portable .agents/skills symlinks and host skill surfaces', async () => {
     const code = await runInit({ cwd: repo, yes: true })
     expect(code).toBe(0)
 
@@ -350,11 +359,6 @@ describe('ak init end-to-end', () => {
     expect(statSync(agentsVerifySkill).isDirectory()).toBe(true)
     expect(lstatSync(agentsVerifySkill).isSymbolicLink()).toBe(true)
     expect(existsSync(join(agentsVerifySkill, 'SKILL.md'))).toBe(true)
-
-    // Gemini CLI: TOML transform
-    const geminiToml = join(repo, '.gemini', 'commands', 'verify.toml')
-    expect(existsSync(geminiToml)).toBe(true)
-    expect(lstatSync(geminiToml).isFile()).toBe(true)
 
     // agent-hooks scaffolder writes .codex/hooks.json
     expect(existsSync(join(repo, '.codex', 'hooks.json'))).toBe(true)
