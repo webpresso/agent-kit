@@ -2025,15 +2025,15 @@ describe('plugin-native invariants — .claude/settings.json', () => {
   })
 })
 
-describe('buildWebpressoHookGroups', () => {
-  it('returns the canonical 5 wp-* event groups with the supplied bin resolver', async () => {
-    const result = buildWebpressoHookGroups({
+describe('buildAgentKitHookGroups', () => {
+  it('returns the canonical 6 ak-* event groups with the supplied bin resolver', () => {
+    const result = buildAgentKitHookGroups({
       resolveBin: (name) => `./node_modules/.bin/${name}`,
       matchers: { preToolUse: 'Bash|Edit|Write', postToolUse: 'Edit|Write' },
     })
 
     expect(Object.keys(result).sort()).toStrictEqual(
-      ['PostToolUse', 'PreToolUse', 'SessionStart', 'Stop', 'UserPromptSubmit'].sort(),
+      ['PostToolUse', 'PreCompact', 'PreToolUse', 'SessionStart', 'Stop', 'UserPromptSubmit'].sort(),
     )
     expect(result.SessionStart?.[0]?.hooks[0]?.command).toBe(
       './node_modules/.bin/wp-sessionstart-routing',

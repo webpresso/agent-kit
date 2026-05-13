@@ -223,18 +223,54 @@ function mergeSkillHooks(hooks: HooksMap, skillHooks: readonly SkillHook[]): Hoo
 // ── Shared webpresso hook construction ───────────────────────────────────────
 
 /**
- * Construct the canonical wp-* hook groups (SessionStart, PreToolUse,
- * PostToolUse, UserPromptSubmit, Stop). Delegates to buildClaudeHookGroups
- * in emitters/claude.ts which reads from WP_HOOK_SPECS in ir.ts.
- *
- * Kept exported for backward compatibility — callers should prefer
- * buildClaudeHookGroups directly.
+ * Construct the canonical 6 ak-* hook groups (SessionStart, PreToolUse,
+ * PostToolUse, PreCompact, UserPromptSubmit, Stop). Single source of truth —
+ * adding a new ak-* hook is one append here and propagates to both surfaces.
  */
 export function buildWebpressoHookGroups(input: {
   resolveBin: (name: string) => string
   matchers: MatcherSet
 }): HooksMap {
-  return buildClaudeHookGroups(input)
+  const { resolveBin, matchers } = input
+  return {
+    SessionStart: [
+      {
+        hooks: [{ type: 'command', command: resolveBin('ak-sessionstart-routing'), timeout: 5 }],
+      },
+      {
+        hooks: [{ type: 'command', command: resolveBin('ak-check-dev-link'), timeout: 5 }],
+      },
+    ],
+    PreToolUse: [
+      {
+        matcher: matchers.preToolUse,
+        hooks: [{ type: 'command', command: resolveBin('ak-pretool-guard'), timeout: 5 }],
+      },
+    ],
+    PostToolUse: [
+      {
+        matcher: matchers.postToolUse,
+        hooks: [{ type: 'command', command: resolveBin('ak-post-tool'), timeout: 15 }],
+      },
+    ],
+    // PreCompact: snapshot session memory before Claude Code compacts context.
+    // Snapshot is restored on SessionStart source=compact via ak-sessionstart-routing.
+    PreCompact: [
+      {
+        hooks: [{ type: 'command', command: resolveBin('ak-pre-compact'), timeout: 6 }],
+      },
+    ],
+    UserPromptSubmit: [
+      {
+        hooks: [{ type: 'command', command: resolveBin('ak-guard-switch'), timeout: 5 }],
+      },
+    ],
+    Stop: [
+      {
+        hooks: [{ type: 'command', command: resolveBin('ak-stop-qa') }],
+      },
+    ],
+  }
 }
 
 function normalizeCodexAgentKitCommands(hooks: HooksMap, repoRoot: string): HooksMap {

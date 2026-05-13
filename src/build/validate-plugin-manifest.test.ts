@@ -19,6 +19,14 @@ interface PluginManifest {
   author?: { name?: string; url?: string }
   skills: string
   commands: string
+  hooks: {
+    PreToolUse: HookEntry[]
+    PostToolUse: HookEntry[]
+    PreCompact: HookEntry[]
+    Stop: HookEntry[]
+    UserPromptSubmit: HookEntry[]
+    SessionStart: HookEntry[]
+  }
   mcpServers: Record<string, { command: string; args: string[] }>
 }
 
@@ -50,19 +58,54 @@ describe('plugin.json manifest', () => {
     expect(readManifest().commands).toBe('./commands')
   })
 
-  // Hooks are intentionally NOT declared in the plugin manifest. `wp setup`
-  // single-sources them into the consumer's .claude/settings.json instead.
-  // Declaring them here too would DOUBLE-FIRE: Claude Code does not dedup hooks
-  // across sources unless the command strings are identical, and the manifest's
-  // `node ${CLAUDE_PLUGIN_ROOT}/bin/*.js` command differs from the setup-written
-  // `.sh` launcher — so both run on every tool call (verified via a controlled
-  // `--plugin-dir` repro: a manifest hook and a settings.json hook with
-  // different commands both executed on a single Bash tool call). Plugin
-  // manifest hooks are also the less reliable surface (they fail to load in
-  // several Claude Code contexts), so settings.json is the single source.
-  it('declares NO hooks (single-sourced via wp setup into .claude/settings.json)', () => {
-    const manifest = JSON.parse(readManifestRaw()) as Record<string, unknown>
-    expect(manifest.hooks).toBeUndefined()
+  describe('hooks', () => {
+    it('PreToolUse matches Bash|Edit|Write|MultiEdit|WebFetch|Read|Grep and points at pretool-guard via bun + ${CLAUDE_PLUGIN_ROOT}', () => {
+      const [entry] = readManifest().hooks.PreToolUse
+      expect(entry!.matcher).toBe('Bash|Edit|Write|MultiEdit|WebFetch|Read|Grep')
+      const [handler] = entry!.hooks
+      expect(handler!.type).toBe('command')
+      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/pretool-guard/index.ts`)
+    })
+
+    it('PostToolUse matches Edit|Write|MultiEdit|Bash and points at post-tool/index.ts dispatcher', () => {
+      const [entry] = readManifest().hooks.PostToolUse
+      expect(entry!.matcher).toBe('Edit|Write|MultiEdit|Bash')
+      const [handler] = entry!.hooks
+      expect(handler!.type).toBe('command')
+      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/post-tool/index.ts`)
+    })
+
+    it('PreCompact has no matcher and points at pre-compact/index.ts', () => {
+      const [entry] = readManifest().hooks.PreCompact
+      expect(entry!.matcher).toBeUndefined()
+      const [handler] = entry!.hooks
+      expect(handler!.type).toBe('command')
+      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/pre-compact/index.ts`)
+    })
+
+    it('Stop has no matcher and points at qa-changed-files', () => {
+      const [entry] = readManifest().hooks.Stop
+      expect(entry!.matcher).toBeUndefined()
+      const [handler] = entry!.hooks
+      expect(handler!.type).toBe('command')
+      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/stop/qa-changed-files.ts`)
+    })
+
+    it('UserPromptSubmit points at guard-switch', () => {
+      const [entry] = readManifest().hooks.UserPromptSubmit
+      expect(entry!.matcher).toBeUndefined()
+      const [handler] = entry!.hooks
+      expect(handler!.type).toBe('command')
+      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/guard-switch/index.ts`)
+    })
+
+    it('SessionStart matches startup|resume|compact and points at sessionstart/index.ts', () => {
+      const [entry] = readManifest().hooks.SessionStart
+      expect(entry!.matcher).toBe('startup|resume|compact')
+      const [handler] = entry!.hooks
+      expect(handler!.type).toBe('command')
+      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/sessionstart/index.ts`)
+    })
   })
 
   describe('mcpServers', () => {

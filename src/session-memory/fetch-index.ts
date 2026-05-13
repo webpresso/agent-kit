@@ -1,100 +1,140 @@
-import { createHash } from 'node:crypto'
+/**
+ * HTTP fetch + index: fetch a URL, convert HTML to Markdown, index into the store.
+ * 24-hour cache via the sources table (skip re-fetch if indexed_at < 24h ago).
+ * Uses native fetch() — Node 24+ baseline, no undici or axios.
+ */
+import type { FetchIndexResult } from './types.js'
+import { getStore } from './store.js'
 
-import { SessionMemoryStore } from './store.js'
-import type { SessionMemoryChunk } from './types.js'
+const CACHE_TTL_MS = 24 * 60 * 60 * 1_000 // 24 hours
 
-type CacheEntry = { ts: number; body: string; contentType: string }
-
-export interface FetchAndIndexOptions {
-  url: string
-  store: SessionMemoryStore
-  source?: string
-  now?: number
-  timeoutMs?: number
-  fetchImpl?: typeof fetch
-}
-
-const cache = new Map<string, CacheEntry>()
-const TTL_MS = 24 * 60 * 60 * 1000
-
-export function clearFetchIndexCache(): void {
-  cache.clear()
-}
-
-function normalizeUrl(url: string): string {
-  const parsed = new URL(url)
-  parsed.hash = ''
-  return parsed.toString()
-}
-
-function htmlToMarkdown(html: string): string {
+/**
+ * Minimal HTML → Markdown converter.
+ * No external deps — strips tags, converts common block elements.
+ */
+export function htmlToMarkdown(html: string): string {
   return html
-    .replace(/<script[\s\S]*?<\/script>/giu, '')
-    .replace(/<style[\s\S]*?<\/style>/giu, '')
-    .replace(
-      /<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/giu,
-      (_match, level: string, text: string) => `${'#'.repeat(Number(level))} ${stripTags(text)}\n`,
-    )
-    .replace(/<li[^>]*>([\s\S]*?)<\/li>/giu, (_match, text: string) => `- ${stripTags(text)}\n`)
-    .replace(/<p[^>]*>([\s\S]*?)<\/p>/giu, (_match, text: string) => `${stripTags(text)}\n\n`)
-    .replace(/<br\s*\/?>/giu, '\n')
-    .replace(/<[^>]+>/gu, ' ')
-    .replace(/&nbsp;/gu, ' ')
-    .replace(/&amp;/gu, '&')
-    .replace(/&lt;/gu, '<')
-    .replace(/&gt;/gu, '>')
-    .replace(/[ \t]+/gu, ' ')
-    .replace(/\n{3,}/gu, '\n\n')
+    // Remove <head>...<head> entirely
+    .replace(/<head[\s\S]*?<\/head>/gi, '')
+    // Remove <script> blocks
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    // Remove <style> blocks
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    // Convert headings
+    .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, '# $1\n\n')
+    .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, '## $1\n\n')
+    .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, '### $1\n\n')
+    .replace(/<h4[^>]*>([\s\S]*?)<\/h4>/gi, '#### $1\n\n')
+    // Convert paragraphs
+    .replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '$1\n\n')
+    // Convert line breaks
+    .replace(/<br\s*\/?>/gi, '\n')
+    // Convert bold
+    .replace(/<(?:strong|b)[^>]*>([\s\S]*?)<\/(?:strong|b)>/gi, '**$1**')
+    // Convert italic
+    .replace(/<(?:em|i)[^>]*>([\s\S]*?)<\/(?:em|i)>/gi, '*$1*')
+    // Convert code
+    .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, '`$1`')
+    // Convert pre blocks
+    .replace(/<pre[^>]*>([\s\S]*?)<\/pre>/gi, '\n```\n$1\n```\n')
+    // Convert list items
+    .replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, '- $1\n')
+    // Convert anchors (keep text)
+    .replace(/<a[^>]*>([\s\S]*?)<\/a>/gi, '$1')
+    // Strip remaining tags
+    .replace(/<[^>]+>/g, '')
+    // Decode HTML entities
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    // Normalize whitespace: collapse 3+ blank lines to 2
+    .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
 
-function stripTags(html: string): string {
-  return html
-    .replace(/<[^>]+>/gu, ' ')
-    .replace(/[ \t\n]+/gu, ' ')
-    .trim()
-}
+/**
+ * Split markdown text into chunks of approximately chunkSize characters.
+ * Splits on paragraph boundaries where possible.
+ */
+export function splitIntoChunks(text: string, chunkSize = 1500): readonly string[] {
+  const paragraphs = text.split(/\n\n+/)
+  const chunks: string[] = []
+  let current = ''
 
-function toIndexableText(body: string, contentType: string): string {
-  if (contentType.includes('text/html')) return htmlToMarkdown(body)
-  if (contentType.includes('application/json')) return JSON.stringify(JSON.parse(body), null, 2)
-  return body
-}
-
-function chunkText(text: string, source: string): SessionMemoryChunk[] {
-  const paragraphs = text
-    .split(/\n{2,}/u)
-    .map((part) => part.trim())
-    .filter(Boolean)
-  const groups = paragraphs.length > 0 ? paragraphs : [text]
-  return groups.map((part, index) => ({
-    id: createHash('sha256').update(`${source}\n${index}\n${part}`).digest('hex').slice(0, 24),
-    source,
-    text: part,
-    metadata: { url: source, index },
-  }))
-}
-
-export async function fetchAndIndex(options: FetchAndIndexOptions): Promise<SessionMemoryChunk[]> {
-  const normalized = normalizeUrl(options.url)
-  const now = options.now ?? Date.now()
-  const cached = cache.get(normalized)
-  let entry = cached && now - cached.ts < TTL_MS ? cached : undefined
-  if (!entry) {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 10_000)
-    try {
-      const response = await (options.fetchImpl ?? fetch)(normalized, { signal: controller.signal })
-      const body = await response.text()
-      entry = { ts: now, body, contentType: response.headers.get('content-type') ?? 'text/plain' }
-      cache.set(normalized, entry)
-    } finally {
-      clearTimeout(timeout)
+  for (const para of paragraphs) {
+    if (current.length + para.length + 2 > chunkSize && current.length > 0) {
+      chunks.push(current.trim())
+      current = para
+    } else {
+      current = current ? `${current}\n\n${para}` : para
     }
   }
-  const text = toIndexableText(entry.body, entry.contentType)
-  const source = options.source ?? normalized
-  const chunks = chunkText(text, source)
-  options.store.indexChunks(chunks)
+
+  if (current.trim().length > 0) {
+    chunks.push(current.trim())
+  }
+
   return chunks
+}
+
+export interface FetchIndexOptions {
+  readonly url: string
+  readonly dbPath: string
+  /** Override cache TTL in ms (for testing) */
+  readonly cacheTtlMs?: number
+}
+
+/**
+ * Fetch a URL, convert to Markdown, and index into the session store.
+ * Respects 24h cache: if the source was indexed recently, skips re-fetch.
+ */
+export async function fetchAndIndex(options: FetchIndexOptions): Promise<FetchIndexResult> {
+  const { url, dbPath, cacheTtlMs = CACHE_TTL_MS } = options
+  const store = getStore(dbPath)
+  const db = store.getDb()
+
+  // Check cache
+  const existingSource = db
+    .prepare('SELECT indexed_at, chunk_count FROM sources WHERE label = ?')
+    .get(url) as { indexed_at: number; chunk_count: number } | undefined
+
+  if (existingSource && Date.now() - existingSource.indexed_at < cacheTtlMs) {
+    return {
+      url,
+      chunkCount: existingSource.chunk_count,
+      cached: true,
+      cachedAt: existingSource.indexed_at,
+    }
+  }
+
+  // Fetch the URL
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'agent-kit/session-memory-index (+https://github.com/webpresso/agent-kit)',
+      Accept: 'text/html,text/plain',
+    },
+    signal: AbortSignal.timeout(15_000),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${url}: HTTP ${response.status}`)
+  }
+
+  const contentType = response.headers.get('content-type') ?? ''
+  const rawText = await response.text()
+
+  const markdown = contentType.includes('text/html') ? htmlToMarkdown(rawText) : rawText
+
+  const chunks = splitIntoChunks(markdown)
+
+  store.insertChunks(chunks.map((content) => ({ content, source: url })))
+
+  return {
+    url,
+    chunkCount: chunks.length,
+    cached: false,
+  }
 }

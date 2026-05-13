@@ -19,7 +19,9 @@ import { existsSync, readFileSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-import { WP_ROUTING_BLOCK } from '#hooks/shared/routing-block'
+import { AK_ROUTING_BLOCK } from '#hooks/shared/routing-block'
+import { restore } from '#session-memory/session'
+import { computeRepoHash } from '#session-memory/repo-hash'
 
 import { readUpdateBanner } from './update-banner.js'
 import { isDirectEntrypoint } from '#hooks/shared/direct-entrypoint'
@@ -32,12 +34,39 @@ type StartInput = Record<string, unknown>
 type EnvLike = Record<string, string | undefined>
 
 /**
- * Pure function: given a parsed input payload, a working directory, and
+ * Build the session-knowledge XML block from restored session context.
+ *
+ * Format:
+ *   <session_knowledge>
+ *     <entry tool="..." ts="...">...</entry>
+ *     ...
+ *   </session_knowledge>
+ *
+ * Injected only when source=compact and restore finds relevant hits.
+ */
+export function buildSessionKnowledgeBlock(
+  hits: ReadonlyArray<{ content: string; source: string; tier: string }>,
+  query: string,
+): string {
+  if (hits.length === 0) return ''
+  const entries = hits
+    .map(
+      (h) =>
+        `  <entry source="${h.source.replace(/"/g, '&quot;')}" tier="${h.tier}">${h.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</entry>`,
+    )
+    .join('\n')
+  return `\n\n<session_knowledge query="${query.replace(/"/g, '&quot;')}">\n${entries}\n</session_knowledge>`
+}
+
+/**
+ * Async function: given a parsed input payload, a working directory, and
  * environment variables, produce the JSON string that the hook should write
  * to stdout. Always emits — never returns null. WP_ROUTING_BLOCK is always
  * prepended; `.agent/routing.md` content is appended when present and non-empty.
+ *
+ * When source=compact, also restores session context and injects <session_knowledge>.
  */
-export function buildOutput(_input: StartInput, cwd: string, env: EnvLike): string {
+export async function buildOutput(input: StartInput, cwd: string, env: EnvLike): Promise<string> {
   const projectDir =
     env.CLAUDE_PROJECT_DIR && env.CLAUDE_PROJECT_DIR.length > 0 ? env.CLAUDE_PROJECT_DIR : cwd
   const target = join(projectDir, '.agent', 'routing.md')
@@ -87,6 +116,30 @@ export function buildOutput(_input: StartInput, cwd: string, env: EnvLike): stri
     additionalContext += '\n\n' + updateBanner
   }
 
+  // Compact-source restore branch: when Claude Code restarts after compaction,
+  // restore relevant session context and inject <session_knowledge> block.
+  const source = typeof input.source === 'string' ? input.source : ''
+  if (source === 'compact') {
+    try {
+      const repoHash = computeRepoHash(projectDir)
+      // Use last user prompt as query if available, else generic query
+      const lastPrompt =
+        typeof input.last_user_prompt === 'string' && input.last_user_prompt.trim().length > 0
+          ? input.last_user_prompt.trim()
+          : 'recent session context'
+      const restoreResult = restore({ repoHash, query: lastPrompt, limit: 10 })
+      const knowledgeBlock = buildSessionKnowledgeBlock(restoreResult.hits, lastPrompt)
+      if (knowledgeBlock.length > 0) {
+        additionalContext += knowledgeBlock
+      }
+    } catch (err) {
+      // Non-blocking: log and continue without session knowledge
+      process.stderr.write(
+        `ak-sessionstart-routing: restore failed (non-fatal): ${(err as Error).message}\n`,
+      )
+    }
+  }
+
   return JSON.stringify({
     hookSpecificOutput: {
       hookEventName: 'SessionStart',
@@ -120,7 +173,7 @@ async function readStdin(): Promise<StartInput> {
 export async function main(): Promise<void> {
   try {
     const input = await readStdin()
-    const out = buildOutput(input, process.cwd(), process.env)
+    const out = await buildOutput(input, process.cwd(), process.env)
     process.stdout.write(out)
   } catch (err) {
     process.stderr.write(`wp-sessionstart-routing: ${(err as Error).message}\n`)

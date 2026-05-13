@@ -1,224 +1,364 @@
-import { Database } from '#db/sqlite.js'
+/**
+ * SQLite FTS5 store for session memory.
+ *
+ * Three-tier search fallback (porter → trigram → IDF-weighted Levenshtein).
+ * Algorithm credit: context-mode (ELv2) — ported to TypeScript, same logic.
+ *
+ * Schema is forward-compatible with v2 ctx-rs (Rust) engine.
+ * Migration v1→v2: swap engine binary, keep .db file — invisible to consumers.
+ */
+import { mkdirSync } from 'node:fs'
+import { dirname } from 'node:path'
 
-import type {
-  IndexedSessionMemoryChunk,
-  SessionMemoryChunk,
-  SessionMemorySearchOptions,
-  SessionMemorySearchResult,
-} from './types.js'
+import type Database from 'better-sqlite3'
+import BetterSqlite3 from 'better-sqlite3'
 
-type ChunkRow = {
-  id: string
-  source: string
-  text: string
-  metadata_json: string
-  created_at: string
-}
+import type { ChunkInsertInput, IndexStats, SearchHit, SearchOptions } from './types.js'
 
-type SearchTier = SessionMemorySearchResult['tier']
+const OPTIMIZE_EVERY = 50
+const DEFAULT_LIMIT = 5
 
-// Search fallback uses a three-tier local ranking design:
-// porter FTS, then trigram FTS, then IDF-weighted Levenshtein.
-const OPTIMIZE_INTERVAL = 50
+// ── Schema ───────────────────────────────────────────────────────────────────
 
 const SCHEMA_SQL = `
-CREATE TABLE IF NOT EXISTS session_memory_chunks (
-  id TEXT PRIMARY KEY,
-  source TEXT NOT NULL,
-  text TEXT NOT NULL,
-  metadata_json TEXT NOT NULL,
-  created_at TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_session_memory_chunks_source
-  ON session_memory_chunks(source);
-CREATE VIRTUAL TABLE IF NOT EXISTS session_memory_chunks_fts
-  USING fts5(id UNINDEXED, source UNINDEXED, text, tokenize='porter');
-CREATE VIRTUAL TABLE IF NOT EXISTS session_memory_chunks_tri
-  USING fts5(id UNINDEXED, source UNINDEXED, text, tokenize='trigram');
+  CREATE VIRTUAL TABLE IF NOT EXISTS chunks USING fts5(
+    content,
+    source,
+    tokenize='porter unicode61'
+  );
+
+  CREATE VIRTUAL TABLE IF NOT EXISTS chunks_trigram USING fts5(
+    content,
+    source,
+    tokenize='trigram'
+  );
+
+  CREATE TABLE IF NOT EXISTS sources(
+    id       INTEGER PRIMARY KEY,
+    label    TEXT    UNIQUE NOT NULL,
+    indexed_at   INTEGER NOT NULL,
+    chunk_count  INTEGER NOT NULL DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS vocabulary(
+    term      TEXT PRIMARY KEY,
+    idf_score REAL NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS sessions(
+    agent_id     TEXT NOT NULL,
+    snapshot_id  TEXT NOT NULL,
+    created_at   INTEGER NOT NULL,
+    status       TEXT NOT NULL,
+    content_json TEXT NOT NULL,
+    PRIMARY KEY (agent_id, snapshot_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS session_events(
+    session_id TEXT    NOT NULL,
+    event_id   TEXT    NOT NULL,
+    ts         INTEGER NOT NULL,
+    tool_name  TEXT    NOT NULL,
+    content    TEXT    NOT NULL,
+    PRIMARY KEY (session_id, event_id)
+  );
 `
 
-function tokenize(value: string): string[] {
-  return value
-    .toLowerCase()
-    .split(/[^a-z0-9]+/u)
-    .filter((token) => token.length > 0)
-}
-
-function escapeFtsQuery(query: string): string {
-  return tokenize(query)
-    .map((token) => `"${token.replaceAll('"', '""')}"`)
-    .join(' ')
-}
+// ── Levenshtein distance ─────────────────────────────────────────────────────
 
 function levenshtein(a: string, b: string): number {
-  const previous = Array.from({ length: b.length + 1 }, (_, index) => index)
-  const current = Array<number>(b.length + 1).fill(0)
-  for (let i = 1; i <= a.length; i += 1) {
-    current[0] = i
-    for (let j = 1; j <= b.length; j += 1) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1
-      current[j] = Math.min(current[j - 1]! + 1, previous[j]! + 1, previous[j - 1]! + cost)
+  if (a === b) return 0
+  if (a.length === 0) return b.length
+  if (b.length === 0) return a.length
+
+  const row: number[] = Array.from({ length: b.length + 1 }, (_, i) => i)
+
+  for (let i = 1; i <= a.length; i++) {
+    let prev = i
+    for (let j = 1; j <= b.length; j++) {
+      const val = a[i - 1] === b[j - 1] ? row[j - 1]! : Math.min(row[j - 1]!, row[j]!, prev) + 1
+      row[j - 1] = prev
+      prev = val
     }
-    previous.splice(0, previous.length, ...current)
+    row[b.length] = prev
   }
-  return previous[b.length] ?? 0
+  return row[b.length]!
 }
 
-function parseMetadata(raw: string): Record<string, unknown> {
-  const parsed = JSON.parse(raw) as unknown
-  return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
-    ? (parsed as Record<string, unknown>)
-    : {}
-}
+// ── Store class ──────────────────────────────────────────────────────────────
 
-export class SessionMemoryStore {
-  private readonly db: Database
-  private insertsSinceOptimize = 0
+export class SessionStore {
+  private readonly db: Database.Database
+  private insertCount = 0
 
-  constructor(dbPath: string | { readonly memory: true }) {
-    this.db = new Database(typeof dbPath === 'string' ? dbPath : ':memory:')
-    this.db.exec('PRAGMA journal_mode = WAL')
-    this.db.exec('PRAGMA synchronous = NORMAL')
-    this.db.exec('PRAGMA mmap_size = 268435456')
-    this.db.exec('PRAGMA busy_timeout = 5000')
+  constructor(dbPath: string) {
+    // Ensure directory exists
+    mkdirSync(dirname(dbPath), { recursive: true })
+
+    this.db = new BetterSqlite3(dbPath)
+
+    // Performance pragmas
+    this.db.pragma('journal_mode=WAL')
+    this.db.pragma('synchronous=NORMAL')
+    this.db.pragma(`mmap_size=${256 * 1024 * 1024}`)
+
+    // Initialize schema
     this.db.exec(SCHEMA_SQL)
+  }
+
+  /**
+   * Insert chunks. Idempotent per source: re-indexing a source removes old chunks
+   * and replaces them, so chunk count stays accurate.
+   */
+  insertChunks(chunks: readonly ChunkInsertInput[]): void {
+    const insertPorter = this.db.prepare<[string, string]>(
+      'INSERT INTO chunks(content, source) VALUES (?, ?)',
+    )
+    const insertTrigram = this.db.prepare<[string, string]>(
+      'INSERT INTO chunks_trigram(content, source) VALUES (?, ?)',
+    )
+    const upsertSource = this.db.prepare<[string, number, number]>(
+      `INSERT INTO sources(label, indexed_at, chunk_count)
+       VALUES (?, ?, ?)
+       ON CONFLICT(label) DO UPDATE SET indexed_at=excluded.indexed_at, chunk_count=excluded.chunk_count`,
+    )
+    const deletePorter = this.db.prepare<[string]>(
+      "DELETE FROM chunks WHERE source = ?",
+    )
+    const deleteTrigram = this.db.prepare<[string]>(
+      "DELETE FROM chunks_trigram WHERE source = ?",
+    )
+
+    const runBatch = this.db.transaction((chunkBatch: readonly ChunkInsertInput[]) => {
+      // Group by source for idempotent re-index
+      const bySource = new Map<string, ChunkInsertInput[]>()
+      for (const c of chunkBatch) {
+        const existing = bySource.get(c.source) ?? []
+        existing.push(c)
+        bySource.set(c.source, existing)
+      }
+
+      for (const [source, sourceChunks] of bySource) {
+        // Remove old entries for this source
+        deletePorter.run(source)
+        deleteTrigram.run(source)
+
+        // Insert new chunks
+        for (const chunk of sourceChunks) {
+          insertPorter.run(chunk.content, chunk.source)
+          insertTrigram.run(chunk.content, chunk.source)
+        }
+
+        upsertSource.run(source, Date.now(), sourceChunks.length)
+      }
+    })
+
+    runBatch(chunks)
+
+    this.insertCount += chunks.length
+    if (this.insertCount >= OPTIMIZE_EVERY) {
+      this.db.exec("INSERT INTO chunks(chunks) VALUES('optimize')")
+      this.insertCount = 0
+    }
+
+    // Update vocabulary IDF scores after bulk insert
+    this.updateVocabulary()
+  }
+
+  /**
+   * Three-tier search:
+   *   1. Porter FTS5 BM25 (best semantic match)
+   *   2. Trigram FTS5 (substring / partial-word match)
+   *   3. IDF-weighted Levenshtein (fuzzy fallback for typos)
+   *
+   * Algorithm credit: context-mode (ELv2) — same algorithm, ported to TypeScript.
+   */
+  search(options: SearchOptions): readonly SearchHit[] {
+    const limit = options.limit ?? DEFAULT_LIMIT
+    const { query, source } = options
+
+    // Tier 1: Porter FTS5 BM25
+    const porterHits = this.searchPorter(query, limit, source)
+    if (porterHits.length > 0) return porterHits
+
+    // Tier 2: Trigram FTS5
+    const trigramHits = this.searchTrigram(query, limit, source)
+    if (trigramHits.length > 0) return trigramHits
+
+    // Tier 3: IDF-weighted Levenshtein
+    return this.searchLevenshtein(query, limit, source)
+  }
+
+  stats(): IndexStats {
+    const chunkCount = (
+      this.db.prepare('SELECT COUNT(*) as cnt FROM chunks').get() as { cnt: number }
+    ).cnt
+    const sourceCount = (
+      this.db.prepare('SELECT COUNT(*) as cnt FROM sources').get() as { cnt: number }
+    ).cnt
+    return { chunkCount, sourceCount }
   }
 
   close(): void {
     this.db.close()
   }
 
-  indexChunk(chunk: SessionMemoryChunk): void {
-    const createdAt = chunk.createdAt ?? new Date().toISOString()
-    const metadataJson = JSON.stringify(chunk.metadata ?? {})
-    this.db
-      .prepare<[string, string, string, string, string]>(
-        `INSERT INTO session_memory_chunks (id, source, text, metadata_json, created_at)
-         VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET
-           source = excluded.source,
-           text = excluded.text,
-           metadata_json = excluded.metadata_json,
-           created_at = excluded.created_at`,
-      )
-      .run(chunk.id, chunk.source, chunk.text, metadataJson, createdAt)
-    this.db.prepare<[string]>('DELETE FROM session_memory_chunks_fts WHERE id = ?').run(chunk.id)
-    this.db.prepare<[string]>('DELETE FROM session_memory_chunks_tri WHERE id = ?').run(chunk.id)
-    this.db
-      .prepare<[string, string, string]>(
-        'INSERT INTO session_memory_chunks_fts (id, source, text) VALUES (?, ?, ?)',
-      )
-      .run(chunk.id, chunk.source, chunk.text)
-    this.db
-      .prepare<[string, string, string]>(
-        'INSERT INTO session_memory_chunks_tri (id, source, text) VALUES (?, ?, ?)',
-      )
-      .run(chunk.id, chunk.source, chunk.text)
-    this.insertsSinceOptimize += 1
-    if (this.insertsSinceOptimize >= OPTIMIZE_INTERVAL) {
-      this.db.exec(
-        "INSERT INTO session_memory_chunks_fts(session_memory_chunks_fts) VALUES('optimize')",
-      )
-      this.db.exec(
-        "INSERT INTO session_memory_chunks_tri(session_memory_chunks_tri) VALUES('optimize')",
-      )
-      this.insertsSinceOptimize = 0
+  /** Expose the raw database for session operations (session.ts uses it). */
+  getDb(): Database.Database {
+    return this.db
+  }
+
+  // ── Private helpers ─────────────────────────────────────────────────────────
+
+  private searchPorter(query: string, limit: number, source?: string): readonly SearchHit[] {
+    try {
+      // Escape FTS5 query — wrap in quotes to handle special chars
+      const ftsQuery = `"${query.replace(/"/g, '""')}"`
+      const sql = source
+        ? 'SELECT content, source, rank FROM chunks WHERE source = ? AND chunks MATCH ? ORDER BY rank LIMIT ?'
+        : 'SELECT content, source, rank FROM chunks WHERE chunks MATCH ? ORDER BY rank LIMIT ?'
+      const rows = source
+        ? (this.db.prepare(sql).all(source, ftsQuery, limit) as Array<{
+            content: string
+            source: string
+            rank: number
+          }>)
+        : (this.db.prepare(sql).all(ftsQuery, limit) as Array<{
+            content: string
+            source: string
+            rank: number
+          }>)
+
+      return rows.map((r) => ({ ...r, tier: 'porter' as const }))
+    } catch {
+      // FTS5 syntax error or empty result — fall through to trigram
+      return []
     }
   }
 
-  indexChunks(chunks: readonly SessionMemoryChunk[]): void {
-    const tx = this.db.transaction((items: unknown) => {
-      for (const chunk of items as readonly SessionMemoryChunk[]) this.indexChunk(chunk)
+  private searchTrigram(query: string, limit: number, source?: string): readonly SearchHit[] {
+    try {
+      const ftsQuery = `"${query.replace(/"/g, '""')}"`
+      const sql = source
+        ? 'SELECT content, source, rank FROM chunks_trigram WHERE source = ? AND chunks_trigram MATCH ? ORDER BY rank LIMIT ?'
+        : 'SELECT content, source, rank FROM chunks_trigram WHERE chunks_trigram MATCH ? ORDER BY rank LIMIT ?'
+      const rows = source
+        ? (this.db.prepare(sql).all(source, ftsQuery, limit) as Array<{
+            content: string
+            source: string
+            rank: number
+          }>)
+        : (this.db.prepare(sql).all(ftsQuery, limit) as Array<{
+            content: string
+            source: string
+            rank: number
+          }>)
+
+      return rows.map((r) => ({ ...r, tier: 'trigram' as const }))
+    } catch {
+      return []
+    }
+  }
+
+  private searchLevenshtein(query: string, limit: number, source?: string): readonly SearchHit[] {
+    // IDF-weighted Levenshtein: score candidates by edit distance then weight by IDF
+    const candidateSql = source
+      ? 'SELECT content, source FROM chunks WHERE source = ? LIMIT 500'
+      : 'SELECT content, source FROM chunks LIMIT 500'
+    const candidates = source
+      ? (this.db.prepare(candidateSql).all(source) as Array<{
+          content: string
+          source: string
+        }>)
+      : (this.db.prepare(candidateSql).all() as Array<{ content: string; source: string }>)
+
+    if (candidates.length === 0) return []
+
+    // Fetch IDF scores for query terms
+    const terms = query.toLowerCase().split(/\s+/).filter(Boolean)
+    const idfMap = new Map<string, number>()
+    for (const term of terms) {
+      const row = this.db
+        .prepare('SELECT idf_score FROM vocabulary WHERE term = ?')
+        .get(term) as { idf_score: number } | undefined
+      idfMap.set(term, row?.idf_score ?? 1.0)
+    }
+
+    const scored = candidates.map((c) => {
+      const words = c.content.toLowerCase().split(/\s+/).filter(Boolean)
+      // Minimum Levenshtein distance between query and any word in content
+      let minDist = Infinity
+      let idfWeight = 1.0
+      for (const term of terms) {
+        for (const word of words) {
+          const dist = levenshtein(term, word)
+          if (dist < minDist) {
+            minDist = dist
+            idfWeight = idfMap.get(term) ?? 1.0
+          }
+        }
+      }
+      // Lower distance + higher IDF = better score (negative for rank convention)
+      const score = minDist === Infinity ? Infinity : minDist / idfWeight
+      return { content: c.content, source: c.source, rank: score, tier: 'levenshtein' as const }
     })
-    tx(chunks)
-  }
 
-  search(options: SessionMemorySearchOptions): SessionMemorySearchResult[] {
-    const limit = options.limit ?? 5
-    const ftsQuery = escapeFtsQuery(options.query)
-    if (!ftsQuery) return []
-    const scoped = this.searchFts('porter', ftsQuery, options.source, limit)
-    if (scoped.length > 0) return scoped
-    const trigram = this.searchFts('trigram', ftsQuery, options.source, limit)
-    if (trigram.length > 0) return trigram
-    const fuzzy = this.searchLevenshtein(options.query, options.source, limit)
-    if (fuzzy.length > 0) return fuzzy
-    return options.source ? this.search({ ...options, source: undefined }) : []
-  }
-
-  count(): number {
-    const row = this.db
-      .prepare<[], { count: number }>('SELECT COUNT(*) AS count FROM session_memory_chunks')
-      .get()
-    return row?.count ?? 0
-  }
-
-  private searchFts(
-    tier: Exclude<SearchTier, 'levenshtein'>,
-    query: string,
-    source: string | undefined,
-    limit: number,
-  ): SessionMemorySearchResult[] {
-    const table = tier === 'porter' ? 'session_memory_chunks_fts' : 'session_memory_chunks_tri'
-    const sourceFilter = source ? 'AND c.source = ?' : ''
-    const params = source
-      ? ([query, source, limit] as [string, string, number])
-      : ([query, limit] as [string, number])
-    const rows = this.db
-      .prepare<typeof params, ChunkRow & { score: number }>(
-        `SELECT c.id, c.source, c.text, c.metadata_json, c.created_at, bm25(${table}) * -1 AS score
-         FROM ${table} f
-         JOIN session_memory_chunks c ON c.id = f.id
-         WHERE ${table} MATCH ? ${sourceFilter}
-         ORDER BY score DESC
-         LIMIT ?`,
-      )
-      .all(...params)
-    return rows.map((row) => this.mapResult(row, row.score, tier))
-  }
-
-  private searchLevenshtein(
-    query: string,
-    source: string | undefined,
-    limit: number,
-  ): SessionMemorySearchResult[] {
-    const rows = source
-      ? this.db
-          .prepare<[string], ChunkRow>(
-            'SELECT id, source, text, metadata_json, created_at FROM session_memory_chunks WHERE source = ?',
-          )
-          .all(source)
-      : this.db
-          .prepare<[], ChunkRow>(
-            'SELECT id, source, text, metadata_json, created_at FROM session_memory_chunks',
-          )
-          .all()
-    const queryTokens = tokenize(query)
-    return rows
-      .map((row) => {
-        const textTokens = tokenize(row.text)
-        const bestDistance = Math.min(
-          ...queryTokens.map((needle) =>
-            Math.min(...textTokens.map((token) => levenshtein(needle, token))),
-          ),
-        )
-        const idfWeight = 1 + Math.log(1 + rows.length / Math.max(1, textTokens.length))
-        return { row, score: idfWeight / (1 + bestDistance) }
-      })
-      .filter((item) => Number.isFinite(item.score) && item.score > 0.15)
-      .sort((a, b) => b.score - a.score)
+    return scored
+      .sort((a, b) => a.rank - b.rank)
       .slice(0, limit)
-      .map((item) => this.mapResult(item.row, item.score, 'levenshtein'))
+      .filter((h) => h.rank < Infinity)
   }
 
-  private mapResult(row: ChunkRow, score: number, tier: SearchTier): SessionMemorySearchResult {
-    const chunk: IndexedSessionMemoryChunk = {
-      id: row.id,
-      source: row.source,
-      text: row.text,
-      metadata: parseMetadata(row.metadata_json),
-      createdAt: row.created_at,
+  private updateVocabulary(): void {
+    // Compute IDF scores: log(N / df) where N = total docs, df = docs containing term
+    // Simplified: use FTS5 term statistics via content scan (vocabulary is best-effort)
+    try {
+      const rows = this.db
+        .prepare('SELECT content FROM chunks LIMIT 2000')
+        .all() as Array<{ content: string }>
+      const n = rows.length
+      if (n === 0) return
+
+      const df = new Map<string, number>()
+      for (const row of rows) {
+        const terms = new Set(row.content.toLowerCase().split(/\s+/).filter(Boolean))
+        for (const term of terms) {
+          df.set(term, (df.get(term) ?? 0) + 1)
+        }
+      }
+
+      const upsert = this.db.prepare<[string, number]>(
+        'INSERT INTO vocabulary(term, idf_score) VALUES(?, ?) ON CONFLICT(term) DO UPDATE SET idf_score=excluded.idf_score',
+      )
+      const batch = this.db.transaction(() => {
+        for (const [term, docFreq] of df) {
+          const idf = Math.log((n + 1) / (docFreq + 1)) + 1
+          upsert.run(term, idf)
+        }
+      })
+      batch()
+    } catch {
+      // Vocabulary update is best-effort; never block on failure
     }
-    return { ...chunk, score, tier }
+  }
+}
+
+// ── Store registry (one instance per db path) ────────────────────────────────
+
+const registry = new Map<string, SessionStore>()
+
+export function getStore(dbPath: string): SessionStore {
+  const existing = registry.get(dbPath)
+  if (existing) return existing
+  const store = new SessionStore(dbPath)
+  registry.set(dbPath, store)
+  return store
+}
+
+export function closeStore(dbPath: string): void {
+  const store = registry.get(dbPath)
+  if (store) {
+    store.close()
+    registry.delete(dbPath)
   }
 }

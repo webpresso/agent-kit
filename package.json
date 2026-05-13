@@ -166,7 +166,8 @@
     "#*.js": "./src/blueprint/*.ts",
     "#*": "./src/blueprint/*.ts",
     "#deploy/*.js": "./src/deploy/*.ts",
-    "#deploy/*": "./src/deploy/*.ts"
+    "#deploy/*": "./src/deploy/*.ts",
+    "#session-memory/*": "./src/session-memory/*.ts"
   },
   "exports": {
     ".": {
