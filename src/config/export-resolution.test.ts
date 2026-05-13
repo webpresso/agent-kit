@@ -115,6 +115,13 @@ describe('webpresso folded package exports', () => {
     expect(packageJson.files).toContain('src')
   })
 
+  it('maps tsconfig package exports directly to physical json files for TypeScript extends', async () => {
+    const packageJson = await readCanonicalPackageJson()
+
+    expect(packageJson.exports?.['./tsconfig/webpresso.json']).toBe('./tsconfig/webpresso.json')
+    expect(packageJson.exports?.['./tsconfig/webpresso']).toBe('./tsconfig/webpresso.json')
+  })
+
   it('keeps hook bins and wires folded docs-lint bins to local entrypoints', async () => {
     const packageJson = await readCanonicalPackageJson()
 

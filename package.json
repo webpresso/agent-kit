@@ -195,48 +195,13 @@
         "default": "./dist/esm/e2e/index.js"
       }
     },
-    "./tsconfig/base.json": {
-      "import": {
-        "types": "./dist/esm/config/tsconfig/base.json",
-        "default": "./dist/esm/config/tsconfig/base.json"
-      }
-    },
-    "./tsconfig/cloudflare.json": {
-      "import": {
-        "types": "./dist/esm/config/tsconfig/cloudflare.json",
-        "default": "./dist/esm/config/tsconfig/cloudflare.json"
-      }
-    },
-    "./tsconfig/library.json": {
-      "import": {
-        "types": "./dist/esm/config/tsconfig/library.json",
-        "default": "./dist/esm/config/tsconfig/library.json"
-      }
-    },
-    "./tsconfig/react-library.json": {
-      "import": {
-        "types": "./dist/esm/config/tsconfig/react-library.json",
-        "default": "./dist/esm/config/tsconfig/react-library.json"
-      }
-    },
-    "./tsconfig/react-router.json": {
-      "import": {
-        "types": "./dist/esm/config/tsconfig/react-router.json",
-        "default": "./dist/esm/config/tsconfig/react-router.json"
-      }
-    },
-    "./tsconfig/webpresso.json": {
-      "import": {
-        "types": "./dist/esm/config/tsconfig/webpresso.json",
-        "default": "./dist/esm/config/tsconfig/webpresso.json"
-      }
-    },
-    "./tsconfig/webpresso": {
-      "import": {
-        "types": "./dist/esm/config/tsconfig/webpresso.json",
-        "default": "./dist/esm/config/tsconfig/webpresso.json"
-      }
-    },
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./tsconfig/cloudflare.json": "./tsconfig/cloudflare.json",
+    "./tsconfig/library.json": "./tsconfig/library.json",
+    "./tsconfig/react-library.json": "./tsconfig/react-library.json",
+    "./tsconfig/react-router.json": "./tsconfig/react-router.json",
+    "./tsconfig/webpresso.json": "./tsconfig/webpresso.json",
+    "./tsconfig/webpresso": "./tsconfig/webpresso.json",
     "./vitest/node": {
       "import": {
         "types": "./dist/esm/config/vitest/node.d.ts",

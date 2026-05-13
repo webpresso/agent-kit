@@ -1,5 +1,10 @@
 #!/usr/bin/env sh
 set -eu
-# Use the direct binary path — npx exits 1 in some closed-stdin git-commit
-# subshell contexts (npm/11.x quirk), causing silent pre-commit failures.
-"$(git rev-parse --show-toplevel)/node_modules/.bin/ak" audit guardrails
+# Prefer the installed ak bin, but root package worktrees do not always link their
+# own bin into node_modules/.bin. Fall back to the source CLI so hooks still run.
+AK_BIN="$(git rev-parse --show-toplevel)/node_modules/.bin/ak"
+if [ -x "$AK_BIN" ]; then
+  "$AK_BIN" audit guardrails
+else
+  bun "$(git rev-parse --show-toplevel)/src/cli/cli.ts" audit guardrails
+fi
