@@ -1,0 +1,8 @@
+{
+    "$schema": "https://json.schemastore.org/tsconfig",
+    "display": "Webpresso Internal",
+    "extends": "./base.json",
+    "compilerOptions": {
+        "customConditions": ["@webpresso/source"]
+    }
+}
