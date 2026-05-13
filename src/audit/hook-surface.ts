@@ -310,7 +310,9 @@ export interface HookSurfaceOptions {
 /**
  * Run the hook-surface audit.
  */
-export function auditHookSurface(projectDirOrOpts?: string | HookSurfaceOptions): HookSurfaceResult {
+export function auditHookSurface(
+  projectDirOrOpts?: string | HookSurfaceOptions,
+): HookSurfaceResult {
   const opts: HookSurfaceOptions =
     typeof projectDirOrOpts === 'string'
       ? { projectDir: projectDirOrOpts }

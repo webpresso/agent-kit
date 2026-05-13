@@ -4,7 +4,12 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { auditHookSurface, auditHookSurfaceAsRepoResult, detectDrift, extractOwner } from './hook-surface.js'
+import {
+  auditHookSurface,
+  auditHookSurfaceAsRepoResult,
+  detectDrift,
+  extractOwner,
+} from './hook-surface.js'
 import type { HookEntry } from './hook-surface.js'
 
 // ---------------------------------------------------------------------------
@@ -62,7 +67,10 @@ afterEach(() => {
 })
 
 // Shorthand: build options that isolate from the real ~/.claude/settings.json
-function opts(extraProjectHooks?: Record<string, unknown>): { projectDir: string; userSettingsPath: string } {
+function opts(extraProjectHooks?: Record<string, unknown>): {
+  projectDir: string
+  userSettingsPath: string
+} {
   if (extraProjectHooks) {
     writeSettings(tempRepo.claudeDir, extraProjectHooks)
   }
@@ -82,17 +90,13 @@ describe('auditHookSurface — passing', () => {
   })
 
   it('passes when only RTK is on the Bash matcher (project level)', () => {
-    const result = auditHookSurface(
-      opts({ PreToolUse: [hookGroup('Bash', ['rtk hook claude'])] }),
-    )
+    const result = auditHookSurface(opts({ PreToolUse: [hookGroup('Bash', ['rtk hook claude'])] }))
     expect(result.passed).toBe(true)
     expect(result.details.violations).toHaveLength(0)
   })
 
   it('passes when only pretool-guard is on the Bash matcher (project level)', () => {
-    const result = auditHookSurface(
-      opts({ PreToolUse: [hookGroup('Bash', ['ak-pretool-guard'])] }),
-    )
+    const result = auditHookSurface(opts({ PreToolUse: [hookGroup('Bash', ['ak-pretool-guard'])] }))
     expect(result.passed).toBe(true)
     expect(result.details.violations).toHaveLength(0)
   })
@@ -201,14 +205,20 @@ describe('auditHookSurface — violations', () => {
 describe('auditHookSurface — parse error handling', () => {
   it('reports a parse error in details when project settings.json is malformed JSON', () => {
     writeFileSync(path.join(tempRepo.claudeDir, 'settings.json'), '{ bad json }', 'utf8')
-    const result = auditHookSurface({ projectDir: tempRepo.cwd, userSettingsPath: tempRepo.userSettingsFile })
+    const result = auditHookSurface({
+      projectDir: tempRepo.cwd,
+      userSettingsPath: tempRepo.userSettingsFile,
+    })
     expect(result.passed).toBe(false)
     expect(result.details.violations.some((v) => v.event === 'parse-error')).toBe(true)
   })
 
   it('does not crash when project settings.json is empty', () => {
     writeFileSync(path.join(tempRepo.claudeDir, 'settings.json'), '', 'utf8')
-    const result = auditHookSurface({ projectDir: tempRepo.cwd, userSettingsPath: tempRepo.userSettingsFile })
+    const result = auditHookSurface({
+      projectDir: tempRepo.cwd,
+      userSettingsPath: tempRepo.userSettingsFile,
+    })
     // Empty file is a parse error (not valid JSON) but must not throw
     expect(result).toHaveProperty('passed')
   })
@@ -286,7 +296,11 @@ describe('detectDrift', () => {
   // TC-01: cross-owner same-event → allowed
   it('TC-01: allows agent-kit and context-mode to share the same runtime+event', () => {
     const hooks: readonly HookEntry[] = [
-      { runtime: 'codex', event: 'SessionStart', command: './node_modules/.bin/ak-sessionstart-routing' },
+      {
+        runtime: 'codex',
+        event: 'SessionStart',
+        command: './node_modules/.bin/ak-sessionstart-routing',
+      },
       { runtime: 'codex', event: 'SessionStart', command: 'context-mode hook codex sessionstart' },
     ]
     expect(detectDrift(hooks)).toHaveLength(0)
@@ -295,8 +309,18 @@ describe('detectDrift', () => {
   // TC-02: same-owner + same-command → drift
   it('TC-02: flags context-mode self-duplication as drift', () => {
     const hooks: readonly HookEntry[] = [
-      { runtime: 'codex', event: 'PreToolUse', matcher: 'Bash', command: 'context-mode hook codex pretooluse' },
-      { runtime: 'codex', event: 'PreToolUse', matcher: 'Edit', command: 'context-mode hook codex pretooluse' },
+      {
+        runtime: 'codex',
+        event: 'PreToolUse',
+        matcher: 'Bash',
+        command: 'context-mode hook codex pretooluse',
+      },
+      {
+        runtime: 'codex',
+        event: 'PreToolUse',
+        matcher: 'Edit',
+        command: 'context-mode hook codex pretooluse',
+      },
     ]
     const violations = detectDrift(hooks)
     expect(violations).toHaveLength(1)
@@ -326,8 +350,18 @@ describe('detectDrift', () => {
   // TC-06: same command across different matchers → still drift (dedup key ignores matcher)
   it('TC-06: flags same context-mode command across different matchers as drift', () => {
     const hooks: readonly HookEntry[] = [
-      { runtime: 'codex', event: 'PreToolUse', matcher: 'Bash', command: 'context-mode hook codex pretooluse' },
-      { runtime: 'codex', event: 'PreToolUse', matcher: 'Write', command: 'context-mode hook codex pretooluse' },
+      {
+        runtime: 'codex',
+        event: 'PreToolUse',
+        matcher: 'Bash',
+        command: 'context-mode hook codex pretooluse',
+      },
+      {
+        runtime: 'codex',
+        event: 'PreToolUse',
+        matcher: 'Write',
+        command: 'context-mode hook codex pretooluse',
+      },
     ]
     const violations = detectDrift(hooks)
     expect(violations).toHaveLength(1)
@@ -343,7 +377,11 @@ describe('detectDrift', () => {
     const hooks: readonly HookEntry[] = [
       { runtime: 'codex', event: 'Stop', command: './node_modules/.bin/ak-stop-qa' },
       { runtime: 'codex', event: 'Stop', command: 'context-mode hook codex stop' },
-      { runtime: 'codex', event: 'Stop', command: 'node /path/oh-my-codex/dist/scripts/codex-native-hook.js' },
+      {
+        runtime: 'codex',
+        event: 'Stop',
+        command: 'node /path/oh-my-codex/dist/scripts/codex-native-hook.js',
+      },
     ]
     expect(detectDrift(hooks)).toHaveLength(0)
   })
