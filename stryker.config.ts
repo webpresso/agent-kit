@@ -1,5 +1,22 @@
 import { baseConfig } from '@webpresso/agent-stryker'
 
+function parseMutationFilesFromEnv(value: string | undefined): string[] | null {
+  const files =
+    value
+      ?.split(/\r?\n/)
+      .map((file) => file.trim())
+      .filter(Boolean) ?? []
+
+  return files.length > 0 ? files : null
+}
+
+const defaultMutate = [
+  'src/**/*.ts',
+  '!src/**/*.test.ts',
+  '!src/**/*.d.ts',
+  '!src/**/__fixtures__/**',
+]
+
 const config = {
   ...baseConfig,
   thresholds: {
@@ -26,7 +43,7 @@ const config = {
   incremental: true,
   incrementalFile: 'reports/stryker-incremental.json',
   concurrency: 6,
-  mutate: ['src/**/*.ts', '!src/**/*.test.ts', '!src/**/*.d.ts', '!src/**/__fixtures__/**'],
+  mutate: parseMutationFilesFromEnv(process.env.STRYKER_MUTATE_FILES) ?? defaultMutate,
 }
 
 export default config

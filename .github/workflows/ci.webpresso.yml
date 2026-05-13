@@ -69,12 +69,15 @@ jobs:
 
   mutation:
     runs-on: ubicloud-standard-2
-    # Mutation testing is expensive — run on main pushes and weekly schedule only
+    # Mutation testing is expensive — push runs mutate only changed source files;
+    # the weekly schedule still runs the full configured mutation set.
     if: >
       (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) ||
       github.event_name == 'schedule'
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v5
         with:
@@ -92,10 +95,37 @@ jobs:
       - name: Clear cache for scheduled full run
         if: github.event_name == 'schedule'
         run: rm -f reports/stryker-incremental.json
+      - name: Select changed source files for push mutation
+        if: github.event_name == 'push'
+        id: mutation_scope
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git diff --name-only HEAD^ HEAD -- 'src/**/*.ts' \
+            | grep -vE '(^|/)(__fixtures__|.*\.test\.ts$|.*\.d\.ts$)' \
+            > /tmp/stryker-mutated-files || true
+
+          if [ ! -s /tmp/stryker-mutated-files ]; then
+            echo "has_files=false" >> "$GITHUB_OUTPUT"
+            echo "No changed source files for mutation."
+            exit 0
+          fi
+
+          echo "has_files=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "STRYKER_MUTATE_FILES<<EOF"
+            cat /tmp/stryker-mutated-files
+            echo "EOF"
+          } >> "$GITHUB_ENV"
       - run: pnpm install --frozen-lockfile
         env:
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
       - name: Run mutation tests
+        if: github.event_name == 'schedule' || steps.mutation_scope.outputs.has_files == 'true'
         run: pnpm test:mutation
         env:
           STRYKER_CONCURRENCY: '4'
+      - name: Skip mutation tests
+        if: github.event_name == 'push' && steps.mutation_scope.outputs.has_files != 'true'
+        run: echo "Skipped mutation because this push did not change source files."
