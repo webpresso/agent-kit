@@ -468,7 +468,7 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 
 #### Task 6.1: `ak_session_execute` — single-command output sandboxing (ctx-rs backed)
 
-**Status:** done (implemented in this session)
+**Status:** done
 
 **Depends:** Wave 4
 
@@ -479,15 +479,15 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 **Purpose:** Replaces `ctx_execute` — runs a shell command, indexes output >2KB via ctx-rs FFI `index()`, returns compact summary.
 
 **Acceptance:**
-- [ ] small output returned directly
-- [ ] large output indexed via ctx-rs
-- [ ] query triggers FTS5 search
-- [ ] error returns structured envelope
-- [ ] graceful disable (AK_DISABLE_CTX) falls through to TS engine
+- [x] small output returned directly
+- [x] large output indexed via ctx-rs
+- [x] query triggers FTS5 search
+- [x] error returns structured envelope
+- [x] graceful disable (AK_DISABLE_CTX) falls through to TS engine
 
 #### Task 6.2: `ak_session_batch_execute` — parallel batch with search (ctx-rs backed)
 
-**Status:** done (implemented in this session)
+**Status:** done
 
 **Depends:** Wave 4
 
@@ -498,14 +498,14 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 **Purpose:** Replaces `ctx_batch_execute` — runs N commands, indexes all large outputs via ctx-rs, cross-command FTS5 search in one round trip.
 
 **Acceptance:**
-- [ ] concurrency respects max 8
-- [ ] all outputs indexed via ctx-rs
-- [ ] queries return cross-command hits
-- [ ] graceful disable falls through to TS
+- [x] concurrency respects max 8
+- [x] all outputs indexed via ctx-rs
+- [x] queries return cross-command hits
+- [x] graceful disable falls through to TS
 
 #### Task 6.3: Expanded PostToolUse capture coverage
 
-**Status:** done (implemented in this session)
+**Status:** done
 
 **Depends:** Wave 4
 
@@ -516,13 +516,13 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 **Purpose:** Extends capture from Bash/Edit/Write/MultiEdit to Read/Grep/WebFetch/mcp__; capture goes through ctx-rs FFI.
 
 **Acceptance:**
-- [ ] Read/Grep/WebFetch/mcp__ events captured
-- [ ] capture uses ctx-rs `captureEvent` sync FFI
-- [ ] graceful disable uses TS fallback
+- [x] Read/Grep/WebFetch/mcp__ events captured
+- [x] capture uses ctx-rs `captureEvent` sync FFI
+- [x] graceful disable uses TS fallback
 
 #### Task 6.4: Routing guidance — nudge Claude toward ak_session_execute
 
-**Status:** done (implemented in this session)
+**Status:** done
 
 **Depends:** Wave 4
 
@@ -533,8 +533,8 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 **Purpose:** SessionStart routing block tells Claude to route large-output commands through `ak_session_execute`.
 
 **Acceptance:**
-- [ ] AK_ROUTING_BLOCK includes ak_session_execute decision row
-- [ ] context-mode-routing.md updated
+- [x] AK_ROUTING_BLOCK includes ak_session_execute decision row
+- [x] context-mode-routing.md updated
 
 ---
 

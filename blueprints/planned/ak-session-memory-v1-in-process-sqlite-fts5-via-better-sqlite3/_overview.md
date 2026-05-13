@@ -520,7 +520,7 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 
 #### Task 5.1: `ak_session_execute` — single-command output sandboxing
 
-**Status:** done (implemented in this session)
+**Status:** done
 
 **Depends:** Task 1.1, 1.2 (session store + session primitives)
 
@@ -531,16 +531,16 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 **Purpose:** Replaces `ctx_execute` — runs a shell command, indexes output >2KB into FTS5, returns compact summary instead of flooding context window.
 
 **Acceptance:**
-- [ ] small output (<2KB) returned directly in response
-- [ ] large output (≥2KB) indexed into FTS5 + compact summary returned
-- [ ] `query` param triggers FTS5 search over indexed content from this command
-- [ ] error returns structured envelope `{ ok: false, error: string, exitCode: number }`
+- [x] small output (<2KB) returned directly in response
+- [x] large output (≥2KB) indexed into FTS5 + compact summary returned
+- [x] `query` param triggers FTS5 search over indexed content from this command
+- [x] error returns structured envelope `{ ok: false, error: string, exitCode: number }`
 
 ---
 
 #### Task 5.2: `ak_session_batch_execute` — parallel batch with search
 
-**Status:** done (implemented in this session)
+**Status:** done
 
 **Depends:** Task 5.1
 
@@ -551,15 +551,15 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 **Purpose:** Replaces `ctx_batch_execute` — runs N commands (labeled), indexes all large outputs into FTS5, searches across all results in one round trip.
 
 **Acceptance:**
-- [ ] concurrency respects max 8 parallel commands
-- [ ] all outputs ≥2KB are indexed with label as FTS5 source prefix
-- [ ] `queries` param returns cross-command hits ranked by BM25
+- [x] concurrency respects max 8 parallel commands
+- [x] all outputs ≥2KB are indexed with label as FTS5 source prefix
+- [x] `queries` param returns cross-command hits ranked by BM25
 
 ---
 
 #### Task 5.3: Expanded PostToolUse capture coverage
 
-**Status:** done (implemented in this session)
+**Status:** done
 
 **Depends:** Task 2.1 (post-tool dispatcher)
 
@@ -570,16 +570,16 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 **Purpose:** Extends automatic capture from Bash/Edit/Write/MultiEdit to also cover Read, Grep, WebFetch, and `mcp__*` tool calls, broadening the session memory event log.
 
 **Acceptance:**
-- [ ] Read tool events captured with file path as label
-- [ ] Grep tool events captured with pattern + match count summary
-- [ ] WebFetch tool events captured with URL + truncated body (first 500 chars)
-- [ ] `mcp__*` tool events captured with tool name + structured output summary
+- [x] Read tool events captured with file path as label
+- [x] Grep tool events captured with pattern + match count summary
+- [x] WebFetch tool events captured with URL + truncated body (first 500 chars)
+- [x] `mcp__*` tool events captured with tool name + structured output summary
 
 ---
 
 #### Task 5.4: Routing guidance — nudge Claude toward `ak_session_execute`
 
-**Status:** done (implemented in this session)
+**Status:** done
 
 **Depends:** Task 4.2 (routing rule updates), Task 5.1
 
@@ -590,8 +590,8 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 **Purpose:** SessionStart routing block tells Claude to route large-output commands through `ak_session_execute` instead of raw Bash. Updates the canonical lane-2 routing rule to reference `ak_session_execute` as the replacement for `ctx_execute`.
 
 **Acceptance:**
-- [ ] `AK_ROUTING_BLOCK` injected by SessionStart includes `ak_session_execute` as a decision row for large-output Bash commands
-- [ ] `catalog/agent/rules/context-mode-routing.md` updated to reference `ak_session_execute` in the routing table and hard-rules section
+- [x] `AK_ROUTING_BLOCK` injected by SessionStart includes `ak_session_execute` as a decision row for large-output Bash commands
+- [x] `catalog/agent/rules/context-mode-routing.md` updated to reference `ak_session_execute` in the routing table and hard-rules section
 
 ---
 

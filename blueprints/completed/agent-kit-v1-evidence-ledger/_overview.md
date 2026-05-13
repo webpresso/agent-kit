@@ -445,7 +445,10 @@ mirroring `context-mode-routing.md` structure.
 
 #### [templates] Tasks 0.5–0.9: Blueprint templates (5 templates, parallel)
 
-**Status:** done (deleted per user decision — catalog blueprint templates are not needed)
+**Status:** done
+
+**Note:** Deleted per user decision — catalog blueprint templates are not needed.
+
 **Depends:** None (each task is independent)
 
 Curate 5 markdown blueprint templates under `catalog/blueprints/<name>/`
@@ -1053,7 +1056,8 @@ backends (this is where real-subprocess fidelity lives).
 
 #### [evals] Tasks 5.1–5.4: Evals 2–5
 
-**Status:** done (each)
+**Status:** done
+
 **Depends:** Task 4.2 (each independent of the others)
 
 Build out the remaining 4 evals at `src/runners/evals/` (per B3):

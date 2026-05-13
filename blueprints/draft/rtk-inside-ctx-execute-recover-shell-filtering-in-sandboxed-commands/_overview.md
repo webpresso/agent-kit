@@ -68,7 +68,7 @@ After fix:
 
 #### Task 1.1: Add wrapWithRtk helper and ctx_execute shell intercept
 
-**Status:** completed
+**Status:** done
 
 **Depends:** None
 
