@@ -2,16 +2,18 @@
  * `ak_session_batch_execute` MCP tool — parallel output sandboxing for multiple commands.
  *
  * Replaces `ctx_batch_execute` as the Lane 2 batch output-sandboxing tool.
- * Runs multiple commands (sequentially or in parallel up to `concurrency`),
- * indexes large outputs via ctx-rs FFI, and optionally queries across all newly
- * indexed content in one pass.
+ * Runs multiple commands in parallel up to `concurrency` using p-queue to control
+ * JS-side concurrency over the async napi calls. Each command's execution and
+ * indexing are handled entirely in Rust via ctx-rs `executeSandboxed`.
  *
- * Equivalent to calling `ak_session_execute` for each command but with a single
- * round-trip and shared query phase after all commands complete.
+ * v2: no execa — execution + indexing happen in the Rust napi binding.
  */
 
-import { spawnSync } from 'node:child_process'
+import { mkdirSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
+import PQueue from 'p-queue'
 import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
@@ -19,11 +21,46 @@ import { getStore } from '#session-memory/store'
 import type { SearchHit } from '#session-memory/types'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
-const LARGE_OUTPUT_THRESHOLD_BYTES = 2048
-const SUMMARY_PREVIEW_CHARS = 500
 const DEFAULT_SEARCH_LIMIT = 10
 const MAX_CONCURRENCY = 8
-const COMMAND_TIMEOUT_MS = 120_000
+const TASK_TIMEOUT_MS = 60_000
+
+// ── ctx-rs napi binding ───────────────────────────────────────────────────────
+
+interface CtxRsExecuteResult {
+  readonly exitCode: number
+  readonly outputBytes: number
+  readonly indexed: boolean
+  readonly summary: string
+}
+
+interface CtxRsModule {
+  readonly executeSandboxed: (
+    dbPath: string,
+    command: string,
+    label: string,
+  ) => Promise<CtxRsExecuteResult>
+}
+
+function tryLoadCtxRs(): CtxRsModule | null {
+  try {
+    const requireFn = createRequire(import.meta.url)
+    return requireFn('@webpresso/ctx-rs') as CtxRsModule
+  } catch {
+    return null
+  }
+}
+
+// ── Session DB path ───────────────────────────────────────────────────────────
+
+function resolveSessionDbPath(): string {
+  const repoHash = process.env['CLAUDE_REPO_HASH'] ?? process.env['AK_REPO_HASH'] ?? 'default'
+  const dbDir = join(homedir(), '.webpresso', 'sessions')
+  mkdirSync(dbDir, { recursive: true })
+  return join(dbDir, `${repoHash}.db`)
+}
+
+// ── Schema ────────────────────────────────────────────────────────────────────
 
 const commandEntrySchema = z.object({
   label: z.string().min(1),
@@ -52,12 +89,19 @@ const commandResultSchema = z.object({
 const outputSchema = createSummaryOutputSchema({
   details: z.object({
     results: z.array(commandResultSchema),
-    queryHits: z.record(z.string(), z.array(z.object({
-      content: z.string(),
-      source: z.string(),
-      rank: z.number(),
-      tier: z.enum(['porter', 'trigram', 'levenshtein']),
-    }))).optional(),
+    queryHits: z
+      .record(
+        z.string(),
+        z.array(
+          z.object({
+            content: z.string(),
+            source: z.string(),
+            rank: z.number(),
+            tier: z.enum(['porter', 'trigram', 'levenshtein']),
+          }),
+        ),
+      )
+      .optional(),
   }),
 })
 
@@ -69,105 +113,7 @@ interface CommandResult {
   readonly summary: string
 }
 
-/**
- * Resolve the active session DB path (mirrors session.ts logic).
- */
-function resolveSessionDbPath(_cwd: string): string {
-  const { homedir } = require('node:os') as typeof import('node:os')
-  const { mkdirSync } = require('node:fs') as typeof import('node:fs')
-  const repoHash = process.env['CLAUDE_REPO_HASH'] ?? process.env['AK_REPO_HASH'] ?? 'default'
-  const dbDir = join(homedir(), '.webpresso', 'sessions')
-  mkdirSync(dbDir, { recursive: true })
-  return join(dbDir, `${repoHash}.db`)
-}
-
-/**
- * Run a single shell command synchronously.
- */
-function runCommandSync(command: string, cwd: string): { output: string; exitCode: number } {
-  const PATH_SEP = process.platform === 'win32' ? ';' : ':'
-  const localBin = join(cwd, 'node_modules', '.bin')
-  const env: NodeJS.ProcessEnv = {
-    ...process.env,
-    PATH: [localBin, process.env.PATH].filter(Boolean).join(PATH_SEP),
-  }
-
-  try {
-    const result = spawnSync('sh', ['-c', command], {
-      cwd,
-      env,
-      timeout: COMMAND_TIMEOUT_MS,
-      maxBuffer: 50 * 1024 * 1024,
-      encoding: 'utf8',
-    })
-    const stdout = result.stdout ?? ''
-    const stderr = result.stderr ?? ''
-    const output = stdout + (stderr.length > 0 ? '\n' + stderr : '')
-    const exitCode = result.status ?? (result.signal != null ? 1 : 0)
-    return { output, exitCode }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    return { output: `[spawn error] ${message}`, exitCode: 1 }
-  }
-}
-
-/**
- * Execute a single command entry: run → index if large → return CommandResult.
- */
-function executeOne(
-  entry: { label: string; command: string },
-  cwd: string,
-  dbPath: string,
-): CommandResult {
-  const { output, exitCode } = runCommandSync(entry.command, cwd)
-  const outputBytes = Buffer.byteLength(output, 'utf8')
-  const shouldIndex = outputBytes > LARGE_OUTPUT_THRESHOLD_BYTES
-  let indexed = false
-
-  if (shouldIndex) {
-    try {
-      const store = getStore(dbPath)
-      store.insertChunks([{ source: entry.label, content: output }])
-      indexed = true
-    } catch (err) {
-      process.stderr.write(
-        `ak_session_batch_execute: indexing failed for "${entry.label}": ${(err as Error).message}\n`,
-      )
-    }
-  }
-
-  return {
-    label: entry.label,
-    exitCode,
-    outputBytes,
-    indexed,
-    summary: output.slice(0, SUMMARY_PREVIEW_CHARS),
-  }
-}
-
-/**
- * Run command entries with a given concurrency limit.
- * Uses sequential chunks of `concurrency` size (Promise.all per batch).
- */
-async function runWithConcurrency(
-  entries: ReadonlyArray<{ label: string; command: string }>,
-  concurrency: number,
-  cwd: string,
-  dbPath: string,
-): Promise<CommandResult[]> {
-  const results: CommandResult[] = []
-  for (let i = 0; i < entries.length; i += concurrency) {
-    const batch = entries.slice(i, i + concurrency)
-    // spawnSync is synchronous — wrap in Promise.resolve to keep async signature consistent
-    const batchResults = await Promise.all(
-      batch.map((entry) =>
-        Promise.resolve(executeOne(entry, cwd, dbPath)),
-      ),
-    )
-    results.push(...batchResults)
-  }
-  return results
-}
+// ── Tool descriptor ───────────────────────────────────────────────────────────
 
 const tool: ToolDescriptor = {
   name: 'ak_session_batch_execute',
@@ -186,15 +132,70 @@ const tool: ToolDescriptor = {
   },
   handler: async (raw) => {
     const input = inputSchema.parse(raw ?? {})
-    const cwd = input.cwd ?? process.cwd()
+
+    const ctxRs = tryLoadCtxRs()
+
+    if (ctxRs === null) {
+      return createSummaryResult(
+        {
+          passed: false,
+          summary: 'ak_session_batch_execute: ctx-rs unavailable — run ak setup to install',
+          details: { results: [] },
+        },
+        { isError: true },
+      )
+    }
 
     try {
-      const dbPath = resolveSessionDbPath(cwd)
-      const results = await runWithConcurrency(
-        input.commands,
-        input.concurrency,
-        cwd,
-        dbPath,
+      const dbPath = resolveSessionDbPath()
+
+      const queue = new PQueue({
+        concurrency: Math.min(input.concurrency, MAX_CONCURRENCY),
+        timeout: TASK_TIMEOUT_MS,
+        throwOnTimeout: false,
+      })
+
+      const results: CommandResult[] = await Promise.all(
+        input.commands.map(({ label, command }) =>
+          queue
+            .add(async () => {
+              let execResult: CtxRsExecuteResult
+              let indexed = false
+              try {
+                execResult = await ctxRs.executeSandboxed(dbPath, command, label)
+                indexed = execResult.indexed
+              } catch (execErr) {
+                const msg = execErr instanceof Error ? execErr.message : String(execErr)
+                process.stderr.write(
+                  `ak_session_batch_execute: executeSandboxed failed for "${label}": ${msg}\n`,
+                )
+                return {
+                  label,
+                  exitCode: -1,
+                  outputBytes: 0,
+                  indexed: false,
+                  summary: `[execute error] ${msg}`,
+                } satisfies CommandResult
+              }
+              return {
+                label,
+                exitCode: execResult.exitCode,
+                outputBytes: execResult.outputBytes,
+                indexed,
+                summary: execResult.summary,
+              } satisfies CommandResult
+            })
+            .then(
+              (r) =>
+                r ?? ({
+                  label,
+                  exitCode: -1,
+                  outputBytes: 0,
+                  indexed: false,
+                  summary: 'timed out',
+                } satisfies CommandResult),
+            ),
+        ),
       )
 
       let queryHits: Record<string, SearchHit[]> | undefined
@@ -204,10 +205,12 @@ const tool: ToolDescriptor = {
           try {
             const store = getStore(dbPath)
             queryHits = {}
-            for (const query of input.queries) {
-              const hits = store.search({ query, limit: DEFAULT_SEARCH_LIMIT })
-              queryHits[query] = hits as SearchHit[]
-            }
+            await Promise.all(
+              input.queries.map(async (query) => {
+                const hits = store.search({ query, limit: DEFAULT_SEARCH_LIMIT })
+                queryHits![query] = hits as SearchHit[]
+              }),
+            )
           } catch (searchErr) {
             process.stderr.write(
               `ak_session_batch_execute: query search failed: ${(searchErr as Error).message}\n`,
