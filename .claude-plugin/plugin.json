@@ -22,7 +22,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit|Bash",
+        "matcher": "Edit|Write|MultiEdit|Bash|Read|Grep|WebFetch|mcp__",
         "hooks": [
           {
             "type": "command",
