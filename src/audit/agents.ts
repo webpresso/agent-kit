@@ -335,6 +335,17 @@ function checkAgentKitDevDependency(
 ): void {
   const devDependencies = (packageJson.devDependencies ?? {}) as Record<string, unknown>
   const version = devDependencies['@webpresso/agent-kit']
+  const scripts = (packageJson.scripts ?? {}) as Record<string, unknown>
+  const setupAgent = typeof scripts['setup:agent'] === 'string' ? scripts['setup:agent'] : ''
+  const postinstall = typeof scripts.postinstall === 'string' ? scripts.postinstall : ''
+
+  const usesGlobalAkConsumerMode =
+    setupAgent === 'ak setup' && postinstall.includes('run-agent-kit-bin.ts restore-dev-links')
+
+  if (usesGlobalAkConsumerMode) {
+    return
+  }
+
   if (typeof version !== 'string' || version.trim().length === 0) {
     violations.push({
       file: 'package.json',
