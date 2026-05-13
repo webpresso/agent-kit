@@ -53,7 +53,7 @@ describe('scaffoldBaseKit', () => {
       unknown
     >
     expect((pkg['engines'] as Record<string, string>)['node']).toBe('>=24')
-    expect(pkg['packageManager']).toBe('pnpm@10.33.0')
+    expect(pkg['packageManager']).toBe('pnpm@11.1.1')
     expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
       'latest',
     )
@@ -98,6 +98,25 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
       '^0.2.0',
     )
+  })
+
+  it('does not downgrade packageManager when repo already has pnpm@11+', () => {
+    const pkgPath = join(repoRoot, 'package.json')
+    mkdirSync(repoRoot, { recursive: true })
+    const initial = {
+      name: 'consumer-app',
+      packageManager: 'pnpm@11.5.0',
+      engines: { node: '>=24' },
+      scripts: { 'setup:agent': 'ak setup' },
+      devDependencies: { '@webpresso/agent-kit': '^0.18.0' },
+    }
+    writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
+
+    const catalogDir = resolveCatalogDir()
+    scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
+
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
+    expect(pkg['packageManager']).toBe('pnpm@11.5.0')
   })
 
   it('does NOT overwrite an existing .gitignore even with --overwrite', () => {

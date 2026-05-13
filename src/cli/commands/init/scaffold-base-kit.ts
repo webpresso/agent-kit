@@ -46,7 +46,7 @@ const BOOTSTRAP_ONLY_MAP: Array<[string, string]> = [
 function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult {
   const pkgPath = join(repoRoot, 'package.json')
   const engines = { node: '>=24' }
-  const packageManager = 'pnpm@10.33.0'
+  const packageManager = 'pnpm@11.1.1'
 
   if (options.dryRun) {
     return { targetPath: pkgPath, action: 'skipped-dry' }
@@ -66,7 +66,12 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
 
   const existing = pkg['engines'] as Record<string, string> | undefined
   const alreadyHasEngines = existing?.node === engines.node
-  const alreadyHasPm = pkg['packageManager'] === packageManager
+  // Don't downgrade: treat any pnpm@11+ as already-satisfied so ak setup
+  // does not regress repos that have already been migrated to v11.
+  const existingPm = pkg['packageManager']
+  const alreadyHasPm =
+    existingPm === packageManager ||
+    (typeof existingPm === 'string' && /^pnpm@1[1-9]\./.test(existingPm))
   const packageName = typeof pkg['name'] === 'string' ? pkg['name'] : undefined
 
   const scripts = (pkg['scripts'] ?? {}) as Record<string, string>
@@ -86,7 +91,7 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
   }
 
   pkg['engines'] = { ...existing, node: engines.node }
-  pkg['packageManager'] = packageManager
+  if (!alreadyHasPm) pkg['packageManager'] = packageManager
 
   // Ensure husky is in devDependencies so `pnpm exec husky init` works
   if (!devDeps['husky']) {
