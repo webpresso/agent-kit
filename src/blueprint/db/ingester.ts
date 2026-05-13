@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
-import Database from 'better-sqlite3'
+import { Database } from '#db/sqlite.js'
 import { glob } from 'glob'
 
 import { parseBlueprintForDb } from './parser/blueprint-db-parser.js'
@@ -13,7 +13,7 @@ import { resolveTechDebtRoot } from '#utils/tech-debt-root.js'
 import type { RunnerEvent } from '#runners/types'
 
 export interface IngestOptions {
-  readonly db: Database.Database
+  readonly db: Database
   readonly cwd: string
   readonly dryRun?: boolean
 }
@@ -39,7 +39,7 @@ function deriveSlugFromTechDebtPath(filePath: string): string {
   return path.basename(filePath, '.md')
 }
 
-function existingBlueprintHash(db: Database.Database, slug: string): string | null {
+function existingBlueprintHash(db: Database, slug: string): string | null {
   const row = db
     .prepare<[string], { content_hash: string }>(
       'SELECT content_hash FROM blueprints WHERE slug = ?',
@@ -48,7 +48,7 @@ function existingBlueprintHash(db: Database.Database, slug: string): string | nu
   return row?.content_hash ?? null
 }
 
-function existingTechDebtHash(db: Database.Database, slug: string): string | null {
+function existingTechDebtHash(db: Database, slug: string): string | null {
   const row = db
     .prepare<[string], { content_hash: string }>(
       'SELECT content_hash FROM tech_debt_items WHERE slug = ?',
@@ -65,7 +65,7 @@ function existingTechDebtHash(db: Database.Database, slug: string): string | nul
  * Returns true when the cross-org dependency should be allowed (not redacted).
  * Delegates to `resolvesCrossRepo` which enforces the both-sides allowlist rule.
  */
-function isAllowedCrossOrg(db: Database.Database, sourceOrg: string, targetOrg: string): boolean {
+function isAllowedCrossOrg(db: Database, sourceOrg: string, targetOrg: string): boolean {
   const rows = db
     .prepare<[], { source_org: string; permitted_org: string }>(
       'SELECT source_org, permitted_org FROM correlate_allowlist',
@@ -78,7 +78,7 @@ function isAllowedCrossOrg(db: Database.Database, sourceOrg: string, targetOrg: 
 // Blueprint ingester
 // ---------------------------------------------------------------------------
 
-function upsertBlueprint(db: Database.Database, filePath: string, _cwd: string): void {
+function upsertBlueprint(db: Database, filePath: string, _cwd: string): void {
   const content = readFileSync(filePath, 'utf8')
   const slug = deriveSlugFromBlueprintPath(filePath)
   const parsed = parseBlueprintForDb(content, filePath, slug)
@@ -287,7 +287,7 @@ function upsertBlueprint(db: Database.Database, filePath: string, _cwd: string):
   })()
 }
 
-function upsertTechDebt(db: Database.Database, filePath: string, _cwd: string): void {
+function upsertTechDebt(db: Database, filePath: string, _cwd: string): void {
   const content = readFileSync(filePath, 'utf8')
   const slug = deriveSlugFromTechDebtPath(filePath)
   const parsed = parseTechDebtForDb(content, filePath, slug)
@@ -457,7 +457,7 @@ export async function ingestAll(opts: IngestOptions): Promise<IngestResult> {
 // ---------------------------------------------------------------------------
 
 export interface IngestRunnerEventInput {
-  readonly db: Database.Database
+  readonly db: Database
   readonly executionHandle: string
   readonly sequence: number
   readonly event: RunnerEvent

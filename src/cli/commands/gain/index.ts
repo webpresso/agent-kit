@@ -3,7 +3,7 @@ import { existsSync, readdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
-import { Database } from 'bun:sqlite'
+import { Database } from '#db/sqlite.js'
 
 export type ContextModeStats = {
   readonly sessions: number
@@ -35,7 +35,7 @@ export function queryContextModeStats(sessionDirs?: readonly string[]): ContextM
       try {
         const db = new Database(join(dir, file), { readonly: true })
         const row = db
-          .prepare<{ s: number; e: number; c: number }, []>(
+          .prepare<[], { s: number; e: number; c: number }>(
             'SELECT COUNT(*) as s, COALESCE(SUM(event_count),0) as e, COALESCE(SUM(compact_count),0) as c FROM session_meta',
           )
           .get()

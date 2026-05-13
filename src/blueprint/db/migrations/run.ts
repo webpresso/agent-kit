@@ -2,19 +2,19 @@ import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import type Database from 'better-sqlite3'
+import type { Database } from '#db/sqlite.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const MIGRATIONS_DIR = __dirname
 
-function ensureSchemaVersionTable(db: Database.Database): void {
+function ensureSchemaVersionTable(db: Database): void {
   db.exec(
     'CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY, applied_at TEXT)',
   )
 }
 
-function getAppliedVersions(db: Database.Database): Set<number> {
+function getAppliedVersions(db: Database): Set<number> {
   const rows = db.prepare('SELECT version FROM schema_version').all() as Array<{
     version: number
   }>
@@ -27,7 +27,7 @@ function parseMigrationVersion(filename: string): number | null {
   return parseInt(match[1], 10)
 }
 
-export function runMigrations(db: Database.Database): void {
+export function runMigrations(db: Database): void {
   ensureSchemaVersionTable(db)
   const applied = getAppliedVersions(db)
 

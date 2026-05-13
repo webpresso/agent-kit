@@ -49,7 +49,7 @@ export async function auditTechDebtCadence(cwd: string): Promise<RepoAuditResult
     }
   }
 
-  const Database = (await import('better-sqlite3')).default
+  const { Database } = await import('#db/sqlite.js')
   const db = new Database(dbFile, { readonly: true })
 
   const violations: RepoAuditViolation[] = []

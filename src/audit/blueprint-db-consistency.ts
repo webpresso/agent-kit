@@ -58,8 +58,7 @@ export async function auditBlueprintDbConsistency(cwd: string): Promise<RepoAudi
     }
   }
 
-  // Dynamic import: better-sqlite3 is a native addon — defer to runtime
-  const Database = (await import('better-sqlite3')).default
+  const { Database } = await import('#db/sqlite.js')
   const db = new Database(dbFile, { readonly: true })
 
   const violations: RepoAuditViolation[] = []

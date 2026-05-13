@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 
-import Database from 'better-sqlite3'
+import { Database } from '#db/sqlite.js'
 import { load as yamlLoad } from 'js-yaml'
 import { z } from 'zod'
 
@@ -76,7 +76,7 @@ export function ensureAgentDir(agentDir?: string): void {
  *
  * Silent on individual repo failures so one bad remote doesn't abort the run.
  */
-export function ingestWorkspaceRepos(db: Database.Database, cwd: string): void {
+export function ingestWorkspaceRepos(db: Database, cwd: string): void {
   const repos = getWorkspaceRepos()
 
   const upsert = db.prepare<[string, string, string, string, number]>(

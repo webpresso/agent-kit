@@ -537,7 +537,7 @@ async function handleTaskNext(cwd: string, raw: unknown): Promise<ToolHandlerRes
         (
           (blueprint
             ? conn.db.prepare(readySql).all(blueprint)
-            : conn.db.prepare(readySql).all()) as TaskRow[]
+            : conn.db.prepare(readySql).all()) as unknown as TaskRow[]
         )[0] ?? null
       w0cnt =
         (

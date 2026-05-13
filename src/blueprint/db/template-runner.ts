@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type Database from 'better-sqlite3'
+import type { Database } from '#db/sqlite.js'
 
 import { QUERY_TEMPLATES, findTemplate } from './templates.js'
 
@@ -29,7 +29,7 @@ const PARAM_DEFAULTS: Record<string, Record<string, unknown>> = {
 // ---------------------------------------------------------------------------
 
 export function runTemplate(
-  db: Database.Database,
+  db: Database,
   templateId: string,
   params: Record<string, unknown>,
 ): TemplateRunResult {

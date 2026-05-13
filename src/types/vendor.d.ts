@@ -27,21 +27,3 @@ declare module 'proper-lockfile' {
   export default { lock, unlock, check, lockSync, unlockSync, checkSync }
 }
 
-declare module 'bun:sqlite' {
-  interface DatabaseOptions {
-    readonly?: boolean
-    create?: boolean
-    readwrite?: boolean
-  }
-  interface Statement<ReturnType> {
-    get(...params: unknown[]): ReturnType | null
-    all(...params: unknown[]): ReturnType[]
-    run(...params: unknown[]): void
-  }
-  class Database {
-    constructor(filename: string, options?: DatabaseOptions)
-    prepare<ReturnType = Record<string, unknown>, _Params = unknown[]>(sql: string): Statement<ReturnType>
-    close(): void
-  }
-  export { Database }
-}

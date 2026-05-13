@@ -11,7 +11,7 @@
  *  AK_BLUEPRINT_PLATFORM_DISABLED=1: ensureFresh is always a no-op.
  */
 
-import type Database from 'better-sqlite3'
+import type { Database } from '#db/sqlite.js'
 
 import type { BlueprintPlatformClient } from './types.js'
 
@@ -28,7 +28,7 @@ export interface ReplicaState {
 export interface ReplicaOptions {
   readonly ttlSeconds?: number // default: AK_BLUEPRINT_REPLICA_TTL_S or 30
   readonly client: BlueprintPlatformClient
-  readonly db: Database.Database
+  readonly db: Database
 }
 
 // ---------------------------------------------------------------------------

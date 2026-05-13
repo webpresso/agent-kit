@@ -41,7 +41,12 @@
     "ak-test-quality-check": "./src/hooks/test-quality-check.ts",
     "ak-sessionstart-routing": "./src/hooks/sessionstart/index.ts",
     "ak-check-dev-link": "./src/hooks/check-dev-link/index.ts",
-    "ak-restore-dev-links": "./src/dev/restore-dev-links/index.ts"
+    "ak-restore-dev-links": "./src/dev/restore-dev-links/index.ts",
+    "docs-check-internal-links": "./src/config/docs-lint/cli/check-internal-links.ts",
+    "docs-check-refs": "./src/config/docs-lint/cli/check-refs.ts",
+    "docs-check-stale": "./src/config/docs-lint/cli/check-stale.ts",
+    "docs-lint": "./src/config/docs-lint/cli/validate.ts",
+    "docs-migrate": "./src/config/docs-lint/cli/migrate.ts"
   },
   "files": [
     "dist",
@@ -59,17 +64,29 @@
   "sideEffects": false,
   "module": "./dist/esm/index.js",
   "imports": {
+    "#db/*": "./src/blueprint/db/*.ts",
     "#e2e": "./src/e2e/index.ts",
     "#e2e/*": "./src/e2e/*.ts",
     "#test": "./src/test/index.ts",
     "#symlinker": "./src/symlinker/index.ts",
     "#paths/*": "./src/paths/*.ts",
+    "#paths/*.js": "./src/paths/*.ts",
     "#cli/auto-update/*": "./src/cli/auto-update/*.ts",
+    "#cli/auto-update/*.js": "./src/cli/auto-update/*.ts",
     "#cli/*": "./src/cli/*.ts",
+    "#cli/*.js": "./src/cli/*.ts",
     "#dev/*": "./src/dev/*.ts",
     "#audit/*": "./src/audit/*.ts",
     "#docs-linter/*": "./src/docs-linter/*.ts",
+    "#config/tsconfig/*": "./src/config/tsconfig/*",
+    "#config/vitest/*": "./src/config/vitest/*.ts",
+    "#config/stryker/*": "./src/config/stryker/*.ts",
+    "#config/oxlint/*": "./src/config/oxlint/*.ts",
+    "#config/workers-test/*": "./src/config/workers-test/*.ts",
     "#config/docs-lint/*": "./src/config/docs-lint/*.ts",
+    "#config/launch/*": "./src/config/launch/*.ts",
+    "#config/test-preset/*": "./src/config/test-preset/*.ts",
+    "#config/e2e-preset/*": "./src/config/e2e-preset/*.ts",
     "#hooks/*": "./src/hooks/*.ts",
     "#mcp/*": "./src/mcp/*.ts",
     "#content/*": "./src/content/*.ts",
@@ -86,9 +103,15 @@
     "#ai-memory/hierarchy/*": "./src/ai-memory/hierarchy/*.ts",
     "#runners": "./src/runners/index.ts",
     "#runners/*": "./src/runners/*.ts",
+    "#db/*.js": "./src/blueprint/db/*.ts",
+    "#sync/*.js": "./src/blueprint/sync/*.ts",
+    "#utils/*.js": "./src/blueprint/utils/*.ts",
+    "#cross-repo/*.js": "./src/blueprint/cross-repo/*.ts",
     "#blueprint/sync/types.js": "./src/blueprint/sync/types.ts",
     "#blueprint/sync/auth.js": "./src/blueprint/sync/auth.ts",
     "#blueprint/sync/client.js": "./src/blueprint/sync/client.ts",
+    "#types/execution-backend": "./src/blueprint/types/execution-backend.ts",
+    "#types/execution-backend.js": "./src/blueprint/types/execution-backend.ts",
     "#*": "./src/blueprint/*.ts"
   },
   "exports": {
@@ -169,6 +192,234 @@
       "import": {
         "types": "./dist/esm/e2e/index.d.ts",
         "default": "./dist/esm/e2e/index.js"
+      }
+    },
+    "./tsconfig/base.json": {
+      "import": {
+        "types": "./dist/esm/config/tsconfig/base.json",
+        "default": "./dist/esm/config/tsconfig/base.json"
+      }
+    },
+    "./tsconfig/cloudflare.json": {
+      "import": {
+        "types": "./dist/esm/config/tsconfig/cloudflare.json",
+        "default": "./dist/esm/config/tsconfig/cloudflare.json"
+      }
+    },
+    "./tsconfig/library.json": {
+      "import": {
+        "types": "./dist/esm/config/tsconfig/library.json",
+        "default": "./dist/esm/config/tsconfig/library.json"
+      }
+    },
+    "./tsconfig/react-library.json": {
+      "import": {
+        "types": "./dist/esm/config/tsconfig/react-library.json",
+        "default": "./dist/esm/config/tsconfig/react-library.json"
+      }
+    },
+    "./tsconfig/react-router.json": {
+      "import": {
+        "types": "./dist/esm/config/tsconfig/react-router.json",
+        "default": "./dist/esm/config/tsconfig/react-router.json"
+      }
+    },
+    "./tsconfig/webpresso.json": {
+      "import": {
+        "types": "./dist/esm/config/tsconfig/webpresso.json",
+        "default": "./dist/esm/config/tsconfig/webpresso.json"
+      }
+    },
+    "./tsconfig/webpresso": {
+      "import": {
+        "types": "./dist/esm/config/tsconfig/webpresso.json",
+        "default": "./dist/esm/config/tsconfig/webpresso.json"
+      }
+    },
+    "./vitest/node": {
+      "import": {
+        "types": "./dist/esm/config/vitest/node.d.ts",
+        "default": "./dist/esm/config/vitest/node.js"
+      }
+    },
+    "./vitest/react": {
+      "import": {
+        "types": "./dist/esm/config/vitest/react.d.ts",
+        "default": "./dist/esm/config/vitest/react.js"
+      }
+    },
+    "./vitest/react-router": {
+      "import": {
+        "types": "./dist/esm/config/vitest/react-router.d.ts",
+        "default": "./dist/esm/config/vitest/react-router.js"
+      }
+    },
+    "./vitest/workers": {
+      "import": {
+        "types": "./dist/esm/config/vitest/workers.d.ts",
+        "default": "./dist/esm/config/vitest/workers.js"
+      }
+    },
+    "./vitest/react-setup": {
+      "import": {
+        "types": "./dist/esm/config/vitest/react-setup.d.ts",
+        "default": "./dist/esm/config/vitest/react-setup.js"
+      }
+    },
+    "./vitest/react-setup.ts": {
+      "import": {
+        "types": "./dist/esm/config/vitest/react-setup.d.ts",
+        "default": "./dist/esm/config/vitest/react-setup.js"
+      }
+    },
+    "./vitest/flakiness-reporter": {
+      "import": {
+        "types": "./dist/esm/config/vitest/flakiness-reporter.d.ts",
+        "default": "./dist/esm/config/vitest/flakiness-reporter.js"
+      }
+    },
+    "./vitest/webpresso/node": {
+      "import": {
+        "types": "./dist/esm/config/vitest/webpresso-node.d.ts",
+        "default": "./dist/esm/config/vitest/webpresso-node.js"
+      }
+    },
+    "./vitest/webpresso/react": {
+      "import": {
+        "types": "./dist/esm/config/vitest/webpresso-react.d.ts",
+        "default": "./dist/esm/config/vitest/webpresso-react.js"
+      }
+    },
+    "./vitest/webpresso/react-router": {
+      "import": {
+        "types": "./dist/esm/config/vitest/webpresso-react-router.d.ts",
+        "default": "./dist/esm/config/vitest/webpresso-react-router.js"
+      }
+    },
+    "./vitest/webpresso/workers": {
+      "import": {
+        "types": "./dist/esm/config/vitest/webpresso-workers.d.ts",
+        "default": "./dist/esm/config/vitest/webpresso-workers.js"
+      }
+    },
+    "./stryker": {
+      "import": {
+        "types": "./dist/esm/config/stryker/index.d.ts",
+        "default": "./dist/esm/config/stryker/index.js"
+      }
+    },
+    "./stryker/webpresso": {
+      "import": {
+        "types": "./dist/esm/config/stryker/webpresso.d.ts",
+        "default": "./dist/esm/config/stryker/webpresso.js"
+      }
+    },
+    "./oxlint": {
+      "import": {
+        "types": "./dist/esm/config/oxlint/index.d.ts",
+        "default": "./dist/esm/config/oxlint/index.js"
+      }
+    },
+    "./oxlint/import-hygiene": {
+      "import": {
+        "types": "./dist/esm/config/oxlint/import-hygiene.d.ts",
+        "default": "./dist/esm/config/oxlint/import-hygiene.js"
+      }
+    },
+    "./oxlint/monorepo-paths": {
+      "import": {
+        "types": "./dist/esm/config/oxlint/monorepo-paths.d.ts",
+        "default": "./dist/esm/config/oxlint/monorepo-paths.js"
+      }
+    },
+    "./oxlint/foundation-purity": {
+      "import": {
+        "types": "./dist/esm/config/oxlint/foundation-purity.d.ts",
+        "default": "./dist/esm/config/oxlint/foundation-purity.js"
+      }
+    },
+    "./oxlint/tier-boundaries": {
+      "import": {
+        "types": "./dist/esm/config/oxlint/tier-boundaries.d.ts",
+        "default": "./dist/esm/config/oxlint/tier-boundaries.js"
+      }
+    },
+    "./oxlint/query-patterns": {
+      "import": {
+        "types": "./dist/esm/config/oxlint/query-patterns.d.ts",
+        "default": "./dist/esm/config/oxlint/query-patterns.js"
+      }
+    },
+    "./oxlint/graphql-conventions": {
+      "import": {
+        "types": "./dist/esm/config/oxlint/graphql-conventions.d.ts",
+        "default": "./dist/esm/config/oxlint/graphql-conventions.js"
+      }
+    },
+    "./oxlint/testing-quality": {
+      "import": {
+        "types": "./dist/esm/config/oxlint/testing-quality.d.ts",
+        "default": "./dist/esm/config/oxlint/testing-quality.js"
+      }
+    },
+    "./oxlint/code-safety": {
+      "import": {
+        "types": "./dist/esm/config/oxlint/code-safety.d.ts",
+        "default": "./dist/esm/config/oxlint/code-safety.js"
+      }
+    },
+    "./workers-test": {
+      "import": {
+        "types": "./dist/esm/config/workers-test/index.d.ts",
+        "default": "./dist/esm/config/workers-test/index.js"
+      }
+    },
+    "./docs-lint": {
+      "import": {
+        "types": "./dist/esm/config/docs-lint/index.d.ts",
+        "default": "./dist/esm/config/docs-lint/index.js"
+      }
+    },
+    "./docs-lint/schemas": {
+      "import": {
+        "types": "./dist/esm/config/docs-lint/schemas/index.d.ts",
+        "default": "./dist/esm/config/docs-lint/schemas/index.js"
+      }
+    },
+    "./docs-lint/generator": {
+      "import": {
+        "types": "./dist/esm/config/docs-lint/generator/index.d.ts",
+        "default": "./dist/esm/config/docs-lint/generator/index.js"
+      }
+    },
+    "./launch": {
+      "import": {
+        "types": "./dist/esm/config/launch/index.d.ts",
+        "default": "./dist/esm/config/launch/index.js"
+      }
+    },
+    "./test-preset": {
+      "import": {
+        "types": "./dist/esm/config/test-preset/index.d.ts",
+        "default": "./dist/esm/config/test-preset/index.js"
+      }
+    },
+    "./test-preset/vitest": {
+      "import": {
+        "types": "./dist/esm/config/test-preset/vitest.d.ts",
+        "default": "./dist/esm/config/test-preset/vitest.js"
+      }
+    },
+    "./e2e-preset": {
+      "import": {
+        "types": "./dist/esm/config/e2e-preset/index.d.ts",
+        "default": "./dist/esm/config/e2e-preset/index.js"
+      }
+    },
+    "./e2e-preset/playwright": {
+      "import": {
+        "types": "./dist/esm/config/e2e-preset/playwright.d.ts",
+        "default": "./dist/esm/config/e2e-preset/playwright.js"
       }
     },
     "./format": {
@@ -365,6 +616,44 @@
       "./dev": "./src/dev/index.ts",
       "./docs-linter": "./src/docs-linter/index.ts",
       "./e2e": "./src/e2e/index.ts",
+      "./tsconfig/base.json": "./src/config/tsconfig/base.json",
+      "./tsconfig/cloudflare.json": "./src/config/tsconfig/cloudflare.json",
+      "./tsconfig/library.json": "./src/config/tsconfig/library.json",
+      "./tsconfig/react-library.json": "./src/config/tsconfig/react-library.json",
+      "./tsconfig/react-router.json": "./src/config/tsconfig/react-router.json",
+      "./tsconfig/webpresso.json": "./src/config/tsconfig/webpresso.json",
+      "./tsconfig/webpresso": "./src/config/tsconfig/webpresso.json",
+      "./vitest/node": "./src/config/vitest/node.ts",
+      "./vitest/react": "./src/config/vitest/react.ts",
+      "./vitest/react-router": "./src/config/vitest/react-router.ts",
+      "./vitest/workers": "./src/config/vitest/workers.ts",
+      "./vitest/react-setup": "./src/config/vitest/react-setup.ts",
+      "./vitest/react-setup.ts": "./src/config/vitest/react-setup.ts",
+      "./vitest/flakiness-reporter": "./src/config/vitest/flakiness-reporter.ts",
+      "./vitest/webpresso/node": "./src/config/vitest/webpresso-node.ts",
+      "./vitest/webpresso/react": "./src/config/vitest/webpresso-react.ts",
+      "./vitest/webpresso/react-router": "./src/config/vitest/webpresso-react-router.ts",
+      "./vitest/webpresso/workers": "./src/config/vitest/webpresso-workers.ts",
+      "./stryker": "./src/config/stryker/index.ts",
+      "./stryker/webpresso": "./src/config/stryker/webpresso.ts",
+      "./oxlint": "./src/config/oxlint/index.ts",
+      "./oxlint/import-hygiene": "./src/config/oxlint/import-hygiene.ts",
+      "./oxlint/monorepo-paths": "./src/config/oxlint/monorepo-paths.ts",
+      "./oxlint/foundation-purity": "./src/config/oxlint/foundation-purity.ts",
+      "./oxlint/tier-boundaries": "./src/config/oxlint/tier-boundaries.ts",
+      "./oxlint/query-patterns": "./src/config/oxlint/query-patterns.ts",
+      "./oxlint/graphql-conventions": "./src/config/oxlint/graphql-conventions.ts",
+      "./oxlint/testing-quality": "./src/config/oxlint/testing-quality.ts",
+      "./oxlint/code-safety": "./src/config/oxlint/code-safety.ts",
+      "./workers-test": "./src/config/workers-test/index.ts",
+      "./docs-lint": "./src/config/docs-lint/index.ts",
+      "./docs-lint/schemas": "./src/config/docs-lint/schemas/index.ts",
+      "./docs-lint/generator": "./src/config/docs-lint/generator/index.ts",
+      "./launch": "./src/config/launch/index.ts",
+      "./test-preset": "./src/config/test-preset/index.ts",
+      "./test-preset/vitest": "./src/config/test-preset/vitest.ts",
+      "./e2e-preset": "./src/config/e2e-preset/index.ts",
+      "./e2e-preset/playwright": "./src/config/e2e-preset/playwright.ts",
       "./format": "./src/format/index.ts",
       "./lint": "./src/lint/index.ts",
       "./local": "./src/local.ts",

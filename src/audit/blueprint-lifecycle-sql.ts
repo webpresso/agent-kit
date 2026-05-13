@@ -42,7 +42,7 @@ export async function auditBlueprintLifecycleSql(cwd: string): Promise<RepoAudit
     return auditBlueprintLifecycle(cwd)
   }
 
-  const Database = (await import('better-sqlite3')).default
+  const { Database } = await import('#db/sqlite.js')
   const db = new Database(dbFile, { readonly: true })
 
   const violations: RepoAuditViolation[] = []

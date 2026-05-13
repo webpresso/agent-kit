@@ -18,7 +18,7 @@ import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 
-import Database from 'better-sqlite3'
+import { Database } from '#db/sqlite.js'
 
 import type { AllowlistEntry } from './resolver.js'
 import { bothSidesAllowlistEntries } from './resolver.js'
@@ -88,7 +88,6 @@ export async function auditCrossRepoCorrelation(
     return { pass: true, leaks: [], missingAllowlists: [] }
   }
 
-  const Database = (await import('better-sqlite3')).default
   const db = new Database(dbFile, { readonly: true })
 
   try {
@@ -98,7 +97,7 @@ export async function auditCrossRepoCorrelation(
   }
 }
 
-function runAudit(db: InstanceType<typeof Database>): CrossRepoAuditResult {
+function runAudit(db: Database): CrossRepoAuditResult {
   // -------------------------------------------------------------------------
   // 1. Load cross_repo_dependencies joined with blueprint visibility
   // -------------------------------------------------------------------------
@@ -225,8 +224,7 @@ export async function fixCrossRepoLeak(cwd: string, blueprintSlug: string): Prom
     return { fixed: false, reason: 'DB file not found' }
   }
 
-  const DatabaseMod = (await import('better-sqlite3')).default
-  const db = new DatabaseMod(dbFile)
+  const db = new Database(dbFile)
 
   try {
     const rows = db
