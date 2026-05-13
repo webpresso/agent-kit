@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -33,18 +33,19 @@ describe('agent sub-package deprecation metadata', () => {
     }
   })
 
-  it('includes every deprecated agent sub-package in the release changeset', () => {
-    const changeset = readFileSync(
-      resolve(repoRoot, '.changeset', 'deprecate-agent-subpackages.md'),
-      'utf8',
+  it('preserves every deprecated agent sub-package after changesets are consumed', () => {
+    expect(existsSync(resolve(repoRoot, '.changeset', 'deprecate-agent-subpackages.md'))).toBe(
+      false,
     )
 
     for (const packageDir of AGENT_PACKAGE_DIRS) {
       const manifest = readJson(resolve(repoRoot, 'packages', packageDir, 'package.json'))
 
-      expect(changeset).toContain(`"${manifest['name']}": patch`)
+      expect(manifest['deprecated'], String(manifest['name'])).toBe(DEPRECATION_NOTICE)
     }
 
-    expect(changeset).toContain(DEPRECATION_NOTICE)
+    const changelog = readFileSync(resolve(repoRoot, 'CHANGELOG.md'), 'utf8')
+    expect(changelog).toContain('## 0.18.0')
+    expect(changelog).toContain('Consolidate the former `@webpresso/agent-*` helper packages')
   })
 })
