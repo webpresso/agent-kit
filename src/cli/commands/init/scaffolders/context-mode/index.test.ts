@@ -56,6 +56,38 @@ describe('context-mode preset', () => {
       'context-mode hook codex userpromptsubmit',
     )
     expect(hooks.Stop[0]?.hooks[0]?.command).toBe('context-mode hook codex stop')
+    // New: compaction event coverage
+    expect(hooks.PreCompact[0]?.hooks[0]?.command).toBe('context-mode hook codex precompact')
+    expect(hooks.PostCompact[0]?.hooks[0]?.command).toBe('context-mode hook codex postcompact')
+  })
+
+  it('generates PreCompact and PostCompact hooks for compaction-event support', () => {
+    const next = patchCodexContextModeHooks({})
+    const hooks = next.hooks as Record<
+      string,
+      Array<{ matcher?: string; hooks: Array<{ command: string }> }>
+    >
+    expect(hooks.PreCompact).toHaveLength(1)
+    expect(hooks.PreCompact[0]?.hooks[0]).toStrictEqual({
+      type: 'command',
+      command: 'context-mode hook codex precompact',
+    })
+    expect(hooks.PostCompact).toHaveLength(1)
+    expect(hooks.PostCompact[0]?.hooks[0]).toStrictEqual({
+      type: 'command',
+      command: 'context-mode hook codex postcompact',
+    })
+  })
+
+  it('does not duplicate PreCompact/PostCompact hooks on idempotent re-run', () => {
+    const first = patchCodexContextModeHooks({})
+    const second = patchCodexContextModeHooks(first)
+    const hooks = second.hooks as Record<
+      string,
+      Array<{ matcher?: string; hooks: Array<{ command: string }> }>
+    >
+    expect(hooks.PreCompact).toHaveLength(1)
+    expect(hooks.PostCompact).toHaveLength(1)
   })
 
   it('patches OpenCode config with mcp + plugin entries', () => {
@@ -193,5 +225,16 @@ describe('context-mode preset', () => {
     })
 
     expect(result.installed).toBe(false)
+  })
+
+  it('opencode.json plugin array never includes local .opencode/plugins paths — agent-kit-dev-link.js is auto-loaded, not explicitly registered', () => {
+    const next = patchOpenCodeContextModeConfig({}, ['pnpm', 'exec', 'ak', 'mcp'])
+    const plugins = next.plugin as string[]
+
+    for (const entry of plugins) {
+      expect(entry).not.toContain('.opencode/plugins')
+      expect(entry).not.toContain('agent-kit-dev-link')
+      expect(entry).not.toMatch(/\.(js|ts)$/)
+    }
   })
 })

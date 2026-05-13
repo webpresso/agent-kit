@@ -118,6 +118,12 @@ export function patchCodexContextModeHooks(
   hooks.Stop = ensureGroup(hooks.Stop ?? [], {
     hooks: [{ type: 'command', command: 'context-mode hook codex stop' }],
   })
+  hooks.PreCompact = ensureGroup(hooks.PreCompact ?? [], {
+    hooks: [{ type: 'command', command: 'context-mode hook codex precompact' }],
+  })
+  hooks.PostCompact = ensureGroup(hooks.PostCompact ?? [], {
+    hooks: [{ type: 'command', command: 'context-mode hook codex postcompact' }],
+  })
 
   return {
     ...migrated,

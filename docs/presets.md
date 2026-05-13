@@ -78,6 +78,18 @@ Codex CLI and OpenCode. This preset runs by default and ensures `context-mode` i
 - Merges OpenCode's `mcp.context-mode` entry and `plugin: ["context-mode"]`
   without clobbering unrelated config
 
+**Codex hook events wired by this preset:**
+
+| Event | Command |
+| ----- | ------- |
+| `PreToolUse` | `context-mode hook codex pretooluse` (matcher: ctx/shell tools) |
+| `PostToolUse` | `context-mode hook codex posttooluse` |
+| `SessionStart` | `context-mode hook codex sessionstart` |
+| `UserPromptSubmit` | `context-mode hook codex userpromptsubmit` |
+| `Stop` | `context-mode hook codex stop` |
+| `PreCompact` | `context-mode hook codex precompact` |
+| `PostCompact` | `context-mode hook codex postcompact` |
+
 **Failure modes:**
 - `context-mode` missing from `PATH` and automatic `npm install -g context-mode` fails → `EXIT_SETUP_FAIL` with install hint
 

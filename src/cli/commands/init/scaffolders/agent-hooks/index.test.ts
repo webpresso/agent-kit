@@ -482,6 +482,52 @@ describe('hoistTopLevelEvents', () => {
   })
 })
 
+describe('plugin-native invariants — .claude/settings.json', () => {
+  let repoRoot: string
+
+  beforeEach(() => {
+    repoRoot = mkdtempSync(join(tmpdir(), 'ak-agent-hooks-invariant-'))
+  })
+
+  afterEach(async () => {
+    await import('node:fs/promises').then((fs) => fs.rm(repoRoot, { recursive: true, force: true }))
+  })
+
+  it('generated settings.json contains no context-mode hook commands', () => {
+    scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const settings = JSON.parse(
+      readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8'),
+    ) as { hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>> }
+
+    const allCommands = Object.values(settings.hooks).flatMap((groups) =>
+      groups.flatMap((group) => group.hooks.map((hook) => hook.command)),
+    )
+
+    for (const command of allCommands) {
+      expect(command).not.toContain('context-mode hook')
+      expect(command).not.toContain('npx context-mode')
+    }
+  })
+
+  it('generated settings.json PreToolUse matchers cover only Bash|Write|Edit|MultiEdit and Skill — not Read, Grep, WebFetch, or Agent', () => {
+    scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const settings = JSON.parse(
+      readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8'),
+    ) as { hooks: { PreToolUse: Array<{ matcher?: string }> } }
+
+    const matchers = settings.hooks.PreToolUse.flatMap((group) =>
+      group.matcher ? group.matcher.split('|') : [],
+    )
+
+    const forbidden = ['Read', 'Grep', 'WebFetch', 'Agent']
+    for (const term of forbidden) {
+      expect(matchers).not.toContain(term)
+    }
+  })
+})
+
 describe('buildAgentKitHookGroups', () => {
   it('returns the canonical 5 ak-* event groups with the supplied bin resolver', () => {
     const result = buildAgentKitHookGroups({

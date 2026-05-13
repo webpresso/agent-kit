@@ -4,7 +4,8 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { auditHookSurface, auditHookSurfaceAsRepoResult } from './hook-surface.js'
+import { auditHookSurface, auditHookSurfaceAsRepoResult, detectDrift, extractOwner } from './hook-surface.js'
+import type { HookEntry } from './hook-surface.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -233,5 +234,137 @@ describe('auditHookSurfaceAsRepoResult', () => {
     expect(result.ok).toBe(false)
     expect(result.violations.length).toBeGreaterThanOrEqual(1)
     expect(typeof result.violations[0]?.message).toBe('string')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// extractOwner — TC-04 / TC-10
+// ---------------------------------------------------------------------------
+
+describe('extractOwner', () => {
+  it('classifies ak-* bins as agent-kit (dash form)', () => {
+    expect(extractOwner('./node_modules/.bin/ak-pretool-guard')).toBe('agent-kit')
+    expect(extractOwner('ak-stop-qa')).toBe('agent-kit')
+    expect(extractOwner('ak-sessionstart-routing')).toBe('agent-kit')
+  })
+
+  it('classifies ak_* bins as agent-kit (underscore form)', () => {
+    expect(extractOwner('ak_pretool_guard')).toBe('agent-kit')
+  })
+
+  it('classifies context-mode hook subcommands', () => {
+    expect(extractOwner('context-mode hook codex sessionstart')).toBe('context-mode')
+    expect(extractOwner('context-mode hook codex pretooluse')).toBe('context-mode')
+  })
+
+  it('classifies oh-my-codex / codex-native-hook.js as omx', () => {
+    expect(extractOwner('node "/path/oh-my-codex/dist/scripts/codex-native-hook.js"')).toBe('omx')
+    expect(extractOwner('node /path/omx/hook.js')).toBe('omx')
+  })
+
+  it('classifies rtk commands', () => {
+    expect(extractOwner('rtk hook pretooluse')).toBe('rtk')
+    expect(extractOwner('rtk hook claude')).toBe('rtk')
+  })
+
+  it('classifies gstack scripts', () => {
+    expect(extractOwner('"$CLAUDE_PROJECT_DIR/.claude/hooks/check-gstack.sh"')).toBe('gstack')
+    expect(extractOwner('/some/path/gstack-hook.sh')).toBe('gstack')
+  })
+
+  it('returns unknown for unrecognised commands', () => {
+    expect(extractOwner('some-other-tool --hook')).toBe('unknown')
+    expect(extractOwner('')).toBe('unknown')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// detectDrift — TC-01 through TC-06, TC-07/TC-08 (empty input), TC-09
+// ---------------------------------------------------------------------------
+
+describe('detectDrift', () => {
+  // TC-01: cross-owner same-event → allowed
+  it('TC-01: allows agent-kit and context-mode to share the same runtime+event', () => {
+    const hooks: readonly HookEntry[] = [
+      { runtime: 'codex', event: 'SessionStart', command: './node_modules/.bin/ak-sessionstart-routing' },
+      { runtime: 'codex', event: 'SessionStart', command: 'context-mode hook codex sessionstart' },
+    ]
+    expect(detectDrift(hooks)).toHaveLength(0)
+  })
+
+  // TC-02: same-owner + same-command → drift
+  it('TC-02: flags context-mode self-duplication as drift', () => {
+    const hooks: readonly HookEntry[] = [
+      { runtime: 'codex', event: 'PreToolUse', matcher: 'Bash', command: 'context-mode hook codex pretooluse' },
+      { runtime: 'codex', event: 'PreToolUse', matcher: 'Edit', command: 'context-mode hook codex pretooluse' },
+    ]
+    const violations = detectDrift(hooks)
+    expect(violations).toHaveLength(1)
+    expect(violations[0]?.count).toBe(2)
+  })
+
+  // TC-03: same-owner, different-command → allowed
+  it('TC-03: allows same owner with different commands on the same event', () => {
+    const hooks: readonly HookEntry[] = [
+      { runtime: 'codex', event: 'Stop', command: './node_modules/.bin/ak-stop-qa' },
+      { runtime: 'codex', event: 'Stop', command: './node_modules/.bin/ak-guard-switch' },
+    ]
+    expect(detectDrift(hooks)).toHaveLength(0)
+  })
+
+  // TC-05: same agent-kit bin registered twice → drift
+  it('TC-05: flags same agent-kit bin registered twice on same event as drift', () => {
+    const hooks: readonly HookEntry[] = [
+      { runtime: 'codex', event: 'PreToolUse', command: './node_modules/.bin/ak-pretool-guard' },
+      { runtime: 'codex', event: 'PreToolUse', command: './node_modules/.bin/ak-pretool-guard' },
+    ]
+    const violations = detectDrift(hooks)
+    expect(violations).toHaveLength(1)
+    expect(violations[0]?.count).toBe(2)
+  })
+
+  // TC-06: same command across different matchers → still drift (dedup key ignores matcher)
+  it('TC-06: flags same context-mode command across different matchers as drift', () => {
+    const hooks: readonly HookEntry[] = [
+      { runtime: 'codex', event: 'PreToolUse', matcher: 'Bash', command: 'context-mode hook codex pretooluse' },
+      { runtime: 'codex', event: 'PreToolUse', matcher: 'Write', command: 'context-mode hook codex pretooluse' },
+    ]
+    const violations = detectDrift(hooks)
+    expect(violations).toHaveLength(1)
+  })
+
+  // TC-07/TC-08: empty input → no errors
+  it('TC-07/TC-08: returns empty array for empty input', () => {
+    expect(detectDrift([])).toHaveLength(0)
+  })
+
+  // TC-09: three-way cross-owner on same event → allowed
+  it('TC-09: allows agent-kit, context-mode, and omx on the same event', () => {
+    const hooks: readonly HookEntry[] = [
+      { runtime: 'codex', event: 'Stop', command: './node_modules/.bin/ak-stop-qa' },
+      { runtime: 'codex', event: 'Stop', command: 'context-mode hook codex stop' },
+      { runtime: 'codex', event: 'Stop', command: 'node /path/oh-my-codex/dist/scripts/codex-native-hook.js' },
+    ]
+    expect(detectDrift(hooks)).toHaveLength(0)
+  })
+
+  // Additional: cross-runtime same command → no drift (different runtime = different key)
+  it('allows the same command on different runtimes (not drift)', () => {
+    const hooks: readonly HookEntry[] = [
+      { runtime: 'codex', event: 'PreToolUse', command: 'context-mode hook codex pretooluse' },
+      { runtime: 'claude', event: 'PreToolUse', command: 'context-mode hook codex pretooluse' },
+    ]
+    expect(detectDrift(hooks)).toHaveLength(0)
+  })
+
+  // Violation key format check
+  it('violation key encodes runtime:event:owner:command', () => {
+    const cmd = 'context-mode hook codex pretooluse'
+    const hooks: readonly HookEntry[] = [
+      { runtime: 'codex', event: 'PreToolUse', command: cmd },
+      { runtime: 'codex', event: 'PreToolUse', command: cmd },
+    ]
+    const violations = detectDrift(hooks)
+    expect(violations[0]?.key).toBe(`codex:PreToolUse:context-mode:${cmd}`)
   })
 })

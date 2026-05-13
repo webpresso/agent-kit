@@ -29,9 +29,24 @@ import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 // Types
 // ---------------------------------------------------------------------------
 
-type HookEntry = { type?: string; command?: string; timeout?: number }
-type HookGroup = { matcher?: string; hooks?: readonly HookEntry[] }
+type InternalHookEntry = { type?: string; command?: string; timeout?: number }
+type HookGroup = { matcher?: string; hooks?: readonly InternalHookEntry[] }
 type HooksMap = Readonly<Record<string, readonly HookGroup[]>>
+
+/** A normalised hook entry carrying runtime, event, command, and optional matcher. */
+export type HookEntry = {
+  readonly runtime: string
+  readonly event: string
+  readonly command: string
+  readonly matcher?: string
+}
+
+/** A drift violation: the same owner+command appears >1 time for the same runtime+event. */
+export type DriftViolation = {
+  readonly key: string
+  readonly count: number
+  readonly entries: readonly HookEntry[]
+}
 
 export interface HookSurfaceViolation {
   readonly event: string
@@ -55,6 +70,60 @@ interface ParsedSettings {
   readonly source: string
   readonly hooks: HooksMap
   readonly parseError?: string
+}
+
+// ---------------------------------------------------------------------------
+// Owner extraction
+// ---------------------------------------------------------------------------
+
+/**
+ * Determines the canonical owner of a hook command using priority-ordered
+ * pattern matching. Returns one of: 'agent-kit', 'context-mode', 'omx',
+ * 'rtk', 'gstack', or 'unknown'.
+ */
+export function extractOwner(command: string): string {
+  if (/\bak[-_][a-z]/.test(command)) return 'agent-kit'
+  if (command.includes('context-mode')) return 'context-mode'
+  if (/omx|oh-my-codex/.test(command)) return 'omx'
+  if (/\brtk\b/.test(command)) return 'rtk'
+  if (/gstack|check-gstack/.test(command)) return 'gstack'
+  return 'unknown'
+}
+
+// ---------------------------------------------------------------------------
+// Drift detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Detects drift violations where the same owner+command appears more than once
+ * for the same runtime+event combination. Cross-owner same-event composition
+ * is NOT a violation — only same-owner/same-command duplication is.
+ *
+ * Pure function — no filesystem I/O.
+ */
+export function detectDrift(entries: readonly HookEntry[]): DriftViolation[] {
+  const byKey = new Map<string, HookEntry[]>()
+
+  for (const entry of entries) {
+    const owner = extractOwner(entry.command)
+    const key = `${entry.runtime}:${entry.event}:${owner}:${entry.command.trim()}`
+    const existing = byKey.get(key)
+    if (existing) {
+      existing.push(entry)
+    } else {
+      byKey.set(key, [entry])
+    }
+  }
+
+  const violations: DriftViolation[] = []
+
+  for (const [key, group] of byKey) {
+    if (group.length > 1) {
+      violations.push({ key, count: group.length, entries: group })
+    }
+  }
+
+  return violations
 }
 
 // ---------------------------------------------------------------------------

@@ -78,6 +78,22 @@ describe('scaffoldOpencodePlugin', () => {
   })
 })
 
+describe('plugin-native invariants — agent-kit-dev-link.js', () => {
+  it('scaffolder produces byte-identical output on first and second run', () => {
+    const repoRoot = createTempRoot()
+    const targetPath = join(repoRoot, OPENCODE_PLUGIN_RELATIVE_PATH)
+
+    scaffoldOpencodePlugin({ repoRoot, options: {} })
+    const firstContent = readFileSync(targetPath, 'utf8')
+
+    scaffoldOpencodePlugin({ repoRoot, options: {} })
+    const secondContent = readFileSync(targetPath, 'utf8')
+
+    expect(firstContent).toStrictEqual(OPENCODE_PLUGIN_CONTENT)
+    expect(secondContent).toStrictEqual(OPENCODE_PLUGIN_CONTENT)
+  })
+})
+
 describe('OPENCODE_PLUGIN_CONTENT', () => {
   it('exports an async plugin function as required by opencode plugin contract', () => {
     expect(OPENCODE_PLUGIN_CONTENT).toContain('export const AgentKitDevLinkPlugin')
