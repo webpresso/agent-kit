@@ -369,7 +369,7 @@ Create a pure helper that turns existing SQLite rows plus markdown task extracti
 
 #### [markdown] Task 1.4: Add verification block markdown helper with enforced Evidence Contract
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -394,13 +394,13 @@ Add a focused markdown helper for inserting/updating a task-local `**Verificatio
 
 **Acceptance:**
 
-- [ ] Evidence zod schema enforces per-kind required fields; `{ ok: true }` and similar trivial payloads fail parse.
-- [ ] Helper is idempotent for identical canonical evidence input.
-- [ ] Existing task content outside the target task is unchanged byte-for-byte (test asserts).
-- [ ] Status becomes `done` only when at least one evidence item has `result: 'pass'` AND zero items have `result: 'fail'`.
-- [ ] Any `result: 'fail'` evidence item rejects the transition with `next_action: 'verify_task'`.
-- [ ] Lane-prefixed headers (`[db] Task X.Y:`, `[mcp] Task X.Y:`, etc.) remain supported.
-- [ ] Canonical evidence serialization is stable (sorted keys, normalized whitespace) so re-ingest produces identical chunk text.
+- [x] Evidence zod schema enforces per-kind required fields; `{ ok: true }` and similar trivial payloads fail parse.
+- [x] Helper is idempotent for identical canonical evidence input.
+- [x] Existing task content outside the target task is unchanged byte-for-byte (test asserts).
+- [x] Status becomes `done` only when at least one evidence item has `result: 'pass'` AND zero items have `result: 'fail'`.
+- [x] Any `result: 'fail'` evidence item rejects the transition with `next_action: 'verify_task'`.
+- [x] Lane-prefixed headers (`[db] Task X.Y:`, `[mcp] Task X.Y:`, etc.) remain supported.
+- [x] Canonical evidence serialization is stable (sorted keys, normalized whitespace) so re-ingest produces identical chunk text.
 
 #### [mcp] Task 2.1: Register structured blueprint tools and lazy MCP roots input in the main server
 

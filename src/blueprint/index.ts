@@ -78,6 +78,28 @@ export type {
 } from './query/types.js'
 export { isBlueprintStatus, isComplexity, isTaskStatus } from './query/types.js'
 export { BlueprintNotFoundError } from './utils/errors.js'
+// Evidence Contract (F10) — pin per-kind evidence rules at zod parse time.
+export {
+  canonicalizeEvidence,
+  canonicalizeEvidenceList,
+  type Evidence,
+  type EvidenceKind,
+  type EvidenceList,
+  evidenceListSchema,
+  evidenceSchema,
+} from './evidence.js'
+// Verification block markdown helper (consumed by ak_blueprint_task_verify).
+export {
+  applyVerification,
+  parseVerificationBlock,
+  serializeVerificationBlock,
+  VERIFICATION_BLOCK_HEADER,
+  type VerificationFailure,
+  type VerificationResult,
+  type VerificationSuccess,
+  writeVerification,
+  type WriteVerificationOptions,
+} from './verification.js'
 // Utilities (pure functions)
 export { calculateFreshness, type FreshnessScore } from './utils/freshness.js'
 export {
