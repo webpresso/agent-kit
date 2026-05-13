@@ -4,7 +4,7 @@ status: in-progress
 complexity: M
 created: '2026-05-13'
 last_updated: '2026-05-13'
-progress: '100% (all 13 tasks done; output sandboxing added post-blueprint)'
+progress: '100% (17/17 tasks done — 13 original + 4 Phase 5 output sandboxing)'
 depends_on: []
 tags:
   - session-memory
@@ -599,7 +599,82 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 | Cross-plans updated | 1 (parked v1 + v2 reference this as supersession) |
 | Edge cases documented | 8 |
 | Risks documented | 6 |
-| **Parallelization score** | A (RW0=4, CPR=3.25, CP=0) |
-| **Critical path** | 4 waves |
-| **Total tasks** | 13 |
-| **Blueprint compliant** | 13/13 |
+| **Parallelization score** | A (RW0=4, CPR=3.40, CP=0) |
+| **Critical path** | 5 waves |
+| **Total tasks** | 17 (13 original + 4 Phase 5 output sandboxing) |
+| **Blueprint compliant** | 17/17 |
+
+---
+
+### Phase 5: Output Sandboxing (context-mode replacement parity) [Complexity: S-M]
+
+#### Task 5.1: `ak_session_execute` — single-command output sandboxing
+
+**Status:** done
+
+**Depends:** Task 4.2
+
+**Files:**
+- `src/mcp/tools/session-execute.ts`
+- `src/mcp/tools/session-execute.test.ts`
+
+**Purpose:** Replaces `ctx_execute` — runs a shell command via `execa` async streaming, indexes output >2KB into FTS5 as chunks arrive (no full-buffer memory spike), returns compact summary. Never throws.
+
+**Acceptance:**
+- [x] small output returned directly (< 2KB threshold)
+- [x] large output indexed with label as FTS5 source prefix; summary returned
+- [x] `query` param triggers FTS5 search over indexed content
+- [x] error returns structured envelope `{ error, exitCode: -1 }`
+- [x] streaming: chunks indexed as they arrive via `for await` — no memory spike
+
+#### Task 5.2: `ak_session_batch_execute` — parallel batch with search
+
+**Status:** done
+
+**Depends:** Task 5.1
+
+**Files:**
+- `src/mcp/tools/session-batch-execute.ts`
+- `src/mcp/tools/session-batch-execute.test.ts`
+
+**Purpose:** Replaces `ctx_batch_execute` — runs N commands via `p-queue` concurrency control, indexes all large outputs, searches across all results in one round trip.
+
+**Acceptance:**
+- [x] concurrency respects max 8 (via `p-queue` 8.x)
+- [x] per-task 60s timeout via p-queue `throwOnTimeout: false`
+- [x] all outputs ≥2KB indexed with label as FTS5 source prefix
+- [x] `queries` param returns cross-command hits ranked by BM25
+
+#### Task 5.3: Expanded PostToolUse capture coverage
+
+**Status:** done
+
+**Depends:** Task 2.1 (post-tool dispatcher)
+
+**Files:**
+- `.claude-plugin/plugin.json`
+- `src/hooks/post-tool/session-capture.ts`
+
+**Purpose:** Extends automatic capture from `Bash|Edit|Write|MultiEdit` to also cover `Read|Grep|WebFetch|mcp__*`, broadening the session memory event log.
+
+**Acceptance:**
+- [x] Read tool events captured with file path as label
+- [x] Grep tool events captured with pattern + match count summary
+- [x] WebFetch tool events captured with URL + truncated body (first 500 chars)
+- [x] `mcp__*` tool events captured with tool name + structured output summary
+
+#### Task 5.4: Routing guidance — nudge Claude toward `ak_session_execute`
+
+**Status:** done
+
+**Depends:** Task 4.2, Task 5.1
+
+**Files:**
+- `src/hooks/shared/routing-block.ts`
+- `catalog/agent/rules/context-mode-routing.md`
+
+**Purpose:** SessionStart routing block tells Claude to route large-output commands through `ak_session_execute` instead of raw Bash. Updates canonical lane-2 routing rule to reference `ak_session_execute` as replacement for `ctx_execute`.
+
+**Acceptance:**
+- [x] `AK_ROUTING_BLOCK` includes `ak_session_execute` decision row for large-output Bash commands
+- [x] `catalog/agent/rules/context-mode-routing.md` updated to reference `ak_session_execute`
