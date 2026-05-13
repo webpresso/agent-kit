@@ -544,7 +544,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
       {
         targetPath: auditHooksResult.preCommitPath,
         action: auditHooksResult.action === 'appended' ? 'overwritten' : auditHooksResult.action,
-      } satisfies import('./merge.js').MergeResult,
+      } satisfies MergeResult,
       opencodePluginResult,
       ...claudeRulesResults,
       ...subagentResults,

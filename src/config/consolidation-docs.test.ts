@@ -45,11 +45,11 @@ describe('consolidation migration docs', () => {
     expect(migration).toContain('@webpresso/agent-kit')
   })
 
-  it('ships a consolidation changeset without publishing in this task', async () => {
-    const changeset = await readRepoFile('.changeset/consolidate-agent-subpackages.md')
+  it('preserves the published consolidation release note after changesets are consumed', async () => {
+    const changelog = await readRepoFile('CHANGELOG.md')
 
-    expect(changeset).toContain('"@webpresso/agent-kit": minor')
-    expect(changeset).toContain('webpresso')
-    expect(changeset).toContain('No publish happens in this changeset')
+    expect(changelog).toContain('## 0.18.0')
+    expect(changelog).toContain('Consolidate the former `@webpresso/agent-*` helper packages')
+    expect(changelog).toContain('webpresso/*` subpath exports')
   })
 })

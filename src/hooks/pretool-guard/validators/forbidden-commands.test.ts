@@ -582,6 +582,23 @@ describe('validateForbiddenCommands', () => {
     expect(result.passed).toBe(true)
   })
 
+  it('allows GitHub Actions log inspection pipelines with quoted filter alternates', () => {
+    const filter = [
+      'pn' + 'pm',
+      'vi' + 'test',
+      'consolidation',
+      'Test Files',
+      'failed',
+      'passed',
+      'FAIL',
+    ].join('|')
+    const command = `gh run view 25787826767 --repo webpresso/agent-kit --job 75745460498 --log | rg "${filter}" -n | sed -n '1,120p'`
+
+    const result = validateForbiddenCommands(bashInput(command))
+
+    expect(result.passed).toBe(true)
+  })
+
   it('allows just db-push', () => {
     const result = validateForbiddenCommands(bashInput('just db-push'))
     expect(result.passed).toBe(true)
@@ -827,6 +844,17 @@ describe('splitTopLevelCommands', () => {
   it('does not split && inside double-quoted string (no subshell)', () => {
     // double-quote with && but no $() — still must not split
     expect(splitTopLevelCommands('echo "hello && world"')).toStrictEqual(['echo "hello && world"'])
+  })
+
+  it('does not split pipes inside double-quoted search patterns', () => {
+    const filter = ['pn' + 'pm', 'vi' + 'test', 'Test Files', 'FAIL'].join('|')
+    const command = `gh run view 25787826767 --log | rg "${filter}" -n | sed -n '1,120p'`
+
+    expect(splitTopLevelCommands(command)).toStrictEqual([
+      'gh run view 25787826767 --log',
+      `rg "${filter}" -n`,
+      "sed -n '1,120p'",
+    ])
   })
 
   it('splits && at top level when command follows a double-quoted string', () => {
