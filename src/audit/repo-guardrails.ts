@@ -777,6 +777,12 @@ export interface NoRelativeParentImportsOptions {
   skipTsconfig?: boolean
   /** Directory to start the tsconfig scan from. Defaults to the repo root. */
   tsconfigRoot?: string
+  /**
+   * Subdirectory paths relative to `srcDir` to skip entirely. Use for
+   * published config packages that rely on within-package relative imports
+   * by design (e.g. `config/docs-lint`).
+   */
+  excludeDirs?: readonly string[]
 }
 
 /**
@@ -791,6 +797,7 @@ export function auditNoRelativeParentImports(
 ): RepoAuditResult {
   const srcDir = resolve(root, options.srcDir ?? 'src')
   const extensions = options.extensions ?? ['.ts', '.tsx', '.js', '.jsx']
+  const excludedDirs = new Set((options.excludeDirs ?? []).map((d) => resolve(srcDir, d)))
   const violations: RepoAuditViolation[] = []
   let checked = 0
 
@@ -801,6 +808,7 @@ export function auditNoRelativeParentImports(
       if (entry.isDirectory()) {
         if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name === '_sandbox')
           continue
+        if (excludedDirs.has(full)) continue
         walk(full)
         continue
       }

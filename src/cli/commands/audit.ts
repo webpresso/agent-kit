@@ -48,7 +48,11 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     }),
   'tech-debt': async (root) => (await import('#audit/tech-debt')).auditTechDebt(root),
   'no-relative-parent-imports': async (root) =>
-    (await import('#audit/repo-guardrails')).auditNoRelativeParentImports(root),
+    (await import('#audit/repo-guardrails')).auditNoRelativeParentImports(root, {
+      // config/docs-lint is a published package that uses within-package relative
+      // imports between its own sibling directories — exclude from this audit.
+      excludeDirs: ['config/docs-lint'],
+    }),
   'no-link-protocol': async (root) =>
     (await import('#audit/repo-guardrails')).auditNoLinkProtocol(root),
   'bucket-boundary': async (root, options) =>
