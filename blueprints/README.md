@@ -15,7 +15,7 @@ Each subdirectory represents a lifecycle state:
 | ----- | ----: | ----------- |
 | `draft/` | 1 | early-stage sketches. Expect churn; move to `planned/` once scoped. |
 | `planned/` | 7 | committed-to specs, ready to pick up. |
-| `in-progress/` | 0 | actively being executed. At most 3 active blueprints per lane. |
+| `in-progress/` | 1 | actively being executed. At most 3 active blueprints per lane. |
 | `completed/` | 40 | execution finished and verified. Kept for reference. |
 | `parked/` | 2 | intentionally paused. Include a reason in the spec's frontmatter. |
 | `archived/` | 2 | superseded or abandoned. Not deleted — the record matters. |
@@ -58,7 +58,9 @@ Move files with `git mv` so history follows the spec through its lifecycle.
 
 ## Active work (2026-06-11)
 
-_None currently._
+| Blueprint | Path | Purpose |
+| --------- | ---- | ------- |
+| wp session memory v1 — in-process SQLite + FTS5 (TS engine) | [`in-progress/ak-session-memory-v1-in-process-sqlite-fts5-via-better-sqlite3/_overview.md`](./in-progress/ak-session-memory-v1-in-process-sqlite-fts5-via-better-sqlite3/_overview.md) | Keeps the pure TypeScript session-memory alternative available as the in-process SQLite + FTS5 benchmark lane. |
 
 ## Recently completed (2026-06-11)
 
