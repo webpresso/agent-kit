@@ -33,7 +33,13 @@ vi.mock('./skip.js', () => ({
 }))
 
 vi.mock('env-paths', () => ({
-  default: () => ({ data: '/fake/state', cache: '/fake/cache', log: '/fake/log', temp: '/fake/temp', config: '/fake/config' }),
+  default: () => ({
+    data: '/fake/state',
+    cache: '/fake/cache',
+    log: '/fake/log',
+    temp: '/fake/temp',
+    config: '/fake/config',
+  }),
 }))
 
 // ─── Imports (after vi.mock hoisting) ─────────────────────────────────────────
@@ -88,7 +94,9 @@ describe('fetchLatestRelease', () => {
   it('returns the version from dist-tags.latest', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ 'dist-tags': { latest: '2.3.4' } }) }),
+      vi
+        .fn()
+        .mockResolvedValue({ ok: true, json: async () => ({ 'dist-tags': { latest: '2.3.4' } }) }),
     )
     expect(await fetchLatestRelease()).toStrictEqual('2.3.4')
   })
@@ -105,10 +113,7 @@ describe('fetchLatestRelease', () => {
   })
 
   it('returns null when dist-tags.latest is missing', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }),
-    )
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }))
     expect(await fetchLatestRelease()).toStrictEqual(null)
   })
 })
@@ -119,7 +124,9 @@ describe('runUpdateFlow — no update available', () => {
   it('is a no-op when fetch returns the same version', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ 'dist-tags': { latest: '1.0.0' } }) }),
+      vi
+        .fn()
+        .mockResolvedValue({ ok: true, json: async () => ({ 'dist-tags': { latest: '1.0.0' } }) }),
     )
     await runUpdateFlow('1.0.0')
     expect(scheduleDeferredInstallMock).not.toHaveBeenCalled()
@@ -161,7 +168,9 @@ describe('runUpdateFlow — update available + AK_SKIP_AUTO_INSTALL=1', () => {
   it('does not call scheduleDeferredInstall when auto-install is skipped', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ 'dist-tags': { latest: '2.0.0' } }) }),
+      vi
+        .fn()
+        .mockResolvedValue({ ok: true, json: async () => ({ 'dist-tags': { latest: '2.0.0' } }) }),
     )
     shouldSkipAutoInstallMock.mockReturnValue(true)
 
@@ -178,7 +187,9 @@ describe('runUpdateFlow — update available + PM detected', () => {
   it('calls scheduleDeferredInstall with the detected command', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ 'dist-tags': { latest: '2.0.0' } }) }),
+      vi
+        .fn()
+        .mockResolvedValue({ ok: true, json: async () => ({ 'dist-tags': { latest: '2.0.0' } }) }),
     )
     detectMock.mockReturnValue({
       manager: 'npm',
@@ -201,7 +212,9 @@ describe('runUpdateFlow — update available + PM abort', () => {
   it('calls logUpdateError with the abort reason, does not spawn', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ 'dist-tags': { latest: '1.0.1' } }) }),
+      vi
+        .fn()
+        .mockResolvedValue({ ok: true, json: async () => ({ 'dist-tags': { latest: '1.0.1' } }) }),
     )
     detectMock.mockReturnValue({ abort: 'Unable to detect a package manager' })
 
@@ -236,7 +249,9 @@ describe('runUpdateFlow — cache write', () => {
   it('writes cache after a successful fetch', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ 'dist-tags': { latest: '1.0.0' } }) }),
+      vi
+        .fn()
+        .mockResolvedValue({ ok: true, json: async () => ({ 'dist-tags': { latest: '1.0.0' } }) }),
     )
     detectMock.mockReturnValue({ abort: 'no pm' })
 

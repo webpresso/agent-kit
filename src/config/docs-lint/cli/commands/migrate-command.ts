@@ -7,7 +7,11 @@ import { copyFile, readFile, writeFile } from 'node:fs/promises'
 import { relative } from 'node:path'
 
 import { getNonCanonicalPlanningPathViolation } from '#config/docs-lint/cli/planning-path'
-import { hasBoldMetadata, normalizeBoldMetadata, parseBoldMetadata } from '#config/docs-lint/parsers/bold-metadata'
+import {
+  hasBoldMetadata,
+  normalizeBoldMetadata,
+  parseBoldMetadata,
+} from '#config/docs-lint/parsers/bold-metadata'
 import { generateFrontmatter, parseFrontmatter } from '#config/docs-lint/parsers/frontmatter'
 import { detectDocType } from '#config/docs-lint/schemas/index'
 

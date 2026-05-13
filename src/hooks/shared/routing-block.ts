@@ -81,6 +81,11 @@ export const AK_ROUTING_BLOCK: string = `<ak_routing>
     <rule>Context-mode owns ctx_* routing when that plugin is installed.</rule>
   </ownership_boundary>
 
+  <package_guidance>
+    <rule>Consumers add the public webpresso package and import config helpers through webpresso/* subpath exports such as webpresso/oxlint, webpresso/vitest, webpresso/test-preset, webpresso/e2e-preset, webpresso/tsconfig, webpresso/docs-linter, webpresso/stryker, webpresso/launch, and webpresso/workers-test.</rule>
+    <rule>Do not recommend adding retired split agent config packages for consumer projects; keep ak_* MCP tool names and ak-* hook bin names unchanged.</rule>
+  </package_guidance>
+
   <forbidden_alternatives>
     <command>just test</command>
     <command>pnpm test</command>

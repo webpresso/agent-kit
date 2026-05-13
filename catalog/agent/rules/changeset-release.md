@@ -62,7 +62,7 @@ When a feature branch with a `.changeset/<slug>.md` file merges to `main`,
    syncs `.claude-plugin/marketplace.json` to match the new version.
 2. `git push` — commits the version bump directly to `main`.
 3. `pnpm changeset publish` — publishes `@webpresso/agent-kit` to GitHub
-   Packages (legacy stub, frozen after the `webpresso` rename).
+   Packages (legacy source package, frozen after the `webpresso` rename).
 4. `bun scripts/publish-webpresso.ts` — publishes `webpresso` to public
    npmjs.org (see Dual-publish pattern below).
 5. CI creates a `release/v<version>` branch with compiled `dist/` committed
@@ -76,8 +76,10 @@ gh workflow run release.yml -f dry-run=true
 ## Dual-publish pattern
 
 `@webpresso/agent-kit` (GitHub Packages) and `webpresso` (public npmjs.org)
-carry the same version and the same code. Changesets has no native
-dual-registry support, so the second publish is driven by
+carry the same version and the same code. Consumers should install
+`webpresso` and use its `webpresso/*` subpath exports for folded agent config
+helpers instead of adding retired split agent config packages.
+Changesets has no native dual-registry support, so the second publish is driven by
 `scripts/publish-webpresso.ts`:
 
 1. Reads the just-bumped `package.json#version`.

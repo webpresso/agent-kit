@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite-plus/test/config';
 import { createFlakinessReporter } from './flakiness-reporter.js';
-import { webpressoGeneratedRuntimeAliases, } from './webpresso-generated-runtime-aliases.js';
+import { webpressoGeneratedRuntimeAliases } from './webpresso-generated-runtime-aliases.js';
 import { resolvedExecArgv, resolvedMaxWorkers, resolvedPool } from './pool-defaults.js';
 import { assertNonWorkersVitest4 } from './version-guard.js';
 assertNonWorkersVitest4({ caller: 'webpressoNodeConfig' });
@@ -20,6 +20,7 @@ export function createWebpressoNodeProjects(name, options = {}) {
     const sharedResolve = {
         alias: [...webpressoGeneratedRuntimeAliases],
         tsconfigPaths: true,
+        conditions: ['@webpresso/source'],
     };
     const sharedServer = {
         deps: {
@@ -78,6 +79,11 @@ export const webpressoNodeConfig = defineConfig({
     resolve: {
         alias: [...webpressoGeneratedRuntimeAliases],
         tsconfigPaths: true,
+        // Honor workspace packages' `@webpresso/source` export condition so
+        // vitest resolves to .ts source instead of dist artifacts. Without
+        // this, fresh-clone tests fail with "Cannot find module" against
+        // packages that haven't been built yet.
+        conditions: ['@webpresso/source'],
     },
     test: {
         globals: true,

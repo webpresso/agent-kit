@@ -16,15 +16,21 @@ paths:
 
 # Webpresso Public Package Conventions
 
-These rules apply across all webpresso public packages: agent-kit, runtime,
-db-branching, neon-branching, workers-test-kit, generator, quality-engine,
-tooling, webpresso framework, and derivatives.
+These rules apply across all webpresso public packages and derivatives. For
+consumer-facing agent config helpers, prefer the single public `webpresso`
+package with explicit subpath exports over new split packages.
 
 ## Import hygiene
 
 - **No `../` parent-relative imports.** Use workspace package deps or subpath
   exports. `import { x } from '../../utils'` is always wrong; find the
   package that exports it and add it as a dep.
+- **Use `webpresso/*` subpaths for folded agent config.** Consumers should add
+  the public `webpresso` package and import from subpath exports such as
+  `webpresso/oxlint`, `webpresso/vitest`, `webpresso/test-preset`,
+  `webpresso/e2e-preset`, `webpresso/tsconfig`, `webpresso/docs-linter`,
+  `webpresso/stryker`, `webpresso/launch`, and `webpresso/workers-test`.
+  Do not tell consumers to install retired split agent config packages.
 - **No `.mjs` source files.** Write `.ts` with a Bun/Node shebang or as a
   plain module. Never convert existing `.ts` to `.mjs`. Config files that a
   tool requires in `.mjs` are the only documented exception, and only when the
@@ -39,7 +45,7 @@ tooling, webpresso framework, and derivatives.
 
 ## Publishing & registry
 
-- All packages publish to GitHub Packages:
+- Scoped `@webpresso/*` packages publish to GitHub Packages:
   `@webpresso:registry=https://npm.pkg.github.com`.
 - Auth via `GH_PACKAGES_TOKEN` env var read by the repo's `.npmrc`. Never
   hardcode tokens or create `.env` files with credentials.
@@ -50,13 +56,13 @@ tooling, webpresso framework, and derivatives.
 - Run `pnpm lint:pkg` (publint / attw) before releasing to catch broken export
   maps.
 
-**Exception — user-facing globally-installed CLIs:** The `webpresso` CLI
-package (`webpresso` on public npmjs.org) is unscoped and published to the
-public registry with `access: "public"`. This is necessary because globally
-installed CLIs require frictionless install (`npm i -g webpresso` without
-`.npmrc` auth setup). The dual-publish is handled by
-`scripts/publish-webpresso.ts` (see `changeset-release.md` § Dual-publish
-pattern). All other `@webpresso/*` packages continue to use GitHub Packages.
+**Exception — public `webpresso` package:** The `webpresso` package on
+public npmjs.org is unscoped and published with `access: "public"`. It is both
+the frictionless globally-installed CLI (`npm i -g webpresso`) and the
+consumer dependency for folded agent config helpers via `webpresso/*` subpath
+exports. The dual-publish is handled by `scripts/publish-webpresso.ts` (see
+`changeset-release.md` § Dual-publish pattern). Scoped `@webpresso/*` packages
+continue to use GitHub Packages.
 
 ## Module format
 

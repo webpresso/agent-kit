@@ -219,9 +219,7 @@ describe('getSurfacePath', () => {
 
     const surface = getSurfacePath('guard-state.json', 'worktree')
 
-    expect(surface).toStrictEqual(
-      `/fake/state-root/${repoKey}/worktree/${wtKey}/guard-state.json`,
-    )
+    expect(surface).toStrictEqual(`/fake/state-root/${repoKey}/worktree/${wtKey}/guard-state.json`)
   })
 })
 

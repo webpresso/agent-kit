@@ -18,8 +18,9 @@ const getVitestMajor = () => {
 };
 const hasWorkersPool = () => {
     const pkg = readConsumerPackageJson();
-    return !!pkg && ('@cloudflare/vitest-pool-workers' in (pkg.devDependencies ?? {}) ||
-        '@cloudflare/vitest-pool-workers' in (pkg.dependencies ?? {}));
+    return (!!pkg &&
+        ('@cloudflare/vitest-pool-workers' in (pkg.devDependencies ?? {}) ||
+            '@cloudflare/vitest-pool-workers' in (pkg.dependencies ?? {})));
 };
 const getPackageName = () => {
     return readConsumerPackageJson()?.name ?? 'this package';

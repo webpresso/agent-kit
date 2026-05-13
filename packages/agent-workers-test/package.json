@@ -1,6 +1,7 @@
 {
   "name": "@webpresso/agent-workers-test",
   "version": "0.2.0",
+  "deprecated": "Deprecated: migrate to the consolidated webpresso package subpath exports. See https://github.com/webpresso/agent-kit/blob/main/MIGRATION.md",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/webpresso/workers-test-kit.git"

@@ -4,6 +4,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   resolve: {
     alias: [
+      { find: 'bun:sqlite', replacement: resolve(__dirname, 'src/__mocks__/bun-sqlite.ts') },
       // Subpath imports map: "#utils/*" → src/blueprint/utils/*
       // This mirrors the package.json `"imports": { "#*": "./src/blueprint/*.ts" }` mapping
       // so that vitest can resolve internal imports like `#utils/blueprint-root.js`.
@@ -61,8 +62,6 @@ export default defineConfig({
       { find: /^#e2e\/(.*)/, replacement: resolve(__dirname, 'src/e2e/$1') },
       // Fallback: remaining "#*" maps to src/blueprint/*
       { find: /^#(.*)/, replacement: resolve(__dirname, 'src/blueprint/$1') },
-      // bun:sqlite shim: routes bun's built-in SQLite to better-sqlite3 under Node.js/vitest
-      { find: 'bun:sqlite', replacement: resolve(__dirname, 'src/__mocks__/bun-sqlite.ts') },
     ],
   },
   test: {

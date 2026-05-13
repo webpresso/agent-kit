@@ -26,4 +26,3 @@ declare module 'proper-lockfile' {
   export { lock, unlock, check, lockSync, unlockSync, checkSync }
   export default { lock, unlock, check, lockSync, unlockSync, checkSync }
 }
-
