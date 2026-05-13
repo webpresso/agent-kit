@@ -517,8 +517,8 @@
   "dependencies": {
     "@manypkg/find-root": "catalog:",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@webpresso/ctx-rs": "file:../../ctx-rs/npm/@webpresso/ctx-rs",
-    "@webpresso/ctx-rs-darwin-arm64": "file:../../ctx-rs/npm/@webpresso/ctx-rs-darwin-arm64",
+    "@webpresso/ctx-rs": "file:../ctx-rs/npm/@webpresso/ctx-rs",
+    "@webpresso/ctx-rs-darwin-arm64": "file:../ctx-rs/npm/@webpresso/ctx-rs-darwin-arm64",
     "@webpresso/runtime-format": "catalog:",
     "@webpresso/runtime-storage": "catalog:",
     "better-sqlite3": "^12.9.0",
