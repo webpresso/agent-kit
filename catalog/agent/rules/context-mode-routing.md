@@ -41,23 +41,33 @@ contexts where no injected routing block is present.
 | Manually saving a decision or finding | `ak_session_capture` |
 | Snapshotting state before risky operation | `ak_session_snapshot` |
 
-## Legacy ctx_* tools (context-mode still installed)
+## Output sandboxing (lane-2 owned by ak_session_*)
 
-If context-mode is explicitly installed alongside agent-kit, the following routing
-applies for data-processing operations (separate from lane-2 memory):
+Use these tools for any shell command that may produce large output:
 
 | Trigger | Tool |
 | --- | --- |
-| Shell commands producing >20 lines | `ctx_execute` or `ctx_batch_execute` |
-| Multiple commands + searches in one shot | `ctx_batch_execute` |
+| Shell commands producing >20 lines | `ak_session_execute` |
+| Multiple commands + searches in one shot | `ak_session_batch_execute` |
+| Searching previously indexed output | `ak_session_search` |
+
+## Legacy ctx_* tools (context-mode still installed)
+
+If context-mode is explicitly installed alongside agent-kit for non-lane-2 purposes,
+the following routing applies for data-processing operations only:
+
+| Trigger | Tool |
+| --- | --- |
+| Shell commands producing >20 lines | `ak_session_execute` (preferred) or `ctx_execute` |
+| Multiple commands + searches in one shot | `ak_session_batch_execute` (preferred) or `ctx_batch_execute` |
 | Searching previously indexed content | `ctx_search` |
 | Fetching web pages / remote docs | `ctx_fetch_and_index` |
 | Log analysis, data processing, computation | `ctx_execute` / `ctx_execute_file` |
 
 ## Hard rules
 
-- **Never** use raw `Bash` for commands that produce >20 lines — use `ctx_execute`.
-- **Never** use `WebFetch` — use `ctx_fetch_and_index`.
+- **Never** use raw `Bash` for commands that produce >20 lines — use `ak_session_execute`.
+- **Never** use `WebFetch` — use `ctx_fetch_and_index` (or index via `ak_session_execute`).
 - **Never** use `Read` for large-file analysis — use `ctx_execute_file`.
 - `Bash` is for: `git`, `mkdir`, `rm`, `mv`, navigation only.
 - `Read` is for: files you intend to immediately `Edit`.

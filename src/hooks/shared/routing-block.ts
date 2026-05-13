@@ -40,6 +40,10 @@ export const AK_ROUTING_BLOCK: string = `<ak_routing>
       <trigger>e2e testing philosophy audit, tph-e2e</trigger>
       <tool>ak_audit(kind="tph-e2e")</tool>
     </row>
+    <row>
+      <trigger>running shell commands that produce large output (tests, git log, grep, build output, lint)</trigger>
+      <tool>ak_session_execute or ak_session_batch_execute</tool>
+    </row>
   </decision_table>
 
   <tools>
@@ -73,6 +77,15 @@ export const AK_ROUTING_BLOCK: string = `<ak_routing>
       <trigger>auditing blueprints, catalog drift, bundle budget, docs frontmatter</trigger>
       <forbidden>just audit</forbidden>
       <usage>Use kind="tph-e2e" for the E2E testing-philosophy audit. This audits E2E quality rules; it does not execute the E2E suite itself.</usage>
+    </tool>
+    <tool name="ak_session_execute">
+      <trigger>any shell command where output may exceed 2KB</trigger>
+      <benefit>indexes full output to session memory FTS5; returns compact summary; searchable later via ak_session_search</benefit>
+      <forbidden>raw Bash for large-output commands</forbidden>
+    </tool>
+    <tool name="ak_session_batch_execute">
+      <trigger>multiple commands + search queries in one shot</trigger>
+      <benefit>parallel execution, auto-index, search results in one round trip; primary replacement for ctx_batch_execute</benefit>
     </tool>
   </tools>
 
