@@ -19,6 +19,12 @@ import path from 'node:path'
 
 import { openDb } from '#db/connection.js'
 import { ingestAll } from '#db/ingester.js'
+import { migrateLegacyAgentDb } from '#db/legacy-migration.js'
+import {
+  resolveBlueprintProjectionDbPath,
+  withMarkdownWriteLock,
+  withProjectionDbWriteLock,
+} from '#db/paths.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
 
 // ---------------------------------------------------------------------------
@@ -133,7 +139,6 @@ export async function resolveSyncAdapterForCli(cwd: string): Promise<SyncAdapter
 // Constants
 // ---------------------------------------------------------------------------
 
-const DB_FILENAME = '.blueprints.db'
 const ALL_STATES = ['draft', 'planned', 'in-progress', 'parked', 'archived', 'completed'] as const
 
 type BlueprintState = (typeof ALL_STATES)[number]
@@ -166,7 +171,10 @@ export interface PromoteBlueprintResult {
 // ---------------------------------------------------------------------------
 
 function dbPath(cwd: string): string {
-  return path.join(cwd, '.agent', DB_FILENAME)
+  // Migrate any legacy `.agent/.blueprints.db` once per process per repo
+  // before resolving the canonical worktree-scoped path.
+  migrateLegacyAgentDb(cwd)
+  return resolveBlueprintProjectionDbPath(cwd)
 }
 
 function findBlueprintDir(
@@ -192,12 +200,16 @@ function atomicWriteFile(targetPath: string, content: string): void {
 async function reIngestDb(cwd: string): Promise<void> {
   const target = dbPath(cwd)
   if (!existsSync(target)) return
-  const conn = openDb(target)
-  try {
-    await ingestAll({ db: conn.db, cwd })
-  } finally {
-    conn.close()
-  }
+  // F9/R7: projection DB writes serialize via the worktree-scoped lock. Throws
+  // LockTimeoutError on contention rather than silently proceeding.
+  await withProjectionDbWriteLock(cwd, async () => {
+    const conn = openDb(target)
+    try {
+      await ingestAll({ db: conn.db, cwd })
+    } finally {
+      conn.close()
+    }
+  })
 }
 
 /**
@@ -263,6 +275,18 @@ function findTaskStatusLine(
  * Idempotent: if the task is already at `toStatus`, reports "already <toStatus>" and exits cleanly.
  */
 export async function advanceTask(
+  cwd: string,
+  blueprintSlug: string,
+  taskId: string,
+  toStatus: TaskStatus,
+): Promise<AdvanceTaskResult> {
+  // F9/R7: cross-worktree markdown writes serialize via the repo-scoped lock.
+  return withMarkdownWriteLock(cwd, () =>
+    advanceTaskLocked(cwd, blueprintSlug, taskId, toStatus),
+  )
+}
+
+async function advanceTaskLocked(
   cwd: string,
   blueprintSlug: string,
   taskId: string,
@@ -352,6 +376,15 @@ export async function advanceTask(
  * - Re-ingests into DB
  */
 export async function promoteBlueprint(
+  cwd: string,
+  slug: string,
+  toState: 'planned' | 'in-progress' | 'completed' | 'parked',
+): Promise<PromoteBlueprintResult> {
+  // F9/R7: cross-worktree markdown writes serialize via the repo-scoped lock.
+  return withMarkdownWriteLock(cwd, () => promoteBlueprintLocked(cwd, slug, toState))
+}
+
+async function promoteBlueprintLocked(
   cwd: string,
   slug: string,
   toState: 'planned' | 'in-progress' | 'completed' | 'parked',

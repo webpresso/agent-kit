@@ -1,9 +1,13 @@
-import { existsSync, mkdirSync, openSync, closeSync, constants } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 
-import { getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
 import { openDb } from './connection.js'
 import { ingestAll } from './ingester.js'
+import { migrateLegacyAgentDb } from './legacy-migration.js'
+import {
+  resolveBlueprintProjectionDbPath,
+  withProjectionDbWriteLock,
+} from './paths.js'
 
 export interface ColdStartResult {
   rebuilt: boolean
@@ -12,82 +16,27 @@ export interface ColdStartResult {
   durationMs: number
 }
 
-function dbPath(cwd: string): string {
-  try {
-    return getSurfacePath('blueprints/blueprints.db', 'repo', cwd)
-  } catch (err) {
-    if (err instanceof NotInGitRepoError) return path.join(cwd, '.agent', '.blueprints.db')
-    throw err
-  }
-}
-
-function lockPath(cwd: string): string {
-  try {
-    return getSurfacePath('blueprints/.lock', 'repo', cwd)
-  } catch (err) {
-    if (err instanceof NotInGitRepoError) return path.join(cwd, '.agent', '.blueprints.lock')
-    throw err
-  }
-}
-
-/** Advisory lock using an exclusive open on the lock file.
- *  Returns a release function. If the lock is already held, waits up to
- *  5 seconds in 50ms increments, then proceeds anyway (advisory only). */
-async function acquireLock(lockFile: string): Promise<() => void> {
-  const dir = path.dirname(lockFile)
-  mkdirSync(dir, { recursive: true })
-
-  const maxWaitMs = 5_000
-  const intervalMs = 50
-  const deadline = Date.now() + maxWaitMs
-
-  let fd: number | null = null
-  while (Date.now() < deadline) {
-    try {
-      fd = openSync(lockFile, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o600)
-      break
-    } catch {
-      await new Promise<void>((resolve) => setTimeout(resolve, intervalMs))
-    }
-  }
-
-  if (fd === null) {
-    // Advisory: could not acquire — proceed without lock
-    return () => {
-      /* no-op */
-    }
-  }
-
-  closeSync(fd)
-  const { unlinkSync } = await import('node:fs')
-  return () => {
-    try {
-      unlinkSync(lockFile)
-    } catch {
-      /* already gone */
-    }
-  }
-}
-
 export async function coldStartIfNeeded(cwd: string): Promise<ColdStartResult> {
   const start = Date.now()
-  const target = dbPath(cwd)
-  const lock = lockPath(cwd)
+
+  // F12/R10/E12: detect+migrate legacy `.agent/.blueprints.db` once per repo.
+  migrateLegacyAgentDb(cwd)
+
+  const target = resolveBlueprintProjectionDbPath(cwd)
 
   if (existsSync(target)) {
     return { rebuilt: false, blueprintsCount: 0, techDebtCount: 0, durationMs: 0 }
   }
 
-  const release = await acquireLock(lock)
-
-  try {
-    // Re-check after lock acquisition — another process may have created it
+  // F9/R7: worktree-scoped write lock. Throws LockTimeoutError on failure —
+  // no silent 5s "proceeds anyway" escape on write paths.
+  return withProjectionDbWriteLock(cwd, async () => {
+    // Re-check after lock acquisition — another writer may have created it.
     if (existsSync(target)) {
       return { rebuilt: false, blueprintsCount: 0, techDebtCount: 0, durationMs: 0 }
     }
 
-    const agentDir = path.dirname(target)
-    mkdirSync(agentDir, { recursive: true })
+    mkdirSync(path.dirname(target), { recursive: true })
 
     const conn = openDb(target)
     let blueprintsCount = 0
@@ -107,7 +56,5 @@ export async function coldStartIfNeeded(cwd: string): Promise<ColdStartResult> {
     )
 
     return { rebuilt: true, blueprintsCount, techDebtCount, durationMs }
-  } finally {
-    release()
-  }
+  })
 }

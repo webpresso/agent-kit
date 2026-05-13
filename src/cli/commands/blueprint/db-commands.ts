@@ -6,21 +6,27 @@ import path from 'node:path'
 import { coldStartIfNeeded } from '#db/cold-start.js'
 import { openDb } from '#db/connection.js'
 import { ingestAll } from '#db/ingester.js'
+import { migrateLegacyAgentDb } from '#db/legacy-migration.js'
+import {
+  resolveBlueprintProjectionDbPath,
+  withProjectionDbWriteLock,
+} from '#db/paths.js'
 import { runTemplate } from '#db/template-runner.js'
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const DB_FILENAME = '.blueprints.db'
 const METADATA_FILENAME = '.datasette-metadata.json'
 
 function agentDbPath(projectRoot: string): string {
-  return path.join(projectRoot, '.agent', DB_FILENAME)
+  // Migrate any legacy DB (idempotent + memoized) before resolving canonical path.
+  migrateLegacyAgentDb(projectRoot)
+  return resolveBlueprintProjectionDbPath(projectRoot)
 }
 
 function agentMetadataPath(projectRoot: string): string {
-  return path.join(projectRoot, '.agent', METADATA_FILENAME)
+  return path.join(path.dirname(agentDbPath(projectRoot)), METADATA_FILENAME)
 }
 
 // ---------------------------------------------------------------------------
@@ -70,24 +76,28 @@ export async function dbBuild(projectRoot: string): Promise<DbBuildResult> {
 
   mkdirSync(agentDir, { recursive: true })
 
-  const conn = openDb(dbPath)
-  let blueprintsCount = 0
-  let techDebtCount = 0
+  // F9/R7: write path goes through the worktree-scoped projection lock. Throws
+  // LockTimeoutError on contention — no silent "proceeds anyway" escape.
+  return withProjectionDbWriteLock(projectRoot, async () => {
+    const conn = openDb(dbPath)
+    let blueprintsCount = 0
+    let techDebtCount = 0
 
-  try {
-    const result = await ingestAll({ db: conn.db, cwd: projectRoot })
-    blueprintsCount = result.blueprintsIngested
-    techDebtCount = result.techDebtIngested
-  } finally {
-    conn.close()
-  }
+    try {
+      const result = await ingestAll({ db: conn.db, cwd: projectRoot })
+      blueprintsCount = result.blueprintsIngested
+      techDebtCount = result.techDebtIngested
+    } finally {
+      conn.close()
+    }
 
-  return {
-    durationMs: Date.now() - start,
-    blueprintsCount,
-    techDebtCount,
-    dbPath,
-  }
+    return {
+      durationMs: Date.now() - start,
+      blueprintsCount,
+      techDebtCount,
+      dbPath,
+    }
+  })
 }
 
 // ---------------------------------------------------------------------------

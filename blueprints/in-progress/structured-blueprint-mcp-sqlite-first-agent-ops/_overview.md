@@ -241,7 +241,7 @@ The original wave table coalesced tasks that share `src/mcp/blueprint-server.ts`
 
 #### [db] Task 1.1: Centralize projection DB path policy with worktree safety and lock-scope decision
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -282,14 +282,14 @@ Create one path helper for blueprint structured-store paths so CLI, MCP, audits,
 
 **Acceptance:**
 
-- [ ] All DB call sites in this task use the shared helper.
-- [ ] Two git worktrees of one repo resolve different projection DB paths.
-- [ ] Non-git temp repo tests still use `.agent/.blueprints.db`.
-- [ ] Projection DB lock is `'worktree'`-scoped; markdown-mutation lock is `'repo'`-scoped; rationale documented in `paths.ts` block comment.
-- [ ] Write paths no longer fall through after a 5s lock-acquisition timeout; instead they return a typed `LockTimeoutError` with `next_action: 'reingest_project'`.
-- [ ] Legacy `.agent/.blueprints.db` is detected, moved with sibling WAL/SHM, and `ak audit blueprint-lifecycle` does not double-count during migration.
-- [ ] Concurrent-ingest integration test demonstrates serialization in both same-worktree and cross-worktree cases.
-- [ ] No schema or migration changes introduced.
+- [x] All DB call sites in this task use the shared helper.
+- [x] Two git worktrees of one repo resolve different projection DB paths.
+- [x] Non-git temp repo tests still use `.agent/.blueprints.db`.
+- [x] Projection DB lock is `'worktree'`-scoped; markdown-mutation lock is `'repo'`-scoped; rationale documented in `paths.ts` block comment.
+- [x] Write paths no longer fall through after a 5s lock-acquisition timeout; instead they return a typed `LockTimeoutError` with `next_action: 'reingest_project'`.
+- [x] Legacy `.agent/.blueprints.db` is detected, moved with sibling WAL/SHM, and `ak audit blueprint-lifecycle` does not double-count during migration.
+- [x] Concurrent-ingest integration test demonstrates serialization in both same-worktree and cross-worktree cases.
+- [x] No schema or migration changes introduced.
 
 #### [projects] Task 1.2: Add one reusable project resolver for current roots, workspace repos, worktrees, and bounded recursion
 

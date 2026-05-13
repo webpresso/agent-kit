@@ -16,9 +16,14 @@
 import path from 'node:path'
 import { existsSync } from 'node:fs'
 
+import { migrateLegacyAgentDb } from '#db/legacy-migration.js'
+import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
+
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 
-const DB_PATH = path.join('.agent', '.blueprints.db')
+// Legacy fallback path — kept for the brief window where a migration may have
+// just-happened (Task 1.1 / F12 / R10 / E12). Worktree-scoped path is canonical.
+const LEGACY_DB_PATH = path.join('.agent', '.blueprints.db')
 
 interface BlueprintStatusRow {
   slug: string
@@ -35,7 +40,22 @@ interface TaskInProgressRow {
 }
 
 export async function auditBlueprintLifecycleSql(cwd: string): Promise<RepoAuditResult> {
-  const dbFile = path.join(cwd, DB_PATH)
+  // F12/R10/E12: trigger one-shot migration before resolving the DB so a stray
+  // legacy file is moved (and gone) before we count rows. After this call the
+  // canonical worktree-scoped path is the single source of truth.
+  migrateLegacyAgentDb(cwd)
+
+  // Prefer the canonical worktree-scoped path. If the migration failed because
+  // the destination already existed, the warning is already logged; we trust
+  // the canonical DB and never read the legacy file in addition, which would
+  // double-count rows.
+  let dbFile: string
+  try {
+    dbFile = resolveBlueprintProjectionDbPath(cwd)
+  } catch {
+    dbFile = path.join(cwd, LEGACY_DB_PATH)
+  }
+
   if (!existsSync(dbFile)) {
     // DB not yet built — fall back to markdown-based audit
     const { auditBlueprintLifecycle } = await import('./repo-guardrails.js')
