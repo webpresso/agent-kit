@@ -41,6 +41,9 @@ export interface AgentkitConfig {
   durablePlanningRoot: string
   blueprintsDir?: string
   lastInit?: string
+  /** True when agent-kit is installed globally rather than as a devDep.
+   *  Skips the devDependency presence check in `ak audit guardrails`. */
+  globalInstall?: boolean
 }
 
 export function defaultConfig(): AgentkitConfig {
@@ -106,6 +109,9 @@ export function readConfig(repoRoot: string): AgentkitConfig | null {
       durablePlanningRoot: durablePlanningRoot ?? DEFAULT_DURABLE_PLANNING_ROOT,
       ...(blueprintsDir ? { blueprintsDir } : {}),
       lastInit: readOptionalString(parsed.lastInit),
+      ...((parsed as { globalInstall?: unknown }).globalInstall === true
+        ? { globalInstall: true as const }
+        : {}),
     }
   } catch {
     return null
@@ -142,6 +148,7 @@ export function mergeConfig(
     durablePlanningRoot: incoming.durablePlanningRoot || existing.durablePlanningRoot,
     blueprintsDir: incoming.blueprintsDir ?? existing.blueprintsDir,
     lastInit: incoming.lastInit ?? existing.lastInit,
+    ...(incoming.globalInstall ?? existing.globalInstall ? { globalInstall: true as const } : {}),
   }
 }
 

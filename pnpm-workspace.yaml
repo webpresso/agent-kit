@@ -26,6 +26,9 @@ catalog:
 
 cleanupUnusedCatalogs: true
 
+confirmModulesPurge: false
+verifyDepsBeforeRun: warn
+
 minimumReleaseAgeExclude:
   - '@webpresso/runtime-format'
   - '@webpresso/runtime-storage'
