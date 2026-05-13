@@ -1,100 +1,127 @@
-import { createHash } from 'node:crypto'
+/**
+ * HTTP fetch + index — v2 with ctx-rs backend.
+ *
+ * Fetch a URL, convert HTML→Markdown, chunk, and index into the session store.
+ * 24-hour cache via the sources table (skip re-fetch if indexed_at < 24h ago).
+ *
+ * Backend: ctx-rs fetch_and_index (async) when available; TS engine fallback.
+ */
+import { mkdirSync } from 'node:fs'
+import { dirname } from 'node:path'
 
-import { SessionMemoryStore } from './store.js'
-import type { SessionMemoryChunk } from './types.js'
+import type { FetchIndexOptions, FetchIndexResult } from './types.js'
+import { isUnavailable } from './types.js'
+import { getStore } from './store.js'
+import { resolveBackend, tryLoadCtxRsSync } from './backend.js'
 
-type CacheEntry = { ts: number; body: string; contentType: string }
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 
-export interface FetchAndIndexOptions {
-  url: string
-  store: SessionMemoryStore
-  source?: string
-  now?: number
-  timeoutMs?: number
-  fetchImpl?: typeof fetch
+/**
+ * Fetch a URL, convert to Markdown, and index into the session store.
+ * Respects 24h cache: if the source was indexed recently, skips re-fetch.
+ */
+export async function fetchAndIndex(options: FetchIndexOptions): Promise<FetchIndexResult> {
+  const { url, dbPath, cacheTtlMs = CACHE_TTL_MS } = options
+  mkdirSync(dirname(dbPath), { recursive: true })
+
+  const backend = resolveBackend()
+
+  // Check cache first (TS engine path — ctx-rs also has internal caching via sources table)
+  if (backend === 'ts') {
+    return fetchAndIndexTs(url, dbPath, cacheTtlMs)
+  }
+
+  // ctx-rs path: use the async fetch_and_index FFI call
+  const ctxRs = tryLoadCtxRsSync()
+  if (ctxRs !== null) {
+    // Check cache via sources table (requires opening the DB)
+    const store = getStore(dbPath)
+    const cachedAt = getCachedAt(store, url)
+    if (cachedAt !== null && Date.now() - cachedAt < cacheTtlMs) {
+      return { url, chunkCount: 0, cached: true, cachedAt }
+    }
+
+    const result = await ctxRs.fetchAndIndex(dbPath, url)
+    if (isUnavailable(result)) {
+      // Fall back to TS
+      return fetchAndIndexTs(url, dbPath, cacheTtlMs)
+    }
+    const fetchResult = result as { url: string; chunkCount: number; sourceLabel: string }
+    return { url: fetchResult.url, chunkCount: fetchResult.chunkCount, cached: false }
+  }
+
+  // ctx-rs unavailable — fall back to TS
+  return fetchAndIndexTs(url, dbPath, cacheTtlMs)
 }
 
-const cache = new Map<string, CacheEntry>()
-const TTL_MS = 24 * 60 * 60 * 1000
-
-export function clearFetchIndexCache(): void {
-  cache.clear()
+function getCachedAt(store: ReturnType<typeof getStore>, url: string): number | null {
+  try {
+    const db = (store as { getDb?(): unknown }).getDb?.()
+    if (db === undefined || db === null) return null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const row = (db as any)
+      .prepare('SELECT indexed_at FROM sources WHERE label = ?')
+      .get(url) as { indexed_at: number } | undefined
+    return row?.indexed_at ?? null
+  } catch {
+    return null
+  }
 }
 
-function normalizeUrl(url: string): string {
-  const parsed = new URL(url)
-  parsed.hash = ''
-  return parsed.toString()
+async function fetchAndIndexTs(
+  url: string,
+  dbPath: string,
+  cacheTtlMs: number,
+): Promise<FetchIndexResult> {
+  const store = getStore(dbPath)
+  const cachedAt = getCachedAt(store, url)
+  if (cachedAt !== null && Date.now() - cachedAt < cacheTtlMs) {
+    return { url, chunkCount: 0, cached: true, cachedAt }
+  }
+
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`fetch ${url} failed: ${response.status} ${response.statusText}`)
+  }
+
+  const contentType = response.headers.get('content-type') ?? ''
+  const rawText = await response.text()
+  const markdown = contentType.includes('text/html') ? htmlToMarkdown(rawText) : rawText
+  const chunks = splitIntoChunks(markdown)
+
+  store.insertChunks(chunks.map((content) => ({ content, source: url })))
+
+  return { url, chunkCount: chunks.length, cached: false }
 }
+
+// ── HTML → Markdown (minimal, no deps) ───────────────────────────────────────
 
 function htmlToMarkdown(html: string): string {
   return html
-    .replace(/<script[\s\S]*?<\/script>/giu, '')
-    .replace(/<style[\s\S]*?<\/style>/giu, '')
-    .replace(
-      /<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/giu,
-      (_match, level: string, text: string) => `${'#'.repeat(Number(level))} ${stripTags(text)}\n`,
-    )
-    .replace(/<li[^>]*>([\s\S]*?)<\/li>/giu, (_match, text: string) => `- ${stripTags(text)}\n`)
-    .replace(/<p[^>]*>([\s\S]*?)<\/p>/giu, (_match, text: string) => `${stripTags(text)}\n\n`)
-    .replace(/<br\s*\/?>/giu, '\n')
-    .replace(/<[^>]+>/gu, ' ')
-    .replace(/&nbsp;/gu, ' ')
-    .replace(/&amp;/gu, '&')
-    .replace(/&lt;/gu, '<')
-    .replace(/&gt;/gu, '>')
-    .replace(/[ \t]+/gu, ' ')
-    .replace(/\n{3,}/gu, '\n\n')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/\s+/g, ' ')
     .trim()
 }
 
-function stripTags(html: string): string {
-  return html
-    .replace(/<[^>]+>/gu, ' ')
-    .replace(/[ \t\n]+/gu, ' ')
-    .trim()
-}
+// ── Text chunking (token-aware approximation) ─────────────────────────────────
 
-function toIndexableText(body: string, contentType: string): string {
-  if (contentType.includes('text/html')) return htmlToMarkdown(body)
-  if (contentType.includes('application/json')) return JSON.stringify(JSON.parse(body), null, 2)
-  return body
-}
+const CHUNK_SIZE = 512 // approximate tokens
+const WORDS_PER_TOKEN = 0.75 // English average
 
-function chunkText(text: string, source: string): SessionMemoryChunk[] {
-  const paragraphs = text
-    .split(/\n{2,}/u)
-    .map((part) => part.trim())
-    .filter(Boolean)
-  const groups = paragraphs.length > 0 ? paragraphs : [text]
-  return groups.map((part, index) => ({
-    id: createHash('sha256').update(`${source}\n${index}\n${part}`).digest('hex').slice(0, 24),
-    source,
-    text: part,
-    metadata: { url: source, index },
-  }))
-}
-
-export async function fetchAndIndex(options: FetchAndIndexOptions): Promise<SessionMemoryChunk[]> {
-  const normalized = normalizeUrl(options.url)
-  const now = options.now ?? Date.now()
-  const cached = cache.get(normalized)
-  let entry = cached && now - cached.ts < TTL_MS ? cached : undefined
-  if (!entry) {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 10_000)
-    try {
-      const response = await (options.fetchImpl ?? fetch)(normalized, { signal: controller.signal })
-      const body = await response.text()
-      entry = { ts: now, body, contentType: response.headers.get('content-type') ?? 'text/plain' }
-      cache.set(normalized, entry)
-    } finally {
-      clearTimeout(timeout)
-    }
+function splitIntoChunks(text: string): string[] {
+  const words = text.split(/\s+/)
+  const wordsPerChunk = Math.round(CHUNK_SIZE * WORDS_PER_TOKEN)
+  const chunks: string[] = []
+  for (let i = 0; i < words.length; i += wordsPerChunk) {
+    const chunk = words.slice(i, i + wordsPerChunk).join(' ')
+    if (chunk.length > 0) chunks.push(chunk)
   }
-  const text = toIndexableText(entry.body, entry.contentType)
-  const source = options.source ?? normalized
-  const chunks = chunkText(text, source)
-  options.store.indexChunks(chunks)
   return chunks
 }

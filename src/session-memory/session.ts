@@ -1,143 +1,239 @@
-import { Database } from '#db/sqlite.js'
+/**
+ * Session capture, snapshot, and restore primitives — v2 with ctx-rs backend.
+ *
+ * All methods are non-blocking: errors are logged to stderr and return success.
+ *
+ * DB location: ~/.webpresso/sessions/<repo-hash>.db
+ * Backend: ctx-rs (default) or better-sqlite3 TS engine (fallback via AK_SESSION_ENGINE=ts)
+ */
+import { mkdirSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
 
 import type {
+  CaptureEventInput,
   RestoreInput,
-  RestoredSessionEvent,
-  SessionCaptureInput,
+  RestoreResult,
   SnapshotInput,
   SnapshotResult,
 } from './types.js'
+import { isUnavailable } from './types.js'
+import { getStore } from './store.js'
+import { tryLoadCtxRsSync, resolveBackend } from './backend.js'
 
-type EventRow = {
-  session_id: string
-  event_id: string
-  ts: string
-  tool_name: string
-  content: string
+const SESSIONS_DIR = join(homedir(), '.webpresso', 'sessions')
+
+export function resolveDbPath(repoHash: string, sessionsDir?: string): string {
+  const dir = sessionsDir ?? SESSIONS_DIR
+  return join(dir, `${repoHash}.db`)
 }
 
-const SCHEMA_SQL = `
-CREATE TABLE IF NOT EXISTS sessions (
-  agent_id TEXT NOT NULL,
-  snapshot_id TEXT PRIMARY KEY,
-  repo_hash TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  status TEXT NOT NULL,
-  content_json TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_sessions_repo_created ON sessions(repo_hash, created_at DESC);
-CREATE TABLE IF NOT EXISTS session_events (
-  session_id TEXT NOT NULL,
-  event_id TEXT PRIMARY KEY,
-  repo_hash TEXT NOT NULL,
-  ts TEXT NOT NULL,
-  tool_name TEXT NOT NULL,
-  content TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_session_events_repo_ts ON session_events(repo_hash, ts DESC);
-CREATE VIRTUAL TABLE IF NOT EXISTS session_events_fts
-  USING fts5(session_id UNINDEXED, event_id UNINDEXED, repo_hash UNINDEXED, tool_name UNINDEXED, content, tokenize='porter');
-`
-
-function newId(prefix: string): string {
-  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
+function ensureSessionsDir(sessionsDir: string): void {
+  mkdirSync(sessionsDir, { recursive: true })
 }
 
-export class SessionMemorySessionStore {
-  private readonly db: Database
+function getSessionStore(repoHash: string, sessionsDir?: string) {
+  const dir = sessionsDir ?? SESSIONS_DIR
+  ensureSessionsDir(dir)
+  const dbPath = resolveDbPath(repoHash, sessionsDir)
+  return getStore(dbPath)
+}
 
-  constructor(dbPath: string) {
-    this.db = new Database(dbPath)
-    this.db.exec('PRAGMA journal_mode = WAL')
-    this.db.exec('PRAGMA synchronous = NORMAL')
-    this.db.exec('PRAGMA busy_timeout = 5000')
-    this.db.exec(SCHEMA_SQL)
-  }
+/**
+ * Append a tool event to the session event log.
+ * Target: <0.5ms (sync better-sqlite3 INSERT or ctx-rs FFI call).
+ * Never throws — errors are logged to stderr, returns false on failure.
+ */
+export function captureEvent(input: CaptureEventInput, sessionsDir?: string): boolean {
+  try {
+    const dbPath = resolveDbPath(input.repoHash, sessionsDir)
+    mkdirSync(join(dbPath, '..'), { recursive: true })
+    const eventId = randomUUID()
+    const ts = Date.now()
 
-  close(): void {
-    this.db.close()
-  }
-
-  captureEvent(input: SessionCaptureInput): string {
-    const sessionId = input.sessionId ?? `${input.repoHash}:${input.agentId ?? 'default'}`
-    const eventId = input.event.eventId ?? newId('evt')
-    const ts = input.event.ts ?? new Date().toISOString()
-    this.db
-      .prepare<[string, string, string, string, string, string]>(
-        `INSERT OR REPLACE INTO session_events (session_id, event_id, repo_hash, ts, tool_name, content)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-      )
-      .run(sessionId, eventId, input.repoHash, ts, input.event.toolName, input.event.content)
-    this.db.prepare<[string]>('DELETE FROM session_events_fts WHERE event_id = ?').run(eventId)
-    this.db
-      .prepare<[string, string, string, string, string]>(
-        'INSERT INTO session_events_fts (session_id, event_id, repo_hash, tool_name, content) VALUES (?, ?, ?, ?, ?)',
-      )
-      .run(sessionId, eventId, input.repoHash, input.event.toolName, input.event.content)
-    return eventId
-  }
-
-  snapshot(input: SnapshotInput): SnapshotResult {
-    const started = performance.now()
-    const capMs = input.capMs ?? 5000
-    const sessionId = input.sessionId ?? `${input.repoHash}:${input.agentId ?? 'default'}`
-    const rows = this.db
-      .prepare<[string, string], EventRow>(
-        `SELECT session_id, event_id, ts, tool_name, content
-         FROM session_events
-         WHERE repo_hash = ? AND session_id = ?
-         ORDER BY ts ASC`,
-      )
-      .all(input.repoHash, sessionId)
-    const included: EventRow[] = []
-    for (const row of rows) {
-      if (performance.now() - started >= capMs) break
-      included.push(row)
+    const backend = resolveBackend()
+    if (backend === 'ctx-rs') {
+      const ctxRs = tryLoadCtxRsSync()
+      if (ctxRs !== null) {
+        const result = ctxRs.captureEvent(
+          dbPath,
+          input.event.sessionId,
+          eventId,
+          input.event.toolName,
+          input.event.content,
+        )
+        if (isUnavailable(result)) {
+          throw new Error('ctx-rs unavailable for captureEvent')
+        }
+        return true
+      }
+      // Fall through to TS engine
     }
-    const status: SnapshotResult['status'] = included.length < rows.length ? 'partial' : 'complete'
-    const content = included.map((row) => `[${row.ts}] ${row.tool_name}: ${row.content}`).join('\n')
-    const snapshotId = newId('snap')
-    this.db
-      .prepare<[string, string, string, string, string, string]>(
-        `INSERT INTO sessions (agent_id, snapshot_id, repo_hash, created_at, status, content_json)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+
+    // TS engine path
+    const store = getSessionStore(input.repoHash, sessionsDir)
+    const db = (store as { getDb?(): unknown }).getDb?.()
+    if (db === undefined || db === null) {
+      throw new Error('TS store does not expose getDb — ctx-rs fallback failed')
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anyDb = db as any
+    anyDb
+      .prepare(
+        'INSERT INTO session_events(session_id, event_id, ts, tool_name, content) VALUES (?, ?, ?, ?, ?)',
       )
-      .run(
-        input.agentId ?? 'default',
-        snapshotId,
-        input.repoHash,
-        new Date().toISOString(),
-        status,
-        JSON.stringify({ events: included, content }),
-      )
-    return { snapshotId, sessionId, status, eventCount: included.length, content }
+      .run(input.event.sessionId, eventId, ts, input.event.toolName, input.event.content)
+
+    return true
+  } catch (err) {
+    process.stderr.write(`ak-session-memory: captureEvent failed: ${(err as Error).message}\n`)
+    return false
+  }
+}
+
+/**
+ * Consolidate recent session events into a snapshot row.
+ * Respects a cap (capMs) — partial snapshots are allowed on timeout.
+ */
+export async function snapshot(input: SnapshotInput, sessionsDir?: string): Promise<SnapshotResult> {
+  const snapshotId = randomUUID()
+  try {
+    const dbPath = resolveDbPath(input.repoHash, sessionsDir)
+    const backend = resolveBackend()
+
+    if (backend === 'ctx-rs') {
+      const ctxRs = tryLoadCtxRsSync()
+      if (ctxRs !== null) {
+        const agentId = process.env['CLAUDE_SESSION_ID'] ?? 'unknown'
+        const result = ctxRs.snapshot(dbPath, agentId, input.capMs)
+        if (isUnavailable(result)) {
+          throw new Error('ctx-rs unavailable for snapshot')
+        }
+        const snap = result as { snapshotId: string; eventCount: number; complete: boolean }
+        return {
+          snapshotId: snap.snapshotId,
+          eventsIncluded: snap.eventCount,
+          partial: !snap.complete,
+        }
+      }
+    }
+
+    // TS engine fallback
+    return await snapshotTs(input, snapshotId, sessionsDir)
+  } catch (err) {
+    process.stderr.write(`ak-session-memory: snapshot failed: ${(err as Error).message}\n`)
+    return { snapshotId, eventsIncluded: 0, partial: true }
+  }
+}
+
+async function snapshotTs(
+  input: SnapshotInput,
+  snapshotId: string,
+  sessionsDir?: string,
+): Promise<SnapshotResult> {
+  const store = getSessionStore(input.repoHash, sessionsDir)
+  const db = (store as { getDb?(): unknown }).getDb?.()
+  if (db === undefined || db === null) {
+    throw new Error('TS store does not expose getDb')
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anyDb = db as any
+
+  const events = anyDb
+    .prepare(
+      `SELECT session_id, event_id, ts, tool_name, content
+       FROM session_events
+       ORDER BY ts DESC
+       LIMIT 200`,
+    )
+    .all() as Array<{
+    session_id: string
+    event_id: string
+    ts: number
+    tool_name: string
+    content: string
+  }>
+
+  const deadline = Date.now() + input.capMs
+  let includedCount = events.length
+  let partial = false
+
+  for (let i = 0; i < events.length; i++) {
+    if (Date.now() > deadline) {
+      includedCount = i
+      partial = true
+      break
+    }
   }
 
-  restore(input: RestoreInput): RestoredSessionEvent[] {
-    const query = input.query
-      .trim()
-      .split(/\s+/u)
-      .filter(Boolean)
-      .map((token) => `"${token.replaceAll('"', '""')}"`)
-      .join(' ')
-    if (!query) return []
-    const rows = this.db
-      .prepare<[string, string, number], EventRow & { score: number }>(
-        `SELECT e.session_id, e.event_id, e.ts, e.tool_name, e.content, bm25(session_events_fts) * -1 AS score
-         FROM session_events_fts f
-         JOIN session_events e ON e.event_id = f.event_id
-         WHERE session_events_fts MATCH ? AND e.repo_hash = ?
-         ORDER BY score DESC, e.ts DESC
-         LIMIT ?`,
-      )
-      .all(query, input.repoHash, input.limit ?? 5)
-    return rows.map((row) => ({
-      sessionId: row.session_id,
-      eventId: row.event_id,
-      ts: row.ts,
-      toolName: row.tool_name,
-      content: row.content,
-      score: row.score,
-    }))
+  const eventsToInclude = events.slice(0, includedCount)
+  const contentJson = JSON.stringify(eventsToInclude)
+  const agentId = process.env['CLAUDE_SESSION_ID'] ?? 'unknown'
+
+  anyDb
+    .prepare(
+      `INSERT INTO sessions(agent_id, snapshot_id, created_at, status, content_json)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(agent_id, snapshot_id) DO NOTHING`,
+    )
+    .run(agentId, snapshotId, Date.now(), partial ? 'partial' : 'complete', contentJson)
+
+  return { snapshotId, eventsIncluded: includedCount, partial }
+}
+
+/**
+ * Restore session context relevant to the given query.
+ * Searches event content for the most relevant chunks and returns them.
+ */
+export function restore(input: RestoreInput, sessionsDir?: string): RestoreResult {
+  try {
+    const dbPath = resolveDbPath(input.repoHash, sessionsDir)
+    const backend = resolveBackend()
+
+    if (backend === 'ctx-rs') {
+      const ctxRs = tryLoadCtxRsSync()
+      if (ctxRs !== null) {
+        const agentId = process.env['CLAUDE_SESSION_ID'] ?? 'unknown'
+        const result = ctxRs.restore(dbPath, agentId, input.query, input.limit ?? 10)
+        if (isUnavailable(result)) {
+          throw new Error('ctx-rs unavailable for restore')
+        }
+        const events = result as Array<{
+          sessionId: string
+          eventId: string
+          ts: number
+          toolName: string
+          content: string
+        }>
+
+        // Also search the store for related indexed content
+        const store = getSessionStore(input.repoHash, sessionsDir)
+        const hits = store.search({ query: input.query, limit: input.limit ?? 10 })
+
+        return {
+          hits,
+          snapshotId: events.length > 0 ? (events[0]?.sessionId ?? null) : null,
+        }
+      }
+    }
+
+    // TS engine fallback
+    const store = getSessionStore(input.repoHash, sessionsDir)
+    const db = (store as { getDb?(): unknown }).getDb?.()
+
+    const latestSnapshot =
+      db !== undefined && db !== null
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ((db as any)
+            .prepare(`SELECT snapshot_id FROM sessions ORDER BY created_at DESC LIMIT 1`)
+            .get() as { snapshot_id: string } | undefined)
+        : undefined
+
+    const hits = store.search({ query: input.query, limit: input.limit ?? 10 })
+    return { hits, snapshotId: latestSnapshot?.snapshot_id ?? null }
+  } catch (err) {
+    process.stderr.write(`ak-session-memory: restore failed: ${(err as Error).message}\n`)
+    return { hits: [], snapshotId: null }
   }
 }

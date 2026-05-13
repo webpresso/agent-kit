@@ -1,66 +1,100 @@
-export interface SessionMemoryChunk {
-  id: string
-  source: string
-  text: string
-  metadata?: Record<string, unknown>
-  createdAt?: string
+/**
+ * Session-memory type definitions.
+ *
+ * Forward-compatible with both v1 (better-sqlite3 TS engine) and
+ * v2 (ctx-rs Rust engine via napi-rs FFI).
+ * Migration v1→v2 is "swap engine binary, keep .db file" — invisible to consumers.
+ */
+
+// ── Store types ──────────────────────────────────────────────────────────────
+
+export interface ChunkInsertInput {
+  readonly content: string
+  readonly source: string
 }
 
-export interface IndexedSessionMemoryChunk extends Required<Omit<SessionMemoryChunk, 'metadata'>> {
-  metadata: Record<string, unknown>
+export interface SearchHit {
+  readonly content: string
+  readonly source: string
+  readonly rank: number
+  readonly tier: 'porter' | 'trigram' | 'levenshtein'
 }
 
-export interface SessionMemorySearchOptions {
-  query: string
-  source?: string
-  limit?: number
+export interface SearchOptions {
+  readonly query: string
+  readonly limit?: number
+  readonly source?: string
 }
 
-export interface SessionMemorySearchResult extends IndexedSessionMemoryChunk {
-  score: number
-  tier: 'porter' | 'trigram' | 'levenshtein'
+export interface IndexStats {
+  readonly chunkCount: number
+  readonly sourceCount: number
 }
 
-export interface SessionEventInput {
-  eventId?: string
-  ts?: string
-  toolName: string
-  content: string
+// ── Session event types ──────────────────────────────────────────────────────
+
+export interface SessionEvent {
+  readonly sessionId: string
+  readonly eventId: string
+  readonly ts: number
+  readonly toolName: string
+  readonly content: string
 }
 
-export interface SessionCaptureInput {
-  repoHash: string
-  agentId?: string
-  sessionId?: string
-  event: SessionEventInput
+export interface CaptureEventInput {
+  readonly repoHash: string
+  readonly event: Omit<SessionEvent, 'eventId' | 'ts'>
 }
 
 export interface SnapshotInput {
-  repoHash: string
-  sessionId?: string
-  agentId?: string
-  capMs?: number
+  readonly repoHash: string
+  /** Maximum time to spend consolidating, in ms */
+  readonly capMs: number
 }
 
 export interface SnapshotResult {
-  snapshotId: string
-  sessionId: string
-  status: 'complete' | 'partial'
-  eventCount: number
-  content: string
+  readonly snapshotId: string
+  readonly eventsIncluded: number
+  readonly partial: boolean
 }
 
 export interface RestoreInput {
-  repoHash: string
-  query: string
-  limit?: number
+  readonly repoHash: string
+  readonly query: string
+  readonly limit?: number
 }
 
-export interface RestoredSessionEvent {
-  sessionId: string
-  eventId: string
-  ts: string
-  toolName: string
-  content: string
-  score: number
+export interface RestoreResult {
+  readonly hits: readonly SearchHit[]
+  readonly snapshotId: string | null
+}
+
+// ── Fetch-index types ────────────────────────────────────────────────────────
+
+export interface FetchIndexOptions {
+  readonly url: string
+  readonly dbPath: string
+  /** Override cache TTL in ms (for testing) */
+  readonly cacheTtlMs?: number
+}
+
+export interface FetchIndexResult {
+  readonly url: string
+  readonly chunkCount: number
+  readonly cached: boolean
+  readonly cachedAt?: number
+}
+
+// ── Backend selector ─────────────────────────────────────────────────────────
+
+/** Engine backends. ctx-rs is the default in v2. */
+export type SessionEngineBackend = 'ctx-rs' | 'ts'
+
+/** Status returned when ctx-rs prebuilt is missing and AK_DISABLE_CTX=1. */
+export interface UnavailableStatus {
+  readonly status: 'unavailable'
+}
+
+export function isUnavailable(v: unknown): v is UnavailableStatus {
+  return typeof v === 'object' && v !== null && 'status' in v && (v as UnavailableStatus).status === 'unavailable'
 }
