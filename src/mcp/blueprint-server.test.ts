@@ -21,7 +21,11 @@ import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ToolRegistrar, ToolHandler, ToolHandlerResult } from './auto-discover.js'
-import { registerBlueprintTools, _setSyncAdapterFactory } from './blueprint-server.js'
+import {
+  registerBlueprintServer,
+  registerBlueprintTools,
+  _setSyncAdapterFactory,
+} from './blueprint-server.js'
 import type { SyncAdapter } from './blueprint-server.js'
 
 // ---------------------------------------------------------------------------
@@ -932,5 +936,163 @@ describe('registerBlueprintTools', () => {
       expect(tools.has(name), `${name} should be registered`).toBe(true)
     }
     expect(tools.size).toBe(expectedTools.length)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Task 2.1 — registerBlueprintServer integration point
+// ---------------------------------------------------------------------------
+
+describe('registerBlueprintServer (Task 2.1)', () => {
+  it('registers all 8 structured tools plus ak_blueprint_projects', async () => {
+    const localTmp = mkdtempSync(path.join(tmpdir(), 'ak-bs-server-'))
+    try {
+      mkdirSync(path.join(localTmp, '.agent'), { recursive: true })
+      mkdirSync(path.join(localTmp, 'blueprints', 'draft'), { recursive: true })
+      writeFileSync(path.join(localTmp, 'package.json'), JSON.stringify({ name: 'x' }), 'utf8')
+
+      const { registrar, tools: local } = makeRegistrar()
+      await registerBlueprintServer(registrar, {
+        cwd: localTmp,
+        existingToolNames: new Set(),
+      })
+
+      const expected = [
+        'ak_blueprint_query',
+        'ak_blueprint_new',
+        'ak_blueprint_validate',
+        'ak_blueprint_task_next',
+        'ak_blueprint_task_advance',
+        'ak_blueprint_promote',
+        'ak_blueprint_finalize',
+        'ak_blueprint_depgraph',
+        'ak_blueprint_projects',
+      ]
+      for (const name of expected) {
+        expect(local.has(name), `${name} should be registered`).toBe(true)
+      }
+      expect(local.size).toBe(expected.length)
+    } finally {
+      rmSync(localTmp, { recursive: true, force: true })
+    }
+  })
+
+  it('hard-fails when a blueprint tool name collides with an existing tool', async () => {
+    const localTmp = mkdtempSync(path.join(tmpdir(), 'ak-bs-collide-'))
+    try {
+      mkdirSync(path.join(localTmp, '.agent'), { recursive: true })
+      mkdirSync(path.join(localTmp, 'blueprints', 'draft'), { recursive: true })
+      writeFileSync(path.join(localTmp, 'package.json'), JSON.stringify({ name: 'x' }), 'utf8')
+
+      const { registrar } = makeRegistrar()
+      // Pretend the auto-discover step already registered a tool that collides
+      // with one of the blueprint surface names.
+      const existing = new Set<string>(['ak_blueprint_query'])
+
+      await expect(
+        registerBlueprintServer(registrar, { cwd: localTmp, existingToolNames: existing }),
+      ).rejects.toThrow(/collide|collision|already registered/i)
+    } finally {
+      rmSync(localTmp, { recursive: true, force: true })
+    }
+  })
+
+  it('ak_blueprint_projects returns roots-derived projects when getMcpRoots is provided and supported', async () => {
+    const localTmp = mkdtempSync(path.join(tmpdir(), 'ak-bs-roots-'))
+    try {
+      mkdirSync(path.join(localTmp, '.agent'), { recursive: true })
+      mkdirSync(path.join(localTmp, 'blueprints', 'draft'), { recursive: true })
+      writeFileSync(path.join(localTmp, 'package.json'), JSON.stringify({ name: 'x' }), 'utf8')
+
+      const { registrar, tools: local } = makeRegistrar()
+      await registerBlueprintServer(registrar, {
+        cwd: localTmp,
+        existingToolNames: new Set(),
+        getMcpRoots: async () => ({ roots: [{ uri: `file://${localTmp}`, name: 'local' }] }),
+      })
+
+      const result = await callTool(local, 'ak_blueprint_projects', {})
+      const parsed = parseResult(result) as {
+        summary: string
+        projects: Array<{ project_id: string; worktree_path: string; source: string }>
+        warnings: string[]
+      }
+      expect(Array.isArray(parsed.projects)).toBe(true)
+      // The current project AND the roots-derived project should appear; both
+      // resolve to the same worktree path so dedupe leaves one entry.
+      expect(parsed.projects.length).toBeGreaterThanOrEqual(1)
+      expect(parsed.warnings).not.toContain('unsupported_roots')
+    } finally {
+      rmSync(localTmp, { recursive: true, force: true })
+    }
+  })
+
+  it('ak_blueprint_projects degrades gracefully when getMcpRoots throws (roots unsupported)', async () => {
+    const localTmp = mkdtempSync(path.join(tmpdir(), 'ak-bs-noroots-'))
+    try {
+      mkdirSync(path.join(localTmp, '.agent'), { recursive: true })
+      mkdirSync(path.join(localTmp, 'blueprints', 'draft'), { recursive: true })
+      writeFileSync(path.join(localTmp, 'package.json'), JSON.stringify({ name: 'x' }), 'utf8')
+
+      const { registrar, tools: local } = makeRegistrar()
+      await registerBlueprintServer(registrar, {
+        cwd: localTmp,
+        existingToolNames: new Set(),
+        getMcpRoots: async () => {
+          throw new Error('McpError: Method not found')
+        },
+      })
+
+      const result = await callTool(local, 'ak_blueprint_projects', {})
+      const parsed = parseResult(result) as {
+        summary: string
+        projects: Array<{ project_id: string }>
+        warnings: string[]
+        next_action?: { kind: string; hint: string }
+      }
+      // Roots unsupported must NOT block tool execution; we just emit a warning.
+      expect(parsed.warnings).toContain('unsupported_roots')
+      // Current project must still be discoverable from cwd.
+      expect(parsed.projects.length).toBeGreaterThanOrEqual(1)
+    } finally {
+      rmSync(localTmp, { recursive: true, force: true })
+    }
+  })
+
+  it('roots list-changed notification refreshes the cached roots on the next call', async () => {
+    const localTmp = mkdtempSync(path.join(tmpdir(), 'ak-bs-rootschanged-'))
+    try {
+      mkdirSync(path.join(localTmp, '.agent'), { recursive: true })
+      mkdirSync(path.join(localTmp, 'blueprints', 'draft'), { recursive: true })
+      writeFileSync(path.join(localTmp, 'package.json'), JSON.stringify({ name: 'x' }), 'utf8')
+
+      let listRootsCalls = 0
+      const { registrar, tools: local } = makeRegistrar()
+      let notifyRootsChanged: (() => void) | null = null
+      await registerBlueprintServer(registrar, {
+        cwd: localTmp,
+        existingToolNames: new Set(),
+        getMcpRoots: async () => {
+          listRootsCalls += 1
+          return { roots: [{ uri: `file://${localTmp}` }] }
+        },
+        onRootsListChanged: (cb) => {
+          notifyRootsChanged = cb
+        },
+      })
+
+      // Two consecutive calls — same cached snapshot, only one listRoots call.
+      await callTool(local, 'ak_blueprint_projects', {})
+      await callTool(local, 'ak_blueprint_projects', {})
+      expect(listRootsCalls).toBe(1)
+
+      // Trigger list-changed and call again — cache must rebind.
+      expect(typeof notifyRootsChanged).toBe('function')
+      notifyRootsChanged!()
+      await callTool(local, 'ak_blueprint_projects', {})
+      expect(listRootsCalls).toBe(2)
+    } finally {
+      rmSync(localTmp, { recursive: true, force: true })
+    }
   })
 })

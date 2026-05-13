@@ -25,6 +25,8 @@ import { openDb } from '#db/connection.js'
 import { ingestAll } from '#db/ingester.js'
 import { findTemplate } from '#db/templates.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
+import { makeNextAction } from '#next-action.js'
+import { resolveBlueprintProjects } from '#projects.js'
 import { maybeHint } from './_tail-hints.js'
 import type { ToolHandlerResult, ToolRegistrar } from './auto-discover.js'
 
@@ -1010,4 +1012,184 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
     (r) => handleDepgraph(cwd, r),
     { title: 'Blueprint Dep Graph', readOnlyHint: true, openWorldHint: false },
   )
+}
+
+// ---------------------------------------------------------------------------
+// Task 2.1 — single integration point for the main MCP server
+// ---------------------------------------------------------------------------
+
+/**
+ * Options for {@link registerBlueprintServer}.
+ *
+ * @property cwd                Repo working directory (defaults to process.cwd()).
+ * @property existingToolNames  Names of tools already registered by the
+ *                              auto-discover step. Registration HARD-FAILS on
+ *                              collision (F13/E15) — silent shadowing would
+ *                              hide name drift from CI.
+ * @property getMcpRoots        Lazy callback that returns the current MCP
+ *                              client roots. Catch unsupported-capability
+ *                              errors *inside* this callback or let them
+ *                              throw — `ak_blueprint_projects` degrades
+ *                              gracefully to current-cwd + warning.
+ * @property onRootsListChanged Optional callback to install a notification
+ *                              handler for `RootsListChangedNotificationSchema`.
+ *                              When the client emits the notification, invoke
+ *                              the callback (no args) and the roots cache will
+ *                              be invalidated. Callers wire this via
+ *                              `server.setNotificationHandler(...)` (F5).
+ */
+export interface RegisterBlueprintServerOptions {
+  readonly cwd?: string
+  readonly existingToolNames: ReadonlySet<string>
+  readonly getMcpRoots?: () => Promise<{
+    readonly roots: ReadonlyArray<{ readonly uri: string; readonly name?: string }>
+  }>
+  readonly onRootsListChanged?: (handler: () => void) => void
+}
+
+const BLUEPRINT_SURFACE_TOOLS = [
+  'ak_blueprint_query',
+  'ak_blueprint_new',
+  'ak_blueprint_validate',
+  'ak_blueprint_task_next',
+  'ak_blueprint_task_advance',
+  'ak_blueprint_promote',
+  'ak_blueprint_finalize',
+  'ak_blueprint_depgraph',
+  'ak_blueprint_projects',
+] as const
+
+/**
+ * Wire the blueprint structured-store tools into the main MCP server.
+ *
+ * Single integration point (F13/E15): call this once from `createServer` AFTER
+ * `auto-discover` finishes so tool-name collisions surface as a registration
+ * error rather than silent shadow. Adds `ak_blueprint_projects` on top of the
+ * 8 existing tools.
+ *
+ * Roots handling (F5):
+ * - Roots are looked up lazily via `getMcpRoots` (callers pass a thunk that
+ *   calls `server.listRoots()`). If the client does not support roots, the
+ *   callback throws `assertClientCapability` — that throw is caught here, the
+ *   tool result includes an `unsupported_roots` warning, and the current
+ *   project still resolves from cwd.
+ * - `onRootsListChanged` lets the caller hook a notification handler so the
+ *   cached roots invalidate on the next read.
+ */
+export async function registerBlueprintServer(
+  registrar: ToolRegistrar,
+  options: RegisterBlueprintServerOptions,
+): Promise<void> {
+  const cwd = options.cwd ?? process.cwd()
+
+  // F13/E15: hard-fail on collision before doing any work — silent shadowing
+  // would hide the conflict until a downstream tool-call surfaced it.
+  for (const name of BLUEPRINT_SURFACE_TOOLS) {
+    if (options.existingToolNames.has(name)) {
+      throw new Error(
+        `[blueprint-server] tool name "${name}" collides with an auto-discovered tool; rename one of them before registering`,
+      )
+    }
+  }
+
+  // Register the 8 existing structured-store tools.
+  await registerBlueprintTools(registrar, cwd)
+
+  // Cached snapshot of the MCP client's roots, invalidated by list-changed.
+  interface RootsCacheState {
+    fetched: boolean
+    roots: ReadonlyArray<{ readonly uri: string; readonly name?: string }>
+    unsupported: boolean
+  }
+  const cache: RootsCacheState = { fetched: false, roots: [], unsupported: false }
+
+  async function ensureRoots(): Promise<RootsCacheState> {
+    if (cache.fetched) return cache
+    if (!options.getMcpRoots) {
+      cache.fetched = true
+      cache.roots = []
+      cache.unsupported = false
+      return cache
+    }
+    try {
+      const response = await options.getMcpRoots()
+      cache.fetched = true
+      cache.roots = response.roots
+      cache.unsupported = false
+    } catch {
+      // Roots capability missing on the client — degrade gracefully.
+      cache.fetched = true
+      cache.roots = []
+      cache.unsupported = true
+    }
+    return cache
+  }
+
+  if (options.onRootsListChanged) {
+    options.onRootsListChanged(() => {
+      cache.fetched = false
+      cache.roots = []
+      cache.unsupported = false
+    })
+  }
+
+  registrar.registerTool(
+    'ak_blueprint_projects',
+    'List blueprint-bearing projects from current cwd, MCP roots, workspace config, and git worktrees. Returns { summary, projects, warnings, next_action? }.',
+    {
+      type: 'object',
+      properties: {
+        scope: {
+          type: 'string',
+          enum: ['current', 'roots', 'workspace', 'all'],
+          default: 'all',
+        },
+      },
+    },
+    undefined,
+    async () => handleProjects(cwd, ensureRoots),
+    { title: 'Blueprint Projects', readOnlyHint: true, openWorldHint: false },
+  )
+}
+
+async function handleProjects(
+  cwd: string,
+  ensureRoots: () => Promise<{
+    fetched: boolean
+    roots: ReadonlyArray<{ readonly uri: string; readonly name?: string }>
+    unsupported: boolean
+  }>,
+): Promise<ToolHandlerResult> {
+  const rootsState = await ensureRoots()
+
+  const projects = await resolveBlueprintProjects({
+    cwd,
+    rootsProvider: rootsState.roots.length > 0 ? async () => ({ roots: rootsState.roots }) : undefined,
+  })
+
+  const warnings: string[] = []
+  if (rootsState.unsupported) warnings.push('unsupported_roots')
+
+  const summary =
+    projects.length === 0
+      ? 'No blueprint-bearing projects found'
+      : `Found ${projects.length} project${projects.length === 1 ? '' : 's'}`
+
+  const payload: Record<string, unknown> = {
+    summary,
+    projects,
+    warnings,
+  }
+
+  if (rootsState.unsupported) {
+    payload.next_action = makeNextAction(
+      'unsupported_roots',
+      'MCP client does not advertise the roots capability; only the current cwd was scanned. Pass --roots explicitly or configure workspace.yaml.',
+    )
+  }
+
+  return {
+    content: [{ type: 'text', text: JSON.stringify(payload) }],
+    structuredContent: payload,
+  }
 }

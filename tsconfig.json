@@ -57,6 +57,8 @@
       "#blueprint/sync/types.js": ["./src/blueprint/sync/types.ts"],
       "#blueprint/sync/auth.js": ["./src/blueprint/sync/auth.ts"],
       "#blueprint/sync/client.js": ["./src/blueprint/sync/client.ts"],
+      "#projects.js": ["./src/blueprint/projects.ts"],
+      "#next-action.js": ["./src/blueprint/next-action.ts"],
       "#*": ["./src/blueprint/*"]
     }
   },

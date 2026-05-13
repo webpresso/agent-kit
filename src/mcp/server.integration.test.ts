@@ -331,4 +331,45 @@ describe('mcp server integration', () => {
     expect(typeof textBlock?.text).toBe('string')
     expect(JSON.parse(textBlock!.text!)).toEqual(callResponse?.result?.structuredContent)
   })
+
+  // Task 2.1: the structured blueprint surface (8 existing tools + the new
+  // `ak_blueprint_projects` aggregate) must be advertised by the main server,
+  // not just available via direct registrar tests.
+  it('advertises the 9 structured blueprint tools in tools/list (Task 2.1)', async () => {
+    const responses = await callServer(
+      {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {},
+          clientInfo: { name: 'agent-kit-test', version: '0.0.0' },
+        },
+      },
+      { jsonrpc: '2.0', id: 2, method: 'tools/list' },
+    )
+
+    const tools = (responses.find((r) => r.id === 2)?.result?.tools ?? []) as Array<{
+      name: string
+    }>
+    const names = tools.map((t) => t.name)
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'ak_blueprint_query',
+        'ak_blueprint_new',
+        'ak_blueprint_validate',
+        'ak_blueprint_task_next',
+        'ak_blueprint_task_advance',
+        'ak_blueprint_promote',
+        'ak_blueprint_finalize',
+        'ak_blueprint_depgraph',
+        'ak_blueprint_projects',
+      ]),
+    )
+    // Auto-discovered non-blueprint tools must still be present alongside.
+    expect(names).toEqual(
+      expect.arrayContaining(['ak_lint', 'ak_qa', 'ak_test', 'ak_audit']),
+    )
+  }, 20_000)
 })

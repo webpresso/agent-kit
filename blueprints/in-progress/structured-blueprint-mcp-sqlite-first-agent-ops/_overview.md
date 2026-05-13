@@ -404,7 +404,7 @@ Add a focused markdown helper for inserting/updating a task-local `**Verificatio
 
 #### [mcp] Task 2.1: Register structured blueprint tools and lazy MCP roots input in the main server
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1, Task 1.2
 
@@ -436,12 +436,12 @@ Wire the existing structured-store tool registrar into `createServer` so `ak mcp
 
 **Acceptance:**
 
-- [ ] `ak mcp` advertises both the 8 existing structured tools and `ak_blueprint_projects`.
-- [ ] Registration hard-fails on tool-name collision; test asserts.
-- [ ] Fresh repo with no DB can still list tools; tool-call returns `next_action: 'rebuild_db'`.
-- [ ] Roots capability absence does not fail tool listing or current-project operation; `getMcpRoots()` returns an empty result with `unsupported_roots` warning.
-- [ ] Roots list-changed notification is handled via `setNotificationHandler` (no reliance on a non-existent `onRootsListChanged` property).
-- [ ] Existing non-blueprint MCP tools still list and call normally.
+- [x] `ak mcp` advertises both the 8 existing structured tools and `ak_blueprint_projects`.
+- [x] Registration hard-fails on tool-name collision; test asserts.
+- [x] Fresh repo with no DB can still list tools; tool-call returns `next_action: 'rebuild_db'`.
+- [x] Roots capability absence does not fail tool listing or current-project operation; `getMcpRoots()` returns an empty result with `unsupported_roots` warning.
+- [x] Roots list-changed notification is handled via `setNotificationHandler` (no reliance on a non-existent `onRootsListChanged` property).
+- [x] Existing non-blueprint MCP tools still list and call normally.
 
 #### [mcp] Task 2.2: Add project-aware list/get/context/create handlers in the existing blueprint MCP surface
 

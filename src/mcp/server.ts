@@ -14,6 +14,7 @@ import {
   ListResourcesRequestSchema,
   ListResourceTemplatesRequestSchema,
   ListToolsRequestSchema,
+  RootsListChangedNotificationSchema,
 } from '@modelcontextprotocol/sdk/types.js'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -26,6 +27,7 @@ import {
   type ToolHandler,
   type ToolRegistrar,
 } from './auto-discover.js'
+import { registerBlueprintServer } from './blueprint-server.js'
 
 const SERVER_NAME = 'agent-kit'
 
@@ -77,6 +79,11 @@ export interface CreateServerOptions {
    * `pnpm build`.
    */
   toolsDir?: string
+  /**
+   * Repo working directory passed through to the blueprint structured-store
+   * registrar (Task 2.1). Defaults to `process.cwd()`. Tests inject a tmpdir.
+   */
+  cwd?: string
 }
 
 export async function createServer(options: CreateServerOptions = {}): Promise<Server> {
@@ -101,6 +108,31 @@ export async function createServer(options: CreateServerOptions = {}): Promise<S
   }
 
   await discoverTools(registrar, options.toolsDir ?? defaultToolsDir())
+
+  // Task 2.1: register the blueprint structured-store tools AFTER auto-discover
+  // so any tool-name collision surfaces here as a thrown error rather than
+  // silent shadowing. Roots are looked up lazily via `server.listRoots()`; the
+  // capability-missing throw is caught inside `registerBlueprintServer` so
+  // tool listing still works in clients that don't advertise roots.
+  const existingToolNames = new Set(tools.keys())
+  await registerBlueprintServer(registrar, {
+    cwd: options.cwd ?? process.cwd(),
+    existingToolNames,
+    getMcpRoots: () => server.listRoots(),
+    onRootsListChanged: (handler) => {
+      // F5: the SDK has no convenience `onRootsListChanged` property — the
+      // notification handler must be installed explicitly. Capability-missing
+      // clients simply never emit this notification, which is harmless.
+      try {
+        server.setNotificationHandler(RootsListChangedNotificationSchema, async () => {
+          handler()
+        })
+      } catch {
+        // Some test transports don't accept additional notification handlers;
+        // failing to install is non-fatal — list-changed is an optimization.
+      }
+    },
+  })
 
   // Empty prompts/resources/resource-templates handlers, registered exactly
   // like context-mode does (build/server.js:50-57). Several MCP clients —
