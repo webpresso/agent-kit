@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env bun
 import type { MigrateOptions } from './commands/migrate-command.js'
 
 function printHelp(): void {

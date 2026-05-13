@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env bun
 import type { ValidateOptions } from './commands/validate-command.js'
 
 function printHelp(): void {
