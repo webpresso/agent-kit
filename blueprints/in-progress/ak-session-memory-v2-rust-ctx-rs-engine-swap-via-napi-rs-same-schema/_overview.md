@@ -1,6 +1,6 @@
 ---
 type: blueprint
-status: planned
+status: in-progress
 complexity: L
 created: '2026-05-13'
 last_updated: '2026-05-13'
