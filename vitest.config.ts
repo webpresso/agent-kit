@@ -57,6 +57,11 @@ export default defineConfig({
         find: /^#blueprint\/sync\/client\.js$/,
         replacement: resolve(__dirname, 'src/blueprint/sync/client.ts'),
       },
+      {
+        find: /^#session-memory\/(.*)$/,
+        replacement: resolve(__dirname, 'src/session-memory/$1'),
+      },
+      { find: /^#session-memory$/, replacement: resolve(__dirname, 'src/session-memory/index.ts') },
       { find: /^#test/, replacement: resolve(__dirname, 'src/test/index.ts') },
       { find: /^#e2e$/, replacement: resolve(__dirname, 'src/e2e/index.ts') },
       { find: /^#e2e\/(.*)/, replacement: resolve(__dirname, 'src/e2e/$1') },
