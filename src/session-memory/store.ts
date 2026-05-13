@@ -115,8 +115,8 @@ class TsStore {
   constructor(dbPath: string) {
     mkdirSync(dirname(dbPath), { recursive: true })
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const BetterSqlite3 = require('better-sqlite3') as BetterSqlite3Module
-    this.db = new BetterSqlite3.default(dbPath)
+    const BetterSqlite3 = require('better-sqlite3') as BetterSqlite3Module['default']
+    this.db = new BetterSqlite3(dbPath)
     this.db.pragma('journal_mode=WAL')
     this.db.pragma('synchronous=NORMAL')
     this.db.pragma(`mmap_size=${256 * 1024 * 1024}`)
