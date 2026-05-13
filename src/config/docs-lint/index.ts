@@ -1,3 +1,5 @@
+import type { DocType } from './schemas/index.js'
+
 export * from './parsers/index.js'
 export * from './schemas/index.js'
 
@@ -36,6 +38,6 @@ export interface ValidationResult {
 export interface MigrationResult {
   file: string
   action: 'added' | 'updated' | 'skipped' | 'error'
-  docType: import('./schemas/index.js').DocType
+  docType: DocType
   message?: string
 }

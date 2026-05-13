@@ -252,9 +252,7 @@ export class TechDebtService extends TrackedDocumentService<
    * @param tdSlug - TechDebt slug
    * @returns Array of BlueprintRecord objects
    */
-  async getLinkedBlueprints(
-    tdSlug: string,
-  ): Promise<import('../query/types.js').BlueprintRecord[]> {
+  async getLinkedBlueprints(tdSlug: string): Promise<BlueprintRecord[]> {
     // Read fresh from disk and deep-clone to avoid gray-matter shared state issues
     const itemPath = path.join(this.baseDir, tdSlug, 'README.md')
     const content = await fs.readFile(itemPath, 'utf-8')
@@ -283,9 +281,7 @@ export class TechDebtService extends TrackedDocumentService<
       ),
     )
 
-    return records.filter(
-      (record): record is import('../query/types.js').BlueprintRecord => record !== null,
-    )
+    return records.filter((record): record is BlueprintRecord => record !== null)
   }
 
   /**
