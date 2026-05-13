@@ -29,6 +29,7 @@ export type AuditKind =
   | 'mutation'
   | 'quality'
   | 'guardrails'
+  | 'hook-surface'
 
 export type AuditOutcome =
   | { kind: 'invalid-usage'; message: string }

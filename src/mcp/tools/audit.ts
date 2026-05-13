@@ -35,6 +35,7 @@ const KINDS = [
   'bundle-budget',
   'commit-message',
   'tech-debt',
+  'hook-surface',
 ] as const
 
 const inputSchema = z.object({
@@ -245,6 +246,23 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
         ...applyOutputTransform(output, { toolName: `ak_audit-${kind}` }),
       }
     }
+    case 'hook-surface': {
+      const { auditHookSurface } = await import('#audit/hook-surface')
+      const auditResult = auditHookSurface(input.cwd ?? input.directory)
+      return {
+        passed: auditResult.passed,
+        summary: auditResult.passed
+          ? 'hook-surface audit passed'
+          : `hook-surface audit failed with ${auditResult.details.violations.length} violation${auditResult.details.violations.length === 1 ? '' : 's'}`,
+        kind,
+        details: {
+          ok: auditResult.details.ok,
+          violations: auditResult.details.violations.map((v) => ({
+            message: v.reason,
+          })),
+        },
+      }
+    }
     default: {
       // Exhaustiveness check — z.enum should make this unreachable.
       const _exhaustive: never = kind
@@ -261,7 +279,7 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
 const tool: ToolDescriptor = {
   name: 'ak_audit',
   description:
-    'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-lifecycle, roadmap-links, bundle-budget, commit-message, tech-debt). Returns {passed, kind, details}.',
+    'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-lifecycle, roadmap-links, bundle-budget, commit-message, tech-debt, hook-surface). Returns {passed, kind, details}.',
   inputSchema,
   outputSchema,
   annotations: {

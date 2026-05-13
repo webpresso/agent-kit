@@ -38,22 +38,29 @@ import {
   ALLOWED_REAL_FILES,
   type ConsumerConfig,
   DEFAULT_CONSUMERS,
-  DEFAULT_PER_SKILL_CONSUMERS,
   DEFAULT_SKILLS_CONSUMERS,
-  type PerSkillConsumerConfig,
   type SkillsConsumerConfig,
 } from './consumers.js'
 import { parseMarkdownFrontmatter } from './frontmatter.js'
 import { toToml } from './toml.js'
 import { isSymlinkPointingTo } from './unified-sync.js'
 
+// Per-skill consumer — one directory symlink per skill (Codex discovery shape).
+// Defined locally because consumers.ts removed it during the consolidation pass;
+// external consumers still depend on the re-exported name.
+export interface PerSkillConsumerConfig {
+  dir: string
+}
+
+export const DEFAULT_PER_SKILL_CONSUMERS: PerSkillConsumerConfig[] = [
+  { dir: '.agents/skills' },
+]
+
 export {
   ALLOWED_REAL_FILES,
   type ConsumerConfig,
   DEFAULT_CONSUMERS,
-  DEFAULT_PER_SKILL_CONSUMERS,
   DEFAULT_SKILLS_CONSUMERS,
-  type PerSkillConsumerConfig,
   type SkillsConsumerConfig,
 }
 

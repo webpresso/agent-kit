@@ -93,6 +93,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     (await import('#audit/tech-debt-cadence')).auditTechDebtCadence(root),
   'cross-repo-correlation': async (root) =>
     (await import('#audit/cross-repo-correlation')).auditCrossRepoCorrelationAsRepoResult(root),
+  'hook-surface': async (root) =>
+    (await import('#audit/hook-surface')).auditHookSurfaceAsRepoResult(root),
   rules: async (root) => runContentAudit(root, 'rule'),
   skills: async (root) => runContentAudit(root, 'skill'),
 }
