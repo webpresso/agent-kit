@@ -2,26 +2,25 @@
  * Tests for `ak_session_batch_execute` MCP tool.
  *
  * Mocks:
- *   - node:child_process (spawnSync) — controls per-command output
- *   - #session-memory/store (getStore) — controls insertChunks + search
+ *   - @webpresso/ctx-rs (executeSandboxed) — controls per-command execution + indexing
+ *   - #session-memory/store (getStore)     — controls search
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 
-const spawnSyncMock = vi.hoisted(() => vi.fn())
-const insertChunksMock = vi.hoisted(() => vi.fn())
+const executeSandboxedMock = vi.hoisted(() => vi.fn())
 const searchMock = vi.hoisted(() => vi.fn())
 const getStoreMock = vi.hoisted(() =>
   vi.fn(() => ({
-    insertChunks: insertChunksMock,
+    insertChunks: vi.fn(),
     search: searchMock,
   })),
 )
 
-vi.mock('node:child_process', () => ({
-  spawnSync: spawnSyncMock,
+vi.mock('@webpresso/ctx-rs', () => ({
+  executeSandboxed: executeSandboxedMock,
 }))
 
 vi.mock('#session-memory/store', () => ({
@@ -30,19 +29,17 @@ vi.mock('#session-memory/store', () => ({
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fakeSpawnResult(opts: {
-  stdout?: string
-  stderr?: string
+function fakeExecuteResult(opts: {
   exitCode?: number
+  outputBytes?: number
+  indexed?: boolean
+  summary?: string
 }) {
   return {
-    stdout: opts.stdout ?? '',
-    stderr: opts.stderr ?? '',
-    status: opts.exitCode ?? 0,
-    signal: null,
-    pid: 12345,
-    output: [],
-    error: undefined,
+    exitCode: opts.exitCode ?? 0,
+    outputBytes: opts.outputBytes ?? 10,
+    indexed: opts.indexed ?? false,
+    summary: opts.summary ?? 'ok',
   }
 }
 
@@ -64,11 +61,10 @@ describe('ak_session_batch_execute', () => {
   })
 
   afterEach(() => {
-    spawnSyncMock.mockReset()
-    insertChunksMock.mockReset()
+    executeSandboxedMock.mockReset()
     searchMock.mockReset()
     getStoreMock.mockReset()
-    getStoreMock.mockReturnValue({ insertChunks: insertChunksMock, search: searchMock })
+    getStoreMock.mockReturnValue({ insertChunks: vi.fn(), search: searchMock })
   })
 
   it('exposes correct descriptor surface', () => {
@@ -77,9 +73,11 @@ describe('ak_session_batch_execute', () => {
     expect(tool.handler).toBeTypeOf('function')
   })
 
-  describe('small output (≤ 2KB)', () => {
+  describe('small output (not indexed)', () => {
     it('runs all commands and returns results without indexing', async () => {
-      spawnSyncMock.mockReturnValue(fakeSpawnResult({ stdout: 'ok\n', exitCode: 0 }))
+      executeSandboxedMock.mockResolvedValue(
+        fakeExecuteResult({ exitCode: 0, outputBytes: 4, indexed: false }),
+      )
 
       const result = await tool.handler({
         commands: [
@@ -94,13 +92,14 @@ describe('ak_session_batch_execute', () => {
       const details = payload.details as { results: { indexed: boolean }[] }
       expect(details.results).toHaveLength(2)
       expect(details.results.every((r) => !r.indexed)).toBe(true)
-      expect(insertChunksMock).not.toHaveBeenCalled()
     })
   })
 
-  describe('large output (> 2KB)', () => {
-    it('indexes each large-output command separately', async () => {
-      spawnSyncMock.mockReturnValue(fakeSpawnResult({ stdout: 'x'.repeat(3000), exitCode: 0 }))
+  describe('large output (indexed)', () => {
+    it('reports indexed=true per command when ctx-rs indexed them', async () => {
+      executeSandboxedMock.mockResolvedValue(
+        fakeExecuteResult({ exitCode: 0, outputBytes: 3000, indexed: true }),
+      )
 
       const result = await tool.handler({
         commands: [
@@ -113,15 +112,30 @@ describe('ak_session_batch_execute', () => {
 
       expect(details.results[0]!.indexed).toBe(true)
       expect(details.results[1]!.indexed).toBe(true)
-      expect(insertChunksMock).toHaveBeenCalledTimes(2)
-      const call0 = insertChunksMock.mock.calls[0]![0]
-      expect(call0[0].source).toBe('big-a')
+      expect(executeSandboxedMock).toHaveBeenCalledTimes(2)
+    })
+
+    it('passes correct label to executeSandboxed for each command', async () => {
+      executeSandboxedMock.mockResolvedValue(
+        fakeExecuteResult({ exitCode: 0, outputBytes: 3000, indexed: true }),
+      )
+
+      await tool.handler({
+        commands: [
+          { label: 'big-a', command: 'cmd-a' },
+          { label: 'big-b', command: 'cmd-b' },
+        ],
+      })
+
+      const labels = executeSandboxedMock.mock.calls.map((c) => c[2])
+      expect(labels).toContain('big-a')
+      expect(labels).toContain('big-b')
     })
 
     it('reports individual command failure while others pass', async () => {
-      spawnSyncMock
-        .mockReturnValueOnce(fakeSpawnResult({ stdout: 'x'.repeat(3000), exitCode: 0 }))
-        .mockReturnValueOnce(fakeSpawnResult({ stdout: 'x'.repeat(3000), exitCode: 2 }))
+      executeSandboxedMock
+        .mockResolvedValueOnce(fakeExecuteResult({ exitCode: 0, outputBytes: 3000, indexed: true }))
+        .mockResolvedValueOnce(fakeExecuteResult({ exitCode: 2, outputBytes: 3000, indexed: true }))
 
       const result = await tool.handler({
         commands: [
@@ -140,7 +154,9 @@ describe('ak_session_batch_execute', () => {
 
   describe('query phase', () => {
     it('searches across indexed content when queries provided', async () => {
-      spawnSyncMock.mockReturnValue(fakeSpawnResult({ stdout: 'x'.repeat(3000), exitCode: 0 }))
+      executeSandboxedMock.mockResolvedValue(
+        fakeExecuteResult({ exitCode: 0, outputBytes: 3000, indexed: true }),
+      )
       const fakeHits = [{ content: 'x', source: 'big-a', rank: -1, tier: 'porter' }]
       searchMock.mockReturnValue(fakeHits)
 
@@ -160,8 +176,9 @@ describe('ak_session_batch_execute', () => {
     })
 
     it('skips query phase when no commands were indexed', async () => {
-      // small output — nothing indexed
-      spawnSyncMock.mockReturnValue(fakeSpawnResult({ stdout: 'tiny', exitCode: 0 }))
+      executeSandboxedMock.mockResolvedValue(
+        fakeExecuteResult({ exitCode: 0, outputBytes: 50, indexed: false }),
+      )
 
       const result = await tool.handler({
         commands: [{ label: 'small', command: 'echo tiny' }],
@@ -175,7 +192,9 @@ describe('ak_session_batch_execute', () => {
     })
 
     it('omits queryHits from result when no queries provided', async () => {
-      spawnSyncMock.mockReturnValue(fakeSpawnResult({ stdout: 'x'.repeat(3000), exitCode: 0 }))
+      executeSandboxedMock.mockResolvedValue(
+        fakeExecuteResult({ exitCode: 0, outputBytes: 3000, indexed: true }),
+      )
 
       const result = await tool.handler({
         commands: [{ label: 'big', command: 'cmd' }],
@@ -189,7 +208,9 @@ describe('ak_session_batch_execute', () => {
 
   describe('concurrency', () => {
     it('accepts concurrency override (max 8)', async () => {
-      spawnSyncMock.mockReturnValue(fakeSpawnResult({ stdout: 'ok', exitCode: 0 }))
+      executeSandboxedMock.mockResolvedValue(
+        fakeExecuteResult({ exitCode: 0, outputBytes: 4, indexed: false }),
+      )
 
       const result = await tool.handler({
         commands: [
@@ -202,7 +223,7 @@ describe('ak_session_batch_execute', () => {
       const payload = parsePayload(result)
 
       expect(payload.passed).toBe(true)
-      expect(spawnSyncMock).toHaveBeenCalledTimes(3)
+      expect(executeSandboxedMock).toHaveBeenCalledTimes(3)
     })
 
     it('rejects concurrency > 8', async () => {
@@ -216,21 +237,17 @@ describe('ak_session_batch_execute', () => {
   })
 
   describe('error handling', () => {
-    it('returns error envelope without throwing when getStore throws', async () => {
-      spawnSyncMock.mockReturnValue(fakeSpawnResult({ stdout: 'x'.repeat(3000), exitCode: 0 }))
-      // Make ALL store interactions throw (incl. initial getStore resolution)
-      getStoreMock.mockImplementation(() => {
-        throw new Error('db locked')
-      })
+    it('returns non-fatal result with indexed=false when executeSandboxed throws for one command', async () => {
+      executeSandboxedMock.mockRejectedValue(new Error('napi panic'))
 
       const result = await tool.handler({
         commands: [{ label: 'x', command: 'cmd' }],
       })
-      // indexing failure is non-fatal; command still succeeds
       const payload = parsePayload(result)
-      expect(payload.passed).toBe(true)
-      const details = payload.details as { results: { indexed: boolean }[] }
+      // executeSandboxed failure is caught per-command — command result shows exitCode -1
+      const details = payload.details as { results: { indexed: boolean; exitCode: number }[] }
       expect(details.results[0]!.indexed).toBe(false)
+      expect(details.results[0]!.exitCode).toBe(-1)
     })
 
     it('returns error envelope when input is invalid (empty commands array)', async () => {
@@ -240,7 +257,9 @@ describe('ak_session_batch_execute', () => {
 
   describe('output format', () => {
     it('returns MCP content array with text block and structuredContent', async () => {
-      spawnSyncMock.mockReturnValue(fakeSpawnResult({ stdout: 'ok', exitCode: 0 }))
+      executeSandboxedMock.mockResolvedValue(
+        fakeExecuteResult({ exitCode: 0, outputBytes: 4, indexed: false }),
+      )
 
       const result = await tool.handler({
         commands: [{ label: 'x', command: 'echo x' }],

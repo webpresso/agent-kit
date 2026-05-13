@@ -2,16 +2,17 @@
  * `ak_session_execute` MCP tool — output sandboxing for large command output.
  *
  * Replaces `ctx_execute` as the Lane 2 output-sandboxing tool.
- * When a command produces more than 2KB of output, the content is automatically
- * indexed via the ctx-rs Rust FFI (getStore().insertChunks) and only a compact
- * summary is returned to Claude. Optional query triggers an immediate FTS5 search
- * over the newly indexed content.
+ * When a command produces more than 2 KB of output, the content is automatically
+ * indexed via the ctx-rs Rust FFI (`executeSandboxed`) and only a compact
+ * summary is returned to Claude. Optional `query` triggers an immediate FTS5
+ * search over the newly indexed content.
  *
- * This is the core mechanism that achieves token savings equivalent to
- * context-mode's 98% output sandboxing — without the ctx_* dependency.
+ * v2: execution + indexing live entirely in Rust. This module is a thin napi shim.
  */
 
-import { spawnSync } from 'node:child_process'
+import { mkdirSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { z } from 'zod'
 
@@ -20,10 +21,44 @@ import { getStore } from '#session-memory/store'
 import type { SearchHit } from '#session-memory/types'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
-const LARGE_OUTPUT_THRESHOLD_BYTES = 2048
-const SUMMARY_PREVIEW_CHARS = 500
 const DEFAULT_SEARCH_LIMIT = 10
-const COMMAND_TIMEOUT_MS = 120_000
+
+// ── ctx-rs napi binding ───────────────────────────────────────────────────────
+
+interface CtxRsExecuteResult {
+  readonly exitCode: number
+  readonly outputBytes: number
+  readonly indexed: boolean
+  readonly summary: string
+}
+
+interface CtxRsModule {
+  readonly executeSandboxed: (
+    dbPath: string,
+    command: string,
+    label: string,
+  ) => Promise<CtxRsExecuteResult>
+}
+
+function tryLoadCtxRs(): CtxRsModule | null {
+  try {
+    const requireFn = createRequire(import.meta.url)
+    return requireFn('@webpresso/ctx-rs') as CtxRsModule
+  } catch {
+    return null
+  }
+}
+
+// ── Session DB path ───────────────────────────────────────────────────────────
+
+function resolveSessionDbPath(): string {
+  const repoHash = process.env['CLAUDE_REPO_HASH'] ?? process.env['AK_REPO_HASH'] ?? 'default'
+  const dbDir = join(homedir(), '.webpresso', 'sessions')
+  mkdirSync(dbDir, { recursive: true })
+  return join(dbDir, `${repoHash}.db`)
+}
+
+// ── Schema ────────────────────────────────────────────────────────────────────
 
 const inputSchema = z
   .object({
@@ -56,57 +91,13 @@ const outputSchema = createSummaryOutputSchema({
   }),
 })
 
-/**
- * Resolve the active session DB path (mirrors session.ts logic).
- * Falls back to a temp path when no repo-hash env is set.
- */
-function resolveSessionDbPath(_cwd: string): string {
-  const { homedir } = require('node:os') as typeof import('node:os')
-  const { mkdirSync } = require('node:fs') as typeof import('node:fs')
-  const repoHash = process.env['CLAUDE_REPO_HASH'] ?? process.env['AK_REPO_HASH'] ?? 'default'
-  const dbDir = join(homedir(), '.webpresso', 'sessions')
-  mkdirSync(dbDir, { recursive: true })
-  return join(dbDir, `${repoHash}.db`)
-}
-
-/**
- * Run a shell command synchronously and return stdout+stderr combined.
- */
-function runCommandSync(
-  command: string,
-  cwd: string,
-): { output: string; exitCode: number } {
-  const PATH_SEP = process.platform === 'win32' ? ';' : ':'
-  const localBin = join(cwd, 'node_modules', '.bin')
-  const env: NodeJS.ProcessEnv = {
-    ...process.env,
-    PATH: [localBin, process.env.PATH].filter(Boolean).join(PATH_SEP),
-  }
-
-  try {
-    const result = spawnSync('sh', ['-c', command], {
-      cwd,
-      env,
-      timeout: COMMAND_TIMEOUT_MS,
-      maxBuffer: 50 * 1024 * 1024, // 50MB
-      encoding: 'utf8',
-    })
-    const stdout = result.stdout ?? ''
-    const stderr = result.stderr ?? ''
-    const output = stdout + (stderr.length > 0 ? '\n' + stderr : '')
-    const exitCode = result.status ?? (result.signal != null ? 1 : 0)
-    return { output, exitCode }
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    return { output: `[spawn error] ${message}`, exitCode: 1 }
-  }
-}
+// ── Tool descriptor ───────────────────────────────────────────────────────────
 
 const tool: ToolDescriptor = {
   name: 'ak_session_execute',
   description:
     'Run a shell command and sandbox large output via ctx-rs FTS5 indexing. ' +
-    'When output exceeds 2KB, stores it in the session knowledge-base and returns a compact summary. ' +
+    'When output exceeds 2 KB, stores it in the session knowledge-base and returns a compact summary. ' +
     'Optionally accepts a `query` to search the newly indexed content immediately. ' +
     'Use instead of raw Bash for commands that produce large output (tests, git log, grep, build output).',
   inputSchema,
@@ -119,50 +110,59 @@ const tool: ToolDescriptor = {
   },
   handler: async (raw) => {
     const input = inputSchema.parse(raw ?? {})
-    const cwd = input.cwd ?? process.cwd()
     const label = input.label ?? input.command
 
+    const ctxRs = tryLoadCtxRs()
+
+    if (ctxRs === null) {
+      return createSummaryResult(
+        {
+          passed: false,
+          summary: 'ak_session_execute: ctx-rs unavailable — run ak setup to install',
+          exitCode: -1,
+          details: {
+            label,
+            exitCode: -1,
+            outputBytes: 0,
+            indexed: false,
+            summary: 'ctx-rs prebuilt not available',
+          },
+        },
+        { isError: true },
+      )
+    }
+
     try {
-      const { output, exitCode } = runCommandSync(input.command, cwd)
-      const outputBytes = Buffer.byteLength(output, 'utf8')
-      const shouldIndex = outputBytes > LARGE_OUTPUT_THRESHOLD_BYTES
+      const dbPath = resolveSessionDbPath()
 
-      let indexed = false
+      const result = await ctxRs.executeSandboxed(dbPath, input.command, label)
+
       let hits: readonly SearchHit[] | undefined
-
-      if (shouldIndex) {
+      if (input.query && result.indexed) {
         try {
-          const dbPath = resolveSessionDbPath(cwd)
           const store = getStore(dbPath)
-          store.insertChunks([{ source: label, content: output }])
-          indexed = true
-
-          if (input.query) {
-            hits = store.search({ query: input.query, limit: DEFAULT_SEARCH_LIMIT, source: label })
-          }
-        } catch (indexErr) {
-          // Indexing failure is non-fatal — still return command output
+          hits = store.search({ query: input.query, limit: DEFAULT_SEARCH_LIMIT, source: label })
+        } catch (searchErr) {
           process.stderr.write(
-            `ak_session_execute: indexing failed: ${(indexErr as Error).message}\n`,
+            `ak_session_execute: search failed: ${(searchErr as Error).message}\n`,
           )
         }
       }
 
-      const summary = output.slice(0, SUMMARY_PREVIEW_CHARS)
-      const passed = exitCode === 0
+      const passed = result.exitCode === 0
 
       const payload = {
         passed,
         summary: passed
-          ? `command succeeded (${outputBytes} bytes${indexed ? ', indexed' : ''})`
-          : `command failed with exit code ${exitCode} (${outputBytes} bytes${indexed ? ', indexed' : ''})`,
-        exitCode,
+          ? `command succeeded (${result.outputBytes} bytes${result.indexed ? ', indexed' : ''})`
+          : `command failed with exit code ${result.exitCode} (${result.outputBytes} bytes${result.indexed ? ', indexed' : ''})`,
+        exitCode: result.exitCode,
         details: {
           label,
-          exitCode,
-          outputBytes,
-          indexed,
-          summary,
+          exitCode: result.exitCode,
+          outputBytes: result.outputBytes,
+          indexed: result.indexed,
+          summary: result.summary,
           ...(hits !== undefined ? { hits: hits as SearchHit[] } : {}),
         },
       }
