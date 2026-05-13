@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.1
+
+### Patch Changes
+
+- 977b1b4: Ship top-level tsconfig JSON files so consumers can extend `@webpresso/agent-kit/tsconfig/*` after the config subpackages consolidate into agent-kit.
+
 ## 0.18.0
 
 ### Minor Changes
