@@ -296,3 +296,43 @@ developer experience. No PII, no repo identifiers, no file paths are ever collec
 ## License
 
 MIT
+
+## Consolidated helper package subpaths
+
+`webpresso` also replaces the separate `@webpresso/agent-*` helper packages.
+Install one package, then migrate old imports/config paths to the matching
+`webpresso/*` subpath. Full details live in [MIGRATION.md](./MIGRATION.md).
+
+| Old package/path | New `webpresso` path |
+| --- | --- |
+| `@webpresso/agent-tsconfig/base.json` | `webpresso/tsconfig/base.json` |
+| `@webpresso/agent-tsconfig/cloudflare.json` | `webpresso/tsconfig/cloudflare.json` |
+| `@webpresso/agent-tsconfig/library.json` | `webpresso/tsconfig/library.json` |
+| `@webpresso/agent-tsconfig/react-library.json` | `webpresso/tsconfig/react-library.json` |
+| `@webpresso/agent-tsconfig/react-router.json` | `webpresso/tsconfig/react-router.json` |
+| `@webpresso/agent-tsconfig/webpresso.json` | `webpresso/tsconfig/webpresso.json` |
+| `@webpresso/agent-vitest/node` | `webpresso/vitest/node` |
+| `@webpresso/agent-vitest/react` | `webpresso/vitest/react` |
+| `@webpresso/agent-vitest/react-router` | `webpresso/vitest/react-router` |
+| `@webpresso/agent-vitest/workers` | `webpresso/vitest/workers` |
+| `@webpresso/agent-vitest/react-setup` | `webpresso/vitest/react-setup` |
+| `@webpresso/agent-vitest/flakiness-reporter` | `webpresso/vitest/flakiness-reporter` |
+| `@webpresso/agent-stryker` | `webpresso/stryker` |
+| `@webpresso/agent-stryker/webpresso` | `webpresso/stryker/webpresso` |
+| `@webpresso/agent-oxlint` | `webpresso/oxlint` |
+| `@webpresso/agent-oxlint/import-hygiene` | `webpresso/oxlint/import-hygiene` |
+| `@webpresso/agent-oxlint/monorepo-paths` | `webpresso/oxlint/monorepo-paths` |
+| `@webpresso/agent-oxlint/testing-quality` | `webpresso/oxlint/testing-quality` |
+| `@webpresso/agent-workers-test` | `webpresso/workers-test` |
+| `@webpresso/agent-docs-lint` | `webpresso/docs-lint` |
+| `@webpresso/agent-docs-lint/schemas` | `webpresso/docs-lint/schemas` |
+| `@webpresso/agent-docs-lint/generator` | `webpresso/docs-lint/generator` |
+| `@webpresso/agent-launch` | `webpresso/launch` |
+| `@webpresso/agent-test-preset` | `webpresso/test-preset` |
+| `@webpresso/agent-test-preset/vitest` | `webpresso/test-preset/vitest` |
+| `@webpresso/agent-e2e-preset` | `webpresso/e2e-preset` |
+| `@webpresso/agent-e2e-preset/playwright` | `webpresso/e2e-preset/playwright` |
+
+Oxlint consumers should move JSON-only `.oxlintrc.json` wiring to
+`oxlint.config.ts` and import the TypeScript config surface from
+`webpresso/oxlint`.

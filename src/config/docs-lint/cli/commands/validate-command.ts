@@ -17,7 +17,12 @@ import { validateLinks } from '#config/docs-lint/cli/validators/links'
 import { validateMarkdownlint } from '#config/docs-lint/cli/validators/markdownlint'
 import { validateStructure } from '#config/docs-lint/cli/validators/structure'
 import { parseFrontmatter } from '#config/docs-lint/parsers/frontmatter'
-import { detectDocType, getConfig, getSchema, normalizeDocType } from '#config/docs-lint/schemas/index'
+import {
+  detectDocType,
+  getConfig,
+  getSchema,
+  normalizeDocType,
+} from '#config/docs-lint/schemas/index'
 
 export interface ValidateOptions {
   files?: string[]

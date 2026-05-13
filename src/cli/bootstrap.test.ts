@@ -40,9 +40,7 @@ vi.mock('#cli/auto-update/log.js', () => ({
 }))
 
 // Import after mocks are registered
-const { bootstrapAk, isInformationalVerb, NotInGitRepoError } = await import(
-  '#cli/bootstrap.js'
-)
+const { bootstrapAk, isInformationalVerb, NotInGitRepoError } = await import('#cli/bootstrap.js')
 const { getRepoKey } = await import('#paths/state-root.js')
 const { shouldSkipUpdateCheck } = await import('#cli/auto-update/skip.js')
 const { runUpdateFlow } = await import('#cli/auto-update/run.js')

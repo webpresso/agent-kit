@@ -246,7 +246,14 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     const result = detect({ npm_config_user_agent: 'pnpm/10.33.0 node/v22' }, '/path/to/bin')
     expect(result).toStrictEqual({
       manager: 'pnpm',
-      command: ['pnpm', 'add', '-g', '@webpresso/agent-kit', '--registry', 'https://npm.pkg.github.com'],
+      command: [
+        'pnpm',
+        'add',
+        '-g',
+        '@webpresso/agent-kit',
+        '--registry',
+        'https://npm.pkg.github.com',
+      ],
     })
   })
 
@@ -254,7 +261,14 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     const result = detect({ npm_config_user_agent: 'npm/10.2.4 node/v22' }, '/path/to/bin')
     expect(result).toStrictEqual({
       manager: 'npm',
-      command: ['npm', 'install', '-g', '@webpresso/agent-kit', '--registry', 'https://npm.pkg.github.com'],
+      command: [
+        'npm',
+        'install',
+        '-g',
+        '@webpresso/agent-kit',
+        '--registry',
+        'https://npm.pkg.github.com',
+      ],
     })
   })
 
@@ -282,7 +296,14 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     )
     expect(result).toStrictEqual({
       manager: 'npm',
-      command: ['npm', 'install', '-g', '@webpresso/agent-kit', '--registry', 'https://npm.pkg.github.com'],
+      command: [
+        'npm',
+        'install',
+        '-g',
+        '@webpresso/agent-kit',
+        '--registry',
+        'https://npm.pkg.github.com',
+      ],
     })
   })
 })
@@ -293,7 +314,14 @@ describe('detect — priority 2: realpath walk', () => {
     const result = detect({}, '/Users/me/bin/webpresso')
     expect(result).toStrictEqual({
       manager: 'pnpm',
-      command: ['pnpm', 'add', '-g', '@webpresso/agent-kit', '--registry', 'https://npm.pkg.github.com'],
+      command: [
+        'pnpm',
+        'add',
+        '-g',
+        '@webpresso/agent-kit',
+        '--registry',
+        'https://npm.pkg.github.com',
+      ],
     })
   })
 
@@ -313,7 +341,14 @@ describe('detect — priority 2: realpath walk', () => {
     const result = detect({}, '/opt/homebrew/bin/webpresso')
     expect(result).toStrictEqual({
       manager: 'npm',
-      command: ['npm', 'install', '-g', '@webpresso/agent-kit', '--registry', 'https://npm.pkg.github.com'],
+      command: [
+        'npm',
+        'install',
+        '-g',
+        '@webpresso/agent-kit',
+        '--registry',
+        'https://npm.pkg.github.com',
+      ],
     })
   })
 })

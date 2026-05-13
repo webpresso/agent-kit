@@ -63,7 +63,6 @@ function hasInformationalFlag(argv: string[]): boolean {
   return false
 }
 
-
 function isCiEnvironment(env: NodeJS.ProcessEnv): boolean {
   // Match the convention used by `is-ci` / `ci-info`: `CI` set to any
   // truthy-looking value counts. Some CI vendors set `CI=1` rather than

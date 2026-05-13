@@ -14,7 +14,6 @@ import path from 'node:path'
 
 import { getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
 
-
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 
 export interface RotationLogEntry {

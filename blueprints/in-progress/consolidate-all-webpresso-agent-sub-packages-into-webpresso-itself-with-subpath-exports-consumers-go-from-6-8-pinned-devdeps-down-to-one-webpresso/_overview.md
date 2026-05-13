@@ -3,8 +3,8 @@ type: blueprint
 status: in-progress
 complexity: M
 created: '2026-05-12'
-last_updated: '2026-05-12'
-progress: '56% (9/16 tasks done, 0 blocked, updated 2026-05-12)'
+last_updated: '2026-05-13'
+progress: '94% (15/16 tasks done, 1 blocked release gate, updated 2026-05-13)'
 depends_on: []
 tags:
   - consolidation
@@ -269,7 +269,7 @@ API must be usable from `oxlint.config.ts` by importing config objects from
 - [x] `ak_lint` and `ak_typecheck` pass for changed files.
 #### [docs] Task 1.5: Update routing block and agent rules for new import paths
 
-**Status:** in_progress
+**Status:** done
 
 **Depends:** None
 
@@ -297,10 +297,10 @@ hook bin names stay unchanged; only package import/install guidance changes.
 
 **Acceptance:**
 
-- [ ] No routing/rule surface tells consumers to install `@webpresso/agent-*`.
-- [ ] `ak_*` MCP tool names are unchanged.
-- [ ] Hook bin names in `package.json#bin` are unchanged.
-- [ ] `ak_lint` and `ak_typecheck` pass for changed files.
+- [x] No routing/rule surface tells consumers to install `@webpresso/agent-*`.
+- [x] `ak_*` MCP tool names are unchanged.
+- [x] Hook bin names in `package.json#bin` are unchanged.
+- [x] `ak_lint` and `ak_typecheck` pass for changed files.
 
 ---
 
@@ -466,7 +466,7 @@ available for Task 2.6 to expose.
 - [x] `ak_lint` and `ak_typecheck` pass for changed files.
 #### [package] Task 2.6: Wire manifest, exports, bins, and staging package
 
-**Status:** in_progress
+**Status:** done
 
 **Depends:** Task 1.1, Task 1.2, Task 1.3, Task 1.4, Task 2.1, Task 2.2, Task 2.3, Task 2.4, Task 2.5
 
@@ -498,17 +498,17 @@ public `webpresso` package through `scripts/publish-webpresso.ts --dry-run`.
 
 **Acceptance:**
 
-- [ ] All `webpresso/*` subpaths resolve from the staged public package.
-- [ ] `package.json` is modified only in this task for the fold.
-- [ ] Hook bins remain present.
-- [ ] `pnpm lint:pkg`, `ak_typecheck`, and `ak_lint` pass.
+- [x] All `webpresso/*` subpaths resolve from the staged public package.
+- [x] `package.json` is modified only in this task for the fold.
+- [x] Hook bins remain present.
+- [x] `pnpm lint:pkg`, `ak_typecheck`, and `ak_lint` pass.
 
 ---
 
 ## Phase 3: Migration proof and deprecation prep [Complexity: S]
 #### [docs] Task 3.1: Document migration and create consolidation changeset
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 2.6
 
@@ -535,14 +535,19 @@ package; publishing is deferred to Task 4.2.
 
 **Acceptance:**
 
-- [ ] Migration table covers tsconfig, vitest, stryker, oxlint, workers-test,
+- [x] Migration table covers tsconfig, vitest, stryker, oxlint, workers-test,
   docs-lint, launch, test-preset, and e2e-preset.
-- [ ] Changeset is present but no publish occurs.
-- [ ] Docs checks pass.
-
+- [x] Changeset is present but no publish occurs.
+- [x] Docs checks pass.
 #### [sibling-repo] Task 3.2: Prove consumer migration in a sibling PR
 
-**Status:** todo
+**Status:** done
+
+**Evidence:** Sibling branch `ozby/ingest-lens@agent-kit-consolidation-proof`
+commit `5573dd7` records the migration. `consumer-migration-checklist.md` captures the baseline
+YAML indentation fix, before/after dependency mapping, and passing migrated
+`pnpm install --frozen-lockfile`, `pnpm run check-types`, `pnpm run test`,
+`pnpm run lint`, targeted wrapper test, and `pnpm run lint:repo`.
 
 **Depends:** Task 2.6
 
@@ -552,7 +557,7 @@ repo silently; create a checklist and capture the PR/branch reference.
 
 **Files:**
 
-- Create: `blueprints/planned/consolidate-all-webpresso-agent-sub-packages-into-webpresso-itself-with-subpath-exports-consumers-go-from-6-8-pinned-devdeps-down-to-one-webpresso/consumer-migration-checklist.md`
+- Create: `blueprints/in-progress/consolidate-all-webpresso-agent-sub-packages-into-webpresso-itself-with-subpath-exports-consumers-go-from-6-8-pinned-devdeps-down-to-one-webpresso/consumer-migration-checklist.md`
 - External: sibling consumer repo `package.json`, `pnpm-workspace.yaml`,
   `tsconfig*.json`, `vitest.config.ts`, `stryker.config.ts` if present,
   `.oxlintrc.json` or `oxlint.config.ts`
@@ -570,14 +575,13 @@ repo silently; create a checklist and capture the PR/branch reference.
 
 **Acceptance:**
 
-- [ ] Consumer checklist exists in this blueprint directory.
-- [ ] Sibling PR/branch reference is recorded.
-- [ ] Consumer typecheck, tests, and lint pass with `webpresso`.
-- [ ] No sibling repo edits are hidden inside this repo diff.
-
+- [x] Consumer checklist exists in this blueprint directory.
+- [x] Sibling PR/branch reference is recorded.
+- [x] Consumer typecheck, tests, and lint pass with `webpresso`.
+- [x] No sibling repo edits are hidden inside this repo diff.
 #### [release-prep] Task 3.3: Prepare sub-package deprecation metadata
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 2.6
 
@@ -609,18 +613,21 @@ packages. This does not run `npm deprecate` and does not unpublish anything.
 
 **Acceptance:**
 
-- [ ] All 9 sub-package manifests carry the migration notice.
-- [ ] Changeset for final deprecated package versions exists.
-- [ ] No registry deprecation command runs in this task.
-- [ ] `ak_lint` and `ak_typecheck` pass.
+- [x] All 9 sub-package manifests carry the migration notice.
+- [x] Changeset for final deprecated package versions exists.
+- [x] No registry deprecation command runs in this task.
+- [x] `ak_lint` and `ak_typecheck` pass.
 
 ---
 
 ## Phase 4: QA and release gate [Complexity: XS]
-
 #### [qa] Task 4.1: Full QA gate
 
-**Status:** todo
+**Status:** done
+
+**Evidence:** Full local QA passed after sibling consumer proof was attached.
+One `ak_qa` run exposed a transient RTK integration test failure; the scoped
+test passed immediately afterward, and the follow-up full `ak_qa` passed.
 
 **Depends:** Task 1.5, Task 3.1, Task 3.2, Task 3.3
 
@@ -642,17 +649,20 @@ publish/deprecation work.
 
 **Acceptance:**
 
-- [ ] `ak_typecheck` passes.
-- [ ] `ak_lint` passes.
-- [ ] `ak_test` passes.
-- [ ] `ak_qa` passes.
-- [ ] `pnpm lint:pkg` passes.
-- [ ] Staged `webpresso` dry-run package contains all subpaths and non-code assets.
-- [ ] Sibling consumer proof is attached.
+- [x] `ak_typecheck` passes.
+- [x] `ak_lint` passes.
+- [x] `ak_test` passes.
+- [x] `ak_qa` passes.
+- [x] `pnpm lint:pkg` passes.
+- [x] Staged `webpresso` dry-run package contains all subpaths and non-code assets.
+- [x] Sibling consumer proof is attached.
 
 #### [release-gate] Task 4.2: Publish `webpresso` and deprecate old packages
 
-**Status:** todo
+**Status:** blocked
+
+**Blocked:** Credential-gated publish/deprecation release gate remains for the
+operator; do not run until `NPM_TOKEN`/OTP and package ownership are confirmed.
 
 **Depends:** Task 4.1
 

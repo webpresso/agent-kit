@@ -1,6 +1,7 @@
 {
   "name": "@webpresso/agent-test-preset",
   "version": "0.3.0",
+  "deprecated": "Deprecated: migrate to the consolidated webpresso package subpath exports. See https://github.com/webpresso/agent-kit/blob/main/MIGRATION.md",
   "private": false,
   "description": "Portable Vitest preset helpers for agent-kit consumer repos.",
   "type": "module",

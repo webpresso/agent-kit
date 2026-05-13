@@ -12,9 +12,7 @@ const underSharedWorkspaceRunner = !!process.env.VP_RUN_CONCURRENCY_LIMIT;
 // The workspace runner already provides outer parallelism, and allowing many
 // inner fork workers causes frequent shutdown timeouts and EPIPE crashes on
 // large happy-dom / integration suites.
-const MAX_WORKERS = underSharedWorkspaceRunner
-    ? 1
-    : Math.max(1, Math.floor(cpus().length * 0.75));
+const MAX_WORKERS = underSharedWorkspaceRunner ? 1 : Math.max(1, Math.floor(cpus().length * 0.75));
 const parsePositiveInt = (value) => {
     if (!value)
         return;

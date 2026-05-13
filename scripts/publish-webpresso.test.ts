@@ -1,7 +1,7 @@
 /**
  * Unit tests for the pure staging-dir logic in scripts/publish-webpresso.ts.
  *
- * Covers D12: name, publishConfig, bin map (9 entries), preferGlobal.
+ * Covers D12: name, publishConfig, bin map, preferGlobal.
  * Covers D21: registry probe short-circuit (200 → skip, 404 → proceed).
  *
  * No file system writes. Fetch is mocked.
@@ -24,6 +24,14 @@ const HOOK_BINS = [
   'ak-restore-dev-links',
 ] as const
 
+const DOCS_LINT_BINS = {
+  'docs-check-internal-links': './src/config/docs-lint/cli/check-internal-links.ts',
+  'docs-check-refs': './src/config/docs-lint/cli/check-refs.ts',
+  'docs-check-stale': './src/config/docs-lint/cli/check-stale.ts',
+  'docs-lint': './src/config/docs-lint/cli/validate.ts',
+  'docs-migrate': './src/config/docs-lint/cli/migrate.ts',
+} as const
+
 const MINIMAL_CANONICAL = {
   name: '@webpresso/agent-kit',
   version: '0.16.0',
@@ -44,6 +52,7 @@ const MINIMAL_CANONICAL = {
     'ak-sessionstart-routing': './src/hooks/sessionstart/index.ts',
     'ak-check-dev-link': './src/hooks/check-dev-link/index.ts',
     'ak-restore-dev-links': './src/dev/restore-dev-links/index.ts',
+    ...DOCS_LINT_BINS,
   },
 }
 
@@ -93,10 +102,16 @@ describe('buildStagingPackageJson', () => {
     }
   })
 
-  it('includes exactly 11 bin entries (wp + webpresso + ak + 8 hook bins)', () => {
+  it('includes folded docs-lint bins from canonical', () => {
     const result = buildStagingPackageJson(MINIMAL_CANONICAL)
     const bin = result.bin as Record<string, string>
-    expect(Object.keys(bin)).toHaveLength(11) // wp + webpresso + ak + 8 hooks = 11
+    expect(bin).toMatchObject(DOCS_LINT_BINS)
+  })
+
+  it('includes exactly 16 bin entries (wp + webpresso + ak + 8 hook bins + 5 docs-lint bins)', () => {
+    const result = buildStagingPackageJson(MINIMAL_CANONICAL)
+    const bin = result.bin as Record<string, string>
+    expect(Object.keys(bin)).toHaveLength(16)
   })
 
   it('copies files array verbatim from canonical', () => {
@@ -166,8 +181,6 @@ describe('isAlreadyPublished — registry probe (D21)', () => {
   it('probes the correct npmjs.org URL', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 404 }))
     await isAlreadyPublished('0.99.0')
-    expect(vi.mocked(fetch)).toHaveBeenCalledWith(
-      'https://registry.npmjs.org/webpresso/0.99.0',
-    )
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith('https://registry.npmjs.org/webpresso/0.99.0')
   })
 })

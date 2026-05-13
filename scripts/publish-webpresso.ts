@@ -29,6 +29,14 @@ const HOOK_BINS = [
   'ak-restore-dev-links',
 ] as const
 
+const DOCS_LINT_BINS = [
+  'docs-check-internal-links',
+  'docs-check-refs',
+  'docs-check-stale',
+  'docs-lint',
+  'docs-migrate',
+] as const
+
 interface CanonicalPackageJson {
   version: string
   bin: Record<string, string>
@@ -48,12 +56,17 @@ export async function readCanonicalPackageJson(): Promise<CanonicalPackageJson> 
  * Builds the `package.json` for the `webpresso` staging directory.
  * - name → "webpresso"
  * - publishConfig → public npmjs.org
- * - bin → { wp, webpresso, ak, ...8 hook bins }
+ * - bin → { wp, webpresso, ak, ...8 hook bins, ...docs-lint bins }
  * - preferGlobal → true
  * All other fields are copied verbatim from the canonical package.json.
  */
 export function buildStagingPackageJson(canonical: CanonicalPackageJson): Record<string, unknown> {
-  const { name: _name, publishConfig: _pc, scripts: canonicalScripts, ...rest } = canonical as CanonicalPackageJson & { scripts?: Record<string, string> }
+  const {
+    name: _name,
+    publishConfig: _pc,
+    scripts: canonicalScripts,
+    ...rest
+  } = canonical as CanonicalPackageJson & { scripts?: Record<string, string> }
 
   const binEntries: Record<string, string> = {
     wp: './src/cli/cli.ts',
@@ -67,6 +80,16 @@ export function buildStagingPackageJson(canonical: CanonicalPackageJson): Record
       throw new Error(`Expected hook bin "${hookBin}" not found in canonical package.json#bin`)
     }
     binEntries[hookBin] = canonicalBinPath
+  }
+
+  for (const docsLintBin of DOCS_LINT_BINS) {
+    const canonicalBinPath = canonical.bin[docsLintBin]
+    if (canonicalBinPath === undefined) {
+      throw new Error(
+        `Expected docs-lint bin "${docsLintBin}" not found in canonical package.json#bin`,
+      )
+    }
+    binEntries[docsLintBin] = canonicalBinPath
   }
 
   // Strip postinstall — the migration notice only belongs on @webpresso/agent-kit
@@ -189,10 +212,10 @@ async function main(): Promise<void> {
     }
 
     // Real publish
-    execSync(
-      `pnpm publish "${stagingDir}" --no-git-checks --access public`,
-      { cwd: repoRoot, stdio: 'inherit' },
-    )
+    execSync(`pnpm publish "${stagingDir}" --no-git-checks --access public`, {
+      cwd: repoRoot,
+      stdio: 'inherit',
+    })
     console.log(`webpresso@${version} published successfully`)
   } finally {
     await rm(stagingDir, { recursive: true, force: true })

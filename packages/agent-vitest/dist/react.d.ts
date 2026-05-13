@@ -3,7 +3,7 @@
  *
  * Usage in vitest.config.ts:
  * ```ts
- * import { reactConfig } from '@webpresso/vitest-config/react'
+ * import { reactConfig } from '@webpresso/agent-vitest/react'
  * import { defineConfig, mergeConfig } from 'vite-plus/test/config'
  *
  * export default mergeConfig(reactConfig, defineConfig({

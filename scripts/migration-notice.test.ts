@@ -25,9 +25,7 @@ describe('scripts/migration-notice.ts', () => {
     })
 
     expect(result.status).toBe(0)
-    expect(result.stderr).toContain(
-      'https://github.com/webpresso/agent-kit/blob/main/MIGRATION.md',
-    )
+    expect(result.stderr).toContain('https://github.com/webpresso/agent-kit/blob/main/MIGRATION.md')
   })
 
   it('exits 0 and prints nothing to stderr when CI=true', () => {
