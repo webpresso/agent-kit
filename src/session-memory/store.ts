@@ -14,6 +14,7 @@ import type Database from 'better-sqlite3'
 import BetterSqlite3 from 'better-sqlite3'
 
 import type { ChunkInsertInput, IndexStats, SearchHit, SearchOptions } from './types.js'
+import { BunSqliteStore } from './bun-store.js'
 
 const OPTIMIZE_EVERY = 50
 const DEFAULT_LIMIT = 5
@@ -350,7 +351,9 @@ const registry = new Map<string, SessionStore>()
 export function getStore(dbPath: string): SessionStore {
   const existing = registry.get(dbPath)
   if (existing) return existing
-  const store = new SessionStore(dbPath)
+  const engine = process.env['AK_SESSION_ENGINE']
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const store: SessionStore = engine === 'bun' ? (new BunSqliteStore(dbPath) as any) : new SessionStore(dbPath)
   registry.set(dbPath, store)
   return store
 }
