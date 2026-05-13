@@ -4,7 +4,7 @@ status: in-progress
 complexity: L
 created: '2026-05-13'
 last_updated: '2026-05-14'
-progress: '100% (all 13 tasks done; output sandboxing added post-blueprint)'
+progress: '100% (17/17 tasks done — 13 original + 4 Phase 6 output sandboxing)'
 depends_on:
   - ak-session-memory-v1-in-process-sqlite-fts5-via-better-sqlite3
 tags:
@@ -561,7 +561,84 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 | Bench gate | criterion does not gate natively → custom script (F9 v2) |
 | Mutation gate | path corrected `.cargo/mutants.toml` + custom script (F8 v2) |
 | MSRV | 1.88 stack-wide (F12 v2) |
-| **Parallelization score** | A (RW0=5, CPR=2.6, CP=0) |
+| **Parallelization score** | A (RW0=5, CPR=3.4, CP=0) |
 | **Critical path** | 5 waves |
-| **Total tasks** | 13 |
-| **Blueprint compliant** | 13/13 |
+| **Total tasks** | 17 (13 original + 4 Phase 6 output sandboxing) |
+| **Blueprint compliant** | 17/17 |
+
+---
+
+### Phase 6: Output Sandboxing (context-mode replacement parity) [Complexity: S-M]
+
+#### Task 6.1: `ak_session_execute` — single-command output sandboxing (ctx-rs backed)
+
+**Status:** done
+
+**Depends:** Wave 4
+
+**Files:**
+- `src/mcp/tools/session-execute.ts`
+- `src/mcp/tools/session-execute.test.ts`
+- `crates/ctx-rs-core/src/execute.rs` (Rust)
+- `crates/ctx-rs-napi/src/lib.rs` (napi binding)
+
+**Purpose:** Replaces `ctx_execute` — thin TS shim calls `ctxRs.executeSandboxed(dbPath, command, label)`. All execution + streaming + FTS5 indexing happens in Rust via tokio async (stdout/stderr drained concurrently via `tokio::spawn` + `tokio::join!`). Returns compact summary.
+
+**Acceptance:**
+- [x] small output returned directly (< 2KB)
+- [x] large output indexed via ctx-rs Rust FTS5 (`execute_and_index` in `ctx-rs-core`)
+- [x] query triggers FTS5 search over indexed content
+- [x] error returns structured envelope
+- [x] graceful disable (`AK_DISABLE_CTX`) — returns `{ error: 'ctx-rs unavailable' }`
+- [x] 5 Rust integration tests pass (small/large/nonzero-exit/summary-truncation/searchable)
+
+#### Task 6.2: `ak_session_batch_execute` — parallel batch with search (ctx-rs backed)
+
+**Status:** done
+
+**Depends:** Task 6.1
+
+**Files:**
+- `src/mcp/tools/session-batch-execute.ts`
+- `src/mcp/tools/session-batch-execute.test.ts`
+
+**Purpose:** Calls `executeSandboxed` per command via `p-queue` (JS-side concurrency control over napi async calls). All indexing in Rust. Cross-command FTS5 search after batch completes.
+
+**Acceptance:**
+- [x] concurrency respects max 8 via p-queue
+- [x] all outputs indexed via ctx-rs Rust FFI
+- [x] `queries` returns cross-command hits
+- [x] graceful disable falls through
+
+#### Task 6.3: Expanded PostToolUse capture coverage
+
+**Status:** done
+
+**Depends:** Wave 4
+
+**Files:**
+- `.claude-plugin/plugin.json`
+- `src/hooks/post-tool/session-capture.ts`
+
+**Purpose:** Extends capture from `Bash|Edit|Write|MultiEdit` to `Read|Grep|WebFetch|mcp__*`; capture uses ctx-rs `captureEvent` sync FFI with graceful TS fallback.
+
+**Acceptance:**
+- [x] Read/Grep/WebFetch/mcp__ events captured
+- [x] capture routes through ctx-rs `captureEvent` sync FFI
+- [x] graceful disable uses TS engine fallback
+
+#### Task 6.4: Routing guidance — nudge Claude toward `ak_session_execute`
+
+**Status:** done
+
+**Depends:** Wave 4
+
+**Files:**
+- `src/hooks/shared/routing-block.ts`
+- `catalog/agent/rules/context-mode-routing.md`
+
+**Purpose:** SessionStart routing block tells Claude to route large-output commands through `ak_session_execute`. Updates lane-2 routing rule.
+
+**Acceptance:**
+- [x] `AK_ROUTING_BLOCK` includes `ak_session_execute` decision row
+- [x] `context-mode-routing.md` updated to reference `ak_session_execute`
