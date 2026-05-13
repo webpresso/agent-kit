@@ -24,6 +24,9 @@ export default mergeConfig(
         // spawns a real detached `node -e` child to verify the installer end-to-end;
         // Node cold-start under Stryker's forks pool exceeds the unit-test timeout
         'src/cli/auto-update/installer.integration.test.ts',
+        // calls ingestAll (filesystem glob scan + SQLite writes) — heavyweight operation
+        // not suitable for Stryker's forks pool unit-test timeout
+        'src/mcp/blueprint-workflow.integration.test.ts',
       ],
     },
   }),
