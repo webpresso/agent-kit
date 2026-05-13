@@ -4,7 +4,7 @@ status: planned
 complexity: L
 created: '2026-05-13'
 last_updated: '2026-05-13'
-progress: '0% (planned, refinement-applied — needs manual git mv from draft/ to planned/)'
+progress: '0/17 tasks done (planned, refinement-applied — needs manual git mv from draft/ to planned/)'
 depends_on:
   - ak-session-memory-v1-in-process-sqlite-fts5-via-better-sqlite3
 tags:
@@ -143,6 +143,7 @@ fixes are tagged with `Fx` references to the corresponding finding.)
 | **Wave 2**        | 3.1, 3.2                         | Wave 1       | 2 agents       | S-M              |
 | **Wave 3**        | 4.1, 4.2                         | Wave 2       | 2 agents       | M                |
 | **Wave 4**        | 5.1, 5.2                         | Wave 3       | 2 agents       | S                |
+| **Wave 5**        | 6.1, 6.2, 6.3, 6.4               | Wave 4       | 4 agents       | S-M              |
 | **Critical path** | 1.1 → 2.1 → 3.1 → 4.1 → 5.1      | --           | 5 waves        | L                |
 
 ### Parallel Metrics Snapshot
@@ -150,11 +151,11 @@ fixes are tagged with `Fx` references to the corresponding finding.)
 | Metric | Formula / Meaning                  | Target               | Actual |
 | ------ | ---------------------------------- | -------------------- | ------ |
 | RW0    | Ready tasks in Wave 0              | ≥ planned agents / 2 | 5      |
-| CPR    | total_tasks / critical_path_length | ≥ 2.5                | 13/5 = 2.6 |
-| DD     | dependency_edges / total_tasks     | ≤ 2.0                | ~13/13 = 1.0 |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5                | 17/5 = 3.4 |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0                | ~17/17 = 1.0 |
 | CP     | same-file overlaps per wave        | 0                    | 0      |
 
-All metrics meet target after restructure (Wave 0 expanded from 3 to 5 by moving cargo-deny and bench scaffolding into independent first-wave tasks). Plan is `/pll`-ready.
+All metrics meet target after restructure (Wave 0 expanded from 3 to 5 by moving cargo-deny and bench scaffolding into independent first-wave tasks; Wave 5 adds 4 output-sandboxing tasks). Plan is `/pll`-ready.
 
 ### Phase 1: ctx-rs core crate scaffold + storage [Complexity: M]
 
@@ -463,6 +464,78 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 - [ ] Guide explains engine swap + zero-migration claim
 - [ ] Routing rule reflects new implementation
 
+### Phase 6: Output Sandboxing (context-mode replacement parity) [Complexity: S-M]
+
+#### Task 6.1: `ak_session_execute` — single-command output sandboxing (ctx-rs backed)
+
+**Status:** done (implemented in this session)
+
+**Depends:** Wave 4
+
+**Files:**
+- `src/mcp/tools/session-execute.ts`
+- `src/mcp/tools/session-execute.test.ts`
+
+**Purpose:** Replaces `ctx_execute` — runs a shell command, indexes output >2KB via ctx-rs FFI `index()`, returns compact summary.
+
+**Acceptance:**
+- [ ] small output returned directly
+- [ ] large output indexed via ctx-rs
+- [ ] query triggers FTS5 search
+- [ ] error returns structured envelope
+- [ ] graceful disable (AK_DISABLE_CTX) falls through to TS engine
+
+#### Task 6.2: `ak_session_batch_execute` — parallel batch with search (ctx-rs backed)
+
+**Status:** done (implemented in this session)
+
+**Depends:** Wave 4
+
+**Files:**
+- `src/mcp/tools/session-batch-execute.ts`
+- `src/mcp/tools/session-batch-execute.test.ts`
+
+**Purpose:** Replaces `ctx_batch_execute` — runs N commands, indexes all large outputs via ctx-rs, cross-command FTS5 search in one round trip.
+
+**Acceptance:**
+- [ ] concurrency respects max 8
+- [ ] all outputs indexed via ctx-rs
+- [ ] queries return cross-command hits
+- [ ] graceful disable falls through to TS
+
+#### Task 6.3: Expanded PostToolUse capture coverage
+
+**Status:** done (implemented in this session)
+
+**Depends:** Wave 4
+
+**Files:**
+- `.claude-plugin/plugin.json`
+- `src/hooks/post-tool/session-capture.ts`
+
+**Purpose:** Extends capture from Bash/Edit/Write/MultiEdit to Read/Grep/WebFetch/mcp__; capture goes through ctx-rs FFI.
+
+**Acceptance:**
+- [ ] Read/Grep/WebFetch/mcp__ events captured
+- [ ] capture uses ctx-rs `captureEvent` sync FFI
+- [ ] graceful disable uses TS fallback
+
+#### Task 6.4: Routing guidance — nudge Claude toward ak_session_execute
+
+**Status:** done (implemented in this session)
+
+**Depends:** Wave 4
+
+**Files:**
+- `src/hooks/sessionstart/index.ts`
+- `catalog/agent/rules/context-mode-routing.md`
+
+**Purpose:** SessionStart routing block tells Claude to route large-output commands through `ak_session_execute`.
+
+**Acceptance:**
+- [ ] AK_ROUTING_BLOCK includes ak_session_execute decision row
+- [ ] context-mode-routing.md updated
+
 ---
 
 ## Verification Gates
@@ -561,7 +634,7 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 | Bench gate | criterion does not gate natively → custom script (F9 v2) |
 | Mutation gate | path corrected `.cargo/mutants.toml` + custom script (F8 v2) |
 | MSRV | 1.88 stack-wide (F12 v2) |
-| **Parallelization score** | A (RW0=5, CPR=2.6, CP=0) |
+| **Parallelization score** | A (RW0=5, CPR=3.4, CP=0) |
 | **Critical path** | 5 waves |
-| **Total tasks** | 13 |
-| **Blueprint compliant** | 13/13 |
+| **Total tasks** | 17 (13 original + 4 Phase 6 output-sandboxing) |
+| **Blueprint compliant** | 17/17 |

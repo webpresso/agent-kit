@@ -4,7 +4,7 @@ status: planned
 complexity: M
 created: '2026-05-13'
 last_updated: '2026-05-13'
-progress: '0% (planned, refinement-applied — needs manual git mv from draft/ to planned/)'
+progress: '0/17 tasks done (0%) — planned; 4 new Phase 5 tasks added (output sandboxing / context-mode replacement parity)'
 depends_on: []
 tags:
   - session-memory
@@ -132,21 +132,22 @@ DATA FLOW (event capture path):
 
 ## Quick Reference (Execution Waves)
 
-| Wave              | Tasks                | Dependencies | Parallelizable | Effort (T-shirt) |
-| ----------------- | -------------------- | ------------ | -------------- | ---------------- |
-| **Wave 0**        | 1.1, 1.2, 1.3, 1.4   | None         | 4 agents       | XS-S             |
-| **Wave 1**        | 2.1, 2.2, 2.3        | Wave 0       | 3 agents       | S-M              |
-| **Wave 2**        | 3.1, 3.2, 3.3, 3.4   | Wave 1       | 4 agents       | S                |
-| **Wave 3**        | 4.1, 4.2             | Wave 2       | 2 agents       | S-M              |
-| **Critical path** | 1.1 → 2.1 → 3.1 → 4.1 | --          | 4 waves        | M                |
+| Wave              | Tasks                    | Dependencies | Parallelizable | Effort (T-shirt) |
+| ----------------- | ------------------------ | ------------ | -------------- | ---------------- |
+| **Wave 0**        | 1.1, 1.2, 1.3, 1.4       | None         | 4 agents       | XS-S             |
+| **Wave 1**        | 2.1, 2.2, 2.3            | Wave 0       | 3 agents       | S-M              |
+| **Wave 2**        | 3.1, 3.2, 3.3, 3.4       | Wave 1       | 4 agents       | S                |
+| **Wave 3**        | 4.1, 4.2                 | Wave 2       | 2 agents       | S-M              |
+| **Wave 4 (new)**  | 5.1, 5.2, 5.3, 5.4       | Wave 3       | 4 agents       | S-M              |
+| **Critical path** | 1.1 → 2.1 → 3.1 → 4.1 → 5.1 | --       | 5 waves        | M                |
 
 ### Parallel Metrics Snapshot
 
 | Metric | Formula / Meaning                  | Target               | Actual |
 | ------ | ---------------------------------- | -------------------- | ------ |
 | RW0    | Ready tasks in Wave 0              | ≥ planned agents / 2 | 4      |
-| CPR    | total_tasks / critical_path_length | ≥ 2.5                | 13/4 = 3.25 |
-| DD     | dependency_edges / total_tasks     | ≤ 2.0                | ~12/13 = 0.92 |
+| CPR    | total_tasks / critical_path_length | ≥ 2.5                | 17/5 = 3.40 |
+| DD     | dependency_edges / total_tasks     | ≤ 2.0                | ~16/17 = 0.94 |
 | CP     | same-file overlaps per wave        | 0                    | 0      |
 
 All metrics meet target. Plan is `/pll`-ready.
@@ -515,6 +516,83 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 - [ ] `ak_audit kind=docs-frontmatter` passes
 - [ ] Old context-mode references replaced with ak_session_* recommendations
 
+### Phase 5: Output Sandboxing (context-mode replacement parity) [Complexity: S-M]
+
+#### Task 5.1: `ak_session_execute` — single-command output sandboxing
+
+**Status:** done (implemented in this session)
+
+**Depends:** Task 1.1, 1.2 (session store + session primitives)
+
+**Files:**
+- `src/mcp/tools/session-execute.ts`
+- `src/mcp/tools/session-execute.test.ts`
+
+**Purpose:** Replaces `ctx_execute` — runs a shell command, indexes output >2KB into FTS5, returns compact summary instead of flooding context window.
+
+**Acceptance:**
+- [ ] small output (<2KB) returned directly in response
+- [ ] large output (≥2KB) indexed into FTS5 + compact summary returned
+- [ ] `query` param triggers FTS5 search over indexed content from this command
+- [ ] error returns structured envelope `{ ok: false, error: string, exitCode: number }`
+
+---
+
+#### Task 5.2: `ak_session_batch_execute` — parallel batch with search
+
+**Status:** done (implemented in this session)
+
+**Depends:** Task 5.1
+
+**Files:**
+- `src/mcp/tools/session-batch-execute.ts`
+- `src/mcp/tools/session-batch-execute.test.ts`
+
+**Purpose:** Replaces `ctx_batch_execute` — runs N commands (labeled), indexes all large outputs into FTS5, searches across all results in one round trip.
+
+**Acceptance:**
+- [ ] concurrency respects max 8 parallel commands
+- [ ] all outputs ≥2KB are indexed with label as FTS5 source prefix
+- [ ] `queries` param returns cross-command hits ranked by BM25
+
+---
+
+#### Task 5.3: Expanded PostToolUse capture coverage
+
+**Status:** done (implemented in this session)
+
+**Depends:** Task 2.1 (post-tool dispatcher)
+
+**Files:**
+- `.claude-plugin/plugin.json`
+- `src/hooks/post-tool/session-capture.ts`
+
+**Purpose:** Extends automatic capture from Bash/Edit/Write/MultiEdit to also cover Read, Grep, WebFetch, and `mcp__*` tool calls, broadening the session memory event log.
+
+**Acceptance:**
+- [ ] Read tool events captured with file path as label
+- [ ] Grep tool events captured with pattern + match count summary
+- [ ] WebFetch tool events captured with URL + truncated body (first 500 chars)
+- [ ] `mcp__*` tool events captured with tool name + structured output summary
+
+---
+
+#### Task 5.4: Routing guidance — nudge Claude toward `ak_session_execute`
+
+**Status:** done (implemented in this session)
+
+**Depends:** Task 4.2 (routing rule updates), Task 5.1
+
+**Files:**
+- `src/hooks/sessionstart/index.ts`
+- `catalog/agent/rules/context-mode-routing.md`
+
+**Purpose:** SessionStart routing block tells Claude to route large-output commands through `ak_session_execute` instead of raw Bash. Updates the canonical lane-2 routing rule to reference `ak_session_execute` as the replacement for `ctx_execute`.
+
+**Acceptance:**
+- [ ] `AK_ROUTING_BLOCK` injected by SessionStart includes `ak_session_execute` as a decision row for large-output Bash commands
+- [ ] `catalog/agent/rules/context-mode-routing.md` updated to reference `ak_session_execute` in the routing table and hard-rules section
+
 ---
 
 ## Verification Gates
@@ -599,7 +677,7 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 | Cross-plans updated | 1 (parked v1 + v2 reference this as supersession) |
 | Edge cases documented | 8 |
 | Risks documented | 6 |
-| **Parallelization score** | A (RW0=4, CPR=3.25, CP=0) |
-| **Critical path** | 4 waves |
-| **Total tasks** | 13 |
-| **Blueprint compliant** | 13/13 |
+| **Parallelization score** | A (RW0=4, CPR=3.40, CP=0) |
+| **Critical path** | 5 waves |
+| **Total tasks** | 17 (13 original + 4 Phase 5 output sandboxing) |
+| **Blueprint compliant** | 17/17 |
