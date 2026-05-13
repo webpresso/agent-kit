@@ -52,9 +52,7 @@ export interface PerSkillConsumerConfig {
   dir: string
 }
 
-export const DEFAULT_PER_SKILL_CONSUMERS: PerSkillConsumerConfig[] = [
-  { dir: '.agents/skills' },
-]
+export const DEFAULT_PER_SKILL_CONSUMERS: PerSkillConsumerConfig[] = [{ dir: '.agents/skills' }]
 
 export {
   ALLOWED_REAL_FILES,
