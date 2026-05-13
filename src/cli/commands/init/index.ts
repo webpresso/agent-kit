@@ -366,7 +366,11 @@ export async function runInit(flags: InitFlags): Promise<number> {
     }
 
     if (presets.includes('context-mode')) {
-      const contextModeResult = ensureContextMode({ repoRoot: consumer.repoRoot, options })
+      const contextModeResult = ensureContextMode({
+        repoRoot: consumer.repoRoot,
+        options,
+        globalInstall: config.globalInstall,
+      })
       console.log(
         `  context-mode codex mcp: ${contextModeResult.codexMcp.action === 'identical' ? 'already configured' : contextModeResult.codexMcp.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.codexMcp.targetPath}`,
       )

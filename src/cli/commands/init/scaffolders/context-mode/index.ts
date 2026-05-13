@@ -22,6 +22,7 @@ export interface EnsureContextModeInput {
   pinFilePath?: string
   strict?: boolean
   spinnerFactory?: SpinnerFactory
+  globalInstall?: boolean
 }
 
 export type EnsureContextModeResult = {
@@ -163,10 +164,10 @@ export function patchOpenCodeContextModeConfig(
   }
 }
 
-function resolveOpenCodeAgentKitCommand(repoRoot: string): string[] {
+function resolveOpenCodeAgentKitCommand(repoRoot: string, globalInstall = false): string[] {
   const repoLocalRoot = join(repoRoot, 'node_modules', '@webpresso', 'agent-kit')
   const entryPath = findAgentKitMcpEntry({ candidates: [repoLocalRoot] }) ?? findAgentKitMcpEntry()
-  if (!entryPath) return ['pnpm', 'exec', 'ak', 'mcp']
+  if (!entryPath) return globalInstall ? ['ak', 'mcp'] : ['pnpm', 'exec', 'ak', 'mcp']
   const launch = agentKitMcpLaunchCommand(entryPath)
   return [launch.command, ...launch.args]
 }
@@ -242,7 +243,10 @@ export function ensureContextMode(input: EnsureContextModeInput): EnsureContextM
     opencodeConfig: patchJsonFile(
       opencodeConfigPath,
       (existing) =>
-        patchOpenCodeContextModeConfig(existing, resolveOpenCodeAgentKitCommand(input.repoRoot)),
+        patchOpenCodeContextModeConfig(
+          existing,
+          resolveOpenCodeAgentKitCommand(input.repoRoot, input.globalInstall),
+        ),
       input.options,
     ),
     installed,

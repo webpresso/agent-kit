@@ -237,4 +237,16 @@ describe('context-mode preset', () => {
       expect(entry).not.toMatch(/\.(js|ts)$/)
     }
   })
+
+  it('patchOpenCodeContextModeConfig uses ak mcp directly when globalInstall command is passed', () => {
+    const next = patchOpenCodeContextModeConfig({}, ['ak', 'mcp'])
+    const mcp = next.mcp as Record<string, { command: unknown }>
+    expect(mcp['agent-kit'].command).toEqual(['ak', 'mcp'])
+  })
+
+  it('patchOpenCodeContextModeConfig uses pnpm exec ak mcp as default fallback command', () => {
+    const next = patchOpenCodeContextModeConfig({}, ['pnpm', 'exec', 'ak', 'mcp'])
+    const mcp = next.mcp as Record<string, { command: unknown }>
+    expect(mcp['agent-kit'].command).toEqual(['pnpm', 'exec', 'ak', 'mcp'])
+  })
 })
