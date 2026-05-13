@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.2
+
+### Patch Changes
+
+- 1bc0ec8: Expose tsconfig exports as direct JSON file targets so TypeScript `extends` can resolve `@webpresso/agent-kit/tsconfig/*` in consumers.
+
 ## 0.18.1
 
 ### Patch Changes
