@@ -29,9 +29,12 @@ vi.mock('execa', () => ({
 }))
 vi.mock('p-queue', () => {
   // Minimal PQueue that respects concurrency=1 and runs tasks inline
-  const PQueue = vi.fn().mockImplementation(() => ({
-    add: vi.fn(async (fn: () => Promise<unknown>) => fn()),
-  }))
+  // Must use a regular function (not arrow) as mockImplementation so `new PQueue()` works.
+  const PQueue = vi.fn().mockImplementation(function () {
+    return {
+      add: vi.fn(async (fn: () => Promise<unknown>) => fn()),
+    }
+  })
   return { default: PQueue }
 })
 
