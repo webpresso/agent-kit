@@ -1,7 +1,7 @@
 ---
 type: blueprint
 title: Structured blueprint MCP — SQLite-first multi-project agent operations
-status: planned
+status: in-progress
 complexity: XL
 owner: ozby
 created: '2026-05-13'
