@@ -53,7 +53,12 @@ export async function readCanonicalPackageJson(): Promise<CanonicalPackageJson> 
  * All other fields are copied verbatim from the canonical package.json.
  */
 export function buildStagingPackageJson(canonical: CanonicalPackageJson): Record<string, unknown> {
-  const { name: _name, publishConfig: _pc, scripts: canonicalScripts, ...rest } = canonical as CanonicalPackageJson & { scripts?: Record<string, string> }
+  const {
+    name: _name,
+    publishConfig: _pc,
+    scripts: canonicalScripts,
+    ...rest
+  } = canonical as CanonicalPackageJson & { scripts?: Record<string, string> }
 
   const binEntries: Record<string, string> = {
     wp: './src/cli/cli.ts',
@@ -189,10 +194,10 @@ async function main(): Promise<void> {
     }
 
     // Real publish
-    execSync(
-      `pnpm publish "${stagingDir}" --no-git-checks --access public`,
-      { cwd: repoRoot, stdio: 'inherit' },
-    )
+    execSync(`pnpm publish "${stagingDir}" --no-git-checks --access public`, {
+      cwd: repoRoot,
+      stdio: 'inherit',
+    })
     console.log(`webpresso@${version} published successfully`)
   } finally {
     await rm(stagingDir, { recursive: true, force: true })

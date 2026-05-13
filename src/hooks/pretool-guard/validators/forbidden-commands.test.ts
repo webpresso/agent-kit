@@ -696,11 +696,9 @@ describe('blueprint lifecycle enforcement', () => {
   it('redirect message points to ak_blueprint MCP tool', () => {
     const rule = findMatchingRule('mv blueprints/draft/foo blueprints/planned/')!
     expect(rule).toBeDefined()
-    const result = createBlockedResult(
-      'mv blueprints/draft/foo blueprints/planned/',
-      rule,
-      { mcpReady: true },
-    )
+    const result = createBlockedResult('mv blueprints/draft/foo blueprints/planned/', rule, {
+      mcpReady: true,
+    })
     expect(result.message).toContain('mcp__agent-kit__ak_blueprint(...)')
   })
 
@@ -719,7 +717,7 @@ describe('blueprint lifecycle enforcement', () => {
     // used to extract "mv blueprints/draft/foo blueprints/planned/" from the heredoc
     // content of a git commit -m "..." and treat it as a standalone mv command.
     const body = [
-      'git commit -m "$(cat <<\'EOF\'',
+      "git commit -m \"$(cat <<'EOF'",
       'feat: block blueprint lifecycle mv',
       '',
       'Prevents `mkdir -p blueprints/planned && mv blueprints/draft/foo blueprints/planned/`',
@@ -732,7 +730,9 @@ describe('blueprint lifecycle enforcement', () => {
 
   it('does not block git commit with blueprint paths in -m flag value', () => {
     const result = validateForbiddenCommands(
-      bashInput('git commit -m "chore: move blueprint from blueprints/draft to blueprints/planned"'),
+      bashInput(
+        'git commit -m "chore: move blueprint from blueprints/draft to blueprints/planned"',
+      ),
     )
     expect(result.passed).toBe(true)
   })

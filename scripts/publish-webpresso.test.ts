@@ -166,8 +166,6 @@ describe('isAlreadyPublished — registry probe (D21)', () => {
   it('probes the correct npmjs.org URL', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 404 }))
     await isAlreadyPublished('0.99.0')
-    expect(vi.mocked(fetch)).toHaveBeenCalledWith(
-      'https://registry.npmjs.org/webpresso/0.99.0',
-    )
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith('https://registry.npmjs.org/webpresso/0.99.0')
   })
 })

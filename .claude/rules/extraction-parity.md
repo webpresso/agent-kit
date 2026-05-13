@@ -1,1 +1,0 @@
-../../.agent/rules/extraction-parity.md

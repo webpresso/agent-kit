@@ -39,10 +39,7 @@ export function isInformationalVerb(argv: string[]): boolean {
  *                 so the caller owns the version read, not bootstrap.
  * @param argv     Normalized process.argv (defaults to process.argv).
  */
-export async function bootstrapAk(
-  version: string,
-  argv: string[] = process.argv,
-): Promise<void> {
+export async function bootstrapAk(version: string, argv: string[] = process.argv): Promise<void> {
   // D19 — informational verbs short-circuit before any git repo check.
   if (isInformationalVerb(argv)) return
 

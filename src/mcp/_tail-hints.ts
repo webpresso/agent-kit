@@ -14,7 +14,6 @@ import path from 'node:path'
 
 import { getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
 
-
 export const TAIL_HINTS = {
   PLL_PARALLEL: 'Consider /pll for parallel execution.',
   VERIFY_DONE: 'Run /verify to confirm done-ness before finalizing.',

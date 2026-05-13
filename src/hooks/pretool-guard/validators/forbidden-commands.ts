@@ -53,7 +53,8 @@ export const AUDIT_MODE_ENV = 'FORBIDDEN_COMMANDS_AUDIT'
 export const DOCS_REF = 'AGENTS.md "Forbidden Commands (CRITICAL)" section'
 
 const DB_HINT = 'just db-push (or just db-migrate, just db-generate)'
-const BLUEPRINT_HINT = 'ak blueprint new|list|audit — use ak_blueprint MCP tool for lifecycle transitions'
+const BLUEPRINT_HINT =
+  'ak blueprint new|list|audit — use ak_blueprint MCP tool for lifecycle transitions'
 const BLUEPRINT_LIFECYCLE_DIRS = '(draft|planned|in-progress|completed|archived)'
 const LINT_BASE = 'just lint --package <name> (or --file <path>)'
 const LINT_HINT = `${LINT_BASE} [--fix] [--fix-unsafe]`
