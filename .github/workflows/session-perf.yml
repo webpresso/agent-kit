@@ -1,0 +1,39 @@
+name: session-perf
+
+on:
+  pull_request:
+    paths:
+      - 'src/session-memory/**'
+      - 'tests/perf/**'
+  push:
+    branches: [main, 'feat/ak-session-memory-v2*']
+
+jobs:
+  session-perf:
+    name: Session memory performance gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run session perf bench
+        run: pnpm exec vitest bench tests/perf/session-capture.bench.ts --reporter=verbose
+        env:
+          AK_SESSION_ENGINE: ctx-rs
+
+      - name: Run with TS fallback (regression comparison)
+        run: pnpm exec vitest bench tests/perf/session-capture.bench.ts --reporter=verbose
+        env:
+          AK_SESSION_ENGINE: ts
