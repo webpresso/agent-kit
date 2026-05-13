@@ -1,8 +1,6 @@
 {
-  "worktree": {
-    "symlinkDirectories": [
-      ".claude"
-    ]
+  "enabledPlugins": {
+    "context-mode@context-mode": false
   },
   "hooks": {
     "Stop": [
