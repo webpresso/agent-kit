@@ -1449,3 +1449,164 @@ describe('ak_blueprint_task_verify — Task 3.2', () => {
     expect(data.idempotent).toBe(true)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Task 3.3 — aggregate reads + legacy facade removal
+// ---------------------------------------------------------------------------
+
+describe('Task 3.3 — ak_blueprint_list with aggregate scope', () => {
+  it('ak_blueprint tool is NOT registered (legacy facade deleted)', () => {
+    expect(tools.has('ak_blueprint')).toBe(false)
+  })
+
+  it('ak_blueprint_list with scope: current returns blueprints from single project', async () => {
+    // Create a blueprint so there is something to list
+    await callTool(tools, 'ak_blueprint_create', {
+      project_id: tmpDir,
+      title: 'Scope Current Blueprint',
+      goal: 'Test scope current',
+    })
+    const result = await callTool(tools, 'ak_blueprint_list', { scope: 'current' })
+    expect(result.isError).toStrictEqual(false)
+    const data = parseResult(result) as {
+      blueprints: Array<{ slug: string }>
+      failures: unknown[]
+    }
+    expect(Array.isArray(data.blueprints)).toBe(true)
+    expect(Array.isArray(data.failures)).toBe(true)
+    expect(data.blueprints.some((b) => b.slug === 'scope-current-blueprint')).toBe(true)
+  })
+
+  it('ak_blueprint_list with scope: all returns blueprints and failures array', async () => {
+    await callTool(tools, 'ak_blueprint_create', {
+      project_id: tmpDir,
+      title: 'Scope All Blueprint',
+      goal: 'Test scope all aggregate',
+    })
+    const result = await callTool(tools, 'ak_blueprint_list', { scope: 'all' })
+    expect(result.isError).toStrictEqual(false)
+    const data = parseResult(result) as {
+      blueprints: Array<{ slug: string; project_id: string }>
+      failures: unknown[]
+      duplicate_slugs: unknown[]
+    }
+    expect(Array.isArray(data.blueprints)).toBe(true)
+    expect(Array.isArray(data.failures)).toBe(true)
+    expect(Array.isArray(data.duplicate_slugs)).toBe(true)
+    // Every row must carry a project_id tag
+    for (const bp of data.blueprints) {
+      expect(typeof bp.project_id).toBe('string')
+      expect(bp.project_id.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('ak_blueprint_list with scope: roots returns blueprints and failures array', async () => {
+    const result = await callTool(tools, 'ak_blueprint_list', { scope: 'roots' })
+    expect(result.isError).toStrictEqual(false)
+    const data = parseResult(result) as {
+      blueprints: unknown[]
+      failures: unknown[]
+      duplicate_slugs: unknown[]
+    }
+    expect(Array.isArray(data.blueprints)).toBe(true)
+    expect(Array.isArray(data.failures)).toBe(true)
+    expect(Array.isArray(data.duplicate_slugs)).toBe(true)
+  })
+
+  it('ak_blueprint_list with scope: workspace returns blueprints and failures array', async () => {
+    const result = await callTool(tools, 'ak_blueprint_list', { scope: 'workspace' })
+    expect(result.isError).toStrictEqual(false)
+    const data = parseResult(result) as {
+      blueprints: unknown[]
+      failures: unknown[]
+      duplicate_slugs: unknown[]
+    }
+    expect(Array.isArray(data.blueprints)).toBe(true)
+    expect(Array.isArray(data.failures)).toBe(true)
+    expect(Array.isArray(data.duplicate_slugs)).toBe(true)
+  })
+})
+
+describe('Task 3.3 — ak_blueprint_get with aggregate scope', () => {
+  it('ak_blueprint_get with scope: current (single-project) finds blueprint by directory-derived slug', async () => {
+    // Use a fresh tmpDir so coldStartIfNeeded runs with the blueprint present
+    const localTmpDir = mkdtempSync(path.join(tmpdir(), 'ak-bs-get33-'))
+    mkdirSync(path.join(localTmpDir, '.agent'), { recursive: true })
+    writeFileSync(path.join(localTmpDir, 'package.json'), JSON.stringify({ name: 'test' }), 'utf8')
+
+    // Write blueprint using directory name as slug source (ingester uses dir name, not frontmatter title)
+    const bpSlug = 'single-scope-test-bp'
+    const overviewPath = path.join(localTmpDir, 'blueprints', 'draft', bpSlug, '_overview.md')
+    mkdirSync(path.dirname(overviewPath), { recursive: true })
+    writeFileSync(overviewPath, VALID_BLUEPRINT, 'utf8')
+
+    const { registrar: lr, tools: lt } = makeRegistrar()
+    await registerBlueprintTools(lr, localTmpDir)
+
+    try {
+      // scope: 'current' → single-project path (NOT aggregate)
+      const result = await callTool(lt, 'ak_blueprint_get', {
+        slug: bpSlug,
+        scope: 'current',
+      })
+      expect(result.isError).toStrictEqual(false)
+      const data = parseResult(result) as {
+        blueprint: { slug: string } | null
+        failures: unknown[]
+      }
+      // Single-project path always finds the blueprint directly in the local DB
+      expect(data.blueprint).not.toBeNull()
+      expect(data.blueprint?.slug).toBe(bpSlug)
+    } finally {
+      rmSync(localTmpDir, { recursive: true, force: true })
+    }
+  })
+
+  it('ak_blueprint_get with scope: all returns structured response with failures/blueprint fields', async () => {
+    // With scope: all, the aggregate path is used. In a non-git temp dir,
+    // the aggregate may not find the project's DB (different db_path conventions),
+    // but the response must always have a well-formed envelope.
+    const result = await callTool(tools, 'ak_blueprint_get', {
+      slug: 'any-slug',
+      scope: 'all',
+    })
+    expect(result.isError).toStrictEqual(false)
+    const data = parseResult(result) as Record<string, unknown>
+    // Aggregate path must return these fields regardless of whether data was found
+    expect(Array.isArray(data['failures'])).toBe(true)
+    // Must have a blueprint field (null if not found, object if found)
+    expect('blueprint' in data).toBe(true)
+    // Must have a next_action if blueprint is null
+    if (data['blueprint'] === null) {
+      expect(typeof (data['next_action'] as { kind: string })?.kind).toBe('string')
+    }
+  })
+
+  it('ak_blueprint_get with scope: all returns disambiguate_slug next_action when slug not found anywhere', async () => {
+    const result = await callTool(tools, 'ak_blueprint_get', {
+      slug: 'nonexistent-everywhere',
+      scope: 'all',
+    })
+    expect(result.isError).toStrictEqual(false)
+    const data = parseResult(result) as {
+      blueprint: unknown
+      next_action: { kind: string }
+      failures: unknown[]
+    }
+    expect(data.blueprint).toBeNull()
+    expect(data.next_action.kind).toBe('disambiguate_slug')
+  })
+
+  it('mutation tools still reject scope — ak_blueprint_create ignores scope field', async () => {
+    // MutationTarget schema does not include scope; zod strips it
+    const result = await callTool(tools, 'ak_blueprint_create', {
+      project_id: tmpDir,
+      title: 'No Scope Mutation',
+      goal: 'Verify scope is stripped',
+      scope: 'all',
+    })
+    expect(result.isError).toStrictEqual(false)
+    const data = parseResult(result) as Record<string, unknown>
+    expect('scope' in data).toBe(false)
+  })
+})

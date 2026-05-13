@@ -29,6 +29,10 @@ import { evidenceListSchema, canonicalizeEvidenceList } from '#evidence.js'
 import { applyVerification, parseVerificationBlock } from '#verification.js'
 import { makeNextAction } from '#next-action.js'
 import { resolveBlueprintProjects } from '#projects.js'
+import {
+  aggregateBlueprintRows,
+  type ProjectReader,
+} from '#aggregate.js'
 import { maybeHint } from './_tail-hints.js'
 import type { ToolHandlerResult, ToolRegistrar } from './auto-discover.js'
 
@@ -1032,11 +1036,66 @@ const listSchema = ReadTarget.extend({
   limit: z.number().int().min(1).max(500).default(100),
 })
 
+type BpRow = {
+  slug: string
+  title: string
+  status: string
+  complexity: string | null
+  owner: string | null
+  last_updated: string | null
+  content_hash: string
+  ingested_at: number
+  file_path: string
+  [key: string]: unknown
+}
+
+const listBpReader: ProjectReader<BpRow> = ({ db }) => {
+  // Reader used by both single-project and aggregate paths.
+  // Callers layer on status/limit filters after the fact when using aggregate.
+  const sql = `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints ORDER BY ingested_at DESC LIMIT 500`
+  return db.prepare(sql).all() as unknown as BpRow[]
+}
+
 async function handleBlueprintList(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = listSchema.safeParse(raw)
   if (!p.success) return err('ak_blueprint_list validation error', p.error.message)
-  const { status, limit } = p.data
+  const { status, limit, scope } = p.data
 
+  // Multi-project path: scope is 'roots', 'workspace', or 'all'
+  const isMultiScope =
+    scope === 'roots' || scope === 'workspace' || scope === 'all'
+
+  if (isMultiScope) {
+    try {
+      const target: { scope: typeof scope; project_id?: string } = { scope }
+      if (p.data.project_id) target.project_id = p.data.project_id
+
+      const result = await aggregateBlueprintRows<BpRow>({
+        target,
+        read: listBpReader,
+        resolveOptions: { cwd },
+      })
+
+      let rows = result.rows as Array<BpRow & { project_id: string }>
+      if (status) rows = rows.filter((r) => r.status === status)
+      rows = rows.slice(0, limit)
+
+      const b = bytes(JSON.stringify(rows))
+      return jsonContent({
+        summary: `Found ${rows.length} blueprint(s)${status ? ` with status "${status}"` : ''} across ${result.projects.length} project(s)`,
+        blueprints: rows,
+        failures: result.failures,
+        duplicate_slugs: result.duplicate_slugs,
+        freshness_ok: result.failures.length === 0,
+        bytes: b,
+        tokensSaved: 0,
+      })
+    } catch (e) {
+      return err('ak_blueprint_list failed', toStr(e))
+    }
+  }
+
+  // Single-project path: scope is 'current' or omitted
   const target = dbPath(cwd)
   if (!existsSync(target))
     return jsonContent({
@@ -1051,17 +1110,6 @@ async function handleBlueprintList(cwd: string, raw: unknown): Promise<ToolHandl
 
   try {
     const conn = openDb(target)
-    interface BpRow {
-      slug: string
-      title: string
-      status: string
-      complexity: string | null
-      owner: string | null
-      last_updated: string | null
-      content_hash: string
-      ingested_at: number
-      file_path: string
-    }
     let rows: BpRow[]
     try {
       const sql = status
@@ -1093,11 +1141,124 @@ async function handleBlueprintList(cwd: string, raw: unknown): Promise<ToolHandl
 
 const getSchema = ReadTarget.extend({ slug: z.string() })
 
+type BpDetailRow = {
+  slug: string
+  title: string
+  status: string
+  complexity: string | null
+  owner: string | null
+  last_updated: string | null
+  content_hash: string
+  ingested_at: number
+  file_path: string
+  [key: string]: unknown
+}
+
+interface TaskRow {
+  task_id: string
+  title: string
+  status: string
+  wave: string | null
+  lane: string | null
+}
+
 async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = getSchema.safeParse(raw)
   if (!p.success) return err('ak_blueprint_get validation error', p.error.message)
-  const { slug } = p.data
+  const { slug, scope } = p.data
 
+  const isMultiScope =
+    scope === 'roots' || scope === 'workspace' || scope === 'all'
+
+  if (isMultiScope) {
+    try {
+      const readTarget: { scope: typeof scope; project_id?: string } = { scope }
+      if (p.data.project_id) readTarget.project_id = p.data.project_id
+
+      const result = await aggregateBlueprintRows<BpDetailRow>({
+        target: readTarget,
+        read: ({ db }) => {
+          const row = db
+            .prepare<[string], BpDetailRow>(
+              `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints WHERE slug = ?`,
+            )
+            .get(slug)
+          return row ? [row] : []
+        },
+        resolveOptions: { cwd },
+      })
+
+      // Duplicate slug across projects — caller must disambiguate
+      if (result.duplicate_slugs.includes(slug)) {
+        const candidates = result.rows
+          .filter((r) => r.slug === slug)
+          .map((r) => ({ project_id: r.project_id, file_path: r.file_path }))
+        return jsonContent({
+          summary: `Blueprint "${slug}" found in multiple projects — disambiguation required`,
+          blueprint: null,
+          next_action: {
+            kind: 'disambiguate_slug',
+            hint: `Slug "${slug}" exists in ${candidates.length} projects. Specify project_id to disambiguate.`,
+            candidates,
+          },
+          failures: result.failures,
+          bytes: 0,
+          tokensSaved: 0,
+        })
+      }
+
+      const found = result.rows.find((r) => r.slug === slug)
+      if (!found) {
+        return jsonContent({
+          summary: `Blueprint "${slug}" not found across ${result.projects.length} project(s)`,
+          blueprint: null,
+          next_action: {
+            kind: 'disambiguate_slug',
+            hint: `No blueprint with slug "${slug}" found. Check the slug or re-ingest.`,
+          },
+          failures: result.failures,
+          bytes: 0,
+          tokensSaved: 0,
+        })
+      }
+
+      // Fetch tasks from the owning project's DB
+      const owningProject = result.projects.find((pr) => pr.project_id === found.project_id)
+      let tasks: TaskRow[] = []
+      if (owningProject) {
+        const owningDbPath = dbPath(owningProject.worktree_path)
+        if (existsSync(owningDbPath)) {
+          const conn = openDb(owningDbPath)
+          try {
+            tasks = conn.db
+              .prepare<[string], TaskRow>(
+                `SELECT task_id, title, status, wave, lane FROM tasks WHERE blueprint_slug = ? ORDER BY id`,
+              )
+              .all(slug) as TaskRow[]
+          } finally {
+            conn.close()
+          }
+        }
+      }
+
+      const blueprintWithTasks = { ...found, tasks }
+      const b = bytes(JSON.stringify(blueprintWithTasks))
+      return jsonContent({
+        summary: `Blueprint "${slug}": ${found.status}, ${tasks.length} task(s) [project: ${found.project_id}]`,
+        blueprint: blueprintWithTasks,
+        content_hash: found.content_hash,
+        ingested_at: found.ingested_at,
+        project_id: found.project_id,
+        failures: result.failures,
+        bytes: b,
+        tokensSaved: 0,
+      })
+    } catch (e) {
+      return err('ak_blueprint_get failed', toStr(e))
+    }
+  }
+
+  // Single-project path
   const target = dbPath(cwd)
   if (!existsSync(target))
     return jsonContent({
@@ -1111,24 +1272,6 @@ async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandle
 
   try {
     const conn = openDb(target)
-    interface BpDetailRow {
-      slug: string
-      title: string
-      status: string
-      complexity: string | null
-      owner: string | null
-      last_updated: string | null
-      content_hash: string
-      ingested_at: number
-      file_path: string
-    }
-    interface TaskRow {
-      task_id: string
-      title: string
-      status: string
-      wave: string | null
-      lane: string | null
-    }
     let blueprint: BpDetailRow | null
     let tasks: TaskRow[]
     try {
