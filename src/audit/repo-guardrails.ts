@@ -1019,7 +1019,7 @@ export function auditNoRelativePackageScripts(
           // interpreter followed immediately by a ../ script path
           if (/^(?:node|bun|tsx|ts-node|npx|pnpm\s+exec)\s+\.\.\/\S+/.test(trimmed)) return true
           // bare ../ script execution
-          if (/^\.\.\//.test(trimmed)) return true
+          if (trimmed.startsWith('../')) return true
           return false
         })
         if (hasRelativeScript) {
