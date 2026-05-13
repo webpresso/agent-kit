@@ -10,7 +10,8 @@
  *
  * Auto-discovered by `src/mcp/server.ts` — no manual registration needed.
  */
-import { spawnSync } from 'node:child_process'
+import { execa } from 'execa'
+import PQueue from 'p-queue'
 
 import { z } from 'zod'
 
@@ -23,6 +24,7 @@ import { splitIntoChunks } from '#session-memory/fetch-index'
 const LARGE_OUTPUT_THRESHOLD = 2 * 1024 // 2KB
 const SUMMARY_LENGTH = 500
 const MAX_CONCURRENCY = 8
+const COMMAND_TIMEOUT_MS = 60_000 // 60s per command in batch
 
 const commandSchema = z.object({
   label: z.string().min(1).describe('Human-readable label for this command (used as FTS5 source key)'),
@@ -78,20 +80,32 @@ interface CommandResult {
   error?: string
 }
 
-function runSingleCommand(
+async function runSingleCommand(
   label: string,
   command: string,
   workDir: string,
-): { output: string; result: CommandResult } {
-  let spawnResult: ReturnType<typeof spawnSync>
+): Promise<{ output: string; result: CommandResult }> {
+  let fullOutput = ''
+  let exitCode = 0
+
   try {
-    spawnResult = spawnSync(command, {
+    const subprocess = execa(command, {
       shell: true,
       cwd: workDir,
-      encoding: 'buffer',
-      env: process.env,
-      timeout: 5 * 60 * 1_000,
+      all: true,
+      reject: false,
+      env: process.env as Record<string, string>,
+      timeout: COMMAND_TIMEOUT_MS,
     })
+
+    if (subprocess.all) {
+      for await (const chunk of subprocess.all) {
+        fullOutput += typeof chunk === 'string' ? chunk : chunk.toString('utf-8')
+      }
+    }
+
+    const result = await subprocess
+    exitCode = result.exitCode
   } catch (err) {
     const errorMsg = (err as Error).message
     return {
@@ -100,15 +114,7 @@ function runSingleCommand(
     }
   }
 
-  const stdoutBuf = spawnResult.stdout instanceof Buffer ? spawnResult.stdout : Buffer.from(spawnResult.stdout ?? '')
-  const stderrBuf = spawnResult.stderr instanceof Buffer ? spawnResult.stderr : Buffer.from(spawnResult.stderr ?? '')
-  const combined =
-    stderrBuf.length > 0
-      ? Buffer.concat([stdoutBuf, Buffer.from('\n--- stderr ---\n'), stderrBuf])
-      : stdoutBuf
-  const fullOutput = combined.toString('utf-8')
-  const outputBytes = combined.length
-  const exitCode = spawnResult.status ?? (spawnResult.error ? -1 : 0)
+  const outputBytes = Buffer.byteLength(fullOutput, 'utf-8')
 
   return {
     output: fullOutput,
@@ -138,48 +144,45 @@ const tool: ToolDescriptor = {
   async handler(rawInput) {
     const input = inputSchema.parse(rawInput)
     const workDir = input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
-    const concurrency = input.concurrency ?? 1
+    const concurrency = Math.min(input.concurrency ?? 1, MAX_CONCURRENCY)
 
     // Determine the store once — shared across all commands in this batch
     const repoHash = computeRepoHash(workDir)
     const dbPath = resolveDbPath(repoHash)
 
-    const commands = input.commands
     const results: CommandResult[] = []
     const indexedLabels: string[] = []
 
-    // Execute commands in batches of `concurrency`
-    for (let i = 0; i < commands.length; i += concurrency) {
-      const batch = commands.slice(i, i + concurrency)
+    // p-queue handles concurrency + per-task timeout
+    const queue = new PQueue({
+      concurrency,
+      timeout: COMMAND_TIMEOUT_MS,
+      throwOnTimeout: false,
+    })
 
-      const batchOutputs = await Promise.all(
-        batch.map(async ({ label, command }) => {
-          // spawnSync is synchronous but we wrap in a promise so Promise.all
-          // can fan out the batch. For true parallelism we rely on the OS
-          // scheduler — good enough for I/O-bound commands.
-          return new Promise<{ output: string; result: CommandResult }>((resolve) => {
-            resolve(runSingleCommand(label, command, workDir))
-          })
-        }),
+    const settled = await Promise.all(
+      input.commands.map(({ label, command }) =>
+        queue.add(() => runSingleCommand(label, command, workDir))
+          .then(r => r ?? { output: '', result: { label, exitCode: -1, outputBytes: 0, indexed: false, summary: 'timed out' } })
       )
+    )
 
-      // Index large outputs — must be sequential to avoid WAL contention
-      for (const { output, result } of batchOutputs) {
-        if (output.length > LARGE_OUTPUT_THRESHOLD) {
-          try {
-            const store = getStore(dbPath)
-            const chunks = splitIntoChunks(output)
-            store.insertChunks(chunks.map((content) => ({ content, source: result.label })))
-            result.indexed = true
-            indexedLabels.push(result.label)
-          } catch (err) {
-            process.stderr.write(
-              `ak_session_batch_execute: index error for "${result.label}": ${(err as Error).message}\n`,
-            )
-          }
+    // Index large outputs — sequential to avoid WAL contention
+    for (const { output, result } of settled) {
+      if (output.length > LARGE_OUTPUT_THRESHOLD) {
+        try {
+          const store = getStore(dbPath)
+          const chunks = splitIntoChunks(output)
+          store.insertChunks(chunks.map((content) => ({ content, source: result.label })))
+          result.indexed = true
+          indexedLabels.push(result.label)
+        } catch (err) {
+          process.stderr.write(
+            `ak_session_batch_execute: index error for "${result.label}": ${(err as Error).message}\n`,
+          )
         }
-        results.push(result)
       }
+      results.push(result)
     }
 
     // Run cross-command queries if requested and any output was indexed
@@ -207,7 +210,7 @@ const tool: ToolDescriptor = {
     const payload = {
       results,
       totalIndexed: indexedLabels.length,
-      totalCommands: commands.length,
+      totalCommands: input.commands.length,
       ...(queryHits !== undefined ? { queryHits } : {}),
     }
 

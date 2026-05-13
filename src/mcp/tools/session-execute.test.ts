@@ -23,34 +23,40 @@ vi.mock('#session-memory/fetch-index', () => ({
   htmlToMarkdown: vi.fn((html: string) => html),
 }))
 
-// Mock child_process
-vi.mock('node:child_process', () => ({
-  spawnSync: vi.fn(),
+// Mock execa
+vi.mock('execa', () => ({
+  execa: vi.fn(),
 }))
 
 import tool from './session-execute.js'
 import { getStore } from '#session-memory/store'
-import { spawnSync } from 'node:child_process'
+import { execa } from 'execa'
 
 const mockGetStore = vi.mocked(getStore)
-const mockSpawnSync = vi.mocked(spawnSync)
+const mockExeca = vi.mocked(execa)
 
-function makeSpawnResult(stdout: string, stderr = '', status = 0) {
-  return {
-    stdout: Buffer.from(stdout),
-    stderr: Buffer.from(stderr),
-    status,
-    error: undefined,
-    pid: 1234,
-    signal: null,
-    output: [],
+/** Build a fake execa subprocess result. The returned object must:
+ *  - have an `all` async iterable that yields the output string
+ *  - be a Promise that resolves to { exitCode }
+ */
+function makeExecaResult(output: string, exitCode = 0) {
+  async function* allIterable() {
+    yield output
   }
+
+  const promise = Promise.resolve({ exitCode }) as ReturnType<typeof execa>
+  ;(promise as unknown as { all: AsyncIterable<string> }).all = allIterable()
+  return promise
+}
+
+function makeExecaError(message: string) {
+  return () => { throw new Error(message) }
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
   // Default: successful command with small output
-  mockSpawnSync.mockReturnValue(makeSpawnResult('hello world\n'))
+  mockExeca.mockReturnValue(makeExecaResult('hello world\n'))
 })
 
 afterEach(() => {
@@ -68,7 +74,7 @@ describe('ak_session_execute MCP tool', () => {
 
   it('returns summary for small output (< 2KB) without indexing', async () => {
     const smallOutput = 'small output\n'
-    mockSpawnSync.mockReturnValue(makeSpawnResult(smallOutput))
+    mockExeca.mockReturnValue(makeExecaResult(smallOutput))
 
     const result = await tool.handler({ command: 'echo hello' })
     const payload = JSON.parse(result.content[0]!.text!) as {
@@ -88,7 +94,7 @@ describe('ak_session_execute MCP tool', () => {
 
   it('indexes large output (> 2KB) into session memory', async () => {
     const largeOutput = 'x'.repeat(3000)
-    mockSpawnSync.mockReturnValue(makeSpawnResult(largeOutput))
+    mockExeca.mockReturnValue(makeExecaResult(largeOutput))
 
     const result = await tool.handler({ command: 'big-command', label: 'my-big-cmd' })
     const payload = JSON.parse(result.content[0]!.text!) as {
@@ -105,7 +111,7 @@ describe('ak_session_execute MCP tool', () => {
 
   it('uses label for FTS5 source when provided', async () => {
     const largeOutput = 'y'.repeat(3000)
-    mockSpawnSync.mockReturnValue(makeSpawnResult(largeOutput))
+    mockExeca.mockReturnValue(makeExecaResult(largeOutput))
 
     await tool.handler({ command: 'pnpm test', label: 'test-run' })
 
@@ -116,7 +122,7 @@ describe('ak_session_execute MCP tool', () => {
 
   it('returns search hits when query is provided and output is large', async () => {
     const largeOutput = 'z'.repeat(3000)
-    mockSpawnSync.mockReturnValue(makeSpawnResult(largeOutput))
+    mockExeca.mockReturnValue(makeExecaResult(largeOutput))
 
     const result = await tool.handler({ command: 'pnpm test', query: 'error' })
     const payload = JSON.parse(result.content[0]!.text!) as {
@@ -129,7 +135,7 @@ describe('ak_session_execute MCP tool', () => {
   })
 
   it('does NOT run search query for small output (not indexed)', async () => {
-    mockSpawnSync.mockReturnValue(makeSpawnResult('small'))
+    mockExeca.mockReturnValue(makeExecaResult('small'))
 
     const result = await tool.handler({ command: 'echo small', query: 'error' })
     const payload = JSON.parse(result.content[0]!.text!) as {
@@ -141,10 +147,8 @@ describe('ak_session_execute MCP tool', () => {
     expect(payload.hits).toBeUndefined()
   })
 
-  it('returns structured error envelope on spawn failure', async () => {
-    mockSpawnSync.mockImplementation(() => {
-      throw new Error('spawn ENOENT')
-    })
+  it('returns structured error envelope on exec failure', async () => {
+    mockExeca.mockImplementation(makeExecaError('spawn ENOENT'))
 
     const result = await tool.handler({ command: 'nonexistent-command' })
     const payload = JSON.parse(result.content[0]!.text!) as {
@@ -158,8 +162,9 @@ describe('ak_session_execute MCP tool', () => {
     expect(payload.indexed).toBe(false)
   })
 
-  it('includes stderr in combined output', async () => {
-    mockSpawnSync.mockReturnValue(makeSpawnResult('stdout', 'stderr error', 1))
+  it('includes stdout and stderr in combined output', async () => {
+    const combined = 'stdout output\n--- stderr ---\nstderr error'
+    mockExeca.mockReturnValue(makeExecaResult(combined, 1))
 
     const result = await tool.handler({ command: 'failing-cmd' })
     const payload = JSON.parse(result.content[0]!.text!) as {
@@ -174,7 +179,7 @@ describe('ak_session_execute MCP tool', () => {
 
   it('summary is capped at 500 chars', async () => {
     const longOutput = 'a'.repeat(1000)
-    mockSpawnSync.mockReturnValue(makeSpawnResult(longOutput))
+    mockExeca.mockReturnValue(makeExecaResult(longOutput))
 
     const result = await tool.handler({ command: 'echo long' })
     const payload = JSON.parse(result.content[0]!.text!) as { summary: string }

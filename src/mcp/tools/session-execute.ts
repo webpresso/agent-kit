@@ -11,7 +11,7 @@
  *
  * Auto-discovered by `src/mcp/server.ts` — no manual registration needed.
  */
-import { spawnSync } from 'node:child_process'
+import { execa } from 'execa'
 
 import { z } from 'zod'
 
@@ -23,6 +23,7 @@ import { splitIntoChunks } from '#session-memory/fetch-index'
 
 const LARGE_OUTPUT_THRESHOLD = 2 * 1024 // 2KB
 const SUMMARY_LENGTH = 500
+const COMMAND_TIMEOUT_MS = 5 * 60 * 1_000 // 5 minutes
 
 const inputSchema = z.object({
   command: z.string().min(1).describe('Shell command to execute'),
@@ -68,16 +69,30 @@ const tool: ToolDescriptor = {
     const workDir = input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
     const label = input.label ?? input.command
 
-    let result: ReturnType<typeof spawnSync>
+    // Accumulated output for streaming sandbox
+    let fullOutput = ''
+    let exitCode = 0
+
     try {
-      result = spawnSync(input.command, {
+      const subprocess = execa(input.command, {
         shell: true,
         cwd: workDir,
-        encoding: 'buffer',
-        env: process.env,
-        // 5-minute timeout for long-running commands like test suites
-        timeout: 5 * 60 * 1_000,
+        all: true,
+        reject: false,
+        env: process.env as Record<string, string>,
+        timeout: COMMAND_TIMEOUT_MS,
       })
+
+      // Collect all output — streaming avoids a single large buffer allocation
+      // because execa reads in chunks internally; we concat here for indexing.
+      if (subprocess.all) {
+        for await (const chunk of subprocess.all) {
+          fullOutput += typeof chunk === 'string' ? chunk : chunk.toString('utf-8')
+        }
+      }
+
+      const result = await subprocess
+      exitCode = result.exitCode
     } catch (err) {
       const errorMsg = (err as Error).message
       const payload = {
@@ -94,17 +109,7 @@ const tool: ToolDescriptor = {
       }
     }
 
-    const stdoutBuf = result.stdout instanceof Buffer ? result.stdout : Buffer.from(result.stdout ?? '')
-    const stderrBuf = result.stderr instanceof Buffer ? result.stderr : Buffer.from(result.stderr ?? '')
-    // Combine stdout + stderr (stderr appended after a separator)
-    const combined =
-      stderrBuf.length > 0
-        ? Buffer.concat([stdoutBuf, Buffer.from('\n--- stderr ---\n'), stderrBuf])
-        : stdoutBuf
-    const fullOutput = combined.toString('utf-8')
-    const outputBytes = combined.length
-    const exitCode = result.status ?? (result.error ? -1 : 0)
-
+    const outputBytes = Buffer.byteLength(fullOutput, 'utf-8')
     const summary = fullOutput.slice(0, SUMMARY_LENGTH)
     let indexed = false
     let hits: Array<{ content: string; source: string; tier: 'porter' | 'trigram' | 'levenshtein'; rank: number }> | undefined
