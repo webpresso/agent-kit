@@ -29,3 +29,6 @@ cleanupUnusedCatalogs: true
 minimumReleaseAgeExclude:
   - '@webpresso/runtime-format'
   - '@webpresso/runtime-storage'
+
+allowBuilds:
+  better-sqlite3: true
