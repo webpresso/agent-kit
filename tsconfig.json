@@ -110,6 +110,12 @@
       "#mcp/*": [
         "./src/mcp/*"
       ],
+      "#session-memory": [
+        "./src/session-memory/index.ts"
+      ],
+      "#session-memory/*": [
+        "./src/session-memory/*"
+      ],
       "#content/*": [
         "./src/content/*"
       ],
