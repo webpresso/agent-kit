@@ -293,7 +293,7 @@ Create one path helper for blueprint structured-store paths so CLI, MCP, audits,
 
 #### [projects] Task 1.2: Add one reusable project resolver for current roots, workspace repos, worktrees, and bounded recursion
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -322,13 +322,13 @@ Create one small resolver module that owns project identity, selector disambigua
 
 **Acceptance:**
 
-- [ ] Current project is first and is the default target.
-- [ ] `project_id` follows the pinned `project_id_v1` formula; tests assert stability and platform-folding behavior.
-- [ ] Every project ref includes `source`, `repo_path`, `worktree_path`, `has_blueprints`, `db_path`, and optional `branch`/`repo_key`/`worktree_key`.
-- [ ] Duplicate blueprint slugs return candidate `project_id` values instead of guessing.
-- [ ] Recursive discovery enforces `depth ≤ 3`, `count ≤ 200`, `timeout 2s`, ignore-list pinned above; cap-exceeded returns partial results plus structured failures.
-- [ ] Imports `parseWorktreePorcelain` from `router-dispatch.ts` rather than re-parsing porcelain.
-- [ ] No persistent registry, daemon, or background indexer is introduced.
+- [x] Current project is first and is the default target.
+- [x] `project_id` follows the pinned `project_id_v1` formula; tests assert stability and platform-folding behavior.
+- [x] Every project ref includes `source`, `repo_path`, `worktree_path`, `has_blueprints`, `db_path`, and optional `branch`/`repo_key`/`worktree_key`.
+- [x] Duplicate blueprint slugs return candidate `project_id` values instead of guessing.
+- [x] Recursive discovery enforces `depth ≤ 3`, `count ≤ 200`, `timeout 2s`, ignore-list pinned above; cap-exceeded returns partial results plus structured failures.
+- [x] Imports `parseWorktreePorcelain` from `router-dispatch.ts` rather than re-parsing porcelain.
+- [x] No persistent registry, daemon, or background indexer is introduced.
 
 #### [context] Task 1.3: Build reusable blueprint context chunk assembler with HEAD-pinned freshness
 

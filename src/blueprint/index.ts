@@ -193,3 +193,18 @@ export {
   type NextActionKind,
   NEXT_ACTION_KINDS,
 } from './next-action.js'
+// Project/worktree resolver (Task 1.2).
+export {
+  type BlueprintProjectRef,
+  type GitProbe,
+  PROJECT_SOURCES,
+  type ProjectSource,
+  projectIdV1,
+  RECURSIVE_SCAN_IGNORED_DIRS,
+  type RecursiveScanLimits,
+  RECURSIVE_SCAN_LIMITS,
+  resolveBlueprintProjects,
+  type ResolveBlueprintProjectsOptions,
+  type RootsProvider,
+  type RootsResponse,
+} from './projects.js'
