@@ -67,7 +67,7 @@ class CtxRsStore {
 
 // Lazy import of better-sqlite3 so it's not required when ctx-rs is active.
 type BetterSqlite3Module = typeof import('better-sqlite3')
-type BetterSqlite3Database = InstanceType<BetterSqlite3Module['default']>
+type BetterSqlite3Database = InstanceType<BetterSqlite3Module>
 
 const SCHEMA_SQL = `
   CREATE VIRTUAL TABLE IF NOT EXISTS chunks USING fts5(
@@ -115,7 +115,7 @@ class TsStore {
   constructor(dbPath: string) {
     mkdirSync(dirname(dbPath), { recursive: true })
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const BetterSqlite3 = require('better-sqlite3') as BetterSqlite3Module['default']
+    const BetterSqlite3 = require('better-sqlite3') as BetterSqlite3Module
     this.db = new BetterSqlite3(dbPath)
     this.db.pragma('journal_mode=WAL')
     this.db.pragma('synchronous=NORMAL')

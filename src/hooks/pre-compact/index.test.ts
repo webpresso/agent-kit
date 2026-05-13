@@ -2,12 +2,16 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { runPreCompact } from './index.js'
 import { captureEvent, resolveDbPath, snapshot } from '#session-memory/session'
 
 const TEST_REPO_HASH = 'precompact000abc1'
+
+// Force TS engine so tests never depend on the ctx-rs native binary
+const originalEngine = process.env['AK_SESSION_ENGINE']
+process.env['AK_SESSION_ENGINE'] = 'ts'
 
 let tmpDir: string
 
@@ -17,10 +21,16 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  // Close any open DB handles via the store cache by importing store and clearing
-  // (v2 does not export closeStore — the cache is process-scoped and will GC)
   rmSync(tmpDir, { recursive: true, force: true })
   vi.restoreAllMocks()
+})
+
+afterAll(() => {
+  if (originalEngine === undefined) {
+    delete process.env['AK_SESSION_ENGINE']
+  } else {
+    process.env['AK_SESSION_ENGINE'] = originalEngine
+  }
 })
 
 describe('runPreCompact', () => {
