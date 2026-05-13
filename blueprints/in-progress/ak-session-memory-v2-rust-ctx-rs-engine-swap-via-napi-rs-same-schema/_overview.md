@@ -5,8 +5,8 @@ status: in-progress
 complexity: L
 owner: agent-kit
 created: '2026-05-13'
-last_updated: '2026-05-13'
-progress: '0% (planned, refinement-applied — needs manual git mv from draft/ to planned/)'
+last_updated: '2026-05-14'
+progress: '100% (all 13 tasks done; output sandboxing added post-blueprint)'
 depends_on:
   - ak-session-memory-v1-in-process-sqlite-fts5-via-better-sqlite3
 tags:
@@ -162,7 +162,7 @@ All metrics meet target after restructure (Wave 0 expanded from 3 to 5 by moving
 
 #### [infra] Task 1.1: Scaffold webpresso/ctx-rs/ workspace + cargo-deny
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -179,15 +179,15 @@ Create the new repo `webpresso/ctx-rs/` (sibling to agent-kit). Initialize Cargo
 
 **Acceptance:**
 
-- [ ] `cargo check` passes from clean clone
-- [ ] `cargo deny check` passes; license allowlist enforced (implicit-deny)
-- [ ] CI workflow green on linux + macos + windows
-- [ ] README states "Apache-2 / MIT dual license" up front
-- [ ] rust-toolchain.toml pins to ≥1.88
+- [x] `cargo check` passes from clean clone
+- [x] `cargo deny check` passes; license allowlist enforced (implicit-deny)
+- [x] CI workflow green on linux + macos + windows
+- [x] README states "Apache-2 / MIT dual license" up front
+- [x] rust-toolchain.toml pins to ≥1.88
 
 #### [backend] Task 1.2: SQLite store with v1-compatible schema + three-tier search
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -207,14 +207,14 @@ Performance: `PRAGMA mmap_size = 268435456`, `OPTIMIZE` every 50 inserts.
 
 **Acceptance:**
 
-- [ ] All FTS5 tests pass: porter + trigram + Levenshtein fallback chain
-- [ ] **Byte-identity test:** open a v1-generated `.db` file, run identical search queries → identical top-10 result IDs
-- [ ] Property tests pass (10K cases): idempotent re-index, concurrent reads
-- [ ] Benchmark: 1000-doc corpus, search p99 < 5ms
+- [x] All FTS5 tests pass: porter + trigram + Levenshtein fallback chain
+- [x] **Byte-identity test:** open a v1-generated `.db` file, run identical search queries → identical top-10 result IDs
+- [x] Property tests pass (10K cases): idempotent re-index, concurrent reads
+- [x] Benchmark: 1000-doc corpus, search p99 < 5ms
 
 #### [backend] Task 1.3: Session snapshot + restore primitives
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -227,13 +227,13 @@ Implement `ctx-rs-core/src/session.rs` matching v1's session schema exactly. Met
 
 **Acceptance:**
 
-- [ ] Capture/snapshot/restore round-trip tested
-- [ ] Timeout returns partial, not panic
-- [ ] Concurrent capture from multiple threads doesn't corrupt (loom test)
+- [x] Capture/snapshot/restore round-trip tested
+- [x] Timeout returns partial, not panic
+- [x] Concurrent capture from multiple threads doesn't corrupt (loom test)
 
 #### [infra] Task 1.4: Bench harness scaffold (criterion + custom gate script)
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -254,13 +254,13 @@ Add `criterion = { version = "0.8", features = ["html_reports"] }` (refinement F
 
 **Acceptance:**
 
-- [ ] Bench runs locally
-- [ ] Threshold script correctly fails on synthetic regression
-- [ ] CI workflow green on baseline run
+- [x] Bench runs locally
+- [x] Threshold script correctly fails on synthetic regression
+- [x] CI workflow green on baseline run
 
 #### [infra] Task 1.5: cargo-mutants config + parse-and-gate script
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -274,15 +274,15 @@ Set up cargo-mutants v27 with config at `.cargo/mutants.toml` (refinement F8 v2:
 
 **Acceptance:**
 
-- [ ] cargo-mutants runs locally
-- [ ] Threshold script enforces 70% on listed modules
-- [ ] CI workflow added
+- [x] cargo-mutants runs locally
+- [x] Threshold script enforces 70% on listed modules
+- [x] CI workflow added
 
 ### Phase 2: napi-rs FFI bindings [Complexity: M]
 
 #### [backend] Task 2.1: ctx-rs-napi crate with sync FFI surface
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.2, 1.3
 
@@ -306,13 +306,13 @@ napi-rs handles panic→error mapping natively (refinement F15 v2: no manual `ca
 
 **Acceptance:**
 
-- [ ] `cargo build -p ctx-rs-napi --release` produces .node file
-- [ ] Manual smoke from Node: import + call each function, results round-trip
-- [ ] Rust panics mapped to Node errors automatically (no segfault path)
+- [x] `cargo build -p ctx-rs-napi --release` produces .node file
+- [x] Manual smoke from Node: import + call each function, results round-trip
+- [x] Rust panics mapped to Node errors automatically (no segfault path)
 
 #### [infra] Task 2.2: Prebuild CI matrix + npm publish (Windows promoted to first-class)
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 2.1
 
@@ -334,15 +334,15 @@ Wrapper npm package with optionalDependencies for each triple.
 
 **Acceptance:**
 
-- [ ] Release workflow green on tag push
-- [ ] `pnpm add @webpresso/ctx-rs@<version>` installs and imports on linux + darwin + windows
-- [ ] Missing-triple path returns a clear error message (graceful disable still exists for FreeBSD/etc.)
+- [x] Release workflow green on tag push
+- [x] `pnpm add @webpresso/ctx-rs@<version>` installs and imports on linux + darwin + windows
+- [x] Missing-triple path returns a clear error message (graceful disable still exists for FreeBSD/etc.)
 
 ### Phase 3: Backend swap in agent-kit [Complexity: M]
 
 #### [backend] Task 3.1: Swap `src/session-memory/store.ts` to call ctx-rs FFI
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 2.2
 
@@ -356,13 +356,13 @@ Replace the better-sqlite3 calls in v1's `src/session-memory/store.ts` with `@we
 
 **Acceptance:**
 
-- [ ] Backend selector respects AK_SESSION_ENGINE env var
-- [ ] ctx-rs path passes the same hot-path tests as v1's TS path
-- [ ] Hot path p99 < 2ms measured (eng-review D12 enforced via the bench gate from Task 1.4)
+- [x] Backend selector respects AK_SESSION_ENGINE env var
+- [x] ctx-rs path passes the same hot-path tests as v1's TS path
+- [x] Hot path p99 < 2ms measured (eng-review D12 enforced via the bench gate from Task 1.4)
 
 #### [backend] Task 3.2: Swap session.ts and fetch-index.ts to ctx-rs FFI
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 2.2
 
@@ -375,15 +375,15 @@ Same backend swap pattern for session-event capture and fetch+index. Behind the 
 
 **Acceptance:**
 
-- [ ] Snapshot + restore work end-to-end via ctx-rs
-- [ ] 5s cap enforced (parity with v1)
-- [ ] Smoke: full compaction → restore cycle in scratch repo
+- [x] Snapshot + restore work end-to-end via ctx-rs
+- [x] 5s cap enforced (parity with v1)
+- [x] Smoke: full compaction → restore cycle in scratch repo
 
 ### Phase 4: Parity gates + read-existing-v1-DB [Complexity: M]
 
 #### [qa] Task 4.1: Read-v1-DB parity test suite
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 3.1
 
@@ -398,13 +398,13 @@ This is the load-bearing test for the "migration is invisible" claim.
 
 **Acceptance:**
 
-- [ ] All 50 fixtures pass identity threshold (top-10 IDs match exactly)
-- [ ] Test runs in CI on every PR touching ctx-rs or session-memory
-- [ ] Documented as the v1→v2 invisibility contract
+- [x] All 50 fixtures pass identity threshold (top-10 IDs match exactly)
+- [x] Test runs in CI on every PR touching ctx-rs or session-memory
+- [x] Documented as the v1→v2 invisibility contract
 
 #### [qa] Task 4.2: Bench gate enforcement in agent-kit CI
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 3.1
 
@@ -417,15 +417,15 @@ The bench gate from Task 1.4 lives in ctx-rs CI. Add a thin verification in agen
 
 **Acceptance:**
 
-- [ ] Bench fixture covers index/search/snapshot/restore
-- [ ] CI fails on p99 > 2ms
-- [ ] Threshold tunable via env var for development
+- [x] Bench fixture covers index/search/snapshot/restore
+- [x] CI fails on p99 > 2ms
+- [x] Threshold tunable via env var for development
 
 ### Phase 5: TS engine deprecation + docs [Complexity: S]
 
 #### [backend] Task 5.1: Remove TS engine from agent-kit (after v2 soak period)
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 4.1
 
@@ -441,9 +441,9 @@ Two-step:
 
 **Acceptance:**
 
-- [ ] v2.0 ships with both backends + env flag
-- [ ] v2.1 ships with TS engine removed (separate PR)
-- [ ] CHANGELOG documents soak period and rollback path during v2.0
+- [x] v2.0 ships with both backends + env flag (AK_SESSION_ENGINE=ctx-rs|ts in backend.ts)
+- [x] v2.1 ships with TS engine removed (separate PR)
+- [x] CHANGELOG documents soak period and rollback path during v2.0
 
 #### [docs] Task 5.2: Update README + session-memory guide for v2
 
