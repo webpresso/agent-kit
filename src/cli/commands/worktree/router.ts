@@ -13,12 +13,15 @@ const HELP_TEXT = [
   'Usage: ak worktree <subcommand> [options]',
   '',
   'Subcommands:',
-  '  new <branch> [--base <ref>] [--path <dir>]   Create worktree and seed .agent/',
+  '  new [branch] [--base <ref>] [--path <dir>]   Create worktree and seed .agent/',
   '  list                                          List worktrees',
   '  remove <branch-or-path> [--force]             Remove a worktree',
   '',
   'Options:',
-  '  --cwd <dir>   Repo root (default: process.cwd())',
+  '  --name <name>       Human-friendly generated branch slug (new only)',
+  '  --prefix <prefix>   Prefix for generated branches (new only, default: agent)',
+  '  --dry-run           Print the resolved worktree target without writing',
+  '  --cwd <dir>         Repo root (default: process.cwd())',
 ].join('\n')
 
 export function registerWorktreeRouter(cli: CAC): void {
@@ -29,6 +32,9 @@ export function registerWorktreeRouter(cli: CAC): void {
     )
     .option('--base <ref>', 'Base ref for the new branch (new only, default: HEAD)')
     .option('--path <dir>', 'Explicit filesystem path for the new worktree (new only)')
+    .option('--name <name>', 'Human-friendly generated branch slug (new only)')
+    .option('--prefix <prefix>', 'Prefix for generated branches (new only, default: agent)')
+    .option('--dry-run', 'Print the resolved worktree target without writing (new only)')
     .option('--force', 'Force remove even with uncommitted changes (remove only)')
     .option('--cwd <dir>', 'Repo root to operate from (default: process.cwd())')
     .action(

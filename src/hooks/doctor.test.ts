@@ -113,6 +113,77 @@ describe('hooks/doctor', () => {
       expect(mcpCheck?.detail).toContain('skipped')
     })
 
+    it('reports hook probe stdin EPIPE instead of throwing an unhandled error', async () => {
+      const knownPaths = new Set([
+        pkgJson,
+        pluginJson,
+        join(repoRoot, 'src/hooks/pretool-guard/index.ts'),
+        join(repoRoot, 'src/hooks/post-tool/lint-after-edit.ts'),
+        join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
+        join(repoRoot, 'src/hooks/guard-switch/index.ts'),
+        join(repoRoot, 'src/hooks/sessionstart/index.ts'),
+        join(repoRoot, 'src/hooks/test-quality-check.ts'),
+      ])
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockStatSync.mockReturnValue({ mode: 0o755 } as unknown as ReturnType<typeof statSync>)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === pkgJson) {
+          return JSON.stringify({
+            bin: {
+              'ak-pretool-guard': './src/hooks/pretool-guard/index.ts',
+              'ak-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'ak-stop-qa': './src/hooks/stop/qa-changed-files.ts',
+              'ak-guard-switch': './src/hooks/guard-switch/index.ts',
+              'ak-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'ak-test-quality-check': './src/hooks/test-quality-check.ts',
+            },
+          })
+        }
+        if (String(path) === pluginJson)
+          return JSON.stringify({ version: '0.1.0', hooks: {}, mcpServers: {} })
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+      mockSpawn.mockImplementation(() => {
+        const child = new EventEmitter() as EventEmitter & {
+          stdout: EventEmitter
+          stderr: EventEmitter
+          stdin: EventEmitter & { write: (chunk: string, cb?: () => void) => void; end: () => void }
+          kill: () => boolean
+        }
+        child.stdout = new EventEmitter()
+        child.stderr = new EventEmitter()
+        child.stdin = new EventEmitter() as EventEmitter & {
+          write: (chunk: string, cb?: () => void) => void
+          end: () => void
+        }
+        child.stdin.write = () => {
+          queueMicrotask(() => {
+            const error = new Error('write EPIPE') as NodeJS.ErrnoException
+            error.code = 'EPIPE'
+            child.stdin.emit('error', error)
+            child.emit('close', 1)
+          })
+        }
+        child.stdin.end = () => {
+          queueMicrotask(() => child.emit('close', 0))
+        }
+        child.kill = () => true
+        return child as unknown as ReturnType<typeof spawn>
+      })
+
+      vi.stubGlobal('process', fakeProcess())
+
+      const { runHooksDoctor } = await import('#hooks/doctor')
+      const result = await runHooksDoctor({ skipMcp: true })
+      expect(result.ok).toBe(false)
+      expect(result.checks.find((check) => check.name === 'pretool-guard')?.detail).toBe(
+        'stdin write failed: write EPIPE',
+      )
+    })
+
     it('accepts plugin.json hooks/mcp path references relative to package root', async () => {
       const knownPaths = new Set([
         pkgJson,

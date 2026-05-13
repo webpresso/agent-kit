@@ -226,28 +226,37 @@ function probeJsonStdin(file: string): Promise<{ ok: boolean; detail?: string }>
     const child = spawn(file, [], { stdio: ['pipe', 'pipe', 'pipe'] })
     let stdout = ''
     let stderr = ''
+    let settled = false
+    const settle = (result: { ok: boolean; detail?: string }) => {
+      if (settled) return
+      settled = true
+      resolve(result)
+    }
     child.stdout.on('data', (chunk) => {
       stdout += String(chunk)
     })
     child.stderr?.on('data', (chunk) => {
       stderr += String(chunk)
     })
+    child.stdin.on?.('error', (err) => {
+      settle({ ok: false, detail: `stdin write failed: ${err.message}` })
+    })
     child.stdin.write('{}\n', () => {
       child.stdin.end()
     })
     child.on('error', (err) => {
-      resolve({ ok: false, detail: String(err.message) })
+      settle({ ok: false, detail: String(err.message) })
     })
     child.on('close', (code) => {
       if (code !== 0) {
-        resolve({ ok: false, detail: `exit ${code}${stderr ? `: ${stderr.trim()}` : ''}` })
+        settle({ ok: false, detail: `exit ${code}${stderr ? `: ${stderr.trim()}` : ''}` })
         return
       }
       try {
         JSON.parse(stdout.trim())
-        resolve({ ok: true })
+        settle({ ok: true })
       } catch {
-        resolve({ ok: false, detail: `invalid JSON on stdout: ${stdout.trim().slice(0, 80)}` })
+        settle({ ok: false, detail: `invalid JSON on stdout: ${stdout.trim().slice(0, 80)}` })
       }
     })
   })

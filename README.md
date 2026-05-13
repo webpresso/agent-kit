@@ -205,7 +205,7 @@ Required for Codex CLI, OpenCode, Cursor, Gemini, and any IDE without a plugin m
 | `ak blueprint export --format spec-kit <slug>` | Export a blueprint to spec-kit 4-file format |
 | `ak tech-debt new --severity <s> --category <c>` | Create a tech-debt record with lifecycle status |
 | `ak tech-debt new --from-audit <audit-name>` | Auto-file audit findings as tech-debt items |
-| `ak worktree new <branch>` | Create a git worktree and seed `.agent/` so AI agents have rules/skills/commands |
+| `ak worktree new [branch] [--name <name>] [--prefix <prefix>]` | Create a git worktree and seed `.agent/`; no branch auto-generates `agent/<timestamp>-<suffix>` |
 | `ak worktree list` / `ak worktree remove <branch-or-path>` | List or remove worktrees (resolves by branch, basename, or path) |
 | `ak skill list` / `ak skill install <name>` | Browse and install catalog skills into the active IDE surfaces |
 | `ak audit guardrails` | Composite audit (8 checks) — wired into pre-commit, CI, ship gate |

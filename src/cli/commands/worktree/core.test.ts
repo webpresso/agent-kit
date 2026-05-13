@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  formatWorktreeList,
   parseWorktreePorcelain,
+  resolveNewWorktreeTarget,
   resolveWorktreePath,
+  sanitizeWorktreeSegment,
   type WorktreeEntry,
 } from './router-dispatch.js'
 
@@ -102,5 +105,159 @@ describe('resolveWorktreePath', () => {
     expect(() => resolveWorktreePath('nonexistent', ENTRIES)).toThrow(
       'No worktree matching "nonexistent"',
     )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// formatWorktreeList
+// ---------------------------------------------------------------------------
+
+describe('formatWorktreeList', () => {
+  it('marks the resolved current worktree root instead of the shell cwd', () => {
+    expect(formatWorktreeList(ENTRIES, '/repos/myrepo-feat-auth')).toStrictEqual([
+      '  PATH                     BRANCH      HEAD',
+      '  -----------------------  ----------  -------',
+      '  /repos/myrepo            main        aaaaaaa',
+      '* /repos/myrepo-feat-auth  feat/auth   bbbbbbb',
+      '  /repos/myrepo-fix-cors   fix/cors    ccccccc',
+      '  /repos/myrepo-detached   (detached)  ddddddd',
+    ])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// resolveNewWorktreeTarget
+// ---------------------------------------------------------------------------
+
+describe('resolveNewWorktreeTarget', () => {
+  it('generates a branch and sibling path when no branch is provided', () => {
+    const target = resolveNewWorktreeTarget({
+      repoRoot: '/repos/agent-kit',
+      now: new Date('2026-05-13T14:27:00'),
+      randomSuffix: () => 'x9k',
+      existingEntries: [],
+      branchExists: () => false,
+    })
+
+    expect(target).toStrictEqual({
+      branch: 'agent/2026-05-13-1427-x9k',
+      path: '/repos/agent-kit-agent-2026-05-13-1427-x9k',
+      generated: true,
+    })
+  })
+
+  it('uses --name as a human-friendly branch slug with the default prefix', () => {
+    const target = resolveNewWorktreeTarget({
+      name: 'Fix Login Flow',
+      repoRoot: '/repos/agent-kit',
+      now: new Date('2026-05-13T14:27:00'),
+      randomSuffix: () => 'unused',
+      existingEntries: [],
+      branchExists: () => false,
+    })
+
+    expect(target).toStrictEqual({
+      branch: 'agent/fix-login-flow',
+      path: '/repos/agent-kit-agent-fix-login-flow',
+      generated: true,
+    })
+  })
+
+  it('honors --prefix for generated branches', () => {
+    const target = resolveNewWorktreeTarget({
+      prefix: 'ralph',
+      repoRoot: '/repos/agent-kit',
+      now: new Date('2026-05-13T14:27:00'),
+      randomSuffix: () => 'q2w',
+      existingEntries: [],
+      branchExists: () => false,
+    })
+
+    expect(target.branch).toBe('ralph/2026-05-13-1427-q2w')
+    expect(target.path).toBe('/repos/agent-kit-ralph-2026-05-13-1427-q2w')
+  })
+
+  it('retries generated names when the branch or default path collides', () => {
+    const suffixes = ['aaa', 'bbb']
+    const target = resolveNewWorktreeTarget({
+      repoRoot: '/repos/agent-kit',
+      now: new Date('2026-05-13T14:27:00'),
+      randomSuffix: () => suffixes.shift() ?? 'ccc',
+      existingEntries: [
+        {
+          path: '/repos/agent-kit-agent-2026-05-13-1427-aaa',
+          head: 'abc',
+          branch: null,
+          bare: false,
+        },
+      ],
+      branchExists: (branch) => branch === 'agent/2026-05-13-1427-aaa',
+    })
+
+    expect(target).toStrictEqual({
+      branch: 'agent/2026-05-13-1427-bbb',
+      path: '/repos/agent-kit-agent-2026-05-13-1427-bbb',
+      generated: true,
+    })
+  })
+
+  it('retries --name targets when the friendly branch already exists', () => {
+    const target = resolveNewWorktreeTarget({
+      name: 'Fix Login Flow',
+      repoRoot: '/repos/agent-kit',
+      randomSuffix: () => 'r2d',
+      existingEntries: [],
+      branchExists: (branch) => branch === 'agent/fix-login-flow',
+    })
+
+    expect(target).toStrictEqual({
+      branch: 'agent/fix-login-flow-r2d',
+      path: '/repos/agent-kit-agent-fix-login-flow-r2d',
+      generated: true,
+    })
+  })
+
+  it('rejects ambiguous explicit branch plus --name input', () => {
+    expect(() =>
+      resolveNewWorktreeTarget({
+        branch: 'feat/auth',
+        name: 'auth',
+        repoRoot: '/repos/agent-kit',
+      }),
+    ).toThrow('Use either <branch> or --name, not both.')
+  })
+
+  it('fails loudly when generated branch/path candidates keep colliding', () => {
+    expect(() =>
+      resolveNewWorktreeTarget({
+        repoRoot: '/repos/agent-kit',
+        now: new Date('2026-05-13T14:27:00'),
+        randomSuffix: () => 'aaa',
+        branchExists: () => true,
+      }),
+    ).toThrow('Could not generate a collision-free worktree branch/path after 20 attempts.')
+  })
+
+  it('keeps explicit branch behavior stable', () => {
+    const target = resolveNewWorktreeTarget({
+      branch: 'feat/auth',
+      repoRoot: '/repos/agent-kit',
+      explicitPath: '/tmp/auth-worktree',
+      now: new Date('2026-05-13T14:27:00'),
+      randomSuffix: () => 'unused',
+      existingEntries: [],
+      branchExists: () => false,
+    })
+
+    expect(target).toStrictEqual({
+      branch: 'feat/auth',
+      path: '/tmp/auth-worktree',
+      generated: false,
+    })
+  })
+
+  it('sanitizes generated branch path segments', () => {
+    expect(sanitizeWorktreeSegment(' Fix/Login Flow! ')).toBe('fix-login-flow')
+    expect(sanitizeWorktreeSegment('!!!')).toBe('agent')
   })
 })

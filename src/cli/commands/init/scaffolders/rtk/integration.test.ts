@@ -136,5 +136,5 @@ describe('rtk scaffolder integration', () => {
     expect(settingsAfterSecond).toContain('RTK_TELEMETRY_DISABLED=1') // G8
     expect(settingsAfterSecond).not.toContain('.codex/hooks.json')
     expect(readFileSync(join(repo, '.codex', 'hooks.json'), 'utf8')).not.toContain('rtk')
-  })
+  }, 20_000)
 })

@@ -4,6 +4,7 @@
  * Handles: new, list, remove
  */
 import { execFileSync, spawnSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 
 import { scaffoldAgent } from '#cli/commands/init/scaffold-agent'
@@ -14,6 +15,9 @@ import { getProjectRoot } from '#cli/utils'
 export interface WorktreeCommandOptions {
   base?: string
   path?: string
+  name?: string
+  prefix?: string
+  dryRun?: boolean
   force?: boolean
   cwd?: string
 }
@@ -23,6 +27,25 @@ export interface WorktreeEntry {
   head: string
   branch: string | null
   bare: boolean
+}
+
+export interface NewWorktreeTarget {
+  branch: string
+  path: string
+  generated: boolean
+}
+
+export interface NewWorktreeTargetInput {
+  branch?: string
+  name?: string
+  prefix?: string
+  explicitPath?: string
+  repoRoot: string
+  now?: Date
+  randomSuffix?: () => string
+  existingEntries?: WorktreeEntry[]
+  branchExists?: (branch: string) => boolean
+  pathExists?: (path: string) => boolean
 }
 
 export function parseWorktreePorcelain(raw: string): WorktreeEntry[] {
@@ -46,6 +69,79 @@ export function parseWorktreePorcelain(raw: string): WorktreeEntry[] {
   return entries
 }
 
+export function sanitizeWorktreeSegment(value: string, fallback = 'agent'): string {
+  const sanitized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]+/gi, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return sanitized || fallback
+}
+
+function formatTimestamp(now: Date): string {
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const hour = String(now.getHours()).padStart(2, '0')
+  const minute = String(now.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}-${hour}${minute}`
+}
+
+function defaultRandomSuffix(): string {
+  return Math.random().toString(36).slice(2, 5).padEnd(3, '0')
+}
+
+function defaultWorktreePath(repoRoot: string, branch: string): string {
+  const pathSegment = sanitizeWorktreeSegment(branch)
+  return join(dirname(repoRoot), `${basename(repoRoot)}-${pathSegment}`)
+}
+
+function collides(
+  branch: string,
+  path: string,
+  entries: WorktreeEntry[],
+  branchExists: (branch: string) => boolean,
+  pathExists: (path: string) => boolean,
+): boolean {
+  return branchExists(branch) || entries.some((e) => e.path === path) || pathExists(path)
+}
+
+export function resolveNewWorktreeTarget(input: NewWorktreeTargetInput): NewWorktreeTarget {
+  const branch = input.branch?.trim()
+  const name = input.name?.trim()
+  if (branch && name) {
+    throw new Error('Use either <branch> or --name, not both.')
+  }
+
+  if (branch) {
+    return {
+      branch,
+      path: input.explicitPath ?? defaultWorktreePath(input.repoRoot, branch),
+      generated: false,
+    }
+  }
+
+  const prefix = sanitizeWorktreeSegment(input.prefix ?? 'agent')
+  const now = input.now ?? new Date()
+  const randomSuffix = input.randomSuffix ?? defaultRandomSuffix
+  const entries = input.existingEntries ?? []
+  const branchExists = input.branchExists ?? (() => false)
+  const pathExists = input.pathExists ?? (() => false)
+  const baseSlug = name ? sanitizeWorktreeSegment(name) : formatTimestamp(now)
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const suffix = name && attempt === 0 ? '' : `-${sanitizeWorktreeSegment(randomSuffix(), 'x')}`
+    const candidateBranch = `${prefix}/${baseSlug}${suffix}`
+    const candidatePath = input.explicitPath ?? defaultWorktreePath(input.repoRoot, candidateBranch)
+    if (!collides(candidateBranch, candidatePath, entries, branchExists, pathExists)) {
+      return { branch: candidateBranch, path: candidatePath, generated: true }
+    }
+  }
+
+  throw new Error('Could not generate a collision-free worktree branch/path after 20 attempts.')
+}
+
 export function resolveWorktreePath(nameOrPath: string, entries: WorktreeEntry[]): string {
   const match = entries.find(
     (e) =>
@@ -63,6 +159,13 @@ export function resolveWorktreePath(nameOrPath: string, entries: WorktreeEntry[]
   return match.path
 }
 
+function gitBranchExists(repoRoot: string, branch: string): boolean {
+  const result = spawnSync('git', ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`], {
+    cwd: repoRoot,
+  })
+  return result.status === 0
+}
+
 function listEntries(repoRoot: string): WorktreeEntry[] {
   const raw = execFileSync('git', ['worktree', 'list', '--porcelain'], {
     cwd: repoRoot,
@@ -71,14 +174,56 @@ function listEntries(repoRoot: string): WorktreeEntry[] {
   return parseWorktreePorcelain(raw)
 }
 
+export function formatWorktreeList(
+  entries: WorktreeEntry[],
+  currentWorktreePath: string,
+): string[] {
+  if (entries.length === 0) return ['No worktrees found.']
+
+  const pathWidth = Math.max(...entries.map((e) => e.path.length), 4)
+  const branchLabels = entries.map((e) => e.branch?.replace('refs/heads/', '') ?? '(detached)')
+  const branchWidth = Math.max(...branchLabels.map((b) => b.length), 6)
+  const rows = [
+    `  ${'PATH'.padEnd(pathWidth)}  ${'BRANCH'.padEnd(branchWidth)}  HEAD`,
+    `  ${'-'.repeat(pathWidth)}  ${'-'.repeat(branchWidth)}  -------`,
+  ]
+
+  for (const [index, e] of entries.entries()) {
+    const marker = e.path === currentWorktreePath ? '* ' : '  '
+    const branchShort = branchLabels[index] ?? '(detached)'
+    const headShort = e.head.slice(0, 7)
+    rows.push(
+      `${marker}${e.path.padEnd(pathWidth)}  ${branchShort.padEnd(branchWidth)}  ${headShort}`,
+    )
+  }
+
+  return rows
+}
+
 async function handleNew(branch: string, opts: WorktreeCommandOptions): Promise<void> {
   const cwd = opts.cwd ?? process.cwd()
   const repoRoot = getProjectRoot({ startDir: cwd })
+  const existingEntries = listEntries(repoRoot)
+  const target = resolveNewWorktreeTarget({
+    branch,
+    name: opts.name,
+    prefix: opts.prefix,
+    explicitPath: opts.path,
+    repoRoot,
+    existingEntries,
+    branchExists: (candidate) => gitBranchExists(repoRoot, candidate),
+    pathExists: existsSync,
+  })
 
-  const sanitized = branch.replace(/[^a-z0-9_.-]/gi, '-')
-  const worktreePath = opts.path ?? join(dirname(repoRoot), `${basename(repoRoot)}-${sanitized}`)
+  if (opts.dryRun) {
+    console.log('[dry-run] Would create worktree:')
+    console.log(`  branch: ${target.branch}`)
+    console.log(`  path:   ${target.path}`)
+    console.log(`  base:   ${opts.base ?? 'HEAD'}`)
+    return
+  }
 
-  const gitArgs = ['worktree', 'add', '-b', branch, worktreePath]
+  const gitArgs = ['worktree', 'add', '-b', target.branch, target.path]
   if (opts.base) gitArgs.push(opts.base)
 
   const addResult = spawnSync('git', gitArgs, { cwd: repoRoot, stdio: 'inherit' })
@@ -87,39 +232,20 @@ async function handleNew(branch: string, opts: WorktreeCommandOptions): Promise<
   }
 
   const catalogDir = resolveCatalogDir()
-  scaffoldAgent({ catalogDir, repoRoot: worktreePath, options: {} })
-  runUnifiedSync({ catalogDir, consumerRoot: worktreePath })
+  scaffoldAgent({ catalogDir, repoRoot: target.path, options: {} })
+  runUnifiedSync({ catalogDir, consumerRoot: target.path })
 
-  console.log(`\nWorktree ready: ${worktreePath}`)
-  console.log(`  cd ${worktreePath}`)
+  console.log(`\nWorktree ready: ${target.path}`)
+  console.log(`  branch: ${target.branch}`)
+  console.log(`  cd ${target.path}`)
 }
 
 function handleList(opts: WorktreeCommandOptions): void {
   const cwd = opts.cwd ?? process.cwd()
   const repoRoot = getProjectRoot({ startDir: cwd })
-  const currentPath = process.cwd()
 
   const entries = listEntries(repoRoot)
-  if (entries.length === 0) {
-    console.log('No worktrees found.')
-    return
-  }
-
-  const pathWidth = Math.max(...entries.map((e) => e.path.length), 4)
-  const branchLabels = entries.map((e) => e.branch?.replace('refs/heads/', '') ?? '(detached)')
-  const branchWidth = Math.max(...branchLabels.map((b) => b.length), 6)
-
-  console.log(`  ${'PATH'.padEnd(pathWidth)}  ${'BRANCH'.padEnd(branchWidth)}  HEAD`)
-  console.log(`  ${'-'.repeat(pathWidth)}  ${'-'.repeat(branchWidth)}  -------`)
-
-  for (const e of entries) {
-    const marker = e.path === currentPath ? '* ' : '  '
-    const branchShort = e.branch?.replace('refs/heads/', '') ?? '(detached)'
-    const headShort = e.head.slice(0, 7)
-    console.log(
-      `${marker}${e.path.padEnd(pathWidth)}  ${branchShort.padEnd(branchWidth)}  ${headShort}`,
-    )
-  }
+  console.log(formatWorktreeList(entries, repoRoot).join('\n'))
 }
 
 function handleRemove(nameOrPath: string, opts: WorktreeCommandOptions): void {
@@ -146,10 +272,7 @@ export async function executeWorktreeSubcommand(
   switch (subcommand) {
     case 'new': {
       const branch = args[0]
-      if (!branch) {
-        throw new Error('Usage: ak worktree new <branch> [--base <ref>] [--path <dir>]')
-      }
-      await handleNew(branch, opts)
+      await handleNew(branch ?? '', opts)
       return
     }
     case 'list': {

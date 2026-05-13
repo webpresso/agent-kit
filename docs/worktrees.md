@@ -1,9 +1,28 @@
 ---
 type: guide
-last_updated: 2026-05-05
+last_updated: 2026-05-13
 ---
 
 # Worktrees
+
+## Creating one with `wp`
+
+`wp`, `webpresso`, and `ak` are aliases for the same CLI. The worktree helper
+accepts an explicit branch, but can also generate one for quick agent lanes:
+
+```bash
+wp worktree new
+# branch: agent/2026-05-13-1427-x9k
+
+wp worktree new --name "fix login flow"
+# branch: agent/fix-login-flow
+
+wp worktree new feat/auth --base main --path ../agent-kit-auth
+```
+
+Generated branches use the `agent` prefix by default. Override it with
+`--prefix <prefix>`, and use `--dry-run` to preview the resolved branch/path
+without creating anything.
 
 ## What inherits
 

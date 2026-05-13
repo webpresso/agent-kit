@@ -220,18 +220,8 @@
         "default": "./dist/esm/config/tsconfig/react-router.json"
       }
     },
-    "./tsconfig/webpresso.json": {
-      "import": {
-        "types": "./dist/esm/config/tsconfig/webpresso.json",
-        "default": "./dist/esm/config/tsconfig/webpresso.json"
-      }
-    },
-    "./tsconfig/webpresso": {
-      "import": {
-        "types": "./dist/esm/config/tsconfig/webpresso.json",
-        "default": "./dist/esm/config/tsconfig/webpresso.json"
-      }
-    },
+    "./tsconfig/webpresso.json": "./tsconfig/webpresso.json",
+    "./tsconfig/webpresso": "./tsconfig/webpresso.json",
     "./vitest/node": {
       "import": {
         "types": "./dist/esm/config/vitest/node.d.ts",

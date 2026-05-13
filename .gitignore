@@ -72,6 +72,7 @@ tmp/
 .cursor/
 .windsurf/
 .omx/
+.omc/
 .opencode/
 # .claude/ is partially tracked:
 #   settings.json, hooks/, rules/ — committed so worktrees inherit them
