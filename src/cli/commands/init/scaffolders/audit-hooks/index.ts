@@ -26,10 +26,11 @@ export interface ScaffoldAuditHooksResult {
 /**
  * Lines to append to `.husky/pre-commit` (each must be idempotently checked).
  */
+// Previously included ak audit skill-sizes and ak audit broken-refs --staged,
+// but those verbs were removed from the audit surface. Pre-commit now only
+// writes the comment header; the main guardrails gate lives in pre-commit.tmpl.
 const AUDIT_HOOK_LINES = [
   '# agent-kit audit hooks (staged mode — fast)',
-  'ak audit skill-sizes --staged',
-  'ak audit broken-refs --staged',
 ] as const
 
 const SHEBANG = '#!/bin/sh\n'

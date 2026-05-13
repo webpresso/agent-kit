@@ -1,1 +1,1 @@
-../../.agent/rules/agent-guide.md
+../../catalog/agent/rules/agent-guide.md

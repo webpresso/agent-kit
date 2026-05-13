@@ -9,6 +9,24 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./node_modules/.bin/ak-check-dev-link",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/opt/homebrew/Cellar/node/25.9.0_3/bin/node\" \"/opt/homebrew/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js\""
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -19,6 +37,15 @@
             "type": "command",
             "command": "./node_modules/.bin/ak-pretool-guard",
             "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/opt/homebrew/Cellar/node/25.9.0_3/bin/node\" \"/opt/homebrew/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js\""
           }
         ]
       }
@@ -33,6 +60,14 @@
             "timeout": 15
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/opt/homebrew/Cellar/node/25.9.0_3/bin/node\" \"/opt/homebrew/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js\""
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -42,6 +77,14 @@
             "type": "command",
             "command": "./node_modules/.bin/ak-guard-switch",
             "timeout": 5
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/opt/homebrew/Cellar/node/25.9.0_3/bin/node\" \"/opt/homebrew/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js\""
           }
         ]
       }
@@ -54,7 +97,59 @@
             "command": "./node_modules/.bin/ak-stop-qa"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/opt/homebrew/Cellar/node/25.9.0_3/bin/node\" \"/opt/homebrew/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/opt/homebrew/Cellar/node/25.9.0_3/bin/node\" \"/opt/homebrew/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js\""
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/opt/homebrew/Cellar/node/25.9.0_3/bin/node\" \"/opt/homebrew/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js\""
+          }
+        ]
       }
     ]
+  },
+  "state": {
+    "/Users/ozby/repos/webpresso/agent-kit/.codex/hooks.json:session_start:0:0": {
+      "trusted_hash": "sha256:eee6922cee5dcacb05ca03ffa8011f6da3bffe5a99e6ca8a26830abf2c067652"
+    },
+    "/Users/ozby/repos/webpresso/agent-kit/.codex/hooks.json:pre_tool_use:0:0": {
+      "trusted_hash": "sha256:85dddef0f4304dadd56f5f741739df43e058719fa71beb9f5d0f44fa5acce8cc"
+    },
+    "/Users/ozby/repos/webpresso/agent-kit/.codex/hooks.json:post_tool_use:0:0": {
+      "trusted_hash": "sha256:4d42af8f37ae4927bd06c1182a89beaafeb22f48b1cc78e74962b06b04249296"
+    },
+    "/Users/ozby/repos/webpresso/agent-kit/.codex/hooks.json:user_prompt_submit:0:0": {
+      "trusted_hash": "sha256:c2b551fd37807eb79d7e4930735b16e43d751fbbb4c1e6539ee647a46ee027ac"
+    },
+    "/Users/ozby/repos/webpresso/agent-kit/.codex/hooks.json:pre_compact:0:0": {
+      "trusted_hash": "sha256:ad9de635405aa6a144ac90557a1a2e575e1d66d41ca57ffb64cbda5b62351699"
+    },
+    "/Users/ozby/repos/webpresso/agent-kit/.codex/hooks.json:post_compact:0:0": {
+      "trusted_hash": "sha256:c463fb6efa75c3db5ece1c1a4790ce7f6bd5330493502a6237168a2e957eb031"
+    },
+    "/Users/ozby/repos/webpresso/agent-kit/.codex/hooks.json:stop:0:0": {
+      "trusted_hash": "sha256:aa7465230b93784c7a473d097ca9098ce9182d474b1cc58707f53ac44691edd2"
+    }
   }
 }

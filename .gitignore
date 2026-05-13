@@ -127,3 +127,20 @@ __fixtures__/fake-home/.vite-plus/
 .agent/.tail-hint-history.jsonl
 # === agent-kit: generated end
 .gstack/
+
+# >>> managed by @webpresso/agent-kit (rule-sync)
+.agent/rules/
+.cursor/rules/
+.windsurf/rules/
+.claude/rules/
+.gemini/commands/
+# <<< managed by @webpresso/agent-kit (rule-sync)
+
+# >>> managed by @webpresso/agent-kit (skill-sync)
+.agent/skills/
+.cursor/skills/
+.windsurf/skills/
+.claude/skills/
+.gemini/commands/
+.agents/skills/
+# <<< managed by @webpresso/agent-kit (skill-sync)

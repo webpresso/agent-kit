@@ -1,1 +1,1 @@
-../../.agent/rules/context-mode-routing.md
+../../catalog/agent/rules/context-mode-routing.md

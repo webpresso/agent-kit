@@ -5,9 +5,35 @@
       "base-kit"
     ]
   },
-  "durablePlanningRoot": ".agent/planning/",
-  "lastInit": "2026-04-25T19:21:03.361Z",
+  "hosts": {
+    "selected": [
+      "codex",
+      "claude",
+      "opencode"
+    ],
+    "requiredCapabilities": [
+      "verify",
+      "plan-refine"
+    ],
+    "visibility": {
+      "codex": {
+        "verify": "visible-after-restart",
+        "plan-refine": "visible-after-restart"
+      },
+      "claude": {
+        "verify": "visible-after-restart",
+        "plan-refine": "visible-after-restart"
+      },
+      "opencode": {
+        "verify": "visible-after-restart",
+        "plan-refine": "visible-after-restart"
+      }
+    }
+  },
   "rules": {
     "overrides": []
-  }
+  },
+  "scripts": {},
+  "durablePlanningRoot": ".agent/planning/",
+  "lastInit": "2026-04-25T19:21:03.361Z"
 }

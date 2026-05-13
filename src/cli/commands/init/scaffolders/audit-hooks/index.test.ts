@@ -24,30 +24,24 @@ afterEach(async () => {
 const preCommitPath = (root: string): string => path.join(root, '.husky', 'pre-commit')
 
 describe('scaffoldAuditHooks', () => {
-  it('creates .husky/pre-commit with shebang and audit lines when missing', async () => {
+  it('creates .husky/pre-commit with shebang and comment header when missing', async () => {
     const result = scaffoldAuditHooks({ repoRoot: tmpDir, options: {} })
     expect(result.action).toBe('created')
     expect(result.preCommitPath).toBe(preCommitPath(tmpDir))
 
     const content = await readFile(preCommitPath(tmpDir), 'utf8')
     expect(content).toContain('#!/bin/sh')
-    expect(content).toContain('ak audit skill-sizes --staged')
-    expect(content).toContain('ak audit broken-refs --staged')
     expect(content).toContain('# agent-kit audit hooks (staged mode — fast)')
+    // Dead verbs removed — skill-sizes and broken-refs no longer emitted
+    expect(content).not.toContain('skill-sizes')
+    expect(content).not.toContain('broken-refs')
   })
 
-  it('is idempotent — returns identical when lines already present', async () => {
-    // Create the hook file with the lines already present
+  it('is idempotent — returns identical when comment header already present', async () => {
     await mkdir(path.join(tmpDir, '.husky'), { recursive: true })
     await writeFile(
       preCommitPath(tmpDir),
-      [
-        '#!/bin/sh',
-        '# agent-kit audit hooks (staged mode — fast)',
-        'ak audit skill-sizes --staged',
-        'ak audit broken-refs --staged',
-        '',
-      ].join('\n'),
+      '#!/bin/sh\n# agent-kit audit hooks (staged mode — fast)\n',
       'utf8',
     )
 
@@ -55,7 +49,7 @@ describe('scaffoldAuditHooks', () => {
     expect(result.action).toBe('identical')
   })
 
-  it('appends missing lines to existing hook without removing existing content', async () => {
+  it('appends comment header to existing hook without removing existing content', async () => {
     await mkdir(path.join(tmpDir, '.husky'), { recursive: true })
     await writeFile(preCommitPath(tmpDir), '#!/bin/sh\npnpm lint\n', 'utf8')
 
@@ -64,23 +58,26 @@ describe('scaffoldAuditHooks', () => {
 
     const content = await readFile(preCommitPath(tmpDir), 'utf8')
     expect(content).toContain('pnpm lint')
-    expect(content).toContain('ak audit skill-sizes --staged')
-    expect(content).toContain('ak audit broken-refs --staged')
+    expect(content).toContain('# agent-kit audit hooks (staged mode — fast)')
   })
 
-  it('only appends the missing subset when some lines already present', async () => {
+  it('is idempotent on a file that had the old dead verbs — does not add them again', async () => {
+    // Existing hooks may still have old lines from previous ak setup runs
     await mkdir(path.join(tmpDir, '.husky'), { recursive: true })
-    await writeFile(preCommitPath(tmpDir), '#!/bin/sh\nak audit skill-sizes --staged\n', 'utf8')
+    await writeFile(
+      preCommitPath(tmpDir),
+      '#!/bin/sh\n# agent-kit audit hooks (staged mode — fast)\nak audit skill-sizes --staged\nak audit broken-refs --staged\n',
+      'utf8',
+    )
 
     const result = scaffoldAuditHooks({ repoRoot: tmpDir, options: {} })
-    expect(result.action).toBe('appended')
+    // Header is present → identical (does not add new lines)
+    expect(result.action).toBe('identical')
 
     const content = await readFile(preCommitPath(tmpDir), 'utf8')
-    expect(content).toContain('ak audit skill-sizes --staged')
-    expect(content).toContain('ak audit broken-refs --staged')
-    // skill-sizes should appear exactly once
-    const matches = content.match(/ak audit skill-sizes --staged/g) ?? []
-    expect(matches).toHaveLength(1)
+    // Dead verbs are not added again; they remain as-is from the existing file
+    const headerCount = (content.match(/# agent-kit audit hooks/g) ?? []).length
+    expect(headerCount).toStrictEqual(1)
   })
 
   it('skips writes in dry-run mode', async () => {

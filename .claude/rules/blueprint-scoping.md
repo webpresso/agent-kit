@@ -1,1 +1,1 @@
-../../.agent/rules/blueprint-scoping.md
+../../catalog/agent/rules/blueprint-scoping.md

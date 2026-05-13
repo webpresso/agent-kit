@@ -1,1 +1,1 @@
-../../.agent/rules/cmd-execution.md
+../../catalog/agent/rules/cmd-execution.md

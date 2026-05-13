@@ -2,6 +2,7 @@
 set -eu
 # Prefer the installed ak bin, but root package worktrees do not always link their
 # own bin into node_modules/.bin. Fall back to the source CLI so hooks still run.
+# (The direct binary path also avoids the npm 11.x npx-closed-stdin pre-commit quirk.)
 AK_BIN="$(git rev-parse --show-toplevel)/node_modules/.bin/ak"
 if [ -x "$AK_BIN" ]; then
   "$AK_BIN" audit guardrails

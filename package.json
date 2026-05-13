@@ -518,17 +518,17 @@
   },
   "dependencies": {
     "@manypkg/find-root": "catalog:",
-    "env-paths": "^4.0.0",
-    "proper-lockfile": "^4.1.2",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "ora": "^8.2.0",
     "@webpresso/runtime-format": "catalog:",
     "@webpresso/runtime-storage": "catalog:",
     "better-sqlite3": "^12.9.0",
     "cac": "^7.0.0",
+    "env-paths": "^4.0.0",
     "glob": "^13.0.6",
     "gray-matter": "catalog:",
     "js-yaml": "^4.1.0",
+    "ora": "^8.2.0",
+    "proper-lockfile": "^4.1.2",
     "remark": "^15.0.1",
     "remark-frontmatter": "catalog:",
     "remark-validate-links": "^13.1.0",
@@ -642,5 +642,5 @@
   "engines": {
     "node": ">=24"
   },
-  "packageManager": "pnpm@10.33.0"
+  "packageManager": "pnpm@11.1.1"
 }

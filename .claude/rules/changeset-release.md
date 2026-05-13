@@ -1,1 +1,1 @@
-../../.agent/rules/changeset-release.md
+../../catalog/agent/rules/changeset-release.md

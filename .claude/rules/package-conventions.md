@@ -1,1 +1,1 @@
-../../.agent/rules/package-conventions.md
+../../catalog/agent/rules/package-conventions.md

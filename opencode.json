@@ -1,0 +1,21 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "context-mode": {
+      "type": "local",
+      "command": [
+        "context-mode"
+      ]
+    },
+    "agent-kit": {
+      "type": "local",
+      "command": [
+        "bun",
+        "/Users/ozby/.claude/plugins/cache/agent-kit/agent-kit/src/mcp/cli.ts"
+      ]
+    }
+  },
+  "plugin": [
+    "context-mode"
+  ]
+}
