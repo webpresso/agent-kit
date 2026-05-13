@@ -529,14 +529,14 @@ describe('plugin-native invariants — .claude/settings.json', () => {
 })
 
 describe('buildAgentKitHookGroups', () => {
-  it('returns the canonical 5 ak-* event groups with the supplied bin resolver', () => {
+  it('returns the canonical 6 ak-* event groups with the supplied bin resolver', () => {
     const result = buildAgentKitHookGroups({
       resolveBin: (name) => `./node_modules/.bin/${name}`,
       matchers: { preToolUse: 'Bash|Edit|Write', postToolUse: 'Edit|Write' },
     })
 
     expect(Object.keys(result).sort()).toStrictEqual(
-      ['PostToolUse', 'PreToolUse', 'SessionStart', 'Stop', 'UserPromptSubmit'].sort(),
+      ['PostToolUse', 'PreCompact', 'PreToolUse', 'SessionStart', 'Stop', 'UserPromptSubmit'].sort(),
     )
     expect(result.SessionStart?.[0]?.hooks[0]?.command).toBe(
       './node_modules/.bin/ak-sessionstart-routing',

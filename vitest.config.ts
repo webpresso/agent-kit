@@ -60,6 +60,7 @@ export default defineConfig({
       { find: /^#test/, replacement: resolve(__dirname, 'src/test/index.ts') },
       { find: /^#e2e$/, replacement: resolve(__dirname, 'src/e2e/index.ts') },
       { find: /^#e2e\/(.*)/, replacement: resolve(__dirname, 'src/e2e/$1') },
+      { find: /^#session-memory\/(.*)/, replacement: resolve(__dirname, 'src/session-memory/$1') },
       // Fallback: remaining "#*" maps to src/blueprint/*
       { find: /^#(.*)/, replacement: resolve(__dirname, 'src/blueprint/$1') },
     ],

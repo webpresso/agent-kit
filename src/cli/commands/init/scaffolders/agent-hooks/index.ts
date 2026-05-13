@@ -154,9 +154,9 @@ function mergeSkillHooks(hooks: HooksMap, skillHooks: readonly SkillHook[]): Hoo
 // ── Shared agent-kit hook construction ───────────────────────────────────────
 
 /**
- * Construct the canonical 5 ak-* hook groups (SessionStart, PreToolUse,
- * PostToolUse, UserPromptSubmit, Stop). Single source of truth — adding a
- * new ak-* hook is one append here and propagates to both surfaces.
+ * Construct the canonical 6 ak-* hook groups (SessionStart, PreToolUse,
+ * PostToolUse, PreCompact, UserPromptSubmit, Stop). Single source of truth —
+ * adding a new ak-* hook is one append here and propagates to both surfaces.
  */
 export function buildAgentKitHookGroups(input: {
   resolveBin: (name: string) => string
@@ -182,6 +182,13 @@ export function buildAgentKitHookGroups(input: {
       {
         matcher: matchers.postToolUse,
         hooks: [{ type: 'command', command: resolveBin('ak-post-tool'), timeout: 15 }],
+      },
+    ],
+    // PreCompact: snapshot session memory before Claude Code compacts context.
+    // Snapshot is restored on SessionStart source=compact via ak-sessionstart-routing.
+    PreCompact: [
+      {
+        hooks: [{ type: 'command', command: resolveBin('ak-pre-compact'), timeout: 6 }],
       },
     ],
     UserPromptSubmit: [

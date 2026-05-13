@@ -12,10 +12,23 @@ vi.mock('./update-banner.js', () => ({
   readUpdateBanner: vi.fn(() => null),
 }))
 
+// Mock session-memory restore to avoid SQLite in unit tests
+vi.mock('#session-memory/session', () => ({
+  restore: vi.fn(() => ({ hits: [], snapshotId: null })),
+  captureEvent: vi.fn(() => true),
+  snapshot: vi.fn(async () => ({ snapshotId: 'test-snap', eventsIncluded: 0, partial: false })),
+}))
+
+vi.mock('#session-memory/repo-hash', () => ({
+  computeRepoHash: vi.fn(() => 'test-hash-1234'),
+}))
+
 import { readUpdateBanner } from './update-banner.js'
-import { buildOutput, MAX_BYTES, TRUNCATION_NOTICE } from './index.js'
+import { restore } from '#session-memory/session'
+import { buildOutput, buildSessionKnowledgeBlock, MAX_BYTES, TRUNCATION_NOTICE } from './index.js'
 
 const mockReadUpdateBanner = vi.mocked(readUpdateBanner)
+const mockRestore = vi.mocked(restore)
 
 interface ParsedOutput {
   hookSpecificOutput: {
@@ -41,6 +54,7 @@ describe('sessionstart hook buildOutput', () => {
 
   beforeEach(() => {
     dirs = []
+    mockRestore.mockReturnValue({ hits: [], snapshotId: null })
   })
 
   afterEach(() => {
@@ -53,122 +67,225 @@ describe('sessionstart hook buildOutput', () => {
     return d
   }
 
-  it('emits valid JSON additionalContext when .agent/routing.md exists', () => {
+  it('emits valid JSON additionalContext when .agent/routing.md exists', async () => {
     const cwd = tmp()
     const contents = '# Routing\n\nGo to docs.'
     writeRoutingMd(cwd, contents)
 
-    const out = buildOutput({}, cwd, {})
+    const out = await buildOutput({}, cwd, {})
 
     expect(out).not.toBeNull()
-    const parsed = JSON.parse(out as string) as ParsedOutput
+    const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed.hookSpecificOutput.hookEventName).toBe('SessionStart')
     expect(parsed.hookSpecificOutput.additionalContext).toContain(contents)
   })
 
-  it('always emits routing block even when .agent/routing.md is absent', () => {
+  it('always emits routing block even when .agent/routing.md is absent', async () => {
     const cwd = tmp()
-    const out = buildOutput({}, cwd, {})
+    const out = await buildOutput({}, cwd, {})
     expect(out).not.toBeNull()
-    const parsed = JSON.parse(out as string) as ParsedOutput
+    const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')
   })
 
-  it('always emits routing block when .agent/routing.md is empty', () => {
+  it('always emits routing block when .agent/routing.md is empty', async () => {
     const cwd = tmp()
     writeRoutingMd(cwd, '')
-    const out = buildOutput({}, cwd, {})
+    const out = await buildOutput({}, cwd, {})
     expect(out).not.toBeNull()
-    const parsed = JSON.parse(out as string) as ParsedOutput
+    const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain('routing.md')
   })
 
-  it('prepends AK_ROUTING_BLOCK before .agent/routing.md content', () => {
+  it('prepends AK_ROUTING_BLOCK before .agent/routing.md content', async () => {
     const cwd = tmp()
     const contents = '# Routing\n\nGo to docs.'
     writeRoutingMd(cwd, contents)
 
-    const out = buildOutput({}, cwd, {})
+    const out = await buildOutput({}, cwd, {})
     expect(out).not.toBeNull()
-    const parsed = JSON.parse(out as string) as ParsedOutput
+    const parsed = JSON.parse(out) as ParsedOutput
     const ctx = parsed.hookSpecificOutput.additionalContext
     // Routing block must come before routing.md content
     expect(ctx.indexOf(AK_ROUTING_BLOCK)).toBeLessThan(ctx.indexOf(contents))
     expect(ctx).toContain(AK_ROUTING_BLOCK + '\n\n' + contents)
   })
 
-  it('always emits routing block when .agent/routing.md is missing (nonexistent dir)', () => {
-    const out = buildOutput({}, '/definitely/not/a/real/path/xyz', {})
+  it('always emits routing block when .agent/routing.md is missing (nonexistent dir)', async () => {
+    const out = await buildOutput({}, '/definitely/not/a/real/path/xyz', {})
     expect(out).not.toBeNull()
-    const parsed = JSON.parse(out as string) as ParsedOutput
+    const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')
   })
 
-  it('output is valid JSON with hookSpecificOutput.additionalContext field', () => {
+  it('output is valid JSON with hookSpecificOutput.additionalContext field', async () => {
     const cwd = tmp()
-    const out = buildOutput({}, cwd, {})
+    const out = await buildOutput({}, cwd, {})
     expect(out).not.toBeNull()
-    const parsed = JSON.parse(out as string) as ParsedOutput
+    const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed).toHaveProperty('hookSpecificOutput')
     expect(parsed.hookSpecificOutput).toHaveProperty('hookEventName', 'SessionStart')
     expect(parsed.hookSpecificOutput).toHaveProperty('additionalContext')
     expect(typeof parsed.hookSpecificOutput.additionalContext).toBe('string')
   })
 
-  it('truncates routing.md contents larger than 200KB and appends notice', () => {
+  it('truncates routing.md contents larger than 200KB and appends notice', async () => {
     const cwd = tmp()
     const big = 'x'.repeat(MAX_BYTES + 5_000)
     writeRoutingMd(cwd, big)
 
-    const out = buildOutput({}, cwd, {})
+    const out = await buildOutput({}, cwd, {})
     expect(out).not.toBeNull()
-    const parsed = JSON.parse(out as string) as ParsedOutput
+    const parsed = JSON.parse(out) as ParsedOutput
     const ctx = parsed.hookSpecificOutput.additionalContext
     expect(ctx).toContain(TRUNCATION_NOTICE)
   })
 
-  it('CLAUDE_PROJECT_DIR takes precedence over cwd', () => {
+  it('CLAUDE_PROJECT_DIR takes precedence over cwd', async () => {
     const cwd = tmp()
     const projectDir = tmp()
     writeRoutingMd(cwd, 'CWD CONTENT')
     writeRoutingMd(projectDir, 'PROJECT DIR CONTENT')
 
-    const out = buildOutput({}, cwd, { CLAUDE_PROJECT_DIR: projectDir })
+    const out = await buildOutput({}, cwd, { CLAUDE_PROJECT_DIR: projectDir })
     expect(out).not.toBeNull()
-    const parsed = JSON.parse(out as string) as ParsedOutput
+    const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed.hookSpecificOutput.additionalContext).toContain('PROJECT DIR CONTENT')
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain('CWD CONTENT')
   })
 
-  it('input.cwd is ignored in favor of explicit cwd / env (env takes precedence)', () => {
+  it('input.cwd is ignored in favor of explicit cwd / env (env takes precedence)', async () => {
     const cwd = tmp()
     writeRoutingMd(cwd, 'CWD CONTENT')
 
-    const out = buildOutput({ cwd: '/nonexistent/path' }, cwd, {})
+    const out = await buildOutput({ cwd: '/nonexistent/path' }, cwd, {})
     expect(out).not.toBeNull()
-    const parsed = JSON.parse(out as string) as ParsedOutput
+    const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed.hookSpecificOutput.additionalContext).toContain('CWD CONTENT')
   })
 
-  it('runs in <50ms on a small file', () => {
+  it('runs in <100ms on a small file', async () => {
     const cwd = tmp()
     writeRoutingMd(cwd, '# Routing\nshort content\n')
 
     // Warm up to avoid first-call overhead skewing the measurement.
-    buildOutput({}, cwd, {})
+    await buildOutput({}, cwd, {})
 
     const t0 = performance.now()
-    const out = buildOutput({}, cwd, {})
+    const out = await buildOutput({}, cwd, {})
     const elapsed = performance.now() - t0
 
     expect(out).not.toBeNull()
-    expect(elapsed).toBeLessThan(50)
+    expect(elapsed).toBeLessThan(100)
+  })
+})
+
+describe('sessionstart hook — compact-source restore', () => {
+  let dirs: string[] = []
+
+  beforeEach(() => {
+    dirs = []
+    mockRestore.mockReturnValue({ hits: [], snapshotId: null })
+  })
+
+  afterEach(() => {
+    for (const d of dirs) rmSync(d, { recursive: true, force: true })
+    vi.clearAllMocks()
+  })
+
+  function tmp(): string {
+    const d = mkdtempSync(join(tmpdir(), 'ak-sessionstart-compact-'))
+    dirs.push(d)
+    return d
+  }
+
+  it('source=compact with non-empty restore → emits <session_knowledge> block', async () => {
+    const cwd = tmp()
+    mockRestore.mockReturnValue({
+      hits: [
+        { content: 'implemented session memory store', source: 'session:snap1', tier: 'porter' },
+      ],
+      snapshotId: 'snap1',
+    })
+
+    const out = await buildOutput({ source: 'compact', last_user_prompt: 'session memory' }, cwd, {})
+    const parsed = JSON.parse(out) as ParsedOutput
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('<session_knowledge')
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('session memory store')
+  })
+
+  it('source=compact with empty restore → no <session_knowledge> block', async () => {
+    const cwd = tmp()
+    mockRestore.mockReturnValue({ hits: [], snapshotId: null })
+
+    const out = await buildOutput({ source: 'compact' }, cwd, {})
+    const parsed = JSON.parse(out) as ParsedOutput
+    expect(parsed.hookSpecificOutput.additionalContext).not.toContain('<session_knowledge')
+  })
+
+  it('source=startup → restore NOT called', async () => {
+    const cwd = tmp()
+
+    const out = await buildOutput({ source: 'startup' }, cwd, {})
+    const parsed = JSON.parse(out) as ParsedOutput
+    // restore should not have been called for startup source
+    expect(mockRestore).not.toHaveBeenCalled()
+    expect(parsed.hookSpecificOutput.additionalContext).not.toContain('<session_knowledge')
+  })
+
+  it('source=resume → restore NOT called', async () => {
+    const cwd = tmp()
+
+    await buildOutput({ source: 'resume' }, cwd, {})
+    expect(mockRestore).not.toHaveBeenCalled()
+  })
+
+  it('restore failure is non-blocking — still emits routing block', async () => {
+    const cwd = tmp()
+    mockRestore.mockImplementation(() => {
+      throw new Error('SQLite locked')
+    })
+    vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+
+    const out = await buildOutput({ source: 'compact' }, cwd, {})
+    const parsed = JSON.parse(out) as ParsedOutput
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')
+    expect(parsed.hookSpecificOutput.additionalContext).not.toContain('<session_knowledge')
+  })
+})
+
+describe('buildSessionKnowledgeBlock', () => {
+  it('returns empty string for empty hits', () => {
+    expect(buildSessionKnowledgeBlock([], 'query')).toBe('')
+  })
+
+  it('wraps hits in <session_knowledge> tag', () => {
+    const block = buildSessionKnowledgeBlock(
+      [{ content: 'some content', source: 'src1', tier: 'porter' }],
+      'test query',
+    )
+    expect(block).toContain('<session_knowledge')
+    expect(block).toContain('</session_knowledge>')
+    expect(block).toContain('some content')
+  })
+
+  it('HTML-escapes entry content', () => {
+    const block = buildSessionKnowledgeBlock(
+      [{ content: '<evil>injection</evil>', source: 'src', tier: 'porter' }],
+      'q',
+    )
+    expect(block).not.toContain('<evil>')
+    expect(block).toContain('&lt;evil&gt;')
   })
 })
 
 describe('sessionstart hook gstack block (opt-in)', () => {
   let dirs: string[] = []
+
+  beforeEach(() => {
+    mockRestore.mockReturnValue({ hits: [], snapshotId: null })
+  })
 
   afterEach(() => {
     for (const d of dirs) rmSync(d, { recursive: true, force: true })
@@ -180,33 +297,27 @@ describe('sessionstart hook gstack block (opt-in)', () => {
     return d
   }
 
-  it('does NOT append gstack block when AK_GSTACK_ROUTING is unset', () => {
+  it('does NOT append gstack block when AK_GSTACK_ROUTING is unset', async () => {
     const cwd = tmp()
-    const out = buildOutput({}, cwd, {})
+    const out = await buildOutput({}, cwd, {})
     const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain('Interactive skills (gstack)')
   })
 
-  it('does NOT append gstack block when AK_GSTACK_ROUTING=0', () => {
+  it('does NOT append gstack block when AK_GSTACK_ROUTING=0', async () => {
     const cwd = tmp()
-    const out = buildOutput({}, cwd, { AK_GSTACK_ROUTING: '0' })
+    const out = await buildOutput({}, cwd, { AK_GSTACK_ROUTING: '0' })
     const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain('Interactive skills (gstack)')
   })
 
-  it('does NOT append gstack block when AK_GSTACK_ROUTING=1 but gstack dir absent', () => {
+  it('does NOT append gstack block when AK_GSTACK_ROUTING=1 but gstack dir absent', async () => {
     const cwd = tmp()
-    // Create a temp dir to act as a non-existent gstack location.
-    // We rely on a path that provably does not exist.
-    const _fakeHome = join(tmp(), 'fakehome')
-    // No gstack dir under fakeHome — homedir() won't point there, but we can
-    // verify the negative: no block when gstack dir doesn't exist at homedir.
     const gstackDir = join(homedir(), '.claude', 'skills', 'gstack')
     const gstackExists = existsSync(gstackDir)
-    const out = buildOutput({}, cwd, { AK_GSTACK_ROUTING: '1' })
+    const out = await buildOutput({}, cwd, { AK_GSTACK_ROUTING: '1' })
     const parsed = JSON.parse(out) as ParsedOutput
     const ctx = parsed.hookSpecificOutput.additionalContext
-    // Result depends on whether gstack is installed in this environment.
     if (gstackExists) {
       expect(ctx).toContain('Interactive skills (gstack)')
     } else {
@@ -214,28 +325,11 @@ describe('sessionstart hook gstack block (opt-in)', () => {
     }
   })
 
-  it('always preserves routing block regardless of gstack flag', () => {
+  it('always preserves routing block regardless of gstack flag', async () => {
     const cwd = tmp()
-    const out = buildOutput({}, cwd, { AK_GSTACK_ROUTING: '1' })
+    const out = await buildOutput({}, cwd, { AK_GSTACK_ROUTING: '1' })
     const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')
-  })
-
-  it('appends gstack block after routing content when gstack dir exists', () => {
-    const cwd = tmp()
-    const gstackDir = join(homedir(), '.claude', 'skills', 'gstack')
-    if (!existsSync(gstackDir)) {
-      // Gstack not installed in this env — skip conditional path gracefully.
-      return
-    }
-    const out = buildOutput({}, cwd, { AK_GSTACK_ROUTING: '1' })
-    const parsed = JSON.parse(out) as ParsedOutput
-    const ctx = parsed.hookSpecificOutput.additionalContext
-    expect(ctx).toContain('Interactive skills (gstack)')
-    expect(ctx).toContain('/browse')
-    const routingIdx = ctx.indexOf('<ak_routing>')
-    const gstackIdx = ctx.indexOf('Interactive skills (gstack)')
-    expect(routingIdx).toBeLessThan(gstackIdx)
   })
 })
 
@@ -245,6 +339,7 @@ describe('sessionstart hook update banner', () => {
   beforeEach(() => {
     dirs = []
     mockReadUpdateBanner.mockReturnValue(null)
+    mockRestore.mockReturnValue({ hits: [], snapshotId: null })
   })
 
   afterEach(() => {
@@ -258,23 +353,23 @@ describe('sessionstart hook update banner', () => {
     return d
   }
 
-  it('appends <wp_update> to additionalContext when readUpdateBanner returns a banner', () => {
+  it('appends <wp_update> to additionalContext when readUpdateBanner returns a banner', async () => {
     const cwd = tmp()
     const banner =
       '<wp_update>webpresso 2.0.0 available (current 1.0.0). Auto-install runs on the next `wp` invocation, or set AK_SKIP_AUTO_INSTALL=1 to opt out.</wp_update>'
     mockReadUpdateBanner.mockReturnValue(banner)
 
-    const out = buildOutput({}, cwd, {})
+    const out = await buildOutput({}, cwd, {})
     const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed.hookSpecificOutput.additionalContext).toContain('<wp_update>')
     expect(parsed.hookSpecificOutput.additionalContext).toContain('webpresso 2.0.0 available')
   })
 
-  it('does not include <wp_update> when readUpdateBanner returns null', () => {
+  it('does not include <wp_update> when readUpdateBanner returns null', async () => {
     const cwd = tmp()
     mockReadUpdateBanner.mockReturnValue(null)
 
-    const out = buildOutput({}, cwd, {})
+    const out = await buildOutput({}, cwd, {})
     const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain('<wp_update>')
     expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')

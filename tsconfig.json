@@ -54,6 +54,7 @@
       "#ai-memory/checkpoint/*": ["./src/ai-memory/checkpoint/*.ts"],
       "#ai-memory/facts/*": ["./src/ai-memory/facts/*.ts"],
       "#ai-memory/hierarchy/*": ["./src/ai-memory/hierarchy/*.ts"],
+      "#session-memory/*": ["./src/session-memory/*.ts"],
       "#blueprint/sync/types.js": ["./src/blueprint/sync/types.ts"],
       "#blueprint/sync/auth.js": ["./src/blueprint/sync/auth.ts"],
       "#blueprint/sync/client.js": ["./src/blueprint/sync/client.ts"],

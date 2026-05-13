@@ -31,6 +31,7 @@ interface PluginManifest {
   hooks: {
     PreToolUse: HookEntry[]
     PostToolUse: HookEntry[]
+    PreCompact: HookEntry[]
     Stop: HookEntry[]
     UserPromptSubmit: HookEntry[]
     SessionStart: HookEntry[]
@@ -68,12 +69,20 @@ describe('plugin.json manifest', () => {
       expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/pretool-guard/index.ts`)
     })
 
-    it('PostToolUse matches Edit|Write and points at lint-after-edit', () => {
+    it('PostToolUse matches Edit|Write|MultiEdit|Bash and points at post-tool/index.ts dispatcher', () => {
       const [entry] = readManifest().hooks.PostToolUse
-      expect(entry!.matcher).toBe('Edit|Write')
+      expect(entry!.matcher).toBe('Edit|Write|MultiEdit|Bash')
       const [handler] = entry!.hooks
       expect(handler!.type).toBe('command')
-      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/post-tool/lint-after-edit.ts`)
+      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/post-tool/index.ts`)
+    })
+
+    it('PreCompact has no matcher and points at pre-compact/index.ts', () => {
+      const [entry] = readManifest().hooks.PreCompact
+      expect(entry!.matcher).toBeUndefined()
+      const [handler] = entry!.hooks
+      expect(handler!.type).toBe('command')
+      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/pre-compact/index.ts`)
     })
 
     it('Stop has no matcher and points at qa-changed-files', () => {
