@@ -68,6 +68,27 @@ describe('routeCommand', () => {
     if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_qa')
   })
 
+  it('just lint-md README.md → deny, mentions ak_qa', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('just lint-md README.md')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_qa')
+  })
+
+  it('pnpm exec markdownlint-cli2 README.md → deny, mentions ak_qa', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('pnpm exec markdownlint-cli2 README.md')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_qa')
+  })
+
+  it('markdownlint-cli2 README.md → deny, mentions ak_qa', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('markdownlint-cli2 README.md')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_qa')
+  })
+
   it('just audit blueprint-lifecycle → passthrough (not deny)', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('just audit blueprint-lifecycle')

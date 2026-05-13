@@ -57,9 +57,18 @@ describe('AK_ROUTING_BLOCK', () => {
     expect(AK_ROUTING_BLOCK).toContain('pnpm test')
     expect(AK_ROUTING_BLOCK).toContain('just lint')
     expect(AK_ROUTING_BLOCK).toContain('just qa')
+    expect(AK_ROUTING_BLOCK).toContain('just lint-md')
     expect(AK_ROUTING_BLOCK).toContain('vitest')
     expect(AK_ROUTING_BLOCK).toContain('oxlint')
+    expect(AK_ROUTING_BLOCK).toContain('markdownlint-cli2')
     expect(AK_ROUTING_BLOCK).toContain('tsc')
+  })
+
+  it('routes markdown lint commands through ak_qa', () => {
+    expect(AK_ROUTING_BLOCK).toContain('markdown lint')
+    expect(AK_ROUTING_BLOCK).toContain('lint-md')
+    expect(AK_ROUTING_BLOCK).toContain('markdownlint')
+    expect(AK_ROUTING_BLOCK).toContain('just lint-md, markdownlint-cli2')
   })
 
   it('includes a decision table for ak_* dev-workflow tools', () => {

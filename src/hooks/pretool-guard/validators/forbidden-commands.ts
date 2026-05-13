@@ -57,6 +57,7 @@ const BLUEPRINT_LIFECYCLE_DIRS = '(draft|planned|in-progress|completed|archived)
 const LINT_BASE = 'just lint --package <name> (or --file <path>)'
 const LINT_HINT = `${LINT_BASE} [--fix] [--fix-unsafe]`
 const FORMAT_HINT = 'just format (or just format-check)'
+const QA_HINT = 'just qa'
 const TEST_HINT = 'just test --package <name> (or --file <path>)'
 const MUTATION_HINT = 'just test --mutation --package <name>'
 const TYPECHECK_HINT = 'just typecheck --package <name> (or --file <path>)'
@@ -150,6 +151,13 @@ export function generateRules(): CommandRule[] {
   }
 
   rules.push(
+    { pattern: /^just lint-md\b/, category: 'unknown', suggestion: QA_HINT },
+    {
+      pattern: /^pnpm exec markdownlint-cli2\b/,
+      category: 'unknown',
+      suggestion: QA_HINT,
+    },
+    { pattern: /^markdownlint-cli2\b/, category: 'unknown', suggestion: QA_HINT },
     {
       pattern: new RegExp(`^mv\\b.*blueprints\\/${BLUEPRINT_LIFECYCLE_DIRS}`),
       category: 'blueprint',

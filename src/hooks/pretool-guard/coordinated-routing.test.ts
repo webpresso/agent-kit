@@ -83,6 +83,9 @@ describe('coordinated routing pipeline', () => {
       'tsc --noEmit',
       'just qa',
       'pnpm qa',
+      'just lint-md README.md',
+      'pnpm exec markdownlint-cli2 README.md',
+      'markdownlint-cli2 README.md',
     ]
 
     for (const cmd of devCommands) {

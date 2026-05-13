@@ -24,9 +24,16 @@ interface RoutingRule {
 
 const ROUTING_RULES: RoutingRule[] = [
   {
-    prefixes: ['just qa', 'pnpm qa'],
+    prefixes: [
+      'just qa',
+      'pnpm qa',
+      'just lint-md',
+      'pnpm exec markdownlint-cli2',
+      'markdownlint-cli2',
+    ],
     guidanceType: 'qa',
-    guidance: 'Use ak_qa MCP tool instead — runs lint+typecheck+test and returns combined summary',
+    guidance:
+      'Use ak_qa MCP tool instead — QA is the blessed MCP quality entrypoint; avoid ad hoc markdown-only lint endpoints',
     tool: 'ak_qa',
   },
   {

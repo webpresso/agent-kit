@@ -97,6 +97,13 @@ describe('generateRules', () => {
     const npxRule = rules.find((r) => r.pattern.test('npx something'))
     expect(npxRule).toBeDefined()
   })
+
+  it('includes just lint-md as a blocked rule that points at qa', () => {
+    const rules = generateRules()
+    const rule = rules.find((r) => r.pattern.test('just lint-md README.md'))
+    expect(rule).toBeDefined()
+    expect(rule!.suggestion).toContain('just qa')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -186,6 +193,12 @@ describe('findMatchingRule', () => {
     expect(rule).toBeDefined()
     expect(rule!.category).toBe('lint')
   })
+
+  it('matches just lint-md', () => {
+    const rule = findMatchingRule('just lint-md README.md')
+    expect(rule).toBeDefined()
+    expect(rule!.suggestion).toContain('just qa')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -254,6 +267,10 @@ describe('getJustEquivalent', () => {
 
   it('returns just equivalent for pnpm exec oxlint', () => {
     expect(getJustEquivalent('pnpm exec oxlint')).toContain('just lint')
+  })
+
+  it('returns just qa for just lint-md', () => {
+    expect(getJustEquivalent('just lint-md README.md')).toContain('just qa')
   })
 
   it('returns generic message for unknown command', () => {
@@ -575,6 +592,12 @@ describe('validateForbiddenCommands', () => {
   it('allows just lint', () => {
     const result = validateForbiddenCommands(bashInput('just lint --package mypkg'))
     expect(result.passed).toBe(true)
+  })
+
+  it('blocks just lint-md so markdown-only lint routes through qa guidance', () => {
+    const result = validateForbiddenCommands(bashInput('just lint-md README.md'))
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.suggestion).toContain('just qa')
   })
 
   it('allows unrelated commands', () => {

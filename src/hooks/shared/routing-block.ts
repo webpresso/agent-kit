@@ -29,7 +29,7 @@ export const AK_ROUTING_BLOCK: string = `<ak_routing>
       <tool>ak_typecheck</tool>
     </row>
     <row>
-      <trigger>quality assurance, full QA pass, qa check</trigger>
+      <trigger>quality assurance, full QA pass, qa check, markdown lint, lint-md, markdownlint</trigger>
       <tool>ak_qa</tool>
     </row>
     <row>
@@ -65,8 +65,8 @@ export const AK_ROUTING_BLOCK: string = `<ak_routing>
     </tool>
     <tool name="ak_qa">
       <category>dev-workflow</category>
-      <trigger>quality assurance, full QA pass, qa check</trigger>
-      <forbidden>just qa</forbidden>
+      <trigger>quality assurance, full QA pass, qa check, markdown lint, lint-md, markdownlint</trigger>
+      <forbidden>just qa, just lint-md, markdownlint-cli2</forbidden>
     </tool>
     <tool name="ak_audit">
       <category>dev-workflow</category>
@@ -91,8 +91,10 @@ export const AK_ROUTING_BLOCK: string = `<ak_routing>
     <command>pnpm test</command>
     <command>just lint</command>
     <command>just qa</command>
+    <command>just lint-md</command>
     <command>vitest</command>
     <command>oxlint</command>
+    <command>markdownlint-cli2</command>
     <command>tsc</command>
   </forbidden_alternatives>
 
