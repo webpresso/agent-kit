@@ -6,7 +6,7 @@ complexity: XL
 owner: ozby
 created: '2026-05-13'
 last_updated: '2026-05-13'
-progress: '0/12 tasks done'
+progress: '6/12 tasks done'
 depends_on:
   - blueprint-structured-store
 tags:
@@ -445,7 +445,7 @@ Wire the existing structured-store tool registrar into `createServer` so `ak mcp
 
 #### [mcp] Task 2.2: Add project-aware list/get/context/create handlers in the existing blueprint MCP surface
 
-**Status:** todo
+**Status:** in-progress
 
 **Depends:** Task 1.1, Task 1.2, Task 1.3, Task 2.1
 
@@ -490,7 +490,7 @@ const ReadTarget = z.object({
 
 #### [query] Task 3.1: Add read-only aggregate helpers across selected projects
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1, Task 1.2
 
@@ -511,10 +511,10 @@ Add one non-MCP helper that runs list/query/next-task style reads across selecte
 
 **Acceptance:**
 
-- [ ] Aggregate reads include `project_id` on every result.
-- [ ] One broken/missing project DB does not fail the entire aggregate call.
-- [ ] Duplicate slugs are surfaced as warnings/failures.
-- [ ] No global cross-project projection DB is introduced.
+- [x] Aggregate reads include `project_id` on every result.
+- [x] One broken/missing project DB does not fail the entire aggregate call.
+- [x] Duplicate slugs are surfaced as warnings/failures.
+- [x] No global cross-project projection DB is introduced.
 
 #### [mcp] Task 3.2: Add verification-backed task completion with Evidence Contract
 

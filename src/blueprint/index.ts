@@ -208,3 +208,17 @@ export {
   type RootsProvider,
   type RootsResponse,
 } from './projects.js'
+// Read-only aggregate helpers across selected projects (Task 3.1).
+export {
+  type AggregateBlueprintRowsOptions,
+  type AggregateFailure,
+  type AggregateResult,
+  aggregateBlueprintRows,
+  type ProjectReader,
+  type ProjectReaderContext,
+  READ_TARGET_SCOPES,
+  type ReadTarget,
+  type ReadTargetScope,
+  readTargetSchema,
+  type TaggedRow,
+} from './aggregate.js'
