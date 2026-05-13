@@ -905,6 +905,355 @@ async function handleDepgraph(cwd: string, raw: unknown): Promise<ToolHandlerRes
 }
 
 // ---------------------------------------------------------------------------
+// Task 2.2 handlers: list / get / context / create
+// ---------------------------------------------------------------------------
+
+// Zod target schemas (F15/E13)
+const ReadTarget = z.object({
+  project_id: z.string().optional(),
+  scope: z.enum(['current', 'roots', 'workspace', 'all']).optional(),
+})
+
+const MutationTarget = z.object({
+  project_id: z.string(),
+  // NO scope field — enforced at type level per F15/E13
+})
+
+const listSchema = ReadTarget.extend({
+  status: z
+    .enum(['draft', 'planned', 'in-progress', 'completed', 'parked', 'archived'])
+    .optional(),
+  limit: z.number().int().min(1).max(500).default(100),
+})
+
+async function handleBlueprintList(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
+  const p = listSchema.safeParse(raw)
+  if (!p.success) return err('ak_blueprint_list validation error', p.error.message)
+  const { status, limit } = p.data
+
+  const target = dbPath(cwd)
+  if (!existsSync(target))
+    return jsonContent({
+      summary: 'No blueprint DB found — run ak_blueprint_new or trigger a re-ingest',
+      blueprints: [],
+      freshness_ok: false,
+      next_action: { kind: 'rebuild_db', hint: 'Blueprint DB missing. Re-ingest to create it.' },
+      failures: [],
+      bytes: 0,
+      tokensSaved: 0,
+    })
+
+  try {
+    const conn = openDb(target)
+    interface BpRow {
+      slug: string
+      title: string
+      status: string
+      complexity: string | null
+      owner: string | null
+      last_updated: string | null
+      content_hash: string
+      ingested_at: number
+      file_path: string
+    }
+    let rows: BpRow[]
+    try {
+      const sql = status
+        ? `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints WHERE status = ? ORDER BY ingested_at DESC LIMIT ?`
+        : `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints ORDER BY ingested_at DESC LIMIT ?`
+      rows = (
+        status
+          ? conn.db.prepare(sql).all(status, limit)
+          : conn.db.prepare(sql).all(limit)
+      ) as BpRow[]
+    } finally {
+      conn.close()
+    }
+
+    const b = bytes(JSON.stringify(rows))
+    return jsonContent({
+      summary: `Found ${rows.length} blueprint(s)${status ? ` with status "${status}"` : ''}`,
+      blueprints: rows,
+      project_id: p.data.project_id ?? cwd,
+      freshness_ok: true,
+      failures: [],
+      bytes: b,
+      tokensSaved: 0,
+    })
+  } catch (e) {
+    return err('ak_blueprint_list failed', toStr(e))
+  }
+}
+
+const getSchema = ReadTarget.extend({ slug: z.string() })
+
+async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
+  const p = getSchema.safeParse(raw)
+  if (!p.success) return err('ak_blueprint_get validation error', p.error.message)
+  const { slug } = p.data
+
+  const target = dbPath(cwd)
+  if (!existsSync(target))
+    return jsonContent({
+      summary: 'No blueprint DB found',
+      blueprint: null,
+      next_action: { kind: 'rebuild_db', hint: 'Blueprint DB missing. Re-ingest to create it.' },
+      failures: [],
+      bytes: 0,
+      tokensSaved: 0,
+    })
+
+  try {
+    const conn = openDb(target)
+    interface BpDetailRow {
+      slug: string
+      title: string
+      status: string
+      complexity: string | null
+      owner: string | null
+      last_updated: string | null
+      content_hash: string
+      ingested_at: number
+      file_path: string
+    }
+    interface TaskRow {
+      task_id: string
+      title: string
+      status: string
+      wave: string | null
+      lane: string | null
+    }
+    let blueprint: BpDetailRow | null
+    let tasks: TaskRow[]
+    try {
+      blueprint = (
+        conn.db
+          .prepare<[string], BpDetailRow>(
+            `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints WHERE slug = ?`,
+          )
+          .get(slug) ?? null
+      )
+      tasks = blueprint
+        ? (conn.db
+            .prepare<[string], TaskRow>(
+              `SELECT task_id, title, status, wave, lane FROM tasks WHERE blueprint_slug = ? ORDER BY id`,
+            )
+            .all(slug) as TaskRow[])
+        : []
+    } finally {
+      conn.close()
+    }
+
+    if (!blueprint) {
+      return jsonContent({
+        summary: `Blueprint "${slug}" not found`,
+        blueprint: null,
+        next_action: {
+          kind: 'disambiguate_slug',
+          hint: `No blueprint with slug "${slug}" found in the DB. Check the slug or re-ingest.`,
+        },
+        failures: [`Blueprint "${slug}" not found`],
+        bytes: 0,
+        tokensSaved: 0,
+      })
+    }
+
+    const result = { ...blueprint, tasks }
+    const b = bytes(JSON.stringify(result))
+    return jsonContent({
+      summary: `Blueprint "${slug}": ${blueprint.status}, ${tasks.length} task(s)`,
+      blueprint: result,
+      content_hash: blueprint.content_hash,
+      ingested_at: blueprint.ingested_at,
+      project_id: p.data.project_id ?? cwd,
+      failures: [],
+      bytes: b,
+      tokensSaved: 0,
+    })
+  } catch (e) {
+    return err('ak_blueprint_get failed', toStr(e))
+  }
+}
+
+const contextSchema = ReadTarget.extend({
+  slug: z.string(),
+  task_id: z.string().optional(),
+})
+
+async function handleBlueprintContext(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
+  const p = contextSchema.safeParse(raw)
+  if (!p.success) return err('ak_blueprint_context validation error', p.error.message)
+  const { slug, task_id } = p.data
+
+  const target = dbPath(cwd)
+  if (!existsSync(target))
+    return jsonContent({
+      summary: 'No blueprint DB found',
+      chunks: [],
+      total_bytes: 0,
+      next_action: { kind: 'rebuild_db', hint: 'Blueprint DB missing. Re-ingest to create it.' },
+      failures: [],
+      bytes: 0,
+      tokensSaved: 0,
+    })
+
+  try {
+    const conn = openDb(target)
+    interface BpCtxRow {
+      slug: string
+      title: string
+      status: string
+      complexity: string | null
+      file_path: string
+      last_updated: string | null
+    }
+    interface TaskCtxRow {
+      task_id: string
+      title: string
+      status: string
+      description: string | null
+      acceptance_json: string | null
+      wave: string | null
+    }
+    let blueprint: BpCtxRow | null
+    let tasks: TaskCtxRow[]
+    try {
+      blueprint = (
+        conn.db
+          .prepare<[string], BpCtxRow>(
+            `SELECT slug, title, status, complexity, file_path, last_updated FROM blueprints WHERE slug = ?`,
+          )
+          .get(slug) ?? null
+      )
+      tasks = blueprint
+        ? (conn.db
+            .prepare<[string], TaskCtxRow>(
+              `SELECT task_id, title, status, description, acceptance_json, wave FROM tasks WHERE blueprint_slug = ? ORDER BY id`,
+            )
+            .all(slug) as TaskCtxRow[])
+        : []
+    } finally {
+      conn.close()
+    }
+
+    if (!blueprint) {
+      return jsonContent({
+        summary: `Blueprint "${slug}" not found`,
+        chunks: [],
+        total_bytes: 0,
+        next_action: {
+          kind: 'disambiguate_slug',
+          hint: `No blueprint with slug "${slug}" found. Check the slug or re-ingest.`,
+        },
+        failures: [`Blueprint "${slug}" not found`],
+        bytes: 0,
+        tokensSaved: 0,
+      })
+    }
+
+    // Assemble context chunks inline (Task 1.3 helper not yet available)
+    const chunks: Array<{ kind: string; label: string; content: string; byte_size: number }> = []
+
+    const summaryContent = `# ${blueprint.title}\nStatus: ${blueprint.status}\nComplexity: ${blueprint.complexity ?? 'unset'}\nLast updated: ${blueprint.last_updated ?? 'unknown'}`
+    chunks.push({
+      kind: 'summary',
+      label: `Blueprint: ${slug}`,
+      content: summaryContent,
+      byte_size: bytes(summaryContent),
+    })
+
+    const filteredTasks = task_id ? tasks.filter((t) => t.task_id === task_id) : tasks
+    for (const t of filteredTasks) {
+      const taskContent = `## Task ${t.task_id}: ${t.title}\nStatus: ${t.status}\nWave: ${t.wave ?? 'unset'}\n${t.description ?? ''}`
+      chunks.push({
+        kind: 'task',
+        label: `Task ${t.task_id}`,
+        content: taskContent,
+        byte_size: bytes(taskContent),
+      })
+    }
+
+    if (task_id && filteredTasks.length === 0) {
+      return jsonContent({
+        summary: `Task "${task_id}" not found in blueprint "${slug}"`,
+        chunks: [],
+        total_bytes: 0,
+        next_action: {
+          kind: 'verify_task',
+          hint: `Task "${task_id}" not found. Check the task_id or use ak_blueprint_get to list available tasks.`,
+        },
+        failures: [`Task "${task_id}" not found in blueprint "${slug}"`],
+        bytes: 0,
+        tokensSaved: 0,
+      })
+    }
+
+    const totalBytes = chunks.reduce((acc, c) => acc + c.byte_size, 0)
+    const b = bytes(JSON.stringify(chunks))
+    return jsonContent({
+      summary: `Context for "${slug}"${task_id ? ` task "${task_id}"` : ''}: ${chunks.length} chunk(s), ${totalBytes} bytes`,
+      chunks,
+      total_bytes: totalBytes,
+      project_id: p.data.project_id ?? cwd,
+      failures: [],
+      bytes: b,
+      tokensSaved: 0,
+    })
+  } catch (e) {
+    return err('ak_blueprint_context failed', toStr(e))
+  }
+}
+
+const createSchema = MutationTarget.extend({
+  title: z.string(),
+  goal: z.string(),
+  complexity: z.enum(['XS', 'S', 'M', 'L', 'XL']).default('M'),
+  tags: z.array(z.string()).optional(),
+})
+
+async function handleBlueprintCreate(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
+  const p = createSchema.safeParse(raw)
+  if (!p.success) return err('ak_blueprint_create validation error', p.error.message)
+  const { title, goal, complexity } = p.data
+
+  const today = new Date().toISOString().split('T')[0] ?? ''
+  const slug = titleToSlug(title)
+  const root = resolveBlueprintRoot(cwd)
+  const targetDir = path.join(root, 'draft', slug)
+  const overviewPath = path.join(targetDir, '_overview.md')
+
+  try {
+    mkdirSync(targetDir, { recursive: true })
+    const content = BLUEPRINT_TEMPLATE.replace(/{TITLE}/g, title)
+      .replace(/{COMPLEXITY}/g, complexity)
+      .replace(/{DATE}/g, today)
+      .replace('{GOAL}', goal)
+    writeFileSync(overviewPath, content, 'utf8')
+
+    // Re-ingest so the DB reflects the new blueprint
+    await reIngest(cwd)
+
+    const b = bytes(content)
+    return jsonContent({
+      summary: `Blueprint "${slug}" created at ${overviewPath}`,
+      slug,
+      path: overviewPath,
+      next_action: {
+        kind: 'verify_task',
+        hint:
+          'Blueprint created. Next: run ak_blueprint_validate to check structure, ' +
+          'then /plan-refine to harden, /plan-eng-review to validate architecture.',
+      },
+      failures: [],
+      bytes: b,
+      tokensSaved: 0,
+    })
+  } catch (e) {
+    return err('ak_blueprint_create failed', toStr(e))
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Registration
 // ---------------------------------------------------------------------------
 
@@ -1011,6 +1360,81 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
     undefined,
     (r) => handleDepgraph(cwd, r),
     { title: 'Blueprint Dep Graph', readOnlyHint: true, openWorldHint: false },
+  )
+
+  registrar.registerTool(
+    'ak_blueprint_list',
+    'List blueprints in a project from the SQLite projection. Supports optional status filter. Returns { blueprints, project_id, freshness_ok, next_action? }.',
+    {
+      type: 'object',
+      properties: {
+        project_id: { type: 'string' },
+        scope: { type: 'string', enum: ['current', 'roots', 'workspace', 'all'] },
+        status: {
+          type: 'string',
+          enum: ['draft', 'planned', 'in-progress', 'completed', 'parked', 'archived'],
+        },
+        limit: { type: 'integer', minimum: 1, maximum: 500, default: 100 },
+      },
+      required: [],
+    },
+    undefined,
+    (r) => handleBlueprintList(cwd, r),
+    { title: 'Blueprint List', readOnlyHint: true, openWorldHint: false },
+  )
+
+  registrar.registerTool(
+    'ak_blueprint_get',
+    'Get a single blueprint by slug with task list and freshness metadata. Returns { blueprint, content_hash, ingested_at, next_action? }.',
+    {
+      type: 'object',
+      properties: {
+        slug: { type: 'string' },
+        project_id: { type: 'string' },
+        scope: { type: 'string', enum: ['current', 'roots', 'workspace', 'all'] },
+      },
+      required: ['slug'],
+    },
+    undefined,
+    (r) => handleBlueprintGet(cwd, r),
+    { title: 'Blueprint Get', readOnlyHint: true, openWorldHint: false },
+  )
+
+  registrar.registerTool(
+    'ak_blueprint_context',
+    'Assemble context chunks for a blueprint (and optionally a specific task). Returns { chunks, total_bytes, next_action? }.',
+    {
+      type: 'object',
+      properties: {
+        slug: { type: 'string' },
+        task_id: { type: 'string' },
+        project_id: { type: 'string' },
+        scope: { type: 'string', enum: ['current', 'roots', 'workspace', 'all'] },
+      },
+      required: ['slug'],
+    },
+    undefined,
+    (r) => handleBlueprintContext(cwd, r),
+    { title: 'Blueprint Context', readOnlyHint: true, openWorldHint: false },
+  )
+
+  registrar.registerTool(
+    'ak_blueprint_create',
+    'Create a new blueprint markdown under blueprints/draft/<slug>/_overview.md and re-ingest. Returns { slug, path, next_action }.',
+    {
+      type: 'object',
+      properties: {
+        project_id: { type: 'string' },
+        title: { type: 'string' },
+        goal: { type: 'string' },
+        complexity: { type: 'string', enum: ['XS', 'S', 'M', 'L', 'XL'], default: 'M' },
+        tags: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['project_id', 'title', 'goal'],
+    },
+    undefined,
+    (r) => handleBlueprintCreate(cwd, r),
+    { title: 'Blueprint Create', destructiveHint: false, openWorldHint: false },
   )
 }
 
