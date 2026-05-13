@@ -957,3 +957,77 @@ function relativePath(root: string, path: string): string {
   const relativePathValue = relative(root, path)
   return relativePathValue.split(sep).join('/')
 }
+
+export interface NoRelativePackageScriptsOptions {
+  /** Glob-style subdirectory patterns relative to root to skip. */
+  excludeDirs?: readonly string[]
+}
+
+/**
+ * Fail if any `package.json#scripts` entry invokes a relative parent path
+ * (`../`). Scripts should call workspace bins or registered CLI commands, not
+ * path-relative sibling scripts — those break when packages move.
+ *
+ * @example bad  — "build": "node [dot-dot-dot]/scripts/foo.js"  (relative parent path)
+ * @example good — "build": "pnpm --filter scripts foo"  or  "build": "ak build"
+ */
+export function auditNoRelativePackageScripts(
+  root: string,
+  options: NoRelativePackageScriptsOptions = {},
+): RepoAuditResult {
+  const violations: RepoAuditViolation[] = []
+  const excludedDirs = new Set((options.excludeDirs ?? []).map((d) => resolve(root, d)))
+  let checked = 0
+
+  function walk(dir: string): void {
+    if (!existsSync(dir)) return
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        if (
+          entry.name === 'node_modules' ||
+          entry.name === 'dist' ||
+          entry.name === '.git' ||
+          entry.name === '_sandbox'
+        )
+          continue
+        if (excludedDirs.has(full)) continue
+        walk(full)
+        continue
+      }
+      if (entry.name !== 'package.json') continue
+
+      checked++
+      let pkg: Record<string, unknown>
+      try {
+        pkg = JSON.parse(readFileSync(full, 'utf-8')) as Record<string, unknown>
+      } catch {
+        continue
+      }
+
+      const scripts = pkg['scripts']
+      if (!scripts || typeof scripts !== 'object') continue
+      const rel = relativePath(root, full)
+
+      for (const [name, value] of Object.entries(scripts as Record<string, unknown>)) {
+        if (typeof value !== 'string') continue
+        // Detect any ../ in the script value — relative parent paths are fragile
+        if (/\.\.\//.test(value)) {
+          violations.push({
+            file: rel,
+            message: `scripts.${name}: relative parent path detected — use a workspace bin or registered CLI command instead: ${value}`,
+          })
+        }
+      }
+    }
+  }
+
+  walk(root)
+
+  return {
+    ok: violations.length === 0,
+    title: 'no-relative-package-scripts',
+    checked,
+    violations,
+  }
+}

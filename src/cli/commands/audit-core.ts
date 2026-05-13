@@ -30,6 +30,7 @@ export type AuditKind =
   | 'quality'
   | 'guardrails'
   | 'hook-surface'
+  | 'no-relative-package-scripts'
 
 export type AuditOutcome =
   | { kind: 'invalid-usage'; message: string }

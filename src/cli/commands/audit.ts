@@ -55,6 +55,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     }),
   'no-link-protocol': async (root) =>
     (await import('#audit/repo-guardrails')).auditNoLinkProtocol(root),
+  'no-relative-package-scripts': async (root) =>
+    (await import('#audit/repo-guardrails')).auditNoRelativePackageScripts(root),
   'bucket-boundary': async (root, options) =>
     (await import('#audit/bucket-boundary')).auditBucketBoundary(root, {
       changedOnly: options.changedOnly,

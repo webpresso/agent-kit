@@ -36,6 +36,7 @@ const KINDS = [
   'commit-message',
   'tech-debt',
   'hook-surface',
+  'no-relative-package-scripts',
 ] as const
 
 const inputSchema = z.object({
@@ -263,6 +264,21 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
         },
       }
     }
+    case 'no-relative-package-scripts': {
+      const { auditNoRelativePackageScripts } = await import('#audit/repo-guardrails')
+      const auditResult = auditNoRelativePackageScripts(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: auditResult.ok
+          ? 'no-relative-package-scripts passed'
+          : `no-relative-package-scripts failed: ${auditResult.violations.length} violation${auditResult.violations.length === 1 ? '' : 's'}`,
+        kind,
+        details: {
+          ok: auditResult.ok,
+          violations: auditResult.violations,
+        },
+      }
+    }
     default: {
       // Exhaustiveness check — z.enum should make this unreachable.
       const _exhaustive: never = kind
@@ -279,7 +295,7 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
 const tool: ToolDescriptor = {
   name: 'ak_audit',
   description:
-    'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-lifecycle, roadmap-links, bundle-budget, commit-message, tech-debt, hook-surface). Returns {passed, kind, details}.',
+    'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-lifecycle, roadmap-links, bundle-budget, commit-message, tech-debt, hook-surface, no-relative-package-scripts). Returns {passed, kind, details}.',
   inputSchema,
   outputSchema,
   annotations: {

@@ -9,6 +9,7 @@ import {
   auditCatalogDrift,
   auditDocsFrontmatter,
   auditNoLinkProtocol,
+  auditNoRelativePackageScripts,
   auditNoRelativeParentImports,
   formatRepoAuditReport,
   validateCommitMessage,
@@ -1528,5 +1529,66 @@ describe('auditNoLinkProtocol', () => {
     const result = auditNoLinkProtocol(root)
     expect(result.ok).toBe(true)
     expect(result.checked).toBe(0)
+  })
+})
+
+describe('auditNoRelativePackageScripts', () => {
+  function writePackageJson(dir: string, scripts: Record<string, string>): void {
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'pkg', scripts }, null, 2))
+  }
+
+  test('flags ../  in a script value', () => {
+    const root = tempRepo()
+    writePackageJson(join(root, 'packages', 'a'), {
+      'build:fix-extensions': 'node ../../../scripts/add-js-extensions.js dist',
+    })
+    const result = auditNoRelativePackageScripts(root)
+    expect(result.ok).toBe(false)
+    expect(result.violations).toHaveLength(1)
+    expect(result.violations[0]?.message).toContain('build:fix-extensions')
+    expect(result.violations[0]?.message).toContain('relative parent path')
+  })
+
+  test('passes when scripts use registered bins or workspace commands', () => {
+    const root = tempRepo()
+    writePackageJson(join(root, 'packages', 'a'), {
+      build: 'pnpm --filter scripts add-js-extensions dist',
+      typecheck: 'tsc --noEmit',
+      lint: 'oxlint src',
+    })
+    const result = auditNoRelativePackageScripts(root)
+    expect(result.ok).toBe(true)
+    expect(result.violations).toHaveLength(0)
+  })
+
+  test('catches multiple violations across packages', () => {
+    const root = tempRepo()
+    writePackageJson(join(root, 'packages', 'a'), {
+      build: 'node ../scripts/foo.js',
+    })
+    writePackageJson(join(root, 'packages', 'b'), {
+      postbuild: 'bun ../../scripts/bar.ts',
+    })
+    const result = auditNoRelativePackageScripts(root)
+    expect(result.ok).toBe(false)
+    expect(result.violations).toHaveLength(2)
+  })
+
+  test('skips node_modules', () => {
+    const root = tempRepo()
+    writePackageJson(join(root, 'node_modules', 'some-pkg'), {
+      build: 'node ../../../anything.js',
+    })
+    const result = auditNoRelativePackageScripts(root)
+    expect(result.ok).toBe(true)
+  })
+
+  test('returns ok when no package.json scripts exist', () => {
+    const root = tempRepo()
+    writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'root' }))
+    const result = auditNoRelativePackageScripts(root)
+    expect(result.ok).toBe(true)
+    expect(result.checked).toBe(1)
   })
 })
