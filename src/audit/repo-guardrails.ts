@@ -1011,8 +1011,18 @@ export function auditNoRelativePackageScripts(
 
       for (const [name, value] of Object.entries(scripts as Record<string, unknown>)) {
         if (typeof value !== 'string') continue
-        // Detect any ../ in the script value — relative parent paths are fragile
-        if (/\.\.\//.test(value)) {
+        // Detect ../ only in the executable/script position of each sub-command,
+        // not in subsequent argument tokens. Split by command separators first.
+        const subCommands = value.split(/&&|\|\||;/)
+        const hasRelativeScript = subCommands.some((sub) => {
+          const trimmed = sub.trim()
+          // interpreter followed immediately by a ../ script path
+          if (/^(?:node|bun|tsx|ts-node|npx|pnpm\s+exec)\s+\.\.\/\S+/.test(trimmed)) return true
+          // bare ../ script execution
+          if (/^\.\.\//.test(trimmed)) return true
+          return false
+        })
+        if (hasRelativeScript) {
           violations.push({
             file: rel,
             message: `scripts.${name}: relative parent path detected — use a workspace bin or registered CLI command instead: ${value}`,

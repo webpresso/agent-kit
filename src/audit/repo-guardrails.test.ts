@@ -1591,4 +1591,27 @@ describe('auditNoRelativePackageScripts', () => {
     expect(result.ok).toBe(true)
     expect(result.checked).toBe(1)
   })
+
+  test('does NOT flag ../ appearing only in an argument position (not the script path)', () => {
+    const root = tempRepo()
+    writePackageJson(join(root, 'packages', 'a'), {
+      codegen:
+        'graphql-codegen --config src/codegen.ts && node scripts/gen.mjs ../../../output/file.ts',
+      'build:fix-extensions': 'node scripts/add-js-extensions.js ../../../output/dir',
+    })
+    const result = auditNoRelativePackageScripts(root)
+    expect(result.ok).toBe(true)
+    expect(result.violations).toHaveLength(0)
+  })
+
+  test('DOES flag ../ in the script (interpreter + relative path) position', () => {
+    const root = tempRepo()
+    writePackageJson(join(root, 'packages', 'a'), {
+      'build:fix-extensions': 'node ../../../scripts/foo.js dist',
+    })
+    const result = auditNoRelativePackageScripts(root)
+    expect(result.ok).toBe(false)
+    expect(result.violations).toHaveLength(1)
+    expect(result.violations[0]?.message).toContain('build:fix-extensions')
+  })
 })
