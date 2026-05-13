@@ -23,33 +23,43 @@ vi.mock('#session-memory/fetch-index', () => ({
   htmlToMarkdown: vi.fn((html: string) => html),
 }))
 
-// Mock child_process
-vi.mock('node:child_process', () => ({
-  spawnSync: vi.fn(),
+// Mock execa and p-queue
+vi.mock('execa', () => ({
+  execa: vi.fn(),
 }))
+vi.mock('p-queue', () => {
+  // Minimal PQueue that respects concurrency=1 and runs tasks inline
+  const PQueue = vi.fn().mockImplementation(() => ({
+    add: vi.fn(async (fn: () => Promise<unknown>) => fn()),
+  }))
+  return { default: PQueue }
+})
 
 import tool from './session-batch-execute.js'
 import { getStore } from '#session-memory/store'
-import { spawnSync } from 'node:child_process'
+import { execa } from 'execa'
 
 const mockGetStore = vi.mocked(getStore)
-const mockSpawnSync = vi.mocked(spawnSync)
+const mockExeca = vi.mocked(execa)
 
-function makeSpawnResult(stdout: string, stderr = '', status = 0) {
-  return {
-    stdout: Buffer.from(stdout),
-    stderr: Buffer.from(stderr),
-    status,
-    error: undefined,
-    pid: 1234,
-    signal: null,
-    output: [],
+/** Build a fake execa subprocess result with an async-iterable `all`. */
+function makeExecaResult(output: string, exitCode = 0) {
+  async function* allIterable() {
+    yield output
   }
+
+  const promise = Promise.resolve({ exitCode }) as ReturnType<typeof execa>
+  ;(promise as unknown as { all: AsyncIterable<string> }).all = allIterable()
+  return promise
+}
+
+function makeExecaError(message: string) {
+  return () => { throw new Error(message) }
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockSpawnSync.mockReturnValue(makeSpawnResult('ok\n'))
+  mockExeca.mockReturnValue(makeExecaResult('ok\n'))
 })
 
 afterEach(() => {
@@ -66,9 +76,9 @@ describe('ak_session_batch_execute MCP tool', () => {
   })
 
   it('runs all commands and returns results for each', async () => {
-    mockSpawnSync
-      .mockReturnValueOnce(makeSpawnResult('lint: OK\n', '', 0))
-      .mockReturnValueOnce(makeSpawnResult('types: OK\n', '', 0))
+    mockExeca
+      .mockReturnValueOnce(makeExecaResult('lint: OK\n', 0))
+      .mockReturnValueOnce(makeExecaResult('types: OK\n', 0))
 
     const result = await tool.handler({
       commands: [
@@ -89,7 +99,7 @@ describe('ak_session_batch_execute MCP tool', () => {
   })
 
   it('does not index small outputs (< 2KB)', async () => {
-    mockSpawnSync.mockReturnValue(makeSpawnResult('small output\n'))
+    mockExeca.mockReturnValue(makeExecaResult('small output\n'))
 
     const result = await tool.handler({
       commands: [{ label: 'test', command: 'echo test' }],
@@ -106,7 +116,7 @@ describe('ak_session_batch_execute MCP tool', () => {
 
   it('indexes large outputs (> 2KB)', async () => {
     const largeOutput = 'x'.repeat(3000)
-    mockSpawnSync.mockReturnValue(makeSpawnResult(largeOutput))
+    mockExeca.mockReturnValue(makeExecaResult(largeOutput))
 
     const result = await tool.handler({
       commands: [{ label: 'big-test', command: 'pnpm test' }],
@@ -123,7 +133,7 @@ describe('ak_session_batch_execute MCP tool', () => {
 
   it('runs cross-command queries after indexing when queries provided', async () => {
     const largeOutput = 'y'.repeat(3000)
-    mockSpawnSync.mockReturnValue(makeSpawnResult(largeOutput))
+    mockExeca.mockReturnValue(makeExecaResult(largeOutput))
 
     const result = await tool.handler({
       commands: [{ label: 'test-suite', command: 'pnpm test' }],
@@ -140,7 +150,7 @@ describe('ak_session_batch_execute MCP tool', () => {
   })
 
   it('does not run queries when nothing was indexed', async () => {
-    mockSpawnSync.mockReturnValue(makeSpawnResult('small\n'))
+    mockExeca.mockReturnValue(makeExecaResult('small\n'))
 
     const result = await tool.handler({
       commands: [{ label: 'tiny', command: 'echo ok' }],
@@ -154,10 +164,8 @@ describe('ak_session_batch_execute MCP tool', () => {
     expect(payload.queryHits).toBeUndefined()
   })
 
-  it('returns error envelope for a spawning failure without crashing', async () => {
-    mockSpawnSync.mockImplementation(() => {
-      throw new Error('spawn ENOENT')
-    })
+  it('returns error envelope for an exec failure without crashing', async () => {
+    mockExeca.mockImplementation(makeExecaError('spawn ENOENT'))
 
     const result = await tool.handler({
       commands: [{ label: 'fail', command: 'nonexistent' }],
@@ -172,10 +180,10 @@ describe('ak_session_batch_execute MCP tool', () => {
   })
 
   it('respects concurrency parameter (runs batch in parallel)', async () => {
-    mockSpawnSync
-      .mockReturnValueOnce(makeSpawnResult('cmd1\n'))
-      .mockReturnValueOnce(makeSpawnResult('cmd2\n'))
-      .mockReturnValueOnce(makeSpawnResult('cmd3\n'))
+    mockExeca
+      .mockReturnValueOnce(makeExecaResult('cmd1\n'))
+      .mockReturnValueOnce(makeExecaResult('cmd2\n'))
+      .mockReturnValueOnce(makeExecaResult('cmd3\n'))
 
     const result = await tool.handler({
       commands: [

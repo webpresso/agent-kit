@@ -2,10 +2,10 @@
 type: blueprint
 title: wp session memory v1 — in-process SQLite + FTS5 (TS engine)
 owner: agent-kit
-status: in-progress
+status: completed
 complexity: M
 created: '2026-05-13'
-last_updated: '2026-05-13'
+last_updated: '2026-06-11'
 progress: '100% (all 13 tasks done; output sandboxing added post-blueprint)'
 depends_on: []
 tags:
