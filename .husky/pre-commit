@@ -1,14 +1,9 @@
 #!/usr/bin/env sh
 set -eu
-# Prefer the worktree-local ak bin. For linked worktrees that do not carry
-# their own node_modules (the common case), fall back to the main worktree's
-# install via --git-common-dir. Finally fall back to the source CLI via bun.
-# (Direct binary path also avoids the npm 11.x npx-closed-stdin pre-commit quirk.)
+# Prefer the installed ak bin, but root package worktrees do not always link their
+# own bin into node_modules/.bin. Fall back to the source CLI so hooks still run.
+# (The direct binary path also avoids the npm 11.x npx-closed-stdin pre-commit quirk.)
 AK_BIN="$(git rev-parse --show-toplevel)/node_modules/.bin/ak"
-if [ ! -x "$AK_BIN" ]; then
-  MAIN_ROOT="$(dirname "$(git rev-parse --git-common-dir)")"
-  AK_BIN="$MAIN_ROOT/node_modules/.bin/ak"
-fi
 if [ -x "$AK_BIN" ]; then
   "$AK_BIN" audit guardrails
 else
