@@ -93,6 +93,23 @@ describe('ak_blueprint tool', () => {
       const payload = readPayload(result)
       expect(payload).toMatchObject({ action: 'new', passed: false, error: 'boom' })
     })
+
+    it('forwards cwd as projectRoot when provided', async () => {
+      createBlueprintMock.mockResolvedValue({
+        path: '/wt/blueprints/draft/g/_overview.md',
+        slug: 'g',
+        status: 'draft',
+        message: 'ok',
+      })
+
+      await akBlueprintTool.handler({ action: 'new', goal: 'G', cwd: '/wt' })
+
+      const [, optsArg] = createBlueprintMock.mock.calls[0] as [
+        string,
+        { complexity: string; projectRoot?: string },
+      ]
+      expect(optsArg.projectRoot).toBe('/wt')
+    })
   })
 
   describe('action: audit', () => {
@@ -137,6 +154,15 @@ describe('ak_blueprint tool', () => {
       const result = await akBlueprintTool.handler({ action: 'audit' })
       const payload = readPayload(result)
       expect(payload).toMatchObject({ action: 'audit', passed: false, error: 'audit crashed' })
+    })
+
+    it('forwards cwd as projectRoot when provided', async () => {
+      auditBlueprintsMock.mockResolvedValue({ ok: true, issues: [] })
+
+      await akBlueprintTool.handler({ action: 'audit', cwd: '/wt' })
+
+      const [opts] = auditBlueprintsMock.mock.calls[0] as [{ projectRoot?: string }]
+      expect(opts.projectRoot).toBe('/wt')
     })
   })
 
@@ -191,6 +217,15 @@ describe('ak_blueprint tool', () => {
       const result = await akBlueprintTool.handler({ action: 'list' })
       const payload = readPayload(result)
       expect(payload).toMatchObject({ action: 'list', passed: false, error: 'list failed' })
+    })
+
+    it('forwards cwd as projectRoot when provided', async () => {
+      listBlueprintsMock.mockResolvedValue([])
+
+      await akBlueprintTool.handler({ action: 'list', cwd: '/wt' })
+
+      const [opts] = listBlueprintsMock.mock.calls[0] as [{ projectRoot?: string }]
+      expect(opts.projectRoot).toBe('/wt')
     })
   })
 
@@ -271,6 +306,30 @@ describe('ak_blueprint tool', () => {
         passed: false,
         error: 'Cannot promote "x" to completed: tasks open',
       })
+    })
+
+    it('forwards cwd as projectRoot in the options arg', async () => {
+      promoteBlueprintToStateMock.mockResolvedValue({
+        slug: 'bp',
+        oldState: 'planned',
+        newState: 'in-progress',
+        newPath: '/wt/blueprints/in-progress/bp/_overview.md',
+        message: 'ok',
+      })
+
+      await akBlueprintTool.handler({
+        action: 'transition',
+        slug: 'bp',
+        to: 'in-progress',
+        cwd: '/wt',
+      })
+
+      const [, , optsArg] = promoteBlueprintToStateMock.mock.calls[0] as [
+        string,
+        string,
+        { projectRoot?: string },
+      ]
+      expect(optsArg.projectRoot).toBe('/wt')
     })
 
     it('routes each valid transition target (planned, in-progress, completed, parked)', async () => {

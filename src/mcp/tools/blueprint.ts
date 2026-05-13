@@ -58,6 +58,9 @@ const inputSchema = z
     // `transition`-only:
     slug: z.string().optional(),
     to: z.enum(TRANSITION_TARGETS).optional(),
+    // all actions: override the repo root (useful when the MCP server runs from
+    // a different worktree than the target repo — pass the absolute worktree path).
+    cwd: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.action === 'new' && !data.goal) {
@@ -106,7 +109,7 @@ function jsonContent(
 const tool: ToolDescriptor = {
   name: 'ak_blueprint',
   description:
-    'Manage agent-kit blueprints. `action: "new"` creates a draft blueprint, `action: "audit"` validates blueprints (returns {passed, errors}), `action: "list"` returns blueprint summaries, `action: "transition"` moves a blueprint to a target lifecycle state (`to: "planned" | "in-progress" | "completed" | "parked"`) — atomically updates the frontmatter status AND moves the directory under `blueprints/<to>/`. Returns a structured error envelope (no throw) on failure.',
+    'Manage agent-kit blueprints. `action: "new"` creates a draft blueprint, `action: "audit"` validates blueprints (returns {passed, errors}), `action: "list"` returns blueprint summaries, `action: "transition"` moves a blueprint to a target lifecycle state (`to: "planned" | "in-progress" | "completed" | "parked"`) — atomically updates the frontmatter status AND moves the directory under `blueprints/<to>/`. Optional `cwd` overrides the repo root (use the absolute worktree path when the MCP server runs from a different worktree). Returns a structured error envelope (no throw) on failure.',
   inputSchema,
   // `action: "new"` writes a blueprint file (destructive). `audit` and `list`
   // are read-only. We can't split the annotation per-action, so we declare
@@ -141,7 +144,7 @@ const tool: ToolDescriptor = {
         // narrow + apply the default complexity that the discriminated union used to inline.
         const goal = parsed.goal as string
         const complexity = parsed.complexity ?? DEFAULT_COMPLEXITY
-        const created = await createBlueprint(goal, { complexity })
+        const created = await createBlueprint(goal, { complexity, projectRoot: parsed.cwd })
         return jsonContent({ action: 'new', path: created.path })
       } catch (err) {
         return jsonContent(
@@ -157,6 +160,7 @@ const tool: ToolDescriptor = {
           all: parsed.all,
           strict: parsed.strict,
           staged: parsed.staged,
+          projectRoot: parsed.cwd,
         })
         const errorIssues = result.issues.filter((issue) => issue.level === 'error')
         const errors = errorIssues.map((issue) =>
@@ -176,7 +180,7 @@ const tool: ToolDescriptor = {
 
     if (parsed.action === 'list') {
       try {
-        const summaries = await listBlueprints({ status: parsed.status })
+        const summaries = await listBlueprints({ status: parsed.status, projectRoot: parsed.cwd })
         const blueprints = summaries.map((s) => ({
           slug: s.name,
           status: s.status,
@@ -197,7 +201,7 @@ const tool: ToolDescriptor = {
       // `superRefine` already guarantees `slug` and `to` are present; narrow.
       const slug = parsed.slug as string
       const to = parsed.to as (typeof TRANSITION_TARGETS)[number]
-      const result = await promoteBlueprintToState(slug, to)
+      const result = await promoteBlueprintToState(slug, to, { projectRoot: parsed.cwd })
       return jsonContent({
         action: 'transition',
         slug: result.slug,
