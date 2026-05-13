@@ -1,11 +1,11 @@
 /**
  * `ak_blueprint` MCP tool.
  *
- * Wraps `ak blueprint new|audit|list` behind a single MCP tool with a
- * discriminated-union input schema. Dispatch is direct library import — we
+ * Wraps `ak blueprint new|audit|list|transition` behind a single MCP tool with
+ * a discriminated-union input schema. Dispatch is direct library import — we
  * call the same router-level functions the CLI uses (`createBlueprint`,
- * `auditBlueprints`, `listBlueprints`) so we avoid a shell-out hop and
- * preserve typed return values.
+ * `auditBlueprints`, `listBlueprints`, `promoteBlueprintToState`) so we avoid
+ * a shell-out hop and preserve typed return values.
  *
  * On error, returns a structured `{action, passed: false, error}` envelope
  * inside the MCP `text` content block instead of throwing — the MCP server
@@ -14,7 +14,12 @@
 
 import { z } from 'zod'
 
-import { auditBlueprints, createBlueprint, listBlueprints } from '#cli/commands/blueprint/router'
+import {
+  auditBlueprints,
+  createBlueprint,
+  listBlueprints,
+  promoteBlueprintToState,
+} from '#cli/commands/blueprint/router'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
 
@@ -31,7 +36,9 @@ import type { ToolDescriptor } from '#mcp/auto-discover'
  * `superRefine` so JSON-schema clients see one valid object shape while
  * the runtime still enforces the dispatch contract.
  */
-const ACTIONS = ['new', 'audit', 'list'] as const
+const ACTIONS = ['new', 'audit', 'list', 'transition'] as const
+
+const TRANSITION_TARGETS = ['planned', 'in-progress', 'completed', 'parked'] as const
 
 const inputSchema = z
   .object({
@@ -48,6 +55,9 @@ const inputSchema = z
     status: z
       .enum(['draft', 'planned', 'parked', 'in-progress', 'completed', 'archived'])
       .optional(),
+    // `transition`-only:
+    slug: z.string().optional(),
+    to: z.enum(TRANSITION_TARGETS).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.action === 'new' && !data.goal) {
@@ -56,6 +66,22 @@ const inputSchema = z
         path: ['goal'],
         message: '`goal` is required when action is "new"',
       })
+    }
+    if (data.action === 'transition') {
+      if (!data.slug) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['slug'],
+          message: '`slug` is required when action is "transition"',
+        })
+      }
+      if (!data.to) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['to'],
+          message: '`to` is required when action is "transition"',
+        })
+      }
     }
   })
 
@@ -80,7 +106,7 @@ function jsonContent(
 const tool: ToolDescriptor = {
   name: 'ak_blueprint',
   description:
-    'Manage agent-kit blueprints. `action: "new"` creates a draft blueprint, `action: "audit"` validates blueprints (returns {passed, errors}), `action: "list"` returns blueprint summaries. Returns a structured error envelope (no throw) on failure.',
+    'Manage agent-kit blueprints. `action: "new"` creates a draft blueprint, `action: "audit"` validates blueprints (returns {passed, errors}), `action: "list"` returns blueprint summaries, `action: "transition"` moves a blueprint to a target lifecycle state (`to: "planned" | "in-progress" | "completed" | "parked"`) — atomically updates the frontmatter status AND moves the directory under `blueprints/<to>/`. Returns a structured error envelope (no throw) on failure.',
   inputSchema,
   // `action: "new"` writes a blueprint file (destructive). `audit` and `list`
   // are read-only. We can't split the annotation per-action, so we declare
@@ -148,19 +174,40 @@ const tool: ToolDescriptor = {
       }
     }
 
-    // parsed.action === 'list'
+    if (parsed.action === 'list') {
+      try {
+        const summaries = await listBlueprints({ status: parsed.status })
+        const blueprints = summaries.map((s) => ({
+          slug: s.name,
+          status: s.status,
+          title: s.title,
+          progress: s.taskCount > 0 ? `${s.progress}/${s.taskCount}` : '0/0',
+        }))
+        return jsonContent({ action: 'list', blueprints })
+      } catch (err) {
+        return jsonContent(
+          { action: 'list', passed: false, error: toErrorMessage(err) },
+          { isError: true },
+        )
+      }
+    }
+
+    // parsed.action === 'transition'
     try {
-      const summaries = await listBlueprints({ status: parsed.status })
-      const blueprints = summaries.map((s) => ({
-        slug: s.name,
-        status: s.status,
-        title: s.title,
-        progress: s.taskCount > 0 ? `${s.progress}/${s.taskCount}` : '0/0',
-      }))
-      return jsonContent({ action: 'list', blueprints })
+      // `superRefine` already guarantees `slug` and `to` are present; narrow.
+      const slug = parsed.slug as string
+      const to = parsed.to as (typeof TRANSITION_TARGETS)[number]
+      const result = await promoteBlueprintToState(slug, to)
+      return jsonContent({
+        action: 'transition',
+        slug: result.slug,
+        from: result.oldState,
+        to: result.newState,
+        path: result.newPath,
+      })
     } catch (err) {
       return jsonContent(
-        { action: 'list', passed: false, error: toErrorMessage(err) },
+        { action: 'transition', passed: false, error: toErrorMessage(err) },
         { isError: true },
       )
     }

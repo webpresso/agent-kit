@@ -3,11 +3,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 const createBlueprintMock = vi.hoisted(() => vi.fn())
 const auditBlueprintsMock = vi.hoisted(() => vi.fn())
 const listBlueprintsMock = vi.hoisted(() => vi.fn())
+const promoteBlueprintToStateMock = vi.hoisted(() => vi.fn())
 
 vi.mock('#cli/commands/blueprint/router', () => ({
   createBlueprint: createBlueprintMock,
   auditBlueprints: auditBlueprintsMock,
   listBlueprints: listBlueprintsMock,
+  promoteBlueprintToState: promoteBlueprintToStateMock,
 }))
 
 import akBlueprintTool from './blueprint.js'
@@ -26,6 +28,7 @@ afterEach(() => {
   createBlueprintMock.mockReset()
   auditBlueprintsMock.mockReset()
   listBlueprintsMock.mockReset()
+  promoteBlueprintToStateMock.mockReset()
 })
 
 describe('ak_blueprint tool', () => {
@@ -188,6 +191,105 @@ describe('ak_blueprint tool', () => {
       const result = await akBlueprintTool.handler({ action: 'list' })
       const payload = readPayload(result)
       expect(payload).toMatchObject({ action: 'list', passed: false, error: 'list failed' })
+    })
+  })
+
+  describe('action: transition', () => {
+    it('invokes promoteBlueprintToState with slug + to and returns the lifecycle result', async () => {
+      promoteBlueprintToStateMock.mockResolvedValue({
+        slug: 'my-blueprint',
+        oldState: 'draft',
+        newState: 'planned',
+        newPath: '/repo/blueprints/planned/my-blueprint/_overview.md',
+        message: 'Promoted my-blueprint: draft → planned',
+      })
+
+      const result = await akBlueprintTool.handler({
+        action: 'transition',
+        slug: 'my-blueprint',
+        to: 'planned',
+      })
+
+      expect(promoteBlueprintToStateMock).toHaveBeenCalledTimes(1)
+      const [slugArg, toArg] = promoteBlueprintToStateMock.mock.calls[0] as [string, string]
+      expect(slugArg).toBe('my-blueprint')
+      expect(toArg).toBe('planned')
+
+      const payload = readPayload(result)
+      expect(payload).toMatchObject({
+        action: 'transition',
+        slug: 'my-blueprint',
+        from: 'draft',
+        to: 'planned',
+        path: '/repo/blueprints/planned/my-blueprint/_overview.md',
+      })
+    })
+
+    it('rejects missing `slug` with a structured error', async () => {
+      const result = await akBlueprintTool.handler({ action: 'transition', to: 'planned' })
+      const payload = readPayload(result)
+      expect(payload).toMatchObject({ action: 'transition', passed: false })
+      expect(promoteBlueprintToStateMock).not.toHaveBeenCalled()
+      expect(String(payload.error)).toContain('slug')
+    })
+
+    it('rejects missing `to` with a structured error', async () => {
+      const result = await akBlueprintTool.handler({
+        action: 'transition',
+        slug: 'my-blueprint',
+      })
+      const payload = readPayload(result)
+      expect(payload).toMatchObject({ action: 'transition', passed: false })
+      expect(promoteBlueprintToStateMock).not.toHaveBeenCalled()
+      expect(String(payload.error)).toContain('to')
+    })
+
+    it('rejects an invalid `to` value (e.g. "archived" — not a promote target)', async () => {
+      const result = await akBlueprintTool.handler({
+        action: 'transition',
+        slug: 'my-blueprint',
+        to: 'archived',
+      })
+      const payload = readPayload(result)
+      expect(payload).toMatchObject({ passed: false })
+      expect(promoteBlueprintToStateMock).not.toHaveBeenCalled()
+    })
+
+    it('returns a structured error envelope when promoteBlueprintToState throws', async () => {
+      promoteBlueprintToStateMock.mockRejectedValue(
+        new Error('Cannot promote "x" to completed: tasks open'),
+      )
+
+      const result = await akBlueprintTool.handler({
+        action: 'transition',
+        slug: 'x',
+        to: 'completed',
+      })
+      const payload = readPayload(result)
+      expect(payload).toMatchObject({
+        action: 'transition',
+        passed: false,
+        error: 'Cannot promote "x" to completed: tasks open',
+      })
+    })
+
+    it('routes each valid transition target (planned, in-progress, completed, parked)', async () => {
+      promoteBlueprintToStateMock.mockResolvedValue({
+        slug: 's',
+        oldState: 'draft',
+        newState: 'planned',
+        newPath: '/p/_overview.md',
+        message: 'ok',
+      })
+      const targets = ['planned', 'in-progress', 'completed', 'parked'] as const
+      for (const to of targets) {
+        await akBlueprintTool.handler({ action: 'transition', slug: 's', to })
+      }
+      expect(promoteBlueprintToStateMock).toHaveBeenCalledTimes(targets.length)
+      const calledTargets = promoteBlueprintToStateMock.mock.calls.map(
+        (call) => (call as [string, string])[1],
+      )
+      expect(calledTargets).toEqual([...targets])
     })
   })
 })
