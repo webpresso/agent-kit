@@ -1,6 +1,6 @@
 {
   "name": "@webpresso/agent-vitest",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "deprecated": "Deprecated: migrate to the consolidated webpresso package subpath exports. See https://github.com/webpresso/agent-kit/blob/main/MIGRATION.md",
   "private": false,
   "publishConfig": {

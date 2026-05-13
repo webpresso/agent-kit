@@ -1,5 +1,13 @@
 # @webpresso/agent-oxlint
 
+## 0.2.1
+
+### Patch Changes
+
+- 1be5f27: Deprecated: migrate to the consolidated webpresso package subpath exports. See https://github.com/webpresso/agent-kit/blob/main/MIGRATION.md
+
+  Marks the final `@webpresso/agent-*` sub-package releases with the shared migration notice. Registry deprecation commands remain deferred to the release gate.
+
 ## 0.2.0
 
 ### Minor Changes
