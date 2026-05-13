@@ -75,15 +75,29 @@ Deliberately NOT generated:
 
 ### Optional layer — Blueprint SQLite projection
 
-**Location:** `.agent/.blueprints.db` (gitignored; rebuilt on cold start)
+**Location:** worktree-scoped at `<state-root>/blueprints/<worktree-id>.db` (gitignored; rebuilt on cold start)
 
-`ak blueprint db build` projects all `blueprints/**/_overview.md` and
-`tech-debt/**/*.md` into a SQLite store. Agents query it via 8 MCP tools
-(`ak_blueprint_query`, `ak_blueprint_task_next`, etc.) instead of reading 50KB
-of markdown. Humans browse it with `ak blueprint db browse` (Datasette).
+`ak blueprint db build` (or any MCP read tool) projects all
+`blueprints/**/_overview.md` into a SQLite store per worktree. Agents use the
+structured MCP tools (`ak_blueprint_list`, `ak_blueprint_get`,
+`ak_blueprint_context`, etc.) instead of reading raw markdown files. Humans
+browse it with `ak blueprint db browse` (Datasette).
 
-This layer is derived — markdown stays canonical. Never write back to SQLite
-from a remote agent; commit the markdown change instead.
+This layer is derived — markdown stays canonical. Never write back to SQLite;
+commit the markdown change instead and let the server re-ingest.
+
+**Two-lock policy:** Markdown mutations hold a repo-scoped lock; projection DB
+writes hold a worktree-scoped lock. Two worktrees of the same repo have
+independent projection DBs because their checked-out blueprints may differ.
+
+**HEAD-pinned freshness:** The worktree HEAD commit is recorded at ingest time.
+If HEAD changes (e.g. `git checkout`), the next MCP call detects the mismatch
+and returns `next_action: { kind: 'reingest_project' }` instead of stale data.
+
+**Multi-project scope:** MCP read tools default to the current project. Pass
+`scope: 'roots'|'workspace'|'all'` to widen reads across MCP client roots,
+workspace config repos, or discovered git worktrees. Mutation tools never
+accept `scope` — they require an explicit `project_id`.
 
 
 ## Public package boundary

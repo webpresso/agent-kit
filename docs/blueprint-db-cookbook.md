@@ -1,14 +1,53 @@
 ---
 type: system
-last_updated: '2026-05-11'
+last_updated: '2026-05-13'
 ---
 
 # Blueprint DB Cookbook
 
-The blueprint structured store indexes every blueprint, task, tech-debt item, and
-cross-repo dependency in a local SQLite database (`<repo>/.agent/.blueprints.db`).
-Pre-registered SQL templates give you safe, parameterised access to the most
-useful slices of that data without ever writing raw SQL.
+The blueprint structured store indexes every blueprint and task into a
+worktree-scoped SQLite projection. The normal agent interface is through the
+MCP tools (`ak_blueprint_*`). SQL templates and the `ak blueprint db` CLI
+give direct access for maintainer introspection and custom queries.
+
+---
+
+## 0. Agent workflow (MCP-first)
+
+For day-to-day agent operations use the MCP tools. The SQLite DB is an
+implementation detail; the MCP layer manages ingest and freshness automatically.
+
+### Re-ingest a stale project
+
+When any MCP read tool returns `next_action: { kind: 'reingest_project' }`,
+the projection is behind the current HEAD. Simply repeat the same call — the
+server detects the HEAD mismatch, rebuilds the projection, and retries.
+
+```
+# Trigger re-ingest by repeating the list call
+ak_blueprint_list  project_id="..."
+```
+
+### Multi-project aggregate read
+
+```
+# List blueprints across all workspace repos
+ak_blueprint_list  scope="workspace"
+
+# List across MCP roots AND workspace repos
+ak_blueprint_list  scope="all"
+```
+
+Duplicate slugs across projects are surfaced in `duplicate_slugs[]` and never
+silently selected. Use `ak_blueprint_get` with an explicit `project_id` to
+disambiguate.
+
+### Worktree isolation
+
+Each git worktree of a repo has its own independent projection DB keyed by the
+worktree path. Checking out a different branch in one worktree does not affect
+another worktree's projection. Switching branches invalidates freshness — the
+next MCP call triggers a rebuild.
 
 ---
 
