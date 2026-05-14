@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { captureEvent, snapshot, restore, resolveDbPath } from './session.js'
-import { closeStore } from './store.js'
+import { closeStore, getStore } from './store.js'
 
 let tmpDir: string
 const TEST_REPO_HASH = 'abc123def456abc1'
@@ -142,5 +142,48 @@ describe('restore', () => {
       ),
     )
     expect(results.every((r) => r === true)).toBe(true)
+  })
+
+  it('does not bleed events between sessions', () => {
+    // Session A — insert one event
+    captureEvent(
+      { repoHash: TEST_REPO_HASH, event: { sessionId: 'session-a', toolName: 'Read', content: 'content-a' } },
+      tmpDir,
+    )
+    // Session B — insert a different event (different sessionId)
+    captureEvent(
+      { repoHash: TEST_REPO_HASH, event: { sessionId: 'session-b', toolName: 'Bash', content: 'content-b' } },
+      tmpDir,
+    )
+
+    const db = getStore(resolveDbPath(TEST_REPO_HASH, tmpDir)).getDb()
+
+    // Events for session-a must not include session-b content
+    const rowsA = db
+      .prepare('SELECT session_id, content FROM session_events WHERE session_id = ?')
+      .all('session-a') as Array<{ session_id: string; content: string }>
+    expect(rowsA.length).toBe(1)
+    expect(rowsA[0]!.content).toBe('content-a')
+    expect(rowsA.every((r) => r.session_id === 'session-a')).toBe(true)
+
+    // Events for session-b must not include session-a content
+    const rowsB = db
+      .prepare('SELECT session_id, content FROM session_events WHERE session_id = ?')
+      .all('session-b') as Array<{ session_id: string; content: string }>
+    expect(rowsB.length).toBe(1)
+    expect(rowsB[0]!.content).toBe('content-b')
+    expect(rowsB.every((r) => r.session_id === 'session-b')).toBe(true)
+  })
+
+  it('session_events rows have expected columns', () => {
+    captureEvent(
+      { repoHash: TEST_REPO_HASH, event: { sessionId: 's1', toolName: 'Edit', content: 'test' } },
+      tmpDir,
+    )
+    const db = getStore(resolveDbPath(TEST_REPO_HASH, tmpDir)).getDb()
+    const rows = db.prepare('SELECT * FROM session_events LIMIT 1').all()
+    expect(rows.length).toBeGreaterThan(0)
+    const cols = Object.keys(rows[0] as object)
+    expect(cols).toStrictEqual(['session_id', 'event_id', 'ts', 'tool_name', 'content'])
   })
 })
