@@ -1,3 +1,12 @@
+## Supported agent CLIs
+
+Source of truth: [`catalog/agent/rules/supported-agent-clis.md`](catalog/agent/rules/supported-agent-clis.md).
+Plans, benchmarks, and docs MUST honor the tier classification defined there.
+Do not re-list the tiers anywhere — link to that rule.
+
+Adding a new CLI requires updating the rule file (gated by `ak audit
+supported-agent-clis`).
+
 ## Skill routing
 
 When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill.
