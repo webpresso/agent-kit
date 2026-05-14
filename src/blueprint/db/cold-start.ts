@@ -8,6 +8,7 @@ import {
   resolveBlueprintProjectionDbPath,
   withProjectionDbWriteLock,
 } from './paths.js'
+import { recordProjectionMetadata } from '#freshness.js'
 
 export interface ColdStartResult {
   rebuilt: boolean
@@ -46,6 +47,11 @@ export async function coldStartIfNeeded(cwd: string): Promise<ColdStartResult> {
       const result = await ingestAll({ db: conn.db, cwd })
       blueprintsCount = result.blueprintsIngested
       techDebtCount = result.techDebtIngested
+      recordProjectionMetadata({
+        dbPath: target,
+        cwd,
+        ingestedAt: Date.now(),
+      })
     } finally {
       conn.close()
     }

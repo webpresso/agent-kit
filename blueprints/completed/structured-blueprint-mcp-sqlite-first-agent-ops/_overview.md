@@ -5,8 +5,8 @@ status: completed
 complexity: XL
 owner: ozby
 created: '2026-05-13'
-last_updated: '2026-05-13'
-progress: '6/12 tasks done'
+last_updated: '2026-05-14'
+progress: '12/12 tasks done'
 depends_on:
   - blueprint-structured-store
 tags:
@@ -445,7 +445,7 @@ Wire the existing structured-store tool registrar into `createServer` so `ak mcp
 
 #### [mcp] Task 2.2: Add project-aware list/get/context/create handlers in the existing blueprint MCP surface
 
-**Status:** in-progress
+**Status:** done
 
 **Depends:** Task 1.1, Task 1.2, Task 1.3, Task 2.1
 
@@ -481,12 +481,12 @@ const ReadTarget = z.object({
 
 **Acceptance:**
 
-- [ ] Project discovery defaults to current project and supports explicit wider read scopes.
-- [ ] List/get/context operate from SQLite projection and include project + freshness metadata (`content_hash`, `ingested_at`, `head_at_ingest`).
-- [ ] Create writes markdown under `blueprints/draft/<slug>/_overview.md` in one selected worktree and re-ingests it.
-- [ ] Mutation tool input schemas reject `scope` at zod parse time; test asserts.
-- [ ] All `next_action` values come from the `NextAction` discriminated union; no string literals leak into handler code.
-- [ ] No duplicate parser/schema or handler micro-framework is introduced.
+- [x] Project discovery defaults to current project and supports explicit wider read scopes.
+- [x] List/get/context operate from SQLite projection and include project + freshness metadata (`content_hash`, `ingested_at`, `head_at_ingest`).
+- [x] Create writes markdown under `blueprints/draft/<slug>/_overview.md` in one selected worktree and re-ingests it.
+- [x] Mutation tool input schemas reject `scope` at zod parse time; test asserts.
+- [x] All `next_action` values come from the `NextAction` discriminated union; no string literals leak into handler code.
+- [x] No duplicate parser/schema or handler micro-framework is introduced.
 
 #### [query] Task 3.1: Add read-only aggregate helpers across selected projects
 
@@ -518,7 +518,7 @@ Add one non-MCP helper that runs list/query/next-task style reads across selecte
 
 #### [mcp] Task 3.2: Add verification-backed task completion with Evidence Contract
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.4, Task 2.2
 
@@ -547,18 +547,18 @@ Add `ak_blueprint_task_verify` as the MCP path for marking tasks done, with inpu
 
 **Acceptance:**
 
-- [ ] Generic MCP task advance cannot mark `done` and returns `next_action: 'verify_task'`.
-- [ ] Verification requires at least one evidence item with `result: 'pass'` AND zero items with `result: 'fail'`.
-- [ ] Evidence items violating per-kind required fields are rejected at zod parse time.
-- [ ] Verification block is persisted to markdown in the selected worktree in canonical form.
-- [ ] DB reflects the completed status after re-ingest, including `head_at_ingest`.
-- [ ] Idempotent: identical canonical evidence on an already-`done` task does not append a duplicate block and does not change `ingested_at`.
-- [ ] Response includes next suggested context or an explicit no-ready-task summary.
-- [ ] Tool input rejects `scope`; test asserts.
+- [x] Generic MCP task advance cannot mark `done` and returns `next_action: 'verify_task'`.
+- [x] Verification requires at least one evidence item with `result: 'pass'` AND zero items with `result: 'fail'`.
+- [x] Evidence items violating per-kind required fields are rejected at zod parse time.
+- [x] Verification block is persisted to markdown in the selected worktree in canonical form.
+- [x] DB reflects the completed status after re-ingest, including `head_at_ingest`.
+- [x] Idempotent: identical canonical evidence on an already-`done` task does not append a duplicate block and does not change `ingested_at`.
+- [x] Response includes next suggested context or an explicit no-ready-task summary.
+- [x] Tool input rejects `scope`; test asserts.
 
 #### [mcp] Task 3.3: Wire aggregate reads into MCP and retire legacy facade
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 2.2, Task 3.1, Task 3.2
 
@@ -581,14 +581,14 @@ Allow read-only MCP list/query/task-next style operations to widen beyond one pr
 
 **Acceptance:**
 
-- [ ] Aggregate read-only calls are explicit and bounded by discovery limits.
-- [ ] Mutating calls still reject aggregate scope.
-- [ ] Duplicate slugs never silently select a target.
-- [ ] `ak_blueprint` no longer appears in MCP tool listing, while structured replacements do.
+- [x] Aggregate read-only calls are explicit and bounded by discovery limits.
+- [x] Mutating calls still reject aggregate scope.
+- [x] Duplicate slugs never silently select a target.
+- [x] `ak_blueprint` no longer appears in MCP tool listing, while structured replacements do.
 
 #### [docs] Task 4.1: Document SQLite-first multi-project agent workflow and legacy mapping
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 2.2, Task 3.3
 
@@ -609,14 +609,14 @@ Update maintainer/agent docs so the happy path is discoverable in under two minu
 
 **Acceptance:**
 
-- [ ] Docs explain that SQLite is derived but MCP is the normal agent operation surface.
-- [ ] Docs explain current-project default and explicit multi-project widening.
-- [ ] Docs include old `ak_blueprint` action mapping.
-- [ ] Docs include a maintainer smoke path.
+- [x] Docs explain that SQLite is derived but MCP is the normal agent operation surface.
+- [x] Docs explain current-project default and explicit multi-project widening.
+- [x] Docs include old `ak_blueprint` action mapping.
+- [x] Docs include a maintainer smoke path.
 
 #### [qa] Task 4.2a: Single-worktree end-to-end maintainer smoke + fixture helper
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 3.2, Task 4.1
 
@@ -639,15 +639,15 @@ Build the reusable fixture helper and prove the under-two-minute happy path on a
 
 **Acceptance:**
 
-- [ ] Fixture helper supports both in-memory and real-git modes; both budgets enforced via test assertions.
-- [ ] Single-worktree happy path runs in ≤ 5s wall-clock; test asserts.
-- [ ] Test verifies markdown persistence (canonical Verification block) and selected-project DB re-ingest.
-- [ ] Test does not depend on external platform credentials.
-- [ ] No `hookTimeout`/`testTimeout` bumps introduced (per `catalog/agent/rules/no-timeout-as-fix.md`).
+- [x] Fixture helper supports both in-memory and real-git modes; both budgets enforced via test assertions.
+- [x] Single-worktree happy path runs in ≤ 5s wall-clock; test asserts.
+- [x] Test verifies markdown persistence (canonical Verification block) and selected-project DB re-ingest.
+- [x] Test does not depend on external platform credentials.
+- [x] No `hookTimeout`/`testTimeout` bumps introduced (per `catalog/agent/rules/no-timeout-as-fix.md`).
 
 #### [qa] Task 4.2b: Multi-project aggregate smoke + duplicate-slug coverage
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 3.3, Task 4.2a
 
@@ -667,15 +667,15 @@ Extend the workflow smoke to multi-project aggregate using the helper from 4.2a.
 
 **Acceptance:**
 
-- [ ] Aggregate smoke covers one current project plus one additional project or worktree.
-- [ ] Duplicate-slug case returns disambiguation with candidate `project_id`s and does not auto-select.
-- [ ] Aggregate read tolerates one broken project DB and surfaces it as a structured failure.
-- [ ] Total integration-test wall-clock for this task ≤ 10s; test asserts.
-- [ ] No `hookTimeout`/`testTimeout` bumps introduced.
+- [x] Aggregate smoke covers one current project plus one additional project or worktree.
+- [x] Duplicate-slug case returns disambiguation with candidate `project_id`s and does not auto-select.
+- [x] Aggregate read tolerates one broken project DB and surfaces it as a structured failure.
+- [x] Total integration-test wall-clock for this task ≤ 10s; test asserts.
+- [x] No `hookTimeout`/`testTimeout` bumps introduced.
 
 #### [audit] Task 4.3: Run final verification and blueprint audit
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 4.2b
 
@@ -702,11 +702,21 @@ Run final quality gates and verify the new blueprint itself remains lifecycle-co
 
 **Acceptance:**
 
-- [ ] Targeted tests pass.
-- [ ] Typecheck passes.
-- [ ] Lint passes.
-- [ ] Blueprint audit passes or pre-existing unrelated failures are listed with evidence.
-- [ ] Final report names changed files, validation output, and remaining risks.
+- [x] Targeted tests pass.
+- [x] Typecheck passes.
+- [x] Lint passes.
+- [x] Blueprint audit passes or pre-existing unrelated failures are listed with evidence.
+- [x] Final report names changed files, validation output, and remaining risks.
+
+**Final report (2026-05-14):**
+
+- **Targeted MCP tests:** `pnpm vitest run src/mcp/blueprint-server.test.ts src/mcp/server.integration.test.ts src/mcp/__fixtures__/blueprint-fixture.test.ts src/mcp/blueprint-workflow.integration.test.ts` — `84 passed`.
+- **Typecheck:** `pnpm run typecheck` — pass.
+- **Lint:** `pnpm run lint` — pass.
+- **Docs frontmatter:** `pnpm run docs:check` — pass.
+- **Blueprint lifecycle audit:** `bun ./src/cli/cli.ts blueprint audit structured-blueprint-mcp-sqlite-first-agent-ops --strict` — pass.
+- **Changed files (this blueprint):** `src/blueprint/db/paths.ts`, `src/blueprint/db/paths.test.ts`, `src/blueprint/db/legacy-migration.ts`, `src/blueprint/db/legacy-migration.test.ts`, `src/blueprint/projects.ts`, `src/blueprint/projects.test.ts`, `src/blueprint/context.ts`, `src/blueprint/context.test.ts`, `src/blueprint/freshness.ts`, `src/blueprint/freshness.test.ts`, `src/blueprint/next-action.ts`, `src/blueprint/next-action.test.ts`, `src/blueprint/evidence.ts`, `src/blueprint/evidence.test.ts`, `src/blueprint/verification.ts`, `src/blueprint/verification.test.ts`, `src/blueprint/aggregate.ts`, `src/blueprint/aggregate.test.ts`, `src/mcp/blueprint-server.ts`, `src/mcp/blueprint-server.test.ts`, `src/mcp/__fixtures__/blueprint-fixture.ts`, `src/mcp/__fixtures__/blueprint-fixture.test.ts`, `src/mcp/blueprint-workflow.integration.test.ts`.
+- **Remaining risks:** Read-context assembly still preserves the existing MCP payload shape instead of exposing the richer `src/blueprint/context.ts` chunk schema directly; this is an intentional compatibility tradeoff, not a known failing path.
 
 ## Refinement Summary
 

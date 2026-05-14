@@ -78,6 +78,10 @@ Re-calling with identical canonical evidence on an already-`done` task is a no-o
 
 ## Freshness
 
-Every response includes `freshness_ok` and `head_at_ingest`. If `freshness_ok` is false,
-the response includes `next_action: { kind: 'reingest_project', hint: '...' }`.
-Re-call `ak_blueprint_list` (or any read tool) with the same project — it will trigger re-ingest.
+Read responses surface freshness metadata where applicable (`freshness_ok`,
+`content_hash`, `ingested_at`, `head_at_ingest`) and use
+`next_action: { kind: 'reingest_project', hint: '...' }` when the projection is stale.
+The projection is refreshed on MCP server startup/registration and after successful
+mutations (`ak_blueprint_create`, `ak_blueprint_task_verify`, promote/finalize flows).
+If a read reports stale/missing projection state, restart/re-register the MCP surface
+or use a mutating flow that re-ingests the selected project.

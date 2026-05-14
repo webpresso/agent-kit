@@ -1048,6 +1048,7 @@ describe('ak_blueprint_get', () => {
       blueprint: { slug: string; title: string; status: string; tasks: unknown[] }
       content_hash: string
       ingested_at: number
+      head_at_ingest: string | null
       failures: string[]
     }
     expect(result.isError).toStrictEqual(false)
@@ -1055,6 +1056,7 @@ describe('ak_blueprint_get', () => {
     expect(data.blueprint.slug).toBe(bpSlug)
     expect(typeof data.content_hash).toBe('string')
     expect(typeof data.ingested_at).toBe('number')
+    expect(data.head_at_ingest === null || typeof data.head_at_ingest === 'string').toBe(true)
     expect(Array.isArray(data.blueprint.tasks)).toBe(true)
     expect(data.failures).toStrictEqual([])
   })
@@ -1082,12 +1084,18 @@ describe('ak_blueprint_context', () => {
     const data = parseResult(result) as {
       chunks: Array<{ kind: string; label: string; content: string; byte_size: number }>
       total_bytes: number
+      content_hash: string
+      ingested_at: number
+      head_at_ingest: string | null
       failures: string[]
     }
     expect(result.isError).toStrictEqual(false)
     expect(Array.isArray(data.chunks)).toBe(true)
     expect(data.chunks.length).toBeGreaterThan(0)
     expect(typeof data.total_bytes).toBe('number')
+    expect(typeof data.content_hash).toBe('string')
+    expect(typeof data.ingested_at).toBe('number')
+    expect(data.head_at_ingest === null || typeof data.head_at_ingest === 'string').toBe(true)
     expect(data.failures).toStrictEqual([])
     // First chunk should be summary kind
     expect(data.chunks[0]?.kind).toBe('summary')
@@ -1401,9 +1409,12 @@ describe('ak_blueprint_task_verify — Task 3.2', () => {
     expect(result.isError).toStrictEqual(false)
     const data = parseResult(result) as {
       status: string
+      next_summary: string
+      next_task: { task_id: string } | null
       failures: string[]
     }
     expect(data.status).toBe('done')
+    expect(typeof data.next_summary).toBe('string')
     expect(data.failures).toStrictEqual([])
 
     // Markdown should be updated with the verification block and status=done
@@ -1444,9 +1455,14 @@ describe('ak_blueprint_task_verify — Task 3.2', () => {
       evidence,
     })
     expect(second.isError).toStrictEqual(false)
-    const data = parseResult(second) as { status: string; idempotent?: boolean }
+    const data = parseResult(second) as {
+      status: string
+      idempotent?: boolean
+      next_summary: string
+    }
     expect(data.status).toBe('done')
     expect(data.idempotent).toBe(true)
+    expect(typeof data.next_summary).toBe('string')
   })
 })
 

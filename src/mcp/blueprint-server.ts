@@ -23,9 +23,14 @@ import { z } from 'zod'
 import { coldStartIfNeeded } from '#db/cold-start.js'
 import { openDb } from '#db/connection.js'
 import { ingestAll } from '#db/ingester.js'
+import {
+  resolveBlueprintProjectionDbPath,
+  withProjectionDbWriteLock,
+} from '#db/paths.js'
 import { findTemplate } from '#db/templates.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
 import { evidenceListSchema, canonicalizeEvidenceList } from '#evidence.js'
+import { readProjectionMetadata, recordProjectionMetadata } from '#freshness.js'
 import { applyVerification, parseVerificationBlock } from '#verification.js'
 import { makeNextAction } from '#next-action.js'
 import { resolveBlueprintProjects } from '#projects.js'
@@ -181,7 +186,6 @@ async function resolveSyncAdapter(cwd: string): Promise<SyncAdapter | null> {
 // Constants
 // ---------------------------------------------------------------------------
 
-const DB_FILENAME = '.blueprints.db'
 const VALIDATE_TS_FILE = '.validate-timestamps.json'
 const ROWS_CAP = 200
 const LIFECYCLE_ADVICE =
@@ -227,7 +231,7 @@ last_updated: {DATE}
 // Shared helpers
 // ---------------------------------------------------------------------------
 
-const dbPath = (cwd: string) => path.join(cwd, '.agent', DB_FILENAME)
+const dbPath = (cwd: string) => resolveBlueprintProjectionDbPath(cwd)
 const vtPath = (cwd: string) => path.join(cwd, '.agent', VALIDATE_TS_FILE)
 const bytes = (s: string) => Buffer.byteLength(s, 'utf8')
 const toStr = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -237,6 +241,19 @@ function jsonContent(payload: unknown, isError = false): ToolHandlerResult {
     content: [{ type: 'text', text: JSON.stringify(payload) }],
     structuredContent: payload as Record<string, unknown>,
     isError,
+  }
+}
+
+function parseStructuredJson(result: ToolHandlerResult): Record<string, unknown> {
+  if (result.structuredContent && typeof result.structuredContent === 'object') {
+    return result.structuredContent as Record<string, unknown>
+  }
+  const text = result.content.find((item) => item.type === 'text')
+  if (!text || typeof text.text !== 'string') return {}
+  try {
+    return JSON.parse(text.text) as Record<string, unknown>
+  } catch {
+    return {}
   }
 }
 
@@ -271,13 +288,20 @@ function openDbRW(cwd: string) {
 
 async function reIngest(cwd: string): Promise<void> {
   const target = dbPath(cwd)
-  if (!existsSync(target)) return
-  const conn = openDb(target)
-  try {
-    await ingestAll({ db: conn.db, cwd })
-  } finally {
-    conn.close()
-  }
+  await withProjectionDbWriteLock(cwd, async () => {
+    mkdirSync(path.dirname(target), { recursive: true })
+    const conn = openDb(target)
+    try {
+      await ingestAll({ db: conn.db, cwd })
+      recordProjectionMetadata({
+        dbPath: target,
+        cwd,
+        ingestedAt: Date.now(),
+      })
+    } finally {
+      conn.close()
+    }
+  })
 }
 
 function findBlueprintDir(
@@ -734,10 +758,19 @@ async function handleTaskVerify(cwd: string, raw: unknown): Promise<ToolHandlerR
   const existingEvidence = parseVerificationBlock(markdownBefore)
   if (existingEvidence !== null && canonicalizeEvidenceList(existingEvidence) === incomingCanonical) {
     const b = bytes(markdownBefore)
+    const nextPayload = parseStructuredJson(await handleTaskNext(cwd, { blueprint: slug }))
     return jsonContent({
       summary: `Task "${task_id}" verification is already recorded (idempotent)`,
       status: 'done',
       idempotent: true,
+      next_summary:
+        typeof nextPayload['summary'] === 'string'
+          ? nextPayload['summary']
+          : 'No ready tasks found',
+      next_task:
+        typeof nextPayload['task'] === 'object' && nextPayload['task'] !== null
+          ? nextPayload['task']
+          : null,
       failures: [],
       bytes: b,
       tokensSaved: 0,
@@ -771,10 +804,17 @@ async function handleTaskVerify(cwd: string, raw: unknown): Promise<ToolHandlerR
   }
 
   const b = bytes(result.markdown)
+  const nextPayload = parseStructuredJson(await handleTaskNext(cwd, { blueprint: slug }))
   const payload: Record<string, unknown> = {
     summary: `Task "${task_id}" verified and marked done`,
     status: 'done',
     idempotent: false,
+    next_summary:
+      typeof nextPayload['summary'] === 'string' ? nextPayload['summary'] : 'No ready tasks found',
+    next_task:
+      typeof nextPayload['task'] === 'object' && nextPayload['task'] !== null
+        ? nextPayload['task']
+        : null,
     failures: [],
     bytes: b,
     tokensSaved: 0,
@@ -1197,8 +1237,10 @@ async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandle
           summary: `Blueprint "${slug}" found in multiple projects — disambiguation required`,
           blueprint: null,
           next_action: {
-            kind: 'disambiguate_slug',
-            hint: `Slug "${slug}" exists in ${candidates.length} projects. Specify project_id to disambiguate.`,
+            ...makeNextAction(
+              'disambiguate_slug',
+              `Slug "${slug}" exists in ${candidates.length} projects. Specify project_id to disambiguate.`,
+            ),
             candidates,
           },
           failures: result.failures,
@@ -1212,10 +1254,10 @@ async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandle
         return jsonContent({
           summary: `Blueprint "${slug}" not found across ${result.projects.length} project(s)`,
           blueprint: null,
-          next_action: {
-            kind: 'disambiguate_slug',
-            hint: `No blueprint with slug "${slug}" found. Check the slug or re-ingest.`,
-          },
+          next_action: makeNextAction(
+            'disambiguate_slug',
+            `No blueprint with slug "${slug}" found. Check the slug or re-ingest.`,
+          ),
           failures: result.failures,
           bytes: 0,
           tokensSaved: 0,
@@ -1240,6 +1282,9 @@ async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandle
           }
         }
       }
+      const headAtIngest = owningProject
+        ? (readProjectionMetadata(dbPath(owningProject.worktree_path))?.head_at_ingest ?? null)
+        : null
 
       const blueprintWithTasks = { ...found, tasks }
       const b = bytes(JSON.stringify(blueprintWithTasks))
@@ -1248,6 +1293,7 @@ async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandle
         blueprint: blueprintWithTasks,
         content_hash: found.content_hash,
         ingested_at: found.ingested_at,
+        head_at_ingest: headAtIngest,
         project_id: found.project_id,
         failures: result.failures,
         bytes: b,
@@ -1264,7 +1310,7 @@ async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandle
     return jsonContent({
       summary: 'No blueprint DB found',
       blueprint: null,
-      next_action: { kind: 'rebuild_db', hint: 'Blueprint DB missing. Re-ingest to create it.' },
+      next_action: makeNextAction('rebuild_db', 'Blueprint DB missing. Re-ingest to create it.'),
       failures: [],
       bytes: 0,
       tokensSaved: 0,
@@ -1297,10 +1343,10 @@ async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandle
       return jsonContent({
         summary: `Blueprint "${slug}" not found`,
         blueprint: null,
-        next_action: {
-          kind: 'disambiguate_slug',
-          hint: `No blueprint with slug "${slug}" found in the DB. Check the slug or re-ingest.`,
-        },
+        next_action: makeNextAction(
+          'disambiguate_slug',
+          `No blueprint with slug "${slug}" found in the DB. Check the slug or re-ingest.`,
+        ),
         failures: [`Blueprint "${slug}" not found`],
         bytes: 0,
         tokensSaved: 0,
@@ -1309,11 +1355,13 @@ async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandle
 
     const result = { ...blueprint, tasks }
     const b = bytes(JSON.stringify(result))
+    const headAtIngest = readProjectionMetadata(target)?.head_at_ingest ?? null
     return jsonContent({
       summary: `Blueprint "${slug}": ${blueprint.status}, ${tasks.length} task(s)`,
       blueprint: result,
       content_hash: blueprint.content_hash,
       ingested_at: blueprint.ingested_at,
+      head_at_ingest: headAtIngest,
       project_id: p.data.project_id ?? cwd,
       failures: [],
       bytes: b,
@@ -1340,7 +1388,7 @@ async function handleBlueprintContext(cwd: string, raw: unknown): Promise<ToolHa
       summary: 'No blueprint DB found',
       chunks: [],
       total_bytes: 0,
-      next_action: { kind: 'rebuild_db', hint: 'Blueprint DB missing. Re-ingest to create it.' },
+      next_action: makeNextAction('rebuild_db', 'Blueprint DB missing. Re-ingest to create it.'),
       failures: [],
       bytes: 0,
       tokensSaved: 0,
@@ -1355,6 +1403,8 @@ async function handleBlueprintContext(cwd: string, raw: unknown): Promise<ToolHa
       complexity: string | null
       file_path: string
       last_updated: string | null
+      content_hash: string
+      ingested_at: number
     }
     interface TaskCtxRow {
       task_id: string
@@ -1370,7 +1420,7 @@ async function handleBlueprintContext(cwd: string, raw: unknown): Promise<ToolHa
       blueprint = (
         conn.db
           .prepare<[string], BpCtxRow>(
-            `SELECT slug, title, status, complexity, file_path, last_updated FROM blueprints WHERE slug = ?`,
+            `SELECT slug, title, status, complexity, file_path, last_updated, content_hash, ingested_at FROM blueprints WHERE slug = ?`,
           )
           .get(slug) ?? null
       )
@@ -1390,17 +1440,17 @@ async function handleBlueprintContext(cwd: string, raw: unknown): Promise<ToolHa
         summary: `Blueprint "${slug}" not found`,
         chunks: [],
         total_bytes: 0,
-        next_action: {
-          kind: 'disambiguate_slug',
-          hint: `No blueprint with slug "${slug}" found. Check the slug or re-ingest.`,
-        },
+        next_action: makeNextAction(
+          'disambiguate_slug',
+          `No blueprint with slug "${slug}" found. Check the slug or re-ingest.`,
+        ),
         failures: [`Blueprint "${slug}" not found`],
         bytes: 0,
         tokensSaved: 0,
       })
     }
 
-    // Assemble context chunks inline (Task 1.3 helper not yet available)
+    // Assemble context chunks inline to preserve the existing MCP payload shape.
     const chunks: Array<{ kind: string; label: string; content: string; byte_size: number }> = []
 
     const summaryContent = `# ${blueprint.title}\nStatus: ${blueprint.status}\nComplexity: ${blueprint.complexity ?? 'unset'}\nLast updated: ${blueprint.last_updated ?? 'unknown'}`
@@ -1427,10 +1477,10 @@ async function handleBlueprintContext(cwd: string, raw: unknown): Promise<ToolHa
         summary: `Task "${task_id}" not found in blueprint "${slug}"`,
         chunks: [],
         total_bytes: 0,
-        next_action: {
-          kind: 'verify_task',
-          hint: `Task "${task_id}" not found. Check the task_id or use ak_blueprint_get to list available tasks.`,
-        },
+        next_action: makeNextAction(
+          'verify_task',
+          `Task "${task_id}" not found. Check the task_id or use ak_blueprint_get to list available tasks.`,
+        ),
         failures: [`Task "${task_id}" not found in blueprint "${slug}"`],
         bytes: 0,
         tokensSaved: 0,
@@ -1439,10 +1489,14 @@ async function handleBlueprintContext(cwd: string, raw: unknown): Promise<ToolHa
 
     const totalBytes = chunks.reduce((acc, c) => acc + c.byte_size, 0)
     const b = bytes(JSON.stringify(chunks))
+    const headAtIngest = readProjectionMetadata(target)?.head_at_ingest ?? null
     return jsonContent({
       summary: `Context for "${slug}"${task_id ? ` task "${task_id}"` : ''}: ${chunks.length} chunk(s), ${totalBytes} bytes`,
       chunks,
       total_bytes: totalBytes,
+      content_hash: blueprint.content_hash,
+      ingested_at: blueprint.ingested_at,
+      head_at_ingest: headAtIngest,
       project_id: p.data.project_id ?? cwd,
       failures: [],
       bytes: b,
@@ -1487,12 +1541,10 @@ async function handleBlueprintCreate(cwd: string, raw: unknown): Promise<ToolHan
       summary: `Blueprint "${slug}" created at ${overviewPath}`,
       slug,
       path: overviewPath,
-      next_action: {
-        kind: 'verify_task',
-        hint:
-          'Blueprint created. Next: run ak_blueprint_validate to check structure, ' +
-          'then /plan-refine to harden, /plan-eng-review to validate architecture.',
-      },
+      next_action: makeNextAction(
+        'verify_task',
+        'Blueprint created. Next: run ak_blueprint_validate to check structure, then /plan-refine to harden, /plan-eng-review to validate architecture.',
+      ),
       failures: [],
       bytes: b,
       tokensSaved: 0,
@@ -1507,7 +1559,10 @@ async function handleBlueprintCreate(cwd: string, raw: unknown): Promise<ToolHan
 // ---------------------------------------------------------------------------
 
 export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: string): Promise<void> {
-  await coldStartIfNeeded(cwd)
+  const coldStart = await coldStartIfNeeded(cwd)
+  if (!coldStart.rebuilt) {
+    await reIngest(cwd)
+  }
 
   registrar.registerTool(
     'ak_blueprint_query',
