@@ -5,6 +5,7 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { openDb } from '#db/connection.js'
+import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 import type { Database } from '#db/sqlite.js'
 
 import {
@@ -83,9 +84,7 @@ function newProject(opts: {
   const worktree = mkroot()
   // `.git` marker so resolveProjectRoot can anchor here without walking up.
   mkdirSync(path.join(worktree, '.git'), { recursive: true })
-  // DB is the canonical worktree-scoped projection path (matches Task 1.2's
-  // `resolveDbPathFor`: `<worktree>/.agent/blueprints.sqlite`).
-  const dbPath = path.join(worktree, '.agent', 'blueprints.sqlite')
+  const dbPath = resolveBlueprintProjectionDbPath(worktree)
   mkdirSync(path.dirname(dbPath), { recursive: true })
   const conn = openDb(dbPath)
   openConns.push({ close: conn.close })

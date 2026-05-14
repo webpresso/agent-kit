@@ -266,7 +266,9 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
     }
     case 'no-relative-package-scripts': {
       const { auditNoRelativePackageScripts } = await import('#audit/repo-guardrails')
-      const auditResult = auditNoRelativePackageScripts(input.cwd ?? input.directory ?? process.cwd())
+      const auditResult = auditNoRelativePackageScripts(
+        input.cwd ?? input.directory ?? process.cwd(),
+      )
       return {
         passed: auditResult.ok,
         summary: auditResult.ok

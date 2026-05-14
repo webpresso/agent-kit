@@ -281,9 +281,7 @@ export async function advanceTask(
   toStatus: TaskStatus,
 ): Promise<AdvanceTaskResult> {
   // F9/R7: cross-worktree markdown writes serialize via the repo-scoped lock.
-  return withMarkdownWriteLock(cwd, () =>
-    advanceTaskLocked(cwd, blueprintSlug, taskId, toStatus),
-  )
+  return withMarkdownWriteLock(cwd, () => advanceTaskLocked(cwd, blueprintSlug, taskId, toStatus))
 }
 
 async function advanceTaskLocked(

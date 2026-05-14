@@ -20,11 +20,12 @@
  */
 
 import { mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { openDb } from '#db/connection.js'
+import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 import { ingestAll } from '#db/ingester.js'
 import { aggregateBlueprintRows } from '#aggregate.js'
 import { recordProjectionMetadata } from '#freshness.js'
@@ -102,14 +103,10 @@ describe('blueprint MCP workflow — single worktree smoke', () => {
     })
     cleanups.push(fixture.cleanup)
 
-    // Step 2: Ingest blueprints into SQLite (bypasses coldStartIfNeeded which
-    // uses the new worktree-scoped path — we write directly to the legacy path
-    // that handleBlueprintList reads from: <cwd>/.agent/.blueprints.db)
-    const { join } = await import('node:path')
-    const { mkdirSync } = await import('node:fs')
-    const dbDir = join(fixture.dir, '.agent')
-    mkdirSync(dbDir, { recursive: true })
-    const dbFile = join(dbDir, '.blueprints.db')
+    // Step 2: Ingest blueprints into the canonical projection DB path that
+    // the MCP handlers read for this fixture's repo shape.
+    const dbFile = resolveBlueprintProjectionDbPath(fixture.dir)
+    mkdirSync(dirname(dbFile), { recursive: true })
 
     const conn = openDb(dbFile)
     try {
@@ -147,7 +144,11 @@ describe('blueprint MCP workflow — single worktree smoke', () => {
     const contextPayload = parsePayload(contextResult)
 
     expect(contextResult.isError).toBeFalsy()
-    const chunks = contextPayload['chunks'] as Array<{ kind: string; label: string; content: string }>
+    const chunks = contextPayload['chunks'] as Array<{
+      kind: string
+      label: string
+      content: string
+    }>
     expect(chunks).toBeInstanceOf(Array)
     expect(chunks.length).toBeGreaterThan(0)
 
@@ -168,14 +169,12 @@ describe('blueprint MCP workflow — single worktree smoke', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Helper: ingest a fixture into its worktree-scoped DB
-// (<dir>/.agent/blueprints.sqlite — the path resolveBlueprintProjects uses)
+// Helper: ingest a fixture into its canonical projection DB.
 // ---------------------------------------------------------------------------
 
 async function ingestFixture(dir: string): Promise<void> {
-  const dbDir = join(dir, '.agent')
-  mkdirSync(dbDir, { recursive: true })
-  const dbFile = join(dbDir, 'blueprints.sqlite')
+  const dbFile = resolveBlueprintProjectionDbPath(dir)
+  mkdirSync(dirname(dbFile), { recursive: true })
   const conn = openDb(dbFile)
   try {
     await ingestAll({ db: conn.db, cwd: dir })

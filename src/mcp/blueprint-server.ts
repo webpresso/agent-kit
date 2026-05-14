@@ -23,10 +23,7 @@ import { z } from 'zod'
 import { coldStartIfNeeded } from '#db/cold-start.js'
 import { openDb } from '#db/connection.js'
 import { ingestAll } from '#db/ingester.js'
-import {
-  resolveBlueprintProjectionDbPath,
-  withProjectionDbWriteLock,
-} from '#db/paths.js'
+import { resolveBlueprintProjectionDbPath, withProjectionDbWriteLock } from '#db/paths.js'
 import { findTemplate } from '#db/templates.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
 import { evidenceListSchema, canonicalizeEvidenceList } from '#evidence.js'
@@ -34,10 +31,7 @@ import { readProjectionMetadata, recordProjectionMetadata } from '#freshness.js'
 import { applyVerification, parseVerificationBlock } from '#verification.js'
 import { makeNextAction } from '#next-action.js'
 import { resolveBlueprintProjects } from '#projects.js'
-import {
-  aggregateBlueprintRows,
-  type ProjectReader,
-} from '#aggregate.js'
+import { aggregateBlueprintRows, type ProjectReader } from '#aggregate.js'
 import { maybeHint } from './_tail-hints.js'
 import type { ToolHandlerResult, ToolRegistrar } from './auto-discover.js'
 
@@ -627,9 +621,7 @@ async function handleTaskAdvance(cwd: string, raw: unknown): Promise<ToolHandler
     return jsonContent(
       {
         summary: 'Use ak_blueprint_task_verify to mark tasks done with evidence',
-        failures: [
-          'Use ak_blueprint_task_verify to mark tasks done with evidence',
-        ],
+        failures: ['Use ak_blueprint_task_verify to mark tasks done with evidence'],
         error: 'Use ak_blueprint_task_verify to mark tasks done with evidence',
         next_action: makeNextAction(
           'verify_task',
@@ -756,7 +748,10 @@ async function handleTaskVerify(cwd: string, raw: unknown): Promise<ToolHandlerR
   // making `result.markdown !== markdownBefore` always true even for identical evidence.
   const incomingCanonical = canonicalizeEvidenceList(evidence)
   const existingEvidence = parseVerificationBlock(markdownBefore)
-  if (existingEvidence !== null && canonicalizeEvidenceList(existingEvidence) === incomingCanonical) {
+  if (
+    existingEvidence !== null &&
+    canonicalizeEvidenceList(existingEvidence) === incomingCanonical
+  ) {
     const b = bytes(markdownBefore)
     const nextPayload = parseStructuredJson(await handleTaskNext(cwd, { blueprint: slug }))
     return jsonContent({
@@ -1070,9 +1065,7 @@ const MutationTarget = z.object({
 })
 
 const listSchema = ReadTarget.extend({
-  status: z
-    .enum(['draft', 'planned', 'in-progress', 'completed', 'parked', 'archived'])
-    .optional(),
+  status: z.enum(['draft', 'planned', 'in-progress', 'completed', 'parked', 'archived']).optional(),
   limit: z.number().int().min(1).max(500).default(100),
 })
 
@@ -1102,8 +1095,7 @@ async function handleBlueprintList(cwd: string, raw: unknown): Promise<ToolHandl
   const { status, limit, scope } = p.data
 
   // Multi-project path: scope is 'roots', 'workspace', or 'all'
-  const isMultiScope =
-    scope === 'roots' || scope === 'workspace' || scope === 'all'
+  const isMultiScope = scope === 'roots' || scope === 'workspace' || scope === 'all'
 
   if (isMultiScope) {
     try {
@@ -1155,11 +1147,9 @@ async function handleBlueprintList(cwd: string, raw: unknown): Promise<ToolHandl
       const sql = status
         ? `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints WHERE status = ? ORDER BY ingested_at DESC LIMIT ?`
         : `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints ORDER BY ingested_at DESC LIMIT ?`
-      rows = (
-        status
-          ? conn.db.prepare(sql).all(status, limit)
-          : conn.db.prepare(sql).all(limit)
-      ) as unknown as BpRow[]
+      rows = (status
+        ? conn.db.prepare(sql).all(status, limit)
+        : conn.db.prepare(sql).all(limit)) as unknown as BpRow[]
     } finally {
       conn.close()
     }
@@ -1207,8 +1197,7 @@ async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandle
   if (!p.success) return err('ak_blueprint_get validation error', p.error.message)
   const { slug, scope } = p.data
 
-  const isMultiScope =
-    scope === 'roots' || scope === 'workspace' || scope === 'all'
+  const isMultiScope = scope === 'roots' || scope === 'workspace' || scope === 'all'
 
   if (isMultiScope) {
     try {
@@ -1321,13 +1310,12 @@ async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandle
     let blueprint: BpDetailRow | null
     let tasks: TaskRow[]
     try {
-      blueprint = (
+      blueprint =
         conn.db
           .prepare<[string], BpDetailRow>(
             `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints WHERE slug = ?`,
           )
           .get(slug) ?? null
-      )
       tasks = blueprint
         ? (conn.db
             .prepare<[string], TaskRow>(
@@ -1417,13 +1405,12 @@ async function handleBlueprintContext(cwd: string, raw: unknown): Promise<ToolHa
     let blueprint: BpCtxRow | null
     let tasks: TaskCtxRow[]
     try {
-      blueprint = (
+      blueprint =
         conn.db
           .prepare<[string], BpCtxRow>(
             `SELECT slug, title, status, complexity, file_path, last_updated, content_hash, ingested_at FROM blueprints WHERE slug = ?`,
           )
           .get(slug) ?? null
-      )
       tasks = blueprint
         ? (conn.db
             .prepare<[string], TaskCtxRow>(
@@ -1922,7 +1909,8 @@ async function handleProjects(
 
   const projects = await resolveBlueprintProjects({
     cwd,
-    rootsProvider: rootsState.roots.length > 0 ? async () => ({ roots: rootsState.roots }) : undefined,
+    rootsProvider:
+      rootsState.roots.length > 0 ? async () => ({ roots: rootsState.roots }) : undefined,
   })
 
   const warnings: string[] = []

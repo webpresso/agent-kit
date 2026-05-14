@@ -32,7 +32,11 @@ vi.mock('env-paths', () => ({
   }),
 }))
 
-import { withMarkdownWriteLock, withProjectionDbWriteLock } from './paths.js'
+import {
+  resolveBlueprintProjectionDbLockPath,
+  withMarkdownWriteLock,
+  withProjectionDbWriteLock,
+} from './paths.js'
 import { _clearCacheForTests } from '#paths/state-root.js'
 
 function initGitRepo(dir: string): void {
@@ -109,9 +113,8 @@ describe('concurrent ingest — projection DB lock (worktree scope)', () => {
       await Promise.all([runOne('A'), runOne('B')])
 
       expect(spans).toHaveLength(2)
-      const [first, second] = spans[0]!.start < spans[1]!.start
-        ? [spans[0]!, spans[1]!]
-        : [spans[1]!, spans[0]!]
+      const [first, second] =
+        spans[0]!.start < spans[1]!.start ? [spans[0]!, spans[1]!] : [spans[1]!, spans[0]!]
       expect(overlaps(first, second)).toBe(false)
     } finally {
       rmSync(repo, { recursive: true, force: true })
@@ -145,9 +148,8 @@ describe('concurrent ingest — markdown lock (repo scope, cross-worktree)', () 
       await Promise.all([runOne('main', repo), runOne('alt', wtDir)])
 
       expect(spans).toHaveLength(2)
-      const [first, second] = spans[0]!.start < spans[1]!.start
-        ? [spans[0]!, spans[1]!]
-        : [spans[1]!, spans[0]!]
+      const [first, second] =
+        spans[0]!.start < spans[1]!.start ? [spans[0]!, spans[1]!] : [spans[1]!, spans[0]!]
       expect(overlaps(first, second)).toBe(false)
     } finally {
       try {
@@ -170,6 +172,10 @@ describe('concurrent ingest — markdown lock (repo scope, cross-worktree)', () 
       execSync('git add . && git commit -q -m init', { cwd: repo })
       execSync(`git worktree add -q -b alt-wt2 "${wtDir}"`, { cwd: repo })
 
+      expect(resolveBlueprintProjectionDbLockPath(repo)).not.toBe(
+        resolveBlueprintProjectionDbLockPath(wtDir),
+      )
+
       const spans: Span[] = []
       const runOne = async (label: string, cwd: string): Promise<void> => {
         await withProjectionDbWriteLock(cwd, async () => {
@@ -179,14 +185,11 @@ describe('concurrent ingest — markdown lock (repo scope, cross-worktree)', () 
         })
       }
 
-      const t0 = performance.now()
       await Promise.all([runOne('main', repo), runOne('alt', wtDir)])
-      const totalMs = performance.now() - t0
-
-      // Two 60ms critical sections running in parallel should finish in ~70ms,
-      // not 120ms+. Pick a forgiving cap to avoid flakes on slow CI hosts.
-      expect(totalMs).toBeLessThan(110)
       expect(spans).toHaveLength(2)
+      const [first, second] =
+        spans[0]!.start < spans[1]!.start ? [spans[0]!, spans[1]!] : [spans[1]!, spans[0]!]
+      expect(overlaps(first, second)).toBe(true)
     } finally {
       try {
         execSync(`git worktree remove --force "${wtDir}"`, { cwd: repo })

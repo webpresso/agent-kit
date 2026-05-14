@@ -185,9 +185,7 @@ function selectProjects(
   }
 
   // scope === 'workspace'
-  return projects.filter(
-    (p) => p.source === 'workspace_config' || p.source === 'git_worktree',
-  )
+  return projects.filter((p) => p.source === 'workspace_config' || p.source === 'git_worktree')
 }
 
 // ---------------------------------------------------------------------------
@@ -210,7 +208,10 @@ interface PerProjectOutcome<TRow> {
 function runOneProject<TRow>(
   project: BlueprintProjectRef,
   read: ProjectReader<TRow>,
-  openDbFor: (project: BlueprintProjectRef) => { readonly db: Database; readonly close: () => void },
+  openDbFor: (project: BlueprintProjectRef) => {
+    readonly db: Database
+    readonly close: () => void
+  },
 ): PerProjectOutcome<TRow> {
   // Freshness gate (Task 1.3 / F11) — refuse stale reads with a structured hint.
   const fresh = checkFreshness({

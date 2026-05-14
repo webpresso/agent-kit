@@ -37,8 +37,10 @@ import { platform as osPlatform } from 'node:os'
 import { basename, join } from 'node:path'
 
 import { parseWorktreePorcelain } from '#cli/commands/worktree/router-dispatch'
+import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 import { getWorkspaceRepos } from '#db/workspace-config.js'
 import { resolveProjectRoot } from '#mcp/tools/_shared/project-root.js'
+import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
 
 // Re-export the porcelain parser path so callers can verify (in tests) that
 // this module imports from `router-dispatch.ts` rather than re-implementing
@@ -366,12 +368,13 @@ function buildRef(
   const realPath = safeRealpath(rawPath)
   if (!realPath) return null
   const repoCommonDir = overrides.repoPathOverride
-    ? safeRealpath(join(overrides.repoPathOverride, '.git')) ?? join(overrides.repoPathOverride, '.git')
+    ? (safeRealpath(join(overrides.repoPathOverride, '.git')) ??
+      join(overrides.repoPathOverride, '.git'))
     : (git.repoCommonDir(realPath) ?? undefined)
   const platform = git.platform()
   const project_id = projectIdV1(realPath, repoCommonDir, platform)
   const repoPath = overrides.repoPathOverride
-    ? safeRealpath(overrides.repoPathOverride) ?? overrides.repoPathOverride
+    ? (safeRealpath(overrides.repoPathOverride) ?? overrides.repoPathOverride)
     : (git.repoToplevel(realPath) ?? realPath)
   const branch = overrides.branch ?? git.headBranch(realPath) ?? undefined
   return {
@@ -387,7 +390,7 @@ function buildRef(
 }
 
 function detectBlueprints(worktreePath: string): boolean {
-  const dir = join(worktreePath, 'blueprints')
+  const dir = resolveBlueprintRoot(worktreePath)
   if (!existsSync(dir)) return false
   return hasMarkdownAnywhere(dir, 0)
 }
@@ -404,12 +407,8 @@ function hasMarkdownAnywhere(dir: string, depth: number): boolean {
   return false
 }
 
-/**
- * Worktree-scoped projection DB path. Task 1.1 may eventually export a richer
- * resolver; until then, this stays local and stable.
- */
 function resolveDbPathFor(worktreePath: string): string {
-  return join(worktreePath, '.agent', 'blueprints.sqlite')
+  return resolveBlueprintProjectionDbPath(worktreePath)
 }
 
 function safeRealpath(path: string): string | null {

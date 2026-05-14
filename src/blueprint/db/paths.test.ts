@@ -227,9 +227,9 @@ describe('write-lock acquisition (no silent escape)', () => {
       initGitRepo(repo)
       const holderRelease = await acquireProjectionDbWriteLock(repo, { timeoutMs: 5_000 })
       try {
-        await expect(
-          acquireProjectionDbWriteLock(repo, { timeoutMs: 300 }),
-        ).rejects.toBeInstanceOf(LockTimeoutError)
+        await expect(acquireProjectionDbWriteLock(repo, { timeoutMs: 300 })).rejects.toBeInstanceOf(
+          LockTimeoutError,
+        )
       } finally {
         await holderRelease()
       }

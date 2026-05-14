@@ -368,8 +368,6 @@ describe('mcp server integration', () => {
       ]),
     )
     // Auto-discovered non-blueprint tools must still be present alongside.
-    expect(names).toEqual(
-      expect.arrayContaining(['ak_lint', 'ak_qa', 'ak_test', 'ak_audit']),
-    )
+    expect(names).toEqual(expect.arrayContaining(['ak_lint', 'ak_qa', 'ak_test', 'ak_audit']))
   }, 20_000)
 })

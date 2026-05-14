@@ -4,6 +4,8 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
+
 import {
   PROJECT_SOURCES,
   projectIdV1,
@@ -86,7 +88,7 @@ describe('resolveBlueprintProjects — current root', () => {
     expect(first.worktree_path).toBe(root)
     expect(first.repo_path).toBe(root)
     expect(first.project_id).toMatch(/^[0-9a-f]{16}$/)
-    expect(first.db_path.endsWith('blueprints.sqlite')).toBe(true)
+    expect(first.db_path).toBe(resolveBlueprintProjectionDbPath(root))
   })
 
   it('detects has_blueprints when blueprints/ contains markdown', async () => {
@@ -111,6 +113,25 @@ describe('resolveBlueprintProjects — current root', () => {
       git: stubGit({ enabled: false }),
     })
     expect(result[0]?.has_blueprints).toBe(false)
+  })
+
+  it('detects has_blueprints when the configured blueprintsDir contains markdown', async () => {
+    const root = mkroot()
+    gitMarker(root)
+    mkdirSync(join(root, 'webpresso', 'blueprints', 'planned'), { recursive: true })
+    writeFileSync(
+      join(root, '.agent-kitrc.json'),
+      JSON.stringify({ blueprintsDir: 'webpresso/blueprints' }),
+    )
+    writeFileSync(join(root, 'webpresso', 'blueprints', 'planned', 'a.md'), '# a\n')
+
+    const result = await resolveBlueprintProjects({
+      cwd: root,
+      env: {},
+      git: stubGit({ enabled: false }),
+    })
+
+    expect(result[0]?.has_blueprints).toBe(true)
   })
 })
 

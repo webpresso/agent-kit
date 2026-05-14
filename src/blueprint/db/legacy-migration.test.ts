@@ -17,10 +17,7 @@ vi.mock('env-paths', () => ({
   }),
 }))
 
-import {
-  _clearMigrationMemoForTests,
-  migrateLegacyAgentDb,
-} from './legacy-migration.js'
+import { _clearMigrationMemoForTests, migrateLegacyAgentDb } from './legacy-migration.js'
 import { resolveBlueprintProjectionDbPath } from './paths.js'
 import { _clearCacheForTests } from '#paths/state-root.js'
 

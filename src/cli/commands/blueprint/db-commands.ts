@@ -7,10 +7,7 @@ import { coldStartIfNeeded } from '#db/cold-start.js'
 import { openDb } from '#db/connection.js'
 import { ingestAll } from '#db/ingester.js'
 import { migrateLegacyAgentDb } from '#db/legacy-migration.js'
-import {
-  resolveBlueprintProjectionDbPath,
-  withProjectionDbWriteLock,
-} from '#db/paths.js'
+import { resolveBlueprintProjectionDbPath, withProjectionDbWriteLock } from '#db/paths.js'
 import { runTemplate } from '#db/template-runner.js'
 
 // ---------------------------------------------------------------------------
@@ -66,8 +63,8 @@ export interface DbQueryResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Always rebuilds `.agent/.blueprints.db` from all markdown files.
- * Never deletes the DB — always calls ingestAll on a fresh connection.
+ * Always rebuilds the canonical blueprint projection DB from all markdown
+ * files. Never deletes the DB — always calls ingestAll on a fresh connection.
  */
 export async function dbBuild(projectRoot: string): Promise<DbBuildResult> {
   const start = Date.now()
@@ -105,8 +102,9 @@ export async function dbBuild(projectRoot: string): Promise<DbBuildResult> {
 // ---------------------------------------------------------------------------
 
 /**
- * Checks that `.agent/.blueprints.db` is consistent with the markdown files
- * on disk by re-hashing each known file and comparing with the stored hash.
+ * Checks that the canonical blueprint projection DB is consistent with the
+ * markdown files on disk by re-hashing each known file and comparing with the
+ * stored hash.
  */
 export async function dbVerify(projectRoot: string): Promise<DbVerifyResult> {
   const dbPath = agentDbPath(projectRoot)
@@ -209,8 +207,8 @@ export async function dbQuery(
 export type ExecSyncFn = typeof execSync
 
 /**
- * Generates a minimal datasette metadata JSON and launches datasette
- * to serve `.agent/.blueprints.db` as an interactive web UI.
+ * Generates a minimal datasette metadata JSON and launches datasette to serve
+ * the canonical blueprint projection DB as an interactive web UI.
  *
  * Prints a clear error and exits 1 if datasette is not installed.
  *
