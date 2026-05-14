@@ -65,6 +65,9 @@ const SCHEMA_SQL = `
     content    TEXT    NOT NULL,
     PRIMARY KEY (session_id, event_id)
   );
+
+  CREATE INDEX IF NOT EXISTS idx_events_session_ts
+    ON session_events(session_id, ts DESC);
 `
 
 // ── Levenshtein distance ─────────────────────────────────────────────────────
@@ -104,7 +107,7 @@ export class BunSqliteStore {
     this.db.exec('PRAGMA journal_mode=WAL')
     this.db.exec('PRAGMA synchronous=NORMAL')
     this.db.exec(`PRAGMA mmap_size=${256 * 1024 * 1024}`)
-    this.db.exec('PRAGMA busy_timeout=2000')
+    this.db.exec('PRAGMA busy_timeout=250')
 
     // Initialize schema — bun:sqlite uses exec() for DDL (same as better-sqlite3 exec)
     this.db.exec(SCHEMA_SQL)

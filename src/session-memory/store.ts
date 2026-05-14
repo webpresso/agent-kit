@@ -63,6 +63,9 @@ const SCHEMA_SQL = `
     content    TEXT    NOT NULL,
     PRIMARY KEY (session_id, event_id)
   );
+
+  CREATE INDEX IF NOT EXISTS idx_events_session_ts
+    ON session_events(session_id, ts DESC);
 `
 
 // ── Levenshtein distance ─────────────────────────────────────────────────────
@@ -102,6 +105,7 @@ export class SessionStore {
     this.db.pragma('journal_mode=WAL')
     this.db.pragma('synchronous=NORMAL')
     this.db.pragma(`mmap_size=${256 * 1024 * 1024}`)
+    this.db.pragma('busy_timeout = 250')
 
     // Initialize schema
     this.db.exec(SCHEMA_SQL)
