@@ -8,6 +8,8 @@ applies_to: [agents]
 related: []
 created: '2026-05-07'
 last_reviewed: '2026-05-07'
+name: lore-protocol
+description: Enforce Lore commit-message trailers using `ak audit commit-message`, including setup guidance for lore-enabled commit hooks and the required trailer protocol.
 ---
 
 # lore-protocol

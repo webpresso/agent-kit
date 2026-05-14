@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: 2026-05-05
+last_updated: '2026-05-14'
 ---
 
 # Hook Matrix
@@ -47,11 +47,30 @@ currently scaffolds and verifies in this repo.
 - events: `SessionStart`, `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `Stop`
 - edit matcher contract used by agent-kit today: `Edit|Write`
 
+**Trust sync**
+
+After writing `.codex/hooks.json`, agent-kit asks the installed Codex runtime for
+hook identity instead of computing hook hashes itself. It starts
+`codex app-server --listen stdio://`, calls `hooks/list` for the repo, filters the
+result to agent-kit-owned unmanaged command hooks, then writes those hooks'
+`key` + `currentHash` values to `hooks.state` through `config/batchWrite`.
+
+Only agent-kit-owned hooks are auto-trusted. A discovered hook must come from the
+expected agent-kit Codex hook source, be an unmanaged command hook, have no plugin
+owner, and invoke one of the known `ak-*` hook bins. User-authored hooks, managed
+hooks, plugin hooks, and unrelated commands remain for normal Codex review.
+
+If `codex` is missing, `codex app-server` fails, the protocol call times out, or
+post-write verification still reports untrusted/disabled hooks, setup prints one
+concise warning and leaves the hooks reviewable in Codex with `/hooks`.
+
 **Explicit non-claim**
 
 - agent-kit does **not** currently claim Codex `MultiEdit` parity
 - agent-kit does **not** currently claim richer post-edit automation beyond the
   generated `Edit|Write` hook surface
+- agent-kit does **not** treat the docs.rs `codex-app-server-protocol` crate as
+  an official OpenAI distribution
 
 ## context-mode
 

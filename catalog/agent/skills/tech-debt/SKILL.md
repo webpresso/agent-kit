@@ -8,6 +8,8 @@ applies_to: [agents]
 related: []
 created: '2026-05-07'
 last_reviewed: '2026-05-07'
+name: tech-debt
+description: Manage the tech-debt lifecycle using `ak tech-debt` commands and `ak audit tech-debt`, including creation, review, and schema validation workflows.
 ---
 
 # tech-debt

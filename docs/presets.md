@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-05-11'
+last_updated: '2026-05-14'
 ---
 
 # `ak setup --with` presets
@@ -17,6 +17,23 @@ ak setup --with omx,gstack,tanstack-query --yes
 ```
 
 Unknown values fall through to Tier-3 skill resolution and are rejected with `EXIT_SETUP_FAIL` (exit code 1). Whitespace around commas is tolerated.
+
+## Always-on Codex hook trust sync
+
+Every non-`--dry-run` setup run writes agent-kit's Codex hook definitions and then
+tries to trust only those agent-kit-owned hooks through the local Codex runtime.
+The trust sync starts `codex app-server --listen stdio://`, reads hook `key` and
+`currentHash` metadata with `hooks/list`, and upserts `hooks.state` with
+`config/batchWrite`. Agent-kit does not auto-trust arbitrary project hooks.
+
+If `codex` is not on `PATH`, app-server cannot start, a protocol call fails, or
+verification still shows untrusted/disabled agent-kit hooks, setup prints a
+concise `codex hook trust: warning` and continues. The generated hooks are still
+present; inspect and approve them manually from Codex with `/hooks`.
+
+This path uses the installed Codex runtime as the source of hook identity. Do not
+treat the docs.rs `codex-app-server-protocol` crate as an official OpenAI
+distribution for this behavior.
 
 ## Available presets
 
