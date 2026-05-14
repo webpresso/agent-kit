@@ -92,6 +92,10 @@
     "#symlinker/*": "./src/symlinker/*.ts",
     "#compiler/*": "./src/compiler/*.ts",
     "#telemetry/*": "./src/telemetry/*.ts",
+    "#codex/app-server/client": "./src/codex/app-server/client.ts",
+    "#codex/app-server/client.js": "./src/codex/app-server/client.ts",
+    "#codex/app-server/types": "./src/codex/app-server/types.ts",
+    "#codex/app-server/types.js": "./src/codex/app-server/types.ts",
     "#quality-engine": "./src/quality-engine/index.ts",
     "#quality-engine/*": "./src/quality-engine/*.ts",
     "#ai-memory/checkpoint/*": "./src/ai-memory/checkpoint/*.ts",
@@ -508,7 +512,7 @@
     }
   },
   "scripts": {
-    "build": "tshy && pnpm run chmod-bins && pnpm run link-self-bins",
+    "build": "tshy && bun scripts/restore-direct-tsconfig-exports.ts && pnpm run chmod-bins && pnpm run link-self-bins",
     "postbuild": "pnpm run generate-skills",
     "chmod-bins": "bun scripts/chmod-bins.ts",
     "link-self-bins": "bun scripts/link-self-bins.ts",

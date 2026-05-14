@@ -29,6 +29,14 @@ export default defineConfig({
       { find: /^#symlinker\/(.*)/, replacement: resolve(__dirname, 'src/symlinker/$1') },
       { find: /^#symlinker/, replacement: resolve(__dirname, 'src/symlinker/index.ts') },
       { find: /^#compiler\/(.*)/, replacement: resolve(__dirname, 'src/compiler/$1') },
+      {
+        find: /^#codex\/app-server\/client(?:\.js)?$/,
+        replacement: resolve(__dirname, 'src/codex/app-server/client.ts'),
+      },
+      {
+        find: /^#codex\/app-server\/types(?:\.js)?$/,
+        replacement: resolve(__dirname, 'src/codex/app-server/types.ts'),
+      },
       { find: /^#telemetry\/(.*)/, replacement: resolve(__dirname, 'src/telemetry/$1') },
       { find: /^#quality-engine$/, replacement: resolve(__dirname, 'src/quality-engine/index.ts') },
       { find: /^#quality-engine\/(.*)/, replacement: resolve(__dirname, 'src/quality-engine/$1') },

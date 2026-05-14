@@ -9,9 +9,15 @@
  * Runs by default on every `ak setup`.
  */
 import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 
 import { type MergeOptions, type MergeResult, patchJsonFile } from '#cli/commands/init/merge'
+import { CodexAppServerClient } from '#codex/app-server/client.js'
+import type { CodexAppServerApi } from '#codex/app-server/types.js'
+import {
+  syncCodexHookTrustWithAppServer,
+  type SyncCodexHookTrustResult,
+} from './codex-trust-sync.js'
 import {
   buildSkillTag,
   extractSkillHooks,
@@ -327,11 +333,64 @@ function patchCodexHooks(existing: Record<string, unknown>): Record<string, unkn
   }
 }
 
+export type CodexTrustSyncWarning = {
+  readonly kind: 'codex-app-server-trust-sync-warning'
+  readonly message: string
+  readonly syncResult?: SyncCodexHookTrustResult
+}
+
+type CodexAppServerFactory = (repoRoot: string) => Promise<CodexAppServerApi>
+
+function reportCodexTrustSyncWarning(
+  input: ScaffoldAgentHooksInput,
+  warning: CodexTrustSyncWarning,
+): void {
+  input.onCodexTrustSyncWarning?.(warning)
+  console.warn(`  codex hook trust: warning — ${warning.message}. Review in /hooks.`)
+}
+
+export async function trustCodexAgentKitHooksForRepo(
+  input: ScaffoldAgentHooksInput,
+): Promise<void> {
+  if (input.options.dryRun) return
+  const hooksPath = resolve(input.repoRoot, '.codex', 'hooks.json')
+  if (!existsSync(hooksPath)) return
+
+  const createCodexAppServer =
+    input.createCodexAppServer ?? ((repoRoot) => CodexAppServerClient.start({ cwd: repoRoot }))
+
+  let api: CodexAppServerApi
+  try {
+    api = await createCodexAppServer(input.repoRoot)
+  } catch (error) {
+    reportCodexTrustSyncWarning(input, {
+      kind: 'codex-app-server-trust-sync-warning',
+      message: error instanceof Error ? error.message : String(error),
+    })
+    return
+  }
+
+  try {
+    const syncResult = await syncCodexHookTrustWithAppServer(api, { repoRoot: input.repoRoot })
+    if (!syncResult.ok && syncResult.reason !== 'no-agent-kit-hooks-found') {
+      reportCodexTrustSyncWarning(input, {
+        kind: 'codex-app-server-trust-sync-warning',
+        message: syncResult.message,
+        syncResult,
+      })
+    }
+  } finally {
+    await api.close()
+  }
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export interface ScaffoldAgentHooksInput {
   repoRoot: string
   options: MergeOptions
+  createCodexAppServer?: CodexAppServerFactory
+  onCodexTrustSyncWarning?: (warning: CodexTrustSyncWarning) => void
 }
 
 export interface ScaffoldAgentHooksResult {
@@ -374,10 +433,12 @@ function ensureGstackHooks(repoRoot: string, options: MergeOptions = {}): void {
   }
 }
 
-export function scaffoldAgentHooks(input: ScaffoldAgentHooksInput): ScaffoldAgentHooksResult {
+export async function scaffoldAgentHooks(
+  input: ScaffoldAgentHooksInput,
+): Promise<ScaffoldAgentHooksResult> {
   ensureGstackHooks(input.repoRoot, input.options)
   const skillHooks = extractSkillHooks(join(input.repoRoot, '.agent', 'skills'))
-  return {
+  const result = {
     claude: patchJsonFile(
       join(input.repoRoot, '.claude', 'settings.json'),
       (existing) => patchClaudeSettings(existing, skillHooks),
@@ -385,8 +446,10 @@ export function scaffoldAgentHooks(input: ScaffoldAgentHooksInput): ScaffoldAgen
     ),
     codex: patchJsonFile(
       join(input.repoRoot, '.codex', 'hooks.json'),
-      patchCodexHooks,
+      (existing) => patchCodexHooks(existing),
       input.options,
     ),
   }
+  await trustCodexAgentKitHooksForRepo(input)
+  return result
 }

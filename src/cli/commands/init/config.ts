@@ -148,7 +148,7 @@ export function mergeConfig(
     durablePlanningRoot: incoming.durablePlanningRoot || existing.durablePlanningRoot,
     blueprintsDir: incoming.blueprintsDir ?? existing.blueprintsDir,
     lastInit: incoming.lastInit ?? existing.lastInit,
-    ...(incoming.globalInstall ?? existing.globalInstall ? { globalInstall: true as const } : {}),
+    ...((incoming.globalInstall ?? existing.globalInstall) ? { globalInstall: true as const } : {}),
   }
 }
 

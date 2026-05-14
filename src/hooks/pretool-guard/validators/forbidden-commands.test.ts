@@ -562,6 +562,12 @@ describe('validateForbiddenCommands', () => {
     expect('command' in result && result.category).toBe('lint')
   })
 
+  it('blocks vp exec oxlint', () => {
+    const result = validateForbiddenCommands(bashInput('vp exec oxlint'))
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.category).toBe('lint')
+  })
+
   it('blocks pnpm run lint', () => {
     const result = validateForbiddenCommands(bashInput('pnpm run lint'))
     expect(result.passed).toBe(false)
@@ -570,6 +576,12 @@ describe('validateForbiddenCommands', () => {
 
   it('blocks pnpm exec stryker', () => {
     const result = validateForbiddenCommands(bashInput('pnpm exec stryker run'))
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.category).toBe('test')
+  })
+
+  it('blocks vp exec vitest', () => {
+    const result = validateForbiddenCommands(bashInput('vp exec vitest run'))
     expect(result.passed).toBe(false)
     expect('command' in result && result.category).toBe('test')
   })
@@ -641,6 +653,32 @@ describe('validateForbiddenCommands', () => {
     const result = validateForbiddenCommands(bashInput('pnpm exec tsgo'))
     expect(result.passed).toBe(false)
     expect('command' in result && result.category).toBe('typecheck')
+  })
+
+  it('blocks vp exec tsc', () => {
+    const result = validateForbiddenCommands(bashInput('vp exec tsc --noEmit'))
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.category).toBe('typecheck')
+  })
+
+  it('blocks vp exec markdownlint-cli2', () => {
+    const result = validateForbiddenCommands(bashInput('vp exec markdownlint-cli2 README.md'))
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.suggestion).toContain('just qa')
+  })
+
+  it('blocks prettier bare command', () => {
+    const result = validateForbiddenCommands(bashInput('prettier README.md --write'))
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.category).toBe('format')
+    expect('command' in result && result.suggestion).toContain('just format')
+  })
+
+  it('blocks vp exec prettier', () => {
+    const result = validateForbiddenCommands(bashInput('vp exec prettier README.md --write'))
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.category).toBe('format')
+    expect('command' in result && result.suggestion).toContain('just format')
   })
 
   it('blocks bun run typecheck', () => {

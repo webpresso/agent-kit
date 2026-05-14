@@ -5,7 +5,7 @@ import { getCommand, isBashInput } from '#hooks/shared/types'
 import { createSkipResult } from './skip-result.js'
 import { buildRedirectMessage, type MCPRedirectConfig } from './mcp-redirect.js'
 
-export type CommandCategory = 'test' | 'lint' | 'typecheck' | 'blueprint' | 'unknown'
+export type CommandCategory = 'test' | 'lint' | 'typecheck' | 'format' | 'blueprint' | 'unknown'
 
 export interface CommandRule {
   pattern: RegExp
@@ -65,7 +65,7 @@ const ENV_HINT = 'just run <cmd> (injects secrets/env automatically)'
 const JUST_TASK_TARGET_HINT =
   'just <task> [target] — check justfile for existing recipes, or add a new one'
 
-const EXEC_RUNNERS = ['pnpm exec', 'pnpx', 'bunx'] as const
+const EXEC_RUNNERS = ['pnpm exec', 'vp exec', 'pnpx', 'bunx'] as const
 const DIRECT_RUNNERS = ['pnpm', 'bun run', 'bun'] as const
 const SCRIPT_RUNNERS = ['pnpm run', 'pnpm', 'npm run', 'npm', 'bun run', 'bun'] as const
 
@@ -79,6 +79,12 @@ export const BLOCKED_TOOLS: BlockedToolSpec[] = [
   { tool: 'vitest', category: 'test', suggestion: TEST_HINT, runners: ['exec', 'direct', 'bare'] },
   { tool: 'oxlint', category: 'lint', suggestion: LINT_HINT, runners: ['exec', 'direct', 'bare'] },
   { tool: 'oxfmt', category: 'lint', suggestion: FORMAT_HINT, runners: ['exec', 'direct', 'bare'] },
+  {
+    tool: 'prettier',
+    category: 'format',
+    suggestion: FORMAT_HINT,
+    runners: ['exec', 'direct', 'bare'],
+  },
   { tool: 'stryker', category: 'test', suggestion: MUTATION_HINT, runners: ['exec', 'bare'] },
   {
     tool: 'tsc',
@@ -154,6 +160,11 @@ export function generateRules(): CommandRule[] {
     { pattern: /^just lint-md\b/, category: 'unknown', suggestion: QA_HINT },
     {
       pattern: /^pnpm exec markdownlint-cli2\b/,
+      category: 'unknown',
+      suggestion: QA_HINT,
+    },
+    {
+      pattern: /^vp exec markdownlint-cli2\b/,
       category: 'unknown',
       suggestion: QA_HINT,
     },

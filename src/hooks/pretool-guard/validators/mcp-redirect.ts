@@ -39,6 +39,8 @@ function toolSuffixForCategory(category: CommandCategory): string {
       return 'lint'
     case 'typecheck':
       return 'typecheck'
+    case 'format':
+      return 'format'
     case 'blueprint':
       return 'blueprint'
     case 'unknown':

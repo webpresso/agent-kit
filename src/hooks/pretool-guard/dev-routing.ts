@@ -3,7 +3,7 @@ import { O_CREAT, O_EXCL, O_WRONLY } from 'node:constants'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-export type GuidanceType = 'test' | 'lint' | 'typecheck' | 'qa'
+export type GuidanceType = 'test' | 'lint' | 'typecheck' | 'qa' | 'format'
 
 export type RouteAction =
   | { action: 'deny'; tool: string; guidance: string }
@@ -27,6 +27,7 @@ const ROUTING_RULES: RoutingRule[] = [
     prefixes: [
       'just qa',
       'pnpm qa',
+      'vp exec markdownlint-cli2',
       'just lint-md',
       'pnpm exec markdownlint-cli2',
       'markdownlint-cli2',
@@ -37,22 +38,28 @@ const ROUTING_RULES: RoutingRule[] = [
     tool: 'ak_qa',
   },
   {
-    prefixes: ['just test', 'pnpm test', 'vitest'],
+    prefixes: ['just test', 'pnpm test', 'vp exec vitest', 'vitest'],
     guidanceType: 'test',
     guidance: 'Use ak_test MCP tool instead — returns {passed, summary} not raw logs',
     tool: 'ak_test',
   },
   {
-    prefixes: ['just lint', 'pnpm lint', 'oxlint'],
+    prefixes: ['just lint', 'pnpm lint', 'vp exec oxlint', 'oxlint'],
     guidanceType: 'lint',
     guidance: 'Use ak_lint MCP tool instead — returns {passed, violations[]}',
     tool: 'ak_lint',
   },
   {
-    prefixes: ['just typecheck', 'pnpm typecheck', 'tsc'],
+    prefixes: ['just typecheck', 'pnpm typecheck', 'vp exec tsc', 'tsc'],
     guidanceType: 'typecheck',
     guidance: 'Use ak_typecheck MCP tool instead — returns {passed, errors[]}',
     tool: 'ak_typecheck',
+  },
+  {
+    prefixes: ['vp exec prettier', 'prettier'],
+    guidanceType: 'format',
+    guidance: 'Use ak_format MCP tool instead — routes through the repo formatter, not Prettier',
+    tool: 'ak_format',
   },
 ]
 

@@ -42,7 +42,10 @@ import {
   serializeHostVisibility,
   summarizeHostVisibility,
 } from './host-visibility.js'
-import { scaffoldAgentHooks } from './scaffolders/agent-hooks/index.js'
+import {
+  scaffoldAgentHooks,
+  trustCodexAgentKitHooksForRepo,
+} from './scaffolders/agent-hooks/index.js'
 import { scaffoldAuditHooks } from './scaffolders/audit-hooks/index.js'
 import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js'
 import { ensureCodexAgentKitMcp, ensureCodexPlaywrightMcp } from './scaffolders/codex-mcp/index.js'
@@ -296,7 +299,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
       ...(blueprintsDir ? { blueprintsDir } : {}),
     })
 
-    const agentHooksResult = scaffoldAgentHooks({ repoRoot: consumer.repoRoot, options })
+    const agentHooksResult = await scaffoldAgentHooks({ repoRoot: consumer.repoRoot, options })
     const auditHooksResult = scaffoldAuditHooks({ repoRoot: consumer.repoRoot, options })
     const opencodePluginResult = scaffoldOpencodePlugin({ repoRoot: consumer.repoRoot, options })
     let claudeRulesResults: MergeResult[] = []
@@ -419,6 +422,11 @@ export async function runInit(flags: InitFlags): Promise<number> {
           break
       }
     }
+
+    // OMX setup can repair legacy duplicate hook trust-state blocks by
+    // clearing all `[hooks.state]` entries before rehydrating its own hooks.
+    // Re-apply agent-kit's trust hashes after that possible cleanup.
+    await trustCodexAgentKitHooksForRepo({ repoRoot: consumer.repoRoot, options })
 
     // Always upsert agent-kit's MCP entry into the user's codex config when
     // an install root is discoverable. Codex's config.toml is user-global, so
