@@ -139,11 +139,6 @@ __fixtures__/fake-home/.vite-plus/
 .gemini/commands/
 .agents/skills/
 # <<< managed by @webpresso/agent-kit (skill-sync)
-!.codex/agents/
-!.codex/agents/**
-!.codex/skills/
-!.codex/skills/**
-.codex/skills/.system/**
 
 # >>> managed by @webpresso/agent-kit (catalog-installed)
 agent-skills/better-auth-best-practices/

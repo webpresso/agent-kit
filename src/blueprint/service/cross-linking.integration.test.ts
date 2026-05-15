@@ -6,6 +6,7 @@
  */
 
 import * as fs from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -18,13 +19,9 @@ describe('Cross-linking Integration Tests', () => {
   let techDebtService: TechDebtService
 
   beforeEach(async () => {
-    // Create temporary test directory
-    testDir = path.join(
-      process.cwd(),
-      'test-fixtures',
-      `cross-linking-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    )
-    await fs.mkdir(testDir, { recursive: true })
+    // mkdtemp under the OS tmpdir so a crashed test doesn't leak fixtures into
+    // the repo working tree (previous pattern wrote into process.cwd() + test-fixtures/).
+    testDir = await fs.mkdtemp(path.join(tmpdir(), 'ak-cross-linking-'))
 
     const blueprintsDir = path.join(testDir, 'webpresso/blueprints')
     const techDebtDir = path.join(testDir, 'webpresso/tech-debt')
