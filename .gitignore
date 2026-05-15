@@ -81,12 +81,6 @@ tmp/
 .claude/skills/
 .claude/scheduled_tasks.lock
 .codex/*
-!.codex/hooks.json
-!.codex/agents/
-!.codex/agents/**
-!.codex/skills/
-!.codex/skills/**
-.codex/skills/.system/**
 !.codex/prompts/
 !.codex/prompts/**
 

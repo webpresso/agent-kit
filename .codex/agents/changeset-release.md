@@ -1,1 +1,0 @@
-../../catalog/agent/rules/changeset-release.md

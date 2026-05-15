@@ -1,1 +1,0 @@
-../../catalog/agent/rules/no-timeout-as-fix.md
