@@ -2,17 +2,11 @@
   AGENTS.md template.
 
   `ak setup` renders this file with:
-  - - `@webpresso/agent-docs-lint` — `packages/agent-docs-lint`
-- `@webpresso/agent-e2e-preset` — `packages/agent-e2e-preset`
-- `@webpresso/agent-kit` — `.`
-- `@webpresso/agent-launch` — `packages/agent-launch`
-- `@webpresso/agent-oxlint` — `packages/agent-oxlint`
-- `@webpresso/agent-stryker` — `packages/agent-stryker`
-- `@webpresso/agent-test-preset` — `packages/agent-test-preset`
-- `@webpresso/agent-tsconfig` — `packages/agent-tsconfig`
-- `@webpresso/agent-vitest` — `packages/agent-vitest`
-- `@webpresso/agent-workers-test` — `packages/agent-workers-test`: bulleted list of workspace packages inferred from
-    pnpm-workspace.yaml / package.json workspaces.
+  - Repository map: bulleted list of workspace packages inferred from
+    pnpm-workspace.yaml / package.json workspaces. Recommend the umbrella
+    `webpresso` package + `webpresso/*` subpath exports
+    (see `catalog/agent/rules/package-conventions.md`); never recommend
+    the deprecated split agent-config package names.
   - - TypeScript
 - Vitest
 - Zod: short description generated from package.json + detected
@@ -139,16 +133,15 @@ Full details: `.agent/rules/package-conventions.md`
 
 ## Repository map
 
-- `@webpresso/agent-docs-lint` — `packages/agent-docs-lint`
-- `@webpresso/agent-e2e-preset` — `packages/agent-e2e-preset`
-- `@webpresso/agent-kit` — `.`
-- `@webpresso/agent-launch` — `packages/agent-launch`
-- `@webpresso/agent-oxlint` — `packages/agent-oxlint`
-- `@webpresso/agent-stryker` — `packages/agent-stryker`
-- `@webpresso/agent-test-preset` — `packages/agent-test-preset`
-- `@webpresso/agent-tsconfig` — `packages/agent-tsconfig`
-- `@webpresso/agent-vitest` — `packages/agent-vitest`
-- `@webpresso/agent-workers-test` — `packages/agent-workers-test`
+- `webpresso` (this repo, `.`) — umbrella package. Folded agent-config helpers
+  ship via subpath exports: `webpresso/oxlint`, `webpresso/vitest`,
+  `webpresso/test-preset`, `webpresso/e2e-preset`, `webpresso/tsconfig`,
+  `webpresso/docs-linter`, `webpresso/stryker`, `webpresso/launch`,
+  `webpresso/workers-test`. See `catalog/agent/rules/package-conventions.md`.
+- The `packages/` directory contains deprecated split agent-config packages
+  preserved on the GitHub Packages registry for backwards compatibility only.
+  New consumer recommendations MUST point at the `webpresso/*` subpath
+  exports above, never at any deprecated split package name.
 
 ## Tech stack
 
