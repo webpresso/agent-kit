@@ -135,6 +135,14 @@ describe('rtk scaffolder integration', () => {
 
     expect(settingsAfterSecond).toContain('RTK_TELEMETRY_DISABLED=1') // G8
     expect(settingsAfterSecond).not.toContain('.codex/hooks.json')
-    expect(readFileSync(join(repo, '.codex', 'hooks.json'), 'utf8')).not.toContain('rtk')
+    // G8 (codex isolation): rtk hook content must not leak into .codex/hooks.json.
+    // Assert on real rtk markers — not the substring 'rtk', which now appears in
+    // the tmpdir path baked into absolute bin paths after the codex hook trust
+    // change (commit 8a31e2a switched CODEX_BIN to absolute paths for trust
+    // verification).
+    const codexHooksContent = readFileSync(join(repo, '.codex', 'hooks.json'), 'utf8')
+    expect(codexHooksContent).not.toContain('rtk-rewrite.sh')
+    expect(codexHooksContent).not.toContain('RTK_TELEMETRY_DISABLED')
+    expect(codexHooksContent).not.toContain('RTK_HOOK_EXCLUDE_COMMANDS')
   }, 20_000)
 })

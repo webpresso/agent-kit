@@ -299,7 +299,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
       ...(blueprintsDir ? { blueprintsDir } : {}),
     })
 
-    const agentHooksResult = await scaffoldAgentHooks({ repoRoot: consumer.repoRoot, options })
+    let agentHooksResult = await scaffoldAgentHooks({ repoRoot: consumer.repoRoot, options })
     const auditHooksResult = scaffoldAuditHooks({ repoRoot: consumer.repoRoot, options })
     const opencodePluginResult = scaffoldOpencodePlugin({ repoRoot: consumer.repoRoot, options })
     let claudeRulesResults: MergeResult[] = []
@@ -421,6 +421,10 @@ export async function runInit(flags: InitFlags): Promise<number> {
           console.log('  codex playwright mcp: skipped (--dry-run)')
           break
       }
+    }
+
+    if (presets.includes('omx')) {
+      agentHooksResult = await scaffoldAgentHooks({ repoRoot: consumer.repoRoot, options })
     }
 
     // OMX setup can repair legacy duplicate hook trust-state blocks by

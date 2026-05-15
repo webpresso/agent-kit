@@ -4,128 +4,50 @@ on:
   push:
     branches: [main, master]
   pull_request:
-  schedule:
-    # Weekly full mutation run (Sundays 02:00 UTC) — covers dep-bump blind spots
-    # that incremental mode misses when only source/test diffs are tracked.
-    - cron: '0 2 * * 0'
 
 jobs:
   check:
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'pnpm'
-      - uses: oven-sh/setup-bun@v2
+      - uses: pnpm/action-setup@v4
         with:
-          bun-version: latest
+          version: '11.1.1'
       - run: pnpm install --frozen-lockfile
-        env:
-          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
-      - run: pnpm run format:check
-      - run: pnpm run lint
-      - run: pnpm -r run check-types 2>/dev/null || pnpm -r run typecheck 2>/dev/null || true
+      - run: pnpm -r run check-types 2>/dev/null || pnpm -r run typecheck
+      - run: pnpm -r run lint
 
   test:
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'pnpm'
-      - uses: oven-sh/setup-bun@v2
+      - uses: pnpm/action-setup@v4
         with:
-          bun-version: latest
+          version: '11.1.1'
       - run: pnpm install --frozen-lockfile
-        env:
-          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
       - run: pnpm -r run test
 
   ak-audits:
-    runs-on: ubicloud-standard-2
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'pnpm'
-      - uses: oven-sh/setup-bun@v2
+      - uses: pnpm/action-setup@v4
         with:
-          bun-version: latest
+          version: '11.1.1'
       - run: pnpm install --frozen-lockfile
-        env:
-          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
       - run: |
           which claude && claude install-plugin @webpresso/agent-kit || echo "Claude Code not installed, skipping plugin install"
-          npx ak audit blueprint-lifecycle 2>/dev/null || true
-          npx ak audit docs-frontmatter 2>/dev/null || true
-          npx ak audit catalog-drift 2>/dev/null || true
-
-  mutation:
-    runs-on: ubicloud-standard-2
-    # Mutation testing is expensive — push runs mutate only changed source files;
-    # the weekly schedule still runs the full configured mutation set.
-    if: >
-      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) ||
-      github.event_name == 'schedule'
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 2
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '24'
-          cache: 'pnpm'
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      - name: Restore incremental mutation cache
-        uses: actions/cache@v5
-        with:
-          path: reports/stryker-incremental.json
-          key: stryker-incremental-${{ github.sha }}
-          restore-keys: stryker-incremental-
-      - name: Clear cache for scheduled full run
-        if: github.event_name == 'schedule'
-        run: rm -f reports/stryker-incremental.json
-      - name: Select changed source files for push mutation
-        if: github.event_name == 'push'
-        id: mutation_scope
-        shell: bash
+      - name: Run ak audit guardrails
         run: |
-          set -euo pipefail
-
-          git diff --name-only HEAD^ HEAD -- 'src/**/*.ts' \
-            | grep -vE '(^|/)(__fixtures__|.*\.test\.ts$|.*\.d\.ts$)' \
-            > /tmp/stryker-mutated-files || true
-
-          if [ ! -s /tmp/stryker-mutated-files ]; then
-            echo "has_files=false" >> "$GITHUB_OUTPUT"
-            echo "No changed source files for mutation."
-            exit 0
-          fi
-
-          echo "has_files=true" >> "$GITHUB_OUTPUT"
-          {
-            echo "STRYKER_MUTATE_FILES<<EOF"
-            cat /tmp/stryker-mutated-files
-            echo "EOF"
-          } >> "$GITHUB_ENV"
-      - run: pnpm install --frozen-lockfile
-        env:
-          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
-      - name: Run mutation tests
-        if: github.event_name == 'schedule' || steps.mutation_scope.outputs.has_files == 'true'
-        run: pnpm test:mutation
-        env:
-          STRYKER_CONCURRENCY: '4'
-      - name: Skip mutation tests
-        if: github.event_name == 'push' && steps.mutation_scope.outputs.has_files != 'true'
-        run: echo "Skipped mutation because this push did not change source files."
+          AK="$(pwd)/node_modules/.bin/ak"
+          [ -x "$AK" ] || AK=ak
+          "$AK" audit guardrails

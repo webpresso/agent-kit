@@ -219,6 +219,28 @@ function mergeAgentKitGroups(existing: HooksMap, addition: HooksMap): HooksMap {
   return result
 }
 
+function normalizeCodexAgentKitCommands(hooks: HooksMap, repoRoot: string): HooksMap {
+  const normalized: HooksMap = {}
+
+  for (const [event, groups] of Object.entries(hooks)) {
+    normalized[event] = groups.map((group) => ({
+      ...group,
+      hooks: group.hooks.map((hook) => {
+        const command = hook.command
+        if (typeof command !== 'string') return hook
+        const match = command.match(/^\.\/node_modules\/\.bin\/(ak-[\w-]+)$/u)
+        if (!match) return hook
+        return {
+          ...hook,
+          command: CODEX_BIN(repoRoot)(match[1]!),
+        }
+      }),
+    }))
+  }
+
+  return normalized
+}
+
 /**
  * Migration: Codex's canonical hooks.json schema is wrapped under a top-level
  * `hooks` key (matching Codex's official docs at
@@ -350,7 +372,7 @@ const CODEX_MATCHERS: MatcherSet = {
 
 function patchCodexHooks(existing: Record<string, unknown>, repoRoot: string): Record<string, unknown> {
   const migrated = hoistTopLevelEvents(existing)
-  const existingHooks = (migrated.hooks ?? {}) as HooksMap
+  const existingHooks = normalizeCodexAgentKitCommands((migrated.hooks ?? {}) as HooksMap, repoRoot)
   const agentKit = buildAgentKitHookGroups({
     resolveBin: CODEX_BIN(repoRoot),
     matchers: CODEX_MATCHERS,

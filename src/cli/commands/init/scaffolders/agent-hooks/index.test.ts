@@ -763,6 +763,29 @@ hooks:
     expect(command).toBe(codexBinCommand(repoRoot, 'ak-pretool-guard'))
     expect(result.status).toBe(0)
   })
+
+  it('keeps the Codex Stop hook executable from a sibling cwd instead of failing with 127', async () => {
+    await scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const binPath = join(repoRoot, 'node_modules', '.bin', 'ak-stop-qa')
+    mkdirSync(join(repoRoot, 'node_modules', '.bin'), { recursive: true })
+    writeFileSync(binPath, '#!/bin/sh\nexit 0\n', 'utf8')
+    chmodSync(binPath, 0o755)
+
+    const siblingCwd = mkdtempSync(join(repoRoot, 'sibling-stop-'))
+    const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
+      hooks: { Stop: Array<{ hooks: Array<{ command: string }> }> }
+    }
+    const command = codex.hooks.Stop[0]?.hooks[0]?.command
+
+    const result = spawnSync('sh', ['-lc', command ?? ''], {
+      cwd: siblingCwd,
+      encoding: 'utf8',
+    })
+
+    expect(command).toBe(codexBinCommand(repoRoot, 'ak-stop-qa'))
+    expect(result.status).toBe(0)
+  })
 })
 
 describe('hoistTopLevelEvents', () => {

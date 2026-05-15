@@ -1,3 +1,7 @@
 #!/usr/bin/env sh
 set -eu
-bun ./src/cli/cli.ts audit commit-message --message-file "$1"
+# Prefer local node_modules/.bin/ak; fall back to global ak for repos
+# that rely on the global install (no local agent-kit devDep).
+AK="$(git rev-parse --show-toplevel)/node_modules/.bin/ak"
+[ -x "$AK" ] || AK=ak
+"$AK" audit commit-message --message-file "$1"

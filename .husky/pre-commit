@@ -1,12 +1,8 @@
 #!/usr/bin/env sh
 set -eu
-# Prefer the installed ak bin, but root package worktrees do not always link their
-# own bin into node_modules/.bin. Fall back to the source CLI so hooks still run.
-# (The direct binary path also avoids the npm 11.x npx-closed-stdin pre-commit quirk.)
-AK_BIN="$(git rev-parse --show-toplevel)/node_modules/.bin/ak"
-if [ -x "$AK_BIN" ]; then
-  "$AK_BIN" audit guardrails
-else
-  bun "$(git rev-parse --show-toplevel)/src/cli/cli.ts" audit guardrails
-fi
+# Prefer local node_modules/.bin/ak; fall back to global ak for repos
+# that rely on the global install (no local agent-kit devDep).
+AK="$(git rev-parse --show-toplevel)/node_modules/.bin/ak"
+[ -x "$AK" ] || AK=ak
+"$AK" audit guardrails
 # agent-kit audit hooks (staged mode — fast)

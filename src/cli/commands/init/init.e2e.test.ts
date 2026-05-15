@@ -10,7 +10,7 @@
  * Fixtures live under __fixtures__/{fake-tools,fake-home}.
  */
 import { spawnSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -104,6 +104,46 @@ function pathWithoutOmx(): string {
   return `${CONTEXT_MODE_BIN}:/usr/bin:/bin`
 }
 
+function makeRewritingOmxPath(repoRoot: string): string {
+  const dir = mkdtempSync(path.join(tmpdir(), 'ak-fake-omx-rewrite-'))
+  const omxPath = path.join(dir, 'omx')
+  writeFileSync(
+    omxPath,
+    `#!/bin/sh
+case "$1" in
+  --version)
+    echo "omx-fixture 1.0.0"
+    exit 0
+    ;;
+  setup)
+    mkdir -p "${repoRoot}/.codex"
+    cat > "${repoRoot}/.codex/hooks.json" <<'JSON'
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "./node_modules/.bin/ak-sessionstart-routing" }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "./node_modules/.bin/ak-stop-qa" }] }
+    ]
+  }
+}
+JSON
+    echo "omx-fixture: setup --yes rewrote codex hooks"
+    exit 0
+    ;;
+  *)
+    echo "omx-fixture: unknown subcommand: $1" >&2
+    exit 64
+    ;;
+esac
+`,
+    'utf8',
+  )
+  spawnSync('chmod', ['+x', omxPath])
+  return `${CONTEXT_MODE_BIN}:${dir}:/usr/bin:/bin`
+}
+
 describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
   'ak setup — live e2e via subprocess',
   () => {
@@ -141,6 +181,36 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.code).toBe(0)
       expect(r.stdout).toContain('omx setup: ✓')
       expect(r.stdout).toContain('omx-fixture: setup --yes ran')
+    })
+
+    it('--with omx re-applies agent hooks after omx rewrites codex hooks back to relative commands', () => {
+      const r = runAk(['setup', '--yes', '--with', 'omx', '--cwd', repo], {
+        PATH: makeRewritingOmxPath(repo),
+        HOME: fakeHome,
+      })
+
+      expect(r.code).toBe(0)
+
+      const codex = JSON.parse(
+        readFileSync(path.join(repo, '.codex', 'hooks.json'), 'utf8'),
+      ) as {
+        hooks: {
+          SessionStart: Array<{ hooks: Array<{ command: string }> }>
+          Stop: Array<{ hooks: Array<{ command: string }> }>
+        }
+      }
+
+      const sessionCommands = codex.hooks.SessionStart.flatMap((group) =>
+        group.hooks.map((hook) => hook.command),
+      )
+      const stopCommands = codex.hooks.Stop.flatMap((group) =>
+        group.hooks.map((hook) => hook.command),
+      )
+
+      expect(sessionCommands).toContain(`"${path.join(repo, 'node_modules', '.bin', 'ak-sessionstart-routing')}"`)
+      expect(stopCommands).toContain(`"${path.join(repo, 'node_modules', '.bin', 'ak-stop-qa')}"`)
+      expect(sessionCommands).not.toContain('./node_modules/.bin/ak-sessionstart-routing')
+      expect(stopCommands).not.toContain('./node_modules/.bin/ak-stop-qa')
     })
 
     it('--with omx + omx not on PATH: exits 1 with not-found hint', () => {
