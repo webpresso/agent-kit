@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   CommandHookMetadataSchema,
   ConfigBatchWriteParamsSchema,
+  ConfigBatchWriteResponseSchema,
   HooksListResponseSchema,
   JsonRpcErrorSchema,
   parseCommandHookMetadata,
@@ -44,6 +45,36 @@ describe('HooksListResponseSchema', () => {
     expect(hook?.timeoutSec).toBe(5)
     expect(hook?.displayOrder).toBe(0)
     expect(hook?.currentHash).toBe('sha256:...')
+  })
+
+  it('accepts camelCase event names from the live app-server and normalizes them', () => {
+    const parsed = HooksListResponseSchema.parse({
+      data: [
+        {
+          cwd: '/Users/me/project',
+          hooks: [{ ...readmeHookMetadata, eventName: 'preToolUse' }],
+          warnings: [],
+          errors: [],
+        },
+      ],
+    })
+
+    expect(parsed.data[0]?.hooks[0]?.eventName).toBe('pre_tool_use')
+  })
+
+  it('accepts unrelated event names from hooks/list without rejecting the payload', () => {
+    const parsed = HooksListResponseSchema.parse({
+      data: [
+        {
+          cwd: '/Users/me/project',
+          hooks: [{ ...readmeHookMetadata, eventName: 'preCompact' }],
+          warnings: [],
+          errors: [],
+        },
+      ],
+    })
+
+    expect(parsed.data[0]?.hooks[0]?.eventName).toBe('preCompact')
   })
 
   it('requires key and currentHash so trust state updates are addressable', () => {
@@ -142,6 +173,24 @@ describe('ConfigBatchWriteParamsSchema', () => {
     ).toMatchObject({
       edits: [{ keyPath: 'hooks.state', mergeStrategy: 'upsert' }],
       reloadUserConfig: true,
+    })
+  })
+})
+
+describe('ConfigBatchWriteResponseSchema', () => {
+  it('accepts metadata-rich success payloads from the live app-server', () => {
+    expect(
+      ConfigBatchWriteResponseSchema.parse({
+        status: 'ok',
+        version: 'sha256:abc123',
+        filePath: '/Users/me/.codex/config.toml',
+        overriddenMetadata: null,
+      }),
+    ).toMatchObject({
+      status: 'ok',
+      version: 'sha256:abc123',
+      filePath: '/Users/me/.codex/config.toml',
+      overriddenMetadata: null,
     })
   })
 })

@@ -98,6 +98,55 @@ describe('CodexAppServerClient', () => {
     await expect(hooksListPromise).resolves.toMatchObject({ data: [{ cwd: '/repo' }] })
   })
 
+  it('parses camelCase event names from hooks/list responses returned by the live app-server', async () => {
+    const child = new FakeChild()
+    const clientPromise = CodexAppServerClient.start({ spawn: () => child, timeoutMs: 50 })
+
+    child.emitStdout(JSON.stringify({ jsonrpc: '2.0', id: 1, result: {} }))
+    const client = await clientPromise
+
+    const hooksListPromise = client.hooksList(['/repo'])
+    await flushMicrotasks()
+    child.emitStdout(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: 2,
+        result: {
+          data: [
+            {
+              cwd: '/repo',
+              hooks: [
+                {
+                  key: '/repo/.codex/hooks.json:pre_tool_use:0:0',
+                  eventName: 'preToolUse',
+                  handlerType: 'command',
+                  matcher: 'Bash',
+                  command: './node_modules/.bin/ak-pretool-guard',
+                  timeoutSec: 5,
+                  statusMessage: null,
+                  sourcePath: '/repo/.codex/hooks.json',
+                  source: 'project',
+                  pluginId: null,
+                  displayOrder: 0,
+                  enabled: true,
+                  isManaged: false,
+                  currentHash: 'sha256:abc123',
+                  trustStatus: 'trusted',
+                },
+              ],
+              warnings: [],
+              errors: [],
+            },
+          ],
+        },
+      }),
+    )
+
+    await expect(hooksListPromise).resolves.toMatchObject({
+      data: [{ hooks: [{ eventName: 'pre_tool_use' }] }],
+    })
+  })
+
   it('times out requests with method-aware diagnostics', async () => {
     const child = new FakeChild()
     const clientPromise = CodexAppServerClient.start({ spawn: () => child, timeoutMs: 10 })
