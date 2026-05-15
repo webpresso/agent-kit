@@ -10,7 +10,7 @@
  * Fixtures live under __fixtures__/{fake-tools,fake-home}.
  */
 import { spawnSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -46,6 +46,23 @@ interface RunResult {
   code: number
   stdout: string
   stderr: string
+}
+
+function installFakeAgentKitBins(repoRoot: string): void {
+  const binDir = path.join(repoRoot, 'node_modules', '.bin')
+  mkdirSync(binDir, { recursive: true })
+  for (const name of [
+    'ak-sessionstart-routing',
+    'ak-check-dev-link',
+    'ak-pretool-guard',
+    'ak-post-tool',
+    'ak-guard-switch',
+    'ak-stop-qa',
+  ]) {
+    const binPath = path.join(binDir, name)
+    writeFileSync(binPath, '#!/bin/sh\nexit 0\n', 'utf8')
+    chmodSync(binPath, 0o755)
+  }
 }
 
 function runAk(args: string[], extraEnv: Record<string, string> = {}): RunResult {
@@ -211,6 +228,21 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(stopCommands).toContain(`"${path.join(repo, 'node_modules', '.bin', 'ak-stop-qa')}"`)
       expect(sessionCommands).not.toContain('./node_modules/.bin/ak-sessionstart-routing')
       expect(stopCommands).not.toContain('./node_modules/.bin/ak-stop-qa')
+
+      installFakeAgentKitBins(repo)
+      const siblingCwd = mkdtempSync(path.join(repo, 'codex-runtime-'))
+      const allCommands = ['SessionStart', 'PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop']
+        .flatMap((event) => (codex.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)))
+        .filter((command) => command.includes('/node_modules/.bin/ak-'))
+
+      for (const command of allCommands) {
+        const result = spawnSync('sh', ['-lc', command], {
+          cwd: siblingCwd,
+          encoding: 'utf8',
+          env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+        })
+        expect(result.status, command).toBe(0)
+      }
     })
 
     it('--with omx + omx not on PATH: exits 1 with not-found hint', () => {

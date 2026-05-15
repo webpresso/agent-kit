@@ -15,6 +15,24 @@ function codexBinCommand(repoRoot: string, name: string): string {
   return `"${join(repoRoot, 'node_modules', '.bin', name)}"`
 }
 
+const AGENT_KIT_HOOK_BINS = [
+  'ak-sessionstart-routing',
+  'ak-check-dev-link',
+  'ak-pretool-guard',
+  'ak-post-tool',
+  'ak-guard-switch',
+  'ak-stop-qa',
+] as const
+
+function installFakeAgentKitBins(repoRoot: string): void {
+  mkdirSync(join(repoRoot, 'node_modules', '.bin'), { recursive: true })
+  for (const bin of AGENT_KIT_HOOK_BINS) {
+    const binPath = join(repoRoot, 'node_modules', '.bin', bin)
+    writeFileSync(binPath, '#!/bin/sh\nprintf "{}\\n"\n', 'utf8')
+    chmodSync(binPath, 0o755)
+  }
+}
+
 describe('scaffoldAgentHooks', () => {
   let repoRoot: string
   let previousCodexHome: string | undefined
@@ -785,6 +803,56 @@ hooks:
 
     expect(command).toBe(codexBinCommand(repoRoot, 'ak-stop-qa'))
     expect(result.status).toBe(0)
+  })
+
+  it('executes every generated Claude hook command successfully from outside repo root', async () => {
+    await scaffoldAgentHooks({ repoRoot, options: {} })
+    installFakeAgentKitBins(repoRoot)
+
+    const siblingCwd = mkdtempSync(join(repoRoot, 'claude-smoke-'))
+    const settings = JSON.parse(readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8')) as {
+      hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
+    }
+
+    const commands = ['SessionStart', 'PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop']
+      .flatMap((event) => (settings.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)))
+
+    expect(commands.length).toBeGreaterThan(0)
+    for (const command of commands) {
+      const result = spawnSync('sh', ['-lc', command], {
+        cwd: siblingCwd,
+        encoding: 'utf8',
+        env: {
+          PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
+          HOME: process.env.HOME,
+          CLAUDE_PROJECT_DIR: repoRoot,
+        },
+      })
+      expect(result.status, command).toBe(0)
+    }
+  })
+
+  it('executes every generated Codex hook command successfully from a sibling cwd', async () => {
+    await scaffoldAgentHooks({ repoRoot, options: {} })
+    installFakeAgentKitBins(repoRoot)
+
+    const siblingCwd = mkdtempSync(join(repoRoot, 'codex-smoke-'))
+    const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
+      hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
+    }
+
+    const commands = ['SessionStart', 'PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop']
+      .flatMap((event) => (codex.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)))
+
+    expect(commands.length).toBeGreaterThan(0)
+    for (const command of commands) {
+      const result = spawnSync('sh', ['-lc', command], {
+        cwd: siblingCwd,
+        encoding: 'utf8',
+        env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+      })
+      expect(result.status, command).toBe(0)
+    }
   })
 })
 

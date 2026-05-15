@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
@@ -10,7 +11,6 @@ import {
 } from './index'
 
 const tempRoots: string[] = []
-
 function createTempRoot(): string {
   const root = mkdtempSync(join(tmpdir(), 'opencode-plugin-scaffolder-'))
   tempRoots.push(root)
@@ -115,5 +115,53 @@ describe('OPENCODE_PLUGIN_CONTENT', () => {
 
   it('routes the warning to stderr (visible in opencode TUI)', () => {
     expect(OPENCODE_PLUGIN_CONTENT).toContain('process.stderr.write')
+  })
+
+  it('executes as a real plugin and propagates breakage context through session and compaction hooks', async () => {
+    const repoRoot = createTempRoot()
+    const targetPath = join(repoRoot, OPENCODE_PLUGIN_RELATIVE_PATH)
+    scaffoldOpencodePlugin({ repoRoot, options: {} })
+
+    const mod = (await import(`${pathToFileURL(targetPath).href}?t=${Date.now()}`)) as {
+      AgentKitDevLinkPlugin: (input: {
+        $: (strings: TemplateStringsArray, ...values: string[]) => {
+          cwd: (directory: string) => {
+            quiet: () => { nothrow: () => Promise<{ exitCode: number; stdout: Buffer }> }
+          }
+        }
+        directory: string
+      }) => Promise<{
+        event: (input: { event: { type: string } }) => Promise<void>
+        'experimental.session.compacting': (_input: unknown, output: { context: string[] }) => Promise<void>
+      }>
+    }
+
+    const $ = (_strings: TemplateStringsArray, ..._values: string[]) => {
+      return {
+        cwd: (_directory: string) => ({
+          quiet: () => ({
+            nothrow: async () => {
+              return {
+                exitCode: 0,
+                stdout: Buffer.from(
+                  JSON.stringify({
+                    hookSpecificOutput: {
+                      additionalContext: 'dev-link-broken',
+                    },
+                  }),
+                ),
+              }
+            },
+          }),
+        }),
+      }
+    }
+
+    const plugin = await mod.AgentKitDevLinkPlugin({ $, directory: repoRoot })
+    await plugin.event({ event: { type: 'session.created' } })
+    const output = { context: [] as string[] }
+    await plugin['experimental.session.compacting']({}, output)
+
+    expect(output.context).toContain('dev-link-broken')
   })
 })
