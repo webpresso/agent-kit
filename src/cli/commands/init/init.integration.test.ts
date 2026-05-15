@@ -327,7 +327,11 @@ describe('ak init end-to-end', () => {
     expect(existsSync(join(repo, '.cursor', 'rules'))).toBe(true)
     // .windsurf/skills now hosts copied skills
     expect(existsSync(join(repo, '.windsurf', 'skills'))).toBe(true)
-    expect(existsSync(join(repo, 'opencode.json'))).toBe(true)
+    // opencode.json is gated behind `--with context-mode` per the 2026-05-15
+    // opt-in migration (docs/migration/context-mode-opt-in.md). A bare
+    // `runInit` must NOT write it; if this flips, context-mode silently
+    // re-defaulted.
+    expect(existsSync(join(repo, 'opencode.json'))).toBe(false)
     // agent-hooks scaffolder writes hook config
     expect(existsSync(join(repo, '.claude', 'settings.json'))).toBe(true)
     expect(existsSync(join(repo, '.codex', 'hooks.json'))).toBe(true)
@@ -490,11 +494,108 @@ describe('warnIfNonLocalCli (DX2)', () => {
     const { warnIfNonLocalCli } = await import('./detect-consumer.js')
     const cliFile = join(repo, 'node_modules', '@webpresso', 'agent-kit', 'dist', 'cli', 'cli.js')
     mkdirSync(dirname(cliFile), { recursive: true })
+    writeFileSync(join(repo, 'node_modules', '@webpresso', 'agent-kit', 'package.json'), '{}')
     writeFileSync(cliFile, '// stub')
 
     warnIfNonLocalCli(repo, `file://${cliFile}`)
 
     expect(captured).toEqual([])
+  })
+
+  it('stays silent when CLI lives under pnpm local install roots', async () => {
+    const { warnIfNonLocalCli } = await import('./detect-consumer.js')
+    const cliFile = join(
+      repo,
+      'node_modules',
+      '.pnpm',
+      '@webpresso+agent-kit@1.2.3',
+      'node_modules',
+      '@webpresso',
+      'agent-kit',
+      'dist',
+      'cli',
+      'cli.js',
+    )
+    mkdirSync(dirname(cliFile), { recursive: true })
+    writeFileSync(
+      join(
+        repo,
+        'node_modules',
+        '.pnpm',
+        '@webpresso+agent-kit@1.2.3',
+        'node_modules',
+        '@webpresso',
+        'agent-kit',
+        'package.json',
+      ),
+      '{}',
+    )
+    writeFileSync(cliFile, '// stub')
+
+    warnIfNonLocalCli(repo, `file://${cliFile}`)
+
+    expect(captured).toEqual([])
+  })
+
+  it('stays silent for repo-local symlink/dev-link installs', async () => {
+    const { warnIfNonLocalCli } = await import('./detect-consumer.js')
+    const linkedRoot = join(tmpdir(), `ak-linked-root-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+    const localRoot = join(repo, 'node_modules', '@webpresso', 'agent-kit')
+    const cliFile = join(linkedRoot, 'dist', 'cli', 'cli.js')
+
+    mkdirSync(dirname(cliFile), { recursive: true })
+    writeFileSync(join(linkedRoot, 'package.json'), '{}')
+    writeFileSync(cliFile, '// stub')
+    mkdirSync(dirname(localRoot), { recursive: true })
+    symlinkSync(linkedRoot, localRoot, 'dir')
+
+    warnIfNonLocalCli(repo, `file://${cliFile}`)
+
+    expect(captured).toEqual([])
+    rmSync(linkedRoot, { recursive: true, force: true })
+  })
+
+  it('stays silent when .agent-kitrc.json opts into globalInstall mode', async () => {
+    const { warnIfNonLocalCli } = await import('./detect-consumer.js')
+    writeFileSync(
+      join(repo, '.agent-kitrc.json'),
+      JSON.stringify({
+        version: '1',
+        installed: { tier3Skills: [] },
+        rules: { overrides: [] },
+        scripts: {},
+        durablePlanningRoot: '.agent/planning/',
+        globalInstall: true,
+      }),
+    )
+
+    warnIfNonLocalCli(repo, 'file:///opt/homebrew/lib/agent-kit/dist/cli/cli.js')
+
+    expect(captured).toEqual([])
+  })
+
+  it('warns to use the repo-local CLI when the repo already pins agent-kit', async () => {
+    const { warnIfNonLocalCli } = await import('./detect-consumer.js')
+    writeFileSync(
+      join(repo, 'package.json'),
+      JSON.stringify({
+        name: '@acme/demo',
+        private: true,
+        devDependencies: { '@webpresso/agent-kit': '^1.2.3' },
+      }),
+    )
+
+    warnIfNonLocalCli(repo, 'file:///opt/homebrew/lib/agent-kit/dist/cli/cli.js')
+
+    expect(
+      captured.some(
+        (line) =>
+          line.includes('warning: ak running from a non-local install') &&
+          line.includes('This repo already pins `@webpresso/agent-kit`') &&
+          line.includes('pnpm run setup:agent') &&
+          line.includes('pnpm exec ak setup'),
+      ),
+    ).toBe(true)
   })
 
   it('self-mode short-circuits (consumer IS @webpresso/agent-kit)', async () => {

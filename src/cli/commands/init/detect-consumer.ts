@@ -5,9 +5,11 @@
  * workspaces — single-package projects are fine). Reads `package.json` and
  * `pnpm-workspace.yaml` when present to power downstream template rendering.
  */
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+import { readConfig } from './config.js'
 
 export interface ConsumerPackageInfo {
   name: string
@@ -118,6 +120,55 @@ function safeReaddir(dir: string): string[] {
   }
 }
 
+function safeRealpath(target: string): string | null {
+  try {
+    return realpathSync(target)
+  } catch {
+    return null
+  }
+}
+
+function isWithinPath(target: string, root: string): boolean {
+  const relative = path.relative(root, target)
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
+}
+
+function discoverInstalledAgentKitRoots(repoRoot: string): string[] {
+  const roots = new Set<string>()
+
+  const directRoot = path.join(repoRoot, 'node_modules', '@webpresso', 'agent-kit')
+  if (existsSync(path.join(directRoot, 'package.json'))) {
+    roots.add(directRoot)
+  }
+
+  const pnpmRoot = path.join(repoRoot, 'node_modules', '.pnpm')
+  for (const entry of safeReaddir(pnpmRoot)) {
+    if (!entry.startsWith('@webpresso+agent-kit@')) continue
+    const candidate = path.join(pnpmRoot, entry, 'node_modules', '@webpresso', 'agent-kit')
+    if (existsSync(path.join(candidate, 'package.json'))) {
+      roots.add(candidate)
+    }
+  }
+
+  return [...roots]
+}
+
+function isLocalAgentKitCli(repoRoot: string, cliPath: string): boolean {
+  const cliCandidates = [...new Set([cliPath, safeRealpath(cliPath)].filter((p): p is string => p !== null))]
+  if (cliCandidates.length === 0) return false
+
+  for (const root of discoverInstalledAgentKitRoots(repoRoot)) {
+    const rootCandidates = [...new Set([root, safeRealpath(root)].filter((p): p is string => p !== null))]
+    for (const candidate of cliCandidates) {
+      if (rootCandidates.some((rootPath) => isWithinPath(candidate, rootPath))) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
 function isDirectory(full: string): boolean {
   try {
     return statSync(full).isDirectory()
@@ -196,12 +247,14 @@ export function discoverWorkspacePackages(
 }
 
 /**
- * Soft warning when the running CLI does not live under the consumer's
- * `node_modules/`. Catches the global-install / pnpm-link / npx case where
- * `ak setup` succeeds against the executing CLI's catalog but produces a
- * non-reproducible `.agents/skills/` tree (symlinks point outside the project
- * tree; lockfile irrelevant). Self-mode short-circuits when the consumer
- * IS `@webpresso/agent-kit` (running setup from agent-kit's own checkout).
+ * Soft warning when the running CLI does not resolve to the consumer's local
+ * `@webpresso/agent-kit` install. Catches the global-install / pnpm-link / npx
+ * case where `ak setup` succeeds against the executing CLI's catalog but
+ * produces a non-reproducible `.agents/skills/` tree (symlinks point outside
+ * the project tree; lockfile irrelevant). Repo-local symlink/dev-link installs
+ * still count as local via realpath comparison. Self-mode short-circuits when
+ * the consumer IS `@webpresso/agent-kit` (running setup from agent-kit's own
+ * checkout).
  *
  * Non-blocking: prints to stderr and returns. The bc88-class failure
  * (catalog truly missing) is caught by the catch-wrap in `runInit` via
@@ -211,19 +264,24 @@ export function discoverWorkspacePackages(
 export function warnIfNonLocalCli(repoRoot: string, cliUrl: string = import.meta.url): void {
   const ourPkg = readPackageJson(repoRoot).info
   if (ourPkg?.name === '@webpresso/agent-kit') return
+  if (readConfig(repoRoot)?.globalInstall === true) return
   let cliPath: string
   try {
     cliPath = fileURLToPath(cliUrl)
   } catch {
     return
   }
-  const localBin = path.join(repoRoot, 'node_modules')
-  if (!cliPath.startsWith(localBin + path.sep) && cliPath !== localBin) {
-    console.error(
-      `warning: ak running from a non-local install (${cliPath}). ` +
-        'Pin `@webpresso/agent-kit` as a local dep for reproducible setup.',
-    )
-  }
+  if (isLocalAgentKitCli(repoRoot, cliPath)) return
+
+  const hasLocalAgentKitDep =
+    ourPkg?.dependencies['@webpresso/agent-kit'] ?? ourPkg?.devDependencies['@webpresso/agent-kit']
+
+  console.error(
+    `warning: ak running from a non-local install (${cliPath}). ` +
+      (hasLocalAgentKitDep
+        ? 'This repo already pins `@webpresso/agent-kit`; rerun via the repo-local CLI (`pnpm run setup:agent` or `pnpm exec ak setup`).'
+        : 'Pin `@webpresso/agent-kit` as a local dep for reproducible setup.'),
+  )
 }
 
 export function detectConsumer(startDir: string = process.cwd()): ConsumerContext | null {
