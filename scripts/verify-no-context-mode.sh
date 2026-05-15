@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TMP_DIR="$(mktemp -d)"
+cleanup() {
+  rm -rf "$TMP_DIR"
+}
+trap cleanup EXIT
+
+cd "$ROOT_DIR"
+PACK_JSON="$(npm pack --json)"
+TARBALL_NAME="$(printf '%s' "$PACK_JSON" | node -e "const input=JSON.parse(require('fs').readFileSync(0,'utf8')); process.stdout.write(input[0].filename)")"
+TARBALL_PATH="$ROOT_DIR/$TARBALL_NAME"
+
+mkdir -p "$TMP_DIR/unpacked"
+tar -xzf "$TARBALL_PATH" -C "$TMP_DIR/unpacked"
+PACKED_PACKAGE_JSON="$TMP_DIR/unpacked/package/package.json"
+
+HAS_CONTEXT_MODE="$(node - "$PACKED_PACKAGE_JSON" <<'NODE'
+const fs = require('fs')
+const packagePath = process.argv[2]
+const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'))
+const sections = ['dependencies', 'optionalDependencies', 'peerDependencies', 'devDependencies']
+for (const section of sections) {
+  const value = pkg[section]
+  if (value && typeof value === 'object' && Object.prototype.hasOwnProperty.call(value, 'context-mode')) {
+    process.stdout.write('1')
+    process.exit(0)
+  }
+}
+process.stdout.write('0')
+NODE
+)"
+
+if [[ "$HAS_CONTEXT_MODE" == "1" ]]; then
+  echo "context-mode still appears in the packed default package metadata" >&2
+  exit 1
+fi
+
+echo "ok: packed default package metadata does not contain context-mode"

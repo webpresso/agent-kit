@@ -47,3 +47,4 @@ export type {
   MemoryStore,
   RetrievedContext,
 } from './hierarchy/retriever.js'
+export { SqliteAiMemoryStore } from './store/sqlite-store.js'

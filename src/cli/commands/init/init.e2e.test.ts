@@ -188,6 +188,20 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, 'blueprints'))).toBe(true)
       expect(existsSync(path.join(repo, '.agent-kitrc.json'))).toBe(true)
       expect(r.stdout).toContain('ak init: done.')
+      expect(r.stdout).not.toContain('context-mode codex mcp')
+      expect(r.stdout).not.toContain('context-mode codex hooks')
+      expect(r.stdout).not.toContain('context-mode opencode config')
+    })
+
+    it('--with context-mode: wires context-mode surfaces explicitly when requested', () => {
+      const r = runAk(['setup', '--yes', '--with', 'context-mode', '--cwd', repo], {
+        PATH: pathWithFakeOmxOk(),
+        HOME: fakeHome,
+      })
+      expect(r.code).toBe(0)
+      expect(r.stdout).toContain('context-mode codex mcp')
+      expect(r.stdout).toContain('context-mode codex hooks')
+      expect(r.stdout).toContain('context-mode opencode config')
     })
 
     it('--with omx + fake omx on PATH: exits 0 and chains omx setup', () => {

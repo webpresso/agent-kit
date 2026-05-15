@@ -81,11 +81,16 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
     const install = run('pnpm', ['install', '--ignore-scripts'], repo, {})
     expect(install.code).toBe(0)
 
-    const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
-      CODEX_HOME: codexHome,
-      AK_SKIP_GSTACK: '1',
-      AK_SKIP_RTK: '1',
-    })
+    const setup = run(
+      CLI_RUNTIME,
+      [CLI_PATH, 'setup', '--yes', '--with', 'context-mode', '--cwd', repo],
+      repo,
+      {
+        CODEX_HOME: codexHome,
+        AK_SKIP_GSTACK: '1',
+        AK_SKIP_RTK: '1',
+      },
+    )
     expect(setup.code).toBe(0)
     expect(existsSync(path.join(repo, 'opencode.json'))).toBe(true)
     expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).toContain('context-mode')
@@ -101,6 +106,30 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
     )
   }, 240_000)
 
+  it('default setup leaves context-mode out of host configs', () => {
+    const install = run('pnpm', ['install', '--ignore-scripts'], repo, {})
+    expect(install.code).toBe(0)
+
+    const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
+      CODEX_HOME: codexHome,
+      AK_SKIP_GSTACK: '1',
+      AK_SKIP_RTK: '1',
+    })
+    expect(setup.code).toBe(0)
+    expect(existsSync(path.join(repo, 'opencode.json'))).toBe(true)
+    expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).toContain('agent-kit')
+    expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).toContain(
+      '[mcp_servers.agent-kit]',
+    )
+    expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).not.toContain('context-mode')
+    expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).not.toContain(
+      '[mcp_servers.context-mode]',
+    )
+    expect(readFileSync(path.join(codexHome, 'hooks.json'), 'utf8')).not.toContain(
+      'context-mode hook codex pretooluse',
+    )
+  }, 240_000)
+
   it('Codex host sees agent-kit + context-mode MCP entries when installed', () => {
     if (!hasCommand('codex')) {
       if (REQUIRE_CODEX) throw new Error('codex required but not on PATH')
@@ -109,7 +138,7 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
 
     const install = run('pnpm', ['install', '--ignore-scripts'], repo, {})
     expect(install.code).toBe(0)
-    const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
+    const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--with', 'context-mode', '--cwd', repo], repo, {
       CODEX_HOME: codexHome,
       AK_SKIP_GSTACK: '1',
       AK_SKIP_RTK: '1',
@@ -130,7 +159,7 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
 
     const install = run('pnpm', ['install', '--ignore-scripts'], repo, {})
     expect(install.code).toBe(0)
-    const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
+    const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--with', 'context-mode', '--cwd', repo], repo, {
       CODEX_HOME: codexHome,
       AK_SKIP_GSTACK: '1',
       AK_SKIP_RTK: '1',

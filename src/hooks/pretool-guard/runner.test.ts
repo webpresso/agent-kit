@@ -112,9 +112,39 @@ describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
     expect(parsed.hookSpecificOutput.permissionDecision).toBe('deny')
   })
 
+  it('pnpm exec vitest + MCP ready → exit 0, deny JSON mentioning ak_test', () => {
+    writeMcpSentinel()
+    const payload = JSON.stringify({
+      tool_name: 'Bash',
+      tool_input: { command: 'pnpm exec vitest run' },
+    })
+    const { stdout, status } = runBinary(payload)
+    expect(status).toBe(0)
+    const parsed = JSON.parse(stdout) as {
+      hookSpecificOutput: { permissionDecision: string; permissionDecisionReason: string }
+    }
+    expect(parsed.hookSpecificOutput.permissionDecision).toBe('deny')
+    expect(parsed.hookSpecificOutput.permissionDecisionReason).toContain('ak_test')
+  })
+
   it('just lint + MCP ready → exit 0, deny JSON mentioning ak_lint', () => {
     writeMcpSentinel()
     const payload = JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'just lint' } })
+    const { stdout, status } = runBinary(payload)
+    expect(status).toBe(0)
+    const parsed = JSON.parse(stdout) as {
+      hookSpecificOutput: { permissionDecision: string; permissionDecisionReason: string }
+    }
+    expect(parsed.hookSpecificOutput.permissionDecision).toBe('deny')
+    expect(parsed.hookSpecificOutput.permissionDecisionReason).toContain('ak_lint')
+  })
+
+  it('pnpm exec oxlint + MCP ready → exit 0, deny JSON mentioning ak_lint', () => {
+    writeMcpSentinel()
+    const payload = JSON.stringify({
+      tool_name: 'Bash',
+      tool_input: { command: 'pnpm exec oxlint .' },
+    })
     const { stdout, status } = runBinary(payload)
     expect(status).toBe(0)
     const parsed = JSON.parse(stdout) as {
@@ -134,6 +164,36 @@ describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
     }
     expect(parsed.hookSpecificOutput.permissionDecision).toBe('deny')
     expect(parsed.hookSpecificOutput.permissionDecisionReason).toContain('ak_typecheck')
+  })
+
+  it('pnpm exec tsc + MCP ready → exit 0, deny JSON mentioning ak_typecheck', () => {
+    writeMcpSentinel()
+    const payload = JSON.stringify({
+      tool_name: 'Bash',
+      tool_input: { command: 'pnpm exec tsc --noEmit' },
+    })
+    const { stdout, status } = runBinary(payload)
+    expect(status).toBe(0)
+    const parsed = JSON.parse(stdout) as {
+      hookSpecificOutput: { permissionDecision: string; permissionDecisionReason: string }
+    }
+    expect(parsed.hookSpecificOutput.permissionDecision).toBe('deny')
+    expect(parsed.hookSpecificOutput.permissionDecisionReason).toContain('ak_typecheck')
+  })
+
+  it('pnpm exec prettier + MCP ready → exit 0, deny JSON mentioning ak_format', () => {
+    writeMcpSentinel()
+    const payload = JSON.stringify({
+      tool_name: 'Bash',
+      tool_input: { command: 'pnpm exec prettier README.md --write' },
+    })
+    const { stdout, status } = runBinary(payload)
+    expect(status).toBe(0)
+    const parsed = JSON.parse(stdout) as {
+      hookSpecificOutput: { permissionDecision: string; permissionDecisionReason: string }
+    }
+    expect(parsed.hookSpecificOutput.permissionDecision).toBe('deny')
+    expect(parsed.hookSpecificOutput.permissionDecisionReason).toContain('ak_format')
   })
 
   // ── Passthrough cases ─────────────────────────────────────────────────────

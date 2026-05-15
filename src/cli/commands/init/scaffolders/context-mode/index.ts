@@ -97,6 +97,12 @@ export function upsertContextModeMcpServer(raw: string): string {
   )
 }
 
+// Codex hooks are enabled by default — do NOT write `[features].hooks = true`
+// (context-mode README is stale on this; upstream developers.openai.com/codex/hooks
+// is authoritative — the flag is a disable-only toggle). PreToolUse in Codex is
+// deny-only until openai/codex#18491 lands `updatedInput`. PreCompact requires
+// Codex 0.130.0+. `additionalContext` injection routes via PostToolUse/SessionStart
+// (handled by context-mode's codex formatter automatically).
 export function patchCodexContextModeHooks(
   existing: Record<string, unknown>,
 ): Record<string, unknown> {

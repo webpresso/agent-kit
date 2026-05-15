@@ -29,24 +29,32 @@ function parseMigrationVersion(filename: string): number | null {
 
 export function runMigrations(db: Database): void {
   ensureSchemaVersionTable(db)
-  const applied = getAppliedVersions(db)
-
   const files = readdirSync(MIGRATIONS_DIR)
     .filter((f) => f.endsWith('.sql'))
     .sort()
 
   for (const file of files) {
     const version = parseMigrationVersion(file)
-    if (version === null || applied.has(version)) continue
+    if (version === null) continue
 
     const sql = readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8')
+    db.exec('BEGIN IMMEDIATE')
+    try {
+      const applied = getAppliedVersions(db)
+      if (applied.has(version)) {
+        db.exec('COMMIT')
+        continue
+      }
 
-    db.transaction(() => {
       db.exec(sql)
       db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(
         version,
         new Date().toISOString(),
       )
-    })()
+      db.exec('COMMIT')
+    } catch (error) {
+      db.exec('ROLLBACK')
+      throw error
+    }
   }
 }

@@ -48,6 +48,13 @@ describe('routeCommand', () => {
     if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_test')
   })
 
+  it('pnpm exec vitest run → deny', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('pnpm exec vitest run')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_test')
+  })
+
   it('vitest run → deny', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('vitest run')
@@ -68,6 +75,13 @@ describe('routeCommand', () => {
     if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_lint')
   })
 
+  it('pnpm exec oxlint . → deny, mentions ak_lint', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('pnpm exec oxlint .')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_lint')
+  })
+
   it('just typecheck → deny, mentions ak_typecheck', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('just typecheck')
@@ -78,6 +92,13 @@ describe('routeCommand', () => {
   it('vp exec tsc --noEmit → deny, mentions ak_typecheck', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('vp exec tsc --noEmit')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_typecheck')
+  })
+
+  it('pnpm exec tsc --noEmit → deny, mentions ak_typecheck', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('pnpm exec tsc --noEmit')
     expect(result?.action.action).toBe('deny')
     if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_typecheck')
   })
@@ -113,6 +134,13 @@ describe('routeCommand', () => {
   it('prettier README.md → deny, mentions ak_format', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('prettier README.md')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_format')
+  })
+
+  it('pnpm exec prettier README.md --write → deny, mentions ak_format', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('pnpm exec prettier README.md --write')
     expect(result?.action.action).toBe('deny')
     if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_format')
   })

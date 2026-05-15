@@ -3,47 +3,56 @@ type: blueprint
 status: draft
 complexity: S
 created: '2026-05-14'
-last_updated: '2026-05-14'
-progress: '0% (drafted)'
+last_updated: '2026-05-15'
+progress: '0% (refined to current repo layout on 2026-05-15)'
 depends_on: []
-tags: [session-memory, wal, concurrency, reliability]
+tags: [sqlite, wal, concurrency, reliability]
 ---
 
-# Harden session-store multi-window WAL safety (engine-wide)
+# Harden shared SQLite WAL safety for multi-window agent workloads
 
-**Goal:** Prove and harden v1 session-store's behavior under concurrent
-multi-process writes (two Claude Code windows, hook + manual call,
-fetch-and-index racing capture, etc.) for ALL session-* tools, not just
-one. Replaces the WAL test that was previously bundled into the
-context-mode-replacement blueprint (split out per Codex outside-voice
-finding 2026-05-14: WAL safety is engine-wide concern, not
-fetch-and-index-specific).
+**Goal:** Prove and harden the current shared SQLite layer under
+multi-process access so future persistent ai-memory/session tools do not
+inherit silent write-drop or SQLITE_BUSY failure modes. The current repo
+does **not** have `src/session-memory/*`; the active SQLite boundary is
+`src/blueprint/db/*`, with `openDb()` in `src/blueprint/db/connection.ts`
+and the `bun:sqlite` adapter in `src/blueprint/db/sqlite.ts`.
 
 ## Provenance
 
-Originally Task 1.3 inside `replace-context-mode-plugin-with-v1-session-
-memory-mit-stack-...`. Codex outside-voice review surfaced that WAL
-safety affects every session-* tool (capture, snapshot, search, execute,
-batch-execute, fetch-and-index). Bundling it into a license-removal BP
-entangled two unrelated risks. This BP now owns the engine-wide
-concurrency story.
+This blueprint was originally split out of the larger context-mode
+replacement plan because WAL/concurrency is an engine-wide prerequisite.
+It has now been fact-checked against the current repo and rewritten to
+target the SQLite layer that actually exists today.
 
 ## Product wedge anchor
 
-- **Stage outcome:** Eliminate silent dropped session events under
-  multi-window concurrency for the agent-kit reference consumer
-  (ozby/ingest-lens). Today, two Claude Code windows on the same repo
-  + a Codex session can race on the same `~/.webpresso/sessions/<hash>.db`
-  with no integration test asserting safety. After this BP, every
-  session-* tool has a deterministic concurrency contract.
-- **Consuming surface:** All `ak_session_*` MCP tools
-  (capture/restore/search/snapshot/execute/batch-execute, plus future
-  fetch-and-index from BP B). Consumers see no API change — only
-  reliability improvement.
-- **New user-visible capability:** Agents can run multiple Claude Code
-  / Codex sessions on the same repo simultaneously without losing
-  session events to silent SQLITE_BUSY drops. Hook authors can stop
-  worrying about race conditions on `~/.webpresso/sessions/`.
+- **Stage outcome:** the shared SQLite boundary used by blueprint/db work
+  is proven safe under concurrent multi-process writes, and is safe to
+  reuse for the future ai-memory/session persistence layer.
+- **Consuming surface:** `src/blueprint/db/connection.ts`,
+  `src/blueprint/db/sqlite.ts`, and any future persistence work built on
+  top of them.
+- **New user-visible capability:** none directly; this is a reliability
+  prerequisite that prevents latent multi-window data loss in future
+  session tooling.
+
+## Architecture Overview
+
+```text
+CURRENT:
+  openDb(dbPath)
+    ├── Database(filename)           src/blueprint/db/sqlite.ts
+    ├── PRAGMA journal_mode = WAL    src/blueprint/db/connection.ts
+    ├── PRAGMA foreign_keys = ON
+    └── runMigrations(db)
+
+TARGET AFTER THIS BP:
+  shared SQLite WAL contract
+    ├── deterministic multi-process write tests
+    ├── explicit busy/locking behavior documented in code + tests
+    └── safe foundation for future ai-memory persistence work
+```
 
 ## Quick Reference (Execution Waves)
 
@@ -54,112 +63,142 @@ concurrency story.
 | **Wave 2** | 1.4 | 1.3 | 1 agent |
 | **Critical path** | 1.1 → 1.3 → 1.4 | — | 3 waves |
 
-### Phase 1: Engine-wide WAL hardening [Complexity: S]
+### Parallel Metrics Snapshot
 
-#### [qa] Task 1.1: Multi-process integration test for `session_events` table
+| Metric | Target | Actual |
+| --- | --- | --- |
+| RW0 | ≥ planned agents / 2 | 2 |
+| CPR | ≥ 2.5 | 1.33 |
+| DD | ≤ 2.0 | 0.75 |
+| CP | 0 | 0 |
 
-**Status:** todo
+Refinement delta: this is a narrow reliability BP with one unavoidable
+engine fan-in task, so CPR is below ideal; keep it intentionally small
+rather than over-splitting fake parallel work.
 
-**Depends:** None
+### Phase 1: shared SQLite concurrency hardening [Complexity: S]
 
-Spawn N child processes (`child_process.spawn`, not worker_threads —
-need OS-level processes to mirror real multi-window scenario) each
-calling `captureEvent()` against the same `dbPath`. Mocked content,
-deterministic seeding. Assert all writes persisted, no SQLITE_BUSY
-surfaces to caller, total event count matches expected.
-
-**Files:**
-
-- Create: `src/session-memory/session-events.wal-multiwindow.integration.test.ts`
-
-**Steps (TDD):**
-
-1. Write integration test: 4 child processes × 25 captureEvent calls
-   each = 100 events; assert sources table has all 100.
-2. Run 10 consecutive invocations; assert all 10 green.
-3. If ANY run drops events, root-cause (busy_timeout? checkpoint
-   starvation?); fix at engine layer; do not raise the test bound.
-
-**Acceptance:**
-
-- [ ] 10/10 deterministic green
-- [ ] 100/100 events persisted in every run
-- [ ] Engine fix landed if `busy_timeout = 250` insufficient
-
-#### [qa] Task 1.2: Multi-process integration test for `sources` table (fetch-and-index path)
+#### [qa] Task 1.1: Add multi-process integration test for the shared SQLite write path
 
 **Status:** todo
 
 **Depends:** None
 
-Same shape as Task 1.1 but exercising `insertChunks()` from two
-processes simultaneously against the same `dbPath` with different
-sources. Asserts both source rows + their chunks present, no
-constraint violations.
+Create a real multi-process integration test around `openDb()` using a
+single temp database file and OS child processes. Use an existing
+writable table that goes through the current migration stack (prefer a
+simple append-only/event-like table already present in `src/blueprint/db`
+tests). Each process should open its own connection and perform repeated
+writes to the same db file. Assert all writes persist and no child exits
+with SQLITE_BUSY.
 
 **Files:**
 
-- Create: `src/session-memory/sources.wal-multiwindow.integration.test.ts`
+- Create: `src/blueprint/db/wal-multiwindow.integration.test.ts`
 
 **Steps (TDD):**
 
-1. 2 child processes each insert 50 chunks under different `source`
-   labels; assert final `sources` table has both rows with correct
-   `chunk_count`.
-2. Repeat 10 times.
+1. Write a failing integration test that spawns 4 processes writing to
+   the same DB file through `openDb()`.
+2. Run the test repeatedly (10 iterations inside the test or via helper)
+   and prove the current behavior.
+3. Keep the test deterministic: fixed counts, fixed schema target,
+   explicit child exit-code assertions.
 
 **Acceptance:**
 
-- [ ] 10/10 deterministic green
-- [ ] Both sources persisted with correct chunk counts in every run
+- [ ] 10/10 deterministic green on local runs
+- [ ] Final persisted row count matches expected total writes
+- [ ] No child process exits with SQLITE_BUSY or lock-related failure
 
-#### [backend] Task 1.3: Engine-level fix if busy_timeout insufficient
+#### [qa] Task 1.2: Add multi-connection regression coverage for reopen/reuse semantics
+
+**Status:** todo
+
+**Depends:** None
+
+Strengthen the existing sqlite/connection tests to cover overlapping
+connections and writer contention at the API boundary, not only the
+child-process e2e path. This task should pin the expected behavior of
+`openDb()` and any transaction/retry semantics already present.
+
+**Files:**
+
+- Modify: `src/blueprint/db/migrations.test.ts`
+- Modify: `src/blueprint/db/connection.ts` tests if split exists, or add
+  a new focused test file near it
+
+**Steps (TDD):**
+
+1. Add failing tests for overlapping connections against the same db file.
+2. Assert WAL mode is active and the expected locking behavior is
+   observable.
+3. Re-run after Task 1.3 if engine hardening is needed.
+
+**Acceptance:**
+
+- [ ] Connection-level overlap behavior is pinned by tests
+- [ ] WAL mode is asserted explicitly, not assumed
+
+#### [backend] Task 1.3: Apply the minimal shared SQLite hardening if tests prove it is needed
 
 **Status:** todo
 
 **Depends:** Task 1.1, Task 1.2
 
-If either integration test surfaces dropped writes or unhandled
-SQLITE_BUSY, fix at the engine layer:
+If the new tests surface real contention failures, fix the shared
+SQLite boundary at its owner:
+- `src/blueprint/db/connection.ts`
+- `src/blueprint/db/sqlite.ts`
 
-- Bump `busy_timeout` (only with measured justification per `no-timeout-as-fix.md` rule)
-- Add WAL checkpoint scheduling
-- Add SQLITE_BUSY retry at `SessionStore` boundaries
-- Document trade-offs
+Allowed fixes:
+- explicit `busy_timeout`
+- explicit transaction discipline
+- minimal retry only if justified by test evidence
 
-If both tests pass with current config, this task is a no-op
-documented as such.
+Do **not** invent a larger persistence refactor here.
 
 **Files:**
 
-- Modify (conditionally): `src/session-memory/store.ts`,
-  `src/session-memory/bun-store.ts`, `src/session-memory/session.ts`
+- Modify (conditional): `src/blueprint/db/connection.ts`
+- Modify (conditional): `src/blueprint/db/sqlite.ts`
+
+**Steps (TDD):**
+
+1. Reproduce failing contention via Tasks 1.1/1.2.
+2. Apply the narrowest fix at the shared DB boundary.
+3. Re-run all WAL tests to confirm deterministic green.
 
 **Acceptance:**
 
-- [ ] Tasks 1.1 + 1.2 green deterministically
-- [ ] If engine fix applied, root-cause documented in commit
+- [ ] All new WAL/concurrency tests pass
+- [ ] Any fix is localized to the shared SQLite owner files
+- [ ] No unrelated persistence/API work is bundled in
 
-#### [infra] Task 1.4: Wire WAL tests into CI
+#### [infra] Task 1.4: Wire WAL tests into the blocking verification lane
 
 **Status:** todo
 
 **Depends:** Task 1.3
 
-Add the new integration tests to the CI flow that runs on PRs touching
-`src/session-memory/`. Mark as required check.
+Add the new WAL test(s) to the blocking verification lane so future
+persistent ai-memory/session work cannot regress the shared SQLite
+contract.
 
 **Files:**
 
-- Modify: `.github/workflows/ci.yml` or equivalent
-- Modify: any `vitest.config.ts` integration-test glob
+- Modify: CI workflow / test entry wiring that owns blocking verification
+
+**Steps (TDD):**
+
+1. Add the new test file(s) to the relevant CI/test entry.
+2. Verify they run in the same lane as the other blocking reliability
+   checks.
 
 **Acceptance:**
 
-- [ ] PR check fails if either WAL test fails
-- [ ] PR check completes within current CI time budget
-
----
+- [ ] WAL tests are part of a blocking verification lane
+- [ ] CI fails if shared SQLite concurrency regresses
 
 ## Verification Gates
 
@@ -167,35 +206,33 @@ Add the new integration tests to the CI flow that runs on PRs touching
 | --- | --- | --- |
 | Type safety | `ak_typecheck` | Zero errors |
 | Lint | `ak_lint` (scoped) | Zero violations |
-| Unit tests | `ak_test` (scoped) | All pass |
-| Integration | new WAL multi-window tests | 10/10 deterministic green |
-| Full QA | `ak_qa` | Pass |
+| Tests | `ak_test` (scoped) | All WAL tests pass |
+| Full hook+sqlite slice | targeted blocking lane | Green |
 
 ## Cross-Plan References
 
 | Type | Blueprint | Relationship |
 | --- | --- | --- |
-| Downstream | `replace-context-mode-plugin-with-v1-session-memory-mit-stack-...` (BP B) | BP B's `depends_on` includes this BP per Codex outside-voice 2026-05-14 |
+| Downstream | `replace-context-mode-plugin-with-v1-session-memory-mit-stack-...` | Future ai-memory persistence must build on this validated SQLite boundary |
 
-## Non-goals
+## Edge Cases and Error Handling
 
-- Designing a new concurrency primitive — this BP validates the
-  existing WAL+busy_timeout config is sufficient (or fixes it minimally
-  if not)
-- Cross-machine concurrency (network FS, etc.) — out of scope; SQLite
-  WAL is single-machine
-- Performance regression testing — separate concern
+| Edge Case | Risk | Solution | Task |
+| --- | --- | --- | --- |
+| Child-process test is flaky | False confidence / noisy CI | Keep write counts deterministic and fail loudly on the first mismatch | 1.1 |
+| Existing tables are too coupled for clean write stress | Test becomes brittle | Use the smallest migrated table with append-only semantics | 1.1 |
+| Contention fix requires more than a small connection tweak | Scope explosion | Stop, document, and split follow-up engine work | 1.3 |
 
 ## Risks
 
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
-| Test reveals deeper concurrency bug requiring schema change | Engine rework expands scope | Document and split into a follow-up BP if needed; do not paper over |
-| `child_process.spawn` integration test flaky in CI | Reliability gate becomes noise | Root-cause flake; do not raise test bounds (per `no-timeout-as-fix.md`) |
+| Shared SQLite hardening reveals deeper architectural contention | Medium | Keep this BP limited to proving/fixing the owner boundary; defer broader persistence design to BP B |
+| CI runtime grows noticeably | Low | Keep WAL suite focused and table-targeted |
 
 ## Technology Choices
 
 | Component | Technology | Version | Why |
 | --- | --- | --- | --- |
-| Process isolation | `child_process.spawn` | Node 24+ | Real multi-process semantics; not worker_threads |
-| Test framework | vitest | repo pinned | Existing |
+| Process isolation | `child_process.spawn` | Node/Bun current repo runtime | Real multi-process semantics |
+| SQLite boundary | `bun:sqlite` + test shim | current repo | Matches the actual shared DB owner |

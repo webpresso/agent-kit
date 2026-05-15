@@ -73,7 +73,7 @@ const PRESETS = [
   'vision',
 ] as const
 type Preset = (typeof PRESETS)[number]
-const DEFAULT_PRESETS: readonly Preset[] = ['context-mode', 'omx', 'gstack', 'vision', 'rtk']
+const DEFAULT_PRESETS: readonly Preset[] = ['omx', 'gstack', 'vision', 'rtk']
 const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested')
 
 function parsePresets(withFlag: string | undefined): Preset[] {

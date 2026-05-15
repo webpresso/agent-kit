@@ -84,6 +84,24 @@ npm install -g webpresso && wp setup
 
 Requires Node `>=24` and bun on the machine that runs the CLI or Claude Code plugin.
 
+## context-mode is now opt-in
+
+`wp setup` / `ak setup` no longer wires `context-mode` by default. This keeps the
+default setup MIT-only and lets consumers avoid the ELv2 plugin unless they
+explicitly need the `ctx_*` tools.
+
+If you still want the `context-mode` MCP server + Codex hooks + OpenCode config,
+opt in explicitly:
+
+```bash
+wp setup --with context-mode
+```
+
+Migration details:
+- [docs/migration/context-mode-opt-in.md](./docs/migration/context-mode-opt-in.md)
+- The longer-horizon MIT replacement work remains tracked separately under the
+  session-memory blueprints.
+
 ## What changes after `ak setup`
 
 ### 1. Multi-IDE rule sync — no more drift
