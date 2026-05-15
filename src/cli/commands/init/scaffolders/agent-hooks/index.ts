@@ -9,6 +9,7 @@
  * Runs by default on every `ak setup`.
  */
 import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 import { type MergeOptions, type MergeResult, patchJsonFile } from '#cli/commands/init/merge'
@@ -25,14 +26,17 @@ import {
   type SkillHook,
 } from './skill-hooks.js'
 
-// Claude Code uses $CLAUDE_PROJECT_DIR; Codex runs from repo root so relative path works.
+// Claude Code uses $CLAUDE_PROJECT_DIR. Codex hook runners can execute while the
+// active session cwd points at a sibling repo, so Codex hook commands must be
+// path-stable and not depend on the caller's cwd.
 //
 // CC_BIN wraps the command in a guard so it exits 0 gracefully when node_modules
 // hasn't been installed yet (e.g. a fresh worktree before `pnpm install` completes).
 // Without the guard every hook fires an error on first session start in new worktrees.
 const CC_BIN = (name: string) =>
   `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}" || true`
-const CODEX_BIN = (name: string) => `./node_modules/.bin/${name}`
+const CODEX_BIN = (repoRoot: string) => (name: string) =>
+  `"${resolve(repoRoot, 'node_modules', '.bin', name)}"`
 
 type HookEntry = { type: string; command: string; timeout?: number }
 type HookGroup = { matcher?: string; hooks: HookEntry[] }
@@ -256,6 +260,30 @@ const CLAUDE_MATCHERS: MatcherSet = {
   postToolUse: 'Write|Edit|MultiEdit',
 }
 
+const AGENT_KIT_CLAUDE_PLUGIN_ID = 'agent-kit@agent-kit'
+
+function defaultClaudeUserSettingsPath(): string {
+  return join(process.env.HOME || homedir(), '.claude', 'settings.json')
+}
+
+function patchClaudeUserSettings(existing: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...existing }
+  const enabledPluginsValue = next.enabledPlugins
+  const enabledPlugins =
+    enabledPluginsValue && typeof enabledPluginsValue === 'object' && !Array.isArray(enabledPluginsValue)
+      ? { ...(enabledPluginsValue as Record<string, unknown>) }
+      : {}
+
+  enabledPlugins[AGENT_KIT_CLAUDE_PLUGIN_ID] = true
+  next.enabledPlugins = enabledPlugins
+
+  if (next.disableAllHooks === true) {
+    next.disableAllHooks = false
+  }
+
+  return next
+}
+
 function patchClaudeSettings(
   existing: Record<string, unknown>,
   skillHooks: readonly SkillHook[],
@@ -320,11 +348,11 @@ const CODEX_MATCHERS: MatcherSet = {
   postToolUse: 'Edit|Write',
 }
 
-function patchCodexHooks(existing: Record<string, unknown>): Record<string, unknown> {
+function patchCodexHooks(existing: Record<string, unknown>, repoRoot: string): Record<string, unknown> {
   const migrated = hoistTopLevelEvents(existing)
   const existingHooks = (migrated.hooks ?? {}) as HooksMap
   const agentKit = buildAgentKitHookGroups({
-    resolveBin: CODEX_BIN,
+    resolveBin: CODEX_BIN(repoRoot),
     matchers: CODEX_MATCHERS,
   })
   return {
@@ -396,6 +424,7 @@ export interface ScaffoldAgentHooksInput {
 export interface ScaffoldAgentHooksResult {
   claude: MergeResult
   codex: MergeResult
+  claudeUser: MergeResult
 }
 
 // Fast existence check — no network, no install, sub-10ms.
@@ -446,7 +475,12 @@ export async function scaffoldAgentHooks(
     ),
     codex: patchJsonFile(
       join(input.repoRoot, '.codex', 'hooks.json'),
-      (existing) => patchCodexHooks(existing),
+      (existing) => patchCodexHooks(existing, input.repoRoot),
+      input.options,
+    ),
+    claudeUser: patchJsonFile(
+      defaultClaudeUserSettingsPath(),
+      (existing) => patchClaudeUserSettings(existing),
       input.options,
     ),
   }

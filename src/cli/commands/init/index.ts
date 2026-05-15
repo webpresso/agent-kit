@@ -551,6 +551,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
       ...(agentsMdResult ? [agentsMdResult] : []),
       agentHooksResult.claude,
       agentHooksResult.codex,
+      agentHooksResult.claudeUser,
       {
         targetPath: auditHooksResult.preCommitPath,
         action: auditHooksResult.action === 'appended' ? 'overwritten' : auditHooksResult.action,

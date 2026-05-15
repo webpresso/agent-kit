@@ -1,4 +1,5 @@
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -10,19 +11,28 @@ import {
   trustCodexAgentKitHooksForRepo,
 } from './index.js'
 
+function codexBinCommand(repoRoot: string, name: string): string {
+  return `"${join(repoRoot, 'node_modules', '.bin', name)}"`
+}
+
 describe('scaffoldAgentHooks', () => {
   let repoRoot: string
   let previousCodexHome: string | undefined
+  let previousHome: string | undefined
 
   beforeEach(() => {
     repoRoot = mkdtempSync(join(tmpdir(), 'ak-agent-hooks-'))
     previousCodexHome = process.env.CODEX_HOME
+    previousHome = process.env.HOME
+    process.env.HOME = join(repoRoot, '.home')
     process.env.CODEX_HOME = join(repoRoot, '.codex-home')
   })
 
   afterEach(async () => {
     if (previousCodexHome === undefined) delete process.env.CODEX_HOME
     else process.env.CODEX_HOME = previousCodexHome
+    if (previousHome === undefined) delete process.env.HOME
+    else process.env.HOME = previousHome
     await import('node:fs/promises').then((fs) => fs.rm(repoRoot, { recursive: true, force: true }))
   })
 
@@ -75,6 +85,48 @@ describe('scaffoldAgentHooks', () => {
     }
 
     expect(settings.worktree.symlinkDirectories).toContain('.claude')
+  })
+
+  it('creates user Claude settings that enable the agent-kit plugin', async () => {
+    await scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const settings = JSON.parse(
+      readFileSync(join(repoRoot, '.home', '.claude', 'settings.json'), 'utf8'),
+    ) as {
+      enabledPlugins: Record<string, boolean>
+    }
+
+    expect(settings.enabledPlugins['agent-kit@agent-kit']).toBe(true)
+  })
+
+  it('re-enables Claude hooks in user settings without dropping unrelated plugin state', async () => {
+    const userSettingsPath = join(repoRoot, '.home', '.claude', 'settings.json')
+    mkdirSync(join(repoRoot, '.home', '.claude'), { recursive: true })
+    writeFileSync(
+      userSettingsPath,
+      JSON.stringify(
+        {
+          disableAllHooks: true,
+          enabledPlugins: {
+            'playwright@claude-plugins-official': false,
+            'agent-kit@agent-kit': false,
+          },
+        },
+        null,
+        2,
+      ),
+    )
+
+    await scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const settings = JSON.parse(readFileSync(userSettingsPath, 'utf8')) as {
+      disableAllHooks: boolean
+      enabledPlugins: Record<string, boolean>
+    }
+
+    expect(settings.disableAllHooks).toBe(false)
+    expect(settings.enabledPlugins['agent-kit@agent-kit']).toBe(true)
+    expect(settings.enabledPlugins['playwright@claude-plugins-official']).toBe(false)
   })
 
   it('preserves existing symlinkDirectories and adds .claude additively', async () => {
@@ -132,7 +184,7 @@ describe('scaffoldAgentHooks', () => {
 
     expect(claudeCommands.some((cmd) => cmd.includes('ak-check-dev-link'))).toBe(true)
     expect(claudeCommands.some((cmd) => cmd.includes('$CLAUDE_PROJECT_DIR'))).toBe(true)
-    expect(codexCommands).toContain('./node_modules/.bin/ak-check-dev-link')
+    expect(codexCommands).toContain(codexBinCommand(repoRoot, 'ak-check-dev-link'))
   })
 
   it('dedupes pre-existing wrapped script hooks against the raw incoming form', async () => {
@@ -665,7 +717,51 @@ hooks:
     }
     const sessionCmds = codex.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))
     expect(sessionCmds.some((c) => c.includes('omx/codex-native-hook'))).toBe(true)
-    expect(sessionCmds.some((c) => c.includes('ak-sessionstart-routing'))).toBe(true)
+    expect(sessionCmds).toContain(codexBinCommand(repoRoot, 'ak-sessionstart-routing'))
+  })
+
+  it('writes Codex hook commands as absolute node_modules bin paths', async () => {
+    await scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
+      hooks: {
+        SessionStart: Array<{ hooks: Array<{ command: string }> }>
+        PreToolUse: Array<{ hooks: Array<{ command: string }> }>
+        PostToolUse: Array<{ hooks: Array<{ command: string }> }>
+      }
+    }
+
+    const sessionCommands = codex.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))
+    const preToolCommands = codex.hooks.PreToolUse.flatMap((g) => g.hooks.map((h) => h.command))
+    const postToolCommands = codex.hooks.PostToolUse.flatMap((g) => g.hooks.map((h) => h.command))
+
+    expect(sessionCommands).toContain(codexBinCommand(repoRoot, 'ak-sessionstart-routing'))
+    expect(preToolCommands).toContain(codexBinCommand(repoRoot, 'ak-pretool-guard'))
+    expect(postToolCommands).toContain(codexBinCommand(repoRoot, 'ak-post-tool'))
+  })
+
+  it('keeps Codex hook commands executable from a sibling cwd instead of failing with 127', async () => {
+    await scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const binPath = join(repoRoot, 'node_modules', '.bin', 'ak-pretool-guard')
+    mkdirSync(join(repoRoot, 'node_modules', '.bin'), { recursive: true })
+    writeFileSync(binPath, '#!/bin/sh\nprintf "{}\\n"\n', 'utf8')
+    chmodSync(binPath, 0o755)
+
+    const siblingCwd = mkdtempSync(join(repoRoot, 'sibling-'))
+    const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
+      hooks: { PreToolUse: Array<{ hooks: Array<{ command: string }> }> }
+    }
+    const command = codex.hooks.PreToolUse[0]?.hooks[0]?.command
+
+    const result = spawnSync('sh', ['-lc', command ?? ''], {
+      cwd: siblingCwd,
+      encoding: 'utf8',
+      input: '{}',
+    })
+
+    expect(command).toBe(codexBinCommand(repoRoot, 'ak-pretool-guard'))
+    expect(result.status).toBe(0)
   })
 })
 

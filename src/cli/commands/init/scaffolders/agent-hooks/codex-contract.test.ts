@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 
 import { CodexAppServerClient } from '../../../../../codex/app-server/client.js'
 import type { CommandHookMetadata } from '../../../../../codex/app-server/types.js'
+import { isAgentKitOwnedCodexHook } from './codex-ownership.js'
 import { scaffoldAgentHooks } from './index.js'
 
 const FORBIDDEN_LOCAL_HASH_SYMBOLS = [
@@ -63,9 +64,7 @@ function agentKitCodexHooks(hooks: unknown[], sourcePath: string): CommandHookMe
     const candidate = hook as Partial<CommandHookMetadata>
     return (
       candidate.handlerType === 'command' &&
-      typeof candidate.command === 'string' &&
-      candidate.command.startsWith('./node_modules/.bin/ak-') &&
-      resolve(String(candidate.sourcePath)) === sourcePath
+      isAgentKitOwnedCodexHook(candidate, [sourcePath])
     )
   })
 }
