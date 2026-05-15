@@ -22,7 +22,7 @@
 import { z } from 'zod'
 
 import type { ToolDescriptor, ToolHandlerResult } from '#mcp/auto-discover'
-import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
+import { createSummaryOutputSchema, createSummaryResult, failureSchema } from './_shared/result.js'
 import { detectUiChanges } from './_shared/ui-detection.js'
 import lintTool from './lint.js'
 import testTool from './test.js'
@@ -43,11 +43,27 @@ const inputSchema = z.object({
 
 export type AkQaInput = z.infer<typeof inputSchema>
 
+const qaLeafSchema = z
+  .object({
+    passed: z.boolean(),
+    summary: z.string(),
+    exitCode: z.number().optional(),
+    backend: z.string().optional(),
+    failures: z.array(failureSchema),
+    tier: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+    bytes: z.number().optional(),
+    tokensSaved: z.number().optional(),
+    timedOut: z.boolean().optional(),
+    aborted: z.boolean().optional(),
+    unwrapError: z.string().optional(),
+  })
+  .strict()
+
 const outputSchema = createSummaryOutputSchema({
   details: z.object({
-    lint: z.record(z.string(), z.unknown()),
-    typecheck: z.record(z.string(), z.unknown()),
-    test: z.record(z.string(), z.unknown()),
+    lint: qaLeafSchema,
+    typecheck: qaLeafSchema,
+    test: qaLeafSchema,
   }),
 })
 
@@ -61,12 +77,16 @@ interface CompactLeafResult {
   readonly summary: string
   readonly exitCode?: number
   readonly backend?: string
-  readonly failures: unknown[]
+  readonly failures: Array<z.infer<typeof failureSchema>>
   readonly tier?: number
   readonly bytes?: number
   readonly tokensSaved?: number
+  readonly timedOut?: boolean
+  readonly aborted?: boolean
   readonly unwrapError?: string
 }
+
+const QA_FAILURE_LIMIT = 10
 
 /**
  * Sub-tool handlers return MCP `{content: [{type: 'text', text: <json>}]}`.
@@ -105,6 +125,31 @@ function unwrap(result: ToolHandlerResult): SubResultShape {
   return parsed as SubResultShape
 }
 
+function normalizeFailureEntry(
+  entry: unknown,
+  fallbackMessage: string,
+): z.infer<typeof failureSchema> {
+  if (typeof entry === 'string') return { message: entry }
+
+  if (entry && typeof entry === 'object') {
+    const record = entry as Record<string, unknown>
+    const message =
+      typeof record.message === 'string'
+        ? record.message
+        : typeof record.summary === 'string'
+          ? record.summary
+          : fallbackMessage
+
+    const normalized: z.infer<typeof failureSchema> = { message }
+    if (typeof record.file === 'string') normalized.file = record.file
+    if (typeof record.line === 'number') normalized.line = record.line
+    if (typeof record.code === 'string') normalized.code = record.code
+    return normalized
+  }
+
+  return { message: fallbackMessage }
+}
+
 function toCompactLeaf(result: SubResultShape): CompactLeafResult {
   const details = result.details
   const failures: unknown[] = Array.isArray(result.failures)
@@ -118,11 +163,14 @@ function toCompactLeaf(result: SubResultShape): CompactLeafResult {
             ? ((details as { errors?: unknown[] }).errors ?? [])
             : []
       : []
+  const fallbackMessage = typeof result.summary === 'string' ? result.summary : 'failed'
   const normalizedFailures =
     failures.length > 0
       ? failures
+          .slice(0, QA_FAILURE_LIMIT)
+          .map((failure) => normalizeFailureEntry(failure, fallbackMessage))
       : result.passed === false
-        ? [{ message: typeof result.summary === 'string' ? result.summary : 'failed' }]
+        ? [normalizeFailureEntry(undefined, fallbackMessage)]
         : []
 
   return {
@@ -134,6 +182,8 @@ function toCompactLeaf(result: SubResultShape): CompactLeafResult {
     ...(typeof result.tier === 'number' ? { tier: result.tier } : {}),
     ...(typeof result.bytes === 'number' ? { bytes: result.bytes } : {}),
     ...(typeof result.tokensSaved === 'number' ? { tokensSaved: result.tokensSaved } : {}),
+    ...(typeof result.timedOut === 'boolean' ? { timedOut: result.timedOut } : {}),
+    ...(typeof result.aborted === 'boolean' ? { aborted: result.aborted } : {}),
     ...(typeof result.unwrapError === 'string' ? { unwrapError: result.unwrapError } : {}),
   }
 }

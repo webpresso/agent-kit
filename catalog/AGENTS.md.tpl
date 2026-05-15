@@ -11,10 +11,12 @@
   - {{DURABLE_PLANNING_ROOT}}: defaults to `.agent/planning/`. Override via
     .agent-kitrc.json.
 
-  After rendering, this file belongs to the consumer repo. Agent Kit does not
-  rewrite it on re-runs unless `ak setup --overwrite` is used.
+  Managed sections in this file are refreshed by agent-kit on `ak sync`.
+  Repo-specific edits belong only inside `user-owned` blocks; agent-kit
+  preserves those blocks verbatim when it rewrites managed content.
 -->
 
+<!-- >>> managed by @webpresso/agent-kit (operating-contract) -->
 # Operating Contract
 
 This is the shared working agreement for contributors and coding agents in this
@@ -72,7 +74,16 @@ If a gate fails, fix the root cause or record the blocker with evidence.
 Commit messages, PR descriptions, and decision records should explain why the
 change exists, what tradeoffs were made, and what was verified. Record durable
 architecture decisions in this repo's ADR or planning location if one exists.
+<!-- <<< managed by @webpresso/agent-kit (operating-contract) -->
 
+<!-- >>> user-owned (repo-customizations) -->
+## Repo-specific customizations
+
+Add repo-local instructions, preferences, and exceptions here. Content inside
+this block is preserved verbatim across `ak sync` runs.
+<!-- <<< user-owned (repo-customizations) -->
+
+<!-- >>> managed by @webpresso/agent-kit (planning-and-release) -->
 ## Safety boundaries
 
 - Do not commit secrets or credentials.
@@ -120,7 +131,7 @@ Full protocol: `.agent/rules/changeset-release.md`
 
 - No `../` parent-relative imports — use workspace deps + subpath exports.
 - No `.mjs` source files — write `.ts` (with Bun/Node shebang if needed).
-- `pnpm` only (`pnpm@10.x`). Run scripts via `pnpm run <script>`.
+- `pnpm` only (`pnpm@11.x`). Run scripts via `pnpm run <script>`.
 - All packages: `"type": "module"`, `publishConfig` → GitHub Packages registry.
 - Auth: `GH_PACKAGES_TOKEN` env var consumed by `.npmrc`. Never hardcode tokens.
 
@@ -133,7 +144,10 @@ Full details: `.agent/rules/package-conventions.md`
 ## Tech stack
 
 {{TECH_STACK}}
+<!-- <<< managed by @webpresso/agent-kit (planning-and-release) -->
 
+<!-- >>> user-owned (escalation-map) -->
 ## Escalation map
 
 {{ESCALATION_MAP}}
+<!-- <<< user-owned (escalation-map) -->

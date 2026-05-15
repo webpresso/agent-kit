@@ -27,14 +27,11 @@ const config = {
   mutator: {
     excludedMutations: [],
   },
-  // vitest-runner@9.6.1 crashes (TypeError: Cannot convert object to primitive value
-  // in errorToString) when vitest returns non-serializable test errors. Use command
-  // runner until the upstream bug is fixed in vitest-runner.
-  testRunner: 'command',
-  commandRunner: {
-    command: 'pnpm exec vitest run --reporter=dot --config vitest.stryker.config.ts',
+  testRunner: 'vitest',
+  vitest: {
+    configFile: 'vitest.stryker.config.ts',
   },
-  coverageAnalysis: 'off',
+  coverageAnalysis: 'perTest',
   ignoreStatic: false,
   // inPlace:true — no sandbox copy overhead. The previous inPlace:false was added after
   // a mid-run pkill left source files instrumented; start clean and this is safe.

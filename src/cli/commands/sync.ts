@@ -15,6 +15,10 @@ import type { CAC } from 'cac'
 import { runUnifiedSync, type UnifiedSyncMismatch } from '#symlinker/unified-sync'
 import type { ContentKind } from '#content/loader'
 import { resolvePackageAsset } from '#utils/package-assets'
+import { defaultConfig, readConfig } from './init/config.js'
+import { detectConsumer } from './init/detect-consumer.js'
+import { scaffoldAgentsMd } from './init/scaffold-agents-md.js'
+import type { MergeResult } from './init/merge.js'
 
 interface SyncCommandOptions {
   kind?: string
@@ -38,6 +42,37 @@ function formatMismatches(mismatches: readonly UnifiedSyncMismatch[]): string {
   return mismatches.map((m) => `  - [${m.consumerId}] ${m.targetPath}: ${m.reason}`).join('\n')
 }
 
+function agentsResultToMismatch(result: MergeResult): UnifiedSyncMismatch | null {
+  switch (result.action) {
+    case 'identical':
+      return null
+    case 'created':
+    case 'overwritten':
+      return {
+        consumerId: 'agents-md',
+        targetPath: result.targetPath,
+        reason: 'managed AGENTS.md blocks drifted from the current agent-kit template',
+      }
+    case 'sidecar-written':
+      return {
+        consumerId: 'agents-md',
+        targetPath: result.targetPath,
+        reason:
+          'AGENTS.md has no managed block markers; merge the generated .new sidecar or rerun setup with overwrite once',
+      }
+    case 'skipped-dry':
+      return {
+        consumerId: 'agents-md',
+        targetPath: result.targetPath,
+        reason: result.sidecarPath
+          ? 'AGENTS.md has no managed block markers; merge the generated .new sidecar or rerun setup with overwrite once'
+          : 'managed AGENTS.md blocks would be refreshed',
+      }
+    default:
+      return null
+  }
+}
+
 export function registerSyncCommand(cli: CAC): void {
   cli
     .command('sync', 'Sync agent rules + skills across all supported host surfaces')
@@ -50,6 +85,17 @@ export function registerSyncCommand(cli: CAC): void {
       const check = options.check === true
 
       let result: ReturnType<typeof runUnifiedSync>
+      const consumer = detectConsumer(repoRoot)
+      if (!consumer) {
+        throw commandError('ak sync: could not detect the current git repo root.')
+      }
+      const agentsResult = scaffoldAgentsMd({
+        catalogDir: resolvePackageAsset('catalog'),
+        repoRoot,
+        consumer,
+        config: readConfig(repoRoot) ?? defaultConfig(),
+        options: { dryRun: check, overwrite: false },
+      })
       try {
         result = runUnifiedSync({
           catalogDir,
@@ -67,20 +113,27 @@ export function registerSyncCommand(cli: CAC): void {
         throw error
       }
 
+      const agentsMismatch =
+        agentsResult === null ? null : agentsResultToMismatch(agentsResult)
+      const combinedFixCount = result.fixCount + (agentsMismatch ? 1 : 0)
+      const combinedMismatches = agentsMismatch
+        ? [...result.mismatches, agentsMismatch]
+        : [...result.mismatches]
+
       if (check) {
-        if (result.fixCount > 0) {
-          const first = result.mismatches[0]
+        if (combinedFixCount > 0) {
+          const first = combinedMismatches[0]
           if (first) {
             console.error(`ak sync --check: drift detected at ${first.targetPath}`)
             console.error(`  reason: ${first.reason}`)
             console.error(`  consumer: ${first.consumerId}`)
-            if (result.mismatches.length > 1) {
-              console.error(`(${result.mismatches.length - 1} additional drift entries follow)`)
-              console.error(formatMismatches(result.mismatches.slice(1)))
+            if (combinedMismatches.length > 1) {
+              console.error(`(${combinedMismatches.length - 1} additional drift entries follow)`)
+              console.error(formatMismatches(combinedMismatches.slice(1)))
             }
             console.error('\nRun `ak sync` to repair, then commit the changes.')
           } else {
-            console.error(`ak sync --check: ${result.fixCount} drift items detected.`)
+            console.error(`ak sync --check: ${combinedFixCount} drift items detected.`)
           }
           return 1
         }
@@ -88,12 +141,12 @@ export function registerSyncCommand(cli: CAC): void {
         return 0
       }
 
-      if (result.fixCount === 0) {
+      if (combinedFixCount === 0) {
         console.log('Already up to date.')
         return 0
       }
 
-      console.log(`ak sync: wrote ${result.fixCount} entries.`)
+      console.log(`ak sync: wrote ${combinedFixCount} entries.`)
       console.log('Synced. Restart your IDE to load new rules/skills.')
       return 0
     })

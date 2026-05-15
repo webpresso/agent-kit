@@ -27,6 +27,7 @@ interface ChildProcessLike {
   readonly stdin: {
     write(chunk: string, callback?: (error?: Error | null) => void): boolean
     end(chunk?: string, callback?: () => void): void
+    on?(event: 'error', listener: (error: Error) => void): unknown
   }
   readonly stdout: NodeJS.ReadableStream
   readonly stderr?: NodeJS.ReadableStream | null
@@ -122,6 +123,12 @@ export class CodexAppServerClient implements CodexAppServerApi {
     })
     this.child.stderr?.on('data', (chunk) => {
       this.stderrBuffer = `${this.stderrBuffer}${String(chunk)}`.slice(-STDERR_TAIL_LIMIT)
+    })
+    // stdin EPIPE — surface as a transport failure rather than letting Node's
+    // default error handler bubble it up as an uncaught exception when the
+    // child exits before we finish writing the request line.
+    this.child.stdin.on?.('error', (error) => {
+      this.failTransport(new Error(`Codex app-server stdin error: ${error.message}`))
     })
     this.child.on('error', (error) => {
       this.failTransport(new Error(`Codex app-server transport error: ${error.message}`))

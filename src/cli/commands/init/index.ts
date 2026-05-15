@@ -30,6 +30,7 @@ import { resolveTier3Selection } from './prompts.js'
 import { scaffoldAgent, RENDERED_SKILLS, TIER1_SKILLS, TIER2_SKILLS } from './scaffold-agent.js'
 import { scaffoldAgentRules } from './scaffold-agent-rules.js'
 import { scaffoldAgentSkills } from './scaffold-agent-skills.js'
+import { scaffoldCatalogIgnore } from './scaffold-catalog-ignore.js'
 import { scaffoldAgentsMd } from './scaffold-agents-md.js'
 import { scaffoldBlueprints } from './scaffold-blueprints.js'
 import { scaffoldDocs } from './scaffold-docs.js'
@@ -45,6 +46,7 @@ import {
 import {
   scaffoldAgentHooks,
   trustCodexAgentKitHooksForRepo,
+  trustCodexPresetHooksForUser,
 } from './scaffolders/agent-hooks/index.js'
 import { scaffoldAuditHooks } from './scaffolders/audit-hooks/index.js'
 import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js'
@@ -252,6 +254,12 @@ export async function runInit(flags: InitFlags): Promise<number> {
       dryRun: options.dryRun,
       overwrite: options.overwrite,
     })
+    const catalogIgnoreReport = scaffoldCatalogIgnore({
+      cwd: consumer.repoRoot,
+      catalogDir,
+      dryRun: options.dryRun,
+      overwrite: options.overwrite,
+    })
 
     const baseKitResults = tier3Selection.includes('base-kit')
       ? scaffoldBaseKit({ catalogDir, repoRoot: consumer.repoRoot, options })
@@ -431,6 +439,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
     // clearing all `[hooks.state]` entries before rehydrating its own hooks.
     // Re-apply agent-kit's trust hashes after that possible cleanup.
     await trustCodexAgentKitHooksForRepo({ repoRoot: consumer.repoRoot, options })
+    await trustCodexPresetHooksForUser({ repoRoot: consumer.repoRoot, options })
 
     // Always upsert agent-kit's MCP entry into the user's codex config when
     // an install root is discoverable. Codex's config.toml is user-global, so
@@ -548,6 +557,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
       ...agentReport.results,
       ...agentRulesReport.results,
       ...agentSkillsReport.results,
+      ...catalogIgnoreReport.results,
       ...baseKitResults,
       ...docsResults,
       ...blueprintResults,

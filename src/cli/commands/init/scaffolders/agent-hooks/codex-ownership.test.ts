@@ -36,6 +36,18 @@ describe('isAgentKitOwnedCodexHook', () => {
     ).toBe(true)
   })
 
+  it('accepts guarded absolute node_modules bin commands', () => {
+    expect(
+      isAgentKitOwnedCodexHook(
+        ownedHook({
+          command:
+            '[ -x "/repo/node_modules/.bin/ak-post-tool" ] && "/repo/node_modules/.bin/ak-post-tool" || true',
+        }),
+        EXPECTED_SOURCE_PATHS,
+      ),
+    ).toBe(true)
+  })
+
   it('rejects arbitrary Bash and Python hook commands', () => {
     expect(
       isAgentKitOwnedCodexHook(

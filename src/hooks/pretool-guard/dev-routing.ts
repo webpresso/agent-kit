@@ -27,6 +27,7 @@ const ROUTING_RULES: RoutingRule[] = [
     prefixes: [
       'just qa',
       'pnpm qa',
+      'pnpm run qa',
       'vp exec markdownlint-cli2',
       'just lint-md',
       'pnpm exec markdownlint-cli2',
@@ -38,19 +39,40 @@ const ROUTING_RULES: RoutingRule[] = [
     tool: 'ak_qa',
   },
   {
-    prefixes: ['just test', 'pnpm test', 'pnpm exec vitest', 'vp exec vitest', 'vitest'],
+    prefixes: [
+      'just test',
+      'pnpm test',
+      'pnpm run test',
+      'pnpm exec vitest',
+      'vp exec vitest',
+      'vitest',
+    ],
     guidanceType: 'test',
     guidance: 'Use ak_test MCP tool instead — returns {passed, summary} not raw logs',
     tool: 'ak_test',
   },
   {
-    prefixes: ['just lint', 'pnpm lint', 'pnpm exec oxlint', 'vp exec oxlint', 'oxlint'],
+    prefixes: [
+      'just lint',
+      'pnpm lint',
+      'pnpm run lint',
+      'pnpm exec oxlint',
+      'vp exec oxlint',
+      'oxlint',
+    ],
     guidanceType: 'lint',
     guidance: 'Use ak_lint MCP tool instead — returns {passed, violations[]}',
     tool: 'ak_lint',
   },
   {
-    prefixes: ['just typecheck', 'pnpm typecheck', 'pnpm exec tsc', 'vp exec tsc', 'tsc'],
+    prefixes: [
+      'just typecheck',
+      'pnpm typecheck',
+      'pnpm run typecheck',
+      'pnpm exec tsc',
+      'vp exec tsc',
+      'tsc',
+    ],
     guidanceType: 'typecheck',
     guidance: 'Use ak_typecheck MCP tool instead — returns {passed, errors[]}',
     tool: 'ak_typecheck',
@@ -93,6 +115,16 @@ const SANDBOX_PREFIXES: Array<{ prefix: string; guidance: string }> = [
   { prefix: 'pnpm build', guidance: 'Use ctx_execute for build output' },
 ]
 
+const PNPM_DIRECTORY_PREFIX =
+  /^pnpm\s+(?:(?:--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)\s+)+(?<rest>.+)$/u
+
+export function normalizeCommandForRouting(command: string): string {
+  const trimmed = command.trim()
+  const match = PNPM_DIRECTORY_PREFIX.exec(trimmed)
+  const rest = match?.groups?.rest?.trim()
+  return rest ? `pnpm ${rest}` : trimmed
+}
+
 function matchesPrefix(command: string, prefix: string): boolean {
   return command === prefix || command.startsWith(prefix + ' ')
 }
@@ -119,7 +151,7 @@ function shouldThrottle(
 }
 
 export function routeCommand(command: string, sessionId?: string): RouteDecision | null {
-  const trimmed = command.trim()
+  const trimmed = normalizeCommandForRouting(command)
   if (!trimmed) return null
 
   // Explicit passthroughs (audits, safe git/nav commands)

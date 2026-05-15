@@ -6,7 +6,12 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { defaultConfig } from './config.js'
-import { renderAgentsMd, renderRepositoryMap, renderTechStack } from './scaffold-agents-md.js'
+import {
+  mergeRenderedAgentsMd,
+  renderAgentsMd,
+  renderRepositoryMap,
+  renderTechStack,
+} from './scaffold-agents-md.js'
 
 function makeConsumer(overrides: Partial<ConsumerContext> = {}): ConsumerContext {
   return {
@@ -111,7 +116,45 @@ describe('renderAgentsMd', () => {
     expect(rendered).toContain(
       'pnpm setup:agent runs ak setup, which scaffolds .agent/, AGENTS.md, hooks, and runs ak sync',
     )
+    expect(rendered).toContain('<!-- >>> managed by @webpresso/agent-kit (operating-contract) -->')
+    expect(rendered).toContain('<!-- >>> user-owned (repo-customizations) -->')
     expect(rendered).not.toContain('ak symlink sync')
     expect(rendered).not.toContain('omx setup --scope project')
+  })
+
+  it('preserves user-owned blocks while refreshing managed content', () => {
+    const rendered = [
+      '<!-- >>> managed by @webpresso/agent-kit (operating-contract) -->',
+      '# Managed',
+      '<!-- <<< managed by @webpresso/agent-kit (operating-contract) -->',
+      '<!-- >>> user-owned (repo-customizations) -->',
+      'default custom text',
+      '<!-- <<< user-owned (repo-customizations) -->',
+      '<!-- >>> user-owned (escalation-map) -->',
+      'default escalation text',
+      '<!-- <<< user-owned (escalation-map) -->',
+      '',
+    ].join('\n')
+    const existing = [
+      '<!-- >>> managed by @webpresso/agent-kit (operating-contract) -->',
+      '# Old managed',
+      '<!-- <<< managed by @webpresso/agent-kit (operating-contract) -->',
+      '<!-- >>> user-owned (repo-customizations) -->',
+      'keep my repo customizations',
+      '<!-- <<< user-owned (repo-customizations) -->',
+      '<!-- >>> user-owned (escalation-map) -->',
+      'keep my escalation map',
+      '<!-- <<< user-owned (escalation-map) -->',
+      '',
+    ].join('\n')
+
+    const merged = mergeRenderedAgentsMd(rendered, existing)
+    expect(merged).not.toBeNull()
+    expect(merged).toContain('# Managed')
+    expect(merged).not.toContain('# Old managed')
+    expect(merged).toContain('keep my repo customizations')
+    expect(merged).toContain('keep my escalation map')
+    expect(merged).not.toContain('default custom text')
+    expect(merged).not.toContain('default escalation text')
   })
 })

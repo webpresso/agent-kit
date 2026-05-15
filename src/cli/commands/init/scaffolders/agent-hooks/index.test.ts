@@ -9,10 +9,12 @@ import {
   hoistTopLevelEvents,
   scaffoldAgentHooks,
   trustCodexAgentKitHooksForRepo,
+  trustCodexPresetHooksForUser,
 } from './index.js'
 
 function codexBinCommand(repoRoot: string, name: string): string {
-  return `"${join(repoRoot, 'node_modules', '.bin', name)}"`
+  const binPath = join(repoRoot, 'node_modules', '.bin', name)
+  return `[ -x "${binPath}" ] && "${binPath}" || true`
 }
 
 const AGENT_KIT_HOOK_BINS = [
@@ -498,6 +500,134 @@ describe('scaffoldAgentHooks', () => {
     expect(batchWrites).toHaveLength(1)
   })
 
+  it('can refresh trusted hashes for preset-owned global Codex hooks after setup rewrites ~/.codex/hooks.json', async () => {
+    const globalHooksPath = join(repoRoot, '.codex-home', 'hooks.json')
+    mkdirSync(join(repoRoot, '.codex-home'), { recursive: true })
+    writeFileSync(globalHooksPath, JSON.stringify({ hooks: {} }, null, 2))
+
+    const { api, batchWrites, hooksListCalls } = createFakeCodexAppServer([
+      {
+        data: [
+          {
+            cwd: repoRoot,
+            hooks: [
+              {
+                key: `${globalHooksPath}:pre_tool_use:0:0`,
+                eventName: 'pre_tool_use',
+                handlerType: 'command',
+                matcher: 'Bash',
+                command: 'context-mode hook codex pretooluse',
+                timeoutSec: 5,
+                statusMessage: null,
+                sourcePath: globalHooksPath,
+                source: 'user',
+                pluginId: null,
+                displayOrder: 0,
+                enabled: true,
+                isManaged: false,
+                currentHash: 'sha256:ctx123',
+                trustStatus: 'modified',
+              },
+              {
+                key: `${globalHooksPath}:pre_tool_use:1:0`,
+                eventName: 'pre_tool_use',
+                handlerType: 'command',
+                matcher: 'Bash',
+                command: 'node "/tmp/oh-my-codex/dist/scripts/codex-native-hook.js"',
+                timeoutSec: 5,
+                statusMessage: null,
+                sourcePath: globalHooksPath,
+                source: 'user',
+                pluginId: null,
+                displayOrder: 1,
+                enabled: true,
+                isManaged: false,
+                currentHash: 'sha256:omx123',
+                trustStatus: 'modified',
+              },
+            ],
+            warnings: [],
+            errors: [],
+          },
+        ],
+      },
+      {
+        data: [
+          {
+            cwd: repoRoot,
+            hooks: [
+              {
+                key: `${globalHooksPath}:pre_tool_use:0:0`,
+                eventName: 'pre_tool_use',
+                handlerType: 'command',
+                matcher: 'Bash',
+                command: 'context-mode hook codex pretooluse',
+                timeoutSec: 5,
+                statusMessage: null,
+                sourcePath: globalHooksPath,
+                source: 'user',
+                pluginId: null,
+                displayOrder: 0,
+                enabled: true,
+                isManaged: false,
+                currentHash: 'sha256:ctx123',
+                trustStatus: 'trusted',
+              },
+              {
+                key: `${globalHooksPath}:pre_tool_use:1:0`,
+                eventName: 'pre_tool_use',
+                handlerType: 'command',
+                matcher: 'Bash',
+                command: 'node "/tmp/oh-my-codex/dist/scripts/codex-native-hook.js"',
+                timeoutSec: 5,
+                statusMessage: null,
+                sourcePath: globalHooksPath,
+                source: 'user',
+                pluginId: null,
+                displayOrder: 1,
+                enabled: true,
+                isManaged: false,
+                currentHash: 'sha256:omx123',
+                trustStatus: 'trusted',
+              },
+            ],
+            warnings: [],
+            errors: [],
+          },
+        ],
+      },
+    ])
+
+    await trustCodexPresetHooksForUser({
+      repoRoot,
+      options: {},
+      createCodexAppServer: async () => api,
+    })
+
+    expect(hooksListCalls).toStrictEqual([[repoRoot], [repoRoot]])
+    expect(batchWrites).toStrictEqual([
+      {
+        edits: [
+          {
+            keyPath: 'hooks.state',
+            value: {
+              [`${globalHooksPath}:pre_tool_use:0:0`]: {
+                enabled: true,
+                trusted_hash: 'sha256:ctx123',
+              },
+              [`${globalHooksPath}:pre_tool_use:1:0`]: {
+                enabled: true,
+                trusted_hash: 'sha256:omx123',
+              },
+            },
+            mergeStrategy: 'upsert',
+          },
+        ],
+        reloadUserConfig: true,
+      },
+    ])
+  })
+
   it('uses MultiEdit in Claude PreToolUse and PostToolUse matchers', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {} })
 
@@ -707,6 +837,68 @@ hooks:
     expect(sessionAkCount).toBe(1)
   })
 
+  it('rewrites legacy run-agent-kit-bin Codex commands to the guarded installed-bin form without duplicates', async () => {
+    const codexPath = join(repoRoot, '.codex', 'hooks.json')
+    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
+    const legacyRunnerPath = join(repoRoot, 'apps/scripts/src/maintenance/run-agent-kit-bin.ts')
+    writeFileSync(
+      codexPath,
+      JSON.stringify(
+        {
+          hooks: {
+            SessionStart: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command: `cd "${repoRoot}" && "/opt/homebrew/bin/bun" "${legacyRunnerPath}" ak-sessionstart-routing`,
+                    timeout: 5,
+                  },
+                ],
+              },
+            ],
+            PreToolUse: [
+              {
+                matcher: 'Bash|Edit|Write',
+                hooks: [
+                  {
+                    type: 'command',
+                    command: `cd "${repoRoot}" && "/opt/homebrew/bin/bun" "${legacyRunnerPath}" ak-pretool-guard`,
+                    timeout: 5,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+
+    await scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const codex = JSON.parse(readFileSync(codexPath, 'utf8')) as {
+      hooks: {
+        SessionStart: Array<{ hooks: Array<{ command: string }> }>
+        PreToolUse: Array<{ hooks: Array<{ command: string }> }>
+      }
+    }
+    const sessionCommands = codex.hooks.SessionStart.flatMap((group) =>
+      group.hooks.map((hook) => hook.command),
+    )
+    const preToolCommands = codex.hooks.PreToolUse.flatMap((group) =>
+      group.hooks.map((hook) => hook.command),
+    )
+
+    expect(sessionCommands).toContain(codexBinCommand(repoRoot, 'ak-sessionstart-routing'))
+    expect(preToolCommands).toContain(codexBinCommand(repoRoot, 'ak-pretool-guard'))
+    expect(sessionCommands.filter((command) => command.includes('ak-sessionstart-routing'))).toHaveLength(1)
+    expect(preToolCommands.filter((command) => command.includes('ak-pretool-guard'))).toHaveLength(1)
+    expect(sessionCommands.some((command) => command.includes('run-agent-kit-bin.ts'))).toBe(false)
+    expect(preToolCommands.some((command) => command.includes('run-agent-kit-bin.ts'))).toBe(false)
+  })
+
   it('preserves wrapped Codex hooks (e.g. OMX entries) and adds ak-* alongside', async () => {
     const codexPath = join(repoRoot, '.codex', 'hooks.json')
     mkdirSync(join(repoRoot, '.codex'), { recursive: true })
@@ -756,6 +948,28 @@ hooks:
     expect(sessionCommands).toContain(codexBinCommand(repoRoot, 'ak-sessionstart-routing'))
     expect(preToolCommands).toContain(codexBinCommand(repoRoot, 'ak-pretool-guard'))
     expect(postToolCommands).toContain(codexBinCommand(repoRoot, 'ak-post-tool'))
+  })
+
+  it('gracefully no-ops Codex hook commands before node_modules bins exist instead of failing with 127', async () => {
+    await scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const siblingCwd = mkdtempSync(join(repoRoot, 'codex-missing-bins-'))
+    const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
+      hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
+    }
+
+    const commands = ['SessionStart', 'PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop']
+      .flatMap((event) => (codex.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)))
+
+    expect(commands.length).toBeGreaterThan(0)
+    for (const command of commands) {
+      const result = spawnSync('sh', ['-lc', command], {
+        cwd: siblingCwd,
+        encoding: 'utf8',
+        env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+      })
+      expect(result.status, command).toBe(0)
+    }
   })
 
   it('keeps Codex hook commands executable from a sibling cwd instead of failing with 127', async () => {

@@ -304,6 +304,38 @@ describe('ak init end-to-end', () => {
     expect(existsSync(join(repo, 'AGENTS.md.new'))).toBe(true)
   })
 
+  it('refreshes managed AGENTS blocks in place while preserving user-owned blocks', async () => {
+    writeFileSync(
+      join(repo, 'AGENTS.md'),
+      [
+        '<!-- >>> managed by @webpresso/agent-kit (operating-contract) -->',
+        '# Old heading',
+        '<!-- <<< managed by @webpresso/agent-kit (operating-contract) -->',
+        '<!-- >>> user-owned (repo-customizations) -->',
+        'Keep this customization',
+        '<!-- <<< user-owned (repo-customizations) -->',
+        '<!-- >>> managed by @webpresso/agent-kit (planning-and-release) -->',
+        'Old planning block',
+        '<!-- <<< managed by @webpresso/agent-kit (planning-and-release) -->',
+        '<!-- >>> user-owned (escalation-map) -->',
+        'Keep this escalation map',
+        '<!-- <<< user-owned (escalation-map) -->',
+        '',
+      ].join('\n'),
+    )
+
+    const code = await runInit({ cwd: repo, yes: true })
+
+    expect(code).toBe(0)
+    const body = readFileSync(join(repo, 'AGENTS.md'), 'utf8')
+    expect(body).toContain('# Operating Contract')
+    expect(body).toContain('Keep this customization')
+    expect(body).toContain('Keep this escalation map')
+    expect(body).not.toContain('# Old heading')
+    expect(body).not.toContain('Old planning block')
+    expect(existsSync(join(repo, 'AGENTS.md.new'))).toBe(false)
+  })
+
   it('replaces existing AGENTS.md when --overwrite is passed', async () => {
     writeFileSync(join(repo, 'AGENTS.md'), '# old')
     const code = await runInit({ cwd: repo, yes: true, overwrite: true })

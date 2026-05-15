@@ -1,5 +1,7 @@
 import { normalize } from 'node:path'
 
+import type { CommandHookMetadata } from '#codex/app-server/types.js'
+
 export const KNOWN_AGENT_KIT_CODEX_BINS = [
   'ak-sessionstart-routing',
   'ak-check-dev-link',
@@ -13,6 +15,8 @@ type KnownAgentKitCodexBin = (typeof KNOWN_AGENT_KIT_CODEX_BINS)[number]
 
 const KNOWN_AGENT_KIT_CODEX_BIN_SET = new Set<string>(KNOWN_AGENT_KIT_CODEX_BINS)
 const NODE_MODULES_BIN_PATTERN = /^(?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+)$/u
+const GUARDED_NODE_MODULES_BIN_PATTERN =
+  /^\[ -x (["']?)((?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+))\1 \] && \1\2\1 \|\| true$/u
 
 export interface CodexHookOwnershipMetadata {
   readonly isManaged?: unknown
@@ -25,7 +29,7 @@ export interface CodexHookOwnershipMetadata {
 export function isAgentKitOwnedCodexHook(
   metadata: unknown,
   expectedSourcePaths: readonly string[],
-): boolean {
+): metadata is CommandHookMetadata {
   if (!isObject(metadata)) return false
 
   const candidate = metadata as CodexHookOwnershipMetadata
@@ -59,7 +63,10 @@ function isKnownAgentKitCodexBin(binName: string): binName is KnownAgentKitCodex
 function extractDirectNodeModulesBin(command: string): string | null {
   const normalizedCommand = stripSingleShellQuotePair(command.trim())
   const match = NODE_MODULES_BIN_PATTERN.exec(normalizedCommand)
-  return match?.[1] ?? null
+  if (match?.[1]) return match[1]
+
+  const guardedMatch = GUARDED_NODE_MODULES_BIN_PATTERN.exec(command.trim())
+  return guardedMatch?.[3] ?? null
 }
 
 function stripSingleShellQuotePair(value: string): string {

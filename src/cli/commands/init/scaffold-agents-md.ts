@@ -10,8 +10,8 @@ import type { ConsumerContext } from './detect-consumer.js'
  * - {{ESCALATION_MAP}}: TODO placeholder.
  * - {{DURABLE_PLANNING_ROOT}}: from .agent-kitrc.json, defaulting to `.agent/planning/`.
  */
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 
 import { DEFAULT_DURABLE_PLANNING_ROOT } from './config.js'
 import { type MergeOptions, type MergeResult, writeFileMerged } from './merge.js'
@@ -71,6 +71,135 @@ export interface ScaffoldAgentsMdInput {
   options: MergeOptions
 }
 
+type AgentsBlockKind = 'managed' | 'user'
+
+interface AgentsBlock {
+  kind: AgentsBlockKind
+  id: string
+  startLine: number
+  endLine: number
+  innerLines: string[]
+}
+
+const MANAGED_BEGIN = /^<!-- >>> managed by @webpresso\/agent-kit \(([^)]+)\) -->$/u
+const MANAGED_END = /^<!-- <<< managed by @webpresso\/agent-kit \(([^)]+)\) -->$/u
+const USER_BEGIN = /^<!-- >>> user-owned \(([^)]+)\) -->$/u
+const USER_END = /^<!-- <<< user-owned \(([^)]+)\) -->$/u
+
+function parseAgentsBlocks(content: string): AgentsBlock[] {
+  const lines = content.split('\n')
+  const blocks: AgentsBlock[] = []
+  let cursor = 0
+
+  while (cursor < lines.length) {
+    const line = lines[cursor] ?? ''
+    const managedStart = MANAGED_BEGIN.exec(line)
+    const userStart = USER_BEGIN.exec(line)
+
+    if (!managedStart && !userStart) {
+      cursor += 1
+      continue
+    }
+
+    const kind: AgentsBlockKind = managedStart ? 'managed' : 'user'
+    const id = managedStart?.[1] ?? userStart?.[1]
+    const endMatcher = kind === 'managed' ? MANAGED_END : USER_END
+    let endLine = cursor + 1
+    while (endLine < lines.length && !endMatcher.test(lines[endLine] ?? '')) {
+      endLine += 1
+    }
+    if (!id || endLine >= lines.length) {
+      cursor += 1
+      continue
+    }
+
+    blocks.push({
+      kind,
+      id,
+      startLine: cursor,
+      endLine,
+      innerLines: lines.slice(cursor + 1, endLine),
+    })
+    cursor = endLine + 1
+  }
+
+  return blocks
+}
+
+function renderBlock(
+  kind: AgentsBlockKind,
+  id: string,
+  innerLines: readonly string[],
+): readonly string[] {
+  const begin =
+    kind === 'managed'
+      ? `<!-- >>> managed by @webpresso/agent-kit (${id}) -->`
+      : `<!-- >>> user-owned (${id}) -->`
+  const end =
+    kind === 'managed'
+      ? `<!-- <<< managed by @webpresso/agent-kit (${id}) -->`
+      : `<!-- <<< user-owned (${id}) -->`
+  return [begin, ...innerLines, end]
+}
+
+export function mergeRenderedAgentsMd(rendered: string, existing: string): string | null {
+  const renderedBlocks = parseAgentsBlocks(rendered)
+  const existingBlocks = parseAgentsBlocks(existing)
+  if (renderedBlocks.length === 0 || existingBlocks.length === 0) return null
+
+  const existingUserBlocks = new Map(
+    existingBlocks
+      .filter((block) => block.kind === 'user')
+      .map((block) => [block.id, block.innerLines] as const),
+  )
+
+  const lines = rendered.split('\n')
+  const replacements = renderedBlocks
+    .filter((block) => block.kind === 'user')
+    .map((block) => ({
+      ...block,
+      replacement: renderBlock(
+        'user',
+        block.id,
+        existingUserBlocks.get(block.id) ?? block.innerLines,
+      ),
+    }))
+    .toReversed()
+
+  for (const block of replacements) {
+    lines.splice(block.startLine, block.endLine - block.startLine + 1, ...block.replacement)
+  }
+
+  return lines.join('\n')
+}
+
+function writeAgentsMdManaged(
+  targetPath: string,
+  rendered: string,
+  opts: MergeOptions = {},
+): MergeResult {
+  const exists = existsSync(targetPath)
+  if (!exists) {
+    if (opts.dryRun) return { targetPath, action: 'skipped-dry' }
+    mkdirSync(dirname(targetPath), { recursive: true })
+    writeFileSync(targetPath, rendered)
+    return { targetPath, action: 'created' }
+  }
+
+  const existing = readFileSync(targetPath, 'utf8')
+  if (existing === rendered) return { targetPath, action: 'identical' }
+
+  const merged = mergeRenderedAgentsMd(rendered, existing)
+  if (merged === null) {
+    return writeFileMerged(targetPath, rendered, opts)
+  }
+  if (merged === existing) return { targetPath, action: 'identical' }
+  if (opts.dryRun) return { targetPath, action: 'skipped-dry' }
+
+  writeFileSync(targetPath, merged)
+  return { targetPath, action: 'overwritten' }
+}
+
 export function renderAgentsMd(
   template: string,
   consumer: ConsumerContext,
@@ -96,5 +225,5 @@ export function scaffoldAgentsMd(input: ScaffoldAgentsMdInput): MergeResult | nu
   const template = readFileSync(tplPath, 'utf8')
   const rendered = renderAgentsMd(template, consumer, config)
   const target = join(repoRoot, 'AGENTS.md')
-  return writeFileMerged(target, rendered, options)
+  return writeAgentsMdManaged(target, rendered, options)
 }

@@ -41,6 +41,20 @@ describe('routeCommand', () => {
     expect(result?.action.action).toBe('deny')
   })
 
+  it('pnpm --dir packages/sdk/common run qa → deny and routes to ak_qa', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('pnpm --dir packages/sdk/common run qa')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_qa')
+  })
+
+  it('pnpm -C packages/cli/host exec vitest run → deny and routes to ak_test', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('pnpm -C packages/cli/host exec vitest run')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_test')
+  })
+
   it('vp exec vitest run → deny', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('vp exec vitest run')

@@ -183,6 +183,139 @@ describe('ak_qa tool', () => {
     expect(payload).toEqual(expected)
   })
 
+  it('drops nested leaf internals and raw output from sub-tools', async () => {
+    lintHandler.mockReset()
+    typecheckHandler.mockReset()
+    testHandler.mockReset()
+
+    lintHandler.mockResolvedValue(
+      wrapPayload({
+        passed: false,
+        summary: 'lint failed',
+        rawOutput: 'very long lint output',
+        details: {
+          issues: [{ file: 'src/a.ts', line: 3, code: 'rule-a', message: 'bad lint' }],
+          extraNested: { should: 'not survive' },
+        },
+        tier: 1,
+        bytes: 50,
+        tokensSaved: 25,
+      }),
+    )
+    typecheckHandler.mockResolvedValue(
+      wrapPayload({
+        passed: true,
+        summary: 'typecheck passed',
+        rawOutput: 'should not survive',
+        details: { errors: [], debug: { deep: true } },
+      }),
+    )
+    testHandler.mockResolvedValue(
+      wrapPayload({
+        passed: false,
+        summary: 'tests failed',
+        rawOutput: 'huge raw output',
+        details: {
+          failures: [{ file: 'src/a.test.ts', message: 'expected 1 to be 2', code: 'ASSERT' }],
+          nested: { giant: ['payload'] },
+        },
+        backend: 'pnpm',
+        exitCode: 1,
+      }),
+    )
+
+    const result = await akQaTool.handler({})
+    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      details: {
+        lint: Record<string, unknown>
+        typecheck: Record<string, unknown>
+        test: Record<string, unknown>
+      }
+    }
+
+    expect(payload.details.lint.failures).toEqual([
+      { file: 'src/a.ts', line: 3, code: 'rule-a', message: 'bad lint' },
+    ])
+    expect(payload.details.test.failures).toEqual([
+      { file: 'src/a.test.ts', code: 'ASSERT', message: 'expected 1 to be 2' },
+    ])
+    expect(payload.details.lint).not.toHaveProperty('details')
+    expect(payload.details.lint).not.toHaveProperty('rawOutput')
+    expect(payload.details.typecheck).not.toHaveProperty('details')
+    expect(payload.details.typecheck).not.toHaveProperty('rawOutput')
+    expect(payload.details.test).not.toHaveProperty('details')
+    expect(payload.details.test).not.toHaveProperty('rawOutput')
+  })
+
+  it('caps oversized nested failure lists to a bounded excerpt set', async () => {
+    lintHandler.mockReset()
+    typecheckHandler.mockReset()
+    testHandler.mockReset()
+
+    const nestedFailures = Array.from({ length: 25 }, (_, index) => ({
+      file: `src/case-${index}.test.ts`,
+      message: `failure ${index}`,
+      code: 'ASSERT',
+      nested: { giant: 'payload' },
+    }))
+
+    lintHandler.mockResolvedValue(wrapPayload({ passed: true, summary: 'lint passed', issues: [] }))
+    typecheckHandler.mockResolvedValue(
+      wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
+    )
+    testHandler.mockResolvedValue(
+      wrapPayload({
+        passed: false,
+        summary: 'tests failed hard',
+        details: {
+          failures: nestedFailures,
+          perTest: nestedFailures,
+        },
+        rawOutput: 'x'.repeat(200000),
+        backend: 'pnpm',
+        exitCode: 1,
+      }),
+    )
+
+    const result = await akQaTool.handler({})
+    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      details: {
+        test: {
+          failures: Array<{ file?: string; message: string; code?: string }>
+        }
+      }
+    }
+
+    expect(payload.details.test.failures).toHaveLength(10)
+    expect(payload.details.test.failures[0]).toEqual({
+      file: 'src/case-0.test.ts',
+      code: 'ASSERT',
+      message: 'failure 0',
+    })
+    expect(Buffer.byteLength(JSON.stringify(payload.details.test))).toBeLessThanOrEqual(2048)
+  })
+
+  it('compiled output schema rejects the old leaky nested leaf shape', () => {
+    const invalid = {
+      passed: false,
+      summary: 'qa failed: test',
+      details: {
+        lint: { passed: true, summary: 'lint passed', failures: [] },
+        typecheck: { passed: true, summary: 'typecheck passed', failures: [] },
+        test: {
+          passed: false,
+          summary: 'tests failed',
+          failures: [{ message: 'boom' }],
+          details: { giant: ['nested', 'payload'] },
+          rawOutput: 'should be rejected',
+        },
+      },
+    }
+
+    const result = akQaTool.outputSchema.safeParse(invalid)
+    expect(result.success).toBe(false)
+  })
+
   it('aggregates passed=false when lint fails', async () => {
     lintHandler.mockReset()
     typecheckHandler.mockReset()

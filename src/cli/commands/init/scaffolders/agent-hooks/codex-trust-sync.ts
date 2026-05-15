@@ -10,6 +10,11 @@ import { isAgentKitOwnedCodexHook } from './codex-ownership.js'
 export interface SyncCodexHookTrustInput {
   readonly repoRoot: string
   readonly expectedSourcePaths?: readonly string[]
+  readonly hookDescription?: string
+  readonly selectHook?: (
+    metadata: unknown,
+    expectedSourcePaths: readonly string[],
+  ) => metadata is CommandHookMetadata
 }
 
 export type CodexTrustStateUpdate = Record<string, { enabled: true; trusted_hash: string }>
@@ -35,6 +40,8 @@ export async function syncCodexHookTrustWithAppServer(
   input: SyncCodexHookTrustInput,
 ): Promise<SyncCodexHookTrustResult> {
   const expectedSourcePaths = normalizeExpectedSourcePaths(input)
+  const hookDescription = input.hookDescription ?? 'agent-kit-owned'
+  const selectHook = input.selectHook ?? isAgentKitOwnedCodexHook
 
   let firstList
   try {
@@ -43,12 +50,12 @@ export async function syncCodexHookTrustWithAppServer(
     return failure('hooks-list-failed', error)
   }
 
-  const ownedHooks = collectOwnedHooks(firstList, expectedSourcePaths)
+  const ownedHooks = collectOwnedHooks(firstList, expectedSourcePaths, selectHook)
   if (ownedHooks.length === 0) {
     return {
       ok: false,
       reason: 'no-agent-kit-hooks-found',
-      message: `No agent-kit-owned Codex hooks found for ${input.repoRoot}`,
+      message: `No ${hookDescription} Codex hooks found for ${input.repoRoot}`,
     }
   }
 
@@ -97,11 +104,13 @@ export function buildCodexTrustStateUpdate(
 function collectOwnedHooks(
   response: HooksListResponse,
   expectedSourcePaths: readonly string[],
+  selectHook: (
+    metadata: unknown,
+    expectedSourcePaths: readonly string[],
+  ) => metadata is CommandHookMetadata,
 ): CommandHookMetadata[] {
   return response.data.flatMap((entry) =>
-    entry.hooks.filter((hook): hook is CommandHookMetadata =>
-      isAgentKitOwnedCodexHook(hook, expectedSourcePaths),
-    ),
+    entry.hooks.filter((hook): hook is CommandHookMetadata => selectHook(hook, expectedSourcePaths)),
   )
 }
 

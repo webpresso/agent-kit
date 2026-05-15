@@ -15,6 +15,7 @@ import { join, resolve } from 'node:path'
 import { type MergeOptions, type MergeResult, patchJsonFile } from '#cli/commands/init/merge'
 import { CodexAppServerClient } from '#codex/app-server/client.js'
 import type { CodexAppServerApi } from '#codex/app-server/types.js'
+import { isPresetOwnedGlobalCodexHook } from './codex-global-ownership.js'
 import {
   syncCodexHookTrustWithAppServer,
   type SyncCodexHookTrustResult,
@@ -35,8 +36,10 @@ import {
 // Without the guard every hook fires an error on first session start in new worktrees.
 const CC_BIN = (name: string) =>
   `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}" || true`
-const CODEX_BIN = (repoRoot: string) => (name: string) =>
-  `"${resolve(repoRoot, 'node_modules', '.bin', name)}"`
+const CODEX_BIN = (repoRoot: string) => (name: string) => {
+  const binPath = resolve(repoRoot, 'node_modules', '.bin', name)
+  return `[ -x "${binPath}" ] && "${binPath}" || true`
+}
 
 type HookEntry = { type: string; command: string; timeout?: number }
 type HookGroup = { matcher?: string; hooks: HookEntry[] }
@@ -84,7 +87,10 @@ function hasCommand(groups: HookGroup[], command: string): boolean {
 }
 
 const SCRIPT_EXTENSIONS = ['sh', 'ts', 'js', 'mjs', 'cjs', 'py'] as const
-const BIN_NAME_PATTERN = /node_modules\/\.bin\/([\w-]+)/u
+const DIRECT_NODE_MODULES_BIN_PATTERN = /^(?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+)$/u
+const GUARDED_NODE_MODULES_BIN_PATTERN =
+  /^\[ -x (["']?)((?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+))\1 \] && \1\2\1 \|\| true$/u
+const LEGACY_AGENT_KIT_BIN_PATTERN = /run-agent-kit-bin\.ts"\s+(ak-[\w-]+)(?=$|["'\s])/u
 // Capture the basename of any path that ends in a known script extension.
 // Handles trailing chars (quote, space, end-of-string).
 const SCRIPT_BASENAME_PATTERN = new RegExp(
@@ -92,14 +98,34 @@ const SCRIPT_BASENAME_PATTERN = new RegExp(
   'u',
 )
 
+function extractAgentKitCodexBinName(command: string): string | null {
+  const normalizedCommand = stripSingleShellQuotePair(command.trim())
+  const directBinMatch = DIRECT_NODE_MODULES_BIN_PATTERN.exec(normalizedCommand)
+  if (directBinMatch !== null) return directBinMatch[1] ?? null
+  const guardedBinMatch = GUARDED_NODE_MODULES_BIN_PATTERN.exec(command.trim())
+  if (guardedBinMatch !== null) return guardedBinMatch[3] ?? null
+  const legacyRunnerMatch = LEGACY_AGENT_KIT_BIN_PATTERN.exec(command)
+  return legacyRunnerMatch?.[1] ?? null
+}
+
+function stripSingleShellQuotePair(value: string): string {
+  if (value.length < 2) return value
+  const first = value[0]
+  const last = value[value.length - 1]
+  if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+    return value.slice(1, -1)
+  }
+  return value
+}
+
 /**
  * Return a stable identifier for the script that `command` invokes, or null
  * when none can be extracted (e.g. an opaque shell expression). Used by
  * `hasCommand` for dedup across wrapped/raw invocation forms.
  */
 function extractCommandTarget(command: string): string | null {
-  const binMatch = BIN_NAME_PATTERN.exec(command)
-  if (binMatch !== null) return `bin:${binMatch[1]}`
+  const binName = extractAgentKitCodexBinName(command)
+  if (binName !== null) return `bin:${binName}`
   const scriptMatch = SCRIPT_BASENAME_PATTERN.exec(command)
   if (scriptMatch !== null) return `script:${scriptMatch[1]}`
   return null
@@ -223,19 +249,23 @@ function normalizeCodexAgentKitCommands(hooks: HooksMap, repoRoot: string): Hook
   const normalized: HooksMap = {}
 
   for (const [event, groups] of Object.entries(hooks)) {
-    normalized[event] = groups.map((group) => ({
-      ...group,
-      hooks: group.hooks.map((hook) => {
-        const command = hook.command
-        if (typeof command !== 'string') return hook
-        const match = command.match(/^\.\/node_modules\/\.bin\/(ak-[\w-]+)$/u)
-        if (!match) return hook
-        return {
-          ...hook,
-          command: CODEX_BIN(repoRoot)(match[1]!),
-        }
-      }),
-    }))
+    normalized[event] = groups.reduce<HookGroup[]>((dedupedGroups, group) => {
+      const nextGroup = {
+        ...group,
+        hooks: group.hooks.map((hook) => {
+          const command = hook.command
+          if (typeof command !== 'string') return hook
+          const binName = extractAgentKitCodexBinName(command)
+          if (binName === null) return hook
+          return {
+            ...hook,
+            command: CODEX_BIN(repoRoot)(binName),
+          }
+        }),
+      }
+
+      return ensureGroup(dedupedGroups, nextGroup)
+    }, [])
   }
 
   return normalized
@@ -422,6 +452,48 @@ export async function trustCodexAgentKitHooksForRepo(
 
   try {
     const syncResult = await syncCodexHookTrustWithAppServer(api, { repoRoot: input.repoRoot })
+    if (!syncResult.ok && syncResult.reason !== 'no-agent-kit-hooks-found') {
+      reportCodexTrustSyncWarning(input, {
+        kind: 'codex-app-server-trust-sync-warning',
+        message: syncResult.message,
+        syncResult,
+      })
+    }
+  } finally {
+    await api.close()
+  }
+}
+
+export async function trustCodexPresetHooksForUser(
+  input: ScaffoldAgentHooksInput,
+): Promise<void> {
+  if (input.options.dryRun) return
+
+  const codexHome = process.env.CODEX_HOME || join(homedir(), '.codex')
+  const hooksPath = resolve(codexHome, 'hooks.json')
+  if (!existsSync(hooksPath)) return
+
+  const createCodexAppServer =
+    input.createCodexAppServer ?? ((repoRoot) => CodexAppServerClient.start({ cwd: repoRoot }))
+
+  let api: CodexAppServerApi
+  try {
+    api = await createCodexAppServer(input.repoRoot)
+  } catch (error) {
+    reportCodexTrustSyncWarning(input, {
+      kind: 'codex-app-server-trust-sync-warning',
+      message: error instanceof Error ? error.message : String(error),
+    })
+    return
+  }
+
+  try {
+    const syncResult = await syncCodexHookTrustWithAppServer(api, {
+      repoRoot: input.repoRoot,
+      expectedSourcePaths: [hooksPath],
+      hookDescription: 'preset-owned global',
+      selectHook: isPresetOwnedGlobalCodexHook,
+    })
     if (!syncResult.ok && syncResult.reason !== 'no-agent-kit-hooks-found') {
       reportCodexTrustSyncWarning(input, {
         kind: 'codex-app-server-trust-sync-warning',
