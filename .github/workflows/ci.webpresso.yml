@@ -5,6 +5,13 @@ on:
     branches: [main, master]
   pull_request:
 
+env:
+  # Opt the workflow's JavaScript actions into Node.js 24 ahead of the
+  # 2026-06-02 GitHub default switch (replaces the deprecation warning
+  # surfaced by actions/checkout@v4, actions/setup-node@v4, and
+  # pnpm/action-setup@v4 internally running on Node 20).
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   check:
     runs-on: ubuntu-latest
