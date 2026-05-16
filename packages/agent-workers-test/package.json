@@ -63,7 +63,7 @@
     "selfLink": false
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "module": "./dist/esm/index.js"
 }
