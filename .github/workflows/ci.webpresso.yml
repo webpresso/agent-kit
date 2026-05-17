@@ -16,13 +16,12 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
-      - uses: pnpm/action-setup@v4
-        with:
-          version: '11.1.1'
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r run check-types 2>/dev/null || pnpm -r run typecheck
       - run: pnpm -r run lint
@@ -30,26 +29,24 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
-      - uses: pnpm/action-setup@v4
-        with:
-          version: '11.1.1'
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r run test
 
   ak-audits:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
-      - uses: pnpm/action-setup@v4
-        with:
-          version: '11.1.1'
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: |
           which claude && claude install-plugin @webpresso/agent-kit || echo "Claude Code not installed, skipping plugin install"
