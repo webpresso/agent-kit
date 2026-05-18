@@ -1,6 +1,6 @@
 {
   "name": "@webpresso/agent-stryker",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "deprecated": "Deprecated: migrate to the consolidated webpresso package subpath exports. See https://github.com/webpresso/agent-kit/blob/main/MIGRATION.md",
   "private": false,
   "type": "module",
