@@ -1,6 +1,6 @@
 {
   "name": "@webpresso/agent-tsconfig",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "deprecated": "Deprecated: migrate to the consolidated webpresso package subpath exports. See https://github.com/webpresso/agent-kit/blob/main/MIGRATION.md",
   "private": false,
   "publishConfig": {

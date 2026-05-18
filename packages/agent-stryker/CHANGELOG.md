@@ -1,5 +1,13 @@
 # @webpresso/agent-stryker
 
+## 0.2.3
+
+### Patch Changes
+
+- 612116c: Resume the host-visibility-gate-fix patch that was version-bumped to
+  0.18.5 but failed to publish on tshy double-build. This changeset
+  triggers a new patch (0.18.6) that publishes cleanly.
+
 ## 0.2.2
 
 ### Patch Changes
