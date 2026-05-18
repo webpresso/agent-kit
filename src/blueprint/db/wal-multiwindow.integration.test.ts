@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -15,6 +15,11 @@ function createTempRoot(): string {
 function resolveBunPath(): string {
   const fromEnv = process.env.BUN_PATH
   if (fromEnv) return fromEnv
+  // Look up bun from PATH so the test works on both macOS and Linux CI runners.
+  const which = spawnSync('which', ['bun'], { encoding: 'utf8' })
+  const fromPath = which.stdout.trim()
+  if (fromPath) return fromPath
+  // Last-resort well-known locations
   return '/opt/homebrew/bin/bun'
 }
 
