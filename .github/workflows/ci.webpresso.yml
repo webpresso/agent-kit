@@ -26,8 +26,8 @@ jobs:
         with:
           bun-version: latest
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -r run check-types 2>/dev/null || pnpm -r run typecheck
-      - run: pnpm -r run lint
+      - run: pnpm run typecheck
+      - run: pnpm run lint
 
   test:
     runs-on: ubicloud-standard-2
@@ -42,7 +42,7 @@ jobs:
         with:
           bun-version: latest
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -r run test
+      - run: pnpm run test
 
   ak-audits:
     runs-on: ubicloud-standard-2
@@ -57,10 +57,8 @@ jobs:
         with:
           bun-version: latest
       - run: pnpm install --frozen-lockfile
-      - run: |
-          which claude && claude install-plugin @webpresso/agent-kit || echo "Claude Code not installed, skipping plugin install"
       - name: Run ak audit guardrails
-        run: |
-          AK="$(pwd)/node_modules/.bin/ak"
-          [ -x "$AK" ] || AK=ak
-          "$AK" audit guardrails
+        # The repo IS @webpresso/agent-kit; invoke the in-tree CLI via bun
+        # directly rather than relying on the `ak` shim, which only exists
+        # after `pnpm build` runs chmod-bins + link-self-bins.
+        run: bun src/cli/cli.ts audit guardrails
