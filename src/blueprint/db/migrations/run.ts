@@ -53,7 +53,14 @@ export function runMigrations(db: Database): void {
       )
       db.exec('COMMIT')
     } catch (error) {
-      db.exec('ROLLBACK')
+      // Only ROLLBACK if a transaction is actually active. If BEGIN IMMEDIATE
+      // itself failed (e.g. SQLITE_BUSY), there is no open transaction and a
+      // ROLLBACK here would throw a secondary "cannot rollback" error that
+      // masks the original SQLITE_BUSY, preventing openDb's retry loop from
+      // recognising the error as retryable.
+      if (db.inTransaction) {
+        db.exec('ROLLBACK')
+      }
       throw error
     }
   }
