@@ -79,7 +79,7 @@ npm install -g webpresso && wp setup
 
 # Claude Code plugin:
 /plugin marketplace add webpresso/agent-kit
-/plugin install agent-kit@webpresso
+/plugin install agent-kit@agent-kit
 ```
 
 Requires Node `>=24` and bun on the machine that runs the CLI or Claude Code plugin.
@@ -178,7 +178,7 @@ Two paths exist because Codex CLI doesn't ship a plugin marketplace yet ([config
 
 ```bash
 /plugin marketplace add webpresso/agent-kit
-/plugin install agent-kit@webpresso
+/plugin install agent-kit@agent-kit
 ```
 
 You get: hooks (PreToolUse, PostToolUse, Stop, SessionStart), the `ak` MCP server with seven tools (`ak_test`, `ak_e2e`, `ak_lint`, `ak_typecheck`, `ak_qa`, `ak_audit`, `ak_blueprint`), slash commands, and the skills catalog. Pin to release tags — `main` does not ship `dist/`. Hot-reload from source: see [CONTRIBUTING.md](./CONTRIBUTING.md#edge-local-plugin-link-hot-reload-hooks-from-source).
@@ -190,7 +190,17 @@ npm install -g webpresso
 wp setup
 ```
 
-Required for Codex CLI, OpenCode, Cursor, Gemini, and any IDE without a plugin marketplace. Same hooks, scaffolded into `.claude/settings.json` AND `.codex/hooks.json`. Library imports (`defineAgentKitConfig`, `createAkTestCommandConfig`) flow through this path too. See [`docs/getting-started.md`](./docs/getting-started.md) for the full setup matrix and [`docs/presets.md`](./docs/presets.md) for `--with` presets (`omx`, `gstack`, `context-mode`, `playwright-mcp`, `vision`, `lore-commits`, `rtk`, `base-kit`).
+Required for Codex CLI, OpenCode, Cursor, Gemini, and any IDE without a plugin marketplace. Same hooks, scaffolded into `.claude/settings.json` AND `.codex/hooks.json`. Library imports (`defineAgentKitConfig`, `createAkTestCommandConfig`) flow through this path too.
+
+If the `claude` CLI is on PATH, `wp setup` / `ak setup` now also attempts to ensure the **Claude Code user-scope marketplace + plugin** automatically:
+
+```bash
+claude plugin marketplace add --scope user <agent-kit-package-root>
+claude plugin install --scope user agent-kit@agent-kit
+claude plugin update --scope user agent-kit@agent-kit
+```
+
+That means one `wp setup` run can wire both Codex's global MCP entry and Claude Code's user-global plugin state. Set `AK_SKIP_CLAUDE_PLUGIN=1` to opt out. See [`docs/getting-started.md`](./docs/getting-started.md) for the full setup matrix and [`docs/presets.md`](./docs/presets.md) for `--with` presets (`omx`, `gstack`, `context-mode`, `playwright-mcp`, `vision`, `lore-commits`, `rtk`, `base-kit`).
 
 > **Pinned-version devDependency:** `pnpm add -D webpresso && npx wp setup`. `ak` is a working alias for all `wp` commands.
 

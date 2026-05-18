@@ -472,6 +472,13 @@ describe('DX output: lane framing and next-steps block', () => {
     expect(allOutput).toContain('ak gain')
   })
 
+  it('prints Claude plugin auto-enable status on non-dry-run', async () => {
+    await runInit({ cwd: repo, yes: true })
+    const allOutput = logLines.join('\n')
+    expect(allOutput).toContain('claude plugin:')
+    expect(allOutput).toContain('agent-kit@agent-kit')
+  })
+
   it('omits next-steps block in --dry-run mode', async () => {
     await runInit({ cwd: repo, yes: true, 'dry-run': true })
     const allOutput = logLines.join('\n')
