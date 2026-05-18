@@ -238,10 +238,13 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         group.hooks.map((hook) => hook.command),
       )
 
-      expect(sessionCommands).toContain(`"${path.join(repo, 'node_modules', '.bin', 'ak-sessionstart-routing')}"`)
-      expect(stopCommands).toContain(`"${path.join(repo, 'node_modules', '.bin', 'ak-stop-qa')}"`)
-      expect(sessionCommands).not.toContain('./node_modules/.bin/ak-sessionstart-routing')
-      expect(stopCommands).not.toContain('./node_modules/.bin/ak-stop-qa')
+      const sessionRoutingBin = path.join(repo, 'node_modules', '.bin', 'ak-sessionstart-routing')
+      const stopQaBin = path.join(repo, 'node_modules', '.bin', 'ak-stop-qa')
+      // CODEX_BIN produces guarded commands: `[ -x "<abs>" ] && "<abs>" || true`
+      expect(sessionCommands.some((cmd) => cmd.includes(sessionRoutingBin) && !cmd.includes('./node_modules'))).toBe(true)
+      expect(stopCommands.some((cmd) => cmd.includes(stopQaBin) && !cmd.includes('./node_modules'))).toBe(true)
+      expect(sessionCommands.every((cmd) => !cmd.includes('./node_modules/.bin/ak-sessionstart-routing'))).toBe(true)
+      expect(stopCommands.every((cmd) => !cmd.includes('./node_modules/.bin/ak-stop-qa'))).toBe(true)
 
       installFakeAgentKitBins(repo)
       const siblingCwd = mkdtempSync(path.join(repo, 'codex-runtime-'))
