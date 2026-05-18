@@ -71,10 +71,17 @@ function runAk(args: string[], extraEnv: Record<string, string> = {}): RunResult
   const useSource = existsSync(SOURCE_CLI_PATH)
   const command = useSource ? BUN_PATH : process.execPath
   const commandArgs = useSource ? [SOURCE_CLI_PATH, ...args] : [DIST_CLI_PATH, ...args]
+  // Build a clean base env: inherit process.env but strip CI sentinels so
+  // the subprocess behaves like a developer workstation. Without this,
+  // GitHub Actions' CI=true causes isCiEnvironment to be true inside the
+  // spawned ak binary, which skips omx/gstack/rtk preset execution and
+  // makes every preset e2e test assert on output that is never produced.
+  // Individual tests can re-add CI=true via extraEnv if they need CI behaviour.
+  const { CI: _ci, GITHUB_ACTIONS: _ga, ...baseEnv } = process.env
   const result = spawnSync(command, commandArgs, {
     encoding: 'utf8',
     env: {
-      ...process.env,
+      ...baseEnv,
       // rtk is default-on but isn't packaged in the test fixture's PATH —
       // skip it unless the individual test explicitly opts in.
       AK_SKIP_RTK: '1',
