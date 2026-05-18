@@ -49,6 +49,7 @@ import {
   trustCodexPresetHooksForUser,
 } from './scaffolders/agent-hooks/index.js'
 import { scaffoldAuditHooks } from './scaffolders/audit-hooks/index.js'
+import { ensureClaudeCodeUserPlugin } from './scaffolders/claude-plugin/index.js'
 import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js'
 import { ensureCodexAgentKitMcp, ensureCodexPlaywrightMcp } from './scaffolders/codex-mcp/index.js'
 import { scaffoldExampleSkill } from './scaffolders/example-skill/index.js'
@@ -175,6 +176,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
   }
 
   const catalogDir = resolveCatalogDir()
+  const packageRoot = dirname(catalogDir)
   const options: MergeOptions = {
     overwrite: flags.overwrite ?? false,
     dryRun: flags['dry-run'] ?? false,
@@ -393,8 +395,15 @@ export async function runInit(flags: InitFlags): Promise<number> {
       )
     }
 
+    // CI runners (GitHub Actions, etc.) set CI=true but don't have optional
+    // developer-workstation tools (omx, gstack, rtk) available. Failures from
+    // these installations must not fail the postinstall in that context.
+    const isCiEnvironment = process.env.CI === 'true' || process.env.CI === '1'
+
     let omxFailure: 'not-found' | 'spawn-failed' | null = null
-    if (presets.includes('omx')) {
+    if (isCiEnvironment && presets.includes('omx')) {
+      console.log('  omx setup: - skipped (CI environment)')
+    } else if (presets.includes('omx')) {
       const omxResult = ensureOmx({ repoRoot: consumer.repoRoot, options })
       switch (omxResult.kind) {
         case 'omx-ok':
@@ -465,11 +474,44 @@ export async function runInit(flags: InitFlags): Promise<number> {
         break
     }
 
+    const claudePluginResult = ensureClaudeCodeUserPlugin({
+      options,
+      packageRoot,
+    })
+    switch (claudePluginResult.kind) {
+      case 'claude-plugin-installed':
+        console.log(
+          `  claude plugin: ✓ user-scope marketplace + plugin ensured (${claudePluginResult.pluginId})`,
+        )
+        break
+      case 'claude-plugin-skipped-dry-run':
+        console.log('  claude plugin: skipped (--dry-run)')
+        break
+      case 'claude-plugin-skipped-opt-out':
+        console.log('  claude plugin: skipped (AK_SKIP_CLAUDE_PLUGIN=1)')
+        break
+      case 'claude-plugin-skipped-no-cli':
+        console.log('  claude plugin: - skipped (claude not on PATH)')
+        break
+      case 'claude-plugin-unavailable':
+        console.log('  claude plugin: - skipped (plugin manifest unavailable in this install)')
+        break
+      case 'claude-plugin-failed':
+        console.warn(
+          `  claude plugin: ⚠ ${claudePluginResult.step} exited with ${claudePluginResult.exitCode}; ` +
+            `fallback: claude plugin marketplace add --scope user ${claudePluginResult.packageRoot} && ` +
+            `claude plugin install --scope user ${claudePluginResult.pluginId}`,
+        )
+        break
+    }
+
     let gstackFailure: 'clone-failed' | 'pull-failed' | 'setup-failed' | null = null
     if (process.env.AK_SKIP_GSTACK === '1') {
       console.warn(
         '  gstack: ⚠ AK_SKIP_GSTACK=1 — skipping. Most consumer repos treat gstack as a hard prerequisite.',
       )
+    } else if (isCiEnvironment && presets.includes('gstack')) {
+      console.log('  gstack: - skipped (CI environment)')
     } else if (presets.includes('gstack')) {
       const gstackResult = ensureGstack({ repoRoot: consumer.repoRoot, options })
       switch (gstackResult.kind) {
@@ -526,6 +568,8 @@ export async function runInit(flags: InitFlags): Promise<number> {
       console.warn(
         '  rtk: ⚠ AK_SKIP_RTK=1 — skipping. RTK provides shell-tool output filtering for git/gh/kubectl/etc.',
       )
+    } else if (isCiEnvironment && presets.includes('rtk')) {
+      console.log('  rtk: - skipped (CI environment)')
     } else if (presets.includes('rtk')) {
       if (!options.dryRun) {
         mkdirSync(join(consumer.repoRoot, '.agent'), { recursive: true })
@@ -612,38 +656,21 @@ export async function runInit(flags: InitFlags): Promise<number> {
 
       const missing = visibilityAudit.results.filter((result) => result.status === 'not-visible')
       if (missing.length > 0) {
-        console.error(
-          `\nak setup: host visibility check failed for ${missing
-            .map((result) => `${result.host}/${result.capability}`)
-            .join(', ')}`,
-        )
-        return EXIT_SETUP_FAIL
+        if (isCiEnvironment) {
+          // CI runners don't have skills installed (no claude, no ~/.claude/skills/).
+          // Skill visibility is a developer-workstation concern; skip the hard gate.
+          console.log(
+            `  host visibility: - skipped hard gate (CI environment, ${missing.length} capability/host pair(s) not visible)`,
+          )
+        } else {
+          console.error(
+            `\nak setup: host visibility check failed for ${missing
+              .map((result) => `${result.host}/${result.capability}`)
+              .join(', ')}`,
+          )
+          return EXIT_SETUP_FAIL
+        }
       }
-    }
-
-    // Surface claude plugin install hint if agent-kit is in node_modules
-    try {
-      const pluginJsonPath = join(
-        consumer.repoRoot,
-        'node_modules',
-        '@webpresso',
-        'agent-kit',
-        '.claude-plugin',
-        'plugin.json',
-      )
-      if (existsSync(pluginJsonPath)) {
-        console.log(
-          '\nClaude Code plugin: to enable /pll, /verify, and other skills,\n' +
-            '  run: claude --plugin-dir ' +
-            join(consumer.repoRoot, 'node_modules', '@webpresso', 'agent-kit') +
-            '\n' +
-            '  (or start Claude Code from this directory with the --plugin-dir flag,\n' +
-            '   then add it permanently via: claude plugin marketplace add ...\n' +
-            '   see docs/presets.md for the full procedure)',
-        )
-      }
-    } catch {
-      // non-fatal — plugin hint is best-effort
     }
 
     if (!options.dryRun) {
