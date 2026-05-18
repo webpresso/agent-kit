@@ -45,9 +45,10 @@ export function auditAgents(rootDirectory: string = process.cwd()): RepoAuditRes
   )
 
   if (isSelfHost) {
-    checked += 1
-    checkHookFile(root, CODEX_HOOKS_PATH, 'codex', violations)
-
+    // .codex/hooks.json is gitignored (.codex/* in .gitignore) — it is written
+    // at runtime by Codex CLI and never present in a fresh CI checkout. Skip
+    // the Codex hook check for the source repo itself; consumer repos (the
+    // else branch) still check it because they commit their hooks.json.
     checked += 1
     checkClaudeRules(root, config?.rules.overrides ?? [], violations)
 
