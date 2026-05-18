@@ -1,0 +1,1 @@
+{"version":3,"file":"provenance.js","sourceRoot":"","sources":["../../../../src/compiler/memory/provenance.ts"],"names":[],"mappings":"AAaA,MAAM,UAAU,eAAe,CAC7B,OAAmC,EACnC,WAA8B;IAE9B,OAAO;QACL,WAAW,EAAE,IAAI,IAAI,EAAE,CAAC,WAAW,EAAE;QACrC,WAAW;QACX,QAAQ,EAAE,OAAO;KAClB,CAAA;AACH,CAAC"}
