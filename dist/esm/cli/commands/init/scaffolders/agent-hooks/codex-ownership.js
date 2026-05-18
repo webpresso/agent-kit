@@ -1,0 +1,62 @@
+import { normalize } from 'node:path';
+export const KNOWN_AGENT_KIT_CODEX_BINS = [
+    'ak-sessionstart-routing',
+    'ak-check-dev-link',
+    'ak-pretool-guard',
+    'ak-post-tool',
+    'ak-guard-switch',
+    'ak-stop-qa',
+];
+const KNOWN_AGENT_KIT_CODEX_BIN_SET = new Set(KNOWN_AGENT_KIT_CODEX_BINS);
+const NODE_MODULES_BIN_PATTERN = /^(?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+)$/u;
+const GUARDED_NODE_MODULES_BIN_PATTERN = /^\[ -x (["']?)((?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+))\1 \] && \1\2\1 \|\| true$/u;
+export function isAgentKitOwnedCodexHook(metadata, expectedSourcePaths) {
+    if (!isObject(metadata))
+        return false;
+    const candidate = metadata;
+    if (candidate.isManaged !== false)
+        return false;
+    if (candidate.handlerType !== 'command')
+        return false;
+    if (candidate.pluginId !== null)
+        return false;
+    if (typeof candidate.sourcePath !== 'string')
+        return false;
+    if (typeof candidate.command !== 'string' || candidate.command.trim() === '')
+        return false;
+    if (!isExpectedSourcePath(candidate.sourcePath, expectedSourcePaths))
+        return false;
+    const binName = extractDirectNodeModulesBin(candidate.command);
+    return binName !== null && isKnownAgentKitCodexBin(binName);
+}
+function isObject(value) {
+    return typeof value === 'object' && value !== null;
+}
+function isExpectedSourcePath(sourcePath, expectedSourcePaths) {
+    if (expectedSourcePaths.length === 0)
+        return false;
+    const normalizedSourcePath = normalize(sourcePath);
+    return expectedSourcePaths.some((expectedPath) => normalize(expectedPath) === normalizedSourcePath);
+}
+function isKnownAgentKitCodexBin(binName) {
+    return KNOWN_AGENT_KIT_CODEX_BIN_SET.has(binName);
+}
+function extractDirectNodeModulesBin(command) {
+    const normalizedCommand = stripSingleShellQuotePair(command.trim());
+    const match = NODE_MODULES_BIN_PATTERN.exec(normalizedCommand);
+    if (match?.[1])
+        return match[1];
+    const guardedMatch = GUARDED_NODE_MODULES_BIN_PATTERN.exec(command.trim());
+    return guardedMatch?.[3] ?? null;
+}
+function stripSingleShellQuotePair(value) {
+    if (value.length < 2)
+        return value;
+    const first = value[0];
+    const last = value[value.length - 1];
+    if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+        return value.slice(1, -1);
+    }
+    return value;
+}
+//# sourceMappingURL=codex-ownership.js.map
