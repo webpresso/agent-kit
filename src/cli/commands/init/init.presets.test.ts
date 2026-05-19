@@ -50,13 +50,24 @@ describe('runInit() — omx + gstack presets (integration)', () => {
   let repo: string
   let originalCodexHome: string | undefined
   let originalHome: string | undefined
+  let originalCi: string | undefined
 
   beforeEach(() => {
     repo = makeRepo()
     originalCodexHome = process.env.CODEX_HOME
     originalHome = process.env.HOME
+    originalCi = process.env.CI
     process.env.CODEX_HOME = join(repo, '.codex-home')
     process.env.HOME = join(repo, '.home')
+    // runInit() short-circuits the omx/gstack/rtk scaffolders when CI=true/1
+    // (production guard against postinstall failures on hosted CI runners
+    // that don't carry these dev-workstation tools). The integration tests
+    // here exercise the real preset code paths through a mocked spawnSync,
+    // so they must run outside the CI-skip branch — otherwise the mocks are
+    // never invoked and every assertion against `spawnSyncMock.mock.calls`
+    // sees an empty array. PATH-manipulation coverage of the CI-skip branch
+    // lives in init.e2e.test.ts, where it belongs.
+    delete process.env.CI
     spawnSyncMock.mockReset()
     spawnSyncMock.mockImplementation(() => okSpawnResult)
   })
@@ -71,6 +82,11 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       delete process.env.HOME
     } else {
       process.env.HOME = originalHome
+    }
+    if (originalCi === undefined) {
+      delete process.env.CI
+    } else {
+      process.env.CI = originalCi
     }
     rmSync(repo, { recursive: true, force: true })
   })

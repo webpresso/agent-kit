@@ -50,6 +50,7 @@ describe('rtk scaffolder integration', () => {
   let previousHome: string | undefined
   let previousPath: string | undefined
   let previousCodeHome: string | undefined
+  let previousCi: string | undefined
 
   beforeEach(() => {
     repo = makeRepo()
@@ -57,9 +58,17 @@ describe('rtk scaffolder integration', () => {
     previousHome = process.env.HOME
     previousPath = process.env.PATH
     previousCodeHome = process.env.CODEX_HOME
+    previousCi = process.env.CI
     process.env.HOME = fakeHome
     process.env.CODEX_HOME = join(repo, '.codex-home')
     process.env.PATH = [fakeRtkBin, fakeOmxBin, previousPath ?? ''].filter(Boolean).join(':')
+    // runInit() short-circuits the rtk scaffolder when CI=true/1 (production
+    // guard against postinstall failures on hosted CI runners). This test
+    // intentionally exercises the rtk preset against a PATH-injected fake
+    // rtk binary, so we must run outside the CI-skip branch — otherwise
+    // settings.json is never scaffolded with rtk-rewrite.sh and every G2-G8
+    // assertion fails.
+    delete process.env.CI
     chmodSync(join(fakeRtkBin, 'rtk'), 0o755)
   })
 
@@ -70,6 +79,8 @@ describe('rtk scaffolder integration', () => {
     else process.env.PATH = previousPath
     if (previousCodeHome === undefined) delete process.env.CODEX_HOME
     else process.env.CODEX_HOME = previousCodeHome
+    if (previousCi === undefined) delete process.env.CI
+    else process.env.CI = previousCi
     rmSync(repo, { recursive: true, force: true })
     rmSync(fakeHome, { recursive: true, force: true })
   })
@@ -144,5 +155,12 @@ describe('rtk scaffolder integration', () => {
     expect(codexHooksContent).not.toContain('rtk-rewrite.sh')
     expect(codexHooksContent).not.toContain('RTK_TELEMETRY_DISABLED')
     expect(codexHooksContent).not.toContain('RTK_HOOK_EXCLUDE_COMMANDS')
-  }, 20_000)
+    // 45s budget covers two full runInit() passes (G1 + G7 idempotency
+    // verification at line 131), each scaffolding the .claude/.codex agent
+    // surfaces against a fixture repo. Measured wall-clock: ~25s on macOS
+    // arm64, ~5s on ubicloud-standard-2 (Linux/amd64). The previous 20s
+    // bound was set when CI=true short-circuited the scaffolders (test
+    // effectively a noop); the CI-env clear in beforeEach now makes the
+    // test exercise the real preset code path, restoring its intended cost.
+  }, 45_000)
 })
