@@ -11,6 +11,13 @@ env:
   # surfaced by actions/checkout@v4, actions/setup-node@v4, and
   # pnpm/action-setup@v4 internally running on Node 20).
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  # Authenticate to GitHub Packages so `pnpm install --frozen-lockfile`
+  # can fetch @webpresso/* scoped deps (e.g. @webpresso/runtime-storage,
+  # @webpresso/runtime-format). `.npmrc` references ${GH_PACKAGES_TOKEN};
+  # without this env entry the substitution becomes empty and pnpm gets
+  # 401 Unauthorized. Mirrors release.yml's per-job auth wiring at
+  # workflow scope so check/test/ak-audits all inherit it.
+  GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
 jobs:
   check:
