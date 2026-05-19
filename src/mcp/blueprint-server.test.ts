@@ -15,7 +15,8 @@
  * All tests use an in-memory DB via a temp directory so they leave no state.
  */
 
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs'
+import { execSync } from 'node:child_process'
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, renameSync } from 'node:fs'
 import path from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -1010,6 +1011,44 @@ describe('ak_blueprint_list', () => {
     }
   })
 
+  it('returns next_action reingest_project when HEAD changed after ingest on single-project path', async () => {
+    const localTmpDir = mkdtempSync(path.join(tmpdir(), 'ak-bs-stale-list-'))
+    mkdirSync(path.join(localTmpDir, '.agent'), { recursive: true })
+    mkdirSync(path.join(localTmpDir, 'blueprints', 'draft', 'stale-bp'), { recursive: true })
+    writeFileSync(path.join(localTmpDir, 'package.json'), JSON.stringify({ name: 'test' }), 'utf8')
+    const overviewPath = path.join(localTmpDir, 'blueprints', 'draft', 'stale-bp', '_overview.md')
+    writeFileSync(overviewPath, VALID_BLUEPRINT, 'utf8')
+
+    execSync('git init -q', { cwd: localTmpDir })
+    execSync('git config user.email "test@example.com"', { cwd: localTmpDir })
+    execSync('git config user.name "Test User"', { cwd: localTmpDir })
+    execSync('git add . && git commit -qm "init"', { cwd: localTmpDir })
+
+    const { registrar: lr, tools: lt } = makeRegistrar()
+    await registerBlueprintTools(lr, localTmpDir)
+
+    const completedDir = path.join(localTmpDir, 'blueprints', 'completed', 'stale-bp')
+    mkdirSync(path.dirname(completedDir), { recursive: true })
+    renameSync(path.dirname(overviewPath), completedDir)
+    const movedOverview = path.join(completedDir, '_overview.md')
+    const updated = readFileSync(movedOverview, 'utf8').replace('status: draft', 'status: completed')
+    writeFileSync(movedOverview, updated, 'utf8')
+    execSync('git add -A && git commit -qm "move"', { cwd: localTmpDir })
+
+    const result = await callTool(lt, 'ak_blueprint_list', {})
+    const data = parseResult(result) as {
+      freshness_ok: boolean
+      next_action: { kind: string }
+      blueprints: unknown[]
+    }
+
+    expect(result.isError).toStrictEqual(false)
+    expect(data.freshness_ok).toBe(false)
+    expect(data.next_action.kind).toBe('reingest_project')
+    expect(data.blueprints).toEqual([])
+    rmSync(localTmpDir, { recursive: true, force: true })
+  })
+
   it('rejects input with unknown field gracefully (extra fields pass through zod)', async () => {
     const result = await callTool(tools, 'ak_blueprint_list', { limit: 10 })
     expect(result.isError).toStrictEqual(false)
@@ -1064,6 +1103,42 @@ describe('ak_blueprint_get', () => {
   it('returns validation error when slug is missing', async () => {
     const result = await callTool(tools, 'ak_blueprint_get', {})
     expect(result.isError).toStrictEqual(true)
+  })
+
+  it('returns next_action reingest_project when HEAD changed after ingest on single-project path', async () => {
+    const localTmpDir = mkdtempSync(path.join(tmpdir(), 'ak-bs-stale-get-'))
+    mkdirSync(path.join(localTmpDir, '.agent'), { recursive: true })
+    mkdirSync(path.join(localTmpDir, 'blueprints', 'draft', 'stale-get'), { recursive: true })
+    writeFileSync(path.join(localTmpDir, 'package.json'), JSON.stringify({ name: 'test' }), 'utf8')
+    const overviewPath = path.join(localTmpDir, 'blueprints', 'draft', 'stale-get', '_overview.md')
+    writeFileSync(overviewPath, VALID_BLUEPRINT, 'utf8')
+
+    execSync('git init -q', { cwd: localTmpDir })
+    execSync('git config user.email "test@example.com"', { cwd: localTmpDir })
+    execSync('git config user.name "Test User"', { cwd: localTmpDir })
+    execSync('git add . && git commit -qm "init"', { cwd: localTmpDir })
+
+    const { registrar: lr, tools: lt } = makeRegistrar()
+    await registerBlueprintTools(lr, localTmpDir)
+
+    const completedDir = path.join(localTmpDir, 'blueprints', 'completed', 'stale-get')
+    mkdirSync(path.dirname(completedDir), { recursive: true })
+    renameSync(path.dirname(overviewPath), completedDir)
+    const movedOverview = path.join(completedDir, '_overview.md')
+    const updated = readFileSync(movedOverview, 'utf8').replace('status: draft', 'status: completed')
+    writeFileSync(movedOverview, updated, 'utf8')
+    execSync('git add -A && git commit -qm "move"', { cwd: localTmpDir })
+
+    const result = await callTool(lt, 'ak_blueprint_get', { slug: 'stale-get' })
+    const data = parseResult(result) as {
+      blueprint: unknown
+      next_action: { kind: string }
+    }
+
+    expect(result.isError).toStrictEqual(false)
+    expect(data.blueprint).toBeNull()
+    expect(data.next_action.kind).toBe('reingest_project')
+    rmSync(localTmpDir, { recursive: true, force: true })
   })
 })
 
