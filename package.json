@@ -545,6 +545,7 @@
     "postinstall": "bun scripts/migration-notice.ts"
   },
   "dependencies": {
+    "@vitejs/plugin-react": "catalog:",
     "@manypkg/find-root": "catalog:",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@webpresso/runtime-format": "catalog:",
@@ -562,6 +563,7 @@
     "remark-validate-links": "^13.1.0",
     "rulesync": "8.15.1",
     "ts-pattern": "^5.9.0",
+    "vite-plus": "catalog:",
     "yaml": "catalog:",
     "zod": "catalog:",
     "zod-to-json-schema": "^3.25.2"

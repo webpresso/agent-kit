@@ -12,6 +12,7 @@
 
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { globSync } from 'glob'
 import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
@@ -98,6 +99,37 @@ function readWorkspaceGlobs(cwd: string): string[] | null {
   return globs
 }
 
+function resolveTypecheckTarget(cwd: string, target: string, workspaceGlobs: string[] | null): string {
+  const directTsconfig = join(cwd, target, 'tsconfig.json')
+  if (existsSync(directTsconfig)) return target
+
+  if (!workspaceGlobs || !target.startsWith('@')) return target
+
+  for (const workspaceGlob of workspaceGlobs) {
+    const packageJsonPattern = join(workspaceGlob, 'package.json').replaceAll('\\', '/')
+    const packageJsonPaths = globSync(packageJsonPattern, {
+      cwd,
+      nodir: true,
+      absolute: false,
+    })
+
+    for (const packageJsonPath of packageJsonPaths) {
+      try {
+        const packageJson = JSON.parse(readFileSync(join(cwd, packageJsonPath), 'utf8')) as {
+          name?: string
+        }
+        if (packageJson.name === target) {
+          return packageJsonPath.slice(0, -'/package.json'.length)
+        }
+      } catch {
+        continue
+      }
+    }
+  }
+
+  return target
+}
+
 function summarizeTypecheckResult(options: {
   passed: boolean
   errorCount: number
@@ -137,12 +169,13 @@ const tool: ToolDescriptor = {
 
     // Touch the workspace file so its presence is observable in tests/log; the
     // current resolution treats each entry as a relative path either way.
-    if (targets) readWorkspaceGlobs(cwd)
+    const workspaceGlobs = targets ? readWorkspaceGlobs(cwd) : null
 
     const runs: RunResult[] = []
     if (targets) {
       for (const pkg of targets) {
-        const tsconfig = join(pkg, 'tsconfig.json')
+        const resolvedTarget = resolveTypecheckTarget(cwd, pkg, workspaceGlobs)
+        const tsconfig = join(resolvedTarget, 'tsconfig.json')
         const outcome = await runCommand('tsc', ['--noEmit', '-p', tsconfig], runOptions)
         if (isRunFailure(outcome)) {
           throw outcome.error

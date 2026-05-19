@@ -8,7 +8,9 @@
  * directly so external scaffolders can consume it without the MCP transport.
  */
 
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { globSync } from 'glob'
 
 import { isRunFailure, runCommand, type RunResult } from '#mcp/tools/_shared/run-command'
 import { resolveProjectRoot } from '#mcp/tools/_shared/project-root'
@@ -51,6 +53,49 @@ const DEFAULT_TYPECHECK_TIMEOUT_MS = 10 * 60 * 1_000
 //   src/foo.ts:5:12 - error TS2304: Cannot find name 'bar'.
 const ERROR_LINE = /^(.+?)(?:\((\d+),\d+\)|:(\d+):\d+)(?::\s*|\s+-\s+)error TS(\d+):\s*(.*)$/
 
+function readWorkspaceGlobs(cwd: string): string[] | null {
+  const file = join(cwd, 'pnpm-workspace.yaml')
+  if (!existsSync(file)) return null
+  const text = readFileSync(file, 'utf8')
+  const globs: string[] = []
+  for (const line of text.split('\n')) {
+    const m = /^\s*-\s*['"]?([^'"\s#]+)['"]?\s*$/.exec(line)
+    if (m && m[1]) globs.push(m[1])
+  }
+  return globs
+}
+
+function resolveTypecheckTarget(cwd: string, target: string, workspaceGlobs: string[] | null): string {
+  const directTsconfig = join(cwd, target, 'tsconfig.json')
+  if (existsSync(directTsconfig)) return target
+
+  if (!workspaceGlobs || !target.startsWith('@')) return target
+
+  for (const workspaceGlob of workspaceGlobs) {
+    const packageJsonPattern = join(workspaceGlob, 'package.json').replaceAll('\\', '/')
+    const packageJsonPaths = globSync(packageJsonPattern, {
+      cwd,
+      nodir: true,
+      absolute: false,
+    })
+
+    for (const packageJsonPath of packageJsonPaths) {
+      try {
+        const packageJson = JSON.parse(readFileSync(join(cwd, packageJsonPath), 'utf8')) as {
+          name?: string
+        }
+        if (packageJson.name === target) {
+          return packageJsonPath.slice(0, -'/package.json'.length)
+        }
+      } catch {
+        continue
+      }
+    }
+  }
+
+  return target
+}
+
 /**
  * Parse `tsc --noEmit` stdout into structured `{file, line, code, message}`
  * entries. Lines that don't match the diagnostic format are ignored so
@@ -92,11 +137,13 @@ export async function runTypecheck(options: RunTypecheckOptions = {}): Promise<T
 
   const targets: readonly string[] | null =
     options.packages && options.packages.length > 0 ? options.packages : null
+  const workspaceGlobs = targets ? readWorkspaceGlobs(cwd) : null
 
   const runs: RunResult[] = []
   if (targets) {
     for (const pkg of targets) {
-      const tsconfig = join(pkg, 'tsconfig.json')
+      const resolvedTarget = resolveTypecheckTarget(cwd, pkg, workspaceGlobs)
+      const tsconfig = join(resolvedTarget, 'tsconfig.json')
       const outcome = await runCommand('tsc', ['--noEmit', '-p', tsconfig], runOptions)
       if (isRunFailure(outcome)) {
         throw outcome.error
