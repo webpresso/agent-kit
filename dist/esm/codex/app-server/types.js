@@ -12,7 +12,10 @@ const JsonValueSchema = z.lazy(() => z.union([
     z.array(JsonValueSchema),
     z.record(z.string(), JsonValueSchema),
 ]));
-export const HookEventNameSchema = z.string().min(1).transform((value) => {
+export const HookEventNameSchema = z
+    .string()
+    .min(1)
+    .transform((value) => {
     switch (value) {
         case 'preToolUse':
             return 'pre_tool_use';

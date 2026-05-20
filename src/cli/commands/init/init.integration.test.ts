@@ -578,7 +578,10 @@ describe('warnIfNonLocalCli (DX2)', () => {
 
   it('stays silent for repo-local symlink/dev-link installs', async () => {
     const { warnIfNonLocalCli } = await import('./detect-consumer.js')
-    const linkedRoot = join(tmpdir(), `ak-linked-root-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+    const linkedRoot = join(
+      tmpdir(),
+      `ak-linked-root-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    )
     const localRoot = join(repo, 'node_modules', '@webpresso', 'agent-kit')
     const cliFile = join(linkedRoot, 'dist', 'cli', 'cli.js')
 

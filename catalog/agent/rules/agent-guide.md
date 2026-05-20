@@ -12,7 +12,7 @@ paths:
   - 'schema/**/*.yaml'
   - '**/*.ts'
   - '**/*.tsx'
-  - 'justfile'
+  - 'legacy task-runner file'
 ---
 
 # Agent Rules

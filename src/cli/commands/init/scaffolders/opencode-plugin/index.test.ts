@@ -124,7 +124,10 @@ describe('OPENCODE_PLUGIN_CONTENT', () => {
 
     const mod = (await import(`${pathToFileURL(targetPath).href}?t=${Date.now()}`)) as {
       AgentKitDevLinkPlugin: (input: {
-        $: (strings: TemplateStringsArray, ...values: string[]) => {
+        $: (
+          strings: TemplateStringsArray,
+          ...values: string[]
+        ) => {
           cwd: (directory: string) => {
             quiet: () => { nothrow: () => Promise<{ exitCode: number; stdout: Buffer }> }
           }
@@ -132,7 +135,10 @@ describe('OPENCODE_PLUGIN_CONTENT', () => {
         directory: string
       }) => Promise<{
         event: (input: { event: { type: string } }) => Promise<void>
-        'experimental.session.compacting': (_input: unknown, output: { context: string[] }) => Promise<void>
+        'experimental.session.compacting': (
+          _input: unknown,
+          output: { context: string[] },
+        ) => Promise<void>
       }>
     }
 

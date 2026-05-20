@@ -150,6 +150,90 @@ describe('findMatchingRule', () => {
     expect(rule!.suggestion).toContain('just test')
   })
 
+  it('matches pnpm --filter exec vitest with arguments', () => {
+    const rule = findMatchingRule('pnpm --filter @repo/platform-web exec vitest run')
+    expect(rule).toBeDefined()
+    expect(rule!.suggestion).toContain('just test')
+  })
+
+  it('matches pnpm --filter run test', () => {
+    const rule = findMatchingRule('pnpm --filter @repo/platform-web run test')
+    expect(rule).toBeDefined()
+    expect(rule!.suggestion).toContain('just test')
+  })
+
+  it('matches pnpm --filter exec tsc', () => {
+    const rule = findMatchingRule('pnpm --filter @repo/platform-web exec tsc --noEmit')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('typecheck')
+  })
+
+  it('matches pnpm --filter exec oxlint', () => {
+    const rule = findMatchingRule('pnpm --filter @repo/platform-web exec oxlint .')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('lint')
+  })
+
+  it('matches pnpm -F exec vitest', () => {
+    const rule = findMatchingRule('pnpm -F @repo/platform-web exec vitest run')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('test')
+  })
+
+  it('matches pnpm --workspace-root exec tsc', () => {
+    const rule = findMatchingRule('pnpm --workspace-root exec tsc --noEmit')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('typecheck')
+  })
+
+  it('matches pnpm -w exec oxlint', () => {
+    const rule = findMatchingRule('pnpm -w exec oxlint .')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('lint')
+  })
+
+  it('matches pnpm --workspace-root run test', () => {
+    const rule = findMatchingRule('pnpm --workspace-root run test')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('test')
+  })
+
+  it('matches pnpm --dir exec vitest', () => {
+    const rule = findMatchingRule('pnpm --dir apps/platform/web/platform-web exec vitest run')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('test')
+  })
+
+  it('matches pnpm -F run test', () => {
+    const rule = findMatchingRule('pnpm -F @repo/platform-web run test')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('test')
+  })
+
+  it('matches pnpm -C run test', () => {
+    const rule = findMatchingRule('pnpm -C apps/platform/web/platform-web run test')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('test')
+  })
+
+  it('matches pnpm --filter run lint --fix', () => {
+    const rule = findMatchingRule('pnpm --filter @repo/platform-web run lint --fix')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('lint')
+  })
+
+  it('matches pnpm --workspace-root run typecheck', () => {
+    const rule = findMatchingRule('pnpm --workspace-root run typecheck')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('typecheck')
+  })
+
+  it('matches pnpm --dir run lint --fix', () => {
+    const rule = findMatchingRule('pnpm --dir apps/platform/web/platform-web run lint --fix')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('lint')
+  })
+
   it('returns undefined for an allowed command', () => {
     expect(findMatchingRule('just test --package mypkg')).toBeUndefined()
   })
@@ -454,6 +538,112 @@ describe('validateForbiddenCommands', () => {
     expect(result.passed).toBe(false)
     expect('command' in result && result.command).toBe('pnpm vitest')
     expect('command' in result && result.suggestion).toContain('just test')
+  })
+
+  it('blocks pnpm --filter exec vitest', () => {
+    const result = validateForbiddenCommands(
+      bashInput('pnpm --filter @repo/platform-web exec vitest run'),
+    )
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.command).toBe(
+      'pnpm --filter @repo/platform-web exec vitest run',
+    )
+  })
+
+  it('blocks pnpm --filter run test', () => {
+    const result = validateForbiddenCommands(bashInput('pnpm --filter @repo/platform-web run test'))
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.command).toBe('pnpm --filter @repo/platform-web run test')
+  })
+
+  it('blocks pnpm --filter exec oxlint', () => {
+    const result = validateForbiddenCommands(
+      bashInput('pnpm --filter @repo/platform-web exec oxlint .'),
+    )
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.command).toBe(
+      'pnpm --filter @repo/platform-web exec oxlint .',
+    )
+  })
+
+  it('blocks pnpm -F exec vitest', () => {
+    const result = validateForbiddenCommands(
+      bashInput('pnpm -F @repo/platform-web exec vitest run'),
+    )
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.command).toBe('pnpm -F @repo/platform-web exec vitest run')
+  })
+
+  it('blocks pnpm --workspace-root exec tsc', () => {
+    const result = validateForbiddenCommands(bashInput('pnpm --workspace-root exec tsc --noEmit'))
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.command).toBe('pnpm --workspace-root exec tsc --noEmit')
+  })
+
+  it('blocks pnpm -w exec oxlint', () => {
+    const result = validateForbiddenCommands(bashInput('pnpm -w exec oxlint .'))
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.command).toBe('pnpm -w exec oxlint .')
+  })
+
+  it('blocks pnpm --workspace-root run test', () => {
+    const result = validateForbiddenCommands(bashInput('pnpm --workspace-root run test'))
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.command).toBe('pnpm --workspace-root run test')
+  })
+
+  it('blocks pnpm --dir exec vitest', () => {
+    const result = validateForbiddenCommands(
+      bashInput('pnpm --dir apps/platform/web/platform-web exec vitest run'),
+    )
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.command).toBe(
+      'pnpm --dir apps/platform/web/platform-web exec vitest run',
+    )
+  })
+
+  it('blocks pnpm -F run test', () => {
+    const result = validateForbiddenCommands(bashInput('pnpm -F @repo/platform-web run test'))
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.command).toBe('pnpm -F @repo/platform-web run test')
+  })
+
+  it('blocks pnpm -C run test', () => {
+    const result = validateForbiddenCommands(
+      bashInput('pnpm -C apps/platform/web/platform-web run test'),
+    )
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.command).toBe(
+      'pnpm -C apps/platform/web/platform-web run test',
+    )
+  })
+
+  it('blocks pnpm --filter run lint --fix', () => {
+    const result = validateForbiddenCommands(
+      bashInput('pnpm --filter @repo/platform-web run lint --fix'),
+    )
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.command).toBe(
+      'pnpm --filter @repo/platform-web run lint --fix',
+    )
+    expect('command' in result && result.suggestion).toContain('--fix')
+  })
+
+  it('blocks pnpm --workspace-root run typecheck', () => {
+    const result = validateForbiddenCommands(bashInput('pnpm --workspace-root run typecheck'))
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.command).toBe('pnpm --workspace-root run typecheck')
+  })
+
+  it('blocks pnpm --dir run lint --fix', () => {
+    const result = validateForbiddenCommands(
+      bashInput('pnpm --dir apps/platform/web/platform-web run lint --fix'),
+    )
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.command).toBe(
+      'pnpm --dir apps/platform/web/platform-web run lint --fix',
+    )
+    expect('command' in result && result.suggestion).toContain('--fix')
   })
 
   it('keeps the recorded redirect fixtures in MCP-shaped format', () => {

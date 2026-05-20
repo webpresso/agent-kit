@@ -115,8 +115,7 @@ const SANDBOX_PREFIXES: Array<{ prefix: string; guidance: string }> = [
   { prefix: 'pnpm build', guidance: 'Use ctx_execute for build output' },
 ]
 
-const PNPM_DIRECTORY_PREFIX =
-  /^pnpm\s+(?:(?:--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)\s+)+(?<rest>.+)$/u
+const PNPM_DIRECTORY_PREFIX = /^pnpm\s+(?:(?:--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)\s+)+(?<rest>.+)$/u
 
 export function normalizeCommandForRouting(command: string): string {
   const trimmed = command.trim()

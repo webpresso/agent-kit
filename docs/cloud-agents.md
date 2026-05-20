@@ -14,7 +14,7 @@ state for free — `blueprints/` and `tech-debt/` markdown is committed.
 ```bash
 # In your Routine's setup script:
 pnpm install
-npx ak setup
+pnpm exec ak setup
 ```
 
 Any `ak blueprint *` command lazy-rebuilds the SQLite store from markdown on first call.

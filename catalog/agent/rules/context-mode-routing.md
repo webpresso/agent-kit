@@ -53,7 +53,7 @@ Never pull raw output into context to reason over it manually.
 
 ## Forbidden alternatives (use ak_* instead)
 
-`just test`, `pnpm test`, `just lint`, `just qa`, `vitest`, `oxlint`, `tsc`
+`webpresso project test`, `pnpm test`, `webpresso project lint`, `webpresso project check`, `vitest`, `oxlint`, `tsc`
 
 ## Ownership boundary
 

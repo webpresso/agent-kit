@@ -11,6 +11,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { globSync } from 'glob';
 import { z } from 'zod';
 import { applyOutputTransform } from '#output-transforms/index';
 import { resolveProjectRoot } from './_shared/project-root.js';
@@ -81,6 +82,33 @@ function readWorkspaceGlobs(cwd) {
     }
     return globs;
 }
+function resolveTypecheckTarget(cwd, target, workspaceGlobs) {
+    const directTsconfig = join(cwd, target, 'tsconfig.json');
+    if (existsSync(directTsconfig))
+        return target;
+    if (!workspaceGlobs || !target.startsWith('@'))
+        return target;
+    for (const workspaceGlob of workspaceGlobs) {
+        const packageJsonPattern = join(workspaceGlob, 'package.json').replaceAll('\\', '/');
+        const packageJsonPaths = globSync(packageJsonPattern, {
+            cwd,
+            nodir: true,
+            absolute: false,
+        });
+        for (const packageJsonPath of packageJsonPaths) {
+            try {
+                const packageJson = JSON.parse(readFileSync(join(cwd, packageJsonPath), 'utf8'));
+                if (packageJson.name === target) {
+                    return packageJsonPath.slice(0, -'/package.json'.length);
+                }
+            }
+            catch {
+                continue;
+            }
+        }
+    }
+    return target;
+}
 function summarizeTypecheckResult(options) {
     if (options.timedOut)
         return 'typecheck timed out';
@@ -113,12 +141,12 @@ const tool = {
         const targets = input.packages && input.packages.length > 0 ? input.packages : null;
         // Touch the workspace file so its presence is observable in tests/log; the
         // current resolution treats each entry as a relative path either way.
-        if (targets)
-            readWorkspaceGlobs(cwd);
+        const workspaceGlobs = targets ? readWorkspaceGlobs(cwd) : null;
         const runs = [];
         if (targets) {
             for (const pkg of targets) {
-                const tsconfig = join(pkg, 'tsconfig.json');
+                const resolvedTarget = resolveTypecheckTarget(cwd, pkg, workspaceGlobs);
+                const tsconfig = join(resolvedTarget, 'tsconfig.json');
                 const outcome = await runCommand('tsc', ['--noEmit', '-p', tsconfig], runOptions);
                 if (isRunFailure(outcome)) {
                     throw outcome.error;

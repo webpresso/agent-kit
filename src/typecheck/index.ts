@@ -65,7 +65,11 @@ function readWorkspaceGlobs(cwd: string): string[] | null {
   return globs
 }
 
-function resolveTypecheckTarget(cwd: string, target: string, workspaceGlobs: string[] | null): string {
+function resolveTypecheckTarget(
+  cwd: string,
+  target: string,
+  workspaceGlobs: string[] | null,
+): string {
   const directTsconfig = join(cwd, target, 'tsconfig.json')
   if (existsSync(directTsconfig)) return target
 

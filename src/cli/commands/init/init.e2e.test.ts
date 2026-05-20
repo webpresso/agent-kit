@@ -10,7 +10,16 @@
  * Fixtures live under __fixtures__/{fake-tools,fake-home}.
  */
 import { spawnSync } from 'node:child_process'
-import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -229,9 +238,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
 
       expect(r.code).toBe(0)
 
-      const codex = JSON.parse(
-        readFileSync(path.join(repo, '.codex', 'hooks.json'), 'utf8'),
-      ) as {
+      const codex = JSON.parse(readFileSync(path.join(repo, '.codex', 'hooks.json'), 'utf8')) as {
         hooks: {
           SessionStart: Array<{ hooks: Array<{ command: string }> }>
           Stop: Array<{ hooks: Array<{ command: string }> }>
@@ -248,15 +255,29 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       const sessionRoutingBin = path.join(repo, 'node_modules', '.bin', 'ak-sessionstart-routing')
       const stopQaBin = path.join(repo, 'node_modules', '.bin', 'ak-stop-qa')
       // CODEX_BIN produces guarded commands: `[ -x "<abs>" ] && "<abs>" || true`
-      expect(sessionCommands.some((cmd) => cmd.includes(sessionRoutingBin) && !cmd.includes('./node_modules'))).toBe(true)
-      expect(stopCommands.some((cmd) => cmd.includes(stopQaBin) && !cmd.includes('./node_modules'))).toBe(true)
-      expect(sessionCommands.every((cmd) => !cmd.includes('./node_modules/.bin/ak-sessionstart-routing'))).toBe(true)
-      expect(stopCommands.every((cmd) => !cmd.includes('./node_modules/.bin/ak-stop-qa'))).toBe(true)
+      expect(
+        sessionCommands.some(
+          (cmd) => cmd.includes(sessionRoutingBin) && !cmd.includes('./node_modules'),
+        ),
+      ).toBe(true)
+      expect(
+        stopCommands.some((cmd) => cmd.includes(stopQaBin) && !cmd.includes('./node_modules')),
+      ).toBe(true)
+      expect(
+        sessionCommands.every(
+          (cmd) => !cmd.includes('./node_modules/.bin/ak-sessionstart-routing'),
+        ),
+      ).toBe(true)
+      expect(stopCommands.every((cmd) => !cmd.includes('./node_modules/.bin/ak-stop-qa'))).toBe(
+        true,
+      )
 
       installFakeAgentKitBins(repo)
       const siblingCwd = mkdtempSync(path.join(repo, 'codex-runtime-'))
       const allCommands = ['SessionStart', 'PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop']
-        .flatMap((event) => (codex.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)))
+        .flatMap((event) =>
+          (codex.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
+        )
         .filter((command) => command.includes('/node_modules/.bin/ak-'))
 
       for (const command of allCommands) {

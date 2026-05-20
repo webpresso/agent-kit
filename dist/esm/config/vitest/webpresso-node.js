@@ -5,6 +5,13 @@ import { webpressoGeneratedRuntimeAliases } from './webpresso-generated-runtime-
 import { resolvedExecArgv, resolvedMaxWorkers, resolvedPool } from './pool-defaults.js';
 import { assertNonWorkersVitest4 } from './version-guard.js';
 assertNonWorkersVitest4({ caller: 'webpressoNodeConfig' });
+// Route bun:sqlite → better-sqlite3 shim so Node-based vitest can load `@webpresso/agent-kit/blueprint`.
+const bunSqliteAlias = [
+    {
+        find: /^bun:sqlite$/,
+        replacement: fileURLToPath(new URL('../../__mocks__/bun-sqlite.js', import.meta.url)),
+    },
+];
 export function createWebpressoNodeProjects(name, options = {}) {
     const unitInclude = options.unitInclude ?? [
         'src/**/*.test.ts',
@@ -18,7 +25,7 @@ export function createWebpressoNodeProjects(name, options = {}) {
     const projectIsolate = options.isolate;
     const projectTestTimeout = options.testTimeout;
     const sharedResolve = {
-        alias: [...webpressoGeneratedRuntimeAliases],
+        alias: [...webpressoGeneratedRuntimeAliases, ...bunSqliteAlias],
         tsconfigPaths: true,
         conditions: ['@webpresso/source'],
     };
@@ -77,7 +84,7 @@ export function createWebpressoNodeProjects(name, options = {}) {
 }
 export const webpressoNodeConfig = defineConfig({
     resolve: {
-        alias: [...webpressoGeneratedRuntimeAliases],
+        alias: [...webpressoGeneratedRuntimeAliases, ...bunSqliteAlias],
         tsconfigPaths: true,
         // Honor workspace packages' `@webpresso/source` export condition so
         // vitest resolves to .ts source instead of dist artifacts. Without

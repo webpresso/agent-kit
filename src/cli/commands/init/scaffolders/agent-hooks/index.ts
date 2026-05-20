@@ -322,7 +322,9 @@ function patchClaudeUserSettings(existing: Record<string, unknown>): Record<stri
   const next = { ...existing }
   const enabledPluginsValue = next.enabledPlugins
   const enabledPlugins =
-    enabledPluginsValue && typeof enabledPluginsValue === 'object' && !Array.isArray(enabledPluginsValue)
+    enabledPluginsValue &&
+    typeof enabledPluginsValue === 'object' &&
+    !Array.isArray(enabledPluginsValue)
       ? { ...(enabledPluginsValue as Record<string, unknown>) }
       : {}
 
@@ -400,7 +402,10 @@ const CODEX_MATCHERS: MatcherSet = {
   postToolUse: 'Edit|Write',
 }
 
-function patchCodexHooks(existing: Record<string, unknown>, repoRoot: string): Record<string, unknown> {
+function patchCodexHooks(
+  existing: Record<string, unknown>,
+  repoRoot: string,
+): Record<string, unknown> {
   const migrated = hoistTopLevelEvents(existing)
   const existingHooks = normalizeCodexAgentKitCommands((migrated.hooks ?? {}) as HooksMap, repoRoot)
   const agentKit = buildAgentKitHookGroups({
@@ -464,9 +469,7 @@ export async function trustCodexAgentKitHooksForRepo(
   }
 }
 
-export async function trustCodexPresetHooksForUser(
-  input: ScaffoldAgentHooksInput,
-): Promise<void> {
+export async function trustCodexPresetHooksForUser(input: ScaffoldAgentHooksInput): Promise<void> {
   if (input.options.dryRun) return
 
   const codexHome = process.env.CODEX_HOME || join(homedir(), '.codex')

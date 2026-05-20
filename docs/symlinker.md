@@ -121,13 +121,13 @@ Use in pre-commit / CI to fail loudly on drift:
 
 ```bash
 # .husky/pre-commit
-npx ak sync --check
+pnpm exec ak sync --check
 ```
 
 ```yaml
 # .github/workflows/ci.yml
 - name: Agent surface sync check
-  run: npx ak sync --check
+  run: pnpm exec ak sync --check
 ```
 
 If the check fails, run `ak sync` locally and commit the output.

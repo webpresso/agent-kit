@@ -41,7 +41,8 @@ describe('isPresetOwnedGlobalCodexHook', () => {
     expect(
       isPresetOwnedGlobalCodexHook(
         ownedHook({
-          command: '[ -x "/repo/node_modules/.bin/ak-pretool-guard" ] && "/repo/node_modules/.bin/ak-pretool-guard" || true',
+          command:
+            '[ -x "/repo/node_modules/.bin/ak-pretool-guard" ] && "/repo/node_modules/.bin/ak-pretool-guard" || true',
         }),
         EXPECTED_SOURCE_PATHS,
       ),

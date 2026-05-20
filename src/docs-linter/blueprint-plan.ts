@@ -31,6 +31,7 @@ const FOUR_HASH_TASK_BLOCK_REGEX = new RegExp(
 const EXECUTABLE_BLUEPRINT_STATUSES = new Set([
   'draft',
   'planned',
+  'parked',
   'in-progress',
   'completed',
   'archived',
@@ -339,7 +340,7 @@ function createBlueprintStatusError(filePath: string, status: string): Validatio
     file: filePath,
     severity: 'error',
     source: 'blueprint-format',
-    message: `Blueprint status "${status}" is not allowed. Use only: draft, planned, in-progress, completed, archived.`,
+    message: `Blueprint status "${status}" is not allowed. Use only: draft, planned, parked, in-progress, completed, archived.`,
     ruleId: 'blueprint-status',
   }
 }

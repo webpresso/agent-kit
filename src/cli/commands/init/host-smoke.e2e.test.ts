@@ -138,11 +138,16 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
 
     const install = run('pnpm', ['install', '--ignore-scripts'], repo, {})
     expect(install.code).toBe(0)
-    const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--with', 'context-mode', '--cwd', repo], repo, {
-      CODEX_HOME: codexHome,
-      AK_SKIP_GSTACK: '1',
-      AK_SKIP_RTK: '1',
-    })
+    const setup = run(
+      CLI_RUNTIME,
+      [CLI_PATH, 'setup', '--yes', '--with', 'context-mode', '--cwd', repo],
+      repo,
+      {
+        CODEX_HOME: codexHome,
+        AK_SKIP_GSTACK: '1',
+        AK_SKIP_RTK: '1',
+      },
+    )
     expect(setup.code).toBe(0)
 
     const list = run('codex', ['mcp', 'list'], repo, { CODEX_HOME: codexHome })
@@ -159,11 +164,16 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
 
     const install = run('pnpm', ['install', '--ignore-scripts'], repo, {})
     expect(install.code).toBe(0)
-    const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--with', 'context-mode', '--cwd', repo], repo, {
-      CODEX_HOME: codexHome,
-      AK_SKIP_GSTACK: '1',
-      AK_SKIP_RTK: '1',
-    })
+    const setup = run(
+      CLI_RUNTIME,
+      [CLI_PATH, 'setup', '--yes', '--with', 'context-mode', '--cwd', repo],
+      repo,
+      {
+        CODEX_HOME: codexHome,
+        AK_SKIP_GSTACK: '1',
+        AK_SKIP_RTK: '1',
+      },
+    )
     expect(setup.code).toBe(0)
 
     const list = run('opencode', ['mcp', 'list'], repo, {})

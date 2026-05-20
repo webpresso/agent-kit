@@ -114,9 +114,9 @@ describe('scaffoldCatalogIgnore', () => {
     expect(after).toContain('# <<< managed by @webpresso/agent-kit (catalog-installed)')
 
     expect(after.split('# >>> managed by @webpresso/agent-kit (skill-sync)').length - 1).toBe(1)
-    expect(after.split('# >>> managed by @webpresso/agent-kit (catalog-installed)').length - 1).toBe(
-      1,
-    )
+    expect(
+      after.split('# >>> managed by @webpresso/agent-kit (catalog-installed)').length - 1,
+    ).toBe(1)
   })
 
   it('delete + re-add round-trip is byte-identical', () => {

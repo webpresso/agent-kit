@@ -16,7 +16,7 @@ paths:
 
 ## BOOKEND Rule: Full QA Runs Exactly Twice
 
-The full QA pipeline (e.g. `just qa`, `pnpm qa`, `turbo run check`) is a
+The full QA pipeline (e.g. `webpresso project check`, `pnpm qa`, `turbo run check`) is a
 **bookend command** — run it once at the START and once at the END. Never in
 between.
 

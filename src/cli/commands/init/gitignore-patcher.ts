@@ -102,8 +102,7 @@ export function patchGitignore(
       // produces byte-identical output to the original write — and so we never
       // stack blank lines when the file already ends with one.
       const trimmed = original.replace(/\s+$/, '')
-      next =
-        trimmed.length === 0 ? `${rendered}\n` : `${trimmed}\n\n${rendered}\n`
+      next = trimmed.length === 0 ? `${rendered}\n` : `${trimmed}\n\n${rendered}\n`
     }
     action = exists ? 'overwritten' : 'created'
   }

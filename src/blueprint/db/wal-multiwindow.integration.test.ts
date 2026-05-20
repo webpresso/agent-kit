@@ -56,13 +56,11 @@ async function runWorkerScript(
   })
 }
 
-async function readCount(
-  cwd: string,
-  dbPath: string,
-  sql: string,
-  key: string,
-): Promise<number> {
-  const readerScript = path.join(createTempRoot(), `reader-${Math.random().toString(36).slice(2)}.ts`)
+async function readCount(cwd: string, dbPath: string, sql: string, key: string): Promise<number> {
+  const readerScript = path.join(
+    createTempRoot(),
+    `reader-${Math.random().toString(36).slice(2)}.ts`,
+  )
   writeFileSync(
     readerScript,
     `import { openDb } from ${JSON.stringify(path.join(import.meta.dirname, 'connection.ts'))}
@@ -133,12 +131,7 @@ try {
       }
 
       expect(
-        await readCount(
-          repoRoot,
-          dbPath,
-          'SELECT COUNT(*) as count FROM runner_events',
-          'count',
-        ),
+        await readCount(repoRoot, dbPath, 'SELECT COUNT(*) as count FROM runner_events', 'count'),
       ).toBe(100)
     }
   }, 120_000)

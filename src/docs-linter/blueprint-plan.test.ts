@@ -803,6 +803,26 @@ complexity: M
     expect(errors.some((e) => e.ruleId === 'blueprint-status')).toBe(true)
   })
 
+  it('accepts parked blueprint frontmatter status', () => {
+    const content = `---
+type: blueprint
+status: parked
+complexity: M
+---
+
+# Plan
+
+#### Task 1.1: Waiting
+**Status:** blocked
+
+**Depends:** None
+
+- [ ] a
+`
+    const errors = validateBlueprintPlan(filePath, content, 'blueprint')
+    expect(errors.some((e) => e.ruleId === 'blueprint-status')).toBe(false)
+  })
+
   it('rejects completed blueprint with any non-done task', () => {
     const content = `---
 type: blueprint

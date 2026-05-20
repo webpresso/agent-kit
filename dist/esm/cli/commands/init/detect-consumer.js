@@ -125,11 +125,15 @@ function discoverInstalledAgentKitRoots(repoRoot) {
     return [...roots];
 }
 function isLocalAgentKitCli(repoRoot, cliPath) {
-    const cliCandidates = [...new Set([cliPath, safeRealpath(cliPath)].filter((p) => p !== null))];
+    const cliCandidates = [
+        ...new Set([cliPath, safeRealpath(cliPath)].filter((p) => p !== null)),
+    ];
     if (cliCandidates.length === 0)
         return false;
     for (const root of discoverInstalledAgentKitRoots(repoRoot)) {
-        const rootCandidates = [...new Set([root, safeRealpath(root)].filter((p) => p !== null))];
+        const rootCandidates = [
+            ...new Set([root, safeRealpath(root)].filter((p) => p !== null)),
+        ];
         for (const candidate of cliCandidates) {
             if (rootCandidates.some((rootPath) => isWithinPath(candidate, rootPath))) {
                 return true;

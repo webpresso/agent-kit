@@ -110,7 +110,9 @@ function collectOwnedHooks(
   ) => metadata is CommandHookMetadata,
 ): CommandHookMetadata[] {
   return response.data.flatMap((entry) =>
-    entry.hooks.filter((hook): hook is CommandHookMetadata => selectHook(hook, expectedSourcePaths)),
+    entry.hooks.filter((hook): hook is CommandHookMetadata =>
+      selectHook(hook, expectedSourcePaths),
+    ),
   )
 }
 

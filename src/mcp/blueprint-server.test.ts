@@ -16,7 +16,15 @@
  */
 
 import { execSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, renameSync } from 'node:fs'
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  rmSync,
+  existsSync,
+  renameSync,
+} from 'node:fs'
 import path from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -1031,7 +1039,10 @@ describe('ak_blueprint_list', () => {
     mkdirSync(path.dirname(completedDir), { recursive: true })
     renameSync(path.dirname(overviewPath), completedDir)
     const movedOverview = path.join(completedDir, '_overview.md')
-    const updated = readFileSync(movedOverview, 'utf8').replace('status: draft', 'status: completed')
+    const updated = readFileSync(movedOverview, 'utf8').replace(
+      'status: draft',
+      'status: completed',
+    )
     writeFileSync(movedOverview, updated, 'utf8')
     execSync('git add -A && git commit -qm "move"', { cwd: localTmpDir })
 
@@ -1125,7 +1136,10 @@ describe('ak_blueprint_get', () => {
     mkdirSync(path.dirname(completedDir), { recursive: true })
     renameSync(path.dirname(overviewPath), completedDir)
     const movedOverview = path.join(completedDir, '_overview.md')
-    const updated = readFileSync(movedOverview, 'utf8').replace('status: draft', 'status: completed')
+    const updated = readFileSync(movedOverview, 'utf8').replace(
+      'status: draft',
+      'status: completed',
+    )
     writeFileSync(movedOverview, updated, 'utf8')
     execSync('git add -A && git commit -qm "move"', { cwd: localTmpDir })
 

@@ -36,10 +36,14 @@ describe('SqliteAiMemoryStore', () => {
 
     const first = await store.save(config, state)
     vi.setSystemTime(new Date('2026-01-01T00:00:01.000Z'))
-    const second = await store.save(config, {
-      messages: [...state.messages, { role: 'assistant', content: 'hi back' }],
-      toolCalls: [],
-    }, first.checkpointId)
+    const second = await store.save(
+      config,
+      {
+        messages: [...state.messages, { role: 'assistant', content: 'hi back' }],
+        toolCalls: [],
+      },
+      first.checkpointId,
+    )
 
     const latest = await store.loadLatest('thread-1')
     const loaded = await store.load(second.checkpointId!)

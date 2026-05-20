@@ -61,7 +61,7 @@ Install with:
 ```bash
 ak setup --with tanstack-query,better-auth-best-practices,react-doctor
 # Or after initial install:
-ak skills install tanstack-query
+ak skill install tanstack-query
 ```
 
 | Skill | Applies to |
@@ -150,9 +150,9 @@ Tier-1 and Tier-2 skills are agent-kit-owned and update with the package.
 Consumers bring new catalog content into `.agent/` explicitly with
 `ak setup --overwrite` (or by manually merging the `.new` sidecars).
 
-Tier-3 skills are installed one at a time with `ak skills install <name>`
+Tier-3 skills are installed one at a time with `ak skill install <name>`
 or selected during setup with `ak setup --with <name>`. Agent Kit does not
-ship a public `ak skills refresh` placeholder; registry refresh can be
+ship a public `ak skill refresh` placeholder; registry refresh can be
 added later when there is a concrete upstream contract.
 
 ## Counts

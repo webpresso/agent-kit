@@ -893,8 +893,12 @@ hooks:
 
     expect(sessionCommands).toContain(codexBinCommand(repoRoot, 'ak-sessionstart-routing'))
     expect(preToolCommands).toContain(codexBinCommand(repoRoot, 'ak-pretool-guard'))
-    expect(sessionCommands.filter((command) => command.includes('ak-sessionstart-routing'))).toHaveLength(1)
-    expect(preToolCommands.filter((command) => command.includes('ak-pretool-guard'))).toHaveLength(1)
+    expect(
+      sessionCommands.filter((command) => command.includes('ak-sessionstart-routing')),
+    ).toHaveLength(1)
+    expect(preToolCommands.filter((command) => command.includes('ak-pretool-guard'))).toHaveLength(
+      1,
+    )
     expect(sessionCommands.some((command) => command.includes('run-agent-kit-bin.ts'))).toBe(false)
     expect(preToolCommands.some((command) => command.includes('run-agent-kit-bin.ts'))).toBe(false)
   })
@@ -958,8 +962,15 @@ hooks:
       hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
     }
 
-    const commands = ['SessionStart', 'PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop']
-      .flatMap((event) => (codex.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)))
+    const commands = [
+      'SessionStart',
+      'PreToolUse',
+      'PostToolUse',
+      'UserPromptSubmit',
+      'Stop',
+    ].flatMap((event) =>
+      (codex.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
+    )
 
     expect(commands.length).toBeGreaterThan(0)
     for (const command of commands) {
@@ -1024,12 +1035,21 @@ hooks:
     installFakeAgentKitBins(repoRoot)
 
     const siblingCwd = mkdtempSync(join(repoRoot, 'claude-smoke-'))
-    const settings = JSON.parse(readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8')) as {
+    const settings = JSON.parse(
+      readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8'),
+    ) as {
       hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
     }
 
-    const commands = ['SessionStart', 'PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop']
-      .flatMap((event) => (settings.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)))
+    const commands = [
+      'SessionStart',
+      'PreToolUse',
+      'PostToolUse',
+      'UserPromptSubmit',
+      'Stop',
+    ].flatMap((event) =>
+      (settings.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
+    )
 
     expect(commands.length).toBeGreaterThan(0)
     for (const command of commands) {
@@ -1055,8 +1075,15 @@ hooks:
       hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
     }
 
-    const commands = ['SessionStart', 'PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop']
-      .flatMap((event) => (codex.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)))
+    const commands = [
+      'SessionStart',
+      'PreToolUse',
+      'PostToolUse',
+      'UserPromptSubmit',
+      'Stop',
+    ].flatMap((event) =>
+      (codex.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
+    )
 
     expect(commands.length).toBeGreaterThan(0)
     for (const command of commands) {

@@ -274,7 +274,9 @@ function defaultClaudeUserSettingsPath() {
 function patchClaudeUserSettings(existing) {
     const next = { ...existing };
     const enabledPluginsValue = next.enabledPlugins;
-    const enabledPlugins = enabledPluginsValue && typeof enabledPluginsValue === 'object' && !Array.isArray(enabledPluginsValue)
+    const enabledPlugins = enabledPluginsValue &&
+        typeof enabledPluginsValue === 'object' &&
+        !Array.isArray(enabledPluginsValue)
         ? { ...enabledPluginsValue }
         : {};
     enabledPlugins[AGENT_KIT_CLAUDE_PLUGIN_ID] = true;

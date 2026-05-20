@@ -45,8 +45,7 @@ function listCatalogRules(catalogDir: string): string[] {
   if (!existsSync(dir)) return []
   return readdirSync(dir)
     .filter(
-      (name) =>
-        name.endsWith('.md') && name !== 'README.md' && statSync(join(dir, name)).isFile(),
+      (name) => name.endsWith('.md') && name !== 'README.md' && statSync(join(dir, name)).isFile(),
     )
     .map((name) => name.replace(/\.md$/, ''))
     .sort()

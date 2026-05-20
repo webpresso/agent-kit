@@ -17,22 +17,25 @@ const JsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
   ]),
 )
 
-export const HookEventNameSchema = z.string().min(1).transform((value) => {
-  switch (value) {
-    case 'preToolUse':
-      return 'pre_tool_use'
-    case 'permissionRequest':
-      return 'permission_request'
-    case 'postToolUse':
-      return 'post_tool_use'
-    case 'sessionStart':
-      return 'session_start'
-    case 'userPromptSubmit':
-      return 'user_prompt_submit'
-    default:
-      return value
-  }
-})
+export const HookEventNameSchema = z
+  .string()
+  .min(1)
+  .transform((value) => {
+    switch (value) {
+      case 'preToolUse':
+        return 'pre_tool_use'
+      case 'permissionRequest':
+        return 'permission_request'
+      case 'postToolUse':
+        return 'post_tool_use'
+      case 'sessionStart':
+        return 'session_start'
+      case 'userPromptSubmit':
+        return 'user_prompt_submit'
+      default:
+        return value
+    }
+  })
 
 export const HookHandlerTypeSchema = z.enum(['command', 'prompt', 'agent'])
 export const HookSourceSchema = z.enum([

@@ -41,7 +41,7 @@ ak --version   # alias — same binary
 ```
 
 > **Pinned-version devDependency path** (library imports, CI with reproducible
-> lockfiles): `pnpm add -D webpresso && npx wp setup`. The legacy
+> lockfiles): `pnpm add -D webpresso && pnpm exec wp setup`. The legacy
 > `@webpresso/agent-kit` package on GitHub Packages is frozen — use `webpresso`
 > from public npmjs.org for all new installs.
 

@@ -98,14 +98,7 @@ export class SqliteAiMemoryStore extends BaseCheckpointSaver implements FactData
           (id, thread_id, parent_id, state_json, metadata_json, created_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
       )
-      .run(
-        checkpointId,
-        config.threadId,
-        parentId ?? null,
-        JSON.stringify(state),
-        null,
-        now,
-      )
+      .run(checkpointId, config.threadId, parentId ?? null, JSON.stringify(state), null, now)
 
     return { success: true, checkpointId }
   }

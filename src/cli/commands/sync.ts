@@ -113,8 +113,7 @@ export function registerSyncCommand(cli: CAC): void {
         throw error
       }
 
-      const agentsMismatch =
-        agentsResult === null ? null : agentsResultToMismatch(agentsResult)
+      const agentsMismatch = agentsResult === null ? null : agentsResultToMismatch(agentsResult)
       const combinedFixCount = result.fixCount + (agentsMismatch ? 1 : 0)
       const combinedMismatches = agentsMismatch
         ? [...result.mismatches, agentsMismatch]

@@ -135,6 +135,21 @@ export const SUGGESTION_MODIFIERS = [
     { pattern: /--fix|--write/, category: 'lint', suggestion: `${LINT_BASE} --fix` },
 ];
 const LOGICAL_OPERATOR_REGEX = /(?:&&|\|\||;)/;
+const PNPM_SCOPE_FLAG_REGEX = /\s+(?:(?:--filter|-F|--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)|(?:--workspace-root|-w))/;
+function stripPnpmScopeFlags(command) {
+    if (!command.startsWith('pnpm ')) {
+        return command;
+    }
+    let next = command;
+    while (PNPM_SCOPE_FLAG_REGEX.test(next)) {
+        const updated = next.replace(PNPM_SCOPE_FLAG_REGEX, '');
+        if (updated === next) {
+            break;
+        }
+        next = updated;
+    }
+    return next.replace(/\s+/g, ' ').trim();
+}
 /**
  * Split a shell command string on top-level operators (&&, ||, |, ;) while
  * correctly skipping operators that appear inside:
@@ -319,6 +334,16 @@ export function getCommandVariants(command) {
         for (const segment of splitTopLevelCommands(normalized)) {
             if (!variants.includes(segment))
                 variants.push(segment);
+        }
+    }
+    const initialVariantCount = variants.length;
+    for (let index = 0; index < initialVariantCount; index += 1) {
+        const variant = variants[index];
+        if (!variant)
+            continue;
+        const strippedPnpmVariant = stripPnpmScopeFlags(variant);
+        if (strippedPnpmVariant !== variant && !variants.includes(strippedPnpmVariant)) {
+            variants.push(strippedPnpmVariant);
         }
     }
     return variants;

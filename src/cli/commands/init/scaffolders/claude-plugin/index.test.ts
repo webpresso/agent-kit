@@ -4,10 +4,7 @@ import { tmpdir } from 'node:os'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
-import {
-  CLAUDE_PLUGIN_ID,
-  ensureClaudeCodeUserPlugin,
-} from './index.js'
+import { CLAUDE_PLUGIN_ID, ensureClaudeCodeUserPlugin } from './index.js'
 
 const tempRoots: string[] = []
 

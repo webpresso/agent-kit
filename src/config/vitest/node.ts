@@ -27,6 +27,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 assertNonWorkersVitest4({ caller: 'nodeConfig' })
 
+// Route bun:sqlite → better-sqlite3 shim so Node-based vitest can load `@webpresso/agent-kit/blueprint`.
+const bunSqliteAlias = [
+  {
+    find: /^bun:sqlite$/,
+    replacement: fileURLToPath(new URL('../../__mocks__/bun-sqlite.js', import.meta.url)),
+  },
+] as const
+
 export interface CreateNodeProjectsOptions {
   unitInclude?: string[]
   unitExclude?: string[]
@@ -69,7 +77,7 @@ export function createNodeProjects(
   const projectIsolate = options.isolate
   const projectTestTimeout = options.testTimeout
   const sharedResolve = {
-    alias: [...generatedRuntimeAliases],
+    alias: [...generatedRuntimeAliases, ...bunSqliteAlias],
     tsconfigPaths: true,
   } as unknown as UserWorkspaceConfig['resolve']
 
@@ -122,7 +130,7 @@ export function createNodeProjects(
 
 export const nodeConfig = defineConfig({
   resolve: {
-    alias: [...generatedRuntimeAliases],
+    alias: [...generatedRuntimeAliases, ...bunSqliteAlias],
     tsconfigPaths: true,
   },
   test: {

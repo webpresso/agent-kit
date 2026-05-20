@@ -24,7 +24,7 @@ import { resolveBlueprintProjectionDbPath, withProjectionDbWriteLock } from '#db
 import { findTemplate } from '#db/templates.js';
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js';
 import { evidenceListSchema, canonicalizeEvidenceList } from '#evidence.js';
-import { readProjectionMetadata, recordProjectionMetadata } from '#freshness.js';
+import { checkFreshness, readProjectionMetadata, recordProjectionMetadata } from '#freshness.js';
 import { applyVerification, parseVerificationBlock } from '#verification.js';
 import { makeNextAction } from '#next-action.js';
 import { resolveBlueprintProjects } from '#projects.js';
@@ -432,6 +432,12 @@ async function handleTaskNext(cwd, raw) {
             bytes: 0,
             tokensSaved: 0,
         });
+    const taskNextFreshness = checkFreshness({ worktree_path: cwd, db_path: target });
+    if (!taskNextFreshness.ok) {
+        return staleProjectionResponse('Blueprint projection is stale', taskNextFreshness.next_action, {
+            task: null,
+        });
+    }
     try {
         const conn = openDb(target);
         const sc = blueprint ? 'AND t.blueprint_slug = ?' : '';
@@ -912,6 +918,16 @@ const listBpReader = ({ db }) => {
     const sql = `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints ORDER BY ingested_at DESC LIMIT 500`;
     return db.prepare(sql).all();
 };
+function staleProjectionResponse(summary, nextAction, extra) {
+    return jsonContent({
+        summary,
+        failures: [],
+        bytes: 0,
+        tokensSaved: 0,
+        ...extra,
+        next_action: nextAction,
+    });
+}
 async function handleBlueprintList(cwd, raw) {
     const p = listSchema.safeParse(raw);
     if (!p.success)
@@ -960,6 +976,14 @@ async function handleBlueprintList(cwd, raw) {
             bytes: 0,
             tokensSaved: 0,
         });
+    const listFreshness = checkFreshness({ worktree_path: cwd, db_path: target });
+    if (!listFreshness.ok) {
+        return staleProjectionResponse('Blueprint projection is stale', listFreshness.next_action, {
+            blueprints: [],
+            project_id: p.data.project_id ?? cwd,
+            freshness_ok: false,
+        });
+    }
     try {
         const conn = openDb(target);
         let rows;
@@ -1088,6 +1112,16 @@ async function handleBlueprintGet(cwd, raw) {
             bytes: 0,
             tokensSaved: 0,
         });
+    const getFreshness = checkFreshness({ worktree_path: cwd, db_path: target });
+    if (!getFreshness.ok) {
+        return staleProjectionResponse('Blueprint projection is stale', getFreshness.next_action, {
+            blueprint: null,
+            content_hash: null,
+            ingested_at: null,
+            head_at_ingest: null,
+            project_id: p.data.project_id ?? cwd,
+        });
+    }
     try {
         const conn = openDb(target);
         let blueprint;
@@ -1155,6 +1189,17 @@ async function handleBlueprintContext(cwd, raw) {
             bytes: 0,
             tokensSaved: 0,
         });
+    const contextFreshness = checkFreshness({ worktree_path: cwd, db_path: target });
+    if (!contextFreshness.ok) {
+        return staleProjectionResponse('Blueprint projection is stale', contextFreshness.next_action, {
+            chunks: [],
+            total_bytes: 0,
+            content_hash: null,
+            ingested_at: null,
+            head_at_ingest: null,
+            project_id: p.data.project_id ?? cwd,
+        });
+    }
     try {
         const conn = openDb(target);
         let blueprint;

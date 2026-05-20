@@ -20,6 +20,13 @@ import { resolvedExecArgv, resolvedMaxWorkers, resolvedPool } from './pool-defau
 import { assertNonWorkersVitest4 } from './version-guard.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 assertNonWorkersVitest4({ caller: 'nodeConfig' });
+// Route bun:sqlite → better-sqlite3 shim so Node-based vitest can load `@webpresso/agent-kit/blueprint`.
+const bunSqliteAlias = [
+    {
+        find: /^bun:sqlite$/,
+        replacement: fileURLToPath(new URL('../../__mocks__/bun-sqlite.js', import.meta.url)),
+    },
+];
 /**
  * Create vitest projects for unit/integration test split.
  *
@@ -49,7 +56,7 @@ export function createNodeProjects(name, options = {}) {
     const projectIsolate = options.isolate;
     const projectTestTimeout = options.testTimeout;
     const sharedResolve = {
-        alias: [...generatedRuntimeAliases],
+        alias: [...generatedRuntimeAliases, ...bunSqliteAlias],
         tsconfigPaths: true,
     };
     return [
@@ -100,7 +107,7 @@ export function createNodeProjects(name, options = {}) {
 }
 export const nodeConfig = defineConfig({
     resolve: {
-        alias: [...generatedRuntimeAliases],
+        alias: [...generatedRuntimeAliases, ...bunSqliteAlias],
         tsconfigPaths: true,
     },
     test: {

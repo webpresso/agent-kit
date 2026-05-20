@@ -62,10 +62,7 @@ function productionSourceFiles(root: string): string[] {
 function agentKitCodexHooks(hooks: unknown[], sourcePath: string): CommandHookMetadata[] {
   return hooks.filter((hook): hook is CommandHookMetadata => {
     const candidate = hook as Partial<CommandHookMetadata>
-    return (
-      candidate.handlerType === 'command' &&
-      isAgentKitOwnedCodexHook(candidate, [sourcePath])
-    )
+    return candidate.handlerType === 'command' && isAgentKitOwnedCodexHook(candidate, [sourcePath])
   })
 }
 

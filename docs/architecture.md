@@ -159,9 +159,9 @@ Two alternatives fail for specific reasons:
 ```
 agent-kit ships an update
   └─→ pnpm update @webpresso/agent-kit        (catalog refreshed in node_modules/)
-       └─→ npx ak setup --overwrite           (or: ak skills install <name>)
+       └─→ pnpm exec ak setup --overwrite     (or: ak skill install <name>)
             └─→ new catalog content copied into .agent/   — review the diff
-                 └─→ npx ak sync       (regenerate .claude/, .gemini/, …)
+                 └─→ pnpm exec ak sync       (regenerate .claude/, .gemini/, …)
 ```
 
 Skip `ak setup` after a package update and you keep running the old
