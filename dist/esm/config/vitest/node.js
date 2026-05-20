@@ -27,6 +27,10 @@ const bunSqliteAlias = [
         replacement: fileURLToPath(new URL('../../__mocks__/bun-sqlite.js', import.meta.url)),
     },
 ];
+// Force @webpresso/agent-kit through Vite's transform so the bun:sqlite alias applies even when imported from node_modules.
+const agentKitInline = {
+    deps: { inline: [/@webpresso\/agent-kit/] },
+};
 /**
  * Create vitest projects for unit/integration test split.
  *
@@ -62,7 +66,9 @@ export function createNodeProjects(name, options = {}) {
     return [
         {
             resolve: sharedResolve,
+            server: agentKitInline,
             test: {
+                server: agentKitInline,
                 name: `${name}/unit`,
                 globals: true,
                 restoreMocks: true,
@@ -83,6 +89,7 @@ export function createNodeProjects(name, options = {}) {
         },
         {
             resolve: sharedResolve,
+            server: agentKitInline,
             test: {
                 name: `${name}/integration`,
                 globals: true,
@@ -110,6 +117,7 @@ export const nodeConfig = defineConfig({
         alias: [...generatedRuntimeAliases, ...bunSqliteAlias],
         tsconfigPaths: true,
     },
+    server: agentKitInline,
     test: {
         globals: true,
         restoreMocks: true,

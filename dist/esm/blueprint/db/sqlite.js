@@ -1,30 +1,24 @@
 /**
  * Unified SQLite adapter for agent-kit.
  *
- * At runtime: uses `bun:sqlite` (Bun's native, zero-dep SQLite).
- * In vitest (Node.js): `bun:sqlite` is aliased to the better-sqlite3 shim
- * at src/__mocks__/bun-sqlite.ts via vitest.config.ts resolve.alias.
- *
- * Exposes `Statement<Params, ReturnType>` with Params-first generic order
- * (matching better-sqlite3 conventions) so existing call sites typecheck
- * without modification. The internal bun:sqlite prepare call uses ReturnType-first
- * order; the cast is intentional and safe — the SQL query determines the actual
- * return shape.
+ * Driver is selected lazily so Node's static ESM loader never resolves
+ * `bun:sqlite` (which fails outside Bun). Under Bun → `bun:sqlite`; under
+ * Node (vitest, CLI) → `better-sqlite3`.
  */
-import { Database as BunDatabase } from 'bun:sqlite';
+const driverSpec = typeof globalThis.Bun !== 'undefined' ? 'bun:sqlite' : 'better-sqlite3';
+const driverModule = (await import(/* @vite-ignore */ driverSpec));
+const BunDatabase = (driverModule.Database ?? driverModule.default);
+if (!BunDatabase) {
+    throw new Error(`Could not resolve a SQLite Database constructor from driver "${driverSpec}"`);
+}
 export class Database {
     _db;
     constructor(filename, options) {
         this._db = new BunDatabase(filename, options);
     }
-    /**
-     * Prepare a SQL statement.
-     * Generic order matches better-sqlite3: Params first, ReturnType second.
-     */
     prepare(sql) {
         return this._db.prepare(sql);
     }
-    /** Execute SQL statements (DDL, PRAGMA, etc.) with no result set. */
     exec(sql) {
         this._db.exec(sql);
     }

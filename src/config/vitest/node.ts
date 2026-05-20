@@ -35,6 +35,11 @@ const bunSqliteAlias = [
   },
 ] as const
 
+// Force @webpresso/agent-kit through Vite's transform so the bun:sqlite alias applies even when imported from node_modules.
+const agentKitInline = {
+  deps: { inline: [/@webpresso\/agent-kit/] },
+} as const
+
 export interface CreateNodeProjectsOptions {
   unitInclude?: string[]
   unitExclude?: string[]
@@ -84,7 +89,9 @@ export function createNodeProjects(
   return [
     {
       resolve: sharedResolve,
+      server: agentKitInline as unknown as UserWorkspaceConfig['server'],
       test: {
+        server: agentKitInline,
         name: `${name}/unit`,
         globals: true,
         restoreMocks: true,
@@ -105,6 +112,7 @@ export function createNodeProjects(
     },
     {
       resolve: sharedResolve,
+      server: agentKitInline as unknown as UserWorkspaceConfig['server'],
       test: {
         name: `${name}/integration`,
         globals: true,
@@ -133,6 +141,7 @@ export const nodeConfig = defineConfig({
     alias: [...generatedRuntimeAliases, ...bunSqliteAlias],
     tsconfigPaths: true,
   },
+  server: agentKitInline,
   test: {
     globals: true,
     restoreMocks: true,
