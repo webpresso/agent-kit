@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.11
+
+### Patch Changes
+
+- ee74d36: Fix blueprint docs lint parity for parked lifecycle plans and keep Node Vitest `bun:sqlite` alias behavior aligned between folded and legacy config exports.
+
 ## 0.18.10
 
 ### Patch Changes

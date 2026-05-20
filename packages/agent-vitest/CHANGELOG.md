@@ -1,5 +1,11 @@
 # @webpresso/agent-vitest
 
+## 0.3.4
+
+### Patch Changes
+
+- ee74d36: Fix blueprint docs lint parity for parked lifecycle plans and keep Node Vitest `bun:sqlite` alias behavior aligned between folded and legacy config exports.
+
 ## 0.3.3
 
 ### Patch Changes
