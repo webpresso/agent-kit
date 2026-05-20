@@ -1,5 +1,11 @@
 # @webpresso/agent-vitest
 
+## 0.3.5
+
+### Patch Changes
+
+- a7e0d5f: Inline `@webpresso/agent-kit` in Node Vitest config so the `bun:sqlite` alias is applied when agent-kit is imported from `node_modules`.
+
 ## 0.3.4
 
 ### Patch Changes
