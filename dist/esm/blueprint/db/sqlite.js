@@ -7,7 +7,8 @@
  */
 const driverSpec = typeof globalThis.Bun !== 'undefined' ? 'bun:sqlite' : 'better-sqlite3';
 const driverModule = (await import(/* @vite-ignore */ driverSpec));
-const BunDatabase = (driverModule.Database ?? driverModule.default);
+const BunDatabase = (driverModule.Database ??
+    driverModule.default);
 if (!BunDatabase) {
     throw new Error(`Could not resolve a SQLite Database constructor from driver "${driverSpec}"`);
 }
