@@ -9,6 +9,7 @@ import type { ConsumerContext } from './detect-consumer.js'
  * - {{TECH_STACK}}: detected from package.json deps.
  * - {{ESCALATION_MAP}}: TODO placeholder.
  * - {{DURABLE_PLANNING_ROOT}}: from .agent-kitrc.json, defaulting to `.agent/planning/`.
+ * - {{BLUEPRINTS_DIR}}: from .agent-kitrc.json, defaulting to `blueprints`.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -200,16 +201,28 @@ function writeAgentsMdManaged(
   return { targetPath, action: 'overwritten' }
 }
 
+function withTrailingSlash(path: string): string {
+  return path.endsWith('/') ? path : `${path}/`
+}
+
+function withoutTrailingSlash(path: string): string {
+  return path.replace(/\/+$/u, '')
+}
+
 export function renderAgentsMd(
   template: string,
   consumer: ConsumerContext,
   config: AgentkitConfig,
 ): string {
+  const durablePlanningRoot = withTrailingSlash(
+    config.durablePlanningRoot || DEFAULT_DURABLE_PLANNING_ROOT,
+  )
   const replacements: Record<string, string> = {
     '{{REPOSITORY_MAP}}': renderRepositoryMap(consumer),
     '{{TECH_STACK}}': renderTechStack(consumer),
     '{{ESCALATION_MAP}}': '{{TODO: populate escalation map — who to ping for which subsystem.}}',
-    '{{DURABLE_PLANNING_ROOT}}': config.durablePlanningRoot || DEFAULT_DURABLE_PLANNING_ROOT,
+    '{{DURABLE_PLANNING_ROOT}}': durablePlanningRoot,
+    '{{BLUEPRINTS_DIR}}': withoutTrailingSlash(config.blueprintsDir ?? 'blueprints'),
   }
   let output = template
   for (const [key, value] of Object.entries(replacements)) {

@@ -90,6 +90,65 @@ describe('formatBlueprintSummaries', () => {
       '  BLUEPRINT orphan-a status=draft complexity=S progress=0% tasks=1 parent=missing-roadmap',
     )
   })
+
+  it('renders reproducible inventory and anomaly summary counts', () => {
+    const output = formatBlueprintSummaries([
+      {
+        name: 'roadmap-active',
+        title: 'Active Roadmap',
+        status: 'in-progress',
+        complexity: 'L',
+        taskCount: 3,
+        progress: 33,
+        type: 'parent-roadmap',
+      },
+      {
+        name: 'planned-child',
+        title: 'Planned Child',
+        status: 'planned',
+        complexity: 'S',
+        taskCount: 2,
+        progress: 0,
+        type: 'blueprint',
+        parentRoadmap: 'roadmap-active',
+      },
+      {
+        name: 'completed-with-tasks',
+        title: 'Completed With Tasks',
+        status: 'completed',
+        complexity: 'M',
+        taskCount: 4,
+        progress: 100,
+        type: 'blueprint',
+      },
+      {
+        name: 'completed-zero-task',
+        title: 'Completed Zero Task',
+        status: 'completed',
+        complexity: 'XS',
+        taskCount: 0,
+        progress: 0,
+        type: 'blueprint',
+      },
+      {
+        name: 'draft-orphan',
+        title: 'Draft Orphan',
+        status: 'draft',
+        complexity: 'S',
+        taskCount: 1,
+        progress: 0,
+        type: 'blueprint',
+        parentRoadmap: 'missing-roadmap',
+      },
+    ])
+
+    expect(output).toContain('SUMMARY total=5')
+    expect(output).toContain(
+      'BY_STATUS archived=0 completed=2 draft=1 in-progress=1 parked=0 planned=1',
+    )
+    expect(output).toContain('BY_TYPE blueprint=4 parent-roadmap=1')
+    expect(output).toContain('ANOMALIES completed-zero-task=1')
+  })
 })
 
 describe('formatBlueprintAudit', () => {
