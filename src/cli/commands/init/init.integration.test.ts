@@ -229,6 +229,14 @@ describe('ak init end-to-end', () => {
     expect(agents).toContain('@acme/api')
     expect(agents).toContain('React')
     expect(agents).toContain('.agent/planning/')
+    expect(existsSync(join(repo, '.agent', 'planning', 'contracts'))).toBe(false)
+    expect(existsSync(join(repo, '.agent', 'planning', 'state'))).toBe(false)
+    expect(existsSync(join(repo, '.agent', 'planning', 'notepad.md'))).toBe(false)
+    expect(existsSync(join(repo, '.agent', 'planning', 'project-memory.json'))).toBe(false)
+    expect(agents).toMatch(/Materialized by setup:[\s\S]*`\.agent\/planning\/plans\/`/)
+    expect(agents).toMatch(
+      /Generated on demand \(not created by setup\):[\s\S]*`\.agent\/planning\/contracts\/`[\s\S]*`\.agent\/planning\/state\/`[\s\S]*`\.agent\/planning\/notepad\.md`[\s\S]*`\.agent\/planning\/project-memory\.json`/,
+    )
     expect(agents).toContain('pnpm install && pnpm setup:agent')
     expect(agents).not.toContain('ak symlink sync')
 
@@ -272,6 +280,12 @@ describe('ak init end-to-end', () => {
     }
     expect(rc.blueprintsDir).toBe('webpresso/blueprints')
     expect(rc.installed.tier3Skills).toEqual([])
+
+    const agents = readFileSync(join(repo, 'AGENTS.md'), 'utf8')
+    expect(agents).toContain('[`webpresso/blueprints/`](./webpresso/blueprints/)')
+    expect(agents).toContain('`webpresso/blueprints/` (`planned/`, `in-progress/`, `completed/`)')
+    expect(agents).not.toContain('./blueprints/')
+    expect(agents).not.toContain('{{BLUEPRINTS_DIR}}')
   })
 
   it('rejects unknown Tier-3 names with exit code 1', async () => {

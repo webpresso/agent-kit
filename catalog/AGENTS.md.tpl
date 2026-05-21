@@ -10,6 +10,8 @@
     not specified.
   - {{DURABLE_PLANNING_ROOT}}: defaults to `.agent/planning/`. Override via
     .agent-kitrc.json.
+  - {{BLUEPRINTS_DIR}}: defaults to `blueprints`. Override via
+    .agent-kitrc.json#blueprintsDir.
 
   Managed sections in this file are refreshed by agent-kit on `ak sync`.
   Repo-specific edits belong only inside `user-owned` blocks; agent-kit
@@ -38,9 +40,10 @@ individual repos. The `--with omx` preset chains `omx setup --yes`.
 ## Plan
 
 Use blueprints for non-trivial work. Blueprint specs live in
-[`blueprints/`](./blueprints/) with lifecycle directories such as `planned/`,
-`in-progress/`, and `completed/`. Keep each blueprint's tasks, dependencies,
-verification commands, and acceptance criteria current before execution.
+[`{{BLUEPRINTS_DIR}}/`](./{{BLUEPRINTS_DIR}}/) with lifecycle directories such
+as `planned/`, `in-progress/`, and `completed/`. Keep each blueprint's tasks,
+dependencies, verification commands, and acceptance criteria current before
+execution.
 
 Slash-commands and skills are loaded from agent-kit's catalog at setup time:
 
@@ -99,12 +102,15 @@ this block is preserved verbatim across `ak sync` runs.
 
 ## Durable planning surface
 
-- PRDs: `{{DURABLE_PLANNING_ROOT}}/plans/prd-<slug>.md`
-- Test specs: `{{DURABLE_PLANNING_ROOT}}/plans/test-spec-<slug>.md`
-- Boundary contracts: `{{DURABLE_PLANNING_ROOT}}/contracts/*.md`
-- Lifecycle state: `{{DURABLE_PLANNING_ROOT}}/state/lifecycle/<slug>.json`
-- Session notes: `{{DURABLE_PLANNING_ROOT}}/notepad.md`
-- Project memory: `{{DURABLE_PLANNING_ROOT}}/project-memory.json`
+- Materialized by setup: blueprint lifecycle directories under
+  `{{BLUEPRINTS_DIR}}/` (`planned/`, `in-progress/`, `completed/`) and durable
+  plan files under `{{DURABLE_PLANNING_ROOT}}plans/` when PRDs or test specs
+  are generated.
+- Generated on demand (not created by setup): boundary contracts at
+  `{{DURABLE_PLANNING_ROOT}}contracts/`, lifecycle state at
+  `{{DURABLE_PLANNING_ROOT}}state/`, session notes at
+  `{{DURABLE_PLANNING_ROOT}}notepad.md`, and project memory at
+  `{{DURABLE_PLANNING_ROOT}}project-memory.json`.
 
 If work changes workspace ownership, build boundaries, or cross-package
 consumption mode, update the relevant boundary contract before claiming the plan

@@ -78,9 +78,9 @@ describe('renderTechStack', () => {
 })
 
 describe('renderAgentsMd', () => {
-  it('replaces all four placeholders', () => {
+  it('replaces all five placeholders', () => {
     const template =
-      '## Map\n{{REPOSITORY_MAP}}\n## Stack\n{{TECH_STACK}}\n## Esc\n{{ESCALATION_MAP}}\n## Planning\n{{DURABLE_PLANNING_ROOT}}'
+      '## Map\n{{REPOSITORY_MAP}}\n## Stack\n{{TECH_STACK}}\n## Esc\n{{ESCALATION_MAP}}\n## Planning\n{{DURABLE_PLANNING_ROOT}}\n## Blueprints\n{{BLUEPRINTS_DIR}}'
     const consumer = makeConsumer({
       packageJson: { name: '@acme/app', dependencies: { react: '^18' }, devDependencies: {} },
     })
@@ -90,9 +90,11 @@ describe('renderAgentsMd', () => {
     expect(rendered).toContain('React')
     expect(rendered).toContain('{{TODO: populate escalation map')
     expect(rendered).toContain('.agent/planning/')
+    expect(rendered).toContain('blueprints')
     expect(rendered).not.toContain('{{REPOSITORY_MAP}}')
     expect(rendered).not.toContain('{{TECH_STACK}}')
     expect(rendered).not.toContain('{{DURABLE_PLANNING_ROOT}}')
+    expect(rendered).not.toContain('{{BLUEPRINTS_DIR}}')
   })
 
   it('honours custom DURABLE_PLANNING_ROOT from config', () => {
@@ -120,6 +122,23 @@ describe('renderAgentsMd', () => {
     expect(rendered).toContain('<!-- >>> user-owned (repo-customizations) -->')
     expect(rendered).not.toContain('ak symlink sync')
     expect(rendered).not.toContain('omx setup --scope project')
+  })
+
+  it('renders the configured blueprint directory in the catalog template', () => {
+    const template = readFileSync(join(process.cwd(), 'catalog', 'AGENTS.md.tpl'), 'utf8')
+    const rendered = renderAgentsMd(
+      template,
+      makeConsumer({
+        packageJson: { name: '@acme/app', dependencies: { react: '^18' }, devDependencies: {} },
+      }),
+      { ...defaultConfig(), blueprintsDir: 'webpresso/blueprints' },
+    )
+
+    expect(rendered).toContain('webpresso/blueprints/')
+    expect(rendered).not.toContain('(./blueprints/)')
+    expect(rendered).toContain('Materialized by setup: blueprint lifecycle directories')
+    expect(rendered).toContain('Generated on demand (not created by setup): boundary contracts')
+    expect(rendered).not.toContain('{{BLUEPRINTS_DIR}}')
   })
 
   it('preserves user-owned blocks while refreshing managed content', () => {

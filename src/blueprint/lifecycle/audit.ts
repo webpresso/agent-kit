@@ -3,6 +3,8 @@ import type { Blueprint } from '#core/parser'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 
+import matter from 'gray-matter'
+
 import { parseBlueprint } from '#core/parser'
 import { lifecycleBlueprintStatusSchema } from '#core/schema'
 import { readBlueprintExecutionArtifacts } from '#execution/artifacts'
@@ -31,6 +33,12 @@ export interface RunBlueprintAuditOptions {
   strict?: boolean
 }
 
+interface LifecycleAuditFrontmatter {
+  historicalZeroTaskRationale?: unknown
+  historicalZeroTaskWaiver?: unknown
+  status?: unknown
+}
+
 function isBlueprintOverview(file: string): boolean {
   const normalized = file.replace(/\\/g, '/')
   return (
@@ -41,6 +49,19 @@ function isBlueprintOverview(file: string): boolean {
 
 function normalizePath(file: string): string {
   return file.replace(/\\/g, '/')
+}
+
+function readLifecycleAuditFrontmatter(raw: string): LifecycleAuditFrontmatter {
+  const data = matter(raw).data as Record<string, unknown>
+  return {
+    historicalZeroTaskRationale: data.historical_zero_task_rationale,
+    historicalZeroTaskWaiver: data.historical_zero_task_waiver,
+    status: data.status,
+  }
+}
+
+function countTaskHeadings(raw: string): number {
+  return raw.match(/^####\s+(?:\[[^\]]+\]\s+)?Task\s+/gm)?.length ?? 0
 }
 
 function readTaskStatusLines(raw: string): Map<string, string | undefined> {
@@ -135,6 +156,37 @@ function validateBlueprintSlugUniqueness(
   }
 
   return issues
+}
+
+function hasHistoricalZeroTaskRationale(frontmatter: LifecycleAuditFrontmatter): boolean {
+  return (
+    frontmatter.historicalZeroTaskWaiver === true &&
+    typeof frontmatter.historicalZeroTaskRationale === 'string' &&
+    frontmatter.historicalZeroTaskRationale.trim().length > 0
+  )
+}
+
+function validateCompletedZeroTaskBlueprint(
+  file: string,
+  frontmatter: LifecycleAuditFrontmatter,
+  taskHeadingCount: number,
+): BlueprintAuditIssue[] {
+  if (
+    frontmatter.status !== 'completed' ||
+    taskHeadingCount > 0 ||
+    hasHistoricalZeroTaskRationale(frontmatter)
+  ) {
+    return []
+  }
+
+  return [
+    {
+      file,
+      level: 'error',
+      message:
+        'A completed zero-task blueprint requires explicit historical zero-task waiver and rationale.',
+    },
+  ]
 }
 
 /**
@@ -297,13 +349,22 @@ function validateBlueprintPlacement(file: string, blueprint: Blueprint): Bluepri
   return issues
 }
 
-async function auditBlueprintFile(file: string, slug: string): Promise<BlueprintAuditIssue[]> {
+async function auditBlueprintFile(
+  file: string,
+  slug: string,
+  options: Pick<RunBlueprintAuditOptions, 'strict'>,
+): Promise<BlueprintAuditIssue[]> {
   const raw = await readFile(file, 'utf-8')
   const blueprint = parseBlueprint(raw, slug)
+  const frontmatter = readLifecycleAuditFrontmatter(raw)
+  const strictIssues = options.strict
+    ? validateCompletedZeroTaskBlueprint(file, frontmatter, countTaskHeadings(raw))
+    : []
   return [
     ...validateBlueprintPlacement(file, blueprint),
     ...validateTaskState(blueprint).map((issue) => Object.assign({}, issue, { file })),
     ...validateBlueprintEngineSemantics(file, blueprint),
+    ...strictIssues,
     ...validateExecutionMetadataTruth(file, blueprint),
   ]
 }
@@ -463,7 +524,7 @@ export async function runBlueprintAudit(
 
   issues.push(...validateBlueprintSlugUniqueness(blueprintFiles))
   for (const entry of blueprintFiles) {
-    issues.push(...(await auditBlueprintFile(entry.path, entry.slug)))
+    issues.push(...(await auditBlueprintFile(entry.path, entry.slug, options)))
   }
 
   const pllDocs = [

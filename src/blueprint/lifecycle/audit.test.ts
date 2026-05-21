@@ -198,6 +198,73 @@ last_updated: 2026-04-02
     ).toBe(true)
   })
 
+  it('errors when a completed zero-task blueprint has no historical waiver rationale', async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-zero-task-completed-'))
+    tempDirs.push(projectRoot)
+
+    writeOverview(
+      projectRoot,
+      ['completed', 'zero-task-without-waiver', '_overview.md'],
+      `---
+type: blueprint
+status: completed
+complexity: S
+created: 2026-04-02
+last_updated: 2026-04-02
+---
+
+# zero-task-without-waiver
+
+## Progress
+
+0/0 tasks complete.
+`,
+    )
+    writeOverview(
+      projectRoot,
+      ['completed', 'zero-task-with-waiver', '_overview.md'],
+      `---
+type: blueprint
+status: completed
+complexity: S
+created: 2026-04-02
+last_updated: 2026-04-02
+historical_zero_task_waiver: true
+historical_zero_task_rationale: Migrated completed record predates task-level blueprint tracking.
+---
+
+# zero-task-with-waiver
+
+## Progress
+
+0/0 tasks complete.
+`,
+    )
+
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
+    const zeroTaskIssues = result.issues.filter((issue) =>
+      issue.message.includes('completed zero-task blueprint'),
+    )
+
+    expect(result.ok).toBe(false)
+    expect(zeroTaskIssues).toEqual([
+      expect.objectContaining({
+        file: expect.stringContaining('completed/zero-task-without-waiver/_overview.md'),
+        level: 'error',
+        message: expect.stringContaining(
+          'requires explicit historical zero-task waiver and rationale',
+        ),
+      }),
+    ])
+    expect(zeroTaskIssues).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: expect.stringContaining('completed/zero-task-with-waiver/_overview.md'),
+        }),
+      ]),
+    )
+  })
+
   it('errors when execution metadata claims completion before blueprint truth is completed', async () => {
     const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-exec-completed-'))
     tempDirs.push(projectRoot)
