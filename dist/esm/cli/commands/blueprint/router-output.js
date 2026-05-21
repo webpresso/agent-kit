@@ -1,4 +1,4 @@
-import { buildRoadmapModel } from '#local';
+import { buildRoadmapModel, planStatusSchema } from '#local';
 const BLUEPRINT_HELP = [
     'Blueprint management',
     '',
@@ -28,19 +28,58 @@ export function formatTaskLine(task) {
 export function getBlueprintHelpText() {
     return BLUEPRINT_HELP;
 }
+export function summarizeBlueprintInventory(summaries) {
+    const byStatus = Object.fromEntries(planStatusSchema.options.toSorted().map((status) => [status, 0]));
+    const byType = {
+        blueprint: 0,
+        'parent-roadmap': 0,
+    };
+    let completedZeroTask = 0;
+    for (const summary of summaries) {
+        byStatus[summary.status] = (byStatus[summary.status] ?? 0) + 1;
+        byType[summary.type] += 1;
+        if (summary.status === 'completed' && summary.taskCount === 0) {
+            completedZeroTask += 1;
+        }
+    }
+    return {
+        total: summaries.length,
+        byStatus,
+        byType,
+        anomalies: {
+            completedZeroTask,
+        },
+    };
+}
+export function formatBlueprintInventorySummary(summary) {
+    const byStatus = Object.entries(summary.byStatus)
+        .toSorted(([left], [right]) => left.localeCompare(right))
+        .map(([status, count]) => `${status}=${count}`)
+        .join(' ');
+    const byType = Object.entries(summary.byType)
+        .toSorted(([left], [right]) => left.localeCompare(right))
+        .map(([type, count]) => `${type}=${count}`)
+        .join(' ');
+    return [
+        `SUMMARY total=${summary.total}`,
+        `BY_STATUS ${byStatus}`,
+        `BY_TYPE ${byType}`,
+        `ANOMALIES completed-zero-task=${summary.anomalies.completedZeroTask}`,
+    ].join('\n');
+}
 export function formatBlueprintSummaries(summaries) {
     if (!summaries.length) {
         return 'No blueprints found.';
     }
+    const inventorySummary = formatBlueprintInventorySummary(summarizeBlueprintInventory(summaries));
     const hasRoadmaps = summaries.some((summary) => summary.type === 'parent-roadmap');
     if (!hasRoadmaps) {
-        return summaries
-            .map((summary) => {
+        const lines = summaries.map((summary) => {
             const label = summary.type === 'parent-roadmap' ? 'ROADMAP' : 'BLUEPRINT';
             const malformedSuffix = summary.malformed ? ' malformed=yes' : '';
             return `${label} ${summary.name} status=${summary.status} complexity=${summary.complexity} progress=${summary.progress}% tasks=${summary.taskCount}${malformedSuffix}`;
-        })
-            .join('\n');
+        });
+        return [...lines, inventorySummary].join('\n');
     }
     const model = buildRoadmapModel(summaries);
     const attachedChildren = new Set(model.roadmaps.flatMap((roadmap) => roadmap.children.map((child) => child.name)));
@@ -71,7 +110,7 @@ export function formatBlueprintSummaries(summaries) {
             lines.push(`  BLUEPRINT ${summary.name} status=${summary.status} complexity=${summary.complexity} progress=${summary.progress}% tasks=${summary.taskCount} parent=${summary.parentRoadmap}${malformedSuffix}`);
         }
     }
-    return lines.join('\n');
+    return [...lines, inventorySummary].join('\n');
 }
 export function formatBlueprintDetails(result) {
     const doneTasks = result.blueprint.tasks.filter((task) => task.status === 'done').length;
