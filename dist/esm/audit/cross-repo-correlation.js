@@ -7,14 +7,14 @@
  * FAIL LOUD: any leak or missing allowlist produces a non-zero exit via the
  * audit framework. The audit does NOT auto-mutate anything.
  *
- * Alpha gate: only runs meaningful checks when AK_USE_SQL_AUDITS=1.
+ * Alpha gate: only runs meaningful checks when WP_USE_SQL_AUDITS=1.
  */
 import { auditCrossRepoCorrelation } from '#cross-repo/audit.js';
 export async function auditCrossRepoCorrelationAsRepoResult(cwd) {
-    if (!process.env['AK_USE_SQL_AUDITS']) {
+    if (!process.env['WP_USE_SQL_AUDITS']) {
         return {
             ok: true,
-            title: 'Cross-repo correlation (SQL) — disabled (set AK_USE_SQL_AUDITS=1)',
+            title: 'Cross-repo correlation (SQL) — disabled (set WP_USE_SQL_AUDITS=1)',
             checked: 0,
             violations: [],
         };

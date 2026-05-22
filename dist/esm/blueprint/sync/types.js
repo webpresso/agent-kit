@@ -3,7 +3,7 @@
  * private webpresso platform-api.
  *
  * Platform team implements this interface; agent-kit ships the types.
- * The platform URL is injected at runtime via `AK_BLUEPRINT_PLATFORM_URL`.
+ * The platform URL is injected at runtime via `WP_BLUEPRINT_PLATFORM_URL`.
  *
  * Design decisions (resolved 2026-05-12, platform team design session):
  *  Q1: Buffer locally, push on reconnect. `eventId` provides idempotency.

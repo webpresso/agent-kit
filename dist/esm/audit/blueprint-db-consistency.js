@@ -2,7 +2,7 @@
  * `wp audit blueprint-db-consistency` — SQL-backed consistency check between
  * the SQLite blueprints DB and the filesystem.
  *
- * Alpha gate: only runs meaningful checks when AK_USE_SQL_AUDITS=1.
+ * Alpha gate: only runs meaningful checks when WP_USE_SQL_AUDITS=1.
  * Without the flag returns a disabled notice (pass: true).
  *
  * Checks (when enabled):
@@ -26,10 +26,10 @@ function computeSha256(content) {
     return createHash('sha256').update(content, 'utf8').digest('hex');
 }
 export async function auditBlueprintDbConsistency(cwd) {
-    if (!process.env['AK_USE_SQL_AUDITS']) {
+    if (!process.env['WP_USE_SQL_AUDITS']) {
         return {
             ok: true,
-            title: 'Blueprint DB consistency (SQL) — disabled (set AK_USE_SQL_AUDITS=1)',
+            title: 'Blueprint DB consistency (SQL) — disabled (set WP_USE_SQL_AUDITS=1)',
             checked: 0,
             violations: [],
         };

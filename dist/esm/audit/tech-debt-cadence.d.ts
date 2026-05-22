@@ -2,7 +2,7 @@
  * `wp audit tech-debt-cadence` — SQL-backed cadence health check for
  * tech-debt items.
  *
- * Alpha gate: only runs queries when AK_USE_SQL_AUDITS=1.
+ * Alpha gate: only runs queries when WP_USE_SQL_AUDITS=1.
  * Without the flag returns a disabled notice (pass: true).
  *
  * Checks (when enabled):

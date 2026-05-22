@@ -5,7 +5,7 @@ import { isGuardEnabled } from '#hooks/guard-switch/state';
 import { readStdinJson, suppressStderr } from '#hooks/shared/hook-bootstrap';
 import { getCommand, getFilePath, isBashInput, parseToolInput } from '#hooks/shared/types';
 import { logRun } from './logger.js';
-import { routeCommand } from './dev-routing.js';
+import { extractRoutableCommandsFromToolInput, routeCommand } from './dev-routing.js';
 import { VALIDATORS } from './validators/index.js';
 const RED = '\x1b[31m';
 const YELLOW = '\x1b[33m';
@@ -100,8 +100,12 @@ export function processValidation(inputJson) {
     }
     const input = parseToolInput(inputJson);
     const command = isBashInput(input) ? getCommand(input) : null;
-    if (command) {
-        const decision = routeCommand(command);
+    const routableCommands = [
+        ...(command ? [command] : []),
+        ...extractRoutableCommandsFromToolInput(input),
+    ];
+    for (const routedCommand of routableCommands) {
+        const decision = routeCommand(routedCommand);
         if (decision !== null) {
             if (decision.action.action === 'deny') {
                 // Phase 1: Dev-workflow routing — always authoritative (MCP-first)

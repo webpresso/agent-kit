@@ -57,7 +57,7 @@ export function buildOutput(_input, cwd, env) {
         // ENOENT / ENOTDIR: no routing.md, that's fine — emit routing block alone.
     }
     let gstackBlock = null;
-    if (env.AK_GSTACK_ROUTING === '1') {
+    if (env.WP_GSTACK_ROUTING === '1') {
         const gstackDir = join(homedir(), '.claude', 'skills', 'gstack');
         if (existsSync(gstackDir)) {
             gstackBlock =

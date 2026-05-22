@@ -10,7 +10,7 @@ export function getDevHelpText() {
         '  --restart          Restart the target',
         '  -h, --help         Display this message',
         '',
-        'Manifest precedence: --manifest -> AK_APP_MANIFEST -> ./app-manifest.yaml -> error',
+        'Manifest precedence: --manifest -> WP_APP_MANIFEST -> ./app-manifest.yaml -> error',
     ].join('\n');
 }
 export async function runDevCommand(input) {
@@ -25,7 +25,7 @@ export async function runDevCommand(input) {
 export function registerDevCommand(cli) {
     cli
         .command('dev [target]', 'Run a manifest-backed development target')
-        .option('--manifest <path>', 'Dev manifest path (precedence: --manifest -> AK_APP_MANIFEST -> ./app-manifest.yaml -> error)')
+        .option('--manifest <path>', 'Dev manifest path (precedence: --manifest -> WP_APP_MANIFEST -> ./app-manifest.yaml -> error)')
         .option('--doctor', 'Validate manifest and print resolved services')
         .option('--clean', 'Clean supervisor-owned state for the target')
         .option('--restart', 'Restart the target')

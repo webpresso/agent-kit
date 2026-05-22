@@ -1,4 +1,4 @@
-import { getErrorMessage } from '../format/errors.js';
+import { getErrorMessage } from '#format/errors.js';
 import { isValidRelativePath } from './shared/validate-path.js';
 async function getSemanticContext(semanticContext, ragRetriever, path) {
     if (!semanticContext || !ragRetriever) {

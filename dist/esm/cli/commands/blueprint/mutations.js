@@ -8,7 +8,7 @@
  * Platform-first sync (Tasks 2.6 + 2.7):
  *   When a SyncAdapter is available (credentials present, not disabled), mutations
  *   push a BlueprintPlatformEvent before updating local markdown/SQLite.
- *   Iron rule: AK_BLUEPRINT_PLATFORM_DISABLED=1 skips the adapter entirely — the
+ *   Iron rule: WP_BLUEPRINT_PLATFORM_DISABLED=1 skips the adapter entirely — the
  *   markdown-canonical path runs byte-identically to the pre-migration behaviour.
  */
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
@@ -38,13 +38,13 @@ export function _setSyncAdapterForCli(factory) {
 /**
  * Resolve the sync adapter for the current CLI mutation.
  *
- * Iron rule: returns `null` when `AK_BLUEPRINT_PLATFORM_DISABLED=1` regardless
+ * Iron rule: returns `null` when `WP_BLUEPRINT_PLATFORM_DISABLED=1` regardless
  * of any injected factory — the caller must skip all platform operations.
  *
  * @param cwd - repo working directory, used to locate the replica DB file.
  */
 export async function resolveSyncAdapterForCli(cwd) {
-    if (process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] === '1')
+    if (process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] === '1')
         return null;
     if (_syncAdapterFactory !== null) {
         return _syncAdapterFactory();
@@ -198,12 +198,12 @@ async function advanceTaskLocked(cwd, blueprintSlug, taskId, toStatus) {
         };
     }
     // Platform-first path: push event + pull fresh replica before local update.
-    // Iron rule: resolveSyncAdapterForCli() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
+    // Iron rule: resolveSyncAdapterForCli() returns null when WP_BLUEPRINT_PLATFORM_DISABLED=1.
     const adapter = await resolveSyncAdapterForCli(cwd);
     if (adapter !== null) {
         await adapter.pushEvent({
             eventId: randomUUID(),
-            repoId: process.env['AK_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
+            repoId: process.env['WP_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
             occurredAt: new Date().toISOString(),
             type: 'task.status_changed',
             payload: {
@@ -278,12 +278,12 @@ async function promoteBlueprintLocked(cwd, slug, toState) {
         }
     }
     // Platform-first path: push event + pull fresh replica before local move.
-    // Iron rule: resolveSyncAdapterForCli() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
+    // Iron rule: resolveSyncAdapterForCli() returns null when WP_BLUEPRINT_PLATFORM_DISABLED=1.
     const adapter = await resolveSyncAdapterForCli(cwd);
     if (adapter !== null) {
         await adapter.pushEvent({
             eventId: randomUUID(),
-            repoId: process.env['AK_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
+            repoId: process.env['WP_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
             occurredAt: new Date().toISOString(),
             type: 'blueprint.status_changed',
             payload: {

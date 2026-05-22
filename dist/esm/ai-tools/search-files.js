@@ -1,4 +1,4 @@
-import { getErrorMessage } from '../format/errors.js';
+import { getErrorMessage } from '#format/errors.js';
 import { isValidRelativePath } from './shared/validate-path.js';
 async function performSemanticSearch(pattern, maxResults, context) {
     if (!context.ragRetriever) {

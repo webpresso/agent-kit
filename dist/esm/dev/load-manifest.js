@@ -6,7 +6,7 @@ export function resolveManifestPath(input = {}) {
     const env = input.env ?? process.env;
     const candidates = [
         input.manifestPath,
-        env.AK_APP_MANIFEST,
+        env.WP_APP_MANIFEST,
         join(cwd, 'app-manifest.yaml'),
     ].filter((candidate) => Boolean(candidate));
     for (const candidate of candidates) {
@@ -14,7 +14,7 @@ export function resolveManifestPath(input = {}) {
         if (existsSync(absolute))
             return absolute;
     }
-    throw new Error('Unable to find dev manifest. Checked --manifest, AK_APP_MANIFEST, and ./app-manifest.yaml.');
+    throw new Error('Unable to find dev manifest. Checked --manifest, WP_APP_MANIFEST, and ./app-manifest.yaml.');
 }
 export function loadDevManifest(input = {}) {
     const manifestPath = resolveManifestPath(input);

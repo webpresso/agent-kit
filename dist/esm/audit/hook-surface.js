@@ -30,7 +30,7 @@ import path from 'node:path';
  * 'rtk', 'gstack', or 'unknown'.
  */
 export function extractOwner(command) {
-    if (/\bak[-_][a-z]/.test(command))
+    if (/\bwp[-_][a-z]/.test(command))
         return 'agent-kit';
     if (command.includes('context-mode'))
         return 'context-mode';

@@ -1,15 +1,15 @@
 import { TELEMETRY_ENDPOINT, TELEMETRY_TIMEOUT_MS } from './_endpoint.js';
 export function isTelemetryEnabled(env) {
-    if (env['AK_TELEMETRY'] === '0')
+    if (env['WP_TELEMETRY'] === '0')
         return false;
-    if (env['AK_TELEMETRY'] === '1')
+    if (env['WP_TELEMETRY'] === '1')
         return true;
-    if (env['AK_INTERNAL'] === '1')
+    if (env['WP_INTERNAL'] === '1')
         return true;
     return false;
 }
 export async function reportTthw(payload) {
-    if (process.env['AK_TELEMETRY_DEBUG'] === '1') {
+    if (process.env['WP_TELEMETRY_DEBUG'] === '1') {
         console.error('[wp telemetry]', JSON.stringify(payload));
     }
     try {

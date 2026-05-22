@@ -31,7 +31,7 @@ function sidecarPath(dbPath) {
     return `${dbPath}.meta.json`;
 }
 /** Run `git rev-parse HEAD` in cwd; return null when not a git repo / no commits. */
-function readCurrentHead(cwd) {
+export function readCurrentHead(cwd) {
     try {
         const sha = execFileSync('git', ['rev-parse', 'HEAD'], {
             cwd,

@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { isMcpReady } from './shared/mcp-sentinel.js';
 const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested');
 const RTK_INSTALL_HINT = 'rtk requested via --with rtk but not on PATH; brew install rtk';
-const HOST_SMOKE_ENV = 'AK_RUN_HOST_SMOKE';
+const HOST_SMOKE_ENV = 'WP_RUN_HOST_SMOKE';
 /** Hook bin definitions */
 const HOOK_BINS = [
     { name: 'pretool-guard', binName: 'wp-pretool-guard', checkStdin: true },
@@ -277,7 +277,7 @@ async function checkMcpServer() {
     if (isMcpReady()) {
         return { ok: true, detail: 'MCP server already running (sentinel found)', skipped: true };
     }
-    const timeoutMs = Number(process.env.AK_DOCTOR_MCP_TIMEOUT_MS ?? 5000);
+    const timeoutMs = Number(process.env.WP_DOCTOR_MCP_TIMEOUT_MS ?? 5000);
     const probeCommand = resolveMcpProbeCommand();
     if (!probeCommand) {
         return { ok: false, detail: 'MCP server (wp) not found in .bin' };
@@ -285,7 +285,7 @@ async function checkMcpServer() {
     return new Promise((resolve) => {
         const child = spawn(probeCommand.command, probeCommand.args, {
             stdio: ['pipe', 'pipe', 'pipe'],
-            env: { ...process.env, AK_DOCTOR_MCP_TIMEOUT_MS: String(timeoutMs) },
+            env: { ...process.env, WP_DOCTOR_MCP_TIMEOUT_MS: String(timeoutMs) },
         });
         let stdout = '';
         let stderr = '';
