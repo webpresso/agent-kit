@@ -82,7 +82,7 @@ interface ParsedSettings {
  * 'rtk', 'gstack', or 'unknown'.
  */
 export function extractOwner(command: string): string {
-  if (/\bak[-_][a-z]/.test(command)) return 'agent-kit'
+  if (/\bwp[-_][a-z]/.test(command)) return 'agent-kit'
   if (command.includes('context-mode')) return 'context-mode'
   if (/omx|oh-my-codex/.test(command)) return 'omx'
   if (/\brtk\b/.test(command)) return 'rtk'

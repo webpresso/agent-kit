@@ -25,6 +25,7 @@ const EXPECTED_TABLES = [
   'correlate_allowlist',
   'executions',
   'runner_events',
+  'mutation_request_ledger',
 ] as const
 
 function getTableNames(db: Database.Database): string[] {
@@ -49,7 +50,7 @@ afterEach(() => {
 })
 
 describe('migrations', () => {
-  it('creates all 17 expected tables', () => {
+  it('creates all expected tables', () => {
     const conn = openDb(dbPath)
     try {
       const tables = getTableNames(conn.db)
@@ -79,8 +80,7 @@ describe('migrations', () => {
       const rows = conn.db
         .prepare('SELECT version FROM schema_version ORDER BY version')
         .all() as Array<{ version: number }>
-      expect(rows).toHaveLength(1)
-      expect(rows[0]?.version).toBe(1)
+      expect(rows.map((row) => row.version)).toStrictEqual([1, 2])
     } finally {
       conn.close()
     }
@@ -94,7 +94,7 @@ describe('migrations', () => {
     const rows = db.prepare('SELECT version FROM schema_version').all() as Array<{
       version: number
     }>
-    expect(rows).toHaveLength(1)
+    expect(rows.map((row) => row.version)).toStrictEqual([1, 2])
     db.close()
   })
 

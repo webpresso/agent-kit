@@ -687,14 +687,14 @@ describe('validateForbiddenCommands', () => {
     writeFileSync(sentinel, String(process.pid))
 
     const originalProjectDir = process.env.CLAUDE_PROJECT_DIR
-    const originalSentinelKey = process.env.AK_MCP_SENTINEL_KEY
+    const originalSentinelKey = process.env.WP_MCP_SENTINEL_KEY
     try {
       // Use CLAUDE_PROJECT_DIR instead of process.chdir() — chdir is not
       // supported in vitest worker threads (breaks Stryker perTest coverage).
       process.env.CLAUDE_PROJECT_DIR = dir
       // Pin sentinel key so the readiness check finds the file we approved wrote
       // regardless of the test runner's cwd.
-      process.env.AK_MCP_SENTINEL_KEY = sentinelKey
+      process.env.WP_MCP_SENTINEL_KEY = sentinelKey
       const sentinelMod = await import('#hooks/shared/mcp-sentinel')
       sentinelMod._resetProjectKeyCache()
       const result = validateForbiddenCommands(bashInput('vp vitest'))
@@ -707,9 +707,9 @@ describe('validateForbiddenCommands', () => {
         delete process.env.CLAUDE_PROJECT_DIR
       }
       if (originalSentinelKey !== undefined) {
-        process.env.AK_MCP_SENTINEL_KEY = originalSentinelKey
+        process.env.WP_MCP_SENTINEL_KEY = originalSentinelKey
       } else {
-        delete process.env.AK_MCP_SENTINEL_KEY
+        delete process.env.WP_MCP_SENTINEL_KEY
       }
       const sentinelMod = await import('#hooks/shared/mcp-sentinel')
       sentinelMod._resetProjectKeyCache()

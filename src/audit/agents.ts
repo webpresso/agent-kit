@@ -45,15 +45,14 @@ export function auditAgents(rootDirectory: string = process.cwd()): RepoAuditRes
   )
 
   if (isSelfHost) {
-    // .codex/hooks.json is gitignored (.codex/* in .gitignore) — it is written
-    // at runtime by Codex CLI and never present in a fresh CI checkout. Skip
-    // the Codex hook check for the source repo itself; consumer repos (the
-    // else branch) still check it because they commit their hooks.json.
+    // Agent surfaces (.agent/.claude/.codex/etc.) are generated and gitignored
+    // in the source repo. For self-host, audit the canonical catalog sources
+    // instead of requiring generated projections to exist in a clean checkout.
     checked += 1
-    checkClaudeRules(root, config?.rules.overrides ?? [], violations)
+    checkCatalogRules(root, violations)
 
     checked += 1
-    checkClaudeAgents(root, violations)
+    checkCatalogAgents(root, violations)
   } else {
     checked += 1
     checkHookFile(root, CLAUDE_SETTINGS_PATH, 'claude', violations)
@@ -84,6 +83,48 @@ export function auditAgents(rootDirectory: string = process.cwd()): RepoAuditRes
     title: 'Agent surfaces',
     checked,
     violations,
+  }
+}
+
+function checkCatalogRules(root: string, violations: RepoAuditViolation[]): void {
+  const rulesSource = join(root, 'catalog', 'agent', 'rules')
+  if (!existsSync(rulesSource)) {
+    violations.push({
+      file: 'catalog/agent/rules',
+      message: 'Missing catalog/agent/rules source directory.',
+    })
+    return
+  }
+
+  const sourceEntries = readdirSync(rulesSource).filter(
+    (file) => file.endsWith('.md') && file !== 'README.md' && file !== '.markdownlint.json',
+  )
+  if (sourceEntries.length === 0) {
+    violations.push({
+      file: 'catalog/agent/rules',
+      message: 'catalog/agent/rules must contain canonical rule markdown files.',
+    })
+  }
+}
+
+function checkCatalogAgents(root: string, violations: RepoAuditViolation[]): void {
+  const agentsSource = join(root, 'catalog', 'agent', 'agents')
+  if (!existsSync(agentsSource)) {
+    violations.push({
+      file: 'catalog/agent/agents',
+      message: 'Missing catalog/agent/agents source directory.',
+    })
+    return
+  }
+
+  for (const file of REQUIRED_SUBAGENTS) {
+    const sourcePath = join(agentsSource, file)
+    if (!existsSync(sourcePath)) {
+      violations.push({
+        file: relative(root, sourcePath),
+        message: `Missing canonical subagent ${file} in catalog/agent/agents.`,
+      })
+    }
   }
 }
 

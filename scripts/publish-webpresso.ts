@@ -71,7 +71,6 @@ export function buildStagingPackageJson(canonical: CanonicalPackageJson): Record
   const binEntries: Record<string, string> = {
     wp: './src/cli/cli.ts',
     webpresso: './src/cli/cli.ts',
-    wp: './src/cli/cli.ts',
   }
 
   for (const hookBin of HOOK_BINS) {

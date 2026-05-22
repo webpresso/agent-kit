@@ -108,10 +108,10 @@ describe('buildStagingPackageJson', () => {
     expect(bin).toMatchObject(DOCS_LINT_BINS)
   })
 
-  it('includes exactly 16 bin entries (wp + webpresso + wp + 8 hook bins + 5 docs-lint bins)', () => {
+  it('includes exactly 15 bin entries (wp + webpresso + 8 hook bins + 5 docs-lint bins)', () => {
     const result = buildStagingPackageJson(MINIMAL_CANONICAL)
     const bin = result.bin as Record<string, string>
-    expect(Object.keys(bin)).toHaveLength(16)
+    expect(Object.keys(bin)).toHaveLength(15)
   })
 
   it('copies files array verbatim from canonical', () => {

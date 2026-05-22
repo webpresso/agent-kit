@@ -215,46 +215,14 @@ describe('auditAgents', () => {
     expect(result.violations.some((v) => v.message.includes('@webpresso/agent-kit'))).toBe(true)
   })
 
-  it('passes for the self-hosting repo shape without .claude/settings.json', () => {
-    mkdirSync(join(root, '.agent', 'rules'), { recursive: true })
-    mkdirSync(join(root, '.claude', 'rules'), { recursive: true })
-    mkdirSync(join(root, '.claude', 'agents'), { recursive: true })
-    mkdirSync(join(root, '.codex'), { recursive: true })
+  it('passes for the self-hosting repo shape using catalog sources only', () => {
     mkdirSync(join(root, 'catalog', 'agent', 'agents'), { recursive: true })
+    mkdirSync(join(root, 'catalog', 'agent', 'rules'), { recursive: true })
     writeFileSync(join(root, 'AGENTS.md'), '# Root contract\n')
     writeJson(join(root, 'package.json'), { name: '@webpresso/agent-kit' })
-    writeJson(join(root, '.codex', 'hooks.json'), {
-      SessionStart: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] },
-      ],
-      PreToolUse: [
-        {
-          matcher: 'Bash|Edit|Write',
-          hooks: [{ type: 'command', command: './node_modules/.bin/wp-pretool-guard' }],
-        },
-      ],
-      PostToolUse: [
-        {
-          matcher: 'Edit|Write',
-          hooks: [{ type: 'command', command: './node_modules/.bin/wp-post-tool' }],
-        },
-      ],
-      UserPromptSubmit: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-guard-switch' }] },
-      ],
-      Stop: [{ hooks: [{ type: 'command', command: './node_modules/.bin/wp-stop-qa' }] }],
-    })
-    writeFileSync(join(root, '.agent', 'rules', 'repo-restrictions.md'), '# rule\n')
-    symlinkSync(
-      '../../.agent/rules/repo-restrictions.md',
-      join(root, '.claude', 'rules', 'repo-restrictions.md'),
-    )
+    writeFileSync(join(root, 'catalog', 'agent', 'rules', 'repo-restrictions.md'), '# rule\n')
     for (const agentName of ['code-reviewer', 'security-auditor', 'doc-writer', 'explorer']) {
       writeFileSync(join(root, 'catalog', 'agent', 'agents', `${agentName}.md`), `# ${agentName}\n`)
-      symlinkSync(
-        join('..', '..', 'catalog', 'agent', 'agents', `${agentName}.md`),
-        join(root, '.claude', 'agents', `${agentName}.md`),
-      )
     }
 
     const result = auditAgents(root)

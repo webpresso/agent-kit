@@ -54,6 +54,7 @@ describe('rtk scaffolder integration', () => {
   let previousAkSkipGstack: string | undefined
   let previousAkSkipClaudePlugin: string | undefined
   let previousAkSkipOmc: string | undefined
+  let previousWpSkipCodexTrustSync: string | undefined
 
   beforeEach(() => {
     repo = makeRepo()
@@ -65,6 +66,7 @@ describe('rtk scaffolder integration', () => {
     previousAkSkipGstack = process.env.WP_SKIP_GSTACK
     previousAkSkipClaudePlugin = process.env.WP_SKIP_CLAUDE_PLUGIN
     previousAkSkipOmc = process.env.WP_SKIP_OMC
+    previousWpSkipCodexTrustSync = process.env.WP_SKIP_CODEX_TRUST_SYNC
     process.env.HOME = fakeHome
     process.env.CODEX_HOME = join(repo, '.codex-home')
     process.env.PATH = [fakeRtkBin, fakeOmxBin, previousPath ?? ''].filter(Boolean).join(':')
@@ -100,6 +102,7 @@ describe('rtk scaffolder integration', () => {
     process.env.WP_SKIP_GSTACK = '1'
     process.env.WP_SKIP_CLAUDE_PLUGIN = '1'
     process.env.WP_SKIP_OMC = '1'
+    process.env.WP_SKIP_CODEX_TRUST_SYNC = '1'
     chmodSync(join(fakeRtkBin, 'rtk'), 0o755)
   })
 
@@ -118,6 +121,8 @@ describe('rtk scaffolder integration', () => {
     else process.env.WP_SKIP_CLAUDE_PLUGIN = previousAkSkipClaudePlugin
     if (previousAkSkipOmc === undefined) delete process.env.WP_SKIP_OMC
     else process.env.WP_SKIP_OMC = previousAkSkipOmc
+    if (previousWpSkipCodexTrustSync === undefined) delete process.env.WP_SKIP_CODEX_TRUST_SYNC
+    else process.env.WP_SKIP_CODEX_TRUST_SYNC = previousWpSkipCodexTrustSync
     rmSync(repo, { recursive: true, force: true })
     rmSync(fakeHome, { recursive: true, force: true })
   })
@@ -153,7 +158,6 @@ describe('rtk scaffolder integration', () => {
       join(repo, '.claude', 'hooks', 'rtk-rewrite.sh'),
       JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'vp exec vitest' } }),
       repo,
-      wp_,
     )
     expect(rtkPassthrough.stdout.trim()).toBe('{}')
 
