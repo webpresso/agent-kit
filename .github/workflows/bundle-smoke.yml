@@ -55,9 +55,10 @@ jobs:
           git config user.email "ci@example.com"
           git config user.name "CI"
 
-          # Install agent-kit locally so wp setup can locate its catalog.
+          # Install the checked-out package locally so this smoke tests the
+          # candidate source, not the last published @webpresso/agent-kit.
           pnpm init --silent 2>/dev/null || true
-          pnpm add --silent @webpresso/agent-kit@* 2>/dev/null
+          pnpm add --silent ../.. 2>/dev/null
 
           # Run wp setup --yes to avoid TTY prompts. Capture stdout + stderr.
           OUTPUT=$(pnpm exec wp setup --yes 2>&1) || {
