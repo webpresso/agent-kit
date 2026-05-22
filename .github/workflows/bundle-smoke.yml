@@ -49,7 +49,7 @@ jobs:
         run: |
           set -euo pipefail
 
-        # The fixture directory is not a git repo; wp setup requires one.
+          # The fixture directory is not a git repo; wp setup requires one.
           cd test-fixtures/bundle-smoke
           git init --quiet
           git config user.email "ci@example.com"
