@@ -1,4 +1,4 @@
-export type MergeAction = 'created' | 'identical' | 'drifted' | 'overwritten' | 'sidecar-written' | 'skipped-dry';
+export type MergeAction = 'created' | 'identical' | 'drifted' | 'overwritten' | 'skipped-dry';
 export interface MergeOptions {
     overwrite?: boolean;
     dryRun?: boolean;
@@ -6,7 +6,6 @@ export interface MergeOptions {
 export interface MergeResult {
     targetPath: string;
     action: MergeAction;
-    sidecarPath?: string;
     note?: string;
 }
 export declare function writeFileMerged(targetPath: string, incoming: string, opts?: MergeOptions): MergeResult;
@@ -24,8 +23,8 @@ export declare function copyDirectoryMerged(sourceDir: string, targetDir: string
  * (or `{}` if the file doesn't exist) and returns the new object to write.
  *
  * Unlike raw template files, structured JSON patch targets are merged in-place:
- * the patcher already preserves unknown fields, so writing a `.new` sidecar
- * would strand required hook/config updates behind an extra manual merge step.
+ * the patcher already preserves unknown fields, so reporting drift would strand
+ * required hook/config updates behind an extra manual merge step.
  */
 export declare function patchJsonFile(targetPath: string, patcher: (existing: Record<string, unknown>) => Record<string, unknown>, opts?: MergeOptions): MergeResult;
 export declare function summarizeResults(results: readonly MergeResult[]): Record<MergeAction, number>;

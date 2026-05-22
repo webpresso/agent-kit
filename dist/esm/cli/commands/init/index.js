@@ -2,8 +2,8 @@
  * `ak setup` / `ak init` — scaffolds the agent-kit catalog into a consumer repo.
  *
  * Idempotent: re-runs reconcile against `.agent-kitrc.json`.
- * Safe-by-default: if a target file exists with different content, writes
- * to `<name>.new` unless `--overwrite` is passed.
+ * Safe-by-default: if a target file exists with different content, reports
+ * drift and leaves it untouched unless `--overwrite` is passed.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative } from 'node:path';
@@ -21,6 +21,7 @@ import { scaffoldAgent, RENDERED_SKILLS, TIER1_SKILLS, TIER2_SKILLS } from './sc
 import { scaffoldAgentRules } from './scaffold-agent-rules.js';
 import { scaffoldAgentSkills } from './scaffold-agent-skills.js';
 import { scaffoldCatalogIgnore } from './scaffold-catalog-ignore.js';
+import { GENERATED_PATHS_BLOCK, patchGitignore } from './gitignore-patcher.js';
 import { scaffoldAgentsMd } from './scaffold-agents-md.js';
 import { scaffoldBlueprints } from './scaffold-blueprints.js';
 import { scaffoldDocs } from './scaffold-docs.js';
@@ -210,6 +211,7 @@ export async function runInit(flags) {
             dryRun: options.dryRun,
             overwrite: options.overwrite,
         });
+        const generatedSurfaceIgnoreResult = patchGitignore(join(consumer.repoRoot, '.gitignore'), GENERATED_PATHS_BLOCK, { dryRun: options.dryRun, overwrite: true });
         const baseKitResults = tier3Selection.includes('base-kit')
             ? scaffoldBaseKit({ catalogDir, repoRoot: consumer.repoRoot, options })
             : [];
@@ -331,10 +333,17 @@ export async function runInit(flags) {
             console.log('  omx setup: - skipped (CI environment)');
         }
         else if (presets.includes('omx')) {
-            const omxResult = ensureOmx({ repoRoot: consumer.repoRoot, options });
+            const omxResult = ensureOmx({
+                repoRoot: consumer.repoRoot,
+                options,
+                scope: flags.project ? 'project' : 'user',
+            });
             switch (omxResult.kind) {
                 case 'omx-ok':
                     console.log(omxResult.installed ? '  omx setup: ✓ installed + configured' : '  omx setup: ✓');
+                    if (omxResult.removedProjectFiles.length > 0) {
+                        console.log(`  omx project-scope cleanup: ✓ removed ${omxResult.removedProjectFiles.length} tracked file(s)`);
+                    }
                     break;
                 case 'omx-skipped-dry-run':
                     console.log('  omx setup: skipped (--dry-run)');
@@ -506,6 +515,7 @@ export async function runInit(flags) {
             ...agentRulesReport.results,
             ...agentSkillsReport.results,
             ...catalogIgnoreReport.results,
+            generatedSurfaceIgnoreResult,
             ...baseKitResults,
             ...docsResults,
             ...blueprintResults,
@@ -528,13 +538,12 @@ export async function runInit(flags) {
         console.log(`  created:         ${summary.created}`);
         console.log(`  identical:       ${summary.identical}`);
         console.log(`  overwritten:     ${summary.overwritten}`);
-        console.log(`  sidecar (.new):  ${summary['sidecar-written']}`);
+        console.log(`  drifted:         ${summary.drifted}`);
         if (options.dryRun)
             console.log(`  would-change:    ${summary['skipped-dry']}`);
-        if (summary['sidecar-written'] > 0) {
-            console.log('\n  Note: some files exist with different content. New versions were\n' +
-                '  written with a `.new` suffix — diff and merge manually, or re-run\n' +
-                '  with `--overwrite` to replace them.');
+        if (summary.drifted > 0) {
+            console.log('\n  Note: some files exist with different content and were left unchanged.\n' +
+                '  Review the drift or re-run with `--overwrite` to replace them.');
         }
         if (!options.dryRun) {
             const visibilityAudit = auditHostSkillVisibility({
@@ -628,8 +637,7 @@ export async function runInit(flags) {
     }
     catch (error) {
         if (error instanceof Error && /catalogDir does not exist/.test(error.message)) {
-            console.error('ak init: @webpresso/agent-kit not installed in node_modules. ' +
-                'Run `pnpm install` first.');
+            console.error('ak init: @webpresso/agent-kit not installed in node_modules. ' + 'Run `vp install` first.');
             return EXIT_SETUP_FAIL;
         }
         console.error(`ak init: write failed — ${error instanceof Error ? error.message : String(error)}`);
@@ -651,11 +659,12 @@ export function registerInitCommand(cli, commandName = 'init') {
         .option('--with <skills>', withHelp)
         .option('--host <hosts>', 'Comma-separated host targets: codex, claude, opencode, all')
         .option('--all', 'Install every skill (Tier-1 + Tier-2 + all Tier-3)')
-        .option('--overwrite', 'Replace consumer customizations (default: write new files to <name>.new)')
+        .option('--overwrite', 'Replace consumer customizations (default: leave divergent files untouched)')
         .option('--dry-run', 'Show what would change without writing anything')
         .option('--yes', 'Accept defaults, skip interactive prompts')
         .option('--cwd <dir>', 'Working tree to scaffold into (default: process.cwd())')
         .option('--strict', 'Abort if any compatibility check fails (default: warn and continue)')
+        .option('--project', 'Configure OMX in project scope instead of the default user scope')
         .action(async (flags) => {
         const code = await runInit(flags);
         if (code !== EXIT_SUCCESS) {

@@ -2,8 +2,9 @@
  * Conflict policy for `ak init` file writes.
  *
  * Default: don't clobber consumer edits. If the target exists and differs
- * from the incoming content, write to `<target>.new` and log. In overwrite
- * mode: replace unconditionally. In dry-run: log the would-be change only.
+ * from the incoming content, report drift and leave the file untouched. In
+ * overwrite mode: replace unconditionally. In dry-run: log the would-be change
+ * only.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -26,12 +27,9 @@ export function writeFileMerged(targetPath, incoming, opts = {}) {
         writeFileSync(targetPath, incoming);
         return { targetPath, action: 'overwritten' };
     }
-    const sidecarPath = `${targetPath}.new`;
     if (opts.dryRun)
-        return { targetPath, action: 'skipped-dry', sidecarPath };
-    mkdirSync(dirname(sidecarPath), { recursive: true });
-    writeFileSync(sidecarPath, incoming);
-    return { targetPath, action: 'sidecar-written', sidecarPath };
+        return { targetPath, action: 'skipped-dry' };
+    return { targetPath, action: 'drifted' };
 }
 /**
  * Copy a single file from the catalog to the consumer, applying merge policy.
@@ -76,8 +74,8 @@ export function copyDirectoryMerged(sourceDir, targetDir, opts = {}) {
  * (or `{}` if the file doesn't exist) and returns the new object to write.
  *
  * Unlike raw template files, structured JSON patch targets are merged in-place:
- * the patcher already preserves unknown fields, so writing a `.new` sidecar
- * would strand required hook/config updates behind an extra manual merge step.
+ * the patcher already preserves unknown fields, so reporting drift would strand
+ * required hook/config updates behind an extra manual merge step.
  */
 export function patchJsonFile(targetPath, patcher, opts = {}) {
     const exists = existsSync(targetPath);
@@ -103,7 +101,6 @@ export function summarizeResults(results) {
         identical: 0,
         drifted: 0,
         overwritten: 0,
-        'sidecar-written': 0,
         'skipped-dry': 0,
     };
     for (const r of results)

@@ -53,20 +53,18 @@ function agentsResultToMismatch(result: MergeResult): UnifiedSyncMismatch | null
         targetPath: result.targetPath,
         reason: 'managed AGENTS.md blocks drifted from the current agent-kit template',
       }
-    case 'sidecar-written':
+    case 'drifted':
       return {
         consumerId: 'agents-md',
         targetPath: result.targetPath,
         reason:
-          'AGENTS.md has no managed block markers; merge the generated .new sidecar or rerun setup with overwrite once',
+          'AGENTS.md has no managed block markers; review the drift or rerun setup with overwrite once',
       }
     case 'skipped-dry':
       return {
         consumerId: 'agents-md',
         targetPath: result.targetPath,
-        reason: result.sidecarPath
-          ? 'AGENTS.md has no managed block markers; merge the generated .new sidecar or rerun setup with overwrite once'
-          : 'managed AGENTS.md blocks would be refreshed',
+        reason: 'managed AGENTS.md blocks would be refreshed',
       }
     default:
       return null

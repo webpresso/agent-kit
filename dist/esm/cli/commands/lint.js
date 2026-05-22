@@ -1,6 +1,6 @@
 import { runLint } from '#lint/index';
 export const LINT_COMMAND_HELP = [
-    'Lint via `oxlint` (fast, structured output) with `pnpm lint` as a fallback.',
+    'Lint via `oxlint` (fast, structured output) with `vp run lint` as a fallback.',
     '',
     'Examples:',
     '  ak lint',
@@ -11,16 +11,16 @@ export function registerLintCommand(cli) {
     cli
         .command('lint [...files]', LINT_COMMAND_HELP)
         .option('--fix', 'Apply autofixes via oxlint --fix')
-        .option('--no-pnpm-fallback', 'Fail if oxlint missing instead of falling back to pnpm lint')
+        .option('--no-pnpm-fallback', 'Fail if oxlint missing instead of falling back to vp run lint')
         .action(async (files, flags) => {
         const result = await runLint({
             files: files && files.length > 0 ? files : undefined,
             fix: Boolean(flags.fix),
             cwd: process.cwd(),
         });
-        if (flags.pnpmFallback === false && result.backend === 'pnpm') {
+        if (flags.pnpmFallback === false && result.backend === 'vp') {
             console.error('oxlint not found on PATH and --no-pnpm-fallback was set. Install oxlint:');
-            console.error('  pnpm add -D oxlint');
+            console.error('  vp install -D oxlint');
             return 1;
         }
         if (result.spawnError) {

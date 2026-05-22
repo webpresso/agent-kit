@@ -1,7 +1,7 @@
 import type { MergeOptions } from '#cli/commands/init/merge';
 export declare const PLAYWRIGHT_MCP_SERVER_NAME = "playwright";
 export declare const PLAYWRIGHT_MCP_HEADER = "[mcp_servers.playwright]";
-export declare const PLAYWRIGHT_MCP_BLOCK = "[mcp_servers.playwright]\ncommand = \"npx\"\nargs = [\"-y\", \"@playwright/mcp@latest\", \"--caps=testing,storage,network,devtools\"]\nenabled = true\nstartup_timeout_sec = 30\n";
+export declare const PLAYWRIGHT_MCP_BLOCK = "[mcp_servers.playwright]\ncommand = \"vp\"\nargs = [\"dlx\", \"@playwright/mcp@latest\", \"--caps=testing,storage,network,devtools\"]\nenabled = true\nstartup_timeout_sec = 30\n";
 export declare const AGENT_KIT_MCP_SERVER_NAME = "agent-kit";
 export declare const AGENT_KIT_MCP_HEADER = "[mcp_servers.agent-kit]";
 export interface EnsureCodexPlaywrightMcpInput {

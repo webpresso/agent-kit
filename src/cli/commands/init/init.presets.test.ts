@@ -115,6 +115,19 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes', '--scope', 'project'])
     })
 
+    it('repairs .gitignore so regenerated Codex and OMX surfaces stay ignored', async () => {
+      writeFileSync(join(repo, '.gitignore'), ['node_modules/', '!.codex/agents/**', ''].join('\n'))
+
+      const code = await runInit({ cwd: repo, yes: true, with: 'omx' })
+
+      expect(code).toBe(EXIT_SUCCESS)
+      const gitignore = readFileSync(join(repo, '.gitignore'), 'utf8')
+      expect(gitignore).toContain('# >>> managed by @webpresso/agent-kit (generated)')
+      expect(gitignore).toContain('.codex/')
+      expect(gitignore).toContain('.omx/')
+      expect(gitignore.trimEnd()).toMatch(/# <<< managed by @webpresso\/agent-kit \(generated\)$/)
+    })
+
     it('returns EXIT_SETUP_FAIL when probe errors with ENOENT (omx not on PATH)', async () => {
       spawnSyncMock.mockImplementation((cmd: string) => {
         if (cmd === 'omx') {

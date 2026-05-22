@@ -45,7 +45,7 @@ Webpresso is adopter zero — agent-kit replaces its internal `@webpresso/bluepr
 
 - **Zero `@webpresso/*` runtime or dev dependencies.** agent-kit is self-contained and maintained outside the Webpresso monorepo.
 - **The catalog is canonical.** Consumers run `ak setup` once, then own their copy. `ak skill install <name>` is explicit; there is no implicit upstream refresh.
-- **OMX skills stay in OMX.** Anything `[OMX]`-marked in webpresso's `.agent/skills/` is deliberately excluded from agent-kit's catalog. A normal `ak setup` installs or refreshes OMX and runs `omx setup --yes --scope user` so those skills remain owned by OMX but available in the consumer environment; `wp setup --project` opts into project-scoped OMX setup.
+- **OMX skills stay in OMX.** Anything `[OMX]`-marked in webpresso's `.agent/skills/` is deliberately excluded from agent-kit's catalog. A normal `ak setup` installs or refreshes OMX and runs `omx setup --yes --scope user` so those skills remain owned by OMX but available in the consumer environment; `wp setup --project` opts into project-scoped OMX setup. Setup also repairs the managed `.gitignore` block for regenerated `.codex/`, `.omx/`, `.agent/`, and IDE projection outputs.
 
 ## Versioning
 

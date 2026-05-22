@@ -39,14 +39,13 @@ describe('writeFileMerged', () => {
     expect(result.action).toBe('identical')
   })
 
-  it('writes sidecar .new when content differs and overwrite is false', () => {
+  it('reports drift without writing companion files when content differs and overwrite is false', () => {
     const target = join(dir, 'file.md')
     writeFileSync(target, 'original')
     const result = writeFileMerged(target, 'updated')
-    expect(result.action).toBe('sidecar-written')
-    expect(result.sidecarPath).toBe(`${target}.new`)
+    expect(result.action).toBe('drifted')
     expect(readFileSync(target, 'utf8')).toBe('original')
-    expect(readFileSync(`${target}.new`, 'utf8')).toBe('updated')
+    expect(existsSync(`${target}.new`)).toBe(false)
   })
 
   it('overwrites when overwrite is true', () => {
@@ -62,7 +61,6 @@ describe('writeFileMerged', () => {
     writeFileSync(target, 'original')
     const result = writeFileMerged(target, 'updated', { dryRun: true })
     expect(result.action).toBe('skipped-dry')
-    expect(result.sidecarPath).toBe(`${target}.new`)
     expect(existsSync(`${target}.new`)).toBe(false)
     expect(readFileSync(target, 'utf8')).toBe('original')
   })
@@ -107,14 +105,14 @@ describe('copyFileMerged / copyDirectoryMerged', () => {
     expect(readFileSync(join(dst, 'nested', 'b.md'), 'utf8')).toBe('b')
   })
 
-  it('applies merge policy per-file when nested conflicts exist', () => {
+  it('reports drift per-file when nested conflicts exist', () => {
     mkdirSync(join(src, 'nested'), { recursive: true })
     writeFileSync(join(src, 'nested', 'b.md'), 'new')
     mkdirSync(join(dst, 'nested'), { recursive: true })
     writeFileSync(join(dst, 'nested', 'b.md'), 'old')
     const results = copyDirectoryMerged(src, dst)
-    expect(results.some((r) => r.action === 'sidecar-written')).toBe(true)
+    expect(results.some((r) => r.action === 'drifted')).toBe(true)
     expect(readFileSync(join(dst, 'nested', 'b.md'), 'utf8')).toBe('old')
-    expect(readFileSync(join(dst, 'nested', 'b.md.new'), 'utf8')).toBe('new')
+    expect(existsSync(join(dst, 'nested', 'b.md.new'))).toBe(false)
   })
 })

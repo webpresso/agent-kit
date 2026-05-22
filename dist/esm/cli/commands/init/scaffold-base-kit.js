@@ -16,14 +16,14 @@ const TEMPLATE_MAP = [
  * — even under `--overwrite`. These files are consumer-owned and grow with
  * project-specific content (catalog entries, ignore patterns) that the
  * generic template can't reproduce. Clobbering them on every `ak setup`
- * deletes that content silently, breaks `pnpm install`, and pollutes git
+ * deletes that content silently, breaks `vp install`, and pollutes git
  * status with thousands of newly-tracked artifacts.
  *
  * Verified failure mode (webpresso/monorepo, 2026-05-07): the postinstall
  * `ak setup --overwrite` reduced pnpm-workspace.yaml from 221 lines (full
  * catalog) to 34 lines (generic template), removing every catalog entry
  * referenced by `pnpm.overrides` (`@neondatabase/serverless` etc.) and
- * making subsequent `pnpm install` fail with ERR_PNPM_CATALOG_IN_OVERRIDES.
+ * making subsequent `vp install` fail with ERR_PNPM_CATALOG_IN_OVERRIDES.
  * The same overwrite stripped monorepo-specific .gitignore rules
  * (.test-reports/, .webpresso/generated/, all-paths/.wrangler/, etc.),
  * unmasking 23k+ generated artifacts to git status.
@@ -75,14 +75,14 @@ function mergePackageJson(repoRoot, options) {
     pkg['engines'] = { ...existing, node: engines.node };
     if (!alreadyHasPm)
         pkg['packageManager'] = packageManager;
-    // Ensure husky is in devDependencies so `pnpm exec husky init` works
+    // Ensure husky is in devDependencies so `vp exec husky init` works
     if (!devDeps['husky']) {
         devDeps['husky'] = '^9.0.0';
     }
     if (!shouldSkipSelfInstall && !hasAgentKitDevDep) {
         // Keep consumers on the currently published dist-tag rather than a
         // repo-internal path. Do not wire this through `prepare`: `ak` is not
-        // reliably on PATH during `pnpm install`, so `setup:agent` stays opt-in.
+        // reliably on PATH during `vp install`, so `setup:agent` stays opt-in.
         devDeps['@webpresso/agent-kit'] = 'latest';
     }
     pkg['devDependencies'] = devDeps;
@@ -109,8 +109,8 @@ export function scaffoldBaseKit(input) {
         results.push(writeFileMerged(targetPath, content, options));
     }
     // Bootstrap-only: write template only when target is absent. Never
-    // overwrite (even under --overwrite) and never produce a `.new` sidecar
-    // — the consumer's existing file is the source of truth once it exists.
+    // overwrite (even under --overwrite): the consumer's existing file is the
+    // source of truth once it exists.
     for (const [tmplRel, targetRel] of BOOTSTRAP_ONLY_MAP) {
         const tmplPath = join(baseKitDir, tmplRel);
         if (!existsSync(tmplPath))

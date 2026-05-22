@@ -8,7 +8,7 @@
  *
  * Two managed blocks today:
  *   1. `[mcp_servers.playwright]` — points at the npm-published Playwright
- *      MCP server (path-stable via npx).
+ *      MCP server through Vite+'s `vp dlx` facade.
  *   2. `[mcp_servers.agent-kit]` — points at agent-kit's own MCP server.
  *      Path-stability requires discovery: agent-kit lives in different
  *      locations depending on how the user installed it (Claude plugin
@@ -24,8 +24,8 @@ import { dirname, join } from 'node:path';
 export const PLAYWRIGHT_MCP_SERVER_NAME = 'playwright';
 export const PLAYWRIGHT_MCP_HEADER = `[mcp_servers.${PLAYWRIGHT_MCP_SERVER_NAME}]`;
 export const PLAYWRIGHT_MCP_BLOCK = `${PLAYWRIGHT_MCP_HEADER}
-command = "npx"
-args = ["-y", "@playwright/mcp@latest", "--caps=testing,storage,network,devtools"]
+command = "vp"
+args = ["dlx", "@playwright/mcp@latest", "--caps=testing,storage,network,devtools"]
 enabled = true
 startup_timeout_sec = 30
 `;

@@ -113,7 +113,7 @@ Migration details:
 wp setup
 ```
 
-`wp setup` (alias: `ak setup`) is re-runnable. Existing files get a `<name>.new` sidecar by default; `--overwrite` replaces them. Hooks are patched additively into `.claude/settings.json` and `.codex/hooks.json` — your custom hooks survive.
+`wp setup` (alias: `ak setup`) is re-runnable. Existing divergent files are left untouched and reported as drift; `--overwrite` replaces them. Hooks are patched additively into `.claude/settings.json` and `.codex/hooks.json` — your custom hooks survive. Setup also repairs the managed `.gitignore` block so regenerated `.codex/`, `.omx/`, `.agent/`, and IDE projection outputs stay out of Git.
 
 ### 3. Implementation plans that don't rot
 

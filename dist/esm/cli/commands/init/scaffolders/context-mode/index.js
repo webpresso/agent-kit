@@ -89,7 +89,7 @@ export function patchCodexContextModeHooks(existing) {
         hooks,
     };
 }
-export function patchOpenCodeContextModeConfig(existing, agentKitCommand = ['pnpm', 'exec', 'ak', 'mcp']) {
+export function patchOpenCodeContextModeConfig(existing, agentKitCommand = ['vp', 'exec', 'ak', 'mcp']) {
     const currentMcp = existing.mcp && typeof existing.mcp === 'object' && !Array.isArray(existing.mcp)
         ? { ...existing.mcp }
         : {};
@@ -118,7 +118,7 @@ function resolveOpenCodeAgentKitCommand(repoRoot, globalInstall = false) {
     const repoLocalRoot = join(repoRoot, 'node_modules', '@webpresso', 'agent-kit');
     const entryPath = findAgentKitMcpEntry({ candidates: [repoLocalRoot] }) ?? findAgentKitMcpEntry();
     if (!entryPath)
-        return globalInstall ? ['ak', 'mcp'] : ['pnpm', 'exec', 'ak', 'mcp'];
+        return globalInstall ? ['ak', 'mcp'] : ['vp', 'exec', 'ak', 'mcp'];
     const launch = agentKitMcpLaunchCommand(entryPath);
     return [launch.command, ...launch.args];
 }
@@ -134,13 +134,13 @@ function ensureCodexContextModeMcp(configPath, options) {
     writeFileSync(configPath, next, 'utf8');
     return { targetPath: configPath, action: existed ? 'overwritten' : 'created' };
 }
-const CONTEXT_MODE_NOT_FOUND_HINT = 'context-mode is not on PATH after `npm install -g context-mode`. Install it manually and re-run.';
+const CONTEXT_MODE_NOT_FOUND_HINT = 'context-mode is not on PATH after `vp install -g context-mode`. Install it manually and re-run.';
 function ensureContextModeBinary(spawn, spinner) {
     let installed = false;
     spinner.start();
     let probe = spawn('context-mode', ['--help'], { stdio: 'ignore' });
     if (probe.error || (probe.status !== null && probe.status !== 0)) {
-        const install = spawn('npm', ['install', '-g', 'context-mode'], { stdio: 'inherit' });
+        const install = spawn('vp', ['install', '-g', 'context-mode'], { stdio: 'inherit' });
         if (install.status !== 0) {
             spinner.fail('context-mode install failed');
             throw new Error(CONTEXT_MODE_NOT_FOUND_HINT);

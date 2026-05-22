@@ -53,11 +53,9 @@ function writeOverrideRule(targetPath, sourcePath, options) {
         writeFileSync(targetPath, incoming);
         return { targetPath, action: 'overwritten' };
     }
-    const sidecarPath = `${targetPath}.new`;
     if (options.dryRun)
-        return { targetPath, action: 'sidecar-written', sidecarPath };
-    writeFileSync(sidecarPath, incoming);
-    return { targetPath, action: 'sidecar-written', sidecarPath };
+        return { targetPath, action: 'skipped-dry' };
+    return { targetPath, action: 'drifted' };
 }
 function resolveCurrentPackageRoot() {
     let dir = dirname(fileURLToPath(import.meta.url));

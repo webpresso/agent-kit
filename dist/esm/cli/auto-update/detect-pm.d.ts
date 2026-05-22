@@ -17,7 +17,7 @@
  *   4. Volta / asdf shim → abort with a manual-command hint.
  *   5. Unknown → abort.
  */
-export type ManagerName = 'npm' | 'pnpm' | 'yarn' | 'bun' | 'git';
+export type ManagerName = 'npm' | 'pnpm' | 'yarn' | 'bun' | 'vp' | 'git';
 export interface DetectSuccess {
     manager: ManagerName;
     command: string[];
@@ -60,7 +60,7 @@ export declare function parseUserAgent(userAgent: string): Exclude<ManagerName, 
 export declare function matchStoreMarker(realpath: string): Exclude<ManagerName, 'git'> | null;
 /**
  * Detect Volta / asdf shim layouts. These intercept the binary lookup such
- * that an in-place `npm install -g` won't pick up. Returns a user-facing
+ * that an in-place `vp install -g` won't pick up. Returns a user-facing
  * abort reason or null.
  * Exported for testability.
  */

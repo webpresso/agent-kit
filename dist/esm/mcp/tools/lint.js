@@ -3,17 +3,17 @@
  *
  * Runs `oxlint` (preferred — fast, structured JSON output) on the supplied
  * files (or `.` when none are given). When the `oxlint` binary is absent on
- * PATH, falls back to `pnpm lint`. Returns a structured payload:
+ * PATH, falls back to `vp run lint`. Returns a structured payload:
  *
  *   {
  *     passed: boolean,
  *     issues: Array<{file, line, rule, message}>,
- *     backend: 'oxlint' | 'pnpm',
+ *     backend: 'oxlint' | 'vp',
  *     exitCode: number,
- *     output?: string,   // only on the pnpm fallback
+ *     output?: string,   // only on the vp fallback
  *   }
  *
- * The pnpm fallback intentionally does NOT parse output — `pnpm lint` aggregates
+ * The vp fallback intentionally does NOT parse output — `vp run lint` aggregates
  * heterogeneous per-package linters whose stdout shapes differ. Raw output is
  * passed through in `output` for human inspection.
  */
@@ -34,7 +34,7 @@ const lintIssueSchema = z.object({
     message: z.string(),
 });
 const outputSchema = createSummaryOutputSchema({
-    backend: z.enum(['oxlint', 'pnpm']),
+    backend: z.enum(['oxlint', 'vp']),
     counts: z.object({
         issueCount: z.number(),
     }),
@@ -162,7 +162,7 @@ function summarizeLintResult(options) {
 }
 const tool = {
     name: 'ak_lint',
-    description: 'Run lint via `oxlint` (fast, structured JSON output) with `pnpm lint` as a fallback when oxlint is not on PATH. Returns `{passed, issues: [{file, line, rule, message}]}`.',
+    description: 'Run lint via `oxlint` (fast, structured JSON output) with `vp run lint` as a fallback when oxlint is not on PATH. Returns `{passed, issues: [{file, line, rule, message}]}`.',
     inputSchema,
     outputSchema,
     annotations: {
@@ -219,7 +219,7 @@ const tool = {
             };
             return createSummaryResult(payload);
         }
-        // Only fall back to pnpm lint when oxlint is genuinely missing on PATH.
+        // Only fall back to vp run lint when oxlint is genuinely missing on PATH.
         // Other spawn errors (EPERM, EAGAIN, ELOOP) are real failures and should
         // surface — silently routing them to pnpm masks setup bugs.
         if (!isMissingBinary(oxlintOutcome)) {
@@ -238,43 +238,43 @@ const tool = {
             // resolve this by changing inputs. Distinct from "lint found issues."
             return createSummaryResult(payload, { isError: true });
         }
-        const pnpmOutcome = await runCommand('pnpm', ['lint'], runOptions);
-        if (isRunFailure(pnpmOutcome)) {
+        const vpOutcome = await runCommand('vp', ['run', 'lint'], runOptions);
+        if (isRunFailure(vpOutcome)) {
             const payload = {
                 passed: false,
-                summary: 'lint could not start: pnpm lint spawn failed',
-                backend: 'pnpm',
+                summary: 'lint could not start: vp run lint spawn failed',
+                backend: 'vp',
                 exitCode: 1,
                 counts: { issueCount: 0 },
                 details: {
                     issues: [],
-                    spawnError: `oxlint missing and pnpm spawn failed: ${pnpmOutcome.error.message}`,
+                    spawnError: `oxlint missing and vp spawn failed: ${vpOutcome.error.message}`,
                 },
             };
             return createSummaryResult(payload, { isError: true });
         }
-        const { transform: _transform, ...compact } = applyOutputTransform([pnpmOutcome.stdout, pnpmOutcome.stderr].filter(Boolean).join(''), {
-            toolName: 'ak_lint-pnpm',
+        const { transform: _transform, ...compact } = applyOutputTransform([vpOutcome.stdout, vpOutcome.stderr].filter(Boolean).join(''), {
+            toolName: 'ak_lint-vp',
         });
         const payload = {
-            passed: pnpmOutcome.exitCode === 0,
+            passed: vpOutcome.exitCode === 0,
             summary: summarizeLintResult({
-                passed: pnpmOutcome.exitCode === 0,
-                backend: 'pnpm',
+                passed: vpOutcome.exitCode === 0,
+                backend: 'vp',
                 issueCount: 0,
-                exitCode: pnpmOutcome.exitCode,
-                timedOut: pnpmOutcome.timedOut,
-                aborted: pnpmOutcome.aborted,
+                exitCode: vpOutcome.exitCode,
+                timedOut: vpOutcome.timedOut,
+                aborted: vpOutcome.aborted,
             }),
-            backend: 'pnpm',
-            exitCode: pnpmOutcome.exitCode,
+            backend: 'vp',
+            exitCode: vpOutcome.exitCode,
             counts: { issueCount: 0 },
             details: {
                 issues: [],
             },
             ...compact,
-            timedOut: pnpmOutcome.timedOut || undefined,
-            aborted: pnpmOutcome.aborted || undefined,
+            timedOut: vpOutcome.timedOut || undefined,
+            aborted: vpOutcome.aborted || undefined,
         };
         return createSummaryResult(payload);
     },

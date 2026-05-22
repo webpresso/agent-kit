@@ -42,19 +42,17 @@ function agentsResultToMismatch(result) {
                 targetPath: result.targetPath,
                 reason: 'managed AGENTS.md blocks drifted from the current agent-kit template',
             };
-        case 'sidecar-written':
+        case 'drifted':
             return {
                 consumerId: 'agents-md',
                 targetPath: result.targetPath,
-                reason: 'AGENTS.md has no managed block markers; merge the generated .new sidecar or rerun setup with overwrite once',
+                reason: 'AGENTS.md has no managed block markers; review the drift or rerun setup with overwrite once',
             };
         case 'skipped-dry':
             return {
                 consumerId: 'agents-md',
                 targetPath: result.targetPath,
-                reason: result.sidecarPath
-                    ? 'AGENTS.md has no managed block markers; merge the generated .new sidecar or rerun setup with overwrite once'
-                    : 'managed AGENTS.md blocks would be refreshed',
+                reason: 'managed AGENTS.md blocks would be refreshed',
             };
         default:
             return null;
@@ -93,7 +91,7 @@ export function registerSyncCommand(cli) {
         catch (error) {
             if (error instanceof Error && /catalogDir does not exist/.test(error.message)) {
                 throw commandError('ak sync: @webpresso/agent-kit not installed in node_modules. ' +
-                    'Run `pnpm install` first.');
+                    'Run `vp install` first.');
             }
             throw error;
         }

@@ -47,7 +47,7 @@ Drops a starter `VISION.md` at repo root from `catalog/vision/VISION.md.tmpl`, w
 - ≤ 100 body lines and ≤ 1500 body words
 - soft-warns when `last_updated` is older than 365 days
 
-**Touches:** `VISION.md` only; existing files are protected by the standard merge policy (`.new` sidecar unless `--overwrite`).
+**Touches:** `VISION.md` only; existing files are protected by the standard merge policy (reported as drift unless `--overwrite`).
 **Requires nothing on PATH.**
 
 ### `lore-commits`
@@ -68,7 +68,7 @@ Chains `omx setup --yes --scope user` after the agent-kit scaffold completes. OM
 
 **Idempotency:** OMX manages its own state — every `ak setup` re-invokes `omx setup --yes --scope user`, which is itself idempotent. After OMX finishes, agent-kit also migrates deprecated Codex config entries from `[features].codex_hooks` to `[features].hooks` in `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`) so older OMX releases do not keep re-triggering Codex's deprecation warning.
 **Codex/OMX MCP persistence:** after `omx setup --yes --scope user`, agent-kit upserts the owned `[mcp_servers.playwright]` block in `$CODEX_HOME/config.toml` or `~/.codex/config.toml`. This gives both Codex and OMX a persistent Playwright MCP server for browser testing without relying on session-local tool state.
-**Side-effects:** OMX writes user-scoped Codex/OMX configuration and may persist `.omx/setup-scope.json` in the consumer repo. When default user-scoped setup migrates a repo that was previously project-scoped, agent-kit removes Git-tracked `.codex/` and `.omx/` files so repo-scoped OMX/Codex artifacts do not remain committed; untracked local runtime files are preserved. agent-kit also writes the global Codex Playwright MCP block described above and the one-line `codex_hooks` → `hooks` feature-flag migration when needed, preserving unrelated config.
+**Side-effects:** OMX writes user-scoped Codex/OMX configuration and may persist `.omx/setup-scope.json` in the consumer repo. `wp setup` also repairs the managed `.gitignore` block for generated agent surfaces (`.codex/`, `.omx/`, `.agent/`, IDE projections) so re-running setup does not expose regenerated files as untracked. When default user-scoped setup migrates a repo that was previously project-scoped, agent-kit removes Git-tracked `.codex/` and `.omx/` files so repo-scoped OMX/Codex artifacts do not remain committed; untracked local runtime files are preserved. agent-kit also writes the global Codex Playwright MCP block described above and the one-line `codex_hooks` → `hooks` feature-flag migration when needed, preserving unrelated config.
 
 ### `playwright-mcp`
 

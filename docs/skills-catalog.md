@@ -148,7 +148,7 @@ never rewrites it unless `ak setup --overwrite` is used.
 
 Tier-1 and Tier-2 skills are agent-kit-owned and update with the package.
 Consumers bring new catalog content into `.agent/` explicitly with
-`ak setup --overwrite` (or by manually merging the `.new` sidecars).
+`ak setup --overwrite` after reviewing the reported drift.
 
 Tier-3 skills are installed one at a time with `ak skill install <name>`
 or selected during setup with `ak setup --with <name>`. Agent Kit does not

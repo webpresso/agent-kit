@@ -52,7 +52,7 @@ function builtinEvals(subagentFn) {
         makeEval('eval-1-add-function', 'Add src/add.ts exporting add(a,b). Add src/add.test.ts asserting add(2,3)===5. pnpm test exits 0.', assertEval1, subagentFn),
         makeEval('eval-2-multi-file-refactor', 'Extract duplicated clamp() from src/a.ts and src/b.ts into src/utils/clamp.ts. Update imports.', assertEval2, subagentFn),
         makeEval('eval-3-test-addition', 'Add src/multiply.test.ts asserting multiply(3,4)===12 via toStrictEqual.', assertEval3, subagentFn),
-        makeEval('eval-4-dependency-bump', 'Bump zod from ^3.22.0 to ^3.23.0 in package.json. Verify pnpm install succeeds.', assertEval4, subagentFn),
+        makeEval('eval-4-dependency-bump', 'Bump zod from ^3.22.0 to ^3.23.0 in package.json. Verify vp install succeeds.', assertEval4, subagentFn),
         makeEval('eval-5-extract-package', 'Extract src/math/ to packages/math/. Verify byte identity via diff -ru and mutation parity.', assertEval5, subagentFn),
     ];
 }

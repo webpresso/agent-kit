@@ -104,6 +104,8 @@ Default setup also wires in tooling that lives outside the skill catalog:
   layer is set up alongside agent-kit with shared user auth by default. Use
   `wp setup --project` to request project-scoped OMX setup instead. If `omx`
   is missing, setup first runs `vp install -g oh-my-codex` and then retries.
+  Setup also repairs the managed `.gitignore` block so regenerated `.codex/`,
+  `.omx/`, `.agent/`, and IDE projection outputs stay out of Git.
 - `gstack` — ensures the gstack skill registry is installed at
   `~/.claude/skills/gstack/` (clones + runs `./setup --team` if missing,
   no-op if already there). Provides `/qa`, `/ship`, `/review`, etc.

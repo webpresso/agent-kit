@@ -3,20 +3,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { GENERATED_PATHS_BLOCK } from '#cli/commands/init/gitignore-patcher'
 import { auditGitignoreAgentSurfaces } from './gitignore-agent-surfaces.js'
 
-const EXPECTED_PATHS = [
-  '.claude/rules/',
-  '.claude/skills/',
-  '.cursor/rules/',
-  '.windsurf/skills/',
-  '.gemini/commands/',
-  '.opencode/commands/',
-  '.agents/skills/',
-  '.agent/.merged.provenance.json',
-  '.agent/.compile-manifest.json',
-  '.agent/.rotation-log.jsonl',
-]
+const EXPECTED_PATHS = GENERATED_PATHS_BLOCK.patterns.filter((line) => !line.startsWith('#'))
 
 function makeCompleteGitignore(): string {
   return EXPECTED_PATHS.join('\n') + '\n'
@@ -91,6 +81,17 @@ describe('auditGitignoreAgentSurfaces', () => {
 
     expect(result.ok).toBe(true)
     expect(result.violations).toHaveLength(0)
+  })
+
+  it('fails when a later exception re-exposes a generated surface', async () => {
+    const cwd = tmp()
+    writeFileSync(join(cwd, '.gitignore'), [...EXPECTED_PATHS, '!.codex/agents/**', ''].join('\n'))
+
+    const result = await auditGitignoreAgentSurfaces(cwd)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toHaveLength(1)
+    expect(result.violations[0]?.message).toContain('overridden by later exception')
   })
 
   it('title is "gitignore agent surfaces"', async () => {

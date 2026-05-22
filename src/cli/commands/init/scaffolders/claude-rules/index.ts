@@ -98,10 +98,8 @@ function writeOverrideRule(
     return { targetPath, action: 'overwritten' }
   }
 
-  const sidecarPath = `${targetPath}.new`
-  if (options.dryRun) return { targetPath, action: 'sidecar-written', sidecarPath }
-  writeFileSync(sidecarPath, incoming)
-  return { targetPath, action: 'sidecar-written', sidecarPath }
+  if (options.dryRun) return { targetPath, action: 'skipped-dry' }
+  return { targetPath, action: 'drifted' }
 }
 
 function resolveCurrentPackageRoot(): string {

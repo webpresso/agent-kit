@@ -131,8 +131,8 @@ export function scaffoldBaseKit(input: ScaffoldBaseKitInput): MergeResult[] {
   }
 
   // Bootstrap-only: write template only when target is absent. Never
-  // overwrite (even under --overwrite) and never produce a `.new` sidecar
-  // — the consumer's existing file is the source of truth once it exists.
+  // overwrite (even under --overwrite): the consumer's existing file is the
+  // source of truth once it exists.
   for (const [tmplRel, targetRel] of BOOTSTRAP_ONLY_MAP) {
     const tmplPath = join(baseKitDir, tmplRel)
     if (!existsSync(tmplPath)) continue

@@ -258,7 +258,7 @@ export function warnIfNonLocalCli(repoRoot, cliUrl = import.meta.url) {
     const hasLocalAgentKitDep = ourPkg?.dependencies['@webpresso/agent-kit'] ?? ourPkg?.devDependencies['@webpresso/agent-kit'];
     console.error(`warning: ak running from a non-local install (${cliPath}). ` +
         (hasLocalAgentKitDep
-            ? 'This repo already pins `@webpresso/agent-kit`; rerun via the repo-local CLI (`pnpm run setup:agent` or `pnpm exec ak setup`).'
+            ? 'This repo already pins `@webpresso/agent-kit`; rerun via the repo-local CLI (`vp run setup:agent` or `vp exec ak setup`).'
             : 'Pin `@webpresso/agent-kit` as a local dep for reproducible setup.'));
 }
 export function detectConsumer(startDir = process.cwd()) {

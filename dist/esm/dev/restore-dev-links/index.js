@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * Postinstall helper: restore the @webpresso/agent-kit dev-link symlink
- * that `pnpm install` overwrites with the pnpm-store snapshot.
+ * that `vp install` overwrites with the pnpm-store snapshot.
  *
  * Behavior:
  *   - State file absent           → silent exit 0 (CI / never linked)

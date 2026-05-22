@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process';
 export async function runStryker(cwd, deps = {}) {
     const spawnFn = deps.spawn ?? spawn;
     return new Promise((resolve) => {
-        const child = spawnFn('npx', ['--yes', 'stryker', 'run'], {
+        const child = spawnFn('vp', ['dlx', 'stryker', 'run'], {
             cwd,
             stdio: 'inherit',
             shell: false,

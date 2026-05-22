@@ -4,7 +4,7 @@
  * Drops a starter `VISION.md` at repo root from `catalog/vision/VISION.md.tmpl`
  * with `{{REPO_NAME}}`, `{{TODAY}}`, and (optionally) interview-derived
  * substitutions. Idempotent: existing files are protected by the standard
- * merge policy (sidecar `.new` unless `--overwrite`).
+ * merge policy (reported as drift unless `--overwrite`).
  *
  * When `answers` is provided (from `maybeRunVisionInterview`), the
  * placeholders `{{ONE_LINER}}`, `{{PROBLEM}}`, `{{TAGLINE}}`, `{{IN_SCOPE}}`,

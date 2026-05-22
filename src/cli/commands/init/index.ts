@@ -4,8 +4,8 @@ import type { CAC } from 'cac'
  * `ak setup` / `ak init` — scaffolds the agent-kit catalog into a consumer repo.
  *
  * Idempotent: re-runs reconcile against `.agent-kitrc.json`.
- * Safe-by-default: if a target file exists with different content, writes
- * to `<name>.new` unless `--overwrite` is passed.
+ * Safe-by-default: if a target file exists with different content, reports
+ * drift and leaves it untouched unless `--overwrite` is passed.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, relative } from 'node:path'
@@ -31,6 +31,7 @@ import { scaffoldAgent, RENDERED_SKILLS, TIER1_SKILLS, TIER2_SKILLS } from './sc
 import { scaffoldAgentRules } from './scaffold-agent-rules.js'
 import { scaffoldAgentSkills } from './scaffold-agent-skills.js'
 import { scaffoldCatalogIgnore } from './scaffold-catalog-ignore.js'
+import { GENERATED_PATHS_BLOCK, patchGitignore } from './gitignore-patcher.js'
 import { scaffoldAgentsMd } from './scaffold-agents-md.js'
 import { scaffoldBlueprints } from './scaffold-blueprints.js'
 import { scaffoldDocs } from './scaffold-docs.js'
@@ -263,6 +264,11 @@ export async function runInit(flags: InitFlags): Promise<number> {
       dryRun: options.dryRun,
       overwrite: options.overwrite,
     })
+    const generatedSurfaceIgnoreResult = patchGitignore(
+      join(consumer.repoRoot, '.gitignore'),
+      GENERATED_PATHS_BLOCK,
+      { dryRun: options.dryRun, overwrite: true },
+    )
 
     const baseKitResults = tier3Selection.includes('base-kit')
       ? scaffoldBaseKit({ catalogDir, repoRoot: consumer.repoRoot, options })
@@ -612,6 +618,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
       ...agentRulesReport.results,
       ...agentSkillsReport.results,
       ...catalogIgnoreReport.results,
+      generatedSurfaceIgnoreResult,
       ...baseKitResults,
       ...docsResults,
       ...blueprintResults,
@@ -635,14 +642,13 @@ export async function runInit(flags: InitFlags): Promise<number> {
     console.log(`  created:         ${summary.created}`)
     console.log(`  identical:       ${summary.identical}`)
     console.log(`  overwritten:     ${summary.overwritten}`)
-    console.log(`  sidecar (.new):  ${summary['sidecar-written']}`)
+    console.log(`  drifted:         ${summary.drifted}`)
     if (options.dryRun) console.log(`  would-change:    ${summary['skipped-dry']}`)
 
-    if (summary['sidecar-written'] > 0) {
+    if (summary.drifted > 0) {
       console.log(
-        '\n  Note: some files exist with different content. New versions were\n' +
-          '  written with a `.new` suffix — diff and merge manually, or re-run\n' +
-          '  with `--overwrite` to replace them.',
+        '\n  Note: some files exist with different content and were left unchanged.\n' +
+          '  Review the drift or re-run with `--overwrite` to replace them.',
       )
     }
 
@@ -744,8 +750,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
   } catch (error) {
     if (error instanceof Error && /catalogDir does not exist/.test(error.message)) {
       console.error(
-        'ak init: @webpresso/agent-kit not installed in node_modules. ' +
-          'Run `vp install` first.',
+        'ak init: @webpresso/agent-kit not installed in node_modules. ' + 'Run `vp install` first.',
       )
       return EXIT_SETUP_FAIL
     }
@@ -779,7 +784,7 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
     .option('--all', 'Install every skill (Tier-1 + Tier-2 + all Tier-3)')
     .option(
       '--overwrite',
-      'Replace consumer customizations (default: write new files to <name>.new)',
+      'Replace consumer customizations (default: leave divergent files untouched)',
     )
     .option('--dry-run', 'Show what would change without writing anything')
     .option('--yes', 'Accept defaults, skip interactive prompts')

@@ -36,7 +36,7 @@ export async function runFormat(options = {}) {
     const outcome = await runCommand('oxfmt', args, runOptions);
     if (isRunFailure(outcome)) {
         if (isMissingBinary(outcome)) {
-            throw new Error("oxfmt binary not found on PATH. Install it as a devDependency: 'pnpm add -D oxfmt'");
+            throw new Error("oxfmt binary not found on PATH. Install it as a devDependency: 'vp install -D oxfmt'");
         }
         return {
             passed: false,

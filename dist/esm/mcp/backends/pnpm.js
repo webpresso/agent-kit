@@ -2,13 +2,13 @@ import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 /**
- * Run tests via `pnpm`.
+ * Run tests via the `vp` facade over the repo-declared package-manager substrate.
  *
  * Argv shape:
- *   - `pnpm -F <p> test` once per package when packages are given (results
+ *   - `vp run --filter <p> test` once per package when packages are given (results
  *     aggregated; first non-zero exit wins).
- *   - `pnpm test -- <file1> <file2>` when files are given (no packages).
- *   - `pnpm test` otherwise.
+ *   - `vp run test -- <file1> <file2>` when files are given (no packages).
+ *   - `vp run test` otherwise.
  */
 export async function runTests(input) {
     const cwd = input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
@@ -29,21 +29,22 @@ export async function runTests(input) {
     }
     if (input.files && input.files.length > 0) {
         if (usesVitest(cwd)) {
-            return runCommand('pnpm', ['exec', 'vitest', 'run', '--reporter=json', '--no-color', ...input.files], cwd);
+            return runCommand('vp', ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color', ...input.files], cwd);
         }
-        return runCommand('pnpm', ['test', '--', ...input.files], cwd);
+        return runCommand('vp', ['run', 'test', '--', ...input.files], cwd);
     }
     if (usesVitest(cwd)) {
-        return runCommand('pnpm', ['exec', 'vitest', 'run', '--reporter=json', '--no-color'], cwd);
+        return runCommand('vp', ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color'], cwd);
     }
-    return runCommand('pnpm', ['test'], cwd);
+    return runCommand('vp', ['run', 'test'], cwd);
 }
 function runPackageScopedTests(cwd, packageName, files) {
     if (usesVitest(cwd, packageName)) {
-        return runCommand('pnpm', [
-            '-F',
-            packageName,
+        return runCommand('vp', [
             'exec',
+            '--filter',
+            packageName,
+            '--',
             'vitest',
             'run',
             '--reporter=json',
@@ -52,9 +53,9 @@ function runPackageScopedTests(cwd, packageName, files) {
         ], cwd);
     }
     if (files && files.length > 0) {
-        return runCommand('pnpm', ['-F', packageName, 'test', '--', ...files], cwd);
+        return runCommand('vp', ['run', '--filter', packageName, 'test', '--', ...files], cwd);
     }
-    return runCommand('pnpm', ['-F', packageName, 'test'], cwd);
+    return runCommand('vp', ['run', '--filter', packageName, 'test'], cwd);
 }
 function usesVitest(cwd, packageName) {
     const packageJson = findPackageJson(cwd, packageName);

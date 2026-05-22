@@ -43,10 +43,10 @@ const HAS_TANSTACK = existsSync(join(CATALOG_DIR, 'agent', 'skills', 'tanstack-q
 const HAS_REACT_DOCTOR = existsSync(join(CATALOG_DIR, 'agent', 'skills', 'react-doctor'))
 
 /**
- * Walk the repo (skipping node_modules + .git) and return any `.new` sidecar
- * paths. Wave-3 expects ZERO sidecars from rule/skill surfaces.
+ * Walk the repo (skipping node_modules + .git) and return any generated
+ * companion files. Normal setup should not create these.
  */
-function findSidecars(root: string): string[] {
+function findCompanionFiles(root: string): string[] {
   const out: string[] = []
   const stack: string[] = [root]
   while (stack.length > 0) {
@@ -194,9 +194,9 @@ describe('ak init end-to-end', () => {
     expect(existsSync(join(repo, 'agent-skills', '.gitkeep'))).toBe(true)
     expect(existsSync(join(repo, 'agent-skills', 'README.md'))).toBe(true)
 
-    // Wave-3: zero `.new` sidecars under derived rule/skill surfaces
-    const sidecars = findSidecars(repo)
-    expect(sidecars).toEqual([])
+    // Wave-3: zero generated companion files under derived rule/skill surfaces
+    const companionFiles = findCompanionFiles(repo)
+    expect(companionFiles).toEqual([])
 
     // No tier-3 skills installed by default — unified sync filters by allowedSkillSlugs
     expect(existsSync(join(repo, '.agent', 'skills', 'tanstack-query'))).toBe(false)
@@ -310,12 +310,12 @@ describe('ak init end-to-end', () => {
     expect(code).toBe(0)
   })
 
-  it('preserves existing AGENTS.md with a .new sidecar by default', async () => {
+  it('preserves existing unmanaged AGENTS.md without writing companion files by default', async () => {
     writeFileSync(join(repo, 'AGENTS.md'), '# Custom already-owned content')
     const code = await runInit({ cwd: repo, yes: true })
     expect(code).toBe(0)
     expect(readFileSync(join(repo, 'AGENTS.md'), 'utf8')).toBe('# Custom already-owned content')
-    expect(existsSync(join(repo, 'AGENTS.md.new'))).toBe(true)
+    expect(existsSync(join(repo, 'AGENTS.md.new'))).toBe(false)
   })
 
   it('refreshes managed AGENTS blocks in place while preserving user-owned blocks', async () => {
@@ -428,9 +428,9 @@ describe('ak init end-to-end', () => {
     }
     expect(rc.installed.tier3Skills).toContain('tanstack-query')
 
-    // Wave-3: second invocation produces no `.new` sidecars under
+    // Wave-3: second invocation produces no generated companion files under
     // any rule/skill surface.
-    expect(findSidecars(repo)).toEqual([])
+    expect(findCompanionFiles(repo)).toEqual([])
   })
 })
 

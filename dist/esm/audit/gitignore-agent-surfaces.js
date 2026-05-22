@@ -1,17 +1,17 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-const EXPECTED_PATHS = [
-    '.claude/rules/',
-    '.claude/skills/',
-    '.cursor/rules/',
-    '.windsurf/skills/',
-    '.gemini/commands/',
-    '.opencode/commands/',
-    '.agents/skills/',
-    '.agent/.merged.provenance.json',
-    '.agent/.compile-manifest.json',
-    '.agent/.rotation-log.jsonl',
-];
+import { GENERATED_PATHS_BLOCK } from '#cli/commands/init/gitignore-patcher';
+const EXPECTED_PATHS = GENERATED_PATHS_BLOCK.patterns.filter((line) => !line.startsWith('#'));
+function lastMatchingRule(lines, expected) {
+    let last;
+    const negatedPrefix = `!${expected}`;
+    for (const line of lines) {
+        if (line === expected || line === `!${expected}` || line.startsWith(negatedPrefix)) {
+            last = line;
+        }
+    }
+    return last;
+}
 export async function auditGitignoreAgentSurfaces(cwd) {
     const gitignorePath = join(cwd, '.gitignore');
     const violations = [];
@@ -37,15 +37,24 @@ export async function auditGitignoreAgentSurfaces(cwd) {
             violations: [{ file: '.gitignore', message: 'failed to read .gitignore' }],
         };
     }
-    const lines = new Set(content
+    const lines = content
         .split('\n')
         .map((l) => l.trim())
-        .filter(Boolean));
+        .filter((line) => line.length > 0 && !line.startsWith('#'));
+    const lineSet = new Set(lines);
     for (const expected of EXPECTED_PATHS) {
-        if (!lines.has(expected)) {
+        if (!lineSet.has(expected)) {
             violations.push({
                 file: '.gitignore',
                 message: `Missing gitignore entry: ${expected} — run \`ak setup\` to add generated agent surface paths`,
+            });
+            continue;
+        }
+        const last = lastMatchingRule(lines, expected);
+        if (last?.startsWith('!')) {
+            violations.push({
+                file: '.gitignore',
+                message: `Gitignore entry ${expected} is overridden by later exception ${last} — run \`ak setup\` to move the generated surface block to the end`,
             });
         }
     }

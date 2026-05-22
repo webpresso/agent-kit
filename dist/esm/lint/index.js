@@ -2,7 +2,7 @@
  * Stable subpath export: `@webpresso/agent-kit/lint`.
  *
  * Exposes a framework-friendly `runLint` runner that wraps `oxlint`
- * (preferred — fast, structured JSON output) with a `pnpm lint` fallback
+ * (preferred — fast, structured JSON output) with a `vp run lint` fallback
  * when `oxlint` is not on PATH. Mirrors the semantics of the
  * `ak_lint` MCP tool but returns a typed result object directly so
  * external scaffolders (e.g. webpresso-framework Wave 2) can consume it
@@ -76,7 +76,7 @@ function normalizeWrappedReports(parsed) {
 }
 /**
  * Run lint and return a structured result. Prefers `oxlint`; falls back to
- * `pnpm lint` only when `oxlint` is missing on PATH. Other spawn errors
+ * `vp run lint` only when `oxlint` is missing on PATH. Other spawn errors
  * surface explicitly via `spawnError` rather than being silently rerouted.
  */
 export async function runLint(options = {}) {
@@ -118,24 +118,24 @@ export async function runLint(options = {}) {
             spawnError: `oxlint spawn failed: ${oxlintOutcome.error.code ?? 'unknown'} ${oxlintOutcome.error.message}`,
         };
     }
-    const pnpmOutcome = await runCommand('pnpm', ['lint'], runOptions);
-    if (isRunFailure(pnpmOutcome)) {
+    const vpOutcome = await runCommand('vp', ['run', 'lint'], runOptions);
+    if (isRunFailure(vpOutcome)) {
         return {
             passed: false,
             issues: [],
-            backend: 'pnpm',
+            backend: 'vp',
             exitCode: 1,
-            spawnError: `oxlint missing and pnpm spawn failed: ${pnpmOutcome.error.message}`,
+            spawnError: `oxlint missing and vp spawn failed: ${vpOutcome.error.message}`,
         };
     }
     return {
-        passed: pnpmOutcome.exitCode === 0,
+        passed: vpOutcome.exitCode === 0,
         issues: [],
-        backend: 'pnpm',
-        exitCode: pnpmOutcome.exitCode,
-        output: [pnpmOutcome.stdout, pnpmOutcome.stderr].filter(Boolean).join('') || undefined,
-        timedOut: pnpmOutcome.timedOut || undefined,
-        aborted: pnpmOutcome.aborted || undefined,
+        backend: 'vp',
+        exitCode: vpOutcome.exitCode,
+        output: [vpOutcome.stdout, vpOutcome.stderr].filter(Boolean).join('') || undefined,
+        timedOut: vpOutcome.timedOut || undefined,
+        aborted: vpOutcome.aborted || undefined,
     };
 }
 //# sourceMappingURL=index.js.map

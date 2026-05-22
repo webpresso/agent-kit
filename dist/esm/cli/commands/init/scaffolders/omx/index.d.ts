@@ -1,7 +1,7 @@
 /**
  * `omx` scaffolder preset.
  *
- * Ensures `omx` is installed, then chains `omx setup --yes` after the
+ * Ensures `omx` is installed, then chains `omx setup --yes --scope user` after the
  * agent-kit scaffold completes. OMX (oh-my-codex) is the operator-workflow
  * execution layer; it manages its own scaffolding idempotently.
  *
@@ -13,6 +13,7 @@ import type { MergeOptions } from '#cli/commands/init/merge';
 export interface EnsureOmxInput {
     repoRoot: string;
     options: MergeOptions;
+    scope?: OmxSetupScope;
     /** Dependency-injection seam for tests; defaults to node's child_process.spawnSync. */
     spawn?: typeof spawnSync;
     /** Test seam — override `$CODEX_HOME/config.toml` or `~/.codex/config.toml`. */
@@ -21,6 +22,7 @@ export interface EnsureOmxInput {
 export type EnsureOmxResult = {
     kind: 'omx-ok';
     installed: boolean;
+    removedProjectFiles: string[];
 } | {
     kind: 'omx-skipped-dry-run';
 } | {
@@ -30,6 +32,7 @@ export type EnsureOmxResult = {
     kind: 'omx-spawn-failed';
     exitCode: number;
 };
+type OmxSetupScope = 'user' | 'project';
 /**
  * Removes ALL hook trust state blocks when duplicate `[hooks.state."..."]` keys
  * are detected.
@@ -43,13 +46,14 @@ export type EnsureOmxResult = {
  * Detection contract: count unique vs total `[hooks.state."..."]` section
  * headers. If any key appears more than once the file is TOML-invalid. When
  * duplicates exist we strip all hook trust content (entries + OMX block marker
- * comments) so `omx setup --yes` can rewrite exactly one clean managed block.
+ * comments) so `omx setup --yes --scope user` can rewrite exactly one clean managed block.
  */
 export declare function deduplicateCodexHookTrustState(config: string): string;
 export declare function migrateDeprecatedCodexHooksFeatureFlag(raw: string): string;
 /**
- * Ensure `omx` is on PATH then run `omx setup --yes` in the consumer repo.
+ * Ensure `omx` is on PATH then run `omx setup --yes --scope user` in the consumer repo.
  * Idempotent: safe to run on every `ak setup`.
  */
 export declare function ensureOmx(input: EnsureOmxInput): EnsureOmxResult;
+export {};
 //# sourceMappingURL=index.d.ts.map

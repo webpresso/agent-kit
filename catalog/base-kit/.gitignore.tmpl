@@ -71,6 +71,7 @@ tmp/
 .cursor/
 .windsurf/
 .omx/
+.omc/
 .codex/
 .opencode/
 # .claude/ is partially tracked:
@@ -78,8 +79,4 @@ tmp/
 #   worktrees/ and skills/ — gitignored (runtime / user-global)
 .claude/worktrees/
 .claude/skills/
-
-# `ak setup` safe-default outputs — when a target file exists with different
-# content, the scaffolder writes to `<name>.new` instead of overwriting.
-# These are review-and-discard or review-and-merge artifacts; never commit.
-*.new
+.claude/scheduled_tasks.lock

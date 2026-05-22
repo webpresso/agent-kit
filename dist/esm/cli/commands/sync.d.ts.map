@@ -1,1 +1,1 @@
-{"version":3,"file":"sync.d.ts","sourceRoot":"","sources":["../../../../src/cli/commands/sync.ts"],"names":[],"mappings":"AAAA;;;;;;;;;;GAUG;AAEH,OAAO,KAAK,EAAE,GAAG,EAAE,MAAM,KAAK,CAAA;AA+D9B,wBAAgB,mBAAmB,CAAC,GAAG,EAAE,GAAG,GAAG,IAAI,CA4ElD"}
+{"version":3,"file":"sync.d.ts","sourceRoot":"","sources":["../../../../src/cli/commands/sync.ts"],"names":[],"mappings":"AAAA;;;;;;;;;;GAUG;AAEH,OAAO,KAAK,EAAE,GAAG,EAAE,MAAM,KAAK,CAAA;AA6D9B,wBAAgB,mBAAmB,CAAC,GAAG,EAAE,GAAG,GAAG,IAAI,CA4ElD"}

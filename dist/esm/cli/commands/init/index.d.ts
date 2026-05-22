@@ -8,6 +8,7 @@ export interface InitFlags {
     yes?: boolean;
     cwd?: string;
     strict?: boolean;
+    project?: boolean;
 }
 export declare const EXIT_SUCCESS = 0;
 export declare const EXIT_SETUP_FAIL = 1;

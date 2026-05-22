@@ -21,7 +21,7 @@ import { buildSkillTag, extractSkillHooks, isTaggedSkillHook, } from './skill-ho
 // path-stable and not depend on the caller's cwd.
 //
 // CC_BIN wraps the command in a guard so it exits 0 gracefully when node_modules
-// hasn't been installed yet (e.g. a fresh worktree before `pnpm install` completes).
+// hasn't been installed yet (e.g. a fresh worktree before `vp install` completes).
 // Without the guard every hook fires an error on first session start in new worktrees.
 const CC_BIN = (name) => `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}" || true`;
 const CODEX_BIN = (repoRoot) => (name) => {

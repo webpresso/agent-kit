@@ -2,7 +2,7 @@
  * Stable subpath export: `@webpresso/agent-kit/lint`.
  *
  * Exposes a framework-friendly `runLint` runner that wraps `oxlint`
- * (preferred — fast, structured JSON output) with a `pnpm lint` fallback
+ * (preferred — fast, structured JSON output) with a `vp run lint` fallback
  * when `oxlint` is not on PATH. Mirrors the semantics of the
  * `ak_lint` MCP tool but returns a typed result object directly so
  * external scaffolders (e.g. webpresso-framework Wave 2) can consume it
@@ -14,7 +14,7 @@ export interface LintIssue {
     readonly rule: string;
     readonly message: string;
 }
-export type LintBackend = 'oxlint' | 'pnpm';
+export type LintBackend = 'oxlint' | 'vp';
 export interface LintResult {
     readonly passed: boolean;
     readonly issues: readonly LintIssue[];
@@ -29,7 +29,7 @@ export interface LintResult {
 export interface RunLintOptions {
     /** Files or glob targets to lint. When omitted, lints `.` */
     readonly files?: readonly string[];
-    /** Apply autofixes via `oxlint --fix`. Ignored on the pnpm fallback. */
+    /** Apply autofixes via `oxlint --fix`. Ignored on the vp fallback. */
     readonly fix?: boolean;
     /** Override the resolved project root. */
     readonly cwd?: string;
@@ -50,7 +50,7 @@ interface ParseOutcome {
 export declare function parseOxlintIssues(stdout: string): ParseOutcome;
 /**
  * Run lint and return a structured result. Prefers `oxlint`; falls back to
- * `pnpm lint` only when `oxlint` is missing on PATH. Other spawn errors
+ * `vp run lint` only when `oxlint` is missing on PATH. Other spawn errors
  * surface explicitly via `spawnError` rather than being silently rerouted.
  */
 export declare function runLint(options?: RunLintOptions): Promise<LintResult>;

@@ -42,7 +42,7 @@ describe('scaffoldOpencodePlugin', () => {
     expect(second.action).toBe('identical')
   })
 
-  it('writes a sidecar (.new) when consumer-modified content is present', () => {
+  it('reports drift without writing companion files when consumer-modified content is present', () => {
     const repoRoot = createTempRoot()
     const targetPath = join(repoRoot, OPENCODE_PLUGIN_RELATIVE_PATH)
     mkdirSync(join(repoRoot, '.opencode/plugins'), { recursive: true })
@@ -50,10 +50,9 @@ describe('scaffoldOpencodePlugin', () => {
 
     const result = scaffoldOpencodePlugin({ repoRoot, options: {} })
 
-    expect(result.action).toBe('sidecar-written')
-    expect(result.sidecarPath).toBe(`${targetPath}.new`)
+    expect(result.action).toBe('drifted')
     expect(readFileSync(targetPath, 'utf8')).toBe('// consumer custom content\n')
-    expect(readFileSync(`${targetPath}.new`, 'utf8')).toBe(OPENCODE_PLUGIN_CONTENT)
+    expect(() => readFileSync(`${targetPath}.new`, 'utf8')).toThrow()
   })
 
   it('overwrites consumer content when --overwrite is set', () => {
