@@ -30,9 +30,6 @@ catalogs:
     '@vitejs/plugin-react':
       specifier: ^6.0.1
       version: 6.0.1
-    '@webpresso/runtime-storage':
-      specifier: ^0.1.2
-      version: 0.1.2
     gray-matter:
       specifier: ^4.0.3
       version: 4.0.3
@@ -74,9 +71,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 6.0.1(vite@8.0.12(@types/node@25.6.2)(esbuild@0.27.3)(yaml@2.8.4))
-      '@webpresso/runtime-storage':
-        specifier: 'catalog:'
-        version: 0.1.2
       better-sqlite3:
         specifier: ^12.9.0
         version: 12.9.0
@@ -2322,10 +2316,6 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
-
-  '@webpresso/runtime-storage@0.1.2':
-    resolution: {integrity: sha512-oDC0eSIvH6eZbn6y40cmJCrvo5C1cGWuCRIEFLVFLyCtLoLTXlsuPN0ttpk9zQH5abAwfu9xT0sVwvkwksnUAA==, tarball: https://npm.pkg.github.com/download/@webpresso/runtime-storage/0.1.2/d608992f020fca5877461e8484090ba154a4dc4a}
-    engines: {node: '>=24'}
 
   abbrev@2.0.0:
     resolution: {integrity: sha512-6/mh1E2u2YgEsCHdY0Yx5oW+61gZU+1vXaoiHHrpKeuRNNgFvS+/jrwHiQhB5apAf5oB7UB7E19ol2R2LKH8hQ==}
@@ -6481,8 +6471,6 @@ snapshots:
 
   '@voidzero-dev/vite-plus-win32-x64-msvc@0.1.20':
     optional: true
-
-  '@webpresso/runtime-storage@0.1.2': {}
 
   abbrev@2.0.0: {}
 
