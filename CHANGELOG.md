@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.18.15
+
+### Patch Changes
+
+- 7e06dba: Make `wp_blueprint_*` the canonical documented blueprint MCP surface, add
+  retry-safe `request_id` replay for mutating blueprint tools, and add optional
+  `head_at_ingest` stale-write protection plus doc/registry drift coverage.
+
 ## 0.18.14
 
 ### Patch Changes
