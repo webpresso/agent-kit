@@ -93,7 +93,7 @@ export declare function registerBlueprintTools(registrar: ToolRegistrar, cwd: st
  * @property getMcpRoots        Lazy callback that returns the current MCP
  *                              client roots. Catch unsupported-capability
  *                              errors *inside* this callback or let them
- *                              throw — `ak_blueprint_projects` degrades
+ *                              throw — `wp_blueprint_projects` degrades
  *                              gracefully to current-cwd + warning.
  * @property onRootsListChanged Optional callback to install a notification
  *                              handler for `RootsListChangedNotificationSchema`.
@@ -118,7 +118,7 @@ export interface RegisterBlueprintServerOptions {
  *
  * Single integration point (F13/E15): call this once from `createServer` AFTER
  * `auto-discover` finishes so tool-name collisions surface as a registration
- * error rather than silent shadow. Adds `ak_blueprint_projects` on top of the
+ * error rather than silent shadow. Adds `wp_blueprint_projects` on top of the
  * 8 existing tools.
  *
  * Roots handling (F5):

@@ -32,7 +32,7 @@ function exitCodeFromSignal(signal) {
         return 1;
     return 128 + (COMMON_SIGNAL_NUMBERS[signal] ?? 15);
 }
-// Mirrors npm/pnpm script execution: project-local binaries (oxfmt, oxlint,
+// Mirrors package script execution: project-local binaries (oxfmt, oxlint,
 // tsc) are devDependencies resolved via node_modules/.bin, not global installs.
 const PATH_SEP = process.platform === 'win32' ? ';' : ':';
 function buildEnv(cwd) {

@@ -13,7 +13,7 @@
  *
  * Implementation calls the sibling tools' `handler` exports through their
  * default descriptors — no public re-exports needed. Parallelism is the whole
- * point: a sequential composite would be strictly worse than the user just
+ * point: a sequential composite would be strictly worse than the user simply
  * running each tool back-to-back, since the sub-tools each spawn long-lived
  * external processes (`oxlint`, `tsc`, the test runner). Running them
  * concurrently is the only thing this composite buys you.

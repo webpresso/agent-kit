@@ -13,7 +13,7 @@
  *
  * Implementation calls the sibling tools' `handler` exports through their
  * default descriptors — no public re-exports needed. Parallelism is the whole
- * point: a sequential composite would be strictly worse than the user just
+ * point: a sequential composite would be strictly worse than the user simply
  * running each tool back-to-back, since the sub-tools each spawn long-lived
  * external processes (`oxlint`, `tsc`, the test runner). Running them
  * concurrently is the only thing this composite buys you.
@@ -41,7 +41,6 @@ const qaLeafSchema = z
     passed: z.boolean(),
     summary: z.string(),
     exitCode: z.number().optional(),
-    backend: z.string().optional(),
     failures: z.array(failureSchema),
     tier: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
     bytes: z.number().optional(),
@@ -142,7 +141,6 @@ function toCompactLeaf(result) {
         passed: result.passed === true,
         summary: typeof result.summary === 'string' ? result.summary : '',
         ...(typeof result.exitCode === 'number' ? { exitCode: result.exitCode } : {}),
-        ...(typeof result.backend === 'string' ? { backend: result.backend } : {}),
         failures: normalizedFailures,
         ...(typeof result.tier === 'number' ? { tier: result.tier } : {}),
         ...(typeof result.bytes === 'number' ? { bytes: result.bytes } : {}),

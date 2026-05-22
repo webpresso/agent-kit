@@ -1,4 +1,4 @@
-import { getErrorMessage } from '@webpresso/runtime-format/errors';
+import { getErrorMessage } from '#format/errors.js';
 import { isValidRelativePath } from './shared/validate-path.js';
 async function performSemanticSearch(pattern, maxResults, context) {
     if (!context.ragRetriever) {

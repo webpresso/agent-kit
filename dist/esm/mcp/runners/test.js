@@ -2,37 +2,60 @@ import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 /**
- * Run tests via `just test`.
+ * Run tests via the `vp` facade over the repo-declared package-manager substrate.
  *
  * Argv shape:
- *   - `just test --package <p1> <p2> ...` when packages are given.
- *   - `just test --file <f1> <f2> ...` when files are given (and no packages).
- *   - `just test` otherwise.
- *
- * Captures stdout + stderr; resolves with the structured result and the
- * spawned process's exit code.
+ *   - `vp run --filter <p> test` once per package when packages are given (results
+ *     aggregated; first non-zero exit wins).
+ *   - `vp run test -- <file1> <file2>` when files are given (no packages).
+ *   - `vp run test` otherwise.
  */
 export async function runTests(input) {
     const cwd = input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
-    const args = ['test'];
     if (input.packages && input.packages.length > 0) {
-        args.push('--package', ...input.packages);
+        let combinedOutput = '';
+        let firstFailure = 0;
+        for (const pkg of input.packages) {
+            const result = await runPackageScopedTests(cwd, pkg, input.files);
+            combinedOutput += result.output;
+            if (!result.passed && firstFailure === 0)
+                firstFailure = result.exitCode;
+        }
+        return {
+            passed: firstFailure === 0,
+            output: combinedOutput,
+            exitCode: firstFailure,
+        };
     }
-    else if (input.files && input.files.length > 0) {
-        args.push('--file', ...input.files);
+    if (input.files && input.files.length > 0) {
+        if (usesVitest(cwd)) {
+            return runCommand('vp', ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color', ...input.files], cwd);
+        }
+        return runCommand('vp', ['run', 'test', '--', ...input.files], cwd);
     }
-    const extraArgs = input.extraArgs ?? inferExtraArgs(cwd, input);
-    if (extraArgs.length > 0) {
-        args.push('--', ...extraArgs);
+    if (usesVitest(cwd)) {
+        return runCommand('vp', ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color'], cwd);
     }
-    return runCommand('just', args, cwd);
+    return runCommand('vp', ['run', 'test'], cwd);
 }
-function inferExtraArgs(cwd, input) {
-    if (input.packages?.some((pkg) => usesVitest(cwd, pkg)) ||
-        (!input.packages?.length && usesVitest(cwd))) {
-        return ['--reporter=json', '--no-color'];
+function runPackageScopedTests(cwd, packageName, files) {
+    if (usesVitest(cwd, packageName)) {
+        return runCommand('vp', [
+            'exec',
+            '--filter',
+            packageName,
+            '--',
+            'vitest',
+            'run',
+            '--reporter=json',
+            '--no-color',
+            ...(files ?? []),
+        ], cwd);
     }
-    return [];
+    if (files && files.length > 0) {
+        return runCommand('vp', ['run', '--filter', packageName, 'test', '--', ...files], cwd);
+    }
+    return runCommand('vp', ['run', '--filter', packageName, 'test'], cwd);
 }
 function usesVitest(cwd, packageName) {
     const packageJson = findPackageJson(cwd, packageName);
@@ -89,4 +112,4 @@ function runCommand(cmd, args, cwd) {
         });
     });
 }
-//# sourceMappingURL=just.js.map
+//# sourceMappingURL=test.js.map

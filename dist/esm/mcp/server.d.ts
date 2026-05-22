@@ -11,7 +11,7 @@ export interface CreateServerOptions {
     /**
      * Directory to scan for tool descriptors. Defaults to `./tools` relative to
      * this module — i.e. `src/mcp/tools/` in dev and `dist/esm/mcp/tools/` after
-     * `pnpm build`.
+     * `vp run build`.
      */
     toolsDir?: string;
     /**

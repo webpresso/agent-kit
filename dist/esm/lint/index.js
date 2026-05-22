@@ -1,14 +1,12 @@
 /**
  * Stable subpath export: `@webpresso/agent-kit/lint`.
  *
- * Exposes a framework-friendly `runLint` runner that wraps `oxlint`
- * (preferred — fast, structured JSON output) with a `vp run lint` fallback
- * when `oxlint` is not on PATH. Mirrors the semantics of the
- * `ak_lint` MCP tool but returns a typed result object directly so
- * external scaffolders (e.g. webpresso-framework Wave 2) can consume it
- * without reaching through the MCP transport.
+ * Exposes a framework-friendly `runLint` runner that uses the `vp lint`
+ * facade. Mirrors the semantics of the `ak_lint` MCP tool but returns a
+ * typed result object directly so external scaffolders can consume it without
+ * reaching through the MCP transport.
  */
-import { isMissingBinary, isRunFailure, runCommand } from '#mcp/tools/_shared/run-command';
+import { isRunFailure, runCommand } from '#mcp/tools/_shared/run-command';
 import { resolveProjectRoot } from '#mcp/tools/_shared/project-root';
 const DEFAULT_LINT_TIMEOUT_MS = 5 * 60 * 1_000;
 /**
@@ -75,9 +73,8 @@ function normalizeWrappedReports(parsed) {
     });
 }
 /**
- * Run lint and return a structured result. Prefers `oxlint`; falls back to
- * `vp run lint` only when `oxlint` is missing on PATH. Other spawn errors
- * surface explicitly via `spawnError` rather than being silently rerouted.
+ * Run lint via `vp lint` and return a structured result. Spawn failures surface
+ * explicitly via `spawnError`.
  */
 export async function runLint(options = {}) {
     const cwd = resolveProjectRoot(options.cwd ? { explicitCwd: options.cwd } : {});
@@ -86,54 +83,31 @@ export async function runLint(options = {}) {
         signal: options.signal,
         cwd,
     };
-    const oxlintArgs = ['--format=json'];
+    const lintArgs = ['lint', '--format=json'];
     if (options.fix)
-        oxlintArgs.push('--fix');
+        lintArgs.push('--fix');
     if (options.files && options.files.length > 0) {
-        oxlintArgs.push(...options.files);
+        lintArgs.push(...options.files);
     }
     else {
-        oxlintArgs.push('.');
+        lintArgs.push('.');
     }
-    const oxlintOutcome = await runCommand('oxlint', oxlintArgs, runOptions);
-    if (!isRunFailure(oxlintOutcome)) {
-        const { issues, parseError } = parseOxlintIssues(oxlintOutcome.stdout);
-        return {
-            passed: oxlintOutcome.exitCode === 0,
-            issues,
-            backend: 'oxlint',
-            exitCode: oxlintOutcome.exitCode,
-            output: oxlintOutcome.stderr || undefined,
-            parseError,
-            timedOut: oxlintOutcome.timedOut || undefined,
-            aborted: oxlintOutcome.aborted || undefined,
-        };
-    }
-    if (!isMissingBinary(oxlintOutcome)) {
-        return {
-            passed: false,
-            issues: [],
-            backend: 'oxlint',
-            exitCode: 1,
-            spawnError: `oxlint spawn failed: ${oxlintOutcome.error.code ?? 'unknown'} ${oxlintOutcome.error.message}`,
-        };
-    }
-    const vpOutcome = await runCommand('vp', ['run', 'lint'], runOptions);
+    const vpOutcome = await runCommand('vp', lintArgs, runOptions);
     if (isRunFailure(vpOutcome)) {
         return {
             passed: false,
             issues: [],
-            backend: 'vp',
             exitCode: 1,
-            spawnError: `oxlint missing and vp spawn failed: ${vpOutcome.error.message}`,
+            spawnError: `vp lint spawn failed: ${vpOutcome.error.code ?? 'unknown'} ${vpOutcome.error.message}`,
         };
     }
+    const { issues, parseError } = parseOxlintIssues(vpOutcome.stdout);
     return {
         passed: vpOutcome.exitCode === 0,
-        issues: [],
-        backend: 'vp',
+        issues,
         exitCode: vpOutcome.exitCode,
-        output: [vpOutcome.stdout, vpOutcome.stderr].filter(Boolean).join('') || undefined,
+        output: vpOutcome.stderr || undefined,
+        parseError,
         timedOut: vpOutcome.timedOut || undefined,
         aborted: vpOutcome.aborted || undefined,
     };

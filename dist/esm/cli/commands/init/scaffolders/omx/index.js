@@ -161,10 +161,7 @@ function decodeSpawnStdout(stdout) {
     return '';
 }
 function isProjectScopedOmxPath(path) {
-    return (path === '.codex' ||
-        path.startsWith('.codex/') ||
-        path === '.omx' ||
-        path.startsWith('.omx/'));
+    return (path === '.codex' || path.startsWith('.codex/') || path === '.omx' || path.startsWith('.omx/'));
 }
 function resolveSafeRepoPath(repoRoot, relativePath) {
     const root = resolve(repoRoot);

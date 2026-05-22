@@ -6,21 +6,21 @@ export const VALIDATOR_NAME = 'forbidden-commands';
 export const SKIP_ENV_VAR = 'FORBIDDEN_COMMANDS_SKIP';
 export const AUDIT_MODE_ENV = 'FORBIDDEN_COMMANDS_AUDIT';
 export const DOCS_REF = 'AGENTS.md "Forbidden Commands (CRITICAL)" section';
-const DB_HINT = 'just db-push (or just db-migrate, just db-generate)';
+const DB_HINT = 'Use the database MCP/tooling entrypoint instead of direct CLI execution';
 const BLUEPRINT_HINT = 'ak blueprint new|list|audit — use ak_blueprint MCP tool for lifecycle transitions';
 const BLUEPRINT_LIFECYCLE_DIRS = '(draft|planned|in-progress|completed|archived)';
-const LINT_BASE = 'just lint --package <name> (or --file <path>)';
+const LINT_BASE = 'ak_lint MCP tool with package/file scope';
 const LINT_HINT = `${LINT_BASE} [--fix] [--fix-unsafe]`;
-const FORMAT_HINT = 'just format (or just format-check)';
-const QA_HINT = 'just qa';
-const TEST_HINT = 'just test --package <name> (or --file <path>)';
-const MUTATION_HINT = 'just test --mutation --package <name>';
-const TYPECHECK_HINT = 'just typecheck --package <name> (or --file <path>)';
-const ENV_HINT = 'just run <cmd> (injects secrets/env automatically)';
-const JUST_TASK_TARGET_HINT = 'just <task> [target] — check justfile for existing recipes, or add a new one';
-const EXEC_RUNNERS = ['pnpm exec', 'vp exec', 'pnpx', 'bunx'];
-const DIRECT_RUNNERS = ['pnpm', 'bun run', 'bun'];
-const SCRIPT_RUNNERS = ['pnpm run', 'pnpm', 'npm run', 'npm', 'bun run', 'bun'];
+const FORMAT_HINT = 'ak_format MCP tool';
+const QA_HINT = 'ak_qa MCP tool';
+const TEST_HINT = 'ak_test MCP tool with package/file scope';
+const MUTATION_HINT = 'ak_test mutation workflow';
+const TYPECHECK_HINT = 'ak_typecheck MCP tool with package/file scope';
+const ENV_HINT = 'Use the repo-approved environment wrapper for secret-bearing commands';
+const TASK_TARGET_HINT = 'Use the repo-approved vp facade or MCP tool instead of raw execution';
+const EXEC_RUNNERS = ['vp exec'];
+const DIRECT_RUNNERS = ['vp'];
+const SCRIPT_RUNNERS = ['vp run', 'vp'];
 export const BLOCKED_TOOLS = [
     {
         tool: 'drizzle-kit',
@@ -101,11 +101,7 @@ export function generateRules() {
             });
         }
     }
-    rules.push({ pattern: /^just lint-md\b/, category: 'unknown', suggestion: QA_HINT }, {
-        pattern: /^pnpm exec markdownlint-cli2\b/,
-        category: 'unknown',
-        suggestion: QA_HINT,
-    }, {
+    rules.push({
         pattern: /^vp exec markdownlint-cli2\b/,
         category: 'unknown',
         suggestion: QA_HINT,
@@ -122,7 +118,7 @@ export function generateRules() {
         pattern: new RegExp(`^git\\s+mv\\b.*blueprints\\/${BLUEPRINT_LIFECYCLE_DIRS}`),
         category: 'blueprint',
         suggestion: BLUEPRINT_HINT,
-    }, { pattern: /^doppler run/, category: 'unknown', suggestion: ENV_HINT }, { pattern: /^DATABASE_URL=/, category: 'unknown', suggestion: ENV_HINT }, { pattern: /^pnpm exec\b/, category: 'unknown', suggestion: JUST_TASK_TARGET_HINT }, { pattern: /^pnpm run\b/, category: 'unknown', suggestion: JUST_TASK_TARGET_HINT }, { pattern: /^npm exec\b/, category: 'unknown', suggestion: JUST_TASK_TARGET_HINT }, { pattern: /^npm run\b/, category: 'unknown', suggestion: JUST_TASK_TARGET_HINT }, { pattern: /^bun run\b/, category: 'unknown', suggestion: JUST_TASK_TARGET_HINT }, { pattern: /^npx\b/, category: 'unknown', suggestion: JUST_TASK_TARGET_HINT }, { pattern: /^pnpx\b/, category: 'unknown', suggestion: JUST_TASK_TARGET_HINT }, { pattern: /^bunx\b/, category: 'unknown', suggestion: JUST_TASK_TARGET_HINT });
+    }, { pattern: /^doppler run/, category: 'unknown', suggestion: ENV_HINT }, { pattern: /^DATABASE_URL=/, category: 'unknown', suggestion: ENV_HINT }, { pattern: /^vp exec\b/, category: 'unknown', suggestion: TASK_TARGET_HINT }, { pattern: /^vp run\b/, category: 'unknown', suggestion: TASK_TARGET_HINT });
     return rules;
 }
 export const COMMAND_RULES = generateRules();
@@ -135,14 +131,14 @@ export const SUGGESTION_MODIFIERS = [
     { pattern: /--fix|--write/, category: 'lint', suggestion: `${LINT_BASE} --fix` },
 ];
 const LOGICAL_OPERATOR_REGEX = /(?:&&|\|\||;)/;
-const PNPM_SCOPE_FLAG_REGEX = /\s+(?:(?:--filter|-F|--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)|(?:--workspace-root|-w))/;
-function stripPnpmScopeFlags(command) {
-    if (!command.startsWith('pnpm ')) {
+const VP_SCOPE_FLAG_REGEX = /\s+(?:(?:--filter|-F|--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)|(?:--workspace-root|-w))/;
+function stripVpScopeFlags(command) {
+    if (!command.startsWith('vp ')) {
         return command;
     }
     let next = command;
-    while (PNPM_SCOPE_FLAG_REGEX.test(next)) {
-        const updated = next.replace(PNPM_SCOPE_FLAG_REGEX, '');
+    while (VP_SCOPE_FLAG_REGEX.test(next)) {
+        const updated = next.replace(VP_SCOPE_FLAG_REGEX, '');
         if (updated === next) {
             break;
         }
@@ -308,16 +304,16 @@ export function applySuggestionModifiers(command, rule) {
     }
     return rule.suggestion;
 }
-export function getJustEquivalent(command) {
+export function getApprovedEquivalent(command) {
     const rule = findMatchingRule(command);
     if (!rule)
-        return 'just <appropriate-recipe>';
+        return 'repo-approved MCP/tooling entrypoint';
     return applySuggestionModifiers(command, rule);
 }
 export function getCommandVariants(command) {
     const normalized = command.trim();
     const variants = normalized ? [normalized] : [];
-    if (normalized.startsWith('just ')) {
+    if (normalized.startsWith('vp ')) {
         const logicalSegments = normalized
             .split(LOGICAL_OPERATOR_REGEX)
             .map((s) => s.trim())
@@ -341,9 +337,9 @@ export function getCommandVariants(command) {
         const variant = variants[index];
         if (!variant)
             continue;
-        const strippedPnpmVariant = stripPnpmScopeFlags(variant);
-        if (strippedPnpmVariant !== variant && !variants.includes(strippedPnpmVariant)) {
-            variants.push(strippedPnpmVariant);
+        const strippedVpVariant = stripVpScopeFlags(variant);
+        if (strippedVpVariant !== variant && !variants.includes(strippedVpVariant)) {
+            variants.push(strippedVpVariant);
         }
     }
     return variants;
