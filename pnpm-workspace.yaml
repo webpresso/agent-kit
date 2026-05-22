@@ -21,7 +21,6 @@ catalog:
   vitest: ^4.1.5
   yaml: ^2.8.1
   zod: ^4.4.3
-  '@webpresso/runtime-format': ^0.1.2
   '@webpresso/runtime-storage': ^0.1.2
 
 cleanupUnusedCatalogs: true

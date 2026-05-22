@@ -30,9 +30,6 @@ catalogs:
     '@vitejs/plugin-react':
       specifier: ^6.0.1
       version: 6.0.1
-    '@webpresso/runtime-format':
-      specifier: ^0.1.2
-      version: 0.1.2
     '@webpresso/runtime-storage':
       specifier: ^0.1.2
       version: 0.1.2
@@ -77,9 +74,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 6.0.1(vite@8.0.12(@types/node@25.6.2)(esbuild@0.27.3)(yaml@2.8.4))
-      '@webpresso/runtime-format':
-        specifier: 'catalog:'
-        version: 0.1.2
       '@webpresso/runtime-storage':
         specifier: 'catalog:'
         version: 0.1.2
@@ -173,7 +167,7 @@ importers:
         version: 0.48.0
       oxlint:
         specifier: ^1.63.0
-        version: 1.63.0
+        version: 1.63.0(oxlint-tsgolint@0.22.0)
       publint:
         specifier: ^0.3.20
         version: 0.3.20
@@ -2328,10 +2322,6 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
-
-  '@webpresso/runtime-format@0.1.2':
-    resolution: {integrity: sha512-PBhpSm1McG3Qu9S92RvLCc2pM3kUp+aZEusG+DvC5lFX0df2FczyBrxZvZPAeOkbJACwf614dQzPDChFpoHHaQ==, tarball: https://npm.pkg.github.com/download/@webpresso/runtime-format/0.1.2/03e743bdaf61a09c38bcf2ed3b83f495fe360b0e}
-    engines: {node: '>=24'}
 
   '@webpresso/runtime-storage@0.1.2':
     resolution: {integrity: sha512-oDC0eSIvH6eZbn6y40cmJCrvo5C1cGWuCRIEFLVFLyCtLoLTXlsuPN0ttpk9zQH5abAwfu9xT0sVwvkwksnUAA==, tarball: https://npm.pkg.github.com/download/@webpresso/runtime-storage/0.1.2/d608992f020fca5877461e8484090ba154a4dc4a}
@@ -6492,8 +6482,6 @@ snapshots:
   '@voidzero-dev/vite-plus-win32-x64-msvc@0.1.20':
     optional: true
 
-  '@webpresso/runtime-format@0.1.2': {}
-
   '@webpresso/runtime-storage@0.1.2': {}
 
   abbrev@2.0.0: {}
@@ -8137,7 +8125,7 @@ snapshots:
       '@oxlint/binding-win32-x64-msvc': 1.61.0
       oxlint-tsgolint: 0.22.0
 
-  oxlint@1.63.0:
+  oxlint@1.63.0(oxlint-tsgolint@0.22.0):
     optionalDependencies:
       '@oxlint/binding-android-arm-eabi': 1.63.0
       '@oxlint/binding-android-arm64': 1.63.0
@@ -8158,6 +8146,7 @@ snapshots:
       '@oxlint/binding-win32-arm64-msvc': 1.63.0
       '@oxlint/binding-win32-ia32-msvc': 1.63.0
       '@oxlint/binding-win32-x64-msvc': 1.63.0
+      oxlint-tsgolint: 0.22.0
 
   p-filter@2.1.0:
     dependencies:
