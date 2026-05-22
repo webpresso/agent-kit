@@ -7,7 +7,7 @@ last_updated: '2026-05-13'
 
 The blueprint structured store indexes every blueprint and task into a
 worktree-scoped SQLite projection. The normal agent interface is through the
-MCP tools (`ak_blueprint_*`). SQL templates and the `ak blueprint db` CLI
+MCP tools (`wp_blueprint_*`). SQL templates and the `wp blueprint db` CLI
 give direct access for maintainer introspection and custom queries.
 
 ---
@@ -25,21 +25,21 @@ server detects the HEAD mismatch, rebuilds the projection, and retries.
 
 ```
 # Trigger re-ingest by repeating the list call
-ak_blueprint_list  project_id="..."
+wp_blueprint_list  project_id="..."
 ```
 
 ### Multi-project aggregate read
 
 ```
 # List blueprints across all workspace repos
-ak_blueprint_list  scope="workspace"
+wp_blueprint_list  scope="workspace"
 
 # List across MCP roots AND workspace repos
-ak_blueprint_list  scope="all"
+wp_blueprint_list  scope="all"
 ```
 
 Duplicate slugs across projects are surfaced in `duplicate_slugs[]` and never
-silently selected. Use `ak_blueprint_get` with an explicit `project_id` to
+silently selected. Use `wp_blueprint_get` with an explicit `project_id` to
 disambiguate.
 
 ### Worktree isolation
@@ -51,10 +51,10 @@ next MCP call triggers a rebuild.
 
 ---
 
-## 1. Using templates via `ak blueprint db query`
+## 1. Using templates via `wp blueprint db query`
 
 ```
-ak blueprint db query <template-id> [--param key=value ...]
+wp blueprint db query <template-id> [--param key=value ...]
 ```
 
 - `<template-id>` — one of the names listed in `src/blueprint/db/templates.ts`
@@ -64,7 +64,7 @@ ak blueprint db query <template-id> [--param key=value ...]
 **List all available templates:**
 
 ```
-ak blueprint db query --list
+wp blueprint db query --list
 ```
 
 ---
@@ -78,13 +78,13 @@ task-dependencies are all `done`. Tasks are ordered by blueprint complexity
 (XL first) then by `task_id`.
 
 ```
-ak blueprint db query next-ready-task
+wp blueprint db query next-ready-task
 ```
 
 Returns up to 5 rows by default. Override:
 
 ```
-ak blueprint db query next-ready-task --param limit=10
+wp blueprint db query next-ready-task --param limit=10
 ```
 
 Typical output columns: `task_id`, `title`, `status`, `wave`,
@@ -101,13 +101,13 @@ of grepping markdown files.
 *"Which tech-debt items need review in the next two weeks?"*
 
 ```
-ak blueprint db query tech-debt-due-soon
+wp blueprint db query tech-debt-due-soon
 ```
 
 Default window is 14 days, default row limit is 20. To widen the window:
 
 ```
-ak blueprint db query tech-debt-due-soon --param days=30 --param limit=50
+wp blueprint db query tech-debt-due-soon --param days=30 --param limit=50
 ```
 
 Items with `status = 'resolved'` are excluded. Results are ordered by
@@ -161,7 +161,7 @@ Rules:
 *"Which of our blueprints depend on work in other organisations?"*
 
 ```
-ak blueprint db query cross-org-correlations
+wp blueprint db query cross-org-correlations
 ```
 
 This returns every row in `cross_repo_dependencies` where `is_cross_org = 1`,
@@ -171,7 +171,7 @@ coordination obligations with external teams before starting sprint planning.
 For a narrower view limited to unresolved cross-repo deps in a specific org:
 
 ```
-ak blueprint db query cross-repo-blocked-on --param org_filter=acme-corp
+wp blueprint db query cross-repo-blocked-on --param org_filter=acme-corp
 ```
 
 `org_filter` matches the leading characters of `target_repo`
@@ -195,3 +195,13 @@ ak blueprint db query cross-repo-blocked-on --param org_filter=acme-corp
 
 Source of truth for all templates: `src/blueprint/db/templates.ts`.
 Template runner implementation: `src/blueprint/db/template-runner.ts`.
+
+For retry-safe blueprint mutations, pass `request_id` to
+`wp_blueprint_create`, `wp_blueprint_task_advance`, and
+`wp_blueprint_task_verify`. The server treats identical retries as idempotent
+and rejects `request_id` reuse when the payload changes.
+
+For stale-write protection, also pass `head_at_ingest` from the latest
+`wp_blueprint_list`, `wp_blueprint_get`, or `wp_blueprint_context` response.
+If HEAD moved since that read, the mutation is rejected before markdown writes
+and points the caller at the canonical refresh path.

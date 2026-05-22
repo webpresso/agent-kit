@@ -19,7 +19,7 @@
  *   - No platform-canonical sync.
  *
  * Consumers: `assembleBlueprintContext` (this task) and Task 2.2's MCP
- * handlers (`ak_blueprint_list`, `_get`, `_context`).
+ * handlers (`wp_blueprint_list`, `_get`, `_context`).
  */
 
 import { execFileSync } from 'node:child_process'
@@ -70,7 +70,7 @@ function sidecarPath(dbPath: string): string {
 }
 
 /** Run `git rev-parse HEAD` in cwd; return null when not a git repo / no commits. */
-function readCurrentHead(cwd: string): string | null {
+export function readCurrentHead(cwd: string): string | null {
   try {
     const sha = execFileSync('git', ['rev-parse', 'HEAD'], {
       cwd,

@@ -1,4 +1,4 @@
-import { getErrorMessage } from '@webpresso/runtime-format/errors'
+import { getErrorMessage } from '#format/errors.js'
 
 import type { AgentTool, FileOperation, ToolContext, ToolResult } from './types.js'
 

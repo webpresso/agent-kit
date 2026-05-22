@@ -14,7 +14,7 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import path from 'node:path'
 
 import matter from 'gray-matter'
@@ -27,7 +27,12 @@ import { resolveBlueprintProjectionDbPath, withProjectionDbWriteLock } from '#db
 import { findTemplate } from '#db/templates.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
 import { evidenceListSchema, canonicalizeEvidenceList } from '#evidence.js'
-import { checkFreshness, readProjectionMetadata, recordProjectionMetadata } from '#freshness.js'
+import {
+  checkFreshness,
+  readCurrentHead,
+  readProjectionMetadata,
+  recordProjectionMetadata,
+} from '#freshness.js'
 import { applyVerification, parseVerificationBlock } from '#verification.js'
 import { makeNextAction } from '#next-action.js'
 import { resolveBlueprintProjects } from '#projects.js'
@@ -184,7 +189,7 @@ const VALIDATE_TS_FILE = '.validate-timestamps.json'
 const ROWS_CAP = 200
 const LIFECYCLE_ADVICE =
   'After creating: /plan-refine to harden; /plan-eng-review to validate; ' +
-  'ak_blueprint_promote draft→planned when ready; /pll for parallel execution; ' +
+  'wp_blueprint_promote draft→planned when ready; /pll for parallel execution; ' +
   '/verify before finalize'
 const ALL_STATES = ['draft', 'planned', 'in-progress', 'parked', 'archived', 'completed'] as const
 const NON_COMPLETED = ['draft', 'planned', 'in-progress', 'parked', 'archived'] as const
@@ -340,6 +345,124 @@ function finishPayload(payload: Record<string, unknown>): ToolHandlerResult {
   return jsonContent(payload)
 }
 
+type MutationToolName =
+  | 'wp_blueprint_create'
+  | 'wp_blueprint_task_advance'
+  | 'wp_blueprint_task_verify'
+
+type MutationRequestLedgerRow = {
+  payload_hash: string
+  response_json: string
+}
+
+function sortKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortKeys)
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+      a < b ? -1 : a > b ? 1 : 0,
+    )
+    const out: Record<string, unknown> = {}
+    for (const [key, nested] of entries) out[key] = sortKeys(nested)
+    return out
+  }
+  return value
+}
+
+function hashMutationPayload(payload: unknown): string {
+  return createHash('sha256')
+    .update(JSON.stringify(sortKeys(payload)))
+    .digest('hex')
+}
+
+function mutationFreshnessError(
+  toolName: string,
+  guidanceTool: 'wp_blueprint_list' | 'wp_blueprint_get',
+) {
+  return jsonContent(
+    {
+      summary: `${toolName} rejected a stale mutation token`,
+      failures: [
+        'head_at_ingest does not match the current repository HEAD. Refresh blueprint state before mutating.',
+      ],
+      error: 'stale_head_at_ingest',
+      next_action: makeNextAction(
+        'reingest_project',
+        `Refresh projection state, then call ${guidanceTool} again to obtain a fresh head_at_ingest token.`,
+      ),
+      bytes: 0,
+      tokensSaved: 0,
+    },
+    true,
+  )
+}
+
+function validateMutationFreshnessToken(
+  projectCwd: string,
+  headAtIngest: string | null | undefined,
+  toolName: string,
+  guidanceTool: 'wp_blueprint_list' | 'wp_blueprint_get',
+): ToolHandlerResult | null {
+  if (headAtIngest === undefined) return null
+  const currentHead = readCurrentHead(projectCwd)
+  if (headAtIngest === currentHead) return null
+  return mutationFreshnessError(toolName, guidanceTool)
+}
+
+function readMutationReplay(
+  cwd: string,
+  toolName: MutationToolName,
+  requestId: string,
+  payloadHash: string,
+): ToolHandlerResult | null {
+  const target = dbPath(cwd)
+  if (!existsSync(target)) return null
+  const conn = openDb(target)
+  try {
+    const row =
+      conn.db
+        .prepare<[string, string], MutationRequestLedgerRow>(
+          `SELECT payload_hash, response_json
+             FROM mutation_request_ledger
+            WHERE tool_name = ? AND request_id = ?
+            LIMIT 1`,
+        )
+        .get(toolName, requestId) ?? null
+    if (row === null) return null
+    if (row.payload_hash !== payloadHash) {
+      return err(
+        `${toolName} failed`,
+        `request_id "${requestId}" was already used with a different payload`,
+      )
+    }
+    const payload = JSON.parse(row.response_json) as Record<string, unknown>
+    payload['idempotent'] = true
+    return finishPayload(payload)
+  } finally {
+    conn.close()
+  }
+}
+
+function recordMutationReplay(
+  cwd: string,
+  toolName: MutationToolName,
+  requestId: string,
+  payloadHash: string,
+  payload: Record<string, unknown>,
+): void {
+  const conn = openDbRW(cwd)
+  try {
+    conn.db
+      .prepare<[string, string, string, string]>(
+        `INSERT OR REPLACE INTO mutation_request_ledger
+           (tool_name, request_id, payload_hash, response_json)
+         VALUES (?, ?, ?, ?)`,
+      )
+      .run(toolName, requestId, payloadHash, JSON.stringify(payload))
+  } finally {
+    conn.close()
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Validate logic (shared by handler + promote guard)
 // ---------------------------------------------------------------------------
@@ -387,7 +510,7 @@ const querySchema = z.object({
 })
 async function handleQuery(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = querySchema.safeParse(raw)
-  if (!p.success) return err('ak_blueprint_query validation error', p.error.message)
+  if (!p.success) return err('wp_blueprint_query validation error', p.error.message)
   const { template_id, params } = p.data
   const tmpl = findTemplate(template_id)
   if (!tmpl)
@@ -424,7 +547,7 @@ const newSchema = z.object({
 })
 async function handleNew(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = newSchema.safeParse(raw)
-  if (!p.success) return err('ak_blueprint_new validation error', p.error.message)
+  if (!p.success) return err('wp_blueprint_new validation error', p.error.message)
   const { title, complexity, goal_prompt, examples_count } = p.data
   const today = new Date().toISOString().split('T')[0] ?? ''
   const template = BLUEPRINT_TEMPLATE.replace(/{TITLE}/g, title)
@@ -497,7 +620,7 @@ async function handleNew(cwd: string, raw: unknown): Promise<ToolHandlerResult> 
 const validateSchema = z.object({ path: z.string() })
 async function handleValidate(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = validateSchema.safeParse(raw)
-  if (!p.success) return err('ak_blueprint_validate validation error', p.error.message)
+  if (!p.success) return err('wp_blueprint_validate validation error', p.error.message)
   const { path: filePath } = p.data
   const result = runValidate(filePath)
   if (result.valid) {
@@ -521,7 +644,7 @@ async function handleValidate(cwd: string, raw: unknown): Promise<ToolHandlerRes
 const taskNextSchema = z.object({ blueprint: z.string().optional() })
 async function handleTaskNext(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = taskNextSchema.safeParse(raw)
-  if (!p.success) return err('ak_blueprint_task_next validation error', p.error.message)
+  if (!p.success) return err('wp_blueprint_task_next validation error', p.error.message)
   const { blueprint } = p.data
 
   // Platform-first: refresh local replica before reading so the result reflects remote state.
@@ -609,29 +732,44 @@ async function handleTaskNext(cwd: string, raw: unknown): Promise<ToolHandlerRes
     if (w0cnt >= 3) appendHint(payload, cwd, 'PLL_PARALLEL')
     return finishPayload(payload)
   } catch (e) {
-    return err('ak_blueprint_task_next failed', toStr(e))
+    return err('wp_blueprint_task_next failed', toStr(e))
   }
 }
 
 const advanceSchema = z.object({
   task_id: z.string(),
   to: z.enum(['todo', 'in-progress', 'blocked', 'done', 'dropped']),
+  request_id: z.string().min(1).optional(),
+  head_at_ingest: z.string().nullable().optional(),
 })
 async function handleTaskAdvance(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = advanceSchema.safeParse(raw)
-  if (!p.success) return err('ak_blueprint_task_advance validation error', p.error.message)
-  const { task_id, to } = p.data
+  if (!p.success) return err('wp_blueprint_task_advance validation error', p.error.message)
+  const { task_id, to, request_id, head_at_ingest } = p.data
+  const freshnessFailure = validateMutationFreshnessToken(
+    cwd,
+    head_at_ingest,
+    'wp_blueprint_task_advance',
+    'wp_blueprint_list',
+  )
+  if (freshnessFailure) return freshnessFailure
+  const payloadHash = hashMutationPayload({ task_id, to })
+  const replay =
+    request_id !== undefined
+      ? readMutationReplay(cwd, 'wp_blueprint_task_advance', request_id, payloadHash)
+      : null
+  if (replay) return replay
 
-  // Task 3.2 guard: refuse to mark done via advance — require evidence via ak_blueprint_task_verify
+  // Task 3.2 guard: refuse to mark done via advance — require evidence via wp_blueprint_task_verify
   if (to === 'done') {
     return jsonContent(
       {
-        summary: 'Use ak_blueprint_task_verify to mark tasks done with evidence',
-        failures: ['Use ak_blueprint_task_verify to mark tasks done with evidence'],
-        error: 'Use ak_blueprint_task_verify to mark tasks done with evidence',
+        summary: 'Use wp_blueprint_task_verify to mark tasks done with evidence',
+        failures: ['Use wp_blueprint_task_verify to mark tasks done with evidence'],
+        error: 'Use wp_blueprint_task_verify to mark tasks done with evidence',
         next_action: makeNextAction(
           'verify_task',
-          'Call ak_blueprint_task_verify with evidence items',
+          'Call wp_blueprint_task_verify with evidence items',
         ),
         bytes: 0,
         tokensSaved: 0,
@@ -641,7 +779,7 @@ async function handleTaskAdvance(cwd: string, raw: unknown): Promise<ToolHandler
   }
 
   const target = dbPath(cwd)
-  if (!existsSync(target)) return err('ak_blueprint_task_advance failed', 'Blueprint DB not found')
+  if (!existsSync(target)) return err('wp_blueprint_task_advance failed', 'Blueprint DB not found')
   try {
     const conn = openDb(target)
     let oldStatus: string | null = null
@@ -653,7 +791,7 @@ async function handleTaskAdvance(cwd: string, raw: unknown): Promise<ToolHandler
           'SELECT status, blueprint_slug FROM tasks WHERE task_id = ? LIMIT 1',
         )
         .get(task_id) as { status: string; blueprint_slug: string } | undefined
-      if (!row) return err('ak_blueprint_task_advance failed', `Task "${task_id}" not found in DB`)
+      if (!row) return err('wp_blueprint_task_advance failed', `Task "${task_id}" not found in DB`)
       oldStatus = row.status
       blueprintSlug = row.blueprint_slug
       const bp = conn.db
@@ -710,41 +848,60 @@ async function handleTaskAdvance(cwd: string, raw: unknown): Promise<ToolHandler
       task_id,
       old_status: oldStatus,
       new_status: to,
+      idempotent: false,
       failures: [],
       bytes: 0,
       tokensSaved: 0,
     }
+    if (request_id !== undefined) {
+      recordMutationReplay(cwd, 'wp_blueprint_task_advance', request_id, payloadHash, payload)
+    }
     return finishPayload(payload)
   } catch (e) {
-    return err('ak_blueprint_task_advance failed', toStr(e))
+    return err('wp_blueprint_task_advance failed', toStr(e))
   }
 }
 
-// Task 3.2 — ak_blueprint_task_verify
+// Task 3.2 — wp_blueprint_task_verify
 const taskVerifySchema = z.object({
   project_id: z.string(),
   slug: z.string(),
   task_id: z.string(),
   evidence: evidenceListSchema,
+  request_id: z.string().min(1).optional(),
+  head_at_ingest: z.string().nullable().optional(),
 })
 
 async function handleTaskVerify(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = taskVerifySchema.safeParse(raw)
-  if (!p.success) return err('ak_blueprint_task_verify validation error', p.error.message)
-  const { slug, task_id, evidence } = p.data
+  if (!p.success) return err('wp_blueprint_task_verify validation error', p.error.message)
+  const { project_id, slug, task_id, evidence, request_id, head_at_ingest } = p.data
+  const freshnessFailure = validateMutationFreshnessToken(
+    project_id,
+    head_at_ingest,
+    'wp_blueprint_task_verify',
+    'wp_blueprint_get',
+  )
+  if (freshnessFailure) return freshnessFailure
+  const payloadHash = hashMutationPayload({ slug, task_id, evidence })
+  const replay =
+    request_id !== undefined
+      ? readMutationReplay(cwd, 'wp_blueprint_task_verify', request_id, payloadHash)
+      : null
+  if (replay) return replay
 
   // Locate the blueprint markdown file on disk
   const root = resolveBlueprintRoot(cwd)
   const found = findBlueprintDir(root, slug, ALL_STATES)
   if (!found) {
     return err(
-      'ak_blueprint_task_verify failed',
+      'wp_blueprint_task_verify failed',
       `Blueprint "${slug}" not found in any state directory`,
     )
   }
   const filePath = path.join(found.dir, '_overview.md')
   if (!existsSync(filePath)) {
-    return err('ak_blueprint_task_verify failed', `Blueprint overview not found at ${filePath}`)
+    return err('wp_blueprint_task_verify failed', `Blueprint overview not found at ${filePath}`)
   }
 
   const markdownBefore = readFileSync(filePath, 'utf8')
@@ -758,9 +915,8 @@ async function handleTaskVerify(cwd: string, raw: unknown): Promise<ToolHandlerR
     existingEvidence !== null &&
     canonicalizeEvidenceList(existingEvidence) === incomingCanonical
   ) {
-    const b = bytes(markdownBefore)
     const nextPayload = parseStructuredJson(await handleTaskNext(cwd, { blueprint: slug }))
-    return jsonContent({
+    const payload: Record<string, unknown> = {
       summary: `Task "${task_id}" verification is already recorded (idempotent)`,
       status: 'done',
       idempotent: true,
@@ -773,9 +929,13 @@ async function handleTaskVerify(cwd: string, raw: unknown): Promise<ToolHandlerR
           ? nextPayload['task']
           : null,
       failures: [],
-      bytes: b,
+      bytes: bytes(markdownBefore),
       tokensSaved: 0,
-    })
+    }
+    if (request_id !== undefined) {
+      recordMutationReplay(cwd, 'wp_blueprint_task_verify', request_id, payloadHash, payload)
+    }
+    return finishPayload(payload)
   }
 
   // Apply verification (pure function — no FS side effects)
@@ -820,6 +980,9 @@ async function handleTaskVerify(cwd: string, raw: unknown): Promise<ToolHandlerR
     bytes: b,
     tokensSaved: 0,
   }
+  if (request_id !== undefined) {
+    recordMutationReplay(cwd, 'wp_blueprint_task_verify', request_id, payloadHash, payload)
+  }
   return finishPayload(payload)
 }
 
@@ -829,13 +992,13 @@ const promoteSchema = z.object({
 })
 async function handlePromote(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = promoteSchema.safeParse(raw)
-  if (!p.success) return err('ak_blueprint_promote validation error', p.error.message)
+  if (!p.success) return err('wp_blueprint_promote validation error', p.error.message)
   const { slug, to_state } = p.data
   const root = resolveBlueprintRoot(cwd)
   const found = findBlueprintDir(root, slug, ALL_STATES)
   if (!found)
     return err(
-      'ak_blueprint_promote failed',
+      'wp_blueprint_promote failed',
       `Blueprint "${slug}" not found in any state directory`,
     )
   const { dir: currentDir, state: currentState } = found
@@ -844,8 +1007,8 @@ async function handlePromote(cwd: string, raw: unknown): Promise<ToolHandlerResu
   const mtime = existsSync(overviewPath) ? statSync(overviewPath).mtimeMs : 0
   if ((ts[slug] ?? 0) < mtime)
     return err(
-      'ak_blueprint_promote refused',
-      `Blueprint "${slug}" not validated since last write. Run ak_blueprint_validate first.`,
+      'wp_blueprint_promote refused',
+      `Blueprint "${slug}" not validated since last write. Run wp_blueprint_validate first.`,
     )
   // Platform-first path: push event + pull fresh replica before local move.
   // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
@@ -872,7 +1035,7 @@ async function handlePromote(cwd: string, raw: unknown): Promise<ToolHandlerResu
   try {
     renameSync(currentDir, destDir)
   } catch (e) {
-    return err('ak_blueprint_promote failed', `Directory move error: ${toStr(e)}`)
+    return err('wp_blueprint_promote failed', `Directory move error: ${toStr(e)}`)
   }
   const destOverview = path.join(destDir, '_overview.md')
   if (existsSync(destOverview)) {
@@ -902,10 +1065,10 @@ async function handlePromote(cwd: string, raw: unknown): Promise<ToolHandlerResu
 const finalizeSchema = z.object({ slug: z.string() })
 async function handleFinalize(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = finalizeSchema.safeParse(raw)
-  if (!p.success) return err('ak_blueprint_finalize validation error', p.error.message)
+  if (!p.success) return err('wp_blueprint_finalize validation error', p.error.message)
   const { slug } = p.data
   const target = dbPath(cwd)
-  if (!existsSync(target)) return err('ak_blueprint_finalize failed', 'Blueprint DB not found')
+  if (!existsSync(target)) return err('wp_blueprint_finalize failed', 'Blueprint DB not found')
   const conn = openDb(target)
   let openTasks: Array<{ task_id: string; status: string }>
   try {
@@ -919,7 +1082,7 @@ async function handleFinalize(cwd: string, raw: unknown): Promise<ToolHandlerRes
   }
   if (openTasks.length > 0)
     return err(
-      'ak_blueprint_finalize refused',
+      'wp_blueprint_finalize refused',
       `Blueprint "${slug}" has open tasks: ${openTasks.map((t) => `${t.task_id} (${t.status})`).join(', ')}`,
     )
   const root = resolveBlueprintRoot(cwd)
@@ -934,7 +1097,7 @@ async function handleFinalize(cwd: string, raw: unknown): Promise<ToolHandlerRes
         bytes: 0,
         tokensSaved: 0,
       })
-    return err('ak_blueprint_finalize failed', `Blueprint "${slug}" not found`)
+    return err('wp_blueprint_finalize failed', `Blueprint "${slug}" not found`)
   }
 
   // Platform-first path: push event + pull fresh replica before local move.
@@ -960,7 +1123,7 @@ async function handleFinalize(cwd: string, raw: unknown): Promise<ToolHandlerRes
   try {
     renameSync(found.dir, destDir)
   } catch (e) {
-    return err('ak_blueprint_finalize failed', `Directory move error: ${toStr(e)}`)
+    return err('wp_blueprint_finalize failed', `Directory move error: ${toStr(e)}`)
   }
   const destOverview = path.join(destDir, '_overview.md')
   if (existsSync(destOverview)) {
@@ -989,10 +1152,10 @@ async function handleFinalize(cwd: string, raw: unknown): Promise<ToolHandlerRes
 const depgraphSchema = z.object({ from: z.string() })
 async function handleDepgraph(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = depgraphSchema.safeParse(raw)
-  if (!p.success) return err('ak_blueprint_depgraph validation error', p.error.message)
+  if (!p.success) return err('wp_blueprint_depgraph validation error', p.error.message)
   const { from } = p.data
   const target = dbPath(cwd)
-  if (!existsSync(target)) return err('ak_blueprint_depgraph failed', 'Blueprint DB not found')
+  if (!existsSync(target)) return err('wp_blueprint_depgraph failed', 'Blueprint DB not found')
   try {
     const conn = openDb(target)
     const nodes = new Map<string, { slug: string; title: string; status: string }>()
@@ -1051,7 +1214,7 @@ async function handleDepgraph(cwd: string, raw: unknown): Promise<ToolHandlerRes
       tokensSaved: 0,
     })
   } catch (e) {
-    return err('ak_blueprint_depgraph failed', toStr(e))
+    return err('wp_blueprint_depgraph failed', toStr(e))
   }
 }
 
@@ -1112,7 +1275,7 @@ function staleProjectionResponse(
 
 async function handleBlueprintList(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = listSchema.safeParse(raw)
-  if (!p.success) return err('ak_blueprint_list validation error', p.error.message)
+  if (!p.success) return err('wp_blueprint_list validation error', p.error.message)
   const { status, limit, scope } = p.data
 
   // Multi-project path: scope is 'roots', 'workspace', or 'all'
@@ -1144,7 +1307,7 @@ async function handleBlueprintList(cwd: string, raw: unknown): Promise<ToolHandl
         tokensSaved: 0,
       })
     } catch (e) {
-      return err('ak_blueprint_list failed', toStr(e))
+      return err('wp_blueprint_list failed', toStr(e))
     }
   }
 
@@ -1152,7 +1315,7 @@ async function handleBlueprintList(cwd: string, raw: unknown): Promise<ToolHandl
   const target = dbPath(cwd)
   if (!existsSync(target))
     return jsonContent({
-      summary: 'No blueprint DB found — run ak_blueprint_new or trigger a re-ingest',
+      summary: 'No blueprint DB found — run wp_blueprint_new or trigger a re-ingest',
       blueprints: [],
       freshness_ok: false,
       next_action: { kind: 'rebuild_db', hint: 'Blueprint DB missing. Re-ingest to create it.' },
@@ -1195,7 +1358,7 @@ async function handleBlueprintList(cwd: string, raw: unknown): Promise<ToolHandl
       tokensSaved: 0,
     })
   } catch (e) {
-    return err('ak_blueprint_list failed', toStr(e))
+    return err('wp_blueprint_list failed', toStr(e))
   }
 }
 
@@ -1224,7 +1387,7 @@ interface TaskRow {
 
 async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = getSchema.safeParse(raw)
-  if (!p.success) return err('ak_blueprint_get validation error', p.error.message)
+  if (!p.success) return err('wp_blueprint_get validation error', p.error.message)
   const { slug, scope } = p.data
 
   const isMultiScope = scope === 'roots' || scope === 'workspace' || scope === 'all'
@@ -1319,7 +1482,7 @@ async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandle
         tokensSaved: 0,
       })
     } catch (e) {
-      return err('ak_blueprint_get failed', toStr(e))
+      return err('wp_blueprint_get failed', toStr(e))
     }
   }
 
@@ -1397,7 +1560,7 @@ async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandle
       tokensSaved: 0,
     })
   } catch (e) {
-    return err('ak_blueprint_get failed', toStr(e))
+    return err('wp_blueprint_get failed', toStr(e))
   }
 }
 
@@ -1408,7 +1571,7 @@ const contextSchema = ReadTarget.extend({
 
 async function handleBlueprintContext(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = contextSchema.safeParse(raw)
-  if (!p.success) return err('ak_blueprint_context validation error', p.error.message)
+  if (!p.success) return err('wp_blueprint_context validation error', p.error.message)
   const { slug, task_id } = p.data
 
   const target = dbPath(cwd)
@@ -1519,7 +1682,7 @@ async function handleBlueprintContext(cwd: string, raw: unknown): Promise<ToolHa
         total_bytes: 0,
         next_action: makeNextAction(
           'verify_task',
-          `Task "${task_id}" not found. Check the task_id or use ak_blueprint_get to list available tasks.`,
+          `Task "${task_id}" not found. Check the task_id or use wp_blueprint_get to list available tasks.`,
         ),
         failures: [`Task "${task_id}" not found in blueprint "${slug}"`],
         bytes: 0,
@@ -1543,7 +1706,7 @@ async function handleBlueprintContext(cwd: string, raw: unknown): Promise<ToolHa
       tokensSaved: 0,
     })
   } catch (e) {
-    return err('ak_blueprint_context failed', toStr(e))
+    return err('wp_blueprint_context failed', toStr(e))
   }
 }
 
@@ -1552,12 +1715,27 @@ const createSchema = MutationTarget.extend({
   goal: z.string(),
   complexity: z.enum(['XS', 'S', 'M', 'L', 'XL']).default('M'),
   tags: z.array(z.string()).optional(),
+  request_id: z.string().min(1).optional(),
+  head_at_ingest: z.string().nullable().optional(),
 })
 
 async function handleBlueprintCreate(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = createSchema.safeParse(raw)
-  if (!p.success) return err('ak_blueprint_create validation error', p.error.message)
-  const { title, goal, complexity } = p.data
+  if (!p.success) return err('wp_blueprint_create validation error', p.error.message)
+  const { project_id, title, goal, complexity, tags, request_id, head_at_ingest } = p.data
+  const freshnessFailure = validateMutationFreshnessToken(
+    project_id,
+    head_at_ingest,
+    'wp_blueprint_create',
+    'wp_blueprint_list',
+  )
+  if (freshnessFailure) return freshnessFailure
+  const payloadHash = hashMutationPayload({ title, goal, complexity, tags: tags ?? [] })
+  const replay =
+    request_id !== undefined
+      ? readMutationReplay(cwd, 'wp_blueprint_create', request_id, payloadHash)
+      : null
+  if (replay) return replay
 
   const today = new Date().toISOString().split('T')[0] ?? ''
   const slug = titleToSlug(title)
@@ -1577,26 +1755,51 @@ async function handleBlueprintCreate(cwd: string, raw: unknown): Promise<ToolHan
     await reIngest(cwd)
 
     const b = bytes(content)
-    return jsonContent({
+    const payload: Record<string, unknown> = {
       summary: `Blueprint "${slug}" created at ${overviewPath}`,
       slug,
       path: overviewPath,
+      idempotent: false,
       next_action: makeNextAction(
         'verify_task',
-        'Blueprint created. Next: run ak_blueprint_validate to check structure, then /plan-refine to harden, /plan-eng-review to validate architecture.',
+        'Blueprint created. Next: run wp_blueprint_validate to check structure, then /plan-refine to harden, /plan-eng-review to validate architecture.',
       ),
       failures: [],
       bytes: b,
       tokensSaved: 0,
-    })
+    }
+    if (request_id !== undefined) {
+      recordMutationReplay(cwd, 'wp_blueprint_create', request_id, payloadHash, payload)
+    }
+    return finishPayload(payload)
   } catch (e) {
-    return err('ak_blueprint_create failed', toStr(e))
+    return err('wp_blueprint_create failed', toStr(e))
   }
 }
 
 // ---------------------------------------------------------------------------
 // Registration
 // ---------------------------------------------------------------------------
+
+const nextActionOutputSchema = {
+  type: 'object',
+  properties: {
+    kind: { type: 'string' },
+    hint: { type: 'string' },
+  },
+  required: ['kind', 'hint'],
+} as const
+
+const summaryEnvelopeOutputSchema = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string' },
+    failures: { type: 'array', items: { type: 'string' } },
+    bytes: { type: 'number' },
+    tokensSaved: { type: 'number' },
+  },
+  required: ['summary', 'failures', 'bytes', 'tokensSaved'],
+} as const
 
 export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: string): Promise<void> {
   const coldStart = await coldStartIfNeeded(cwd)
@@ -1605,7 +1808,7 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
   }
 
   registrar.registerTool(
-    'ak_blueprint_query',
+    'wp_blueprint_query',
     'Run a pre-registered SQL template against the blueprint store. Returns { summary, rows_capped, rows, failures, bytes, tokensSaved }.',
     {
       type: 'object',
@@ -1618,7 +1821,7 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
   )
 
   registrar.registerTool(
-    'ak_blueprint_new',
+    'wp_blueprint_new',
     'Return a drafting bundle for a new blueprint (no LLM call). Returns { target_path, template, rules_context, examples, lifecycle_advice, validation_required }.',
     {
       type: 'object',
@@ -1636,8 +1839,8 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
   )
 
   registrar.registerTool(
-    'ak_blueprint_validate',
-    'Validate _overview.md structure. Returns { valid, gaps }. Must pass before ak_blueprint_promote.',
+    'wp_blueprint_validate',
+    'Validate _overview.md structure. Returns { valid, gaps }. Must pass before wp_blueprint_promote.',
     { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
     undefined,
     (r) => handleValidate(cwd, r),
@@ -1645,7 +1848,7 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
   )
 
   registrar.registerTool(
-    'ak_blueprint_task_next',
+    'wp_blueprint_task_next',
     'Return the next ready task (all deps done). Returns { summary, task }.',
     { type: 'object', properties: { blueprint: { type: 'string' } } },
     undefined,
@@ -1654,23 +1857,35 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
   )
 
   registrar.registerTool(
-    'ak_blueprint_task_advance',
-    'Advance task status. Edits _overview.md and re-syncs DB. Returns { summary, old_status, new_status }.',
+    'wp_blueprint_task_advance',
+    'Advance task status. Edits _overview.md and re-syncs DB. Accepts optional request_id for idempotent retries and optional head_at_ingest from wp_blueprint_get/wp_blueprint_list to reject stale writes. Returns { summary, old_status, new_status, idempotent }.',
     {
       type: 'object',
       properties: {
         task_id: { type: 'string' },
         to: { type: 'string', enum: ['todo', 'in-progress', 'blocked', 'done', 'dropped'] },
+        request_id: { type: 'string' },
+        head_at_ingest: { type: ['string', 'null'] },
       },
       required: ['task_id', 'to'],
     },
-    undefined,
+    {
+      ...summaryEnvelopeOutputSchema,
+      properties: {
+        ...summaryEnvelopeOutputSchema.properties,
+        task_id: { type: 'string' },
+        old_status: { type: ['string', 'null'] },
+        new_status: { type: 'string' },
+        idempotent: { type: 'boolean' },
+        next_action: nextActionOutputSchema,
+      },
+    },
     (r) => handleTaskAdvance(cwd, r),
     { title: 'Blueprint Task Advance', destructiveHint: false, openWorldHint: false },
   )
 
   registrar.registerTool(
-    'ak_blueprint_promote',
+    'wp_blueprint_promote',
     'Promote a blueprint to a new lifecycle state. Refuses without prior validate. Returns { summary, new_path }.',
     {
       type: 'object',
@@ -1689,7 +1904,7 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
   )
 
   registrar.registerTool(
-    'ak_blueprint_finalize',
+    'wp_blueprint_finalize',
     'Finalize a blueprint (move to completed). Refuses if any tasks are not done/dropped. Returns { summary, new_path }.',
     { type: 'object', properties: { slug: { type: 'string' } }, required: ['slug'] },
     undefined,
@@ -1698,7 +1913,7 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
   )
 
   registrar.registerTool(
-    'ak_blueprint_depgraph',
+    'wp_blueprint_depgraph',
     'Build dependency graph from a blueprint slug. Private cross-org targets shown as private/<hash>. Returns { summary, nodes, edges }.',
     { type: 'object', properties: { from: { type: 'string' } }, required: ['from'] },
     undefined,
@@ -1707,7 +1922,7 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
   )
 
   registrar.registerTool(
-    'ak_blueprint_list',
+    'wp_blueprint_list',
     'List blueprints in a project from the SQLite projection. Supports optional status filter. Returns { blueprints, project_id, freshness_ok, next_action? }.',
     {
       type: 'object',
@@ -1722,13 +1937,28 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
       },
       required: [],
     },
-    undefined,
+    {
+      ...summaryEnvelopeOutputSchema,
+      properties: {
+        ...summaryEnvelopeOutputSchema.properties,
+        blueprints: { type: 'array', items: { type: 'object' } },
+        project_id: { type: 'string' },
+        freshness_ok: { type: 'boolean' },
+        next_action: nextActionOutputSchema,
+      },
+      required: [
+        ...summaryEnvelopeOutputSchema.required,
+        'blueprints',
+        'project_id',
+        'freshness_ok',
+      ],
+    },
     (r) => handleBlueprintList(cwd, r),
     { title: 'Blueprint List', readOnlyHint: true, openWorldHint: false },
   )
 
   registrar.registerTool(
-    'ak_blueprint_get',
+    'wp_blueprint_get',
     'Get a single blueprint by slug with task list and freshness metadata. Returns { blueprint, content_hash, ingested_at, next_action? }.',
     {
       type: 'object',
@@ -1739,13 +1969,32 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
       },
       required: ['slug'],
     },
-    undefined,
+    {
+      ...summaryEnvelopeOutputSchema,
+      properties: {
+        ...summaryEnvelopeOutputSchema.properties,
+        blueprint: { type: ['object', 'null'] },
+        content_hash: { type: ['string', 'null'] },
+        ingested_at: { type: ['number', 'null'] },
+        head_at_ingest: { type: ['string', 'null'] },
+        project_id: { type: 'string' },
+        next_action: nextActionOutputSchema,
+      },
+      required: [
+        ...summaryEnvelopeOutputSchema.required,
+        'blueprint',
+        'content_hash',
+        'ingested_at',
+        'head_at_ingest',
+        'project_id',
+      ],
+    },
     (r) => handleBlueprintGet(cwd, r),
     { title: 'Blueprint Get', readOnlyHint: true, openWorldHint: false },
   )
 
   registrar.registerTool(
-    'ak_blueprint_context',
+    'wp_blueprint_context',
     'Assemble context chunks for a blueprint (and optionally a specific task). Returns { chunks, total_bytes, next_action? }.',
     {
       type: 'object',
@@ -1757,14 +2006,27 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
       },
       required: ['slug'],
     },
-    undefined,
+    {
+      ...summaryEnvelopeOutputSchema,
+      properties: {
+        ...summaryEnvelopeOutputSchema.properties,
+        chunks: { type: 'array', items: { type: 'object' } },
+        total_bytes: { type: 'number' },
+        content_hash: { type: ['string', 'null'] },
+        ingested_at: { type: ['number', 'null'] },
+        head_at_ingest: { type: ['string', 'null'] },
+        project_id: { type: 'string' },
+        next_action: nextActionOutputSchema,
+      },
+      required: [...summaryEnvelopeOutputSchema.required, 'chunks', 'total_bytes', 'project_id'],
+    },
     (r) => handleBlueprintContext(cwd, r),
     { title: 'Blueprint Context', readOnlyHint: true, openWorldHint: false },
   )
 
   registrar.registerTool(
-    'ak_blueprint_create',
-    'Create a new blueprint markdown under blueprints/draft/<slug>/_overview.md and re-ingest. Returns { slug, path, next_action }.',
+    'wp_blueprint_create',
+    'Create a new blueprint markdown under blueprints/draft/<slug>/_overview.md and re-ingest. Accepts optional request_id for idempotent retries and optional head_at_ingest from wp_blueprint_projects/wp_blueprint_list to reject stale writes. Returns { slug, path, next_action, idempotent }.',
     {
       type: 'object',
       properties: {
@@ -1773,23 +2035,43 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
         goal: { type: 'string' },
         complexity: { type: 'string', enum: ['XS', 'S', 'M', 'L', 'XL'], default: 'M' },
         tags: { type: 'array', items: { type: 'string' } },
+        request_id: { type: 'string' },
+        head_at_ingest: { type: ['string', 'null'] },
       },
       required: ['project_id', 'title', 'goal'],
     },
-    undefined,
+    {
+      ...summaryEnvelopeOutputSchema,
+      properties: {
+        ...summaryEnvelopeOutputSchema.properties,
+        slug: { type: 'string' },
+        path: { type: 'string' },
+        idempotent: { type: 'boolean' },
+        next_action: nextActionOutputSchema,
+      },
+      required: [
+        ...summaryEnvelopeOutputSchema.required,
+        'slug',
+        'path',
+        'idempotent',
+        'next_action',
+      ],
+    },
     (r) => handleBlueprintCreate(cwd, r),
     { title: 'Blueprint Create', destructiveHint: false, openWorldHint: false },
   )
 
   registrar.registerTool(
-    'ak_blueprint_task_verify',
-    'Mark a task done with an Evidence Contract. Requires at least one pass evidence item. Re-ingests DB on success. Returns { status, idempotent, next_action? }.',
+    'wp_blueprint_task_verify',
+    'Mark a task done with an Evidence Contract. Requires at least one pass evidence item. Accepts optional request_id for idempotent retries, optional head_at_ingest from wp_blueprint_get/wp_blueprint_context to reject stale writes, and re-ingests DB on success. Returns { status, idempotent, next_action? }.',
     {
       type: 'object',
       properties: {
         project_id: { type: 'string' },
         slug: { type: 'string' },
         task_id: { type: 'string' },
+        request_id: { type: 'string' },
+        head_at_ingest: { type: ['string', 'null'] },
         evidence: {
           type: 'array',
           minItems: 1,
@@ -1806,7 +2088,17 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
       },
       required: ['project_id', 'slug', 'task_id', 'evidence'],
     },
-    undefined,
+    {
+      ...summaryEnvelopeOutputSchema,
+      properties: {
+        ...summaryEnvelopeOutputSchema.properties,
+        status: { type: 'string' },
+        idempotent: { type: 'boolean' },
+        next_summary: { type: 'string' },
+        next_task: { type: ['object', 'null'] },
+        next_action: nextActionOutputSchema,
+      },
+    },
     (r) => handleTaskVerify(cwd, r),
     { title: 'Blueprint Task Verify', destructiveHint: false, openWorldHint: false },
   )
@@ -1827,7 +2119,7 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
  * @property getMcpRoots        Lazy callback that returns the current MCP
  *                              client roots. Catch unsupported-capability
  *                              errors *inside* this callback or let them
- *                              throw — `ak_blueprint_projects` degrades
+ *                              throw — `wp_blueprint_projects` degrades
  *                              gracefully to current-cwd + warning.
  * @property onRootsListChanged Optional callback to install a notification
  *                              handler for `RootsListChangedNotificationSchema`.
@@ -1846,15 +2138,15 @@ export interface RegisterBlueprintServerOptions {
 }
 
 const BLUEPRINT_SURFACE_TOOLS = [
-  'ak_blueprint_query',
-  'ak_blueprint_new',
-  'ak_blueprint_validate',
-  'ak_blueprint_task_next',
-  'ak_blueprint_task_advance',
-  'ak_blueprint_promote',
-  'ak_blueprint_finalize',
-  'ak_blueprint_depgraph',
-  'ak_blueprint_projects',
+  'wp_blueprint_query',
+  'wp_blueprint_new',
+  'wp_blueprint_validate',
+  'wp_blueprint_task_next',
+  'wp_blueprint_task_advance',
+  'wp_blueprint_promote',
+  'wp_blueprint_finalize',
+  'wp_blueprint_depgraph',
+  'wp_blueprint_projects',
 ] as const
 
 /**
@@ -1862,7 +2154,7 @@ const BLUEPRINT_SURFACE_TOOLS = [
  *
  * Single integration point (F13/E15): call this once from `createServer` AFTER
  * `auto-discover` finishes so tool-name collisions surface as a registration
- * error rather than silent shadow. Adds `ak_blueprint_projects` on top of the
+ * error rather than silent shadow. Adds `wp_blueprint_projects` on top of the
  * 8 existing tools.
  *
  * Roots handling (F5):
@@ -1932,7 +2224,7 @@ export async function registerBlueprintServer(
   }
 
   registrar.registerTool(
-    'ak_blueprint_projects',
+    'wp_blueprint_projects',
     'List blueprint-bearing projects from current cwd, MCP roots, workspace config, and git worktrees. Returns { summary, projects, warnings, next_action? }.',
     {
       type: 'object',
@@ -1944,7 +2236,16 @@ export async function registerBlueprintServer(
         },
       },
     },
-    undefined,
+    {
+      ...summaryEnvelopeOutputSchema,
+      properties: {
+        ...summaryEnvelopeOutputSchema.properties,
+        projects: { type: 'array', items: { type: 'object' } },
+        warnings: { type: 'array', items: { type: 'string' } },
+        next_action: nextActionOutputSchema,
+      },
+      required: [...summaryEnvelopeOutputSchema.required, 'projects', 'warnings'],
+    },
     async () => handleProjects(cwd, ensureRoots),
     { title: 'Blueprint Projects', readOnlyHint: true, openWorldHint: false },
   )

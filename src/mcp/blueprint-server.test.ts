@@ -1,14 +1,14 @@
 /**
  * Tests for the blueprint MCP server (Tasks 2.1–2.5).
  *
- * Task 2.1 tests exercise `ak_blueprint_task_advance` with platform-first path,
+ * Task 2.1 tests exercise `wp_blueprint_task_advance` with platform-first path,
  * iron rule regression (AK_BLUEPRINT_PLATFORM_DISABLED=1), and null-credentials
  * fallback — all patterns established here for Wave 2 tasks 2.2-2.7 to copy.
  *
- * Task 2.2 tests exercise `ak_blueprint_promote` platform-first path.
- * Task 2.3 tests exercise `ak_blueprint_finalize` platform-first path.
- * Task 2.4 tests exercise `ak_blueprint_new` platform-first path (pushEvent before scaffold).
- * Task 2.5 tests exercise `ak_blueprint_task_next` ensureFresh-before-read path.
+ * Task 2.2 tests exercise `wp_blueprint_promote` platform-first path.
+ * Task 2.3 tests exercise `wp_blueprint_finalize` platform-first path.
+ * Task 2.4 tests exercise `wp_blueprint_new` platform-first path (pushEvent before scaffold).
+ * Task 2.5 tests exercise `wp_blueprint_task_next` ensureFresh-before-read path.
  *
  * Prior Task 2.2 tests (validate, new bundle, task_next empty-DB) remain unchanged.
  *
@@ -188,16 +188,16 @@ afterEach(() => {
 })
 
 // ---------------------------------------------------------------------------
-// ak_blueprint_validate — valid blueprint
+// wp_blueprint_validate — valid blueprint
 // ---------------------------------------------------------------------------
 
-describe('ak_blueprint_validate', () => {
+describe('wp_blueprint_validate', () => {
   it('passes for a well-formed blueprint', async () => {
     const overviewPath = path.join(tmpDir, 'blueprints', 'draft', 'my-feature', '_overview.md')
     mkdirSync(path.dirname(overviewPath), { recursive: true })
     writeFileSync(overviewPath, VALID_BLUEPRINT, 'utf8')
 
-    const result = await callTool(tools, 'ak_blueprint_validate', { path: overviewPath })
+    const result = await callTool(tools, 'wp_blueprint_validate', { path: overviewPath })
     const data = parseResult(result) as { valid: boolean; gaps: string[]; summary: string }
 
     expect(result.isError).toStrictEqual(false)
@@ -211,7 +211,7 @@ describe('ak_blueprint_validate', () => {
     mkdirSync(path.dirname(overviewPath), { recursive: true })
     writeFileSync(overviewPath, INVALID_BLUEPRINT_MISSING_WEDGE, 'utf8')
 
-    const result = await callTool(tools, 'ak_blueprint_validate', { path: overviewPath })
+    const result = await callTool(tools, 'wp_blueprint_validate', { path: overviewPath })
     const data = parseResult(result) as { valid: boolean; gaps: string[] }
 
     expect(result.isError).toStrictEqual(false)
@@ -227,7 +227,7 @@ describe('ak_blueprint_validate', () => {
     mkdirSync(path.dirname(overviewPath), { recursive: true })
     writeFileSync(overviewPath, INVALID_BLUEPRINT_NO_TASKS, 'utf8')
 
-    const result = await callTool(tools, 'ak_blueprint_validate', { path: overviewPath })
+    const result = await callTool(tools, 'wp_blueprint_validate', { path: overviewPath })
     const data = parseResult(result) as { valid: boolean; gaps: string[] }
 
     expect(data.valid).toBe(false)
@@ -240,7 +240,7 @@ describe('ak_blueprint_validate', () => {
     mkdirSync(path.dirname(overviewPath), { recursive: true })
     writeFileSync(overviewPath, INVALID_BLUEPRINT_MISSING_FRONTMATTER, 'utf8')
 
-    const result = await callTool(tools, 'ak_blueprint_validate', { path: overviewPath })
+    const result = await callTool(tools, 'wp_blueprint_validate', { path: overviewPath })
     const data = parseResult(result) as { valid: boolean; gaps: string[] }
 
     expect(data.valid).toBe(false)
@@ -250,7 +250,7 @@ describe('ak_blueprint_validate', () => {
   })
 
   it('returns error when file does not exist', async () => {
-    const result = await callTool(tools, 'ak_blueprint_validate', {
+    const result = await callTool(tools, 'wp_blueprint_validate', {
       path: '/nonexistent/path/_overview.md',
     })
     const data = parseResult(result) as { valid: boolean; gaps: string[] }
@@ -261,12 +261,12 @@ describe('ak_blueprint_validate', () => {
 })
 
 // ---------------------------------------------------------------------------
-// ak_blueprint_new — drafting bundle
+// wp_blueprint_new — drafting bundle
 // ---------------------------------------------------------------------------
 
-describe('ak_blueprint_new', () => {
+describe('wp_blueprint_new', () => {
   it('returns a bundle with all required fields', async () => {
-    const result = await callTool(tools, 'ak_blueprint_new', {
+    const result = await callTool(tools, 'wp_blueprint_new', {
       title: 'Test Feature',
       complexity: 'S',
       goal_prompt: 'Build a test feature that does something useful.',
@@ -297,7 +297,7 @@ describe('ak_blueprint_new', () => {
 
   it('includes the goal_prompt in the template', async () => {
     const goalPrompt = 'Enable users to export their data in CSV format'
-    const result = await callTool(tools, 'ak_blueprint_new', {
+    const result = await callTool(tools, 'wp_blueprint_new', {
       title: 'CSV Export',
       goal_prompt: goalPrompt,
     })
@@ -306,7 +306,7 @@ describe('ak_blueprint_new', () => {
   })
 
   it('defaults complexity to M when not specified', async () => {
-    const result = await callTool(tools, 'ak_blueprint_new', {
+    const result = await callTool(tools, 'wp_blueprint_new', {
       title: 'No Complexity',
       goal_prompt: 'some goal',
     })
@@ -316,7 +316,7 @@ describe('ak_blueprint_new', () => {
   })
 
   it('returns validation error for missing required fields', async () => {
-    const result = await callTool(tools, 'ak_blueprint_new', { title: 'Only Title' })
+    const result = await callTool(tools, 'wp_blueprint_new', { title: 'Only Title' })
     const data = parseResult(result) as { failures: string[] }
     expect(result.isError).toBe(true)
     expect(data.failures.length).toBeGreaterThan(0)
@@ -324,12 +324,12 @@ describe('ak_blueprint_new', () => {
 })
 
 // ---------------------------------------------------------------------------
-// ak_blueprint_task_next — empty DB
+// wp_blueprint_task_next — empty DB
 // ---------------------------------------------------------------------------
 
-describe('ak_blueprint_task_next', () => {
+describe('wp_blueprint_task_next', () => {
   it('returns null task on an empty DB', async () => {
-    const result = await callTool(tools, 'ak_blueprint_task_next', {})
+    const result = await callTool(tools, 'wp_blueprint_task_next', {})
     const data = parseResult(result) as { task: unknown; summary: string }
 
     expect(result.isError).toStrictEqual(false)
@@ -338,7 +338,7 @@ describe('ak_blueprint_task_next', () => {
   })
 
   it('returns null task when scoped to a nonexistent blueprint slug', async () => {
-    const result = await callTool(tools, 'ak_blueprint_task_next', {
+    const result = await callTool(tools, 'wp_blueprint_task_next', {
       blueprint: 'nonexistent-slug',
     })
     const data = parseResult(result) as { task: unknown }
@@ -349,7 +349,7 @@ describe('ak_blueprint_task_next', () => {
 })
 
 // ---------------------------------------------------------------------------
-// ak_blueprint_task_advance — platform-first path (Task 2.1)
+// wp_blueprint_task_advance — platform-first path (Task 2.1)
 // ---------------------------------------------------------------------------
 
 /**
@@ -388,7 +388,7 @@ Blueprint used to test task advance.
 - [ ] The task is advanced
 `
 
-describe('ak_blueprint_task_advance', () => {
+describe('wp_blueprint_task_advance', () => {
   const BLUEPRINT_SLUG = 'advance-test-blueprint'
 
   /** Write the fixture blueprint and return its path. */
@@ -429,7 +429,7 @@ describe('ak_blueprint_task_advance', () => {
 
     const { overviewPath, localTools } = await setupWithBlueprint()
 
-    const result = await callTool(localTools, 'ak_blueprint_task_advance', {
+    const result = await callTool(localTools, 'wp_blueprint_task_advance', {
       task_id: '1.1',
       to: 'in-progress',
     })
@@ -476,9 +476,9 @@ describe('ak_blueprint_task_advance', () => {
 
     const { overviewPath, localTools } = await setupWithBlueprint()
 
-    // Use 'blocked' instead of 'done' — 'done' is now forbidden via ak_blueprint_task_advance
-    // (Task 3.2: done requires evidence via ak_blueprint_task_verify)
-    const result = await callTool(localTools, 'ak_blueprint_task_advance', {
+    // Use 'blocked' instead of 'done' — 'done' is now forbidden via wp_blueprint_task_advance
+    // (Task 3.2: done requires evidence via wp_blueprint_task_verify)
+    const result = await callTool(localTools, 'wp_blueprint_task_advance', {
       task_id: '1.1',
       to: 'blocked',
     })
@@ -504,7 +504,7 @@ describe('ak_blueprint_task_advance', () => {
 
     const { overviewPath, localTools } = await setupWithBlueprint()
 
-    const result = await callTool(localTools, 'ak_blueprint_task_advance', {
+    const result = await callTool(localTools, 'wp_blueprint_task_advance', {
       task_id: '1.1',
       to: 'blocked',
     })
@@ -522,7 +522,7 @@ describe('ak_blueprint_task_advance', () => {
   it('returns error when task_id does not exist in DB', async () => {
     _setSyncAdapterFactory(() => null)
 
-    const result = await callTool(tools, 'ak_blueprint_task_advance', {
+    const result = await callTool(tools, 'wp_blueprint_task_advance', {
       task_id: 'nonexistent.99',
       to: 'done',
     })
@@ -533,7 +533,7 @@ describe('ak_blueprint_task_advance', () => {
 })
 
 // ---------------------------------------------------------------------------
-// ak_blueprint_promote — platform-first path (Task 2.2)
+// wp_blueprint_promote — platform-first path (Task 2.2)
 // ---------------------------------------------------------------------------
 
 /**
@@ -570,7 +570,7 @@ Blueprint used to test promote.
 - [ ] The blueprint is promoted
 `
 
-describe('ak_blueprint_promote — platform-first (Task 2.2)', () => {
+describe('wp_blueprint_promote — platform-first (Task 2.2)', () => {
   const PROMOTE_SLUG = 'promote-test-blueprint'
 
   async function setupWithPromoteBlueprint(): Promise<{
@@ -586,7 +586,7 @@ describe('ak_blueprint_promote — platform-first (Task 2.2)', () => {
     const { registrar, tools: t } = makeRegistrar()
     await registerBlueprintTools(registrar, localTmpDir)
     // Validate first so the promote guard passes
-    await callTool(t, 'ak_blueprint_validate', { path: overviewPath })
+    await callTool(t, 'wp_blueprint_validate', { path: overviewPath })
     return { localTmpDir, localTools: t }
   }
 
@@ -602,7 +602,7 @@ describe('ak_blueprint_promote — platform-first (Task 2.2)', () => {
 
     const { localTools } = await setupWithPromoteBlueprint()
 
-    const result = await callTool(localTools, 'ak_blueprint_promote', {
+    const result = await callTool(localTools, 'wp_blueprint_promote', {
       slug: PROMOTE_SLUG,
       to_state: 'planned',
     })
@@ -645,7 +645,7 @@ describe('ak_blueprint_promote — platform-first (Task 2.2)', () => {
 
     const { localTools } = await setupWithPromoteBlueprint()
 
-    const result = await callTool(localTools, 'ak_blueprint_promote', {
+    const result = await callTool(localTools, 'wp_blueprint_promote', {
       slug: PROMOTE_SLUG,
       to_state: 'planned',
     })
@@ -662,7 +662,7 @@ describe('ak_blueprint_promote — platform-first (Task 2.2)', () => {
 })
 
 // ---------------------------------------------------------------------------
-// ak_blueprint_finalize — platform-first path (Task 2.3)
+// wp_blueprint_finalize — platform-first path (Task 2.3)
 // ---------------------------------------------------------------------------
 
 /**
@@ -697,7 +697,7 @@ Blueprint used to test finalize.
 - [x] The blueprint is finalized
 `
 
-describe('ak_blueprint_finalize — platform-first (Task 2.3)', () => {
+describe('wp_blueprint_finalize — platform-first (Task 2.3)', () => {
   const FINALIZE_SLUG = 'finalize-test-blueprint'
 
   async function setupWithFinalizeBlueprint(): Promise<{
@@ -735,7 +735,7 @@ describe('ak_blueprint_finalize — platform-first (Task 2.3)', () => {
 
     const { localTools } = await setupWithFinalizeBlueprint()
 
-    const result = await callTool(localTools, 'ak_blueprint_finalize', {
+    const result = await callTool(localTools, 'wp_blueprint_finalize', {
       slug: FINALIZE_SLUG,
     })
     const data = parseResult(result) as {
@@ -773,7 +773,7 @@ describe('ak_blueprint_finalize — platform-first (Task 2.3)', () => {
 
     const { localTools } = await setupWithFinalizeBlueprint()
 
-    const result = await callTool(localTools, 'ak_blueprint_finalize', {
+    const result = await callTool(localTools, 'wp_blueprint_finalize', {
       slug: FINALIZE_SLUG,
     })
     const data = parseResult(result) as { slug: string; failures: string[] }
@@ -789,10 +789,10 @@ describe('ak_blueprint_finalize — platform-first (Task 2.3)', () => {
 })
 
 // ---------------------------------------------------------------------------
-// ak_blueprint_new — platform-first path (Task 2.4)
+// wp_blueprint_new — platform-first path (Task 2.4)
 // ---------------------------------------------------------------------------
 
-describe('ak_blueprint_new — platform-first (Task 2.4)', () => {
+describe('wp_blueprint_new — platform-first (Task 2.4)', () => {
   afterEach(() => {
     _setSyncAdapterFactory(null)
     vi.unstubAllEnvs()
@@ -803,7 +803,7 @@ describe('ak_blueprint_new — platform-first (Task 2.4)', () => {
     const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockResolvedValue(undefined)
     _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }))
 
-    const result = await callTool(tools, 'ak_blueprint_new', {
+    const result = await callTool(tools, 'wp_blueprint_new', {
       title: 'Platform New Feature',
       complexity: 'M',
       goal_prompt: 'Register this blueprint with the platform.',
@@ -844,7 +844,7 @@ describe('ak_blueprint_new — platform-first (Task 2.4)', () => {
     const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockResolvedValue(undefined)
     _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }))
 
-    const result = await callTool(tools, 'ak_blueprint_new', {
+    const result = await callTool(tools, 'wp_blueprint_new', {
       title: 'Disabled New Feature',
       goal_prompt: 'Should not push event.',
     })
@@ -860,10 +860,10 @@ describe('ak_blueprint_new — platform-first (Task 2.4)', () => {
 })
 
 // ---------------------------------------------------------------------------
-// ak_blueprint_task_next — ensureFresh-before-read (Task 2.5)
+// wp_blueprint_task_next — ensureFresh-before-read (Task 2.5)
 // ---------------------------------------------------------------------------
 
-describe('ak_blueprint_task_next — ensureFresh-before-read (Task 2.5)', () => {
+describe('wp_blueprint_task_next — ensureFresh-before-read (Task 2.5)', () => {
   afterEach(() => {
     _setSyncAdapterFactory(null)
     vi.unstubAllEnvs()
@@ -874,7 +874,7 @@ describe('ak_blueprint_task_next — ensureFresh-before-read (Task 2.5)', () => 
     const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockResolvedValue(undefined)
     _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }))
 
-    const result = await callTool(tools, 'ak_blueprint_task_next', {})
+    const result = await callTool(tools, 'wp_blueprint_task_next', {})
     const data = parseResult(result) as { task: unknown; failures: string[] }
 
     expect(result.isError).toStrictEqual(false)
@@ -892,7 +892,7 @@ describe('ak_blueprint_task_next — ensureFresh-before-read (Task 2.5)', () => 
     const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockResolvedValue(undefined)
     _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }))
 
-    const result = await callTool(tools, 'ak_blueprint_task_next', {
+    const result = await callTool(tools, 'wp_blueprint_task_next', {
       blueprint: 'some-slug',
     })
 
@@ -912,7 +912,7 @@ describe('ak_blueprint_task_next — ensureFresh-before-read (Task 2.5)', () => 
     const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockResolvedValue(undefined)
     _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }))
 
-    const result = await callTool(tools, 'ak_blueprint_task_next', {})
+    const result = await callTool(tools, 'wp_blueprint_task_next', {})
     const data = parseResult(result) as { task: unknown; failures: string[] }
 
     expect(result.isError).toStrictEqual(false)
@@ -931,21 +931,21 @@ describe('ak_blueprint_task_next — ensureFresh-before-read (Task 2.5)', () => 
 describe('registerBlueprintTools', () => {
   it('registers all 13 blueprint tools', () => {
     const expectedTools = [
-      'ak_blueprint_query',
-      'ak_blueprint_new',
-      'ak_blueprint_validate',
-      'ak_blueprint_task_next',
-      'ak_blueprint_task_advance',
-      'ak_blueprint_promote',
-      'ak_blueprint_finalize',
-      'ak_blueprint_depgraph',
+      'wp_blueprint_query',
+      'wp_blueprint_new',
+      'wp_blueprint_validate',
+      'wp_blueprint_task_next',
+      'wp_blueprint_task_advance',
+      'wp_blueprint_promote',
+      'wp_blueprint_finalize',
+      'wp_blueprint_depgraph',
       // Task 2.2 additions
-      'ak_blueprint_list',
-      'ak_blueprint_get',
-      'ak_blueprint_context',
-      'ak_blueprint_create',
+      'wp_blueprint_list',
+      'wp_blueprint_get',
+      'wp_blueprint_context',
+      'wp_blueprint_create',
       // Task 3.2 addition
-      'ak_blueprint_task_verify',
+      'wp_blueprint_task_verify',
     ]
     for (const name of expectedTools) {
       expect(tools.has(name), `${name} should be registered`).toBe(true)
@@ -955,12 +955,12 @@ describe('registerBlueprintTools', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Task 2.2 — ak_blueprint_list
+// Task 2.2 — wp_blueprint_list
 // ---------------------------------------------------------------------------
 
-describe('ak_blueprint_list', () => {
+describe('wp_blueprint_list', () => {
   it('returns empty list when DB has no blueprints', async () => {
-    const result = await callTool(tools, 'ak_blueprint_list', {})
+    const result = await callTool(tools, 'wp_blueprint_list', {})
     const data = parseResult(result) as {
       summary: string
       blueprints: unknown[]
@@ -986,7 +986,7 @@ describe('ak_blueprint_list', () => {
     if (existsSync(dbFile)) {
       rmSync(dbFile)
     }
-    const result = await callTool(lt, 'ak_blueprint_list', {})
+    const result = await callTool(lt, 'wp_blueprint_list', {})
     const data = parseResult(result) as {
       blueprints: unknown[]
       freshness_ok: boolean
@@ -1006,7 +1006,7 @@ describe('ak_blueprint_list', () => {
     const { registrar: lr, tools: lt } = makeRegistrar()
     await registerBlueprintTools(lr, tmpDir)
 
-    const result = await callTool(lt, 'ak_blueprint_list', { status: 'draft' })
+    const result = await callTool(lt, 'wp_blueprint_list', { status: 'draft' })
     const data = parseResult(result) as {
       blueprints: Array<{ slug: string; status: string }>
       failures: string[]
@@ -1046,7 +1046,7 @@ describe('ak_blueprint_list', () => {
     writeFileSync(movedOverview, updated, 'utf8')
     execSync('git add -A && git commit -qm "move"', { cwd: localTmpDir })
 
-    const result = await callTool(lt, 'ak_blueprint_list', {})
+    const result = await callTool(lt, 'wp_blueprint_list', {})
     const data = parseResult(result) as {
       freshness_ok: boolean
       next_action: { kind: string }
@@ -1061,18 +1061,18 @@ describe('ak_blueprint_list', () => {
   })
 
   it('rejects input with unknown field gracefully (extra fields pass through zod)', async () => {
-    const result = await callTool(tools, 'ak_blueprint_list', { limit: 10 })
+    const result = await callTool(tools, 'wp_blueprint_list', { limit: 10 })
     expect(result.isError).toStrictEqual(false)
   })
 })
 
 // ---------------------------------------------------------------------------
-// Task 2.2 — ak_blueprint_get
+// Task 2.2 — wp_blueprint_get
 // ---------------------------------------------------------------------------
 
-describe('ak_blueprint_get', () => {
+describe('wp_blueprint_get', () => {
   it('returns next_action disambiguate_slug for unknown slug', async () => {
-    const result = await callTool(tools, 'ak_blueprint_get', { slug: 'nonexistent-slug-xyz' })
+    const result = await callTool(tools, 'wp_blueprint_get', { slug: 'nonexistent-slug-xyz' })
     const data = parseResult(result) as {
       blueprint: null
       next_action: { kind: string }
@@ -1093,7 +1093,7 @@ describe('ak_blueprint_get', () => {
     const { registrar: lr, tools: lt } = makeRegistrar()
     await registerBlueprintTools(lr, tmpDir)
 
-    const result = await callTool(lt, 'ak_blueprint_get', { slug: bpSlug })
+    const result = await callTool(lt, 'wp_blueprint_get', { slug: bpSlug })
     const data = parseResult(result) as {
       blueprint: { slug: string; title: string; status: string; tasks: unknown[] }
       content_hash: string
@@ -1112,7 +1112,7 @@ describe('ak_blueprint_get', () => {
   })
 
   it('returns validation error when slug is missing', async () => {
-    const result = await callTool(tools, 'ak_blueprint_get', {})
+    const result = await callTool(tools, 'wp_blueprint_get', {})
     expect(result.isError).toStrictEqual(true)
   })
 
@@ -1143,7 +1143,7 @@ describe('ak_blueprint_get', () => {
     writeFileSync(movedOverview, updated, 'utf8')
     execSync('git add -A && git commit -qm "move"', { cwd: localTmpDir })
 
-    const result = await callTool(lt, 'ak_blueprint_get', { slug: 'stale-get' })
+    const result = await callTool(lt, 'wp_blueprint_get', { slug: 'stale-get' })
     const data = parseResult(result) as {
       blueprint: unknown
       next_action: { kind: string }
@@ -1157,10 +1157,10 @@ describe('ak_blueprint_get', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Task 2.2 — ak_blueprint_context
+// Task 2.2 — wp_blueprint_context
 // ---------------------------------------------------------------------------
 
-describe('ak_blueprint_context', () => {
+describe('wp_blueprint_context', () => {
   it('returns chunks array for existing blueprint', async () => {
     const bpSlug = 'context-test-blueprint'
     const overviewPath = path.join(tmpDir, 'blueprints', 'draft', bpSlug, '_overview.md')
@@ -1169,7 +1169,7 @@ describe('ak_blueprint_context', () => {
     const { registrar: lr, tools: lt } = makeRegistrar()
     await registerBlueprintTools(lr, tmpDir)
 
-    const result = await callTool(lt, 'ak_blueprint_context', { slug: bpSlug })
+    const result = await callTool(lt, 'wp_blueprint_context', { slug: bpSlug })
     const data = parseResult(result) as {
       chunks: Array<{ kind: string; label: string; content: string; byte_size: number }>
       total_bytes: number
@@ -1191,7 +1191,7 @@ describe('ak_blueprint_context', () => {
   })
 
   it('returns disambiguate_slug next_action for unknown slug', async () => {
-    const result = await callTool(tools, 'ak_blueprint_context', { slug: 'unknown-slug-abc' })
+    const result = await callTool(tools, 'wp_blueprint_context', { slug: 'unknown-slug-abc' })
     const data = parseResult(result) as {
       chunks: unknown[]
       next_action: { kind: string }
@@ -1209,7 +1209,7 @@ describe('ak_blueprint_context', () => {
     const { registrar: lr, tools: lt } = makeRegistrar()
     await registerBlueprintTools(lr, tmpDir)
 
-    const result = await callTool(lt, 'ak_blueprint_context', {
+    const result = await callTool(lt, 'wp_blueprint_context', {
       slug: bpSlug,
       task_id: 'nonexistent-task-99.99',
     })
@@ -1222,18 +1222,18 @@ describe('ak_blueprint_context', () => {
   })
 
   it('returns validation error when slug is missing', async () => {
-    const result = await callTool(tools, 'ak_blueprint_context', {})
+    const result = await callTool(tools, 'wp_blueprint_context', {})
     expect(result.isError).toStrictEqual(true)
   })
 })
 
 // ---------------------------------------------------------------------------
-// Task 2.2 — ak_blueprint_create
+// Task 2.2 — wp_blueprint_create
 // ---------------------------------------------------------------------------
 
-describe('ak_blueprint_create', () => {
+describe('wp_blueprint_create', () => {
   it('creates blueprint markdown and returns slug + path', async () => {
-    const result = await callTool(tools, 'ak_blueprint_create', {
+    const result = await callTool(tools, 'wp_blueprint_create', {
       project_id: tmpDir,
       title: 'My Created Blueprint',
       goal: 'Test the create handler end-to-end',
@@ -1253,13 +1253,13 @@ describe('ak_blueprint_create', () => {
     expect(data.failures).toStrictEqual([])
   })
 
-  it('re-ingests so the new blueprint appears in ak_blueprint_list', async () => {
-    await callTool(tools, 'ak_blueprint_create', {
+  it('re-ingests so the new blueprint appears in wp_blueprint_list', async () => {
+    await callTool(tools, 'wp_blueprint_create', {
       project_id: tmpDir,
       title: 'Ingest Check Blueprint',
       goal: 'Verify re-ingest after create',
     })
-    const listResult = await callTool(tools, 'ak_blueprint_list', { status: 'draft' })
+    const listResult = await callTool(tools, 'wp_blueprint_list', { status: 'draft' })
     const listData = parseResult(listResult) as {
       blueprints: Array<{ slug: string }>
     }
@@ -1271,7 +1271,7 @@ describe('ak_blueprint_create', () => {
     // scope is not in MutationTarget schema — zod strips it (extra fields ignored by default)
     // but if schema used .strict() it would reject. Since zod strips extras, we verify
     // the handler does NOT error merely because scope is passed (it's simply ignored).
-    const result = await callTool(tools, 'ak_blueprint_create', {
+    const result = await callTool(tools, 'wp_blueprint_create', {
       project_id: tmpDir,
       title: 'Scope Test Blueprint',
       goal: 'Test scope field handling',
@@ -1285,7 +1285,7 @@ describe('ak_blueprint_create', () => {
   })
 
   it('returns validation error when required fields are missing', async () => {
-    const result = await callTool(tools, 'ak_blueprint_create', { project_id: tmpDir })
+    const result = await callTool(tools, 'wp_blueprint_create', { project_id: tmpDir })
     expect(result.isError).toStrictEqual(true)
   })
 
@@ -1303,10 +1303,10 @@ describe('ak_blueprint_create', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Task 3.2 — ak_blueprint_task_advance refuses to: done
+// Task 3.2 — wp_blueprint_task_advance refuses to: done
 // ---------------------------------------------------------------------------
 
-describe('ak_blueprint_task_advance — refuses to:done (Task 3.2)', () => {
+describe('wp_blueprint_task_advance — refuses to:done (Task 3.2)', () => {
   afterEach(() => {
     _setSyncAdapterFactory(null)
     vi.unstubAllEnvs()
@@ -1315,7 +1315,7 @@ describe('ak_blueprint_task_advance — refuses to:done (Task 3.2)', () => {
   it('returns error with next_action verify_task when to is done', async () => {
     _setSyncAdapterFactory(() => null)
 
-    const result = await callTool(tools, 'ak_blueprint_task_advance', {
+    const result = await callTool(tools, 'wp_blueprint_task_advance', {
       task_id: '1.1',
       to: 'done',
     })
@@ -1326,7 +1326,7 @@ describe('ak_blueprint_task_advance — refuses to:done (Task 3.2)', () => {
       next_action: { kind: string; hint: string }
     }
     expect(data.failures.length).toBeGreaterThan(0)
-    expect(data.failures[0]).toMatch(/ak_blueprint_task_verify/i)
+    expect(data.failures[0]).toMatch(/wp_blueprint_task_verify/i)
     expect(data.next_action.kind).toBe('verify_task')
   })
 
@@ -1334,7 +1334,7 @@ describe('ak_blueprint_task_advance — refuses to:done (Task 3.2)', () => {
     _setSyncAdapterFactory(() => null)
 
     // This uses the global tools which has an empty DB; expect task-not-found error (not the done guard)
-    const result = await callTool(tools, 'ak_blueprint_task_advance', {
+    const result = await callTool(tools, 'wp_blueprint_task_advance', {
       task_id: 'nonexistent.99',
       to: 'in-progress',
     })
@@ -1346,7 +1346,7 @@ describe('ak_blueprint_task_advance — refuses to:done (Task 3.2)', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Task 3.2 — ak_blueprint_task_verify (Task 3.2)
+// Task 3.2 — wp_blueprint_task_verify (Task 3.2)
 // ---------------------------------------------------------------------------
 
 /**
@@ -1383,7 +1383,7 @@ Blueprint used to test task verification.
 - [ ] The task is verified
 `
 
-describe('ak_blueprint_task_verify — Task 3.2', () => {
+describe('wp_blueprint_task_verify — Task 3.2', () => {
   const VERIFY_SLUG = 'verify-test-blueprint'
 
   async function setupWithVerifyBlueprint(): Promise<{
@@ -1414,7 +1414,7 @@ describe('ak_blueprint_task_verify — Task 3.2', () => {
   })
 
   it('tool is registered', async () => {
-    expect(tools.has('ak_blueprint_task_verify')).toBe(true)
+    expect(tools.has('wp_blueprint_task_verify')).toBe(true)
   })
 
   it('input schema rejects inputs containing scope field at the zod level', () => {
@@ -1447,7 +1447,7 @@ describe('ak_blueprint_task_verify — Task 3.2', () => {
   })
 
   it('returns validation error for missing required fields', async () => {
-    const result = await callTool(tools, 'ak_blueprint_task_verify', {
+    const result = await callTool(tools, 'wp_blueprint_task_verify', {
       project_id: tmpDir,
     })
     expect(result.isError).toBe(true)
@@ -1456,7 +1456,7 @@ describe('ak_blueprint_task_verify — Task 3.2', () => {
   it('fails when evidence has zero pass items (all fail items)', async () => {
     const { localTools } = await setupWithVerifyBlueprint()
 
-    const result = await callTool(localTools, 'ak_blueprint_task_verify', {
+    const result = await callTool(localTools, 'wp_blueprint_task_verify', {
       project_id: localTools.size > 0 ? 'test' : 'test', // placeholder, handler uses cwd
       slug: VERIFY_SLUG,
       task_id: '1.1',
@@ -1480,7 +1480,7 @@ describe('ak_blueprint_task_verify — Task 3.2', () => {
     _setSyncAdapterFactory(() => null)
     const { overviewPath, localTools } = await setupWithVerifyBlueprint()
 
-    const result = await callTool(localTools, 'ak_blueprint_task_verify', {
+    const result = await callTool(localTools, 'wp_blueprint_task_verify', {
       project_id: 'test',
       slug: VERIFY_SLUG,
       task_id: '1.1',
@@ -1528,7 +1528,7 @@ describe('ak_blueprint_task_verify — Task 3.2', () => {
     ]
 
     // First call
-    const first = await callTool(localTools, 'ak_blueprint_task_verify', {
+    const first = await callTool(localTools, 'wp_blueprint_task_verify', {
       project_id: 'test',
       slug: VERIFY_SLUG,
       task_id: '1.1',
@@ -1537,7 +1537,7 @@ describe('ak_blueprint_task_verify — Task 3.2', () => {
     expect(first.isError).toStrictEqual(false)
 
     // Second call with identical evidence
-    const second = await callTool(localTools, 'ak_blueprint_task_verify', {
+    const second = await callTool(localTools, 'wp_blueprint_task_verify', {
       project_id: 'test',
       slug: VERIFY_SLUG,
       task_id: '1.1',
@@ -1559,19 +1559,19 @@ describe('ak_blueprint_task_verify — Task 3.2', () => {
 // Task 3.3 — aggregate reads + old facade removal
 // ---------------------------------------------------------------------------
 
-describe('Task 3.3 — ak_blueprint_list with aggregate scope', () => {
+describe('Task 3.3 — wp_blueprint_list with aggregate scope', () => {
   it('ak_blueprint tool is NOT registered (old facade deleted)', () => {
     expect(tools.has('ak_blueprint')).toBe(false)
   })
 
-  it('ak_blueprint_list with scope: current returns blueprints from single project', async () => {
+  it('wp_blueprint_list with scope: current returns blueprints from single project', async () => {
     // Create a blueprint so there is something to list
-    await callTool(tools, 'ak_blueprint_create', {
+    await callTool(tools, 'wp_blueprint_create', {
       project_id: tmpDir,
       title: 'Scope Current Blueprint',
       goal: 'Test scope current',
     })
-    const result = await callTool(tools, 'ak_blueprint_list', { scope: 'current' })
+    const result = await callTool(tools, 'wp_blueprint_list', { scope: 'current' })
     expect(result.isError).toStrictEqual(false)
     const data = parseResult(result) as {
       blueprints: Array<{ slug: string }>
@@ -1582,13 +1582,13 @@ describe('Task 3.3 — ak_blueprint_list with aggregate scope', () => {
     expect(data.blueprints.some((b) => b.slug === 'scope-current-blueprint')).toBe(true)
   })
 
-  it('ak_blueprint_list with scope: all returns blueprints and failures array', async () => {
-    await callTool(tools, 'ak_blueprint_create', {
+  it('wp_blueprint_list with scope: all returns blueprints and failures array', async () => {
+    await callTool(tools, 'wp_blueprint_create', {
       project_id: tmpDir,
       title: 'Scope All Blueprint',
       goal: 'Test scope all aggregate',
     })
-    const result = await callTool(tools, 'ak_blueprint_list', { scope: 'all' })
+    const result = await callTool(tools, 'wp_blueprint_list', { scope: 'all' })
     expect(result.isError).toStrictEqual(false)
     const data = parseResult(result) as {
       blueprints: Array<{ slug: string; project_id: string }>
@@ -1605,8 +1605,8 @@ describe('Task 3.3 — ak_blueprint_list with aggregate scope', () => {
     }
   })
 
-  it('ak_blueprint_list with scope: roots returns blueprints and failures array', async () => {
-    const result = await callTool(tools, 'ak_blueprint_list', { scope: 'roots' })
+  it('wp_blueprint_list with scope: roots returns blueprints and failures array', async () => {
+    const result = await callTool(tools, 'wp_blueprint_list', { scope: 'roots' })
     expect(result.isError).toStrictEqual(false)
     const data = parseResult(result) as {
       blueprints: unknown[]
@@ -1618,8 +1618,8 @@ describe('Task 3.3 — ak_blueprint_list with aggregate scope', () => {
     expect(Array.isArray(data.duplicate_slugs)).toBe(true)
   })
 
-  it('ak_blueprint_list with scope: workspace returns blueprints and failures array', async () => {
-    const result = await callTool(tools, 'ak_blueprint_list', { scope: 'workspace' })
+  it('wp_blueprint_list with scope: workspace returns blueprints and failures array', async () => {
+    const result = await callTool(tools, 'wp_blueprint_list', { scope: 'workspace' })
     expect(result.isError).toStrictEqual(false)
     const data = parseResult(result) as {
       blueprints: unknown[]
@@ -1632,8 +1632,8 @@ describe('Task 3.3 — ak_blueprint_list with aggregate scope', () => {
   })
 })
 
-describe('Task 3.3 — ak_blueprint_get with aggregate scope', () => {
-  it('ak_blueprint_get with scope: current (single-project) finds blueprint by directory-derived slug', async () => {
+describe('Task 3.3 — wp_blueprint_get with aggregate scope', () => {
+  it('wp_blueprint_get with scope: current (single-project) finds blueprint by directory-derived slug', async () => {
     // Use a fresh tmpDir so coldStartIfNeeded runs with the blueprint present
     const localTmpDir = mkdtempSync(path.join(tmpdir(), 'ak-bs-get33-'))
     mkdirSync(path.join(localTmpDir, '.agent'), { recursive: true })
@@ -1650,7 +1650,7 @@ describe('Task 3.3 — ak_blueprint_get with aggregate scope', () => {
 
     try {
       // scope: 'current' → single-project path (NOT aggregate)
-      const result = await callTool(lt, 'ak_blueprint_get', {
+      const result = await callTool(lt, 'wp_blueprint_get', {
         slug: bpSlug,
         scope: 'current',
       })
@@ -1667,11 +1667,11 @@ describe('Task 3.3 — ak_blueprint_get with aggregate scope', () => {
     }
   })
 
-  it('ak_blueprint_get with scope: all returns structured response with failures/blueprint fields', async () => {
+  it('wp_blueprint_get with scope: all returns structured response with failures/blueprint fields', async () => {
     // With scope: all, the aggregate path is used. In a non-git temp dir,
     // the aggregate may not find the project's DB (different db_path conventions),
     // but the response must always have a well-formed envelope.
-    const result = await callTool(tools, 'ak_blueprint_get', {
+    const result = await callTool(tools, 'wp_blueprint_get', {
       slug: 'any-slug',
       scope: 'all',
     })
@@ -1687,8 +1687,8 @@ describe('Task 3.3 — ak_blueprint_get with aggregate scope', () => {
     }
   })
 
-  it('ak_blueprint_get with scope: all returns disambiguate_slug next_action when slug not found anywhere', async () => {
-    const result = await callTool(tools, 'ak_blueprint_get', {
+  it('wp_blueprint_get with scope: all returns disambiguate_slug next_action when slug not found anywhere', async () => {
+    const result = await callTool(tools, 'wp_blueprint_get', {
       slug: 'nonexistent-everywhere',
       scope: 'all',
     })
@@ -1702,9 +1702,9 @@ describe('Task 3.3 — ak_blueprint_get with aggregate scope', () => {
     expect(data.next_action.kind).toBe('disambiguate_slug')
   })
 
-  it('mutation tools still reject scope — ak_blueprint_create ignores scope field', async () => {
+  it('mutation tools still reject scope — wp_blueprint_create ignores scope field', async () => {
     // MutationTarget schema does not include scope; zod strips it
-    const result = await callTool(tools, 'ak_blueprint_create', {
+    const result = await callTool(tools, 'wp_blueprint_create', {
       project_id: tmpDir,
       title: 'No Scope Mutation',
       goal: 'Verify scope is stripped',

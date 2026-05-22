@@ -81,11 +81,28 @@ Existing `.agent/.blueprints.db` and other `.agent/` state files are harmless
 orphans after migration. You do not need to delete them manually. The first
 `wp` command in a repo cold-starts the blueprint DB from `blueprints/` markdown.
 
+## Blueprint MCP tool names
+
+Canonical blueprint MCP tool names use the `wp_*` prefix. If you still have
+older notes or prompts that mention `ak_blueprint_*`, update them to the
+resource-oriented `wp_blueprint_*` surface:
+
+- `ak_blueprint_list` → `wp_blueprint_list`
+- `ak_blueprint_get` / stale facade reads → `wp_blueprint_get`
+- `ak_blueprint_context` → `wp_blueprint_context`
+- `ak_blueprint_create` → `wp_blueprint_create`
+- `ak_blueprint_task_advance` → `wp_blueprint_task_advance`
+- `ak_blueprint_task_verify` → `wp_blueprint_task_verify`
+
+For multi-agent safety, copy `head_at_ingest` from a fresh read into mutation
+calls when you need stale-write protection, and pass `request_id` when the
+caller may retry the same mutation.
+
 ## Hook bins
 
-The hook entry-point binary names are unchanged: `ak-pretool-guard`,
-`ak-post-tool`, `ak-stop-qa`, `ak-guard-switch`, `ak-test-quality-check`,
-`ak-sessionstart-routing`, `ak-check-dev-link`, and `ak-restore-dev-links`.
+The hook entry-point binary names are unchanged: `wp-pretool-guard`,
+`wp-post-tool`, `wp-stop-qa`, `wp-guard-switch`, `wp-test-quality-check`,
+`wp-sessionstart-routing`, `wp-check-dev-link`, and `wp-restore-dev-links`.
 Existing `.claude/settings.json` and `.codex/hooks.json` files do not need to
 change.
 
@@ -97,7 +114,7 @@ public `webpresso` package.
 
 ## Troubleshooting
 
-**Old `@webpresso/agent-kit` still runs when I type `ak`** — remove the scoped
+**Old `@webpresso/agent-kit` still runs when I type `wp`** — remove the scoped
 package from local devDependencies and reinstall.
 
 **Oxlint cannot load plugins from `.oxlintrc.json`** — migrate to
