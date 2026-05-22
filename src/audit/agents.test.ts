@@ -22,7 +22,7 @@ function seedConsumerRepo(root: string): void {
   writeFileSync(join(root, 'AGENTS.md'), '# Root contract\n')
   writeJson(join(root, 'package.json'), {
     name: 'consumer-app',
-    scripts: { 'setup:agent': 'ak setup' },
+    scripts: { 'setup:agent': 'wp setup' },
     devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
   })
   writeJson(join(root, '.agent-kitrc.json'), {

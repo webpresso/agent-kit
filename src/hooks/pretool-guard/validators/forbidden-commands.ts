@@ -50,24 +50,23 @@ export const SKIP_ENV_VAR = 'FORBIDDEN_COMMANDS_SKIP'
 export const AUDIT_MODE_ENV = 'FORBIDDEN_COMMANDS_AUDIT'
 export const DOCS_REF = 'AGENTS.md "Forbidden Commands (CRITICAL)" section'
 
-const DB_HINT = 'just db-push (or just db-migrate, just db-generate)'
+const DB_HINT = 'Use the database MCP/tooling entrypoint instead of direct CLI execution'
 const BLUEPRINT_HINT =
   'ak blueprint new|list|audit — use ak_blueprint MCP tool for lifecycle transitions'
 const BLUEPRINT_LIFECYCLE_DIRS = '(draft|planned|in-progress|completed|archived)'
-const LINT_BASE = 'just lint --package <name> (or --file <path>)'
+const LINT_BASE = 'ak_lint MCP tool with package/file scope'
 const LINT_HINT = `${LINT_BASE} [--fix] [--fix-unsafe]`
-const FORMAT_HINT = 'just format (or just format-check)'
-const QA_HINT = 'just qa'
-const TEST_HINT = 'just test --package <name> (or --file <path>)'
-const MUTATION_HINT = 'just test --mutation --package <name>'
-const TYPECHECK_HINT = 'just typecheck --package <name> (or --file <path>)'
-const ENV_HINT = 'just run <cmd> (injects secrets/env automatically)'
-const JUST_TASK_TARGET_HINT =
-  'just <task> [target] — check justfile for existing recipes, or add a new one'
+const FORMAT_HINT = 'ak_format MCP tool'
+const QA_HINT = 'ak_qa MCP tool'
+const TEST_HINT = 'ak_test MCP tool with package/file scope'
+const MUTATION_HINT = 'ak_test mutation workflow'
+const TYPECHECK_HINT = 'ak_typecheck MCP tool with package/file scope'
+const ENV_HINT = 'Use the repo-approved environment wrapper for secret-bearing commands'
+const TASK_TARGET_HINT = 'Use the repo-approved vp facade or MCP tool instead of raw execution'
 
-const EXEC_RUNNERS = ['pnpm exec', 'vp exec', 'pnpx', 'bunx'] as const
-const DIRECT_RUNNERS = ['pnpm', 'bun run', 'bun'] as const
-const SCRIPT_RUNNERS = ['pnpm run', 'pnpm', 'npm run', 'npm', 'bun run', 'bun'] as const
+const EXEC_RUNNERS = ['vp exec'] as const
+const DIRECT_RUNNERS = ['vp'] as const
+const SCRIPT_RUNNERS = ['vp run', 'vp'] as const
 
 export const BLOCKED_TOOLS: BlockedToolSpec[] = [
   {
@@ -157,12 +156,6 @@ export function generateRules(): CommandRule[] {
   }
 
   rules.push(
-    { pattern: /^just lint-md\b/, category: 'unknown', suggestion: QA_HINT },
-    {
-      pattern: /^pnpm exec markdownlint-cli2\b/,
-      category: 'unknown',
-      suggestion: QA_HINT,
-    },
     {
       pattern: /^vp exec markdownlint-cli2\b/,
       category: 'unknown',
@@ -187,14 +180,8 @@ export function generateRules(): CommandRule[] {
     },
     { pattern: /^doppler run/, category: 'unknown', suggestion: ENV_HINT },
     { pattern: /^DATABASE_URL=/, category: 'unknown', suggestion: ENV_HINT },
-    { pattern: /^pnpm exec\b/, category: 'unknown', suggestion: JUST_TASK_TARGET_HINT },
-    { pattern: /^pnpm run\b/, category: 'unknown', suggestion: JUST_TASK_TARGET_HINT },
-    { pattern: /^npm exec\b/, category: 'unknown', suggestion: JUST_TASK_TARGET_HINT },
-    { pattern: /^npm run\b/, category: 'unknown', suggestion: JUST_TASK_TARGET_HINT },
-    { pattern: /^bun run\b/, category: 'unknown', suggestion: JUST_TASK_TARGET_HINT },
-    { pattern: /^npx\b/, category: 'unknown', suggestion: JUST_TASK_TARGET_HINT },
-    { pattern: /^pnpx\b/, category: 'unknown', suggestion: JUST_TASK_TARGET_HINT },
-    { pattern: /^bunx\b/, category: 'unknown', suggestion: JUST_TASK_TARGET_HINT },
+    { pattern: /^vp exec\b/, category: 'unknown', suggestion: TASK_TARGET_HINT },
+    { pattern: /^vp run\b/, category: 'unknown', suggestion: TASK_TARGET_HINT },
   )
 
   return rules
@@ -213,17 +200,17 @@ export const SUGGESTION_MODIFIERS: SuggestionModifier[] = [
 
 const LOGICAL_OPERATOR_REGEX = /(?:&&|\|\||;)/
 
-const PNPM_SCOPE_FLAG_REGEX =
+const VP_SCOPE_FLAG_REGEX =
   /\s+(?:(?:--filter|-F|--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)|(?:--workspace-root|-w))/
 
-function stripPnpmScopeFlags(command: string): string {
-  if (!command.startsWith('pnpm ')) {
+function stripVpScopeFlags(command: string): string {
+  if (!command.startsWith('vp ')) {
     return command
   }
 
   let next = command
-  while (PNPM_SCOPE_FLAG_REGEX.test(next)) {
-    const updated = next.replace(PNPM_SCOPE_FLAG_REGEX, '')
+  while (VP_SCOPE_FLAG_REGEX.test(next)) {
+    const updated = next.replace(VP_SCOPE_FLAG_REGEX, '')
     if (updated === next) {
       break
     }
@@ -378,9 +365,9 @@ export function applySuggestionModifiers(command: string, rule: CommandRule): st
   return rule.suggestion
 }
 
-export function getJustEquivalent(command: string): string {
+export function getApprovedEquivalent(command: string): string {
   const rule = findMatchingRule(command)
-  if (!rule) return 'just <appropriate-recipe>'
+  if (!rule) return 'repo-approved MCP/tooling entrypoint'
   return applySuggestionModifiers(command, rule)
 }
 
@@ -388,7 +375,7 @@ export function getCommandVariants(command: string): string[] {
   const normalized = command.trim()
   const variants = normalized ? [normalized] : []
 
-  if (normalized.startsWith('just ')) {
+  if (normalized.startsWith('vp ')) {
     const logicalSegments = normalized
       .split(LOGICAL_OPERATOR_REGEX)
       .map((s) => s.trim())
@@ -409,9 +396,9 @@ export function getCommandVariants(command: string): string[] {
   for (let index = 0; index < initialVariantCount; index += 1) {
     const variant = variants[index]
     if (!variant) continue
-    const strippedPnpmVariant = stripPnpmScopeFlags(variant)
-    if (strippedPnpmVariant !== variant && !variants.includes(strippedPnpmVariant)) {
-      variants.push(strippedPnpmVariant)
+    const strippedVpVariant = stripVpScopeFlags(variant)
+    if (strippedVpVariant !== variant && !variants.includes(strippedVpVariant)) {
+      variants.push(strippedVpVariant)
     }
   }
 

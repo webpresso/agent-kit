@@ -83,7 +83,7 @@ function runAk(args: string[], extraEnv: Record<string, string> = {}): RunResult
   // Build a clean base env: inherit process.env but strip CI sentinels so
   // the subprocess behaves like a developer workstation. Without this,
   // GitHub Actions' CI=true causes isCiEnvironment to be true inside the
-  // spawned ak binary, which skips omx/gstack/rtk preset execution and
+  // spawned ak binary, which skips omx/omc/gstack/rtk preset execution and
   // makes every preset e2e test assert on output that is never produced.
   // Individual tests can re-add CI=true via extraEnv if they need CI behaviour.
   const { CI: _ci, GITHUB_ACTIONS: _ga, ...baseEnv } = process.env
@@ -91,9 +91,10 @@ function runAk(args: string[], extraEnv: Record<string, string> = {}): RunResult
     encoding: 'utf8',
     env: {
       ...baseEnv,
-      // rtk is default-on but isn't packaged in the test fixture's PATH —
-      // skip it unless the individual test explicitly opts in.
+      // rtk and OMC are default-on but depend on workstation-global tools not
+      // packaged in this fixture PATH — skip unless a test explicitly opts in.
       AK_SKIP_RTK: '1',
+      AK_SKIP_OMC: '1',
       ...extraEnv,
     },
   })
@@ -354,7 +355,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.stdout).toContain('gstack: ✓ updated')
     })
 
-    it('presets run independently: omx failure does NOT skip gstack, exit code reflects worst failure', () => {
+    it('presets run independently: omx failure does NOT skip gstack, exit code reflects partial failure', () => {
       const r = runAk(['setup', '--yes', '--with', 'omx,gstack', '--cwd', repo], {
         PATH: pathWithoutOmx(),
         HOME: fakeHome,
@@ -403,6 +404,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.stdout).toContain('Presets:')
       expect(r.stdout).toContain('context-mode')
       expect(r.stdout).toContain('lore-commits')
+      expect(r.stdout).toContain('omc')
       expect(r.stdout).toContain('omx')
       expect(r.stdout).toContain('playwright-mcp')
       expect(r.stdout).toContain('rtk')

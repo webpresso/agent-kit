@@ -53,6 +53,7 @@ describe('rtk scaffolder integration', () => {
   let previousCi: string | undefined
   let previousAkSkipGstack: string | undefined
   let previousAkSkipClaudePlugin: string | undefined
+  let previousAkSkipOmc: string | undefined
 
   beforeEach(() => {
     repo = makeRepo()
@@ -63,6 +64,7 @@ describe('rtk scaffolder integration', () => {
     previousCi = process.env.CI
     previousAkSkipGstack = process.env.AK_SKIP_GSTACK
     previousAkSkipClaudePlugin = process.env.AK_SKIP_CLAUDE_PLUGIN
+    previousAkSkipOmc = process.env.AK_SKIP_OMC
     process.env.HOME = fakeHome
     process.env.CODEX_HOME = join(repo, '.codex-home')
     process.env.PATH = [fakeRtkBin, fakeOmxBin, previousPath ?? ''].filter(Boolean).join(':')
@@ -80,14 +82,15 @@ describe('rtk scaffolder integration', () => {
     //
     // - gstack: `git clone https://github.com/garrytan/gstack` — a real
     //   network call that adds ~15-20s and makes the test depend on GitHub.
-    // - claude plugin: spawns the real `claude` CLI three times
-    //   (`plugin marketplace add` → `plugin install` → `plugin update`),
+    // - OMC / claude plugin: spawns the real `claude` CLI
+    //   (`plugin marketplace add` → `plugin install`),
     //   each a 5+s subprocess. ~17s total measured locally with a
     //   claude binary on PATH.
     //
     // Both have production-supported opt-out env vars used precisely for
     // this case:
     //   - AK_SKIP_GSTACK → src/cli/commands/init/index.ts:509-512
+    //   - AK_SKIP_OMC → src/cli/commands/init/scaffolders/omc/index.ts
     //   - AK_SKIP_CLAUDE_PLUGIN → src/cli/commands/init/scaffolders/
     //     claude-plugin/index.ts:58-60
     //
@@ -96,6 +99,7 @@ describe('rtk scaffolder integration', () => {
     // bumping the timeout (per the no-timeout-as-fix rule).
     process.env.AK_SKIP_GSTACK = '1'
     process.env.AK_SKIP_CLAUDE_PLUGIN = '1'
+    process.env.AK_SKIP_OMC = '1'
     chmodSync(join(fakeRtkBin, 'rtk'), 0o755)
   })
 
@@ -112,6 +116,8 @@ describe('rtk scaffolder integration', () => {
     else process.env.AK_SKIP_GSTACK = previousAkSkipGstack
     if (previousAkSkipClaudePlugin === undefined) delete process.env.AK_SKIP_CLAUDE_PLUGIN
     else process.env.AK_SKIP_CLAUDE_PLUGIN = previousAkSkipClaudePlugin
+    if (previousAkSkipOmc === undefined) delete process.env.AK_SKIP_OMC
+    else process.env.AK_SKIP_OMC = previousAkSkipOmc
     rmSync(repo, { recursive: true, force: true })
     rmSync(fakeHome, { recursive: true, force: true })
   })
@@ -145,12 +151,12 @@ describe('rtk scaffolder integration', () => {
 
     const rtkPassthrough = runHook(
       join(repo, '.claude', 'hooks', 'rtk-rewrite.sh'),
-      JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'pnpm test' } }),
+      JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'vp exec vitest' } }),
       repo,
     )
     expect(rtkPassthrough.stdout.trim()).toBe('{}')
 
-    const agentKitRoute = routeCommand('pnpm test', `rtk-fixture-${Date.now()}`)
+    const agentKitRoute = routeCommand('vp exec vitest', `rtk-fixture-${Date.now()}`)
     expect(agentKitRoute?.action.action).toBe('deny')
     if (agentKitRoute?.action.action === 'deny') expect(agentKitRoute.action.tool).toBe('ak_test') // G4
 

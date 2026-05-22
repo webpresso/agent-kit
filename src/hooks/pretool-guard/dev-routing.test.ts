@@ -27,30 +27,24 @@ describe('routeCommand', () => {
     return routeCommand
   }
 
-  it('just test → deny, guidance mentions ak_test', async () => {
+  it('vp exec vitest run → deny, guidance mentions ak_test', async () => {
     const routeCommand = await getRoute()
-    const result = routeCommand('just test')
+    const result = routeCommand('vp exec vitest run')
     expect(result).not.toBeNull()
     expect(result?.action.action).toBe('deny')
     if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_test')
   })
 
-  it('pnpm test --filter foo → deny', async () => {
+  it('vp --dir packages/sdk/common exec markdownlint-cli2 README.md → deny and routes to ak_qa', async () => {
     const routeCommand = await getRoute()
-    const result = routeCommand('pnpm test --filter foo')
-    expect(result?.action.action).toBe('deny')
-  })
-
-  it('pnpm --dir packages/sdk/common run qa → deny and routes to ak_qa', async () => {
-    const routeCommand = await getRoute()
-    const result = routeCommand('pnpm --dir packages/sdk/common run qa')
+    const result = routeCommand('vp --dir packages/sdk/common exec markdownlint-cli2 README.md')
     expect(result?.action.action).toBe('deny')
     if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_qa')
   })
 
-  it('pnpm -C packages/cli/host exec vitest run → deny and routes to ak_test', async () => {
+  it('vp -C packages/cli/host exec vitest run → deny and routes to ak_test', async () => {
     const routeCommand = await getRoute()
-    const result = routeCommand('pnpm -C packages/cli/host exec vitest run')
+    const result = routeCommand('vp -C packages/cli/host exec vitest run')
     expect(result?.action.action).toBe('deny')
     if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_test')
   })
@@ -62,24 +56,10 @@ describe('routeCommand', () => {
     if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_test')
   })
 
-  it('pnpm exec vitest run → deny', async () => {
-    const routeCommand = await getRoute()
-    const result = routeCommand('pnpm exec vitest run')
-    expect(result?.action.action).toBe('deny')
-    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_test')
-  })
-
   it('vitest run → deny', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('vitest run')
     expect(result?.action.action).toBe('deny')
-  })
-
-  it('just lint --package workers → deny, mentions ak_lint', async () => {
-    const routeCommand = await getRoute()
-    const result = routeCommand('just lint --package workers')
-    expect(result?.action.action).toBe('deny')
-    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_lint')
   })
 
   it('vp exec oxlint . → deny, mentions ak_lint', async () => {
@@ -89,53 +69,11 @@ describe('routeCommand', () => {
     if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_lint')
   })
 
-  it('pnpm exec oxlint . → deny, mentions ak_lint', async () => {
-    const routeCommand = await getRoute()
-    const result = routeCommand('pnpm exec oxlint .')
-    expect(result?.action.action).toBe('deny')
-    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_lint')
-  })
-
-  it('just typecheck → deny, mentions ak_typecheck', async () => {
-    const routeCommand = await getRoute()
-    const result = routeCommand('just typecheck')
-    expect(result?.action.action).toBe('deny')
-    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_typecheck')
-  })
-
   it('vp exec tsc --noEmit → deny, mentions ak_typecheck', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('vp exec tsc --noEmit')
     expect(result?.action.action).toBe('deny')
     if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_typecheck')
-  })
-
-  it('pnpm exec tsc --noEmit → deny, mentions ak_typecheck', async () => {
-    const routeCommand = await getRoute()
-    const result = routeCommand('pnpm exec tsc --noEmit')
-    expect(result?.action.action).toBe('deny')
-    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_typecheck')
-  })
-
-  it('just qa → deny, mentions ak_qa', async () => {
-    const routeCommand = await getRoute()
-    const result = routeCommand('just qa')
-    expect(result?.action.action).toBe('deny')
-    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_qa')
-  })
-
-  it('just lint-md README.md → deny, mentions ak_qa', async () => {
-    const routeCommand = await getRoute()
-    const result = routeCommand('just lint-md README.md')
-    expect(result?.action.action).toBe('deny')
-    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_qa')
-  })
-
-  it('pnpm exec markdownlint-cli2 README.md → deny, mentions ak_qa', async () => {
-    const routeCommand = await getRoute()
-    const result = routeCommand('pnpm exec markdownlint-cli2 README.md')
-    expect(result?.action.action).toBe('deny')
-    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_qa')
   })
 
   it('vp exec markdownlint-cli2 README.md → deny, mentions ak_qa', async () => {
@@ -152,9 +90,9 @@ describe('routeCommand', () => {
     if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_format')
   })
 
-  it('pnpm exec prettier README.md --write → deny, mentions ak_format', async () => {
+  it('vp exec prettier README.md --write → deny, mentions ak_format', async () => {
     const routeCommand = await getRoute()
-    const result = routeCommand('pnpm exec prettier README.md --write')
+    const result = routeCommand('vp exec prettier README.md --write')
     expect(result?.action.action).toBe('deny')
     if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_format')
   })
@@ -164,12 +102,6 @@ describe('routeCommand', () => {
     const result = routeCommand('markdownlint-cli2 README.md')
     expect(result?.action.action).toBe('deny')
     if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_qa')
-  })
-
-  it('just audit blueprint-lifecycle → passthrough (not deny)', async () => {
-    const routeCommand = await getRoute()
-    const result = routeCommand('just audit blueprint-lifecycle')
-    expect(result?.action.action).toBe('passthrough')
   })
 
   it('ak audit docs-frontmatter → passthrough', async () => {
@@ -195,7 +127,7 @@ describe('routeCommand', () => {
 
     // First call succeeds → deny
     vi.mocked(openSync).mockReturnValueOnce(3)
-    const first = routeCommand('just test', 'session-abc')
+    const first = routeCommand('vp exec vitest run', 'session-abc')
     expect(first?.action.action).toBe('deny')
 
     // Second call throws EEXIST → throttled, passthrough
@@ -204,7 +136,7 @@ describe('routeCommand', () => {
       err.code = 'EEXIST'
       throw err
     })
-    const second = routeCommand('just test', 'session-abc')
+    const second = routeCommand('vp exec vitest run', 'session-abc')
     expect(second?.action.action).toBe('passthrough')
   })
 
@@ -216,7 +148,7 @@ describe('routeCommand', () => {
       err.code = 'ENOTSUP'
       throw err
     })
-    const result = routeCommand('just test', 'session-nfs')
+    const result = routeCommand('vp exec vitest run', 'session-nfs')
     expect(result?.action.action).toBe('deny')
   })
 })

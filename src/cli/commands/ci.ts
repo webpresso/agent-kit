@@ -59,13 +59,19 @@ export function registerCiCommand(cli: CAC): void {
     .option('--chef-url <url>', 'CHEF_CI_URL passed to the act container')
     .option('--chef-token <token>', 'CHEF_CI_TOKEN override')
     .option('--allow-local-chef-token', 'Allow deterministic local chef token fallback (default)')
-    .option('--allow-host-mutation', 'Pass act --bind so workflow steps can mutate the host checkout (default)')
+    .option(
+      '--allow-host-mutation',
+      'Pass act --bind so workflow steps can mutate the host checkout (default)',
+    )
     .option('--container-architecture <arch>', 'act container architecture override')
     .option('--platform-image <image>', 'act runner image for ubicloud-standard-2')
     .option('--event-path <path>', 'Use an existing event JSON file')
     .option('--execute', 'Run act; default is dry-run')
     .option('--dry-run', 'Print the resolved act command without executing it')
-    .option('--direct', 'Debug mode: bypass the repo secret wrapper and call the act adapter directly')
+    .option(
+      '--direct',
+      'Debug mode: bypass the repo secret wrapper and call the act adapter directly',
+    )
     .action((action: string, flags: Record<string, unknown>) => {
       if (action !== 'act') {
         process.stderr.write(`Unknown ci action: ${action}. Use 'act'.\n`)
@@ -90,7 +96,10 @@ export function registerCiCommand(cli: CAC): void {
     })
 }
 
-export function buildCiActCommand(options: CiActOptions = {}, cwd = process.cwd()): CiCommandConfig {
+export function buildCiActCommand(
+  options: CiActOptions = {},
+  cwd = process.cwd(),
+): CiCommandConfig {
   const actPath = resolve(cwd, ACT_ADAPTER_PATH)
   const withSecretsPath = resolve(cwd, WITH_SECRETS_PATH)
   const adapterArgs = ['bun', actPath, '--workflow', options.workflow || 'ci-e2e']

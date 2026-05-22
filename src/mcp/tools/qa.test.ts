@@ -84,10 +84,7 @@ describe('ak_qa tool', () => {
         ),
       )
       testHandler.mockImplementation(() =>
-        delayedResolve(
-          wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
-          100,
-        ),
+        delayedResolve(wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }), 100),
       )
 
       const resultPromise = akQaTool.handler({})
@@ -119,7 +116,7 @@ describe('ak_qa tool', () => {
       errorCount: 0,
       errors: [],
     }
-    const testPayload = { passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }
+    const testPayload = { passed: true, summary: 'tests passed', exitCode: 0 }
 
     lintHandler.mockResolvedValue(wrapPayload(lintPayload))
     typecheckHandler.mockResolvedValue(wrapPayload(typecheckPayload))
@@ -136,7 +133,6 @@ describe('ak_qa tool', () => {
           passed: boolean
           summary: string
           exitCode: number
-          backend: string
           failures: unknown[]
         }
       }
@@ -155,7 +151,6 @@ describe('ak_qa tool', () => {
       passed: true,
       summary: 'tests passed',
       exitCode: 0,
-      backend: 'pnpm',
       failures: [],
     })
   })
@@ -219,7 +214,6 @@ describe('ak_qa tool', () => {
           failures: [{ file: 'src/a.test.ts', message: 'expected 1 to be 2', code: 'ASSERT' }],
           nested: { giant: ['payload'] },
         },
-        backend: 'pnpm',
         exitCode: 1,
       }),
     )
@@ -272,7 +266,6 @@ describe('ak_qa tool', () => {
           perTest: nestedFailures,
         },
         rawOutput: 'x'.repeat(200000),
-        backend: 'pnpm',
         exitCode: 1,
       }),
     )
@@ -338,7 +331,7 @@ describe('ak_qa tool', () => {
       }),
     )
     testHandler.mockResolvedValue(
-      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }),
     )
 
     const result = await akQaTool.handler({})
@@ -374,7 +367,6 @@ describe('ak_qa tool', () => {
         summary: 'tests failed',
         rawOutput: 'boom',
         exitCode: 1,
-        backend: 'pnpm',
       }),
     )
 
@@ -407,7 +399,7 @@ describe('ak_qa tool', () => {
       wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
     )
     testHandler.mockResolvedValue(
-      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }),
     )
 
     const result = await akQaTool.handler({})
@@ -433,7 +425,7 @@ describe('ak_qa tool', () => {
       wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
     )
     testHandler.mockResolvedValue(
-      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }),
     )
 
     const result = await akQaTool.handler({})
@@ -460,7 +452,7 @@ describe('ak_qa tool', () => {
       wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
     )
     testHandler.mockResolvedValue(
-      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }),
     )
 
     await akQaTool.handler({ files: ['a.ts'], packages: ['p1'] })
@@ -482,7 +474,7 @@ describe('ak_qa tool', () => {
       wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
     )
     testHandler.mockResolvedValue(
-      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }),
     )
 
     const result = await akQaTool.handler({})
@@ -504,7 +496,7 @@ describe('ak_qa tool', () => {
       wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
     )
     testHandler.mockResolvedValue(
-      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }),
     )
 
     const result = await akQaTool.handler({})
@@ -522,7 +514,7 @@ describe('ak_qa tool', () => {
       wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
     )
     testHandler.mockResolvedValue(
-      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }),
     )
 
     const result = await akQaTool.handler({ cwd: '/some/repo' })
@@ -553,7 +545,7 @@ describe('ak_qa tool', () => {
       wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
     )
     testHandler.mockResolvedValue(
-      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }),
     )
 
     const result = await akQaTool.handler({ cwd: '/some/repo' })
@@ -578,7 +570,7 @@ describe('ak_qa tool', () => {
       wrapPayload({ passed: true, summary: 'typecheck passed', errorCount: 0, errors: [] }),
     )
     testHandler.mockResolvedValue(
-      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }),
     )
 
     const result = await akQaTool.handler({ cwd: '/some/repo' })

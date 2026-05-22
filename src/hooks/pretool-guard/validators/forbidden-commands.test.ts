@@ -16,7 +16,7 @@ import {
   generateRules,
   getCommandCategory,
   getCommandVariants,
-  getJustEquivalent,
+  getApprovedEquivalent,
   SKIP_ENV_VAR,
   AUDIT_MODE_ENV,
   SUGGESTION_MODIFIERS,
@@ -72,18 +72,18 @@ describe('generateRules', () => {
     }
   })
 
-  it('includes pnpm exec vitest as a blocked rule', () => {
+  it('includes vp exec vitest as a blocked rule', () => {
     const rules = generateRules()
-    const vitestRule = rules.find((r) => r.pattern.test('pnpm exec vitest'))
+    const vitestRule = rules.find((r) => r.pattern.test('vp exec vitest'))
     expect(vitestRule).toBeDefined()
-    expect(vitestRule!.suggestion).toContain('just test')
+    expect(vitestRule!.suggestion).toContain('ak_test')
   })
 
-  it('includes pnpm run test as a blocked rule', () => {
+  it('includes vp run test as a blocked rule', () => {
     const rules = generateRules()
-    const testScriptRule = rules.find((r) => r.pattern.test('pnpm run test'))
+    const testScriptRule = rules.find((r) => r.pattern.test('vp run test'))
     expect(testScriptRule).toBeDefined()
-    expect(testScriptRule!.suggestion).toContain('just test')
+    expect(testScriptRule!.suggestion).toContain('ak_test')
   })
 
   it('includes doppler run as a blocked rule', () => {
@@ -92,17 +92,17 @@ describe('generateRules', () => {
     expect(dopplerRule).toBeDefined()
   })
 
-  it('includes npx as a blocked rule', () => {
+  it('includes vp exec as a blocked rule', () => {
     const rules = generateRules()
-    const npxRule = rules.find((r) => r.pattern.test('npx something'))
-    expect(npxRule).toBeDefined()
+    const vpExecRule = rules.find((r) => r.pattern.test('vp exec something'))
+    expect(vpExecRule).toBeDefined()
   })
 
-  it('includes just lint-md as a blocked rule that points at qa', () => {
+  it('includes vp exec markdownlint-cli2 as a blocked rule that points at qa', () => {
     const rules = generateRules()
-    const rule = rules.find((r) => r.pattern.test('just lint-md README.md'))
+    const rule = rules.find((r) => r.pattern.test('vp exec markdownlint-cli2 README.md'))
     expect(rule).toBeDefined()
-    expect(rule!.suggestion).toContain('just qa')
+    expect(rule!.suggestion).toContain('ak_qa')
   })
 })
 
@@ -110,20 +110,20 @@ describe('generateRules', () => {
 // findMatchingRule
 // ---------------------------------------------------------------------------
 describe('findMatchingRule', () => {
-  it('matches pnpm vitest and returns the correct rule', () => {
-    const rule = findMatchingRule('pnpm vitest')
+  it('matches vp vitest and returns the correct rule', () => {
+    const rule = findMatchingRule('vp vitest')
     expect(rule).toBeDefined()
-    expect(rule!.suggestion).toContain('just test')
+    expect(rule!.suggestion).toContain('ak_test')
   })
 
-  it('matches pnpm run test', () => {
-    const rule = findMatchingRule('pnpm run test')
+  it('matches vp run test', () => {
+    const rule = findMatchingRule('vp run test')
     expect(rule).toBeDefined()
-    expect(rule!.suggestion).toContain('just test')
+    expect(rule!.suggestion).toContain('ak_test')
   })
 
-  it('matches pnpm exec tsc', () => {
-    const rule = findMatchingRule('pnpm exec tsc')
+  it('matches vp exec tsc', () => {
+    const rule = findMatchingRule('vp exec tsc')
     expect(rule).toBeDefined()
     expect(rule!.category).toBe('typecheck')
   })
@@ -133,109 +133,109 @@ describe('findMatchingRule', () => {
     expect(rule).toBeDefined()
   })
 
-  it('matches npx command', () => {
-    const rule = findMatchingRule('npx some-tool')
+  it('matches vp exec command', () => {
+    const rule = findMatchingRule('vp exec some-tool')
     expect(rule).toBeDefined()
     expect(rule!.category).toBe('unknown')
   })
 
-  it('matches bunx command', () => {
-    const rule = findMatchingRule('bunx drizzle-kit generate')
+  it('matches vp exec command', () => {
+    const rule = findMatchingRule('vp exec drizzle-kit generate')
     expect(rule).toBeDefined()
   })
 
-  it('matches pnpm exec vitest with arguments', () => {
-    const rule = findMatchingRule('pnpm exec vitest --run --reporter verbose')
+  it('matches vp exec vitest with arguments', () => {
+    const rule = findMatchingRule('vp exec vitest --run --reporter verbose')
     expect(rule).toBeDefined()
-    expect(rule!.suggestion).toContain('just test')
+    expect(rule!.suggestion).toContain('ak_test')
   })
 
-  it('matches pnpm --filter exec vitest with arguments', () => {
-    const rule = findMatchingRule('pnpm --filter @repo/platform-web exec vitest run')
+  it('matches vp --filter exec vitest with arguments', () => {
+    const rule = findMatchingRule('vp --filter @repo/platform-web exec vitest run')
     expect(rule).toBeDefined()
-    expect(rule!.suggestion).toContain('just test')
+    expect(rule!.suggestion).toContain('ak_test')
   })
 
-  it('matches pnpm --filter run test', () => {
-    const rule = findMatchingRule('pnpm --filter @repo/platform-web run test')
+  it('matches vp --filter run test', () => {
+    const rule = findMatchingRule('vp --filter @repo/platform-web run test')
     expect(rule).toBeDefined()
-    expect(rule!.suggestion).toContain('just test')
+    expect(rule!.suggestion).toContain('ak_test')
   })
 
-  it('matches pnpm --filter exec tsc', () => {
-    const rule = findMatchingRule('pnpm --filter @repo/platform-web exec tsc --noEmit')
-    expect(rule).toBeDefined()
-    expect(rule!.category).toBe('typecheck')
-  })
-
-  it('matches pnpm --filter exec oxlint', () => {
-    const rule = findMatchingRule('pnpm --filter @repo/platform-web exec oxlint .')
-    expect(rule).toBeDefined()
-    expect(rule!.category).toBe('lint')
-  })
-
-  it('matches pnpm -F exec vitest', () => {
-    const rule = findMatchingRule('pnpm -F @repo/platform-web exec vitest run')
-    expect(rule).toBeDefined()
-    expect(rule!.category).toBe('test')
-  })
-
-  it('matches pnpm --workspace-root exec tsc', () => {
-    const rule = findMatchingRule('pnpm --workspace-root exec tsc --noEmit')
+  it('matches vp --filter exec tsc', () => {
+    const rule = findMatchingRule('vp --filter @repo/platform-web exec tsc --noEmit')
     expect(rule).toBeDefined()
     expect(rule!.category).toBe('typecheck')
   })
 
-  it('matches pnpm -w exec oxlint', () => {
-    const rule = findMatchingRule('pnpm -w exec oxlint .')
+  it('matches vp --filter exec oxlint', () => {
+    const rule = findMatchingRule('vp --filter @repo/platform-web exec oxlint .')
     expect(rule).toBeDefined()
     expect(rule!.category).toBe('lint')
   })
 
-  it('matches pnpm --workspace-root run test', () => {
-    const rule = findMatchingRule('pnpm --workspace-root run test')
+  it('matches vp -F exec vitest', () => {
+    const rule = findMatchingRule('vp -F @repo/platform-web exec vitest run')
     expect(rule).toBeDefined()
     expect(rule!.category).toBe('test')
   })
 
-  it('matches pnpm --dir exec vitest', () => {
-    const rule = findMatchingRule('pnpm --dir apps/platform/web/platform-web exec vitest run')
-    expect(rule).toBeDefined()
-    expect(rule!.category).toBe('test')
-  })
-
-  it('matches pnpm -F run test', () => {
-    const rule = findMatchingRule('pnpm -F @repo/platform-web run test')
-    expect(rule).toBeDefined()
-    expect(rule!.category).toBe('test')
-  })
-
-  it('matches pnpm -C run test', () => {
-    const rule = findMatchingRule('pnpm -C apps/platform/web/platform-web run test')
-    expect(rule).toBeDefined()
-    expect(rule!.category).toBe('test')
-  })
-
-  it('matches pnpm --filter run lint --fix', () => {
-    const rule = findMatchingRule('pnpm --filter @repo/platform-web run lint --fix')
-    expect(rule).toBeDefined()
-    expect(rule!.category).toBe('lint')
-  })
-
-  it('matches pnpm --workspace-root run typecheck', () => {
-    const rule = findMatchingRule('pnpm --workspace-root run typecheck')
+  it('matches vp --workspace-root exec tsc', () => {
+    const rule = findMatchingRule('vp --workspace-root exec tsc --noEmit')
     expect(rule).toBeDefined()
     expect(rule!.category).toBe('typecheck')
   })
 
-  it('matches pnpm --dir run lint --fix', () => {
-    const rule = findMatchingRule('pnpm --dir apps/platform/web/platform-web run lint --fix')
+  it('matches vp -w exec oxlint', () => {
+    const rule = findMatchingRule('vp -w exec oxlint .')
     expect(rule).toBeDefined()
     expect(rule!.category).toBe('lint')
   })
 
-  it('returns undefined for an allowed command', () => {
-    expect(findMatchingRule('just test --package mypkg')).toBeUndefined()
+  it('matches vp --workspace-root run test', () => {
+    const rule = findMatchingRule('vp --workspace-root run test')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('test')
+  })
+
+  it('matches vp --dir exec vitest', () => {
+    const rule = findMatchingRule('vp --dir apps/platform/web/platform-web exec vitest run')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('test')
+  })
+
+  it('matches vp -F run test', () => {
+    const rule = findMatchingRule('vp -F @repo/platform-web run test')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('test')
+  })
+
+  it('matches vp -C run test', () => {
+    const rule = findMatchingRule('vp -C apps/platform/web/platform-web run test')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('test')
+  })
+
+  it('matches vp --filter run lint --fix', () => {
+    const rule = findMatchingRule('vp --filter @repo/platform-web run lint --fix')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('lint')
+  })
+
+  it('matches vp --workspace-root run typecheck', () => {
+    const rule = findMatchingRule('vp --workspace-root run typecheck')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('typecheck')
+  })
+
+  it('matches vp --dir run lint --fix', () => {
+    const rule = findMatchingRule('vp --dir apps/platform/web/platform-web run lint --fix')
+    expect(rule).toBeDefined()
+    expect(rule!.category).toBe('lint')
+  })
+
+  it('returns undefined for an unrelated vp command', () => {
+    expect(findMatchingRule('vp --version')).toBeUndefined()
   })
 
   it('returns undefined for empty command', () => {
@@ -247,41 +247,41 @@ describe('findMatchingRule', () => {
   })
 
   it('matches commands split by &&', () => {
-    const rule = findMatchingRule('echo done && pnpm run test')
+    const rule = findMatchingRule('echo done && vp run test')
     expect(rule).toBeDefined()
-    expect(rule!.suggestion).toContain('just test')
+    expect(rule!.suggestion).toContain('ak_test')
   })
 
   it('matches commands split by ;', () => {
-    const rule = findMatchingRule('ls; pnpm vitest')
+    const rule = findMatchingRule('ls; vp vitest')
     expect(rule).toBeDefined()
   })
 
   it('matches DATABASE_URL= inline env var', () => {
-    const rule = findMatchingRule('DATABASE_URL=postgres://... pnpm exec drizzle-kit push')
+    const rule = findMatchingRule('DATABASE_URL=postgres://... vp exec drizzle-kit push')
     expect(rule).toBeDefined()
   })
 
   it('does not match partial commands', () => {
-    expect(findMatchingRule('just lint')).toBeUndefined()
+    expect(findMatchingRule('vp linty')).toBeUndefined()
   })
 
-  it('matches bun run typecheck', () => {
-    const rule = findMatchingRule('bun run typecheck')
+  it('matches vp typecheck', () => {
+    const rule = findMatchingRule('vp typecheck')
     expect(rule).toBeDefined()
     expect(rule!.category).toBe('typecheck')
   })
 
-  it('matches pnpm exec oxlint', () => {
-    const rule = findMatchingRule('pnpm exec oxlint')
+  it('matches vp exec oxlint', () => {
+    const rule = findMatchingRule('vp exec oxlint')
     expect(rule).toBeDefined()
     expect(rule!.category).toBe('lint')
   })
 
-  it('matches just lint-md', () => {
-    const rule = findMatchingRule('just lint-md README.md')
+  it('matches vp exec markdownlint-cli2', () => {
+    const rule = findMatchingRule('vp exec markdownlint-cli2 README.md')
     expect(rule).toBeDefined()
-    expect(rule!.suggestion).toContain('just qa')
+    expect(rule!.suggestion).toContain('ak_qa')
   })
 })
 
@@ -290,79 +290,81 @@ describe('findMatchingRule', () => {
 // ---------------------------------------------------------------------------
 describe('applySuggestionModifiers', () => {
   it('returns the modifier suggestion when --fix flag is present for lint', () => {
-    const rule = { pattern: /^pnpm run lint/, category: 'lint' as const, suggestion: 'just lint' }
-    expect(applySuggestionModifiers('pnpm run lint --fix', rule)).toContain('--fix')
+    const rule = { pattern: /^vp run lint/, category: 'lint' as const, suggestion: 'vp run lint' }
+    expect(applySuggestionModifiers('vp run lint --fix', rule)).toContain('--fix')
   })
 
   it('returns the modifier suggestion when --write flag is present for lint', () => {
     const rule = {
-      pattern: /^pnpm exec oxlint/,
+      pattern: /^vp exec oxlint/,
       category: 'lint' as const,
-      suggestion: 'just lint',
+      suggestion: 'vp run lint',
     }
-    expect(applySuggestionModifiers('pnpm exec oxlint --write', rule)).toContain('--fix')
+    expect(applySuggestionModifiers('vp exec oxlint --write', rule)).toContain('--fix')
   })
 
   it('returns the modifier suggestion for --fix-dangerous flag', () => {
     const rule = {
-      pattern: /^pnpm exec oxfmt/,
+      pattern: /^vp exec oxfmt/,
       category: 'lint' as const,
-      suggestion: 'just format',
+      suggestion: 'ak_format MCP tool',
     }
-    expect(applySuggestionModifiers('pnpm exec oxfmt --fix-dangerous', rule)).toContain(
+    expect(applySuggestionModifiers('vp exec oxfmt --fix-dangerous', rule)).toContain(
       '--fix-unsafe',
     )
   })
 
   it('returns default suggestion when modifier does not match category', () => {
     const rule = {
-      pattern: /^pnpm exec stryker/,
+      pattern: /^vp exec stryker/,
       category: 'test' as const,
-      suggestion: 'just test --mutation',
+      suggestion: 'ak_test mutation workflow',
     }
-    expect(applySuggestionModifiers('pnpm exec stryker run', rule)).toBe('just test --mutation')
+    expect(applySuggestionModifiers('vp exec stryker run', rule)).toBe('ak_test mutation workflow')
   })
 
   it('returns default suggestion when no modifier pattern matches', () => {
     const rule = {
-      pattern: /^pnpm exec tsc/,
+      pattern: /^vp exec tsc/,
       category: 'typecheck' as const,
-      suggestion: 'just typecheck',
+      suggestion: 'ak_typecheck MCP tool with package/file scope',
     }
-    expect(applySuggestionModifiers('pnpm exec tsc --noEmit', rule)).toBe('just typecheck')
+    expect(applySuggestionModifiers('vp exec tsc --noEmit', rule)).toBe(
+      'ak_typecheck MCP tool with package/file scope',
+    )
   })
 })
 
 // ---------------------------------------------------------------------------
-// getJustEquivalent
+// getApprovedEquivalent
 // ---------------------------------------------------------------------------
-describe('getJustEquivalent', () => {
-  it('returns just equivalent for pnpm vitest', () => {
-    expect(getJustEquivalent('pnpm vitest')).toContain('just test')
+describe('getApprovedEquivalent', () => {
+  it('returns approved equivalent for vp vitest', () => {
+    expect(getApprovedEquivalent('vp vitest')).toContain('ak_test')
   })
 
-  it('returns just equivalent for pnpm run test', () => {
-    expect(getJustEquivalent('pnpm run test')).toContain('just test')
+  it('returns approved equivalent for vp run test', () => {
+    expect(getApprovedEquivalent('vp run test')).toContain('ak_test')
   })
 
-  it('returns just equivalent for pnpm exec tsc', () => {
-    expect(getJustEquivalent('pnpm exec tsc')).toContain('just typecheck')
+  it('returns approved equivalent for vp exec tsc', () => {
+    expect(getApprovedEquivalent('vp exec tsc')).toContain('ak_typecheck')
   })
 
-  it('returns just equivalent for pnpm exec oxlint', () => {
-    expect(getJustEquivalent('pnpm exec oxlint')).toContain('just lint')
+  it('returns approved equivalent for vp exec oxlint', () => {
+    expect(getApprovedEquivalent('vp exec oxlint')).toContain('ak_lint')
   })
 
-  it('returns just qa for just lint-md', () => {
-    expect(getJustEquivalent('just lint-md README.md')).toContain('just qa')
+  it('returns qa MCP guidance for vp exec markdownlint-cli2', () => {
+    expect(getApprovedEquivalent('vp exec markdownlint-cli2 README.md')).toContain('ak_qa')
   })
 
   it('returns generic message for unknown command', () => {
-    expect(getJustEquivalent('echo hello')).toBe('just <appropriate-recipe>')
+    expect(getApprovedEquivalent('echo hello')).toBe('repo-approved MCP/tooling entrypoint')
   })
 
   it('returns generic message for empty command', () => {
-    expect(getJustEquivalent('')).toBe('just <appropriate-recipe>')
+    expect(getApprovedEquivalent('')).toBe('repo-approved MCP/tooling entrypoint')
   })
 })
 
@@ -371,32 +373,32 @@ describe('getJustEquivalent', () => {
 // ---------------------------------------------------------------------------
 describe('getCommandVariants', () => {
   it('returns a single variant for a plain command', () => {
-    const variants = getCommandVariants('pnpm vitest')
-    expect(variants).toEqual(['pnpm vitest'])
+    const variants = getCommandVariants('vp vitest')
+    expect(variants).toEqual(['vp vitest'])
   })
 
   it('splits chained commands by &&', () => {
-    const variants = getCommandVariants('echo done && pnpm run test')
+    const variants = getCommandVariants('echo done && vp run test')
     expect(variants).toContain('echo done')
-    expect(variants).toContain('pnpm run test')
+    expect(variants).toContain('vp run test')
   })
 
   it('splits commands by ;', () => {
-    const variants = getCommandVariants('ls; pnpm vitest')
+    const variants = getCommandVariants('ls; vp vitest')
     expect(variants).toContain('ls')
-    expect(variants).toContain('pnpm vitest')
+    expect(variants).toContain('vp vitest')
   })
 
   it('splits commands by ||', () => {
-    const variants = getCommandVariants('pnpm vitest || echo failed')
-    expect(variants).toContain('pnpm vitest')
+    const variants = getCommandVariants('vp vitest || echo failed')
+    expect(variants).toContain('vp vitest')
     expect(variants).toContain('echo failed')
   })
 
   it('splits commands by |', () => {
-    const variants = getCommandVariants('pnpm vitest | grep FAIL')
-    expect(variants).toContain('pnpm vitest')
-    expect(variants).toContain('grep FAIL')
+    const variants = getCommandVariants('vp vitest | grep FAIL')
+    expect(variants).toContain('vp vitest')
+    expect(variants).not.toContain('grep FAIL')
   })
 
   it('returns empty array for empty string', () => {
@@ -407,18 +409,20 @@ describe('getCommandVariants', () => {
     expect(getCommandVariants('   ')).toEqual([])
   })
 
-  it('extracts before-pipe segments when command starts with just', () => {
-    const variants = getCommandVariants('just test --package foo | grep PASS')
-    expect(variants).toContain('just test --package foo')
-    // The just branch splits by logical operators but pipes are extracted
+  it('extracts before-pipe segments when command starts with vp', () => {
+    const variants = getCommandVariants('vp run test --package foo | grep PASS')
+    expect(variants).toContain('vp run test --package foo')
+    // The vp branch splits by logical operators but pipes are extracted
     // via the before-pipe logic, not as separate command variants
-    expect(variants).toContain('just test --package foo | grep PASS')
+    expect(variants).toContain('vp run test --package foo | grep PASS')
   })
 
-  it('splits just command segments by logical operators', () => {
-    const variants = getCommandVariants('just test --package foo && just typecheck --package foo')
-    expect(variants).toContain('just test --package foo')
-    expect(variants).toContain('just typecheck --package foo')
+  it('splits vp command segments by logical operators', () => {
+    const variants = getCommandVariants(
+      'vp run test --package foo && vp run typecheck --package foo',
+    )
+    expect(variants).toContain('vp run test --package foo')
+    expect(variants).toContain('vp run typecheck --package foo')
   })
 })
 
@@ -426,24 +430,24 @@ describe('getCommandVariants', () => {
 // getCommandCategory
 // ---------------------------------------------------------------------------
 describe('getCommandCategory', () => {
-  it('returns test for pnpm vitest', () => {
-    expect(getCommandCategory('pnpm vitest')).toBe('test')
+  it('returns test for vp vitest', () => {
+    expect(getCommandCategory('vp vitest')).toBe('test')
   })
 
-  it('returns lint for pnpm run lint', () => {
-    expect(getCommandCategory('pnpm run lint')).toBe('lint')
+  it('returns lint for vp run lint', () => {
+    expect(getCommandCategory('vp run lint')).toBe('lint')
   })
 
-  it('returns typecheck for pnpm exec tsc', () => {
-    expect(getCommandCategory('pnpm exec tsc')).toBe('typecheck')
+  it('returns typecheck for vp exec tsc', () => {
+    expect(getCommandCategory('vp exec tsc')).toBe('typecheck')
   })
 
-  it('returns unknown for npx command', () => {
-    expect(getCommandCategory('npx something')).toBe('unknown')
+  it('returns unknown for vp exec command', () => {
+    expect(getCommandCategory('vp exec something')).toBe('unknown')
   })
 
-  it('returns unknown for allowed command', () => {
-    expect(getCommandCategory('just test --package foo')).toBe('unknown')
+  it('returns unknown for unrelated vp command', () => {
+    expect(getCommandCategory('vp --version')).toBe('unknown')
   })
 
   it('returns unknown for empty command', () => {
@@ -456,13 +460,13 @@ describe('getCommandCategory', () => {
 // ---------------------------------------------------------------------------
 describe('createBlockedResult', () => {
   it('returns a failed validation result', () => {
-    const rule = findMatchingRule('pnpm vitest')!
-    const result = createBlockedResult('pnpm vitest', rule, { mcpReady: true })
+    const rule = findMatchingRule('vp vitest')!
+    const result = createBlockedResult('vp vitest', rule, { mcpReady: true })
     expect(result.validator).toBe(VALIDATOR_NAME)
     expect(result.passed).toBe(false)
-    expect(result.command).toBe('pnpm vitest')
+    expect(result.command).toBe('vp vitest')
     expect(result.category).toBe('test')
-    expect(result.message).toContain('pnpm vitest')
+    expect(result.message).toContain('vp vitest')
     expect(result.message).toContain('mcp__agent-kit__ak_test(...)')
     expect(result.message).toContain('Fallback if MCP unavailable:')
     expect(result.docsRef).toBeDefined()
@@ -470,19 +474,19 @@ describe('createBlockedResult', () => {
   })
 
   it('includes suggestion in the message', () => {
-    const rule = findMatchingRule('pnpm exec tsc')!
-    const result = createBlockedResult('pnpm exec tsc', rule, { mcpReady: false })
-    expect(result.suggestion).toContain('just typecheck')
+    const rule = findMatchingRule('vp exec tsc')!
+    const result = createBlockedResult('vp exec tsc', rule, { mcpReady: false })
+    expect(result.suggestion).toContain('ak_typecheck')
     expect(result.message).toContain(result.suggestion)
   })
 
   it('filters through suggestion modifiers', () => {
     const rule = {
-      pattern: /^pnpm exec oxfmt/,
+      pattern: /^vp exec oxfmt/,
       category: 'lint' as const,
-      suggestion: 'just format',
+      suggestion: 'ak_format MCP tool',
     }
-    const result = createBlockedResult('pnpm exec oxfmt --fix-dangerous', rule)
+    const result = createBlockedResult('vp exec oxfmt --fix-dangerous', rule)
     expect(result.suggestion).toContain('--fix-unsafe')
   })
 })
@@ -492,12 +496,12 @@ describe('createBlockedResult', () => {
 // ---------------------------------------------------------------------------
 describe('createAuditResult', () => {
   it('returns a passed result with audit prefix', () => {
-    const rule = findMatchingRule('pnpm vitest')!
-    const result = createAuditResult('pnpm vitest', rule, { mcpReady: true })
+    const rule = findMatchingRule('vp vitest')!
+    const result = createAuditResult('vp vitest', rule, { mcpReady: true })
     expect(result.validator).toBe(VALIDATOR_NAME)
     expect(result.passed).toBe(true)
     expect(result.message).toContain('[AUDIT] Would block')
-    expect(result.command).toBe('pnpm vitest')
+    expect(result.command).toBe('vp vitest')
     expect(result.message).toContain('mcp__agent-kit__ak_test(...)')
     expect(result.docsRef).toBeDefined()
   })
@@ -533,115 +537,113 @@ describe('validateForbiddenCommands', () => {
     expect(result.skipped).toBe(true)
   })
 
-  it('blocks pnpm vitest', () => {
-    const result = validateForbiddenCommands(bashInput('pnpm vitest'))
+  it('blocks vp vitest', () => {
+    const result = validateForbiddenCommands(bashInput('vp vitest'))
     expect(result.passed).toBe(false)
-    expect('command' in result && result.command).toBe('pnpm vitest')
-    expect('command' in result && result.suggestion).toContain('just test')
+    expect('command' in result && result.command).toBe('vp vitest')
+    expect('command' in result && result.suggestion).toContain('ak_test')
   })
 
-  it('blocks pnpm --filter exec vitest', () => {
+  it('blocks vp --filter exec vitest', () => {
     const result = validateForbiddenCommands(
-      bashInput('pnpm --filter @repo/platform-web exec vitest run'),
+      bashInput('vp --filter @repo/platform-web exec vitest run'),
     )
     expect(result.passed).toBe(false)
     expect('command' in result && result.command).toBe(
-      'pnpm --filter @repo/platform-web exec vitest run',
+      'vp --filter @repo/platform-web exec vitest run',
     )
   })
 
-  it('blocks pnpm --filter run test', () => {
-    const result = validateForbiddenCommands(bashInput('pnpm --filter @repo/platform-web run test'))
+  it('blocks vp --filter run test', () => {
+    const result = validateForbiddenCommands(bashInput('vp --filter @repo/platform-web run test'))
     expect(result.passed).toBe(false)
-    expect('command' in result && result.command).toBe('pnpm --filter @repo/platform-web run test')
+    expect('command' in result && result.command).toBe('vp --filter @repo/platform-web run test')
   })
 
-  it('blocks pnpm --filter exec oxlint', () => {
+  it('blocks vp --filter exec oxlint', () => {
     const result = validateForbiddenCommands(
-      bashInput('pnpm --filter @repo/platform-web exec oxlint .'),
+      bashInput('vp --filter @repo/platform-web exec oxlint .'),
     )
     expect(result.passed).toBe(false)
     expect('command' in result && result.command).toBe(
-      'pnpm --filter @repo/platform-web exec oxlint .',
+      'vp --filter @repo/platform-web exec oxlint .',
     )
   })
 
-  it('blocks pnpm -F exec vitest', () => {
+  it('blocks vp -F exec vitest', () => {
+    const result = validateForbiddenCommands(bashInput('vp -F @repo/platform-web exec vitest run'))
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.command).toBe('vp -F @repo/platform-web exec vitest run')
+  })
+
+  it('blocks vp --workspace-root exec tsc', () => {
+    const result = validateForbiddenCommands(bashInput('vp --workspace-root exec tsc --noEmit'))
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.command).toBe('vp --workspace-root exec tsc --noEmit')
+  })
+
+  it('blocks vp -w exec oxlint', () => {
+    const result = validateForbiddenCommands(bashInput('vp -w exec oxlint .'))
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.command).toBe('vp -w exec oxlint .')
+  })
+
+  it('blocks vp --workspace-root run test', () => {
+    const result = validateForbiddenCommands(bashInput('vp --workspace-root run test'))
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.command).toBe('vp --workspace-root run test')
+  })
+
+  it('blocks vp --dir exec vitest', () => {
     const result = validateForbiddenCommands(
-      bashInput('pnpm -F @repo/platform-web exec vitest run'),
-    )
-    expect(result.passed).toBe(false)
-    expect('command' in result && result.command).toBe('pnpm -F @repo/platform-web exec vitest run')
-  })
-
-  it('blocks pnpm --workspace-root exec tsc', () => {
-    const result = validateForbiddenCommands(bashInput('pnpm --workspace-root exec tsc --noEmit'))
-    expect(result.passed).toBe(false)
-    expect('command' in result && result.command).toBe('pnpm --workspace-root exec tsc --noEmit')
-  })
-
-  it('blocks pnpm -w exec oxlint', () => {
-    const result = validateForbiddenCommands(bashInput('pnpm -w exec oxlint .'))
-    expect(result.passed).toBe(false)
-    expect('command' in result && result.command).toBe('pnpm -w exec oxlint .')
-  })
-
-  it('blocks pnpm --workspace-root run test', () => {
-    const result = validateForbiddenCommands(bashInput('pnpm --workspace-root run test'))
-    expect(result.passed).toBe(false)
-    expect('command' in result && result.command).toBe('pnpm --workspace-root run test')
-  })
-
-  it('blocks pnpm --dir exec vitest', () => {
-    const result = validateForbiddenCommands(
-      bashInput('pnpm --dir apps/platform/web/platform-web exec vitest run'),
+      bashInput('vp --dir apps/platform/web/platform-web exec vitest run'),
     )
     expect(result.passed).toBe(false)
     expect('command' in result && result.command).toBe(
-      'pnpm --dir apps/platform/web/platform-web exec vitest run',
+      'vp --dir apps/platform/web/platform-web exec vitest run',
     )
   })
 
-  it('blocks pnpm -F run test', () => {
-    const result = validateForbiddenCommands(bashInput('pnpm -F @repo/platform-web run test'))
+  it('blocks vp -F run test', () => {
+    const result = validateForbiddenCommands(bashInput('vp -F @repo/platform-web run test'))
     expect(result.passed).toBe(false)
-    expect('command' in result && result.command).toBe('pnpm -F @repo/platform-web run test')
+    expect('command' in result && result.command).toBe('vp -F @repo/platform-web run test')
   })
 
-  it('blocks pnpm -C run test', () => {
+  it('blocks vp -C run test', () => {
     const result = validateForbiddenCommands(
-      bashInput('pnpm -C apps/platform/web/platform-web run test'),
+      bashInput('vp -C apps/platform/web/platform-web run test'),
     )
     expect(result.passed).toBe(false)
     expect('command' in result && result.command).toBe(
-      'pnpm -C apps/platform/web/platform-web run test',
+      'vp -C apps/platform/web/platform-web run test',
     )
   })
 
-  it('blocks pnpm --filter run lint --fix', () => {
+  it('blocks vp --filter run lint --fix', () => {
     const result = validateForbiddenCommands(
-      bashInput('pnpm --filter @repo/platform-web run lint --fix'),
+      bashInput('vp --filter @repo/platform-web run lint --fix'),
     )
     expect(result.passed).toBe(false)
     expect('command' in result && result.command).toBe(
-      'pnpm --filter @repo/platform-web run lint --fix',
+      'vp --filter @repo/platform-web run lint --fix',
     )
     expect('command' in result && result.suggestion).toContain('--fix')
   })
 
-  it('blocks pnpm --workspace-root run typecheck', () => {
-    const result = validateForbiddenCommands(bashInput('pnpm --workspace-root run typecheck'))
+  it('blocks vp --workspace-root run typecheck', () => {
+    const result = validateForbiddenCommands(bashInput('vp --workspace-root run typecheck'))
     expect(result.passed).toBe(false)
-    expect('command' in result && result.command).toBe('pnpm --workspace-root run typecheck')
+    expect('command' in result && result.command).toBe('vp --workspace-root run typecheck')
   })
 
-  it('blocks pnpm --dir run lint --fix', () => {
+  it('blocks vp --dir run lint --fix', () => {
     const result = validateForbiddenCommands(
-      bashInput('pnpm --dir apps/platform/web/platform-web run lint --fix'),
+      bashInput('vp --dir apps/platform/web/platform-web run lint --fix'),
     )
     expect(result.passed).toBe(false)
     expect('command' in result && result.command).toBe(
-      'pnpm --dir apps/platform/web/platform-web run lint --fix',
+      'vp --dir apps/platform/web/platform-web run lint --fix',
     )
     expect('command' in result && result.suggestion).toContain('--fix')
   })
@@ -653,7 +655,7 @@ describe('validateForbiddenCommands', () => {
         'utf8',
       ).trim()
 
-      expect(text.startsWith('"pnpm test" denied — use agent-kit MCP tool:')).toBe(true)
+      expect(text.startsWith('"vp run test" denied — use agent-kit MCP tool:')).toBe(true)
       expect(text).toContain('mcp__agent-kit__ak_test(...)')
       expect(text).toContain('Fallback if MCP unavailable:')
     }
@@ -690,12 +692,12 @@ describe('validateForbiddenCommands', () => {
       // Use CLAUDE_PROJECT_DIR instead of process.chdir() — chdir is not
       // supported in vitest worker threads (breaks Stryker perTest coverage).
       process.env.CLAUDE_PROJECT_DIR = dir
-      // Pin sentinel key so the readiness check finds the file we just wrote
+      // Pin sentinel key so the readiness check finds the file we approved wrote
       // regardless of the test runner's cwd.
       process.env.AK_MCP_SENTINEL_KEY = sentinelKey
       const sentinelMod = await import('#hooks/shared/mcp-sentinel')
       sentinelMod._resetProjectKeyCache()
-      const result = validateForbiddenCommands(bashInput('pnpm vitest'))
+      const result = validateForbiddenCommands(bashInput('vp vitest'))
       expect(result.passed).toBe(false)
       expect('message' in result && result.message).toContain('mcp__custom-server__tool_test(...)')
     } finally {
@@ -716,38 +718,38 @@ describe('validateForbiddenCommands', () => {
     }
   })
 
-  it('blocks pnpm run test', () => {
-    const result = validateForbiddenCommands(bashInput('pnpm run test'))
+  it('blocks vp run test', () => {
+    const result = validateForbiddenCommands(bashInput('vp run test'))
     expect(result.passed).toBe(false)
-    expect('command' in result && result.command).toBe('pnpm run test')
+    expect('command' in result && result.command).toBe('vp run test')
   })
 
-  it('blocks pnpm exec tsc', () => {
-    const result = validateForbiddenCommands(bashInput('pnpm exec tsc'))
+  it('blocks vp exec tsc', () => {
+    const result = validateForbiddenCommands(bashInput('vp exec tsc'))
     expect(result.passed).toBe(false)
     expect('command' in result && result.category).toBe('typecheck')
   })
 
-  it('blocks pnpm exec drizzle-kit', () => {
-    const result = validateForbiddenCommands(bashInput('pnpm exec drizzle-kit push'))
+  it('blocks vp exec drizzle-kit', () => {
+    const result = validateForbiddenCommands(bashInput('vp exec drizzle-kit push'))
     expect(result.passed).toBe(false)
-    expect('command' in result && result.suggestion).toContain('just db-push')
+    expect('command' in result && result.suggestion).toContain('database MCP/tooling')
   })
 
-  it('blocks npx commands', () => {
-    const result = validateForbiddenCommands(bashInput('npx whatever'))
+  it('blocks vp exec commands', () => {
+    const result = validateForbiddenCommands(bashInput('vp exec whatever'))
     expect(result.passed).toBe(false)
   })
 
   it('blocks DATABASE_URL= prefix commands', () => {
     const result = validateForbiddenCommands(
-      bashInput('DATABASE_URL=postgres://... pnpm exec drizzle-kit push'),
+      bashInput('DATABASE_URL=postgres://... vp exec drizzle-kit push'),
     )
     expect(result.passed).toBe(false)
   })
 
-  it('blocks pnpm exec oxlint', () => {
-    const result = validateForbiddenCommands(bashInput('pnpm exec oxlint'))
+  it('blocks vp exec oxlint', () => {
+    const result = validateForbiddenCommands(bashInput('vp exec oxlint'))
     expect(result.passed).toBe(false)
     expect('command' in result && result.category).toBe('lint')
   })
@@ -758,14 +760,14 @@ describe('validateForbiddenCommands', () => {
     expect('command' in result && result.category).toBe('lint')
   })
 
-  it('blocks pnpm run lint', () => {
-    const result = validateForbiddenCommands(bashInput('pnpm run lint'))
+  it('blocks vp run lint', () => {
+    const result = validateForbiddenCommands(bashInput('vp run lint'))
     expect(result.passed).toBe(false)
     expect('command' in result && result.category).toBe('lint')
   })
 
-  it('blocks pnpm exec stryker', () => {
-    const result = validateForbiddenCommands(bashInput('pnpm exec stryker run'))
+  it('blocks vp exec stryker', () => {
+    const result = validateForbiddenCommands(bashInput('vp exec stryker run'))
     expect(result.passed).toBe(false)
     expect('command' in result && result.category).toBe('test')
   })
@@ -776,30 +778,30 @@ describe('validateForbiddenCommands', () => {
     expect('command' in result && result.category).toBe('test')
   })
 
-  it('blocks bunx drizzle-kit', () => {
-    const result = validateForbiddenCommands(bashInput('bunx drizzle-kit generate'))
+  it('blocks vp exec drizzle-kit', () => {
+    const result = validateForbiddenCommands(bashInput('vp exec drizzle-kit generate'))
     expect(result.passed).toBe(false)
   })
 
-  it('allows just test', () => {
-    const result = validateForbiddenCommands(bashInput('just test --package mypkg'))
-    expect(result.passed).toBe(true)
-  })
-
-  it('allows just typecheck', () => {
-    const result = validateForbiddenCommands(bashInput('just typecheck --package mypkg'))
-    expect(result.passed).toBe(true)
-  })
-
-  it('allows just lint', () => {
-    const result = validateForbiddenCommands(bashInput('just lint --package mypkg'))
-    expect(result.passed).toBe(true)
-  })
-
-  it('blocks just lint-md so markdown-only lint routes through qa guidance', () => {
-    const result = validateForbiddenCommands(bashInput('just lint-md README.md'))
+  it('blocks scoped vp run test', () => {
+    const result = validateForbiddenCommands(bashInput('vp run test --package mypkg'))
     expect(result.passed).toBe(false)
-    expect('command' in result && result.suggestion).toContain('just qa')
+  })
+
+  it('blocks scoped vp run typecheck', () => {
+    const result = validateForbiddenCommands(bashInput('vp run typecheck --package mypkg'))
+    expect(result.passed).toBe(false)
+  })
+
+  it('blocks scoped vp run lint', () => {
+    const result = validateForbiddenCommands(bashInput('vp run lint --package mypkg'))
+    expect(result.passed).toBe(false)
+  })
+
+  it('blocks vp exec markdownlint-cli2 so markdown-only lint routes through qa guidance', () => {
+    const result = validateForbiddenCommands(bashInput('vp exec markdownlint-cli2 README.md'))
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.suggestion).toContain('ak_qa')
   })
 
   it('allows unrelated commands', () => {
@@ -824,13 +826,13 @@ describe('validateForbiddenCommands', () => {
     expect(result.passed).toBe(true)
   })
 
-  it('allows just db-push', () => {
-    const result = validateForbiddenCommands(bashInput('just db-push'))
+  it('allows approved db-push', () => {
+    const result = validateForbiddenCommands(bashInput('approved db-push'))
     expect(result.passed).toBe(true)
   })
 
   it('blocks commands chained with && that contain blocked commands', () => {
-    const result = validateForbiddenCommands(bashInput('echo done && pnpm run test'))
+    const result = validateForbiddenCommands(bashInput('echo done && vp run test'))
     expect(result.passed).toBe(false)
   })
 
@@ -839,8 +841,8 @@ describe('validateForbiddenCommands', () => {
     expect(result.passed).toBe(false)
   })
 
-  it('blocks pnpm exec tsgo', () => {
-    const result = validateForbiddenCommands(bashInput('pnpm exec tsgo'))
+  it('blocks vp exec tsgo', () => {
+    const result = validateForbiddenCommands(bashInput('vp exec tsgo'))
     expect(result.passed).toBe(false)
     expect('command' in result && result.category).toBe('typecheck')
   })
@@ -854,53 +856,31 @@ describe('validateForbiddenCommands', () => {
   it('blocks vp exec markdownlint-cli2', () => {
     const result = validateForbiddenCommands(bashInput('vp exec markdownlint-cli2 README.md'))
     expect(result.passed).toBe(false)
-    expect('command' in result && result.suggestion).toContain('just qa')
+    expect('command' in result && result.suggestion).toContain('ak_qa')
   })
 
   it('blocks prettier bare command', () => {
     const result = validateForbiddenCommands(bashInput('prettier README.md --write'))
     expect(result.passed).toBe(false)
     expect('command' in result && result.category).toBe('format')
-    expect('command' in result && result.suggestion).toContain('just format')
+    expect('command' in result && result.suggestion).toContain('ak_format')
   })
 
   it('blocks vp exec prettier', () => {
     const result = validateForbiddenCommands(bashInput('vp exec prettier README.md --write'))
     expect(result.passed).toBe(false)
     expect('command' in result && result.category).toBe('format')
-    expect('command' in result && result.suggestion).toContain('just format')
+    expect('command' in result && result.suggestion).toContain('ak_format')
   })
 
-  it('blocks bun run typecheck', () => {
-    const result = validateForbiddenCommands(bashInput('bun run typecheck'))
+  it('blocks vp run test', () => {
+    const result = validateForbiddenCommands(bashInput('vp run test'))
     expect(result.passed).toBe(false)
   })
 
-  it('blocks bun run test', () => {
-    const result = validateForbiddenCommands(bashInput('bun run test'))
+  it('blocks vp typecheck', () => {
+    const result = validateForbiddenCommands(bashInput('vp typecheck'))
     expect(result.passed).toBe(false)
-  })
-
-  it('blocks npm run test', () => {
-    const result = validateForbiddenCommands(bashInput('npm run test'))
-    expect(result.passed).toBe(false)
-  })
-
-  it('blocks pnpm typecheck', () => {
-    const result = validateForbiddenCommands(bashInput('pnpm typecheck'))
-    expect(result.passed).toBe(false)
-  })
-
-  it('blocks bun exec vitest', () => {
-    const result = validateForbiddenCommands(bashInput('bun exec vitest --run'))
-    // bun exec is not in the EXEC_RUNNERS list, so this may not be blocked
-    // Verify it exists in the rules first
-    const rule = findMatchingRule('bun exec vitest --run')
-    if (rule) {
-      expect(result.passed).toBe(false)
-    }
-    // If not blocked, check the pattern is reasonable
-    expect(result.validator).toBe(VALIDATOR_NAME)
   })
 })
 
@@ -1050,10 +1030,7 @@ describe('splitTopLevelCommands', () => {
   })
 
   it('splits pipe', () => {
-    expect(splitTopLevelCommands('pnpm vitest | grep FAIL')).toStrictEqual([
-      'pnpm vitest',
-      'grep FAIL',
-    ])
+    expect(splitTopLevelCommands('vp vitest | grep FAIL')).toStrictEqual(['vp vitest', 'grep FAIL'])
   })
 
   it('splits semicolon', () => {
@@ -1147,25 +1124,25 @@ describe('forbidden-commands edge cases', () => {
   })
 
   it('handles commands with leading/trailing whitespace', () => {
-    const rule = findMatchingRule('  pnpm vitest  ')
+    const rule = findMatchingRule('  vp vitest  ')
     expect(rule).toBeDefined()
-    expect(rule!.suggestion).toContain('just test')
+    expect(rule!.suggestion).toContain('ak_test')
   })
 
-  it('does not block just commands even if they contain blocklisted tool names', () => {
-    // "just vitest" itself isn't a valid just command, but the prefix "just " should
-    // cause it not to match the bare vitest pattern since it starts with "just "
+  it('does not block approved commands even if they contain blocklisted tool names', () => {
+    // "approved vitest" itself isn't a valid approved command, but the prefix "approved " should
+    // cause it not to match the bare vitest pattern since it starts with "approved "
     // Actually let's check: the pattern for bare vitest is /^vitest(\s|$)/
-    // So "just vitest" would NOT match it.
-    const rule = findMatchingRule('just vitest')
+    // So "approved vitest" would NOT match it.
+    const rule = findMatchingRule('approved vitest')
     expect(rule).toBeUndefined()
-    // However "just " prefix itself doesn't bypass all rules
+    // However "approved " prefix itself doesn't bypass all rules
     // The key question: does "vitest" have a bare runner pattern? Yes.
-    // But "just vitest" starts with "just " not "vitest", so the bare pattern won't match.
+    // But "approved vitest" starts with "approved " not "vitest", so the bare pattern won't match.
   })
 
-  it('matches pnpm exec oxlint with --fix flag', () => {
-    const rule = findMatchingRule('pnpm exec oxlint --fix')
+  it('matches vp exec oxlint with --fix flag', () => {
+    const rule = findMatchingRule('vp exec oxlint --fix')
     expect(rule).toBeDefined()
   })
 })

@@ -57,6 +57,7 @@ import { scaffoldExampleSkill } from './scaffolders/example-skill/index.js'
 import { ensureGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
 import { ensureOmx } from './scaffolders/omx/index.js'
+import { ensureOmc, OMC_SETUP_COMMAND } from './scaffolders/omc/index.js'
 import { ensureContextMode } from './scaffolders/context-mode/index.js'
 import { scaffoldOpencodePlugin } from './scaffolders/opencode-plugin/index.js'
 import { ensureRtk } from './scaffolders/rtk/index.js'
@@ -71,13 +72,14 @@ const PRESETS = [
   'example-skill',
   'gstack',
   'lore-commits',
+  'omc',
   'omx',
   'playwright-mcp',
   'rtk',
   'vision',
 ] as const
 type Preset = (typeof PRESETS)[number]
-const DEFAULT_PRESETS: readonly Preset[] = ['omx', 'gstack', 'vision', 'rtk']
+const DEFAULT_PRESETS: readonly Preset[] = ['omx', 'omc', 'gstack', 'vision', 'rtk']
 const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested')
 
 function parsePresets(withFlag: string | undefined): Preset[] {
@@ -460,6 +462,40 @@ export async function runInit(flags: InitFlags): Promise<number> {
       agentHooksResult = await scaffoldAgentHooks({ repoRoot: consumer.repoRoot, options })
     }
 
+    if (isCiEnvironment && presets.includes('omc')) {
+      console.log('  omc plugin: - skipped (CI environment)')
+    } else if (presets.includes('omc')) {
+      const omcResult = ensureOmc({
+        options,
+        scope: flags.project ? 'project' : 'user',
+      })
+      switch (omcResult.kind) {
+        case 'omc-installed':
+          console.log(
+            `  omc plugin: ✓ ${omcResult.scope}-scope plugin ensured (${omcResult.pluginId}); next in Claude Code: ${OMC_SETUP_COMMAND} --${omcResult.scope === 'project' ? 'local' : 'global'}`,
+          )
+          break
+        case 'omc-skipped-dry-run':
+          console.log('  omc plugin: skipped (--dry-run)')
+          break
+        case 'omc-skipped-opt-out':
+          console.log('  omc plugin: skipped (AK_SKIP_OMC=1)')
+          break
+        case 'omc-skipped-no-cli':
+          console.warn(
+            '  omc plugin: - skipped (claude not on PATH; OMC installs through Claude Code plugin marketplace only)',
+          )
+          break
+        case 'omc-failed':
+          console.warn(
+            `  omc plugin: ⚠ ${omcResult.step} exited with ${omcResult.exitCode}; ` +
+              `fallback: claude plugin marketplace add --scope ${omcResult.scope} https://github.com/Yeachan-Heo/oh-my-claudecode && ` +
+              `claude plugin install --scope ${omcResult.scope} ${omcResult.pluginId}`,
+          )
+          break
+      }
+    }
+
     // OMX setup can repair legacy duplicate hook trust-state blocks by
     // clearing all `[hooks.state]` entries before rehydrating its own hooks.
     // Re-apply agent-kit's trust hashes after that possible cleanup.
@@ -790,7 +826,7 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
     .option('--yes', 'Accept defaults, skip interactive prompts')
     .option('--cwd <dir>', 'Working tree to scaffold into (default: process.cwd())')
     .option('--strict', 'Abort if any compatibility check fails (default: warn and continue)')
-    .option('--project', 'Configure OMX in project scope instead of the default user scope')
+    .option('--project', 'Configure OMX/OMC in project scope instead of the default user scope')
     .action(async (flags: InitFlags) => {
       const code = await runInit(flags)
       if (code !== EXIT_SUCCESS) {

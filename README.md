@@ -1,6 +1,44 @@
 # webpresso
 
-> One command scaffolds a repo so every AI coding agent — Claude Code, Codex CLI, Cursor, Windsurf, Gemini, OpenCode — shares the same context, hooks, and quality gates. Edit a canonical `.agent/` once; `ak sync` propagates everywhere. MIT. Experimental (v0.x).
+> One command turns a repo into a shared workspace for AI coding agents: Claude Code, Codex CLI, Cursor, Windsurf, Gemini, and OpenCode get the same instructions, skills, hooks, planning files, and quality gates. Edit canonical `.agent/` content once; `ak sync` propagates it everywhere. MIT. Experimental (v0.x).
+
+## What problem does this solve?
+
+AI coding agents are powerful, but every repo tends to rebuild the same support
+system by hand: `AGENTS.md`, IDE-specific rules, hooks, MCP routing, skill
+catalogs, planning conventions, drift checks, and quality gates. Those surfaces
+then diverge across Claude Code, Codex, Cursor, Windsurf, Gemini, OpenCode, and
+local CI.
+
+Agent-kit packages that operating layer. The published package is
+`@webpresso/agent-kit`; it exposes the `wp`, `webpresso`, and `ak` CLI aliases
+that scaffold, sync, audit, and refresh the surfaces each tool expects.
+
+## What does webpresso do?
+
+- Scaffolds a repo-local `.agent/` source of truth plus `AGENTS.md`, blueprints,
+  docs templates, hooks, and gitignore protection for generated agent surfaces.
+- Emits that source of truth into each supported IDE/runtime surface, including
+  `.claude/`, `.codex/`, `.cursor/`, `.windsurf/`, `.gemini/`, `.opencode/`,
+  and `.agents/`.
+- Installs or refreshes companion workflow tools that stay owned by their own
+  projects, then wires them into the repo where appropriate.
+- Provides `ak_*` MCP tools and `wp` / `ak` CLI commands for tests, lint,
+  typecheck, E2E, audits, blueprints, skills, and tech-debt lifecycle work.
+
+## Companion tools and links
+
+webpresso is the glue layer, not a replacement for the tools below. Default
+setup installs or refreshes OMX, OMC, gstack, vision, and RTK; context-mode is
+opt-in.
+
+| Tool | Link | How it relates |
+| --- | --- | --- |
+| gstack | [gstack.lol](https://gstack.lol/) / [GitHub](https://github.com/garrytan/gstack) | Opinionated Claude Code and Codex workflow skills such as QA, review, release, design review, and office-hours style planning. |
+| OMX, `oh-my-codex` | [docs](https://oh-my-codex.dev/docs.html) / [GitHub](https://github.com/Yeachan-Heo/oh-my-codex) | Codex orchestration layer for tmux teams, durable workflow state, HUD/status surfaces, and persistent execution modes. |
+| OMC, `oh-my-claudecode` | [website](https://yeachan-heo.github.io/oh-my-claudecode-website/) / [GitHub](https://github.com/Yeachan-Heo/oh-my-claudecode) | Claude-side sibling to OMX. When `claude` is on `PATH`, default `wp setup` ensures the OMC Claude Code plugin marketplace install. |
+| context-mode | [GitHub](https://github.com/mksglu/context-mode) | Optional context-window and tool-output routing layer for teams that explicitly opt into `wp setup --with context-mode`. |
+| rulesync | [GitHub](https://github.com/dyoshikawa/rulesync) | Multi-runtime emission substrate used by agent-kit instead of reimplementing each IDE format. |
 
 ## Requires bun
 
@@ -14,19 +52,20 @@ curl -fsSL https://bun.sh/install | bash
 ## Install
 
 ```bash
-vp install -g webpresso
+vp install -g @webpresso/agent-kit
 ```
 
 > **Pinned-version / devDependency path** (Codex CLI, library consumers):
-> `vp install -D webpresso && vp exec wp setup`. See [docs/getting-started.md](./docs/getting-started.md)
-> for the full setup matrix. The legacy `@webpresso/agent-kit` package on GitHub
-> Packages is frozen — new releases are published to `webpresso` on public npmjs.org only.
+> `vp install -D @webpresso/agent-kit && vp exec wp setup`. See
+> [docs/getting-started.md](./docs/getting-started.md) for the full setup
+> matrix. The current published package is `@webpresso/agent-kit`; the
+> unscoped `webpresso` package is a placeholder and does not ship this CLI.
 
 ## First 5 minutes
 
 ```bash
 # 1. Install and set up
-vp install -g webpresso
+vp install -g @webpresso/agent-kit
 wp setup --with base-kit --with example-skill
 
 # 2. Compile to all 6 IDE surfaces
@@ -57,17 +96,11 @@ for multi-runtime emission (17 runtimes, MIT, 175k weekly downloads).
 
 **agent-kit does not reimplement what rulesync does well.** It adds the integration layer that rulesync doesn't own: blueprint lifecycle, drift audits, tech-debt compounding, and structured MCP surfaces.
 
-## The problem
-
-Every repo using AI coding agents needs the same scaffolding: an `AGENTS.md` operating contract, scoped rules, lifecycle hooks, slash-command skills, quality gates. Today each team hand-crafts this from scratch, surfaces drift across tools and repos, and the knowledge of *what to configure and why* lives in tribal memory rather than code.
-
-agent-kit is the catalog and the `ak` CLI that fixes that.
-
 ## Quick start
 
 ```bash
 # Global install (recommended — Claude Code, Codex CLI, Cursor, Windsurf, Gemini, OpenCode):
-vp install -g webpresso && wp setup
+vp install -g @webpresso/agent-kit && wp setup
 
 # Claude Code plugin:
 /plugin marketplace add webpresso/agent-kit
@@ -178,7 +211,7 @@ You get: hooks (PreToolUse, PostToolUse, Stop, SessionStart), the `ak` MCP serve
 ### Path B — global install + `wp setup`
 
 ```bash
-vp install -g webpresso
+vp install -g @webpresso/agent-kit
 wp setup
 ```
 
@@ -192,9 +225,9 @@ claude plugin install --scope user agent-kit@agent-kit
 claude plugin update --scope user agent-kit@agent-kit
 ```
 
-That means one `wp setup` run can wire both Codex's global MCP entry and Claude Code's user-global plugin state. Set `AK_SKIP_CLAUDE_PLUGIN=1` to opt out. See [`docs/getting-started.md`](./docs/getting-started.md) for the full setup matrix and [`docs/presets.md`](./docs/presets.md) for `--with` presets (`omx`, `gstack`, `context-mode`, `playwright-mcp`, `vision`, `lore-commits`, `rtk`, `base-kit`).
+That means one `wp setup` run can wire Codex's global MCP entry, Claude Code's user-global agent-kit plugin state, OMX, and OMC. Agent-kit uses OMC's Claude Code plugin marketplace path: when `claude` is on `PATH`, setup runs `claude plugin marketplace add --scope user https://github.com/Yeachan-Heo/oh-my-claudecode` and `claude plugin install --scope user oh-my-claudecode`; `wp setup --project` requests project-scoped OMX/OMC instead. Set `AK_SKIP_CLAUDE_PLUGIN=1` or `AK_SKIP_OMC=1` to opt out. See [`docs/getting-started.md`](./docs/getting-started.md) for the full setup matrix and [`docs/presets.md`](./docs/presets.md) for `--with` presets (`omx`, `omc`, `gstack`, `context-mode`, `playwright-mcp`, `vision`, `lore-commits`, `rtk`, `base-kit`).
 
-> **Pinned-version devDependency:** `vp install -D webpresso && vp exec wp setup`. `ak` is a working alias for all `wp` commands.
+> **Pinned-version devDependency:** `vp install -D @webpresso/agent-kit && vp exec wp setup`. `ak` is a working alias for all `wp` commands.
 
 ## IDE support matrix
 
@@ -213,7 +246,7 @@ That means one `wp setup` run can wire both Codex's global MCP entry and Claude 
 | Command | What it does |
 | --- | --- |
 | `ak setup` | Scaffold every IDE surface, install presets, idempotent |
-| `ak setup --with <preset>` | Comma-separated presets: `omx`, `gstack`, `context-mode`, `playwright-mcp`, `lore-commits`, `vision`, `rtk`, `base-kit` |
+| `ak setup --with <preset>` | Comma-separated presets: `omx`, `omc`, `gstack`, `context-mode`, `playwright-mcp`, `lore-commits`, `vision`, `rtk`, `base-kit` |
 | `ak sync` | Propagate canonical `.agent/` rules + skills to every IDE surface (`--check` for drift, no writes) |
 | `ak blueprint new "<goal>" --complexity M` | Create a new blueprint under `blueprints/draft/` |
 | `ak blueprint audit --all --strict` | Audit blueprint lifecycle states |

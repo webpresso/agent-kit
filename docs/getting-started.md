@@ -1,12 +1,17 @@
 ---
 type: guide
-last_updated: '2026-05-11'
+last_updated: '2026-05-22'
 ---
 
 # Getting started with `webpresso`
 
 This guide takes a fresh repo from zero to a fully wired blueprint +
 agent-surface setup in five minutes.
+
+webpresso solves the repo bootstrap problem for AI coding agents. It gives a
+project one canonical agent contract, then scaffolds the files, hooks, skills,
+MCP entries, quality gates, and planning surfaces that Claude Code, Codex CLI,
+Cursor, Windsurf, Gemini, OpenCode, and compatible agents expect.
 
 ## Prerequisites
 
@@ -16,22 +21,15 @@ agent-surface setup in five minutes.
   curl -fsSL https://bun.sh/install | bash
   ```
 - Node.js ≥24 (matches `package.json#engines`).
-- pnpm (or npm/bun — examples use pnpm).
+- Vite+ `vp` on `PATH` (agent-kit routes package and script workflows through `vp`).
 - A git repo.
 
 ## Install
 
 ```bash
-vp install -g webpresso
+vp install -g @webpresso/agent-kit
 ```
 
-pnpm / yarn / bun equivalents:
-
-```bash
-pnpm add -g webpresso
-# yarn global add webpresso
-# bun add -g webpresso
-```
 
 The `wp`, `webpresso`, and `ak` bins are now available globally:
 
@@ -41,9 +39,9 @@ ak --version   # alias — same binary
 ```
 
 > **Pinned-version devDependency path** (library imports, CI with reproducible
-> lockfiles): `vp install -D webpresso && vp exec wp setup`. The legacy
-> `@webpresso/agent-kit` package on GitHub Packages is frozen — use `webpresso`
-> from public npmjs.org for all new installs.
+> lockfiles): `vp install -D @webpresso/agent-kit && vp exec wp setup`. The
+> current published package is `@webpresso/agent-kit`; the unscoped
+> `webpresso` package is a placeholder and does not ship this CLI.
 
 ## Scaffold your repo
 
@@ -100,13 +98,23 @@ wp setup
 
 Default setup also wires in tooling that lives outside the skill catalog:
 
-- `omx` — chains `omx setup --yes --scope user` so the operator-workflow execution
+- [`omx`](https://oh-my-codex.dev/docs.html) / [`oh-my-codex`](https://github.com/Yeachan-Heo/oh-my-codex)
+  chains `omx setup --yes --scope user` so the operator-workflow execution
   layer is set up alongside agent-kit with shared user auth by default. Use
   `wp setup --project` to request project-scoped OMX setup instead. If `omx`
   is missing, setup first runs `vp install -g oh-my-codex` and then retries.
   Setup also repairs the managed `.gitignore` block so regenerated `.codex/`,
   `.omx/`, `.agent/`, and IDE projection outputs stay out of Git.
-- `gstack` — ensures the gstack skill registry is installed at
+- [`omc`](https://omc.vibetip.help/docs/getting-started) / [`oh-my-claudecode`](https://github.com/Yeachan-Heo/oh-my-claudecode)
+  is the Claude-side sibling to OMX. When `claude` is on `PATH`, setup ensures
+  OMC through Claude Code's plugin marketplace in user scope by default:
+  `claude plugin marketplace add --scope user https://github.com/Yeachan-Heo/oh-my-claudecode`
+  followed by `claude plugin install --scope user oh-my-claudecode`. Use
+  `wp setup --project` to request project-scoped OMC plugin installation.
+  Upstream also documents an npm runtime path (`oh-my-claude-sisyphus`), but
+  agent-kit uses the Claude Code plugin marketplace path for setup.
+- [`gstack`](https://gstack.lol/) / [`garrytan/gstack`](https://github.com/garrytan/gstack)
+  ensures the gstack skill registry is installed at
   `~/.claude/skills/gstack/` (clones + runs `./setup --team` if missing,
   no-op if already there). Provides `/qa`, `/ship`, `/review`, etc.
 - `vision` — drops a starter `VISION.md` at repo root from the agent-kit
@@ -220,36 +228,9 @@ wp compile
 
 Use `wp audit compile-drift` in CI to catch any surfaces that diverge from the `.agent/` source.
 
-## Add the dev command drop-in
+## Run project commands
 
-Repos that define an agent-kit dev manifest can import the packaged just
-wrappers:
-
-```just
-import 'node_modules/webpresso/just/dev-kit.just'
-```
-
-The drop-in exposes:
-
-- `just dev [target]` -> `ak dev [target]`
-- `just dev-doctor [target]` ->
-  `ak dev [target] --doctor`
-- `just dev-clean [target]` ->
-  `ak dev [target] --clean`
-- `just dev-restart [target]` ->
-  `ak dev [target] --restart`
-
-Manifest resolution is intentionally explicit:
-
-1. `ak dev --manifest <path>`
-2. `AK_APP_MANIFEST`
-3. `./app-manifest.yaml`
-4. error
-
-Consumer manifests own service commands, service groups, dependencies,
-readiness metadata, and any plain env passthrough values. Agent-kit does
-not read Webpresso host config, inject secrets, or assume a PM2-specific
-public contract.
+Use the repo-owned `vp` facade for package and script workflows. Agent-kit exposes portable wrappers for common quality gates, so prefer `wp test`, `wp lint`, `wp typecheck`, `wp format`, or the equivalent `vp run <script>` entry when the consumer repo defines one.
 
 ## Add a custom command or skill
 

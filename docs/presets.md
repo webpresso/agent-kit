@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-05-14'
+last_updated: '2026-05-22'
 ---
 
 # `ak setup --with` presets
@@ -8,7 +8,7 @@ last_updated: '2026-05-14'
 `--with <names>` accepts a comma-separated mix of two things:
 
 1. **Tier-3 skills** — opt-in skill packs from the agent-kit catalog (e.g. `tanstack-query`, `react-doctor`, `frontend-design`). Run `ak skill list` for the full list.
-2. **Presets** — named scaffolder modes that wire in additional tooling beyond the skill catalog. `omx`, `gstack`, and `vision` run by default on every `ak setup`; the rest are opt-in. Each preset is documented below.
+2. **Presets** — named scaffolder modes that wire in additional tooling beyond the skill catalog. `omx`, `omc`, `gstack`, `vision`, and `rtk` run by default on every `ak setup`; the rest are opt-in. Each preset is documented below.
 
 Presets and Tier-3 skills can be combined freely:
 
@@ -59,7 +59,7 @@ Writes `.husky/commit-msg` that enforces Lore Commit Protocol trailers via `ak a
 
 ### `omx`
 
-Chains `omx setup --yes --scope user` after the agent-kit scaffold completes. OMX (oh-my-codex) is the operator-workflow execution layer that complements agent-kit's plan/audit layer; agent-kit invokes `omx team` downstream during blueprint execution. Use `wp setup --project` to request `omx setup --yes --scope project` instead.
+Chains `omx setup --yes --scope user` after the agent-kit scaffold completes. [OMX](https://oh-my-codex.dev/docs.html) ([oh-my-codex on GitHub](https://github.com/Yeachan-Heo/oh-my-codex)) is the operator-workflow execution layer that complements agent-kit's plan/audit layer; agent-kit invokes `omx team` downstream during blueprint execution. Use `wp setup --project` to request `omx setup --yes --scope project` instead.
 
 **Detection:** `omx --version` on PATH; if missing, setup runs `vp install -g oh-my-codex` and probes again.
 **Failure modes:**
@@ -69,6 +69,27 @@ Chains `omx setup --yes --scope user` after the agent-kit scaffold completes. OM
 **Idempotency:** OMX manages its own state — every `ak setup` re-invokes `omx setup --yes --scope user`, which is itself idempotent. After OMX finishes, agent-kit also migrates deprecated Codex config entries from `[features].codex_hooks` to `[features].hooks` in `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`) so older OMX releases do not keep re-triggering Codex's deprecation warning.
 **Codex/OMX MCP persistence:** after `omx setup --yes --scope user`, agent-kit upserts the owned `[mcp_servers.playwright]` block in `$CODEX_HOME/config.toml` or `~/.codex/config.toml`. This gives both Codex and OMX a persistent Playwright MCP server for browser testing without relying on session-local tool state.
 **Side-effects:** OMX writes user-scoped Codex/OMX configuration and may persist `.omx/setup-scope.json` in the consumer repo. `wp setup` also repairs the managed `.gitignore` block for generated agent surfaces (`.codex/`, `.omx/`, `.agent/`, IDE projections) so re-running setup does not expose regenerated files as untracked. When default user-scoped setup migrates a repo that was previously project-scoped, agent-kit removes Git-tracked `.codex/` and `.omx/` files so repo-scoped OMX/Codex artifacts do not remain committed; untracked local runtime files are preserved. agent-kit also writes the global Codex Playwright MCP block described above and the one-line `codex_hooks` → `hooks` feature-flag migration when needed, preserving unrelated config.
+
+### `omc`
+
+Ensures [OMC / oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) is installed through Claude Code's plugin marketplace. OMC is the Claude Code sibling to OMX. It runs by default on every `ak setup` when the `claude` CLI is on `PATH`.
+
+**Install path:** agent-kit uses OMC's Claude Code plugin marketplace path. Upstream OMC also documents an npm runtime package (`oh-my-claude-sisyphus`), but `ak setup` does not use that path. Default setup runs:
+
+```bash
+claude plugin marketplace add --scope user https://github.com/Yeachan-Heo/oh-my-claudecode
+claude plugin install --scope user oh-my-claudecode
+```
+
+Use `wp setup --project` to request project-scoped OMC plugin installation instead.
+
+**After install:** run `/oh-my-claudecode:omc-setup --global` in Claude Code for user-wide OMC configuration, or `/oh-my-claudecode:omc-setup --local` when you intentionally want project-local OMC configuration.
+
+**Failure/skip modes:**
+- `claude` is not on `PATH` → setup warns and skips OMC, because agent-kit only drives the Claude Code plugin path
+- any plugin command exits non-zero → setup warns with the exact failing step and fallback command
+
+**Opt-out:** set `AK_SKIP_OMC=1` in the environment to skip.
 
 ### `playwright-mcp`
 
@@ -82,7 +103,7 @@ Upserts Playwright's MCP server into Codex's persistent MCP config. This is norm
 ### `context-mode`
 
 Configures the [context-mode](https://github.com/mksglu/context-mode) peer tool for
-Codex CLI and OpenCode. This preset runs by default and ensures `context-mode` is available on `PATH`; if missing, agent-kit installs it with `vp install -g context-mode` before patching config files.
+Codex CLI and OpenCode. This preset is opt-in; run `wp setup --with context-mode` when you want the `ctx_*` MCP tools and hook routing. It ensures `context-mode` is available on `PATH`; if missing, agent-kit installs it with `vp install -g context-mode` before patching config files.
 
 **Touches:**
 - `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`)
@@ -117,7 +138,7 @@ Codex CLI and OpenCode. This preset runs by default and ensures `context-mode` i
 
 ### `gstack`
 
-Ensures gstack's **canonical checkout** exists at `~/.claude/skills/gstack/`. This runs by default on every `ak setup`. If the directory is missing, setup clones from `https://github.com/garrytan/gstack.git` and runs `./setup --team`. When Codex is detected, agent-kit then runs gstack's official host-specific setup flow (`./setup --host codex`) from that same checkout so Codex skills materialize under `~/.codex/skills/`.
+Ensures [gstack](https://gstack.lol/)'s **canonical checkout** exists at `~/.claude/skills/gstack/` ([GitHub](https://github.com/garrytan/gstack)). This runs by default on every `ak setup`. If the directory is missing, setup clones from `https://github.com/garrytan/gstack.git` and runs `./setup --team`. When Codex is detected, agent-kit then runs gstack's official host-specific setup flow (`./setup --host codex`) from that same checkout so Codex skills materialize under `~/.codex/skills/`.
 
 **Detection:** path-based (`~/.claude/skills/gstack/setup` exists), NOT PATH-based.
 **Failure modes:**
@@ -159,7 +180,7 @@ environments without `brew` access, or platforms where RTK isn't yet packaged).
 
 ## Combining presets
 
-Presets run independently in the order: `context-mode`, `gstack`, `lore-commits`, `omx`, `playwright-mcp`, `rtk`, `vision`. The default preset set is `omx,gstack,vision,rtk`; `playwright-mcp` is also applied whenever `omx` runs. Specifying default presets explicitly is safe and idempotent. A failure in one does **not** skip subsequent presets — every preset gets a chance to run. The aggregate exit code reflects the worst failure across all presets.
+Presets run independently from the setup command's registered scaffolder flow. The default preset set is `omx,omc,gstack,vision,rtk`; `playwright-mcp` is also applied whenever `omx` runs. Specifying default presets explicitly is safe and idempotent. A failure in one does **not** skip subsequent presets — every preset gets a chance to run. The aggregate exit code reflects the worst failure across all presets.
 
 Example: `ak setup` with `omx` unavailable after the fallback install and a reusable gstack install root already present → omx logs an error, gstack still detects + reports `updated`, overall exit code is 1 (the omx failure dominates).
 
@@ -206,4 +227,4 @@ pre-commit check typically runs in under a second.
 
 ## Adding new presets
 
-Presets live under `src/cli/commands/init/scaffolders/<name>/index.ts` and are registered in the `PRESETS` const at `src/cli/commands/init/index.ts`. The CLI `--help` text reads from `PRESETS` directly so a new preset auto-surfaces in `ak setup --help`. Tests should follow the unit + integration + e2e pattern established by `omx/`, `gstack/`, and `runtime-check/`.
+Presets live under `src/cli/commands/init/scaffolders/<name>/index.ts` and are registered in the `PRESETS` const at `src/cli/commands/init/index.ts`. The CLI `--help` text reads from `PRESETS` directly so a new preset auto-surfaces in `ak setup --help`. Tests should follow the unit + integration + e2e pattern established by `omx/`, `omc/`, `gstack/`, and `runtime-check/`.

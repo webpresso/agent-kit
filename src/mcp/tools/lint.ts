@@ -1,21 +1,17 @@
 /**
  * `ak_lint` MCP tool.
  *
- * Runs `oxlint` (preferred — fast, structured JSON output) on the supplied
- * files (or `.` when none are given). When the `oxlint` binary is absent on
- * PATH, falls back to `vp run lint`. Returns a structured payload:
+ * Runs `vp lint` on the supplied files (or `.` when none are given). Returns a
+ * structured payload:
  *
  *   {
  *     passed: boolean,
  *     issues: Array<{file, line, rule, message}>,
- *     backend: 'oxlint' | 'vp',
  *     exitCode: number,
- *     output?: string,   // only on the vp fallback
  *   }
  *
- * The vp fallback intentionally does NOT parse output — `vp run lint` aggregates
- * heterogeneous per-package linters whose stdout shapes differ. Raw output is
- * passed through in `output` for human inspection.
+ * `vp lint --format=json` forwards to the bundled Oxlint engine while keeping
+ * the repo command surface on the `vp` facade.
  */
 
 import { z } from 'zod'
@@ -25,7 +21,7 @@ import { applyOutputTransform } from '#output-transforms/index'
 
 import { resolveProjectRoot } from './_shared/project-root.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
-import { isMissingBinary, isRunFailure, runCommand } from './_shared/run-command.js'
+import { isRunFailure, runCommand } from './_shared/run-command.js'
 
 const inputSchema = z.object({
   cwd: z.string().optional(),
@@ -43,7 +39,6 @@ const lintIssueSchema = z.object({
 })
 
 const outputSchema = createSummaryOutputSchema({
-  backend: z.enum(['oxlint', 'vp']),
   counts: z.object({
     issueCount: z.number(),
   }),
@@ -181,27 +176,26 @@ function extractJsonObjectOrArray(raw: string): string | undefined {
 
 function summarizeLintResult(options: {
   passed: boolean
-  backend: 'oxlint' | 'vp'
   issueCount: number
   exitCode: number
   parseError?: string
   timedOut?: boolean
   aborted?: boolean
 }): string {
-  if (options.timedOut) return `lint timed out via ${options.backend}`
-  if (options.aborted) return `lint aborted via ${options.backend}`
-  if (options.parseError) return `lint failed: could not parse ${options.backend} output`
-  if (options.passed) return `lint passed via ${options.backend}`
+  if (options.timedOut) return 'lint timed out via vp lint'
+  if (options.aborted) return 'lint aborted via vp lint'
+  if (options.parseError) return 'lint failed: could not parse vp lint output'
+  if (options.passed) return 'lint passed via vp lint'
   if (options.issueCount > 0) {
-    return `lint failed with ${options.issueCount} issue${options.issueCount === 1 ? '' : 's'} via ${options.backend}`
+    return `lint failed with ${options.issueCount} issue${options.issueCount === 1 ? '' : 's'} via vp lint`
   }
-  return `lint failed via ${options.backend} (exit ${options.exitCode})`
+  return `lint failed via vp lint (exit ${options.exitCode})`
 }
 
 const tool: ToolDescriptor = {
   name: 'ak_lint',
   description:
-    'Run lint via `oxlint` (fast, structured JSON output) with `vp run lint` as a fallback when oxlint is not on PATH. Returns `{passed, issues: [{file, line, rule, message}]}`.',
+    'Run lint via the `vp lint` facade. Returns `{passed, issues: [{file, line, rule, message}]}`.',
   inputSchema,
   outputSchema,
   annotations: {
@@ -220,112 +214,58 @@ const tool: ToolDescriptor = {
       cwd,
     }
 
-    const oxlintArgs: string[] = ['--format=json']
-    if (input.fix) oxlintArgs.push('--fix')
+    const lintArgs: string[] = ['lint', '--format=json']
+    if (input.fix) lintArgs.push('--fix')
     if (input.files && input.files.length > 0) {
-      oxlintArgs.push(...input.files)
+      lintArgs.push(...input.files)
     } else {
-      oxlintArgs.push('.')
+      lintArgs.push('.')
     }
 
-    const oxlintOutcome = await runCommand('oxlint', oxlintArgs, runOptions)
+    const vpOutcome = await runCommand('vp', lintArgs, runOptions)
 
-    if (!isRunFailure(oxlintOutcome)) {
-      const { issues, parseError } = parseOxlintIssues(oxlintOutcome.stdout)
+    if (!isRunFailure(vpOutcome)) {
+      const { issues, parseError } = parseOxlintIssues(vpOutcome.stdout)
       const { transform: _transform, ...compact } = applyOutputTransform(
-        oxlintOutcome.stdout || oxlintOutcome.stderr,
+        vpOutcome.stdout || vpOutcome.stderr,
         {
-          toolName: 'ak_lint-oxlint',
+          toolName: 'ak_lint-vp',
         },
       )
       const payload = {
-        passed: oxlintOutcome.exitCode === 0,
+        passed: vpOutcome.exitCode === 0,
         summary: summarizeLintResult({
-          passed: oxlintOutcome.exitCode === 0,
-          backend: 'oxlint',
+          passed: vpOutcome.exitCode === 0,
           issueCount: issues.length,
-          exitCode: oxlintOutcome.exitCode,
+          exitCode: vpOutcome.exitCode,
           parseError,
-          timedOut: oxlintOutcome.timedOut,
-          aborted: oxlintOutcome.aborted,
+          timedOut: vpOutcome.timedOut,
+          aborted: vpOutcome.aborted,
         }),
-        backend: 'oxlint' as const,
-        exitCode: oxlintOutcome.exitCode,
+        exitCode: vpOutcome.exitCode,
         counts: { issueCount: issues.length },
         details: {
           issues,
           parseError,
         },
         ...compact,
-        timedOut: oxlintOutcome.timedOut || undefined,
-        aborted: oxlintOutcome.aborted || undefined,
+        timedOut: vpOutcome.timedOut || undefined,
+        aborted: vpOutcome.aborted || undefined,
       }
       return createSummaryResult(payload)
     }
 
-    // Only fall back to vp run lint when oxlint is genuinely missing on PATH.
-    // Other spawn errors (EPERM, EAGAIN, ELOOP) are real failures and should
-    // surface — silently routing them to pnpm masks setup bugs.
-    if (!isMissingBinary(oxlintOutcome)) {
-      const payload = {
-        passed: false,
-        summary: 'lint could not start: oxlint spawn failed',
-        backend: 'oxlint' as const,
-        exitCode: 1,
-        counts: { issueCount: 0 },
-        details: {
-          issues: [] as LintIssue[],
-          spawnError: `oxlint spawn failed: ${oxlintOutcome.error.code ?? 'unknown'} ${oxlintOutcome.error.message}`,
-        },
-      }
-      // `isError: true` per MCP spec — the tool didn't run, the agent can't
-      // resolve this by changing inputs. Distinct from "lint found issues."
-      return createSummaryResult(payload, { isError: true })
-    }
-
-    const vpOutcome = await runCommand('vp', ['run', 'lint'], runOptions)
-    if (isRunFailure(vpOutcome)) {
-      const payload = {
-        passed: false,
-        summary: 'lint could not start: vp run lint spawn failed',
-        backend: 'vp' as const,
-        exitCode: 1,
-        counts: { issueCount: 0 },
-        details: {
-          issues: [] as LintIssue[],
-          spawnError: `oxlint missing and vp spawn failed: ${vpOutcome.error.message}`,
-        },
-      }
-      return createSummaryResult(payload, { isError: true })
-    }
-
-    const { transform: _transform, ...compact } = applyOutputTransform(
-      [vpOutcome.stdout, vpOutcome.stderr].filter(Boolean).join(''),
-      {
-        toolName: 'ak_lint-vp',
-      },
-    )
     const payload = {
-      passed: vpOutcome.exitCode === 0,
-      summary: summarizeLintResult({
-        passed: vpOutcome.exitCode === 0,
-        backend: 'vp',
-        issueCount: 0,
-        exitCode: vpOutcome.exitCode,
-        timedOut: vpOutcome.timedOut,
-        aborted: vpOutcome.aborted,
-      }),
-      backend: 'vp' as const,
-      exitCode: vpOutcome.exitCode,
+      passed: false,
+      summary: 'lint could not start: vp lint spawn failed',
+      exitCode: 1,
       counts: { issueCount: 0 },
       details: {
         issues: [] as LintIssue[],
+        spawnError: `vp lint spawn failed: ${vpOutcome.error.code ?? 'unknown'} ${vpOutcome.error.message}`,
       },
-      ...compact,
-      timedOut: vpOutcome.timedOut || undefined,
-      aborted: vpOutcome.aborted || undefined,
     }
-    return createSummaryResult(payload)
+    return createSummaryResult(payload, { isError: true })
   },
 }
 

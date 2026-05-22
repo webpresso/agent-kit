@@ -134,8 +134,8 @@ describe('mcp server integration', () => {
     expect(akTest?.inputSchema.properties).toMatchObject({
       packages: expect.any(Object),
       files: expect.any(Object),
-      backend: expect.any(Object),
     })
+    expect(akTest?.inputSchema.properties).not.toHaveProperty('backend')
     expect(akTest?.inputSchema.properties).not.toHaveProperty('suite')
     expect(akTest?.outputSchema?.properties).toMatchObject({
       passed: expect.any(Object),

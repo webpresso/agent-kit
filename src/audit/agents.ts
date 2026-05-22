@@ -316,7 +316,7 @@ function checkSetupAgentScript(
 ): void {
   const scripts = (packageJson.scripts ?? {}) as Record<string, unknown>
   const actual = typeof scripts['setup:agent'] === 'string' ? scripts['setup:agent'] : undefined
-  const expected = overrideCommand ?? 'ak setup'
+  const expected = overrideCommand ?? 'wp setup'
 
   if (actual !== expected) {
     violations.push({
@@ -340,10 +340,10 @@ function checkAgentKitDevDependency(
   const setupAgent = typeof scripts['setup:agent'] === 'string' ? scripts['setup:agent'] : ''
   const postinstall = typeof scripts.postinstall === 'string' ? scripts.postinstall : ''
 
-  const usesGlobalAkConsumerMode =
-    setupAgent === 'ak setup' && postinstall.includes('run-agent-kit-bin.ts restore-dev-links')
+  const usesGlobalWpConsumerMode =
+    setupAgent === 'wp setup' && postinstall.includes('run-agent-kit-bin.ts restore-dev-links')
 
-  if (usesGlobalAkConsumerMode) {
+  if (usesGlobalWpConsumerMode) {
     return
   }
 

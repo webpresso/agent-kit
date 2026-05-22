@@ -122,7 +122,7 @@ describe('docs-linter validation pipeline (e2e)', () => {
     expect(exitCode).toBe(0)
   })
 
-  it('validates multiple files and reports errors from any', async () => {
+  it('validates multiple files and reports partial failures from any invalid doc', async () => {
     const goodFile = writeTempFile('good.md', '# Good Doc\n\nAll good here.\n')
     const badFile = writeTempFile('bad.md', '# Bad Doc\n\nSee [missing](./no-such-file.md).\n')
 

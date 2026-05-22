@@ -1,34 +1,3 @@
-<!--
-  AGENTS.md template.
-
-  `ak setup` renders this file with:
-  - - `@webpresso/agent-docs-lint` — `packages/agent-docs-lint`
-- `@webpresso/agent-e2e-preset` — `packages/agent-e2e-preset`
-- `@webpresso/agent-kit` — `.`
-- `@webpresso/agent-launch` — `packages/agent-launch`
-- `@webpresso/agent-oxlint` — `packages/agent-oxlint`
-- `@webpresso/agent-stryker` — `packages/agent-stryker`
-- `@webpresso/agent-test-preset` — `packages/agent-test-preset`
-- `@webpresso/agent-tsconfig` — `packages/agent-tsconfig`
-- `@webpresso/agent-vitest` — `packages/agent-vitest`
-- `@webpresso/agent-workers-test` — `packages/agent-workers-test`: bulleted list of workspace packages inferred from
-    pnpm-workspace.yaml / package.json workspaces.
-  - - TypeScript
-- Vitest
-- Zod: short description generated from package.json + detected
-    frameworks (React, Hono, Drizzle, etc.).
-  - {{TODO: populate escalation map — who to ping for which subsystem.}}: user-edited section. Left as a TODO placeholder if
-    not specified.
-  - .agent/planning/: defaults to `.agent/planning/`. Override via
-    .agent-kitrc.json.
-  - blueprints: defaults to `blueprints`. Override via
-    .agent-kitrc.json#blueprintsDir.
-
-  Managed sections in this file are refreshed by agent-kit on `ak sync`.
-  Repo-specific edits belong only inside `user-owned` blocks; agent-kit
-  preserves those blocks verbatim when it rewrites managed content.
--->
-
 <!-- >>> managed by @webpresso/agent-kit (operating-contract) -->
 # Operating Contract
 
@@ -46,8 +15,11 @@ vp install && vp run setup:agent  # setup:agent runs ak setup, which scaffolds .
 
 Agent-kit is the single source of truth. To customize skills, commands, or
 workflows, edit them in `@webpresso/agent-kit`'s catalog and publish — not in
-individual repos. The `--with omx` preset chains `omx setup --yes --scope user`
-by default; `wp setup --project` requests project-scoped OMX setup. `wp setup`
+individual repos. The default `omx` preset chains `omx setup --yes --scope user`
+and installs missing OMX through `vp install -g oh-my-codex`. The default `omc`
+preset ensures OMC through Claude Code's plugin marketplace in user scope when
+`claude` is on `PATH`. `wp setup --project` requests project-scoped OMX/OMC
+setup. `wp setup`
 also repairs the managed `.gitignore` block for regenerated agent surfaces so
 repo-local `.codex/`, `.omx/`, `.agent/`, and IDE projection outputs stay out
 of Git.
@@ -160,16 +132,9 @@ Full details: `.agent/rules/package-conventions.md`
 
 ## Repository map
 
-- `@webpresso/agent-docs-lint` — `packages/agent-docs-lint`
-- `@webpresso/agent-e2e-preset` — `packages/agent-e2e-preset`
 - `@webpresso/agent-kit` — `.`
-- `@webpresso/agent-launch` — `packages/agent-launch`
-- `@webpresso/agent-oxlint` — `packages/agent-oxlint`
-- `@webpresso/agent-stryker` — `packages/agent-stryker`
-- `@webpresso/agent-test-preset` — `packages/agent-test-preset`
-- `@webpresso/agent-tsconfig` — `packages/agent-tsconfig`
-- `@webpresso/agent-vitest` — `packages/agent-vitest`
-- `@webpresso/agent-workers-test` — `packages/agent-workers-test`
+- Workspace packages are discovered from `pnpm-workspace.yaml`; do not route
+  users to retired `@webpresso/agent-*` config packages.
 
 ## Tech stack
 

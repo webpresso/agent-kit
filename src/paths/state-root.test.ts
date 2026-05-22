@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { realpathSync } from 'node:fs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+// [TPH-INFRA] Node/git/filesystem boundaries — not available deterministically in unit tests
 vi.mock('node:child_process', () => ({
   execFileSync: vi.fn(),
 }))
@@ -10,6 +11,7 @@ vi.mock('node:fs', () => ({
   realpathSync: vi.fn(),
 }))
 
+// [TPH-INFRA] env-paths data-dir resolution — OS-level boundary
 vi.mock('env-paths', () => ({
   default: vi.fn(() => ({
     data: '/fake/state-root',
@@ -20,6 +22,7 @@ vi.mock('env-paths', () => ({
   })),
 }))
 
+// [TPH-INFRA] Cross-process lock helper — filesystem side effect boundary
 vi.mock('proper-lockfile', () => {
   const lock = vi.fn(async () => async () => {
     /* release */

@@ -43,7 +43,7 @@ describe('ak_e2e tool', () => {
             batchKey: 'smoke',
             runner: 'playwright',
             logName: 'smoke',
-            command: 'pnpm',
+            command: 'vp',
             args: ['exec', 'playwright', 'test'],
           },
         ],
@@ -51,7 +51,7 @@ describe('ak_e2e tool', () => {
     ]
     const commands = [
       {
-        command: 'pnpm',
+        command: 'vp',
         args: ['exec', 'playwright', 'test'],
         env: { E2E_SUITE: 'smoke' },
       },
@@ -103,13 +103,13 @@ describe('ak_e2e tool', () => {
             batchKey: 'platform',
             runner: 'command',
             logName: 'platform-api',
-            command: 'pnpm',
+            command: 'vp',
             args: ['run', 'e2e:run'],
           },
         ],
       },
     ]
-    const commands = [{ command: 'pnpm', args: ['run', 'e2e:run'] }]
+    const commands = [{ command: 'vp', args: ['run', 'e2e:run'] }]
     createE2eExecutionPlan.mockResolvedValue(groups)
     plannedGroupsToCommandConfigs.mockReturnValue(commands)
     runCommandConfigs.mockResolvedValue({ passed: false, exitCode: 1, output: 'boom\n' })
@@ -142,13 +142,13 @@ describe('ak_e2e tool', () => {
             batchKey: 'smoke',
             runner: 'playwright',
             logName: 'smoke',
-            command: 'pnpm',
+            command: 'vp',
             args: ['exec', 'playwright', 'test'],
           },
         ],
       },
     ]
-    const commands = [{ command: 'pnpm', args: ['exec', 'playwright', 'test'] }]
+    const commands = [{ command: 'vp', args: ['exec', 'playwright', 'test'] }]
     createE2eExecutionPlan.mockResolvedValue(groups)
     plannedGroupsToCommandConfigs.mockReturnValue(commands)
     runCommandConfigs.mockResolvedValue({ passed: false, exitCode: 1, output: 'x'.repeat(5_000) })

@@ -1,9 +1,9 @@
 /**
- * Integration tests for the OMX and gstack scaffolder presets, exercised
+ * Integration tests for the OMX, OMC, and gstack scaffolder presets, exercised
  * through the full `runInit()` machinery.
  *
  * `node:child_process.spawnSync` is mocked at module-load so the presets
- * don't actually invoke `omx setup` or clone gstack — the integration
+ * don't actually invoke `omx setup`, Claude plugin install, or clone gstack — the integration
  * boundary is the spawn call. Filesystem scaffolding still runs for real
  * against a tmpdir per test, so we also assert the agent surface is laid
  * down correctly when presets are active.
@@ -171,6 +171,63 @@ describe('runInit() — omx + gstack presets (integration)', () => {
     })
   })
 
+  describe('--with omc', () => {
+    it('installs OMC through user-scoped Claude Code plugin commands by default', async () => {
+      const code = await runInit({ cwd: repo, yes: true, with: 'omc' })
+
+      expect(code).toBe(EXIT_SUCCESS)
+      const claudeCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'claude')
+      expect(claudeCalls).toContainEqual([
+        'claude',
+        [
+          'plugin',
+          'marketplace',
+          'add',
+          '--scope',
+          'user',
+          'https://github.com/Yeachan-Heo/oh-my-claudecode',
+        ],
+        expect.any(Object),
+      ])
+      expect(claudeCalls).toContainEqual([
+        'claude',
+        ['plugin', 'install', '--scope', 'user', 'oh-my-claudecode'],
+        expect.any(Object),
+      ])
+    })
+
+    it('uses project scope for OMC when --project is requested', async () => {
+      const code = await runInit({ cwd: repo, yes: true, with: 'omc', project: true })
+
+      expect(code).toBe(EXIT_SUCCESS)
+      const claudeCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'claude')
+      expect(claudeCalls).toContainEqual([
+        'claude',
+        [
+          'plugin',
+          'marketplace',
+          'add',
+          '--scope',
+          'project',
+          'https://github.com/Yeachan-Heo/oh-my-claudecode',
+        ],
+        expect.any(Object),
+      ])
+    })
+
+    it('--dry-run does not invoke Claude Code for OMC', async () => {
+      await runInit({ cwd: repo, yes: true, with: 'omc', 'dry-run': true })
+
+      const omcClaudeCalls = spawnSyncMock.mock.calls.filter(
+        (c) =>
+          c[0] === 'claude' &&
+          Array.isArray(c[1]) &&
+          (c[1] as string[]).includes('oh-my-claudecode'),
+      )
+      expect(omcClaudeCalls).toHaveLength(0)
+    })
+  })
+
   describe('--with gstack', () => {
     it('returns SUCCESS and clones + runs setup --team when missing', async () => {
       // gstack install root absent: existsSync returns false (default tmpdir
@@ -265,6 +322,36 @@ describe('runInit() — omx + gstack presets (integration)', () => {
     })
   })
 
+  describe('--with omx,omc (combined)', () => {
+    it('uses user scope for both OMX and OMC by default', async () => {
+      const code = await runInit({ cwd: repo, yes: true, with: 'omx,omc' })
+
+      expect(code).toBe(EXIT_SUCCESS)
+      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
+      const claudeCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'claude')
+      expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes', '--scope', 'user'])
+      expect(claudeCalls).toContainEqual([
+        'claude',
+        ['plugin', 'install', '--scope', 'user', 'oh-my-claudecode'],
+        expect.any(Object),
+      ])
+    })
+
+    it('passes project scope to both OMX and OMC when --project is requested', async () => {
+      const code = await runInit({ cwd: repo, yes: true, with: 'omx,omc', project: true })
+
+      expect(code).toBe(EXIT_SUCCESS)
+      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
+      const claudeCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'claude')
+      expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes', '--scope', 'project'])
+      expect(claudeCalls).toContainEqual([
+        'claude',
+        ['plugin', 'install', '--scope', 'project', 'oh-my-claudecode'],
+        expect.any(Object),
+      ])
+    })
+  })
+
   describe('runtime check (always-on)', () => {
     it('runs default external presets and probes bun/vp without --with flags', async () => {
       await runInit({ cwd: repo, yes: true })
@@ -277,17 +364,21 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(omxCalls).toHaveLength(2)
       expect(gstackCloneCalls).toHaveLength(1)
       expect(bunCalls).toHaveLength(1)
-      expect(vpCalls).toHaveLength(1)
+      // One vp probe comes from setup preflight and one from the always-on runtime check.
+      expect(vpCalls).toHaveLength(2)
       expect(bunCalls[0]?.[1]).toEqual(['--version'])
-      expect(vpCalls[0]?.[1]).toEqual(['--version'])
+      expect(
+        vpCalls.every((call) => JSON.stringify(call[1]) === JSON.stringify(['--version'])),
+      ).toBe(true)
     })
 
-    it('--dry-run skips runtime probes', async () => {
+    it('--dry-run skips runtime probes after preflight', async () => {
       await runInit({ cwd: repo, yes: true, 'dry-run': true })
       const bunCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'bun')
       const vpCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'vp')
       expect(bunCalls).toHaveLength(0)
-      expect(vpCalls).toHaveLength(0)
+      expect(vpCalls).toHaveLength(1)
+      expect(vpCalls[0]?.[1]).toEqual(['--version'])
     })
   })
 

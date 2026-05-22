@@ -118,7 +118,14 @@ describe('ak ci command', () => {
   })
 
   it('lets debug direct mode run without the secret wrapper', () => {
-    const run = vi.fn(() => ({ status: 0, signal: null, output: [], pid: 1, stdout: '', stderr: '' }))
+    const run = vi.fn(() => ({
+      status: 0,
+      signal: null,
+      output: [],
+      pid: 1,
+      stdout: '',
+      stderr: '',
+    }))
     const code = runCiActCommand(
       { workflow: 'ci-e2e', direct: true },
       {
@@ -145,7 +152,14 @@ describe('ak ci command', () => {
       {
         cwd: '/repo',
         exists: () => true,
-        run: () => ({ status: null, signal: 'SIGTERM', output: [], pid: 1, stdout: '', stderr: '' }),
+        run: () => ({
+          status: null,
+          signal: 'SIGTERM',
+          output: [],
+          pid: 1,
+          stdout: '',
+          stderr: '',
+        }),
       },
     )
 
@@ -153,7 +167,14 @@ describe('ak ci command', () => {
   })
 
   it('passes the exact wrapped command to the injected runner by default', () => {
-    const run = vi.fn(() => ({ status: 0, signal: null, output: [], pid: 1, stdout: '', stderr: '' }))
+    const run = vi.fn(() => ({
+      status: 0,
+      signal: null,
+      output: [],
+      pid: 1,
+      stdout: '',
+      stderr: '',
+    }))
     const code = runCiActCommand(
       { workflow: 'ci-e2e' },
       {

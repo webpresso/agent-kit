@@ -2,9 +2,19 @@ import { spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import type { TestResult, TestRunInput } from './just.js'
+export interface TestRunInput {
+  /** Working tree to run from. Defaults to `CLAUDE_PROJECT_DIR` or `process.cwd()`. */
+  readonly cwd?: string
+  readonly packages?: readonly string[]
+  readonly files?: readonly string[]
+  readonly extraArgs?: readonly string[]
+}
 
-export type { TestResult, TestRunInput } from './just.js'
+export interface TestResult {
+  readonly passed: boolean
+  readonly output: string
+  readonly exitCode: number
+}
 
 /**
  * Run tests via the `vp` facade over the repo-declared package-manager substrate.
@@ -34,7 +44,11 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
 
   if (input.files && input.files.length > 0) {
     if (usesVitest(cwd)) {
-      return runCommand('vp', ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color', ...input.files], cwd)
+      return runCommand(
+        'vp',
+        ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color', ...input.files],
+        cwd,
+      )
     }
     return runCommand('vp', ['run', 'test', '--', ...input.files], cwd)
   }

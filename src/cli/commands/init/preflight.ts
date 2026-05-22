@@ -41,15 +41,10 @@ function checkTypeScriptWorkspace(repoRoot: string): string | null {
   return null
 }
 
-function checkPnpm(): string | null {
-  const result = spawnSync('pnpm', ['--version'], { encoding: 'utf8' })
+function checkVp(): string | null {
+  const result = spawnSync('vp', ['--version'], { encoding: 'utf8' })
   if (result.error !== undefined || (result.status !== null && result.status !== 0)) {
-    return 'pnpm not found on PATH — pnpm ≥ 10 required (see docs)'
-  }
-  const version = result.stdout.trim().split('\n')[0] ?? ''
-  const major = parseMajor(version)
-  if (major === null || major < 10) {
-    return `pnpm ${version} detected — pnpm ≥ 10 required (see docs)`
+    return 'vp not found on PATH — install Vite+ and use vp as the package-command facade (see docs)'
   }
   return null
 }
@@ -89,7 +84,7 @@ function checkLoreCommitProtocol(repoRoot: string): string | null {
 export async function runPreflight(repoRoot: string, strict: boolean): Promise<PreflightResult> {
   const checks: Array<() => string | null> = [
     () => checkTypeScriptWorkspace(repoRoot),
-    () => checkPnpm(),
+    () => checkVp(),
     () => checkWorkersOrVite(repoRoot),
     () => checkBlueprintLifecycle(repoRoot),
     () => checkLoreCommitProtocol(repoRoot),

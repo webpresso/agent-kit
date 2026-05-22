@@ -1,11 +1,15 @@
 ---
 type: docs-index
-last_updated: '2026-05-09'
+last_updated: '2026-05-22'
 ---
 
 # `@webpresso/agent-kit` documentation
 
-agent-kit is the catalog and the `ak` CLI that scaffolds a repo so every AI coding agent — Claude Code, Codex CLI, Cursor, Windsurf, Gemini, OpenCode — shares the same operating contract, skills, hooks, and quality gates. Standalone, no Webpresso-monorepo dependency.
+`@webpresso/agent-kit` is the npm package that ships the agent-kit catalog and
+`ak` / `wp` CLI. It scaffolds a repo so every AI coding agent — Claude Code,
+Codex CLI, Cursor, Windsurf, Gemini, OpenCode — shares the same operating
+contract, skills, hooks, planning files, and quality gates. Standalone, no
+Webpresso-monorepo dependency.
 
 The four moving parts:
 
@@ -31,7 +35,7 @@ New to agent-kit? Read [`getting-started.md`](./getting-started.md).
 
 ## `--with` presets
 
-`ak setup --with` accepts both Tier-3 skills and named presets (`lore-commits`, `omx`, `playwright-mcp`, `gstack`, `context-mode`, `vision`, `rtk`, `base-kit`). `omx` and `gstack` are default presets so their skills are present after a normal setup. For what each preset touches and failure semantics, see [`presets.md`](./presets.md).
+`ak setup --with` accepts both Tier-3 skills and named presets (`lore-commits`, `omx`, `omc`, `playwright-mcp`, `gstack`, `context-mode`, `vision`, `rtk`, `base-kit`). `omx`, `omc`, `gstack`, `vision`, and `rtk` are default presets; `context-mode` is opt-in. For what each preset touches and failure semantics, see [`presets.md`](./presets.md).
 
 ## How the pieces fit together
 

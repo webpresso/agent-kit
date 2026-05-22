@@ -78,7 +78,7 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
   })
 
   it('installs locally and setup generates healthy host configs', () => {
-    const install = run('pnpm', ['install', '--ignore-scripts'], repo, {})
+    const install = run('vp', ['install', '--ignore-scripts'], repo, {})
     expect(install.code).toBe(0)
 
     const setup = run(
@@ -89,6 +89,7 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
         CODEX_HOME: codexHome,
         AK_SKIP_GSTACK: '1',
         AK_SKIP_RTK: '1',
+        AK_SKIP_OMC: '1',
       },
     )
     expect(setup.code).toBe(0)
@@ -107,13 +108,14 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
   }, 240_000)
 
   it('default setup leaves context-mode out of host configs', () => {
-    const install = run('pnpm', ['install', '--ignore-scripts'], repo, {})
+    const install = run('vp', ['install', '--ignore-scripts'], repo, {})
     expect(install.code).toBe(0)
 
     const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
       CODEX_HOME: codexHome,
       AK_SKIP_GSTACK: '1',
       AK_SKIP_RTK: '1',
+      AK_SKIP_OMC: '1',
     })
     expect(setup.code).toBe(0)
     expect(existsSync(path.join(repo, 'opencode.json'))).toBe(true)
@@ -130,13 +132,22 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
     )
   }, 240_000)
 
+  it('fails when codex is required but not on PATH', () => {
+    if (hasCommand('codex')) return
+
+    expect(REQUIRE_CODEX).toBe(false)
+    expect(() => {
+      if (REQUIRE_CODEX) throw new Error('codex required but not on PATH')
+    }).not.toThrow()
+  })
+
   it('Codex host sees agent-kit + context-mode MCP entries when installed', () => {
     if (!hasCommand('codex')) {
       if (REQUIRE_CODEX) throw new Error('codex required but not on PATH')
       return
     }
 
-    const install = run('pnpm', ['install', '--ignore-scripts'], repo, {})
+    const install = run('vp', ['install', '--ignore-scripts'], repo, {})
     expect(install.code).toBe(0)
     const setup = run(
       CLI_RUNTIME,
@@ -146,6 +157,7 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
         CODEX_HOME: codexHome,
         AK_SKIP_GSTACK: '1',
         AK_SKIP_RTK: '1',
+        AK_SKIP_OMC: '1',
       },
     )
     expect(setup.code).toBe(0)
@@ -156,13 +168,19 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
     expect(list.stdout).toContain('context-mode')
   }, 240_000)
 
+  it('gracefully skips OpenCode host check when opencode is not on PATH', () => {
+    if (hasCommand('opencode')) return
+
+    expect(REQUIRE_OPENCODE).toBe(false)
+  })
+
   it('OpenCode host sees agent-kit + context-mode MCP entries when installed', () => {
     if (!hasCommand('opencode')) {
       if (REQUIRE_OPENCODE) throw new Error('opencode required but not on PATH')
       return
     }
 
-    const install = run('pnpm', ['install', '--ignore-scripts'], repo, {})
+    const install = run('vp', ['install', '--ignore-scripts'], repo, {})
     expect(install.code).toBe(0)
     const setup = run(
       CLI_RUNTIME,
@@ -172,6 +190,7 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
         CODEX_HOME: codexHome,
         AK_SKIP_GSTACK: '1',
         AK_SKIP_RTK: '1',
+        AK_SKIP_OMC: '1',
       },
     )
     expect(setup.code).toBe(0)
@@ -186,17 +205,18 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
   }, 240_000)
 
   it('hooks doctor passes host checks for installed hosts', () => {
-    const install = run('pnpm', ['install', '--ignore-scripts'], repo, {})
+    const install = run('vp', ['install', '--ignore-scripts'], repo, {})
     expect(install.code).toBe(0)
     const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
       CODEX_HOME: codexHome,
       AK_SKIP_GSTACK: '1',
       AK_SKIP_RTK: '1',
       AK_RUN_HOST_SMOKE: '1',
+      AK_SKIP_OMC: '1',
     })
     expect(setup.code).toBe(0)
 
-    const doctor = run('pnpm', ['exec', 'ak', 'hooks', 'doctor', '--hosts', 'auto'], repo, {
+    const doctor = run('vp', ['exec', 'ak', 'hooks', 'doctor', '--hosts', 'auto'], repo, {
       CODEX_HOME: codexHome,
     })
     expect(doctor.code).toBe(0)

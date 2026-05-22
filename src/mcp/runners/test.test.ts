@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { runTests } from './pnpm.js'
+import { runTests } from './test.js'
 
 const spawnMock = vi.hoisted(() => vi.fn())
 
@@ -33,7 +33,7 @@ const originalProjectDir = process.env.CLAUDE_PROJECT_DIR
 let defaultRoot: string | undefined
 
 beforeEach(() => {
-  defaultRoot = mkdtempSync(join(tmpdir(), 'ak-pnpm-default-'))
+  defaultRoot = mkdtempSync(join(tmpdir(), 'ak-vp-default-'))
   process.env.CLAUDE_PROJECT_DIR = defaultRoot
 })
 
@@ -47,7 +47,7 @@ afterEach(() => {
   }
 })
 
-describe('pnpm backend', () => {
+describe('test runner', () => {
   it('runs `vp run --filter <p> test` once per package', async () => {
     spawnMock
       .mockReturnValueOnce(fakeChild({ stdout: 'a ok\n', exitCode: 0 }))
@@ -62,7 +62,7 @@ describe('pnpm backend', () => {
   })
 
   it('runs vitest directly for package targets that declare vitest', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'ak-pnpm-vitest-'))
+    const root = mkdtempSync(join(tmpdir(), 'ak-vp-vitest-'))
     try {
       process.env.CLAUDE_PROJECT_DIR = root
       mkdirSync(join(root, 'packages', 'a'), { recursive: true })
@@ -90,7 +90,7 @@ describe('pnpm backend', () => {
   })
 
   it('preserves file filters when package targets declare vitest', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'ak-pnpm-vitest-files-'))
+    const root = mkdtempSync(join(tmpdir(), 'ak-vp-vitest-files-'))
     try {
       process.env.CLAUDE_PROJECT_DIR = root
       mkdirSync(join(root, 'packages', 'a'), { recursive: true })
@@ -119,7 +119,7 @@ describe('pnpm backend', () => {
   })
 
   it('preserves file filters for non-vitest package test scripts', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'ak-pnpm-script-files-'))
+    const root = mkdtempSync(join(tmpdir(), 'ak-vp-script-files-'))
     try {
       process.env.CLAUDE_PROJECT_DIR = root
       mkdirSync(join(root, 'packages', 'a'), { recursive: true })

@@ -50,7 +50,7 @@ function toolSuffixForCategory(category: CommandCategory): string {
 }
 
 export function buildRedirectMessage(ctx: MCPRedirectContext): string {
-  const fallbackHint = ctx.fallbackHint ?? 'just <task> [target]'
+  const fallbackHint = ctx.fallbackHint ?? 'repo-approved MCP/tooling entrypoint'
   if (!resolveMcpReady(ctx.mcpReady)) {
     return `"${ctx.command}" denied — MCP not ready. Use: ${fallbackHint}`
   }

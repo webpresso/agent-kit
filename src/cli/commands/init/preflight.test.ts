@@ -47,8 +47,8 @@ describe('runPreflight', () => {
       // Node ≥ 24 — process.version is read directly
       const originalVersion = process.version
       Object.defineProperty(process, 'version', { value: 'v24.0.0', configurable: true })
-      // pnpm ≥ 10
-      mockSpawnSync.mockReturnValue(makeSpawnResult('10.33.0'))
+      // vp is on PATH
+      mockSpawnSync.mockReturnValue(makeSpawnResult('0.1.22'))
 
       const result = await runPreflight('/fake/repo', false)
 
@@ -70,7 +70,7 @@ describe('runPreflight', () => {
       })
       const originalVersion = process.version
       Object.defineProperty(process, 'version', { value: 'v24.0.0', configurable: true })
-      mockSpawnSync.mockReturnValue(makeSpawnResult('10.33.0'))
+      mockSpawnSync.mockReturnValue(makeSpawnResult('0.1.22'))
 
       const result = await runPreflight('/fake/repo', false)
 
@@ -89,7 +89,7 @@ describe('runPreflight', () => {
       })
       const originalVersion = process.version
       Object.defineProperty(process, 'version', { value: 'v24.0.0', configurable: true })
-      mockSpawnSync.mockReturnValue(makeSpawnResult('10.33.0'))
+      mockSpawnSync.mockReturnValue(makeSpawnResult('0.1.22'))
 
       const result = await runPreflight('/fake/repo', false)
 
@@ -115,7 +115,7 @@ describe('runPreflight', () => {
       })
       const originalVersion = process.version
       Object.defineProperty(process, 'version', { value: 'v22.0.0', configurable: true })
-      mockSpawnSync.mockReturnValue(makeSpawnResult('10.33.0'))
+      mockSpawnSync.mockReturnValue(makeSpawnResult('0.1.22'))
 
       const result = await runPreflight('/fake/repo', false)
 
@@ -127,8 +127,8 @@ describe('runPreflight', () => {
     })
   })
 
-  describe('pnpm below 10', () => {
-    it('returns score 4 with pnpm warning', async () => {
+  describe('vp available', () => {
+    it('does not warn on the vp command facade version', async () => {
       mockExistsSync.mockImplementation((p) => {
         const s = String(p)
         return (
@@ -140,21 +140,20 @@ describe('runPreflight', () => {
       })
       const originalVersion = process.version
       Object.defineProperty(process, 'version', { value: 'v24.0.0', configurable: true })
-      // pnpm 9.x — below requirement
-      mockSpawnSync.mockReturnValue(makeSpawnResult('9.15.0'))
+      mockSpawnSync.mockReturnValue(makeSpawnResult('0.1.22'))
 
       const result = await runPreflight('/fake/repo', false)
 
       Object.defineProperty(process, 'version', { value: originalVersion, configurable: true })
 
       expect(result.ok).toStrictEqual(true)
-      expect(result.score).toStrictEqual(4)
-      expect(result.warnings[0]).toContain('pnpm')
+      expect(result.score).toStrictEqual(5)
+      expect(result.warnings).toStrictEqual([])
     })
   })
 
-  describe('pnpm not found', () => {
-    it('returns score 4 with pnpm warning when spawn fails', async () => {
+  describe('vp not found', () => {
+    it('returns score 4 with vp warning when spawn fails', async () => {
       mockExistsSync.mockImplementation((p) => {
         const s = String(p)
         return (
@@ -166,7 +165,7 @@ describe('runPreflight', () => {
       })
       const originalVersion = process.version
       Object.defineProperty(process, 'version', { value: 'v24.0.0', configurable: true })
-      // pnpm not on PATH
+      // vp not on PATH
       mockSpawnSync.mockReturnValue(makeSpawnResult('', 1))
 
       const result = await runPreflight('/fake/repo', false)
@@ -175,7 +174,7 @@ describe('runPreflight', () => {
 
       expect(result.ok).toStrictEqual(true)
       expect(result.score).toStrictEqual(4)
-      expect(result.warnings[0]).toContain('pnpm')
+      expect(result.warnings[0]).toContain('vp')
     })
   })
 
@@ -187,7 +186,7 @@ describe('runPreflight', () => {
       })
       const originalVersion = process.version
       Object.defineProperty(process, 'version', { value: 'v24.0.0', configurable: true })
-      mockSpawnSync.mockReturnValue(makeSpawnResult('10.33.0'))
+      mockSpawnSync.mockReturnValue(makeSpawnResult('0.1.22'))
 
       const result = await runPreflight('/fake/repo', false)
 
@@ -207,7 +206,7 @@ describe('runPreflight', () => {
       })
       const originalVersion = process.version
       Object.defineProperty(process, 'version', { value: 'v24.0.0', configurable: true })
-      mockSpawnSync.mockReturnValue(makeSpawnResult('10.33.0'))
+      mockSpawnSync.mockReturnValue(makeSpawnResult('0.1.22'))
 
       const result = await runPreflight('/fake/repo', false)
 
@@ -230,7 +229,7 @@ describe('runPreflight', () => {
       })
       const originalVersion = process.version
       Object.defineProperty(process, 'version', { value: 'v24.0.0', configurable: true })
-      mockSpawnSync.mockReturnValue(makeSpawnResult('10.33.0'))
+      mockSpawnSync.mockReturnValue(makeSpawnResult('0.1.22'))
 
       const result = await runPreflight('/fake/repo', false)
 
@@ -253,7 +252,7 @@ describe('runPreflight', () => {
       })
       const originalVersion = process.version
       Object.defineProperty(process, 'version', { value: 'v24.0.0', configurable: true })
-      mockSpawnSync.mockReturnValue(makeSpawnResult('10.33.0'))
+      mockSpawnSync.mockReturnValue(makeSpawnResult('0.1.22'))
 
       const result = await runPreflight('/fake/repo', false)
 
@@ -274,7 +273,7 @@ describe('runPreflight', () => {
       })
       const originalVersion = process.version
       Object.defineProperty(process, 'version', { value: 'v24.0.0', configurable: true })
-      mockSpawnSync.mockReturnValue(makeSpawnResult('10.33.0'))
+      mockSpawnSync.mockReturnValue(makeSpawnResult('0.1.22'))
 
       const result = await runPreflight('/fake/repo', true)
 
@@ -297,7 +296,7 @@ describe('runPreflight', () => {
       })
       const originalVersion = process.version
       Object.defineProperty(process, 'version', { value: 'v24.0.0', configurable: true })
-      mockSpawnSync.mockReturnValue(makeSpawnResult('10.33.0'))
+      mockSpawnSync.mockReturnValue(makeSpawnResult('0.1.22'))
 
       const result = await runPreflight('/fake/repo', true)
 
@@ -313,7 +312,7 @@ describe('runPreflight', () => {
       mockExistsSync.mockImplementation((p) => String(p).endsWith('wrangler.toml'))
       const originalVersion = process.version
       Object.defineProperty(process, 'version', { value: 'v20.0.0', configurable: true })
-      mockSpawnSync.mockReturnValue(makeSpawnResult('8.0.0'))
+      mockSpawnSync.mockReturnValue(makeSpawnResult('', 1))
 
       const result = await runPreflight('/fake/repo', false)
 

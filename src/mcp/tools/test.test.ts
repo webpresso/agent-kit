@@ -48,7 +48,7 @@ describe('ak_test tool', () => {
     expect(akTestTool.handler).toBeTypeOf('function')
   })
 
-  describe('backend routing', () => {
+  describe('vp runner', () => {
     let dir: string
 
     beforeEach(() => {
@@ -60,14 +60,13 @@ describe('ak_test tool', () => {
       rmSync(dir, { recursive: true, force: true })
     })
 
-    it('routes to `just` when justfile is present', async () => {
-      writeFileSync(join(dir, 'justfile'), 'test:\n\techo ok\n')
+    it('routes package tests through `vp`', async () => {
       spawnMock.mockReturnValue(fakeChild({ stdout: 'ok\n', exitCode: 0 }))
 
       const result = await akTestTool.handler({ packages: ['x'] })
       const [cmd, args] = spawnMock.mock.calls[0]!
-      expect(cmd).toBe('just')
-      expect(args).toEqual(['test', '--package', 'x'])
+      expect(cmd).toBe('vp')
+      expect(args).toEqual(['run', '--filter', 'x', 'test'])
       // Result is wrapped in MCP content blocks with JSON-serialized payload.
       expect(result.content[0]).toMatchObject({ type: 'text' })
       const payload = JSON.parse((result.content[0] as { text: string }).text) as Record<
@@ -77,23 +76,12 @@ describe('ak_test tool', () => {
       expect(result.structuredContent).toEqual(payload)
       expect(payload).toMatchObject({
         passed: true,
-        summary: 'tests passed via just for 1 package',
+        summary: 'tests passed for 1 package',
         exitCode: 0,
       })
     })
 
-    it('routes to `vp` when only pnpm-workspace.yaml is present', async () => {
-      writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n')
-      spawnMock.mockReturnValue(fakeChild({ stdout: 'ok\n', exitCode: 0 }))
-
-      await akTestTool.handler({ packages: ['x'] })
-      const [cmd, args] = spawnMock.mock.calls[0]!
-      expect(cmd).toBe('vp')
-      expect(args).toEqual(['run', '--filter', 'x', 'test'])
-    })
-
-    it('preserves file filters when package targets are provided on the pnpm path', async () => {
-      writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n')
+    it('preserves file filters when package targets are provided on the vp path', async () => {
       mkdirSync(join(dir, 'packages', 'x'), { recursive: true })
       writeFileSync(
         join(dir, 'packages', 'x', 'package.json'),
@@ -101,7 +89,7 @@ describe('ak_test tool', () => {
       )
       spawnMock.mockReturnValue(fakeChild({ stdout: '{}\n', exitCode: 0 }))
 
-      await akTestTool.handler({ packages: ['x'], files: ['src/example.test.ts'], backend: 'pnpm' })
+      await akTestTool.handler({ packages: ['x'], files: ['src/example.test.ts'] })
       const [cmd, args] = spawnMock.mock.calls[0]!
       expect(cmd).toBe('vp')
       expect(args).toEqual([
@@ -117,18 +105,7 @@ describe('ak_test tool', () => {
       ])
     })
 
-    it('honors explicit backend override', async () => {
-      writeFileSync(join(dir, 'justfile'), 'test:\n\techo ok\n')
-      spawnMock.mockReturnValue(fakeChild({ stdout: 'ok\n', exitCode: 0 }))
-
-      await akTestTool.handler({ packages: ['x'], backend: 'pnpm' })
-      const [cmd] = spawnMock.mock.calls[0]!
-      expect(cmd).toBe('vp')
-    })
-
     it('rejects `suite` as an unknown input key', async () => {
-      writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n')
-
       await expect(akTestTool.handler({ suite: 'e2e', packages: ['x'] })).rejects.toSatisfy(
         (error: unknown) => {
           return (
@@ -142,7 +119,6 @@ describe('ak_test tool', () => {
     })
 
     it('clips long raw test output and marks it truncated', async () => {
-      writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n')
       spawnMock.mockReturnValue(fakeChild({ stdout: 'x'.repeat(5_000), exitCode: 1 }))
 
       const result = await akTestTool.handler({ packages: ['x'] })
@@ -154,7 +130,7 @@ describe('ak_test tool', () => {
         logPath?: string
       }
       expect(payload.passed).toBe(false)
-      expect(payload.summary).toMatch(/tests failed via pnpm/)
+      expect(payload.summary).toMatch(/tests failed for 1 package/)
       expect(payload.rawOutput).toHaveLength(4_000)
       expect(payload.truncated).toBe(true)
       expect(payload.logPath).toMatch(/^logs\//)

@@ -24,68 +24,39 @@ interface RoutingRule {
 
 const ROUTING_RULES: RoutingRule[] = [
   {
-    prefixes: [
-      'just qa',
-      'pnpm qa',
-      'pnpm run qa',
-      'vp exec markdownlint-cli2',
-      'just lint-md',
-      'pnpm exec markdownlint-cli2',
-      'markdownlint-cli2',
-    ],
+    prefixes: ['vp exec markdownlint-cli2', 'markdownlint-cli2'],
     guidanceType: 'qa',
     guidance:
       'Use ak_qa MCP tool instead — QA is the blessed MCP quality entrypoint; avoid ad hoc markdown-only lint endpoints',
     tool: 'ak_qa',
   },
   {
-    prefixes: [
-      'just test',
-      'pnpm test',
-      'pnpm run test',
-      'pnpm exec vitest',
-      'vp exec vitest',
-      'vitest',
-    ],
+    prefixes: ['vp exec vitest', 'vitest'],
     guidanceType: 'test',
     guidance: 'Use ak_test MCP tool instead — returns {passed, summary} not raw logs',
     tool: 'ak_test',
   },
   {
-    prefixes: [
-      'just lint',
-      'pnpm lint',
-      'pnpm run lint',
-      'pnpm exec oxlint',
-      'vp exec oxlint',
-      'oxlint',
-    ],
+    prefixes: ['vp exec oxlint', 'oxlint'],
     guidanceType: 'lint',
     guidance: 'Use ak_lint MCP tool instead — returns {passed, violations[]}',
     tool: 'ak_lint',
   },
   {
-    prefixes: [
-      'just typecheck',
-      'pnpm typecheck',
-      'pnpm run typecheck',
-      'pnpm exec tsc',
-      'vp exec tsc',
-      'tsc',
-    ],
+    prefixes: ['vp exec tsc', 'tsc'],
     guidanceType: 'typecheck',
     guidance: 'Use ak_typecheck MCP tool instead — returns {passed, errors[]}',
     tool: 'ak_typecheck',
   },
   {
-    prefixes: ['pnpm exec prettier', 'vp exec prettier', 'prettier'],
+    prefixes: ['vp exec prettier', 'prettier'],
     guidanceType: 'format',
     guidance: 'Use ak_format MCP tool instead — routes through the repo formatter, not Prettier',
     tool: 'ak_format',
   },
 ]
 
-const PASSTHROUGH_PREFIXES = ['just audit', 'ak audit']
+const PASSTHROUGH_PREFIXES = ['ak audit']
 
 const SAFE_PASSTHROUGH_PREFIXES = [
   'git status',
@@ -110,18 +81,16 @@ const SANDBOX_PREFIXES: Array<{ prefix: string; guidance: string }> = [
   { prefix: 'git log', guidance: 'Use ctx_execute_file or ctx_execute' },
   { prefix: 'git diff', guidance: 'Use ctx_execute_file or ctx_execute' },
   { prefix: 'git show', guidance: 'Use ctx_execute_file or ctx_execute' },
-  { prefix: 'npm test', guidance: 'Use ctx_execute for test output' },
-  { prefix: 'npm run build', guidance: 'Use ctx_execute for build output' },
-  { prefix: 'pnpm build', guidance: 'Use ctx_execute for build output' },
+  { prefix: 'vp run build', guidance: 'Use ctx_execute for build output' },
 ]
 
-const PNPM_DIRECTORY_PREFIX = /^pnpm\s+(?:(?:--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)\s+)+(?<rest>.+)$/u
+const VP_DIRECTORY_PREFIX = /^vp\s+(?:(?:--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)\s+)+(?<rest>.+)$/u
 
 export function normalizeCommandForRouting(command: string): string {
   const trimmed = command.trim()
-  const match = PNPM_DIRECTORY_PREFIX.exec(trimmed)
+  const match = VP_DIRECTORY_PREFIX.exec(trimmed)
   const rest = match?.groups?.rest?.trim()
-  return rest ? `pnpm ${rest}` : trimmed
+  return rest ? `vp ${rest}` : trimmed
 }
 
 function matchesPrefix(command: string, prefix: string): boolean {

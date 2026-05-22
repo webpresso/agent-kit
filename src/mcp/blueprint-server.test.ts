@@ -1270,7 +1270,7 @@ describe('ak_blueprint_create', () => {
   it('rejects input with scope field (MutationTarget enforces no scope)', async () => {
     // scope is not in MutationTarget schema — zod strips it (extra fields ignored by default)
     // but if schema used .strict() it would reject. Since zod strips extras, we verify
-    // the handler does NOT error just because scope is passed (it's simply ignored).
+    // the handler does NOT error merely because scope is passed (it's simply ignored).
     const result = await callTool(tools, 'ak_blueprint_create', {
       project_id: tmpDir,
       title: 'Scope Test Blueprint',
@@ -1434,7 +1434,7 @@ describe('ak_blueprint_task_verify — Task 3.2', () => {
           kind: 'test',
           result: 'pass',
           ts: '2026-01-01T00:00:00Z',
-          command: 'pnpm test',
+          command: 'vp run test',
           exit_code: 0,
         },
       ],
@@ -1465,7 +1465,7 @@ describe('ak_blueprint_task_verify — Task 3.2', () => {
           kind: 'test',
           result: 'fail',
           ts: '2026-01-01T00:00:00Z',
-          command: 'pnpm test',
+          command: 'vp run test',
           exit_code: 1,
         },
       ],
@@ -1489,7 +1489,7 @@ describe('ak_blueprint_task_verify — Task 3.2', () => {
           kind: 'test',
           result: 'pass',
           ts: '2026-01-01T00:00:00Z',
-          command: 'pnpm test',
+          command: 'vp run test',
           exit_code: 0,
         },
       ],
@@ -1522,7 +1522,7 @@ describe('ak_blueprint_task_verify — Task 3.2', () => {
         kind: 'test',
         result: 'pass',
         ts: '2026-01-01T00:00:00Z',
-        command: 'pnpm test',
+        command: 'vp run test',
         exit_code: 0,
       },
     ]
@@ -1556,11 +1556,11 @@ describe('ak_blueprint_task_verify — Task 3.2', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Task 3.3 — aggregate reads + legacy facade removal
+// Task 3.3 — aggregate reads + old facade removal
 // ---------------------------------------------------------------------------
 
 describe('Task 3.3 — ak_blueprint_list with aggregate scope', () => {
-  it('ak_blueprint tool is NOT registered (legacy facade deleted)', () => {
+  it('ak_blueprint tool is NOT registered (old facade deleted)', () => {
     expect(tools.has('ak_blueprint')).toBe(false)
   })
 

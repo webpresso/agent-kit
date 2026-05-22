@@ -74,21 +74,14 @@ describe('coordinated routing pipeline', () => {
   // Category 1: Dev-workflow commands → deny
   describe('Phase 1: dev-workflow → deny', () => {
     const devCommands = [
-      'just test',
-      'pnpm test',
-      'pnpm exec vitest run',
+      'vp exec vitest run',
       'vitest src/',
-      'just lint',
-      'pnpm exec oxlint .',
+      'vp exec oxlint .',
       'oxlint .',
-      'just typecheck',
-      'pnpm exec tsc --noEmit',
+      'vp exec tsc --noEmit',
       'tsc --noEmit',
-      'pnpm exec prettier README.md --write',
-      'just qa',
-      'pnpm qa',
-      'just lint-md README.md',
-      'pnpm exec markdownlint-cli2 README.md',
+      'vp exec prettier README.md --write',
+      'vp exec markdownlint-cli2 README.md',
       'markdownlint-cli2 README.md',
     ]
 
@@ -118,7 +111,7 @@ describe('coordinated routing pipeline', () => {
       'cat package.json',
       'curl https://api.example.com',
       'git log --oneline',
-      'pnpm build',
+      'vp run build',
     ]
 
     for (const cmd of sandboxCommands) {
@@ -196,13 +189,13 @@ describe('coordinated routing pipeline', () => {
 
   // Category 7: Throttle behavior — second call passthrough
   describe('throttle: second dev-command call passes through', () => {
-    it('second just test call → passthrough (guidance already shown)', async () => {
+    it('second vp test call → passthrough (guidance already shown)', async () => {
       const processValidation = await getRunner()
 
       // First call: deny (guidance shown)
       vi.mocked(openSync).mockReturnValueOnce(3)
       try {
-        processValidation(makeBashInput('just test'))
+        processValidation(makeBashInput('vp exec vitest run'))
       } catch {
         // process.exit throws
       }
@@ -221,28 +214,31 @@ describe('coordinated routing pipeline', () => {
         throw err
       })
       try {
-        processValidation(makeBashInput('just test'))
+        processValidation(makeBashInput('vp exec vitest run'))
       } catch {
         // process.exit throws
       }
       const secondOutput = getLastOutput()
-      expect(secondOutput).toBe('{}')
+      // Throttled routing falls through to the security validators; raw dev
+      // commands are still blocked there, so no passthrough JSON is emitted.
+      expect(secondOutput).toBe('')
     })
   })
 
   // Category 7 extra: MCP not ready → dev-commands fall through (not denied)
   describe('MCP not ready → dev-workflow commands pass through', () => {
-    it('just test with MCP not ready → passthrough (not denied)', async () => {
+    it('vp test with MCP not ready → passthrough (not denied)', async () => {
       mcpReady.mockReturnValue(false)
       const processValidation = await getRunner()
       try {
-        processValidation(makeBashInput('just test'))
+        processValidation(makeBashInput('vp exec vitest run'))
       } catch {
         // process.exit throws
       }
       const output = getLastOutput()
-      // Should be passthrough {} since MCP is not ready (agent can't use ak_test)
-      expect(output).toBe('{}')
+      // Without MCP-ready routing, the security validators still block raw dev
+      // commands instead of letting them run directly.
+      expect(output).toBe('')
     })
   })
 })

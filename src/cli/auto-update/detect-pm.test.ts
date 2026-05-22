@@ -85,9 +85,9 @@ describe('parseUserAgent', () => {
 
 describe('matchStoreMarker', () => {
   it('detects Vite+ via .vite-plus segment', () => {
-    expect(matchStoreMarker('/Users/me/.vite-plus/packages/webpresso/current/bin/wp')).toStrictEqual(
-      'vp',
-    )
+    expect(
+      matchStoreMarker('/Users/me/.vite-plus/packages/webpresso/current/bin/wp'),
+    ).toStrictEqual('vp')
   })
 
   it('detects pnpm via .pnpm-store segment', () => {
@@ -288,7 +288,7 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     const result = detect({ npm_config_user_agent: 'yarn/1.22.22 node/v22' }, '/path/to/bin')
     expect(result).toStrictEqual({
       manager: 'yarn',
-            command: [
+      command: [
         'vp',
         'install',
         '-g',
@@ -304,7 +304,7 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     const result = detect({ npm_config_user_agent: 'bun/1.1.0 node/v22' }, '/path/to/bin')
     expect(result).toStrictEqual({
       manager: 'bun',
-            command: [
+      command: [
         'vp',
         'install',
         '-g',
@@ -360,7 +360,7 @@ describe('detect — priority 2: realpath walk', () => {
     const result = detect({}, '/Users/me/.bun/bin/webpresso')
     expect(result).toStrictEqual({
       manager: 'bun',
-            command: [
+      command: [
         'vp',
         'install',
         '-g',

@@ -3,31 +3,23 @@ import type { CAC } from 'cac'
 import { runLint } from '#lint/index'
 
 export const LINT_COMMAND_HELP = [
-  'Lint via `oxlint` (fast, structured output) with `vp run lint` as a fallback.',
+  'Lint via the `vp lint` facade.',
   '',
   'Examples:',
   '  ak lint',
   '  ak lint --fix',
-  '  ak lint --no-pnpm-fallback',
 ].join('\n')
 
 export function registerLintCommand(cli: CAC): void {
   cli
     .command('lint [...files]', LINT_COMMAND_HELP)
-    .option('--fix', 'Apply autofixes via oxlint --fix')
-    .option('--no-pnpm-fallback', 'Fail if oxlint missing instead of falling back to vp run lint')
+    .option('--fix', 'Apply autofixes via vp lint --fix')
     .action(async (files: string[] | undefined, flags: Record<string, unknown>) => {
       const result = await runLint({
         files: files && files.length > 0 ? files : undefined,
         fix: Boolean(flags.fix),
         cwd: process.cwd(),
       })
-
-      if (flags.pnpmFallback === false && result.backend === 'vp') {
-        console.error('oxlint not found on PATH and --no-pnpm-fallback was set. Install oxlint:')
-        console.error('  vp install -D oxlint')
-        return 1
-      }
 
       if (result.spawnError) {
         console.error(result.spawnError)
@@ -50,7 +42,7 @@ export function registerLintCommand(cli: CAC): void {
 
       const verb = result.passed ? 'passed' : 'failed'
       const detail = result.issues.length > 0 ? ` (${result.issues.length} issue(s))` : ''
-      console.error(`lint ${verb} via ${result.backend}${detail}`)
+      console.error(`lint ${verb} via vp lint${detail}`)
 
       return result.exitCode
     })

@@ -35,8 +35,11 @@ vp install && vp run setup:agent  # setup:agent runs ak setup, which scaffolds .
 
 Agent-kit is the single source of truth. To customize skills, commands, or
 workflows, edit them in `@webpresso/agent-kit`'s catalog and publish — not in
-individual repos. The `--with omx` preset chains `omx setup --yes --scope user`
-by default; `wp setup --project` requests project-scoped OMX setup. `wp setup`
+individual repos. The default `omx` preset chains `omx setup --yes --scope user`
+and installs missing OMX through `vp install -g oh-my-codex`. The default `omc`
+preset ensures OMC through Claude Code's plugin marketplace in user scope when
+`claude` is on `PATH`. `wp setup --project` requests project-scoped OMX/OMC
+setup. `wp setup`
 also repairs the managed `.gitignore` block for regenerated agent surfaces so
 repo-local `.codex/`, `.omx/`, `.agent/`, and IDE projection outputs stay out
 of Git.

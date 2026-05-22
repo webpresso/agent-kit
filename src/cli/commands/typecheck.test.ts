@@ -18,7 +18,14 @@ describe('ak typecheck command', () => {
   })
 
   it('returns the child process exit status', () => {
-    const run = vi.fn(() => ({ status: 2, signal: null, output: [], pid: 1, stdout: '', stderr: '' }))
+    const run = vi.fn(() => ({
+      status: 2,
+      signal: null,
+      output: [],
+      pid: 1,
+      stdout: '',
+      stderr: '',
+    }))
     expect(runTypecheckCommand({}, { run })).toBe(2)
     expect(run).toHaveBeenCalledWith('tsc', ['--noEmit', '--pretty', 'false'])
   })

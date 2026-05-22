@@ -39,12 +39,6 @@ function fakeChild(
   }
 }
 
-function enoent(): NodeJS.ErrnoException {
-  const err = new Error('spawn oxlint ENOENT') as NodeJS.ErrnoException
-  err.code = 'ENOENT'
-  return err
-}
-
 afterEach(() => {
   spawnMock.mockReset()
 })
@@ -56,25 +50,25 @@ describe('ak_lint tool', () => {
     expect(akLintTool.handler).toBeTypeOf('function')
   })
 
-  it('invokes oxlint with --format=json and the supplied files', async () => {
+  it('invokes vp lint with --format=json and the supplied files', async () => {
     spawnMock.mockReturnValue(fakeChild({ stdout: '[]', exitCode: 0 }))
 
     await akLintTool.handler({ files: ['a.ts', 'b.ts'] })
 
     expect(spawnMock).toHaveBeenCalledOnce()
     const [cmd, args] = spawnMock.mock.calls[0]!
-    expect(cmd).toBe('oxlint')
-    expect(args).toEqual(['--format=json', 'a.ts', 'b.ts'])
+    expect(cmd).toBe('vp')
+    expect(args).toEqual(['lint', '--format=json', 'a.ts', 'b.ts'])
   })
 
-  it('invokes oxlint against `.` when no files supplied', async () => {
+  it('invokes vp lint against `.` when no files supplied', async () => {
     spawnMock.mockReturnValue(fakeChild({ stdout: '[]', exitCode: 0 }))
 
     await akLintTool.handler({})
 
     const [cmd, args] = spawnMock.mock.calls[0]!
-    expect(cmd).toBe('oxlint')
-    expect(args).toEqual(['--format=json', '.'])
+    expect(cmd).toBe('vp')
+    expect(args).toEqual(['lint', '--format=json', '.'])
   })
 
   it('adds --fix when requested', async () => {
@@ -83,10 +77,10 @@ describe('ak_lint tool', () => {
     await akLintTool.handler({ files: ['a.ts'], fix: true })
 
     const [, args] = spawnMock.mock.calls[0]!
-    expect(args).toEqual(['--format=json', '--fix', 'a.ts'])
+    expect(args).toEqual(['lint', '--format=json', '--fix', 'a.ts'])
   })
 
-  it('returns {passed: true, issues: []} when oxlint exits 0', async () => {
+  it('returns {passed: true, issues: []} when vp lint exits 0', async () => {
     spawnMock.mockReturnValue(fakeChild({ stdout: '[]', exitCode: 0 }))
 
     const result = await akLintTool.handler({ files: ['a.ts'] })
@@ -97,7 +91,7 @@ describe('ak_lint tool', () => {
     expect(result.structuredContent).toEqual(payload)
     expect(payload).toMatchObject({
       passed: true,
-      summary: 'lint passed via oxlint',
+      summary: 'lint passed via vp lint',
       counts: { issueCount: 0 },
       details: { issues: [] },
     })
@@ -149,7 +143,7 @@ describe('ak_lint tool', () => {
     }
 
     expect(payload.passed).toBe(false)
-    expect(payload.summary).toBe('lint failed with 3 issues via oxlint')
+    expect(payload.summary).toBe('lint failed with 3 issues via vp lint')
     expect(payload.details.issues).toHaveLength(3)
     expect(payload.details.issues[0]).toEqual({
       file: '/abs/path/a.ts',
@@ -171,40 +165,6 @@ describe('ak_lint tool', () => {
     })
   })
 
-  it('falls back to `vp run lint` when oxlint binary is missing (ENOENT)', async () => {
-    spawnMock
-      .mockReturnValueOnce(fakeChild({ error: enoent() }))
-      .mockReturnValueOnce(fakeChild({ stdout: 'lint ok\n', exitCode: 0 }))
-
-    const result = await akLintTool.handler({ files: ['a.ts'] })
-
-    expect(spawnMock).toHaveBeenCalledTimes(2)
-    const [firstCmd] = spawnMock.mock.calls[0]!
-    const [secondCmd, secondArgs] = spawnMock.mock.calls[1]!
-    expect(firstCmd).toBe('oxlint')
-    expect(secondCmd).toBe('vp')
-    expect(secondArgs).toEqual(['run', 'lint'])
-
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
-      passed: boolean
-      summary?: string
-      counts?: { issueCount: number }
-      details?: { issues: unknown[] }
-      rawOutput?: string
-      backend?: string
-      tier?: number
-    }
-    expect(payload.passed).toBe(true)
-    expect(payload.counts?.issueCount).toBe(0)
-    expect(payload.details?.issues).toEqual([])
-    expect(payload.backend).toBe('vp')
-    expect(payload.summary).toBe('lint passed via vp')
-    // Passthrough fallback: when no oxlint JSON issues are parsed, the raw
-    // command output flows through unchanged (clipped only if >4000 chars).
-    expect(payload.rawOutput).toBe('lint ok\n')
-    expect(payload.tier).toBe(3)
-  })
-
   // Regression: parseOxlintIssues used to silently return [] on JSON parse
   // failure. Caller saw `{passed:false, issues:[]}` and concluded "lint failed
   // with no specific issues" — masking the parse bug. Now annotated.
@@ -219,7 +179,7 @@ describe('ak_lint tool', () => {
     }
     expect(payload.passed).toBe(false)
     expect(payload.details?.issues).toEqual([])
-    expect(payload.summary).toBe('lint failed: could not parse oxlint output')
+    expect(payload.summary).toBe('lint failed: could not parse vp lint output')
     expect(payload.details?.parseError).toMatch(/oxlint JSON\.parse failed/)
   })
 
@@ -270,11 +230,8 @@ describe('ak_lint tool', () => {
     })
   })
 
-  // Regression: every spawn error used to be conflated with "binary missing"
-  // and silently routed to pnpm. Non-ENOENT spawn errors must surface, not
-  // hide as a fallback masquerading as success.
-  it('does NOT fall back to pnpm when oxlint spawn fails with a non-ENOENT error', async () => {
-    const eperm = new Error('spawn oxlint EPERM') as NodeJS.ErrnoException
+  it('surfaces vp lint spawn failures instead of hiding them', async () => {
+    const eperm = new Error('spawn vp EPERM') as NodeJS.ErrnoException
     eperm.code = 'EPERM'
     spawnMock.mockReturnValue(fakeChild({ error: eperm }))
 
@@ -283,12 +240,10 @@ describe('ak_lint tool', () => {
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {
       passed: boolean
       summary?: string
-      backend: string
       details?: { spawnError?: string }
     }
     expect(payload.passed).toBe(false)
-    expect(payload.backend).toBe('oxlint')
-    expect(payload.summary).toBe('lint could not start: oxlint spawn failed')
+    expect(payload.summary).toBe('lint could not start: vp lint spawn failed')
     expect(payload.details?.spawnError).toMatch(/EPERM/)
   })
 
@@ -296,23 +251,10 @@ describe('ak_lint tool', () => {
   // the tool didn't run, the agent can't fix it by retrying with new inputs.
   // Must set `isError: true` so MCP clients can distinguish from
   // "lint genuinely found issues with passed=false".
-  it('sets `isError: true` when oxlint spawn fails (non-ENOENT)', async () => {
-    const eperm = new Error('spawn oxlint EPERM') as NodeJS.ErrnoException
+  it('sets `isError: true` when vp lint spawn fails', async () => {
+    const eperm = new Error('spawn vp EPERM') as NodeJS.ErrnoException
     eperm.code = 'EPERM'
     spawnMock.mockReturnValue(fakeChild({ error: eperm }))
-
-    const result = await akLintTool.handler({})
-    expect(result.isError).toBe(true)
-  })
-
-  it('sets `isError: true` when both oxlint AND pnpm fall back fail to spawn', async () => {
-    const enoent = new Error('spawn oxlint ENOENT') as NodeJS.ErrnoException
-    enoent.code = 'ENOENT'
-    const pnpmEnoent = new Error('spawn pnpm ENOENT') as NodeJS.ErrnoException
-    pnpmEnoent.code = 'ENOENT'
-    spawnMock
-      .mockReturnValueOnce(fakeChild({ error: enoent }))
-      .mockReturnValueOnce(fakeChild({ error: pnpmEnoent }))
 
     const result = await akLintTool.handler({})
     expect(result.isError).toBe(true)
@@ -328,19 +270,5 @@ describe('ak_lint tool', () => {
 
     const result = await akLintTool.handler({})
     expect(result.isError).toBeUndefined()
-  })
-
-  it('clips long generic fallback error output and marks it truncated', async () => {
-    spawnMock
-      .mockReturnValueOnce(fakeChild({ error: enoent() }))
-      .mockReturnValueOnce(fakeChild({ stdout: `ERROR ${'x'.repeat(5_000)}`, exitCode: 1 }))
-
-    const result = await akLintTool.handler({})
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
-      rawOutput?: string
-      truncated?: boolean
-    }
-    expect(payload.rawOutput).toHaveLength(4_000)
-    expect(payload.truncated).toBe(true)
   })
 })

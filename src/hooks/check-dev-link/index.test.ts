@@ -84,7 +84,7 @@ describe('formatBreakageMessage', () => {
 
     expect(message).toContain('/tmp/agent-kit')
     expect(message).toContain('/tmp/store-snapshot')
-    expect(message).toContain('pnpm dev:link --consumer /tmp/consumer')
+    expect(message).toContain('vp run dev:link --consumer /tmp/consumer')
     expect(message).toContain('@webpresso/agent-kit')
     expect(message).toContain('ak-restore-dev-links')
   })

@@ -198,10 +198,7 @@ function decodeSpawnStdout(stdout: string | Buffer | null | undefined): string {
 
 function isProjectScopedOmxPath(path: string): boolean {
   return (
-    path === '.codex' ||
-    path.startsWith('.codex/') ||
-    path === '.omx' ||
-    path.startsWith('.omx/')
+    path === '.codex' || path.startsWith('.codex/') || path === '.omx' || path.startsWith('.omx/')
   )
 }
 
