@@ -671,7 +671,7 @@ describe('validateForbiddenCommands', () => {
       `ak-forbidden-commands-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     )
     const sentinelKey = `forbidden-commands-test-${Date.now()}`
-    const sentinel = join(tmpdir(), `ak-mcp-ready-${sentinelKey}`)
+    const sentinel = join(tmpdir(), `wp-mcp-ready-${sentinelKey}`)
     mkdirSync(dir, { recursive: true })
     writeFileSync(
       join(dir, '.agent-kitrc.json'),
