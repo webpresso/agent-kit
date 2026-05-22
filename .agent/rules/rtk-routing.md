@@ -1,1 +1,0 @@
-../../catalog/agent/rules/rtk-routing.md
