@@ -29,15 +29,10 @@ function checkTypeScriptWorkspace(repoRoot) {
     }
     return null;
 }
-function checkPnpm() {
-    const result = spawnSync('pnpm', ['--version'], { encoding: 'utf8' });
+function checkVp() {
+    const result = spawnSync('vp', ['--version'], { encoding: 'utf8' });
     if (result.error !== undefined || (result.status !== null && result.status !== 0)) {
-        return 'pnpm not found on PATH — pnpm ≥ 10 required (see docs)';
-    }
-    const version = result.stdout.trim().split('\n')[0] ?? '';
-    const major = parseMajor(version);
-    if (major === null || major < 10) {
-        return `pnpm ${version} detected — pnpm ≥ 10 required (see docs)`;
+        return 'vp not found on PATH — install Vite+ and use vp as the package-command facade (see docs)';
     }
     return null;
 }
@@ -73,7 +68,7 @@ function checkLoreCommitProtocol(repoRoot) {
 export async function runPreflight(repoRoot, strict) {
     const checks = [
         () => checkTypeScriptWorkspace(repoRoot),
-        () => checkPnpm(),
+        () => checkVp(),
         () => checkWorkersOrVite(repoRoot),
         () => checkBlueprintLifecycle(repoRoot),
         () => checkLoreCommitProtocol(repoRoot),

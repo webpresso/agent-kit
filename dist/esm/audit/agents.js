@@ -241,7 +241,7 @@ function checkClaudeRules(root, overrides, violations) {
 function checkSetupAgentScript(root, packageJson, overrideCommand, violations) {
     const scripts = (packageJson.scripts ?? {});
     const actual = typeof scripts['setup:agent'] === 'string' ? scripts['setup:agent'] : undefined;
-    const expected = overrideCommand ?? 'ak setup';
+    const expected = overrideCommand ?? 'wp setup';
     if (actual !== expected) {
         violations.push({
             file: 'package.json',
@@ -257,8 +257,8 @@ function checkAgentKitDevDependency(root, packageJson, violations) {
     const scripts = (packageJson.scripts ?? {});
     const setupAgent = typeof scripts['setup:agent'] === 'string' ? scripts['setup:agent'] : '';
     const postinstall = typeof scripts.postinstall === 'string' ? scripts.postinstall : '';
-    const usesGlobalAkConsumerMode = setupAgent === 'ak setup' && postinstall.includes('run-agent-kit-bin.ts restore-dev-links');
-    if (usesGlobalAkConsumerMode) {
+    const usesGlobalWpConsumerMode = setupAgent === 'wp setup' && postinstall.includes('run-agent-kit-bin.ts restore-dev-links');
+    if (usesGlobalWpConsumerMode) {
         return;
     }
     if (typeof version !== 'string' || version.trim().length === 0) {

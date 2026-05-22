@@ -18,7 +18,6 @@ export const summaryFirstResultSchema = z.object({
     passed: z.boolean(),
     summary: z.string(),
     exitCode: z.number().optional(),
-    backend: z.string().optional(),
     counts: z.record(z.string(), z.number()).optional(),
     details: z.record(z.string(), z.unknown()).optional(),
     rawOutput: z.string().optional(),
@@ -34,8 +33,6 @@ export const summaryFirstResultSchema = z.object({
 });
 export function createSummaryOutputSchema(options = {}) {
     const shape = {};
-    if (options.backend)
-        shape.backend = options.backend;
     if (options.counts)
         shape.counts = options.counts.optional();
     if (options.details)

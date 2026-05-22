@@ -18,7 +18,6 @@ export declare const summaryFirstResultSchema: z.ZodObject<{
     passed: z.ZodBoolean;
     summary: z.ZodString;
     exitCode: z.ZodOptional<z.ZodNumber>;
-    backend: z.ZodOptional<z.ZodString>;
     counts: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodNumber>>;
     details: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
     rawOutput: z.ZodOptional<z.ZodString>;
@@ -46,7 +45,6 @@ export declare const summaryFirstResultSchema: z.ZodObject<{
     }, z.core.$strip>>;
 }, z.core.$strip>;
 type SummaryShapeOptions = {
-    backend?: z.ZodTypeAny;
     counts?: z.ZodTypeAny;
     details?: z.ZodTypeAny;
 };

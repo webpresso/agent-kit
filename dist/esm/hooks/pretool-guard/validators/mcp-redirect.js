@@ -32,7 +32,7 @@ function toolSuffixForCategory(category) {
     }
 }
 export function buildRedirectMessage(ctx) {
-    const fallbackHint = ctx.fallbackHint ?? 'just <task> [target]';
+    const fallbackHint = ctx.fallbackHint ?? 'repo-approved MCP/tooling entrypoint';
     if (!resolveMcpReady(ctx.mcpReady)) {
         return `"${ctx.command}" denied — MCP not ready. Use: ${fallbackHint}`;
     }
