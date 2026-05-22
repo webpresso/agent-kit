@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.16
+
+### Patch Changes
+
+- 75169dd: Remove the unused runtime-storage package dependency from the agent-kit CLI package.
+
 ## 0.18.15
 
 ### Patch Changes
@@ -686,18 +692,19 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 
   Existing `seedConsumerRepo` test fixture updated to write the wrapped form
   (matching what the scaffolder actually emits today). The self-hosting test
-  keeps the flat-form fixture to lock the backwards-compat path.wp_wp_
-wp_wp_wp_wp_
+  keeps the flat-form fixture to lock the backwards-compat path.wp*wp*
+  wp*wp_wp_wp*
+
 ## 0.7.0
 
-### Minor Changeswp_
+### Minor Changeswp\_
 
 - 2db1b01: Add optional `cwd` param to all MCP dev-workflow tools: `wp_test`, `wp_lint`,
   `wp_typecheck`, `wp_qa`, `wp_e2e`, `wp_audit`.
 
   The MCP server inherits the cwd of the Claude Code session that spawned it.
   When a session was opened in one repo and called an `wp_*` tool against a
-  sibling repo, the backend ran against the session's cwd and failedwp_.g.
+  sibling repo, the backend ran against the session's cwd and failedwp\_.g.
   `pnpm test` in a yarn-configured tree returned "This project is configured
   to use yarn"; `tsc --noEmit` witwp_o tsconfig at cwd dumped `--help`).
 
@@ -737,13 +744,13 @@ wp_wp_wp_wp_
 
 - 1e7ec89: Plugin manifest: PreToolUse now matches Bash + MultiEdit
 
-  The Claude Code plugin install path wp_viously left Bash unguarded —
+  The Claude Code plugin install path wp*viously left Bash unguarded —
   the SessionStart routing block was advisory but not enforced. Adding
   `Bash|MultiEdit` to the PreToolUse matcher (full matcher now
   `Bash|Edit|Write|MultiEdit|WebFetch|Read|Grep`) lets the
   `forbidden-commands` validator actually intercept `pnpm vitest`,
   `just test`, `oxlint`, `tsc`, and other dev-workflow shell commands and
-  redirect them to the corresponding `wp_*` MCP tools.
+  redirect them to the corresponding `wp*\*` MCP tools.
 
   Matches context-mode's own plugin precedent (their `hooks/hooks.json`
   registers PreToolUse for Bash, WebFetch, Read, Grep, Agent, and
@@ -780,7 +787,7 @@ wp_wp_wp_wp_
 --overwrite --with base-kit`, or hand-edit the three files; the diff is
   literally `s/nwp_pnpm exec/`.
 
-## 0.5.1wp_
+## 0.5.1wp\_
 
 ### Patch Changes
 
@@ -788,7 +795,7 @@ wp_wp_wp_wp_
 
   The MCP spec (`ToolSchema` in `@modelcontextprotocol/sdk`) requires evewp_tool's `inputSchema.type` to be exactly `"object"`. `wp_blueprint` previously declared its input schema as a Zod `discriminatedUnion`, which serializes to JSON Schema as `{ oneOf: [...] }` with no top-level `type`. Strict MCP clients (e.g. Codex) rejected the entire `tools/list` response with:
 
-  ```
+  ````
   "path": ["tools", N, "inputSchema", "type"], "message": "expected 'object'"
   ```wp_wp_wp_wp_wp_wp_wp_wp_
 
@@ -797,6 +804,7 @@ wp_wp_wp_wp_
   The fix flattens the schema to a single `z.object({ action, ...optional fields })` and enforces the per-action invariants (`goal` required when `action === 'new'`) via `superRefine`. JSON-schema clients now see one valid object shape; runtime dispatch is unchanged.
 
   All 8 MCP tools (`wp_lint`, `wp_qa`, `wp_e2e`, `wp_test`, `wp_format`, `wp_blueprint`, `wp_typecheck`, `wp_audit`) now serialize with spec-compliant root shape.
+  ````
 
 ## 0.5.0
 
@@ -871,7 +879,7 @@ wp_wp_wp_wp_
 
 ## 0.4.0
 
-### Minor Changeswp_
+### Minor Changeswp\_
 
 - 12fwp_2: Consumer-rule + consumer-skill wp_mitives, unified `wp sync` command, and removal of legacy sync commands.
 
