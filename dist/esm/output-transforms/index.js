@@ -19,7 +19,7 @@ export function clearTransformsForTest() {
         transforms.set(name, transform);
 }
 export function normalizeToolName(toolName) {
-    const withoutPrefix = toolName.replace(/^ak_/u, '');
+    const withoutPrefix = toolName.replace(/^wp_/u, '');
     if (withoutPrefix.startsWith('audit-'))
         return 'audit';
     return withoutPrefix;

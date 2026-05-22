@@ -1,9 +1,9 @@
 /**
  * Runtime detection for tools that agent-kit consumers commonly need
- * but that `ak setup` cannot install for them (curl-pipe install scripts
+ * but that `wp setup` cannot install for them (curl-pipe install scripts
  * or system package managers shouldn't be triggered silently).
  *
- * Auto-runs at the end of `ak setup`; prints a one-line status per
+ * Auto-runs at the end of `wp setup`; prints a one-line status per
  * runtime so the consumer knows what's missing without surprising them
  * with a download.
  */

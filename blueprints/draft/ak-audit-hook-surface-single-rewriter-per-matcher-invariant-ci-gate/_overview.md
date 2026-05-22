@@ -9,20 +9,20 @@ depends_on: []
 tags: [audit, hooks, ci-gate]
 ---
 
-# ak audit hook-surface — single-rewriter-per-matcher invariant CI gate
+# wp audit hook-surface — single-rewriter-per-matcher invariant CI gate
 
-**Goal:** Add `ak audit hook-surface` to enforce the Anthropic-documented
+**Goal:** Add `wp audit hook-surface` to enforce the Anthropic-documented
 single-rewriter-per-matcher invariant for Claude Code hooks.
 
 ## Product wedge anchor
 
-- **Stage outcome:** `ak setup` consumers get a CI gate that catches
+- **Stage outcome:** `wp setup` consumers get a CI gate that catches
   non-deterministic `updatedInput` races before they degrade session quality.
   Satisfies the Anthropic hooks doc guidance (May 2026): "Avoid having more
   than one hook modify the same tool's input."
-- **Consuming surface:** `ak audit hook-surface` CLI verb + `ak_audit` MCP
+- **Consuming surface:** `wp audit hook-surface` CLI verb + `wp_audit` MCP
   tool (`kind: "hook-surface"`).
-- **New user-visible capability:** Running `ak audit hook-surface` flags any
+- **New user-visible capability:** Running `wp audit hook-surface` flags any
   project that has both RTK and a context-mode rewriter registered on the
   same PreToolUse/Bash matcher — a silent non-determinism bug that previously
   had no automated detection.
@@ -41,8 +41,8 @@ auditHookSurface()               src/audit/hook-surface.ts
   └─ buildViolations()
         │
         ▼
-RepoAuditResult  ──►  REPO_AUDIT_REGISTRY["hook-surface"]  ──►  ak audit hook-surface
-                  ──►  MCP dispatch case "hook-surface"      ──►  ak_audit(kind="hook-surface")
+RepoAuditResult  ──►  REPO_AUDIT_REGISTRY["hook-surface"]  ──►  wp audit hook-surface
+                  ──►  MCP dispatch case "hook-surface"      ──►  wp_audit(kind="hook-surface")
 ```
 
 ## Key Decisions
@@ -113,8 +113,8 @@ Register `hook-surface` in:
 
 **Acceptance:**
 
-- [x] `ak audit hook-surface` dispatches correctly via REPO_AUDIT_REGISTRY
-- [x] `ak_audit(kind: "hook-surface")` dispatches via MCP
+- [x] `wp audit hook-surface` dispatches correctly via REPO_AUDIT_REGISTRY
+- [x] `wp_audit(kind: "hook-surface")` dispatches via MCP
 - [x] Lint passes
 
 ---
@@ -123,9 +123,9 @@ Register `hook-surface` in:
 
 | Gate        | Command                                      | Success Criteria          |
 | ----------- | -------------------------------------------- | ------------------------- |
-| Lint        | `ak_lint` (scoped to new files)              | Zero violations           |
-| Tests       | `ak_test` (scoped to hook-surface.test.ts)   | All 14 tests pass         |
-| Type safety | `ak_typecheck`                               | No new errors introduced  |
+| Lint        | `wp_lint` (scoped to new files)              | Zero violations           |
+| Tests       | `wp_test` (scoped to hook-surface.test.ts)   | All 14 tests pass         |
+| Type safety | `wp_typecheck`                               | No new errors introduced  |
 
 ## Cross-Plan References
 

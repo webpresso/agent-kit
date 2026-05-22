@@ -10,7 +10,7 @@ import { hashAgentDir } from '#cli/commands/compile'
 // ---------------------------------------------------------------------------
 
 function makeTmpDir(): string {
-  return mkdtempSync(join(tmpdir(), 'ak-orchestrator-test-'))
+  return mkdtempSync(join(tmpdir(), 'wp-orchestrator-test-'))
 }
 
 function writeSkill(

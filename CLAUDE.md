@@ -4,7 +4,7 @@ Source of truth: [`catalog/agent/rules/supported-agent-clis.md`](catalog/agent/r
 Plans, benchmarks, and docs MUST honor the tier classification defined there.
 Do not re-list the tiers anywhere — link to that rule.
 
-Adding a new CLI requires updating the rule file (gated by `ak audit
+Adding a new CLI requires updating the rule file (gated by `wp audit
 supported-agent-clis`).
 
 ## Skill routing

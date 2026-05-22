@@ -11,7 +11,7 @@ let tmpDir: string
 beforeEach(async () => {
   tmpDir = path.join(
     os.tmpdir(),
-    `ak-skill-sizes-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    `wp-skill-sizes-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   )
   await mkdir(tmpDir, { recursive: true })
 })

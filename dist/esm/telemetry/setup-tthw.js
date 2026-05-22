@@ -10,7 +10,7 @@ export function isTelemetryEnabled(env) {
 }
 export async function reportTthw(payload) {
     if (process.env['AK_TELEMETRY_DEBUG'] === '1') {
-        console.error('[ak telemetry]', JSON.stringify(payload));
+        console.error('[wp telemetry]', JSON.stringify(payload));
     }
     try {
         const controller = new AbortController();

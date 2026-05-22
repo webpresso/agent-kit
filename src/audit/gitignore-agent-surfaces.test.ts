@@ -23,7 +23,7 @@ describe('auditGitignoreAgentSurfaces', () => {
   })
 
   function tmp(): string {
-    const d = mkdtempSync(join(tmpdir(), 'ak-gitignore-audit-'))
+    const d = mkdtempSync(join(tmpdir(), 'wp-gitignore-audit-'))
     dirs.push(d)
     return d
   }
@@ -110,5 +110,11 @@ describe('auditGitignoreAgentSurfaces', () => {
     const result = await auditGitignoreAgentSurfaces(cwd)
 
     expect(result.checked).toBe(EXPECTED_PATHS.length)
+  })
+
+  it('protects Codex and OMX runtime surfaces', () => {
+    expect(EXPECTED_PATHS).toContain('.codex/')
+    expect(EXPECTED_PATHS).toContain('.omc/')
+    expect(EXPECTED_PATHS).toContain('.omx/')
   })
 })

@@ -4,7 +4,7 @@
  * Creates `~/.agent/workspace.yaml` (user-global, never committed) if absent.
  * The file lists local repos for cross-repo correlation lookups.
  *
- * Runs unconditionally on every `ak setup` — not gated behind a --with flag
+ * Runs unconditionally on every `wp setup` — not gated behind a --with flag
  * since workspace config is always needed for cross-repo correlation.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'

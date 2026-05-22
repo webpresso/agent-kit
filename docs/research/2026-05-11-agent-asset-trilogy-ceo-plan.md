@@ -34,7 +34,7 @@ agent-kit becomes the single source of truth for agent-asset state across every 
 - Three audit verbs catch drift before commit, in CI, and in PR review — auto-filing tech-debt into the existing lifecycle
 - Agents query blueprint state via SQL templates over a custom MCP (~300 LOC) honoring the summary-first contract
 - Cross-repo blueprint correlation with **permission/org-aware boundaries** coordinates work across monorepo + ingest-lens + agent-kit without leaking private slugs into public repos
-- GitHub Action ships as a reusable workflow; PR auto-comments structure drift summaries; pre-commit hooks catch issues at lowest cost; `ak blueprint browse` gives humans a Datasette-backed UI
+- GitHub Action ships as a reusable workflow; PR auto-comments structure drift summaries; pre-commit hooks catch issues at lowest cost; `wp blueprint browse` gives humans a Datasette-backed UI
 
 ### Platonic Ideal
 
@@ -51,7 +51,7 @@ Every webpresso public package + ingest-lens reaches "fully wired agent surfaces
 
 - **v0.11.0** — Compiler (rulesync wrap + 4 plugin manifests + AGENTS.md merger + memory rotation + GitHub Action + PR comment integration)
 - **v0.12.0** — Minimal 3-verb audit slice (skill-sizes, broken-refs, tech-debt new --from-audit) + pre-commit hooks
-- **v0.13.0** — Custom MCP over SQLite blueprint store + cold-start rebuild + `ak blueprint browse` + cross-repo correlation with permission model
+- **v0.13.0** — Custom MCP over SQLite blueprint store + cold-start rebuild + `wp blueprint browse` + cross-repo correlation with permission model
 
 Total: ~32 tasks (was 54 in original drafts; 41% reduction after research + selective expansion cherry-picks).
 
@@ -65,8 +65,8 @@ Total: ~32 tasks (was 54 in original drafts; 41% reduction after research + sele
 | 4 | Custom MCP vs `mcp-server-sqlite` | CUSTOM (~300 LOC) | mcp-server-sqlite is archived; raw rows violate summary-first contract; mutations bypass markdown-canonical |
 | 5 | State export/import for Routines | SKIP — document rebuild-from-markdown | Routines clone repo fresh; canonical markdown is accessible; SQLite is derived projection |
 | D3 | GitHub Action `webpresso/agent-kit-action@v1` | ACCEPTED → v0.11.0 | High leverage per consumer + 3rd-party; compounds with every audit added |
-| D4 | Pre-commit hooks via `ak setup --with husky` | ACCEPTED → v0.12.0 | Cheapest drift-catch point; extends existing scaffolder |
-| D5 | `ak blueprint browse` Datasette wrapper | ACCEPTED → v0.13.0 | Lowest-effort candidate; free dev UX win |
+| D4 | Pre-commit hooks via `wp setup --with husky` | ACCEPTED → v0.12.0 | Cheapest drift-catch point; extends existing scaffolder |
+| D5 | `wp blueprint browse` Datasette wrapper | ACCEPTED → v0.13.0 | Lowest-effort candidate; free dev UX win |
 | D6 | PR auto-comment with structured drift summary | ACCEPTED → v0.11.0/v0.12.0 | Compounds D3; differentiates action vs generic-audit |
 | D7 | Memory rotation (`op: rotate` directive) | ACCEPTED → v0.11.0 | Solves monorepo's 29KB AGENTS.md pain; shares parser with merger |
 | D8 | Cross-repo correlation **with permission/org-aware constraint** | ACCEPTED → v0.13.0 | Real workspace value; **load-bearing constraint: cannot ship without permission model** |
@@ -80,21 +80,21 @@ These are non-negotiable acceptance criteria. Cross-repo correlation cannot ship
 3. **Explicit cross-org allowlist.** `.agent/correlate.allow.yaml` lists permitted cross-org targets (`permits: [acme-corp]`). Both sides must allowlist for the correlation to resolve.
 4. **Visibility-aware resolution.** A public repo correlating to a private repo's blueprint resolves to a redacted reference (`depends_on: private/<sha256-hash>`) — proves the dependency exists without leaking the slug. The consuming public repo never serializes the private slug into committed markdown.
 5. **Workspace scoping.** `~/.agent/workspace.yaml` (user-global, gitignored) declares which local repos comprise the workspace for correlation lookups. Cloud agents (Routines) without this file fall back to git-clonable URLs declared per blueprint frontmatter.
-6. **Audit gate.** `ak audit cross-repo-correlation` (CI-suitable) verifies no public blueprint references a private slug in committed markdown. Fails the build on leak detection.
+6. **Audit gate.** `wp audit cross-repo-correlation` (CI-suitable) verifies no public blueprint references a private slug in committed markdown. Fails the build on leak detection.
 7. **3rd-party fit.** Public-extraction requirement: model must work for any adopter, not webpresso-specific. acme-corp configures their own multi-repo workspace; webpresso is just one instance of the pattern.
 
 ## Accepted scope (added to blueprints)
 
 - v0.11.0: rulesync wrap, 4 plugin manifests, AGENTS.md merger + `op: rotate`, GitHub Action `webpresso/agent-kit-action@v1`, PR comment integration
-- v0.12.0: 3-verb audit slice (`ak audit skill-sizes`, `ak audit broken-refs`, `ak tech-debt new --from-audit`), pre-commit hooks via husky extension
-- v0.13.0: custom MCP (~300 LOC) over SQLite store, cold-start rebuild path, `ak blueprint browse` (Datasette), cross-repo correlation **with all 7 D8 requirements**
+- v0.12.0: 3-verb audit slice (`wp audit skill-sizes`, `wp audit broken-refs`, `wp tech-debt new --from-audit`), pre-commit hooks via husky extension
+- v0.13.0: custom MCP (~300 LOC) over SQLite store, cold-start rebuild path, `wp blueprint browse` (Datasette), cross-repo correlation **with all 7 D8 requirements**
 
 ## Deferred to TODOS.md
 
 - **Full Kuzu+chokidar KG** behind concrete gating conditions in blueprint #2:
   1. Blueprint #1 manifest catches <90% of observed drift on monorepo over 30 days
   2. Tech-debt accumulates ≥10 items requiring graph traversal
-  3. Second consumer beyond monorepo+ingest-lens commits to consuming `ak_graph_*` tools
+  3. Second consumer beyond monorepo+ingest-lens commits to consuming `wp_graph_*` tools
 - **Optional graphify v0.13.0+ integration** (advisory, contingent on stable v1.0 + LICENSE)
 - **State export/import verbs** (revisit only if Anthropic ships sandbox-mode Routines that block repo cloning)
 - **VS Code/Cursor extension** for inline audit findings (heavy + niche)
@@ -122,7 +122,7 @@ All three: markdown is canonical, embedded DBs are derived, watchers (or audit c
 |---|---|---|---|
 | T1 | HIGH | `rulesync` upstream breakage (single-maintainer, 15+ minors/recent weeks) | Blueprint #1: pin `^8.15`, contract test on every minor bump |
 | T2 | MEDIUM | Plugin marketplace volatility (Cursor/Codex are new) | Blueprint #1: version-pin each manifest's schema, audit on monthly cadence |
-| T3 | MEDIUM | Cross-repo permission model leaks (D8) | Blueprint #3: `ak audit cross-repo-correlation` in CI for every consumer |
+| T3 | MEDIUM | Cross-repo permission model leaks (D8) | Blueprint #3: `wp audit cross-repo-correlation` in CI for every consumer |
 | T4 | MEDIUM | Memory rotation surprises users (lost context) | Blueprint #1: strong defaults, opt-in directive, clear logging on every rotation |
 | T5 | LOW | Datasette Python dep adds friction (D5) | Blueprint #3: document `pip install datasette`; non-blocking if absent |
 

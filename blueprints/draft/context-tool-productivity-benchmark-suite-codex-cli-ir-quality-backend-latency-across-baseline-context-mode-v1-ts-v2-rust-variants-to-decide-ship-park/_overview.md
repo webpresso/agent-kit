@@ -591,7 +591,7 @@ Write the Codex-specific recommendation memo. It must cite Codex-only evidence, 
 2. Populate the run manifest from the executed benchmark data
 3. Write `decision.md` using the template and the actual outputs
 4. Run: `pnpm lint benchmarks/session-memory-productivity-codex/templates --fix=false` and `pnpm typecheck`
-5. Run: `ak blueprint audit --all --strict`
+5. Run: `wp blueprint audit --all --strict`
 
 **Acceptance:**
 
@@ -603,7 +603,7 @@ Write the Codex-specific recommendation memo. It must cite Codex-only evidence, 
 
 | Gate | Command | Success Criteria |
 | --- | --- | --- |
-| Blueprint validation | `ak blueprint audit --all --strict` | No blueprint structure or lifecycle errors |
+| Blueprint validation | `wp blueprint audit --all --strict` | No blueprint structure or lifecycle errors |
 | Benchmark TS type safety | `pnpm typecheck` | Zero type errors in benchmark additions |
 | Benchmark TS tests | `pnpm vitest run benchmarks/session-memory-productivity-codex/...` | All benchmark unit tests pass |
 | Python adapter tests | `python -m pytest benchmarks/session-memory-productivity-codex/tier3/test_codex_runner.py` | Runner contract passes locally |

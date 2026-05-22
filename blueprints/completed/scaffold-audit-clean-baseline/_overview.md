@@ -16,7 +16,7 @@ tags:
 
 # Scaffold an Audit-Clean Baseline
 
-**Goal:** Make `ak setup` leave a consumer repo at an audit-clean baseline without manual cleanup, and tighten the remaining gaps between setup, audits, and post-install diagnostics.
+**Goal:** Make `wp setup` leave a consumer repo at an audit-clean baseline without manual cleanup, and tighten the remaining gaps between setup, audits, and post-install diagnostics.
 
 ## Status snapshot — current repo reality (2026-05-06)
 
@@ -28,8 +28,8 @@ This blueprint was drafted before several setup/tooling slices landed. It should
 - **OMX + gstack setup chaining already exists.** `src/cli/commands/init/index.ts` now ships presets for `omx` and `gstack`, and they are in `DEFAULT_PRESETS`.
 - **RTK setup/doctor slice also landed elsewhere.** `rtk` preset, `.agent/.rtk-requested` marker, and `runHooksDoctor()` RTK row are already implemented; that work belongs to `blueprints/completed/integrate-rtk-as-peer-plugin/_overview.md`.
 - **Dry-run guardrails are substantially in place.** `runInit()` passes `dryRun` through scaffolders; dedicated dry-run coverage exists in `src/cli/commands/init/init.integration.test.ts`, `init.presets.test.ts`, merge tests, and individual scaffolder tests.
-- **Claude plugin hint exists, but in a newer form.** `ak setup` now prints a `claude --plugin-dir ...` hint, not the older `claude install-plugin @webpresso/agent-kit` wording from this draft.
-- **Top-level `ak doctor` did not land.** Current shipped surface is still **`ak hooks doctor`**, not an audit-layer umbrella command.
+- **Claude plugin hint exists, but in a newer form.** `wp setup` now prints a `claude --plugin-dir ...` hint, not the older `claude install-plugin @webpresso/agent-kit` wording from this draft.
+- **Top-level `wp doctor` did not land.** Current shipped surface is still **`wp hooks doctor`**, not an audit-layer umbrella command.
 
 ### Stale assumptions in the original draft
 
@@ -42,10 +42,10 @@ This blueprint was drafted before several setup/tooling slices landed. It should
 
 The original dogfood problem statement still holds in narrower form:
 
-1. **`ak setup` should remediate more of what `ak audit *` later complains about.**
+1. **`wp setup` should remediate more of what `wp audit *` later complains about.**
 2. **Single-package consumers should not need fake workspace/catalog surfaces just to appease audits.**
 3. **Setup should converge cleanly on rerun.**
-4. **Audit and doctor surfaces are still split:** repo audits live under `ak audit ...`; post-install hook/plugin verification lives under `ak hooks doctor`.
+4. **Audit and doctor surfaces are still split:** repo audits live under `wp audit ...`; post-install hook/plugin verification lives under `wp hooks doctor`.
 
 ## Refined scope
 
@@ -68,8 +68,8 @@ This remains the largest unresolved user-facing gap from the original dogfood pa
 Target behavior:
 
 - Add a **safe, idempotent fixer** for missing docs frontmatter on existing docs.
-- Prefer `ak audit docs-frontmatter --fix` (or equivalent CLI affordance) over hidden setup mutation.
-- `ak setup` may optionally chain the fixer, but only via an explicit, documented path.
+- Prefer `wp audit docs-frontmatter --fix` (or equivalent CLI affordance) over hidden setup mutation.
+- `wp setup` may optionally chain the fixer, but only via an explicit, documented path.
 - Never overwrite existing frontmatter.
 
 #### C. Setup reruns should converge without churn
@@ -82,11 +82,11 @@ This blueprint still owns the convergence/idempotency cleanup:
 
 ### 2) Unify audit remediation discoverability
 
-The original `ak doctor` concept is still valid, but should now be reframed as:
+The original `wp doctor` concept is still valid, but should now be reframed as:
 
-- **Do not replace `ak hooks doctor`.** Keep it as the plugin/hook health verifier.
+- **Do not replace `wp hooks doctor`.** Keep it as the plugin/hook health verifier.
 - Add a new **audit-layer aggregator** only if it clearly composes with the existing hooks doctor and does not duplicate its logic.
-- The minimum acceptable outcome may be a thinner surface than the original draft: e.g. a command that runs selected repo audits and prints remediation hints, while deferring hook/plugin health to `ak hooks doctor`.
+- The minimum acceptable outcome may be a thinner surface than the original draft: e.g. a command that runs selected repo audits and prints remediation hints, while deferring hook/plugin health to `wp hooks doctor`.
 
 ### 3) Keep toolchain/setup scope narrow
 
@@ -103,7 +103,7 @@ For this blueprint, toolchain/setup follow-up scope is limited to:
 ## Out of scope
 
 - Re-implementing OMX, gstack, or RTK scaffolders already shipped elsewhere.
-- Replacing `ak hooks doctor` with a different hook/plugin health system.
+- Replacing `wp hooks doctor` with a different hook/plugin health system.
 - New toolchain preset expansion for `bun`, `vp`, or a revived `--all-tools` umbrella.
 - Plugin marketplace / install-flow redesign already covered by completed Claude-plugin work.
 - New audit categories unrelated to the audit-clean baseline.
@@ -162,7 +162,7 @@ This remains the core unfinished remediation path from the original dogfood pass
 
 **Evidence (2026-05-06):** `auditDocsFrontmatter()` now accepts `fix: true` and safely inserts missing `type` / `last_updated` fields without overwriting existing frontmatter; `src/audit/repo-guardrails.test.ts` has bare-doc, partial-frontmatter, and idempotency coverage; `pnpm exec vitest run src/audit/repo-guardrails.test.ts --reporter=dot` passed (107 tests), and `pnpm run typecheck` passed.
 
-#### [agent-kit] Task 2.2: Re-verify true `ak setup --dry-run`; fix only if a remaining leak is found
+#### [agent-kit] Task 2.2: Re-verify true `wp setup --dry-run`; fix only if a remaining leak is found
 
 **Status:** done
 
@@ -203,13 +203,13 @@ This task should now start with repo verification, not assumption. Current tests
 
 **Evidence (2026-05-06):** `.agent-kitrc.json` no longer churns because `runInit()` stopped rewriting `lastInit`; a remaining rerun diff in `.claude/settings.json` was narrowed to nondeterministic Stop-hook ordering and fixed by making `ak-stop-qa` sort after skill-managed Stop hooks; `src/cli/commands/init/scaffolders/agent-hooks/index.test.ts` now covers second-run preservation of the `verify` Stop hook; `src/cli/commands/init/init.integration.test.ts` now proves the second `runInit()` result reaches `overwritten: 0` with `identical: 106`; `pnpm exec vitest run src/cli/commands/init/scaffolders/agent-hooks/index.test.ts src/cli/commands/init/init.integration.test.ts --reporter=dot` passed (18 tests), and `pnpm run typecheck` passed.
 
-#### [agent-kit] Task 3.1: Design a repo-audit aggregator that composes with `ak hooks doctor`
+#### [agent-kit] Task 3.1: Design a repo-audit aggregator that composes with `wp hooks doctor`
 
 **Status:** done
 
 **Depends:** Tasks 1.2, 2.1
 
-Reframe the old top-level `ak doctor` idea around the repo's current doctor surface.
+Reframe the old top-level `wp doctor` idea around the repo's current doctor surface.
 
 **Files:**
 
@@ -220,10 +220,10 @@ Reframe the old top-level `ak doctor` idea around the repo's current doctor surf
 **Acceptance:**
 
 - [x] Repo audits can be run from one discoverable surface with remediation hints.
-- [x] `ak hooks doctor` remains intact for plugin/hook health.
+- [x] `wp hooks doctor` remains intact for plugin/hook health.
 - [x] Command naming/help makes the split between repo audits and hook/plugin checks obvious.
 
-**Evidence (2026-05-06):** added `src/cli/commands/doctor.ts` + `doctor.test.ts`, registered `doctor` in `src/cli/cli.ts`, and surfaced it in `README.md`; `ak doctor` now runs `catalog-drift`, `docs-frontmatter`, and `blueprint-lifecycle`, prints remediation hints, supports safe `--fix` for docs frontmatter, and explicitly defers hook/plugin health to `ak hooks doctor`; `pnpm exec vitest run src/cli/commands/doctor.test.ts src/cli/cli.test.ts --reporter=dot` passed, and `pnpm run typecheck` passed.
+**Evidence (2026-05-06):** added `src/cli/commands/doctor.ts` + `doctor.test.ts`, registered `doctor` in `src/cli/cli.ts`, and surfaced it in `README.md`; `wp doctor` now runs `catalog-drift`, `docs-frontmatter`, and `blueprint-lifecycle`, prints remediation hints, supports safe `--fix` for docs frontmatter, and explicitly defers hook/plugin health to `wp hooks doctor`; `pnpm exec vitest run src/cli/commands/doctor.test.ts src/cli/cli.test.ts --reporter=dot` passed, and `pnpm run typecheck` passed.
 
 #### [agent-kit] Task 4.1: Mark legacy OMX/gstack tracer-bullet work as complete/stale
 
@@ -283,12 +283,12 @@ Critical path now: **2.1 -> 2.3 -> 6.1**, with doctor/guidance work parallel aft
 
 ## Verification gates (updated)
 
-- `ak audit docs-frontmatter` on a seeded legacy-doc repo exposes a one-command remediation path.
-- `ak setup` on a fresh repo reaches the intended baseline without manual edits that setup/audit should own.
-- `ak setup` rerun is convergent: no avoidable `.new` storm, no timestamp-only churn.
-- `ak hooks doctor` continues to verify plugin/hook health.
-- If a new repo-audit doctor/aggregator lands, it clearly complements rather than replaces `ak hooks doctor`.
-- `ak setup --dry-run` remains write-free and spawn-free.
+- `wp audit docs-frontmatter` on a seeded legacy-doc repo exposes a one-command remediation path.
+- `wp setup` on a fresh repo reaches the intended baseline without manual edits that setup/audit should own.
+- `wp setup` rerun is convergent: no avoidable `.new` storm, no timestamp-only churn.
+- `wp hooks doctor` continues to verify plugin/hook health.
+- If a new repo-audit doctor/aggregator lands, it clearly complements rather than replaces `wp hooks doctor`.
+- `wp setup --dry-run` remains write-free and spawn-free.
 
 ## Related
 

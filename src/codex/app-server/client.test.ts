@@ -121,7 +121,7 @@ describe('CodexAppServerClient', () => {
                   eventName: 'preToolUse',
                   handlerType: 'command',
                   matcher: 'Bash',
-                  command: './node_modules/.bin/ak-pretool-guard',
+                  command: './node_modules/.bin/wp-pretool-guard',
                   timeoutSec: 5,
                   statusMessage: null,
                   sourcePath: '/repo/.codex/hooks.json',

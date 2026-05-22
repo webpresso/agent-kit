@@ -11,7 +11,7 @@
  *    has not allowlisted the other.
  *
  * The audit only detects and reports. Remediation requires manual intervention
- * via `ak fix cross-repo-leak <slug>` (or `fixCrossRepoLeak()` below).
+ * via `wp fix cross-repo-leak <slug>` (or `fixCrossRepoLeak()` below).
  */
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
@@ -127,7 +127,7 @@ function runAudit(db) {
  * `is_redacted=1`.
  *
  * This function is intentionally NOT called by `auditCrossRepoCorrelation`.
- * It must be invoked explicitly via `ak fix cross-repo-leak <slug>`.
+ * It must be invoked explicitly via `wp fix cross-repo-leak <slug>`.
  */
 export async function fixCrossRepoLeak(cwd, blueprintSlug) {
     const dbFile = path.join(cwd, DB_PATH);

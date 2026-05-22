@@ -1,5 +1,5 @@
 /**
- * Pure core for `ak docs lint` — no process.exit, no console.log.
+ * Pure core for `wp docs lint` — no process.exit, no console.log.
  *
  * Reads markdown files, detects `doc-type: blueprint` frontmatter, runs
  * `validateBlueprintPlan`, and returns a structured result. All I/O is

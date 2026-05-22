@@ -19,14 +19,14 @@ import { execSync } from 'node:child_process'
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 const HOOK_BINS = [
-  'ak-pretool-guard',
-  'ak-post-tool',
-  'ak-stop-qa',
-  'ak-guard-switch',
-  'ak-test-quality-check',
-  'ak-sessionstart-routing',
-  'ak-check-dev-link',
-  'ak-restore-dev-links',
+  'wp-pretool-guard',
+  'wp-post-tool',
+  'wp-stop-qa',
+  'wp-guard-switch',
+  'wp-test-quality-check',
+  'wp-sessionstart-routing',
+  'wp-check-dev-link',
+  'wp-restore-dev-links',
 ] as const
 
 const DOCS_LINT_BINS = [
@@ -56,7 +56,7 @@ export async function readCanonicalPackageJson(): Promise<CanonicalPackageJson> 
  * Builds the `package.json` for the `webpresso` staging directory.
  * - name → "webpresso"
  * - publishConfig → public npmjs.org
- * - bin → { wp, webpresso, ak, ...8 hook bins, ...docs-lint bins }
+ * - bin → { wp, webpresso, wp, ...8 hook bins, ...docs-lint bins }
  * - preferGlobal → true
  * All other fields are copied verbatim from the canonical package.json.
  */
@@ -71,7 +71,7 @@ export function buildStagingPackageJson(canonical: CanonicalPackageJson): Record
   const binEntries: Record<string, string> = {
     wp: './src/cli/cli.ts',
     webpresso: './src/cli/cli.ts',
-    ak: './src/cli/cli.ts',
+    wp: './src/cli/cli.ts',
   }
 
   for (const hookBin of HOOK_BINS) {

@@ -1,5 +1,5 @@
 /**
- * `ak audit cross-repo-correlation`
+ * `wp audit cross-repo-correlation`
  *
  * Wraps `auditCrossRepoCorrelation` from the blueprint cross-repo module into
  * the standard `RepoAuditResult` shape used by the audit registry.
@@ -26,7 +26,7 @@ export async function auditCrossRepoCorrelationAsRepoResult(cwd) {
             file: leak.blueprintSlug,
             message: `LEAK: public blueprint '${leak.blueprintSlug}' has unredacted reference to` +
                 ` private slug '${leak.targetSlug}' in repo '${leak.targetRepo}'.` +
-                ` Run 'ak fix cross-repo-leak ${leak.blueprintSlug}' to remediate.`,
+                ` Run 'wp fix cross-repo-leak ${leak.blueprintSlug}' to remediate.`,
         });
     }
     for (const missing of result.missingAllowlists) {

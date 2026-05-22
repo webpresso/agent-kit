@@ -1,5 +1,5 @@
 /**
- * Conflict policy for `ak init` file writes.
+ * Conflict policy for `wp init` file writes.
  *
  * Default: don't clobber consumer edits. If the target exists and differs
  * from the incoming content, report drift and leave the file untouched. In

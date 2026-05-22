@@ -88,7 +88,7 @@ export {
   evidenceListSchema,
   evidenceSchema,
 } from './evidence.js'
-// Verification block markdown helper (consumed by ak_blueprint_task_verify).
+// Verification block markdown helper (consumed by wp_blueprint_task_verify).
 export {
   applyVerification,
   parseVerificationBlock,
@@ -163,7 +163,7 @@ export {
   type RoadmapNode,
   type RoadmapRollup,
 } from './roadmap.js'
-// Context chunk assembler (consumed by ak_blueprint_context, Task 1.3).
+// Context chunk assembler (consumed by wp_blueprint_context, Task 1.3).
 export {
   assembleBlueprintContext,
   type AssembleContextInput,

@@ -42,7 +42,7 @@ export async function auditCompileDrift(cwd: string): Promise<RepoAuditResult> {
   if (manifest.sourceHash !== currentHash) {
     violations.push({
       file: '.agent/.compile-manifest.json',
-      message: `Compile drift detected — .agent/ has changed since last \`ak compile\` (stored hash: ${manifest.sourceHash.slice(0, 12)}…, current: ${currentHash.slice(0, 12)}…). Run \`ak compile\` to regenerate.`,
+      message: `Compile drift detected — .agent/ has changed since last \`wp compile\` (stored hash: ${manifest.sourceHash.slice(0, 12)}…, current: ${currentHash.slice(0, 12)}…). Run \`wp compile\` to regenerate.`,
     })
   }
 

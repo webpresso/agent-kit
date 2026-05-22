@@ -55,14 +55,14 @@ This prevents the private slug from leaking into public markdown.
 
 ### Req 6 — Audit gate (FAIL LOUD, no auto-mutation)
 
-`ak audit cross-repo-correlation` runs `auditCrossRepoCorrelation()` and fails with a non-zero exit code if any violation is found. It **never** auto-rewrites files or DB rows.
+`wp audit cross-repo-correlation` runs `auditCrossRepoCorrelation()` and fails with a non-zero exit code if any violation is found. It **never** auto-rewrites files or DB rows.
 
 Two violation classes:
 
 1. **LEAK** — a public blueprint has `is_redacted=0` and a `target_slug` pointing to a private-repo blueprint.
 2. **MISSING ALLOWLIST** — a cross-org dependency exists but at least one side lacks an allowlist entry.
 
-Requires `AK_USE_SQL_AUDITS=1` to run (same alpha gate as other SQL audits).
+Requires `WP_USE_SQL_AUDITS=1` to run (same alpha gate as other SQL audits).
 
 ### Req 7 — 3rd-party fit (generic)
 
@@ -147,12 +147,12 @@ cross_repo_depends_on:
 - `acme-corp/public-repo` is **public**
 - No mutual allowlist exists
 
-At ingest time, `is_redacted=1` is set and `target_slug` is nulled. But if somehow an unredacted row slips into the DB (e.g., the allowlist was revoked after initial ingest), `ak audit cross-repo-correlation` will FAIL LOUD:
+At ingest time, `is_redacted=1` is set and `target_slug` is nulled. But if somehow an unredacted row slips into the DB (e.g., the allowlist was revoked after initial ingest), `wp audit cross-repo-correlation` will FAIL LOUD:
 
 ```
 LEAK: public blueprint 'acme-feature' has unredacted reference to
 private slug 'internal-migration-plan' in repo 'other-org/private-repo'.
-Run 'ak fix cross-repo-leak acme-feature' to remediate.
+Run 'wp fix cross-repo-leak acme-feature' to remediate.
 ```
 
 ---
@@ -162,12 +162,12 @@ Run 'ak fix cross-repo-leak acme-feature' to remediate.
 The audit never auto-mutates. To fix a detected leak, run:
 
 ```bash
-ak fix cross-repo-leak <blueprint-slug>
+wp fix cross-repo-leak <blueprint-slug>
 ```
 
 This redacts the target slug in the DB (sets `target_slug=null`, computes the hash, sets `is_redacted=1`). The source markdown also needs manual review to remove or redact the slug reference.
 
-> Note: the `ak fix cross-repo-leak` verb exists as a placeholder in the CLI. The `fixCrossRepoLeak()` function in `src/blueprint/cross-repo/audit.ts` implements the DB remediation. Full CLI wiring is planned.
+> Note: the `wp fix cross-repo-leak` verb exists as a placeholder in the CLI. The `fixCrossRepoLeak()` function in `src/blueprint/cross-repo/audit.ts` implements the DB remediation. Full CLI wiring is planned.
 
 ---
 
@@ -180,4 +180,4 @@ This redacts the target slug in the DB (sets `target_slug=null`, computes the ha
 | `src/blueprint/cross-repo/audit.ts` | `auditCrossRepoCorrelation()` + `fixCrossRepoLeak()` |
 | `src/audit/cross-repo-correlation.ts` | Wraps audit into `RepoAuditResult` for the registry |
 | `src/blueprint/db/workspace-config.ts` | `ingestWorkspaceRepos()` — upserts workspace repo metadata |
-| `catalog/agent/correlate.allow.yaml` | Template deployed by `ak setup` |
+| `catalog/agent/correlate.allow.yaml` | Template deployed by `wp setup` |

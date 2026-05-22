@@ -20,18 +20,18 @@ Each compact quality leaf remains summary-first and adds:
 - `bytes`: emitted compact-output bytes.
 - `tokensSaved`: raw bytes minus compact bytes, used as the budget proxy.
 
-`ak_qa` keeps the existing envelope and carries the additive leaf metadata under
+`wp_qa` keeps the existing envelope and carries the additive leaf metadata under
 `details.lint`, `details.typecheck`, and `details.test`.
 
 ## Current transforms
 
-- `ak_lint` uses the oxlint JSON transform when available and a generic
+- `wp_lint` uses the oxlint JSON transform when available and a generic
   errors-only fallback for heterogeneous package-manager lint output.
-- `ak_typecheck` compacts TypeScript diagnostics by file/line/code.
-- `ak_test` asks Vitest for JSON on the MCP path and compacts failing tests.
+- `wp_typecheck` compacts TypeScript diagnostics by file/line/code.
+- `wp_test` asks Vitest for JSON on the MCP path and compacts failing tests.
 - Unknown tools fall back to the generic errors-only transform.
 
-For one-off local commands without a quality wrapper, use `ak err <cmd>`. It
+For one-off local commands without a quality wrapper, use `wp err <cmd>`. It
 prints only lines matching failure markers such as `error`, `fail`, `✗`, or
 `✘`, and exits with the wrapped command's exit code.
 
@@ -44,8 +44,8 @@ old full raw-output shape for debugging or compatibility checks.
 ## BOOKEND usage
 
 Full QA remains a BOOKEND command: run it once before broad work and once at the
-end. During the middle loop, use scoped leaves (`ak_lint`, `ak_typecheck`,
-`ak_test`, or their repo-owned wrappers) so the agent receives compact evidence
+end. During the middle loop, use scoped leaves (`wp_lint`, `wp_typecheck`,
+`wp_test`, or their repo-owned wrappers) so the agent receives compact evidence
 instead of full logs.
 
 When an external repo such as ingest-lens wants to validate the budget, set

@@ -76,14 +76,14 @@ describe('generateRules', () => {
     const rules = generateRules()
     const vitestRule = rules.find((r) => r.pattern.test('vp exec vitest'))
     expect(vitestRule).toBeDefined()
-    expect(vitestRule!.suggestion).toContain('ak_test')
+    expect(vitestRule!.suggestion).toContain('wp_test')
   })
 
   it('includes vp run test as a blocked rule', () => {
     const rules = generateRules()
     const testScriptRule = rules.find((r) => r.pattern.test('vp run test'))
     expect(testScriptRule).toBeDefined()
-    expect(testScriptRule!.suggestion).toContain('ak_test')
+    expect(testScriptRule!.suggestion).toContain('wp_test')
   })
 
   it('includes doppler run as a blocked rule', () => {
@@ -102,7 +102,7 @@ describe('generateRules', () => {
     const rules = generateRules()
     const rule = rules.find((r) => r.pattern.test('vp exec markdownlint-cli2 README.md'))
     expect(rule).toBeDefined()
-    expect(rule!.suggestion).toContain('ak_qa')
+    expect(rule!.suggestion).toContain('wp_qa')
   })
 })
 
@@ -113,13 +113,13 @@ describe('findMatchingRule', () => {
   it('matches vp vitest and returns the correct rule', () => {
     const rule = findMatchingRule('vp vitest')
     expect(rule).toBeDefined()
-    expect(rule!.suggestion).toContain('ak_test')
+    expect(rule!.suggestion).toContain('wp_test')
   })
 
   it('matches vp run test', () => {
     const rule = findMatchingRule('vp run test')
     expect(rule).toBeDefined()
-    expect(rule!.suggestion).toContain('ak_test')
+    expect(rule!.suggestion).toContain('wp_test')
   })
 
   it('matches vp exec tsc', () => {
@@ -147,19 +147,19 @@ describe('findMatchingRule', () => {
   it('matches vp exec vitest with arguments', () => {
     const rule = findMatchingRule('vp exec vitest --run --reporter verbose')
     expect(rule).toBeDefined()
-    expect(rule!.suggestion).toContain('ak_test')
+    expect(rule!.suggestion).toContain('wp_test')
   })
 
   it('matches vp --filter exec vitest with arguments', () => {
     const rule = findMatchingRule('vp --filter @repo/platform-web exec vitest run')
     expect(rule).toBeDefined()
-    expect(rule!.suggestion).toContain('ak_test')
+    expect(rule!.suggestion).toContain('wp_test')
   })
 
   it('matches vp --filter run test', () => {
     const rule = findMatchingRule('vp --filter @repo/platform-web run test')
     expect(rule).toBeDefined()
-    expect(rule!.suggestion).toContain('ak_test')
+    expect(rule!.suggestion).toContain('wp_test')
   })
 
   it('matches vp --filter exec tsc', () => {
@@ -249,7 +249,7 @@ describe('findMatchingRule', () => {
   it('matches commands split by &&', () => {
     const rule = findMatchingRule('echo done && vp run test')
     expect(rule).toBeDefined()
-    expect(rule!.suggestion).toContain('ak_test')
+    expect(rule!.suggestion).toContain('wp_test')
   })
 
   it('matches commands split by ;', () => {
@@ -281,7 +281,7 @@ describe('findMatchingRule', () => {
   it('matches vp exec markdownlint-cli2', () => {
     const rule = findMatchingRule('vp exec markdownlint-cli2 README.md')
     expect(rule).toBeDefined()
-    expect(rule!.suggestion).toContain('ak_qa')
+    expect(rule!.suggestion).toContain('wp_qa')
   })
 })
 
@@ -307,7 +307,7 @@ describe('applySuggestionModifiers', () => {
     const rule = {
       pattern: /^vp exec oxfmt/,
       category: 'lint' as const,
-      suggestion: 'ak_format MCP tool',
+      suggestion: 'wp_format MCP tool',
     }
     expect(applySuggestionModifiers('vp exec oxfmt --fix-dangerous', rule)).toContain(
       '--fix-unsafe',
@@ -318,19 +318,19 @@ describe('applySuggestionModifiers', () => {
     const rule = {
       pattern: /^vp exec stryker/,
       category: 'test' as const,
-      suggestion: 'ak_test mutation workflow',
+      suggestion: 'wp_test mutation workflow',
     }
-    expect(applySuggestionModifiers('vp exec stryker run', rule)).toBe('ak_test mutation workflow')
+    expect(applySuggestionModifiers('vp exec stryker run', rule)).toBe('wp_test mutation workflow')
   })
 
   it('returns default suggestion when no modifier pattern matches', () => {
     const rule = {
       pattern: /^vp exec tsc/,
       category: 'typecheck' as const,
-      suggestion: 'ak_typecheck MCP tool with package/file scope',
+      suggestion: 'wp_typecheck MCP tool with package/file scope',
     }
     expect(applySuggestionModifiers('vp exec tsc --noEmit', rule)).toBe(
-      'ak_typecheck MCP tool with package/file scope',
+      'wp_typecheck MCP tool with package/file scope',
     )
   })
 })
@@ -340,23 +340,23 @@ describe('applySuggestionModifiers', () => {
 // ---------------------------------------------------------------------------
 describe('getApprovedEquivalent', () => {
   it('returns approved equivalent for vp vitest', () => {
-    expect(getApprovedEquivalent('vp vitest')).toContain('ak_test')
+    expect(getApprovedEquivalent('vp vitest')).toContain('wp_test')
   })
 
   it('returns approved equivalent for vp run test', () => {
-    expect(getApprovedEquivalent('vp run test')).toContain('ak_test')
+    expect(getApprovedEquivalent('vp run test')).toContain('wp_test')
   })
 
   it('returns approved equivalent for vp exec tsc', () => {
-    expect(getApprovedEquivalent('vp exec tsc')).toContain('ak_typecheck')
+    expect(getApprovedEquivalent('vp exec tsc')).toContain('wp_typecheck')
   })
 
   it('returns approved equivalent for vp exec oxlint', () => {
-    expect(getApprovedEquivalent('vp exec oxlint')).toContain('ak_lint')
+    expect(getApprovedEquivalent('vp exec oxlint')).toContain('wp_lint')
   })
 
   it('returns qa MCP guidance for vp exec markdownlint-cli2', () => {
-    expect(getApprovedEquivalent('vp exec markdownlint-cli2 README.md')).toContain('ak_qa')
+    expect(getApprovedEquivalent('vp exec markdownlint-cli2 README.md')).toContain('wp_qa')
   })
 
   it('returns generic message for unknown command', () => {
@@ -467,7 +467,7 @@ describe('createBlockedResult', () => {
     expect(result.command).toBe('vp vitest')
     expect(result.category).toBe('test')
     expect(result.message).toContain('vp vitest')
-    expect(result.message).toContain('mcp__agent-kit__ak_test(...)')
+    expect(result.message).toContain('mcp__agent-kit__wp_test(...)')
     expect(result.message).toContain('Fallback if MCP unavailable:')
     expect(result.docsRef).toBeDefined()
     expect(result.matchedPattern).toBeDefined()
@@ -476,7 +476,7 @@ describe('createBlockedResult', () => {
   it('includes suggestion in the message', () => {
     const rule = findMatchingRule('vp exec tsc')!
     const result = createBlockedResult('vp exec tsc', rule, { mcpReady: false })
-    expect(result.suggestion).toContain('ak_typecheck')
+    expect(result.suggestion).toContain('wp_typecheck')
     expect(result.message).toContain(result.suggestion)
   })
 
@@ -484,7 +484,7 @@ describe('createBlockedResult', () => {
     const rule = {
       pattern: /^vp exec oxfmt/,
       category: 'lint' as const,
-      suggestion: 'ak_format MCP tool',
+      suggestion: 'wp_format MCP tool',
     }
     const result = createBlockedResult('vp exec oxfmt --fix-dangerous', rule)
     expect(result.suggestion).toContain('--fix-unsafe')
@@ -502,7 +502,7 @@ describe('createAuditResult', () => {
     expect(result.passed).toBe(true)
     expect(result.message).toContain('[AUDIT] Would block')
     expect(result.command).toBe('vp vitest')
-    expect(result.message).toContain('mcp__agent-kit__ak_test(...)')
+    expect(result.message).toContain('mcp__agent-kit__wp_test(...)')
     expect(result.docsRef).toBeDefined()
   })
 })
@@ -541,7 +541,7 @@ describe('validateForbiddenCommands', () => {
     const result = validateForbiddenCommands(bashInput('vp vitest'))
     expect(result.passed).toBe(false)
     expect('command' in result && result.command).toBe('vp vitest')
-    expect('command' in result && result.suggestion).toContain('ak_test')
+    expect('command' in result && result.suggestion).toContain('wp_test')
   })
 
   it('blocks vp --filter exec vitest', () => {
@@ -655,8 +655,8 @@ describe('validateForbiddenCommands', () => {
         'utf8',
       ).trim()
 
-      expect(text.startsWith('"vp run test" denied — use agent-kit MCP tool:')).toBe(true)
-      expect(text).toContain('mcp__agent-kit__ak_test(...)')
+      expect(text.startsWith('"vp run test" denied — use wp MCP tool:')).toBe(true)
+      expect(text).toContain('mcp__agent-kit__wp_test(...)')
       expect(text).toContain('Fallback if MCP unavailable:')
     }
   })
@@ -801,7 +801,7 @@ describe('validateForbiddenCommands', () => {
   it('blocks vp exec markdownlint-cli2 so markdown-only lint routes through qa guidance', () => {
     const result = validateForbiddenCommands(bashInput('vp exec markdownlint-cli2 README.md'))
     expect(result.passed).toBe(false)
-    expect('command' in result && result.suggestion).toContain('ak_qa')
+    expect('command' in result && result.suggestion).toContain('wp_qa')
   })
 
   it('allows unrelated commands', () => {
@@ -856,21 +856,21 @@ describe('validateForbiddenCommands', () => {
   it('blocks vp exec markdownlint-cli2', () => {
     const result = validateForbiddenCommands(bashInput('vp exec markdownlint-cli2 README.md'))
     expect(result.passed).toBe(false)
-    expect('command' in result && result.suggestion).toContain('ak_qa')
+    expect('command' in result && result.suggestion).toContain('wp_qa')
   })
 
   it('blocks prettier bare command', () => {
     const result = validateForbiddenCommands(bashInput('prettier README.md --write'))
     expect(result.passed).toBe(false)
     expect('command' in result && result.category).toBe('format')
-    expect('command' in result && result.suggestion).toContain('ak_format')
+    expect('command' in result && result.suggestion).toContain('wp_format')
   })
 
   it('blocks vp exec prettier', () => {
     const result = validateForbiddenCommands(bashInput('vp exec prettier README.md --write'))
     expect(result.passed).toBe(false)
     expect('command' in result && result.category).toBe('format')
-    expect('command' in result && result.suggestion).toContain('ak_format')
+    expect('command' in result && result.suggestion).toContain('wp_format')
   })
 
   it('blocks vp run test', () => {
@@ -948,7 +948,7 @@ describe('blueprint lifecycle enforcement', () => {
     const result = createBlockedResult('mv blueprints/draft/foo blueprints/planned/', rule, {
       mcpReady: true,
     })
-    expect(result.message).toContain('mcp__agent-kit__ak_blueprint(...)')
+    expect(result.message).toContain('mcp__agent-kit__wp_blueprint(...)')
   })
 
   it('blocks git mv targeting blueprint lifecycle dirs', () => {
@@ -1126,7 +1126,7 @@ describe('forbidden-commands edge cases', () => {
   it('handles commands with leading/trailing whitespace', () => {
     const rule = findMatchingRule('  vp vitest  ')
     expect(rule).toBeDefined()
-    expect(rule!.suggestion).toContain('ak_test')
+    expect(rule!.suggestion).toContain('wp_test')
   })
 
   it('does not block approved commands even if they contain blocklisted tool names', () => {

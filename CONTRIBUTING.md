@@ -2,17 +2,17 @@
 
 ## Local development
 
-Run the CLI as **`pnpm exec ak <subcommand>`** (or bare `ak <subcommand>` from
+Run the CLI as **`pnpm exec wp <subcommand>`** (or bare `wp <subcommand>` from
 inside any pnpm script — pnpm prepends `node_modules/.bin` to `PATH`). Don't
 shell out to `node ./dist/esm/cli/cli.js …`: that path is an implementation
 detail; the bin is the contract.
 
 ```bash
-pnpm exec ak blueprint show <slug>
-pnpm exec ak blueprint task complete <slug> <task-id>
-pnpm exec ak audit blueprint-lifecycle
-pnpm exec ak sync
-pnpm exec ak tech-debt new "<title>" --severity low --category documentation
+pnpm exec wp blueprint show <slug>
+pnpm exec wp blueprint task complete <slug> <task-id>
+pnpm exec wp audit blueprint-lifecycle
+pnpm exec wp sync
+pnpm exec wp tech-debt new "<title>" --severity low --category documentation
 ```
 
 This works because `prepare` (run automatically on every `pnpm install`) chains
@@ -24,7 +24,7 @@ fills the gap for in-repo development. Adding a new bin entry to
 extends automatically.
 
 In a consumer repo (e.g. `ozby/ingest-lens`) that has installed
-`@webpresso/agent-kit`, the `ak` binary is on `node_modules/.bin/ak`
+`@webpresso/agent-kit`, the `wp` binary is on `node_modules/.bin/wp`
 directly via pnpm's normal dependency-bin linking — no extra step needed
 there. **The link-self-bins script is only relevant when working inside this
 repo.** Consumers don't have the gap because pnpm symlinks the bins of

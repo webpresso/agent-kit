@@ -5,7 +5,7 @@
  *
  * Note: list and review use direct file scanning (not TechDebtService) because
  * the service uses README.md file pattern for subdirectory-based layout, while
- * the h-NNN-*.md flat file layout is what we write via `ak tech-debt new`.
+ * the h-NNN-*.md flat file layout is what we write via `wp tech-debt new`.
  */
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -415,7 +415,7 @@ export async function executeTechDebtSubcommand(subcommand, args, options) {
             const title = args[0] ?? '';
             // --from-audit derives its own title; a user-supplied title is optional in that mode
             if (!title && !options.fromAudit) {
-                throw new Error('Usage: ak tech-debt new "<title>" --severity <s> --category <c>');
+                throw new Error('Usage: wp tech-debt new "<title>" --severity <s> --category <c>');
             }
             await handleNew(title, options);
             return;

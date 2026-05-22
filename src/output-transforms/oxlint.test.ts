@@ -10,7 +10,7 @@ describe('oxlintTransform', () => {
 
   it('compacts oxlint JSON output into file-line-rule messages', () => {
     const result = oxlintTransform(fixture('one-error.json'), {
-      toolName: 'ak_lint-oxlint',
+      toolName: 'wp_lint-oxlint',
       normalizedToolName: 'lint-oxlint',
     })
 
@@ -23,7 +23,7 @@ describe('oxlintTransform', () => {
 
   it('falls back to error/warning lines when JSON parsing fails', () => {
     const result = oxlintTransform(fixture('malformed.txt'), {
-      toolName: 'ak_lint-oxlint',
+      toolName: 'wp_lint-oxlint',
       normalizedToolName: 'lint-oxlint',
     })
 
@@ -32,7 +32,7 @@ describe('oxlintTransform', () => {
 
   it('accepts diagnostics wrapper output', () => {
     const result = oxlintTransform(fixture('tsgolint-one-error.json'), {
-      toolName: 'ak_lint-oxlint',
+      toolName: 'wp_lint-oxlint',
       normalizedToolName: 'lint-oxlint',
     })
 
@@ -41,11 +41,11 @@ describe('oxlintTransform', () => {
 
   it('handles clean and multi-rule fixtures within the compact budget', () => {
     const clean = oxlintTransform(fixture('clean.json'), {
-      toolName: 'ak_lint-oxlint',
+      toolName: 'wp_lint-oxlint',
       normalizedToolName: 'lint-oxlint',
     })
     const multi = oxlintTransform(fixture('multi-rule.json'), {
-      toolName: 'ak_lint-oxlint',
+      toolName: 'wp_lint-oxlint',
       normalizedToolName: 'lint-oxlint',
     })
 

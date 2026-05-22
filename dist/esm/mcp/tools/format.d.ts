@@ -1,5 +1,5 @@
 /**
- * `ak_format` MCP tool.
+ * `wp_format` MCP tool.
  *
  * Runs `oxfmt` on the resolved project root. By default writes fixes in
  * place; pass `check: true` to verify formatting without writing (useful

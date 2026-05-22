@@ -82,7 +82,7 @@ let dbPath: string
 let conn: ReturnType<typeof openDb>
 
 beforeEach(() => {
-  tmpDir = mkdtempSync(path.join(tmpdir(), 'ak-audit-xrepo-'))
+  tmpDir = mkdtempSync(path.join(tmpdir(), 'wp-audit-xrepo-'))
   mkdirSync(path.join(tmpDir, '.agent'), { recursive: true })
   dbPath = path.join(tmpDir, '.agent', '.blueprints.db')
   conn = openDb(dbPath)
@@ -108,7 +108,7 @@ describe('auditCrossRepoCorrelation', () => {
     })
 
     it('passes when no DB exists', async () => {
-      const emptyDir = mkdtempSync(path.join(tmpdir(), 'ak-empty-'))
+      const emptyDir = mkdtempSync(path.join(tmpdir(), 'wp-empty-'))
       try {
         const result = await auditCrossRepoCorrelation(emptyDir)
         expect(result.pass).toBe(true)
@@ -258,7 +258,7 @@ describe('auditCrossRepoCorrelation', () => {
 
 describe('fixCrossRepoLeak', () => {
   it('returns fixed=false when DB does not exist', async () => {
-    const emptyDir = mkdtempSync(path.join(tmpdir(), 'ak-fix-empty-'))
+    const emptyDir = mkdtempSync(path.join(tmpdir(), 'wp-fix-empty-'))
     try {
       const result = await fixCrossRepoLeak(emptyDir, 'some-slug')
       expect(result.fixed).toBe(false)

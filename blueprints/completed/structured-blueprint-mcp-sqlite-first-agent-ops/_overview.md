@@ -31,7 +31,7 @@ reviews:
 
 - **Stage outcome:** Agents stop treating blueprints as stale markdown blobs. The completed `blueprint-structured-store` work already created a SQLite projection, SQL templates, CLI DB verbs, and a DB-backed MCP server; this blueprint turns that existing work into the default agent-facing MCP contract.
 - **Expanded operating scope:** MCP can see the current project, MCP client roots, configured workspace repos, and discovered git worktrees/nested blueprint projects through one small resolver. Agents operate on one project by default and intentionally widen to multiple projects/worktrees.
-- **Consuming surface:** `ak mcp` tool list, structured blueprint MCP tools (`ak_blueprint_projects`, `ak_blueprint_list`, `ak_blueprint_get`, `ak_blueprint_context`, `ak_blueprint_create`, `ak_blueprint_task_verify`, plus existing query/validate/task/promote/finalize/depgraph), and maintainer smoke docs.
+- **Consuming surface:** `wp mcp` tool list, structured blueprint MCP tools (`wp_blueprint_projects`, `wp_blueprint_list`, `wp_blueprint_get`, `wp_blueprint_context`, `wp_blueprint_create`, `wp_blueprint_task_verify`, plus existing query/validate/task/promote/finalize/depgraph), and maintainer smoke docs.
 - **New user-visible capability:** A maintainer or agent can discover relevant projects and blueprints, fetch only needed context chunks, mark completion with verification evidence, and receive the next recommended context without manually reading or editing `_overview.md`.
 
 ## Critical investigation summary
@@ -42,17 +42,17 @@ The repo already has substantial SQLite blueprint infrastructure. This blueprint
 | -- | -------- | -------- | -------------------------- |
 | F1 | HIGH | `src/blueprint/db/cold-start.ts` uses `getSurfacePath('blueprints/blueprints.db', 'repo', cwd)`, while older call sites hardcode `.agent/.blueprints.db`. `src/paths/state-root.ts` has separate `repo` and `worktree` scopes. | Centralize path resolution before MCP widening. Use a worktree-scoped projection DB for markdown-derived rows, because two worktrees of the same repo can have different checked-out blueprint files. Keep any cross-project registry separate from the projection DB. |
 | F2 | HIGH | SQLite schema/migrations/ingester/query templates already exist in `src/blueprint/db/*`; CLI mutations still edit markdown then re-ingest. | Preserve markdown as canonical durable artifact. Do not add a second schema/parser. Add helpers around the existing projection. |
-| F3 | HIGH | `src/mcp/blueprint-server.ts` registers structured DB-backed tools, but `src/mcp/server.ts` only auto-discovers `src/mcp/tools/*`, where legacy `ak_blueprint` remains. | Wire structured tools into the default `ak mcp` server and retire the stale file/action facade only after replacements cover normal workflows. |
+| F3 | HIGH | `src/mcp/blueprint-server.ts` registers structured DB-backed tools, but `src/mcp/server.ts` only auto-discovers `src/mcp/tools/*`, where legacy `wp_blueprint` remains. | Wire structured tools into the default `wp mcp` server and retire the stale file/action facade only after replacements cover normal workflows. |
 | F4 | HIGH | `src/blueprint/db/workspace-config.ts` only reads static `~/.agent/workspace.yaml` entries shaped as `{ repos: [{ path }] }`. `src/cli/commands/worktree/router-dispatch.ts` already exports `parseWorktreePorcelain(raw: string): WorktreeEntry[]` and `resolveWorktreePath`. | Build an explicit project/worktree discovery module that imports the already-exported worktree parser; do not re-export or duplicate it. Do not make MCP infer all roots by ad hoc recursive filesystem scans. |
 | F5 | HIGH | Installed `@modelcontextprotocol/sdk` is `1.29.0`; local SDK exposes `Server.listRoots()` and `RootsListChangedNotificationSchema`. `listRoots()` throws via `assertClientCapability()` if the client did not advertise roots capability. There is no convenience `onRootsListChanged` hook — handlers must be registered via `server.setNotificationHandler(RootsListChangedNotificationSchema, handler)`. | Add an optional MCP roots provider/cache with graceful fallback. If roots are unsupported or fail, default to current project + workspace config instead of failing tool listing. Register list-changed via `setNotificationHandler`, not a non-existent `onRootsListChanged` property. |
-| F6 | HIGH | Existing `ak_blueprint_task_advance` can transition tasks to `done`; CLI mutation path can also set done without evidence. | Add verification-backed completion and refuse `done` through generic MCP advance. Persist evidence into markdown and re-ingest. |
+| F6 | HIGH | Existing `wp_blueprint_task_advance` can transition tasks to `done`; CLI mutation path can also set done without evidence. | Add verification-backed completion and refuse `done` through generic MCP advance. Persist evidence into markdown and re-ingest. |
 | F7 | MEDIUM | `src/mcp/tools/_shared/project-root.ts` resolves one project root from `CLAUDE_PROJECT_DIR`, cwd, or upward markers. | Keep single-project default for safety. Multi-project listing is explicit via `scope: roots|workspace|all` or `project_id` selectors. |
 | F8 | MEDIUM | `workspace_repos` table stores repo metadata only; it does not make blueprint query rows globally unique across projects/worktrees. | Aggregate by opening each selected project's projection DB and return `project_id` with every row. Do not merge multiple projects into one projection DB in this blueprint. |
 | F9 | CRITICAL | `src/blueprint/db/cold-start.ts` uses `getSurfacePath('blueprints/.lock', 'repo', cwd)` for the advisory ingest lock with a 5s `proceeds anyway` escape, while Task 1.1 moves the projection DB to `'worktree'` scope. Mismatched lock+DB scopes leave concurrent writers unprotected; the 5s escape silently allows races during long ingests. The ingester (`src/blueprint/db/ingester.ts`) uses DELETE-then-INSERT inside a single `db.transaction()`, so partial reads during a competing ingest are possible. | Task 1.1 must explicitly resolve **both** projection DB scope **and** lock scope, choosing one of: (a) lock stays `'repo'` to serialize cross-worktree ingest of shared markdown; (b) lock moves to `'worktree'` and a separate `'repo'`-scoped markdown-mutation lock is added. Remove the silent 5s "proceeds anyway" escape on write paths. Add a concurrent-ingest test. |
-| F10 | CRITICAL | Task 1.4 (verification helper) and Task 3.2 (`ak_blueprint_task_verify`) require "passed evidence" but the blueprint defines no evidence schema, validity rules, or anti-forgery posture. The product wedge ("agents stop marking tasks done without verification") collapses if evidence is `z.any().array().min(1)`. | Pin an explicit Evidence Contract (see new section below) before Task 1.4 begins, with required fields, validity rules per kind, and a canonical markdown serialization. |
+| F10 | CRITICAL | Task 1.4 (verification helper) and Task 3.2 (`wp_blueprint_task_verify`) require "passed evidence" but the blueprint defines no evidence schema, validity rules, or anti-forgery posture. The product wedge ("agents stop marking tasks done without verification") collapses if evidence is `z.any().array().min(1)`. | Pin an explicit Evidence Contract (see new section below) before Task 1.4 begins, with required fields, validity rules per kind, and a canonical markdown serialization. |
 | F11 | HIGH | `blueprints/{draft,planned,in-progress,completed}/` is git-tracked; a `git checkout other-branch` flips on-disk markdown without touching `blueprints/blueprints.db`. E1 only covers stale-after-mutation. | Add freshness invalidation on branch HEAD change: record `git rev-parse HEAD` in projection metadata at ingest time, refuse cached reads if current HEAD differs, return `next_action: 'reingest_project'`. |
-| F12 | HIGH | The completed `blueprint-structured-store` upstream creates `.agent/.blueprints.db` in existing repos. Task 1.1's path change leaves those DBs as orphans after upgrade; the new path rebuilds silently with zero user signal and `ak audit blueprint-lifecycle` may double-count. | Task 1.1 must include a deprecation step: detect `.agent/.blueprints.db` in git repos, log a one-line deprecation warning pointing at the new path, optionally move (or symlink) the legacy file, and add a fixture test covering the upgrade path. |
-| F13 | HIGH | `src/mcp/auto-discover.ts` only scans `src/mcp/tools/*.ts` for default-exported `ToolDescriptor`. `src/mcp/blueprint-server.ts` registers via `registrar.registerTool` and is **currently never called by `src/mcp/server.ts`** — the 8 structured tools (`ak_blueprint_query`, `_new`, `_validate`, `_task_next`, `_task_advance`, `_promote`, `_finalize`, `_depgraph`) exist but are not advertised. Task 2.1 must pick a single integration shape. | Task 2.1 picks shape: add `registerBlueprintServer(server, { cwd, getMcpRoots })` invocation inside `createServer` after auto-discover completes, with a hard-fail dedupe check on tool-name collisions. Do not split between auto-discover and explicit registration silently. |
+| F12 | HIGH | The completed `blueprint-structured-store` upstream creates `.agent/.blueprints.db` in existing repos. Task 1.1's path change leaves those DBs as orphans after upgrade; the new path rebuilds silently with zero user signal and `wp audit blueprint-lifecycle` may double-count. | Task 1.1 must include a deprecation step: detect `.agent/.blueprints.db` in git repos, log a one-line deprecation warning pointing at the new path, optionally move (or symlink) the legacy file, and add a fixture test covering the upgrade path. |
+| F13 | HIGH | `src/mcp/auto-discover.ts` only scans `src/mcp/tools/*.ts` for default-exported `ToolDescriptor`. `src/mcp/blueprint-server.ts` registers via `registrar.registerTool` and is **currently never called by `src/mcp/server.ts`** — the 8 structured tools (`wp_blueprint_query`, `_new`, `_validate`, `_task_next`, `_task_advance`, `_promote`, `_finalize`, `_depgraph`) exist but are not advertised. Task 2.1 must pick a single integration shape. | Task 2.1 picks shape: add `registerBlueprintServer(server, { cwd, getMcpRoots })` invocation inside `createServer` after auto-discover completes, with a hard-fail dedupe check on tool-name collisions. Do not split between auto-discover and explicit registration silently. |
 | F14 | MEDIUM | `project_id = stable hash of real worktree path + optional repo common dir` is under-specified: macOS APFS case-insensitive `realpath` vs Linux case-sensitive can produce different IDs for the same logical project; recreating a worktree at the same path after `git worktree remove`+`add` reuses the ID for a semantically different worktree. | Pin a `project_id_v1` spec: `sha256(realpath(worktree) + '\0' + (repo_common_dir ?? '') + '\0' + os.platform())` with documented stability semantics. Add tests for case-folding behavior and worktree recreation. |
 | F15 | MEDIUM | Task 3.3 enforces "mutating calls reject aggregate scope" as a runtime check; if mutation and read tools share a zod input base, a future refactor silently widens the surface. | Use two distinct zod input bases: `MutationTarget = { project_id: string }` (no `scope` field) vs `ReadTarget = { project_id?: string, scope?: 'current'\|'roots'\|'workspace'\|'all' }`. Acceptance: mutation input schemas do not contain a `scope` field at type level. |
 | F16 | MEDIUM | Task 4.2 requires multi-worktree fixture repos plus MCP server plus duplicate-slug coverage at "M" effort. Real `git init` + `git worktree add` fixtures cost ~200-500ms each and the test will likely violate `catalog/agent/rules/no-timeout-as-fix.md` if it slips. | Either split into 4.2a (single-worktree happy path + fixture builder helper) and 4.2b (multi-project aggregate), or rely on Task 1.2's injected git/filesystem dependencies to run the smoke against an in-memory fixture. Pin a per-fixture-repo time budget and document it. |
@@ -111,7 +111,7 @@ project_id = sha256(realpath(worktree_path) + '\0' + (repo_common_dir ?? '') + '
 
 ## Evidence Contract (F10)
 
-`ak_blueprint_task_verify` accepts evidence items conforming to:
+`wp_blueprint_task_verify` accepts evidence items conforming to:
 
 ```ts
 type EvidenceKind = 'test' | 'integration' | 'audit' | 'manual'
@@ -133,7 +133,7 @@ type Evidence = {
 - For `kind ∈ {'test', 'integration', 'audit'}`: `exit_code === 0` is required when `result === 'pass'`.
 - For `kind === 'manual'`: a non-empty `log_excerpt` is required.
 - Any evidence item with `result === 'fail'` rejects the transition with `next_action: 'verify_task'` and a summary of failing items.
-- The helper canonicalizes evidence to stable JSON (sorted keys, normalized whitespace) and persists it inside the markdown verification block. Re-ingest then exposes it as a structured chunk via `ak_blueprint_context` scope `'verification'`.
+- The helper canonicalizes evidence to stable JSON (sorted keys, normalized whitespace) and persists it inside the markdown verification block. Re-ingest then exposes it as a structured chunk via `wp_blueprint_context` scope `'verification'`.
 
 **Anti-forgery posture:** evidence is **not** cryptographically attested in this blueprint; the helper trusts the calling agent. The Contract's job is to prevent trivially-empty evidence (`{ ok: true }`) and to make audit trails grep-able. Stronger attestation is out of scope; it will be tracked as a follow-up tech-debt item if needed.
 
@@ -143,7 +143,7 @@ type Evidence = {
 - Do not replace the existing schema, migrations, parser, or query template system.
 - Do not build a hosted platform-canonical sync path. Existing platform-first hooks stay optional.
 - Do not recursively crawl arbitrary home directories by default. Recursive discovery is explicit, bounded, and read-only.
-- Do not remove CLI `ak blueprint`; only replace the MCP facade behavior.
+- Do not remove CLI `wp blueprint`; only replace the MCP facade behavior.
 
 ## Public MCP contract
 
@@ -164,12 +164,12 @@ New and refined tool surface:
 
 | Tool | Purpose | Notes |
 | ---- | ------- | ----- |
-| `ak_blueprint_projects` | List visible projects/worktrees and their blueprint/DB freshness. | Inputs: `scope: current|roots|workspace|all`, optional `include_worktrees`, `recursive`, `limit`. Defaults to current only. |
-| `ak_blueprint_list` | List filtered blueprint summaries. | Inputs include `project_id` or read-only aggregate `scope`. Returns `project_id`, progress, freshness metadata, and duplicate-slug warnings. |
-| `ak_blueprint_get` | Return one blueprint summary. | Requires `project_id` when slug is ambiguous. Includes lifecycle state, task rollup, risks, dependencies, source path/hash. |
-| `ak_blueprint_context` | Return bounded chunks for agent work. | Inputs: `project_id`, `slug`, optional `task_id`, `scope`. Chunks include `chunk_id`, `kind`, `heading`, `text`, `source_path`, `content_hash`, `ingested_at`. |
-| `ak_blueprint_create` | Create a draft blueprint markdown file and re-ingest. | Requires one target project. Replaces legacy MCP `action: new`; unlike `ak_blueprint_new`, it writes the draft. |
-| `ak_blueprint_task_verify` | Mark a task done only with verification evidence. | Requires one target project and at least one passed evidence item; writes verification block, status, and re-ingests. |
+| `wp_blueprint_projects` | List visible projects/worktrees and their blueprint/DB freshness. | Inputs: `scope: current|roots|workspace|all`, optional `include_worktrees`, `recursive`, `limit`. Defaults to current only. |
+| `wp_blueprint_list` | List filtered blueprint summaries. | Inputs include `project_id` or read-only aggregate `scope`. Returns `project_id`, progress, freshness metadata, and duplicate-slug warnings. |
+| `wp_blueprint_get` | Return one blueprint summary. | Requires `project_id` when slug is ambiguous. Includes lifecycle state, task rollup, risks, dependencies, source path/hash. |
+| `wp_blueprint_context` | Return bounded chunks for agent work. | Inputs: `project_id`, `slug`, optional `task_id`, `scope`. Chunks include `chunk_id`, `kind`, `heading`, `text`, `source_path`, `content_hash`, `ingested_at`. |
+| `wp_blueprint_create` | Create a draft blueprint markdown file and re-ingest. | Requires one target project. Replaces legacy MCP `action: new`; unlike `wp_blueprint_new`, it writes the draft. |
+| `wp_blueprint_task_verify` | Mark a task done only with verification evidence. | Requires one target project and at least one passed evidence item; writes verification block, status, and re-ingests. |
 | Existing structured tools | Query, validate, task_next, task_advance, promote, finalize, depgraph. | Keep names compatible unless a test proves rename is unavoidable. Add project selectors before making them default MCP surface. |
 
 ## Quick Reference (Execution Waves)
@@ -207,16 +207,16 @@ The original wave table coalesced tasks that share `src/mcp/blueprint-server.ts`
 | -- | -------- | --------- | ---------- |
 | E1 | HIGH | MCP reads a stale DB because markdown changed after last ingest. | Context/list/get responses include content hash and `ingested_at`; stale detection returns `next_action` to rebuild or re-ingest. |
 | E2 | CRITICAL | Repo-scoped projection DB mixes divergent worktree markdown from the same git common dir. | Use worktree-scoped projection DB by default; aggregate across worktrees at query time with explicit `project_id`. |
-| E3 | HIGH | Two DB path conventions split state between `.agent/.blueprints.db` and state-root. | Centralize path resolution and migrate call sites before registering structured tools in `ak mcp`. |
+| E3 | HIGH | Two DB path conventions split state between `.agent/.blueprints.db` and state-root. | Centralize path resolution and migrate call sites before registering structured tools in `wp mcp`. |
 | E4 | HIGH | MCP roots are unsupported, change mid-session, or throw due missing client capability. | Wrap `server.listRoots()` behind optional provider/cache; listen for roots list-changed when possible; gracefully fall back to current/workspace roots. |
 | E5 | HIGH | Recursive discovery indexes `node_modules`, build directories, hidden vendor repos, or an enormous home tree. | Recursive scan is explicit, depth/count capped, ignore-listed, timeout-bounded, and summarized with truncation failures. |
 | E6 | HIGH | Duplicate blueprint slug appears across projects or worktrees. | Return choices and require `project_id` for mutating or ambiguous read operations. |
-| E7 | HIGH | Agent marks task `done` without verification. | MCP refuses `done` through generic task advance; only `ak_blueprint_task_verify` can complete. |
+| E7 | HIGH | Agent marks task `done` without verification. | MCP refuses `done` through generic task advance; only `wp_blueprint_task_verify` can complete. |
 | E8 | MEDIUM | Context chunks become too large and recreate markdown context bloat. | Enforce scope-specific chunk limits and return `tokensSaved`/`bytes`. |
 | E9 | MEDIUM | Concurrent MCP calls ingest or mutate the same worktree projection. | Two-lock policy from Task 1.1 (worktree-scoped projection DB lock + repo-scoped markdown lock); no silent 5s "proceeds anyway" escape on write paths; read-only aggregate calls remain tolerant of per-project failures. (F9/R7) |
 | E10 | MEDIUM | Private repo paths leak in broad multi-project results. | Default to current project only; aggregate scopes are explicit and can redact absolute paths in summary text while preserving structured `project_id`. |
 | E11 | HIGH | `git checkout other-branch` flips on-disk markdown without invalidating the projection DB. | Record `git rev-parse HEAD` in projection metadata at ingest; refuse cached reads if current HEAD differs, returning `next_action: 'reingest_project'`. (F11) |
-| E12 | HIGH | Legacy `.agent/.blueprints.db` left behind by completed `blueprint-structured-store` after path migration. | Detect legacy DB on first call; log one-line deprecation; offer move/symlink path; `ak audit blueprint-lifecycle` must not double-count. (F12) |
+| E12 | HIGH | Legacy `.agent/.blueprints.db` left behind by completed `blueprint-structured-store` after path migration. | Detect legacy DB on first call; log one-line deprecation; offer move/symlink path; `wp audit blueprint-lifecycle` must not double-count. (F12) |
 | E13 | HIGH | Mutation tool input schema accidentally gains a `scope` field via shared zod base, silently widening blast radius. | Separate zod input bases `MutationTarget` (no `scope`) and `ReadTarget` (optional `scope`). Test asserts mutation schemas lack `scope` at type level. (F15) |
 | E14 | MEDIUM | Evidence forgery via trivial payloads. | Evidence Contract enforces per-kind required fields; trivial `{ ok: true }` payloads are rejected at zod parse time. (F10) |
 | E15 | MEDIUM | Tool registration drift: structured tools exist but aren't advertised, or are advertised twice. | Single integration point `registerBlueprintServer(server, ...)` invoked after auto-discover; hard-fail on duplicate tool names. (F13) |
@@ -257,7 +257,7 @@ Create one path helper for blueprint structured-store paths so CLI, MCP, audits,
 
 - Log a one-line deprecation pointing at the new state-root path.
 - Move (rename) the legacy file to the new path on first run, including `-wal`/`-shm` siblings if present; if the destination already exists, leave both untouched and surface a failure-style warning.
-- Update `ak audit blueprint-lifecycle` (`src/audit/blueprint-lifecycle-sql.ts`) so it does not double-count when both files transiently exist during migration.
+- Update `wp audit blueprint-lifecycle` (`src/audit/blueprint-lifecycle-sql.ts`) so it does not double-count when both files transiently exist during migration.
 
 **Files:**
 
@@ -287,7 +287,7 @@ Create one path helper for blueprint structured-store paths so CLI, MCP, audits,
 - [x] Non-git temp repo tests still use `.agent/.blueprints.db`.
 - [x] Projection DB lock is `'worktree'`-scoped; markdown-mutation lock is `'repo'`-scoped; rationale documented in `paths.ts` block comment.
 - [x] Write paths no longer fall through after a 5s lock-acquisition timeout; instead they return a typed `LockTimeoutError` with `next_action: 'reingest_project'`.
-- [x] Legacy `.agent/.blueprints.db` is detected, moved with sibling WAL/SHM, and `ak audit blueprint-lifecycle` does not double-count during migration.
+- [x] Legacy `.agent/.blueprints.db` is detected, moved with sibling WAL/SHM, and `wp audit blueprint-lifecycle` does not double-count during migration.
 - [x] Concurrent-ingest integration test demonstrates serialization in both same-worktree and cross-worktree cases.
 - [x] No schema or migration changes introduced.
 
@@ -408,7 +408,7 @@ Add a focused markdown helper for inserting/updating a task-local `**Verificatio
 
 **Depends:** Task 1.1, Task 1.2
 
-Wire the existing structured-store tool registrar into `createServer` so `ak mcp` advertises DB-backed blueprint tools by default. The current `registerBlueprintTools` in `src/mcp/blueprint-server.ts` is implemented but never invoked (F13). Pass an optional `getMcpRoots` dependency that calls `server.listRoots()` lazily, registers a `RootsListChangedNotificationSchema` handler via `server.setNotificationHandler(...)` (F5 — there is no convenience `onRootsListChanged` property), and catches unsupported-capability errors. Do not add cache invalidation machinery unless tests prove it necessary.
+Wire the existing structured-store tool registrar into `createServer` so `wp mcp` advertises DB-backed blueprint tools by default. The current `registerBlueprintTools` in `src/mcp/blueprint-server.ts` is implemented but never invoked (F13). Pass an optional `getMcpRoots` dependency that calls `server.listRoots()` lazily, registers a `RootsListChangedNotificationSchema` handler via `server.setNotificationHandler(...)` (F5 — there is no convenience `onRootsListChanged` property), and catches unsupported-capability errors. Do not add cache invalidation machinery unless tests prove it necessary.
 
 **Registration shape (F13/E15).** Single integration point:
 
@@ -426,7 +426,7 @@ Wire the existing structured-store tool registrar into `createServer` so `ak mcp
 
 **Steps (TDD):**
 
-1. Add failing integration assertion that `tools/list` includes the existing 8 structured tools (`ak_blueprint_query`, `_new`, `_validate`, `_task_next`, `_task_advance`, `_promote`, `_finalize`, `_depgraph`) plus the new `ak_blueprint_projects`.
+1. Add failing integration assertion that `tools/list` includes the existing 8 structured tools (`wp_blueprint_query`, `_new`, `_validate`, `_task_next`, `_task_advance`, `_promote`, `_finalize`, `_depgraph`) plus the new `wp_blueprint_projects`.
 2. Add failing test that registration throws if a tool-name collision exists with auto-discovered tools.
 3. Add failing tests for roots-supported, roots-unsupported (capability check throws), and roots-list-changed notification rebinding the cache.
 4. Run: `pnpm exec vitest run src/mcp/server.integration.test.ts src/mcp/blueprint-server.test.ts` — verify FAIL.
@@ -436,7 +436,7 @@ Wire the existing structured-store tool registrar into `createServer` so `ak mcp
 
 **Acceptance:**
 
-- [x] `ak mcp` advertises both the 8 existing structured tools and `ak_blueprint_projects`.
+- [x] `wp mcp` advertises both the 8 existing structured tools and `wp_blueprint_projects`.
 - [x] Registration hard-fails on tool-name collision; test asserts.
 - [x] Fresh repo with no DB can still list tools; tool-call returns `next_action: 'rebuild_db'`.
 - [x] Roots capability absence does not fail tool listing or current-project operation; `getMcpRoots()` returns an empty result with `unsupported_roots` warning.
@@ -461,8 +461,8 @@ const ReadTarget = z.object({
 })
 ```
 
-- `ak_blueprint_list`, `ak_blueprint_get`, `ak_blueprint_context`, `ak_blueprint_projects` extend `ReadTarget`.
-- `ak_blueprint_create` extends `MutationTarget`.
+- `wp_blueprint_list`, `wp_blueprint_get`, `wp_blueprint_context`, `wp_blueprint_projects` extend `ReadTarget`.
+- `wp_blueprint_create` extends `MutationTarget`.
 - Tests assert `MutationTarget`-derived schemas do not parse inputs containing `scope`.
 
 **Files:**
@@ -472,8 +472,8 @@ const ReadTarget = z.object({
 
 **Steps (TDD):**
 
-1. Add failing tests for `ak_blueprint_projects`, `ak_blueprint_list`, `ak_blueprint_get`, `ak_blueprint_context`, and `ak_blueprint_create` registration and golden response shapes.
-2. Add failing test that `ak_blueprint_create` input schema rejects payloads containing a `scope` field.
+1. Add failing tests for `wp_blueprint_projects`, `wp_blueprint_list`, `wp_blueprint_get`, `wp_blueprint_context`, and `wp_blueprint_create` registration and golden response shapes.
+2. Add failing test that `wp_blueprint_create` input schema rejects payloads containing a `scope` field.
 3. Run: `pnpm exec vitest run src/mcp/blueprint-server.test.ts` — verify FAIL.
 4. Implement handlers using existing DB schema, ingester, project resolver, and context helper. Use the `NextAction` discriminated union from Task 1.3 for all `next_action` values.
 5. Add `next_action` guidance for missing DB (`rebuild_db`), stale rows (`reingest_project`), unknown slug (`disambiguate_slug` or omitted), unknown task, ambiguous slug (`disambiguate_slug`), and ambiguous project (`disambiguate_slug` with project candidates).
@@ -522,7 +522,7 @@ Add one non-MCP helper that runs list/query/next-task style reads across selecte
 
 **Depends:** Task 1.4, Task 2.2
 
-Add `ak_blueprint_task_verify` as the MCP path for marking tasks done, with input parsed through the `Evidence[]` zod schema from Task 1.4 (F10/R8/E14). Use the `MutationTarget` zod base from Task 2.2 (no `scope`). Refuse `to: done` in `ak_blueprint_task_advance` with a clear `next_action: 'verify_task'`. Operation must be idempotent: re-calling `verify` with the same canonical evidence for a task already at `done` is a no-op success.
+Add `wp_blueprint_task_verify` as the MCP path for marking tasks done, with input parsed through the `Evidence[]` zod schema from Task 1.4 (F10/R8/E14). Use the `MutationTarget` zod base from Task 2.2 (no `scope`). Refuse `to: done` in `wp_blueprint_task_advance` with a clear `next_action: 'verify_task'`. Operation must be idempotent: re-calling `verify` with the same canonical evidence for a task already at `done` is a no-op success.
 
 **Files:**
 
@@ -533,7 +533,7 @@ Add `ak_blueprint_task_verify` as the MCP path for marking tasks done, with inpu
 
 1. Add failing tests that:
    - Generic advance refuses `done` with `next_action: 'verify_task'`.
-   - `ak_blueprint_task_verify` input zod schema rejects `{ evidence: [{ ok: true }] }` and other trivial payloads.
+   - `wp_blueprint_task_verify` input zod schema rejects `{ evidence: [{ ok: true }] }` and other trivial payloads.
    - `verify` refuses when zero `result: 'pass'` items exist.
    - `verify` refuses when any `result: 'fail'` item exists.
    - `verify` writes a canonical verification block to markdown.
@@ -541,7 +541,7 @@ Add `ak_blueprint_task_verify` as the MCP path for marking tasks done, with inpu
    - `verify` is idempotent: calling twice with the same canonical evidence does not duplicate the verification block and returns `status: 'done'` on the second call.
    - `verify` input rejects `scope` field at zod parse time.
 2. Run: `pnpm exec vitest run src/mcp/blueprint-server.test.ts` — verify FAIL.
-3. Implement `ak_blueprint_task_verify` using the markdown verification helper from Task 1.4, the canonical Evidence serializer, and existing re-ingest flow.
+3. Implement `wp_blueprint_task_verify` using the markdown verification helper from Task 1.4, the canonical Evidence serializer, and existing re-ingest flow.
 4. Return next recommended context bundle after successful verification using the chunk assembler from Task 1.3.
 5. Run targeted tests — verify PASS.
 
@@ -562,7 +562,7 @@ Add `ak_blueprint_task_verify` as the MCP path for marking tasks done, with inpu
 
 **Depends:** Task 2.2, Task 3.1, Task 3.2
 
-Allow read-only MCP list/query/task-next style operations to widen beyond one project when explicitly requested, then remove the legacy single-tool action facade. CLI `ak blueprint` remains unchanged.
+Allow read-only MCP list/query/task-next style operations to widen beyond one project when explicitly requested, then remove the legacy single-tool action facade. CLI `wp blueprint` remains unchanged.
 
 **Files:**
 
@@ -574,7 +574,7 @@ Allow read-only MCP list/query/task-next style operations to widen beyond one pr
 
 **Steps (TDD):**
 
-1. Add failing tests for explicit aggregate read scope, duplicate slug warnings, mutation-scope refusal, and `tools/list` excluding `ak_blueprint`.
+1. Add failing tests for explicit aggregate read scope, duplicate slug warnings, mutation-scope refusal, and `tools/list` excluding `wp_blueprint`.
 2. Run targeted MCP tests — verify FAIL.
 3. Integrate aggregate helpers for read-only paths and remove the legacy tool/test.
 4. Run targeted MCP tests — verify PASS.
@@ -584,7 +584,7 @@ Allow read-only MCP list/query/task-next style operations to widen beyond one pr
 - [x] Aggregate read-only calls are explicit and bounded by discovery limits.
 - [x] Mutating calls still reject aggregate scope.
 - [x] Duplicate slugs never silently select a target.
-- [x] `ak_blueprint` no longer appears in MCP tool listing, while structured replacements do.
+- [x] `wp_blueprint` no longer appears in MCP tool listing, while structured replacements do.
 
 #### [docs] Task 4.1: Document SQLite-first multi-project agent workflow and legacy mapping
 
@@ -611,7 +611,7 @@ Update maintainer/agent docs so the happy path is discoverable in under two minu
 
 - [x] Docs explain that SQLite is derived but MCP is the normal agent operation surface.
 - [x] Docs explain current-project default and explicit multi-project widening.
-- [x] Docs include old `ak_blueprint` action mapping.
+- [x] Docs include old `wp_blueprint` action mapping.
 - [x] Docs include a maintainer smoke path.
 
 #### [qa] Task 4.2a: Single-worktree end-to-end maintainer smoke + fixture helper

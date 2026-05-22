@@ -5,12 +5,11 @@ import { realpathSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import { isGuardEnabled } from '#hooks/guard-switch/state'
-import { isMcpReady } from '#hooks/shared/mcp-sentinel'
 import { readStdinJson, suppressStderr } from '#hooks/shared/hook-bootstrap'
 import { getCommand, getFilePath, isBashInput, parseToolInput } from '#hooks/shared/types'
 
 import { logRun } from './logger.js'
-import { routeCommand } from './dev-routing.js'
+import { extractRoutableCommandsFromToolInput, routeCommand } from './dev-routing.js'
 import { VALIDATORS } from './validators/index.js'
 
 const RED = '\x1b[31m'
@@ -122,7 +121,7 @@ function writeDenyDecision(permissionDecisionReason: string): void {
   )
 }
 
-export function processValidation(inputJson: string, mcpReadyFn: () => boolean = isMcpReady): void {
+export function processValidation(inputJson: string): void {
   if (!isGuardEnabled()) {
     console.log('{}')
     process.exit(0)
@@ -130,12 +129,16 @@ export function processValidation(inputJson: string, mcpReadyFn: () => boolean =
 
   const input = parseToolInput(inputJson)
   const command = isBashInput(input) ? getCommand(input) : null
+  const routableCommands = [
+    ...(command ? [command] : []),
+    ...extractRoutableCommandsFromToolInput(input),
+  ]
 
-  if (command) {
-    const decision = routeCommand(command)
+  for (const routedCommand of routableCommands) {
+    const decision = routeCommand(routedCommand)
     if (decision !== null) {
-      if (decision.action.action === 'deny' && mcpReadyFn()) {
-        // Phase 1: Dev-workflow routing — only when MCP ready
+      if (decision.action.action === 'deny') {
+        // Phase 1: Dev-workflow routing — always authoritative (MCP-first)
         writeDenyDecision(decision.action.guidance)
         process.exit(0)
       } else if (decision.action.action === 'sandbox') {

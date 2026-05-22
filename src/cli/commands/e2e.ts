@@ -13,9 +13,9 @@ export const E2E_COMMAND_HELP = [
   'Build and run a portable E2E command from host-supplied suite metadata.',
   '',
   'Examples:',
-  '  ak e2e --suite smoke --config playwright.config.ts',
-  '  ak e2e --file tests/smoke.spec.ts --test-list .tmp/e2e-list.txt',
-  '  ak e2e --suite platform-api --reuse-reset',
+  '  wp e2e --suite smoke --config playwright.config.ts',
+  '  wp e2e --file tests/smoke.spec.ts --test-list .tmp/e2e-list.txt',
+  '  wp e2e --suite platform-api --reuse-reset',
 ].join('\n')
 
 export interface AkE2eCommandInput {

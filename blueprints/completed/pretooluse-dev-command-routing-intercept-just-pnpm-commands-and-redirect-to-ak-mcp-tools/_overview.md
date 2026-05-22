@@ -21,7 +21,7 @@ tags:
 
 > **2026-04-28 update:** Tasks 1.1 (routing table), 1.2 (formatter), and 1.3 (runner integration) are absorbed into [`coordinated-pre-tool-hook`](../coordinated-pre-tool-hook-unified-hook-process-for-context-mode-agent-kit/_overview.md) which merges context-mode + agent-kit routing into one hook process. Task 1.4 (integration tests) remains here as verification. See the coordinated blueprint for the merged routing table including context-mode sandbox rules.
 
-When Claude runs `just test`, `pnpm test`, `just lint`, `just qa`, etc., the PreToolUse hook intercepts and either denies with one-time guidance pointing to `ak_test`/`ak_qa`, or passes through. The result: Claude gets structured `{passed, summary}` JSON with no build log in context, instead of thousands of lines of raw output.
+When Claude runs `just test`, `pnpm test`, `just lint`, `just qa`, etc., the PreToolUse hook intercepts and either denies with one-time guidance pointing to `wp_test`/`wp_qa`, or passes through. The result: Claude gets structured `{passed, summary}` JSON with no build log in context, instead of thousands of lines of raw output.
 
 **Research source:** `docs/research/2026-04-26-context-mode-plugin-architecture.md` — Priority 4. Pattern mirrors context-mode's `routing.mjs` + `formatters.mjs` architecture: normalized decision → platform-specific JSON, with O_EXCL guidance throttle per session.
 
@@ -67,11 +67,11 @@ Four tasks in three waves. Wave 0 (parallel): routing logic + formatter. Wave 1 
 - **Change:** Export `routeDevCommand(command: string, sessionId?: string): DevRoutingDecision | null`. Decision type: `{action: 'deny', guidance: string}` | `null` (passthrough). There is NO `modify` variant — `updatedInput` cannot redirect tool types in PreToolUse. Routing fires BEFORE validators (between `parseToolInput` and `runAllValidators` in `processValidation()`). When routing exits, validators never run.
 
   Routing table (all entries use `{action: 'deny', guidance: ...}` — NO modify action):
-  - `just test [*]` / `pnpm test [*]` / `vitest [*]` → `{action: 'deny', guidance: 'Use ak_test MCP tool instead'}`
-  - `just lint [*]` / `pnpm lint [*]` / `oxlint [*]` → deny → `ak_lint`
-  - `just typecheck [*]` / `pnpm typecheck [*]` / `tsc [*]` → deny → `ak_typecheck`
-  - `just qa [*]` / `pnpm qa [*]` → deny → `ak_qa`
-  - `just audit [*]` / `ak audit [*]` → passthrough (audit commands are fine to run directly)
+  - `just test [*]` / `pnpm test [*]` / `vitest [*]` → `{action: 'deny', guidance: 'Use wp_test MCP tool instead'}`
+  - `just lint [*]` / `pnpm lint [*]` / `oxlint [*]` → deny → `wp_lint`
+  - `just typecheck [*]` / `pnpm typecheck [*]` / `tsc [*]` → deny → `wp_typecheck`
+  - `just qa [*]` / `pnpm qa [*]` → deny → `wp_qa`
+  - `just audit [*]` / `wp audit [*]` → passthrough (audit commands are fine to run directly)
   - Everything else → null (passthrough)
 
   Guidance throttle: use O_EXCL file marker at `${tmpdir()}/ak-routing-guidance-${sessionId ?? process.ppid}-${guidanceType}` — emit guidance only on first intercept per type per session. Subsequent intercepts return `null` (passthrough after warning shown). Non-EEXIST errors from O_EXCL (e.g. NFS does not support O_EXCL) → always-deny (never silent suppression). Never silently swallow non-EEXIST errors.

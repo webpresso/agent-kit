@@ -32,7 +32,7 @@ promoted_to_completed: 2026-05-11
 ## Product wedge anchor
 
 - **Stage outcome:** VISION.md's "One command, fully wired" + Elegance Pass 2026's stage outcome ("every webpresso public package + ingest-lens reaches fully wired agent surfaces from a fresh clone via one command"). The original blueprint planned six custom emitters. Research (2026-05-11) found `dyoshikawa/rulesync@8.15.1` (175k weekly npm dl, MIT, daily commits) already does ~95% of multi-runtime emission, plus the Agent Skills open standard (Anthropic, Dec 2025) is now adopted natively by Claude/Codex/Gemini/Cursor/Copilot/Junie/Goose/OpenCode. Plugin marketplaces shipped in 4 of 6 target IDEs. So agent-kit's job is no longer "build the compiler" — it's "wrap rulesync + own AGENTS.md merging + emit plugin manifests + ship the audit/lifecycle integration that the substrate doesn't own."
-- **Consuming surface:** `ak compile` (thin wrapper over `rulesync generate`), `ak skills orphans --fix`, new audit `ak audit gitignore-agent-surfaces`, new `ak audit memory-unified`, **plus** four plugin manifest emitters (`@webpresso/agent-kit-{claude,codex,cursor,gemini}-plugin`), the AGENTS.md section-keyed merger with `memory.merge.yaml` directives including `op: rotate`, the reusable `webpresso/agent-kit-action@v1` GitHub Action, and PR auto-comment integration.
+- **Consuming surface:** `wp compile` (thin wrapper over `rulesync generate`), `wp skills orphans --fix`, new audit `wp audit gitignore-agent-surfaces`, new `wp audit memory-unified`, **plus** four plugin manifest emitters (`@webpresso/agent-kit-{claude,codex,cursor,gemini}-plugin`), the AGENTS.md section-keyed merger with `memory.merge.yaml` directives including `op: rotate`, the reusable `webpresso/agent-kit-action@v1` GitHub Action, and PR auto-comment integration.
 - **New user-visible capability:** A consumer can author `.agent/skills/foo/SKILL.md` once and have it appear correctly (and only once) in Claude/Codex/OpenCode/Cursor/Windsurf/Gemini — distributed via plugin marketplace install for 4 of 6 IDEs and via rulesync filesystem fallback for Windsurf/OpenCode. AGENTS.md sections merge structurally across user/project/per-directory layers with rotation for stale sections. PRs auto-comment with structured drift summaries. CI is one yaml line: `uses: webpresso/agent-kit-action@v1`.
 
 ## Why this exists (revised)
@@ -51,7 +51,7 @@ So this blueprint is now ~30% of the original draft's scope. The remaining work 
 - Not a generic "agent framework."
 - Not reimplementing rulesync's emitters (we wrap it).
 - Not maintaining bespoke MDC/TOML writers — rulesync owns them.
-- **No migration commands. No legacy support.** agent-kit goes public at v0.11.0 as a clean release — there is no prior public version to migrate from. Internal consumers (monorepo + ingest-lens) get a one-time pre-release cleanup commit (delete symlinks, legacy `.windsurfrules`/`.cursorrules`, old `ak cursor-windsurf-sync` references) BEFORE v0.11.0 ships, done by hand or by a single throwaway script. After v0.11.0 lands, no `migrate-legacy` verb exists in the CLI surface. **Zero backwards compat in the public API.**
+- **No migration commands. No legacy support.** agent-kit goes public at v0.11.0 as a clean release — there is no prior public version to migrate from. Internal consumers (monorepo + ingest-lens) get a one-time pre-release cleanup commit (delete symlinks, legacy `.windsurfrules`/`.cursorrules`, old `wp cursor-windsurf-sync` references) BEFORE v0.11.0 ships, done by hand or by a single throwaway script. After v0.11.0 lands, no `migrate-legacy` verb exists in the CLI surface. **Zero backwards compat in the public API.**
 
 ## Architecture
 
@@ -78,7 +78,7 @@ CLAUDE.md                            ← committed; user-owned, expected to cont
 .agent/
    │
    ▼
-ak compile  ─── reads .agent/, normalizes to .rulesync/ shape (flatten step ~50 LOC)
+wp compile  ─── reads .agent/, normalizes to .rulesync/ shape (flatten step ~50 LOC)
    │
    ▼
 rulesync generate --targets claude,codex,cursor,gemini,opencode,windsurf
@@ -153,7 +153,7 @@ sections:
     keep_summary: true              # leave a one-line summary in main AGENTS.md pointing at history
 ```
 
-Solves the 29KB monorepo `.codex/AGENTS.md` problem structurally. Strong defaults (90-day threshold, summary preserved). Every rotation logged to `.agent/.rotation-log.jsonl` (gitignored) with timestamp + section slug + reason. Audit `ak audit memory-rotation` surfaces rotation events for review.
+Solves the 29KB monorepo `.codex/AGENTS.md` problem structurally. Strong defaults (90-day threshold, summary preserved). Every rotation logged to `.agent/.rotation-log.jsonl` (gitignored) with timestamp + section slug + reason. Audit `wp audit memory-rotation` surfaces rotation events for review.
 
 ## GitHub Action (NEW per D3 cherry-pick)
 
@@ -187,10 +187,10 @@ When the action runs on a PR and `.agent/` or `blueprints/` or `tech-debt/` file
 
 **Tech-debt items:** none auto-filed this PR
 
-Run locally: `pnpm ak audit --all`
+Run locally: `pnpm wp audit --all`
 ```
 
-Implementation: `webpresso/agent-kit-action` invokes `ak audit --all --json`, formats via template, posts via `gh pr comment` (or GitLab equivalent in v0.12.x).
+Implementation: `webpresso/agent-kit-action` invokes `wp audit --all --json`, formats via template, posts via `gh pr comment` (or GitLab equivalent in v0.12.x).
 
 ## Technology Choices
 
@@ -204,8 +204,8 @@ Implementation: `webpresso/agent-kit-action` invokes `ak audit --all --json`, fo
 | GitHub Action | **`webpresso/agent-kit-action`** (separate repo) | Reusable workflow; version-pinned to agent-kit minor releases |
 | PR comment | **`gh pr comment` via action** | Single-platform initially (GitHub); GitLab support deferred to v0.12.x |
 | Plugin marketplace path for Windsurf/OpenCode | **None — rulesync filesystem fallback** | No plugin marketplace in either; rulesync owns file writes |
-| Legacy paths | **No migration verb. No public API for legacy.** | Per DX-review D7: agent-kit not live yet; internal consumers (monorepo + ingest-lens) get one-time hand-commit cleanup before v0.11.0 ships. No `ak skills migrate-legacy` verb exists in the v0.11.0 CLI surface. |
-| AGENTS.md generation for Claude | **Don't generate CLAUDE.md** | `ak audit memory-unified` warns if CLAUDE.md missing `@AGENTS.md` import |
+| Legacy paths | **No migration verb. No public API for legacy.** | Per DX-review D7: agent-kit not live yet; internal consumers (monorepo + ingest-lens) get one-time hand-commit cleanup before v0.11.0 ships. No `wp skills migrate-legacy` verb exists in the v0.11.0 CLI surface. |
+| AGENTS.md generation for Claude | **Don't generate CLAUDE.md** | `wp audit memory-unified` warns if CLAUDE.md missing `@AGENTS.md` import |
 | Rulesync version pinning | **Exact pin (`8.15.1` at v0.11.0 release) + Renovate auto-PR for minor bumps + contract test gate** | Codex caught that `^8.15` lets fresh installs pull breaking minor before CI catches it. Exact pin + automated upgrade PR + CI contract test on each PR is the correct invariant. |
 | Publishing target | **GitHub Packages npm registry** (per DX-review D10) | Confirmed: trilogy ships to GitHub Packages. Consumer must configure `@webpresso:registry=https://npm.pkg.github.com` + token. README documents the auth setup explicitly so OSS adopter discovers it on first install, not after first failure. |
 | Generated file policy | **Explicit per-file classification table** (added below in Architecture section) | Codex caught that provenance JSON, manifests, and snapshots are described inconsistently as "outputs" vs "committed" vs "gitignored" in different places. Table is single source of truth. |
@@ -214,13 +214,13 @@ Implementation: `webpresso/agent-kit-action` invokes `ak audit --all --json`, fo
 
 | ID | Severity | Case | Mitigation |
 |---|---|---|---|
-| E1 | HIGH | Consumer hand-edits a rulesync-generated file → lost on next `ak compile` | Manifest tracks content hash; sync aborts with diff if drift detected; prompts `ak skills import <path>` |
+| E1 | HIGH | Consumer hand-edits a rulesync-generated file → lost on next `wp compile` | Manifest tracks content hash; sync aborts with diff if drift detected; prompts `wp skills import <path>` |
 | E2 | HIGH | Two memory layers both define `## Build` — atomic-replace surprises consumer expecting concat | Default = Option A semantics; users wanting append add `memory.merge.yaml` with `op: append`; README cookbook with worked examples |
 | E3 | MEDIUM | `memory.merge.yaml` references heading that doesn't exist in any layer | Warn naming unused directive; don't fail (allows directives to anticipate future sections) |
 | E4 | MEDIUM | `op: rotate` archives a section the agent still needs context for | Strong default (90-day threshold); summary preserved in main AGENTS.md pointing at history; rotation log audit surfaces every event |
 | E5 | MEDIUM | Plugin marketplace schema change in Claude/Codex/Cursor/Gemini | Each manifest emitter has its own version constant in `src/compiler/manifests/_versions.ts`; monthly audit checks against official docs |
 | E6 | MEDIUM | `rulesync` ships a breaking minor bump | Pinned `^8.15`; CI contract test (fixture SKILL.md → expected output per runtime) fails on breaking change; we don't auto-upgrade |
-| E7 | LOW | `ak compile` runs in parallel from two terminals on same repo | `O_EXCL` lock file at `.agent/.compile.lock`; second invocation exits with clear message |
+| E7 | LOW | `wp compile` runs in parallel from two terminals on same repo | `O_EXCL` lock file at `.agent/.compile.lock`; second invocation exits with clear message |
 | E8 | LOW | Consumer uses GitLab not GitHub for PR commenting | v0.11.0 GitHub-only; GitLab adapter in v0.12.x or later if consumer demand surfaces |
 
 ## Risks
@@ -256,23 +256,23 @@ Implement Option C hybrid in `src/compiler/memory/`. Files: `merger.ts`, `preced
 - **`op: rotate` is OPT-IN ONLY at the section level.** Sections must be explicitly tagged in `memory.merge.yaml` with `rotation_eligible: true`. Default is no-rotate. No section auto-rotates because the merger noticed it was stale.
 - **Threshold tunable per section.** `threshold_days` configurable from 30 to unlimited, default 180 (conservative). Per-section override in `memory.merge.yaml`. Heuristic = `git blame` last-touched date AS WELL AS explicit content-staleness signal (e.g., section's slug is referenced by zero in-progress blueprint task acceptance criteria — leverages the Blueprint #3 SQL projection if available).
 - **Shallow-clone detection.** Merger runs `git rev-parse --is-shallow-repository` before any rotation decision. If shallow clone detected, rotation is DISABLED with explicit warning: "shallow clone — rotation heuristics unreliable; run `git fetch --unshallow` or set `rotation_eligible: false` per section."
-- **`--dry-run` flag standardized.** Both `ak compile --dry-run` and `ak audit memory-rotation --dry-run` show what WOULD be rotated without writing. Pre-merge verification step.
-- **`ak audit memory-rotation --strict`** fails CI if any section was rotated within the last 30 days without an explicit `last_rotation_acked: <timestamp>` field in `memory.merge.yaml`. Forces human review of every rotation event.
+- **`--dry-run` flag standardized.** Both `wp compile --dry-run` and `wp audit memory-rotation --dry-run` show what WOULD be rotated without writing. Pre-merge verification step.
+- **`wp audit memory-rotation --strict`** fails CI if any section was rotated within the last 30 days without an explicit `last_rotation_acked: <timestamp>` field in `memory.merge.yaml`. Forces human review of every rotation event.
 
 **Acceptance:**
 - [x] All worked examples from research note parse correctly; deterministic output; rotation log captures every event
 - [x] Rotation is opt-in (no auto-rotation surprises)
 - [x] Shallow-clone detection prevents incorrect rotation decisions
 - [x] `--dry-run` shows planned rotations without writing
-- [x] `ak audit memory-rotation --strict` enforces post-rotation acknowledgement
+- [x] `wp audit memory-rotation --strict` enforces post-rotation acknowledgement
 
 #### Task 1.3: Gitignore template + opt-in gstack SessionStart routing
 **Status:** done
 **Depends:** None
 
-Extend `ak setup --with base-kit`'s `.gitignore` template. Block delimited by `# === agent-kit:` markers covering all generated paths (rulesync outputs + provenance JSON + manifests). Plus: extend `src/hooks/sessionstart/index.ts` to detect `~/.claude/skills/gstack/` presence (from `ak setup --with gstack`) and inject a small "interactive skills available" block alongside the existing `ak_*` / `ctx_*` routing block. **Opt-in only** — controlled by an explicit setup flag, never auto-enabled.
+Extend `wp setup --with base-kit`'s `.gitignore` template. Block delimited by `# === agent-kit:` markers covering all generated paths (rulesync outputs + provenance JSON + manifests). Plus: extend `src/hooks/sessionstart/index.ts` to detect `~/.claude/skills/gstack/` presence (from `wp setup --with gstack`) and inject a small "interactive skills available" block alongside the existing `wp_*` / `ctx_*` routing block. **Opt-in only** — controlled by an explicit setup flag, never auto-enabled.
 
-**Acceptance:** `ak audit gitignore-agent-surfaces` accepts the block on fresh setup. SessionStart hook emits gstack routing block only when `ak setup --with gstack` was run; default install is unchanged.
+**Acceptance:** `wp audit gitignore-agent-surfaces` accepts the block on fresh setup. SessionStart hook emits gstack routing block only when `wp setup --with gstack` was run; default install is unchanged.
 
 ---
 
@@ -280,23 +280,23 @@ Extend `ak setup --with base-kit`'s `.gitignore` template. Block delimited by `#
 **Status:** done
 **Depends:** None. **Critical-path for "bulletproof 100% confidently" guarantee.**
 
-Address the 6/9 GAPS verdict from filter coverage audit AND D6 from DX review (extend coverage to `rulesync` subprocess output emitted by `ak compile`). Land before any new `ak_*` MCP tool ships in v0.11.0.
+Address the 6/9 GAPS verdict from filter coverage audit AND D6 from DX review (extend coverage to `rulesync` subprocess output emitted by `wp compile`). Land before any new `wp_*` MCP tool ships in v0.11.0.
 
 - **Create:** `src/output-transforms/edge-cases.test.ts` — 32-case matrix: 5 transforms (vitest, oxlint, tsc, generic, **rulesync**) × 7 edges (empty, ANSI escape codes, 1MB blob, mid-truncation, stderr-only, summary-key collision, mixed-success-fail). Skip 3 N/A cells per transform/edge combinatorics. Each case asserts envelope shape valid, `bytes <= 4000`, `rawBytes` correct, `tokensSaved >= 0`, no thrown exceptions.
-- **Create:** `src/output-transforms/rulesync.ts` — new transform for `ak compile`'s rulesync subprocess. Parses rulesync's per-target generation output into the summary-first envelope: count of skills/commands/agents emitted per runtime, failures with file:line, byte budget per runtime. Pinned to `rulesync@8.15.1` (exact pin, matches package.json). **Required by D6 from DX review** — without this, `ak compile` UX is inconsistent with `ak qa`/`ak test`/`ak lint`.
+- **Create:** `src/output-transforms/rulesync.ts` — new transform for `wp compile`'s rulesync subprocess. Parses rulesync's per-target generation output into the summary-first envelope: count of skills/commands/agents emitted per runtime, failures with file:line, byte budget per runtime. Pinned to `rulesync@8.15.1` (exact pin, matches package.json). **Required by D6 from DX review** — without this, `wp compile` UX is inconsistent with `wp qa`/`wp test`/`wp lint`.
 - **Create:** `src/output-transforms/__fixtures__/edge/` — committed real-world fixtures (ANSI-colored vitest, oxlint with stack traces, huge tsc output, rulesync v8.15 success + failure outputs).
 - **Land 3 PoC tests proving current gaps** before fixing them:
   1. ANSI shift in `extractJson` (`vitest.ts:33`) — feed `'[31m['+JSON.stringify(sample)+'[0m'` to vitestTransform; verify regex fallback hits.
   2. 1MB blob in `genericTransform` — `'x'.repeat(1_500_000)`; verify no O(n²) blow-up + clip works.
   3. Truncated vitest JSON — fixture cut at byte 500 of 5KB; verify `extractJson`'s brace-counter doesn't infinite-loop.
 - **Fix:** Add timeout to `runScript` in `src/mcp/tools/audit.ts:284-302` (mirror `lint.ts`'s `LINT_COMMAND_TIMEOUT_MS=5min`).
-- **Fix:** `.agent/rules/rtk-routing.md` clarification block — append subprocess-vs-Bash-hook coverage note: "ak_* tools shelling out via `child_process.spawn` own their own filtering; rtk PreToolUse hook only fires for top-level Bash calls and does NOT reach into ak_* internals. CLI verbs (`ak <verb>` from a shell) ARE rewritten by rtk."
+- **Fix:** `.agent/rules/rtk-routing.md` clarification block — append subprocess-vs-Bash-hook coverage note: "wp_* tools shelling out via `child_process.spawn` own their own filtering; rtk PreToolUse hook only fires for top-level Bash calls and does NOT reach into wp_* internals. CLI verbs (`wp <verb>` from a shell) ARE rewritten by rtk."
 
 **Acceptance:**
 - [x] All 32 cases pass with current source (some via fix, some via existing transform)
 - [x] 4 PoCs initially fail (proving gap), then pass after fix (PoC 4 = rulesync wrapping per D6)
 - [x] `runScript` audit timeout test (5-min cap) added
-- [x] `rulesync` transform wraps `ak compile` subprocess output; UX consistent with `ak qa`/`ak test`/`ak lint`
+- [x] `rulesync` transform wraps `wp compile` subprocess output; UX consistent with `wp qa`/`wp test`/`wp lint`
 - [x] `rtk-routing.md` subprocess clarification block landed in both `.agent/rules/` and `catalog/agent/rules/` mirrors
 
 ---
@@ -308,7 +308,7 @@ Address the 6/9 GAPS verdict from filter coverage audit AND D6 from DX review (e
 Two text-only changes per CEO review + eng review decisions (no code coupling):
 
 - **Modify:** `.agent/rules/rtk-routing.md` (and `catalog/agent/rules/rtk-routing.md` mirror) — add **gstack as the 4th lane**:
-  > agent-kit owns `ak_*` dev-workflow routing and MCP-shaped deny wording
+  > agent-kit owns `wp_*` dev-workflow routing and MCP-shaped deny wording
   > context-mode owns its own `ctx_*` nudging when that plugin is installed
   > rtk owns `rtk *` shell-tool filtering for the long-tail command surface
   > **gstack owns interactive/browser workflows (slash-skill invocation, AskUserQuestion-gated)**
@@ -321,7 +321,7 @@ Two text-only changes per CEO review + eng review decisions (no code coupling):
 
 ### Wave 1 — wrappers + manifest emitters (parallel; depend on 1.1)
 
-#### Task 2.1: `ak compile` wrapper
+#### Task 2.1: `wp compile` wrapper
 **Status:** done
 **Depends:** Task 1.1
 
@@ -337,30 +337,30 @@ Two text-only changes per CEO review + eng review decisions (no code coupling):
 
 **Acceptance:** Each manifest validates against current official schema (verified per-manifest at test time).
 
-#### Task 2.3: `ak setup --with example-skill` scaffold (DX-review D5)
+#### Task 2.3: `wp setup --with example-skill` scaffold (DX-review D5)
 **Status:** done
 **Depends:** Task 1.1, Task 2.1
 
-Per DX review D5: fix the empathy-narrative T+1:30 dead-end where first-time consumers run `ak compile` on an empty `.agent/skills/` and get a useless error. New scaffolder flag emits a working `.agent/skills/hello-webpresso/SKILL.md` + auto-runs `ak compile` as the final setup step. Chained with existing `--with base-kit` and `--with gstack` flags. TTHW for OSS-adopter persona: install → IDE skill discovery in ~90s without leaving terminal.
+Per DX review D5: fix the empathy-narrative T+1:30 dead-end where first-time consumers run `wp compile` on an empty `.agent/skills/` and get a useless error. New scaffolder flag emits a working `.agent/skills/hello-webpresso/SKILL.md` + auto-runs `wp compile` as the final setup step. Chained with existing `--with base-kit` and `--with gstack` flags. TTHW for OSS-adopter persona: install → IDE skill discovery in ~90s without leaving terminal.
 
 **Files:**
 - Create: `src/cli/commands/init/scaffolders/example-skill/index.ts`
 - Create: `src/cli/commands/init/scaffolders/example-skill/SKILL.md.template`
 - Modify: `src/cli/commands/init/scaffolders/_registry.ts`
 
-**Acceptance:** Fresh repo + `pnpm add -D @webpresso/agent-kit && npx ak setup --with base-kit --with example-skill` → `.agent/skills/hello-webpresso/SKILL.md` exists, `ak compile` ran, all 6 IDE asset trees populated, ready for first `/hello-webpresso` invocation.
+**Acceptance:** Fresh repo + `pnpm add -D @webpresso/agent-kit && npx wp setup --with base-kit --with example-skill` → `.agent/skills/hello-webpresso/SKILL.md` exists, `wp compile` ran, all 6 IDE asset trees populated, ready for first `/hello-webpresso` invocation.
 
 ---
 
-#### Task 2.4: `ak_qa` advisory tail-hint for UI changesets
+#### Task 2.4: `wp_qa` advisory tail-hint for UI changesets
 **Status:** done
 **Depends:** Task 1.4 (filter test harness must precede MCP output changes)
 
-When `ak_qa` returns success AND the changeset detected by `git diff --name-only HEAD` includes UI files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `apps/client/**`, `apps/web/**`), append a single advisory line to the `ak_qa` summary output: `"Static QA passed. For visual/UX QA, run /qa (gstack)."` Static text only — no skill discovery, no auto-invocation, no MCP coupling. Detection logic lives in `src/mcp/tools/_shared/ui-detection.ts`.
+When `wp_qa` returns success AND the changeset detected by `git diff --name-only HEAD` includes UI files (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `apps/client/**`, `apps/web/**`), append a single advisory line to the `wp_qa` summary output: `"Static QA passed. For visual/UX QA, run /qa (gstack)."` Static text only — no skill discovery, no auto-invocation, no MCP coupling. Detection logic lives in `src/mcp/tools/_shared/ui-detection.ts`.
 
 Tail-hint must respect the 4000-char `clipRawOutput` cap (cannot extend the envelope size).
 
-**Acceptance:** Fixture with UI file change → hint appended. Fixture with backend-only change → no hint. Hint absent if `ak_qa` failed (don't muddy failure output). Test added to `edge-cases.test.ts` matrix.
+**Acceptance:** Fixture with UI file change → hint appended. Fixture with backend-only change → no hint. Hint absent if `wp_qa` failed (don't muddy failure output). Test added to `edge-cases.test.ts` matrix.
 
 ---
 
@@ -389,11 +389,11 @@ Per DX-review D9: trilogy scope stays as-drafted; add the OSS-positioning work t
 
 ---
 
-#### Task 2.5: Anonymous opt-in TTHW telemetry in `ak setup` (DX-review D8)
+#### Task 2.5: Anonymous opt-in TTHW telemetry in `wp setup` (DX-review D8)
 **Status:** done
 **Depends:** Task 2.3
 
-Per DX review D8: instrument `ak setup` to measure wall-clock from install to first successful `ak compile`. Anonymous, opt-in only (`--telemetry` flag at setup time or interactive prompt; defaults OFF for 3rd-party adopters, ON only for internal monorepo + ingest-lens consumers via a config flag). Posts a minimal payload (timestamp, duration_ms, agent-kit version, OS, no PII, no repo identifiers) to webpresso analytics endpoint. Reuses the gstack telemetry pattern (`gstack-telemetry-log` shape) so consumers see familiar UX. Enables the `/devex-review` boomerang to measure plan-vs-reality TTHW.
+Per DX review D8: instrument `wp setup` to measure wall-clock from install to first successful `wp compile`. Anonymous, opt-in only (`--telemetry` flag at setup time or interactive prompt; defaults OFF for 3rd-party adopters, ON only for internal monorepo + ingest-lens consumers via a config flag). Posts a minimal payload (timestamp, duration_ms, agent-kit version, OS, no PII, no repo identifiers) to webpresso analytics endpoint. Reuses the gstack telemetry pattern (`gstack-telemetry-log` shape) so consumers see familiar UX. Enables the `/devex-review` boomerang to measure plan-vs-reality TTHW.
 
 **Files:**
 - Create: `src/telemetry/setup-tthw.ts`
@@ -410,11 +410,11 @@ Per DX review D8: instrument `ak setup` to measure wall-clock from install to fi
 **Status:** done
 **Depends:** Tasks 2.1, 2.2
 
-Wire flatten → rulesync → manifests → merger into a single `ak compile` transactional run. Writes `.agent/.compile-manifest.json` with content-hash sentinels for drift detection.
+Wire flatten → rulesync → manifests → merger into a single `wp compile` transactional run. Writes `.agent/.compile-manifest.json` with content-hash sentinels for drift detection.
 
 **Acceptance:** Re-running with no source changes is a no-op (manifest match); drift detection works.
 
-#### Task 3.2: `ak skills orphans --fix` + `ak audit gitignore-agent-surfaces` + `ak audit memory-unified`
+#### Task 3.2: `wp skills orphans --fix` + `wp audit gitignore-agent-surfaces` + `wp audit memory-unified`
 **Status:** done
 **Depends:** Task 3.1
 
@@ -428,7 +428,7 @@ The three audits + the orphans verb. Each emits summary-first JSON (`failures`, 
 **Status:** done
 **Depends:** v0.11.0 of agent-kit shipped
 
-Create new repo `webpresso/agent-kit-action`. Reusable workflow `.github/workflows/audit.yml` that runs `ak audit --all --json` and posts a PR comment (D6) if `pr-comment: true`. Fixture-based test harness for the action itself.
+Create new repo `webpresso/agent-kit-action`. Reusable workflow `.github/workflows/audit.yml` that runs `wp audit --all --json` and posts a PR comment (D6) if `pr-comment: true`. Fixture-based test harness for the action itself.
 
 **Acceptance:** Action consumed by 1 consumer (monorepo or ingest-lens) in PR test; comment formatted correctly.
 
@@ -438,7 +438,7 @@ Create new repo `webpresso/agent-kit-action`. Reusable workflow `.github/workflo
 **Status:** done
 **Depends:** All prior
 
-`pnpm version 0.11.0`, CHANGELOG with explicit breaking-change callout (symlink-era removed, `ak cursor-windsurf-sync` deleted, rulesync wrap is new architecture). Tag + push.
+`pnpm version 0.11.0`, CHANGELOG with explicit breaking-change callout (symlink-era removed, `wp cursor-windsurf-sync` deleted, rulesync wrap is new architecture). Tag + push.
 
 **Acceptance:** Published to GitHub Packages; SHA captured for ingest-lens pin.
 
@@ -448,15 +448,15 @@ Create new repo `webpresso/agent-kit-action`. Reusable workflow `.github/workflo
 
 Per "we are not live yet" decision (DX review D7): no public migration commands. Internal consumers get a **one-time pre-release cleanup** before v0.11.0 ships:
 
-- Hand-commit deleting `.claude/skills` symlinks, `.windsurfrules`, `.cursorrules`, any `ak cursor-windsurf-sync` references in package.json/husky/CI yamls. One throwaway commit per consumer, no CLI verb.
+- Hand-commit deleting `.claude/skills` symlinks, `.windsurfrules`, `.cursorrules`, any `wp cursor-windsurf-sync` references in package.json/husky/CI yamls. One throwaway commit per consumer, no CLI verb.
 - After cleanup commit: bump agent-kit dep to v0.11.0.
-- Run `ak setup --with base-kit --with example-skill` (D5 — fresh setup as if greenfield).
-- Run `ak compile` (clean state, all 6 IDE trees populate from `.agent/`).
+- Run `wp setup --with base-kit --with example-skill` (D5 — fresh setup as if greenfield).
+- Run `wp compile` (clean state, all 6 IDE trees populate from `.agent/`).
 - Run all audits (gitignore-agent-surfaces, memory-unified, broken-refs, skill-sizes).
 - Add `webpresso/agent-kit-action@v1` to each consumer's CI.
 - Commit with lore-protocol message.
 
-**Acceptance:** Both consumers' CI green; no drift on second `ak compile`; PR action runs and comments correctly; zero references to `migrate-legacy` anywhere in agent-kit source.
+**Acceptance:** Both consumers' CI green; no drift on second `wp compile`; PR action runs and comments correctly; zero references to `migrate-legacy` anywhere in agent-kit source.
 
 ## Quick Reference
 
@@ -469,7 +469,7 @@ Per "we are not live yet" decision (DX review D7): no public migration commands.
 | Wave 4 | 5.1, 5.2 | 1 then 2 | ~1-2 days |
 | **Total** | **14 tasks** | | **~6.5-9 days CC / ~4-5 weeks human** |
 
-Parallelization score: A. Total 14 tasks (1.4 filter harness, 1.5 gstack lane/cross-link, 2.3 example-skill scaffolder replaces removed migrate-legacy, 2.4 ak_qa tail-hint, 2.5 TTHW telemetry, 2.6 OSS-positioning+wedge-experience). Critical path still 5 waves. Task 1.2 expanded with rotation safeguards (post-codex concern #2) — same Wave 0 effort.
+Parallelization score: A. Total 14 tasks (1.4 filter harness, 1.5 gstack lane/cross-link, 2.3 example-skill scaffolder replaces removed migrate-legacy, 2.4 wp_qa tail-hint, 2.5 TTHW telemetry, 2.6 OSS-positioning+wedge-experience). Critical path still 5 waves. Task 1.2 expanded with rotation safeguards (post-codex concern #2) — same Wave 0 effort.
 
 ## Appendix A — Verified frontmatter schemas (2026-05-11)
 
@@ -492,10 +492,10 @@ All open questions from prior revision resolved by CEO review 2026-05-11:
 1. ✅ **rulesync as dep** — yes.
 2. ✅ **Plugin marketplace pivot** — yes for 4 of 6 IDEs; filesystem fallback only for Windsurf/OpenCode.
 3. ✅ **AGENTS.md merging** — Option C hybrid (section-keyed default + `memory.merge.yaml` directives + provenance JSON) + new `op: rotate` directive.
-4. ✅ **Cursor/Windsurf/Gemini fold-in** — all in scope; `ak cursor-windsurf-sync` deleted.
+4. ✅ **Cursor/Windsurf/Gemini fold-in** — all in scope; `wp cursor-windsurf-sync` deleted.
 5. ✅ **Zero backwards compat for any integration** — applied recursively.
 6. ✅ **GitHub Action + PR comment** — yes (D3 + D6).
 7. ✅ **Memory rotation** — yes (D7) via `op: rotate` directive.
-8. ✅ **AGENTS.md root ownership semantics (explicit decision — 2026-05-11 post-Codex audit)** — Root `AGENTS.md` is classified as **payload** (committed, generated). This is a deliberate semantic change from the prior convention where AGENTS.md was consumer-owned and not rewritten by tooling. Decision: `ak compile` writes and owns root `AGENTS.md`; consumers MUST NOT hand-edit it (use `.agent/memory/AGENTS.md` or `memory.merge.yaml` directives instead). The generated-file policy table in Architecture is the single source of truth. `ak audit memory-unified` warns if CLAUDE.md does not import `@AGENTS.md`. This decision is load-bearing — implementors must not soften it to "ak compile writes it if missing" or any partial-generation path.
+8. ✅ **AGENTS.md root ownership semantics (explicit decision — 2026-05-11 post-Codex audit)** — Root `AGENTS.md` is classified as **payload** (committed, generated). This is a deliberate semantic change from the prior convention where AGENTS.md was consumer-owned and not rewritten by tooling. Decision: `wp compile` writes and owns root `AGENTS.md`; consumers MUST NOT hand-edit it (use `.agent/memory/AGENTS.md` or `memory.merge.yaml` directives instead). The generated-file policy table in Architecture is the single source of truth. `wp audit memory-unified` warns if CLAUDE.md does not import `@AGENTS.md`. This decision is load-bearing — implementors must not soften it to "wp compile writes it if missing" or any partial-generation path.
 
 Blueprint ready to promote `draft/` → `planned/`.

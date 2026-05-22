@@ -14,14 +14,14 @@ import {
 } from './publish-webpresso.ts'
 
 const HOOK_BINS = [
-  'ak-pretool-guard',
-  'ak-post-tool',
-  'ak-stop-qa',
-  'ak-guard-switch',
-  'ak-test-quality-check',
-  'ak-sessionstart-routing',
-  'ak-check-dev-link',
-  'ak-restore-dev-links',
+  'wp-pretool-guard',
+  'wp-post-tool',
+  'wp-stop-qa',
+  'wp-guard-switch',
+  'wp-test-quality-check',
+  'wp-sessionstart-routing',
+  'wp-check-dev-link',
+  'wp-restore-dev-links',
 ] as const
 
 const DOCS_LINT_BINS = {
@@ -43,15 +43,15 @@ const MINIMAL_CANONICAL = {
     access: 'restricted',
   },
   bin: {
-    ak: './src/cli/cli.ts',
-    'ak-pretool-guard': './src/hooks/pretool-guard/index.ts',
-    'ak-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
-    'ak-stop-qa': './src/hooks/stop/qa-changed-files.ts',
-    'ak-guard-switch': './src/hooks/guard-switch/index.ts',
-    'ak-test-quality-check': './src/hooks/test-quality-check.ts',
-    'ak-sessionstart-routing': './src/hooks/sessionstart/index.ts',
-    'ak-check-dev-link': './src/hooks/check-dev-link/index.ts',
-    'ak-restore-dev-links': './src/dev/restore-dev-links/index.ts',
+    wp: './src/cli/cli.ts',
+    'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
+    'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+    'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
+    'wp-guard-switch': './src/hooks/guard-switch/index.ts',
+    'wp-test-quality-check': './src/hooks/test-quality-check.ts',
+    'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+    'wp-check-dev-link': './src/hooks/check-dev-link/index.ts',
+    'wp-restore-dev-links': './src/dev/restore-dev-links/index.ts',
     ...DOCS_LINT_BINS,
   },
 }
@@ -86,10 +86,10 @@ describe('buildStagingPackageJson', () => {
     expect(bin['webpresso']).toBe('./src/cli/cli.ts')
   })
 
-  it('includes "ak" bin entry pointing to cli.ts', () => {
+  it('includes "wp" bin entry pointing to cli.ts', () => {
     const result = buildStagingPackageJson(MINIMAL_CANONICAL)
     const bin = result.bin as Record<string, string>
-    expect(bin['ak']).toBe('./src/cli/cli.ts')
+    expect(bin['wp']).toBe('./src/cli/cli.ts')
   })
 
   it('includes all 8 hook bins from canonical', () => {
@@ -108,7 +108,7 @@ describe('buildStagingPackageJson', () => {
     expect(bin).toMatchObject(DOCS_LINT_BINS)
   })
 
-  it('includes exactly 16 bin entries (wp + webpresso + ak + 8 hook bins + 5 docs-lint bins)', () => {
+  it('includes exactly 16 bin entries (wp + webpresso + wp + 8 hook bins + 5 docs-lint bins)', () => {
     const result = buildStagingPackageJson(MINIMAL_CANONICAL)
     const bin = result.bin as Record<string, string>
     expect(Object.keys(bin)).toHaveLength(16)
@@ -131,8 +131,8 @@ describe('buildStagingPackageJson', () => {
   })
 
   it('throws when a hook bin is missing from canonical', () => {
-    const missingBin = { ...MINIMAL_CANONICAL, bin: { ak: './src/cli/cli.ts' } }
-    expect(() => buildStagingPackageJson(missingBin)).toThrow('ak-pretool-guard')
+    const missingBin = { ...MINIMAL_CANONICAL, bin: { wp: './src/cli/cli.ts' } }
+    expect(() => buildStagingPackageJson(missingBin)).toThrow('wp-pretool-guard')
   })
 })
 

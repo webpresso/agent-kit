@@ -5,7 +5,7 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mockState = vi.hoisted(() => ({ stateRoot: '/tmp/ak-state-root-placeholder' }))
+const mockState = vi.hoisted(() => ({ stateRoot: '/tmp/wp-state-root-placeholder' }))
 
 vi.mock('env-paths', () => ({
   default: () => ({
@@ -32,7 +32,7 @@ let stateRootDir: string
 beforeEach(() => {
   _clearCacheForTests()
   _clearMigrationMemoForTests()
-  stateRootDir = mkdtempSync(path.join(tmpdir(), 'ak-state-root-'))
+  stateRootDir = mkdtempSync(path.join(tmpdir(), 'wp-state-root-'))
   mockState.stateRoot = stateRootDir
 })
 
@@ -52,7 +52,7 @@ function fakeLogger(): { warn: ReturnType<typeof vi.fn>; messages: string[] } {
 
 describe('migrateLegacyAgentDb', () => {
   it('returns no-legacy when the file is absent', () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'ak-repo-'))
+    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     try {
       initGitRepo(repo)
       const logger = fakeLogger()
@@ -65,7 +65,7 @@ describe('migrateLegacyAgentDb', () => {
   })
 
   it('returns not-git outside a git repo (legacy IS canonical there)', () => {
-    const nonGit = mkdtempSync(path.join(tmpdir(), 'ak-nogit-'))
+    const nonGit = mkdtempSync(path.join(tmpdir(), 'wp-nogit-'))
     try {
       // Put a legacy file in place — but since it's not a git repo, the
       // legacy path IS the canonical path. Nothing to migrate.
@@ -81,7 +81,7 @@ describe('migrateLegacyAgentDb', () => {
   })
 
   it('moves the legacy DB + sibling WAL/SHM into the worktree-scoped path', () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'ak-repo-'))
+    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     try {
       initGitRepo(repo)
       // Place legacy files
@@ -118,7 +118,7 @@ describe('migrateLegacyAgentDb', () => {
   })
 
   it('does not move when the destination already exists, emits a failure-style warning', () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'ak-repo-'))
+    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     try {
       initGitRepo(repo)
       mkdirSync(path.join(repo, '.agent'), { recursive: true })
@@ -146,7 +146,7 @@ describe('migrateLegacyAgentDb', () => {
   })
 
   it('is memoized per cwd — repeated calls do not re-warn or re-touch disk', () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'ak-repo-'))
+    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     try {
       initGitRepo(repo)
       mkdirSync(path.join(repo, '.agent'), { recursive: true })
@@ -163,7 +163,7 @@ describe('migrateLegacyAgentDb', () => {
   })
 
   it('leaves the destination untouched and does not promise migration when only the legacy file exists with no siblings', () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'ak-repo-'))
+    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     try {
       initGitRepo(repo)
       mkdirSync(path.join(repo, '.agent'), { recursive: true })

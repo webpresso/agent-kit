@@ -22,7 +22,7 @@ import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 const STRONG_MARKERS = ['.git', 'pnpm-workspace.yaml'] as const
-const WEAK_MARKERS = ['package.json'] as const
+const WEWP_MARKERS = ['package.json'] as const
 const MAX_UPWARD_LEVELS = 32
 
 export class ProjectRootNotFoundError extends Error {
@@ -62,7 +62,7 @@ export function resolveProjectRoot(options: ResolveProjectRootOptions = {}): str
   const start = options.cwd ?? process.cwd()
   const fromStrong = walkUp(start, STRONG_MARKERS)
   if (fromStrong) return fromStrong
-  const fromWeak = walkUp(start, WEAK_MARKERS)
+  const fromWeak = walkUp(start, WEWP_MARKERS)
   if (fromWeak) return fromWeak
 
   throw new ProjectRootNotFoundError(start)

@@ -63,7 +63,7 @@ After design is validated:
 
 After brainstorming, offer:
 
-1. **Create implementation plan**: `ak blueprint new "<goal>" --complexity <XS|S|M|L|XL>`
+1. **Create implementation plan**: `wp blueprint new "<goal>" --complexity <XS|S|M|L|XL>`
 2. **Execute plan**: `/pll` (Blueprint-aware adapter over ultrawork/subagents)
 3. **Verify completion**: `/verify <target>`
 

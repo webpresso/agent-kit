@@ -1,4 +1,4 @@
-export type GuidanceType = 'test' | 'lint' | 'typecheck' | 'qa' | 'format';
+export type GuidanceType = 'test' | 'lint' | 'typecheck' | 'qa' | 'format' | 'e2e';
 export type RouteAction = {
     action: 'deny';
     tool: string;
@@ -11,8 +11,7 @@ export type RouteAction = {
 };
 export interface RouteDecision {
     action: RouteAction;
-    throttleKey?: string;
 }
 export declare function normalizeCommandForRouting(command: string): string;
-export declare function routeCommand(command: string, sessionId?: string): RouteDecision | null;
+export declare function routeCommand(command: string, _sessionId?: string): RouteDecision | null;
 //# sourceMappingURL=dev-routing.d.ts.map

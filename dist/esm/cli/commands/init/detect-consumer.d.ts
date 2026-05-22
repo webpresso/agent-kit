@@ -32,7 +32,7 @@ export declare function discoverWorkspacePackages(repoRoot: string, globs: strin
 /**
  * Soft warning when the running CLI does not resolve to the consumer's local
  * `@webpresso/agent-kit` install. Catches the global-install / pnpm-link / npx
- * case where `ak setup` succeeds against the executing CLI's catalog but
+ * case where `wp setup` succeeds against the executing CLI's catalog but
  * produces a non-reproducible `.agents/skills/` tree (symlinks point outside
  * the project tree; lockfile irrelevant). Repo-local symlink/dev-link installs
  * still count as local via realpath comparison. Self-mode short-circuits when

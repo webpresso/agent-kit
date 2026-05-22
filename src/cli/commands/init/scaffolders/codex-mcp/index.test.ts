@@ -32,12 +32,12 @@ command = "old"
 args = ["old"]
 
 [mcp_servers.agent-kit]
-command = "ak"
+command = "wp"
 `)
 
     expect(next).toContain('command = "vp"')
     expect(next).not.toContain('command = "old"')
-    expect(next).toContain('[mcp_servers.agent-kit]\ncommand = "ak"')
+    expect(next).toContain('[mcp_servers.agent-kit]\ncommand = "wp"')
     expect(next.match(/\[mcp_servers\.playwright\]/g)).toHaveLength(1)
   })
 })
@@ -51,7 +51,7 @@ describe('ensureCodexPlaywrightMcp', () => {
   })
 
   it('writes a missing config.toml under the supplied config path', () => {
-    dir = mkdtempSync(join(tmpdir(), 'ak-codex-mcp-'))
+    dir = mkdtempSync(join(tmpdir(), 'wp-codex-mcp-'))
     const configPath = join(dir, 'config.toml')
 
     const result = ensureCodexPlaywrightMcp({
@@ -64,7 +64,7 @@ describe('ensureCodexPlaywrightMcp', () => {
   })
 
   it('is idempotent when the desired server block is already present', () => {
-    dir = mkdtempSync(join(tmpdir(), 'ak-codex-mcp-'))
+    dir = mkdtempSync(join(tmpdir(), 'wp-codex-mcp-'))
     const configPath = join(dir, 'config.toml')
     ensureCodexPlaywrightMcp({ options: { overwrite: false, dryRun: false }, configPath })
 
@@ -77,7 +77,7 @@ describe('ensureCodexPlaywrightMcp', () => {
   })
 
   it('does not write in dry-run mode', () => {
-    dir = mkdtempSync(join(tmpdir(), 'ak-codex-mcp-'))
+    dir = mkdtempSync(join(tmpdir(), 'wp-codex-mcp-'))
     const configPath = join(dir, 'config.toml')
 
     const result = ensureCodexPlaywrightMcp({
@@ -106,7 +106,7 @@ describe('findAgentKitMcpEntry', () => {
   })
 
   it('returns the first candidate that contains src/mcp/cli.ts', () => {
-    dir = mkdtempSync(join(tmpdir(), 'ak-find-'))
+    dir = mkdtempSync(join(tmpdir(), 'wp-find-'))
     const goodRoot = join(dir, 'good')
     const badRoot = join(dir, 'missing')
     const expected = makeFakeAgentKitInstall(goodRoot)
@@ -117,7 +117,7 @@ describe('findAgentKitMcpEntry', () => {
   })
 
   it('returns null when none of the candidates contain the entry', () => {
-    dir = mkdtempSync(join(tmpdir(), 'ak-find-empty-'))
+    dir = mkdtempSync(join(tmpdir(), 'wp-find-empty-'))
     const found = findAgentKitMcpEntry({
       candidates: [join(dir, 'a'), join(dir, 'b')],
     })
@@ -126,7 +126,7 @@ describe('findAgentKitMcpEntry', () => {
   })
 
   it('honors the pnpm/npm probe seams when no claude/bun candidate exists', () => {
-    dir = mkdtempSync(join(tmpdir(), 'ak-find-pnpm-'))
+    dir = mkdtempSync(join(tmpdir(), 'wp-find-pnpm-'))
     const pnpmRoot = join(dir, 'pnpm-store')
     const expected = makeFakeAgentKitInstall(join(pnpmRoot, '@webpresso', 'agent-kit'))
 
@@ -195,7 +195,7 @@ describe('ensureCodexAgentKitMcp', () => {
   })
 
   it('writes the agent-kit MCP block when an install root is found', () => {
-    dir = mkdtempSync(join(tmpdir(), 'ak-codex-akmcp-'))
+    dir = mkdtempSync(join(tmpdir(), 'wp-codex-akmcp-'))
     const configPath = join(dir, 'config.toml')
     const entryPath = makeFakeAgentKitInstall(join(dir, 'install'))
 
@@ -210,7 +210,7 @@ describe('ensureCodexAgentKitMcp', () => {
   })
 
   it('is idempotent on a second invocation', () => {
-    dir = mkdtempSync(join(tmpdir(), 'ak-codex-akmcp-'))
+    dir = mkdtempSync(join(tmpdir(), 'wp-codex-akmcp-'))
     const configPath = join(dir, 'config.toml')
     const entryPath = makeFakeAgentKitInstall(join(dir, 'install'))
     ensureCodexAgentKitMcp({
@@ -229,7 +229,7 @@ describe('ensureCodexAgentKitMcp', () => {
   })
 
   it('skips writes in dry-run mode', () => {
-    dir = mkdtempSync(join(tmpdir(), 'ak-codex-akmcp-'))
+    dir = mkdtempSync(join(tmpdir(), 'wp-codex-akmcp-'))
     const configPath = join(dir, 'config.toml')
 
     const result = ensureCodexAgentKitMcp({
@@ -243,7 +243,7 @@ describe('ensureCodexAgentKitMcp', () => {
   })
 
   it('returns the not-installed result and does not write when no install root is found', () => {
-    dir = mkdtempSync(join(tmpdir(), 'ak-codex-akmcp-'))
+    dir = mkdtempSync(join(tmpdir(), 'wp-codex-akmcp-'))
     const configPath = join(dir, 'config.toml')
 
     const result = ensureCodexAgentKitMcp({

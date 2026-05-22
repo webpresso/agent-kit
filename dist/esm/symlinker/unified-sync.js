@@ -336,7 +336,7 @@ export function runUnifiedSync(options) {
         : loaded.records;
     if (loaded.collisions.length > 0) {
         const lines = loaded.collisions.map((c) => `  - ${c.kind}/${c.slug}: canonical=${c.canonical} consumer=${c.consumer}`);
-        throw new Error(`ak sync: slug collisions between catalog and consumer (rename consumer copy):\n${lines.join('\n')}`);
+        throw new Error(`wp sync: slug collisions between catalog and consumer (rename consumer copy):\n${lines.join('\n')}`);
     }
     const plans = planTargets(filteredRecords, consumers, consumerRoot);
     let fixCount = 0;

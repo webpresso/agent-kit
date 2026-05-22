@@ -9,7 +9,7 @@
  * so re-running never creates duplicates (platform deduplicates on `eventId`).
  *
  * Disabled path: when `loadSyncCredentials()` returns `null` (either
- * `AK_BLUEPRINT_PLATFORM_DISABLED=1` or no token), logs and exits 0.
+ * `WP_BLUEPRINT_PLATFORM_DISABLED=1` or no token), logs and exits 0.
  */
 
 import { createHash } from 'node:crypto'
@@ -217,7 +217,7 @@ export async function migrate(repoRoot: string, fetchFn?: typeof fetch): Promise
   if (creds === null) {
     console.log(
       '[migrate] Platform sync is disabled or no token configured ' +
-        '(AK_BLUEPRINT_PLATFORM_DISABLED=1 or AK_BLUEPRINT_PLATFORM_TOKEN not set). ' +
+        '(WP_BLUEPRINT_PLATFORM_DISABLED=1 or WP_BLUEPRINT_PLATFORM_TOKEN not set). ' +
         'Nothing to do.',
     )
     return

@@ -33,8 +33,8 @@ promoted_to_completed: 2026-05-11
 ## Product wedge anchor
 
 - **Stage outcome:** Cite VISION.md ("One command, fully wired") + the Elegance Pass 2026 stage outcome. The original blueprint planned a full Kuzu+remark+chokidar knowledge graph; research + deeper investigation (2026-05-11) showed: (a) GitNexus is the validated architecture analog but PolyForm-NC licensed and source-code-domain not agent-asset-domain, so reuse impossible; (b) the original q-* class of pollution is already zero; (c) Blueprint #1's content-hash compile-manifest already detects drift between canonical `.agent/` and per-IDE outputs; (d) the tech-debt lifecycle has only 1 file — auto-filing from a full KG has no real consumer demand yet. **But** monorepo has 4 `.agent/` files exceeding Codex's 8000-char budget today (skill-creator 22KB, openai-docs 33KB, agent-practices 20KB, soa.md 16KB), broken refs in agent-assets aren't checked anywhere, and the tech-debt loop is dormant. So ship a 3-verb minimal slice now that addresses concrete pain; defer the full KG behind concrete gating conditions.
-- **Consuming surface:** Three new audit verbs (`ak audit skill-sizes`, `ak audit broken-refs`, `ak audit memory-rotation`) + `ak tech-debt new --from-audit <name>` integration + pre-commit hook wiring via `ak setup --with husky` extension.
-- **New user-visible capability:** A developer can run `ak audit --all` and see (1) which skills exceed runtime budgets, (2) which `.agent/` refs are broken, (3) which AGENTS.md rotations need review. CI gates these via `webpresso/agent-kit-action@v1`. Any audit finding can auto-file an `h-NNN-*.md` tech-debt item with appropriate `review_cadence` — the lifecycle starts compounding instead of staying dormant.
+- **Consuming surface:** Three new audit verbs (`wp audit skill-sizes`, `wp audit broken-refs`, `wp audit memory-rotation`) + `wp tech-debt new --from-audit <name>` integration + pre-commit hook wiring via `wp setup --with husky` extension.
+- **New user-visible capability:** A developer can run `wp audit --all` and see (1) which skills exceed runtime budgets, (2) which `.agent/` refs are broken, (3) which AGENTS.md rotations need review. CI gates these via `webpresso/agent-kit-action@v1`. Any audit finding can auto-file an `h-NNN-*.md` tech-debt item with appropriate `review_cadence` — the lifecycle starts compounding instead of staying dormant.
 
 ## Why this exists (revised, post-CEO-review)
 
@@ -51,7 +51,7 @@ A regex audit + `remark-validate-links` walk over `.agent/**/*.md` solves these 
 ## Non-goals
 
 - **Not building the full KG.** Deferred behind concrete gating conditions (below).
-- **Not introducing Kuzu, remark watcher (chokidar), or `ak_graph_*` MCP namespace.**
+- **Not introducing Kuzu, remark watcher (chokidar), or `wp_graph_*` MCP namespace.**
 - **No semantic similarity, no embeddings, no compaction.** Pure regex + AST walks.
 - **No new runtime dep beyond `remark-validate-links`.**
 - **Zero backwards compat.** No legacy paths.
@@ -60,7 +60,7 @@ A regex audit + `remark-validate-links` walk over `.agent/**/*.md` solves these 
 
 ### The three audit verbs
 
-#### `ak audit skill-sizes`
+#### `wp audit skill-sizes`
 
 Walk `.agent/skills/<name>/SKILL.md` files. For each, measure description bytes + file bytes. Compare against budgets in `.agent/.audit-budgets.yaml`:
 
@@ -81,18 +81,18 @@ budgets:
 Output:
 
 ```
-ak audit skill-sizes
+wp audit skill-sizes
   ⚠️  3 files exceed budget:
     - .agent/skills/skill-creator/SKILL.md: 22,103 bytes (max 16,384 — 135%)
     - .agent/skills/openai-docs/SKILL.md: 33,217 bytes (max 16,384 — 203%)
     - .agent/skills/agent-practices/SKILL.md: 20,094 bytes (max 16,384 — 123%)
   ⚠️  Codex listing total: 8,640 bytes (max 7,000 — 123%)
-  Run: ak tech-debt new --from-audit skill-sizes
+  Run: wp tech-debt new --from-audit skill-sizes
 ```
 
 Exit code 1 on any over-budget file. `--json` for machine-readable output per `cmd-execution.md` contract (summary-first; `failures`, `tier`, `bytes`, `tokensSaved`).
 
-#### `ak audit broken-refs`
+#### `wp audit broken-refs`
 
 Walk `.agent/**/*.md` + `AGENTS.md` + `CLAUDE.md` via `remark` + `remark-validate-links`. Resolve relative links (`[text](path)`), `@AGENTS.md`-style imports, anchor links. Fail on any unresolved.
 
@@ -101,21 +101,21 @@ Uses `remark-validate-links` (MIT, Node-native; replaces our originally-planned 
 Output:
 
 ```
-ak audit broken-refs
+wp audit broken-refs
   ❌ 2 broken refs:
     - .agent/skills/foo/SKILL.md:23 → .agent/skills/bar/SKILL.md (doesn't exist)
     - AGENTS.md:5 → @AGENTS.md (file missing)
-  Run: ak tech-debt new --from-audit broken-refs
+  Run: wp tech-debt new --from-audit broken-refs
 ```
 
-#### `ak audit memory-rotation`
+#### `wp audit memory-rotation`
 
 Surface rotation events from `.agent/.rotation-log.jsonl` (written by the memory merger from blueprint #1's `op: rotate` directive). Flags any section rotation that needs human review.
 
 Output:
 
 ```
-ak audit memory-rotation
+wp audit memory-rotation
   ℹ️  3 sections rotated to AGENTS.history.md in the last 7 days:
     - "Legacy Stripe webhook handling" (last touched 2026-02-14, 92 days ago)
     - "Old auth flow notes" (last touched 2026-01-30, 107 days ago)
@@ -125,12 +125,12 @@ ak audit memory-rotation
 
 This is informational by default; only fails CI if `--strict` and any rotation lacks a summary line in the live AGENTS.md.
 
-### `ak tech-debt new --from-audit <name>` integration
+### `wp tech-debt new --from-audit <name>` integration
 
 Auto-file finding(s) from any audit into `tech-debt/needs-remediation/h-NNN-<slug>.md` using the existing Zod schema:
 
 ```bash
-ak tech-debt new --from-audit skill-sizes
+wp tech-debt new --from-audit skill-sizes
 # → tech-debt/needs-remediation/h-002-skill-files-exceeding-budget.md
 #   with frontmatter: type:tech-debt, status:needs-remediation, severity:medium,
 #                     category:documentation, review_cadence:biweekly,
@@ -142,12 +142,12 @@ Idempotency key = SHA256(audit-name + finding-set). Re-running with the same fin
 
 ### Pre-commit hook integration (D4 cherry-pick)
 
-Extend existing `ak setup --with husky`:
+Extend existing `wp setup --with husky`:
 
 ```bash
-# .husky/pre-commit (consumer-side, scaffolded by ak setup)
-ak audit skill-sizes --staged
-ak audit broken-refs --staged
+# .husky/pre-commit (consumer-side, scaffolded by wp setup)
+wp audit skill-sizes --staged
+wp audit broken-refs --staged
 ```
 
 `--staged` mode: only audit files in the current git staging area, not the whole `.agent/` tree. Fast (<1s typical). Catches drift at the cheapest possible point.
@@ -158,7 +158,7 @@ Full Kuzu+remark+chokidar KG ships **only if all three become true:**
 
 1. Blueprint #1 manifest catches **<90% of observed drift** on monorepo over a 30-day window.
 2. `tech-debt/` accumulates **≥10 items** where graph queries (cross-asset traversal) are the natural authoring path that regex+AST audits can't replace.
-3. **Second consumer** beyond monorepo+ingest-lens commits to consuming `ak_graph_*` tools.
+3. **Second consumer** beyond monorepo+ingest-lens commits to consuming `wp_graph_*` tools.
 
 If any condition fails, the minimal slice is the permanent shape. If all three become true, file a follow-on blueprint `agent-knowledge-graph-mcp-v2` with the original Kuzu architecture.
 
@@ -170,7 +170,7 @@ If any condition fails, the minimal slice is the permanent shape. If all three b
 | Size budget | **In-tree regex + bytes count** | No new dep; budgets configurable in `.agent/.audit-budgets.yaml` |
 | Rotation audit | **Reads `.agent/.rotation-log.jsonl`** | Memory merger from blueprint #1 writes it; this audit just surfaces |
 | Tech-debt schema | **Reuses existing `src/blueprint/tech-debt/schema.ts`** | Already in tree; extend with `--from-audit` semantics |
-| Pre-commit | **Extends `ak setup --with husky`** | Existing scaffolder; ~1-2 hours work |
+| Pre-commit | **Extends `wp setup --with husky`** | Existing scaffolder; ~1-2 hours work |
 | Kuzu / chokidar | **None at v0.12.0** | Deferred behind gating conditions |
 | simhash near-dup detection | **Skipped at v0.12.0** | No need without full KG; revisit if blueprint deferred-KG lands |
 | Backwards compat | **None** | Net new at v0.12.0 |
@@ -192,7 +192,7 @@ If any condition fails, the minimal slice is the permanent shape. If all three b
 |---|---|---|---|
 | AR1 | MEDIUM | `remark-validate-links` last commit was 2025-02 — risk of unmaintained dep | Small surface, MIT license, forkable in a day; we use only the ref-resolution API |
 | AR2 | MEDIUM | Auto-filing tech-debt creates noise if budgets are wrong out of the gate | Ship with **measure-only** mode for first 2 weeks; `--from-audit` requires explicit invocation, not auto-on-CI-failure |
-| AR3 | LOW | Pre-commit slow-down on large `.agent/` (>500 files) | Bench at scale; `--staged` mode scopes to changed files; full audit only runs locally on explicit `ak audit` |
+| AR3 | LOW | Pre-commit slow-down on large `.agent/` (>500 files) | Bench at scale; `--staged` mode scopes to changed files; full audit only runs locally on explicit `wp audit` |
 | AR4 | LOW | Deferred-KG never lands because gating conditions never become true | This is by design — minimal slice is the permanent shape if the full KG isn't justified by real usage |
 
 ## Tasks (~4 tasks)
@@ -201,7 +201,7 @@ If any condition fails, the minimal slice is the permanent shape. If all three b
 **Status:** done
 **Depends:** None
 
-Create `src/audits/_budgets.ts` (default budgets + loader). Add `catalog/agent/.audit-budgets.yaml` template emitted by `ak setup`. Zod schema for budget shape.
+Create `src/audits/_budgets.ts` (default budgets + loader). Add `catalog/agent/.audit-budgets.yaml` template emitted by `wp setup`. Zod schema for budget shape.
 
 **Acceptance:** Defaults work without consumer config; override via committed yaml.
 
@@ -209,11 +209,11 @@ Create `src/audits/_budgets.ts` (default budgets + loader). Add `catalog/agent/.
 **Status:** done
 **Depends:** Task 1.1
 
-`src/cli/commands/audit/{skill-sizes,broken-refs,memory-rotation}.ts`. Each emits summary-first JSON. `skill-sizes` is pure regex/bytes. `broken-refs` wraps `remark-validate-links`. `memory-rotation` reads `.agent/.rotation-log.jsonl`. All three integrated into `ak audit --all`.
+`src/cli/commands/audit/{skill-sizes,broken-refs,memory-rotation}.ts`. Each emits summary-first JSON. `skill-sizes` is pure regex/bytes. `broken-refs` wraps `remark-validate-links`. `memory-rotation` reads `.agent/.rotation-log.jsonl`. All three integrated into `wp audit --all`.
 
 **Acceptance:** Each audit on fixture data exits 0/1 correctly with JSON output; integrated test against monorepo's actual `.agent/` confirms the 4 oversized files are flagged.
 
-#### Task 1.3: `ak tech-debt new --from-audit`
+#### Task 1.3: `wp tech-debt new --from-audit`
 **Status:** done
 **Depends:** Task 1.2
 
@@ -225,7 +225,7 @@ Extend `src/cli/commands/tech-debt/new.ts` with `--from-audit <name>` mode. Read
 **Status:** done
 **Depends:** Task 1.2
 
-Extend `ak setup --with husky` to wire `ak audit skill-sizes --staged` + `ak audit broken-refs --staged` as pre-commit. Roll out to monorepo + ingest-lens.
+Extend `wp setup --with husky` to wire `wp audit skill-sizes --staged` + `wp audit broken-refs --staged` as pre-commit. Roll out to monorepo + ingest-lens.
 
 **Acceptance:** Pre-commit catches a fixture-staged oversized file; consumers' real commits pass.
 

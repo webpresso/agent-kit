@@ -43,9 +43,9 @@ afterEach(() => {
   spawnMock.mockReset()
 })
 
-describe('ak_format tool', () => {
+describe('wp_format tool', () => {
   it('exposes the expected descriptor surface', () => {
-    expect(akFormatTool.name).toBe('ak_format')
+    expect(akFormatTool.name).toBe('wp_format')
     expect(typeof akFormatTool.description).toBe('string')
     expect(akFormatTool.handler).toBeTypeOf('function')
   })

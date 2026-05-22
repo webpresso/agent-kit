@@ -21,7 +21,7 @@ describe('scaffoldSubagents', () => {
   let repoRoot: string
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'ak-subagents-'))
+    repoRoot = mkdtempSync(join(tmpdir(), 'wp-subagents-'))
   })
 
   afterEach(() => {

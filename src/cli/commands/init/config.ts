@@ -1,6 +1,6 @@
 /**
  * `.agent-kitrc.json` read/write. Captures the consumer's opt-in choices so
- * re-runs of `ak init` are idempotent without re-prompting.
+ * re-runs of `wp init` are idempotent without re-prompting.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -42,7 +42,7 @@ export interface AgentkitConfig {
   blueprintsDir?: string
   lastInit?: string
   /** True when agent-kit is installed globally rather than as a devDep.
-   *  Skips the devDependency presence check in `ak audit guardrails`. */
+   *  Skips the devDependency presence check in `wp audit guardrails`. */
   globalInstall?: boolean
 }
 

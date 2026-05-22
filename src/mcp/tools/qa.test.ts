@@ -14,7 +14,7 @@ vi.mock('./_shared/ui-detection.js', () => ({
 
 vi.mock('./lint.js', () => ({
   default: {
-    name: 'ak_lint',
+    name: 'wp_lint',
     description: 'mocked',
     inputSchema: {} as unknown,
     handler: lintHandler,
@@ -23,7 +23,7 @@ vi.mock('./lint.js', () => ({
 
 vi.mock('./typecheck.js', () => ({
   default: {
-    name: 'ak_typecheck',
+    name: 'wp_typecheck',
     description: 'mocked',
     inputSchema: {} as unknown,
     handler: typecheckHandler,
@@ -32,7 +32,7 @@ vi.mock('./typecheck.js', () => ({
 
 vi.mock('./test.js', () => ({
   default: {
-    name: 'ak_test',
+    name: 'wp_test',
     description: 'mocked',
     inputSchema: {} as unknown,
     handler: testHandler,
@@ -57,9 +57,9 @@ function delayedResolve<T>(value: T, ms: number): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), ms))
 }
 
-describe('ak_qa tool', () => {
+describe('wp_qa tool', () => {
   it('exposes the expected descriptor surface', () => {
-    expect(akQaTool.name).toBe('ak_qa')
+    expect(akQaTool.name).toBe('wp_qa')
     expect(typeof akQaTool.description).toBe('string')
     expect(akQaTool.handler).toBeTypeOf('function')
   })
@@ -440,10 +440,10 @@ describe('ak_qa tool', () => {
     expect(payload.details.lint.unwrapError).toMatch(/text content block/)
   })
 
-  // Regression: `ak_qa` used to call sub-handlers with empty `{}`, blocking
+  // Regression: `wp_qa` used to call sub-handlers with empty `{}`, blocking
   // any scoped run. The new schema threads `files` (→ lint+test) and
   // `packages` (→ typecheck+test) verbatim.
-  it('forwards `files` to lint and test, `packages` to typecheck and test', async () => {
+  it('forwards `fiwp_` to lint and test, `packages` to typecheck and test', async () => {
     lintHandler.mockReset()
     typecheckHandler.mockReset()
     testHandler.mockReset()

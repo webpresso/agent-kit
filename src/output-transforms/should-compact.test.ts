@@ -8,9 +8,9 @@ describe('shouldCompact', () => {
     expect(shouldCompact({ isTTY: false, env: {} })).toBe(true)
   })
 
-  it('lets AK_COMPACT override the TTY default', () => {
-    expect(shouldCompact({ isTTY: true, env: { AK_COMPACT: '1' } })).toBe(true)
-    expect(shouldCompact({ isTTY: false, env: { AK_COMPACT: '0' } })).toBe(false)
+  it('lets WP_COMPACT override the TTY default', () => {
+    expect(shouldCompact({ isTTY: true, env: { WP_COMPACT: '1' } })).toBe(true)
+    expect(shouldCompact({ isTTY: false, env: { WP_COMPACT: '0' } })).toBe(false)
   })
 
   it('uses QUALITY_ENGINE_COMPACT as the preferred escape hatch', () => {
@@ -20,7 +20,7 @@ describe('shouldCompact', () => {
 
   it('accepts common false env spellings', () => {
     for (const value of ['false', 'no', 'off']) {
-      expect(shouldCompact({ isTTY: false, env: { AK_COMPACT: value } })).toBe(false)
+      expect(shouldCompact({ isTTY: false, env: { WP_COMPACT: value } })).toBe(false)
       expect(shouldCompact({ isTTY: false, env: { QUALITY_ENGINE_COMPACT: value } })).toBe(false)
     }
   })
@@ -40,8 +40,8 @@ describe('shouldCompact', () => {
   })
 
   it('lets explicit flags override env and TTY', () => {
-    expect(shouldCompact({ flag: true, isTTY: true, env: { AK_COMPACT: '0' } })).toBe(true)
-    expect(shouldCompact({ flag: false, isTTY: false, env: { AK_COMPACT: '1' } })).toBe(false)
+    expect(shouldCompact({ flag: true, isTTY: true, env: { WP_COMPACT: '0' } })).toBe(true)
+    expect(shouldCompact({ flag: false, isTTY: false, env: { WP_COMPACT: '1' } })).toBe(false)
     expect(shouldCompact({ flag: true, isTTY: true, env: { QUALITY_ENGINE_COMPACT: '0' } })).toBe(
       true,
     )

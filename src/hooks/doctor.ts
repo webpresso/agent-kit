@@ -1,5 +1,5 @@
 /**
- * `ak hooks doctor` — post-install plugin health verification.
+ * `wp hooks doctor` — post-install plugin health verification.
  *
  * Verifies the agent-kit plugin installation is healthy:
  * - all hook bins exist
@@ -31,16 +31,16 @@ export interface DoctorResult {
 
 const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested')
 const RTK_INSTALL_HINT = 'rtk requested via --with rtk but not on PATH; brew install rtk'
-const HOST_SMOKE_ENV = 'AK_RUN_HOST_SMOKE'
+const HOST_SMOKE_ENV = 'WP_RUN_HOST_SMOKE'
 
 /** Hook bin definitions */
 const HOOK_BINS: { name: string; binName: string; checkStdin: boolean }[] = [
-  { name: 'pretool-guard', binName: 'ak-pretool-guard', checkStdin: true },
-  { name: 'post-tool (lint-after-edit)', binName: 'ak-post-tool', checkStdin: false },
-  { name: 'stop (qa-changed-files)', binName: 'ak-stop-qa', checkStdin: false },
-  { name: 'guard-switch', binName: 'ak-guard-switch', checkStdin: true },
-  { name: 'sessionstart', binName: 'ak-sessionstart-routing', checkStdin: true },
-  { name: 'test-quality-check', binName: 'ak-test-quality-check', checkStdin: false },
+  { name: 'pretool-guard', binName: 'wp-pretool-guard', checkStdin: true },
+  { name: 'post-tool (lint-after-edit)', binName: 'wp-post-tool', checkStdin: false },
+  { name: 'stop (qa-changed-files)', binName: 'wp-stop-qa', checkStdin: false },
+  { name: 'guard-switch', binName: 'wp-guard-switch', checkStdin: true },
+  { name: 'sessionstart', binName: 'wp-sessionstart-routing', checkStdin: true },
+  { name: 'test-quality-check', binName: 'wp-test-quality-check', checkStdin: false },
 ]
 
 type HostCheckMode = 'auto' | 'skip' | 'required'
@@ -265,7 +265,7 @@ function probeJsonStdin(file: string): Promise<{ ok: boolean; detail?: string }>
 function checkPluginJson(): { ok: boolean; detail?: string } {
   const root = resolvePluginRoot()
   if (!root) {
-    return { ok: false, detail: 'plugin root not found (ak not in PATH)' }
+    return { ok: false, detail: 'plugin root not found (wp not in PATH)' }
   }
   const pluginJsonPath = join(root, '.claude-plugin', 'plugin.json')
   if (!tryAccess(pluginJsonPath)) {
@@ -323,17 +323,17 @@ async function checkMcpServer(): Promise<{ ok: boolean; detail?: string; skipped
     return { ok: true, detail: 'MCP server already running (sentinel found)', skipped: true }
   }
 
-  const timeoutMs = Number(process.env.AK_DOCTOR_MCP_TIMEOUT_MS ?? 5000)
+  const timeoutMs = Number(process.env.WP_DOCTOR_MCP_TIMEOUT_MS ?? 5000)
   const probeCommand = resolveMcpProbeCommand()
 
   if (!probeCommand) {
-    return { ok: false, detail: 'MCP server (ak) not found in .bin' }
+    return { ok: false, detail: 'MCP server (wp) not found in .bin' }
   }
 
   return new Promise<{ ok: boolean; detail?: string; skipped?: boolean }>((resolve) => {
     const child = spawn(probeCommand.command, probeCommand.args, {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, AK_DOCTOR_MCP_TIMEOUT_MS: String(timeoutMs) },
+      env: { ...process.env, WP_DOCTOR_MCP_TIMEOUT_MS: String(timeoutMs) },
     })
 
     let stdout = ''

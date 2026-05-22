@@ -34,13 +34,13 @@ tags:
   - parked-pending-v1
 ---
 
-# ak session memory v2 — Rust ctx-rs engine (replaces Letta, preserves v1 API)
+# wp session memory v2 — Rust ctx-rs engine (replaces Letta, preserves v1 API)
 
 ## Product wedge anchor
 
 - **Stage outcome:** Same as v1 stage outcome (Lane 2 permissive), **plus** webpresso owns the engine — no upstream coupling to Letta, no docker/postgres dependency for consumers, hot-path latency drops from ~50-100ms (HTTP) to <2ms (FFI). Roadmap cite: webpresso open-sourcing extraction roadmap, Wave 2+ (post-v1 ship).
-- **Consuming surface:** Same MCP tool surface as v1 (`ak_session_capture`, `ak_session_snapshot`, `ak_session_restore`, `ak_session_search`), **same setup command** (`ak setup --with session-memory`). Behind the scenes: Letta backend is swapped for `@webpresso/ctx-rs` Rust crate loaded via napi-rs prebuilt binary. Migration is invisible to the consumer.
-- **New user-visible capability:** After this lands, the same consumer using v1 today removes their Letta docker-compose dependency (one-line note from `ak setup`) and gets sub-millisecond session-capture latency. The interactive feel of "agent uses session memory" goes from "noticeable HTTP hop" to "invisible". `rtk gain`-style telemetry on session-capture overhead becomes observable.
+- **Consuming surface:** Same MCP tool surface as v1 (`wp_session_capture`, `wp_session_snapshot`, `wp_session_restore`, `wp_session_search`), **same setup command** (`wp setup --with session-memory`). Behind the scenes: Letta backend is swapped for `@webpresso/ctx-rs` Rust crate loaded via napi-rs prebuilt binary. Migration is invisible to the consumer.
+- **New user-visible capability:** After this lands, the same consumer using v1 today removes their Letta docker-compose dependency (one-line note from `wp setup`) and gets sub-millisecond session-capture latency. The interactive feel of "agent uses session memory" goes from "noticeable HTTP hop" to "invisible". `rtk gain`-style telemetry on session-capture overhead becomes observable.
 
 ## Problem Statement
 
@@ -66,7 +66,7 @@ engine in Rust:
   pulls the native module transparently (no docker, no postgres).
 - **FFI seam** — agent-kit's TS hook bins call `ctx-rs` via sync napi-rs (eng-review D8/D9).
 
-The v2 cut is constrained: it MUST keep the `ak_session_*` MCP tool shapes
+The v2 cut is constrained: it MUST keep the `wp_session_*` MCP tool shapes
 identical to v1 so consumers see no behavior change beyond "it got faster
 and lost the docker dependency."
 
@@ -100,7 +100,7 @@ and lost the docker dependency."
 └────────────────────────────────────────────────────────────┘
 
 LANE MODEL (same as v1, faster + lighter):
-  1  agent-kit + ctx-rs (FFI)   ak_session_*    MIT (both)
+  1  agent-kit + ctx-rs (FFI)   wp_session_*    MIT (both)
   2  — DROPPED —                —               (context-mode out)
   3  rtk (upstream)             bash filter     MIT
   4  gstack (upstream)          /skill          MIT
@@ -139,11 +139,11 @@ refinement.)
 | FTS engine | rusqlite (SQLite + FTS5) | Library survey: simpler than tantivy for our scale; same data model as MemoryPilot's adopt-don't-build pattern |
 | Embedded search ranking | BM25 (FTS5 default) + porter stemming + trigram + Levenshtein fallback | Three-tier fallback per context-mode's original design; behavior parity goal |
 | Node integration | napi-rs prebuilt binaries (sync API for hot path) | Eng-review D4 + D8. Sync FFI ~0.1ms; async only for fetch |
-| MCP tool surface | `ak_session_capture` / `ak_session_snapshot` / `ak_session_restore` / `ak_session_search` — IDENTICAL to v1 shapes | Migration must be invisible to consumers |
+| MCP tool surface | `wp_session_capture` / `wp_session_snapshot` / `wp_session_restore` / `wp_session_search` — IDENTICAL to v1 shapes | Migration must be invisible to consumers |
 | TS shim thickness | Thin (eng-review D9): TS reads stdin, calls ctx-rs.index, writes stdout. ~20 LOC per hook | All logic in Rust |
 | Hot path SLO | p99 < 2ms, p50 < 0.5ms (eng-review D12) | Benchmark suite gates CI |
-| Migration from v1 | Background data port: v2 ships a `ctx-rs migrate-from-letta` subcommand that reads Letta's archival memory + reinserts into ctx-rs SQLite | One-time cost; consumer runs it once during `ak setup` upgrade |
-| napi-rs platform fallback | Graceful disable (eng-review D13): missing prebuilt → `ak_session_*` returns `unavailable`, agent-kit otherwise works | Absorbed into scope, not deferred |
+| Migration from v1 | Background data port: v2 ships a `ctx-rs migrate-from-letta` subcommand that reads Letta's archival memory + reinserts into ctx-rs SQLite | One-time cost; consumer runs it once during `wp setup` upgrade |
+| napi-rs platform fallback | Graceful disable (eng-review D13): missing prebuilt → `wp_session_*` returns `unavailable`, agent-kit otherwise works | Absorbed into scope, not deferred |
 | PreCompact timeout cap | 5s (same as v1) with partial snapshot on timeout (eng-review D14) | Carried over; cheaper to enforce in Rust |
 | Mutation score parity | Behavior parity only (TP3 reframed): cargo-mutants ≥ 70% AND fixture-replay tests against v1 Letta outputs | Cross-language mutation subtraction is incoherent (outside voice TP3) |
 | Distribution | crates.io (Rust crate) + npm `@webpresso/ctx-rs` (prebuilt) | Standard napi-rs pattern; ingest-lens picks up via existing pnpm catalog |
@@ -364,7 +364,7 @@ triple at install time and pulls only the matching binary.
 
 Swap the Letta HTTP client used in v1's `ak-post-tool` for `@webpresso/ctx-rs`. The hook stays a thin shim (eng-review D9 reaffirmed).
 
-Behind a feature flag `AK_SESSION_BACKEND=ctx-rs|letta` so consumers can roll back if v2 has issues. Default to `ctx-rs` once v2 ships; document the flag in the migration guide.
+Behind a feature flag `WP_SESSION_BACKEND=ctx-rs|letta` so consumers can roll back if v2 has issues. Default to `ctx-rs` once v2 ships; document the flag in the migration guide.
 
 **Files:**
 
@@ -374,7 +374,7 @@ Behind a feature flag `AK_SESSION_BACKEND=ctx-rs|letta` so consumers can roll ba
 
 **Acceptance:**
 
-- [ ] Backend selector respects AK_SESSION_BACKEND env var
+- [ ] Backend selector respects WP_SESSION_BACKEND env var
 - [ ] ctx-rs path passes the same hot-path tests as v1's Letta path
 - [ ] Hot path p99 < 2ms measured (eng-review D12 enforced)
 
@@ -399,7 +399,7 @@ Same backend swap pattern for the snapshot + restore hooks. Behind the same env 
 
 ### Phase 4: Migration tooling + parity gates [Complexity: M]
 
-#### [infra] Task 4.1: `ak session migrate-from-letta` subcommand
+#### [infra] Task 4.1: `wp session migrate-from-letta` subcommand
 
 **Status:** todo
 
@@ -407,7 +407,7 @@ Same backend swap pattern for the snapshot + restore hooks. Behind the same env 
 
 A one-shot migration command that reads a consumer's existing Letta archival_memory + replays into ctx-rs SQLite. Idempotent (re-run = no-op if target DB already migrated). Includes a `--dry-run` flag that reports counts without writing.
 
-Triggered automatically by `ak setup --with session-memory` when ctx-rs is the new backend AND Letta data exists.
+Triggered automatically by `wp setup --with session-memory` when ctx-rs is the new backend AND Letta data exists.
 
 **Files:**
 
@@ -496,7 +496,7 @@ new install footprint (just npm prebuilt). Update `docs/guides/session-memory.md
 
 - Why we ship Rust (single binary, sub-ms latency, no docker)
 - How to opt back into Letta if needed (env flag)
-- Platform fallback (`AK_DISABLE_CTX=1` for unsupported platforms — per D13)
+- Platform fallback (`WP_DISABLE_CTX=1` for unsupported platforms — per D13)
 
 **Files:**
 
@@ -516,21 +516,21 @@ new install footprint (just npm prebuilt). Update `docs/guides/session-memory.md
 
 | Gate | Command | Success Criteria |
 | ---- | ------- | ---------------- |
-| Type safety (TS) | `ak_typecheck` | Zero errors |
+| Type safety (TS) | `wp_typecheck` | Zero errors |
 | Type safety (Rust) | `cargo check --all-targets` | Zero errors |
 | Lint (Rust) | `cargo clippy -- -D warnings` | Zero warnings |
-| Lint (TS) | `ak_lint --file <touched>` | Zero violations |
+| Lint (TS) | `wp_lint --file <touched>` | Zero violations |
 | License audit | `cargo deny check` | Zero forbidden licenses |
 | Unit tests (Rust) | `cargo test --workspace` | All pass |
-| Unit tests (TS) | `ak_test --file <touched>` | All pass |
+| Unit tests (TS) | `wp_test --file <touched>` | All pass |
 | Mutation score | `cargo mutants --in-place` | ≥ 70% on core modules |
 | Behavior parity | parity.test.ts | ≥ 80% top-10 overlap vs v1 |
 | Hot path perf | bench in ctx-rs-core/benches/ | p99 < 2ms, p50 < 0.5ms |
 | Cross-platform build | release workflow | Green on linux-x64, linux-arm64, darwin-x64, darwin-arm64 |
 | npm install smoke | `pnpm add @webpresso/ctx-rs` in temp dir | Pulls correct prebuilt; require works |
 | End-to-end | scratch Claude Code session + simulated compaction | Restore correctness preserved across backends |
-| Full QA | `ak_qa` | All pass |
-| Lifecycle audit | `ak_audit blueprint-lifecycle` | Blueprint passes |
+| Full QA | `wp_qa` | All pass |
+| Lifecycle audit | `wp_audit blueprint-lifecycle` | Blueprint passes |
 
 ## Cross-Plan References
 
@@ -543,7 +543,7 @@ new install footprint (just npm prebuilt). Update `docs/guides/session-memory.md
 
 | Edge Case | Risk | Solution | Task |
 | --------- | ---- | -------- | ---- |
-| napi-rs prebuilt missing for user's platform | `pnpm add` fails confusingly | Graceful disable: `AK_DISABLE_CTX=1` env var detected, ak_session_* returns "unavailable" cleanly. README documents | 2.2 + D13 |
+| napi-rs prebuilt missing for user's platform | `pnpm add` fails confusingly | Graceful disable: `WP_DISABLE_CTX=1` env var detected, wp_session_* returns "unavailable" cleanly. README documents | 2.2 + D13 |
 | Rust panic across FFI boundary | Node process crashes | All napi functions wrap in `std::panic::catch_unwind`; panics become typed Node errors | 2.1 |
 | ctx-rs version mismatch with agent-kit expectations | API drift breaks integration | Strict semver + ABI-version constant in ctx-rs-napi checked at module init | 2.1 |
 | SQLite file corruption (laptop crash mid-write) | Session data lost | WAL mode enabled; recovery is SQLite's own; documented | 1.2 |

@@ -1,5 +1,5 @@
 import type { CommandHookMetadata } from '#codex/app-server/types.js';
-export declare const KNOWN_AGENT_KIT_CODEX_BINS: readonly ["ak-sessionstart-routing", "ak-check-dev-link", "ak-pretool-guard", "ak-post-tool", "ak-guard-switch", "ak-stop-qa"];
+export declare const KNOWN_AGENT_KIT_CODEX_BINS: readonly ["wp-sessionstart-routing", "wp-check-dev-link", "wp-pretool-guard", "wp-post-tool", "wp-guard-switch", "wp-stop-qa"];
 export interface CodexHookOwnershipMetadata {
     readonly isManaged?: unknown;
     readonly handlerType?: unknown;

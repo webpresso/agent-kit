@@ -95,7 +95,7 @@ Sentiment is **strongly against platform-canonical** for developer tools that ar
 ### Vision Fit
 The product wedge: "Two agents on different machines collaborating on the same blueprint never conflict."
 
-**Current state:** This is ALREADY solved by git. When agents work on the same blueprint across machines, they run on the same git repo. `git push` after `ak blueprint task done` — same as any code change. The "conflict" scenario requires two agents mutating the same task simultaneously on disconnected machines, which is not the primary use case for solo developers using agent-kit.
+**Current state:** This is ALREADY solved by git. When agents work on the same blueprint across machines, they run on the same git repo. `git push` after `wp blueprint task done` — same as any code change. The "conflict" scenario requires two agents mutating the same task simultaneously on disconnected machines, which is not the primary use case for solo developers using agent-kit.
 
 If the use case is real (two humans, not two AI agents, collaborating in real time), that's a different product — closer to a collaborative project management tool, which is a significant scope expansion.
 
@@ -122,7 +122,7 @@ Add Turso as an optional sync backend. When `TURSO_URL` env var is set, agent-ki
 **Covers:** Q1-Q3 natively. Doesn't require platform team. Open-source friendly. Solves the "real-time cross-machine" use case without a proprietary API.
 
 ### Option C: Template catalog only (XS, 1 task)
-The one genuinely new capability in the blueprint that can't be solved by git is Q5 (platform template catalog). Implement `ak blueprint new --fetch-template <url>` that reads from a GitHub release or CDN URL. No platform API, no sync complexity.
+The one genuinely new capability in the blueprint that can't be solved by git is Q5 (platform template catalog). Implement `wp blueprint new --fetch-template <url>` that reads from a GitHub release or CDN URL. No platform API, no sync complexity.
 
 **Ask the user** which option to pursue — or whether the blueprint should stay parked indefinitely.
 

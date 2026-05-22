@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { registerDoctorCommand, runDoctor } from './doctor.js'
 
 function tempRepo(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'ak-doctor-'))
+  const dir = mkdtempSync(join(tmpdir(), 'wp-doctor-'))
   mkdirSync(join(dir, '.git'), { recursive: true })
   writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'demo', private: true }))
   return dir
@@ -61,7 +61,7 @@ describe('runDoctor', () => {
       expect(code).toBe(0)
       expect(logs.join('\n')).toContain('Catalog drift — single package (no workspace file): OK')
       expect(logs.join('\n')).toContain(
-        'Hook/plugin health remains separate: run `ak hooks doctor`.',
+        'Hook/plugin health remains separate: run `wp hooks doctor`.',
       )
     } finally {
       rmSync(repo, { recursive: true, force: true })
@@ -81,7 +81,7 @@ describe('runDoctor', () => {
 
     expect(code).toBe(1)
     expect(logs.join('\n')).toContain('Docs frontmatter: FAILED')
-    expect(logs.join('\n')).toContain('→ remediation: ak audit docs-frontmatter --fix')
+    expect(logs.join('\n')).toContain('→ remediation: wp audit docs-frontmatter --fix')
     rmSync(repo, { recursive: true, force: true })
   })
 

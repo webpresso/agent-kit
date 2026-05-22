@@ -12,7 +12,7 @@ import { auditTechDebtCadence } from './tech-debt-cadence.js'
 // ---------------------------------------------------------------------------
 
 function makeTempRepo(): { cwd: string; agentDir: string; dbPath: string } {
-  const cwd = mkdtempSync(path.join(tmpdir(), 'ak-audit-td-cadence-'))
+  const cwd = mkdtempSync(path.join(tmpdir(), 'wp-audit-td-cadence-'))
   const agentDir = path.join(cwd, '.agent')
   mkdirSync(agentDir, { recursive: true })
   const dbPath = path.join(agentDir, '.blueprints.db')
@@ -80,12 +80,12 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(cwd, { recursive: true, force: true })
-  delete process.env['AK_USE_SQL_AUDITS']
+  delete process.env['WP_USE_SQL_AUDITS']
 })
 
 describe('auditTechDebtCadence — env gate', () => {
-  it('returns disabled (ok: true) when AK_USE_SQL_AUDITS is not set', async () => {
-    delete process.env['AK_USE_SQL_AUDITS']
+  it('returns disabled (ok: true) when WP_USE_SQL_AUDITS is not set', async () => {
+    delete process.env['WP_USE_SQL_AUDITS']
     const result = await auditTechDebtCadence(cwd)
     expect(result.ok).toBe(true)
     expect(result.violations).toHaveLength(0)
@@ -93,9 +93,9 @@ describe('auditTechDebtCadence — env gate', () => {
   })
 })
 
-describe('auditTechDebtCadence — with AK_USE_SQL_AUDITS=1', () => {
+describe('auditTechDebtCadence — with WP_USE_SQL_AUDITS=1', () => {
   beforeEach(() => {
-    process.env['AK_USE_SQL_AUDITS'] = '1'
+    process.env['WP_USE_SQL_AUDITS'] = '1'
   })
 
   it('returns ok when DB is empty', async () => {

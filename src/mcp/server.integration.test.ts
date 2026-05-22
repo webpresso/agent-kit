@@ -105,7 +105,7 @@ describe('mcp server integration', () => {
     return
   }
 
-  it('responds to tools/list with ak_test registered and a JSON Schema', async () => {
+  it('responds to tools/list with wp_test registered and a JSON Schema', async () => {
     const responses = await callServer(
       {
         jsonrpc: '2.0',
@@ -128,7 +128,7 @@ describe('mcp server integration', () => {
       inputSchema: { type: string; properties?: Record<string, unknown> }
       outputSchema?: { type: string; properties?: Record<string, unknown> }
     }>
-    const akTest = tools.find((t) => t.name === 'ak_test')
+    const akTest = tools.find((t) => t.name === 'wp_test')
     expect(akTest).toBeDefined()
     expect(akTest?.inputSchema.type).toBe('object')
     expect(akTest?.inputSchema.properties).toMatchObject({
@@ -142,7 +142,7 @@ describe('mcp server integration', () => {
       summary: expect.any(Object),
     })
 
-    const akE2e = tools.find((t) => t.name === 'ak_e2e')
+    const akE2e = tools.find((t) => t.name === 'wp_e2e')
     expect(akE2e).toBeDefined()
     expect(akE2e?.inputSchema.properties).toMatchObject({
       suite: expect.any(Object),
@@ -155,7 +155,7 @@ describe('mcp server integration', () => {
       details: expect.any(Object),
     })
 
-    const akAudit = tools.find((t) => t.name === 'ak_audit')
+    const akAudit = tools.find((t) => t.name === 'wp_audit')
     expect(akAudit).toBeDefined()
     expect(
       (akAudit?.inputSchema.properties?.kind as { enum?: unknown[] } | undefined)?.enum ?? [],
@@ -200,7 +200,7 @@ describe('mcp server integration', () => {
       name: string
     }>
     expect(tools.map((t) => t.name)).toEqual(
-      expect.arrayContaining(['ak_lint', 'ak_qa', 'ak_test', 'ak_e2e', 'ak_typecheck', 'ak_audit']),
+      expect.arrayContaining(['wp_lint', 'wp_qa', 'wp_test', 'wp_e2e', 'wp_typecheck', 'wp_audit']),
     )
   }, 20_000)
 
@@ -311,7 +311,7 @@ describe('mcp server integration', () => {
         id: 2,
         method: 'tools/call',
         params: {
-          name: 'ak_audit',
+          name: 'wp_audit',
           arguments: { kind: 'docs-frontmatter', directory: process.cwd() },
         },
       },
@@ -333,7 +333,7 @@ describe('mcp server integration', () => {
   })
 
   // Task 2.1: the structured blueprint surface (8 existing tools + the new
-  // `ak_blueprint_projects` aggregate) must be advertised by the main server,
+  // `wp_blueprint_projects` aggregate) must be advertised by the main server,
   // not just available via direct registrar tests.
   it('advertises the 9 structured blueprint tools in tools/list (Task 2.1)', async () => {
     const responses = await callServer(
@@ -356,18 +356,18 @@ describe('mcp server integration', () => {
     const names = tools.map((t) => t.name)
     expect(names).toEqual(
       expect.arrayContaining([
-        'ak_blueprint_query',
-        'ak_blueprint_new',
-        'ak_blueprint_validate',
-        'ak_blueprint_task_next',
-        'ak_blueprint_task_advance',
-        'ak_blueprint_promote',
-        'ak_blueprint_finalize',
-        'ak_blueprint_depgraph',
-        'ak_blueprint_projects',
+        'wp_blueprint_query',
+        'wp_blueprint_new',
+        'wp_blueprint_validate',
+        'wp_blueprint_task_next',
+        'wp_blueprint_task_advance',
+        'wp_blueprint_promote',
+        'wp_blueprint_finalize',
+        'wp_blueprint_depgraph',
+        'wp_blueprint_projects',
       ]),
     )
     // Auto-discovered non-blueprint tools must still be present alongside.
-    expect(names).toEqual(expect.arrayContaining(['ak_lint', 'ak_qa', 'ak_test', 'ak_audit']))
+    expect(names).toEqual(expect.arrayContaining(['wp_lint', 'wp_qa', 'wp_test', 'wp_audit']))
   }, 20_000)
 })

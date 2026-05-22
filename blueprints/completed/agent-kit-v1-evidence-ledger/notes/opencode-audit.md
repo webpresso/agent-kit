@@ -89,7 +89,7 @@ Task 1.8 adds two new entries to `DEFAULT_UNIFIED_CONSUMERS`:
 `~/.config/opencode/skills/` for user-global, possibly
 `.opencode/skills/` for repo-local.)
 
-Acceptance: `ak sync` writes opencode skills to the verified path;
+Acceptance: `wp sync` writes opencode skills to the verified path;
 existing Codex + Gemini sync regression-checked; the comment in
 `consumers.ts` is updated to reflect the actual opencode integration
 shape.

@@ -13,11 +13,11 @@ const SKILL_HOOK_EVENTS = [
 ] as const
 
 const RESERVED_GLOBAL_BINS = [
-  'ak-pretool-guard',
-  'ak-post-tool',
-  'ak-guard-switch',
-  'ak-sessionstart-routing',
-  'ak-stop-qa',
+  'wp-pretool-guard',
+  'wp-post-tool',
+  'wp-guard-switch',
+  'wp-sessionstart-routing',
+  'wp-stop-qa',
 ] as const
 
 const TRACEABILITY_PREFIX = '# from-skill:'

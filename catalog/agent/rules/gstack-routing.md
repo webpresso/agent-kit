@@ -11,7 +11,7 @@ last_reviewed: '2026-05-11'
 
 # gstack routing — lane 4: interactive/browser workflows
 
-Fallback-only note: if SessionStart already injected `AK_ROUTING_BLOCK`, or
+Fallback-only note: if SessionStart already injected `WP_ROUTING_BLOCK`, or
 any other routing block is already present, follow that and do not duplicate
 it. This rule exists to preserve the same routing in plain repo contexts.
 
@@ -22,7 +22,7 @@ tooling. It is **lane 4** in the agent-kit ownership model:
 
 | Lane | Owner | Surface |
 | ---- | ----- | ------- |
-| 1 | agent-kit | `ak_*` dev-workflow (blueprint execution, audits, quality) |
+| 1 | agent-kit | `wp_*` dev-workflow (blueprint execution, audits, quality) |
 | 2 | context-mode | `ctx_*` (context reduction, knowledge-base indexing) |
 | 3 | rtk | shell-tool output filtering for non-quality-engine commands |
 | **4** | **gstack** | **interactive/browser workflows, skill UX, CEO/design reviews** |
@@ -44,8 +44,8 @@ Use gstack skills when the workflow is:
 
 Do not invoke gstack for:
 
-- Running tests, lint, typecheck, or audits → use `ak_test`, `ak_lint`,
-  `ak_typecheck`, `ak_qa`, `ak_audit`.
+- Running tests, lint, typecheck, or audits → use `wp_test`, `wp_lint`,
+  `wp_typecheck`, `wp_qa`, `wp_audit`.
 - Searching previously indexed content → use `ctx_search`.
 - Shell output filtering → use `rtk`.
 
@@ -53,7 +53,7 @@ Do not invoke gstack for:
 
 gstack is **not bundled or redistributed by agent-kit**. It lives at
 `~/.claude/skills/gstack/`, cloned from Garry Tan's repo at
-https://github.com/garrytan/gstack. `ak setup` prints a recommend-install
+https://github.com/garrytan/gstack. `wp setup` prints a recommend-install
 line but never clones on the user's behalf.
 
 This is intentional: gstack is Garry Tan's project. Redistributing it
@@ -65,16 +65,16 @@ and follow the setup instructions.
 ## Hard rules
 
 - Never implement or replicate gstack skills inside agent-kit.
-- Never import gstack internals from `ak` CLI code.
+- Never import gstack internals from `wp` CLI code.
 - Never wire gstack into agent-kit's hook chain as a first-class hook
   (gstack has its own lifecycle; hooks are installed by `./setup --team`).
-- Keep lanes 1-3 (`ak_*`, `ctx_*`, `rtk *`) as independent routing
+- Keep lanes 1-3 (`wp_*`, `ctx_*`, `rtk *`) as independent routing
   surfaces; lane 4 is advisory, not the primary control surface for
   dev-workflow operations.
 
 ## Ownership boundary
 
-- agent-kit owns `ak_*` dev-workflow routing.
+- agent-kit owns `wp_*` dev-workflow routing.
 - context-mode owns `ctx_*` nudges when that plugin is installed.
 - rtk owns shell-tool output filtering for the long-tail command surface.
 - **gstack owns lane 4.** agent-kit defers to it there; it does not
@@ -83,8 +83,8 @@ and follow the setup instructions.
 
 ## Subprocess coverage note
 
-`ak_*` tools shelling out via `child_process.spawn` own their own
+`wp_*` tools shelling out via `child_process.spawn` own their own
 filtering; `rtk` PreToolUse hook only fires for top-level Bash calls and
-does NOT reach into `ak_*` internals. CLI verbs (`ak <verb>` from a shell)
+does NOT reach into `wp_*` internals. CLI verbs (`wp <verb>` from a shell)
 ARE rewritten by rtk. gstack skill invocations from within Claude Code
 are NOT filtered by rtk (they go through the Claude Code plugin lifecycle).

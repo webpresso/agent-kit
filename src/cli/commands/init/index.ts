@@ -1,7 +1,7 @@
 import type { CAC } from 'cac'
 
 /**
- * `ak setup` / `ak init` — scaffolds the agent-kit catalog into a consumer repo.
+ * `wp setup` / `wp init` — scaffolds the agent-kit catalog into a consumer repo.
  *
  * Idempotent: re-runs reconcile against `.agent-kitrc.json`.
  * Safe-by-default: if a target file exists with different content, reports
@@ -125,7 +125,7 @@ export function resolveCatalogDir(): string {
     dir = parent
   }
   throw new Error(
-    'ak init: could not locate the agent-kit catalog directory. The package may be broken.',
+    'wp init: could not locate the agent-kit catalog directory. The package may be broken.',
   )
 }
 
@@ -148,7 +148,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
   const consumer = detectConsumer(cwd)
   if (!consumer) {
     console.error(
-      `ak init: could not find a git repo (walked up from ${cwd}).\n` +
+      `wp init: could not find a git repo (walked up from ${cwd}).\n` +
         `Run \`git init\` first, or pass --cwd pointing at a git working tree.`,
     )
     return EXIT_SETUP_FAIL
@@ -165,7 +165,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
         console.error(`  preflight: ✗ ${warning}`)
       }
       console.error(
-        `\nak setup: aborting — ${preflightResult.warnings.length} compatibility check(s) failed.\n` +
+        `\nwp setup: aborting — ${preflightResult.warnings.length} compatibility check(s) failed.\n` +
           `See ${DOCS_URL}`,
       )
       return EXIT_SETUP_FAIL
@@ -213,7 +213,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
       isTTY: Boolean(process.stdin.isTTY),
     })
     if (selection.aborted) {
-      console.error('ak init: aborted by user.')
+      console.error('wp init: aborted by user.')
       return EXIT_USER_ABORT
     }
     tier3Selection = selection.selected
@@ -222,7 +222,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
     return EXIT_SETUP_FAIL
   }
 
-  console.log(`ak init: scaffolding into ${consumer.repoRoot}`)
+  console.log(`wp init: scaffolding into ${consumer.repoRoot}`)
   if (options.dryRun) console.log('  mode: DRY RUN (no writes)')
   if (options.overwrite)
     console.log('  mode: --overwrite (consumer customizations will be replaced)')
@@ -329,7 +329,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
         error instanceof Error &&
         error.message.includes('@webpresso/agent-kit not found in node_modules')
       ) {
-        console.error(`ak init: setup failed — ${error.message}`)
+        console.error(`wp init: setup failed — ${error.message}`)
         return EXIT_SETUP_FAIL
       }
       throw error
@@ -380,7 +380,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
           console.log('  vision: ✓ scaffolded VISION.md from your answers')
         } else {
           console.log(
-            `  vision: ✓ scaffolded ${visionPath} (template stub — fill it in, then \`ak audit vision\`)`,
+            `  vision: ✓ scaffolded ${visionPath} (template stub — fill it in, then \`wp audit vision\`)`,
           )
         }
       }
@@ -479,7 +479,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
           console.log('  omc plugin: skipped (--dry-run)')
           break
         case 'omc-skipped-opt-out':
-          console.log('  omc plugin: skipped (AK_SKIP_OMC=1)')
+          console.log('  omc plugin: skipped (WP_SKIP_OMC=1)')
           break
         case 'omc-skipped-no-cli':
           console.warn(
@@ -540,7 +540,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
         console.log('  claude plugin: skipped (--dry-run)')
         break
       case 'claude-plugin-skipped-opt-out':
-        console.log('  claude plugin: skipped (AK_SKIP_CLAUDE_PLUGIN=1)')
+        console.log('  claude plugin: skipped (WP_SKIP_CLAUDE_PLUGIN=1)')
         break
       case 'claude-plugin-skipped-no-cli':
         console.log('  claude plugin: - skipped (claude not on PATH)')
@@ -558,9 +558,9 @@ export async function runInit(flags: InitFlags): Promise<number> {
     }
 
     let gstackFailure: 'clone-failed' | 'pull-failed' | 'setup-failed' | null = null
-    if (process.env.AK_SKIP_GSTACK === '1') {
+    if (process.env.WP_SKIP_GSTACK === '1') {
       console.warn(
-        '  gstack: ⚠ AK_SKIP_GSTACK=1 — skipping. Most consumer repos treat gstack as a hard prerequisite.',
+        '  gstack: ⚠ WP_SKIP_GSTACK=1 — skipping. Most consumer repos treat gstack as a hard prerequisite.',
       )
     } else if (isCiEnvironment && presets.includes('gstack')) {
       console.log('  gstack: - skipped (CI environment)')
@@ -616,9 +616,9 @@ export async function runInit(flags: InitFlags): Promise<number> {
     }
 
     let rtkFailure: 'not-found' | 'init-failed' | null = null
-    if (process.env.AK_SKIP_RTK === '1') {
+    if (process.env.WP_SKIP_RTK === '1') {
       console.warn(
-        '  rtk: ⚠ AK_SKIP_RTK=1 — skipping. RTK provides shell-tool output filtering for git/gh/kubectl/etc.',
+        '  rtk: ⚠ WP_SKIP_RTK=1 — skipping. RTK provides shell-tool output filtering for git/gh/kubectl/etc.',
       )
     } else if (isCiEnvironment && presets.includes('rtk')) {
       console.log('  rtk: - skipped (CI environment)')
@@ -627,7 +627,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
         mkdirSync(join(consumer.repoRoot, '.agent'), { recursive: true })
         writeFileSync(
           join(consumer.repoRoot, RTK_REQUESTED_MARKER),
-          'managed by ak setup (default-on)\n',
+          'managed by wp setup (default-on)\n',
         )
       }
       const rtkResult = ensureRtk({ repoRoot: consumer.repoRoot, options })
@@ -716,7 +716,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
           )
         } else {
           console.error(
-            `\nak setup: host visibility check failed for ${missing
+            `\nwp setup: host visibility check failed for ${missing
               .map((result) => `${result.host}/${result.capability}`)
               .join(', ')}`,
           )
@@ -736,7 +736,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
       }
     }
 
-    console.log('\nak init: done.')
+    console.log('\nwp init: done.')
     if (omxFailure === 'not-found') return EXIT_SETUP_FAIL
     if (omxFailure === 'spawn-failed') return EXIT_WRITE_FAIL
     if (gstackFailure === 'clone-failed') return EXIT_WRITE_FAIL
@@ -762,7 +762,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
       [
         '',
         'Ownership lanes:',
-        '  Lane 1 ak_*   blueprint · audit · quality',
+        '  Lane 1 wp_*   blueprint · audit · quality',
         '  Lane 2 ctx_*  context-mode (context reduction)',
         '  Lane 3 rtk    shell-tool token filtering',
         '  Lane 4 gstack interactive workflows',
@@ -776,8 +776,8 @@ export async function runInit(flags: InitFlags): Promise<number> {
           '',
           '✅ Setup complete.',
           '',
-          '  Next: ak blueprint new "your first task"',
-          '        ak gain          # token savings after your first session',
+          '  Next: wp blueprint new "your first task"',
+          '        wp gain          # token savings after your first session',
         ].join('\n'),
       )
     }
@@ -786,12 +786,12 @@ export async function runInit(flags: InitFlags): Promise<number> {
   } catch (error) {
     if (error instanceof Error && /catalogDir does not exist/.test(error.message)) {
       console.error(
-        'ak init: @webpresso/agent-kit not installed in node_modules. ' + 'Run `vp install` first.',
+        'wp init: @webpresso/agent-kit not installed in node_modules. ' + 'Run `vp install` first.',
       )
       return EXIT_SETUP_FAIL
     }
     console.error(
-      `ak init: write failed — ${error instanceof Error ? error.message : String(error)}`,
+      `wp init: write failed — ${error instanceof Error ? error.message : String(error)}`,
     )
     return EXIT_WRITE_FAIL
   }
@@ -803,7 +803,7 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
   const description =
     commandName === 'setup'
       ? 'Scaffold agent-kit catalog into the current repo'
-      : 'Compatibility alias for ak setup'
+      : 'Compatibility alias for wp setup'
 
   // Help text is data-driven so adding a preset (PRESETS) automatically
   // updates --help. Prevents the docs/code drift we discovered when
@@ -811,7 +811,7 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
   const withHelp =
     `Comma-separated Tier-3 skills and/or presets to install ` +
     `(non-interactive). Presets: ${PRESETS.join(', ')}. ` +
-    `Tier-3 skills are listed by 'ak skill list'.`
+    `Tier-3 skills are listed by 'wp skill list'.`
 
   cli
     .command(commandName, description)

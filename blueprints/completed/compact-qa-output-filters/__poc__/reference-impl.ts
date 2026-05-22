@@ -368,9 +368,9 @@ const TRANSFORMS: Readonly<Record<string, TransformParsers>> = {
   tsc: tscParsers,
 }
 
-/** Strip dynamic suffixes — `ak_audit-blueprint-lifecycle` → `audit`. */
+/** Strip dynamic suffixes — `wp_audit-blueprint-lifecycle` → `audit`. */
 export function normalizeToolName(toolName: string): string {
-  return toolName.replace(/^ak_/, '').split('-')[0]!
+  return toolName.replace(/^wp_/, '').split('-')[0]!
 }
 
 export function applyTransform(

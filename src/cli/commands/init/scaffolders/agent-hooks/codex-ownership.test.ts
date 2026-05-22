@@ -10,7 +10,7 @@ function ownedHook(overrides: Record<string, unknown> = {}): Record<string, unkn
     handlerType: 'command',
     pluginId: null,
     sourcePath: EXPECTED_SOURCE_PATHS[0],
-    command: './node_modules/.bin/ak-pretool-guard',
+    command: './node_modules/.bin/wp-pretool-guard',
     ...overrides,
   }
 }
@@ -30,7 +30,7 @@ describe('isAgentKitOwnedCodexHook', () => {
   it('accepts quoted absolute node_modules bin paths', () => {
     expect(
       isAgentKitOwnedCodexHook(
-        ownedHook({ command: '"/repo/node_modules/.bin/ak-post-tool"' }),
+        ownedHook({ command: '"/repo/node_modules/.bin/wp-post-tool"' }),
         EXPECTED_SOURCE_PATHS,
       ),
     ).toBe(true)
@@ -41,7 +41,7 @@ describe('isAgentKitOwnedCodexHook', () => {
       isAgentKitOwnedCodexHook(
         ownedHook({
           command:
-            '[ -x "/repo/node_modules/.bin/ak-post-tool" ] && "/repo/node_modules/.bin/ak-post-tool" || true',
+            '[ -x "/repo/node_modules/.bin/wp-post-tool" ] && "/repo/node_modules/.bin/wp-post-tool" || true',
         }),
         EXPECTED_SOURCE_PATHS,
       ),
@@ -102,19 +102,19 @@ describe('isAgentKitOwnedCodexHook', () => {
   it('rejects commands that do not directly target known agent-kit node_modules bins', () => {
     expect(
       isAgentKitOwnedCodexHook(
-        ownedHook({ command: './node_modules/.bin/ak' }),
+        ownedHook({ command: './node_modules/.bin/wp' }),
         EXPECTED_SOURCE_PATHS,
       ),
     ).toBe(false)
     expect(
       isAgentKitOwnedCodexHook(
-        ownedHook({ command: './node_modules/.bin/ak-test-quality-check' }),
+        ownedHook({ command: './node_modules/.bin/wp-test-quality-check' }),
         EXPECTED_SOURCE_PATHS,
       ),
     ).toBe(false)
     expect(
       isAgentKitOwnedCodexHook(
-        ownedHook({ command: 'echo ./node_modules/.bin/ak-pretool-guard' }),
+        ownedHook({ command: 'echo ./node_modules/.bin/wp-pretool-guard' }),
         EXPECTED_SOURCE_PATHS,
       ),
     ).toBe(false)

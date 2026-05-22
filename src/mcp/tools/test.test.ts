@@ -41,9 +41,9 @@ afterEach(() => {
   }
 })
 
-describe('ak_test tool', () => {
+describe('wp_test tool', () => {
   it('exposes the expected descriptor surface', () => {
-    expect(akTestTool.name).toBe('ak_test')
+    expect(akTestTool.name).toBe('wp_test')
     expect(typeof akTestTool.description).toBe('string')
     expect(akTestTool.handler).toBeTypeOf('function')
   })
@@ -52,7 +52,7 @@ describe('ak_test tool', () => {
     let dir: string
 
     beforeEach(() => {
-      dir = mkdtempSync(join(tmpdir(), `ak-mcp-test-tool-${randomUUID().slice(0, 8)}-`))
+      dir = mkdtempSync(join(tmpdir(), `wp-mcp-test-tool-${randomUUID().slice(0, 8)}-`))
       process.env.CLAUDE_PROJECT_DIR = dir
     })
 

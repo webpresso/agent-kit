@@ -5,7 +5,7 @@
  * `agent-rules/<name>.md`.
  *
  * Couples the consumer's `.gitignore` to the catalog snapshot at scaffold
- * time. Re-run `ak setup` to pick up new catalog entries; the managed block
+ * time. Re-run `wp setup` to pick up new catalog entries; the managed block
  * is overwritten in-place.
  *
  * Consumer-authored skills/rules with names that DO NOT match a catalog

@@ -15,7 +15,7 @@
  * input. Text payloads are clamped to `CONTEXT_CHUNK_MAX_BYTES` so the
  * helper cannot recreate markdown context bloat.
  *
- * Consumers: Task 2.2's `ak_blueprint_context` MCP tool. The helper is
+ * Consumers: Task 2.2's `wp_blueprint_context` MCP tool. The helper is
  * deliberately CLI-free so it can be imported by MCP without dragging
  * `src/cli` into the dependency graph.
  */

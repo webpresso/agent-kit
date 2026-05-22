@@ -37,11 +37,11 @@ it have lots of transitions.
 
 Rules:
 
-- **`draft → planned`** requires the plan pass format audit (`ak blueprint audit <slug> --strict`) and ideally `/plan-refine`. Enforced by `ak blueprint move <slug> planned` — the move command refuses if the audit fails.
-- **`planned → in-progress`** is automatic on `ak blueprint start <slug>` or when an agent calls `ak blueprint task <slug> <task-id> start`. Don't manually move between these two states.
-- **`in-progress → completed`** requires every task's checklist ticked and frontmatter `status: completed` set. `ak blueprint finalize <slug>` validates and transitions.
-- **`completed → archived`** is manual (`ak blueprint move <slug> archived`) and signals "this historical record should stay but isn't referenced by active work."
-- **`→ parked`** can happen from `planned` or `in-progress` (`ak blueprint move <slug> parked`). Frontmatter gains a `parked_reason:` field.
+- **`draft → planned`** requires the plan pass format audit (`wp blueprint audit <slug> --strict`) and ideally `/plan-refine`. Enforced by `wp blueprint move <slug> planned` — the move command refuses if the audit fails.
+- **`planned → in-progress`** is automatic on `wp blueprint start <slug>` or when an agent calls `wp blueprint task <slug> <task-id> start`. Don't manually move between these two states.
+- **`in-progress → completed`** requires every task's checklist ticked and frontmatter `status: completed` set. `wp blueprint finalize <slug>` validates and transitions.
+- **`completed → archived`** is manual (`wp blueprint move <slug> archived`) and signals "this historical record should stay but isn't referenced by active work."
+- **`→ parked`** can happen from `planned` or `in-progress` (`wp blueprint move <slug> parked`). Frontmatter gains a `parked_reason:` field.
 - **`parked → planned`** / **`parked → in-progress`** is the resume path.
 
 ## Frontmatter fields
@@ -125,22 +125,22 @@ This keeps the backlog honest.
 ## Common operations
 
 ```bash
-ak blueprint new "<goal>" --complexity M        # create draft
-ak blueprint list                                # all statuses
-ak blueprint list --status planned               # filter
-ak blueprint show <slug>                         # detail view
-ak blueprint audit <slug> --strict               # format + lifecycle check
-ak blueprint audit --all --strict                # everything
-ak blueprint move <slug> planned                 # transition (audit-gated)
-ak blueprint start <slug>                        # planned → in-progress
-ak blueprint task <slug> 1.1 start               # task → in_progress
-ak blueprint task <slug> 1.1 complete            # task → done
-ak blueprint task <slug> 1.1 block --reason "<why>"
-ak blueprint task <slug> 1.1 unblock
-ak blueprint finalize <slug>                     # all tasks done → completed
-ak blueprint move <slug> archived                # keep record
-ak blueprint diff <slug>                         # history
-ak blueprint graph <slug>                        # render task DAG as mermaid
+wp blueprint new "<goal>" --complexity M        # create draft
+wp blueprint list                                # all statuses
+wp blueprint list --status planned               # filter
+wp blueprint show <slug>                         # detail view
+wp blueprint audit <slug> --strict               # format + lifecycle check
+wp blueprint audit --all --strict                # everything
+wp blueprint move <slug> planned                 # transition (audit-gated)
+wp blueprint start <slug>                        # planned → in-progress
+wp blueprint task <slug> 1.1 start               # task → in_progress
+wp blueprint task <slug> 1.1 complete            # task → done
+wp blueprint task <slug> 1.1 block --reason "<why>"
+wp blueprint task <slug> 1.1 unblock
+wp blueprint finalize <slug>                     # all tasks done → completed
+wp blueprint move <slug> archived                # keep record
+wp blueprint diff <slug>                         # history
+wp blueprint graph <slug>                        # render task DAG as mermaid
 ```
 
 For parallel lane launch, Agent Kit exposes the Blueprint DAG and lifecycle
@@ -150,13 +150,13 @@ package core.
 
 ## SQLite projection
 
-Run `ak blueprint db build` after any lifecycle state change to keep the SQLite
+Run `wp blueprint db build` after any lifecycle state change to keep the SQLite
 projection in sync with the markdown on disk. Agents can query it directly via
 MCP tools (see `docs/blueprint-db-cookbook.md` for the nine pre-registered query
 templates, e.g. `next-ready-task`).
 
 ```bash
-ak blueprint db build    # rebuild after state changes
-ak blueprint db verify   # confirm DB matches markdown (suitable for CI)
-ak blueprint db browse   # open Datasette UI for human exploration
+wp blueprint db build    # rebuild after state changes
+wp blueprint db verify   # confirm DB matches markdown (suitable for CI)
+wp blueprint db browse   # open Datasette UI for human exploration
 ```

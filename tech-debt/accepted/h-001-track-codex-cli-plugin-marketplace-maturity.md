@@ -17,7 +17,7 @@ affected_modules: []
 Agent-kit distributes hooks + MCP server + skills + slash commands via two paths (the [context-mode pattern](https://github.com/mksglu/context-mode)):
 
 1. **Claude Code → plugin marketplace** (`/plugin marketplace add webpresso/agent-kit && /plugin install agent-kit@webpresso`). Zero-config; the `.claude-plugin/plugin.json` declares everything inline.
-2. **Codex CLI + everything else → npm + scaffolder** (`pnpm add -D @webpresso/agent-kit && npx ak setup`). The `scaffoldAgentHooks` step (`src/cli/commands/init/scaffolders/agent-hooks/`) idempotently patches `.claude/settings.json` AND `.codex/hooks.json` with hook entries.
+2. **Codex CLI + everything else → npm + scaffolder** (`pnpm add -D @webpresso/agent-kit && npx wp setup`). The `scaffoldAgentHooks` step (`src/cli/commands/init/scaffolders/agent-hooks/`) idempotently patches `.claude/settings.json` AND `.codex/hooks.json` with hook entries.
 
 The asymmetry is **not optional today**: as of 2026-04-26, [Codex CLI's config docs](https://github.com/openai/codex/blob/main/docs/config.md) document MCP servers (`~/.codex/config.toml`) and hooks (`~/.codex/hooks.json`) but **no plugin marketplace** equivalent to Claude Code's `/plugin install`. The scaffolder is the only automated install path for Codex.
 
@@ -27,7 +27,7 @@ The two paths drift independently:
 - Claude Code plugin manifest changes (e.g., new hook event) require updating `.claude-plugin/plugin.json`.
 - Codex hooks contract changes require updating the `scaffolder/agent-hooks/index.ts` patch logic.
 - Skills are duplicated to `.agents/skills/` (Codex) and consumed via plugin (Claude Code).
-- A consumer who installs both paths gets hooks wired twice (deduplicated by `ak-pretool-guard` etc., but conceptually two truths).
+- A consumer who installs both paths gets hooks wired twice (deduplicated by `wp-pretool-guard` etc., but conceptually two truths).
 
 If/when Codex CLI ships a plugin marketplace, the scaffolder path becomes legacy and should fold into a single plugin-style distribution (the original Task 4.2 premise — see `blueprints/in-progress/agent-kit-claude-plugin-marketplace/_overview.md`).
 
@@ -49,11 +49,11 @@ Resolve this item when **any one** of:
 
 1. Add a `.codex-plugin/marketplace.json` (or whatever Codex's manifest format becomes).
 2. Migrate `scaffoldAgentHooks` Codex patches into the plugin manifest.
-3. Update `ak setup` to detect Codex plugin support and skip the manual `.codex/hooks.json` patching when a plugin install path exists.
+3. Update `wp setup` to detect Codex plugin support and skip the manual `.codex/hooks.json` patching when a plugin install path exists.
 4. Update README's Install Paths section.
 5. Mark this item `resolved` with a link to the implementing blueprint.
 
 ## Related
 
-- Source commit for the dual-distribution decision: `7bc036c feat(hooks): port claude-hooks into agent-kit + wire via ak setup` + this session's blueprint `agent-kit-claude-plugin-marketplace`.
+- Source commit for the dual-distribution decision: `7bc036c feat(hooks): port claude-hooks into agent-kit + wire via wp setup` + this session's blueprint `agent-kit-claude-plugin-marketplace`.
 - Sibling: `blueprints/planned/agent-kit-parity-pass/_overview.md` plans `.agent/mcp.json` fan-out across non-Claude IDEs (separate concern; same general theme).

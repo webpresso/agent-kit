@@ -4,28 +4,28 @@ import { buildRedirectMessage } from './mcp-redirect.js'
 
 describe('buildRedirectMessage', () => {
   it.each([
-    ['test', 'mcp__agent-kit__ak_test(...)'],
-    ['lint', 'mcp__agent-kit__ak_lint(...)'],
-    ['typecheck', 'mcp__agent-kit__ak_typecheck(...)'],
-    ['blueprint', 'mcp__agent-kit__ak_blueprint(...)'],
-    ['unknown', 'mcp__agent-kit__ak_qa(...)'],
+    ['test', 'mcp__agent-kit__wp_test(...)'],
+    ['lint', 'mcp__agent-kit__wp_lint(...)'],
+    ['typecheck', 'mcp__agent-kit__wp_typecheck(...)'],
+    ['blueprint', 'mcp__agent-kit__wp_blueprint(...)'],
+    ['unknown', 'mcp__agent-kit__wp_qa(...)'],
   ] as const)('uses MCP tool format for %s when MCP is ready', (category, matcher) => {
     const message = buildRedirectMessage({
       category,
       command: 'vp run test',
-      fallbackHint: 'ak_test MCP tool with package/file scope',
+      fallbackHint: 'wp_test MCP tool with package/file scope',
       mcpReady: true,
     })
 
-    expect(message).toContain('"vp run test" denied — use agent-kit MCP tool:')
+    expect(message).toContain('"vp run test" denied — use wp MCP tool:')
     expect(message).toContain(matcher)
     expect(message).toContain('Fallback if MCP unavailable:')
   })
 
   it.each([
-    ['test', 'ak_test MCP tool with package/file scope'],
-    ['lint', 'ak_lint MCP tool with package/file scope'],
-    ['typecheck', 'ak_typecheck MCP tool with package/file scope'],
+    ['test', 'wp_test MCP tool with package/file scope'],
+    ['lint', 'wp_lint MCP tool with package/file scope'],
+    ['typecheck', 'wp_typecheck MCP tool with package/file scope'],
     ['unknown', 'repo-approved MCP/tooling entrypoint'],
   ] as const)('falls back cleanly for %s when MCP is not ready', (category, fallbackHint) => {
     const message = buildRedirectMessage({
@@ -42,7 +42,7 @@ describe('buildRedirectMessage', () => {
     const message = buildRedirectMessage({
       category: 'test',
       command: 'vp run test',
-      fallbackHint: 'ak_test MCP tool with package/file scope',
+      fallbackHint: 'wp_test MCP tool with package/file scope',
       mcpReady: true,
       mcp: { serverName: 'custom-server', toolPrefix: 'tool_' },
     })

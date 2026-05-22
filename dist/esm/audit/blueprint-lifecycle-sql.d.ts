@@ -1,5 +1,5 @@
 /**
- * `ak audit blueprint-lifecycle-sql` — SQL-backed rewrite of the existing
+ * `wp audit blueprint-lifecycle-sql` — SQL-backed rewrite of the existing
  * blueprint-lifecycle audit.
  *
  * Uses the SQLite replica as the primary source when the DB file exists.

@@ -24,12 +24,12 @@ const TEMPLATE_MAP: Array<[string, string]> = [
  * fresh repo gets sane defaults) but NEVER overwrites them once they exist
  * — even under `--overwrite`. These files are consumer-owned and grow with
  * project-specific content (catalog entries, ignore patterns) that the
- * generic template can't reproduce. Clobbering them on every `ak setup`
+ * generic template can't reproduce. Clobbering them on every `wp setup`
  * deletes that content silently, breaks `vp install`, and pollutes git
  * status with thousands of newly-tracked artifacts.
  *
  * Verified failure mode (webpresso/monorepo, 2026-05-07): the postinstall
- * `ak setup --overwrite` reduced pnpm-workspace.yaml from 221 lines (full
+ * `wp setup --overwrite` reduced pnpm-workspace.yaml from 221 lines (full
  * catalog) to 34 lines (generic template), removing every catalog entry
  * referenced by `pnpm.overrides` (`@neondatabase/serverless` etc.) and
  * making subsequent `vp install` fail with ERR_PNPM_CATALOG_IN_OVERRIDES.
@@ -66,7 +66,7 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
 
   const existing = pkg['engines'] as Record<string, string> | undefined
   const alreadyHasEngines = existing?.node === engines.node
-  // Don't downgrade: treat any pnpm@11+ as already-satisfied so ak setup
+  // Don't downgrade: treat any pnpm@11+ as already-satisfied so wp setup
   // does not regress repos that have already been migrated to v11.
   const existingPm = pkg['packageManager']
   const alreadyHasPm =
@@ -99,14 +99,14 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
   }
   if (!shouldSkipSelfInstall && !hasAgentKitDevDep) {
     // Keep consumers on the currently published dist-tag rather than a
-    // repo-internal path. Do not wire this through `prepare`: `ak` is not
+    // repo-internal path. Do not wire this through `prepare`: `wp` is not
     // reliably on PATH during `vp install`, so `setup:agent` stays opt-in.
     devDeps['@webpresso/agent-kit'] = 'latest'
   }
   pkg['devDependencies'] = devDeps
 
   if (!shouldSkipSelfInstall && !hasSetupAgent) {
-    scripts['setup:agent'] = 'ak setup'
+    scripts['setup:agent'] = 'wp setup'
   }
   if (Object.keys(scripts).length > 0) {
     pkg['scripts'] = scripts

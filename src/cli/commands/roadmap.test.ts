@@ -92,11 +92,11 @@ describe('registerRoadmapCommand', () => {
         type: 'parent-roadmap',
       },
     ])
-    const cli = cac('ak')
+    const cli = cac('wp')
     registerRoadmapCommand(cli)
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    cli.parse(['node', 'ak', 'roadmap', 'list', '--json'], { run: false })
+    cli.parse(['node', 'wp', 'roadmap', 'list', '--json'], { run: false })
     await cli.runMatchedCommand()
 
     expect(listBlueprints).toHaveBeenCalledWith(
@@ -118,11 +118,11 @@ describe('registerRoadmapCommand', () => {
         type: 'parent-roadmap',
       },
     ])
-    const cli = cac('ak')
+    const cli = cac('wp')
     registerRoadmapCommand(cli)
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
-    cli.parse(['node', 'ak', 'roadmap', 'show', 'demo'], { run: false })
+    cli.parse(['node', 'wp', 'roadmap', 'show', 'demo'], { run: false })
     await cli.runMatchedCommand()
 
     expect(showBlueprint).toHaveBeenCalledWith('demo', { json: undefined, projectRoot: undefined })
@@ -132,10 +132,10 @@ describe('registerRoadmapCommand', () => {
 
   it('rejects roadmap show for non-roadmap blueprints', async () => {
     vi.mocked(showBlueprint).mockResolvedValue(buildResult('blueprint'))
-    const cli = cac('ak')
+    const cli = cac('wp')
     registerRoadmapCommand(cli)
 
-    cli.parse(['node', 'ak', 'roadmap', 'show', 'demo'], { run: false })
+    cli.parse(['node', 'wp', 'roadmap', 'show', 'demo'], { run: false })
 
     await expect(cli.runMatchedCommand()).rejects.toThrow(/not type=parent-roadmap/)
   })

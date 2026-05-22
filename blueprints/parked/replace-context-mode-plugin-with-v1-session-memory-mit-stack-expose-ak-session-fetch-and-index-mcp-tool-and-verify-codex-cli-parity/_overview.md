@@ -21,7 +21,7 @@ tags: [ai-memory, mit, ssrf, codex, parked]
 **Goal:** Ship a fully MIT agent-memory/tooling path that replaces the
 most important context-mode capabilities without bundling ELv2. Current
 repo reality: there is **no** `src/session-memory/*` engine and no
-shipped `ak_session_*` MCP tool family. What does exist is:
+shipped `wp_session_*` MCP tool family. What does exist is:
 - `src/ai-memory/*` — in-memory checkpoint/fact/retrieval primitives
 - `src/blueprint/db/*` — the current shared SQLite boundary
 - `src/mcp/*` — MCP discovery/registration infrastructure
@@ -45,7 +45,7 @@ correct:
 - **Stage outcome:** after BP A ships, consumers can avoid ELv2 by
   default. This BP restores the missing product capability by shipping a
   persistent MIT session tool family built on `ai-memory`.
-- **Consuming surface:** new `ak_session_*` MCP tools, discovered via the
+- **Consuming surface:** new `wp_session_*` MCP tools, discovered via the
   existing MCP auto-discovery layer and consumable from Claude Code,
   Codex, and OpenCode through the agent-kit MCP server.
 - **New user-visible capability:** consumers get persistent search,
@@ -68,11 +68,11 @@ TARGET AFTER THIS BP:
   persistent ai-memory store
     ├── SQLite-backed checkpoint/fact persistence
     ├── MIT fetch/index ingest pipeline
-    └── ak_session_* MCP tools
-         ├── ak_session_search
-         ├── ak_session_execute
-         ├── ak_session_batch_execute
-         └── ak_session_fetch_and_index
+    └── wp_session_* MCP tools
+         ├── wp_session_search
+         ├── wp_session_execute
+         ├── wp_session_batch_execute
+         └── wp_session_fetch_and_index
 ```
 
 ## Key Decisions
@@ -81,7 +81,7 @@ TARGET AFTER THIS BP:
 | --- | --- | --- |
 | D1 | Build on `src/ai-memory/*`, not the non-existent `src/session-memory/*` tree | Fact-checked against current repo |
 | D2 | Reuse the validated shared SQLite boundary from WAL BP rather than inventing a second DB layer | Reduces persistence drift |
-| D3 | `ak_session_fetch_and_index` is the new fetch/index surface, but it is part of a **tool family**, not a standalone one-off | Current repo has no shipped `ak_session_*` tools |
+| D3 | `wp_session_fetch_and_index` is the new fetch/index surface, but it is part of a **tool family**, not a standalone one-off | Current repo has no shipped `wp_session_*` tools |
 | D4 | SSRF protection must use a third-party MIT/Apache dependency | Do not own bespoke SSRF logic |
 | D5 | Cache identity is composite (`url + normalized options + parser version`) | Prevent stale artifact reuse |
 
@@ -188,7 +188,7 @@ Implement the actual fetch/index engine that does not currently exist:
 
 - [ ] engine exists and is fully test-covered
 - [ ] SSRF + size-cap + protocol gates are enforced
-- [ ] persisted output is consumable by later `ak_session_*` tools
+- [ ] persisted output is consumable by later `wp_session_*` tools
 
 #### [backend] Task 1.4: Add composite cache identity for fetched sources
 
@@ -211,7 +211,7 @@ Add source/cache persistence keyed by:
 - [ ] same URL + different options are not treated as the same cached artifact
 - [ ] cache hit behavior is deterministic and test-covered
 
-#### [mcp] Task 1.5: Add the first `ak_session_*` MCP tool family
+#### [mcp] Task 1.5: Add the first `wp_session_*` MCP tool family
 
 **Status:** todo
 
@@ -219,10 +219,10 @@ Add source/cache persistence keyed by:
 
 Introduce the new MCP tool family, discovered through the existing
 auto-discovery layer:
-- `ak_session_search`
-- `ak_session_execute`
-- `ak_session_batch_execute`
-- `ak_session_fetch_and_index`
+- `wp_session_search`
+- `wp_session_execute`
+- `wp_session_batch_execute`
+- `wp_session_fetch_and_index`
 
 If search/execute/batch are still too large to ship together after the
 foundation lands, split them into a follow-up only **after** a first
@@ -249,7 +249,7 @@ usable family shape exists in this blueprint.
 
 **Depends:** Task 1.5
 
-Extend the current host-confidence lane so the new `ak_session_*` tools
+Extend the current host-confidence lane so the new `wp_session_*` tools
 are present and executable across provider surfaces.
 
 **Files:**
@@ -259,7 +259,7 @@ are present and executable across provider surfaces.
 
 **Acceptance:**
 
-- [ ] every expected `ak_session_*` tool is auto-discovered
+- [ ] every expected `wp_session_*` tool is auto-discovered
 - [ ] provider/runtime confidence tests fail if the tool family regresses
 
 #### [infra] Task 1.7: Benchmark + parity gate
@@ -286,10 +286,10 @@ Use the existing benchmark harness blueprint to compare:
 
 | Gate | Command | Success Criteria |
 | --- | --- | --- |
-| Type safety | `ak_typecheck` | Zero errors |
-| Lint | `ak_lint` (scoped) | Zero violations |
-| Tests | `ak_test` (scoped) | All new tool/store tests pass |
-| Discovery | MCP discovery tests | All `ak_session_*` tools present |
+| Type safety | `wp_typecheck` | Zero errors |
+| Lint | `wp_lint` (scoped) | Zero violations |
+| Tests | `wp_test` (scoped) | All new tool/store tests pass |
+| Discovery | MCP discovery tests | All `wp_session_*` tools present |
 | Bench | benchmark harness gate | Meets parity/regression thresholds |
 
 ## Cross-Plan References

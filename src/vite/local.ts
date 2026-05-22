@@ -121,7 +121,7 @@ export async function runBundleBudgetCli(
 
 export function bundleBudgetCliHelp(): string {
   return [
-    'Usage: ak audit bundle-budget [dist] [options]',
+    'Usage: wp audit bundle-budget [dist] [options]',
     '',
     'Options:',
     '  -d, --dist <dir>                                  Built Vite dist directory (default: dist)',

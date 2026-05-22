@@ -140,7 +140,7 @@ export function patchCodexContextModeHooks(
 
 export function patchOpenCodeContextModeConfig(
   existing: Record<string, unknown>,
-  agentKitCommand: string[] = ['vp', 'exec', 'ak', 'mcp'],
+  agentKitCommand: string[] = ['vp', 'exec', 'wp', 'mcp'],
 ): Record<string, unknown> {
   const currentMcp =
     existing.mcp && typeof existing.mcp === 'object' && !Array.isArray(existing.mcp)
@@ -173,7 +173,7 @@ export function patchOpenCodeContextModeConfig(
 function resolveOpenCodeAgentKitCommand(repoRoot: string, globalInstall = false): string[] {
   const repoLocalRoot = join(repoRoot, 'node_modules', '@webpresso', 'agent-kit')
   const entryPath = findAgentKitMcpEntry({ candidates: [repoLocalRoot] }) ?? findAgentKitMcpEntry()
-  if (!entryPath) return globalInstall ? ['ak', 'mcp'] : ['vp', 'exec', 'ak', 'mcp']
+  if (!entryPath) return globalInstall ? ['wp', 'mcp'] : ['vp', 'exec', 'wp', 'mcp']
   const launch = agentKitMcpLaunchCommand(entryPath)
   return [launch.command, ...launch.args]
 }

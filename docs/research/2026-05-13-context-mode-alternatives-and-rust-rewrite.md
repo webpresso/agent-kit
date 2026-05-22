@@ -18,7 +18,7 @@ verdict: assess
 - **Best targeted alternatives:** Anthropic Tool Search (tool-def bloat, native, free), Cloudflare Code Mode (API-heavy use cases, 99.9% reduction), MCP Compressor (proxy-wrap existing MCPs, 70–99%), Engram (Go single binary for persistent memory).
 - **Best Rust precedent that maps to webpresso's needs:** [meta_skill](https://github.com/Dicklesworthstone/meta_skill) (Rust + SQLite-FTS5 + Tantivy + RRF Fusion) — but its problem domain (skill management with hybrid lexical+semantic search) is **not** agent-kit's problem domain.
 - **A webpresso-specific Rust rewrite is a "no" for the context-mode use case** because agent-kit's MCP tools already return structured `{passed: bool}` JSON — the summary is the output. The indexing layer is redundant by design.
-- **A narrower Rust opportunity exists** but is unrelated to context-mode: small static-binary hook bins (`ak-pretool-guard`, etc.) and audit-engine perf for large repos. ROI is real but modest; not the highest-leverage work.
+- **A narrower Rust opportunity exists** but is unrelated to context-mode: small static-binary hook bins (`wp-pretool-guard`, etc.) and audit-engine perf for large repos. ROI is real but modest; not the highest-leverage work.
 
 ## What This Is
 
@@ -28,7 +28,7 @@ verdict: assess
 2. **FTS5 indexing + BM25 search** — `ctx_search` lets the agent re-query indexed output by keyword later.
 3. **SessionStart XML injection** — tells Claude the routing rules before the first turn.
 
-Agent-kit already adopted patterns 1 and 3 (verified by the `ak_routing` block injected at session start in this very conversation) but **explicitly skipped pattern 2** per the [Apr 26 architecture review](./2026-04-26-context-mode-plugin-architecture.md). That decision is load-bearing for the rest of this analysis.
+Agent-kit already adopted patterns 1 and 3 (verified by the `wp_routing` block injected at session start in this very conversation) but **explicitly skipped pattern 2** per the [Apr 26 architecture review](./2026-04-26-context-mode-plugin-architecture.md). That decision is load-bearing for the rest of this analysis.
 
 ## State of the Art (2026)
 
@@ -52,7 +52,7 @@ Below these primitives sit narrower specialized layers: **Claude Context** ([zil
 ### context-mode's routing mechanism is genuinely novel
 
 - The `updatedInput` + `permissionDecision: "allow"` combo in its PreToolUse hook is architecturally clean: Claude doesn't see an error, no permission prompt, the call just executes in the sandbox. No other library in the survey does exactly this for raw Bash output.
-- The SessionStart XML injection pattern is the right surface for routing instructions and has been adopted by agent-kit and other plugins (visible in this very session's `<ak_routing>` block).
+- The SessionStart XML injection pattern is the right surface for routing instructions and has been adopted by agent-kit and other plugins (visible in this very session's `<wp_routing>` block).
 
 ### Targeted alternatives package the same idea with fewer dependencies
 
@@ -85,11 +85,11 @@ Below these primitives sit narrower specialized layers: **Claude Context** ([zil
 
 ### Routing has false-positive risk
 
-- The PreToolUse hook in context-mode is parallel with other hooks; per [Anthropic's docs](https://code.claude.com/docs/en/agent-sdk/hooks), *"when multiple PreToolUse hooks return `updatedInput`, the last one to finish wins, and since hooks run in parallel, the order is non-deterministic."* This is an active footgun if context-mode and RTK both modify `Bash` input, or if context-mode and `ak-pretool-guard` collide. The current webpresso CLAUDE.md already routes around this (lane 1 / lane 2 / lane 3 / lane 4 ownership model), but that routing is an in-repo convention, not a guarantee.
+- The PreToolUse hook in context-mode is parallel with other hooks; per [Anthropic's docs](https://code.claude.com/docs/en/agent-sdk/hooks), *"when multiple PreToolUse hooks return `updatedInput`, the last one to finish wins, and since hooks run in parallel, the order is non-deterministic."* This is an active footgun if context-mode and RTK both modify `Bash` input, or if context-mode and `wp-pretool-guard` collide. The current webpresso CLAUDE.md already routes around this (lane 1 / lane 2 / lane 3 / lane 4 ownership model), but that routing is an in-repo convention, not a guarantee.
 
 ### "98% reduction" doesn't apply to repos with structured-output tools
 
-- The 98% number ([context-mode README](https://github.com/mksglu/context-mode)) is measured on raw shell output (315 KB → 5.4 KB). Agent-kit's MCP tools (`ak_test`, `ak_lint`, `ak_qa`, `ak_audit`) return ≤2 KB JSON summaries by design. The savings ceiling on already-structured output is ≤2 KB → ≤2 KB.
+- The 98% number ([context-mode README](https://github.com/mksglu/context-mode)) is measured on raw shell output (315 KB → 5.4 KB). Agent-kit's MCP tools (`wp_test`, `wp_lint`, `wp_qa`, `wp_audit`) return ≤2 KB JSON summaries by design. The savings ceiling on already-structured output is ≤2 KB → ≤2 KB.
 
 ## Community Sentiment
 
@@ -104,11 +104,11 @@ Below these primitives sit narrower specialized layers: **Claude Context** ([zil
 
 Agent-kit's stated non-goals (from [`webpresso/agent-kit/README.md`](../../README.md)) include *"running AI agents themselves"* and *"application or runtime code — agent-kit is dev-time scaffolding only."* That bounds the question hard: context-mode is dev-time scaffolding for context reduction; webpresso can recommend it and ride its routing pattern (already done in the SessionStart block), but **owning a context-management library is not on the roadmap.**
 
-The Lane 1–4 ownership model in [`catalog/agent/rules/gstack-routing.md`](../../catalog/agent/rules/gstack-routing.md) makes this explicit: agent-kit owns `ak_*` dev-workflow routing; context-mode owns `ctx_*`; rtk owns shell-tool output filtering; gstack owns interactive/browser workflows. **Building a webpresso-owned context-reduction library would create a fifth lane that overlaps with existing ones.** That's the wrong shape.
+The Lane 1–4 ownership model in [`catalog/agent/rules/gstack-routing.md`](../../catalog/agent/rules/gstack-routing.md) makes this explicit: agent-kit owns `wp_*` dev-workflow routing; context-mode owns `ctx_*`; rtk owns shell-tool output filtering; gstack owns interactive/browser workflows. **Building a webpresso-owned context-reduction library would create a fifth lane that overlaps with existing ones.** That's the wrong shape.
 
 ### Tech Stack Fit
 
-- Webpresso already ships **two** dev-time runtimes: Bun-distributed Node CLIs (`wp`, `ak`) and **Rust binaries via RTK** ([`/Users/ozby/.claude/RTK.md`](../../../../.claude/RTK.md) on the workspace). Adding a third runtime for a context-reduction layer raises the install matrix without unblocking a wedge.
+- Webpresso already ships **two** dev-time runtimes: Bun-distributed Node CLIs (`wp`, `wp`) and **Rust binaries via RTK** ([`/Users/ozby/.claude/RTK.md`](../../../../.claude/RTK.md) on the workspace). Adding a third runtime for a context-reduction layer raises the install matrix without unblocking a wedge.
 - The build-side fit for a Rust addition is acceptable (rmcp is mature, single-binary distribution via `cargo-dist` is well-trodden). The fit problem is product, not engineering.
 
 ### Trade-offs for Current Stage
@@ -116,8 +116,8 @@ The Lane 1–4 ownership model in [`catalog/agent/rules/gstack-routing.md`](../.
 Per the workspace's [`blueprint-scoping.md`](../../catalog/agent/rules/blueprint-scoping.md) rule, any new infrastructure work needs a product-wedge anchor — a roadmap stage outcome that consumes the capability in the same cycle. A Rust context-mode replacement has no such anchor:
 
 - **Stage outcome:** none in the current roadmap names "agent context reduction" as a deliverable.
-- **Consuming surface:** none of `ak`, `wp`, blueprint runtime, audits, or any consumer-facing route would change.
-- **New user-visible capability:** none. Users would still type `ak test`, `ak audit`, and so on; the output would be identical.
+- **Consuming surface:** none of `wp`, `wp`, blueprint runtime, audits, or any consumer-facing route would change.
+- **New user-visible capability:** none. Users would still type `wp test`, `wp audit`, and so on; the output would be identical.
 
 By the rule's own framing, *"if you cannot fill all three, the blueprint is premature."*
 
@@ -130,12 +130,12 @@ By the rule's own framing, *"if you cannot fill all three, the blueprint is prem
 1. **Leave context-mode in place** as a recommend-install plugin for consumer repos. Its routing pattern is the right abstraction and the FTS5 sandbox is genuinely useful for repos with heavy raw-Bash workflows (e.g. monorepo's `just dev` PM2 logs).
 2. **Ride the Anthropic-native primitives** explicitly. The current SessionStart block in agent-kit already does this implicitly; consider documenting it in [`docs/architecture.md`](../architecture.md) as a hard expectation: *"Tool definitions are deferred via Anthropic Tool Search; agent-kit assumes this and does not duplicate it."*
 3. **Do not build a Rust context-mode replacement.** It would inherit the architectural mismatch that the prior research already identified: agent-kit's structured outputs make indexing redundant.
-4. **Track a narrower Rust opportunity, if any** — `ak-pretool-guard` startup speed or large-repo audit-engine perf. Each is a measured wedge with a consuming surface (hook latency, audit wall-time on monorepo). File a fact-check doc under `blueprints/draft/` if and when those latencies become a measurable complaint. **Today they are not.**
+4. **Track a narrower Rust opportunity, if any** — `wp-pretool-guard` startup speed or large-repo audit-engine perf. Each is a measured wedge with a consuming surface (hook latency, audit wall-time on monorepo). File a fact-check doc under `blueprints/draft/` if and when those latencies become a measurable complaint. **Today they are not.**
 5. **Adopt MCP Compressor** if and only if webpresso starts wrapping a high-tool-count external MCP server in the consumer install path. The `just-bash` mode is the most interesting variant for agent-kit's existing routing model.
 
 ### Conditions under which this recommendation would change
 
-- **Adopt-Rust-rewrite path opens** if (a) agent-kit's MCP tools shift from returning structured summaries to returning streaming logs (e.g. `ak dev` style live console output) **and** (b) ingest-lens or another consumer files a blueprint that names "live-log search across the last N sessions" as a roadmap outcome with a consuming surface.
+- **Adopt-Rust-rewrite path opens** if (a) agent-kit's MCP tools shift from returning structured summaries to returning streaming logs (e.g. `wp dev` style live console output) **and** (b) ingest-lens or another consumer files a blueprint that names "live-log search across the last N sessions" as a roadmap outcome with a consuming surface.
 - **Drop-context-mode path opens** if Anthropic ships a native raw-Bash output sandbox primitive (none announced as of May 2026) or if context-mode's solo-maintainer status changes meaningfully (project archived, license shift).
 
 ## Sources

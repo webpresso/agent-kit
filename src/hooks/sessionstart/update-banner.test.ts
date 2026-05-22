@@ -21,7 +21,7 @@ describe('readUpdateBanner', () => {
   let cacheFile: string
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'ak-update-banner-'))
+    tmpDir = mkdtempSync(join(tmpdir(), 'wp-update-banner-'))
     cacheFile = join(tmpDir, 'update-notifier-cache.json')
     mockGetSurfacePath.mockReturnValue(cacheFile)
   })
@@ -102,7 +102,7 @@ describe('readUpdateBanner', () => {
     const result = readUpdateBanner(process.env)
     expect(result).not.toBeNull()
     expect(result).toBe(
-      '<wp_update>webpresso 2.0.0 available (current 1.9.9). Auto-install runs on the next `wp` invocation, or set AK_SKIP_AUTO_INSTALL=1 to opt out.</wp_update>',
+      '<wp_update>webpresso 2.0.0 available (current 1.9.9). Auto-install runs on the next `wp` invocation, or set WP_SKIP_AUTO_INSTALL=1 to opt out.</wp_update>',
     )
   })
 

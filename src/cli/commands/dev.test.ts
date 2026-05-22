@@ -18,15 +18,15 @@ function writeManifest(dir: string, name: string, body: string): string {
   return file
 }
 
-describe('ak dev command', () => {
+describe('wp dev command', () => {
   it('documents public flags and manifest precedence in help text', () => {
-    expect(getDevHelpText()).toContain('Usage: ak dev [target] [options]')
+    expect(getDevHelpText()).toContain('Usage: wp dev [target] [options]')
     expect(getDevHelpText()).toContain('--manifest <path>')
     expect(getDevHelpText()).toContain('--doctor')
     expect(getDevHelpText()).toContain('--clean')
     expect(getDevHelpText()).toContain('--restart')
     expect(getDevHelpText()).toContain(
-      '--manifest -> AK_APP_MANIFEST -> ./app-manifest.yaml -> error',
+      '--manifest -> WP_APP_MANIFEST -> ./app-manifest.yaml -> error',
     )
   })
 
@@ -53,7 +53,7 @@ describe('ak dev command', () => {
       'env.yaml',
       ['version: 1', 'services:', '  web:', '    command: node', '    args: ["web.js"]'].join('\n'),
     )
-    vi.stubEnv('AK_APP_MANIFEST', envManifest)
+    vi.stubEnv('WP_APP_MANIFEST', envManifest)
 
     const result = await runDevCommand({
       cwd: root,
@@ -65,14 +65,14 @@ describe('ak dev command', () => {
     expect(result.services).toEqual(['api'])
   })
 
-  it('uses AK_APP_MANIFEST when --manifest is omitted', async () => {
+  it('uses WP_APP_MANIFEST when --manifest is omitted', async () => {
     const root = join(import.meta.dirname, '__tmp-dev-command-env')
     const envManifest = writeManifest(
       root,
       'env.yaml',
       ['version: 1', 'services:', '  web:', '    command: node', '    args: ["web.js"]'].join('\n'),
     )
-    vi.stubEnv('AK_APP_MANIFEST', envManifest)
+    vi.stubEnv('WP_APP_MANIFEST', envManifest)
 
     const result = await runDevCommand({
       cwd: root,

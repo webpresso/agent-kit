@@ -41,9 +41,9 @@ afterEach(() => {
   }
 })
 
-describe('ak_typecheck tool', () => {
+describe('wp_typecheck tool', () => {
   it('exposes the expected descriptor surface', () => {
-    expect(akTypecheckTool.name).toBe('ak_typecheck')
+    expect(akTypecheckTool.name).toBe('wp_typecheck')
     expect(typeof akTypecheckTool.description).toBe('string')
     expect(akTypecheckTool.handler).toBeTypeOf('function')
   })
@@ -52,7 +52,7 @@ describe('ak_typecheck tool', () => {
     let dir: string
 
     beforeEach(() => {
-      dir = mkdtempSync(join(tmpdir(), `ak-mcp-typecheck-${randomUUID().slice(0, 8)}-`))
+      dir = mkdtempSync(join(tmpdir(), `wp-mcp-typecheck-${randomUUID().slice(0, 8)}-`))
       process.env.CLAUDE_PROJECT_DIR = dir
     })
 

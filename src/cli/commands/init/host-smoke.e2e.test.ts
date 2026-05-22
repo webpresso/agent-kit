@@ -17,9 +17,9 @@ function hasCommand(command: string): boolean {
   return spawnSync('which', [command], { stdio: 'ignore' }).status === 0
 }
 
-const RUN_HOST_SMOKE = process.env.AK_RUN_HOST_SMOKE === '1'
-const REQUIRE_CODEX = process.env.AK_REQUIRE_CODEX === '1'
-const REQUIRE_OPENCODE = process.env.AK_REQUIRE_OPENCODE === '1'
+const RUN_HOST_SMOKE = process.env.WP_RUN_HOST_SMOKE === '1'
+const REQUIRE_CODEX = process.env.WP_REQUIRE_CODEX === '1'
+const REQUIRE_OPENCODE = process.env.WP_REQUIRE_OPENCODE === '1'
 
 const ANSI_ESCAPE_PATTERN = new RegExp(String.raw`\u001B\[[0-9;]*m`, 'g')
 
@@ -42,14 +42,14 @@ function run(
 }
 
 function makeRepo(): string {
-  const dir = mkdtempSync(path.join(tmpdir(), 'ak-host-smoke-'))
+  const dir = mkdtempSync(path.join(tmpdir(), 'wp-host-smoke-'))
   spawnSync('git', ['init', '-q'], { cwd: dir })
   spawnSync('git', ['commit', '--allow-empty', '-q', '-m', 'bootstrap'], { cwd: dir })
   writeFileSync(
     path.join(dir, 'package.json'),
     JSON.stringify(
       {
-        name: 'ak-host-smoke',
+        name: 'wp-host-smoke',
         private: true,
         packageManager: 'pnpm@10.33.0',
         devDependencies: {
@@ -63,13 +63,13 @@ function makeRepo(): string {
   return dir
 }
 
-describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
+describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
   let repo: string
   let codexHome: string
 
   beforeEach(() => {
     repo = makeRepo()
-    codexHome = mkdtempSync(path.join(tmpdir(), 'ak-codex-home-'))
+    codexHome = mkdtempSync(path.join(tmpdir(), 'wp-codex-home-'))
   })
 
   afterEach(() => {
@@ -87,9 +87,9 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
       repo,
       {
         CODEX_HOME: codexHome,
-        AK_SKIP_GSTACK: '1',
-        AK_SKIP_RTK: '1',
-        AK_SKIP_OMC: '1',
+        WP_SKIP_GSTACK: '1',
+        WP_SKIP_RTK: '1',
+        WP_SKIP_OMC: '1',
       },
     )
     expect(setup.code).toBe(0)
@@ -113,9 +113,9 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
 
     const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
       CODEX_HOME: codexHome,
-      AK_SKIP_GSTACK: '1',
-      AK_SKIP_RTK: '1',
-      AK_SKIP_OMC: '1',
+      WP_SKIP_GSTACK: '1',
+      WP_SKIP_RTK: '1',
+      WP_SKIP_OMC: '1',
     })
     expect(setup.code).toBe(0)
     expect(existsSync(path.join(repo, 'opencode.json'))).toBe(true)
@@ -155,9 +155,9 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
       repo,
       {
         CODEX_HOME: codexHome,
-        AK_SKIP_GSTACK: '1',
-        AK_SKIP_RTK: '1',
-        AK_SKIP_OMC: '1',
+        WP_SKIP_GSTACK: '1',
+        WP_SKIP_RTK: '1',
+        WP_SKIP_OMC: '1',
       },
     )
     expect(setup.code).toBe(0)
@@ -188,9 +188,9 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
       repo,
       {
         CODEX_HOME: codexHome,
-        AK_SKIP_GSTACK: '1',
-        AK_SKIP_RTK: '1',
-        AK_SKIP_OMC: '1',
+        WP_SKIP_GSTACK: '1',
+        WP_SKIP_RTK: '1',
+        WP_SKIP_OMC: '1',
       },
     )
     expect(setup.code).toBe(0)
@@ -209,14 +209,14 @@ describe.skipIf(!RUN_HOST_SMOKE)('ak setup host smoke', () => {
     expect(install.code).toBe(0)
     const setup = run(CLI_RUNTIME, [CLI_PATH, 'setup', '--yes', '--cwd', repo], repo, {
       CODEX_HOME: codexHome,
-      AK_SKIP_GSTACK: '1',
-      AK_SKIP_RTK: '1',
-      AK_RUN_HOST_SMOKE: '1',
-      AK_SKIP_OMC: '1',
+      WP_SKIP_GSTACK: '1',
+      WP_SKIP_RTK: '1',
+      WP_RUN_HOST_SMOKE: '1',
+      WP_SKIP_OMC: '1',
     })
     expect(setup.code).toBe(0)
 
-    const doctor = run('vp', ['exec', 'ak', 'hooks', 'doctor', '--hosts', 'auto'], repo, {
+    const doctor = run('vp', ['exec', 'wp', 'hooks', 'doctor', '--hosts', 'auto'], repo, {
       CODEX_HOME: codexHome,
     })
     expect(doctor.code).toBe(0)

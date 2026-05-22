@@ -9,7 +9,7 @@ import { CLAUDE_PLUGIN_ID, ensureClaudeCodeUserPlugin } from './index.js'
 const tempRoots: string[] = []
 
 function makePackageRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), 'ak-claude-plugin-'))
+  const root = mkdtempSync(join(tmpdir(), 'wp-claude-plugin-'))
   tempRoots.push(root)
   mkdirSync(join(root, '.claude-plugin'), { recursive: true })
   writeFileSync(join(root, '.claude-plugin', 'plugin.json'), '{"name":"agent-kit"}\n', 'utf8')
@@ -20,7 +20,7 @@ afterEach(() => {
   for (const root of tempRoots.splice(0)) {
     rmSync(root, { recursive: true, force: true })
   }
-  delete process.env.AK_SKIP_CLAUDE_PLUGIN
+  delete process.env.WP_SKIP_CLAUDE_PLUGIN
 })
 
 describe('ensureClaudeCodeUserPlugin', () => {
@@ -95,7 +95,7 @@ describe('ensureClaudeCodeUserPlugin', () => {
 
   it('supports an env opt-out', () => {
     const packageRoot = makePackageRoot()
-    process.env.AK_SKIP_CLAUDE_PLUGIN = '1'
+    process.env.WP_SKIP_CLAUDE_PLUGIN = '1'
 
     const result = ensureClaudeCodeUserPlugin({
       options: { dryRun: false, overwrite: false },

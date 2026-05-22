@@ -166,7 +166,7 @@ The TypeScript `extends`-does-not-use-exports-map behavior is a known point of c
 
 ### Vision Fit
 
-agent-kit's positioning ("one command scaffolds a repo so every AI coding agent shares the same context") is directly served by reducing the install surface. A consumer who installs `webpresso` gets every config preset in one dep. This reduces friction in the `npx ak setup` flow and makes `pnpm add -D webpresso` the atomic onboarding command.
+agent-kit's positioning ("one command scaffolds a repo so every AI coding agent shares the same context") is directly served by reducing the install surface. A consumer who installs `webpresso` gets every config preset in one dep. This reduces friction in the `npx wp setup` flow and makes `pnpm add -D webpresso` the atomic onboarding command.
 
 ### Tech Stack Fit
 

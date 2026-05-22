@@ -10,7 +10,7 @@ describe('scaffoldAgentSkills', () => {
   let cwd: string
 
   beforeEach(() => {
-    cwd = join(tmpdir(), `ak-agent-skills-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+    cwd = join(tmpdir(), `wp-agent-skills-${Date.now()}-${Math.random().toString(36).slice(2)}`)
     mkdirSync(cwd, { recursive: true })
   })
 
@@ -78,7 +78,7 @@ describe('scaffoldAgentSkills', () => {
     const { results } = scaffoldAgentSkills({ cwd, overwrite: true })
     const readmeResult = results.find((r) => r.targetPath === readmePath)
     expect(readmeResult?.action).toBe('overwritten')
-    expect(readFileSync(readmePath, 'utf8')).toContain('ak skill new')
+    expect(readFileSync(readmePath, 'utf8')).toContain('wp skill new')
   })
 
   it('two scaffolders share .gitignore without colliding', () => {

@@ -1,5 +1,5 @@
 /**
- * `ak_typecheck` MCP tool.
+ * `wp_typecheck` MCP tool.
  *
  * Runs `tsc --noEmit` either at cwd (no `packages` given) or once per
  * resolved package path (each becomes `tsc --noEmit -p <pkg>/tsconfig.json`).
@@ -119,7 +119,7 @@ function summarizeTypecheckResult(options) {
     return `typecheck failed with ${options.errorCount} error${options.errorCount === 1 ? '' : 's'}`;
 }
 const tool = {
-    name: 'ak_typecheck',
+    name: 'wp_typecheck',
     description: 'Run `tsc --noEmit` per resolved package (or at cwd) and return structured diagnostics parsed from tsc stdout.',
     inputSchema,
     outputSchema,
@@ -168,7 +168,7 @@ const tool = {
         const timedOut = runs.some((r) => r.timedOut);
         const aborted = runs.some((r) => r.aborted);
         const { transform: _transform, ...compact } = applyOutputTransform([combinedStdout, combinedStderr].filter(Boolean).join(''), {
-            toolName: 'ak_typecheck',
+            toolName: 'wp_typecheck',
         });
         const payload = {
             passed,

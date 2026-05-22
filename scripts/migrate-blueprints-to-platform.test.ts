@@ -183,7 +183,7 @@ describe('discoverBlueprints', () => {
   let tmpRoot: string
 
   beforeEach(() => {
-    tmpRoot = mkdtempSync(join(tmpdir(), 'ak-migrate-test-'))
+    tmpRoot = mkdtempSync(join(tmpdir(), 'wp-migrate-test-'))
   })
 
   afterEach(() => {
@@ -261,17 +261,17 @@ describe('migrate', () => {
   let tmpRoot: string
 
   beforeEach(() => {
-    tmpRoot = mkdtempSync(join(tmpdir(), 'ak-migrate-test-'))
-    setEnv('AK_BLUEPRINT_PLATFORM_TOKEN', 'test-token-for-migrate')
-    setEnv('AK_BLUEPRINT_PLATFORM_URL', 'https://api.example.com')
-    setEnv('AK_BLUEPRINT_PLATFORM_DISABLED', undefined)
+    tmpRoot = mkdtempSync(join(tmpdir(), 'wp-migrate-test-'))
+    setEnv('WP_BLUEPRINT_PLATFORM_TOKEN', 'test-token-for-migrate')
+    setEnv('WP_BLUEPRINT_PLATFORM_URL', 'https://api.example.com')
+    setEnv('WP_BLUEPRINT_PLATFORM_DISABLED', undefined)
   })
 
   afterEach(() => {
     rmSync(tmpRoot, { recursive: true, force: true })
-    setEnv('AK_BLUEPRINT_PLATFORM_TOKEN', undefined)
-    setEnv('AK_BLUEPRINT_PLATFORM_URL', undefined)
-    setEnv('AK_BLUEPRINT_PLATFORM_DISABLED', undefined)
+    setEnv('WP_BLUEPRINT_PLATFORM_TOKEN', undefined)
+    setEnv('WP_BLUEPRINT_PLATFORM_URL', undefined)
+    setEnv('WP_BLUEPRINT_PLATFORM_DISABLED', undefined)
     vi.clearAllMocks()
   })
 
@@ -327,9 +327,9 @@ describe('migrate', () => {
     expect(body['type']).toStrictEqual('blueprint.created')
   })
 
-  it('does nothing when AK_BLUEPRINT_PLATFORM_DISABLED=1', async () => {
+  it('does nothing when WP_BLUEPRINT_PLATFORM_DISABLED=1', async () => {
     createBlueprintFixture(tmpRoot, 'completed', 'bp-disabled', VALID_FRONTMATTER)
-    setEnv('AK_BLUEPRINT_PLATFORM_DISABLED', '1')
+    setEnv('WP_BLUEPRINT_PLATFORM_DISABLED', '1')
 
     const fetchFn = makeFetchOk(200)
     await migrate(tmpRoot, fetchFn)
@@ -339,7 +339,7 @@ describe('migrate', () => {
 
   it('does nothing when no token is set', async () => {
     createBlueprintFixture(tmpRoot, 'completed', 'bp-no-token', VALID_FRONTMATTER)
-    setEnv('AK_BLUEPRINT_PLATFORM_TOKEN', undefined)
+    setEnv('WP_BLUEPRINT_PLATFORM_TOKEN', undefined)
 
     const fetchFn = makeFetchOk(200)
     await migrate(tmpRoot, fetchFn)

@@ -8,7 +8,7 @@ import { defaultConfig, mergeConfig, readConfig, writeConfig } from './config.js
 function makeTempDir(): string {
   const dir = join(
     tmpdir(),
-    `ak-init-config-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    `wp-init-config-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   )
   mkdirSync(dir, { recursive: true })
   return dir
@@ -33,40 +33,40 @@ describe('config', () => {
     const cfg = {
       ...defaultConfig(),
       installed: { tier3Skills: ['tanstack-query'] },
-      mcp: { serverName: 'agent-kit', toolPrefix: 'ak_' },
+      mcp: { serverName: 'agent-kit', toolPrefix: 'wp_' },
       rules: { overrides: ['repo-restrictions'] },
-      scripts: { 'setup-agent': 'vp exec ak setup' },
+      scripts: { 'setup-agent': 'vp exec wp setup' },
     }
     writeConfig(dir, cfg)
     expect(existsSync(join(dir, '.agent-kitrc.json'))).toBe(true)
     const readBack = readConfig(dir)
     expect(readBack?.installed.tier3Skills).toEqual(['tanstack-query'])
-    expect(readBack?.mcp).toEqual({ serverName: 'agent-kit', toolPrefix: 'ak_' })
+    expect(readBack?.mcp).toEqual({ serverName: 'agent-kit', toolPrefix: 'wp_' })
     expect(readBack?.rules.overrides).toEqual(['repo-restrictions'])
-    expect(readBack?.scripts['setup-agent']).toBe('vp exec ak setup')
+    expect(readBack?.scripts['setup-agent']).toBe('vp exec wp setup')
   })
 
   it('mergeConfig unions allowlists and tolerates optional legacy lastInit', () => {
     const existing = {
       ...defaultConfig(),
       installed: { tier3Skills: ['react-doctor'] },
-      mcp: { serverName: 'agent-kit', toolPrefix: 'ak_' },
+      mcp: { serverName: 'agent-kit', toolPrefix: 'wp_' },
       rules: { overrides: ['agent-hooks'] },
-      scripts: { 'setup-agent': 'ak setup' },
+      scripts: { 'setup-agent': 'wp setup' },
     }
     const incoming = {
       ...defaultConfig(),
       installed: { tier3Skills: ['tanstack-query'] },
       mcp: { serverName: 'custom-server' },
       rules: { overrides: ['claude-rules'] },
-      scripts: { 'setup-agent': 'vp exec ak setup' },
+      scripts: { 'setup-agent': 'vp exec wp setup' },
       lastInit: '2026-04-22T00:00:00Z',
     }
     const merged = mergeConfig(existing, incoming)
     expect(merged.installed.tier3Skills.toSorted()).toEqual(['react-doctor', 'tanstack-query'])
-    expect(merged.mcp).toEqual({ serverName: 'custom-server', toolPrefix: 'ak_' })
+    expect(merged.mcp).toEqual({ serverName: 'custom-server', toolPrefix: 'wp_' })
     expect(merged.rules.overrides).toEqual(['agent-hooks', 'claude-rules'])
-    expect(merged.scripts['setup-agent']).toBe('vp exec ak setup')
+    expect(merged.scripts['setup-agent']).toBe('vp exec wp setup')
     expect(merged.lastInit).toBe('2026-04-22T00:00:00Z')
   })
 

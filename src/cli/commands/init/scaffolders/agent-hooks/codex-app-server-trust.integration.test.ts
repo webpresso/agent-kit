@@ -26,7 +26,7 @@ describe('codex app-server trust integration', () => {
   })
 
   function tempRepo(): string {
-    const repoRoot = mkdtempSync(join(tmpdir(), 'ak-agent-hooks-app-server-'))
+    const repoRoot = mkdtempSync(join(tmpdir(), 'wp-agent-hooks-app-server-'))
     repos.push(repoRoot)
     return repoRoot
   }
@@ -111,7 +111,7 @@ describe('codex app-server trust integration', () => {
                     eventName: 'pre_tool_use',
                     handlerType: 'command',
                     matcher: 'Bash',
-                    command: './node_modules/.bin/ak-pretool-guard',
+                    command: './node_modules/.bin/wp-pretool-guard',
                     timeoutSec: 5,
                     statusMessage: null,
                     sourcePath: hooksPath,

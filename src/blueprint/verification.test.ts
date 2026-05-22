@@ -26,7 +26,7 @@ function passingTest(): Evidence {
   return {
     kind: 'test',
     result: 'pass',
-    command: 'ak_test --package agent-kit',
+    command: 'wp_test --package agent-kit',
     exit_code: 0,
     ts: TS,
   }
@@ -46,7 +46,7 @@ function failingTest(): Evidence {
   return {
     kind: 'test',
     result: 'fail',
-    command: 'ak_test',
+    command: 'wp_test',
     exit_code: 1,
     ts: TS,
   }
@@ -91,7 +91,7 @@ describe('applyVerification', () => {
 
   it('rejects when zero items have result === pass', () => {
     const evidence: Evidence[] = [
-      { kind: 'test', result: 'fail', command: 'ak_test', exit_code: 1, ts: TS },
+      { kind: 'test', result: 'fail', command: 'wp_test', exit_code: 1, ts: TS },
     ]
     const result = applyVerification(sampleMarkdown(), '1.1', evidence)
     expect(result.ok).toBe(false)

@@ -9,7 +9,7 @@ import { emitManifest as emitCursor } from './cursor.js'
 import { emitManifest as emitGemini } from './gemini.js'
 
 function makeTmp(): string {
-  return mkdtempSync(join(tmpdir(), 'ak-manifest-'))
+  return mkdtempSync(join(tmpdir(), 'wp-manifest-'))
 }
 
 function readJson(filePath: string): Record<string, unknown> {

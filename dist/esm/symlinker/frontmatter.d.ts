@@ -3,7 +3,7 @@
  *
  * Intentionally hand-rolled rather than depending on `gray-matter` because
  * `@webpresso/agent-kit/symlinker` must stay runtime-dependency-free at the
- * leaf level — the symlinker ships inside the `ak` CLI and is called from
+ * leaf level — the symlinker ships inside the `wp` CLI and is called from
  * hot paths where pulling in a YAML engine for a single `description:` line
  * is overkill.
  */

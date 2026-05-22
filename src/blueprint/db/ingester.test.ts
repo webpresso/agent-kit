@@ -107,7 +107,7 @@ Insufficient coverage after refactor.
 // ---------------------------------------------------------------------------
 
 function makeTempRepo(): string {
-  const dir = mkdtempSync(path.join(tmpdir(), 'ak-ingest-test-'))
+  const dir = mkdtempSync(path.join(tmpdir(), 'wp-ingest-test-'))
   // Create blueprint structure
   mkdirSync(path.join(dir, 'blueprints', 'planned', 'my-feature'), { recursive: true })
   mkdirSync(path.join(dir, 'blueprints', 'completed', 'old-task'), { recursive: true })

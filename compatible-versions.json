@@ -1,6 +1,6 @@
 {
   "$schema": "./compatible-versions.schema.json",
-  "_comment": "Pinned compatible versions of upstream tools that `ak setup --bundle` installs. Each agent-kit release runs the bundle smoke CI (Blueprint Task 3.3) against the pinned versions before declaring the agent-kit version stable. Renovate-bot watches upstream releases and proposes pin bumps; agent-kit maintainer merges after smoke CI passes against the new range.",
+  "_comment": "Pinned compatible versions of upstream tools that `wp setup --bundle` installs. Each agent-kit release runs the bundle smoke CI (Blueprint Task 3.3) against the pinned versions before declaring the agent-kit version stable. Renovate-bot watches upstream releases and proposes pin bumps; agent-kit maintainer merges after smoke CI passes against the new range.",
   "agent_kit_version": "0.14.0",
   "pinned_at": "2026-05-11",
   "pins": {

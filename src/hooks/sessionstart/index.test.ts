@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { AK_ROUTING_BLOCK } from '#hooks/shared/routing-block'
+import { WP_ROUTING_BLOCK } from '#hooks/shared/routing-block'
 
 // Mock update-banner so state-root (which requires env-paths/proper-lockfile) is
 // never imported in the index test environment.
@@ -25,7 +25,7 @@ interface ParsedOutput {
 }
 
 function makeFixture(): string {
-  return mkdtempSync(join(tmpdir(), 'ak-sessionstart-'))
+  return mkdtempSync(join(tmpdir(), 'wp-sessionstart-'))
 }
 
 function writeRoutingMd(dir: string, contents: string): string {
@@ -71,7 +71,7 @@ describe('sessionstart hook buildOutput', () => {
     const out = buildOutput({}, cwd, {})
     expect(out).not.toBeNull()
     const parsed = JSON.parse(out as string) as ParsedOutput
-    expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('<wp_routing>')
   })
 
   it('always emits routing block when .agent/routing.md is empty', () => {
@@ -80,11 +80,11 @@ describe('sessionstart hook buildOutput', () => {
     const out = buildOutput({}, cwd, {})
     expect(out).not.toBeNull()
     const parsed = JSON.parse(out as string) as ParsedOutput
-    expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('<wp_routing>')
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain('routing.md')
   })
 
-  it('prepends AK_ROUTING_BLOCK before .agent/routing.md content', () => {
+  it('prepends WP_ROUTING_BLOCK before .agent/routing.md content', () => {
     const cwd = tmp()
     const contents = '# Routing\n\nGo to docs.'
     writeRoutingMd(cwd, contents)
@@ -94,15 +94,15 @@ describe('sessionstart hook buildOutput', () => {
     const parsed = JSON.parse(out as string) as ParsedOutput
     const ctx = parsed.hookSpecificOutput.additionalContext
     // Routing block must come before routing.md content
-    expect(ctx.indexOf(AK_ROUTING_BLOCK)).toBeLessThan(ctx.indexOf(contents))
-    expect(ctx).toContain(AK_ROUTING_BLOCK + '\n\n' + contents)
+    expect(ctx.indexOf(WP_ROUTING_BLOCK)).toBeLessThan(ctx.indexOf(contents))
+    expect(ctx).toContain(WP_ROUTING_BLOCK + '\n\n' + contents)
   })
 
   it('always emits routing block when .agent/routing.md is missing (nonexistent dir)', () => {
     const out = buildOutput({}, '/definitely/not/a/real/path/xyz', {})
     expect(out).not.toBeNull()
     const parsed = JSON.parse(out as string) as ParsedOutput
-    expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('<wp_routing>')
   })
 
   it('output is valid JSON with hookSpecificOutput.additionalContext field', () => {
@@ -175,26 +175,26 @@ describe('sessionstart hook gstack block (opt-in)', () => {
   })
 
   function tmp(): string {
-    const d = mkdtempSync(join(tmpdir(), 'ak-sessionstart-gstack-'))
+    const d = mkdtempSync(join(tmpdir(), 'wp-sessionstart-gstack-'))
     dirs.push(d)
     return d
   }
 
-  it('does NOT append gstack block when AK_GSTACK_ROUTING is unset', () => {
+  it('does NOT append gstack block when WP_GSTACK_ROUTING is unset', () => {
     const cwd = tmp()
     const out = buildOutput({}, cwd, {})
     const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain('Interactive skills (gstack)')
   })
 
-  it('does NOT append gstack block when AK_GSTACK_ROUTING=0', () => {
+  it('does NOT append gstack block when WP_GSTACK_ROUTING=0', () => {
     const cwd = tmp()
-    const out = buildOutput({}, cwd, { AK_GSTACK_ROUTING: '0' })
+    const out = buildOutput({}, cwd, { WP_GSTACK_ROUTING: '0' })
     const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain('Interactive skills (gstack)')
   })
 
-  it('does NOT append gstack block when AK_GSTACK_ROUTING=1 but gstack dir absent', () => {
+  it('does NOT append gstack block when WP_GSTACK_ROUTING=1 but gstack dir absent', () => {
     const cwd = tmp()
     // Create a temp dir to act as a non-existent gstack location.
     // We rely on a path that provably does not exist.
@@ -203,7 +203,7 @@ describe('sessionstart hook gstack block (opt-in)', () => {
     // verify the negative: no block when gstack dir doesn't exist at homedir.
     const gstackDir = join(homedir(), '.claude', 'skills', 'gstack')
     const gstackExists = existsSync(gstackDir)
-    const out = buildOutput({}, cwd, { AK_GSTACK_ROUTING: '1' })
+    const out = buildOutput({}, cwd, { WP_GSTACK_ROUTING: '1' })
     const parsed = JSON.parse(out) as ParsedOutput
     const ctx = parsed.hookSpecificOutput.additionalContext
     // Result depends on whether gstack is installed in this environment.
@@ -216,9 +216,9 @@ describe('sessionstart hook gstack block (opt-in)', () => {
 
   it('always preserves routing block regardless of gstack flag', () => {
     const cwd = tmp()
-    const out = buildOutput({}, cwd, { AK_GSTACK_ROUTING: '1' })
+    const out = buildOutput({}, cwd, { WP_GSTACK_ROUTING: '1' })
     const parsed = JSON.parse(out) as ParsedOutput
-    expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('<wp_routing>')
   })
 
   it('appends gstack block after routing content when gstack dir exists', () => {
@@ -228,12 +228,12 @@ describe('sessionstart hook gstack block (opt-in)', () => {
       // Gstack not installed in this env — skip conditional path gracefully.
       return
     }
-    const out = buildOutput({}, cwd, { AK_GSTACK_ROUTING: '1' })
+    const out = buildOutput({}, cwd, { WP_GSTACK_ROUTING: '1' })
     const parsed = JSON.parse(out) as ParsedOutput
     const ctx = parsed.hookSpecificOutput.additionalContext
     expect(ctx).toContain('Interactive skills (gstack)')
     expect(ctx).toContain('/browse')
-    const routingIdx = ctx.indexOf('<ak_routing>')
+    const routingIdx = ctx.indexOf('<wp_routing>')
     const gstackIdx = ctx.indexOf('Interactive skills (gstack)')
     expect(routingIdx).toBeLessThan(gstackIdx)
   })
@@ -253,7 +253,7 @@ describe('sessionstart hook update banner', () => {
   })
 
   function tmp(): string {
-    const d = mkdtempSync(join(tmpdir(), 'ak-sessionstart-banner-'))
+    const d = mkdtempSync(join(tmpdir(), 'wp-sessionstart-banner-'))
     dirs.push(d)
     return d
   }
@@ -261,7 +261,7 @@ describe('sessionstart hook update banner', () => {
   it('appends <wp_update> to additionalContext when readUpdateBanner returns a banner', () => {
     const cwd = tmp()
     const banner =
-      '<wp_update>webpresso 2.0.0 available (current 1.0.0). Auto-install runs on the next `wp` invocation, or set AK_SKIP_AUTO_INSTALL=1 to opt out.</wp_update>'
+      '<wp_update>webpresso 2.0.0 available (current 1.0.0). Auto-install runs on the next `wp` invocation, or set WP_SKIP_AUTO_INSTALL=1 to opt out.</wp_update>'
     mockReadUpdateBanner.mockReturnValue(banner)
 
     const out = buildOutput({}, cwd, {})
@@ -277,6 +277,6 @@ describe('sessionstart hook update banner', () => {
     const out = buildOutput({}, cwd, {})
     const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain('<wp_update>')
-    expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('<wp_routing>')
   })
 })

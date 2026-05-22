@@ -52,7 +52,7 @@ const HOOK_STATE_SECTION_RE = /^\[hooks\.state\.".+"\]$/
  * Older OMX versions wrote blocks terminated by `# End OMX-owned Codex hook
  * trust state` but without a leading start marker. OMX's own
  * `stripManagedCodexHookTrustState` only strips START→END bounded blocks, so
- * legacy entries accumulate on every `ak setup` run.
+ * legacy entries accumulate on every `wp setup` run.
  *
  * Detection contract: count unique vs total `[hooks.state."..."]` section
  * headers. If any key appears more than once the file is TOML-invalid. When
@@ -226,7 +226,7 @@ function pruneEmptyProjectScopedDirs(repoRoot: string, relativeFile: string): vo
 
 /**
  * Ensure `omx` is on PATH then run `omx setup --yes --scope user` in the consumer repo.
- * Idempotent: safe to run on every `ak setup`.
+ * Idempotent: safe to run on every `wp setup`.
  */
 export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
   if (input.options.dryRun) return { kind: 'omx-skipped-dry-run' }

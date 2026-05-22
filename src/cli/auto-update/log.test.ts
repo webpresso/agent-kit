@@ -33,7 +33,7 @@ const getSurfacePathMock = vi.mocked(getSurfacePath)
 let tmpDir: string
 
 beforeEach(() => {
-  tmpDir = mkdtempSync(join(tmpdir(), 'ak-auto-update-log-'))
+  tmpDir = mkdtempSync(join(tmpdir(), 'wp-auto-update-log-'))
   getSurfacePathMock.mockReset()
   getSurfacePathMock.mockImplementation((name: string, scope: 'repo' | 'worktree' | 'user') => {
     if (scope !== 'user') throw new Error(`unexpected scope ${scope}`)

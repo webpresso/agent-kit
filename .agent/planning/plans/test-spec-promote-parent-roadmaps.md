@@ -10,10 +10,10 @@
 ## Command contract
 - `pnpm test -- src/blueprint/service/BlueprintService-parsing.test.ts src/cli/cli.test.ts`
 - manual probes:
-  - `pnpm exec ak blueprint list --json`
-  - `pnpm exec ak roadmap --help`
+  - `pnpm exec wp blueprint list --json`
+  - `pnpm exec wp roadmap --help`
 
 ## Success criteria
-- Parent roadmaps appear in `ak blueprint list` output.
-- `ak roadmap list/show` works for supported cases.
+- Parent roadmaps appear in `wp blueprint list` output.
+- `wp roadmap list/show` works for supported cases.
 - Existing ordinary blueprint behavior stays green in focused tests.

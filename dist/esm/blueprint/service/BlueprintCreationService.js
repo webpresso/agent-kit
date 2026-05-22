@@ -93,7 +93,7 @@ function buildParentRoadmapMarkdown(input) {
         `- Complexity: \`${input.complexity}\``,
         `- Draft slug: \`${input.slug}\``,
         `- Output path: \`${input.outputPath}\``,
-        `- Creation command: \`ak blueprint new "${input.goal}" --complexity ${input.complexity} --type parent-roadmap\``,
+        `- Creation command: \`wp blueprint new "${input.goal}" --complexity ${input.complexity} --type parent-roadmap\``,
         '',
         '## Architecture Overview',
         '',

@@ -79,7 +79,7 @@ Resolve this item when **any one** of:
 4. Extend `runner_events` table schema with a `snapshot_blob`
    column (or separate `runner_snapshots` table) to persist the
    opaque state.
-5. Document the resume CLI surface: `ak blueprint resume <execution
+5. Document the resume CLI surface: `wp blueprint resume <execution
    _handle>`.
 6. Move this file to `tech-debt/resolved/` with the implementing
    blueprint link.

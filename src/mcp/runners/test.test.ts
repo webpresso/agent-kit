@@ -33,7 +33,7 @@ const originalProjectDir = process.env.CLAUDE_PROJECT_DIR
 let defaultRoot: string | undefined
 
 beforeEach(() => {
-  defaultRoot = mkdtempSync(join(tmpdir(), 'ak-vp-default-'))
+  defaultRoot = mkdtempSync(join(tmpdir(), 'wp-vp-default-'))
   process.env.CLAUDE_PROJECT_DIR = defaultRoot
 })
 
@@ -62,7 +62,7 @@ describe('test runner', () => {
   })
 
   it('runs vitest directly for package targets that declare vitest', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'ak-vp-vitest-'))
+    const root = mkdtempSync(join(tmpdir(), 'wp-vp-vitest-'))
     try {
       process.env.CLAUDE_PROJECT_DIR = root
       mkdirSync(join(root, 'packages', 'a'), { recursive: true })
@@ -90,7 +90,7 @@ describe('test runner', () => {
   })
 
   it('preserves file filters when package targets declare vitest', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'ak-vp-vitest-files-'))
+    const root = mkdtempSync(join(tmpdir(), 'wp-vp-vitest-files-'))
     try {
       process.env.CLAUDE_PROJECT_DIR = root
       mkdirSync(join(root, 'packages', 'a'), { recursive: true })
@@ -119,7 +119,7 @@ describe('test runner', () => {
   })
 
   it('preserves file filters for non-vitest package test scripts', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'ak-vp-script-files-'))
+    const root = mkdtempSync(join(tmpdir(), 'wp-vp-script-files-'))
     try {
       process.env.CLAUDE_PROJECT_DIR = root
       mkdirSync(join(root, 'packages', 'a'), { recursive: true })

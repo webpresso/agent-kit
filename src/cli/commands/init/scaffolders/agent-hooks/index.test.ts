@@ -18,12 +18,12 @@ function codexBinCommand(repoRoot: string, name: string): string {
 }
 
 const AGENT_KIT_HOOK_BINS = [
-  'ak-sessionstart-routing',
-  'ak-check-dev-link',
-  'ak-pretool-guard',
-  'ak-post-tool',
-  'ak-guard-switch',
-  'ak-stop-qa',
+  'wp-sessionstart-routing',
+  'wp-check-dev-link',
+  'wp-pretool-guard',
+  'wp-post-tool',
+  'wp-guard-switch',
+  'wp-stop-qa',
 ] as const
 
 function installFakeAgentKitBins(repoRoot: string): void {
@@ -41,7 +41,7 @@ describe('scaffoldAgentHooks', () => {
   let previousHome: string | undefined
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'ak-agent-hooks-'))
+    repoRoot = mkdtempSync(join(tmpdir(), 'wp-agent-hooks-'))
     previousCodexHome = process.env.CODEX_HOME
     previousHome = process.env.HOME
     process.env.HOME = join(repoRoot, '.home')
@@ -189,7 +189,7 @@ describe('scaffoldAgentHooks', () => {
     ).toThrow()
   })
 
-  it('wires ak-check-dev-link as a SessionStart hook in both Claude and Codex', async () => {
+  it('wires wp-check-dev-link as a SessionStart hook in both Claude and Codex', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {} })
 
     const claude = JSON.parse(readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8')) as {
@@ -202,16 +202,16 @@ describe('scaffoldAgentHooks', () => {
     const claudeCommands = claude.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))
     const codexCommands = codex.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))
 
-    expect(claudeCommands.some((cmd) => cmd.includes('ak-check-dev-link'))).toBe(true)
+    expect(claudeCommands.some((cmd) => cmd.includes('wp-check-dev-link'))).toBe(true)
     expect(claudeCommands.some((cmd) => cmd.includes('$CLAUDE_PROJECT_DIR'))).toBe(true)
-    expect(codexCommands).toContain(codexBinCommand(repoRoot, 'ak-check-dev-link'))
+    expect(codexCommands).toContain(codexBinCommand(repoRoot, 'wp-check-dev-link'))
   })
 
   it('dedupes pre-existing wrapped script hooks against the raw incoming form', async () => {
     // Regression: hasCommand previously only extracted node_modules/.bin/<name>
     // identifiers. Script paths like .claude/hooks/check-gstack-session.sh
     // fell through to exact-string match, so the wrapped form
-    // `[ -x X ] && X || true` did not match the raw incoming `X`. ak setup
+    // `[ -x X ] && X || true` did not match the raw incoming `X`. wp setup
     // accumulated a duplicate gstack entry on every run.
     const settingsPath = join(repoRoot, '.claude', 'settings.json')
     mkdirSync(join(repoRoot, '.claude'), { recursive: true })
@@ -276,7 +276,7 @@ describe('scaffoldAgentHooks', () => {
     expect(gstackSkillMatches).toHaveLength(1)
   })
 
-  it('does not duplicate the ak-check-dev-link entry on a second scaffold', async () => {
+  it('does not duplicate the wp-check-dev-link entry on a second scaffold', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {} })
     await scaffoldAgentHooks({ repoRoot, options: {} })
 
@@ -285,7 +285,7 @@ describe('scaffoldAgentHooks', () => {
     }
 
     const matches = codex.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command)).filter(
-      (cmd) => cmd.includes('ak-check-dev-link'),
+      (cmd) => cmd.includes('wp-check-dev-link'),
     )
     expect(matches).toHaveLength(1)
   })
@@ -304,7 +304,7 @@ describe('scaffoldAgentHooks', () => {
                 eventName: 'pre_tool_use',
                 handlerType: 'command',
                 matcher: 'Bash',
-                command: './node_modules/.bin/ak-pretool-guard',
+                command: './node_modules/.bin/wp-pretool-guard',
                 timeoutSec: 5,
                 statusMessage: null,
                 sourcePath: hooksPath,
@@ -332,7 +332,7 @@ describe('scaffoldAgentHooks', () => {
                 eventName: 'pre_tool_use',
                 handlerType: 'command',
                 matcher: 'Bash',
-                command: './node_modules/.bin/ak-pretool-guard',
+                command: './node_modules/.bin/wp-pretool-guard',
                 timeoutSec: 5,
                 statusMessage: null,
                 sourcePath: hooksPath,
@@ -430,7 +430,7 @@ describe('scaffoldAgentHooks', () => {
                 eventName: 'pre_tool_use',
                 handlerType: 'command',
                 matcher: 'Bash',
-                command: './node_modules/.bin/ak-pretool-guard',
+                command: './node_modules/.bin/wp-pretool-guard',
                 timeoutSec: 5,
                 statusMessage: null,
                 sourcePath: hooksPath,
@@ -458,7 +458,7 @@ describe('scaffoldAgentHooks', () => {
                 eventName: 'pre_tool_use',
                 handlerType: 'command',
                 matcher: 'Bash',
-                command: './node_modules/.bin/ak-pretool-guard',
+                command: './node_modules/.bin/wp-pretool-guard',
                 timeoutSec: 5,
                 statusMessage: null,
                 sourcePath: hooksPath,
@@ -657,7 +657,7 @@ describe('scaffoldAgentHooks', () => {
 name: verify
 hooks:
   Stop:
-    - command: ak audit agents
+    - command: wp audit agents
 ---
 
 # Verify
@@ -677,10 +677,10 @@ hooks:
     const stopCommands = settings.hooks.Stop.flatMap((group) =>
       group.hooks.map((hook) => hook.command),
     )
-    expect(stopCommands.some((command) => command.includes('ak-stop-qa'))).toBe(true)
+    expect(stopCommands.some((command) => command.includes('wp-stop-qa'))).toBe(true)
     expect(
       stopCommands.some((command) =>
-        command.includes('"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak" audit agents'),
+        command.includes('"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp" audit agents'),
       ),
     ).toBe(true)
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
@@ -695,7 +695,7 @@ hooks:
 name: verify
 hooks:
   Stop:
-    - command: ak audit agents
+    - command: wp audit agents
       timeout: 20
 ---
 
@@ -717,7 +717,7 @@ hooks:
     const stopCommands = settings.hooks.Stop.flatMap((group) =>
       group.hooks.map((hook) => hook.command),
     )
-    expect(stopCommands.some((command) => command.includes('ak-stop-qa'))).toBe(true)
+    expect(stopCommands.some((command) => command.includes('wp-stop-qa'))).toBe(true)
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
   })
 
@@ -735,7 +735,7 @@ hooks:
                   {
                     type: 'command',
                     command:
-                      '[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/ak" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/ak" audit agents || true # from-skill: verify',
+                      '[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp" audit agents || true # from-skill: verify',
                   },
                 ],
               },
@@ -759,7 +759,7 @@ hooks:
     )
 
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(false)
-    expect(stopCommands.some((command) => command.includes('ak-stop-qa'))).toBe(true)
+    expect(stopCommands.some((command) => command.includes('wp-stop-qa'))).toBe(true)
   })
 
   it('writes Codex hooks under the canonical wrapped `hooks` key, not at top level', async () => {
@@ -780,11 +780,11 @@ hooks:
     }
     expect(
       hooks.SessionStart.some((g) =>
-        g.hooks.some((h) => h.command.includes('ak-sessionstart-routing')),
+        g.hooks.some((h) => h.command.includes('wp-sessionstart-routing')),
       ),
     ).toBe(true)
     expect(
-      hooks.PreToolUse.some((g) => g.hooks.some((h) => h.command.includes('ak-pretool-guard'))),
+      hooks.PreToolUse.some((g) => g.hooks.some((h) => h.command.includes('wp-pretool-guard'))),
     ).toBe(true)
   })
 
@@ -800,7 +800,7 @@ hooks:
               hooks: [
                 {
                   type: 'command',
-                  command: './node_modules/.bin/ak-sessionstart-routing',
+                  command: './node_modules/.bin/wp-sessionstart-routing',
                   timeout: 5,
                 },
               ],
@@ -810,7 +810,7 @@ hooks:
             {
               matcher: 'Bash|Edit|Write',
               hooks: [
-                { type: 'command', command: './node_modules/.bin/ak-pretool-guard', timeout: 5 },
+                { type: 'command', command: './node_modules/.bin/wp-pretool-guard', timeout: 5 },
               ],
             },
           ],
@@ -833,7 +833,7 @@ hooks:
     }
     // No duplication — ensureGroup deduped the migrated entries with what we re-add.
     const sessionCmds = hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))
-    const sessionAkCount = sessionCmds.filter((c) => c.includes('ak-sessionstart-routing')).length
+    const sessionAkCount = sessionCmds.filter((c) => c.includes('wp-sessionstart-routing')).length
     expect(sessionAkCount).toBe(1)
   })
 
@@ -851,7 +851,7 @@ hooks:
                 hooks: [
                   {
                     type: 'command',
-                    command: `cd "${repoRoot}" && "/opt/homebrew/bin/bun" "${legacyRunnerPath}" ak-sessionstart-routing`,
+                    command: `cd "${repoRoot}" && "/opt/homebrew/bin/bun" "${legacyRunnerPath}" wp-sessionstart-routing`,
                     timeout: 5,
                   },
                 ],
@@ -863,7 +863,7 @@ hooks:
                 hooks: [
                   {
                     type: 'command',
-                    command: `cd "${repoRoot}" && "/opt/homebrew/bin/bun" "${legacyRunnerPath}" ak-pretool-guard`,
+                    command: `cd "${repoRoot}" && "/opt/homebrew/bin/bun" "${legacyRunnerPath}" wp-pretool-guard`,
                     timeout: 5,
                   },
                 ],
@@ -891,19 +891,19 @@ hooks:
       group.hooks.map((hook) => hook.command),
     )
 
-    expect(sessionCommands).toContain(codexBinCommand(repoRoot, 'ak-sessionstart-routing'))
-    expect(preToolCommands).toContain(codexBinCommand(repoRoot, 'ak-pretool-guard'))
+    expect(sessionCommands).toContain(codexBinCommand(repoRoot, 'wp-sessionstart-routing'))
+    expect(preToolCommands).toContain(codexBinCommand(repoRoot, 'wp-pretool-guard'))
     expect(
-      sessionCommands.filter((command) => command.includes('ak-sessionstart-routing')),
+      sessionCommands.filter((command) => command.includes('wp-sessionstart-routing')),
     ).toHaveLength(1)
-    expect(preToolCommands.filter((command) => command.includes('ak-pretool-guard'))).toHaveLength(
+    expect(preToolCommands.filter((command) => command.includes('wp-pretool-guard'))).toHaveLength(
       1,
     )
     expect(sessionCommands.some((command) => command.includes('run-agent-kit-bin.ts'))).toBe(false)
     expect(preToolCommands.some((command) => command.includes('run-agent-kit-bin.ts'))).toBe(false)
   })
 
-  it('preserves wrapped Codex hooks (e.g. OMX entries) and adds ak-* alongside', async () => {
+  it('preserves wrapped Codex hooks (e.g. OMX entries) and adds wp-* alongside', async () => {
     const codexPath = join(repoRoot, '.codex', 'hooks.json')
     mkdirSync(join(repoRoot, '.codex'), { recursive: true })
     writeFileSync(
@@ -931,7 +931,7 @@ hooks:
     }
     const sessionCmds = codex.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))
     expect(sessionCmds.some((c) => c.includes('omx/codex-native-hook'))).toBe(true)
-    expect(sessionCmds).toContain(codexBinCommand(repoRoot, 'ak-sessionstart-routing'))
+    expect(sessionCmds).toContain(codexBinCommand(repoRoot, 'wp-sessionstart-routing'))
   })
 
   it('writes Codex hook commands as absolute node_modules bin paths', async () => {
@@ -949,9 +949,9 @@ hooks:
     const preToolCommands = codex.hooks.PreToolUse.flatMap((g) => g.hooks.map((h) => h.command))
     const postToolCommands = codex.hooks.PostToolUse.flatMap((g) => g.hooks.map((h) => h.command))
 
-    expect(sessionCommands).toContain(codexBinCommand(repoRoot, 'ak-sessionstart-routing'))
-    expect(preToolCommands).toContain(codexBinCommand(repoRoot, 'ak-pretool-guard'))
-    expect(postToolCommands).toContain(codexBinCommand(repoRoot, 'ak-post-tool'))
+    expect(sessionCommands).toContain(codexBinCommand(repoRoot, 'wp-sessionstart-routing'))
+    expect(preToolCommands).toContain(codexBinCommand(repoRoot, 'wp-pretool-guard'))
+    expect(postToolCommands).toContain(codexBinCommand(repoRoot, 'wp-post-tool'))
   })
 
   it('gracefully no-ops Codex hook commands before node_modules bins exist instead of failing with 127', async () => {
@@ -986,7 +986,7 @@ hooks:
   it('keeps Codex hook commands executable from a sibling cwd instead of failing with 127', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {} })
 
-    const binPath = join(repoRoot, 'node_modules', '.bin', 'ak-pretool-guard')
+    const binPath = join(repoRoot, 'node_modules', '.bin', 'wp-pretool-guard')
     mkdirSync(join(repoRoot, 'node_modules', '.bin'), { recursive: true })
     writeFileSync(binPath, '#!/bin/sh\nprintf "{}\\n"\n', 'utf8')
     chmodSync(binPath, 0o755)
@@ -1003,14 +1003,14 @@ hooks:
       input: '{}',
     })
 
-    expect(command).toBe(codexBinCommand(repoRoot, 'ak-pretool-guard'))
+    expect(command).toBe(codexBinCommand(repoRoot, 'wp-pretool-guard'))
     expect(result.status).toBe(0)
   })
 
   it('keeps the Codex Stop hook executable from a sibling cwd instead of failing with 127', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {} })
 
-    const binPath = join(repoRoot, 'node_modules', '.bin', 'ak-stop-qa')
+    const binPath = join(repoRoot, 'node_modules', '.bin', 'wp-stop-qa')
     mkdirSync(join(repoRoot, 'node_modules', '.bin'), { recursive: true })
     writeFileSync(binPath, '#!/bin/sh\nexit 0\n', 'utf8')
     chmodSync(binPath, 0o755)
@@ -1026,7 +1026,7 @@ hooks:
       encoding: 'utf8',
     })
 
-    expect(command).toBe(codexBinCommand(repoRoot, 'ak-stop-qa'))
+    expect(command).toBe(codexBinCommand(repoRoot, 'wp-stop-qa'))
     expect(result.status).toBe(0)
   })
 
@@ -1101,12 +1101,12 @@ describe('hoistTopLevelEvents', () => {
   it('moves top-level event keys into the wrapped `hooks` key', async () => {
     const input = {
       SessionStart: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/ak-sessionstart-routing' }] },
+        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] },
       ],
       PreToolUse: [
         {
           matcher: 'Bash',
-          hooks: [{ type: 'command', command: './node_modules/.bin/ak-pretool-guard' }],
+          hooks: [{ type: 'command', command: './node_modules/.bin/wp-pretool-guard' }],
         },
       ],
     }
@@ -1117,8 +1117,8 @@ describe('hoistTopLevelEvents', () => {
     expect(result).not.toHaveProperty('PreToolUse')
     expect(result).toHaveProperty('hooks')
     const hooks = result.hooks as Record<string, Array<{ hooks: Array<{ command: string }> }>>
-    expect(hooks.SessionStart?.[0]?.hooks[0]?.command).toContain('ak-sessionstart-routing')
-    expect(hooks.PreToolUse?.[0]?.hooks[0]?.command).toContain('ak-pretool-guard')
+    expect(hooks.SessionStart?.[0]?.hooks[0]?.command).toContain('wp-sessionstart-routing')
+    expect(hooks.PreToolUse?.[0]?.hooks[0]?.command).toContain('wp-pretool-guard')
   })
 
   it('leaves already-wrapped input unchanged in shape (idempotent)', async () => {
@@ -1133,14 +1133,14 @@ describe('hoistTopLevelEvents', () => {
     expect(result).toStrictEqual(input)
   })
 
-  it('dedupes when both top-level and wrapped contain the same ak-* command', async () => {
+  it('dedupes when both top-level and wrapped contain the same wp-* command', async () => {
     const input = {
       SessionStart: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/ak-sessionstart-routing' }] },
+        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] },
       ],
       hooks: {
         SessionStart: [
-          { hooks: [{ type: 'command', command: './node_modules/.bin/ak-sessionstart-routing' }] },
+          { hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] },
         ],
       },
     }
@@ -1150,7 +1150,7 @@ describe('hoistTopLevelEvents', () => {
     const hooks = result.hooks as Record<string, Array<{ hooks: Array<{ command: string }> }>>
     const akCount = (hooks.SessionStart ?? [])
       .flatMap((g) => g.hooks.map((h) => h.command))
-      .filter((c) => c.includes('ak-sessionstart-routing')).length
+      .filter((c) => c.includes('wp-sessionstart-routing')).length
     expect(akCount).toBe(1)
   })
 
@@ -1158,7 +1158,7 @@ describe('hoistTopLevelEvents', () => {
     const input = {
       $schema: 'https://example.com/schema.json',
       SessionStart: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/ak-sessionstart-routing' }] },
+        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] },
       ],
     }
 
@@ -1173,7 +1173,7 @@ describe('plugin-native invariants — .claude/settings.json', () => {
   let repoRoot: string
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'ak-agent-hooks-invariant-'))
+    repoRoot = mkdtempSync(join(tmpdir(), 'wp-agent-hooks-invariant-'))
   })
 
   afterEach(async () => {
@@ -1216,7 +1216,7 @@ describe('plugin-native invariants — .claude/settings.json', () => {
 })
 
 describe('buildAgentKitHookGroups', () => {
-  it('returns the canonical 5 ak-* event groups with the supplied bin resolver', async () => {
+  it('returns the canonical 5 wp-* event groups with the supplied bin resolver', async () => {
     const result = buildAgentKitHookGroups({
       resolveBin: (name) => `./node_modules/.bin/${name}`,
       matchers: { preToolUse: 'Bash|Edit|Write', postToolUse: 'Edit|Write' },
@@ -1226,16 +1226,16 @@ describe('buildAgentKitHookGroups', () => {
       ['PostToolUse', 'PreToolUse', 'SessionStart', 'Stop', 'UserPromptSubmit'].sort(),
     )
     expect(result.SessionStart?.[0]?.hooks[0]?.command).toBe(
-      './node_modules/.bin/ak-sessionstart-routing',
+      './node_modules/.bin/wp-sessionstart-routing',
     )
     expect(result.PreToolUse?.[0]?.matcher).toBe('Bash|Edit|Write')
-    expect(result.PreToolUse?.[0]?.hooks[0]?.command).toBe('./node_modules/.bin/ak-pretool-guard')
+    expect(result.PreToolUse?.[0]?.hooks[0]?.command).toBe('./node_modules/.bin/wp-pretool-guard')
     expect(result.PostToolUse?.[0]?.matcher).toBe('Edit|Write')
-    expect(result.PostToolUse?.[0]?.hooks[0]?.command).toBe('./node_modules/.bin/ak-post-tool')
+    expect(result.PostToolUse?.[0]?.hooks[0]?.command).toBe('./node_modules/.bin/wp-post-tool')
     expect(result.UserPromptSubmit?.[0]?.hooks[0]?.command).toBe(
-      './node_modules/.bin/ak-guard-switch',
+      './node_modules/.bin/wp-guard-switch',
     )
-    expect(result.Stop?.[0]?.hooks[0]?.command).toBe('./node_modules/.bin/ak-stop-qa')
+    expect(result.Stop?.[0]?.hooks[0]?.command).toBe('./node_modules/.bin/wp-stop-qa')
   })
 
   it('substitutes the Claude bin resolver for guarded $CLAUDE_PROJECT_DIR commands', async () => {
@@ -1246,7 +1246,7 @@ describe('buildAgentKitHookGroups', () => {
     })
 
     expect(result.SessionStart?.[0]?.hooks[0]?.command).toContain('$CLAUDE_PROJECT_DIR')
-    expect(result.SessionStart?.[0]?.hooks[0]?.command).toContain('ak-sessionstart-routing')
+    expect(result.SessionStart?.[0]?.hooks[0]?.command).toContain('wp-sessionstart-routing')
     expect(result.PreToolUse?.[0]?.matcher).toBe('Bash|Write|Edit|MultiEdit')
   })
 })

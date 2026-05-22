@@ -4,9 +4,9 @@ export const TEST_COMMAND_HELP = [
     'Run tests through the portable agent-kit test surface.',
     '',
     'Examples:',
-    '  ak test --package cli2',
-    '  ak test --file apps/cli2/src/commands/target.test.ts',
-    '  ak test --package cli2 -- --reporter=dot',
+    '  wp test --package cli2',
+    '  wp test --file apps/cli2/src/commands/target.test.ts',
+    '  wp test --package cli2 -- --reporter=dot',
 ].join('\n');
 export function createAkTestCommandConfig(input) {
     const target = resolveTestTarget({

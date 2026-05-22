@@ -1,9 +1,9 @@
 /**
- * `ak_e2e` MCP tool.
+ * `wp_e2e` MCP tool.
  *
- * First-class E2E execution surface backed by the existing portable `ak e2e`
+ * First-class E2E execution surface backed by the existing portable `wp e2e`
  * planner and host-adapter architecture. This tool is suite-aware and should
- * be used for E2E execution instead of overloading `ak_test`.
+ * be used for E2E execution instead of overloading `wp_test`.
  */
 import { z } from 'zod';
 import type { ToolDescriptor } from '#mcp/auto-discover';

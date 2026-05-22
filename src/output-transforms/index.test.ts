@@ -14,14 +14,14 @@ afterEach(() => {
 describe('output transform dispatcher', () => {
   it('uses the generic errors-only fallback with bytes when no transform is registered', () => {
     const result = applyOutputTransform('hello\nERROR one', {
-      toolName: 'ak_custom',
+      toolName: 'wp_custom',
       persistOverflow: false,
     })
 
     expect(result).toMatchObject({
       rawOutput: 'ERROR one',
       transform: {
-        toolName: 'ak_custom',
+        toolName: 'wp_custom',
         normalizedToolName: 'custom',
         tier: 'registered',
         rawBytes: 15,
@@ -30,7 +30,7 @@ describe('output transform dispatcher', () => {
   })
 
   it('normalizes dynamic audit tool names for lookup', () => {
-    expect(normalizeToolName('ak_audit-blueprint-lifecycle')).toBe('audit')
+    expect(normalizeToolName('wp_audit-blueprint-lifecycle')).toBe('audit')
 
     registerTransform('audit', (rawOutput, context) => ({
       rawOutput: `registered:${rawOutput}`,
@@ -43,13 +43,13 @@ describe('output transform dispatcher', () => {
     }))
 
     const result = applyOutputTransform('ok', {
-      toolName: 'ak_audit-blueprint-lifecycle',
+      toolName: 'wp_audit-blueprint-lifecycle',
     })
 
     expect(result).toMatchObject({
       rawOutput: 'registered:ok',
       transform: {
-        toolName: 'ak_audit-blueprint-lifecycle',
+        toolName: 'wp_audit-blueprint-lifecycle',
         normalizedToolName: 'audit',
         tier: 'registered',
         rawBytes: 2,

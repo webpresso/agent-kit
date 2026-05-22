@@ -40,7 +40,7 @@ function writeToolFile(dir: string, fileName: string, body: string): string {
 
 describe('discoverTools', () => {
   it('discovers and registers a tool from a *.js file', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'ak-mcp-discover-'))
+    const dir = mkdtempSync(join(tmpdir(), 'wp-mcp-discover-'))
     writeToolFile(
       dir,
       'sample.js',
@@ -66,7 +66,7 @@ describe('discoverTools', () => {
   })
 
   it('skips *.test.* files', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'ak-mcp-discover-'))
+    const dir = mkdtempSync(join(tmpdir(), 'wp-mcp-discover-'))
     writeToolFile(
       dir,
       'good.js',
@@ -99,7 +99,7 @@ describe('discoverTools', () => {
   })
 
   it('passes through input via the registered handler', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'ak-mcp-discover-'))
+    const dir = mkdtempSync(join(tmpdir(), 'wp-mcp-discover-'))
     writeToolFile(
       dir,
       'echo.js',
@@ -122,7 +122,7 @@ describe('discoverTools', () => {
   })
 
   it('passes through `outputSchema` to the registrar when present', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'ak-mcp-discover-output-schema-'))
+    const dir = mkdtempSync(join(tmpdir(), 'wp-mcp-discover-output-schema-'))
     writeToolFile(
       dir,
       'typed.js',
@@ -165,7 +165,7 @@ describe('discoverTools', () => {
   // server can include them in tools/list. Without this, MCP clients
   // pessimize and gate every read-only call behind a confirmation prompt.
   it('passes through `annotations` to the registrar', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'ak-mcp-discover-annotations-'))
+    const dir = mkdtempSync(join(tmpdir(), 'wp-mcp-discover-annotations-'))
     writeToolFile(
       dir,
       'annotated.js',
@@ -207,7 +207,7 @@ describe('discoverTools', () => {
   })
 
   it('omits `annotations` when the descriptor has none', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'ak-mcp-discover-noann-'))
+    const dir = mkdtempSync(join(tmpdir(), 'wp-mcp-discover-noann-'))
     writeToolFile(
       dir,
       'plain.js',

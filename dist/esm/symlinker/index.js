@@ -15,7 +15,7 @@
  * - Removes symlinks pointing outside .agent/
  *
  * Usage:
- *   ak symlink sync            # Phase 2 — wires to syncAll
+ *   wp symlink sync            # Phase 2 — wires to syncAll
  *   node dist/symlinker/index  # direct invocation from built output
  */
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync, } from 'node:fs';
@@ -437,7 +437,7 @@ export function syncAll(repoRoot, consumers = DEFAULT_CONSUMERS) {
     totalFixes += syncSkillFanouts(repoRoot, DEFAULT_PER_SKILL_CONSUMERS).wrote;
     totalFixes += syncGeminiCommands(repoRoot);
     // Fan-out writes are tracked separately — they are not "broken symlinks",
-    // so they must not pollute totalFixes (which gates `ak symlink check`).
+    // so they must not pollute totalFixes (which gates `wp symlink check`).
     syncAgentsMd(repoRoot);
     syncMcpJson(repoRoot);
     console.log();
@@ -455,7 +455,7 @@ export function syncAll(repoRoot, consumers = DEFAULT_CONSUMERS) {
  * Supported sources: .cursorrules, CLAUDE.md, .github/copilot-instructions.md
  *
  * The source file is copied to .agent/AGENTS.md (if it does not already
- * exist), leaving the original in place so that a subsequent `ak symlink sync`
+ * exist), leaving the original in place so that a subsequent `wp symlink sync`
  * can fan it back out.  Returns the destination path on success, or null when
  * the source file does not exist.
  */

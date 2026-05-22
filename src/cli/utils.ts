@@ -129,7 +129,7 @@ function findClosestCommand(input: string, commands: readonly string[]): string[
 export function formatUnknownCommandError(
   input: string | undefined,
   commands: readonly string[],
-  binName = 'ak',
+  binName = 'wp',
 ): string {
   const actual = input ?? ''
   const suggestions = findClosestCommand(actual, commands)

@@ -8,7 +8,7 @@ import { readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 describe('mcp-sentinel', () => {
   beforeEach(() => {
     vi.resetAllMocks()
-    vi.stubEnv('AK_MCP_SENTINEL_KEY', 'test-fixture-key')
+    vi.stubEnv('WP_MCP_SENTINEL_KEY', 'test-fixture-key')
   })
   afterEach(() => {
     vi.unstubAllEnvs()
@@ -37,8 +37,8 @@ describe('mcp-sentinel', () => {
 
   it('isMcpReady returns false when only stale (dead PID) sentinels exist', async () => {
     vi.mocked(readdirSync).mockReturnValue([
-      'ak-mcp-ready-99999',
-      'ak-mcp-ready-88888',
+      'wp-mcp-ready-99999',
+      'wp-mcp-ready-88888',
     ] as unknown as ReturnType<typeof readdirSync>)
     vi.mocked(readFileSync).mockImplementation((path): ReturnType<typeof readFileSync> => {
       if (typeof path === 'string' && path.endsWith('99999'))
@@ -59,9 +59,9 @@ describe('mcp-sentinel', () => {
 
   it('isMcpReady returns true when ANY sentinel contains a live PID (cross-cwd resilient)', async () => {
     vi.mocked(readdirSync).mockReturnValue([
-      'ak-mcp-ready-99999', // dead
+      'wp-mcp-ready-99999', // dead
       'unrelated-file',
-      'ak-mcp-ready-12345', // alive
+      'wp-mcp-ready-12345', // alive
     ] as unknown as ReturnType<typeof readdirSync>)
     vi.mocked(readFileSync).mockImplementation((path): ReturnType<typeof readFileSync> => {
       if (typeof path === 'string' && path.endsWith('99999'))
@@ -87,7 +87,7 @@ describe('mcp-sentinel', () => {
     vi.mocked(readdirSync).mockReturnValue([
       'random.log',
       'something-else',
-      'ak-mcp-readyish-12345', // wrong prefix (no trailing dash)
+      'wp-mcp-readyish-12345', // wrong prefix (no trailing dash)
     ] as unknown as ReturnType<typeof readdirSync>)
     const killSpy = vi.spyOn(process, 'kill')
     const { isMcpReady } = await import('#hooks/shared/mcp-sentinel')
@@ -97,7 +97,7 @@ describe('mcp-sentinel', () => {
   })
 
   it('isMcpReady skips files with unparsable PIDs', async () => {
-    vi.mocked(readdirSync).mockReturnValue(['ak-mcp-ready-bogus'] as unknown as ReturnType<
+    vi.mocked(readdirSync).mockReturnValue(['wp-mcp-ready-bogus'] as unknown as ReturnType<
       typeof readdirSync
     >)
     vi.mocked(readFileSync).mockReturnValue(
@@ -111,18 +111,18 @@ describe('mcp-sentinel', () => {
     const { writeSentinel } = await import('#hooks/shared/mcp-sentinel')
     writeSentinel()
     expect(vi.mocked(writeFileSync)).toHaveBeenCalledWith(
-      '/tmp/ak-mcp-ready-test-fixture-key',
+      '/tmp/wp-mcp-ready-test-fixture-key',
       String(process.pid),
       'utf-8',
     )
   })
 
-  it('writeSentinel uses process.pid as key when AK_MCP_SENTINEL_KEY is unset', async () => {
-    vi.stubEnv('AK_MCP_SENTINEL_KEY', '')
+  it('writeSentinel uses process.pid as key when WP_MCP_SENTINEL_KEY is unset', async () => {
+    vi.stubEnv('WP_MCP_SENTINEL_KEY', '')
     const { writeSentinel } = await import('#hooks/shared/mcp-sentinel')
     writeSentinel()
     expect(vi.mocked(writeFileSync)).toHaveBeenCalledWith(
-      `/tmp/ak-mcp-ready-${process.pid}`,
+      `/tmp/wp-mcp-ready-${process.pid}`,
       String(process.pid),
       'utf-8',
     )
@@ -131,7 +131,7 @@ describe('mcp-sentinel', () => {
   it('deleteSentinel removes its own sentinel file silently', async () => {
     const { deleteSentinel } = await import('#hooks/shared/mcp-sentinel')
     deleteSentinel()
-    expect(vi.mocked(unlinkSync)).toHaveBeenCalledWith('/tmp/ak-mcp-ready-test-fixture-key')
+    expect(vi.mocked(unlinkSync)).toHaveBeenCalledWith('/tmp/wp-mcp-ready-test-fixture-key')
   })
 
   it('deleteSentinel is silent when file does not exist', async () => {

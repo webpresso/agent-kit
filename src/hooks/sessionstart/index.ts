@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * SessionStart hook: injects AK_ROUTING_BLOCK and optionally `.agent/routing.md`
+ * SessionStart hook: injects WP_ROUTING_BLOCK and optionally `.agent/routing.md`
  * into Claude Code sessions.
  *
  * Wired in `plugin.json` as `SessionStart` with matcher `startup|resume|compact`.
@@ -12,7 +12,7 @@
  * Output contract (per Claude Code hooks docs):
  *   {"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"<contents>"}}
  *
- * Always emits — never returns null. AK_ROUTING_BLOCK is always prepended.
+ * Always emits — never returns null. WP_ROUTING_BLOCK is always prepended.
  * If `.agent/routing.md` exists and is non-empty, it is appended after the block.
  */
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs'
@@ -20,11 +20,11 @@ import { fileURLToPath } from 'node:url'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-import { AK_ROUTING_BLOCK } from '#hooks/shared/routing-block'
+import { WP_ROUTING_BLOCK } from '#hooks/shared/routing-block'
 
 import { readUpdateBanner } from './update-banner.js'
 
-export { AK_ROUTING_BLOCK }
+export { WP_ROUTING_BLOCK }
 export const MAX_BYTES = 200 * 1024
 export const TRUNCATION_NOTICE = '\n\n[truncated: file exceeded 200KB limit]'
 
@@ -34,7 +34,7 @@ type EnvLike = Record<string, string | undefined>
 /**
  * Pure function: given a parsed input payload, a working directory, and
  * environment variables, produce the JSON string that the hook should write
- * to stdout. Always emits — never returns null. AK_ROUTING_BLOCK is always
+ * to stdout. Always emits — never returns null. WP_ROUTING_BLOCK is always
  * prepended; `.agent/routing.md` content is appended when present and non-empty.
  */
 export function buildOutput(_input: StartInput, cwd: string, env: EnvLike): string {
@@ -61,14 +61,14 @@ export function buildOutput(_input: StartInput, cwd: string, env: EnvLike): stri
     if (code !== 'ENOENT' && code !== 'ENOTDIR') {
       // Permission or other read errors: surface to stderr but continue.
       process.stderr.write(
-        `ak-sessionstart-routing: failed to read ${target}: ${(err as Error).message}\n`,
+        `wp-sessionstart-routing: failed to read ${target}: ${(err as Error).message}\n`,
       )
     }
     // ENOENT / ENOTDIR: no routing.md, that's fine — emit routing block alone.
   }
 
   let gstackBlock: string | null = null
-  if (env.AK_GSTACK_ROUTING === '1') {
+  if (env.WP_GSTACK_ROUTING === '1') {
     const gstackDir = join(homedir(), '.claude', 'skills', 'gstack')
     if (existsSync(gstackDir)) {
       gstackBlock =
@@ -77,7 +77,7 @@ export function buildOutput(_input: StartInput, cwd: string, env: EnvLike): stri
   }
 
   let additionalContext =
-    routingMd !== null ? AK_ROUTING_BLOCK + '\n\n' + routingMd : AK_ROUTING_BLOCK
+    routingMd !== null ? WP_ROUTING_BLOCK + '\n\n' + routingMd : WP_ROUTING_BLOCK
   if (gstackBlock !== null) {
     additionalContext += gstackBlock
   }
@@ -123,7 +123,7 @@ export async function main(): Promise<void> {
     const out = buildOutput(input, process.cwd(), process.env)
     process.stdout.write(out)
   } catch (err) {
-    process.stderr.write(`ak-sessionstart-routing: ${(err as Error).message}\n`)
+    process.stderr.write(`wp-sessionstart-routing: ${(err as Error).message}\n`)
   }
   process.exit(0)
 }

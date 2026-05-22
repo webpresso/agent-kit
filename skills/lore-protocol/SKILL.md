@@ -9,12 +9,12 @@ related: []
 created: '2026-05-07'
 last_reviewed: '2026-05-07'
 name: lore-protocol
-description: Enforce Lore commit-message trailers using `ak audit commit-message`, including setup guidance for lore-enabled commit hooks and the required trailer protocol.
+description: Enforce Lore commit-message trailers using `wp audit commit-message`, including setup guidance for lore-enabled commit hooks and the required trailer protocol.
 ---
 
 # lore-protocol
 
-Enforce Lore commit-message trailers using `ak audit commit-message`.
+Enforce Lore commit-message trailers using `wp audit commit-message`.
 
 Lore is a lightweight protocol for embedding decision context directly into
 commit messages — constraints, rejected alternatives, confidence, and
@@ -25,10 +25,10 @@ was made, not just *what* changed.
 
 ```bash
 # Validate a commit message file (hard-fail mode — exits non-zero on violations)
-ak audit commit-message --message-file .git/COMMIT_EDITMSG --require-lore
+wp audit commit-message --message-file .git/COMMIT_EDITMSG --require-lore
 
 # Soft-warn mode — emits warnings but always exits 0 (adoption ramp)
-ak audit commit-message --message-file .git/COMMIT_EDITMSG --lore-warn
+wp audit commit-message --message-file .git/COMMIT_EDITMSG --lore-warn
 
 # Opt in per-commit by adding [lore] to the subject line:
 # feat(auth): prevent silent session drops [lore]
@@ -37,14 +37,14 @@ ak audit commit-message --message-file .git/COMMIT_EDITMSG --lore-warn
 ## Install the commit-msg hook
 
 ```bash
-ak setup --with lore-commits
+wp setup --with lore-commits
 ```
 
 This writes `.husky/commit-msg` containing:
 
 ```sh
 #!/bin/sh
-ak audit commit-message --require-lore --message-file "$1"
+wp audit commit-message --require-lore --message-file "$1"
 ```
 
 ## Trailer format

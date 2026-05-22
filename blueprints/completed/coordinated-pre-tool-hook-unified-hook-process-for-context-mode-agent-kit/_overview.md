@@ -34,7 +34,7 @@ Bash("just test")
 
 **~85ms overhead per Bash call × 200 calls/session = 17 seconds wasted on hook spawns.**
 
-Worse: there's a **routing conflict**. Both hooks fire on `Bash` with different matchers (`Bash|WebFetch|Read|Grep|Agent` vs `Bash|Edit|Write`). Neither knows about the other. The execution order is non-deterministic — if context-mode fires first, it rewrites `Bash("just test")` → `ctx_execute("shell", "just test")`, and agent-kit can no longer deny it (its matcher doesn't cover `ctx_execute`). The agent then runs `just test` inside context-mode's sandbox instead of using `ak_test` for structured JSON output.
+Worse: there's a **routing conflict**. Both hooks fire on `Bash` with different matchers (`Bash|WebFetch|Read|Grep|Agent` vs `Bash|Edit|Write`). Neither knows about the other. The execution order is non-deterministic — if context-mode fires first, it rewrites `Bash("just test")` → `ctx_execute("shell", "just test")`, and agent-kit can no longer deny it (its matcher doesn't cover `ctx_execute`). The agent then runs `just test` inside context-mode's sandbox instead of using `wp_test` for structured JSON output.
 
 ## Fact-Checked Findings
 
@@ -78,7 +78,7 @@ Bash call
       ├─ suppress-stderr
       ├─ parseToolInput()
       ├─ Phase 1: agent-kit dev-routing (fires first)
-      │   └─ just test → deny → "use ak_test" (exits here)
+      │   └─ just test → deny → "use wp_test" (exits here)
       ├─ Phase 2: context-mode data-routing (if Phase 1 passthrough)
       │   └─ grep/cat/find/npm test(no justfile) → modify → ctx_execute
       ├─ Phase 3: security validators
@@ -93,7 +93,7 @@ The key principle: **dev-workflow commands win**. If the command is a dev-workfl
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | Merge into agent-kit hook (not context-mode) | agent-kit owns the merged hook | agent-kit already has the validator-pipeline architecture and is the repo we control. context-mode integration is replicated logic, not dependency. |
-| Dev-workflow commands take priority | Deny before modify | `just test` should ALWAYS be denied in favor of `ak_test`. Context-mode's `ctx_execute` rewrite would produce worse output (raw test runner output vs structured JSON). |
+| Dev-workflow commands take priority | Deny before modify | `just test` should ALWAYS be denied in favor of `wp_test`. Context-mode's `ctx_execute` rewrite would produce worse output (raw test runner output vs structured JSON). |
 | Replicate, don't import | Copy context-mode's Bash routing logic | F4: context-mode doesn't expose an importable hooks API. Replicating ~50 lines of routing logic is cheaper than upstreaming an API change. |
 | Shared guidance throttle | Single tmpdir marker directory, shared format | F6: both plugins use the same O_EXCL pattern. Merge into one marker per command type per session. |
 | MCP readiness sentinel | Agent-kit's sentinel is the source of truth | Both plugins use the same pattern. Agent-kit's `writeSentinel()` already exists. context-mode's routing only fires when agent-kit's MCP is ready (reverse of current). |
@@ -149,11 +149,11 @@ Routing table (checked in order):
 
 | Command pattern | Action | Guidance |
 |----------------|--------|----------|
-| `just test [*]` / `pnpm test [*]` / `vitest [*]` | deny → ak_test | "Use ak_test MCP tool instead" |
-| `just lint [*]` / `pnpm lint [*]` / `oxlint [*]` | deny → ak_lint | "Use ak_lint MCP tool instead" |
-| `just typecheck [*]` / `pnpm typecheck [*]` / `tsc [*]` | deny → ak_typecheck | "Use ak_typecheck MCP tool instead" |
-| `just qa [*]` / `pnpm qa [*]` | deny → ak_qa | "Use ak_qa MCP tool instead" |
-| `just audit [*]` / `ak audit [*]` | passthrough | — |
+| `just test [*]` / `pnpm test [*]` / `vitest [*]` | deny → wp_test | "Use wp_test MCP tool instead" |
+| `just lint [*]` / `pnpm lint [*]` / `oxlint [*]` | deny → wp_lint | "Use wp_lint MCP tool instead" |
+| `just typecheck [*]` / `pnpm typecheck [*]` / `tsc [*]` | deny → wp_typecheck | "Use wp_typecheck MCP tool instead" |
+| `just qa [*]` / `pnpm qa [*]` | deny → wp_qa | "Use wp_qa MCP tool instead" |
+| `just audit [*]` / `wp audit [*]` | passthrough | — |
 | `grep [*]` / `find [*]` / `cat [*]` / `tail [*]` / `head [*]` | sandbox → ctx_execute | "Use ctx_batch_execute for large outputs" |
 | `curl [*]` / `wget [*]` | sandbox → ctx_execute | "Use ctx_execute or ctx_fetch_and_index" |
 | `git log [*]` / `git diff [*]` / `git show [*]` | sandbox → ctx_execute | "Use ctx_execute_file or ctx_execute" |
@@ -274,7 +274,7 @@ export function processValidation(inputJson: string): void {
 This absorbs what was planned in `pretooluse-dev-command-routing` Task 1.3 AND adds context-mode coordination. The existing validators (`dangerous-commands`, `forbidden-commands`) remain as Phase 3.
 
 **Steps (TDD):**
-1. Write integration tests: (a) `just test` → deny with ak_test guidance, (b) `grep -r foo src/` → sandbox redirect, (c) `git status` → passthrough, (d) `rm -rf /` → security deny
+1. Write integration tests: (a) `just test` → deny with wp_test guidance, (b) `grep -r foo src/` → sandbox redirect, (c) `git status` → passthrough, (d) `rm -rf /` → security deny
 2. Implement the 3-phase flow
 3. `pnpm run typecheck` — no errors
 4. `pnpm test` — green
@@ -284,7 +284,7 @@ This absorbs what was planned in `pretooluse-dev-command-routing` Task 1.3 AND a
 - [x] Phase 1 (dev-routing) fires before Phase 2 (sandbox)
 - [x] Phase 2 (sandbox) fires only when Phase 1 passes through
 - [x] Phase 3 (security) fires only when Phases 1+2 pass through
-- [x] MCP readiness sentinel gates Phases 1+2 (no `ak_test` redirect when MCP not ready)
+- [x] MCP readiness sentinel gates Phases 1+2 (no `wp_test` redirect when MCP not ready)
 - [x] `pnpm test` green
 
 #### [infra] Task 1.4: Context-mode pretooluse hook passthrough when coordinated hook active
@@ -357,7 +357,7 @@ Updated scope:
 4. **Security deny:** `sudo rm -rf /`, `rm -rf /`
 5. **Edit/Write → passthrough to validators:** `Edit({path: "src/foo.ts"})`, `Write({path: "src/bar.ts"})` — should fall through to existing validators
 6. **Unknown Bash commands → passthrough:** `some-random-tool --flag`
-7. **MCP not ready → dev-commands passthrough (not denied):** Without MCP sentinel, `just test` should NOT be denied (agent can't use ak_test if MCP not available)
+7. **MCP not ready → dev-commands passthrough (not denied):** Without MCP sentinel, `just test` should NOT be denied (agent can't use wp_test if MCP not available)
 
 **Steps (TDD):**
 1. Write all test cases — verify FAIL (coordinated routing not integrated yet)
@@ -402,10 +402,10 @@ Updated scope:
 |------|---------|-----------------|
 | Type safety | `pnpm typecheck` | Zero errors |
 | Unit tests | `pnpm test` | All pass, including new coordinated-routing tests |
-| Hook functional test | `echo '{"tool_name":"Bash","tool_input":{"command":"just test"}}' \| node dist/esm/hooks/pretool-guard/index.js` | Outputs deny JSON with `permissionDecision: "deny"` and guidance mentioning `ak_test` |
+| Hook functional test | `echo '{"tool_name":"Bash","tool_input":{"command":"just test"}}' \| node dist/esm/hooks/pretool-guard/index.js` | Outputs deny JSON with `permissionDecision: "deny"` and guidance mentioning `wp_test` |
 | Hook functional test (sandbox) | `echo '{"tool_name":"Bash","tool_input":{"command":"grep -r foo src/"}}' \| node dist/esm/hooks/pretool-guard/index.js` | Outputs context-mode sandbox redirect |
 | Hook functional test (passthrough) | `echo '{"tool_name":"Bash","tool_input":{"command":"git status"}}' \| node dist/esm/hooks/pretool-guard/index.js` | Outputs `{}` (passthrough) |
-| MCP integration | Start Claude Code with both plugins, run `/ak:test` | Agent uses `ak_test` MCP tool, not Bash |
+| MCP integration | Start Claude Code with both plugins, run `/ak:test` | Agent uses `wp_test` MCP tool, not Bash |
 | No regression | Full `pnpm qa` | No new failures in lint/typecheck/test |
 
 ## Edge Cases

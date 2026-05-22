@@ -1,13 +1,13 @@
 import { buildRoadmapModel } from '#local';
 import { listBlueprints, showBlueprint } from './blueprint/router.js';
 import { formatBlueprintDetails, formatBlueprintSummaries, printBlueprintOutput, } from './blueprint/router-output.js';
-const ROADMAP_HELP = ['ak roadmap', '', 'Commands:', '  list [status]', '  show <slug>'].join('\n');
+const ROADMAP_HELP = ['wp roadmap', '', 'Commands:', '  list [status]', '  show <slug>'].join('\n');
 export function getRoadmapHelpText() {
     return ROADMAP_HELP;
 }
 export function assertParentRoadmap(result) {
     if (result.blueprint.type !== 'parent-roadmap') {
-        throw new Error(`Blueprint ${result.slug} is type=${result.blueprint.type}, not type=parent-roadmap. Use 'ak blueprint show ${result.slug}' instead.`);
+        throw new Error(`Blueprint ${result.slug} is type=${result.blueprint.type}, not type=parent-roadmap. Use 'wp blueprint show ${result.slug}' instead.`);
     }
     return result;
 }
@@ -40,7 +40,7 @@ export function registerRoadmapCommand(cli) {
                 return;
             case 'list': {
                 if (args.length > 1) {
-                    throw new Error('Usage: ak roadmap list [status]');
+                    throw new Error('Usage: wp roadmap list [status]');
                 }
                 const summaries = await listBlueprints({
                     json: options.json,
@@ -54,7 +54,7 @@ export function registerRoadmapCommand(cli) {
             case 'show': {
                 const slug = args[0];
                 if (!slug) {
-                    throw new Error('Usage: ak roadmap show <slug>');
+                    throw new Error('Usage: wp roadmap show <slug>');
                 }
                 const result = assertParentRoadmap(await showBlueprint(slug, { json: options.json, projectRoot: options.projectRoot }));
                 const summaries = await listBlueprints({ projectRoot: options.projectRoot });

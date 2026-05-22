@@ -2,11 +2,11 @@ import { existsSync, lstatSync, readFileSync, readdirSync, readlinkSync } from '
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { readConfig } from '#cli/commands/init/config';
 const REQUIRED_HOOKS = [
-    { event: 'SessionStart', bin: 'ak-sessionstart-routing' },
-    { event: 'PreToolUse', bin: 'ak-pretool-guard' },
-    { event: 'PostToolUse', bin: 'ak-post-tool' },
-    { event: 'UserPromptSubmit', bin: 'ak-guard-switch' },
-    { event: 'Stop', bin: 'ak-stop-qa' },
+    { event: 'SessionStart', bin: 'wp-sessionstart-routing' },
+    { event: 'PreToolUse', bin: 'wp-pretool-guard' },
+    { event: 'PostToolUse', bin: 'wp-post-tool' },
+    { event: 'UserPromptSubmit', bin: 'wp-guard-switch' },
+    { event: 'Stop', bin: 'wp-stop-qa' },
 ];
 const CLAUDE_SETTINGS_PATH = '.claude/settings.json';
 const CODEX_HOOKS_PATH = '.codex/hooks.json';
@@ -66,7 +66,7 @@ function checkClaudeAgents(root, violations) {
     if (!existsSync(agentsTarget)) {
         violations.push({
             file: '.claude/agents',
-            message: 'Missing .claude/agents directory — run `ak setup` to scaffold canonical subagents.',
+            message: 'Missing .claude/agents directory — run `wp setup` to scaffold canonical subagents.',
         });
         return;
     }
@@ -75,7 +75,7 @@ function checkClaudeAgents(root, violations) {
         if (!existsSync(targetPath)) {
             violations.push({
                 file: relative(root, targetPath),
-                message: `Missing Claude subagent ${file}. Run \`ak setup\` to re-sync canonical subagents.`,
+                message: `Missing Claude subagent ${file}. Run \`wp setup\` to re-sync canonical subagents.`,
             });
             continue;
         }
@@ -101,7 +101,7 @@ function checkClaudeAgents(root, violations) {
         if (!existsSync(resolvedTarget)) {
             violations.push({
                 file: relative(root, targetPath),
-                message: `Canonical subagent ${file} symlink is dangling. Run \`ak setup\` to repair it.`,
+                message: `Canonical subagent ${file} symlink is dangling. Run \`wp setup\` to repair it.`,
             });
         }
     }
@@ -123,8 +123,8 @@ function checkHookFile(root, relativePath, host, violations) {
         violations.push({
             file: relativePath,
             message: host === 'claude'
-                ? 'Missing .claude/settings.json — run `ak setup` to scaffold Claude hooks.'
-                : 'Missing .codex/hooks.json — run `ak setup` to scaffold Codex hooks.',
+                ? 'Missing .claude/settings.json — run `wp setup` to scaffold Claude hooks.'
+                : 'Missing .codex/hooks.json — run `wp setup` to scaffold Codex hooks.',
         });
         return;
     }
@@ -135,7 +135,7 @@ function checkHookFile(root, relativePath, host, violations) {
         if (!found) {
             violations.push({
                 file: relativePath,
-                message: `Missing ${requirement.event} hook for ${requirement.bin}. Re-run \`ak setup\` to repair agent hooks.`,
+                message: `Missing ${requirement.event} hook for ${requirement.bin}. Re-run \`wp setup\` to repair agent hooks.`,
             });
         }
     }
@@ -170,7 +170,7 @@ function checkClaudeRules(root, overrides, violations) {
     if (!existsSync(rulesTarget)) {
         violations.push({
             file: '.claude/rules',
-            message: 'Missing .claude/rules directory — run `ak setup` to scaffold rule symlinks.',
+            message: 'Missing .claude/rules directory — run `wp setup` to scaffold rule symlinks.',
         });
         return;
     }
@@ -185,7 +185,7 @@ function checkClaudeRules(root, overrides, violations) {
                 file: relative(root, targetPath),
                 message: isOverride
                     ? `Allowlisted override ${ruleName} is missing its .claude/rules entry.`
-                    : `Missing Claude rule link for ${ruleName}. Run \`ak setup\` to re-sync.`,
+                    : `Missing Claude rule link for ${ruleName}. Run \`wp setup\` to re-sync.`,
             });
             continue;
         }
@@ -222,7 +222,7 @@ function checkClaudeRules(root, overrides, violations) {
         if (!existsSync(resolvedTarget)) {
             violations.push({
                 file: relative(root, targetPath),
-                message: `Rule ${ruleName} symlink is dangling. Run \`ak setup\` to repair it.`,
+                message: `Rule ${ruleName} symlink is dangling. Run \`wp setup\` to repair it.`,
             });
         }
     }
@@ -241,7 +241,7 @@ function checkClaudeRules(root, overrides, violations) {
 function checkSetupAgentScript(root, packageJson, overrideCommand, violations) {
     const scripts = (packageJson.scripts ?? {});
     const actual = typeof scripts['setup:agent'] === 'string' ? scripts['setup:agent'] : undefined;
-    const expected = overrideCommand ?? 'ak setup';
+    const expected = overrideCommand ?? 'wp setup';
     if (actual !== expected) {
         violations.push({
             file: 'package.json',
@@ -257,8 +257,8 @@ function checkAgentKitDevDependency(root, packageJson, violations) {
     const scripts = (packageJson.scripts ?? {});
     const setupAgent = typeof scripts['setup:agent'] === 'string' ? scripts['setup:agent'] : '';
     const postinstall = typeof scripts.postinstall === 'string' ? scripts.postinstall : '';
-    const usesGlobalAkConsumerMode = setupAgent === 'ak setup' && postinstall.includes('run-agent-kit-bin.ts restore-dev-links');
-    if (usesGlobalAkConsumerMode) {
+    const usesGlobalWpConsumerMode = setupAgent === 'wp setup' && postinstall.includes('run-agent-kit-bin.ts restore-dev-links');
+    if (usesGlobalWpConsumerMode) {
         return;
     }
     if (typeof version !== 'string' || version.trim().length === 0) {

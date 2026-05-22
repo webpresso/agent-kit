@@ -28,15 +28,15 @@ External research (2026-04-25) — see roadmap Decision 3/4 — identified concr
 
 ### Parity additions (from rulesync / agents.md)
 
-- **AGENTS.md fan-out** — the canonical `.agent/AGENTS.md` is generated and kept in sync at repo-root `AGENTS.md`. Idempotent under `ak symlink sync`.
+- **AGENTS.md fan-out** — the canonical `.agent/AGENTS.md` is generated and kept in sync at repo-root `AGENTS.md`. Idempotent under `wp symlink sync`.
 - **MCP server registration via fan-out** — canonical source `.agent/mcp.json` fans out to `.mcp.json`, `.cursor/mcp.json`, etc.
-- **`ak symlink import`** — onboard repos that already have `.cursorrules`, `CLAUDE.md`, or `.github/copilot-instructions.md` by reading them into `.agent/` as the new canonical source.
+- **`wp symlink import`** — onboard repos that already have `.cursorrules`, `CLAUDE.md`, or `.github/copilot-instructions.md` by reading them into `.agent/` as the new canonical source.
 - **Expanded fan-out targets** — Cline (`.clinerules/`), Aider (`CONVENTIONS.md`), Goose, Factory Droid, deepagents-cli (research scope per IDE; ship the cheap ones first).
 
 ### Audit absorption (replaces standalone quality-engine)
 
-- `ak audit mutation` — wraps Stryker invocation, reads `@webpresso/tooling/stryker-config`, fails CI on threshold misses.
-- `ak audit quality` — composite gate that runs `mutation`, `bundle-budget`, `catalog-drift`, `docs-frontmatter`, `blueprint-lifecycle`, `commit-message`. Single command for "is this repo healthy?"
+- `wp audit mutation` — wraps Stryker invocation, reads `@webpresso/tooling/stryker-config`, fails CI on threshold misses.
+- `wp audit quality` — composite gate that runs `mutation`, `bundle-budget`, `catalog-drift`, `docs-frontmatter`, `blueprint-lifecycle`, `commit-message`. Single command for "is this repo healthy?"
 - The `quality-engine` source from `monorepo/packages/foundation/quality-engine/` migrates into `webpresso/agent-kit/src/audits/quality/`.
 - No new public package created.
 
@@ -45,14 +45,14 @@ External research (2026-04-25) — see roadmap Decision 3/4 — identified concr
 - New audit categories beyond what `quality-engine` already implements.
 - Authoring additional skills.
 - Symlinker rewrite — only adds new targets/behaviors, doesn't restructure.
-- **Parent-roadmap promotion in `ak blueprint list`** — separate blueprint at `planned/promote-parent-roadmaps`. Different problem (internal hierarchy DX vs ecosystem rules-fanout), different urgency, different code surface (blueprint service + `/pll` dispatcher vs symlinker).
+- **Parent-roadmap promotion in `wp blueprint list`** — separate blueprint at `planned/promote-parent-roadmaps`. Different problem (internal hierarchy DX vs ecosystem rules-fanout), different urgency, different code surface (blueprint service + `/pll` dispatcher vs symlinker).
 
 ## Verification Gates
 
-- `ak symlink sync` produces `AGENTS.md` at repo root that matches `.agent/AGENTS.md` byte-for-byte (after format transform).
-- `ak symlink import --from .cursorrules` round-trips: import → sync → diff is empty.
+- `wp symlink sync` produces `AGENTS.md` at repo root that matches `.agent/AGENTS.md` byte-for-byte (after format transform).
+- `wp symlink import --from .cursorrules` round-trips: import → sync → diff is empty.
 - `cat .mcp.json` and `cat .cursor/mcp.json` both resolve to the same servers as `.agent/mcp.json`.
-- `ak audit quality` exits zero on a clean ingest-lens checkout, non-zero with a seeded violation.
+- `wp audit quality` exits zero on a clean ingest-lens checkout, non-zero with a seeded violation.
 - `npm view @webpresso/quality-engine` returns 404 or `unpublished` (it never exists as a standalone package).
 
 ## Related

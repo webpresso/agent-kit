@@ -1,12 +1,10 @@
 /**
  * Stable subpath export: `@webpresso/agent-kit/lint`.
  *
- * Exposes a framework-friendly `runLint` runner that wraps `oxlint`
- * (preferred — fast, structured JSON output) with a `vp run lint` fallback
- * when `oxlint` is not on PATH. Mirrors the semantics of the
- * `ak_lint` MCP tool but returns a typed result object directly so
- * external scaffolders (e.g. webpresso-framework Wave 2) can consume it
- * without reaching through the MCP transport.
+ * Exposes a framework-friendly `runLint` runner that uses the `vp lint`
+ * facade. Mirrors the semantics of the `wp_lint` MCP tool but returns a
+ * typed result object directly so external scaffolders can consume it without
+ * reaching through the MCP transport.
  */
 export interface LintIssue {
     readonly file: string;
@@ -14,11 +12,9 @@ export interface LintIssue {
     readonly rule: string;
     readonly message: string;
 }
-export type LintBackend = 'oxlint' | 'vp';
 export interface LintResult {
     readonly passed: boolean;
     readonly issues: readonly LintIssue[];
-    readonly backend: LintBackend;
     readonly exitCode: number;
     readonly output?: string;
     readonly parseError?: string;
@@ -29,7 +25,7 @@ export interface LintResult {
 export interface RunLintOptions {
     /** Files or glob targets to lint. When omitted, lints `.` */
     readonly files?: readonly string[];
-    /** Apply autofixes via `oxlint --fix`. Ignored on the vp fallback. */
+    /** Apply autofixes via `vp lint --fix`. */
     readonly fix?: boolean;
     /** Override the resolved project root. */
     readonly cwd?: string;
@@ -49,9 +45,8 @@ interface ParseOutcome {
  */
 export declare function parseOxlintIssues(stdout: string): ParseOutcome;
 /**
- * Run lint and return a structured result. Prefers `oxlint`; falls back to
- * `vp run lint` only when `oxlint` is missing on PATH. Other spawn errors
- * surface explicitly via `spawnError` rather than being silently rerouted.
+ * Run lint via `vp lint` and return a structured result. Spawn failures surface
+ * explicitly via `spawnError`.
  */
 export declare function runLint(options?: RunLintOptions): Promise<LintResult>;
 export {};

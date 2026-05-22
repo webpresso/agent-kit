@@ -38,7 +38,7 @@ export declare class ReplicaManager {
         readonly slug?: string;
     }): Promise<void>;
     /**
-     * Force a pull regardless of TTL (e.g. used by `ak setup --sync`).
+     * Force a pull regardless of TTL (e.g. used by `wp setup --sync`).
      * Does NOT participate in single-flight — each forcePull is independent.
      */
     forcePull(opts?: {

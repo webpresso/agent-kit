@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { buildCiActCommand, runCiActCommand, validateCiActCommand } from './ci'
 
-describe('ak ci command', () => {
+describe('wp ci command', () => {
   it('routes act through the repo secret wrapper by default', () => {
     const command = buildCiActCommand({ workflow: 'ci-e2e' }, '/repo')
 

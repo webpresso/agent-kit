@@ -1,5 +1,5 @@
 /**
- * `ak audit blueprint-db-consistency` — SQL-backed consistency check between
+ * `wp audit blueprint-db-consistency` — SQL-backed consistency check between
  * the SQLite blueprints DB and the filesystem.
  *
  * Alpha gate: only runs meaningful checks when AK_USE_SQL_AUDITS=1.

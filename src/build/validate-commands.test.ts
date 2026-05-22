@@ -38,10 +38,10 @@ describe('plugin commands directory', () => {
         expect((parsed.data.description as string).trim().length).toBeGreaterThan(0)
       })
 
-      it(`body references mcp__agent-kit__ak_${cmd}`, () => {
+      it(`body references mcp__agent-kit__wp_${cmd}`, () => {
         const raw = readFileSync(filePath, 'utf-8')
         const parsed = matter(raw)
-        expect(parsed.content).toContain(`mcp__agent-kit__ak_${cmd}`)
+        expect(parsed.content).toContain(`mcp__agent-kit__wp_${cmd}`)
       })
     })
   }

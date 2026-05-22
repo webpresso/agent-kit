@@ -93,9 +93,9 @@ describe('ReplicaManager', () => {
     expect(client.getSnapshot).toHaveBeenCalledTimes(1)
   })
 
-  // ── 5. AK_BLUEPRINT_PLATFORM_DISABLED=1 → ensureFresh is a no-op ───────
-  it('is a no-op when AK_BLUEPRINT_PLATFORM_DISABLED=1', async () => {
-    vi.stubEnv('AK_BLUEPRINT_PLATFORM_DISABLED', '1')
+  // ── 5. WP_BLUEPRINT_PLATFORM_DISABLED=1 → ensureFresh is a no-op ───────
+  it('is a no-op when WP_BLUEPRINT_PLATFORM_DISABLED=1', async () => {
+    vi.stubEnv('WP_BLUEPRINT_PLATFORM_DISABLED', '1')
 
     const manager = new ReplicaManager({ ttlSeconds: 0, client, db })
 
@@ -190,8 +190,8 @@ describe('ReplicaManager', () => {
   })
 
   // ── env TTL override ─────────────────────────────────────────────────────
-  it('uses AK_BLUEPRINT_REPLICA_TTL_S env var when ttlSeconds is not provided', async () => {
-    vi.stubEnv('AK_BLUEPRINT_REPLICA_TTL_S', '3600')
+  it('uses WP_BLUEPRINT_REPLICA_TTL_S env var when ttlSeconds is not provided', async () => {
+    vi.stubEnv('WP_BLUEPRINT_REPLICA_TTL_S', '3600')
 
     const manager = new ReplicaManager({ client, db })
 

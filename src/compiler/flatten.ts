@@ -25,7 +25,7 @@ function validateFrontmatter(
   const result = schema.safeParse(data)
   if (!result.success) {
     process.stderr.write(
-      `ak-compiler: frontmatter validation warning for ${filePath}: ${result.error?.message ?? 'unknown error'}\n`,
+      `wp-compiler: frontmatter validation warning for ${filePath}: ${result.error?.message ?? 'unknown error'}\n`,
     )
   }
 }

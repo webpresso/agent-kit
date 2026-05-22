@@ -60,7 +60,7 @@ function seedBlueprint(db: Database, b: SeedBlueprint): void {
 const createdRoots: string[] = []
 const openConns: Array<{ close: () => void }> = []
 
-function mkroot(prefix = 'ak-aggregate-'): string {
+function mkroot(prefix = 'wp-aggregate-'): string {
   const dir = mkdtempSync(path.join(tmpdir(), prefix))
   createdRoots.push(dir)
   return realpathSync(dir)

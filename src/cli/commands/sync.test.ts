@@ -1,5 +1,5 @@
 /**
- * `ak sync` CLI command tests. Runs the registered command against a fixture
+ * `wp sync` CLI command tests. Runs the registered command against a fixture
  * tree by stubbing `resolvePackageAsset` (via PNPM-style env override) and
  * cwd changes.
  */
@@ -14,7 +14,7 @@ import { runUnifiedSync } from '../../symlinker/unified-sync.js'
 function makeTempDir(): string {
   const dir = join(
     tmpdir(),
-    `ak-sync-cli-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    `wp-sync-cli-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   )
   mkdirSync(dir, { recursive: true })
   return dir
@@ -159,7 +159,7 @@ describe('runUnifiedSync (sync command core)', () => {
   // when the catalog dir doesn't exist on disk, loadContent throws with a
   // message matching /catalogDir does not exist/. The CLI catches that
   // shape and rewrites it to the actionable
-  // "ak {init,sync}: @webpresso/agent-kit not installed in node_modules"
+  // "wp {init,sync}: @webpresso/agent-kit not installed in node_modules"
   // message. If this throw shape ever changes, the catch-wrap stops firing
   // and the silent-non-determinism class returns.
   it('throws "catalogDir does not exist" when the catalog path is missing', () => {

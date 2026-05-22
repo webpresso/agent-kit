@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `ak mcp` — stdio MCP server entrypoint.
+ * `wp mcp` — stdio MCP server entrypoint.
  *
  * Spins up the `agent-kit` MCP server with auto-discovered tools and connects
  * it to a stdio transport. Each tool is a single file under

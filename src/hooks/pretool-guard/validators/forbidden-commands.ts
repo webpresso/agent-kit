@@ -5,7 +5,14 @@ import { getCommand, isBashInput } from '#hooks/shared/types'
 import { createSkipResult } from './skip-result.js'
 import { buildRedirectMessage, type MCPRedirectConfig } from './mcp-redirect.js'
 
-export type CommandCategory = 'test' | 'lint' | 'typecheck' | 'format' | 'blueprint' | 'unknown'
+export type CommandCategory =
+  | 'test'
+  | 'lint'
+  | 'typecheck'
+  | 'format'
+  | 'blueprint'
+  | 'e2e'
+  | 'unknown'
 
 export interface CommandRule {
   pattern: RegExp
@@ -52,21 +59,22 @@ export const DOCS_REF = 'AGENTS.md "Forbidden Commands (CRITICAL)" section'
 
 const DB_HINT = 'Use the database MCP/tooling entrypoint instead of direct CLI execution'
 const BLUEPRINT_HINT =
-  'ak blueprint new|list|audit — use ak_blueprint MCP tool for lifecycle transitions'
+  'wp blueprint new|list|audit — use wp_blueprint MCP tool for lifecycle transitions'
 const BLUEPRINT_LIFECYCLE_DIRS = '(draft|planned|in-progress|completed|archived)'
-const LINT_BASE = 'ak_lint MCP tool with package/file scope'
+const LINT_BASE = 'wp_lint MCP tool with package/file scope'
 const LINT_HINT = `${LINT_BASE} [--fix] [--fix-unsafe]`
-const FORMAT_HINT = 'ak_format MCP tool'
-const QA_HINT = 'ak_qa MCP tool'
-const TEST_HINT = 'ak_test MCP tool with package/file scope'
-const MUTATION_HINT = 'ak_test mutation workflow'
-const TYPECHECK_HINT = 'ak_typecheck MCP tool with package/file scope'
+const FORMAT_HINT = 'wp_format MCP tool'
+const QA_HINT = 'wp_qa MCP tool'
+const TEST_HINT = 'wp_test MCP tool with package/file scope'
+const MUTATION_HINT = 'wp_test mutation workflow'
+const TYPECHECK_HINT = 'wp_typecheck MCP tool with package/file scope'
+const E2E_HINT = 'wp_e2e MCP tool'
 const ENV_HINT = 'Use the repo-approved environment wrapper for secret-bearing commands'
 const TASK_TARGET_HINT = 'Use the repo-approved vp facade or MCP tool instead of raw execution'
 
 const EXEC_RUNNERS = ['vp exec'] as const
 const DIRECT_RUNNERS = ['vp'] as const
-const SCRIPT_RUNNERS = ['vp run', 'vp'] as const
+const SCRIPT_RUNNERS = ['vp run', 'vp', 'pnpm', 'pnpm run', 'just'] as const
 
 export const BLOCKED_TOOLS: BlockedToolSpec[] = [
   {
@@ -103,6 +111,8 @@ export const BLOCKED_SCRIPTS: BlockedScriptSpec[] = [
   { script: 'test', category: 'test', suggestion: TEST_HINT },
   { script: 'lint', category: 'lint', suggestion: LINT_HINT },
   { script: 'typecheck', category: 'typecheck', suggestion: TYPECHECK_HINT },
+  { script: 'e2e', category: 'e2e', suggestion: E2E_HINT },
+  { script: 'qa', category: 'unknown', suggestion: QA_HINT },
 ]
 
 function escapeRegex(s: string): string {
@@ -203,6 +213,9 @@ const LOGICAL_OPERATOR_REGEX = /(?:&&|\|\||;)/
 const VP_SCOPE_FLAG_REGEX =
   /\s+(?:(?:--filter|-F|--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)|(?:--workspace-root|-w))/
 
+const PNPM_SCOPE_FLAG_REGEX =
+  /(?:\s+(?:(?:--filter|-F|--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)|(?:--workspace-root|-w|--recursive|-r|--workspace))(?=\s|$))/
+
 function stripVpScopeFlags(command: string): string {
   if (!command.startsWith('vp ')) {
     return command
@@ -218,6 +231,33 @@ function stripVpScopeFlags(command: string): string {
   }
 
   return next.replace(/\s+/g, ' ').trim()
+}
+
+function stripPnPmScopeFlags(command: string): string {
+  if (!command.startsWith('pnpm ')) {
+    return command
+  }
+
+  let next = command
+  while (PNPM_SCOPE_FLAG_REGEX.test(next)) {
+    const updated = next.replace(PNPM_SCOPE_FLAG_REGEX, '')
+    if (updated === next) break
+    next = updated.replace(/\s+/g, ' ').trim()
+  }
+
+  return next
+}
+
+function stripKnownScopeFlags(command: string): string {
+  let normalized = command
+
+  if (normalized.startsWith('vp ')) {
+    normalized = stripVpScopeFlags(normalized)
+  } else if (normalized.startsWith('pnpm ')) {
+    normalized = stripPnPmScopeFlags(normalized)
+  }
+
+  return normalized
 }
 
 /**
@@ -399,6 +439,11 @@ export function getCommandVariants(command: string): string[] {
     const strippedVpVariant = stripVpScopeFlags(variant)
     if (strippedVpVariant !== variant && !variants.includes(strippedVpVariant)) {
       variants.push(strippedVpVariant)
+    }
+
+    const strippedCommandVariant = stripKnownScopeFlags(variant)
+    if (strippedCommandVariant !== variant && !variants.includes(strippedCommandVariant)) {
+      variants.push(strippedCommandVariant)
     }
   }
 

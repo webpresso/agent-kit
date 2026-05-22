@@ -58,14 +58,14 @@ function makeFetchNetworkError(message = 'ECONNREFUSED'): ReturnType<typeof vi.f
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 // ---------------------------------------------------------------------------
-// AK_BLUEPRINT_PLATFORM_DISABLED env management
+// WP_BLUEPRINT_PLATFORM_DISABLED env management
 // ---------------------------------------------------------------------------
 
 function setDisabled(val: '1' | undefined): void {
   if (val === undefined) {
-    delete process.env['AK_BLUEPRINT_PLATFORM_DISABLED']
+    delete process.env['WP_BLUEPRINT_PLATFORM_DISABLED']
   } else {
-    process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] = val
+    process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = val
   }
 }
 
@@ -239,10 +239,10 @@ describe('BlueprintSyncClient', () => {
   })
 
   // -------------------------------------------------------------------------
-  // AK_BLUEPRINT_PLATFORM_DISABLED=1
+  // WP_BLUEPRINT_PLATFORM_DISABLED=1
   // -------------------------------------------------------------------------
 
-  describe('disabled mode (AK_BLUEPRINT_PLATFORM_DISABLED=1)', () => {
+  describe('disabled mode (WP_BLUEPRINT_PLATFORM_DISABLED=1)', () => {
     beforeEach(() => {
       setDisabled('1')
     })

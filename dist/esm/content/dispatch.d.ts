@@ -1,8 +1,8 @@
 /**
- * Shared CLI dispatch for `ak rule` and `ak skill` subcommands.
+ * Shared CLI dispatch for `wp rule` and `wp skill` subcommands.
  *
  * Subcommands handled here are kind-agnostic — `new | list | show |
- * deprecate`. Per-kind additions (e.g. `ak skill install`) are implemented
+ * deprecate`. Per-kind additions (e.g. `wp skill install`) are implemented
  * in the thin command shims, not here.
  */
 import { type ContentKind, type ContentSource } from './loader.js';

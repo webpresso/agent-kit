@@ -12,7 +12,7 @@ let tmpDir: string
 beforeEach(async () => {
   tmpDir = path.join(
     os.tmpdir(),
-    `ak-audit-hooks-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    `wp-audit-hooks-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   )
   await mkdir(tmpDir, { recursive: true })
 })
@@ -62,11 +62,11 @@ describe('scaffoldAuditHooks', () => {
   })
 
   it('is idempotent on a file that had the old dead verbs — does not add them again', async () => {
-    // Existing hooks may still have old lines from previous ak setup runs
+    // Existing hooks may still have old lines from previous wp setup runs
     await mkdir(path.join(tmpDir, '.husky'), { recursive: true })
     await writeFile(
       preCommitPath(tmpDir),
-      '#!/bin/sh\n# agent-kit audit hooks (staged mode — fast)\nak audit skill-sizes --staged\nak audit broken-refs --staged\n',
+      '#!/bin/sh\n# agent-kit audit hooks (staged mode — fast)\nwp audit skill-sizes --staged\nwp audit broken-refs --staged\n',
       'utf8',
     )
 

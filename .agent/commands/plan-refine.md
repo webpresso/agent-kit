@@ -80,7 +80,7 @@ Expected edits commonly include:
 Run the blueprint parser check:
 
 ```bash
-ak blueprint show <slug>
+wp blueprint show <slug>
 ```
 
 If the refinement changes markdown structure enough to warrant a lint pass, also run your repo's markdown linter against `blueprints/*/<slug>/_overview.md` (for example, `just lint-md` with webpresso's just recipes).

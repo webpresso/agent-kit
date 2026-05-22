@@ -1,5 +1,5 @@
 /**
- * `ak hooks doctor` — post-install plugin health verification.
+ * `wp hooks doctor` — post-install plugin health verification.
  *
  * Verifies the agent-kit plugin installation is healthy:
  * - all hook bins exist

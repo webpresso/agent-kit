@@ -43,9 +43,9 @@ afterEach(() => {
   spawnMock.mockReset()
 })
 
-describe('ak_lint tool', () => {
+describe('wp_lint tool', () => {
   it('exposes the expected descriptor surface', () => {
-    expect(akLintTool.name).toBe('ak_lint')
+    expect(akLintTool.name).toBe('wp_lint')
     expect(typeof akLintTool.description).toBe('string')
     expect(akLintTool.handler).toBeTypeOf('function')
   })

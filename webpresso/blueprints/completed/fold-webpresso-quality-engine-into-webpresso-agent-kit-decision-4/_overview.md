@@ -16,8 +16,8 @@ tags: [extraction, hard-cut, decision-4, fold]
 ## Product wedge anchor
 
 - **Stage outcome:** Decision 4 of [`webpresso-public-extraction-roadmap`](../../../monorepo/webpresso/blueprints/completed/webpresso-public-extraction-roadmap/_overview.md) — "agent-kit + audit harness" brand wedge: one install, one CLI, one mental model. Also unblocks archiving `webpresso/quality-engine` on GitHub.
-- **Consuming surface:** `ak audit mutation` / `ak audit quality` (already exposed by `agent-kit/src/cli/commands/audit.ts:89,91`) + new agent-kit subpath exports `@webpresso/agent-kit/quality-engine` and six leaf subpaths consumed by `monorepo/apps/{cli2,scripts,cli-wp}`.
-- **New user-visible capability:** After this lands, `pnpm add -D @webpresso/agent-kit` is sufficient for the entire audit/mutation/quality story. No second sibling-package install. The agent-kit README's "what changes after `ak setup`" earns the credibility signal that every audit lives in the same package as `ak`.
+- **Consuming surface:** `wp audit mutation` / `wp audit quality` (already exposed by `agent-kit/src/cli/commands/audit.ts:89,91`) + new agent-kit subpath exports `@webpresso/agent-kit/quality-engine` and six leaf subpaths consumed by `monorepo/apps/{cli2,scripts,cli-wp}`.
+- **New user-visible capability:** After this lands, `pnpm add -D @webpresso/agent-kit` is sufficient for the entire audit/mutation/quality story. No second sibling-package install. The agent-kit README's "what changes after `wp setup`" earns the credibility signal that every audit lives in the same package as `wk`.
 
 ## Architecture Overview
 
@@ -173,14 +173,14 @@ This is a pure relocation. The "RED then GREEN" loop is misleading here — the 
 
 1. Copy each module + its test sibling **together** (matched pair) into `agent-kit/src/quality-engine/`.
 2. Inspect copied test imports: every `import` in a copied test file must reference **local relative paths** (`./target-resolver`, `../quality-engine/foo`, etc.) — NOT `'@webpresso/quality-engine'`. If any test still imports the old package name, the test would pass for the wrong reason (resolving against the still-present sibling package). Fix imports as part of the copy.
-3. `ak_test --file 'agent-kit/src/quality-engine/**/*.test.ts'` — expect **GREEN immediately**. Relocations don't have a RED phase.
+3. `wp_test --file 'agent-kit/src/quality-engine/**/*.test.ts'` — expect **GREEN immediately**. Relocations don't have a RED phase.
 4. If RED: the copy is wrong (typo, missing module, broken import path). Surface and re-copy.
-5. `ak_lint --package agent-kit` — confirm zero violations under the agent-kit linter (oxlint config may differ from quality-engine).
+5. `wp_lint --package agent-kit` — confirm zero violations under the agent-kit linter (oxlint config may differ from quality-engine).
 
 **Acceptance:**
 - [ ] All 6 modules + their tests exist under `agent-kit/src/quality-engine/`.
-- [ ] `ak_test --package agent-kit` passes.
-- [ ] `ak_lint --package agent-kit` passes.
+- [ ] `wp_test --package agent-kit` passes.
+- [ ] `wp_lint --package agent-kit` passes.
 - [ ] No `../../` parent imports introduced.
 - [ ] No new top-level deps unless they were already in `agent-kit/package.json` (audit before adding).
 
@@ -222,7 +222,7 @@ Difference must be empty (modulo blank lines).
 
 **Steps (TDD):**
 1. Add an isolation test: `agent-kit/src/quality-engine/export-isolation.test.ts` that asserts every public subpath imports clean.
-2. `ak_test --file agent-kit/src/quality-engine/export-isolation.test.ts` — verify RED (exports not declared yet).
+2. `wp_test --file agent-kit/src/quality-engine/export-isolation.test.ts` — verify RED (exports not declared yet).
 3. Patch `package.json#exports` + `imports`.
 4. Re-run — verify GREEN.
 5. Run `pnpm lint:pkg` (publint / attw) — must pass on the export map.
@@ -306,14 +306,14 @@ Inventory which of these already live in `agent-kit/package.json#devDependencies
 - `@stryker-mutator/typescript-checker`
 - `@stryker-mutator/vitest-runner`
 
-Add only what's missing. Verify `agent-kit/stryker.config.mjs` (or `.config.ts`) targets the new `src/quality-engine/**` files. agent-kit already runs mutation testing via `ak audit mutation` so this is mostly a sanity check, not new wiring.
+Add only what's missing. Verify `agent-kit/stryker.config.mjs` (or `.config.ts`) targets the new `src/quality-engine/**` files. agent-kit already runs mutation testing via `wp audit mutation` so this is mostly a sanity check, not new wiring.
 
 **Files:**
 - Modify: `agent-kit/package.json` (devDeps as needed)
 - Modify: `agent-kit/stryker.config.*` (mutate scope, if needed)
 
 **Acceptance:**
-- [ ] `ak_audit kind:mutation` runs end-to-end on the new modules and reports a baseline mutation score.
+- [ ] `wp_audit kind:mutation` runs end-to-end on the new modules and reports a baseline mutation score.
 - [ ] No `@stryker-mutator/*` left as a transitive-only dep when it's used directly.
 
 #### [agent-kit] Task 1.5: `pnpm pack` + extract + import smoke test (gates PR1 publish)
@@ -494,7 +494,7 @@ Once monorepo no longer consumes the standalone package and CI is green:
 **Depends:** Task 3.1
 
 - `~/repos/CLAUDE.md` — remove `quality-engine/` row from the repo map; remove the "Slated to fold..." sentence.
-- `webpresso/agent-kit/README.md` — add a one-line mention under "What changes after `ak setup`" that the audit/mutation harness lives in agent-kit (no separate package needed).
+- `webpresso/agent-kit/README.md` — add a one-line mention under "What changes after `wp setup`" that the audit/mutation harness lives in agent-kit (no separate package needed).
 - `webpresso/monorepo/webpresso/blueprints/completed/webpresso-public-extraction-roadmap/_overview.md` — change Decision 4 status from "Reverted (planned)" to "Reverted (executed YYYY-MM-DD via blueprints/completed/fold-webpresso-quality-engine-into-webpresso-agent-kit-decision-4)".
 
 > **Do not** hand-edit `webpresso/agent-kit/CHANGELOG.md`. The Changesets Version-Packages PR (driven by the `.changeset/fold-quality-engine-into-agent-kit.md` from Task 1.2) owns CHANGELOG generation. Hand-editing creates a merge conflict with the Version-Packages PR.
@@ -510,13 +510,13 @@ Once monorepo no longer consumes the standalone package and CI is green:
 **Depends:** Task 4.1
 
 ```bash
-ak blueprint move fold-webpresso-quality-engine-into-webpresso-agent-kit-decision-4 completed
-ak audit blueprint-lifecycle --strict
+wp blueprint move fold-webpresso-quality-engine-into-webpresso-agent-kit-decision-4 completed
+wp audit blueprint-lifecycle --strict
 ```
 
 **Acceptance:**
 - [ ] Blueprint sits under `blueprints/completed/`.
-- [ ] `ak audit blueprint-lifecycle --strict` is green.
+- [ ] `wp audit blueprint-lifecycle --strict` is green.
 
 #### [docs] Task 4.3: agent-kit metadata sweep
 
@@ -528,7 +528,7 @@ After the fold lands and quality-engine is archived, sweep agent-kit's package m
 
 **Files:**
 - Modify: `webpresso/agent-kit/package.json` — add `"mutation"`, `"audits"`, `"quality-engine"` to `keywords`.
-- Modify: `webpresso/agent-kit/README.md` — one-line mention under "What changes after `ak setup`" or the Skills/CLI section, e.g. *"Audit + mutation harness ships in-package: `@webpresso/agent-kit/quality-engine` for programmatic access; `ak audit mutation` / `ak audit quality` for the CLI."*
+- Modify: `webpresso/agent-kit/README.md` — one-line mention under "What changes after `wp setup`" or the Skills/CLI section, e.g. *"Audit + mutation harness ships in-package: `@webpresso/agent-kit/quality-engine` for programmatic access; `wp audit mutation` / `wp audit quality` for the CLI."*
 - Verify: `webpresso/agent-kit/package.json#files` allowlist still includes the dist directory that ships `dist/esm/quality-engine/**`. The Task 1.5 smoke test caught any dist gaps; this is a final sanity pass.
 
 **Acceptance:**
@@ -543,11 +543,11 @@ After the fold lands and quality-engine is archived, sweep agent-kit's package m
 | Gate                  | Command                                                         | Success Criteria |
 | --------------------- | --------------------------------------------------------------- | ---------------- |
 | Type safety           | `ak typecheck --package agent-kit`                              | Zero errors |
-| Lint                  | `ak lint --package agent-kit`                                   | Zero violations |
-| Tests (agent-kit)     | `ak test --package agent-kit`                                   | All pass; new `quality-engine/*.test.ts` included |
+| Lint                  | `wp lint --package agent-kit`                                   | Zero violations |
+| Tests (agent-kit)     | `wp test --package agent-kit`                                   | All pass; new `quality-engine/*.test.ts` included |
 | Export integrity      | `pnpm lint:pkg` (publint + attw) in agent-kit                   | Clean export map |
-| Mutation              | `ak audit mutation`                                             | New modules covered; baseline score recorded |
-| Composite             | `ak audit guardrails`                                           | All 8 audits pass (including catalog-drift) |
+| Mutation              | `wp audit mutation`                                             | New modules covered; baseline score recorded |
+| Composite             | `wp audit guardrails`                                           | All 8 audits pass (including catalog-drift) |
 | Monorepo full QA      | `just qa` from monorepo root after Task 2.1                     | All pass |
 | Consumer-grep clean   | `grep -rn '@webpresso/quality-engine' monorepo/`                | Zero non-historical hits |
 | GH archive verified   | `gh repo view webpresso/quality-engine --json isArchived`       | `{"isArchived": true}` |
@@ -572,7 +572,7 @@ After the fold lands and quality-engine is archived, sweep agent-kit's package m
 
 ## Non-goals
 
-- **Re-architecting the audit composite.** `ak audit guardrails` keeps its current 8-audit registry. This blueprint moves modules; it doesn't change what they do.
+- **Re-architecting the audit composite.** `wp audit guardrails` keeps its current 8-audit registry. This blueprint moves modules; it doesn't change what they do.
 - **Changing mutation thresholds.** Same Stryker config surface; same numeric gates.
 - **Adding new quality-engine capabilities.** This is a relocation, not a feature extension.
 - **A transitional re-export shim in `@webpresso/quality-engine@0.3.0`.** Hard cut. Decision 3 used a shim for process-utils/cli-utils; this blueprint deliberately does not.
@@ -583,9 +583,9 @@ After the fold lands and quality-engine is archived, sweep agent-kit's package m
 | Risk | Impact | Mitigation |
 | ---- | ------ | ---------- |
 | Three repos and three PRs land out of order, leaving a window where monorepo can't `pnpm install` cleanly | High (CI red) | See "Release sequencing" subsection. Strict order: PR1 agent-kit minor (Tasks 1.1, 1.2, 1.3, 1.4) → published to GH Packages → PR2 monorepo (Task 2.1, in step order) → merged → PR3 quality-engine deprecation (Task 3.1). No concurrent merges across the chain. |
-| Hidden internal import cycles inside the 6 quality-engine modules that resolve fine standalone but break in agent-kit's resolution graph | Medium | `pnpm lint:pkg` (publint + attw) catches export-shape regressions; `ak audit no-relative-parent-imports` catches `../../` paths. Both run in Task 1.1's acceptance. |
+| Hidden internal import cycles inside the 6 quality-engine modules that resolve fine standalone but break in agent-kit's resolution graph | Medium | `pnpm lint:pkg` (publint + attw) catches export-shape regressions; `wp audit no-relative-parent-imports` catches `../../` paths. Both run in Task 1.1's acceptance. |
 | `@stryker-mutator/*` version drift between agent-kit and quality-engine | Low | Pin to whatever agent-kit already uses; quality-engine's deps are devDeps only. |
-| Loss of the per-package mutation history tracked under `webpresso/quality-engine/reports/mutation/` | Low (reports are reproducible) | Reports regenerate on next `ak audit mutation`. |
+| Loss of the per-package mutation history tracked under `webpresso/quality-engine/reports/mutation/` | Low (reports are reproducible) | Reports regenerate on next `wp audit mutation`. |
 | `npm deprecate` + `gh repo archive` happen before the `pnpm install` lockfile refresh propagates everywhere | Medium | Verify `grep -rn '@webpresso/quality-engine' monorepo/pnpm-lock.yaml` returns no resolution entries (only historical lock blocks if any) before Task 3.1. |
 
 ## Technology Choices

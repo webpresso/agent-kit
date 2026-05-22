@@ -19,7 +19,7 @@
  *   - No platform-canonical sync.
  *
  * Consumers: `assembleBlueprintContext` (this task) and Task 2.2's MCP
- * handlers (`ak_blueprint_list`, `_get`, `_context`).
+ * handlers (`wp_blueprint_list`, `_get`, `_context`).
  */
 import { type NextAction } from './next-action.js';
 /**

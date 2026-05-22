@@ -23,7 +23,7 @@ describe('consumer layout root resolution', () => {
   }
 
   it('defaults fresh generic agent-kit repos to top-level blueprints and tech-debt', async () => {
-    const root = await tempRoot('ak-generic-root-')
+    const root = await tempRoot('wp-generic-root-')
     writeFileSync(path.join(root, 'package.json'), '{"name":"consumer"}')
 
     expect(resolveBlueprintRoot(root)).toBe(path.join(root, 'blueprints'))
@@ -31,7 +31,7 @@ describe('consumer layout root resolution', () => {
   })
 
   it('keeps Webpresso fallback when the legacy sentinel is present', async () => {
-    const root = await tempRoot('ak-webpresso-root-')
+    const root = await tempRoot('wp-webpresso-root-')
     mkdirSync(path.join(root, 'webpresso'), { recursive: true })
     writeFileSync(path.join(root, 'webpresso', 'config.yaml'), 'project:\n  name: webpresso\n')
     writeFileSync(path.join(root, 'package.json'), '{"name":"webpresso"}')
@@ -41,7 +41,7 @@ describe('consumer layout root resolution', () => {
   })
 
   it('prefers existing generic directories over legacy directories in consumer repos', async () => {
-    const root = await tempRoot('ak-existing-generic-root-')
+    const root = await tempRoot('wp-existing-generic-root-')
     mkdirSync(path.join(root, 'blueprints'), { recursive: true })
     mkdirSync(path.join(root, 'webpresso', 'blueprints'), { recursive: true })
     mkdirSync(path.join(root, 'tech-debt'), { recursive: true })
@@ -52,7 +52,7 @@ describe('consumer layout root resolution', () => {
   })
 
   it('prefers Webpresso directories when both layouts exist in a Webpresso repo', async () => {
-    const root = await tempRoot('ak-webpresso-both-root-')
+    const root = await tempRoot('wp-webpresso-both-root-')
     mkdirSync(path.join(root, 'blueprints'), { recursive: true })
     mkdirSync(path.join(root, 'webpresso', 'blueprints'), { recursive: true })
     mkdirSync(path.join(root, 'tech-debt'), { recursive: true })
@@ -65,7 +65,7 @@ describe('consumer layout root resolution', () => {
   })
 
   it('uses blueprintsDir from .agent-kitrc.json as highest-priority override', async () => {
-    const root = await tempRoot('ak-config-override-')
+    const root = await tempRoot('wp-config-override-')
     writeFileSync(path.join(root, 'package.json'), '{"name":"consumer"}')
     writeFileSync(path.join(root, '.agent-kitrc.json'), JSON.stringify({ blueprintsDir: 'plans' }))
 
@@ -73,7 +73,7 @@ describe('consumer layout root resolution', () => {
   })
 
   it('config override takes priority over an existing webpresso/blueprints directory', async () => {
-    const root = await tempRoot('ak-config-override-webpresso-')
+    const root = await tempRoot('wp-config-override-webpresso-')
     mkdirSync(path.join(root, 'webpresso', 'blueprints'), { recursive: true })
     writeFileSync(path.join(root, 'webpresso', 'config.yaml'), 'project:\n  name: webpresso\n')
     writeFileSync(path.join(root, 'package.json'), '{"name":"webpresso"}')

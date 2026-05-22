@@ -34,15 +34,15 @@ describe('formatUnknownCommandError', () => {
   it('suggests a single close match when one is found', () => {
     const message = formatUnknownCommandError('blueprintz', COMMANDS)
     expect(message).toContain('Unknown command: blueprintz')
-    expect(message).toContain('Did you mean: ak blueprint?')
-    expect(message).toContain('Run ak --help')
+    expect(message).toContain('Did you mean: wp blueprint?')
+    expect(message).toContain('Run wp --help')
   })
 
   it('returns a no-suggestions message when nothing is close', () => {
     const message = formatUnknownCommandError('xyzqqq', COMMANDS)
     expect(message).toContain('Unknown command: xyzqqq')
     expect(message).not.toContain('Did you mean')
-    expect(message).toContain('Run ak --help')
+    expect(message).toContain('Run wp --help')
   })
 
   it('honours a custom bin name', () => {
@@ -76,7 +76,7 @@ describe('findProjectRoot', () => {
   })
 
   it('finds a generic package.json project root from a nested directory', async () => {
-    const root = await tempRoot('ak-root-package-')
+    const root = await tempRoot('wp-root-package-')
     writeFileSync(path.join(root, 'package.json'), '{"name":"consumer"}')
     const nested = path.join(root, 'packages', 'tool', 'src')
     mkdirSync(nested, { recursive: true })
@@ -85,7 +85,7 @@ describe('findProjectRoot', () => {
   })
 
   it('keeps webpresso/config.yaml as a fallback root marker', async () => {
-    const root = await tempRoot('ak-root-webpresso-')
+    const root = await tempRoot('wp-root-webpresso-')
     mkdirSync(path.join(root, 'webpresso'), { recursive: true })
     writeFileSync(path.join(root, 'webpresso', 'config.yaml'), 'project:\n  name: webpresso\n')
     const nested = path.join(root, 'webpresso', 'blueprints')

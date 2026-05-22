@@ -1,6 +1,6 @@
 # webpresso
 
-> One command turns a repo into a shared workspace for AI coding agents: Claude Code, Codex CLI, Cursor, Windsurf, Gemini, and OpenCode get the same instructions, skills, hooks, planning files, and quality gates. Edit canonical `.agent/` content once; `ak sync` propagates it everywhere. MIT. Experimental (v0.x).
+> One command turns a repo into a shared workspace for AI coding agents: Claude Code, Codex CLI, Cursor, Windsurf, Gemini, and OpenCode get the same instructions, skills, hooks, planning files, and quality gates. Edit canonical `.agent/` content once; `wp sync` propagates it everywhere. MIT. Experimental (v0.x).
 
 ## What problem does this solve?
 
@@ -11,7 +11,7 @@ then diverge across Claude Code, Codex, Cursor, Windsurf, Gemini, OpenCode, and
 local CI.
 
 Agent-kit packages that operating layer. The published package is
-`@webpresso/agent-kit`; it exposes the `wp`, `webpresso`, and `ak` CLI aliases
+`@webpresso/agent-kit`; it exposes the `wp`, `webpresso`, and `wp` CLI aliases
 that scaffold, sync, audit, and refresh the surfaces each tool expects.
 
 ## What does webpresso do?
@@ -23,7 +23,7 @@ that scaffold, sync, audit, and refresh the surfaces each tool expects.
   and `.agents/`.
 - Installs or refreshes companion workflow tools that stay owned by their own
   projects, then wires them into the repo where appropriate.
-- Provides `ak_*` MCP tools and `wp` / `ak` CLI commands for tests, lint,
+- Provides `wp_*` MCP tools and `wp` / `wp` CLI commands for tests, lint,
   typecheck, E2E, audits, blueprints, skills, and tech-debt lifecycle work.
 
 ## Companion tools and links
@@ -43,7 +43,7 @@ opt-in.
 ## Requires bun
 
 webpresso CLI bins ship as TypeScript source with `#!/usr/bin/env bun`. Install
-bun globally before running `wp`, `webpresso`, or `ak`:
+bun globally before running `wp`, `webpresso`, or `wp`:
 
 ```bash
 curl -fsSL https://bun.sh/install | bash
@@ -111,7 +111,7 @@ Requires Node `>=24` and bun on the machine that runs the CLI or Claude Code plu
 
 ## context-mode is now opt-in
 
-`wp setup` / `ak setup` no longer wires `context-mode` by default. This keeps the
+`wp setup` / `wp setup` no longer wires `context-mode` by default. This keeps the
 default setup MIT-only and lets consumers avoid the ELv2 plugin unless they
 explicitly need the `ctx_*` tools.
 
@@ -127,13 +127,13 @@ Migration details:
 - The longer-horizon MIT replacement work remains tracked separately under the
   session-memory blueprints.
 
-## What changes after `ak setup`
+## What changes after `wp setup`
 
 ### 1. Multi-IDE rule sync — no more drift
 
 | Before | After |
 | --- | --- |
-| Edit `.cursor/rules/foo.md`. Then `.claude/skills/foo/SKILL.md`. Then `.gemini/commands/foo.toml`. Then `.windsurf/rules/foo.md`. Four files for one rule. They drift. | Edit `.agent/skills/foo/SKILL.md` once. `ak sync` propagates to every IDE surface. `ak audit catalog-drift` fails CI if anything diverges. |
+| Edit `.cursor/rules/foo.md`. Then `.claude/skills/foo/SKILL.md`. Then `.gemini/commands/foo.toml`. Then `.windsurf/rules/foo.md`. Four files for one rule. They drift. | Edit `.agent/skills/foo/SKILL.md` once. `wp sync` propagates to every IDE surface. `wp audit catalog-drift` fails CI if anything diverges. |
 
 ### 2. Repo bootstrap — one command, idempotent
 
@@ -146,7 +146,7 @@ Migration details:
 wp setup
 ```
 
-`wp setup` (alias: `ak setup`) is re-runnable. Existing divergent files are left untouched and reported as drift; `--overwrite` replaces them. Hooks are patched additively into `.claude/settings.json` and `.codex/hooks.json` — your custom hooks survive. Setup also repairs the managed `.gitignore` block so regenerated `.codex/`, `.omx/`, `.agent/`, and IDE projection outputs stay out of Git.
+`wp setup` (alias: `wp setup`) is re-runnable. Existing divergent files are left untouched and reported as drift; `--overwrite` replaces them. Hooks are patched additively into `.claude/settings.json` and `.codex/hooks.json` — your custom hooks survive. Setup also repairs the managed `.gitignore` block so regenerated `.codex/`, `.omx/`, `.agent/`, and IDE projection outputs stay out of Git.
 
 ### 3. Implementation plans that don't rot
 
@@ -172,13 +172,13 @@ Reversibility: clean
 Tested: tests/auth/session-drop.test.ts
 ```
 
-Required trailers: `Confidence:` (`low|medium|high`) and at least one of `Constraint:` / `Rejected:` / `Directive:`. Audit-gated by `ak audit commit-message --require-lore`. Soft-adoption with `--lore-warn`.
-
+Required trailers: `Confidence:` (`low|medium|high`) and at least one of `Constraint:` / `Rejected:` / `Directive:`. Audit-gated by `wp audit commit-message --require-lore`. Soft-adoption with `--lore-warn`.
+wp_wp_wp_wp_wp_wp_wp_
 ### 5. Tech-debt that gets reviewed, not buried
 
 | Before | After |
 | --- | --- |
-| 47 `TODO` comments, no owner, no triage, no review cadence. | `ak tech-debt new --severity high --category complexity` creates `tech-debt/<status>/h-NNN-slug.md` with a status (`accepted` / `needs-remediation` / `monitoring` / `resolved`) and a review cadence. `ak audit tech-debt` keeps the inventory honest. |
+| 47 `TODO` comments, no owner, no triage, no review cadence. | `wp tech-debt new --severity high --category complexity` creates `tech-debt/<status>/h-NNN-slug.md` with a status (`accepted` / `needs-remediation` / `monitoring` / `resolved`) and a review cadence. `wp audit tech-debt` keeps the inventory honest. |
 
 ### 6. One audit gate, every check
 
@@ -193,7 +193,7 @@ wp audit guardrails
 
 Add a new audit kind to `REPO_AUDIT_REGISTRY` and it propagates to all three call sites — pre-commit, CI, ship gate — automatically.
 
-Audit + mutation harness ships in-package: `@webpresso/agent-kit/quality-engine` for programmatic access; `ak audit mutation` / `ak audit quality` for the CLI.
+Audit + mutation harness ships in-package: `@webpresso/agent-kit/quality-engine` for programmatic access; `wp audit mutation` / `wp audit quality` for the CLI.
 
 ## Install paths
 
@@ -206,7 +206,7 @@ Two paths exist because Codex CLI doesn't ship a plugin marketplace yet ([config
 /plugin install agent-kit@agent-kit
 ```
 
-You get: hooks (PreToolUse, PostToolUse, Stop, SessionStart), the `ak` MCP server with seven tools (`ak_test`, `ak_e2e`, `ak_lint`, `ak_typecheck`, `ak_qa`, `ak_audit`, `ak_blueprint`), slash commands, and the skills catalog. Pin to release tags — `main` does not ship `dist/`. Hot-reload from source: see [CONTRIBUTING.md](./CONTRIBUTING.md#edge-local-plugin-link-hot-reload-hooks-from-source).
+You get: hooks (PreToolUse, PostToolUse, Stop, SessionStart), the `wp` MCP server with seven tools (`wp_test`, `wp_e2e`, `wp_lint`, `wp_typecheck`, `wp_qa`, `wp_audit`, `wp_blueprint`), slash commands, and the skills catalog. Pin to release tags — `main` does not ship `dist/`. Hot-reload from source: see [CONTRIBUTING.md](./CONTRIBUTING.md#edge-local-plugin-link-hot-reload-hooks-from-source).
 
 ### Path B — global install + `wp setup`
 
@@ -217,7 +217,7 @@ wp setup
 
 Required for Codex CLI, OpenCode, Cursor, Gemini, and any IDE without a plugin marketplace. Same hooks, scaffolded into `.claude/settings.json` AND `.codex/hooks.json`. Library imports (`defineAgentKitConfig`, `createAkTestCommandConfig`) flow through this path too.
 
-If the `claude` CLI is on PATH, `wp setup` / `ak setup` now also attempts to ensure the **Claude Code user-scope marketplace + plugin** automatically:
+If the `claude` CLI is on PATH, `wp setup` / `wp setup` now also attempts to ensure the **Claude Code user-scope marketplace + plugin** automatically:
 
 ```bash
 claude plugin marketplace add --scope user <agent-kit-package-root>
@@ -225,91 +225,91 @@ claude plugin install --scope user agent-kit@agent-kit
 claude plugin update --scope user agent-kit@agent-kit
 ```
 
-That means one `wp setup` run can wire Codex's global MCP entry, Claude Code's user-global agent-kit plugin state, OMX, and OMC. Agent-kit uses OMC's Claude Code plugin marketplace path: when `claude` is on `PATH`, setup runs `claude plugin marketplace add --scope user https://github.com/Yeachan-Heo/oh-my-claudecode` and `claude plugin install --scope user oh-my-claudecode`; `wp setup --project` requests project-scoped OMX/OMC instead. Set `AK_SKIP_CLAUDE_PLUGIN=1` or `AK_SKIP_OMC=1` to opt out. See [`docs/getting-started.md`](./docs/getting-started.md) for the full setup matrix and [`docs/presets.md`](./docs/presets.md) for `--with` presets (`omx`, `omc`, `gstack`, `context-mode`, `playwright-mcp`, `vision`, `lore-commits`, `rtk`, `base-kit`).
+That means one `wp setup` run can wire Codex's global MCP entry, Claude Code's user-global agent-kit plugin state, OMX, and OMC. Agent-kit uses OMC's Claude Code plugin marketplace path: when `claude` is on `PATH`, setup runs `claude plugin marketplace add --scope user https://github.com/Yeachan-Heo/oh-my-claudecode` and `claude plugin install --scope user oh-my-claudecode`; `wp setup --project` requests project-scoped OMX/OMC instead. Set `WP_SKIP_CLAUDE_PLUGIN=1` or `WP_SKIP_OMC=1` to opt out. See [`docs/getting-started.md`](./docs/getting-started.md) for the full setup matrix and [`docs/presets.md`](./docs/presets.md) for `--with` presets (`omx`, `omc`, `gstack`, `context-mode`, `playwright-mcp`, `vision`, `lore-commits`, `rtk`, `base-kit`).
 
-> **Pinned-version devDependency:** `vp install -D @webpresso/agent-kit && vp exec wp setup`. `ak` is a working alias for all `wp` commands.
+> **Pinned-version devDependency:** `vp install -D @webpresso/agent-kit && vp exec wp setup`. `wp` is a working alias for all `wp` commands.
 
 ## IDE support matrix
 
 | IDE | Skills surface | Setup path |
 | --- | --- | --- |
 | Claude Code | `.claude/skills/` | Path A (plugin marketplace) |
-| Codex CLI | `.agents/skills/` + `.codex/hooks.json` | Path B (`ak setup`) |
-| OpenCode | `.agents/skills/` + `.claude/skills/` | Path B (`ak setup`) |
-| Cursor / Windsurf | `.cursor/skills/` / `.windsurf/skills/` | Path B (`ak setup`) |
-| Gemini CLI | `.gemini/commands/*.toml` (TOML transform) | Path B (`ak setup`) |
+| Codex CLI | `.agents/skills/` + `.codex/hooks.json` | Path B (`wp setup`) |
+| OpenCode | `.agents/skills/` + `.claude/skills/` | Path B (`wp setup`) |
+| Cursor / Windsurf | `.cursor/skills/` / `.windsurf/skills/` | Path B (`wp setup`) |
+| Gemini CLI | `.gemini/commands/*.toml` (TOML transform) | Path B (`wp setup`) |
 
-## `wp` / `ak` CLI reference
+## `wp` / `wp` CLI reference
 
-`wp` is the primary bin alias. `webpresso` and `ak` are working aliases for all commands.
+`wp` is the primary bin alias. `webpresso` and `wp` are working aliases for all commands.
 
 | Command | What it does |
 | --- | --- |
-| `ak setup` | Scaffold every IDE surface, install presets, idempotent |
-| `ak setup --with <preset>` | Comma-separated presets: `omx`, `omc`, `gstack`, `context-mode`, `playwright-mcp`, `lore-commits`, `vision`, `rtk`, `base-kit` |
-| `ak sync` | Propagate canonical `.agent/` rules + skills to every IDE surface (`--check` for drift, no writes) |
-| `ak blueprint new "<goal>" --complexity M` | Create a new blueprint under `blueprints/draft/` |
-| `ak blueprint audit --all --strict` | Audit blueprint lifecycle states |
-| `ak blueprint list` / `ak roadmap list` | List blueprints / parent roadmaps |
-| `ak blueprint db build` | Cold-start rebuild of the SQLite projection from markdown |
-| `ak blueprint db query <template>` | Run a pre-registered query (e.g. `next-ready-task`) |
-| `ak blueprint db verify` | Check the SQLite DB matches markdown on disk |
-| `ak blueprint db browse` | Open Datasette UI (requires `pip install datasette`) |
-| `ak blueprint export --format spec-kit <slug>` | Export a blueprint to spec-kit 4-file format |
-| `ak tech-debt new --severity <s> --category <c>` | Create a tech-debt record with lifecycle status |
-| `ak tech-debt new --from-audit <audit-name>` | Auto-file audit findings as tech-debt items |
-| `ak worktree new [branch] [--name <name>] [--prefix <prefix>]` | Create a git worktree and seed `.agent/`; no branch auto-generates `agent/<timestamp>-<suffix>` |
-| `ak worktree list` / `ak worktree remove <branch-or-path>` | List or remove worktrees (resolves by branch, basename, or path) |
-| `ak skill list` / `ak skill install <name>` | Browse and install catalog skills into the active IDE surfaces |
-| `ak audit guardrails` | Composite audit (8 checks) — wired into pre-commit, CI, ship gate |
-| `ak audit quality` | `guardrails` + Stryker mutation testing |
-| `ak audit commit-message --require-lore` | Enforce Lore trailers on commit messages |
-| `ak audit bundle-budget <dir> --max-js-asset-bytes 512000` | Vite bundle budget guard |
-| `ak audit vision` | Enforce `VISION.md` structure (frontmatter, ≤100 lines, ≤1500 words, required sections) |
-| `ak audit skill-sizes` | Check that skill files don't exceed size budget |
-| `ak audit broken-refs` | Detect dead links and missing file references in agent surfaces |
-| `ak audit memory-rotation` | Verify memory files are rotated per retention policy |
-| `ak audit gitignore-agent-surfaces` | Check that generated IDE surfaces are gitignored |
-| `ak audit memory-unified` | Unified memory consistency check across IDE surfaces |
-| `ak audit compile-drift` | Detect drift between `.agent/` source and compiled IDE outputs |
-| `ak skills orphans --fix` | List (and optionally remove) stale IDE skill outputs with no `.agent/` source |
-| `ak compile` | Compile `.agent/` to all 6 IDE surfaces (wraps rulesync) |
-| `ak test`, `ak e2e`, `ak lint`, `ak typecheck`, `ak format` | Portable command surface — same flags work in every consumer repo |
-| `ak err <cmd>` | Run a command and print only failure-looking lines |
-| `ak hooks doctor` | Verify hook bins are installed, executable, MCP reachable |
-| `ak doctor` | Repo audit health check with remediation hints |
-| `ak mcp` | Run the agent-kit MCP server over stdio |
-| `ak docs lint <file>` | Lint a research or blueprint doc |
+| `wp setup` | Scaffold every IDE surface, install presets, idempotent |
+| `wp setup --with <preset>` | Comma-separated presets: `omx`, `omc`, `gstack`, `context-mode`, `playwright-mcp`, `lore-commits`, `vision`, `rtk`, `base-kit` |
+| `wp sync` | Propagate canonical `.agent/` rules + skills to every IDE surface (`--check` for drift, no writes) |
+| `wp blueprint new "<goal>" --complexity M` | Create a new blueprint under `blueprints/draft/` |
+| `wp blueprint audit --all --strict` | Audit blueprint lifecycle states |
+| `wp blueprint list` / `wp roadmap list` | List blueprints / parent roadmaps |
+| `wp blueprint db build` | Cold-start rebuild of the SQLite projection from markdown |
+| `wp blueprint db query <template>` | Run a pre-registered query (e.g. `next-ready-task`) |
+| `wp blueprint db verify` | Check the SQLite DB matches markdown on disk |
+| `wp blueprint db browse` | Open Datasette UI (requires `pip install datasette`) |
+| `wp blueprint export --format spec-kit <slug>` | Export a blueprint to spec-kit 4-file format |
+| `wp tech-debt new --severity <s> --category <c>` | Create a tech-debt record with lifecycle status |
+| `wp tech-debt new --from-audit <audit-name>` | Auto-file audit findings as tech-debt items |
+| `wp worktree new [branch] [--name <name>] [--prefix <prefix>]` | Create a git worktree and seed `.agent/`; no branch auto-generates `agent/<timestamp>-<suffix>` |
+| `wp worktree list` / `wp worktree remove <branch-or-path>` | List or remove worktrees (resolves by branch, basename, or path) |
+| `wp skill list` / `wp skill install <name>` | Browse and install catalog skills into the active IDE surfaces |
+| `wp audit guardrails` | Composite audit (8 checks) — wired into pre-commit, CI, ship gate |
+| `wp audit quality` | `guardrails` + Stryker mutation testing |
+| `wp audit commit-message --require-lore` | Enforce Lore trailers on commit messages |
+| `wp audit bundle-budget <dir> --max-js-asset-bytes 512000` | Vite bundle budget guard |
+| `wp audit vision` | Enforce `VISION.md` structure (frontmatter, ≤100 lines, ≤1500 words, required sections) |
+| `wp audit skill-sizes` | Check that skill files don't exceed size budget |
+| `wp audit broken-refs` | Detect dead links and missing file references in agent surfaces |
+| `wp audit memory-rotation` | Verify memory files are rotated per retention policy |
+| `wp audit gitignore-agent-surfaces` | Check that generated IDE surfaces are gitignored |
+| `wp audit memory-unified` | Unified memory consistency check across IDE surfaces |
+| `wp audit compile-drift` | Detect drift between `.agent/` source and compiled IDE outputs |
+| `wp skills orphans --fix` | List (and optionally remove) stale IDE skill outputs with no `.agent/` source |
+| `wp compile` | Compile `.agent/` to all 6 IDE surfaces (wraps rulesync) |
+| `wp test`, `wp e2e`, `wp lint`, `wp typecheck`, `wp format` | Portable command surface — same flags work in every consumer repo |
+| `wp err <cmd>` | Run a command and print only failure-looking lines |
+| `wp hooks doctor` | Verify hook bins are installed, executable, MCP reachable |
+| `wp doctor` | Repo audit health check with remediation hints |
+| `wp mcp` | Run the agent-kit MCP server over stdio |
+| `wp docs lint <file>` | Lint a research or blueprint doc |
 
-Run `wp <command> --help` (or `ak <command> --help`) for full flags.
+Run `wp <command> --help` (or `wp <command> --help`) for full flags.
 
 ## Blueprint structured store
 
-`ak blueprint db` gives agents and humans a queryable SQLite view of all blueprints and tech-debt.
+`wp blueprint db` gives agents and humans a queryable SQLite view of all blueprints and tech-debt.
 
 ```bash
-ak blueprint db build           # cold-start rebuild from markdown
-ak blueprint db query next-ready-task   # what should I work on next?
-ak blueprint db verify          # check DB matches markdown on disk
-ak blueprint db browse          # open Datasette UI (requires pip install datasette)
+wp blueprint db build           # cold-start rebuild from markdown
+wp blueprint db query next-ready-task   # what should I work on next?
+wp blueprint db verify          # check DB matches markdown on disk
+wp blueprint db browse          # open Datasette UI (requires pip install datasette)
 ```
 
 Nine pre-registered query templates. See `docs/blueprint-db-cookbook.md`.
 
 Mutation verbs:
 ```bash
-ak blueprint task advance <slug> <task-id> --to in-progress
-ak blueprint promote <slug> planned
-ak blueprint finalize <slug>
-ak blueprint export --format spec-kit <slug>   # export to github/spec-kit format
+wp blueprint task advance <slug> <task-id> --to in-progress
+wp blueprint promote <slug> planned
+wp blueprint finalize <slug>
+wp blueprint export --format spec-kit <slug>   # export to github/spec-kit format
 ```
 
 ### Tech-debt lifecycle
 
 ```bash
-ak tech-debt new --from-audit skill-sizes   # auto-file findings as h-NNN-*.md
-ak tech-debt list
-ak tech-debt review
+wp tech-debt new --from-audit skill-sizes   # auto-file findings as h-NNN-*.md
+wp tech-debt list
+wp tech-debt review
 ```
 
 ## Skills catalog
@@ -318,7 +318,7 @@ ak tech-debt review
 
 `better-auth-best-practices` · `deep-research` · `frontend-design` · `hooks-doctor` · `logging-best-practices` · `lore-protocol` · `monorepo-navigation` · `plan-refine` · `pll` · `react-doctor` · `systematic-debugging` · `tanstack-query` · `tech-debt` · `test-driven-development` · `testing-philosophy` · `vercel-react-best-practices` · `verify` · `web-design-guidelines`
 
-Opinionated baseline, not a registry. Extend with your own under `.agent/skills/` and they ride the same `ak sync` distribution.
+Opinionated baseline, not a registry. Extend with your own under `.agent/skills/` and they ride the same `wp sync` distribution.
 
 ## Non-goals
 
@@ -330,8 +330,8 @@ Opinionated baseline, not a registry. Extend with your own under `.agent/skills/
 ## Design invariants
 
 - **Zero `@webpresso/*` runtime or dev dependencies.** agent-kit is standalone — does not depend on the Webpresso monorepo.
-- **The catalog is canonical.** Consumers run `ak setup` once, then own their copy. Edit the catalog → publish → consumers pull. Don't hand-edit generated `.cursor/`, `.gemini/`, `.codex/` files; `ak audit catalog-drift` will catch it.
-- **Fail loudly, never silently degrade.** If a surface can't be wired, `ak setup` reports it.
+- **The catalog is canonical.** Consumers run `wp setup` once, then own their copy. Edit the catalog → publish → consumers pull. Don't hand-edit generated `.cursor/`, `.gemini/`, `.codex/` files; `wp audit catalog-drift` will catch it.
+- **Fail loudly, never silently degrade.** If a surface can't be wired, `wp setup` reports it.
 
 ## Status
 
@@ -339,12 +339,12 @@ Opinionated baseline, not a registry. Extend with your own under `.agent/skills/
 
 ## Telemetry
 
-`ak setup` can optionally collect anonymous wall-clock timing to help improve the
+`wp setup` can optionally collect anonymous wall-clock timing to help improve the
 developer experience. No PII, no repo identifiers, no file paths are ever collected.
 
-**Off by default** for third-party adopters. Opt in: `AK_TELEMETRY=1 wp setup`.
-**Always on** for internal consumers (`AK_INTERNAL=1`).
-**Always off**: `AK_TELEMETRY=0 wp setup`.
+**Off by default** for third-party adopters. Opt in: `WP_TELEMETRY=1 wp setup`.
+**Always on** for internal consumers (`WP_INTERNAL=1`).
+**Always off**: `WP_TELEMETRY=0 wp setup`.
 
 ## License
 

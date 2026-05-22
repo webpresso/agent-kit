@@ -4,8 +4,8 @@ export const ERR_COMMAND_HELP = [
     'Run a command and print only failure-looking output lines.',
     '',
     'Examples:',
-    '  ak err sh -c \'echo a; echo "ERROR: x"; echo b\'',
-    '  ak err pnpm test',
+    '  wp err sh -c \'echo a; echo "ERROR: x"; echo b\'',
+    '  wp err pnpm test',
 ].join('\n');
 export function registerErrCommand(cli) {
     cli
@@ -17,19 +17,19 @@ export function registerErrCommand(cli) {
 }
 export function runErrCommand(commandParts, deps = {}) {
     if (commandParts.length === 0) {
-        write(deps.stderr ?? process.stderr, 'Usage: ak err <cmd> [...args]\n');
+        write(deps.stderr ?? process.stderr, 'Usage: wp err <cmd> [...args]\n');
         return 1;
     }
     const command = commandParts[0];
     const args = commandParts.slice(1);
     if (!command) {
-        write(deps.stderr ?? process.stderr, 'Usage: ak err <cmd> [...args]\n');
+        write(deps.stderr ?? process.stderr, 'Usage: wp err <cmd> [...args]\n');
         return 1;
     }
     const result = (deps.run ?? defaultRun)(command, args);
     const rawOutput = combineOutput(result.stdout, result.stderr);
     const compact = genericTransform(rawOutput || result.error?.message, {
-        toolName: 'ak_err',
+        toolName: 'wp_err',
         normalizedToolName: 'err',
         persistOverflow: false,
     });

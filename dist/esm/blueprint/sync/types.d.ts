@@ -167,7 +167,7 @@ export interface SnapshotTask {
  * A single entry in the GitHub-hosted blueprint template catalog (Q5).
  *
  * `url` points to the raw markdown source on GitHub from which
- * `ak blueprint new --template <slug>` fetches the scaffold.
+ * `wp blueprint new --template <slug>` fetches the scaffold.
  */
 export interface BlueprintTemplateEntry {
     readonly name: string;

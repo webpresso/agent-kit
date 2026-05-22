@@ -1,5 +1,5 @@
 /**
- * `ak_test` MCP tool.
+ * `wp_test` MCP tool.
  *
  * Routes test execution through the `vp` package-manager facade and returns a
  * summary-first payload with bounded `rawOutput`.
@@ -42,9 +42,9 @@ function summarizeScope(input: AkTestInput): string {
 }
 
 const tool: ToolDescriptor = {
-  name: 'ak_test',
+  name: 'wp_test',
   description:
-    'Run tests via the `vp` package-manager facade. Use `ak_e2e` for suite-aware E2E execution.',
+    'Run tests via the `vp` package-manager facade. Use `wp_e2e` for suite-aware E2E execution.',
   inputSchema,
   outputSchema,
   // Tests SHOULD be deterministic + side-effect-free, but we can't prove it
@@ -68,7 +68,7 @@ const tool: ToolDescriptor = {
       files: input.files,
     })
     const { transform: _transform, ...compact } = applyOutputTransform(result.output, {
-      toolName: 'ak_test',
+      toolName: 'wp_test',
     })
     const payload = {
       passed: result.passed,

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { auditAgents } from './agents.js'
 
 function makeTempDir(): string {
-  return join(tmpdir(), `ak-audit-agents-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+  return join(tmpdir(), `wp-audit-agents-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
 }
 
 function writeJson(path: string, value: unknown): void {
@@ -36,24 +36,24 @@ function seedConsumerRepo(root: string): void {
     worktree: { symlinkDirectories: ['.claude'] },
     hooks: {
       SessionStart: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/ak-sessionstart-routing' }] },
+        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] },
       ],
       PreToolUse: [
         {
           matcher: 'Bash|Write|Edit',
-          hooks: [{ type: 'command', command: './node_modules/.bin/ak-pretool-guard' }],
+          hooks: [{ type: 'command', command: './node_modules/.bin/wp-pretool-guard' }],
         },
       ],
       PostToolUse: [
         {
           matcher: 'Write|Edit',
-          hooks: [{ type: 'command', command: './node_modules/.bin/ak-post-tool' }],
+          hooks: [{ type: 'command', command: './node_modules/.bin/wp-post-tool' }],
         },
       ],
       UserPromptSubmit: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/ak-guard-switch' }] },
+        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-guard-switch' }] },
       ],
-      Stop: [{ hooks: [{ type: 'command', command: './node_modules/.bin/ak-stop-qa' }] }],
+      Stop: [{ hooks: [{ type: 'command', command: './node_modules/.bin/wp-stop-qa' }] }],
     },
   })
   // Canonical Codex schema is wrapped under "hooks" — matches what the
@@ -61,24 +61,24 @@ function seedConsumerRepo(root: string): void {
   writeJson(join(root, '.codex', 'hooks.json'), {
     hooks: {
       SessionStart: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/ak-sessionstart-routing' }] },
+        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] },
       ],
       PreToolUse: [
         {
           matcher: 'Bash|Edit|Write',
-          hooks: [{ type: 'command', command: './node_modules/.bin/ak-pretool-guard' }],
+          hooks: [{ type: 'command', command: './node_modules/.bin/wp-pretool-guard' }],
         },
       ],
       PostToolUse: [
         {
           matcher: 'Edit|Write',
-          hooks: [{ type: 'command', command: './node_modules/.bin/ak-post-tool' }],
+          hooks: [{ type: 'command', command: './node_modules/.bin/wp-post-tool' }],
         },
       ],
       UserPromptSubmit: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/ak-guard-switch' }] },
+        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-guard-switch' }] },
       ],
-      Stop: [{ hooks: [{ type: 'command', command: './node_modules/.bin/ak-stop-qa' }] }],
+      Stop: [{ hooks: [{ type: 'command', command: './node_modules/.bin/wp-stop-qa' }] }],
     },
   })
 
@@ -148,7 +148,7 @@ describe('auditAgents', () => {
     seedConsumerRepo(root)
     writeJson(join(root, 'package.json'), {
       name: 'consumer-app',
-      scripts: { 'setup:agent': 'vp exec ak setup' },
+      scripts: { 'setup:agent': 'vp exec wp setup' },
       devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
     })
 
@@ -187,7 +187,7 @@ describe('auditAgents', () => {
     // Remove the devDep — this is what globalInstall repos look like
     writeJson(join(root, 'package.json'), {
       name: 'consumer-app',
-      scripts: { 'setup:agent': 'ak setup' },
+      scripts: { 'setup:agent': 'wp setup' },
       devDependencies: {},
     })
     writeJson(join(root, '.agent-kitrc.json'), {
@@ -207,7 +207,7 @@ describe('auditAgents', () => {
     seedConsumerRepo(root)
     writeJson(join(root, 'package.json'), {
       name: 'consumer-app',
-      scripts: { 'setup:agent': 'ak setup' },
+      scripts: { 'setup:agent': 'wp setup' },
       devDependencies: {},
     })
 
@@ -225,24 +225,24 @@ describe('auditAgents', () => {
     writeJson(join(root, 'package.json'), { name: '@webpresso/agent-kit' })
     writeJson(join(root, '.codex', 'hooks.json'), {
       SessionStart: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/ak-sessionstart-routing' }] },
+        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] },
       ],
       PreToolUse: [
         {
           matcher: 'Bash|Edit|Write',
-          hooks: [{ type: 'command', command: './node_modules/.bin/ak-pretool-guard' }],
+          hooks: [{ type: 'command', command: './node_modules/.bin/wp-pretool-guard' }],
         },
       ],
       PostToolUse: [
         {
           matcher: 'Edit|Write',
-          hooks: [{ type: 'command', command: './node_modules/.bin/ak-post-tool' }],
+          hooks: [{ type: 'command', command: './node_modules/.bin/wp-post-tool' }],
         },
       ],
       UserPromptSubmit: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/ak-guard-switch' }] },
+        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-guard-switch' }] },
       ],
-      Stop: [{ hooks: [{ type: 'command', command: './node_modules/.bin/ak-stop-qa' }] }],
+      Stop: [{ hooks: [{ type: 'command', command: './node_modules/.bin/wp-stop-qa' }] }],
     })
     writeFileSync(join(root, '.agent', 'rules', 'repo-restrictions.md'), '# rule\n')
     symlinkSync(

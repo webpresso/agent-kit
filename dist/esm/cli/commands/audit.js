@@ -1,5 +1,5 @@
 /**
- * `ak audit <kind>` — packaged repository audits.
+ * `wp audit <kind>` — packaged repository audits.
  *
  * CAC shell: maps AuditOutcome → console output + process.exit.
  * All dispatch logic lives in audit-core.ts (no process.exit there).
@@ -204,7 +204,7 @@ export function registerAuditCommand(cli) {
         });
         switch (outcome.kind) {
             case 'invalid-usage': {
-                console.error(kind ? outcome.message : `Usage: ak audit <kind> [target]\nKinds: ${AUDIT_KIND_LIST}`);
+                console.error(kind ? outcome.message : `Usage: wp audit <kind> [target]\nKinds: ${AUDIT_KIND_LIST}`);
                 process.exit(1);
             }
             case 'unknown-kind': {

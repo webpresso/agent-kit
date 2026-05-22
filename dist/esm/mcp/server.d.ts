@@ -1,5 +1,5 @@
 /**
- * `ak mcp` stdio server.
+ * `wp mcp` stdio server.
  *
  * Builds an MCP {@link Server} and auto-registers every tool found under
  * `src/mcp/tools/` (or, post-build, `dist/esm/mcp/tools/`). Adding a new tool
@@ -11,7 +11,7 @@ export interface CreateServerOptions {
     /**
      * Directory to scan for tool descriptors. Defaults to `./tools` relative to
      * this module — i.e. `src/mcp/tools/` in dev and `dist/esm/mcp/tools/` after
-     * `pnpm build`.
+     * `vp run build`.
      */
     toolsDir?: string;
     /**

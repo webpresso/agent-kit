@@ -24,8 +24,8 @@ progress: '4% (1/24 tasks done, 0 blocked, updated 2026-05-11)'
 - **Stage outcome:** agent-kit v1.0 public launch with the "verified execution
   record for AI coding work" wedge (per CEO plan
   `~/.gstack/projects/agent-kit/ceo-plans/2026-05-11-positioning-and-v1-scope.md`).
-- **Consuming surface:** `ak setup` (existing, extended with preflight +
-  version-pinning + lane-4 framing + spinner), `ak blueprint new --template
+- **Consuming surface:** `wp setup` (existing, extended with preflight +
+  version-pinning + lane-4 framing + spinner), `wp blueprint new --template
   <name>` (new flag on existing verb), `pll` skill runtime, MCP server
   (existing).
 - **New user-visible capability:** A consumer writes a blueprint, picks any
@@ -43,13 +43,13 @@ diffs, audit checks, artifacts, completion proof.
 
 Most of that ledger is already shipped:
 
-- Blueprint lifecycle + audit composite (`ak audit *`) — checks ✓
+- Blueprint lifecycle + audit composite (`wp audit *`) — checks ✓
 - Lore commit protocol — provenance ✓
 - Tech-debt lifecycle — admitted debt ✓
 - Mutation engine + extraction-parity rule — proof tests pass ✓
 - Blueprint SQLite store (`src/blueprint/db/`) — queryable state ✓
 - Symlinker + multi-runtime asset compiler (completed) — multi-CLI surface ✓
-- `ak setup` with `DEFAULT_PRESETS = [context-mode, omx, gstack, vision, rtk]`
+- `wp setup` with `DEFAULT_PRESETS = [context-mode, omx, gstack, vision, rtk]`
   — bundling ✓
 
 What v1.0 adds:
@@ -97,8 +97,8 @@ What v1.0 adds:
 ## Errata vs CEO plan dated 2026-05-11
 
 The CEO plan was written before Phase 2 codebase verification ran. The plan's
-scope sizing assumed `ak setup --bundle` was net-new infrastructure. In fact
-`ak setup` already exists at `src/cli/commands/init/index.ts` with
+scope sizing assumed `wp setup --bundle` was net-new infrastructure. In fact
+`wp setup` already exists at `src/cli/commands/init/index.ts` with
 `DEFAULT_PRESETS = ['context-mode', 'omx', 'gstack', 'vision', 'rtk']` and
 fully-shipped scaffolders for each. This Blueprint reflects the corrected
 sizing: C2 is **S** (pin + smoke + framing + spinner) rather than **M**;
@@ -219,7 +219,7 @@ AFTER (single source of truth + extended):
 | Choice | Used For | Verification |
 |---|---|---|
 | `child_process.spawnSync` (Node 24+) | Cross-platform Runner subprocess invocation (codex-exec, local-worktree); already used in existing scaffolders. **All tests mock at this boundary per B2.** | Existing usage at `init/scaffolders/rtk/index.ts:1`, `context-mode/index.ts:1` |
-| `ora` (v8.x) | Spinner UX for `ak setup` (4A); per `ora` docs supports Bun and Node 24+ | Verify via Context7 docs before adding dep in Task 2.5 |
+| `ora` (v8.x) | Spinner UX for `wp setup` (4A); per `ora` docs supports Bun and Node 24+ | Verify via Context7 docs before adding dep in Task 2.5 |
 | `@modelcontextprotocol/sdk` ^1.29.0 | Existing MCP server; unchanged in v1.0 | Already in deps |
 | `better-sqlite3` | Existing blueprint store; unchanged in v1.0 | Already shipped in `src/blueprint/db/` |
 | `zod` + `remark` family | Existing schema + parser; extended for runners/permissions | Already in deps |
@@ -235,7 +235,7 @@ AFTER (single source of truth + extended):
 | 1A | Runner.execute() yields AsyncIterable<RunnerEvent> with AbortSignal | Eng |
 | 1B | Cross-platform via `child_process.spawnSync` (no shell pipes) | Eng |
 | 1C | Tasks declare `permissions: read \| workspace-write` in frontmatter | Eng |
-| 1D | `ak setup` output explicitly frames lane 2/3/4 | Eng |
+| 1D | `wp setup` output explicitly frames lane 2/3/4 | Eng |
 | 2A | Runner exports at top-level `./runners/*` subpath | Eng |
 | 2C | Extend (+ deduplicate) executionBackendSchema; add ExecutionType migration | Eng + Phase 2 finding |
 | 3A | Happy-path E2E + integration edges + golden-transcript regression | Eng |
@@ -246,7 +246,7 @@ AFTER (single source of truth + extended):
 | B1 | Capture baseline BEFORE C3 lands (Task 0.0 in Wave 0) | This eng review |
 | B2 | All Runner tests mock at spawnSync/Agent boundary; eval suite holds real-subprocess fidelity | This eng review (user picked C: restructure over exclude) |
 | B3 | Evals colocate at `src/runners/evals/` | This eng review |
-| B4 | Template scaffolding via `ak blueprint new --template <name>` flag (not a new subverb) | This eng review |
+| B4 | Template scaffolding via `wp blueprint new --template <name>` flag (not a new subverb) | This eng review |
 
 ## Risks
 
@@ -260,7 +260,7 @@ AFTER (single source of truth + extended):
 | R6 | Worktree orphan after Runner subprocess killed before teardown() | MEDIUM | local-worktree.teardown() is idempotent; pll-side timeout calls teardown after grace period |
 | R7 | Mock-only PR CI misses real-codex behavior drift (auth, CLI flags, JSONL schema, sandbox mount, TTY, SIGTERM, orphans, Windows) | MEDIUM | Tech-debt `h-NNN-real-codex-nightly-smoke` filed; `pnpm eval` provides partial coverage via real runs against golden blueprints |
 | R8 | rtk scaffolder uses `brew install rtk` on macOS without pin | MEDIUM | Task 1.5 adds `compatible-versions.json` + scaffolder reads it for version constraint; smoke test verifies |
-| R9 | Two `ak setup --bundle` invocations on the same machine race on marketplace install | LOW | Document; rely on marketplace API + brew idempotency |
+| R9 | Two `wp setup --bundle` invocations on the same machine race on marketplace install | LOW | Document; rely on marketplace API + brew idempotency |
 | R10 | opencode plugin scaffolder is "thin" per codex outside voice | MEDIUM | Task 0.10 audit + Task 1.8 extension; if opencode skill format does not support agent-kit skills, document and scope C5 down further |
 
 ## Edge Cases
@@ -271,10 +271,10 @@ AFTER (single source of truth + extended):
 | E2 | AbortSignal fires during Runner.prepare() (before run() is called) | prepare() respects signal; throws AbortError; cleanup not needed because nothing started | Unit test in `src/runners/local-worktree/index.test.ts` |
 | E3 | Runner subprocess killed externally; teardown() called later | teardown() idempotent; logs orphan-cleanup if any | Unit test (mocked) in `src/runners/codex-exec/index.test.ts`; real-subprocess coverage via nightly tech-debt |
 | E4 | Worktree branch conflict: `git worktree add` fails | Runner.prepare() catches and yields `failed` event with clear error | Unit test (mocked) in `src/runners/local-worktree/index.test.ts` |
-| E5 | `ak setup` re-run on a machine with rtk already installed at the pinned version | rtk scaffolder probes; `rtk-ok` with `installed: false`; no-op | Existing scaffolder test |
-| E6 | `ak setup` re-run when pinned context-mode version is lower than installed | Task 1.5 detects version mismatch, prompts (or no-op based on `--strict`) | Unit test in `init/scaffolders/context-mode/index.test.ts` (extend) |
+| E5 | `wp setup` re-run on a machine with rtk already installed at the pinned version | rtk scaffolder probes; `rtk-ok` with `installed: false`; no-op | Existing scaffolder test |
+| E6 | `wp setup` re-run when pinned context-mode version is lower than installed | Task 1.5 detects version mismatch, prompts (or no-op based on `--strict`) | Unit test in `init/scaffolders/context-mode/index.test.ts` (extend) |
 | E7 | RunnerEvent emitted before SQLite ingester is ready | Ingester buffers up to N events; flushes on first DB write | Unit test in `src/blueprint/db/ingester.test.ts` (extend) |
-| E8 | Template task references a skill name that doesn't exist | `ak blueprint new --template <name>` validates skill names against `ak skills list` | Unit test in `src/cli/commands/blueprint/new.test.ts` (extend) |
+| E8 | Template task references a skill name that doesn't exist | `wp blueprint new --template <name>` validates skill names against `wp skills list` | Unit test in `src/cli/commands/blueprint/new.test.ts` (extend) |
 | E9 | Two parallel Runners (different tasks) compete for the same worktree path | local-worktree generates UUID-suffixed paths; no collision | Unit test in `src/runners/local-worktree/path.test.ts` |
 | E10 | Eval suite runs real subprocesses (claude-subagent) — slow but not in vitest | `pnpm eval` runs them outside vitest; Stryker untouched | N/A — evals are a separate runner |
 
@@ -369,7 +369,7 @@ extend the enum without diverging.
 
 ---
 
-#### [setup] Task 0.2: Preflight pattern check in `ak setup`
+#### [setup] Task 0.2: Preflight pattern check in `wp setup`
 
 **Status:** done
 **Depends:** None
@@ -416,7 +416,7 @@ the X1 evidence-ledger wedge framing.
 
 **Acceptance:**
 - [x] Page exists with the 5 sections.
-- [x] `ak audit docs-frontmatter` passes.
+- [x] `wp audit docs-frontmatter` passes.
 - [x] Hero leads with X1 wedge framing, not multi-CLI-runner framing.
 
 ---
@@ -434,12 +434,12 @@ mirroring `context-mode-routing.md` structure.
 
 **Steps:**
 1. Write the rule using `context-mode-routing.md` as template.
-2. `pnpm exec ak audit catalog-drift` — verify pickup.
+2. `pnpm exec wp audit catalog-drift` — verify pickup.
 
 **Acceptance:**
 - [x] Rule file exists with Description, Ownership boundary, Hard rules,
       When-to-recommend-gstack.
-- [x] `ak audit catalog-drift` includes the rule.
+- [x] `wp audit catalog-drift` includes the rule.
 
 ---
 
@@ -452,7 +452,7 @@ mirroring `context-mode-routing.md` structure.
 **Depends:** None (each task is independent)
 
 Curate 5 markdown blueprint templates under `catalog/blueprints/<name>/`
-that `ak blueprint new --template <name>` (Task 1.7) will scaffold. Each
+that `wp blueprint new --template <name>` (Task 1.7) will scaffold. Each
 must contain at least one task with the new `runners`/`permissions`
 frontmatter (Task 1.2).
 
@@ -468,13 +468,13 @@ Templates:
 
 **Steps (per template):**
 1. Write `_overview.md` with valid frontmatter + section skeleton.
-2. `pnpm exec ak audit catalog-drift` — verify pickup.
+2. `pnpm exec wp audit catalog-drift` — verify pickup.
 3. After Tasks 1.1+1.2 land, validate `runners`/`permissions` fields parse.
 
 **Acceptance (per template):**
 - [x] `_overview.md` exists with valid frontmatter (type=blueprint, status=draft).
 - [x] Contains at least one task block with `runners` + `permissions` fields.
-- [x] `ak audit catalog-drift` lists the template.
+- [x] `wp audit catalog-drift` lists the template.
 
 ---
 
@@ -507,14 +507,14 @@ the delta for Task 1.8.
 
 ---
 
-#### [cli] Task 0.11: `ak gain` — token savings summary command
+#### [cli] Task 0.11: `wp gain` — token savings summary command
 
 **Status:** done
 **Depends:** None
 
 DX review (2026-05-12) found: the chosen magical moment for first-user adoption is
-`ak gain` showing token savings after a session. This command does not yet exist.
-RTK exposes `rtk gain` with full analytics. `ak gain` wraps it.
+`wp gain` showing token savings after a session. This command does not yet exist.
+RTK exposes `rtk gain` with full analytics. `wp gain` wraps it.
 
 **Files:**
 - Create: `src/cli/commands/gain/index.ts`
@@ -522,35 +522,35 @@ RTK exposes `rtk gain` with full analytics. `ak gain` wraps it.
 - Create: `src/cli/commands/gain/index.test.ts`
 
 **Steps (TDD):**
-1. Write test: when RTK is on PATH, `ak gain` exits 0 and produces output containing
+1. Write test: when RTK is on PATH, `wp gain` exits 0 and produces output containing
    "tokens" (case-insensitive). When RTK absent, exits 0 with install hint.
 2. `pnpm test src/cli/commands/gain/` → FAIL.
 3. Implement: `spawnSync('rtk', ['gain'])` if RTK found, else print
-   `"RTK not installed. Run \`ak setup --with rtk\` to enable token savings tracking."`.
+   `"RTK not installed. Run \`wp setup --with rtk\` to enable token savings tracking."`.
 4. `pnpm test src/cli/commands/gain/` → PASS.
 5. Lint + typecheck.
 
 **Acceptance:**
-- [x] `ak gain` runs `rtk gain` output when RTK installed.
-- [x] `ak gain` prints actionable install hint when RTK absent.
-- [x] Listed in `ak --help` under Core commands group.
+- [x] `wp gain` runs `rtk gain` output when RTK installed.
+- [x] `wp gain` prints actionable install hint when RTK absent.
+- [x] Listed in `wp --help` under Core commands group.
 - [x] Tests pass; lint passes.
 
 ---
 
-#### [cli] Task 0.12: `ak --help` progressive disclosure
+#### [cli] Task 0.12: `wp --help` progressive disclosure
 
 **Status:** done
 **Depends:** None
 
-DX review found: 20+ commands on first `ak --help` is cognitive overload. New users
+DX review found: 20+ commands on first `wp --help` is cognitive overload. New users
 don't know which 3 commands matter. Group into Core / Quality / Advanced sections.
 
 **Files:**
 - Modify: `src/cli/cli.ts`
 
 **Steps (TDD):**
-1. Snapshot-test current `ak --help` output.
+1. Snapshot-test current `wp --help` output.
 2. Modify commander config to group commands with section headers.
    Core: `setup`, `blueprint`, `gain`, `sync`
    Quality: `audit`, `test`, `lint`, `typecheck`, `e2e`
@@ -559,7 +559,7 @@ don't know which 3 commands matter. Group into Core / Quality / Advanced section
 4. Lint + typecheck.
 
 **Acceptance:**
-- [x] `ak --help` output has three sections: Core, Quality, Advanced.
+- [x] `wp --help` output has three sections: Core, Quality, Advanced.
 - [x] `gain` appears in Core group.
 - [x] `err` description updated to: "Run a command and show only failures (hooks + CI)".
 - [x] Snapshot test updated.
@@ -701,12 +701,12 @@ ranges. context-mode and rtk scaffolders read it and enforce pin/range.
 
 ---
 
-#### [setup] Task 1.6: Lane-4 framing + post-install "what to do next" in `ak setup` output
+#### [setup] Task 1.6: Lane-4 framing + post-install "what to do next" in `wp setup` output
 
 **Status:** done
 **Depends:** Task 0.4, Task 0.11 (gain must exist before it can be referenced)
 
-`ak setup` summary line frames lanes 2/3/4 explicitly (per Decision 1D). Also
+`wp setup` summary line frames lanes 2/3/4 explicitly (per Decision 1D). Also
 addresses DX review finding: post-install silence kills conversion. After all
 scaffolders complete, print a "next steps" block that gives users one concrete
 command to run immediately.
@@ -718,25 +718,25 @@ command to run immediately.
 **Steps (TDD):**
 1. Write integration test: capture stdout → assert four lane framing lines → FAIL.
 2. Implement lane framing → PASS.
-3. Extend test: assert final output block contains `ak blueprint new` and `ak gain`.
+3. Extend test: assert final output block contains `wp blueprint new` and `wp gain`.
 4. Implement next-steps block printed unconditionally after successful setup:
    ```
    ✅ Setup complete.
 
-   Next: ak blueprint new "your first task"
-         ak gain          # token savings after your first session
+   Next: wp blueprint new "your first task"
+         wp gain          # token savings after your first session
    ```
 5. Lint + typecheck.
 
 **Acceptance:**
 - [x] Output contains 4 lane framing lines.
 - [x] Silent when scaffolders skipped.
-- [x] Post-install block contains `ak blueprint new` and `ak gain`.
+- [x] Post-install block contains `wp blueprint new` and `wp gain`.
 - [x] Block omitted on `--dry-run`.
 
 ---
 
-#### [cli] Task 1.7: `ak blueprint new --template <name>` flag
+#### [cli] Task 1.7: `wp blueprint new --template <name>` flag
 
 **Status:** done
 **Depends:** None
@@ -755,14 +755,14 @@ available rather than requiring a fixed 5.
 - Create: `src/cli/commands/blueprint/template-resolver.test.ts`
 
 **Steps (TDD):**
-1. Test: `ak blueprint new --template <name>` resolves from `docs/templates/`.
+1. Test: `wp blueprint new --template <name>` resolves from `docs/templates/`.
    Unknown template → exit 2 with list of available templates.
 2. FAIL → implement template-resolver + wire into `new` command → PASS.
 3. `pnpm test && pnpm lint && pnpm typecheck`.
 
 **Acceptance:**
-- [x] `ak blueprint new --list-templates` lists available templates from `docs/templates/`.
-- [x] Generated `_overview.md` passes `ak blueprint audit`.
+- [x] `wp blueprint new --list-templates` lists available templates from `docs/templates/`.
+- [x] Generated `_overview.md` passes `wp blueprint audit`.
 - [x] `--template` composes with `--complexity` (template sets default; flag overrides).
 - [x] Unknown template exits 2 with available list.
 
@@ -774,7 +774,7 @@ available rather than requiring a fixed 5.
 **Depends:** Task 0.10
 
 Per Task 0.10's audit, extend `src/symlinker/consumers.ts` or
-`init/scaffolders/opencode-plugin/index.ts` so `ak sync` writes skills
+`init/scaffolders/opencode-plugin/index.ts` so `wp sync` writes skills
 into opencode's expected layout. Scope: skill-sync only.
 
 **Files:**
@@ -784,7 +784,7 @@ into opencode's expected layout. Scope: skill-sync only.
 **Steps (TDD):** fixture test → FAIL → implement → PASS.
 
 **Acceptance:**
-- [x] `ak sync` writes opencode skills to the identified location.
+- [x] `wp sync` writes opencode skills to the identified location.
 - [x] Codex + Gemini sync regression-checked.
 
 ---
@@ -973,12 +973,12 @@ version mismatch raises pre-write error → FAIL → implement → PASS.
 
 ---
 
-#### [ci] Task 3.3: CI smoke test for `ak setup --bundle`
+#### [ci] Task 3.3: CI smoke test for `wp setup --bundle`
 
 **Status:** done
 **Depends:** Task 1.5, 2.5
 
-GitHub Action runs `ak setup --bundle` in a clean container; asserts pinned
+GitHub Action runs `wp setup --bundle` in a clean container; asserts pinned
 versions install + spinner output non-garbled + lane-4 framing appears.
 
 **Files:**
@@ -1160,9 +1160,9 @@ because Task 4.1 depends on its fixture output.
 | CEO Review | `/plan-ceo-review` | Scope & strategy | 1 (revised) | CLEAR | X1 wedge pivot; 6 cherry-picks accepted, 1 deferred, 1 unresolved |
 | Eng Review | `/plan-eng-review` | Architecture & tests (required) | 2 (CEO + Blueprint) | CLEAR | First pass: 12 issues resolved; second pass on Blueprint: 4 issues resolved (regression timing, Stryker, evals location, CLI surface) |
 | Outside Voice | `codex exec` (gpt-5.5, reasoning=high) | Independent challenge | 1 | issues_found → fold-in complete | 15 problems flagged; 4 tensions accepted; 6 refinements folded |
-| Plan Refine | `/plan-refine` | Blueprint format + parallelism | 1 | this Blueprint | 26 tasks across 6 waves; CPR 4.33, RW0 11, CP 0, score A; Phase 2 caught the `ak setup` already-existing finding |
+| Plan Refine | `/plan-refine` | Blueprint format + parallelism | 1 | this Blueprint | 26 tasks across 6 waves; CPR 4.33, RW0 11, CP 0, score A; Phase 2 caught the `wp setup` already-existing finding |
 | Design Review | `/plan-design-review` | UI/UX (docs page only) | 0 | not yet run | Queued for after v1.0 alpha planning lands |
-| DX Review | `/plan-devex-review` | Developer experience | 1 | issues_found → folded | Composite 6/10. Critical: `ak gain` unimplemented (magical moment blocked). 5 fixes → Tasks 0.11, 0.12 added; Task 1.6 expanded. |
+| DX Review | `/plan-devex-review` | Developer experience | 1 | issues_found → folded | Composite 6/10. Critical: `wp gain` unimplemented (magical moment blocked). 5 fixes → Tasks 0.11, 0.12 added; Task 1.6 expanded. |
 
 - **CROSS-MODEL:** strong agreement on Runner under-specification (X3) and templates unblock (X4); X1 wedge pivot accepted; X2 v1.0 timing left unresolved.
 - **UNRESOLVED:** X2 — v1.0 SemVer-stable declaration gated on external adopter.

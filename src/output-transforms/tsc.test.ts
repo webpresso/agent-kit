@@ -16,7 +16,7 @@ describe('tscTransform', () => {
     ].join('\n')
 
     const result = tscTransform(raw, {
-      toolName: 'ak_typecheck',
+      toolName: 'wp_typecheck',
       normalizedToolName: 'typecheck',
     })
 
@@ -30,12 +30,12 @@ describe('tscTransform', () => {
 
   it('falls back to passthrough when no diagnostics are found', () => {
     const clean = tscTransform(fixture('clean.txt'), {
-      toolName: 'ak_typecheck',
+      toolName: 'wp_typecheck',
       normalizedToolName: 'typecheck',
       persistOverflow: false,
     })
     const result = tscTransform('x'.repeat(5_000), {
-      toolName: 'ak_typecheck',
+      toolName: 'wp_typecheck',
       normalizedToolName: 'typecheck',
       persistOverflow: false,
     })
@@ -47,11 +47,11 @@ describe('tscTransform', () => {
 
   it('keeps one-error and cascade fixtures within budget', () => {
     const one = tscTransform(fixture('one-error.txt'), {
-      toolName: 'ak_typecheck',
+      toolName: 'wp_typecheck',
       normalizedToolName: 'typecheck',
     })
     const cascade = tscTransform(fixture('cascade.txt'), {
-      toolName: 'ak_typecheck',
+      toolName: 'wp_typecheck',
       normalizedToolName: 'typecheck',
     })
 
@@ -62,11 +62,11 @@ describe('tscTransform', () => {
 
   it('handles multi-file and colon-format fixtures', () => {
     const multi = tscTransform(fixture('multi-file.txt'), {
-      toolName: 'ak_typecheck',
+      toolName: 'wp_typecheck',
       normalizedToolName: 'typecheck',
     })
     const colon = tscTransform(fixture('colon-format.txt'), {
-      toolName: 'ak_typecheck',
+      toolName: 'wp_typecheck',
       normalizedToolName: 'typecheck',
     })
 

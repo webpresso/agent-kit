@@ -15,7 +15,7 @@ export const TAIL_HINTS = {
     PLL_PARALLEL: 'Consider /pll for parallel execution.',
     VERIFY_DONE: 'Run /verify to confirm done-ness before finalizing.',
     PLAN_REFINE: 'Run /plan-refine to harden this blueprint.',
-    AUDIT_FIX: 'Run /verify or `ak audit --fix` before finalizing.',
+    AUDIT_FIX: 'Run /verify or `wp audit --fix` before finalizing.',
 };
 const HINT_HISTORY_FILENAME = '.tail-hint-history.jsonl';
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;

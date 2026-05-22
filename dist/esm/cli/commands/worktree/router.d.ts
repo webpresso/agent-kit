@@ -1,5 +1,5 @@
 /**
- * `ak worktree` command router.
+ * `wp worktree` command router.
  *
  * Mirrors the tech-debt router pattern:
  * - router.ts        — registers the CAC command and wires options

@@ -1,19 +1,19 @@
 /**
- * `ak_qa` MCP tool.
+ * `wp_qa` MCP tool.
  *
  * Composite tool that fans out to the three sibling check tools in parallel
  * via `Promise.all` and returns an aggregated structured payload:
  *
  *   {
  *     passed: lint.passed && typecheck.passed && test.passed,
- *     lint: <ak_lint payload>,
- *     typecheck: <ak_typecheck payload>,
- *     test: <ak_test payload>,
+ *     lint: <wp_lint payload>,
+ *     typecheck: <wp_typecheck payload>,
+ *     test: <wp_test payload>,
  *   }
  *
  * Implementation calls the sibling tools' `handler` exports through their
  * default descriptors — no public re-exports needed. Parallelism is the whole
- * point: a sequential composite would be strictly worse than the user just
+ * point: a sequential composite would be strictly worse than the user simply
  * running each tool back-to-back, since the sub-tools each spawn long-lived
  * external processes (`oxlint`, `tsc`, the test runner). Running them
  * concurrently is the only thing this composite buys you.

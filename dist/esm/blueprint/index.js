@@ -23,7 +23,7 @@ export { isBlueprintStatus, isComplexity, isTaskStatus } from './query/types.js'
 export { BlueprintNotFoundError } from './utils/errors.js';
 // Evidence Contract (F10) — pin per-kind evidence rules at zod parse time.
 export { canonicalizeEvidence, canonicalizeEvidenceList, evidenceListSchema, evidenceSchema, } from './evidence.js';
-// Verification block markdown helper (consumed by ak_blueprint_task_verify).
+// Verification block markdown helper (consumed by wp_blueprint_task_verify).
 export { applyVerification, parseVerificationBlock, serializeVerificationBlock, VERIFICATION_BLOCK_HEADER, writeVerification, } from './verification.js';
 // Utilities (pure functions)
 export { calculateFreshness } from './utils/freshness.js';
@@ -33,7 +33,7 @@ export { clearBlueprintExecutionMetadata, readBlueprintExecutionMetadata, writeB
 export { buildBlueprintProgressBridgeState, blueprintProgressBridgeStateSchema, blueprintProgressBridgeTaskBindingSchema, normalizeOmxTeamTaskSnapshot, omxTeamTaskSnapshotSchema, omxTeamTaskStatusSchema, projectBlueprintLifecycleFromRuntime, resolveBlueprintProgressBridgePath, sanitizeBlueprintExecutionId, } from './execution/progress-bridge.js';
 export { applyRuntimeProgressSnapshot, runtimeSnapshotPathForExecution, } from './execution/progress-bridge.js';
 export { buildRoadmapModel, } from './roadmap.js';
-// Context chunk assembler (consumed by ak_blueprint_context, Task 1.3).
+// Context chunk assembler (consumed by wp_blueprint_context, Task 1.3).
 export { assembleBlueprintContext, CONTEXT_CHUNK_MAX_BYTES, TASK_DEP_CONE_LIMIT, VERIFICATION_RECENT_LIMIT, } from './context.js';
 // HEAD-pinned freshness for projection DB (Task 1.3 + F11).
 export { checkFreshness, readProjectionMetadata, recordProjectionMetadata, } from './freshness.js';

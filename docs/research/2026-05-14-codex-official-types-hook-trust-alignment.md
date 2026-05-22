@@ -93,11 +93,11 @@ Balance: favorable toward using hooks and app-server, but cautious about treatin
 
 ### Vision Fit
 
-Agent-kit's VISION.md emphasizes “One command, fully wired,” where `ak setup` makes a bare checkout ready for AI coding agents with context, hooks, and guardrails. It also says the catalog is law, surfaces should load at the right time, and failures should be loud rather than silent.
+Agent-kit's VISION.md emphasizes “One command, fully wired,” where `wp setup` makes a bare checkout ready for AI coding agents with context, hooks, and guardrails. It also says the catalog is law, surfaces should load at the right time, and failures should be loud rather than silent.
 
 Using official app-server hook metadata supports that vision better than manual hashing:
 
-- **One command, fully wired:** `ak setup` can install hooks and persist the correct trust state automatically.
+- **One command, fully wired:** `wp setup` can install hooks and persist the correct trust state automatically.
 - **Surfaces load at the right time:** app-server evaluates the effective config for the actual cwd, including user/project/plugin layers.
 - **Fail loudly:** if app-server cannot provide `currentHash`, agent-kit can emit a precise warning and fall back to manual hashing only under known-compatible Codex versions.
 
@@ -131,7 +131,7 @@ Implement a bounded migration from manual hook hashing to app-server-derived hoo
 3. Call `hooks/list` with the repo cwd(s).
 4. Filter discovered hooks by:
    - `sourcePath` matching the hook file/config layer agent-kit wrote, and
-   - `command` matching known `ak-*` generated hook commands, and
+   - `command` matching known `wp-*` generated hook commands, and
    - `isManaged === false`.
 5. Build a state update:
    ```json

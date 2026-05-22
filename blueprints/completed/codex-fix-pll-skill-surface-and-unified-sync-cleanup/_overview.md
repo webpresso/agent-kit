@@ -19,21 +19,21 @@ completed_at: '2026-05-13'
 
 ## Goal
 
-Make `fix`, `verify`, and `pll` available through Codex-compatible skill surfaces and remove the conflicting legacy tail-sync path from `ak setup` / `ak sync` so generated surfaces do not oscillate between old and unified projections.
+Make `fix`, `verify`, and `pll` available through Codex-compatible skill surfaces and remove the conflicting legacy tail-sync path from `wp setup` / `wp sync` so generated surfaces do not oscillate between old and unified projections.
 
 ## Acceptance Criteria
 
 - `fix` exists as a first-class skill in both catalog and package-root plugin skill output.
 - `fix` is installed by default with the same Tier-1 skill set as `verify` and `pll`.
 - `pll` remains available as both command and skill, with regression coverage for portable skill projection.
-- `ak setup` / `ak sync` use unified rule/skill projection for supported host surfaces and do not invoke the old tail `syncAll` path.
+- `wp setup` / `wp sync` use unified rule/skill projection for supported host surfaces and do not invoke the old tail `syncAll` path.
 - Focused tests, typecheck, lint, and changed-file format checks pass.
 
 ## Completed Tasks
 
 1. Added `catalog/agent/skills/fix/SKILL.md` from the existing root-cause fix command workflow and regenerated `skills/fix/SKILL.md` for plugin distribution.
 2. Added `fix` to the Tier-1 default skill list next to `verify`, `testing-philosophy`, `plan-refine`, and `pll`.
-3. Removed `syncAll` invocation from `ak sync` and `ak setup`; kept setup host visibility tied to generated skill surfaces.
+3. Removed `syncAll` invocation from `wp sync` and `wp setup`; kept setup host visibility tied to generated skill surfaces.
 4. Added regression coverage for `fix`, `pll`, portable `.agents/skills` projection, and `--kind rules` preserving existing skill projections.
 
 ## Verification Evidence

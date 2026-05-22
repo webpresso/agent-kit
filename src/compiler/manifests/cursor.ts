@@ -29,7 +29,7 @@ export async function emitManifest(opts: ManifestEmitOptions): Promise<void> {
   const rules = collectRulePaths(opts.agentDir)
 
   const plugin = {
-    _generated: 'by agent-kit ak compile — do not edit manually',
+    _generated: 'by agent-kit wp compile — do not edit manually',
     name: '@webpresso/agent-kit',
     version: opts.version,
     description: 'Agent-kit: blueprint lifecycle, skill compiler, audits for Claude Code',

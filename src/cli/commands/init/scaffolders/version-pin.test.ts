@@ -27,7 +27,7 @@ describe('checkVersionPin', () => {
   let pinFile: string
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'ak-version-pin-'))
+    tmpDir = mkdtempSync(join(tmpdir(), 'wp-version-pin-'))
     pinFile = join(tmpDir, 'compatible-versions.json')
   })
 

@@ -19,7 +19,7 @@ afterEach(async () => {
 async function mkTmpDir(): Promise<string> {
   const dir = path.join(
     os.tmpdir(),
-    `ak-tech-debt-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    `wp-tech-debt-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   )
   await mkdir(dir, { recursive: true })
   return dir

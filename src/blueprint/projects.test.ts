@@ -18,7 +18,7 @@ import {
 
 const createdRoots: string[] = []
 
-function mkroot(prefix = 'ak-projects-'): string {
+function mkroot(prefix = 'wp-projects-'): string {
   const dir = mkdtempSync(join(tmpdir(), prefix))
   createdRoots.push(dir)
   // Always resolve real-path so macOS /private/var symlinks don't confuse string compares

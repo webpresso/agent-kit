@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import { createAkTestCommandConfig, TEST_COMMAND_HELP } from './test.js'
 
-describe('ak test command helpers', () => {
+describe('wp test command helpers', () => {
   it('documents package and file target flags', () => {
-    expect(TEST_COMMAND_HELP).toContain('ak test --package cli2')
-    expect(TEST_COMMAND_HELP).toContain('ak test --file apps/cli2/src/commands/target.test.ts')
+    expect(TEST_COMMAND_HELP).toContain('wp test --package cli2')
+    expect(TEST_COMMAND_HELP).toContain('wp test --file apps/cli2/src/commands/target.test.ts')
   })
 
   it('builds package-target commands with passthrough args', () => {

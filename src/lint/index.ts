@@ -2,7 +2,7 @@
  * Stable subpath export: `@webpresso/agent-kit/lint`.
  *
  * Exposes a framework-friendly `runLint` runner that uses the `vp lint`
- * facade. Mirrors the semantics of the `ak_lint` MCP tool but returns a
+ * facade. Mirrors the semantics of the `wp_lint` MCP tool but returns a
  * typed result object directly so external scaffolders can consume it without
  * reaching through the MCP transport.
  */

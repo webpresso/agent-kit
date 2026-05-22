@@ -1,5 +1,5 @@
 /**
- * `ak audit memory-rotation` — surfaces recent rotation events from
+ * `wp audit memory-rotation` — surfaces recent rotation events from
  * `.agent/.rotation-log.jsonl`.
  *
  * Each line in the log is a JSON object describing a section that was

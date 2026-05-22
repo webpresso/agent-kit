@@ -1,5 +1,5 @@
 /**
- * `ak skill <new|list|show|deprecate|install|uninstall>` — thin shim over
+ * `wp skill <new|list|show|deprecate|install|uninstall>` — thin shim over
  * shared content dispatch with two extra registry actions:
  *
  *   install <name>     — adds <name> to .agent-kitrc.json#installed.tier3Skills
@@ -7,7 +7,7 @@
  *                        Idempotent. Registry-only edit; no copy.
  *   uninstall <name>   — removes <name> from the registry. Idempotent.
  *
- * `ak skills` (plural) was renamed to `ak skill` (singular) in 0.4.0. The
+ * `wp skills` (plural) was renamed to `wp skill` (singular) in 0.4.0. The
  * old plural is wired separately as a hidden helpful-error stub (see cli.ts).
  */
 
@@ -106,10 +106,10 @@ function withRegistry(
 }
 
 function handleInstall(name: string, catalogDir: string, cwd: string): void {
-  if (!name) throw commandError('Usage: ak skill install <name>')
+  if (!name) throw commandError('Usage: wp skill install <name>')
   if (!catalogContainsSkill(catalogDir, name)) {
     throw commandError(
-      `Skill not found in bundled catalog: ${name}. Run \`ak skill list --source canonical\` to see available skills.`,
+      `Skill not found in bundled catalog: ${name}. Run \`wp skill list --source canonical\` to see available skills.`,
     )
   }
   const { config, changed } = withRegistry(cwd, (skills) =>
@@ -122,7 +122,7 @@ function handleInstall(name: string, catalogDir: string, cwd: string): void {
 }
 
 function handleUninstall(name: string, cwd: string): void {
-  if (!name) throw commandError('Usage: ak skill uninstall <name>')
+  if (!name) throw commandError('Usage: wp skill uninstall <name>')
   const { config, changed } = withRegistry(cwd, (skills) => skills.filter((s) => s !== name))
   console.log(
     `${changed ? 'Uninstalled' : 'Not installed'} skill ${name} from .agent-kitrc.json#installed.tier3Skills`,
@@ -196,17 +196,17 @@ export function registerSkillCommand(cli: CAC): void {
 }
 
 /**
- * Hidden stub for the renamed `ak skills` (plural). cac will still match
+ * Hidden stub for the renamed `wp skills` (plural). cac will still match
  * the command, but we just emit a helpful redirect and exit 1.
  */
 export function registerSkillsRenameStub(cli: CAC): void {
   cli
-    .command('skills [...args]', 'Removed in 0.4.0 — use `ak skill`')
+    .command('skills [...args]', 'Removed in 0.4.0 — use `wp skill`')
     .allowUnknownOptions()
     .action(() => {
       throw commandError(
-        "'ak skills' was renamed to 'ak skill' in 0.4.0. " +
-          'Use: ak skill <subcommand>. See `ak skill --help`.',
+        "'wp skills' was renamed to 'wp skill' in 0.4.0. " +
+          'Use: wp skill <subcommand>. See `wp skill --help`.',
       )
     })
 }

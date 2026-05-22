@@ -24,9 +24,9 @@ depends_on:
 - **Stage outcome:** Any machine, any agent, any CLI can query or mutate
   a blueprint's state and see a consistent view — no manual file-sync,
   no `git pull`, no stale local SQLite.
-- **Consuming surface:** All 8 blueprint MCP tools (`ak_blueprint_task
-  _next`, `ak_blueprint_task_advance`, `ak_blueprint_promote`,
-  `ak_blueprint_finalize`, …), `ak blueprint start/task/finalize` CLI,
+- **Consuming surface:** All 8 blueprint MCP tools (`wp_blueprint_task
+  _next`, `wp_blueprint_task_advance`, `wp_blueprint_promote`,
+  `wp_blueprint_finalize`, …), `wp blueprint start/task/finalize` CLI,
   and the `/pll` skill.
 - **New user-visible capability:** Two agents on different machines
   collaborating on the same blueprint never conflict. State persists
@@ -91,13 +91,13 @@ After every successful platform write, the MCP/CLI mutation tools
 regenerate the corresponding `_overview.md` on the local machine and
 create a git commit. Responsibility:
 
-- **The mutation tool** (e.g., `ak_blueprint_task_advance`) generates the
+- **The mutation tool** (e.g., `wp_blueprint_task_advance`) generates the
   updated markdown from the platform snapshot.
 - **Agent context:** if the user has other staged changes, the markdown
   commit is made as a separate, atomic commit with message
   `chore(blueprint): sync [slug] task [id] to [status]`. No mixing with
   user changes.
-- **Manual override:** `AK_BLUEPRINT_NO_AUTO_COMMIT=1` skips the auto-commit;
+- **Manual override:** `WP_BLUEPRINT_NO_AUTO_COMMIT=1` skips the auto-commit;
   the markdown is written to disk but left unstaged.
 
 This means `git log blueprints/` retains a complete audit trail of all
@@ -105,7 +105,7 @@ blueprint mutations, even though markdown is no longer the canonical source.
 
 ### Audit migration (F3 fix)
 
-`ak audit blueprint-lifecycle` currently reads markdown. After this blueprint
+`wp audit blueprint-lifecycle` currently reads markdown. After this blueprint
 lands, the audit must run against the local replica SQLite (or the platform
 snapshot) rather than markdown files directly. This is a tracked migration
 task (Task 3.3 below).
@@ -126,21 +126,21 @@ configurable TTL). Polling and SSE are deferred to v2.x.
 | # | Question | Decision |
 |---|---|---|
 | Q1 | **Offline mutation strategy** | **A — Buffer locally, push when reconnected.** Mutations write to local SQLite outbox first. Sync queue flushes when network is available. Conflict: last-write-wins on reconnect (idempotent eventId). |
-| Q2 | **Auth model** | **C — OAuth device flow.** `ak setup --login` opens browser → OAuth consent → token stored in OS keychain. Same UX as `gh auth login`. No manual token management. |
-| Q3 | **Replica freshness SLA** | **B — 30 second TTL.** Reads within 30s use local replica (near-zero latency). After 30s, one background refresh fires before responding. Tunable via `AK_REPLICA_TTL` env var. |
+| Q2 | **Auth model** | **C — OAuth device flow.** `wp setup --login` opens browser → OAuth consent → token stored in OS keychain. Same UX as `gh auth login`. No manual token management. |
+| Q3 | **Replica freshness SLA** | **B — 30 second TTL.** Reads within 30s use local replica (near-zero latency). After 30s, one background refresh fires before responding. Tunable via `WP_REPLICA_TTL` env var. |
 | Q4 | **Markdown generation** | **C — No markdown. Agents read SQLite/MCP only.** The `blueprints/` directory becomes a legacy/migration artifact. Platform users have no markdown files on disk; all blueprint access goes through SQLite replica + MCP tools. Human-readable view is a future platform UI concern. |
-| Q5 | **Template catalog** | **C — GitHub-hosted, fetched by URL.** `ak blueprint new --template <slug>` resolves to a public GitHub repo (e.g. `webpresso/blueprint-templates`). No platform API dependency for templates. Community can submit PRs. |
+| Q5 | **Template catalog** | **C — GitHub-hosted, fetched by URL.** `wp blueprint new --template <slug>` resolves to a public GitHub repo (e.g. `webpresso/blueprint-templates`). No platform API dependency for templates. Community can submit PRs. |
 | Q6 | **Monorepo boundary** | **A — Types + client in agent-kit (OSS); implementation in webpresso monorepo (private).** agent-kit ships: `PlatformApiClient` interface, TypeScript event types, sync engine logic. webpresso monorepo ships: the actual API endpoints, auth handler, platform database. |
-| Q7 | **Migration** | **A — `ak setup --sync` idempotent import on first auth.** On first OAuth login, agent-kit scans `blueprints/` and pushes all existing blueprints to the platform in the background. Idempotent — safe to re-run. After migration, markdown is archived (moved to `.blueprints-archive/`). |
+| Q7 | **Migration** | **A — `wp setup --sync` idempotent import on first auth.** On first OAuth login, agent-kit scans `blueprints/` and pushes all existing blueprints to the platform in the background. Idempotent — safe to re-run. After migration, markdown is archived (moved to `.blueprints-archive/`). |
 
 ### Q4 architectural implication
 
 Q4:C is a breaking change from the current `blueprint-structured-store` design. The `blueprints/` directory, lifecycle audit, and markdown-based task tracking are replaced by SQLite replica + MCP tools as the primary surface. This affects:
 
-- `ak audit blueprint-lifecycle` — Task 3.3 must migrate this audit to read from SQLite, not markdown (risk R3).
-- `ak blueprint finalize` CLI — continues to work but writes to platform, not markdown files.
+- `wp audit blueprint-lifecycle` — Task 3.3 must migrate this audit to read from SQLite, not markdown (risk R3).
+- `wp blueprint finalize` CLI — continues to work but writes to platform, not markdown files.
 - `/pll` skill — already reads via MCP tools; no change needed.
-- `blueprints/` directory — becomes archive after `ak setup --sync` migration.
+- `blueprints/` directory — becomes archive after `wp setup --sync` migration.
 
 ## Technology Choices
 
@@ -157,8 +157,8 @@ Q4:C is a breaking change from the current `blueprint-structured-store` design. 
 | ID | Risk | Severity | Mitigation |
 |---|---|---|---|
 | R1 | Platform API not yet built; blueprint assumes endpoints exist | HIGH | Q6 design session confirms what needs to be built in platform-api vs. what's in agent-kit |
-| R2 | Markdown auto-commit conflicts with user's staged changes | HIGH | `AK_BLUEPRINT_NO_AUTO_COMMIT=1` escape hatch; auto-commit is separate atomic commit |
-| R3 | `ak audit blueprint-lifecycle` reads markdown — silently wrong after migration | HIGH | Task 3.3 migrates the audit to read from SQLite replica |
+| R2 | Markdown auto-commit conflicts with user's staged changes | HIGH | `WP_BLUEPRINT_NO_AUTO_COMMIT=1` escape hatch; auto-commit is separate atomic commit |
+| R3 | `wp audit blueprint-lifecycle` reads markdown — silently wrong after migration | HIGH | Task 3.3 migrates the audit to read from SQLite replica |
 | R4 | Pull-on-demand adds latency to every MCP mutation that must refresh | MEDIUM | TTL-based staleness (Q3); reads within TTL don't network-refresh |
 | R5 | Thundering herd: many agents start simultaneously, all pull replica | MEDIUM | Replica staleness check is a local timestamp compare; only one pull fires per TTL window per process |
 | R6 | runner_events (v1.0 blueprint Task 1.3) creates local-only table; must also sync | MEDIUM | Include in Task 0.1 platform API contract design; `runner_events` syncs via `pushRunnerEvent` or bundled in blueprint event payload |
@@ -172,8 +172,8 @@ Q4:C is a breaking change from the current `blueprint-structured-store` design. 
 | E2 | Auth token expires mid-pll run (long blueprint) | Task 1.1 | Test: 401 response → token-refresh attempt → clear error if refresh fails |
 | E3 | Two agents mutate same task simultaneously | Task 2.1 | Test: platform returns 409 conflict → retry logic or clear error |
 | E4 | User has staged changes when markdown auto-commit fires | Task 2.1 | Test: verify auto-commit is atomic and leaves staged changes untouched |
-| E5 | Local replica stale by > TTL when `ak_blueprint_task_next` reads | Task 1.2 | Test: stale replica → pull-on-demand refresh before returning result |
-| E6 | `AK_BLUEPRINT_NO_AUTO_COMMIT=1` set — markdown written but not committed | Task 2.1 | Test: env var set → file written → git status shows untracked/modified |
+| E5 | Local replica stale by > TTL when `wp_blueprint_task_next` reads | Task 1.2 | Test: stale replica → pull-on-demand refresh before returning result |
+| E6 | `WP_BLUEPRINT_NO_AUTO_COMMIT=1` set — markdown written but not committed | Task 2.1 | Test: env var set → file written → git status shows untracked/modified |
 
 ## What already exists (leverage)
 
@@ -254,7 +254,7 @@ env var.
 - [x] Event payload type covers all 8 mutation operations.
 - [x] Platform team has reviewed the contract (async; can be in-progress).
 - [x] `pnpm lint:pkg` (attw) passes — new `./blueprint/sync/types` subpath export.
-- [x] `notes/emergency-rollback.md` created documenting the `AK_BLUEPRINT_PLATFORM_DISABLED=1` recovery procedure (per CEO review 1A).
+- [x] `notes/emergency-rollback.md` created documenting the `WP_BLUEPRINT_PLATFORM_DISABLED=1` recovery procedure (per CEO review 1A).
 
 ---
 
@@ -288,10 +288,10 @@ Tests mock using `vi.stubGlobal('fetch', vi.fn())` — NOT MSW.
 - [x] `pushEvent` writes to platform and returns snapshot.
 - [x] `pushEvent` generates a UUID `eventId` per call (per CEO review 2A); idempotent on retry.
 - [x] Offline behavior matches Q1 decision (buffer or reject with clear error).
-- [x] `AK_BLUEPRINT_PLATFORM_DISABLED=1` bypasses platform writes; falls back to markdown-canonical mode (per CEO review 1A).
+- [x] `WP_BLUEPRINT_PLATFORM_DISABLED=1` bypasses platform writes; falls back to markdown-canonical mode (per CEO review 1A).
 - [x] 429 rate-limit response triggers exponential backoff (NOT immediate retry); surfaces as offline behavior after max retries exceeded.
 - [x] Structured log on every `pushEvent`: `{level, eventType, eventId, httpStatus, durationMs}` (per CEO review 8A).
-- [x] Local counter for consecutive sync failures stored in replica schema; `ak blueprint show` surfaces 'Last synced: <ts>' and 'Sync failures (last hour): N'.
+- [x] Local counter for consecutive sync failures stored in replica schema; `wp blueprint show` surfaces 'Last synced: <ts>' and 'Sync failures (last hour): N'.
 - [x] Credentials loaded from env var (never hardcoded).
 - [x] **getSnapshot() tests (per eng review 3A):**
   - [x] Happy path: 200 response → `ingestAll()` called; local replica reflects snapshot.
@@ -313,7 +313,7 @@ Tests mock using `vi.stubGlobal('fetch', vi.fn())` — NOT MSW.
 
 Before any MCP mutation tool reads from local SQLite, check replica
 freshness and pull from platform if stale. Staleness threshold configurable
-via `AK_BLUEPRINT_REPLICA_TTL_S` (default: 30).
+via `WP_BLUEPRINT_REPLICA_TTL_S` (default: 30).
 
 **Files:**
 - Create: `src/blueprint/sync/replica.ts`
@@ -328,21 +328,21 @@ via `AK_BLUEPRINT_REPLICA_TTL_S` (default: 30).
 - [x] Staleness check is a local timestamp compare (no network call if fresh).
 - [x] **Single-flight pattern (per CEO review Section 7):** concurrent replica-refresh calls within the same process coalesce to a single pull via a mutex/promise-sharing pattern. No thundering herd when 6 pll agents all expire TTL simultaneously.
 - [x] Pull adds < 200ms to MCP query tools when replica is fresh (unit test with mocked fetch).
-- [x] `AK_BLUEPRINT_REPLICA_TTL_S` env var respected.
+- [x] `WP_BLUEPRINT_REPLICA_TTL_S` env var respected.
 
 ---
 
 ### Wave 3 — First mutation tool (depends on Task 1.1 + 1.2 — RW3 = 1)
 
-#### [mcp] Task 2.1: Migrate `ak_blueprint_task_advance` to platform write
+#### [mcp] Task 2.1: Migrate `wp_blueprint_task_advance` to platform write
 
 **Status:** done
 **Depends:** Task 1.1, Task 1.2
 
-`ak_blueprint_task_advance` is the highest-traffic mutation tool. Swap its
+`wp_blueprint_task_advance` is the highest-traffic mutation tool. Swap its
 mutation path from "edit markdown + `ingestAll()`" to "push event to platform
 → refresh local replica → regenerate markdown as derived artifact → auto-commit
-markdown (unless `AK_BLUEPRINT_NO_AUTO_COMMIT=1`)".
+markdown (unless `WP_BLUEPRINT_NO_AUTO_COMMIT=1`)".
 
 This task ESTABLISHES the pattern all other mutation tools (Tasks 2.2-2.7)
 will follow. Do it first; the others copy the pattern.
@@ -353,7 +353,7 @@ will follow. Do it first; the others copy the pattern.
 
 **Steps (TDD):**
 1. Test: task advance → `BlueprintSyncClient.pushEvent` called with correct payload → local markdown updated → auto-commit made.
-2. Test: `AK_BLUEPRINT_NO_AUTO_COMMIT=1` → markdown written, not committed.
+2. Test: `WP_BLUEPRINT_NO_AUTO_COMMIT=1` → markdown written, not committed.
 3. Test: platform unreachable → offline behavior per Q1 decision.
 4. Test: user has staged changes → auto-commit is atomic and leaves staged changes untouched.
 5. FAIL → swap mutation path → PASS.
@@ -362,9 +362,9 @@ will follow. Do it first; the others copy the pattern.
 **Acceptance:**
 - [x] Platform API is the primary write path (markdown edit is derived output).
 - [x] Auto-commit is atomic; never mixes with user's staged changes.
-- [x] `AK_BLUEPRINT_NO_AUTO_COMMIT=1` suppresses commit; file still written.
+- [x] `WP_BLUEPRINT_NO_AUTO_COMMIT=1` suppresses commit; file still written.
 - [x] Offline path consistent with Q1 decision.
-- [x] **IRON RULE REGRESSION (eng review):** With `AK_BLUEPRINT_PLATFORM_DISABLED=1`, `ak_blueprint_task_advance` produces byte-identical markdown output and SQLite state as the pre-sync markdown-canonical implementation. Verified via a golden-fixture snapshot test or before/after state comparison.
+- [x] **IRON RULE REGRESSION (eng review):** With `WP_BLUEPRINT_PLATFORM_DISABLED=1`, `wp_blueprint_task_advance` produces byte-identical markdown output and SQLite state as the pre-sync markdown-canonical implementation. Verified via a golden-fixture snapshot test or before/after state comparison.
 
 ---
 
@@ -373,12 +373,12 @@ will follow. Do it first; the others copy the pattern.
 Tasks 2.2-2.7 each follow the same pattern established in Task 2.1.
 They are independent of each other and run in parallel.
 
-#### [mcp] Task 2.2: Migrate `ak_blueprint_promote`
+#### [mcp] Task 2.2: Migrate `wp_blueprint_promote`
 
 **Status:** done
 **Depends:** Task 2.1
 
-Swap `ak_blueprint_promote`'s mutation path. Promote moves a blueprint
+Swap `wp_blueprint_promote`'s mutation path. Promote moves a blueprint
 between lifecycle directories (e.g., `planned/` → `in-progress/`).
 
 **Files:**
@@ -394,7 +394,7 @@ between lifecycle directories (e.g., `planned/` → `in-progress/`).
 
 ---
 
-#### [mcp] Task 2.3: Migrate `ak_blueprint_finalize`
+#### [mcp] Task 2.3: Migrate `wp_blueprint_finalize`
 
 **Status:** done
 **Depends:** Task 2.1
@@ -410,12 +410,12 @@ between lifecycle directories (e.g., `planned/` → `in-progress/`).
 
 ---
 
-#### [mcp] Task 2.4: Migrate `ak_blueprint_new`
+#### [mcp] Task 2.4: Migrate `wp_blueprint_new`
 
 **Status:** done
 **Depends:** Task 2.1
 
-`ak_blueprint_new` creates a new blueprint scaffold. After this task,
+`wp_blueprint_new` creates a new blueprint scaffold. After this task,
 creation registers the blueprint with the platform immediately (no
 markdown-first creation).
 
@@ -429,12 +429,12 @@ markdown-first creation).
 
 ---
 
-#### [mcp] Task 2.5: Migrate `ak_blueprint_task_next` (read tool with replica refresh)
+#### [mcp] Task 2.5: Migrate `wp_blueprint_task_next` (read tool with replica refresh)
 
 **Status:** done
 **Depends:** Task 2.1
 
-`ak_blueprint_task_next` is a read-only tool that returns the next ready
+`wp_blueprint_task_next` is a read-only tool that returns the next ready
 task. It does not write to the platform, but it must refresh the local
 replica if stale (using Task 1.2's replica layer). This task wires the
 replica refresh into the read path.
@@ -450,12 +450,12 @@ replica refresh into the read path.
 
 ---
 
-#### [mcp] Task 2.6: Migrate `ak blueprint start` CLI
+#### [mcp] Task 2.6: Migrate `wp blueprint start` CLI
 
 **Status:** done
 **Depends:** Task 2.1
 
-`ak blueprint start` is the CLI entry point for beginning a blueprint.
+`wp blueprint start` is the CLI entry point for beginning a blueprint.
 Currently moves the directory and updates markdown frontmatter. After
 this task, it writes to the platform first.
 
@@ -470,7 +470,7 @@ this task, it writes to the platform first.
 
 ---
 
-#### [mcp] Task 2.7: Migrate `ak blueprint task complete` CLI
+#### [mcp] Task 2.7: Migrate `wp blueprint task complete` CLI
 
 **Status:** done
 **Depends:** Task 2.1
@@ -509,16 +509,16 @@ Idempotent: safe to re-run.
 **Acceptance:**
 - [x] All 18+ blueprints imported.
 - [x] Script idempotent.
-- [x] `ak audit blueprint-lifecycle` passes after migration.
+- [x] `wp audit blueprint-lifecycle` passes after migration.
 
 ---
 
-#### [audit] Task 3.2: Migrate `ak audit blueprint-lifecycle` to SQLite replica (F3 fix)
+#### [audit] Task 3.2: Migrate `wp audit blueprint-lifecycle` to SQLite replica (F3 fix)
 
 **Status:** done
 **Depends:** Task 2.2, Task 2.3, Task 2.4, Task 2.5, Task 2.6, Task 2.7
 
-`ak audit blueprint-lifecycle` currently reads markdown files. After this
+`wp audit blueprint-lifecycle` currently reads markdown files. After this
 task, it reads from the local SQLite replica (which reflects platform
 state) instead. Markdown is no longer the audit source of truth.
 
@@ -534,11 +534,11 @@ state) instead. Markdown is no longer the audit source of truth.
 **Acceptance:**
 - [x] Audit reads from SQLite replica.
 - [x] Audit produces the same result as before for a fully-migrated repo.
-- [x] `ak audit blueprint-lifecycle` passes in CI.
+- [x] `wp audit blueprint-lifecycle` passes in CI.
 
 ---
 
-#### [templates] Task 3.3: `ak blueprint new --template` queries platform catalog
+#### [templates] Task 3.3: `wp blueprint new --template` queries platform catalog
 
 **Status:** done
 **Depends:** Task 3.1
@@ -552,7 +552,7 @@ Falls back to a minimal skeleton when offline.
 - Modify: matching test
 
 **Acceptance:**
-- [x] `ak blueprint new --template feature-cloudflare-worker` fetches template from platform.
+- [x] `wp blueprint new --template feature-cloudflare-worker` fetches template from platform.
 - [x] Offline fallback: minimal skeleton + clear notice that platform templates are unavailable.
 
 ---
@@ -615,7 +615,7 @@ are well-parallelized.
 |--------|---------|-----|------|--------|----------|
 | Plan Refine | `/plan-refine` | Blueprint format + fact-check | 1 | CLEAR | 6 findings, all applied; parallelization score C (inherent to design-gated structure) |
 | CEO Review | `/plan-ceo-review` | Scope & strategy | 1 | CLEAR | HOLD SCOPE; 3 AUQs: 1A (rollback escape hatch), 2A (idempotent pushEvent via UUID), 8A (observability logging + lastSyncedAt); all accepted. 4 inline fixes: per-repo auth scoping, 429 rate-limit backoff, single-flight replica, security scope in Task 0.1. |
-| Eng Review | `/plan-eng-review` | Architecture & tests | 1 | CLEAR | 0 arch issues, 0 code quality, 2 test findings: 3A (getSnapshot+auth tests added to Task 1.1 acceptance), IRON RULE regression (AK_BLUEPRINT_PLATFORM_DISABLED=1 regression added to Task 2.1 acceptance). 0 critical gaps. |
+| Eng Review | `/plan-eng-review` | Architecture & tests | 1 | CLEAR | 0 arch issues, 0 code quality, 2 test findings: 3A (getSnapshot+auth tests added to Task 1.1 acceptance), IRON RULE regression (WP_BLUEPRINT_PLATFORM_DISABLED=1 regression added to Task 2.1 acceptance). 0 critical gaps. |
 
 - **UNRESOLVED:** 0 — all findings resolved.
 - **VERDICT: CEO + ENG CLEARED — ready to move to planned/ and begin Task 0.1 design session.**

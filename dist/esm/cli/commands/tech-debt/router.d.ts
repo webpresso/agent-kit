@@ -1,5 +1,5 @@
 /**
- * `ak tech-debt` command router.
+ * `wp tech-debt` command router.
  *
  * Mirrors the blueprint router pattern:
  * - router.ts  — registers the CAC command and wires options

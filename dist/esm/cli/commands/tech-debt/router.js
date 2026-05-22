@@ -12,7 +12,7 @@ export function registerTechDebtRouter(cli) {
         .action(async (subcommand, args, options) => {
         if (!subcommand) {
             console.log([
-                'Usage: ak tech-debt <subcommand> [options]',
+                'Usage: wp tech-debt <subcommand> [options]',
                 '',
                 'Subcommands:',
                 '  new "<title>" --severity <s> --category <c> [--review-cadence <r>] [--status <s>] [--dry-run]',

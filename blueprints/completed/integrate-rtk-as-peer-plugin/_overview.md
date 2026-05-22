@@ -23,7 +23,7 @@ tags:
 prefix, an independent PreToolUse hook entry, and a fallback-only routing rule
 in the catalog. Each plugin owns one lane and never reaches into another's:
 
-- **agent-kit** owns `ak_*` for QA tooling (test, lint, typecheck, qa, audit).
+- **agent-kit** owns `wp_*` for QA tooling (test, lint, typecheck, qa, audit).
 - **context-mode** owns `ctx_*` for search / fetch / execute over large output.
 - **rtk** owns shell-tool output filtering for the ~100 commands neither of the
   above wraps — `git`, `gh`, `jira`, `glab`, `gcloud`, `kubectl`, `cargo`,
@@ -37,15 +37,15 @@ authority over either neighbour's prefix.
 - **Stage outcome:** Extend the peer-plugin pattern (already proven for
   context-mode — see [`context-mode-routing.md`](../../../catalog/agent/rules/context-mode-routing.md))
   to cover the long tail of shell tools the agent runs. Per [`VISION.md` § North Star](../../../VISION.md):
-  *"The `ak_*` MCP tools are now summary-first and context-friendly … context-mode
+  *"The `wp_*` MCP tools are now summary-first and context-friendly … context-mode
   owns its own `ctx_*` nudging when installed; and `.omx` remains runtime/state
   rather than a direct hook surface."* This blueprint adds rtk as the third
   named peer plugin in that sentence, closing the long-tail shell-output gap
   without agent-kit shipping per-tool filter code.
-- **Consuming surface:** `ak setup --with rtk` in `ozby/ingest-lens` — same
+- **Consuming surface:** `wp setup --with rtk` in `ozby/ingest-lens` — same
   invocation shape as `--with monorepo-navigation,tanstack-query` already
   documented in the ingest-lens agent-kit setup docs. After this blueprint lands,
-  ingest-lens can `pnpm ak setup --with rtk`
+  ingest-lens can `pnpm wp setup --with rtk`
   and immediately get compact `git status`, `gh pr list`, `kubectl get pods`,
   `cargo build` output without any agent-kit-side per-tool work.
 - **New user-visible capability:** An engineer's AI session running `git status`,
@@ -91,22 +91,22 @@ blueprint, and the repo glossary/invariants on 2026-05-06.
 
 | Vision principle / invariant | Alignment in this blueprint |
 | --- | --- |
-| **North Star** ("`ak_*` MCP tools summary-first; context-mode owns `ctx_*` nudging") | Direct extension. Adds rtk as a third named peer with the same shape: sacrosanct prefix (`rtk *` shell-tool wrapping), independent PreToolUse hook, fallback-only routing rule. |
+| **North Star** ("`wp_*` MCP tools summary-first; context-mode owns `ctx_*` nudging") | Direct extension. Adds rtk as a third named peer with the same shape: sacrosanct prefix (`rtk *` shell-tool wrapping), independent PreToolUse hook, fallback-only routing rule. |
 | **Softest sufficient boundary — defer to upstream specialists, don't reimplement** | **The defining alignment for this blueprint.** rtk is a maintained MIT-licensed Rust binary covering ~100 shell tools. We install their binary via `brew install rtk-ai/rtk/rtk`; we do not lift any of their filter code into TS. The agent-kit surface added here is one scaffolder + one rule + one doctor row. Softer than: lifting rtk filters, building a TS port, writing per-tool transforms for git/gh/kubectl/cargo/pytest/rspec/etc. |
-| **Catalog is law** | New routing rule lands at `catalog/agent/rules/rtk-routing.md` first (canonical for shipping). `.agent/rules/` is the synced copy via `ak symlink sync`. No hand-edits to per-IDE surfaces. |
+| **Catalog is law** | New routing rule lands at `catalog/agent/rules/rtk-routing.md` first (canonical for shipping). `.agent/rules/` is the synced copy via `wp symlink sync`. No hand-edits to per-IDE surfaces. |
 | **Multi-IDE distribution is zero-maintenance** | rtk's `rtk init -g --auto-patch` writes a single PreToolUse hook into `.claude/settings.json` and `.codex/hooks.json`. Every IDE that consumes those settings (Claude Code, Codex/OMX) gets rtk filtering automatically. agent-kit's scaffolder just chains rtk's installer — no per-IDE adapter code. |
-| **Fail loudly, never silently degrade** | Scaffolder returns explicit result kinds (`rtk-ok`, `rtk-not-found`, `rtk-init-failed`) matching the existing `EnsureOmxResult` / `EnsureGstackResult` discriminated unions. `ak doctor` surfaces a missing rtk binary as a hard signal when `--with rtk` was requested. |
+| **Fail loudly, never silently degrade** | Scaffolder returns explicit result kinds (`rtk-ok`, `rtk-not-found`, `rtk-init-failed`) matching the existing `EnsureOmxResult` / `EnsureGstackResult` discriminated unions. `wp doctor` surfaces a missing rtk binary as a hard signal when `--with rtk` was requested. |
 | **Surfaces load at the right time** | The new `rtk-routing.md` rule is path-scoped (`paths: ['**/*']`) and fallback-only — same shape as `context-mode-routing.md`. It does not duplicate guidance when rtk has already injected its own routing block. |
-| **Vision boundaries — IN scope** | "Multi-IDE symlinker," "`ak setup` (scaffold)," and quality gates are explicitly listed in [`VISION.md` § Boundaries](../../../VISION.md) as in-scope. This blueprint touches all three. |
+| **Vision boundaries — IN scope** | "Multi-IDE symlinker," "`wp setup` (scaffold)," and quality gates are explicitly listed in [`VISION.md` § Boundaries](../../../VISION.md) as in-scope. This blueprint touches all three. |
 | **Vision boundaries — OUT of scope** | We do not run rtk; we install its binary and let it run itself. We add zero filter code to agent-kit. We do not author prompts. We do not modify rtk's behaviour. |
-| **Anti-pattern: hand-edit generated `.claude/` / `.codex/`** | Avoided. rtk's `rtk init -g --auto-patch` is the *upstream* tool that mutates `.claude/settings.json` and `.codex/hooks.json` — the same pattern by which OMX and agent-kit's `ak setup` already mutate those files via their own scaffolders. agent-kit does not hand-edit those files in this blueprint. |
+| **Anti-pattern: hand-edit generated `.claude/` / `.codex/`** | Avoided. rtk's `rtk init -g --auto-patch` is the *upstream* tool that mutates `.claude/settings.json` and `.codex/hooks.json` — the same pattern by which OMX and agent-kit's `wp setup` already mutate those files via their own scaffolders. agent-kit does not hand-edit those files in this blueprint. |
 | **Anti-pattern: worktree-local `.claude/` isolation** | N/A — scaffolder operates on the consumer repo root. |
 | **Public package isolation invariant** | Zero `@webpresso/*` runtime or dev deps added. The new scaffolder uses only `node:child_process` (`spawnSync`), exactly like the omx and gstack scaffolders. |
 | **Catalog content is canonical once shipped** | One new catalog rule (`catalog/agent/rules/rtk-routing.md`) follows the canonical-edit-in-`catalog/`-then-sync rhythm. No hand-edits to `.agent/`. |
-| **Testing philosophy — TDD Iron Law** | Each task below has explicit red→green TDD steps with `ak test --file <path>` cycles before implementation, mirroring `omx/index.test.ts` and `gstack/index.test.ts`. |
-| **Testing philosophy — integration-first** | Verification gate runs `ak setup --with rtk` end-to-end on a fresh fixture repo, then exercises a real Bash `git status` invocation through the resulting hook chain. The unit tests for the scaffolder are secondary. |
-| **Testing philosophy — E2E never call internal APIs** | The verification gate invokes `ak setup --with rtk` via the CLI surface and Bash via the shell, not by importing scaffolder functions directly. |
-| **Ubiquitous Language — Reference consumer** | `ozby/ingest-lens` is named as the integration surface (per glossary) — `pnpm ak setup --with rtk` is the canonical post-merge smoke-test command. |
+| **Testing philosophy — TDD Iron Law** | Each task below has explicit red→green TDD steps with `wp test --file <path>` cycles before implementation, mirroring `omx/index.test.ts` and `gstack/index.test.ts`. |
+| **Testing philosophy — integration-first** | Verification gate runs `wp setup --with rtk` end-to-end on a fresh fixture repo, then exercises a real Bash `git status` invocation through the resulting hook chain. The unit tests for the scaffolder are secondary. |
+| **Testing philosophy — E2E never call internal APIs** | The verification gate invokes `wp setup --with rtk` via the CLI surface and Bash via the shell, not by importing scaffolder functions directly. |
+| **Ubiquitous Language — Reference consumer** | `ozby/ingest-lens` is named as the integration surface (per glossary) — `pnpm wp setup --with rtk` is the canonical post-merge smoke-test command. |
 | **Ubiquitous Language — Audit (non-mutating)** | The new doctor row is non-mutating — it inspects `$PATH` for `rtk` and prints a hint. It never installs, repairs, or modifies user state. |
 | **Roadmap completion rules** | Sits as a follow-up to the **completed** [`webpresso-public-extraction-roadmap`](../../../../monorepo/webpresso/blueprints/completed/webpresso-public-extraction-roadmap/_overview.md), per its rule 3 ("agent-kit roadmap UX/audit improvements are explicitly scoped as separate blueprints"). Does not reopen any completed wave. |
 
@@ -165,7 +165,7 @@ exactly (verified content above):
 - Fallback-only header: "if SessionStart already injected … or rtk has
   already injected its own routing block, follow that and do not duplicate it."
 - Ownership boundary section that codifies the three lanes:
-  - agent-kit owns `ak_*` for QA tools.
+  - agent-kit owns `wp_*` for QA tools.
   - context-mode owns `ctx_*` for large-output search / fetch / execute.
   - rtk owns shell-tool output filtering for the rest (git, gh, kubectl,
     cargo, pytest, rspec, etc.).
@@ -174,17 +174,17 @@ exactly (verified content above):
 **Files:**
 
 - Create: `catalog/agent/rules/rtk-routing.md`
-- Run: `ak symlink sync` (propagates to `.agent/rules/rtk-routing.md` and
+- Run: `wp symlink sync` (propagates to `.agent/rules/rtk-routing.md` and
   per-IDE surfaces).
-- Run: `ak audit catalog-drift` (verifies sync).
+- Run: `wp audit catalog-drift` (verifies sync).
 
-### C. New `ak doctor` row
+### C. New `wp doctor` row
 
 **Path:** `src/hooks/doctor.ts` (extend `HOOK_BINS` and check chain) or a new
 sibling check function `checkRtkOnPath()`.
 
 **Behaviour:** Inspect `$PATH` for `rtk`. If present → `{ ok: true, detail: 'rtk vX.Y.Z' }`.
-If absent **and** the consumer's `ak setup` was invoked with `--with rtk`
+If absent **and** the consumer's `wp setup` was invoked with `--with rtk`
 (detected via a marker the scaffolder writes — e.g. `.agent/.rtk-requested`
 or a `peerPlugins.rtk: true` field in agent-kit's persisted scaffold state) →
 `{ ok: false, detail: 'rtk requested via --with rtk but not on PATH; brew install rtk-ai/rtk/rtk' }`.
@@ -231,7 +231,7 @@ upstream against the offender, do not paper over in agent-kit.
 ```
 PreToolUse(Bash) →
   rtk-rewrite.sh + rtk binary  (~5ms,  owns: git/gh/cargo/kubectl/...)
-  ak-pretool-guard             (~46ms, owns: ak_* dev-workflow)
+  ak-pretool-guard             (~46ms, owns: wp_* dev-workflow)
   context-mode pretooluse.mjs  (~91ms, owns: ctx_* nudging + cache injection)
 ```
 
@@ -240,7 +240,7 @@ flat — no peer wraps, dispatches to, or proxies for another.
 
 ### `RTK_HOOK_EXCLUDE_COMMANDS` configuration
 
-When `ak setup --with rtk` runs, the scaffolder MUST populate rtk's exclude
+When `wp setup --with rtk` runs, the scaffolder MUST populate rtk's exclude
 list with the dev-routing prefixes that `ak-pretool-guard` already denies, so
 rtk skips redundant forks on those commands.
 
@@ -293,7 +293,7 @@ maps to a specific anti-pattern from the analysis.
 
 1. **Don't merge agent-kit's hook with rtk's.** Each plugin owns its prefix;
    merging them couples release cadences and shadows ownership.
-2. **Don't proxy `ak_*` through context-mode or rtk.** agent-kit's prefix is
+2. **Don't proxy `wp_*` through context-mode or rtk.** agent-kit's prefix is
    sacrosanct; routing it through a peer creates a dependency loop and
    doubles the fork cost.
 3. **Don't add per-Bash-call MCP RPC.** Use existing peer MCP servers' direct
@@ -328,13 +328,13 @@ fixture repo, not the agent-kit repo itself.
 
 | Gate | Description |
 | --- | --- |
-| **G1. Fresh-repo setup** | `mkdir /tmp/rtk-fixture && cd $_ && git init && pnpm init -y && pnpm add -D @webpresso/agent-kit && npx ak setup --with rtk`. Expect exit 0. |
+| **G1. Fresh-repo setup** | `mkdir /tmp/rtk-fixture && cd $_ && git init && pnpm init -y && pnpm add -D @webpresso/agent-kit && npx wp setup --with rtk`. Expect exit 0. |
 | **G2. Three-hook composition** | After G1, `cat .claude/settings.json` shows three independent Claude `PreToolUse` entries: agent-kit's `ak-pretool-guard`, OMX's `oh-my-codex/dist/scripts/codex-native-hook.js` (if `--with omx` also ran), and rtk's hook. None wraps the others. |
-| **G3. rtk redirect on git** | From a Claude Code session in the fixture repo, run `git status` via Bash. Assert: rtk's PreToolUse hook denies with a `rtk git status` redirect, exactly like agent-kit's hook denies `pnpm test` with `mcp__agent-kit__ak_test`. |
-| **G4. agent-kit redirect still works** | In the same fixture repo, `pnpm test` via Bash → still gets agent-kit's `ak_test` redirect. The two redirects coexist; rtk does not shadow agent-kit's QA prefix. |
-| **G5. Doctor row** | `ak doctor` in the fixture repo lists a green `rtk on PATH` row. After RTK is removed from `PATH` → red row with the install hint. |
-| **G6. Symlink sync clean** | `ak audit catalog-drift` after `ak symlink sync` returns clean (new `rtk-routing.md` rule properly synced to `.agent/` and per-IDE surfaces). |
-| **G7. Idempotent re-run** | `npx ak setup --with rtk` twice in a row → second run is a no-op (rtk's own `rtk init -g --auto-patch` is idempotent; agent-kit's scaffolder just chains it). |
+| **G3. rtk redirect on git** | From a Claude Code session in the fixture repo, run `git status` via Bash. Assert: rtk's PreToolUse hook denies with a `rtk git status` redirect, exactly like agent-kit's hook denies `pnpm test` with `mcp__agent-kit__wp_test`. |
+| **G4. agent-kit redirect still works** | In the same fixture repo, `pnpm test` via Bash → still gets agent-kit's `wp_test` redirect. The two redirects coexist; rtk does not shadow agent-kit's QA prefix. |
+| **G5. Doctor row** | `wp doctor` in the fixture repo lists a green `rtk on PATH` row. After RTK is removed from `PATH` → red row with the install hint. |
+| **G6. Symlink sync clean** | `wp audit catalog-drift` after `wp symlink sync` returns clean (new `rtk-routing.md` rule properly synced to `.agent/` and per-IDE surfaces). |
+| **G7. Idempotent re-run** | `npx wp setup --with rtk` twice in a row → second run is a no-op (rtk's own `rtk init -g --auto-patch` is idempotent; agent-kit's scaffolder just chains it). |
 | **G8. Telemetry default** | `RTK_TELEMETRY_DISABLED=1` is set in the hook entry written by `rtk init`. Verified by grepping `.claude/settings.json`. |
 
 ## Out of scope
@@ -351,8 +351,8 @@ fixture repo, not the agent-kit repo itself.
 - **A Linux `.deb` / `.rpm` install path.** Step A.3 falls back to a printed
   install hint on non-macOS; building a multi-platform installer is rtk's
   problem, not agent-kit's. Linux users follow rtk's docs.
-- **Wrapping rtk's CLI behind `ak rtk *`.** rtk's prefix is sacrosanct;
-  agent-kit must not promote `ak rtk` aliases that rot when rtk's CLI evolves.
+- **Wrapping rtk's CLI behind `wp rtk *`.** rtk's prefix is sacrosanct;
+  agent-kit must not promote `wp rtk` aliases that rot when rtk's CLI evolves.
 - **A unified `--with all-peers` preset.** Each peer plugin remains an
   independent `--with <name>` flag (`--with rtk`, `--with omx`,
   `--with gstack`). Composition is the consumer's choice.
@@ -378,12 +378,12 @@ fixture repo, not the agent-kit repo itself.
    on PATH (skip install), rtk missing → brew install path, brew install
    fails → `rtk-not-found`, `rtk init` succeeds, `rtk init` fails →
    `rtk-init-failed`. Use DI-injected `spawnSync` per omx pattern.
-3. Run: `ak test --file src/cli/commands/init/scaffolders/rtk/index.test.ts` → FAIL.
+3. Run: `wp test --file src/cli/commands/init/scaffolders/rtk/index.test.ts` → FAIL.
 4. Implement `ensureRtk` against the omx shape. Add `RTK_TELEMETRY_DISABLED=1`
    to the env passed into `rtk init`.
-5. Run: `ak test --file src/cli/commands/init/scaffolders/rtk/index.test.ts` → PASS.
-6. Run: `ak lint --file src/cli/commands/init/scaffolders/rtk/index.ts` and
-   `ak typecheck --file src/cli/commands/init/scaffolders/rtk/index.ts`.
+5. Run: `wp test --file src/cli/commands/init/scaffolders/rtk/index.test.ts` → PASS.
+6. Run: `wp lint --file src/cli/commands/init/scaffolders/rtk/index.ts` and
+   `wp typecheck --file src/cli/commands/init/scaffolders/rtk/index.ts`.
 
 **Acceptance:**
 
@@ -411,8 +411,8 @@ fixture repo, not the agent-kit repo itself.
 
 **Acceptance:**
 
-- [x] `ak setup --with rtk` calls `ensureRtk` exactly once.
-- [x] `ak setup --with omx,rtk` runs both, in deterministic order
+- [x] `wp setup --with rtk` calls `ensureRtk` exactly once.
+- [x] `wp setup --with omx,rtk` runs both, in deterministic order
       (alphabetical by preset name, matching existing convention).
 
 **Evidence (2026-05-06):** `src/cli/commands/init/index.ts` now registers the `rtk` preset and writes the `.agent/.rtk-requested` marker before invoking `ensureRtk`; `pnpm exec vitest run src/cli/commands/init/init.presets.test.ts src/cli/commands/init/init.e2e.test.ts --reporter=dot` passed, including `--with rtk`, `--with omx,rtk`, and `--help` preset surfacing.
@@ -426,24 +426,24 @@ fixture repo, not the agent-kit repo itself.
 **Files:**
 
 - Create: `catalog/agent/rules/rtk-routing.md`
-- Run: `ak symlink sync` → propagates to `.agent/rules/rtk-routing.md`.
+- Run: `wp symlink sync` → propagates to `.agent/rules/rtk-routing.md`.
 
 **Steps:**
 
 1. Author the rule mirroring `context-mode-routing.md` (same frontmatter,
    same fallback-only header, same Ownership boundary section structure).
-2. Run: `ak symlink sync`.
-3. Run: `ak audit catalog-drift` → expect clean.
-4. Run: `ak audit docs-frontmatter` → expect clean.
+2. Run: `wp symlink sync`.
+3. Run: `wp audit catalog-drift` → expect clean.
+4. Run: `wp audit docs-frontmatter` → expect clean.
 
 **Acceptance:**
 
 - [x] Frontmatter has `paths: ['**/*']`.
 - [x] Includes a "fallback-only" disclaimer matching `context-mode-routing.md`.
-- [x] Ownership boundary section names all three lanes (`ak_*`, `ctx_*`, `rtk *`).
-- [x] `ak audit catalog-drift` clean.
+- [x] Ownership boundary section names all three lanes (`wp_*`, `ctx_*`, `rtk *`).
+- [x] `wp audit catalog-drift` clean.
 
-**Evidence (2026-05-06):** Added `catalog/agent/rules/rtk-routing.md` and aligned `.agent/rules/rtk-routing.md`; `pnpm exec ak audit catalog-drift` passed.
+**Evidence (2026-05-06):** Added `catalog/agent/rules/rtk-routing.md` and aligned `.agent/rules/rtk-routing.md`; `pnpm exec wp audit catalog-drift` passed.
 
 #### [agent-kit] Task 2.2: Update `context-mode-routing.md` ownership boundary
 
@@ -455,16 +455,16 @@ fixture repo, not the agent-kit repo itself.
 
 - Modify: `catalog/agent/rules/context-mode-routing.md` § Ownership boundary
   (add the rtk lane).
-- Run: `ak symlink sync`.
+- Run: `wp symlink sync`.
 
 **Acceptance:**
 
 - [x] Both rules now name all three peers symmetrically.
-- [x] `ak audit catalog-drift` clean.
+- [x] `wp audit catalog-drift` clean.
 
-**Evidence (2026-05-06):** Updated `catalog/agent/rules/context-mode-routing.md` and `.agent/rules/context-mode-routing.md` ownership boundaries to name `ak_*`, `ctx_*`, and `rtk *`; `pnpm exec ak audit catalog-drift` passed.
+**Evidence (2026-05-06):** Updated `catalog/agent/rules/context-mode-routing.md` and `.agent/rules/context-mode-routing.md` ownership boundaries to name `wp_*`, `ctx_*`, and `rtk *`; `pnpm exec wp audit catalog-drift` passed.
 
-#### [agent-kit] Task 3.1: New `ak doctor` row for rtk
+#### [agent-kit] Task 3.1: New `wp doctor` row for rtk
 
 **Status:** done
 
@@ -480,10 +480,10 @@ fixture repo, not the agent-kit repo itself.
 **Steps (TDD):**
 
 1. Write tests for the three cases.
-2. Run: `ak test --file src/hooks/doctor.test.ts` → FAIL.
+2. Run: `wp test --file src/hooks/doctor.test.ts` → FAIL.
 3. Implement `checkRtkOnPath()`. Read marker file written by the scaffolder
    (e.g. `.agent/.rtk-requested`).
-4. Run: `ak test --file src/hooks/doctor.test.ts` → PASS.
+4. Run: `wp test --file src/hooks/doctor.test.ts` → PASS.
 
 **Acceptance:**
 
@@ -513,7 +513,7 @@ fixture repo, not the agent-kit repo itself.
    shell-redirect output.
 2. Verify rtk is installable in the test environment (CI cache or a
    `rtk --version` prerequisite skip).
-3. Run: `ak test --file src/cli/commands/init/scaffolders/rtk/integration.test.ts`.
+3. Run: `wp test --file src/cli/commands/init/scaffolders/rtk/integration.test.ts`.
 
 **Acceptance:**
 
@@ -543,7 +543,7 @@ one rule file, one doctor row, plus tests.
 | rtk's `rtk init -g --auto-patch` changes its hook-entry shape between versions and breaks G2's "three independent entries" assertion. | Pin the rtk version range tested in CI. Track upstream releases via the doctor's version-string row. Add a `transform-drift`-style snapshot if churn becomes painful. |
 | Linux fixture repos can't install rtk via brew. | Document the fallback (printed install hint), and skip G1–G8 on Linux CI with a clear rationale. The reference consumer (`ozby/ingest-lens`) is macOS-first. |
 | rtk and OMX both try to mutate `.codex/hooks.json` and step on each other. | Verified in [`compact-qa-output-filters` § Why](../compact-qa-output-filters/_overview.md): hooks compose as independent entries under the same event. rtk's installer follows the same convention. If a future rtk version regresses this, file upstream — do not work around in agent-kit. |
-| Telemetry default (`RTK_TELEMETRY_DISABLED=1`) drifts upstream as rtk renames the env var. | Track the var name in a single constant in the scaffolder; surface a warning row in `ak doctor` if rtk's `--version` output reports an unexpected telemetry default. |
+| Telemetry default (`RTK_TELEMETRY_DISABLED=1`) drifts upstream as rtk renames the env var. | Track the var name in a single constant in the scaffolder; surface a warning row in `wp doctor` if rtk's `--version` output reports an unexpected telemetry default. |
 
 ## Maintenance considerations
 
@@ -571,7 +571,7 @@ one rule file, one doctor row, plus tests.
   — the shape this blueprint's new `rtk-routing.md` mirrors exactly.
 - **Sibling scaffolders:** `src/cli/commands/init/scaffolders/{omx,gstack}/index.ts`
   — the patterns this blueprint's new `rtk/index.ts` mirrors.
-- **Reference consumer:** `ozby/ingest-lens` — `pnpm ak setup --with rtk` is the
+- **Reference consumer:** `ozby/ingest-lens` — `pnpm wp setup --with rtk` is the
   canonical post-merge smoke command.
 - **Upstream:** [`rtk-ai/rtk`](https://github.com/rtk-ai/rtk) (MIT-licensed,
   installed via `brew install rtk`). Read but **don't depend on**

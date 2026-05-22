@@ -7,7 +7,7 @@ import { agentFrontmatterSchema, commandFrontmatterSchema, skillFrontmatterSchem
 function validateFrontmatter(schema, data, filePath) {
     const result = schema.safeParse(data);
     if (!result.success) {
-        process.stderr.write(`ak-compiler: frontmatter validation warning for ${filePath}: ${result.error?.message ?? 'unknown error'}\n`);
+        process.stderr.write(`wp-compiler: frontmatter validation warning for ${filePath}: ${result.error?.message ?? 'unknown error'}\n`);
     }
 }
 /** Reads a file as utf-8 string and parses its gray-matter frontmatter. */

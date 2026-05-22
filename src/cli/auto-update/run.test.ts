@@ -162,9 +162,9 @@ describe('runUpdateFlow — no update available', () => {
   })
 })
 
-// ─── runUpdateFlow — update available + AK_SKIP_AUTO_INSTALL=1 ───────────────
+// ─── runUpdateFlow — update available + WP_SKIP_AUTO_INSTALL=1 ───────────────
 
-describe('runUpdateFlow — update available + AK_SKIP_AUTO_INSTALL=1', () => {
+describe('runUpdateFlow — update available + WP_SKIP_AUTO_INSTALL=1', () => {
   it('does not call scheduleDeferredInstall when auto-install is skipped', async () => {
     vi.stubGlobal(
       'fetch',

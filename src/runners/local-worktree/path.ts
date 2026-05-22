@@ -6,9 +6,9 @@ import { join } from 'node:path'
  * Two calls with the same taskId return different paths because a UUID is
  * appended, making each invocation distinct.
  *
- * @returns `<baseDir>/.ak-worktrees/<taskId>-<uuid>`
+ * @returns `<baseDir>/.wp-worktrees/<taskId>-<uuid>`
  */
 export function generateWorktreePath(baseDir: string, taskId: string): string {
   const uuid = crypto.randomUUID()
-  return join(baseDir, '.ak-worktrees', `${taskId}-${uuid}`)
+  return join(baseDir, '.wp-worktrees', `${taskId}-${uuid}`)
 }

@@ -2,7 +2,7 @@
  * Tier-3 skill selection — `--with`, `--all`, and an optional TTY prompt.
  *
  * Kept deliberately minimal: we don't pull in an interactive prompt library.
- * If the user runs `ak init` in a TTY without flags, we use `node:readline/promises`
+ * If the user runs `wp init` in a TTY without flags, we use `node:readline/promises`
  * to ask a single yes/no per Tier-3 skill. If stdin isn't a TTY and no flags
  * are provided, we default to installing Tier-1/Tier-2 only.
  */

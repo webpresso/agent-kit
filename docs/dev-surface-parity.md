@@ -3,7 +3,7 @@ type: research
 last_updated: '2026-04-25'
 ---
 
-# `ak dev` parity report
+# `wp dev` parity report
 
 Status: Phase 4 complete. External consumer adoption is explicitly parked.
 
@@ -13,9 +13,9 @@ Date: 2026-04-24
 
 ### `just dev platform-api`
 
-- Command reached the new `ak dev` preflight path through the checked-in
+- Command reached the new `wp dev` preflight path through the checked-in
   `webpresso/app-manifest.yaml`.
-- `ak dev platform-api --manifest webpresso/app-manifest.yaml --doctor`
+- `wp dev platform-api --manifest webpresso/app-manifest.yaml --doctor`
   resolved `["api"]`.
 - The existing host execution path still handled the real startup:
   `"[Neon] Using existing branch: dev/ozby"` followed by
@@ -25,7 +25,7 @@ Date: 2026-04-24
 
 ### `just dev-recover platform-api`
 
-- Command ran the new `ak dev --restart` preflight before host recovery.
+- Command ran the new `wp dev --restart` preflight before host recovery.
 - Recovery sequence preserved the existing behavior:
   `doctor -> cleanup -> doctor -> dev`.
 - First doctor run failed on an existing port conflict for `api:4001`.
@@ -57,7 +57,7 @@ Fixture path:
 Validation command:
 
 ```bash
-ak dev --manifest \
+wp dev --manifest \
   packages/cli/agent-kit/fixtures/dev-two-process/app-manifest.yaml \
   full-stack
 ```

@@ -14,14 +14,14 @@ describe('genericTransform', () => {
     const rawOutput = readFileSync(join(fixtureDir, 'mixed.txt'), 'utf8')
 
     const result = genericTransform(rawOutput, {
-      toolName: 'ak_err',
+      toolName: 'wp_err',
       normalizedToolName: 'err',
       persistOverflow: false,
     })
 
     expect(result.rawOutput).toBe('ERROR: compact this line')
     expect(result.transform).toMatchObject({
-      toolName: 'ak_err',
+      toolName: 'wp_err',
       normalizedToolName: 'err',
       tier: 'registered',
     })
@@ -29,7 +29,7 @@ describe('genericTransform', () => {
 
   it('is the fallback for unknown tools', () => {
     const result = applyOutputTransform('ok\nFAIL expected\nignored', {
-      toolName: 'ak_unknown-tool',
+      toolName: 'wp_unknown-tool',
       persistOverflow: false,
     })
 
@@ -42,7 +42,7 @@ describe('genericTransform', () => {
 
   it('falls back to passthrough when there are no matching lines', () => {
     const result = genericTransform('all good\nstill fine', {
-      toolName: 'ak_err',
+      toolName: 'wp_err',
       normalizedToolName: 'err',
     })
 

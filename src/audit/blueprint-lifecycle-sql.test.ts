@@ -12,7 +12,7 @@ import { auditBlueprintLifecycleSql } from './blueprint-lifecycle-sql.js'
 // ---------------------------------------------------------------------------
 
 function makeTempRepo(): { cwd: string; agentDir: string; dbPath: string } {
-  const cwd = mkdtempSync(path.join(tmpdir(), 'ak-audit-bp-lifecycle-sql-'))
+  const cwd = mkdtempSync(path.join(tmpdir(), 'wp-audit-bp-lifecycle-sql-'))
   const agentDir = path.join(cwd, '.agent')
   mkdirSync(agentDir, { recursive: true })
   const dbPath = path.join(agentDir, '.blueprints.db')

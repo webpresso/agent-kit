@@ -15,9 +15,9 @@ bash docs/wedge-experience/demo.sh
 
 ## What it shows
 
-1. **Drift catch**: rulesync alone doesn't catch a skill that's over Codex's 8KB budget; `ak audit skill-sizes` does
-2. **AGENTS.md merge**: rulesync doesn't merge layered AGENTS.md; `ak compile` does (with section-keyed precedence)
-3. **Audit-to-tech-debt loop**: `ak tech-debt new --from-audit skill-sizes` auto-files a remediation item; rulesync has no tech-debt lifecycle
+1. **Drift catch**: rulesync alone doesn't catch a skill that's over Codex's 8KB budget; `wp audit skill-sizes` does
+2. **AGENTS.md merge**: rulesync doesn't merge layered AGENTS.md; `wp compile` does (with section-keyed precedence)
+3. **Audit-to-tech-debt loop**: `wp tech-debt new --from-audit skill-sizes` auto-files a remediation item; rulesync has no tech-debt lifecycle
 
 ## Expected output
 

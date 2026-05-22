@@ -99,8 +99,8 @@ describe('OPENCODE_PLUGIN_CONTENT', () => {
     expect(OPENCODE_PLUGIN_CONTENT).toContain('async ({ $, directory })')
   })
 
-  it('shells out to the agent-kit-shipped ak-check-dev-link bin', () => {
-    expect(OPENCODE_PLUGIN_CONTENT).toContain('./node_modules/.bin/ak-check-dev-link')
+  it('shells out to the agent-kit-shipped wp-check-dev-link bin', () => {
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('./node_modules/.bin/wp-check-dev-link')
   })
 
   it('subscribes to session.created for first-run detection', () => {

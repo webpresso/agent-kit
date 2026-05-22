@@ -49,7 +49,7 @@ function project(overrides?: Partial<BlueprintProjectLike>): BlueprintProjectLik
 }
 
 beforeEach(() => {
-  tmp = mkdtempSync(path.join(tmpdir(), 'ak-freshness-'))
+  tmp = mkdtempSync(path.join(tmpdir(), 'wp-freshness-'))
   repo = path.join(tmp, 'repo')
   mkdirSync(repo, { recursive: true })
   dbPath = path.join(tmp, 'blueprints.db')

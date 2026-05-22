@@ -17,7 +17,7 @@ function sha256(content: string): string {
 }
 
 function makeTempRepo(): { cwd: string; agentDir: string; dbPath: string } {
-  const cwd = mkdtempSync(path.join(tmpdir(), 'ak-audit-bp-db-test-'))
+  const cwd = mkdtempSync(path.join(tmpdir(), 'wp-audit-bp-db-test-'))
   const agentDir = path.join(cwd, '.agent')
   mkdirSync(agentDir, { recursive: true })
   const dbPath = path.join(agentDir, '.blueprints.db')
@@ -82,12 +82,12 @@ beforeEach(() => {
 afterEach(() => {
   rmSync(cwd, { recursive: true, force: true })
   // Restore env
-  delete process.env['AK_USE_SQL_AUDITS']
+  delete process.env['WP_USE_SQL_AUDITS']
 })
 
 describe('auditBlueprintDbConsistency — env gate', () => {
-  it('returns disabled (ok: true) when AK_USE_SQL_AUDITS is not set', async () => {
-    delete process.env['AK_USE_SQL_AUDITS']
+  it('returns disabled (ok: true) when WP_USE_SQL_AUDITS is not set', async () => {
+    delete process.env['WP_USE_SQL_AUDITS']
     const result = await auditBlueprintDbConsistency(cwd)
     expect(result.ok).toBe(true)
     expect(result.violations).toHaveLength(0)
@@ -95,9 +95,9 @@ describe('auditBlueprintDbConsistency — env gate', () => {
   })
 })
 
-describe('auditBlueprintDbConsistency — with AK_USE_SQL_AUDITS=1', () => {
+describe('auditBlueprintDbConsistency — with WP_USE_SQL_AUDITS=1', () => {
   beforeEach(() => {
-    process.env['AK_USE_SQL_AUDITS'] = '1'
+    process.env['WP_USE_SQL_AUDITS'] = '1'
   })
 
   it('returns ok when DB matches filesystem (all files present and hashes match)', async () => {

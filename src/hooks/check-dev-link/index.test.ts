@@ -86,7 +86,7 @@ describe('formatBreakageMessage', () => {
     expect(message).toContain('/tmp/store-snapshot')
     expect(message).toContain('vp run dev:link --consumer /tmp/consumer')
     expect(message).toContain('@webpresso/agent-kit')
-    expect(message).toContain('ak-restore-dev-links')
+    expect(message).toContain('wp-restore-dev-links')
   })
 
   it('uses <store snapshot> placeholder when actual link is null', () => {

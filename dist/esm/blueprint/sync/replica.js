@@ -60,7 +60,7 @@ export class ReplicaManager {
         return this.scheduleWithSingleFlight(opts?.slug, () => this.doActualPull(opts?.slug));
     }
     /**
-     * Force a pull regardless of TTL (e.g. used by `ak setup --sync`).
+     * Force a pull regardless of TTL (e.g. used by `wp setup --sync`).
      * Does NOT participate in single-flight — each forcePull is independent.
      */
     async forcePull(opts) {

@@ -54,7 +54,7 @@ BEFORE:
 AFTER:
   agent-kit (consumer install)
     └── plugin surface = MIT-only by default
-          └── opt-in: AK_PLUGINS=context-mode  (or config flag)
+          └── opt-in: WP_PLUGINS=context-mode  (or config flag)
                 └── consumer explicitly adds context-mode → loaded
 ```
 
@@ -82,11 +82,11 @@ surfaces:
 - `.claude-plugin/plugin.json` `mcpServers` block
 - `catalog/` manifests that enumerate default tools/plugins
 - `package.json` `dependencies` / `peerDependencies` entries
-- Any `ak setup` recipe that auto-installs context-mode
+- Any `wp setup` recipe that auto-installs context-mode
 
 Make the opt-in mechanism explicit: a documented env var
-(`AK_PLUGINS=context-mode`), config file flag, or section in
-`ak setup --with` so that consumers wanting context-mode get a clear
+(`WP_PLUGINS=context-mode`), config file flag, or section in
+`wp setup --with` so that consumers wanting context-mode get a clear
 one-line path.
 
 **Files:**
@@ -94,31 +94,31 @@ one-line path.
 - Modify: `.claude-plugin/plugin.json` (likely)
 - Modify: `package.json` (if context-mode is a runtime dep)
 - Modify: `catalog/` manifests (if applicable)
-- Modify: `src/cli/setup.ts` or equivalent (if `ak setup` auto-wires it)
+- Modify: `src/cli/setup.ts` or equivalent (if `wp setup` auto-wires it)
 
 **Steps (TDD):**
 
 1. Grep agent-kit for every reference to `context-mode` across `src/`,
    `catalog/`, `.claude-plugin/`, root `package.json`.
 2. Categorize each: required-by-default vs opt-in vs documentation-only.
-3. Write failing test asserting that a fresh `ak setup` (or equivalent
+3. Write failing test asserting that a fresh `wp setup` (or equivalent
    plugin enumeration command) does NOT include `context-mode` by
    default.
 4. Move every default reference behind an opt-in flag. Remove from
    `dependencies`; add to `optionalDependencies` or `peerDependenciesMeta`
    only if needed.
 5. Re-run test → PASS.
-6. Add a positive-path test: with `AK_PLUGINS=context-mode` set, the
+6. Add a positive-path test: with `WP_PLUGINS=context-mode` set, the
    plugin IS loaded.
 
 **Acceptance:**
 
-- [ ] `ak setup` (default invocation) does not pull or load `context-mode`
+- [ ] `wp setup` (default invocation) does not pull or load `context-mode`
 - [ ] Documented opt-in path works end-to-end
 - [ ] Negative + positive tests both green
 - [ ] No regression in existing agent-kit behavior for consumers who
       DO opt in
-- [ ] `ak audit catalog-drift` clean
+- [ ] `wp audit catalog-drift` clean
 
 #### [docs] Task 1.2: Migration note + opt-in instructions in README
 
@@ -141,7 +141,7 @@ is in flight.
 
 - [ ] README has a "context-mode is now opt-in" section near the top
 - [ ] Migration doc shows exact one-liners for Claude Code and Codex
-- [ ] `ak audit docs-frontmatter` passes
+- [ ] `wp audit docs-frontmatter` passes
 
 #### [infra] Task 1.3: Cross-repo issue for ozby/ingest-lens
 
@@ -202,10 +202,10 @@ ground-truth check that the wedge actually delivers — without it,
 
 | Gate | Command | Success Criteria |
 | --- | --- | --- |
-| Type safety | `ak_typecheck` | Zero errors |
-| Lint | `ak_lint` (scoped) | Zero violations |
-| Tests | `ak_test` (scoped) | All pass |
-| Audit | `ak_audit` (catalog-drift, docs-frontmatter) | All pass |
+| Type safety | `wp_typecheck` | Zero errors |
+| Lint | `wp_lint` (scoped) | Zero violations |
+| Tests | `wp_test` (scoped) | All pass |
+| Audit | `wp_audit` (catalog-drift, docs-frontmatter) | All pass |
 | Clean-install ELv2 check | `bash scripts/verify-no-elv2.sh` | Zero ELv2 nodes |
 
 ## Cross-Plan References
@@ -236,7 +236,7 @@ ground-truth check that the wedge actually delivers — without it,
 | --- | --- | --- |
 | Consumer agents silently lose `ctx_*` tools after upgrade | Workflow regressions in the wild | Migration note prominent in README + changelog; opt-in is one line |
 | Hidden transitive context-mode dep persists | "ELv2 gone" claim is false | Task 1.4 hard check |
-| Removing default surface breaks `ak setup` recipes that assume context-mode | `ak setup --with monorepo-navigation` etc. | Audit at Task 1.1; preserve recipes that explicitly want context-mode by adding it to their explicit deps |
+| Removing default surface breaks `wp setup` recipes that assume context-mode | `wp setup --with monorepo-navigation` etc. | Audit at Task 1.1; preserve recipes that explicitly want context-mode by adding it to their explicit deps |
 
 ## Technology Choices
 

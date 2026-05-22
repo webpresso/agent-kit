@@ -1,7 +1,7 @@
 import { loadDevManifest, resolveDevServices } from '#dev/index';
 export function getDevHelpText() {
     return [
-        'Usage: ak dev [target] [options]',
+        'Usage: wp dev [target] [options]',
         '',
         'Options:',
         '  --manifest <path>  Dev manifest path',

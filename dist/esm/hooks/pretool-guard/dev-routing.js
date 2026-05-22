@@ -1,69 +1,79 @@
-import { closeSync, openSync } from 'node:fs';
-import { O_CREAT, O_EXCL, O_WRONLY } from 'node:constants';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 const ROUTING_RULES = [
     {
         prefixes: [
-            'just qa',
-            'pnpm qa',
-            'pnpm run qa',
             'vp exec markdownlint-cli2',
-            'just lint-md',
-            'pnpm exec markdownlint-cli2',
             'markdownlint-cli2',
+            'pnpm exec markdownlint-cli2',
         ],
         guidanceType: 'qa',
-        guidance: 'Use ak_qa MCP tool instead — QA is the blessed MCP quality entrypoint; avoid ad hoc markdown-only lint endpoints',
-        tool: 'ak_qa',
+        guidance: 'Use wp_qa MCP tool instead — QA is the blessed MCP quality entrypoint; avoid ad hoc markdown-only lint endpoints',
+        tool: 'wp_qa',
     },
     {
         prefixes: [
-            'just test',
+            'vp exec vitest',
+            'vitest',
+            'vp run test',
+            'vp test',
             'pnpm test',
             'pnpm run test',
             'pnpm exec vitest',
-            'vp exec vitest',
-            'vitest',
+            'just test',
         ],
         guidanceType: 'test',
-        guidance: 'Use ak_test MCP tool instead — returns {passed, summary} not raw logs',
-        tool: 'ak_test',
+        guidance: 'Use wp_test MCP tool instead — returns {passed, summary} not raw logs',
+        tool: 'wp_test',
     },
     {
         prefixes: [
-            'just lint',
-            'pnpm lint',
-            'pnpm run lint',
-            'pnpm exec oxlint',
             'vp exec oxlint',
             'oxlint',
+            'pnpm exec oxlint',
+            'vp run lint',
+            'vp lint',
+            'pnpm lint',
+            'pnpm run lint',
+            'just lint',
         ],
         guidanceType: 'lint',
-        guidance: 'Use ak_lint MCP tool instead — returns {passed, violations[]}',
-        tool: 'ak_lint',
+        guidance: 'Use wp_lint MCP tool instead — returns {passed, violations[]}',
+        tool: 'wp_lint',
+    },
+    {
+        prefixes: ['vp exec tsc', 'tsc', 'pnpm exec tsc', 'vp run typecheck', 'pnpm run typecheck'],
+        guidanceType: 'typecheck',
+        guidance: 'Use wp_typecheck MCP tool instead — returns {passed, errors[]}',
+        tool: 'wp_typecheck',
+    },
+    {
+        prefixes: ['vp exec prettier', 'prettier', 'pnpm exec prettier'],
+        guidanceType: 'format',
+        guidance: 'Use wp_format MCP tool instead — routes through the repo formatter, not Prettier',
+        tool: 'wp_format',
+    },
+    {
+        prefixes: ['vp run e2e', 'vp e2e', 'pnpm run e2e', 'pnpm e2e', 'pnpm exec playwright', 'pnpm exec playwright test'],
+        guidanceType: 'e2e',
+        guidance: 'Use wp_e2e MCP tool instead — returns {passed, summary} for e2e workflow execution',
+        tool: 'wp_e2e',
     },
     {
         prefixes: [
-            'just typecheck',
-            'pnpm typecheck',
-            'pnpm run typecheck',
-            'pnpm exec tsc',
-            'vp exec tsc',
-            'tsc',
+            'just qa',
+            'pnpm run qa',
+            'vp run qa',
+            'pnpm qa',
+            'vp run lint-md',
+            'pnpm run lint-md',
+            'just lint-md',
+            'pnpm exec markdownlint-cli2',
         ],
-        guidanceType: 'typecheck',
-        guidance: 'Use ak_typecheck MCP tool instead — returns {passed, errors[]}',
-        tool: 'ak_typecheck',
-    },
-    {
-        prefixes: ['pnpm exec prettier', 'vp exec prettier', 'prettier'],
-        guidanceType: 'format',
-        guidance: 'Use ak_format MCP tool instead — routes through the repo formatter, not Prettier',
-        tool: 'ak_format',
+        guidanceType: 'qa',
+        guidance: 'Use wp_qa MCP tool instead — QA is the blessed MCP quality entrypoint; avoid ad hoc markdown-only lint endpoints',
+        tool: 'wp_qa',
     },
 ];
-const PASSTHROUGH_PREFIXES = ['just audit', 'ak audit'];
+const PASSTHROUGH_PREFIXES = ['wp audit'];
 const SAFE_PASSTHROUGH_PREFIXES = [
     'git status',
     'git add',
@@ -86,38 +96,43 @@ const SANDBOX_PREFIXES = [
     { prefix: 'git log', guidance: 'Use ctx_execute_file or ctx_execute' },
     { prefix: 'git diff', guidance: 'Use ctx_execute_file or ctx_execute' },
     { prefix: 'git show', guidance: 'Use ctx_execute_file or ctx_execute' },
-    { prefix: 'npm test', guidance: 'Use ctx_execute for test output' },
-    { prefix: 'npm run build', guidance: 'Use ctx_execute for build output' },
-    { prefix: 'pnpm build', guidance: 'Use ctx_execute for build output' },
+    { prefix: 'vp run build', guidance: 'Use ctx_execute for build output' },
 ];
-const PNPM_DIRECTORY_PREFIX = /^pnpm\s+(?:(?:--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)\s+)+(?<rest>.+)$/u;
+const VP_SCOPE_FLAG_PREFIX = /(?:(?:--filter|-F|--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)|(?:--workspace-root|-w))/u;
+const PNPM_SCOPE_FLAG_PREFIX = /(?:(?:--filter|-F|--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)|--workspace-root|-w|--recursive|-r|--workspace)(?=\s|$)/u;
+const VP_COMMAND_PREFIX = /^vp\s+(?<rest>.+)$/u;
+const PNPM_COMMAND_PREFIX = /^pnpm\s+(?<rest>.+)$/u;
 export function normalizeCommandForRouting(command) {
     const trimmed = command.trim();
-    const match = PNPM_DIRECTORY_PREFIX.exec(trimmed);
-    const rest = match?.groups?.rest?.trim();
-    return rest ? `pnpm ${rest}` : trimmed;
+    let match = VP_COMMAND_PREFIX.exec(trimmed);
+    let next = trimmed;
+    let prefix = 'vp';
+    if (match?.groups?.rest) {
+        next = match.groups.rest.trim();
+    }
+    else {
+        match = PNPM_COMMAND_PREFIX.exec(trimmed);
+        if (match?.groups?.rest) {
+            next = match.groups.rest.trim();
+            prefix = 'pnpm';
+        }
+        else {
+            return trimmed;
+        }
+    }
+    const scopePrefix = prefix === 'pnpm' ? PNPM_SCOPE_FLAG_PREFIX : VP_SCOPE_FLAG_PREFIX;
+    while (scopePrefix.test(next)) {
+        const updated = next.replace(scopePrefix, '').trim();
+        if (updated === next)
+            break;
+        next = updated;
+    }
+    return `${prefix} ${next.replace(/\s+/g, ' ').trim()}`;
 }
 function matchesPrefix(command, prefix) {
     return command === prefix || command.startsWith(prefix + ' ');
 }
-function markerPath(sessionId, guidanceType) {
-    const key = sessionId ?? String(process.ppid);
-    return join(tmpdir(), `ak-routing-guidance-${key}-${guidanceType}`);
-}
-function shouldThrottle(sessionId, guidanceType, guidance) {
-    const path = markerPath(sessionId, guidanceType);
-    try {
-        const fd = openSync(path, O_CREAT | O_EXCL | O_WRONLY);
-        closeSync(fd);
-        return { guidance }; // first time — show guidance
-    }
-    catch (err) {
-        if (err.code === 'EEXIST')
-            return null; // already shown this session
-        return { guidance }; // non-EEXIST (NFS etc) — always deny
-    }
-}
-export function routeCommand(command, sessionId) {
+export function routeCommand(command, _sessionId) {
     const trimmed = normalizeCommandForRouting(command);
     if (!trimmed)
         return null;
@@ -134,14 +149,8 @@ export function routeCommand(command, sessionId) {
     for (const rule of ROUTING_RULES) {
         for (const prefix of rule.prefixes) {
             if (matchesPrefix(trimmed, prefix)) {
-                const throttled = shouldThrottle(sessionId, rule.guidanceType, rule.guidance);
-                if (throttled === null) {
-                    // Already shown guidance this session — passthrough
-                    return { action: { action: 'passthrough' }, throttleKey: rule.guidanceType };
-                }
                 return {
                     action: { action: 'deny', tool: rule.tool, guidance: rule.guidance },
-                    throttleKey: rule.guidanceType,
                 };
             }
         }

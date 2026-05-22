@@ -87,7 +87,7 @@ Changesets has no native dual-registry support, so the second publish is driven 
    `package.json`:
    - `name: "webpresso"`
    - `publishConfig: { registry: "https://registry.npmjs.org", access: "public" }`
-   - `bin: { wp, webpresso, ak, ...hook bins }`
+   - `bin: { wp, webpresso, wp, ...hook bins }`
    - `preferGlobal: true`
    — plus copies of `dist/`, `src/`, `catalog/`, `just/`, `docs/`,
    `skills/`, `commands/`, `.claude-plugin/`, and `README.md`.

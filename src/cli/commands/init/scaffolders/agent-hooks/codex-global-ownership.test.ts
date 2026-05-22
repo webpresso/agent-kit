@@ -42,7 +42,7 @@ describe('isPresetOwnedGlobalCodexHook', () => {
       isPresetOwnedGlobalCodexHook(
         ownedHook({
           command:
-            '[ -x "/repo/node_modules/.bin/ak-pretool-guard" ] && "/repo/node_modules/.bin/ak-pretool-guard" || true',
+            '[ -x "/repo/node_modules/.bin/wp-pretool-guard" ] && "/repo/node_modules/.bin/wp-pretool-guard" || true',
         }),
         EXPECTED_SOURCE_PATHS,
       ),

@@ -1,5 +1,5 @@
 /**
- * `ak audit <kind>` — packaged repository audits.
+ * `wp audit <kind>` — packaged repository audits.
  *
  * CAC shell: maps AuditOutcome → console output + process.exit.
  * All dispatch logic lives in audit-core.ts (no process.exit there).

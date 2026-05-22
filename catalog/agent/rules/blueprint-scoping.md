@@ -30,7 +30,7 @@ will use it in the same cycle.
 
 ## How to apply
 
-During `ak blueprint new` / refinement, the blueprint `_overview.md` must
+During `wp blueprint new` / refinement, the blueprint `_overview.md` must
 include a **Product wedge anchor** subsection at the top of the summary. The
 anchor must name:
 

@@ -1,8 +1,8 @@
 /**
- * `ak audit tech-debt-cadence` — SQL-backed cadence health check for
+ * `wp audit tech-debt-cadence` — SQL-backed cadence health check for
  * tech-debt items.
  *
- * Alpha gate: only runs queries when AK_USE_SQL_AUDITS=1.
+ * Alpha gate: only runs queries when WP_USE_SQL_AUDITS=1.
  * Without the flag returns a disabled notice (pass: true).
  *
  * Checks (when enabled):
@@ -30,10 +30,10 @@ interface TechDebtRow {
 }
 
 export async function auditTechDebtCadence(cwd: string): Promise<RepoAuditResult> {
-  if (!process.env['AK_USE_SQL_AUDITS']) {
+  if (!process.env['WP_USE_SQL_AUDITS']) {
     return {
       ok: true,
-      title: 'Tech-debt cadence (SQL) — disabled (set AK_USE_SQL_AUDITS=1)',
+      title: 'Tech-debt cadence (SQL) — disabled (set WP_USE_SQL_AUDITS=1)',
       checked: 0,
       violations: [],
     }

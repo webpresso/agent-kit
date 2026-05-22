@@ -63,7 +63,7 @@ describe('runGain', () => {
     expect(result).toStrictEqual(0)
 
     const logged = logSpy.mock.calls.map((call) => call.join(' ')).join('\n')
-    expect(logged).toContain('ak setup --with rtk')
+    expect(logged).toContain('wp setup --with rtk')
     expect(logged).toContain('context-mode')
 
     logSpy.mockRestore()

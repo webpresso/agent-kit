@@ -211,7 +211,7 @@ function assertBlueprintCanMoveToStatus(blueprint: Blueprint, nextStatus: Bluepr
  *      CLI outside a pnpm workspace without supplying `--template-path`.
  *
  * Resolution is lazy — returns a function so we don't throw at module load
- * when the lookup fails in unrelated contexts (e.g. `ak --help`).
+ * when the lookup fails in unrelated contexts (e.g. `wp --help`).
  */
 function resolveRepoBlueprintTemplatePath(): string {
   return resolvePackageAsset('docs/templates/blueprint.md')
@@ -231,7 +231,7 @@ function resolveProjectRoot(projectRoot?: string): string {
 
 function normalizeBlueprintComplexity(complexity?: string): PlanComplexity {
   if (!complexity) {
-    throw new Error('Usage: ak blueprint new "<goal>" --complexity <XS|S|M|L|XL>')
+    throw new Error('Usage: wp blueprint new "<goal>" --complexity <XS|S|M|L|XL>')
   }
 
   const parsed = complexitySchema.safeParse(complexity)
@@ -464,7 +464,7 @@ export async function controlBlueprintExec(
 
   if (!metadata) {
     throw new Error(
-      `Blueprint ${location.slug} has no stored execution metadata. Launch it with ak blueprint exec <slug> first.`,
+      `Blueprint ${location.slug} has no stored execution metadata. Launch it with wp blueprint exec <slug> first.`,
     )
   }
 
@@ -600,7 +600,7 @@ export async function moveBlueprint(
 
   if (!options.forceRecovery) {
     throw new Error(
-      'Blueprint move is recovery-only. Use ak blueprint start/task/finalize for normal lifecycle changes, or pass --force-recovery.',
+      'Blueprint move is recovery-only. Use wp blueprint start/task/finalize for normal lifecycle changes, or pass --force-recovery.',
     )
   }
 
@@ -761,7 +761,7 @@ export function registerBlueprintRouter(cli: CAC): void {
   cli
     .command(
       'blueprint [subcommand] [...args]',
-      'Manage blueprints. Use: ak blueprint <action> --help for action-specific options (new, list, show, audit, exec, move, finalize, start, task)',
+      'Manage blueprints. Use: wp blueprint <action> --help for action-specific options (new, list, show, audit, exec, move, finalize, start, task)',
     )
     .option('--json', 'Print JSON output')
     .option('--no-tui', 'Use plain terminal output')
@@ -770,7 +770,7 @@ export function registerBlueprintRouter(cli: CAC): void {
     .option('--format <format>', 'Export format (spec-kit)')
     .option('--force-recovery', 'Bypass lifecycle guards for blueprint move')
     .option('--reason <text>', 'Blocked reason for task block')
-    .option('--params <json>', 'JSON params for ak blueprint db query')
+    .option('--params <json>', 'JSON params for wp blueprint db query')
     .option(
       '--to <status>',
       'Target status for task advance (todo|in-progress|blocked|done|dropped)',

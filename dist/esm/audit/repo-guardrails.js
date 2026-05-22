@@ -365,7 +365,7 @@ function applyDocsFrontmatterFix(markdown, options) {
         return markdown;
     const lines = [];
     if (needsType) {
-        lines.push('# TODO: classify type — auto-set by ak');
+        lines.push('# TODO: classify type — auto-set by wp');
         lines.push(`type: ${options.inferredType}`);
     }
     if (needsLastUpdated) {
@@ -759,7 +759,7 @@ function relativePath(root, path) {
  * path-relative sibling scripts — those break when packages move.
  *
  * @example bad  — "build": "node [dot-dot-dot]/scripts/foo.js"  (relative parent path)
- * @example good — "build": "pnpm --filter scripts foo"  or  "build": "ak build"
+ * @example good — "build": "pnpm --filter scripts foo"  or  "build": "wp build"
  */
 export function auditNoRelativePackageScripts(root, options = {}) {
     const violations = [];

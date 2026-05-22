@@ -1,5 +1,5 @@
 /**
- * `ak audit skill-sizes` — checks .agent/skills/<name>/SKILL.md file sizes
+ * `wp audit skill-sizes` — checks .agent/skills/<name>/SKILL.md file sizes
  * against the configured budgets.
  *
  * Checks:

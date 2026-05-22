@@ -35,9 +35,9 @@ promoted_to_completed: 2026-05-11
 
 ## Product wedge anchor
 
-- **Stage outcome:** VISION.md ("One command, fully wired") + Elegance Pass 2026 stage outcome. Markdown blueprints/tech-debt is the canonical state but agents currently regex-parse 50KB of markdown to answer "what should I work on next?" — expensive context burn on every question. This blueprint adds a **derived SQLite projection** queried via a **custom MCP server (~300 LOC)** honoring the summary-first contract. Decisions 4 + 5 from CEO review banked: custom MCP (mcp-server-sqlite is archived + would violate summary-first + bypass markdown-canonical mutations); skip state export/import (Routines clone the repo fresh and rebuild from markdown). Adds D5 (Datasette `ak blueprint browse`) for free human dev UX win and D8 (cross-repo correlation with permission/org-aware model) — load-bearing constraints documented below.
-- **Consuming surface:** Six custom MCP tools (`ak_blueprint_query`, `task_next`, `task_advance`, `promote`, `finalize`, `depgraph`), four CLI verbs (`ak blueprint db build|query|verify|browse`), three audits (`blueprint-db-consistency`, `blueprint-lifecycle` rewritten, `tech-debt-cadence`, `cross-repo-correlation`).
-- **New user-visible capability:** Agent asks "what's next?" via MCP → gets back a 200-byte summary (task id, lane, files, blockers) instead of reading 50KB of markdown. Humans run `ak blueprint browse` → browser Datasette UI over the same SQLite store. Cross-repo dependencies (`webpresso/agent-kit` v0.11.0 blocks `webpresso/monorepo` Task 5.1) resolve with permission-aware boundaries — private slugs never leak into public repos.
+- **Stage outcome:** VISION.md ("One command, fully wired") + Elegance Pass 2026 stage outcome. Markdown blueprints/tech-debt is the canonical state but agents currently regex-parse 50KB of markdown to answer "what should I work on next?" — expensive context burn on every question. This blueprint adds a **derived SQLite projection** queried via a **custom MCP server (~300 LOC)** honoring the summary-first contract. Decisions 4 + 5 from CEO review banked: custom MCP (mcp-server-sqlite is archived + would violate summary-first + bypass markdown-canonical mutations); skip state export/import (Routines clone the repo fresh and rebuild from markdown). Adds D5 (Datasette `wp blueprint browse`) for free human dev UX win and D8 (cross-repo correlation with permission/org-aware model) — load-bearing constraints documented below.
+- **Consuming surface:** Six custom MCP tools (`wp_blueprint_query`, `task_next`, `task_advance`, `promote`, `finalize`, `depgraph`), four CLI verbs (`wp blueprint db build|query|verify|browse`), three audits (`blueprint-db-consistency`, `blueprint-lifecycle` rewritten, `tech-debt-cadence`, `cross-repo-correlation`).
+- **New user-visible capability:** Agent asks "what's next?" via MCP → gets back a 200-byte summary (task id, lane, files, blockers) instead of reading 50KB of markdown. Humans run `wp blueprint browse` → browser Datasette UI over the same SQLite store. Cross-repo dependencies (`webpresso/agent-kit` v0.11.0 blocks `webpresso/monorepo` Task 5.1) resolve with permission-aware boundaries — private slugs never leak into public repos.
 
 ## Why this exists
 
@@ -55,7 +55,7 @@ The trilogy's other two blueprints address compilation (v0.11.0) and drift detec
 - **Not making SQLite canonical.** Markdown stays the source of truth. SQLite is derived projection, rebuildable from markdown.
 - **Not splitting blueprints into multi-file layouts.** One `_overview.md` per blueprint; we write a robust parser.
 - **Not introducing a UI for editing.** Mutations happen via CLI/MCP verbs that edit markdown.
-- **Not preserving regex-based `ak blueprint audit`.** Hard cutover at v0.13.0; old linter deleted.
+- **Not preserving regex-based `wp blueprint audit`.** Hard cutover at v0.13.0; old linter deleted.
 - **Not shipping state export/import verbs.** Routines clone the repo fresh; cold-start rebuild from markdown is the documented pattern. No Claude-Routines-specific surface in a multi-runtime kit.
 - **Not using `mcp-server-sqlite`.** Archived; violates summary-first contract; bypasses markdown-mutation invariant.
 - **Zero backwards compat.**
@@ -71,10 +71,10 @@ The trilogy's other two blueprints address compilation (v0.11.0) and drift detec
 | Blueprint AST parser | **`remark` + `remark-frontmatter` + `remark-gfm`** (shared with blueprint #1) | Section-keyed extraction; deterministic; handles tables |
 | Schema migrations | **Hand-rolled `.sql` files** in `src/blueprint/db/migrations/` indexed by version | No ORM; full control; replayable on every consumer rebuild |
 | Enum source | TS file `src/blueprint/db/enums.ts` generates SQL CHECK constraints + Zod schemas | One file owns valid values for `status`, `severity`, `category`, etc. |
-| Cold-start rebuild | **Lazy on first `ak blueprint *` command if `.blueprints.db` missing** | Replaces state-export/import (decision 5); Routines + cloud agents rebuild from canonical markdown |
-| Human browser UI | **`datasette` (Python, Apache-2.0)** wrapped as `ak blueprint browse` | D5 cherry-pick; free UX win; `pip install datasette` is universal; non-blocking optional dep |
+| Cold-start rebuild | **Lazy on first `wp blueprint *` command if `.blueprints.db` missing** | Replaces state-export/import (decision 5); Routines + cloud agents rebuild from canonical markdown |
+| Human browser UI | **`datasette` (Python, Apache-2.0)** wrapped as `wp blueprint browse` | D5 cherry-pick; free UX win; `pip install datasette` is universal; non-blocking optional dep |
 | Cross-repo correlation | **Org/visibility-aware tables + audit gate** (D8) | Load-bearing permission model below |
-| Backwards compat | **None** | Hard cutover at v0.13.0; old `ak blueprint audit` regex code deleted |
+| Backwards compat | **None** | Hard cutover at v0.13.0; old `wp blueprint audit` regex code deleted |
 
 ### Storage layout
 
@@ -241,20 +241,20 @@ CHECK constraints enforce the same enum sets as existing Zod schemas — single 
 
 ### Custom MCP tools (decision 4)
 
-**Eight** tools: seven primary + one quality-gate validator (`ak_blueprint_validate` added post-codex concern #3). ~450 LOC single TS file with `better-sqlite3` + `@modelcontextprotocol/sdk`. All mutation tools call existing `ak blueprint` CLI handlers (markdown-edit + re-ingest). All output honors summary-first contract per `cmd-execution.md`.
+**Eight** tools: seven primary + one quality-gate validator (`wp_blueprint_validate` added post-codex concern #3). ~450 LOC single TS file with `better-sqlite3` + `@modelcontextprotocol/sdk`. All mutation tools call existing `wp blueprint` CLI handlers (markdown-edit + re-ingest). All output honors summary-first contract per `cmd-execution.md`.
 
 **Tail-hint rate limiting (codex critique #18 — anti-noise):** every tail-hint tracks a last-shown timestamp per `(repo_path, hint_id)` in `.agent/.tail-hint-history.jsonl` (gitignored cache). Hint suppressed if shown in last **7 days** for the same repo. Caps repeated nudges from feeling like ad copy. Override via `--no-hints` flag on individual tool invocations for scripted/CI use.
 
 | Tool | Inputs | Output (summary-first envelope) |
 |---|---|---|
-| `ak_blueprint_query` | `template_id`, `params` (pre-registered SQL templates only) | `{summary, rows_capped:N, failures, bytes, tokensSaved}` |
-| `ak_blueprint_new` (NEW) | `title`, `complexity`, `goal_prompt`, optional `examples_count` | LLM-generation scaffolding bundle: slug, target path, blueprint template, blueprint-scoping rules, N similar completed blueprints as examples. Caller (Claude/Codex) does the LLM call + writes the file. **Two-phase contract:** the bundle includes a `validation_required: true` flag; after the caller writes the file, they MUST call `ak_blueprint_validate <path>` (8th MCP tool, see below) before any `ak_blueprint_promote` will accept the slug. |
-| `ak_blueprint_validate` (NEW, post-codex concern #3) | `<path>` | Runs Zod schema + structural validation on a draft blueprint. Returns `{ valid: bool, gaps: [...] }`. Required quality gate before `promote`. Prevents garbage-in-garbage-out from `ak_blueprint_new` drafting bundle. |
-| `ak_blueprint_task_next` | `--blueprint <slug>` (optional) | Single task object: id, lane, files, deps satisfied. **Tail-hint:** if Wave 0 has ≥3 ready tasks, append "Consider /pll for parallel execution." |
-| `ak_blueprint_task_advance` | `--task-id <id>`, `--to <status>` | Confirmation; edits markdown + re-ingests. **Tail-hint:** when advancing to `done`, append "Run /verify to confirm done-ness before finalizing." |
-| `ak_blueprint_promote` | `<slug>`, `<to-state>` | Moves dir, updates frontmatter, re-ingests. **Tail-hint:** on `draft→planned`, append "Run /plan-refine to harden this blueprint." |
-| `ak_blueprint_finalize` | `<slug>` | Validates all tasks done, moves draft→completed, writes `completed_at`. **Tail-hint:** if any audit ran with findings in last 7 days, append "Run /verify or `ak audit --fix` before finalizing." |
-| `ak_blueprint_depgraph` | `--from <slug>` | DAG (in-repo + permission-aware cross-repo); private targets redacted to hash |
+| `wp_blueprint_query` | `template_id`, `params` (pre-registered SQL templates only) | `{summary, rows_capped:N, failures, bytes, tokensSaved}` |
+| `wp_blueprint_new` (NEW) | `title`, `complexity`, `goal_prompt`, optional `examples_count` | LLM-generation scaffolding bundle: slug, target path, blueprint template, blueprint-scoping rules, N similar completed blueprints as examples. Caller (Claude/Codex) does the LLM call + writes the file. **Two-phase contract:** the bundle includes a `validation_required: true` flag; after the caller writes the file, they MUST call `wp_blueprint_validate <path>` (8th MCP tool, see below) before any `wp_blueprint_promote` will accept the slug. |
+| `wp_blueprint_validate` (NEW, post-codex concern #3) | `<path>` | Runs Zod schema + structural validation on a draft blueprint. Returns `{ valid: bool, gaps: [...] }`. Required quality gate before `promote`. Prevents garbage-in-garbage-out from `wp_blueprint_new` drafting bundle. |
+| `wp_blueprint_task_next` | `--blueprint <slug>` (optional) | Single task object: id, lane, files, deps satisfied. **Tail-hint:** if Wave 0 has ≥3 ready tasks, append "Consider /pll for parallel execution." |
+| `wp_blueprint_task_advance` | `--task-id <id>`, `--to <status>` | Confirmation; edits markdown + re-ingests. **Tail-hint:** when advancing to `done`, append "Run /verify to confirm done-ness before finalizing." |
+| `wp_blueprint_promote` | `<slug>`, `<to-state>` | Moves dir, updates frontmatter, re-ingests. **Tail-hint:** on `draft→planned`, append "Run /plan-refine to harden this blueprint." |
+| `wp_blueprint_finalize` | `<slug>` | Validates all tasks done, moves draft→completed, writes `completed_at`. **Tail-hint:** if any audit ran with findings in last 7 days, append "Run /verify or `wp audit --fix` before finalizing." |
+| `wp_blueprint_depgraph` | `--from <slug>` | DAG (in-repo + permission-aware cross-repo); private targets redacted to hash |
 
 ### Pre-registered SQL templates (starter cookbook in `docs/blueprint-db-cookbook.md`)
 
@@ -267,9 +267,9 @@ CHECK constraints enforce the same enum sets as existing Zod schemas — single 
 
 ### Cold-start rebuild path (decision 5)
 
-`ak blueprint *` commands check for `.agent/.blueprints.db` on first invocation. If missing, lazy-rebuild from `blueprints/**/*.md` + `tech-debt/**/*.md`. Reports `Rebuilt in Xms (N blueprints, M tech-debt items)`. No state-export/import surface. Documented in `docs/cloud-agents.md`:
+`wp blueprint *` commands check for `.agent/.blueprints.db` on first invocation. If missing, lazy-rebuild from `blueprints/**/*.md` + `tech-debt/**/*.md`. Reports `Rebuilt in Xms (N blueprints, M tech-debt items)`. No state-export/import surface. Documented in `docs/cloud-agents.md`:
 
-> Cloud agents (Claude Code Routines, Codex web, etc.) get canonical state for free — `blueprints/` and `tech-debt/` markdown is committed. To use `ak` in a Routine: setup script `pnpm i && npx ak setup`. Any `ak blueprint *` command lazy-rebuilds SQLite from markdown on first call. Never write SQLite back from a Routine — commit the markdown change and open a PR; the next session rebuilds locally from merged markdown.
+> Cloud agents (Claude Code Routines, Codex web, etc.) get canonical state for free — `blueprints/` and `tech-debt/` markdown is committed. To use `wk` in a Routine: setup script `pnpm i && npx wp setup`. Any `wp blueprint *` command lazy-rebuilds SQLite from markdown on first call. Never write SQLite back from a Routine — commit the markdown change and open a PR; the next session rebuilds locally from merged markdown.
 
 ## D8 — cross-repo correlation with permission/org-aware model (load-bearing)
 
@@ -309,10 +309,10 @@ CHECK constraints enforce the same enum sets as existing Zod schemas — single 
    ```
    Cloud agents (Routines) without this file fall back to git-clonable URLs declared per-blueprint in frontmatter.
 
-6. **Audit gate.** `ak audit cross-repo-correlation` (CI-suitable):
+6. **Audit gate.** `wp audit cross-repo-correlation` (CI-suitable):
    - Verifies no public blueprint's committed markdown references a private slug.
    - Verifies no correlation declared without allowlist when cross-org.
-   - **FAILS LOUD on leak detection — does NOT auto-mutate.** Per codex critique #17 (security): security audits should reject, not silently rewrite. Mutation belongs in an explicit operator-invoked `ak fix cross-repo-leak <slug>` verb that requires reading the proposed change before applying. The audit's job is to detect; remediation is a separate command requiring intent.
+   - **FAILS LOUD on leak detection — does NOT auto-mutate.** Per codex critique #17 (security): security audits should reject, not silently rewrite. Mutation belongs in an explicit operator-invoked `wp fix cross-repo-leak <slug>` verb that requires reading the proposed change before applying. The audit's job is to detect; remediation is a separate command requiring intent.
 
 7. **3rd-party fit.** Public-extraction requirement: model works for any adopter. acme-corp configures their own multi-repo workspace; webpresso is one instance.
 
@@ -335,26 +335,26 @@ Audit rewrites the second entry to `slug: private/<hash>` if leak detected. Auth
 
 | ID | Severity | Case | Mitigation |
 |---|---|---|---|
-| B1 | HIGH | Two agents call `ak_blueprint_task_advance` concurrently for same task | better-sqlite3 transactions serializable; markdown write atomic via tmp+rename; second sees post-state, no-ops or fails with stale-state error |
+| B1 | HIGH | Two agents call `wp_blueprint_task_advance` concurrently for same task | better-sqlite3 transactions serializable; markdown write atomic via tmp+rename; second sees post-state, no-ops or fails with stale-state error |
 | B2 | HIGH | Markdown blueprint has parse error (malformed YAML, wrong table syntax) | Ingester logs error with file path + line; skips file; existing row flagged in `parse_errors` table; downstream queries filter on parse status |
-| B3 | HIGH | **D8 leak attempt** — public repo's committed markdown references a private slug | `ak audit cross-repo-correlation` flags + rewrites to redacted hash; CI fails until human intervention |
-| B4 | MEDIUM | Blueprint moves dir on disk (draft→planned) outside `ak blueprint promote` | Watcher / cold-start re-ingest sees the move; status recomputed from directory; no data lost |
+| B3 | HIGH | **D8 leak attempt** — public repo's committed markdown references a private slug | `wp audit cross-repo-correlation` flags + rewrites to redacted hash; CI fails until human intervention |
+| B4 | MEDIUM | Blueprint moves dir on disk (draft→planned) outside `wp blueprint promote` | Watcher / cold-start re-ingest sees the move; status recomputed from directory; no data lost |
 | B5 | MEDIUM | Consumer runs v0.13.0 ingester on 200+ blueprints | Cold rebuild target <2s for 500 blueprints; if exceeded, profile per `no-timeout-as-fix.md` |
 | B6 | MEDIUM | D8 allowlist exists locally but not committed; cloud agent doesn't see it | `correlate.allow.yaml` is committed by design; gitignore audit verifies it's tracked |
 | B7 | MEDIUM | `gh repo view` fails (offline, not authed, repo deleted) for visibility auto-detect | Fall back to `visibility: private` (most-conservative default); warn user; document in README |
 | B8 | LOW | Schema version mismatch when consumer is on v0.13.1 (added a column) | `schema_version` table; if older, migrations run forward; never backward |
 | B9 | LOW | Pre-registered SQL template returns >1000 rows | Cap at 1000 in tool; `--more` token for paging (deferred to v0.13.x if demand surfaces) |
-| B10 | LOW | Datasette not installed when `ak blueprint browse` invoked | Clear error message: "install via `pip install datasette`"; non-blocking — the SQL store works without it |
+| B10 | LOW | Datasette not installed when `wp blueprint browse` invoked | Clear error message: "install via `pip install datasette`"; non-blocking — the SQL store works without it |
 
 ## Risks
 
 | ID | Severity | Risk | Mitigation |
 |---|---|---|---|
-| BR1 | HIGH | Replacing regex `ak blueprint audit` adds regression risk | Alpha gate: ship v0.13.0-alpha behind `AK_USE_SQL_AUDITS=1` env; both audits must agree on test corpus before flipping; full delete at v0.13.0 GA |
-| BR2 | HIGH | D8 permission model is novel; consumer misconfiguration could still leak | Three layers of defense: default-deny + explicit allowlist + audit-gate-in-CI. Plus documented worked examples in `docs/cross-repo-correlation.md`. Plus dry-run mode for `ak audit cross-repo-correlation`. |
+| BR1 | HIGH | Replacing regex `wp blueprint audit` adds regression risk | Alpha gate: ship v0.13.0-alpha behind `WP_USE_SQL_AUDITS=1` env; both audits must agree on test corpus before flipping; full delete at v0.13.0 GA |
+| BR2 | HIGH | D8 permission model is novel; consumer misconfiguration could still leak | Three layers of defense: default-deny + explicit allowlist + audit-gate-in-CI. Plus documented worked examples in `docs/cross-repo-correlation.md`. Plus dry-run mode for `wp audit cross-repo-correlation`. |
 | BR3 | MEDIUM | better-sqlite3 prebuilt binaries occasionally miss platforms (Alpine musl, M3 transitions) | node-gyp fallback; CI tests macOS Intel+ARM + Ubuntu |
 | BR4 | MEDIUM | Blueprint markdown parser is bespoke — fragile to format drift | Extensive fixture corpus (every existing completed blueprint as regression); breaking template changes require explicit blueprint template version bump |
-| BR5 | MEDIUM | Direct SQL via `ak blueprint db query --raw` (shell-only escape hatch) lets agents fingerprint schema | Schema versioning exposed via `ak_blueprint_query template=schema-version`; cookbook queries versioned alongside |
+| BR5 | MEDIUM | Direct SQL via `wp blueprint db query --raw` (shell-only escape hatch) lets agents fingerprint schema | Schema versioning exposed via `wp_blueprint_query template=schema-version`; cookbook queries versioned alongside |
 | BR6 | LOW | Datasette adds optional Python dep | Non-blocking; documented as optional; agent-kit core works without it |
 
 ## Tasks (~10 tasks)
@@ -383,9 +383,9 @@ Create `src/blueprint/db/{connection,migrations/run,migrations/0001_seed.sql,enu
 **Status:** done
 **Depends:** None
 
-Extend `ak setup --with base-kit`. Gitignore adds `.agent/.blueprints.db`, `.agent/.blueprints.lock`. **Commits** `.agent/correlate.allow.yaml` (template empty `permits: []`). Auto-creates `~/.agent/workspace.yaml` (gitignored).
+Extend `wp setup --with base-kit`. Gitignore adds `.agent/.blueprints.db`, `.agent/.blueprints.lock`. **Commits** `.agent/correlate.allow.yaml` (template empty `permits: []`). Auto-creates `~/.agent/workspace.yaml` (gitignored).
 
-**Acceptance:** `ak audit gitignore-agent-surfaces` accepts the new block.
+**Acceptance:** `wp audit gitignore-agent-surfaces` accepts the new block.
 
 ### Wave 1 — ingester + custom MCP server
 
@@ -397,36 +397,36 @@ Extend `ak setup --with base-kit`. Gitignore adds `.agent/.blueprints.db`, `.age
 
 **Acceptance:** Transactional; idempotent; cold-rebuild target <2s for 500 blueprints.
 
-#### Task 2.2: Custom MCP server (~300 LOC) + 7th tool `ak_blueprint_new` + skill-chain tail-hints
+#### Task 2.2: Custom MCP server (~300 LOC) + 7th tool `wp_blueprint_new` + skill-chain tail-hints
 **Status:** done
 **Depends:** Task 2.1
 
-Single TS file `src/mcp/blueprint-server.ts`. **Seven** tools per the table above (was six; added `ak_blueprint_new` per user directive for LLM-based blueprint creation). Mutations call existing `ak blueprint` CLI handlers (markdown-edit-then-reingest invariant). All output summary-first JSON envelope (`failures`, `tier`, `bytes`, `tokensSaved`). Pre-registered template set in `_query-templates.ts`.
+Single TS file `src/mcp/blueprint-server.ts`. **Seven** tools per the table above (was six; added `wp_blueprint_new` per user directive for LLM-based blueprint creation). Mutations call existing `wp blueprint` CLI handlers (markdown-edit-then-reingest invariant). All output summary-first JSON envelope (`failures`, `tier`, `bytes`, `tokensSaved`). Pre-registered template set in `_query-templates.ts`.
 
-**`ak_blueprint_new` + `ak_blueprint_validate` design (LLM-generation scaffolding + post-codex quality gate):**
+**`wp_blueprint_new` + `wp_blueprint_validate` design (LLM-generation scaffolding + post-codex quality gate):**
 
-The MCP tool does NOT call an LLM directly. Agent-kit stays credential-free. Instead, the tool returns a structured "drafting bundle" that the calling agent (Claude/Codex/Cursor) uses to generate the blueprint content itself, then writes the file via its own Write tool. **After write, the caller MUST invoke `ak_blueprint_validate <path>` before `ak_blueprint_promote` will accept the slug** — this closes the post-codex concern #3 quality-gate gap. Validation runs the same Zod schemas + structural checks the parser does, surfacing specific gaps (missing frontmatter, no tasks, missing acceptance criteria, malformed dependency refs) so the caller can iterate. Bundle includes:
+The MCP tool does NOT call an LLM directly. Agent-kit stays credential-free. Instead, the tool returns a structured "drafting bundle" that the calling agent (Claude/Codex/Cursor) uses to generate the blueprint content itself, then writes the file via its own Write tool. **After write, the caller MUST invoke `wp_blueprint_validate <path>` before `wp_blueprint_promote` will accept the slug** — this closes the post-codex concern #3 quality-gate gap. Validation runs the same Zod schemas + structural checks the parser does, surfacing specific gaps (missing frontmatter, no tasks, missing acceptance criteria, malformed dependency refs) so the caller can iterate. Bundle includes:
 
 - `target_path`: `blueprints/draft/<slugified-title>/_overview.md`
 - `template`: the canonical blueprint template (frontmatter + section skeleton)
 - `rules_context`: contents of `.agent/rules/blueprint-scoping.md` (product-wedge anchor requirements)
 - `examples`: N similar completed blueprints (default 3) from `blueprints/completed/`, selected by tag/complexity match to the user's `goal_prompt`
-- `lifecycle_advice`: one-line reminders of the typical workflow — "After creating: `/plan-refine` to harden; `/plan-eng-review` to validate architecture; `ak_blueprint_promote draft→planned` when ready; `/pll` for parallel execution; `/verify` before finalize"
+- `lifecycle_advice`: one-line reminders of the typical workflow — "After creating: `/plan-refine` to harden; `/plan-eng-review` to validate architecture; `wp_blueprint_promote draft→planned` when ready; `/pll` for parallel execution; `/verify` before finalize"
 
 **Tail-hints (per user directive on skill chaining):** Each of the 7 tools appends ONE advisory line to its summary output when a related skill would help. Static text, no skill invocation, no MCP coupling. Hints documented in `src/mcp/_tail-hints.ts` constants.
 
 **Files:**
 - Modify: `src/mcp/blueprint-server.ts`
 - Create: `src/mcp/_tail-hints.ts` (skill-chain advisory text constants)
-- Create: `src/mcp/_drafting-bundle.ts` (assembles the `ak_blueprint_new` response)
+- Create: `src/mcp/_drafting-bundle.ts` (assembles the `wp_blueprint_new` response)
 
 **Acceptance:**
-- [x] ≤450 LOC including imports for the 8-tool server (7 primary + `ak_blueprint_validate` quality gate)
+- [x] ≤450 LOC including imports for the 8-tool server (7 primary + `wp_blueprint_validate` quality gate)
 - [x] Integration test confirms tool output stays under N tokens including tail-hints
 - [x] Mutation paths edit markdown not SQL
-- [x] `ak_blueprint_new` returns a deterministic bundle (same `goal_prompt` → same examples picked + same template)
-- [x] **`ak_blueprint_promote` REFUSES** any slug whose `_overview.md` hasn't passed `ak_blueprint_validate` since last write. Closes post-codex concern #3 quality gate.
-- [x] `ak_blueprint_validate` returns structured gaps (missing frontmatter fields, no tasks, malformed dependency refs, missing acceptance criteria) so caller can iterate
+- [x] `wp_blueprint_new` returns a deterministic bundle (same `goal_prompt` → same examples picked + same template)
+- [x] **`wp_blueprint_promote` REFUSES** any slug whose `_overview.md` hasn't passed `wp_blueprint_validate` since last write. Closes post-codex concern #3 quality gate.
+- [x] `wp_blueprint_validate` returns structured gaps (missing frontmatter fields, no tasks, malformed dependency refs, missing acceptance criteria) so caller can iterate
 - [x] No LLM credentials required by agent-kit itself
 - [x] All 4 skill-chain tail-hints fire only when the relevant condition holds (Wave 0 ≥3 ready; advancing to done; promoting draft→planned; audit findings in last 7d)
 - [x] Tail-hint rate-limit honored: 7-day suppression per `(repo, hint_id)` per `.agent/.tail-hint-history.jsonl`
@@ -441,7 +441,7 @@ The MCP tool does NOT call an LLM directly. Agent-kit stays credential-free. Ins
 
 ### Wave 2 — CLI verbs + audits + D8
 
-#### Task 3.1: `ak blueprint db` CLI verbs
+#### Task 3.1: `wp blueprint db` CLI verbs
 **Status:** done
 **Depends:** Task 2.1
 
@@ -451,7 +451,7 @@ The MCP tool does NOT call an LLM directly. Agent-kit stays credential-free. Ins
 
 ---
 
-#### Task 3.1b: `ak blueprint export --format spec-kit` (DRY KISS SOLID emitter)
+#### Task 3.1b: `wp blueprint export --format spec-kit` (DRY KISS SOLID emitter)
 **Status:** done
 **Depends:** Task 1.2 (blueprint parser), Task 2.1 (ingester for cross-blueprint refs)
 
@@ -460,7 +460,7 @@ One-way export only. Reads canonical blueprint markdown via the parser (no re-re
 **Design constraints (per `DRY KISS SOLID`):**
 
 - **DRY:** Single transformation pipeline. `blueprintToSpecKit(parsed: ParsedBlueprint): SpecKitBundle`. Blueprint content is the single source — every field in the spec-kit output traces back to a blueprint field through one mapping table in `src/blueprint/export/spec-kit/_field-map.ts`. No string duplication, no manual re-typing of blueprint sections in the export.
-- **KISS:** No roundtrip (spec-kit → blueprint is out of scope; reverse import only goes through `ak blueprint import` which already exists for legacy formats). No fields added to blueprint format. No watch mode — explicit invocation only.
+- **KISS:** No roundtrip (spec-kit → blueprint is out of scope; reverse import only goes through `wp blueprint import` which already exists for legacy formats). No fields added to blueprint format. No watch mode — explicit invocation only.
 - **SOLID:** Single-responsibility per file emitter. Four pure functions:
   - `emitSpec(parsed) → spec.md` — Feature Specification (User Scenarios, Requirements, Review checklist)
   - `emitPlan(parsed) → plan.md` — Implementation Plan referencing spec.md
@@ -496,12 +496,12 @@ One-way export only. Reads canonical blueprint markdown via the parser (no re-re
 **Status:** done
 **Depends:** Task 2.1
 
-Rewrite `ak blueprint audit` to query SQL. Three new audit subcommands:
+Rewrite `wp blueprint audit` to query SQL. Three new audit subcommands:
 - `blueprint-db-consistency`
 - `blueprint-lifecycle` (rewrite of existing)
 - `tech-debt-cadence`
 
-Alpha gate per BR1: `AK_USE_SQL_AUDITS=1` env flips between old regex + new SQL until parity confirmed.
+Alpha gate per BR1: `WP_USE_SQL_AUDITS=1` env flips between old regex + new SQL until parity confirmed.
 
 **Acceptance:** All existing completed blueprints pass new audits (verifying no false positives); regression test against test corpus.
 
@@ -509,7 +509,7 @@ Alpha gate per BR1: `AK_USE_SQL_AUDITS=1` env flips between old regex + new SQL 
 **Status:** done
 **Depends:** Task 2.1
 
-`ak blueprint task advance <id> --to <status>`, `ak blueprint promote <slug> <to-state>`, `ak blueprint finalize <slug>`. Each: parses canonical markdown, computes target, writes `.tmp`, atomic rename, triggers re-ingest.
+`wp blueprint task advance <id> --to <status>`, `wp blueprint promote <slug> <to-state>`, `wp blueprint finalize <slug>`. Each: parses canonical markdown, computes target, writes `.tmp`, atomic rename, triggers re-ingest.
 
 **Acceptance:** Round-trip cleanly; atomic write semantics; idempotent re-runs.
 
@@ -532,7 +532,7 @@ Implement all 7 D8 requirements. Files:
 **Status:** done
 **Depends:** All Wave 2 + v0.12.0 shipped
 
-Bump version. CHANGELOG breaking-change callout: new SQL store, custom MCP, rewritten `ak blueprint audit`, deleted regex code, D8 cross-repo correlation.
+Bump version. CHANGELOG breaking-change callout: new SQL store, custom MCP, rewritten `wp blueprint audit`, deleted regex code, D8 cross-repo correlation.
 
 **Acceptance:** CHANGELOG names compiler v0.11.0 + audit-slice v0.12.0 as prerequisites; no regex audit code remains in `src/`.
 
@@ -542,7 +542,7 @@ Bump version. CHANGELOG breaking-change callout: new SQL store, custom MCP, rewr
 **Status:** done
 **Depends:** Task 4.1
 
-Bump dep. `ak blueprint db build`. Run new audits. If `cross-repo-correlation` flags leaks, fix and re-run. Verify `ak blueprint browse` works (Datasette installed). Commit with lore-protocol message.
+Bump dep. `wp blueprint db build`. Run new audits. If `cross-repo-correlation` flags leaks, fix and re-run. Verify `wp blueprint browse` works (Datasette installed). Commit with lore-protocol message.
 
 **Acceptance:** All audits pass; cross-repo correlation resolves webpresso workspace (agent-kit ↔ monorepo ↔ ingest-lens) without leaks.
 
@@ -571,7 +571,7 @@ Parallelization score: A. Added Task 3.1b (spec-kit export, DRY KISS SOLID). **T
 
 1. ✅ **Custom MCP vs `mcp-server-sqlite`** — custom (~300 LOC); mcp-server-sqlite is archived + violates summary-first contract
 2. ✅ **State export/import for Routines** — skipped; document rebuild-from-markdown (cold-start path)
-3. ✅ **Datasette `ak blueprint browse` (D5)** — yes; lowest-effort cherry-pick
+3. ✅ **Datasette `wp blueprint browse` (D5)** — yes; lowest-effort cherry-pick
 4. ✅ **Cross-repo correlation (D8)** — yes, with all 7 permission/org-aware requirements as hard acceptance criteria
 
 Blueprint ready to promote `draft/` → `planned/`.

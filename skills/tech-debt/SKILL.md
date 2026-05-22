@@ -9,37 +9,37 @@ related: []
 created: '2026-05-07'
 last_reviewed: '2026-05-07'
 name: tech-debt
-description: Manage the tech-debt lifecycle using `ak tech-debt` commands and `ak audit tech-debt`, including creation, review, and schema validation workflows.
+description: Manage the tech-debt lifecycle using `wp tech-debt` commands and `wp audit tech-debt`, including creation, review, and schema validation workflows.
 ---
 
 # tech-debt
 
-Manage the tech-debt lifecycle using `ak tech-debt` commands.
+Manage the tech-debt lifecycle using `wp tech-debt` commands.
 
 ## Usage
 
 ```bash
 # Create a new tech-debt item (written to webpresso/tech-debt/<status>/h-NNN-<kebab-title>.md)
-ak tech-debt new "Legacy CLI complexity" \
+wp tech-debt new "Legacy CLI complexity" \
   --severity medium \
   --category complexity \
   --review-cadence quarterly \
   --status accepted
 
 # Preview without writing
-ak tech-debt new "Performance bottleneck" --severity high --category mutation --dry-run
+wp tech-debt new "Performance bottleneck" --severity high --category mutation --dry-run
 
 # List all tech-debt items (optional filters)
-ak tech-debt list
-ak tech-debt list --status accepted
-ak tech-debt list --status needs-remediation --severity high
-ak tech-debt list --category security
+wp tech-debt list
+wp tech-debt list --status accepted
+wp tech-debt list --status needs-remediation --severity high
+wp tech-debt list --category security
 
 # Review: show items past their review date (exits non-zero if any are overdue)
-ak tech-debt review
+wp tech-debt review
 
 # Audit tech-debt files against the schema (CI gate)
-ak audit tech-debt --root .
+wp audit tech-debt --root .
 ```
 
 ## File naming

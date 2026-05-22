@@ -1,7 +1,7 @@
 /**
- * `ak_audit` MCP tool.
+ * `wp_audit` MCP tool.
  *
- * Wraps the existing `ak audit *` subcommands behind one MCP tool with a
+ * Wraps the existing `wp audit *` subcommands behind one MCP tool with a
  * `kind` enum. Returns a structured `{passed, kind, details}` payload wrapped
  * in MCP `text` content blocks.
  *
@@ -195,7 +195,7 @@ async function dispatch(input) {
                 summary: summarizeExitCode(kind, exitCode),
                 kind,
                 details: { exitCode },
-                ...applyOutputTransform(output, { toolName: `ak_audit-${kind}` }),
+                ...applyOutputTransform(output, { toolName: `wp_audit-${kind}` }),
             };
         }
         case 'tph-e2e': {
@@ -206,7 +206,7 @@ async function dispatch(input) {
                 summary: summarizeExitCode(kind, exitCode),
                 kind,
                 details: { exitCode },
-                ...applyOutputTransform(output, { toolName: `ak_audit-${kind}` }),
+                ...applyOutputTransform(output, { toolName: `wp_audit-${kind}` }),
             };
         }
         case 'hook-surface': {
@@ -254,7 +254,7 @@ async function dispatch(input) {
     }
 }
 const tool = {
-    name: 'ak_audit',
+    name: 'wp_audit',
     description: 'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-lifecycle, roadmap-links, bundle-budget, commit-message, tech-debt, hook-surface, no-relative-package-scripts). Returns {passed, kind, details}.',
     inputSchema,
     outputSchema,
@@ -280,7 +280,7 @@ const tool = {
                 : 'unknown';
             // Schema validation failure — agent supplied bad input; isError lets
             // it distinguish "audit ran and found issues" from "audit didn't run".
-            return wrap({ passed: false, summary: `Invalid ak_audit input for ${kind}`, kind, details: message }, { isError: true });
+            return wrap({ passed: false, summary: `Invalid wp_audit input for ${kind}`, kind, details: message }, { isError: true });
         }
         try {
             const payload = await dispatch(input);

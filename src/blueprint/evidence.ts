@@ -3,7 +3,7 @@
  * `blueprints/in-progress/structured-blueprint-mcp-sqlite-first-agent-ops`).
  *
  * This module is the bedrock of the verification anti-forgery posture:
- * `ak_blueprint_task_verify` parses caller-supplied evidence through these
+ * `wp_blueprint_task_verify` parses caller-supplied evidence through these
  * zod schemas before the markdown helper or the projection DB is touched.
  *
  * Validity rules enforced by the schemas:

@@ -10,7 +10,7 @@ describe('generated agent-surface gitignore block', () => {
   let repo: string
 
   beforeEach(() => {
-    repo = mkdtempSync(join(tmpdir(), 'ak-gitignore-patcher-'))
+    repo = mkdtempSync(join(tmpdir(), 'wp-gitignore-patcher-'))
     const init = spawnSync('git', ['init', '-q'], { cwd: repo, encoding: 'utf8' })
     expect(init.status).toBe(0)
   })

@@ -1,6 +1,6 @@
 import { executeWorktreeSubcommand } from './router-dispatch.js';
 const HELP_TEXT = [
-    'Usage: ak worktree <subcommand> [options]',
+    'Usage: wp worktree <subcommand> [options]',
     '',
     'Subcommands:',
     '  new [branch] [--base <ref>] [--path <dir>]   Create worktree and seed .agent/',

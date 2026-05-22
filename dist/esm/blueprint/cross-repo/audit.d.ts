@@ -11,7 +11,7 @@
  *    has not allowlisted the other.
  *
  * The audit only detects and reports. Remediation requires manual intervention
- * via `ak fix cross-repo-leak <slug>` (or `fixCrossRepoLeak()` below).
+ * via `wp fix cross-repo-leak <slug>` (or `fixCrossRepoLeak()` below).
  */
 export interface CrossRepoLeak {
     readonly blueprintSlug: string;
@@ -43,7 +43,7 @@ export interface FixResult {
  * `is_redacted=1`.
  *
  * This function is intentionally NOT called by `auditCrossRepoCorrelation`.
- * It must be invoked explicitly via `ak fix cross-repo-leak <slug>`.
+ * It must be invoked explicitly via `wp fix cross-repo-leak <slug>`.
  */
 export declare function fixCrossRepoLeak(cwd: string, blueprintSlug: string): Promise<FixResult>;
 //# sourceMappingURL=audit.d.ts.map

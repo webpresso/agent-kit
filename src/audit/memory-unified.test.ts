@@ -16,7 +16,7 @@ describe('auditMemoryUnified', () => {
   })
 
   function tmp(): string {
-    const d = mkdtempSync(join(tmpdir(), 'ak-memory-unified-audit-'))
+    const d = mkdtempSync(join(tmpdir(), 'wp-memory-unified-audit-'))
     dirs.push(d)
     return d
   }

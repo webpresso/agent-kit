@@ -49,7 +49,7 @@ function enoent(): NodeJS.ErrnoException {
 }
 
 function makeFixtureDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'ak-format-fixture-'))
+  const dir = mkdtempSync(join(tmpdir(), 'wp-format-fixture-'))
   return dir
 }
 

@@ -1,5 +1,5 @@
 /**
- * `ak audit tech-debt` — validates tech-debt files against the schema.
+ * `wp audit tech-debt` — validates tech-debt files against the schema.
  *
  * Checks:
  * - Each file parses against the Zod schema (all required fields, valid enums)

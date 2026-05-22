@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `ak mcp` — stdio MCP server entrypoint.
+ * `wp mcp` — stdio MCP server entrypoint.
  *
  * Spins up the `agent-kit` MCP server with auto-discovered tools and connects
  * it to a stdio transport. Each tool is a single file under
@@ -41,7 +41,7 @@ const isDirectInvocation = typeof process !== 'undefined' &&
     realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1]);
 if (isDirectInvocation) {
     runStdioServer().catch((err) => {
-        process.stderr.write(`ak mcp: ${err instanceof Error ? err.message : String(err)}\n`);
+        process.stderr.write(`wp mcp: ${err instanceof Error ? err.message : String(err)}\n`);
         process.exit(1);
     });
 }

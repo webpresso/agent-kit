@@ -6,7 +6,7 @@
  *
  * With --consumer <path> [--consumer <path> ...]:
  *   Also repoints <consumer>/node_modules/@webpresso/agent-kit → this repo,
- *   so project-level hook binaries (ak-pretool-guard, ak-sessionstart-routing,
+ *   so project-level hook binaries (wp-pretool-guard, wp-sessionstart-routing,
  *   etc.) run from live source instead of the pnpm-store snapshot.
  *   Writes <consumer>/.webpresso/agent-kit-dev-link.json so the consumer's
  *   postinstall can auto-restore the symlink after `pnpm install`.
@@ -121,7 +121,7 @@ function writeStateFile(consumerPath: string): void {
     linkedFrom: repoRoot,
     linkedAt: new Date().toISOString(),
     agentKitVersion: pkg.version,
-    note: 'Read by ak-restore-dev-links (consumer postinstall) to re-establish the symlink after pnpm install, and by ak-check-dev-link (SessionStart hook) to warn when the link is broken. Delete this file to disable the dev link.',
+    note: 'Read by wp-restore-dev-links (consumer postinstall) to re-establish the symlink after pnpm install, and by wp-check-dev-link (SessionStart hook) to warn when the link is broken. Delete this file to disable the dev link.',
   }
   writeFileSync(statePath, `${JSON.stringify(payload, null, 2)}\n`)
   console.log(`consumer ${consumerPath}: wrote ${STATE_FILE_RELATIVE_PATH}`)

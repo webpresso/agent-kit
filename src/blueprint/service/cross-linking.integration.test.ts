@@ -21,7 +21,7 @@ describe('Cross-linking Integration Tests', () => {
   beforeEach(async () => {
     // mkdtemp under the OS tmpdir so a crashed test doesn't leak fixtures into
     // the repo working tree (previous pattern wrote into process.cwd() + test-fixtures/).
-    testDir = await fs.mkdtemp(path.join(tmpdir(), 'ak-cross-linking-'))
+    testDir = await fs.mkdtemp(path.join(tmpdir(), 'wp-cross-linking-'))
 
     const blueprintsDir = path.join(testDir, 'webpresso/blueprints')
     const techDebtDir = path.join(testDir, 'webpresso/tech-debt')

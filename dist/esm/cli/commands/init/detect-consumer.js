@@ -1,5 +1,5 @@
 /**
- * Detect the consumer repo that `ak init` is running against.
+ * Detect the consumer repo that `wp init` is running against.
  *
  * Walks for a `.git` directory (the consumer is not required to use pnpm
  * workspaces — single-package projects are fine). Reads `package.json` and
@@ -228,7 +228,7 @@ export function discoverWorkspacePackages(repoRoot, globs) {
 /**
  * Soft warning when the running CLI does not resolve to the consumer's local
  * `@webpresso/agent-kit` install. Catches the global-install / pnpm-link / npx
- * case where `ak setup` succeeds against the executing CLI's catalog but
+ * case where `wp setup` succeeds against the executing CLI's catalog but
  * produces a non-reproducible `.agents/skills/` tree (symlinks point outside
  * the project tree; lockfile irrelevant). Repo-local symlink/dev-link installs
  * still count as local via realpath comparison. Self-mode short-circuits when
@@ -256,9 +256,9 @@ export function warnIfNonLocalCli(repoRoot, cliUrl = import.meta.url) {
     if (isLocalAgentKitCli(repoRoot, cliPath))
         return;
     const hasLocalAgentKitDep = ourPkg?.dependencies['@webpresso/agent-kit'] ?? ourPkg?.devDependencies['@webpresso/agent-kit'];
-    console.error(`warning: ak running from a non-local install (${cliPath}). ` +
+    console.error(`warning: wp running from a non-local install (${cliPath}). ` +
         (hasLocalAgentKitDep
-            ? 'This repo already pins `@webpresso/agent-kit`; rerun via the repo-local CLI (`vp run setup:agent` or `vp exec ak setup`).'
+            ? 'This repo already pins `@webpresso/agent-kit`; rerun via the repo-local CLI (`vp run setup:agent` or `vp exec wp setup`).'
             : 'Pin `@webpresso/agent-kit` as a local dep for reproducible setup.'));
 }
 export function detectConsumer(startDir = process.cwd()) {

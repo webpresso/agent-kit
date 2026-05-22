@@ -56,13 +56,13 @@ export interface UnifiedSyncOptions {
   /**
    * Optional allowlist of skill slugs. When provided, only `kind === 'skill'`
    * records whose slug is in this set are projected. Rules are unaffected.
-   * Used by `ak setup` to gate Tier-3 skills behind opt-in selection while
+   * Used by `wp setup` to gate Tier-3 skills behind opt-in selection while
    * still letting all canonical rules flow through.
    */
   readonly allowedSkillSlugs?: ReadonlySet<string>
   /**
    * Optional set of skill slugs that must NOT be pruned even though they are
-   * absent from the projected record set. Used by `ak setup` for skills that
+   * absent from the projected record set. Used by `wp setup` for skills that
    * are produced by separate scaffolders (e.g. the rendered
    * generated skills that are produced outside the catalog.
    */
@@ -425,7 +425,7 @@ export function runUnifiedSync(options: UnifiedSyncOptions): UnifiedSyncResult {
       (c) => `  - ${c.kind}/${c.slug}: canonical=${c.canonical} consumer=${c.consumer}`,
     )
     throw new Error(
-      `ak sync: slug collisions between catalog and consumer (rename consumer copy):\n${lines.join('\n')}`,
+      `wp sync: slug collisions between catalog and consumer (rename consumer copy):\n${lines.join('\n')}`,
     )
   }
 

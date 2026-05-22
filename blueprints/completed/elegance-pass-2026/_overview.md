@@ -23,27 +23,27 @@ completed_at: '2026-05-05'
 >
 > **Repo reality check (2026-05-04):** Re-verified before this refinement pass: `git status --short` is clean, this repo has no root `justfile`, verification flows are `pnpm`/`bun`-script based, and the catalog namespace is `catalog/agent/*` rather than `catalog/agents/*`. Task file lists below were tightened to those current surfaces.
 >
-> **Reconciliation note (2026-05-05):** Adjacent MCP/E2E work landed after this blueprint was written (`ak_e2e`, summary-first MCP responses, outputSchema/structuredContent plumbing). That work improves the surrounding platform, but it does **not** satisfy any numbered task in this blueprint. Progress below reflects only the bootstrap/catalog tasks verified directly in this blueprint lane.
+> **Reconciliation note (2026-05-05):** Adjacent MCP/E2E work landed after this blueprint was written (`wp_e2e`, summary-first MCP responses, outputSchema/structuredContent plumbing). That work improves the surrounding platform, but it does **not** satisfy any numbered task in this blueprint. Progress below reflects only the bootstrap/catalog tasks verified directly in this blueprint lane.
 
-Make `ak setup` the canonical, idempotent, single-command bootstrap for AI agent surfaces across Claude Code, Codex, Gemini CLI, and OpenCode. Eliminates regression classes (worktree hooks gap, missing `ak-pretool-guard`, stale `.claude/rules/` copies, missing `MultiEdit` coverage on Claude) by patching them into the scaffolder, and adds `ak audit agents` so CI catches drift before sessions degrade.
+Make `wp setup` the canonical, idempotent, single-command bootstrap for AI agent surfaces across Claude Code, Codex, Gemini CLI, and OpenCode. Eliminates regression classes (worktree hooks gap, missing `ak-pretool-guard`, stale `.claude/rules/` copies, missing `MultiEdit` coverage on Claude) by patching them into the scaffolder, and adds `wp audit agents` so CI catches drift before sessions degrade.
 
 ## Product wedge anchor
 
 - **Stage outcome:** Every webpresso public package + ingest-lens consumer reaches "fully wired agent surfaces from a fresh clone" via one command, with CI catching drift.
-- **Consuming surface:** `pnpm setup:agent` (consumer-side) + `ak audit agents` (CI-side).
+- **Consuming surface:** `pnpm setup:agent` (consumer-side) + `wp audit agents` (CI-side).
 - **New user-visible capability:** A developer who clones any webpresso public package today gets zero agent context. After this lands, they get full Claude Code rules, Codex hooks, Gemini commands, and gstack skills with one `pnpm install && pnpm setup:agent`.
 
 ## Planning Summary
 
-16 tasks across 5 phases. **Shipping plan**: Phase 1+2 together as one PR (regression fix + enabler), then Phases 3, 4, 5 as separate PRs (net-new capabilities + redirect tightening). Phase 1 stops the regression bleeding (worktree hooks gap, missing `setup:agent` script, missing tests, missed `MultiEdit` path on Claude). Phase 2 simplifies the symlink chain by pointing `.claude/rules/` directly into `node_modules/@webpresso/agent-kit/catalog/agent/rules/` (auto-updates on `pnpm install`) while preserving the current `package-fallback` bootstrap path for fresh consumer setups before the devDep exists locally. Phase 3 adds the *capability* for skills to declare scope-limited hooks. Phase 4 ships 4 canonical subagent definitions: code-reviewer, security-auditor, doc-writer, explorer. Phase 5 tightens forbidden-command deny reasons to lead with the `mcp__agent-kit__ak_*` MCP-tool template, removes duplicate context-mode routing ownership on Claude, and converts Codex hook claims from assumption to measured support.
+16 tasks across 5 phases. **Shipping plan**: Phase 1+2 together as one PR (regression fix + enabler), then Phases 3, 4, 5 as separate PRs (net-new capabilities + redirect tightening). Phase 1 stops the regression bleeding (worktree hooks gap, missing `setup:agent` script, missing tests, missed `MultiEdit` path on Claude). Phase 2 simplifies the symlink chain by pointing `.claude/rules/` directly into `node_modules/@webpresso/agent-kit/catalog/agent/rules/` (auto-updates on `pnpm install`) while preserving the current `package-fallback` bootstrap path for fresh consumer setups before the devDep exists locally. Phase 3 adds the *capability* for skills to declare scope-limited hooks. Phase 4 ships 4 canonical subagent definitions: code-reviewer, security-auditor, doc-writer, explorer. Phase 5 tightens forbidden-command deny reasons to lead with the `mcp__agent-kit__wp_*` MCP-tool template, removes duplicate context-mode routing ownership on Claude, and converts Codex hook claims from assumption to measured support.
 
-**Audit strictness (decided):** `ak audit agents` is **hard-fail everything**. Missing AGENTS.md, missing hooks, broken symlinks, hand-edited rule files, missing `setup:agent` script, missing devDep — all block CI. Legitimate overrides require an explicit allowlist entry in `.agent-kitrc.json#rules.overrides`.
+**Audit strictness (decided):** `wp audit agents` is **hard-fail everything**. Missing AGENTS.md, missing hooks, broken symlinks, hand-edited rule files, missing `setup:agent` script, missing devDep — all block CI. Legitimate overrides require an explicit allowlist entry in `.agent-kitrc.json#rules.overrides`.
 
 **Dropped from original plan:**
-- `ak setup --with github:user/repo` (community catalogs) — needs separate trust-model blueprint first; arbitrary catalog = arbitrary RCE via hooks.
-- `ak migrate` — premature; do when catalog format actually changes.
+- `wp setup --with github:user/repo` (community catalogs) — needs separate trust-model blueprint first; arbitrary catalog = arbitrary RCE via hooks.
+- `wp migrate` — premature; do when catalog format actually changes.
 - cc-switch integration — wrong audience layering (GUI vs CLI).
-- `ak doctor agents` — `ak audit agents` already covers it.
+- `wp doctor agents` — `wp audit agents` already covers it.
 - `.agent/rules/` fallback in `scaffoldClaudeRules` — adds complexity for the rare case; better to fail-fast and require devDep.
 
 ## Quick Reference (Execution Waves)
@@ -69,10 +69,10 @@ Make `ak setup` the canonical, idempotent, single-command bootstrap for AI agent
 | # | Severity | Claim | Reality | Fix |
 |---|----------|-------|---------|-----|
 | F1 | CRITICAL | "Move `ak-pretool-guard` into a skill SKILL.md" | Skill `hooks:` are scoped to skill lifecycle, not session-wide. `ak-pretool-guard` must fire on every Bash/Write/Edit. Moving it = breaks safety guarantee. | Phase 3 REWRITTEN: skill hooks for skill-specific behavior only; keep global hooks centralized. |
-| F2 | CRITICAL | "`ak setup --with github:user/repo`" | Catalogs ship hooks. Arbitrary catalog from GitHub = arbitrary RCE on every tool use. No trust model proposed. | Dropped from this blueprint. Spin off `community-catalog-trust-model` blueprint. |
+| F2 | CRITICAL | "`wp setup --with github:user/repo`" | Catalogs ship hooks. Arbitrary catalog from GitHub = arbitrary RCE on every tool use. No trust model proposed. | Dropped from this blueprint. Spin off `community-catalog-trust-model` blueprint. |
 | F3 | HIGH | "Worktrees inherit `.claude/` cleanly via symlinkDirectories" | Symlink chain: `worktree/.claude` → `main/.claude` → `main/.agent/rules/`. Worktree reads MAIN's `.agent/rules/`, not its own. Catalog content is identical so functionally fine, but counter-intuitive. | Document in Task 1.5 + VISION.md. |
 | F4 | HIGH | "`scaffoldClaudeRules` symlinks to `node_modules/...`" | agent-kit's own repo has no `node_modules/@webpresso/agent-kit/`. Self-hosting case unhandled. | Task 2.1 adds self / consumer / package-fallback resolution so self-hosting and fresh consumer bootstraps both work without reintroducing the old `.agent/rules` chain. |
-| F5 | HIGH | Implicit assumption that `prepare` hook could run `ak setup` | Race condition: `prepare` fires during `pnpm install` BEFORE agent-kit's own install completes in pnpm hoisted layout. | Task 1.5 documents anti-pattern: do NOT add `prepare: ak setup`. Use `pnpm install && pnpm setup:agent`. |
+| F5 | HIGH | Implicit assumption that `prepare` hook could run `wp setup` | Race condition: `prepare` fires during `pnpm install` BEFORE agent-kit's own install completes in pnpm hoisted layout. | Task 1.5 documents anti-pattern: do NOT add `prepare: wp setup`. Use `pnpm install && pnpm setup:agent`. |
 | F6 | MEDIUM | Original 1+2+3 day estimates | 1.5-2x optimistic; missing test files, hook-composition edge cases, and platform-compat proof work. | T-shirt sizing: Phase 1 = M, Phase 2 = L, Phase 3 = S, Phase 4 = M, Phase 5 = M. |
 | F7 | MEDIUM | "Plan structured for `/pll`" (original) | No Blueprint format, no Files lists, no TDD steps, no parallelization metrics. | This rewrite. |
 | F8 | MEDIUM | "cc-switch integration" | cc-switch is desktop-GUI for users; agent-kit is CLI for repos. Different audiences. | Dropped. Replaced with Phase 4 subagents (real value). |
@@ -105,17 +105,17 @@ Make `ak setup` the canonical, idempotent, single-command bootstrap for AI agent
 | E1 | Consumer in fresh worktree, node_modules not yet installed | All `ak-*` hook commands wrap in `[ -x ... ] && ... || true` (already shipped in current `scaffold-agent-hooks`); verify in Task 1.1 test | 1.1 |
 | E2 | Consumer's `.claude/settings.json` has user-customized hooks | `patchClaudeSettings` is additive; `hasCommand` checks by binary name (already implemented) | 1.1 |
 | E3 | Consumer hand-edited a `.claude/rules/<name>.md` (not a symlink) | `scaffoldClaudeRules` preserves real files (already implemented in current code) | 2.2 |
-| E4 | agent-kit's own repo running `ak setup` | Detect `package.json#name === "@webpresso/agent-kit"` → use `catalog/agent/rules/` instead of `node_modules/...` | 2.1 |
-| E5 | Consumer with broken/stale symlinks in `.claude/rules/` | `ak audit agents` **hard-fails** (CI blocked). Run `ak setup --overwrite` to repair. | 2.3 |
+| E4 | agent-kit's own repo running `wp setup` | Detect `package.json#name === "@webpresso/agent-kit"` → use `catalog/agent/rules/` instead of `node_modules/...` | 2.1 |
+| E5 | Consumer with broken/stale symlinks in `.claude/rules/` | `wp audit agents` **hard-fails** (CI blocked). Run `wp setup --overwrite` to repair. | 2.3 |
 | E6 | Skill SKILL.md has malformed `hooks:` frontmatter | Validator in Task 3.2 rejects with clear error; setup fails fast | 3.2 |
 | E7 | Worktree experimenting with rule changes | Reads MAIN's rules (documented behavior). To diverge, copy `.agent/rules/` into worktree and remove `.claude` symlinkDirectories entry locally | 1.5 |
 | E8 | Pnpm hoisted vs nested layout | Resolution uses the consumer-facing `node_modules/@webpresso/agent-kit` entry plus `realpathSync` on the catalog rules dir, so both hoisted and nested pnpm layouts resolve to the real installed catalog path | 2.1 |
 | E9 | Consumer wants to override a catalog rule with custom content | Add entry to `.agent-kitrc.json#rules.overrides: ["rule-name"]` — audit then ignores that rule. Without entry: hard-fail. | 2.3 |
-| E10 | Consumer has not installed `@webpresso/agent-kit` devDep yet | `ak setup` uses the executing package's catalog as a bootstrap fallback, then converges on the installed consumer package once the devDep exists locally. | 2.1 |
-| E11 | `node_modules/@webpresso/agent-kit/` deleted (e.g. `rm -rf node_modules`) | `.claude/rules/` symlinks become dangling; next `ak audit agents` hard-fails. Resolution: `pnpm install`. | 2.1, 2.3 |
-| E12 | Existing consumer repo runs `ak audit agents` for the first time → fails with multiple drift findings | **Migration path:** run `ak setup --overwrite`. Re-runs scaffolders with overwrite mode: catalog-owned files (rules symlinks, hooks) updated to current state; consumer-customized files preserved with `.new` sidecar for manual merge; subsequent `ak audit agents` passes. Documented in audit failure messages and `docs/migration.md`. | 2.3 |
+| E10 | Consumer has not installed `@webpresso/agent-kit` devDep yet | `wp setup` uses the executing package's catalog as a bootstrap fallback, then converges on the installed consumer package once the devDep exists locally. | 2.1 |
+| E11 | `node_modules/@webpresso/agent-kit/` deleted (e.g. `rm -rf node_modules`) | `.claude/rules/` symlinks become dangling; next `wp audit agents` hard-fails. Resolution: `pnpm install`. | 2.1, 2.3 |
+| E12 | Existing consumer repo runs `wp audit agents` for the first time → fails with multiple drift findings | **Migration path:** run `wp setup --overwrite`. Re-runs scaffolders with overwrite mode: catalog-owned files (rules symlinks, hooks) updated to current state; consumer-customized files preserved with `.new` sidecar for manual merge; subsequent `wp audit agents` passes. Documented in audit failure messages and `docs/migration.md`. | 2.3 |
 | E13 | Consumer pinned `@webpresso/agent-kit` to a specific version, doesn't want `"latest"` | Task 1.4 preserves consumer-customized version field (test #4). The `"latest"` injection fires only when the dep is missing entirely, never when present. | 1.4 |
-| E14 | Agent runs `pnpm test` in `webpresso/runtime` (no justfile) | New redirect format leads with `mcp__agent-kit__ak_test(...)`. Fallback line mentions `just test...` but model picks the MCP path which works (Phase 5 V1+V2). Old format would have suggested `just test` and silently failed at execution. | 5.1 |
+| E14 | Agent runs `pnpm test` in `webpresso/runtime` (no justfile) | New redirect format leads with `mcp__agent-kit__wp_test(...)`. Fallback line mentions `just test...` but model picks the MCP path which works (Phase 5 V1+V2). Old format would have suggested `just test` and silently failed at execution. | 5.1 |
 | E15 | Agent-kit MCP server is briefly unavailable mid-session (sentinel cleared) | `buildRedirectMessage` checks `isMcpReady()` (V4) at call time. When false, output reverts to `just`-prefixed hint (V5 routing-availability split). No agent-stuck state. | 5.1 |
 | E16 | Fork of agent-kit publishes under different MCP server name | Override via `.agent-kitrc.json#mcp.serverName`. `buildRedirectMessage` reads from `AgentkitConfig.mcp.serverName`, defaults to `'agent-kit'` (V1). | 5.2 |
 | E17 | Claude uses `MultiEdit` instead of `Edit` during a multi-file change | Task 1.1 widens the Claude matcher strings to include `MultiEdit`, so both pre-tool guardrails and post-tool classification still fire. | 1.1 |
@@ -127,13 +127,13 @@ Make `ak setup` the canonical, idempotent, single-command bootstrap for AI agent
 | # | Risk | Mitigation | Severity |
 |---|------|------------|----------|
 | R1 | Future contributor moves `ak-pretool-guard` into a skill (recurring temptation since "self-contained skill" is appealing) | F1 documented in this blueprint + Risks; add explicit comment in `scaffold-agent-hooks.ts` warning against this | HIGH |
-| R2 | `node_modules/@webpresso/agent-kit/` symlink target deleted by `rm -rf node_modules` | Symlinks become broken until next `pnpm install`. `ak audit agents` hard-fails on dangling symlinks (Task 2.3); developer runs `pnpm install && pnpm setup:agent` to repair. | MEDIUM |
-| R3 | Phase 4 subagent definitions diverge from Claude Code subagent format as it evolves | Pin to docs version at time of writing; `ak audit agents` validates frontmatter; revisit on major Claude Code releases | MEDIUM |
+| R2 | `node_modules/@webpresso/agent-kit/` symlink target deleted by `rm -rf node_modules` | Symlinks become broken until next `pnpm install`. `wp audit agents` hard-fails on dangling symlinks (Task 2.3); developer runs `pnpm install && pnpm setup:agent` to repair. | MEDIUM |
+| R3 | Phase 4 subagent definitions diverge from Claude Code subagent format as it evolves | Pin to docs version at time of writing; `wp audit agents` validates frontmatter; revisit on major Claude Code releases | MEDIUM |
 | R4 | Hard-fail audit blocks legitimate consumer customizations | Documented `.agent-kitrc.json#rules.overrides` and `scripts.setup-agent` allowlist mechanism. Failure messages tell consumers exactly how to opt out per-file. The strictness is intentional: with hard-fail-everything chosen by the team, drift never silently leaks past CI. | MEDIUM (LOWERED from HIGH by allowlist) |
-| R5 | Consumer never installs `@webpresso/agent-kit` devDep, runs `ak setup` and gets cryptic error | Task 2.1 returns actionable error message (`pnpm add -D @webpresso/agent-kit && pnpm install`). Task 1.4 ensures fresh `ak setup` runs auto-add the devDep before the symlink step. | LOW |
+| R5 | Consumer never installs `@webpresso/agent-kit` devDep, runs `wp setup` and gets cryptic error | Task 2.1 returns actionable error message (`pnpm add -D @webpresso/agent-kit && pnpm install`). Task 1.4 ensures fresh `wp setup` runs auto-add the devDep before the symlink step. | LOW |
 | R6 | Phase 1+2 single PR is large | Each task is XS-S individually; PR is a ~10-task PR. Review burden manageable if each task has its own commit. CI's existing audit chain catches regressions per-commit. | LOW |
-| R7 | `"latest"` dist-tag in consumer devDep means `pnpm install` silently picks up new agent-kit majors | `ak audit agents` in CI catches catalog-format breaks immediately on next install (Task 2.3 hard-fails on schema drift). Consumers with tighter reproducibility needs can override the injected `"latest"` to a pinned version — Task 1.4 preserves consumer-customized version (test #4). | MEDIUM |
-| R8 | MCP tool names drift between Claude Code (matcher pattern), MCP server registration, and the `ak_*` source files | Phase 5 hardcodes the matcher format (`mcp__agent-kit__ak_<verb>`) with file:line references in V1+V2 of the blueprint. The `ak audit agents` check from Task 2.3 should be extended to verify the constants in `mcp-redirect.ts` match the actual `name:` literals in `src/mcp/tools/*.ts` (use AST or grep). Cited as follow-up in Task 5.3 acceptance. | LOW |
+| R7 | `"latest"` dist-tag in consumer devDep means `pnpm install` silently picks up new agent-kit majors | `wp audit agents` in CI catches catalog-format breaks immediately on next install (Task 2.3 hard-fails on schema drift). Consumers with tighter reproducibility needs can override the injected `"latest"` to a pinned version — Task 1.4 preserves consumer-customized version (test #4). | MEDIUM |
+| R8 | MCP tool names drift between Claude Code (matcher pattern), MCP server registration, and the `wp_*` source files | Phase 5 hardcodes the matcher format (`mcp__agent-kit__wp_<verb>`) with file:line references in V1+V2 of the blueprint. The `wp audit agents` check from Task 2.3 should be extended to verify the constants in `mcp-redirect.ts` match the actual `name:` literals in `src/mcp/tools/*.ts` (use AST or grep). Cited as follow-up in Task 5.3 acceptance. | LOW |
 | R9 | Claude with context-mode plugin + agent-kit routing sources active can double-inject routing guidance | Task 5.3 runs plugin-on collision smoke, then narrows agent-kit-owned routing to a single source and documents when context-mode owns `ctx_*` nudging. | HIGH |
 | R10 | Codex hook semantics stay under-documented or diverge from Claude assumptions | Task 5.3 adds an empirical parity probe on the current Codex release; docs and VISION must only claim behavior that the probe actually observed. | HIGH |
 | R11 | `MultiEdit` bypasses pre/post-tool hooks if matcher coverage regresses later | Task 1.1 adds dedicated matcher tests so future refactors fail loudly if `MultiEdit` drops out. | MEDIUM |
@@ -153,7 +153,7 @@ Make `ak setup` the canonical, idempotent, single-command bootstrap for AI agent
 
 ### Phase 1: Bootstrap regression fixes [Complexity: M]
 
-Goal: every `ak setup` run produces correct settings. Stops the regression where the monorepo had to be hand-fixed for `symlinkDirectories`, `ak-pretool-guard`, and `ak-stop-qa`.
+Goal: every `wp setup` run produces correct settings. Stops the regression where the monorepo had to be hand-fixed for `symlinkDirectories`, `ak-pretool-guard`, and `ak-stop-qa`.
 
 #### [infra] Task 1.1: Patch `worktree.symlinkDirectories` + Claude `MultiEdit` matcher parity in scaffold-agent-hooks
 
@@ -192,7 +192,7 @@ Goal: every `ak setup` run produces correct settings. Stops the regression where
 
 **Depends:** None
 
-The current `AGENTS.md.tpl` setup section says `ak setup && ak symlink sync`. But `ak setup` already calls `syncAll` (the symlinker) at the end of its flow. The second command is redundant and confuses consumers. Update the template to a single canonical command that works for both first-time and re-run cases.
+The current `AGENTS.md.tpl` setup section says `wp setup && wp symlink sync`. But `wp setup` already calls `syncAll` (the symlinker) at the end of its flow. The second command is redundant and confuses consumers. Update the template to a single canonical command that works for both first-time and re-run cases.
 
 **Files:**
 - Modify: `catalog/AGENTS.md.tpl`
@@ -200,7 +200,7 @@ The current `AGENTS.md.tpl` setup section says `ak setup && ak symlink sync`. Bu
 **Steps (TDD):**
 1. Read current template's "Setup after clone" section
 2. Replace the multi-command block with: `pnpm install && pnpm setup:agent`
-3. Add explanatory comment: `# pnpm setup:agent runs ak setup, which scaffolds .agent/, AGENTS.md, hooks, and runs symlink sync`
+3. Add explanatory comment: `# pnpm setup:agent runs wp setup, which scaffolds .agent/, AGENTS.md, hooks, and runs symlink sync`
 4. Run: `bun run lint:pkg` (ensure publint still passes)
 5. Run: existing `scaffold-agents-md.test.ts` tests — verify PASS (no regression in template rendering)
 
@@ -235,13 +235,13 @@ When `scaffolders/claude-rules/index.ts` was created earlier, no test file was a
 - [x] All tests pass
 - [x] Test file follows existing scaffolder test patterns (e.g. `scaffold-agents-md.test.ts`)
 
-#### [infra] Task 1.4: ak setup ensures @webpresso/agent-kit devDep + setup:agent script
+#### [infra] Task 1.4: wp setup ensures @webpresso/agent-kit devDep + setup:agent script
 
 **Status:** done
 
 **Depends:** None
 
-Currently consumers must hand-add `@webpresso/agent-kit` as a devDep and the `setup:agent` script. We did this manually for 7 sibling repos in the prior session — this should be `ak setup`'s job. Extend `scaffold-base-kit.ts` to merge both into the consumer's `package.json`.
+Currently consumers must hand-add `@webpresso/agent-kit` as a devDep and the `setup:agent` script. We did this manually for 7 sibling repos in the prior session — this should be `wp setup`'s job. Extend `scaffold-base-kit.ts` to merge both into the consumer's `package.json`.
 
 **Files:**
 - Modify: `src/cli/commands/init/scaffold-base-kit.ts`
@@ -249,13 +249,13 @@ Currently consumers must hand-add `@webpresso/agent-kit` as a devDep and the `se
 
 **Steps (TDD):**
 1. Write failing test: consumer `package.json` without `@webpresso/agent-kit` → after scaffold → has `devDependencies["@webpresso/agent-kit"] = "latest"` (tracks dist-tag, not pinned to a specific version)
-2. Write failing test: consumer without `setup:agent` script → after scaffold → has `scripts["setup:agent"] = "ak setup"`
+2. Write failing test: consumer without `setup:agent` script → after scaffold → has `scripts["setup:agent"] = "wp setup"`
 3. Write failing test: consumer with both already present at correct values → identical, no change
 4. Write failing test: consumer with `setup:agent` pointing to a custom command → preserve consumer override (do NOT clobber)
 5. Write failing test: agent-kit's OWN repo (detected by `package.json#name`) → skip both (don't add self-as-devDep)
 6. Run failing tests, implement, re-run
-7. Document in scaffolder: never add `prepare` script — chicken-and-egg with `ak` not on PATH yet during `pnpm install` (F5)
-8. Document in scaffolder: `"latest"` tag tracks the published dist-tag; consumers re-run `pnpm install` to pick up new versions; CI catches break-on-update via `ak audit agents` (see R7)
+7. Document in scaffolder: never add `prepare` script — chicken-and-egg with `wk` not on PATH yet during `pnpm install` (F5)
+8. Document in scaffolder: `"latest"` tag tracks the published dist-tag; consumers re-run `pnpm install` to pick up new versions; CI catches break-on-update via `wp audit agents` (see R7)
 
 **Acceptance:**
 - [x] 5 tests pass
@@ -279,21 +279,21 @@ When `symlinkDirectories: [".claude"]` is set, new worktrees follow the symlink 
 **Steps (TDD):**
 1. Write `docs/worktrees.md` covering: how `symlinkDirectories` resolves, what reads MAIN vs worktree, when to diverge (rare), and how to opt out per-worktree
 2. Add "Anti-patterns" section to VISION.md:
-   - Do NOT use `prepare: ak setup` in `package.json` (race condition during pnpm install)
-   - Remove the current "should provision" gap item that recommends a `prepare` hook for `ak setup`
+   - Do NOT use `prepare: wp setup` in `package.json` (race condition during pnpm install)
+   - Remove the current "should provision" gap item that recommends a `prepare` hook for `wp setup`
    - Do NOT migrate `ak-*` global hooks into skill SKILL.md `hooks:` (scope mismatch)
-3. Run: `pnpm exec ak audit docs-frontmatter` — verify new doc passes
+3. Run: `pnpm exec wp audit docs-frontmatter` — verify new doc passes
 4. Run: existing `pnpm docs:check` — no regressions
 
 **Acceptance:**
 - [x] `docs/worktrees.md` created with frontmatter
 - [x] VISION.md updated with anti-patterns section
-- [x] `ak audit docs-frontmatter` passes
+- [x] `wp audit docs-frontmatter` passes
 - [x] Cross-references between VISION.md and `docs/worktrees.md` are intact
 
 ### Phase 2: Direct catalog symlinks + audit [Complexity: L]
 
-Goal: eliminate the redundant `.agent/rules/` copy hop for Claude Code consumers; auto-update `.claude/rules/` content on `pnpm install`. Add `ak audit agents` so CI catches drift.
+Goal: eliminate the redundant `.agent/rules/` copy hop for Claude Code consumers; auto-update `.claude/rules/` content on `pnpm install`. Add `wp audit agents` so CI catches drift.
 
 #### [infra] Task 2.1: scaffoldClaudeRules with self / consumer / package-fallback detection
 
@@ -309,7 +309,7 @@ Refactor `scaffoldClaudeRules` to detect environment and choose symlink target:
 | `consumer` | `node_modules/@webpresso/agent-kit/package.json` and `catalog/agent/rules/` exist | `../../node_modules/@webpresso/agent-kit/catalog/agent/rules/<name>.md` (or the `.pnpm/...` realpath target for nested installs) |
 | `package-fallback` | consumer install is missing but the currently executing agent-kit package root is available | relative path into the executing package's `catalog/agent/rules/<name>.md` |
 
-Installed consumer mode still prefers the consumer's `node_modules/@webpresso/agent-kit` entry, using `realpathSync()` so pnpm hoisted/nested layouts both resolve correctly. When that install is missing, the scaffolder falls back to the currently executing agent-kit package root so fresh `npx ak setup` flows still wire `.claude/rules/` without reintroducing the old `.agent/rules/` copy hop.
+Installed consumer mode still prefers the consumer's `node_modules/@webpresso/agent-kit` entry, using `realpathSync()` so pnpm hoisted/nested layouts both resolve correctly. When that install is missing, the scaffolder falls back to the currently executing agent-kit package root so fresh `npx wp setup` flows still wire `.claude/rules/` without reintroducing the old `.agent/rules/` copy hop.
 
 **Files:**
 - Modify: `src/cli/commands/init/scaffolders/claude-rules/index.ts`
@@ -321,7 +321,7 @@ Installed consumer mode still prefers the consumer's `node_modules/@webpresso/ag
 2. Write failing tests for each mode + the fallback case (consumer install missing → package-local catalog)
 3. Implement mode detection + per-mode `symlinkTargetFor(name, mode)` helper
 4. Migration: existing symlinks pointing at the wrong target are detected and replaced (with `--overwrite` flag) or flagged as drift (without `--overwrite`)
-5. Keep fresh `ak setup` flows working when the consumer install is missing by falling back to the currently executing package root
+5. Keep fresh `wp setup` flows working when the consumer install is missing by falling back to the currently executing package root
 6. Run tests — all pass
 7. Run: `bun run typecheck` — clean
 
@@ -365,18 +365,18 @@ Expand the test suite added in Task 1.3 to cover the mode detection. Specificall
 
 **Depends:** Task 1.1
 
-Add `ak audit agents` checking the full agent surface. **Every check is hard-fail.** No warn-level. Drift = CI block. Legitimate overrides require explicit allowlist in `.agent-kitrc.json#rules.overrides`.
+Add `wp audit agents` checking the full agent surface. **Every check is hard-fail.** No warn-level. Drift = CI block. Legitimate overrides require explicit allowlist in `.agent-kitrc.json#rules.overrides`.
 
 Checks (all hard-fail):
 
 1. `AGENTS.md` exists at repo root and is non-empty
-2. `.claude/settings.json` exists and contains all 5 ak hooks: `ak-pretool-guard` (PreToolUse), `ak-post-tool` (PostToolUse), `ak-stop-qa` (Stop), `ak-sessionstart-routing` (SessionStart), `ak-guard-switch` (UserPromptSubmit)
+2. `.claude/settings.json` exists and contains all 5 wp hooks: `ak-pretool-guard` (PreToolUse), `ak-post-tool` (PostToolUse), `ak-stop-qa` (Stop), `ak-sessionstart-routing` (SessionStart), `ak-guard-switch` (UserPromptSubmit)
 3. `.claude/settings.json#worktree.symlinkDirectories` includes `.claude`
 4. Every `.md` in the catalog rules dir (resolved per Task 2.1 mode detection) has a corresponding entry in `.claude/rules/`. Two valid forms:
    - A symlink resolving to the catalog target (matches expected target byte-for-byte)
    - An entry in `.agent-kitrc.json#rules.overrides: ["<name>"]` declaring intentional override (then audit ignores that name)
 5. Every entry in `.claude/rules/` is either a valid symlink (resolvable, target exists) or an allowlisted override (per #4). No dangling, no untracked files.
-6. `package.json#scripts.setup:agent === "ak setup"` — exact match. Customization requires an `.agent-kitrc.json#scripts.setup-agent` allowlist entry with the override command.
+6. `package.json#scripts.setup:agent === "wp setup"` — exact match. Customization requires an `.agent-kitrc.json#scripts.setup-agent` allowlist entry with the override command.
 7. `package.json#devDependencies["@webpresso/agent-kit"]` present and matches a satisfiable semver range for the installed version.
 
 The `.agent-kitrc.json` allowlist mechanism extends the existing config schema. Adding overrides is opt-in per consumer; default is empty (full hard-fail). Document the override path in audit failure messages so consumers know how to legitimize a customization.
@@ -393,7 +393,7 @@ The `.agent-kitrc.json` allowlist mechanism extends the existing config schema. 
 3. Write failing tests for each check (one fixture per failure mode)
 4. Write failing test for each override path (allowlisted rule → check passes)
 5. Implement `runAgentsAudit(repoRoot, config): AgentsAuditResult`
-6. Failure messages must include actionable remediation (`run \`ak setup\``, `add to .agent-kitrc.json#rules.overrides`, etc.)
+6. Failure messages must include actionable remediation (`run \`wp setup\``, `add to .agent-kitrc.json#rules.overrides`, etc.)
 7. Run tests — all pass
 8. Verify against the local monorepo + sibling repos (manual smoke)
 
@@ -405,13 +405,13 @@ The `.agent-kitrc.json` allowlist mechanism extends the existing config schema. 
 - [x] Manual smoke against a sibling repo (e.g. runtime): passes
 - [x] Manual test: hand-edit a `.claude/rules/X.md` symlink → audit fails with override-path hint
 
-#### [infra] Task 2.4: Wire ak audit agents into CLI + audits:check
+#### [infra] Task 2.4: Wire wp audit agents into CLI + audits:check
 
 **Status:** done
 
 **Depends:** Task 2.3
 
-Register the new audit in the `ak audit` CLI dispatcher and add to agent-kit's own `audits:check` script so CI runs it.
+Register the new audit in the `wp audit` CLI dispatcher and add to agent-kit's own `audits:check` script so CI runs it.
 
 **Files:**
 - Modify: `src/cli/commands/audit.ts` (add `agents` subcommand)
@@ -428,7 +428,7 @@ Register the new audit in the `ak audit` CLI dispatcher and add to agent-kit's o
 6. Run: existing audit tests — no regressions
 
 **Acceptance:**
-- [x] `pnpm exec ak audit agents` runs and exits 0 in agent-kit's repo
+- [x] `pnpm exec wp audit agents` runs and exits 0 in agent-kit's repo
 - [x] MCP `audit` tool lists `agents` as available subaudit
 - [x] CI script (`audits:check`) includes the new audit
 - [x] No regressions in existing audit suite
@@ -441,19 +441,19 @@ Goal: support skills that declare scope-limited hooks for skill-specific behavio
 
 **Status:** done
 
-**Depends:** Task 1.1, Task 2.3 (`verify` skill's Stop hook calls `ak audit agents` from Phase 2.3)
+**Depends:** Task 1.1, Task 2.3 (`verify` skill's Stop hook calls `wp audit agents` from Phase 2.3)
 
 `scaffold-agent-hooks` currently has hardcoded global hooks (ak-pretool-guard, etc.). Add a second pass that walks `.agent/skills/*/SKILL.md`, extracts the optional `hooks:` frontmatter field, and merges those scoped hooks into `.claude/settings.json`. Skills without `hooks:` are unchanged.
 
 The merged hooks must be tagged so they can be removed cleanly when a skill is uninstalled.
 
-**Canonical example shipped in this task:** add `hooks:` frontmatter to `catalog/agent/skills/verify/SKILL.md` declaring a Stop hook that runs `ak audit agents`. This demonstrates the "skill installs its own enforcement when invoked" pattern: when a session uses the `verify` skill, on stop, the agent-surface audit fires automatically.
+**Canonical example shipped in this task:** add `hooks:` frontmatter to `catalog/agent/skills/verify/SKILL.md` declaring a Stop hook that runs `wp audit agents`. This demonstrates the "skill installs its own enforcement when invoked" pattern: when a session uses the `verify` skill, on stop, the agent-surface audit fires automatically.
 
 **Files:**
 - Modify: `src/cli/commands/init/scaffolders/agent-hooks/index.ts`
 - Create: `src/cli/commands/init/scaffolders/agent-hooks/skill-hooks.ts` (helper to extract+merge)
 - Create: `src/cli/commands/init/scaffolders/agent-hooks/skill-hooks.test.ts`
-- Modify: `catalog/agent/skills/verify/SKILL.md` (add `hooks:` frontmatter — Stop hook running `ak audit agents`)
+- Modify: `catalog/agent/skills/verify/SKILL.md` (add `hooks:` frontmatter — Stop hook running `wp audit agents`)
 
 **Steps (TDD):**
 1. Define helper `extractSkillHooks(skillsDir): SkillHook[]` that scans SKILL.md files
@@ -462,13 +462,13 @@ The merged hooks must be tagged so they can be removed cleanly when a skill is u
 4. Write failing test: malformed `hooks:` → returns extraction error (fed to validator in 3.2)
 5. Write failing test: skill-defined hook merged into settings.json with traceability tag
 6. Implement, run tests, verify clean
-7. Edit `catalog/agent/skills/verify/SKILL.md`: add `hooks: { Stop: [{ command: "ak audit agents", matcher: ... }] }` to frontmatter
-8. Verify: in a test consumer repo with the verify skill, after `ak setup`, `.claude/settings.json` Stop array includes both the global `ak-stop-qa` AND the verify-skill-scoped `ak audit agents`
+7. Edit `catalog/agent/skills/verify/SKILL.md`: add `hooks: { Stop: [{ command: "wp audit agents", matcher: ... }] }` to frontmatter
+8. Verify: in a test consumer repo with the verify skill, after `wp setup`, `.claude/settings.json` Stop array includes both the global `ak-stop-qa` AND the verify-skill-scoped `wp audit agents`
 
 **Acceptance:**
 - [x] Helper extracts hooks from SKILL.md frontmatter
 - [x] Merged hooks tagged with skill name (e.g. `# from-skill: verify`) for clean removal
-- [x] `verify` skill SKILL.md updated with Stop hook running `ak audit agents`
+- [x] `verify` skill SKILL.md updated with Stop hook running `wp audit agents`
 - [x] Test verifies both global + skill-scoped Stop hooks coexist in settings.json
 - [x] No regression in existing global-hook merging
 
@@ -496,18 +496,18 @@ Validation rules:
 2. Write failing tests for each rejection rule
 3. Write failing test: valid hooks → no error
 4. Implement validator; run tests until clean
-5. Wire validator into Task 3.1's extraction so invalid skills surface error during `ak setup`
+5. Wire validator into Task 3.1's extraction so invalid skills surface error during `wp setup`
 
 **Acceptance:**
 - [x] Zod schema covers all 5 events
 - [x] Required-matcher events rejected without matcher
 - [x] Reserved global names rejected with clear error
 - [x] All validation tests pass
-- [x] `ak setup` fails fast on invalid SKILL.md hooks (not silent)
+- [x] `wp setup` fails fast on invalid SKILL.md hooks (not silent)
 
 ### Phase 4: Subagent catalog [Complexity: M]
 
-Goal: ship canonical subagent definitions in the catalog and distribute them to consumers via `ak setup`. The 2026 frontier of agentic workflows.
+Goal: ship canonical subagent definitions in the catalog and distribute them to consumers via `wp setup`. The 2026 frontier of agentic workflows.
 
 #### [catalog] Task 4.1: Add 4 canonical subagents to catalog
 
@@ -533,7 +533,7 @@ Subagents:
 **Steps (TDD):**
 1. Write each subagent with full frontmatter + system prompt body (~50-150 lines each)
 2. `explorer` MUST exclude Bash, Edit, Write from `tools` (validates the read-only contract)
-3. Run: `pnpm exec ak audit docs-frontmatter` — verify all four pass frontmatter validation
+3. Run: `pnpm exec wp audit docs-frontmatter` — verify all four pass frontmatter validation
 4. Verify frontmatter, read-only explorer contract, and catalog/scaffolder integration in repo-local tests
 5. Document each in `catalog/agent/agents/README.md` (purpose, when to use, tools, example invocation)
 
@@ -570,20 +570,20 @@ New scaffolder copies (or symlinks, depending on mode from Phase 2) `catalog/age
 
 **Acceptance:**
 - [x] All 5 tests pass
-- [x] `ak setup` distributes subagents to `.claude/agents/`
-- [x] `ak audit agents` extended to validate `.claude/agents/`
+- [x] `wp setup` distributes subagents to `.claude/agents/`
+- [x] `wp audit agents` extended to validate `.claude/agents/`
 - [x] Consumer-owned subagents preserved across re-runs
 
 ### Phase 5: MCP-shaped redirect format + routing ownership [Complexity: M]
 
-Goal: deny reasons for forbidden commands lead with the agent-kit MCP-tool template (`mcp__agent-kit__ak_*`) so they work universally — in `ozby/ingest-lens` (justfile + pnpm scripts), in `webpresso/monorepo` (justfile + pnpm-workspace), in `webpresso/runtime` (pnpm-only, no justfile). Mirrors context-mode's `mcpRedirect` readiness-guard pattern so the redirect only fires when the MCP server is actually responding, while also collapsing duplicate `ctx_*` routing ownership on Claude and turning Codex hook support from assumption into measured behavior.
+Goal: deny reasons for forbidden commands lead with the agent-kit MCP-tool template (`mcp__agent-kit__wp_*`) so they work universally — in `ozby/ingest-lens` (justfile + pnpm scripts), in `webpresso/monorepo` (justfile + pnpm-workspace), in `webpresso/runtime` (pnpm-only, no justfile). Mirrors context-mode's `mcpRedirect` readiness-guard pattern so the redirect only fires when the MCP server is actually responding, while also collapsing duplicate `ctx_*` routing ownership on Claude and turning Codex hook support from assumption into measured behavior.
 
 **Verified facts (file:line):**
 
 | # | Claim | Source |
 |---|-------|--------|
 | V1 | MCP server identifies as `agent-kit` (the matcher prefix is `mcp__agent-kit__`) | `src/mcp/server.ts:30` — `const SERVER_NAME = 'agent-kit'`; passed to `new Server({name: SERVER_NAME, ...})` at `:83`. Also `.claude-plugin/plugin.json:mcpServers.agent-kit` |
-| V2 | Existing MCP tool names | `src/mcp/tools/test.ts:34` → `ak_test`; `src/mcp/tools/lint.ts:102` → `ak_lint`; `src/mcp/tools/typecheck.ts:83` → `ak_typecheck`; `src/mcp/tools/qa.ts:75` → `ak_qa`; `src/mcp/tools/audit.ts:140` → `ak_audit`; `src/mcp/tools/blueprint.ts:63` → `ak_blueprint` |
+| V2 | Existing MCP tool names | `src/mcp/tools/test.ts:34` → `wp_test`; `src/mcp/tools/lint.ts:102` → `wp_lint`; `src/mcp/tools/typecheck.ts:83` → `wp_typecheck`; `src/mcp/tools/qa.ts:75` → `wp_qa`; `src/mcp/tools/audit.ts:140` → `wp_audit`; `src/mcp/tools/blueprint.ts:63` → `wp_blueprint` |
 | V3 | Current `forbidden-commands.ts` hints are `just`-prefixed | `src/hooks/pretool-guard/validators/forbidden-commands.ts:46-53` — `DB_HINT`, `LINT_BASE`, `TEST_HINT`, `MUTATION_HINT`, `TYPECHECK_HINT`, `ENV_HINT` constants all start with `'just '` |
 | V4 | `isMcpReady()` already exists and is wired into the runner | `src/hooks/shared/mcp-sentinel.ts` exports `isMcpReady` (camelCase, not `isMCPReady`); used at `src/hooks/pretool-guard/runner.ts:104` and `src/hooks/doctor.ts:18,246` |
 | V5 | context-mode officially distinguishes full-plugin automatic routing from MCP-only install without automatic routing | `https://github.com/mksglu/context-mode/blob/main/README.md` — Claude plugin install says "Routing: Automatic"; MCP-only install says tools are available but the model "won't be nudged" automatically |
@@ -592,7 +592,7 @@ Goal: deny reasons for forbidden commands lead with the agent-kit MCP-tool templ
 | V8 | runtime has no justfile (so `just`-redirects fail there silently) | No `justfile` in `/Users/ozby/repos/webpresso/runtime/` (sibling repo, pnpm-only) |
 | V9 | The `mcp__<server>__<tool>` matcher pattern is the official Claude Code convention | `https://docs.anthropic.com/en/docs/claude-code/hooks` § "Match MCP tools" — examples include `mcp__memory__create_entities` |
 
-**Why this phase exists:** V3 + V8 prove the bug. The current redirect tells the model to run `just test --package <name>` — which silently fails in runtime (no justfile). The agent-kit MCP server with `ak_test` works in **all** consumers because it's registered globally via `.claude-plugin/plugin.json` (V1 + plugin marketplace install). The MCP-tool redirect is universal; the `just`-prefixed redirect is repo-specific.
+**Why this phase exists:** V3 + V8 prove the bug. The current redirect tells the model to run `just test --package <name>` — which silently fails in runtime (no justfile). The agent-kit MCP server with `wp_test` works in **all** consumers because it's registered globally via `.claude-plugin/plugin.json` (V1 + plugin marketplace install). The MCP-tool redirect is universal; the `just`-prefixed redirect is repo-specific.
 
 #### [infra] Task 5.1: New `mcp-redirect.ts` helper + refactor forbidden-commands hints
 
@@ -600,7 +600,7 @@ Goal: deny reasons for forbidden commands lead with the agent-kit MCP-tool templ
 
 **Depends:** Task 1.1 (no functional dep, but ordering keeps PR #1 cleanly scoped)
 
-New helper produces deny reasons that lead with the `mcp__agent-kit__ak_*` template, fall back to the existing `just`-prefixed hint when MCP is not ready (mirrors V5's routing-availability split). `forbidden-commands.ts:46-53` switches from static `*_HINT` constants to calling the helper.
+New helper produces deny reasons that lead with the `mcp__agent-kit__wp_*` template, fall back to the existing `just`-prefixed hint when MCP is not ready (mirrors V5's routing-availability split). `forbidden-commands.ts:46-53` switches from static `*_HINT` constants to calling the helper.
 
 **Files:**
 - Create: `src/hooks/pretool-guard/validators/mcp-redirect.ts`
@@ -628,15 +628,15 @@ export function buildRedirectMessage(ctx: MCPRedirectContext): string
 
 | Category | MCP tool name | Server matcher | Source |
 |---|---|---|---|
-| `test` | `ak_test` | `mcp__agent-kit__ak_test` | `src/mcp/tools/test.ts:34` |
-| `lint` | `ak_lint` | `mcp__agent-kit__ak_lint` | `src/mcp/tools/lint.ts:102` |
-| `typecheck` | `ak_typecheck` | `mcp__agent-kit__ak_typecheck` | `src/mcp/tools/typecheck.ts:83` |
-| `unknown` (qa/audit/mutation) | first match: `ak_qa`, `ak_audit`, or fall back to `ak_test --mutation` | `mcp__agent-kit__ak_qa`, `mcp__agent-kit__ak_audit` | `src/mcp/tools/qa.ts:75`, `src/mcp/tools/audit.ts:140` |
+| `test` | `wp_test` | `mcp__agent-kit__wp_test` | `src/mcp/tools/test.ts:34` |
+| `lint` | `wp_lint` | `mcp__agent-kit__wp_lint` | `src/mcp/tools/lint.ts:102` |
+| `typecheck` | `wp_typecheck` | `mcp__agent-kit__wp_typecheck` | `src/mcp/tools/typecheck.ts:83` |
+| `unknown` (qa/audit/mutation) | first match: `wp_qa`, `wp_audit`, or fall back to `wp_test --mutation` | `mcp__agent-kit__wp_qa`, `mcp__agent-kit__wp_audit` | `src/mcp/tools/qa.ts:75`, `src/mcp/tools/audit.ts:140` |
 
 **Output format (caveman, parseable):**
 ```
 "<command>" denied — use agent-kit MCP tool:
-  mcp__agent-kit__ak_test({ "package": "<infer-from-cwd>" })
+  mcp__agent-kit__wp_test({ "package": "<infer-from-cwd>" })
 Returns structured, summary-first results. Raw output is clipped; overflow may include a log path for deeper investigation.
 Fallback (MCP not ready): just test --package <name>
 ```
@@ -657,7 +657,7 @@ When `mcpReady() === false`, output the existing `just`-prefixed hint as the pri
 - [x] 8 helper tests pass (4 categories × 2 ready states)
 - [x] `forbidden-commands` integration tests pass with new format
 - [x] Helper uses `isMcpReady` from `src/hooks/shared/mcp-sentinel.ts` (V4); injectable for tests
-- [x] Format includes literal `mcp__agent-kit__ak_*` tool name (not `${prefix}` placeholder) when MCP is ready
+- [x] Format includes literal `mcp__agent-kit__wp_*` tool name (not `${prefix}` placeholder) when MCP is ready
 - [x] Format falls back to `just`-prefixed hint when MCP is not ready (V5 routing-availability split)
 - [x] No regression in existing forbidden-commands DENY behavior (still denies; only the reason changes)
 
@@ -683,7 +683,7 @@ export interface AgentkitConfig {
   mcp?: {
     /** MCP server name as seen in matcher prefix `mcp__<serverName>__<tool>`. Defaults to `'agent-kit'` (matches src/mcp/server.ts:30). */
     serverName?: string
-    /** Tool name prefix. Defaults to `'ak_'` (matches src/mcp/tools/*.ts naming). */
+    /** Tool name prefix. Defaults to `'wp_'` (matches src/mcp/tools/*.ts naming). */
     toolPrefix?: string
   }
 }
@@ -724,7 +724,7 @@ Three consumer profiles cover the realistic distribution of agent-kit consumers.
 1. Ensure agent-kit plugin is installed (Claude Code marketplace) — gives `mcp__agent-kit__*` tools system-wide
 2. Confirm `.claude/settings.json` has `ak-pretool-guard` wired (V4: it must be — it's installed by `scaffold-agent-hooks`)
 3. In a Claude Code session inside the consumer repo, run `pnpm test`
-4. Expected: hook denies; deny reason starts with `"pnpm test" denied — use agent-kit MCP tool: mcp__agent-kit__ak_test(...)`
+4. Expected: hook denies; deny reason starts with `"pnpm test" denied — use agent-kit MCP tool: mcp__agent-kit__wp_test(...)`
 5. For `runtime` (no justfile): the fallback line should still mention `just test...`-style fallback (acceptable; the model uses the primary MCP suggestion)
 6. Narrow agent-kit SessionStart routing so `ctx_*` ownership belongs to context-mode when installed.
 7. Reduce Codex claims to the measured/generated hook surface we can verify in-repo today.
@@ -741,21 +741,21 @@ Three consumer profiles cover the realistic distribution of agent-kit consumers.
 
 **Steps (TDD):**
 1. Run the smoke sequence in each consumer; record verbatim output to fixture files
-2. Add a unit test that loads each fixture and asserts the new format invariants (starts with `"<cmd>" denied — use agent-kit MCP tool:`, contains `mcp__agent-kit__ak_*` literal)
-3. Enforce one agent-kit-owned routing source for `ctx_*` guidance by removing duplicate `ctx_*` tool nudges from `AK_ROUTING_BLOCK`.
+2. Add a unit test that loads each fixture and asserts the new format invariants (starts with `"<cmd>" denied — use agent-kit MCP tool:`, contains `mcp__agent-kit__wp_*` literal)
+3. Enforce one agent-kit-owned routing source for `ctx_*` guidance by removing duplicate `ctx_*` tool nudges from `WP_ROUTING_BLOCK`.
 4. Update `docs/hook-matrix.md` and `VISION.md` to describe only the measured/generated Codex behavior and leave richer post-edit automation out of scope.
 5. Update VISION.md + `docs/hook-matrix.md` with the redirect-format guarantee, routing ownership split, and current `ak-post-tool` scope (classifier only; no lint shell-out yet)
-6. Add / update unit tests around `AK_ROUTING_BLOCK` so the chosen ownership boundary is enforced in code review
+6. Add / update unit tests around `WP_ROUTING_BLOCK` so the chosen ownership boundary is enforced in code review
 7. Run: `bun run test src/hooks/pretool-guard/` — all pass
-8. Run: `pnpm exec ak audit docs-frontmatter` — docs edits don't break frontmatter
+8. Run: `pnpm exec wp audit docs-frontmatter` — docs edits don't break frontmatter
 
 **Acceptance:**
 - [x] 3 fixture files committed, verbatim deny reasons
 - [x] Unit test loads fixtures + validates format
-- [x] `AK_ROUTING_BLOCK` (or equivalent) owns only one clear routing boundary; no duplicate agent-kit-owned `ctx_*` guidance remains
+- [x] `WP_ROUTING_BLOCK` (or equivalent) owns only one clear routing boundary; no duplicate agent-kit-owned `ctx_*` guidance remains
 - [x] VISION.md + `docs/hook-matrix.md` distinguish documented vs measured platform behavior
 - [x] `.omx` is documented as runtime/state, not a direct hook surface
-- [x] Runtime-profile redirect evidence now leads with `mcp__agent-kit__ak_test(...)` and retains the `just` fallback line only as secondary guidance
+- [x] Runtime-profile redirect evidence now leads with `mcp__agent-kit__wp_test(...)` and retains the `just` fallback line only as secondary guidance
 - [x] Codex claims in docs are narrowed to the measured/generated hook surface and no longer overclaim richer parity
 
 ## Verification
@@ -764,12 +764,12 @@ After implementation completes, run the full audit chain to verify the system ac
 
 ```bash
 # In agent-kit
-pnpm audits:check    # includes new ak audit agents
+pnpm audits:check    # includes new wp audit agents
 pnpm test            # all scaffolder + audit tests
 pnpm typecheck       # zero errors
 
 # In a sibling repo (e.g. runtime) after `pnpm install && pnpm setup:agent`
-ak audit agents      # passes — full surface wired
+wp audit agents      # passes — full surface wired
 ls .claude/rules/    # symlinks resolve to node_modules/@webpresso/agent-kit/catalog/agent/rules/
 ls .claude/agents/   # has code-reviewer, security-auditor, doc-writer, explorer
 cat .claude/settings.json | jq '.worktree.symlinkDirectories'  # ['.claude']
@@ -778,35 +778,35 @@ cat .claude/settings.json | jq '.worktree.symlinkDirectories'  # ['.claude']
 # (Should inherit everything via symlinkDirectories — no manual setup)
 
 # Migration path for an existing repo whose audit fails on first run:
-ak setup --overwrite   # re-syncs catalog state, preserves customizations as .new sidecars
-ak audit agents        # now passes
+wp setup --overwrite   # re-syncs catalog state, preserves customizations as .new sidecars
+wp audit agents        # now passes
 ```
 
 ## Migration Path (for existing consumers)
 
 Existing consumers that have hand-edited agent surfaces will get audit failures when PR #1 lands. The fix path:
 
-1. Run `ak audit agents` — see all drift findings with remediation hints
-2. For each catalog-owned file (rules, hooks): run `ak setup --overwrite` to re-sync
+1. Run `wp audit agents` — see all drift findings with remediation hints
+2. For each catalog-owned file (rules, hooks): run `wp setup --overwrite` to re-sync
 3. For each genuine consumer customization: add to `.agent-kitrc.json#rules.overrides` (allowlist)
-4. Re-run `ak audit agents` — should pass
+4. Re-run `wp audit agents` — should pass
 5. If a `.new` sidecar was written (pre-existing custom AGENTS.md content), manually merge
 
-This is the only path; no `ak migrate` subcommand. Failure messages in Task 2.3 must include the exact override path or `ak setup --overwrite` command per failure.
+This is the only path; no `wp migrate` subcommand. Failure messages in Task 2.3 must include the exact override path or `wp setup --overwrite` command per failure.
 
 ## Cross-Plan References
 
 - **Upstream (completed):**
   - [`coordinated-pre-tool-hook-unified-hook-process-for-context-mode-agent-kit`](../../completed/coordinated-pre-tool-hook-unified-hook-process-for-context-mode-agent-kit/) — hook-process unification + context-mode interaction model. Phase 5 directly references its F4 finding (context-mode hooks NOT importable as a library) and F5 (MCP readiness sentinel pattern shared with agent-kit's `mcp-sentinel.ts`).
   - [`pretooluse-dev-command-routing-intercept-just-pnpm-commands-and-redirect-to-ak-mcp-tools`](../../completed/pretooluse-dev-command-routing-intercept-just-pnpm-commands-and-redirect-to-ak-mcp-tools/) — built the `dev-routing.ts` validator. Phase 5 tightens its sibling `forbidden-commands.ts` redirect format to the same MCP-shape standard.
-  - [`sessionstart-routing-block-inject-ak-tool-routing-rules-at-session-start`](../../completed/sessionstart-routing-block-inject-ak-tool-routing-rules-at-session-start/) — SessionStart-time `<ak_routing>` block. Phase 5's PreToolUse-time deny reasons must be consistent with the SessionStart routing rules.
+  - [`sessionstart-routing-block-inject-ak-tool-routing-rules-at-session-start`](../../completed/sessionstart-routing-block-inject-ak-tool-routing-rules-at-session-start/) — SessionStart-time `<wp_routing>` block. Phase 5's PreToolUse-time deny reasons must be consistent with the SessionStart routing rules.
   - [`harden-plugin-hooks-suppress-stderr-and-mcp-readiness-sentinel`](../../completed/harden-plugin-hooks-suppress-stderr-and-mcp-readiness-sentinel/) — installed the `mcp-sentinel.ts` that Phase 5.1 reads (V4).
-  - [`ak-hooks-doctor`](../../completed/ak-hooks-doctor-post-install-verification-skill-for-plugin-hook-health/) — `ak audit agents` extends what `ak hooks doctor` started.
+  - [`ak-hooks-doctor`](../../completed/ak-hooks-doctor-post-install-verification-skill-for-plugin-hook-health/) — `wp audit agents` extends what `wp hooks doctor` started.
 - **Spinoff (NOT created yet):** `community-catalog-trust-model` — required before Phase 4-equivalent (third-party catalogs from GitHub) can ship; tracks F2.
 
 ## Out of scope
 
 - Community catalog distribution (`--with github:user/repo`) — needs trust model first
-- `ak migrate` for catalog format upgrades — premature
+- `wp migrate` for catalog format upgrades — premature
 - cc-switch integration — different audience layer
 - Migrating existing global hooks into per-skill SKILL.md (see R1)

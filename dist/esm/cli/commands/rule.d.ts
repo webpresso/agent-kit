@@ -1,5 +1,5 @@
 /**
- * `ak rule <new|list|show|deprecate>` — thin shim over shared content
+ * `wp rule <new|list|show|deprecate>` — thin shim over shared content
  * dispatch in `src/content/dispatch.ts`. Handles consumer-owned rules at
  * `<repo>/agent-rules/<slug>.md`.
  */

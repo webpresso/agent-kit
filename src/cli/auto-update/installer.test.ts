@@ -55,7 +55,7 @@ function fakeSpawnReturn(): MockChild {
 }
 
 beforeEach(() => {
-  tmpDir = mkdtempSync(join(tmpdir(), 'ak-installer-test-'))
+  tmpDir = mkdtempSync(join(tmpdir(), 'wp-installer-test-'))
   spawnMock.mockReset()
   getSurfacePathMock.mockReset()
   logUpdateErrorMock.mockReset()

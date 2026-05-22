@@ -136,7 +136,7 @@ describe('ensureOmx', () => {
   })
 
   it('migrates deprecated codex_hooks to hooks in the Codex config after omx setup', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'ak-omx-'))
+    const dir = mkdtempSync(join(tmpdir(), 'wp-omx-'))
     const configPath = join(dir, 'config.toml')
     writeFileSync(
       configPath,
@@ -222,7 +222,7 @@ describe('deduplicateCodexHookTrustState', () => {
 
 describe('ensureOmx — deduplication of legacy hook trust state', () => {
   it('repairs a config with multiple end markers before calling omx setup', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'ak-omx-dedup-'))
+    const dir = mkdtempSync(join(tmpdir(), 'wp-omx-dedup-'))
     const configPath = join(dir, 'config.toml')
     const END = '# End OMX-owned Codex hook trust state'
     const ENTRY =

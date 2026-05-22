@@ -1,5 +1,5 @@
 /**
- * `ak audit broken-refs` — checks for unresolved relative links in agent
+ * `wp audit broken-refs` — checks for unresolved relative links in agent
  * markdown files.
  *
  * Walks:

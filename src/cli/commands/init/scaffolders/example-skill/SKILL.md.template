@@ -12,5 +12,5 @@ Verifies agent-kit setup is complete.
 ## Steps
 
 1. Confirm `.agent/skills/hello-webpresso/SKILL.md` exists
-2. Confirm `ak compile` has been run (check `.claude/skills/` exists)
-3. Say: "agent-kit is ready. Run `ak compile` to sync to all IDEs."
+2. Confirm `wp compile` has been run (check `.claude/skills/` exists)
+3. Say: "agent-kit is ready. Run `wp compile` to sync to all IDEs."

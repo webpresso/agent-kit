@@ -37,7 +37,7 @@ function assertBlueprintCanMoveToStatus(blueprint, nextStatus) {
  *      CLI outside a pnpm workspace without supplying `--template-path`.
  *
  * Resolution is lazy — returns a function so we don't throw at module load
- * when the lookup fails in unrelated contexts (e.g. `ak --help`).
+ * when the lookup fails in unrelated contexts (e.g. `wp --help`).
  */
 function resolveRepoBlueprintTemplatePath() {
     return resolvePackageAsset('docs/templates/blueprint.md');
@@ -53,7 +53,7 @@ function resolveProjectRoot(projectRoot) {
 }
 function normalizeBlueprintComplexity(complexity) {
     if (!complexity) {
-        throw new Error('Usage: ak blueprint new "<goal>" --complexity <XS|S|M|L|XL>');
+        throw new Error('Usage: wp blueprint new "<goal>" --complexity <XS|S|M|L|XL>');
     }
     const parsed = complexitySchema.safeParse(complexity);
     if (!parsed.success) {
@@ -225,7 +225,7 @@ export async function controlBlueprintExec(action, slug, options = {}) {
     const location = await resolveBlueprintLocation(slug, projectRoot);
     const metadata = await readBlueprintExecutionState(location.path);
     if (!metadata) {
-        throw new Error(`Blueprint ${location.slug} has no stored execution metadata. Launch it with ak blueprint exec <slug> first.`);
+        throw new Error(`Blueprint ${location.slug} has no stored execution metadata. Launch it with wp blueprint exec <slug> first.`);
     }
     if (action === 'stop') {
         const control = controlBlueprintExecution(metadata.backend, action, metadata.executionId, projectRoot);
@@ -322,7 +322,7 @@ export async function moveBlueprint(slug, status, options = {}) {
         };
     }
     if (!options.forceRecovery) {
-        throw new Error('Blueprint move is recovery-only. Use ak blueprint start/task/finalize for normal lifecycle changes, or pass --force-recovery.');
+        throw new Error('Blueprint move is recovery-only. Use wp blueprint start/task/finalize for normal lifecycle changes, or pass --force-recovery.');
     }
     assertBlueprintCanMoveToStatus(location.blueprint, nextStatus);
     if (sourceDir !== targetDir) {
@@ -425,7 +425,7 @@ export async function finalizeBlueprintBySlug(slug, options = {}) {
 }
 export function registerBlueprintRouter(cli) {
     cli
-        .command('blueprint [subcommand] [...args]', 'Manage blueprints. Use: ak blueprint <action> --help for action-specific options (new, list, show, audit, exec, move, finalize, start, task)')
+        .command('blueprint [subcommand] [...args]', 'Manage blueprints. Use: wp blueprint <action> --help for action-specific options (new, list, show, audit, exec, move, finalize, start, task)')
         .option('--json', 'Print JSON output')
         .option('--no-tui', 'Use plain terminal output')
         .option('--complexity <complexity>', 'Blueprint complexity (XS|S|M|L|XL)')
@@ -433,7 +433,7 @@ export function registerBlueprintRouter(cli) {
         .option('--format <format>', 'Export format (spec-kit)')
         .option('--force-recovery', 'Bypass lifecycle guards for blueprint move')
         .option('--reason <text>', 'Blocked reason for task block')
-        .option('--params <json>', 'JSON params for ak blueprint db query')
+        .option('--params <json>', 'JSON params for wp blueprint db query')
         .option('--to <status>', 'Target status for task advance (todo|in-progress|blocked|done|dropped)')
         .option('--staged', 'Audit only staged files')
         .option('--all', 'Audit all blueprints')

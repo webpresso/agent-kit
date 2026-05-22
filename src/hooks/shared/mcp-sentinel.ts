@@ -2,7 +2,7 @@
  * MCP readiness sentinel.
  *
  * Background. The pretool-guard hook routes dev-workflow commands
- * (`pnpm test`, `just lint`, `ak ...`) to the agent-kit MCP tool surface
+ * (`pnpm test`, `just lint`, `wp ...`) to the agent-kit MCP tool surface
  * when MCP is alive, and falls back to a `just <task>` recipe otherwise.
  * The hook needs a way to discover whether an agent-kit MCP server is
  * currently running.
@@ -19,8 +19,8 @@
  *     with the script's directory, not the project root).
  *
  * The fix decouples the two halves. The writer claims a unique
- * filename (defaulting to `ak-mcp-ready-${process.pid}`); the reader
- * scans `tmpdir` for ALL files matching `ak-mcp-ready-*` and returns
+ * filename (defaulting to `wp-mcp-ready-${process.pid}`); the reader
+ * scans `tmpdir` for ALL files matching `wp-mcp-ready-*` and returns
  * true if any of them contains a live PID. Reader and writer no longer
  * need to agree on a key, only on a stable filename pattern.
  *
@@ -32,17 +32,17 @@
  * verifies the PID is alive via `process.kill(pid, 0)`. Stale
  * sentinels (MCP crashed without cleanup) are skipped.
  *
- * Override. Set `AK_MCP_SENTINEL_KEY` to pin the writer's filename
+ * Override. Set `WP_MCP_SENTINEL_KEY` to pin the writer's filename
  * suffix (useful for tests that need a deterministic file path).
  */
 import { readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-const SENTINEL_PREFIX = 'ak-mcp-ready-'
+const SENTINEL_PREFIX = 'wp-mcp-ready-'
 
 function writerKey(): string {
-  const override = process.env.AK_MCP_SENTINEL_KEY
+  const override = process.env.WP_MCP_SENTINEL_KEY
   if (override && override.trim().length > 0) return override.trim()
   return String(process.pid)
 }

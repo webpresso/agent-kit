@@ -16,7 +16,7 @@ verdict: adopt
 
 - Context-mode achieves 98% context reduction by intercepting tool calls in PreToolUse and redirecting them to sandboxed MCP tools that index output to FTS5 and return summaries only
 - Its hook architecture separates concerns cleanly: routing logic (platform-agnostic) → formatter (platform-specific JSON) → sentinel (MCP liveness) → suppress-stderr (native module noise)
-- Agent-kit already has the MCP side (`ak_qa`, `ak_lint`, `ak_test` returning `{passed: bool, ...}`) — the missing piece is the **routing layer**: PreToolUse intercepting `just test`/`pnpm qa` and redirecting to `ak_test`/`ak_qa`, plus a SessionStart block instructing Claude to use those tools
+- Agent-kit already has the MCP side (`wp_qa`, `wp_lint`, `wp_test` returning `{passed: bool, ...}`) — the missing piece is the **routing layer**: PreToolUse intercepting `just test`/`pnpm qa` and redirecting to `wp_test`/`wp_qa`, plus a SessionStart block instructing Claude to use those tools
 - The guidance throttle pattern (O_EXCL file per session per guidance type) prevents routing instructions from repeating every tool call — adopt this or Claude gets nagged on every Bash invocation
 - suppress-stderr.mjs is load-order-critical: it must be the first import in every hook entry point or native modules (e.g. better-sqlite3) will emit to fd2 and Claude Code interprets any stderr as hook failure
 
@@ -118,11 +118,11 @@ The 10k stars and 703 forks on context-mode indicate strong adoption. The `ctx-d
 
 ### Vision Fit
 
-Agent-kit's goal is to make agent-driven development seamless — install, test, lint, QA should be one-command operations that Claude can invoke without getting lost in output. The context-mode routing pattern is exactly what makes this possible: instead of `just test` dumping 2000 lines of vitest output into context, `ak_test` returns `{passed: true, summary: "271 tests passed"}` and Claude moves on. **This is load-bearing for the plugin's value proposition.**
+Agent-kit's goal is to make agent-driven development seamless — install, test, lint, QA should be one-command operations that Claude can invoke without getting lost in output. The context-mode routing pattern is exactly what makes this possible: instead of `just test` dumping 2000 lines of vitest output into context, `wp_test` returns `{passed: true, summary: "271 tests passed"}` and Claude moves on. **This is load-bearing for the plugin's value proposition.**
 
 ### Tech Stack Fit
 
-Agent-kit already has `@modelcontextprotocol/sdk` as a dep and a complete MCP server with `ak_qa`, `ak_lint`, `ak_test`, `ak_typecheck`, `ak_audit`. These tools already return clean `{passed: bool, ...}` JSON structured to avoid context bloat. The missing piece is **the routing layer** — PreToolUse routing `just test` / `pnpm qa` calls to these MCP tools, and SessionStart telling Claude to prefer them.
+Agent-kit already has `@modelcontextprotocol/sdk` as a dep and a complete MCP server with `wp_qa`, `wp_lint`, `wp_test`, `wp_typecheck`, `wp_audit`. These tools already return clean `{passed: bool, ...}` JSON structured to avoid context bloat. The missing piece is **the routing layer** — PreToolUse routing `just test` / `pnpm qa` calls to these MCP tools, and SessionStart telling Claude to prefer them.
 
 No new deps needed (no SQLite/FTS5 required — agent-kit's MCP tools already produce summaries). The gap is ~200 lines of routing code and ~50 lines of session injection.
 
@@ -140,16 +140,16 @@ Create `src/hooks/shared/suppress-stderr.ts` mirroring context-mode's pattern. I
 
 ### Priority 2 — MCP readiness sentinel in pretool-guard (1 file, ~20 lines)
 
-The pretool-guard currently validates commands unconditionally. Add a sentinel check: write `${tmpdir()}/ak-mcp-ready-${process.ppid}` when the MCP server starts; read it in PreToolUse before attempting to redirect. If MCP is not ready, fall through to passthrough. This prevents pretool-guard from blocking commands when the MCP server hasn't started.
+The pretool-guard currently validates commands unconditionally. Add a sentinel check: write `${tmpdir()}/wp-mcp-ready-${process.ppid}` when the MCP server starts; read it in PreToolUse before attempting to redirect. If MCP is not ready, fall through to passthrough. This prevents pretool-guard from blocking commands when the MCP server hasn't started.
 
 ```ts
 // src/mcp/cli.ts — after server connects:
-writeFileSync(join(tmpdir(), `ak-mcp-ready-${process.ppid}`), String(process.pid))
+writeFileSync(join(tmpdir(), `wp-mcp-ready-${process.ppid}`), String(process.pid))
 
 // src/hooks/pretool-guard/mcp-ready.ts:
 export function isMcpReady(): boolean {
   try {
-    const pid = parseInt(readFileSync(join(tmpdir(), `ak-mcp-ready-${process.ppid}`), 'utf-8'), 10)
+    const pid = parseInt(readFileSync(join(tmpdir(), `wp-mcp-ready-${process.ppid}`), 'utf-8'), 10)
     process.kill(pid, 0)
     return true
   } catch { return false }
@@ -158,28 +158,28 @@ export function isMcpReady(): boolean {
 
 ### Priority 3 — SessionStart routing block (1 file, ~40 lines)
 
-Update `src/hooks/sessionstart/index.ts` to inject a routing block alongside the `.agent/routing.md` content. The routing block tells Claude: use `ak_test`, `ak_lint`, `ak_typecheck`, `ak_qa` instead of raw `just test`/`pnpm` commands. Crucially: also define forbidden output patterns (`just test` producing raw vitest logs → use `ak_test` instead).
+Update `src/hooks/sessionstart/index.ts` to inject a routing block alongside the `.agent/routing.md` content. The routing block tells Claude: use `wp_test`, `wp_lint`, `wp_typecheck`, `wp_qa` instead of raw `just test`/`pnpm` commands. Crucially: also define forbidden output patterns (`just test` producing raw vitest logs → use `wp_test` instead).
 
 ```xml
-<ak_routing>
-  <rule>Use ak_test (MCP) instead of just test / pnpm test — returns {passed, summary} not raw logs</rule>
-  <rule>Use ak_lint (MCP) instead of just lint / oxlint — returns {passed, violations[]}</rule>
-  <rule>Use ak_qa (MCP) for full quality gate — runs lint+typecheck+test in parallel</rule>
-  <rule>Use ak_audit blueprint-lifecycle (CLI) for blueprint checks</rule>
-</ak_routing>
+<wp_routing>
+  <rule>Use wp_test (MCP) instead of just test / pnpm test — returns {passed, summary} not raw logs</rule>
+  <rule>Use wp_lint (MCP) instead of just lint / oxlint — returns {passed, violations[]}</rule>
+  <rule>Use wp_qa (MCP) for full quality gate — runs lint+typecheck+test in parallel</rule>
+  <rule>Use wp_audit blueprint-lifecycle (CLI) for blueprint checks</rule>
+</wp_routing>
 ```
 
 ### Priority 4 — PreToolUse routing for dev commands (1 new file, ~60 lines)
 
 Add a routing validator that intercepts `just test`, `pnpm test`, `just lint`, `just qa`, etc. in PreToolUse and responds with:
-- `permissionDecision: "deny"` + guidance message pointing to `ak_test`/`ak_qa`
+- `permissionDecision: "deny"` + guidance message pointing to `wp_test`/`wp_qa`
 - OR `permissionDecision: "allow"` + `updatedInput` that rewrites the command to call the MCP tool
 
 The guidance throttle pattern (O_EXCL marker per session) is essential — show the routing guidance only once per session, not on every blocked command.
 
 ```ts
 // One-time guidance per session
-const marker = join(tmpdir(), `ak-routing-shown-${process.ppid}`)
+const marker = join(tmpdir(), `wp-routing-shown-${process.ppid}`)
 try {
   closeSync(openSync(marker, O_CREAT | O_EXCL | O_WRONLY))
   // show guidance only on first interception
@@ -188,7 +188,7 @@ try {
 
 ### Priority 5 — Doctor skill (1 skill file, ~30 lines)
 
-Add `skills/ak-doctor/SKILL.md` that runs `ak hooks doctor` — verifies each hook bin exists, is executable, exits 0 on empty stdin, and the MCP server starts cleanly. Wire into plugin marketplace description and `ak setup` output.
+Add `skills/wp-doctor/SKILL.md` that runs `wp hooks doctor` — verifies each hook bin exists, is executable, exits 0 on empty stdin, and the MCP server starts cleanly. Wire into plugin marketplace description and `wp setup` output.
 
 ### What NOT to adopt
 

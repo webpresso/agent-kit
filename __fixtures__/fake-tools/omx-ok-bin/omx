@@ -1,6 +1,6 @@
 #!/bin/sh
 # Test fixture: a fake `omx` binary that responds the way real omx would
-# for `--version` and setup invocations. Used to live-verify ak setup --with
+# for `--version` and setup invocations. Used to live-verify wp setup --with
 # omx without invoking the real omx CLI.
 case "$1" in
   --version)

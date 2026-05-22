@@ -55,7 +55,7 @@ tags:
 parked_reason: >-
   One or two sentences explaining why it's paused and what unblocks resumption.
 
-# Optional — set by `ak blueprint finalize`
+# Optional — set by `wp blueprint finalize`
 completed_at: 2026-04-22
 
 # Optional — execution hints
@@ -66,7 +66,7 @@ max_parallel_agents: 3
 
 Full schema lives in `@webpresso/agent-kit/blueprint` as a Zod schema
 (`planFrontmatterSchema`). The CLI validates frontmatter on every
-`ak blueprint audit` run.
+`wp blueprint audit` run.
 
 ## Blueprint vs parent-roadmap
 
@@ -106,11 +106,11 @@ parent_roadmap: q2-platform-roadmap
 
 Validation and discovery surfaces:
 
-- `ak blueprint new "<goal>" --complexity M --type parent-roadmap` scaffolds a roadmap stub.
-- `ak blueprint list` shows `ROADMAP`, nested `CHILD`, and fallback `ORPHANS` rows.
-- `ak roadmap list` lists only roadmap-layer entries.
-- `ak roadmap show <slug>` shows a single parent-roadmap.
-- `ak audit roadmap-links` checks bidirectional roadmap/child references; add `--strict` to fail unresolved orphan parents.
+- `wp blueprint new "<goal>" --complexity M --type parent-roadmap` scaffolds a roadmap stub.
+- `wp blueprint list` shows `ROADMAP`, nested `CHILD`, and fallback `ORPHANS` rows.
+- `wp roadmap list` lists only roadmap-layer entries.
+- `wp roadmap show <slug>` shows a single parent-roadmap.
+- `wp audit roadmap-links` checks bidirectional roadmap/child references; add `--strict` to fail unresolved orphan parents.
 
 ## Body structure
 
@@ -240,8 +240,8 @@ See `src/blueprint/lifecycle/engine.ts` for the full intent vocabulary
 ## DAG + graph
 
 A blueprint's task graph is parsed from the `**Depends on:**` lines
-into a directed acyclic graph. `ak blueprint graph <slug>` renders
-that DAG as Mermaid, and the DAG executor (`ak blueprint exec <slug>`)
+into a directed acyclic graph. `wp blueprint graph <slug>` renders
+that DAG as Mermaid, and the DAG executor (`wp blueprint exec <slug>`)
 walks it respecting dependencies.
 
 For details on the graph runtime, see `src/blueprint/dag/` source.

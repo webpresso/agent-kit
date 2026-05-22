@@ -10,7 +10,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -x \"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak\" ] && \"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak\" audit agents || true # from-skill: verify",
+            "command": "[ -x \"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp\" ] && \"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp\" audit agents || true # from-skill: verify",
             "timeout": 20
           }
         ]
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -x \"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-stop-qa\" ] && \"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-stop-qa\" || true"
+            "command": "[ -x \"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-stop-qa\" ] && \"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-stop-qa\" || true"
           }
         ]
       }
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -x \"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-sessionstart-routing\" ] && \"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-sessionstart-routing\" || true",
+            "command": "[ -x \"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-sessionstart-routing\" ] && \"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-sessionstart-routing\" || true",
             "timeout": 5
           }
         ]
@@ -47,7 +47,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -x \"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-check-dev-link\" ] && \"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-check-dev-link\" || true",
+            "command": "[ -x \"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-check-dev-link\" ] && \"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-check-dev-link\" || true",
             "timeout": 5
           }
         ]
@@ -59,7 +59,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -x \"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-pretool-guard\" ] && \"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-pretool-guard\" || true",
+            "command": "[ -x \"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-pretool-guard\" ] && \"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-pretool-guard\" || true",
             "timeout": 5
           }
         ]
@@ -81,7 +81,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -x \"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-post-tool\" ] && \"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-post-tool\" || true",
+            "command": "[ -x \"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-post-tool\" ] && \"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-post-tool\" || true",
             "timeout": 15
           }
         ]
@@ -92,7 +92,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -x \"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-guard-switch\" ] && \"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-guard-switch\" || true",
+            "command": "[ -x \"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-guard-switch\" ] && \"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-guard-switch\" || true",
             "timeout": 5
           }
         ]

@@ -1,5 +1,5 @@
 /**
- * `ak audit tech-debt-cadence` — SQL-backed cadence health check for
+ * `wp audit tech-debt-cadence` — SQL-backed cadence health check for
  * tech-debt items.
  *
  * Alpha gate: only runs queries when AK_USE_SQL_AUDITS=1.

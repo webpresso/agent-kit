@@ -33,7 +33,7 @@ describe('findOrphanedSkills', () => {
   })
 
   function tmp(): string {
-    const d = mkdtempSync(join(tmpdir(), 'ak-orphans-test-'))
+    const d = mkdtempSync(join(tmpdir(), 'wp-orphans-test-'))
     dirs.push(d)
     return d
   }
@@ -105,7 +105,7 @@ describe('removeOrphanedSkills', () => {
   })
 
   function tmp(): string {
-    const d = mkdtempSync(join(tmpdir(), 'ak-orphans-remove-test-'))
+    const d = mkdtempSync(join(tmpdir(), 'wp-orphans-remove-test-'))
     dirs.push(d)
     return d
   }

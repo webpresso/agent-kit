@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { buildTypecheckCommand, runTypecheckCommand } from './typecheck'
 
-describe('ak typecheck command', () => {
+describe('wp typecheck command', () => {
   it('builds the default no-emit command with stable non-pretty output', () => {
     expect(buildTypecheckCommand()).toEqual({
       command: 'tsc',

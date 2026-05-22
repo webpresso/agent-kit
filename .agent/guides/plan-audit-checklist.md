@@ -23,7 +23,7 @@ reality:
 ## Quick Start
 
 ```bash
-ak blueprint audit --all --strict
+wp blueprint audit --all --strict
 ```
 
 ## Review Process
@@ -31,7 +31,7 @@ ak blueprint audit --all --strict
 ### 1. Run Audit (2 min)
 
 ```bash
-ak blueprint audit --all --strict
+wp blueprint audit --all --strict
 ```
 
 If exit code is 0 → ✅ No issues, done.
@@ -80,9 +80,9 @@ last_updated: 2026-04-22
   - `status: in-progress` → move to `in-progress/` (includes blueprints with
     blocked tasks)
   - `status: draft` → move to `draft/`
-- **Command**: `ak blueprint move <slug> <status>`
+- **Command**: `wp blueprint move <slug> <status>`
 - **Note**: `move` is a recovery/repair action for mismatched lifecycle
-  state. For normal completion flow, use `ak blueprint finalize <slug>`.
+  state. For normal completion flow, use `wp blueprint finalize <slug>`.
 
 ### 3. Review Warnings (5 min)
 
@@ -168,7 +168,7 @@ incrementally.
 
 ### "We keep forgetting to finalize completed plans"
 
-→ Add to your Definition of Done: "Run `ak blueprint finalize <slug>` and add
+→ Add to your Definition of Done: "Run `wp blueprint finalize <slug>` and add
 retrospective"
 
 ### "Audit finds issues every week in the same plans"

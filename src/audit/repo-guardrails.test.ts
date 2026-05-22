@@ -297,7 +297,7 @@ describe('repo guardrail audits', () => {
 
     expect(result.ok).toBe(true)
     expect(readFileSync(file, 'utf8')).toContain(
-      "# TODO: classify type — auto-set by ak\ntype: guide\nlast_updated: '2026-05-06'",
+      "# TODO: classify type — auto-set by wp\ntype: guide\nlast_updated: '2026-05-06'",
     )
   })
 

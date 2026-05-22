@@ -63,7 +63,7 @@ export function runGain(sessionDirs?: readonly string[]): number {
     const err = rtk.error
     if (err instanceof Error && 'code' in err && err.code === 'ENOENT') {
       console.log('  RTK not installed.')
-      console.log('  Enable: ak setup --with rtk  |  Manual: brew install rtk')
+      console.log('  Enable: wp setup --with rtk  |  Manual: brew install rtk')
     } else {
       throw err
     }

@@ -16,7 +16,7 @@ export interface MCPRedirectContext {
 }
 
 const DEFAULT_SERVER_NAME = 'agent-kit'
-const DEFAULT_TOOL_PREFIX = 'ak_'
+const DEFAULT_TOOL_PREFIX = 'wp_'
 
 export function resolveMcpReady(value: MCPRedirectContext['mcpReady']): boolean {
   if (typeof value === 'function') return value()
@@ -41,6 +41,8 @@ function toolSuffixForCategory(category: CommandCategory): string {
       return 'typecheck'
     case 'format':
       return 'format'
+    case 'e2e':
+      return 'e2e'
     case 'blueprint':
       return 'blueprint'
     case 'unknown':
@@ -59,7 +61,7 @@ export function buildRedirectMessage(ctx: MCPRedirectContext): string {
   const toolMatcher = `mcp__${serverName}__${toolPrefix}${toolSuffixForCategory(ctx.category)}(...)`
 
   return [
-    `"${ctx.command}" denied — use agent-kit MCP tool:`,
+    `"${ctx.command}" denied — use wp MCP tool:`,
     `  ${toolMatcher}`,
     'Returns structured, summary-first results. Raw output is clipped; overflow may include a log path for deeper investigation.',
     `Fallback if MCP unavailable: ${fallbackHint}`,

@@ -108,7 +108,7 @@ A blueprint with one incomplete task.
 // ---------------------------------------------------------------------------
 
 function makeRepo(blueprintSlug: string, content: string, state = 'planned'): string {
-  const dir = mkdtempSync(path.join(tmpdir(), 'ak-mutations-test-'))
+  const dir = mkdtempSync(path.join(tmpdir(), 'wp-mutations-test-'))
   mkdirSync(path.join(dir, 'blueprints', state, blueprintSlug), { recursive: true })
   writeFileSync(path.join(dir, 'blueprints', state, blueprintSlug, '_overview.md'), content, 'utf8')
   // Minimal package.json so resolveBlueprintRoot works
@@ -385,7 +385,7 @@ describe('advanceTask — platform-first sync', () => {
 
   afterEach(() => {
     _setSyncAdapterForCli(null)
-    delete process.env['AK_BLUEPRINT_PLATFORM_DISABLED']
+    delete process.env['WP_BLUEPRINT_PLATFORM_DISABLED']
   })
 
   it('calls pushEvent with task.status_changed and ensureFresh when adapter is available', async () => {
@@ -422,8 +422,8 @@ describe('advanceTask — platform-first sync', () => {
     expect(content).toContain('**Status:** done')
   })
 
-  it('does not call pushEvent when AK_BLUEPRINT_PLATFORM_DISABLED=1', async () => {
-    process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+  it('does not call pushEvent when WP_BLUEPRINT_PLATFORM_DISABLED=1', async () => {
+    process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
     const { adapter, pushEvent } = makeMockAdapter()
     _setSyncAdapterForCli(() => adapter)
 
@@ -436,7 +436,7 @@ describe('advanceTask — platform-first sync', () => {
     const before = readOverview(tmpRepoDir, 'my-feature', 'planned')
 
     // With disabled flag, markdown-canonical path runs
-    process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+    process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
     await advanceTask(tmpRepoDir, 'my-feature', '1.1', 'in-progress')
 
     const afterDisabled = readOverview(tmpRepoDir, 'my-feature', 'planned')
@@ -445,7 +445,7 @@ describe('advanceTask — platform-first sync', () => {
     // Reset and run without adapter at all — same result expected
     const tmpRepoDir2 = makeRepo('my-feature', before, 'planned')
     await seedDb(tmpRepoDir2)
-    delete process.env['AK_BLUEPRINT_PLATFORM_DISABLED']
+    delete process.env['WP_BLUEPRINT_PLATFORM_DISABLED']
     _setSyncAdapterForCli(() => null)
 
     await advanceTask(tmpRepoDir2, 'my-feature', '1.1', 'in-progress')
@@ -478,14 +478,14 @@ describe('resolveSyncAdapterForCli — production default path', () => {
 
   afterEach(() => {
     _setSyncAdapterForCli(null) // restore default (null factory = production path)
-    delete process.env['AK_BLUEPRINT_PLATFORM_TOKEN']
-    delete process.env['AK_BLUEPRINT_PLATFORM_DISABLED']
+    delete process.env['WP_BLUEPRINT_PLATFORM_TOKEN']
+    delete process.env['WP_BLUEPRINT_PLATFORM_DISABLED']
   })
 
-  it('returns null when no factory is injected and AK_BLUEPRINT_PLATFORM_TOKEN is absent', async () => {
+  it('returns null when no factory is injected and WP_BLUEPRINT_PLATFORM_TOKEN is absent', async () => {
     // Do NOT call _setSyncAdapterForCli — let it use the production default
-    delete process.env['AK_BLUEPRINT_PLATFORM_TOKEN']
-    delete process.env['AK_BLUEPRINT_PLATFORM_DISABLED']
+    delete process.env['WP_BLUEPRINT_PLATFORM_TOKEN']
+    delete process.env['WP_BLUEPRINT_PLATFORM_DISABLED']
 
     // advanceTask with production path → no token → adapter null → markdown-canonical
     await advanceTask(tmpRepoDir, 'my-feature', '1.1', 'in-progress')
@@ -494,9 +494,9 @@ describe('resolveSyncAdapterForCli — production default path', () => {
     expect(content).toContain('**Status:** in-progress')
   })
 
-  it('returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1 even if token is present', async () => {
-    process.env['AK_BLUEPRINT_PLATFORM_TOKEN'] = 'some-token'
-    process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+  it('returns null when WP_BLUEPRINT_PLATFORM_DISABLED=1 even if token is present', async () => {
+    process.env['WP_BLUEPRINT_PLATFORM_TOKEN'] = 'some-token'
+    process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
 
     await advanceTask(tmpRepoDir, 'my-feature', '1.1', 'blocked')
 
@@ -512,7 +512,7 @@ describe('resolveSyncAdapterForCli — production default path', () => {
 describe('promoteBlueprint — platform-first sync', () => {
   afterEach(() => {
     _setSyncAdapterForCli(null)
-    delete process.env['AK_BLUEPRINT_PLATFORM_DISABLED']
+    delete process.env['WP_BLUEPRINT_PLATFORM_DISABLED']
   })
 
   it('calls pushEvent with blueprint.status_changed and ensureFresh when adapter is available', async () => {
@@ -555,11 +555,11 @@ describe('promoteBlueprint — platform-first sync', () => {
     expect(content).toContain('status: in-progress')
   })
 
-  it('does not call pushEvent when AK_BLUEPRINT_PLATFORM_DISABLED=1', async () => {
+  it('does not call pushEvent when WP_BLUEPRINT_PLATFORM_DISABLED=1', async () => {
     tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
     await seedDb(tmpRepoDir)
 
-    process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+    process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
     const { adapter, pushEvent } = makeMockAdapter()
     _setSyncAdapterForCli(() => adapter)
 
@@ -572,13 +572,13 @@ describe('promoteBlueprint — platform-first sync', () => {
     // Run with platform disabled — uses markdown-canonical path
     tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
     await seedDb(tmpRepoDir)
-    process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+    process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
 
     const result1 = await promoteBlueprint(tmpRepoDir, 'my-feature', 'in-progress')
     const contentDisabled = readFileSync(result1.newPath, 'utf8')
 
     // Run with null adapter — same path
-    delete process.env['AK_BLUEPRINT_PLATFORM_DISABLED']
+    delete process.env['WP_BLUEPRINT_PLATFORM_DISABLED']
     const tmpRepoDir2 = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
     await seedDb(tmpRepoDir2)
     _setSyncAdapterForCli(() => null)

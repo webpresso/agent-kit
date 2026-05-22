@@ -11,28 +11,28 @@ const BASE_PAYLOAD: TthwPayload = {
 }
 
 describe('isTelemetryEnabled', () => {
-  it('returns false when AK_TELEMETRY=0', () => {
-    expect(isTelemetryEnabled({ AK_TELEMETRY: '0' })).toBe(false)
+  it('returns false when WP_TELEMETRY=0', () => {
+    expect(isTelemetryEnabled({ WP_TELEMETRY: '0' })).toBe(false)
   })
 
-  it('returns true when AK_TELEMETRY=1', () => {
-    expect(isTelemetryEnabled({ AK_TELEMETRY: '1' })).toBe(true)
+  it('returns true when WP_TELEMETRY=1', () => {
+    expect(isTelemetryEnabled({ WP_TELEMETRY: '1' })).toBe(true)
   })
 
   it('returns false when no env vars are set (default OFF for external adopters)', () => {
     expect(isTelemetryEnabled({})).toBe(false)
   })
 
-  it('returns false when AK_INTERNAL is absent and AK_TELEMETRY is absent', () => {
+  it('returns false when WP_INTERNAL is absent and WP_TELEMETRY is absent', () => {
     expect(isTelemetryEnabled({ SOME_OTHER_VAR: '1' })).toBe(false)
   })
 
-  it('returns true when AK_INTERNAL=1 and AK_TELEMETRY is absent', () => {
-    expect(isTelemetryEnabled({ AK_INTERNAL: '1' })).toBe(true)
+  it('returns true when WP_INTERNAL=1 and WP_TELEMETRY is absent', () => {
+    expect(isTelemetryEnabled({ WP_INTERNAL: '1' })).toBe(true)
   })
 
-  it('AK_TELEMETRY=0 takes precedence over AK_INTERNAL=1', () => {
-    expect(isTelemetryEnabled({ AK_TELEMETRY: '0', AK_INTERNAL: '1' })).toBe(false)
+  it('WP_TELEMETRY=0 takes precedence over WP_INTERNAL=1', () => {
+    expect(isTelemetryEnabled({ WP_TELEMETRY: '0', WP_INTERNAL: '1' })).toBe(false)
   })
 })
 

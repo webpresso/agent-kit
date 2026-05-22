@@ -1,5 +1,5 @@
 /**
- * `ak_format` MCP tool.
+ * `wp_format` MCP tool.
  *
  * Runs `oxfmt` on the resolved project root. By default writes fixes in
  * place; pass `check: true` to verify formatting without writing (useful
@@ -41,7 +41,7 @@ const outputSchema = createSummaryOutputSchema({
 const FORMAT_COMMAND_TIMEOUT_MS = 5 * 60 * 1_000
 
 const tool: ToolDescriptor = {
-  name: 'ak_format',
+  name: 'wp_format',
   description:
     'Run formatter via `oxfmt`. By default writes fixes in place; pass `check: true` to verify without writing. No fallback — oxfmt must be on PATH.',
   inputSchema,
@@ -86,7 +86,7 @@ const tool: ToolDescriptor = {
 
     const combined = [outcome.stdout, outcome.stderr].filter(Boolean).join('')
     const { transform: _transform, ...compact } = applyOutputTransform(combined, {
-      toolName: 'ak_format',
+      toolName: 'wp_format',
     })
 
     const payload = {
@@ -119,7 +119,7 @@ function summarizeFormatResult(options: {
   if (options.aborted) return 'format aborted'
   if (options.passed) return options.check ? 'format check passed' : 'format applied'
   return options.check
-    ? `format check failed (exit ${options.exitCode}) — run \`ak format\` to apply fixes`
+    ? `format check failed (exit ${options.exitCode}) — run \`wp format\` to apply fixes`
     : `format failed (exit ${options.exitCode})`
 }
 

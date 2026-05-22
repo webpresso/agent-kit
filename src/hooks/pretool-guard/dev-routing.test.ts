@@ -1,21 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('node:fs')
-vi.mock('node:constants', () => ({
-  O_CREAT: 0o100,
-  O_EXCL: 0o200,
-  O_WRONLY: 1,
-}))
-vi.mock('node:os', () => ({ tmpdir: () => '/tmp', homedir: () => '/home/test' }))
-
-import { closeSync, openSync } from 'node:fs'
-
 describe('routeCommand', () => {
   beforeEach(() => {
     vi.resetAllMocks()
-    // Default: openSync succeeds (first call)
-    vi.mocked(openSync).mockReturnValue(3)
-    vi.mocked(closeSync).mockReturnValue(undefined)
   })
 
   afterEach(() => {
@@ -27,33 +14,33 @@ describe('routeCommand', () => {
     return routeCommand
   }
 
-  it('vp exec vitest run → deny, guidance mentions ak_test', async () => {
+  it('vp exec vitest run → deny, guidance mentions wp_test', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('vp exec vitest run')
     expect(result).not.toBeNull()
     expect(result?.action.action).toBe('deny')
-    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_test')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_test')
   })
 
-  it('vp --dir packages/sdk/common exec markdownlint-cli2 README.md → deny and routes to ak_qa', async () => {
+  it('vp --dir packages/sdk/common exec markdownlint-cli2 README.md → deny and routes to wp_qa', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('vp --dir packages/sdk/common exec markdownlint-cli2 README.md')
     expect(result?.action.action).toBe('deny')
-    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_qa')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_qa')
   })
 
-  it('vp -C packages/cli/host exec vitest run → deny and routes to ak_test', async () => {
+  it('vp -C packages/cli/host exec vitest run → deny and routes to wp_test', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('vp -C packages/cli/host exec vitest run')
     expect(result?.action.action).toBe('deny')
-    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_test')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_test')
   })
 
   it('vp exec vitest run → deny', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('vp exec vitest run')
     expect(result?.action.action).toBe('deny')
-    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_test')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_test')
   })
 
   it('vitest run → deny', async () => {
@@ -62,51 +49,86 @@ describe('routeCommand', () => {
     expect(result?.action.action).toBe('deny')
   })
 
-  it('vp exec oxlint . → deny, mentions ak_lint', async () => {
+  it('vp exec oxlint . → deny, mentions wp_lint', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('vp exec oxlint .')
     expect(result?.action.action).toBe('deny')
-    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_lint')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_lint')
   })
 
-  it('vp exec tsc --noEmit → deny, mentions ak_typecheck', async () => {
+  it('pnpm --filter pkg run test → deny and routes to wp_test', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('pnpm --filter @scope/foo run test', 'sess-1')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_test')
+  })
+
+  it('vp run --filter=@scope/foo test → deny and routes to wp_test', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('vp run --filter=@scope/foo test', 'sess-1')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_test')
+  })
+
+  it('pnpm exec vitest → deny and routes to wp_test', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('pnpm exec vitest', 'sess-3')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_test')
+  })
+
+  it('pnpm run qa → deny and routes to wp_qa', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('pnpm run qa', 'sess-2')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_qa')
+  })
+
+  it('pnpm exec prettier README.md --write → deny and routes to wp_format', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('pnpm exec prettier README.md --write', 'sess-4')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_format')
+  })
+
+  it('vp exec tsc --noEmit → deny, mentions wp_typecheck', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('vp exec tsc --noEmit')
     expect(result?.action.action).toBe('deny')
-    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_typecheck')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_typecheck')
   })
 
-  it('vp exec markdownlint-cli2 README.md → deny, mentions ak_qa', async () => {
+  it('vp exec markdownlint-cli2 README.md → deny, mentions wp_qa', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('vp exec markdownlint-cli2 README.md')
     expect(result?.action.action).toBe('deny')
-    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_qa')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_qa')
   })
 
-  it('prettier README.md → deny, mentions ak_format', async () => {
+  it('prettier README.md → deny, mentions wp_format', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('prettier README.md')
     expect(result?.action.action).toBe('deny')
-    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_format')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_format')
   })
 
-  it('vp exec prettier README.md --write → deny, mentions ak_format', async () => {
+  it('vp exec prettier README.md --write → deny, mentions wp_format', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('vp exec prettier README.md --write')
     expect(result?.action.action).toBe('deny')
-    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_format')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_format')
   })
 
-  it('markdownlint-cli2 README.md → deny, mentions ak_qa', async () => {
+  it('markdownlint-cli2 README.md → deny, mentions wp_qa', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('markdownlint-cli2 README.md')
     expect(result?.action.action).toBe('deny')
-    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('ak_qa')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_qa')
   })
 
-  it('ak audit docs-frontmatter → passthrough', async () => {
+  it('wp audit docs-frontmatter → passthrough', async () => {
     const routeCommand = await getRoute()
-    const result = routeCommand('ak audit docs-frontmatter')
+    const result = routeCommand('wp audit docs-frontmatter')
     expect(result?.action.action).toBe('passthrough')
   })
 
@@ -122,33 +144,48 @@ describe('routeCommand', () => {
     expect(result).toBeNull()
   })
 
-  it('throttle: second call returns passthrough when openSync throws EEXIST', async () => {
+  it('session-scoped calls also deny repeatedly', async () => {
     const routeCommand = await getRoute()
-
-    // First call succeeds → deny
-    vi.mocked(openSync).mockReturnValueOnce(3)
     const first = routeCommand('vp exec vitest run', 'session-abc')
-    expect(first?.action.action).toBe('deny')
-
-    // Second call throws EEXIST → throttled, passthrough
-    vi.mocked(openSync).mockImplementationOnce(() => {
-      const err = new Error('EEXIST') as NodeJS.ErrnoException
-      err.code = 'EEXIST'
-      throw err
-    })
     const second = routeCommand('vp exec vitest run', 'session-abc')
-    expect(second?.action.action).toBe('passthrough')
+    expect(first?.action.action).toBe('deny')
+    expect(second?.action.action).toBe('deny')
   })
 
-  it('NFS fallback: openSync throws ENOTSUP → returns deny (not passthrough)', async () => {
-    const routeCommand = await getRoute()
-
-    vi.mocked(openSync).mockImplementationOnce(() => {
-      const err = new Error('ENOTSUP') as NodeJS.ErrnoException
-      err.code = 'ENOTSUP'
-      throw err
+  it('extracts vp test commands embedded inside ctx_execute code', async () => {
+    const { extractRoutableCommandsFromToolInput, routeCommand } = await import('./dev-routing.js')
+    const commands = extractRoutableCommandsFromToolInput({
+      tool_name: 'context-mode.ctx_execute',
+      tool_input: {
+        language: 'javascript',
+        code: "execFileSync('vp',['run','--filter=@webpresso/agent-kit','test','src/audit/gitignore-agent-surfaces.test.ts'])",
+      },
     })
-    const result = routeCommand('vp exec vitest run', 'session-nfs')
+
+    expect(commands).toContain(
+      'vp run --filter=@webpresso/agent-kit test src/audit/gitignore-agent-surfaces.test.ts',
+    )
+    const result = routeCommand(commands[0] ?? '')
     expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') {
+      expect(result.action.guidance).toContain('wp_test')
+    }
+  })
+
+  it('extracts routed commands from ctx_batch_execute command entries', async () => {
+    const { extractRoutableCommandsFromToolInput, routeCommand } = await import('./dev-routing.js')
+    const commands = extractRoutableCommandsFromToolInput({
+      tool_name: 'mcp__context_mode__ctx_batch_execute',
+      tool_input: {
+        commands: [{ label: 'tests', command: 'vp run --filter=@webpresso/agent-kit test' }],
+      },
+    })
+
+    expect(commands).toEqual(['vp run --filter=@webpresso/agent-kit test'])
+    const result = routeCommand(commands[0] ?? '')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') {
+      expect(result.action.guidance).toContain('wp_test')
+    }
   })
 })

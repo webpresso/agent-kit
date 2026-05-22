@@ -40,7 +40,7 @@ let tmpDir: string
 let dbPath: string
 
 beforeEach(() => {
-  tmpDir = mkdtempSync(path.join(tmpdir(), 'ak-db-test-'))
+  tmpDir = mkdtempSync(path.join(tmpdir(), 'wp-db-test-'))
   dbPath = path.join(tmpDir, 'test.db')
 })
 

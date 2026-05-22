@@ -16,12 +16,12 @@ description: Blueprint-aware parallel execution adapter over ultrawork/subagents
 
 Use this skill when the user invokes `/pll` or asks for Blueprint-aware parallel execution.
 
-`/pll` is not a standalone runner. It is the operator-facing adapter over the same shared execution model used by `ak blueprint exec`: both surfaces consume the same Blueprint-backed launch spec, backend vocabulary, and runtime-state bridge, but `/pll` stays manual and operator-facing.
+`/pll` is not a standalone runner. It is the operator-facing adapter over the same shared execution model used by `wp blueprint exec`: both surfaces consume the same Blueprint-backed launch spec, backend vocabulary, and runtime-state bridge, but `/pll` stays manual and operator-facing.
 
 `/pll`:
 
 1. understands Blueprint/task dependencies
-2. updates `ak blueprint` lifecycle state honestly
+2. updates `wp blueprint` lifecycle state honestly
 3. delegates generic parallel fan-out to the engine layer such as `$ultrawork` or host-native subagents
 
 > **Backends**: `/pll` can delegate to `omx-team` or `omx-pll-interactive` when OMX is installed. If OMX isn't installed, the skill uses the `local-worktree` backend (default for repos without OMX).
@@ -32,9 +32,9 @@ Use this skill when the user invokes `/pll` or asks for Blueprint-aware parallel
    - Accept inline task lists, comma-separated strings, or file paths.
    - Treat blueprint paths under `blueprints/` as lifecycle-backed execution.
 2. **Blueprint lifecycle**
-   - Use `ak blueprint start`, `ak blueprint task ...`, and `ak blueprint finalize` for durable state.
-   - Never use `ak blueprint move` as the normal execution primitive.
-   - Keep the lifecycle semantics aligned with `ak blueprint exec`; do not invent a separate `/pll`-only plan model.
+   - Use `wp blueprint start`, `wp blueprint task ...`, and `wp blueprint finalize` for durable state.
+   - Never use `wp blueprint move` as the normal execution primitive.
+   - Keep the lifecycle semantics aligned with `wp blueprint exec`; do not invent a separate `/pll`-only plan model.
 3. **Dependency-aware batching**
    - Compute ready work from explicit dependencies and obvious blocking relationships.
    - Prioritize critical-path or high-fan-out work when choosing the next batch.
@@ -44,17 +44,17 @@ Use this skill when the user invokes `/pll` or asks for Blueprint-aware parallel
 5. **Verification discipline**
    - Require repo verification before marking blueprint tasks complete.
 6. **Shared execution model**
-   - Treat `/pll` as the interactive/manual front door for the same control-plane contract that `ak blueprint exec` uses.
+   - Treat `/pll` as the interactive/manual front door for the same control-plane contract that `wp blueprint exec` uses.
    - Reuse the same backend names, progress bridge semantics, and truthfulness rules.
 
 
 ## Roadmap-Aware Lane Picking
 
-When no explicit task list is supplied, ground lane selection in `ak blueprint list` before inventing work:
+When no explicit task list is supplied, ground lane selection in `wp blueprint list` before inventing work:
 
 1. Prefer active `ROADMAP` rows and pick the next `planned` `CHILD` row whose `depends_on:` chain is satisfied.
 2. Treat `ORPHANS` as fallback work only when no roadmap child is actionable.
-3. Keep the heuristic discoverable and auditable: `ak audit roadmap-links` checks bidirectional roadmap/child links, while `ak audit blueprint-lifecycle` checks lifecycle placement.
+3. Keep the heuristic discoverable and auditable: `wp audit roadmap-links` checks bidirectional roadmap/child links, while `wp audit blueprint-lifecycle` checks lifecycle placement.
 4. If command output changes, update `/pll` guidance and the shared blueprint output contract together.
 
 ## Concurrency Limits

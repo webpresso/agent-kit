@@ -126,7 +126,7 @@ List decision sessions.
 
 This command integrates with the blueprint decision framework:
 
-- CLI: `ak blueprint decision init <topic>`
-- CLI: `ak blueprint decision decide`
+- CLI: `wp blueprint decision init <topic>`
+- CLI: `wp blueprint decision decide`
 - Sessions stored in `docs/system/decisions/_sessions/`
 - DRRs stored in `docs/system/decisions/`

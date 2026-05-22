@@ -105,7 +105,7 @@ function findClosestCommand(input, commands) {
 /**
  * Format error message for unknown commands with suggestions.
  */
-export function formatUnknownCommandError(input, commands, binName = 'ak') {
+export function formatUnknownCommandError(input, commands, binName = 'wp') {
     const actual = input ?? '';
     const suggestions = findClosestCommand(actual, commands);
     let msg = `Unknown command: ${actual}`;

@@ -151,7 +151,7 @@ export async function runAuditDispatch(
         results.push({ name, result })
       }
       // Surface every per-audit result so the shell can print failures —
-      // previously this returned a bare `script-exit` and `ak audit guardrails`
+      // previously this returned a bare `script-exit` and `wp audit guardrails`
       // would exit 1 with zero output, hiding the actual cause from the
       // pre-commit hook output.
       return { kind: 'aggregate-result', code: allOk ? 0 : 1, results }

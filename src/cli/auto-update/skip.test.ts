@@ -60,25 +60,25 @@ describe('shouldSkipUpdateCheck — mcp subcommand', () => {
   })
 })
 
-describe('shouldSkipUpdateCheck — AK_SKIP_UPDATE_CHECK', () => {
-  it('returns true when AK_SKIP_UPDATE_CHECK=1', () => {
-    expect(shouldSkipUpdateCheck({ AK_SKIP_UPDATE_CHECK: '1' }, argv('blueprint'))).toStrictEqual(
+describe('shouldSkipUpdateCheck — WP_SKIP_UPDATE_CHECK', () => {
+  it('returns true when WP_SKIP_UPDATE_CHECK=1', () => {
+    expect(shouldSkipUpdateCheck({ WP_SKIP_UPDATE_CHECK: '1' }, argv('blueprint'))).toStrictEqual(
       true,
     )
   })
 
   it('returns false for other truthy-looking values (strict 1 match only)', () => {
     expect(
-      shouldSkipUpdateCheck({ AK_SKIP_UPDATE_CHECK: 'true' }, argv('blueprint')),
+      shouldSkipUpdateCheck({ WP_SKIP_UPDATE_CHECK: 'true' }, argv('blueprint')),
     ).toStrictEqual(false)
-    expect(shouldSkipUpdateCheck({ AK_SKIP_UPDATE_CHECK: 'yes' }, argv('blueprint'))).toStrictEqual(
+    expect(shouldSkipUpdateCheck({ WP_SKIP_UPDATE_CHECK: 'yes' }, argv('blueprint'))).toStrictEqual(
       false,
     )
   })
 
-  it('returns false when AK_SKIP_UPDATE_CHECK is unset or empty', () => {
+  it('returns false when WP_SKIP_UPDATE_CHECK is unset or empty', () => {
     expect(shouldSkipUpdateCheck({}, argv('blueprint'))).toStrictEqual(false)
-    expect(shouldSkipUpdateCheck({ AK_SKIP_UPDATE_CHECK: '' }, argv('blueprint'))).toStrictEqual(
+    expect(shouldSkipUpdateCheck({ WP_SKIP_UPDATE_CHECK: '' }, argv('blueprint'))).toStrictEqual(
       false,
     )
   })
@@ -120,18 +120,18 @@ describe('shouldSkipUpdateCheck — CI detection', () => {
   })
 })
 
-describe('shouldSkipUpdateCheck — AK_SKIP_AUTO_INSTALL is NOT a skip signal', () => {
-  it('returns false when only AK_SKIP_AUTO_INSTALL=1 is set', () => {
-    // Per plan: AK_SKIP_AUTO_INSTALL gates only the install side; notify
+describe('shouldSkipUpdateCheck — WP_SKIP_AUTO_INSTALL is NOT a skip signal', () => {
+  it('returns false when only WP_SKIP_AUTO_INSTALL=1 is set', () => {
+    // Per plan: WP_SKIP_AUTO_INSTALL gates only the install side; notify
     // (banner) must still fire. So the broad update-check is not skipped.
-    expect(shouldSkipUpdateCheck({ AK_SKIP_AUTO_INSTALL: '1' }, argv('blueprint'))).toStrictEqual(
+    expect(shouldSkipUpdateCheck({ WP_SKIP_AUTO_INSTALL: '1' }, argv('blueprint'))).toStrictEqual(
       false,
     )
   })
 
-  it('still skips when AK_SKIP_AUTO_INSTALL=1 AND a real skip signal is present', () => {
+  it('still skips when WP_SKIP_AUTO_INSTALL=1 AND a real skip signal is present', () => {
     expect(
-      shouldSkipUpdateCheck({ AK_SKIP_AUTO_INSTALL: '1', CI: 'true' }, argv('blueprint')),
+      shouldSkipUpdateCheck({ WP_SKIP_AUTO_INSTALL: '1', CI: 'true' }, argv('blueprint')),
     ).toStrictEqual(true)
   })
 })
@@ -147,21 +147,21 @@ describe('shouldSkipUpdateCheck — happy path', () => {
 })
 
 describe('shouldSkipAutoInstall', () => {
-  it('returns true when AK_SKIP_AUTO_INSTALL=1', () => {
-    expect(shouldSkipAutoInstall({ AK_SKIP_AUTO_INSTALL: '1' })).toStrictEqual(true)
+  it('returns true when WP_SKIP_AUTO_INSTALL=1', () => {
+    expect(shouldSkipAutoInstall({ WP_SKIP_AUTO_INSTALL: '1' })).toStrictEqual(true)
   })
 
-  it('returns false when AK_SKIP_AUTO_INSTALL is unset', () => {
+  it('returns false when WP_SKIP_AUTO_INSTALL is unset', () => {
     expect(shouldSkipAutoInstall({})).toStrictEqual(false)
   })
 
-  it('returns false for AK_SKIP_AUTO_INSTALL=0 or empty', () => {
-    expect(shouldSkipAutoInstall({ AK_SKIP_AUTO_INSTALL: '0' })).toStrictEqual(false)
-    expect(shouldSkipAutoInstall({ AK_SKIP_AUTO_INSTALL: '' })).toStrictEqual(false)
+  it('returns false for WP_SKIP_AUTO_INSTALL=0 or empty', () => {
+    expect(shouldSkipAutoInstall({ WP_SKIP_AUTO_INSTALL: '0' })).toStrictEqual(false)
+    expect(shouldSkipAutoInstall({ WP_SKIP_AUTO_INSTALL: '' })).toStrictEqual(false)
   })
 
   it('returns false for other truthy values (strict 1 match only)', () => {
-    expect(shouldSkipAutoInstall({ AK_SKIP_AUTO_INSTALL: 'true' })).toStrictEqual(false)
-    expect(shouldSkipAutoInstall({ AK_SKIP_AUTO_INSTALL: 'yes' })).toStrictEqual(false)
+    expect(shouldSkipAutoInstall({ WP_SKIP_AUTO_INSTALL: 'true' })).toStrictEqual(false)
+    expect(shouldSkipAutoInstall({ WP_SKIP_AUTO_INSTALL: 'yes' })).toStrictEqual(false)
   })
 })

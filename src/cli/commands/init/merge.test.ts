@@ -8,7 +8,7 @@ import { copyDirectoryMerged, copyFileMerged, writeFileMerged } from './merge.js
 function makeTempDir(): string {
   const dir = join(
     tmpdir(),
-    `ak-init-merge-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    `wp-init-merge-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   )
   mkdirSync(dir, { recursive: true })
   return dir

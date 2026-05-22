@@ -1,5 +1,5 @@
 /**
- * Tool auto-discovery for the `ak mcp` server.
+ * Tool auto-discovery for the `wp mcp` server.
  *
  * Scans a directory for `*.ts` (source) or `*.js` (built) files, dynamic-imports
  * each, and registers any default-exported {@link ToolDescriptor} on the

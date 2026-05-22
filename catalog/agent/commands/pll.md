@@ -6,14 +6,14 @@ argument-hint: <task-list-or-file> [--max=8]
 
 # /pll - Blueprint-Aware Parallel Execution
 
-Execute Blueprint-shaped work through the current parallel engine layer while keeping durable lifecycle state on the shipped `ak blueprint` surface.
+Execute Blueprint-shaped work through the current parallel engine layer while keeping durable lifecycle state on the shipped `wp blueprint` surface.
 
-`/pll` is an **operator adapter**, not a standalone runtime. It is the interactive half of the same shared execution model used by `ak blueprint exec`, so both surfaces should agree on launch spec shape, backend vocabulary, and runtime-state bridge semantics.
+`/pll` is an **operator adapter**, not a standalone runtime. It is the interactive half of the same shared execution model used by `wp blueprint exec`, so both surfaces should agree on launch spec shape, backend vocabulary, and runtime-state bridge semantics.
 
 It does three things:
 
 1. understands task dependencies well enough to preserve ordering
-2. keeps Blueprint lifecycle state honest via `ak blueprint start|task|finalize`
+2. keeps Blueprint lifecycle state honest via `wp blueprint start|task|finalize`
 3. delegates generic parallel fan-out to the active engine layer (`$ultrawork`, subagents, or equivalent host-native parallel lanes)
 
 **Arguments**: $ARGUMENTS
@@ -56,23 +56,23 @@ If invoked without arguments, infer the nearest task list from the latest user c
 
 When `/pll` is executing blueprint-backed work:
 
-- use `ak blueprint start <slug>` before execution begins
-- use `ak blueprint task start <slug> <taskId>` when a task starts
-- use `ak blueprint task block <slug> <taskId> --reason "<reason>"` when work is blocked
-- use `ak blueprint task complete <slug> <taskId>` only after the task's acceptance and verification actually pass
-- use `ak blueprint finalize <slug>` only after all tasks are validly done
-- do **not** use `ak blueprint move` as the normal execution primitive; it is recovery-only
+- use `wp blueprint start <slug>` before execution begins
+- use `wp blueprint task start <slug> <taskId>` when a task starts
+- use `wp blueprint task block <slug> <taskId> --reason "<reason>"` when work is blocked
+- use `wp blueprint task complete <slug> <taskId>` only after the task's acceptance and verification actually pass
+- use `wp blueprint finalize <slug>` only after all tasks are validly done
+- do **not** use `wp blueprint move` as the normal execution primitive; it is recovery-only
 
 
 ## Roadmap-Aware Lane Picking
 
-When invoked without an explicit task list, `/pll` should prefer the roadmap-shaped queue exposed by `ak blueprint list`:
+When invoked without an explicit task list, `/pll` should prefer the roadmap-shaped queue exposed by `wp blueprint list`:
 
-1. Read `ak blueprint list` first. `ROADMAP` rows are strategic parents; indented `CHILD` rows are tactical lanes.
+1. Read `wp blueprint list` first. `ROADMAP` rows are strategic parents; indented `CHILD` rows are tactical lanes.
 2. Choose the next `planned` child under an active (`in-progress` or `planned`) roadmap, respecting each child's `depends_on:` before fan-out.
 3. Use orphan blueprints only when no roadmap child is actionable. The `ORPHANS` group is fallback work, not the primary lane queue.
-4. Keep output-shape assumptions aligned with `ROADMAP ... children=N ...`, `CHILD ... parent=<roadmap>`, and `ORPHANS` rows from `ak blueprint list`.
-5. If the roadmap/child relationship looks inconsistent, run `ak audit roadmap-links` before dispatching lanes.
+4. Keep output-shape assumptions aligned with `ROADMAP ... children=N ...`, `CHILD ... parent=<roadmap>`, and `ORPHANS` rows from `wp blueprint list`.
+5. If the roadmap/child relationship looks inconsistent, run `wp audit roadmap-links` before dispatching lanes.
 
 ## What `/pll` Owns
 
@@ -84,7 +84,7 @@ When invoked without an explicit task list, `/pll` should prefer the roadmap-sha
 
 ## Shared Execution Model
 
-`/pll` and `ak blueprint exec` are two surfaces over one repo-owned model:
+`/pll` and `wp blueprint exec` are two surfaces over one repo-owned model:
 
 - same Blueprint-backed launch spec
 - same backend names and policy hooks
@@ -170,5 +170,5 @@ If the model would diverge between the two surfaces, fix the contract instead of
 ## Verification Discipline
 
 - Prefer per-file or per-package verification first.
-- Use `ak blueprint audit` and the task's named checks to prove state transitions.
+- Use `wp blueprint audit` and the task's named checks to prove state transitions.
 - Never treat orchestration progress as proof of correctness.

@@ -75,14 +75,14 @@ Title: *"Long-running spec-driven implementation for AI coding agents"*. Quick-s
 
 ### Specific defects in current README (line numbers from the live file)
 
-- **Line 3 — feature soup.** "Ships a Blueprint runtime…, a Symlinker…, a curated Skills catalog…, a Lore commit protocol…, a Tech-Debt lifecycle…, and the ak CLI that ties all of it together — one install, all IDEs covered." Five proper nouns + "ties together" + "one install". Reader has no anchor.
+- **Line 3 — feature soup.** "Ships a Blueprint runtime…, a Symlinker…, a curated Skills catalog…, a Lore commit protocol…, a Tech-Debt lifecycle…, and the wp CLI that ties all of it together — one install, all IDEs covered." Five proper nouns + "ties together" + "one install". Reader has no anchor.
 - **Lines 5–119 — install before why.** 114 lines of install matrix, runtime contract, "two coexisting distribution channels", convergence prose. None of it answers "why would I need this."
-- **Line 19 — comma-soup.** "What you get: hooks (PreToolUse, PostToolUse, Stop, SessionStart), `ak mcp` server with 7 tools (`ak_test`, `ak_e2e`, `ak_lint`, `ak_typecheck`, `ak_qa`, `ak_audit`, `ak_blueprint`), slash commands (`/ak:test`, `/ak:qa`, `/ak:audit`, `/ak:blueprint`), and the skill catalog." Classic AI-slop noun pile.
+- **Line 19 — comma-soup.** "What you get: hooks (PreToolUse, PostToolUse, Stop, SessionStart), `wp mcp` server with 7 tools (`wp_test`, `wp_e2e`, `wp_lint`, `wp_typecheck`, `wp_qa`, `wp_audit`, `wp_blueprint`), slash commands (`/wp:test`, `/wp:qa`, `/wp:audit`, `/wp:blueprint`), and the skill catalog." Classic AI-slop noun pile.
 - **Line 21 — "summary-first" is jargon** with no referent for a reader meeting the project for the first time.
 - **Line 38 — "Why two paths"** misframes the question. The reader's question is "what does this do for me," not "why are there two paths."
 - **Line 122 — IDE matrix is correct content but in the wrong place.** Should be deeper, not at line 122 of the structural arc.
-- **Line 132 — CLI reference exists but is unanchored.** Without a "what does this do" up top, the table is just a wall of `ak audit ...` rows with no narrative.
-- **Line 140 — outdated CLI surface.** `ak symlink sync` is in the README; the actual CLI exposes `ak sync` (`ak symlink` is `Unknown command` per `bun ./src/cli/cli.ts symlink --help`). Direct example of [kunalganglani's "outdated README"](https://www.kunalganglani.com/blog/write-good-readme-guide) failure mode #4.
+- **Line 132 — CLI reference exists but is unanchored.** Without a "what does this do" up top, the table is just a wall of `wp audit ...` rows with no narrative.
+- **Line 140 — outdated CLI surface.** `wp symlink sync` is in the README; the actual CLI exposes `wp sync` (`wp symlink` is `Unknown command` per `bun ./src/cli/cli.ts symlink --help`). Direct example of [kunalganglani's "outdated README"](https://www.kunalganglani.com/blog/write-good-readme-guide) failure mode #4.
 - **Line 198 — "Design Invariants" buried.** Two important invariants ("zero `@webpresso/*` runtime deps" and "catalog content is canonical once shipped") matter, but live below the fold.
 - **Line 201 — "Status: Experimental (v0.x)" buried.** Should be in the first 30 lines so readers calibrate trust.
 
@@ -118,7 +118,7 @@ agent-kit's `VISION.md` is unusually well-written and already contains the pain 
 
 agent-kit ships as a Claude Code plugin AND an npm package, has 19 CLI verbs, 18 skills, and 8+ audit kinds. The README must cover all distribution paths but should not lead with them. The IDE matrix and CLI reference are reference material — they belong, but after the "why."
 
-The package.json `description` field is also a touchpoint — currently *"Toolkit for agent-driven development: Blueprint runtime, agent-surface symlinker, skills catalog, and the `ak` CLI that ties them together."* This has the same "ties together" tell. Consider rewriting it in lockstep with the README opener.
+The package.json `description` field is also a touchpoint — currently *"Toolkit for agent-driven development: Blueprint runtime, agent-surface symlinker, skills catalog, and the `wp` CLI that ties them together."* This has the same "ties together" tell. Consider rewriting it in lockstep with the README opener.
 
 ### Trade-offs for Current Stage
 
@@ -135,9 +135,9 @@ The package.json `description` field is also a touchpoint — currently *"Toolki
 ```
 1. Title + one-line description
 2. Pain hook (3 sentences — verbatim from VISION.md "The problem")
-3. Quick start (3 lines — `npx ak setup` for npm, `/plugin marketplace add` for Claude Code)
-4. What changes after `ak setup` — 5 concrete before/after pairs
-5. Install matrix (Path A: Claude Code plugin, Path B: npm + ak setup)
+3. Quick start (3 lines — `npx wp setup` for npm, `/plugin marketplace add` for Claude Code)
+4. What changes after `wp setup` — 5 concrete before/after pairs
+5. Install matrix (Path A: Claude Code plugin, Path B: npm + wp setup)
 6. CLI reference table (existing — keep)
 7. Skills catalog (one paragraph, link to catalog/)
 8. Non-goals (verbatim from VISION.md "Out of scope")
@@ -150,7 +150,7 @@ The package.json `description` field is also a touchpoint — currently *"Toolki
 ```markdown
 # @webpresso/agent-kit
 
-> The `ak` CLI: one command scaffolds a repo so every AI coding agent —
+> The `wp` CLI: one command scaffolds a repo so every AI coding agent —
 > Claude Code, Codex CLI, Cursor, Windsurf, Gemini, OpenCode — has the
 > same context, hooks, and guardrails. No tribal knowledge. No per-repo
 > drift.
@@ -171,22 +171,22 @@ not in code. agent-kit is the catalog and the CLI that fixes that.
 > 18 curated skills, eight composite audits, blueprint + lore + tech-debt
 > lifecycles. MIT.
 
-`ak setup` turns a bare git checkout into a repo where Claude Code, Codex,
+`wp setup` turns a bare git checkout into a repo where Claude Code, Codex,
 Cursor, Windsurf, Gemini, and OpenCode all share the same operating
 contract, the same skills, the same hooks, the same audits. Edit the
-canonical `.agent/` once; `ak sync` propagates everywhere.
+canonical `.agent/` once; `wp sync` propagates everywhere.
 ```
 
 ### The five before/after pairs (to anchor "what changes")
 
 ````markdown
-## What changes after `ak setup`
+## What changes after `wp setup`
 
 ### 1. Multi-IDE rule sync (no more drift)
 
 | Before | After |
 | --- | --- |
-| Edit `.cursor/rules/foo.md`. Then `.claude/skills/foo/SKILL.md`. Then `.gemini/commands/foo.toml`. Then `.windsurf/rules/foo.md`. Four files for one rule. They drift. | Edit `.agent/skills/foo/SKILL.md`. Run `ak sync`. Done. `ak audit catalog-drift` fails CI if anything diverges. |
+| Edit `.cursor/rules/foo.md`. Then `.claude/skills/foo/SKILL.md`. Then `.gemini/commands/foo.toml`. Then `.windsurf/rules/foo.md`. Four files for one rule. They drift. | Edit `.agent/skills/foo/SKILL.md`. Run `wp sync`. Done. `wp audit catalog-drift` fails CI if anything diverges. |
 
 ### 2. Repo bootstrap (one command, idempotent)
 
@@ -197,33 +197,33 @@ canonical `.agent/` once; `ak sync` propagates everywhere.
 #   bundle-budget, blueprint-lifecycle, catalog-drift checks. Hours, drifts.
 
 # After:
-npx ak setup
+npx wp setup
 ```
 
 ### 3. Implementation plans that don't rot
 
 | Before | After |
 | --- | --- |
-| Paste a plan into chat. Lose it on `/clear`. Plan rots. No way to track which agent has worked on which task. | `ak blueprint new "<goal>"` writes a markdown plan to `blueprints/in-progress/`. Lifecycle states (`draft` / `planned` / `in-progress` / `completed`) are CI-gated by `ak audit blueprint-lifecycle`. |
+| Paste a plan into chat. Lose it on `/clear`. Plan rots. No way to track which agent has worked on which task. | `wp blueprint new "<goal>"` writes a markdown plan to `blueprints/in-progress/`. Lifecycle states (`draft` / `planned` / `in-progress` / `completed`) are CI-gated by `wp audit blueprint-lifecycle`. |
 
 ### 4. Commit messages as decision records
 
 | Before | After |
 | --- | --- |
-| `git log` returns "fix bug in auth" — useless six months later. | The Lore Commit Protocol writes structured decision trailers (`Lore-Why:`, `Lore-Alternative:`, `Lore-Decision:`). Queryable via `git log`. Audit-gated by `ak audit commit-message --require-lore`. |
+| `git log` returns "fix bug in auth" — useless six months later. | The Lore Commit Protocol writes structured decision trailers (`Lore-Why:`, `Lore-Alternative:`, `Lore-Decision:`). Queryable via `git log`. Audit-gated by `wp audit commit-message --require-lore`. |
 
 ### 5. Tech-debt that gets reviewed, not ignored
 
 | Before | After |
 | --- | --- |
-| 47 TODO comments, no owner, no triage, no review cadence. | `ak tech-debt new --severity high --category complexity` creates `tech-debt/<status>/h-NNN-slug.md` with a documented status (`accepted` / `needs-remediation` / `monitoring` / `resolved`) and a review cadence. `ak audit tech-debt` keeps the inventory honest. |
+| 47 TODO comments, no owner, no triage, no review cadence. | `wp tech-debt new --severity high --category complexity` creates `tech-debt/<status>/h-NNN-slug.md` with a documented status (`accepted` / `needs-remediation` / `monitoring` / `resolved`) and a review cadence. `wp audit tech-debt` keeps the inventory honest. |
 
 ### 6. One audit gate that runs every check
 
 ```bash
 # Before: 8 separate pre-commit hooks, each in its own config file.
 # After:  one composite, same registry powers pre-commit + CI + ship gate.
-ak audit guardrails
+wp audit guardrails
 # runs: catalog-drift + blueprint-lifecycle + roadmap-links +
 #       docs-frontmatter + vision + tech-debt +
 #       no-relative-parent-imports + bucket-boundary
@@ -242,8 +242,8 @@ ak audit guardrails
 
 ### Lines to fix
 
-- Line 140 — "ak symlink sync" → "ak sync" (factual error: command was renamed).
-- Line 144 — "ak setup" description still says "default external tooling presets (`omx`, `gstack`)"; verify against current setup defaults.
+- Line 140 — "wp symlink sync" → "wp sync" (factual error: command was renamed).
+- Line 144 — "wp setup" description still says "default external tooling presets (`omx`, `gstack`)"; verify against current setup defaults.
 
 ### Conditions under which the recommendation would change
 

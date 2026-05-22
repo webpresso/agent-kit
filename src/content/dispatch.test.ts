@@ -19,7 +19,7 @@ interface Workspace {
 }
 
 function makeWorkspace(): Workspace {
-  const root = mkdtempSync(join(tmpdir(), 'ak-content-dispatch-'))
+  const root = mkdtempSync(join(tmpdir(), 'wp-content-dispatch-'))
   const catalogDir = join(root, 'catalog')
   mkdirSync(join(catalogDir, 'rules'), { recursive: true })
   mkdirSync(join(catalogDir, 'skills'), { recursive: true })

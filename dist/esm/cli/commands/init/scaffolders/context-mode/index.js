@@ -89,7 +89,7 @@ export function patchCodexContextModeHooks(existing) {
         hooks,
     };
 }
-export function patchOpenCodeContextModeConfig(existing, agentKitCommand = ['vp', 'exec', 'ak', 'mcp']) {
+export function patchOpenCodeContextModeConfig(existing, agentKitCommand = ['vp', 'exec', 'wp', 'mcp']) {
     const currentMcp = existing.mcp && typeof existing.mcp === 'object' && !Array.isArray(existing.mcp)
         ? { ...existing.mcp }
         : {};
@@ -118,7 +118,7 @@ function resolveOpenCodeAgentKitCommand(repoRoot, globalInstall = false) {
     const repoLocalRoot = join(repoRoot, 'node_modules', '@webpresso', 'agent-kit');
     const entryPath = findAgentKitMcpEntry({ candidates: [repoLocalRoot] }) ?? findAgentKitMcpEntry();
     if (!entryPath)
-        return globalInstall ? ['ak', 'mcp'] : ['vp', 'exec', 'ak', 'mcp'];
+        return globalInstall ? ['wp', 'mcp'] : ['vp', 'exec', 'wp', 'mcp'];
     const launch = agentKitMcpLaunchCommand(entryPath);
     return [launch.command, ...launch.args];
 }

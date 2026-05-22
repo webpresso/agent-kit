@@ -616,10 +616,10 @@ Agents 1-3 run in parallel. Phases 4-6 (Cross-Plan, Blueprint Enforcement, Apply
 
 ## Related Commands
 
-- `ak blueprint new "<goal>" --complexity <size>` — Create a new blueprint (this skill refines it)
-- `ak blueprint audit --all --strict` — Audit blueprint format/lifecycle before or after refinement
+- `wp blueprint new "<goal>" --complexity <size>` — Create a new blueprint (this skill refines it)
+- `wp blueprint audit --all --strict` — Audit blueprint format/lifecycle before or after refinement
 - `/pll` — Operator-facing parallel execution workflow for refined Blueprint-shaped work
 - `/verify <target>` — Post-implementation quality gate
 - `/soa <target>` — Apply SOA 2026 quality standards (TDD, complexity ≤8, mutation ≥85%)
 
-**Parallel Execution:** Refined plans should execute through the current workflow surface while Blueprint remains the durable lifecycle source of truth via `ak blueprint start|task|finalize`. See `.agent/commands/pll.md` for the current operator guidance.
+**Parallel Execution:** Refined plans should execute through the current workflow surface while Blueprint remains the durable lifecycle source of truth via `wp blueprint start|task|finalize`. See `.agent/commands/pll.md` for the current operator guidance.

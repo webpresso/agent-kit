@@ -37,11 +37,11 @@ Use the narrowest scope that proves your change:
 | Typecheck  | `typecheck --package <name>`         |
 
 When this repo exposes the agent-kit quality MCP/CLI surface, prefer
-`ak_qa`/`ak_lint`/`ak_typecheck`/`ak_test` leaves (or the equivalent wrapped
-`ak qa` surface) for local-dev agent runs. Their compact output filters return
+`wp_qa`/`wp_lint`/`wp_typecheck`/`wp_test` leaves (or the equivalent wrapped
+`wp qa` surface) for local-dev agent runs. Their compact output filters return
 summary-first payloads with `failures`, `tier`, `bytes`, and `tokensSaved`, so
 agents can reason over the error set without dumping full test/lint logs into
-context. Use `ak err <cmd>` only for ad hoc commands that do not yet have a
+context. Use `wp err <cmd>` only for ad hoc commands that do not yet have a
 specific wrapper; it strips non-failure-looking lines and preserves the
 subcommand exit code.
 
@@ -74,13 +74,13 @@ breaks auto-logging and hides real output.
 
 ## Formatting
 
-Use the `ak_format` MCP tool (or `bun ./src/cli/cli.ts format` as a direct
+Use the `wp_format` MCP tool (or `bun ./src/cli/cli.ts format` as a direct
 fallback). **Never invoke `oxfmt` directly without the correct flags** — it
 requires `--ignore-path .gitignore` to skip `.prettierignore` (which contains
 `*` and silently excludes every file), and the binary lives in
 `node_modules/.bin`, not a global install.
 
-If `ak_format` is unavailable, the correct direct invocation is:
+If `wp_format` is unavailable, the correct direct invocation is:
 
 ```bash
 cd <repo-root> && ./node_modules/.bin/oxfmt --write --ignore-path .gitignore
@@ -97,5 +97,5 @@ cd <repo-root> && ./node_modules/.bin/oxfmt --write --ignore-path .gitignore
 - Prefer the repo's recipe surface over raw package-manager execution when
   the repo expects a wrapped CLI invocation.
 - Never pipe quality commands at all — they typically auto-log (and piping
-  may be blocked by pretool hooks). Use compact wrappers such as `ak err`
+  may be blocked by pretool hooks). Use compact wrappers such as `wp err`
   instead of piping through `grep`/`tail`.

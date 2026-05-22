@@ -161,7 +161,7 @@ describe('executeBlueprintSubcommand', () => {
     expect(deps.startBlueprint).toHaveBeenCalledWith('blueprints/foo', { '--': [] })
   })
 
-  it('accepts ak-native task form: <slug> <taskId> <action>', async () => {
+  it('accepts wp-native task form: <slug> <taskId> <action>', async () => {
     const deps = buildDeps()
     await executeBlueprintSubcommand(
       'task',
@@ -306,7 +306,7 @@ describe('executeBlueprintSubcommand', () => {
   it('throws when "new" receives no goal', async () => {
     const deps = buildDeps()
     await expect(executeBlueprintSubcommand('new', [], { '--': [] }, deps)).rejects.toThrow(
-      /Usage: ak blueprint new/,
+      /Usage: wp blueprint new/,
     )
   })
 
@@ -341,7 +341,7 @@ describe('executeBlueprintSubcommand', () => {
   it('throws when "show" receives no slug', async () => {
     const deps = buildDeps()
     await expect(executeBlueprintSubcommand('show', [], { '--': [] }, deps)).rejects.toThrow(
-      /Usage: ak blueprint show/,
+      /Usage: wp blueprint show/,
     )
   })
 
@@ -423,7 +423,7 @@ describe('executeBlueprintSubcommand', () => {
   it('throws when "exec" receives no subaction', async () => {
     const deps = buildDeps()
     await expect(executeBlueprintSubcommand('exec', [], { '--': [] }, deps)).rejects.toThrow(
-      /Usage: ak blueprint exec/,
+      /Usage: wp blueprint exec/,
     )
   })
 
@@ -431,7 +431,7 @@ describe('executeBlueprintSubcommand', () => {
     const deps = buildDeps()
     await expect(
       executeBlueprintSubcommand('exec', ['status'], { '--': [] }, deps),
-    ).rejects.toThrow(/Usage: ak blueprint exec status/)
+    ).rejects.toThrow(/Usage: wp blueprint exec status/)
   })
 
   // ── logs ─────────────────────────────────────────────────────────────
@@ -449,7 +449,7 @@ describe('executeBlueprintSubcommand', () => {
   it('throws when "logs" receives no slug', async () => {
     const deps = buildDeps()
     await expect(executeBlueprintSubcommand('logs', [], { '--': [] }, deps)).rejects.toThrow(
-      /Usage: ak blueprint logs/,
+      /Usage: wp blueprint logs/,
     )
   })
 
@@ -465,7 +465,7 @@ describe('executeBlueprintSubcommand', () => {
   it('throws when "park" receives no slug', async () => {
     const deps = buildDeps()
     await expect(executeBlueprintSubcommand('park', [], { '--': [] }, deps)).rejects.toThrow(
-      /Usage: ak blueprint park/,
+      /Usage: wp blueprint park/,
     )
   })
 
@@ -481,7 +481,7 @@ describe('executeBlueprintSubcommand', () => {
   it('throws when "finalize" receives no slug', async () => {
     const deps = buildDeps()
     await expect(executeBlueprintSubcommand('finalize', [], { '--': [] }, deps)).rejects.toThrow(
-      /Usage: ak blueprint finalize/,
+      /Usage: wp blueprint finalize/,
     )
   })
 
@@ -516,7 +516,7 @@ describe('executeBlueprintSubcommand', () => {
     const deps = buildDeps()
     await expect(
       executeBlueprintSubcommand('move', ['my-feature'], { '--': [] }, deps),
-    ).rejects.toThrow(/Usage: ak blueprint move/)
+    ).rejects.toThrow(/Usage: wp blueprint move/)
   })
 
   // ── audit ─────────────────────────────────────────────────────────────
@@ -565,7 +565,7 @@ describe('executeBlueprintSubcommand', () => {
   it('throws when "control" receives no args', async () => {
     const deps = buildDeps()
     await expect(executeBlueprintSubcommand('control', [], { '--': [] }, deps)).rejects.toThrow(
-      /Usage: ak blueprint control/,
+      /Usage: wp blueprint control/,
     )
   })
 
@@ -644,7 +644,7 @@ describe('executeBlueprintSubcommand', () => {
     const deps = buildDeps()
     await expect(
       executeBlueprintSubcommand('task', ['blueprints/foo', '1.1'], { '--': [] }, deps),
-    ).rejects.toThrow(/Usage: ak blueprint task/)
+    ).rejects.toThrow(/Usage: wp blueprint task/)
   })
 
   // ── start missing slug ────────────────────────────────────────────────
@@ -652,7 +652,7 @@ describe('executeBlueprintSubcommand', () => {
   it('throws when "start" receives no slug', async () => {
     const deps = buildDeps()
     await expect(executeBlueprintSubcommand('start', [], { '--': [] }, deps)).rejects.toThrow(
-      /Usage: ak blueprint start/,
+      /Usage: wp blueprint start/,
     )
   })
 
@@ -683,7 +683,7 @@ describe('executeBlueprintSubcommand', () => {
     const deps = buildDeps()
     await expect(
       executeBlueprintSubcommand('list', ['planned', 'extra'], { '--': [] }, deps),
-    ).rejects.toThrow(/Usage: ak blueprint list/)
+    ).rejects.toThrow(/Usage: wp blueprint list/)
   })
 
   // ── --list-templates ──────────────────────────────────────────────────

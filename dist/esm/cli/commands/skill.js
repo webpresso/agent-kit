@@ -1,5 +1,5 @@
 /**
- * `ak skill <new|list|show|deprecate|install|uninstall>` — thin shim over
+ * `wp skill <new|list|show|deprecate|install|uninstall>` — thin shim over
  * shared content dispatch with two extra registry actions:
  *
  *   install <name>     — adds <name> to .agent-kitrc.json#installed.tier3Skills
@@ -7,7 +7,7 @@
  *                        Idempotent. Registry-only edit; no copy.
  *   uninstall <name>   — removes <name> from the registry. Idempotent.
  *
- * `ak skills` (plural) was renamed to `ak skill` (singular) in 0.4.0. The
+ * `wp skills` (plural) was renamed to `wp skill` (singular) in 0.4.0. The
  * old plural is wired separately as a hidden helpful-error stub (see cli.ts).
  */
 import { dispatchContent } from '#content/dispatch';
@@ -73,9 +73,9 @@ function withRegistry(cwd, mutate) {
 }
 function handleInstall(name, catalogDir, cwd) {
     if (!name)
-        throw commandError('Usage: ak skill install <name>');
+        throw commandError('Usage: wp skill install <name>');
     if (!catalogContainsSkill(catalogDir, name)) {
-        throw commandError(`Skill not found in bundled catalog: ${name}. Run \`ak skill list --source canonical\` to see available skills.`);
+        throw commandError(`Skill not found in bundled catalog: ${name}. Run \`wp skill list --source canonical\` to see available skills.`);
     }
     const { config, changed } = withRegistry(cwd, (skills) => skills.includes(name) ? skills : [...skills, name]);
     console.log(`${changed ? 'Installed' : 'Already installed'} skill ${name} → .agent-kitrc.json#installed.tier3Skills`);
@@ -83,7 +83,7 @@ function handleInstall(name, catalogDir, cwd) {
 }
 function handleUninstall(name, cwd) {
     if (!name)
-        throw commandError('Usage: ak skill uninstall <name>');
+        throw commandError('Usage: wp skill uninstall <name>');
     const { config, changed } = withRegistry(cwd, (skills) => skills.filter((s) => s !== name));
     console.log(`${changed ? 'Uninstalled' : 'Not installed'} skill ${name} from .agent-kitrc.json#installed.tier3Skills`);
     console.log(`installed.tier3Skills: ${JSON.stringify(config.installed.tier3Skills)}`);
@@ -145,16 +145,16 @@ export function registerSkillCommand(cli) {
     });
 }
 /**
- * Hidden stub for the renamed `ak skills` (plural). cac will still match
+ * Hidden stub for the renamed `wp skills` (plural). cac will still match
  * the command, but we just emit a helpful redirect and exit 1.
  */
 export function registerSkillsRenameStub(cli) {
     cli
-        .command('skills [...args]', 'Removed in 0.4.0 — use `ak skill`')
+        .command('skills [...args]', 'Removed in 0.4.0 — use `wp skill`')
         .allowUnknownOptions()
         .action(() => {
-        throw commandError("'ak skills' was renamed to 'ak skill' in 0.4.0. " +
-            'Use: ak skill <subcommand>. See `ak skill --help`.');
+        throw commandError("'wp skills' was renamed to 'wp skill' in 0.4.0. " +
+            'Use: wp skill <subcommand>. See `wp skill --help`.');
     });
 }
 //# sourceMappingURL=skill.js.map

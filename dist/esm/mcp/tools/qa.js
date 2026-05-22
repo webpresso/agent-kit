@@ -1,19 +1,19 @@
 /**
- * `ak_qa` MCP tool.
+ * `wp_qa` MCP tool.
  *
  * Composite tool that fans out to the three sibling check tools in parallel
  * via `Promise.all` and returns an aggregated structured payload:
  *
  *   {
  *     passed: lint.passed && typecheck.passed && test.passed,
- *     lint: <ak_lint payload>,
- *     typecheck: <ak_typecheck payload>,
- *     test: <ak_test payload>,
+ *     lint: <wp_lint payload>,
+ *     typecheck: <wp_typecheck payload>,
+ *     test: <wp_test payload>,
  *   }
  *
  * Implementation calls the sibling tools' `handler` exports through their
  * default descriptors — no public re-exports needed. Parallelism is the whole
- * point: a sequential composite would be strictly worse than the user just
+ * point: a sequential composite would be strictly worse than the user simply
  * running each tool back-to-back, since the sub-tools each spawn long-lived
  * external processes (`oxlint`, `tsc`, the test runner). Running them
  * concurrently is the only thing this composite buys you.
@@ -28,11 +28,11 @@ const inputSchema = z.object({
     // Forwarded to all three sub-tools so cross-repo invocation works (e.g.
     // run agent-kit's QA from a session launched in monorepo).
     cwd: z.string().optional(),
-    // Forwarded to `ak_lint.files` and `ak_test.files` so a scoped QA on
-    // changed files is possible. `ak_typecheck` ignores files (it operates on
+    // Forwarded to `wp_lint.files` and `wp_test.files` so a scoped QA on
+    // changed files is possible. `wp_typecheck` ignores files (it operates on
     // tsconfig projects).
     files: z.array(z.string()).optional(),
-    // Forwarded to `ak_typecheck.packages` and `ak_test.packages` to scope
+    // Forwarded to `wp_typecheck.packages` and `wp_test.packages` to scope
     // the run to specific workspace packages.
     packages: z.array(z.string()).optional(),
 });
@@ -41,7 +41,6 @@ const qaLeafSchema = z
     passed: z.boolean(),
     summary: z.string(),
     exitCode: z.number().optional(),
-    backend: z.string().optional(),
     failures: z.array(failureSchema),
     tier: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
     bytes: z.number().optional(),
@@ -142,7 +141,6 @@ function toCompactLeaf(result) {
         passed: result.passed === true,
         summary: typeof result.summary === 'string' ? result.summary : '',
         ...(typeof result.exitCode === 'number' ? { exitCode: result.exitCode } : {}),
-        ...(typeof result.backend === 'string' ? { backend: result.backend } : {}),
         failures: normalizedFailures,
         ...(typeof result.tier === 'number' ? { tier: result.tier } : {}),
         ...(typeof result.bytes === 'number' ? { bytes: result.bytes } : {}),
@@ -166,8 +164,8 @@ function summarizeQa(lint, typecheck, test, hasUiChanges = false) {
     return hasUiChanges ? `qa passed. ${UI_QA_HINT}` : 'qa passed';
 }
 const tool = {
-    name: 'ak_qa',
-    description: 'Run `ak_lint`, `ak_typecheck`, and `ak_test` in parallel via `Promise.all`. Returns `{passed, lint, typecheck, test}` where the top-level `passed` is the AND of the three sub-results.',
+    name: 'wp_qa',
+    description: 'Run `wp_lint`, `wp_typecheck`, and `wp_test` in parallel via `Promise.all`. Returns `{passed, lint, typecheck, test}` where the top-level `passed` is the AND of the three sub-results.',
     inputSchema,
     outputSchema,
     annotations: {

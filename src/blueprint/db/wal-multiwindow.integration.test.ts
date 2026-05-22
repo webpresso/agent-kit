@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 const tempRoots: string[] = []
 
 function createTempRoot(): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'ak-blueprint-wal-'))
+  const root = mkdtempSync(path.join(tmpdir(), 'wp-blueprint-wal-'))
   tempRoots.push(root)
   return root
 }

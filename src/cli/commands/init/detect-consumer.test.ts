@@ -11,7 +11,7 @@ import {
   readPackageJson,
 } from './detect-consumer.js'
 
-function makeTempDir(prefix = 'ak-detect'): string {
+function makeTempDir(prefix = 'wp-detect'): string {
   const dir = join(tmpdir(), `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
   mkdirSync(dir, { recursive: true })
   return dir

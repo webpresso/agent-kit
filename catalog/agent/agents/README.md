@@ -6,7 +6,7 @@ last_updated: 2026-05-05
 # Canonical Subagents
 
 These markdown files are the canonical Claude subagent definitions shipped by
-agent-kit. `ak setup` distributes them to `.claude/agents/`.
+agent-kit. `wp setup` distributes them to `.claude/agents/`.
 
 ## Included Agents
 
@@ -17,6 +17,6 @@ agent-kit. `ak setup` distributes them to `.claude/agents/`.
 
 ## Usage
 
-- Run `ak setup` to sync the canonical agents into `.claude/agents/`.
+- Run `wp setup` to sync the canonical agents into `.claude/agents/`.
 - Keep custom consumer agents under `.claude/agents/*.md`; the scaffolder preserves them.
-- If a canonical agent drifts, re-run `ak setup` or `ak audit agents`.
+- If a canonical agent drifts, re-run `wp setup` or `wp audit agents`.

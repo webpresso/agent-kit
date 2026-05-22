@@ -1,13 +1,13 @@
 /**
- * `ak audit vision` — enforce VISION.md structure, length, and freshness.
+ * `wp audit vision` — enforce VISION.md structure, length, and freshness.
  *
- * Every repo that runs `ak setup` should have a concise VISION.md at root that
+ * Every repo that runs `wp setup` should have a concise VISION.md at root that
  * defines the project's purpose and boundaries. This audit gates structure
  * (frontmatter + required H2 sections), length (lines + words), and warns on
- * staleness. Composes into `ak audit quality` so it runs in consumers' CI by
+ * staleness. Composes into `wp audit quality` so it runs in consumers' CI by
  * default.
  *
- * The companion scaffolder (`ak setup --with vision`) drops a starter file
+ * The companion scaffolder (`wp setup --with vision`) drops a starter file
  * from `catalog/vision/VISION.md.tmpl`.
  */
 import { existsSync, readFileSync } from 'node:fs';
@@ -39,7 +39,7 @@ export function auditVision(rootDirectory = process.cwd(), options = {}) {
             violations: [
                 {
                     file: relativeName,
-                    message: `${relativeName} is required at repo root — run \`ak setup --with vision\` to scaffold one.`,
+                    message: `${relativeName} is required at repo root — run \`wp setup --with vision\` to scaffold one.`,
                 },
             ],
         };

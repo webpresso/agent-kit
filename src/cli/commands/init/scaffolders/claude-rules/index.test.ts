@@ -20,7 +20,7 @@ describe('scaffoldClaudeRules', () => {
   let repoRoot: string
 
   beforeEach(() => {
-    repoRoot = mkdtempSync(join(tmpdir(), 'ak-claude-rules-'))
+    repoRoot = mkdtempSync(join(tmpdir(), 'wp-claude-rules-'))
   })
 
   afterEach(() => {

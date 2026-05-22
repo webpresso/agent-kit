@@ -18,7 +18,7 @@ const fakeOmxBin = join(fixtureRoot, 'fake-tools', 'omx-ok-bin')
 const hookFixture = join(fixtureRoot, 'rtk-three-hook-composition')
 
 function makeRepo(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'ak-rtk-integration-'))
+  const dir = mkdtempSync(join(tmpdir(), 'wp-rtk-integration-'))
   spawnSync('git', ['init', '-q'], { cwd: dir })
   writeFileSync(
     join(dir, 'package.json'),
@@ -29,7 +29,7 @@ function makeRepo(): string {
 }
 
 function makeFakeHome(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'ak-rtk-home-'))
+  const dir = mkdtempSync(join(tmpdir(), 'wp-rtk-home-'))
   cpSync(fakeHomeSource, dir, { recursive: true })
   return dir
 }
@@ -62,9 +62,9 @@ describe('rtk scaffolder integration', () => {
     previousPath = process.env.PATH
     previousCodeHome = process.env.CODEX_HOME
     previousCi = process.env.CI
-    previousAkSkipGstack = process.env.AK_SKIP_GSTACK
-    previousAkSkipClaudePlugin = process.env.AK_SKIP_CLAUDE_PLUGIN
-    previousAkSkipOmc = process.env.AK_SKIP_OMC
+    previousAkSkipGstack = process.env.WP_SKIP_GSTACK
+    previousAkSkipClaudePlugin = process.env.WP_SKIP_CLAUDE_PLUGIN
+    previousAkSkipOmc = process.env.WP_SKIP_OMC
     process.env.HOME = fakeHome
     process.env.CODEX_HOME = join(repo, '.codex-home')
     process.env.PATH = [fakeRtkBin, fakeOmxBin, previousPath ?? ''].filter(Boolean).join(':')
@@ -89,17 +89,17 @@ describe('rtk scaffolder integration', () => {
     //
     // Both have production-supported opt-out env vars used precisely for
     // this case:
-    //   - AK_SKIP_GSTACK → src/cli/commands/init/index.ts:509-512
-    //   - AK_SKIP_OMC → src/cli/commands/init/scaffolders/omc/index.ts
-    //   - AK_SKIP_CLAUDE_PLUGIN → src/cli/commands/init/scaffolders/
+    //   - WP_SKIP_GSTACK → src/cli/commands/init/index.ts:509-512
+    //   - WP_SKIP_OMC → src/cli/commands/init/scaffolders/omc/index.ts
+    //   - WP_SKIP_CLAUDE_PLUGIN → src/cli/commands/init/scaffolders/
     //     claude-plugin/index.ts:58-60
     //
     // Skipping them scopes the test to what it actually covers (the rtk
     // scaffolder) and brings the test cost under the 20s budget without
     // bumping the timeout (per the no-timeout-as-fix rule).
-    process.env.AK_SKIP_GSTACK = '1'
-    process.env.AK_SKIP_CLAUDE_PLUGIN = '1'
-    process.env.AK_SKIP_OMC = '1'
+    process.env.WP_SKIP_GSTACK = '1'
+    process.env.WP_SKIP_CLAUDE_PLUGIN = '1'
+    process.env.WP_SKIP_OMC = '1'
     chmodSync(join(fakeRtkBin, 'rtk'), 0o755)
   })
 
@@ -112,12 +112,12 @@ describe('rtk scaffolder integration', () => {
     else process.env.CODEX_HOME = previousCodeHome
     if (previousCi === undefined) delete process.env.CI
     else process.env.CI = previousCi
-    if (previousAkSkipGstack === undefined) delete process.env.AK_SKIP_GSTACK
-    else process.env.AK_SKIP_GSTACK = previousAkSkipGstack
-    if (previousAkSkipClaudePlugin === undefined) delete process.env.AK_SKIP_CLAUDE_PLUGIN
-    else process.env.AK_SKIP_CLAUDE_PLUGIN = previousAkSkipClaudePlugin
-    if (previousAkSkipOmc === undefined) delete process.env.AK_SKIP_OMC
-    else process.env.AK_SKIP_OMC = previousAkSkipOmc
+    if (previousAkSkipGstack === undefined) delete process.env.WP_SKIP_GSTACK
+    else process.env.WP_SKIP_GSTACK = previousAkSkipGstack
+    if (previousAkSkipClaudePlugin === undefined) delete process.env.WP_SKIP_CLAUDE_PLUGIN
+    else process.env.WP_SKIP_CLAUDE_PLUGIN = previousAkSkipClaudePlugin
+    if (previousAkSkipOmc === undefined) delete process.env.WP_SKIP_OMC
+    else process.env.WP_SKIP_OMC = previousAkSkipOmc
     rmSync(repo, { recursive: true, force: true })
     rmSync(fakeHome, { recursive: true, force: true })
   })
@@ -133,7 +133,7 @@ describe('rtk scaffolder integration', () => {
       group.hooks.map((hook) => hook.command),
     )
 
-    expect(preToolCommands.some((command) => command.includes('ak-pretool-guard'))).toBe(true)
+    expect(preToolCommands.some((command) => command.includes('wp-pretool-guard'))).toBe(true)
     expect(
       preToolCommands.some((command) =>
         command.includes('oh-my-codex/dist/scripts/codex-native-hook.js'),
@@ -153,12 +153,13 @@ describe('rtk scaffolder integration', () => {
       join(repo, '.claude', 'hooks', 'rtk-rewrite.sh'),
       JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'vp exec vitest' } }),
       repo,
+      wp_,
     )
     expect(rtkPassthrough.stdout.trim()).toBe('{}')
 
     const agentKitRoute = routeCommand('vp exec vitest', `rtk-fixture-${Date.now()}`)
     expect(agentKitRoute?.action.action).toBe('deny')
-    if (agentKitRoute?.action.action === 'deny') expect(agentKitRoute.action.tool).toBe('ak_test') // G4
+    if (agentKitRoute?.action.action === 'deny') expect(agentKitRoute.action.tool).toBe('wp_test') // G4
 
     const doctorOk = await runHooksDoctor({ skipMcp: true, cwd: repo })
     expect(doctorOk.checks.find((check) => check.name === 'rtk on PATH')?.ok).toBe(true) // G5

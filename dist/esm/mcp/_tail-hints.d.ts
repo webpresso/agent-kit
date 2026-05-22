@@ -12,7 +12,7 @@ export declare const TAIL_HINTS: {
     readonly PLL_PARALLEL: "Consider /pll for parallel execution.";
     readonly VERIFY_DONE: "Run /verify to confirm done-ness before finalizing.";
     readonly PLAN_REFINE: "Run /plan-refine to harden this blueprint.";
-    readonly AUDIT_FIX: "Run /verify or `ak audit --fix` before finalizing.";
+    readonly AUDIT_FIX: "Run /verify or `wp audit --fix` before finalizing.";
 };
 export type TailHintId = keyof typeof TAIL_HINTS;
 /**

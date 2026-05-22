@@ -4,7 +4,7 @@
  * Exposes a framework-friendly `runTypecheck` runner that wraps
  * `tsc --noEmit` either at cwd (no `packages` given) or once per resolved
  * package path (each becomes `tsc --noEmit -p <pkg>/tsconfig.json`). Mirrors
- * the semantics of the `ak_typecheck` MCP tool but returns a typed result
+ * the semantics of the `wp_typecheck` MCP tool but returns a typed result
  * directly so external scaffolders can consume it without the MCP transport.
  */
 export interface TscError {

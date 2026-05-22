@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { getWorkspaceRepos, loadWorkspaceConfig } from './workspace-config.js'
 
-const TMP_DIR = path.join('/tmp', `ak-wc-test-${process.pid}`)
+const TMP_DIR = path.join('/tmp', `wp-wc-test-${process.pid}`)
 
 beforeEach(() => {
   mkdirSync(TMP_DIR, { recursive: true })

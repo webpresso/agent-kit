@@ -1,6 +1,6 @@
 /**
  * `.agent-kitrc.json` read/write. Captures the consumer's opt-in choices so
- * re-runs of `ak init` are idempotent without re-prompting.
+ * re-runs of `wp init` are idempotent without re-prompting.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

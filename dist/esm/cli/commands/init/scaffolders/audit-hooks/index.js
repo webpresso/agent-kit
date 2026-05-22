@@ -2,8 +2,8 @@
  * `audit-hooks` scaffolder preset.
  *
  * Extends `.husky/pre-commit` to wire staged-mode audit commands for:
- *   - `ak audit skill-sizes --staged`
- *   - `ak audit broken-refs --staged`
+ *   - `wp audit skill-sizes --staged`
+ *   - `wp audit broken-refs --staged`
  *
  * Additive: appends lines only when not already present (idempotent).
  * Does not remove existing content.
@@ -13,7 +13,7 @@ import path from 'node:path';
 /**
  * Lines to append to `.husky/pre-commit` (each must be idempotently checked).
  */
-// Previously included ak audit skill-sizes and ak audit broken-refs --staged,
+// Previously included wp audit skill-sizes and wp audit broken-refs --staged,
 // but those verbs were removed from the audit surface. Pre-commit now only
 // writes the comment header; the main guardrails gate lives in pre-commit.tmpl.
 const AUDIT_HOOK_LINES = ['# agent-kit audit hooks (staged mode — fast)'];

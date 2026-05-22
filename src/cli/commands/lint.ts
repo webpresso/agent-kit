@@ -6,8 +6,8 @@ export const LINT_COMMAND_HELP = [
   'Lint via the `vp lint` facade.',
   '',
   'Examples:',
-  '  ak lint',
-  '  ak lint --fix',
+  '  wp lint',
+  '  wp lint --fix',
 ].join('\n')
 
 export function registerLintCommand(cli: CAC): void {

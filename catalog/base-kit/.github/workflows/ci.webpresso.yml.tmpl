@@ -50,7 +50,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run test
 
-  ak-audits:
+  wp-audits:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -63,8 +63,8 @@ jobs:
         with:
           bun-version: latest
       - run: pnpm install --frozen-lockfile
-      - name: Run ak audit guardrails
+      - name: Run wp audit guardrails
         run: |
-          AK="$(pwd)/node_modules/.bin/ak"
-          [ -x "$AK" ] || AK=ak
-          "$AK" audit guardrails
+          WP="$(pwd)/node_modules/.bin/wp"
+          [ -x "$WP" ] || WP=wp
+          "$WP" audit guardrails

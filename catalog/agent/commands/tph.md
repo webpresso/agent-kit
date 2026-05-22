@@ -16,7 +16,7 @@ just audit-tph-e2e             # Run TPH E2E audit (internal API calls, mocks, d
 /tph --check                   # Agent: check current changes only (git diff)
 ```
 
-> Note: `just <recipe>` commands assume your repo uses the [just](https://github.com/casey/just) task runner. Substitute your own runner (`make`, `npm run`, etc.) where needed. The `ak run` abstraction layer is planned; until then, the referenced recipes are illustrative.
+> Note: `just <recipe>` commands assume your repo uses the [just](https://github.com/casey/just) task runner. Substitute your own runner (`make`, `npm run`, etc.) where needed. The `wp run` abstraction layer is planned; until then, the referenced recipes are illustrative.
 
 ## Implementation
 
@@ -28,7 +28,7 @@ These run during lint and catch pattern-level violations:
 
 | Pattern                     | File                             | Detects                                            |
 | --------------------------- | -------------------------------- | -------------------------------------------------- |
-| `no_weak_assertions`        | `no-weak-assertions.grit`        | `toBeTruthy()`, `toBeFalsy()`                      |
+| `no_wewp_assertions`        | `no-weak-assertions.grit`        | `toBeTruthy()`, `toBeFalsy()`                      |
 | `no_tobefalsy`              | `no-tobefalsy.grit`              | `toBeFalsy()` (all chains)                         |
 | `no_tobedefined`            | `no-tobedefined.grit`            | `toBeDefined()`, `toBeUndefined()`, `toBeTypeOf()` |
 | `no_bare_spy_assertions`    | `no-bare-spy-assertions.grit`    | `toHaveBeenCalled()` without args                  |
@@ -372,7 +372,7 @@ just qa                      # Full quality check
 | Test behavior       | `expect(spy).toHaveBeenCalled()`     | Test actual outputs/state                       |
 | Specific assertions | `toBeTruthy()`                       | `toBe(expected)` or `toEqual(expected)`         |
 | No inline YAML      | `writeFileSync(path, \`yaml: ...\`)` | Use `__fixtures__/*.yaml` + `cpSync`            |
-| 90% mutation        | Weak tests pass but mutants survive  | Add boundary tests, exact assertions            |
+| 90% mutation        | Wewp tests pass but mutants survive  | Add boundary tests, exact assertions            |
 
 ## See Also
 

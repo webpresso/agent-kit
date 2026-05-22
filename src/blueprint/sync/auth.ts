@@ -4,9 +4,9 @@
  * Reads configuration from environment variables; never writes to disk.
  *
  * Environment variables:
- *   AK_BLUEPRINT_PLATFORM_DISABLED  — set to "1" to bypass all platform ops
- *   AK_BLUEPRINT_PLATFORM_TOKEN     — required Bearer token
- *   AK_BLUEPRINT_PLATFORM_URL       — override API base URL (default: https://api.webpresso.io)
+ *   WP_BLUEPRINT_PLATFORM_DISABLED  — set to "1" to bypass all platform ops
+ *   WP_BLUEPRINT_PLATFORM_TOKEN     — required Bearer token
+ *   WP_BLUEPRINT_PLATFORM_URL       — override API base URL (default: https://api.webpresso.io)
  */
 
 import { createHash } from 'node:crypto'
@@ -46,23 +46,23 @@ function deriveRepoId(): string {
  * Load sync credentials from the environment.
  *
  * Returns `null` when:
- *  - `AK_BLUEPRINT_PLATFORM_DISABLED=1` (emergency escape hatch), or
- *  - `AK_BLUEPRINT_PLATFORM_TOKEN` is not set or is an empty string.
+ *  - `WP_BLUEPRINT_PLATFORM_DISABLED=1` (emergency escape hatch), or
+ *  - `WP_BLUEPRINT_PLATFORM_TOKEN` is not set or is an empty string.
  *
  * The caller must treat `null` as "sync is unavailable" and bypass all
  * platform operations.
  */
 export function loadSyncCredentials(): SyncCredentials | null {
-  if (process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] === '1') {
+  if (process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] === '1') {
     return null
   }
 
-  const token = process.env['AK_BLUEPRINT_PLATFORM_TOKEN'] ?? ''
+  const token = process.env['WP_BLUEPRINT_PLATFORM_TOKEN'] ?? ''
   if (token.length === 0) {
     return null
   }
 
-  const platformUrl = process.env['AK_BLUEPRINT_PLATFORM_URL'] ?? DEFAULT_PLATFORM_URL
+  const platformUrl = process.env['WP_BLUEPRINT_PLATFORM_URL'] ?? DEFAULT_PLATFORM_URL
 
   return {
     token,

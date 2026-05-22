@@ -18,7 +18,7 @@ export const TAIL_HINTS = {
   PLL_PARALLEL: 'Consider /pll for parallel execution.',
   VERIFY_DONE: 'Run /verify to confirm done-ness before finalizing.',
   PLAN_REFINE: 'Run /plan-refine to harden this blueprint.',
-  AUDIT_FIX: 'Run /verify or `ak audit --fix` before finalizing.',
+  AUDIT_FIX: 'Run /verify or `wp audit --fix` before finalizing.',
 } as const
 
 export type TailHintId = keyof typeof TAIL_HINTS

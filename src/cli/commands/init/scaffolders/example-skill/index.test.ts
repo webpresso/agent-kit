@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process'
 import { scaffoldExampleSkill } from './index.js'
 
 function makeTmpDir(): string {
-  return mkdtempSync(join(tmpdir(), 'ak-example-skill-test-'))
+  return mkdtempSync(join(tmpdir(), 'wp-example-skill-test-'))
 }
 
 describe('scaffoldExampleSkill', () => {
@@ -61,7 +61,7 @@ describe('scaffoldExampleSkill', () => {
     expect(content).toMatch(/user-invocable:\s*true/)
   })
 
-  it('does not throw when ak compile is not on PATH', async () => {
+  it('does not throw when wp compile is not on PATH', async () => {
     const spawnMock = vi.fn().mockImplementation(() => {
       throw new Error('spawn ENOENT')
     }) as unknown as typeof spawnSync

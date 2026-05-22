@@ -1,5 +1,5 @@
 /**
- * End-to-end tests that spawn the actual `ak` CLI as a subprocess with
+ * End-to-end tests that spawn the actual `wp` CLI as a subprocess with
  * env manipulation (PATH / HOME) to simulate every preset code path
  * against fixtures instead of real omx/gstack/etc.
  *
@@ -61,12 +61,12 @@ function installFakeAgentKitBins(repoRoot: string): void {
   const binDir = path.join(repoRoot, 'node_modules', '.bin')
   mkdirSync(binDir, { recursive: true })
   for (const name of [
-    'ak-sessionstart-routing',
-    'ak-check-dev-link',
-    'ak-pretool-guard',
-    'ak-post-tool',
-    'ak-guard-switch',
-    'ak-stop-qa',
+    'wp-sessionstart-routing',
+    'wp-check-dev-link',
+    'wp-pretool-guard',
+    'wp-post-tool',
+    'wp-guard-switch',
+    'wp-stop-qa',
   ]) {
     const binPath = path.join(binDir, name)
     writeFileSync(binPath, '#!/bin/sh\nexit 0\n', 'utf8')
@@ -83,7 +83,7 @@ function runAk(args: string[], extraEnv: Record<string, string> = {}): RunResult
   // Build a clean base env: inherit process.env but strip CI sentinels so
   // the subprocess behaves like a developer workstation. Without this,
   // GitHub Actions' CI=true causes isCiEnvironment to be true inside the
-  // spawned ak binary, which skips omx/omc/gstack/rtk preset execution and
+  // spawned wp binary, which skips omx/omc/gstack/rtk preset execution and
   // makes every preset e2e test assert on output that is never produced.
   // Individual tests can re-add CI=true via extraEnv if they need CI behaviour.
   const { CI: _ci, GITHUB_ACTIONS: _ga, ...baseEnv } = process.env
@@ -93,8 +93,8 @@ function runAk(args: string[], extraEnv: Record<string, string> = {}): RunResult
       ...baseEnv,
       // rtk and OMC are default-on but depend on workstation-global tools not
       // packaged in this fixture PATH — skip unless a test explicitly opts in.
-      AK_SKIP_RTK: '1',
-      AK_SKIP_OMC: '1',
+      WP_SKIP_RTK: '1',
+      WP_SKIP_OMC: '1',
       ...extraEnv,
     },
   })
@@ -106,7 +106,7 @@ function runAk(args: string[], extraEnv: Record<string, string> = {}): RunResult
 }
 
 function makeRepo(): string {
-  const dir = mkdtempSync(path.join(tmpdir(), 'ak-init-e2e-'))
+  const dir = mkdtempSync(path.join(tmpdir(), 'wp-init-e2e-'))
   spawnSync('git', ['init', '-q'], { cwd: dir })
   spawnSync('git', ['commit', '--allow-empty', '-q', '-m', 'bootstrap'], { cwd: dir })
   return dir
@@ -118,7 +118,7 @@ function makeRepo(): string {
  * source-tracked fixture across runs.
  */
 function makeIsolatedFakeHome(): string {
-  const dir = mkdtempSync(path.join(tmpdir(), 'ak-fake-home-'))
+  const dir = mkdtempSync(path.join(tmpdir(), 'wp-fake-home-'))
   cpSync(FAKE_HOME, dir, { recursive: true })
   return dir
 }
@@ -139,7 +139,7 @@ function pathWithoutOmx(): string {
 }
 
 function makeRewritingOmxPath(repoRoot: string): string {
-  const dir = mkdtempSync(path.join(tmpdir(), 'ak-fake-omx-rewrite-'))
+  const dir = mkdtempSync(path.join(tmpdir(), 'wp-fake-omx-rewrite-'))
   const omxPath = path.join(dir, 'omx')
   writeFileSync(
     omxPath,
@@ -155,10 +155,10 @@ case "$1" in
 {
   "hooks": {
     "SessionStart": [
-      { "hooks": [{ "type": "command", "command": "./node_modules/.bin/ak-sessionstart-routing" }] }
+      { "hooks": [{ "type": "command", "command": "./node_modules/.bin/wp-sessionstart-routing" }] }
     ],
     "Stop": [
-      { "hooks": [{ "type": "command", "command": "./node_modules/.bin/ak-stop-qa" }] }
+      { "hooks": [{ "type": "command", "command": "./node_modules/.bin/wp-stop-qa" }] }
     ]
   }
 }
@@ -179,7 +179,7 @@ esac
 }
 
 describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
-  'ak setup — live e2e via subprocess',
+  'wp setup — live e2e via subprocess',
   () => {
     let repo: string
     let fakeHome: string
@@ -194,7 +194,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       rmSync(fakeHome, { recursive: true, force: true })
     })
 
-    it('baseline: ak setup --yes scaffolds the agent surface and exits 0', () => {
+    it('baseline: wp setup --yes scaffolds the agent surface and exits 0', () => {
       const r = runAk(['setup', '--yes', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
@@ -204,7 +204,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, 'AGENTS.md'))).toBe(true)
       expect(existsSync(path.join(repo, 'blueprints'))).toBe(true)
       expect(existsSync(path.join(repo, '.agent-kitrc.json'))).toBe(true)
-      expect(r.stdout).toContain('ak init: done.')
+      expect(r.stdout).toContain('wp init: done.')
       expect(r.stdout).not.toContain('context-mode codex mcp')
       expect(r.stdout).not.toContain('context-mode codex hooks')
       expect(r.stdout).not.toContain('context-mode opencode config')
@@ -263,8 +263,8 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         group.hooks.map((hook) => hook.command),
       )
 
-      const sessionRoutingBin = path.join(repo, 'node_modules', '.bin', 'ak-sessionstart-routing')
-      const stopQaBin = path.join(repo, 'node_modules', '.bin', 'ak-stop-qa')
+      const sessionRoutingBin = path.join(repo, 'node_modules', '.bin', 'wp-sessionstart-routing')
+      const stopQaBin = path.join(repo, 'node_modules', '.bin', 'wp-stop-qa')
       // CODEX_BIN produces guarded commands: `[ -x "<abs>" ] && "<abs>" || true`
       expect(
         sessionCommands.some(
@@ -276,10 +276,10 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       ).toBe(true)
       expect(
         sessionCommands.every(
-          (cmd) => !cmd.includes('./node_modules/.bin/ak-sessionstart-routing'),
+          (cmd) => !cmd.includes('./node_modules/.bin/wp-sessionstart-routing'),
         ),
       ).toBe(true)
-      expect(stopCommands.every((cmd) => !cmd.includes('./node_modules/.bin/ak-stop-qa'))).toBe(
+      expect(stopCommands.every((cmd) => !cmd.includes('./node_modules/.bin/wp-stop-qa'))).toBe(
         true,
       )
 
@@ -289,7 +289,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         .flatMap((event) =>
           (codex.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
         )
-        .filter((command) => command.includes('/node_modules/.bin/ak-'))
+        .filter((command) => command.includes('/node_modules/.bin/wp-'))
 
       for (const command of allCommands) {
         const result = spawnSync('sh', ['-lc', command], {
@@ -409,7 +409,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.stdout).toContain('playwright-mcp')
       expect(r.stdout).toContain('rtk')
       expect(r.stdout).toContain('gstack')
-      expect(r.stdout).toContain("'ak skill list'")
+      expect(r.stdout).toContain("'wp skill list'")
     })
   },
 )

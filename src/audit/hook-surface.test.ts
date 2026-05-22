@@ -32,9 +32,9 @@ interface TempRepo {
 }
 
 function makeTempRepo(): TempRepo {
-  const cwd = mkdtempSync(path.join(os.tmpdir(), 'ak-audit-hook-surface-'))
+  const cwd = mkdtempSync(path.join(os.tmpdir(), 'wp-audit-hook-surface-'))
   const claudeDir = path.join(cwd, '.claude')
-  const userDir = mkdtempSync(path.join(os.tmpdir(), 'ak-audit-hook-surface-user-'))
+  const userDir = mkdtempSync(path.join(os.tmpdir(), 'wp-audit-hook-surface-user-'))
   mkdirSync(claudeDir, { recursive: true })
   // User settings file starts absent (no file = no hooks)
   const userSettingsFile = path.join(userDir, 'settings.json')
@@ -96,7 +96,7 @@ describe('auditHookSurface — passing', () => {
   })
 
   it('passes when only pretool-guard is on the Bash matcher (project level)', () => {
-    const result = auditHookSurface(opts({ PreToolUse: [hookGroup('Bash', ['ak-pretool-guard'])] }))
+    const result = auditHookSurface(opts({ PreToolUse: [hookGroup('Bash', ['wp-pretool-guard'])] }))
     expect(result.passed).toBe(true)
     expect(result.details.violations).toHaveLength(0)
   })
@@ -117,7 +117,7 @@ describe('auditHookSurface — passing', () => {
   it('passes when a validator and a rewriter share the same matcher', () => {
     // Only one rewriter — validator does not count
     const result = auditHookSurface(
-      opts({ PreToolUse: [hookGroup('Bash', ['rtk hook claude', 'ak-pretool-guard'])] }),
+      opts({ PreToolUse: [hookGroup('Bash', ['rtk hook claude', 'wp-pretool-guard'])] }),
     )
     expect(result.passed).toBe(true)
     expect(result.details.violations).toHaveLength(0)
@@ -125,7 +125,7 @@ describe('auditHookSurface — passing', () => {
 
   it('passes when multiple validators are on the same matcher', () => {
     const result = auditHookSurface(
-      opts({ PreToolUse: [hookGroup('Bash', ['ak-pretool-guard', 'some-other-validator'])] }),
+      opts({ PreToolUse: [hookGroup('Bash', ['wp-pretool-guard', 'some-other-validator'])] }),
     )
     expect(result.passed).toBe(true)
     expect(result.details.violations).toHaveLength(0)
@@ -252,14 +252,14 @@ describe('auditHookSurfaceAsRepoResult', () => {
 // ---------------------------------------------------------------------------
 
 describe('extractOwner', () => {
-  it('classifies ak-* bins as agent-kit (dash form)', () => {
-    expect(extractOwner('./node_modules/.bin/ak-pretool-guard')).toBe('agent-kit')
-    expect(extractOwner('ak-stop-qa')).toBe('agent-kit')
-    expect(extractOwner('ak-sessionstart-routing')).toBe('agent-kit')
+  it('classifies wp-* bins as agent-kit (dash form)', () => {
+    expect(extractOwner('./node_modules/.bin/wp-pretool-guard')).toBe('agent-kit')
+    expect(extractOwner('wp-stop-qa')).toBe('agent-kit')
+    expect(extractOwner('wp-sessionstart-routing')).toBe('agent-kit')
   })
 
-  it('classifies ak_* bins as agent-kit (underscore form)', () => {
-    expect(extractOwner('ak_pretool_guard')).toBe('agent-kit')
+  it('classifies wp_* bins as agent-kit (underscore form)', () => {
+    expect(extractOwner('wp_pretool_guard')).toBe('agent-kit')
   })
 
   it('classifies context-mode hook subcommands', () => {
@@ -299,7 +299,7 @@ describe('detectDrift', () => {
       {
         runtime: 'codex',
         event: 'SessionStart',
-        command: './node_modules/.bin/ak-sessionstart-routing',
+        command: './node_modules/.bin/wp-sessionstart-routing',
       },
       { runtime: 'codex', event: 'SessionStart', command: 'context-mode hook codex sessionstart' },
     ]
@@ -330,8 +330,8 @@ describe('detectDrift', () => {
   // TC-03: same-owner, different-command → allowed
   it('TC-03: allows same owner with different commands on the same event', () => {
     const hooks: readonly HookEntry[] = [
-      { runtime: 'codex', event: 'Stop', command: './node_modules/.bin/ak-stop-qa' },
-      { runtime: 'codex', event: 'Stop', command: './node_modules/.bin/ak-guard-switch' },
+      { runtime: 'codex', event: 'Stop', command: './node_modules/.bin/wp-stop-qa' },
+      { runtime: 'codex', event: 'Stop', command: './node_modules/.bin/wp-guard-switch' },
     ]
     expect(detectDrift(hooks)).toHaveLength(0)
   })
@@ -339,8 +339,8 @@ describe('detectDrift', () => {
   // TC-05: same agent-kit bin registered twice → drift
   it('TC-05: flags same agent-kit bin registered twice on same event as drift', () => {
     const hooks: readonly HookEntry[] = [
-      { runtime: 'codex', event: 'PreToolUse', command: './node_modules/.bin/ak-pretool-guard' },
-      { runtime: 'codex', event: 'PreToolUse', command: './node_modules/.bin/ak-pretool-guard' },
+      { runtime: 'codex', event: 'PreToolUse', command: './node_modules/.bin/wp-pretool-guard' },
+      { runtime: 'codex', event: 'PreToolUse', command: './node_modules/.bin/wp-pretool-guard' },
     ]
     const violations = detectDrift(hooks)
     expect(violations).toHaveLength(1)
@@ -375,7 +375,7 @@ describe('detectDrift', () => {
   // TC-09: three-way cross-owner on same event → allowed
   it('TC-09: allows agent-kit, context-mode, and omx on the same event', () => {
     const hooks: readonly HookEntry[] = [
-      { runtime: 'codex', event: 'Stop', command: './node_modules/.bin/ak-stop-qa' },
+      { runtime: 'codex', event: 'Stop', command: './node_modules/.bin/wp-stop-qa' },
       { runtime: 'codex', event: 'Stop', command: 'context-mode hook codex stop' },
       {
         runtime: 'codex',

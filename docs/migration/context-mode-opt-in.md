@@ -6,7 +6,7 @@ last_updated: 2026-05-15
 
 # context-mode is now opt-in
 
-As of the current `ak setup` / `wp setup` behavior, `context-mode` is **not**
+As of the current `wp setup` / `wp setup` behavior, `context-mode` is **not**
 wired by default.
 
 ## Why
@@ -36,7 +36,7 @@ wp setup --with context-mode
 Equivalent:
 
 ```bash
-ak setup --with context-mode
+wp setup --with context-mode
 ```
 
 ## Consumer migration checklist

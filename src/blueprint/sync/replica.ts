@@ -6,9 +6,9 @@
  * in-flight pull promise (no thundering herd).
  *
  * Design decisions resolved 2026-05-12:
- *  Q3: 30 s TTL default; configurable via AK_BLUEPRINT_REPLICA_TTL_S.
+ *  Q3: 30 s TTL default; configurable via WP_BLUEPRINT_REPLICA_TTL_S.
  *  CEO review § 7: single-flight via module-level Map<key, Promise<void>>.
- *  AK_BLUEPRINT_PLATFORM_DISABLED=1: ensureFresh is always a no-op.
+ *  WP_BLUEPRINT_PLATFORM_DISABLED=1: ensureFresh is always a no-op.
  */
 
 import type { Database } from '#db/sqlite.js'
@@ -26,7 +26,7 @@ export interface ReplicaState {
 }
 
 export interface ReplicaOptions {
-  readonly ttlSeconds?: number // default: AK_BLUEPRINT_REPLICA_TTL_S or 30
+  readonly ttlSeconds?: number // default: WP_BLUEPRINT_REPLICA_TTL_S or 30
   readonly client: BlueprintPlatformClient
   readonly db: Database
 }
@@ -48,14 +48,14 @@ const inflight = new Map<string, Promise<void>>()
 const DEFAULT_TTL_S = 30
 
 function getEnvTtl(): number {
-  const raw = process.env['AK_BLUEPRINT_REPLICA_TTL_S']
+  const raw = process.env['WP_BLUEPRINT_REPLICA_TTL_S']
   if (!raw) return DEFAULT_TTL_S
   const parsed = Number(raw)
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_TTL_S
 }
 
 function isPlatformDisabled(): boolean {
-  return process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] === '1'
+  return process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] === '1'
 }
 
 // ---------------------------------------------------------------------------
@@ -88,7 +88,7 @@ export class ReplicaManager {
   }
 
   /**
-   * Force a pull regardless of TTL (e.g. used by `ak setup --sync`).
+   * Force a pull regardless of TTL (e.g. used by `wp setup --sync`).
    * Does NOT participate in single-flight — each forcePull is independent.
    */
   async forcePull(opts?: { readonly slug?: string }): Promise<void> {

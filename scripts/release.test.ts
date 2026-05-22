@@ -52,7 +52,7 @@ function runScript(
 }
 
 function createFixture({ withRemote = false }: { withRemote?: boolean } = {}): Fixture {
-  const root = mkdtempSync(join(tmpdir(), 'ak-release-'))
+  const root = mkdtempSync(join(tmpdir(), 'wp-release-'))
   const repoDir = join(root, 'repo')
   const remoteDir = join(root, 'remote.git')
   mkdirSync(repoDir, { recursive: true })

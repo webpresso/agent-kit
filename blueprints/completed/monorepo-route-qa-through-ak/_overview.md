@@ -26,11 +26,11 @@ reimplementing rtk filters in agent-kit.
 ## Why
 
 `compact-qa-output-filters` deliberately covers the agent-kit MCP QA path:
-`ak qa`, `ak test`, `ak lint`, `ak typecheck`, and local dev commands that
+`wp qa`, `wp test`, `wp lint`, `wp typecheck`, and local dev commands that
 `ak-pretool-guard` redirects to those MCP handlers.
 
 The **Monorepo** `just qa` recipe is different: it runs its own parallel
-pipeline and does not currently call `ak qa`. Compacting that output needs a
+pipeline and does not currently call `wp qa`. Compacting that output needs a
 separate cross-repo boundary decision:
 
 1. route `just qa` through the agent-kit MCP path, preserving Monorepo flags; or
@@ -45,8 +45,8 @@ the compact-QA implementation blueprint.
 ### A. Boundary discovery
 
 - Inspect the Monorepo `just qa` recipe and its package/file filter semantics.
-- Map which stages correspond to `ak lint`, `ak typecheck`, `ak test`, and
-  `ak qa`.
+- Map which stages correspond to `wp lint`, `wp typecheck`, `wp test`, and
+  `wp qa`.
 - Identify any Monorepo-only stages that cannot be represented by agent-kit MCP
   tools yet.
 
@@ -54,7 +54,7 @@ the compact-QA implementation blueprint.
 
 Pick one bridge:
 
-- **Preferred:** route Monorepo `just qa` to `ak qa`/MCP handlers while
+- **Preferred:** route Monorepo `just qa` to `wp qa`/MCP handlers while
   preserving package and file filters.
 - **Fallback:** define a Monorepo-side adapter that emits the compact-QA
   transform contract without moving orchestration into agent-kit.
@@ -89,14 +89,14 @@ Stage mapping:
 | Monorepo stage | Current command surface | agent-kit MCP analogue | Fit |
 | --- | --- | --- | --- |
 | Root checks | `vp run -w --log grouped qa:root` | none | Monorepo-only |
-| Typecheck | `buildTypecheckCommand(...)` over VP package filters | `ak_typecheck(packages)` | Partial; package names/filters differ |
-| Test | `buildVpTestCommand(...)` over VP package/file resolution | `ak_test(packages/files)` | Partial; just backend currently maps to `just test`, not Monorepo QA stage logs |
-| Lint | mostly package/root `qa` scripts, not a distinct `just qa` stage | `ak_lint(files)` | Partial; Monorepo root checks/package scripts own policy |
-| QA aggregate | `workspace-tasks qa` + root/typecheck/test stage logs | `ak_qa` MCP composition | Not a drop-in CLI replacement |
+| Typecheck | `buildTypecheckCommand(...)` over VP package filters | `wp_typecheck(packages)` | Partial; package names/filters differ |
+| Test | `buildVpTestCommand(...)` over VP package/file resolution | `wp_test(packages/files)` | Partial; just backend currently maps to `just test`, not Monorepo QA stage logs |
+| Lint | mostly package/root `qa` scripts, not a distinct `just qa` stage | `wp_lint(files)` | Partial; Monorepo root checks/package scripts own policy |
+| QA aggregate | `workspace-tasks qa` + root/typecheck/test stage logs | `wp_qa` MCP composition | Not a drop-in CLI replacement |
 
-Unsupported or risky for direct `ak_qa` routing:
+Unsupported or risky for direct `wp_qa` routing:
 
-- `ak_qa` is an MCP tool, not a user-facing `ak qa` CLI command.
+- `wp_qa` is an MCP tool, not a user-facing `wp qa` CLI command.
 - The current agent-kit `just` backend only shells to `just test` for test
   execution; it does not understand Monorepo `workspace-tasks qa` stage logs.
 - Direct replacement would bypass root `qa:root`, GraphQL artifact preflight,
@@ -116,9 +116,9 @@ stage outputs to the compact-QA contract. That preserves root checks, artifact
 preflights, file/package filters, VP grouping, and memory safeguards while
 still making the LLM-facing payload compact.
 
-Rejected: route `just qa` directly through `ak_qa`/MCP now.
+Rejected: route `just qa` directly through `wp_qa`/MCP now.
 
-Reason: `ak_qa` is not currently a CLI command, its just backend does not model
+Reason: `wp_qa` is not currently a CLI command, its just backend does not model
 Monorepo QA stages, and routing would either drop Monorepo-only root/preflight
 behavior or require moving Monorepo orchestration into agent-kit. That violates
 the blueprint boundary more than an adapter does.
@@ -158,7 +158,7 @@ Ownership boundary:
 
 | Gate | Expected behavior |
 | --- | --- |
-| **G1. Boundary decision** | Blueprint records whether Monorepo uses `ak qa` routing or a Monorepo-side adapter, with reasons. |
+| **G1. Boundary decision** | Blueprint records whether Monorepo uses `wp qa` routing or a Monorepo-side adapter, with reasons. |
 | **G2. Flag preservation** | Existing Monorepo package/file filters still work after routing. |
 | **G3. Compact payload** | Seeded lint/type/test failures produce an LLM-facing compact payload ≤ 2 KB total, unless the chosen adapter documents a different budget. |
 | **G4. Failure preservation** | All seeded failures remain present with file/line signal. |
@@ -195,7 +195,7 @@ editing either repo.
 - [x] Existing filter semantics are documented.
 - [x] Unknowns are resolved or explicitly blocked.
 
-**Evidence (2026-05-06):** inspected `/Users/ozby/repos/webpresso/monorepo/justfile`, `apps/cli-wp/src/internal/workspace-tasks.ts`, root package/catalog agent-kit references, and agent-kit MCP `ak_qa`/just backend implementation; documented stage graph, filter semantics, and non-drop-in risks above.
+**Evidence (2026-05-06):** inspected `/Users/ozby/repos/webpresso/monorepo/justfile`, `apps/cli-wp/src/internal/workspace-tasks.ts`, root package/catalog agent-kit references, and agent-kit MCP `wp_qa`/just backend implementation; documented stage graph, filter semantics, and non-drop-in risks above.
 
 #### [agent-kit] Task 1.2: Choose bridge contract
 
@@ -203,7 +203,7 @@ editing either repo.
 
 **Depends:** Task 1.1
 
-Choose `ak qa` routing or Monorepo-side adapter based on the discovery result.
+Choose `wp qa` routing or Monorepo-side adapter based on the discovery result.
 
 **Files:**
 
@@ -213,7 +213,7 @@ Choose `ak qa` routing or Monorepo-side adapter based on the discovery result.
 
 **Steps (TDD):**
 
-1. Compare `ak qa` routing vs Monorepo-side adapter.
+1. Compare `wp qa` routing vs Monorepo-side adapter.
 2. Pick the softest sufficient boundary.
 3. Document rejected alternative and reason.
 4. Define acceptance fixtures for the chosen path.
@@ -224,7 +224,7 @@ Choose `ak qa` routing or Monorepo-side adapter based on the discovery result.
 - [x] Rejected alternative is documented.
 - [x] Ownership boundary is clear.
 
-**Evidence (2026-05-06):** selected Monorepo-side adapter, rejected direct `ak_qa` routing, and recorded ownership split in the Bridge decision section above.
+**Evidence (2026-05-06):** selected Monorepo-side adapter, rejected direct `wp_qa` routing, and recorded ownership split in the Bridge decision section above.
 
 #### [agent-kit] Task 2.1: Implement selected bridge
 
@@ -252,7 +252,7 @@ Make Monorepo `just qa` reach compact-QA output through the selected boundary.
 - [x] Existing flags still work.
 - [x] No rtk filter clone is introduced.
 
-**Evidence (2026-05-06):** implemented the Monorepo-side adapter in `/Users/ozby/repos/webpresso/monorepo/apps/cli-wp/src/internal/workspace-tasks.ts` and tests in `apps/cli-wp/src/internal/workspace-tasks.test.ts`. The adapter keeps the existing `just qa`/`workspace-tasks qa` command graph, switches QA stages to captured log-backed execution only when compact mode is active (`AK_COMPACT`, `QUALITY_ENGINE_COMPACT`, `--json`, or non-TTY agent context), emits the Agent Kit-style summary-first payload with `failures`, `tier`, `bytes`, `tokensSaved`, and `logPath`, continues across failed QA stages when `continue` is true, and does not import or clone rtk filters.
+**Evidence (2026-05-06):** implemented the Monorepo-side adapter in `/Users/ozby/repos/webpresso/monorepo/apps/cli-wp/src/internal/workspace-tasks.ts` and tests in `apps/cli-wp/src/internal/workspace-tasks.test.ts`. The adapter keeps the existing `just qa`/`workspace-tasks qa` command graph, switches QA stages to captured log-backed execution only when compact mode is active (`WP_COMPACT`, `QUALITY_ENGINE_COMPACT`, `--json`, or non-TTY agent context), emits the Agent Kit-style summary-first payload with `failures`, `tier`, `bytes`, `tokensSaved`, and `logPath`, continues across failed QA stages when `continue` is true, and does not import or clone rtk filters.
 
 #### [agent-kit] Task 3.1: End-to-end compact-output verification
 
@@ -280,9 +280,9 @@ Verify the user-facing Monorepo result.
 - [x] Evidence links to commands/output summary.
 - [x] Follow-up risks are documented.
 
-**Evidence (2026-05-06):** Monorepo-focused tests passed with `../../node_modules/.bin/vitest run src/internal/workspace-tasks.test.ts --reporter=dot --maxWorkers=1` from `apps/cli-wp` (21 tests). Focused package typecheck passed with `pnpm --filter @repo/cli-wp typecheck`. User-facing smoke passed with `AK_COMPACT=1 NODE_OPTIONS=--max-old-space-size=4096 just qa --package cli-wp --quick --no-cache`, returning compact JSON (`passed: true`, `summary: qa passed`, `details.typecheck`, `bytes: 288`). A temporary seeded failing test file was created and removed to exercise the real `just qa --file` path; it returned non-zero with compact JSON under budget (`bytes: 1875`) and preserved the failing test stage plus log path. Unit fixtures cover the full lint/typecheck/test failure-preservation contract, including file/line/code signals and the ≤2 KB budget.
+**Evidence (2026-05-06):** Monorepo-focused tests passed with `../../node_modules/.bin/vitest run src/internal/workspace-tasks.test.ts --reporter=dot --maxWorkers=1` from `apps/cli-wp` (21 tests). Focused package typecheck passed with `pnpm --filter @repo/cli-wp typecheck`. User-facing smoke passed with `WP_COMPACT=1 NODE_OPTIONS=--max-old-space-size=4096 just qa --package cli-wp --quick --no-cache`, returning compact JSON (`passed: true`, `summary: qa passed`, `details.typecheck`, `bytes: 288`). A temporary seeded failing test file was created and removed to exercise the real `just qa --file` path; it returned non-zero with compact JSON under budget (`bytes: 1875`) and preserved the failing test stage plus log path. Unit fixtures cover the full lint/typecheck/test failure-preservation contract, including file/line/code signals and the ≤2 KB budget.
 
-**Follow-up risks:** full-repo `just qa` remains expensive and was not run; the compact adapter intentionally summarizes Monorepo stage logs rather than adopting agent-kit MCP `ak_qa`; future work can export a generic agent-kit transform package once Monorepo can consume a released version. Existing unrelated Monorepo test failures surfaced in `src/public-surface.integrity.test.ts` during the seeded `--file` smoke and are not introduced by this bridge.
+**Follow-up risks:** full-repo `just qa` remains expensive and was not run; the compact adapter intentionally summarizes Monorepo stage logs rather than adopting agent-kit MCP `wp_qa`; future work can export a generic agent-kit transform package once Monorepo can consume a released version. Existing unrelated Monorepo test failures surfaced in `src/public-surface.integrity.test.ts` during the seeded `--file` smoke and are not introduced by this bridge.
 
 ## Quick Reference (Execution Waves)
 
@@ -305,7 +305,7 @@ Critical path: 1.1 → 1.2 → 2.1 → 3.1.
 
 ### Deliverables
 
-- Documented the Monorepo QA boundary and rejected direct `ak_qa` routing for this cross-repo bridge.
+- Documented the Monorepo QA boundary and rejected direct `wp_qa` routing for this cross-repo bridge.
 - Implemented a Monorepo-owned compact QA adapter in `apps/cli-wp/src/internal/workspace-tasks.ts` that preserves existing `just qa` filters, logs full stage output, and emits Agent Kit-style summary-first compact JSON in agent contexts.
 - Added focused Monorepo tests for compact TypeScript diagnostics, lint/type/test failure preservation, ≤2 KB payload budget, and compact-mode escape hatches.
 - Moved this blueprint to completed with command evidence and follow-up risks recorded.

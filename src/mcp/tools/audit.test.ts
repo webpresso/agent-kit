@@ -1,5 +1,5 @@
 /**
- * Tests for the `ak_audit` MCP tool.
+ * Tests for the `wp_audit` MCP tool.
  *
  * Mocks the underlying audit library functions and the `node:child_process`
  * `spawn` (used for the tph kind which runs as a Bun script). Asserts each
@@ -86,9 +86,9 @@ beforeEach(() => {
   repoGuardrailsMock.formatRepoAuditReport.mockReturnValue('formatted report')
 })
 
-describe('ak_audit tool', () => {
+describe('wp_audit tool', () => {
   it('exposes the expected descriptor surface', () => {
-    expect(akAuditTool.name).toBe('ak_audit')
+    expect(akAuditTool.name).toBe('wp_audit')
     expect(typeof akAuditTool.description).toBe('string')
     expect(akAuditTool.handler).toBeTypeOf('function')
   })

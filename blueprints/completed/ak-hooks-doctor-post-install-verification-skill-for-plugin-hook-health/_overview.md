@@ -20,13 +20,13 @@ tags:
 
 > **2026-04-28 update:** After the coordinated hook ships, the doctor must also verify: (1) the single coordinated hook process is active (not the old 2-process setup), (2) context-mode MCP server is reachable via `ctx_doctor` tool, (3) the coordinated routing table covers all expected command patterns. Added as Task 2.1 in the coordinated blueprint scope.
 
-Add `ak hooks doctor` CLI command and `/webpresso-agent-kit:hooks-doctor` skill that verifies the plugin installation is healthy: all hook bins exist, are executable, respond correctly to empty stdin, and the MCP server starts and responds. Mirrors context-mode's `/ctx-doctor` pattern — the single most effective way to surface silent plugin failures immediately.
+Add `wp hooks doctor` CLI command and `/webpresso-agent-kit:hooks-doctor` skill that verifies the plugin installation is healthy: all hook bins exist, are executable, respond correctly to empty stdin, and the MCP server starts and responds. Mirrors context-mode's `/ctx-doctor` pattern — the single most effective way to surface silent plugin failures immediately.
 
 **Research source:** `docs/research/2026-04-26-context-mode-plugin-architecture.md` — Priority 5. Context-mode's doctor pattern (`npx tsx src/cli.ts doctor`) is cited as the canonical post-install verification in their CI and README.
 
 ## Planning Summary
 
-Three tasks: (1) `ak hooks doctor` CLI command checking all hook bins + MCP, (2) wire into `ak` CLI, (3) skill file so Claude can invoke it as a slash command. Task 1.3 has NO dependency on Task 1.2 — it runs in Wave 0 parallel with Task 1.1.
+Three tasks: (1) `wp hooks doctor` CLI command checking all hook bins + MCP, (2) wire into `wk` CLI, (3) skill file so Claude can invoke it as a slash command. Task 1.3 has NO dependency on Task 1.2 — it runs in Wave 0 parallel with Task 1.1.
 
 ## Quick Reference (Execution Waves)
 
@@ -48,7 +48,7 @@ Three tasks: (1) `ak hooks doctor` CLI command checking all hook bins + MCP, (2)
 |---|-------|--------|
 | F1 | MCP `tools/list` is the correct method for liveness probe | Verified |
 | F2 | Executable check (`mode & 0o111`) is platform-specific — Windows ignores file mode bits | Verified — skip executable check on `process.platform === 'win32'` |
-| F3 | MCP timeout default is 3s | **Updated to 5s** — 3s is too tight for cold starts; use 5s, overridable via `AK_DOCTOR_MCP_TIMEOUT_MS` |
+| F3 | MCP timeout default is 3s | **Updated to 5s** — 3s is too tight for cold starts; use 5s, overridable via `WP_DOCTOR_MCP_TIMEOUT_MS` |
 | F4 | `CLAUDE_PLUGIN_ROOT` is the env var for plugin root resolution | Verified |
 | F5 | Skill catalog path is `catalog/skills/hooks-doctor/SKILL.md` | **CRITICAL — WRONG.** Correct path is `catalog/agent/skills/hooks-doctor/SKILL.md` — generate-skills script reads from `catalog/agent/skills/` |
 | F6 | Hook bin paths: `post-tool` → `index.js`, `stop` → `index.js` | **WRONG.** `post-tool` bin is `lint-after-edit.js`, `stop` bin is `qa-changed-files.js`. Also `test-quality-check.js` is a flat file at `dist/esm/hooks/test-quality-check.js` (not in a subdirectory) |
@@ -58,7 +58,7 @@ Three tasks: (1) `ak hooks doctor` CLI command checking all hook bins + MCP, (2)
 
 ### Phase 1: Doctor command and skill [Complexity: S]
 
-#### [cli] Task 1.1: Implement ak hooks doctor audit logic
+#### [cli] Task 1.1: Implement wp hooks doctor audit logic
 
 **Status:** done
 - **Depends on:** —
@@ -75,7 +75,7 @@ Three tasks: (1) `ak hooks doctor` CLI command checking all hook bins + MCP, (2)
   2. Each bin is executable (mode includes `0o111`) — skip this check on `process.platform === 'win32'`
   3. `echo '{}' | node <bin>` exits 0 with JSON on stdout (tested for pretool-guard, guard-switch, sessionstart; post-tool and stop are fire-and-forget so just check exit 0)
   4. `plugin.json` exists and references only paths that exist on disk
-  5. MCP server starts and responds to `tools/list` within 5 seconds (overridable via `AK_DOCTOR_MCP_TIMEOUT_MS` env var). If `isMcpReady()` is true (sentinel from harden-plugin-hooks), skip the cold-spawn and fast-path to pass. MCP check is **soft-fail in CI** — emit warning but do NOT set `ok: false` for MCP check alone.
+  5. MCP server starts and responds to `tools/list` within 5 seconds (overridable via `WP_DOCTOR_MCP_TIMEOUT_MS` env var). If `isMcpReady()` is true (sentinel from harden-plugin-hooks), skip the cold-spawn and fast-path to pass. MCP check is **soft-fail in CI** — emit warning but do NOT set `ok: false` for MCP check alone.
   - Print results as `[x] check name` / `[ ] check name: detail` lines to stderr. Exit 0 if all pass, exit 1 if any non-MCP check fails.
 - **Steps (TDD):**
   1. Write failing tests: all 5 check categories (mock fs/spawn), MCP soft-fail in CI mode, fast-path when `isMcpReady()` is true
@@ -89,29 +89,29 @@ Three tasks: (1) `ak hooks doctor` CLI command checking all hook bins + MCP, (2)
   - [x] `post-tool` bin is `lint-after-edit.js`, `stop` bin is `qa-changed-files.js`
   - [x] `test-quality-check.js` checked as flat file at `dist/esm/hooks/test-quality-check.js`
   - [x] Executable check skipped on Windows
-  - [x] MCP timeout is 5s, overridable via `AK_DOCTOR_MCP_TIMEOUT_MS`
+  - [x] MCP timeout is 5s, overridable via `WP_DOCTOR_MCP_TIMEOUT_MS`
   - [x] MCP check is soft-fail (warning only, does not set `ok: false`)
   - [x] `isMcpReady()` fast-path skips cold-spawn when sentinel present
   - [x] Exits 0 on full-pass, 1 on any non-MCP failure
   - [x] Output is `[x]` / `[ ]` format per check
   - [x] Unit tests for check logic (mock fs/spawn)
 
-#### [cli] Task 1.2: Wire `ak hooks doctor` into the CLI
+#### [cli] Task 1.2: Wire `wp hooks doctor` into the CLI
 
 **Status:** done
 - **Depends on:** Task 1.1
 - **Files:**
   - Modify: `src/cli/cli.ts`
-- **Change:** Register `hooks` command group. `ak hooks doctor` invokes `runHooksDoctor()` and exits with its exit code. Also wire into CI: add `"hooks:doctor": "node ./dist/esm/cli/cli.js hooks doctor"` and `"hooks:doctor:ci": "node ./dist/esm/cli/cli.js hooks doctor --skip-mcp"` to `package.json` scripts. Do NOT add `hooks:doctor` to `audits:check` — use `hooks:doctor:ci` (with `--skip-mcp`) instead, since MCP is soft-fail in CI.
+- **Change:** Register `hooks` command group. `wp hooks doctor` invokes `runHooksDoctor()` and exits with its exit code. Also wire into CI: add `"hooks:doctor": "node ./dist/esm/cli/cli.js hooks doctor"` and `"hooks:doctor:ci": "node ./dist/esm/cli/cli.js hooks doctor --skip-mcp"` to `package.json` scripts. Do NOT add `hooks:doctor` to `audits:check` — use `hooks:doctor:ci` (with `--skip-mcp`) instead, since MCP is soft-fail in CI.
 - **Steps (TDD):**
-  1. Write failing test: `ak hooks doctor` command registered in CLI and exits with correct code
+  1. Write failing test: `wp hooks doctor` command registered in CLI and exits with correct code
   2. Update `src/cli/cli.ts` — make test green
   3. `pnpm run typecheck` — no errors
   4. `pnpm test` — green
   5. Manual: `pnpm hooks:doctor` exits 0 in a healthy repo
 - **Verify:** `pnpm hooks:doctor` exits 0 in a healthy repo.
 - **Acceptance:** all of the following:
-  - [x] `ak hooks doctor` registered in CLI help text
+  - [x] `wp hooks doctor` registered in CLI help text
   - [x] `hooks:doctor` npm script present
   - [x] `hooks:doctor:ci` npm script present with `--skip-mcp` flag
   - [x] `audits:check` uses `hooks:doctor:ci` (not `hooks:doctor`)
@@ -123,17 +123,17 @@ Three tasks: (1) `ak hooks doctor` CLI command checking all hook bins + MCP, (2)
 - **Depends on:** — (independent of Task 1.2)
 - **Files:**
   - Create: `catalog/agent/skills/hooks-doctor/SKILL.md`
-- **Change:** Skill file that tells Claude to run `ak hooks doctor` and interpret the `[x]` / `[ ]` output. If any check fails, Claude should suggest the fix (e.g. "run `pnpm build`", "reinstall plugin with `claude plugin install agent-kit --scope user`"). Include trigger phrases: "doctor", "verify hooks", "check plugin", "hooks broken", "plugin not working".
+- **Change:** Skill file that tells Claude to run `wp hooks doctor` and interpret the `[x]` / `[ ]` output. If any check fails, Claude should suggest the fix (e.g. "run `pnpm build`", "reinstall plugin with `claude plugin install agent-kit --scope user`"). Include trigger phrases: "doctor", "verify hooks", "check plugin", "hooks broken", "plugin not working".
 
   **CRITICAL:** Path must be `catalog/agent/skills/hooks-doctor/SKILL.md` — the generate-skills script reads from `catalog/agent/skills/`, not `catalog/skills/`.
 - **Steps (TDD):**
   1. Create `catalog/agent/skills/hooks-doctor/SKILL.md` with correct frontmatter
   2. Run `pnpm build` — verify `skills/` directory includes `hooks-doctor`
-  3. Run `ak skills list` — verify `hooks-doctor` appears
-- **Verify:** `ak skills list` shows `hooks-doctor`. Invoking `/webpresso-agent-kit:hooks-doctor` in Claude Code runs the audit.
+  3. Run `wp skills list` — verify `hooks-doctor` appears
+- **Verify:** `wp skills list` shows `hooks-doctor`. Invoking `/webpresso-agent-kit:hooks-doctor` in Claude Code runs the audit.
 - **Acceptance:** all of the following:
   - [x] `catalog/agent/skills/hooks-doctor/SKILL.md` present with correct frontmatter (NOT `catalog/skills/`)
-  - [x] `ak skills list` shows `hooks-doctor`
+  - [x] `wp skills list` shows `hooks-doctor`
   - [x] Skill file includes remediation guidance for each failure type
   - [x] `pnpm build` regenerates `skills/` directory including new skill
 
@@ -142,7 +142,7 @@ Three tasks: (1) `ak hooks doctor` CLI command checking all hook bins + MCP, (2)
 ### Deliverables
 
 - `src/hooks/doctor.ts` — `runHooksDoctor()` with 5 check categories and soft-fail MCP check
-- `ak hooks doctor` CLI command wired into `src/cli/cli.ts`
+- `wp hooks doctor` CLI command wired into `src/cli/cli.ts`
 - `catalog/agent/skills/hooks-doctor/SKILL.md` — slash-command skill for Claude Code
 - `hooks:doctor` and `hooks:doctor:ci` npm scripts
 
@@ -154,4 +154,4 @@ Post-install verification for agent-kit plugin hooks. Surfaces broken bin paths,
 
 - Does not implement self-healing or auto-reinstall (context-mode's self-heal block is cited as a code smell in the research)
 - Does not check Codex `.codex/hooks.json` integration (separate concern)
-- Does not replace `ak audit` — this is plugin-health-specific, not repo-health
+- Does not replace `wp audit` — this is plugin-health-specific, not repo-health

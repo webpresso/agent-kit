@@ -1,5 +1,5 @@
 /**
- * `ak worktree` command router.
+ * `wp worktree` command router.
  *
  * Mirrors the tech-debt router pattern:
  * - router.ts        — registers the CAC command and wires options
@@ -10,7 +10,7 @@ import type { CAC } from 'cac'
 import { executeWorktreeSubcommand, type WorktreeCommandOptions } from './router-dispatch.js'
 
 const HELP_TEXT = [
-  'Usage: ak worktree <subcommand> [options]',
+  'Usage: wp worktree <subcommand> [options]',
   '',
   'Subcommands:',
   '  new [branch] [--base <ref>] [--path <dir>]   Create worktree and seed .agent/',

@@ -87,7 +87,7 @@ let dbPath: string
 let dbConn: ReturnType<typeof openDb>
 
 beforeEach(() => {
-  tmp = mkdtempSync(path.join(tmpdir(), 'ak-context-'))
+  tmp = mkdtempSync(path.join(tmpdir(), 'wp-context-'))
   dbPath = path.join(tmp, 'blueprints.db')
   dbConn = openDb(dbPath)
   // Pin freshness so assembleBlueprintContext does not bail on missing metadata.

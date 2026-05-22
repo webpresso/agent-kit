@@ -32,14 +32,14 @@ verdict: adopt
   million-token models that just stuff context. For agent-kit's purpose
   (compaction-aware session memory in short-lived hooks), we need an
   agentic-pattern benchmark, not a chatbot-recall one.
-- **Recommendation: ADOPT** a Bun-native harness shipped as `ak bench session-memory`
+- **Recommendation: ADOPT** a Bun-native harness shipped as `wp bench session-memory`
   with versioned scenarios, hash-pinned variants, and cost/recall/latency
   reporting per scenario × variant.
 
 ## What This Is
 
 The previous two-turn `claude --print` experiment showed zero token savings
-because: (1) session memory tools (`ak_session_search`, `ctx_search`) require
+because: (1) session memory tools (`wp_session_search`, `ctx_search`) require
 the agent to *decide* to call them, (2) Claude's prompt cache served the second
 turn anyway, and (3) the value of session memory is recovering context across
 compaction, which never fired in 2-turn synthetic runs.
@@ -157,7 +157,7 @@ The benchmark must reflect that workload.
   Code as of 2026-05-14.
 
 ### Two-turn `--print` is the wrong unit
-- Our 2026-05-14 experiment confirmed: agents do NOT call `ak_session_search`
+- Our 2026-05-14 experiment confirmed: agents do NOT call `wp_session_search`
   in fresh `--print` calls because (a) they don't know prior context exists
   unless told, and (b) Anthropic's prompt cache serves T2 from T1's residual
   cache. The savings need a longer session that triggers compaction.
@@ -192,9 +192,9 @@ The current state of the agent-kit ecosystem:
 - Existing harness at `/tmp/session-memory-benchmark/harness.js` measures
   raw SQLite ops only — not token savings
 
-A token-savings harness shipped as `ak bench session-memory` aligns with the
-ecosystem's existing CLI surface (`ak setup`, `ak blueprint`, `ak audit`,
-`ak test`, `ak qa`).
+A token-savings harness shipped as `wp bench session-memory` aligns with the
+ecosystem's existing CLI surface (`wp setup`, `wp blueprint`, `wp audit`,
+`wp test`, `wp qa`).
 
 ### Tech Stack Fit
 - **Bun-native**: Bun 1.3+ is the runtime for all hooks; the harness should be
@@ -227,7 +227,7 @@ ecosystem's existing CLI surface (`ak setup`, `ak blueprint`, `ak audit`,
 **ADOPT** a Bun-native, hash-pinned token-savings harness as a first-class
 agent-kit deliverable. Specifically:
 
-### Deliverable: `ak bench session-memory`
+### Deliverable: `wp bench session-memory`
 
 **Files to create:**
 ```

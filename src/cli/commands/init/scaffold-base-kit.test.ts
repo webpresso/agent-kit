@@ -10,7 +10,7 @@ describe('scaffoldBaseKit', () => {
   let repoRoot: string
 
   beforeEach(() => {
-    repoRoot = join(tmpdir(), `ak-base-kit-test-${Date.now()}`)
+    repoRoot = join(tmpdir(), `wp-base-kit-test-${Date.now()}`)
     mkdirSync(repoRoot, { recursive: true })
   })
 
@@ -57,7 +57,7 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
       'latest',
     )
-    expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('ak setup')
+    expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
   })
 
   it('adds only missing bootstrap fields for consumers', () => {
@@ -76,7 +76,7 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
       '^0.2.0',
     )
-    expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('ak setup')
+    expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
     expect((pkg['scripts'] as Record<string, string>)['test']).toBe('vitest')
   })
 
@@ -85,7 +85,7 @@ describe('scaffoldBaseKit', () => {
     mkdirSync(repoRoot, { recursive: true })
     const initial = {
       name: 'consumer-app',
-      scripts: { 'setup:agent': 'vp exec ak setup' },
+      scripts: { 'setup:agent': 'vp exec wp setup' },
       devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
@@ -94,7 +94,7 @@ describe('scaffoldBaseKit', () => {
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
-    expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('vp exec ak setup')
+    expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('vp exec wp setup')
     expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
       '^0.2.0',
     )
@@ -107,7 +107,7 @@ describe('scaffoldBaseKit', () => {
       name: 'consumer-app',
       packageManager: 'pnpm@11.5.0',
       engines: { node: '>=24' },
-      scripts: { 'setup:agent': 'ak setup' },
+      scripts: { 'setup:agent': 'wp setup' },
       devDependencies: { '@webpresso/agent-kit': '^0.18.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))

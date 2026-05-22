@@ -65,7 +65,7 @@ export async function dbBuild(projectRoot) {
 export async function dbVerify(projectRoot) {
     const dbPath = agentDbPath(projectRoot);
     if (!existsSync(dbPath)) {
-        throw new Error(`DB not found at ${dbPath}. Run \`ak blueprint db build\` first.`);
+        throw new Error(`DB not found at ${dbPath}. Run \`wp blueprint db build\` first.`);
     }
     const conn = openDb(dbPath);
     const staleEntries = [];
@@ -152,7 +152,7 @@ export function dbBrowse(projectRoot, _execSync = execSync) {
     const metadataPath = agentMetadataPath(projectRoot);
     const agentDir = path.dirname(dbPath);
     if (!existsSync(dbPath)) {
-        process.stderr.write(`DB not found at ${dbPath}.\nRun \`ak blueprint db build\` first.\n`);
+        process.stderr.write(`DB not found at ${dbPath}.\nRun \`wp blueprint db build\` first.\n`);
         process.exit(1);
     }
     // Check datasette availability
@@ -168,7 +168,7 @@ export function dbBrowse(projectRoot, _execSync = execSync) {
     const metadata = {
         title: 'Blueprints DB',
         description: 'Blueprint and tech-debt structured store (agent-kit)',
-        source: 'ak blueprint db build',
+        source: 'wp blueprint db build',
     };
     writeFileSync(metadataPath, JSON.stringify(metadata, null, 2) + '\n', 'utf8');
     // Launch datasette (blocking — inherits stdio so the user sees the URL)
@@ -204,7 +204,7 @@ export async function executeBlueprintDbSubcommand(verb, args, options, print) {
         case 'query': {
             const templateId = args[0];
             if (!templateId) {
-                throw new Error('Usage: ak blueprint db query <template-id> [--params \'{"key":value}\']');
+                throw new Error('Usage: wp blueprint db query <template-id> [--params \'{"key":value}\']');
             }
             let params = {};
             if (options.params) {

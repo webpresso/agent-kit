@@ -18,13 +18,13 @@ tags:
   - in-process
 ---
 
-# ak session memory v1 — in-process SQLite + FTS5 (TS engine)
+# wp session memory v1 — in-process SQLite + FTS5 (TS engine)
 
 ## Product wedge anchor
 
 - **Stage outcome:** webpresso open-sourcing — Lane 2 of the four-lane routing model becomes permissively-licensed and **dependency-free at the consumer layer**. No external memory service to install, no docker, no embedding provider, no API key. Cited model: `catalog/agent/rules/gstack-routing.md` (and `context-mode-routing.md`, the lane-2 canonical rule per refinement F8/F14).
-- **Consuming surface:** New `ak setup` step (no extra flag needed; ships by default since cost is zero) + new MCP tools `ak_session_capture`, `ak_session_snapshot`, `ak_session_restore`, `ak_session_search` exposed via agent-kit's existing MCP server (auto-discovered from `src/mcp/tools/`).
-- **New user-visible capability:** After this lands, `pnpm add -D @webpresso/agent-kit` is the entire install. After a Claude Code compaction, the agent uses `ak_session_search` to recall what it was working on. Sub-millisecond hot path. Same on-disk SQLite schema as v2 (Rust engine swap is invisible).
+- **Consuming surface:** New `wp setup` step (no extra flag needed; ships by default since cost is zero) + new MCP tools `wp_session_capture`, `wp_session_snapshot`, `wp_session_restore`, `wp_session_search` exposed via agent-kit's existing MCP server (auto-discovered from `src/mcp/tools/`).
+- **New user-visible capability:** After this lands, `pnpm add -D @webpresso/agent-kit` is the entire install. After a Claude Code compaction, the agent uses `wp_session_search` to recall what it was working on. Sub-millisecond hot path. Same on-disk SQLite schema as v2 (Rust engine swap is invisible).
 
 ## Problem Statement
 
@@ -78,7 +78,7 @@ external dependency.
 └─────────────────────────────────────────────────────────────┘
 
 LANE MODEL (final, all permissive, all in-process):
-  1  agent-kit + TS session engine   ak_session_*   MIT
+  1  agent-kit + TS session engine   wp_session_*   MIT
   2  — DROPPED —                     —              (context-mode out)
   3  rtk (upstream)                  bash filter    MIT
   4  gstack (upstream)               /skill         MIT
@@ -116,7 +116,7 @@ DATA FLOW (event capture path):
 | SQLite library | `better-sqlite3` ^11 | Mature, sync API matches hot path; bundled SQLite ships FTS5 (refinement F1/F3 v2 verified) |
 | FTS5 setup | `tokenize='porter unicode61'` and `tokenize='trigram'` virtual tables | Built-in tokenizers, no rusqlite-style custom-tokenizer limitation (refinement F2 v2) |
 | Three-tier search | porter → trigram → IDF-weighted Levenshtein | Same fallback chain as context-mode and v2 ctx-rs (intentional behavior parity) |
-| MCP tool naming | `ak_session_*` MCP names; tool files named `session-*.ts` (no `ak-` prefix in filenames) | Refinement F5 v1: agent-kit convention is no `ak-` prefix in tool filenames; the prefix is added by routing |
+| MCP tool naming | `wp_session_*` MCP names; tool files named `session-*.ts` (no `ak-` prefix in filenames) | Refinement F5 v1: agent-kit convention is no `ak-` prefix in tool filenames; the prefix is added by routing |
 | MCP server registration | None — MCP server auto-discovers from `src/mcp/tools/*.ts` | Refinement F13 v1: `.mcp.json` does not exist in agent-kit; auto-discovery is the pattern |
 | Hook integration | New `src/hooks/post-tool/index.ts` dispatcher (currently only `lint-after-edit.ts` exists) | Refinement F2 v1: dispatcher hub is a prerequisite, not assumption |
 | Pre-compact hook | New `src/hooks/pre-compact/index.ts` + new entry in package.json `bin` + new `PreCompact` block in `.claude/settings.json` template | Refinement F3 v1 + F9/F10 v1: PreCompact is not currently registered |
@@ -127,7 +127,7 @@ DATA FLOW (event capture path):
 | Hook order | rtk → ak (rtk first) | Eng-review D5 unchanged |
 | Failure mode | If SQLite locked or DB corrupt: hooks log + return success (non-blocking) | Eng-review D13 spirit — never block tool calls |
 | PreCompact timeout | 5s cap; partial snapshot allowed | Eng-review D14 carries |
-| Lane-2 routing rule update | Update `catalog/agent/rules/context-mode-routing.md` (NOT `gstack-routing.md`) — context-mode entry deprecated, ak_session_* takes its place | Refinement F8/F14 v1: lane-2 is owned by `context-mode-routing.md` |
+| Lane-2 routing rule update | Update `catalog/agent/rules/context-mode-routing.md` (NOT `gstack-routing.md`) — context-mode entry deprecated, wp_session_* takes its place | Refinement F8/F14 v1: lane-2 is owned by `context-mode-routing.md` |
 | Schema design | Forward-compatible with v2 ctx-rs (Rust) | Migration v1→v2 is "swap engine binary, keep .db file" — invisible to consumers |
 
 ## Quick Reference (Execution Waves)
@@ -174,17 +174,17 @@ Performance pragmas applied at open: `journal_mode=WAL`, `synchronous=NORMAL`, `
 **Steps (TDD):**
 
 1. Write failing tests: insert 100 chunks, search "foo" → expected top-5; trigram fallback when porter empty; Levenshtein when trigram empty; source-scoping with global fallback; idempotent re-index doesn't double-add
-2. Run `ak_test --file src/session-memory/store.test.ts` — verify FAIL
+2. Run `wp_test --file src/session-memory/store.test.ts` — verify FAIL
 3. Implement schema + BM25 query + fallback ladder
-4. Run `ak_test --file src/session-memory/store.test.ts` — verify PASS
+4. Run `wp_test --file src/session-memory/store.test.ts` — verify PASS
 5. Bench in-test: 1000-doc corpus, search p99 < 5ms (informational; this is not the hot path)
-6. Run `ak_lint --file src/session-memory/store.ts src/session-memory/store.test.ts src/session-memory/types.ts` and `ak_typecheck --file src/session-memory/store.ts src/session-memory/store.test.ts src/session-memory/types.ts`
+6. Run `wp_lint --file src/session-memory/store.ts src/session-memory/store.test.ts src/session-memory/types.ts` and `wp_typecheck --file src/session-memory/store.ts src/session-memory/store.test.ts src/session-memory/types.ts`
 
 **Acceptance:**
 
 - [ ] All 5 test cases pass
-- [ ] `ak_lint` clean
-- [ ] `ak_typecheck` clean
+- [ ] `wp_lint` clean
+- [ ] `wp_typecheck` clean
 - [ ] No `any` types
 - [ ] better-sqlite3 dep added to package.json (or confirmed present)
 
@@ -215,19 +215,19 @@ Methods:
 **Steps (TDD):**
 
 1. Write tests: capture/snapshot/restore round-trip; snapshot timeout returns partial; concurrent capture from multiple processes doesn't corrupt (use better-sqlite3's WAL mode)
-2. Run `ak_test --file src/session-memory/session.test.ts src/session-memory/repo-hash.test.ts` — verify FAIL
+2. Run `wp_test --file src/session-memory/session.test.ts src/session-memory/repo-hash.test.ts` — verify FAIL
 3. Implement
 4. Run tests — verify PASS
-5. `ak_lint` + `ak_typecheck` on all touched files
+5. `wp_lint` + `wp_typecheck` on all touched files
 
 **Acceptance:**
 
 - [ ] All tests pass including concurrent-capture
-- [ ] `ak_lint` + `ak_typecheck` clean
+- [ ] `wp_lint` + `wp_typecheck` clean
 - [ ] Snapshot timeout produces partial gracefully
 - [ ] repoHash is deterministic and short
 
-#### [backend] Task 1.3: HTTP fetch + index (for ak_fetch_index parity)
+#### [backend] Task 1.3: HTTP fetch + index (for wp_fetch_index parity)
 
 **Status:** todo
 
@@ -277,7 +277,7 @@ Create `docs/guides/session-memory.md` with the mental model: how event capture 
 
 - [ ] README has "Session memory" section
 - [ ] Guide explains the schema + event flow
-- [ ] `ak_audit kind=docs-frontmatter` passes
+- [ ] `wp_audit kind=docs-frontmatter` passes
 
 ### Phase 2: Hook wiring [Complexity: S-M]
 
@@ -317,7 +317,7 @@ Update `package.json` `bin` field: `"ak-post-tool": "./src/hooks/post-tool/index
 - [ ] Dispatcher tested with both modules
 - [ ] Failure isolation verified (one module breaks ≠ others fail)
 - [ ] package.json bin updated and verified
-- [ ] `ak_lint` + `ak_typecheck` clean
+- [ ] `wp_lint` + `wp_typecheck` clean
 
 #### [backend] Task 2.2: Create `src/hooks/pre-compact/index.ts` + register PreCompact
 
@@ -375,11 +375,11 @@ The current `src/hooks/sessionstart/index.ts` (refinement F4 v1: not `sessionsta
 
 - [ ] All branches tested
 - [ ] `<session_knowledge>` block format documented in code comment
-- [ ] `ak_lint` + `ak_typecheck` clean
+- [ ] `wp_lint` + `wp_typecheck` clean
 
 ### Phase 3: MCP tools [Complexity: S]
 
-#### [backend] Task 3.1: ak_session_search MCP tool
+#### [backend] Task 3.1: wp_session_search MCP tool
 
 **Status:** todo
 
@@ -398,9 +398,9 @@ Input schema: `{ query: string, limit?: number, source?: string }`. Output: arra
 
 - [ ] Auto-discovered by MCP server (no manual register edit)
 - [ ] Returns structured results, not raw store payloads
-- [ ] `ak_lint` + `ak_typecheck` clean
+- [ ] `wp_lint` + `wp_typecheck` clean
 
-#### [backend] Task 3.2: ak_session_snapshot MCP tool (manual snapshot)
+#### [backend] Task 3.2: wp_session_snapshot MCP tool (manual snapshot)
 
 **Status:** todo
 
@@ -415,10 +415,10 @@ Manual snapshot tool for agents to call before branch switches or risky operatio
 
 **Acceptance:**
 
-- [ ] Tool returns snapshot id usable by ak_session_restore
-- [ ] `ak_lint` + `ak_typecheck` clean
+- [ ] Tool returns snapshot id usable by wp_session_restore
+- [ ] `wp_lint` + `wp_typecheck` clean
 
-#### [backend] Task 3.3: ak_session_restore MCP tool
+#### [backend] Task 3.3: wp_session_restore MCP tool
 
 **Status:** todo
 
@@ -434,9 +434,9 @@ Manual restore tool. Input: `{ snapshotId?, query? }`. Either restore from a spe
 **Acceptance:**
 
 - [ ] Both restore modes tested
-- [ ] `ak_lint` + `ak_typecheck` clean
+- [ ] `wp_lint` + `wp_typecheck` clean
 
-#### [backend] Task 3.4: ak_session_capture MCP tool (manual event capture)
+#### [backend] Task 3.4: wp_session_capture MCP tool (manual event capture)
 
 **Status:** todo
 
@@ -451,8 +451,8 @@ Lets agents record their own decisions/notes outside tool-call events. Input: `{
 
 **Acceptance:**
 
-- [ ] Manual events visible via ak_session_search
-- [ ] `ak_lint` + `ak_typecheck` clean
+- [ ] Manual events visible via wp_session_search
+- [ ] `wp_lint` + `wp_typecheck` clean
 
 ### Phase 4: Setup orchestration + migration [Complexity: M]
 
@@ -462,7 +462,7 @@ Lets agents record their own decisions/notes outside tool-call events. Input: `{
 
 **Depends:** Task 2.1, 2.2, 2.3, 3.1
 
-Add `src/cli/commands/init/scaffolders/scaffold-session-memory.ts` — runs as part of `ak setup` (refinement F1 v1: integrates into existing `init/scaffolders/` pattern, NOT a new `setup/` directory).
+Add `src/cli/commands/init/scaffolders/scaffold-session-memory.ts` — runs as part of `wp setup` (refinement F1 v1: integrates into existing `init/scaffolders/` pattern, NOT a new `setup/` directory).
 
 Responsibilities:
 1. Ensure `~/.webpresso/sessions/` directory exists
@@ -500,7 +500,7 @@ Responsibilities:
 Per refinement F8/F14 v1: lane-2 ownership lives in `catalog/agent/rules/context-mode-routing.md`, not `gstack-routing.md`. Update the canonical lane-2 rule to:
 
 1. Mark context-mode as deprecated
-2. State that `ak_session_*` is the new lane-2 surface
+2. State that `wp_session_*` is the new lane-2 surface
 3. Link to the v1 blueprint as the implementation record
 
 Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect the new lane-1+lane-2 unification under agent-kit.
@@ -513,12 +513,12 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 **Acceptance:**
 
 - [ ] Both rules updated and cross-link
-- [ ] `ak_audit kind=docs-frontmatter` passes
-- [ ] Old context-mode references replaced with ak_session_* recommendations
+- [ ] `wp_audit kind=docs-frontmatter` passes
+- [ ] Old context-mode references replaced with wp_session_* recommendations
 
 ### Phase 5: Output Sandboxing (context-mode replacement parity) [Complexity: S-M]
 
-#### Task 5.1: `ak_session_execute` — single-command output sandboxing
+#### Task 5.1: `wp_session_execute` — single-command output sandboxing
 
 **Status:** done
 
@@ -538,7 +538,7 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 
 ---
 
-#### Task 5.2: `ak_session_batch_execute` — parallel batch with search
+#### Task 5.2: `wp_session_batch_execute` — parallel batch with search
 
 **Status:** done
 
@@ -577,7 +577,7 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 
 ---
 
-#### Task 5.4: Routing guidance — nudge Claude toward `ak_session_execute`
+#### Task 5.4: Routing guidance — nudge Claude toward `wp_session_execute`
 
 **Status:** done
 
@@ -587,11 +587,11 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 - `src/hooks/sessionstart/index.ts`
 - `catalog/agent/rules/context-mode-routing.md`
 
-**Purpose:** SessionStart routing block tells Claude to route large-output commands through `ak_session_execute` instead of raw Bash. Updates the canonical lane-2 routing rule to reference `ak_session_execute` as the replacement for `ctx_execute`.
+**Purpose:** SessionStart routing block tells Claude to route large-output commands through `wp_session_execute` instead of raw Bash. Updates the canonical lane-2 routing rule to reference `wp_session_execute` as the replacement for `ctx_execute`.
 
 **Acceptance:**
-- [x] `AK_ROUTING_BLOCK` injected by SessionStart includes `ak_session_execute` as a decision row for large-output Bash commands
-- [x] `catalog/agent/rules/context-mode-routing.md` updated to reference `ak_session_execute` in the routing table and hard-rules section
+- [x] `WP_ROUTING_BLOCK` injected by SessionStart includes `wp_session_execute` as a decision row for large-output Bash commands
+- [x] `catalog/agent/rules/context-mode-routing.md` updated to reference `wp_session_execute` in the routing table and hard-rules section
 
 ---
 
@@ -599,14 +599,14 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 
 | Gate | Command | Success Criteria |
 | ---- | ------- | ---------------- |
-| Type safety | `ak_typecheck --package agent-kit` | Zero errors |
-| Lint | `ak_lint --file <touched>` | Zero violations |
-| Unit tests | `ak_test --file <touched>` | All pass |
-| Full QA | `ak_qa` | All pass |
+| Type safety | `wp_typecheck --package agent-kit` | Zero errors |
+| Lint | `wp_lint --file <touched>` | Zero violations |
+| Unit tests | `wp_test --file <touched>` | All pass |
+| Full QA | `wp_qa` | All pass |
 | Hot path perf | bench in session-capture.test.ts | p99 < 100ms (informational; v2 raises bar) |
-| Smoke test | `ak setup` in scratch repo + simulated compaction | Restore returns relevant content |
-| Migration | `ak setup` with context-mode in `.claude-plugin/plugin.json` | Removed, backup written |
-| Audit | `ak_audit kind=blueprint-lifecycle` | Blueprint passes |
+| Smoke test | `wp setup` in scratch repo + simulated compaction | Restore returns relevant content |
+| Migration | `wp setup` with context-mode in `.claude-plugin/plugin.json` | Removed, backup written |
+| Audit | `wp_audit kind=blueprint-lifecycle` | Blueprint passes |
 
 ## Cross-Plan References
 
@@ -620,7 +620,7 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 
 | Edge Case | Risk | Solution | Task |
 | --------- | ---- | -------- | ---- |
-| better-sqlite3 native binding not available for user's platform | Hook crash → tool calls fail | Catch import error in session-memory entry; ak_session_* tools return `unavailable`; agent-kit continues to work | All Phase 1 |
+| better-sqlite3 native binding not available for user's platform | Hook crash → tool calls fail | Catch import error in session-memory entry; wp_session_* tools return `unavailable`; agent-kit continues to work | All Phase 1 |
 | SQLite WAL file locked by concurrent process | Capture write fails | better-sqlite3 retries with BUSY_TIMEOUT; on persistent failure, log + return success (non-blocking) | 1.2, 2.1 |
 | `~/.webpresso/sessions/` directory not writable | Setup fails opaquely | Detect at setup time, print clear error + opt-out flag | 4.1 |
 | Repo hash collision (extremely unlikely with 16-char prefix) | Two repos share session DB | 16 hex chars = 64 bits; collision probability negligible. Documented limitation | 1.2 |
@@ -642,11 +642,11 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 
 | Risk | Impact | Mitigation |
 | ---- | ------ | ---------- |
-| better-sqlite3 doesn't ship a prebuilt binary for an ingest-lens dev's exotic platform | `pnpm add` fails, agent-kit becomes unusable | Catch import failure at session-memory entry; ak_session_* tools degrade to `unavailable`; document supported platforms (linux/darwin/windows × x64/arm64) |
+| better-sqlite3 doesn't ship a prebuilt binary for an ingest-lens dev's exotic platform | `pnpm add` fails, agent-kit becomes unusable | Catch import failure at session-memory entry; wp_session_* tools degrade to `unavailable`; document supported platforms (linux/darwin/windows × x64/arm64) |
 | Schema drift between v1 (TS) and v2 (Rust) breaks the "engine swap" promise | v2 migration becomes a re-ingest | Schema is documented in this blueprint as the contract; v2 task includes byte-identity test against v1 SQL |
 | Hot path latency creeps over budget as event log grows | Interactive feel degrades | OPTIMIZE every 50 inserts; bench guard in CI; v2 brings hard SLO via Rust |
 | WAL checkpoint stalls under heavy concurrent capture | DB grows unboundedly | better-sqlite3 default checkpoint cadence + manual WAL_CHECKPOINT in periodic task |
-| Pretool guard hooks block agents from using ak_session_* MCP tools | Agents can't capture state | Verify ak_session_* MCP names are in any pretool allowlist or routing block |
+| Pretool guard hooks block agents from using wp_session_* MCP tools | Agents can't capture state | Verify wp_session_* MCP names are in any pretool allowlist or routing block |
 | Schema becomes load-bearing for v2 — locking us in | v2 design constrained by v1 mistakes | Schema reviewed in v2 blueprint planning; if breaking change needed, document migration in v2 |
 
 ## Technology Choices
@@ -661,7 +661,7 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 | MCP SDK | `@modelcontextprotocol/sdk` (existing pinned version in agent-kit) | as pinned | Already in use |
 | Hash for repo id | `node:crypto` SHA-256, first 16 chars hex | n/a | No external dep; deterministic |
 | Test runner | vitest | as pinned in agent-kit | Refinement F11 v1: existing convention |
-| Lifecycle audit | `ak_audit kind=blueprint-lifecycle` | existing | Standard repo gate |
+| Lifecycle audit | `wp_audit kind=blueprint-lifecycle` | existing | Standard repo gate |
 
 ## Refinement summary
 

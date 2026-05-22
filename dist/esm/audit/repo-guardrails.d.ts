@@ -83,7 +83,7 @@ export interface NoRelativePackageScriptsOptions {
  * path-relative sibling scripts — those break when packages move.
  *
  * @example bad  — "build": "node [dot-dot-dot]/scripts/foo.js"  (relative parent path)
- * @example good — "build": "pnpm --filter scripts foo"  or  "build": "ak build"
+ * @example good — "build": "pnpm --filter scripts foo"  or  "build": "wp build"
  */
 export declare function auditNoRelativePackageScripts(root: string, options?: NoRelativePackageScriptsOptions): RepoAuditResult;
 //# sourceMappingURL=repo-guardrails.d.ts.map

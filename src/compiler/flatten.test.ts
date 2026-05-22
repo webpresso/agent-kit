@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { flattenAgentDir, writeFlattenedAssets } from './flatten.js'
 
 function makeTmp(): string {
-  return mkdtempSync(join(tmpdir(), 'ak-flatten-'))
+  return mkdtempSync(join(tmpdir(), 'wp-flatten-'))
 }
 
 function writeSkill(agentDir: string, name: string, content: string): void {

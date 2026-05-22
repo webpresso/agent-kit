@@ -72,7 +72,7 @@ function resolveCurrentPackageRoot(): string {
     if (parent === dir) break
     dir = parent
   }
-  throw new Error('ak init: could not locate the agent-kit package root for subagents fallback.')
+  throw new Error('wp init: could not locate the agent-kit package root for subagents fallback.')
 }
 
 export function scaffoldSubagents(input: ScaffoldSubagentsInput): MergeResult[] {

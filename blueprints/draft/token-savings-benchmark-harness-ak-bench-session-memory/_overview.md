@@ -14,13 +14,13 @@ tags:
   - mit
 ---
 
-# Token-savings benchmark harness `ak bench session-memory`
+# Token-savings benchmark harness `wp bench session-memory`
 
 ## Product wedge anchor
 
 - **Stage outcome:** Webpresso open-sourcing extraction roadmap, Wave 1 — agent-kit ships as a reusable building block. The session-memory family (v1/v2) needs **proof of token savings** before it can be pitched as a context-mode replacement to 3rd-party consumers like ozby/ingest-lens. Must be **vendor-neutral** to compare Claude Code session memory vs OpenAI Codex CLI memory honestly.
-- **Consuming surface:** New CLI verb `ak bench session-memory` (lives at `src/cli/commands/bench/session-memory.ts`). Output: markdown report in `runs/<run-id>/report.md` with cost/recall/latency comparison across `(vendor, variant)` cells: Claude Code × {baseline, context-mode, v1, v2} + Codex CLI × {baseline, codex-memory}.
-- **New user-visible capability:** A maintainer or 3rd-party plugin author can run `ak bench session-memory --scenario debug --all-vendors --all-variants` and receive a defensible, reproducible cross-vendor token-savings report — works for any agentic CLI that emits per-call usage (Claude Code, Codex CLI, future Gemini CLI).
+- **Consuming surface:** New CLI verb `wp bench session-memory` (lives at `src/cli/commands/bench/session-memory.ts`). Output: markdown report in `runs/<run-id>/report.md` with cost/recall/latency comparison across `(vendor, variant)` cells: Claude Code × {baseline, context-mode, v1, v2} + Codex CLI × {baseline, codex-memory}.
+- **New user-visible capability:** A maintainer or 3rd-party plugin author can run `wp bench session-memory --scenario debug --all-vendors --all-variants` and receive a defensible, reproducible cross-vendor token-savings report — works for any agentic CLI that emits per-call usage (Claude Code, Codex CLI, future Gemini CLI).
 
 ## Context
 
@@ -74,7 +74,7 @@ This blueprint implements that adoption.
 | Recall measurement | LoCoMo-style qrels (Q/A pairs) | Industry standard, but custom qrels for our agentic workload |
 | Trials per cell | N=2 | Per existing benchmark plan F12 (Wilson CI for variance) |
 | License | MIT | Aligns with agent-kit ecosystem; rules out any ELv2 code from context-mode |
-| Distribution | `ak bench session-memory` subcommand | Aligns with existing `ak setup`, `ak blueprint`, `ak audit` surface |
+| Distribution | `wp bench session-memory` subcommand | Aligns with existing `wp setup`, `wp blueprint`, `wp audit` surface |
 
 ## Quick Reference (Execution Waves)
 
@@ -137,7 +137,7 @@ Build the manifest module that captures and verifies pinned tool versions at run
 
 **Depends:** None
 
-Parse `claude --print --output-format stream-json` output into a typed `Usage` record. Extracts the `result` event and pulls `{input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, duration_ms}`. Also enumerates `tool_use` events for "did the agent use ak_session_search" check.
+Parse `claude --print --output-format stream-json` output into a typed `Usage` record. Extracts the `result` event and pulls `{input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, duration_ms}`. Also enumerates `tool_use` events for "did the agent use wp_session_search" check.
 
 **Files:**
 
@@ -286,7 +286,7 @@ Author 3 versioned scenarios that exercise compaction. Each scenario JSON has: `
 - [ ] qrels file has ≥ 5 Q/A pairs per scenario for recall scoring
 - [ ] Each scenario's worst-case token count documented in scenario JSON
 
-#### [backend] Task 3.2: `ak bench session-memory` CLI command
+#### [backend] Task 3.2: `wp bench session-memory` CLI command
 
 **Status:** todo
 
@@ -364,13 +364,13 @@ Document the harness so a 3rd-party plugin author can use it without reading the
 
 1. Write README with: install (none — bun built-in), 3-line how-to-run, expected output table, troubleshooting
 2. Write methodology doc summarizing the 2026-05-14 research findings + linking to it
-3. Run `ak audit docs-frontmatter` (or equivalent) to verify frontmatter
+3. Run `wp audit docs-frontmatter` (or equivalent) to verify frontmatter
 
 **Acceptance:**
 
 - [ ] README has working "how to run" example
 - [ ] Methodology doc cross-references `docs/research/2026-05-14-token-savings-benchmark-methodology.md`
-- [ ] `ak_audit kind=docs-frontmatter` passes on new docs
+- [ ] `wp_audit kind=docs-frontmatter` passes on new docs
 
 ---
 
@@ -378,9 +378,9 @@ Document the harness so a 3rd-party plugin author can use it without reading the
 
 | Gate | Command | Success Criteria |
 | ---- | ------- | ---------------- |
-| Type safety | `ak_typecheck` (or `bun run typecheck`) | Zero errors |
-| Lint | `ak_lint` | Zero violations |
-| Tests | `ak_test --file scripts/bench/**/*.test.ts` | All pass |
+| Type safety | `wp_typecheck` (or `bun run typecheck`) | Zero errors |
+| Lint | `wp_lint` | Zero violations |
+| Tests | `wp_test --file scripts/bench/**/*.test.ts` | All pass |
 | Reproducibility | `bun test scripts/bench/__tests__/reproducibility.test.ts` | 2 runs byte-identical |
 | Smoke (no API) | `bun src/cli/cli.ts bench session-memory --dry-run` | Exit 0, valid manifest report |
 | End-to-end (1 cell, real API) | `bun src/cli/cli.ts bench session-memory --scenario debug --variant baseline --trials 1` | Cost < $1, report.md generated |
@@ -450,7 +450,7 @@ Document the harness so a 3rd-party plugin author can use it without reading the
 | HIGH | ELv2 "algorithm-learnable" is legally casual. Even patterns influenced by ELv2 source structure/names/tests carry risk. | Use clean-room spec process: write spec from research doc only (cites ELv2 sources but isn't derived); no source-derived test names; document provenance per file. |
 | MEDIUM | `duration_ms` is `result` SIBLING, not part of `usage` object. Per-step assistant messages also carry usage; need event-id de-dup. | Update `usage-extractor.ts` design: parse `result.usage` (cumulative) AND filter per-step `assistant` events with event-id de-dup. Real captured fixture mandatory before implementation. |
 | MEDIUM | Anthropic Usage API has reporting delay (~5min, sometimes hours). Blocking ±2% agreement at run end is fragile. | Mark reconciliation `pending` at run end; poll bounded (max 30min); update report later. Don't block run completion. |
-| MEDIUM | Manifest hard-refusal on bun upgrade is hostile without update path. | Add `ak bench session-memory update-manifest --reason "..."` that records old/new versions, runs dry-run + 1-cell smoke, requires human-readable reason in lock diff. |
+| MEDIUM | Manifest hard-refusal on bun upgrade is hostile without update path. | Add `wp bench session-memory update-manifest --reason "..."` that records old/new versions, runs dry-run + 1-cell smoke, requires human-readable reason in lock diff. |
 | MEDIUM | Cost estimate was wrong but $50 cap is safe. Real: 24 runs × 50K input ≈ $3.60 input + $0.36 cache_read + $4.50 cache_writes + $1.80 output = **~$10**. | Update cost section: realistic ~$10–15 per full run; $50 cap stays as safety margin. |
 | LOW | `bun:test` Jest compatibility incomplete. | Acknowledge in tech choices: vitest fallback for any compat gap. |
 | LOW | `Bun.spawn` defaults `stderr: "inherit"`. | Document in variant-runner.ts: must set `stderr: "pipe"` to capture rate_limit. |
@@ -608,7 +608,7 @@ Codex re-reviewed after the OpenCode/3-vendor expansion. Verdict: **same severit
 | HIGH | `{usage_per_call?, usage_session}` adapter shape leaks granularity into consumers via `undefined` branching | **Replaced with `UsageMeasurement`**: `{ total: TokenCounts, attribution: { kind: 'per-call' \| 'session-only', calls?: TokenCounts[] }, source: string, confidence: 'high' \| 'medium', tier: 1 \| 2 }`. Aggregator/cost code consumes `total` only; `attribution.kind` only relevant to stats/reporting. |
 | HIGH | Cross-tier comparison gate is policy prose, not data structure | **`BenchmarkCell` gets first-class `{vendor, tier, granularity}` fields.** `stats.compare(a, b, { allowCrossTier?: false })` enforces in code: throws if `a.tier !== b.tier && !allowCrossTier`. Reporter receives pre-validated claims. |
 | HIGH | Worktree parallelization wrong — extractor (1.2) cannot precede adapter interface (1.5); pre-flight (0.0) labeled both "Final" and "BLOCKS ALL" | **Re-sequenced**: 0.0 + 0.-1 (preflight) → 1.5 (interface only, types) → 1.2 + 1.3 + 1.1 in parallel → 2.x → 3.x → 4.x. Authoring tasks (3.1 qrels) stay parallel from Wave 0. |
-| HIGH | Tier rule is prose, not infrastructure. No audit gate. CLAUDE.md re-lists tiers (drift risk). | **New Task 4.3**: implement `ak audit supported-agent-clis`. Scans plans/docs for known CLI names, requires tier classification, fails on Tier 3 silently added. CLAUDE.md trimmed to pointer-only (already done). |
+| HIGH | Tier rule is prose, not infrastructure. No audit gate. CLAUDE.md re-lists tiers (drift risk). | **New Task 4.3**: implement `wp audit supported-agent-clis`. Scans plans/docs for known CLI names, requires tier classification, fails on Tier 3 silently added. CLAUDE.md trimmed to pointer-only (already done). |
 | HIGH | OpenCode cache isolation not enforceable — config merges from multiple sources, parsing misses actual provider used | **OpenCode adapter contract update**: every `opencode run` invocation uses `--pure`, isolated `OPENCODE_CONFIG_CONTENT`, explicit `--model provider/model`, restricted `enabled_providers`. **Validate provider/model from emitted events**, fail-closed on mismatch. |
 | MEDIUM | Cell/cost math inconsistent (36 vs 36-72 cells) | **Single explicit cell matrix below.** No more ranges. |
 
@@ -641,7 +641,7 @@ GRAND TOTAL: 42 cells
 ### New tasks added in round 2
 
 - **Task 0.-1 (Phase -1, BLOCKS Phase 0)**: OpenCode telemetry fixture capture. Run `opencode run --format json "say hi"` against an isolated config, parse output, prove either (a) per-call usage events emit OR (b) `export <sessionID>` returns aggregate. If neither: demote OpenCode to reference-only.
-- **Task 4.3**: `ak audit supported-agent-clis` — codifies the tier rule as enforced infrastructure, not policy prose.
+- **Task 4.3**: `wp audit supported-agent-clis` — codifies the tier rule as enforced infrastructure, not policy prose.
 
 ### What round 2 did NOT find
 

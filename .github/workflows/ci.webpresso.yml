@@ -16,7 +16,7 @@ env:
   # @webpresso/runtime-format). `.npmrc` references ${GH_PACKAGES_TOKEN};
   # without this env entry the substitution becomes empty and pnpm gets
   # 401 Unauthorized. Mirrors release.yml's per-job auth wiring at
-  # workflow scope so check/test/ak-audits all inherit it.
+  # workflow scope so check/test/wp-audits all inherit it.
   GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
 jobs:
@@ -51,7 +51,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run test
 
-  ak-audits:
+  wp-audits:
     runs-on: ubicloud-standard-2
     steps:
       - uses: actions/checkout@v5
@@ -64,8 +64,8 @@ jobs:
         with:
           bun-version: latest
       - run: pnpm install --frozen-lockfile
-      - name: Run ak audit guardrails
+      - name: Run wp audit guardrails
         # The repo IS @webpresso/agent-kit; invoke the in-tree CLI via bun
-        # directly rather than relying on the `ak` shim, which only exists
-        # after `pnpm build` runs chmod-bins + link-self-bins.
+        # directly rather than relying on a shim, which only exists after
+        # `pnpm build` runs chmod-bins + link-self-bins.
         run: bun src/cli/cli.ts audit guardrails

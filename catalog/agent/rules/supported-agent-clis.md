@@ -61,7 +61,7 @@ expansion.
   says "supported CLIs", it links here. Single source of truth.
 - **Adding a new tier-1 CLI requires** plan-eng-review approval + integration
   test coverage + per-call usage extractor.
-- **Promoting tier 2 → tier 1** requires the same gate plus a 1-week soak test
+- **Promoting tier 2 → tier 1** requires the same gate plus a 1-week sowp test
   in actual benchmark runs.
 - **Removing a tier-1 CLI** requires CEO-review-level scope decision (it's a
   product position change).

@@ -30,7 +30,7 @@ const getSurfacePathMock = vi.mocked(getSurfacePath)
 let tmpDir: string
 
 beforeEach(() => {
-  tmpDir = mkdtempSync(join(tmpdir(), 'ak-installer-int-'))
+  tmpDir = mkdtempSync(join(tmpdir(), 'wp-installer-int-'))
   getSurfacePathMock.mockImplementation((name: string, scope: 'repo' | 'worktree' | 'user') => {
     if (scope !== 'user') throw new Error(`unexpected scope ${scope}`)
     return join(tmpDir, name)
@@ -54,7 +54,7 @@ async function waitFor(condition: () => boolean, timeoutMs = 3_000): Promise<boo
 
 describe('scheduleDeferredInstall — real spawn integration', () => {
   it('spawns a detached child that survives the synchronous return', async () => {
-    const marker = 'AK_INSTALLER_INTEGRATION_MARKER_xyz123'
+    const marker = 'WP_INSTALLER_INTEGRATION_MARKER_xyz123'
     const result = scheduleDeferredInstall({
       command: ['node', '-e', `process.stdout.write('${marker}\\n')`],
     })
@@ -88,7 +88,7 @@ describe('scheduleDeferredInstall — real spawn integration', () => {
   })
 
   it('captures child stderr to the same log file as stdout', async () => {
-    const stderrMarker = 'AK_INSTALLER_INT_STDERR_abc456'
+    const stderrMarker = 'WP_INSTALLER_INT_STDERR_abc456'
     const result = scheduleDeferredInstall({
       command: ['node', '-e', `process.stderr.write('${stderrMarker}\\n')`],
     })

@@ -7,7 +7,7 @@ import { vitestTransform } from './vitest.js'
 describe('vitestTransform', () => {
   const fixture = (name: string) =>
     readFileSync(join(process.cwd(), 'src/output-transforms/__fixtures__/vitest', name), 'utf8')
-  const context = { toolName: 'ak_test', normalizedToolName: 'test' }
+  const context = { toolName: 'wp_test', normalizedToolName: 'test' }
 
   it('emits empty compact output for all-pass JSON', () => {
     expect(vitestTransform(fixture('v2-all-pass.json'), context).rawOutput).toBe('')

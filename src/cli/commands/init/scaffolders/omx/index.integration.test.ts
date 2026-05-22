@@ -37,7 +37,7 @@ function makeOmxOnlyMockSpawn(): Parameters<typeof ensureOmx>[0]['spawn'] {
 
 describe('ensureOmx project-scope cleanup integration', () => {
   it('removes tracked project-scoped OMX files when migrating project scope to user scope', () => {
-    const repoRoot = mkdtempSync(join(tmpdir(), 'ak-omx-project-cleanup-'))
+    const repoRoot = mkdtempSync(join(tmpdir(), 'wp-omx-project-cleanup-'))
     mkdirSync(join(repoRoot, '.codex'), { recursive: true })
     mkdirSync(join(repoRoot, '.omx', 'state'), { recursive: true })
     writeFileSync(join(repoRoot, '.codex', 'config.toml'), 'model = "gpt-5"\n', 'utf8')
@@ -63,7 +63,7 @@ describe('ensureOmx project-scope cleanup integration', () => {
   })
 
   it('does not remove tracked project-scoped files when project scope is explicitly requested', () => {
-    const repoRoot = mkdtempSync(join(tmpdir(), 'ak-omx-project-preserve-'))
+    const repoRoot = mkdtempSync(join(tmpdir(), 'wp-omx-project-preserve-'))
     mkdirSync(join(repoRoot, '.omx'), { recursive: true })
     writeFileSync(join(repoRoot, '.omx', 'setup-scope.json'), '{"scope":"project"}\n', 'utf8')
     git(repoRoot, ['init'])

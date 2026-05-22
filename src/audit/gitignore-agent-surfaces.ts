@@ -27,7 +27,7 @@ export async function auditGitignoreAgentSurfaces(cwd: string): Promise<RepoAudi
       title: 'gitignore agent surfaces',
       checked: EXPECTED_PATHS.length,
       violations: [
-        { file: '.gitignore', message: '.gitignore not found — run `ak setup` to scaffold it' },
+        { file: '.gitignore', message: '.gitignore not found — run `wp setup` to scaffold it' },
       ],
     }
   }
@@ -54,7 +54,7 @@ export async function auditGitignoreAgentSurfaces(cwd: string): Promise<RepoAudi
     if (!lineSet.has(expected)) {
       violations.push({
         file: '.gitignore',
-        message: `Missing gitignore entry: ${expected} — run \`ak setup\` to add generated agent surface paths`,
+        message: `Missing gitignore entry: ${expected} — run \`wp setup\` to add generated agent surface paths`,
       })
       continue
     }
@@ -62,7 +62,7 @@ export async function auditGitignoreAgentSurfaces(cwd: string): Promise<RepoAudi
     if (last?.startsWith('!')) {
       violations.push({
         file: '.gitignore',
-        message: `Gitignore entry ${expected} is overridden by later exception ${last} — run \`ak setup\` to move the generated surface block to the end`,
+        message: `Gitignore entry ${expected} is overridden by later exception ${last} — run \`wp setup\` to move the generated surface block to the end`,
       })
     }
   }

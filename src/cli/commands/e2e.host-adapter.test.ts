@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { createAkE2eExecutionPlan } from './e2e.js'
 
-describe('ak e2e host adapter integration', () => {
+describe('wp e2e host adapter integration', () => {
   let testDir: string
 
   beforeEach(() => {

@@ -58,7 +58,7 @@ Verified against [Claude Code plugin docs](https://docs.claude.com/en/docs/claud
 - `webpresso/agent-kit/.claude-plugin/plugin.json` — current minimal manifest (3 fields).
 - `webpresso/agent-kit/.gitignore` (Build outputs section) — `dist/` is ignored. `git ls-files dist | wc -l` → 0. **(Source for F1.)**
 - `webpresso/agent-kit/package.json` — `bin`, `files`, `tshy.exports` declared. Deps: `cac` (CLI), `zod` 4.x, `js-yaml`, `gray-matter`. **(Source for F2.)**
-- `webpresso/agent-kit/src/cli/cli.ts` and `src/cli/commands/{test,e2e,dev,cursor-windsurf-sync}.ts` — CLI surface to extend with `ak mcp`.
+- `webpresso/agent-kit/src/cli/cli.ts` and `src/cli/commands/{test,e2e,dev,cursor-windsurf-sync}.ts` — CLI surface to extend with `wp mcp`.
 - `webpresso/agent-kit/src/hooks/{pretool-guard,post-tool,stop,guard-switch}/` — existing hook bins.
 - `webpresso/agent-kit/skills/` — 15 SKILL.md files.
 - `webpresso/agent-kit/blueprints/planned/agent-kit-parity-pass/_overview.md` — parent_roadmap convention reference. **(Source for F3, F9.)**
@@ -80,16 +80,16 @@ webpresso/agent-kit/                    (one repo, two manifest files)
 ├── src/
 │   ├── hooks/                          EXISTING — 5 hook bins
 │   │   └── sessionstart/               NEW — routing-rule injector (matcher: startup|resume) [F13]
-│   └── mcp/                            NEW — `ak mcp` MCP server, stdio transport
+│   └── mcp/                            NEW — `wp mcp` MCP server, stdio transport
 │       ├── server.ts                   stdio entry — uses @modelcontextprotocol/sdk@^1.29.0/server
 │       ├── auto-discover.ts            scans tools/*.ts → registers each tool's exported descriptor [F4]
 │       └── tools/
-│           ├── test.ts                 ak_test({packages?, files?, suite?, backend?})
-│           ├── lint.ts                 ak_lint({files?, fix?})
-│           ├── typecheck.ts            ak_typecheck({packages?})
-│           ├── qa.ts                   ak_qa() — composite parallel
-│           ├── audit.ts                ak_audit({kind})
-│           └── blueprint.ts            ak_blueprint({action, ...})
+│           ├── test.ts                 wp_test({packages?, files?, suite?, backend?})
+│           ├── lint.ts                 wp_lint({files?, fix?})
+│           ├── typecheck.ts            wp_typecheck({packages?})
+│           ├── qa.ts                   wp_qa() — composite parallel
+│           ├── audit.ts                wp_audit({kind})
+│           └── blueprint.ts            wp_blueprint({action, ...})
 ├── package.json#bin                    EXISTING + 2 NEW (ak-mcp, ak-sessionstart-routing) [F4]
 └── scripts/release.mjs                 NEW — pnpm build → git add -f dist → tag — see F1 mitigation
 
@@ -108,7 +108,7 @@ Consumer install flow (after release):
 | Marketplace location | Same repo as the plugin (`webpresso/agent-kit/.claude-plugin/`) | Matches context-mode and the docs' "Host on GitHub" recommendation. No new repo. |
 | Granularity | One plugin (`agent-kit`) initially; sub-plugins later | Skill count is 15. wshobson's 79-plugin pattern is for catalog-style products. Revisit at >30 skills. |
 | Hook declaration | Inline in `plugin.json` | Schema is small (~4 entries). Avoids a separate `hooks.json`. |
-| MCP server packaging | Bundled, started via `${CLAUDE_PLUGIN_ROOT}/dist/esm/cli/cli.js mcp` | Reuses the `ak` CLI; no separate `start.mjs`. |
+| MCP server packaging | Bundled, started via `${CLAUDE_PLUGIN_ROOT}/dist/esm/cli/cli.js mcp` | Reuses the `wk` CLI; no separate `start.mjs`. |
 | **Distribution of `dist/`** | **Commit `dist/` at release tags only; pin marketplace `source.ref` to those tags** | F1 mitigation. `dist/` stays gitignored on `main`; the release script force-adds and tags. Mirrors how many plugin repos handle this. |
 | `just`-vs-`pnpm` backend | Auto-detect (justfile present → just; else pnpm -F); `agent-kit.config.ts#testBackend` overrides | F7. Keeps monorepo working; portable to public consumers. |
 | Routing injection event | `SessionStart` matcher `startup\|resume` (NOT `InstructionsLoaded`) | F13. InstructionsLoaded is observability-only and cannot inject context. |
@@ -152,7 +152,7 @@ Promote `.claude-plugin/plugin.json` to declare `hooks`, `commands`, and `mcpSer
 **Files:**
 - Modify: `.claude-plugin/plugin.json`
 - Modify: `package.json` (add 2 bin entries to `bin`, add `dist/esm/mcp/cli.js` and `dist/esm/hooks/sessionstart/index.js` to `chmod-bins` script, ensure `commands` is in `files` array, **extend `lint:pkg` script to also run `claude plugin validate .` if the `claude` CLI is on PATH** — this consolidates all Wave-0 `package.json` writes here so 1.2 has no `package.json` overlap)
-- Create: `src/mcp/cli.ts` (shim — exits 2 with "ak mcp not yet implemented; this is a release-engineering placeholder")
+- Create: `src/mcp/cli.ts` (shim — exits 2 with "wp mcp not yet implemented; this is a release-engineering placeholder")
 - Create: `src/hooks/sessionstart/index.ts` (shim — exits 0 silently)
 - Create: `__fixtures__/plugin-manifest/expected.json` (golden snapshot)
 - Create: `src/build/validate-plugin-manifest.test.ts`
@@ -206,7 +206,7 @@ Create `commands/` with markdown files for `/ak:test`, `/ak:qa`, `/ak:audit`, `/
 - Create: `src/build/validate-commands.test.ts`
 
 **Steps (TDD):**
-1. Write a test asserting each `commands/*.md` is <30 lines, has a YAML frontmatter `description` field, and references `mcp__agent-kit__ak_<tool>` in its body.
+1. Write a test asserting each `commands/*.md` is <30 lines, has a YAML frontmatter `description` field, and references `mcp__agent-kit__wp_<tool>` in its body.
 2. Run — verify FAIL.
 3. Write each command file.
 4. Run — verify PASS.
@@ -215,17 +215,17 @@ Create `commands/` with markdown files for `/ak:test`, `/ak:qa`, `/ak:audit`, `/
 - [x] 4 command files created.
 - [x] Each is <30 lines.
 - [x] Each references its corresponding MCP tool by namespaced name.
-### Phase 2: `ak mcp` MCP server (Waves 1–3)
+### Phase 2: `wp mcp` MCP server (Waves 1–3)
 
-#### [backend] Task 1.4: MCP server scaffold + auto-discovery + `ak_test` seed tool
+#### [backend] Task 1.4: MCP server scaffold + auto-discovery + `wp_test` seed tool
 
 **Status:** done
 
 **Depends:** Task 1.1
 
-Replace `src/mcp/cli.ts` shim with a real stdio server using `@modelcontextprotocol/sdk@^1.29.0/server`. Implement `auto-discover.ts` that scans `src/mcp/tools/*.ts` and registers each tool from a default-export descriptor `{name, description, inputSchema, handler}`. Seed the directory with `tools/test.ts` (`ak_test`) to validate the auto-discovery pattern end-to-end. Register `ak mcp` as a `cac` subcommand on `src/cli/cli.ts`.
+Replace `src/mcp/cli.ts` shim with a real stdio server using `@modelcontextprotocol/sdk@^1.29.0/server`. Implement `auto-discover.ts` that scans `src/mcp/tools/*.ts` and registers each tool from a default-export descriptor `{name, description, inputSchema, handler}`. Seed the directory with `tools/test.ts` (`wp_test`) to validate the auto-discovery pattern end-to-end. Register `wp mcp` as a `cac` subcommand on `src/cli/cli.ts`.
 
-Backend selection for `ak_test`: detect `justfile` in cwd → `just test --package <p>...`; else `pnpm -F <p>... test`. Allow override via `agent-kit.config.ts#testBackend: 'just' \| 'pnpm' \| 'auto'` (default `auto`). (F7.)
+Backend selection for `wp_test`: detect `justfile` in cwd → `just test --package <p>...`; else `pnpm -F <p>... test`. Allow override via `agent-kit.config.ts#testBackend: 'just' \| 'pnpm' \| 'auto'` (default `auto`). (F7.)
 
 **Files:**
 - Create: `src/mcp/server.ts`, `src/mcp/auto-discover.ts`, `src/mcp/tools/test.ts`, `src/mcp/backends/just.ts`, `src/mcp/backends/pnpm.ts`
@@ -235,38 +235,38 @@ Backend selection for `ak_test`: detect `justfile` in cwd → `just test --packa
 - Modify: `package.json` (add `@modelcontextprotocol/sdk@^1.29.0`, `zod-to-json-schema@^3` to deps)
 
 **Steps (TDD):**
-1. Write `server.test.ts` — spawns the server via stdio, sends `tools/list`, asserts `ak_test` is present with the expected JSON Schema.
-2. Write `tools/test.test.ts` — calls `ak_test({packages: ["x"]})` against a mock spawn; asserts argv equals `["just", "test", "--package", "x"]` when justfile is present, `["pnpm", "-F", "x", "test"]` otherwise.
+1. Write `server.test.ts` — spawns the server via stdio, sends `tools/list`, asserts `wp_test` is present with the expected JSON Schema.
+2. Write `tools/test.test.ts` — calls `wp_test({packages: ["x"]})` against a mock spawn; asserts argv equals `["just", "test", "--package", "x"]` when justfile is present, `["pnpm", "-F", "x", "test"]` otherwise.
 3. Run all — verify FAIL.
 4. Implement.
 5. Run — verify PASS. Run full `pnpm test` to confirm no regression.
 
 **Acceptance:**
-- [x] `node ./dist/esm/mcp/cli.js` responds to MCP `tools/list` with at least `ak_test`.
-- [x] `ak_test({packages: ["x"]})` correctly routes to justfile or pnpm based on detection.
+- [x] `node ./dist/esm/mcp/cli.js` responds to MCP `tools/list` with at least `wp_test`.
+- [x] `wp_test({packages: ["x"]})` correctly routes to justfile or pnpm based on detection.
 - [x] `auto-discover.ts` picks up new files added under `tools/` without modifying `server.ts`.
-- [x] `ak mcp` subcommand is invokable via the `ak` CLI binary.
-#### [backend] Task 2.2: `ak_lint` tool
+- [x] `wp mcp` subcommand is invokable via the `wk` CLI binary.
+#### [backend] Task 2.2: `wp_lint` tool
 
 **Status:** done
 
 **Depends:** Task 1.4
 
-Add `tools/lint.ts` exporting `{name: "ak_lint", description, inputSchema: zod schema for {files?: string[], fix?: boolean}, handler}`. Backend: oxlint by default; falls back to `pnpm lint` per package if oxlint unavailable.
+Add `tools/lint.ts` exporting `{name: "wp_lint", description, inputSchema: zod schema for {files?: string[], fix?: boolean}, handler}`. Backend: oxlint by default; falls back to `pnpm lint` per package if oxlint unavailable.
 
 **Files:**
 - Create: `src/mcp/tools/lint.ts`, `src/mcp/tools/lint.test.ts`
 
 **Steps (TDD):**
-1. Write `lint.test.ts` — `ak_lint({files: ["a.ts","b.ts"]})` returns structured `{passed: boolean, issues: Array<{file, line, rule, message}>}`. Mock spawned oxlint output.
+1. Write `lint.test.ts` — `wp_lint({files: ["a.ts","b.ts"]})` returns structured `{passed: boolean, issues: Array<{file, line, rule, message}>}`. Mock spawned oxlint output.
 2. Run — verify FAIL.
 3. Implement.
 4. Run — verify PASS.
 
 **Acceptance:**
-- [x] `ak_lint` appears in `tools/list` after Task 1.4 auto-discovery.
+- [x] `wp_lint` appears in `tools/list` after Task 1.4 auto-discovery.
 - [x] Returns structured issues, not raw stdout.
-#### [backend] Task 2.3: `ak_typecheck` tool
+#### [backend] Task 2.3: `wp_typecheck` tool
 
 **Status:** done
 
@@ -286,19 +286,19 @@ Add `tools/typecheck.ts`. Runs `tsc --noEmit -p <pkg>/tsconfig.json` per resolve
 **Acceptance:**
 - [x] Returns structured tsc errors.
 - [x] Resolves packages from `pnpm-workspace.yaml` if present, else just runs at cwd.
-#### [backend] Task 2.5: `ak_audit` tool
+#### [backend] Task 2.5: `wp_audit` tool
 
 **Status:** done
 
 **Depends:** Task 1.4
 
-Add `tools/audit.ts`. Wraps existing `ak audit *` subcommands behind one MCP tool with `kind: "tph" | "catalog-drift" | "docs-frontmatter" | "blueprint-lifecycle" | "bundle-budget" | "commit-message" | "tech-debt"`.
+Add `tools/audit.ts`. Wraps existing `wp audit *` subcommands behind one MCP tool with `kind: "tph" | "catalog-drift" | "docs-frontmatter" | "blueprint-lifecycle" | "bundle-budget" | "commit-message" | "tech-debt"`.
 
 **Files:**
 - Create: `src/mcp/tools/audit.ts`, `src/mcp/tools/audit.test.ts`
 
 **Steps (TDD):**
-1. Write test — for each `kind`, asserts the corresponding `ak audit <kind>` is invoked and the output is parsed into a structured result.
+1. Write test — for each `kind`, asserts the corresponding `wp audit <kind>` is invoked and the output is parsed into a structured result.
 2. Run — verify FAIL.
 3. Implement.
 4. Run — verify PASS.
@@ -306,39 +306,39 @@ Add `tools/audit.ts`. Wraps existing `ak audit *` subcommands behind one MCP too
 **Acceptance:**
 - [x] All 7 `kind` values supported.
 - [x] Failure of any audit returns `{passed: false, kind, details}` rather than throwing.
-#### [backend] Task 2.6: `ak_blueprint` tool
+#### [backend] Task 2.6: `wp_blueprint` tool
 
 **Status:** done
 
 **Depends:** Task 1.4
 
-Add `tools/blueprint.ts`. Wraps `ak blueprint new|audit|list` behind `action: "new" | "audit" | "list"` with action-specific input schemas.
+Add `tools/blueprint.ts`. Wraps `wp blueprint new|audit|list` behind `action: "new" | "audit" | "list"` with action-specific input schemas.
 
 **Files:**
 - Create: `src/mcp/tools/blueprint.ts`, `src/mcp/tools/blueprint.test.ts`
 
 **Steps (TDD):**
-1. Write test — for each action, asserts the correct `ak blueprint <action>` invocation and structured-result parsing.
+1. Write test — for each action, asserts the correct `wp blueprint <action>` invocation and structured-result parsing.
 2. Run — verify FAIL.
 3. Implement.
 4. Run — verify PASS.
 
 **Acceptance:**
-- [x] `ak_blueprint({action: "audit", path: "..."})` returns `{passed, errors: []}`.
-- [x] `ak_blueprint({action: "new", goal, complexity})` returns the path of the created `_overview.md`.
-#### [backend] Task 2.4: `ak_qa` composite tool
+- [x] `wp_blueprint({action: "audit", path: "..."})` returns `{passed, errors: []}`.
+- [x] `wp_blueprint({action: "new", goal, complexity})` returns the path of the created `_overview.md`.
+#### [backend] Task 2.4: `wp_qa` composite tool
 
 **Status:** done
 
-**Depends:** Tasks 2.2, 2.3 (and transitively 1.4 for `ak_test`)
+**Depends:** Tasks 2.2, 2.3 (and transitively 1.4 for `wp_test`)
 
-Add `tools/qa.ts`. Runs `ak_lint` + `ak_typecheck` + `ak_test` in parallel via `Promise.all`. Returns per-step structured results plus a top-level `passed: boolean`.
+Add `tools/qa.ts`. Runs `wp_lint` + `wp_typecheck` + `wp_test` in parallel via `Promise.all`. Returns per-step structured results plus a top-level `passed: boolean`.
 
 **Files:**
 - Create: `src/mcp/tools/qa.ts`, `src/mcp/tools/qa.test.ts`
 
 **Steps (TDD):**
-1. Write test — invoking `ak_qa()` triggers all three tools concurrently (assert via spies); aggregate result has `{passed, lint, typecheck, test}`.
+1. Write test — invoking `wp_qa()` triggers all three tools concurrently (assert via spies); aggregate result has `{passed, lint, typecheck, test}`.
 2. Run — verify FAIL.
 3. Implement.
 4. Run — verify PASS.
@@ -418,7 +418,7 @@ Once ingest-lens is migrated and confirmed working, delete `src/cli/commands/ini
 4. Run — verify PASS.
 
 **Acceptance:**
-- [x] `ak setup --with agent-hooks` errors with a clear deprecation message OR is removed from the `--with` enum.
+- [x] `wp setup --with agent-hooks` errors with a clear deprecation message OR is removed from the `--with` enum.
 - [x] Existing setup golden tests updated and pass.
 ### Phase 5: Release engineering (parallel to Phase 4)
 
@@ -455,7 +455,7 @@ Add `scripts/release.mjs` that: runs `pnpm build`; force-adds `dist/` (overridin
 | Type safety | `pnpm typecheck` | Zero errors |
 | Tests | `pnpm test` | All pass, including new `mcp/`, `hooks/sessionstart/`, `build/validate-*` suites |
 | Package validity | `pnpm lint:pkg` (publint + attw) | No errors |
-| MCP smoke | `node ./dist/esm/mcp/cli.js` + scripted MCP `tools/list` request | Returns 6 tools (`ak_test`, `ak_lint`, `ak_typecheck`, `ak_qa`, `ak_audit`, `ak_blueprint`) |
+| MCP smoke | `node ./dist/esm/mcp/cli.js` + scripted MCP `tools/list` request | Returns 6 tools (`wp_test`, `wp_lint`, `wp_typecheck`, `wp_qa`, `wp_audit`, `wp_blueprint`) |
 | Plugin install dry-run | `claude plugin install ./` (in a temp test consumer) | All hooks register, MCP server starts, slash commands appear under `/ak:*` |
 | End-to-end (ingest-lens) | After Task 4.1: `/plugin install agent-kit@webpresso` then trigger an Edit | `ak-pretool-guard` fires; `ak-post-tool` runs lint after edit; SessionStart injects routing |
 | Public-package isolation | `webpresso/agent-kit/__tests__/export-isolation.test.ts` (existing) | No imports from `webpresso/monorepo` |
@@ -490,7 +490,7 @@ Add `scripts/release.mjs` that: runs `pnpm build`; force-adds `dist/` (overridin
 | Separate `webpresso/agent-kit-marketplace` repo | Extra repo to maintain. Docs and wshobson recommend co-hosting. |
 | Many small sub-plugins (per skill) | Premature fragmentation at 15 skills. Revisit at >30. |
 | Skip MCP server, just wire hooks | Hooks alone don't fix the "agent constructs lossy CLI strings" pain. MCP gives schema-validated tools — the actual DX upgrade. |
-| Keep `ak setup --with agent-hooks` as the primary install path | Two install paths confuse consumers; manual wiring is dead once plugin install works. |
+| Keep `wp setup --with agent-hooks` as the primary install path | Two install paths confuse consumers; manual wiring is dead once plugin install works. |
 | Use `InstructionsLoaded` hook for routing injection | Observability-only — cannot inject context (F13). |
 | Distribute `dist/` via a published npm package only (no committed `dist/`) | Marketplace install is a git clone, not `npm install`. Without committed `dist/`, the plugin is broken on install. F1. |
 | Add `dist/` to `main`'s checked-in tree | Pollutes diffs on every PR; conflicts in feature branches. Tag-only commit (Task 5.1) keeps `main` clean. |
@@ -523,9 +523,9 @@ Add `scripts/release.mjs` that: runs `pnpm build`; force-adds `dist/` (overridin
 Shipped 2026-04-26 across 5 waves:
 
 - **Wave 0** (Tasks 1.1, 1.2, 1.3) — `.claude-plugin/plugin.json` declares `hooks`, `commands`, `mcpServers` inline; `.claude-plugin/marketplace.json` exposes one plugin (`source: "./"`); `commands/` directory with 4 slash commands.
-- **Wave 1** (Tasks 1.4, 3.1) — `ak mcp` stdio MCP server using `@modelcontextprotocol/sdk@^1.29.0` with auto-discovery; `SessionStart` hook injects `.agent/routing.md` (matcher `startup|resume`).
-- **Wave 2** (Tasks 2.2, 2.3, 2.5, 2.6) — 4 MCP tools: `ak_lint`, `ak_typecheck`, `ak_audit`, `ak_blueprint` (each in its own `src/mcp/tools/*.ts` file, picked up by auto-discover).
-- **Wave 3** (Tasks 2.4, 5.1) — `ak_qa` composite tool; `scripts/release.mjs` with `--dry-run` default, commits `dist/` at release tags only (mainline stays clean).
+- **Wave 1** (Tasks 1.4, 3.1) — `wp mcp` stdio MCP server using `@modelcontextprotocol/sdk@^1.29.0` with auto-discovery; `SessionStart` hook injects `.agent/routing.md` (matcher `startup|resume`).
+- **Wave 2** (Tasks 2.2, 2.3, 2.5, 2.6) — 4 MCP tools: `wp_lint`, `wp_typecheck`, `wp_audit`, `wp_blueprint` (each in its own `src/mcp/tools/*.ts` file, picked up by auto-discover).
+- **Wave 3** (Tasks 2.4, 5.1) — `wp_qa` composite tool; `scripts/release.mjs` with `--dry-run` default, commits `dist/` at release tags only (mainline stays clean).
 - **Wave 4** (Tasks 4.1, 4.2) — ingest-lens CLAUDE.md updated with install pointer; **Task 4.2 was reframed mid-execution** — see below.
 
 ### Reframe of Task 4.2
@@ -534,12 +534,12 @@ The original blueprint specified "remove the `agent-hooks` scaffolder" once the 
 
 - **Codex CLI has no plugin marketplace** as of 2026-04. `~/.codex/config.toml` + `~/.codex/hooks.json` are the only install paths. The scaffolder is the canonical Codex distribution path, not legacy.
 - **context-mode (the reference dual-IDE tool)** ships through 14 per-platform install paths simultaneously. The Claude Code plugin is one delivery mechanism; npm + per-platform config is canonical for everything else.
-- **`7bc036c feat(hooks): port claude-hooks into agent-kit + wire via ak setup`** (committed during this session) explicitly added the `agent-hooks` scaffolder to wire `.codex/hooks.json` — Task 4.2's deletion would have broken Codex coverage.
+- **`7bc036c feat(hooks): port claude-hooks into agent-kit + wire via wp setup`** (committed during this session) explicitly added the `agent-hooks` scaffolder to wire `.codex/hooks.json` — Task 4.2's deletion would have broken Codex coverage.
 
 **Reframed Task 4.2 actually shipped:**
 
 - Kept `src/cli/commands/init/scaffolders/agent-hooks/` (the scaffolder).
-- Updated `README.md` with an **Install Paths** section that explains the dual-distribution pattern (Path A: Claude Code plugin marketplace; Path B: npm + `ak setup` for Codex / OpenCode / Cursor / Gemini / everything else).
+- Updated `README.md` with an **Install Paths** section that explains the dual-distribution pattern (Path A: Claude Code plugin marketplace; Path B: npm + `wp setup` for Codex / OpenCode / Cursor / Gemini / everything else).
 - Updated the `## Codex CLI` README section with the actual current install path (no `codex plugin marketplace add` command exists today — that earlier README claim was incorrect).
 - Filed `tech-debt/accepted/h-001-track-codex-cli-plugin-marketplace-maturity.md` to track Codex's plugin/marketplace evolution. When Codex ships a plugin marketplace, the two paths can converge.
 - Restored the `ak-mcp` bin entry and `dist/esm/mcp/cli.js` chmod-bins line that `4545672 fix(hooks): remove ak-mcp bin + mcp chmod until src/mcp is committed` deferred until `src/mcp/` existed.
@@ -559,8 +559,8 @@ The original blueprint specified "remove the `agent-hooks` scaffolder" once the 
 
 ## Non-Goals
 
-- Renaming the plugin or breaking the `ak` CLI surface.
-- Open-sourcing private monorepo recipes (`just`, PM2). `ak mcp` shells out to whatever recipes the consumer has.
+- Renaming the plugin or breaking the `wk` CLI surface.
+- Open-sourcing private monorepo recipes (`just`, PM2). `wp mcp` shells out to whatever recipes the consumer has.
 - Replacing the symlinker. Cursor, Aider, Cline, Gemini still use `.agent/` fan-out.
 - Adding new audits, skills, or scaffolders beyond what's needed for the plugin manifest.
 - Multi-plugin marketplace split. Defer until skill count or domain separation justifies it.

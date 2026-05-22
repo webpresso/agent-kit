@@ -70,11 +70,11 @@ describe('runErrCommand', () => {
     const code = runErrCommand([], { stderr: stderr.stream })
 
     expect(code).toBe(1)
-    expect(stderr.read()).toContain('Usage: ak err <cmd> [...args]')
+    expect(stderr.read()).toContain('Usage: wp err <cmd> [...args]')
   })
 
   it('documents the command in help text', () => {
-    expect(ERR_COMMAND_HELP).toContain('ak err sh -c')
+    expect(ERR_COMMAND_HELP).toContain('wp err sh -c')
     expect(ERR_COMMAND_HELP).toContain('print only failure-looking output')
   })
 })

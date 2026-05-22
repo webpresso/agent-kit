@@ -31,11 +31,11 @@ vp install -g @webpresso/agent-kit
 ```
 
 
-The `wp`, `webpresso`, and `ak` bins are now available globally:
+The `wp`, `webpresso`, and `wp` bins are now available globally:
 
 ```bash
 wp --version
-ak --version   # alias — same binary
+wp --version   # alias — same binary
 ```
 
 > **Pinned-version devDependency path** (library imports, CI with reproducible
@@ -49,7 +49,7 @@ ak --version   # alias — same binary
 wp setup
 ```
 
-`wp setup` (alias: `ak setup`, `ak init`) is idempotent. It:
+`wp setup` (alias: `wp setup`, `wp init`) is idempotent. It:
 
 1. Creates `.agent/{commands,skills,workflows,rules,guides}/` and populates
    them with the catalog's Tier-1 blueprint-native + Tier-2 methodology
@@ -122,7 +122,7 @@ Default setup also wires in tooling that lives outside the skill catalog:
   `guardrails` composite) so every consumer keeps a structured, ≤100-line
   vision under enforcement.
 - `lore-commits` — installs a `.husky/commit-msg` hook that enforces
-  Lore Commit Protocol trailers via `ak audit commit-message` when requested
+  Lore Commit Protocol trailers via `wp audit commit-message` when requested
   with `--with lore-commits`.
 
 Presets and Tier-3 skills can be combined freely in the same `--with`
@@ -165,7 +165,7 @@ Edit the file, then:
 # Harden the plan (fact-check, split coarse tasks, align deps)
 wp blueprint refine add-real-time-notifications-via-sse
 # Or invoke /plan-refine inside Claude Code — the skill lives at
-# .agent/skills/plan-refine/SKILL.md (installed by ak setup).
+# .agent/skills/plan-refine/SKILL.md (installed by wp setup).
 
 # Move draft → planned once it's execution-ready
 wp blueprint move add-real-time-notifications-via-sse planned
@@ -280,7 +280,7 @@ all nine pre-registered query templates.
 - [`blueprint-format.md`](./blueprint-format.md) — the markdown +
   frontmatter spec for blueprints.
 - [`lifecycle.md`](./lifecycle.md) — state machine + transitions.
-- [`architecture.md`](./architecture.md) — three-layer model + `ak compile` pipeline.
+- [`architecture.md`](./architecture.md) — three-layer model + `wp compile` pipeline.
 - [`blueprint-db-cookbook.md`](./blueprint-db-cookbook.md) — SQLite query templates.
 - [`skills-catalog.md`](./skills-catalog.md) — what ships in the catalog +
   upstream refresh plan.

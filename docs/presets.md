@@ -3,17 +3,17 @@ type: guide
 last_updated: '2026-05-22'
 ---
 
-# `ak setup --with` presets
+# `wp setup --with` presets
 
 `--with <names>` accepts a comma-separated mix of two things:
 
-1. **Tier-3 skills** — opt-in skill packs from the agent-kit catalog (e.g. `tanstack-query`, `react-doctor`, `frontend-design`). Run `ak skill list` for the full list.
-2. **Presets** — named scaffolder modes that wire in additional tooling beyond the skill catalog. `omx`, `omc`, `gstack`, `vision`, and `rtk` run by default on every `ak setup`; the rest are opt-in. Each preset is documented below.
+1. **Tier-3 skills** — opt-in skill packs from the agent-kit catalog (e.g. `tanstack-query`, `react-doctor`, `frontend-design`). Run `wp skill list` for the full list.
+2. **Presets** — named scaffolder modes that wire in additional tooling beyond the skill catalog. `omx`, `omc`, `gstack`, `vision`, and `rtk` run by default on every `wp setup`; the rest are opt-in. Each preset is documented below.
 
 Presets and Tier-3 skills can be combined freely:
 
 ```bash
-ak setup --with omx,gstack,tanstack-query --yes
+wp setup --with omx,gstack,tanstack-query --yes
 ```
 
 Unknown values fall through to Tier-3 skill resolution and are rejected with `EXIT_SETUP_FAIL` (exit code 1). Whitespace around commas is tolerated.
@@ -39,7 +39,7 @@ distribution for this behavior.
 
 ### `vision`
 
-Drops a starter `VISION.md` at repo root from `catalog/vision/VISION.md.tmpl`, with `{{REPO_NAME}}` and `{{TODAY}}` substituted. Runs by default on every `ak setup`. The companion audit `ak audit vision` (part of the `guardrails` composite) enforces structure on the file from there on:
+Drops a starter `VISION.md` at repo root from `catalog/vision/VISION.md.tmpl`, with `{{REPO_NAME}}` and `{{TODAY}}` substituted. Runs by default on every `wp setup`. The companion audit `wp audit vision` (part of the `guardrails` composite) enforces structure on the file from there on:
 
 - frontmatter `type: vision` + `last_updated: YYYY-MM-DD`
 - H1 contains "Vision"
@@ -52,7 +52,7 @@ Drops a starter `VISION.md` at repo root from `catalog/vision/VISION.md.tmpl`, w
 
 ### `lore-commits`
 
-Writes `.husky/commit-msg` that enforces Lore Commit Protocol trailers via `ak audit commit-message --require-lore`. Composes safely with `base-kit` — if the hook already exists with the correct content, the run is a no-op.
+Writes `.husky/commit-msg` that enforces Lore Commit Protocol trailers via `wp audit commit-message --require-lore`. Composes safely with `base-kit` — if the hook already exists with the correct content, the run is a no-op.
 
 **Touches:** `.husky/commit-msg` only.
 **Requires nothing on PATH.**
@@ -66,15 +66,15 @@ Chains `omx setup --yes --scope user` after the agent-kit scaffold completes. [O
 - omx still not on PATH after the fallback install → `EXIT_SETUP_FAIL` (exit 1) with install hint in stderr
 - `omx setup --yes --scope user` itself errors → `EXIT_WRITE_FAIL` (exit 3) with the omx exit code surfaced
 
-**Idempotency:** OMX manages its own state — every `ak setup` re-invokes `omx setup --yes --scope user`, which is itself idempotent. After OMX finishes, agent-kit also migrates deprecated Codex config entries from `[features].codex_hooks` to `[features].hooks` in `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`) so older OMX releases do not keep re-triggering Codex's deprecation warning.
+**Idempotency:** OMX manages its own state — every `wp setup` re-invokes `omx setup --yes --scope user`, which is itself idempotent. After OMX finishes, agent-kit also migrates deprecated Codex config entries from `[features].codex_hooks` to `[features].hooks` in `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`) so older OMX releases do not keep re-triggering Codex's deprecation warning.
 **Codex/OMX MCP persistence:** after `omx setup --yes --scope user`, agent-kit upserts the owned `[mcp_servers.playwright]` block in `$CODEX_HOME/config.toml` or `~/.codex/config.toml`. This gives both Codex and OMX a persistent Playwright MCP server for browser testing without relying on session-local tool state.
 **Side-effects:** OMX writes user-scoped Codex/OMX configuration and may persist `.omx/setup-scope.json` in the consumer repo. `wp setup` also repairs the managed `.gitignore` block for generated agent surfaces (`.codex/`, `.omx/`, `.agent/`, IDE projections) so re-running setup does not expose regenerated files as untracked. When default user-scoped setup migrates a repo that was previously project-scoped, agent-kit removes Git-tracked `.codex/` and `.omx/` files so repo-scoped OMX/Codex artifacts do not remain committed; untracked local runtime files are preserved. agent-kit also writes the global Codex Playwright MCP block described above and the one-line `codex_hooks` → `hooks` feature-flag migration when needed, preserving unrelated config.
 
 ### `omc`
 
-Ensures [OMC / oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) is installed through Claude Code's plugin marketplace. OMC is the Claude Code sibling to OMX. It runs by default on every `ak setup` when the `claude` CLI is on `PATH`.
+Ensures [OMC / oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) is installed through Claude Code's plugin marketplace. OMC is the Claude Code sibling to OMX. It runs by default on every `wp setup` when the `claude` CLI is on `PATH`.
 
-**Install path:** agent-kit uses OMC's Claude Code plugin marketplace path. Upstream OMC also documents an npm runtime package (`oh-my-claude-sisyphus`), but `ak setup` does not use that path. Default setup runs:
+**Install path:** agent-kit uses OMC's Claude Code plugin marketplace path. Upstream OMC also documents an npm runtime package (`oh-my-claude-sisyphus`), but `wp setup` does not use that path. Default setup runs:
 
 ```bash
 claude plugin marketplace add --scope user https://github.com/Yeachan-Heo/oh-my-claudecode
@@ -89,7 +89,7 @@ Use `wp setup --project` to request project-scoped OMC plugin installation inste
 - `claude` is not on `PATH` → setup warns and skips OMC, because agent-kit only drives the Claude Code plugin path
 - any plugin command exits non-zero → setup warns with the exact failing step and fallback command
 
-**Opt-out:** set `AK_SKIP_OMC=1` in the environment to skip.
+**Opt-out:** set `WP_SKIP_OMC=1` in the environment to skip.
 
 ### `playwright-mcp`
 
@@ -134,11 +134,11 @@ Codex CLI and OpenCode. This preset is opt-in; run `wp setup --with context-mode
 **OpenCode note:**
 - The preset wires `opencode.json` only. If you want upstream context-mode routing
   prose in the repo contract, copy its `configs/opencode/AGENTS.md` manually or fold
-  equivalent guidance into your existing `AGENTS.md`.
+  equivalent guidance into your existing `AGENTS.md`.wp_
 
 ### `gstack`
 
-Ensures [gstack](https://gstack.lol/)'s **canonical checkout** exists at `~/.claude/skills/gstack/` ([GitHub](https://github.com/garrytan/gstack)). This runs by default on every `ak setup`. If the directory is missing, setup clones from `https://github.com/garrytan/gstack.git` and runs `./setup --team`. When Codex is detected, agent-kit then runs gstack's official host-specific setup flow (`./setup --host codex`) from that same checkout so Codex skills materialize under `~/.codex/skills/`.
+Ensures [gstack](https://gstack.lol/)'s **canonical checkout** exists at `~/.claude/skills/gstack/` ([GitHub](https://github.com/garrytan/gstack)). This runs by default on every `wp setup`. If the directory is missing, setup clones from `https://github.com/garrytan/gstack.git` and runs `./setup --team`. When Codex is detected, agent-kit then runs gstack's official host-specific setup flow (`./setup --host codex`) from that same checkout so Codex skills materialize under `~/.codex/skills/`.
 
 **Detection:** path-based (`~/.claude/skills/gstack/setup` exists), NOT PATH-based.
 **Failure modes:**
@@ -147,15 +147,15 @@ Ensures [gstack](https://gstack.lol/)'s **canonical checkout** exists at `~/.cla
 - `./setup --host codex` exits non-zero after Codex is detected → `EXIT_WRITE_FAIL` (exit 3)
 
 **Codex detection:** Codex is considered present when either `~/.codex/config.toml` exists or `codex --version` succeeds on `PATH`.
-**Idempotency:** every `ak setup` checks gstack and refreshes in place if needed (`gstack: ✓ updated`). Managed installs with a `.git/` directory do a fast-forward pull before `./setup --team`; unmanaged-but-valid installs (a `setup` script without `.git/`) rerun `./setup --team` without forcing git metadata. Codex materialization is also refreshed in place when Codex is detected (`gstack (codex): ✓ updated`).
+**Idempotency:** every `wp setup` checks gstack and refreshes in place if needed (`gstack: ✓ updated`). Managed installs with a `.git/` directory do a fast-forward pull before `./setup --team`; unmanaged-but-valid installs (a `setup` script without `.git/`) rerun `./setup --team` without forcing git metadata. Codex materialization is also refreshed in place when Codex is detected (`gstack (codex): ✓ updated`).
 **Side-effects outside the consumer repo:** writes to the user's home dir at `~/.claude/skills/gstack/`. This is intentional — gstack is global by design.
-**Opt-out:** set `AK_SKIP_GSTACK=1` in the environment to skip (CI / sandboxed environments only — most consumer repos treat gstack as a hard prerequisite for AI-assisted work).
+**Opt-out:** set `WP_SKIP_GSTACK=1` in the environment to skip (CI / sandboxed environments only — most consumer repos treat gstack as a hard prerequisite for AI-assisted work).
 
 ### `rtk`
 
 Ensures [rtk](https://github.com/rtk-ai/rtk) is available, then runs
 `rtk init -g --auto-patch`. Agent-kit treats RTK as a peer plugin: RTK owns
-long-tail shell-tool filtering, while agent-kit keeps `ak_*` quality routing.
+long-tail shell-tool filtering, while agent-kit keeps `wp_*` quality routing.
 
 **Detection:** `rtk --version` on PATH. If missing on macOS, setup falls back to
 the official current install hint: `brew install rtk`.
@@ -166,27 +166,27 @@ the official current install hint: `brew install rtk`.
 
 **Telemetry / config:** agent-kit invokes RTK with
 `RTK_TELEMETRY_DISABLED=1` and a prefilled `RTK_HOOK_EXCLUDE_COMMANDS` list so
-RTK skips commands already owned by `ak-pretool-guard`.
+RTK skips commands already owned by `wp-pretool-guard`.
 
 **Current upstream nuance (May 2026):**
 - Claude-style hook surfaces compose via `.claude/settings.json`
 - Codex is treated as a prompt/instructions lane upstream, not a hook-rewrite
   lane, so agent-kit does **not** add RTK to `.codex/hooks.json`
 
-**Marker:** every `ak setup` writes `.agent/.rtk-requested` so `ak hooks doctor`
+**Marker:** every `wp setup` writes `.agent/.rtk-requested` so `wp hooks doctor`
 can report RTK status for the repo.
-**Opt-out:** set `AK_SKIP_RTK=1` in the environment to skip (CI / sandboxed
+**Opt-out:** set `WP_SKIP_RTK=1` in the environment to skip (CI / sandboxed
 environments without `brew` access, or platforms where RTK isn't yet packaged).
 
 ## Combining presets
 
 Presets run independently from the setup command's registered scaffolder flow. The default preset set is `omx,omc,gstack,vision,rtk`; `playwright-mcp` is also applied whenever `omx` runs. Specifying default presets explicitly is safe and idempotent. A failure in one does **not** skip subsequent presets — every preset gets a chance to run. The aggregate exit code reflects the worst failure across all presets.
 
-Example: `ak setup` with `omx` unavailable after the fallback install and a reusable gstack install root already present → omx logs an error, gstack still detects + reports `updated`, overall exit code is 1 (the omx failure dominates).
+Example: `wp setup` with `omx` unavailable after the fallback install and a reusable gstack install root already present → omx logs an error, gstack still detects + reports `updated`, overall exit code is 1 (the omx failure dominates).
 
 ## Runtime check (always-on)
 
-After the scaffolder pass, every non-`--dry-run` `ak setup` runs a runtime check that probes `bun --version` and `vp --version`. Missing tools print an install hint to stdout but never fail the run. To skip the runtime check, pass `--dry-run`.
+After the scaffolder pass, every non-`--dry-run` `wp setup` runs a runtime check that probes `bun --version` and `vp --version`. Missing tools print an install hint to stdout but never fail the run. To skip the runtime check, pass `--dry-run`.
 
 ## Why `--with` mixes skills and presets
 
@@ -195,19 +195,19 @@ Tier-3 skills install **catalog content** (markdown files, SKILL.md, rules); pre
 ### `example-skill`
 
 Scaffolds a working `.agent/skills/hello-webpresso/SKILL.md` and then runs
-`ak compile` as the final step. Designed for first-time setup: gives the
+`wp compile` as the final step. Designed for first-time setup: gives the
 consumer an immediately invokable skill to verify that IDE skill discovery
 is working end-to-end.
 
 ```bash
-ak setup --with base-kit --with example-skill
+wp setup --with base-kit --with example-skill
 # → .agent/skills/hello-webpresso/SKILL.md created
-# → ak compile runs: all 6 IDE surfaces populated
+# → wp compile runs: all 6 IDE surfaces populated
 # → /hello-webpresso is now available in Claude Code / Codex / Cursor / etc.
 ```
 
 **Idempotency:** if `.agent/skills/hello-webpresso/SKILL.md` already exists,
-the scaffolder skips the write. `ak compile` still runs to ensure surfaces are
+the scaffolder skips the write. `wp compile` still runs to ensure surfaces are
 current.
 **Requires:** nothing beyond Node/Bun on PATH. rulesync is bundled with agent-kit.
 
@@ -216,15 +216,15 @@ current.
 Extends `.husky/pre-commit` (after `base-kit`) with two staged-mode audit hooks:
 
 ```bash
-ak audit skill-sizes --staged
-ak audit broken-refs --staged
+wp audit skill-sizes --staged
+wp audit broken-refs --staged
 ```
 
 `--staged` mode scans only the files in the current git staging area, so the
 pre-commit check typically runs in under a second.
 
-**Requires:** `base-kit` (runs `ak setup --with husky` first if not already set up).
+**Requires:** `base-kit` (runs `wp setup --with husky` first if not already set up).
 
 ## Adding new presets
 
-Presets live under `src/cli/commands/init/scaffolders/<name>/index.ts` and are registered in the `PRESETS` const at `src/cli/commands/init/index.ts`. The CLI `--help` text reads from `PRESETS` directly so a new preset auto-surfaces in `ak setup --help`. Tests should follow the unit + integration + e2e pattern established by `omx/`, `omc/`, `gstack/`, and `runtime-check/`.
+Presets live under `src/cli/commands/init/scaffolders/<name>/index.ts` and are registered in the `PRESETS` const at `src/cli/commands/init/index.ts`. The CLI `--help` text reads from `PRESETS` directly so a new preset auto-surfaces in `wp setup --help`. Tests should follow the unit + integration + e2e pattern established by `omx/`, `omc/`, `gstack/`, and `runtime-check/`.

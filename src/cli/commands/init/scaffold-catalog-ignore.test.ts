@@ -12,7 +12,7 @@ describe('scaffoldCatalogIgnore', () => {
   beforeEach(() => {
     const root = join(
       tmpdir(),
-      `ak-catalog-ignore-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      `wp-catalog-ignore-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     )
     cwd = join(root, 'consumer')
     catalogDir = join(root, 'catalog')

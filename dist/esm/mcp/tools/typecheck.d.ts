@@ -1,5 +1,5 @@
 /**
- * `ak_typecheck` MCP tool.
+ * `wp_typecheck` MCP tool.
  *
  * Runs `tsc --noEmit` either at cwd (no `packages` given) or once per
  * resolved package path (each becomes `tsc --noEmit -p <pkg>/tsconfig.json`).

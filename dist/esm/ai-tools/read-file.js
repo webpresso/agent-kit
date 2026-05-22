@@ -1,4 +1,4 @@
-import { getErrorMessage } from '@webpresso/runtime-format/errors';
+import { getErrorMessage } from '../format/errors.js';
 import { isValidRelativePath } from './shared/validate-path.js';
 async function getSemanticContext(semanticContext, ragRetriever, path) {
     if (!semanticContext || !ragRetriever) {

@@ -625,7 +625,7 @@ Write the one memo that recommends ship v1, ship v2, or park both. It must inclu
 2. Populate the run manifest from the checked-in schemas and the executed benchmark data
 3. Write `decision.md` using the template and the actual run outputs
 4. Run: `pnpm lint benchmarks/session-memory-productivity/templates --fix=false` and `pnpm typecheck`
-5. Run: `ak blueprint audit --all --strict` for the final blueprint pass
+5. Run: `wp blueprint audit --all --strict` for the final blueprint pass
 
 **Acceptance:**
 
@@ -637,7 +637,7 @@ Write the one memo that recommends ship v1, ship v2, or park both. It must inclu
 
 | Gate | Command | Success Criteria |
 | --- | --- | --- |
-| Blueprint validation | `ak blueprint audit --all --strict` | No blueprint-structure or lifecycle errors |
+| Blueprint validation | `wp blueprint audit --all --strict` | No blueprint-structure or lifecycle errors |
 | Benchmark TS type safety | `pnpm typecheck` | Zero type errors in benchmark additions |
 | Benchmark TS tests | `pnpm vitest run benchmarks/session-memory-productivity/...` | All benchmark unit tests pass |
 | Harbor adapter tests | `python -m pytest benchmarks/session-memory-productivity/tier3/test_claude_code_harbor_agent.py` | Adapter contract passes locally |

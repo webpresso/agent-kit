@@ -1,27 +1,15 @@
 /**
  * Integration tests for the coordinated 3-phase pretool-guard pipeline.
  *
- * Phase 1: Dev-workflow routing (deny → ak_* tools)
+ * Phase 1: Dev-workflow routing (deny → wp_* tools)
  * Phase 2: Sandbox routing (rewrite Bash → ctx_execute for data-heavy commands)
  * Phase 3: Security validators (block dangerous/forbidden commands)
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('node:fs')
-vi.mock('node:constants', () => ({
-  O_CREAT: 0o100,
-  O_EXCL: 0o200,
-  O_WRONLY: 1,
-}))
-vi.mock('node:os', () => ({ tmpdir: () => '/tmp', homedir: () => '/home/test' }))
-
-import { closeSync, openSync } from 'node:fs'
-
-const mcpReady = vi.fn()
-
 async function getRunner() {
   const { processValidation } = await import('./runner.js')
-  return (inputJson: string) => processValidation(inputJson, mcpReady)
+  return (inputJson: string) => processValidation(inputJson)
 }
 
 function makeBashInput(command: string): string {
@@ -35,19 +23,19 @@ function makeEditInput(filePath: string): string {
   })
 }
 
+function makeContextExecuteInput(code: string): string {
+  return JSON.stringify({
+    tool_name: 'mcp__context_mode__ctx_execute',
+    tool_input: { language: 'javascript', code },
+  })
+}
+
 describe('coordinated routing pipeline', () => {
   let stdoutOutput: string[]
 
   beforeEach(() => {
     vi.resetAllMocks()
     stdoutOutput = []
-
-    // Default: MCP is ready (so Phase 1 dev-routing fires)
-    mcpReady.mockReturnValue(true)
-
-    // Default: openSync succeeds (first call for throttle marker)
-    vi.mocked(openSync).mockReturnValue(3)
-    vi.mocked(closeSync).mockReturnValue(undefined)
 
     // Capture stdout and exit
     vi.spyOn(process.stdout, 'write').mockImplementation((data) => {
@@ -98,7 +86,7 @@ describe('coordinated routing pipeline', () => {
           hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string }
         }
         expect(parsed.hookSpecificOutput?.permissionDecision).toBe('deny')
-        expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain('ak_')
+        expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain('wp_')
       })
     }
   })
@@ -187,13 +175,35 @@ describe('coordinated routing pipeline', () => {
     })
   })
 
-  // Category 7: Throttle behavior — second call passthrough
-  describe('throttle: second dev-command call passes through', () => {
-    it('second vp test call → passthrough (guidance already shown)', async () => {
+  describe('Context-mode dev-workflow commands → deny before execution', () => {
+    it('ctx_execute wrapping vp test → deny with wp_test guidance', async () => {
       const processValidation = await getRunner()
+      try {
+        processValidation(
+          makeContextExecuteInput(
+            "execFileSync('vp',['run','--filter=@webpresso/agent-kit','test'," +
+              "'src/audit/gitignore-agent-surfaces.test.ts'])",
+          ),
+        )
+      } catch {
+        // process.exit throws
+      }
+      const output = getLastOutput()
+      const parsed = JSON.parse(output) as {
+        hookSpecificOutput?: {
+          permissionDecision?: string
+          permissionDecisionReason?: string
+        }
+      }
+      expect(parsed.hookSpecificOutput?.permissionDecision).toBe('deny')
+      expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain('wp_test')
+    })
+  })
 
-      // First call: deny (guidance shown)
-      vi.mocked(openSync).mockReturnValueOnce(3)
+  // Category 7: Repeated dev-workflow commands stay denied
+  describe('dev-workflow denials stay hard-blocked', () => {
+    it('vp exec vitest run → denied on repeated invocations', async () => {
+      const processValidation = await getRunner()
       try {
         processValidation(makeBashInput('vp exec vitest run'))
       } catch {
@@ -207,38 +217,16 @@ describe('coordinated routing pipeline', () => {
 
       stdoutOutput = []
 
-      // Second call: EEXIST → passthrough
-      vi.mocked(openSync).mockImplementationOnce(() => {
-        const err = new Error('EEXIST') as NodeJS.ErrnoException
-        err.code = 'EEXIST'
-        throw err
-      })
       try {
         processValidation(makeBashInput('vp exec vitest run'))
       } catch {
         // process.exit throws
       }
       const secondOutput = getLastOutput()
-      // Throttled routing falls through to the security validators; raw dev
-      // commands are still blocked there, so no passthrough JSON is emitted.
-      expect(secondOutput).toBe('')
-    })
-  })
-
-  // Category 7 extra: MCP not ready → dev-commands fall through (not denied)
-  describe('MCP not ready → dev-workflow commands pass through', () => {
-    it('vp test with MCP not ready → passthrough (not denied)', async () => {
-      mcpReady.mockReturnValue(false)
-      const processValidation = await getRunner()
-      try {
-        processValidation(makeBashInput('vp exec vitest run'))
-      } catch {
-        // process.exit throws
+      const secondParsed = JSON.parse(secondOutput) as {
+        hookSpecificOutput?: { permissionDecision?: string }
       }
-      const output = getLastOutput()
-      // Without MCP-ready routing, the security validators still block raw dev
-      // commands instead of letting them run directly.
-      expect(output).toBe('')
+      expect(secondParsed.hookSpecificOutput?.permissionDecision).toBe('deny')
     })
   })
 })

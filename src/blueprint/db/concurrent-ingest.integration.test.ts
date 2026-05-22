@@ -20,7 +20,7 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mockState = vi.hoisted(() => ({ stateRoot: '/tmp/ak-state-root-placeholder' }))
+const mockState = vi.hoisted(() => ({ stateRoot: '/tmp/wp-state-root-placeholder' }))
 
 vi.mock('env-paths', () => ({
   default: () => ({
@@ -83,7 +83,7 @@ let stateRootDir: string
 
 beforeEach(() => {
   _clearCacheForTests()
-  stateRootDir = mkdtempSync(path.join(tmpdir(), 'ak-state-root-'))
+  stateRootDir = mkdtempSync(path.join(tmpdir(), 'wp-state-root-'))
   mockState.stateRoot = stateRootDir
 })
 
@@ -94,7 +94,7 @@ afterEach(() => {
 
 describe('concurrent ingest — projection DB lock (worktree scope)', () => {
   it('two ingest paths in the same worktree serialize via the projection lock', async () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'ak-repo-'))
+    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     try {
       initGitRepo(repo)
       writeBlueprintFixture(repo, 'fixture-a')
@@ -124,8 +124,8 @@ describe('concurrent ingest — projection DB lock (worktree scope)', () => {
 
 describe('concurrent ingest — markdown lock (repo scope, cross-worktree)', () => {
   it('two ingest paths in different worktrees of the same repo serialize via the markdown lock', async () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'ak-repo-'))
-    const wtParent = mkdtempSync(path.join(tmpdir(), 'ak-wt-parent-'))
+    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
+    const wtParent = mkdtempSync(path.join(tmpdir(), 'wp-wt-parent-'))
     const wtDir = path.join(wtParent, 'alt')
     try {
       initGitRepo(repo)
@@ -163,8 +163,8 @@ describe('concurrent ingest — markdown lock (repo scope, cross-worktree)', () 
   })
 
   it('cross-worktree projection DBs do not contend on the same lock', async () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'ak-repo-'))
-    const wtParent = mkdtempSync(path.join(tmpdir(), 'ak-wt-parent-'))
+    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
+    const wtParent = mkdtempSync(path.join(tmpdir(), 'wp-wt-parent-'))
     const wtDir = path.join(wtParent, 'alt')
     try {
       initGitRepo(repo)

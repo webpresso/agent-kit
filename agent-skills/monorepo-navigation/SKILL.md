@@ -32,7 +32,7 @@ allowed-tools: Read, Grep, Glob, Bash
 | `@webpresso/agent-tsconfig` | `packages/agent-tsconfig` | {{TODO: describe}} | {{TODO: common files}} |
 | `@webpresso/agent-vitest` | `packages/agent-vitest` | {{TODO: describe}} | {{TODO: common files}} |
 | `@webpresso/agent-workers-test` | `packages/agent-workers-test` | {{TODO: describe}} | {{TODO: common files}} |
-<!-- Rendered from pnpm-workspace.yaml / package.json workspaces during `ak init`.
+<!-- Rendered from pnpm-workspace.yaml / package.json workspaces during `wp init`.
      Format: | Package | Path | Purpose | Common Files |
      Purpose + Common Files start as {{TODO: describe ...}} placeholders. -->
 

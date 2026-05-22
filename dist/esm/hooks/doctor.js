@@ -1,5 +1,5 @@
 /**
- * `ak hooks doctor` — post-install plugin health verification.
+ * `wp hooks doctor` — post-install plugin health verification.
  *
  * Verifies the agent-kit plugin installation is healthy:
  * - all hook bins exist
@@ -20,12 +20,12 @@ const RTK_INSTALL_HINT = 'rtk requested via --with rtk but not on PATH; brew ins
 const HOST_SMOKE_ENV = 'AK_RUN_HOST_SMOKE';
 /** Hook bin definitions */
 const HOOK_BINS = [
-    { name: 'pretool-guard', binName: 'ak-pretool-guard', checkStdin: true },
-    { name: 'post-tool (lint-after-edit)', binName: 'ak-post-tool', checkStdin: false },
-    { name: 'stop (qa-changed-files)', binName: 'ak-stop-qa', checkStdin: false },
-    { name: 'guard-switch', binName: 'ak-guard-switch', checkStdin: true },
-    { name: 'sessionstart', binName: 'ak-sessionstart-routing', checkStdin: true },
-    { name: 'test-quality-check', binName: 'ak-test-quality-check', checkStdin: false },
+    { name: 'pretool-guard', binName: 'wp-pretool-guard', checkStdin: true },
+    { name: 'post-tool (lint-after-edit)', binName: 'wp-post-tool', checkStdin: false },
+    { name: 'stop (qa-changed-files)', binName: 'wp-stop-qa', checkStdin: false },
+    { name: 'guard-switch', binName: 'wp-guard-switch', checkStdin: true },
+    { name: 'sessionstart', binName: 'wp-sessionstart-routing', checkStdin: true },
+    { name: 'test-quality-check', binName: 'wp-test-quality-check', checkStdin: false },
 ];
 function resolvePackageRoot() {
     let dir = dirname(fileURLToPath(import.meta.url));
@@ -221,7 +221,7 @@ function probeJsonStdin(file) {
 function checkPluginJson() {
     const root = resolvePluginRoot();
     if (!root) {
-        return { ok: false, detail: 'plugin root not found (ak not in PATH)' };
+        return { ok: false, detail: 'plugin root not found (wp not in PATH)' };
     }
     const pluginJsonPath = join(root, '.claude-plugin', 'plugin.json');
     if (!tryAccess(pluginJsonPath)) {
@@ -280,7 +280,7 @@ async function checkMcpServer() {
     const timeoutMs = Number(process.env.AK_DOCTOR_MCP_TIMEOUT_MS ?? 5000);
     const probeCommand = resolveMcpProbeCommand();
     if (!probeCommand) {
-        return { ok: false, detail: 'MCP server (ak) not found in .bin' };
+        return { ok: false, detail: 'MCP server (wp) not found in .bin' };
     }
     return new Promise((resolve) => {
         const child = spawn(probeCommand.command, probeCommand.args, {

@@ -1,5 +1,5 @@
 /**
- * `ak audit <kind>` — packaged repository audits.
+ * `wp audit <kind>` — packaged repository audits.
  *
  * CAC shell: maps AuditOutcome → console output + process.exit.
  * All dispatch logic lives in audit-core.ts (no process.exit there).
@@ -20,9 +20,9 @@ import { runStryker } from '#audit/run-stryker'
  * Registry of repo-level (RepoAuditResult-shaped) audits — single source of
  * truth. Adding an entry here surfaces the audit in three places at once:
  *
- *   1. `ak audit <kind>` standalone dispatch
- *   2. `ak audit guardrails` composite (consumed by pre-commit + CI)
- *   3. `ak audit quality` full ship gate (mutation + composite)
+ *   1. `wp audit <kind>` standalone dispatch
+ *   2. `wp audit guardrails` composite (consumed by pre-commit + CI)
+ *   3. `wp audit quality` full ship gate (mutation + composite)
  */
 type RepoAuditRunner = (
   root: string,
@@ -259,7 +259,7 @@ export function registerAuditCommand(cli: CAC): void {
         switch (outcome.kind) {
           case 'invalid-usage': {
             console.error(
-              kind ? outcome.message : `Usage: ak audit <kind> [target]\nKinds: ${AUDIT_KIND_LIST}`,
+              kind ? outcome.message : `Usage: wp audit <kind> [target]\nKinds: ${AUDIT_KIND_LIST}`,
             )
             process.exit(1)
           }

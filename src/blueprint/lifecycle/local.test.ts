@@ -91,7 +91,7 @@ describe('applyBlueprintLifecycleToFile', () => {
   })
 
   it('moves generic consumer blueprints within top-level blueprints/', async () => {
-    const projectRoot = await mkdtemp(path.join(tmpdir(), 'ak-lifecycle-generic-'))
+    const projectRoot = await mkdtemp(path.join(tmpdir(), 'wp-lifecycle-generic-'))
     tempDirs.push(projectRoot)
     writeFileSync(path.join(projectRoot, 'package.json'), '{"name":"consumer"}')
     writeConsumerBlueprint(projectRoot, 'in-progress', 'test-blueprint')

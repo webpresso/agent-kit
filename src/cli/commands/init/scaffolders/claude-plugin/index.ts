@@ -55,7 +55,7 @@ export function ensureClaudeCodeUserPlugin(
     return { kind: 'claude-plugin-skipped-dry-run', packageRoot }
   }
 
-  if (process.env.AK_SKIP_CLAUDE_PLUGIN === '1') {
+  if (process.env.WP_SKIP_CLAUDE_PLUGIN === '1') {
     return { kind: 'claude-plugin-skipped-opt-out', packageRoot }
   }
 

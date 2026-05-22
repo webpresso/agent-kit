@@ -1,5 +1,5 @@
 /**
- * Soft compatibility preflight for `ak setup`.
+ * Soft compatibility preflight for `wp setup`.
  *
  * Checks the 5-point compatibility matrix from docs/is-agent-kit-for-me.md.
  * In non-strict mode: warns and continues. In strict mode: aborts on mismatch.
@@ -62,14 +62,14 @@ function checkBlueprintLifecycle(repoRoot: string): string | null {
   const blueprintRoot = resolveBlueprintRoot(repoRoot)
   if (!existsSync(blueprintRoot)) {
     const displayPath = relative(repoRoot, blueprintRoot).replaceAll('\\', '/') || 'blueprints'
-    return `${displayPath}/ directory not found — blueprint lifecycle required (run \`ak setup --with base-kit\` to scaffold it)`
+    return `${displayPath}/ directory not found — blueprint lifecycle required (run \`wp setup --with base-kit\` to scaffold it)`
   }
   return null
 }
 
 function checkLoreCommitProtocol(repoRoot: string): string | null {
   if (!existsSync(join(repoRoot, '.agent'))) {
-    return '.agent/ directory not found — lore commit protocol required (run `ak setup --with lore-commits` to scaffold it)'
+    return '.agent/ directory not found — lore commit protocol required (run `wp setup --with lore-commits` to scaffold it)'
   }
   return null
 }

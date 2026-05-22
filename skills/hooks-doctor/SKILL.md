@@ -9,7 +9,7 @@ related: []
 created: '2026-05-07'
 last_reviewed: '2026-05-07'
 name: hooks-doctor
-description: Verify the agent-kit plugin hooks installation is healthy. Run after install, when hooks seem broken, or when debugging plugin integration issues. Triggers on `/webpresso-agent-kit:hooks-doctor`, "doctor", "verify hooks", "check plugin", "hooks broken", "plugin not working", "ak hooks doctor".
+description: Verify the agent-kit plugin hooks installation is healthy. Run after install, when hooks seem broken, or when debugging plugin integration issues. Triggers on `/webpresso-agent-kit:hooks-doctor`, "doctor", "verify hooks", "check plugin", "hooks broken", "plugin not working", "wp hooks doctor".
 argument-hint: '[--skip-mcp]'
 allowed-tools: Bash
 ---
@@ -27,13 +27,13 @@ Verify the agent-kit plugin hooks installation is healthy. Run this first when:
 Run the doctor command directly:
 
 ```
-ak hooks doctor
+wp hooks doctor
 ```
 
 Or skip the MCP server check (for CI environments):
 
 ```
-ak hooks doctor --skip-mcp
+wp hooks doctor --skip-mcp
 ```
 
 ## Interpreting Results
@@ -58,10 +58,10 @@ Each check prints `[x]` (pass) or `[ ]` (fail) with a detail line:
 | `pretool-guard` / `post-tool` / etc. — not found | `pnpm build` not run after install | `pnpm build` |
 | `pretool-guard` / etc. — not executable | `chmod +x` not persisted | Re-run `pnpm prepare` or `pnpm build` which runs `chmod-bins` |
 | `plugin.json integrity` — missing | `.claude-plugin/plugin.json` absent | Reinstall plugin: `claude plugin install @webpresso/agent-kit --scope user` |
-| `MCP server liveness` — timeout | MCP server cold-start too slow | Wait and retry, or run `ak hooks doctor --skip-mcp` |
+| `MCP server liveness` — timeout | MCP server cold-start too slow | Wait and retry, or run `wp hooks doctor --skip-mcp` |
 | Any check — not found at `dist/esm/...` | Build artifacts missing | Run `pnpm build` in the agent-kit repo |
 
-After fixing, re-run `ak hooks doctor` to confirm.
+After fixing, re-run `wp hooks doctor` to confirm.
 
 ## How It Works
 

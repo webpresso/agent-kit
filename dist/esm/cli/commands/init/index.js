@@ -1,5 +1,5 @@
 /**
- * `ak setup` / `ak init` — scaffolds the agent-kit catalog into a consumer repo.
+ * `wp setup` / `wp init` — scaffolds the agent-kit catalog into a consumer repo.
  *
  * Idempotent: re-runs reconcile against `.agent-kitrc.json`.
  * Safe-by-default: if a target file exists with different content, reports
@@ -37,6 +37,7 @@ import { scaffoldExampleSkill } from './scaffolders/example-skill/index.js';
 import { ensureGstack } from './scaffolders/gstack/index.js';
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js';
 import { ensureOmx } from './scaffolders/omx/index.js';
+import { ensureOmc, OMC_SETUP_COMMAND } from './scaffolders/omc/index.js';
 import { ensureContextMode } from './scaffolders/context-mode/index.js';
 import { scaffoldOpencodePlugin } from './scaffolders/opencode-plugin/index.js';
 import { ensureRtk } from './scaffolders/rtk/index.js';
@@ -50,12 +51,13 @@ const PRESETS = [
     'example-skill',
     'gstack',
     'lore-commits',
+    'omc',
     'omx',
     'playwright-mcp',
     'rtk',
     'vision',
 ];
-const DEFAULT_PRESETS = ['omx', 'gstack', 'vision', 'rtk'];
+const DEFAULT_PRESETS = ['omx', 'omc', 'gstack', 'vision', 'rtk'];
 const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested');
 function parsePresets(withFlag) {
     const explicit = withFlag
@@ -87,7 +89,7 @@ export function resolveCatalogDir() {
             break;
         dir = parent;
     }
-    throw new Error('ak init: could not locate the agent-kit catalog directory. The package may be broken.');
+    throw new Error('wp init: could not locate the agent-kit catalog directory. The package may be broken.');
 }
 function inferBlueprintsDirOverride(repoRoot, existingConfig) {
     if (existingConfig?.blueprintsDir)
@@ -104,7 +106,7 @@ export async function runInit(flags) {
     const cwd = flags.cwd ?? process.cwd();
     const consumer = detectConsumer(cwd);
     if (!consumer) {
-        console.error(`ak init: could not find a git repo (walked up from ${cwd}).\n` +
+        console.error(`wp init: could not find a git repo (walked up from ${cwd}).\n` +
             `Run \`git init\` first, or pass --cwd pointing at a git working tree.`);
         return EXIT_SETUP_FAIL;
     }
@@ -117,7 +119,7 @@ export async function runInit(flags) {
             for (const warning of preflightResult.warnings) {
                 console.error(`  preflight: ✗ ${warning}`);
             }
-            console.error(`\nak setup: aborting — ${preflightResult.warnings.length} compatibility check(s) failed.\n` +
+            console.error(`\nwp setup: aborting — ${preflightResult.warnings.length} compatibility check(s) failed.\n` +
                 `See ${DOCS_URL}`);
             return EXIT_SETUP_FAIL;
         }
@@ -162,7 +164,7 @@ export async function runInit(flags) {
             isTTY: Boolean(process.stdin.isTTY),
         });
         if (selection.aborted) {
-            console.error('ak init: aborted by user.');
+            console.error('wp init: aborted by user.');
             return EXIT_USER_ABORT;
         }
         tier3Selection = selection.selected;
@@ -171,7 +173,7 @@ export async function runInit(flags) {
         console.error(error instanceof Error ? error.message : String(error));
         return EXIT_SETUP_FAIL;
     }
-    console.log(`ak init: scaffolding into ${consumer.repoRoot}`);
+    console.log(`wp init: scaffolding into ${consumer.repoRoot}`);
     if (options.dryRun)
         console.log('  mode: DRY RUN (no writes)');
     if (options.overwrite)
@@ -263,7 +265,7 @@ export async function runInit(flags) {
         catch (error) {
             if (error instanceof Error &&
                 error.message.includes('@webpresso/agent-kit not found in node_modules')) {
-                console.error(`ak init: setup failed — ${error.message}`);
+                console.error(`wp init: setup failed — ${error.message}`);
                 return EXIT_SETUP_FAIL;
             }
             throw error;
@@ -309,7 +311,7 @@ export async function runInit(flags) {
                     console.log('  vision: ✓ scaffolded VISION.md from your answers');
                 }
                 else {
-                    console.log(`  vision: ✓ scaffolded ${visionPath} (template stub — fill it in, then \`ak audit vision\`)`);
+                    console.log(`  vision: ✓ scaffolded ${visionPath} (template stub — fill it in, then \`wp audit vision\`)`);
                 }
             }
             presetResults.push(visionResult);
@@ -374,6 +376,34 @@ export async function runInit(flags) {
         }
         if (presets.includes('omx')) {
             agentHooksResult = await scaffoldAgentHooks({ repoRoot: consumer.repoRoot, options });
+        }
+        if (isCiEnvironment && presets.includes('omc')) {
+            console.log('  omc plugin: - skipped (CI environment)');
+        }
+        else if (presets.includes('omc')) {
+            const omcResult = ensureOmc({
+                options,
+                scope: flags.project ? 'project' : 'user',
+            });
+            switch (omcResult.kind) {
+                case 'omc-installed':
+                    console.log(`  omc plugin: ✓ ${omcResult.scope}-scope plugin ensured (${omcResult.pluginId}); next in Claude Code: ${OMC_SETUP_COMMAND} --${omcResult.scope === 'project' ? 'local' : 'global'}`);
+                    break;
+                case 'omc-skipped-dry-run':
+                    console.log('  omc plugin: skipped (--dry-run)');
+                    break;
+                case 'omc-skipped-opt-out':
+                    console.log('  omc plugin: skipped (AK_SKIP_OMC=1)');
+                    break;
+                case 'omc-skipped-no-cli':
+                    console.warn('  omc plugin: - skipped (claude not on PATH; OMC installs through Claude Code plugin marketplace only)');
+                    break;
+                case 'omc-failed':
+                    console.warn(`  omc plugin: ⚠ ${omcResult.step} exited with ${omcResult.exitCode}; ` +
+                        `fallback: claude plugin marketplace add --scope ${omcResult.scope} https://github.com/Yeachan-Heo/oh-my-claudecode && ` +
+                        `claude plugin install --scope ${omcResult.scope} ${omcResult.pluginId}`);
+                    break;
+            }
         }
         // OMX setup can repair legacy duplicate hook trust-state blocks by
         // clearing all `[hooks.state]` entries before rehydrating its own hooks.
@@ -490,7 +520,7 @@ export async function runInit(flags) {
         else if (presets.includes('rtk')) {
             if (!options.dryRun) {
                 mkdirSync(join(consumer.repoRoot, '.agent'), { recursive: true });
-                writeFileSync(join(consumer.repoRoot, RTK_REQUESTED_MARKER), 'managed by ak setup (default-on)\n');
+                writeFileSync(join(consumer.repoRoot, RTK_REQUESTED_MARKER), 'managed by wp setup (default-on)\n');
             }
             const rtkResult = ensureRtk({ repoRoot: consumer.repoRoot, options });
             switch (rtkResult.kind) {
@@ -569,7 +599,7 @@ export async function runInit(flags) {
                     console.log(`  host visibility: - skipped hard gate (CI environment, ${missing.length} capability/host pair(s) not visible)`);
                 }
                 else {
-                    console.error(`\nak setup: host visibility check failed for ${missing
+                    console.error(`\nwp setup: host visibility check failed for ${missing
                         .map((result) => `${result.host}/${result.capability}`)
                         .join(', ')}`);
                     return EXIT_SETUP_FAIL;
@@ -588,7 +618,7 @@ export async function runInit(flags) {
                 }
             }
         }
-        console.log('\nak init: done.');
+        console.log('\nwp init: done.');
         if (omxFailure === 'not-found')
             return EXIT_SETUP_FAIL;
         if (omxFailure === 'spawn-failed')
@@ -618,7 +648,7 @@ export async function runInit(flags) {
         console.log([
             '',
             'Ownership lanes:',
-            '  Lane 1 ak_*   blueprint · audit · quality',
+            '  Lane 1 wp_*   blueprint · audit · quality',
             '  Lane 2 ctx_*  context-mode (context reduction)',
             '  Lane 3 rtk    shell-tool token filtering',
             '  Lane 4 gstack interactive workflows',
@@ -629,31 +659,31 @@ export async function runInit(flags) {
                 '',
                 '✅ Setup complete.',
                 '',
-                '  Next: ak blueprint new "your first task"',
-                '        ak gain          # token savings after your first session',
+                '  Next: wp blueprint new "your first task"',
+                '        wp gain          # token savings after your first session',
             ].join('\n'));
         }
         return EXIT_SUCCESS;
     }
     catch (error) {
         if (error instanceof Error && /catalogDir does not exist/.test(error.message)) {
-            console.error('ak init: @webpresso/agent-kit not installed in node_modules. ' + 'Run `vp install` first.');
+            console.error('wp init: @webpresso/agent-kit not installed in node_modules. ' + 'Run `vp install` first.');
             return EXIT_SETUP_FAIL;
         }
-        console.error(`ak init: write failed — ${error instanceof Error ? error.message : String(error)}`);
+        console.error(`wp init: write failed — ${error instanceof Error ? error.message : String(error)}`);
         return EXIT_WRITE_FAIL;
     }
 }
 export function registerInitCommand(cli, commandName = 'init') {
     const description = commandName === 'setup'
         ? 'Scaffold agent-kit catalog into the current repo'
-        : 'Compatibility alias for ak setup';
+        : 'Compatibility alias for wp setup';
     // Help text is data-driven so adding a preset (PRESETS) automatically
     // updates --help. Prevents the docs/code drift we discovered when
     // omx + gstack landed without surfacing in --help.
     const withHelp = `Comma-separated Tier-3 skills and/or presets to install ` +
         `(non-interactive). Presets: ${PRESETS.join(', ')}. ` +
-        `Tier-3 skills are listed by 'ak skill list'.`;
+        `Tier-3 skills are listed by 'wp skill list'.`;
     cli
         .command(commandName, description)
         .option('--with <skills>', withHelp)
@@ -664,7 +694,7 @@ export function registerInitCommand(cli, commandName = 'init') {
         .option('--yes', 'Accept defaults, skip interactive prompts')
         .option('--cwd <dir>', 'Working tree to scaffold into (default: process.cwd())')
         .option('--strict', 'Abort if any compatibility check fails (default: warn and continue)')
-        .option('--project', 'Configure OMX in project scope instead of the default user scope')
+        .option('--project', 'Configure OMX/OMC in project scope instead of the default user scope')
         .action(async (flags) => {
         const code = await runInit(flags);
         if (code !== EXIT_SUCCESS) {

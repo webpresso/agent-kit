@@ -3,7 +3,7 @@
  * private webpresso platform-api.
  *
  * Platform team implements this interface; agent-kit ships the types.
- * The platform URL is injected at runtime via `AK_BLUEPRINT_PLATFORM_URL`.
+ * The platform URL is injected at runtime via `WP_BLUEPRINT_PLATFORM_URL`.
  *
  * Design decisions (resolved 2026-05-12, platform team design session):
  *  Q1: Buffer locally, push on reconnect. `eventId` provides idempotency.
@@ -209,7 +209,7 @@ export interface SnapshotTask {
  * A single entry in the GitHub-hosted blueprint template catalog (Q5).
  *
  * `url` points to the raw markdown source on GitHub from which
- * `ak blueprint new --template <slug>` fetches the scaffold.
+ * `wp blueprint new --template <slug>` fetches the scaffold.
  */
 export interface BlueprintTemplateEntry {
   readonly name: string

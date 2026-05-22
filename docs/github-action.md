@@ -7,7 +7,7 @@ last_updated: 2026-05-11
 # GitHub Action — webpresso/agent-kit-action
 
 The reusable GitHub Action for CI audit integration lives in a **separate repo**:
-`webpresso/agent-kit-action` (to be created at `/tmp/ak-action-repo` — push to GitHub before v0.15.0 ships).
+`webpresso/agent-kit-action` (to be created at `/tmp/wp-action-repo` — push to GitHub before v0.15.0 ships).
 
 ## Quick start (once the repo is pushed)
 
@@ -22,9 +22,9 @@ jobs:
 
 ## What it does
 
-Runs `ak audit --all --json` and posts a structured PR comment when `pr-comment: true`.
+Runs `wp audit --all --json` and posts a structured PR comment when `pr-comment: true`.
 
-The action source is at `/tmp/ak-action-repo/` — push to `webpresso/agent-kit-action` on GitHub
+The action source is at `/tmp/wp-action-repo/` — push to `webpresso/agent-kit-action` on GitHub
 as a public repo before the v0.15.0 release. Tag it `v1` after first push.
 
 ## Consumer rollout (Task 5.2)
@@ -35,7 +35,7 @@ For monorepo and ingest-lens to adopt v0.15.0:
    ```bash
    rm -rf .claude/rules/ .claude/skills/ .agents/skills/ .cursor/rules/ .windsurf/skills/
    rm -f .windsurfrules .cursorrules
-   # Remove ak cursor-windsurf-sync from package.json scripts if present
+   # Remove wp cursor-windsurf-sync from package.json scripts if present
    ```
 2. Bump `webpresso` to `0.15.0` (or `@webpresso/agent-kit` if still on the legacy package)
 3. Run `wp setup --with base-kit --with example-skill`

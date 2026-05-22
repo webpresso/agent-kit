@@ -5,11 +5,10 @@
  * and feed it synthetic stdin payloads, asserting exit code and stdout JSON shape.
  *
  * MCP-ready is signalled by writing a sentinel file at
- * `${tmpdir()}/ak-mcp-ready-${SENTINEL_KEY}` and passing
- * `AK_MCP_SENTINEL_KEY=${SENTINEL_KEY}` to the spawned binary so reader and
+ * `${tmpdir()}/wp-mcp-ready-${SENTINEL_KEY}` and passing
+ * `WP_MCP_SENTINEL_KEY=${SENTINEL_KEY}` to the spawned binary so reader and
  * writer agree on the filename without relying on PPID inheritance.
- * Throttle markers are written to `${tmpdir()}/ak-routing-guidance-${process.pid}-<type>`.
- * Both are cleaned up after each test.
+ * Only the MCP sentinel is used by the hook path.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -25,16 +24,12 @@ const BINARY = join(__dirname, '../../../dist/esm/hooks/pretool-guard/index.js')
 const SENTINEL_KEY = `runner-test-${process.pid}`
 
 // Per-test isolated TMPDIR — the binary's sentinel reader scans tmpdir for any
-// `ak-mcp-ready-*` files, so without isolation real running MCP servers on the
+// `wp-mcp-ready-*` files, so without isolation real running MCP servers on the
 // host machine would leak into the test and fool the readiness check.
 let testTmpDir: string
 
 function sentinelPath(): string {
-  return join(testTmpDir, `ak-mcp-ready-${SENTINEL_KEY}`)
-}
-
-function throttleMarker(type: string): string {
-  return join(testTmpDir, `ak-routing-guidance-${process.pid}-${type}`)
+  return join(testTmpDir, `wp-mcp-ready-${SENTINEL_KEY}`)
 }
 
 function runBinary(stdin: string): { stdout: string; stderr: string; status: number } {
@@ -44,7 +39,7 @@ function runBinary(stdin: string): { stdout: string; stderr: string; status: num
     timeout: 8000,
     env: {
       ...process.env,
-      AK_MCP_SENTINEL_KEY: SENTINEL_KEY,
+      WP_MCP_SENTINEL_KEY: SENTINEL_KEY,
       // TMPDIR=tested directory so the binary's `os.tmpdir()` resolves to our
       // isolated dir on macOS/Linux. Node honours TMPDIR > TMP > TEMP > /tmp.
       TMPDIR: testTmpDir,
@@ -67,23 +62,14 @@ function clearMcpSentinel(): void {
   if (existsSync(sentinelPath())) rmSync(sentinelPath())
 }
 
-function clearThrottleMarkers(): void {
-  for (const type of ['test', 'lint', 'typecheck', 'qa']) {
-    const p = throttleMarker(type)
-    if (existsSync(p)) rmSync(p)
-  }
-}
-
 describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
   beforeEach(() => {
-    testTmpDir = mkdtempSync(join(tmpdir(), 'ak-runner-test-'))
+    testTmpDir = mkdtempSync(join(tmpdir(), 'wp-runner-test-'))
     clearMcpSentinel()
-    clearThrottleMarkers()
   })
 
   afterEach(() => {
     clearMcpSentinel()
-    clearThrottleMarkers()
     rmSync(testTmpDir, { recursive: true, force: true })
   })
 
@@ -101,10 +87,10 @@ describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
       hookSpecificOutput: { permissionDecision: string; permissionDecisionReason: string }
     }
     expect(parsed.hookSpecificOutput.permissionDecision).toBe('deny')
-    expect(parsed.hookSpecificOutput.permissionDecisionReason).toContain('ak_test')
+    expect(parsed.hookSpecificOutput.permissionDecisionReason).toContain('wp_test')
   })
 
-  it('vp exec oxlint + MCP ready → exit 0, deny JSON mentioning ak_lint', () => {
+  it('vp exec oxlint + MCP ready → exit 0, deny JSON mentioning wp_lint', () => {
     writeMcpSentinel()
     const payload = JSON.stringify({
       tool_name: 'Bash',
@@ -116,10 +102,10 @@ describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
       hookSpecificOutput: { permissionDecision: string; permissionDecisionReason: string }
     }
     expect(parsed.hookSpecificOutput.permissionDecision).toBe('deny')
-    expect(parsed.hookSpecificOutput.permissionDecisionReason).toContain('ak_lint')
+    expect(parsed.hookSpecificOutput.permissionDecisionReason).toContain('wp_lint')
   })
 
-  it('vp exec tsc + MCP ready → exit 0, deny JSON mentioning ak_typecheck', () => {
+  it('vp exec tsc + MCP ready → exit 0, deny JSON mentioning wp_typecheck', () => {
     writeMcpSentinel()
     const payload = JSON.stringify({
       tool_name: 'Bash',
@@ -131,10 +117,10 @@ describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
       hookSpecificOutput: { permissionDecision: string; permissionDecisionReason: string }
     }
     expect(parsed.hookSpecificOutput.permissionDecision).toBe('deny')
-    expect(parsed.hookSpecificOutput.permissionDecisionReason).toContain('ak_typecheck')
+    expect(parsed.hookSpecificOutput.permissionDecisionReason).toContain('wp_typecheck')
   })
 
-  it('vp exec prettier + MCP ready → exit 0, deny JSON mentioning ak_format', () => {
+  it('vp exec prettier + MCP ready → exit 0, deny JSON mentioning wp_format', () => {
     writeMcpSentinel()
     const payload = JSON.stringify({
       tool_name: 'Bash',
@@ -146,7 +132,7 @@ describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
       hookSpecificOutput: { permissionDecision: string; permissionDecisionReason: string }
     }
     expect(parsed.hookSpecificOutput.permissionDecision).toBe('deny')
-    expect(parsed.hookSpecificOutput.permissionDecisionReason).toContain('ak_format')
+    expect(parsed.hookSpecificOutput.permissionDecisionReason).toContain('wp_format')
   })
 
   // ── Passthrough cases ─────────────────────────────────────────────────────
@@ -173,34 +159,28 @@ describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
     ).not.toBe('deny')
   })
 
-  // ── MCP not ready passthrough ─────────────────────────────────────────────
+  // ── MCP-not-ready remains MCP-first (still denied) ────────────────────────
 
-  it('vp test WITHOUT MCP sentinel → falls through to validators (no routing deny)', () => {
-    // No sentinel written — MCP not ready
+  it('vp test WITHOUT MCP sentinel → still deny for MCP-first routing', () => {
     const payload = JSON.stringify({
       tool_name: 'Bash',
       tool_input: { command: 'vp exec vitest run' },
     })
     const { stdout, status } = runBinary(payload)
-    // Validators run; they may pass or fail but routing must NOT fire
-    const parsed = JSON.parse(stdout.trim() || '{}') as Record<string, unknown>
-    const hookOutput = parsed.hookSpecificOutput as { permissionDecision?: string } | undefined
-    // Routing deny must NOT have occurred
-    expect(hookOutput?.permissionDecision).not.toBe('deny')
-    // Status is 0 (pass) or 2 (validator block) — not a routing exit
-    expect([0, 2]).toContain(status)
+    const parsed = JSON.parse(stdout) as {
+      hookSpecificOutput: { permissionDecision: string; permissionDecisionReason: string }
+    }
+    expect(status).toBe(0)
+    expect(parsed.hookSpecificOutput.permissionDecision).toBe('deny')
   })
 
-  // ── Guidance throttle ─────────────────────────────────────────────────────
-
-  it('throttle: second vp test call passes through after first showed guidance', () => {
+  it('vp run test remains denied on repeated invocations even with MCP sentinel', () => {
     writeMcpSentinel()
     const payload = JSON.stringify({
       tool_name: 'Bash',
       tool_input: { command: 'vp exec vitest run' },
     })
 
-    // First call: guidance shown (deny)
     const first = runBinary(payload)
     expect(first.status).toBe(0)
     const firstParsed = JSON.parse(first.stdout) as {
@@ -208,17 +188,11 @@ describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
     }
     expect(firstParsed.hookSpecificOutput.permissionDecision).toBe('deny')
 
-    // The throttle marker is now on disk (written by the child process with its own ppid = our pid).
-    // Verify it exists before the second call.
-    expect(existsSync(throttleMarker('test'))).toBe(true)
-
-    // Second call: throttle file exists → routeDevCommand returns null → falls through to validators
     const second = runBinary(payload)
-    const secondParsed = JSON.parse(second.stdout.trim() || '{}') as Record<string, unknown>
-    const secondHook = secondParsed.hookSpecificOutput as
-      | { permissionDecision?: string }
-      | undefined
-    expect(secondHook?.permissionDecision).not.toBe('deny')
-    expect([0, 2]).toContain(second.status)
+    expect(second.status).toBe(0)
+    const secondParsed = JSON.parse(second.stdout) as {
+      hookSpecificOutput: { permissionDecision: string }
+    }
+    expect(secondParsed.hookSpecificOutput.permissionDecision).toBe('deny')
   })
 })

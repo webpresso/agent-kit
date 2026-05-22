@@ -1,5 +1,5 @@
 /**
- * `ak sync` — projects the canonical agent-kit rule/skill catalog into the
+ * `wp sync` — projects the canonical agent-kit rule/skill catalog into the
  * supported host surfaces.
  *
  * Projects unified rule + skill content (catalog ∪ consumer) into per-IDE
@@ -71,7 +71,7 @@ export function registerSyncCommand(cli) {
         let result;
         const consumer = detectConsumer(repoRoot);
         if (!consumer) {
-            throw commandError('ak sync: could not detect the current git repo root.');
+            throw commandError('wp sync: could not detect the current git repo root.');
         }
         const agentsResult = scaffoldAgentsMd({
             catalogDir: resolvePackageAsset('catalog'),
@@ -90,7 +90,7 @@ export function registerSyncCommand(cli) {
         }
         catch (error) {
             if (error instanceof Error && /catalogDir does not exist/.test(error.message)) {
-                throw commandError('ak sync: @webpresso/agent-kit not installed in node_modules. ' +
+                throw commandError('wp sync: @webpresso/agent-kit not installed in node_modules. ' +
                     'Run `vp install` first.');
             }
             throw error;
@@ -104,28 +104,28 @@ export function registerSyncCommand(cli) {
             if (combinedFixCount > 0) {
                 const first = combinedMismatches[0];
                 if (first) {
-                    console.error(`ak sync --check: drift detected at ${first.targetPath}`);
+                    console.error(`wp sync --check: drift detected at ${first.targetPath}`);
                     console.error(`  reason: ${first.reason}`);
                     console.error(`  consumer: ${first.consumerId}`);
                     if (combinedMismatches.length > 1) {
                         console.error(`(${combinedMismatches.length - 1} additional drift entries follow)`);
                         console.error(formatMismatches(combinedMismatches.slice(1)));
                     }
-                    console.error('\nRun `ak sync` to repair, then commit the changes.');
+                    console.error('\nRun `wp sync` to repair, then commit the changes.');
                 }
                 else {
-                    console.error(`ak sync --check: ${combinedFixCount} drift items detected.`);
+                    console.error(`wp sync --check: ${combinedFixCount} drift items detected.`);
                 }
                 return 1;
             }
-            console.log('ak sync --check: in sync.');
+            console.log('wp sync --check: in sync.');
             return 0;
         }
         if (combinedFixCount === 0) {
             console.log('Already up to date.');
             return 0;
         }
-        console.log(`ak sync: wrote ${combinedFixCount} entries.`);
+        console.log(`wp sync: wrote ${combinedFixCount} entries.`);
         console.log('Synced. Restart your IDE to load new rules/skills.');
         return 0;
     });

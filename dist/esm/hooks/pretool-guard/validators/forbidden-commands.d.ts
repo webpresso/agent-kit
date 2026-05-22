@@ -1,6 +1,6 @@
 import type { ToolInput, ValidationResult } from '#hooks/shared/types';
 import { type MCPRedirectConfig } from './mcp-redirect.js';
-export type CommandCategory = 'test' | 'lint' | 'typecheck' | 'format' | 'blueprint' | 'unknown';
+export type CommandCategory = 'test' | 'lint' | 'typecheck' | 'format' | 'blueprint' | 'e2e' | 'unknown';
 export interface CommandRule {
     pattern: RegExp;
     category: CommandCategory;
@@ -56,7 +56,7 @@ export declare const SUGGESTION_MODIFIERS: SuggestionModifier[];
 export declare function splitTopLevelCommands(command: string): string[];
 export declare function findMatchingRule(command: string): CommandRule | undefined;
 export declare function applySuggestionModifiers(command: string, rule: CommandRule): string;
-export declare function getJustEquivalent(command: string): string;
+export declare function getApprovedEquivalent(command: string): string;
 export declare function getCommandVariants(command: string): string[];
 export declare function getCommandCategory(command: string): CommandCategory;
 export declare function createBlockedResult(command: string, rule: CommandRule, options?: RedirectOptions): BlockedCommandResult;

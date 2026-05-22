@@ -1,7 +1,7 @@
 /**
- * `ak_audit` MCP tool.
+ * `wp_audit` MCP tool.
  *
- * Wraps the existing `ak audit *` subcommands behind one MCP tool with a
+ * Wraps the existing `wp audit *` subcommands behind one MCP tool with a
  * `kind` enum. Returns a structured `{passed, kind, details}` payload wrapped
  * in MCP `text` content blocks.
  *

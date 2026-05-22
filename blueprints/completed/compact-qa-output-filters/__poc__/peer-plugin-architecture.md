@@ -110,13 +110,13 @@ The dominant cost is **Node startup for context-mode's hook**. Even on a hot cac
 
 - **Don't merge agent-kit's hook with rtk's.** Each plugin owns its own prefix; merging breaks the ownership boundary (vision principle). The conductor pattern keeps both side-by-side.
 - **Don't put compact-output transforms in a hook.** Transforms run **inside the MCP tool handler** where the handler IS the persistent server (no fork cost). This was the right architectural choice.
-- **Don't proxy ak_* through context-mode.** Each plugin's prefix is sacrosanct (`ak_*` vs `ctx_*` vs `rtk *`). Proxying creates confused ownership.
+- **Don't proxy wp_* through context-mode.** Each plugin's prefix is sacrosanct (`wp_*` vs `ctx_*` vs `rtk *`). Proxying creates confused ownership.
 
 ## Composition pattern — the most efficient shape
 
 ```
 PreToolUse(Bash) event fires
-  ├── ak-pretool-guard       (Bun, ~46ms)  → matches pnpm test/vitest/oxlint/tsc/just qa → DENY → mcp__agent-kit__ak_*
+  ├── ak-pretool-guard       (Bun, ~46ms)  → matches pnpm test/vitest/oxlint/tsc/just qa → DENY → mcp__agent-kit__wp_*
   ├── rtk-rewrite.sh + rtk   (bash + Rust, ~10ms) → matches git/gh/cargo/kubectl/... → ALLOW rewritten | DENY | PASSTHROUGH
   └── context-mode pretool   (Node, ~91ms) → guidance injection ("May produce large output" hints)
 
@@ -130,7 +130,7 @@ Otherwise → original or rewritten command runs
 
 1. **Hook ordering**: place fast deny-emitters (rtk ~5ms) BEFORE slow context-injectors (context-mode ~91ms) in `settings.json`. If rtk denies, downstream hooks may still fire (Claude Code spec dependent), but at least the agent gets feedback faster on partial output.
 2. **PreToolUse parallelism**: Claude Code may run hooks in parallel — if so, total cost is bounded by the slowest hook, not the sum. Empirical confirmation needed if this becomes a UX issue.
-3. **Skip rtk-rewrite for cmds we already know agent-kit denies**: rtk's hook can take an `exclude_commands` config (verified in `rewrite_cmd.rs`). agent-kit's `ak setup --with rtk` could populate this exclude list with our prefixes (`pnpm test`, `vitest`, `oxlint`, `tsc`, `just qa`, `pnpm qa`, `just lint`, `pnpm lint`, `just typecheck`, `pnpm typecheck`). Saves the rtk binary fork on commands we already handle.
+3. **Skip rtk-rewrite for cmds we already know agent-kit denies**: rtk's hook can take an `exclude_commands` config (verified in `rewrite_cmd.rs`). agent-kit's `wp setup --with rtk` could populate this exclude list with our prefixes (`pnpm test`, `vitest`, `oxlint`, `tsc`, `just qa`, `pnpm qa`, `just lint`, `pnpm lint`, `just typecheck`, `pnpm typecheck`). Saves the rtk binary fork on commands we already handle.
 
 ### What we CAN'T do (Claude Code spec limitations)
 
@@ -145,9 +145,9 @@ Otherwise → original or rewritten command runs
 |---|---|
 | Transforms inside MCP tool handler (not a hook) | The MCP server is persistent — zero per-call fork cost. Compaction work runs in the same Node process the agent already has open. |
 | 4 transforms maintained in agent-kit | Bounded scope; rtk handles the long tail; context-mode handles other concerns. |
-| `ak setup --with rtk` (follow-up blueprint) is a peer install | Doesn't merge code; doesn't proxy. Preserves ownership boundary. |
-| Hook ordering: rtk first (fast Rust), then ak-pretool-guard (Bun), then context-mode (Node) | Empirically correct given measured fork costs. Document this in `ak setup --with rtk`. |
-| `RTK_HOOK_EXCLUDE_COMMANDS` populated by `ak setup --with rtk` with our 10 prefixes | Skips rtk's fork on commands we already deny. Net latency reduction. |
+| `wp setup --with rtk` (follow-up blueprint) is a peer install | Doesn't merge code; doesn't proxy. Preserves ownership boundary. |
+| Hook ordering: rtk first (fast Rust), then ak-pretool-guard (Bun), then context-mode (Node) | Empirically correct given measured fork costs. Document this in `wp setup --with rtk`. |
+| `RTK_HOOK_EXCLUDE_COMMANDS` populated by `wp setup --with rtk` with our 10 prefixes | Skips rtk's fork on commands we already deny. Net latency reduction. |
 
 **No re-architecture required.** The current blueprint stands. We can tighten the rtk-integration follow-up with these findings (excludelist, hook ordering, parallel vs serial).
 
@@ -155,7 +155,7 @@ Otherwise → original or rewritten command runs
 
 When that blueprint executes:
 
-1. **`ak setup --with rtk`** must patch `~/.claude/settings.json` (user-level), not the agent-kit plugin manifest, so users can re-order hooks if desired.
+1. **`wp setup --with rtk`** must patch `~/.claude/settings.json` (user-level), not the agent-kit plugin manifest, so users can re-order hooks if desired.
 2. **Set `RTK_TELEMETRY_DISABLED=1`** in the env section of the patched settings.
 3. **Set `RTK_HOOK_EXCLUDE_COMMANDS`** to our 10 dev-routing prefixes (`pnpm test`, `vitest`, `oxlint`, `tsc`, `pnpm qa`, `just qa`, `pnpm lint`, `just lint`, `pnpm typecheck`, `just typecheck`, `pnpm check-types`). Avoids redundant rtk fork on commands already denied by ak-pretool-guard.
 4. **Hook ordering in patched settings.json**: rtk-rewrite.sh BEFORE ak-pretool-guard if Claude Code respects insertion order; otherwise the order doesn't matter for correctness (only for partial-output UX).

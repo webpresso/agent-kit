@@ -10,7 +10,7 @@ description: Navigate the {{PROJECT_NAME}} monorepo efficiently. Knows package s
 ### Packages
 
 {{PACKAGES_TABLE}}
-<!-- Rendered from pnpm-workspace.yaml / package.json workspaces during `ak init`.
+<!-- Rendered from pnpm-workspace.yaml / package.json workspaces during `wp init`.
      Format: | Package | Path | Purpose | Common Files |
      Purpose + Common Files start as {{TODO: describe ...}} placeholders. -->
 

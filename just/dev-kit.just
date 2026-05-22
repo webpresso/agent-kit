@@ -6,19 +6,19 @@
 [doc('Start a manifest-backed development target')]
 [group('agent-kit')]
 dev *targets:
-    @ak dev {{ targets }}
+    @wp dev {{ targets }}
 
 [doc('Validate the dev manifest and print the resolved services')]
 [group('agent-kit')]
 dev-doctor *targets:
-    @ak dev {{ targets }} --doctor
+    @wp dev {{ targets }} --doctor
 
 [doc('Clean supervisor-owned state for a manifest-backed development target')]
 [group('agent-kit')]
 dev-clean *targets:
-    @ak dev {{ targets }} --clean
+    @wp dev {{ targets }} --clean
 
 [doc('Restart a manifest-backed development target')]
 [group('agent-kit')]
 dev-restart *targets:
-    @ak dev {{ targets }} --restart
+    @wp dev {{ targets }} --restart

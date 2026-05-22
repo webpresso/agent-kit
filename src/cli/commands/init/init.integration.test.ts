@@ -80,7 +80,7 @@ function findCompanionFiles(root: string): string[] {
 function makeTempRepo(): string {
   const dir = join(
     tmpdir(),
-    `ak-init-smoke-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    `wp-init-smoke-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   )
   mkdirSync(dir, { recursive: true })
   // Simulate a git repo so findGitRoot succeeds.
@@ -122,7 +122,7 @@ function markAsWebpressoRepo(repoRoot: string): void {
   writeFileSync(join(repoRoot, 'webpresso', 'config.yaml'), 'name: webpresso-monorepo\n')
 }
 
-describe('ak init end-to-end', () => {
+describe('wp init end-to-end', () => {
   let repo: string
   let originalCodexHome: string | undefined
   let originalHome: string | undefined
@@ -151,7 +151,7 @@ describe('ak init end-to-end', () => {
   })
 
   it('fails with code 1 if no git root is found', async () => {
-    const badDir = join(tmpdir(), `ak-init-nogit-${Date.now()}`)
+    const badDir = join(tmpdir(), `wp-init-nogit-${Date.now()}`)
     mkdirSync(badDir, { recursive: true })
     try {
       const code = await runInit({ cwd: badDir, yes: true })
@@ -238,7 +238,7 @@ describe('ak init end-to-end', () => {
       /Generated on demand \(not created by setup\):[\s\S]*`\.agent\/planning\/contracts\/`[\s\S]*`\.agent\/planning\/state\/`[\s\S]*`\.agent\/planning\/notepad\.md`[\s\S]*`\.agent\/planning\/project-memory\.json`/,
     )
     expect(agents).toContain('vp install && vp run setup:agent')
-    expect(agents).not.toContain('ak symlink sync')
+    expect(agents).not.toContain('wp symlink sync')
 
     // Config
     const rc = JSON.parse(readFileSync(join(repo, '.agent-kitrc.json'), 'utf8')) as {
@@ -365,7 +365,7 @@ describe('ak init end-to-end', () => {
 
     // Wave-3: unified sync now populates per-IDE rule/skill surfaces.
     // Commands surfaces (`.claude/commands`) remain unwritten — covered by
-    // the Claude Code plugin, not by ak setup.
+    // the Claude Code plugin, not by wp setup.
     expect(existsSync(join(repo, '.claude', 'commands'))).toBe(false)
     // .claude/skills now hosts symlinked rules + skills via unified sync
     expect(existsSync(join(repo, '.claude', 'skills'))).toBe(true)
@@ -395,10 +395,10 @@ describe('ak init end-to-end', () => {
     const stopCommands = claudeSettings.hooks.Stop.flatMap((group) =>
       group.hooks.map((hook) => hook.command),
     )
-    expect(stopCommands.some((command) => command.includes('ak-stop-qa'))).toBe(true)
+    expect(stopCommands.some((command) => command.includes('wp-stop-qa'))).toBe(true)
     expect(
       stopCommands.some((command) =>
-        command.includes('"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak" audit agents'),
+        command.includes('"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp" audit agents'),
       ),
     ).toBe(true)
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
@@ -473,17 +473,17 @@ describe('DX output: lane framing and next-steps block', () => {
   it('prints lane framing after a successful run', async () => {
     await runInit({ cwd: repo, yes: true })
     const allOutput = logLines.join('\n')
-    expect(allOutput).toContain('ak_*')
+    expect(allOutput).toContain('wp_*')
     expect(allOutput).toContain('ctx_*')
     expect(allOutput).toContain('rtk')
     expect(allOutput).toContain('gstack')
   })
 
-  it('prints next-steps block (ak blueprint new, ak gain) on non-dry-run', async () => {
+  it('prints next-steps block (wp blueprint new, wp gain) on non-dry-run', async () => {
     await runInit({ cwd: repo, yes: true })
     const allOutput = logLines.join('\n')
-    expect(allOutput).toContain('ak blueprint new')
-    expect(allOutput).toContain('ak gain')
+    expect(allOutput).toContain('wp blueprint new')
+    expect(allOutput).toContain('wp gain')
   })
 
   it('prints Claude plugin auto-enable status on non-dry-run', async () => {
@@ -503,14 +503,14 @@ describe('DX output: lane framing and next-steps block', () => {
   it('omits next-steps block in --dry-run mode', async () => {
     await runInit({ cwd: repo, yes: true, 'dry-run': true })
     const allOutput = logLines.join('\n')
-    expect(allOutput).not.toContain('ak blueprint new')
-    expect(allOutput).not.toContain('ak gain')
+    expect(allOutput).not.toContain('wp blueprint new')
+    expect(allOutput).not.toContain('wp gain')
   })
 
   it('lane framing is present even in --dry-run mode', async () => {
     await runInit({ cwd: repo, yes: true, 'dry-run': true })
     const allOutput = logLines.join('\n')
-    expect(allOutput).toContain('ak_*')
+    expect(allOutput).toContain('wp_*')
     expect(allOutput).toContain('ctx_*')
   })
 })
@@ -521,7 +521,7 @@ describe('warnIfNonLocalCli (DX2)', () => {
   let captured: string[]
 
   beforeEach(() => {
-    repo = join(tmpdir(), `ak-warn-cli-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+    repo = join(tmpdir(), `wp-warn-cli-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
     mkdirSync(repo, { recursive: true })
     writeFileSync(join(repo, 'package.json'), JSON.stringify({ name: '@acme/demo', private: true }))
     captured = []
@@ -544,7 +544,7 @@ describe('warnIfNonLocalCli (DX2)', () => {
     expect(
       captured.some(
         (line) =>
-          line.includes('warning: ak running from a non-local install') &&
+          line.includes('warning: wp running from a non-local install') &&
           line.includes('/opt/homebrew/lib/agent-kit/dist/cli/cli.js'),
       ),
     ).toBe(true)
@@ -601,7 +601,7 @@ describe('warnIfNonLocalCli (DX2)', () => {
     const { warnIfNonLocalCli } = await import('./detect-consumer.js')
     const linkedRoot = join(
       tmpdir(),
-      `ak-linked-root-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      `wp-linked-root-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     )
     const localRoot = join(repo, 'node_modules', '@webpresso', 'agent-kit')
     const cliFile = join(linkedRoot, 'dist', 'cli', 'cli.js')
@@ -653,10 +653,10 @@ describe('warnIfNonLocalCli (DX2)', () => {
     expect(
       captured.some(
         (line) =>
-          line.includes('warning: ak running from a non-local install') &&
+          line.includes('warning: wp running from a non-local install') &&
           line.includes('This repo already pins `@webpresso/agent-kit`') &&
           line.includes('vp run setup:agent') &&
-          line.includes('vp exec ak setup'),
+          line.includes('vp exec wp setup'),
       ),
     ).toBe(true)
   })

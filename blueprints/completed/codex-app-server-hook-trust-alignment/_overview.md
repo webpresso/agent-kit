@@ -26,14 +26,14 @@ tags:
 - Complexity: M
 - Draft slug: `codex-app-server-hook-trust-alignment`
 - Output path: `blueprints/draft/codex-app-server-hook-trust-alignment/_overview.md`
-- Validation scope: preserve current `ak setup` behavior while reducing reliance on Codex private hash internals.
+- Validation scope: preserve current `wp setup` behavior while reducing reliance on Codex private hash internals.
 - Refinement scope: fact-check OpenAI/Codex app-server claims, verify local file paths and command surfaces, harden concurrency/error cases, and restructure tasks for `/pll` conflict safety.
 - Execution principle: app-server is authoritative; remove manual hash mirroring rather than preserving it as a compatibility path. Fail loudly with actionable diagnostics when official trust sync is unavailable.
 
 ## Architecture Overview
 
 ```text
-ak setup / codex hook scaffolder
+wp setup / codex hook scaffolder
         |
         v
 write .codex/hooks.json / user hook config
@@ -110,7 +110,7 @@ hooks/list verification; otherwise explicit setup diagnostic and untrusted hooks
 | C1 | LOW | Current hook scaffolder lives in `src/cli/commands/init/scaffolders/agent-hooks/index.ts`. | Verified; it currently owns `.claude/settings.json`, `.codex/hooks.json`, manual trust hash writes, and `trustCodexAgentKitHooksForRepo`. | Tasks isolate new modules before touching `index.ts`, then remove manual trust hash code from it. |
 | C2 | LOW | Existing generated Codex commands include six bins. | Verified in `TRUSTED_AGENT_KIT_CODEX_BINS` and `buildAgentKitHookGroups`: `ak-sessionstart-routing`, `ak-check-dev-link`, `ak-pretool-guard`, `ak-post-tool`, `ak-guard-switch`, `ak-stop-qa`. | Task 1.2 acceptance uses this exact set. |
 | C3 | MEDIUM | The repo has no `src/codex/` directory today. | Verified with filesystem search. | Task 1.1 creates `src/codex/app-server/` as the new boundary. |
-| C4 | LOW | `bun ./src/cli/cli.ts lint [...files]` supports scoped file args. | Verified via `ak lint --help`. | Verification gates keep scoped lint commands. |
+| C4 | LOW | `bun ./src/cli/cli.ts lint [...files]` supports scoped file args. | Verified via `wp lint --help`. | Verification gates keep scoped lint commands. |
 | C5 | MEDIUM | `src/cli/commands/init/index.ts` reapplies hook trust after OMX setup. | Verified; this reapplication must survive migration. | Task 2.2 explicitly wires app-server trust sync into both initial scaffold and post-OMX reapply path. |
 | C6 | LOW | `docs/hook-matrix.md` is the nearest Codex hook guarantee doc. | Verified. | Task 3.2 updates it and setup docs. |
 | L1 | HIGH | Keep failure path for compatibility. | Rejected by current product directive: do not leave legacy manual hash code. | Blueprint removes failure path tasks and adds deletion acceptance checks. |
@@ -235,7 +235,7 @@ Replace the current trust flow in `scaffoldAgentHooks` and `trustCodexAgentKitHo
 **Acceptance:**
 
 - [x] No manual hash path remains.
-- [x] Existing `ak setup` remains non-interactive.
+- [x] Existing `wp setup` remains non-interactive.
 - [x] Dry-run never spawns `codex app-server` or writes `$CODEX_HOME/config.toml`.
 - [x] Post-OMX reapply still runs and uses the same app-server-first behavior.
 - [x] Failure warnings are concise and actionable and direct users to `/hooks` review.
@@ -258,13 +258,13 @@ Add contract and static checks that prove agent-kit no longer computes Codex hoo
 
 **Steps (TDD):**
 
-1. Add a skipped-by-default live test gated by `AK_CODEX_CONTRACT=1` and `codex --version` availability.
+1. Add a skipped-by-default live test gated by `WP_CODEX_CONTRACT=1` and `codex --version` availability.
 2. Use temp directories for repo root and `CODEX_HOME`; never touch the user's real Codex config.
 3. Generate/write agent-kit hook config, run app-server trust sync, and verify app-server `hooks/list` reports agent-kit hooks as trusted/enabled.
 4. Add static assertions that source no longer contains `codexCommandHookHash`, `versionForCodexTomlIdentity`, or `upsertCodexHookTrustStates`.
 5. Assert skipped output includes the reason when the env var or `codex` binary is missing.
 6. Run normal scoped tests to prove this file does not make CI require Codex.
-7. Run optional contract locally when Codex is present: `AK_CODEX_CONTRACT=1 bun run test src/cli/commands/init/scaffolders/agent-hooks/codex-contract.test.ts --reporter=dot`.
+7. Run optional contract locally when Codex is present: `WP_CODEX_CONTRACT=1 bun run test src/cli/commands/init/scaffolders/agent-hooks/codex-contract.test.ts --reporter=dot`.
 
 **Acceptance:**
 
@@ -310,8 +310,8 @@ Update docs so users and future agents understand why hook trust is auto-synced,
 | Scoped hook tests | `bun run test src/cli/commands/init/scaffolders/agent-hooks --reporter=dot` | Hook scaffolder/trust tests pass |
 | Type safety | `bun run typecheck` | Zero errors |
 | Scoped lint | `bun run lint src/codex/app-server src/cli/commands/init/scaffolders/agent-hooks` | Zero violations |
-| Optional Codex contract | `AK_CODEX_CONTRACT=1 bun run test src/cli/commands/init/scaffolders/agent-hooks/codex-contract.test.ts --reporter=dot` | Passes when local Codex is installed; otherwise intentionally skipped outside contract mode |
-| Manual smoke | Run `ak setup` in a temp repo with temporary `CODEX_HOME`; inspect `codex app-server hooks/list` or `/hooks` state | Agent-kit hooks are trusted/enabled; user hooks remain untrusted |
+| Optional Codex contract | `WP_CODEX_CONTRACT=1 bun run test src/cli/commands/init/scaffolders/agent-hooks/codex-contract.test.ts --reporter=dot` | Passes when local Codex is installed; otherwise intentionally skipped outside contract mode |
+| Manual smoke | Run `wp setup` in a temp repo with temporary `CODEX_HOME`; inspect `codex app-server hooks/list` or `/hooks` state | Agent-kit hooks are trusted/enabled; user hooks remain untrusted |
 
 ## Cross-Plan References
 
@@ -326,7 +326,7 @@ Update docs so users and future agents understand why hook trust is auto-synced,
 | --------- | ---- | -------- | ---- |
 | `codex` binary missing (F11) | Setup cannot use official runtime metadata | Emit explicit warning/failure; leave hooks untrusted for `/hooks` review rather than writing guessed hashes | 2.2, 3.1 |
 | App-server protocol changes (F7/F11) | Client fails or writes wrong shape | `zod` validation and method-specific errors; no silent trust write | 1.1, 2.1 |
-| App-server hangs (F11) | `ak setup` stalls | Client timeout and explicit diagnostic | 2.1, 2.2 |
+| App-server hangs (F11) | `wp setup` stalls | Client timeout and explicit diagnostic | 2.1, 2.2 |
 | Hook key positional suffix changes (F10) | Stale guessed keys fail | Never guess keys; always read from `hooks/list` | 2.1 |
 | User-authored project hook present (F6) | Accidental trust of unsafe hook | Strict ownership predicate by source path + command/bin + unmanaged status | 1.2, 2.1 |
 | Multiple config layers produce duplicate commands (C5) | Wrong source trusted | Filter by expected source path and hook ownership; verify after write | 1.2, 2.1 |

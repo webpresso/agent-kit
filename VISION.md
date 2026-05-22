@@ -15,13 +15,13 @@ Every AI coding agent (Claude Code, Codex, OpenCode, Gemini, Cursor, Windsurf) b
 
 > **One repo, one truth, every agent.**
 
-Success means a developer runs `ak setup` once and every AI coding agent in the repo gets the same rules, skills, hooks, quality gates, and blueprint workflows — with no manual duplication.
+Success means a developer runs `wp setup` once and every AI coding agent in the repo gets the same rules, skills, hooks, quality gates, and blueprint workflows — with no manual duplication.
 
 ## Boundaries
 
 **In scope**
 
-- `ak` CLI — setup, sync, audit, blueprint, and quality commands
+- `wp` CLI — setup, sync, audit, blueprint, and quality commands
 - Skill catalog — reusable AI coding patterns (TanStack Query, React Doctor, frontend design, etc.)
 - Preset system — scaffolder integrations for context-mode, gstack, omx, rtk, vision
 - Blueprint MCP — SQLite-backed structured planning surface with evidence contracts
@@ -41,4 +41,4 @@ Success means a developer runs `ak setup` once and every AI coding agent in the 
 - **Additive and idempotent** — every scaffolder operation is safe to re-run; it merges, never overwrites unrelated content
 - **Agent-agnostic** — the same `.agent/` source truth propagates to Claude Code, Codex, OpenCode, Gemini, Cursor, and Windsurf
 - **Evidence-contract blueprints** — planning tasks can't be marked done without proof (test pass, audit clean, manual verification)
-- **Zero local state** — agent surfaces are regenerated from the catalog on every `ak setup`; nothing is tracked in git that can drift
+- **Zero local state** — agent surfaces are regenerated from the catalog on every `wp setup`; nothing is tracked in git that can drift

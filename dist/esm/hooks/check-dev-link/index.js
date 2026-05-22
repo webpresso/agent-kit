@@ -8,7 +8,7 @@
  * into the session's developer context.
  *
  * Catches the rare path where `vp install --ignore-scripts` skipped the
- * consumer's `ak-restore-dev-links` postinstall, leaving
+ * consumer's `wp-restore-dev-links` postinstall, leaving
  * node_modules/@webpresso/agent-kit pointed at the pnpm-store snapshot
  * instead of the live source declared in `.webpresso/agent-kit-dev-link.json`.
  * Always exits 0; never blocks session start.
@@ -45,7 +45,7 @@ export function formatBreakageMessage(breakage) {
         `WARNING: ${breakage.packageName} dev-link is broken.`,
         `State file (${STATE_FILE_RELATIVE_PATH}) says linkedFrom=${breakage.expected} but node_modules/${breakage.packageName} -> ${actualLabel}.`,
         'Hooks will run STALE code.',
-        `Fix: run \`vp install\` (postinstall ak-restore-dev-links re-creates the symlink), or from the agent-kit checkout: \`vp run dev:link --consumer ${breakage.projectDir}\`.`,
+        `Fix: run \`vp install\` (postinstall wp-restore-dev-links re-creates the symlink), or from the agent-kit checkout: \`vp run dev:link --consumer ${breakage.projectDir}\`.`,
     ].join(' ');
 }
 export function buildSessionStartEnvelope(message) {

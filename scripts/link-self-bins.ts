@@ -1,6 +1,6 @@
 /**
  * Self-link the package's own `bin` entries into `node_modules/.bin/` so
- * `pnpm exec ak ...` (and bare `ak ...` inside any pnpm script) works during
+ * `pnpm exec wp ...` (and bare `wp ...` inside any pnpm script) works during
  * dev in this repo. Reads the canonical list from package.json#bin, so adding
  * a new bin entry there auto-extends here — no second source of truth.
  *

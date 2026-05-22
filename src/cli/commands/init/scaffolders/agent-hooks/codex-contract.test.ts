@@ -16,13 +16,13 @@ const FORBIDDEN_LOCAL_HASH_SYMBOLS = [
   'upsert' + 'CodexHookTrustStates',
 ] as const
 
-const CODEX_ENV_REASON = 'AK_CODEX_CONTRACT=1 is required'
+const CODEX_ENV_REASON = 'WP_CODEX_CONTRACT=1 is required'
 const CODEX_BINARY_REASON = 'codex --version is unavailable'
 
 type CommandExists = (command: string, args: readonly string[]) => boolean
 
 function commandExists(command: string, args: readonly string[]): boolean {
-  const codexHome = mkdtempSync(join(tmpdir(), 'ak-codex-version-home-'))
+  const codexHome = mkdtempSync(join(tmpdir(), 'wp-codex-version-home-'))
   try {
     const result = spawnSync(command, [...args], {
       encoding: 'utf8',
@@ -39,13 +39,13 @@ function codexContractSkipReason(
   env: NodeJS.ProcessEnv = process.env,
   exists: CommandExists = commandExists,
 ): string | null {
-  if (env.AK_CODEX_CONTRACT !== '1') return CODEX_ENV_REASON
+  if (env.WP_CODEX_CONTRACT !== '1') return CODEX_ENV_REASON
   if (!exists('codex', ['--version'])) return CODEX_BINARY_REASON
   return null
 }
 
 function codexContractTestTitle(skipReason: string | null): string {
-  const suffix = skipReason === null ? 'enabled by AK_CODEX_CONTRACT=1' : `skipped: ${skipReason}`
+  const suffix = skipReason === null ? 'enabled by WP_CODEX_CONTRACT=1' : `skipped: ${skipReason}`
   return `live Codex app-server owns hook hashes (${suffix})`
 }
 
@@ -87,7 +87,7 @@ describe('Codex hook trust contract', () => {
   })
 
   it('includes the missing codex binary reason in skipped live-test output', () => {
-    const reason = codexContractSkipReason({ AK_CODEX_CONTRACT: '1' }, () => false)
+    const reason = codexContractSkipReason({ WP_CODEX_CONTRACT: '1' }, () => false)
 
     expect(reason).toBe(CODEX_BINARY_REASON)
     expect(codexContractTestTitle(reason)).toContain(CODEX_BINARY_REASON)
@@ -97,8 +97,8 @@ describe('Codex hook trust contract', () => {
   const liveIt = liveSkipReason === null ? it : it.skip
 
   liveIt(codexContractTestTitle(liveSkipReason), async () => {
-    const repoRoot = mkdtempSync(join(tmpdir(), 'ak-codex-contract-repo-'))
-    const codexHome = mkdtempSync(join(tmpdir(), 'ak-codex-contract-home-'))
+    const repoRoot = mkdtempSync(join(tmpdir(), 'wp-codex-contract-repo-'))
+    const codexHome = mkdtempSync(join(tmpdir(), 'wp-codex-contract-home-'))
     const previousCodexHome = process.env.CODEX_HOME
 
     try {

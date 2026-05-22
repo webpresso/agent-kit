@@ -7,7 +7,7 @@ export const MCP_COMMAND_HELP = [
     'client. Tools are auto-discovered from `dist/esm/mcp/tools/*.js`.',
     '',
     'Examples:',
-    '  ak mcp',
+    '  wp mcp',
 ].join('\n');
 export function registerMcpCommand(cli) {
     cli.command('mcp', MCP_COMMAND_HELP).action(async () => {

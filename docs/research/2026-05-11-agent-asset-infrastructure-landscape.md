@@ -20,8 +20,8 @@ Five parallel research agents canvassed the multi-IDE agent ecosystem on 2026-05
 | Blueprint | Original verdict | Final verdict (after deeper research + CEO review) | Why |
 |---|---|---|---|
 | `agent-asset-compiler-multi-runtime` | Build (custom 6-runtime compiler) | **Wrap `rulesync` + emit 4 plugin manifests + AGENTS.md merger + memory rotation** | `dyoshikawa/rulesync` (175k weekly npm dl, MIT, daily commits) covers ~95% of per-runtime emission. Agent Skills standard (Anthropic, Dec 2025) means same `SKILL.md` runs in 26+ runtimes natively. Plugin marketplaces shipped in 4 of 6 IDEs — distribute via plugin install, not file writes. Filesystem fallback only for Windsurf/OpenCode. **~70% scope reduction; ~10 tasks total.** |
-| `agent-knowledge-graph-mcp` | Build (Kuzu + remark + chokidar) | **Minimal 3-verb audit slice; full KG deferred behind concrete gates** | Deeper research: GitNexus is stable (37.6k stars, daily commits) but **PolyForm-NC license blocks reuse** + indexes source code not agent assets. Original q-* pollution already zero. Blueprint #1's compile-manifest already detects drift between canonical and generated. Tech-debt lifecycle dormant. **Ship 3-verb slice now** (`skill-sizes`, `broken-refs`, `tech-debt new --from-audit`) using `remark-validate-links` + regex. **Defer full Kuzu KG** until all three gates fire: #1 manifest catches <90% of monorepo drift over 30 days AND tech-debt accumulates ≥10 graph-traversal items AND a 2nd consumer commits to `ak_graph_*`. |
-| `blueprint-structured-store` | Build (better-sqlite3 + custom MCP) | **Custom MCP (~300 LOC) over SQLite; cold-start rebuild; Datasette browse; cross-repo correlation with permission/org-aware model** | Deeper research flipped two prior conclusions: (1) Anthropic's `mcp-server-sqlite` is **archived** + raw rows violate summary-first contract + mutations would bypass markdown-canonical — keep custom MCP; (2) Claude Code Routines **clone the repo fresh** + canonical markdown is accessible — skip `state export/import`, document rebuild-from-markdown cold-start. Add `ak blueprint browse` Datasette wrapper (D5). Add cross-repo correlation **with 7 hard permission requirements** (D8): org tagging, default-deny cross-org, explicit allowlist (both-sides), visibility-aware redaction, workspace scoping, CI audit gate, 3rd-party fit. `claude-task-master` is **not** a serious replacement — wrong shape. |
+| `agent-knowledge-graph-mcp` | Build (Kuzu + remark + chokidar) | **Minimal 3-verb audit slice; full KG deferred behind concrete gates** | Deeper research: GitNexus is stable (37.6k stars, daily commits) but **PolyForm-NC license blocks reuse** + indexes source code not agent assets. Original q-* pollution already zero. Blueprint #1's compile-manifest already detects drift between canonical and generated. Tech-debt lifecycle dormant. **Ship 3-verb slice now** (`skill-sizes`, `broken-refs`, `tech-debt new --from-audit`) using `remark-validate-links` + regex. **Defer full Kuzu KG** until all three gates fire: #1 manifest catches <90% of monorepo drift over 30 days AND tech-debt accumulates ≥10 graph-traversal items AND a 2nd consumer commits to `wp_graph_*`. |
+| `blueprint-structured-store` | Build (better-sqlite3 + custom MCP) | **Custom MCP (~300 LOC) over SQLite; cold-start rebuild; Datasette browse; cross-repo correlation with permission/org-aware model** | Deeper research flipped two prior conclusions: (1) Anthropic's `mcp-server-sqlite` is **archived** + raw rows violate summary-first contract + mutations would bypass markdown-canonical — keep custom MCP; (2) Claude Code Routines **clone the repo fresh** + canonical markdown is accessible — skip `state export/import`, document rebuild-from-markdown cold-start. Add `wp blueprint browse` Datasette wrapper (D5). Add cross-repo correlation **with 7 hard permission requirements** (D8): org tagging, default-deny cross-org, explicit allowlist (both-sides), visibility-aware redaction, workspace scoping, CI audit gate, 3rd-party fit. `claude-task-master` is **not** a serious replacement — wrong shape. |
 
 ## Five most consequential 60-day findings
 
@@ -37,7 +37,7 @@ Five parallel research agents canvassed the multi-IDE agent ecosystem on 2026-05
 - **URL/state:** [github.com/dyoshikawa/rulesync](https://github.com/dyoshikawa/rulesync), npm `rulesync@8.15.1`, **175,542 weekly downloads** (week of 2026-05-04), MIT, last commit `ba590fd` **2026-05-11T08:49Z** (today, multiple external contributors).
 - **Coverage:** All six runtimes we target (Claude Code, Codex, Cursor, Windsurf, Gemini, OpenCode) plus 11 others (Copilot, Cline, Kilo, Junie, AugmentCode, Warp, Replit, Zed, Goose, Factory Droid, Pi, deepagents). Project + global modes. Per-target generators in `src/features/{rules,commands,skills}/` use `smol-toml`, `gray-matter`, `js-yaml`, `jsonc-parser`. Includes `rulesync import`, `rulesync convert`, `rulesync fetch`, dry-run, programmatic API, embedded MCP server (`fastmcp@3.34.0`).
 - **Risks:** Single-maintainer truck factor (~70% commits by dyoshikawa), 15+ minor releases in recent weeks (velocity ≠ stability). Mitigated by MIT + small surface + active external contributors.
-- **Net:** **Take `rulesync` as a runtime dep.** Wrap it as `ak compile` → `rulesync generate --targets <list>`. Pin to `^8.15`. Keep agent-kit's value-add layered on top (lifecycle dirs, audits, AGENTS.md merger).
+- **Net:** **Take `rulesync` as a runtime dep.** Wrap it as `wp compile` → `rulesync generate --targets <list>`. Pin to `^8.15`. Keep agent-kit's value-add layered on top (lifecycle dirs, audits, AGENTS.md merger).
 
 ### 3. GitNexus validates KG-over-repo architecture (April 24 2026)
 
@@ -57,13 +57,13 @@ Five parallel research agents canvassed the multi-IDE agent ecosystem on 2026-05
 ### 5. Claude Code Routines (April 14 2026) introduces cloud-state-sync requirement
 
 - **What:** Cloud-hosted recurring Claude Code agent runs. Not file-system-local.
-- **Impact on blueprint #3:** Local SQLite at `.agent/.blueprints.db` won't sync to cloud-run agents. Need `ak blueprint state export <path>` and `ak blueprint state import <path>` so cloud sessions can rehydrate.
+- **Impact on blueprint #3:** Local SQLite at `.agent/.blueprints.db` won't sync to cloud-run agents. Need `wp blueprint state export <path>` and `wp blueprint state import <path>` so cloud sessions can rehydrate.
 
 ## Secondary findings worth one line each
 
 - **lychee** (rust, Apache-2.0, active) and **remark-validate-links** (node, MIT, quieter) — either can replace blueprint #2's DIY ref-resolver. Recommend **remark-validate-links** for Node-native simplicity.
 - **simhash npm packages** (`simhash@0.1.0`, `node-simhash@0.1.0`) — both **`license: null` and stale since 2022-06**. Don't use. Vendor ~80 lines of simhash, or swap for `tree-sitter-markdown` AST diff.
-- **mcp-server-sqlite** ([github.com/modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers)) — generic SQLite-over-MCP. Replaces blueprint #3's custom MCP tool surface. Pairs with `datasette` for free read-only browser UI (`ak blueprint browse`).
+- **mcp-server-sqlite** ([github.com/modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers)) — generic SQLite-over-MCP. Replaces blueprint #3's custom MCP tool surface. Pairs with `datasette` for free read-only browser UI (`wp blueprint browse`).
 - **Cognee, Graphiti, Neo4j MCP** — all rejected (LLM-driven, server-required, wrong domain).
 - **Cursor Plugins extension API** — `vscode.cursor.plugins.registerPath()` lets an extension register plugin dirs dynamically (cursor.com/docs).
 - **claude-task-master** v0.43.1 — wrong shape (single tasks.json, AI-PRD-driven, no lifecycle dirs, no tech-debt, MIT-with-Commons-Clause). Not a replacement.
@@ -84,7 +84,7 @@ Keep:
 - **AGENTS.md section-keyed merger + `memory.merge.yaml` directives + provenance JSON** (genuinely novel; no upstream).
 - Lifecycle integration with blueprints + tech-debt.
 - Gitignore best-practices template.
-- Migration story (`ak skills migrate-legacy` deletes legacy artifacts).
+- Migration story (`wp skills migrate-legacy` deletes legacy artifacts).
 
 Delete:
 - Custom per-runtime emitters (Claude, Codex, OpenCode, Cursor, Windsurf, Gemini adapter files). Replace with thin `rulesync` invocation.
@@ -92,7 +92,7 @@ Delete:
 - The "no backwards compat" symlink → copy logic is mostly moot; rulesync owns the write semantics.
 
 New:
-- **Three plugin-manifest emitters** for Claude/Codex/Cursor (plus one Gemini extension manifest). Each emits a small JSON pointing at the shared `skills/` tree. The plugin marketplace path makes consumers install via `/plugin install` instead of `ak setup` running file writes.
+- **Three plugin-manifest emitters** for Claude/Codex/Cursor (plus one Gemini extension manifest). Each emits a small JSON pointing at the shared `skills/` tree. The plugin marketplace path makes consumers install via `/plugin install` instead of `wp setup` running file writes.
 - **Filesystem fallback** path only for Windsurf (no plugin support) + OpenCode agents (markdown-only). Use `rulesync` here.
 - **`state export/import`** for cloud-Routines support (Finding #5).
 
@@ -123,15 +123,15 @@ Keep:
 - Schema (blueprints, tasks, risks, edge_cases, tech_debt_items, junctions).
 - Markdown-canonical / SQL-derived contract.
 - AST-based blueprint parser (remark + gfm).
-- Replace regex-based `ak blueprint audit` with SQL-backed audits.
+- Replace regex-based `wp blueprint audit` with SQL-backed audits.
 
 Delete:
-- **Custom MCP tools** (`ak_blueprint_query`, `task_next`, `task_advance`, etc.). Use Anthropic's reference `mcp-server-sqlite` pointed at the projection file.
+- **Custom MCP tools** (`wp_blueprint_query`, `task_next`, `task_advance`, etc.). Use Anthropic's reference `mcp-server-sqlite` pointed at the projection file.
 - **`better-sqlite3` as the only client.** Still emit SQLite, but consumer wires the generic MCP server.
 
 New:
-- **`ak blueprint state export <path>` + `import <path>`** for Routines cloud-state-sync (Finding #5).
-- **`ak blueprint browse`** spawning `datasette` for a free read-only browser UI.
+- **`wp blueprint state export <path>` + `import <path>`** for Routines cloud-state-sync (Finding #5).
+- **`wp blueprint browse`** spawning `datasette` for a free read-only browser UI.
 - Pre-registered SQL templates ship as a `templates/*.sql` directory consumers can copy-paste into their queries.
 
 ## Risks of revision
@@ -139,7 +139,7 @@ New:
 | Risk | Severity | Mitigation |
 |---|---|---|
 | Take `rulesync` as a hard dep → upstream breakage stalls our releases | HIGH | Pin to `^8.15`; CI smoke roundtrips known fixtures; small fork-cost if abandoned (MIT, single file) |
-| Plugin marketplace path requires consumer behavior change (`/plugin install` instead of `ak setup`) | MEDIUM | Document migration; keep `ak setup` as the wrapper that runs the right install command per IDE |
+| Plugin marketplace path requires consumer behavior change (`/plugin install` instead of `wp setup`) | MEDIUM | Document migration; keep `wp setup` as the wrapper that runs the right install command per IDE |
 | GitNexus shelf-time blocks blueprint #2's value-add (drift detection, tech-debt auto-filing) for 60 days | MEDIUM | Ship a minimal v0.12.0-alpha with `remark-validate-links` only (no graph); revisit graph after 60 days |
 | Replacing custom MCP with generic mcp-server-sqlite means agents need to know SQL templates instead of named tools | LOW | Document the templates in `docs/blueprint-db-cookbook.md`; agents discover via MCP resources |
 | Cloud Routines state-sync introduces a new failure mode (drift between cloud and local DB) | MEDIUM | Sync is one-shot, manual, explicit (export/import verbs). No background sync. |

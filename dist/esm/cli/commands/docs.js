@@ -1,5 +1,5 @@
 /**
- * `ak docs lint <path>` — run the blueprint-plan validator over a markdown
+ * `wp docs lint <path>` — run the blueprint-plan validator over a markdown
  * file or directory.
  *
  * Thin CLI shell: parse args → call runDocsLint → print results → exit.
@@ -19,7 +19,7 @@ export function registerDocsCommand(cli) {
                 throw new Error(`Unknown docs action: ${action}. Use 'lint'.`);
             }
             if (!target) {
-                throw new Error('Usage: ak docs lint <path>');
+                throw new Error('Usage: wp docs lint <path>');
             }
             const result = await runDocsLint(target);
             if (result.files === 0) {

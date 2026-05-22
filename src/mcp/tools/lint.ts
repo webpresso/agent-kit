@@ -1,5 +1,5 @@
 /**
- * `ak_lint` MCP tool.
+ * `wp_lint` MCP tool.
  *
  * Runs `vp lint` on the supplied files (or `.` when none are given). Returns a
  * structured payload:
@@ -193,7 +193,7 @@ function summarizeLintResult(options: {
 }
 
 const tool: ToolDescriptor = {
-  name: 'ak_lint',
+  name: 'wp_lint',
   description:
     'Run lint via the `vp lint` facade. Returns `{passed, issues: [{file, line, rule, message}]}`.',
   inputSchema,
@@ -229,7 +229,7 @@ const tool: ToolDescriptor = {
       const { transform: _transform, ...compact } = applyOutputTransform(
         vpOutcome.stdout || vpOutcome.stderr,
         {
-          toolName: 'ak_lint-vp',
+          toolName: 'wp_lint-vp',
         },
       )
       const payload = {

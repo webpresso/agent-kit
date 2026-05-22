@@ -78,7 +78,7 @@ Insufficient coverage.
 // ---------------------------------------------------------------------------
 
 function makeTempRepo(): string {
-  const dir = mkdtempSync(path.join(tmpdir(), 'ak-db-cmd-test-'))
+  const dir = mkdtempSync(path.join(tmpdir(), 'wp-db-cmd-test-'))
 
   // blueprints
   mkdirSync(path.join(dir, 'blueprints', 'planned', 'my-planned-feature'), { recursive: true })
@@ -175,7 +175,7 @@ describe('dbVerify', () => {
   })
 
   it('throws when DB does not exist', async () => {
-    await expect(dbVerify(tmpRepoDir)).rejects.toThrow('Run `ak blueprint db build` first')
+    await expect(dbVerify(tmpRepoDir)).rejects.toThrow('Run `wp blueprint db build` first')
   })
 
   it('reports stale entry when blueprint content changes after build', async () => {
@@ -279,7 +279,7 @@ describe('dbBrowse', () => {
     }
   })
 
-  it('prints "Run ak blueprint db build first" and exits 1 when DB missing', () => {
+  it('prints "Run wp blueprint db build first" and exits 1 when DB missing', () => {
     const stderr: string[] = []
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation((chunk) => {
       stderr.push(String(chunk))
@@ -295,7 +295,7 @@ describe('dbBrowse', () => {
       expect(() =>
         dbBrowse(tmpRepoDir, fakeExecSync as typeof import('node:child_process').execSync),
       ).toThrow('process.exit called')
-      expect(stderr.join('')).toContain('ak blueprint db build')
+      expect(stderr.join('')).toContain('wp blueprint db build')
     } finally {
       stderrSpy.mockRestore()
       exitSpy.mockRestore()
@@ -348,7 +348,7 @@ describe('executeBlueprintDbSubcommand', () => {
     await dbBuild(tmpRepoDir)
     await expect(
       executeBlueprintDbSubcommand('query', [], { projectRoot: tmpRepoDir }, () => {}),
-    ).rejects.toThrow('Usage: ak blueprint db query <template-id>')
+    ).rejects.toThrow('Usage: wp blueprint db query <template-id>')
   })
 
   it('query verb rejects invalid --params JSON', async () => {

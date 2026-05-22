@@ -1,12 +1,12 @@
 /**
- * `agent-hooks` scaffolder — wires ak-* hooks into:
+ * `agent-hooks` scaffolder — wires wp-* hooks into:
  *   - `.claude/settings.json` (Claude Code)
  *   - `.codex/hooks.json` (Codex CLI)
  *
  * Additive: never removes existing hooks, only ensures agent-kit's entries
  * are present. Uses installed bin paths so consumers don't need bun.
  *
- * Runs by default on every `ak setup`.
+ * Runs by default on every `wp setup`.
  */
 import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -65,7 +65,7 @@ function hasCommand(groups, command) {
 const SCRIPT_EXTENSIONS = ['sh', 'ts', 'js', 'mjs', 'cjs', 'py'];
 const DIRECT_NODE_MODULES_BIN_PATTERN = /^(?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+)$/u;
 const GUARDED_NODE_MODULES_BIN_PATTERN = /^\[ -x (["']?)((?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+))\1 \] && \1\2\1 \|\| true$/u;
-const LEGACY_AGENT_KIT_BIN_PATTERN = /run-agent-kit-bin\.ts"\s+(ak-[\w-]+)(?=$|["'\s])/u;
+const LEGACY_AGENT_KIT_BIN_PATTERN = /run-agent-kit-bin\.ts"\s+(wp-[\w-]+)(?=$|["'\s])/u;
 // Capture the basename of any path that ends in a known script extension.
 // Handles trailing chars (quote, space, end-of-string).
 const SCRIPT_BASENAME_PATTERN = new RegExp(String.raw `([\w-]+\.(?:${SCRIPT_EXTENSIONS.join('|')}))(?=$|["'\s])`, 'u');
@@ -113,8 +113,8 @@ function orderStopGroups(groups) {
     return [...groups].sort((left, right) => {
         const leftCommand = left.hooks[0]?.command ?? '';
         const rightCommand = right.hooks[0]?.command ?? '';
-        const leftIsGlobalStop = leftCommand.includes('ak-stop-qa');
-        const rightIsGlobalStop = rightCommand.includes('ak-stop-qa');
+        const leftIsGlobalStop = leftCommand.includes('wp-stop-qa');
+        const rightIsGlobalStop = rightCommand.includes('wp-stop-qa');
         if (leftIsGlobalStop === rightIsGlobalStop)
             return 0;
         return leftIsGlobalStop ? 1 : -1;
@@ -130,9 +130,9 @@ function stripSkillManagedHooks(groups) {
 }
 function materializeClaudeSkillCommand(skillHook) {
     const tag = buildSkillTag(skillHook.skillName);
-    if (skillHook.command.startsWith('ak ')) {
+    if (skillHook.command.startsWith('wp ')) {
         const args = skillHook.command.slice(3);
-        return `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/ak" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/ak" ${args} || true ${tag}`;
+        return `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp" ${args} || true ${tag}`;
     }
     return `${skillHook.command} ${tag}`;
 }
@@ -155,41 +155,41 @@ function mergeSkillHooks(hooks, skillHooks) {
 }
 // ── Shared agent-kit hook construction ───────────────────────────────────────
 /**
- * Construct the canonical 5 ak-* hook groups (SessionStart, PreToolUse,
+ * Construct the canonical 5 wp-* hook groups (SessionStart, PreToolUse,
  * PostToolUse, UserPromptSubmit, Stop). Single source of truth — adding a
- * new ak-* hook is one append here and propagates to both surfaces.
+ * new wp-* hook is one append here and propagates to both surfaces.
  */
 export function buildAgentKitHookGroups(input) {
     const { resolveBin, matchers } = input;
     return {
         SessionStart: [
             {
-                hooks: [{ type: 'command', command: resolveBin('ak-sessionstart-routing'), timeout: 5 }],
+                hooks: [{ type: 'command', command: resolveBin('wp-sessionstart-routing'), timeout: 5 }],
             },
             {
-                hooks: [{ type: 'command', command: resolveBin('ak-check-dev-link'), timeout: 5 }],
+                hooks: [{ type: 'command', command: resolveBin('wp-check-dev-link'), timeout: 5 }],
             },
         ],
         PreToolUse: [
             {
                 matcher: matchers.preToolUse,
-                hooks: [{ type: 'command', command: resolveBin('ak-pretool-guard'), timeout: 5 }],
+                hooks: [{ type: 'command', command: resolveBin('wp-pretool-guard'), timeout: 5 }],
             },
         ],
         PostToolUse: [
             {
                 matcher: matchers.postToolUse,
-                hooks: [{ type: 'command', command: resolveBin('ak-post-tool'), timeout: 15 }],
+                hooks: [{ type: 'command', command: resolveBin('wp-post-tool'), timeout: 15 }],
             },
         ],
         UserPromptSubmit: [
             {
-                hooks: [{ type: 'command', command: resolveBin('ak-guard-switch'), timeout: 5 }],
+                hooks: [{ type: 'command', command: resolveBin('wp-guard-switch'), timeout: 5 }],
             },
         ],
         Stop: [
             {
-                hooks: [{ type: 'command', command: resolveBin('ak-stop-qa') }],
+                hooks: [{ type: 'command', command: resolveBin('wp-stop-qa') }],
             },
         ],
     };
@@ -428,19 +428,19 @@ export async function trustCodexPresetHooksForUser(input) {
     }
 }
 // Fast existence check — no network, no install, sub-10ms.
-// Installation is handled by `ak setup` (gstack scaffolder runs by default).
+// Installation is handled by `wp setup` (gstack scaffolder runs by default).
 const GSTACK_CHECK_SH = `#!/bin/sh
 if [ -d "$HOME/.claude/skills/gstack/bin" ]; then
   exit 0
 fi
-printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"gstack is not installed. Fix: run \`ak setup\` then restart Claude Code."}}\\n'
+printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"gstack is not installed. Fix: run \`wp setup\` then restart Claude Code."}}\\n'
 `;
 // SessionStart soft warning — emits additionalContext, never blocks.
 const GSTACK_SESSION_SH = `#!/bin/sh
 if [ -d "$HOME/.claude/skills/gstack/bin" ]; then
   exit 0
 fi
-printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"WARNING: gstack is not installed. Skills like /browse, /qa, /ship are unavailable. Fix: run \`ak setup\` then restart."}}\n'
+printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"WARNING: gstack is not installed. Skills like /browse, /qa, /ship are unavailable. Fix: run \`wp setup\` then restart."}}\n'
 `;
 function ensureGstackHooks(repoRoot, options = {}) {
     if (options.dryRun)

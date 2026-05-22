@@ -1,5 +1,5 @@
 /**
- * `ak worktree` subcommand dispatch.
+ * `wp worktree` subcommand dispatch.
  *
  * Handles: new, list, remove
  */
@@ -153,7 +153,7 @@ export function resolveWorktreePath(nameOrPath: string, entries: WorktreeEntry[]
   )
   if (!match) {
     throw new Error(
-      `No worktree matching "${nameOrPath}". Run \`ak worktree list\` to see available worktrees.`,
+      `No worktree matching "${nameOrPath}". Run \`wp worktree list\` to see available worktrees.`,
     )
   }
   return match.path
@@ -283,7 +283,7 @@ export async function executeWorktreeSubcommand(
     case 'rm': {
       const nameOrPath = args[0]
       if (!nameOrPath) {
-        throw new Error('Usage: ak worktree remove <branch-or-path> [--force]')
+        throw new Error('Usage: wp worktree remove <branch-or-path> [--force]')
       }
       handleRemove(nameOrPath, opts)
       return

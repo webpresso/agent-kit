@@ -16,7 +16,7 @@ describe('skill-hooks', () => {
   let skillsDir: string
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'ak-skill-hooks-'))
+    root = mkdtempSync(join(tmpdir(), 'wp-skill-hooks-'))
     skillsDir = join(root, '.agent', 'skills')
     mkdirSync(skillsDir, { recursive: true })
   })
@@ -33,7 +33,7 @@ describe('skill-hooks', () => {
 name: verify
 hooks:
   Stop:
-    - command: ak audit agents
+    - command: wp audit agents
       timeout: 20
   PreToolUse:
     - matcher: Bash
@@ -56,7 +56,7 @@ hooks:
         skillName: 'verify',
         event: 'Stop',
         matcher: undefined,
-        command: 'ak audit agents',
+        command: 'wp audit agents',
         timeout: 20,
       },
     ])
@@ -101,9 +101,9 @@ hooks:
   it('rejects reserved global hook commands', () => {
     expect(() =>
       validateSkillHooks('verify', {
-        Stop: [{ command: 'ak-stop-qa' }],
+        Stop: [{ command: 'wp-stop-qa' }],
       }),
-    ).toThrow('reserved global hook command ak-stop-qa is not allowed in skill hooks')
+    ).toThrow('reserved global hook command wp-stop-qa is not allowed in skill hooks')
   })
 
   it('tags skill-managed commands for clean removal', () => {
@@ -111,9 +111,9 @@ hooks:
     expect(tag).toBe('# from-skill: verify')
     expect(
       isTaggedSkillHook(
-        `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/ak" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/ak" audit agents || true # from-skill: verify`,
+        `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp" audit agents || true # from-skill: verify`,
       ),
     ).toBe(true)
-    expect(isTaggedSkillHook('./node_modules/.bin/ak-stop-qa')).toBe(false)
+    expect(isTaggedSkillHook('./node_modules/.bin/wp-stop-qa')).toBe(false)
   })
 })

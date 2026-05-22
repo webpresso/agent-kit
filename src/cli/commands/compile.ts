@@ -181,7 +181,7 @@ export async function runCompile(options: {
   const installedVersion = readRulesyncVersion(cwd)
   if (installedVersion !== null && installedVersion !== PINNED_RULESYNC_VERSION) {
     process.stderr.write(
-      `ak compile: warning — installed rulesync@${installedVersion} does not match pinned @${PINNED_RULESYNC_VERSION}\n`,
+      `wp compile: warning — installed rulesync@${installedVersion} does not match pinned @${PINNED_RULESYNC_VERSION}\n`,
     )
   }
 
@@ -193,7 +193,7 @@ export async function runCompile(options: {
       ok: false,
       targets: targetList,
       noOp: false,
-      message: `ak compile: lock file exists at ${lockPath} — another compile is running`,
+      message: `wp compile: lock file exists at ${lockPath} — another compile is running`,
     }
   }
 
@@ -231,12 +231,12 @@ export async function runCompile(options: {
         ok: true,
         targets: targetList,
         noOp: true,
-        message: 'ak compile: no-op (content unchanged)',
+        message: 'wp compile: no-op (content unchanged)',
       }
     }
 
     // Step 1+2: Write flattened assets to tmpdir then atomically rename to .rulesync/
-    const tmpOut = mkdtempSync(join(tmpdir(), 'ak-compile-'))
+    const tmpOut = mkdtempSync(join(tmpdir(), 'wp-compile-'))
     try {
       await writeFlattenedAssets(assets, tmpOut)
       const rulesyncInputDir = join(cwd, '.rulesync')
@@ -257,7 +257,7 @@ export async function runCompile(options: {
         ok: false,
         targets: targetList,
         noOp: false,
-        message: `ak compile: rulesync failed to start — ${result.error.message}`,
+        message: `wp compile: rulesync failed to start — ${result.error.message}`,
       }
     }
     const exitCode = result.status ?? 1
@@ -266,7 +266,7 @@ export async function runCompile(options: {
         ok: false,
         targets: targetList,
         noOp: false,
-        message: `ak compile: rulesync exited with code ${exitCode}`,
+        message: `wp compile: rulesync exited with code ${exitCode}`,
       }
     }
 
@@ -298,7 +298,7 @@ export async function runCompile(options: {
         cwd,
       })
       if (!mergeResult.content) {
-        process.stderr.write('ak compile: warning — mergeAgentsMd produced empty content\n')
+        process.stderr.write('wp compile: warning — mergeAgentsMd produced empty content\n')
       } else {
         writeFileSync(join(cwd, 'AGENTS.md'), mergeResult.content)
       }
@@ -325,7 +325,7 @@ export async function runCompile(options: {
       ok: true,
       targets: targetList,
       noOp: false,
-      message: `ak compile: generated for targets [${targetList.join(', ')}]`,
+      message: `wp compile: generated for targets [${targetList.join(', ')}]`,
     }
   } finally {
     cleanup()

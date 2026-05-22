@@ -110,7 +110,7 @@ export async function dbVerify(projectRoot: string): Promise<DbVerifyResult> {
   const dbPath = agentDbPath(projectRoot)
 
   if (!existsSync(dbPath)) {
-    throw new Error(`DB not found at ${dbPath}. Run \`ak blueprint db build\` first.`)
+    throw new Error(`DB not found at ${dbPath}. Run \`wp blueprint db build\` first.`)
   }
 
   const conn = openDb(dbPath)
@@ -221,7 +221,7 @@ export function dbBrowse(projectRoot: string, _execSync: ExecSyncFn = execSync):
   const agentDir = path.dirname(dbPath)
 
   if (!existsSync(dbPath)) {
-    process.stderr.write(`DB not found at ${dbPath}.\nRun \`ak blueprint db build\` first.\n`)
+    process.stderr.write(`DB not found at ${dbPath}.\nRun \`wp blueprint db build\` first.\n`)
     process.exit(1)
   }
 
@@ -240,7 +240,7 @@ export function dbBrowse(projectRoot: string, _execSync: ExecSyncFn = execSync):
   const metadata = {
     title: 'Blueprints DB',
     description: 'Blueprint and tech-debt structured store (agent-kit)',
-    source: 'ak blueprint db build',
+    source: 'wp blueprint db build',
   }
   writeFileSync(metadataPath, JSON.stringify(metadata, null, 2) + '\n', 'utf8')
 
@@ -293,7 +293,7 @@ export async function executeBlueprintDbSubcommand(
     case 'query': {
       const templateId = args[0]
       if (!templateId) {
-        throw new Error('Usage: ak blueprint db query <template-id> [--params \'{"key":value}\']')
+        throw new Error('Usage: wp blueprint db query <template-id> [--params \'{"key":value}\']')
       }
       let params: Record<string, unknown> = {}
       if (options.params) {

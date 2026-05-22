@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 set -eu
-# Prefer local node_modules/.bin/ak; fall back to global ak for repos
+# Prefer local node_modules/.bin/wp; fall back to global wp for repos
 # that rely on the global install (no local agent-kit devDep).
-AK="$(git rev-parse --show-toplevel)/node_modules/.bin/ak"
-[ -x "$AK" ] || AK=ak
-"$AK" audit guardrails
+WP="$(git rev-parse --show-toplevel)/node_modules/.bin/wp"
+[ -x "$WP" ] || WP=wp
+"$WP" audit guardrails
 # agent-kit audit hooks (staged mode — fast)

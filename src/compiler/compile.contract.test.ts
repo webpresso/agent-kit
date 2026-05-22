@@ -18,7 +18,7 @@ import { flattenAgentDir, writeFlattenedAssets } from './flatten.js'
 // ---------------------------------------------------------------------------
 
 function makeAgentDir(): string {
-  return mkdtempSync(join(tmpdir(), 'ak-compile-contract-'))
+  return mkdtempSync(join(tmpdir(), 'wp-compile-contract-'))
 }
 
 function writeSkill(agentDir: string, name: string, content: string): void {

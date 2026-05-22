@@ -7,7 +7,7 @@ last_updated: 2026-05-13
 
 ## Creating one with `wp`
 
-`wp`, `webpresso`, and `ak` are aliases for the same CLI. The worktree helper
+`wp`, `webpresso`, and `wp` are aliases for the same CLI. The worktree helper
 accepts an explicit branch, but can also generate one for quick agent lanes:
 
 ```bash
@@ -53,7 +53,7 @@ second, isolated `.claude/` configuration.
 This is usually what we want:
 
 - one repo-level agent contract
-- no manual `ak setup` after every worktree creation
+- no manual `wp setup` after every worktree creation
 - no drift between main and worktree hook/rule wiring
 
 ## When to diverge
@@ -70,7 +70,7 @@ If you need that:
 
 ## Anti-pattern
 
-Do not rely on `prepare: ak setup` in `package.json` to keep worktrees in sync.
+Do not rely on `prepare: wp setup` in `package.json` to keep worktrees in sync.
 `prepare` fires during install, before the full runtime surface is reliably
 available, and creates confusing bootstrap failures. Use the explicit bootstrap
 surface instead:

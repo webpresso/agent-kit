@@ -17,7 +17,7 @@ export interface RunDevCommandResult {
 
 export function getDevHelpText(): string {
   return [
-    'Usage: ak dev [target] [options]',
+    'Usage: wp dev [target] [options]',
     '',
     'Options:',
     '  --manifest <path>  Dev manifest path',
@@ -26,7 +26,7 @@ export function getDevHelpText(): string {
     '  --restart          Restart the target',
     '  -h, --help         Display this message',
     '',
-    'Manifest precedence: --manifest -> AK_APP_MANIFEST -> ./app-manifest.yaml -> error',
+    'Manifest precedence: --manifest -> WP_APP_MANIFEST -> ./app-manifest.yaml -> error',
   ].join('\n')
 }
 
@@ -45,7 +45,7 @@ export function registerDevCommand(cli: CAC): void {
     .command('dev [target]', 'Run a manifest-backed development target')
     .option(
       '--manifest <path>',
-      'Dev manifest path (precedence: --manifest -> AK_APP_MANIFEST -> ./app-manifest.yaml -> error)',
+      'Dev manifest path (precedence: --manifest -> WP_APP_MANIFEST -> ./app-manifest.yaml -> error)',
     )
     .option('--doctor', 'Validate manifest and print resolved services')
     .option('--clean', 'Clean supervisor-owned state for the target')

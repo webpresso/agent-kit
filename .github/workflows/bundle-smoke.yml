@@ -37,42 +37,42 @@ jobs:
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
       - name: Run bundle smoke
-        # AK_SKIP_GSTACK and AK_SKIP_RTK skip optional network-dependent
+        # WP_SKIP_GSTACK and WP_SKIP_RTK skip optional network-dependent
         # scaffolders (git clone / binary download) that require external
         # network access and are not the subject of this smoke test.
         # NO_COLOR=1 suppresses ANSI escape codes in non-TTY output.
         env:
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
-          AK_SKIP_GSTACK: '1'
-          AK_SKIP_RTK: '1'
+          WP_SKIP_GSTACK: '1'
+          WP_SKIP_RTK: '1'
           NO_COLOR: '1'
         run: |
           set -euo pipefail
 
-          # The fixture directory is not a git repo; ak setup requires one.
+        # The fixture directory is not a git repo; wp setup requires one.
           cd test-fixtures/bundle-smoke
           git init --quiet
           git config user.email "ci@example.com"
           git config user.name "CI"
 
-          # Install agent-kit locally so ak setup can locate its catalog.
+          # Install agent-kit locally so wp setup can locate its catalog.
           pnpm init --silent 2>/dev/null || true
           pnpm add --silent @webpresso/agent-kit@* 2>/dev/null
 
-          # Run ak setup --yes to avoid TTY prompts. Capture stdout + stderr.
-          OUTPUT=$(pnpm exec ak setup --yes 2>&1) || {
-            echo "--- ak setup output ---"
+          # Run wp setup --yes to avoid TTY prompts. Capture stdout + stderr.
+          OUTPUT=$(pnpm exec wp setup --yes 2>&1) || {
+            echo "--- wp setup output ---"
             echo "$OUTPUT"
-            echo "FAIL: ak setup exited non-zero"
+            echo "FAIL: wp setup exited non-zero"
             exit 1
           }
 
-          echo "--- ak setup output ---"
+          echo "--- wp setup output ---"
           echo "$OUTPUT"
 
           # Assert 1: lane-4 framing printed (Task 1.6 requirement)
-          echo "$OUTPUT" | grep -qF 'Lane 1 ak_*' || {
-            echo "FAIL: lane framing missing — expected 'Lane 1 ak_*' in output"
+          echo "$OUTPUT" | grep -qF 'Lane 1 wp_*' || {
+            echo "FAIL: lane framing missing — expected 'Lane 1 wp_*' in output"
             exit 1
           }
 

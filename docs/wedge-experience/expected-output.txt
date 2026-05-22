@@ -12,12 +12,12 @@ With rulesync alone:
   → last 37985 bytes of guidance never seen by Codex
 
 With agent-kit:
-  $ ak audit skill-sizes
+  $ wp audit skill-sizes
   WARN  .agent/skills/oversized-skill/SKILL.md
     compiled size: 16.8KB (Codex budget: 8KB, overage: 8.6KB)
     suggestion: split into oversized-skill/core + oversized-skill/examples
   1 skill over budget (run with --strict to exit 1)
-  [ak not found — showing expected output above]
+  [wp not found — showing expected output above]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   DEMO 2/3 — AGENTS.md section-keyed merge (layered precedence)
@@ -44,7 +44,7 @@ Optional: Constraint: / Rejected: / Directive:
 
 With rulesync alone: emits each source file separately — no merger
 
-With ak compile: section-keyed merge (local wins on same heading):
+With wp compile: section-keyed merge (local wins on same heading):
 ---
 --- /tmp/demo-XXXXXX/base-AGENTS.md	2026-05-11 20:08:57
 +++ /tmp/demo-XXXXXX/merged-AGENTS.md	2026-05-11 20:08:57
@@ -81,7 +81,7 @@ After demo 1, the audit found an over-budget skill.
 rulesync: no further action — drift stays unfiled.
 
 With agent-kit (dry-run — no files written):
-  $ ak tech-debt new --from-audit skill-sizes --severity medium --dry-run
+  $ wp tech-debt new --from-audit skill-sizes --severity medium --dry-run
   [dry-run] would create: tech-debt/needs-remediation/m-001-skill-size-oversized-skill.md
   ---
   # m-001 — oversized-skill exceeds Codex 8KB budget
@@ -89,7 +89,7 @@ With agent-kit (dry-run — no files written):
   **Category:** size-budget
   **Severity:** medium
   **Status:** needs-remediation
-  **Filed by:** ak audit skill-sizes (auto)
+  **Filed by:** wp audit skill-sizes (auto)
   **Review cadence:** next sprint
 
   ## Context
@@ -98,10 +98,10 @@ With agent-kit (dry-run — no files written):
 
   ## Remediation
   Split into `oversized-skill/core` (≤8KB) and `oversized-skill/examples` (≤8KB).
-  Run `ak compile` and `ak audit skill-sizes` to verify.
+  Run `wp compile` and `wp audit skill-sizes` to verify.
   ---
   [dry-run] no files written
-  [ak not found — showing expected output above]
+  [wp not found — showing expected output above]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Summary

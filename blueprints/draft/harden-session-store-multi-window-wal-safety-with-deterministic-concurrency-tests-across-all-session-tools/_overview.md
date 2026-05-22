@@ -204,9 +204,9 @@ contract.
 
 | Gate | Command | Success Criteria |
 | --- | --- | --- |
-| Type safety | `ak_typecheck` | Zero errors |
-| Lint | `ak_lint` (scoped) | Zero violations |
-| Tests | `ak_test` (scoped) | All WAL tests pass |
+| Type safety | `wp_typecheck` | Zero errors |
+| Lint | `wp_lint` (scoped) | Zero violations |
+| Tests | `wp_test` (scoped) | All WAL tests pass |
 | Full hook+sqlite slice | targeted blocking lane | Green |
 
 ## Cross-Plan References

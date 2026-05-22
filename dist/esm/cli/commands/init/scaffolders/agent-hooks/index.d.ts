@@ -16,9 +16,9 @@ export type MatcherSet = {
     postToolUse: string;
 };
 /**
- * Construct the canonical 5 ak-* hook groups (SessionStart, PreToolUse,
+ * Construct the canonical 5 wp-* hook groups (SessionStart, PreToolUse,
  * PostToolUse, UserPromptSubmit, Stop). Single source of truth — adding a
- * new ak-* hook is one append here and propagates to both surfaces.
+ * new wp-* hook is one append here and propagates to both surfaces.
  */
 export declare function buildAgentKitHookGroups(input: {
     resolveBin: (name: string) => string;

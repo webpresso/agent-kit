@@ -28,12 +28,12 @@ tags:
   - parked-pending-recompare
 ---
 
-# ak session memory v1 — Letta adapter (permissive replacement for context-mode)
+# wp session memory v1 — Letta adapter (permissive replacement for context-mode)
 
 ## Product wedge anchor
 
 - **Stage outcome:** webpresso open-sourcing roadmap — Lane 2 of the four-lane routing model (context-mode owns `ctx_*`) becomes permissively-licensed, removing the only ELv2 dependency in the agent-kit-driven stack. Cited model lives at `catalog/agent/rules/gstack-routing.md`.
-- **Consuming surface:** `ak setup --with session-memory` (new flag) + new MCP tools `ak_session_capture`, `ak_session_snapshot`, `ak_session_restore`, `ak_session_search` exposed by agent-kit's MCP server.
+- **Consuming surface:** `wp setup --with session-memory` (new flag) + new MCP tools `wp_session_capture`, `wp_session_snapshot`, `wp_session_restore`, `wp_session_search` exposed by agent-kit's MCP server.
 - **New user-visible capability:** After this lands, a webpresso consumer (e.g. ingest-lens dev) gets compaction-survival session memory without installing the ELv2 context-mode plugin. After a Claude Code compaction, the agent answers "what was I working on?" correctly using Letta's memory-hierarchy semantics (context window / archival / recall).
 
 ## Problem Statement
@@ -83,7 +83,7 @@ that setup invisible to the consumer.
 └────────────────────────────────────────────────────────────┘
 
 LANE MODEL (revised, permissive only):
-  1  agent-kit + Letta adapter   ak_session_*    MIT (adapter) + Apache-2 (Letta)
+  1  agent-kit + Letta adapter   wp_session_*    MIT (adapter) + Apache-2 (Letta)
   2  — DROPPED —                 —               (context-mode out)
   3  rtk (upstream)              bash filter     MIT
   4  gstack (upstream)           /skill          MIT
@@ -109,13 +109,13 @@ DATA FLOW (event capture path):
 | Memory backend | Letta self-hosted (not cloud) | No credential boundary at T0; permissive Apache-2 |
 | Storage | Letta's default Postgres (auto-provisioned via docker compose) | Letta's first-class config; SQLite mode exists but is alpha |
 | Hot path transport | HTTP localhost to Letta server | Native Letta SDK pattern; ~50-100ms acceptable for v1 (v2 brings sub-ms via Rust FFI) |
-| MCP tool namespace | `ak_session_*` (NOT `ctx_*`) | Eng-review D6: unified `ak_*` namespace; clean break from context-mode tool names |
+| MCP tool namespace | `wp_session_*` (NOT `ctx_*`) | Eng-review D6: unified `wp_*` namespace; clean break from context-mode tool names |
 | Hook order | rtk → ak (rtk first) | Eng-review D5: bash filter runs before event capture so Letta doesn't index pre-redacted output |
-| Migration from context-mode | Hard: `ak setup` removes context-mode entries from `.mcp.json` with backup | Eng-review D7. Backup file written; idempotent re-run |
-| Letta lifecycle | `ak setup` boots Letta as a background docker-compose service per-project | Avoid global daemon; project-scoped agent IDs |
+| Migration from context-mode | Hard: `wp setup` removes context-mode entries from `.mcp.json` with backup | Eng-review D7. Backup file written; idempotent re-run |
+| Letta lifecycle | `wp setup` boots Letta as a background docker-compose service per-project | Avoid global daemon; project-scoped agent IDs |
 | Agent ID strategy | One Letta agent per git repo root path (hashed) | Project isolation; survives multiple Claude Code sessions on same repo |
 | PreCompact timeout | 5s cap; partial snapshot allowed (eng-review D14) | Letta snapshot can stall; capped + partial > silent loss |
-| Failure mode | If Letta unreachable: ak_session_* tools return `unavailable`; agent-kit still works | Eng-review D13 spirit applied to Letta path |
+| Failure mode | If Letta unreachable: wp_session_* tools return `unavailable`; agent-kit still works | Eng-review D13 spirit applied to Letta path |
 
 ## Quick Reference (Execution Waves)
 
@@ -131,22 +131,22 @@ DATA FLOW (event capture path):
 
 ### Phase 1: Letta client + setup orchestration [Complexity: M]
 
-#### [infra] Task 1.1: Add Letta to ak setup flow
+#### [infra] Task 1.1: Add Letta to wp setup flow
 
 **Status:** todo
 
 **Depends:** None
 
-Wire Letta installation into `ak setup --with session-memory`. The setup command MUST be idempotent (re-run = no-op if Letta already running), MUST handle docker-compose missing gracefully (clear error + opt-out flag), and MUST write a `.agent/letta/docker-compose.yml` to the project root.
+Wire Letta installation into `wp setup --with session-memory`. The setup command MUST be idempotent (re-run = no-op if Letta already running), MUST handle docker-compose missing gracefully (clear error + opt-out flag), and MUST write a `.agent/letta/docker-compose.yml` to the project root.
 
-The flag `--with session-memory` is an additive opt-in to the existing `ak setup` step. The setup orchestrator (current path: `src/cli/commands/setup/`) gets a new `installSessionMemory()` step that:
+The flag `--with session-memory` is an additive opt-in to the existing `wp setup` step. The setup orchestrator (current path: `src/cli/commands/setup/`) gets a new `installSessionMemory()` step that:
 
 1. Detects docker / docker-compose presence; if missing, prints install URL + skips
 2. Writes `.agent/letta/docker-compose.yml` declaring letta + postgres services on a project-local network
 3. Runs `docker compose up -d` against that file
 4. Polls Letta health endpoint (max 30s); on timeout, logs warning and proceeds
 5. Writes the Letta endpoint URL to `.agent/letta/endpoint.json` for hooks to consume
-6. Registers an `ak_session_*` MCP server entry in `.mcp.json` (with backup of previous version)
+6. Registers an `wp_session_*` MCP server entry in `.mcp.json` (with backup of previous version)
 
 **Files:**
 
@@ -161,7 +161,7 @@ The flag `--with session-memory` is an additive opt-in to the existing `ak setup
 2. Run scoped test — verify FAIL
 3. Implement the orchestrator step
 4. Run scoped test — verify PASS
-5. Manual smoke: `ak setup --with session-memory` in a fresh tmp repo
+5. Manual smoke: `wp setup --with session-memory` in a fresh tmp repo
 
 **Acceptance:**
 
@@ -215,9 +215,9 @@ Each method MUST timeout at 5s (configurable per-call), return typed Result-styl
 Add a "Session memory" section to README explaining:
 
 - What it does (1 sentence)
-- How to enable (`ak setup --with session-memory`)
+- How to enable (`wp setup --with session-memory`)
 - Prerequisites (docker, ~500MB disk for Letta + postgres)
-- How to disable (`ak setup --without session-memory` or remove from `.mcp.json`)
+- How to disable (`wp setup --without session-memory` or remove from `.mcp.json`)
 - Privacy: data stays local, no cloud calls, no telemetry
 
 Also write `docs/guides/session-memory.md` with the full mental model — Letta's hierarchy (context / archival / recall) and what each layer is for.
@@ -231,7 +231,7 @@ Also write `docs/guides/session-memory.md` with the full mental model — Letta'
 
 - [ ] README has working "Session memory" section
 - [ ] Mental model doc explains the hierarchy with examples
-- [ ] `ak audit docs-frontmatter` passes on the new guide
+- [ ] `wp audit docs-frontmatter` passes on the new guide
 
 ### Phase 2: Hook wiring [Complexity: M]
 
@@ -251,7 +251,7 @@ Make `ak-post-tool.ts` thin (per eng-review D9): read tool-result JSON from stdi
 
 **Steps (TDD):**
 
-1. Test: event capture for a representative tool-result JSON (Bash, mcp__ak_test, Edit)
+1. Test: event capture for a representative tool-result JSON (Bash, mcp__wp_test, Edit)
 2. Test: failure path — Letta unreachable, hook still returns success
 3. Test: agentId derivation is stable across runs (same repo → same id)
 4. Implement
@@ -299,13 +299,13 @@ Implement two new hook bins (or extend the existing `ak-sessionstart-routing`):
 
 ### Phase 3: MCP tools + search [Complexity: M]
 
-#### [backend] Task 3.1: ak_session_search MCP tool
+#### [backend] Task 3.1: wp_session_search MCP tool
 
 **Status:** todo
 
 **Depends:** Task 1.2
 
-Expose `ak_session_search` as a registered MCP tool on agent-kit's MCP server. Input: `{ query: string, limit?: number }`. Output: matching event snippets with timestamps. Delegates to `letta-client.searchEvents`.
+Expose `wp_session_search` as a registered MCP tool on agent-kit's MCP server. Input: `{ query: string, limit?: number }`. Output: matching event snippets with timestamps. Delegates to `letta-client.searchEvents`.
 
 This is the primary user-facing tool — agents call it to recall what they were doing.
 
@@ -321,7 +321,7 @@ This is the primary user-facing tool — agents call it to recall what they were
 - [ ] Returns structured results, not raw Letta payloads
 - [ ] Tests cover: happy path, empty results, Letta unreachable
 
-#### [backend] Task 3.2: ak_session_snapshot + ak_session_restore MCP tools
+#### [backend] Task 3.2: wp_session_snapshot + wp_session_restore MCP tools
 
 **Status:** todo
 
@@ -341,7 +341,7 @@ Manual snapshot/restore tools that agents can call on demand (not just at hook e
 - [ ] snapshot returns a snapshot id; restore accepts that id
 - [ ] Restore preserves agent's context-window state when invoked
 
-#### [backend] Task 3.3: ak_session_capture MCP tool (manual capture)
+#### [backend] Task 3.3: wp_session_capture MCP tool (manual capture)
 
 **Status:** todo
 
@@ -357,19 +357,19 @@ Manual event-capture tool for agents to record their own decisions/notes outside
 **Acceptance:**
 
 - [ ] Tool registered, structured input
-- [ ] Captured events visible via `ak_session_search`
+- [ ] Captured events visible via `wp_session_search`
 
 ### Phase 4: Migration + audit [Complexity: M]
 
-#### [infra] Task 4.1: Hard migration — `ak setup` removes context-mode
+#### [infra] Task 4.1: Hard migration — `wp setup` removes context-mode
 
 **Status:** todo
 
 **Depends:** Task 1.1
 
-Per eng-review D7: when `ak setup --with session-memory` runs and detects context-mode entries in `.mcp.json`, remove them automatically. Write a timestamped backup file `.mcp.json.pre-session-memory-backup.{timestamp}.json` first. Print a one-line notice with the backup path.
+Per eng-review D7: when `wp setup --with session-memory` runs and detects context-mode entries in `.mcp.json`, remove them automatically. Write a timestamped backup file `.mcp.json.pre-session-memory-backup.{timestamp}.json` first. Print a one-line notice with the backup path.
 
-Outside-voice flagged this as consent-sensitive. Mitigation: backup is non-optional, restore path is documented (one command: `ak setup --restore-mcp-backup <path>`).
+Outside-voice flagged this as consent-sensitive. Mitigation: backup is non-optional, restore path is documented (one command: `wp setup --restore-mcp-backup <path>`).
 
 **Files:**
 
@@ -398,7 +398,7 @@ Outside-voice flagged this as consent-sensitive. Mitigation: backup is non-optio
 
 **Depends:** Task 1.1
 
-Update `catalog/agent/rules/gstack-routing.md` to reflect the new lane-2 ownership (agent-kit owns `ak_session_*` instead of context-mode owning `ctx_*`). Add a new rule `catalog/agent/rules/session-memory.md` explaining when agents should call `ak_session_search` vs relying on auto-restore.
+Update `catalog/agent/rules/gstack-routing.md` to reflect the new lane-2 ownership (agent-kit owns `wp_session_*` instead of context-mode owning `ctx_*`). Add a new rule `catalog/agent/rules/session-memory.md` explaining when agents should call `wp_session_search` vs relying on auto-restore.
 
 **Files:**
 
@@ -408,7 +408,7 @@ Update `catalog/agent/rules/gstack-routing.md` to reflect the new lane-2 ownersh
 **Acceptance:**
 
 - [ ] Rule diff reviewed
-- [ ] `ak audit docs-frontmatter` passes
+- [ ] `wp audit docs-frontmatter` passes
 - [ ] Rule referenced from README session-memory section
 
 ---
@@ -417,21 +417,21 @@ Update `catalog/agent/rules/gstack-routing.md` to reflect the new lane-2 ownersh
 
 | Gate         | Command                                    | Success Criteria |
 | ------------ | ------------------------------------------ | ---------------- |
-| Type safety  | `ak_typecheck`                             | Zero errors |
-| Lint         | `ak_lint --file <touched>`                 | Zero violations |
-| Unit tests   | `ak_test --file <touched>`                 | All pass |
-| Full QA      | `ak_qa`                                    | All pass |
+| Type safety  | `wp_typecheck`                             | Zero errors |
+| Lint         | `wp_lint --file <touched>`                 | Zero violations |
+| Unit tests   | `wp_test --file <touched>`                 | All pass |
+| Full QA      | `wp_qa`                                    | All pass |
 | Hot path perf | bench harness in session-capture.test.ts  | p99 < 100ms (informational; v2 raises bar) |
-| Smoke test   | `ak setup --with session-memory` in scratch repo + simulated compaction | Agent restores context correctly |
-| Migration    | `ak setup` with prior context-mode install | context-mode removed, backup file present |
-| Audit        | `ak_audit blueprint-lifecycle`             | Blueprint passes lifecycle check |
+| Smoke test   | `wp setup --with session-memory` in scratch repo + simulated compaction | Agent restores context correctly |
+| Migration    | `wp setup` with prior context-mode install | context-mode removed, backup file present |
+| Audit        | `wp_audit blueprint-lifecycle`             | Blueprint passes lifecycle check |
 
 ## Cross-Plan References
 
 | Type       | Blueprint | Relationship |
 | ---------- | --------- | ------------ |
 | Upstream   | None      |              |
-| Downstream | `ak-session-memory-v2-rust-ctx-rs-engine-replaces-letta-backend-while-preserving-v1-api-surface` | v2 replaces Letta backend while keeping `ak_session_*` MCP surface stable |
+| Downstream | `ak-session-memory-v2-rust-ctx-rs-engine-replaces-letta-backend-while-preserving-v1-api-surface` | v2 replaces Letta backend while keeping `wp_session_*` MCP surface stable |
 
 ## Edge Cases and Error Handling
 
@@ -444,7 +444,7 @@ Update `catalog/agent/rules/gstack-routing.md` to reflect the new lane-2 ownersh
 | PreCompact stalls > 5s | Silent loss of session continuity | 5s timeout + partial snapshot + log line (eng-review D14) | 2.2 |
 | `.mcp.json` is malformed during migration | Setup destroys user's config | Migration reads + validates first; on parse error, preserve unchanged | 4.1 |
 | Letta version drift | API breaking change | Pin Letta version in docker-compose template; document upgrade path | 1.1, 1.3 |
-| User has FreeBSD / unsupported OS | Docker unavailable | Setup detects + skips; `ak_session_*` returns `unavailable` cleanly | 1.1, 3.1 |
+| User has FreeBSD / unsupported OS | Docker unavailable | Setup detects + skips; `wp_session_*` returns `unavailable` cleanly | 1.1, 3.1 |
 
 ## Non-goals
 
@@ -460,7 +460,7 @@ Update `catalog/agent/rules/gstack-routing.md` to reflect the new lane-2 ownersh
 
 | Risk | Impact | Mitigation |
 | ---- | ------ | ---------- |
-| Letta's memory-hierarchy concepts leak into our public MCP surface | API churn when v2 swaps engines | `ak_session_*` tool shapes are designed in v1 to be Letta-agnostic; mapped internally |
+| Letta's memory-hierarchy concepts leak into our public MCP surface | API churn when v2 swaps engines | `wp_session_*` tool shapes are designed in v1 to be Letta-agnostic; mapped internally |
 | Postgres adds setup weight users won't tolerate | Adoption drops below context-mode | DX critique flagged this; mitigation = docker-compose template + clear opt-out path |
 | Hot path 50-100ms regresses interactive feel | Users complain about lag | Document as v1 limitation; v2 fixes via FFI; consider async-fire-and-forget if real issue |
 | Letta upstream changes default storage from Postgres | docker-compose template breaks | Pin Letta version; subscribe to Letta releases; quarterly bump cadence |
@@ -478,4 +478,4 @@ Update `catalog/agent/rules/gstack-routing.md` to reflect the new lane-2 ownersh
 | MCP SDK | `@modelcontextprotocol/sdk` | existing pinned version | Already used by agent-kit's MCP server |
 | Hook entry pattern | `bin/ak-pre-compact`, etc. | existing | Mirrors current `ak-post-tool` / `ak-pretool-guard` shape |
 | Setup orchestrator | Existing `src/cli/commands/setup/` | extend, don't replace | Lifts the `--with session-memory` flag onto existing infrastructure |
-| Lifecycle audit | `ak_audit blueprint-lifecycle` | existing | Standard repo gate |
+| Lifecycle audit | `wp_audit blueprint-lifecycle` | existing | Standard repo gate |

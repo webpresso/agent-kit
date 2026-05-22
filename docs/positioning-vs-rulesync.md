@@ -28,7 +28,7 @@ drift beyond its own output files, or integrate with CI in an opinionated way.
 
 ## What agent-kit adds on top
 
-agent-kit uses rulesync as its emission substrate (`ak compile` calls
+agent-kit uses rulesync as its emission substrate (`wp compile` calls
 `rulesync generate` internally). Everything else agent-kit ships is outside
 rulesync's scope:
 
@@ -38,24 +38,24 @@ single `AGENTS.md`, agent-kit merges them using section-keyed precedence (local
 overrides catalog, catalog overrides base). rulesync has no merger concept.
 
 **2. Blueprint lifecycle**
-`ak blueprint new` writes a markdown plan to `blueprints/in-progress/`. CI gates
-on `ak audit blueprint-lifecycle` so plans can't silently rot in `draft/` or stay
+`wp blueprint new` writes a markdown plan to `blueprints/in-progress/`. CI gates
+on `wp audit blueprint-lifecycle` so plans can't silently rot in `draft/` or stay
 marked `in-progress` after the work ships. rulesync has no lifecycle concept.
 
 **3. Drift detection beyond emission**
-`ak audit broken-refs` walks every `@AGENTS.md` and `@RULES.md` cross-reference
-in the compiled output and flags dangling pointers. `ak audit skill-sizes` checks
+`wp audit broken-refs` walks every `@AGENTS.md` and `@RULES.md` cross-reference
+in the compiled output and flags dangling pointers. `wp audit skill-sizes` checks
 that no skill file exceeds the IDE-specific byte budget (Codex: 8KB, Claude: 32KB).
 rulesync validates its own sources but does not audit the compiled output for
 semantic correctness.
 
 **4. Tech-debt lifecycle**
-`ak tech-debt new --from-audit skill-sizes` auto-creates a `tech-debt/needs-remediation/`
+`wp tech-debt new --from-audit skill-sizes` auto-creates a `tech-debt/needs-remediation/`
 record from a failing audit. Items have status (`accepted` / `needs-remediation` /
 `monitoring` / `resolved`) and a review cadence. rulesync has no tech-debt concept.
 
 **5. Structured MCP tools**
-The agent-kit MCP server exposes `ak_audit`, `ak_blueprint`, `ak_test`, and four
+The agent-kit MCP server exposes `wp_audit`, `wp_blueprint`, `wp_test`, and four
 other tools so an AI coding agent can invoke quality gates mid-session without
 leaving the IDE. rulesync ships no MCP surface.
 
@@ -82,7 +82,7 @@ the missing section or skips the guidance entirely.
 **With agent-kit:**
 
 ```bash
-ak audit broken-refs
+wp audit broken-refs
 # FAIL  .agent/skills/auth-patterns/SKILL.md
 #   line 3: @AGENTS.md#session-management — heading not found in AGENTS.md
 #   nearest: #session-lifecycle (edit distance 2)
@@ -90,7 +90,7 @@ ak audit broken-refs
 ```
 
 The pre-commit hook catches this before the branch merges. The developer updates
-the cross-reference in the canonical source, re-runs `ak compile`, and the output
+the cross-reference in the canonical source, re-runs `wp compile`, and the output
 is consistent.
 
 ## Second example: over-budget skill caught before Codex rejects it
@@ -105,7 +105,7 @@ section — is never seen by Codex.
 **With agent-kit:**
 
 ```bash
-ak audit skill-sizes
+wp audit skill-sizes
 # WARN  .agent/skills/auth-patterns/SKILL.md
 #   compiled size: 9.2KB (Codex budget: 8KB, overage: 1.2KB)
 #   suggestion: split into auth-patterns/core + auth-patterns/examples

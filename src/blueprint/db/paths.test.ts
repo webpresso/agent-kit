@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Hoisted mock state — `vi.mock` factory closes over `mockState`.
 const mockState = vi.hoisted(() => {
-  return { stateRoot: '/tmp/ak-state-root-placeholder' }
+  return { stateRoot: '/tmp/wp-state-root-placeholder' }
 })
 
 vi.mock('env-paths', () => ({
@@ -43,7 +43,7 @@ let stateRootDir: string
 beforeEach(() => {
   _clearCacheForTests()
   delete process.env.CLAUDE_PROJECT_DIR
-  stateRootDir = mkdtempSync(path.join(tmpdir(), 'ak-state-root-'))
+  stateRootDir = mkdtempSync(path.join(tmpdir(), 'wp-state-root-'))
   mockState.stateRoot = stateRootDir
 })
 
@@ -54,7 +54,7 @@ afterEach(() => {
 
 describe('resolveBlueprintProjectionDbPath', () => {
   it('returns a worktree-scoped path inside a git repo', () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'ak-repo-'))
+    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     try {
       initGitRepo(repo)
       const dbPath = resolveBlueprintProjectionDbPath(repo)
@@ -68,7 +68,7 @@ describe('resolveBlueprintProjectionDbPath', () => {
   })
 
   it('returns legacy .agent path outside a git repo', () => {
-    const nonGit = mkdtempSync(path.join(tmpdir(), 'ak-nogit-'))
+    const nonGit = mkdtempSync(path.join(tmpdir(), 'wp-nogit-'))
     try {
       const dbPath = resolveBlueprintProjectionDbPath(nonGit)
       expect(dbPath).toStrictEqual(path.join(nonGit, '.agent', '.blueprints.db'))
@@ -78,8 +78,8 @@ describe('resolveBlueprintProjectionDbPath', () => {
   })
 
   it('resolves different projection paths for two worktrees of the same repo', () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'ak-repo-'))
-    const wtParent = mkdtempSync(path.join(tmpdir(), 'ak-wt-parent-'))
+    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
+    const wtParent = mkdtempSync(path.join(tmpdir(), 'wp-wt-parent-'))
     const wtDir = path.join(wtParent, 'alt')
     try {
       initGitRepo(repo)
@@ -112,7 +112,7 @@ describe('resolveBlueprintProjectionDbPath', () => {
 
 describe('lock-scope policy', () => {
   it('projection DB lock is worktree-scoped (sibling to DB)', () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'ak-repo-'))
+    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     try {
       initGitRepo(repo)
       const dbPath = resolveBlueprintProjectionDbPath(repo)
@@ -125,7 +125,7 @@ describe('lock-scope policy', () => {
   })
 
   it('markdown lock is repo-scoped (no worktree segment)', () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'ak-repo-'))
+    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     try {
       initGitRepo(repo)
       const mdLock = resolveBlueprintMarkdownLockPath(repo)
@@ -137,8 +137,8 @@ describe('lock-scope policy', () => {
   })
 
   it('two worktrees share the same markdown lock path', () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'ak-repo-'))
-    const wtParent = mkdtempSync(path.join(tmpdir(), 'ak-wt-parent-'))
+    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
+    const wtParent = mkdtempSync(path.join(tmpdir(), 'wp-wt-parent-'))
     const wtDir = path.join(wtParent, 'alt2')
     try {
       initGitRepo(repo)
@@ -164,7 +164,7 @@ describe('lock-scope policy', () => {
 
 describe('write-lock acquisition (no silent escape)', () => {
   it('serializes concurrent projection-DB writers in the same worktree', async () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'ak-repo-'))
+    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     try {
       initGitRepo(repo)
 
@@ -188,8 +188,8 @@ describe('write-lock acquisition (no silent escape)', () => {
   })
 
   it('serializes cross-worktree markdown writers via the repo-scoped lock', async () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'ak-repo-'))
-    const wtParent = mkdtempSync(path.join(tmpdir(), 'ak-wt-parent-'))
+    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
+    const wtParent = mkdtempSync(path.join(tmpdir(), 'wp-wt-parent-'))
     const wtDir = path.join(wtParent, 'mdlock')
     try {
       initGitRepo(repo)
@@ -222,7 +222,7 @@ describe('write-lock acquisition (no silent escape)', () => {
   })
 
   it('throws LockTimeoutError instead of silently proceeding when the lock cannot be acquired', async () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'ak-repo-'))
+    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     try {
       initGitRepo(repo)
       const holderRelease = await acquireProjectionDbWriteLock(repo, { timeoutMs: 5_000 })
@@ -239,7 +239,7 @@ describe('write-lock acquisition (no silent escape)', () => {
   })
 
   it('LockTimeoutError carries next_action: reingest_project and the lock path', async () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'ak-repo-'))
+    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     try {
       initGitRepo(repo)
       const expectedLockPath = resolveBlueprintMarkdownLockPath(repo)
@@ -262,7 +262,7 @@ describe('write-lock acquisition (no silent escape)', () => {
   })
 
   it('creates parent directories for the lock file on first acquisition', async () => {
-    const repo = mkdtempSync(path.join(tmpdir(), 'ak-repo-'))
+    const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     try {
       initGitRepo(repo)
       const lockPath = resolveBlueprintProjectionDbLockPath(repo)
@@ -276,7 +276,7 @@ describe('write-lock acquisition (no silent escape)', () => {
   })
 
   it('legacy non-git lock path lives under <cwd>/.agent', async () => {
-    const nonGit = mkdtempSync(path.join(tmpdir(), 'ak-nogit-'))
+    const nonGit = mkdtempSync(path.join(tmpdir(), 'wp-nogit-'))
     try {
       mkdirSync(path.join(nonGit, '.agent'), { recursive: true })
       const lockPath = resolveBlueprintProjectionDbLockPath(nonGit)

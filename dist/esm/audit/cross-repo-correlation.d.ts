@@ -1,5 +1,5 @@
 /**
- * `ak audit cross-repo-correlation`
+ * `wp audit cross-repo-correlation`
  *
  * Wraps `auditCrossRepoCorrelation` from the blueprint cross-repo module into
  * the standard `RepoAuditResult` shape used by the audit registry.

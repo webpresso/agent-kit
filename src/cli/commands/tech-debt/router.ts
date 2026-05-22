@@ -1,5 +1,5 @@
 /**
- * `ak tech-debt` command router.
+ * `wp tech-debt` command router.
  *
  * Mirrors the blueprint router pattern:
  * - router.ts  — registers the CAC command and wires options
@@ -40,7 +40,7 @@ export function registerTechDebtRouter(cli: CAC): void {
         if (!subcommand) {
           console.log(
             [
-              'Usage: ak tech-debt <subcommand> [options]',
+              'Usage: wp tech-debt <subcommand> [options]',
               '',
               'Subcommands:',
               '  new "<title>" --severity <s> --category <c> [--review-cadence <r>] [--status <s>] [--dry-run]',

@@ -79,7 +79,7 @@ Resolve this item when **all of the following** are true:
    ("verified execution record for AI coding work") + install
    one-liner.
 6. Update README install path: `pnpm add -D @webpresso/agent-kit
-   && pnpm exec ak setup`.
+   && pnpm exec wp setup`.
 7. Announce on webpresso channels + relevant developer communities.
 8. Move this file to `tech-debt/resolved/` with the release-cycle
    commit link.

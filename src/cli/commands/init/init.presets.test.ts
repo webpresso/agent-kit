@@ -27,7 +27,7 @@ vi.mock('node:child_process', async () => {
 import { EXIT_SETUP_FAIL, EXIT_SUCCESS, EXIT_WRITE_FAIL, runInit } from './index.js'
 
 function makeRepo(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'ak-init-presets-'))
+  const dir = mkdtempSync(join(tmpdir(), 'wp-init-presets-'))
   mkdirSync(join(dir, '.git'), { recursive: true })
   writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: '@acme/x', private: true }))
   writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'packages:\n  - apps/*\n')

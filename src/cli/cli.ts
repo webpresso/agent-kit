@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `ak` — agent-kit CLI entrypoint.
+ * `wp` — agent-kit CLI entrypoint.
  *
  * Lazy-loads subcommand modules based on the first argv to keep startup
  * cheap. Modeled on apps/cli-wp/src/cli.ts.
@@ -47,7 +47,6 @@ const SUPPORTED_COMMANDS = [
 const ROOT_HELP = [
   'Usage: wp [command] [options]',
   '       webpresso [command] [options]  (alias)',
-  '       ak [command] [options]         (deprecated alias)',
   '',
   'Core:',
   '  setup                 Scaffold a consumer repo with the agent surface',
@@ -89,7 +88,7 @@ const ROOT_HELP = [
 export { SUPPORTED_COMMANDS }
 
 export async function main(): Promise<number> {
-  const cli = cac('ak')
+  const cli = cac('wp')
   const argv = normalizeArgv(process.argv)
   const command = argv[2]
   const wantsVersion = argv.includes('--version') || argv.includes('-v')

@@ -16,7 +16,7 @@ tags:
 
 **Goal:** consumers replace 6–8 pinned `@webpresso/agent-*` devDependencies with
 one install: `webpresso`. Configs, presets, runtime helpers, and docs-lint APIs
-are exposed as `webpresso/*` subpaths while existing hook bins and `ak_*` MCP
+are exposed as `webpresso/*` subpaths while existing hook bins and `wp_*` MCP
 tool routing remain unchanged.
 
 This plan is a **prep + release-gate** blueprint:
@@ -145,18 +145,18 @@ manifest; Task 2.6 owns `package.json` and staged publish validation.
 
 1. Write a failing parity test that byte-compares each new JSON file with its
    source in `packages/agent-tsconfig/`.
-2. Run `ak_test` scoped to `src/config/tsconfig/tsconfig-parity.test.ts` — verify FAIL.
+2. Run `wp_test` scoped to `src/config/tsconfig/tsconfig-parity.test.ts` — verify FAIL.
 3. Copy the JSON files without semantic edits.
-4. Run `ak_test` scoped to `src/config/tsconfig/tsconfig-parity.test.ts` — verify PASS.
+4. Run `wp_test` scoped to `src/config/tsconfig/tsconfig-parity.test.ts` — verify PASS.
 5. Refactor only if needed; preserve byte parity.
-6. Run `ak_lint` and `ak_typecheck` for the changed files.
+6. Run `wp_lint` and `wp_typecheck` for the changed files.
 
 **Acceptance:**
 
 - [x] Six JSON configs exist at literal `src/config/tsconfig/*.json` paths.
 - [x] Parity test proves byte-identical content against `packages/agent-tsconfig/`.
 - [x] No `package.json` edit in this task.
-- [x] `ak_lint` and `ak_typecheck` pass for changed files.
+- [x] `wp_lint` and `wp_typecheck` pass for changed files.
 #### [config] Task 1.2: Fold `@webpresso/agent-vitest`
 
 **Status:** done
@@ -184,19 +184,19 @@ needed. Do not implement this as a parent-relative re-export into `packages/`.
 
 1. Write failing tests that import the new local modules and compare key exports
    with `packages/agent-vitest/*`.
-2. Run `ak_test` scoped to `src/config/vitest/vitest-parity.test.ts` — verify FAIL.
+2. Run `wp_test` scoped to `src/config/vitest/vitest-parity.test.ts` — verify FAIL.
 3. Copy/fold the package root source files, updating only import paths needed
    for the new root package.
-4. Run the scoped `ak_test` — verify PASS.
+4. Run the scoped `wp_test` — verify PASS.
 5. Refactor to use package-local aliases instead of parent-relative imports.
-6. Run `ak_lint` and `ak_typecheck` for changed files.
+6. Run `wp_lint` and `wp_typecheck` for changed files.
 
 **Acceptance:**
 
 - [x] All current `@webpresso/agent-vitest` subpath behaviors have local equivalents.
 - [x] New files do not import from `../../packages/*`.
 - [x] Parity tests pass.
-- [x] `ak_lint` and `ak_typecheck` pass for changed files.
+- [x] `wp_lint` and `wp_typecheck` pass for changed files.
 #### [config] Task 1.3: Fold `@webpresso/agent-stryker`
 
 **Status:** done
@@ -217,17 +217,17 @@ default export behavior compatible with current consumers.
 1. Write failing tests that import `src/config/stryker/index.ts` and
    `src/config/stryker/webpresso.ts` and compare normalized config output with
    `packages/agent-stryker/`.
-2. Run `ak_test` scoped to `src/config/stryker/stryker-parity.test.ts` — verify FAIL.
+2. Run `wp_test` scoped to `src/config/stryker/stryker-parity.test.ts` — verify FAIL.
 3. Fold the config source without changing Stryker semantics.
-4. Run the scoped `ak_test` — verify PASS.
+4. Run the scoped `wp_test` — verify PASS.
 5. Remove parent-relative imports introduced during the fold.
-6. Run `ak_lint` and `ak_typecheck` for changed files.
+6. Run `wp_lint` and `wp_typecheck` for changed files.
 
 **Acceptance:**
 
 - [x] `webpresso/stryker` and `webpresso/stryker/webpresso` can be mapped by Task 2.6.
 - [x] Parity tests pass.
-- [x] `ak_lint` and `ak_typecheck` pass for changed files.
+- [x] `wp_lint` and `wp_typecheck` pass for changed files.
 #### [config] Task 1.4: Fold `@webpresso/agent-oxlint`
 
 **Status:** done
@@ -255,18 +255,18 @@ API must be usable from `oxlint.config.ts` by importing config objects from
 
 1. Write failing tests that import the folded config and assert the same rule
    keys as `packages/agent-oxlint/src/index.js`.
-2. Run `ak_test` scoped to `src/config/oxlint/oxlint-parity.test.ts` — verify FAIL.
+2. Run `wp_test` scoped to `src/config/oxlint/oxlint-parity.test.ts` — verify FAIL.
 3. Fold the modules into TypeScript-compatible source, preserving exported names.
-4. Run the scoped `ak_test` — verify PASS.
+4. Run the scoped `wp_test` — verify PASS.
 5. Add a fixture `oxlint.config.ts` import smoke test if one does not already exist.
-6. Run `ak_lint` and `ak_typecheck` for changed files.
+6. Run `wp_lint` and `wp_typecheck` for changed files.
 
 **Acceptance:**
 
 - [x] `webpresso/oxlint` can export an object usable from `oxlint.config.ts`.
 - [x] `.oxlintrc.json` package-import support is not promised.
 - [x] Parity tests pass.
-- [x] `ak_lint` and `ak_typecheck` pass for changed files.
+- [x] `wp_lint` and `wp_typecheck` pass for changed files.
 #### [docs] Task 1.5: Update routing block and agent rules for new import paths
 
 **Status:** done
@@ -288,19 +288,19 @@ hook bin names stay unchanged; only package import/install guidance changes.
 
 1. Write or update a text assertion test that searches routing/rule surfaces for
    stale `@webpresso/agent-` install guidance.
-2. Run `ak_test` scoped to that assertion — verify FAIL if stale references exist.
+2. Run `wp_test` scoped to that assertion — verify FAIL if stale references exist.
 3. Replace stale package guidance with `webpresso/*` subpath guidance, keeping
-   `ak_test`, `ak_lint`, `ak_typecheck`, `ak_qa`, and `ak_audit` names unchanged.
+   `wp_test`, `wp_lint`, `wp_typecheck`, `wp_qa`, and `wp_audit` names unchanged.
 4. Run the scoped assertion — verify PASS.
 5. Refactor wording for clarity only.
-6. Run `ak_lint` and `ak_typecheck` for changed files.
+6. Run `wp_lint` and `wp_typecheck` for changed files.
 
 **Acceptance:**
 
 - [x] No routing/rule surface tells consumers to install `@webpresso/agent-*`.
-- [x] `ak_*` MCP tool names are unchanged.
+- [x] `wp_*` MCP tool names are unchanged.
 - [x] Hook bin names in `package.json#bin` are unchanged.
-- [x] `ak_lint` and `ak_typecheck` pass for changed files.
+- [x] `wp_lint` and `wp_typecheck` pass for changed files.
 
 ---
 
@@ -325,17 +325,17 @@ runtime behavior and tests; only import paths should change.
 
 1. Write a failing parity test that imports the folded `BaseWorkerEnv` and key
    helpers from `src/config/workers-test/index.ts`.
-2. Run `ak_test` scoped to `src/config/workers-test/workers-test-parity.test.ts` — verify FAIL.
+2. Run `wp_test` scoped to `src/config/workers-test/workers-test-parity.test.ts` — verify FAIL.
 3. Copy/fold source from `packages/agent-workers-test/src/`.
-4. Run the scoped `ak_test` — verify PASS.
+4. Run the scoped `wp_test` — verify PASS.
 5. Refactor only import paths; keep logic diffs minimal.
-6. Run `ak_lint` and `ak_typecheck` for changed files.
+6. Run `wp_lint` and `wp_typecheck` for changed files.
 
 **Acceptance:**
 
 - [x] Workers-test parity test passes.
 - [x] Diff against source package is empty or import-path-only.
-- [x] `ak_lint` and `ak_typecheck` pass for changed files.
+- [x] `wp_lint` and `wp_typecheck` pass for changed files.
 #### [runtime] Task 2.2: Fold docs-lint API, schemas, parsers, and generator
 
 **Status:** done
@@ -359,17 +359,17 @@ schemas, parsers, generator APIs, validators, and their fixtures/tests.
 
 1. Write failing API parity tests for `schemas`, `generator`, and main
    docs-lint exports.
-2. Run `ak_test` scoped to `src/config/docs-lint/docs-lint-api-parity.test.ts` — verify FAIL.
+2. Run `wp_test` scoped to `src/config/docs-lint/docs-lint-api-parity.test.ts` — verify FAIL.
 3. Fold the API/schema/parser/generator source.
-4. Run the scoped `ak_test` — verify PASS.
+4. Run the scoped `wp_test` — verify PASS.
 5. Refactor path imports without changing lint semantics.
-6. Run `ak_lint` and `ak_typecheck` for changed files.
+6. Run `wp_lint` and `wp_typecheck` for changed files.
 
 **Acceptance:**
 
 - [x] Public docs-lint APIs resolve locally.
 - [x] Existing docs-lint unit tests have folded equivalents or are moved intact.
-- [x] `ak_lint` and `ak_typecheck` pass for changed files.
+- [x] `wp_lint` and `wp_typecheck` pass for changed files.
 #### [runtime] Task 2.3: Fold docs-lint CLI, templates, and bin entrypoints
 
 **Status:** done
@@ -390,17 +390,17 @@ does not edit `package.json#bin`; Task 2.6 wires bins after all CLI files exist.
 
 1. Write failing CLI smoke tests for the folded CLI modules using the current
    `packages/agent-docs-lint` behavior as oracle.
-2. Run `ak_test` scoped to `src/config/docs-lint/docs-lint-cli-parity.test.ts` — verify FAIL.
+2. Run `wp_test` scoped to `src/config/docs-lint/docs-lint-cli-parity.test.ts` — verify FAIL.
 3. Fold CLI and template files into the new paths.
-4. Run the scoped `ak_test` — verify PASS.
+4. Run the scoped `wp_test` — verify PASS.
 5. Refactor only path/import wiring.
-6. Run `ak_lint` and `ak_typecheck` for changed files.
+6. Run `wp_lint` and `wp_typecheck` for changed files.
 
 **Acceptance:**
 
 - [x] Folded CLI modules run help/validation smoke tests.
 - [x] Templates are included for package staging by Task 2.6.
-- [x] `ak_lint` and `ak_typecheck` pass for changed files.
+- [x] `wp_lint` and `wp_typecheck` pass for changed files.
 #### [runtime] Task 2.4: Fold `@webpresso/agent-launch`
 
 **Status:** done
@@ -419,17 +419,17 @@ APIs and tests.
 **Steps (TDD):**
 
 1. Write failing parity tests for the launch public API.
-2. Run `ak_test` scoped to `src/config/launch/launch-parity.test.ts` — verify FAIL.
+2. Run `wp_test` scoped to `src/config/launch/launch-parity.test.ts` — verify FAIL.
 3. Fold source from `packages/agent-launch/src/`.
-4. Run the scoped `ak_test` — verify PASS.
+4. Run the scoped `wp_test` — verify PASS.
 5. Refactor import paths only.
-6. Run `ak_lint` and `ak_typecheck` for changed files.
+6. Run `wp_lint` and `wp_typecheck` for changed files.
 
 **Acceptance:**
 
 - [x] Launch parity tests pass.
 - [x] Logic diff is empty or justified in the task notes.
-- [x] `ak_lint` and `ak_typecheck` pass for changed files.
+- [x] `wp_lint` and `wp_typecheck` pass for changed files.
 #### [runtime] Task 2.5: Fold test and e2e presets
 
 **Status:** done
@@ -452,18 +452,18 @@ available for Task 2.6 to expose.
 **Steps (TDD):**
 
 1. Write failing parity tests for both preset packages.
-2. Run `ak_test` scoped to the new preset parity tests — verify FAIL.
+2. Run `wp_test` scoped to the new preset parity tests — verify FAIL.
 3. Fold source from `packages/agent-test-preset/src/` and
    `packages/agent-e2e-preset/src/`.
-4. Run the scoped `ak_test` — verify PASS.
+4. Run the scoped `wp_test` — verify PASS.
 5. Refactor path imports only.
-6. Run `ak_lint` and `ak_typecheck` for changed files.
+6. Run `wp_lint` and `wp_typecheck` for changed files.
 
 **Acceptance:**
 
 - [x] Test-preset and e2e-preset parity tests pass.
 - [x] `webpresso/test-preset/vitest` and `webpresso/e2e-preset/playwright` can be mapped.
-- [x] `ak_lint` and `ak_typecheck` pass for changed files.
+- [x] `wp_lint` and `wp_typecheck` pass for changed files.
 #### [package] Task 2.6: Wire manifest, exports, bins, and staging package
 
 **Status:** done
@@ -488,20 +488,20 @@ public `webpresso` package through `scripts/publish-webpresso.ts --dry-run`.
    `webpresso/stryker`, `webpresso/oxlint`, `webpresso/workers-test`,
    `webpresso/docs-lint`, `webpresso/launch`, `webpresso/test-preset`, and
    `webpresso/e2e-preset`.
-2. Run `ak_test` scoped to `src/config/export-resolution.test.ts` — verify FAIL.
+2. Run `wp_test` scoped to `src/config/export-resolution.test.ts` — verify FAIL.
 3. Update `package.json#tshy.exports`, `package.json#files`, `package.json#bin`,
    and `tsconfig.json` aliases.
-4. Run the scoped `ak_test` — verify PASS.
+4. Run the scoped `wp_test` — verify PASS.
 5. Run `bun scripts/publish-webpresso.ts --dry-run` and inspect that staged
    `webpresso` includes JSON files, templates, and bin targets.
-6. Run `pnpm lint:pkg`, `ak_typecheck`, and `ak_lint`.
+6. Run `pnpm lint:pkg`, `wp_typecheck`, and `wp_lint`.
 
 **Acceptance:**
 
 - [x] All `webpresso/*` subpaths resolve from the staged public package.
 - [x] `package.json` is modified only in this task for the fold.
 - [x] Hook bins remain present.
-- [x] `pnpm lint:pkg`, `ak_typecheck`, and `ak_lint` pass.
+- [x] `pnpm lint:pkg`, `wp_typecheck`, and `wp_lint` pass.
 
 ---
 
@@ -527,11 +527,11 @@ package; publishing is deferred to Task 4.2.
 
 1. Write failing docs assertions for old/new import mapping examples and the
    Oxlint TypeScript config requirement.
-2. Run `ak_test` scoped to docs assertions — verify FAIL.
+2. Run `wp_test` scoped to docs assertions — verify FAIL.
 3. Update docs and add the changeset.
 4. Run scoped docs assertions — verify PASS.
 5. Refactor docs for shortest clear migration path.
-6. Run `ak_lint` and `ak_audit(kind="docs-frontmatter")`.
+6. Run `wp_lint` and `wp_audit(kind="docs-frontmatter")`.
 
 **Acceptance:**
 
@@ -605,18 +605,18 @@ packages. This does not run `npm deprecate` and does not unpublish anything.
 
 1. Write failing metadata assertions that every `packages/agent-*` package has
    the same migration notice.
-2. Run `ak_test` scoped to the metadata assertions — verify FAIL.
+2. Run `wp_test` scoped to the metadata assertions — verify FAIL.
 3. Add the deprecation notice metadata and changeset.
 4. Run scoped metadata assertions — verify PASS.
 5. Refactor notice wording only if the migration URL changes.
-6. Run `ak_lint` and `ak_typecheck`.
+6. Run `wp_lint` and `wp_typecheck`.
 
 **Acceptance:**
 
 - [x] All 9 sub-package manifests carry the migration notice.
 - [x] Changeset for final deprecated package versions exists.
 - [x] No registry deprecation command runs in this task.
-- [x] `ak_lint` and `ak_typecheck` pass.
+- [x] `wp_lint` and `wp_typecheck` pass.
 
 ---
 
@@ -626,8 +626,8 @@ packages. This does not run `npm deprecate` and does not unpublish anything.
 **Status:** done
 
 **Evidence:** Full local QA passed after sibling consumer proof was attached.
-One `ak_qa` run exposed a transient RTK integration test failure; the scoped
-test passed immediately afterward, and the follow-up full `ak_qa` passed.
+One `wp_qa` run exposed a transient RTK integration test failure; the scoped
+test passed immediately afterward, and the follow-up full `wp_qa` passed.
 
 **Depends:** Task 1.5, Task 3.1, Task 3.2, Task 3.3
 
@@ -641,18 +641,18 @@ publish/deprecation work.
 **Steps (TDD):**
 
 1. Verify all task-specific tests have already failed then passed in their tasks.
-2. Run `ak_typecheck`.
-3. Run `ak_lint`.
-4. Run `ak_test`.
-5. Run `ak_qa`.
+2. Run `wp_typecheck`.
+3. Run `wp_lint`.
+4. Run `wp_test`.
+5. Run `wp_qa`.
 6. Run `pnpm lint:pkg` and `bun scripts/publish-webpresso.ts --dry-run`.
 
 **Acceptance:**
 
-- [x] `ak_typecheck` passes.
-- [x] `ak_lint` passes.
-- [x] `ak_test` passes.
-- [x] `ak_qa` passes.
+- [x] `wp_typecheck` passes.
+- [x] `wp_lint` passes.
+- [x] `wp_test` passes.
+- [x] `wp_qa` passes.
 - [x] `pnpm lint:pkg` passes.
 - [x] Staged `webpresso` dry-run package contains all subpaths and non-code assets.
 - [x] Sibling consumer proof is attached.
@@ -699,13 +699,13 @@ Keep this task separate from reversible code prep.
 
 | Gate | Command / tool | Success Criteria |
 | --- | --- | --- |
-| Task tests | `ak_test` scoped to changed tests | Failing-before/passing-after evidence per implementation task |
-| Type safety | `ak_typecheck` | Zero diagnostics |
-| Lint | `ak_lint` | Zero violations |
-| QA | `ak_qa` | Full quality pass |
+| Task tests | `wp_test` scoped to changed tests | Failing-before/passing-after evidence per implementation task |
+| Type safety | `wp_typecheck` | Zero diagnostics |
+| Lint | `wp_lint` | Zero violations |
+| QA | `wp_qa` | Full quality pass |
 | Package validation | `pnpm lint:pkg` | `publint` + `attw` pass |
 | Public package staging | `bun scripts/publish-webpresso.ts --dry-run` | Staged `webpresso` contains expected exports, bins, JSON, templates |
-| Blueprint lifecycle | `ak_audit(kind="blueprint-lifecycle")` | Planned blueprint is valid |
+| Blueprint lifecycle | `wp_audit(kind="blueprint-lifecycle")` | Planned blueprint is valid |
 | Consumer proof | Sibling repo gates | Typecheck, test, and lint pass in dogfood consumer |
 
 ## Cross-Plan References

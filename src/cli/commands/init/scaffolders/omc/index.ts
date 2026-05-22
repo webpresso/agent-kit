@@ -54,7 +54,7 @@ function defaultRunCommand(command: string, args: readonly string[]): number {
 export function ensureOmc(input: EnsureOmcInput): EnsureOmcResult {
   const scope = input.scope ?? 'user'
   if (input.options.dryRun) return { kind: 'omc-skipped-dry-run', scope }
-  if (process.env.AK_SKIP_OMC === '1') return { kind: 'omc-skipped-opt-out', scope }
+  if (process.env.WP_SKIP_OMC === '1') return { kind: 'omc-skipped-opt-out', scope }
 
   const commandExists = input.commandExists ?? defaultCommandExists
   if (!commandExists('claude')) return { kind: 'omc-skipped-no-cli', scope }

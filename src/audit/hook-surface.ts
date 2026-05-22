@@ -1,5 +1,5 @@
 /**
- * `ak audit hook-surface` — enforces the single-rewriter-per-matcher invariant.
+ * `wp audit hook-surface` — enforces the single-rewriter-per-matcher invariant.
  *
  * From Anthropic's official hooks docs (May 2026):
  *   "When multiple PreToolUse hooks return updatedInput to rewrite a tool's

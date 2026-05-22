@@ -1,8 +1,8 @@
 /**
- * Shared CLI dispatch for `ak rule` and `ak skill` subcommands.
+ * Shared CLI dispatch for `wp rule` and `wp skill` subcommands.
  *
  * Subcommands handled here are kind-agnostic — `new | list | show |
- * deprecate`. Per-kind additions (e.g. `ak skill install`) are implemented
+ * deprecate`. Per-kind additions (e.g. `wp skill install`) are implemented
  * in the thin command shims, not here.
  */
 
@@ -102,7 +102,7 @@ async function handleNew(args: HandlerArgs): Promise<DispatchResult> {
     return {
       exitCode: 1,
       stdout: '',
-      stderr: `Usage: ak ${args.kind} new <slug> [--title <text>] [--scope <s>]`,
+      stderr: `Usage: wp ${args.kind} new <slug> [--title <text>] [--scope <s>]`,
     }
   }
 
@@ -170,7 +170,7 @@ async function handleShow(args: HandlerArgs): Promise<DispatchResult> {
     return {
       exitCode: 1,
       stdout: '',
-      stderr: `Usage: ak ${args.kind} show <slug>`,
+      stderr: `Usage: wp ${args.kind} show <slug>`,
     }
   }
   const records = loadAll(args)
@@ -205,7 +205,7 @@ async function handleDeprecate(args: HandlerArgs): Promise<DispatchResult> {
     return {
       exitCode: 1,
       stdout: '',
-      stderr: `Usage: ak ${args.kind} deprecate <slug> [--reason <text>]`,
+      stderr: `Usage: wp ${args.kind} deprecate <slug> [--reason <text>]`,
     }
   }
   const filePath = consumerFilePath(args.options.cwd, args.kind, slug)

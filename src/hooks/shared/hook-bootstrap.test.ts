@@ -102,12 +102,12 @@ describe('runHook', () => {
 
     const { runHook } = await import('#hooks/shared/hook-bootstrap')
     await runHook(
-      (_input) => ({ decision: 'deny', reason: 'use ak_test' }),
+      (_input) => ({ decision: 'deny', reason: 'use wp_test' }),
       (result) => JSON.stringify({ hookSpecificOutput: result }),
     )
 
     expect(process.stdout.write).toHaveBeenCalledWith(
-      '{"hookSpecificOutput":{"decision":"deny","reason":"use ak_test"}}',
+      '{"hookSpecificOutput":{"decision":"deny","reason":"use wp_test"}}',
     )
     expect(process.exit).toHaveBeenCalledWith(0)
   })

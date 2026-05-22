@@ -1,5 +1,5 @@
 /**
- * `ak audit blueprint-db-consistency` — SQL-backed consistency check between
+ * `wp audit blueprint-db-consistency` — SQL-backed consistency check between
  * the SQLite blueprints DB and the filesystem.
  *
  * Alpha gate: only runs meaningful checks when AK_USE_SQL_AUDITS=1.
@@ -91,7 +91,7 @@ export async function auditBlueprintDbConsistency(cwd) {
             if (!hasRow) {
                 violations.push({
                     file: normalised,
-                    message: `Blueprint file exists on disk but has no corresponding row in the DB (run 'ak ingest' to update)`,
+                    message: `Blueprint file exists on disk but has no corresponding row in the DB (run 'wp ingest' to update)`,
                 });
             }
         }

@@ -18,11 +18,11 @@ parent_roadmap: 'cross-repo: webpresso/monorepo → webpresso/blueprints/complet
 
 # Promote Parent Roadmaps to First-Class
 
-**Goal:** Stop hiding `type: parent-roadmap` blueprints from `ak blueprint list`. Make the parent → child → `/pll` lane dispatch chain explicit and audited, so a single `ak blueprint list` invocation gives both strategic context (which roadmaps are active) and tactical options (which child lanes are pickable).
+**Goal:** Stop hiding `type: parent-roadmap` blueprints from `wp blueprint list`. Make the parent → child → `/pll` lane dispatch chain explicit and audited, so a single `wp blueprint list` invocation gives both strategic context (which roadmaps are active) and tactical options (which child lanes are pickable).
 
 ## Why
 
-Today, `BlueprintService.ts:86` silently filters `type: parent-roadmap` from `ak blueprint list`. A user who creates a parent-roadmap, runs `list`, and sees nothing assumes their file is broken. A `/pll` dispatcher running `list` to pick a lane gets orphaned children with no strategic anchor. The "they have no meaningful progress stat" excuse is wrong — a roadmap's progress is the rollup of its children, which is more informative than any single child's number.
+Today, `BlueprintService.ts:86` silently filters `type: parent-roadmap` from `wp blueprint list`. A user who creates a parent-roadmap, runs `list`, and sees nothing assumes their file is broken. A `/pll` dispatcher running `list` to pick a lane gets orphaned children with no strategic anchor. The "they have no meaningful progress stat" excuse is wrong — a roadmap's progress is the rollup of its children, which is more informative than any single child's number.
 
 Roadmaps are the natural source of "what should the next parallel lane do?" — hiding them severs that loop.
 
@@ -30,16 +30,16 @@ Roadmaps are the natural source of "what should the next parallel lane do?" — 
 
 ### CLI changes
 
-- **`ak blueprint list`** — show parent-roadmaps **at the top**, with a `ROADMAP` glyph and rollup stats: `children=N done=N in-progress=N planned=N draft=N`. Render each roadmap's children as an indented tree underneath.
+- **`wp blueprint list`** — show parent-roadmaps **at the top**, with a `ROADMAP` glyph and rollup stats: `children=N done=N in-progress=N planned=N draft=N`. Render each roadmap's children as an indented tree underneath.
 - **Orphan detection** — blueprints without a `parent_roadmap:` field are listed in a separate "orphan" group at the bottom.
 - **Breadcrumb in child rows** — when a child blueprint declares `parent_roadmap:`, show the parent slug as a breadcrumb in its row.
-- **`ak roadmap list`** — alias of `ak blueprint list --only roadmaps`, returns just the parent-roadmap layer.
-- **`ak roadmap show <slug>`** — drills into one roadmap: full `_overview.md` summary, child status table, `depends_on:` graph, blocker callouts.
-- **`ak blueprint new --type parent-roadmap`** — scaffolder support so authors don't have to hand-edit frontmatter (closes the doc gap from the prior audit).
+- **`wp roadmap list`** — alias of `wp blueprint list --only roadmaps`, returns just the parent-roadmap layer.
+- **`wp roadmap show <slug>`** — drills into one roadmap: full `_overview.md` summary, child status table, `depends_on:` graph, blocker callouts.
+- **`wp blueprint new --type parent-roadmap`** — scaffolder support so authors don't have to hand-edit frontmatter (closes the doc gap from the prior audit).
 
 ### Audit additions
 
-- **`ak audit roadmap-links`** — bidirectional integrity check:
+- **`wp audit roadmap-links`** — bidirectional integrity check:
   - Every child claiming `parent_roadmap: X` is listed in X's wave map.
   - Every entry in X's wave map points at an actual blueprint that exists and has `parent_roadmap: X`.
   - Roadmaps with zero children get flagged.
@@ -54,8 +54,8 @@ Roadmaps are the natural source of "what should the next parallel lane do?" — 
 ### Documentation
 
 - README section: "Parent roadmaps vs blueprints" — when to use each, with a worked example.
-- `ak blueprint --help` and `ak blueprint new --help` list allowed `type:` values.
-- `ak roadmap --help` documents the new sub-commands.
+- `wp blueprint --help` and `wp blueprint new --help` list allowed `type:` values.
+- `wp roadmap --help` documents the new sub-commands.
 - Update `docs/blueprint-format.md` to elevate the type distinction from a single-line aside to a full subsection.
 
 ## Out of scope
@@ -66,10 +66,10 @@ Roadmaps are the natural source of "what should the next parallel lane do?" — 
 
 ## Verification Gates
 
-- `ak blueprint list draft` shows `webpresso-public-extraction-roadmap` and `go-live-readiness-orchestrator` as `ROADMAP` entries with rollup stats.
-- `ak roadmap show webpresso-public-extraction-roadmap` lists every child blueprint with current status.
-- `ak audit roadmap-links` exits zero on the current monorepo state, non-zero when a seeded mismatch is introduced (e.g. delete a child but leave the wave-map row).
-- `ak blueprint new --type parent-roadmap test-rm` produces a valid roadmap stub that round-trips through `list`.
+- `wp blueprint list draft` shows `webpresso-public-extraction-roadmap` and `go-live-readiness-orchestrator` as `ROADMAP` entries with rollup stats.
+- `wp roadmap show webpresso-public-extraction-roadmap` lists every child blueprint with current status.
+- `wp audit roadmap-links` exits zero on the current monorepo state, non-zero when a seeded mismatch is introduced (e.g. delete a child but leave the wave-map row).
+- `wp blueprint new --type parent-roadmap test-rm` produces a valid roadmap stub that round-trips through `list`.
 - README + `--help` outputs explicitly mention `parent-roadmap`.
 
 ## Planning decision
@@ -99,7 +99,7 @@ Build the shared read-model that exposes parent-roadmaps, children, orphan child
 2. Assert rollups: `children=N done=N in-progress=N planned=N draft=N`.
 3. Assert children can resolve `parent_roadmap:` by slug and cross-repo label without crashing.
 4. Implement the read-model using existing blueprint parse utilities.
-5. Run: `ak test --file src/blueprint/roadmap.test.ts`.
+5. Run: `wp test --file src/blueprint/roadmap.test.ts`.
 
 **Acceptance:**
 
@@ -109,7 +109,7 @@ Build the shared read-model that exposes parent-roadmaps, children, orphan child
 
 **Evidence (2026-05-06):** added pure shared model in `src/blueprint/roadmap.ts`, preserved `parent_roadmap` through parser/schema, and exported the model via `src/blueprint/index.ts` + `local.ts`; `pnpm exec vitest run src/blueprint/roadmap.test.ts src/blueprint/service/BlueprintService-parsing.test.ts src/cli/commands/roadmap.test.ts --reporter=dot` passed, and `pnpm run typecheck` passed.
 
-#### [agent-kit] Task 1.2: `ak blueprint list` roadmap display
+#### [agent-kit] Task 1.2: `wp blueprint list` roadmap display
 
 **Status:** done
 
@@ -127,17 +127,17 @@ Expose the roadmap model in the existing list command.
 1. Add failing snapshots for roadmap rows, indented children, breadcrumbs, and orphan grouping.
 2. Implement `ROADMAP` rows at the top with rollup stats.
 3. Keep non-roadmap list behavior stable when no roadmaps exist.
-4. Run: `ak test --file src/cli/commands/blueprint/list.test.ts`.
+4. Run: `wp test --file src/cli/commands/blueprint/list.test.ts`.
 
 **Acceptance:**
 
-- [x] `ak blueprint list` shows parent-roadmaps before child/orphan groups.
+- [x] `wp blueprint list` shows parent-roadmaps before child/orphan groups.
 - [x] Child rows include parent breadcrumb when `parent_roadmap:` exists.
 - [x] Orphan group appears only when needed.
 
 **Evidence (2026-05-06):** `src/cli/commands/blueprint/router-output.ts` now formats roadmap-first output with rollup counts, nested child rows, and an `ORPHANS` group when needed; `pnpm exec vitest run src/cli/commands/blueprint/router-output.test.ts src/cli/commands/roadmap.test.ts --reporter=dot` passed, and `pnpm run typecheck` passed.
 
-#### [agent-kit] Task 2.1: `ak roadmap` command surface
+#### [agent-kit] Task 2.1: `wp roadmap` command surface
 
 **Status:** done
 
@@ -153,20 +153,20 @@ Add explicit roadmap commands backed by the same read-model.
 
 **Steps (TDD):**
 
-1. Test `ak roadmap list` as `ak blueprint list --only roadmaps`.
-2. Test `ak roadmap show <slug>` with summary, child status table, dependency graph, and blocker callouts.
+1. Test `wp roadmap list` as `wp blueprint list --only roadmaps`.
+2. Test `wp roadmap show <slug>` with summary, child status table, dependency graph, and blocker callouts.
 3. Register the command in the CLI.
-4. Run: `ak test --file src/cli/commands/roadmap/index.test.ts`.
+4. Run: `wp test --file src/cli/commands/roadmap/index.test.ts`.
 
 **Acceptance:**
 
-- [x] `ak roadmap list` returns only roadmap-layer entries.
-- [x] `ak roadmap show <slug>` reports children and blockers.
+- [x] `wp roadmap list` returns only roadmap-layer entries.
+- [x] `wp roadmap show <slug>` reports children and blockers.
 - [x] Missing roadmap slug exits non-zero with a clear message.
 
 **Evidence (2026-05-06):** `src/cli/commands/roadmap.ts` routes `list` through `onlyRoadmaps`, rejects non-roadmap `show`, and formats child rows plus blocked task callouts for `show`; `pnpm exec vitest run src/cli/commands/roadmap.test.ts --reporter=dot` passed.
 
-#### [agent-kit] Task 2.2: `ak blueprint new --type parent-roadmap`
+#### [agent-kit] Task 2.2: `wp blueprint new --type parent-roadmap`
 
 **Status:** done
 
@@ -182,20 +182,20 @@ Make roadmap creation first-class.
 
 **Steps (TDD):**
 
-1. Add a failing test for `ak blueprint new --type parent-roadmap test-rm`.
+1. Add a failing test for `wp blueprint new --type parent-roadmap test-rm`.
 2. Assert generated frontmatter uses `type: parent-roadmap` and round-trips through list/show.
 3. Update help text to list allowed `type:` values.
-4. Run: `ak test --file src/cli/commands/blueprint/new.test.ts`.
+4. Run: `wp test --file src/cli/commands/blueprint/new.test.ts`.
 
 **Acceptance:**
 
 - [x] New roadmap stub is valid.
-- [x] Stub appears in `ak roadmap list`.
+- [x] Stub appears in `wp roadmap list`.
 - [x] Help output names `parent-roadmap`.
 
 **Evidence (2026-05-06):** `BlueprintCreationService` now supports `type: parent-roadmap` and emits a roadmap-specific scaffold; `src/cli/commands/blueprint/router.ts` accepts `--type <blueprint|parent-roadmap>`; help text in `router-output.ts` mentions the type option; `pnpm exec vitest run src/blueprint/service/BlueprintCreationService.test.ts src/cli/commands/blueprint/router-dispatch.test.ts src/cli/commands/blueprint/router-output.test.ts --reporter=dot` passed, and `pnpm run typecheck` passed.
 
-#### [agent-kit] Task 3.1: `ak audit roadmap-links`
+#### [agent-kit] Task 3.1: `wp audit roadmap-links`
 
 **Status:** done
 
@@ -213,8 +213,8 @@ Add bidirectional integrity checks for roadmap/child links.
 
 1. Add fixtures for clean links, missing child, wrong parent, zero-child roadmap, and orphan child.
 2. Implement warning/failure result types using existing audit conventions.
-3. Register `ak audit roadmap-links`.
-4. Run: `ak test --file src/audit/roadmap-links.test.ts`.
+3. Register `wp audit roadmap-links`.
+4. Run: `wp test --file src/audit/roadmap-links.test.ts`.
 
 **Acceptance:**
 
@@ -222,7 +222,7 @@ Add bidirectional integrity checks for roadmap/child links.
 - [x] Seeded mismatch exits non-zero.
 - [x] Orphan policy is configurable: warn by default, fail when requested.
 
-**Evidence (2026-05-06):** added `src/audit/roadmap-links.ts` and `src/audit/roadmap-links.test.ts`; registered `ak audit roadmap-links` in CLI and MCP audit surfaces; lifecycle audit now allows `type: parent-roadmap`; `pnpm exec vitest run src/audit/roadmap-links.test.ts src/audit/repo-guardrails.test.ts src/cli/commands/audit-core.test.ts --reporter=dot`, `pnpm run typecheck`, `pnpm exec ak audit roadmap-links`, and `pnpm exec ak audit blueprint-lifecycle` passed.
+**Evidence (2026-05-06):** added `src/audit/roadmap-links.ts` and `src/audit/roadmap-links.test.ts`; registered `wp audit roadmap-links` in CLI and MCP audit surfaces; lifecycle audit now allows `type: parent-roadmap`; `pnpm exec vitest run src/audit/roadmap-links.test.ts src/audit/repo-guardrails.test.ts src/cli/commands/audit-core.test.ts --reporter=dot`, `pnpm run typecheck`, `pnpm exec wp audit roadmap-links`, and `pnpm exec wp audit blueprint-lifecycle` passed.
 
 #### [agent-kit] Task 4.1: `/pll` routing docs and command-output contract
 
@@ -236,21 +236,21 @@ Teach the planning/lane-picking surface to prefer active roadmap children.
 
 - Modify: `.agent/skills/pll/SKILL.md` or active catalog source for `/pll`
 - Modify: `catalog/agent/skills/pll/SKILL.md` if catalog owns the skill
-- Run: `ak symlink sync`
+- Run: `wp symlink sync`
 
 **Steps (TDD):**
 
 1. Document heuristic: next planned child of an active roadmap, respecting `depends_on:`.
 2. Document fallback to orphan blueprints only when no roadmap child is actionable.
 3. Sync catalog-derived surfaces.
-4. Run: `ak audit catalog-drift`.
+4. Run: `wp audit catalog-drift`.
 
 **Acceptance:**
 
-- [x] `/pll` guidance matches `ak blueprint list` output shape.
+- [x] `/pll` guidance matches `wp blueprint list` output shape.
 - [x] Catalog drift audit is clean.
 
-**Evidence (2026-05-06):** updated `.agent/commands/pll.md`, `.agent/skills/pll/SKILL.md`, `catalog/agent/commands/pll.md`, and `catalog/agent/skills/pll/SKILL.md` to prefer active `ROADMAP`/`CHILD` queues and treat `ORPHANS` as fallback; `pnpm exec ak symlink sync` and `pnpm exec ak audit catalog-drift` passed.
+**Evidence (2026-05-06):** updated `.agent/commands/pll.md`, `.agent/skills/pll/SKILL.md`, `catalog/agent/commands/pll.md`, and `catalog/agent/skills/pll/SKILL.md` to prefer active `ROADMAP`/`CHILD` queues and treat `ORPHANS` as fallback; `pnpm exec wp symlink sync` and `pnpm exec wp audit catalog-drift` passed.
 
 #### [agent-kit] Task 4.2: User documentation and final verification
 
@@ -270,14 +270,14 @@ Update docs/help and run the end-to-end gates.
 
 1. Add README section: "Parent roadmaps vs blueprints."
 2. Expand `docs/blueprint-format.md` with type semantics and a worked example.
-3. Verify help output mentions `parent-roadmap` and `ak roadmap`.
-4. Run: `ak test --file <changed tests>`.
-5. Run: `ak audit blueprint-lifecycle` and `ak audit roadmap-links`.
+3. Verify help output mentions `parent-roadmap` and `wp roadmap`.
+4. Run: `wp test --file <changed tests>`.
+5. Run: `wp audit blueprint-lifecycle` and `wp audit roadmap-links`.
 
 **Acceptance:**
 
 - [x] README + help outputs explicitly mention `parent-roadmap`.
-- [x] `ak blueprint new --type parent-roadmap test-rm` round-trips through list.
+- [x] `wp blueprint new --type parent-roadmap test-rm` round-trips through list.
 - [x] All Verification Gates pass.
 
 **Evidence (2026-05-06):** updated `README.md` and `docs/blueprint-format.md` with parent-roadmap semantics, CLI examples, and `roadmap-links` audit guidance; smoke-tested parent-roadmap creation/listing in a temp package via `tsx src/cli/cli.ts blueprint new "Roadmap smoke" --complexity S --type parent-roadmap` and `tsx src/cli/cli.ts roadmap list`; focused tests (`roadmap`, blueprint creation/router/help, roadmap-links, lifecycle) and `pnpm run typecheck` passed.
@@ -297,5 +297,5 @@ Critical path: 1.1 → 1.2/2.1 → 3.1 → 4.2.
 
 - Parent: `completed/webpresso-public-extraction-roadmap/_overview.md`
 - Sibling: `planned/agent-kit-parity-pass` (rules-fanout work, kept separate)
-- Triggered by: discoverability gap audit on 2026-04-25 — `ak blueprint list` silently dropped a legitimate parent-roadmap
+- Triggered by: discoverability gap audit on 2026-04-25 — `wp blueprint list` silently dropped a legitimate parent-roadmap
 - Source-of-bug: `webpresso/agent-kit/src/blueprint/service/BlueprintService.ts:86-94`

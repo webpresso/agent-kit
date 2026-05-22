@@ -11,7 +11,7 @@ import { SqliteAiMemoryStore } from './sqlite-store.js'
 const tempRoots: string[] = []
 
 function createTempDbPath(): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'ak-ai-memory-store-'))
+  const root = mkdtempSync(path.join(tmpdir(), 'wp-ai-memory-store-'))
   tempRoots.push(root)
   return path.join(root, 'memory.db')
 }

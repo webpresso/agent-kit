@@ -29,11 +29,11 @@ describe('compact-QA output escape hatch', () => {
 
     process.env.QUALITY_ENGINE_COMPACT = '0'
     const legacy = applyOutputTransform(rawOutput, {
-      toolName: 'ak_lint',
+      toolName: 'wp_lint',
       persistOverflow: false,
     })
     const expected = passthroughTransform(rawOutput, {
-      toolName: 'ak_lint',
+      toolName: 'wp_lint',
       normalizedToolName: 'lint',
       persistOverflow: false,
     })
@@ -46,7 +46,7 @@ describe('compact-QA output escape hatch', () => {
 
     process.env.QUALITY_ENGINE_COMPACT = '0'
     const result = applyOutputTransform(rawOutput, {
-      toolName: 'ak_unknown-tool',
+      toolName: 'wp_unknown-tool',
       maxChars: 3_000,
       persistOverflow: false,
     })
@@ -54,7 +54,7 @@ describe('compact-QA output escape hatch', () => {
     expect(result.truncated).toBe(true)
     expect(result.rawOutput).toBe(rawOutput.slice(0, 3_000))
     expect(result.transform).toMatchObject({
-      toolName: 'ak_unknown-tool',
+      toolName: 'wp_unknown-tool',
       normalizedToolName: 'unknown-tool',
       tier: 'passthrough',
     })

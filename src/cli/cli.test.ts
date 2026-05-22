@@ -25,12 +25,12 @@ async function runAk(
   vi.spyOn(console, 'error').mockImplementation((message?: unknown) => {
     stderr.push(String(message ?? ''))
   })
-  process.argv = ['node', 'ak', ...args]
+  process.argv = ['node', 'wp', ...args]
   const code = await main()
   return { code, stdout, stderr }
 }
 
-describe('ak root command surface', () => {
+describe('wp root command surface', () => {
   it('publishes setup as the primary scaffold command and keeps init as an alias', () => {
     expect(SUPPORTED_COMMANDS).toContain('setup')
     expect(SUPPORTED_COMMANDS).toContain('init')
@@ -54,47 +54,47 @@ describe('ak root command surface', () => {
     expect(result.stdout.join('\n')).not.toContain('refresh')
   })
 
-  it('routes ak setup to the scaffold command help', async () => {
+  it('routes wp setup to the scaffold command help', async () => {
     const result = await runAk(['setup', '--help'])
 
     expect(result.code).toBe(0)
-    expect(result.stdout.join('\n')).toContain('ak setup')
+    expect(result.stdout.join('\n')).toContain('wp setup')
     expect(result.stdout.join('\n')).toContain('--with <skills>')
     expect(result.stdout.join('\n')).toContain('--project')
   })
 
-  it('routes ak roadmap to roadmap help', async () => {
+  it('routes wp roadmap to roadmap help', async () => {
     const result = await runAk(['roadmap', '--help'])
 
     expect(result.code).toBe(0)
-    expect(result.stdout.join('\n')).toContain('ak roadmap')
+    expect(result.stdout.join('\n')).toContain('wp roadmap')
     expect(result.stdout.join('\n')).toContain('list [status]')
     expect(result.stdout.join('\n')).toContain('show <slug>')
   })
 
-  it("redirects 'ak skills' to 'ak skill' with a helpful rename error", async () => {
+  it("redirects 'wp skills' to 'wp skill' with a helpful rename error", async () => {
     const result = await runAk(['skills', 'refresh'])
 
     expect(result.code).toBe(1)
-    expect(result.stderr.join('\n')).toContain("'ak skills' was renamed to 'ak skill' in 0.4.0")
-    expect(result.stderr.join('\n')).toContain('ak skill <subcommand>')
+    expect(result.stderr.join('\n')).toContain("'wp skills' was renamed to 'wp skill' in 0.4.0")
+    expect(result.stderr.join('\n')).toContain('wp skill <subcommand>')
   })
 
-  it('rejects legacy `ak symlink` with unknown command error', async () => {
+  it('rejects legacy `wp symlink` with unknown command error', async () => {
     const result = await runAk(['symlink', 'sync'])
 
     expect(result.code).toBe(1)
     expect(result.stderr.join('\n').toLowerCase()).toContain('unknown command')
   })
 
-  it('rejects legacy `ak cursor-windsurf-sync` with unknown command error', async () => {
+  it('rejects legacy `wp cursor-windsurf-sync` with unknown command error', async () => {
     const result = await runAk(['cursor-windsurf-sync'])
 
     expect(result.code).toBe(1)
     expect(result.stderr.join('\n').toLowerCase()).toContain('unknown command')
   })
 
-  it('exposes `ak sync` in help', async () => {
+  it('exposes `wp sync` in help', async () => {
     const result = await runAk(['--help'])
 
     expect(result.code).toBe(0)

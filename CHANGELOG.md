@@ -37,7 +37,7 @@
 ### Patch Changes
 
 - d99b157: Modernize `catalog/base-kit/.github/workflows/ci.webpresso.yml.tmpl` —
-  the workflow scaffolded by `ak setup --with base-kit`. The previous
+  the workflow scaffolded by `wp setup --with base-kit`. The previous
   template carried pre-modernization defaults (`ubuntu-latest` runner,
   `actions/checkout@v4`, `actions/setup-node@v4`, `pnpm/action-setup@v4`
   with explicit `version: '11.1.1'`) and had no `oven-sh/setup-bun@v2`
@@ -56,7 +56,7 @@
   - Pins `actions/checkout@v5`, `actions/setup-node@v5`,
     `pnpm/action-setup@v6` (drops the now-redundant explicit pnpm version;
     v6 reads `packageManager` from package.json).
-  - Adds `oven-sh/setup-bun@v2` in every job so `ak`-driven steps that
+  - Adds `oven-sh/setup-bun@v2` in every job so `wk`-driven steps that
     invoke `bun` have it on PATH.
   - Adds workflow-level `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'` —
     silences the JS-action Node 20 deprecation warning ahead of GitHub's
@@ -69,7 +69,7 @@
     own repos override to `ubicloud-standard-2`.
 
   Existing consumers who customized their `.github/workflows/ci.webpresso.yml`
-  locally are unaffected — `ak setup --overwrite` continues to write the
+  locally are unaffected — `wp setup --overwrite` continues to write the
   template, but downstream repos that want to preserve a customized
   workflow should add the path to their postinstall preservation list (see
   monorepo's `apps/scripts/src/maintenance/agent-setup-postinstall.ts`).
@@ -128,7 +128,7 @@
 
 - 1655c5d: fix(setup): skip host visibility hard gate in CI environments
 
-  `ak setup` was exiting 1 in CI (GitHub Actions, etc.) because the host skill
+  `wp setup` was exiting 1 in CI (GitHub Actions, etc.) because the host skill
   visibility check unconditionally failed when `verify` and `plan-refine` skills
   were not visible — which happens on clean CI runners where `claude` is absent
   and `.claude/skills/` symlinks point to sibling repos that aren't checked out.
@@ -205,9 +205,9 @@
 - 4ef715d: webpresso launch: rename to `webpresso` on public npm + state-out-of-repo + auto-update on start.
 
   This is the final intentional publish of `@webpresso/agent-kit` to GitHub
-  Packages (deprecated, `ak` bin removed, postinstall migration notice).
+  Packages (deprecated, `wk` bin removed, postinstall migration notice).
   The same version ships to public npmjs.org as `webpresso` with full bin
-  map (`wp`, `webpresso`, `ak`, all 8 hook bins), auto-update enabled, and
+  map (`wp`, `webpresso`, `wk`, all 8 hook bins), auto-update enabled, and
   state moved to `~/Library/Application Support/webpresso-agent-kit/`
   (macOS) / `$XDG_STATE_HOME/webpresso-agent-kit/` (Linux). See MIGRATION.md.
 
@@ -221,11 +221,11 @@
 
 ### Minor Changes
 
-- e36cf9e: Add `ak worktree` command (`new` / `list` / `remove`) for git worktree lifecycle with automatic `.agent/` seeding.
+- e36cf9e: Add `wp worktree` command (`new` / `list` / `remove`) for git worktree lifecycle with automatic `.agent/` seeding.
 
-  `ak worktree new <branch>` creates a worktree as a sibling directory, runs `scaffoldAgent` to seed `.agent/commands`, `guides`, `workflows`, and `runUnifiedSync` to project `agent-rules/` and `agent-skills/` into the new worktree — so an AI agent dropped into the fresh worktree has rules, skills, and commands available immediately.
+  `wp worktree new <branch>` creates a worktree as a sibling directory, runs `scaffoldAgent` to seed `.agent/commands`, `guides`, `workflows`, and `runUnifiedSync` to project `agent-rules/` and `agent-skills/` into the new worktree — so an AI agent dropped into the fresh worktree has rules, skills, and commands available immediately.
 
-  `ak worktree list` shows a table of worktrees with branch and short HEAD, marking the current one. `ak worktree remove <branch-or-path>` resolves the target by branch name, directory basename, or full path before invoking `git worktree remove`.
+  `wp worktree list` shows a table of worktrees with branch and short HEAD, marking the current one. `wp worktree remove <branch-or-path>` resolves the target by branch name, directory basename, or full path before invoking `git worktree remove`.
 
 ## 0.15.2
 
@@ -239,7 +239,7 @@
 
 - 1cb288e: fix: resolve rulesync from agent-kit's own node_modules when not hoisted to consumer
 
-  `ak compile` now finds `rulesync` via `createRequire(import.meta.url)` when not
+  `wp compile` now finds `rulesync` via `createRequire(import.meta.url)` when not
   present in the consumer's own `node_modules/.bin/`. Previously failed with
   "rulesync is not installed" in any consumer where rulesync wasn't independently
   installed.
@@ -254,38 +254,38 @@
 
   ### Agent-asset compiler (multi-runtime)
 
-  - `ak compile` — thin wrapper over `rulesync generate --targets <list>` with O_EXCL lock, content-hash idempotency, and SHA-256 source hash manifest (`.agent/.compile-manifest.json`)
+  - `wp_compile` — thin wrapper over `rulesync generate --targets <list>` with O_EXCL lock, content-hash idempotency, and SHA-256 source hash manifest (`.agent/.compile-manifest.json`)
   - Four plugin manifest emitters: Claude Code (`.claude-plugin/plugin.json`), Codex (`.codex-plugin/`), Cursor (`.cursor-plugin/`), Gemini (`gemini-extension.json`)
   - AGENTS.md section-keyed merger with `memory.merge.yaml` directives (replace/append/prepend/delete/rotate); provenance JSON; rotation safeguards (opt-in, shallow-clone detection, dry-run)
-  - `ak setup --with example-skill` — scaffolds `hello-webpresso/SKILL.md` and runs `ak compile` as final step
-  - `ak skills orphans --fix` — removes generated skills with no canonical source in `.agent/skills/`
-  - Three new audits: `ak audit gitignore-agent-surfaces`, `ak audit memory-unified`, `ak audit compile-drift`
-  - `ak_qa` advisory tail-hint when passing QA with UI file changes
-  - Anonymous opt-in TTHW telemetry (`AK_TELEMETRY=1 ak setup`; off by default)
+  - `wp setup --with example-skill` — scaffolds `hello-webpresso/SKILL.md` and runs `wp compile` as final step
+  - `wp skills orphans --fix` — removes generated skills with no canonical source in `.agent/skills/`
+  - Three new audits: `wp audit gitignore-agent-surfaces`, `wp audit memory-unified`, `wp audit compile-drift`
+  - `wp_qa` advisory tail-hint when passing QA with UI file changes
+  - Anonymous opt-in TTHW telemetry (`WP_TELEMETRY=1 wp setup`; off by default)
   - OSS positioning docs: `docs/positioning-vs-rulesync.md`, `docs/wedge-experience/demo.sh`
 
   ### Minimal audit slice
 
-  - `ak audit skill-sizes` — checks skills against configurable budgets in `.agent/.audit-budgets.yaml`
-  - `ak audit broken-refs` — walks `.agent/**/*.md` for unresolved relative links and `@AGENTS.md` imports; supports `--staged` mode for pre-commit
-  - `ak audit memory-rotation` — surfaces AGENTS.md rotation events from `.agent/.rotation-log.jsonl`
-  - `ak tech-debt new --from-audit <name>` — auto-files audit findings as `h-NNN-*.md` with content-hash idempotency
-  - `ak setup --with husky` extended with pre-commit hooks for staged-mode audits
+  - `wp audit skill-sizes` — checks skills against configurable budgets in `.agent/.audit-budgets.yaml`
+  - `wp audit broken-refs` — walks `.agent/**/*.md` for unresolved relative links and `@AGENTS.md` imports; supports `--staged` mode for pre-commit
+  - `wp audit memory-rotation` — surfaces AGENTS.md rotation events from `.agent/.rotation-log.jsonl`
+  - `wp tech-debt new --from-audit <nwp_>` — auto-files audit findings as `h-NNN-*.md` with content-hash idempotency
+  - `wp setup --with husky` extended with pre-commit hooks for staged-mode audits
 
   ### Blueprint structured store (SQLite)
 
   - `better-sqlite3` SQLite projection of all blueprint markdown; cold-start rebuild from canonical markdown
-  - Custom MCP server with 8 tools: `ak_blueprint_query`, `_new`, `_validate`, `_task_next`, `_task_advance`, `_promote`, `_finalize`, `_depgraph`
+  - Custom MCP server with 8 tools: `wp_blueprint_query`, `_new`, `_validate`, `_task_next`, `_task_advance`, `_promote`, `_finalize`, `_depgraph`
   - 9 pre-registered SQL query templates; `docs/blueprint-db-cookbook.md`
-  - `ak blueprint db build|query|verify|browse` CLI verbs; Datasette integration for human browsing
-  - `ak blueprint export --format spec-kit` — exports blueprints to spec-kit 4-file format (DRY KISS SOLID)
-  - `ak blueprint task advance`, `promote`, `finalize` mutation verbs (atomic write + re-ingest)
-  - Three SQL-backed audits (alpha-gated via `AK_USE_SQL_AUDITS=1`): `blueprint-db-consistency`, `blueprint-lifecycle-sql`, `tech-debt-cadence`
+  - `wp blueprint db build|query|verify|browse` CLI verbs; Datasette integration for human browsing
+  - `wp blueprint export --format spec-kit` — exports blueprints to spec-kit 4-file format (DRY KISS SOLID)
+  - `wp blueprint task advance`, `promote`, `finalize` mutation verbs (atomic write + re-ingest)
+  - Three SQL-backed audits (alpha-gated via `WP_USE_SQL_AUDITS=1`): `blueprint-db-consistency`, `blueprint-lifecycle-sql`, `tech-debt-cadence`
 
   ## Breaking changes
 
-  - `ak cursor-windsurf-sync` is removed. Use `ak compile` instead.
-  - `.agent/` symlink-era outputs replaced by rulesync-emitted files. Run `ak setup --with base-kit --with example-skill && ak compile` on fresh install.
+  - `wp cursor-windsurf-sync` is removed. Use `wp compile` instead.
+  - `.agent/` symlink-era outputs replaced by rulesync-emitted files. Run `wp setup --with base-kit --with example-skill && wp compile` on fresh install.
   - Internal consumers (monorepo, ingest-lens) require a one-time cleanup: delete legacy `.windsurfrules`, `.cursorrules`, and old symlinks before bumping to v0.15.0. See `docs/positioning-vs-rulesync.md` for the rollout guide.
 
   ## Dependencies added
@@ -356,19 +356,19 @@
   - `resolveBlueprintRoot` now reads `.agent-kitrc.json#blueprintsDir` first.
   - All blueprint commands (`new`, `list`, `audit`, `start`, `finalize`, `move`,
     execution progress sync) now route through `resolveBlueprintRoot`.
-  - `ak setup` blueprint scaffolding respects the same resolution.
+  - `wp setup` blueprint scaffolding respects the same resolution.
   - Pretool hook validators (`isBlueprintPath`, `isCanonicalBlueprintOverviewPath`,
     `getBlueprintPathViolation`, `getNonCanonicalPlanningPathViolation`) accept both
     `blueprints/` and `webpresso/blueprints/` as canonical by default; accept an explicit
     `blueprintsRoot` parameter for strict per-repo enforcement.
 
-- 3b32d9a: `ak lint` and `ak format` now anchor to `process.cwd()` when invoked from the terminal.
+- 3b32d9a: `wp lint` and `wp format` now anchor to `process.cwd()` when invoked from the terminal.
 
   `resolveProjectRoot` in the shared MCP module checks `CLAUDE_PROJECT_DIR` first.
   When these CLI commands were run from a terminal inside Claude Code, that env var
   pointed at the session's project root (the workspace parent) rather than the terminal's
-  CWD, causing `ak format --check` to fail with a missing `.gitignore` error and
-  `ak lint` to scan unrelated sibling repos.
+  CWD, causing `wp format --check` to fail with a missing `.gitignore` error and
+  `wp lint` to scan unrelated sibling repos.
 
   Both CLI command handlers now pass `cwd: process.cwd()` explicitly, which bypasses the
   `CLAUDE_PROJECT_DIR` path. The env-var behaviour in `resolveProjectRoot` is intentional
@@ -393,7 +393,7 @@
 
   `createBlockedResult(sharedFunc)` now emits suggestions like
   `import { capitalize } from '@webpresso/runtime-format/string'`. Downstream
-  consumers of `ak audit package-imports-gate` and the pretool-guard
+  consumers of `wp audit package-imports-gate` and the pretool-guard
   package-imports validator pick this up automatically — no consumer
   config change needed beyond bumping agent-kit.
 
@@ -401,7 +401,7 @@
 
 ### Patch Changes
 
-- a266ffc: `ak audit no-relative-parent-imports` now also skips `template/`
+- a266ffc: `wp audit no-relative-parent-imports` now also skips `template/`
   directories. Files under `<pkg>/.../template/<v>/...` become a downstream
   customer's source tree when scaffolded — any `../` parent paths in their
   tsconfigs reference the scaffolded layout, not the repo layout — so they
@@ -414,7 +414,7 @@
 
 ### Patch Changes
 
-- 5fdd688: `ak audit no-relative-parent-imports` now also skips `.stryker-tmp/`
+- 5fdd688: `wp audit no-relative-parent-imports` now also skips `.stryker-tmp/`
   directories (mutation-testing sandboxes — gitignored, generated per
   package). Without this skip, the audit reports parent-path violations
   on tsconfigs Stryker materialises inside `<pkg>/.stryker-tmp/sandbox-*/`,
@@ -426,7 +426,7 @@
 
 ### Minor Changes
 
-- c193429: Extend `ak audit no-relative-parent-imports` to also scan every
+- c193429: Extend `wp audit no-relative-parent-imports` to also scan every
   `tsconfig*.json` for parent-relative paths (`../`) in any string value:
   `extends`, `paths`, `references`, `include`, `exclude`, `rootDir`,
   `outDir`, `baseUrl`, etc. Use a package alias
@@ -443,21 +443,21 @@
   via the published alias `@webpresso/agent-tsconfig/<preset>.json`, which
   is both correct and survives future renames.
 
-  Picked up automatically by `ak audit guardrails` and `ak audit quality`.
+  Picked up automatically by `wp audit guardrails` and `wp audit quality`.
 
 ## 0.11.0
 
 ### Minor Changes
 
-- 8e60dcf: Add `ak audit no-link-protocol` repo guardrail. Fails when any
+- 8e60dcf: Add `wp audit no-link-protocol` repo guardrail. Fails when any
   `package.json` (root or workspace member) declares a `link:<filesystem-path>`
   value in `dependencies`, `devDependencies`, `optionalDependencies`, or
   `pnpm.overrides`. `link:` filesystem-couples consumer clones to a
   maintainer's directory layout and hides version-pin drift — use `catalog:`
   (cross-repo) or `workspace:*` (intra-repo) instead.
 
-  Automatically picked up by `ak audit guardrails` (pre-commit composite) and
-  `ak audit quality` (full ship gate).
+  Automatically picked up by `wp audit guardrails` (pre-commit composite) and
+  `wp audit quality` (full ship gate).
 
 ## 0.10.0
 
@@ -484,18 +484,18 @@
     the state file. Catches the rare `pnpm install --ignore-scripts`
     path where postinstall didn't fire. Always exits 0; never blocks.
 
-  - **opencode plugin scaffolder** — `ak setup` now writes
+  - **opencode plugin scaffolder** — `wp setup` now writes
     `.opencode/plugins/agent-kit-dev-link.js`, which shells out to
     `ak-check-dev-link` on `session.created` and pushes the same
     message into `output.context` during `experimental.session.compacting`.
     Single source of truth across all three runtimes.
 
-  `ak setup` wires `ak-check-dev-link` into the SessionStart array of both
+  `wp setup` wires `ak-check-dev-link` into the SessionStart array of both
   `.claude/settings.json` and `.codex/hooks.json` automatically; existing
   hook entries are preserved (additive merge, dedup by bin name).
 
   Consumer migration: add `bun ./node_modules/.bin/ak-restore-dev-links`
-  to your repo's `postinstall` script. Then run `ak setup` to wire the
+  to your repo's `postinstall` script. Then run `wp setup` to wire the
   SessionStart hook + opencode plugin. State file is opt-in: `pnpm
 dev:link --consumer <your-repo-root>` from this repo creates it.
 
@@ -538,13 +538,13 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 
 ### Patch Changes
 
-- 35f243d: Teach `ak hooks doctor` to verify installed Codex/OpenCode/Claude host surfaces, add a gated real-host smoke suite for Codex/OpenCode, and include `agent-kit` alongside `context-mode` in generated `opencode.json` MCP config.
+- 35f243d: Teach `wp hooks doctor` to verify installed Codex/OpenCode/Claude host surfaces, add a gated real-host smoke suite for Codex/OpenCode, and include `agent-kit` alongside `context-mode` in generated `opencode.json` MCP config.
 
 ## 0.8.2
 
 ### Patch Changes
 
-- dfae682: Add a `context-mode` setup preset that patches Codex's `config.toml` and `hooks.json` plus project-local `opencode.json`, so `ak setup --with context-mode` wires context-mode for both Codex CLI and OpenCode.
+- dfae682: Add a `context-mode` setup preset that patches Codex's `config.toml` and `hooks.json` plus project-local `opencode.json`, so `wp setup --with context-mode` wires context-mode for both Codex CLI and OpenCode.
 
 ## 0.8.1
 
@@ -556,10 +556,10 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 
 ### Minor Changes
 
-- ba66596: Eliminate the dangling-symlink class in `.agents/skills/` and harden `ak setup`
+- ba66596: Eliminate the dangling-symlink class in `.agents/skills/` and harden `wp setup`
   against partial / non-local installs.
 
-  **Fix:** `ak setup` no longer emits broken symlinks under
+  **Fix:** `wp setup` no longer emits broken symlinks under
   `.agents/skills/<slug>/<file>` when the skill's source path is missing.
   The legacy `syncPerSkillConsumer` writer had an asymmetric fallback (listing
   fell back to `.agent/skills/`, but symlink targets pointed at the missing
@@ -569,7 +569,7 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
   files (e.g. `tanstack-query/references/`, `systematic-debugging/CREATION-LOG.md`),
   and reuses `isSymlinkPointingTo` for idempotency.
 
-  **Fix:** `ak setup` and `ak sync` now exit 1 with an actionable message
+  **Fix:** `wp setup` and `wp sync` now exit 1 with an actionable message
   when `@webpresso/agent-kit` is missing from the consumer's `node_modules/`
   (e.g. after a failed `pnpm install` or a yanked dependency).
 
@@ -583,7 +583,7 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 
   **Breaking:** `.agents/skills/` is now exclusively managed by agent-kit.
   Top-level directories that don't correspond to a skill in `.agent/skills/`
-  are removed recursively on next `ak setup`. Each removal logs to stderr
+  are removed recursively on next `wp setup`. Each removal logs to stderr
   (`Removed unexpected directory: .agents/skills/<slug>`) so the action is
   never silent. The legacy writer was conservative — it only removed empty
   stale directories — but the contract was always "agent-kit owns this
@@ -592,7 +592,7 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
   `.agents/skills/<slug>/`, move it to a slug name not in `.agent/skills/`
   or relocate it outside the directory.
 
-  **Breaking:** `ak setup` now expects `@webpresso/agent-kit` to be
+  **Breaking:** `wp setup` now expects `@webpresso/agent-kit` to be
   installed in the consumer's `node_modules/`. Running via a global
   install (e.g. a manual symlink in `/opt/homebrew/bin/ak` or
   `pnpm install -g @webpresso/agent-kit`) is no longer supported in
@@ -601,7 +601,7 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
   the global-install path produced non-reproducible setups (symlinks
   resolving to whatever version was globally installed; lockfile irrelevant)
   and is being deprecated. Pin `@webpresso/agent-kit` as a local dep and
-  run via `pnpm exec ak setup`.
+  run via `pnpm exec wp setup`.
 
   **Internal:** Dropped `sourceRootDir` and `sourcePrefix` from
   `PerSkillConsumerConfig`. The legacy `syncPerSkillConsumer` /
@@ -612,13 +612,13 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 
 ### Patch Changes
 
-- 6fbe0dd: Migrate deprecated Codex `[features].codex_hooks` config entries to `[features].hooks` after `ak setup` runs the OMX preset, so older oh-my-codex releases do not keep triggering Codex deprecation warnings.
+- 6fbe0dd: Migrate deprecated Codex `[features].codex_hooks` config entries to `[features].hooks` after `wp setup` runs the OMX preset, so older oh-my-codex releases do not keep triggering Codex deprecation warnings.
 
 ## 0.7.3
 
 ### Patch Changes
 
-- f043257: Stop `ak setup --overwrite` from clobbering consumer-owned `.gitignore`
+- f043257: Stop `wp setup --overwrite` from clobbering consumer-owned `.gitignore`
   and `pnpm-workspace.yaml`.
 
   Both files are now treated as **bootstrap-only** by the base-kit
@@ -632,7 +632,7 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
   deletes that content.
 
   Verified failure mode (webpresso/monorepo, 2026-05-07):
-  `ak setup --overwrite` running as 0.7.x postinstall reduced
+  `wp setup --overwrite` running as 0.7.x postinstall reduced
   `pnpm-workspace.yaml` from 221 lines (full catalog) to 34 lines
   (generic template), removing every catalog entry referenced by
   `pnpm.overrides` and making the next `pnpm install` fail with
@@ -650,15 +650,15 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 
 ### Patch Changes
 
-- 4e33177: Register `ak` as a published bin so consumers can run `ak setup`,
-  `ak audit`, etc. directly from `node_modules/.bin/ak` (and
+- 4e33177: Register `wk` as a published bin so consumers can run `wp setup`,
+  `wp audit`, etc. directly from `node_modules/.bin/ak` (and
   `pnpm exec ak ...`) without the `bun ./node_modules/@webpresso/agent-kit/src/cli/cli.ts`
   workaround.
 
   The package shipped 6 hook bins (`ak-pretool-guard`, `ak-post-tool`,
-  etc.) but never registered the main `ak` CLI entrypoint. Consumers
-  hit this when `ak audit agents` demands `scripts.setup:agent === "ak setup"`
-  literally, but `ak` itself wasn't on PATH — forcing every consumer to
+  etc.) but never registered the main `wk` CLI entrypoint. Consumers
+  hit this when `wp audit agents` demands `scripts.setup:agent === "wp setup"`
+  literally, but `wk` itself wasn't on PATH — forcing every consumer to
   either fail the audit or carry a duplicate bun-driven `setup:agent-kit`
   script alongside the canonical `setup:agent`.
 
@@ -669,7 +669,7 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 
 ### Patch Changes
 
-- 04111a1: Fix `ak audit agents` reading `.codex/hooks.json` as flat-form when the
+- 04111a1: Fix `wp audit agents` reading `.codex/hooks.json` as flat-form when the
   canonical Codex schema is wrapped under `"hooks"`.
 
   `parseHooks` returned `parsed.hooks` for `claude` but raw `parsed` for
@@ -686,26 +686,26 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 
   Existing `seedConsumerRepo` test fixture updated to write the wrapped form
   (matching what the scaffolder actually emits today). The self-hosting test
-  keeps the flat-form fixture to lock the backwards-compat path.
-
+  keeps the flat-form fixture to lock the backwards-compat path.wp_wp_
+wp_wp_wp_wp_
 ## 0.7.0
 
-### Minor Changes
+### Minor Changeswp_
 
-- 2db1b01: Add optional `cwd` param to all MCP dev-workflow tools: `ak_test`, `ak_lint`,
-  `ak_typecheck`, `ak_qa`, `ak_e2e`, `ak_audit`.
+- 2db1b01: Add optional `cwd` param to all MCP dev-workflow tools: `wp_test`, `wp_lint`,
+  `wp_typecheck`, `wp_qa`, `wp_e2e`, `wp_audit`.
 
   The MCP server inherits the cwd of the Claude Code session that spawned it.
-  When a session was opened in one repo and called an `ak_*` tool against a
-  sibling repo, the backend ran against the session's cwd and failed (e.g.
+  When a session was opened in one repo and called an `wp_*` tool against a
+  sibling repo, the backend ran against the session's cwd and failedwp_.g.
   `pnpm test` in a yarn-configured tree returned "This project is configured
-  to use yarn"; `tsc --noEmit` with no tsconfig at cwd dumped `--help`).
+  to use yarn"; `tsc --noEmit` witwp_o tsconfig at cwd dumped `--help`).
 
   `cwd` is a walk-start: the resolver still walks up to find the workspace
   root (pnpm-workspace.yaml / package.json / Justfile), so callers can pass
-  any subdir of the target repo and get correct backend selection. `ak_qa`
+  any subdir of the target repo and get correct backend selection. `wp_qa`
   forwards `cwd` to all three sub-tools so a composite QA run from the wrong
-  session cwd works in one call. `ak_audit` accepts `cwd` as an alias for the
+  session cwd works in one call. `wp_audit` accepts `cwd` as an alias for the
   existing `directory` param.
 
   Backwards-compatible: omitting `cwd` preserves prior behavior
@@ -713,13 +713,13 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 
 ### Patch Changes
 
-- 2db1b01: Fix the rtk scaffolder so `ak setup` actually installs rtk.
+- 2db1b01: Fix the rtk scaffolder so `wp setup` actually installs rtk.
 
   The previous scaffolder shipped two unverified guesses:
 
   1. `brew install rtk-ai/rtk/rtk` via `tap "rtk-ai/rtk"` — that tap does not
      exist (`https://github.com/rtk-ai/homebrew-rtk` returns 404), so every
-     `ak setup` on macOS hit `rtk-not-found` and silently degraded. The real
+     `wp setup` on macOS hit `rtk-not-found` and silently degraded. The real
      formula is in homebrew-core: `brew install rtk` (verified against
      `Formula/r/rtk.rb` v0.39.0). Brewfile entries in consumer repos that
      followed the same wrong path also failed `brew bundle install`.
@@ -737,26 +737,26 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 
 - 1e7ec89: Plugin manifest: PreToolUse now matches Bash + MultiEdit
 
-  The Claude Code plugin install path previously left Bash unguarded —
+  The Claude Code plugin install path wp_viously left Bash unguarded —
   the SessionStart routing block was advisory but not enforced. Adding
   `Bash|MultiEdit` to the PreToolUse matcher (full matcher now
   `Bash|Edit|Write|MultiEdit|WebFetch|Read|Grep`) lets the
   `forbidden-commands` validator actually intercept `pnpm vitest`,
   `just test`, `oxlint`, `tsc`, and other dev-workflow shell commands and
-  redirect them to the corresponding `ak_*` MCP tools.
+  redirect them to the corresponding `wp_*` MCP tools.
 
   Matches context-mode's own plugin precedent (their `hooks/hooks.json`
   registers PreToolUse for Bash, WebFetch, Read, Grep, Agent, and
   `mcp__*` matchers).
 
-  The npm + `ak setup` install path and the Codex hook scaffolder were
+  The npm + `wp setup` install path and the Codex hook scaffolder were
   already correct; this change closes the gap on the plugin install path.
 
 ### Patch Changes
 
-- c47b64a: Fix `base-kit` templates: invoke `ak` via `pnpm exec` instead of `npx`.
+- c47b64a: Fix `base-kit` templates: invoke `wk` via `pnpm exec` instead of `npx`.
 
-  `ak setup --with base-kit` installs `.husky/pre-commit`, `.husky/commit-msg`,
+  `wp setup --with base-kit` installs `.husky/pre-commit`, `.husky/commit-msg`,
   and `.github/workflows/ci.webpresso.yml` from `catalog/base-kit/`. Previously
   all three shelled out via `npx ak ...`, which routes through npm. In any
   pnpm-only repo (i.e. all webpresso consumers), npm's arborist parses the
@@ -776,27 +776,27 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
   - `catalog/base-kit/.husky/commit-msg.tmpl`
   - `catalog/base-kit/.github/workflows/ci.webpresso.yml.tmpl`
 
-  Consumers that already installed prior templates: re-run `ak setup
+  Consumers that already installed prior templates: re-run `wp setup
 --overwrite --with base-kit`, or hand-edit the three files; the diff is
-  literally `s/npx/pnpm exec/`.
+  literally `s/nwp_pnpm exec/`.
 
-## 0.5.1
+## 0.5.1wp_
 
 ### Patch Changes
 
-- b7fa591: Fix `ak_blueprint` MCP tool: flatten `inputSchema` so it serializes with root-level `type: "object"`.
+- b7fa591: Fix `wp_blueprint` MCP tool: flatten `inputSchema` so it serializes with root-level `type: "object"`.
 
-  The MCP spec (`ToolSchema` in `@modelcontextprotocol/sdk`) requires every tool's `inputSchema.type` to be exactly `"object"`. `ak_blueprint` previously declared its input schema as a Zod `discriminatedUnion`, which serializes to JSON Schema as `{ oneOf: [...] }` with no top-level `type`. Strict MCP clients (e.g. Codex) rejected the entire `tools/list` response with:
+  The MCP spec (`ToolSchema` in `@modelcontextprotocol/sdk`) requires evewp_tool's `inputSchema.type` to be exactly `"object"`. `wp_blueprint` previously declared its input schema as a Zod `discriminatedUnion`, which serializes to JSON Schema as `{ oneOf: [...] }` with no top-level `type`. Strict MCP clients (e.g. Codex) rejected the entire `tools/list` response with:
 
   ```
   "path": ["tools", N, "inputSchema", "type"], "message": "expected 'object'"
-  ```
+  ```wp_wp_wp_wp_wp_wp_wp_wp_
 
-  That broke ALL agent-kit MCP tools for the offending client, not just `ak_blueprint`.
+  That broke ALL agent-kit MCP tools for the offending client, not just `wp_blueprint`.
 
   The fix flattens the schema to a single `z.object({ action, ...optional fields })` and enforces the per-action invariants (`goal` required when `action === 'new'`) via `superRefine`. JSON-schema clients now see one valid object shape; runtime dispatch is unchanged.
 
-  All 8 MCP tools (`ak_lint`, `ak_qa`, `ak_e2e`, `ak_test`, `ak_format`, `ak_blueprint`, `ak_typecheck`, `ak_audit`) now serialize with spec-compliant root shape.
+  All 8 MCP tools (`wp_lint`, `wp_qa`, `wp_e2e`, `wp_test`, `wp_format`, `wp_blueprint`, `wp_typecheck`, `wp_audit`) now serialize with spec-compliant root shape.
 
 ## 0.5.0
 
@@ -804,12 +804,12 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 
 - 25c065c: Codex hooks scaffolder + gstack opt-out
 
-  **Codex hooks schema fix.** `ak setup` now writes `.codex/hooks.json` under the
+  **Codex hooks schema fix.** `wp setup` now writes `.codex/hooks.json` under the
   canonical wrapped `hooks` key (`{ "hooks": { "SessionStart": [...] } }`) per
   Codex's official schema at `developers.openai.com/codex/hooks`. Previous
   versions wrote event keys at the top level, which Codex silently ignored —
   agent-kit hooks were never actually firing in any Codex session. Stale
-  flat-form entries are migrated automatically: the next `ak setup` hoists any
+  flat-form entries are migrated automatically: the next `wp setup` hoists any
   top-level `SessionStart`/`PreToolUse`/`PostToolUse`/`UserPromptSubmit`/`Stop`
   keys into the wrapped `hooks` block, deduping with `ensureGroup`.
 
@@ -818,15 +818,15 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
   `patchClaudeSettings` and `patchCodexHooks`. Adding a new ak-_ hook is a
   one-line append and propagates to both surfaces.
 
-  **Gstack opt-out.** `AK_SKIP_GSTACK=1 ak setup` now skips the gstack
+  **Gstack opt-out.** `WP_SKIP_GSTACK=1 wp setup` now skips the gstack
   scaffolder with a stderr warning. `gstack` remains in `DEFAULT_PRESETS` so
-  `ak setup` (no flags) still installs and refreshes gstack on every run; the
+  `wp setup` (no flags) still installs and refreshes gstack on every run; the
   new env-var is for CI / sandboxed environments without network. Most
   consumer repos treat gstack as a hard prerequisite — opt out only when you
   must.
 
   **MCP readiness sentinel — decoupled scan-based reader.** The pretool-guard
-  hook routes dev-workflow commands (`pnpm test`, `just lint`, `ak ...`) to
+  hook routes dev-workflow commands (`pnpm test`, `just lint`, `wp ...`) to
   the agent-kit MCP tool surface when MCP is alive, falling back to a
   `just <task>` recipe otherwise. Earlier the readiness sentinel filename was
   derived from a value (`process.ppid`, then briefly a project-anchor hash)
@@ -838,7 +838,7 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 
   The fix decouples the two halves. The writer claims a unique filename
   (`ak-mcp-ready-${process.pid}` by default, overridable via
-  `AK_MCP_SENTINEL_KEY` for tests). The reader scans `tmpdir` for ALL
+  `WP_MCP_SENTINEL_KEY` for tests). The reader scans `tmpdir` for ALL
   `ak-mcp-ready-*` files and returns true if any contains a live PID
   (verified via `process.kill(pid, 0)`). Reader and writer no longer need
   to agree on a key — only on a stable filename pattern. The agent-kit MCP
@@ -847,7 +847,7 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 
 ### Patch Changes
 
-- 25c065c: `ak setup` now upserts `[mcp_servers.agent-kit]` into Codex's `config.toml`.
+- 25c065c: `wp setup` now upserts `[mcp_servers.agent-kit]` into Codex's `config.toml`.
 
   The codex-mcp scaffolder previously only managed the Playwright MCP block; users who wanted agent-kit's MCP server reachable from Codex had to hand-edit `~/.codex/config.toml`. The Claude Code side was always self-registered via the plugin manifest, so this gap was Codex-only.
 
@@ -871,35 +871,35 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 
 ## 0.4.0
 
-### Minor Changes
+### Minor Changeswp_
 
-- 12f38d2: Consumer-rule + consumer-skill primitives, unified `ak sync` command, and removal of legacy sync commands.
+- 12fwp_2: Consumer-rule + consumer-skill wp_mitives, unified `wp sync` command, and removal of legacy sync commands.
 
   **New primitives**
 
-  - `ak lint [--fix] [--no-pnpm-fallback]` — wraps `oxlint` (with `pnpm lint` fallback) and prints structured issues. Mirrors the `ak_lint` MCP tool. Exit code matches lint result.
-  - `ak format [--check]` — wraps `oxfmt` to format the workspace in place; `--check` exits 1 on any unformatted file (CI / pre-commit friendly). No fallback — `oxfmt` must be installed.
-  - `ak_format` MCP tool — same shape as `ak_lint`, returns the standard summary-first payload, sets `isError: true` when `oxfmt` is missing on PATH.
+  - `wp lint [--fix] [--no-pnpm-fallback]` — wraps `oxlint` (with `pnpm lint` fallback) and prints structured issues. Mirrors the `wp_lint` MCP tool. Exit code matches lint result.
+  - `wp format [--check]` — wraps `oxfmt` to format the workspace in place; `--check` exits 1 on any unformatted file (CI / pre-commit friendly). No fallback — `oxfmt` must be installed.
+  - `wp_format` MCP tool — same shape as `wp_lint`, returns the standard summary-first payload, sets `isError: true` when `oxfmt` is missing on PATH.
   - `@webpresso/agent-kit/format` subpath export — `runFormat({ cwd, files?, check?, signal? })` for programmatic use by scaffolders / CI orchestrators.
-  - agent-kit dogfoods both: `pnpm qa` now runs `pnpm lint` + `pnpm format:check` between typecheck and test; `.husky/pre-commit` calls `ak format --check` then `ak lint`; CI's `check` job runs `pnpm run format:check` + `pnpm run lint` (replacing the silent `pnpm -r run lint 2>/dev/null || true`).
-  - `ak rule new|list|show|deprecate <slug>` — consumer-owned rules at `<repo>/agent-rules/<slug>.md`. Slug-only filenames; frontmatter validated by Zod (`type`, `slug`, `title`, `status`, `scope`, `applies_to`, `related`, `created`, `last_reviewed`, optional `deprecation_date`).
-  - `ak skill new|list|show|deprecate <slug>` — consumer-owned skills at `<repo>/agent-skills/<slug>/SKILL.md` (dirs bundle SKILL.md + arbitrary assets).
-  - `ak audit rules` and `ak audit skills` — schema validation, slug-collision detection (consumer + catalog hard-fail), broken-`related` ref detection, stale-review warnings (>180 days). Wired into `REPO_AUDIT_REGISTRY`.
+  - agent-kit dogfoods both: `pnpm qa` now runs `pnpm lint` + `pnpm format:check` between typecheck and test; `.husky/pre-commit` calls `wp format --check` then `wp lint`; CI's `check` job runs `pnpm run format:check` + `pnpm run lint` (replacing the silent `pnpm -r run lint 2>/dev/null || true`).
+  - `wp rule new|list|show|deprecate <slug>` — consumer-owned rules at `<repo>/agent-rules/<slug>.md`. Slug-only filenames; frontmatter validated by Zod (`type`, `slug`, `title`, `status`, `scope`, `applies_to`, `related`, `created`, `last_reviewed`, optional `deprecation_date`).
+  - `wp skill new|list|show|deprecate <slug>` — consumer-owned skills at `<repo>/agent-skills/<slug>/SKILL.md` (dirs bundle SKILL.md + arbitrary assets).
+  - `wp audit rules` and `wp audit skills` — schema validation, slug-collision detection (consumer + catalog hard-fail), broken-`related` ref detection, stale-review warnings (>180 days). Wired into `REPO_AUDIT_REGISTRY`.
   - Shared `src/content/{schema,loader,audit,dispatch}.ts` module — single source of truth for both kinds; per-kind difference is parameterized (file vs dir).
 
   **Unified sync replaces copy-on-install**
 
-  - New `ak sync [--kind rules|skills] [--check]` command. `--check` exits 1 on drift (CI-friendly); regular run prints "restart your IDE" when files were written.
+  - New `wp sync [--kind rules|skills] [--check]` command. `--check` exits 1 on drift (CI-friendly); regular run prints "restart your IDE" when files were written.
   - Per-IDE distribution: symlink for `.agent/{rules,skills}/`, `.codex/agents/`, `.claude/skills/`; copy for `.cursor/rules/`, `.windsurf/skills/`; TOML transform for `.gemini/commands/`.
-  - `ak setup` no longer copies catalog rules/skills into `.agent/` — instead invokes `ak sync` post-scaffold. Result: zero `.new` sidecars on `pnpm install`, fully idempotent re-runs, no drift surface.
+  - `wp setup` no longer copies catalog rules/skills into `.agent/` — instead invokes `wp sync` post-scaffold. Result: zero `.new` sidecars on `pnpm install`, fully idempotent re-runs, no drift surface.
   - pnpm `.pnpm/<version>/` instability absorbed via `realpathSync` on catalog dir.
 
   **Breaking changes (pre-1.0 minor)**
 
-  - `ak symlink sync` removed. Use `ak sync`.
-  - `ak cursor-windsurf-sync` removed. Use `ak sync`.
-  - `ak skills` (plural) renamed to `ak skill` (singular) — matches `ak blueprint` / `ak tech-debt` convention. The `install`/`uninstall` actions survive but with new semantics: registry-only edit to `.agent-kitrc.json#installed.tier3Skills` (no copy). Running `ak skills` now errors with a redirect message.
-  - `ak setup --overwrite` no longer touches `.agent/rules/` or `.agent/skills/` — they are derived from sync. Existing `--overwrite` semantics for `AGENTS.md`, `.claude/settings.json`, `.codex/hooks.json`, `docs/templates/` are unchanged.
+  - `wp symlink sync` removed. Use `wp sync`.
+  - `wp cursor-windsurf-sync` removed. Use `wp sync`.
+  - `wp skills` (plural) renamed to `wp skill` (singular) — matches `wp blueprint` / `wp tech-debt` convention. The `install`/`uninstall` actions survive but with new semantics: registry-only edit to `.agent-kitrc.json#installed.tier3Skills` (no copy). Running `wp skills` now errors with a redirect message.
+  - `wp setup --overwrite` no longer touches `.agent/rules/` or `.agent/skills/` — they are derived from sync. Existing `--overwrite` semantics for `AGENTS.md`, `.claude/settings.json`, `.codex/hooks.json`, `docs/templates/` are unchanged.
 
   **Catalog promotions**
 
@@ -907,9 +907,9 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 
   **Migration notes for consumers**
 
-  - After upgrading, run `pnpm install` once. `agent-rules/` and `agent-skills/` are scaffolded with `.gitkeep` + README. Add repo-specific rules via `ak rule new <slug>` rather than editing canonical files.
+  - After upgrading, run `pnpm install` once. `agent-rules/` and `agent-skills/` are scaffolded with `.gitkeep` + README. Add repo-specific rules via `wp rule new <slug>` rather than editing canonical files.
   - Slug collisions between consumer rules/skills and catalog content are hard audit failures — pick a different slug or upstream the change.
-  - Add `ak audit rules` and `ak audit skills` to your CI checklist.
+  - Add `wp audit rules` and `wp audit skills` to your CI checklist.
 
 ## 0.3.0
 
@@ -936,18 +936,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
-- Blueprint runtime: `ak blueprint new/list/show/audit/exec/move/finalize/start/task`
-- Agent-surface symlinker: `ak symlink sync/check/import`
+- Blueprint runtime: `wp blueprint new/list/show/audit/exec/move/finalize/start/task`
+- Agent-surface symlinker: `wp symlink sync/check/import`
 - Skills catalog with 13 bundled skills
-- `ak setup` scaffolder: Tier-1/2/3 skill tiers, presets (omx, gstack, lore-commits)
+- `wp setup` scaffolder: Tier-1/2/3 skill tiers, presets (omx, gstack, lore-commits)
 - Claude Code plugin (`.claude-plugin/`) with PreToolUse, PostToolUse, Stop, SessionStart hooks
 - Coordinated PreToolUse hook: dev-command routing + sandbox routing + validators in one process
-- SessionStart routing block (AK_ROUTING_BLOCK XML) injected at session start and after compaction
-- `ak audit` suite: tph, bundle-budget, catalog-drift, docs-frontmatter, blueprint-lifecycle,
+- SessionStart routing blocwp_WP_ROUwp_G_BLOCwp_ML) injectewp_t sewp_on starwp_nd after compaction
+- `wp audit` suite: tph, bundle-budget, catalog-drift, docs-frontmatter, blueprint-lifecycle,
   no-relative-parent-imports, mutation, quality composite gate
-- `ak hooks doctor` for post-install plugin health verification
-- `ak tech-debt` lifecycle management (new, list, review)
-- `ak symlink import --from <file>` for onboarding existing IDE rule files
-- MCP server with 6 tools: ak_test, ak_lint, ak_typecheck, ak_qa, ak_audit, ak_blueprint
+- `wp hooks doctor` for post-install plugin health verification
+- `wp tech-debt` lifecycle management (new, list, review)
+- `wp symlink import --from <file>` for onboarding existing IDE rule files
+- MCP server with 6 tools: wp_test, wp_lint, wp_typecheck, wp_qa, wp_audit, wp_blueprint
 - `resolvePackageAsset()` utility replacing fixed-depth relative path traversals
 - `auditNoRelativeParentImports` guardrail for 3+ level runtime path traversals

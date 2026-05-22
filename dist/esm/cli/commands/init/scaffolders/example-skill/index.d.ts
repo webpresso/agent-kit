@@ -4,7 +4,7 @@
  * Copies the `hello-webpresso` SKILL.md template into `.agent/skills/hello-webpresso/`
  * so new consumers have an immediately runnable skill that verifies agent-kit is wired.
  *
- * After writing, attempts `ak compile` non-fatally so IDEs pick up the new skill.
+ * After writing, attempts `wp compile` non-fatally so IDEs pick up the new skill.
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';

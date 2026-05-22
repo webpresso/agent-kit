@@ -19,12 +19,12 @@ tags:
   - performance
 ---
 
-# ak session memory v2 — Rust ctx-rs engine swap (same schema)
+# wp session memory v2 — Rust ctx-rs engine swap (same schema)
 
 ## Product wedge anchor
 
 - **Stage outcome:** Same Lane 2 stage outcome as v1, **plus** webpresso owns a Rust engine — sub-millisecond hot path with hard SLO, single prebuilt binary swap, no schema change. Roadmap cite: webpresso open-sourcing extraction roadmap, post-v1 perf wave.
-- **Consuming surface:** Same `ak_session_*` MCP tool surface as v1 (`ak_session_capture`, `ak_session_snapshot`, `ak_session_restore`, `ak_session_search`). Same `ak setup`. Same on-disk SQLite file at `~/.webpresso/sessions/<repo-hash>.db`. Behind the scenes: `better-sqlite3` is replaced by `@webpresso/ctx-rs` (Rust crate via napi-rs). Migration is invisible — same schema, same SQLite file format.
+- **Consuming surface:** Same `wp_session_*` MCP tool surface as v1 (`wp_session_capture`, `wp_session_snapshot`, `wp_session_restore`, `wp_session_search`). Same `wp setup`. Same on-disk SQLite file at `~/.webpresso/sessions/<repo-hash>.db`. Behind the scenes: `better-sqlite3` is replaced by `@webpresso/ctx-rs` (Rust crate via napi-rs). Migration is invisible — same schema, same SQLite file format.
 - **New user-visible capability:** After this lands, the same consumer using v1 today gets a `pnpm update @webpresso/agent-kit` that drops in the Rust engine. Hot path drops from sub-100ms to sub-2ms p99. `rtk gain`-style telemetry on session-capture overhead becomes negligible. No data migration.
 
 ## Problem Statement
@@ -45,7 +45,7 @@ But three pressures motivate a Rust rewrite:
    features (richer chunking, cargo-mutants-tested edge cases, custom
    tokenizers via FFI) that the better-sqlite3 SQL surface limits.
 
-The v2 cut is constrained by design: it MUST keep v1's `ak_session_*` MCP tool
+The v2 cut is constrained by design: it MUST keep v1's `wp_session_*` MCP tool
 shapes identical AND read v1's existing `<repo-hash>.db` files unchanged. The
 schema is the contract.
 
@@ -81,7 +81,7 @@ schema is the contract.
 └─────────────────────────────────────────────────────────────┘
 
 LANE MODEL (same as v1, faster):
-  1  agent-kit + ctx-rs (FFI)   ak_session_*    MIT
+  1  agent-kit + ctx-rs (FFI)   wp_session_*    MIT
   2  — DROPPED —                —               (context-mode out)
   3  rtk (upstream)             bash filter     MIT
   4  gstack (upstream)          /skill          MIT
@@ -123,11 +123,11 @@ fixes are tagged with `Fx` references to the corresponding finding.)
 | Tokenizers | Built-in `porter unicode61` + `trigram` (refinement F2 v2: rusqlite has no custom-tokenizer API; built-ins cover us) | Same set as v1 TS engine; behavior parity built in |
 | Node integration | napi 3.8 + napi-derive 3.5 + @napi-rs/cli 3.6 (refinement F12 v2 — exact version-string corrections); MSRV 1.88 | Rust 1.88+ required (most-restrictive in stack) |
 | MCP SDK (future, NOT in v2 scope) | rmcp **1.6+** (refinement F4 v2: was claimed 0.16, actual is 1.6); license is **Apache-2.0** (was claimed MIT) | Reserved for v3 if we move ctx-rs to be a peer MCP server. v2 stays FFI |
-| MCP tool surface | `ak_session_capture` / `ak_session_snapshot` / `ak_session_restore` / `ak_session_search` — IDENTICAL to v1 | Migration must be invisible to consumers |
+| MCP tool surface | `wp_session_capture` / `wp_session_snapshot` / `wp_session_restore` / `wp_session_search` — IDENTICAL to v1 | Migration must be invisible to consumers |
 | TS shim thickness | Thin (eng-review D9): TS reads stdin, calls ctx-rs FFI, writes stdout | All logic in Rust |
 | Hot path SLO | p99 < 2ms, p50 < 0.5ms (eng-review D12) | Benchmark suite in CI |
 | Migration from v1 | Zero migration step — ctx-rs reads existing v1 SQLite file at the same path | Schema is the contract |
-| napi-rs platform fallback | Graceful disable (eng-review D13): missing prebuilt → ak_session_* returns `unavailable`, agent-kit otherwise works. **All triples now first-class incl. Windows** (refinement F13 v2: Windows is NOT flaky in 2026) | Linux x64+arm64, macOS x64+arm64, Windows x64+arm64 |
+| napi-rs platform fallback | Graceful disable (eng-review D13): missing prebuilt → wp_session_* returns `unavailable`, agent-kit otherwise works. **All triples now first-class incl. Windows** (refinement F13 v2: Windows is NOT flaky in 2026) | Linux x64+arm64, macOS x64+arm64, Windows x64+arm64 |
 | Bench / SLO gating | criterion **0.8** (refinement F9 v2: was claimed 0.5+, current is 0.8) + custom JSON-parsing gate script that parses `target/criterion/**/estimates.json` (refinement F9 v2: criterion does NOT natively gate CI on SLOs, returns exit 0 even on regression) | Explicit threshold-checker is required |
 | Mutation testing | cargo-mutants 27.0+ with config at `.cargo/mutants.toml` (refinement F8 v2: was claimed `.cargo-mutants.toml`); 70% threshold via custom parse-and-gate script (refinement F8 v2: no built-in threshold flag) | Reframed parity per outside-voice TP3; no incoherent cross-language Stryker subtraction |
 | License enforcement | cargo-deny 0.19.4+ with allowlist (refinement F7 v2 verified) | Implicit-deny model: anything not in allowlist is denied. Covers GPL/AGPL/BUSL/SSPL/ELv2 by omission |
@@ -345,7 +345,7 @@ Wrapper npm package with optionalDependencies for each triple.
 
 **Depends:** Task 2.2
 
-Replace the better-sqlite3 calls in v1's `src/session-memory/store.ts` with `@webpresso/ctx-rs` FFI calls. Same function signatures. Behind feature flag `AK_SESSION_ENGINE=ctx-rs|ts` so consumers can roll back. Default to `ctx-rs` once v2 ships.
+Replace the better-sqlite3 calls in v1's `src/session-memory/store.ts` with `@webpresso/ctx-rs` FFI calls. Same function signatures. Behind feature flag `WP_SESSION_ENGINE=ctx-rs|ts` so consumers can roll back. Default to `ctx-rs` once v2 ships.
 
 **Files:**
 
@@ -355,7 +355,7 @@ Replace the better-sqlite3 calls in v1's `src/session-memory/store.ts` with `@we
 
 **Acceptance:**
 
-- [ ] Backend selector respects AK_SESSION_ENGINE env var
+- [ ] Backend selector respects WP_SESSION_ENGINE env var
 - [ ] ctx-rs path passes the same hot-path tests as v1's TS path
 - [ ] Hot path p99 < 2ms measured (eng-review D12 enforced via the bench gate from Task 1.4)
 
@@ -450,7 +450,7 @@ Two-step:
 
 **Depends:** Task 5.1
 
-Update the session-memory guide to describe the engine-swap mechanism, the v1→v2 zero-migration claim, and the bench SLO. Keep the user-facing `ak_session_*` API description identical (because it IS identical).
+Update the session-memory guide to describe the engine-swap mechanism, the v1→v2 zero-migration claim, and the bench SLO. Keep the user-facing `wp_session_*` API description identical (because it IS identical).
 
 **Files:**
 
@@ -466,7 +466,7 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 
 ### Phase 6: Output Sandboxing (context-mode replacement parity) [Complexity: S-M]
 
-#### Task 6.1: `ak_session_execute` — single-command output sandboxing (ctx-rs backed)
+#### Task 6.1: `wp_session_execute` — single-command output sandboxing (ctx-rs backed)
 
 **Status:** done
 
@@ -483,9 +483,9 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 - [x] large output indexed via ctx-rs
 - [x] query triggers FTS5 search
 - [x] error returns structured envelope
-- [x] graceful disable (AK_DISABLE_CTX) falls through to TS engine
+- [x] graceful disable (WP_DISABLE_CTX) falls through to TS engine
 
-#### Task 6.2: `ak_session_batch_execute` — parallel batch with search (ctx-rs backed)
+#### Task 6.2: `wp_session_batch_execute` — parallel batch with search (ctx-rs backed)
 
 **Status:** done
 
@@ -520,7 +520,7 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 - [x] capture uses ctx-rs `captureEvent` sync FFI
 - [x] graceful disable uses TS fallback
 
-#### Task 6.4: Routing guidance — nudge Claude toward ak_session_execute
+#### Task 6.4: Routing guidance — nudge Claude toward wp_session_execute
 
 **Status:** done
 
@@ -530,10 +530,10 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 - `src/hooks/sessionstart/index.ts`
 - `catalog/agent/rules/context-mode-routing.md`
 
-**Purpose:** SessionStart routing block tells Claude to route large-output commands through `ak_session_execute`.
+**Purpose:** SessionStart routing block tells Claude to route large-output commands through `wp_session_execute`.
 
 **Acceptance:**
-- [x] AK_ROUTING_BLOCK includes ak_session_execute decision row
+- [x] WP_ROUTING_BLOCK includes wp_session_execute decision row
 - [x] context-mode-routing.md updated
 
 ---
@@ -542,21 +542,21 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 
 | Gate | Command | Success Criteria |
 | ---- | ------- | ---------------- |
-| Type safety (TS) | `ak_typecheck --package agent-kit` | Zero errors |
+| Type safety (TS) | `wp_typecheck --package agent-kit` | Zero errors |
 | Type safety (Rust) | `cargo check --all-targets` | Zero errors |
 | Lint (Rust) | `cargo clippy -- -D warnings` | Zero warnings |
-| Lint (TS) | `ak_lint --file <touched>` | Zero violations |
+| Lint (TS) | `wp_lint --file <touched>` | Zero violations |
 | License audit | `cargo deny check` | Zero forbidden licenses (implicit-deny) |
 | Unit tests (Rust) | `cargo test --workspace` | All pass |
-| Unit tests (TS) | `ak_test --file <touched>` | All pass |
+| Unit tests (TS) | `wp_test --file <touched>` | All pass |
 | Mutation score | `cargo mutants --json` + scripts/check-mutation-score.sh | ≥ 70% on core modules |
 | Read-v1-DB parity | tests/v2-reads-v1-db/parity.test.ts | 50/50 fixtures pass identity test |
 | Hot path SLO | `cargo bench` + scripts/check-bench-thresholds.sh | p99 < 2ms, p50 < 0.5ms |
 | Cross-platform build | release workflow | Green on linux x64+arm64, darwin x64+arm64, windows x64+arm64 |
 | npm install smoke | `pnpm add @webpresso/ctx-rs` in temp dir | Pulls correct prebuilt; require works |
 | End-to-end | scratch Claude Code session + simulated compaction | Restore correctness preserved across backends |
-| Full QA | `ak_qa` | All pass |
-| Lifecycle audit | `ak_audit kind=blueprint-lifecycle` | Blueprint passes |
+| Full QA | `wp_qa` | All pass |
+| Lifecycle audit | `wp_audit kind=blueprint-lifecycle` | Blueprint passes |
 
 ## Cross-Plan References
 
@@ -570,13 +570,13 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 
 | Edge Case | Risk | Solution | Task |
 | --------- | ---- | -------- | ---- |
-| napi-rs prebuilt missing for user's platform | `pnpm add` fails confusingly | Graceful disable (D13 + F13 v2): `AK_DISABLE_CTX=1` env var detected, ak_session_* returns "unavailable" cleanly. README documents | 2.2 |
+| napi-rs prebuilt missing for user's platform | `pnpm add` fails confusingly | Graceful disable (D13 + F13 v2): `WP_DISABLE_CTX=1` env var detected, wp_session_* returns "unavailable" cleanly. README documents | 2.2 |
 | Rust panic across FFI boundary | Node process crashes | napi-rs handles panic→Node-error natively (F15 v2) | 2.1 |
 | Schema drift between v1 TS and v2 Rust | v1 → v2 migration breaks | Read-v1-DB parity test suite (Task 4.1) is the contract | 4.1 |
 | ctx-rs version mismatch with agent-kit expectations | API drift breaks integration | Strict semver + ABI-version constant in ctx-rs-napi checked at module init | 2.1 |
 | SQLite file lock contention with v1 still running | Two engines fight | Document: cannot run v1 and v2 simultaneously on same .db file (env flag selects one) | 3.1 |
 | Concurrent capture from 2 Claude Code sessions on same repo | SQLite write contention | WAL + BUSY_TIMEOUT; same as v1 | 3.1 |
-| FTS5 schema migration needed in v2 | Breaks zero-migration claim | If unavoidable: ship a one-shot `ak session migrate-v1-to-v2` subcommand and document. v2 starts with no schema changes; this is the escape hatch | 4.1, 5.1 |
+| FTS5 schema migration needed in v2 | Breaks zero-migration claim | If unavoidable: ship a one-shot `wp session migrate-v1-to-v2` subcommand and document. v2 starts with no schema changes; this is the escape hatch | 4.1, 5.1 |
 | Bench flake under varied CI runners | False CI failures | Use deterministic fixtures, no time-based assertions; gate on percentage above baseline (3-run median) | 1.4, 4.2 |
 | napi-rs ABI breakage on Node version bump | Hot path regression | Pin napi-rs in Cargo.lock; quarterly bump cadence with full test pass | 2.1 |
 
@@ -596,7 +596,7 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 | ---- | ------ | ---------- |
 | Outside voice was right about napi-rs CI being 1-2 weeks (refinement F12 v2 says scaffolder is fast — verify in spike B) | v2 timeline slips | Library survey + F12 v2 verification reduced unknowns; spike B confirms; if estimate wrong, drop Phase 5 cleanup to follow-up |
 | napi-rs version drift breaks FFI ABI | Hot path regression | Pin napi 3.8, napi-derive 3.5, @napi-rs/cli 3.6; quarterly upgrade with full test pass |
-| Schema-as-contract becomes a constraint when v2 wants to add capabilities | v2 development hampered | If a non-additive change is unavoidable, ship `ak session migrate-v1-to-v2`; document migration as a one-time rather than continuous concern |
+| Schema-as-contract becomes a constraint when v2 wants to add capabilities | v2 development hampered | If a non-additive change is unavoidable, ship `wp session migrate-v1-to-v2`; document migration as a one-time rather than continuous concern |
 | MSRV 1.88 (refinement F12 v2) excludes some contributors | Community contribution friction | Document MSRV; pre-commit hook checks toolchain |
 | Read-v1-DB parity test is harder than expected (FTS5 BM25 ordering across SQLite versions) | "Invisible migration" claim weakens | Parity threshold is "top-10 IDs match", not "byte-identical results"; document tolerance |
 | cargo-mutants runs slow in CI (Rust mutation testing is expensive) | PR feedback loop slows | Run mutation only on PR labels or main-branch nightly; not blocking on every PR |

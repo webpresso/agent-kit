@@ -96,7 +96,7 @@ async function resolveSyncAdapter(cwd) {
 const VALIDATE_TS_FILE = '.validate-timestamps.json';
 const ROWS_CAP = 200;
 const LIFECYCLE_ADVICE = 'After creating: /plan-refine to harden; /plan-eng-review to validate; ' +
-    'ak_blueprint_promote draft→planned when ready; /pll for parallel execution; ' +
+    'wp_blueprint_promote draft→planned when ready; /pll for parallel execution; ' +
     '/verify before finalize';
 const ALL_STATES = ['draft', 'planned', 'in-progress', 'parked', 'archived', 'completed'];
 const NON_COMPLETED = ['draft', 'planned', 'in-progress', 'parked', 'archived'];
@@ -287,7 +287,7 @@ const querySchema = z.object({
 async function handleQuery(cwd, raw) {
     const p = querySchema.safeParse(raw);
     if (!p.success)
-        return err('ak_blueprint_query validation error', p.error.message);
+        return err('wp_blueprint_query validation error', p.error.message);
     const { template_id, params } = p.data;
     const tmpl = findTemplate(template_id);
     if (!tmpl)
@@ -326,7 +326,7 @@ const newSchema = z.object({
 async function handleNew(cwd, raw) {
     const p = newSchema.safeParse(raw);
     if (!p.success)
-        return err('ak_blueprint_new validation error', p.error.message);
+        return err('wp_blueprint_new validation error', p.error.message);
     const { title, complexity, goal_prompt, examples_count } = p.data;
     const today = new Date().toISOString().split('T')[0] ?? '';
     const template = BLUEPRINT_TEMPLATE.replace(/{TITLE}/g, title)
@@ -391,7 +391,7 @@ const validateSchema = z.object({ path: z.string() });
 async function handleValidate(cwd, raw) {
     const p = validateSchema.safeParse(raw);
     if (!p.success)
-        return err('ak_blueprint_validate validation error', p.error.message);
+        return err('wp_blueprint_validate validation error', p.error.message);
     const { path: filePath } = p.data;
     const result = runValidate(filePath);
     if (result.valid) {
@@ -415,7 +415,7 @@ const taskNextSchema = z.object({ blueprint: z.string().optional() });
 async function handleTaskNext(cwd, raw) {
     const p = taskNextSchema.safeParse(raw);
     if (!p.success)
-        return err('ak_blueprint_task_next validation error', p.error.message);
+        return err('wp_blueprint_task_next validation error', p.error.message);
     const { blueprint } = p.data;
     // Platform-first: refresh local replica before reading so the result reflects remote state.
     // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
@@ -489,7 +489,7 @@ async function handleTaskNext(cwd, raw) {
         return finishPayload(payload);
     }
     catch (e) {
-        return err('ak_blueprint_task_next failed', toStr(e));
+        return err('wp_blueprint_task_next failed', toStr(e));
     }
 }
 const advanceSchema = z.object({
@@ -499,22 +499,22 @@ const advanceSchema = z.object({
 async function handleTaskAdvance(cwd, raw) {
     const p = advanceSchema.safeParse(raw);
     if (!p.success)
-        return err('ak_blueprint_task_advance validation error', p.error.message);
+        return err('wp_blueprint_task_advance validation error', p.error.message);
     const { task_id, to } = p.data;
-    // Task 3.2 guard: refuse to mark done via advance — require evidence via ak_blueprint_task_verify
+    // Task 3.2 guard: refuse to mark done via advance — require evidence via wp_blueprint_task_verify
     if (to === 'done') {
         return jsonContent({
-            summary: 'Use ak_blueprint_task_verify to mark tasks done with evidence',
-            failures: ['Use ak_blueprint_task_verify to mark tasks done with evidence'],
-            error: 'Use ak_blueprint_task_verify to mark tasks done with evidence',
-            next_action: makeNextAction('verify_task', 'Call ak_blueprint_task_verify with evidence items'),
+            summary: 'Use wp_blueprint_task_verify to mark tasks done with evidence',
+            failures: ['Use wp_blueprint_task_verify to mark tasks done with evidence'],
+            error: 'Use wp_blueprint_task_verify to mark tasks done with evidence',
+            next_action: makeNextAction('verify_task', 'Call wp_blueprint_task_verify with evidence items'),
             bytes: 0,
             tokensSaved: 0,
         }, true);
     }
     const target = dbPath(cwd);
     if (!existsSync(target))
-        return err('ak_blueprint_task_advance failed', 'Blueprint DB not found');
+        return err('wp_blueprint_task_advance failed', 'Blueprint DB not found');
     try {
         const conn = openDb(target);
         let oldStatus = null;
@@ -525,7 +525,7 @@ async function handleTaskAdvance(cwd, raw) {
                 .prepare('SELECT status, blueprint_slug FROM tasks WHERE task_id = ? LIMIT 1')
                 .get(task_id);
             if (!row)
-                return err('ak_blueprint_task_advance failed', `Task "${task_id}" not found in DB`);
+                return err('wp_blueprint_task_advance failed', `Task "${task_id}" not found in DB`);
             oldStatus = row.status;
             blueprintSlug = row.blueprint_slug;
             const bp = conn.db
@@ -592,10 +592,10 @@ async function handleTaskAdvance(cwd, raw) {
         return finishPayload(payload);
     }
     catch (e) {
-        return err('ak_blueprint_task_advance failed', toStr(e));
+        return err('wp_blueprint_task_advance failed', toStr(e));
     }
 }
-// Task 3.2 — ak_blueprint_task_verify
+// Task 3.2 — wp_blueprint_task_verify
 const taskVerifySchema = z.object({
     project_id: z.string(),
     slug: z.string(),
@@ -605,17 +605,17 @@ const taskVerifySchema = z.object({
 async function handleTaskVerify(cwd, raw) {
     const p = taskVerifySchema.safeParse(raw);
     if (!p.success)
-        return err('ak_blueprint_task_verify validation error', p.error.message);
+        return err('wp_blueprint_task_verify validation error', p.error.message);
     const { slug, task_id, evidence } = p.data;
     // Locate the blueprint markdown file on disk
     const root = resolveBlueprintRoot(cwd);
     const found = findBlueprintDir(root, slug, ALL_STATES);
     if (!found) {
-        return err('ak_blueprint_task_verify failed', `Blueprint "${slug}" not found in any state directory`);
+        return err('wp_blueprint_task_verify failed', `Blueprint "${slug}" not found in any state directory`);
     }
     const filePath = path.join(found.dir, '_overview.md');
     if (!existsSync(filePath)) {
-        return err('ak_blueprint_task_verify failed', `Blueprint overview not found at ${filePath}`);
+        return err('wp_blueprint_task_verify failed', `Blueprint overview not found at ${filePath}`);
     }
     const markdownBefore = readFileSync(filePath, 'utf8');
     // Idempotency check: if the task already has the same canonical evidence block, skip write.
@@ -685,18 +685,18 @@ const promoteSchema = z.object({
 async function handlePromote(cwd, raw) {
     const p = promoteSchema.safeParse(raw);
     if (!p.success)
-        return err('ak_blueprint_promote validation error', p.error.message);
+        return err('wp_blueprint_promote validation error', p.error.message);
     const { slug, to_state } = p.data;
     const root = resolveBlueprintRoot(cwd);
     const found = findBlueprintDir(root, slug, ALL_STATES);
     if (!found)
-        return err('ak_blueprint_promote failed', `Blueprint "${slug}" not found in any state directory`);
+        return err('wp_blueprint_promote failed', `Blueprint "${slug}" not found in any state directory`);
     const { dir: currentDir, state: currentState } = found;
     const overviewPath = path.join(currentDir, '_overview.md');
     const ts = readVt(cwd);
     const mtime = existsSync(overviewPath) ? statSync(overviewPath).mtimeMs : 0;
     if ((ts[slug] ?? 0) < mtime)
-        return err('ak_blueprint_promote refused', `Blueprint "${slug}" not validated since last write. Run ak_blueprint_validate first.`);
+        return err('wp_blueprint_promote refused', `Blueprint "${slug}" not validated since last write. Run wp_blueprint_validate first.`);
     // Platform-first path: push event + pull fresh replica before local move.
     // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
     const adapter = await resolveSyncAdapter(cwd);
@@ -722,7 +722,7 @@ async function handlePromote(cwd, raw) {
         renameSync(currentDir, destDir);
     }
     catch (e) {
-        return err('ak_blueprint_promote failed', `Directory move error: ${toStr(e)}`);
+        return err('wp_blueprint_promote failed', `Directory move error: ${toStr(e)}`);
     }
     const destOverview = path.join(destDir, '_overview.md');
     if (existsSync(destOverview)) {
@@ -754,11 +754,11 @@ const finalizeSchema = z.object({ slug: z.string() });
 async function handleFinalize(cwd, raw) {
     const p = finalizeSchema.safeParse(raw);
     if (!p.success)
-        return err('ak_blueprint_finalize validation error', p.error.message);
+        return err('wp_blueprint_finalize validation error', p.error.message);
     const { slug } = p.data;
     const target = dbPath(cwd);
     if (!existsSync(target))
-        return err('ak_blueprint_finalize failed', 'Blueprint DB not found');
+        return err('wp_blueprint_finalize failed', 'Blueprint DB not found');
     const conn = openDb(target);
     let openTasks;
     try {
@@ -770,7 +770,7 @@ async function handleFinalize(cwd, raw) {
         conn.close();
     }
     if (openTasks.length > 0)
-        return err('ak_blueprint_finalize refused', `Blueprint "${slug}" has open tasks: ${openTasks.map((t) => `${t.task_id} (${t.status})`).join(', ')}`);
+        return err('wp_blueprint_finalize refused', `Blueprint "${slug}" has open tasks: ${openTasks.map((t) => `${t.task_id} (${t.status})`).join(', ')}`);
     const root = resolveBlueprintRoot(cwd);
     const found = findBlueprintDir(root, slug, NON_COMPLETED);
     if (!found) {
@@ -783,7 +783,7 @@ async function handleFinalize(cwd, raw) {
                 bytes: 0,
                 tokensSaved: 0,
             });
-        return err('ak_blueprint_finalize failed', `Blueprint "${slug}" not found`);
+        return err('wp_blueprint_finalize failed', `Blueprint "${slug}" not found`);
     }
     // Platform-first path: push event + pull fresh replica before local move.
     // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
@@ -808,7 +808,7 @@ async function handleFinalize(cwd, raw) {
         renameSync(found.dir, destDir);
     }
     catch (e) {
-        return err('ak_blueprint_finalize failed', `Directory move error: ${toStr(e)}`);
+        return err('wp_blueprint_finalize failed', `Directory move error: ${toStr(e)}`);
     }
     const destOverview = path.join(destDir, '_overview.md');
     if (existsSync(destOverview)) {
@@ -839,11 +839,11 @@ const depgraphSchema = z.object({ from: z.string() });
 async function handleDepgraph(cwd, raw) {
     const p = depgraphSchema.safeParse(raw);
     if (!p.success)
-        return err('ak_blueprint_depgraph validation error', p.error.message);
+        return err('wp_blueprint_depgraph validation error', p.error.message);
     const { from } = p.data;
     const target = dbPath(cwd);
     if (!existsSync(target))
-        return err('ak_blueprint_depgraph failed', 'Blueprint DB not found');
+        return err('wp_blueprint_depgraph failed', 'Blueprint DB not found');
     try {
         const conn = openDb(target);
         const nodes = new Map();
@@ -893,7 +893,7 @@ async function handleDepgraph(cwd, raw) {
         });
     }
     catch (e) {
-        return err('ak_blueprint_depgraph failed', toStr(e));
+        return err('wp_blueprint_depgraph failed', toStr(e));
     }
 }
 // ---------------------------------------------------------------------------
@@ -931,7 +931,7 @@ function staleProjectionResponse(summary, nextAction, extra) {
 async function handleBlueprintList(cwd, raw) {
     const p = listSchema.safeParse(raw);
     if (!p.success)
-        return err('ak_blueprint_list validation error', p.error.message);
+        return err('wp_blueprint_list validation error', p.error.message);
     const { status, limit, scope } = p.data;
     // Multi-project path: scope is 'roots', 'workspace', or 'all'
     const isMultiScope = scope === 'roots' || scope === 'workspace' || scope === 'all';
@@ -961,14 +961,14 @@ async function handleBlueprintList(cwd, raw) {
             });
         }
         catch (e) {
-            return err('ak_blueprint_list failed', toStr(e));
+            return err('wp_blueprint_list failed', toStr(e));
         }
     }
     // Single-project path: scope is 'current' or omitted
     const target = dbPath(cwd);
     if (!existsSync(target))
         return jsonContent({
-            summary: 'No blueprint DB found — run ak_blueprint_new or trigger a re-ingest',
+            summary: 'No blueprint DB found — run wp_blueprint_new or trigger a re-ingest',
             blueprints: [],
             freshness_ok: false,
             next_action: { kind: 'rebuild_db', hint: 'Blueprint DB missing. Re-ingest to create it.' },
@@ -1010,14 +1010,14 @@ async function handleBlueprintList(cwd, raw) {
         });
     }
     catch (e) {
-        return err('ak_blueprint_list failed', toStr(e));
+        return err('wp_blueprint_list failed', toStr(e));
     }
 }
 const getSchema = ReadTarget.extend({ slug: z.string() });
 async function handleBlueprintGet(cwd, raw) {
     const p = getSchema.safeParse(raw);
     if (!p.success)
-        return err('ak_blueprint_get validation error', p.error.message);
+        return err('wp_blueprint_get validation error', p.error.message);
     const { slug, scope } = p.data;
     const isMultiScope = scope === 'roots' || scope === 'workspace' || scope === 'all';
     if (isMultiScope) {
@@ -1098,7 +1098,7 @@ async function handleBlueprintGet(cwd, raw) {
             });
         }
         catch (e) {
-            return err('ak_blueprint_get failed', toStr(e));
+            return err('wp_blueprint_get failed', toStr(e));
         }
     }
     // Single-project path
@@ -1166,7 +1166,7 @@ async function handleBlueprintGet(cwd, raw) {
         });
     }
     catch (e) {
-        return err('ak_blueprint_get failed', toStr(e));
+        return err('wp_blueprint_get failed', toStr(e));
     }
 }
 const contextSchema = ReadTarget.extend({
@@ -1176,7 +1176,7 @@ const contextSchema = ReadTarget.extend({
 async function handleBlueprintContext(cwd, raw) {
     const p = contextSchema.safeParse(raw);
     if (!p.success)
-        return err('ak_blueprint_context validation error', p.error.message);
+        return err('wp_blueprint_context validation error', p.error.message);
     const { slug, task_id } = p.data;
     const target = dbPath(cwd);
     if (!existsSync(target))
@@ -1253,7 +1253,7 @@ async function handleBlueprintContext(cwd, raw) {
                 summary: `Task "${task_id}" not found in blueprint "${slug}"`,
                 chunks: [],
                 total_bytes: 0,
-                next_action: makeNextAction('verify_task', `Task "${task_id}" not found. Check the task_id or use ak_blueprint_get to list available tasks.`),
+                next_action: makeNextAction('verify_task', `Task "${task_id}" not found. Check the task_id or use wp_blueprint_get to list available tasks.`),
                 failures: [`Task "${task_id}" not found in blueprint "${slug}"`],
                 bytes: 0,
                 tokensSaved: 0,
@@ -1276,7 +1276,7 @@ async function handleBlueprintContext(cwd, raw) {
         });
     }
     catch (e) {
-        return err('ak_blueprint_context failed', toStr(e));
+        return err('wp_blueprint_context failed', toStr(e));
     }
 }
 const createSchema = MutationTarget.extend({
@@ -1288,7 +1288,7 @@ const createSchema = MutationTarget.extend({
 async function handleBlueprintCreate(cwd, raw) {
     const p = createSchema.safeParse(raw);
     if (!p.success)
-        return err('ak_blueprint_create validation error', p.error.message);
+        return err('wp_blueprint_create validation error', p.error.message);
     const { title, goal, complexity } = p.data;
     const today = new Date().toISOString().split('T')[0] ?? '';
     const slug = titleToSlug(title);
@@ -1309,14 +1309,14 @@ async function handleBlueprintCreate(cwd, raw) {
             summary: `Blueprint "${slug}" created at ${overviewPath}`,
             slug,
             path: overviewPath,
-            next_action: makeNextAction('verify_task', 'Blueprint created. Next: run ak_blueprint_validate to check structure, then /plan-refine to harden, /plan-eng-review to validate architecture.'),
+            next_action: makeNextAction('verify_task', 'Blueprint created. Next: run wp_blueprint_validate to check structure, then /plan-refine to harden, /plan-eng-review to validate architecture.'),
             failures: [],
             bytes: b,
             tokensSaved: 0,
         });
     }
     catch (e) {
-        return err('ak_blueprint_create failed', toStr(e));
+        return err('wp_blueprint_create failed', toStr(e));
     }
 }
 // ---------------------------------------------------------------------------
@@ -1327,12 +1327,12 @@ export async function registerBlueprintTools(registrar, cwd) {
     if (!coldStart.rebuilt) {
         await reIngest(cwd);
     }
-    registrar.registerTool('ak_blueprint_query', 'Run a pre-registered SQL template against the blueprint store. Returns { summary, rows_capped, rows, failures, bytes, tokensSaved }.', {
+    registrar.registerTool('wp_blueprint_query', 'Run a pre-registered SQL template against the blueprint store. Returns { summary, rows_capped, rows, failures, bytes, tokensSaved }.', {
         type: 'object',
         properties: { template_id: { type: 'string' }, params: { type: 'object', default: {} } },
         required: ['template_id'],
     }, undefined, (r) => handleQuery(cwd, r), { title: 'Blueprint Query', readOnlyHint: true, openWorldHint: false });
-    registrar.registerTool('ak_blueprint_new', 'Return a drafting bundle for a new blueprint (no LLM call). Returns { target_path, template, rules_context, examples, lifecycle_advice, validation_required }.', {
+    registrar.registerTool('wp_blueprint_new', 'Return a drafting bundle for a new blueprint (no LLM call). Returns { target_path, template, rules_context, examples, lifecycle_advice, validation_required }.', {
         type: 'object',
         properties: {
             title: { type: 'string' },
@@ -1342,9 +1342,9 @@ export async function registerBlueprintTools(registrar, cwd) {
         },
         required: ['title', 'goal_prompt'],
     }, undefined, (r) => handleNew(cwd, r), { title: 'Blueprint New', readOnlyHint: true, openWorldHint: false });
-    registrar.registerTool('ak_blueprint_validate', 'Validate _overview.md structure. Returns { valid, gaps }. Must pass before ak_blueprint_promote.', { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] }, undefined, (r) => handleValidate(cwd, r), { title: 'Blueprint Validate', readOnlyHint: false, openWorldHint: false });
-    registrar.registerTool('ak_blueprint_task_next', 'Return the next ready task (all deps done). Returns { summary, task }.', { type: 'object', properties: { blueprint: { type: 'string' } } }, undefined, (r) => handleTaskNext(cwd, r), { title: 'Blueprint Task Next', readOnlyHint: true, openWorldHint: false });
-    registrar.registerTool('ak_blueprint_task_advance', 'Advance task status. Edits _overview.md and re-syncs DB. Returns { summary, old_status, new_status }.', {
+    registrar.registerTool('wp_blueprint_validate', 'Validate _overview.md structure. Returns { valid, gaps }. Must pass before wp_blueprint_promote.', { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] }, undefined, (r) => handleValidate(cwd, r), { title: 'Blueprint Validate', readOnlyHint: false, openWorldHint: false });
+    registrar.registerTool('wp_blueprint_task_next', 'Return the next ready task (all deps done). Returns { summary, task }.', { type: 'object', properties: { blueprint: { type: 'string' } } }, undefined, (r) => handleTaskNext(cwd, r), { title: 'Blueprint Task Next', readOnlyHint: true, openWorldHint: false });
+    registrar.registerTool('wp_blueprint_task_advance', 'Advance task status. Edits _overview.md and re-syncs DB. Returns { summary, old_status, new_status }.', {
         type: 'object',
         properties: {
             task_id: { type: 'string' },
@@ -1352,7 +1352,7 @@ export async function registerBlueprintTools(registrar, cwd) {
         },
         required: ['task_id', 'to'],
     }, undefined, (r) => handleTaskAdvance(cwd, r), { title: 'Blueprint Task Advance', destructiveHint: false, openWorldHint: false });
-    registrar.registerTool('ak_blueprint_promote', 'Promote a blueprint to a new lifecycle state. Refuses without prior validate. Returns { summary, new_path }.', {
+    registrar.registerTool('wp_blueprint_promote', 'Promote a blueprint to a new lifecycle state. Refuses without prior validate. Returns { summary, new_path }.', {
         type: 'object',
         properties: {
             slug: { type: 'string' },
@@ -1363,9 +1363,9 @@ export async function registerBlueprintTools(registrar, cwd) {
         },
         required: ['slug', 'to_state'],
     }, undefined, (r) => handlePromote(cwd, r), { title: 'Blueprint Promote', destructiveHint: false, openWorldHint: false });
-    registrar.registerTool('ak_blueprint_finalize', 'Finalize a blueprint (move to completed). Refuses if any tasks are not done/dropped. Returns { summary, new_path }.', { type: 'object', properties: { slug: { type: 'string' } }, required: ['slug'] }, undefined, (r) => handleFinalize(cwd, r), { title: 'Blueprint Finalize', destructiveHint: false, openWorldHint: false });
-    registrar.registerTool('ak_blueprint_depgraph', 'Build dependency graph from a blueprint slug. Private cross-org targets shown as private/<hash>. Returns { summary, nodes, edges }.', { type: 'object', properties: { from: { type: 'string' } }, required: ['from'] }, undefined, (r) => handleDepgraph(cwd, r), { title: 'Blueprint Dep Graph', readOnlyHint: true, openWorldHint: false });
-    registrar.registerTool('ak_blueprint_list', 'List blueprints in a project from the SQLite projection. Supports optional status filter. Returns { blueprints, project_id, freshness_ok, next_action? }.', {
+    registrar.registerTool('wp_blueprint_finalize', 'Finalize a blueprint (move to completed). Refuses if any tasks are not done/dropped. Returns { summary, new_path }.', { type: 'object', properties: { slug: { type: 'string' } }, required: ['slug'] }, undefined, (r) => handleFinalize(cwd, r), { title: 'Blueprint Finalize', destructiveHint: false, openWorldHint: false });
+    registrar.registerTool('wp_blueprint_depgraph', 'Build dependency graph from a blueprint slug. Private cross-org targets shown as private/<hash>. Returns { summary, nodes, edges }.', { type: 'object', properties: { from: { type: 'string' } }, required: ['from'] }, undefined, (r) => handleDepgraph(cwd, r), { title: 'Blueprint Dep Graph', readOnlyHint: true, openWorldHint: false });
+    registrar.registerTool('wp_blueprint_list', 'List blueprints in a project from the SQLite projection. Supports optional status filter. Returns { blueprints, project_id, freshness_ok, next_action? }.', {
         type: 'object',
         properties: {
             project_id: { type: 'string' },
@@ -1378,7 +1378,7 @@ export async function registerBlueprintTools(registrar, cwd) {
         },
         required: [],
     }, undefined, (r) => handleBlueprintList(cwd, r), { title: 'Blueprint List', readOnlyHint: true, openWorldHint: false });
-    registrar.registerTool('ak_blueprint_get', 'Get a single blueprint by slug with task list and freshness metadata. Returns { blueprint, content_hash, ingested_at, next_action? }.', {
+    registrar.registerTool('wp_blueprint_get', 'Get a single blueprint by slug with task list and freshness metadata. Returns { blueprint, content_hash, ingested_at, next_action? }.', {
         type: 'object',
         properties: {
             slug: { type: 'string' },
@@ -1387,7 +1387,7 @@ export async function registerBlueprintTools(registrar, cwd) {
         },
         required: ['slug'],
     }, undefined, (r) => handleBlueprintGet(cwd, r), { title: 'Blueprint Get', readOnlyHint: true, openWorldHint: false });
-    registrar.registerTool('ak_blueprint_context', 'Assemble context chunks for a blueprint (and optionally a specific task). Returns { chunks, total_bytes, next_action? }.', {
+    registrar.registerTool('wp_blueprint_context', 'Assemble context chunks for a blueprint (and optionally a specific task). Returns { chunks, total_bytes, next_action? }.', {
         type: 'object',
         properties: {
             slug: { type: 'string' },
@@ -1397,7 +1397,7 @@ export async function registerBlueprintTools(registrar, cwd) {
         },
         required: ['slug'],
     }, undefined, (r) => handleBlueprintContext(cwd, r), { title: 'Blueprint Context', readOnlyHint: true, openWorldHint: false });
-    registrar.registerTool('ak_blueprint_create', 'Create a new blueprint markdown under blueprints/draft/<slug>/_overview.md and re-ingest. Returns { slug, path, next_action }.', {
+    registrar.registerTool('wp_blueprint_create', 'Create a new blueprint markdown under blueprints/draft/<slug>/_overview.md and re-ingest. Returns { slug, path, next_action }.', {
         type: 'object',
         properties: {
             project_id: { type: 'string' },
@@ -1408,7 +1408,7 @@ export async function registerBlueprintTools(registrar, cwd) {
         },
         required: ['project_id', 'title', 'goal'],
     }, undefined, (r) => handleBlueprintCreate(cwd, r), { title: 'Blueprint Create', destructiveHint: false, openWorldHint: false });
-    registrar.registerTool('ak_blueprint_task_verify', 'Mark a task done with an Evidence Contract. Requires at least one pass evidence item. Re-ingests DB on success. Returns { status, idempotent, next_action? }.', {
+    registrar.registerTool('wp_blueprint_task_verify', 'Mark a task done with an Evidence Contract. Requires at least one pass evidence item. Re-ingests DB on success. Returns { status, idempotent, next_action? }.', {
         type: 'object',
         properties: {
             project_id: { type: 'string' },
@@ -1432,22 +1432,22 @@ export async function registerBlueprintTools(registrar, cwd) {
     }, undefined, (r) => handleTaskVerify(cwd, r), { title: 'Blueprint Task Verify', destructiveHint: false, openWorldHint: false });
 }
 const BLUEPRINT_SURFACE_TOOLS = [
-    'ak_blueprint_query',
-    'ak_blueprint_new',
-    'ak_blueprint_validate',
-    'ak_blueprint_task_next',
-    'ak_blueprint_task_advance',
-    'ak_blueprint_promote',
-    'ak_blueprint_finalize',
-    'ak_blueprint_depgraph',
-    'ak_blueprint_projects',
+    'wp_blueprint_query',
+    'wp_blueprint_new',
+    'wp_blueprint_validate',
+    'wp_blueprint_task_next',
+    'wp_blueprint_task_advance',
+    'wp_blueprint_promote',
+    'wp_blueprint_finalize',
+    'wp_blueprint_depgraph',
+    'wp_blueprint_projects',
 ];
 /**
  * Wire the blueprint structured-store tools into the main MCP server.
  *
  * Single integration point (F13/E15): call this once from `createServer` AFTER
  * `auto-discover` finishes so tool-name collisions surface as a registration
- * error rather than silent shadow. Adds `ak_blueprint_projects` on top of the
+ * error rather than silent shadow. Adds `wp_blueprint_projects` on top of the
  * 8 existing tools.
  *
  * Roots handling (F5):
@@ -1501,7 +1501,7 @@ export async function registerBlueprintServer(registrar, options) {
             cache.unsupported = false;
         });
     }
-    registrar.registerTool('ak_blueprint_projects', 'List blueprint-bearing projects from current cwd, MCP roots, workspace config, and git worktrees. Returns { summary, projects, warnings, next_action? }.', {
+    registrar.registerTool('wp_blueprint_projects', 'List blueprint-bearing projects from current cwd, MCP roots, workspace config, and git worktrees. Returns { summary, projects, warnings, next_action? }.', {
         type: 'object',
         properties: {
             scope: {

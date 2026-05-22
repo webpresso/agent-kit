@@ -38,7 +38,7 @@ And the architecture overview already encodes the ownership lanes:
 ```text
 Claude Code
   ├─ official path: plugin + settings.json hooks
-  ├─ agent-kit owns repo-local ak_* hook entrypoints
+  ├─ agent-kit owns repo-local wp_* hook entrypoints
   ├─ context-mode owns ctx_* routing guidance when installed
   └─ rtk owns shell filtering lane where documented
 
@@ -70,9 +70,9 @@ In the actual installed state on this workspace:
 
 - `~/.claude/settings.json` PreToolUse `Bash` matcher: `rtk hook claude` (user settings).
 - `~/.claude/plugins/cache/context-mode/.../hooks/pretooluse.mjs` (plugin layer): rewrites Bash → `ctx_execute`.
-- `/Users/ozby/repos/webpresso/agent-kit/.claude/settings.json` PreToolUse `Bash|Write|Edit|MultiEdit`: `ak-pretool-guard` (project settings).
+- `/Users/ozby/repos/webpresso/agent-kit/.claude/settings.json` PreToolUse `Bash|Write|Edit|MultiEdit`: `wp-pretool-guard` (project settings).
 
-`ak-pretool-guard` is a **validator** (verified: `src/hooks/pretool-guard/validators/*` — `forbidden-commands.test.ts`, `dangerous-commands.ts`, `mcp-redirect.ts`, `package-imports.ts`, `plan-frontmatter.ts`, `test-quality.ts`). It does not call `updatedInput`. So the actual race is **only** between RTK and context-mode.
+`wp-pretool-guard` is a **validator** (verified: `src/hooks/pretool-guard/validators/*` — `forbidden-commands.test.ts`, `dangerous-commands.ts`, `mcp-redirect.ts`, `package-imports.ts`, `plan-frontmatter.ts`, `test-quality.ts`). It does not call `updatedInput`. So the actual race is **only** between RTK and context-mode.
 
 The structural fix is *"only one rewriter per matcher"*: have context-mode itself detect RTK and either (a) skip its own rewrite when RTK is installed, or (b) compose them — see Claim 2.
 
@@ -105,7 +105,7 @@ The blueprint's edge-case table explicitly allows multi-owner SessionStart:
 
 And the architecture overview names this *"expected composition: multiple owners may share an event."*
 
-Trying to consolidate the blocks into a single `ak-sessionstart-routing` emission would: (1) couple context-mode's content to agent-kit's release cadence, (2) violate the explicit non-goal *"Hand-maintaining generated hook/config surfaces as the final solution,"* and (3) require agent-kit to know context-mode's internal injection format.
+Trying to consolidate the blocks into a single `wp-sessionstart-routing` emission would: (1) couple context-mode's content to agent-kit's release cadence, (2) violate the explicit non-goal *"Hand-maintaining generated hook/config surfaces as the final solution,"* and (3) require agent-kit to know context-mode's internal injection format.
 
 The right framing is **content density per block**, not block count. Each owner should emit a tight, non-redundant block. The current waste isn't *"three blocks fire"* — it's *"each block restates rules the others already cover."* That's a content question for each owner, not a coordination problem.
 
@@ -113,13 +113,13 @@ The right framing is **content density per block**, not block count. Each owner 
 
 **Verdict: MISALIGNED with the blueprint.**
 
-The blueprint's ownership model is layered, not shared. RTK owns shell filtering. Context-mode owns `ctx_*` routing. Agent-kit owns `ak_*` routing. A shared classifier would couple all three to one config, which:
+The blueprint's ownership model is layered, not shared. RTK owns shell filtering. Context-mode owns `ctx_*` routing. Agent-kit owns `wp_*` routing. A shared classifier would couple all three to one config, which:
 
 - Forces RTK's rules to ship through agent-kit (or vice versa), breaking independent release cadence.
 - Makes RTK's command-set (38 verbs, [`rtk help`](/opt/homebrew/bin/rtk) output: `ls`, `tree`, `git`, `gh`, `aws`, `psql`, `pnpm`, etc.) discoverable inside agent-kit, which then has to track it. That's the wrong direction of coupling.
 - Conflicts with the non-goal *"Expanding RTK beyond the ownership documented in repo/agent-kit guidance."*
 
-The blueprint's preferred mechanism is audit-based: **`ak audit hook-surface`** (Task 1.2) verifies that active hook surfaces *don't overlap unexpectedly* and runs as a CI gate. The audit needs to know the lanes; it does not need a shared classifier.
+The blueprint's preferred mechanism is audit-based: **`wp audit hook-surface`** (Task 1.2) verifies that active hook surfaces *don't overlap unexpectedly* and runs as a CI gate. The audit needs to know the lanes; it does not need a shared classifier.
 
 ## State of the art — May 2026 — for this exact stack
 
@@ -127,7 +127,7 @@ Distilled from the verified facts, the blueprint, and best-practice search:
 
 1. **Lanes, not chains.** Each runtime extension owns a lane. Composition on shared events is expected; collisions on owner+command identity are drift. ([gstack-routing.md](../../catalog/agent/rules/gstack-routing.md) + cross-runtime-hook-surface-alignment).
 2. **One rewriter per matcher.** Anthropic's spec makes parallel `updatedInput` non-deterministic. Treat it as a structural invariant: `Bash` has one rewriter (either RTK *or* context-mode, never both simultaneously rewriting).
-3. **Audit, don't coordinate.** Verify ownership boundaries in CI via `ak audit hook-surface` using owner+command identity (Task 2.2). Don't try to coordinate at runtime — the runtime gives you no levers.
+3. **Audit, don't coordinate.** Verify ownership boundaries in CI via `wp audit hook-surface` using owner+command identity (Task 2.2). Don't try to coordinate at runtime — the runtime gives you no levers.
 4. **Compose at the channel boundary, not the config layer.** When `ctx_execute(shell, code)` masks a command from RTK, fix it inside `ctx_execute`'s code field, not by reordering hooks.
 5. **Re-inject on `compact`.** SessionStart blocks vanish after auto-compaction unless the hook matcher includes `compact`. agent-kit already does this; context-mode's `hooks.json` should be checked for the same. (Confirmed by agent-kit's [`sessionstart/index.ts`](../../src/hooks/sessionstart/index.ts) F3 fact-check comment.)
 6. **Output cap is 10K chars.** SessionStart `additionalContext` exceeding 10K gets file-spilled. Keep each owner's block under 3K to leave headroom for two more owners without spillover. (Verified from hooks reference.)
@@ -142,7 +142,7 @@ Ordered by ROI, each aligned to the existing blueprint:
 
 The blueprint already costs `M` total complexity (S + M + S phases). Phases 1 and 3 are `S`. Phase 2 fixes the actual upstream generators in `@webpresso/agent-kit`. Doing this **is** the answer to *"how do we make them play along better."* My prior suggestions are partial inventions of work the blueprint already specifies.
 
-### 2. Add the `Bash`-matcher single-rewriter invariant to `ak audit hook-surface`
+### 2. Add the `Bash`-matcher single-rewriter invariant to `wp audit hook-surface`
 
 The blueprint's Task 1.2 (consumer-side hook-surface audit) and Task 2.2 (owner/command duplicate detection) should explicitly assert: **at most one hook with `updatedInput`-capable rewriting per matcher**. This catches the RTK+context-mode `Bash` collision today and prevents future regressions. (Mechanism: parse plugin hook manifests + settings.json; flag if more than one entry in the same matcher returns a non-noop `updatedInput`.)
 

@@ -139,7 +139,7 @@ export const techDebtFrontmatterSchema = z
       .array(z.string())
       .optional()
       .default(() => []),
-    // Auto-filing: content-hash idempotency key set by `ak tech-debt new --from-audit`
+    // Auto-filing: content-hash idempotency key set by `wp tech-debt new --from-audit`
     auto_filed_hash: z.string().optional(),
   })
   .transform((data) => ({

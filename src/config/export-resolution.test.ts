@@ -128,8 +128,8 @@ describe('webpresso folded package exports', () => {
     expect(packageJson.bin).toMatchObject({
       wp: './src/cli/cli.ts',
       webpresso: './src/cli/cli.ts',
-      ak: './src/cli/cli.ts',
-      'ak-pretool-guard': './src/hooks/pretool-guard/index.ts',
+      wp: './src/cli/cli.ts',
+      'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
       ...docsLintBins,
     })
   })

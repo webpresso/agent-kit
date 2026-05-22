@@ -42,7 +42,7 @@ describe('loadAllowlist', () => {
   let tmpDir: string
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(path.join(tmpdir(), 'ak-allowlist-test-'))
+    tmpDir = mkdtempSync(path.join(tmpdir(), 'wp-allowlist-test-'))
     mkdirSync(path.join(tmpDir, '.agent'), { recursive: true })
   })
 

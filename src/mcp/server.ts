@@ -1,5 +1,5 @@
 /**
- * `ak mcp` stdio server.
+ * `wp mcp` stdio server.
  *
  * Builds an MCP {@link Server} and auto-registers every tool found under
  * `src/mcp/tools/` (or, post-build, `dist/esm/mcp/tools/`). Adding a new tool

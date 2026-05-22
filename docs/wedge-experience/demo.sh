@@ -2,7 +2,7 @@
 # docs/wedge-experience/demo.sh
 #
 # Wedge Experience Demo — shows 3 agent-kit value-adds beyond rulesync alone.
-# Self-contained: works without network access and gracefully degrades if `ak`
+# Self-contained: works without network access and gracefully degrades if `wp`
 # is not globally installed.
 #
 # Usage: bash docs/wedge-experience/demo.sh
@@ -56,17 +56,17 @@ echo "  → last $(( SKILL_SIZE - 8192 )) bytes of guidance never seen by Codex"
 echo ""
 echo "With agent-kit:"
 
-if command -v ak &>/dev/null; then
-  (cd "$DEMO_DIR" && ak audit skill-sizes 2>&1) || true
+if command -v wp &>/dev/null; then
+  (cd "$DEMO_DIR" && wp audit skill-sizes 2>&1) || true
 else
   cat <<'EXPECTED'
-  $ ak audit skill-sizes
+  $ wp audit skill-sizes
   WARN  .agent/skills/oversized-skill/SKILL.md
     compiled size: 16.8KB (Codex budget: 8KB, overage: 8.6KB)
     suggestion: split into oversized-skill/core + oversized-skill/examples
   1 skill over budget (run with --strict to exit 1)
 EXPECTED
-  echo "  [ak not found — showing expected output above]"
+  echo "  [wp not found — showing expected output above]"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -120,7 +120,7 @@ cat "$LOCAL_AGENTS"
 echo ""
 echo "With rulesync alone: emits each source file separately — no merger"
 echo ""
-echo "With ak compile: section-keyed merge (local wins on same heading):"
+echo "With wp compile: section-keyed merge (local wins on same heading):"
 echo "---"
 diff --unified "$BASE_AGENTS" "$MERGED_AGENTS" || true
 echo ""
@@ -139,14 +139,14 @@ echo "rulesync: no further action — drift stays unfiled."
 echo ""
 echo "With agent-kit (dry-run — no files written):"
 
-if command -v ak &>/dev/null; then
-  (cd "$DEMO_DIR" && ak tech-debt new \
+if command -v wp &>/dev/null; then
+  (cd "$DEMO_DIR" && wp tech-debt new \
     --from-audit skill-sizes \
     --severity medium \
     --dry-run 2>&1) || true
 else
   cat <<'EXPECTED'
-  $ ak tech-debt new --from-audit skill-sizes --severity medium --dry-run
+  $ wp tech-debt new --from-audit skill-sizes --severity medium --dry-run
   [dry-run] would create: tech-debt/needs-remediation/m-001-skill-size-oversized-skill.md
   ---
   # m-001 — oversized-skill exceeds Codex 8KB budget
@@ -154,7 +154,7 @@ else
   **Category:** size-budget
   **Severity:** medium
   **Status:** needs-remediation
-  **Filed by:** ak audit skill-sizes (auto)
+  **Filed by:** wp audit skill-sizes (auto)
   **Review cadence:** next sprint
 
   ## Context
@@ -163,11 +163,11 @@ else
 
   ## Remediation
   Split into `oversized-skill/core` (≤8KB) and `oversized-skill/examples` (≤8KB).
-  Run `ak compile` and `ak audit skill-sizes` to verify.
+  Run `wp compile` and `wp audit skill-sizes` to verify.
   ---
   [dry-run] no files written
 EXPECTED
-  echo "  [ak not found — showing expected output above]"
+  echo "  [wp not found — showing expected output above]"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────

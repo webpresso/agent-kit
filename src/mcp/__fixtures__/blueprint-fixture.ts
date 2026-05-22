@@ -86,7 +86,7 @@ ${taskBlocks}`
 export async function buildBlueprintFixture(
   spec: BlueprintFixtureSpec,
 ): Promise<BlueprintFixture> {
-  const dir = mkdtempSync(join(tmpdir(), 'ak-bp-fixture-'))
+  const dir = mkdtempSync(join(tmpdir(), 'wp-bp-fixture-'))
 
   try {
     let repoCommonDir: string | undefined

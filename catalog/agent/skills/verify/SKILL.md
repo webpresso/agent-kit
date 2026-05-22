@@ -14,7 +14,7 @@ argument-hint: '<target> [--full] where target is: package|file|plan-slug|all'
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, Task, TodoWrite
 hooks: 
   Stop:
-    - command: ak audit agents
+    - command: wp audit agents
       timeout: 20
 ---
 
@@ -47,7 +47,7 @@ Not sufficient: "should pass", "looks correct", partial checks, lint-only eviden
 
 Quality commands auto-save logs under `logs/DD-MM-YYYY/HH-MM-SS_*.log` (if your runner supports it). Reuse fresh logs instead of re-running.
 
-> Note: `just <recipe>` commands in this skill assume a [just](https://github.com/casey/just)-based task runner. Substitute your own runner (`make`, `npm run`, `pnpm run`, etc.) where needed. The `ak run` abstraction layer is planned in a later phase.
+> Note: `just <recipe>` commands in this skill assume a [just](https://github.com/casey/just)-based task runner. Substitute your own runner (`make`, `npm run`, `pnpm run`, etc.) where needed. The `wp run` abstraction layer is planned in a later phase.
 
 ---
 
@@ -58,8 +58,8 @@ Quality commands auto-save logs under `logs/DD-MM-YYYY/HH-MM-SS_*.log` (if your 
 3. If target is a blueprint slug:
 
 ```bash
-ak blueprint show <slug>
-ak blueprint audit <slug> --strict
+wp blueprint show <slug>
+wp blueprint audit <slug> --strict
 ```
 
 Record task IDs and acceptance checkboxes that still need proof.
@@ -70,7 +70,7 @@ Run only what applies to the diff:
 
 - Any repo SSOT (schema/config/blueprint) change → your repo's dedicated check
 - Any `docs/**` change → `just docs` (or `just lint-md <paths>` for targeted checks, or your markdown linter)
-- Blueprint slug target → `ak blueprint audit <slug> --strict`
+- Blueprint slug target → `wp blueprint audit <slug> --strict`
 
 Hard stop on any failure.
 
@@ -79,7 +79,7 @@ Hard stop on any failure.
 > Never pass `.md` files to `just test --file` — that command is for TypeScript tests only.
 
 ```bash
-ak blueprint show <slug>
+wp blueprint show <slug>
 just lint-md blueprints/<status>/<slug>/_overview.md
 # Parser/validator tests only when modifying blueprint structure logic:
 # <run your blueprint parser/validator tests>
@@ -115,7 +115,7 @@ Hard stop: any test file mocks a symbol no longer exported by the target package
 
 Canonical check: `/tph --check` for the current diff, or `/tph <path>` scoped. Treat its findings as authoritative. The list below is an additional guardrail.
 
-Weak-assertion ban (also enforced by oxlint `no_weak_assertions`):
+Weak-assertion ban (also enforced by oxlint `no_wewp_assertions`):
 
 ```bash
 rg 'toBeTruthy\(|toBeFalsy\(|expect\(true\)\.toBe\(true\)|expect\(\[\]\)\.toEqual\(\[\]\)' <target>
@@ -402,4 +402,4 @@ After implementation:
 1. Run `/verify <target>`.
 2. Fix hard-stop findings.
 3. Re-run `/verify` until clean.
-4. For blueprint targets: `ak blueprint finalize <slug>`.
+4. For blueprint targets: `wp blueprint finalize <slug>`.

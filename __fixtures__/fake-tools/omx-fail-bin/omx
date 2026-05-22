@@ -1,6 +1,6 @@
 #!/bin/sh
 # Test fixture: omx-fail responds OK to --version (so probe passes) but
-# exits non-zero on `setup`. Lets us live-verify that ak setup --with omx
+# exits non-zero on `setup`. Lets us live-verify that wp setup --with omx
 # returns EXIT_WRITE_FAIL when the chained omx setup itself fails.
 case "$1" in
   --version)

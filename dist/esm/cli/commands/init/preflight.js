@@ -1,5 +1,5 @@
 /**
- * Soft compatibility preflight for `ak setup`.
+ * Soft compatibility preflight for `wp setup`.
  *
  * Checks the 5-point compatibility matrix from docs/is-agent-kit-for-me.md.
  * In non-strict mode: warns and continues. In strict mode: aborts on mismatch.
@@ -29,15 +29,10 @@ function checkTypeScriptWorkspace(repoRoot) {
     }
     return null;
 }
-function checkPnpm() {
-    const result = spawnSync('pnpm', ['--version'], { encoding: 'utf8' });
+function checkVp() {
+    const result = spawnSync('vp', ['--version'], { encoding: 'utf8' });
     if (result.error !== undefined || (result.status !== null && result.status !== 0)) {
-        return 'pnpm not found on PATH — pnpm ≥ 10 required (see docs)';
-    }
-    const version = result.stdout.trim().split('\n')[0] ?? '';
-    const major = parseMajor(version);
-    if (major === null || major < 10) {
-        return `pnpm ${version} detected — pnpm ≥ 10 required (see docs)`;
+        return 'vp not found on PATH — install Vite+ and use vp as the package-command facade (see docs)';
     }
     return null;
 }
@@ -53,13 +48,13 @@ function checkBlueprintLifecycle(repoRoot) {
     const blueprintRoot = resolveBlueprintRoot(repoRoot);
     if (!existsSync(blueprintRoot)) {
         const displayPath = relative(repoRoot, blueprintRoot).replaceAll('\\', '/') || 'blueprints';
-        return `${displayPath}/ directory not found — blueprint lifecycle required (run \`ak setup --with base-kit\` to scaffold it)`;
+        return `${displayPath}/ directory not found — blueprint lifecycle required (run \`wp setup --with base-kit\` to scaffold it)`;
     }
     return null;
 }
 function checkLoreCommitProtocol(repoRoot) {
     if (!existsSync(join(repoRoot, '.agent'))) {
-        return '.agent/ directory not found — lore commit protocol required (run `ak setup --with lore-commits` to scaffold it)';
+        return '.agent/ directory not found — lore commit protocol required (run `wp setup --with lore-commits` to scaffold it)';
     }
     return null;
 }
@@ -73,7 +68,7 @@ function checkLoreCommitProtocol(repoRoot) {
 export async function runPreflight(repoRoot, strict) {
     const checks = [
         () => checkTypeScriptWorkspace(repoRoot),
-        () => checkPnpm(),
+        () => checkVp(),
         () => checkWorkersOrVite(repoRoot),
         () => checkBlueprintLifecycle(repoRoot),
         () => checkLoreCommitProtocol(repoRoot),

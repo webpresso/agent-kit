@@ -3,12 +3,12 @@ import { normalize } from 'node:path'
 import type { CommandHookMetadata } from '#codex/app-server/types.js'
 
 export const KNOWN_AGENT_KIT_CODEX_BINS = [
-  'ak-sessionstart-routing',
-  'ak-check-dev-link',
-  'ak-pretool-guard',
-  'ak-post-tool',
-  'ak-guard-switch',
-  'ak-stop-qa',
+  'wp-sessionstart-routing',
+  'wp-check-dev-link',
+  'wp-pretool-guard',
+  'wp-post-tool',
+  'wp-guard-switch',
+  'wp-stop-qa',
 ] as const
 
 type KnownAgentKitCodexBin = (typeof KNOWN_AGENT_KIT_CODEX_BINS)[number]

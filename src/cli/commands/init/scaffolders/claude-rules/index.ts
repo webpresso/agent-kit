@@ -112,7 +112,7 @@ function resolveCurrentPackageRoot(): string {
     if (parent === dir) break
     dir = parent
   }
-  throw new Error('ak init: could not locate the agent-kit package root for claude-rules fallback.')
+  throw new Error('wp init: could not locate the agent-kit package root for claude-rules fallback.')
 }
 
 export function scaffoldClaudeRules(input: ScaffoldClaudeRulesInput): MergeResult[] {

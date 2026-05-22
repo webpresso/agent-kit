@@ -114,7 +114,7 @@ async function fetchPlatformTemplateToTmpFile(url: string): Promise<string> {
     throw new Error(`Failed to fetch platform template from ${url}: HTTP ${response.status}`)
   }
   const content = await response.text()
-  const tmpDir = path.join(tmpdir(), 'ak-templates')
+  const tmpDir = path.join(tmpdir(), 'wp-templates')
   mkdirSync(tmpDir, { recursive: true })
   const tmpFile = path.join(tmpDir, `${randomUUID()}.md`)
   writeFileSync(tmpFile, content, 'utf8')
@@ -220,7 +220,7 @@ export async function executeBlueprintSubcommand(
     }
     case 'list': {
       if (args.length > 1) {
-        throw new Error('Usage: ak blueprint list [status]')
+        throw new Error('Usage: wp blueprint list [status]')
       }
 
       const summaries = await deps.listBlueprints({
@@ -234,7 +234,7 @@ export async function executeBlueprintSubcommand(
       return
     }
     case 'new': {
-      // ak blueprint new --list-templates
+      // wp blueprint new --list-templates
       if (options.listTemplates) {
         const platformTemplates = await fetchPlatformTemplates()
         const localTemplates = listTemplates(options.templatesDir)
@@ -249,10 +249,10 @@ export async function executeBlueprintSubcommand(
 
       const goal = args.join(' ').trim()
       if (!goal) {
-        throw new Error('Usage: ak blueprint new "<goal>" --complexity <XS|S|M|L|XL>')
+        throw new Error('Usage: wp blueprint new "<goal>" --complexity <XS|S|M|L|XL>')
       }
 
-      // ak blueprint new --template <name> "<goal>"
+      // wp blueprint new --template <name> "<goal>"
       const templateName = options.template
       if (templateName !== undefined) {
         const platformTemplates = await fetchPlatformTemplates()
@@ -298,7 +298,7 @@ export async function executeBlueprintSubcommand(
     case 'show': {
       const slug = args[0]
       if (!slug) {
-        throw new Error('Usage: ak blueprint show <slug>')
+        throw new Error('Usage: wp blueprint show <slug>')
       }
 
       const result = await deps.showBlueprint(slug, options)
@@ -311,7 +311,7 @@ export async function executeBlueprintSubcommand(
     case 'exec': {
       const subaction = args[0]
       if (!subaction) {
-        throw new Error('Usage: ak blueprint exec <slug>')
+        throw new Error('Usage: wp blueprint exec <slug>')
       }
 
       const isControlAction = ['status', 'resume', 'stop', 'logs'].includes(subaction)
@@ -319,8 +319,8 @@ export async function executeBlueprintSubcommand(
       if (!slug) {
         throw new Error(
           isControlAction
-            ? `Usage: ak blueprint exec ${subaction} <slug>`
-            : 'Usage: ak blueprint exec <slug>',
+            ? `Usage: wp blueprint exec ${subaction} <slug>`
+            : 'Usage: wp blueprint exec <slug>',
         )
       }
 
@@ -340,13 +340,13 @@ export async function executeBlueprintSubcommand(
       return
     }
     case 'control': {
-      // `ak blueprint control <status|resume|stop> <slug>` — explicit alias
+      // `wp blueprint control <status|resume|stop> <slug>` — explicit alias
       // for common exec-control actions. Kept alongside `exec <action> <slug>`
       // for discoverability.
       const action = args[0]
       const slug = args[1]
       if (!action || !slug) {
-        throw new Error('Usage: ak blueprint control <status|resume|stop> <slug>')
+        throw new Error('Usage: wp blueprint control <status|resume|stop> <slug>')
       }
       if (!['status', 'resume', 'stop'].includes(action)) {
         throw new Error(
@@ -367,7 +367,7 @@ export async function executeBlueprintSubcommand(
     case 'logs': {
       const slug = args[0]
       if (!slug) {
-        throw new Error('Usage: ak blueprint logs <slug>')
+        throw new Error('Usage: wp blueprint logs <slug>')
       }
       const result = await deps.readBlueprintExecutionLogs(slug, options)
       deps.printBlueprintOutput(
@@ -380,7 +380,7 @@ export async function executeBlueprintSubcommand(
       const slug = args[0]
       const status = args[1]
       if (!slug || !status) {
-        throw new Error('Usage: ak blueprint move <slug> <status>')
+        throw new Error('Usage: wp blueprint move <slug> <status>')
       }
 
       const result = await deps.moveBlueprint(slug, status, options)
@@ -390,7 +390,7 @@ export async function executeBlueprintSubcommand(
     case 'start': {
       const slug = args[0]
       if (!slug) {
-        throw new Error('Usage: ak blueprint start <slug>')
+        throw new Error('Usage: wp blueprint start <slug>')
       }
       const result = await deps.startBlueprint(slug, options)
       deps.printBlueprintOutput(options.json ? result : result.message, options.json)
@@ -399,7 +399,7 @@ export async function executeBlueprintSubcommand(
     case 'park': {
       const slug = args[0]
       if (!slug) {
-        throw new Error('Usage: ak blueprint park <slug>')
+        throw new Error('Usage: wp blueprint park <slug>')
       }
       const result = await deps.parkBlueprint(slug, options)
       deps.printBlueprintOutput(options.json ? result : result.message, options.json)
@@ -408,7 +408,7 @@ export async function executeBlueprintSubcommand(
     case 'finalize': {
       const slug = args[0]
       if (!slug) {
-        throw new Error('Usage: ak blueprint finalize <slug>')
+        throw new Error('Usage: wp blueprint finalize <slug>')
       }
       // Use the DB-backed mutation finalizer if available; fall through to lifecycle engine
       const result = await deps.finalizeBlueprintBySlug(slug, options)
@@ -416,11 +416,11 @@ export async function executeBlueprintSubcommand(
       return
     }
     case 'promote': {
-      // ak blueprint promote <slug> <to-state>
+      // wp blueprint promote <slug> <to-state>
       const slug = args[0]
       const toState = args[1]
       if (!slug || !toState) {
-        throw new Error('Usage: ak blueprint promote <slug> <planned|in-progress|completed|parked>')
+        throw new Error('Usage: wp blueprint promote <slug> <planned|in-progress|completed|parked>')
       }
       const result = await deps.promoteBlueprintToState(slug, toState, options)
       deps.printBlueprintOutput(options.json ? result : result.message, options.json)
@@ -440,14 +440,14 @@ export async function executeBlueprintSubcommand(
     case 'task': {
       const first = args[0]
 
-      // Handle: ak blueprint task advance <slug> <taskId> --to <status>
+      // Handle: wp blueprint task advance <slug> <taskId> --to <status>
       if (first === 'advance') {
         const slug = args[1]
         const taskId = args[2]
         const toStatus = options.to
         if (!slug || !taskId || !toStatus) {
           throw new Error(
-            'Usage: ak blueprint task advance <slug> <task-id> --to <todo|in-progress|blocked|done|dropped>',
+            'Usage: wp blueprint task advance <slug> <task-id> --to <todo|in-progress|blocked|done|dropped>',
           )
         }
         const result = await deps.advanceBlueprintTask(slug, taskId, toStatus, options)
@@ -456,14 +456,14 @@ export async function executeBlueprintSubcommand(
       }
 
       // Two legacy usage forms:
-      //   ak blueprint task <action> <slug> <taskId>               (wp-compatible)
-      //   ak blueprint task <slug> <taskId> <action> [--reason X]  (ak-native, per spec)
+      //   wp blueprint task <action> <slug> <taskId>               (wp-compatible)
+      //   wp blueprint task <slug> <taskId> <action> [--reason X]  (wp-native, per spec)
       const second = args[1]
       const third = args[2]
       if (!first || !second || !third) {
         throw new Error(
-          'Usage: ak blueprint task advance <slug> <task-id> --to <status>\n' +
-            '       ak blueprint task <slug> <taskId> <start|complete|unblock|block --reason <x>>',
+          'Usage: wp blueprint task advance <slug> <task-id> --to <status>\n' +
+            '       wp blueprint task <slug> <taskId> <start|complete|unblock|block --reason <x>>',
         )
       }
       const ACTIONS = ['start', 'block', 'unblock', 'complete'] as const
@@ -512,7 +512,7 @@ export async function executeBlueprintSubcommand(
       const format = options['format'] as string | undefined
       const slug = args[0]
       if (!format || !slug) {
-        throw new Error('Usage: ak blueprint export --format spec-kit <slug>')
+        throw new Error('Usage: wp blueprint export --format spec-kit <slug>')
       }
       if (format !== 'spec-kit') {
         throw new Error(`Unknown export format: ${format}. Supported formats: spec-kit`)

@@ -10,15 +10,15 @@ export interface TthwPayload {
 }
 
 export function isTelemetryEnabled(env: Record<string, string | undefined>): boolean {
-  if (env['AK_TELEMETRY'] === '0') return false
-  if (env['AK_TELEMETRY'] === '1') return true
-  if (env['AK_INTERNAL'] === '1') return true
+  if (env['WP_TELEMETRY'] === '0') return false
+  if (env['WP_TELEMETRY'] === '1') return true
+  if (env['WP_INTERNAL'] === '1') return true
   return false
 }
 
 export async function reportTthw(payload: TthwPayload): Promise<void> {
-  if (process.env['AK_TELEMETRY_DEBUG'] === '1') {
-    console.error('[ak telemetry]', JSON.stringify(payload))
+  if (process.env['WP_TELEMETRY_DEBUG'] === '1') {
+    console.error('[wp telemetry]', JSON.stringify(payload))
   }
   try {
     const controller = new AbortController()

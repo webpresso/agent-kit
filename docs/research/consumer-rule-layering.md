@@ -5,7 +5,7 @@ date: 2026-05-06
 last_updated: '2026-05-06'
 audience: agent-kit maintainers
 related:
-  - webpresso/monorepo/package.json (postinstall: ak setup --overwrite)
+  - webpresso/monorepo/package.json (postinstall: wp setup --overwrite)
   - webpresso/agent-kit/src/cli/commands/init/merge.ts
   - webpresso/agent-kit/catalog/agent/rules/
 ---
@@ -14,13 +14,13 @@ related:
 
 ## Problem
 
-`ak setup` ships a canonical bundle of rules, skills, commands, hooks, and
+`wp setup` ships a canonical bundle of rules, skills, commands, hooks, and
 templates from `agent-kit/catalog/`. Consumer repos (monorepo, ingest-lens,
 public packages) need:
 
 1. **Canonical files stay canonical.** Local edits to managed files
    (`AGENTS.md`, `.agent/rules/*.md`, `.claude/settings.json`,
-   `.codex/hooks.json`, `docs/templates/*`) must not survive across `ak setup`
+   `.codex/hooks.json`, `docs/templates/*`) must not survive across `wp setup`
    runs. Agent-kit is the single source of truth.
 2. **Consumer repos still need to add their own rules.** Each repo has rules
    that the catalog cannot ship — repo-specific architecture, secret-handling
@@ -122,16 +122,16 @@ Agent-kit is missing #1 and #2 for everything except `.claude/settings.json`
 
 Split every managed surface into a **canonical layer** owned by agent-kit and
 a **consumer layer** owned by the repo. Both are read by agents; only the
-canonical layer is overwritten by `ak setup`.
+canonical layer is overwritten by `wp setup`.
 
 ```
 .agent/
-  rules/                    # canonical — written by ak setup, --overwrite safe
+  rules/                    # canonical — written by wp setup, --overwrite safe
     agent-guide.md
     cmd-execution.md
     blueprint-scoping.md
     ...
-  rules.local/              # consumer-owned — never touched by ak setup
+  rules.local/              # consumer-owned — never touched by wp setup
     bucket-boundaries.md
     secrets-on-disk.md
     .keep
@@ -162,9 +162,9 @@ an aggregator that includes both layers in deterministic order. Example:
 
 - `AGENTS.md` (canonical sections from catalog) ends with:
   ```markdown
-  <!-- ak:include-overrides .agent/agents.local.md -->
+  <!-- wp:include-overrides .agent/agents.local.md -->
   ```
-  `ak setup` re-renders `AGENTS.md` from the catalog *plus* whatever is in
+  `wp setup` re-renders `AGENTS.md` from the catalog *plus* whatever is in
   `.agent/agents.local.md`. The local file is never overwritten; the
   generated `AGENTS.md` is.
 
@@ -176,13 +176,13 @@ an aggregator that includes both layers in deterministic order. Example:
 
 - `.codex/hooks.json`: same approach. Canonical hooks in
   `.codex/hooks.canonical.json`; consumer hooks in `.codex/hooks.local.json`;
-  `ak setup` regenerates `.codex/hooks.json` as the merged output.
+  `wp setup` regenerates `.codex/hooks.json` as the merged output.
 
 ### Symlinks where possible
 
 For per-IDE surfaces (`.cursor/commands/`, `.gemini/commands/`,
 `.windsurf/commands/`), continue the existing symlink approach
-(`ak symlink sync`). Symlinks make drift physically impossible — editing the
+(`wp symlink sync`). Symlinks make drift physically impossible — editing the
 file edits the source.
 
 For canonical files outside the per-IDE mirror, evaluate symlinking into
@@ -192,7 +192,7 @@ auto-updates with the package. Cons: requires consumers to install via npm
 
 ### Banner + audit, not just policy
 
-Every canonical file emitted by `ak setup` should carry a header:
+Every canonical file emitted by `wp setup` should carry a header:
 
 ```markdown
 <!--
@@ -203,7 +203,7 @@ Every canonical file emitted by `ak setup` should carry a header:
 -->
 ```
 
-Reinforce with `ak audit managed-file-drift`: CI gate that hashes each
+Reinforce with `wp audit managed-file-drift`: CI gate that hashes each
 canonical file against the catalog and fails if they diverge. With
 `--overwrite` on postinstall, drift is rare anyway, but the audit makes the
 expectation explicit and catches "I edited it during a debug session and
@@ -212,14 +212,14 @@ forgot."
 ### CLI surface additions
 
 ```bash
-ak rules add <name>                   # scaffolds .agent/rules.local/<name>.md with frontmatter
-ak rules list                         # lists canonical + local rules with source
-ak audit managed-file-drift           # CI gate
-ak audit managed-file-drift --fix     # rewrites canonical files from catalog (alias for ak setup --overwrite scoped to managed files)
+wp rules add <name>                   # scaffolds .agent/rules.local/<name>.md with frontmatter
+wp rules list                         # lists canonical + local rules with source
+wp audit managed-file-drift           # CI gate
+wp audit managed-file-drift --fix     # rewrites canonical files from catalog (alias for wp setup --overwrite scoped to managed files)
 ```
 
-`ak rules add` is the discoverability primitive. A consumer who wants to add
-a rule runs `ak rules add bucket-boundaries`, gets a templated stub in
+`wp rules add` is the discoverability primitive. A consumer who wants to add
+a rule runs `wp rules add bucket-boundaries`, gets a templated stub in
 `.agent/rules.local/bucket-boundaries.md`, edits it, commits it. The path is
 gitignored-aware (`.agent/` is currently gitignored in monorepo; the `.local`
 subdirs would need to be excepted via `!.agent/rules.local/`).
@@ -240,14 +240,14 @@ For union surfaces (rules / skills / commands / templates), consumers can
 also **shadow** a canonical entry by name: `.agent/rules.local/agent-guide.md`
 takes precedence over `.agent/rules/agent-guide.md`. Discouraged but
 supported as the escape hatch for the rare "we genuinely cannot live with
-the canonical version" case. `ak audit shadowed-rules` lists shadows so they
+the canonical version" case. `wp audit shadowed-rules` lists shadows so they
 stay visible at review time.
 
 ## Migration path
 
 The current state:
 
-- `monorepo/package.json#postinstall` runs `ak setup --yes --overwrite`.
+- `monorepo/package.json#postinstall` runs `wp setup --yes --overwrite`.
 - Local edits to managed files are now silently clobbered.
 - Consumers have no clean place to add repo-specific rules.
 
@@ -255,16 +255,16 @@ Phased rollout:
 
 1. **Phase 1 — agent-kit ships the layering mechanism.** Add `.local`
    directory loading to the rules/skills/commands surfaces. Add the
-   `ak:include-overrides` directive to `AGENTS.md` template. Add the
+   `wp:include-overrides` directive to `AGENTS.md` template. Add the
    `.canonical.json` + `.local.json` split for `.claude/settings.json` and
    `.codex/hooks.json`. Document merge semantics.
 2. **Phase 2 — consumers migrate edits.** For each consumer (monorepo,
    ingest-lens), grep for diffs between catalog and consumer-installed files.
-   Move each delta into `.local`. Run `ak audit managed-file-drift` —
+   Move each delta into `.local`. Run `wp audit managed-file-drift` —
    should be clean.
 3. **Phase 3 — banner + audit enforcement.** Ship the banner header and
-   `ak audit managed-file-drift` CI gate. Drift now fails CI.
-4. **Phase 4 — `ak rules add` scaffolding.** Discoverability primitive.
+   `wp audit managed-file-drift` CI gate. Drift now fails CI.
+4. **Phase 4 — `wp rules add` scaffolding.** Discoverability primitive.
    Update CLAUDE.md / agent-kit README to document the layering.
 
 Phase 1 is a single agent-kit minor version bump. Phases 2-4 are
@@ -278,10 +278,10 @@ per-consumer rollouts that don't block agent-kit releases.
   Renovate, Claude Code. Consumers familiar with any of these read the
   layout immediately.
 - Eliminates the silent-clobber surprise: consumer rules live in a separate
-  directory and are physically untouched by `ak setup`.
-- Discoverability via `ak rules add` removes the "where do I put this?"
+  directory and are physically untouched by `wp setup`.
+- Discoverability via `wp rules add` removes the "where do I put this?"
   question that drives in-place edits.
-- `ak audit managed-file-drift` makes the policy machine-checkable.
+- `wp audit managed-file-drift` makes the policy machine-checkable.
 
 **Where it has cost:**
 
@@ -294,7 +294,7 @@ per-consumer rollouts that don't block agent-kit releases.
   parsed during setup.
 - Shadowing (consumer overriding a canonical rule by name) is a foot-gun.
   Audit makes it visible but does not prevent it. Could be locked behind a
-  `--allow-shadow` flag in `ak rules add`.
+  `--allow-shadow` flag in `wp rules add`.
 - The split `.claude/settings.canonical.json` + `.claude/settings.local.json`
   is one extra file to track per consumer. Native Claude Code layering
   resolves it transparently at runtime, but the file structure is

@@ -26,7 +26,7 @@ export interface AgentkitConfig {
     blueprintsDir?: string;
     lastInit?: string;
     /** True when agent-kit is installed globally rather than as a devDep.
-     *  Skips the devDependency presence check in `ak audit guardrails`. */
+     *  Skips the devDependency presence check in `wp audit guardrails`. */
     globalInstall?: boolean;
 }
 export declare function defaultConfig(): AgentkitConfig;

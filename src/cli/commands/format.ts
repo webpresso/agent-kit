@@ -6,8 +6,8 @@ export const FORMAT_COMMAND_HELP = [
   'Format the workspace via `oxfmt`. Writes in place by default.',
   '',
   'Examples:',
-  '  ak format            # rewrite files in place',
-  '  ak format --check    # exit 1 on any unformatted file (no writes)',
+  '  wp format            # rewrite files in place',
+  '  wp format --check    # exit 1 on any unformatted file (no writes)',
 ].join('\n')
 
 export function registerFormatCommand(cli: CAC): void {

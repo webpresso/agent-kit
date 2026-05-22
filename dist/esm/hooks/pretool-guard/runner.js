@@ -2,7 +2,6 @@
 import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { isGuardEnabled } from '#hooks/guard-switch/state';
-import { isMcpReady } from '#hooks/shared/mcp-sentinel';
 import { readStdinJson, suppressStderr } from '#hooks/shared/hook-bootstrap';
 import { getCommand, getFilePath, isBashInput, parseToolInput } from '#hooks/shared/types';
 import { logRun } from './logger.js';
@@ -94,7 +93,7 @@ function writeDenyDecision(permissionDecisionReason) {
         },
     }));
 }
-export function processValidation(inputJson, mcpReadyFn = isMcpReady) {
+export function processValidation(inputJson) {
     if (!isGuardEnabled()) {
         console.log('{}');
         process.exit(0);
@@ -104,8 +103,8 @@ export function processValidation(inputJson, mcpReadyFn = isMcpReady) {
     if (command) {
         const decision = routeCommand(command);
         if (decision !== null) {
-            if (decision.action.action === 'deny' && mcpReadyFn()) {
-                // Phase 1: Dev-workflow routing — only when MCP ready
+            if (decision.action.action === 'deny') {
+                // Phase 1: Dev-workflow routing — always authoritative (MCP-first)
                 writeDenyDecision(decision.action.guidance);
                 process.exit(0);
             }

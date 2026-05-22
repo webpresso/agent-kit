@@ -8,7 +8,7 @@
  * Tier-3 skill selection — no new prompt-library dependency.
  *
  * Every answer is optional. Skipped fields fall back to the template's
- * prose stubs so the audit (`ak audit vision`) still passes minimally.
+ * prose stubs so the audit (`wp audit vision`) still passes minimally.
  */
 import { createInterface } from 'node:readline/promises';
 /**

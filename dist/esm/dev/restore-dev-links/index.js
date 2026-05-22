@@ -12,7 +12,7 @@
  * this into their postinstall script:
  *
  *   "scripts": {
- *     "postinstall": "ak-restore-dev-links && <other postinstall steps>"
+ *     "postinstall": "wp-restore-dev-links && <other postinstall steps>"
  *   }
  *
  * Reasoning for postinstall (not pnpm.overrides + link:): pnpm bakes overrides
@@ -40,7 +40,7 @@ export function restoreDevLinks(options = {}) {
     const target = join(cwd, 'node_modules', state.package);
     const source = state.linkedFrom;
     if (!existsSync(join(source, 'package.json'))) {
-        stderr.write(`ak-restore-dev-links: state file points at ${source} but no package.json found there.\n` +
+        stderr.write(`wp-restore-dev-links: state file points at ${source} but no package.json found there.\n` +
             `  → Move the agent-kit checkout back, or delete ${STATE_FILE_RELATIVE_PATH} to opt out.\n`);
         return {
             exitCode: 1,
@@ -49,11 +49,11 @@ export function restoreDevLinks(options = {}) {
     }
     const outcome = ensureSymlink(target, source);
     if (outcome.kind === 'already-linked') {
-        stdout.write(`ak-restore-dev-links: ${state.package} → ${source} (already linked)\n`);
+        stdout.write(`wp-restore-dev-links: ${state.package} → ${source} (already linked)\n`);
     }
     else {
         const previousLabel = outcome.previous ?? '<store snapshot>';
-        stdout.write(`ak-restore-dev-links: ${state.package} → ${source} (was ${previousLabel})\n`);
+        stdout.write(`wp-restore-dev-links: ${state.package} → ${source} (was ${previousLabel})\n`);
     }
     return { exitCode: 0, outcomes: [outcome] };
 }

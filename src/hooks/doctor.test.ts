@@ -18,7 +18,7 @@ const mockStatSync = vi.mocked(statSync)
 describe('hooks/doctor', () => {
   beforeEach(() => {
     vi.resetAllMocks()
-    vi.stubEnv('AK_DOCTOR_MCP_TIMEOUT_MS', '1000')
+    vi.stubEnv('WP_DOCTOR_MCP_TIMEOUT_MS', '1000')
   })
   afterEach(() => {
     vi.unstubAllEnvs()
@@ -133,12 +133,12 @@ describe('hooks/doctor', () => {
         if (String(path) === pkgJson) {
           return JSON.stringify({
             bin: {
-              'ak-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'ak-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
-              'ak-stop-qa': './src/hooks/stop/qa-changed-files.ts',
-              'ak-guard-switch': './src/hooks/guard-switch/index.ts',
-              'ak-sessionstart-routing': './src/hooks/sessionstart/index.ts',
-              'ak-test-quality-check': './src/hooks/test-quality-check.ts',
+              'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
+              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
+              'wp-guard-switch': './src/hooks/guard-switch/index.ts',
+              'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-test-quality-check': './src/hooks/test-quality-check.ts',
             },
           })
         }
@@ -206,12 +206,12 @@ describe('hooks/doctor', () => {
         if (String(path) === pkgJson) {
           return JSON.stringify({
             bin: {
-              'ak-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'ak-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
-              'ak-stop-qa': './src/hooks/stop/qa-changed-files.ts',
-              'ak-guard-switch': './src/hooks/guard-switch/index.ts',
-              'ak-sessionstart-routing': './src/hooks/sessionstart/index.ts',
-              'ak-test-quality-check': './src/hooks/test-quality-check.ts',
+              'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
+              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
+              'wp-guard-switch': './src/hooks/guard-switch/index.ts',
+              'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-test-quality-check': './src/hooks/test-quality-check.ts',
             },
           })
         }
@@ -268,12 +268,12 @@ describe('hooks/doctor', () => {
         if (String(path) === pkgJson) {
           return JSON.stringify({
             bin: {
-              'ak-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'ak-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
-              'ak-stop-qa': './src/hooks/stop/qa-changed-files.ts',
-              'ak-guard-switch': './src/hooks/guard-switch/index.ts',
-              'ak-sessionstart-routing': './src/hooks/sessionstart/index.ts',
-              'ak-test-quality-check': './src/hooks/test-quality-check.ts',
+              'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
+              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
+              'wp-guard-switch': './src/hooks/guard-switch/index.ts',
+              'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-test-quality-check': './src/hooks/test-quality-check.ts',
             },
           })
         }
@@ -308,7 +308,7 @@ describe('hooks/doctor', () => {
                 )
                 child.stdout.emit(
                   'data',
-                  Buffer.from('{"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"ak_test"}]}}\n'),
+                  Buffer.from('{"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"wp_test"}]}}\n'),
                 )
               })
             }
@@ -369,12 +369,12 @@ describe('hooks/doctor', () => {
         if (String(path) === pkgJson) {
           return JSON.stringify({
             bin: {
-              'ak-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'ak-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
-              'ak-stop-qa': './src/hooks/stop/qa-changed-files.ts',
-              'ak-guard-switch': './src/hooks/guard-switch/index.ts',
-              'ak-sessionstart-routing': './src/hooks/sessionstart/index.ts',
-              'ak-test-quality-check': './src/hooks/test-quality-check.ts',
+              'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
+              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
+              'wp-guard-switch': './src/hooks/guard-switch/index.ts',
+              'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-test-quality-check': './src/hooks/test-quality-check.ts',
             },
           })
         }
@@ -445,12 +445,12 @@ describe('hooks/doctor', () => {
         if (String(path) === pkgJson) {
           return JSON.stringify({
             bin: {
-              'ak-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'ak-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
-              'ak-stop-qa': './src/hooks/stop/qa-changed-files.ts',
-              'ak-guard-switch': './src/hooks/guard-switch/index.ts',
-              'ak-sessionstart-routing': './src/hooks/sessionstart/index.ts',
-              'ak-test-quality-check': './src/hooks/test-quality-check.ts',
+              'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
+              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
+              'wp-guard-switch': './src/hooks/guard-switch/index.ts',
+              'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-test-quality-check': './src/hooks/test-quality-check.ts',
             },
           })
         }
@@ -518,12 +518,12 @@ describe('hooks/doctor', () => {
         if (String(path) === pkgJson) {
           return JSON.stringify({
             bin: {
-              'ak-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'ak-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
-              'ak-stop-qa': './src/hooks/stop/qa-changed-files.ts',
-              'ak-guard-switch': './src/hooks/guard-switch/index.ts',
-              'ak-sessionstart-routing': './src/hooks/sessionstart/index.ts',
-              'ak-test-quality-check': './src/hooks/test-quality-check.ts',
+              'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
+              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
+              'wp-guard-switch': './src/hooks/guard-switch/index.ts',
+              'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-test-quality-check': './src/hooks/test-quality-check.ts',
             },
           })
         }
@@ -562,12 +562,12 @@ describe('hooks/doctor', () => {
         if (String(path) === pkgJson) {
           return JSON.stringify({
             bin: {
-              'ak-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'ak-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
-              'ak-stop-qa': './src/hooks/stop/qa-changed-files.ts',
-              'ak-guard-switch': './src/hooks/guard-switch/index.ts',
-              'ak-sessionstart-routing': './src/hooks/sessionstart/index.ts',
-              'ak-test-quality-check': './src/hooks/test-quality-check.ts',
+              'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
+              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
+              'wp-guard-switch': './src/hooks/guard-switch/index.ts',
+              'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-test-quality-check': './src/hooks/test-quality-check.ts',
             },
           })
         }
@@ -608,7 +608,7 @@ describe('hooks/doctor', () => {
         return child as unknown as ReturnType<typeof spawn>
       })
 
-      vi.stubEnv('AK_RUN_HOST_SMOKE', '1')
+      vi.stubEnv('WP_RUN_HOST_SMOKE', '1')
       vi.stubGlobal('process', fakeProcess({ cwd: () => repoRoot }))
 
       const { runHooksDoctor } = await import('#hooks/doctor')
@@ -640,12 +640,12 @@ describe('hooks/doctor', () => {
         if (String(path) === pkgJson) {
           return JSON.stringify({
             bin: {
-              'ak-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'ak-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
-              'ak-stop-qa': './src/hooks/stop/qa-changed-files.ts',
-              'ak-guard-switch': './src/hooks/guard-switch/index.ts',
-              'ak-sessionstart-routing': './src/hooks/sessionstart/index.ts',
-              'ak-test-quality-check': './src/hooks/test-quality-check.ts',
+              'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
+              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
+              'wp-guard-switch': './src/hooks/guard-switch/index.ts',
+              'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-test-quality-check': './src/hooks/test-quality-check.ts',
             },
           })
         }
@@ -682,7 +682,7 @@ describe('hooks/doctor', () => {
         return child as unknown as ReturnType<typeof spawn>
       })
 
-      vi.stubEnv('AK_RUN_HOST_SMOKE', '1')
+      vi.stubEnv('WP_RUN_HOST_SMOKE', '1')
       vi.stubGlobal('process', fakeProcess({ cwd: () => repoRoot }))
 
       const { runHooksDoctor } = await import('#hooks/doctor')

@@ -18,7 +18,7 @@ afterEach(async () => {
 })
 
 async function createDist() {
-  const root = await mkdtemp(path.join(tmpdir(), 'ak-bundle-budget-'))
+  const root = await mkdtemp(path.join(tmpdir(), 'wp-bundle-budget-'))
   tempDirs.push(root)
   mkdirSync(path.join(root, 'assets'))
   writeFileSync(

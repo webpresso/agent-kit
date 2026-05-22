@@ -11,7 +11,7 @@ export async function emitManifest(opts) {
     const pluginDir = join(opts.outDir, '.claude-plugin');
     mkdirSync(pluginDir, { recursive: true });
     const plugin = {
-        _generated: 'by agent-kit ak compile — do not edit manually',
+        _generated: 'by agent-kit wp compile — do not edit manually',
         name: '@webpresso/agent-kit',
         version: opts.version,
         description: 'Agent-kit: blueprint lifecycle, skill compiler, audits for Claude Code',
@@ -21,7 +21,7 @@ export async function emitManifest(opts) {
     };
     writeAtomic(join(pluginDir, 'plugin.json'), JSON.stringify(plugin, null, 2));
     const marketplace = {
-        _generated: 'by agent-kit ak compile — do not edit manually',
+        _generated: 'by agent-kit wp compile — do not edit manually',
         name: '@webpresso/agent-kit',
         displayName: 'Webpresso Agent Kit',
         description: 'Agent-kit: blueprint lifecycle, skill compiler, audits for Claude Code',

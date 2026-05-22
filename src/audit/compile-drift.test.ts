@@ -26,7 +26,7 @@ describe('auditCompileDrift', () => {
   })
 
   function tmp(): string {
-    const d = mkdtempSync(join(tmpdir(), 'ak-compile-drift-audit-'))
+    const d = mkdtempSync(join(tmpdir(), 'wp-compile-drift-audit-'))
     dirs.push(d)
     return d
   }
@@ -79,7 +79,7 @@ describe('auditCompileDrift', () => {
     expect(result.ok).toBe(false)
     expect(result.violations).toHaveLength(1)
     expect(result.violations[0]?.message).toContain('Compile drift detected')
-    expect(result.violations[0]?.message).toContain('ak compile')
+    expect(result.violations[0]?.message).toContain('wp compile')
   })
 
   it('violation file is .agent/.compile-manifest.json', async () => {

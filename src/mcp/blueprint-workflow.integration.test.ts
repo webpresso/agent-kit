@@ -117,14 +117,14 @@ describe('blueprint MCP workflow — single worktree smoke', () => {
 
     // Step 3: Register tools via fake registrar (no MCP server spawn)
     // Disable platform sync so handlers take the markdown-only path
-    process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+    process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
 
     const { registerBlueprintTools } = await import('#mcp/blueprint-server.js')
     const { registrar, getHandler } = makeFakeRegistrar()
     await registerBlueprintTools(registrar, fixture.dir)
 
-    // Step 4: Call ak_blueprint_list — verify blueprint appears
-    const listHandler = getHandler('ak_blueprint_list')
+    // Step 4: Call wp_blueprint_list — verify blueprint appears
+    const listHandler = getHandler('wp_blueprint_list')
     const listResult = await listHandler({})
     const listPayload = parsePayload(listResult)
 
@@ -135,8 +135,8 @@ describe('blueprint MCP workflow — single worktree smoke', () => {
     expect(found).toBeDefined()
     expect(found?.title).toBe('Smoke Test Blueprint')
 
-    // Step 5: Call ak_blueprint_context for the blueprint
-    const contextHandler = getHandler('ak_blueprint_context')
+    // Step 5: Call wp_blueprint_context for the blueprint
+    const contextHandler = getHandler('wp_blueprint_context')
     const contextResult = await contextHandler({
       slug: 'smoke-test-blueprint',
       task_id: '1.1',
@@ -243,7 +243,7 @@ describe('blueprint MCP workflow — multi-project aggregate smoke (Task 4.2b)',
     })
     cleanups.push(fixtureB.cleanup)
 
-    process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+    process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
 
     // Ingest both fixtures into their respective worktree-scoped DBs
     await ingestFixture(fixtureA.dir)
@@ -308,7 +308,7 @@ describe('blueprint MCP workflow — multi-project aggregate smoke (Task 4.2b)',
     })
     cleanups.push(fixtureB.cleanup)
 
-    process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+    process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
 
     await ingestFixture(fixtureA.dir)
     await ingestFixture(fixtureB.dir)
@@ -373,7 +373,7 @@ describe('blueprint MCP workflow — multi-project aggregate smoke (Task 4.2b)',
     cleanups.push(fixtureBroken.cleanup)
     // Intentionally do NOT ingest the broken fixture — its DB will be missing
 
-    process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+    process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
 
     await ingestFixture(fixtureGood.dir)
     // fixtureBroken is deliberately NOT ingested
@@ -427,7 +427,7 @@ describe('blueprint MCP workflow — multi-project aggregate smoke (Task 4.2b)',
     })
     cleanups.push(fixtureY.cleanup)
 
-    process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+    process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
 
     await ingestFixture(fixtureX.dir)
     await ingestFixture(fixtureY.dir)

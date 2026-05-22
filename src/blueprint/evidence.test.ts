@@ -23,7 +23,7 @@ describe('evidenceSchema', () => {
       const value: Evidence = {
         kind: 'test',
         result: 'pass',
-        command: 'ak_test --package agent-kit',
+        command: 'wp_test --package agent-kit',
         exit_code: 0,
         ts: TS,
       }
@@ -44,7 +44,7 @@ describe('evidenceSchema', () => {
       const result = evidenceSchema.safeParse({
         kind: 'test',
         result: 'pass',
-        command: 'ak_test',
+        command: 'wp_test',
         exit_code: 1,
         ts: TS,
       })
@@ -55,7 +55,7 @@ describe('evidenceSchema', () => {
       const result = evidenceSchema.safeParse({
         kind: 'test',
         result: 'pass',
-        command: 'ak_test',
+        command: 'wp_test',
         ts: TS,
       })
       expect(result.success).toBe(false)
@@ -65,7 +65,7 @@ describe('evidenceSchema', () => {
       const value: Evidence = {
         kind: 'test',
         result: 'fail',
-        command: 'ak_test',
+        command: 'wp_test',
         exit_code: 1,
         ts: TS,
       }
@@ -78,7 +78,7 @@ describe('evidenceSchema', () => {
       const value: Evidence = {
         kind: 'integration',
         result: 'pass',
-        command: 'ak_test --suite integration',
+        command: 'wp_test --suite integration',
         exit_code: 0,
         target_files: ['src/foo.integration.test.ts'],
         ts: TS,
@@ -90,7 +90,7 @@ describe('evidenceSchema', () => {
       const result = evidenceSchema.safeParse({
         kind: 'integration',
         result: 'pass',
-        command: 'ak_test',
+        command: 'wp_test',
         exit_code: 0,
         target_files: [],
         ts: TS,
@@ -102,7 +102,7 @@ describe('evidenceSchema', () => {
       const result = evidenceSchema.safeParse({
         kind: 'integration',
         result: 'pass',
-        command: 'ak_test',
+        command: 'wp_test',
         exit_code: 0,
         ts: TS,
       })
@@ -113,7 +113,7 @@ describe('evidenceSchema', () => {
       const result = evidenceSchema.safeParse({
         kind: 'integration',
         result: 'pass',
-        command: 'ak_test',
+        command: 'wp_test',
         exit_code: 2,
         target_files: ['src/foo.integration.test.ts'],
         ts: TS,
@@ -292,7 +292,7 @@ describe('evidenceSchema', () => {
       const result = evidenceSchema.safeParse({
         kind: 'test',
         result: 'pass',
-        command: 'ak_test',
+        command: 'wp_test',
         exit_code: 0,
       })
       expect(result.success).toBe(false)
@@ -302,7 +302,7 @@ describe('evidenceSchema', () => {
       const result = evidenceSchema.safeParse({
         kind: 'test',
         result: 'pass',
-        command: 'ak_test',
+        command: 'wp_test',
         exit_code: 0,
         ts: 'not-a-date',
       })
@@ -319,7 +319,7 @@ describe('evidenceListSchema', () => {
 
   it('accepts a non-empty array', () => {
     const value: Evidence[] = [
-      { kind: 'test', result: 'pass', command: 'ak_test', exit_code: 0, ts: TS },
+      { kind: 'test', result: 'pass', command: 'wp_test', exit_code: 0, ts: TS },
     ]
     const parsed = evidenceListSchema.parse(value)
     expect(parsed).toHaveLength(1)
@@ -331,14 +331,14 @@ describe('canonicalizeEvidence', () => {
     const a: Evidence = {
       kind: 'test',
       result: 'pass',
-      command: 'ak_test',
+      command: 'wp_test',
       exit_code: 0,
       ts: TS,
     }
     const b: Evidence = {
       ts: TS,
       exit_code: 0,
-      command: 'ak_test',
+      command: 'wp_test',
       result: 'pass',
       kind: 'test',
     }
@@ -349,7 +349,7 @@ describe('canonicalizeEvidence', () => {
     const a: Evidence = {
       kind: 'integration',
       result: 'pass',
-      command: 'ak_test',
+      command: 'wp_test',
       exit_code: 0,
       target_files: ['b.ts', 'a.ts'],
       ts: TS,
@@ -357,7 +357,7 @@ describe('canonicalizeEvidence', () => {
     const b: Evidence = {
       kind: 'integration',
       result: 'pass',
-      command: 'ak_test',
+      command: 'wp_test',
       exit_code: 0,
       target_files: ['b.ts', 'a.ts'],
       ts: TS,
@@ -381,7 +381,7 @@ describe('canonicalizeEvidence', () => {
 describe('canonicalizeEvidenceList', () => {
   it('canonicalizes each item with stable ordering', () => {
     const list: Evidence[] = [
-      { kind: 'test', result: 'pass', command: 'ak_test', exit_code: 0, ts: TS },
+      { kind: 'test', result: 'pass', command: 'wp_test', exit_code: 0, ts: TS },
       {
         kind: 'audit',
         result: 'pass',
@@ -398,7 +398,7 @@ describe('canonicalizeEvidenceList', () => {
 
   it('is byte-stable for identical input', () => {
     const list: Evidence[] = [
-      { kind: 'test', result: 'pass', command: 'ak_test', exit_code: 0, ts: TS },
+      { kind: 'test', result: 'pass', command: 'wp_test', exit_code: 0, ts: TS },
     ]
     expect(canonicalizeEvidenceList(list)).toBe(canonicalizeEvidenceList(list))
   })

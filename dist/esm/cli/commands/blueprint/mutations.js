@@ -92,7 +92,7 @@ function findBlueprintDir(blueprintRoot, slug) {
     return null;
 }
 function atomicWriteFile(targetPath, content) {
-    const tmpPath = path.join(tmpdir(), `ak-bp-mutation-${Date.now()}-${Math.random().toString(36).slice(2)}.tmp`);
+    const tmpPath = path.join(tmpdir(), `wp-bp-mutation-${Date.now()}-${Math.random().toString(36).slice(2)}.tmp`);
     writeFileSync(tmpPath, content, 'utf8');
     renameSync(tmpPath, targetPath);
 }

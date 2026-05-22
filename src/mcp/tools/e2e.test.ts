@@ -26,9 +26,9 @@ beforeEach(() => {
   runCommandConfigs.mockReset()
 })
 
-describe('ak_e2e tool', () => {
+describe('wp_e2e tool', () => {
   it('exposes the expected descriptor surface', () => {
-    expect(akE2eTool.name).toBe('ak_e2e')
+    expect(akE2eTool.name).toBe('wp_e2e')
     expect(typeof akE2eTool.description).toBe('string')
     expect(akE2eTool.handler).toBeTypeOf('function')
   })

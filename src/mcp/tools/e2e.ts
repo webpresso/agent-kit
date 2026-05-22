@@ -1,9 +1,9 @@
 /**
- * `ak_e2e` MCP tool.
+ * `wp_e2e` MCP tool.
  *
- * First-class E2E execution surface backed by the existing portable `ak e2e`
+ * First-class E2E execution surface backed by the existing portable `wp e2e`
  * planner and host-adapter architecture. This tool is suite-aware and should
- * be used for E2E execution instead of overloading `ak_test`.
+ * be used for E2E execution instead of overloading `wp_test`.
  */
 
 import { z } from 'zod'
@@ -99,7 +99,7 @@ function summarizeRun(
 }
 
 const tool: ToolDescriptor = {
-  name: 'ak_e2e',
+  name: 'wp_e2e',
   description:
     'Run E2E execution through the portable agent-kit planner. Suite-aware and host-adapter-aware; returns `{passed, exitCode, commands, output}` plus suite and runner summaries.',
   inputSchema,
@@ -144,7 +144,7 @@ const tool: ToolDescriptor = {
         suiteIds,
         runnerSummary: summarizeRunners(groups),
       },
-      ...applyOutputTransform(result.output, { toolName: 'ak_e2e' }),
+      ...applyOutputTransform(result.output, { toolName: 'wp_e2e' }),
     }
 
     return createSummaryResult(payload)

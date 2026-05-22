@@ -10,7 +10,7 @@
  * placeholders `{{ONE_LINER}}`, `{{PROBLEM}}`, `{{TAGLINE}}`, `{{IN_SCOPE}}`,
  * `{{OUT_OF_SCOPE}}`, and `{{PRINCIPLES}}` are replaced with the operator's
  * own words. Skipped fields fall back to the original prose stubs so the
- * audit (`ak audit vision`) still passes minimally.
+ * audit (`wp audit vision`) still passes minimally.
  */
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'

@@ -1,5 +1,5 @@
-import { getErrorMessage } from '@webpresso/runtime-format/errors';
-import { formatBytes } from '@webpresso/runtime-format/format';
+import { getErrorMessage } from '../format/errors.js';
+import { formatBytes } from '../format/format.js';
 import { isValidRelativePath } from './shared/validate-path.js';
 export const listFilesTool = {
     name: 'list_files',

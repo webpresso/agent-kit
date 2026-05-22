@@ -17,12 +17,12 @@ afterEach(() => {
 
 describe('resolveProjectRoot', () => {
   it('honors CLAUDE_PROJECT_DIR when set', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'ak-pr-env-'))
+    const dir = mkdtempSync(join(tmpdir(), 'wp-pr-env-'))
     expect(resolveProjectRoot({ env: { CLAUDE_PROJECT_DIR: dir }, cwd: '/nowhere' })).toBe(dir)
   })
 
   it('returns the closest ancestor containing .git', () => {
-    const root = mkdtempSync(join(tmpdir(), 'ak-pr-git-'))
+    const root = mkdtempSync(join(tmpdir(), 'wp-pr-git-'))
     mkdirSync(join(root, '.git'))
     const nested = join(root, 'a', 'b', 'c')
     mkdirSync(nested, { recursive: true })
@@ -33,7 +33,7 @@ describe('resolveProjectRoot', () => {
     'anchors at workspace root: strong marker (pnpm-workspace.yaml) ' +
       'higher up wins over a closer weak marker (package.json)',
     () => {
-      const root = mkdtempSync(join(tmpdir(), 'ak-pr-strong-'))
+      const root = mkdtempSync(join(tmpdir(), 'wp-pr-strong-'))
       writeFileSync(join(root, 'pnpm-workspace.yaml'), '')
       const nested = join(root, 'pkg-with-package-json')
       mkdirSync(nested)
@@ -46,7 +46,7 @@ describe('resolveProjectRoot', () => {
   )
 
   it('falls back to package.json when no strong markers exist', () => {
-    const root = mkdtempSync(join(tmpdir(), 'ak-pr-pkg-'))
+    const root = mkdtempSync(join(tmpdir(), 'wp-pr-pkg-'))
     writeFileSync(join(root, 'package.json'), '{}')
     expect(resolveProjectRoot({ env: {}, cwd: root })).toBe(root)
   })
@@ -56,7 +56,7 @@ describe('resolveProjectRoot', () => {
   // plugin cache path, not the project. A loud throw forces the operator to
   // fix the env or pass an explicit cwd, instead of linting the wrong tree.
   it('throws ProjectRootNotFoundError loudly when nothing is found', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'ak-pr-empty-'))
+    const dir = mkdtempSync(join(tmpdir(), 'wp-pr-empty-'))
     expect(() => resolveProjectRoot({ env: {}, cwd: dir })).toThrow(ProjectRootNotFoundError)
   })
 

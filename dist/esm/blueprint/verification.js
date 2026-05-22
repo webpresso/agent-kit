@@ -14,7 +14,7 @@
  * 3. **Edit** the blueprint `_overview.md` in-place (read → edit → write)
  *    atomically and then trigger a re-ingest of the projection DB.
  *
- * This module is consumed by `ak_blueprint_task_verify` (Task 3.2). It does
+ * This module is consumed by `wp_blueprint_task_verify` (Task 3.2). It does
  * not register MCP tools and has no transitive MCP dependency.
  */
 import { readFile, writeFile } from 'node:fs/promises';

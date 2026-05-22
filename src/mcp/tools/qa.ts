@@ -1,14 +1,14 @@
 /**
- * `ak_qa` MCP tool.
+ * `wp_qa` MCP tool.
  *
  * Composite tool that fans out to the three sibling check tools in parallel
  * via `Promise.all` and returns an aggregated structured payload:
  *
  *   {
  *     passed: lint.passed && typecheck.passed && test.passed,
- *     lint: <ak_lint payload>,
- *     typecheck: <ak_typecheck payload>,
- *     test: <ak_test payload>,
+ *     lint: <wp_lint payload>,
+ *     typecheck: <wp_typecheck payload>,
+ *     test: <wp_test payload>,
  *   }
  *
  * Implementation calls the sibling tools' `handler` exports through their
@@ -32,11 +32,11 @@ const inputSchema = z.object({
   // Forwarded to all three sub-tools so cross-repo invocation works (e.g.
   // run agent-kit's QA from a session launched in monorepo).
   cwd: z.string().optional(),
-  // Forwarded to `ak_lint.files` and `ak_test.files` so a scoped QA on
-  // changed files is possible. `ak_typecheck` ignores files (it operates on
+  // Forwarded to `wp_lint.files` and `wp_test.files` so a scoped QA on
+  // changed files is possible. `wp_typecheck` ignores files (it operates on
   // tsconfig projects).
   files: z.array(z.string()).optional(),
-  // Forwarded to `ak_typecheck.packages` and `ak_test.packages` to scope
+  // Forwarded to `wp_typecheck.packages` and `wp_test.packages` to scope
   // the run to specific workspace packages.
   packages: z.array(z.string()).optional(),
 })
@@ -202,9 +202,9 @@ function summarizeQa(
 }
 
 const tool: ToolDescriptor = {
-  name: 'ak_qa',
+  name: 'wp_qa',
   description:
-    'Run `ak_lint`, `ak_typecheck`, and `ak_test` in parallel via `Promise.all`. Returns `{passed, lint, typecheck, test}` where the top-level `passed` is the AND of the three sub-results.',
+    'Run `wp_lint`, `wp_typecheck`, and `wp_test` in parallel via `Promise.all`. Returns `{passed, lint, typecheck, test}` where the top-level `passed` is the AND of the three sub-results.',
   inputSchema,
   outputSchema,
   annotations: {
