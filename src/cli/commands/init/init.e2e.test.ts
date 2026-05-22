@@ -227,7 +227,17 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       })
       expect(r.code).toBe(0)
       expect(r.stdout).toContain('omx setup: ✓')
-      expect(r.stdout).toContain('omx-fixture: setup --yes ran')
+      expect(r.stdout).toContain('omx-fixture: setup --yes --scope user ran')
+    })
+
+    it('--project + fake omx on PATH: chains project-scoped omx setup', () => {
+      const r = runAk(['setup', '--yes', '--with', 'omx', '--project', '--cwd', repo], {
+        PATH: pathWithFakeOmxOk(),
+        HOME: fakeHome,
+      })
+      expect(r.code).toBe(0)
+      expect(r.stdout).toContain('omx setup: ✓')
+      expect(r.stdout).toContain('omx-fixture: setup --yes --scope project ran')
     })
 
     it('--with omx re-applies agent hooks after omx rewrites codex hooks back to relative commands', () => {

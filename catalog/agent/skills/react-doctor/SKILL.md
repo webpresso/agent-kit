@@ -23,7 +23,7 @@ Scans your React codebase for security, performance, correctness, and architectu
 ## Usage
 
 ```bash
-npx -y react-doctor@latest . --verbose
+vp dlx react-doctor@latest . --verbose
 ```
 
 ## Workflow

@@ -76,7 +76,7 @@ available, and creates confusing bootstrap failures. Use the explicit bootstrap
 surface instead:
 
 ```bash
-pnpm install && pnpm setup:agent
+vp install && vp run setup:agent
 ```
 
 See also: [`/Users/ozby/repos/webpresso/agent-kit/VISION.md`](/Users/ozby/repos/webpresso/agent-kit/VISION.md)

@@ -148,7 +148,7 @@ describe('auditAgents', () => {
     seedConsumerRepo(root)
     writeJson(join(root, 'package.json'), {
       name: 'consumer-app',
-      scripts: { 'setup:agent': 'pnpm exec ak setup' },
+      scripts: { 'setup:agent': 'vp exec ak setup' },
       devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
     })
 

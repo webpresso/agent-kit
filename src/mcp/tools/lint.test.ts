@@ -171,7 +171,7 @@ describe('ak_lint tool', () => {
     })
   })
 
-  it('falls back to `pnpm lint` when oxlint binary is missing (ENOENT)', async () => {
+  it('falls back to `vp run lint` when oxlint binary is missing (ENOENT)', async () => {
     spawnMock
       .mockReturnValueOnce(fakeChild({ error: enoent() }))
       .mockReturnValueOnce(fakeChild({ stdout: 'lint ok\n', exitCode: 0 }))
@@ -182,8 +182,8 @@ describe('ak_lint tool', () => {
     const [firstCmd] = spawnMock.mock.calls[0]!
     const [secondCmd, secondArgs] = spawnMock.mock.calls[1]!
     expect(firstCmd).toBe('oxlint')
-    expect(secondCmd).toBe('pnpm')
-    expect(secondArgs).toEqual(['lint'])
+    expect(secondCmd).toBe('vp')
+    expect(secondArgs).toEqual(['run', 'lint'])
 
     const payload = JSON.parse((result.content[0] as { text: string }).text) as {
       passed: boolean
@@ -197,8 +197,8 @@ describe('ak_lint tool', () => {
     expect(payload.passed).toBe(true)
     expect(payload.counts?.issueCount).toBe(0)
     expect(payload.details?.issues).toEqual([])
-    expect(payload.backend).toBe('pnpm')
-    expect(payload.summary).toBe('lint passed via pnpm')
+    expect(payload.backend).toBe('vp')
+    expect(payload.summary).toBe('lint passed via vp')
     // Passthrough fallback: when no oxlint JSON issues are parsed, the raw
     // command output flows through unchanged (clipped only if >4000 chars).
     expect(payload.rawOutput).toBe('lint ok\n')

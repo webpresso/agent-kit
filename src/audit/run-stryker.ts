@@ -10,7 +10,7 @@ export async function runStryker(
 ): Promise<number> {
   const spawnFn = deps.spawn ?? spawn
   return new Promise<number>((resolve) => {
-    const child = spawnFn('npx', ['--yes', 'stryker', 'run'], {
+    const child = spawnFn('vp', ['dlx', 'stryker', 'run'], {
       cwd,
       stdio: 'inherit',
       shell: false,

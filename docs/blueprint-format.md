@@ -195,7 +195,7 @@ blueprints that don't need parallel execution.
 ```markdown
 - **Acceptance:** all of the following:
   - [ ] `pnpm test` is green for `<pkg>`
-  - [ ] `pnpm run e2e` green
+  - [ ] `vp run e2e` green
   - [ ] Manual smoke: `<verb>` produces `<observable>`
 ```
 

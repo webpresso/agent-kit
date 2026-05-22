@@ -35,7 +35,7 @@ describe('config', () => {
       installed: { tier3Skills: ['tanstack-query'] },
       mcp: { serverName: 'agent-kit', toolPrefix: 'ak_' },
       rules: { overrides: ['repo-restrictions'] },
-      scripts: { 'setup-agent': 'pnpm exec ak setup' },
+      scripts: { 'setup-agent': 'vp exec ak setup' },
     }
     writeConfig(dir, cfg)
     expect(existsSync(join(dir, '.agent-kitrc.json'))).toBe(true)
@@ -43,7 +43,7 @@ describe('config', () => {
     expect(readBack?.installed.tier3Skills).toEqual(['tanstack-query'])
     expect(readBack?.mcp).toEqual({ serverName: 'agent-kit', toolPrefix: 'ak_' })
     expect(readBack?.rules.overrides).toEqual(['repo-restrictions'])
-    expect(readBack?.scripts['setup-agent']).toBe('pnpm exec ak setup')
+    expect(readBack?.scripts['setup-agent']).toBe('vp exec ak setup')
   })
 
   it('mergeConfig unions allowlists and tolerates optional legacy lastInit', () => {
@@ -59,14 +59,14 @@ describe('config', () => {
       installed: { tier3Skills: ['tanstack-query'] },
       mcp: { serverName: 'custom-server' },
       rules: { overrides: ['claude-rules'] },
-      scripts: { 'setup-agent': 'pnpm exec ak setup' },
+      scripts: { 'setup-agent': 'vp exec ak setup' },
       lastInit: '2026-04-22T00:00:00Z',
     }
     const merged = mergeConfig(existing, incoming)
     expect(merged.installed.tier3Skills.toSorted()).toEqual(['react-doctor', 'tanstack-query'])
     expect(merged.mcp).toEqual({ serverName: 'custom-server', toolPrefix: 'ak_' })
     expect(merged.rules.overrides).toEqual(['agent-hooks', 'claude-rules'])
-    expect(merged.scripts['setup-agent']).toBe('pnpm exec ak setup')
+    expect(merged.scripts['setup-agent']).toBe('vp exec ak setup')
     expect(merged.lastInit).toBe('2026-04-22T00:00:00Z')
   })
 

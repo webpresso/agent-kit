@@ -203,4 +203,4 @@ The catalog is versioned alongside the package. To add a skill:
 4. Ship with a Changesets entry.
 
 Consumers pick it up on their next `pnpm update @webpresso/agent-kit &&
-npx ak setup --overwrite` cycle.
+vp exec ak setup --overwrite` cycle.

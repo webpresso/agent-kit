@@ -437,5 +437,5 @@ exclude: [
 After adding an exclusion, verify the Stryker suite still passes:
 
 ```bash
-pnpm exec vitest run --config vitest.stryker.config.ts
+vp exec vitest run --config vitest.stryker.config.ts
 ```

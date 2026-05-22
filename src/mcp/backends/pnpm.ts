@@ -7,13 +7,13 @@ import type { TestResult, TestRunInput } from './just.js'
 export type { TestResult, TestRunInput } from './just.js'
 
 /**
- * Run tests via `pnpm`.
+ * Run tests via the `vp` facade over the repo-declared package-manager substrate.
  *
  * Argv shape:
- *   - `pnpm -F <p> test` once per package when packages are given (results
+ *   - `vp run --filter <p> test` once per package when packages are given (results
  *     aggregated; first non-zero exit wins).
- *   - `pnpm test -- <file1> <file2>` when files are given (no packages).
- *   - `pnpm test` otherwise.
+ *   - `vp run test -- <file1> <file2>` when files are given (no packages).
+ *   - `vp run test` otherwise.
  */
 export async function runTests(input: TestRunInput): Promise<TestResult> {
   const cwd = input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
@@ -21,13 +21,7 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
     let combinedOutput = ''
     let firstFailure = 0
     for (const pkg of input.packages) {
-      const result = usesVitest(cwd, pkg)
-        ? await runCommand(
-            'pnpm',
-            ['-F', pkg, 'exec', 'vitest', 'run', '--reporter=json', '--no-color'],
-            cwd,
-          )
-        : await runCommand('pnpm', ['-F', pkg, 'test'], cwd)
+      const result = await runPackageScopedTests(cwd, pkg, input.files)
       combinedOutput += result.output
       if (!result.passed && firstFailure === 0) firstFailure = result.exitCode
     }
@@ -40,20 +34,46 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
 
   if (input.files && input.files.length > 0) {
     if (usesVitest(cwd)) {
-      return runCommand(
-        'pnpm',
-        ['exec', 'vitest', 'run', '--reporter=json', '--no-color', ...input.files],
-        cwd,
-      )
+      return runCommand('vp', ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color', ...input.files], cwd)
     }
-    return runCommand('pnpm', ['test', '--', ...input.files], cwd)
+    return runCommand('vp', ['run', 'test', '--', ...input.files], cwd)
   }
 
   if (usesVitest(cwd)) {
-    return runCommand('pnpm', ['exec', 'vitest', 'run', '--reporter=json', '--no-color'], cwd)
+    return runCommand('vp', ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color'], cwd)
   }
 
-  return runCommand('pnpm', ['test'], cwd)
+  return runCommand('vp', ['run', 'test'], cwd)
+}
+
+function runPackageScopedTests(
+  cwd: string,
+  packageName: string,
+  files?: readonly string[],
+): Promise<TestResult> {
+  if (usesVitest(cwd, packageName)) {
+    return runCommand(
+      'vp',
+      [
+        'exec',
+        '--filter',
+        packageName,
+        '--',
+        'vitest',
+        'run',
+        '--reporter=json',
+        '--no-color',
+        ...(files ?? []),
+      ],
+      cwd,
+    )
+  }
+
+  if (files && files.length > 0) {
+    return runCommand('vp', ['run', '--filter', packageName, 'test', '--', ...files], cwd)
+  }
+
+  return runCommand('vp', ['run', '--filter', packageName, 'test'], cwd)
 }
 
 function usesVitest(cwd: string, packageName?: string): boolean {

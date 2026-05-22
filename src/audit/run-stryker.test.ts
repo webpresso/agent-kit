@@ -27,7 +27,7 @@ describe('runStryker', () => {
     const spawnFn = vi.fn().mockReturnValue(child) as unknown as typeof SpawnType
     const result = await runStryker('/some/cwd', { spawn: spawnFn })
     expect(result).toBe(0)
-    expect(spawnFn).toHaveBeenCalledWith('npx', ['--yes', 'stryker', 'run'], {
+    expect(spawnFn).toHaveBeenCalledWith('vp', ['dlx', 'stryker', 'run'], {
       cwd: '/some/cwd',
       stdio: 'inherit',
       shell: false,
@@ -53,7 +53,7 @@ describe('runStryker', () => {
     const spawnFn = vi.fn().mockReturnValue(child) as unknown as typeof SpawnType
     const result = await runStryker('/some/cwd', { spawn: spawnFn })
     expect(result).toBe(1)
-    expect(spawnFn).toHaveBeenCalledWith('npx', ['--yes', 'stryker', 'run'], {
+    expect(spawnFn).toHaveBeenCalledWith('vp', ['dlx', 'stryker', 'run'], {
       cwd: '/some/cwd',
       stdio: 'inherit',
       shell: false,
@@ -64,7 +64,7 @@ describe('runStryker', () => {
     const child = makeChild(0)
     const spawnFn = vi.fn().mockReturnValue(child) as unknown as typeof SpawnType
     await runStryker('/custom/path', { spawn: spawnFn })
-    expect(spawnFn).toHaveBeenCalledWith('npx', ['--yes', 'stryker', 'run'], {
+    expect(spawnFn).toHaveBeenCalledWith('vp', ['dlx', 'stryker', 'run'], {
       cwd: '/custom/path',
       stdio: 'inherit',
       shell: false,

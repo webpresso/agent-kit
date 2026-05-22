@@ -16,9 +16,7 @@ export async function runTests(input) {
         let combinedOutput = '';
         let firstFailure = 0;
         for (const pkg of input.packages) {
-            const result = usesVitest(cwd, pkg)
-                ? await runCommand('pnpm', ['-F', pkg, 'exec', 'vitest', 'run', '--reporter=json', '--no-color'], cwd)
-                : await runCommand('pnpm', ['-F', pkg, 'test'], cwd);
+            const result = await runPackageScopedTests(cwd, pkg, input.files);
             combinedOutput += result.output;
             if (!result.passed && firstFailure === 0)
                 firstFailure = result.exitCode;
@@ -39,6 +37,24 @@ export async function runTests(input) {
         return runCommand('pnpm', ['exec', 'vitest', 'run', '--reporter=json', '--no-color'], cwd);
     }
     return runCommand('pnpm', ['test'], cwd);
+}
+function runPackageScopedTests(cwd, packageName, files) {
+    if (usesVitest(cwd, packageName)) {
+        return runCommand('pnpm', [
+            '-F',
+            packageName,
+            'exec',
+            'vitest',
+            'run',
+            '--reporter=json',
+            '--no-color',
+            ...(files ?? []),
+        ], cwd);
+    }
+    if (files && files.length > 0) {
+        return runCommand('pnpm', ['-F', packageName, 'test', '--', ...files], cwd);
+    }
+    return runCommand('pnpm', ['-F', packageName, 'test'], cwd);
 }
 function usesVitest(cwd, packageName) {
     const packageJson = findPackageJson(cwd, packageName);

@@ -50,11 +50,11 @@ If you match 0-2: agent-kit is usable but you will need to customize. Start with
 
 ```bash
 # In a matching repo:
-pnpm add -D @webpresso/agent-kit
-pnpm exec ak setup
+vp install -D @webpresso/agent-kit
+vp exec ak setup
 
 # Or install globally:
-npm install -g @webpresso/agent-kit
+vp install -g @webpresso/agent-kit
 ak setup
 ```
 

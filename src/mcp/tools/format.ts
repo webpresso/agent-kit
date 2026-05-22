@@ -71,7 +71,7 @@ const tool: ToolDescriptor = {
 
     if (isRunFailure(outcome)) {
       const message = isMissingBinary(outcome)
-        ? 'oxfmt binary not found on PATH. Install with: pnpm add -D oxfmt'
+        ? 'oxfmt binary not found on PATH. Install with: vp install -D oxfmt'
         : `oxfmt spawn failed: ${outcome.error.code ?? 'unknown'} ${outcome.error.message}`
       const payload = {
         passed: false,

@@ -14,7 +14,7 @@ const VERSION = '0.15.1'
 const TASK: RunnerTask = {
   id: 'eval-4-dependency-bump',
   description:
-    'Bump zod from ^3.22.0 to ^3.23.0 in package.json. Run pnpm install --frozen-lockfile to verify. No test failures after the bump.',
+    'Bump zod from ^3.22.0 to ^3.23.0 in package.json. Run vp install --frozen-lockfile to verify. No test failures after the bump.',
   permissions: 'workspace-write',
 }
 
@@ -28,7 +28,7 @@ const CTX: RunnerContext = {
 // ---------------------------------------------------------------------------
 
 const MOCK_OUTPUT =
-  'Updated zod from ^3.22.0 to ^3.23.0 in package.json. pnpm install succeeded. No test failures.'
+  'Updated zod from ^3.22.0 to ^3.23.0 in package.json. vp install succeeded. No test failures.'
 
 async function collectEvents(runner: ClaudeSubagentRunner) {
   const exec = runner.prepare(TASK, CTX)

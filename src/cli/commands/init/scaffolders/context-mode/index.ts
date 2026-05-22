@@ -140,7 +140,7 @@ export function patchCodexContextModeHooks(
 
 export function patchOpenCodeContextModeConfig(
   existing: Record<string, unknown>,
-  agentKitCommand: string[] = ['pnpm', 'exec', 'ak', 'mcp'],
+  agentKitCommand: string[] = ['vp', 'exec', 'ak', 'mcp'],
 ): Record<string, unknown> {
   const currentMcp =
     existing.mcp && typeof existing.mcp === 'object' && !Array.isArray(existing.mcp)
@@ -173,7 +173,7 @@ export function patchOpenCodeContextModeConfig(
 function resolveOpenCodeAgentKitCommand(repoRoot: string, globalInstall = false): string[] {
   const repoLocalRoot = join(repoRoot, 'node_modules', '@webpresso', 'agent-kit')
   const entryPath = findAgentKitMcpEntry({ candidates: [repoLocalRoot] }) ?? findAgentKitMcpEntry()
-  if (!entryPath) return globalInstall ? ['ak', 'mcp'] : ['pnpm', 'exec', 'ak', 'mcp']
+  if (!entryPath) return globalInstall ? ['ak', 'mcp'] : ['vp', 'exec', 'ak', 'mcp']
   const launch = agentKitMcpLaunchCommand(entryPath)
   return [launch.command, ...launch.args]
 }
@@ -190,7 +190,7 @@ function ensureCodexContextModeMcp(configPath: string, options: MergeOptions): M
 }
 
 const CONTEXT_MODE_NOT_FOUND_HINT =
-  'context-mode is not on PATH after `npm install -g context-mode`. Install it manually and re-run.'
+  'context-mode is not on PATH after `vp install -g context-mode`. Install it manually and re-run.'
 
 function ensureContextModeBinary(
   spawn: typeof spawnSync,
@@ -200,7 +200,7 @@ function ensureContextModeBinary(
   spinner.start()
   let probe = spawn('context-mode', ['--help'], { stdio: 'ignore' })
   if (probe.error || (probe.status !== null && probe.status !== 0)) {
-    const install = spawn('npm', ['install', '-g', 'context-mode'], { stdio: 'inherit' })
+    const install = spawn('vp', ['install', '-g', 'context-mode'], { stdio: 'inherit' })
     if (install.status !== 0) {
       spinner.fail('context-mode install failed')
       throw new Error(CONTEXT_MODE_NOT_FOUND_HINT)

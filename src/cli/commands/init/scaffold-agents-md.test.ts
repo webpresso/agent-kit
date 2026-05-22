@@ -114,13 +114,14 @@ describe('renderAgentsMd', () => {
       defaultConfig(),
     )
 
-    expect(rendered).toContain('pnpm install && pnpm setup:agent')
+    expect(rendered).toContain('vp install && vp run setup:agent')
     expect(rendered).toContain(
-      'pnpm setup:agent runs ak setup, which scaffolds .agent/, AGENTS.md, hooks, and runs ak sync',
+      'setup:agent runs ak setup, which scaffolds .agent/, AGENTS.md, hooks, and runs ak sync',
     )
     expect(rendered).toContain('<!-- >>> managed by @webpresso/agent-kit (operating-contract) -->')
     expect(rendered).toContain('<!-- >>> user-owned (repo-customizations) -->')
     expect(rendered).not.toContain('ak symlink sync')
+    expect(rendered).toContain('omx setup --yes --scope user')
     expect(rendered).not.toContain('omx setup --scope project')
   })
 

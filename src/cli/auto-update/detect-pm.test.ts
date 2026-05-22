@@ -61,6 +61,10 @@ describe('parseUserAgent', () => {
     expect(parseUserAgent('bun/1.1.0 npm/? node/v22.0.0 darwin arm64')).toStrictEqual('bun')
   })
 
+  it('detects vp', () => {
+    expect(parseUserAgent('vp/0.1.22 node/v24.16.0 darwin arm64')).toStrictEqual('vp')
+  })
+
   it('ignores case', () => {
     expect(parseUserAgent('PNPM/9.0 node/v22.0.0')).toStrictEqual('pnpm')
   })
@@ -80,6 +84,12 @@ describe('parseUserAgent', () => {
 })
 
 describe('matchStoreMarker', () => {
+  it('detects Vite+ via .vite-plus segment', () => {
+    expect(matchStoreMarker('/Users/me/.vite-plus/packages/webpresso/current/bin/wp')).toStrictEqual(
+      'vp',
+    )
+  })
+
   it('detects pnpm via .pnpm-store segment', () => {
     expect(matchStoreMarker('/Users/me/.pnpm-store/v3/foo/webpresso/dist/cli.js')).toStrictEqual(
       'pnpm',
@@ -247,10 +257,11 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     expect(result).toStrictEqual({
       manager: 'pnpm',
       command: [
-        'pnpm',
-        'add',
+        'vp',
+        'install',
         '-g',
         '@webpresso/agent-kit',
+        '--',
         '--registry',
         'https://npm.pkg.github.com',
       ],
@@ -262,10 +273,11 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     expect(result).toStrictEqual({
       manager: 'npm',
       command: [
-        'npm',
+        'vp',
         'install',
         '-g',
         '@webpresso/agent-kit',
+        '--',
         '--registry',
         'https://npm.pkg.github.com',
       ],
@@ -276,7 +288,15 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     const result = detect({ npm_config_user_agent: 'yarn/1.22.22 node/v22' }, '/path/to/bin')
     expect(result).toStrictEqual({
       manager: 'yarn',
-      command: ['yarn', 'global', 'add', '@webpresso/agent-kit'],
+            command: [
+        'vp',
+        'install',
+        '-g',
+        '@webpresso/agent-kit',
+        '--',
+        '--registry',
+        'https://npm.pkg.github.com',
+      ],
     })
   })
 
@@ -284,7 +304,15 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     const result = detect({ npm_config_user_agent: 'bun/1.1.0 node/v22' }, '/path/to/bin')
     expect(result).toStrictEqual({
       manager: 'bun',
-      command: ['bun', 'add', '-g', '@webpresso/agent-kit'],
+            command: [
+        'vp',
+        'install',
+        '-g',
+        '@webpresso/agent-kit',
+        '--',
+        '--registry',
+        'https://npm.pkg.github.com',
+      ],
     })
   })
 
@@ -297,10 +325,11 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     expect(result).toStrictEqual({
       manager: 'npm',
       command: [
-        'npm',
+        'vp',
         'install',
         '-g',
         '@webpresso/agent-kit',
+        '--',
         '--registry',
         'https://npm.pkg.github.com',
       ],
@@ -315,10 +344,11 @@ describe('detect — priority 2: realpath walk', () => {
     expect(result).toStrictEqual({
       manager: 'pnpm',
       command: [
-        'pnpm',
-        'add',
+        'vp',
+        'install',
         '-g',
         '@webpresso/agent-kit',
+        '--',
         '--registry',
         'https://npm.pkg.github.com',
       ],
@@ -330,7 +360,15 @@ describe('detect — priority 2: realpath walk', () => {
     const result = detect({}, '/Users/me/.bun/bin/webpresso')
     expect(result).toStrictEqual({
       manager: 'bun',
-      command: ['bun', 'add', '-g', '@webpresso/agent-kit'],
+            command: [
+        'vp',
+        'install',
+        '-g',
+        '@webpresso/agent-kit',
+        '--',
+        '--registry',
+        'https://npm.pkg.github.com',
+      ],
     })
   })
 
@@ -342,10 +380,11 @@ describe('detect — priority 2: realpath walk', () => {
     expect(result).toStrictEqual({
       manager: 'npm',
       command: [
-        'npm',
+        'vp',
         'install',
         '-g',
         '@webpresso/agent-kit',
+        '--',
         '--registry',
         'https://npm.pkg.github.com',
       ],

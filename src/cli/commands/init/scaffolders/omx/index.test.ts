@@ -35,7 +35,7 @@ describe('ensureOmx', () => {
       options: { overwrite: false, dryRun: false },
       spawn,
     })
-    expect(result).toEqual({ kind: 'omx-ok', installed: false })
+    expect(result).toEqual({ kind: 'omx-ok', installed: false, removedProjectFiles: [] })
     expect(spawn).toHaveBeenCalledTimes(2)
   })
 
@@ -62,11 +62,11 @@ describe('ensureOmx', () => {
       options: { overwrite: false, dryRun: false },
       spawn,
     })
-    expect(result).toEqual({ kind: 'omx-ok', installed: true })
-    expect(spawn).toHaveBeenNthCalledWith(2, 'npm', ['install', '-g', 'oh-my-codex'], {
+    expect(result).toEqual({ kind: 'omx-ok', installed: true, removedProjectFiles: [] })
+    expect(spawn).toHaveBeenNthCalledWith(2, 'vp', ['install', '-g', 'oh-my-codex'], {
       stdio: 'inherit',
     })
-    expect(spawn).toHaveBeenNthCalledWith(4, 'omx', ['setup', '--yes'], {
+    expect(spawn).toHaveBeenNthCalledWith(4, 'omx', ['setup', '--yes', '--scope', 'user'], {
       cwd: '/tmp/repo',
       stdio: ['ignore', 'inherit', 'inherit'],
     })
@@ -108,14 +108,28 @@ describe('ensureOmx', () => {
     expect(result).toEqual({ kind: 'omx-spawn-failed', exitCode: 2 })
   })
 
-  it('passes --yes to the setup invocation', () => {
+  it('forces user scope for the setup invocation', () => {
     const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
     ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
     })
-    expect(spawn).toHaveBeenNthCalledWith(2, 'omx', ['setup', '--yes'], {
+    expect(spawn).toHaveBeenNthCalledWith(2, 'omx', ['setup', '--yes', '--scope', 'user'], {
+      cwd: '/tmp/repo',
+      stdio: ['ignore', 'inherit', 'inherit'],
+    })
+  })
+
+  it('allows setup to request project scope explicitly', () => {
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    ensureOmx({
+      repoRoot: '/tmp/repo',
+      options: { overwrite: false, dryRun: false },
+      scope: 'project',
+      spawn,
+    })
+    expect(spawn).toHaveBeenNthCalledWith(2, 'omx', ['setup', '--yes', '--scope', 'project'], {
       cwd: '/tmp/repo',
       stdio: ['ignore', 'inherit', 'inherit'],
     })
@@ -138,7 +152,7 @@ describe('ensureOmx', () => {
       configPath,
     })
 
-    expect(result).toEqual({ kind: 'omx-ok', installed: false })
+    expect(result).toEqual({ kind: 'omx-ok', installed: false, removedProjectFiles: [] })
     expect(readFileSync(configPath, 'utf8')).toBe(
       '[features]\nhooks = true\ngoals = true\n\n[mcp_servers.playwright]\nenabled = true\n',
     )

@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -82,14 +82,39 @@ describe('ak_test tool', () => {
       })
     })
 
-    it('routes to `pnpm` when only pnpm-workspace.yaml is present', async () => {
+    it('routes to `vp` when only pnpm-workspace.yaml is present', async () => {
       writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n')
       spawnMock.mockReturnValue(fakeChild({ stdout: 'ok\n', exitCode: 0 }))
 
       await akTestTool.handler({ packages: ['x'] })
       const [cmd, args] = spawnMock.mock.calls[0]!
-      expect(cmd).toBe('pnpm')
-      expect(args).toEqual(['-F', 'x', 'test'])
+      expect(cmd).toBe('vp')
+      expect(args).toEqual(['run', '--filter', 'x', 'test'])
+    })
+
+    it('preserves file filters when package targets are provided on the pnpm path', async () => {
+      writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n')
+      mkdirSync(join(dir, 'packages', 'x'), { recursive: true })
+      writeFileSync(
+        join(dir, 'packages', 'x', 'package.json'),
+        JSON.stringify({ devDependencies: { vitest: '^4.0.0' } }),
+      )
+      spawnMock.mockReturnValue(fakeChild({ stdout: '{}\n', exitCode: 0 }))
+
+      await akTestTool.handler({ packages: ['x'], files: ['src/example.test.ts'], backend: 'pnpm' })
+      const [cmd, args] = spawnMock.mock.calls[0]!
+      expect(cmd).toBe('vp')
+      expect(args).toEqual([
+        'exec',
+        '--filter',
+        'x',
+        '--',
+        'vitest',
+        'run',
+        '--reporter=json',
+        '--no-color',
+        'src/example.test.ts',
+      ])
     })
 
     it('honors explicit backend override', async () => {
@@ -98,7 +123,7 @@ describe('ak_test tool', () => {
 
       await akTestTool.handler({ packages: ['x'], backend: 'pnpm' })
       const [cmd] = spawnMock.mock.calls[0]!
-      expect(cmd).toBe('pnpm')
+      expect(cmd).toBe('vp')
     })
 
     it('rejects `suite` as an unknown input key', async () => {

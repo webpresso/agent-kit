@@ -98,6 +98,7 @@ export interface InitFlags {
   yes?: boolean
   cwd?: string
   strict?: boolean
+  project?: boolean
 }
 
 export const EXIT_SUCCESS = 0
@@ -404,12 +405,21 @@ export async function runInit(flags: InitFlags): Promise<number> {
     if (isCiEnvironment && presets.includes('omx')) {
       console.log('  omx setup: - skipped (CI environment)')
     } else if (presets.includes('omx')) {
-      const omxResult = ensureOmx({ repoRoot: consumer.repoRoot, options })
+      const omxResult = ensureOmx({
+        repoRoot: consumer.repoRoot,
+        options,
+        scope: flags.project ? 'project' : 'user',
+      })
       switch (omxResult.kind) {
         case 'omx-ok':
           console.log(
             omxResult.installed ? '  omx setup: ✓ installed + configured' : '  omx setup: ✓',
           )
+          if (omxResult.removedProjectFiles.length > 0) {
+            console.log(
+              `  omx project-scope cleanup: ✓ removed ${omxResult.removedProjectFiles.length} tracked file(s)`,
+            )
+          }
           break
         case 'omx-skipped-dry-run':
           console.log('  omx setup: skipped (--dry-run)')
@@ -735,7 +745,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
     if (error instanceof Error && /catalogDir does not exist/.test(error.message)) {
       console.error(
         'ak init: @webpresso/agent-kit not installed in node_modules. ' +
-          'Run `pnpm install` first.',
+          'Run `vp install` first.',
       )
       return EXIT_SETUP_FAIL
     }
@@ -775,6 +785,7 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
     .option('--yes', 'Accept defaults, skip interactive prompts')
     .option('--cwd <dir>', 'Working tree to scaffold into (default: process.cwd())')
     .option('--strict', 'Abort if any compatibility check fails (default: warn and continue)')
+    .option('--project', 'Configure OMX in project scope instead of the default user scope')
     .action(async (flags: InitFlags) => {
       const code = await runInit(flags)
       if (code !== EXIT_SUCCESS) {

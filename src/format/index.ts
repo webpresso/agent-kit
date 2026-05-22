@@ -63,7 +63,7 @@ export async function runFormat(options: RunFormatOptions = {}): Promise<FormatR
   if (isRunFailure(outcome)) {
     if (isMissingBinary(outcome)) {
       throw new Error(
-        "oxfmt binary not found on PATH. Install it as a devDependency: 'pnpm add -D oxfmt'",
+        "oxfmt binary not found on PATH. Install it as a devDependency: 'vp install -D oxfmt'",
       )
     }
     return {

@@ -48,15 +48,15 @@ afterEach(() => {
 })
 
 describe('pnpm backend', () => {
-  it('runs `pnpm -F <p> test` once per package', async () => {
+  it('runs `vp run --filter <p> test` once per package', async () => {
     spawnMock
       .mockReturnValueOnce(fakeChild({ stdout: 'a ok\n', exitCode: 0 }))
       .mockReturnValueOnce(fakeChild({ stdout: 'b ok\n', exitCode: 0 }))
     const result = await runTests({ packages: ['a', 'b'] })
     expect(spawnMock).toHaveBeenCalledTimes(2)
-    expect(spawnMock.mock.calls[0]![0]).toBe('pnpm')
-    expect(spawnMock.mock.calls[0]![1]).toEqual(['-F', 'a', 'test'])
-    expect(spawnMock.mock.calls[1]![1]).toEqual(['-F', 'b', 'test'])
+    expect(spawnMock.mock.calls[0]![0]).toBe('vp')
+    expect(spawnMock.mock.calls[0]![1]).toEqual(['run', '--filter', 'a', 'test'])
+    expect(spawnMock.mock.calls[1]![1]).toEqual(['run', '--filter', 'b', 'test'])
     expect(result.passed).toBe(true)
     expect(result.exitCode).toBe(0)
   })
@@ -75,13 +75,69 @@ describe('pnpm backend', () => {
       await runTests({ packages: ['a'] })
 
       expect(spawnMock.mock.calls[0]![1]).toEqual([
-        '-F',
-        'a',
         'exec',
+        '--filter',
+        'a',
+        '--',
         'vitest',
         'run',
         '--reporter=json',
         '--no-color',
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('preserves file filters when package targets declare vitest', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ak-pnpm-vitest-files-'))
+    try {
+      process.env.CLAUDE_PROJECT_DIR = root
+      mkdirSync(join(root, 'packages', 'a'), { recursive: true })
+      writeFileSync(
+        join(root, 'packages', 'a', 'package.json'),
+        JSON.stringify({ devDependencies: { vitest: '^4.0.0' } }),
+      )
+      spawnMock.mockReturnValueOnce(fakeChild({ stdout: '{}\n', exitCode: 0 }))
+
+      await runTests({ packages: ['a'], files: ['src/a.test.ts'] })
+
+      expect(spawnMock.mock.calls[0]![1]).toEqual([
+        'exec',
+        '--filter',
+        'a',
+        '--',
+        'vitest',
+        'run',
+        '--reporter=json',
+        '--no-color',
+        'src/a.test.ts',
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('preserves file filters for non-vitest package test scripts', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ak-pnpm-script-files-'))
+    try {
+      process.env.CLAUDE_PROJECT_DIR = root
+      mkdirSync(join(root, 'packages', 'a'), { recursive: true })
+      writeFileSync(
+        join(root, 'packages', 'a', 'package.json'),
+        JSON.stringify({ scripts: { test: 'node test-runner.js' } }),
+      )
+      spawnMock.mockReturnValueOnce(fakeChild({ stdout: 'ok\n', exitCode: 0 }))
+
+      await runTests({ packages: ['a'], files: ['src/a.test.ts'] })
+
+      expect(spawnMock.mock.calls[0]![1]).toEqual([
+        'run',
+        '--filter',
+        'a',
+        'test',
+        '--',
+        'src/a.test.ts',
       ])
     } finally {
       rmSync(root, { recursive: true, force: true })
@@ -98,19 +154,19 @@ describe('pnpm backend', () => {
     expect(result.output).toContain('oops')
   })
 
-  it('runs bare `pnpm test` when no packages or files given', async () => {
+  it('runs bare `vp run test` when no packages or files given', async () => {
     spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
     await runTests({})
     const [cmd, args] = spawnMock.mock.calls[0]!
-    expect(cmd).toBe('pnpm')
-    expect(args).toEqual(['test'])
+    expect(cmd).toBe('vp')
+    expect(args).toEqual(['run', 'test'])
   })
 
-  it('runs `pnpm test -- <files>` when files are given without packages', async () => {
+  it('runs `vp run test -- <files>` when files are given without packages', async () => {
     spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
     await runTests({ files: ['a.test.ts', 'b.test.ts'] })
     const [cmd, args] = spawnMock.mock.calls[0]!
-    expect(cmd).toBe('pnpm')
-    expect(args).toEqual(['test', '--', 'a.test.ts', 'b.test.ts'])
+    expect(cmd).toBe('vp')
+    expect(args).toEqual(['run', 'test', '--', 'a.test.ts', 'b.test.ts'])
   })
 })

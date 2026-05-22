@@ -25,7 +25,7 @@ export function registerFormatCommand(cli: CAC): void {
         // Surface the missing-binary message and the install hint to the user
         // and exit non-zero so CI / husky / agent loops fail loud.
         console.error(result.message)
-        console.error('Install with: pnpm add -D oxfmt')
+        console.error('Install with: vp install -D oxfmt')
         return 1
       }
 

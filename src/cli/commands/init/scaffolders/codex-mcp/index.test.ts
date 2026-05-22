@@ -21,7 +21,7 @@ describe('upsertPlaywrightMcpServer', () => {
 
     expect(next).toContain('model = "gpt-5.4"')
     expect(next).toContain(PLAYWRIGHT_MCP_HEADER)
-    expect(next).toContain('args = ["-y", "@playwright/mcp@latest"')
+    expect(next).toContain('args = ["dlx", "@playwright/mcp@latest"')
     expect(next).toContain('enabled = true')
     expect(next).toContain('startup_timeout_sec = 30')
   })
@@ -35,7 +35,7 @@ args = ["old"]
 command = "ak"
 `)
 
-    expect(next).toContain('command = "npx"')
+    expect(next).toContain('command = "vp"')
     expect(next).not.toContain('command = "old"')
     expect(next).toContain('[mcp_servers.agent-kit]\ncommand = "ak"')
     expect(next.match(/\[mcp_servers\.playwright\]/g)).toHaveLength(1)
@@ -164,14 +164,14 @@ command = "old"
 args = ["old"]
 
 [mcp_servers.playwright]
-command = "npx"
+command = "vp"
 `,
       '/new/path/src/mcp/cli.ts',
     )
 
     expect(next).toContain('args = ["/new/path/src/mcp/cli.ts"]')
     expect(next).not.toContain('command = "old"')
-    expect(next).toContain('[mcp_servers.playwright]\ncommand = "npx"')
+    expect(next).toContain('[mcp_servers.playwright]\ncommand = "vp"')
     expect(next.match(/\[mcp_servers\.agent-kit\]/g)).toHaveLength(1)
   })
 

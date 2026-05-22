@@ -106,7 +106,7 @@ function builtinEvals(subagentFn?: SubagentFn): readonly Eval[] {
     ),
     makeEval(
       'eval-4-dependency-bump',
-      'Bump zod from ^3.22.0 to ^3.23.0 in package.json. Verify pnpm install succeeds.',
+      'Bump zod from ^3.22.0 to ^3.23.0 in package.json. Verify vp install succeeds.',
       assertEval4,
       subagentFn,
     ),

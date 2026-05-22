@@ -1,10 +1,14 @@
 /**
  * Unified SQLite adapter for agent-kit.
  *
- * Driver is selected lazily so Node's static ESM loader never resolves
- * `bun:sqlite` (which fails outside Bun). Under Bun → `bun:sqlite`; under
- * Node (vitest, CLI) → `better-sqlite3`.
+ * Driver is selected lazily so neither bundlers nor Node's static ESM loader
+ * ever see a literal `bun:sqlite` specifier. Under Bun the constructor
+ * resolves `bun:sqlite`; under Node (vitest, CLI) it resolves `better-sqlite3`.
  */
+
+import { createRequire } from 'node:module'
+
+const requireFromHere = createRequire(import.meta.url)
 
 type BunDatabaseLike = {
   prepare(sql: string): unknown
@@ -16,19 +20,22 @@ type BunDatabaseLike = {
 
 type BunDatabaseCtor = new (filename: string, options?: DatabaseOptions) => BunDatabaseLike
 
-const driverSpec =
-  typeof (globalThis as { Bun?: unknown }).Bun !== 'undefined' ? 'bun:sqlite' : 'better-sqlite3'
+let cachedDriver: BunDatabaseCtor | undefined
 
-const driverModule = (await import(/* @vite-ignore */ driverSpec)) as {
-  Database?: BunDatabaseCtor
-  default?: BunDatabaseCtor
-}
-
-const BunDatabase: BunDatabaseCtor = (driverModule.Database ??
-  driverModule.default) as BunDatabaseCtor
-
-if (!BunDatabase) {
-  throw new Error(`Could not resolve a SQLite Database constructor from driver "${driverSpec}"`)
+function resolveDriver(): BunDatabaseCtor {
+  if (cachedDriver) return cachedDriver
+  const isBun = typeof (globalThis as { Bun?: unknown }).Bun !== 'undefined'
+  const spec = isBun ? 'bun:sqlite' : 'better-sqlite3'
+  const mod = requireFromHere(spec) as {
+    Database?: BunDatabaseCtor
+    default?: BunDatabaseCtor
+  } & BunDatabaseCtor
+  const ctor = (mod.Database ?? mod.default ?? mod) as BunDatabaseCtor
+  if (typeof ctor !== 'function') {
+    throw new Error(`Could not resolve a SQLite Database constructor from driver "${spec}"`)
+  }
+  cachedDriver = ctor
+  return ctor
 }
 
 /** Statement interface with better-sqlite3-compatible generic order. */
@@ -52,7 +59,8 @@ export class Database {
   private readonly _db: BunDatabaseLike
 
   constructor(filename: string, options?: DatabaseOptions) {
-    this._db = new BunDatabase(filename, options)
+    const Driver = resolveDriver()
+    this._db = new Driver(filename, options)
   }
 
   prepare<Params extends unknown[] = unknown[], ReturnType = Record<string, unknown>>(

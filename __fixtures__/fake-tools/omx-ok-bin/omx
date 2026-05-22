@@ -1,6 +1,6 @@
 #!/bin/sh
 # Test fixture: a fake `omx` binary that responds the way real omx would
-# for `--version` and `setup --yes`. Used to live-verify ak setup --with
+# for `--version` and setup invocations. Used to live-verify ak setup --with
 # omx without invoking the real omx CLI.
 case "$1" in
   --version)
@@ -8,7 +8,7 @@ case "$1" in
     exit 0
     ;;
   setup)
-    echo "omx-fixture: setup --yes ran (no-op)"
+    echo "omx-fixture: $* ran (no-op)"
     exit 0
     ;;
   *)

@@ -176,3 +176,8 @@ agent-rules/rtk-routing.md
 agent-rules/supported-agent-clis.md
 agent-rules/ts-coding-conventions.md
 # <<< managed by @webpresso/agent-kit (catalog-installed)
+!.codex/agents/
+!.codex/agents/**
+!.codex/skills/
+!.codex/skills/**
+.codex/skills/.system/**

@@ -14,19 +14,11 @@ curl -fsSL https://bun.sh/install | bash
 ## Install
 
 ```bash
-npm install -g webpresso
-```
-
-pnpm / yarn / bun equivalents also work:
-
-```bash
-pnpm add -g webpresso
-# yarn global add webpresso
-# bun add -g webpresso
+vp install -g webpresso
 ```
 
 > **Pinned-version / devDependency path** (Codex CLI, library consumers):
-> `pnpm add -D webpresso`. See [docs/getting-started.md](./docs/getting-started.md)
+> `vp install -D webpresso && vp exec wp setup`. See [docs/getting-started.md](./docs/getting-started.md)
 > for the full setup matrix. The legacy `@webpresso/agent-kit` package on GitHub
 > Packages is frozen — new releases are published to `webpresso` on public npmjs.org only.
 
@@ -34,7 +26,7 @@ pnpm add -g webpresso
 
 ```bash
 # 1. Install and set up
-npm install -g webpresso
+vp install -g webpresso
 wp setup --with base-kit --with example-skill
 
 # 2. Compile to all 6 IDE surfaces
@@ -75,7 +67,7 @@ agent-kit is the catalog and the `ak` CLI that fixes that.
 
 ```bash
 # Global install (recommended — Claude Code, Codex CLI, Cursor, Windsurf, Gemini, OpenCode):
-npm install -g webpresso && wp setup
+vp install -g webpresso && wp setup
 
 # Claude Code plugin:
 /plugin marketplace add webpresso/agent-kit
@@ -186,7 +178,7 @@ You get: hooks (PreToolUse, PostToolUse, Stop, SessionStart), the `ak` MCP serve
 ### Path B — global install + `wp setup`
 
 ```bash
-npm install -g webpresso
+vp install -g webpresso
 wp setup
 ```
 
@@ -202,7 +194,7 @@ claude plugin update --scope user agent-kit@agent-kit
 
 That means one `wp setup` run can wire both Codex's global MCP entry and Claude Code's user-global plugin state. Set `AK_SKIP_CLAUDE_PLUGIN=1` to opt out. See [`docs/getting-started.md`](./docs/getting-started.md) for the full setup matrix and [`docs/presets.md`](./docs/presets.md) for `--with` presets (`omx`, `gstack`, `context-mode`, `playwright-mcp`, `vision`, `lore-commits`, `rtk`, `base-kit`).
 
-> **Pinned-version devDependency:** `pnpm add -D webpresso && npx wp setup`. `ak` is a working alias for all `wp` commands.
+> **Pinned-version devDependency:** `vp install -D webpresso && vp exec wp setup`. `ak` is a working alias for all `wp` commands.
 
 ## IDE support matrix
 

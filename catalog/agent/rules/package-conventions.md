@@ -38,10 +38,13 @@ package with explicit subpath exports over new split packages.
 
 ## Package manager
 
-- **pnpm only** — `pnpm@10.x`. No npm or yarn lockfiles.
-- Run dev scripts via `pnpm run <script>`. Prefer wrapping workflows in
-  `package.json` scripts rather than bare-invoking `vitest`, `tsc`, `tshy`,
-  etc., directly.
+- **Vite+ facade first** — run repo workflows through `vp` (`vp install`,
+  `vp run <script>`, `vp exec <bin>`). Vite+ selects the repo-declared package
+  manager substrate from `packageManager`/lockfiles; do not use `npm`, `npx`,
+  or raw package-manager globals for normal repo operations.
+- The Webpresso package substrate remains `pnpm@11.x`; keep `pnpm-workspace.yaml`
+  and `pnpm-lock.yaml`, but access them through `vp` unless a release procedure
+  explicitly requires the raw package-manager command.
 
 ## Publishing & registry
 
@@ -49,16 +52,16 @@ package with explicit subpath exports over new split packages.
   `@webpresso:registry=https://npm.pkg.github.com`.
 - Auth via `GH_PACKAGES_TOKEN` env var read by the repo's `.npmrc`. Never
   hardcode tokens or create `.env` files with credentials.
-- `prepublishOnly` builds the package before every `pnpm publish`. If a
-  package outputs a `dist/`, it must have `prepublishOnly: "pnpm build"` (or
-  equivalent) so that `pnpm changeset publish` always ships built output.
+- `prepublishOnly` builds the package before every publish. If a
+  package outputs a `dist/`, it must have `prepublishOnly: "vp run build"` (or
+  equivalent) so that Changesets publishing always ships built output.
 - All public packages are `"type": "module"` — ESM-only output.
-- Run `pnpm lint:pkg` (publint / attw) before releasing to catch broken export
+- Run `vp run lint:pkg` (publint / attw) before releasing to catch broken export
   maps.
 
 **Exception — public `webpresso` package:** The `webpresso` package on
 public npmjs.org is unscoped and published with `access: "public"`. It is both
-the frictionless globally-installed CLI (`npm i -g webpresso`) and the
+the frictionless globally-installed CLI (`vp install -g webpresso`) and the
 consumer dependency for folded agent config helpers via `webpresso/*` subpath
 exports. The dual-publish is handled by `scripts/publish-webpresso.ts` (see
 `changeset-release.md` § Dual-publish pattern). Scoped `@webpresso/*` packages

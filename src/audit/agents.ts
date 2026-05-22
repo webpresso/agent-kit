@@ -351,7 +351,7 @@ function checkAgentKitDevDependency(
     violations.push({
       file: 'package.json',
       message:
-        'Missing devDependency `@webpresso/agent-kit`. Run `pnpm add -D @webpresso/agent-kit` then `pnpm install`.',
+        'Missing devDependency `@webpresso/agent-kit`. Run `vp install -D @webpresso/agent-kit` then `vp install`.',
     })
   }
 }

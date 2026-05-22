@@ -60,6 +60,7 @@ describe('ak root command surface', () => {
     expect(result.code).toBe(0)
     expect(result.stdout.join('\n')).toContain('ak setup')
     expect(result.stdout.join('\n')).toContain('--with <skills>')
+    expect(result.stdout.join('\n')).toContain('--project')
   })
 
   it('routes ak roadmap to roadmap help', async () => {

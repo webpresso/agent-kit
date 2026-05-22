@@ -237,7 +237,7 @@ describe('ak init end-to-end', () => {
     expect(agents).toMatch(
       /Generated on demand \(not created by setup\):[\s\S]*`\.agent\/planning\/contracts\/`[\s\S]*`\.agent\/planning\/state\/`[\s\S]*`\.agent\/planning\/notepad\.md`[\s\S]*`\.agent\/planning\/project-memory\.json`/,
     )
-    expect(agents).toContain('pnpm install && pnpm setup:agent')
+    expect(agents).toContain('vp install && vp run setup:agent')
     expect(agents).not.toContain('ak symlink sync')
 
     // Config
@@ -648,8 +648,8 @@ describe('warnIfNonLocalCli (DX2)', () => {
         (line) =>
           line.includes('warning: ak running from a non-local install') &&
           line.includes('This repo already pins `@webpresso/agent-kit`') &&
-          line.includes('pnpm run setup:agent') &&
-          line.includes('pnpm exec ak setup'),
+          line.includes('vp run setup:agent') &&
+          line.includes('vp exec ak setup'),
       ),
     ).toBe(true)
   })

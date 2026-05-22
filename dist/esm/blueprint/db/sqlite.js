@@ -1,20 +1,31 @@
 /**
  * Unified SQLite adapter for agent-kit.
  *
- * Driver is selected lazily so Node's static ESM loader never resolves
- * `bun:sqlite` (which fails outside Bun). Under Bun → `bun:sqlite`; under
- * Node (vitest, CLI) → `better-sqlite3`.
+ * Driver is selected lazily so neither bundlers nor Node's static ESM loader
+ * ever see a literal `bun:sqlite` specifier. Under Bun the constructor
+ * resolves `bun:sqlite`; under Node (vitest, CLI) it resolves `better-sqlite3`.
  */
-const driverSpec = typeof globalThis.Bun !== 'undefined' ? 'bun:sqlite' : 'better-sqlite3';
-const driverModule = (await import(/* @vite-ignore */ driverSpec));
-const BunDatabase = (driverModule.Database ?? driverModule.default);
-if (!BunDatabase) {
-    throw new Error(`Could not resolve a SQLite Database constructor from driver "${driverSpec}"`);
+import { createRequire } from 'node:module';
+const requireFromHere = createRequire(import.meta.url);
+let cachedDriver;
+function resolveDriver() {
+    if (cachedDriver)
+        return cachedDriver;
+    const isBun = typeof globalThis.Bun !== 'undefined';
+    const spec = isBun ? 'bun:sqlite' : 'better-sqlite3';
+    const mod = requireFromHere(spec);
+    const ctor = (mod.Database ?? mod.default ?? mod);
+    if (typeof ctor !== 'function') {
+        throw new Error(`Could not resolve a SQLite Database constructor from driver "${spec}"`);
+    }
+    cachedDriver = ctor;
+    return ctor;
 }
 export class Database {
     _db;
     constructor(filename, options) {
-        this._db = new BunDatabase(filename, options);
+        const Driver = resolveDriver();
+        this._db = new Driver(filename, options);
     }
     prepare(sql) {
         return this._db.prepare(sql);

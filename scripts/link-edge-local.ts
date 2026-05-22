@@ -20,6 +20,7 @@ import {
   existsSync,
   lstatSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   readlinkSync,
   renameSync,
@@ -68,6 +69,12 @@ for (const consumerPath of consumerPaths) {
   }
   mkdirSync(join(consumerPath, 'node_modules', '@webpresso'), { recursive: true })
   ensureSymlink(target, repoRoot, `consumer ${consumerPath}`)
+
+  // Repoint nested @webpresso/agent-kit symlinks created by pnpm for sub-packages
+  // (e.g. <consumer>/packages/foo/node_modules/@webpresso/agent-kit). Without this,
+  // tests run from a sub-package resolve to the pnpm-store snapshot, not live source.
+  repointNestedSymlinks(consumerPath, repoRoot)
+
   writeStateFile(consumerPath)
 }
 
@@ -118,6 +125,46 @@ function writeStateFile(consumerPath: string): void {
   }
   writeFileSync(statePath, `${JSON.stringify(payload, null, 2)}\n`)
   console.log(`consumer ${consumerPath}: wrote ${STATE_FILE_RELATIVE_PATH}`)
+}
+
+function repointNestedSymlinks(consumerRoot: string, target: string): void {
+  const found: string[] = []
+  walkForAgentKit(consumerRoot, found, 0)
+  let repointed = 0
+  for (const linkPath of found) {
+    try {
+      const current = readlinkSync(linkPath)
+      if (!current.includes('node_modules/.pnpm/')) continue
+      unlinkSync(linkPath)
+      symlinkSync(target, linkPath, 'dir')
+      repointed++
+    } catch {
+      // best-effort: skip entries we can't readlink (e.g. real dirs)
+    }
+  }
+  if (repointed > 0) {
+    console.log(`consumer ${consumerRoot}: repointed ${repointed} nested symlinks → ${target}`)
+  }
+}
+
+function walkForAgentKit(dir: string, found: string[], depth: number): void {
+  if (depth > 10) return
+  let entries: ReturnType<typeof readdirSync>
+  try {
+    entries = readdirSync(dir, { withFileTypes: true })
+  } catch {
+    return
+  }
+  for (const e of entries) {
+    const p = join(dir, e.name)
+    // Skip the consumer's pnpm store (its own @webpresso/agent-kit lives inside .pnpm/)
+    if (e.name === '.pnpm') continue
+    if (e.isSymbolicLink() && p.endsWith('/node_modules/@webpresso/agent-kit')) {
+      found.push(p)
+      continue
+    }
+    if (e.isDirectory()) walkForAgentKit(p, found, depth + 1)
+  }
 }
 
 function timestamp(): string {

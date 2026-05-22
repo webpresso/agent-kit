@@ -2,11 +2,17 @@
   AGENTS.md template.
 
   `ak setup` renders this file with:
-  - Repository map: bulleted list of workspace packages inferred from
-    pnpm-workspace.yaml / package.json workspaces. Recommend the umbrella
-    `webpresso` package + `webpresso/*` subpath exports
-    (see `catalog/agent/rules/package-conventions.md`); never recommend
-    the deprecated split agent-config package names.
+  - - `@webpresso/agent-docs-lint` — `packages/agent-docs-lint`
+- `@webpresso/agent-e2e-preset` — `packages/agent-e2e-preset`
+- `@webpresso/agent-kit` — `.`
+- `@webpresso/agent-launch` — `packages/agent-launch`
+- `@webpresso/agent-oxlint` — `packages/agent-oxlint`
+- `@webpresso/agent-stryker` — `packages/agent-stryker`
+- `@webpresso/agent-test-preset` — `packages/agent-test-preset`
+- `@webpresso/agent-tsconfig` — `packages/agent-tsconfig`
+- `@webpresso/agent-vitest` — `packages/agent-vitest`
+- `@webpresso/agent-workers-test` — `packages/agent-workers-test`: bulleted list of workspace packages inferred from
+    pnpm-workspace.yaml / package.json workspaces.
   - - TypeScript
 - Vitest
 - Zod: short description generated from package.json + detected
@@ -15,6 +21,8 @@
     not specified.
   - .agent/planning/: defaults to `.agent/planning/`. Override via
     .agent-kitrc.json.
+  - blueprints: defaults to `blueprints`. Override via
+    .agent-kitrc.json#blueprintsDir.
 
   Managed sections in this file are refreshed by agent-kit on `ak sync`.
   Repo-specific edits belong only inside `user-owned` blocks; agent-kit
@@ -33,7 +41,7 @@ starter template, and keep changes small, reviewable, and verified.
 No agent surfaces are tracked in git — everything is regenerated. After cloning:
 
 ```bash
-pnpm install && pnpm setup:agent  # pnpm setup:agent runs ak setup, which scaffolds .agent/, AGENTS.md, hooks, and runs ak sync
+vp install && vp run setup:agent  # setup:agent runs ak setup, which scaffolds .agent/, AGENTS.md, hooks, and runs ak sync
 ```
 
 Agent-kit is the single source of truth. To customize skills, commands, or
@@ -43,9 +51,10 @@ individual repos. The `--with omx` preset chains `omx setup --yes`.
 ## Plan
 
 Use blueprints for non-trivial work. Blueprint specs live in
-[`blueprints/`](./blueprints/) with lifecycle directories such as `planned/`,
-`in-progress/`, and `completed/`. Keep each blueprint's tasks, dependencies,
-verification commands, and acceptance criteria current before execution.
+[`blueprints/`](./blueprints/) with lifecycle directories such
+as `planned/`, `in-progress/`, and `completed/`. Keep each blueprint's tasks,
+dependencies, verification commands, and acceptance criteria current before
+execution.
 
 Slash-commands and skills are loaded from agent-kit's catalog at setup time:
 
@@ -104,12 +113,15 @@ this block is preserved verbatim across `ak sync` runs.
 
 ## Durable planning surface
 
-- PRDs: `.agent/planning//plans/prd-<slug>.md`
-- Test specs: `.agent/planning//plans/test-spec-<slug>.md`
-- Boundary contracts: `.agent/planning//contracts/*.md`
-- Lifecycle state: `.agent/planning//state/lifecycle/<slug>.json`
-- Session notes: `.agent/planning//notepad.md`
-- Project memory: `.agent/planning//project-memory.json`
+- Materialized by setup: blueprint lifecycle directories under
+  `blueprints/` (`planned/`, `in-progress/`, `completed/`) and durable
+  plan files under `.agent/planning/plans/` when PRDs or test specs
+  are generated.
+- Generated on demand (not created by setup): boundary contracts at
+  `.agent/planning/contracts/`, lifecycle state at
+  `.agent/planning/state/`, session notes at
+  `.agent/planning/notepad.md`, and project memory at
+  `.agent/planning/project-memory.json`.
 
 If work changes workspace ownership, build boundaries, or cross-package
 consumption mode, update the relevant boundary contract before claiming the plan
@@ -121,13 +133,13 @@ All packages in the webpresso public umbrella use **Changesets**. Never push
 `v*` tags or manually bump `package.json#version`.
 
 To ship a change:
-1. `pnpm changeset` — describe the change and select the bump type.
+1. `vp run changeset` — describe the change and select the bump type.
 2. Commit the generated `.changeset/<name>.md` alongside your code.
 3. Merge to `main`. CI opens a **"Version Packages"** PR automatically.
 4. Merge that PR — CI publishes to GitHub Packages.
 
 ```bash
-pnpm changeset:status   # see pending changesets
+vp run changeset:status   # see pending changesets
 ```
 
 Full protocol: `.agent/rules/changeset-release.md`
@@ -136,7 +148,7 @@ Full protocol: `.agent/rules/changeset-release.md`
 
 - No `../` parent-relative imports — use workspace deps + subpath exports.
 - No `.mjs` source files — write `.ts` (with Bun/Node shebang if needed).
-- `pnpm` only (`pnpm@11.x`). Run scripts via `pnpm run <script>`.
+- Use `vp` as the command facade (`vp install`, `vp run <script>`) so Vite+ selects the repo-declared package-manager substrate. Do not call `npm`, `npx`, or raw package-manager globals for repo workflows unless a deeper repo instruction explicitly requires it.
 - All packages: `"type": "module"`, `publishConfig` → GitHub Packages registry.
 - Auth: `GH_PACKAGES_TOKEN` env var consumed by `.npmrc`. Never hardcode tokens.
 
@@ -144,15 +156,16 @@ Full details: `.agent/rules/package-conventions.md`
 
 ## Repository map
 
-- `webpresso` (this repo, `.`) — umbrella package. Folded agent-config helpers
-  ship via subpath exports: `webpresso/oxlint`, `webpresso/vitest`,
-  `webpresso/test-preset`, `webpresso/e2e-preset`, `webpresso/tsconfig`,
-  `webpresso/docs-linter`, `webpresso/stryker`, `webpresso/launch`,
-  `webpresso/workers-test`. See `catalog/agent/rules/package-conventions.md`.
-- The `packages/` directory contains deprecated split agent-config packages
-  preserved on the GitHub Packages registry for backwards compatibility only.
-  New consumer recommendations MUST point at the `webpresso/*` subpath
-  exports above, never at any deprecated split package name.
+- `@webpresso/agent-docs-lint` — `packages/agent-docs-lint`
+- `@webpresso/agent-e2e-preset` — `packages/agent-e2e-preset`
+- `@webpresso/agent-kit` — `.`
+- `@webpresso/agent-launch` — `packages/agent-launch`
+- `@webpresso/agent-oxlint` — `packages/agent-oxlint`
+- `@webpresso/agent-stryker` — `packages/agent-stryker`
+- `@webpresso/agent-test-preset` — `packages/agent-test-preset`
+- `@webpresso/agent-tsconfig` — `packages/agent-tsconfig`
+- `@webpresso/agent-vitest` — `packages/agent-vitest`
+- `@webpresso/agent-workers-test` — `packages/agent-workers-test`
 
 ## Tech stack
 

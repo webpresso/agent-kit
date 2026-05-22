@@ -22,7 +22,7 @@ agent-surface setup in five minutes.
 ## Install
 
 ```bash
-npm install -g webpresso
+vp install -g webpresso
 ```
 
 pnpm / yarn / bun equivalents:
@@ -41,7 +41,7 @@ ak --version   # alias — same binary
 ```
 
 > **Pinned-version devDependency path** (library imports, CI with reproducible
-> lockfiles): `pnpm add -D webpresso && pnpm exec wp setup`. The legacy
+> lockfiles): `vp install -D webpresso && vp exec wp setup`. The legacy
 > `@webpresso/agent-kit` package on GitHub Packages is frozen — use `webpresso`
 > from public npmjs.org for all new installs.
 
@@ -100,9 +100,10 @@ wp setup
 
 Default setup also wires in tooling that lives outside the skill catalog:
 
-- `omx` — chains `omx setup --yes` so the operator-workflow execution
-  layer is set up alongside agent-kit. If `omx` is missing, setup first
-  runs `npm install -g oh-my-codex` and then retries.
+- `omx` — chains `omx setup --yes --scope user` so the operator-workflow execution
+  layer is set up alongside agent-kit with shared user auth by default. Use
+  `wp setup --project` to request project-scoped OMX setup instead. If `omx`
+  is missing, setup first runs `vp install -g oh-my-codex` and then retries.
 - `gstack` — ensures the gstack skill registry is installed at
   `~/.claude/skills/gstack/` (clones + runs `./setup --team` if missing,
   no-op if already there). Provides `/qa`, `/ship`, `/review`, etc.

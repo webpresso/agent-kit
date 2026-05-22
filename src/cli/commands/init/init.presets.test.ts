@@ -92,13 +92,13 @@ describe('runInit() — omx + gstack presets (integration)', () => {
   })
 
   describe('--with omx', () => {
-    it('returns SUCCESS and invokes omx --version then omx setup --yes', async () => {
+    it('returns SUCCESS and invokes omx --version then user-scoped omx setup', async () => {
       const code = await runInit({ cwd: repo, yes: true, with: 'omx' })
       expect(code).toBe(EXIT_SUCCESS)
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
       expect(omxCalls).toHaveLength(2)
       expect(omxCalls[0]?.[1]).toEqual(['--version'])
-      expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes'])
+      expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes', '--scope', 'user'])
       expect(omxCalls[1]?.[2]).toMatchObject({
         cwd: repo,
         stdio: ['ignore', 'inherit', 'inherit'],
@@ -106,6 +106,13 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(readFileSync(join(repo, '.codex-home/config.toml'), 'utf8')).toContain(
         '[mcp_servers.playwright]',
       )
+    })
+
+    it('passes project scope to omx setup when --project is requested', async () => {
+      const code = await runInit({ cwd: repo, yes: true, with: 'omx', project: true })
+      expect(code).toBe(EXIT_SUCCESS)
+      const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
+      expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes', '--scope', 'project'])
     })
 
     it('returns EXIT_SETUP_FAIL when probe errors with ENOENT (omx not on PATH)', async () => {

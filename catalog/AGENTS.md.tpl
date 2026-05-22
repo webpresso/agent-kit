@@ -30,12 +30,13 @@ starter template, and keep changes small, reviewable, and verified.
 No agent surfaces are tracked in git — everything is regenerated. After cloning:
 
 ```bash
-pnpm install && pnpm setup:agent  # pnpm setup:agent runs ak setup, which scaffolds .agent/, AGENTS.md, hooks, and runs ak sync
+vp install && vp run setup:agent  # setup:agent runs ak setup, which scaffolds .agent/, AGENTS.md, hooks, and runs ak sync
 ```
 
 Agent-kit is the single source of truth. To customize skills, commands, or
 workflows, edit them in `@webpresso/agent-kit`'s catalog and publish — not in
-individual repos. The `--with omx` preset chains `omx setup --yes`.
+individual repos. The `--with omx` preset chains `omx setup --yes --scope user`
+by default; `wp setup --project` requests project-scoped OMX setup.
 
 ## Plan
 
@@ -122,13 +123,13 @@ All packages in the webpresso public umbrella use **Changesets**. Never push
 `v*` tags or manually bump `package.json#version`.
 
 To ship a change:
-1. `pnpm changeset` — describe the change and select the bump type.
+1. `vp run changeset` — describe the change and select the bump type.
 2. Commit the generated `.changeset/<name>.md` alongside your code.
 3. Merge to `main`. CI opens a **"Version Packages"** PR automatically.
 4. Merge that PR — CI publishes to GitHub Packages.
 
 ```bash
-pnpm changeset:status   # see pending changesets
+vp run changeset:status   # see pending changesets
 ```
 
 Full protocol: `.agent/rules/changeset-release.md`
@@ -137,7 +138,7 @@ Full protocol: `.agent/rules/changeset-release.md`
 
 - No `../` parent-relative imports — use workspace deps + subpath exports.
 - No `.mjs` source files — write `.ts` (with Bun/Node shebang if needed).
-- `pnpm` only (`pnpm@11.x`). Run scripts via `pnpm run <script>`.
+- Use `vp` as the command facade (`vp install`, `vp run <script>`) so Vite+ selects the repo-declared package-manager substrate. Do not call `npm`, `npx`, or raw package-manager globals for repo workflows unless a deeper repo instruction explicitly requires it.
 - All packages: `"type": "module"`, `publishConfig` → GitHub Packages registry.
 - Auth: `GH_PACKAGES_TOKEN` env var consumed by `.npmrc`. Never hardcode tokens.
 

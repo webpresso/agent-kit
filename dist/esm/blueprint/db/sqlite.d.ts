@@ -1,9 +1,9 @@
 /**
  * Unified SQLite adapter for agent-kit.
  *
- * Driver is selected lazily so Node's static ESM loader never resolves
- * `bun:sqlite` (which fails outside Bun). Under Bun → `bun:sqlite`; under
- * Node (vitest, CLI) → `better-sqlite3`.
+ * Driver is selected lazily so neither bundlers nor Node's static ESM loader
+ * ever see a literal `bun:sqlite` specifier. Under Bun the constructor
+ * resolves `bun:sqlite`; under Node (vitest, CLI) it resolves `better-sqlite3`.
  */
 /** Statement interface with better-sqlite3-compatible generic order. */
 export interface Statement<Params extends unknown[] = unknown[], ReturnType = Record<string, unknown>> {

@@ -97,7 +97,7 @@ returns the literal string `'hello, agent-kit'`. Add a colocated
    }
    ```
 4. `pnpm test src/hello.test.ts` — verify PASS.
-5. `pnpm lint src/hello.ts src/hello.test.ts` — verify clean.
+5. `vp run lint -- src/hello.ts src/hello.test.ts` — verify clean.
 
 **Acceptance:**
 - [ ] `src/hello.ts` exists with the documented signature.

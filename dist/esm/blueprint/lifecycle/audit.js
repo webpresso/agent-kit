@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import matter from 'gray-matter';
 import { parseBlueprint } from '#core/parser';
 import { lifecycleBlueprintStatusSchema } from '#core/schema';
 import { readBlueprintExecutionArtifacts } from '#execution/artifacts';
@@ -15,6 +16,17 @@ function isBlueprintOverview(file) {
 }
 function normalizePath(file) {
     return file.replace(/\\/g, '/');
+}
+function readLifecycleAuditFrontmatter(raw) {
+    const data = matter(raw).data;
+    return {
+        historicalZeroTaskRationale: data.historical_zero_task_rationale,
+        historicalZeroTaskWaiver: data.historical_zero_task_waiver,
+        status: data.status,
+    };
+}
+function countTaskHeadings(raw) {
+    return raw.match(/^####\s+(?:\[[^\]]+\]\s+)?Task\s+/gm)?.length ?? 0;
 }
 function readTaskStatusLines(raw) {
     const taskBlocks = raw.split(/^####\s+(?:\[[^\]]+\]\s+)?Task\s+/m).slice(1);
@@ -94,6 +106,25 @@ function validateBlueprintSlugUniqueness(blueprints) {
         });
     }
     return issues;
+}
+function hasHistoricalZeroTaskRationale(frontmatter) {
+    return (frontmatter.historicalZeroTaskWaiver === true &&
+        typeof frontmatter.historicalZeroTaskRationale === 'string' &&
+        frontmatter.historicalZeroTaskRationale.trim().length > 0);
+}
+function validateCompletedZeroTaskBlueprint(file, frontmatter, taskHeadingCount) {
+    if (frontmatter.status !== 'completed' ||
+        taskHeadingCount > 0 ||
+        hasHistoricalZeroTaskRationale(frontmatter)) {
+        return [];
+    }
+    return [
+        {
+            file,
+            level: 'error',
+            message: 'A completed zero-task blueprint requires explicit historical zero-task waiver and rationale.',
+        },
+    ];
 }
 /**
  * Enforce engine semantics: `completed` implies every task is `done`
@@ -225,13 +256,18 @@ function validateBlueprintPlacement(file, blueprint) {
     }
     return issues;
 }
-async function auditBlueprintFile(file, slug) {
+async function auditBlueprintFile(file, slug, options) {
     const raw = await readFile(file, 'utf-8');
     const blueprint = parseBlueprint(raw, slug);
+    const frontmatter = readLifecycleAuditFrontmatter(raw);
+    const strictIssues = options.strict
+        ? validateCompletedZeroTaskBlueprint(file, frontmatter, countTaskHeadings(raw))
+        : [];
     return [
         ...validateBlueprintPlacement(file, blueprint),
         ...validateTaskState(blueprint).map((issue) => Object.assign({}, issue, { file })),
         ...validateBlueprintEngineSemantics(file, blueprint),
+        ...strictIssues,
         ...validateExecutionMetadataTruth(file, blueprint),
     ];
 }
@@ -356,7 +392,7 @@ export async function runBlueprintAudit(options) {
         : scanned.filter((entry) => new Set(options.stagedFiles?.map(normalizePath) ?? []).has(normalizePath(path.relative(options.projectRoot, entry.path))));
     issues.push(...validateBlueprintSlugUniqueness(blueprintFiles));
     for (const entry of blueprintFiles) {
-        issues.push(...(await auditBlueprintFile(entry.path, entry.slug)));
+        issues.push(...(await auditBlueprintFile(entry.path, entry.slug, options)));
     }
     const pllDocs = [
         path.join(options.projectRoot, '.agent', 'commands', 'pll.md'),

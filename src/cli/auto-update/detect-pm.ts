@@ -22,7 +22,7 @@ import { execFileSync } from 'node:child_process'
 import { realpathSync } from 'node:fs'
 import { delimiter, dirname, sep } from 'node:path'
 
-export type ManagerName = 'npm' | 'pnpm' | 'yarn' | 'bun' | 'git'
+export type ManagerName = 'npm' | 'pnpm' | 'yarn' | 'bun' | 'vp' | 'git'
 
 export interface DetectSuccess {
   manager: ManagerName
@@ -38,11 +38,22 @@ export type DetectResult = DetectSuccess | DetectAbort
 export const GH_PACKAGE_NAME = '@webpresso/agent-kit'
 export const GH_PACKAGES_REGISTRY = 'https://npm.pkg.github.com'
 
+const VP_INSTALL_COMMAND = [
+  'vp',
+  'install',
+  '-g',
+  GH_PACKAGE_NAME,
+  '--',
+  '--registry',
+  GH_PACKAGES_REGISTRY,
+]
+
 const INSTALL_COMMANDS: Record<Exclude<ManagerName, 'git'>, string[]> = {
-  npm: ['npm', 'install', '-g', GH_PACKAGE_NAME, '--registry', GH_PACKAGES_REGISTRY],
-  pnpm: ['pnpm', 'add', '-g', GH_PACKAGE_NAME, '--registry', GH_PACKAGES_REGISTRY],
-  yarn: ['yarn', 'global', 'add', GH_PACKAGE_NAME],
-  bun: ['bun', 'add', '-g', GH_PACKAGE_NAME],
+  npm: VP_INSTALL_COMMAND,
+  pnpm: VP_INSTALL_COMMAND,
+  yarn: VP_INSTALL_COMMAND,
+  bun: VP_INSTALL_COMMAND,
+  vp: VP_INSTALL_COMMAND,
 }
 
 /**
@@ -133,7 +144,7 @@ export function parseUserAgent(userAgent: string): Exclude<ManagerName, 'git'> |
   if (head === undefined) return null
   const slash = head.indexOf('/')
   const name = (slash === -1 ? head : head.slice(0, slash)).toLowerCase()
-  if (name === 'npm' || name === 'pnpm' || name === 'yarn' || name === 'bun') {
+  if (name === 'npm' || name === 'pnpm' || name === 'yarn' || name === 'bun' || name === 'vp') {
     return name
   }
   return null
@@ -147,6 +158,8 @@ export function parseUserAgent(userAgent: string): Exclude<ManagerName, 'git'> |
  */
 export function matchStoreMarker(realpath: string): Exclude<ManagerName, 'git'> | null {
   const segments = splitPathSegments(realpath)
+  // Vite+ global package store: `~/.vite-plus/packages/...`.
+  if (segments.includes('.vite-plus')) return 'vp'
   // pnpm: any path under `<store>/.pnpm/...` or containing `.pnpm-store`.
   if (segments.some((seg) => seg === '.pnpm' || seg === '.pnpm-store' || seg === 'pnpm-global')) {
     return 'pnpm'
@@ -171,7 +184,7 @@ export function matchStoreMarker(realpath: string): Exclude<ManagerName, 'git'> 
 
 /**
  * Detect Volta / asdf shim layouts. These intercept the binary lookup such
- * that an in-place `npm install -g` won't pick up. Returns a user-facing
+ * that an in-place `vp install -g` won't pick up. Returns a user-facing
  * abort reason or null.
  * Exported for testability.
  */
@@ -197,10 +210,11 @@ export function confirmInstalledGlobally(realpath: string, env: NodeJS.ProcessEn
   const segments = splitPathSegments(realpath)
   // If the realpath sits inside a project's node_modules and does NOT match
   // a known global prefix (`.pnpm-store`, `.bun/install/global`, `.yarn/global`,
-  // `Cellar`, `lib/node_modules`), call it a devDep install.
+  // `.vite-plus`, `Cellar`, `lib/node_modules`), call it a devDep install.
   const insideNodeModules = segments.includes('node_modules')
   if (!insideNodeModules) return true
   // Global prefixes contain node_modules but are still global.
+  if (segments.includes('.vite-plus')) return true
   if (segments.includes('Cellar')) return true
   if (segments.includes('lib') && segments.includes('node_modules')) return true
   if (segments.includes('.npm-global')) return true

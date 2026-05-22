@@ -109,7 +109,9 @@ describe('runFormat', () => {
     const dir = makeFixtureDir()
 
     await expect(runFormat({ cwd: dir, files: ['a.ts'] })).rejects.toThrow(/oxfmt binary not found/)
-    await expect(runFormat({ cwd: dir, files: ['a.ts'] })).rejects.toThrow(/pnpm add -D oxfmt/)
+    await expect(runFormat({ cwd: dir, files: ['a.ts'] })).rejects.toThrow(
+      /vp install -D oxfmt/,
+    )
   })
 
   it('surfaces non-ENOENT spawn errors via spawnError without throwing', async () => {

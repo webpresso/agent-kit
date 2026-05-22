@@ -88,9 +88,9 @@ pnpm test:mutation 2>&1 | tee /tmp/stryker-new.txt
 If the repo uses a JSON reporter instead:
 
 ```bash
-pnpm exec vitest run --config vitest.stryker.config.ts --reporter=json \
+vp exec vitest run --config vitest.stryker.config.ts --reporter=json \
   > /tmp/stryker-old.json   # before
-pnpm exec vitest run --config vitest.stryker.config.ts --reporter=json \
+vp exec vitest run --config vitest.stryker.config.ts --reporter=json \
   > /tmp/stryker-new.json   # after
 ```
 

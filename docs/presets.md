@@ -59,16 +59,16 @@ Writes `.husky/commit-msg` that enforces Lore Commit Protocol trailers via `ak a
 
 ### `omx`
 
-Chains `omx setup --yes` after the agent-kit scaffold completes. OMX (oh-my-codex) is the operator-workflow execution layer that complements agent-kit's plan/audit layer; agent-kit invokes `omx team` downstream during blueprint execution.
+Chains `omx setup --yes --scope user` after the agent-kit scaffold completes. OMX (oh-my-codex) is the operator-workflow execution layer that complements agent-kit's plan/audit layer; agent-kit invokes `omx team` downstream during blueprint execution. Use `wp setup --project` to request `omx setup --yes --scope project` instead.
 
-**Detection:** `omx --version` on PATH; if missing, setup runs `npm install -g oh-my-codex` and probes again.
+**Detection:** `omx --version` on PATH; if missing, setup runs `vp install -g oh-my-codex` and probes again.
 **Failure modes:**
 - omx still not on PATH after the fallback install → `EXIT_SETUP_FAIL` (exit 1) with install hint in stderr
-- `omx setup --yes` itself errors → `EXIT_WRITE_FAIL` (exit 3) with the omx exit code surfaced
+- `omx setup --yes --scope user` itself errors → `EXIT_WRITE_FAIL` (exit 3) with the omx exit code surfaced
 
-**Idempotency:** OMX manages its own state — every `ak setup` re-invokes `omx setup --yes`, which is itself idempotent. After OMX finishes, agent-kit also migrates deprecated Codex config entries from `[features].codex_hooks` to `[features].hooks` in `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`) so older OMX releases do not keep re-triggering Codex's deprecation warning.
-**Codex/OMX MCP persistence:** after `omx setup --yes`, agent-kit upserts the owned `[mcp_servers.playwright]` block in `$CODEX_HOME/config.toml` or `~/.codex/config.toml`. This gives both Codex and OMX a persistent Playwright MCP server for browser testing without relying on session-local tool state.
-**Side-effects:** OMX writes its own files into the consumer repo (`.codex/`, `.omx/`, scope-specific AGENTS.md additions). agent-kit also writes the global Codex Playwright MCP block described above and the one-line `codex_hooks` → `hooks` feature-flag migration when needed, preserving unrelated config.
+**Idempotency:** OMX manages its own state — every `ak setup` re-invokes `omx setup --yes --scope user`, which is itself idempotent. After OMX finishes, agent-kit also migrates deprecated Codex config entries from `[features].codex_hooks` to `[features].hooks` in `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`) so older OMX releases do not keep re-triggering Codex's deprecation warning.
+**Codex/OMX MCP persistence:** after `omx setup --yes --scope user`, agent-kit upserts the owned `[mcp_servers.playwright]` block in `$CODEX_HOME/config.toml` or `~/.codex/config.toml`. This gives both Codex and OMX a persistent Playwright MCP server for browser testing without relying on session-local tool state.
+**Side-effects:** OMX writes user-scoped Codex/OMX configuration and may persist `.omx/setup-scope.json` in the consumer repo. When default user-scoped setup migrates a repo that was previously project-scoped, agent-kit removes Git-tracked `.codex/` and `.omx/` files so repo-scoped OMX/Codex artifacts do not remain committed; untracked local runtime files are preserved. agent-kit also writes the global Codex Playwright MCP block described above and the one-line `codex_hooks` → `hooks` feature-flag migration when needed, preserving unrelated config.
 
 ### `playwright-mcp`
 
@@ -82,7 +82,7 @@ Upserts Playwright's MCP server into Codex's persistent MCP config. This is norm
 ### `context-mode`
 
 Configures the [context-mode](https://github.com/mksglu/context-mode) peer tool for
-Codex CLI and OpenCode. This preset runs by default and ensures `context-mode` is available on `PATH`; if missing, agent-kit installs it with `npm install -g context-mode` before patching config files.
+Codex CLI and OpenCode. This preset runs by default and ensures `context-mode` is available on `PATH`; if missing, agent-kit installs it with `vp install -g context-mode` before patching config files.
 
 **Touches:**
 - `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`)
@@ -108,7 +108,7 @@ Codex CLI and OpenCode. This preset runs by default and ensures `context-mode` i
 | `PostCompact` | `context-mode hook codex postcompact` |
 
 **Failure modes:**
-- `context-mode` missing from `PATH` and automatic `npm install -g context-mode` fails → `EXIT_SETUP_FAIL` with install hint
+- `context-mode` missing from `PATH` and automatic `vp install -g context-mode` fails → `EXIT_SETUP_FAIL` with install hint
 
 **OpenCode note:**
 - The preset wires `opencode.json` only. If you want upstream context-mode routing

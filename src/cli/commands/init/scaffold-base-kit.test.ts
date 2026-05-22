@@ -85,7 +85,7 @@ describe('scaffoldBaseKit', () => {
     mkdirSync(repoRoot, { recursive: true })
     const initial = {
       name: 'consumer-app',
-      scripts: { 'setup:agent': 'pnpm exec ak setup' },
+      scripts: { 'setup:agent': 'vp exec ak setup' },
       devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
@@ -94,7 +94,7 @@ describe('scaffoldBaseKit', () => {
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
-    expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('pnpm exec ak setup')
+    expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('vp exec ak setup')
     expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
       '^0.2.0',
     )

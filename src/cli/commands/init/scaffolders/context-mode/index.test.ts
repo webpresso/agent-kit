@@ -139,7 +139,7 @@ describe('context-mode preset', () => {
       calls += 1
       if (calls === 1)
         return { status: null, error: Object.assign(new Error('ENOENT'), { code: 'ENOENT' }) }
-      if (cmd === 'npm') return { status: 0, error: undefined }
+      if (cmd === 'vp') return { status: 0, error: undefined }
       return { status: 0, error: undefined }
     }) as never
 
@@ -186,7 +186,7 @@ describe('context-mode preset', () => {
     let calls = 0
     const spawn = (() => {
       calls += 1
-      // First call (probe): fail; second call (npm install): fail
+      // First call (probe): fail; second call (vp install): fail
       return {
         status: calls === 1 ? null : 1,
         error: calls === 1 ? new Error('ENOENT') : undefined,
@@ -228,7 +228,7 @@ describe('context-mode preset', () => {
   })
 
   it('opencode.json plugin array never includes local .opencode/plugins paths — agent-kit-dev-link.js is auto-loaded, not explicitly registered', () => {
-    const next = patchOpenCodeContextModeConfig({}, ['pnpm', 'exec', 'ak', 'mcp'])
+    const next = patchOpenCodeContextModeConfig({}, ['vp', 'exec', 'ak', 'mcp'])
     const plugins = next.plugin as string[]
 
     for (const entry of plugins) {
@@ -244,9 +244,9 @@ describe('context-mode preset', () => {
     expect(mcp['agent-kit'].command).toEqual(['ak', 'mcp'])
   })
 
-  it('patchOpenCodeContextModeConfig uses pnpm exec ak mcp as default fallback command', () => {
-    const next = patchOpenCodeContextModeConfig({}, ['pnpm', 'exec', 'ak', 'mcp'])
+  it('patchOpenCodeContextModeConfig uses vp exec ak mcp as default fallback command', () => {
+    const next = patchOpenCodeContextModeConfig({}, ['vp', 'exec', 'ak', 'mcp'])
     const mcp = next.mcp as Record<string, { command: unknown }>
-    expect(mcp['agent-kit'].command).toEqual(['pnpm', 'exec', 'ak', 'mcp'])
+    expect(mcp['agent-kit'].command).toEqual(['vp', 'exec', 'ak', 'mcp'])
   })
 })

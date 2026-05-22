@@ -1,0 +1,82 @@
+import { spawnSync as realSpawnSync } from 'node:child_process'
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { describe, expect, it } from 'vitest'
+
+import { ensureOmx } from './index.js'
+
+function okSpawnResult(stdout: string | Buffer = '') {
+  return {
+    status: 0,
+    error: undefined,
+    stdout,
+    stderr: '',
+    pid: 1,
+    output: [],
+    signal: null,
+  }
+}
+
+function git(repoRoot: string, args: readonly string[]): void {
+  const result = realSpawnSync('git', [...args], { cwd: repoRoot, encoding: 'utf8' })
+  if (result.status !== 0) {
+    throw new Error(`git ${args.join(' ')} failed: ${result.stderr}`)
+  }
+}
+
+function makeOmxOnlyMockSpawn(): Parameters<typeof ensureOmx>[0]['spawn'] {
+  return ((cmd: string, args: readonly string[], options?: object) => {
+    if (cmd === 'git') {
+      return realSpawnSync(cmd, [...args], options)
+    }
+    return okSpawnResult()
+  }) as Parameters<typeof ensureOmx>[0]['spawn']
+}
+
+describe('ensureOmx project-scope cleanup integration', () => {
+  it('removes tracked project-scoped OMX files when migrating project scope to user scope', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ak-omx-project-cleanup-'))
+    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
+    mkdirSync(join(repoRoot, '.omx', 'state'), { recursive: true })
+    writeFileSync(join(repoRoot, '.codex', 'config.toml'), 'model = "gpt-5"\n', 'utf8')
+    writeFileSync(join(repoRoot, '.omx', 'setup-scope.json'), '{"scope":"project"}\n', 'utf8')
+    writeFileSync(join(repoRoot, '.omx', 'state', 'local.json'), '{}\n', 'utf8')
+    git(repoRoot, ['init'])
+    git(repoRoot, ['add', '-f', '.codex/config.toml', '.omx/setup-scope.json'])
+
+    const result = ensureOmx({
+      repoRoot,
+      options: { overwrite: false, dryRun: false },
+      spawn: makeOmxOnlyMockSpawn(),
+    })
+
+    expect(result).toEqual({
+      kind: 'omx-ok',
+      installed: false,
+      removedProjectFiles: ['.codex/config.toml', '.omx/setup-scope.json'],
+    })
+    expect(existsSync(join(repoRoot, '.codex', 'config.toml'))).toBe(false)
+    expect(existsSync(join(repoRoot, '.omx', 'setup-scope.json'))).toBe(false)
+    expect(existsSync(join(repoRoot, '.omx', 'state', 'local.json'))).toBe(true)
+  })
+
+  it('does not remove tracked project-scoped files when project scope is explicitly requested', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'ak-omx-project-preserve-'))
+    mkdirSync(join(repoRoot, '.omx'), { recursive: true })
+    writeFileSync(join(repoRoot, '.omx', 'setup-scope.json'), '{"scope":"project"}\n', 'utf8')
+    git(repoRoot, ['init'])
+    git(repoRoot, ['add', '-f', '.omx/setup-scope.json'])
+
+    const result = ensureOmx({
+      repoRoot,
+      options: { overwrite: false, dryRun: false },
+      scope: 'project',
+      spawn: makeOmxOnlyMockSpawn(),
+    })
+
+    expect(result).toEqual({ kind: 'omx-ok', installed: false, removedProjectFiles: [] })
+    expect(existsSync(join(repoRoot, '.omx', 'setup-scope.json'))).toBe(true)
+  })
+})

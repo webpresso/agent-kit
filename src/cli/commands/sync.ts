@@ -107,7 +107,7 @@ export function registerSyncCommand(cli: CAC): void {
         if (error instanceof Error && /catalogDir does not exist/.test(error.message)) {
           throw commandError(
             'ak sync: @webpresso/agent-kit not installed in node_modules. ' +
-              'Run `pnpm install` first.',
+              'Run `vp install` first.',
           )
         }
         throw error

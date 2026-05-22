@@ -33,6 +33,8 @@ const SUPPORTED_COMMANDS = [
   'err',
   'test',
   'e2e',
+  'ci',
+  'typecheck',
   'lint',
   'format',
   'tech-debt',
@@ -56,9 +58,11 @@ const ROOT_HELP = [
   'Quality:',
   '  audit                 Run packaged audits (bundle budgets, repo guardrails, TPH, tech-debt)',
   '  test                  Run tests through the portable agent-kit surface',
+  '  typecheck             Typecheck the current workspace through the portable wp surface',
   '  lint                  Lint via oxlint (with pnpm fallback)',
   '  format                Format via oxfmt (--check for CI/husky)',
   '  e2e                   Build and run E2E commands through the portable agent-kit surface',
+  '  ci                    Run repository CI helpers through the portable wp surface',
   '',
   'Advanced:',
   '  roadmap               List or show parent roadmaps directly',
@@ -192,6 +196,16 @@ export async function main(): Promise<number> {
     case 'e2e': {
       const { registerE2eCommand } = await import('./commands/e2e.js')
       registerE2eCommand(cli)
+      break
+    }
+    case 'ci': {
+      const { registerCiCommand } = await import('./commands/ci.js')
+      registerCiCommand(cli)
+      break
+    }
+    case 'typecheck': {
+      const { registerTypecheckCommand } = await import('./commands/typecheck.js')
+      registerTypecheckCommand(cli)
       break
     }
     case 'lint': {
