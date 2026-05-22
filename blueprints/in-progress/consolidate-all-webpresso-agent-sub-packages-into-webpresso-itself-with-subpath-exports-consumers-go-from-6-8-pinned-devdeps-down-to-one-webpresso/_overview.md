@@ -3,8 +3,8 @@ type: blueprint
 status: in-progress
 complexity: M
 created: '2026-05-12'
-last_updated: '2026-05-13'
-progress: '94% (15/16 tasks done, 1 blocked release gate, updated 2026-05-13)'
+last_updated: '2026-05-22'
+progress: '94% (15/16 tasks done, public npm/deprecation release gate still blocked as of 2026-05-22)'
 depends_on: []
 tags:
   - consolidation
@@ -38,6 +38,7 @@ This plan is a **prep + release-gate** blueprint:
 | TypeScript config inheritance from packages is supported, but JSON config files must be physically present for the target path. | TypeScript docs describe `extends` resolving package configs from `node_modules`; TS module docs separately scope `exports` handling to module resolution. | Ship literal `src/config/tsconfig/*.json` files and verify staged-package filesystem paths. Do not rely on `package.json#exports` alone for `tsconfig extends`. |
 | Oxlint package-based shared config requires `oxlint.config.ts`. | Oxlint docs say `.oxlintrc.json` extends paths are relative and package imports are not supported there; TypeScript config files support imported config objects and require Node v22.18+ or v24+. | Migrate consumers from `.oxlintrc.json` to `oxlint.config.ts`; repo already requires Node `>=24`. |
 | `npm deprecate` is registry state, not a workspace file-only change. | npm docs specify `npm deprecate <package-spec> <message>`, owner permission, and note the command is unaware of workspaces. | Split deprecated metadata prep from the final credential-gated registry deprecation gate. |
+| A green GitHub release run is not sufficient proof that the public npm cutover happened. | As of 2026-05-22, `npm view webpresso version` still returns `0.0.0-placeholder`, while `npm view @webpresso/agent-tsconfig deprecated` and sibling packages show no deprecation message. | Keep Task 4.2 blocked until npm registry state proves both publish and deprecations, even if GitHub Packages release automation is green. |
 
 Sources checked: TypeScript docs via Context7, Oxlint config docs, Node package
 exports docs, npm deprecate docs, local `package.json`, `scripts/publish-webpresso.ts`,
@@ -93,6 +94,7 @@ vitest.config.ts:                          stryker.config.ts:
 | F6 | MEDIUM | Docs-lint is large (~12k source lines); one coarse task would be hard to review. | Split docs-lint into API/schema fold and CLI/template fold. |
 | F7 | MEDIUM | `tsconfig extends` and `package.json#exports` claims needed sharper wording. | Plan now requires literal filesystem JSON plus a fixture against the staged `webpresso` package. |
 | F8 | MEDIUM | `npm deprecate` cannot be represented solely by a package file diff. | Add explicit registry deprecation release step with owner/OTP requirements. |
+| F9 | HIGH | GitHub release success can be mistaken for completion of the public npm cutover. | Require explicit `npm view` registry evidence in Task 4.2 and keep blueprint progress blocked until that evidence exists. |
 
 ## Quick Reference (Execution Waves)
 
@@ -663,6 +665,9 @@ publish/deprecation work.
 
 **Blocked:** Credential-gated publish/deprecation release gate remains for the
 operator; do not run until `NPM_TOKEN`/OTP and package ownership are confirmed.
+As of 2026-05-22, `npm view webpresso version` still reports
+`0.0.0-placeholder`, so this task is not complete even if GitHub release
+automation was green.
 
 **Depends:** Task 4.1
 
@@ -680,7 +685,8 @@ Keep this task separate from reversible code prep.
    `@webpresso/agent-*` packages.
 2. Run the release pipeline or `bun scripts/publish-webpresso.ts` according to
    repo release instructions.
-3. Verify `npm view webpresso version` and packed exports after publish.
+3. Verify `npm view webpresso version` returns the expected non-placeholder
+   release version and confirm packed exports after publish.
 4. Run `npm deprecate <package-spec> "<migration message>"` for the old package
    ranges only after the replacement package is visible.
 5. Verify `npm view <old-package> deprecated` returns the migration message.
@@ -728,6 +734,7 @@ Keep this task separate from reversible code prep.
 | Hook or MCP routing names accidentally change | HIGH — agent workflow regression | Routing update task preserves bin/tool names and tests stale package guidance only | 1.5 |
 | Sibling consumer unavailable locally | MEDIUM — no dogfood proof | Checklist + external PR reference; block release gate without proof | 3.2, 4.1 |
 | Registry deprecation happens before replacement is visible | HIGH — consumers get warning without migration target | Release gate verifies `webpresso` first, then runs `npm deprecate` | 4.2 |
+| GitHub Packages release succeeds while public npm still serves the placeholder package | HIGH — operators may falsely mark the blueprint complete | Require `npm view webpresso version` to change from `0.0.0-placeholder` and verify old packages show deprecation messages before closing Task 4.2 | 4.2 |
 
 ## Non-goals
 
@@ -744,6 +751,7 @@ Keep this task separate from reversible code prep.
 | Staged public package diverges from root package tests | HIGH | Run export-resolution tests against staged `webpresso`, not just root `@webpresso/agent-kit`. |
 | Docs-lint fold introduces subtle logic changes | MEDIUM | Split API/CLI tasks and require parity tests plus import-path-only diffs. |
 | Public npm and GitHub Packages release flows diverge | MEDIUM | Keep Task 4.2 credential-gated and verify registry target before deprecating old packages. |
+| GitHub release success is mistaken for npm cutover completion | HIGH | Treat registry state (`npm view`) as the source of truth for Task 4.2 completion, not GitHub workflow color alone. |
 | Unknown consumers still use old packages | MEDIUM | Deprecate rather than unpublish; keep migration docs and transition window. |
 | TS 6 changes config resolution behavior | LOW | Literal files remain compatible; optional exports map can be adjusted later. |
 
@@ -763,13 +771,13 @@ Keep this task separate from reversible code prep.
 | --- | --- |
 | Findings total | 8 |
 | Critical | 0 |
-| High | 4 |
+| High | 5 |
 | Medium | 4 |
 | Low | 0 |
-| Fixes applied | 8/8 |
+| Fixes applied | 9/9 |
 | Cross-plans updated | 0 |
-| Edge cases documented | 8 |
-| Risks documented | 5 |
+| Edge cases documented | 9 |
+| Risks documented | 6 |
 | Parallelization score | A |
 | Critical path | 5 waves |
 | Max parallel agents | 10 |
