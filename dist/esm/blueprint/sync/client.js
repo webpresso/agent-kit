@@ -4,14 +4,14 @@
  * Implements `BlueprintPlatformClient` (types.ts) using the Fetch API.
  *
  * Design:
- *  - AK_BLUEPRINT_PLATFORM_DISABLED=1: every method is a no-op / empty result.
+ *  - WP_BLUEPRINT_PLATFORM_DISABLED=1: every method is a no-op / empty result.
  *  - Token from SyncCredentials (loaded via loadSyncCredentials() in auth.ts).
  *  - Idempotency: auto-generates a UUID eventId when payload.eventId is empty.
  *  - Retry: max 3 attempts on 5xx / network errors, exponential backoff.
  *  - 401: throws AuthError immediately — no retry (token invalid, re-auth needed).
  *  - 409: treated as success (idempotent duplicate, platform silently ignores).
  *  - 429: retried with backoff, counts toward the 3-attempt limit.
- *  - listTemplates: reads from AK_BLUEPRINT_TEMPLATES_URL; returns [] on error.
+ *  - listTemplates: reads from WP_BLUEPRINT_TEMPLATES_URL; returns [] on error.
  *  - Structured log on every pushEvent call.
  */
 import { randomUUID } from 'node:crypto';
@@ -42,7 +42,7 @@ function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 function isDisabled() {
-    return process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] === '1';
+    return process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] === '1';
 }
 function resolveEventId(id) {
     return id.length > 0 ? id : randomUUID();
@@ -111,7 +111,7 @@ export class BlueprintSyncClient {
     async listTemplates() {
         if (isDisabled())
             return [];
-        const url = process.env['AK_BLUEPRINT_TEMPLATES_URL'] ?? DEFAULT_TEMPLATES_URL;
+        const url = process.env['WP_BLUEPRINT_TEMPLATES_URL'] ?? DEFAULT_TEMPLATES_URL;
         try {
             const response = await this.fetchFn(url, { method: 'GET' });
             if (!response.ok)

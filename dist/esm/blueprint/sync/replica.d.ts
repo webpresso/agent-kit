@@ -6,9 +6,9 @@
  * in-flight pull promise (no thundering herd).
  *
  * Design decisions resolved 2026-05-12:
- *  Q3: 30 s TTL default; configurable via AK_BLUEPRINT_REPLICA_TTL_S.
+ *  Q3: 30 s TTL default; configurable via WP_BLUEPRINT_REPLICA_TTL_S.
  *  CEO review § 7: single-flight via module-level Map<key, Promise<void>>.
- *  AK_BLUEPRINT_PLATFORM_DISABLED=1: ensureFresh is always a no-op.
+ *  WP_BLUEPRINT_PLATFORM_DISABLED=1: ensureFresh is always a no-op.
  */
 import type { Database } from '#db/sqlite.js';
 import type { BlueprintPlatformClient } from './types.js';

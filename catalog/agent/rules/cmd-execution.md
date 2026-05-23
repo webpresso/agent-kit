@@ -74,11 +74,13 @@ breaks auto-logging and hides real output.
 
 ## Formatting
 
-Use the `wp_format` MCP tool (or `bun ./src/cli/cli.ts format` as a direct
-fallback). **Never invoke `oxfmt` directly without the correct flags** — it
-requires `--ignore-path .gitignore` to skip `.prettierignore` (which contains
-`*` and silently excludes every file), and the binary lives in
-`node_modules/.bin`, not a global install.
+Use the `wp_format` MCP tool, `wp format`, or the repo script through
+`vp run format`. Do not present raw source-entrypoint commands such as
+`bun ./src/cli/cli.ts format` as agent-facing fallbacks; those belong inside
+package scripts and source-level tests only. **Never invoke `oxfmt` directly
+without the correct flags** — it requires `--ignore-path .gitignore` to skip
+`.prettierignore` (which contains `*` and silently excludes every file), and the
+binary lives in `node_modules/.bin`, not a global install.
 
 If `wp_format` is unavailable, the correct direct invocation is:
 
@@ -88,6 +90,13 @@ cd <repo-root> && ./node_modules/.bin/oxfmt --write --ignore-path .gitignore
 
 ## Other Rules
 
+- Agent-facing commands should use MCP tools, `wp ...`, or repo scripts through
+  `vp run ...`. The raw TypeScript/Bun CLI entrypoint is an implementation
+  detail, not an instruction surface for users or agents.
+- Use the `WP_` environment variable namespace for agent-kit CLI behavior. For
+  update checks, the opt-out is `WP_SKIP_UPDATE_CHECK=1`.
+- Audit commands are `wp audit <kind>` or MCP `wp_audit`; there is no
+  `agent audit` namespace.
 - Always use the repo-owned command wrappers (`just`, `pnpm`, `turbo`, etc.)
   for repo-owned workflows. Do not invoke underlying tools directly when a
   wrapped recipe exists.

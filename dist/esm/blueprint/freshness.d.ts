@@ -53,6 +53,8 @@ export interface RecordProjectionMetadataInput {
     readonly cwd: string;
     readonly ingestedAt: number;
 }
+/** Run `git rev-parse HEAD` in cwd; return null when not a git repo / no commits. */
+export declare function readCurrentHead(cwd: string): string | null;
 /** Read the sidecar metadata for a projection DB. Returns null on miss/parse-failure. */
 export declare function readProjectionMetadata(dbPath: string): ProjectionMetadata | null;
 /**

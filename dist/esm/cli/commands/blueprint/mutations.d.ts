@@ -8,7 +8,7 @@
  * Platform-first sync (Tasks 2.6 + 2.7):
  *   When a SyncAdapter is available (credentials present, not disabled), mutations
  *   push a BlueprintPlatformEvent before updating local markdown/SQLite.
- *   Iron rule: AK_BLUEPRINT_PLATFORM_DISABLED=1 skips the adapter entirely — the
+ *   Iron rule: WP_BLUEPRINT_PLATFORM_DISABLED=1 skips the adapter entirely — the
  *   markdown-canonical path runs byte-identically to the pre-migration behaviour.
  */
 /**
@@ -60,7 +60,7 @@ export declare function _setSyncAdapterForCli(factory: SyncAdapterFactory | null
 /**
  * Resolve the sync adapter for the current CLI mutation.
  *
- * Iron rule: returns `null` when `AK_BLUEPRINT_PLATFORM_DISABLED=1` regardless
+ * Iron rule: returns `null` when `WP_BLUEPRINT_PLATFORM_DISABLED=1` regardless
  * of any injected factory — the caller must skip all platform operations.
  *
  * @param cwd - repo working directory, used to locate the replica DB file.

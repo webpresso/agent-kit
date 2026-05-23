@@ -45,7 +45,7 @@ export function readUpdateBanner(env) {
     // Basic semver-style comparison: check that latest > current
     if (!isNewerVersion(latest, current))
         return null;
-    return `<wp_update>webpresso ${latest} available (current ${current}). Auto-install runs on the next \`wp\` invocation, or set AK_SKIP_AUTO_INSTALL=1 to opt out.</wp_update>`;
+    return `<wp_update>webpresso ${latest} available (current ${current}). Auto-install runs on the next \`wp\` invocation, or set WP_SKIP_AUTO_INSTALL=1 to opt out.</wp_update>`;
 }
 function isNewerVersion(latest, current) {
     const latestParts = latest.split('.').map((p) => parseInt(p, 10));

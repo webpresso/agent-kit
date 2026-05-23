@@ -393,7 +393,7 @@ export async function runInit(flags) {
                     console.log('  omc plugin: skipped (--dry-run)');
                     break;
                 case 'omc-skipped-opt-out':
-                    console.log('  omc plugin: skipped (AK_SKIP_OMC=1)');
+                    console.log('  omc plugin: skipped (WP_SKIP_OMC=1)');
                     break;
                 case 'omc-skipped-no-cli':
                     console.warn('  omc plugin: - skipped (claude not on PATH; OMC installs through Claude Code plugin marketplace only)');
@@ -441,7 +441,7 @@ export async function runInit(flags) {
                 console.log('  claude plugin: skipped (--dry-run)');
                 break;
             case 'claude-plugin-skipped-opt-out':
-                console.log('  claude plugin: skipped (AK_SKIP_CLAUDE_PLUGIN=1)');
+                console.log('  claude plugin: skipped (WP_SKIP_CLAUDE_PLUGIN=1)');
                 break;
             case 'claude-plugin-skipped-no-cli':
                 console.log('  claude plugin: - skipped (claude not on PATH)');
@@ -456,8 +456,8 @@ export async function runInit(flags) {
                 break;
         }
         let gstackFailure = null;
-        if (process.env.AK_SKIP_GSTACK === '1') {
-            console.warn('  gstack: ⚠ AK_SKIP_GSTACK=1 — skipping. Most consumer repos treat gstack as a hard prerequisite.');
+        if (process.env.WP_SKIP_GSTACK === '1') {
+            console.warn('  gstack: ⚠ WP_SKIP_GSTACK=1 — skipping. Most consumer repos treat gstack as a hard prerequisite.');
         }
         else if (isCiEnvironment && presets.includes('gstack')) {
             console.log('  gstack: - skipped (CI environment)');
@@ -511,8 +511,8 @@ export async function runInit(flags) {
             }
         }
         let rtkFailure = null;
-        if (process.env.AK_SKIP_RTK === '1') {
-            console.warn('  rtk: ⚠ AK_SKIP_RTK=1 — skipping. RTK provides shell-tool output filtering for git/gh/kubectl/etc.');
+        if (process.env.WP_SKIP_RTK === '1') {
+            console.warn('  rtk: ⚠ WP_SKIP_RTK=1 — skipping. RTK provides shell-tool output filtering for git/gh/kubectl/etc.');
         }
         else if (isCiEnvironment && presets.includes('rtk')) {
             console.log('  rtk: - skipped (CI environment)');

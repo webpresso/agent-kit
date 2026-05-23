@@ -369,8 +369,7 @@ export function getCommandVariants(command) {
             variants.push(strippedVpVariant);
         }
         const strippedCommandVariant = stripKnownScopeFlags(variant);
-        if (strippedCommandVariant !== variant &&
-            !variants.includes(strippedCommandVariant)) {
+        if (strippedCommandVariant !== variant && !variants.includes(strippedCommandVariant)) {
             variants.push(strippedCommandVariant);
         }
     }

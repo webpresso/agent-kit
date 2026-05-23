@@ -132,6 +132,8 @@ const PNPM_SCOPE_FLAG_PREFIX =
 
 const VP_COMMAND_PREFIX = /^vp\s+(?<rest>.+)$/u
 const PNPM_COMMAND_PREFIX = /^pnpm\s+(?<rest>.+)$/u
+const PACKAGE_MANAGER_PREFIXES = new Set(['vp', 'pnpm', 'just'])
+const TOOL_SHIM_EXTENSION = /\.(?:cmd|ps1|bat)$/iu
 
 export function normalizeCommandForRouting(command: string): string {
   const trimmed = command.trim()
@@ -147,7 +149,7 @@ export function normalizeCommandForRouting(command: string): string {
       next = match.groups.rest.trim()
       prefix = 'pnpm'
     } else {
-      return trimmed
+      return normalizeDirectToolPath(trimmed)
     }
   }
 
@@ -159,6 +161,57 @@ export function normalizeCommandForRouting(command: string): string {
   }
 
   return `${prefix} ${next.replace(/\s+/g, ' ').trim()}`
+}
+
+function normalizeDirectToolPath(command: string): string {
+  const match = /^(?<bin>\S+)(?<rest>\s+[\s\S]*)?$/u.exec(command)
+  const bin = match?.groups?.bin
+  if (!bin) return command
+
+  const baseName = directToolBasename(bin)
+  if (!baseName || !getDirectToolBins().has(baseName)) return command
+
+  return `${baseName}${match.groups?.rest ?? ''}`.replace(/\s+/g, ' ').trim()
+}
+
+function directToolBasename(bin: string): string | null {
+  const normalizedBin = bin.replace(/\\/gu, '/')
+  const rawBaseName = normalizedBin.slice(normalizedBin.lastIndexOf('/') + 1)
+  const baseName = rawBaseName.replace(TOOL_SHIM_EXTENSION, '')
+  return baseName || null
+}
+
+function getDirectToolBins(): Set<string> {
+  const bins = new Set<string>()
+
+  for (const { prefixes } of ROUTING_RULES) {
+    for (const bin of getRuleDirectToolBins(prefixes)) bins.add(bin)
+  }
+
+  return bins
+}
+
+function getRuleDirectToolBins(prefixes: string[]): Set<string> {
+  const bins = new Set<string>()
+
+  for (const prefix of prefixes) {
+    const tokens = prefix.split(/\s+/u)
+    const [command, subcommand, bin] = tokens
+
+    if (command === 'vp' || command === 'pnpm') {
+      if (subcommand === 'exec' && bin) bins.add(bin)
+      continue
+    }
+
+    if (command && !PACKAGE_MANAGER_PREFIXES.has(command)) bins.add(command)
+  }
+
+  return bins
+}
+
+function matchesDirectToolCommand(command: string, rule: RoutingRule): boolean {
+  const firstToken = command.split(/\s+/u)[0]
+  return firstToken ? getRuleDirectToolBins(rule.prefixes).has(firstToken) : false
 }
 
 function matchesPrefix(command: string, prefix: string): boolean {
@@ -183,8 +236,7 @@ function extractProcessCallCommands(code: string): string[] {
     if (command) commands.push(command)
   }
 
-  const argvCall =
-    /\b(?:execFileSync|spawnSync)\(\s*(['"`])(?<bin>vp|pnpm|vitest|tsc|oxlint|prettier|markdownlint-cli2)\1\s*,\s*\[(?<args>[\s\S]*?)\]/gsu
+  const argvCall = /\b(?:execFileSync|spawnSync)\(\s*(['"`])(?<bin>[^\s'"`]+)\1\s*,\s*\[(?<args>[\s\S]*?)\]/gsu
   for (const match of code.matchAll(argvCall)) {
     const bin = match.groups?.bin
     const args = match.groups?.args
@@ -262,7 +314,7 @@ export function routeCommand(command: string, _sessionId?: string): RouteDecisio
   // Dev-workflow deny rules fire first (priority)
   for (const rule of ROUTING_RULES) {
     for (const prefix of rule.prefixes) {
-      if (matchesPrefix(trimmed, prefix)) {
+      if (matchesPrefix(trimmed, prefix) || matchesDirectToolCommand(trimmed, rule)) {
         return {
           action: { action: 'deny', tool: rule.tool, guidance: rule.guidance },
         }

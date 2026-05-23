@@ -1,5 +1,55 @@
-import type { StorageAdapter, SearchMatch } from '@webpresso/runtime-storage/storage-adapter';
-export type { StorageAdapter, SearchMatch };
+/** Metadata for a file or directory entry returned by list/stat operations. */
+export interface FileInfo {
+    path: string;
+    type: 'file' | 'directory';
+    size?: number;
+}
+/** A single search hit with position information within a file. */
+export interface SearchMatch {
+    path: string;
+    line: number;
+    content: string;
+    matchStart: number;
+    matchEnd: number;
+}
+/** Identifies who holds a lock on a file and when it was acquired. */
+export interface FileLock {
+    lockerId: string;
+    lockedAt: Date;
+}
+/** Describes the current lock state of a file. */
+export interface LockStatus {
+    locked: boolean;
+    lockerId?: string;
+    lockedAt?: Date;
+}
+/** Abstract storage interface for file operations used by AI tooling. */
+export interface StorageAdapter {
+    readFile(path: string, options?: {
+        startLine?: number;
+        endLine?: number;
+    }): Promise<string>;
+    writeFile(path: string, content: string): Promise<void>;
+    deleteFile(path: string): Promise<void>;
+    listFiles(path: string, options?: {
+        recursive?: boolean;
+        pattern?: string;
+    }): Promise<FileInfo[]>;
+    searchFiles(pattern: string, options?: {
+        path?: string;
+        filePattern?: string;
+        caseSensitive?: boolean;
+        maxResults?: number;
+    }): Promise<SearchMatch[]>;
+    exists(path: string): Promise<boolean>;
+    stat(path: string): Promise<FileInfo | null>;
+    lockFile(path: string, lockerId: string, options?: {
+        timeoutMs?: number;
+    }): Promise<boolean>;
+    unlockFile(path: string, lockerId: string): Promise<void>;
+    isLocked(path: string): Promise<LockStatus>;
+    unlockAll(lockerId: string): Promise<number>;
+}
 export type JSONSchema7TypeName = 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array' | 'null';
 export type JSONSchema7Type = string | number | boolean | JSONSchema7Object | JSONSchema7Array | null;
 export interface JSONSchema7Object {

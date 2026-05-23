@@ -129,8 +129,11 @@ Vague name, tests mock not code
 
 **MANDATORY. Never skip.**
 
+Run the repo's targeted test surface for the file or package you just changed. Prefer repo-owned wrappers or injected quality routing over raw package-manager commands.
+
 ```bash
-npm test path/to/test.test.ts
+# e.g. repo test wrapper for the changed file or package
+<repo test command for the changed surface>
 ```
 
 Confirm:
@@ -185,8 +188,10 @@ Don't add features, refactor other code, or "improve" beyond the test.
 
 **MANDATORY.**
 
+Run the same targeted repo test surface you used for RED.
+
 ```bash
-npm test path/to/test.test.ts
+<same repo test command for the changed surface>
 ```
 
 Confirm:
@@ -325,7 +330,7 @@ test('rejects empty email', async () => {
 **Verify RED**
 
 ```bash
-$ npm test
+$ <repo test command for the changed surface>
 FAIL: expected 'Email required', got undefined
 ```
 
@@ -343,7 +348,7 @@ function submitForm(data: FormData) {
 **Verify GREEN**
 
 ```bash
-$ npm test
+$ <same repo test command for the changed surface>
 PASS
 ```
 

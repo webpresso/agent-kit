@@ -9,11 +9,11 @@
  *     never trigger background work.
  *   - `mcp` subcommand — JSON-RPC stdio mode; stderr writes would corrupt the
  *     transport.
- *   - `AK_SKIP_UPDATE_CHECK=1` — explicit user opt-out of the whole flow.
+ *   - `WP_SKIP_UPDATE_CHECK=1` — explicit user opt-out of the whole flow.
  *   - `CI=true` (and the broader set of CI signals via ci-info-style env
  *     probing) — non-interactive environments don't want surprise spawns.
  *
- * `AK_SKIP_AUTO_INSTALL=1` does **not** appear here — that variable only
+ * `WP_SKIP_AUTO_INSTALL=1` does **not** appear here — that variable only
  * disables the install step. The notify side of the flow still runs so users
  * get a banner. That check belongs in the installer module.
  */

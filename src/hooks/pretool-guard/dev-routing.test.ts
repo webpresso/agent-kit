@@ -49,6 +49,24 @@ describe('routeCommand', () => {
     expect(result?.action.action).toBe('deny')
   })
 
+  it('direct tool paths → deny and route to the matching MCP tool', async () => {
+    const routeCommand = await getRoute()
+
+    for (const [command, tool] of [
+      ['./../../../../../node_modules/.bin/vitest run src/routes/ci-stack.test.ts', 'wp_test'],
+      ['../../../../node_modules/.bin/vitest run src/routes/ci-stack.test.ts', 'wp_test'],
+      ['/repo/node_modules/.bin/oxlint .', 'wp_lint'],
+      ['.\\node_modules\\.bin\\tsc.cmd --noEmit', 'wp_typecheck'],
+      ['./node_modules/.bin/prettier.ps1 README.md --write', 'wp_format'],
+      ['../node_modules/.bin/markdownlint-cli2 README.md', 'wp_qa'],
+      ['../node_modules/.bin/playwright test e2e/smoke.spec.ts', 'wp_e2e'],
+    ] as const) {
+      const result = routeCommand(command)
+      expect(result?.action.action).toBe('deny')
+      if (result?.action.action === 'deny') expect(result.action.tool).toBe(tool)
+    }
+  })
+
   it('vp exec oxlint . → deny, mentions wp_lint', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('vp exec oxlint .')
@@ -169,6 +187,24 @@ describe('routeCommand', () => {
     expect(result?.action.action).toBe('deny')
     if (result?.action.action === 'deny') {
       expect(result.action.guidance).toContain('wp_test')
+    }
+  })
+
+  it('extracts direct tool paths embedded inside ctx_execute process calls', async () => {
+    const { extractRoutableCommandsFromToolInput, routeCommand } = await import('./dev-routing.js')
+    const commands = extractRoutableCommandsFromToolInput({
+      tool_name: 'context-mode.ctx_execute',
+      tool_input: {
+        language: 'javascript',
+        code: "execFileSync('../../node_modules/.bin/vitest',['run','src/routes/ci-stack.test.ts'])",
+      },
+    })
+
+    expect(commands).toContain('../../node_modules/.bin/vitest run src/routes/ci-stack.test.ts')
+    const result = routeCommand(commands[0] ?? '')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') {
+      expect(result.action.tool).toBe('wp_test')
     }
   })
 

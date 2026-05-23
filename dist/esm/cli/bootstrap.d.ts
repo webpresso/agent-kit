@@ -6,7 +6,7 @@
  *      so those always work outside a git repo.
  *   2. Hard-fail outside a git repo — propagates NotInGitRepoError to cli.ts
  *      for formatted error output + exit 2.
- *   3. Skip auto-update when env/argv say so (CI, mcp, AK_SKIP_UPDATE_CHECK).
+ *   3. Skip auto-update when env/argv say so (CI, mcp, WP_SKIP_UPDATE_CHECK).
  *   4. Fire-and-forget runUpdateFlow — errors sink to logUpdateError (D13).
  */
 import { NotInGitRepoError } from '#paths/state-root.js';

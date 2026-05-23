@@ -1,5 +1,5 @@
-import { getErrorMessage } from '../format/errors.js';
-import { formatBytes } from '../format/format.js';
+import { getErrorMessage } from '#format/errors.js';
+import { formatBytes } from '#format/format.js';
 import { isValidRelativePath } from './shared/validate-path.js';
 export const listFilesTool = {
     name: 'list_files',

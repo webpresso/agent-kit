@@ -1,10 +1,6 @@
 const ROUTING_RULES = [
     {
-        prefixes: [
-            'vp exec markdownlint-cli2',
-            'markdownlint-cli2',
-            'pnpm exec markdownlint-cli2',
-        ],
+        prefixes: ['vp exec markdownlint-cli2', 'markdownlint-cli2', 'pnpm exec markdownlint-cli2'],
         guidanceType: 'qa',
         guidance: 'Use wp_qa MCP tool instead — QA is the blessed MCP quality entrypoint; avoid ad hoc markdown-only lint endpoints',
         tool: 'wp_qa',
@@ -52,7 +48,14 @@ const ROUTING_RULES = [
         tool: 'wp_format',
     },
     {
-        prefixes: ['vp run e2e', 'vp e2e', 'pnpm run e2e', 'pnpm e2e', 'pnpm exec playwright', 'pnpm exec playwright test'],
+        prefixes: [
+            'vp run e2e',
+            'vp e2e',
+            'pnpm run e2e',
+            'pnpm e2e',
+            'pnpm exec playwright',
+            'pnpm exec playwright test',
+        ],
         guidanceType: 'e2e',
         guidance: 'Use wp_e2e MCP tool instead — returns {passed, summary} for e2e workflow execution',
         tool: 'wp_e2e',
@@ -98,8 +101,8 @@ const SANDBOX_PREFIXES = [
     { prefix: 'git show', guidance: 'Use ctx_execute_file or ctx_execute' },
     { prefix: 'vp run build', guidance: 'Use ctx_execute for build output' },
 ];
-const VP_SCOPE_FLAG_PREFIX = /(?:(?:--filter|-F|--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)|(?:--workspace-root|-w))/u;
-const PNPM_SCOPE_FLAG_PREFIX = /(?:(?:--filter|-F|--dir|-C)\s+(?:"[^"]+"|'[^']+'|\S+)|--workspace-root|-w|--recursive|-r|--workspace)(?=\s|$)/u;
+const VP_SCOPE_FLAG_PREFIX = /(?:(?:--filter|-F|--dir|-C)(?:=|\s+)(?:"[^"]+"|'[^']+'|\S+)|(?:--workspace-root|-w)(?=\s|$))/u;
+const PNPM_SCOPE_FLAG_PREFIX = /(?:(?:--filter|-F|--dir|-C)(?:=|\s+)(?:"[^"]+"|'[^']+'|\S+)|--workspace-root|-w|--recursive|-r|--workspace)(?=\s|$)/u;
 const VP_COMMAND_PREFIX = /^vp\s+(?<rest>.+)$/u;
 const PNPM_COMMAND_PREFIX = /^pnpm\s+(?<rest>.+)$/u;
 export function normalizeCommandForRouting(command) {
@@ -131,6 +134,81 @@ export function normalizeCommandForRouting(command) {
 }
 function matchesPrefix(command, prefix) {
     return command === prefix || command.startsWith(prefix + ' ');
+}
+function parseStringLiterals(input) {
+    const values = [];
+    const regex = /(['"`])((?:\\.|(?!\1).)*)\1/gsu;
+    for (const match of input.matchAll(regex)) {
+        const value = match[2];
+        if (value)
+            values.push(value.replace(/\\(['"`\\])/gu, '$1'));
+    }
+    return values;
+}
+function extractProcessCallCommands(code) {
+    const commands = [];
+    const execString = /\bexecSync\(\s*(['"`])((?:\\.|(?!\1).)*)\1/gsu;
+    for (const match of code.matchAll(execString)) {
+        const command = match[2]?.replace(/\\(['"`\\])/gu, '$1').trim();
+        if (command)
+            commands.push(command);
+    }
+    const argvCall = /\b(?:execFileSync|spawnSync)\(\s*(['"`])(?<bin>vp|pnpm|vitest|tsc|oxlint|prettier|markdownlint-cli2)\1\s*,\s*\[(?<args>[\s\S]*?)\]/gsu;
+    for (const match of code.matchAll(argvCall)) {
+        const bin = match.groups?.bin;
+        const args = match.groups?.args;
+        if (!bin || !args)
+            continue;
+        commands.push([bin, ...parseStringLiterals(args)].join(' ').trim());
+    }
+    return commands;
+}
+function extractInlineCommands(code) {
+    const commands = [];
+    const regex = /(?:^|[;&|]\s*)(vp|pnpm|vitest|tsc|oxlint|prettier|markdownlint-cli2)\b([^\n;]*)/gmu;
+    for (const match of code.matchAll(regex)) {
+        const command = `${match[1] ?? ''}${match[2] ?? ''}`.trim();
+        if (command)
+            commands.push(command);
+    }
+    return commands;
+}
+function isContextModeTool(toolName) {
+    const names = new Set([
+        'mcp__context_mode__ctx_execute',
+        'mcp__context_mode__ctx_batch_execute',
+        'mcp__context_mode__.ctx_execute',
+        'mcp__context_mode__.ctx_batch_execute',
+        'context-mode.ctx_execute',
+        'context-mode.ctx_batch_execute',
+        'ctx_execute',
+        'ctx_batch_execute',
+    ]);
+    return typeof toolName === 'string' && names.has(toolName);
+}
+export function extractRoutableCommandsFromToolInput(input) {
+    if (!isContextModeTool(input.tool_name))
+        return [];
+    const toolInput = input.tool_input;
+    if (!toolInput || typeof toolInput !== 'object')
+        return [];
+    const commands = [];
+    const directCommands = toolInput.commands;
+    if (Array.isArray(directCommands)) {
+        for (const entry of directCommands) {
+            if (!entry || typeof entry !== 'object')
+                continue;
+            const command = entry.command;
+            if (typeof command === 'string')
+                commands.push(command);
+        }
+    }
+    const code = toolInput.code;
+    if (typeof code === 'string') {
+        commands.push(...extractProcessCallCommands(code));
+        commands.push(...extractInlineCommands(code));
+    }
+    return [...new Set(commands)];
 }
 export function routeCommand(command, _sessionId) {
     const trimmed = normalizeCommandForRouting(command);

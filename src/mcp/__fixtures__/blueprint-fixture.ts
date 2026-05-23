@@ -92,27 +92,28 @@ export async function buildBlueprintFixture(
     let repoCommonDir: string | undefined
 
     if (spec.realGit === true) {
-      // Real git mode: `git init` + create an initial commit so HEAD is valid
+      // Real git mode: keep the subprocess count minimal so the fixture stays
+      // inside the wall-clock budget without weakening the budget itself.
       execFileSync('git', ['init', '-b', 'main'], { cwd: dir, stdio: 'ignore' })
-      execFileSync('git', ['config', 'user.email', 'fixture@test.local'], {
-        cwd: dir,
-        stdio: 'ignore',
-      })
-      execFileSync('git', ['config', 'user.name', 'Fixture'], { cwd: dir, stdio: 'ignore' })
-      // Touch a file so we can make a real commit
-      writeFileSync(join(dir, '.gitkeep'), '', 'utf8')
-      execFileSync('git', ['add', '.gitkeep'], { cwd: dir, stdio: 'ignore' })
-      execFileSync('git', ['commit', '-m', 'chore: fixture init'], {
-        cwd: dir,
-        stdio: 'ignore',
-      })
-      // Resolve the actual git common-dir (handles both main worktrees and linked)
-      const raw = execFileSync('git', ['rev-parse', '--git-common-dir'], {
-        cwd: dir,
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      }).trim()
-      repoCommonDir = raw.startsWith('/') ? raw : join(dir, raw)
+      execFileSync(
+        'git',
+        [
+          '-c',
+          'user.email=fixture@test.local',
+          '-c',
+          'user.name=Fixture',
+          'commit',
+          '--allow-empty',
+          '-m',
+          'chore: fixture init',
+        ],
+        {
+          cwd: dir,
+          stdio: 'ignore',
+        },
+      )
+      // In a freshly initialized non-worktree repo, the common dir is always .git.
+      repoCommonDir = join(dir, '.git')
     } else {
       // In-memory mode: create a fake .git/HEAD to satisfy any git-probe checks
       const dotGit = join(dir, '.git')
