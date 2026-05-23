@@ -17,7 +17,9 @@ export default defineConfig({
       { find: /^#dev\/(.*)/, replacement: resolve(__dirname, 'src/dev/$1') },
       { find: /^#audit\/(.*)/, replacement: resolve(__dirname, 'src/audit/$1') },
       { find: /^#docs-linter\/(.*)/, replacement: resolve(__dirname, 'src/docs-linter/$1') },
+      { find: /^#ci\/(.*)/, replacement: resolve(__dirname, 'src/ci/$1') },
       { find: /^#hooks\/(.*)/, replacement: resolve(__dirname, 'src/hooks/$1') },
+      { find: /^#secret-gate\/(.*)/, replacement: resolve(__dirname, 'src/secret-gate/$1') },
       { find: /^#mcp\/(.*)/, replacement: resolve(__dirname, 'src/mcp/$1') },
       { find: /^#content\/(.*)/, replacement: resolve(__dirname, 'src/content/$1') },
       {
