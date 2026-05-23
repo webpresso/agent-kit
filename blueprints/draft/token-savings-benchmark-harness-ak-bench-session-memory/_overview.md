@@ -309,7 +309,7 @@ CLI entry point. Wires manifest → variant-runner → cost-aggregator → repor
 4. Run tests — FAIL
 5. Implement (use existing `src/cli/commands/*` patterns for arg parsing)
 6. Run tests — PASS
-7. Smoke test: `bun src/cli/cli.ts bench session-memory --dry-run`
+7. Smoke test: `WP_SKIP_UPDATE_CHECK=1 wp bench session-memory --dry-run`
 
 **Acceptance:**
 
@@ -382,8 +382,8 @@ Document the harness so a 3rd-party plugin author can use it without reading the
 | Lint | `wp_lint` | Zero violations |
 | Tests | `wp_test --file scripts/bench/**/*.test.ts` | All pass |
 | Reproducibility | `bun test scripts/bench/__tests__/reproducibility.test.ts` | 2 runs byte-identical |
-| Smoke (no API) | `bun src/cli/cli.ts bench session-memory --dry-run` | Exit 0, valid manifest report |
-| End-to-end (1 cell, real API) | `bun src/cli/cli.ts bench session-memory --scenario debug --variant baseline --trials 1` | Cost < $1, report.md generated |
+| Smoke (no API) | `WP_SKIP_UPDATE_CHECK=1 wp bench session-memory --dry-run` | Exit 0, valid manifest report |
+| End-to-end (1 cell, real API) | `WP_SKIP_UPDATE_CHECK=1 wp bench session-memory --scenario debug --variant baseline --trials 1` | Cost < $1, report.md generated |
 
 ## Cross-Plan References
 

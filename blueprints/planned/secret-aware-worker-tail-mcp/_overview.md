@@ -64,10 +64,10 @@ Evidence gathered during planning:
   agent-kit for parsing, validation, and repair instead of adding more
   hand-rolled Markdown surgery.
 - Local agent-kit verification confirmed the command surface is `wp audit
-  <kind>` and MCP `wp_audit`, not `agent audit`. Repo scripts may internally
-  call the TypeScript/Bun source entrypoint, but agent-facing commands should
+  <kind>` and MCP `wp_audit`. Repo scripts may internally execute TypeScript
+  through their runtime substrate, but CLI-shaped agent-facing commands should
   use MCP tools, `wp ...`, or `vp run ...`. The update-check opt-out is
-  `WP_SKIP_UPDATE_CHECK=1`, not the retired `AK_` namespace.
+  `WP_SKIP_UPDATE_CHECK=1`, not any retired namespace.
 
 ## Open Source Reuse Evaluation
 
@@ -168,12 +168,12 @@ The implementation should be tail-only in v1, not a generic arbitrary
 0. **Command facade and namespace hygiene**
    - Agent-facing docs, hook guidance, validation output, and pretool rewrites
      should emit MCP tools, `wp ...`, or repo scripts through `vp run ...`.
-   - Treat `bun ./src/cli/cli.ts ...` and `bun src/cli/cli.ts ...` as internal
-     package-script/source-test implementation details, not user guidance.
+   - Treat raw TypeScript/Bun source-entrypoint execution as an internal
+     source-test implementation detail, not user guidance.
    - Use `WP_SKIP_UPDATE_CHECK=1` when suppressing CLI update checks. Do not
-     introduce or suggest `AK_SKIP_UPDATE_CHECK`.
+     introduce or suggest retired update-check env names.
    - Audit command guidance must use `wp audit <kind>` or MCP `wp_audit`. There
-     is no `agent audit` CLI namespace.
+     is no separate generic agent subcommand namespace.
    - Known correct forms include:
 
      ```bash
@@ -233,8 +233,9 @@ The implementation should be tail-only in v1, not a generic arbitrary
      `pnpm exec wrangler tail ...`, and
      `doppler run ... wrangler tail ...` to `wp_worker_tail`.
    - Route or correct stale agent-kit validation command shapes such as raw
-     TypeScript/Bun CLI entrypoints, `AK_SKIP_UPDATE_CHECK`, and `agent audit`
-     toward `wp ...`, `vp run ...`, or MCP `wp_audit` guidance.
+     TypeScript/Bun CLI entrypoints, retired update-check env names, and
+     invented audit subcommands toward `wp ...`, `vp run ...`, or MCP
+     `wp_audit` guidance.
    - Keep generic `doppler run` blocked with repo secret-gate or MCP guidance.
    - Do not route `wrangler types` to this tool; `../monorepo` treats generated
      Wrangler type commands as maintenance/preflight and secret-free.
@@ -457,8 +458,8 @@ choose the smallest valid artifact that fits the work.
   agents can avoid duplicate blueprints and choose the right amount of ADR
   structure for the work.
 - Agent-facing command examples for audits and validation use `wp`, `vp run`,
-  or MCP tool names; they do not suggest raw `bun src/cli/cli.ts`,
-  `AK_SKIP_UPDATE_CHECK`, or the nonexistent `agent audit` namespace.
+  or MCP tool names; they do not suggest raw TypeScript/Bun source-entrypoint
+  execution, retired update-check env names, or invented audit subcommands.
 
 ## Verification Plan
 
