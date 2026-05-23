@@ -95,6 +95,120 @@ describe('routeCommand', () => {
     if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_test')
   })
 
+  it('corepack pnpm --dir exec tsx run-e2e.ts → deny and routes to wp_e2e', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand(
+      'corepack pnpm --dir apps/e2e exec tsx src/cli/run-e2e.ts --help',
+      'sess-e2e',
+    )
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') {
+      expect(result.action.tool).toBe('wp_e2e')
+      expect(result.action.guidance).toContain('wp_e2e')
+    }
+  })
+
+  it('corepack versioned pnpm and optional exec direct binaries route to MCP tools', async () => {
+    const routeCommand = await getRoute()
+    for (const [command, tool] of [
+      ['corepack pnpm@10 --dir apps/e2e exec playwright test', 'wp_e2e'],
+      ['corepack pnpm --dir apps/e2e playwright test', 'wp_e2e'],
+      ['pnpm --filter @webpresso/agent-kit vitest run src/hooks/pretool-guard/dev-routing.test.ts', 'wp_test'],
+      ['vp --filter @webpresso/agent-kit exec vitest run src/hooks/pretool-guard/dev-routing.test.ts', 'wp_test'],
+    ] as const) {
+      const result = routeCommand(command)
+      expect(result?.action.action).toBe('deny')
+      if (result?.action.action === 'deny') expect(result.action.tool).toBe(tool)
+    }
+  })
+
+  it('npm, npx, yarn, and bun package runners route known quality binaries to MCP tools', async () => {
+    const routeCommand = await getRoute()
+    for (const [command, tool] of [
+      ['npm exec -- vitest run src/hooks/pretool-guard/dev-routing.test.ts', 'wp_test'],
+      ['npx vitest run src/hooks/pretool-guard/dev-routing.test.ts', 'wp_test'],
+      ['yarn vitest run src/hooks/pretool-guard/dev-routing.test.ts', 'wp_test'],
+      ['yarn exec playwright test e2e/smoke.spec.ts', 'wp_e2e'],
+      ['bunx oxlint .', 'wp_lint'],
+    ] as const) {
+      const result = routeCommand(command)
+      expect(result?.action.action).toBe('deny')
+      if (result?.action.action === 'deny') expect(result.action.tool).toBe(tool)
+    }
+  })
+
+  it('npm, npx, yarn, and bunx package runners route known source entrypoints to wp_e2e', async () => {
+    const routeCommand = await getRoute()
+    for (const command of [
+      'npm exec -- tsx src/cli/run-e2e.ts --help',
+      'npx tsx src/cli/run-e2e.ts --help',
+      'yarn dlx tsx src/cli/run-e2e.ts --help',
+      'yarn tsx src/cli/run-e2e.ts --help',
+      'bunx tsx src/cli/run-e2e.ts --help',
+      'vp dlx tsx src/cli/run-e2e.ts --help',
+      'vp node src/cli/run-e2e.ts --help',
+    ]) {
+      const result = routeCommand(command)
+      expect(result?.action.action).toBe('deny')
+      if (result?.action.action === 'deny') expect(result.action.tool).toBe('wp_e2e')
+    }
+  })
+
+  it('raw and wrapped CI act source entrypoints deny with secret-aware MCP guidance', async () => {
+    const routeCommand = await getRoute()
+    for (const command of [
+      'bun apps/scripts/src/ci/act.ts --workflow ci-generated-live-validation --execute --chef-url https://chef-ci-alpha.api.webpresso.cloud',
+      'bun run apps/scripts/src/ci/act.ts --workflow ci-generated-live-validation --execute',
+      'pnpm exec bun apps/scripts/src/ci/act.ts --workflow ci-generated-live-validation',
+      'corepack pnpm --dir apps/scripts exec bun apps/scripts/src/ci/act.ts --workflow ci-generated-live-validation',
+    ]) {
+      const result = routeCommand(command)
+      expect(result?.action.action).toBe('deny')
+      if (result?.action.action === 'deny') {
+        expect(result.action.tool).toBe('wp_ci_act')
+        expect(result.action.guidance).toContain('secret-aware')
+        expect(result.action.guidance).toContain('secret-provider gate')
+      }
+    }
+  })
+
+  it('raw and wrapped wrangler tail commands deny with wp_worker_tail guidance', async () => {
+    const routeCommand = await getRoute()
+    for (const command of [
+      'wrangler tail webpresso-chef-alpha --env preview --status error',
+      'pnpm exec wrangler tail webpresso-chef-alpha',
+      'doppler run -- wrangler tail webpresso-chef-alpha --format json',
+      '/repo/node_modules/.bin/wrangler tail webpresso-chef-alpha',
+    ]) {
+      const result = routeCommand(command)
+      expect(result?.action.action).toBe('deny')
+      if (result?.action.action === 'deny') {
+        expect(result.action.tool).toBe('wp_worker_tail')
+      }
+    }
+  })
+
+  it('direct tsx run-e2e.ts source execution → deny and routes to wp_e2e', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('tsx src/cli/run-e2e.ts --help', 'sess-e2e-direct')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.tool).toBe('wp_e2e')
+  })
+
+  it('unmapped tsx scripts are not denied as e2e', async () => {
+    const routeCommand = await getRoute()
+    for (const command of [
+      'pnpm exec tsx scripts/one-off.ts',
+      'npx tsx scripts/one-off.ts',
+      'yarn dlx tsx scripts/one-off.ts',
+      'bun scripts/one-off.ts',
+      'bun run scripts/one-off.ts',
+    ]) {
+      const result = routeCommand(command)
+      expect(result).toBeNull()
+    }
+  })
+
   it('pnpm run qa → deny and routes to wp_qa', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('pnpm run qa', 'sess-2')
@@ -187,6 +301,57 @@ describe('routeCommand', () => {
     expect(result?.action.action).toBe('deny')
     if (result?.action.action === 'deny') {
       expect(result.action.guidance).toContain('wp_test')
+    }
+  })
+
+  it('extracts shell ctx_execute commands and routes them to matching MCP tools', async () => {
+    const { extractRoutableCommandsFromToolInput, routeCommand } = await import('./dev-routing.js')
+    for (const [code, expectedCommand, expectedTool] of [
+      [
+        [
+          'cd /Users/ozby/repos/webpresso/_worktrees/agent-kit-secret-aware-mcp && vp run test -- \\',
+          '  src/secret-gate/runner.test.ts src/ci/act-helper.test.ts \\',
+          '  src/mcp/tools/ci-act.test.ts src/mcp/tools/worker-tail.test.ts \\',
+          '  src/hooks/pretool-guard/dev-routing.test.ts',
+        ].join('\n'),
+        'vp run test -- src/secret-gate/runner.test.ts src/ci/act-helper.test.ts src/mcp/tools/ci-act.test.ts src/mcp/tools/worker-tail.test.ts src/hooks/pretool-guard/dev-routing.test.ts',
+        'wp_test',
+      ],
+      [
+        '# comment before command\nnpm exec -- vitest run src/hooks/pretool-guard/dev-routing.test.ts',
+        'npm exec -- vitest run src/hooks/pretool-guard/dev-routing.test.ts',
+        'wp_test',
+      ],
+      [
+        'corepack pnpm@10 --dir apps/e2e exec playwright test e2e/smoke.spec.ts',
+        'corepack pnpm@10 --dir apps/e2e exec playwright test e2e/smoke.spec.ts',
+        'wp_e2e',
+      ],
+      [
+        'doppler run -- wrangler tail webpresso-chef-alpha --format json',
+        'doppler run -- wrangler tail webpresso-chef-alpha --format json',
+        'wp_worker_tail',
+      ],
+      [
+        'bun apps/scripts/src/ci/act.ts --workflow ci-generated-live-validation',
+        'bun apps/scripts/src/ci/act.ts --workflow ci-generated-live-validation',
+        'wp_ci_act',
+      ],
+    ] as const) {
+      const commands = extractRoutableCommandsFromToolInput({
+        tool_name: 'context-mode.ctx_execute',
+        tool_input: {
+          language: 'shell',
+          code,
+        },
+      })
+
+      expect(commands).toContain(expectedCommand)
+      const result = routeCommand(expectedCommand)
+      expect(result?.action.action).toBe('deny')
+      if (result?.action.action === 'deny') {
+        expect(result.action.tool).toBe(expectedTool)
+      }
     }
   })
 

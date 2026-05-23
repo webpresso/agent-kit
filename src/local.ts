@@ -35,3 +35,28 @@ export {
   runBundleBudgetCli,
 } from './vite/local.js'
 export type { AnalyzeViteDistBundleBudgetOptions, BundleBudgetCliOptions } from './vite/local.js'
+
+export {
+  getCiActSecretProfile,
+  injectDefaultActArgs,
+  isCiActSecretProfileId,
+  listMissingRequiredSecrets,
+  normalizeActSecretsWithOptions,
+  pickAllowedSecrets,
+  renderSecretsFile,
+  resolveCiActSecretProfile,
+  writeTempSecretsFile,
+} from './ci/act-helper.js'
+export type {
+  CiActSecretProfile,
+  CiActSecretProfileId,
+  ResolveCiActSecretProfileOptions,
+  TempSecretsFile,
+} from './ci/act-helper.js'
+
+export { buildSecretGateCommand, runSecretGateCommand } from './secret-gate/runner.js'
+export type {
+  SecretGateCommand,
+  SecretGateCommandOptions,
+  SecretGateRunResult,
+} from './secret-gate/runner.js'
