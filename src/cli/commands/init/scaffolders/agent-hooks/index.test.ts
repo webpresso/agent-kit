@@ -417,6 +417,19 @@ describe('scaffoldAgentHooks', () => {
     expect(batchWrites).toStrictEqual([])
   })
 
+  it('can write hook files without starting Codex trust sync', async () => {
+    await scaffoldAgentHooks({
+      repoRoot,
+      options: {},
+      trustCodexHooks: false,
+      createCodexAppServer: async () => {
+        throw new Error('should not start Codex app-server')
+      },
+    })
+
+    expect(existsSync(join(repoRoot, '.codex', 'hooks.json'))).toBe(true)
+  })
+
   it('can refresh Codex trust state after a later setup step rewrites hook state', async () => {
     const hooksPath = join(repoRoot, '.codex', 'hooks.json')
     const { api, batchWrites } = createFakeCodexAppServer([

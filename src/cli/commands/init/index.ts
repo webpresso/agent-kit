@@ -98,6 +98,7 @@ export interface InitFlags {
   all?: boolean
   overwrite?: boolean
   'dry-run'?: boolean
+  dryRun?: boolean
   yes?: boolean
   cwd?: string
   strict?: boolean
@@ -183,7 +184,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
   const packageRoot = dirname(catalogDir)
   const options: MergeOptions = {
     overwrite: flags.overwrite ?? false,
-    dryRun: flags['dry-run'] ?? false,
+    dryRun: flags.dryRun ?? flags['dry-run'] ?? false,
   }
 
   const existingConfig = readConfig(consumer.repoRoot)
@@ -318,7 +319,11 @@ export async function runInit(flags: InitFlags): Promise<number> {
       ...(blueprintsDir ? { blueprintsDir } : {}),
     })
 
-    let agentHooksResult = await scaffoldAgentHooks({ repoRoot: consumer.repoRoot, options })
+    let agentHooksResult = await scaffoldAgentHooks({
+      repoRoot: consumer.repoRoot,
+      options,
+      trustCodexHooks: false,
+    })
     const auditHooksResult = scaffoldAuditHooks({ repoRoot: consumer.repoRoot, options })
     const opencodePluginResult = scaffoldOpencodePlugin({ repoRoot: consumer.repoRoot, options })
     let claudeRulesResults: MergeResult[] = []
@@ -459,7 +464,11 @@ export async function runInit(flags: InitFlags): Promise<number> {
     }
 
     if (presets.includes('omx')) {
-      agentHooksResult = await scaffoldAgentHooks({ repoRoot: consumer.repoRoot, options })
+      agentHooksResult = await scaffoldAgentHooks({
+        repoRoot: consumer.repoRoot,
+        options,
+        trustCodexHooks: false,
+      })
     }
 
     if (isCiEnvironment && presets.includes('omc')) {

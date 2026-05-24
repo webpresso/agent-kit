@@ -380,6 +380,18 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(vpCalls).toHaveLength(1)
       expect(vpCalls[0]?.[1]).toEqual(['--version'])
     })
+
+    it('accepts CLI-normalized dryRun and skips external setup work', async () => {
+      await runInit({ cwd: repo, yes: true, dryRun: true })
+      const externalSetupCalls = spawnSyncMock.mock.calls.filter((c) =>
+        ['omx', 'claude', 'git', './setup', 'rtk', 'bun'].includes(String(c[0])),
+      )
+      const vpCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'vp')
+
+      expect(externalSetupCalls).toHaveLength(0)
+      expect(vpCalls).toHaveLength(1)
+      expect(vpCalls[0]?.[1]).toEqual(['--version'])
+    })
   })
 
   describe('preset parsing edge cases', () => {

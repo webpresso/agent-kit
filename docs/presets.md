@@ -138,13 +138,13 @@ Codex CLI and OpenCode. This preset is opt-in; run `wp setup --with context-mode
 
 ### `gstack`
 
-Ensures [gstack](https://gstack.lol/)'s **canonical checkout** exists at `~/.claude/skills/gstack/` ([GitHub](https://github.com/garrytan/gstack)). This runs by default on every `wp setup`. If the directory is missing, setup clones from `https://github.com/garrytan/gstack.git` and runs `./setup --team`. When Codex is detected, agent-kit then runs gstack's official host-specific setup flow (`./setup --host codex`) from that same checkout so Codex skills materialize under `~/.codex/skills/`.
+Ensures [gstack](https://gstack.lol/)'s **canonical checkout** exists at `~/.claude/skills/gstack/` ([GitHub](https://github.com/garrytan/gstack)). This runs by default on every `wp setup`. If the directory is missing, setup clones from `https://github.com/garrytan/gstack.git`. When Codex is detected, agent-kit runs gstack's official combined host setup (`./setup --host auto --team`) from that same checkout so Claude/team mode and Codex materialization refresh in one setup pass. Without Codex, setup runs `./setup --team`.
 
 **Detection:** path-based (`~/.claude/skills/gstack/setup` exists), NOT PATH-based.
 **Failure modes:**
 - `git clone` exits non-zero → `EXIT_WRITE_FAIL` (exit 3)
 - `./setup --team` exits non-zero → `EXIT_WRITE_FAIL` (exit 3)
-- `./setup --host codex` exits non-zero after Codex is detected → `EXIT_WRITE_FAIL` (exit 3)
+- `./setup --host auto --team` exits non-zero after Codex is detected → `EXIT_WRITE_FAIL` (exit 3)
 
 **Codex detection:** Codex is considered present when either `~/.codex/config.toml` exists or `codex --version` succeeds on `PATH`.
 **Idempotency:** every `wp setup` checks gstack and refreshes in place if needed (`gstack: ✓ updated`). Managed installs with a `.git/` directory do a fast-forward pull before `./setup --team`; unmanaged-but-valid installs (a `setup` script without `.git/`) rerun `./setup --team` without forcing git metadata. Codex materialization is also refreshed in place when Codex is detected (`gstack (codex): ✓ updated`).

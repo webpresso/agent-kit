@@ -516,6 +516,7 @@ export interface ScaffoldAgentHooksInput {
   options: MergeOptions
   createCodexAppServer?: CodexAppServerFactory
   onCodexTrustSyncWarning?: (warning: CodexTrustSyncWarning) => void
+  trustCodexHooks?: boolean
 }
 
 export interface ScaffoldAgentHooksResult {
@@ -581,6 +582,8 @@ export async function scaffoldAgentHooks(
       input.options,
     ),
   }
-  await trustCodexAgentKitHooksForRepo(input)
+  if (input.trustCodexHooks !== false) {
+    await trustCodexAgentKitHooksForRepo(input)
+  }
   return result
 }
