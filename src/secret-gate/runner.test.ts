@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildSecretGateCommand } from './runner.js'
+import { buildSecretGateCommand, runSecretGateCommand } from './runner.js'
 
 describe('secret-gate runner', () => {
   it('builds command through with-secrets env-profile contract', () => {
@@ -13,6 +13,18 @@ describe('secret-gate runner', () => {
       command: 'with-secrets',
       args: ['--env-profile', 'secrets-only', '--', 'act', '-W', '.github/workflows/ci.yml'],
     })
+  })
+
+  it('bounds captured stdout', async () => {
+    const result = await runSecretGateCommand({
+      runner: '/bin/echo',
+      command: 'x'.repeat(100),
+      maxOutputBytes: 48,
+    })
+
+    expect(result.exitCode).toBe(0)
+    expect(Buffer.byteLength(result.stdout, 'utf8')).toBeLessThanOrEqual(48)
+    expect(result.stdout).toContain('output truncated')
   })
 
   it('supports custom runner and env profile', () => {
