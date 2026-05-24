@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.19
+
+### Patch Changes
+
+- 0d327bd: Fix `wp setup --dry-run` flag handling, avoid repeated Codex hook trust sync during setup, and collapse gstack Codex/team setup into one upstream setup invocation when Codex is available.
+
 ## 0.18.18
 
 ### Patch Changes
