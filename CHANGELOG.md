@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.17
+
+### Patch Changes
+
+- fc90f88: Prevent AGENTS.md template documentation placeholders from expanding into malformed setup comments.
+
 ## 0.18.16
 
 ### Patch Changes
