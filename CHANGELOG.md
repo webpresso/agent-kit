@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.18
+
+### Patch Changes
+
+- 99a97f9: Make the `wp ci act` and `wp_ci_act` surfaces secret-safe by construction: route execution through the provider-neutral secret gate, remove public unsafe act inputs, redact internal secret-file metadata, and bound captured secret-gate output.
+
 ## 0.18.17
 
 ### Patch Changes
