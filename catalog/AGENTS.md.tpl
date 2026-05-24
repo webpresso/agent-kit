@@ -2,15 +2,15 @@
   AGENTS.md template.
 
   `wp setup` renders this file with:
-  - {{REPOSITORY_MAP}}: bulleted list of workspace packages inferred from
+  - Repository map: bulleted list of workspace packages inferred from
     pnpm-workspace.yaml / package.json workspaces.
-  - {{TECH_STACK}}: short description generated from package.json + detected
+  - Tech stack: short description generated from package.json + detected
     frameworks (React, Hono, Drizzle, etc.).
-  - {{ESCALATION_MAP}}: user-edited section. Left as a TODO placeholder if
+  - Escalation map: user-edited section. Left as a TODO placeholder if
     not specified.
-  - {{DURABLE_PLANNING_ROOT}}: defaults to `.agent/planning/`. Override via
+  - Durable planning root: defaults to `.agent/planning/`. Override via
     .agent-kitrc.json.
-  - {{BLUEPRINTS_DIR}}: defaults to `blueprints`. Override via
+  - Blueprints directory: defaults to `blueprints`. Override via
     .agent-kitrc.json#blueprintsDir.
 
   Managed sections in this file are refreshed by agent-kit on `wp sync`.

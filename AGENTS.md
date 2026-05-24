@@ -2,17 +2,15 @@
   AGENTS.md template.
 
   `wp setup` renders this file with:
-  - Workspace package map inferred from pnpm-workspace.yaml / package.json workspaces.
-  - Do not reference retired `@webpresso/agent-*` config packages.
-  - TypeScript
-  - Vitest
-  - Zod: short description generated from package.json + detected
+  - Repository map: bulleted list of workspace packages inferred from
+    pnpm-workspace.yaml / package.json workspaces.
+  - Tech stack: short description generated from package.json + detected
     frameworks (React, Hono, Drizzle, etc.).
-  - {{TODO: populate escalation map — who to ping for which subsystem.}}: user-edited section. Left as a TODO placeholder if
+  - Escalation map: user-edited section. Left as a TODO placeholder if
     not specified.
-  - .agent/planning/: defaults to `.agent/planning/`. Override via
+  - Durable planning root: defaults to `.agent/planning/`. Override via
     .agent-kitrc.json.
-  - blueprints: defaults to `blueprints`. Override via
+  - Blueprints directory: defaults to `blueprints`. Override via
     .agent-kitrc.json#blueprintsDir.
 
   Managed sections in this file are refreshed by agent-kit on `wp sync`.
@@ -154,7 +152,16 @@ Full details: `.agent/rules/package-conventions.md`
 
 ## Repository map
 
-- Workspace packages are discovered from `pnpm-workspace.yaml` / package.json workspaces.
+- `@webpresso/agent-docs-lint` — `packages/agent-docs-lint`
+- `@webpresso/agent-e2e-preset` — `packages/agent-e2e-preset`
+- `@webpresso/agent-kit` — `.`
+- `@webpresso/agent-launch` — `packages/agent-launch`
+- `@webpresso/agent-oxlint` — `packages/agent-oxlint`
+- `@webpresso/agent-stryker` — `packages/agent-stryker`
+- `@webpresso/agent-test-preset` — `packages/agent-test-preset`
+- `@webpresso/agent-tsconfig` — `packages/agent-tsconfig`
+- `@webpresso/agent-vitest` — `packages/agent-vitest`
+- `@webpresso/agent-workers-test` — `packages/agent-workers-test`
 
 ## Tech stack
 
