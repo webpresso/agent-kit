@@ -23,6 +23,7 @@ coverage/
 playwright-report/
 test-results/
 *.auth.json
+.playwright-mcp/
 
 # Environment files
 .env
