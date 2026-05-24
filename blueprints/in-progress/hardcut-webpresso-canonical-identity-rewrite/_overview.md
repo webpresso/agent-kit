@@ -5,7 +5,7 @@ status: in-progress
 complexity: L
 owner: "agent"
 created: '2026-05-23'
-last_updated: '2026-05-23'
+last_updated: '2026-05-24'
 progress: '0% (0/9 tasks done)'
 depends_on:
   - consolidate-all-webpresso-agent-sub-packages-into-webpresso-itself-with-subpath-exports-consumers-go-from-6-8-pinned-devdeps-down-to-one-webpresso
@@ -78,6 +78,10 @@ remain after completion.
   - README documents `/webpresso-agent-kit:*`
 - State storage also still uses the legacy app key
   `envPaths('webpresso-agent-kit', { suffix: '' })`.
+- The blast radius is broader than the first draft of this blueprint captured:
+  generated marker strings, auto-update flows, compiler manifests, dev-link
+  state, and multiple CI/workflow comments still embed `@webpresso/agent-kit`,
+  `webpresso/agent-kit`, or `webpresso-agent-kit`.
 - External best-practice constraints:
   - npm package renames are republish operations, not true renames; registry
     cleanup is an ops track, not something the repo alone can guarantee.
@@ -106,6 +110,7 @@ remain after completion.
 | F4 | HIGH | Claude plugin identity is fragmented across marketplace manifest, plugin manifest, install ID, skill namespace, and MCP server ID. | Split plugin identity work into its own lane with explicit file ownership. |
 | F5 | MEDIUM | Repo slug rename cannot rely on redirects for all consumers. | Added a dedicated repo-slug scrub task and an external ops note. |
 | F6 | MEDIUM | Registry cleanup for published old names is not fully controllable from repo code. | Separated registry cleanup into an explicit ops task with no compatibility-code fallback. |
+| F7 | HIGH | Latest repo scan shows identity drift is also embedded in generated markers, auto-update/dev-link flows, compiler manifests, and workflow comments/tests beyond the original file lists. | Expanded task ownership so each lane explicitly covers those additional live surfaces and regression gates. |
 
 ## Quick Reference (Execution Waves)
 
@@ -145,6 +150,7 @@ release-workflow identity changes so no other parallel task edits those files.
 
 - Modify: `package.json`
 - Modify: `.github/workflows/release.yml`
+- Modify: `.github/workflows/bundle-smoke.yml`
 - Modify: `catalog/agent/rules/changeset-release.md`
 - Modify: `catalog/agent/rules/package-conventions.md`
 - Delete: `scripts/publish-webpresso.ts`
@@ -190,6 +196,7 @@ language, and state-root naming so the identity change is coherent.
 - Modify: `src/cli/commands/init/scaffolders/agent-hooks/index.ts`
 - Modify: `src/paths/state-root.ts`
 - Modify: `src/compiler/manifests/gemini.ts`
+- Modify: `src/compiler/manifests/manifests.test.ts`
 - Modify: `README.md`
 - Modify: `catalog/agent/skills/hooks-doctor/SKILL.md`
 
@@ -237,6 +244,7 @@ packages.
 - Modify: `pnpm-workspace.yaml`
 - Modify: `package.json`
 - Modify: `src/cli/commands/init/detect-consumer.ts`
+- Modify: `src/cli/commands/init/scaffold-base-kit.ts`
 - Modify: `src/audit/agents.ts`
 
 **Steps (TDD):**
@@ -315,6 +323,12 @@ recognizes itself as `webpresso`.
 - Modify: `src/cli/utils.ts`
 - Modify: `src/cli/commands/init/scaffolders/claude-rules/index.ts`
 - Modify: `src/cli/commands/init/scaffolders/subagents/index.ts`
+- Modify: `src/compiler/manifests/claude.ts`
+- Modify: `src/compiler/manifests/codex.ts`
+- Modify: `src/compiler/manifests/cursor.ts`
+- Modify: `src/compiler/manifests/manifests.test.ts`
+- Modify: `src/quality-engine/export-isolation.test.ts`
+- Modify: `src/typecheck/export-isolation.test.ts`
 
 **Steps (TDD):**
 
@@ -346,7 +360,13 @@ and plugin identity.
 
 - Modify: `scripts/link-edge-local.ts`
 - Modify: `src/dev/restore-dev-links/index.ts`
+- Modify: `src/dev/dev-link-state.ts`
 - Modify: `src/hooks/check-dev-link/index.ts`
+- Modify: `src/cli/auto-update/detect-pm.ts`
+- Modify: `src/cli/auto-update/run.ts`
+- Modify: `src/cli/commands/init/index.ts`
+- Modify: `src/cli/commands/init/preflight.ts`
+- Modify: `src/cli/commands/init/scaffold-base-kit.ts`
 - Modify: `src/cli/commands/init/scaffolders/codex-mcp/index.ts`
 - Modify: `src/cli/commands/init/host-smoke.e2e.test.ts`
 
@@ -383,13 +403,17 @@ alone if they are explicitly excluded from the gate.
 - Modify: `.claude-plugin/marketplace.json`
 - Modify: `README.md`
 - Modify: `docs/cloud-agents.md`
+- Modify: `docs/skills-catalog.md`
 - Modify: `catalog/agent/rules/changeset-release.md`
+- Modify: `catalog/AGENTS.md.tpl`
+- Modify: `.github/workflows/ci.webpresso.yml`
 - Create: `src/audit/webpresso-identity-scrub.test.ts`
 
 **Steps (TDD):**
 
 1. Write a failing grep-backed test that scans live surfaces for banned
-   `webpresso/agent-kit` references.
+   `webpresso/agent-kit`, `@webpresso/agent-kit`, `webpresso-agent-kit`, and
+   `/webpresso-agent-kit:` references where they are no longer allowed.
 2. Run `wp_test` scoped to `src/audit/webpresso-identity-scrub.test.ts` —
    verify FAIL.
 3. Rewrite the live repo-slug references and exclude only intentionally
@@ -495,6 +519,7 @@ handoff checklist and evidence needed to finish the hardcut outside git.
 | Edge Case | Risk | Solution | Task |
 | --- | --- | --- | --- |
 | Live package/plugin/repo surfaces drift to mixed naming again | HIGH — consumers and setup flows break inconsistently | Add explicit identity-scrub tests and dedicate ownership by surface | 1.2, 2.3 |
+| Generated markers and self-host helpers keep emitting `@webpresso/agent-kit` even after root metadata changes | HIGH — newly scaffolded repos immediately regress to old naming | Expand file ownership to scaffolders/templates/auto-update lanes and protect with grep-backed tests | 1.3, 2.1, 2.2, 2.3 |
 | Release workflow still assumes dual-publish staging | HIGH — wrong artifact gets published | Put all root-release metadata under Task 1.1 ownership | 1.1 |
 | Repo rename redirects are assumed to cover action-like consumers | MEDIUM — stale source refs keep breaking installs | Add explicit slug scrub plus external rename handoff | 2.3, 3.2 |
 | Published old npm names cannot be fully removed | MEDIUM — registry history remains | Keep cleanup as external ops with no compatibility-code fallback | 3.2 |
@@ -506,6 +531,7 @@ handoff checklist and evidence needed to finish the hardcut outside git.
 | Root package rename has broader blast radius than helper-package fold | HIGH | Isolate root package/release work in its own lane and rely on full verification in Task 3.1. |
 | Plugin ecosystem still caches old IDs after rename | HIGH | Hardcut manifests, install IDs, settings patchers, and docs together in Task 1.2. |
 | Helper-package deletion leaves hidden references in tests or docs | HIGH | Use legacy-reference grep/assertion gates and workspace deletion in one lane. |
+| Generated templates and auto-update/dev-link helpers silently preserve old identity strings | HIGH | Explicitly include scaffolders/templates/auto-update/dev-link files in task ownership and enforce with identity-scrub tests. |
 | External npm/GitHub operations lag behind repo changes | MEDIUM | Capture a strict ops handoff without reintroducing compatibility code. |
 
 ## Technology Choices
@@ -522,13 +548,13 @@ handoff checklist and evidence needed to finish the hardcut outside git.
 | --- | --- |
 | Findings total | 6 |
 | Critical | 1 |
-| High | 3 |
+| High | 4 |
 | Medium | 2 |
 | Low | 0 |
-| Fixes applied | 6/6 |
+| Fixes applied | 7/7 |
 | Cross-plans updated | 1 |
-| Edge cases documented | 4 |
-| Risks documented | 4 |
+| Edge cases documented | 5 |
+| Risks documented | 5 |
 | Parallelization score | A |
 | Critical path | 3 waves |
 | Max parallel agents | 4 |
