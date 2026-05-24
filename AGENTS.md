@@ -152,8 +152,16 @@ Full details: `.agent/rules/package-conventions.md`
 
 ## Repository map
 
-- `@webpresso/agent-kit` — root package and umbrella CLI.
-- Consolidated helper implementations live under `packages/agent-*` and publish through `webpresso/*` subpath exports; do not recommend installing the retired helper packages directly.
+- `@webpresso/agent-docs-lint` — `packages/agent-docs-lint`
+- `@webpresso/agent-e2e-preset` — `packages/agent-e2e-preset`
+- `@webpresso/agent-kit` — `.`
+- `@webpresso/agent-launch` — `packages/agent-launch`
+- `@webpresso/agent-oxlint` — `packages/agent-oxlint`
+- `@webpresso/agent-stryker` — `packages/agent-stryker`
+- `@webpresso/agent-test-preset` — `packages/agent-test-preset`
+- `@webpresso/agent-tsconfig` — `packages/agent-tsconfig`
+- `@webpresso/agent-vitest` — `packages/agent-vitest`
+- `@webpresso/agent-workers-test` — `packages/agent-workers-test`
 
 ## Tech stack
 
