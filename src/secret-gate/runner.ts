@@ -6,6 +6,7 @@ export interface SecretGateCommand {
 }
 
 export interface SecretGateCommandOptions {
+  readonly maxOutputBytes?: number
   readonly runner?: string
   readonly envProfile?: string
   readonly command: string
@@ -23,6 +24,8 @@ export interface SecretGateRunResult {
   readonly aborted: boolean
   readonly signal: NodeJS.Signals | null
 }
+
+const DEFAULT_MAX_OUTPUT_BYTES = 64 * 1024
 
 const SIGNAL_TO_EXIT_CODE: Readonly<Partial<Record<NodeJS.Signals, number>>> = {
   SIGINT: 2,
@@ -50,12 +53,14 @@ function exitCodeFromSignal(signal: NodeJS.Signals | null): number {
 
 export function runSecretGateCommand(options: SecretGateCommandOptions): Promise<SecretGateRunResult> {
   const timeoutMs = options.timeoutMs ?? 30_000
+  const maxOutputBytes = options.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES
   const command = buildSecretGateCommand(options)
 
   return new Promise((resolve) => {
     const child = spawn(command.command, [...command.args], {
       cwd: options.cwd,
       env: process.env,
+      detached: process.platform !== 'win32',
     })
 
     let stdout = ''
@@ -65,12 +70,12 @@ export function runSecretGateCommand(options: SecretGateCommandOptions): Promise
 
     const timer = setTimeout(() => {
       timedOut = true
-      child.kill('SIGTERM')
+      killProcessTree(child.pid, child.kill.bind(child), 'SIGTERM')
     }, timeoutMs)
 
     const onAbort = (): void => {
       aborted = true
-      child.kill('SIGTERM')
+      killProcessTree(child.pid, child.kill.bind(child), 'SIGTERM')
     }
 
     if (options.signal) {
@@ -84,10 +89,10 @@ export function runSecretGateCommand(options: SecretGateCommandOptions): Promise
     }
 
     child.stdout.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString('utf8')
+      stdout = appendBoundedOutput(stdout, chunk, maxOutputBytes)
     })
     child.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString('utf8')
+      stderr = appendBoundedOutput(stderr, chunk, maxOutputBytes)
     })
 
     child.on('error', (error: NodeJS.ErrnoException) => {
@@ -114,4 +119,30 @@ export function runSecretGateCommand(options: SecretGateCommandOptions): Promise
       })
     })
   })
+}
+
+function killProcessTree(
+  pid: number | undefined,
+  fallbackKill: (signal: NodeJS.Signals) => boolean,
+  signal: NodeJS.Signals,
+): void {
+  if (pid && process.platform !== 'win32') {
+    try {
+      process.kill(-pid, signal)
+      return
+    } catch {
+      // Fall through to killing the child when process-group cleanup is not available.
+    }
+  }
+  fallbackKill(signal)
+}
+
+function appendBoundedOutput(current: string, chunk: Buffer, maxBytes: number): string {
+  if (maxBytes <= 0) return ''
+  const next = current + chunk.toString('utf8')
+  if (Buffer.byteLength(next, 'utf8') <= maxBytes) return next
+  const marker = '\n[output truncated by secret-gate runner]\n'
+  const markerBytes = Buffer.byteLength(marker, 'utf8')
+  const budget = Math.max(0, maxBytes - markerBytes)
+  return `${next.slice(0, budget)}${marker}`
 }

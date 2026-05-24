@@ -1,5 +1,3 @@
-import { resolve } from 'node:path'
-
 import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
@@ -10,10 +8,10 @@ import {
   listMissingRequiredSecrets,
   pickAllowedSecrets,
   writeTempSecretsFile,
-  injectDefaultActArgs,
 } from '#ci/act-helper.js'
+import { buildPublicCiActArgs, sanitizePublicCiActArgv } from '#ci/act-runner.js'
 import { runSecretGateCommand } from '#secret-gate/runner.js'
-import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
+import { clipRawOutput, createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 import { redactText } from './_shared/redact.js'
 
 const inputSchema = z
@@ -28,10 +26,8 @@ const inputSchema = z
     mapGithubPatToToken: z.boolean().optional().default(false),
     envProfile: z.string().optional().default('secrets-only'),
     timeoutMs: z.number().int().positive().max(5 * 60_000).optional().default(120_000),
-    allowHostMutation: z.boolean().optional().default(false),
     containerArchitecture: z.string().optional(),
     platformImage: z.string().optional().default('ghcr.io/catthehacker/ubuntu:full-latest'),
-    passthrough: z.array(z.string()).optional().default([]),
     execute: z.boolean().optional().default(false),
   })
   .strict()
@@ -48,26 +44,25 @@ const outputSchema = createSummaryOutputSchema({
   }),
 })
 
-function buildActCommandArgs(input: z.infer<typeof inputSchema>, secretsPath: string): string[] {
-  const args = [
-    input.eventName,
-    '-W',
-    resolve(input.cwd ?? process.cwd(), input.workflowPath),
-    '-P',
-    `ubicloud-standard-2=${input.platformImage}`,
-    '--secret-file',
-    secretsPath,
-    '--rm',
-  ]
-  if (input.job) args.push('-j', input.job)
-  if (input.eventPath) args.push('-e', resolve(input.cwd ?? process.cwd(), input.eventPath))
-  if (input.allowHostMutation) args.push('--bind')
-  if (input.containerArchitecture) args.push('--container-architecture', input.containerArchitecture)
-  if (input.passthrough.length > 0) args.push(...input.passthrough)
-  return injectDefaultActArgs(args)
+function buildInternalActCommandArgs(
+  input: z.infer<typeof inputSchema>,
+  secretsPath: string,
+): string[] {
+  return [...buildPublicCiActArgs(input), '--secret-file', secretsPath]
 }
 
-function buildPayload(input: z.infer<typeof inputSchema>, missingRequired: string[], secretCount: number) {
+function publicCommandDetails(input: z.infer<typeof inputSchema>, secretsPath?: string) {
+  const actArgs = secretsPath
+    ? buildInternalActCommandArgs(input, secretsPath)
+    : buildPublicCiActArgs(input)
+  return sanitizePublicCiActArgv({ command: 'act', args: actArgs, actArgs }).actArgs
+}
+
+function buildPayload(
+  input: z.infer<typeof inputSchema>,
+  missingRequired: string[],
+  secretCount: number,
+) {
   return {
     passed: false,
     summary: `ci-act missing required secrets for profile ${resolveCiActSecretProfile({
@@ -80,7 +75,7 @@ function buildPayload(input: z.infer<typeof inputSchema>, missingRequired: strin
       missingRequiredCount: missingRequired.length,
     },
     details: {
-      command: { command: 'act', args: [] as string[] },
+      command: { command: 'act', args: publicCommandDetails(input) },
       profile: resolveCiActSecretProfile({
         workflowPath: input.workflowPath,
         jobName: input.job,
@@ -122,7 +117,7 @@ const tool: ToolDescriptor = {
 
     const temp = writeTempSecretsFile(secrets)
     try {
-      const actArgs = buildActCommandArgs(input, temp.path)
+      const actArgs = buildInternalActCommandArgs(input, temp.path)
       if (!input.execute) {
         return createSummaryResult({
           passed: true,
@@ -132,7 +127,7 @@ const tool: ToolDescriptor = {
             missingRequiredCount: missingRequired.length,
           },
           details: {
-            command: { command: 'act', args: actArgs },
+            command: { command: 'act', args: publicCommandDetails(input, temp.path) },
             profile: profile.id,
             missingRequired,
           },
@@ -149,6 +144,7 @@ const tool: ToolDescriptor = {
       })
       const merged = [result.stdout, result.stderr].filter(Boolean).join('\n')
       const redacted = redactText(merged)
+      const clipped = clipRawOutput(redacted, 4_000, { toolName: 'wp_ci_act' })
       return createSummaryResult({
         passed: result.exitCode === 0,
         summary:
@@ -161,11 +157,11 @@ const tool: ToolDescriptor = {
           missingRequiredCount: missingRequired.length,
         },
         details: {
-          command: { command: 'act', args: actArgs },
+          command: { command: 'act', args: publicCommandDetails(input, temp.path) },
           profile: profile.id,
           missingRequired,
         },
-        rawOutput: redacted,
+        ...clipped,
         ...(result.timedOut ? { failures: [{ message: 'timed out while running act' }] } : {}),
         ...(result.aborted ? { failures: [{ message: 'aborted by client signal' }] } : {}),
       })
