@@ -466,7 +466,9 @@ export async function scaffoldAgentHooks(input) {
         codex: patchJsonFile(join(input.repoRoot, '.codex', 'hooks.json'), (existing) => patchCodexHooks(existing, input.repoRoot), input.options),
         claudeUser: patchJsonFile(defaultClaudeUserSettingsPath(), (existing) => patchClaudeUserSettings(existing), input.options),
     };
-    await trustCodexAgentKitHooksForRepo(input);
+    if (input.trustCodexHooks !== false) {
+        await trustCodexAgentKitHooksForRepo(input);
+    }
     return result;
 }
 //# sourceMappingURL=index.js.map
