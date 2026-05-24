@@ -697,7 +697,7 @@ Run final quality gates and verify the new blueprint itself remains lifecycle-co
    - `src/mcp/__fixtures__/blueprint-fixture.test.ts`, `src/mcp/blueprint-workflow.integration.test.ts`
 2. Run: `pnpm run typecheck`.
 3. Run: `pnpm run lint`.
-4. Run: `bun ./src/cli/cli.ts blueprint audit --all --strict`.
+4. Run the strict blueprint audit through the `wp` CLI facade.
 5. Fix only regressions caused by this blueprint's implementation; document pre-existing unrelated audit failures separately.
 
 **Acceptance:**
@@ -714,7 +714,8 @@ Run final quality gates and verify the new blueprint itself remains lifecycle-co
 - **Typecheck:** `pnpm run typecheck` — pass.
 - **Lint:** `pnpm run lint` — pass.
 - **Docs frontmatter:** `pnpm run docs:check` — pass.
-- **Blueprint lifecycle audit:** `bun ./src/cli/cli.ts blueprint audit structured-blueprint-mcp-sqlite-first-agent-ops --strict` — pass.
+- **Blueprint lifecycle audit:** strict `wp` CLI blueprint audit for
+  `structured-blueprint-mcp-sqlite-first-agent-ops` — pass.
 - **Changed files (this blueprint):** `src/blueprint/db/paths.ts`, `src/blueprint/db/paths.test.ts`, `src/blueprint/db/legacy-migration.ts`, `src/blueprint/db/legacy-migration.test.ts`, `src/blueprint/projects.ts`, `src/blueprint/projects.test.ts`, `src/blueprint/context.ts`, `src/blueprint/context.test.ts`, `src/blueprint/freshness.ts`, `src/blueprint/freshness.test.ts`, `src/blueprint/next-action.ts`, `src/blueprint/next-action.test.ts`, `src/blueprint/evidence.ts`, `src/blueprint/evidence.test.ts`, `src/blueprint/verification.ts`, `src/blueprint/verification.test.ts`, `src/blueprint/aggregate.ts`, `src/blueprint/aggregate.test.ts`, `src/mcp/blueprint-server.ts`, `src/mcp/blueprint-server.test.ts`, `src/mcp/__fixtures__/blueprint-fixture.ts`, `src/mcp/__fixtures__/blueprint-fixture.test.ts`, `src/mcp/blueprint-workflow.integration.test.ts`.
 - **Remaining risks:** Read-context assembly still preserves the existing MCP payload shape instead of exposing the richer `src/blueprint/context.ts` chunk schema directly; this is an intentional compatibility tradeoff, not a known failing path.
 

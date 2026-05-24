@@ -93,6 +93,15 @@ cd <repo-root> && ./node_modules/.bin/oxfmt --write --ignore-path .gitignore
 - Agent-facing commands should use MCP tools, `wp ...`, or repo scripts through
   `vp run ...`. The raw TypeScript/Bun CLI entrypoint is an implementation
   detail, not an instruction surface for users or agents.
+- Package-manager/runtime wrapper chains such as Corepack, `vp exec`/`vp dlx`,
+  pnpm `exec`/optional exec, `npm exec`/`npx`, `yarn exec`/`yarn dlx`, `bunx`,
+  and TypeScript runtimes do not make quality tools or repo source entrypoints
+  agent-facing. Use the matching MCP tool such as `wp_test`, `wp_lint`, or
+  `wp_e2e`.
+- Secret-touching source entrypoints such as CI act runners must go through a
+  secret-aware MCP wrapper or be blocked until one exists. They should reuse the
+  repo secret-provider gate and must not ask agents to call `doppler` or
+  `infisical` directly.
 - Use the `WP_` environment variable namespace for agent-kit CLI behavior. For
   update checks, the opt-out is `WP_SKIP_UPDATE_CHECK=1`.
 - Audit commands are `wp audit <kind>` or MCP `wp_audit`; do not invent a

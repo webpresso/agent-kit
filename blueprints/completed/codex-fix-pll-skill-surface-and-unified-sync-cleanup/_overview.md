@@ -41,7 +41,8 @@ Make `fix`, `verify`, and `pll` available through Codex-compatible skill surface
 - `pnpm exec vitest run src/cli/commands/init/init.integration.test.ts src/symlinker/unified-sync.test.ts src/cli/commands/sync.test.ts src/symlinker/consumers.test.ts` — PASS, 4 files / 44 tests.
 - `pnpm run typecheck` — PASS.
 - `pnpm run lint` — PASS.
-- `bun ./src/cli/cli.ts format --check <changed files>` — PASS.
+- Legacy source-entrypoint format check for changed files — PASS. Prefer
+  `wp format --check` or `vp run format:check` for current work.
 
 ## Notes
 

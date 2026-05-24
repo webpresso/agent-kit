@@ -566,7 +566,7 @@
     "audits:check": "WP_SKIP_UPDATE_CHECK=1 wp audit guardrails && vp run hooks:doctor:ci",
     "hooks:doctor": "WP_SKIP_UPDATE_CHECK=1 wp hooks doctor",
     "hooks:doctor:ci": "WP_SKIP_UPDATE_CHECK=1 wp hooks doctor --skip-mcp",
-    "qa": "bun run build && bun run typecheck && bun run lint && bun run format:check && bun run test && bun run lint:pkg && bun run audits:check",
+    "qa": "vp run build && vp run typecheck && vp run lint && vp run format:check && vp run test && vp run lint:pkg && vp run audits:check",
     "changeset": "changeset",
     "changeset:status": "changeset status",
     "postinstall": "bun scripts/migration-notice.ts"

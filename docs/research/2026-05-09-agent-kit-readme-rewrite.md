@@ -82,7 +82,7 @@ Title: *"Long-running spec-driven implementation for AI coding agents"*. Quick-s
 - **Line 38 — "Why two paths"** misframes the question. The reader's question is "what does this do for me," not "why are there two paths."
 - **Line 122 — IDE matrix is correct content but in the wrong place.** Should be deeper, not at line 122 of the structural arc.
 - **Line 132 — CLI reference exists but is unanchored.** Without a "what does this do" up top, the table is just a wall of `wp audit ...` rows with no narrative.
-- **Line 140 — outdated CLI surface.** `wp symlink sync` is in the README; the actual CLI exposes `wp sync` (`wp symlink` is `Unknown command` per `bun ./src/cli/cli.ts symlink --help`). Direct example of [kunalganglani's "outdated README"](https://www.kunalganglani.com/blog/write-good-readme-guide) failure mode #4.
+- **Line 140 — outdated CLI surface.** `wp symlink sync` is in the README; the actual CLI exposes `wp sync` (`wp symlink` returned `Unknown command` during CLI help verification). Direct example of [kunalganglani's "outdated README"](https://www.kunalganglani.com/blog/write-good-readme-guide) failure mode #4.
 - **Line 198 — "Design Invariants" buried.** Two important invariants ("zero `@webpresso/*` runtime deps" and "catalog content is canonical once shipped") matter, but live below the fold.
 - **Line 201 — "Status: Experimental (v0.x)" buried.** Should be in the first 30 lines so readers calibrate trust.
 
