@@ -33,7 +33,7 @@ const BOOTSTRAP_ONLY_MAP = [
     ['pnpm-workspace.yaml.tmpl', 'pnpm-workspace.yaml'],
 ];
 /** Merge `engines` and `packageManager` into the consumer repo's package.json. */
-function mergePackageJson(repoRoot, options) {
+function mergePackageJson(repoRoot, options, globalInstall = false) {
     const pkgPath = join(repoRoot, 'package.json');
     const engines = { node: '>=24' };
     const packageManager = 'pnpm@11.1.1';
@@ -66,9 +66,10 @@ function mergePackageJson(repoRoot, options) {
     const devDeps = (pkg['devDependencies'] ?? {});
     const hasAgentKitDevDep = typeof devDeps['@webpresso/agent-kit'] === 'string';
     const shouldSkipSelfInstall = packageName === '@webpresso/agent-kit';
+    const shouldManageAgentKitAsGlobal = globalInstall && !shouldSkipSelfInstall;
     if (alreadyHasEngines &&
         alreadyHasPm &&
-        (shouldSkipSelfInstall || hasAgentKitDevDep) &&
+        (shouldSkipSelfInstall || shouldManageAgentKitAsGlobal || hasAgentKitDevDep) &&
         (shouldSkipSelfInstall || hasSetupAgent)) {
         return { targetPath: pkgPath, action: 'identical' };
     }
@@ -79,7 +80,7 @@ function mergePackageJson(repoRoot, options) {
     if (!devDeps['husky']) {
         devDeps['husky'] = '^9.0.0';
     }
-    if (!shouldSkipSelfInstall && !hasAgentKitDevDep) {
+    if (!shouldSkipSelfInstall && !shouldManageAgentKitAsGlobal && !hasAgentKitDevDep) {
         // Keep consumers on the currently published dist-tag rather than a
         // repo-internal path. Do not wire this through `prepare`: `wp` is not
         // reliably on PATH during `vp install`, so `setup:agent` stays opt-in.
@@ -97,7 +98,7 @@ function mergePackageJson(repoRoot, options) {
     return { targetPath: pkgPath, action: 'overwritten' };
 }
 export function scaffoldBaseKit(input) {
-    const { catalogDir, repoRoot, options } = input;
+    const { catalogDir, repoRoot, options, globalInstall = false } = input;
     const baseKitDir = join(catalogDir, 'base-kit');
     const results = [];
     for (const [tmplRel, targetRel] of TEMPLATE_MAP) {
@@ -145,7 +146,7 @@ export function scaffoldBaseKit(input) {
             }
         }
     }
-    results.push(mergePackageJson(repoRoot, options));
+    results.push(mergePackageJson(repoRoot, options, globalInstall));
     return results;
 }
 //# sourceMappingURL=scaffold-base-kit.js.map

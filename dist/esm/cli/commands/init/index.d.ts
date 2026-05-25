@@ -5,6 +5,7 @@ export interface InitFlags {
     all?: boolean;
     overwrite?: boolean;
     'dry-run'?: boolean;
+    dryRun?: boolean;
     yes?: boolean;
     cwd?: string;
     strict?: boolean;

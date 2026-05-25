@@ -17,7 +17,11 @@ interface PackageRecord {
   private?: boolean
 }
 
-const DEFAULT_ALLOWED_PUBLIC_PACKAGES = ['@webpresso/webpresso', '@webpresso/agent-kit', 'webpresso']
+const DEFAULT_ALLOWED_PUBLIC_PACKAGES = [
+  '@webpresso/webpresso',
+  '@webpresso/agent-kit',
+  'webpresso',
+]
 
 // Compatibility packages that are still publishable while the facade/hardcut
 // plans complete. They are intentionally accepted by the audit, but repos can
@@ -56,6 +60,7 @@ const DEFAULT_COMPATIBILITY_PUBLIC_PACKAGES = [
 ]
 
 const DEFAULT_FORBIDDEN_PUBLIC_NAME_PATTERNS = [
+  '@webpresso/db-branching-neon',
   '@webpresso/neon',
   '@webpresso/neon-core',
   '@webpresso/neon-branching',
@@ -116,9 +121,10 @@ export function auditPackageSurface(rootDirectory: string = process.cwd()): Repo
     ...DEFAULT_COMPATIBILITY_PUBLIC_PACKAGES,
     ...(contract.compatibilityPublicPackages ?? []),
   ])
-  const forbiddenPatterns = contract.forbiddenPublicNamePatterns ?? DEFAULT_FORBIDDEN_PUBLIC_NAME_PATTERNS
+  const forbiddenPatterns =
+    contract.forbiddenPublicNamePatterns ?? DEFAULT_FORBIDDEN_PUBLIC_NAME_PATTERNS
   const staleLinks = contract.staleLinks ?? DEFAULT_STALE_LINKS
-  const baselines = contract.referenceConsumerBaselines ?? undefined
+  const baselines = contract.referenceConsumerBaselines ?? DEFAULT_REFERENCE_BASELINES
 
   for (const packageFile of walkFiles(root, (file) => basename(file) === 'package.json')) {
     const pkg = readJsonObject<PackageRecord>(packageFile)
@@ -166,7 +172,10 @@ export function auditPackageSurface(rootDirectory: string = process.cwd()): Repo
   }
 }
 
-function loadPackageSurfaceContract(root: string): { contract: PackageSurfaceContract; exists: boolean } {
+function loadPackageSurfaceContract(root: string): {
+  contract: PackageSurfaceContract
+  exists: boolean
+} {
   const candidates = [
     join(root, 'package-surface.json'),
     join(root, '.webpresso', 'package-surface.json'),
@@ -270,7 +279,11 @@ function parseVersion(version: string): [number, number, number] {
   return [Number(match?.[1] ?? 0), Number(match?.[2] ?? 0), Number(match?.[3] ?? 0)]
 }
 
-function walkFiles(root: string, predicate: (file: string) => boolean, baseRoot: string = root): string[] {
+function walkFiles(
+  root: string,
+  predicate: (file: string) => boolean,
+  baseRoot: string = root,
+): string[] {
   if (root !== baseRoot && existsSync(join(root, '.git'))) return []
 
   const files: string[] = []
@@ -302,7 +315,12 @@ function hasActionableForbiddenMention(text: string, pattern: string): boolean {
     if (!line.includes(pattern)) continue
     const lower = line.toLowerCase()
     if (lower.includes(`no ${pattern.toLowerCase()}`)) continue
-    if (lower.includes('must not') || lower.includes('never appears') || lower.includes('forbidden')) continue
+    if (
+      lower.includes('must not') ||
+      lower.includes('never appears') ||
+      lower.includes('forbidden')
+    )
+      continue
     return true
   }
   return false

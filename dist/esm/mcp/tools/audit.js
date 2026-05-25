@@ -25,6 +25,7 @@ const KINDS = [
     'tph-e2e',
     'agents',
     'catalog-drift',
+    'package-surface',
     'docs-frontmatter',
     'blueprint-lifecycle',
     'roadmap-links',
@@ -100,6 +101,16 @@ async function dispatch(input) {
         case 'catalog-drift': {
             const { auditCatalogDrift } = await import('#audit/repo-guardrails');
             const auditResult = auditCatalogDrift(input.cwd ?? input.directory ?? process.cwd());
+            return {
+                passed: auditResult.ok,
+                summary: summarizeRepoAudit(kind, auditResult),
+                kind,
+                details: auditResult,
+            };
+        }
+        case 'package-surface': {
+            const { auditPackageSurface } = await import('#audit/package-surface');
+            const auditResult = auditPackageSurface(input.cwd ?? input.directory ?? process.cwd());
             return {
                 passed: auditResult.ok,
                 summary: summarizeRepoAudit(kind, auditResult),
@@ -255,7 +266,7 @@ async function dispatch(input) {
 }
 const tool = {
     name: 'wp_audit',
-    description: 'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-lifecycle, roadmap-links, bundle-budget, commit-message, tech-debt, hook-surface, no-relative-package-scripts). Returns {passed, kind, details}.',
+    description: 'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-lifecycle, roadmap-links, bundle-budget, commit-message, tech-debt, hook-surface, package-surface, no-relative-package-scripts). Returns {passed, kind, details}.',
     inputSchema,
     outputSchema,
     annotations: {

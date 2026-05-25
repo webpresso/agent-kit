@@ -11,6 +11,7 @@ import { runAuditDispatch } from './audit-core.js';
 import { runStryker } from '#audit/run-stryker';
 const REPO_AUDIT_REGISTRY = {
     'catalog-drift': async (root) => (await import('#audit/repo-guardrails')).auditCatalogDrift(root),
+    'package-surface': async (root) => (await import('#audit/package-surface')).auditPackageSurface(root),
     'blueprint-lifecycle': async (root, _options) => (await import('#audit/blueprint-lifecycle-sql')).auditBlueprintLifecycleSql(root),
     'roadmap-links': async (root, options) => (await import('#audit/roadmap-links')).auditRoadmapLinks(root, {
         failOrphans: options.strict,

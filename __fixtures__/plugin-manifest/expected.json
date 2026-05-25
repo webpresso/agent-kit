@@ -1,5 +1,5 @@
 {
-  "name": "webpresso-agent-kit",
+  "name": "webpresso",
   "version": "0.8.1",
   "description": "Webpresso agent-kit: blueprints, skills, lore commit protocol, tech-debt lifecycle",
   "skills": "./skills",
@@ -62,7 +62,7 @@
     ]
   },
   "mcpServers": {
-    "agent-kit": {
+    "webpresso": {
       "command": "bun",
       "args": [
         "${CLAUDE_PLUGIN_ROOT}/src/mcp/cli.ts"

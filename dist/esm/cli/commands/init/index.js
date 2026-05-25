@@ -136,7 +136,7 @@ export async function runInit(flags) {
     const packageRoot = dirname(catalogDir);
     const options = {
         overwrite: flags.overwrite ?? false,
-        dryRun: flags['dry-run'] ?? false,
+        dryRun: flags.dryRun ?? flags['dry-run'] ?? false,
     };
     const existingConfig = readConfig(consumer.repoRoot);
     const presets = parsePresets(flags.with);
@@ -215,7 +215,12 @@ export async function runInit(flags) {
         });
         const generatedSurfaceIgnoreResult = patchGitignore(join(consumer.repoRoot, '.gitignore'), GENERATED_PATHS_BLOCK, { dryRun: options.dryRun, overwrite: true });
         const baseKitResults = tier3Selection.includes('base-kit')
-            ? scaffoldBaseKit({ catalogDir, repoRoot: consumer.repoRoot, options })
+            ? scaffoldBaseKit({
+                catalogDir,
+                repoRoot: consumer.repoRoot,
+                options,
+                globalInstall: existingConfig?.globalInstall === true,
+            })
             : [];
         const docsResults = scaffoldDocs({ catalogDir, repoRoot: consumer.repoRoot, options });
         const blueprintResults = scaffoldBlueprints({ repoRoot: consumer.repoRoot, options });
@@ -255,7 +260,11 @@ export async function runInit(flags) {
             },
             ...(blueprintsDir ? { blueprintsDir } : {}),
         });
-        let agentHooksResult = await scaffoldAgentHooks({ repoRoot: consumer.repoRoot, options });
+        let agentHooksResult = await scaffoldAgentHooks({
+            repoRoot: consumer.repoRoot,
+            options,
+            trustCodexHooks: false,
+        });
         const auditHooksResult = scaffoldAuditHooks({ repoRoot: consumer.repoRoot, options });
         const opencodePluginResult = scaffoldOpencodePlugin({ repoRoot: consumer.repoRoot, options });
         let claudeRulesResults = [];
@@ -375,7 +384,11 @@ export async function runInit(flags) {
             }
         }
         if (presets.includes('omx')) {
-            agentHooksResult = await scaffoldAgentHooks({ repoRoot: consumer.repoRoot, options });
+            agentHooksResult = await scaffoldAgentHooks({
+                repoRoot: consumer.repoRoot,
+                options,
+                trustCodexHooks: false,
+            });
         }
         if (isCiEnvironment && presets.includes('omc')) {
             console.log('  omc plugin: - skipped (CI environment)');

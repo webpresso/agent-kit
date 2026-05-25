@@ -1,5 +1,5 @@
 {
-  "name": "agent-kit",
+  "name": "webpresso",
   "owner": {
     "name": "Webpresso",
     "url": "https://github.com/webpresso"
@@ -10,7 +10,7 @@
   },
   "plugins": [
     {
-      "name": "agent-kit",
+      "name": "webpresso",
       "source": "./",
       "description": "Webpresso agent-kit: blueprints, skills, lore commit protocol, tech-debt lifecycle",
       "category": "development",

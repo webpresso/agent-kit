@@ -102,8 +102,8 @@ describe('plugin.json manifest', () => {
   })
 
   describe('mcpServers', () => {
-    it('declares the agent-kit stdio server via bun + ${CLAUDE_PLUGIN_ROOT}', () => {
-      const server = readManifest().mcpServers['agent-kit']
+    it('declares the webpresso stdio server via bun + ${CLAUDE_PLUGIN_ROOT}', () => {
+      const server = readManifest().mcpServers['webpresso']
       expect(server).toBeDefined()
       expect(server!.command).toBe('bun')
       expect(server!.args).toEqual([`${PLUGIN_ROOT_VAR}/src/mcp/cli.ts`])
