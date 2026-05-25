@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.19.0
+
+### Minor Changes
+
+- 19bd7b5: Hardcut the package, plugin, MCP, workflow, and documentation identity to the canonical `webpresso` package with subpath exports and no legacy helper-package compatibility layer.
+
+### Patch Changes
+
+- 8496020: Fix `wp_test` timeout handling by cleaning up cancelled Vitest process trees, preserving file-scoped Vitest filters, and suppressing real Codex app-server trust sync during Vitest scaffolding tests unless a fake app-server is injected.
+
 ## 0.18.19
 
 ### Patch Changes
