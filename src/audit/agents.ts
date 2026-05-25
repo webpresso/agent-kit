@@ -33,7 +33,7 @@ export function auditAgents(rootDirectory: string = process.cwd()): RepoAuditRes
 
   const packageJson = readJsonFile<Record<string, unknown>>(join(root, 'package.json'))
   const packageName = typeof packageJson.name === 'string' ? packageJson.name : undefined
-  const isSelfHost = packageName === 'webpresso'
+  const isSelfHost = packageName === 'webpresso' || packageName === '@webpresso/agent-kit'
   const config = readConfig(root)
 
   checked += 1
