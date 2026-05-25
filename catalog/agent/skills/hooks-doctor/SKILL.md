@@ -11,7 +11,8 @@ last_reviewed: '2026-05-07'
 name: hooks-doctor
 description: Verify the webpresso plugin hooks installation is healthy. Run after install, when hooks seem broken, or when debugging plugin integration issues. Triggers on `/webpresso:hooks-doctor`, "doctor", "verify hooks", "check plugin", "hooks broken", "plugin not working", "wp hooks doctor".
 argument-hint: '[--skip-mcp]'
-allowed-tools: Bash
+allowed-tools:
+  - Bash
 ---
 
 # Hooks Doctor

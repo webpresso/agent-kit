@@ -1,3 +1,7 @@
+---
+description: Run duplication analysis using jscpd and provide remediation guidance.
+---
+
 # /audit-duplication
 
 Run duplication analysis using jscpd and provide recommendations.
