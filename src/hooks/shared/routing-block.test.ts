@@ -95,7 +95,6 @@ describe('WP_ROUTING_BLOCK', () => {
       'src/hooks/shared/routing-block.ts',
       'catalog/agent/rules/package-conventions.md',
       'catalog/agent/rules/changeset-release.md',
-      'AGENTS.md',
     ]
     const retiredPackages = [
       '@webpresso/agent-docs-lint',

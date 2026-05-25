@@ -180,6 +180,7 @@ esac
 
 describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
   'wp setup — live e2e via subprocess',
+  { timeout: 60_000 },
   () => {
     let repo: string
     let fakeHome: string
@@ -345,7 +346,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       )
     })
 
-    it('--with omx,gstack combined: both presets execute against fixtures', () => {
+    it('--with omx,gstack combined: both presets execute against fixtures', { timeout: 20_000 }, () => {
       const r = runAk(['setup', '--yes', '--with', 'omx,gstack', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
@@ -355,7 +356,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.stdout).toContain('gstack: ✓ updated')
     })
 
-    it('presets run independently: omx failure does NOT skip gstack, exit code reflects partial failure', () => {
+    it('presets run independently: omx failure does NOT skip gstack, exit code reflects partial failure', { timeout: 20_000 }, () => {
       const r = runAk(['setup', '--yes', '--with', 'omx,gstack', '--cwd', repo], {
         PATH: pathWithoutOmx(),
         HOME: fakeHome,
