@@ -842,12 +842,16 @@ hooks:
 
     const hooks = codex.hooks as {
       SessionStart: Array<{ hooks: Array<{ command: string }> }>
-      PreToolUse: Array<{ hooks: Array<{ command: string }> }>
+      PreToolUse: Array<{ matcher?: string; hooks: Array<{ command: string }> }>
     }
     // No duplication — ensureGroup deduped the migrated entries with what we re-add.
     const sessionCmds = hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))
     const sessionAkCount = sessionCmds.filter((c) => c.includes('wp-sessionstart-routing')).length
     expect(sessionAkCount).toBe(1)
+    expect(
+      hooks.PreToolUse.find((g) => g.hooks.some((h) => h.command.includes('wp-pretool-guard')))
+        ?.matcher,
+    ).toBe('Bash|apply_patch|Edit|Write|mcp__.*')
   })
 
   it('rewrites legacy run-agent-kit-bin Codex commands to the guarded installed-bin form without duplicates', async () => {

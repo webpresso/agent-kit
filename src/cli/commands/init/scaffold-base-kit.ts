@@ -7,6 +7,7 @@ export interface ScaffoldBaseKitInput {
   catalogDir: string
   repoRoot: string
   options: MergeOptions
+  globalInstall?: boolean
 }
 
 /** Template files relative to `catalog/base-kit/`, and their target paths relative to repoRoot. */
@@ -43,7 +44,11 @@ const BOOTSTRAP_ONLY_MAP: Array<[string, string]> = [
 ]
 
 /** Merge `engines` and `packageManager` into the consumer repo's package.json. */
-function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult {
+function mergePackageJson(
+  repoRoot: string,
+  options: MergeOptions,
+  globalInstall = false,
+): MergeResult {
   const pkgPath = join(repoRoot, 'package.json')
   const engines = { node: '>=24' }
   const packageManager = 'pnpm@11.1.1'
@@ -80,11 +85,12 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
   const devDeps = (pkg['devDependencies'] ?? {}) as Record<string, string>
   const hasAgentKitDevDep = typeof devDeps['@webpresso/agent-kit'] === 'string'
   const shouldSkipSelfInstall = packageName === '@webpresso/agent-kit'
+  const shouldManageAgentKitAsGlobal = globalInstall && !shouldSkipSelfInstall
 
   if (
     alreadyHasEngines &&
     alreadyHasPm &&
-    (shouldSkipSelfInstall || hasAgentKitDevDep) &&
+    (shouldSkipSelfInstall || shouldManageAgentKitAsGlobal || hasAgentKitDevDep) &&
     (shouldSkipSelfInstall || hasSetupAgent)
   ) {
     return { targetPath: pkgPath, action: 'identical' }
@@ -97,7 +103,7 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
   if (!devDeps['husky']) {
     devDeps['husky'] = '^9.0.0'
   }
-  if (!shouldSkipSelfInstall && !hasAgentKitDevDep) {
+  if (!shouldSkipSelfInstall && !shouldManageAgentKitAsGlobal && !hasAgentKitDevDep) {
     // Keep consumers on the currently published dist-tag rather than a
     // repo-internal path. Do not wire this through `prepare`: `wp` is not
     // reliably on PATH during `vp install`, so `setup:agent` stays opt-in.
@@ -118,7 +124,7 @@ function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult 
 }
 
 export function scaffoldBaseKit(input: ScaffoldBaseKitInput): MergeResult[] {
-  const { catalogDir, repoRoot, options } = input
+  const { catalogDir, repoRoot, options, globalInstall = false } = input
   const baseKitDir = join(catalogDir, 'base-kit')
   const results: MergeResult[] = []
 
@@ -167,6 +173,6 @@ export function scaffoldBaseKit(input: ScaffoldBaseKitInput): MergeResult[] {
     }
   }
 
-  results.push(mergePackageJson(repoRoot, options))
+  results.push(mergePackageJson(repoRoot, options, globalInstall))
   return results
 }

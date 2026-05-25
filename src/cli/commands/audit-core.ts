@@ -9,6 +9,7 @@ export type AuditKind =
   | 'roadmap-links'
   | 'docs-frontmatter'
   | 'catalog-drift'
+  | 'package-surface'
   | 'agents'
   | 'tech-debt'
   | 'no-relative-parent-imports'

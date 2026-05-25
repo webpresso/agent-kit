@@ -186,7 +186,7 @@ wp_wp_wp_wp_wp_wp_wp_
 # Before: 8 separate pre-commit hooks, each in its own config file.
 # After:  one composite, same registry powers pre-commit + CI + ship gate.
 wp audit guardrails
-# composes: catalog-drift + blueprint-lifecycle + docs-frontmatter
+# composes: catalog-drift + package-surface + blueprint-lifecycle + docs-frontmatter
 #         + no-relative-parent-imports + vision + commit-message
 #         + tech-debt + bucket-boundary
 ```
@@ -250,6 +250,7 @@ That means one `wp setup` run can wire Codex's global MCP entry, Claude Code's u
 | `wp sync` | Propagate canonical `.agent/` rules + skills to every IDE surface (`--check` for drift, no writes) |
 | `wp blueprint new "<goal>" --complexity M` | Create a new blueprint under `blueprints/draft/` |
 | `wp blueprint audit --all --strict` | Audit blueprint lifecycle states |
+| `wp audit package-surface` | Enforce the public/private Webpresso package-surface contract |
 | `wp blueprint list` / `wp roadmap list` | List blueprints / parent roadmaps |
 | `wp blueprint db build` | Cold-start rebuild of the SQLite projection from markdown |
 | `wp blueprint db query <template>` | Run a pre-registered query (e.g. `next-ready-task`) |

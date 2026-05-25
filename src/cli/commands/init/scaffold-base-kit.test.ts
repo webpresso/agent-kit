@@ -100,6 +100,31 @@ describe('scaffoldBaseKit', () => {
     )
   })
 
+  it('does not inject a local agent-kit devDependency when the repo opts into globalInstall', () => {
+    const pkgPath = join(repoRoot, 'package.json')
+    writeFileSync(
+      join(repoRoot, '.agent-kitrc.json'),
+      JSON.stringify({
+        version: '1',
+        installed: { tier3Skills: [] },
+        rules: { overrides: [] },
+        scripts: {},
+        durablePlanningRoot: '.agent/planning/',
+        globalInstall: true,
+      }),
+    )
+    writeFileSync(pkgPath, JSON.stringify({ name: 'consumer-app', private: true }, null, 2))
+
+    const catalogDir = resolveCatalogDir()
+    scaffoldBaseKit({ catalogDir, repoRoot, options: {}, globalInstall: true })
+
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
+    expect(
+      (pkg['devDependencies'] as Record<string, string> | undefined)?.['@webpresso/agent-kit'],
+    ).toBeUndefined()
+    expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
+  })
+
   it('does not downgrade packageManager when repo already has pnpm@11+', () => {
     const pkgPath = join(repoRoot, 'package.json')
     mkdirSync(repoRoot, { recursive: true })

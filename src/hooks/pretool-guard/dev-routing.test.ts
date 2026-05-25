@@ -389,4 +389,22 @@ describe('routeCommand', () => {
       expect(result.action.guidance).toContain('wp_test')
     }
   })
+
+  it('extracts routed commands from plugin-prefixed context-mode MCP tool names', async () => {
+    const { extractRoutableCommandsFromToolInput, routeCommand } = await import('./dev-routing.js')
+    const commands = extractRoutableCommandsFromToolInput({
+      tool_name: 'mcp__plugin_context-mode_context-mode__ctx_execute',
+      tool_input: {
+        language: 'shell',
+        code: 'tsc --noEmit --pretty false',
+      },
+    })
+
+    expect(commands).toContain('tsc --noEmit --pretty false')
+    const result = routeCommand(commands[0] ?? '')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') {
+      expect(result.action.tool).toBe('wp_typecheck')
+    }
+  })
 })

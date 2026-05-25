@@ -274,7 +274,12 @@ export async function runInit(flags: InitFlags): Promise<number> {
     )
 
     const baseKitResults = tier3Selection.includes('base-kit')
-      ? scaffoldBaseKit({ catalogDir, repoRoot: consumer.repoRoot, options })
+      ? scaffoldBaseKit({
+          catalogDir,
+          repoRoot: consumer.repoRoot,
+          options,
+          globalInstall: existingConfig?.globalInstall === true,
+        })
       : []
 
     const docsResults = scaffoldDocs({ catalogDir, repoRoot: consumer.repoRoot, options })

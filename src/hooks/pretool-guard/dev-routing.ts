@@ -605,6 +605,7 @@ function extractInlineCommands(code: string): string[] {
 }
 
 function isContextModeTool(toolName: unknown): boolean {
+  if (typeof toolName !== 'string') return false
   const names = new Set([
     'mcp__context_mode__ctx_execute',
     'mcp__context_mode__ctx_batch_execute',
@@ -615,7 +616,12 @@ function isContextModeTool(toolName: unknown): boolean {
     'ctx_execute',
     'ctx_batch_execute',
   ])
-  return typeof toolName === 'string' && names.has(toolName)
+  if (names.has(toolName)) return true
+
+  // Codex/App/plugin MCP tool names are host-generated and may include plugin
+  // prefixes, e.g. `mcp__plugin_context-mode_context-mode__ctx_execute`.
+  // Match the stable operation suffix instead of enumerating every provider.
+  return /(?:^|[._-]|__)ctx_(?:batch_)?execute$/u.test(toolName)
 }
 
 export function extractRoutableCommandsFromToolInput(input: {
