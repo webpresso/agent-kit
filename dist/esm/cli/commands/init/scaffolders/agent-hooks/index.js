@@ -385,7 +385,7 @@ function reportCodexTrustSyncWarning(input, warning) {
     console.warn(`  codex hook trust: warning — ${warning.message}. Review in /hooks.`);
 }
 export async function trustCodexAgentKitHooksForRepo(input) {
-    if (input.options.dryRun || process.env.WP_SKIP_CODEX_TRUST_SYNC === '1')
+    if (shouldSkipCodexTrustSync(input))
         return;
     const hooksPath = resolve(input.repoRoot, '.codex', 'hooks.json');
     if (!existsSync(hooksPath))
@@ -417,7 +417,7 @@ export async function trustCodexAgentKitHooksForRepo(input) {
     }
 }
 export async function trustCodexPresetHooksForUser(input) {
-    if (input.options.dryRun || process.env.WP_SKIP_CODEX_TRUST_SYNC === '1')
+    if (shouldSkipCodexTrustSync(input))
         return;
     const codexHome = process.env.CODEX_HOME || join(homedir(), '.codex');
     const hooksPath = resolve(codexHome, 'hooks.json');
@@ -453,6 +453,11 @@ export async function trustCodexPresetHooksForUser(input) {
     finally {
         await api.close();
     }
+}
+function shouldSkipCodexTrustSync(input) {
+    if (input.options.dryRun || process.env.WP_SKIP_CODEX_TRUST_SYNC === '1')
+        return true;
+    return process.env.VITEST === 'true' && !input.createCodexAppServer;
 }
 // Fast existence check — no network, no install, sub-10ms.
 // Installation is handled by `wp setup` (gstack scaffolder runs by default).

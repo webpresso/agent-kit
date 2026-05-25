@@ -76,11 +76,10 @@ export function runCommand(
   options: RunOptions,
 ): Promise<RunOutcome> {
   return new Promise((resolve) => {
-    const child = spawn(
-      cmd,
-      [...args],
-      options.cwd ? { cwd: options.cwd, env: buildEnv(options.cwd) } : undefined,
-    )
+    const child = spawn(cmd, [...args], {
+      ...(options.cwd ? { cwd: options.cwd, env: buildEnv(options.cwd) } : {}),
+      detached: process.platform !== 'win32',
+    })
     let stdout = ''
     let stderr = ''
     let timedOut = false
@@ -88,12 +87,12 @@ export function runCommand(
 
     const internalTimer = setTimeout(() => {
       timedOut = true
-      child.kill('SIGTERM')
+      killChildTree(child, 'SIGTERM')
     }, options.timeoutMs)
 
     const onAbort = (): void => {
       aborted = true
-      child.kill('SIGTERM')
+      killChildTree(child, 'SIGTERM')
     }
     if (options.signal) {
       if (options.signal.aborted) {
@@ -123,9 +122,34 @@ export function runCommand(
       resolve({ error: err })
     })
     child.on('close', (code: number | null, signal: NodeJS.Signals | null) => {
+      if (timedOut || aborted) {
+        forceKillChildTree(child)
+      }
       cleanup()
       const exitCode = code ?? exitCodeFromSignal(signal)
       resolve({ stdout, stderr, exitCode, signal, timedOut, aborted })
     })
   })
+}
+
+function killChildTree(child: ReturnType<typeof spawn>, signal: NodeJS.Signals): void {
+  if (process.platform !== 'win32' && child.pid) {
+    try {
+      process.kill(-child.pid, signal)
+      return
+    } catch {
+      // Fall back to the direct child below. The process may have exited between
+      // timeout/abort and signal delivery, or the host may reject group kills.
+    }
+  }
+  child.kill(signal)
+}
+
+function forceKillChildTree(child: ReturnType<typeof spawn>): void {
+  if (process.platform === 'win32' || !child.pid) return
+  try {
+    process.kill(-child.pid, 'SIGKILL')
+  } catch {
+    // Best-effort cleanup only; the group may already be gone.
+  }
 }

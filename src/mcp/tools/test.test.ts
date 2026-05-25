@@ -12,7 +12,16 @@ vi.mock('node:child_process', () => ({
   spawn: spawnMock,
 }))
 
-function fakeChild(opts: { stdout?: string; stderr?: string; exitCode?: number } = {}): unknown {
+function fakeChild(
+  opts: {
+    stdout?: string
+    stderr?: string
+    exitCode?: number
+    hang?: boolean
+    killCapture?: { signal: NodeJS.Signals | null }
+  } = {},
+): unknown {
+  let closeFn: ((code: number | null, signal?: NodeJS.Signals | null) => void) | null = null
   return {
     stdout: {
       on: (event: string, fn: (data: Buffer) => void) => {
@@ -24,8 +33,15 @@ function fakeChild(opts: { stdout?: string; stderr?: string; exitCode?: number }
         if (event === 'data' && opts.stderr) fn(Buffer.from(opts.stderr))
       },
     },
-    on: (event: string, fn: (code: number) => void) => {
-      if (event === 'close') queueMicrotask(() => fn(opts.exitCode ?? 0))
+    on: (event: string, fn: (code: number | null, signal?: NodeJS.Signals | null) => void) => {
+      if (event === 'close') {
+        closeFn = fn
+        if (!opts.hang) queueMicrotask(() => fn(opts.exitCode ?? 0))
+      }
+    },
+    kill: (signal: NodeJS.Signals) => {
+      if (opts.killCapture) opts.killCapture.signal = signal
+      if (closeFn) queueMicrotask(() => closeFn?.(null, signal))
     },
   }
 }
@@ -134,6 +150,24 @@ describe('wp_test tool', () => {
       expect(payload.rawOutput).toHaveLength(4_000)
       expect(payload.truncated).toBe(true)
       expect(payload.logPath).toMatch(/^logs\//)
+    })
+
+    it('threads MCP cancellation into the underlying test process', async () => {
+      const killCapture: { signal: NodeJS.Signals | null } = { signal: null }
+      spawnMock.mockReturnValue(fakeChild({ hang: true, killCapture }))
+      const controller = new AbortController()
+
+      const promise = akTestTool.handler({ packages: ['x'] }, { signal: controller.signal })
+      controller.abort()
+      const result = await promise
+      const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+        aborted?: boolean
+        failures?: Array<{ message: string }>
+      }
+
+      expect(killCapture.signal).toBe('SIGTERM')
+      expect(payload.aborted).toBe(true)
+      expect(payload.failures?.[0]?.message).toMatch(/aborted/)
     })
   })
 })

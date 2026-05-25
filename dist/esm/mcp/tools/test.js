@@ -45,7 +45,7 @@ const tool = {
         destructiveHint: false,
         openWorldHint: false,
     },
-    handler: async (raw) => {
+    handler: async (raw, extra) => {
         const input = inputSchema.parse(raw ?? {});
         // `input.cwd` is treated as the walk-start so the resolver still finds
         // the workspace root from any subdir. Callers wanting to bypass walking
@@ -55,6 +55,7 @@ const tool = {
             cwd,
             packages: input.packages,
             files: input.files,
+            signal: extra?.signal,
         });
         const { transform: _transform, ...compact } = applyOutputTransform(result.output, {
             toolName: 'wp_test',
@@ -70,6 +71,10 @@ const tool = {
                 files: input.files,
             },
             ...compact,
+            timedOut: result.timedOut || undefined,
+            aborted: result.aborted || undefined,
+            ...(result.timedOut ? { failures: [{ message: 'test command timed out' }] } : {}),
+            ...(result.aborted ? { failures: [{ message: 'aborted by client signal' }] } : {}),
         };
         return createSummaryResult(payload);
     },

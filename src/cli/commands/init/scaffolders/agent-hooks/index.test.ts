@@ -430,6 +430,25 @@ describe('scaffoldAgentHooks', () => {
     expect(existsSync(join(repoRoot, '.codex', 'hooks.json'))).toBe(true)
   })
 
+  it('does not start the real Codex app-server from Vitest scaffolding paths', async () => {
+    const previousVitest = process.env.VITEST
+    process.env.VITEST = 'true'
+    const warnings: unknown[] = []
+    try {
+      await scaffoldAgentHooks({
+        repoRoot,
+        options: {},
+        onCodexTrustSyncWarning: (warning) => warnings.push(warning),
+      })
+    } finally {
+      if (previousVitest === undefined) delete process.env.VITEST
+      else process.env.VITEST = previousVitest
+    }
+
+    expect(existsSync(join(repoRoot, '.codex', 'hooks.json'))).toBe(true)
+    expect(warnings).toStrictEqual([])
+  })
+
   it('can refresh Codex trust state after a later setup step rewrites hook state', async () => {
     const hooksPath = join(repoRoot, '.codex', 'hooks.json')
     const { api, batchWrites } = createFakeCodexAppServer([

@@ -3,12 +3,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { isMissingBinary, isRunFailure, runCommand } from './run-command.js'
 
 const spawnMock = vi.hoisted(() => vi.fn())
+let lastCloseFn:
+  | ((code: number | null, signal: NodeJS.Signals | null) => void)
+  | null = null
 
 vi.mock('node:child_process', () => ({
   spawn: spawnMock,
 }))
 
 interface FakeChildOpts {
+  pid?: number
   stdout?: string
   stderr?: string
   exitCode?: number | null
@@ -23,6 +27,7 @@ interface FakeChildOpts {
 function fakeChild(opts: FakeChildOpts = {}): unknown {
   let closeFn: ((code: number | null, signal: NodeJS.Signals | null) => void) | null = null
   return {
+    pid: opts.pid ?? 12_345,
     stdout: {
       on: (event: string, fn: (data: Buffer) => void) => {
         if (event === 'data' && opts.stdout) fn(Buffer.from(opts.stdout))
@@ -40,6 +45,7 @@ function fakeChild(opts: FakeChildOpts = {}): unknown {
       }
       if (event === 'close') {
         closeFn = fn as typeof closeFn
+        lastCloseFn = closeFn
         if (!opts.error && !opts.hang) {
           // Pass exitCode through verbatim so tests can simulate `null` from
           // a signal-kill (Node's documented shape).
@@ -58,7 +64,9 @@ function fakeChild(opts: FakeChildOpts = {}): unknown {
 }
 
 afterEach(() => {
+  lastCloseFn = null
   spawnMock.mockReset()
+  vi.restoreAllMocks()
 })
 
 describe('runCommand', () => {
@@ -135,5 +143,25 @@ describe('runCommand', () => {
     if (!isRunFailure(outcome)) {
       expect(outcome.timedOut).toBe(true)
     }
+  })
+
+  it('starts POSIX children in a process group and kills the group on abort', async () => {
+    if (process.platform === 'win32') return
+    const processKill = vi.spyOn(process, 'kill').mockImplementation((_pid, signal) => {
+      queueMicrotask(() => lastCloseFn?.(null, signal as NodeJS.Signals))
+      return true
+    })
+    const killCapture: { signal: NodeJS.Signals | null } = { signal: null }
+    spawnMock.mockReturnValue(fakeChild({ pid: 2468, hang: true, killCapture }))
+    const controller = new AbortController()
+
+    const promise = runCommand('hang', [], { timeoutMs: 60_000, signal: controller.signal })
+    controller.abort()
+    const outcome = await promise
+
+    expect(spawnMock.mock.calls[0]![2]).toMatchObject({ detached: true })
+    expect(processKill).toHaveBeenCalledWith(-2468, 'SIGTERM')
+    expect(killCapture.signal).toBeNull()
+    expect(isRunFailure(outcome)).toBe(false)
   })
 })

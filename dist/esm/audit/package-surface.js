@@ -1,6 +1,10 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
-const DEFAULT_ALLOWED_PUBLIC_PACKAGES = ['@webpresso/webpresso', '@webpresso/agent-kit', 'webpresso'];
+const DEFAULT_ALLOWED_PUBLIC_PACKAGES = [
+    '@webpresso/webpresso',
+    '@webpresso/agent-kit',
+    'webpresso',
+];
 // Compatibility packages that are still publishable while the facade/hardcut
 // plans complete. They are intentionally accepted by the audit, but repos can
 // tighten this list by adding a package-surface contract.
@@ -271,7 +275,9 @@ function hasActionableForbiddenMention(text, pattern) {
         const lower = line.toLowerCase();
         if (lower.includes(`no ${pattern.toLowerCase()}`))
             continue;
-        if (lower.includes('must not') || lower.includes('never appears') || lower.includes('forbidden'))
+        if (lower.includes('must not') ||
+            lower.includes('never appears') ||
+            lower.includes('forbidden'))
             continue;
         return true;
     }

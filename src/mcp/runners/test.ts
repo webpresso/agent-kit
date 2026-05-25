@@ -1,6 +1,15 @@
-import { spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+
+import {
+  isRunFailure,
+  runCommand as runSharedCommand,
+} from '#mcp/tools/_shared/run-command'
+
+// Keep the runner's own deadline below common MCP client call ceilings so a
+// slow workspace suite returns a structured `timedOut` payload and the spawned
+// Vitest process group is cleaned up before the client drops the request.
+const DEFAULT_TEST_TIMEOUT_MS = 105_000
 
 export interface TestRunInput {
   /** Working tree to run from. Defaults to `CLAUDE_PROJECT_DIR` or `process.cwd()`. */
@@ -8,12 +17,16 @@ export interface TestRunInput {
   readonly packages?: readonly string[]
   readonly files?: readonly string[]
   readonly extraArgs?: readonly string[]
+  readonly signal?: AbortSignal
+  readonly timeoutMs?: number
 }
 
 export interface TestResult {
   readonly passed: boolean
   readonly output: string
   readonly exitCode: number
+  readonly timedOut?: boolean
+  readonly aborted?: boolean
 }
 
 /**
@@ -30,15 +43,21 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
   if (input.packages && input.packages.length > 0) {
     let combinedOutput = ''
     let firstFailure = 0
+    let timedOut = false
+    let aborted = false
     for (const pkg of input.packages) {
-      const result = await runPackageScopedTests(cwd, pkg, input.files)
+      const result = await runPackageScopedTests(cwd, pkg, input)
       combinedOutput += result.output
       if (!result.passed && firstFailure === 0) firstFailure = result.exitCode
+      if (result.timedOut) timedOut = true
+      if (result.aborted) aborted = true
     }
     return {
       passed: firstFailure === 0,
       output: combinedOutput,
       exitCode: firstFailure,
+      timedOut,
+      aborted,
     }
   }
 
@@ -47,24 +66,22 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
       return runCommand(
         'vp',
         ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color', ...input.files],
-        cwd,
+        { ...input, cwd },
       )
     }
-    return runCommand('vp', ['run', 'test', '--', ...input.files], cwd)
+    return runCommand('vp', ['run', 'test', '--', ...input.files], { ...input, cwd })
   }
 
-  if (usesVitest(cwd)) {
-    return runCommand('vp', ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color'], cwd)
-  }
-
-  return runCommand('vp', ['run', 'test'], cwd)
+  return runCommand('vp', ['run', 'test'], { ...input, cwd })
 }
 
 function runPackageScopedTests(
   cwd: string,
   packageName: string,
-  files?: readonly string[],
+  input: TestRunInput,
 ): Promise<TestResult> {
+  const files = input.files
+  const options = { cwd, signal: input.signal, timeoutMs: input.timeoutMs }
   if (usesVitest(cwd, packageName)) {
     return runCommand(
       'vp',
@@ -79,15 +96,15 @@ function runPackageScopedTests(
         '--no-color',
         ...(files ?? []),
       ],
-      cwd,
+      options,
     )
   }
 
   if (files && files.length > 0) {
-    return runCommand('vp', ['run', '--filter', packageName, 'test', '--', ...files], cwd)
+    return runCommand('vp', ['run', '--filter', packageName, 'test', '--', ...files], options)
   }
 
-  return runCommand('vp', ['run', '--filter', packageName, 'test'], cwd)
+  return runCommand('vp', ['run', '--filter', packageName, 'test'], options)
 }
 
 function usesVitest(cwd: string, packageName?: string): boolean {
@@ -124,25 +141,23 @@ function readPackage(file: string): Record<string, unknown> {
   }
 }
 
-function runCommand(cmd: string, args: readonly string[], cwd?: string): Promise<TestResult> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(cmd, [...args], cwd ? { cwd } : {})
-    let stdout = ''
-    let stderr = ''
-    child.stdout.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString('utf8')
-    })
-    child.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString('utf8')
-    })
-    child.on('error', (err) => reject(err))
-    child.on('close', (code: number | null) => {
-      const exitCode = code ?? 0
-      resolve({
-        passed: exitCode === 0,
-        output: [stdout, stderr].filter(Boolean).join(''),
-        exitCode,
-      })
-    })
+async function runCommand(
+  cmd: string,
+  args: readonly string[],
+  options: Pick<TestRunInput, 'cwd' | 'signal' | 'timeoutMs'>,
+): Promise<TestResult> {
+  const outcome = await runSharedCommand(cmd, args, {
+    cwd: options.cwd,
+    signal: options.signal,
+    timeoutMs: options.timeoutMs ?? DEFAULT_TEST_TIMEOUT_MS,
   })
+  if (isRunFailure(outcome)) throw outcome.error
+  const output = [outcome.stdout, outcome.stderr].filter(Boolean).join('')
+  return {
+    passed: outcome.exitCode === 0,
+    output,
+    exitCode: outcome.exitCode,
+    timedOut: outcome.timedOut,
+    aborted: outcome.aborted,
+  }
 }

@@ -162,11 +162,48 @@ describe('test runner', () => {
     expect(args).toEqual(['run', 'test'])
   })
 
+  it('uses the repo test script for workspace runs even when the root declares vitest', async () => {
+    writeFileSync(
+      join(defaultRoot!, 'package.json'),
+      JSON.stringify({ scripts: { test: 'vitest run' }, devDependencies: { vitest: '^4.0.0' } }),
+    )
+    spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
+
+    await runTests({})
+
+    const [cmd, args] = spawnMock.mock.calls[0]!
+    expect(cmd).toBe('vp')
+    expect(args).toEqual(['run', 'test'])
+  })
+
   it('runs `vp run test -- <files>` when files are given without packages', async () => {
     spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
     await runTests({ files: ['a.test.ts', 'b.test.ts'] })
     const [cmd, args] = spawnMock.mock.calls[0]!
     expect(cmd).toBe('vp')
     expect(args).toEqual(['run', 'test', '--', 'a.test.ts', 'b.test.ts'])
+  })
+
+  it('runs vitest directly for file filters when the root declares vitest', async () => {
+    writeFileSync(
+      join(defaultRoot!, 'package.json'),
+      JSON.stringify({ scripts: { test: 'vitest run' }, devDependencies: { vitest: '^4.0.0' } }),
+    )
+    spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
+
+    await runTests({ files: ['a.test.ts', 'b.test.ts'] })
+
+    const [cmd, args] = spawnMock.mock.calls[0]!
+    expect(cmd).toBe('vp')
+    expect(args).toEqual([
+      'exec',
+      '--',
+      'vitest',
+      'run',
+      '--reporter=json',
+      '--no-color',
+      'a.test.ts',
+      'b.test.ts',
+    ])
   })
 })

@@ -4,11 +4,15 @@ export interface TestRunInput {
     readonly packages?: readonly string[];
     readonly files?: readonly string[];
     readonly extraArgs?: readonly string[];
+    readonly signal?: AbortSignal;
+    readonly timeoutMs?: number;
 }
 export interface TestResult {
     readonly passed: boolean;
     readonly output: string;
     readonly exitCode: number;
+    readonly timedOut?: boolean;
+    readonly aborted?: boolean;
 }
 /**
  * Run tests via the `vp` facade over the repo-declared package-manager substrate.

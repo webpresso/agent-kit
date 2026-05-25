@@ -467,7 +467,7 @@ function reportCodexTrustSyncWarning(
 export async function trustCodexAgentKitHooksForRepo(
   input: ScaffoldAgentHooksInput,
 ): Promise<void> {
-  if (input.options.dryRun || process.env.WP_SKIP_CODEX_TRUST_SYNC === '1') return
+  if (shouldSkipCodexTrustSync(input)) return
   const hooksPath = resolve(input.repoRoot, '.codex', 'hooks.json')
   if (!existsSync(hooksPath)) return
 
@@ -500,7 +500,7 @@ export async function trustCodexAgentKitHooksForRepo(
 }
 
 export async function trustCodexPresetHooksForUser(input: ScaffoldAgentHooksInput): Promise<void> {
-  if (input.options.dryRun || process.env.WP_SKIP_CODEX_TRUST_SYNC === '1') return
+  if (shouldSkipCodexTrustSync(input)) return
 
   const codexHome = process.env.CODEX_HOME || join(homedir(), '.codex')
   const hooksPath = resolve(codexHome, 'hooks.json')
@@ -537,6 +537,11 @@ export async function trustCodexPresetHooksForUser(input: ScaffoldAgentHooksInpu
   } finally {
     await api.close()
   }
+}
+
+function shouldSkipCodexTrustSync(input: ScaffoldAgentHooksInput): boolean {
+  if (input.options.dryRun || process.env.WP_SKIP_CODEX_TRUST_SYNC === '1') return true
+  return process.env.VITEST === 'true' && !input.createCodexAppServer
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
