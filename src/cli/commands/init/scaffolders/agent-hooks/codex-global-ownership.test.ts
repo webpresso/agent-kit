@@ -37,7 +37,7 @@ describe('isPresetOwnedGlobalCodexHook', () => {
     ).toBe(true)
   })
 
-  it('rejects repo-local agent-kit hook commands from the global selector', () => {
+  it('rejects repo-local webpresso hook commands from the global selector', () => {
     expect(
       isPresetOwnedGlobalCodexHook(
         ownedHook({

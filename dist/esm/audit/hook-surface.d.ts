@@ -49,7 +49,7 @@ export interface HookSurfaceResult {
 }
 /**
  * Determines the canonical owner of a hook command using priority-ordered
- * pattern matching. Returns one of: 'agent-kit', 'context-mode', 'omx',
+ * pattern matching. Returns one of: 'webpresso', 'context-mode', 'omx',
  * 'rtk', 'gstack', or 'unknown'.
  */
 export declare function extractOwner(command: string): string;

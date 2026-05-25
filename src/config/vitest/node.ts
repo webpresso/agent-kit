@@ -3,7 +3,7 @@
  *
  * Usage in vitest.config.ts:
  * ```ts
- * import { nodeConfig } from '@webpresso/agent-vitest/node'
+ * import { nodeConfig } from 'webpresso/vitest/node'
  * import { defineConfig, mergeConfig } from 'vite-plus/test/config'
  *
  * export default mergeConfig(nodeConfig, defineConfig({
@@ -27,7 +27,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 assertNonWorkersVitest4({ caller: 'nodeConfig' })
 
-// Route bun:sqlite → better-sqlite3 shim so Node-based vitest can load `@webpresso/agent-kit/blueprint`.
+// Route bun:sqlite → better-sqlite3 shim so Node-based vitest can load `webpresso/blueprint`.
 const bunSqliteAlias = [
   {
     find: /^bun:sqlite$/,
@@ -35,9 +35,9 @@ const bunSqliteAlias = [
   },
 ] as const
 
-// Force @webpresso/agent-kit through Vite's transform so the bun:sqlite alias applies even when imported from node_modules.
-const agentKitInline = {
-  deps: { inline: [/@webpresso\/agent-kit/] },
+// Force webpresso through Vite's transform so the bun:sqlite alias applies even when imported from node_modules.
+const webpressoInline = {
+  deps: { inline: [/webpresso/] },
 } as const
 
 export interface CreateNodeProjectsOptions {
@@ -55,7 +55,7 @@ export interface CreateNodeProjectsOptions {
  *
  * Usage in vitest.config.ts:
  * ```ts
- * import { nodeConfig, createNodeProjects } from '@webpresso/agent-vitest/node'
+ * import { nodeConfig, createNodeProjects } from 'webpresso/vitest/node'
  * import { mergeConfig } from 'vite-plus/test/config'
  *
  * export default mergeConfig(nodeConfig, {
@@ -89,9 +89,9 @@ export function createNodeProjects(
   return [
     {
       resolve: sharedResolve,
-      server: agentKitInline as unknown as UserWorkspaceConfig['server'],
+      server: webpressoInline as unknown as UserWorkspaceConfig['server'],
       test: {
-        server: agentKitInline,
+        server: webpressoInline,
         name: `${name}/unit`,
         globals: true,
         restoreMocks: true,
@@ -112,7 +112,7 @@ export function createNodeProjects(
     },
     {
       resolve: sharedResolve,
-      server: agentKitInline as unknown as UserWorkspaceConfig['server'],
+      server: webpressoInline as unknown as UserWorkspaceConfig['server'],
       test: {
         name: `${name}/integration`,
         globals: true,
@@ -141,7 +141,7 @@ export const nodeConfig = defineConfig({
     alias: [...generatedRuntimeAliases, ...bunSqliteAlias],
     tsconfigPaths: true,
   },
-  server: agentKitInline,
+  server: webpressoInline,
   test: {
     globals: true,
     restoreMocks: true,

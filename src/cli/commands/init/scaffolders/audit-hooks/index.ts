@@ -29,7 +29,7 @@ export interface ScaffoldAuditHooksResult {
 // Previously included wp audit skill-sizes and wp audit broken-refs --staged,
 // but those verbs were removed from the audit surface. Pre-commit now only
 // writes the comment header; the main guardrails gate lives in pre-commit.tmpl.
-const AUDIT_HOOK_LINES = ['# agent-kit audit hooks (staged mode — fast)'] as const
+const AUDIT_HOOK_LINES = ['# webpresso audit hooks (staged mode — fast)'] as const
 
 const SHEBANG = '#!/bin/sh\n'
 

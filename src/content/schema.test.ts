@@ -116,8 +116,8 @@ describe('contentFrontmatterSchema — value constraints', () => {
   })
 
   it('accepts scope variants: repo, package:<name>, path:<glob>', () => {
-    expect(contentFrontmatterSchema.parse({ ...baseRule, scope: 'package:agent-kit' }).scope).toBe(
-      'package:agent-kit',
+    expect(contentFrontmatterSchema.parse({ ...baseRule, scope: 'package:webpresso' }).scope).toBe(
+      'package:webpresso',
     )
     expect(contentFrontmatterSchema.parse({ ...baseRule, scope: 'path:**/*.ts' }).scope).toBe(
       'path:**/*.ts',
@@ -184,10 +184,10 @@ describe('contentFrontmatterSchema — legacy paths normalization', () => {
   it('prefers explicit scope over legacy paths when both present', () => {
     const parsed = contentFrontmatterSchema.parse({
       ...baseRule,
-      scope: 'package:agent-kit',
+      scope: 'package:webpresso',
       paths: ['**/*.ts'],
     })
-    expect(parsed.scope).toBe('package:agent-kit')
+    expect(parsed.scope).toBe('package:webpresso')
   })
 })
 

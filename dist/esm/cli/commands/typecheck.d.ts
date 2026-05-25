@@ -3,6 +3,7 @@ import type { SpawnSyncReturns } from 'node:child_process';
 export declare const TYPECHECK_COMMAND_HELP: string;
 export interface TypecheckOptions {
     readonly pretty?: boolean;
+    readonly cwd?: string;
 }
 export interface TypecheckCommandConfig {
     readonly command: string;

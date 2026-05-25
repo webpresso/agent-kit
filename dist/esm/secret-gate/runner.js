@@ -8,13 +8,7 @@ const SIGNAL_TO_EXIT_CODE = {
 export function buildSecretGateCommand(options) {
     const runner = (options.runner ?? 'with-secrets').trim();
     const envProfile = (options.envProfile ?? 'secrets-only').trim();
-    const args = [
-        '--env-profile',
-        envProfile,
-        '--',
-        options.command,
-        ...(options.args ?? []),
-    ];
+    const args = ['--env-profile', envProfile, '--', options.command, ...(options.args ?? [])];
     return { command: runner, args };
 }
 function exitCodeFromSignal(signal) {

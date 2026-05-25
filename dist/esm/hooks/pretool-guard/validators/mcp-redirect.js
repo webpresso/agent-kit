@@ -1,5 +1,5 @@
 import { isMcpReady } from '#hooks/shared/mcp-sentinel';
-const DEFAULT_SERVER_NAME = 'agent-kit';
+const DEFAULT_SERVER_NAME = 'webpresso';
 const DEFAULT_TOOL_PREFIX = 'wp_';
 export function resolveMcpReady(value) {
     if (typeof value === 'function')

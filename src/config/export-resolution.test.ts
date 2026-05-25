@@ -2,8 +2,6 @@ import { execFileSync } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
-
 import { describe, expect, it } from 'vitest'
 
 const repositoryRoot = process.cwd()
@@ -90,16 +88,6 @@ function exportedDefaultTarget(value: unknown): string | undefined {
   return (importValue as { default?: string }).default
 }
 
-async function buildStagingPackageJson(canonical: PackageJson): Promise<PackageJson> {
-  const scriptModule = (await import(
-    pathToFileURL(join(repositoryRoot, 'scripts/publish-webpresso.ts')).href
-  )) as {
-    buildStagingPackageJson: (canonical: PackageJson) => PackageJson
-  }
-
-  return scriptModule.buildStagingPackageJson(canonical)
-}
-
 describe('webpresso folded package exports', () => {
   it('maps every folded subpath from source exports to public package exports', async () => {
     const packageJson = await readCanonicalPackageJson()
@@ -133,14 +121,13 @@ describe('webpresso folded package exports', () => {
     })
   })
 
-  it('resolves key public subpaths through the staged webpresso package manifest', async () => {
+  it('resolves key public subpaths through the canonical webpresso package manifest', async () => {
     const packageJson = await readCanonicalPackageJson()
-    const stagingPackageJson = await buildStagingPackageJson(packageJson)
     const tempDir = await mkdtemp(join(tmpdir(), 'webpresso-export-resolution-'))
     const packageDir = join(tempDir, 'node_modules', 'webpresso')
 
     await mkdir(packageDir, { recursive: true })
-    await writeFile(join(packageDir, 'package.json'), JSON.stringify(stagingPackageJson), 'utf8')
+    await writeFile(join(packageDir, 'package.json'), JSON.stringify(packageJson), 'utf8')
 
     try {
       const output = execFileSync(
@@ -161,10 +148,9 @@ describe('webpresso folded package exports', () => {
     }
   })
 
-  it('keeps folded docs-lint bins in the staged webpresso package manifest', async () => {
+  it('keeps folded docs-lint bins in the canonical webpresso package manifest', async () => {
     const packageJson = await readCanonicalPackageJson()
-    const stagingPackageJson = await buildStagingPackageJson(packageJson)
 
-    expect(stagingPackageJson.bin).toMatchObject(docsLintBins)
+    expect(packageJson.bin).toMatchObject(docsLintBins)
   })
 })

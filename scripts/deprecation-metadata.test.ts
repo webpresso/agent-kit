@@ -5,10 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
-const DEPRECATION_NOTICE =
-  'Deprecated: migrate to the consolidated webpresso package subpath exports. See https://github.com/webpresso/agent-kit/blob/main/MIGRATION.md'
-
-const AGENT_PACKAGE_DIRS = [
+const REMOVED_HELPER_PACKAGES = [
   'agent-tsconfig',
   'agent-vitest',
   'agent-stryker',
@@ -20,29 +17,20 @@ const AGENT_PACKAGE_DIRS = [
   'agent-e2e-preset',
 ] as const
 
-function readJson(path: string): Record<string, unknown> {
-  return JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>
-}
-
-describe('agent sub-package deprecation metadata', () => {
-  it('uses one migration notice across every agent sub-package manifest', () => {
-    for (const packageDir of AGENT_PACKAGE_DIRS) {
-      const manifest = readJson(resolve(repoRoot, 'packages', packageDir, 'package.json'))
-
-      expect(manifest['deprecated'], packageDir).toBe(DEPRECATION_NOTICE)
+describe('helper package hardcut metadata', () => {
+  it('removes the deprecated helper package manifests after the hardcut', () => {
+    for (const packageDir of REMOVED_HELPER_PACKAGES) {
+      expect(
+        existsSync(resolve(repoRoot, 'packages', packageDir, 'package.json')),
+        packageDir,
+      ).toBe(false)
     }
   })
 
-  it('preserves every deprecated agent sub-package after changesets are consumed', () => {
+  it('preserves the release-history note after the helper package removal changeset is consumed', () => {
     expect(existsSync(resolve(repoRoot, '.changeset', 'deprecate-agent-subpackages.md'))).toBe(
       false,
     )
-
-    for (const packageDir of AGENT_PACKAGE_DIRS) {
-      const manifest = readJson(resolve(repoRoot, 'packages', packageDir, 'package.json'))
-
-      expect(manifest['deprecated'], String(manifest['name'])).toBe(DEPRECATION_NOTICE)
-    }
 
     const changelog = readFileSync(resolve(repoRoot, 'CHANGELOG.md'), 'utf8')
     expect(changelog).toContain('## 0.18.0')

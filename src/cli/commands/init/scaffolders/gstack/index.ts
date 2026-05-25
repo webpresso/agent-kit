@@ -8,7 +8,7 @@
  *
  * Detection for the canonical checkout is path-based, NOT PATH-based: gstack
  * itself is not a CLI binary on $PATH. Checkout bootstrap is a clone +
- * `./setup --team`. When Codex is detected, agent-kit runs gstack's official
+ * `./setup --team`. When Codex is detected, webpresso runs gstack's official
  * `./setup --host auto --team` flow from that same checkout so one setup pass
  * can refresh both Claude/team mode and Codex materialization.
  *
@@ -86,7 +86,11 @@ function runSetup(
   args: GstackSetupArgs,
 ): { ok: boolean; exitCode: number; command: GstackSetupCommand } {
   const result = spawn('./setup', args, { cwd: root, stdio: 'inherit' })
-  return { ok: result.status === 0, exitCode: result.status ?? -1, command: formatSetupCommand(args) }
+  return {
+    ok: result.status === 0,
+    exitCode: result.status ?? -1,
+    command: formatSetupCommand(args),
+  }
 }
 
 function defaultDetectCodex(input: {
@@ -111,7 +115,9 @@ function ensureCodexHost(input: {
   codexConfigPath: string
   codexSkillsRoot: string
   spinner: ReturnType<SpinnerFactory>
-}): GstackCodexResult | { kind: 'gstack-setup-failed'; exitCode: number; command: GstackSetupCommand } {
+}):
+  | GstackCodexResult
+  | { kind: 'gstack-setup-failed'; exitCode: number; command: GstackSetupCommand } {
   const codexDetected = input.detectCodex({
     spawn: input.spawn,
     exists: input.exists,

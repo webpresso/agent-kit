@@ -6,36 +6,25 @@ import { describe, expect, it } from 'vitest'
 import * as foldedExports from './index.js'
 import oxlintConfig from './oxlint-config.fixture.js'
 
-const LEGACY_INDEX_PATH = join(process.cwd(), 'packages/agent-oxlint/src/index.js')
-
-function legacyExportNames() {
-  const legacyIndexSource = readFileSync(LEGACY_INDEX_PATH, 'utf8')
-
-  return [...legacyIndexSource.matchAll(/export \{ default as (?<name>\w+) \}/g)].map(
-    (match) => match.groups?.name,
-  )
-}
+const exportNames = [
+  'codeSafety',
+  'foundationPurity',
+  'graphqlConventions',
+  'importHygiene',
+  'monorepoNpaths',
+  'queryPatterns',
+  'testingQuality',
+  'tierBoundaries',
+] as const
 
 describe('folded oxlint exports', () => {
-  it('preserves every top-level plugin export from @webpresso/agent-oxlint', () => {
-    expect(legacyExportNames()).toEqual([
-      'codeSafety',
-      'foundationPurity',
-      'graphqlConventions',
-      'importHygiene',
-      'monorepoNpaths',
-      'queryPatterns',
-      'testingQuality',
-      'tierBoundaries',
-    ])
-
-    expect(legacyExportNames().filter((name) => !name || !(name in foldedExports))).toEqual([])
+  it('exports every canonical top-level oxlint plugin', () => {
+    expect(exportNames.filter((name) => !(name in foldedExports))).toEqual([])
   })
 
   it('keeps folded plugin modules importable with valid oxlint plugin shape', async () => {
-    for (const name of legacyExportNames()) {
-      expect(name).toBeTruthy()
-      const plugin = foldedExports[name as keyof typeof foldedExports] as {
+    for (const name of exportNames) {
+      const plugin = foldedExports[name] as {
         meta?: { name?: unknown }
         rules?: unknown
       }
@@ -54,8 +43,8 @@ describe('folded oxlint exports', () => {
       rules: expect.any(Object),
     })
 
-    for (const name of legacyExportNames()) {
-      const plugin = foldedExports[name as keyof typeof foldedExports] as {
+    for (const name of exportNames) {
+      const plugin = foldedExports[name] as {
         meta: { name: string }
         rules: Record<string, unknown>
       }
@@ -73,5 +62,11 @@ describe('folded oxlint exports', () => {
     const fixtureModule = await import(fixtureModuleUrl.href)
 
     expect(fixtureModule.default).toBe(foldedExports.config)
+  })
+
+  it('keeps folded source independent from deleted helper workspaces', () => {
+    const source = readFileSync(join(import.meta.dirname, 'index.ts'), 'utf8')
+
+    expect(source).not.toContain(`packages/${'agent-oxlint'}`)
   })
 })

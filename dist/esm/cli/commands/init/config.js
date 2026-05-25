@@ -1,12 +1,12 @@
 /**
- * `.agent-kitrc.json` read/write. Captures the consumer's opt-in choices so
+ * `.webpressorc.json` read/write. Captures the consumer's opt-in choices so
  * re-runs of `wp init` are idempotent without re-prompting.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { REQUIRED_CORE_CAPABILITIES } from './host-visibility.js';
 export const CONFIG_VERSION = '1';
-export const CONFIG_FILENAME = '.agent-kitrc.json';
+export const CONFIG_FILENAME = '.webpressorc.json';
 export const DEFAULT_DURABLE_PLANNING_ROOT = '.agent/planning/';
 function readOptionalString(value) {
     if (typeof value !== 'string')

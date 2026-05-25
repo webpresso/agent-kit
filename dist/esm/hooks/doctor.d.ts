@@ -1,7 +1,7 @@
 /**
  * `wp hooks doctor` — post-install plugin health verification.
  *
- * Verifies the agent-kit plugin installation is healthy:
+ * Verifies the webpresso plugin installation is healthy:
  * - all hook bins exist
  * - bins are executable (skip on win32)
  * - bins respond to empty stdin with exit 0 + JSON

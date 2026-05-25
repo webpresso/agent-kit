@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `wp` — agent-kit CLI entrypoint.
+ * `wp` — webpresso CLI entrypoint.
  *
  * Lazy-loads subcommand modules based on the first argv to keep startup
  * cheap. Modeled on apps/cli-wp/src/cli.ts.
@@ -56,11 +56,11 @@ const ROOT_HELP = [
   '',
   'Quality:',
   '  audit                 Run packaged audits (bundle budgets, repo guardrails, TPH, tech-debt)',
-  '  test                  Run tests through the portable agent-kit surface',
+  '  test                  Run tests through the portable webpresso surface',
   '  typecheck             Typecheck the current workspace through the portable wp surface',
   '  lint                  Lint via oxlint (with pnpm fallback)',
   '  format                Format via oxfmt (--check for CI/husky)',
-  '  e2e                   Build and run E2E commands through the portable agent-kit surface',
+  '  e2e                   Build and run E2E commands through the portable webpresso surface',
   '  ci                    Run repository CI helpers through the portable wp surface',
   '',
   'Advanced:',
@@ -74,7 +74,7 @@ const ROOT_HELP = [
   '  err                   Run a command and show only failures (hooks + CI)',
   '  tech-debt             Manage tech-debt lifecycle (new, list, review)',
   '  worktree              Git worktree management with .agent/ seeding (new, list, remove)',
-  '  mcp                   Run the agent-kit MCP server over stdio',
+  '  mcp                   Run the webpresso MCP server over stdio',
   '  hooks                 Verify plugin hook installation health',
   '  init                  Compatibility alias for setup',
   '',

@@ -3,7 +3,6 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const legacyTemplatesRoot = 'packages/agent-docs-lint/templates'
 const foldedTemplatesRoot = 'src/config/docs-lint/templates'
 const validateCli = resolve('src/config/docs-lint/cli/validate.ts')
 const migrateCli = resolve('src/config/docs-lint/cli/migrate.ts')
@@ -16,13 +15,12 @@ function runNodeHelp(entrypoint: string): string {
 }
 
 describe('folded docs-lint CLI parity', () => {
-  it('keeps docs-lint templates available for package staging', () => {
+  it('keeps docs-lint templates available from the canonical source tree', () => {
     for (const template of ['blueprint.yaml', 'core-doc.yaml', 'guide.yaml']) {
-      const legacy = join(legacyTemplatesRoot, template)
       const folded = join(foldedTemplatesRoot, template)
 
       expect(existsSync(folded), `${template} should be folded`).toBe(true)
-      expect(readFileSync(folded, 'utf8')).toBe(readFileSync(legacy, 'utf8'))
+      expect(readFileSync(folded, 'utf8').trim().length).toBeGreaterThan(0)
     }
   })
 

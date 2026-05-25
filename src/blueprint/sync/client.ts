@@ -1,5 +1,5 @@
 /**
- * BlueprintSyncClient — agent-kit HTTP client for the webpresso platform API.
+ * BlueprintSyncClient — webpresso HTTP client for the webpresso platform API.
  *
  * Implements `BlueprintPlatformClient` (types.ts) using the Fetch API.
  *
@@ -60,7 +60,7 @@ const DEFAULT_RETRY: Required<RetryOptions> = {
 }
 
 const DEFAULT_TEMPLATES_URL =
-  'https://raw.githubusercontent.com/webpresso/agent-kit/main/catalog/blueprint-templates/index.json'
+  'https://raw.githubusercontent.com/webpresso/webpresso/main/catalog/blueprint-templates/index.json'
 
 // ---------------------------------------------------------------------------
 // Helpers

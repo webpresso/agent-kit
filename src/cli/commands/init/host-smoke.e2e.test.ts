@@ -53,7 +53,7 @@ function makeRepo(): string {
         private: true,
         packageManager: 'pnpm@10.33.0',
         devDependencies: {
-          '@webpresso/agent-kit': `file:${REPO_ROOT}`,
+          webpresso: `file:${REPO_ROOT}`,
         },
       },
       null,
@@ -95,12 +95,12 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
     expect(setup.code).toBe(0)
     expect(existsSync(path.join(repo, 'opencode.json'))).toBe(true)
     expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).toContain('context-mode')
-    expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).toContain('agent-kit')
+    expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).toContain('webpresso')
     expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).toContain(
       '[mcp_servers.context-mode]',
     )
     expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).toContain(
-      '[mcp_servers.agent-kit]',
+      '[mcp_servers.webpresso]',
     )
     expect(readFileSync(path.join(codexHome, 'hooks.json'), 'utf8')).toContain(
       'context-mode hook codex pretooluse',
@@ -119,9 +119,9 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
     })
     expect(setup.code).toBe(0)
     expect(existsSync(path.join(repo, 'opencode.json'))).toBe(true)
-    expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).toContain('agent-kit')
+    expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).toContain('webpresso')
     expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).toContain(
-      '[mcp_servers.agent-kit]',
+      '[mcp_servers.webpresso]',
     )
     expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).not.toContain('context-mode')
     expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).not.toContain(
@@ -141,7 +141,7 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
     }).not.toThrow()
   })
 
-  it('Codex host sees agent-kit + context-mode MCP entries when installed', () => {
+  it('Codex host sees webpresso + context-mode MCP entries when installed', () => {
     if (!hasCommand('codex')) {
       if (REQUIRE_CODEX) throw new Error('codex required but not on PATH')
       return
@@ -164,7 +164,7 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
 
     const list = run('codex', ['mcp', 'list'], repo, { CODEX_HOME: codexHome })
     expect(list.code).toBe(0)
-    expect(list.stdout).toContain('agent-kit')
+    expect(list.stdout).toContain('webpresso')
     expect(list.stdout).toContain('context-mode')
   }, 240_000)
 
@@ -174,7 +174,7 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
     expect(REQUIRE_OPENCODE).toBe(false)
   })
 
-  it('OpenCode host sees agent-kit + context-mode MCP entries when installed', () => {
+  it('OpenCode host sees webpresso + context-mode MCP entries when installed', () => {
     if (!hasCommand('opencode')) {
       if (REQUIRE_OPENCODE) throw new Error('opencode required but not on PATH')
       return
@@ -198,9 +198,9 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
     const list = run('opencode', ['mcp', 'list'], repo, {})
     expect(list.code).toBe(0)
     const stdout = stripAnsi(list.stdout)
-    expect(stdout).toContain('agent-kit')
+    expect(stdout).toContain('webpresso')
     expect(stdout).toContain('context-mode')
-    expect(stdout).toContain('✓ agent-kit')
+    expect(stdout).toContain('✓ webpresso')
     expect(stdout).toContain('✓ context-mode')
   }, 240_000)
 

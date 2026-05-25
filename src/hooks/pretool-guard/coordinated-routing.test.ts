@@ -181,7 +181,7 @@ describe('coordinated routing pipeline', () => {
       try {
         processValidation(
           makeContextExecuteInput(
-            "execFileSync('vp',['run','--filter=@webpresso/agent-kit','test'," +
+            "execFileSync('vp',['run','--filter=webpresso','test'," +
               "'src/audit/gitignore-agent-surfaces.test.ts'])",
           ),
         )

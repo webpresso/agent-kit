@@ -29,7 +29,7 @@ describe('TechDebtService consumer layout', () => {
     }
   })
 
-  it('scans top-level tech-debt/ in generic agent-kit consumers', async () => {
+  it('scans top-level tech-debt/ in generic webpresso consumers', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'wp-tech-debt-generic-'))
     tempDirs.push(root)
     writeFileSync(path.join(root, 'package.json'), '{"name":"consumer"}')

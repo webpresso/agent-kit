@@ -2,7 +2,7 @@ import { normalize } from 'node:path'
 
 import type { CommandHookMetadata } from '#codex/app-server/types.js'
 
-export const KNOWN_AGENT_KIT_CODEX_BINS = [
+export const KNOWN_WEBPRESSO_CODEX_BINS = [
   'wp-sessionstart-routing',
   'wp-check-dev-link',
   'wp-pretool-guard',
@@ -11,9 +11,9 @@ export const KNOWN_AGENT_KIT_CODEX_BINS = [
   'wp-stop-qa',
 ] as const
 
-type KnownAgentKitCodexBin = (typeof KNOWN_AGENT_KIT_CODEX_BINS)[number]
+type KnownWebpressoCodexBin = (typeof KNOWN_WEBPRESSO_CODEX_BINS)[number]
 
-const KNOWN_AGENT_KIT_CODEX_BIN_SET = new Set<string>(KNOWN_AGENT_KIT_CODEX_BINS)
+const KNOWN_WEBPRESSO_CODEX_BIN_SET = new Set<string>(KNOWN_WEBPRESSO_CODEX_BINS)
 const NODE_MODULES_BIN_PATTERN = /^(?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+)$/u
 const GUARDED_NODE_MODULES_BIN_PATTERN =
   /^\[ -x (["']?)((?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+))\1 \] && \1\2\1 \|\| true$/u
@@ -26,7 +26,7 @@ export interface CodexHookOwnershipMetadata {
   readonly command?: unknown
 }
 
-export function isAgentKitOwnedCodexHook(
+export function isWebpressoOwnedCodexHook(
   metadata: unknown,
   expectedSourcePaths: readonly string[],
 ): metadata is CommandHookMetadata {
@@ -41,7 +41,7 @@ export function isAgentKitOwnedCodexHook(
   if (!isExpectedSourcePath(candidate.sourcePath, expectedSourcePaths)) return false
 
   const binName = extractDirectNodeModulesBin(candidate.command)
-  return binName !== null && isKnownAgentKitCodexBin(binName)
+  return binName !== null && isKnownWebpressoCodexBin(binName)
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -56,8 +56,8 @@ function isExpectedSourcePath(sourcePath: string, expectedSourcePaths: readonly 
   )
 }
 
-function isKnownAgentKitCodexBin(binName: string): binName is KnownAgentKitCodexBin {
-  return KNOWN_AGENT_KIT_CODEX_BIN_SET.has(binName)
+function isKnownWebpressoCodexBin(binName: string): binName is KnownWebpressoCodexBin {
+  return KNOWN_WEBPRESSO_CODEX_BIN_SET.has(binName)
 }
 
 function extractDirectNodeModulesBin(command: string): string | null {

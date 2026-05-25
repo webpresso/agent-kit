@@ -1,7 +1,0 @@
-dist/
-.tshy/
-.tshy-build/
-node_modules/
-*.tsbuildinfo
-pnpm-lock.yaml
-reports/

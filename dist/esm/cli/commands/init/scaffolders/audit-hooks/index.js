@@ -16,7 +16,7 @@ import path from 'node:path';
 // Previously included wp audit skill-sizes and wp audit broken-refs --staged,
 // but those verbs were removed from the audit surface. Pre-commit now only
 // writes the comment header; the main guardrails gate lives in pre-commit.tmpl.
-const AUDIT_HOOK_LINES = ['# agent-kit audit hooks (staged mode — fast)'];
+const AUDIT_HOOK_LINES = ['# webpresso audit hooks (staged mode — fast)'];
 const SHEBANG = '#!/bin/sh\n';
 /**
  * Append audit hook lines to `.husky/pre-commit` if not already present.

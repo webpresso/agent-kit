@@ -68,7 +68,7 @@ describe('findProjectRoot', () => {
 
   it('checks generic consumer markers before the Webpresso legacy sentinel', () => {
     expect(PROJECT_ROOT_MARKERS.slice(0, 3)).toEqual([
-      '.agent-kitrc.json',
+      '.webpressorc.json',
       'pnpm-workspace.yaml',
       'package.json',
     ])

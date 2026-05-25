@@ -2,9 +2,9 @@
  * MCP readiness sentinel.
  *
  * Background. The pretool-guard hook routes dev-workflow commands
- * (`pnpm test`, `just lint`, `wp ...`) to the agent-kit MCP tool surface
+ * (`pnpm test`, `just lint`, `wp ...`) to the webpresso MCP tool surface
  * when MCP is alive, and falls back to a `just <task>` recipe otherwise.
- * The hook needs a way to discover whether an agent-kit MCP server is
+ * The hook needs a way to discover whether an webpresso MCP server is
  * currently running.
  *
  * Why a scan-based reader. Earlier versions keyed the sentinel filename
@@ -24,7 +24,7 @@
  * true if any of them contains a live PID. Reader and writer no longer
  * need to agree on a key, only on a stable filename pattern.
  *
- * The agent-kit MCP server's tool surface is functionally global — it
+ * The webpresso MCP server's tool surface is functionally global — it
  * serves whichever cwd the request comes from — so "any MCP is alive"
  * is sufficient to enable MCP-tool routing on the hook side.
  *

@@ -114,7 +114,7 @@ describe('mcp server integration', () => {
         params: {
           protocolVersion: '2024-11-05',
           capabilities: {},
-          clientInfo: { name: 'agent-kit-test', version: '0.0.0' },
+          clientInfo: { name: 'webpresso-test', version: '0.0.0' },
         },
       },
       { jsonrpc: '2.0', id: 2, method: 'tools/list' },
@@ -167,7 +167,7 @@ describe('mcp server integration', () => {
   // transport gets poisoned and subsequent tools/list calls silently fail
   // (anthropics/claude-code#36914, #42442, #45844). The workaround,
   // mirrored from context-mode, is to register empty handlers for these
-  // methods. Without this fix, agent-kit tools never surface in
+  // methods. Without this fix, webpresso tools never surface in
   // Claude Code's deferred-tool registry.
   it('responds to prompts/list and resources/list without -32601 (transport-poisoning workaround)', async () => {
     const responses = await callServer(
@@ -178,7 +178,7 @@ describe('mcp server integration', () => {
         params: {
           protocolVersion: '2024-11-05',
           capabilities: {},
-          clientInfo: { name: 'agent-kit-test', version: '0.0.0' },
+          clientInfo: { name: 'webpresso-test', version: '0.0.0' },
         },
       },
       { jsonrpc: '2.0', id: 2, method: 'prompts/list' },
@@ -212,7 +212,7 @@ describe('mcp server integration', () => {
       params: {
         protocolVersion: '2024-11-05',
         capabilities: {},
-        clientInfo: { name: 'agent-kit-test', version: '0.0.0' },
+        clientInfo: { name: 'webpresso-test', version: '0.0.0' },
       },
     })
     const init = responses.find((r) => r.id === 1)
@@ -254,7 +254,7 @@ describe('mcp server integration', () => {
           params: {
             protocolVersion: '2024-11-05',
             capabilities: {},
-            clientInfo: { name: 'agent-kit-test', version: '0.0.0' },
+            clientInfo: { name: 'webpresso-test', version: '0.0.0' },
           },
         },
         { jsonrpc: '2.0', id: 2, method: 'tools/list' },
@@ -303,7 +303,7 @@ describe('mcp server integration', () => {
         params: {
           protocolVersion: '2024-11-05',
           capabilities: {},
-          clientInfo: { name: 'agent-kit-test', version: '0.0.0' },
+          clientInfo: { name: 'webpresso-test', version: '0.0.0' },
         },
       },
       {
@@ -344,7 +344,7 @@ describe('mcp server integration', () => {
         params: {
           protocolVersion: '2024-11-05',
           capabilities: {},
-          clientInfo: { name: 'agent-kit-test', version: '0.0.0' },
+          clientInfo: { name: 'webpresso-test', version: '0.0.0' },
         },
       },
       { jsonrpc: '2.0', id: 2, method: 'tools/list' },

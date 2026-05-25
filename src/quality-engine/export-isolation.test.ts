@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import * as qualityEngine from '#quality-engine'
 
-describe('@webpresso/agent-kit/quality-engine subpath export', () => {
+describe('webpresso/quality-engine subpath export', () => {
   it('re-exports named symbols from target-resolver', () => {
     expect(qualityEngine).toHaveProperty('findRepoRoot')
     expect(qualityEngine).toHaveProperty('looksLikeFilePath')

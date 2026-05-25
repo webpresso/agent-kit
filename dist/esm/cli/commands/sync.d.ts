@@ -1,5 +1,5 @@
 /**
- * `wp sync` — projects the canonical agent-kit rule/skill catalog into the
+ * `wp sync` — projects the canonical webpresso rule/skill catalog into the
  * supported host surfaces.
  *
  * Projects unified rule + skill content (catalog ∪ consumer) into per-IDE

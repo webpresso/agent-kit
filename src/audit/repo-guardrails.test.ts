@@ -16,7 +16,7 @@ import {
 } from './repo-guardrails.js'
 
 function tempRepo() {
-  return mkdtempSync(join(tmpdir(), 'agent-kit-repo-audit-'))
+  return mkdtempSync(join(tmpdir(), 'webpresso-repo-audit-'))
 }
 
 function writeJson(path: string, value: unknown) {
@@ -44,7 +44,7 @@ describe('repo guardrail audits', () => {
     writeJson(join(root, 'packages', 'api', 'package.json'), {
       name: '@repo/api',
       dependencies: {
-        '@webpresso/agent-tsconfig': 'file:/Users/example/webpresso-typescript-config-0.1.0.tgz',
+        webpresso: 'file:/Users/example/webpresso-typescript-config-0.1.0.tgz',
         react: '^19.0.0',
         zod: 'workspace:*',
       },
@@ -52,7 +52,7 @@ describe('repo guardrail audits', () => {
     writeJson(join(root, 'packages', 'ui', 'package.json'), {
       name: '@repo/ui',
       dependencies: {
-        '@webpresso/agent-tsconfig': 'file:/Users/example/webpresso-typescript-config-0.1.0.tgz',
+        webpresso: 'file:/Users/example/webpresso-typescript-config-0.1.0.tgz',
         react: 'catalog:',
         zod: 'workspace:*',
       },
@@ -95,7 +95,7 @@ describe('repo guardrail audits', () => {
     expect(
       validateCommitMessage(
         [
-          'feat(agent-kit): share repo audits [lore]',
+          'feat(webpresso): share repo audits [lore]',
           '',
           'Move repeated repo validation into Agent Kit.',
           '',
@@ -108,7 +108,7 @@ describe('repo guardrail audits', () => {
 
     const result = validateCommitMessage(
       [
-        'feat(agent-kit): share repo audits [lore]',
+        'feat(webpresso): share repo audits [lore]',
         '',
         'Move repeated repo validation into Agent Kit.',
         '',
@@ -251,7 +251,7 @@ describe('repo guardrail audits', () => {
   })
 
   test('validateCommitMessage rejects subject too long', () => {
-    const longSubject = 'feat(agent-kit): ' + 'a'.repeat(120)
+    const longSubject = 'feat(webpresso): ' + 'a'.repeat(120)
     const result = validateCommitMessage(longSubject, { subjectMaxLength: 100 })
     expect(result.ok).toBe(false)
     expect(result.violations[0]!.message).toContain('100')
@@ -265,7 +265,7 @@ describe('repo guardrail audits', () => {
 
   test('validateCommitMessage enforces lore trailers when subject includes [lore]', () => {
     const result = validateCommitMessage(
-      ['feat(agent-kit): share repo audits [lore]', '', 'Move repeated repo validation.'].join(
+      ['feat(webpresso): share repo audits [lore]', '', 'Move repeated repo validation.'].join(
         '\n',
       ),
     )
@@ -274,7 +274,7 @@ describe('repo guardrail audits', () => {
 
   test('validateCommitMessage enforces lore trailers when requireLore is true', () => {
     const result = validateCommitMessage(
-      ['feat(agent-kit): something', '', 'Regular commit without lore.'].join('\n'),
+      ['feat(webpresso): something', '', 'Regular commit without lore.'].join('\n'),
       { requireLore: true },
     )
     expect(result.ok).toBe(false)
@@ -1420,7 +1420,7 @@ describe('auditNoRelativeParentImports — tsconfig coverage', () => {
       join(root, 'tsconfig.json'),
       JSON.stringify(
         {
-          extends: '@webpresso/agent-tsconfig/library.json',
+          extends: 'webpresso/tsconfig/library.json',
           compilerOptions: { rootDir: './src', outDir: './dist' },
         },
         null,

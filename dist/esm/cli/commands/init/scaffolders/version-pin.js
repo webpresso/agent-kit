@@ -89,7 +89,7 @@ export function checkVersionPin(tool, installedVersion, pinFilePath) {
     const toolLabel = tool === 'context_mode' ? 'context-mode' : 'rtk';
     return {
         ok: false,
-        warning: `[agent-kit] ${toolLabel} version ${installedVersion} does not satisfy the required range ${range} (from compatible-versions.json). Some features may not work as expected. Update ${toolLabel} to a compatible version.`,
+        warning: `[webpresso] ${toolLabel} version ${installedVersion} does not satisfy the required range ${range} (from compatible-versions.json). Some features may not work as expected. Update ${toolLabel} to a compatible version.`,
     };
 }
 //# sourceMappingURL=version-pin.js.map

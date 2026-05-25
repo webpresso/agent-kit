@@ -26,12 +26,12 @@ import path from 'node:path';
 // ---------------------------------------------------------------------------
 /**
  * Determines the canonical owner of a hook command using priority-ordered
- * pattern matching. Returns one of: 'agent-kit', 'context-mode', 'omx',
+ * pattern matching. Returns one of: 'webpresso', 'context-mode', 'omx',
  * 'rtk', 'gstack', or 'unknown'.
  */
 export function extractOwner(command) {
     if (/\bwp[-_][a-z]/.test(command))
-        return 'agent-kit';
+        return 'webpresso';
     if (command.includes('context-mode'))
         return 'context-mode';
     if (/omx|oh-my-codex/.test(command))

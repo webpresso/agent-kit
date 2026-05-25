@@ -29,7 +29,7 @@ implemented it with compatibility fallbacks into `.claude/skills/` and
 - **Amp (Sourcegraph):** `.agents/skills/<name>/SKILL.md`.
 - **Cursor:** `.cursor/commands/*.md`. Cursor's skills-analogous surface
   is `.cursor/rules/*.mdc` (always-applied rules, different semantics) —
-  not a target for agent-kit skills.
+  not a target for webpresso skills.
 - **Windsurf:** `.windsurf/commands/*.md`. Same story as Cursor for rules.
 - **Gemini CLI:** `.gemini/commands/*.toml` (TOML, not markdown — with
   `{{args}}` templating instead of `$ARGUMENTS`).
@@ -73,7 +73,7 @@ directory that Codex + Amp + OpenCode-fallback all read, because that
 directory may already contain third-party or consumer-owned skills;
 per-skill mode creates links only for names that exist in
 `.agent/skills/`, leaving consumer-owned directories alone. If a
-consumer-owned directory collides with an agent-kit skill name, the
+consumer-owned directory collides with an webpresso skill name, the
 symlinker warns and skips rather than clobbering it.
 
 Editors on macOS and Linux follow symlinks natively. Windows requires
@@ -162,11 +162,11 @@ export const DEFAULT_PER_SKILL_CONSUMERS: PerSkillConsumerConfig[] = [
 
 To add a new consumer (e.g., a future CLI tool), either:
 
-- Send a PR to agent-kit adding an entry to `DEFAULT_CONSUMERS`,
+- Send a PR to webpresso adding an entry to `DEFAULT_CONSUMERS`,
   `DEFAULT_SKILLS_CONSUMERS`, or `DEFAULT_PER_SKILL_CONSUMERS` (pick the
   mode that matches the tool's skill-directory semantics) so all repos
   pick it up.
-- Or override in your `.agent-kitrc.json` for a repo-local customization
+- Or override in your `.webpressorc.json` for a repo-local customization
   (planned).
 
 `.gemini/commands/` is **not** in `DEFAULT_CONSUMERS` because it's a
@@ -220,7 +220,7 @@ import {
   DEFAULT_CONSUMERS,
   DEFAULT_SKILLS_CONSUMERS,
   DEFAULT_PER_SKILL_CONSUMERS,
-} from '@webpresso/agent-kit/symlinker'
+} from 'webpresso/symlinker'
 
 const fixes = syncAll(repoRoot)
 if (fixes > 0) console.log(`Fixed ${fixes} symlinks`)

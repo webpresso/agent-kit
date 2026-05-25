@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process'
 import { buildTestCommand, resolveTestTarget } from '#test'
 
 export const TEST_COMMAND_HELP = [
-  'Run tests through the portable agent-kit test surface.',
+  'Run tests through the portable webpresso test surface.',
   '',
   'Examples:',
   '  wp test --package cli2',

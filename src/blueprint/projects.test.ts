@@ -120,7 +120,7 @@ describe('resolveBlueprintProjects — current root', () => {
     gitMarker(root)
     mkdirSync(join(root, 'webpresso', 'blueprints', 'planned'), { recursive: true })
     writeFileSync(
-      join(root, '.agent-kitrc.json'),
+      join(root, '.webpressorc.json'),
       JSON.stringify({ blueprintsDir: 'webpresso/blueprints' }),
     )
     writeFileSync(join(root, 'webpresso', 'blueprints', 'planned', 'a.md'), '# a\n')

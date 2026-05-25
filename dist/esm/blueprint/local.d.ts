@@ -1,8 +1,8 @@
 /**
- * @webpresso/agent-kit/blueprint/local - CLI-only exports
+ * webpresso/blueprint/local - CLI-only exports
  *
  * These exports use Node.js APIs (fs, simple-git) and are NOT compatible with Cloudflare Workers.
- * For Workers-safe functions, use the main '@webpresso/agent-kit/blueprint' entry point.
+ * For Workers-safe functions, use the main 'webpresso/blueprint' entry point.
  */
 export type { FalseDependency, ParallelizeResult, TaskFiles, TaskPairAnalysis, } from './dag/local/independence.js';
 export { createMockPackageGraph, IndependenceDetector } from './dag/local/independence.js';

@@ -7,7 +7,7 @@ import { patchJsonFile, type MergeOptions, type MergeResult } from '#cli/command
 import { hoistTopLevelEvents } from '#cli/commands/init/scaffolders/agent-hooks/index'
 import {
   agentKitMcpLaunchCommand,
-  findAgentKitMcpEntry,
+  findWebpressoMcpEntry,
 } from '#cli/commands/init/scaffolders/codex-mcp/index'
 import { makeNoopSpinnerFactory, type SpinnerFactory } from '#cli/commands/init/scaffolders/spinner'
 import { checkVersionPin } from '#cli/commands/init/scaffolders/version-pin'
@@ -150,7 +150,7 @@ export function patchOpenCodeContextModeConfig(
     type: 'local',
     command: ['context-mode'],
   }
-  currentMcp['agent-kit'] = {
+  currentMcp['webpresso'] = {
     type: 'local',
     command: agentKitCommand,
   }
@@ -170,9 +170,10 @@ export function patchOpenCodeContextModeConfig(
   }
 }
 
-function resolveOpenCodeAgentKitCommand(repoRoot: string, globalInstall = false): string[] {
-  const repoLocalRoot = join(repoRoot, 'node_modules', '@webpresso', 'agent-kit')
-  const entryPath = findAgentKitMcpEntry({ candidates: [repoLocalRoot] }) ?? findAgentKitMcpEntry()
+function resolveOpenCodeWebpressoCommand(repoRoot: string, globalInstall = false): string[] {
+  const repoLocalRoot = join(repoRoot, 'node_modules', '@webpresso', 'webpresso')
+  const entryPath =
+    findWebpressoMcpEntry({ candidates: [repoLocalRoot] }) ?? findWebpressoMcpEntry()
   if (!entryPath) return globalInstall ? ['wp', 'mcp'] : ['vp', 'exec', 'wp', 'mcp']
   const launch = agentKitMcpLaunchCommand(entryPath)
   return [launch.command, ...launch.args]
@@ -251,7 +252,7 @@ export function ensureContextMode(input: EnsureContextModeInput): EnsureContextM
       (existing) =>
         patchOpenCodeContextModeConfig(
           existing,
-          resolveOpenCodeAgentKitCommand(input.repoRoot, input.globalInstall),
+          resolveOpenCodeWebpressoCommand(input.repoRoot, input.globalInstall),
         ),
       input.options,
     ),

@@ -2,7 +2,7 @@ import jsYaml from 'js-yaml';
 import { getContent, getFilePath } from '#hooks/shared/types';
 import { getNonCanonicalPlanningPathViolation, isBlueprintPath } from './path-contract.js';
 import { createSkipResult } from './skip-result.js';
-// Keep aligned with @webpresso/agent-kit/blueprint planStatusSchema + plan type enum.
+// Keep aligned with webpresso/blueprint planStatusSchema + plan type enum.
 const VALID_TYPES = ['blueprint', 'parent-roadmap'];
 const VALID_STATUSES = ['draft', 'planned', 'parked', 'in-progress', 'completed', 'archived'];
 const VALID_COMPLEXITIES = ['XS', 'S', 'M', 'L', 'XL'];

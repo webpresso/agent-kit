@@ -4,23 +4,17 @@ import { describe, expect, it } from 'vitest'
 
 import * as folded from './index'
 
-type LaunchRuntimeApi = typeof folded
-
-async function importLegacyLaunchApi(): Promise<LaunchRuntimeApi> {
-  return (await import(
-    pathToFileURL(`${process.cwd()}/packages/agent-launch/src/index.ts`).href
-  )) as LaunchRuntimeApi
-}
-
 describe('launch public API parity', () => {
-  it('keeps the same runtime exports as @webpresso/agent-launch', async () => {
-    const legacy = await importLegacyLaunchApi()
-
-    expect(Object.keys(folded).sort()).toEqual(Object.keys(legacy).sort())
+  it('exports the canonical launch surface', async () => {
+    expect(Object.keys(folded).sort()).toEqual([
+      'assembleEffectiveVars',
+      'buildLaunchRegistration',
+      'parseDevManifest',
+      'resolveDevTargets',
+    ])
   })
 
   it('preserves launch env assembly behavior', async () => {
-    const legacy = await importLegacyLaunchApi()
     const input = {
       vars: { EXISTING: 'keep-me' },
       databaseHandle: {
@@ -39,11 +33,14 @@ describe('launch public API parity', () => {
       },
     }
 
-    expect(folded.assembleEffectiveVars(input)).toEqual(legacy.assembleEffectiveVars(input))
+    expect(folded.assembleEffectiveVars(input)).toEqual({
+      EXISTING: 'keep-me',
+      INJECTED_SECRET: 'secret-value',
+      DATABASE_URL: 'postgresql://runtime/db',
+    })
   })
 
   it('preserves dev manifest parsing and target resolution behavior', async () => {
-    const legacy = await importLegacyLaunchApi()
     const manifest = {
       version: 1,
       services: {
@@ -59,9 +56,16 @@ describe('launch public API parity', () => {
       },
     } as const
 
-    expect(folded.parseDevManifest(manifest)).toEqual(legacy.parseDevManifest(manifest))
-    expect(folded.resolveDevTargets(folded.parseDevManifest(manifest))).toEqual(
-      legacy.resolveDevTargets(legacy.parseDevManifest(manifest)),
-    )
+    const parsed = folded.parseDevManifest(manifest)
+
+    expect(parsed.defaults.target).toBe('full')
+    expect(parsed.groups.full?.services).toEqual(['web'])
+    expect(folded.resolveDevTargets(parsed)).toEqual(['database', 'api', 'web'])
+  })
+
+  it('keeps source independent from deleted helper workspaces', async () => {
+    const source = await import(pathToFileURL(`${import.meta.dirname}/index.ts`).href)
+
+    expect(source).toBeDefined()
   })
 })

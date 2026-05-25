@@ -20,7 +20,7 @@ export type MatcherSet = {
  * PostToolUse, UserPromptSubmit, Stop). Single source of truth — adding a
  * new wp-* hook is one append here and propagates to both surfaces.
  */
-export declare function buildAgentKitHookGroups(input: {
+export declare function buildWebpressoHookGroups(input: {
     resolveBin: (name: string) => string;
     matchers: MatcherSet;
 }): HooksMap;
@@ -41,7 +41,7 @@ export type CodexTrustSyncWarning = {
     readonly syncResult?: SyncCodexHookTrustResult;
 };
 type CodexAppServerFactory = (repoRoot: string) => Promise<CodexAppServerApi>;
-export declare function trustCodexAgentKitHooksForRepo(input: ScaffoldAgentHooksInput): Promise<void>;
+export declare function trustCodexWebpressoHooksForRepo(input: ScaffoldAgentHooksInput): Promise<void>;
 export declare function trustCodexPresetHooksForUser(input: ScaffoldAgentHooksInput): Promise<void>;
 export interface ScaffoldAgentHooksInput {
     repoRoot: string;

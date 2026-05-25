@@ -23,8 +23,6 @@ const REQUIRED_CANONICAL_TOOLS = [
   'wp_blueprint_task_verify',
 ] as const
 
-const ALLOWED_LEGACY_REFERENCES = ['mcp__agent-kit__wp_blueprint'] as const
-
 function read(rel: string): string {
   return readFileSync(path.join(root, rel), 'utf8')
 }
@@ -66,9 +64,9 @@ describe('blueprint docs drift', () => {
     expect(commandsDoc).toContain('wp_blueprint_get')
   })
 
-  it('contains no stale legacy facade references beyond the explicit removal note', () => {
+  it('contains no stale legacy facade references', () => {
     const commandsDoc = read('commands/blueprint.md')
-    const matches = [...new Set(commandsDoc.match(/\bmcp__agent-kit__wp_blueprint\b/g) ?? [])]
-    expect(matches).toEqual([...ALLOWED_LEGACY_REFERENCES])
+    const matches = [...new Set(commandsDoc.match(/\bmcp__[a-z-]+__wp_blueprint\b/g) ?? [])]
+    expect(matches).toEqual([])
   })
 })

@@ -26,7 +26,7 @@ function passingTest(): Evidence {
   return {
     kind: 'test',
     result: 'pass',
-    command: 'wp_test --package agent-kit',
+    command: 'wp_test --package webpresso',
     exit_code: 0,
     ts: TS,
   }

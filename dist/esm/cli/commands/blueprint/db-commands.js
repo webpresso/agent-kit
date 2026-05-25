@@ -167,7 +167,7 @@ export function dbBrowse(projectRoot, _execSync = execSync) {
     mkdirSync(agentDir, { recursive: true });
     const metadata = {
         title: 'Blueprints DB',
-        description: 'Blueprint and tech-debt structured store (agent-kit)',
+        description: 'Blueprint and tech-debt structured store (webpresso)',
         source: 'wp blueprint db build',
     };
     writeFileSync(metadataPath, JSON.stringify(metadata, null, 2) + '\n', 'utf8');

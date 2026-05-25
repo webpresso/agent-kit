@@ -1,5 +1,5 @@
 /**
- * agent-kit blueprint/dag/local
+ * webpresso blueprint/dag/local
  *
  * Node.js-only DAG utilities for local CLI execution.
  * These modules use `node:fs` and `node:path` — DO NOT import in Workers bundles.

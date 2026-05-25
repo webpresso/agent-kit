@@ -2,7 +2,7 @@
  * Resolves the blueprints directory for a consumer repo.
  *
  * Checks in priority order:
- *   0. `.agent-kitrc.json#blueprintsDir`     — explicit config override
+ *   0. `.webpressorc.json#blueprintsDir`     — explicit config override
  *   1. `<projectPath>/blueprints/`           — generic consumer layout
  *   2. `<projectPath>/webpresso/blueprints/` — webpresso legacy fallback
  *
@@ -19,14 +19,14 @@ const WEBPRESSO_BLUEPRINTS_DIR = 'webpresso/blueprints'
 const DEFAULT_BLUEPRINTS_DIR = 'blueprints'
 
 const GENERIC_PROJECT_MARKERS = [
-  '.agent-kitrc.json',
+  '.webpressorc.json',
   'pnpm-workspace.yaml',
   'package.json',
 ] as const
 
 function readConfiguredBlueprintsDir(projectPath: string): string | undefined {
   try {
-    const raw = readFileSync(path.join(projectPath, '.agent-kitrc.json'), 'utf-8')
+    const raw = readFileSync(path.join(projectPath, '.webpressorc.json'), 'utf-8')
     const v = (JSON.parse(raw) as { blueprintsDir?: unknown }).blueprintsDir
     return typeof v === 'string' && v.trim() ? v.trim() : undefined
   } catch {

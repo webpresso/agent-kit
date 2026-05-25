@@ -22,7 +22,7 @@ describe('consumer layout root resolution', () => {
     return root
   }
 
-  it('defaults fresh generic agent-kit repos to top-level blueprints and tech-debt', async () => {
+  it('defaults fresh generic webpresso repos to top-level blueprints and tech-debt', async () => {
     const root = await tempRoot('wp-generic-root-')
     writeFileSync(path.join(root, 'package.json'), '{"name":"consumer"}')
 
@@ -64,10 +64,10 @@ describe('consumer layout root resolution', () => {
     expect(resolveTechDebtRoot(root)).toBe(path.join(root, 'webpresso', 'tech-debt'))
   })
 
-  it('uses blueprintsDir from .agent-kitrc.json as highest-priority override', async () => {
+  it('uses blueprintsDir from .webpressorc.json as highest-priority override', async () => {
     const root = await tempRoot('wp-config-override-')
     writeFileSync(path.join(root, 'package.json'), '{"name":"consumer"}')
-    writeFileSync(path.join(root, '.agent-kitrc.json'), JSON.stringify({ blueprintsDir: 'plans' }))
+    writeFileSync(path.join(root, '.webpressorc.json'), JSON.stringify({ blueprintsDir: 'plans' }))
 
     expect(resolveBlueprintRoot(root)).toBe(path.join(root, 'plans'))
   })
@@ -78,7 +78,7 @@ describe('consumer layout root resolution', () => {
     writeFileSync(path.join(root, 'webpresso', 'config.yaml'), 'project:\n  name: webpresso\n')
     writeFileSync(path.join(root, 'package.json'), '{"name":"webpresso"}')
     writeFileSync(
-      path.join(root, '.agent-kitrc.json'),
+      path.join(root, '.webpressorc.json'),
       JSON.stringify({ blueprintsDir: 'webpresso/blueprints' }),
     )
 

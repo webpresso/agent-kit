@@ -15,7 +15,7 @@
  *
  * `setup` / `init` intentionally DO NOT skip the update check: setup is the
  * command users run when they want their agent surfaces refreshed, so it should
- * also detect and schedule an agent-kit package refresh when a newer version is
+ * also detect and schedule an webpresso package refresh when a newer version is
  * available.
  *
  * `WP_SKIP_AUTO_INSTALL=1` does **not** appear here — that variable only

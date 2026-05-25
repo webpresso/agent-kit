@@ -1,9 +1,9 @@
-export declare const STATE_FILE_RELATIVE_PATH = ".webpresso/agent-kit-dev-link.json";
+export declare const STATE_FILE_RELATIVE_PATH = ".webpresso/webpresso-dev-link.json";
 export interface DevLinkState {
     package: string;
     linkedFrom: string;
     linkedAt?: string;
-    agentKitVersion?: string;
+    webpressoVersion?: string;
     note?: string;
 }
 /**

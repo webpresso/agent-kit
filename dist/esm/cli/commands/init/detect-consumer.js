@@ -107,30 +107,30 @@ function isWithinPath(target, root) {
     const relative = path.relative(root, target);
     return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
 }
-function discoverInstalledAgentKitRoots(repoRoot) {
+function discoverInstalledWebpressoRoots(repoRoot) {
     const roots = new Set();
-    const directRoot = path.join(repoRoot, 'node_modules', '@webpresso', 'agent-kit');
+    const directRoot = path.join(repoRoot, 'node_modules', 'webpresso');
     if (existsSync(path.join(directRoot, 'package.json'))) {
         roots.add(directRoot);
     }
     const pnpmRoot = path.join(repoRoot, 'node_modules', '.pnpm');
     for (const entry of safeReaddir(pnpmRoot)) {
-        if (!entry.startsWith('@webpresso+agent-kit@'))
+        if (!entry.startsWith('webpresso@'))
             continue;
-        const candidate = path.join(pnpmRoot, entry, 'node_modules', '@webpresso', 'agent-kit');
+        const candidate = path.join(pnpmRoot, entry, 'node_modules', 'webpresso');
         if (existsSync(path.join(candidate, 'package.json'))) {
             roots.add(candidate);
         }
     }
     return [...roots];
 }
-function isLocalAgentKitCli(repoRoot, cliPath) {
+function isLocalWebpressoCli(repoRoot, cliPath) {
     const cliCandidates = [
         ...new Set([cliPath, safeRealpath(cliPath)].filter((p) => p !== null)),
     ];
     if (cliCandidates.length === 0)
         return false;
-    for (const root of discoverInstalledAgentKitRoots(repoRoot)) {
+    for (const root of discoverInstalledWebpressoRoots(repoRoot)) {
         const rootCandidates = [
             ...new Set([root, safeRealpath(root)].filter((p) => p !== null)),
         ];
@@ -227,12 +227,12 @@ export function discoverWorkspacePackages(repoRoot, globs) {
 }
 /**
  * Soft warning when the running CLI does not resolve to the consumer's local
- * `@webpresso/agent-kit` install. Catches the global-install / pnpm-link / npx
+ * `webpresso` install. Catches the global-install / pnpm-link / npx
  * case where `wp setup` succeeds against the executing CLI's catalog but
  * produces a non-reproducible `.agents/skills/` tree (symlinks point outside
  * the project tree; lockfile irrelevant). Repo-local symlink/dev-link installs
  * still count as local via realpath comparison. Self-mode short-circuits when
- * the consumer IS `@webpresso/agent-kit` (running setup from agent-kit's own
+ * the consumer IS `webpresso` (running setup from webpresso's own
  * checkout).
  *
  * Non-blocking: prints to stderr and returns. The bc88-class failure
@@ -242,7 +242,7 @@ export function discoverWorkspacePackages(repoRoot, globs) {
  */
 export function warnIfNonLocalCli(repoRoot, cliUrl = import.meta.url) {
     const ourPkg = readPackageJson(repoRoot).info;
-    if (ourPkg?.name === '@webpresso/agent-kit')
+    if (ourPkg?.name === 'webpresso')
         return;
     if (readConfig(repoRoot)?.globalInstall === true)
         return;
@@ -253,13 +253,13 @@ export function warnIfNonLocalCli(repoRoot, cliUrl = import.meta.url) {
     catch {
         return;
     }
-    if (isLocalAgentKitCli(repoRoot, cliPath))
+    if (isLocalWebpressoCli(repoRoot, cliPath))
         return;
-    const hasLocalAgentKitDep = ourPkg?.dependencies['@webpresso/agent-kit'] ?? ourPkg?.devDependencies['@webpresso/agent-kit'];
+    const hasLocalWebpressoDep = ourPkg?.dependencies['webpresso'] ?? ourPkg?.devDependencies['webpresso'];
     console.error(`warning: wp running from a non-local install (${cliPath}). ` +
-        (hasLocalAgentKitDep
-            ? 'This repo already pins `@webpresso/agent-kit`; rerun via the repo-local CLI (`vp run setup:agent` or `vp exec wp setup`).'
-            : 'Pin `@webpresso/agent-kit` as a local dep for reproducible setup.'));
+        (hasLocalWebpressoDep
+            ? 'This repo already pins `webpresso`; rerun via the repo-local CLI (`vp run setup:agent` or `vp exec wp setup`).'
+            : 'Pin `webpresso` as a local dep for reproducible setup.'));
 }
 export function detectConsumer(startDir = process.cwd()) {
     const repoRoot = findGitRoot(startDir);

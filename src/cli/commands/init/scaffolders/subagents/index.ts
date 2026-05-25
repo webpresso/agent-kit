@@ -25,25 +25,18 @@ type SubagentsMode =
 
 function detectMode(repoRoot: string): SubagentsMode {
   const pkg = readPackageJson(repoRoot).info
-  if (pkg?.name === '@webpresso/agent-kit') {
+  if (pkg?.name === 'webpresso') {
     return {
       mode: 'self',
       sourceRoot: join(repoRoot, 'catalog', 'agent', 'agents'),
     }
   }
 
-  const installedPackageJsonPath = join(
-    repoRoot,
-    'node_modules',
-    '@webpresso',
-    'agent-kit',
-    'package.json',
-  )
+  const installedPackageJsonPath = join(repoRoot, 'node_modules', 'webpresso', 'package.json')
   const installedAgentsRoot = join(
     repoRoot,
     'node_modules',
-    '@webpresso',
-    'agent-kit',
+    'webpresso',
     'catalog',
     'agent',
     'agents',
@@ -72,7 +65,7 @@ function resolveCurrentPackageRoot(): string {
     if (parent === dir) break
     dir = parent
   }
-  throw new Error('wp init: could not locate the agent-kit package root for subagents fallback.')
+  throw new Error('wp init: could not locate the webpresso package root for subagents fallback.')
 }
 
 export function scaffoldSubagents(input: ScaffoldSubagentsInput): MergeResult[] {

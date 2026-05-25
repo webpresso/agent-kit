@@ -31,12 +31,12 @@ export declare function parseWorkspaceGlobs(repoRoot: string): string[] | null;
 export declare function discoverWorkspacePackages(repoRoot: string, globs: string[] | null): WorkspacePackageInfo[];
 /**
  * Soft warning when the running CLI does not resolve to the consumer's local
- * `@webpresso/agent-kit` install. Catches the global-install / pnpm-link / npx
+ * `webpresso` install. Catches the global-install / pnpm-link / npx
  * case where `wp setup` succeeds against the executing CLI's catalog but
  * produces a non-reproducible `.agents/skills/` tree (symlinks point outside
  * the project tree; lockfile irrelevant). Repo-local symlink/dev-link installs
  * still count as local via realpath comparison. Self-mode short-circuits when
- * the consumer IS `@webpresso/agent-kit` (running setup from agent-kit's own
+ * the consumer IS `webpresso` (running setup from webpresso's own
  * checkout).
  *
  * Non-blocking: prints to stderr and returns. The bc88-class failure

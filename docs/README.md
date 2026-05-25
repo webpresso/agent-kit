@@ -3,9 +3,9 @@ type: docs-index
 last_updated: '2026-05-22'
 ---
 
-# `@webpresso/agent-kit` documentation
+# `webpresso` documentation
 
-`@webpresso/agent-kit` is the npm package that ships the agent-kit catalog and
+`webpresso` is the npm package that ships the webpresso catalog and
 `wp` / `wp` CLI. It scaffolds a repo so every AI coding agent — Claude Code,
 Codex CLI, Cursor, Windsurf, Gemini, OpenCode — shares the same operating
 contract, skills, hooks, planning files, and quality gates. Standalone, no
@@ -31,7 +31,7 @@ The four moving parts:
 
 ## Getting started
 
-New to agent-kit? Read [`getting-started.md`](./getting-started.md).
+New to webpresso? Read [`getting-started.md`](./getting-started.md).
 
 ## `--with` presets
 
@@ -43,13 +43,13 @@ The catalog, `.agent/`, and the IDE-specific directories (`.claude/`, `.gemini/`
 
 ## Migration from webpresso's internal blueprint
 
-Webpresso is adopter zero — agent-kit replaces its internal `@webpresso/blueprint` package, `blueprint-plan` validator, `audit-tph` scripts, and `symlinker` maintenance script. See [`migration-from-webpresso.md`](./migration-from-webpresso.md).
+Webpresso is adopter zero — webpresso replaces its internal `@webpresso/blueprint` package, `blueprint-plan` validator, `audit-tph` scripts, and `symlinker` maintenance script. See [`migration-from-webpresso.md`](./migration-from-webpresso.md).
 
 ## Design invariants
 
-- **Zero `@webpresso/*` runtime or dev dependencies.** agent-kit is self-contained and maintained outside the Webpresso monorepo.
+- **Zero `@webpresso/*` runtime or dev dependencies.** webpresso is self-contained and maintained outside the Webpresso monorepo.
 - **The catalog is canonical.** Consumers run `wp setup` once, then own their copy. `wp skill install <name>` is explicit; there is no implicit upstream refresh.
-- **OMX skills stay in OMX.** Anything `[OMX]`-marked in webpresso's `.agent/skills/` is deliberately excluded from agent-kit's catalog. A normal `wp setup` installs or refreshes OMX and runs `omx setup --yes --scope user` so those skills remain owned by OMX but available in the consumer environment; `wp setup --project` opts into project-scoped OMX setup. Setup also repairs the managed `.gitignore` block for regenerated `.codex/`, `.omx/`, `.agent/`, and IDE projection outputs.
+- **OMX skills stay in OMX.** Anything `[OMX]`-marked in webpresso's `.agent/skills/` is deliberately excluded from webpresso's catalog. A normal `wp setup` installs or refreshes OMX and runs `omx setup --yes --scope user` so those skills remain owned by OMX but available in the consumer environment; `wp setup --project` opts into project-scoped OMX setup. Setup also repairs the managed `.gitignore` block for regenerated `.codex/`, `.omx/`, `.agent/`, and IDE projection outputs.
 
 ## Versioning
 

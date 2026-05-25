@@ -2,7 +2,7 @@
  * `wp skill <new|list|show|deprecate|install|uninstall>` — thin shim over
  * shared content dispatch with two extra registry actions:
  *
- *   install <name>     — adds <name> to .agent-kitrc.json#installed.tier3Skills
+ *   install <name>     — adds <name> to .webpressorc.json#installed.tier3Skills
  *                        (the skill must exist in the bundled catalog).
  *                        Idempotent. Registry-only edit; no copy.
  *   uninstall <name>   — removes <name> from the registry. Idempotent.

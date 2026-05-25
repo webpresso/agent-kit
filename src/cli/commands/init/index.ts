@@ -1,9 +1,9 @@
 import type { CAC } from 'cac'
 
 /**
- * `wp setup` / `wp init` — scaffolds the agent-kit catalog into a consumer repo.
+ * `wp setup` / `wp init` — scaffolds the webpresso catalog into a consumer repo.
  *
- * Idempotent: re-runs reconcile against `.agent-kitrc.json`.
+ * Idempotent: re-runs reconcile against `.webpressorc.json`.
  * Safe-by-default: if a target file exists with different content, reports
  * drift and leaves it untouched unless `--overwrite` is passed.
  */
@@ -46,13 +46,13 @@ import {
 } from './host-visibility.js'
 import {
   scaffoldAgentHooks,
-  trustCodexAgentKitHooksForRepo,
+  trustCodexWebpressoHooksForRepo,
   trustCodexPresetHooksForUser,
 } from './scaffolders/agent-hooks/index.js'
 import { scaffoldAuditHooks } from './scaffolders/audit-hooks/index.js'
 import { ensureClaudeCodeUserPlugin } from './scaffolders/claude-plugin/index.js'
 import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js'
-import { ensureCodexAgentKitMcp, ensureCodexPlaywrightMcp } from './scaffolders/codex-mcp/index.js'
+import { ensureCodexWebpressoMcp, ensureCodexPlaywrightMcp } from './scaffolders/codex-mcp/index.js'
 import { scaffoldExampleSkill } from './scaffolders/example-skill/index.js'
 import { ensureGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
@@ -126,7 +126,7 @@ export function resolveCatalogDir(): string {
     dir = parent
   }
   throw new Error(
-    'wp init: could not locate the agent-kit catalog directory. The package may be broken.',
+    'wp init: could not locate the webpresso catalog directory. The package may be broken.',
   )
 }
 
@@ -335,10 +335,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
     try {
       claudeRulesResults = scaffoldClaudeRules({ repoRoot: consumer.repoRoot, options })
     } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.includes('@webpresso/agent-kit not found in node_modules')
-      ) {
+      if (error instanceof Error && error.message.includes('webpresso not found in node_modules')) {
         console.error(`wp init: setup failed — ${error.message}`)
         return EXIT_SETUP_FAIL
       }
@@ -512,30 +509,30 @@ export async function runInit(flags: InitFlags): Promise<number> {
 
     // OMX setup can repair legacy duplicate hook trust-state blocks by
     // clearing all `[hooks.state]` entries before rehydrating its own hooks.
-    // Re-apply agent-kit's trust hashes after that possible cleanup.
-    await trustCodexAgentKitHooksForRepo({ repoRoot: consumer.repoRoot, options })
+    // Re-apply webpresso's trust hashes after that possible cleanup.
+    await trustCodexWebpressoHooksForRepo({ repoRoot: consumer.repoRoot, options })
     await trustCodexPresetHooksForUser({ repoRoot: consumer.repoRoot, options })
 
-    // Always upsert agent-kit's MCP entry into the user's codex config when
+    // Always upsert webpresso's MCP entry into the user's codex config when
     // an install root is discoverable. Codex's config.toml is user-global, so
     // we resolve to whatever absolute install path exists today (Claude
     // plugin / bun global / pnpm global / npm global) and write that.
-    const agentKitMcpResult = ensureCodexAgentKitMcp({ options })
-    switch (agentKitMcpResult.kind) {
-      case 'codex-agent-kit-mcp-written':
+    const webpressoMcpResult = ensureCodexWebpressoMcp({ options })
+    switch (webpressoMcpResult.kind) {
+      case 'codex-webpresso-mcp-written':
         console.log(
-          `  codex agent-kit mcp: ✓ ${agentKitMcpResult.path} → ${agentKitMcpResult.entryPath}`,
+          `  codex webpresso mcp: ✓ ${webpressoMcpResult.path} → ${webpressoMcpResult.entryPath}`,
         )
         break
-      case 'codex-agent-kit-mcp-unchanged':
-        console.log(`  codex agent-kit mcp: already configured at ${agentKitMcpResult.path}`)
+      case 'codex-webpresso-mcp-unchanged':
+        console.log(`  codex webpresso mcp: already configured at ${webpressoMcpResult.path}`)
         break
-      case 'codex-agent-kit-mcp-skipped-dry-run':
-        console.log('  codex agent-kit mcp: skipped (--dry-run)')
+      case 'codex-webpresso-mcp-skipped-dry-run':
+        console.log('  codex webpresso mcp: skipped (--dry-run)')
         break
-      case 'codex-agent-kit-mcp-not-installed':
+      case 'codex-webpresso-mcp-not-installed':
         console.log(
-          `  codex agent-kit mcp: ⚠ no install root found (checked ${agentKitMcpResult.checked.length} paths). Install agent-kit globally (\`bun add -g @webpresso/agent-kit\`) or via the Claude plugin to wire up codex MCP.`,
+          `  codex webpresso mcp: ⚠ no install root found (checked ${webpressoMcpResult.checked.length} paths). Install webpresso globally (\`bun add -g webpresso\`) or via the Claude plugin to wire up codex MCP.`,
         )
         break
     }
@@ -763,7 +760,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
       const payload = {
         event: 'setup-complete' as const,
         durationMs: Date.now() - startMs,
-        agentKitVersion: readPackageVersion(import.meta.url),
+        webpressoVersion: readPackageVersion(import.meta.url),
         os: process.platform,
         nodeVersion: process.version,
       }
@@ -800,7 +797,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
   } catch (error) {
     if (error instanceof Error && /catalogDir does not exist/.test(error.message)) {
       console.error(
-        'wp init: @webpresso/agent-kit not installed in node_modules. ' + 'Run `vp install` first.',
+        'wp init: webpresso not installed in node_modules. ' + 'Run `vp install` first.',
       )
       return EXIT_SETUP_FAIL
     }
@@ -816,7 +813,7 @@ export type InitCommandName = 'setup' | 'init'
 export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'init'): void {
   const description =
     commandName === 'setup'
-      ? 'Scaffold agent-kit catalog into the current repo'
+      ? 'Scaffold webpresso catalog into the current repo'
       : 'Compatibility alias for wp setup'
 
   // Help text is data-driven so adding a preset (PRESETS) automatically

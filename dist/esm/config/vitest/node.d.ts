@@ -3,7 +3,7 @@
  *
  * Usage in vitest.config.ts:
  * ```ts
- * import { nodeConfig } from '@webpresso/agent-vitest/node'
+ * import { nodeConfig } from 'webpresso/vitest/node'
  * import { defineConfig, mergeConfig } from 'vite-plus/test/config'
  *
  * export default mergeConfig(nodeConfig, defineConfig({
@@ -26,7 +26,7 @@ export interface CreateNodeProjectsOptions {
  *
  * Usage in vitest.config.ts:
  * ```ts
- * import { nodeConfig, createNodeProjects } from '@webpresso/agent-vitest/node'
+ * import { nodeConfig, createNodeProjects } from 'webpresso/vitest/node'
  * import { mergeConfig } from 'vite-plus/test/config'
  *
  * export default mergeConfig(nodeConfig, {

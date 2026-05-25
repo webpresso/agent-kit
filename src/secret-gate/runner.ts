@@ -36,13 +36,7 @@ const SIGNAL_TO_EXIT_CODE: Readonly<Partial<Record<NodeJS.Signals, number>>> = {
 export function buildSecretGateCommand(options: SecretGateCommandOptions): SecretGateCommand {
   const runner = (options.runner ?? 'with-secrets').trim()
   const envProfile = (options.envProfile ?? 'secrets-only').trim()
-  const args = [
-    '--env-profile',
-    envProfile,
-    '--',
-    options.command,
-    ...(options.args ?? []),
-  ]
+  const args = ['--env-profile', envProfile, '--', options.command, ...(options.args ?? [])]
   return { command: runner, args }
 }
 
@@ -51,7 +45,9 @@ function exitCodeFromSignal(signal: NodeJS.Signals | null): number {
   return 128 + (SIGNAL_TO_EXIT_CODE[signal] ?? 15)
 }
 
-export function runSecretGateCommand(options: SecretGateCommandOptions): Promise<SecretGateRunResult> {
+export function runSecretGateCommand(
+  options: SecretGateCommandOptions,
+): Promise<SecretGateRunResult> {
   const timeoutMs = options.timeoutMs ?? 30_000
   const maxOutputBytes = options.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES
   const command = buildSecretGateCommand(options)

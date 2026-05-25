@@ -1,5 +1,5 @@
 /**
- * BlueprintSyncClient — agent-kit HTTP client for the webpresso platform API.
+ * BlueprintSyncClient — webpresso HTTP client for the webpresso platform API.
  *
  * Implements `BlueprintPlatformClient` (types.ts) using the Fetch API.
  *

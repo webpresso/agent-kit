@@ -1,5 +1,5 @@
 /**
- * agent-kit blueprint/dag
+ * webpresso blueprint/dag
  *
  * Workers-safe DAG (Directed Acyclic Graph) analysis utilities.
  * Zero Node.js dependencies — safe for Cloudflare Workers, Deno, Bun, and Node.js.

@@ -8,7 +8,7 @@
  *
  * Detection for the canonical checkout is path-based, NOT PATH-based: gstack
  * itself is not a CLI binary on $PATH. Checkout bootstrap is a clone +
- * `./setup --team`. When Codex is detected, agent-kit runs gstack's official
+ * `./setup --team`. When Codex is detected, webpresso runs gstack's official
  * `./setup --host auto --team` flow from that same checkout so one setup pass
  * can refresh both Claude/team mode and Codex materialization.
  *

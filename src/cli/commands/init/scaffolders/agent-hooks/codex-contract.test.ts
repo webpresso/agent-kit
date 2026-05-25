@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 
 import { CodexAppServerClient } from '../../../../../codex/app-server/client.js'
 import type { CommandHookMetadata } from '../../../../../codex/app-server/types.js'
-import { isAgentKitOwnedCodexHook } from './codex-ownership.js'
+import { isWebpressoOwnedCodexHook } from './codex-ownership.js'
 import { scaffoldAgentHooks } from './index.js'
 
 const FORBIDDEN_LOCAL_HASH_SYMBOLS = [
@@ -59,10 +59,10 @@ function productionSourceFiles(root: string): string[] {
   })
 }
 
-function agentKitCodexHooks(hooks: unknown[], sourcePath: string): CommandHookMetadata[] {
+function webpressoCodexHooks(hooks: unknown[], sourcePath: string): CommandHookMetadata[] {
   return hooks.filter((hook): hook is CommandHookMetadata => {
     const candidate = hook as Partial<CommandHookMetadata>
-    return candidate.handlerType === 'command' && isAgentKitOwnedCodexHook(candidate, [sourcePath])
+    return candidate.handlerType === 'command' && isWebpressoOwnedCodexHook(candidate, [sourcePath])
   })
 }
 
@@ -117,7 +117,7 @@ describe('Codex hook trust contract', () => {
       try {
         const listed = await api.hooksList([repoRoot])
         const hooks = listed.data.flatMap((entry) => entry.hooks)
-        const ownedHooks = agentKitCodexHooks(hooks, hooksPath)
+        const ownedHooks = webpressoCodexHooks(hooks, hooksPath)
 
         expect(ownedHooks.length).toBeGreaterThan(0)
         expect(ownedHooks.every((hook) => hook.currentHash.length > 0)).toBe(true)

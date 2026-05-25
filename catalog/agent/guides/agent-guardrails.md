@@ -5,14 +5,14 @@ last_updated: 2026-04-22
 
 # Agent Guardrails
 
-Current guardrails for agents working in a monorepo that uses agent-kit.
+Current guardrails for agents working in a monorepo that uses webpresso.
 
 ## Core Rule
 
 Edit authored source files. Do not teach or rely on repo paths that do not
 exist in the current checkout.
 
-Typical authored source in an agent-kit-configured monorepo:
+Typical authored source in an webpresso-configured monorepo:
 
 - entity / schema truth lives in the declared schema directory (e.g.
   `schema/*.yaml` or `entities/*.yaml`).

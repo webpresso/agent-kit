@@ -38,13 +38,13 @@ describe('scaffoldCatalogIgnore', () => {
     expect(results[0]?.action).toBe('created')
 
     const gi = readFileSync(join(cwd, '.gitignore'), 'utf8')
-    expect(gi).toContain('# >>> managed by @webpresso/agent-kit (catalog-installed)')
+    expect(gi).toContain('# >>> managed by webpresso (catalog-installed)')
     expect(gi).toContain('agent-skills/alpha-skill/')
     expect(gi).toContain('agent-skills/beta-skill/')
     expect(gi).toContain('agent-rules/one-rule.md')
     expect(gi).toContain('agent-rules/two-rule.md')
     expect(gi).not.toContain('agent-rules/README.md')
-    expect(gi).toContain('# <<< managed by @webpresso/agent-kit (catalog-installed)')
+    expect(gi).toContain('# <<< managed by webpresso (catalog-installed)')
   })
 
   it('is idempotent on a second run', () => {
@@ -73,14 +73,14 @@ describe('scaffoldCatalogIgnore', () => {
   it('preserves unrelated managed blocks', () => {
     writeFileSync(
       join(cwd, '.gitignore'),
-      'node_modules/\n# >>> managed by @webpresso/agent-kit (skill-sync)\n.claude/skills/\n# <<< managed by @webpresso/agent-kit (skill-sync)\n',
+      'node_modules/\n# >>> managed by webpresso (skill-sync)\n.claude/skills/\n# <<< managed by webpresso (skill-sync)\n',
     )
     scaffoldCatalogIgnore({ cwd, catalogDir })
 
     const gi = readFileSync(join(cwd, '.gitignore'), 'utf8')
-    expect(gi).toContain('# >>> managed by @webpresso/agent-kit (skill-sync)')
+    expect(gi).toContain('# >>> managed by webpresso (skill-sync)')
     expect(gi).toContain('.claude/skills/')
-    expect(gi).toContain('# >>> managed by @webpresso/agent-kit (catalog-installed)')
+    expect(gi).toContain('# >>> managed by webpresso (catalog-installed)')
     expect(gi).toContain('agent-skills/alpha-skill/')
   })
 
@@ -89,9 +89,9 @@ describe('scaffoldCatalogIgnore', () => {
       'node_modules/',
       'dist/',
       '.env',
-      '# >>> managed by @webpresso/agent-kit (skill-sync)',
+      '# >>> managed by webpresso (skill-sync)',
       '.claude/skills/',
-      '# <<< managed by @webpresso/agent-kit (skill-sync)',
+      '# <<< managed by webpresso (skill-sync)',
       '# user comment that must survive',
       'coverage/',
       '',
@@ -105,18 +105,16 @@ describe('scaffoldCatalogIgnore', () => {
 
     expect(after.startsWith(unrelatedBefore)).toBe(true)
 
-    expect(after).toContain('# >>> managed by @webpresso/agent-kit (skill-sync)')
+    expect(after).toContain('# >>> managed by webpresso (skill-sync)')
     expect(after).toContain('.claude/skills/')
     expect(after).toContain('# user comment that must survive')
 
-    expect(after).toContain('# >>> managed by @webpresso/agent-kit (catalog-installed)')
+    expect(after).toContain('# >>> managed by webpresso (catalog-installed)')
     expect(after).toContain('agent-skills/alpha-skill/')
-    expect(after).toContain('# <<< managed by @webpresso/agent-kit (catalog-installed)')
+    expect(after).toContain('# <<< managed by webpresso (catalog-installed)')
 
-    expect(after.split('# >>> managed by @webpresso/agent-kit (skill-sync)').length - 1).toBe(1)
-    expect(
-      after.split('# >>> managed by @webpresso/agent-kit (catalog-installed)').length - 1,
-    ).toBe(1)
+    expect(after.split('# >>> managed by webpresso (skill-sync)').length - 1).toBe(1)
+    expect(after.split('# >>> managed by webpresso (catalog-installed)').length - 1).toBe(1)
   })
 
   it('delete + re-add round-trip is byte-identical', () => {
@@ -124,7 +122,7 @@ describe('scaffoldCatalogIgnore', () => {
     const original = readFileSync(join(cwd, '.gitignore'), 'utf8')
 
     const stripped = original.replace(
-      /\n?# >>> managed by @webpresso\/agent-kit \(catalog-installed\)[\s\S]*?# <<< managed by @webpresso\/agent-kit \(catalog-installed\)\n?/,
+      /\n?# >>> managed by webpresso \(catalog-installed\)[\s\S]*?# <<< managed by webpresso \(catalog-installed\)\n?/,
       '\n',
     )
     writeFileSync(join(cwd, '.gitignore'), stripped)
@@ -162,7 +160,7 @@ describe('scaffoldCatalogIgnore', () => {
     expect(results[0]?.action).toBe('created')
 
     const gi = readFileSync(join(cwd, '.gitignore'), 'utf8')
-    expect(gi).toContain('# >>> managed by @webpresso/agent-kit (catalog-installed)')
-    expect(gi).toContain('# <<< managed by @webpresso/agent-kit (catalog-installed)')
+    expect(gi).toContain('# >>> managed by webpresso (catalog-installed)')
+    expect(gi).toContain('# <<< managed by webpresso (catalog-installed)')
   })
 })

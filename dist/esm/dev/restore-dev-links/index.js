@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Postinstall helper: restore the @webpresso/agent-kit dev-link symlink
+ * Postinstall helper: restore the webpresso dev-link symlink
  * that `vp install` overwrites with the pnpm-store snapshot.
  *
  * Behavior:
@@ -41,7 +41,7 @@ export function restoreDevLinks(options = {}) {
     const source = state.linkedFrom;
     if (!existsSync(join(source, 'package.json'))) {
         stderr.write(`wp-restore-dev-links: state file points at ${source} but no package.json found there.\n` +
-            `  → Move the agent-kit checkout back, or delete ${STATE_FILE_RELATIVE_PATH} to opt out.\n`);
+            `  → Move the webpresso checkout back, or delete ${STATE_FILE_RELATIVE_PATH} to opt out.\n`);
         return {
             exitCode: 1,
             outcomes: [{ kind: 'source-missing', expectedSource: source }],

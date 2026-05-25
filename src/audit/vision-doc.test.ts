@@ -6,7 +6,7 @@ import { describe, expect, test, vi } from 'vitest'
 import { auditVision } from './vision-doc.js'
 
 function tempRepo() {
-  return mkdtempSync(join(tmpdir(), 'agent-kit-vision-audit-'))
+  return mkdtempSync(join(tmpdir(), 'webpresso-vision-audit-'))
 }
 
 const TODAY = new Date().toISOString().slice(0, 10)

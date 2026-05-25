@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { baseConfig as upstreamBaseConfig } from '@webpresso/agent-stryker'
 import { describe, expect, it } from 'vitest'
 
 import { baseConfig } from './index.js'
@@ -13,13 +12,18 @@ function stripComments(source: string): string {
 }
 
 describe('stryker config parity', () => {
-  it('matches the existing portable agent-stryker base config', () => {
-    expect(baseConfig).toEqual(upstreamBaseConfig)
+  it('keeps the canonical portable stryker base config shape', () => {
+    expect(baseConfig).toMatchObject({
+      packageManager: 'pnpm',
+      testRunner: 'vitest',
+      ignoreStatic: true,
+      thresholds: { high: 85, low: 80, break: 75 },
+    })
   })
 
   it('matches the existing Webpresso-only preset behavior', () => {
     expect(webpressoConfig).toEqual({
-      ...upstreamBaseConfig,
+      ...baseConfig,
       ignorePatterns: ['/.webpresso/**'],
     })
     expect(webpressoConfig.ignorePatterns).toEqual(['/.webpresso/**'])

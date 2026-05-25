@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import {
   scaffoldAgentHooks,
-  trustCodexAgentKitHooksForRepo,
+  trustCodexWebpressoHooksForRepo,
   type CodexTrustSyncWarning,
 } from './index.js'
 
@@ -94,7 +94,7 @@ describe('codex app-server trust integration', () => {
       }),
     })
 
-    await trustCodexAgentKitHooksForRepo({
+    await trustCodexWebpressoHooksForRepo({
       repoRoot,
       options: {},
       createCodexAppServer: async () => ({

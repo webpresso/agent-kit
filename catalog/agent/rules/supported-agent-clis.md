@@ -14,7 +14,7 @@ paths:
 
 # Supported Agent CLIs
 
-agent-kit and webpresso ship building blocks for AI coding-agent CLIs. We
+webpresso ships building blocks for AI coding-agent CLIs. We
 support a fixed set of CLIs at a defined tier. Plans, benchmarks, docs, and
 plugins MUST honor this tier list. Do not add a CLI without tier classification.
 
@@ -22,14 +22,14 @@ plugins MUST honor this tier list. Do not add a CLI without tier classification.
 
 | CLI | Provider model | Why Tier 1 |
 |---|---|---|
-| **Claude Code** (`claude`) | Anthropic | agent-kit's native plugin runtime; primary consumer (ozby/ingest-lens) uses it |
+| **Claude Code** (`claude`) | Anthropic | webpresso's native plugin runtime; primary consumer (ozby/ingest-lens) uses it |
 | **Codex CLI** (`codex`) | OpenAI (configurable) | Already integrated via `/codex` skill for second-opinion review; widely used by webpresso engineers |
 
 Tier 1 requirements:
 - Per-call token-usage extraction (stream-json or equivalent)
 - Plugin/extension surface with isolatable scope (`--plugin-dir`, etc.)
 - Reproducible session lifecycle (`--no-session-persistence` or equivalent)
-- Tested in CI for every relevant agent-kit release
+- Tested in CI for every relevant webpresso release
 
 ## Tier 2 — fairly well, best-effort (P1)
 

@@ -2,12 +2,12 @@
  * Package-manager detection for the auto-update installer.
  *
  * Returns the `{manager, command}` tuple that the installer can use to
- * re-install `@webpresso/agent-kit` globally, OR returns `{abort: <reason>}`
+ * re-install `webpresso` globally, OR returns `{abort: <reason>}`
  * when no safe install command can be inferred (e.g. devDep install, Volta
  * shim, unknown manager). The caller turns `abort` into a notify-only outcome.
  *
  * Detection priority:
- *   0. Source/git install — argv1 resolves into the webpresso/agent-kit clone
+ *   0. Source/git install — argv1 resolves into the webpresso/webpresso clone
  *      → `git -C <repo> pull` (works for symlink dev installs).
  *   1. `process.env.npm_config_user_agent` — most reliable; set by the
  *      manager whenever the CLI is launched via the manager's run wrapper.
@@ -20,8 +20,8 @@
 import { execFileSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { delimiter, dirname, sep } from 'node:path';
-export const GH_PACKAGE_NAME = '@webpresso/agent-kit';
-export const GH_PACKAGES_REGISTRY = 'https://npm.pkg.github.com';
+export const GH_PACKAGE_NAME = 'webpresso';
+export const GH_PACKAGES_REGISTRY = 'https://registry.npmjs.org';
 const VP_INSTALL_COMMAND = [
     'vp',
     'install',
@@ -39,7 +39,7 @@ const INSTALL_COMMANDS = {
     vp: VP_INSTALL_COMMAND,
 };
 /**
- * Detect whether argv1 is a symlink pointing into the webpresso/agent-kit
+ * Detect whether argv1 is a symlink pointing into the webpresso/webpresso
  * source clone. Returns the git worktree root if so, null otherwise.
  * Exported for testability.
  */
@@ -56,7 +56,7 @@ export function detectGitInstall(argv1) {
             encoding: 'utf-8',
             stdio: ['ignore', 'pipe', 'ignore'],
         }).trim();
-        if (remote.includes('webpresso/agent-kit'))
+        if (remote.includes('webpresso/webpresso'))
             return topLevel;
     }
     catch {

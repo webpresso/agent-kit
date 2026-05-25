@@ -54,9 +54,7 @@ describe('scaffoldBaseKit', () => {
     >
     expect((pkg['engines'] as Record<string, string>)['node']).toBe('>=24')
     expect(pkg['packageManager']).toBe('pnpm@11.1.1')
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
-      'latest',
-    )
+    expect((pkg['devDependencies'] as Record<string, string>)['webpresso']).toBe('latest')
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
   })
 
@@ -65,7 +63,7 @@ describe('scaffoldBaseKit', () => {
     const initial = {
       name: 'consumer-app',
       scripts: { test: 'vitest' },
-      devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
+      devDependencies: { webpresso: '^0.2.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
 
@@ -73,20 +71,18 @@ describe('scaffoldBaseKit', () => {
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
-      '^0.2.0',
-    )
+    expect((pkg['devDependencies'] as Record<string, string>)['webpresso']).toBe('^0.2.0')
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
     expect((pkg['scripts'] as Record<string, string>)['test']).toBe('vitest')
   })
 
-  it('preserves consumer-owned setup:agent and existing agent-kit devDependency', () => {
+  it('preserves consumer-owned setup:agent and existing webpresso devDependency', () => {
     const pkgPath = join(repoRoot, 'package.json')
     mkdirSync(repoRoot, { recursive: true })
     const initial = {
       name: 'consumer-app',
       scripts: { 'setup:agent': 'vp exec wp setup' },
-      devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
+      devDependencies: { webpresso: '^0.2.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
 
@@ -95,15 +91,13 @@ describe('scaffoldBaseKit', () => {
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('vp exec wp setup')
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
-      '^0.2.0',
-    )
+    expect((pkg['devDependencies'] as Record<string, string>)['webpresso']).toBe('^0.2.0')
   })
 
-  it('does not inject a local agent-kit devDependency when the repo opts into globalInstall', () => {
+  it('does not inject a local webpresso devDependency when the repo opts into globalInstall', () => {
     const pkgPath = join(repoRoot, 'package.json')
     writeFileSync(
-      join(repoRoot, '.agent-kitrc.json'),
+      join(repoRoot, '.webpressorc.json'),
       JSON.stringify({
         version: '1',
         installed: { tier3Skills: [] },
@@ -120,7 +114,7 @@ describe('scaffoldBaseKit', () => {
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
     expect(
-      (pkg['devDependencies'] as Record<string, string> | undefined)?.['@webpresso/agent-kit'],
+      (pkg['devDependencies'] as Record<string, string> | undefined)?.['webpresso'],
     ).toBeUndefined()
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
   })
@@ -133,7 +127,7 @@ describe('scaffoldBaseKit', () => {
       packageManager: 'pnpm@11.5.0',
       engines: { node: '>=24' },
       scripts: { 'setup:agent': 'wp setup' },
-      devDependencies: { '@webpresso/agent-kit': '^0.18.0' },
+      devDependencies: { webpresso: '^0.18.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
 
@@ -167,17 +161,15 @@ describe('scaffoldBaseKit', () => {
     expect(readFileSync(wsPath, 'utf8')).toBe(consumerOwned)
   })
 
-  it('skips self-install fields in the agent-kit repo itself', () => {
+  it('skips self-install fields in the webpresso repo itself', () => {
     const pkgPath = join(repoRoot, 'package.json')
-    writeFileSync(pkgPath, JSON.stringify({ name: '@webpresso/agent-kit', private: true }, null, 2))
+    writeFileSync(pkgPath, JSON.stringify({ name: 'webpresso', private: true }, null, 2))
 
     const catalogDir = resolveCatalogDir()
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
-    expect(
-      (pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit'],
-    ).toBeUndefined()
+    expect((pkg['devDependencies'] as Record<string, string>)['webpresso']).toBeUndefined()
     expect(pkg['scripts']).toBeUndefined()
   })
 

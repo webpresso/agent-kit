@@ -20,11 +20,11 @@ duplicate it. This rule exists to preserve the same routing in plain repo
 contexts where no injected routing block is present.
 
 Use `rtk *` for shell-tool output filtering on the long-tail command surface
-that agent-kit and context-mode do not own.
+that webpresso and context-mode do not own.
 
 ## Ownership boundary
 
-- agent-kit owns `wp_*` dev-workflow routing and MCP-shaped deny wording
+- webpresso owns `wp_*` dev-workflow routing and MCP-shaped deny wording
 - context-mode owns `ctx_*` nudging when that plugin is installed
 - rtk owns shell-tool output filtering for the long-tail surface (`git`, `gh`,
   `kubectl`, `cargo`, `pytest`, `ruff`, and similar non-quality-engine tools)
@@ -33,7 +33,7 @@ that agent-kit and context-mode do not own.
 
 ## Hard rules
 
-- Never reimplement upstream rtk filters in agent-kit.
+- Never reimplement upstream rtk filters in webpresso.
 - Never wrap the `rtk` prefix behind `wp rtk`.
 - Keep `wp_*`, `ctx_*`, and `rtk *` as independent lanes.
 

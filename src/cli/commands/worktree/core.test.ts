@@ -132,7 +132,7 @@ describe('formatWorktreeList', () => {
 describe('resolveNewWorktreeTarget', () => {
   it('generates a branch and sibling path when no branch is provided', () => {
     const target = resolveNewWorktreeTarget({
-      repoRoot: '/repos/agent-kit',
+      repoRoot: '/repos/webpresso',
       now: new Date('2026-05-13T14:27:00'),
       randomSuffix: () => 'x9k',
       existingEntries: [],
@@ -141,7 +141,7 @@ describe('resolveNewWorktreeTarget', () => {
 
     expect(target).toStrictEqual({
       branch: 'agent/2026-05-13-1427-x9k',
-      path: '/repos/agent-kit-agent-2026-05-13-1427-x9k',
+      path: '/repos/webpresso-agent-2026-05-13-1427-x9k',
       generated: true,
     })
   })
@@ -149,7 +149,7 @@ describe('resolveNewWorktreeTarget', () => {
   it('uses --name as a human-friendly branch slug with the default prefix', () => {
     const target = resolveNewWorktreeTarget({
       name: 'Fix Login Flow',
-      repoRoot: '/repos/agent-kit',
+      repoRoot: '/repos/webpresso',
       now: new Date('2026-05-13T14:27:00'),
       randomSuffix: () => 'unused',
       existingEntries: [],
@@ -158,7 +158,7 @@ describe('resolveNewWorktreeTarget', () => {
 
     expect(target).toStrictEqual({
       branch: 'agent/fix-login-flow',
-      path: '/repos/agent-kit-agent-fix-login-flow',
+      path: '/repos/webpresso-agent-fix-login-flow',
       generated: true,
     })
   })
@@ -166,7 +166,7 @@ describe('resolveNewWorktreeTarget', () => {
   it('honors --prefix for generated branches', () => {
     const target = resolveNewWorktreeTarget({
       prefix: 'ralph',
-      repoRoot: '/repos/agent-kit',
+      repoRoot: '/repos/webpresso',
       now: new Date('2026-05-13T14:27:00'),
       randomSuffix: () => 'q2w',
       existingEntries: [],
@@ -174,18 +174,18 @@ describe('resolveNewWorktreeTarget', () => {
     })
 
     expect(target.branch).toBe('ralph/2026-05-13-1427-q2w')
-    expect(target.path).toBe('/repos/agent-kit-ralph-2026-05-13-1427-q2w')
+    expect(target.path).toBe('/repos/webpresso-ralph-2026-05-13-1427-q2w')
   })
 
   it('retries generated names when the branch or default path collides', () => {
     const suffixes = ['aaa', 'bbb']
     const target = resolveNewWorktreeTarget({
-      repoRoot: '/repos/agent-kit',
+      repoRoot: '/repos/webpresso',
       now: new Date('2026-05-13T14:27:00'),
       randomSuffix: () => suffixes.shift() ?? 'ccc',
       existingEntries: [
         {
-          path: '/repos/agent-kit-agent-2026-05-13-1427-aaa',
+          path: '/repos/webpresso-agent-2026-05-13-1427-aaa',
           head: 'abc',
           branch: null,
           bare: false,
@@ -196,7 +196,7 @@ describe('resolveNewWorktreeTarget', () => {
 
     expect(target).toStrictEqual({
       branch: 'agent/2026-05-13-1427-bbb',
-      path: '/repos/agent-kit-agent-2026-05-13-1427-bbb',
+      path: '/repos/webpresso-agent-2026-05-13-1427-bbb',
       generated: true,
     })
   })
@@ -204,7 +204,7 @@ describe('resolveNewWorktreeTarget', () => {
   it('retries --name targets when the friendly branch already exists', () => {
     const target = resolveNewWorktreeTarget({
       name: 'Fix Login Flow',
-      repoRoot: '/repos/agent-kit',
+      repoRoot: '/repos/webpresso',
       randomSuffix: () => 'r2d',
       existingEntries: [],
       branchExists: (branch) => branch === 'agent/fix-login-flow',
@@ -212,7 +212,7 @@ describe('resolveNewWorktreeTarget', () => {
 
     expect(target).toStrictEqual({
       branch: 'agent/fix-login-flow-r2d',
-      path: '/repos/agent-kit-agent-fix-login-flow-r2d',
+      path: '/repos/webpresso-agent-fix-login-flow-r2d',
       generated: true,
     })
   })
@@ -222,7 +222,7 @@ describe('resolveNewWorktreeTarget', () => {
       resolveNewWorktreeTarget({
         branch: 'feat/auth',
         name: 'auth',
-        repoRoot: '/repos/agent-kit',
+        repoRoot: '/repos/webpresso',
       }),
     ).toThrow('Use either <branch> or --name, not both.')
   })
@@ -230,7 +230,7 @@ describe('resolveNewWorktreeTarget', () => {
   it('fails loudly when generated branch/path candidates keep colliding', () => {
     expect(() =>
       resolveNewWorktreeTarget({
-        repoRoot: '/repos/agent-kit',
+        repoRoot: '/repos/webpresso',
         now: new Date('2026-05-13T14:27:00'),
         randomSuffix: () => 'aaa',
         branchExists: () => true,
@@ -241,7 +241,7 @@ describe('resolveNewWorktreeTarget', () => {
   it('keeps explicit branch behavior stable', () => {
     const target = resolveNewWorktreeTarget({
       branch: 'feat/auth',
-      repoRoot: '/repos/agent-kit',
+      repoRoot: '/repos/webpresso',
       explicitPath: '/tmp/auth-worktree',
       now: new Date('2026-05-13T14:27:00'),
       randomSuffix: () => 'unused',

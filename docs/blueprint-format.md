@@ -64,7 +64,7 @@ max_parallel_agents: 3
 ---
 ```
 
-Full schema lives in `@webpresso/agent-kit/blueprint` as a Zod schema
+Full schema lives in `webpresso/blueprint` as a Zod schema
 (`planFrontmatterSchema`). The CLI validates frontmatter on every
 `wp blueprint audit` run.
 
@@ -215,7 +215,7 @@ import {
   type Task,
   type Phase,
   planFrontmatterSchema,
-} from '@webpresso/agent-kit/blueprint'
+} from 'webpresso/blueprint'
 
 const parsed = parseBlueprint(await readFile(overviewPath, 'utf-8'))
 // parsed: { frontmatter, tasks, phases, acceptanceCriteria, ... }
@@ -227,7 +227,7 @@ For lifecycle transitions:
 import {
   applyBlueprintLifecycle,
   applyBlueprintLifecycleToFile,
-} from '@webpresso/agent-kit/blueprint/local'
+} from 'webpresso/blueprint/local'
 
 await applyBlueprintLifecycleToFile(overviewPath, { type: 'start' })
 // Updates frontmatter status and task[0].status; rewrites the file.

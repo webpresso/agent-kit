@@ -48,9 +48,9 @@ capture. Chosen properties:
 ## Goals
 
 - Add `src/hello.ts` exporting a single function `hello(): string` that
-  returns `'hello, agent-kit'`.
+  returns `'hello, webpresso'`.
 - Add a matching `src/hello.test.ts` that asserts the return value
-  exactly via `toStrictEqual` (no weak assertions per the agent-kit
+  exactly via `toStrictEqual` (no weak assertions per the webpresso
   testing convention).
 - `pnpm test src/hello.test.ts` exits 0.
 
@@ -70,7 +70,7 @@ capture. Chosen properties:
 **Depends:** None
 
 Create `src/hello.ts` with a single exported function `hello()` that
-returns the literal string `'hello, agent-kit'`. Add a colocated
+returns the literal string `'hello, webpresso'`. Add a colocated
 `src/hello.test.ts` asserting the return value via `toStrictEqual`.
 
 **Files:**
@@ -85,7 +85,7 @@ returns the literal string `'hello, agent-kit'`. Add a colocated
 
    describe('hello', () => {
      it('returns the deterministic greeting', () => {
-       expect(hello()).toStrictEqual('hello, agent-kit')
+       expect(hello()).toStrictEqual('hello, webpresso')
      })
    })
    ```
@@ -93,7 +93,7 @@ returns the literal string `'hello, agent-kit'`. Add a colocated
 3. Write `hello.ts`:
    ```ts
    export function hello(): string {
-     return 'hello, agent-kit'
+     return 'hello, webpresso'
    }
    ```
 4. `pnpm test src/hello.test.ts` — verify PASS.

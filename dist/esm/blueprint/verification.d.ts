@@ -79,12 +79,12 @@ export declare function writeVerification(options: WriteVerificationOptions): Pr
  * ```text
  * **Verification:**
  *
- * ```agent-kit-evidence-v1
+ * ```webpresso-evidence-v1
  * [<canonical-json-evidence-array>]
  * ```
  * ```
  *
- * The fenced block uses a custom language tag (`agent-kit-evidence-v1`) so
+ * The fenced block uses a custom language tag (`webpresso-evidence-v1`) so
  * future versions can introduce parallel formats without conflicting with
  * existing tools' fence-language detection.
  */

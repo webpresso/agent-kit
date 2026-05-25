@@ -9,14 +9,15 @@ related: []
 created: '2026-05-07'
 last_reviewed: '2026-05-07'
 name: hooks-doctor
-description: Verify the agent-kit plugin hooks installation is healthy. Run after install, when hooks seem broken, or when debugging plugin integration issues. Triggers on `/webpresso-agent-kit:hooks-doctor`, "doctor", "verify hooks", "check plugin", "hooks broken", "plugin not working", "wp hooks doctor".
+description: Verify the webpresso plugin hooks installation is healthy. Run after install, when hooks seem broken, or when debugging plugin integration issues. Triggers on `/webpresso:hooks-doctor`, "doctor", "verify hooks", "check plugin", "hooks broken", "plugin not working", "wp hooks doctor".
 argument-hint: '[--skip-mcp]'
-allowed-tools: Bash
+allowed-tools:
+  - Bash
 ---
 
 # Hooks Doctor
 
-Verify the agent-kit plugin hooks installation is healthy. Run this first when:
+Verify the webpresso plugin hooks installation is healthy. Run this first when:
 - A hook seems not to be firing
 - The plugin was just installed or updated
 - Claude Code can't find expected tools
@@ -57,9 +58,9 @@ Each check prints `[x]` (pass) or `[ ]` (fail) with a detail line:
 |-------|-------------|-----|
 | `pretool-guard` / `post-tool` / etc. — not found | `pnpm build` not run after install | `pnpm build` |
 | `pretool-guard` / etc. — not executable | `chmod +x` not persisted | Re-run `pnpm prepare` or `pnpm build` which runs `chmod-bins` |
-| `plugin.json integrity` — missing | `.claude-plugin/plugin.json` absent | Reinstall plugin: `claude plugin install @webpresso/agent-kit --scope user` |
+| `plugin.json integrity` — missing | `.claude-plugin/plugin.json` absent | Reinstall plugin: `claude plugin install webpresso@webpresso --scope user` |
 | `MCP server liveness` — timeout | MCP server cold-start too slow | Wait and retry, or run `wp hooks doctor --skip-mcp` |
-| Any check — not found at `dist/esm/...` | Build artifacts missing | Run `pnpm build` in the agent-kit repo |
+| Any check — not found at `dist/esm/...` | Build artifacts missing | Run `pnpm build` in the webpresso repo |
 
 After fixing, re-run `wp hooks doctor` to confirm.
 

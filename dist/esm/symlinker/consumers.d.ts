@@ -11,7 +11,7 @@
  *   - Codex skills: `.agents/skills/` (plus user/global roots), covered by
  *     DEFAULT_UNIFIED_CONSUMERS. `.codex/agents/` is not a skill root.
  *   - Claude Code skills: `.claude/skills/` and plugin distribution.
- *   - Cursor / Windsurf: agent-kit-localskills-distribution (localskills.sh)
+ *   - Cursor / Windsurf: webpresso-localskills-distribution (localskills.sh)
  *     plus copied rules/skills below where the tools need project files.
  *   - OpenCode skills: `.opencode/skills/`, `.claude/skills/`, and
  *     `.agents/skills/`. Agent-kit writes `.agents/skills/` and `.claude/skills/`

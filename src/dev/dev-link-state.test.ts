@@ -34,18 +34,18 @@ describe('readDevLinkState', () => {
   it('parses a complete state file', () => {
     const consumer = createTempRoot()
     writeState(consumer, {
-      package: '@webpresso/agent-kit',
-      linkedFrom: '/abs/path/to/agent-kit',
+      package: 'webpresso',
+      linkedFrom: '/abs/path/to/webpresso',
       linkedAt: '2026-05-10T18:34:45.281Z',
-      agentKitVersion: '0.9.0',
+      webpressoVersion: '0.9.0',
       note: 'whatever',
     })
 
     expect(readDevLinkState(consumer)).toEqual({
-      package: '@webpresso/agent-kit',
-      linkedFrom: '/abs/path/to/agent-kit',
+      package: 'webpresso',
+      linkedFrom: '/abs/path/to/webpresso',
       linkedAt: '2026-05-10T18:34:45.281Z',
-      agentKitVersion: '0.9.0',
+      webpressoVersion: '0.9.0',
       note: 'whatever',
     })
   })
@@ -57,7 +57,7 @@ describe('readDevLinkState', () => {
       package: 'pkg',
       linkedFrom: '/x',
       linkedAt: undefined,
-      agentKitVersion: undefined,
+      webpressoVersion: undefined,
       note: undefined,
     })
   })
@@ -102,7 +102,7 @@ describe('readDevLinkState', () => {
       package: 'pkg',
       linkedFrom: '/x',
       linkedAt: 12345,
-      agentKitVersion: false,
+      webpressoVersion: false,
       note: { not: 'a string' },
     })
 
@@ -110,7 +110,7 @@ describe('readDevLinkState', () => {
       package: 'pkg',
       linkedFrom: '/x',
       linkedAt: undefined,
-      agentKitVersion: undefined,
+      webpressoVersion: undefined,
       note: undefined,
     })
   })

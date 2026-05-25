@@ -10,7 +10,7 @@ import { assertNonWorkersVitest4 } from './version-guard.js'
 
 assertNonWorkersVitest4({ caller: 'webpressoNodeConfig' })
 
-// Route bun:sqlite → better-sqlite3 shim so Node-based vitest can load `@webpresso/agent-kit/blueprint`.
+// Route bun:sqlite → better-sqlite3 shim so Node-based vitest can load `webpresso/blueprint`.
 const bunSqliteAlias = [
   {
     find: /^bun:sqlite$/,

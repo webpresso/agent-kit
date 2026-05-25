@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isAgentKitOwnedCodexHook, KNOWN_AGENT_KIT_CODEX_BINS } from './codex-ownership.js'
+import { isWebpressoOwnedCodexHook, KNOWN_WEBPRESSO_CODEX_BINS } from './codex-ownership.js'
 
 const EXPECTED_SOURCE_PATHS = ['/repo/.codex/hooks.json', '/repo/.codex/extra-hooks.json'] as const
 
@@ -15,11 +15,11 @@ function ownedHook(overrides: Record<string, unknown> = {}): Record<string, unkn
   }
 }
 
-describe('isAgentKitOwnedCodexHook', () => {
-  it('accepts unmanaged command hooks from expected source paths that directly target current agent-kit bins', () => {
-    for (const binName of KNOWN_AGENT_KIT_CODEX_BINS) {
+describe('isWebpressoOwnedCodexHook', () => {
+  it('accepts unmanaged command hooks from expected source paths that directly target current webpresso bins', () => {
+    for (const binName of KNOWN_WEBPRESSO_CODEX_BINS) {
       expect(
-        isAgentKitOwnedCodexHook(
+        isWebpressoOwnedCodexHook(
           ownedHook({ command: `./node_modules/.bin/${binName}` }),
           EXPECTED_SOURCE_PATHS,
         ),
@@ -29,7 +29,7 @@ describe('isAgentKitOwnedCodexHook', () => {
 
   it('accepts quoted absolute node_modules bin paths', () => {
     expect(
-      isAgentKitOwnedCodexHook(
+      isWebpressoOwnedCodexHook(
         ownedHook({ command: '"/repo/node_modules/.bin/wp-post-tool"' }),
         EXPECTED_SOURCE_PATHS,
       ),
@@ -38,7 +38,7 @@ describe('isAgentKitOwnedCodexHook', () => {
 
   it('accepts guarded absolute node_modules bin commands', () => {
     expect(
-      isAgentKitOwnedCodexHook(
+      isWebpressoOwnedCodexHook(
         ownedHook({
           command:
             '[ -x "/repo/node_modules/.bin/wp-post-tool" ] && "/repo/node_modules/.bin/wp-post-tool" || true',
@@ -50,13 +50,13 @@ describe('isAgentKitOwnedCodexHook', () => {
 
   it('rejects arbitrary Bash and Python hook commands', () => {
     expect(
-      isAgentKitOwnedCodexHook(
+      isWebpressoOwnedCodexHook(
         ownedHook({ command: 'bash .codex/hooks/pre-tool.sh' }),
         EXPECTED_SOURCE_PATHS,
       ),
     ).toBe(false)
     expect(
-      isAgentKitOwnedCodexHook(
+      isWebpressoOwnedCodexHook(
         ownedHook({ command: 'python .codex/hooks/post-tool.py' }),
         EXPECTED_SOURCE_PATHS,
       ),
@@ -64,15 +64,15 @@ describe('isAgentKitOwnedCodexHook', () => {
   })
 
   it('rejects managed hooks, non-command handlers, and plugin-owned hooks', () => {
-    expect(isAgentKitOwnedCodexHook(ownedHook({ isManaged: true }), EXPECTED_SOURCE_PATHS)).toBe(
+    expect(isWebpressoOwnedCodexHook(ownedHook({ isManaged: true }), EXPECTED_SOURCE_PATHS)).toBe(
       false,
     )
     expect(
-      isAgentKitOwnedCodexHook(ownedHook({ handlerType: 'python' }), EXPECTED_SOURCE_PATHS),
+      isWebpressoOwnedCodexHook(ownedHook({ handlerType: 'python' }), EXPECTED_SOURCE_PATHS),
     ).toBe(false)
     expect(
-      isAgentKitOwnedCodexHook(
-        ownedHook({ pluginId: 'webpresso.agent-kit' }),
+      isWebpressoOwnedCodexHook(
+        ownedHook({ pluginId: 'webpresso.webpresso' }),
         EXPECTED_SOURCE_PATHS,
       ),
     ).toBe(false)
@@ -80,40 +80,40 @@ describe('isAgentKitOwnedCodexHook', () => {
 
   it('rejects metadata without the required unmanaged plugin-null shape', () => {
     expect(
-      isAgentKitOwnedCodexHook(ownedHook({ isManaged: undefined }), EXPECTED_SOURCE_PATHS),
+      isWebpressoOwnedCodexHook(ownedHook({ isManaged: undefined }), EXPECTED_SOURCE_PATHS),
     ).toBe(false)
     expect(
-      isAgentKitOwnedCodexHook(ownedHook({ pluginId: undefined }), EXPECTED_SOURCE_PATHS),
+      isWebpressoOwnedCodexHook(ownedHook({ pluginId: undefined }), EXPECTED_SOURCE_PATHS),
     ).toBe(false)
   })
 
   it('rejects unrelated source paths and missing commands', () => {
     expect(
-      isAgentKitOwnedCodexHook(
+      isWebpressoOwnedCodexHook(
         ownedHook({ sourcePath: '/tmp/unrelated/hooks.json' }),
         EXPECTED_SOURCE_PATHS,
       ),
     ).toBe(false)
-    expect(isAgentKitOwnedCodexHook(ownedHook({ command: undefined }), EXPECTED_SOURCE_PATHS)).toBe(
-      false,
-    )
+    expect(
+      isWebpressoOwnedCodexHook(ownedHook({ command: undefined }), EXPECTED_SOURCE_PATHS),
+    ).toBe(false)
   })
 
-  it('rejects commands that do not directly target known agent-kit node_modules bins', () => {
+  it('rejects commands that do not directly target known webpresso node_modules bins', () => {
     expect(
-      isAgentKitOwnedCodexHook(
+      isWebpressoOwnedCodexHook(
         ownedHook({ command: './node_modules/.bin/wp' }),
         EXPECTED_SOURCE_PATHS,
       ),
     ).toBe(false)
     expect(
-      isAgentKitOwnedCodexHook(
+      isWebpressoOwnedCodexHook(
         ownedHook({ command: './node_modules/.bin/wp-test-quality-check' }),
         EXPECTED_SOURCE_PATHS,
       ),
     ).toBe(false)
     expect(
-      isAgentKitOwnedCodexHook(
+      isWebpressoOwnedCodexHook(
         ownedHook({ command: 'echo ./node_modules/.bin/wp-pretool-guard' }),
         EXPECTED_SOURCE_PATHS,
       ),
@@ -121,8 +121,8 @@ describe('isAgentKitOwnedCodexHook', () => {
   })
 
   it('rejects malformed metadata and empty expected source allowlists', () => {
-    expect(isAgentKitOwnedCodexHook(null, EXPECTED_SOURCE_PATHS)).toBe(false)
-    expect(isAgentKitOwnedCodexHook('not metadata', EXPECTED_SOURCE_PATHS)).toBe(false)
-    expect(isAgentKitOwnedCodexHook(ownedHook(), [])).toBe(false)
+    expect(isWebpressoOwnedCodexHook(null, EXPECTED_SOURCE_PATHS)).toBe(false)
+    expect(isWebpressoOwnedCodexHook('not metadata', EXPECTED_SOURCE_PATHS)).toBe(false)
+    expect(isWebpressoOwnedCodexHook(ownedHook(), [])).toBe(false)
   })
 })

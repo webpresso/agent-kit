@@ -1,14 +1,14 @@
 /**
  * Soft compatibility preflight for `wp setup`.
  *
- * Checks the 5-point compatibility matrix from docs/is-agent-kit-for-me.md.
+ * Checks the 5-point compatibility matrix from docs/is-webpresso-for-me.md.
  * In non-strict mode: warns and continues. In strict mode: aborts on mismatch.
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { resolveBlueprintRoot } from '#utils/blueprint-root';
-export const DOCS_URL = 'https://github.com/webpresso/agent-kit/blob/main/docs/is-agent-kit-for-me.md';
+export const DOCS_URL = 'https://github.com/webpresso/webpresso/blob/main/docs/is-webpresso-for-me.md';
 /**
  * Returns the major version number from a semver string like "24.0.0" or "v24.0.0".
  * Returns null when the string is not parseable.

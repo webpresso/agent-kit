@@ -1,5 +1,5 @@
 /**
- * Stable subpath export: `@webpresso/agent-kit/lint`.
+ * Stable subpath export: `webpresso/lint`.
  *
  * Exposes a framework-friendly `runLint` runner that uses the `vp lint`
  * facade. Mirrors the semantics of the `wp_lint` MCP tool but returns a

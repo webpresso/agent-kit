@@ -1,5 +1,5 @@
 /**
- * Contract-safe `@webpresso/agent-launch` public surface.
+ * Contract-safe `webpresso/launch` public surface.
  *
  * This package defines generic, host-agnostic launch primitives. Host
  * adapters (e.g. the Neon-backed provisioner in `@webpresso/cli-utils`)

@@ -30,7 +30,7 @@ import typecheckTool from './typecheck.js'
 
 const inputSchema = z.object({
   // Forwarded to all three sub-tools so cross-repo invocation works (e.g.
-  // run agent-kit's QA from a session launched in monorepo).
+  // run webpresso's QA from a session launched in monorepo).
   cwd: z.string().optional(),
   // Forwarded to `wp_lint.files` and `wp_test.files` so a scoped QA on
   // changed files is possible. `wp_typecheck` ignores files (it operates on

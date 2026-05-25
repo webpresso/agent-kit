@@ -9,14 +9,14 @@ import { readConfig } from '#cli/commands/init/config';
 import { readPackageJson } from '#cli/commands/init/detect-consumer';
 function detectMode(repoRoot) {
     const pkg = readPackageJson(repoRoot).info;
-    if (pkg?.name === '@webpresso/agent-kit') {
+    if (pkg?.name === 'webpresso') {
         return {
             mode: 'self',
             sourceRoot: join(repoRoot, 'catalog', 'agent', 'rules'),
         };
     }
-    const installedPackageJsonPath = join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'package.json');
-    const installedRulesRoot = join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'rules');
+    const installedPackageJsonPath = join(repoRoot, 'node_modules', 'webpresso', 'package.json');
+    const installedRulesRoot = join(repoRoot, 'node_modules', 'webpresso', 'catalog', 'agent', 'rules');
     if (existsSync(installedPackageJsonPath) && existsSync(installedRulesRoot)) {
         return {
             mode: 'consumer',
@@ -68,7 +68,7 @@ function resolveCurrentPackageRoot() {
             break;
         dir = parent;
     }
-    throw new Error('wp init: could not locate the agent-kit package root for claude-rules fallback.');
+    throw new Error('wp init: could not locate the webpresso package root for claude-rules fallback.');
 }
 export function scaffoldClaudeRules(input) {
     const { repoRoot, options } = input;

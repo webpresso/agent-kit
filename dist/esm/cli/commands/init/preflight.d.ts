@@ -3,7 +3,7 @@ export interface PreflightResult {
     score: number;
     warnings: readonly string[];
 }
-export declare const DOCS_URL = "https://github.com/webpresso/agent-kit/blob/main/docs/is-agent-kit-for-me.md";
+export declare const DOCS_URL = "https://github.com/webpresso/webpresso/blob/main/docs/is-webpresso-for-me.md";
 /**
  * Run the 5-point compatibility preflight.
  *

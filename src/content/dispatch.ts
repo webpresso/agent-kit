@@ -215,7 +215,7 @@ async function handleDeprecate(args: HandlerArgs): Promise<DispatchResult> {
       stdout: '',
       stderr:
         `Cannot deprecate ${args.kind} ${slug}: not found in consumer at ${filePath}. ` +
-        `Canonical (catalog) entries are owned by the agent-kit package.`,
+        `Canonical (catalog) entries are owned by the webpresso package.`,
     }
   }
 

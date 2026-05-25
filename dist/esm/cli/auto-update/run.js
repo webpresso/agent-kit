@@ -2,7 +2,7 @@
  * Auto-update orchestrator.
  *
  * `runUpdateFlow(version)` is the single entry point called from bootstrap.ts.
- * It checks GitHub Releases for a newer version of @webpresso/agent-kit and,
+ * It checks the npm registry for a newer version of webpresso and,
  * when one is available:
  *   1. Writes a cache entry to the state root (read by the SessionStart banner).
  *   2. Prints a one-line update notice to stderr.
@@ -11,11 +11,8 @@
  * The function NEVER throws — all errors are sunk to logUpdateError per D13.
  *
  * ## Registry note
- * Version checks use the GitHub Releases API (public, no auth) rather than
- * the npm registry. The @webpresso/agent-kit package is on GitHub Packages
- * (private registry), so update-notifier's default npm-registry probe would
- * always return 404. GitHub Releases are public for the webpresso/agent-kit
- * repo regardless of the npm registry visibility.
+ * Version checks use the npm registry for the canonical public `webpresso`
+ * package.
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -24,7 +21,7 @@ import { detect } from './detect-pm.js';
 import { scheduleDeferredInstall } from './installer.js';
 import { logUpdateError } from './log.js';
 import { shouldSkipAutoInstall } from './skip.js';
-const GH_NPM_URL = 'https://npm.pkg.github.com/@webpresso%2fagent-kit';
+const GH_NPM_URL = 'https://registry.npmjs.org/webpresso';
 const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
 const CACHE_FILENAME = 'update-notifier-cache.json';
 async function readCache(cachePath) {

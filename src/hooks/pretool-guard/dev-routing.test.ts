@@ -113,8 +113,11 @@ describe('routeCommand', () => {
     for (const [command, tool] of [
       ['corepack pnpm@10 --dir apps/e2e exec playwright test', 'wp_e2e'],
       ['corepack pnpm --dir apps/e2e playwright test', 'wp_e2e'],
-      ['pnpm --filter @webpresso/agent-kit vitest run src/hooks/pretool-guard/dev-routing.test.ts', 'wp_test'],
-      ['vp --filter @webpresso/agent-kit exec vitest run src/hooks/pretool-guard/dev-routing.test.ts', 'wp_test'],
+      ['pnpm --filter webpresso vitest run src/hooks/pretool-guard/dev-routing.test.ts', 'wp_test'],
+      [
+        'vp --filter webpresso exec vitest run src/hooks/pretool-guard/dev-routing.test.ts',
+        'wp_test',
+      ],
     ] as const) {
       const result = routeCommand(command)
       expect(result?.action.action).toBe('deny')
@@ -290,12 +293,12 @@ describe('routeCommand', () => {
       tool_name: 'context-mode.ctx_execute',
       tool_input: {
         language: 'javascript',
-        code: "execFileSync('vp',['run','--filter=@webpresso/agent-kit','test','src/audit/gitignore-agent-surfaces.test.ts'])",
+        code: "execFileSync('vp',['run','--filter=webpresso','test','src/audit/gitignore-agent-surfaces.test.ts'])",
       },
     })
 
     expect(commands).toContain(
-      'vp run --filter=@webpresso/agent-kit test src/audit/gitignore-agent-surfaces.test.ts',
+      'vp run --filter=webpresso test src/audit/gitignore-agent-surfaces.test.ts',
     )
     const result = routeCommand(commands[0] ?? '')
     expect(result?.action.action).toBe('deny')
@@ -309,7 +312,7 @@ describe('routeCommand', () => {
     for (const [code, expectedCommand, expectedTool] of [
       [
         [
-          'cd /Users/ozby/repos/webpresso/_worktrees/agent-kit-secret-aware-mcp && vp run test -- \\',
+          'cd /Users/ozby/repos/webpresso/_worktrees/webpresso-secret-aware-mcp && vp run test -- \\',
           '  src/secret-gate/runner.test.ts src/ci/act-helper.test.ts \\',
           '  src/mcp/tools/ci-act.test.ts src/mcp/tools/worker-tail.test.ts \\',
           '  src/hooks/pretool-guard/dev-routing.test.ts',
@@ -378,11 +381,11 @@ describe('routeCommand', () => {
     const commands = extractRoutableCommandsFromToolInput({
       tool_name: 'mcp__context_mode__ctx_batch_execute',
       tool_input: {
-        commands: [{ label: 'tests', command: 'vp run --filter=@webpresso/agent-kit test' }],
+        commands: [{ label: 'tests', command: 'vp run --filter=webpresso test' }],
       },
     })
 
-    expect(commands).toEqual(['vp run --filter=@webpresso/agent-kit test'])
+    expect(commands).toEqual(['vp run --filter=webpresso test'])
     const result = routeCommand(commands[0] ?? '')
     expect(result?.action.action).toBe('deny')
     if (result?.action.action === 'deny') {

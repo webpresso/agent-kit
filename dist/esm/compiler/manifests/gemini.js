@@ -8,8 +8,8 @@ function writeAtomic(filePath, content) {
 }
 export async function emitManifest(opts) {
     const extension = {
-        _generated: 'by agent-kit wp compile — do not edit manually',
-        name: 'webpresso-agent-kit',
+        _generated: 'by webpresso wp compile — do not edit manually',
+        name: 'webpresso',
         version: opts.version,
         description: 'Agent-kit: blueprint lifecycle, skill compiler, audits for Claude Code',
         commands: opts.commands.map((name) => ({ path: `commands/${name}.md` })),

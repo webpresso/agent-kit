@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `wp` — agent-kit CLI entrypoint.
+ * `wp` — webpresso CLI entrypoint.
  *
  * Lazy-loads subcommand modules based on the first argv to keep startup
  * cheap. Modeled on apps/cli-wp/src/cli.ts.

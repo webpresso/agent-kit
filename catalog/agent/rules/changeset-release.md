@@ -34,7 +34,7 @@ publishing. The legacy tag-push + `release-package.yml` pattern is retired.
 - **Never** publish from a dirty working tree. Run `git status` first; commit
   or stash everything before `changeset publish`.
 - **Never** call `vp publish` directly — always go through the CI workflow
-  so the Changesets lifecycle and dual-publish step are both honoured.
+  so the Changesets lifecycle stays coherent.
 
 ## Commit sequence — mandatory every release
 
@@ -42,7 +42,7 @@ publishing. The legacy tag-push + `release-package.yml` pattern is retired.
 1. Implement changes + commit code
 2. vp run changeset          # creates .changeset/<slug>.md
 3. git add .changeset/<slug>.md && git commit -m "chore: add changeset"
-4. Merge to main           # CI runs version bump + both publish steps automatically
+4. Merge to main           # CI runs version bump + publish automatically
 ```
 
 Steps 2-3 happen on the feature branch alongside the code change. There is
@@ -61,48 +61,14 @@ When a feature branch with a `.changeset/<slug>.md` file merges to `main`,
    `CHANGELOG.md`, removes the consumed `.changeset/<slug>.md` files, and
    syncs `.claude-plugin/marketplace.json` to match the new version.
 2. `git push` — commits the version bump directly to `main`.
-3. `vp run changeset publish` — publishes `@webpresso/agent-kit` to GitHub
-   Packages (legacy source package, frozen after the `webpresso` rename).
-4. `bun scripts/publish-webpresso.ts` — publishes `webpresso` to public
-   npmjs.org (see Dual-publish pattern below).
-5. CI creates a `release/v<version>` branch with compiled `dist/` committed
+3. `vp run changeset publish` — publishes `webpresso` to public npmjs.org.
+4. CI creates a `release/v<version>` branch with compiled `dist/` committed
    for Claude Code marketplace consumers.
 
 The workflow supports a manual dry-run trigger:
 ```bash
 gh workflow run release.yml -f dry-run=true
 ```
-
-## Dual-publish pattern
-
-`@webpresso/agent-kit` (GitHub Packages) and `webpresso` (public npmjs.org)
-carry the same version and the same code. Consumers should install
-`webpresso` and use its `webpresso/*` subpath exports for folded agent config
-helpers instead of adding retired split agent config packages.
-Changesets has no native dual-registry support, so the second publish is driven by
-`scripts/publish-webpresso.ts`:
-
-1. Reads the just-bumped `package.json#version`.
-2. Builds a staging directory at `dist-publish/` containing a swapped
-   `package.json`:
-   - `name: "webpresso"`
-   - `publishConfig: { registry: "https://registry.npmjs.org", access: "public" }`
-   - `bin: { wp, webpresso, wp, ...hook bins }`
-   - `preferGlobal: true`
-   — plus copies of `dist/`, `src/`, `catalog/`, `just/`, `docs/`,
-   `skills/`, `commands/`, `.claude-plugin/`, and `README.md`.
-3. Writes a temporary `.npmrc` in the staging directory authenticated via
-   `NPM_TOKEN`.
-4. Runs `vp publish dist-publish --no-git-checks --access public`.
-5. Cleans up the staging directory in a `try/finally` block — cleanup runs
-   on both success and failure.
-
-`package.json#name` remains `@webpresso/agent-kit` throughout; the staging
-directory is an ephemeral build artifact, never committed.
-
-After the `webpresso` rename ships, the `vp run changeset publish` step (step 3
-above) will be removed in a follow-up PR, leaving `publish-webpresso.ts` as
-the sole publish step.
 
 ## First-time setup — new extracted repos
 
@@ -121,7 +87,7 @@ vp run changeset pre enter alpha       # creates .changeset/pre.json
 # 4. Create the initial changeset and commit it
 cat > .changeset/initial-release.md << 'EOF'
 ---
-"@webpresso/<name>": minor
+"webpresso": minor
 ---
 
 Initial public extraction from Webpresso monorepo.
@@ -133,15 +99,15 @@ git add .changeset/ && git commit -m "chore: add initial changeset"
 
 **Do NOT run `vp run changeset version` or `vp run changeset publish` manually**
 for established repos — CI owns both steps. Manual execution bypasses the
-`sync-marketplace-version` script and the dual-publish step.
+`sync-marketplace-version` script and the release branch flow.
 
 ## Release workflow (self-contained Changesets)
 
 The active pattern for the three public repos (`webpresso/framework/`,
-`webpresso/ui-kit/`, `webpresso/agent-kit/`) is a **self-contained
+`webpresso/ui-kit/`, `webpresso/`) is a **self-contained
 `release.yml`** that calls the Changesets CLI directly — **not** the legacy
 `release-package.yml@main` reusable workflow from a previous era.
-Copy `webpresso/agent-kit/.github/workflows/release.yml` verbatim when
+Copy `webpresso/.github/workflows/release.yml` verbatim when
 bootstrapping a new public repo.
 
 ## Required repo files
@@ -159,13 +125,13 @@ Without `.npmrc`, CI publish fails auth. Without `@changesets/cli` in
 ## Changeset config
 
 `.changeset/config.json` in each repo:
-- `access: "restricted"` — GitHub Packages private registry.
+- `access: "public"` — public npm publish for the canonical `webpresso` package.
 - `baseBranch: "main"`.
 - `updateInternalDependencies: "patch"`.
 - `webpresso/webpresso` additionally uses `fixed: [all 8 packages]` for
   lockstep versioning across the framework umbrella.
 
-## agent-kit marketplace specifics
+## webpresso marketplace specifics
 
 After publishing, CI creates a `release/v<version>` branch with `dist/`
 committed. Claude Code marketplace consumers **must** pin to
@@ -173,7 +139,7 @@ committed. Claude Code marketplace consumers **must** pin to
 
 ```jsonc
 // marketplace.json consumer reference
-{ "source": { "repo": "webpresso/agent-kit", "ref": "release/v0.2.0" } }
+{ "source": { "repo": "webpresso/webpresso", "ref": "release/v0.2.0" } }
 ```
 
 ### marketplace.json version sync (automated)

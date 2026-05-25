@@ -36,7 +36,7 @@ The plan execution surface has three layers:
 
 1. **Blueprint lifecycle** (`wp blueprint start/task/finalize/audit`) —
    durable repo-owned plan state.
-2. **Blueprint DAG helpers** (`@webpresso/agent-kit/blueprint`) — task graph,
+2. **Blueprint DAG helpers** (`webpresso/blueprint`) — task graph,
    executor, and related local analysis utilities.
 3. **Parallel operator workflow** (`/pll`, parallel-lane commands,
    subagents / team lanes) — prompt / skill-driven orchestration over the
@@ -76,4 +76,4 @@ When `/pll` is used with a blueprint path or active blueprint context:
 
 - **Canonical command**: `.agent/commands/pll.md`
 - **Lifecycle CLI**: the shipped `wp blueprint` subcommands
-- **DAG engine**: `@webpresso/agent-kit/blueprint` DAG helpers
+- **DAG engine**: `webpresso/blueprint` DAG helpers

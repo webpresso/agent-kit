@@ -1,4 +1,4 @@
 "vp run test" denied — use wp MCP tool:
-  mcp__agent-kit__wp_test(...)
+  mcp__webpresso__wp_test(...)
 Returns structured, summary-first results. Raw output is clipped; overflow may include a log path for deeper investigation.
 Fallback if MCP unavailable: wp_test MCP tool with package/file scope

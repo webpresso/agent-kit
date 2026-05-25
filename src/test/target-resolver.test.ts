@@ -12,7 +12,7 @@ describe('looksLikeTestFilePath', () => {
   })
 
   it('does not consider bare names without slashes or extensions as files', () => {
-    expect(looksLikeTestFilePath('agent-kit')).toBe(false)
+    expect(looksLikeTestFilePath('webpresso')).toBe(false)
   })
 
   it('recognizes files with .spec.tsx extension', () => {
@@ -55,9 +55,9 @@ describe('resolveTestTarget', () => {
   })
 
   it('infers package targets from non-file positional input', () => {
-    expect(resolveTestTarget({ positional: ['agent-kit'] })).toEqual({
+    expect(resolveTestTarget({ positional: ['webpresso'] })).toEqual({
       type: 'package',
-      values: ['agent-kit'],
+      values: ['webpresso'],
     })
   })
 
@@ -77,22 +77,22 @@ describe('resolveTestTarget', () => {
   it('rejects mixed positional targets (file + package)', () => {
     expect(() =>
       resolveTestTarget({
-        positional: ['packages/example/src/index.test.ts', 'agent-kit'],
+        positional: ['packages/example/src/index.test.ts', 'webpresso'],
       }),
     ).toThrow(/Choose package targets or file targets/)
   })
 
   it('trims whitespace from target values', () => {
-    expect(resolveTestTarget({ package: ['  agent-kit  '] })).toEqual({
+    expect(resolveTestTarget({ package: ['  webpresso  '] })).toEqual({
       type: 'package',
-      values: ['agent-kit'],
+      values: ['webpresso'],
     })
   })
 
   it('infers package when positional targets lack file characteristics', () => {
-    expect(resolveTestTarget({ positional: ['cli2', 'agent-kit'] })).toEqual({
+    expect(resolveTestTarget({ positional: ['cli2', 'webpresso'] })).toEqual({
       type: 'package',
-      values: ['cli2', 'agent-kit'],
+      values: ['cli2', 'webpresso'],
     })
   })
 })

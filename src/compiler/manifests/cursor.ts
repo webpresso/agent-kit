@@ -29,10 +29,10 @@ export async function emitManifest(opts: ManifestEmitOptions): Promise<void> {
   const rules = collectRulePaths(opts.agentDir)
 
   const plugin = {
-    _generated: 'by agent-kit wp compile — do not edit manually',
-    name: '@webpresso/agent-kit',
+    _generated: 'by webpresso wp compile — do not edit manually',
+    name: 'webpresso',
     version: opts.version,
-    description: 'Agent-kit: blueprint lifecycle, skill compiler, audits for Claude Code',
+    description: 'Webpresso: blueprint lifecycle, skill compiler, audits for Claude Code',
     rules,
     skills: opts.skills.map((name) => ({ path: `skills/${name}/SKILL.md` })),
   }

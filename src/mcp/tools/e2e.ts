@@ -101,7 +101,7 @@ function summarizeRun(
 const tool: ToolDescriptor = {
   name: 'wp_e2e',
   description:
-    'Run E2E execution through the portable agent-kit planner. Suite-aware and host-adapter-aware; returns `{passed, exitCode, commands, output}` plus suite and runner summaries.',
+    'Run E2E execution through the portable webpresso planner. Suite-aware and host-adapter-aware; returns `{passed, exitCode, commands, output}` plus suite and runner summaries.',
   inputSchema,
   outputSchema,
   annotations: {

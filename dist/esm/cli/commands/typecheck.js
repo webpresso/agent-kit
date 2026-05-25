@@ -1,4 +1,6 @@
 import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 export const TYPECHECK_COMMAND_HELP = [
     'Typecheck the current workspace through the portable wp surface.',
     '',
@@ -13,6 +15,13 @@ export function registerTypecheckCommand(cli) {
         .action((flags) => runTypecheckCommand({ pretty: Boolean(flags.pretty) }));
 }
 export function buildTypecheckCommand(options = {}) {
+    const cwd = options.cwd ?? process.cwd();
+    if (hasCheckTypesScript(cwd)) {
+        return {
+            command: 'vp',
+            args: ['run', 'check-types'],
+        };
+    }
     return {
         command: 'tsc',
         args: ['--noEmit', ...(options.pretty ? [] : ['--pretty', 'false'])],
@@ -32,5 +41,17 @@ function defaultRun(command, args) {
         stdio: 'inherit',
         windowsHide: true,
     });
+}
+function hasCheckTypesScript(cwd) {
+    const packageJsonPath = join(cwd, 'package.json');
+    if (!existsSync(packageJsonPath))
+        return false;
+    try {
+        const parsed = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+        return typeof parsed.scripts?.['check-types'] === 'string';
+    }
+    catch {
+        return false;
+    }
 }
 //# sourceMappingURL=typecheck.js.map

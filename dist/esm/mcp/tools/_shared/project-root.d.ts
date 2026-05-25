@@ -1,5 +1,5 @@
 /**
- * Resolve the agent-kit MCP server's *project* root.
+ * Resolve the webpresso MCP server's *project* root.
  *
  * Why this exists: Claude Code does NOT set a reliable cwd for plugin-scope
  * MCP servers (anthropics/claude-code#42687, #17565, #19205). User-scope

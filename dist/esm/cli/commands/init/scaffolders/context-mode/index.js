@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { patchJsonFile } from '#cli/commands/init/merge';
 import { hoistTopLevelEvents } from '#cli/commands/init/scaffolders/agent-hooks/index';
-import { agentKitMcpLaunchCommand, findAgentKitMcpEntry, } from '#cli/commands/init/scaffolders/codex-mcp/index';
+import { agentKitMcpLaunchCommand, findWebpressoMcpEntry, } from '#cli/commands/init/scaffolders/codex-mcp/index';
 import { makeNoopSpinnerFactory } from '#cli/commands/init/scaffolders/spinner';
 import { checkVersionPin } from '#cli/commands/init/scaffolders/version-pin';
 const CONTEXT_MODE_MCP_SERVER_NAME = 'context-mode';
@@ -97,7 +97,7 @@ export function patchOpenCodeContextModeConfig(existing, agentKitCommand = ['vp'
         type: 'local',
         command: ['context-mode'],
     };
-    currentMcp['agent-kit'] = {
+    currentMcp['webpresso'] = {
         type: 'local',
         command: agentKitCommand,
     };
@@ -114,9 +114,9 @@ export function patchOpenCodeContextModeConfig(existing, agentKitCommand = ['vp'
         plugin: plugins,
     };
 }
-function resolveOpenCodeAgentKitCommand(repoRoot, globalInstall = false) {
-    const repoLocalRoot = join(repoRoot, 'node_modules', '@webpresso', 'agent-kit');
-    const entryPath = findAgentKitMcpEntry({ candidates: [repoLocalRoot] }) ?? findAgentKitMcpEntry();
+function resolveOpenCodeWebpressoCommand(repoRoot, globalInstall = false) {
+    const repoLocalRoot = join(repoRoot, 'node_modules', '@webpresso', 'webpresso');
+    const entryPath = findWebpressoMcpEntry({ candidates: [repoLocalRoot] }) ?? findWebpressoMcpEntry();
     if (!entryPath)
         return globalInstall ? ['wp', 'mcp'] : ['vp', 'exec', 'wp', 'mcp'];
     const launch = agentKitMcpLaunchCommand(entryPath);
@@ -175,7 +175,7 @@ export function ensureContextMode(input) {
     return {
         codexMcp: ensureCodexContextModeMcp(codexConfigPath, input.options),
         codexHooks: patchJsonFile(codexHooksPath, patchCodexContextModeHooks, input.options),
-        opencodeConfig: patchJsonFile(opencodeConfigPath, (existing) => patchOpenCodeContextModeConfig(existing, resolveOpenCodeAgentKitCommand(input.repoRoot, input.globalInstall)), input.options),
+        opencodeConfig: patchJsonFile(opencodeConfigPath, (existing) => patchOpenCodeContextModeConfig(existing, resolveOpenCodeWebpressoCommand(input.repoRoot, input.globalInstall)), input.options),
         installed,
     };
 }

@@ -154,7 +154,7 @@ async function handleDeprecate(args) {
             exitCode: 1,
             stdout: '',
             stderr: `Cannot deprecate ${args.kind} ${slug}: not found in consumer at ${filePath}. ` +
-                `Canonical (catalog) entries are owned by the agent-kit package.`,
+                `Canonical (catalog) entries are owned by the webpresso package.`,
         };
     }
     const raw = readFileSync(filePath, 'utf8');

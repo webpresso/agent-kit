@@ -100,7 +100,7 @@ Each task lives under a phase heading (`### Phase N: <name>`):
 ```
 
 Rules (enforced by the `blueprint-plan` docs-linter validator at
-`@webpresso/agent-kit/docs-linter`):
+`webpresso/docs-linter`):
 
 - Task headings use **four** hashes (`####`), not three.
 - Task IDs are numeric dotted (`1.1`, `1.2a`, `2.3.1`), never bare.
@@ -111,7 +111,7 @@ Rules (enforced by the `blueprint-plan` docs-linter validator at
 
 ## Blueprint scoping rule
 
-Per `.agent/rules/blueprint-scoping.md` (in the agent-kit catalog):
+Per `.agent/rules/blueprint-scoping.md` (in the webpresso catalog):
 
 > New blueprints that extend or replace enabling-layer infrastructure
 > (runtime, schema engine, agent fabric, session DOs, policy engine,

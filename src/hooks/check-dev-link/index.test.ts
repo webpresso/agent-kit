@@ -39,8 +39,8 @@ describe('detectDevLinkBreakage', () => {
     const consumer = createTempRoot()
     const source = createTempRoot()
     mkdirSync(join(consumer, 'node_modules', '@webpresso'), { recursive: true })
-    symlinkSync(source, join(consumer, 'node_modules', '@webpresso/agent-kit'), 'dir')
-    writeState(consumer, { package: '@webpresso/agent-kit', linkedFrom: source })
+    symlinkSync(source, join(consumer, 'node_modules', 'webpresso'), 'dir')
+    writeState(consumer, { package: 'webpresso', linkedFrom: source })
 
     expect(detectDevLinkBreakage({ cwd: consumer })).toBeNull()
   })
@@ -50,13 +50,13 @@ describe('detectDevLinkBreakage', () => {
     const source = createTempRoot()
     const stale = createTempRoot()
     mkdirSync(join(consumer, 'node_modules', '@webpresso'), { recursive: true })
-    symlinkSync(stale, join(consumer, 'node_modules', '@webpresso/agent-kit'), 'dir')
-    writeState(consumer, { package: '@webpresso/agent-kit', linkedFrom: source })
+    symlinkSync(stale, join(consumer, 'node_modules', 'webpresso'), 'dir')
+    writeState(consumer, { package: 'webpresso', linkedFrom: source })
 
     expect(detectDevLinkBreakage({ cwd: consumer })).toEqual({
       expected: source,
       actual: stale,
-      packageName: '@webpresso/agent-kit',
+      packageName: 'webpresso',
       projectDir: consumer,
     })
   })
@@ -64,8 +64,8 @@ describe('detectDevLinkBreakage', () => {
   it('detects breakage when target is a real directory (pnpm-store snapshot)', () => {
     const consumer = createTempRoot()
     const source = createTempRoot()
-    mkdirSync(join(consumer, 'node_modules', '@webpresso/agent-kit'), { recursive: true })
-    writeState(consumer, { package: '@webpresso/agent-kit', linkedFrom: source })
+    mkdirSync(join(consumer, 'node_modules', 'webpresso'), { recursive: true })
+    writeState(consumer, { package: 'webpresso', linkedFrom: source })
 
     const breakage = detectDevLinkBreakage({ cwd: consumer })
     expect(breakage?.expected).toBe(source)
@@ -76,24 +76,24 @@ describe('detectDevLinkBreakage', () => {
 describe('formatBreakageMessage', () => {
   it('mentions both expected and actual paths plus the fix command', () => {
     const message = formatBreakageMessage({
-      expected: '/tmp/agent-kit',
+      expected: '/tmp/webpresso',
       actual: '/tmp/store-snapshot',
-      packageName: '@webpresso/agent-kit',
+      packageName: 'webpresso',
       projectDir: '/tmp/consumer',
     })
 
-    expect(message).toContain('/tmp/agent-kit')
+    expect(message).toContain('/tmp/webpresso')
     expect(message).toContain('/tmp/store-snapshot')
     expect(message).toContain('vp run dev:link --consumer /tmp/consumer')
-    expect(message).toContain('@webpresso/agent-kit')
+    expect(message).toContain('webpresso')
     expect(message).toContain('wp-restore-dev-links')
   })
 
   it('uses <store snapshot> placeholder when actual link is null', () => {
     const message = formatBreakageMessage({
-      expected: '/tmp/agent-kit',
+      expected: '/tmp/webpresso',
       actual: null,
-      packageName: '@webpresso/agent-kit',
+      packageName: 'webpresso',
       projectDir: '/tmp/consumer',
     })
 
@@ -128,8 +128,8 @@ describe('buildOutput', () => {
   it('returns a parseable single-line envelope on broken state', () => {
     const consumer = createTempRoot()
     const source = createTempRoot()
-    mkdirSync(join(consumer, 'node_modules', '@webpresso/agent-kit'), { recursive: true })
-    writeState(consumer, { package: '@webpresso/agent-kit', linkedFrom: source })
+    mkdirSync(join(consumer, 'node_modules', 'webpresso'), { recursive: true })
+    writeState(consumer, { package: 'webpresso', linkedFrom: source })
 
     const out = buildOutput(consumer)
     expect(out).not.toBeNull()

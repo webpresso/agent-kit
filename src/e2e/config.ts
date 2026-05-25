@@ -1,25 +1,25 @@
 import { z } from 'zod'
 
-export const AGENT_KIT_CONFIG_FILE_NAME = 'agent-kit.config.ts'
-export const AGENT_KIT_CONFIG_EXPORT_NAME = 'agentKitConfig'
+export const WEBPRESSO_CONFIG_FILE_NAME = 'webpresso.config.ts'
+export const WEBPRESSO_CONFIG_EXPORT_NAME = 'webpressoConfig'
 
-const e2eAgentKitConfigSchema = z
+const e2eWebpressoConfigSchema = z
   .object({
     hostAdapterModule: z.string().min(1, 'e2e.hostAdapterModule must not be empty.'),
     hostAdapterExport: z.string().min(1, 'e2e.hostAdapterExport must not be empty.').optional(),
   })
   .strict()
 
-const agentKitConfigSchema = z
+const webpressoConfigSchema = z
   .object({
-    e2e: e2eAgentKitConfigSchema.optional(),
+    e2e: e2eWebpressoConfigSchema.optional(),
   })
   .strict()
 
-export type AgentKitConfig = z.infer<typeof agentKitConfigSchema>
-export type AgentKitE2eConfig = NonNullable<AgentKitConfig['e2e']>
+export type WebpressoConfig = z.infer<typeof webpressoConfigSchema>
+export type WebpressoE2eConfig = NonNullable<WebpressoConfig['e2e']>
 
-export class AgentKitConfigValidationError extends Error {
+export class WebpressoConfigValidationError extends Error {
   public readonly issues: Array<{ path: string; message: string }>
 
   constructor(
@@ -28,20 +28,20 @@ export class AgentKitConfigValidationError extends Error {
   ) {
     const formattedIssues = issues.map((issue) => `  - ${issue.path}: ${issue.message}`).join('\n')
 
-    super(`Invalid agent-kit config at ${configPath}:\n${formattedIssues}`)
-    this.name = 'AgentKitConfigValidationError'
+    super(`Invalid webpresso config at ${configPath}:\n${formattedIssues}`)
+    this.name = 'WebpressoConfigValidationError'
     this.issues = issues
   }
 }
 
-export function defineAgentKitConfig<TConfig extends AgentKitConfig>(config: TConfig): TConfig {
+export function defineWebpressoConfig<TConfig extends WebpressoConfig>(config: TConfig): TConfig {
   return config
 }
 
-export function validateAgentKitConfig(config: unknown, configPath: string): AgentKitConfig {
-  const result = agentKitConfigSchema.safeParse(config)
+export function validateWebpressoConfig(config: unknown, configPath: string): WebpressoConfig {
+  const result = webpressoConfigSchema.safeParse(config)
   if (!result.success) {
-    throw new AgentKitConfigValidationError(
+    throw new WebpressoConfigValidationError(
       configPath,
       result.error.issues.map((issue) => ({
         path: issue.path.join('.') || '<root>',

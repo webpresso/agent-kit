@@ -4,14 +4,14 @@ import { fileURLToPath } from 'node:url';
 import { readPackageJson } from '#cli/commands/init/detect-consumer';
 function detectMode(repoRoot) {
     const pkg = readPackageJson(repoRoot).info;
-    if (pkg?.name === '@webpresso/agent-kit') {
+    if (pkg?.name === 'webpresso') {
         return {
             mode: 'self',
             sourceRoot: join(repoRoot, 'catalog', 'agent', 'agents'),
         };
     }
-    const installedPackageJsonPath = join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'package.json');
-    const installedAgentsRoot = join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'agents');
+    const installedPackageJsonPath = join(repoRoot, 'node_modules', 'webpresso', 'package.json');
+    const installedAgentsRoot = join(repoRoot, 'node_modules', 'webpresso', 'catalog', 'agent', 'agents');
     if (existsSync(installedPackageJsonPath) && existsSync(installedAgentsRoot)) {
         return {
             mode: 'consumer',
@@ -34,7 +34,7 @@ function resolveCurrentPackageRoot() {
             break;
         dir = parent;
     }
-    throw new Error('wp init: could not locate the agent-kit package root for subagents fallback.');
+    throw new Error('wp init: could not locate the webpresso package root for subagents fallback.');
 }
 export function scaffoldSubagents(input) {
     const { repoRoot, options } = input;

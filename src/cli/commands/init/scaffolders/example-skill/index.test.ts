@@ -25,7 +25,7 @@ describe('scaffoldExampleSkill', () => {
     const skillPath = join(tmpDir, '.agent', 'skills', 'hello-webpresso', 'SKILL.md')
     const content = readFileSync(skillPath, 'utf-8')
     expect(content).toContain('hello-webpresso')
-    expect(content).toContain('agent-kit is ready')
+    expect(content).toContain('webpresso is ready')
   })
 
   it('is idempotent — second call does not overwrite', async () => {

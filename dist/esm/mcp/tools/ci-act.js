@@ -9,13 +9,22 @@ const inputSchema = z
     cwd: z.string().optional(),
     workflowPath: z.string(),
     job: z.string().optional(),
-    eventName: z.enum(['pull_request', 'push', 'workflow_dispatch']).optional().default('pull_request'),
+    eventName: z
+        .enum(['pull_request', 'push', 'workflow_dispatch'])
+        .optional()
+        .default('pull_request'),
     eventPath: z.string().optional(),
     secretProfile: z.enum(['none', 'github-api', 'neon-control-plane']).optional(),
     strictSecrets: z.boolean().optional().default(true),
     mapGithubPatToToken: z.boolean().optional().default(false),
     envProfile: z.string().optional().default('secrets-only'),
-    timeoutMs: z.number().int().positive().max(5 * 60_000).optional().default(120_000),
+    timeoutMs: z
+        .number()
+        .int()
+        .positive()
+        .max(5 * 60_000)
+        .optional()
+        .default(120_000),
     containerArchitecture: z.string().optional(),
     platformImage: z.string().optional().default('ghcr.io/catthehacker/ubuntu:full-latest'),
     execute: z.boolean().optional().default(false),

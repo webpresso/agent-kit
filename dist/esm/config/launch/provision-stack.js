@@ -10,7 +10,7 @@
  * launch-engine orchestrates them into a {@link LaunchRegistration}
  * without depending on any host-specific package.
  *
- * @module @webpresso/agent-launch/provision-stack
+ * @module webpresso/launch/provision-stack
  */
 import { assembleEffectiveVars } from './launch-profile.js';
 /**

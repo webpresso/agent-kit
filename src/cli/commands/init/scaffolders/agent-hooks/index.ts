@@ -3,8 +3,9 @@
  *   - `.claude/settings.json` (Claude Code)
  *   - `.codex/hooks.json` (Codex CLI)
  *
- * Additive: never removes existing hooks, only ensures agent-kit's entries
- * are present. Uses installed bin paths so consumers don't need bun.
+ * Mostly additive: preserves unrelated hooks, ensures webpresso's entries
+ * are present, and prunes stale legacy Claude ak-* hook commands that current
+ * setups no longer own. Uses installed bin paths so consumers don't need bun.
  *
  * Runs by default on every `wp setup`.
  */
@@ -89,13 +90,24 @@ const SCRIPT_EXTENSIONS = ['sh', 'ts', 'js', 'mjs', 'cjs', 'py'] as const
 const DIRECT_NODE_MODULES_BIN_PATTERN = /^(?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+)$/u
 const GUARDED_NODE_MODULES_BIN_PATTERN =
   /^\[ -x (["']?)((?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+))\1 \] && \1\2\1 \|\| true$/u
-const LEGACY_AGENT_KIT_BIN_PATTERN = /run-agent-kit-bin\.ts"\s+(wp-[\w-]+)(?=$|["'\s])/u
+const DIRECT_CLAUDE_NODE_MODULES_BIN_PATTERN =
+  /^["']?\$CLAUDE_PROJECT_DIR\/node_modules\/\.bin\/([\w-]+)["']?$/u
+const GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN =
+  /^\[ -x (["']?)\$CLAUDE_PROJECT_DIR\/node_modules\/\.bin\/([\w-]+)\1 \] && \1\$CLAUDE_PROJECT_DIR\/node_modules\/\.bin\/\2\1 \|\| true$/u
 // Capture the basename of any path that ends in a known script extension.
 // Handles trailing chars (quote, space, end-of-string).
 const SCRIPT_BASENAME_PATTERN = new RegExp(
   String.raw`([\w-]+\.(?:${SCRIPT_EXTENSIONS.join('|')}))(?=$|["'\s])`,
   'u',
 )
+const LEGACY_CLAUDE_AGENT_KIT_BIN_NAMES = new Set([
+  'ak-sessionstart-routing',
+  'ak-check-dev-link',
+  'ak-pretool-guard',
+  'ak-post-tool',
+  'ak-guard-switch',
+  'ak-stop-qa',
+])
 
 function extractAgentKitCodexBinName(command: string): string | null {
   const normalizedCommand = stripSingleShellQuotePair(command.trim())
@@ -103,8 +115,16 @@ function extractAgentKitCodexBinName(command: string): string | null {
   if (directBinMatch !== null) return directBinMatch[1] ?? null
   const guardedBinMatch = GUARDED_NODE_MODULES_BIN_PATTERN.exec(command.trim())
   if (guardedBinMatch !== null) return guardedBinMatch[3] ?? null
-  const legacyRunnerMatch = LEGACY_AGENT_KIT_BIN_PATTERN.exec(command)
-  return legacyRunnerMatch?.[1] ?? null
+  return null
+}
+
+function extractClaudeBinName(command: string): string | null {
+  const normalizedCommand = stripSingleShellQuotePair(command.trim())
+  const directBinMatch = DIRECT_CLAUDE_NODE_MODULES_BIN_PATTERN.exec(normalizedCommand)
+  if (directBinMatch !== null) return directBinMatch[1] ?? null
+  const guardedBinMatch = GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN.exec(command.trim())
+  if (guardedBinMatch !== null) return guardedBinMatch[2] ?? null
+  return null
 }
 
 function stripSingleShellQuotePair(value: string): string {
@@ -214,14 +234,14 @@ function mergeSkillHooks(hooks: HooksMap, skillHooks: readonly SkillHook[]): Hoo
   return nextHooks
 }
 
-// ── Shared agent-kit hook construction ───────────────────────────────────────
+// ── Shared webpresso hook construction ───────────────────────────────────────
 
 /**
  * Construct the canonical 5 wp-* hook groups (SessionStart, PreToolUse,
  * PostToolUse, UserPromptSubmit, Stop). Single source of truth — adding a
  * new wp-* hook is one append here and propagates to both surfaces.
  */
-export function buildAgentKitHookGroups(input: {
+export function buildWebpressoHookGroups(input: {
   resolveBin: (name: string) => string
   matchers: MatcherSet
 }): HooksMap {
@@ -298,6 +318,26 @@ function normalizeCodexAgentKitCommands(hooks: HooksMap, repoRoot: string): Hook
   return normalized
 }
 
+function pruneLegacyClaudeAgentKitCommands(hooks: HooksMap): HooksMap {
+  const normalized: HooksMap = {}
+
+  for (const [event, groups] of Object.entries(hooks)) {
+    const keptGroups = groups
+      .map((group) => {
+        const keptHooks = group.hooks.filter((hook) => {
+          const binName = extractClaudeBinName(hook.command)
+          return binName === null || !LEGACY_CLAUDE_AGENT_KIT_BIN_NAMES.has(binName)
+        })
+        return keptHooks.length > 0 ? { ...group, hooks: keptHooks } : null
+      })
+      .filter((group): group is HookGroup => group !== null)
+
+    if (keptGroups.length > 0) normalized[event] = keptGroups
+  }
+
+  return normalized
+}
+
 /**
  * Migration: Codex's canonical hooks.json schema is wrapped under a top-level
  * `hooks` key (matching Codex's official docs at
@@ -339,7 +379,7 @@ const CLAUDE_MATCHERS: MatcherSet = {
   postToolUse: 'Write|Edit|MultiEdit',
 }
 
-const AGENT_KIT_CLAUDE_PLUGIN_ID = 'agent-kit@agent-kit'
+const AGENT_KIT_CLAUDE_PLUGIN_ID = 'webpresso@webpresso'
 
 function defaultClaudeUserSettingsPath(): string {
   return join(process.env.HOME || homedir(), '.claude', 'settings.json')
@@ -369,12 +409,13 @@ function patchClaudeSettings(
   existing: Record<string, unknown>,
   skillHooks: readonly SkillHook[],
 ): Record<string, unknown> {
-  const withSkills = mergeSkillHooks((existing.hooks ?? {}) as HooksMap, skillHooks)
-  const agentKit = buildAgentKitHookGroups({
+  const existingHooks = pruneLegacyClaudeAgentKitCommands((existing.hooks ?? {}) as HooksMap)
+  const withSkills = mergeSkillHooks(existingHooks, skillHooks)
+  const webpresso = buildWebpressoHookGroups({
     resolveBin: CC_BIN,
     matchers: CLAUDE_MATCHERS,
   })
-  const merged = mergeAgentKitGroups(withSkills, agentKit)
+  const merged = mergeAgentKitGroups(withSkills, webpresso)
 
   // Claude-only extras: gstack soft-warning at SessionStart (non-blocking)
   // and a Skill-matcher PreToolUse hook for stricter enforcement.
@@ -438,13 +479,13 @@ function patchCodexHooks(
 ): Record<string, unknown> {
   const migrated = hoistTopLevelEvents(existing)
   const existingHooks = normalizeCodexAgentKitCommands((migrated.hooks ?? {}) as HooksMap, repoRoot)
-  const agentKit = buildAgentKitHookGroups({
+  const webpresso = buildWebpressoHookGroups({
     resolveBin: CODEX_BIN(repoRoot),
     matchers: CODEX_MATCHERS,
   })
   return {
     ...migrated,
-    hooks: mergeAgentKitGroups(existingHooks, agentKit),
+    hooks: mergeAgentKitGroups(existingHooks, webpresso),
   }
 }
 
@@ -464,7 +505,7 @@ function reportCodexTrustSyncWarning(
   console.warn(`  codex hook trust: warning — ${warning.message}. Review in /hooks.`)
 }
 
-export async function trustCodexAgentKitHooksForRepo(
+export async function trustCodexWebpressoHooksForRepo(
   input: ScaffoldAgentHooksInput,
 ): Promise<void> {
   if (shouldSkipCodexTrustSync(input)) return
@@ -487,7 +528,7 @@ export async function trustCodexAgentKitHooksForRepo(
 
   try {
     const syncResult = await syncCodexHookTrustWithAppServer(api, { repoRoot: input.repoRoot })
-    if (!syncResult.ok && syncResult.reason !== 'no-agent-kit-hooks-found') {
+    if (!syncResult.ok && syncResult.reason !== 'no-webpresso-hooks-found') {
       reportCodexTrustSyncWarning(input, {
         kind: 'codex-app-server-trust-sync-warning',
         message: syncResult.message,
@@ -527,7 +568,7 @@ export async function trustCodexPresetHooksForUser(input: ScaffoldAgentHooksInpu
       hookDescription: 'preset-owned global',
       selectHook: isPresetOwnedGlobalCodexHook,
     })
-    if (!syncResult.ok && syncResult.reason !== 'no-agent-kit-hooks-found') {
+    if (!syncResult.ok && syncResult.reason !== 'no-webpresso-hooks-found') {
       reportCodexTrustSyncWarning(input, {
         kind: 'codex-app-server-trust-sync-warning',
         message: syncResult.message,
@@ -618,7 +659,7 @@ export async function scaffoldAgentHooks(
     ),
   }
   if (input.trustCodexHooks !== false) {
-    await trustCodexAgentKitHooksForRepo(input)
+    await trustCodexWebpressoHooksForRepo(input)
   }
   return result
 }

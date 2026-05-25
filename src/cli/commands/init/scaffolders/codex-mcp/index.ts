@@ -9,8 +9,8 @@
  * Two managed blocks today:
  *   1. `[mcp_servers.playwright]` — points at the npm-published Playwright
  *      MCP server through Vite+'s `vp dlx` facade.
- *   2. `[mcp_servers.agent-kit]` — points at agent-kit's own MCP server.
- *      Path-stability requires discovery: agent-kit lives in different
+ *   2. `[mcp_servers.webpresso]` — points at webpresso's own MCP server.
+ *      Path-stability requires discovery: webpresso lives in different
  *      locations depending on how the user installed it (Claude plugin
  *      install, bun global, pnpm/npm global). Discovery happens at scaffold
  *      time; the resolved absolute path is written into the codex config.
@@ -33,8 +33,8 @@ enabled = true
 startup_timeout_sec = 30
 `
 
-export const AGENT_KIT_MCP_SERVER_NAME = 'agent-kit'
-export const AGENT_KIT_MCP_HEADER = `[mcp_servers.${AGENT_KIT_MCP_SERVER_NAME}]`
+export const WEBPRESSO_MCP_SERVER_NAME = 'webpresso'
+export const WEBPRESSO_MCP_HEADER = `[mcp_servers.${WEBPRESSO_MCP_SERVER_NAME}]`
 
 export interface EnsureCodexPlaywrightMcpInput {
   options: MergeOptions
@@ -105,7 +105,7 @@ export function ensureCodexPlaywrightMcp(
 const SOURCE_MCP_ENTRY_RELATIVE = join('src', 'mcp', 'cli.ts')
 const BUILT_MCP_ENTRY_RELATIVE = join('dist', 'esm', 'mcp', 'cli.js')
 
-export interface AgentKitInstallProbe {
+export interface WebpressoInstallProbe {
   /** Test seam — override the candidate roots. Default: probe in fixed order. */
   candidates?: readonly string[]
   /** Test seam — return value for `pnpm root -g`. Default: shell out. */
@@ -115,20 +115,20 @@ export interface AgentKitInstallProbe {
 }
 
 /**
- * Resolve the absolute path to agent-kit's MCP entry on this machine. Probes
- * the locations consumers use to install agent-kit, in order of stability:
+ * Resolve the absolute path to webpresso's MCP entry on this machine. Probes
+ * the locations consumers use to install webpresso, in order of stability:
  *
- *   1. Claude plugin install — `~/.claude/plugins/cache/agent-kit/agent-kit/`
+ *   1. Claude plugin install — `~/.claude/plugins/cache/webpresso/webpresso/`
  *      (path-stable; updated by Claude Code's plugin manager)
- *   2. bun global — `~/.bun/install/global/node_modules/@webpresso/agent-kit/`
- *   3. pnpm global — `$(pnpm root -g)/@webpresso/agent-kit/`
- *   4. npm global — `$(npm root -g)/@webpresso/agent-kit/`
+ *   2. bun global — `~/.bun/install/global/node_modules/webpresso/`
+ *   3. pnpm global — `$(pnpm root -g)/webpresso/`
+ *   4. npm global — `$(npm root -g)/webpresso/`
  *
  * Returns `null` when none of the candidates contain `src/mcp/cli.ts`. The
  * caller surfaces a clear error in that case rather than writing a broken
  * codex config.
  */
-export function findAgentKitMcpEntry(probe: AgentKitInstallProbe = {}): string | null {
+export function findWebpressoMcpEntry(probe: WebpressoInstallProbe = {}): string | null {
   const candidates = probe.candidates ?? defaultCandidates(probe)
   for (const root of candidates) {
     if (!root) continue
@@ -140,9 +140,9 @@ export function findAgentKitMcpEntry(probe: AgentKitInstallProbe = {}): string |
   return null
 }
 
-function defaultCandidates(probe: AgentKitInstallProbe): readonly string[] {
+function defaultCandidates(probe: WebpressoInstallProbe): readonly string[] {
   const home = process.env.HOME || homedir()
-  const claudePlugin = join(home, '.claude', 'plugins', 'cache', 'agent-kit', 'agent-kit')
+  const claudePlugin = join(home, '.claude', 'plugins', 'cache', 'webpresso', 'webpresso')
   const bunGlobal = join(
     home,
     '.bun',
@@ -150,15 +150,15 @@ function defaultCandidates(probe: AgentKitInstallProbe): readonly string[] {
     'global',
     'node_modules',
     '@webpresso',
-    'agent-kit',
+    'webpresso',
   )
   const pnpmRoot = (probe.pnpmGlobalRoot ?? probePnpmGlobalRoot)()
   const npmRoot = (probe.npmGlobalRoot ?? probeNpmGlobalRoot)()
   return [
     claudePlugin,
     bunGlobal,
-    pnpmRoot ? join(pnpmRoot, '@webpresso', 'agent-kit') : '',
-    npmRoot ? join(npmRoot, '@webpresso', 'agent-kit') : '',
+    pnpmRoot ? join(pnpmRoot, '@webpresso', 'webpresso') : '',
+    npmRoot ? join(npmRoot, '@webpresso', 'webpresso') : '',
   ]
 }
 
@@ -194,18 +194,18 @@ export function agentKitMcpLaunchCommand(entryPath: string): {
 
 export function agentKitMcpBlock(entryPath: string): string {
   const launch = agentKitMcpLaunchCommand(entryPath)
-  return `${AGENT_KIT_MCP_HEADER}
+  return `${WEBPRESSO_MCP_HEADER}
 command = "${launch.command}"
 args = [${launch.args.map((arg) => `"${arg}"`).join(', ')}]
 enabled = true
 `
 }
 
-export function upsertAgentKitMcpServer(raw: string, entryPath: string): string {
+export function upsertWebpressoMcpServer(raw: string, entryPath: string): string {
   const block = agentKitMcpBlock(entryPath)
   const lines = raw.trimEnd().split(/\r?\n/)
   const hasContent = raw.trim().length > 0
-  const start = lines.findIndex((line) => line.trim() === AGENT_KIT_MCP_HEADER)
+  const start = lines.findIndex((line) => line.trim() === WEBPRESSO_MCP_HEADER)
 
   if (start === -1) {
     const prefix = hasContent ? `${raw.trimEnd()}\n\n` : ''
@@ -226,45 +226,45 @@ export function upsertAgentKitMcpServer(raw: string, entryPath: string): string 
   )
 }
 
-export interface EnsureCodexAgentKitMcpInput {
+export interface EnsureCodexWebpressoMcpInput {
   options: MergeOptions
   /** Test seam — override the resolved MCP entry path. */
   entryPath?: string
   /** Test seam — override `$CODEX_HOME/config.toml`. */
   configPath?: string
   /** Test seam — override the install-discovery probe. */
-  probe?: AgentKitInstallProbe
+  probe?: WebpressoInstallProbe
 }
 
-export type EnsureCodexAgentKitMcpResult =
-  | { kind: 'codex-agent-kit-mcp-written'; path: string; entryPath: string }
-  | { kind: 'codex-agent-kit-mcp-unchanged'; path: string; entryPath: string }
-  | { kind: 'codex-agent-kit-mcp-skipped-dry-run'; path: string }
-  | { kind: 'codex-agent-kit-mcp-not-installed'; path: string; checked: readonly string[] }
+export type EnsureCodexWebpressoMcpResult =
+  | { kind: 'codex-webpresso-mcp-written'; path: string; entryPath: string }
+  | { kind: 'codex-webpresso-mcp-unchanged'; path: string; entryPath: string }
+  | { kind: 'codex-webpresso-mcp-skipped-dry-run'; path: string }
+  | { kind: 'codex-webpresso-mcp-not-installed'; path: string; checked: readonly string[] }
 
-export function ensureCodexAgentKitMcp(
-  input: EnsureCodexAgentKitMcpInput,
-): EnsureCodexAgentKitMcpResult {
+export function ensureCodexWebpressoMcp(
+  input: EnsureCodexWebpressoMcpInput,
+): EnsureCodexWebpressoMcpResult {
   const configPath = input.configPath ?? defaultConfigPath()
   if (input.options.dryRun) {
-    return { kind: 'codex-agent-kit-mcp-skipped-dry-run', path: configPath }
+    return { kind: 'codex-webpresso-mcp-skipped-dry-run', path: configPath }
   }
 
-  const entryPath = input.entryPath ?? findAgentKitMcpEntry(input.probe)
+  const entryPath = input.entryPath ?? findWebpressoMcpEntry(input.probe)
   if (!entryPath) {
     const checked = (input.probe?.candidates ?? defaultCandidates(input.probe ?? {})).filter(
       (p): p is string => Boolean(p),
     )
-    return { kind: 'codex-agent-kit-mcp-not-installed', path: configPath, checked }
+    return { kind: 'codex-webpresso-mcp-not-installed', path: configPath, checked }
   }
 
   const existing = existsSync(configPath) ? readFileSync(configPath, 'utf8') : ''
-  const next = upsertAgentKitMcpServer(existing, entryPath)
+  const next = upsertWebpressoMcpServer(existing, entryPath)
   if (next === existing) {
-    return { kind: 'codex-agent-kit-mcp-unchanged', path: configPath, entryPath }
+    return { kind: 'codex-webpresso-mcp-unchanged', path: configPath, entryPath }
   }
 
   mkdirSync(dirname(configPath), { recursive: true })
   writeFileSync(configPath, next, 'utf8')
-  return { kind: 'codex-agent-kit-mcp-written', path: configPath, entryPath }
+  return { kind: 'codex-webpresso-mcp-written', path: configPath, entryPath }
 }

@@ -159,7 +159,7 @@ describe('runUnifiedSync (sync command core)', () => {
   // when the catalog dir doesn't exist on disk, loadContent throws with a
   // message matching /catalogDir does not exist/. The CLI catches that
   // shape and rewrites it to the actionable
-  // "wp {init,sync}: @webpresso/agent-kit not installed in node_modules"
+  // "wp {init,sync}: webpresso not installed in node_modules"
   // message. If this throw shape ever changes, the catch-wrap stops firing
   // and the silent-non-determinism class returns.
   it('throws "catalogDir does not exist" when the catalog path is missing', () => {

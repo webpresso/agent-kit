@@ -1,6 +1,6 @@
 import type { E2eHostAdapter } from './types.js'
 
-export const DEFAULT_HOST_ADAPTER_EXPORT_NAME = 'agentKitE2eHostAdapter'
+export const DEFAULT_HOST_ADAPTER_EXPORT_NAME = 'webpressoE2eHostAdapter'
 export const LEGACY_HOST_ADAPTER_EXPORT_NAME = 'webpressoE2eHostAdapter'
 export const FALLBACK_HOST_ADAPTER_EXPORT_NAMES = [
   DEFAULT_HOST_ADAPTER_EXPORT_NAME,

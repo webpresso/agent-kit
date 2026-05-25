@@ -1,5 +1,5 @@
 /**
- * Unified SQLite adapter for agent-kit.
+ * Unified SQLite adapter for webpresso.
  *
  * Driver is selected lazily so neither bundlers nor Node's static ESM loader
  * ever see a literal `bun:sqlite` specifier. Under Bun the constructor

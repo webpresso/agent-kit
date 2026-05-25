@@ -5,44 +5,35 @@ import { describe, expect, it } from 'vitest'
 
 const repositoryRoot = process.cwd()
 
-const migrationRows = [
-  ['@webpresso/agent-tsconfig/base.json', 'webpresso/tsconfig/base.json'],
-  ['@webpresso/agent-vitest/node', 'webpresso/vitest/node'],
-  ['@webpresso/agent-stryker', 'webpresso/stryker'],
-  ['@webpresso/agent-oxlint', 'webpresso/oxlint'],
-  ['@webpresso/agent-workers-test', 'webpresso/workers-test'],
-  ['@webpresso/agent-docs-lint', 'webpresso/docs-lint'],
-  ['@webpresso/agent-launch', 'webpresso/launch'],
-  ['@webpresso/agent-test-preset', 'webpresso/test-preset'],
-  ['@webpresso/agent-e2e-preset', 'webpresso/e2e-preset'],
+const canonicalSubpaths = [
+  'webpresso/tsconfig/base.json',
+  'webpresso/vitest/node',
+  'webpresso/stryker',
+  'webpresso/oxlint',
+  'webpresso/workers-test',
+  'webpresso/docs-lint',
+  'webpresso/launch',
+  'webpresso/test-preset',
+  'webpresso/e2e-preset',
 ] as const
 
 async function readRepoFile(path: string): Promise<string> {
   return readFile(join(repositoryRoot, path), 'utf8')
 }
 
-describe('consolidation migration docs', () => {
-  it('documents every old package to webpresso subpath migration', async () => {
-    const migration = await readRepoFile('MIGRATION.md')
+describe('consolidation docs', () => {
+  it('documents only canonical webpresso subpaths in the README', async () => {
     const readme = await readRepoFile('README.md')
 
-    for (const [oldSpecifier, newSpecifier] of migrationRows) {
-      expect(migration).toContain(oldSpecifier)
-      expect(migration).toContain(newSpecifier)
-      expect(readme).toContain(oldSpecifier)
-      expect(readme).toContain(newSpecifier)
+    for (const canonicalSubpath of canonicalSubpaths) {
+      expect(readme).toContain(canonicalSubpath)
     }
+
+    expect(readme).not.toContain('@webpresso/agent-')
   })
 
-  it('documents the oxlint TypeScript config migration and public staging caveat', async () => {
-    const migration = await readRepoFile('MIGRATION.md')
-
-    expect(migration).toContain('.oxlintrc.json')
-    expect(migration).toContain('oxlint.config.ts')
-    expect(migration).toContain('TypeScript')
-    expect(migration).toContain('scripts/publish-webpresso.ts')
-    expect(migration).toContain('package.json#name')
-    expect(migration).toContain('@webpresso/agent-kit')
+  it('removes the migration notice document after the hard cutover', async () => {
+    await expect(readRepoFile('MIGRATION.md')).rejects.toThrow()
   })
 
   it('preserves the published consolidation release note after changesets are consumed', async () => {

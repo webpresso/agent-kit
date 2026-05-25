@@ -15,7 +15,7 @@ export interface MCPRedirectContext {
   mcp?: MCPRedirectConfig
 }
 
-const DEFAULT_SERVER_NAME = 'agent-kit'
+const DEFAULT_SERVER_NAME = 'webpresso'
 const DEFAULT_TOOL_PREFIX = 'wp_'
 
 export function resolveMcpReady(value: MCPRedirectContext['mcpReady']): boolean {

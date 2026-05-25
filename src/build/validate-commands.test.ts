@@ -6,6 +6,15 @@ import { describe, expect, it } from 'vitest'
 const PACKAGE_ROOT = resolve(import.meta.dirname, '..', '..')
 const COMMANDS_DIR = join(PACKAGE_ROOT, 'commands')
 const EXPECTED_COMMANDS = ['test', 'qa', 'audit', 'blueprint'] as const
+const BLUEPRINT_TOOL_REFERENCES = [
+  'wp_blueprint_projects',
+  'wp_blueprint_list',
+  'wp_blueprint_get',
+  'wp_blueprint_context',
+  'wp_blueprint_create',
+  'wp_blueprint_task_advance',
+  'wp_blueprint_task_verify',
+] as const
 
 describe('plugin commands directory', () => {
   it('commands/ directory exists', () => {
@@ -38,10 +47,17 @@ describe('plugin commands directory', () => {
         expect((parsed.data.description as string).trim().length).toBeGreaterThan(0)
       })
 
-      it(`body references mcp__agent-kit__wp_${cmd}`, () => {
+      it(`body references the expected ${cmd} tool surface`, () => {
         const raw = readFileSync(filePath, 'utf-8')
         const parsed = matter(raw)
-        expect(parsed.content).toContain(`mcp__agent-kit__wp_${cmd}`)
+        if (cmd === 'blueprint') {
+          for (const tool of BLUEPRINT_TOOL_REFERENCES) {
+            expect(parsed.content).toContain(tool)
+          }
+          return
+        }
+
+        expect(parsed.content).toContain(`mcp__webpresso__wp_${cmd}`)
       })
     })
   }

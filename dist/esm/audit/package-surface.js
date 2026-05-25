@@ -1,13 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
-const DEFAULT_ALLOWED_PUBLIC_PACKAGES = [
-    '@webpresso/webpresso',
-    '@webpresso/agent-kit',
-    'webpresso',
-];
-// Compatibility packages that are still publishable while the facade/hardcut
-// plans complete. They are intentionally accepted by the audit, but repos can
-// tighten this list by adding a package-surface contract.
+const DEFAULT_ALLOWED_PUBLIC_PACKAGES = ['@webpresso/webpresso', 'webpresso'];
 const DEFAULT_COMPATIBILITY_PUBLIC_PACKAGES = [
     '@webpresso/codegen-core',
     '@webpresso/codegen-generator',
@@ -30,15 +23,6 @@ const DEFAULT_COMPATIBILITY_PUBLIC_PACKAGES = [
     '@webpresso/ui-react',
     '@webpresso/ui-theme',
     '@webpresso/ui-i18n',
-    '@webpresso/agent-docs-lint',
-    '@webpresso/agent-e2e-preset',
-    '@webpresso/agent-launch',
-    '@webpresso/agent-oxlint',
-    '@webpresso/agent-stryker',
-    '@webpresso/agent-test-preset',
-    '@webpresso/agent-tsconfig',
-    '@webpresso/agent-vitest',
-    '@webpresso/agent-workers-test',
 ];
 const DEFAULT_FORBIDDEN_PUBLIC_NAME_PATTERNS = [
     '@webpresso/db-branching-neon',
@@ -53,12 +37,8 @@ const DEFAULT_STALE_LINKS = [
 ];
 const DEFAULT_REFERENCE_BASELINES = {
     '@webpresso/webpresso': '0.3.6',
-    '@webpresso/agent-kit': '0.18.18',
+    webpresso: '0.18.18',
     '@webpresso/runtime': '0.5.5',
-    '@webpresso/agent-stryker': '0.2.3',
-    '@webpresso/agent-tsconfig': '0.2.3',
-    '@webpresso/agent-vitest': '0.3.5',
-    '@webpresso/agent-workers-test': '0.2.1',
     '@webpresso/db-branching': '0.2.4',
     '@webpresso/db-branching-neon': '0.2.4',
 };

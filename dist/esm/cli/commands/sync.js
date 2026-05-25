@@ -1,5 +1,5 @@
 /**
- * `wp sync` — projects the canonical agent-kit rule/skill catalog into the
+ * `wp sync` — projects the canonical webpresso rule/skill catalog into the
  * supported host surfaces.
  *
  * Projects unified rule + skill content (catalog ∪ consumer) into per-IDE
@@ -40,7 +40,7 @@ function agentsResultToMismatch(result) {
             return {
                 consumerId: 'agents-md',
                 targetPath: result.targetPath,
-                reason: 'managed AGENTS.md blocks drifted from the current agent-kit template',
+                reason: 'managed AGENTS.md blocks drifted from the current webpresso template',
             };
         case 'drifted':
             return {
@@ -90,8 +90,7 @@ export function registerSyncCommand(cli) {
         }
         catch (error) {
             if (error instanceof Error && /catalogDir does not exist/.test(error.message)) {
-                throw commandError('wp sync: @webpresso/agent-kit not installed in node_modules. ' +
-                    'Run `vp install` first.');
+                throw commandError('wp sync: webpresso not installed in node_modules. ' + 'Run `vp install` first.');
             }
             throw error;
         }

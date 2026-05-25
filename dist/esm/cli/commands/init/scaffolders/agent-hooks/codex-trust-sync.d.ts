@@ -15,7 +15,7 @@ export type SyncCodexHookTrustResult = {
     readonly state: CodexTrustStateUpdate;
 } | {
     readonly ok: false;
-    readonly reason: 'no-agent-kit-hooks-found' | 'hooks-list-failed' | 'config-write-failed' | 'verification-failed';
+    readonly reason: 'no-webpresso-hooks-found' | 'hooks-list-failed' | 'config-write-failed' | 'verification-failed';
     readonly message: string;
 };
 export declare function syncCodexHookTrustWithAppServer(api: CodexAppServerApi, input: SyncCodexHookTrustInput): Promise<SyncCodexHookTrustResult>;
