@@ -228,7 +228,7 @@ describe('hooks/doctor', () => {
               ],
             },
             mcpServers: {
-              'agent-kit': { args: ['${CLAUDE_PLUGIN_ROOT}/src/cli/cli.ts'] },
+              webpresso: { args: ['${CLAUDE_PLUGIN_ROOT}/src/cli/cli.ts'] },
             },
           })
         }

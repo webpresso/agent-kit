@@ -52,15 +52,14 @@ const HOOK_EVENT_NAMES = [
  *
  * Falls back to exact-string match when neither extractor applies.
  */
-function hasCommand(groups, command) {
-    const targetId = extractCommandTarget(command);
-    return groups.some((g) => g.hooks.some((h) => {
-        if (h.command === command)
-            return true;
-        if (targetId !== null && extractCommandTarget(h.command) === targetId)
-            return true;
-        return false;
-    }));
+function commandMatches(left, right) {
+    if (left === right)
+        return true;
+    const leftTarget = extractCommandTarget(left);
+    return leftTarget !== null && extractCommandTarget(right) === leftTarget;
+}
+function findHookIndexByCommand(hooks, command) {
+    return hooks.findIndex((hook) => commandMatches(hook.command, command));
 }
 const SCRIPT_EXTENSIONS = ['sh', 'ts', 'js', 'mjs', 'cjs', 'py'];
 const DIRECT_NODE_MODULES_BIN_PATTERN = /^(?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+)$/u;
@@ -105,8 +104,33 @@ function extractCommandTarget(command) {
     return null;
 }
 function ensureGroup(groups, group) {
-    if (hasCommand(groups, group.hooks[0].command))
+    const incomingHook = group.hooks[0];
+    if (!incomingHook)
         return groups;
+    let changed = false;
+    const nextGroups = groups.map((existingGroup) => {
+        const hookIndex = findHookIndexByCommand(existingGroup.hooks, incomingHook.command);
+        if (hookIndex === -1)
+            return existingGroup;
+        changed = true;
+        const hooks = existingGroup.hooks.map((hook, index) => index === hookIndex
+            ? {
+                ...hook,
+                ...incomingHook,
+                // Preserve the consumer's already-materialized command form when
+                // only the matcher/timeout changed. Codex command path migration is
+                // handled by normalizeCodexAgentKitCommands before this merge.
+                command: hook.command,
+            }
+            : hook);
+        return {
+            ...existingGroup,
+            ...(group.matcher !== undefined ? { matcher: group.matcher } : {}),
+            hooks,
+        };
+    });
+    if (changed)
+        return nextGroups;
     return [...groups, group];
 }
 function orderStopGroups(groups) {
@@ -336,9 +360,12 @@ function patchClaudeSettings(existing, skillHooks) {
 }
 // ── Codex CLI (.codex/hooks.json) ────────────────────────────────────────────
 // Schema is wrapped under top-level `hooks` (Codex docs: developers.openai.com/codex/hooks).
+// Codex can run hooks for Bash, apply_patch, and MCP tool calls. Keep MCP
+// routing visible to the guard so ctx/context-mode shells that wrap quality
+// commands are denied before execution instead of silently bypassing wp_* MCPs.
 // File edits go through apply_patch; "Edit"/"Write" are accepted matcher aliases.
 const CODEX_MATCHERS = {
-    preToolUse: 'Bash|Edit|Write',
+    preToolUse: 'Bash|apply_patch|Edit|Write|mcp__.*',
     postToolUse: 'Edit|Write',
 };
 function patchCodexHooks(existing, repoRoot) {
@@ -466,7 +493,9 @@ export async function scaffoldAgentHooks(input) {
         codex: patchJsonFile(join(input.repoRoot, '.codex', 'hooks.json'), (existing) => patchCodexHooks(existing, input.repoRoot), input.options),
         claudeUser: patchJsonFile(defaultClaudeUserSettingsPath(), (existing) => patchClaudeUserSettings(existing), input.options),
     };
-    await trustCodexAgentKitHooksForRepo(input);
+    if (input.trustCodexHooks !== false) {
+        await trustCodexAgentKitHooksForRepo(input);
+    }
     return result;
 }
 //# sourceMappingURL=index.js.map

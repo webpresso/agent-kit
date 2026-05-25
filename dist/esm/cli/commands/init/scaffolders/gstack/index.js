@@ -8,8 +8,9 @@
  *
  * Detection for the canonical checkout is path-based, NOT PATH-based: gstack
  * itself is not a CLI binary on $PATH. Checkout bootstrap is a clone +
- * `./setup --team`. When Codex is detected, agent-kit additionally runs
- * gstack's official `./setup --host codex` flow from that same checkout.
+ * `./setup --team`. When Codex is detected, agent-kit runs gstack's official
+ * `./setup --host auto --team` flow from that same checkout so one setup pass
+ * can refresh both Claude/team mode and Codex materialization.
  *
  * Side-effect outside the consumer repo: writes to the user's home dir.
  * This is intentional — gstack is global by design.
@@ -29,9 +30,12 @@ function defaultCodexConfigPath() {
 function defaultCodexSkillsRoot() {
     return path.join(process.env.HOME || homedir(), '.codex', 'skills');
 }
+function formatSetupCommand(args) {
+    return args[0] === '--team' ? '--team' : '--host auto --team';
+}
 function runSetup(root, spawn, args) {
     const result = spawn('./setup', args, { cwd: root, stdio: 'inherit' });
-    return { ok: result.status === 0, exitCode: result.status ?? -1 };
+    return { ok: result.status === 0, exitCode: result.status ?? -1, command: formatSetupCommand(args) };
 }
 function defaultDetectCodex(input) {
     if (input.exists(input.codexConfigPath))
@@ -54,10 +58,10 @@ function ensureCodexHost(input) {
     }
     const hadSkills = input.exists(path.join(input.codexSkillsRoot, 'gstack'));
     input.spinner.start();
-    const setup = runSetup(input.root, input.spawn, ['--host', 'codex']);
+    const setup = runSetup(input.root, input.spawn, ['--host', 'auto', '--team']);
     if (!setup.ok) {
         input.spinner.fail('gstack codex setup failed');
-        return { kind: 'gstack-setup-failed', exitCode: setup.exitCode, command: '--host codex' };
+        return { kind: 'gstack-setup-failed', exitCode: setup.exitCode, command: setup.command };
     }
     input.spinner.succeed(hadSkills ? 'gstack codex updated' : 'gstack codex installed');
     return hadSkills
@@ -95,12 +99,6 @@ export function ensureGstack(input) {
             }
         }
         spinner.start();
-        const setup = runSetup(root, spawn, ['--team']);
-        if (!setup.ok) {
-            spinner.fail('gstack setup failed');
-            return { kind: 'gstack-setup-failed', exitCode: setup.exitCode, command: '--team' };
-        }
-        spinner.succeed('gstack updated');
         const codex = ensureCodexHost({
             root,
             spawn,
@@ -112,6 +110,14 @@ export function ensureGstack(input) {
         });
         if (codex.kind === 'gstack-setup-failed')
             return codex;
+        if (codex.kind === 'gstack-codex-skipped') {
+            const setup = runSetup(root, spawn, ['--team']);
+            if (!setup.ok) {
+                spinner.fail('gstack setup failed');
+                return { kind: 'gstack-setup-failed', exitCode: setup.exitCode, command: setup.command };
+            }
+        }
+        spinner.succeed('gstack updated');
         return { kind: 'gstack-updated', root, codex };
     }
     spinner.start();
@@ -122,12 +128,6 @@ export function ensureGstack(input) {
         spinner.fail('gstack clone failed');
         return { kind: 'gstack-clone-failed', exitCode: clone.status ?? -1 };
     }
-    const setup = runSetup(root, spawn, ['--team']);
-    if (!setup.ok) {
-        spinner.fail('gstack setup failed');
-        return { kind: 'gstack-setup-failed', exitCode: setup.exitCode, command: '--team' };
-    }
-    spinner.succeed('gstack installed');
     const codex = ensureCodexHost({
         root,
         spawn,
@@ -139,6 +139,14 @@ export function ensureGstack(input) {
     });
     if (codex.kind === 'gstack-setup-failed')
         return codex;
+    if (codex.kind === 'gstack-codex-skipped') {
+        const setup = runSetup(root, spawn, ['--team']);
+        if (!setup.ok) {
+            spinner.fail('gstack setup failed');
+            return { kind: 'gstack-setup-failed', exitCode: setup.exitCode, command: setup.command };
+        }
+    }
+    spinner.succeed('gstack installed');
     return { kind: 'gstack-installed', root, codex };
 }
 //# sourceMappingURL=index.js.map

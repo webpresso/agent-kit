@@ -13,4 +13,8 @@ export { auditVision } from './audit/vision-doc.js';
 export type { VisionOptions, VisionRequiredSection } from './audit/vision-doc.js';
 export { analyzeViteDistBundleBudget, bundleBudgetCliHelp, parseBundleBudgetCliArgs, runBundleBudgetCli, } from './vite/local.js';
 export type { AnalyzeViteDistBundleBudgetOptions, BundleBudgetCliOptions } from './vite/local.js';
+export { getCiActSecretProfile, injectDefaultActArgs, isCiActSecretProfileId, listMissingRequiredSecrets, normalizeActSecretsWithOptions, pickAllowedSecrets, renderSecretsFile, resolveCiActSecretProfile, writeTempSecretsFile, } from './ci/act-helper.js';
+export type { CiActSecretProfile, CiActSecretProfileId, ResolveCiActSecretProfileOptions, TempSecretsFile, } from './ci/act-helper.js';
+export { buildSecretGateCommand, runSecretGateCommand } from './secret-gate/runner.js';
+export type { SecretGateCommand, SecretGateCommandOptions, SecretGateRunResult, } from './secret-gate/runner.js';
 //# sourceMappingURL=local.d.ts.map

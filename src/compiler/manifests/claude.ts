@@ -24,7 +24,7 @@ export async function emitManifest(opts: ManifestEmitOptions): Promise<void> {
 
   const plugin = {
     _generated: 'by agent-kit wp compile — do not edit manually',
-    name: '@webpresso/agent-kit',
+    name: 'webpresso',
     version: opts.version,
     description: 'Agent-kit: blueprint lifecycle, skill compiler, audits for Claude Code',
     skills: opts.skills.map((name) => ({ path: `skills/${name}/SKILL.md` })),
@@ -36,8 +36,8 @@ export async function emitManifest(opts: ManifestEmitOptions): Promise<void> {
 
   const marketplace = {
     _generated: 'by agent-kit wp compile — do not edit manually',
-    name: '@webpresso/agent-kit',
-    displayName: 'Webpresso Agent Kit',
+    name: 'webpresso',
+    displayName: 'Webpresso',
     description: 'Agent-kit: blueprint lifecycle, skill compiler, audits for Claude Code',
     version: opts.version,
     publisher: 'webpresso',

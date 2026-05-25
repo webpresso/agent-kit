@@ -1,5 +1,5 @@
 import type { RepoAuditResult } from '#audit/repo-guardrails';
-export type AuditKind = 'tph' | 'tph-e2e' | 'bundle-budget' | 'commit-message' | 'blueprint-lifecycle' | 'roadmap-links' | 'docs-frontmatter' | 'catalog-drift' | 'agents' | 'tech-debt' | 'no-relative-parent-imports' | 'no-link-protocol' | 'vision' | 'bucket-boundary' | 'skill-sizes' | 'broken-refs' | 'memory-rotation' | 'gitignore-agent-surfaces' | 'memory-unified' | 'compile-drift' | 'agent-cost' | 'blueprint-db-consistency' | 'blueprint-lifecycle-sql' | 'tech-debt-cadence' | 'cross-repo-correlation' | 'mutation' | 'quality' | 'guardrails' | 'hook-surface' | 'no-relative-package-scripts';
+export type AuditKind = 'tph' | 'tph-e2e' | 'bundle-budget' | 'commit-message' | 'blueprint-lifecycle' | 'roadmap-links' | 'docs-frontmatter' | 'catalog-drift' | 'package-surface' | 'agents' | 'tech-debt' | 'no-relative-parent-imports' | 'no-link-protocol' | 'vision' | 'bucket-boundary' | 'skill-sizes' | 'broken-refs' | 'memory-rotation' | 'gitignore-agent-surfaces' | 'memory-unified' | 'compile-drift' | 'agent-cost' | 'blueprint-db-consistency' | 'blueprint-lifecycle-sql' | 'tech-debt-cadence' | 'cross-repo-correlation' | 'mutation' | 'quality' | 'guardrails' | 'hook-surface' | 'no-relative-package-scripts';
 export type AuditOutcome = {
     kind: 'invalid-usage';
     message: string;

@@ -48,6 +48,7 @@ export interface ScaffoldAgentHooksInput {
     options: MergeOptions;
     createCodexAppServer?: CodexAppServerFactory;
     onCodexTrustSyncWarning?: (warning: CodexTrustSyncWarning) => void;
+    trustCodexHooks?: boolean;
 }
 export interface ScaffoldAgentHooksResult {
     claude: MergeResult;

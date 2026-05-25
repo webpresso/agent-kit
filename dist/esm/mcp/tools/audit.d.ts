@@ -30,6 +30,7 @@ declare const inputSchema: z.ZodObject<{
         "roadmap-links": "roadmap-links";
         "docs-frontmatter": "docs-frontmatter";
         "catalog-drift": "catalog-drift";
+        "package-surface": "package-surface";
     }>;
     cwd: z.ZodOptional<z.ZodString>;
     directory: z.ZodOptional<z.ZodString>;

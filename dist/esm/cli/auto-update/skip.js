@@ -13,6 +13,11 @@
  *   - `CI=true` (and the broader set of CI signals via ci-info-style env
  *     probing) — non-interactive environments don't want surprise spawns.
  *
+ * `setup` / `init` intentionally DO NOT skip the update check: setup is the
+ * command users run when they want their agent surfaces refreshed, so it should
+ * also detect and schedule an agent-kit package refresh when a newer version is
+ * available.
+ *
  * `WP_SKIP_AUTO_INSTALL=1` does **not** appear here — that variable only
  * disables the install step. The notify side of the flow still runs so users
  * get a banner. That check belongs in the installer module.
@@ -32,7 +37,7 @@ export const CI_ENV_KEYS = [
     'DRONE',
     'JENKINS_URL',
 ];
-const SKIP_SUBCOMMANDS = new Set(['mcp', 'setup', 'init']);
+const SKIP_SUBCOMMANDS = new Set(['mcp']);
 export function shouldSkipUpdateCheck(env, argv) {
     if (hasInformationalFlag(argv))
         return true;
