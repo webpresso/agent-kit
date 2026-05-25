@@ -112,14 +112,14 @@ describe('wp ci command', () => {
       command: 'act',
       timeoutMs: undefined,
       args: [
-      'pull_request',
-      '-W',
-      '/repo/.github/workflows/ci-e2e.yml',
-      '-P',
-      'ubicloud-standard-2=ghcr.io/catthehacker/ubuntu:full-latest',
-      '--rm',
-      '--container-architecture',
-      'linux/amd64',
+        'pull_request',
+        '-W',
+        '/repo/.github/workflows/ci-e2e.yml',
+        '-P',
+        'ubicloud-standard-2=ghcr.io/catthehacker/ubuntu:full-latest',
+        '--rm',
+        '--container-architecture',
+        'linux/amd64',
       ],
     })
   })

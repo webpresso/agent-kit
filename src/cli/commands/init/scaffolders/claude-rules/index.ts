@@ -32,25 +32,18 @@ type ClaudeRulesMode =
 
 function detectMode(repoRoot: string): ClaudeRulesMode {
   const pkg = readPackageJson(repoRoot).info
-  if (pkg?.name === '@webpresso/agent-kit') {
+  if (pkg?.name === 'webpresso') {
     return {
       mode: 'self',
       sourceRoot: join(repoRoot, 'catalog', 'agent', 'rules'),
     }
   }
 
-  const installedPackageJsonPath = join(
-    repoRoot,
-    'node_modules',
-    '@webpresso',
-    'agent-kit',
-    'package.json',
-  )
+  const installedPackageJsonPath = join(repoRoot, 'node_modules', 'webpresso', 'package.json')
   const installedRulesRoot = join(
     repoRoot,
     'node_modules',
-    '@webpresso',
-    'agent-kit',
+    'webpresso',
     'catalog',
     'agent',
     'rules',
@@ -112,7 +105,7 @@ function resolveCurrentPackageRoot(): string {
     if (parent === dir) break
     dir = parent
   }
-  throw new Error('wp init: could not locate the agent-kit package root for claude-rules fallback.')
+  throw new Error('wp init: could not locate the webpresso package root for claude-rules fallback.')
 }
 
 export function scaffoldClaudeRules(input: ScaffoldClaudeRulesInput): MergeResult[] {

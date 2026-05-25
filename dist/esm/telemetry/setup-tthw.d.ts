@@ -1,7 +1,7 @@
 export interface TthwPayload {
     readonly event: 'setup-complete';
     readonly durationMs: number;
-    readonly agentKitVersion: string;
+    readonly webpressoVersion: string;
     readonly os: string;
     readonly nodeVersion: string;
 }

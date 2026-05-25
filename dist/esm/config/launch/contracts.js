@@ -7,7 +7,7 @@
  * slug. Host adapters are responsible for mapping their internal types
  * into these contracts before calling launch-engine.
  *
- * @module @webpresso/agent-launch/contracts
+ * @module webpresso/launch/contracts
  */
 export {};
 //# sourceMappingURL=contracts.js.map

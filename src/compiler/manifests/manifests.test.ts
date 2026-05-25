@@ -48,7 +48,9 @@ describe('claude manifest emitter', () => {
     expect(json['version']).toBe('1.2.3')
     expect(Array.isArray(json['skills'])).toBe(true)
     expect((json['skills'] as unknown[]).length).toBe(2)
-    expect(json['_generated']).toMatch(/agent-kit/)
+    expect(json['_generated']).toMatch(/webpresso/)
+    expect(json['description']).toContain('Webpresso')
+    expect(json['description']).not.toContain(`Agent${'-'}kit`)
   })
 
   it('emits .claude-plugin/marketplace.json with skill names and schemaVersion', async () => {
@@ -59,7 +61,8 @@ describe('claude manifest emitter', () => {
     expect(json['name']).toBe('webpresso')
     expect(json['skills']).toStrictEqual(['debug', 'investigate'])
     expect(json['schemaVersion']).toBe('1.0.0')
-    expect(json['_generated']).toMatch(/agent-kit/)
+    expect(json['_generated']).toMatch(/webpresso/)
+    expect(json['description']).toContain('Webpresso')
   })
 
   it('plugin.json skills list maps to correct paths', async () => {
@@ -93,11 +96,12 @@ describe('codex manifest emitter', () => {
     const agentDir = tmp()
     await emitCodex({ ...BASE_OPTS, agentDir, outDir })
     const json = readJson(join(outDir, '.codex-plugin', 'plugin.json'))
-    expect(json['name']).toBe('@webpresso/agent-kit')
+    expect(json['name']).toBe('webpresso')
     expect(json['version']).toBe('1.2.3')
     expect(Array.isArray(json['skills'])).toBe(true)
     expect(json['apps']).toStrictEqual([])
-    expect(json['_generated']).toMatch(/agent-kit/)
+    expect(json['_generated']).toMatch(/webpresso/)
+    expect(json['description']).toContain('Webpresso')
   })
 
   it('skills list maps to correct paths', async () => {
@@ -131,10 +135,11 @@ describe('cursor manifest emitter', () => {
     const agentDir = tmp()
     await emitCursor({ ...BASE_OPTS, agentDir, outDir })
     const json = readJson(join(outDir, '.cursor-plugin', 'plugin.json'))
-    expect(json['name']).toBe('@webpresso/agent-kit')
+    expect(json['name']).toBe('webpresso')
     expect(json['version']).toBe('1.2.3')
     expect(Array.isArray(json['skills'])).toBe(true)
-    expect(json['_generated']).toMatch(/agent-kit/)
+    expect(json['_generated']).toMatch(/webpresso/)
+    expect(json['description']).toContain('Webpresso')
   })
 
   it('rules field is an array (empty when no rules dir)', async () => {
@@ -178,11 +183,11 @@ describe('gemini manifest emitter', () => {
     const agentDir = tmp()
     await emitGemini({ ...BASE_OPTS, agentDir, outDir })
     const json = readJson(join(outDir, 'gemini-extension.json'))
-    expect(json['name']).toBe('webpresso-agent-kit')
+    expect(json['name']).toBe('webpresso')
     expect(json['version']).toBe('1.2.3')
     expect(Array.isArray(json['commands'])).toBe(true)
     expect(json['schemaVersion']).toBe('0.4.0')
-    expect(json['_generated']).toMatch(/agent-kit/)
+    expect(json['_generated']).toMatch(/webpresso/)
   })
 
   it('commands list maps to correct paths', async () => {

@@ -60,12 +60,12 @@ describe('shouldSkipUpdateCheck — mcp subcommand', () => {
   })
 })
 
-describe('shouldSkipUpdateCheck — setup refreshes agent-kit', () => {
-  it('does not skip setup so setup can detect and schedule newer agent-kit versions', () => {
+describe('shouldSkipUpdateCheck — setup refreshes webpresso', () => {
+  it('does not skip setup so setup can detect and schedule newer webpresso versions', () => {
     expect(shouldSkipUpdateCheck({}, argv('setup'))).toStrictEqual(false)
   })
 
-  it('does not skip init so the setup alias can detect and schedule newer agent-kit versions', () => {
+  it('does not skip init so the setup alias can detect and schedule newer webpresso versions', () => {
     expect(shouldSkipUpdateCheck({}, argv('init'))).toStrictEqual(false)
   })
 })

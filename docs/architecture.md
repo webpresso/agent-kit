@@ -14,13 +14,13 @@ on the next sync.
 
 ### Layer 1 — Catalog (read-only template)
 
-**Location:** `node_modules/@webpresso/agent-kit/catalog/`
+**Location:** `node_modules/webpresso/catalog/`
 
 Ships with the package. Curated commands, skills, workflows, rules,
-guides, and doc templates that agent-kit maintainers consider stable
+guides, and doc templates that webpresso maintainers consider stable
 defaults.
 
-- **Owner:** agent-kit
+- **Owner:** webpresso
 - **Lifecycle:** updated by bumping the package version
 - **Edit?** Never. Anything you write here disappears on `vp install`.
 
@@ -126,9 +126,9 @@ surface split into three bands:
   and `.gemini/`. They are derived from `.agent/` and can be skipped by
   consumers that do not use a given tool.
 - **Optional runtime adapters:** OMX/team/pll execution details belong behind
-  a future `agent-kit-omx` seam, not in the public-core mental model.
+  a future `webpresso-omx` seam, not in the public-core mental model.
 - **Optional hook adapters:** reusable pretool validators belong behind a
-  future `agent-kit-hooks` seam after Webpresso-specific policy is removed.
+  future `webpresso-hooks` seam after Webpresso-specific policy is removed.
 - **Internal-only host code:** `apps/cli-wp`, Webpresso product templates,
   host-owned E2E orchestration, and app-specific validator policy remain
   outside the package core. Public docs may mention them as consumers, but
@@ -140,7 +140,7 @@ The historical `webpresso/blueprints/` and `webpresso/tech-debt/` layouts
 remain a compatibility fallback when the Webpresso sentinel (`webpresso/config.yaml`) exists.
 
 To pin the location explicitly — bypassing directory detection — set `blueprintsDir` in
-`.agent-kitrc.json`:
+`.webpressorc.json`:
 
 ```json
 { "blueprintsDir": "webpresso/blueprints" }
@@ -149,7 +149,7 @@ To pin the location explicitly — bypassing directory detection — set `bluepr
 This is the highest-priority override; all blueprint commands (`new`, `list`, `audit`,
 `start`, `finalize`, `move`) and the pretool hook validator read from the same source.
 
-Future `agent-kit-hooks` candidates are tracked in `docs/research/quality-audits/agent-kit-hooks-candidate-matrix.md`; only generic validators should move into that optional package.
+Future `webpresso-hooks` candidates are tracked in `docs/research/quality-audits/webpresso-hooks-candidate-matrix.md`; only generic validators should move into that optional package.
 
 ## Why three layers and not two
 
@@ -169,8 +169,8 @@ Two alternatives fail for specific reasons:
 ## Lifecycle in practice
 
 ```
-agent-kit ships an update
-  └─→ pnpm update @webpresso/agent-kit        (catalog refreshed in node_modules/)
+webpresso ships an update
+  └─→ pnpm update webpresso                   (catalog refreshed in node_modules/)
        └─→ vp exec wp setup --overwrite     (or: wp skill install <name>)
             └─→ new catalog content copied into .agent/   — review the diff
                  └─→ vp exec wp sync       (regenerate .claude/, .gemini/, …)
@@ -182,7 +182,7 @@ old surface. Both steps matter.
 
 ## Anti-patterns
 
-- **Editing `node_modules/@webpresso/agent-kit/catalog/`** — gone on
+- **Editing `node_modules/webpresso/catalog/`** — gone on
   next install.
 - **Editing `.claude/commands/`** — overwritten on next `wp sync`.
 - **Forgetting to commit `.agent/`** — collaborators get the old

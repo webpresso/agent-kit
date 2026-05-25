@@ -37,7 +37,7 @@ per-blueprint in `cross_repo_depends_on` frontmatter:
 
 ```yaml
 cross_repo_depends_on:
-  - repo: webpresso/agent-kit
+  - repo: webpresso/webpresso
     slug: agent-asset-compiler-multi-runtime
     require_status: completed
 ```

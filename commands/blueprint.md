@@ -1,7 +1,7 @@
 ---
 description: Manage blueprints via focused MCP tools
 ---
-Use the focused blueprint MCP tools instead of the removed legacy facade `mcp__agent-kit__wp_blueprint(...)`.
+Use the focused blueprint MCP tools.
 
 - `wp_blueprint_projects` — discover visible projects and worktrees
 - `wp_blueprint_list` — list blueprints

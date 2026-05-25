@@ -33,7 +33,7 @@ export function auditAgents(rootDirectory: string = process.cwd()): RepoAuditRes
 
   const packageJson = readJsonFile<Record<string, unknown>>(join(root, 'package.json'))
   const packageName = typeof packageJson.name === 'string' ? packageJson.name : undefined
-  const isSelfHost = packageName === '@webpresso/agent-kit'
+  const isSelfHost = packageName === 'webpresso'
   const config = readConfig(root)
 
   checked += 1
@@ -309,7 +309,7 @@ function checkClaudeRules(
     if (!stat.isSymbolicLink()) {
       violations.push({
         file: relative(root, targetPath),
-        message: `Rule ${ruleName} is a real file but not allowlisted in .agent-kitrc.json#rules.overrides.`,
+        message: `Rule ${ruleName} is a real file but not allowlisted in .webpressorc.json#rules.overrides.`,
       })
       continue
     }
@@ -344,7 +344,7 @@ function checkClaudeRules(
     if (overrideSet.has(ruleName)) continue
     violations.push({
       file: relative(root, join(rulesTarget, file)),
-      message: `Unexpected Claude rule ${file}. Remove it or add ${ruleName} to .agent-kitrc.json#rules.overrides.`,
+      message: `Unexpected Claude rule ${file}. Remove it or add ${ruleName} to .webpressorc.json#rules.overrides.`,
     })
   }
 }
@@ -376,13 +376,13 @@ function checkAgentKitDevDependency(
   violations: RepoAuditViolation[],
 ): void {
   const devDependencies = (packageJson.devDependencies ?? {}) as Record<string, unknown>
-  const version = devDependencies['@webpresso/agent-kit']
+  const version = devDependencies['webpresso']
   const scripts = (packageJson.scripts ?? {}) as Record<string, unknown>
   const setupAgent = typeof scripts['setup:agent'] === 'string' ? scripts['setup:agent'] : ''
   const postinstall = typeof scripts.postinstall === 'string' ? scripts.postinstall : ''
 
   const usesGlobalWpConsumerMode =
-    setupAgent === 'wp setup' && postinstall.includes('run-agent-kit-bin.ts restore-dev-links')
+    setupAgent === 'wp setup' && postinstall.includes('wp-restore-dev-links')
 
   if (usesGlobalWpConsumerMode) {
     return
@@ -392,7 +392,7 @@ function checkAgentKitDevDependency(
     violations.push({
       file: 'package.json',
       message:
-        'Missing devDependency `@webpresso/agent-kit`. Run `vp install -D @webpresso/agent-kit` then `vp install`.',
+        'Missing devDependency `webpresso`. Run `vp install -D webpresso` then `vp install`.',
     })
   }
 }

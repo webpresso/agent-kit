@@ -33,8 +33,6 @@ jobs:
 
       - name: Install
         run: pnpm install --frozen-lockfile
-        env:
-          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
       - name: Run bundle smoke
         # WP_SKIP_GSTACK and WP_SKIP_RTK skip optional network-dependent
@@ -42,7 +40,6 @@ jobs:
         # network access and are not the subject of this smoke test.
         # NO_COLOR=1 suppresses ANSI escape codes in non-TTY output.
         env:
-          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
           WP_SKIP_GSTACK: '1'
           WP_SKIP_RTK: '1'
           NO_COLOR: '1'
@@ -56,7 +53,7 @@ jobs:
           git config user.name "CI"
 
           # Install the checked-out package locally so this smoke tests the
-          # candidate source, not the last published @webpresso/agent-kit.
+          # candidate source, not the last published webpresso package.
           pnpm init --silent 2>/dev/null || true
           pnpm add --silent ../.. 2>/dev/null
 

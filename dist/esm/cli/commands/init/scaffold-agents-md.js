@@ -5,8 +5,8 @@
  * - {{REPOSITORY_MAP}}: bulleted list of workspace packages, or "single-package" fallback.
  * - {{TECH_STACK}}: detected from package.json deps.
  * - {{ESCALATION_MAP}}: TODO placeholder.
- * - {{DURABLE_PLANNING_ROOT}}: from .agent-kitrc.json, defaulting to `.agent/planning/`.
- * - {{BLUEPRINTS_DIR}}: from .agent-kitrc.json, defaulting to `blueprints`.
+ * - {{DURABLE_PLANNING_ROOT}}: from .webpressorc.json, defaulting to `.agent/planning/`.
+ * - {{BLUEPRINTS_DIR}}: from .webpressorc.json, defaulting to `blueprints`.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -57,8 +57,8 @@ export function renderTechStack(consumer) {
         .map((label) => `- ${label}`)
         .join('\n');
 }
-const MANAGED_BEGIN = /^<!-- >>> managed by @webpresso\/agent-kit \(([^)]+)\) -->$/u;
-const MANAGED_END = /^<!-- <<< managed by @webpresso\/agent-kit \(([^)]+)\) -->$/u;
+const MANAGED_BEGIN = /^<!-- >>> managed by webpresso \(([^)]+)\) -->$/u;
+const MANAGED_END = /^<!-- <<< managed by webpresso \(([^)]+)\) -->$/u;
 const USER_BEGIN = /^<!-- >>> user-owned \(([^)]+)\) -->$/u;
 const USER_END = /^<!-- <<< user-owned \(([^)]+)\) -->$/u;
 function parseAgentsBlocks(content) {
@@ -97,10 +97,10 @@ function parseAgentsBlocks(content) {
 }
 function renderBlock(kind, id, innerLines) {
     const begin = kind === 'managed'
-        ? `<!-- >>> managed by @webpresso/agent-kit (${id}) -->`
+        ? `<!-- >>> managed by webpresso (${id}) -->`
         : `<!-- >>> user-owned (${id}) -->`;
     const end = kind === 'managed'
-        ? `<!-- <<< managed by @webpresso/agent-kit (${id}) -->`
+        ? `<!-- <<< managed by webpresso (${id}) -->`
         : `<!-- <<< user-owned (${id}) -->`;
     return [begin, ...innerLines, end];
 }

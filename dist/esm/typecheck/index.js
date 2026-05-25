@@ -1,5 +1,5 @@
 /**
- * Stable subpath export: `@webpresso/agent-kit/typecheck`.
+ * Stable subpath export: `webpresso/typecheck`.
  *
  * Exposes a framework-friendly `runTypecheck` runner that wraps
  * `tsc --noEmit` either at cwd (no `packages` given) or once per resolved

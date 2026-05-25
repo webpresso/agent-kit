@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * SessionStart hook: warn loud when @webpresso/agent-kit dev-link is broken.
+ * SessionStart hook: warn loud when webpresso dev-link is broken.
  *
  * Cross-runtime — emits the additionalContext envelope shared by Claude Code
  * (docs.claude.com/en/docs/claude-code/hooks) and Codex CLI
@@ -9,8 +9,8 @@
  *
  * Catches the rare path where `vp install --ignore-scripts` skipped the
  * consumer's `wp-restore-dev-links` postinstall, leaving
- * node_modules/@webpresso/agent-kit pointed at the pnpm-store snapshot
- * instead of the live source declared in `.webpresso/agent-kit-dev-link.json`.
+ * node_modules/webpresso pointed at the pnpm-store snapshot
+ * instead of the live source declared in `.webpresso/webpresso-dev-link.json`.
  * Always exits 0; never blocks session start.
  */
 import { readlinkSync, realpathSync } from 'node:fs'
@@ -58,7 +58,7 @@ export function formatBreakageMessage(breakage: DevLinkBreakage): string {
     `WARNING: ${breakage.packageName} dev-link is broken.`,
     `State file (${STATE_FILE_RELATIVE_PATH}) says linkedFrom=${breakage.expected} but node_modules/${breakage.packageName} -> ${actualLabel}.`,
     'Hooks will run STALE code.',
-    `Fix: run \`vp install\` (postinstall wp-restore-dev-links re-creates the symlink), or from the agent-kit checkout: \`vp run dev:link --consumer ${breakage.projectDir}\`.`,
+    `Fix: run \`vp install\` (postinstall wp-restore-dev-links re-creates the symlink), or from the webpresso checkout: \`vp run dev:link --consumer ${breakage.projectDir}\`.`,
   ].join(' ')
 }
 

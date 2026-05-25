@@ -2,9 +2,9 @@
  * Idempotent `.gitignore` patcher anchored by marker comments.
  *
  * Each managed block is wrapped between:
- *   # >>> managed by @webpresso/agent-kit (<id>)
+ *   # >>> managed by webpresso (<id>)
  *   <patterns>
- *   # <<< managed by @webpresso/agent-kit (<id>)
+ *   # <<< managed by webpresso (<id>)
  *
  * Re-running the patcher detects an existing block by id and either leaves
  * it alone (when content matches) or rewrites just that block (overwrite or
@@ -21,8 +21,8 @@ export interface GitignoreBlock {
   patterns: readonly string[]
 }
 
-const BEGIN = (id: string): string => `# >>> managed by @webpresso/agent-kit (${id})`
-const END = (id: string): string => `# <<< managed by @webpresso/agent-kit (${id})`
+const BEGIN = (id: string): string => `# >>> managed by webpresso (${id})`
+const END = (id: string): string => `# <<< managed by webpresso (${id})`
 
 function renderBlock(block: GitignoreBlock): string {
   return [BEGIN(block.id), ...block.patterns, END(block.id)].join('\n')
@@ -45,7 +45,7 @@ function findBlock(content: string, id: string): { start: number; end: number } 
   return { start: startLine, end: endLine }
 }
 
-/** Canonical gitignore block for agent-kit generated/transient paths. */
+/** Canonical gitignore block for webpresso generated/transient paths. */
 export const GENERATED_PATHS_BLOCK: GitignoreBlock = {
   id: 'generated',
   patterns: [

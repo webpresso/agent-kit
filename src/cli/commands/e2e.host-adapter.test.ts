@@ -11,7 +11,7 @@ describe('wp e2e host adapter integration', () => {
   beforeEach(() => {
     testDir = join(
       tmpdir(),
-      `agent-kit-e2e-command-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      `webpresso-e2e-command-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     )
     mkdirSync(testDir, { recursive: true })
   })
@@ -20,14 +20,14 @@ describe('wp e2e host adapter integration', () => {
     rmSync(testDir, { recursive: true, force: true })
   })
 
-  it('uses the configured host adapter when agent-kit.config.ts is present', async () => {
+  it('uses the configured host adapter when webpresso.config.ts is present', async () => {
     const nestedDir = join(testDir, 'packages', 'logger')
 
     mkdirSync(nestedDir, { recursive: true })
     writeFileSync(
-      join(testDir, 'agent-kit.config.ts'),
+      join(testDir, 'webpresso.config.ts'),
       [
-        'export const agentKitConfig = {',
+        'export const webpressoConfig = {',
         "  e2e: { hostAdapterModule: './adapter.ts' },",
         '}',
         '',
@@ -37,7 +37,7 @@ describe('wp e2e host adapter integration', () => {
     writeFileSync(
       join(testDir, 'adapter.ts'),
       [
-        'export const agentKitE2eHostAdapter = {',
+        'export const webpressoE2eHostAdapter = {',
         "  listSuites: () => [{ id: 'platform-api', aliases: ['api'], fileMatchers: ['main/'], batchKey: 'platform-chef', envProfile: 'platform-chef', steps: [{ runner: 'vitest', logName: 'platform-api', configPath: 'apps/workers/platform-api/e2e/vitest.config.ts' }] }],",
         "  resolveSuiteId: (name) => name === 'api' || name === 'platform-api' ? 'platform-api' : null,",
         '  resolveSuiteGroup: () => null,',

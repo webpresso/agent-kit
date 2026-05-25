@@ -48,10 +48,9 @@ package with explicit subpath exports over new split packages.
 
 ## Publishing & registry
 
-- Scoped `@webpresso/*` packages publish to GitHub Packages:
-  `@webpresso:registry=https://npm.pkg.github.com`.
-- Auth via `GH_PACKAGES_TOKEN` env var read by the repo's `.npmrc`. Never
-  hardcode tokens or create `.env` files with credentials.
+- The canonical public package is unscoped `webpresso` on npmjs.org.
+- Auth via `NPM_TOKEN` in CI. Never hardcode tokens or create `.env` files
+  with credentials.
 - `prepublishOnly` builds the package before every publish. If a
   package outputs a `dist/`, it must have `prepublishOnly: "vp run build"` (or
   equivalent) so that Changesets publishing always ships built output.
@@ -59,13 +58,10 @@ package with explicit subpath exports over new split packages.
 - Run `vp run lint:pkg` (publint / attw) before releasing to catch broken export
   maps.
 
-**Exception — public `webpresso` package:** The `webpresso` package on
-public npmjs.org is unscoped and published with `access: "public"`. It is both
-the frictionless globally-installed CLI (`vp install -g webpresso`) and the
-consumer dependency for folded agent config helpers via `webpresso/*` subpath
-exports. The dual-publish is handled by `scripts/publish-webpresso.ts` (see
-`changeset-release.md` § Dual-publish pattern). Scoped `@webpresso/*` packages
-continue to use GitHub Packages.
+The public `webpresso` package is unscoped and published with
+`access: "public"`. It is both the frictionless globally-installed CLI
+(`vp install -g webpresso`) and the consumer dependency for folded agent
+config helpers via `webpresso/*` subpath exports.
 
 ## Module format
 

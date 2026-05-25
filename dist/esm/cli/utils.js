@@ -12,7 +12,7 @@ import path from 'node:path';
 // ---------------------------------------------------------------------------
 /**
  * Webpresso framework layout marker — checked last so the webpresso repo
- * itself resolves correctly when it has no `.agent-kitrc.json`. Generic
+ * itself resolves correctly when it has no `.webpressorc.json`. Generic
  * consumers hit `package.json` first and never see this fallback.
  */
 const CANONICAL_CONFIG_PATH = 'webpresso/config.yaml';
@@ -20,7 +20,7 @@ const CANONICAL_CONFIG_PATH = 'webpresso/config.yaml';
  * Markers used to detect a project root, in priority order; first hit wins.
  */
 export const PROJECT_ROOT_MARKERS = [
-    '.agent-kitrc.json',
+    '.webpressorc.json',
     'pnpm-workspace.yaml',
     'package.json',
     CANONICAL_CONFIG_PATH,
@@ -122,12 +122,12 @@ export function formatUnknownCommandError(input, commands, binName = 'wp') {
 // Package metadata (for --version)
 // ---------------------------------------------------------------------------
 /**
- * Resolve the agent-kit package.json and return its version.
+ * Resolve the webpresso package.json and return its version.
  *
  * Caller must pass `import.meta.url` from a file that lives at
  * `<packageRoot>/src/cli/cli.ts` (source) or `<packageRoot>/dist/cli.js`
  * (bundled). We walk upward until we find a `package.json` whose `name`
- * is `@webpresso/agent-kit`, to be robust against both layouts without
+ * is `webpresso`, to be robust against both layouts without
  * having to know how many `..` segments to append.
  */
 export function readPackageVersion(metaUrl) {
@@ -138,7 +138,7 @@ export function readPackageVersion(metaUrl) {
         if (existsSync(candidate)) {
             try {
                 const parsed = JSON.parse(readFileSync(candidate, 'utf-8'));
-                if (parsed.name === '@webpresso/agent-kit') {
+                if (parsed.name === 'webpresso') {
                     return parsed.version ?? '0.0.0';
                 }
             }

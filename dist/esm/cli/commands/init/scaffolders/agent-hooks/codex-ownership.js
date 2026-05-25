@@ -1,5 +1,5 @@
 import { normalize } from 'node:path';
-export const KNOWN_AGENT_KIT_CODEX_BINS = [
+export const KNOWN_WEBPRESSO_CODEX_BINS = [
     'wp-sessionstart-routing',
     'wp-check-dev-link',
     'wp-pretool-guard',
@@ -7,10 +7,10 @@ export const KNOWN_AGENT_KIT_CODEX_BINS = [
     'wp-guard-switch',
     'wp-stop-qa',
 ];
-const KNOWN_AGENT_KIT_CODEX_BIN_SET = new Set(KNOWN_AGENT_KIT_CODEX_BINS);
+const KNOWN_WEBPRESSO_CODEX_BIN_SET = new Set(KNOWN_WEBPRESSO_CODEX_BINS);
 const NODE_MODULES_BIN_PATTERN = /^(?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+)$/u;
 const GUARDED_NODE_MODULES_BIN_PATTERN = /^\[ -x (["']?)((?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+))\1 \] && \1\2\1 \|\| true$/u;
-export function isAgentKitOwnedCodexHook(metadata, expectedSourcePaths) {
+export function isWebpressoOwnedCodexHook(metadata, expectedSourcePaths) {
     if (!isObject(metadata))
         return false;
     const candidate = metadata;
@@ -27,7 +27,7 @@ export function isAgentKitOwnedCodexHook(metadata, expectedSourcePaths) {
     if (!isExpectedSourcePath(candidate.sourcePath, expectedSourcePaths))
         return false;
     const binName = extractDirectNodeModulesBin(candidate.command);
-    return binName !== null && isKnownAgentKitCodexBin(binName);
+    return binName !== null && isKnownWebpressoCodexBin(binName);
 }
 function isObject(value) {
     return typeof value === 'object' && value !== null;
@@ -38,8 +38,8 @@ function isExpectedSourcePath(sourcePath, expectedSourcePaths) {
     const normalizedSourcePath = normalize(sourcePath);
     return expectedSourcePaths.some((expectedPath) => normalize(expectedPath) === normalizedSourcePath);
 }
-function isKnownAgentKitCodexBin(binName) {
-    return KNOWN_AGENT_KIT_CODEX_BIN_SET.has(binName);
+function isKnownWebpressoCodexBin(binName) {
+    return KNOWN_WEBPRESSO_CODEX_BIN_SET.has(binName);
 }
 function extractDirectNodeModulesBin(command) {
     const normalizedCommand = stripSingleShellQuotePair(command.trim());

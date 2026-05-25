@@ -1,8 +1,0 @@
-{
-  "extends": "@webpresso/agent-tsconfig/library.json",
-  "include": ["src/**/*.ts"],
-  "compilerOptions": {
-    "rootDir": "src"
-  },
-  "exclude": ["dist", "node_modules", "src/**/*.test.ts"]
-}

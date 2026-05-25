@@ -4,10 +4,10 @@
     "capturedAt": "2026-05-11T00:00:00.000Z",
     "note": "Minimal baseline fixture — placeholder until Task 0.0 capture script runs"
   },
-  "subagentOutput": "Created src/hello.ts with hello() function returning 'hello, agent-kit'. Created src/hello.test.ts. All tests pass.",
+  "subagentOutput": "Created src/hello.ts with hello() function returning 'hello, webpresso'. Created src/hello.test.ts. All tests pass.",
   "expectedEvents": [
     { "type": "started" },
-    { "type": "stdout", "line": "Created src/hello.ts with hello() function returning 'hello, agent-kit'. Created src/hello.test.ts. All tests pass." },
+    { "type": "stdout", "line": "Created src/hello.ts with hello() function returning 'hello, webpresso'. Created src/hello.test.ts. All tests pass." },
     { "type": "completed", "exitCode": 0 }
   ]
 }

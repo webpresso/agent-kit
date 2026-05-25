@@ -1,5 +1,5 @@
 /**
- * Runtime detection for tools that agent-kit consumers commonly need
+ * Runtime detection for tools that webpresso consumers commonly need
  * but that `wp setup` cannot install for them (curl-pipe install scripts
  * or system package managers shouldn't be triggered silently).
  *

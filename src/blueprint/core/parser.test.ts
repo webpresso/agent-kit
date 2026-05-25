@@ -910,12 +910,12 @@ created: 2026-01-01
 ---
 # @feature
 
-#### Task 1.1: Fix bug in @webpresso/agent-kit
+#### Task 1.1: Fix bug in webpresso
 **Status:** todo
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0]!.targetPackage).toBe('agent-kit')
+      expect(result.tasks[0]!.targetPackage).toBe('webpresso')
     })
 
     it('should extract target package from "for @webpresso/pkg" pattern', () => {

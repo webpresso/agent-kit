@@ -6,7 +6,7 @@ import { describe, expect, test } from 'vitest'
 import { auditRoadmapLinks } from './roadmap-links.js'
 
 function tempRepo() {
-  return mkdtempSync(join(tmpdir(), 'agent-kit-roadmap-links-'))
+  return mkdtempSync(join(tmpdir(), 'webpresso-roadmap-links-'))
 }
 
 function writeOverview(root: string, status: string, slug: string, markdown: string) {

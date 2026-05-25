@@ -5,7 +5,7 @@ import { isTelemetryEnabled, reportTthw, type TthwPayload } from './setup-tthw.j
 const BASE_PAYLOAD: TthwPayload = {
   event: 'setup-complete',
   durationMs: 1234,
-  agentKitVersion: '0.14.0',
+  webpressoVersion: '0.14.0',
   os: 'linux',
   nodeVersion: 'v22.0.0',
 }

@@ -12,7 +12,7 @@ function makePackageRoot(): string {
   const root = mkdtempSync(join(tmpdir(), 'wp-claude-plugin-'))
   tempRoots.push(root)
   mkdirSync(join(root, '.claude-plugin'), { recursive: true })
-  writeFileSync(join(root, '.claude-plugin', 'plugin.json'), '{"name":"agent-kit"}\n', 'utf8')
+  writeFileSync(join(root, '.claude-plugin', 'plugin.json'), '{"name":"webpresso"}\n', 'utf8')
   return root
 }
 

@@ -2,7 +2,7 @@
  * `wp skill <new|list|show|deprecate|install|uninstall>` — thin shim over
  * shared content dispatch with two extra registry actions:
  *
- *   install <name>     — adds <name> to .agent-kitrc.json#installed.tier3Skills
+ *   install <name>     — adds <name> to .webpressorc.json#installed.tier3Skills
  *                        (the skill must exist in the bundled catalog).
  *                        Idempotent. Registry-only edit; no copy.
  *   uninstall <name>   — removes <name> from the registry. Idempotent.
@@ -116,7 +116,7 @@ function handleInstall(name: string, catalogDir: string, cwd: string): void {
     skills.includes(name) ? skills : [...skills, name],
   )
   console.log(
-    `${changed ? 'Installed' : 'Already installed'} skill ${name} → .agent-kitrc.json#installed.tier3Skills`,
+    `${changed ? 'Installed' : 'Already installed'} skill ${name} → .webpressorc.json#installed.tier3Skills`,
   )
   console.log(`installed.tier3Skills: ${JSON.stringify(config.installed.tier3Skills)}`)
 }
@@ -125,7 +125,7 @@ function handleUninstall(name: string, cwd: string): void {
   if (!name) throw commandError('Usage: wp skill uninstall <name>')
   const { config, changed } = withRegistry(cwd, (skills) => skills.filter((s) => s !== name))
   console.log(
-    `${changed ? 'Uninstalled' : 'Not installed'} skill ${name} from .agent-kitrc.json#installed.tier3Skills`,
+    `${changed ? 'Uninstalled' : 'Not installed'} skill ${name} from .webpressorc.json#installed.tier3Skills`,
   )
   console.log(`installed.tier3Skills: ${JSON.stringify(config.installed.tier3Skills)}`)
 }

@@ -29,7 +29,8 @@ const DEFAULT_PLATFORM_IMAGE = 'ghcr.io/catthehacker/ubuntu:full-latest'
 export function resolveCiActWorkflowPath(options: PublicCiActOptions = {}): string {
   if (options.workflowPath && options.workflowPath.trim().length > 0) return options.workflowPath
   const workflow = (options.workflow ?? DEFAULT_WORKFLOW).trim()
-  if (workflow.includes('/') || workflow.endsWith('.yml') || workflow.endsWith('.yaml')) return workflow
+  if (workflow.includes('/') || workflow.endsWith('.yml') || workflow.endsWith('.yaml'))
+    return workflow
   return `.github/workflows/${workflow}.yml`
 }
 

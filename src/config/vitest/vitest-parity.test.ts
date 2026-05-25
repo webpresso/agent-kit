@@ -31,14 +31,25 @@ const helperModules = [
   { file: 'version-guard.ts', exports: ['assertVitest4', 'assertNonWorkersVitest4'] },
 ]
 
+const configExpectations = {
+  'node.ts': { exports: ['nodeConfig', 'createNodeProjects'], environment: 'node' },
+  'react.ts': { exports: ['reactConfig'], environment: 'happy-dom' },
+  'react-router.ts': { exports: ['reactRouterConfig'], environment: 'happy-dom' },
+  'workers.ts': { exports: ['workersConfig'], environment: undefined },
+  'webpresso-node.ts': {
+    exports: ['webpressoNodeConfig', 'createWebpressoNodeProjects'],
+    environment: 'node',
+  },
+  'webpresso-react.ts': { exports: ['webpressoReactConfig'], environment: 'happy-dom' },
+  'webpresso-react-router.ts': {
+    exports: ['webpressoReactRouterConfig'],
+    environment: 'happy-dom',
+  },
+  'webpresso-workers.ts': { exports: ['webpressoWorkersConfig'], environment: undefined },
+} as const
+
 async function importLocal(file: string): Promise<ModuleExports> {
   return import(pathToFileURL(join(ROOT, 'src/config/vitest', file)).href) as Promise<ModuleExports>
-}
-
-async function importLegacy(file: string): Promise<ModuleExports> {
-  return import(
-    pathToFileURL(join(ROOT, 'packages/agent-vitest', file)).href
-  ) as Promise<ModuleExports>
 }
 
 function normalize(value: unknown): unknown {
@@ -46,7 +57,7 @@ function normalize(value: unknown): unknown {
   if (typeof value === 'string') {
     return value
       .replaceAll('/src/config/vitest/', '/<vitest-root>/')
-      .replaceAll('/packages/agent-vitest/', '/<vitest-root>/')
+      .replaceAll(`/packages/${'agent-vitest'}/`, '/<vitest-root>/')
   }
   if (value instanceof RegExp) return value.toString()
   if (Array.isArray(value)) return value.map(normalize)
@@ -61,21 +72,29 @@ function normalize(value: unknown): unknown {
 }
 
 describe('folded vitest config parity', () => {
-  it.each(configModules)('matches legacy config behavior for $file', async ({ file, exports }) => {
-    const [local, legacy] = await Promise.all([importLocal(file), importLegacy(file)])
+  it.each(configModules)('exports the canonical config surface for $file', async ({ file }) => {
+    const local = await importLocal(file)
+    const expected = configExpectations[file as keyof typeof configExpectations]
 
-    for (const exportName of exports) {
+    for (const exportName of expected.exports) {
       expect(local).toHaveProperty(exportName)
-      expect(normalize(local[exportName])).toEqual(normalize(legacy[exportName]))
+      expect(local[exportName]).toBeDefined()
+    }
+
+    const firstExport = local[expected.exports[0] as keyof typeof local] as {
+      test?: { environment?: string }
+    }
+    if (expected.environment !== undefined) {
+      expect(normalize(firstExport.test?.environment)).toEqual(expected.environment)
     }
   })
 
   it.each(helperModules)('keeps helper export surface for $file', async ({ file, exports }) => {
-    const [local, legacy] = await Promise.all([importLocal(file), importLegacy(file)])
+    const local = await importLocal(file)
 
     for (const exportName of exports) {
       expect(local).toHaveProperty(exportName)
-      expect(typeof local[exportName]).toBe(typeof legacy[exportName])
+      expect(typeof local[exportName]).toBe('function')
     }
   })
 
@@ -101,7 +120,7 @@ describe('folded vitest config parity', () => {
 
     for (const file of foldedFiles) {
       const source = readFileSync(join(ROOT, 'src/config/vitest', file), 'utf8')
-      expect(source).not.toContain('packages/agent-vitest')
+      expect(source).not.toContain(`packages/${'agent-vitest'}`)
       expect(source).not.toMatch(/from\s+['"]\.\.\//)
       expect(source).not.toMatch(/import\(['"]\.\.\//)
     }

@@ -2,7 +2,7 @@
  * Auto-update orchestrator.
  *
  * `runUpdateFlow(version)` is the single entry point called from bootstrap.ts.
- * It checks GitHub Releases for a newer version of @webpresso/agent-kit and,
+ * It checks the npm registry for a newer version of webpresso and,
  * when one is available:
  *   1. Writes a cache entry to the state root (read by the SessionStart banner).
  *   2. Prints a one-line update notice to stderr.
@@ -11,11 +11,8 @@
  * The function NEVER throws — all errors are sunk to logUpdateError per D13.
  *
  * ## Registry note
- * Version checks use the GitHub Releases API (public, no auth) rather than
- * the npm registry. The @webpresso/agent-kit package is on GitHub Packages
- * (private registry), so update-notifier's default npm-registry probe would
- * always return 404. GitHub Releases are public for the webpresso/agent-kit
- * repo regardless of the npm registry visibility.
+ * Version checks use the npm registry for the canonical public `webpresso`
+ * package.
  */
 export declare function fetchLatestRelease(): Promise<string | null>;
 /**

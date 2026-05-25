@@ -1,8 +1,8 @@
 /**
- * @webpresso/agent-kit/blueprint - Implementation Plan Management
+ * webpresso/blueprint - Implementation Plan Management
  *
  * Workers-safe exports (pure functions, types, no I/O)
- * For CLI features with git integration, use '@webpresso/agent-kit/blueprint/local'
+ * For CLI features with git integration, use 'webpresso/blueprint/local'
  */
 export type { AcceptanceCriteria, Blueprint, Phase, Task, TaskStatusValue } from './core/parser.js';
 export { parseBlueprint, serializeBlueprint } from './core/parser.js';

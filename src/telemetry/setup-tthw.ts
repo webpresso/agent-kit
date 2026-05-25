@@ -3,7 +3,7 @@ import { TELEMETRY_ENDPOINT, TELEMETRY_TIMEOUT_MS } from './_endpoint.js'
 export interface TthwPayload {
   readonly event: 'setup-complete'
   readonly durationMs: number
-  readonly agentKitVersion: string
+  readonly webpressoVersion: string
   readonly os: string // process.platform
   readonly nodeVersion: string // process.version
   // NO repo identifiers, NO paths, NO usernames, NO PII

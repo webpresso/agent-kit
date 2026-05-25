@@ -5,13 +5,13 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
-  AGENT_KIT_MCP_HEADER,
+  WEBPRESSO_MCP_HEADER,
   PLAYWRIGHT_MCP_HEADER,
   agentKitMcpBlock,
-  ensureCodexAgentKitMcp,
+  ensureCodexWebpressoMcp,
   ensureCodexPlaywrightMcp,
-  findAgentKitMcpEntry,
-  upsertAgentKitMcpServer,
+  findWebpressoMcpEntry,
+  upsertWebpressoMcpServer,
   upsertPlaywrightMcpServer,
 } from './index.js'
 
@@ -31,13 +31,13 @@ describe('upsertPlaywrightMcpServer', () => {
 command = "old"
 args = ["old"]
 
-[mcp_servers.agent-kit]
+[mcp_servers.webpresso]
 command = "wp"
 `)
 
     expect(next).toContain('command = "vp"')
     expect(next).not.toContain('command = "old"')
-    expect(next).toContain('[mcp_servers.agent-kit]\ncommand = "wp"')
+    expect(next).toContain('[mcp_servers.webpresso]\ncommand = "wp"')
     expect(next.match(/\[mcp_servers\.playwright\]/g)).toHaveLength(1)
   })
 })
@@ -90,14 +90,14 @@ describe('ensureCodexPlaywrightMcp', () => {
   })
 })
 
-function makeFakeAgentKitInstall(root: string): string {
+function makeFakeWebpressoInstall(root: string): string {
   const entry = join(root, 'src', 'mcp', 'cli.ts')
   mkdirSync(join(root, 'src', 'mcp'), { recursive: true })
   writeFileSync(entry, '#!/usr/bin/env bun\n', 'utf8')
   return entry
 }
 
-describe('findAgentKitMcpEntry', () => {
+describe('findWebpressoMcpEntry', () => {
   let dir: string | null = null
 
   afterEach(() => {
@@ -109,16 +109,16 @@ describe('findAgentKitMcpEntry', () => {
     dir = mkdtempSync(join(tmpdir(), 'wp-find-'))
     const goodRoot = join(dir, 'good')
     const badRoot = join(dir, 'missing')
-    const expected = makeFakeAgentKitInstall(goodRoot)
+    const expected = makeFakeWebpressoInstall(goodRoot)
 
-    const found = findAgentKitMcpEntry({ candidates: [badRoot, goodRoot] })
+    const found = findWebpressoMcpEntry({ candidates: [badRoot, goodRoot] })
 
     expect(found).toBe(expected)
   })
 
   it('returns null when none of the candidates contain the entry', () => {
     dir = mkdtempSync(join(tmpdir(), 'wp-find-empty-'))
-    const found = findAgentKitMcpEntry({
+    const found = findWebpressoMcpEntry({
       candidates: [join(dir, 'a'), join(dir, 'b')],
     })
 
@@ -128,13 +128,13 @@ describe('findAgentKitMcpEntry', () => {
   it('honors the pnpm/npm probe seams when no claude/bun candidate exists', () => {
     dir = mkdtempSync(join(tmpdir(), 'wp-find-pnpm-'))
     const pnpmRoot = join(dir, 'pnpm-store')
-    const expected = makeFakeAgentKitInstall(join(pnpmRoot, '@webpresso', 'agent-kit'))
+    const expected = makeFakeWebpressoInstall(join(pnpmRoot, '@webpresso', 'webpresso'))
 
-    const found = findAgentKitMcpEntry({
+    const found = findWebpressoMcpEntry({
       candidates: [
         join(dir, 'no-claude'),
         join(dir, 'no-bun'),
-        join(pnpmRoot, '@webpresso', 'agent-kit'),
+        join(pnpmRoot, '@webpresso', 'webpresso'),
       ],
     })
 
@@ -142,24 +142,24 @@ describe('findAgentKitMcpEntry', () => {
   })
 })
 
-describe('agentKitMcpBlock + upsertAgentKitMcpServer', () => {
+describe('agentKitMcpBlock + upsertWebpressoMcpServer', () => {
   it('renders bun + absolute path in the block', () => {
     const block = agentKitMcpBlock('/abs/path/src/mcp/cli.ts')
-    expect(block).toContain(AGENT_KIT_MCP_HEADER)
+    expect(block).toContain(WEBPRESSO_MCP_HEADER)
     expect(block).toContain('command = "bun"')
     expect(block).toContain('args = ["/abs/path/src/mcp/cli.ts"]')
     expect(block).toContain('enabled = true')
   })
 
   it('appends to an empty config', () => {
-    const next = upsertAgentKitMcpServer('', '/abs/path/src/mcp/cli.ts')
-    expect(next).toContain(AGENT_KIT_MCP_HEADER)
+    const next = upsertWebpressoMcpServer('', '/abs/path/src/mcp/cli.ts')
+    expect(next).toContain(WEBPRESSO_MCP_HEADER)
     expect(next).toContain('args = ["/abs/path/src/mcp/cli.ts"]')
   })
 
-  it('replaces an existing agent-kit block without touching following tables', () => {
-    const next = upsertAgentKitMcpServer(
-      `[mcp_servers.agent-kit]
+  it('replaces an existing webpresso block without touching following tables', () => {
+    const next = upsertWebpressoMcpServer(
+      `[mcp_servers.webpresso]
 command = "old"
 args = ["old"]
 
@@ -172,21 +172,21 @@ command = "vp"
     expect(next).toContain('args = ["/new/path/src/mcp/cli.ts"]')
     expect(next).not.toContain('command = "old"')
     expect(next).toContain('[mcp_servers.playwright]\ncommand = "vp"')
-    expect(next.match(/\[mcp_servers\.agent-kit\]/g)).toHaveLength(1)
+    expect(next.match(/\[mcp_servers\.webpresso\]/g)).toHaveLength(1)
   })
 
   it('coexists with the playwright block when both upserts run on the same config', () => {
     const withPlaywright = upsertPlaywrightMcpServer('model = "gpt-5.4"\n')
-    const withBoth = upsertAgentKitMcpServer(withPlaywright, '/abs/src/mcp/cli.ts')
+    const withBoth = upsertWebpressoMcpServer(withPlaywright, '/abs/src/mcp/cli.ts')
 
     expect(withBoth).toContain(PLAYWRIGHT_MCP_HEADER)
-    expect(withBoth).toContain(AGENT_KIT_MCP_HEADER)
+    expect(withBoth).toContain(WEBPRESSO_MCP_HEADER)
     expect(withBoth.match(/\[mcp_servers\.playwright\]/g)).toHaveLength(1)
-    expect(withBoth.match(/\[mcp_servers\.agent-kit\]/g)).toHaveLength(1)
+    expect(withBoth.match(/\[mcp_servers\.webpresso\]/g)).toHaveLength(1)
   })
 })
 
-describe('ensureCodexAgentKitMcp', () => {
+describe('ensureCodexWebpressoMcp', () => {
   let dir: string | null = null
 
   afterEach(() => {
@@ -194,51 +194,51 @@ describe('ensureCodexAgentKitMcp', () => {
     dir = null
   })
 
-  it('writes the agent-kit MCP block when an install root is found', () => {
+  it('writes the webpresso MCP block when an install root is found', () => {
     dir = mkdtempSync(join(tmpdir(), 'wp-codex-akmcp-'))
     const configPath = join(dir, 'config.toml')
-    const entryPath = makeFakeAgentKitInstall(join(dir, 'install'))
+    const entryPath = makeFakeWebpressoInstall(join(dir, 'install'))
 
-    const result = ensureCodexAgentKitMcp({
+    const result = ensureCodexWebpressoMcp({
       options: { overwrite: false, dryRun: false },
       configPath,
       entryPath,
     })
 
-    expect(result).toEqual({ kind: 'codex-agent-kit-mcp-written', path: configPath, entryPath })
+    expect(result).toEqual({ kind: 'codex-webpresso-mcp-written', path: configPath, entryPath })
     expect(readFileSync(configPath, 'utf8')).toContain(`args = ["${entryPath}"]`)
   })
 
   it('is idempotent on a second invocation', () => {
     dir = mkdtempSync(join(tmpdir(), 'wp-codex-akmcp-'))
     const configPath = join(dir, 'config.toml')
-    const entryPath = makeFakeAgentKitInstall(join(dir, 'install'))
-    ensureCodexAgentKitMcp({
+    const entryPath = makeFakeWebpressoInstall(join(dir, 'install'))
+    ensureCodexWebpressoMcp({
       options: { overwrite: false, dryRun: false },
       configPath,
       entryPath,
     })
 
-    const result = ensureCodexAgentKitMcp({
+    const result = ensureCodexWebpressoMcp({
       options: { overwrite: false, dryRun: false },
       configPath,
       entryPath,
     })
 
-    expect(result).toEqual({ kind: 'codex-agent-kit-mcp-unchanged', path: configPath, entryPath })
+    expect(result).toEqual({ kind: 'codex-webpresso-mcp-unchanged', path: configPath, entryPath })
   })
 
   it('skips writes in dry-run mode', () => {
     dir = mkdtempSync(join(tmpdir(), 'wp-codex-akmcp-'))
     const configPath = join(dir, 'config.toml')
 
-    const result = ensureCodexAgentKitMcp({
+    const result = ensureCodexWebpressoMcp({
       options: { overwrite: false, dryRun: true },
       configPath,
       entryPath: '/anything',
     })
 
-    expect(result).toEqual({ kind: 'codex-agent-kit-mcp-skipped-dry-run', path: configPath })
+    expect(result).toEqual({ kind: 'codex-webpresso-mcp-skipped-dry-run', path: configPath })
     expect(existsSync(configPath)).toBe(false)
   })
 
@@ -246,7 +246,7 @@ describe('ensureCodexAgentKitMcp', () => {
     dir = mkdtempSync(join(tmpdir(), 'wp-codex-akmcp-'))
     const configPath = join(dir, 'config.toml')
 
-    const result = ensureCodexAgentKitMcp({
+    const result = ensureCodexWebpressoMcp({
       options: { overwrite: false, dryRun: false },
       configPath,
       probe: {
@@ -254,8 +254,8 @@ describe('ensureCodexAgentKitMcp', () => {
       },
     })
 
-    expect(result.kind).toBe('codex-agent-kit-mcp-not-installed')
-    if (result.kind === 'codex-agent-kit-mcp-not-installed') {
+    expect(result.kind).toBe('codex-webpresso-mcp-not-installed')
+    if (result.kind === 'codex-webpresso-mcp-not-installed') {
       expect(result.checked).toEqual([join(dir, 'a'), join(dir, 'b')])
     }
     expect(existsSync(configPath)).toBe(false)

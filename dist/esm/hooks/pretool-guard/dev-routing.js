@@ -98,7 +98,7 @@ const SOURCE_ENTRYPOINT_RULES = [
     {
         scriptSuffixes: ['apps/scripts/src/ci/act.ts'],
         tool: 'wp_ci_act',
-        guidance: 'Use a secret-aware agent-kit MCP wrapper for CI act execution instead — raw Bun source execution bypasses MCP output bounds and the repo secret-provider gate',
+        guidance: 'Use a secret-aware webpresso MCP wrapper for CI act execution instead — raw Bun source execution bypasses MCP output bounds and the repo secret-provider gate',
     },
 ];
 const PASSTHROUGH_PREFIXES = ['wp audit'];
@@ -520,9 +520,7 @@ function extractInlineCommands(code) {
         .sort((a, b) => b.length - a.length)
         .map(escapedRegexToken)
         .join('|');
-    const normalizedCode = code
-        .replace(/\\\r?\n\s*/gu, ' ')
-        .replace(/^\s*#.*$/gmu, '');
+    const normalizedCode = code.replace(/\\\r?\n\s*/gu, ' ').replace(/^\s*#.*$/gmu, '');
     const regex = new RegExp(`(?:^|[;&|]\\s*)(${starterPattern})\\b([^\\n;]*)`, 'gmu');
     for (const match of normalizedCode.matchAll(regex)) {
         const command = `${match[1] ?? ''}${match[2] ?? ''}`.replace(/\s+/gu, ' ').trim();

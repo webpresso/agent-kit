@@ -36,7 +36,7 @@ Use the narrowest scope that proves your change:
 | Tests      | `test --file <paths...>` / `--package <name>` |
 | Typecheck  | `typecheck --package <name>`         |
 
-When this repo exposes the agent-kit quality MCP/CLI surface, prefer
+When this repo exposes the webpresso quality MCP/CLI surface, prefer
 `wp_qa`/`wp_lint`/`wp_typecheck`/`wp_test` leaves (or the equivalent wrapped
 `wp qa` surface) for local-dev agent runs. Their compact output filters return
 summary-first payloads with `failures`, `tier`, `bytes`, and `tokensSaved`, so
@@ -102,7 +102,7 @@ cd <repo-root> && ./node_modules/.bin/oxfmt --write --ignore-path .gitignore
   secret-aware MCP wrapper or be blocked until one exists. They should reuse the
   repo secret-provider gate and must not ask agents to call `doppler` or
   `infisical` directly.
-- Use the `WP_` environment variable namespace for agent-kit CLI behavior. For
+- Use the `WP_` environment variable namespace for webpresso CLI behavior. For
   update checks, the opt-out is `WP_SKIP_UPDATE_CHECK=1`.
 - Audit commands are `wp audit <kind>` or MCP `wp_audit`; do not invent a
   separate generic agent subcommand namespace.

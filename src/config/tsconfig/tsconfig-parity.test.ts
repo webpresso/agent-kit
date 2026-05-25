@@ -13,11 +13,10 @@ const configFiles = [
 ] as const
 
 describe('bundled tsconfig JSON files', () => {
-  it.each(configFiles)('%s matches @webpresso/agent-tsconfig byte-for-byte', async (fileName) => {
+  it.each(configFiles)('%s remains bundled and valid JSON', async (fileName) => {
     const repositoryRoot = process.cwd()
-    const source = await readFile(join(repositoryRoot, 'packages', 'agent-tsconfig', fileName))
     const target = await readFile(join(repositoryRoot, 'src', 'config', 'tsconfig', fileName))
 
-    expect(Buffer.compare(target, source)).toBe(0)
+    expect(() => JSON.parse(target.toString('utf8'))).not.toThrow()
   })
 })

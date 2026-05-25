@@ -29,7 +29,7 @@ describe('scaffoldSubagents', () => {
   })
 
   it('creates self-hosting symlinks from catalog/agent/agents when target is empty', () => {
-    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
+    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: 'webpresso' }))
     mkdirSync(join(repoRoot, 'catalog', 'agent', 'agents'), { recursive: true })
     writeFileSync(join(repoRoot, 'catalog', 'agent', 'agents', 'code-reviewer.md'), '# Agent\n')
     writeFileSync(join(repoRoot, 'catalog', 'agent', 'agents', 'README.md'), '# Ignore\n')
@@ -46,19 +46,11 @@ describe('scaffoldSubagents', () => {
 
   it('creates the 4 canonical agent entries for consumers', () => {
     writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: 'consumer-app' }))
-    const sourceRoot = join(
-      repoRoot,
-      'node_modules',
-      '@webpresso',
-      'agent-kit',
-      'catalog',
-      'agent',
-      'agents',
-    )
+    const sourceRoot = join(repoRoot, 'node_modules', 'webpresso', 'catalog', 'agent', 'agents')
     mkdirSync(sourceRoot, { recursive: true })
     writeFileSync(
-      join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'package.json'),
-      JSON.stringify({ name: '@webpresso/agent-kit' }),
+      join(repoRoot, 'node_modules', 'webpresso', 'package.json'),
+      JSON.stringify({ name: 'webpresso' }),
     )
     for (const name of ['code-reviewer', 'security-auditor', 'doc-writer', 'explorer']) {
       writeFileSync(join(sourceRoot, `${name}.md`), `# ${name}\n`)
@@ -72,17 +64,7 @@ describe('scaffoldSubagents', () => {
       expect(existsSync(targetPath)).toBe(true)
       expect(lstatSync(targetPath).isSymbolicLink()).toBe(true)
       expect(readlinkSync(targetPath)).toBe(
-        join(
-          '..',
-          '..',
-          'node_modules',
-          '@webpresso',
-          'agent-kit',
-          'catalog',
-          'agent',
-          'agents',
-          `${name}.md`,
-        ),
+        join('..', '..', 'node_modules', 'webpresso', 'catalog', 'agent', 'agents', `${name}.md`),
       )
       expect(readFileSync(targetPath, 'utf8')).toBe(`# ${name}\n`)
     }
@@ -90,19 +72,11 @@ describe('scaffoldSubagents', () => {
 
   it('preserves custom consumer agents across reruns', () => {
     writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: 'consumer-app' }))
-    const sourceRoot = join(
-      repoRoot,
-      'node_modules',
-      '@webpresso',
-      'agent-kit',
-      'catalog',
-      'agent',
-      'agents',
-    )
+    const sourceRoot = join(repoRoot, 'node_modules', 'webpresso', 'catalog', 'agent', 'agents')
     mkdirSync(sourceRoot, { recursive: true })
     writeFileSync(
-      join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'package.json'),
-      JSON.stringify({ name: '@webpresso/agent-kit' }),
+      join(repoRoot, 'node_modules', 'webpresso', 'package.json'),
+      JSON.stringify({ name: 'webpresso' }),
     )
     writeFileSync(join(sourceRoot, 'code-reviewer.md'), '# code reviewer\n')
 
@@ -131,7 +105,7 @@ describe('scaffoldSubagents', () => {
   })
 
   it('reports drift for wrong-target canonical symlinks without overwriting by default', () => {
-    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
+    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: 'webpresso' }))
     mkdirSync(join(repoRoot, 'catalog', 'agent', 'agents'), { recursive: true })
     mkdirSync(join(repoRoot, '.claude', 'agents'), { recursive: true })
     writeFileSync(

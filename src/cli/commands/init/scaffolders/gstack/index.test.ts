@@ -233,7 +233,11 @@ describe('ensureGstack', () => {
       exists,
       detectCodex: () => true,
     })
-    expect(result).toEqual({ kind: 'gstack-setup-failed', exitCode: 12, command: '--host auto --team' })
+    expect(result).toEqual({
+      kind: 'gstack-setup-failed',
+      exitCode: 12,
+      command: '--host auto --team',
+    })
   })
 
   it('calls spinner.succeed() for checkout + codex materialization success', () => {
@@ -286,7 +290,11 @@ describe('ensureGstack', () => {
       detectCodex: () => true,
       spinnerFactory: factory,
     })
-    expect(result).toEqual({ kind: 'gstack-setup-failed', exitCode: 12, command: '--host auto --team' })
+    expect(result).toEqual({
+      kind: 'gstack-setup-failed',
+      exitCode: 12,
+      command: '--host auto --team',
+    })
     expect(start).toHaveBeenCalled()
     expect(succeed).not.toHaveBeenCalled()
     expect(fail).toHaveBeenCalledTimes(1)

@@ -118,10 +118,12 @@ describe('renderAgentsMd', () => {
     expect(rendered).toContain(
       'setup:agent runs wp setup, which scaffolds .agent/, AGENTS.md, hooks, and runs wp sync',
     )
-    expect(rendered).toContain('<!-- >>> managed by @webpresso/agent-kit (operating-contract) -->')
+    expect(rendered).toContain('<!-- >>> managed by webpresso (operating-contract) -->')
     expect(rendered).toContain('<!-- >>> user-owned (repo-customizations) -->')
     expect(rendered).not.toContain('wp symlink sync')
-    expect(rendered).toContain('- Repository map: bulleted list of workspace packages inferred from')
+    expect(rendered).toContain(
+      '- Repository map: bulleted list of workspace packages inferred from',
+    )
     expect(rendered).not.toContain('- - `')
     expect(rendered).toContain('omx setup --yes --scope user')
     expect(rendered).not.toContain('omx setup --scope project')
@@ -146,9 +148,9 @@ describe('renderAgentsMd', () => {
 
   it('preserves user-owned blocks while refreshing managed content', () => {
     const rendered = [
-      '<!-- >>> managed by @webpresso/agent-kit (operating-contract) -->',
+      '<!-- >>> managed by webpresso (operating-contract) -->',
       '# Managed',
-      '<!-- <<< managed by @webpresso/agent-kit (operating-contract) -->',
+      '<!-- <<< managed by webpresso (operating-contract) -->',
       '<!-- >>> user-owned (repo-customizations) -->',
       'default custom text',
       '<!-- <<< user-owned (repo-customizations) -->',
@@ -158,9 +160,9 @@ describe('renderAgentsMd', () => {
       '',
     ].join('\n')
     const existing = [
-      '<!-- >>> managed by @webpresso/agent-kit (operating-contract) -->',
+      '<!-- >>> managed by webpresso (operating-contract) -->',
       '# Old managed',
-      '<!-- <<< managed by @webpresso/agent-kit (operating-contract) -->',
+      '<!-- <<< managed by webpresso (operating-contract) -->',
       '<!-- >>> user-owned (repo-customizations) -->',
       'keep my repo customizations',
       '<!-- <<< user-owned (repo-customizations) -->',

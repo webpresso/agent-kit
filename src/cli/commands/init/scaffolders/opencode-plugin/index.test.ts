@@ -77,7 +77,7 @@ describe('scaffoldOpencodePlugin', () => {
   })
 })
 
-describe('plugin-native invariants — agent-kit-dev-link.js', () => {
+describe('plugin-native invariants — webpresso-dev-link.js', () => {
   it('scaffolder produces byte-identical output on first and second run', () => {
     const repoRoot = createTempRoot()
     const targetPath = join(repoRoot, OPENCODE_PLUGIN_RELATIVE_PATH)
@@ -95,11 +95,11 @@ describe('plugin-native invariants — agent-kit-dev-link.js', () => {
 
 describe('OPENCODE_PLUGIN_CONTENT', () => {
   it('exports an async plugin function as required by opencode plugin contract', () => {
-    expect(OPENCODE_PLUGIN_CONTENT).toContain('export const AgentKitDevLinkPlugin')
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('export const WebpressoDevLinkPlugin')
     expect(OPENCODE_PLUGIN_CONTENT).toContain('async ({ $, directory })')
   })
 
-  it('shells out to the agent-kit-shipped wp-check-dev-link bin', () => {
+  it('shells out to the webpresso-shipped wp-check-dev-link bin', () => {
     expect(OPENCODE_PLUGIN_CONTENT).toContain('./node_modules/.bin/wp-check-dev-link')
   })
 
@@ -122,7 +122,7 @@ describe('OPENCODE_PLUGIN_CONTENT', () => {
     scaffoldOpencodePlugin({ repoRoot, options: {} })
 
     const mod = (await import(`${pathToFileURL(targetPath).href}?t=${Date.now()}`)) as {
-      AgentKitDevLinkPlugin: (input: {
+      WebpressoDevLinkPlugin: (input: {
         $: (
           strings: TemplateStringsArray,
           ...values: string[]
@@ -162,7 +162,7 @@ describe('OPENCODE_PLUGIN_CONTENT', () => {
       }
     }
 
-    const plugin = await mod.AgentKitDevLinkPlugin({ $, directory: repoRoot })
+    const plugin = await mod.WebpressoDevLinkPlugin({ $, directory: repoRoot })
     await plugin.event({ event: { type: 'session.created' } })
     const output = { context: [] as string[] }
     await plugin['experimental.session.compacting']({}, output)

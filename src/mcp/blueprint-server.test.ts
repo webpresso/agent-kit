@@ -1510,7 +1510,7 @@ describe('wp_blueprint_task_verify — Task 3.2', () => {
     const md = readFileSync(overviewPath, 'utf8')
     expect(md).toContain('**Status:** done')
     expect(md).toContain('**Verification:**')
-    expect(md).toContain('agent-kit-evidence-v1')
+    expect(md).toContain('webpresso-evidence-v1')
   })
 
   it('is idempotent: second call with same canonical evidence returns idempotent: true', async () => {

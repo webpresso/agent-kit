@@ -6,7 +6,7 @@ import { describe, expect, test } from 'vitest'
 import { auditPackageSurface } from './package-surface.js'
 
 function tempRepo() {
-  return mkdtempSync(join(tmpdir(), 'agent-kit-package-surface-'))
+  return mkdtempSync(join(tmpdir(), 'webpresso-package-surface-'))
 }
 
 function writeJson(path: string, value: unknown) {

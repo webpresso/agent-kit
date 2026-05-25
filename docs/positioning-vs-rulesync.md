@@ -3,9 +3,9 @@ type: guide
 last_updated: '2026-05-11'
 ---
 
-# agent-kit vs rulesync — positioning guide
+# webpresso vs rulesync — positioning guide
 
-agent-kit and rulesync are complementary, not competing. Understanding what each
+webpresso and rulesync are complementary, not competing. Understanding what each
 tool owns prevents confusion and guides where to file issues or contribute.
 
 ## What rulesync does
@@ -26,15 +26,15 @@ Core capabilities:
 rulesync is laser-focused on file emission. It does not track lifecycle, audit
 drift beyond its own output files, or integrate with CI in an opinionated way.
 
-## What agent-kit adds on top
+## What webpresso adds on top
 
-agent-kit uses rulesync as its emission substrate (`wp compile` calls
-`rulesync generate` internally). Everything else agent-kit ships is outside
+webpresso uses rulesync as its emission substrate (`wp compile` calls
+`rulesync generate` internally). Everything else webpresso ships is outside
 rulesync's scope:
 
 **1. AGENTS.md section-keyed merger**
 rulesync emits discrete files. When multiple `.agent/skills/` contribute to a
-single `AGENTS.md`, agent-kit merges them using section-keyed precedence (local
+single `AGENTS.md`, webpresso merges them using section-keyed precedence (local
 overrides catalog, catalog overrides base). rulesync has no merger concept.
 
 **2. Blueprint lifecycle**
@@ -55,17 +55,17 @@ record from a failing audit. Items have status (`accepted` / `needs-remediation`
 `monitoring` / `resolved`) and a review cadence. rulesync has no tech-debt concept.
 
 **5. Structured MCP tools**
-The agent-kit MCP server exposes `wp_audit`, `wp_blueprint`, `wp_test`, and four
+The webpresso MCP server exposes `wp_audit`, `wp_blueprint`, `wp_test`, and four
 other tools so an AI coding agent can invoke quality gates mid-session without
 leaving the IDE. rulesync ships no MCP surface.
 
 **6. GitHub Action**
-`webpresso/agent-kit/actions/audit` runs the full guardrails suite in CI and posts
+`webpresso/webpresso/actions/audit` runs the full guardrails suite in CI and posts
 structured PR comments on failures. rulesync has no GitHub Action.
 
 ## Worked example: catching a dangling cross-reference
 
-**Without agent-kit (rulesync alone):**
+**Without webpresso (rulesync alone):**
 
 A skill file at `.agent/skills/auth-patterns/SKILL.md` contains:
 
@@ -79,7 +79,7 @@ The dangling `@AGENTS.md#session-management` reference ships silently. The AI
 agent following the skill now hits a broken cross-reference and either hallucinates
 the missing section or skips the guidance entirely.
 
-**With agent-kit:**
+**With webpresso:**
 
 ```bash
 wp audit broken-refs
@@ -98,11 +98,11 @@ is consistent.
 Codex CLI truncates skill files above 8KB. A developer adds an extended worked
 example to a skill, pushing it to 9.2KB.
 
-**Without agent-kit:** The file emits fine via rulesync. Codex silently truncates
+**Without webpresso:** The file emits fine via rulesync. Codex silently truncates
 it at 8KB. The last 1.2KB of guidance — including the critical error-handling
 section — is never seen by Codex.
 
-**With agent-kit:**
+**With webpresso:**
 
 ```bash
 wp audit skill-sizes
@@ -117,7 +117,7 @@ The CI check fails; the developer splits the skill before merge.
 ## Summary
 
 Use rulesync for what it does best: deterministic file emission to 17 runtimes.
-Use agent-kit when you need the integration layer on top: blueprint lifecycle,
+Use webpresso when you need the integration layer on top: blueprint lifecycle,
 drift audits, tech-debt management, MCP tools, and CI guardrails.
 
-Both tools work together; agent-kit does not replace rulesync and does not fork it.
+Both tools work together; webpresso does not replace rulesync and does not fork it.

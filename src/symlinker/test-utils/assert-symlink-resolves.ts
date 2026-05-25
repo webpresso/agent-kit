@@ -2,7 +2,7 @@ import { existsSync, realpathSync } from 'node:fs'
 
 /**
  * Test helper enforcing the bc88 invariant: every emitted symlink under
- * `.agents/skills/` (or anywhere agent-kit's symlinker writes) must resolve
+ * `.agents/skills/` (or anywhere webpresso's symlinker writes) must resolve
  * to a real file on disk.
  *
  * The historical failure mode was `console.log('✅')` followed by a symlink

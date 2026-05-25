@@ -1,19 +1,19 @@
 {
-  "name": "@webpresso/agent-kit",
+  "name": "webpresso",
   "version": "0.18.19",
   "private": false,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/webpresso/agent-kit.git"
+    "url": "git+https://github.com/webpresso/webpresso.git"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
-    "access": "restricted"
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
   },
   "description": "One command scaffolds a repo so every AI coding agent (Claude Code, Codex CLI, Cursor, Windsurf, Gemini, OpenCode) shares the same context, hooks, and quality gates. The `wp` CLI: blueprints, skills catalog, lore commits, tech-debt lifecycle, audit composite.",
   "keywords": [
     "agent",
-    "agent-kit",
+    "webpresso",
     "audits",
     "blueprint",
     "claude-code",
@@ -52,7 +52,6 @@
     "skills",
     "commands",
     ".claude-plugin",
-    "scripts/migration-notice.ts",
     "README.md"
   ],
   "type": "module",
@@ -568,8 +567,7 @@
     "hooks:doctor:ci": "WP_SKIP_UPDATE_CHECK=1 wp hooks doctor --skip-mcp",
     "qa": "vp run build && vp run typecheck && vp run lint && vp run format:check && vp run test && vp run lint:pkg && vp run audits:check",
     "changeset": "changeset",
-    "changeset:status": "changeset status",
-    "postinstall": "bun scripts/migration-notice.ts"
+    "changeset:status": "changeset status"
   },
   "dependencies": {
     "@vitejs/plugin-react": "catalog:",
@@ -603,7 +601,6 @@
     "@types/bun": "^1.1.14",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "catalog:",
-    "@webpresso/agent-stryker": "workspace:*",
     "husky": "^9.0.0",
     "oxfmt": "^0.48.0",
     "oxlint": "^1.63.0",

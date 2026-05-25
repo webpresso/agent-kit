@@ -20,7 +20,7 @@ the ELv2 `context-mode` surface unless they explicitly choose it.
 wp setup
 ```
 
-This now installs the standard agent-kit surfaces without:
+This now installs the standard webpresso surfaces without:
 - `[mcp_servers.context-mode]` in Codex config
 - `context-mode hook codex ...` entries in `.codex/hooks.json`
 - `context-mode` entries in `opencode.json`

@@ -193,14 +193,14 @@ describe('runUpdateFlow — update available + PM detected', () => {
     )
     detectMock.mockReturnValue({
       manager: 'npm',
-      command: ['npm', 'install', '-g', '@webpresso/agent-kit'],
+      command: ['npm', 'install', '-g', 'webpresso'],
     })
 
     await runUpdateFlow('1.0.0')
 
     expect(scheduleDeferredInstallMock).toHaveBeenCalledOnce()
     expect(scheduleDeferredInstallMock).toHaveBeenCalledWith({
-      command: ['npm', 'install', '-g', '@webpresso/agent-kit'],
+      command: ['npm', 'install', '-g', 'webpresso'],
     })
     expect(logUpdateErrorMock).not.toHaveBeenCalled()
   })

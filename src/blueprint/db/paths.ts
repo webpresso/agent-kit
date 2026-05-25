@@ -38,7 +38,7 @@
  * so existing fixtures and bootstrap flows continue to work.
  *
  * For git repos that still carry a stray `.agent/.blueprints.db` from a
- * previous agent-kit version, see `legacy-migration.ts`.
+ * previous webpresso version, see `legacy-migration.ts`.
  */
 
 import { mkdirSync } from 'node:fs'

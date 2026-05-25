@@ -23,7 +23,7 @@ Use `ctx_*` MCP tools (context-mode) instead of raw Bash/Read for any operation
 that produces or processes large output. Keeps the context window clean.
 
 Agent-kit owns `wp_*` dev-workflow routing. If context-mode is installed, it
-owns `ctx_*` routing nudges; agent-kit should not duplicate them in
+owns `ctx_*` routing nudges; webpresso should not duplicate them in
 SessionStart guidance.
 
 ## When to use ctx_* tools
@@ -57,7 +57,7 @@ Never pull raw output into context to reason over it manually.
 
 ## Ownership boundary
 
-- agent-kit owns `wp_*` dev-workflow routing and MCP-shaped deny wording
+- webpresso owns `wp_*` dev-workflow routing and MCP-shaped deny wording
 - context-mode owns its own `ctx_*` nudging when that plugin is installed
 - rtk owns `rtk *` shell-tool filtering for the long-tail command surface
 - this rule is fallback-only; it should not compete with SessionStart routing

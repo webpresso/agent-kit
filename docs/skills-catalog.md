@@ -6,7 +6,7 @@ last_updated: '2026-04-25'
 # Skills catalog
 
 Agentkit ships a curated set of slash-commands, skills, workflows, rules,
-guides, and doc templates at `packages/cli/agent-kit/catalog/`. `wp setup`
+guides, and doc templates at `catalog/`. `wp setup`
 copies the selected subset into your repo's `.agent/` tree. This doc
 enumerates what's in the catalog and explains the tiers.
 
@@ -14,7 +14,7 @@ enumerates what's in the catalog and explains the tiers.
 
 ### Tier 1 — Blueprint-native (always installed)
 
-Core to the agent-kit operating model. Every `wp setup` installs these.
+Core to the webpresso operating model. Every `wp setup` installs these.
 
 **Commands** (`.agent/commands/`):
 
@@ -139,14 +139,14 @@ Placeholders:
   frameworks (React, Hono, Drizzle, etc.).
 - `{{ESCALATION_MAP}}` — left as `{{TODO: ...}}` for the human to fill.
 - `{{DURABLE_PLANNING_ROOT}}` — defaults to `.agent/planning/`; override
-  via `.agent-kitrc.json`.
+  via `.webpressorc.json`.
 
-After rendering, the `AGENTS.md` is the consumer's to own — agent-kit
+After rendering, the `AGENTS.md` is the consumer's to own — webpresso
 never rewrites it unless `wp setup --overwrite` is used.
 
 ## Catalog updates
 
-Tier-1 and Tier-2 skills are agent-kit-owned and update with the package.
+Tier-1 and Tier-2 skills are webpresso-owned and update with the package.
 Consumers bring new catalog content into `.agent/` explicitly with
 `wp setup --overwrite` after reviewing the reported drift.
 
@@ -195,12 +195,12 @@ multi-file skills like `tanstack-query/` and the reference example in
 
 The catalog is versioned alongside the package. To add a skill:
 
-1. Write the `SKILL.md` under `packages/cli/agent-kit/catalog/agent/skills/<name>/`.
+1. Write the `SKILL.md` under `catalog/agent/skills/<name>/`.
 2. Apply the generalization rules (no `@webpresso/*` refs, no `[OMX]`,
    no `wp blueprint`, no hardcoded repo paths).
 3. If it should be opt-in, document it in the Tier-3 list and update
    `wp setup`'s `--with` allowlist.
 4. Ship with a Changesets entry.
 
-Consumers pick it up on their next `pnpm update @webpresso/agent-kit &&
+Consumers pick it up on their next `pnpm update webpresso &&
 vp exec wp setup --overwrite` cycle.

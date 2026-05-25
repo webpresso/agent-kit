@@ -211,17 +211,17 @@ describe('confirmInstalledGlobally', () => {
 })
 
 describe('detectGitInstall', () => {
-  it('returns the repo dir when argv1 resolves into the webpresso/agent-kit clone', () => {
-    realpathSyncMock.mockReturnValue('/Users/me/repos/webpresso/agent-kit/src/cli/cli.ts')
+  it('returns the repo dir when argv1 resolves into the webpresso/webpresso clone', () => {
+    realpathSyncMock.mockReturnValue('/Users/me/repos/webpresso/webpresso/src/cli/cli.ts')
     execFileSyncMock
-      .mockReturnValueOnce('/Users/me/repos/webpresso/agent-kit\n')
-      .mockReturnValueOnce('git@github.com:webpresso/agent-kit.git\n')
+      .mockReturnValueOnce('/Users/me/repos/webpresso/webpresso\n')
+      .mockReturnValueOnce('git@github.com:webpresso/webpresso.git\n')
     expect(detectGitInstall('/Users/me/.local/bin/wp')).toStrictEqual(
-      '/Users/me/repos/webpresso/agent-kit',
+      '/Users/me/repos/webpresso/webpresso',
     )
   })
 
-  it('returns null when the remote is not webpresso/agent-kit', () => {
+  it('returns null when the remote is not webpresso/webpresso', () => {
     realpathSyncMock.mockReturnValue('/Users/me/other-repo/cli.ts')
     execFileSyncMock
       .mockReturnValueOnce('/Users/me/other-repo\n')
@@ -238,15 +238,15 @@ describe('detectGitInstall', () => {
 })
 
 describe('detect — priority 0: git/source install', () => {
-  it('returns git pull command when argv1 is inside the agent-kit clone', () => {
-    realpathSyncMock.mockReturnValue('/Users/me/repos/webpresso/agent-kit/src/cli/cli.ts')
+  it('returns git pull command when argv1 is inside the webpresso clone', () => {
+    realpathSyncMock.mockReturnValue('/Users/me/repos/webpresso/webpresso/src/cli/cli.ts')
     execFileSyncMock
-      .mockReturnValueOnce('/Users/me/repos/webpresso/agent-kit\n')
-      .mockReturnValueOnce('git@github.com:webpresso/agent-kit.git\n')
+      .mockReturnValueOnce('/Users/me/repos/webpresso/webpresso\n')
+      .mockReturnValueOnce('git@github.com:webpresso/webpresso.git\n')
     const result = detect({}, '/Users/me/.local/bin/wp')
     expect(result).toStrictEqual({
       manager: 'git',
-      command: ['git', '-C', '/Users/me/repos/webpresso/agent-kit', 'pull'],
+      command: ['git', '-C', '/Users/me/repos/webpresso/webpresso', 'pull'],
     })
   })
 })
@@ -260,10 +260,10 @@ describe('detect — priority 1: npm_config_user_agent', () => {
         'vp',
         'install',
         '-g',
-        '@webpresso/agent-kit',
+        'webpresso',
         '--',
         '--registry',
-        'https://npm.pkg.github.com',
+        'https://registry.npmjs.org',
       ],
     })
   })
@@ -276,10 +276,10 @@ describe('detect — priority 1: npm_config_user_agent', () => {
         'vp',
         'install',
         '-g',
-        '@webpresso/agent-kit',
+        'webpresso',
         '--',
         '--registry',
-        'https://npm.pkg.github.com',
+        'https://registry.npmjs.org',
       ],
     })
   })
@@ -292,10 +292,10 @@ describe('detect — priority 1: npm_config_user_agent', () => {
         'vp',
         'install',
         '-g',
-        '@webpresso/agent-kit',
+        'webpresso',
         '--',
         '--registry',
-        'https://npm.pkg.github.com',
+        'https://registry.npmjs.org',
       ],
     })
   })
@@ -308,10 +308,10 @@ describe('detect — priority 1: npm_config_user_agent', () => {
         'vp',
         'install',
         '-g',
-        '@webpresso/agent-kit',
+        'webpresso',
         '--',
         '--registry',
-        'https://npm.pkg.github.com',
+        'https://registry.npmjs.org',
       ],
     })
   })
@@ -328,10 +328,10 @@ describe('detect — priority 1: npm_config_user_agent', () => {
         'vp',
         'install',
         '-g',
-        '@webpresso/agent-kit',
+        'webpresso',
         '--',
         '--registry',
-        'https://npm.pkg.github.com',
+        'https://registry.npmjs.org',
       ],
     })
   })
@@ -347,10 +347,10 @@ describe('detect — priority 2: realpath walk', () => {
         'vp',
         'install',
         '-g',
-        '@webpresso/agent-kit',
+        'webpresso',
         '--',
         '--registry',
-        'https://npm.pkg.github.com',
+        'https://registry.npmjs.org',
       ],
     })
   })
@@ -364,10 +364,10 @@ describe('detect — priority 2: realpath walk', () => {
         'vp',
         'install',
         '-g',
-        '@webpresso/agent-kit',
+        'webpresso',
         '--',
         '--registry',
-        'https://npm.pkg.github.com',
+        'https://registry.npmjs.org',
       ],
     })
   })
@@ -383,10 +383,10 @@ describe('detect — priority 2: realpath walk', () => {
         'vp',
         'install',
         '-g',
-        '@webpresso/agent-kit',
+        'webpresso',
         '--',
         '--registry',
-        'https://npm.pkg.github.com',
+        'https://registry.npmjs.org',
       ],
     })
   })

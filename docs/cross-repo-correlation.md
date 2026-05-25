@@ -1,13 +1,13 @@
 ---
 type: guide
 title: Cross-Repo Correlation
-description: How agent-kit tracks and audits cross-repository blueprint dependencies.
+description: How webpresso tracks and audits cross-repository blueprint dependencies.
 last_updated: '2026-05-11'
 ---
 
 # Cross-Repo Correlation
 
-Agent-kit blueprints can declare dependencies on blueprints in *other* repos via the `cross_repo_depends_on` frontmatter key. This doc explains how those references are stored, validated, and audited.
+Webpresso blueprints can declare dependencies on blueprints in *other* repos via the `cross_repo_depends_on` frontmatter key. This doc explains how those references are stored, validated, and audited.
 
 ## The 7 requirements
 
@@ -15,8 +15,8 @@ Agent-kit blueprints can declare dependencies on blueprints in *other* repos via
 
 When a blueprint is ingested, its `organization` field is auto-detected from `git remote get-url origin` in the blueprint's directory. The URL is parsed for both SSH and HTTPS forms:
 
-- `git@github.com:webpresso/agent-kit.git` → `webpresso`
-- `https://github.com/webpresso/agent-kit.git` → `webpresso`
+- `git@github.com:webpresso/webpresso.git` → `webpresso`
+- `https://github.com/webpresso/webpresso.git` → `webpresso`
 - Fallback: `unknown`
 
 Visibility is detected via `gh repo view --json visibility` (silent fail → `private`).
@@ -90,7 +90,7 @@ source permits target  AND  target permits source  →  RESOLVES
 
 ### Example 1: Same org (always resolves)
 
-`webpresso/agent-kit` has a blueprint that references `webpresso/monorepo`:
+`webpresso/webpresso` has a blueprint that references `webpresso/monorepo`:
 
 ```yaml
 cross_repo_depends_on:
@@ -104,7 +104,7 @@ Both repos are in the `webpresso` org. Resolution: **allowed**.
 
 ### Example 2: Cross-org (denied without mutual allowlist)
 
-`webpresso/agent-kit` references `acme-corp/product`:
+`webpresso/webpresso` references `acme-corp/product`:
 
 ```yaml
 cross_repo_depends_on:
@@ -112,12 +112,12 @@ cross_repo_depends_on:
     slug: acme-feature-x
 ```
 
-- `webpresso/agent-kit/.agent/correlate.allow.yaml` does **not** list `acme-corp`
+- `webpresso/webpresso/.agent/correlate.allow.yaml` does **not** list `acme-corp`
 - Resolution: **denied**, target slug redacted
 
 To allow this, both repos must add each other:
 
-`webpresso/agent-kit/.agent/correlate.allow.yaml`:
+`webpresso/webpresso/.agent/correlate.allow.yaml`:
 ```yaml
 permits:
   - acme-corp

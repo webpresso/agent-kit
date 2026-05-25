@@ -252,14 +252,14 @@ describe('auditHookSurfaceAsRepoResult', () => {
 // ---------------------------------------------------------------------------
 
 describe('extractOwner', () => {
-  it('classifies wp-* bins as agent-kit (dash form)', () => {
-    expect(extractOwner('./node_modules/.bin/wp-pretool-guard')).toBe('agent-kit')
-    expect(extractOwner('wp-stop-qa')).toBe('agent-kit')
-    expect(extractOwner('wp-sessionstart-routing')).toBe('agent-kit')
+  it('classifies wp-* bins as webpresso (dash form)', () => {
+    expect(extractOwner('./node_modules/.bin/wp-pretool-guard')).toBe('webpresso')
+    expect(extractOwner('wp-stop-qa')).toBe('webpresso')
+    expect(extractOwner('wp-sessionstart-routing')).toBe('webpresso')
   })
 
-  it('classifies wp_* bins as agent-kit (underscore form)', () => {
-    expect(extractOwner('wp_pretool_guard')).toBe('agent-kit')
+  it('classifies wp_* bins as webpresso (underscore form)', () => {
+    expect(extractOwner('wp_pretool_guard')).toBe('webpresso')
   })
 
   it('classifies context-mode hook subcommands', () => {
@@ -294,7 +294,7 @@ describe('extractOwner', () => {
 
 describe('detectDrift', () => {
   // TC-01: cross-owner same-event → allowed
-  it('TC-01: allows agent-kit and context-mode to share the same runtime+event', () => {
+  it('TC-01: allows webpresso and context-mode to share the same runtime+event', () => {
     const hooks: readonly HookEntry[] = [
       {
         runtime: 'codex',
@@ -336,8 +336,8 @@ describe('detectDrift', () => {
     expect(detectDrift(hooks)).toHaveLength(0)
   })
 
-  // TC-05: same agent-kit bin registered twice → drift
-  it('TC-05: flags same agent-kit bin registered twice on same event as drift', () => {
+  // TC-05: same webpresso bin registered twice → drift
+  it('TC-05: flags same webpresso bin registered twice on same event as drift', () => {
     const hooks: readonly HookEntry[] = [
       { runtime: 'codex', event: 'PreToolUse', command: './node_modules/.bin/wp-pretool-guard' },
       { runtime: 'codex', event: 'PreToolUse', command: './node_modules/.bin/wp-pretool-guard' },
@@ -373,7 +373,7 @@ describe('detectDrift', () => {
   })
 
   // TC-09: three-way cross-owner on same event → allowed
-  it('TC-09: allows agent-kit, context-mode, and omx on the same event', () => {
+  it('TC-09: allows webpresso, context-mode, and omx on the same event', () => {
     const hooks: readonly HookEntry[] = [
       { runtime: 'codex', event: 'Stop', command: './node_modules/.bin/wp-stop-qa' },
       { runtime: 'codex', event: 'Stop', command: 'context-mode hook codex stop' },

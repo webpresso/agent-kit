@@ -41,7 +41,7 @@ function sha256Hex(value) {
 export function getStateRoot() {
     if (cachedStateRoot !== null)
         return cachedStateRoot;
-    const paths = envPaths('webpresso-agent-kit', { suffix: '' });
+    const paths = envPaths('webpresso', { suffix: '' });
     const root = paths.data;
     cachedStateRoot = root;
     return root;

@@ -1,24 +1,24 @@
 import { existsSync } from 'node:fs';
 import { dirname, resolve, parse } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { AGENT_KIT_CONFIG_EXPORT_NAME, AGENT_KIT_CONFIG_FILE_NAME, validateAgentKitConfig, } from './config.js';
+import { WEBPRESSO_CONFIG_EXPORT_NAME, WEBPRESSO_CONFIG_FILE_NAME, validateWebpressoConfig, } from './config.js';
 import { FALLBACK_HOST_ADAPTER_EXPORT_NAMES, isE2eHostAdapter } from './host-adapter.js';
-export class AgentKitConfigLoadError extends Error {
+export class WebpressoConfigLoadError extends Error {
     configPath;
     cause;
     constructor(configPath, cause) {
-        super(`Failed to load ${AGENT_KIT_CONFIG_FILE_NAME} at ${configPath}: ${cause.message}`, cause instanceof Error ? { cause } : undefined);
+        super(`Failed to load ${WEBPRESSO_CONFIG_FILE_NAME} at ${configPath}: ${cause.message}`, cause instanceof Error ? { cause } : undefined);
         this.configPath = configPath;
         this.cause = cause;
-        this.name = 'AgentKitConfigLoadError';
+        this.name = 'WebpressoConfigLoadError';
     }
 }
-export class AgentKitConfigExportError extends Error {
+export class WebpressoConfigExportError extends Error {
     configPath;
     constructor(configPath) {
-        super(`Expected ${AGENT_KIT_CONFIG_FILE_NAME} at ${configPath} to export ${AGENT_KIT_CONFIG_EXPORT_NAME}.`);
+        super(`Expected ${WEBPRESSO_CONFIG_FILE_NAME} at ${configPath} to export ${WEBPRESSO_CONFIG_EXPORT_NAME}.`);
         this.configPath = configPath;
-        this.name = 'AgentKitConfigExportError';
+        this.name = 'WebpressoConfigExportError';
     }
 }
 export class HostAdapterModuleLoadError extends Error {
@@ -47,43 +47,43 @@ export class HostAdapterExportError extends Error {
         this.name = 'HostAdapterExportError';
     }
 }
-export function getAgentKitConfigPath(cwd = process.cwd()) {
-    return resolve(cwd, AGENT_KIT_CONFIG_FILE_NAME);
+export function getWebpressoConfigPath(cwd = process.cwd()) {
+    return resolve(cwd, WEBPRESSO_CONFIG_FILE_NAME);
 }
-export function resolveAgentKitConfigPath(cwd = process.cwd()) {
-    return findAgentKitConfigPath(cwd) ?? getAgentKitConfigPath(cwd);
+export function resolveWebpressoConfigPath(cwd = process.cwd()) {
+    return findWebpressoConfigPath(cwd) ?? getWebpressoConfigPath(cwd);
 }
-export function findAgentKitConfigPath(cwd = process.cwd()) {
+export function findWebpressoConfigPath(cwd = process.cwd()) {
     for (const searchDir of getSearchDirectories(cwd)) {
-        const configPath = getAgentKitConfigPath(searchDir);
+        const configPath = getWebpressoConfigPath(searchDir);
         if (existsSync(configPath)) {
             return configPath;
         }
     }
     return null;
 }
-export async function loadAgentKitConfig(options = {}) {
-    const configPath = resolveAgentKitConfigPath(options.cwd);
+export async function loadWebpressoConfig(options = {}) {
+    const configPath = resolveWebpressoConfigPath(options.cwd);
     const configModule = await loadModuleNamespace(pathToFileURL(configPath).href, (cause) => {
-        throw new AgentKitConfigLoadError(configPath, cause);
+        throw new WebpressoConfigLoadError(configPath, cause);
     });
-    if (!(AGENT_KIT_CONFIG_EXPORT_NAME in configModule)) {
-        throw new AgentKitConfigExportError(configPath);
+    if (!(WEBPRESSO_CONFIG_EXPORT_NAME in configModule)) {
+        throw new WebpressoConfigExportError(configPath);
     }
     return {
-        config: validateAgentKitConfig(configModule[AGENT_KIT_CONFIG_EXPORT_NAME], configPath),
+        config: validateWebpressoConfig(configModule[WEBPRESSO_CONFIG_EXPORT_NAME], configPath),
         configPath,
     };
 }
-export async function loadAgentKitConfigSafe(options = {}) {
-    const configPath = findAgentKitConfigPath(options.cwd);
+export async function loadWebpressoConfigSafe(options = {}) {
+    const configPath = findWebpressoConfigPath(options.cwd);
     if (!configPath) {
         return null;
     }
-    return loadAgentKitConfig({ cwd: dirname(configPath) });
+    return loadWebpressoConfig({ cwd: dirname(configPath) });
 }
 export async function loadHostAdapter(options = {}) {
-    const loadedConfig = await loadAgentKitConfigSafe(options);
+    const loadedConfig = await loadWebpressoConfigSafe(options);
     if (!loadedConfig?.config.e2e) {
         return null;
     }

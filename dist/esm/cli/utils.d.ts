@@ -8,7 +8,7 @@
 /**
  * Markers used to detect a project root, in priority order; first hit wins.
  */
-export declare const PROJECT_ROOT_MARKERS: readonly [".agent-kitrc.json", "pnpm-workspace.yaml", "package.json", "webpresso/config.yaml"];
+export declare const PROJECT_ROOT_MARKERS: readonly [".webpressorc.json", "pnpm-workspace.yaml", "package.json", "webpresso/config.yaml"];
 interface GetProjectRootOptions {
     /** Directory to start searching from (default: process.cwd()) */
     startDir?: string;
@@ -32,12 +32,12 @@ export declare function normalizeArgv(argv: string[]): string[];
  */
 export declare function formatUnknownCommandError(input: string | undefined, commands: readonly string[], binName?: string): string;
 /**
- * Resolve the agent-kit package.json and return its version.
+ * Resolve the webpresso package.json and return its version.
  *
  * Caller must pass `import.meta.url` from a file that lives at
  * `<packageRoot>/src/cli/cli.ts` (source) or `<packageRoot>/dist/cli.js`
  * (bundled). We walk upward until we find a `package.json` whose `name`
- * is `@webpresso/agent-kit`, to be robust against both layouts without
+ * is `webpresso`, to be robust against both layouts without
  * having to know how many `..` segments to append.
  */
 export declare function readPackageVersion(metaUrl: string): string;

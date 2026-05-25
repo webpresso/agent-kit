@@ -1,5 +1,5 @@
 /**
- * Export-isolation guard for `@webpresso/agent-kit/lint`.
+ * Export-isolation guard for `webpresso/lint`.
  *
  * Ensures the public surface of the `./lint` subpath stays:
  *   1. resolvable from the package's own source-relative module ID
@@ -16,7 +16,7 @@ import { describe, expect, it } from 'vitest'
 import * as lintModule from './index.js'
 import { parseOxlintIssues, runLint } from './index.js'
 
-describe('@webpresso/agent-kit/lint export surface', () => {
+describe('webpresso/lint export surface', () => {
   it('exports runLint as a function', () => {
     expect(typeof runLint).toBe('function')
     expect(runLint.length).toBeLessThanOrEqual(1)

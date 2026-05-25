@@ -100,8 +100,8 @@ describe('syncCodexHookTrustWithAppServer', () => {
 
     expect(result).toStrictEqual({
       ok: false,
-      reason: 'no-agent-kit-hooks-found',
-      message: `No agent-kit-owned Codex hooks found for ${REPO_ROOT}`,
+      reason: 'no-webpresso-hooks-found',
+      message: `No webpresso-owned Codex hooks found for ${REPO_ROOT}`,
     })
     expect(api.batchWrites).toStrictEqual([])
   })

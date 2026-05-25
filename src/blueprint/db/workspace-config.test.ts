@@ -30,14 +30,14 @@ describe('loadWorkspaceConfig', () => {
     const configPath = tmpConfig()
     writeFileSync(
       configPath,
-      ['repos:', '  - path: ~/repos/webpresso/agent-kit', '  - path: /absolute/path/to/repo'].join(
+      ['repos:', '  - path: ~/repos/webpresso/webpresso', '  - path: /absolute/path/to/repo'].join(
         '\n',
       ),
       'utf8',
     )
     const result = loadWorkspaceConfig(configPath)
     expect(result).toStrictEqual({
-      repos: [{ path: '~/repos/webpresso/agent-kit' }, { path: '/absolute/path/to/repo' }],
+      repos: [{ path: '~/repos/webpresso/webpresso' }, { path: '/absolute/path/to/repo' }],
     })
   })
 
@@ -89,7 +89,7 @@ describe('getWorkspaceRepos', () => {
       configPath,
       [
         'repos:',
-        '  - path: ~/repos/webpresso/agent-kit',
+        '  - path: ~/repos/webpresso/webpresso',
         '  - path: ~/repos/webpresso/monorepo',
         '  - path: /opt/local/repo',
       ].join('\n'),
@@ -97,7 +97,7 @@ describe('getWorkspaceRepos', () => {
     )
     const result = getWorkspaceRepos(configPath)
     expect(result).toStrictEqual([
-      path.join(homedir(), 'repos/webpresso/agent-kit'),
+      path.join(homedir(), 'repos/webpresso/webpresso'),
       path.join(homedir(), 'repos/webpresso/monorepo'),
       '/opt/local/repo',
     ])

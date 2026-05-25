@@ -1,5 +1,5 @@
 /**
- * Stable subpath export: `@webpresso/agent-kit/format`.
+ * Stable subpath export: `webpresso/format`.
  *
  * Wraps the `oxfmt` binary for repo formatting. Mirrors the `runLint` API
  * shape so consumers can compose lint + format in the same pipeline. Unlike

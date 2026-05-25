@@ -52,13 +52,13 @@ Result: the real-consumer slice is parked, not silently skipped.
 
 Fixture path:
 
-`packages/cli/agent-kit/fixtures/dev-two-process/app-manifest.yaml`
+`fixtures/dev-two-process/app-manifest.yaml`
 
 Validation command:
 
 ```bash
 wp dev --manifest \
-  packages/cli/agent-kit/fixtures/dev-two-process/app-manifest.yaml \
+  fixtures/dev-two-process/app-manifest.yaml \
   full-stack
 ```
 
@@ -68,4 +68,4 @@ Expected resolution:
 - `web`
 
 The fixture validates the public contract only. It adds no consumer-specific
-behavior to `@webpresso/agent-kit`.
+behavior to `webpresso`.

@@ -467,7 +467,7 @@ describe('createBlockedResult', () => {
     expect(result.command).toBe('vp vitest')
     expect(result.category).toBe('test')
     expect(result.message).toContain('vp vitest')
-    expect(result.message).toContain('mcp__agent-kit__wp_test(...)')
+    expect(result.message).toContain('mcp__webpresso__wp_test(...)')
     expect(result.message).toContain('Fallback if MCP unavailable:')
     expect(result.docsRef).toBeDefined()
     expect(result.matchedPattern).toBeDefined()
@@ -502,7 +502,7 @@ describe('createAuditResult', () => {
     expect(result.passed).toBe(true)
     expect(result.message).toContain('[AUDIT] Would block')
     expect(result.command).toBe('vp vitest')
-    expect(result.message).toContain('mcp__agent-kit__wp_test(...)')
+    expect(result.message).toContain('mcp__webpresso__wp_test(...)')
     expect(result.docsRef).toBeDefined()
   })
 })
@@ -656,7 +656,7 @@ describe('validateForbiddenCommands', () => {
       ).trim()
 
       expect(text.startsWith('"vp run test" denied — use wp MCP tool:')).toBe(true)
-      expect(text).toContain('mcp__agent-kit__wp_test(...)')
+      expect(text).toContain('wp_test')
       expect(text).toContain('Fallback if MCP unavailable:')
     }
   })
@@ -674,7 +674,7 @@ describe('validateForbiddenCommands', () => {
     const sentinel = join(tmpdir(), `wp-mcp-ready-${sentinelKey}`)
     mkdirSync(dir, { recursive: true })
     writeFileSync(
-      join(dir, '.agent-kitrc.json'),
+      join(dir, '.webpressorc.json'),
       JSON.stringify({
         version: '1',
         installed: { tier3Skills: [] },
@@ -819,7 +819,7 @@ describe('validateForbiddenCommands', () => {
       'passed',
       'FAIL',
     ].join('|')
-    const command = `gh run view 25787826767 --repo webpresso/agent-kit --job 75745460498 --log | rg "${filter}" -n | sed -n '1,120p'`
+    const command = `gh run view 25787826767 --repo webpresso/webpresso --job 75745460498 --log | rg "${filter}" -n | sed -n '1,120p'`
 
     const result = validateForbiddenCommands(bashInput(command))
 
@@ -919,7 +919,7 @@ describe('blueprint lifecycle enforcement', () => {
   it('blocks mv with absolute paths to blueprint lifecycle dirs', () => {
     const result = validateForbiddenCommands(
       bashInput(
-        'mv /Users/oz/repos/agent-kit/blueprints/draft/foo /Users/oz/repos/agent-kit/blueprints/planned/',
+        'mv /Users/oz/repos/webpresso/blueprints/draft/foo /Users/oz/repos/webpresso/blueprints/planned/',
       ),
     )
     expect(result.passed).toBe(false)
@@ -928,7 +928,7 @@ describe('blueprint lifecycle enforcement', () => {
 
   it('blocks mkdir creating a blueprint lifecycle dir', () => {
     const result = validateForbiddenCommands(
-      bashInput('mkdir -p /Users/oz/repos/agent-kit/blueprints/planned'),
+      bashInput('mkdir -p /Users/oz/repos/webpresso/blueprints/planned'),
     )
     expect(result.passed).toBe(false)
     expect('command' in result && result.category).toBe('blueprint')
@@ -948,7 +948,7 @@ describe('blueprint lifecycle enforcement', () => {
     const result = createBlockedResult('mv blueprints/draft/foo blueprints/planned/', rule, {
       mcpReady: true,
     })
-    expect(result.message).toContain('mcp__agent-kit__wp_blueprint(...)')
+    expect(result.message).toContain('mcp__webpresso__wp_blueprint(...)')
   })
 
   it('blocks git mv targeting blueprint lifecycle dirs', () => {

@@ -64,8 +64,8 @@ function mergePackageJson(repoRoot, options, globalInstall = false) {
     const scripts = (pkg['scripts'] ?? {});
     const hasSetupAgent = typeof scripts['setup:agent'] === 'string';
     const devDeps = (pkg['devDependencies'] ?? {});
-    const hasAgentKitDevDep = typeof devDeps['@webpresso/agent-kit'] === 'string';
-    const shouldSkipSelfInstall = packageName === '@webpresso/agent-kit';
+    const hasAgentKitDevDep = typeof devDeps['webpresso'] === 'string';
+    const shouldSkipSelfInstall = packageName === 'webpresso';
     const shouldManageAgentKitAsGlobal = globalInstall && !shouldSkipSelfInstall;
     if (alreadyHasEngines &&
         alreadyHasPm &&
@@ -84,7 +84,7 @@ function mergePackageJson(repoRoot, options, globalInstall = false) {
         // Keep consumers on the currently published dist-tag rather than a
         // repo-internal path. Do not wire this through `prepare`: `wp` is not
         // reliably on PATH during `vp install`, so `setup:agent` stays opt-in.
-        devDeps['@webpresso/agent-kit'] = 'latest';
+        devDeps['webpresso'] = 'latest';
     }
     pkg['devDependencies'] = devDeps;
     if (!shouldSkipSelfInstall && !hasSetupAgent) {

@@ -1,5 +1,5 @@
 /**
- * Export-isolation guard for `@webpresso/agent-kit/typecheck`.
+ * Export-isolation guard for `webpresso/typecheck`.
  *
  * Pins the public surface of the `./typecheck` subpath: framework consumers
  * (Wave 2 scaffolders) rely on `runTypecheck(options): Promise<TypecheckResult>`
@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest'
 import * as typecheckModule from './index.js'
 import { parseTscOutput, runTypecheck } from './index.js'
 
-describe('@webpresso/agent-kit/typecheck export surface', () => {
+describe('webpresso/typecheck export surface', () => {
   it('exports runTypecheck as a function', () => {
     expect(typeof runTypecheck).toBe('function')
     expect(runTypecheck.length).toBeLessThanOrEqual(1)

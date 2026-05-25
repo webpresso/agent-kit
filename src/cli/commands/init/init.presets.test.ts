@@ -122,10 +122,10 @@ describe('runInit() — omx + gstack presets (integration)', () => {
 
       expect(code).toBe(EXIT_SUCCESS)
       const gitignore = readFileSync(join(repo, '.gitignore'), 'utf8')
-      expect(gitignore).toContain('# >>> managed by @webpresso/agent-kit (generated)')
+      expect(gitignore).toContain('# >>> managed by webpresso (generated)')
       expect(gitignore).toContain('.codex/')
       expect(gitignore).toContain('.omx/')
-      expect(gitignore.trimEnd()).toMatch(/# <<< managed by @webpresso\/agent-kit \(generated\)$/)
+      expect(gitignore.trimEnd()).toMatch(/# <<< managed by webpresso \(generated\)$/)
     })
 
     it('returns EXIT_SETUP_FAIL when probe errors with ENOENT (omx not on PATH)', async () => {

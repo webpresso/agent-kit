@@ -1,9 +1,9 @@
 import { resolve } from 'node:path';
-import { isAgentKitOwnedCodexHook } from './codex-ownership.js';
+import { isWebpressoOwnedCodexHook } from './codex-ownership.js';
 export async function syncCodexHookTrustWithAppServer(api, input) {
     const expectedSourcePaths = normalizeExpectedSourcePaths(input);
-    const hookDescription = input.hookDescription ?? 'agent-kit-owned';
-    const selectHook = input.selectHook ?? isAgentKitOwnedCodexHook;
+    const hookDescription = input.hookDescription ?? 'webpresso-owned';
+    const selectHook = input.selectHook ?? isWebpressoOwnedCodexHook;
     let firstList;
     try {
         firstList = await api.hooksList([input.repoRoot]);
@@ -15,7 +15,7 @@ export async function syncCodexHookTrustWithAppServer(api, input) {
     if (ownedHooks.length === 0) {
         return {
             ok: false,
-            reason: 'no-agent-kit-hooks-found',
+            reason: 'no-webpresso-hooks-found',
             message: `No ${hookDescription} Codex hooks found for ${input.repoRoot}`,
         };
     }

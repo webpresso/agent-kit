@@ -24,7 +24,7 @@ const DEFAULT_TARGETS = 'claude,codex,cursor,gemini,opencode,windsurf'
 const COMPILE_MANIFEST_VERSION = 1
 
 // Resolve rulesync bin — checks consumer's node_modules first,
-// then falls back to agent-kit's own bundled rulesync.
+// then falls back to webpresso's own bundled rulesync.
 const _require = createRequire(import.meta.url)
 function resolveRulesyncBinFromAgentKit(): string | null {
   try {
@@ -59,7 +59,7 @@ export interface CompileManifest {
 }
 
 function resolveRulesyncBin(cwd: string): string | null {
-  // Prefer consumer-local install (supports overrides), fall back to agent-kit's bundled copy.
+  // Prefer consumer-local install (supports overrides), fall back to webpresso's bundled copy.
   const consumerBin = join(cwd, 'node_modules', '.bin', 'rulesync')
   if (existsSync(consumerBin)) return consumerBin
   return resolveRulesyncBinFromAgentKit()

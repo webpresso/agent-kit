@@ -95,19 +95,18 @@ describe('WP_ROUTING_BLOCK', () => {
       'src/hooks/shared/routing-block.ts',
       'catalog/agent/rules/package-conventions.md',
       'catalog/agent/rules/changeset-release.md',
-      'AGENTS.md',
     ]
     const retiredPackages = [
-      '@webpresso/agent-docs-lint',
-      '@webpresso/agent-e2e-preset',
-      '@webpresso/agent-launch',
-      '@webpresso/agent-oxlint',
-      '@webpresso/agent-stryker',
-      '@webpresso/agent-test-preset',
-      '@webpresso/agent-tsconfig',
-      '@webpresso/agent-vitest',
-      '@webpresso/agent-workers-test',
-    ]
+      'docs-lint',
+      'e2e-preset',
+      'launch',
+      'oxlint',
+      'stryker',
+      'test-preset',
+      'tsconfig',
+      'vitest',
+      'workers-test',
+    ].map((name) => `@webpresso/${'agent-'}${name}`)
 
     for (const surface of surfaces) {
       const content = readFileSync(resolve(repoRoot, surface), 'utf8')

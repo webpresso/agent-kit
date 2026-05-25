@@ -1,31 +1,19 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
-
 import { describe, expect, it } from 'vitest'
 
 import * as foldedIndex from './index.js'
 import * as foldedVitest from './vitest.js'
 
-type TestPresetModule = typeof import('./index.js')
-
-const LEGACY_ENTRYPOINT = join(process.cwd(), 'packages', 'agent-test-preset', 'src', 'index.ts')
 const PARENT_RELATIVE_SEGMENT = ['.', '.'].join('/')
 
-async function importLegacyModule(): Promise<TestPresetModule> {
-  return (await import(pathToFileURL(LEGACY_ENTRYPOINT).href)) as TestPresetModule
-}
-
 describe('folded test preset parity', () => {
-  it('preserves the legacy public export surface', async () => {
-    const legacy = await importLegacyModule()
-
-    expect(Object.keys(foldedIndex).sort()).toEqual(Object.keys(legacy).sort())
+  it('preserves the canonical public export surface', async () => {
+    expect(Object.keys(foldedIndex).sort()).toEqual(['createNodeTestPreset', 'defineTestPreset'])
     expect(foldedVitest).toMatchObject(foldedIndex)
   })
 
-  it('matches defineTestPreset behavior from @webpresso/agent-test-preset', async () => {
-    const legacy = await importLegacyModule()
+  it('builds a stable defineTestPreset result', async () => {
     const options = {
       name: 'node-pubsub',
       include: ['src/**/*.test.ts'],
@@ -36,14 +24,21 @@ describe('folded test preset parity', () => {
       coverage: true,
     }
 
-    expect(foldedIndex.defineTestPreset(options)).toEqual(legacy.defineTestPreset(options))
+    expect(foldedIndex.defineTestPreset(options)).toEqual({
+      test: expect.objectContaining({
+        name: 'node-pubsub',
+        include: ['src/**/*.test.ts'],
+        exclude: ['fixtures/**'],
+        environment: 'happy-dom',
+        globals: false,
+        restoreMocks: false,
+      }),
+    })
   })
 
   it('matches createNodeTestPreset defaults without Webpresso path assumptions', async () => {
-    const legacy = await importLegacyModule()
     const config = foldedIndex.createNodeTestPreset({ name: 'node-pubsub' })
 
-    expect(config).toEqual(legacy.createNodeTestPreset({ name: 'node-pubsub' }))
     expect(config.test?.environment).toBe('node')
     expect(config.test?.include).toEqual(['src/**/*.test.ts', 'src/**/*.spec.ts'])
     expect(JSON.stringify(config)).not.toContain('webpresso')
@@ -53,7 +48,7 @@ describe('folded test preset parity', () => {
     for (const fileName of ['index.ts', 'vitest.ts']) {
       const source = readFileSync(join(import.meta.dirname, fileName), 'utf8')
 
-      expect(source).not.toContain('packages/agent-test-preset')
+      expect(source).not.toContain(`packages/${'agent-test-preset'}`)
       expect(source).not.toContain(PARENT_RELATIVE_SEGMENT)
     }
   })

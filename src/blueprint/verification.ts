@@ -39,7 +39,7 @@ import {
  */
 export const VERIFICATION_BLOCK_HEADER = '**Verification:**'
 
-const VERIFICATION_FENCE_LANG = 'agent-kit-evidence-v1'
+const VERIFICATION_FENCE_LANG = 'webpresso-evidence-v1'
 
 const VERIFICATION_BLOCK_PATTERN = new RegExp(
   `\\n*${escapeRegex(VERIFICATION_BLOCK_HEADER)}\\n+\`\`\`${VERIFICATION_FENCE_LANG}\\n[\\s\\S]*?\\n\`\`\`\\n*`,
@@ -167,12 +167,12 @@ export async function writeVerification(
  * ```text
  * **Verification:**
  *
- * ```agent-kit-evidence-v1
+ * ```webpresso-evidence-v1
  * [<canonical-json-evidence-array>]
  * ```
  * ```
  *
- * The fenced block uses a custom language tag (`agent-kit-evidence-v1`) so
+ * The fenced block uses a custom language tag (`webpresso-evidence-v1`) so
  * future versions can introduce parallel formats without conflicting with
  * existing tools' fence-language detection.
  */

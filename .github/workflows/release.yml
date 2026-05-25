@@ -36,17 +36,13 @@ jobs:
   release:
     name: Release
     runs-on: ubicloud-standard-2
-    env:
-      GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     permissions:
       contents: write
-      packages: write
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          token: ${{ secrets.GH_PACKAGES_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v5
         with:
@@ -67,21 +63,14 @@ jobs:
       - name: Publish
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != 'true' }}
         id: publish
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -o pipefail
           pnpm changeset publish 2>&1 | tee /tmp/publish.log
           status=${PIPESTATUS[0]}
           echo "published=$(grep -c 'New tag' /tmp/publish.log || true)" >> "$GITHUB_OUTPUT"
           exit $status
-      # Public npm publish is gated — enable when ready to ship by setting
-      # the ENABLE_NPM_PUBLISH repo variable to 'true' and adding NPM_TOKEN secret.
-      - name: Publish webpresso to public npm
-        if: ${{ vars.ENABLE_NPM_PUBLISH == 'true' && (github.event_name != 'workflow_dispatch' || inputs.dry-run != 'true') }}
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          set -o pipefail
-          bun scripts/publish-webpresso.ts 2>&1 | tee /tmp/publish-public.log
       - name: Create marketplace release branch
         if: ${{ steps.publish.outputs.published != '0' && (github.event_name != 'workflow_dispatch' || inputs.dry-run != 'true') }}
         run: |

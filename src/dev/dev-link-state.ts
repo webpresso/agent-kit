@@ -1,5 +1,5 @@
 /**
- * Shared types + I/O for `<consumer>/.webpresso/agent-kit-dev-link.json`.
+ * Shared types + I/O for `<consumer>/.webpresso/webpresso-dev-link.json`.
  *
  * Single source of truth for the dev-link state file format used by:
  *   - `scripts/link-edge-local.ts` — writes the file when `--consumer` is passed
@@ -12,13 +12,13 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-export const STATE_FILE_RELATIVE_PATH = '.webpresso/agent-kit-dev-link.json'
+export const STATE_FILE_RELATIVE_PATH = '.webpresso/webpresso-dev-link.json'
 
 export interface DevLinkState {
   package: string
   linkedFrom: string
   linkedAt?: string
-  agentKitVersion?: string
+  webpressoVersion?: string
   note?: string
 }
 
@@ -54,8 +54,8 @@ export function readDevLinkState(consumerCwd: string): DevLinkState | null {
     package: candidate.package,
     linkedFrom: candidate.linkedFrom,
     linkedAt: typeof candidate.linkedAt === 'string' ? candidate.linkedAt : undefined,
-    agentKitVersion:
-      typeof candidate.agentKitVersion === 'string' ? candidate.agentKitVersion : undefined,
+    webpressoVersion:
+      typeof candidate.webpressoVersion === 'string' ? candidate.webpressoVersion : undefined,
     note: typeof candidate.note === 'string' ? candidate.note : undefined,
   }
 }

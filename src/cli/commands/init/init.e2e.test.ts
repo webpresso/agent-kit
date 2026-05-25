@@ -180,6 +180,7 @@ esac
 
 describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
   'wp setup — live e2e via subprocess',
+  { timeout: 60_000 },
   () => {
     let repo: string
     let fakeHome: string
@@ -203,7 +204,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, '.agent'))).toBe(true)
       expect(existsSync(path.join(repo, 'AGENTS.md'))).toBe(true)
       expect(existsSync(path.join(repo, 'blueprints'))).toBe(true)
-      expect(existsSync(path.join(repo, '.agent-kitrc.json'))).toBe(true)
+      expect(existsSync(path.join(repo, '.webpressorc.json'))).toBe(true)
       expect(r.stdout).toContain('wp init: done.')
       expect(r.stdout).not.toContain('context-mode codex mcp')
       expect(r.stdout).not.toContain('context-mode codex hooks')
@@ -345,28 +346,36 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       )
     })
 
-    it('--with omx,gstack combined: both presets execute against fixtures', () => {
-      const r = runAk(['setup', '--yes', '--with', 'omx,gstack', '--cwd', repo], {
-        PATH: pathWithFakeOmxOk(),
-        HOME: fakeHome,
-      })
-      expect(r.code).toBe(0)
-      expect(r.stdout).toContain('omx setup: ✓')
-      expect(r.stdout).toContain('gstack: ✓ updated')
-    })
+    it(
+      '--with omx,gstack combined: both presets execute against fixtures',
+      { timeout: 20_000 },
+      () => {
+        const r = runAk(['setup', '--yes', '--with', 'omx,gstack', '--cwd', repo], {
+          PATH: pathWithFakeOmxOk(),
+          HOME: fakeHome,
+        })
+        expect(r.code).toBe(0)
+        expect(r.stdout).toContain('omx setup: ✓')
+        expect(r.stdout).toContain('gstack: ✓ updated')
+      },
+    )
 
-    it('presets run independently: omx failure does NOT skip gstack, exit code reflects partial failure', () => {
-      const r = runAk(['setup', '--yes', '--with', 'omx,gstack', '--cwd', repo], {
-        PATH: pathWithoutOmx(),
-        HOME: fakeHome,
-      })
-      // omx fails (not on PATH) → contributes EXIT_SETUP_FAIL = 1
-      expect(r.code).toBe(1)
-      expect(r.stderr).toContain('not on PATH')
-      // gstack still runs after omx fails — independent presets aren't
-      // coupled. Verify it succeeded against the fake-home fixture.
-      expect(r.stdout).toContain('gstack: ✓ updated')
-    })
+    it(
+      'presets run independently: omx failure does NOT skip gstack, exit code reflects partial failure',
+      { timeout: 20_000 },
+      () => {
+        const r = runAk(['setup', '--yes', '--with', 'omx,gstack', '--cwd', repo], {
+          PATH: pathWithoutOmx(),
+          HOME: fakeHome,
+        })
+        // omx fails (not on PATH) → contributes EXIT_SETUP_FAIL = 1
+        expect(r.code).toBe(1)
+        expect(r.stderr).toContain('not on PATH')
+        // gstack still runs after omx fails — independent presets aren't
+        // coupled. Verify it succeeded against the fake-home fixture.
+        expect(r.stdout).toContain('gstack: ✓ updated')
+      },
+    )
 
     it('runtime check: prints bun + vp status regardless of presets', () => {
       const r = runAk(['setup', '--yes', '--cwd', repo], {

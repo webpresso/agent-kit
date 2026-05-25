@@ -2,7 +2,7 @@
  * `omx` scaffolder preset.
  *
  * Ensures `omx` is installed, then chains `omx setup --yes --scope user` after the
- * agent-kit scaffold completes. OMX (oh-my-codex) is the operator-workflow
+ * webpresso scaffold completes. OMX (oh-my-codex) is the operator-workflow
  * execution layer; it manages its own scaffolding idempotently.
  *
  * Required when downstream features rely on `omx team` (see

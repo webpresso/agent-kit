@@ -33,15 +33,15 @@ describe('config', () => {
     const cfg = {
       ...defaultConfig(),
       installed: { tier3Skills: ['tanstack-query'] },
-      mcp: { serverName: 'agent-kit', toolPrefix: 'wp_' },
+      mcp: { serverName: 'webpresso', toolPrefix: 'wp_' },
       rules: { overrides: ['repo-restrictions'] },
       scripts: { 'setup-agent': 'vp exec wp setup' },
     }
     writeConfig(dir, cfg)
-    expect(existsSync(join(dir, '.agent-kitrc.json'))).toBe(true)
+    expect(existsSync(join(dir, '.webpressorc.json'))).toBe(true)
     const readBack = readConfig(dir)
     expect(readBack?.installed.tier3Skills).toEqual(['tanstack-query'])
-    expect(readBack?.mcp).toEqual({ serverName: 'agent-kit', toolPrefix: 'wp_' })
+    expect(readBack?.mcp).toEqual({ serverName: 'webpresso', toolPrefix: 'wp_' })
     expect(readBack?.rules.overrides).toEqual(['repo-restrictions'])
     expect(readBack?.scripts['setup-agent']).toBe('vp exec wp setup')
   })
@@ -50,7 +50,7 @@ describe('config', () => {
     const existing = {
       ...defaultConfig(),
       installed: { tier3Skills: ['react-doctor'] },
-      mcp: { serverName: 'agent-kit', toolPrefix: 'wp_' },
+      mcp: { serverName: 'webpresso', toolPrefix: 'wp_' },
       rules: { overrides: ['agent-hooks'] },
       scripts: { 'setup-agent': 'wp setup' },
     }
@@ -72,7 +72,7 @@ describe('config', () => {
 
   it('readConfig defaults new override buckets when missing or malformed', () => {
     writeFileSync(
-      join(dir, '.agent-kitrc.json'),
+      join(dir, '.webpressorc.json'),
       JSON.stringify({
         version: '1',
         installed: { tier3Skills: ['tanstack-query'] },
@@ -91,7 +91,7 @@ describe('config', () => {
 
   it('readConfig defaults mcp when absent', () => {
     writeFileSync(
-      join(dir, '.agent-kitrc.json'),
+      join(dir, '.webpressorc.json'),
       JSON.stringify({
         version: '1',
         installed: { tier3Skills: ['tanstack-query'] },
@@ -105,7 +105,7 @@ describe('config', () => {
   })
 
   it('readConfig tolerates malformed files', () => {
-    writeFileSync(join(dir, '.agent-kitrc.json'), '{not json')
+    writeFileSync(join(dir, '.webpressorc.json'), '{not json')
     expect(readConfig(dir)).toBeNull()
   })
 })

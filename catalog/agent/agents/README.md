@@ -6,7 +6,7 @@ last_updated: 2026-05-05
 # Canonical Subagents
 
 These markdown files are the canonical Claude subagent definitions shipped by
-agent-kit. `wp setup` distributes them to `.claude/agents/`.
+webpresso. `wp setup` distributes them to `.claude/agents/`.
 
 ## Included Agents
 

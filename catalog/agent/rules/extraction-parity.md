@@ -16,7 +16,7 @@ Applies to any blueprint that claims to be a **pure relocation** (moving code
 between packages without behaviour changes), including:
 
 - **Fold blueprints** — absorbing one package into another (e.g. folding
-  `@webpresso/quality-engine` into `@webpresso/agent-kit`).
+  `@webpresso/quality-engine` into `webpresso`).
 - **Extraction blueprints** — splitting a module out of a monorepo into a
   standalone public package.
 - Any task annotated with "zero behaviour change", "pure move", "rename only",
@@ -146,7 +146,7 @@ Reference in the blueprint overview:
 
 ## Why this rule exists
 
-Task 1.4 of the `fold-webpresso-quality-engine-into-webpresso-agent-kit`
+Task 1.4 of the `fold-webpresso-quality-engine-into-webpresso`
 blueprint first applied this pattern. Without it, "pure relocation" was an
 unchecked claim — the diff step caught an import-path inconsistency that would
 otherwise have shipped silently. Codifying the bar here means future fold and

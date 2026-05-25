@@ -39,7 +39,7 @@ describe('generated agent-surface gitignore block', () => {
 
     expect(result.action).toBe('overwritten')
     const after = readFileSync(join(repo, '.gitignore'), 'utf8')
-    expect(after.trimEnd()).toMatch(/# <<< managed by @webpresso\/agent-kit \(generated\)$/)
+    expect(after.trimEnd()).toMatch(/# <<< managed by webpresso \(generated\)$/)
     expect(after).toContain('.codex/')
     expect(after).toContain('.omx/')
 

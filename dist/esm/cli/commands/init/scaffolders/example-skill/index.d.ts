@@ -2,7 +2,7 @@
  * `example-skill` scaffolder preset.
  *
  * Copies the `hello-webpresso` SKILL.md template into `.agent/skills/hello-webpresso/`
- * so new consumers have an immediately runnable skill that verifies agent-kit is wired.
+ * so new consumers have an immediately runnable skill that verifies webpresso is wired.
  *
  * After writing, attempts `wp compile` non-fatally so IDEs pick up the new skill.
  */

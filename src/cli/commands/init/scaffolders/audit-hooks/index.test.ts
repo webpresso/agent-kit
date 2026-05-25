@@ -31,7 +31,7 @@ describe('scaffoldAuditHooks', () => {
 
     const content = await readFile(preCommitPath(tmpDir), 'utf8')
     expect(content).toContain('#!/bin/sh')
-    expect(content).toContain('# agent-kit audit hooks (staged mode — fast)')
+    expect(content).toContain('# webpresso audit hooks (staged mode — fast)')
     // Dead verbs removed — skill-sizes and broken-refs no longer emitted
     expect(content).not.toContain('skill-sizes')
     expect(content).not.toContain('broken-refs')
@@ -41,7 +41,7 @@ describe('scaffoldAuditHooks', () => {
     await mkdir(path.join(tmpDir, '.husky'), { recursive: true })
     await writeFile(
       preCommitPath(tmpDir),
-      '#!/bin/sh\n# agent-kit audit hooks (staged mode — fast)\n',
+      '#!/bin/sh\n# webpresso audit hooks (staged mode — fast)\n',
       'utf8',
     )
 
@@ -58,7 +58,7 @@ describe('scaffoldAuditHooks', () => {
 
     const content = await readFile(preCommitPath(tmpDir), 'utf8')
     expect(content).toContain('pnpm lint')
-    expect(content).toContain('# agent-kit audit hooks (staged mode — fast)')
+    expect(content).toContain('# webpresso audit hooks (staged mode — fast)')
   })
 
   it('is idempotent on a file that had the old dead verbs — does not add them again', async () => {
@@ -66,7 +66,7 @@ describe('scaffoldAuditHooks', () => {
     await mkdir(path.join(tmpDir, '.husky'), { recursive: true })
     await writeFile(
       preCommitPath(tmpDir),
-      '#!/bin/sh\n# agent-kit audit hooks (staged mode — fast)\nwp audit skill-sizes --staged\nwp audit broken-refs --staged\n',
+      '#!/bin/sh\n# webpresso audit hooks (staged mode — fast)\nwp audit skill-sizes --staged\nwp audit broken-refs --staged\n',
       'utf8',
     )
 
@@ -76,7 +76,7 @@ describe('scaffoldAuditHooks', () => {
 
     const content = await readFile(preCommitPath(tmpDir), 'utf8')
     // Dead verbs are not added again; they remain as-is from the existing file
-    const headerCount = (content.match(/# agent-kit audit hooks/g) ?? []).length
+    const headerCount = (content.match(/# webpresso audit hooks/g) ?? []).length
     expect(headerCount).toStrictEqual(1)
   })
 

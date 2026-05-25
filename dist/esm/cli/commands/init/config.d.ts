@@ -1,6 +1,6 @@
 import type { AgentHost, VisibilityStatus } from './host-visibility.js';
 export declare const CONFIG_VERSION = "1";
-export declare const CONFIG_FILENAME = ".agent-kitrc.json";
+export declare const CONFIG_FILENAME = ".webpressorc.json";
 export declare const DEFAULT_DURABLE_PLANNING_ROOT = ".agent/planning/";
 export interface AgentkitConfig {
     version: string;
@@ -25,7 +25,7 @@ export interface AgentkitConfig {
     durablePlanningRoot: string;
     blueprintsDir?: string;
     lastInit?: string;
-    /** True when agent-kit is installed globally rather than as a devDep.
+    /** True when webpresso is installed globally rather than as a devDep.
      *  Skips the devDependency presence check in `wp audit guardrails`. */
     globalInstall?: boolean;
 }

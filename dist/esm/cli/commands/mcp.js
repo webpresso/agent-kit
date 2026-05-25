@@ -1,6 +1,6 @@
 import { runStdioServer } from '#mcp/cli';
 export const MCP_COMMAND_HELP = [
-    'Run the agent-kit MCP server (stdio transport).',
+    'Run the webpresso MCP server (stdio transport).',
     '',
     'Speaks the Model Context Protocol over stdin/stdout. Intended to be invoked',
     'by a Claude Code plugin manifest entry (`mcpServers.webpresso`) or any MCP',

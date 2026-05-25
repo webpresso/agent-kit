@@ -30,7 +30,7 @@ function assertBlueprintCanMoveToStatus(blueprint, nextStatus) {
  * Two strategies, tried in order:
  *   1. If a repo-root marker (`pnpm-workspace.yaml`) is found upward from
  *      `import.meta.dirname`, use `<repoRoot>/docs/templates/blueprint.md`.
- *      This keeps the wp-style lookup working when agent-kit is consumed
+ *      This keeps the wp-style lookup working when webpresso is consumed
  *      inside the webpresso monorepo.
  *   2. Otherwise, fall back to the template bundled inside this package at
  *      `catalog/docs/templates/blueprint.md`. Allows consumers to run the

@@ -91,16 +91,16 @@ describe('context-mode preset', () => {
   })
 
   it('patches OpenCode config with mcp + plugin entries', () => {
-    const next = patchOpenCodeContextModeConfig({}, ['bun', '/tmp/agent-kit/src/mcp/cli.ts'])
+    const next = patchOpenCodeContextModeConfig({}, ['bun', '/tmp/webpresso/src/mcp/cli.ts'])
     expect(next.$schema).toBe('https://opencode.ai/config.json')
     expect(next.mcp).toEqual({
       'context-mode': {
         type: 'local',
         command: ['context-mode'],
       },
-      'agent-kit': {
+      webpresso: {
         type: 'local',
-        command: ['bun', '/tmp/agent-kit/src/mcp/cli.ts'],
+        command: ['bun', '/tmp/webpresso/src/mcp/cli.ts'],
       },
     })
     expect(next.plugin).toEqual(['context-mode'])
@@ -227,13 +227,13 @@ describe('context-mode preset', () => {
     expect(result.installed).toBe(false)
   })
 
-  it('opencode.json plugin array never includes local .opencode/plugins paths — agent-kit-dev-link.js is auto-loaded, not explicitly registered', () => {
+  it('opencode.json plugin array never includes local .opencode/plugins paths — webpresso-dev-link.js is auto-loaded, not explicitly registered', () => {
     const next = patchOpenCodeContextModeConfig({}, ['vp', 'exec', 'wp', 'mcp'])
     const plugins = next.plugin as string[]
 
     for (const entry of plugins) {
       expect(entry).not.toContain('.opencode/plugins')
-      expect(entry).not.toContain('agent-kit-dev-link')
+      expect(entry).not.toContain('webpresso-dev-link')
       expect(entry).not.toMatch(/\.(js|ts)$/)
     }
   })
@@ -241,12 +241,12 @@ describe('context-mode preset', () => {
   it('patchOpenCodeContextModeConfig uses wp mcp directly when globalInstall command is passed', () => {
     const next = patchOpenCodeContextModeConfig({}, ['wp', 'mcp'])
     const mcp = next.mcp as Record<string, { command: unknown }>
-    expect(mcp['agent-kit'].command).toEqual(['wp', 'mcp'])
+    expect(mcp['webpresso'].command).toEqual(['wp', 'mcp'])
   })
 
   it('patchOpenCodeContextModeConfig uses vp exec wp mcp as default fallback command', () => {
     const next = patchOpenCodeContextModeConfig({}, ['vp', 'exec', 'wp', 'mcp'])
     const mcp = next.mcp as Record<string, { command: unknown }>
-    expect(mcp['agent-kit'].command).toEqual(['vp', 'exec', 'wp', 'mcp'])
+    expect(mcp['webpresso'].command).toEqual(['vp', 'exec', 'wp', 'mcp'])
   })
 })

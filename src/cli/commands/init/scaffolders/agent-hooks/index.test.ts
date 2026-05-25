@@ -5,10 +5,10 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import {
-  buildAgentKitHookGroups,
+  buildWebpressoHookGroups,
   hoistTopLevelEvents,
   scaffoldAgentHooks,
-  trustCodexAgentKitHooksForRepo,
+  trustCodexWebpressoHooksForRepo,
   trustCodexPresetHooksForUser,
 } from './index.js'
 
@@ -17,7 +17,7 @@ function codexBinCommand(repoRoot: string, name: string): string {
   return `[ -x "${binPath}" ] && "${binPath}" || true`
 }
 
-const AGENT_KIT_HOOK_BINS = [
+const WEBPRESSO_HOOK_BINS = [
   'wp-sessionstart-routing',
   'wp-check-dev-link',
   'wp-pretool-guard',
@@ -26,9 +26,9 @@ const AGENT_KIT_HOOK_BINS = [
   'wp-stop-qa',
 ] as const
 
-function installFakeAgentKitBins(repoRoot: string): void {
+function installFakeWebpressoBins(repoRoot: string): void {
   mkdirSync(join(repoRoot, 'node_modules', '.bin'), { recursive: true })
-  for (const bin of AGENT_KIT_HOOK_BINS) {
+  for (const bin of WEBPRESSO_HOOK_BINS) {
     const binPath = join(repoRoot, 'node_modules', '.bin', bin)
     writeFileSync(binPath, '#!/bin/sh\nprintf "{}\\n"\n', 'utf8')
     chmodSync(binPath, 0o755)
@@ -107,7 +107,7 @@ describe('scaffoldAgentHooks', () => {
     expect(settings.worktree.symlinkDirectories).toContain('.claude')
   })
 
-  it('creates user Claude settings that enable the agent-kit plugin', async () => {
+  it('creates user Claude settings that enable the webpresso plugin', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {} })
 
     const settings = JSON.parse(
@@ -116,7 +116,7 @@ describe('scaffoldAgentHooks', () => {
       enabledPlugins: Record<string, boolean>
     }
 
-    expect(settings.enabledPlugins['agent-kit@agent-kit']).toBe(true)
+    expect(settings.enabledPlugins['webpresso@webpresso']).toBe(true)
   })
 
   it('re-enables Claude hooks in user settings without dropping unrelated plugin state', async () => {
@@ -129,7 +129,7 @@ describe('scaffoldAgentHooks', () => {
           disableAllHooks: true,
           enabledPlugins: {
             'playwright@claude-plugins-official': false,
-            'agent-kit@agent-kit': false,
+            'webpresso@webpresso': false,
           },
         },
         null,
@@ -145,7 +145,7 @@ describe('scaffoldAgentHooks', () => {
     }
 
     expect(settings.disableAllHooks).toBe(false)
-    expect(settings.enabledPlugins['agent-kit@agent-kit']).toBe(true)
+    expect(settings.enabledPlugins['webpresso@webpresso']).toBe(true)
     expect(settings.enabledPlugins['playwright@claude-plugins-official']).toBe(false)
   })
 
@@ -504,7 +504,7 @@ describe('scaffoldAgentHooks', () => {
         close() {},
       }),
     })
-    await trustCodexAgentKitHooksForRepo({
+    await trustCodexWebpressoHooksForRepo({
       repoRoot,
       options: {},
       createCodexAppServer: async () => api,
@@ -734,6 +734,100 @@ hooks:
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
   })
 
+  it('prunes stale legacy Claude ak-* hook commands while preserving unrelated hooks', async () => {
+    const settingsPath = join(repoRoot, '.claude', 'settings.json')
+    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
+    writeFileSync(
+      settingsPath,
+      JSON.stringify(
+        {
+          hooks: {
+            SessionStart: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command: '"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-sessionstart-routing"',
+                    timeout: 5,
+                  },
+                ],
+              },
+              {
+                hooks: [{ type: 'command', command: 'echo keep-session-start', timeout: 1 }],
+              },
+            ],
+            PreToolUse: [
+              {
+                matcher: 'Bash|Write|Edit',
+                hooks: [
+                  {
+                    type: 'command',
+                    command:
+                      '[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-pretool-guard" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-pretool-guard" || true',
+                    timeout: 5,
+                  },
+                ],
+              },
+            ],
+            PostToolUse: [
+              {
+                matcher: 'Write|Edit',
+                hooks: [
+                  {
+                    type: 'command',
+                    command: '"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-post-tool"',
+                    timeout: 15,
+                  },
+                ],
+              },
+            ],
+            UserPromptSubmit: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command: '"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-guard-switch"',
+                    timeout: 5,
+                  },
+                ],
+              },
+            ],
+            Stop: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command: '"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-stop-qa"',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+
+    await scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const settings = JSON.parse(readFileSync(settingsPath, 'utf8')) as {
+      hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
+    }
+
+    const allCommands = Object.values(settings.hooks).flatMap((groups) =>
+      groups.flatMap((group) => group.hooks.map((hook) => hook.command)),
+    )
+
+    expect(allCommands.some((command) => command.includes('node_modules/.bin/ak-'))).toBe(false)
+    expect(allCommands).toContain('echo keep-session-start')
+    expect(allCommands.some((command) => command.includes('wp-sessionstart-routing'))).toBe(true)
+    expect(allCommands.some((command) => command.includes('wp-pretool-guard'))).toBe(true)
+    expect(allCommands.some((command) => command.includes('wp-post-tool'))).toBe(true)
+    expect(allCommands.some((command) => command.includes('wp-guard-switch'))).toBe(true)
+    expect(allCommands.some((command) => command.includes('wp-stop-qa'))).toBe(true)
+  })
+
   it('removes stale skill-managed hooks when the skill is no longer installed', async () => {
     const settingsPath = join(repoRoot, '.claude', 'settings.json')
     mkdirSync(join(repoRoot, '.claude'), { recursive: true })
@@ -852,72 +946,6 @@ hooks:
       hooks.PreToolUse.find((g) => g.hooks.some((h) => h.command.includes('wp-pretool-guard')))
         ?.matcher,
     ).toBe('Bash|apply_patch|Edit|Write|mcp__.*')
-  })
-
-  it('rewrites legacy run-agent-kit-bin Codex commands to the guarded installed-bin form without duplicates', async () => {
-    const codexPath = join(repoRoot, '.codex', 'hooks.json')
-    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
-    const legacyRunnerPath = join(repoRoot, 'apps/scripts/src/maintenance/run-agent-kit-bin.ts')
-    writeFileSync(
-      codexPath,
-      JSON.stringify(
-        {
-          hooks: {
-            SessionStart: [
-              {
-                hooks: [
-                  {
-                    type: 'command',
-                    command: `cd "${repoRoot}" && "/opt/homebrew/bin/bun" "${legacyRunnerPath}" wp-sessionstart-routing`,
-                    timeout: 5,
-                  },
-                ],
-              },
-            ],
-            PreToolUse: [
-              {
-                matcher: 'Bash|Edit|Write',
-                hooks: [
-                  {
-                    type: 'command',
-                    command: `cd "${repoRoot}" && "/opt/homebrew/bin/bun" "${legacyRunnerPath}" wp-pretool-guard`,
-                    timeout: 5,
-                  },
-                ],
-              },
-            ],
-          },
-        },
-        null,
-        2,
-      ),
-    )
-
-    await scaffoldAgentHooks({ repoRoot, options: {} })
-
-    const codex = JSON.parse(readFileSync(codexPath, 'utf8')) as {
-      hooks: {
-        SessionStart: Array<{ hooks: Array<{ command: string }> }>
-        PreToolUse: Array<{ hooks: Array<{ command: string }> }>
-      }
-    }
-    const sessionCommands = codex.hooks.SessionStart.flatMap((group) =>
-      group.hooks.map((hook) => hook.command),
-    )
-    const preToolCommands = codex.hooks.PreToolUse.flatMap((group) =>
-      group.hooks.map((hook) => hook.command),
-    )
-
-    expect(sessionCommands).toContain(codexBinCommand(repoRoot, 'wp-sessionstart-routing'))
-    expect(preToolCommands).toContain(codexBinCommand(repoRoot, 'wp-pretool-guard'))
-    expect(
-      sessionCommands.filter((command) => command.includes('wp-sessionstart-routing')),
-    ).toHaveLength(1)
-    expect(preToolCommands.filter((command) => command.includes('wp-pretool-guard'))).toHaveLength(
-      1,
-    )
-    expect(sessionCommands.some((command) => command.includes('run-agent-kit-bin.ts'))).toBe(false)
-    expect(preToolCommands.some((command) => command.includes('run-agent-kit-bin.ts'))).toBe(false)
   })
 
   it('preserves wrapped Codex hooks (e.g. OMX entries) and adds wp-* alongside', async () => {
@@ -1049,7 +1077,7 @@ hooks:
 
   it('executes every generated Claude hook command successfully from outside repo root', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {} })
-    installFakeAgentKitBins(repoRoot)
+    installFakeWebpressoBins(repoRoot)
 
     const siblingCwd = mkdtempSync(join(repoRoot, 'claude-smoke-'))
     const settings = JSON.parse(
@@ -1085,7 +1113,7 @@ hooks:
 
   it('executes every generated Codex hook command successfully from a sibling cwd', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {} })
-    installFakeAgentKitBins(repoRoot)
+    installFakeWebpressoBins(repoRoot)
 
     const siblingCwd = mkdtempSync(join(repoRoot, 'codex-smoke-'))
     const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
@@ -1232,9 +1260,9 @@ describe('plugin-native invariants — .claude/settings.json', () => {
   })
 })
 
-describe('buildAgentKitHookGroups', () => {
+describe('buildWebpressoHookGroups', () => {
   it('returns the canonical 5 wp-* event groups with the supplied bin resolver', async () => {
-    const result = buildAgentKitHookGroups({
+    const result = buildWebpressoHookGroups({
       resolveBin: (name) => `./node_modules/.bin/${name}`,
       matchers: { preToolUse: 'Bash|Edit|Write', postToolUse: 'Edit|Write' },
     })
@@ -1256,7 +1284,7 @@ describe('buildAgentKitHookGroups', () => {
   })
 
   it('substitutes the Claude bin resolver for guarded $CLAUDE_PROJECT_DIR commands', async () => {
-    const result = buildAgentKitHookGroups({
+    const result = buildWebpressoHookGroups({
       resolveBin: (name) =>
         `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}" || true`,
       matchers: { preToolUse: 'Bash|Write|Edit|MultiEdit', postToolUse: 'Write|Edit|MultiEdit' },

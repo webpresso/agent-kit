@@ -90,7 +90,10 @@ export function validateCiActCommand(..._legacyArgs: readonly unknown[]): string
   return null
 }
 
-export async function runCiActCommand(options: CiActOptions = {}, deps: CiCommandDeps = {}): Promise<number> {
+export async function runCiActCommand(
+  options: CiActOptions = {},
+  deps: CiCommandDeps = {},
+): Promise<number> {
   const cwd = deps.cwd ?? process.cwd()
   const command = buildPublicCiActCommand({ ...options, cwd })
 

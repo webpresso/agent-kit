@@ -26,13 +26,13 @@ describe('scaffoldAgentRules', () => {
     expect(readFileSync(join(cwd, 'agent-rules', 'README.md'), 'utf8')).toContain('agent-rules/')
 
     const gi = readFileSync(join(cwd, '.gitignore'), 'utf8')
-    expect(gi).toContain('# >>> managed by @webpresso/agent-kit (rule-sync)')
+    expect(gi).toContain('# >>> managed by webpresso (rule-sync)')
     expect(gi).toContain('.agent/rules/')
     expect(gi).toContain('.cursor/rules/')
-    expect(gi).toContain('# <<< managed by @webpresso/agent-kit (rule-sync)')
+    expect(gi).toContain('# <<< managed by webpresso (rule-sync)')
     // README must not leak the marker comment
     expect(readFileSync(join(cwd, 'agent-rules', 'README.md'), 'utf8')).not.toContain(
-      'managed by @webpresso/agent-kit',
+      'managed by webpresso',
     )
   })
 
@@ -49,21 +49,21 @@ describe('scaffoldAgentRules', () => {
   })
 
   it('preserves an existing .gitignore block from another scaffolder', () => {
-    const existing = `node_modules/\n.agent/\n# >>> managed by @webpresso/agent-kit (omx)\n.omx/cache/\n# <<< managed by @webpresso/agent-kit (omx)\n`
+    const existing = `node_modules/\n.agent/\n# >>> managed by webpresso (omx)\n.omx/cache/\n# <<< managed by webpresso (omx)\n`
     writeFileSync(join(cwd, '.gitignore'), existing)
 
     scaffoldAgentRules({ cwd })
 
     const gi = readFileSync(join(cwd, '.gitignore'), 'utf8')
     // pre-existing block intact
-    expect(gi).toContain('# >>> managed by @webpresso/agent-kit (omx)')
+    expect(gi).toContain('# >>> managed by webpresso (omx)')
     expect(gi).toContain('.omx/cache/')
-    expect(gi).toContain('# <<< managed by @webpresso/agent-kit (omx)')
+    expect(gi).toContain('# <<< managed by webpresso (omx)')
     // hand-written line intact
     expect(gi).toContain('node_modules/')
     expect(gi).toContain('.agent/')
     // new block appended exactly once
-    const occurrences = gi.split('# >>> managed by @webpresso/agent-kit (rule-sync)').length - 1
+    const occurrences = gi.split('# >>> managed by webpresso (rule-sync)').length - 1
     expect(occurrences).toBe(1)
   })
 

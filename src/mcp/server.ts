@@ -29,7 +29,7 @@ import {
 } from './auto-discover.js'
 import { registerBlueprintServer } from './blueprint-server.js'
 
-const SERVER_NAME = 'agent-kit'
+const SERVER_NAME = 'webpresso'
 
 // Walk upward from this module's location until we find package.json. Works
 // for both src/mcp/server.ts (dev) and dist/esm/mcp/server.js (built) without
@@ -51,7 +51,7 @@ function readPackageVersion(): string {
     if (parent === dir) break
     dir = parent
   }
-  throw new Error('Cannot locate a versioned package.json relative to agent-kit MCP server module')
+  throw new Error('Cannot locate a versioned package.json relative to webpresso MCP server module')
 }
 
 const SERVER_VERSION = readPackageVersion()

@@ -3,8 +3,9 @@
  *   - `.claude/settings.json` (Claude Code)
  *   - `.codex/hooks.json` (Codex CLI)
  *
- * Additive: never removes existing hooks, only ensures agent-kit's entries
- * are present. Uses installed bin paths so consumers don't need bun.
+ * Mostly additive: preserves unrelated hooks, ensures webpresso's entries
+ * are present, and prunes stale legacy Claude ak-* hook commands that current
+ * setups no longer own. Uses installed bin paths so consumers don't need bun.
  *
  * Runs by default on every `wp setup`.
  */
@@ -64,10 +65,19 @@ function findHookIndexByCommand(hooks, command) {
 const SCRIPT_EXTENSIONS = ['sh', 'ts', 'js', 'mjs', 'cjs', 'py'];
 const DIRECT_NODE_MODULES_BIN_PATTERN = /^(?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+)$/u;
 const GUARDED_NODE_MODULES_BIN_PATTERN = /^\[ -x (["']?)((?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+))\1 \] && \1\2\1 \|\| true$/u;
-const LEGACY_AGENT_KIT_BIN_PATTERN = /run-agent-kit-bin\.ts"\s+(wp-[\w-]+)(?=$|["'\s])/u;
+const DIRECT_CLAUDE_NODE_MODULES_BIN_PATTERN = /^["']?\$CLAUDE_PROJECT_DIR\/node_modules\/\.bin\/([\w-]+)["']?$/u;
+const GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN = /^\[ -x (["']?)\$CLAUDE_PROJECT_DIR\/node_modules\/\.bin\/([\w-]+)\1 \] && \1\$CLAUDE_PROJECT_DIR\/node_modules\/\.bin\/\2\1 \|\| true$/u;
 // Capture the basename of any path that ends in a known script extension.
 // Handles trailing chars (quote, space, end-of-string).
 const SCRIPT_BASENAME_PATTERN = new RegExp(String.raw `([\w-]+\.(?:${SCRIPT_EXTENSIONS.join('|')}))(?=$|["'\s])`, 'u');
+const LEGACY_CLAUDE_AGENT_KIT_BIN_NAMES = new Set([
+    'ak-sessionstart-routing',
+    'ak-check-dev-link',
+    'ak-pretool-guard',
+    'ak-post-tool',
+    'ak-guard-switch',
+    'ak-stop-qa',
+]);
 function extractAgentKitCodexBinName(command) {
     const normalizedCommand = stripSingleShellQuotePair(command.trim());
     const directBinMatch = DIRECT_NODE_MODULES_BIN_PATTERN.exec(normalizedCommand);
@@ -76,8 +86,17 @@ function extractAgentKitCodexBinName(command) {
     const guardedBinMatch = GUARDED_NODE_MODULES_BIN_PATTERN.exec(command.trim());
     if (guardedBinMatch !== null)
         return guardedBinMatch[3] ?? null;
-    const legacyRunnerMatch = LEGACY_AGENT_KIT_BIN_PATTERN.exec(command);
-    return legacyRunnerMatch?.[1] ?? null;
+    return null;
+}
+function extractClaudeBinName(command) {
+    const normalizedCommand = stripSingleShellQuotePair(command.trim());
+    const directBinMatch = DIRECT_CLAUDE_NODE_MODULES_BIN_PATTERN.exec(normalizedCommand);
+    if (directBinMatch !== null)
+        return directBinMatch[1] ?? null;
+    const guardedBinMatch = GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN.exec(command.trim());
+    if (guardedBinMatch !== null)
+        return guardedBinMatch[2] ?? null;
+    return null;
 }
 function stripSingleShellQuotePair(value) {
     if (value.length < 2)
@@ -177,13 +196,13 @@ function mergeSkillHooks(hooks, skillHooks) {
     }
     return nextHooks;
 }
-// ── Shared agent-kit hook construction ───────────────────────────────────────
+// ── Shared webpresso hook construction ───────────────────────────────────────
 /**
  * Construct the canonical 5 wp-* hook groups (SessionStart, PreToolUse,
  * PostToolUse, UserPromptSubmit, Stop). Single source of truth — adding a
  * new wp-* hook is one append here and propagates to both surfaces.
  */
-export function buildAgentKitHookGroups(input) {
+export function buildWebpressoHookGroups(input) {
     const { resolveBin, matchers } = input;
     return {
         SessionStart: [
@@ -253,6 +272,23 @@ function normalizeCodexAgentKitCommands(hooks, repoRoot) {
     }
     return normalized;
 }
+function pruneLegacyClaudeAgentKitCommands(hooks) {
+    const normalized = {};
+    for (const [event, groups] of Object.entries(hooks)) {
+        const keptGroups = groups
+            .map((group) => {
+            const keptHooks = group.hooks.filter((hook) => {
+                const binName = extractClaudeBinName(hook.command);
+                return binName === null || !LEGACY_CLAUDE_AGENT_KIT_BIN_NAMES.has(binName);
+            });
+            return keptHooks.length > 0 ? { ...group, hooks: keptHooks } : null;
+        })
+            .filter((group) => group !== null);
+        if (keptGroups.length > 0)
+            normalized[event] = keptGroups;
+    }
+    return normalized;
+}
 /**
  * Migration: Codex's canonical hooks.json schema is wrapped under a top-level
  * `hooks` key (matching Codex's official docs at
@@ -291,7 +327,7 @@ const CLAUDE_MATCHERS = {
     preToolUse: 'Bash|Write|Edit|MultiEdit',
     postToolUse: 'Write|Edit|MultiEdit',
 };
-const AGENT_KIT_CLAUDE_PLUGIN_ID = 'agent-kit@agent-kit';
+const AGENT_KIT_CLAUDE_PLUGIN_ID = 'webpresso@webpresso';
 function defaultClaudeUserSettingsPath() {
     return join(process.env.HOME || homedir(), '.claude', 'settings.json');
 }
@@ -311,12 +347,13 @@ function patchClaudeUserSettings(existing) {
     return next;
 }
 function patchClaudeSettings(existing, skillHooks) {
-    const withSkills = mergeSkillHooks((existing.hooks ?? {}), skillHooks);
-    const agentKit = buildAgentKitHookGroups({
+    const existingHooks = pruneLegacyClaudeAgentKitCommands((existing.hooks ?? {}));
+    const withSkills = mergeSkillHooks(existingHooks, skillHooks);
+    const webpresso = buildWebpressoHookGroups({
         resolveBin: CC_BIN,
         matchers: CLAUDE_MATCHERS,
     });
-    const merged = mergeAgentKitGroups(withSkills, agentKit);
+    const merged = mergeAgentKitGroups(withSkills, webpresso);
     // Claude-only extras: gstack soft-warning at SessionStart (non-blocking)
     // and a Skill-matcher PreToolUse hook for stricter enforcement.
     const withClaudeExtras = {
@@ -371,20 +408,20 @@ const CODEX_MATCHERS = {
 function patchCodexHooks(existing, repoRoot) {
     const migrated = hoistTopLevelEvents(existing);
     const existingHooks = normalizeCodexAgentKitCommands((migrated.hooks ?? {}), repoRoot);
-    const agentKit = buildAgentKitHookGroups({
+    const webpresso = buildWebpressoHookGroups({
         resolveBin: CODEX_BIN(repoRoot),
         matchers: CODEX_MATCHERS,
     });
     return {
         ...migrated,
-        hooks: mergeAgentKitGroups(existingHooks, agentKit),
+        hooks: mergeAgentKitGroups(existingHooks, webpresso),
     };
 }
 function reportCodexTrustSyncWarning(input, warning) {
     input.onCodexTrustSyncWarning?.(warning);
     console.warn(`  codex hook trust: warning — ${warning.message}. Review in /hooks.`);
 }
-export async function trustCodexAgentKitHooksForRepo(input) {
+export async function trustCodexWebpressoHooksForRepo(input) {
     if (input.options.dryRun || process.env.WP_SKIP_CODEX_TRUST_SYNC === '1')
         return;
     const hooksPath = resolve(input.repoRoot, '.codex', 'hooks.json');
@@ -404,7 +441,7 @@ export async function trustCodexAgentKitHooksForRepo(input) {
     }
     try {
         const syncResult = await syncCodexHookTrustWithAppServer(api, { repoRoot: input.repoRoot });
-        if (!syncResult.ok && syncResult.reason !== 'no-agent-kit-hooks-found') {
+        if (!syncResult.ok && syncResult.reason !== 'no-webpresso-hooks-found') {
             reportCodexTrustSyncWarning(input, {
                 kind: 'codex-app-server-trust-sync-warning',
                 message: syncResult.message,
@@ -442,7 +479,7 @@ export async function trustCodexPresetHooksForUser(input) {
             hookDescription: 'preset-owned global',
             selectHook: isPresetOwnedGlobalCodexHook,
         });
-        if (!syncResult.ok && syncResult.reason !== 'no-agent-kit-hooks-found') {
+        if (!syncResult.ok && syncResult.reason !== 'no-webpresso-hooks-found') {
             reportCodexTrustSyncWarning(input, {
                 kind: 'codex-app-server-trust-sync-warning',
                 message: syncResult.message,
@@ -494,7 +531,7 @@ export async function scaffoldAgentHooks(input) {
         claudeUser: patchJsonFile(defaultClaudeUserSettingsPath(), (existing) => patchClaudeUserSettings(existing), input.options),
     };
     if (input.trustCodexHooks !== false) {
-        await trustCodexAgentKitHooksForRepo(input);
+        await trustCodexWebpressoHooksForRepo(input);
     }
     return result;
 }

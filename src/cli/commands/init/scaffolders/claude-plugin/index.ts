@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
 
-export const CLAUDE_PLUGIN_ID = 'agent-kit@agent-kit'
+export const CLAUDE_PLUGIN_ID = 'webpresso@webpresso'
 
 export interface EnsureClaudePluginInput {
   options: MergeOptions

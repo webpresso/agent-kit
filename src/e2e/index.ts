@@ -1,4 +1,4 @@
-export { defineAgentKitConfig, type AgentKitConfig } from './config.js'
+export { defineWebpressoConfig, type WebpressoConfig } from './config.js'
 export { buildE2eCommand } from './command-builder.js'
 export {
   cloneE2eStepDefinition,
@@ -9,13 +9,13 @@ export {
   type CreateCommandE2eHostAdapterOptions,
 } from './command-host-adapter.js'
 export {
-  findAgentKitConfigPath,
-  getAgentKitConfigPath,
-  loadAgentKitConfig,
-  loadAgentKitConfigSafe,
+  findWebpressoConfigPath,
+  getWebpressoConfigPath,
+  loadWebpressoConfig,
+  loadWebpressoConfigSafe,
   loadConfiguredHostAdapter,
   loadHostAdapter,
-  resolveAgentKitConfigPath,
+  resolveWebpressoConfigPath,
   type LoadedHostAdapter,
 } from './load-host-adapter.js'
 export {

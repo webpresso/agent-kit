@@ -1,7 +1,7 @@
 /**
  * Scaffold a `.gitignore` block listing every catalog-shipped skill and rule
  * name, so a consumer repo never accidentally tracks a duplicate of a
- * canonical agent-kit source under `agent-skills/<name>/` or
+ * canonical webpresso source under `agent-skills/<name>/` or
  * `agent-rules/<name>.md`.
  *
  * Couples the consumer's `.gitignore` to the catalog snapshot at scaffold

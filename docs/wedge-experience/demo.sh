@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # docs/wedge-experience/demo.sh
 #
-# Wedge Experience Demo — shows 3 agent-kit value-adds beyond rulesync alone.
+# Wedge Experience Demo — shows 3 webpresso value-adds beyond rulesync alone.
 # Self-contained: works without network access and gracefully degrades if `wp`
 # is not globally installed.
 #
@@ -54,7 +54,7 @@ echo "  rulesync generate  # succeeds — no size awareness"
 echo "  → Codex silently truncates the skill at 8KB"
 echo "  → last $(( SKILL_SIZE - 8192 )) bytes of guidance never seen by Codex"
 echo ""
-echo "With agent-kit:"
+echo "With webpresso:"
 
 if command -v wp &>/dev/null; then
   (cd "$DEMO_DIR" && wp audit skill-sizes 2>&1) || true
@@ -137,7 +137,7 @@ echo ""
 echo "After demo 1, the audit found an over-budget skill."
 echo "rulesync: no further action — drift stays unfiled."
 echo ""
-echo "With agent-kit (dry-run — no files written):"
+echo "With webpresso (dry-run — no files written):"
 
 if command -v wp &>/dev/null; then
   (cd "$DEMO_DIR" && wp tech-debt new \
@@ -177,7 +177,7 @@ print_section "Summary"
 
 echo ""
 echo "  rulesync: deterministic file emission to 17 runtimes — excellent at what it does"
-echo "  agent-kit adds:"
+echo "  webpresso adds:"
 echo "    1. Audit layer (skill-sizes, broken-refs) — catches drift rulesync can't see"
 echo "    2. AGENTS.md merger — section-keyed precedence across layered sources"
 echo "    3. Tech-debt lifecycle — audit failures auto-file remediation items"

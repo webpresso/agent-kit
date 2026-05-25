@@ -94,7 +94,7 @@ if (
   realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
 ) {
   runHook(
-    // `Stop` is latency-sensitive and user-visible. Until agent-kit grows a
+    // `Stop` is latency-sensitive and user-visible. Until webpresso grows a
     // deferred execution plane, broad typecheck/test sweeps stay off the hot
     // path instead of shelling synchronously at turn end.
     (_input) => null,

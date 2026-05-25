@@ -27,12 +27,12 @@ describe('scaffoldAgentSkills', () => {
     expect(readFileSync(join(cwd, 'agent-skills', 'README.md'), 'utf8')).toContain('agent-skills/')
 
     const gi = readFileSync(join(cwd, '.gitignore'), 'utf8')
-    expect(gi).toContain('# >>> managed by @webpresso/agent-kit (skill-sync)')
+    expect(gi).toContain('# >>> managed by webpresso (skill-sync)')
     expect(gi).toContain('.agent/skills/')
     expect(gi).toContain('.claude/skills/')
-    expect(gi).toContain('# <<< managed by @webpresso/agent-kit (skill-sync)')
+    expect(gi).toContain('# <<< managed by webpresso (skill-sync)')
     expect(readFileSync(join(cwd, 'agent-skills', 'README.md'), 'utf8')).not.toContain(
-      'managed by @webpresso/agent-kit',
+      'managed by webpresso',
     )
   })
 
@@ -49,17 +49,17 @@ describe('scaffoldAgentSkills', () => {
   })
 
   it('preserves an existing .gitignore block from another scaffolder', () => {
-    const existing = `node_modules/\n.agent/\n# >>> managed by @webpresso/agent-kit (omx)\n.omx/cache/\n# <<< managed by @webpresso/agent-kit (omx)\n`
+    const existing = `node_modules/\n.agent/\n# >>> managed by webpresso (omx)\n.omx/cache/\n# <<< managed by webpresso (omx)\n`
     writeFileSync(join(cwd, '.gitignore'), existing)
 
     scaffoldAgentSkills({ cwd })
 
     const gi = readFileSync(join(cwd, '.gitignore'), 'utf8')
-    expect(gi).toContain('# >>> managed by @webpresso/agent-kit (omx)')
+    expect(gi).toContain('# >>> managed by webpresso (omx)')
     expect(gi).toContain('.omx/cache/')
     expect(gi).toContain('node_modules/')
     expect(gi).toContain('.agent/')
-    const occurrences = gi.split('# >>> managed by @webpresso/agent-kit (skill-sync)').length - 1
+    const occurrences = gi.split('# >>> managed by webpresso (skill-sync)').length - 1
     expect(occurrences).toBe(1)
   })
 
@@ -86,8 +86,8 @@ describe('scaffoldAgentSkills', () => {
     scaffoldAgentSkills({ cwd })
 
     const gi = readFileSync(join(cwd, '.gitignore'), 'utf8')
-    expect(gi).toContain('# >>> managed by @webpresso/agent-kit (rule-sync)')
-    expect(gi).toContain('# >>> managed by @webpresso/agent-kit (skill-sync)')
+    expect(gi).toContain('# >>> managed by webpresso (rule-sync)')
+    expect(gi).toContain('# >>> managed by webpresso (skill-sync)')
 
     // Re-running both is idempotent
     const r1 = scaffoldAgentRules({ cwd })

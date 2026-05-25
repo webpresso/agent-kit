@@ -31,7 +31,8 @@ type RepoAuditRunner = (
 
 const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
   'catalog-drift': async (root) => (await import('#audit/repo-guardrails')).auditCatalogDrift(root),
-  'package-surface': async (root) => (await import('#audit/package-surface')).auditPackageSurface(root),
+  'package-surface': async (root) =>
+    (await import('#audit/package-surface')).auditPackageSurface(root),
   'blueprint-lifecycle': async (root, _options) =>
     (await import('#audit/blueprint-lifecycle-sql')).auditBlueprintLifecycleSql(root),
   'roadmap-links': async (root, options) =>

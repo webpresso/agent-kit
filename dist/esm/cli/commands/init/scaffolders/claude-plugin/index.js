@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-export const CLAUDE_PLUGIN_ID = 'agent-kit@agent-kit';
+export const CLAUDE_PLUGIN_ID = 'webpresso@webpresso';
 function defaultCommandExists(command) {
     const result = spawnSync('which', [command], { stdio: 'ignore' });
     return result.status === 0;

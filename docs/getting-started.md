@@ -21,13 +21,13 @@ Cursor, Windsurf, Gemini, OpenCode, and compatible agents expect.
   curl -fsSL https://bun.sh/install | bash
   ```
 - Node.js ≥24 (matches `package.json#engines`).
-- Vite+ `vp` on `PATH` (agent-kit routes package and script workflows through `vp`).
+- Vite+ `vp` on `PATH` (webpresso routes package and script workflows through `vp`).
 - A git repo.
 
 ## Install
 
 ```bash
-vp install -g @webpresso/agent-kit
+vp install -g webpresso
 ```
 
 
@@ -39,9 +39,7 @@ wp --version   # alias — same binary
 ```
 
 > **Pinned-version devDependency path** (library imports, CI with reproducible
-> lockfiles): `vp install -D @webpresso/agent-kit && vp exec wp setup`. The
-> current published package is `@webpresso/agent-kit`; the unscoped
-> `webpresso` package is a placeholder and does not ship this CLI.
+> lockfiles): `vp install -D webpresso && vp exec wp setup`.
 
 ## Scaffold your repo
 
@@ -70,7 +68,7 @@ wp setup
 6. Creates `AGENTS.md` at the repo root (only if none exists) from the
    template, filling `{{REPOSITORY_MAP}}` by scanning your
    `pnpm-workspace.yaml` / `package.json` workspaces.
-7. Writes `.agent-kitrc.json` capturing your choices for idempotent re-runs.
+7. Writes `.webpressorc.json` capturing your choices for idempotent re-runs.
 
 ### Opt into tech-specific skills
 
@@ -100,7 +98,7 @@ Default setup also wires in tooling that lives outside the skill catalog:
 
 - [`omx`](https://oh-my-codex.dev/docs.html) / [`oh-my-codex`](https://github.com/Yeachan-Heo/oh-my-codex)
   chains `omx setup --yes --scope user` so the operator-workflow execution
-  layer is set up alongside agent-kit with shared user auth by default. Use
+  layer is set up alongside webpresso with shared user auth by default. Use
   `wp setup --project` to request project-scoped OMX setup instead. If `omx`
   is missing, setup first runs `vp install -g oh-my-codex` and then retries.
   Setup also repairs the managed `.gitignore` block so regenerated `.codex/`,
@@ -112,12 +110,12 @@ Default setup also wires in tooling that lives outside the skill catalog:
   followed by `claude plugin install --scope user oh-my-claudecode`. Use
   `wp setup --project` to request project-scoped OMC plugin installation.
   Upstream also documents an npm runtime path (`oh-my-claude-sisyphus`), but
-  agent-kit uses the Claude Code plugin marketplace path for setup.
+  webpresso uses the Claude Code plugin marketplace path for setup.
 - [`gstack`](https://gstack.lol/) / [`garrytan/gstack`](https://github.com/garrytan/gstack)
   ensures the gstack skill registry is installed at
   `~/.claude/skills/gstack/` (clones + runs `./setup --team` if missing,
   no-op if already there). Provides `/qa`, `/ship`, `/review`, etc.
-- `vision` — drops a starter `VISION.md` at repo root from the agent-kit
+- `vision` — drops a starter `VISION.md` at repo root from the webpresso
   template. Runs by default. Pairs with the `vision` audit (part of the
   `guardrails` composite) so every consumer keeps a structured, ≤100-line
   vision under enforcement.
@@ -157,7 +155,7 @@ from `docs/templates/blueprint.md`, with frontmatter filled in
 > **Blueprint root** — generic repos use `blueprints/` at the repo root;
 > repos with a `webpresso/config.yaml` sentinel use `webpresso/blueprints/`.
 > Override either default by setting `"blueprintsDir": "<path>"` in
-> `.agent-kitrc.json`.
+> `.webpressorc.json`.
 
 Edit the file, then:
 

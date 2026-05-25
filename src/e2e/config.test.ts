@@ -1,42 +1,42 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  AgentKitConfigValidationError,
-  defineAgentKitConfig,
-  validateAgentKitConfig,
+  WebpressoConfigValidationError,
+  defineWebpressoConfig,
+  validateWebpressoConfig,
 } from './config.js'
 
-describe('defineAgentKitConfig', () => {
+describe('defineWebpressoConfig', () => {
   it('returns the config unchanged', () => {
-    const config = defineAgentKitConfig({
+    const config = defineWebpressoConfig({
       e2e: {
-        hostAdapterModule: './apps/e2e/src/agent-kit-host-adapter.ts',
+        hostAdapterModule: './apps/e2e/src/webpresso-host-adapter.ts',
       },
     })
 
     expect(config).toEqual({
       e2e: {
-        hostAdapterModule: './apps/e2e/src/agent-kit-host-adapter.ts',
+        hostAdapterModule: './apps/e2e/src/webpresso-host-adapter.ts',
       },
     })
   })
 })
 
-describe('validateAgentKitConfig', () => {
+describe('validateWebpressoConfig', () => {
   it('accepts a root config without e2e settings', () => {
-    expect(validateAgentKitConfig({}, '/repo/agent-kit.config.ts')).toEqual({})
+    expect(validateWebpressoConfig({}, '/repo/webpresso.config.ts')).toEqual({})
   })
 
   it('rejects invalid e2e config payloads', () => {
     expect(() =>
-      validateAgentKitConfig(
+      validateWebpressoConfig(
         {
           e2e: {
-            hostAdapterExport: 'agentKitE2eHostAdapter',
+            hostAdapterExport: 'webpressoE2eHostAdapter',
           },
         },
-        '/repo/agent-kit.config.ts',
+        '/repo/webpresso.config.ts',
       ),
-    ).toThrow(AgentKitConfigValidationError)
+    ).toThrow(WebpressoConfigValidationError)
   })
 })

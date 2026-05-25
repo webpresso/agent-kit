@@ -4,11 +4,11 @@ import { buildRedirectMessage } from './mcp-redirect.js'
 
 describe('buildRedirectMessage', () => {
   it.each([
-    ['test', 'mcp__agent-kit__wp_test(...)'],
-    ['lint', 'mcp__agent-kit__wp_lint(...)'],
-    ['typecheck', 'mcp__agent-kit__wp_typecheck(...)'],
-    ['blueprint', 'mcp__agent-kit__wp_blueprint(...)'],
-    ['unknown', 'mcp__agent-kit__wp_qa(...)'],
+    ['test', 'mcp__webpresso__wp_test(...)'],
+    ['lint', 'mcp__webpresso__wp_lint(...)'],
+    ['typecheck', 'mcp__webpresso__wp_typecheck(...)'],
+    ['blueprint', 'mcp__webpresso__wp_blueprint(...)'],
+    ['unknown', 'mcp__webpresso__wp_qa(...)'],
   ] as const)('uses MCP tool format for %s when MCP is ready', (category, matcher) => {
     const message = buildRedirectMessage({
       category,

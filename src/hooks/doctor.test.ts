@@ -339,7 +339,7 @@ describe('hooks/doctor', () => {
       expect(result.ok).toBe(true)
       const mcpKey = `node ${builtMcpCli}`
       expect(writesByCommand.get(mcpKey)).toEqual([
-        '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"agent-kit-hooks-doctor","version":"0.0.0"}}}\n',
+        '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"webpresso-hooks-doctor","version":"0.0.0"}}}\n',
         '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}\n',
       ])
       expect(result.checks.find((c) => c.name === 'MCP server liveness')?.detail).toContain(
@@ -588,9 +588,9 @@ describe('hooks/doctor', () => {
         const finish = () => {
           queueMicrotask(() => {
             if (command === 'codex' && args?.[0] === 'mcp') {
-              child.stdout.emit('data', Buffer.from('✓ agent-kit\n✓ context-mode\n'))
+              child.stdout.emit('data', Buffer.from('✓ webpresso\n✓ context-mode\n'))
             } else if (command === 'opencode' && args?.[0] === 'mcp') {
-              child.stdout.emit('data', Buffer.from('✓ agent-kit\n✓ context-mode\n'))
+              child.stdout.emit('data', Buffer.from('✓ webpresso\n✓ context-mode\n'))
             } else if (command === 'claude' && args?.[0] === 'plugin') {
               child.stdout.emit('data', Buffer.from('ok\n'))
             } else {
@@ -666,7 +666,7 @@ describe('hooks/doctor', () => {
         const finish = () => {
           queueMicrotask(() => {
             if (command === 'opencode' && args?.[0] === 'mcp') {
-              child.stdout.emit('data', Buffer.from('✗ agent-kit\n✓ context-mode\n'))
+              child.stdout.emit('data', Buffer.from('✗ webpresso\n✓ context-mode\n'))
             } else {
               child.stdout.emit('data', Buffer.from('{}'))
             }

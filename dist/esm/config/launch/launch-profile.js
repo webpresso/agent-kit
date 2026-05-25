@@ -6,7 +6,7 @@
  * effective environment-variable bundle a spawn will use. No wrangler,
  * vite, or host-specific logic lives here.
  *
- * @module @webpresso/agent-launch/launch-profile
+ * @module webpresso/launch/launch-profile
  */
 const defaultDatabaseUrlSelector = (handle) => ({
     runtimeDatabaseUrl: handle.primaryConnectionUri,

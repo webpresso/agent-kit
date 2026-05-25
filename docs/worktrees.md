@@ -17,7 +17,7 @@ wp worktree new
 wp worktree new --name "fix login flow"
 # branch: agent/fix-login-flow
 
-wp worktree new feat/auth --base main --path ../agent-kit-auth
+wp worktree new feat/auth --base main --path ../webpresso-auth
 ```
 
 Generated branches use the `agent` prefix by default. Override it with
@@ -79,4 +79,4 @@ surface instead:
 vp install && vp run setup:agent
 ```
 
-See also: [`/Users/ozby/repos/webpresso/agent-kit/VISION.md`](/Users/ozby/repos/webpresso/agent-kit/VISION.md)
+See also: [`/Users/ozby/repos/webpresso/webpresso/VISION.md`](/Users/ozby/repos/webpresso/webpresso/VISION.md)

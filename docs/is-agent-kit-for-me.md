@@ -1,13 +1,13 @@
 ---
 type: guide
-title: Is agent-kit for me?
-description: A one-screen answer to whether agent-kit fits your repo.
+title: Is webpresso for me?
+description: A one-screen answer to whether webpresso fits your repo.
 last_updated: '2026-05-11'
 ---
 
-# Is agent-kit for me?
+# Is webpresso for me?
 
-**agent-kit is the verified-execution-record kit for AI coding work.** You write a blueprint. You pick your CLI (Claude Code, Codex, opencode). agent-kit runs it, captures everything (runner transcript, diffs, audit checks, artifacts), and proves the AI-generated change did what it was supposed to do.
+**webpresso is the verified-execution-record kit for AI coding work.** You write a blueprint. You pick your CLI (Claude Code, Codex, opencode). webpresso runs it, captures everything (runner transcript, diffs, audit checks, artifacts), and proves the AI-generated change did what it was supposed to do.
 
 That's the pitch. Here's whether your repo fits.
 
@@ -25,9 +25,9 @@ Run `wp setup --strict` and it will check these automatically. Or verify manuall
 
 If you match all 5: `wp setup` defaults are tuned for you and the evidence ledger works out of the box.
 
-If you match 3-4: agent-kit still installs and most features work, but some defaults (blueprint lifecycle audits, lore-commit validation) assume the full pattern. You can opt out of specific scaffolders with `--without <feature>`.
+If you match 3-4: webpresso still installs and most features work, but some defaults (blueprint lifecycle audits, lore-commit validation) assume the full pattern. You can opt out of specific scaffolders with `--without <feature>`.
 
-If you match 0-2: agent-kit is usable but you will need to customize. Start with `wp setup --with base-kit` to scaffold only the non-opinionated pieces (hooks, skills, lore).
+If you match 0-2: webpresso is usable but you will need to customize. Start with `wp setup --with base-kit` to scaffold only the non-opinionated pieces (hooks, skills, lore).
 
 ## What you get when you fit
 
@@ -41,20 +41,20 @@ If you match 0-2: agent-kit is usable but you will need to customize. Start with
 
 ## What you don't get (explicitly not in scope)
 
-- **Replacing your existing quality gates** — agent-kit augments; it doesn't replace your lint, typecheck, or test runner.
+- **Replacing your existing quality gates** — webpresso augments; it doesn't replace your lint, typecheck, or test runner.
 - **A graphical UI** — the evidence ledger is queryable via MCP tools (`wp_blueprint_query`, `task_next`) and Datasette (`wp blueprint browse`). No web app.
-- **Magic AI coding** — agent-kit coordinates AI CLI execution and captures evidence. It doesn't make the AI smarter.
+- **Magic AI coding** — webpresso coordinates AI CLI execution and captures evidence. It doesn't make the AI smarter.
 - **Support for every stack** — defaults assume Workers/Vite + pnpm. Pure Python, Go, or Rust repos work at a reduced capability tier.
 
 ## Install
 
 ```bash
 # In a matching repo:
-vp install -D @webpresso/agent-kit
+vp install -D webpresso
 vp exec wp setup
 
 # Or install globally:
-vp install -g @webpresso/agent-kit
+vp install -g webpresso
 wp setup
 ```
 
@@ -64,4 +64,4 @@ wp setup
 
 Run `wp setup` without `--strict`. It will print a compatibility summary and let you decide whether to proceed. No destructive changes happen until you confirm.
 
-Or look at a reference consumer repo: `ozby/ingest-lens` (Cloudflare Workers + React Router + pnpm + blueprints + lore commits) is the canonical example of a webpresso-pattern repo consuming agent-kit.
+Or look at a reference consumer repo: `ozby/ingest-lens` (Cloudflare Workers + React Router + pnpm + blueprints + lore commits) is the canonical example of a webpresso-pattern repo consuming webpresso.

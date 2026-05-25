@@ -179,7 +179,7 @@ export interface SyncSkillFanoutResult {
  * an asymmetric fallback where listing succeeded against `.agent/skills/`
  * but symlink targets pointed at the missing `node_modules/.../skills/`).
  *
- * Contract: `.agents/skills/<slug>` is an agent-kit-owned generated symlink.
+ * Contract: `.agents/skills/<slug>` is an webpresso-owned generated symlink.
  * Top-level entries that do not correspond to a skill in `.agent/skills/` are
  * removed recursively. Real directories for expected slugs are also replaced
  * so stale file-level projections cannot mask the official directory-symlink
