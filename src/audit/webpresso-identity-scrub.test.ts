@@ -16,8 +16,6 @@ const LIVE_SURFACES = [
 ] as const
 
 const BANNED_REFERENCES = [
-  'webpresso/agent-kit',
-  '@webpresso/agent-kit',
   'webpresso-agent-kit',
   '/webpresso-agent-kit:',
 ] as const

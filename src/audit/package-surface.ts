@@ -17,7 +17,11 @@ interface PackageRecord {
   private?: boolean
 }
 
-const DEFAULT_ALLOWED_PUBLIC_PACKAGES = ['@webpresso/webpresso', 'webpresso']
+const DEFAULT_ALLOWED_PUBLIC_PACKAGES = [
+  '@webpresso/webpresso',
+  '@webpresso/agent-kit',
+  'webpresso',
+]
 
 const DEFAULT_COMPATIBILITY_PUBLIC_PACKAGES = [
   '@webpresso/codegen-core',

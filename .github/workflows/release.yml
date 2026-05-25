@@ -36,8 +36,12 @@ jobs:
   release:
     name: Release
     runs-on: ubicloud-standard-2
+    env:
+      GH_PACKAGES_TOKEN: ${{ github.token }}
+      NODE_AUTH_TOKEN: ${{ github.token }}
     permissions:
       contents: write
+      packages: write
     steps:
       - uses: actions/checkout@v5
         with:
@@ -47,6 +51,8 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+          registry-url: https://npm.pkg.github.com
+          scope: "@webpresso"
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
@@ -64,7 +70,8 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != 'true' }}
         id: publish
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GH_PACKAGES_TOKEN: ${{ github.token }}
+          NODE_AUTH_TOKEN: ${{ github.token }}
         run: |
           set -o pipefail
           pnpm changeset publish 2>&1 | tee /tmp/publish.log
