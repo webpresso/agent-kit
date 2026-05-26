@@ -60,6 +60,11 @@ wp setup
      Amp + OpenCode's `.agents/skills/` fallback in one surface)
 3. Generates `.gemini/commands/*.toml` by transforming each `.agent/commands/*.md`
    (Gemini CLI wants TOML, not markdown).
+4. Converges managed hook surfaces for supported agents. In particular, when
+   Codex project hooks already exist in `.codex/hooks.json`, setup preserves
+   unrelated commands, rewrites managed `wp-*` hook commands to the current
+   canonical form, and prunes stale legacy `ak-*` webpresso hook commands left
+   behind by older setups.
 4. Creates `docs/templates/{blueprint,guide,research,postmortem,system,adr,runbook,tech-debt}.md`
    (with `blueprint.yaml` variant).
 5. Creates `blueprints/{completed,in-progress,planned,parked,archived}/`
