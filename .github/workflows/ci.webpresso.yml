@@ -17,7 +17,7 @@ env:
   # without this env entry the substitution becomes empty and pnpm gets
   # 401 Unauthorized. Mirrors release.yml's per-job auth wiring at
   # workflow scope so check/test/wp-audits all inherit it.
-  GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+  GH_PACKAGES_TOKEN: ${{ github.token || secrets.GITHUB_TOKEN }}
 
 jobs:
   check:
