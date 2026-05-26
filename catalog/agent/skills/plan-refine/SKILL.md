@@ -35,6 +35,7 @@ Refinement has two equally important goals:
 
 1. **Correctness** — Every claim is fact-checked, every edge case documented
 2. **Parallelizability** — Tasks are structured in Blueprint format with maximum independence for `/pll`
+3. **Simplicity and safety** — DRY, SOLID, YAGNI, KISS, and public package leak-prevention gates are applied before abstractions or release surfaces are approved
 
 ## When to Use
 
@@ -117,6 +118,23 @@ Blueprint (Draft/In-Progress)
 │  - Rewrite tasks in Blueprint fmt│
 └─────────────────────────────────┘
 ```
+
+---
+
+## Required Policy Gates
+
+Apply these gates to every refined blueprint:
+
+- **Engineering principles:** enforce `.agent/rules/engineering-principles.md`.
+  Reject speculative abstractions, unused extension seams, avoidable
+  dependencies, and designs that can be simpler without losing behavior.
+- **Public package safety:** when a plan touches `package.json`, `files`, `bin`,
+  `exports`, package docs, catalog assets, generated agent surfaces, or release
+  workflows, enforce `.agent/rules/public-package-safety.md`. Require a
+  tarball/package-surface check and explicitly keep private content out.
+
+If either gate fails, record the finding and simplify or quarantine the public
+surface before execution.
 
 ---
 
@@ -546,6 +564,8 @@ After applying all fixes, verify:
 
 - [ ] **Blueprint format** — Every task has Depends, Files, Steps (TDD), Acceptance
 - [ ] **Self-contained tasks** — Each task can be executed by an independent agent
+- [ ] **Engineering principles** — DRY, SOLID, YAGNI, and KISS are applied; unnecessary abstractions, dependencies, and config are removed
+- [ ] **Public package safety** — Plans that touch package or release surfaces include tarball/package-surface leak checks and denied-content exclusions
 - [ ] **No file conflicts** — No two parallel tasks modify the same file
 - [ ] **Quick Reference table** — Updated with correct waves and agent counts
 - [ ] **Edge Cases table** — Every finding with severity ≥ MEDIUM has a row

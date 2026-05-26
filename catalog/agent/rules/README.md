@@ -16,8 +16,12 @@ and load automatically for the tools that pick up this directory.
   infra-layer blueprints
 - `cmd-execution.md` — bookend QA protocol, scoped command surface, log-file
   discipline
+- `engineering-principles.md` — DRY, SOLID, YAGNI, and KISS filters for plans,
+  abstractions, dependencies, and implementation scope
 - `generated-code-governance.md` — authored source vs generated output,
   import surface for generated packages
+- `public-package-safety.md` — publishable tarball disclosure boundary,
+  package-surface leak prevention, and pre-publish guardrails
 - `repo-restrictions.md` — how restrictions are layered (linter, pre-commit,
   agent hooks, CI, agent instructions) and how to add a new one
 
