@@ -16,6 +16,10 @@ function writeOverview(root: string, status: string, slug: string, markdown: str
 }
 
 function roadmap(markdownBody: string = '') {
+  const body =
+    markdownBody.trim().length > 0 && !markdownBody.includes('## Quick Reference (Execution Waves)')
+      ? ['## Quick Reference (Execution Waves)', '', markdownBody].join('\n')
+      : markdownBody
   return [
     '---',
     'type: parent-roadmap',
@@ -25,7 +29,7 @@ function roadmap(markdownBody: string = '') {
     "last_updated: '2026-05-06'",
     '---',
     '# Roadmap',
-    markdownBody,
+    body,
     '',
   ].join('\n')
 }
@@ -38,7 +42,7 @@ function child(parentRoadmap: string) {
     'complexity: S',
     "created: '2026-05-06'",
     "last_updated: '2026-05-06'",
-    `parent_roadmap: ${parentRoadmap}`,
+    `parent_roadmap: ${JSON.stringify(parentRoadmap)}`,
     '---',
     '# Child',
     '#### Task 1.1: Work',
@@ -175,5 +179,87 @@ describe('auditRoadmapLinks', () => {
         message: expect.stringContaining('no local parent-roadmap resolves'),
       }),
     ])
+  })
+
+  test('fails active children that use cross-repo parent_roadmap labels', () => {
+    const root = tempRepo()
+    writeOverview(root, 'planned', 'child-a', child('cross-repo: webpresso/monorepo → roadmap-a'))
+
+    const result = auditRoadmapLinks(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: 'blueprints/planned/child-a/_overview.md',
+          message: expect.stringContaining('local roadmap slug/path'),
+        }),
+      ]),
+    )
+  })
+
+  test('fails active roadmaps that place GitHub links in the execution wave section', () => {
+    const root = tempRepo()
+    writeOverview(
+      root,
+      'planned',
+      'roadmap-a',
+      roadmap(
+        [
+          '## Quick Reference (Execution Waves)',
+          '',
+          '| Wave | Blueprints |',
+          '| --- | --- |',
+          '| Wave 0 | [framework child](https://github.com/webpresso/framework/blob/main/blueprints/planned/public-secret-surface-hard-cut/_overview.md) |',
+          '',
+          '## Cross-Plan References',
+          '',
+          '| Blueprint | Relationship |',
+          '| --- | --- |',
+          '| [framework child](https://github.com/webpresso/framework/blob/main/blueprints/planned/public-secret-surface-hard-cut/_overview.md) | Documentary only |',
+        ].join('\n'),
+      ),
+    )
+
+    const result = auditRoadmapLinks(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: 'blueprints/planned/roadmap-a/_overview.md',
+          message: expect.stringContaining('execution-wave maps may list local child blueprints only'),
+        }),
+      ]),
+    )
+  })
+
+  test('ignores documentary GitHub links outside the execution wave section', () => {
+    const root = tempRepo()
+    writeOverview(
+      root,
+      'planned',
+      'roadmap-a',
+      roadmap(
+        [
+          '## Quick Reference (Execution Waves)',
+          '',
+          '| Wave | Blueprints |',
+          '| --- | --- |',
+          '| Wave 0 | [child-a](../planned/child-a/_overview.md) |',
+          '',
+          '## Cross-Plan References',
+          '',
+          '| Blueprint | Relationship |',
+          '| --- | --- |',
+          '| [framework child](https://github.com/webpresso/framework/blob/main/blueprints/planned/public-secret-surface-hard-cut/_overview.md) | Documentary only |',
+        ].join('\n'),
+      ),
+    )
+    writeOverview(root, 'planned', 'child-a', child('roadmap-a'))
+
+    const result = auditRoadmapLinks(root)
+
+    expect(result.ok).toBe(true)
   })
 })

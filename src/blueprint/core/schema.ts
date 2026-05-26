@@ -61,6 +61,12 @@ export const executionStatusSchema = z.enum([
   'stopped',
 ])
 
+export const crossRepoDependencySchema = z.object({
+  repo: z.string().min(1),
+  slug: z.string().min(1),
+  require_status: planStatusSchema.optional(),
+})
+
 /**
  * Plan frontmatter schema.
  *
@@ -95,6 +101,7 @@ export const planFrontmatterSchema = z.object({
   max_parallel_agents: z.number().optional(),
   parent_roadmap: z.string().optional(),
   depends_on: z.array(z.string()).optional(),
+  cross_repo_depends_on: z.array(crossRepoDependencySchema).optional(),
   tags: z.array(z.string()).optional(),
 })
 

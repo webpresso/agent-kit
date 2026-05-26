@@ -24,6 +24,11 @@ interface BlueprintFrontmatter {
   completed_at?: string | Date
   parent_roadmap?: string
   depends_on?: string[]
+  cross_repo_depends_on?: Array<{
+    repo: string
+    slug: string
+    require_status?: string
+  }>
   tags?: string[]
 }
 

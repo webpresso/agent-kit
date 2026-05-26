@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join, relative, resolve, sep } from 'node:path'
 
+import matter from 'gray-matter'
+
 import { validateLoreTrailers } from './commit-message-lore.js'
 
 export interface RepoAuditViolation {
@@ -89,6 +91,15 @@ const DEFAULT_BLUEPRINT_STATUSES = [
   'completed',
   'archived',
 ] as const
+
+const ACTIVE_BLUEPRINT_STATUSES = new Set(['draft', 'planned', 'in-progress', 'parked'])
+const BLUEPRINT_REFERENCE_PATTERN = /^(?:blueprints\/)?(?:draft|planned|in-progress|parked|completed|archived)\/[A-Za-z0-9._-]+(?:\/_overview\.md)?$/
+const GITHUB_BLOB_URL_PATTERN =
+  /^https?:\/\/github\.com\/[^/\s]+\/[^/\s]+\/blob\/[^/\s]+\/.+$/i
+const ABSOLUTE_FILE_REFERENCE_PATTERN = /^(?:\/|[A-Za-z]:[\\/]|file:\/\/)/i
+const LEGACY_CROSS_REPO_LABEL_PATTERN = /^cross-repo:/i
+const GITHUB_REPO_PATTERN = /^[^/\s]+\/[^/\s]+$/
+const BLUEPRINT_SLUG_PATTERN = /^[A-Za-z0-9._-]+$/
 
 export function auditCatalogDrift(
   rootDirectory: string = process.cwd(),
@@ -308,7 +319,8 @@ export function auditBlueprintLifecycle(
         continue
       }
 
-      const frontmatter = parseFrontmatter(readFileSync(overviewPath, 'utf8'))
+      const raw = readFileSync(overviewPath, 'utf8')
+      const frontmatter = matter(raw).data as Record<string, unknown>
       if (frontmatter.type !== 'blueprint' && frontmatter.type !== 'parent-roadmap') {
         violations.push({
           file: relativePath(root, overviewPath),
@@ -322,6 +334,14 @@ export function auditBlueprintLifecycle(
           message: `Blueprint status must match folder (${status})`,
         })
       }
+
+      violations.push(
+        ...validateBlueprintLinkingFrontmatter({
+          file: relativePath(root, overviewPath),
+          frontmatter,
+          status,
+        }),
+      )
     }
   }
 
@@ -356,6 +376,137 @@ function parseWorkspacePackageGlobs(workspaceYaml: string): string[] {
     .filter((value): value is string => value !== undefined)
     .map((value) => stripQuotes(value.trim()))
     .filter((value) => value.length > 0 && !value.startsWith('!'))
+}
+
+function validateBlueprintLinkingFrontmatter(options: {
+  file: string
+  frontmatter: Record<string, unknown>
+  status: string
+}): RepoAuditViolation[] {
+  if (!ACTIVE_BLUEPRINT_STATUSES.has(options.status)) return []
+
+  const violations: RepoAuditViolation[] = []
+  const parentRoadmap =
+    typeof options.frontmatter.parent_roadmap === 'string'
+      ? options.frontmatter.parent_roadmap.trim()
+      : ''
+  if (parentRoadmap.length > 0 && !isLocalParentRoadmapReference(parentRoadmap)) {
+    violations.push({
+      file: options.file,
+      message:
+        'parent_roadmap must reference a local roadmap slug/path in the same repo; use cross_repo_depends_on plus GitHub links for cross-repo relationships',
+    })
+  }
+
+  const dependsOn = Array.isArray(options.frontmatter.depends_on)
+    ? options.frontmatter.depends_on
+    : []
+  for (const dependency of dependsOn) {
+    if (typeof dependency !== 'string') {
+      violations.push({
+        file: options.file,
+        message: 'depends_on entries must be strings',
+      })
+      continue
+    }
+
+    const trimmed = dependency.trim()
+    if (looksLikeCrossRepoReference(trimmed)) {
+      violations.push({
+        file: options.file,
+        message:
+          'depends_on must stay repo-local; move cross-repo blockers to cross_repo_depends_on and use GitHub links in markdown body references',
+      })
+    }
+  }
+
+  if (options.frontmatter.cross_repo_depends_on === undefined) return violations
+  if (!Array.isArray(options.frontmatter.cross_repo_depends_on)) {
+    violations.push({
+      file: options.file,
+      message: 'cross_repo_depends_on must be an array of { repo, slug, require_status? } objects',
+    })
+    return violations
+  }
+
+  for (const dependency of options.frontmatter.cross_repo_depends_on) {
+    if (!dependency || typeof dependency !== 'object' || Array.isArray(dependency)) {
+      violations.push({
+        file: options.file,
+        message:
+          'cross_repo_depends_on entries must be objects with repo, slug, and optional require_status',
+      })
+      continue
+    }
+
+    const record = dependency as Record<string, unknown>
+    const repo = typeof record.repo === 'string' ? record.repo.trim() : ''
+    const slug = typeof record.slug === 'string' ? record.slug.trim() : ''
+    const requireStatus =
+      typeof record.require_status === 'string' ? record.require_status.trim() : undefined
+
+    if (!GITHUB_REPO_PATTERN.test(repo) || looksLikeCrossRepoReference(repo)) {
+      violations.push({
+        file: options.file,
+        message: 'cross_repo_depends_on.repo must use owner/repo form',
+      })
+    }
+
+    if (!BLUEPRINT_SLUG_PATTERN.test(slug) || looksLikeCrossRepoReference(slug)) {
+      violations.push({
+        file: options.file,
+        message:
+          'cross_repo_depends_on.slug must be a blueprint slug only (no paths, URLs, or _overview.md suffix)',
+      })
+    }
+
+    if (requireStatus && !isBlueprintStatusValue(requireStatus)) {
+      violations.push({
+        file: options.file,
+        message: 'cross_repo_depends_on.require_status must be a valid blueprint lifecycle status',
+      })
+    }
+  }
+
+  return violations
+}
+
+function isLocalParentRoadmapReference(reference: string): boolean {
+  const normalized = normalizeBlueprintReference(reference)
+  if (normalized.length === 0) return false
+  if (looksLikeCrossRepoReference(normalized)) return false
+  if (BLUEPRINT_REFERENCE_PATTERN.test(normalized)) return true
+  return BLUEPRINT_SLUG_PATTERN.test(lastSegment(normalized))
+}
+
+function looksLikeCrossRepoReference(reference: string): boolean {
+  const trimmed = reference.trim()
+  return (
+    trimmed.length > 0 &&
+    (LEGACY_CROSS_REPO_LABEL_PATTERN.test(trimmed) ||
+      ABSOLUTE_FILE_REFERENCE_PATTERN.test(trimmed) ||
+      /^https?:\/\//i.test(trimmed) ||
+      GITHUB_BLOB_URL_PATTERN.test(trimmed))
+  )
+}
+
+function normalizeBlueprintReference(reference: string): string {
+  return reference
+    .trim()
+    .replace(/^['"]|['"]$/g, '')
+    .replace(/\\/g, '/')
+    .replace(/^\.?\//, '')
+    .replace(/\/_overview\.md$/, '')
+}
+
+function lastSegment(value: string): string {
+  return value.split('/').filter(Boolean).at(-1) ?? value
+}
+
+function isBlueprintStatusValue(value: string): boolean {
+  return DEFAULT_BLUEPRINT_STATUSES.includes(
+    value as (typeof DEFAULT_BLUEPRINT_STATUSES)[number],
+  )
 }
 
 function parseCatalogDependencyNames(workspaceYaml: string): Set<string> {

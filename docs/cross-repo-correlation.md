@@ -9,6 +9,43 @@ last_updated: '2026-05-11'
 
 Webpresso blueprints can declare dependencies on blueprints in *other* repos via the `cross_repo_depends_on` frontmatter key. This doc explains how those references are stored, validated, and audited.
 
+## Parent-roadmaps and cross-repo references
+
+Parent-roadmaps remain **repo-local orchestration surfaces**.
+
+- `parent_roadmap:` is for local child → local roadmap backlinks only.
+- `depends_on:` is for local blueprint → local blueprint dependencies only.
+- `cross_repo_depends_on:` is for real cross-repo blockers.
+- Documentary cross-repo roadmap/adoption references belong in markdown body sections
+  such as `## Cross-Plan References`, and those references should use **GitHub links**.
+
+### Enforced authoring rules
+
+1. Do **not** use `parent_roadmap:` to point at another repo.
+2. Do **not** put cross-repo references in `depends_on:`.
+3. Do **not** use absolute local filesystem paths (`/Users/...`, `C:\...`) for
+   cross-repo blueprint references.
+4. Do **not** list external blueprints in a parent-roadmap execution-wave map.
+5. Use `cross_repo_depends_on:` plus GitHub links instead.
+
+Example:
+
+```yaml
+depends_on: []
+cross_repo_depends_on:
+  - repo: webpresso/agent-kit
+    slug: secret-aware-worker-tail-mcp
+    require_status: planned
+```
+
+```markdown
+## Cross-Plan References
+
+| Blueprint | Relationship |
+| --- | --- |
+| [webpresso/agent-kit: secret-aware-worker-tail-mcp](https://github.com/webpresso/agent-kit/blob/main/blueprints/planned/secret-aware-worker-tail-mcp/_overview.md) | Upstream MCP helper/export lane |
+```
+
 ## The 7 requirements
 
 ### Req 1 — Org tagging (auto-detect at ingest)

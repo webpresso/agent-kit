@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import {
   buildWebpressoHookGroups,
+  classifyWebpressoHookBin,
   hoistTopLevelEvents,
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
@@ -847,6 +848,282 @@ hooks:
     expect(allCommands.some((command) => command.includes('wp-stop-qa'))).toBe(true)
   })
 
+  it('prunes stale legacy wrapped Codex ak-* hook commands while preserving unrelated hooks', async () => {
+    const codexPath = join(repoRoot, '.codex', 'hooks.json')
+    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
+    writeFileSync(
+      codexPath,
+      JSON.stringify(
+        {
+          hooks: {
+            SessionStart: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command: './node_modules/.bin/ak-sessionstart-routing',
+                    timeout: 5,
+                  },
+                ],
+              },
+              {
+                hooks: [{ type: 'command', command: 'echo keep-codex-session', timeout: 1 }],
+              },
+            ],
+            PreToolUse: [
+              {
+                matcher: 'Bash|Write|Edit',
+                hooks: [
+                  {
+                    type: 'command',
+                    command:
+                      '[ -x ./node_modules/.bin/ak-pretool-guard ] && ./node_modules/.bin/ak-pretool-guard || true',
+                    timeout: 5,
+                  },
+                ],
+              },
+              {
+                matcher: 'Bash',
+                hooks: [
+                  {
+                    type: 'command',
+                    command: './node_modules/.bin/not-webpresso',
+                    timeout: 5,
+                  },
+                ],
+              },
+            ],
+            CustomEvent: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command: './node_modules/.bin/wp-pretool-guard',
+                    timeout: 123,
+                  },
+                  {
+                    type: 'command',
+                    command: 42,
+                  },
+                ],
+              },
+            ],
+            LegacyOnlyCustomEvent: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command: './node_modules/.bin/ak-pretool-guard',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    const codex = JSON.parse(readFileSync(codexPath, 'utf8')) as {
+      hooks: Record<string, Array<{ hooks: Array<{ command: unknown; timeout?: number }> }>>
+    }
+    const allCommands = Object.values(codex.hooks).flatMap((groups) =>
+      groups.flatMap((group) => group.hooks.map((hook) => hook.command)),
+    )
+    const customCommands = codex.hooks.CustomEvent.flatMap((group) =>
+      group.hooks.map((hook) => hook.command),
+    )
+    const preToolUseCommands = codex.hooks.PreToolUse.flatMap((group) =>
+      group.hooks.map((hook) => hook.command),
+    )
+
+    expect(
+      allCommands.filter(
+        (command) => typeof command === 'string' && command.includes('node_modules/.bin/ak-'),
+      ),
+    ).toEqual([])
+    expect(allCommands).toContain('echo keep-codex-session')
+    expect(allCommands).toContain('./node_modules/.bin/not-webpresso')
+    expect(customCommands).toStrictEqual([codexBinCommand(repoRoot, 'wp-pretool-guard'), 42])
+    expect(codex.hooks.LegacyOnlyCustomEvent).toBeUndefined()
+    expect(
+      allCommands.filter((command) => command === codexBinCommand(repoRoot, 'wp-sessionstart-routing')),
+    ).toHaveLength(1)
+    expect(
+      preToolUseCommands.filter((command) => command === codexBinCommand(repoRoot, 'wp-pretool-guard')),
+    ).toHaveLength(1)
+  })
+
+  it('prunes stale legacy flat-form Codex ak-* hook commands during wrapped migration', async () => {
+    const codexPath = join(repoRoot, '.codex', 'hooks.json')
+    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
+    writeFileSync(
+      codexPath,
+      JSON.stringify(
+        {
+          SessionStart: [
+            {
+              hooks: [
+                {
+                  type: 'command',
+                  command: './node_modules/.bin/ak-sessionstart-routing',
+                  timeout: 5,
+                },
+              ],
+            },
+          ],
+          PreToolUse: [
+            {
+              matcher: 'Bash|Edit|Write',
+              hooks: [
+                { type: 'command', command: './node_modules/.bin/ak-pretool-guard', timeout: 5 },
+              ],
+            },
+          ],
+        },
+        null,
+        2,
+      ),
+    )
+
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    const codex = JSON.parse(readFileSync(codexPath, 'utf8')) as {
+      hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
+      SessionStart?: unknown
+      PreToolUse?: unknown
+    }
+    const allCommands = Object.values(codex.hooks).flatMap((groups) =>
+      groups.flatMap((group) => group.hooks.map((hook) => hook.command)),
+    )
+
+    expect(codex.SessionStart).toBeUndefined()
+    expect(codex.PreToolUse).toBeUndefined()
+    expect(allCommands.filter((command) => command.includes('node_modules/.bin/ak-'))).toEqual([])
+    expect(
+      allCommands.filter((command) => command === codexBinCommand(repoRoot, 'wp-sessionstart-routing')),
+    ).toHaveLength(1)
+    expect(
+      allCommands.filter((command) => command === codexBinCommand(repoRoot, 'wp-pretool-guard')),
+    ).toHaveLength(1)
+  })
+
+  it('converges dirty Claude and Codex hook surfaces before Codex trust sync observes hooks', async () => {
+    const claudePath = join(repoRoot, '.claude', 'settings.json')
+    const codexPath = join(repoRoot, '.codex', 'hooks.json')
+    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
+    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
+    writeFileSync(
+      claudePath,
+      JSON.stringify(
+        {
+          hooks: {
+            PreToolUse: [
+              {
+                matcher: 'Bash',
+                hooks: [
+                  {
+                    type: 'command',
+                    command: '"$CLAUDE_PROJECT_DIR/node_modules/.bin/ak-pretool-guard"',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+    writeFileSync(
+      codexPath,
+      JSON.stringify(
+        {
+          hooks: {
+            PreToolUse: [
+              {
+                matcher: 'Bash',
+                hooks: [
+                  { type: 'command', command: './node_modules/.bin/ak-pretool-guard' },
+                  { type: 'command', command: './node_modules/.bin/wp-pretool-guard' },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+
+    const observedCodexCommands: string[][] = []
+    let hooksListCount = 0
+    const api = {
+      async hooksList() {
+        hooksListCount += 1
+        const codex = JSON.parse(readFileSync(codexPath, 'utf8')) as {
+          hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
+        }
+        const commands = Object.values(codex.hooks).flatMap((groups) =>
+          groups.flatMap((group) => group.hooks.map((hook) => hook.command)),
+        )
+        observedCodexCommands.push(commands)
+        return {
+          data: [
+            {
+              cwd: repoRoot,
+              hooks: commands.map((command, index) => ({
+                key: `${codexPath}:command:${index}`,
+                eventName: 'pre_tool_use',
+                handlerType: 'command',
+                matcher: 'Bash',
+                command,
+                timeoutSec: 5,
+                statusMessage: null,
+                sourcePath: codexPath,
+                source: 'project',
+                pluginId: null,
+                displayOrder: index,
+                enabled: true,
+                isManaged: false,
+                currentHash: `sha256:${index}`,
+                trustStatus: hooksListCount === 1 ? 'untrusted' : 'trusted',
+              })),
+              warnings: [],
+              errors: [],
+            },
+          ],
+        }
+      },
+      async configBatchWrite() {
+        return {}
+      },
+      close() {},
+    }
+
+    await scaffoldAgentHooks({
+      repoRoot,
+      options: {},
+      createCodexAppServer: async () => api,
+    })
+
+    const firstClaude = readFileSync(claudePath, 'utf8')
+    const firstCodex = readFileSync(codexPath, 'utf8')
+
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    expect(readFileSync(claudePath, 'utf8')).toBe(firstClaude)
+    expect(readFileSync(codexPath, 'utf8')).toBe(firstCodex)
+    expect(
+      observedCodexCommands.flat().filter((command) => command.includes('node_modules/.bin/ak-')),
+    ).toEqual([])
+    expect(firstClaude).not.toContain('node_modules/.bin/ak-')
+    expect(firstCodex).not.toContain('node_modules/.bin/ak-')
+  })
+
   it('removes stale skill-managed hooks when the skill is no longer installed', async () => {
     const settingsPath = join(repoRoot, '.claude', 'settings.json')
     mkdirSync(join(repoRoot, '.claude'), { recursive: true })
@@ -1158,6 +1435,29 @@ hooks:
       })
       expect(result.status, command).toBe(0)
     }
+  })
+})
+
+describe('classifyWebpressoHookBin', () => {
+  it('classifies canonical, legacy, null, and unrelated bin names exactly', () => {
+    expect(classifyWebpressoHookBin('wp-pretool-guard')).toStrictEqual({
+      kind: 'canonical',
+      binName: 'wp-pretool-guard',
+    })
+    expect(classifyWebpressoHookBin('wp-check-dev-link')).toStrictEqual({
+      kind: 'canonical',
+      binName: 'wp-check-dev-link',
+    })
+    expect(classifyWebpressoHookBin('ak-pretool-guard')).toStrictEqual({
+      kind: 'legacy',
+      binName: 'ak-pretool-guard',
+    })
+    expect(classifyWebpressoHookBin('ak-check-dev-link')).toStrictEqual({
+      kind: 'legacy',
+      binName: 'ak-check-dev-link',
+    })
+    expect(classifyWebpressoHookBin(null)).toBeNull()
+    expect(classifyWebpressoHookBin('not-webpresso')).toBeNull()
   })
 })
 

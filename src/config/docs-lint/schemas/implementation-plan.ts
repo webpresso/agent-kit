@@ -21,6 +21,17 @@ export const implementationPlanFrontmatter = baseFrontmatter.extend({
   /** Dependencies on other plans */
   depends_on: z.array(z.string()).optional(),
 
+  /** Cross-repo dependencies on plans in other repos */
+  cross_repo_depends_on: z
+    .array(
+      z.object({
+        repo: z.string(),
+        slug: z.string(),
+        require_status: implementationStatus.optional(),
+      }),
+    )
+    .optional(),
+
   /** Epic this plan belongs to */
   epic: z.string().optional(),
 })

@@ -100,7 +100,15 @@ const SCRIPT_BASENAME_PATTERN = new RegExp(
   String.raw`([\w-]+\.(?:${SCRIPT_EXTENSIONS.join('|')}))(?=$|["'\s])`,
   'u',
 )
-const LEGACY_CLAUDE_AGENT_KIT_BIN_NAMES = new Set([
+const WEBPRESSO_HOOK_BIN_NAMES = new Set([
+  'wp-sessionstart-routing',
+  'wp-check-dev-link',
+  'wp-pretool-guard',
+  'wp-post-tool',
+  'wp-guard-switch',
+  'wp-stop-qa',
+])
+const LEGACY_WEBPRESSO_HOOK_BIN_NAMES = new Set([
   'ak-sessionstart-routing',
   'ak-check-dev-link',
   'ak-pretool-guard',
@@ -108,6 +116,19 @@ const LEGACY_CLAUDE_AGENT_KIT_BIN_NAMES = new Set([
   'ak-guard-switch',
   'ak-stop-qa',
 ])
+
+type WebpressoHookBinClassification =
+  | { kind: 'canonical'; binName: string }
+  | { kind: 'legacy'; binName: string }
+
+export function classifyWebpressoHookBin(
+  binName: string | null,
+): WebpressoHookBinClassification | null {
+  if (binName === null) return null
+  if (WEBPRESSO_HOOK_BIN_NAMES.has(binName)) return { kind: 'canonical', binName }
+  if (LEGACY_WEBPRESSO_HOOK_BIN_NAMES.has(binName)) return { kind: 'legacy', binName }
+  return null
+}
 
 function extractAgentKitCodexBinName(command: string): string | null {
   const normalizedCommand = stripSingleShellQuotePair(command.trim())
@@ -296,23 +317,26 @@ function normalizeCodexAgentKitCommands(hooks: HooksMap, repoRoot: string): Hook
   const normalized: HooksMap = {}
 
   for (const [event, groups] of Object.entries(hooks)) {
-    normalized[event] = groups.reduce<HookGroup[]>((dedupedGroups, group) => {
+    const normalizedGroups = groups.reduce<HookGroup[]>((dedupedGroups, group) => {
       const nextGroup = {
         ...group,
-        hooks: group.hooks.map((hook) => {
+        hooks: group.hooks.flatMap((hook) => {
           const command = hook.command
           if (typeof command !== 'string') return hook
-          const binName = extractAgentKitCodexBinName(command)
-          if (binName === null) return hook
+          const classification = classifyWebpressoHookBin(extractAgentKitCodexBinName(command))
+          if (classification === null) return hook
+          if (classification.kind === 'legacy') return []
           return {
             ...hook,
-            command: CODEX_BIN(repoRoot)(binName),
+            command: CODEX_BIN(repoRoot)(classification.binName),
           }
         }),
       }
+      if (nextGroup.hooks.length === 0) return dedupedGroups
 
       return ensureGroup(dedupedGroups, nextGroup)
     }, [])
+    if (normalizedGroups.length > 0) normalized[event] = normalizedGroups
   }
 
   return normalized
@@ -325,8 +349,8 @@ function pruneLegacyClaudeAgentKitCommands(hooks: HooksMap): HooksMap {
     const keptGroups = groups
       .map((group) => {
         const keptHooks = group.hooks.filter((hook) => {
-          const binName = extractClaudeBinName(hook.command)
-          return binName === null || !LEGACY_CLAUDE_AGENT_KIT_BIN_NAMES.has(binName)
+          const classification = classifyWebpressoHookBin(extractClaudeBinName(hook.command))
+          return classification === null || classification.kind !== 'legacy'
         })
         return keptHooks.length > 0 ? { ...group, hooks: keptHooks } : null
       })

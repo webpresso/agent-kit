@@ -237,6 +237,127 @@ describe('repo guardrail audits', () => {
     )
   })
 
+  test('blueprint lifecycle audit enforces local-only parent_roadmap and depends_on for active blueprints', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'blueprints', 'planned', 'child-a'), { recursive: true })
+    writeFileSync(
+      join(root, 'blueprints', 'planned', 'child-a', '_overview.md'),
+      [
+        '---',
+        'type: blueprint',
+        'status: planned',
+        'complexity: M',
+        'parent_roadmap: "cross-repo: webpresso/monorepo → roadmap-a"',
+        'depends_on:',
+        '  - https://github.com/webpresso/framework/blob/main/blueprints/planned/public-secret-surface-hard-cut/_overview.md',
+        '---',
+        '# Child',
+      ].join('\n'),
+    )
+
+    const result = auditBlueprintLifecycle(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: 'blueprints/planned/child-a/_overview.md',
+          message: expect.stringContaining('parent_roadmap must reference a local roadmap'),
+        }),
+        expect.objectContaining({
+          file: 'blueprints/planned/child-a/_overview.md',
+          message: expect.stringContaining('depends_on must stay repo-local'),
+        }),
+      ]),
+    )
+  })
+
+  test('blueprint lifecycle audit validates cross_repo_depends_on object shape for active blueprints', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'blueprints', 'planned', 'child-a'), { recursive: true })
+    writeFileSync(
+      join(root, 'blueprints', 'planned', 'child-a', '_overview.md'),
+      [
+        '---',
+        'type: blueprint',
+        'status: planned',
+        'complexity: M',
+        'cross_repo_depends_on:',
+        '  - repo: https://github.com/webpresso/framework',
+        '    slug: planned/public-secret-surface-hard-cut/_overview.md',
+        '    require_status: shipping',
+        '---',
+        '# Child',
+      ].join('\n'),
+    )
+
+    const result = auditBlueprintLifecycle(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: 'blueprints/planned/child-a/_overview.md',
+          message: expect.stringContaining('owner/repo'),
+        }),
+        expect.objectContaining({
+          file: 'blueprints/planned/child-a/_overview.md',
+          message: expect.stringContaining('slug must be a blueprint slug only'),
+        }),
+        expect.objectContaining({
+          file: 'blueprints/planned/child-a/_overview.md',
+          message: expect.stringContaining('require_status must be a valid blueprint lifecycle status'),
+        }),
+      ]),
+    )
+  })
+
+  test('blueprint lifecycle audit accepts structured cross_repo_depends_on objects', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'blueprints', 'planned', 'child-a'), { recursive: true })
+    writeFileSync(
+      join(root, 'blueprints', 'planned', 'child-a', '_overview.md'),
+      [
+        '---',
+        'type: blueprint',
+        'status: planned',
+        'complexity: M',
+        'depends_on: []',
+        'cross_repo_depends_on:',
+        '  - repo: webpresso/framework',
+        '    slug: public-secret-surface-hard-cut',
+        '    require_status: planned',
+        '---',
+        '# Child',
+      ].join('\n'),
+    )
+
+    const result = auditBlueprintLifecycle(root)
+
+    expect(result.ok).toBe(true)
+  })
+
+  test('blueprint lifecycle audit grandfathers completed legacy cross-repo parent_roadmap values', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'blueprints', 'completed', 'child-a'), { recursive: true })
+    writeFileSync(
+      join(root, 'blueprints', 'completed', 'child-a', '_overview.md'),
+      [
+        '---',
+        'type: blueprint',
+        'status: completed',
+        'complexity: M',
+        'parent_roadmap: "cross-repo: webpresso/monorepo → roadmap-a"',
+        '---',
+        '# Child',
+      ].join('\n'),
+    )
+
+    const result = auditBlueprintLifecycle(root)
+
+    expect(result.ok).toBe(true)
+  })
+
   test('validateCommitMessage rejects empty subject', () => {
     const result = validateCommitMessage('\n\nbody\n')
     expect(result.ok).toBe(false)

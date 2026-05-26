@@ -21,12 +21,15 @@ frontmatter:
       format: YYYY-MM-DD
       description: Last modification date
   optional:
-    parent:
+    parent_roadmap:
       type: string
-      description: Path to parent epic (e.g., ../README.md)
+      description: Local parent-roadmap slug/path in the same repo
     depends_on:
       type: array
-      description: Dependencies on other plans
+      description: Local blueprint dependencies in the same repo
+    cross_repo_depends_on:
+      type: array
+      description: Cross-repo blueprint dependencies expressed as { repo, slug, require_status? }
 
 sections:
   required: []

@@ -6,6 +6,7 @@ created: '2026-04-22'
 last_updated: '2026-04-22'
 progress: '0% (drafted)'
 depends_on: []
+cross_repo_depends_on: []
 tags: []
 ---
 

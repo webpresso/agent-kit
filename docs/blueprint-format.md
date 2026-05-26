@@ -46,6 +46,12 @@ depends_on:
   - >-
     other-blueprint-slug (planned) — one-line context about the dependency
 
+# Optional — cross-repo blueprint blockers
+cross_repo_depends_on:
+  - repo: webpresso/framework
+    slug: public-secret-surface-hard-cut
+    require_status: planned
+
 # Optional — tags for filtering
 tags:
   - infra
@@ -102,6 +108,48 @@ Child blueprints link back with `parent_roadmap:`:
 
 ```yaml
 parent_roadmap: q2-platform-roadmap
+```
+
+## Local graph vs cross-repo graph
+
+Use **local** roadmap/dependency keys for the **local repo graph only**:
+
+- `parent_roadmap:` → local child → local parent-roadmap backlink
+- `depends_on:` → local blueprint → local blueprint dependency
+
+Use **cross-repo** references for everything outside the repo:
+
+- `cross_repo_depends_on:` in frontmatter for real cross-repo blockers
+- GitHub links in body sections such as `## Cross-Plan References`
+
+### Enforced rules
+
+1. `parent_roadmap:` must resolve to a roadmap in the **same repo**.
+2. `depends_on:` must contain **local** blueprint references only.
+3. `cross_repo_depends_on:` is the only supported frontmatter field for executable
+   cross-repo dependencies.
+4. Cross-repo references in body text must use **GitHub links**, not local filesystem
+   paths such as `/Users/...` or `../other-repo/...`.
+5. A parent-roadmap's `## Quick Reference (Execution Waves)` section is for **local
+   auditable children only**. Do not list external blueprints there.
+
+Canonical cross-repo dependency example:
+
+```yaml
+cross_repo_depends_on:
+  - repo: ozby/ingest-lens
+    slug: public-ci-surface-adoption
+    require_status: planned
+```
+
+Canonical documentary cross-plan link example:
+
+```markdown
+## Cross-Plan References
+
+| Blueprint | Relationship |
+| --- | --- |
+| [ozby/ingest-lens: public-ci-surface-adoption](https://github.com/ozby/ingest-lens/blob/main/blueprints/planned/public-ci-surface-adoption/_overview.md) | Downstream adoption lane |
 ```
 
 Validation and discovery surfaces:

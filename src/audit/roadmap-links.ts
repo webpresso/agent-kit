@@ -16,6 +16,7 @@ interface BlueprintLinkRecord {
   parentRoadmap?: string
   raw: string
   slug: string
+  status: (typeof BLUEPRINT_STATUSES)[number]
   type: 'blueprint' | 'parent-roadmap'
 }
 
@@ -29,6 +30,13 @@ const BLUEPRINT_STATUSES = [
 ] as const
 
 const BLUEPRINT_STATUS_PATTERN = BLUEPRINT_STATUSES.join('|')
+const ACTIVE_BLUEPRINT_STATUSES = new Set(['draft', 'planned', 'in-progress', 'parked'])
+const LOCAL_BLUEPRINT_REFERENCE_PATTERN = new RegExp(
+  String.raw`^(?:blueprints/)?(?:${BLUEPRINT_STATUS_PATTERN})/[A-Za-z0-9._-]+(?:/_overview\.md)?$`,
+)
+const GITHUB_URL_PATTERN = /https?:\/\/github\.com\//i
+const ABSOLUTE_FILE_REFERENCE_PATTERN = /(?:^|[\s(])(?:\/|[A-Za-z]:[\\/]|file:\/\/)/i
+const LEGACY_CROSS_REPO_LABEL_PATTERN = /cross-repo:/i
 
 export function auditRoadmapLinks(
   rootDirectory: string = process.cwd(),
@@ -45,6 +53,18 @@ export function auditRoadmapLinks(
   for (const child of records.filter(
     (record) => record.type !== 'parent-roadmap' && record.parentRoadmap,
   )) {
+    if (
+      ACTIVE_BLUEPRINT_STATUSES.has(child.status) &&
+      !isLocalParentRoadmapReference(child.parentRoadmap ?? '')
+    ) {
+      violations.push({
+        file: child.file,
+        message:
+          'Active blueprint parent_roadmap must reference a local roadmap slug/path; use cross_repo_depends_on plus GitHub links for cross-repo relationships',
+      })
+      continue
+    }
+
     const parent = resolveParentRoadmap(child.parentRoadmap ?? '', byKey)
     if (!parent) {
       if (options.failOrphans === true) {
@@ -62,8 +82,20 @@ export function auditRoadmapLinks(
   }
 
   for (const roadmap of roadmaps) {
-    const waveMapChildren = extractWaveMapChildren(roadmap.raw)
+    const quickReference = extractExecutionWaveSection(roadmap.raw)
+    const waveMapChildren = extractWaveMapChildren(quickReference)
     const localChildren = localChildrenByRoadmap.get(roadmap.key) ?? []
+
+    if (
+      ACTIVE_BLUEPRINT_STATUSES.has(roadmap.status) &&
+      containsCrossRepoWaveMapReference(quickReference)
+    ) {
+      violations.push({
+        file: roadmap.file,
+        message:
+          'Parent-roadmap execution-wave maps may list local child blueprints only; move cross-repo references to Cross-Plan References and use GitHub links there',
+      })
+    }
 
     if (waveMapChildren.size === 0 && localChildren.length === 0) {
       violations.push({
@@ -147,6 +179,7 @@ function readBlueprintRecords(root: string, blueprintsRoot: string): BlueprintLi
         ...(parentRoadmap ? { parentRoadmap } : {}),
         raw,
         slug: key,
+        status,
         type,
       })
     }
@@ -187,6 +220,29 @@ function extractWaveMapChildren(markdown: string): Set<string> {
   return refs
 }
 
+function extractExecutionWaveSection(markdown: string): string {
+  const lines = markdown.split(/\r?\n/)
+  const start = lines.findIndex((line) => /^## Quick Reference \(Execution Waves\)\s*$/.test(line))
+  if (start === -1) return ''
+
+  const body: string[] = []
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const line = lines[index] ?? ''
+    if (/^##\s+/.test(line)) break
+    body.push(line)
+  }
+
+  return body.join('\n')
+}
+
+function containsCrossRepoWaveMapReference(markdown: string): boolean {
+  return (
+    GITHUB_URL_PATTERN.test(markdown) ||
+    ABSOLUTE_FILE_REFERENCE_PATTERN.test(markdown) ||
+    LEGACY_CROSS_REPO_LABEL_PATTERN.test(markdown)
+  )
+}
+
 function resolveBlueprintReference(
   reference: string,
   byKey: ReadonlyMap<string, BlueprintLinkRecord>,
@@ -222,6 +278,15 @@ function parentRoadmapCandidates(parentRoadmap: string): string[] {
     candidates.add(lastSegment(normalizedTail))
   }
   return [...candidates]
+}
+
+function isLocalParentRoadmapReference(reference: string): boolean {
+  const normalized = normalizeReference(reference)
+  if (!normalized || containsCrossRepoWaveMapReference(normalized)) return false
+  return (
+    LOCAL_BLUEPRINT_REFERENCE_PATTERN.test(normalized) ||
+    /^[A-Za-z0-9._-]+$/.test(lastSegment(normalized))
+  )
 }
 
 function normalizeReference(reference: string): string {
