@@ -100,7 +100,9 @@ describe('webpresso folded package exports', () => {
       ).toBeDefined()
     }
 
-    expect(packageJson.files).toContain('src')
+    expect(packageJson.files).not.toContain('src')
+    expect(packageJson.files).not.toContain('docs')
+    expect(packageJson.files).toContain('dist')
     expect(packageJson.files).toContain('bin')
   })
 
