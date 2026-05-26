@@ -306,7 +306,9 @@ describe('repo guardrail audits', () => {
         }),
         expect.objectContaining({
           file: 'blueprints/planned/child-a/_overview.md',
-          message: expect.stringContaining('require_status must be a valid blueprint lifecycle status'),
+          message: expect.stringContaining(
+            'require_status must be a valid blueprint lifecycle status',
+          ),
         }),
       ]),
     )

@@ -49,7 +49,7 @@ line must be listed in the blueprint task with its category:
 | Category | Example |
 | --- | --- |
 | Import path updates | `@scope/old-package` → `@scope/new-package` |
-| Subpath alias changes | `@repo/utils` → `@webpresso/runtime/utils` |
+| Subpath alias changes | `@workspace/utils` → `@webpresso/runtime/utils` |
 | Shebang line adjustments | `#!/usr/bin/env node` unchanged; path to bin updated |
 | `package.json` name / version fields | `"name": "old"` → `"name": "new"` |
 

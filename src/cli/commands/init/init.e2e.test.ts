@@ -206,19 +206,18 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, 'blueprints'))).toBe(true)
       expect(existsSync(path.join(repo, '.webpressorc.json'))).toBe(true)
       expect(r.stdout).toContain('wp init: done.')
-      expect(r.stdout).not.toContain('context-mode codex mcp')
-      expect(r.stdout).not.toContain('context-mode codex hooks')
+      expect(r.stdout).not.toContain('context-mode codex features')
       expect(r.stdout).not.toContain('context-mode opencode config')
     })
 
-    it('--with context-mode: wires context-mode surfaces explicitly when requested', () => {
+    it('--with context-mode: enables gated Codex plugin hooks when requested', () => {
       const r = runAk(['setup', '--yes', '--with', 'context-mode', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
       })
       expect(r.code).toBe(0)
-      expect(r.stdout).toContain('context-mode codex mcp')
-      expect(r.stdout).toContain('context-mode codex hooks')
+      expect(r.stdout).toContain('context-mode codex features')
+      expect(r.stdout).toContain('context-mode codex plugin')
       expect(r.stdout).toContain('context-mode opencode config')
     })
 
@@ -346,7 +345,6 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       )
     })
 
-
     it(
       '--with omx,gstack combined: both presets execute against fixtures',
       { timeout: 20_000 },
@@ -377,7 +375,6 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         expect(r.stdout).toContain('gstack: ✓ updated')
       },
     )
-
 
     it('runtime check: prints bun + vp + actionlint status regardless of presets', () => {
       const r = runAk(['setup', '--yes', '--cwd', repo], {

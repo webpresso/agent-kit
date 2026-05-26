@@ -40,10 +40,14 @@ opt-in.
 | context-mode | [GitHub](https://github.com/mksglu/context-mode) | Optional context-window and tool-output routing layer for teams that explicitly opt into `wp setup --with context-mode`. |
 | rulesync | [GitHub](https://github.com/dyoshikawa/rulesync) | Multi-runtime emission substrate used by webpresso instead of reimplementing each IDE format. |
 
-## Requires bun
+## Runtime requirements
 
-webpresso CLI bins ship as TypeScript source with `#!/usr/bin/env bun`. Install
-bun globally before running `wp`, `webpresso`, or `wp`:
+Published `wp` / `webpresso` bins now ship as stable Node launchers. They prefer
+packaged `dist/esm` output and only fall back to `bun + src/*.ts` when you are
+running directly from a source checkout.
+
+Install bun if you develop webpresso from source or rely on source-checkout
+fallbacks:
 
 ```bash
 curl -fsSL https://bun.sh/install | bash
@@ -54,6 +58,19 @@ curl -fsSL https://bun.sh/install | bash
 ```bash
 vp install -g webpresso
 ```
+
+If bootstrap, hooks, or local live-source linking ever drift, diagnose first:
+
+```bash
+wp hooks doctor
+```
+
+Typical repairs:
+
+- refresh local surfaces: `wp setup`
+- restore a live-source link: `vp install` or `vp run dev:link --consumer <repo>`
+- fix GitHub Packages auth before reinstalling if `vp install` fails with `403`
+  on `@webpresso/*`
 
 > **Pinned-version / devDependency path** (Codex CLI, library consumers):
 > `vp install -D webpresso && vp exec wp setup`. See
@@ -145,7 +162,7 @@ Migration details:
 wp setup
 ```
 
-`wp setup` (alias: `wp setup`) is re-runnable. Existing divergent files are left untouched and reported as drift; `--overwrite` replaces them. Hooks are patched additively into `.claude/settings.json` and `.codex/hooks.json` — your custom hooks survive. Setup also repairs the managed `.gitignore` block so regenerated `.codex/`, `.omx/`, `.agent/`, and IDE projection outputs stay out of Git.
+`wp setup` (alias: `wp setup`) is re-runnable. By default it refreshes the sections, structured config keys, and generated surfaces that webpresso owns, while leaving divergent consumer-owned files untouched and reported as drift. Use `--overwrite` only when you intentionally want full-file replacement for eligible managed files. Hooks are patched additively into `.claude/settings.json` and `.codex/hooks.json` — your custom hooks survive. Setup also repairs the managed `.gitignore` block so regenerated `.codex/`, `.omx/`, `.agent/`, and IDE projection outputs stay out of Git.
 
 ### 3. Implementation plans that don't rot
 

@@ -141,14 +141,16 @@ Placeholders:
 - `{{DURABLE_PLANNING_ROOT}}` — defaults to `.agent/planning/`; override
   via `.webpressorc.json`.
 
-After rendering, the `AGENTS.md` is the consumer's to own — webpresso
-never rewrites it unless `wp setup --overwrite` is used.
+After rendering, the `AGENTS.md` is shared ownership: reruns of `wp setup`
+refresh webpresso-managed blocks in place, while fully unmanaged/divergent
+files are left alone unless `--overwrite` is used.
 
 ## Catalog updates
 
-Tier-1 and Tier-2 skills are webpresso-owned and update with the package.
-Consumers bring new catalog content into `.agent/` explicitly with
-`wp setup --overwrite` after reviewing the reported drift.
+Tier-1 and Tier-2 generated `.agent/` content is webpresso-owned and
+refreshes on reruns of `wp setup`. Consumer-owned canonical sources like
+`agent-rules/` and `agent-skills/` keep their local edits unless you
+explicitly replace them.
 
 Tier-3 skills are installed one at a time with `wp skill install <name>`
 or selected during setup with `wp setup --with <name>`. Agent Kit does not
@@ -203,4 +205,4 @@ The catalog is versioned alongside the package. To add a skill:
 4. Ship with a Changesets entry.
 
 Consumers pick it up on their next `pnpm update webpresso &&
-vp exec wp setup --overwrite` cycle.
+vp exec wp setup` cycle.

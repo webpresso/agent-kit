@@ -27,7 +27,7 @@ jobs:
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v5
         with:
-          node-version: '24'
+          node-version: '24.16.0'
           cache: pnpm
       - uses: oven-sh/setup-bun@v2
         with:
@@ -43,7 +43,7 @@ jobs:
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v5
         with:
-          node-version: '24'
+          node-version: '24.16.0'
           cache: pnpm
       - uses: oven-sh/setup-bun@v2
         with:
@@ -58,12 +58,20 @@ jobs:
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v5
         with:
-          node-version: '24'
+          node-version: '24.16.0'
           cache: pnpm
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
       - run: pnpm install --frozen-lockfile
+      - name: Stage packed surface for external scanning
+        run: |
+          rm -rf .webpresso-packed-surface
+          bun scripts/stage-packed-surface.ts .webpresso-packed-surface
+      - name: Gitleaks packed surface
+        uses: docker://ghcr.io/gitleaks/gitleaks:latest
+        with:
+          args: dir --exit-code 1 /github/workspace/.webpresso-packed-surface
       - name: Run wp audit guardrails
         # The repo IS webpresso; invoke the in-tree CLI via bun
         # directly rather than relying on a shim, which only exists after

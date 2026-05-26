@@ -43,8 +43,7 @@ export const DEFAULT_PROBES: RuntimeProbe[] = [
   {
     name: 'actionlint',
     detect: () => probeVersion('actionlint'),
-    hint:
-      'install actionlint (`brew install actionlint` or `go install github.com/rhysd/actionlint/cmd/actionlint@latest`)',
+    hint: 'install actionlint (`brew install actionlint` or `go install github.com/rhysd/actionlint/cmd/actionlint@latest`)',
   },
 ]
 

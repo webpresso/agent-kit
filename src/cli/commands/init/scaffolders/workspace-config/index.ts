@@ -15,9 +15,9 @@ const WORKSPACE_YAML_TEMPLATE = `# ~/.agent/workspace.yaml — user-global works
 # Lists local repos for cross-repo correlation lookups
 # Never committed to any repo (gitignored by design)
 repos: []
-  # - path: ~/repos/webpresso/webpresso
-  # - path: ~/repos/webpresso/monorepo
-  # - path: ~/repos/ozby/ingest-lens
+  # - path: ~/repos/<org>/<repo-a>
+  # - path: ~/repos/<org>/<repo-b>
+  # - path: ~/repos/<org>/<consumer-repo>
 `
 
 export function defaultWorkspaceConfigPath(): string {

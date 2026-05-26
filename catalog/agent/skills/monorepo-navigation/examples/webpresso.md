@@ -33,7 +33,7 @@ Delete if not useful.
 **GraphQL Actions**: `apps/platform/workers/platform-api/src/handlers//`
 **Frontend Routes**: `apps/web/*/app/routes/`
 **Shared Components**: `packages/core/ui/src/components/`
-**Generated Package**: `.webpresso/generated/` (physical root, exposed as workspace package `@repo/generated`)
+**Generated Package**: `.webpresso/generated/` (physical root, exposed as workspace package `@workspace/generated`)
 
 ## Preferred Inspection Flow
 
@@ -92,16 +92,16 @@ rg -n "projects:" apps/platform/workers/platform-api/src/handlers/
 
 ```typescript
 // From generated artifacts (real workspace package rooted at .webpresso/generated/)
-import { projectFragment } from '@repo/generated/graphql'
-import * as schema from '@repo/generated/drizzle/schemas'
+import { projectFragment } from '@workspace/generated/graphql'
+import * as schema from '@workspace/generated/drizzle/schemas'
 
 // From test-utils
-import { createIntegrationContext } from '@repo/test-utils'
-import { projectsFactory } from '@repo/generated/factories'
+import { createIntegrationContext } from '@workspace/test-utils'
+import { projectsFactory } from '@workspace/generated/factories'
 
 // From database
-import { db } from '@repo/database/client'
-import { projects } from '@repo/database/schemas'
+import { db } from '@workspace/database/client'
+import { projects } from '@workspace/database/schemas'
 
 // From ui (shared components)
 import { Button } from '@webpresso/ui'
@@ -110,8 +110,8 @@ import { Button } from '@webpresso/ui'
 ### Package Names
 
 Two npm scopes coexist after the `6 degrees of seperation` rename:
-- Internal workspace packages use `@repo/*` scope (e.g. `@repo/platform-api`, `@repo/platform-web`, `@repo/chef`, `@repo/neon`, `@repo/e2e`, `@repo/docs-linter`)
-- Externally published packages keep `@webpresso/*` scope (e.g. `@webpresso/schema-engine`, `@webpresso/cli-wp`, `webpresso`, `@webpresso/ui`, `@repo/generated`)
+- Internal workspace packages use `@workspace/*` scope (e.g. `@workspace/platform-api`, `@workspace/platform-web`, `@workspace/chef`, `@workspace/neon`, `@workspace/e2e`, `@workspace/docs-linter`)
+- Externally published packages keep `@webpresso/*` scope (e.g. `@webpresso/schema-engine`, `@webpresso/cli-wp`, `webpresso`, `@webpresso/ui`, `@workspace/generated`)
 
 Short names in just commands: `platform-api`, `schema-engine`, `cli2` (slug only, no scope)
 
@@ -156,7 +156,7 @@ just test cli2,schema-engine
 1. Edit entity YAML: `webpresso/entities/<entity>.yaml`
 2. Run `just schema-compile`
 3. Check generated artifacts in `.webpresso/generated/`
-4. Import generated consumer surfaces via `@repo/generated/*` instead of deep relative paths
+4. Import generated consumer surfaces via `@workspace/generated/*` instead of deep relative paths
 5. Test with integration tests
 
 ## Dependency Graph
@@ -227,8 +227,8 @@ sed -n '120,170p' apps/platform/workers/platform-api/src/services/project-servic
 **Import not working?**
 
 - Check `package.json` exports field
-- Check `package.json` imports field for package-private `#...` mappings, and prefer `@repo/generated/*` for generated artifacts
-- Ensure the importing package declares `@repo/generated` in `dependencies`
+- Check `package.json` imports field for package-private `#...` mappings, and prefer `@workspace/generated/*` for generated artifacts
+- Ensure the importing package declares `@workspace/generated` in `dependencies`
 - Ensure package is built: `just build <package>`
 - Check workspace install/link state instead of adding `tsconfig.paths` aliases
 

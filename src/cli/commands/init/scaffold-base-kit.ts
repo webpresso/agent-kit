@@ -29,13 +29,13 @@ const TEMPLATE_MAP: Array<[string, string]> = [
  * deletes that content silently, breaks `vp install`, and pollutes git
  * status with thousands of newly-tracked artifacts.
  *
- * Verified failure mode (webpresso/monorepo, 2026-05-07): the postinstall
+ * Verified failure mode (large multi-package workspace, 2026-05-07): the postinstall
  * `wp setup --overwrite` reduced pnpm-workspace.yaml from 221 lines (full
- * catalog) to 34 lines (generic template), removing every catalog entry
- * referenced by `pnpm.overrides` (`@neondatabase/serverless` etc.) and
+ * catalog) to 34 lines (generic template), removing catalog entries
+ * referenced by `pnpm.overrides` and
  * making subsequent `vp install` fail with ERR_PNPM_CATALOG_IN_OVERRIDES.
- * The same overwrite stripped monorepo-specific .gitignore rules
- * (.test-reports/, .webpresso/generated/, all-paths/.wrangler/, etc.),
+ * The same overwrite stripped workspace-specific .gitignore rules
+ * (.test-reports/, generated outputs, worker-state directories, etc.),
  * unmasking 23k+ generated artifacts to git status.
  */
 const BOOTSTRAP_ONLY_MAP: Array<[string, string]> = [

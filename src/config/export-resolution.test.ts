@@ -60,11 +60,11 @@ const exportSourceTargets: Record<string, string> = {
 }
 
 const docsLintBins = {
-  'docs-check-internal-links': './src/config/docs-lint/cli/check-internal-links.ts',
-  'docs-check-refs': './src/config/docs-lint/cli/check-refs.ts',
-  'docs-check-stale': './src/config/docs-lint/cli/check-stale.ts',
-  'docs-lint': './src/config/docs-lint/cli/validate.ts',
-  'docs-migrate': './src/config/docs-lint/cli/migrate.ts',
+  'docs-check-internal-links': './bin/docs-check-internal-links.js',
+  'docs-check-refs': './bin/docs-check-refs.js',
+  'docs-check-stale': './bin/docs-check-stale.js',
+  'docs-lint': './bin/docs-lint.js',
+  'docs-migrate': './bin/docs-migrate.js',
 } as const
 
 type PackageJson = {
@@ -101,6 +101,7 @@ describe('webpresso folded package exports', () => {
     }
 
     expect(packageJson.files).toContain('src')
+    expect(packageJson.files).toContain('bin')
   })
 
   it('maps tsconfig package exports directly to physical json files for TypeScript extends', async () => {
@@ -114,9 +115,9 @@ describe('webpresso folded package exports', () => {
     const packageJson = await readCanonicalPackageJson()
 
     expect(packageJson.bin).toMatchObject({
-      wp: './src/cli/cli.ts',
-      webpresso: './src/cli/cli.ts',
-      'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
+      wp: './bin/wp.js',
+      webpresso: './bin/webpresso.js',
+      'wp-pretool-guard': './bin/wp-pretool-guard.js',
       ...docsLintBins,
     })
   })

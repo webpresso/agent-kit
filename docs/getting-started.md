@@ -53,7 +53,7 @@ wp hooks doctor
 
 Preferred repairs:
 
-- refresh generated hook/plugin surfaces: `wp setup --overwrite`
+- refresh generated hook/plugin surfaces: `wp setup`
 - restore a broken live-source dev-link: `vp install` or
   `vp run dev:link --consumer <repo>`
 - if `vp install` fails with `403` on `@webpresso/*`, fix
@@ -94,6 +94,11 @@ wp setup
    template, filling `{{REPOSITORY_MAP}}` by scanning your
    `pnpm-workspace.yaml` / `package.json` workspaces.
 7. Writes `.webpressorc.json` capturing your choices for idempotent re-runs.
+
+Re-running `wp setup` refreshes the sections, structured config keys, and
+generated files that webpresso owns. Divergent consumer-owned whole files are
+left untouched and reported as drift unless you explicitly pass
+`--overwrite`.
 
 ### Opt into tech-specific skills
 

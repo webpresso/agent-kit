@@ -106,27 +106,19 @@ Configures the [context-mode](https://github.com/mksglu/context-mode) peer tool 
 Codex CLI and OpenCode. This preset is opt-in; run `wp setup --with context-mode` when you want the `ctx_*` MCP tools and hook routing. It ensures `context-mode` is available on `PATH`; if missing, webpresso installs it with `vp install -g context-mode` before patching config files. If it is already present, setup refreshes it with `vp update -g context-mode` first.
 
 **Touches:**
-- `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`)
-- `$CODEX_HOME/hooks.json` (or `~/.codex/hooks.json`)
+- `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`) — enables gated Codex plugin hooks with `[features].hooks = true` and `[features].plugin_hooks = true`
 - `<repoRoot>/opencode.json`
 
 **Idempotency:**
-- Replaces only the owned `[mcp_servers.context-mode]` table in Codex config
-- Merges the Codex hook chain additively into the wrapped `hooks` schema
+- Adds or updates only the owned `hooks` and `plugin_hooks` keys in Codex's `[features]` table. `codex_hooks` is a legacy Codex alias and is not written by setup.
+- Relies on the context-mode Codex plugin manifest for MCP (`.codex-plugin/mcp.json`), skills (`skills/`), and bundled hooks (`.codex-plugin/hooks.json`); no manual `[mcp_servers.context-mode]` block or `$CODEX_HOME/hooks.json` entry is needed when plugin hooks are enabled and trusted.
 - Merges OpenCode's `mcp.context-mode` entry and `plugin: ["context-mode"]`
   without clobbering unrelated config
 
-**Codex hook events wired by this preset:**
-
-| Event | Command |
-| ----- | ------- |
-| `PreToolUse` | `context-mode hook codex pretooluse` (matcher: ctx/shell tools) |
-| `PostToolUse` | `context-mode hook codex posttooluse` |
-| `SessionStart` | `context-mode hook codex sessionstart` |
-| `UserPromptSubmit` | `context-mode hook codex userpromptsubmit` |
-| `Stop` | `context-mode hook codex stop` |
-| `PreCompact` | `context-mode hook codex precompact` |
-| `PostCompact` | `context-mode hook codex postcompact` |
+**Codex runtime notes:**
+- Restart Codex after setup so plugin MCP and hooks are loaded.
+- `context-mode` still needs `node` visible to the Codex process. The plugin removes manual Codex config but does not vendor Node or inherit login-shell PATH fixes automatically.
+- If Codex cannot write the adapter's default storage directory, launch it with an absolute writable root, for example `CONTEXT_MODE_DIR="$HOME/.codex-context-mode" codex`. Sessions and stats use `<root>/sessions`; indexed content uses `<root>/content`.
 
 **Failure modes:**
 - `context-mode` missing from `PATH` and automatic `vp install -g context-mode` fails → `EXIT_SETUP_FAIL` with install hint

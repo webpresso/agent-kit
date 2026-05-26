@@ -5,6 +5,7 @@ packages:
 catalog:
   '@arethetypeswrong/cli': ^0.18.2
   '@manypkg/find-root': ^3.1.0
+  '@secretlint/secretlint-rule-preset-recommend': ^13.0.2
   '@stryker-mutator/core': ^9.6.1
   '@stryker-mutator/typescript-checker': ^9.6.1
   '@stryker-mutator/vitest-runner': ^9.6.1
@@ -12,6 +13,7 @@ catalog:
   '@vitejs/plugin-react': ^6.0.1
   gray-matter: ^4.0.3
   remark-frontmatter: ^5.0.0
+  secretlint: ^13.0.2
   tshy: ^4.1.2
   typescript: ^6.0.3
   vite: ^8.0.11

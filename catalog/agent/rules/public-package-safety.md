@@ -28,9 +28,10 @@ boundary: only intentional API, documentation, and assets belong inside it.
 ## Keep out by default
 
 - secrets, credentials, private keys, tokens, and token-shaped fixtures;
-- absolute local paths such as `/Users/...` or machine-specific cache paths;
+- absolute local paths such as `<absolute-local-path>` or machine-specific
+  cache paths;
 - private repo names, customer/workspace examples, and internal package aliases
-  such as `@repo/*` unless they are deliberately public examples;
+  such as `<workspace-alias>/*` unless they are deliberately public examples;
 - strategy notes, research docs, founder/market context, private roadmaps, and
   unpublished architecture rationale;
 - raw `src/`, tests, fixtures, snapshots, generated IDE/agent surfaces, and

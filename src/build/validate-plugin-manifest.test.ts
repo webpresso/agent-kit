@@ -60,12 +60,12 @@ describe('plugin.json manifest', () => {
   })
 
   describe('hooks', () => {
-    it('PreToolUse matches Bash|Edit|Write|MultiEdit|WebFetch|Read|Grep and points at pretool-guard via bun + ${CLAUDE_PLUGIN_ROOT}', () => {
+    it('PreToolUse matches Bash|Edit|Write|MultiEdit|WebFetch|Read|Grep and points at the stable node wrapper', () => {
       const [entry] = readManifest().hooks.PreToolUse
       expect(entry!.matcher).toBe('Bash|Edit|Write|MultiEdit|WebFetch|Read|Grep')
       const [handler] = entry!.hooks
       expect(handler!.type).toBe('command')
-      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/pretool-guard/index.ts`)
+      expect(handler!.command).toBe(`node ${PLUGIN_ROOT_VAR}/bin/wp-pretool-guard.js`)
     })
 
     it('PostToolUse matches Edit|Write and points at lint-after-edit', () => {
@@ -73,7 +73,7 @@ describe('plugin.json manifest', () => {
       expect(entry!.matcher).toBe('Edit|Write')
       const [handler] = entry!.hooks
       expect(handler!.type).toBe('command')
-      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/post-tool/lint-after-edit.ts`)
+      expect(handler!.command).toBe(`node ${PLUGIN_ROOT_VAR}/bin/wp-post-tool.js`)
     })
 
     it('Stop has no matcher and points at qa-changed-files', () => {
@@ -81,7 +81,7 @@ describe('plugin.json manifest', () => {
       expect(entry!.matcher).toBeUndefined()
       const [handler] = entry!.hooks
       expect(handler!.type).toBe('command')
-      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/stop/qa-changed-files.ts`)
+      expect(handler!.command).toBe(`node ${PLUGIN_ROOT_VAR}/bin/wp-stop-qa.js`)
     })
 
     it('UserPromptSubmit points at guard-switch', () => {
@@ -89,24 +89,24 @@ describe('plugin.json manifest', () => {
       expect(entry!.matcher).toBeUndefined()
       const [handler] = entry!.hooks
       expect(handler!.type).toBe('command')
-      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/guard-switch/index.ts`)
+      expect(handler!.command).toBe(`node ${PLUGIN_ROOT_VAR}/bin/wp-guard-switch.js`)
     })
 
-    it('SessionStart matches startup|resume|compact and points at sessionstart/index.ts', () => {
+    it('SessionStart matches startup|resume|compact and points at the stable session-start wrapper', () => {
       const [entry] = readManifest().hooks.SessionStart
       expect(entry!.matcher).toBe('startup|resume|compact')
       const [handler] = entry!.hooks
       expect(handler!.type).toBe('command')
-      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/sessionstart/index.ts`)
+      expect(handler!.command).toBe(`node ${PLUGIN_ROOT_VAR}/bin/wp-sessionstart-routing.js`)
     })
   })
 
   describe('mcpServers', () => {
-    it('declares the webpresso stdio server via bun + ${CLAUDE_PLUGIN_ROOT}', () => {
+    it('declares the webpresso stdio server via the stable node wrapper', () => {
       const server = readManifest().mcpServers['webpresso']
       expect(server).toBeDefined()
-      expect(server!.command).toBe('bun')
-      expect(server!.args).toEqual([`${PLUGIN_ROOT_VAR}/src/mcp/cli.ts`])
+      expect(server!.command).toBe('node')
+      expect(server!.args).toEqual([`${PLUGIN_ROOT_VAR}/bin/wp.js`, 'mcp'])
     })
   })
 

@@ -9,7 +9,7 @@ import {
   ensureContextMode,
   patchCodexContextModeHooks,
   patchOpenCodeContextModeConfig,
-  upsertContextModeMcpServer,
+  upsertCodexContextModeFeatures,
 } from './index.js'
 
 function makeSpinnerFactory(): {
@@ -36,11 +36,21 @@ describe('context-mode preset', () => {
     rmSync(repoRoot, { recursive: true, force: true })
   })
 
-  it('upserts the Codex MCP server block', () => {
-    expect(upsertContextModeMcpServer('model = "gpt-5.5"\n')).toContain(
-      '[mcp_servers.context-mode]',
+  it('upserts Codex feature gates for plugin-provided context-mode hooks', () => {
+    const next = upsertCodexContextModeFeatures('model = "gpt-5.5"\n')
+    expect(next).toContain('[features]')
+    expect(next).toContain('hooks = true')
+    expect(next).toContain('plugin_hooks = true')
+    expect(next).not.toContain('[mcp_servers.context-mode]')
+  })
+
+  it('patches an existing Codex features table without writing the legacy alias', () => {
+    const next = upsertCodexContextModeFeatures(
+      'model = "gpt-5.5"\n\n[features]\ncodex_hooks = false\nhooks = false\n\n[projects."/repo"]\ntrust_level = "trusted"\n',
     )
-    expect(upsertContextModeMcpServer('model = "gpt-5.5"\n')).toContain('command = "context-mode"')
+    expect(next).toContain('[features]\ncodex_hooks = false\nhooks = true\nplugin_hooks = true')
+    expect(next).toContain('[projects."/repo"]')
+    expect(next).not.toContain('codex_hooks = true')
   })
 
   it('patches Codex hooks with the context-mode hook chain', () => {
@@ -106,7 +116,7 @@ describe('context-mode preset', () => {
     expect(next.plugin).toEqual(['context-mode'])
   })
 
-  it('writes all three surfaces when context-mode is available', () => {
+  it('writes Codex feature gates plus OpenCode config when context-mode is available', () => {
     const codexConfigPath = join(repoRoot, '.codex', 'config.toml')
     const codexHooksPath = join(repoRoot, '.codex', 'hooks.json')
     const opencodeConfigPath = join(repoRoot, 'opencode.json')
@@ -115,17 +125,17 @@ describe('context-mode preset', () => {
       repoRoot,
       options: {},
       codexConfigPath,
-      codexHooksPath,
       opencodeConfigPath,
       spawn: (() => ({ status: 0, error: undefined })) as never,
     })
 
-    expect(result.codexMcp.action).toBe('created')
-    expect(result.codexHooks.action).toBe('created')
+    expect(result.codexFeatures.action).toBe('created')
     expect(result.opencodeConfig.action).toBe('created')
     expect(result.installed).toBe(false)
-    expect(readFileSync(codexConfigPath, 'utf8')).toContain('[mcp_servers.context-mode]')
-    expect(readFileSync(codexHooksPath, 'utf8')).toContain('context-mode hook codex pretooluse')
+    expect(readFileSync(codexConfigPath, 'utf8')).toContain('[features]')
+    expect(readFileSync(codexConfigPath, 'utf8')).toContain('hooks = true')
+    expect(readFileSync(codexConfigPath, 'utf8')).toContain('plugin_hooks = true')
+    expect(() => readFileSync(codexHooksPath, 'utf8')).toThrow()
     expect(readFileSync(opencodeConfigPath, 'utf8')).toContain('context-mode')
   })
 
@@ -141,7 +151,6 @@ describe('context-mode preset', () => {
       repoRoot,
       options: {},
       codexConfigPath: join(repoRoot, '.codex', 'config.toml'),
-      codexHooksPath: join(repoRoot, '.codex', 'hooks.json'),
       opencodeConfigPath: join(repoRoot, 'opencode.json'),
       spawn,
     })
@@ -151,9 +160,8 @@ describe('context-mode preset', () => {
     })
   })
 
-  it('installs context-mode when missing, then writes all three surfaces', () => {
+  it('installs context-mode when missing, then writes Codex feature gates', () => {
     const codexConfigPath = join(repoRoot, '.codex', 'config.toml')
-    const codexHooksPath = join(repoRoot, '.codex', 'hooks.json')
     const opencodeConfigPath = join(repoRoot, 'opencode.json')
 
     let calls = 0
@@ -169,18 +177,16 @@ describe('context-mode preset', () => {
       repoRoot,
       options: {},
       codexConfigPath,
-      codexHooksPath,
       opencodeConfigPath,
       spawn,
     })
 
     expect(result.installed).toBe(true)
-    expect(readFileSync(codexConfigPath, 'utf8')).toContain('[mcp_servers.context-mode]')
+    expect(readFileSync(codexConfigPath, 'utf8')).toContain('plugin_hooks = true')
   })
 
   it('calls spinner.start() then spinner.succeed() when context-mode is available', () => {
     const codexConfigPath = join(repoRoot, '.codex', 'config.toml')
-    const codexHooksPath = join(repoRoot, '.codex', 'hooks.json')
     const opencodeConfigPath = join(repoRoot, 'opencode.json')
     const { factory, start, succeed, fail } = makeSpinnerFactory()
 
@@ -188,7 +194,6 @@ describe('context-mode preset', () => {
       repoRoot,
       options: {},
       codexConfigPath,
-      codexHooksPath,
       opencodeConfigPath,
       spawn: (() => ({ status: 0, error: undefined })) as never,
       spinnerFactory: factory,
@@ -201,7 +206,6 @@ describe('context-mode preset', () => {
 
   it('calls spinner.fail() when context-mode install fails', () => {
     const codexConfigPath = join(repoRoot, '.codex', 'config.toml')
-    const codexHooksPath = join(repoRoot, '.codex', 'hooks.json')
     const opencodeConfigPath = join(repoRoot, 'opencode.json')
     const { factory, start, fail, succeed } = makeSpinnerFactory()
 
@@ -220,7 +224,6 @@ describe('context-mode preset', () => {
         repoRoot,
         options: {},
         codexConfigPath,
-        codexHooksPath,
         opencodeConfigPath,
         spawn,
         spinnerFactory: factory,
@@ -234,14 +237,12 @@ describe('context-mode preset', () => {
 
   it('uses noop spinner (no real ora) when spinnerFactory is not provided', () => {
     const codexConfigPath = join(repoRoot, '.codex', 'config.toml')
-    const codexHooksPath = join(repoRoot, '.codex', 'hooks.json')
     const opencodeConfigPath = join(repoRoot, 'opencode.json')
 
     const result = ensureContextMode({
       repoRoot,
       options: {},
       codexConfigPath,
-      codexHooksPath,
       opencodeConfigPath,
       spawn: (() => ({ status: 0, error: undefined })) as never,
     })

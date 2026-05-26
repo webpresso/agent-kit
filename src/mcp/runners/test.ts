@@ -1,10 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import {
-  isRunFailure,
-  runCommand as runSharedCommand,
-} from '#mcp/tools/_shared/run-command'
+import { isRunFailure, runCommand as runSharedCommand } from '#mcp/tools/_shared/run-command'
 
 // Keep the runner's own deadline below common MCP client call ceilings so a
 // slow workspace suite returns a structured `timedOut` payload and the spawned

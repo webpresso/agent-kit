@@ -56,6 +56,16 @@ describe('writeFileMerged', () => {
     expect(readFileSync(target, 'utf8')).toBe('updated')
   })
 
+  it('overwrites generated whole-file outputs by default', () => {
+    const target = join(dir, 'file.md')
+    writeFileSync(target, 'original')
+    const result = writeFileMerged(target, 'updated', {
+      ownership: 'generated-whole-file',
+    })
+    expect(result.action).toBe('overwritten')
+    expect(readFileSync(target, 'utf8')).toBe('updated')
+  })
+
   it('in dry-run mode, no writes happen and action is skipped-dry', () => {
     const target = join(dir, 'file.md')
     writeFileSync(target, 'original')
@@ -69,6 +79,17 @@ describe('writeFileMerged', () => {
     const target = join(dir, 'file.md')
     writeFileSync(target, 'original')
     const result = writeFileMerged(target, 'updated', { dryRun: true, overwrite: true })
+    expect(result.action).toBe('skipped-dry')
+    expect(readFileSync(target, 'utf8')).toBe('original')
+  })
+
+  it('in dry-run mode, generated whole-file outputs still do not write', () => {
+    const target = join(dir, 'file.md')
+    writeFileSync(target, 'original')
+    const result = writeFileMerged(target, 'updated', {
+      dryRun: true,
+      ownership: 'generated-whole-file',
+    })
     expect(result.action).toBe('skipped-dry')
     expect(readFileSync(target, 'utf8')).toBe('original')
   })
@@ -114,5 +135,17 @@ describe('copyFileMerged / copyDirectoryMerged', () => {
     expect(results.some((r) => r.action === 'drifted')).toBe(true)
     expect(readFileSync(join(dst, 'nested', 'b.md'), 'utf8')).toBe('old')
     expect(existsSync(join(dst, 'nested', 'b.md.new'))).toBe(false)
+  })
+
+  it('refreshes generated directories by default while preserving consumer-owned defaults elsewhere', () => {
+    mkdirSync(join(src, 'nested'), { recursive: true })
+    writeFileSync(join(src, 'nested', 'b.md'), 'new')
+    mkdirSync(join(dst, 'nested'), { recursive: true })
+    writeFileSync(join(dst, 'nested', 'b.md'), 'old')
+
+    const results = copyDirectoryMerged(src, dst, { ownership: 'generated-whole-file' })
+
+    expect(results).toEqual([{ targetPath: join(dst, 'nested', 'b.md'), action: 'overwritten' }])
+    expect(readFileSync(join(dst, 'nested', 'b.md'), 'utf8')).toBe('new')
   })
 })

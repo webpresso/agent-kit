@@ -3,9 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { isMissingBinary, isRunFailure, runCommand } from './run-command.js'
 
 const spawnMock = vi.hoisted(() => vi.fn())
-let lastCloseFn:
-  | ((code: number | null, signal: NodeJS.Signals | null) => void)
-  | null = null
+let lastCloseFn: ((code: number | null, signal: NodeJS.Signals | null) => void) | null = null
 
 vi.mock('node:child_process', () => ({
   spawn: spawnMock,

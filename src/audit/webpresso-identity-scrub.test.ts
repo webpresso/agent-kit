@@ -15,10 +15,7 @@ const LIVE_SURFACES = [
   'AGENTS.md',
 ] as const
 
-const BANNED_REFERENCES = [
-  'webpresso-agent-kit',
-  '/webpresso-agent-kit:',
-] as const
+const BANNED_REFERENCES = ['webpresso-agent-kit', '/webpresso-agent-kit:'] as const
 
 describe('webpresso identity scrub', () => {
   it('keeps stale package/plugin/repo identity out of live surfaces', () => {

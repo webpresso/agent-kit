@@ -1,8 +1,5 @@
 import type { CAC } from 'cac'
-import type {
-  SecretManagerName,
-  SecretsConfig,
-} from '@webpresso/runtime/env'
+import type { SecretManagerName, SecretsConfig } from '@webpresso/runtime/env'
 
 import {
   getSecretsConfigPath,
@@ -34,7 +31,9 @@ export interface SecretsConfigCommandDeps {
   readonly getPath?: (cwd?: string) => string
   readonly readConfig?: (cwd?: string) => SecretsConfig | null
   readonly writeConfig?: (config: SecretsConfig, cwd?: string) => void
-  readonly setup?: (options?: { cwd?: string }) => Promise<{ manager: SecretManagerName; projectId: string }>
+  readonly setup?: (options?: {
+    cwd?: string
+  }) => Promise<{ manager: SecretManagerName; projectId: string }>
   readonly registry?: Pick<typeof secretManagerRegistry, 'get'>
   readonly stdout?: OutputWriter
   readonly stderr?: OutputWriter
@@ -232,14 +231,10 @@ export function registerConfigCommand(cli: CAC): void {
           throw commandError(`Unknown config scope: ${scope}. Use 'secrets'.`)
         }
 
-        return runSecretsConfigCommand(
-          action,
-          typeof rest === 'string' ? [rest] : (rest ?? []),
-          {
-            json: options.json,
-            label: options.label,
-          },
-        )
+        return runSecretsConfigCommand(action, typeof rest === 'string' ? [rest] : (rest ?? []), {
+          json: options.json,
+          label: options.label,
+        })
       },
     )
 }

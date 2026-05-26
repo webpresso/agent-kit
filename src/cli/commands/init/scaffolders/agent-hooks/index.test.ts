@@ -950,10 +950,14 @@ hooks:
     expect(customCommands).toStrictEqual([codexBinCommand(repoRoot, 'wp-pretool-guard'), 42])
     expect(codex.hooks.LegacyOnlyCustomEvent).toBeUndefined()
     expect(
-      allCommands.filter((command) => command === codexBinCommand(repoRoot, 'wp-sessionstart-routing')),
+      allCommands.filter(
+        (command) => command === codexBinCommand(repoRoot, 'wp-sessionstart-routing'),
+      ),
     ).toHaveLength(1)
     expect(
-      preToolUseCommands.filter((command) => command === codexBinCommand(repoRoot, 'wp-pretool-guard')),
+      preToolUseCommands.filter(
+        (command) => command === codexBinCommand(repoRoot, 'wp-pretool-guard'),
+      ),
     ).toHaveLength(1)
   })
 
@@ -1004,7 +1008,9 @@ hooks:
     expect(codex.PreToolUse).toBeUndefined()
     expect(allCommands.filter((command) => command.includes('node_modules/.bin/ak-'))).toEqual([])
     expect(
-      allCommands.filter((command) => command === codexBinCommand(repoRoot, 'wp-sessionstart-routing')),
+      allCommands.filter(
+        (command) => command === codexBinCommand(repoRoot, 'wp-sessionstart-routing'),
+      ),
     ).toHaveLength(1)
     expect(
       allCommands.filter((command) => command === codexBinCommand(repoRoot, 'wp-pretool-guard')),

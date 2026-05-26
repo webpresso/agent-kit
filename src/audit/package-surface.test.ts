@@ -1,9 +1,9 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 
-import { auditPackageSurface } from './package-surface.js'
+import { auditPackageSurface, stagePublishableTarballSurface } from './package-surface.js'
 
 function tempRepo() {
   return mkdtempSync(join(tmpdir(), 'webpresso-package-surface-'))
@@ -101,4 +101,93 @@ describe('package-surface audit', () => {
 
     expect(auditPackageSurface(root).ok).toBe(true)
   })
+
+  test('flags forbidden packed tarball paths and content', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'docs', 'research'), { recursive: true })
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/webpresso',
+      version: '0.1.0',
+      private: false,
+      files: ['docs', 'README.md'],
+    })
+    writeFileSync(join(root, 'README.md'), 'hello\n')
+    writeFileSync(
+      join(root, 'docs', 'research', 'note.md'),
+      'private path /Users/ozby/example and @repo/hidden\n',
+    )
+
+    const result = auditPackageSurface(root)
+
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations.some(
+        (violation) =>
+          violation.file === 'docs/research/note.md' &&
+          violation.message.includes('forbidden path policy'),
+      ),
+    ).toBe(true)
+    expect(
+      result.violations.some(
+        (violation) =>
+          violation.file === 'docs/research/note.md' &&
+          violation.message.includes('forbidden pattern') &&
+          violation.message.includes('Users'),
+      ),
+    ).toBe(true)
+  })
+
+  test('flags secretlint findings in packed files', () => {
+    const root = tempRepo()
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/webpresso',
+      version: '0.1.0',
+      private: false,
+      files: ['README.md'],
+    })
+    writeFileSync(join(root, 'README.md'), 'token ghp_123456789012345678901234567890123456\n')
+
+    const result = auditPackageSurface(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: 'README.md',
+          message: expect.stringContaining('Secretlint flagged packed file'),
+        }),
+      ]),
+    )
+  })
+
+  test('stages publishable packed files for external scanners', () => {
+    const root = tempRepo()
+    const destination = join(root, '.packed-surface')
+    mkdirSync(join(root, 'docs'), { recursive: true })
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/webpresso',
+      version: '0.1.0',
+      private: false,
+      files: ['README.md', 'docs'],
+      bin: {
+        webpresso: './bin/webpresso.js',
+      },
+    })
+    mkdirSync(join(root, 'bin'), { recursive: true })
+    writeFileSync(join(root, 'README.md'), 'hello\n')
+    writeFileSync(join(root, 'docs', 'guide.md'), 'guide\n')
+    writeFileSync(join(root, 'bin', 'webpresso.js'), '#!/usr/bin/env node\nconsole.log("ok")\n')
+    chmodSync(join(root, 'bin', 'webpresso.js'), 0o755)
+
+    const result = stagePublishableTarballSurface(root, destination)
+
+    expect(result.packageCount).toBe(1)
+    expect(result.fileCount).toBeGreaterThanOrEqual(3)
+    expect(readText(join(destination, 'README.md'))).toContain('hello')
+    expect(readText(join(destination, 'bin', 'webpresso.js'))).toContain('console.log')
+  })
 })
+
+function readText(path: string) {
+  return readFileSync(path, 'utf8')
+}

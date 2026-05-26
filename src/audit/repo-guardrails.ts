@@ -93,9 +93,9 @@ const DEFAULT_BLUEPRINT_STATUSES = [
 ] as const
 
 const ACTIVE_BLUEPRINT_STATUSES = new Set(['draft', 'planned', 'in-progress', 'parked'])
-const BLUEPRINT_REFERENCE_PATTERN = /^(?:blueprints\/)?(?:draft|planned|in-progress|parked|completed|archived)\/[A-Za-z0-9._-]+(?:\/_overview\.md)?$/
-const GITHUB_BLOB_URL_PATTERN =
-  /^https?:\/\/github\.com\/[^/\s]+\/[^/\s]+\/blob\/[^/\s]+\/.+$/i
+const BLUEPRINT_REFERENCE_PATTERN =
+  /^(?:blueprints\/)?(?:draft|planned|in-progress|parked|completed|archived)\/[A-Za-z0-9._-]+(?:\/_overview\.md)?$/
+const GITHUB_BLOB_URL_PATTERN = /^https?:\/\/github\.com\/[^/\s]+\/[^/\s]+\/blob\/[^/\s]+\/.+$/i
 const ABSOLUTE_FILE_REFERENCE_PATTERN = /^(?:\/|[A-Za-z]:[\\/]|file:\/\/)/i
 const LEGACY_CROSS_REPO_LABEL_PATTERN = /^cross-repo:/i
 const GITHUB_REPO_PATTERN = /^[^/\s]+\/[^/\s]+$/
@@ -504,9 +504,7 @@ function lastSegment(value: string): string {
 }
 
 function isBlueprintStatusValue(value: string): boolean {
-  return DEFAULT_BLUEPRINT_STATUSES.includes(
-    value as (typeof DEFAULT_BLUEPRINT_STATUSES)[number],
-  )
+  return DEFAULT_BLUEPRINT_STATUSES.includes(value as (typeof DEFAULT_BLUEPRINT_STATUSES)[number])
 }
 
 function parseCatalogDependencyNames(workspaceYaml: string): Set<string> {

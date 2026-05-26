@@ -4,8 +4,9 @@ import type { CAC } from 'cac'
  * `wp setup` / `wp init` — scaffolds the webpresso catalog into a consumer repo.
  *
  * Idempotent: re-runs reconcile against `.webpressorc.json`.
- * Safe-by-default: if a target file exists with different content, reports
- * drift and leaves it untouched unless `--overwrite` is passed.
+ * Ownership-aware by default: webpresso refreshes the sections, structured
+ * config keys, and generated surfaces it owns while leaving consumer-owned
+ * divergent files untouched unless `--overwrite` is passed.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, relative } from 'node:path'
@@ -228,7 +229,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
   console.log(`wp init: scaffolding into ${consumer.repoRoot}`)
   if (options.dryRun) console.log('  mode: DRY RUN (no writes)')
   if (options.overwrite)
-    console.log('  mode: --overwrite (consumer customizations will be replaced)')
+    console.log('  mode: --overwrite (force full-file replacement for eligible managed files)')
   console.log(
     `  Tier-3 skills: ${tier3Selection.length > 0 ? tier3Selection.join(', ') : '(none)'}`,
   )
@@ -403,13 +404,13 @@ export async function runInit(flags: InitFlags): Promise<number> {
         globalInstall: config.globalInstall,
       })
       console.log(
-        `  context-mode codex mcp: ${contextModeResult.codexMcp.action === 'identical' ? 'already configured' : contextModeResult.codexMcp.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.codexMcp.targetPath}`,
-      )
-      console.log(
-        `  context-mode codex hooks: ${contextModeResult.codexHooks.action === 'identical' ? 'already configured' : contextModeResult.codexHooks.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.codexHooks.targetPath}`,
+        `  context-mode codex features: ${contextModeResult.codexFeatures.action === 'identical' ? 'already configured' : contextModeResult.codexFeatures.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.codexFeatures.targetPath}`,
       )
       console.log(
         `  context-mode opencode config: ${contextModeResult.opencodeConfig.action === 'identical' ? 'already configured' : contextModeResult.opencodeConfig.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.opencodeConfig.targetPath}`,
+      )
+      console.log(
+        '  context-mode codex plugin: uses bundled .codex-plugin/mcp.json + hooks.json; ensure node is on the Codex PATH',
       )
     }
 
@@ -713,8 +714,8 @@ export async function runInit(flags: InitFlags): Promise<number> {
 
     if (summary.drifted > 0) {
       console.log(
-        '\n  Note: some files exist with different content and were left unchanged.\n' +
-          '  Review the drift or re-run with `--overwrite` to replace them.',
+        '\n  Note: some consumer-owned files exist with different content and were left unchanged.\n' +
+          '  Review the drift or re-run with `--overwrite` to force eligible managed files.',
       )
     }
 
@@ -850,7 +851,7 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
     .option('--all', 'Install every skill (Tier-1 + Tier-2 + all Tier-3)')
     .option(
       '--overwrite',
-      'Replace consumer customizations (default: leave divergent files untouched)',
+      'Force full-file replacement for eligible managed files (default: reconcile owned content and preserve divergent consumer files)',
     )
     .option('--dry-run', 'Show what would change without writing anything')
     .option('--yes', 'Accept defaults, skip interactive prompts (default behavior)')

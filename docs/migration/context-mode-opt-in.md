@@ -23,6 +23,7 @@ wp setup
 This now installs the standard webpresso surfaces without:
 - `[mcp_servers.context-mode]` in Codex config
 - `context-mode hook codex ...` entries in `.codex/hooks.json`
+- context-mode Codex feature gates (`[features].hooks` / `[features].plugin_hooks`)
 - `context-mode` entries in `opencode.json`
 
 ## Opt back in
@@ -32,6 +33,11 @@ If you still need the `ctx_*` tools, run:
 ```bash
 wp setup --with context-mode
 ```
+
+The opt-in path now enables Codex's gated plugin hook support instead of
+writing manual Codex MCP or hook blocks. The context-mode plugin provides MCP
+through `.codex-plugin/mcp.json`, skills through `skills/`, and bundled hooks
+through `.codex-plugin/hooks.json`.
 
 Equivalent:
 
@@ -52,6 +58,14 @@ wp setup --with context-mode
 
    ```bash
    wp setup --with context-mode
+   ```
+
+4. Restart Codex with `node` visible on `PATH`. If the default context-mode
+   storage root is not writable from the Codex process, launch Codex with an
+   absolute writable root:
+
+   ```bash
+   CONTEXT_MODE_DIR="$HOME/.codex-context-mode" codex
    ```
 
 ## Clean-install verification

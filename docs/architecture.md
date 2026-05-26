@@ -171,7 +171,7 @@ Two alternatives fail for specific reasons:
 ```
 webpresso ships an update
   └─→ pnpm update webpresso                   (catalog refreshed in node_modules/)
-       └─→ vp exec wp setup --overwrite     (or: wp skill install <name>)
+       └─→ vp exec wp setup                 (or: wp skill install <name>)
             └─→ new catalog content copied into .agent/   — review the diff
                  └─→ vp exec wp sync       (regenerate .claude/, .gemini/, …)
 ```
@@ -187,8 +187,8 @@ old surface. Both steps matter.
 - **Editing `.claude/commands/`** — overwritten on next `wp sync`.
 - **Forgetting to commit `.agent/`** — collaborators get the old
   surface or none at all.
-- **`wp setup --overwrite` without diffing first** — wipes per-repo
-  customizations.
+- **`wp setup --overwrite` without diffing first** — force-replaces
+  eligible managed whole files you may have intended to customize.
 
 ## See also
 

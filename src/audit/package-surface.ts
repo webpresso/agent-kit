@@ -1,7 +1,25 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+} from 'node:fs'
+import { tmpdir } from 'node:os'
 import { basename, dirname, join, relative, resolve } from 'node:path'
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
+
+interface PackageSurfaceTarballContract {
+  forbiddenPathPatterns?: readonly string[]
+  allowedPathPatterns?: readonly string[]
+  forbiddenContentPatterns?: readonly string[]
+  allowedContentPatterns?: readonly string[]
+  allowedSecretlintMessageIds?: readonly string[]
+}
 
 interface PackageSurfaceContract {
   allowedPublicPackages?: readonly string[]
@@ -9,12 +27,15 @@ interface PackageSurfaceContract {
   forbiddenPublicNamePatterns?: readonly string[]
   staleLinks?: readonly string[]
   referenceConsumerBaselines?: Readonly<Record<string, string>>
+  tarball?: PackageSurfaceTarballContract
 }
 
 interface PackageRecord {
   name: string
   version?: string
   private?: boolean
+  bin?: string | Record<string, string>
+  main?: string
 }
 
 const DEFAULT_ALLOWED_PUBLIC_PACKAGES = [
@@ -56,9 +77,7 @@ const DEFAULT_FORBIDDEN_PUBLIC_NAME_PATTERNS = [
   '@webpresso/doppler-pulumi',
 ]
 
-const DEFAULT_STALE_LINKS = [
-  'webpresso/monorepo/webpresso/blueprints/draft/webpresso-public-extraction-roadmap',
-]
+const DEFAULT_STALE_LINKS: string[] = []
 
 const DEFAULT_REFERENCE_BASELINES: Readonly<Record<string, string>> = {
   '@webpresso/webpresso': '0.3.6',
@@ -89,6 +108,81 @@ const SKIP_DIRECTORIES = new Set([
 const PUBLIC_DOC_FILENAMES = new Set(['README.md', 'AGENTS.md', 'CLAUDE.md', 'VISION.md'])
 const SCANNED_EXTENSIONS = new Set(['.md', '.mdx', '.json', '.yaml', '.yml', '.ts', '.tsx', '.js'])
 const IGNORED_SCAN_BASENAMES = new Set(['CHANGELOG.md', 'pnpm-lock.yaml', 'package-lock.json'])
+const SECRETLINT_EXTENSIONS = new Set([
+  '.cjs',
+  '.cts',
+  '.js',
+  '.json',
+  '.md',
+  '.mdx',
+  '.mjs',
+  '.mts',
+  '.sh',
+  '.sql',
+  '.template',
+  '.tmpl',
+  '.tpl',
+  '.ts',
+  '.tsx',
+  '.txt',
+  '.yaml',
+  '.yml',
+])
+const DEFAULT_FORBIDDEN_TARBALL_PATH_PATTERNS = [
+  '.agent/',
+  '.agents/',
+  '.claude/',
+  '.codex/',
+  '.cursor/',
+  '.gemini/',
+  '.omc/',
+  '.omx/',
+  '.opencode/',
+  '.windsurf/',
+  'docs/research/',
+] as const
+const DEFAULT_FORBIDDEN_TARBALL_CONTENT_PATTERNS = [
+  '/\\/Users\\/[A-Za-z0-9._-]+/',
+  '/@(?:repo)\\//',
+  '/gh[pousr]_[A-Za-z0-9_]{20,}/',
+  '/npm_[A-Za-z0-9]{36,}/',
+  '/sk-ant-[A-Za-z0-9_-]{20,}/',
+  '/sk-[A-Za-z0-9]{32,}/',
+  '/-----BEGIN [A-Z ]*PRIVATE KEY-----/',
+] as const
+const SECRETLINT_DEFAULT_CONFIG = JSON.stringify({
+  rules: [{ id: '@secretlint/secretlint-rule-preset-recommend' }],
+})
+
+interface PackageCandidate {
+  name: string
+  packageFile: string
+  packageRoot: string
+}
+
+interface PackedFileRecord {
+  path: string
+  size?: number
+  mode?: number
+}
+
+interface NpmPackDryRunEntry {
+  files?: PackedFileRecord[]
+}
+
+interface MatchRule {
+  raw: string
+  matches(value: string): boolean
+}
+
+interface SecretlintMessage {
+  filePath?: string
+  message?: string
+  ruleId?: string
+  messageId?: string
+  line?: number
+  column?: number
+}
 
 export function auditPackageSurface(rootDirectory: string = process.cwd()): RepoAuditResult {
   const root = resolve(rootDirectory)
@@ -148,12 +242,33 @@ export function auditPackageSurface(rootDirectory: string = process.cwd()): Repo
     checked += auditReferenceConsumerFreshness(root, baselines, violations)
   }
 
+  checked += auditPackedTarballSurface(root, contract, violations)
+
   return {
     ok: violations.length === 0,
     title: 'Package surface',
     checked,
     violations,
   }
+}
+
+export function stagePublishableTarballSurface(
+  rootDirectory: string,
+  destinationDirectory: string,
+): { packageCount: number; fileCount: number } {
+  const root = resolve(rootDirectory)
+  const destinationRoot = resolve(destinationDirectory)
+  rmSync(destinationRoot, { recursive: true, force: true })
+  mkdirSync(destinationRoot, { recursive: true })
+
+  const packages = discoverPublishablePackages(root)
+  let fileCount = 0
+  for (const candidate of packages) {
+    const packedFiles = readPackedFiles(candidate.packageRoot)
+    stagePackedFiles(root, destinationRoot, candidate, packedFiles)
+    fileCount += packedFiles.length
+  }
+  return { packageCount: packages.length, fileCount }
 }
 
 function loadPackageSurfaceContract(root: string): {
@@ -195,6 +310,309 @@ function discoverPublicSurfaceFiles(root: string): string[] {
   }
 
   return [...files].toSorted((left, right) => left.localeCompare(right))
+}
+
+function auditPackedTarballSurface(
+  root: string,
+  contract: PackageSurfaceContract,
+  violations: RepoAuditViolation[],
+): number {
+  const packages = discoverPublishablePackages(root)
+  if (packages.length === 0) return 0
+
+  const tarball = contract.tarball ?? {}
+  const forbiddenPathRules = compileMatchRules([
+    ...DEFAULT_FORBIDDEN_TARBALL_PATH_PATTERNS,
+    ...(tarball.forbiddenPathPatterns ?? []),
+  ])
+  const allowedPathRules = compileMatchRules(tarball.allowedPathPatterns ?? [])
+  const forbiddenContentRules = compileMatchRules([
+    ...DEFAULT_FORBIDDEN_TARBALL_CONTENT_PATTERNS,
+    ...(tarball.forbiddenContentPatterns ?? []),
+  ])
+  const allowedContentRules = compileMatchRules(tarball.allowedContentPatterns ?? [])
+  const allowedSecretlintMessageIds = new Set(tarball.allowedSecretlintMessageIds ?? [])
+
+  let checked = 0
+  for (const candidate of packages) {
+    let packedFiles: PackedFileRecord[]
+    try {
+      packedFiles = readPackedFiles(candidate.packageRoot)
+    } catch (error) {
+      violations.push({
+        file: relativePath(root, candidate.packageFile),
+        message: `npm pack --dry-run --json failed for ${candidate.name}: ${errorMessage(error)}`,
+      })
+      checked += 1
+      continue
+    }
+
+    checked += packedFiles.length
+    for (const packedFile of packedFiles) {
+      const repoRelative = packageFileToRepoRelative(root, candidate, packedFile.path)
+      if (
+        matchesAny(forbiddenPathRules, packedFile.path, repoRelative) &&
+        !matchesAny(allowedPathRules, packedFile.path, repoRelative)
+      ) {
+        violations.push({
+          file: repoRelative,
+          message: `Packed tarball path ${packedFile.path} matches a forbidden path policy`,
+        })
+      }
+    }
+
+    checked += auditPackedTarballContent(
+      root,
+      candidate,
+      packedFiles,
+      forbiddenContentRules,
+      allowedContentRules,
+      allowedPathRules,
+      violations,
+    )
+
+    checked += auditPackedTarballSecrets(
+      root,
+      candidate,
+      packedFiles,
+      forbiddenPathRules,
+      allowedPathRules,
+      allowedSecretlintMessageIds,
+      violations,
+    )
+  }
+
+  return checked
+}
+
+function auditPackedTarballContent(
+  root: string,
+  candidate: PackageCandidate,
+  packedFiles: readonly PackedFileRecord[],
+  forbiddenRules: readonly MatchRule[],
+  allowedRules: readonly MatchRule[],
+  allowedPathRules: readonly MatchRule[],
+  violations: RepoAuditViolation[],
+): number {
+  let checked = 0
+  for (const packedFile of packedFiles) {
+    const repoRelative = packageFileToRepoRelative(root, candidate, packedFile.path)
+    if (matchesAny(allowedPathRules, packedFile.path, repoRelative)) continue
+    const text = readPackedText(join(candidate.packageRoot, packedFile.path))
+    if (text === undefined) continue
+    checked += 1
+    for (const rule of forbiddenRules) {
+      if (!rule.matches(text)) continue
+      if (allowedRules.some((allowed) => allowed.matches(text))) continue
+      violations.push({
+        file: repoRelative,
+        message: `Packed tarball content matches forbidden pattern ${rule.raw}`,
+      })
+    }
+  }
+  return checked
+}
+
+function auditPackedTarballSecrets(
+  root: string,
+  candidate: PackageCandidate,
+  packedFiles: readonly PackedFileRecord[],
+  forbiddenPathRules: readonly MatchRule[],
+  allowedPathRules: readonly MatchRule[],
+  allowedMessageIds: ReadonlySet<string>,
+  violations: RepoAuditViolation[],
+): number {
+  const packageRelativeRoot = relativePath(root, candidate.packageRoot)
+  const secretlintCandidates = packedFiles.filter((packedFile) => {
+    const repoRelative = packageFileToRepoRelative(root, candidate, packedFile.path)
+    if (matchesAny(allowedPathRules, packedFile.path, repoRelative)) return false
+    if (matchesAny(forbiddenPathRules, packedFile.path, repoRelative)) return false
+    return isSecretlintCandidate(packedFile.path)
+  })
+  if (secretlintCandidates.length === 0) return 0
+
+  const stageRoot = mkdtempSync(join(tmpdir(), 'wp-package-surface-pack-'))
+  try {
+    stagePackedFiles(root, stageRoot, candidate, secretlintCandidates)
+    const secretlintOutput = runSecretlint(stageRoot, candidate.packageRoot)
+    let checked = secretlintCandidates.length
+    for (const message of normalizeSecretlintMessages(secretlintOutput)) {
+      const absoluteFilePath = message.filePath
+        ? resolveSecretlintFilePath(stageRoot, message.filePath)
+        : undefined
+      const relativeToStage = absoluteFilePath
+        ? relativePath(stageRoot, absoluteFilePath)
+        : undefined
+      const repoRelative = relativeToStage
+        ? packageRelativeRoot
+          ? `${packageRelativeRoot}/${relativeToStage}`
+          : relativeToStage
+        : relativePath(root, candidate.packageFile)
+      const packedPath = relativeToStage ?? repoRelative
+      if (matchesAny(allowedPathRules, packedPath, repoRelative)) continue
+      if (message.messageId && allowedMessageIds.has(message.messageId)) continue
+      const location =
+        message.line && message.column
+          ? `:${message.line}:${message.column}`
+          : message.line
+            ? `:${message.line}`
+            : ''
+      violations.push({
+        file: repoRelative,
+        message: `Secretlint flagged packed file${location}: ${message.ruleId ?? 'secretlint'}${
+          message.messageId ? `/${message.messageId}` : ''
+        } — ${message.message ?? 'secret detected'}`,
+      })
+    }
+    return checked
+  } finally {
+    rmSync(stageRoot, { recursive: true, force: true })
+  }
+}
+
+function discoverPublishablePackages(root: string): PackageCandidate[] {
+  const packages: PackageCandidate[] = []
+  for (const packageFile of walkFiles(root, (file) => basename(file) === 'package.json')) {
+    const pkg = readJsonObject<PackageRecord>(packageFile)
+    if (!pkg.name?.startsWith('@webpresso/') && pkg.name !== 'webpresso') continue
+    if (pkg.private === true) continue
+    packages.push({
+      name: pkg.name,
+      packageFile,
+      packageRoot: dirname(packageFile),
+    })
+  }
+  return packages
+}
+
+function readPackedFiles(packageRoot: string): PackedFileRecord[] {
+  const raw = execFileSync('npm', ['pack', '--dry-run', '--json'], {
+    cwd: packageRoot,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  const entries = JSON.parse(raw) as unknown
+  if (!Array.isArray(entries) || entries.length === 0) return []
+  const first = entries[0] as NpmPackDryRunEntry
+  return Array.isArray(first.files)
+    ? first.files.filter((item): item is PackedFileRecord => Boolean(item?.path))
+    : []
+}
+
+function stagePackedFiles(
+  root: string,
+  destinationRoot: string,
+  candidate: PackageCandidate,
+  packedFiles: readonly PackedFileRecord[],
+): void {
+  const packageRelativeRoot = relativePath(root, candidate.packageRoot)
+  for (const packedFile of packedFiles) {
+    const source = join(candidate.packageRoot, packedFile.path)
+    if (!existsSync(source)) continue
+    const destination = join(destinationRoot, packageRelativeRoot, packedFile.path)
+    mkdirSync(dirname(destination), { recursive: true })
+    copyFileSync(source, destination)
+  }
+}
+
+function runSecretlint(stageRoot: string, packageRoot: string): unknown {
+  const rcPath = findSecretlintRc(packageRoot)
+  const outputFile = join(stageRoot, '.secretlint-output.json')
+  const args = [
+    'exec',
+    'secretlint',
+    '--format',
+    'json',
+    '--output',
+    outputFile,
+    '--no-gitignore',
+  ]
+  if (rcPath) {
+    args.push('--secretlintrc', rcPath)
+  } else {
+    args.push('--secretlintrcJSON', SECRETLINT_DEFAULT_CONFIG)
+  }
+  args.push(join(stageRoot, '**/*'))
+
+  try {
+    execFileSync('pnpm', args, {
+      cwd: packageRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      maxBuffer: 20 * 1024 * 1024,
+    })
+    const stdout = readText(outputFile) ?? ''
+    return stdout.trim() ? JSON.parse(stdout) : []
+  } catch (error) {
+    const output = readText(outputFile) ?? ''
+    if (output.trim()) return JSON.parse(output)
+    throw error
+  } finally {
+    rmSync(outputFile, { force: true })
+  }
+}
+
+function findSecretlintRc(root: string): string | undefined {
+  const candidates = [
+    '.secretlintrc.json',
+    '.secretlintrc.json5',
+    '.secretlintrc.yaml',
+    '.secretlintrc.yml',
+    '.secretlintrc.js',
+    '.secretlintrc.cjs',
+    '.secretlintrc.mjs',
+  ].map((name) => join(root, name))
+  return candidates.find((candidate) => existsSync(candidate))
+}
+
+function normalizeSecretlintMessages(output: unknown): SecretlintMessage[] {
+  if (!Array.isArray(output)) return []
+  const messages: SecretlintMessage[] = []
+  for (const entry of output) {
+    if (!entry || typeof entry !== 'object') continue
+    const filePath =
+      'filePath' in entry && typeof entry.filePath === 'string' ? entry.filePath : undefined
+    const nestedMessages =
+      'messages' in entry && Array.isArray(entry.messages) ? entry.messages : []
+    for (const nested of nestedMessages) {
+      if (!nested || typeof nested !== 'object') continue
+      messages.push({
+        filePath,
+        message: typeof nested.message === 'string' ? nested.message : undefined,
+        ruleId: typeof nested.ruleId === 'string' ? nested.ruleId : undefined,
+        messageId: typeof nested.messageId === 'string' ? nested.messageId : undefined,
+        line:
+          nested.loc &&
+          typeof nested.loc === 'object' &&
+          'start' in nested.loc &&
+          nested.loc.start &&
+          typeof nested.loc.start === 'object' &&
+          'line' in nested.loc.start &&
+          typeof nested.loc.start.line === 'number'
+            ? nested.loc.start.line
+            : typeof nested.line === 'number'
+              ? nested.line
+              : undefined,
+        column:
+          nested.loc &&
+          typeof nested.loc === 'object' &&
+          'start' in nested.loc &&
+          nested.loc.start &&
+          typeof nested.loc.start === 'object' &&
+          'column' in nested.loc.start &&
+          typeof nested.loc.start.column === 'number'
+            ? nested.loc.start.column
+            : typeof nested.column === 'number'
+              ? nested.column
+              : undefined,
+      })
+    }
+  }
+  return messages
+}
+
+function resolveSecretlintFilePath(stageRoot: string, filePath: string): string {
+  return filePath.startsWith(stageRoot) ? filePath : resolve(stageRoot, filePath)
 }
 
 function auditReferenceConsumerFreshness(
@@ -294,6 +712,55 @@ function fileExtension(file: string): string {
   return dot === -1 ? '' : name.slice(dot)
 }
 
+function isSecretlintCandidate(file: string): boolean {
+  return SECRETLINT_EXTENSIONS.has(fileExtension(file))
+}
+
+function packageFileToRepoRelative(
+  root: string,
+  candidate: PackageCandidate,
+  packedPath: string,
+): string {
+  const packageRelativeRoot = relativePath(root, candidate.packageRoot)
+  return packageRelativeRoot ? `${packageRelativeRoot}/${packedPath}` : packedPath
+}
+
+function readPackedText(file: string): string | undefined {
+  try {
+    const buffer = readFileSync(file)
+    if (buffer.includes(0)) return undefined
+    return buffer.toString('utf8')
+  } catch {
+    return undefined
+  }
+}
+
+function compileMatchRules(patterns: readonly string[]): MatchRule[] {
+  return patterns.map((raw) => {
+    const parsed = parseSlashRegex(raw)
+    return parsed
+      ? { raw, matches: (value) => parsed.test(value) }
+      : { raw, matches: (value) => value.includes(raw) }
+  })
+}
+
+function matchesAny(rules: readonly MatchRule[], ...values: string[]): boolean {
+  return rules.some((rule) => values.some((value) => rule.matches(value)))
+}
+
+function parseSlashRegex(pattern: string): RegExp | undefined {
+  if (!pattern.startsWith('/')) return undefined
+  const lastSlash = pattern.lastIndexOf('/')
+  if (lastSlash <= 0) return undefined
+  const source = pattern.slice(1, lastSlash)
+  const flags = pattern.slice(lastSlash + 1)
+  try {
+    return new RegExp(source, flags)
+  } catch {
+    return undefined
+  }
+}
+
 function hasActionableForbiddenMention(text: string, pattern: string): boolean {
   for (const line of text.split(/\r?\n/)) {
     if (!line.includes(pattern)) continue
@@ -334,4 +801,9 @@ function relativePath(root: string, file: string): string {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  return String(error)
 }

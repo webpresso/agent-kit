@@ -10,10 +10,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync, readdirSy
 import { dirname, join } from 'node:path'
 
 export type MergeAction = 'created' | 'identical' | 'drifted' | 'overwritten' | 'skipped-dry'
+export type MergeOwnership = 'consumer-owned' | 'generated-whole-file'
 
 export interface MergeOptions {
   overwrite?: boolean
   dryRun?: boolean
+  ownership?: MergeOwnership
 }
 
 export interface MergeResult {
@@ -41,7 +43,9 @@ export function writeFileMerged(
     return { targetPath, action: 'identical' }
   }
 
-  if (opts.overwrite) {
+  const shouldOverwrite = opts.overwrite === true || opts.ownership === 'generated-whole-file'
+
+  if (shouldOverwrite) {
     if (opts.dryRun) return { targetPath, action: 'skipped-dry' }
     writeFileSync(targetPath, incoming)
     return { targetPath, action: 'overwritten' }

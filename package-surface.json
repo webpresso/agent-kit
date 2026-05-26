@@ -1,0 +1,11 @@
+{
+  "staleLinks": [
+    "webpresso/monorepo/webpresso/blueprints/draft/webpresso-public-extraction-roadmap"
+  ],
+  "tarball": {
+    "forbiddenContentPatterns": [
+      "ozby/ingest-lens",
+      "webpresso/monorepo"
+    ]
+  }
+}

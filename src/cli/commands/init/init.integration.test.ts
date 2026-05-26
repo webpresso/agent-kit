@@ -432,6 +432,31 @@ describe('wp init end-to-end', () => {
     // any rule/skill surface.
     expect(findCompanionFiles(repo)).toEqual([])
   })
+
+  it('refreshes generated .agent content by default on rerun', async () => {
+    const first = await runInit({ cwd: repo, yes: true })
+    expect(first).toBe(0)
+
+    const targetPath = join(repo, '.agent', 'commands', 'verify.md')
+    const original = readFileSync(targetPath, 'utf8')
+    writeFileSync(targetPath, '# locally drifted generated content\n')
+
+    const second = await runInit({ cwd: repo, yes: true })
+    expect(second).toBe(0)
+    expect(readFileSync(targetPath, 'utf8')).toBe(original)
+  })
+
+  it('keeps fresh-only .agent files conservative on rerun', async () => {
+    const first = await runInit({ cwd: repo, yes: true })
+    expect(first).toBe(0)
+
+    const targetPath = join(repo, '.agent', 'correlate.allow.yaml')
+    writeFileSync(targetPath, 'manually curated: true\n')
+
+    const second = await runInit({ cwd: repo, yes: true })
+    expect(second).toBe(0)
+    expect(readFileSync(targetPath, 'utf8')).toBe('manually curated: true\n')
+  })
 })
 
 describe('DX output: lane framing and next-steps block', () => {

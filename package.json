@@ -26,29 +26,28 @@
   "license": "MIT",
   "preferGlobal": true,
   "bin": {
-    "wp": "./src/cli/cli.ts",
-    "webpresso": "./src/cli/cli.ts",
-    "wp-pretool-guard": "./src/hooks/pretool-guard/index.ts",
-    "wp-post-tool": "./src/hooks/post-tool/lint-after-edit.ts",
-    "wp-stop-qa": "./src/hooks/stop/qa-changed-files.ts",
-    "wp-guard-switch": "./src/hooks/guard-switch/index.ts",
-    "wp-test-quality-check": "./src/hooks/test-quality-check.ts",
-    "wp-sessionstart-routing": "./src/hooks/sessionstart/index.ts",
-    "wp-check-dev-link": "./src/hooks/check-dev-link/index.ts",
-    "wp-restore-dev-links": "./src/dev/restore-dev-links/index.ts",
-    "docs-check-internal-links": "./src/config/docs-lint/cli/check-internal-links.ts",
-    "docs-check-refs": "./src/config/docs-lint/cli/check-refs.ts",
-    "docs-check-stale": "./src/config/docs-lint/cli/check-stale.ts",
-    "docs-lint": "./src/config/docs-lint/cli/validate.ts",
-    "docs-migrate": "./src/config/docs-lint/cli/migrate.ts"
+    "wp": "./bin/wp.js",
+    "webpresso": "./bin/webpresso.js",
+    "wp-pretool-guard": "./bin/wp-pretool-guard.js",
+    "wp-post-tool": "./bin/wp-post-tool.js",
+    "wp-stop-qa": "./bin/wp-stop-qa.js",
+    "wp-guard-switch": "./bin/wp-guard-switch.js",
+    "wp-test-quality-check": "./bin/wp-test-quality-check.js",
+    "wp-sessionstart-routing": "./bin/wp-sessionstart-routing.js",
+    "wp-check-dev-link": "./bin/wp-check-dev-link.js",
+    "wp-restore-dev-links": "./bin/wp-restore-dev-links.js",
+    "docs-check-internal-links": "./bin/docs-check-internal-links.js",
+    "docs-check-refs": "./bin/docs-check-refs.js",
+    "docs-check-stale": "./bin/docs-check-stale.js",
+    "docs-lint": "./bin/docs-lint.js",
+    "docs-migrate": "./bin/docs-migrate.js"
   },
   "files": [
+    "bin",
     "dist",
-    "src",
     "tsconfig",
     "catalog",
     "just",
-    "docs",
     "skills",
     "commands",
     ".claude-plugin",
@@ -596,6 +595,7 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",
     "@changesets/cli": "^2.31.0",
+    "@secretlint/secretlint-rule-preset-recommend": "catalog:",
     "@stryker-mutator/core": "catalog:",
     "@stryker-mutator/typescript-checker": "catalog:",
     "@stryker-mutator/vitest-runner": "catalog:",
@@ -607,6 +607,7 @@
     "oxfmt": "^0.48.0",
     "oxlint": "^1.63.0",
     "publint": "^0.3.20",
+    "secretlint": "catalog:",
     "tshy": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
@@ -694,7 +695,7 @@
     "selfLink": false
   },
   "engines": {
-    "node": ">=24"
+    "node": "24.16.0"
   },
   "packageManager": "pnpm@11.1.1"
 }

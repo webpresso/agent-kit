@@ -97,7 +97,8 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(code).toBe(EXIT_SUCCESS)
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
       const omxUpdateCalls = spawnSyncMock.mock.calls.filter(
-        (c) => c[0] === 'vp' && JSON.stringify(c[1]) === JSON.stringify(['update', '-g', 'oh-my-codex']),
+        (c) =>
+          c[0] === 'vp' && JSON.stringify(c[1]) === JSON.stringify(['update', '-g', 'oh-my-codex']),
       )
       expect(omxCalls).toHaveLength(2)
       expect(omxUpdateCalls).toHaveLength(1)
@@ -377,10 +378,14 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(codexCalls[0]?.[1]).toEqual(['--version'])
       expect(bunCalls[0]?.[1]).toEqual(['--version'])
       expect(
-        vpCalls.some((call) => JSON.stringify(call[1]) === JSON.stringify(['update', '-g', 'oh-my-codex'])),
+        vpCalls.some(
+          (call) => JSON.stringify(call[1]) === JSON.stringify(['update', '-g', 'oh-my-codex']),
+        ),
       ).toBe(true)
       expect(
-        vpCalls.some((call) => JSON.stringify(call[1]) === JSON.stringify(['update', '-g', '@openai/codex'])),
+        vpCalls.some(
+          (call) => JSON.stringify(call[1]) === JSON.stringify(['update', '-g', '@openai/codex']),
+        ),
       ).toBe(true)
       expect(
         vpCalls.filter((call) => JSON.stringify(call[1]) === JSON.stringify(['--version'])).length,

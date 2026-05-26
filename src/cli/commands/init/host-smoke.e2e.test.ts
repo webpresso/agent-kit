@@ -96,13 +96,15 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
     expect(existsSync(path.join(repo, 'opencode.json'))).toBe(true)
     expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).toContain('context-mode')
     expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).toContain('webpresso')
-    expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).toContain(
-      '[mcp_servers.context-mode]',
-    )
+    const codexConfig = readFileSync(path.join(codexHome, 'config.toml'), 'utf8')
+    expect(codexConfig).toContain('[features]')
+    expect(codexConfig).toContain('hooks = true')
+    expect(codexConfig).toContain('plugin_hooks = true')
+    expect(codexConfig).not.toContain('[mcp_servers.context-mode]')
     expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).toContain(
       '[mcp_servers.webpresso]',
     )
-    expect(readFileSync(path.join(codexHome, 'hooks.json'), 'utf8')).toContain(
+    expect(readFileSync(path.join(codexHome, 'hooks.json'), 'utf8')).not.toContain(
       'context-mode hook codex pretooluse',
     )
   }, 240_000)
@@ -126,6 +128,9 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
     expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).not.toContain('context-mode')
     expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).not.toContain(
       '[mcp_servers.context-mode]',
+    )
+    expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).not.toContain(
+      'plugin_hooks = true',
     )
     expect(readFileSync(path.join(codexHome, 'hooks.json'), 'utf8')).not.toContain(
       'context-mode hook codex pretooluse',

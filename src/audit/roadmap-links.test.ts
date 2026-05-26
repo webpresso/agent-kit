@@ -228,7 +228,9 @@ describe('auditRoadmapLinks', () => {
       expect.arrayContaining([
         expect.objectContaining({
           file: 'blueprints/planned/roadmap-a/_overview.md',
-          message: expect.stringContaining('execution-wave maps may list local child blueprints only'),
+          message: expect.stringContaining(
+            'execution-wave maps may list local child blueprints only',
+          ),
         }),
       ]),
     )

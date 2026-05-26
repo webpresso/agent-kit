@@ -42,7 +42,7 @@ describe('scaffoldOpencodePlugin', () => {
     expect(second.action).toBe('identical')
   })
 
-  it('reports drift without writing companion files when consumer-modified content is present', () => {
+  it('refreshes the generated plugin when local content has drifted', () => {
     const repoRoot = createTempRoot()
     const targetPath = join(repoRoot, OPENCODE_PLUGIN_RELATIVE_PATH)
     mkdirSync(join(repoRoot, '.opencode/plugins'), { recursive: true })
@@ -50,8 +50,8 @@ describe('scaffoldOpencodePlugin', () => {
 
     const result = scaffoldOpencodePlugin({ repoRoot, options: {} })
 
-    expect(result.action).toBe('drifted')
-    expect(readFileSync(targetPath, 'utf8')).toBe('// consumer custom content\n')
+    expect(result.action).toBe('overwritten')
+    expect(readFileSync(targetPath, 'utf8')).toBe(OPENCODE_PLUGIN_CONTENT)
     expect(() => readFileSync(`${targetPath}.new`, 'utf8')).toThrow()
   })
 

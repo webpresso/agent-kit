@@ -11,7 +11,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun ${CLAUDE_PLUGIN_ROOT}/src/hooks/pretool-guard/index.ts"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/bin/wp-pretool-guard.js"
           }
         ]
       }
@@ -22,7 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun ${CLAUDE_PLUGIN_ROOT}/src/hooks/post-tool/lint-after-edit.ts",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/bin/wp-post-tool.js",
             "timeout": 15
           }
         ]
@@ -33,7 +33,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun ${CLAUDE_PLUGIN_ROOT}/src/hooks/stop/qa-changed-files.ts"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/bin/wp-stop-qa.js"
           }
         ]
       }
@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun ${CLAUDE_PLUGIN_ROOT}/src/hooks/guard-switch/index.ts",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/bin/wp-guard-switch.js",
             "timeout": 5
           }
         ]
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun ${CLAUDE_PLUGIN_ROOT}/src/hooks/sessionstart/index.ts"
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/bin/wp-sessionstart-routing.js"
           }
         ]
       }
@@ -63,9 +63,10 @@
   },
   "mcpServers": {
     "webpresso": {
-      "command": "bun",
+      "command": "node",
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/src/mcp/cli.ts"
+        "${CLAUDE_PLUGIN_ROOT}/bin/wp.js",
+        "mcp"
       ]
     }
   }

@@ -22,7 +22,7 @@ plugins MUST honor this tier list. Do not add a CLI without tier classification.
 
 | CLI | Provider model | Why Tier 1 |
 |---|---|---|
-| **Claude Code** (`claude`) | Anthropic | webpresso's native plugin runtime; primary consumer (ozby/ingest-lens) uses it |
+| **Claude Code** (`claude`) | Anthropic | webpresso's native plugin runtime; primary reference consumer uses it |
 | **Codex CLI** (`codex`) | OpenAI (configurable) | Already integrated via `/codex` skill for second-opinion review; widely used by webpresso engineers |
 
 Tier 1 requirements:

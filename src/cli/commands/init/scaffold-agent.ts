@@ -46,6 +46,8 @@ export interface ScaffoldAgentReport {
 
 const ALWAYS_COPY_SUBDIRS = ['commands', 'workflows', 'guides'] as const
 
+const GENERATED_WHOLE_FILE: MergeOptions = { ownership: 'generated-whole-file' }
+
 /** Top-level catalog files emitted once on fresh setup (never overwritten). */
 const FRESH_COPY_FILES = ['correlate.allow.yaml'] as const
 
@@ -59,14 +61,19 @@ export function scaffoldAgent(input: ScaffoldAgentInput): ScaffoldAgentReport {
     const src = join(catalogAgent, subdir)
     const dst = join(targetAgent, subdir)
     if (existsSync(src)) {
-      results.push(...copyDirectoryMerged(src, dst, options))
+      results.push(...copyDirectoryMerged(src, dst, { ...options, ...GENERATED_WHOLE_FILE }))
     }
   }
 
-  // Top-level catalog README (when present) — small, always safe to mirror.
+  // Top-level catalog README is a generated surface owned by webpresso.
   const topReadme = join(catalogAgent, 'README.md')
   if (existsSync(topReadme)) {
-    results.push(copyFileMerged(topReadme, join(targetAgent, 'README.md'), options))
+    results.push(
+      copyFileMerged(topReadme, join(targetAgent, 'README.md'), {
+        ...options,
+        ...GENERATED_WHOLE_FILE,
+      }),
+    )
   }
 
   // Fresh-only top-level files — emitted once to the consumer's .agent/.
