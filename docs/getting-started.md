@@ -15,12 +15,14 @@ Cursor, Windsurf, Gemini, OpenCode, and compatible agents expect.
 
 ## Prerequisites
 
-- **Bun ≥1** — required. The CLI bins ship as TypeScript with `#!/usr/bin/env bun`
-  shebangs. Install bun first:
+- **Node.js ≥24** — required. Published `wp` / `webpresso` bins are stable Node
+  launchers that prefer packaged `dist/esm`.
+- **Bun ≥1** — required for source-checkout fallback, local webpresso
+  development, and repo workflows that execute TypeScript entrypoints directly.
+  Install bun first:
   ```bash
   curl -fsSL https://bun.sh/install | bash
   ```
-- Node.js ≥24 (matches `package.json#engines`).
 - Vite+ `vp` on `PATH` (webpresso routes package and script workflows through `vp`).
 - A git repo.
 
@@ -40,6 +42,22 @@ wp --version   # alias — same binary
 
 > **Pinned-version devDependency path** (library imports, CI with reproducible
 > lockfiles): `vp install -D webpresso && vp exec wp setup`.
+
+## Diagnose and repair bootstrap drift
+
+If hooks, MCP wiring, or local live-source linking drift, start with:
+
+```bash
+wp hooks doctor
+```
+
+Preferred repairs:
+
+- refresh generated hook/plugin surfaces: `wp setup --overwrite`
+- restore a broken live-source dev-link: `vp install` or
+  `vp run dev:link --consumer <repo>`
+- if `vp install` fails with `403` on `@webpresso/*`, fix
+  `GH_PACKAGES_TOKEN` / GitHub Packages auth first, then retry
 
 ## Scaffold your repo
 
@@ -65,9 +83,11 @@ wp setup
    unrelated commands, rewrites managed `wp-*` hook commands to the current
    canonical form, and prunes stale legacy `ak-*` webpresso hook commands left
    behind by older setups.
-4. Creates `docs/templates/{blueprint,guide,research,postmortem,system,adr,runbook,tech-debt}.md`
+5. Runs non-interactively with defaults unless you explicitly opt into another
+   flow.
+6. Creates `docs/templates/{blueprint,guide,research,postmortem,system,adr,runbook,tech-debt}.md`
    (with `blueprint.yaml` variant).
-5. Creates `blueprints/{completed,in-progress,planned,parked,archived}/`
+7. Creates `blueprints/{completed,in-progress,planned,parked,archived}/`
    with `.gitkeep` placeholders and a generalized `README.md` explaining
    the lifecycle.
 6. Creates `AGENTS.md` at the repo root (only if none exists) from the
@@ -131,9 +151,12 @@ Default setup also wires in tooling that lives outside the skill catalog:
 Presets and Tier-3 skills can be combined freely in the same `--with`
 flag. Full reference: [`presets.md`](./presets.md).
 
-After setup, every non-`--dry-run` run also probes `bun --version` and
-`vp --version`, printing install hints if either is missing — this is
-informational, never blocks the run.
+After setup, every non-`--dry-run` run also probes `bun --version`,
+`vp --version`, and `actionlint --version`, printing install hints if any are
+missing — this is informational, never blocks the run. Setup also refreshes
+managed CLI dependencies through `vp`: Codex via `vp update -g @openai/codex`,
+OMX via `vp update -g oh-my-codex`, and context-mode via
+`vp update -g context-mode` when those tools are already present.
 
 ### Preview without writing
 

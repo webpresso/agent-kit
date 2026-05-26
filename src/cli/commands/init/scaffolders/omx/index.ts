@@ -259,6 +259,8 @@ export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
     if (probe.error || (probe.status !== null && probe.status !== 0)) {
       return { kind: 'omx-not-found', hint: NOT_FOUND_HINT }
     }
+  } else {
+    spawn('vp', ['update', '-g', 'oh-my-codex'], { stdio: 'inherit' })
   }
 
   const result = spawn('omx', ['setup', '--yes', '--scope', scope], {

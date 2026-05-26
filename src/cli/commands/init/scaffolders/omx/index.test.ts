@@ -29,14 +29,14 @@ function makeSpawn(behaviors: Array<{ status: number | null; error?: Error }>) {
 
 describe('ensureOmx', () => {
   it('returns omx-ok when probe and setup both succeed', () => {
-    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }])
     const result = ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
     })
     expect(result).toEqual({ kind: 'omx-ok', installed: false, removedProjectFiles: [] })
-    expect(spawn).toHaveBeenCalledTimes(2)
+    expect(spawn).toHaveBeenCalledTimes(3)
   })
 
   it('returns omx-skipped-dry-run without spawning anything', () => {
@@ -99,7 +99,7 @@ describe('ensureOmx', () => {
   })
 
   it('returns omx-spawn-failed when setup itself fails', () => {
-    const spawn = makeSpawn([{ status: 0 }, { status: 2 }])
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 2 }])
     const result = ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
@@ -109,27 +109,27 @@ describe('ensureOmx', () => {
   })
 
   it('forces user scope for the setup invocation', () => {
-    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }])
     ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
     })
-    expect(spawn).toHaveBeenNthCalledWith(2, 'omx', ['setup', '--yes', '--scope', 'user'], {
+    expect(spawn).toHaveBeenNthCalledWith(3, 'omx', ['setup', '--yes', '--scope', 'user'], {
       cwd: '/tmp/repo',
       stdio: ['ignore', 'inherit', 'inherit'],
     })
   })
 
   it('allows setup to request project scope explicitly', () => {
-    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }])
     ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       scope: 'project',
       spawn,
     })
-    expect(spawn).toHaveBeenNthCalledWith(2, 'omx', ['setup', '--yes', '--scope', 'project'], {
+    expect(spawn).toHaveBeenNthCalledWith(3, 'omx', ['setup', '--yes', '--scope', 'project'], {
       cwd: '/tmp/repo',
       stdio: ['ignore', 'inherit', 'inherit'],
     })
@@ -144,7 +144,7 @@ describe('ensureOmx', () => {
       'utf8',
     )
 
-    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }])
     const result = ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },

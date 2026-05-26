@@ -96,7 +96,11 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       const code = await runInit({ cwd: repo, yes: true, with: 'omx' })
       expect(code).toBe(EXIT_SUCCESS)
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
+      const omxUpdateCalls = spawnSyncMock.mock.calls.filter(
+        (c) => c[0] === 'vp' && JSON.stringify(c[1]) === JSON.stringify(['update', '-g', 'oh-my-codex']),
+      )
       expect(omxCalls).toHaveLength(2)
+      expect(omxUpdateCalls).toHaveLength(1)
       expect(omxCalls[0]?.[1]).toEqual(['--version'])
       expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes', '--scope', 'user'])
       expect(omxCalls[1]?.[2]).toMatchObject({
@@ -353,38 +357,54 @@ describe('runInit() — omx + gstack presets (integration)', () => {
   })
 
   describe('runtime check (always-on)', () => {
-    it('runs default external presets and probes bun/vp without --with flags', async () => {
+    it('runs default external presets and probes bun/vp/actionlint without --with flags', async () => {
       await runInit({ cwd: repo, yes: true })
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
       const gstackCloneCalls = spawnSyncMock.mock.calls.filter(
         (c) => c[0] === 'git' && Array.isArray(c[1]) && c[1][0] === 'clone',
       )
+      const codexCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'codex')
       const bunCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'bun')
       const vpCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'vp')
+      const actionlintCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'actionlint')
       expect(omxCalls).toHaveLength(2)
       expect(gstackCloneCalls).toHaveLength(1)
+      expect(codexCalls.length).toBeGreaterThanOrEqual(1)
       expect(bunCalls).toHaveLength(1)
-      // One vp probe comes from setup preflight and one from the always-on runtime check.
-      expect(vpCalls).toHaveLength(2)
+      // vp is used by setup preflight, the always-on runtime check, and managed tool updates.
+      expect(vpCalls).toHaveLength(4)
+      expect(actionlintCalls).toHaveLength(1)
+      expect(codexCalls[0]?.[1]).toEqual(['--version'])
       expect(bunCalls[0]?.[1]).toEqual(['--version'])
       expect(
-        vpCalls.every((call) => JSON.stringify(call[1]) === JSON.stringify(['--version'])),
+        vpCalls.some((call) => JSON.stringify(call[1]) === JSON.stringify(['update', '-g', 'oh-my-codex'])),
       ).toBe(true)
+      expect(
+        vpCalls.some((call) => JSON.stringify(call[1]) === JSON.stringify(['update', '-g', '@openai/codex'])),
+      ).toBe(true)
+      expect(
+        vpCalls.filter((call) => JSON.stringify(call[1]) === JSON.stringify(['--version'])).length,
+      ).toBe(2)
+      expect(actionlintCalls[0]?.[1]).toEqual(['--version'])
     })
 
     it('--dry-run skips runtime probes after preflight', async () => {
       await runInit({ cwd: repo, yes: true, 'dry-run': true })
       const bunCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'bun')
       const vpCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'vp')
+      const actionlintCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'actionlint')
       expect(bunCalls).toHaveLength(0)
       expect(vpCalls).toHaveLength(1)
+      expect(actionlintCalls).toHaveLength(0)
       expect(vpCalls[0]?.[1]).toEqual(['--version'])
     })
 
     it('accepts CLI-normalized dryRun and skips external setup work', async () => {
       await runInit({ cwd: repo, yes: true, dryRun: true })
       const externalSetupCalls = spawnSyncMock.mock.calls.filter((c) =>
-        ['omx', 'claude', 'git', './setup', 'rtk', 'bun'].includes(String(c[0])),
+        ['omx', 'claude', 'git', './setup', 'rtk', 'bun', 'codex', 'actionlint'].includes(
+          String(c[0]),
+        ),
       )
       const vpCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'vp')
 

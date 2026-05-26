@@ -13,7 +13,7 @@ last_updated: '2026-05-22'
 Presets and Tier-3 skills can be combined freely:
 
 ```bash
-wp setup --with omx,gstack,tanstack-query --yes
+wp setup --with omx,gstack,tanstack-query
 ```
 
 Unknown values fall through to Tier-3 skill resolution and are rejected with `EXIT_SETUP_FAIL` (exit code 1). Whitespace around commas is tolerated.
@@ -61,7 +61,7 @@ Writes `.husky/commit-msg` that enforces Lore Commit Protocol trailers via `wp a
 
 Chains `omx setup --yes --scope user` after the webpresso scaffold completes. [OMX](https://oh-my-codex.dev/docs.html) ([oh-my-codex on GitHub](https://github.com/Yeachan-Heo/oh-my-codex)) is the operator-workflow execution layer that complements webpresso's plan/audit layer; webpresso invokes `omx team` downstream during blueprint execution. Use `wp setup --project` to request `omx setup --yes --scope project` instead.
 
-**Detection:** `omx --version` on PATH; if missing, setup runs `vp install -g oh-my-codex` and probes again.
+**Detection:** `omx --version` on PATH; if missing, setup runs `vp install -g oh-my-codex` and probes again. If OMX is already present, setup refreshes it with `vp update -g oh-my-codex` before running `omx setup`.
 **Failure modes:**
 - omx still not on PATH after the fallback install → `EXIT_SETUP_FAIL` (exit 1) with install hint in stderr
 - `omx setup --yes --scope user` itself errors → `EXIT_WRITE_FAIL` (exit 3) with the omx exit code surfaced
@@ -103,7 +103,7 @@ Upserts Playwright's MCP server into Codex's persistent MCP config. This is norm
 ### `context-mode`
 
 Configures the [context-mode](https://github.com/mksglu/context-mode) peer tool for
-Codex CLI and OpenCode. This preset is opt-in; run `wp setup --with context-mode` when you want the `ctx_*` MCP tools and hook routing. It ensures `context-mode` is available on `PATH`; if missing, webpresso installs it with `vp install -g context-mode` before patching config files.
+Codex CLI and OpenCode. This preset is opt-in; run `wp setup --with context-mode` when you want the `ctx_*` MCP tools and hook routing. It ensures `context-mode` is available on `PATH`; if missing, webpresso installs it with `vp install -g context-mode` before patching config files. If it is already present, setup refreshes it with `vp update -g context-mode` first.
 
 **Touches:**
 - `$CODEX_HOME/config.toml` (or `~/.codex/config.toml`)
@@ -186,7 +186,7 @@ Example: `wp setup` with `omx` unavailable after the fallback install and a reus
 
 ## Runtime check (always-on)
 
-After the scaffolder pass, every non-`--dry-run` `wp setup` runs a runtime check that probes `bun --version` and `vp --version`. Missing tools print an install hint to stdout but never fail the run. To skip the runtime check, pass `--dry-run`.
+After the scaffolder pass, every non-`--dry-run` `wp setup` runs a runtime check that probes `bun --version`, `vp --version`, and `actionlint --version`. Missing tools print an install hint to stdout but never fail the run. In the same pass, setup also refreshes managed CLIs through `vp update -g`: Codex (`@openai/codex`) on developer workstations, OMX (`oh-my-codex`) when the preset is active, and context-mode when that preset is active. To skip the runtime check, pass `--dry-run`.
 
 ## Why `--with` mixes skills and presets
 

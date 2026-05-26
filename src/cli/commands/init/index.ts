@@ -52,6 +52,7 @@ import {
 import { scaffoldAuditHooks } from './scaffolders/audit-hooks/index.js'
 import { ensureClaudeCodeUserPlugin } from './scaffolders/claude-plugin/index.js'
 import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js'
+import { ensureCodexCli } from './scaffolders/codex-cli/index.js'
 import { ensureCodexWebpressoMcp, ensureCodexPlaywrightMcp } from './scaffolders/codex-mcp/index.js'
 import { scaffoldExampleSkill } from './scaffolders/example-skill/index.js'
 import { ensureGstack } from './scaffolders/gstack/index.js'
@@ -186,6 +187,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
     overwrite: flags.overwrite ?? false,
     dryRun: flags.dryRun ?? flags['dry-run'] ?? false,
   }
+  const acceptDefaults = flags.yes ?? true
 
   const existingConfig = readConfig(consumer.repoRoot)
   const presets = parsePresets(flags.with)
@@ -209,7 +211,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
     const selection = await resolveTier3Selection({
       withFlag: withFlagWithoutPresets,
       allFlag: flags.all,
-      yesFlag: flags.yes,
+      yesFlag: acceptDefaults,
       existing: existingConfig?.installed.tier3Skills,
       isTTY: Boolean(process.stdin.isTTY),
     })
@@ -368,12 +370,12 @@ export async function runInit(flags: InitFlags): Promise<number> {
 
     if (presets.includes('vision')) {
       // Only interview the operator when VISION.md is being scaffolded fresh
-      // (preserves --yes, non-TTY, and existing-VISION non-clobber semantics).
+      // (preserves default non-interactive setup and existing-VISION non-clobber semantics).
       const visionPath = join(consumer.repoRoot, 'VISION.md')
       const visionAnswers = await maybeRunVisionInterview({
         repoName: basename(consumer.repoRoot),
         isTTY: Boolean(process.stdin.isTTY),
-        yesFlag: flags.yes,
+        yesFlag: acceptDefaults,
         visionExists: existsSync(visionPath),
       })
       const visionResult = scaffoldVision({
@@ -415,6 +417,23 @@ export async function runInit(flags: InitFlags): Promise<number> {
     // developer-workstation tools (omx, gstack, rtk) available. Failures from
     // these installations must not fail the postinstall in that context.
     const isCiEnvironment = process.env.CI === 'true' || process.env.CI === '1'
+
+    if (isCiEnvironment) {
+      console.log('  codex cli: - skipped (CI environment)')
+    } else {
+      const codexCliResult = ensureCodexCli({ options })
+      switch (codexCliResult.kind) {
+        case 'codex-cli-ok':
+          console.log(codexCliResult.installed ? '  codex cli: ✓ installed' : '  codex cli: ✓')
+          break
+        case 'codex-cli-skipped-dry-run':
+          console.log('  codex cli: skipped (--dry-run)')
+          break
+        case 'codex-cli-unavailable':
+          console.warn(`  codex cli: ⚠ ${codexCliResult.hint}`)
+          break
+      }
+    }
 
     let omxFailure: 'not-found' | 'spawn-failed' | null = null
     if (isCiEnvironment && presets.includes('omx')) {
@@ -834,7 +853,7 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
       'Replace consumer customizations (default: leave divergent files untouched)',
     )
     .option('--dry-run', 'Show what would change without writing anything')
-    .option('--yes', 'Accept defaults, skip interactive prompts')
+    .option('--yes', 'Accept defaults, skip interactive prompts (default behavior)')
     .option('--cwd <dir>', 'Working tree to scaffold into (default: process.cwd())')
     .option('--strict', 'Abort if any compatibility check fails (default: warn and continue)')
     .option('--project', 'Configure OMX/OMC in project scope instead of the default user scope')

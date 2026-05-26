@@ -195,8 +195,8 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       rmSync(fakeHome, { recursive: true, force: true })
     })
 
-    it('baseline: wp setup --yes scaffolds the agent surface and exits 0', () => {
-      const r = runAk(['setup', '--yes', '--cwd', repo], {
+    it('baseline: wp setup scaffolds the agent surface and exits 0 without needing --yes', () => {
+      const r = runAk(['setup', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
       })
@@ -379,7 +379,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
     )
 
 
-    it('runtime check: prints bun + vp status regardless of presets', () => {
+    it('runtime check: prints bun + vp + actionlint status regardless of presets', () => {
       const r = runAk(['setup', '--yes', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),
         HOME: fakeHome,
@@ -388,6 +388,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.stdout).toContain('Runtime check:')
       expect(r.stdout).toMatch(/bun:/)
       expect(r.stdout).toMatch(/vp:/)
+      expect(r.stdout).toMatch(/actionlint:/)
     })
 
     it('runtime check: missing tool prints install hint, exit still 0', () => {
@@ -399,6 +400,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.code).toBe(0)
       expect(r.stdout).toContain('bun: ✗ not on PATH')
       expect(r.stdout).toContain('vp: ✗ not on PATH')
+      expect(r.stdout).toContain('actionlint: ✗ not on PATH')
     })
 
     it('rejects unknown --with values with exit code 1', () => {

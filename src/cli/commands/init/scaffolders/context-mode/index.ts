@@ -213,6 +213,8 @@ function ensureContextModeBinary(
       spinner.fail('context-mode not found after install')
       throw new Error(CONTEXT_MODE_NOT_FOUND_HINT)
     }
+  } else {
+    spawn('vp', ['update', '-g', 'context-mode'], { stdio: 'inherit' })
   }
 
   // Detect installed version for pin check

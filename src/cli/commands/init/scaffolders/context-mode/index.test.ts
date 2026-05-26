@@ -129,6 +129,28 @@ describe('context-mode preset', () => {
     expect(readFileSync(opencodeConfigPath, 'utf8')).toContain('context-mode')
   })
 
+  it('updates context-mode through vp when already available', () => {
+    const spawn = vi.fn((cmd: string) => {
+      if (cmd === 'context-mode') {
+        return { status: 0, error: undefined, stdout: cmd === 'context-mode' ? '1.2.3' : '' }
+      }
+      return { status: 0, error: undefined, stdout: '' }
+    }) as never
+
+    ensureContextMode({
+      repoRoot,
+      options: {},
+      codexConfigPath: join(repoRoot, '.codex', 'config.toml'),
+      codexHooksPath: join(repoRoot, '.codex', 'hooks.json'),
+      opencodeConfigPath: join(repoRoot, 'opencode.json'),
+      spawn,
+    })
+
+    expect(spawn).toHaveBeenCalledWith('vp', ['update', '-g', 'context-mode'], {
+      stdio: 'inherit',
+    })
+  })
+
   it('installs context-mode when missing, then writes all three surfaces', () => {
     const codexConfigPath = join(repoRoot, '.codex', 'config.toml')
     const codexHooksPath = join(repoRoot, '.codex', 'hooks.json')

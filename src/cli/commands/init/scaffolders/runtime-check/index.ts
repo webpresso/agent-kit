@@ -40,6 +40,12 @@ export const DEFAULT_PROBES: RuntimeProbe[] = [
     detect: () => probeVersion('vp'),
     hint: 'install vite-plus per your package manager (vp powers ingest-lens-style workspaces)',
   },
+  {
+    name: 'actionlint',
+    detect: () => probeVersion('actionlint'),
+    hint:
+      'install actionlint (`brew install actionlint` or `go install github.com/rhysd/actionlint/cmd/actionlint@latest`)',
+  },
 ]
 
 export function checkRuntimes(probes: RuntimeProbe[] = DEFAULT_PROBES): RuntimeStatus[] {
