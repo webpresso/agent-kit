@@ -9,8 +9,8 @@ export declare const transformMetadataSchema: z.ZodObject<{
     toolName: z.ZodString;
     normalizedToolName: z.ZodString;
     tier: z.ZodEnum<{
-        passthrough: "passthrough";
         registered: "registered";
+        passthrough: "passthrough";
     }>;
     rawBytes: z.ZodNumber;
 }, z.core.$strip>;
@@ -38,8 +38,8 @@ export declare const summaryFirstResultSchema: z.ZodObject<{
         toolName: z.ZodString;
         normalizedToolName: z.ZodString;
         tier: z.ZodEnum<{
-            passthrough: "passthrough";
             registered: "registered";
+            passthrough: "passthrough";
         }>;
         rawBytes: z.ZodNumber;
     }, z.core.$strip>>;

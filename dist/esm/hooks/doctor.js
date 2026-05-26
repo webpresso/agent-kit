@@ -14,6 +14,8 @@ import { spawn } from 'node:child_process';
 import { platform } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { STATE_FILE_RELATIVE_PATH, readDevLinkState } from '#dev/dev-link-state';
+import { detectDevLinkBreakage, formatBreakageMessage } from '#hooks/check-dev-link/index';
 import { isMcpReady } from './shared/mcp-sentinel.js';
 const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested');
 const RTK_INSTALL_HINT = 'rtk requested via --with rtk but not on PATH; brew install rtk';
@@ -466,6 +468,32 @@ async function checkClaudeHost() {
             detail: result.stderr.trim() || result.stdout.trim() || `exit ${result.code}`,
         };
 }
+function checkLiveSourceDevLink(cwd = process.cwd()) {
+    const state = readDevLinkState(cwd);
+    if (!state)
+        return null;
+    if (!tryAccess(join(state.linkedFrom, 'package.json'))) {
+        return {
+            name: 'live-source dev-link',
+            ok: false,
+            detail: `State file (${STATE_FILE_RELATIVE_PATH}) points at ${state.linkedFrom}, but that checkout is missing. ` +
+                `Fix the source checkout or rerun \`vp run dev:link --consumer ${cwd}\`.`,
+        };
+    }
+    const breakage = detectDevLinkBreakage({ cwd });
+    if (breakage) {
+        return {
+            name: 'live-source dev-link',
+            ok: false,
+            detail: formatBreakageMessage(breakage),
+        };
+    }
+    return {
+        name: 'live-source dev-link',
+        ok: true,
+        detail: `${state.package} → ${state.linkedFrom}`,
+    };
+}
 export async function runHooksDoctor(opts = {}) {
     const checks = [];
     const isWin = platform() === 'win32';
@@ -502,6 +530,9 @@ export async function runHooksDoctor(opts = {}) {
     const rtkCheck = await checkRtkOnPath(opts.cwd);
     if (rtkCheck)
         checks.push(rtkCheck);
+    const liveSourceCheck = checkLiveSourceDevLink(opts.cwd);
+    if (liveSourceCheck)
+        checks.push(liveSourceCheck);
     const hostMode = opts.hosts ?? 'auto';
     if (shouldRunHostChecks(hostMode)) {
         for (const host of resolveRequestedHosts(hostMode, opts.hostNames)) {
@@ -558,6 +589,13 @@ export async function printHooksDoctor(opts = {}) {
         const icon = check.ok ? '[x]' : '[ ]';
         const detail = check.detail ? `: ${check.detail}` : '';
         console.error(`${icon} ${check.name}${detail}`);
+    }
+    if (!result.ok) {
+        console.error('');
+        console.error('Repair hints:');
+        console.error('  • Refresh local hook/plugin surfaces: `wp setup`');
+        console.error('  • If live-source linking is broken: `vp install` or `vp run dev:link --consumer <repo>`');
+        console.error('  • If install failed with 403 on @webpresso/*: fix `GH_PACKAGES_TOKEN` / GitHub Packages auth, then rerun `vp install`');
     }
     return result.ok ? 0 : 1;
 }

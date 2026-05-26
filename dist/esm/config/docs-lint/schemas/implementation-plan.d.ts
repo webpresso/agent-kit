@@ -33,6 +33,23 @@ export declare const implementationPlanFrontmatter: z.ZodObject<{
     }>>;
     last_updated: z.ZodOptional<z.ZodUnion<readonly [z.ZodString, z.ZodPipe<z.ZodDate, z.ZodTransform<string | undefined, Date>>]>>;
     depends_on: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    cross_repo_depends_on: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        repo: z.ZodString;
+        slug: z.ZodString;
+        require_status: z.ZodOptional<z.ZodEnum<{
+            draft: "draft";
+            planned: "planned";
+            "in-progress": "in-progress";
+            parked: "parked";
+            completed: "completed";
+            archived: "archived";
+            current: "current";
+            complete: "complete";
+            deferred: "deferred";
+            deprioritized: "deprioritized";
+            future: "future";
+        }>>;
+    }, z.core.$strip>>>;
     epic: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
 export type ImplementationPlanFrontmatter = z.infer<typeof implementationPlanFrontmatter>;

@@ -15,6 +15,14 @@ export type MatcherSet = {
     preToolUse: string;
     postToolUse: string;
 };
+type WebpressoHookBinClassification = {
+    kind: 'canonical';
+    binName: string;
+} | {
+    kind: 'legacy';
+    binName: string;
+};
+export declare function classifyWebpressoHookBin(binName: string | null): WebpressoHookBinClassification | null;
 /**
  * Construct the canonical 5 wp-* hook groups (SessionStart, PreToolUse,
  * PostToolUse, UserPromptSubmit, Stop). Single source of truth — adding a

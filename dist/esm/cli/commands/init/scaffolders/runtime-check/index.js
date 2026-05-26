@@ -25,6 +25,11 @@ export const DEFAULT_PROBES = [
         detect: () => probeVersion('vp'),
         hint: 'install vite-plus per your package manager (vp powers ingest-lens-style workspaces)',
     },
+    {
+        name: 'actionlint',
+        detect: () => probeVersion('actionlint'),
+        hint: 'install actionlint (`brew install actionlint` or `go install github.com/rhysd/actionlint/cmd/actionlint@latest`)',
+    },
 ];
 export function checkRuntimes(probes = DEFAULT_PROBES) {
     return probes.map((p) => ({ name: p.name, version: p.detect(), hint: p.hint }));

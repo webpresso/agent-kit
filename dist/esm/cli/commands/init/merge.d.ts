@@ -1,7 +1,9 @@
 export type MergeAction = 'created' | 'identical' | 'drifted' | 'overwritten' | 'skipped-dry';
+export type MergeOwnership = 'consumer-owned' | 'generated-whole-file';
 export interface MergeOptions {
     overwrite?: boolean;
     dryRun?: boolean;
+    ownership?: MergeOwnership;
 }
 export interface MergeResult {
     targetPath: string;

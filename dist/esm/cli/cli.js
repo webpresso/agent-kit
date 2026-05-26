@@ -14,6 +14,7 @@ import { formatUnknownCommandError, normalizeArgv, readPackageVersion } from './
 const VERSION = readPackageVersion(import.meta.url);
 const SUPPORTED_COMMANDS = [
     'blueprint',
+    'config',
     'roadmap',
     'sync',
     'audit',
@@ -46,6 +47,7 @@ const ROOT_HELP = [
     'Core:',
     '  setup                 Scaffold a consumer repo with the agent surface',
     '  blueprint             Manage blueprints (list, new, show, exec, audit, ...)',
+    '  config                Repo configuration (secrets set/show/status/setup)',
     '  gain                  Show token savings from RTK — run after any AI session',
     '  sync                  Sync agent rules + skills across IDE surfaces (--kind, --check)',
     '',
@@ -111,6 +113,11 @@ export async function main() {
         case 'blueprint': {
             const { registerBlueprintRouter } = await import('./commands/blueprint/router.js');
             registerBlueprintRouter(cli);
+            break;
+        }
+        case 'config': {
+            const { registerConfigCommand } = await import('./commands/config.js');
+            registerConfigCommand(cli);
             break;
         }
         case 'roadmap': {

@@ -64,6 +64,18 @@ export declare const executionStatusSchema: z.ZodEnum<{
     running: "running";
     stopped: "stopped";
 }>;
+export declare const crossRepoDependencySchema: z.ZodObject<{
+    repo: z.ZodString;
+    slug: z.ZodString;
+    require_status: z.ZodOptional<z.ZodEnum<{
+        draft: "draft";
+        planned: "planned";
+        "in-progress": "in-progress";
+        parked: "parked";
+        completed: "completed";
+        archived: "archived";
+    }>>;
+}, z.core.$strip>;
 /**
  * Plan frontmatter schema.
  *
@@ -127,6 +139,18 @@ export declare const planFrontmatterSchema: z.ZodObject<{
     max_parallel_agents: z.ZodOptional<z.ZodNumber>;
     parent_roadmap: z.ZodOptional<z.ZodString>;
     depends_on: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    cross_repo_depends_on: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        repo: z.ZodString;
+        slug: z.ZodString;
+        require_status: z.ZodOptional<z.ZodEnum<{
+            draft: "draft";
+            planned: "planned";
+            "in-progress": "in-progress";
+            parked: "parked";
+            completed: "completed";
+            archived: "archived";
+        }>>;
+    }, z.core.$strip>>>;
     tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
 }, z.core.$strip>;
 export type PlanFrontmatter = z.infer<typeof planFrontmatterSchema>;

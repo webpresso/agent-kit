@@ -7,19 +7,14 @@ import { hoistTopLevelEvents } from '#cli/commands/init/scaffolders/agent-hooks/
 import { agentKitMcpLaunchCommand, findWebpressoMcpEntry, } from '#cli/commands/init/scaffolders/codex-mcp/index';
 import { makeNoopSpinnerFactory } from '#cli/commands/init/scaffolders/spinner';
 import { checkVersionPin } from '#cli/commands/init/scaffolders/version-pin';
-const CONTEXT_MODE_MCP_SERVER_NAME = 'context-mode';
-const CONTEXT_MODE_MCP_HEADER = `[mcp_servers.${CONTEXT_MODE_MCP_SERVER_NAME}]`;
-const CONTEXT_MODE_MCP_BLOCK = `${CONTEXT_MODE_MCP_HEADER}
-command = "context-mode"
-`;
+const CODEX_CONTEXT_MODE_FEATURES = {
+    plugin_hooks: 'true',
+    hooks: 'true',
+};
 const CONTEXT_MODE_CODEX_PRETOOL_MATCHER = 'local_shell|shell|shell_command|exec_command|container.exec|Bash|Shell|grep_files|mcp__plugin_context-mode_context-mode__ctx_execute|mcp__plugin_context-mode_context-mode__ctx_execute_file|mcp__plugin_context-mode_context-mode__ctx_batch_execute';
 function defaultCodexConfigPath() {
     const codexHome = process.env.CODEX_HOME || join(process.env.HOME || homedir(), '.codex');
     return join(codexHome, 'config.toml');
-}
-function defaultCodexHooksPath() {
-    const codexHome = process.env.CODEX_HOME || join(process.env.HOME || homedir(), '.codex');
-    return join(codexHome, 'hooks.json');
 }
 function defaultOpenCodeConfigPath(repoRoot) {
     return join(repoRoot, 'opencode.json');
@@ -32,13 +27,16 @@ function ensureGroup(groups, group) {
         candidate.hooks.some((hook) => hook.command === command));
     return exists ? groups : [...groups, group];
 }
-export function upsertContextModeMcpServer(raw) {
-    const lines = raw.trimEnd().split(/\r?\n/);
+export function upsertCodexContextModeFeatures(raw) {
+    const trimmed = raw.trimEnd();
+    const lines = trimmed.length > 0 ? trimmed.split(/\r?\n/) : [];
     const hasContent = raw.trim().length > 0;
-    const start = lines.findIndex((line) => line.trim() === CONTEXT_MODE_MCP_HEADER);
+    const start = lines.findIndex((line) => line.trim() === '[features]');
     if (start === -1) {
         const prefix = hasContent ? `${raw.trimEnd()}\n\n` : '';
-        return `${prefix}${CONTEXT_MODE_MCP_BLOCK}`;
+        return `${prefix}[features]\n${Object.entries(CODEX_CONTEXT_MODE_FEATURES)
+            .map(([key, value]) => `${key} = ${value}`)
+            .join('\n')}\n`;
     }
     let end = lines.length;
     for (let i = start + 1; i < lines.length; i += 1) {
@@ -47,18 +45,32 @@ export function upsertContextModeMcpServer(raw) {
             break;
         }
     }
-    return ([
-        ...lines.slice(0, start),
-        ...CONTEXT_MODE_MCP_BLOCK.trimEnd().split('\n'),
-        ...lines.slice(end),
-    ].join('\n') + '\n');
+    const seen = new Set();
+    const body = lines.slice(start + 1, end).map((line) => {
+        const match = line.match(/^(\s*)(hooks|plugin_hooks)\s*=/);
+        if (!match)
+            return line;
+        const key = match[2];
+        seen.add(key);
+        return `${match[1]}${key} = ${CODEX_CONTEXT_MODE_FEATURES[key]}`;
+    });
+    const trailingBlankLines = [];
+    while (body.length > 0 && body[body.length - 1]?.trim() === '') {
+        trailingBlankLines.unshift(body.pop());
+    }
+    for (const [key, value] of Object.entries(CODEX_CONTEXT_MODE_FEATURES)) {
+        if (!seen.has(key))
+            body.push(`${key} = ${value}`);
+    }
+    body.push(...trailingBlankLines);
+    return [...lines.slice(0, start + 1), ...body, ...lines.slice(end)].join('\n') + '\n';
 }
-// Codex hooks are enabled by default — do NOT write `[features].hooks = true`
-// (context-mode README is stale on this; upstream developers.openai.com/codex/hooks
-// is authoritative — the flag is a disable-only toggle). PreToolUse in Codex is
-// deny-only until openai/codex#18491 lands `updatedInput`. PreCompact requires
-// Codex 0.130.0+. `additionalContext` injection routes via PostToolUse/SessionStart
-// (handled by context-mode's codex formatter automatically).
+// Legacy helper retained for migrations/tests that need to normalize an older
+// manual `$CODEX_HOME/hooks.json`. New setup paths use the context-mode Codex
+// plugin manifest instead: MCP comes from `.codex-plugin/mcp.json`, skills from
+// `skills/`, and bundled hooks from `.codex-plugin/hooks.json`. While Codex keeps
+// those surfaces behind feature gates, `wp setup --with context-mode` writes
+// `[features].hooks = true` and `[features].plugin_hooks = true` to config.toml.
 export function patchCodexContextModeHooks(existing) {
     const migrated = hoistTopLevelEvents(existing);
     const hooks = { ...(migrated.hooks ?? {}) };
@@ -122,12 +134,12 @@ function resolveOpenCodeWebpressoCommand(repoRoot, globalInstall = false) {
     const launch = agentKitMcpLaunchCommand(entryPath);
     return [launch.command, ...launch.args];
 }
-function ensureCodexContextModeMcp(configPath, options) {
+function ensureCodexContextModeFeatures(configPath, options) {
     if (options.dryRun)
         return { targetPath: configPath, action: 'skipped-dry' };
     const existed = existsSync(configPath);
     const existing = existed ? readFileSync(configPath, 'utf8') : '';
-    const next = upsertContextModeMcpServer(existing);
+    const next = upsertCodexContextModeFeatures(existing);
     if (next === existing)
         return { targetPath: configPath, action: 'identical' };
     mkdirSync(dirname(configPath), { recursive: true });
@@ -152,6 +164,9 @@ function ensureContextModeBinary(spawn, spinner) {
             throw new Error(CONTEXT_MODE_NOT_FOUND_HINT);
         }
     }
+    else {
+        spawn('vp', ['update', '-g', 'context-mode'], { stdio: 'inherit' });
+    }
     // Detect installed version for pin check
     const versionProbe = spawn('context-mode', ['--version'], { encoding: 'utf8' });
     const version = String(versionProbe.stdout ?? '').trim();
@@ -170,11 +185,9 @@ export function ensureContextMode(input) {
         console.warn(pinCheck.warning);
     }
     const codexConfigPath = input.codexConfigPath ?? defaultCodexConfigPath();
-    const codexHooksPath = input.codexHooksPath ?? defaultCodexHooksPath();
     const opencodeConfigPath = input.opencodeConfigPath ?? defaultOpenCodeConfigPath(input.repoRoot);
     return {
-        codexMcp: ensureCodexContextModeMcp(codexConfigPath, input.options),
-        codexHooks: patchJsonFile(codexHooksPath, patchCodexContextModeHooks, input.options),
+        codexFeatures: ensureCodexContextModeFeatures(codexConfigPath, input.options),
         opencodeConfig: patchJsonFile(opencodeConfigPath, (existing) => patchOpenCodeContextModeConfig(existing, resolveOpenCodeWebpressoCommand(input.repoRoot, input.globalInstall)), input.options),
         installed,
     };

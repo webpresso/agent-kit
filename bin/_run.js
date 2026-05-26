@@ -1,0 +1,108 @@
+#!/usr/bin/env node
+
+import { spawnSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { basename, dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+export const BIN_ENTRYPOINTS = {
+  wp: 'src/cli/cli.ts',
+  webpresso: 'src/cli/cli.ts',
+  'wp-pretool-guard': 'src/hooks/pretool-guard/index.ts',
+  'wp-post-tool': 'src/hooks/post-tool/lint-after-edit.ts',
+  'wp-stop-qa': 'src/hooks/stop/qa-changed-files.ts',
+  'wp-guard-switch': 'src/hooks/guard-switch/index.ts',
+  'wp-test-quality-check': 'src/hooks/test-quality-check.ts',
+  'wp-sessionstart-routing': 'src/hooks/sessionstart/index.ts',
+  'wp-check-dev-link': 'src/hooks/check-dev-link/index.ts',
+  'wp-restore-dev-links': 'src/dev/restore-dev-links/index.ts',
+  'docs-check-internal-links': 'src/config/docs-lint/cli/check-internal-links.ts',
+  'docs-check-refs': 'src/config/docs-lint/cli/check-refs.ts',
+  'docs-check-stale': 'src/config/docs-lint/cli/check-stale.ts',
+  'docs-lint': 'src/config/docs-lint/cli/validate.ts',
+  'docs-migrate': 'src/config/docs-lint/cli/migrate.ts',
+}
+
+function resolvePackageRoot() {
+  return join(dirname(fileURLToPath(import.meta.url)), '..')
+}
+
+function sourceToBuiltRelativePath(sourceRelativePath) {
+  if (!sourceRelativePath.startsWith('src/')) {
+    throw new Error(`Unsupported bin source path: ${sourceRelativePath}`)
+  }
+  return `dist/esm/${sourceRelativePath.slice(4).replace(/\.ts$/u, '.js')}`
+}
+
+export function resolveInvokedBinName(argv = process.argv.slice(1)) {
+  const invoked = argv[0]
+  if (typeof invoked !== 'string' || invoked.length === 0) {
+    throw new Error('Unable to determine which webpresso bin was invoked.')
+  }
+  return basename(invoked).replace(/\.js$/u, '')
+}
+
+export function buildLaunchPlan({
+  binName,
+  repoRoot = resolvePackageRoot(),
+  forwardedArgs = process.argv.slice(2),
+  builtExists,
+  sourceExists,
+  nodeExecPath = process.execPath,
+}) {
+  const sourceRelativePath = BIN_ENTRYPOINTS[binName]
+  if (!sourceRelativePath) {
+    throw new Error(`Unknown webpresso bin: ${binName}`)
+  }
+
+  const builtRelativePath = sourceToBuiltRelativePath(sourceRelativePath)
+  const builtEntrypoint = join(repoRoot, builtRelativePath)
+  const sourceEntrypoint = join(repoRoot, sourceRelativePath)
+
+  const hasBuilt = builtExists ?? existsSync(builtEntrypoint)
+  if (hasBuilt) {
+    return {
+      mode: 'built',
+      runtime: nodeExecPath,
+      entrypoint: builtEntrypoint,
+      args: [builtEntrypoint, ...forwardedArgs],
+    }
+  }
+
+  const hasSource = sourceExists ?? existsSync(sourceEntrypoint)
+  if (hasSource) {
+    return {
+      mode: 'source',
+      runtime: process.env.BUN ?? 'bun',
+      entrypoint: sourceEntrypoint,
+      args: [sourceEntrypoint, ...forwardedArgs],
+    }
+  }
+
+  throw new Error(
+    [
+      `Unable to launch ${binName}: neither ${builtRelativePath} nor ${sourceRelativePath} exists.`,
+      'Run `wp hooks doctor` to diagnose the install, or rebuild/reinstall the package before retrying.',
+    ].join(' '),
+  )
+}
+
+export function runNamedBin(binName, argv = process.argv.slice(2)) {
+  const plan = buildLaunchPlan({ binName, forwardedArgs: argv })
+  const child = spawnSync(plan.runtime, plan.args, { stdio: 'inherit' })
+
+  if (child.error) {
+    const detail =
+      plan.mode === 'source'
+        ? `Bun is required for source-checkout fallback (${plan.entrypoint}). Install bun or rebuild so dist/esm exists.`
+        : child.error.message
+    throw new Error(detail)
+  }
+
+  if (child.signal) {
+    process.kill(process.pid, child.signal)
+    return
+  }
+
+  process.exit(child.status ?? 1)
+}

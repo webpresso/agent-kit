@@ -2,8 +2,9 @@
  * `wp setup` / `wp init` — scaffolds the webpresso catalog into a consumer repo.
  *
  * Idempotent: re-runs reconcile against `.webpressorc.json`.
- * Safe-by-default: if a target file exists with different content, reports
- * drift and leaves it untouched unless `--overwrite` is passed.
+ * Ownership-aware by default: webpresso refreshes the sections, structured
+ * config keys, and generated surfaces it owns while leaving consumer-owned
+ * divergent files untouched unless `--overwrite` is passed.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative } from 'node:path';
@@ -32,6 +33,7 @@ import { scaffoldAgentHooks, trustCodexWebpressoHooksForRepo, trustCodexPresetHo
 import { scaffoldAuditHooks } from './scaffolders/audit-hooks/index.js';
 import { ensureClaudeCodeUserPlugin } from './scaffolders/claude-plugin/index.js';
 import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js';
+import { ensureCodexCli } from './scaffolders/codex-cli/index.js';
 import { ensureCodexWebpressoMcp, ensureCodexPlaywrightMcp } from './scaffolders/codex-mcp/index.js';
 import { scaffoldExampleSkill } from './scaffolders/example-skill/index.js';
 import { ensureGstack } from './scaffolders/gstack/index.js';
@@ -138,6 +140,7 @@ export async function runInit(flags) {
         overwrite: flags.overwrite ?? false,
         dryRun: flags.dryRun ?? flags['dry-run'] ?? false,
     };
+    const acceptDefaults = flags.yes ?? true;
     const existingConfig = readConfig(consumer.repoRoot);
     const presets = parsePresets(flags.with);
     let selectedHosts;
@@ -159,7 +162,7 @@ export async function runInit(flags) {
         const selection = await resolveTier3Selection({
             withFlag: withFlagWithoutPresets,
             allFlag: flags.all,
-            yesFlag: flags.yes,
+            yesFlag: acceptDefaults,
             existing: existingConfig?.installed.tier3Skills,
             isTTY: Boolean(process.stdin.isTTY),
         });
@@ -177,7 +180,7 @@ export async function runInit(flags) {
     if (options.dryRun)
         console.log('  mode: DRY RUN (no writes)');
     if (options.overwrite)
-        console.log('  mode: --overwrite (consumer customizations will be replaced)');
+        console.log('  mode: --overwrite (force full-file replacement for eligible managed files)');
     console.log(`  Tier-3 skills: ${tier3Selection.length > 0 ? tier3Selection.join(', ') : '(none)'}`);
     // Unconditional: workspace config is always needed for cross-repo correlation.
     if (!options.dryRun) {
@@ -300,12 +303,12 @@ export async function runInit(flags) {
         }
         if (presets.includes('vision')) {
             // Only interview the operator when VISION.md is being scaffolded fresh
-            // (preserves --yes, non-TTY, and existing-VISION non-clobber semantics).
+            // (preserves default non-interactive setup and existing-VISION non-clobber semantics).
             const visionPath = join(consumer.repoRoot, 'VISION.md');
             const visionAnswers = await maybeRunVisionInterview({
                 repoName: basename(consumer.repoRoot),
                 isTTY: Boolean(process.stdin.isTTY),
-                yesFlag: flags.yes,
+                yesFlag: acceptDefaults,
                 visionExists: existsSync(visionPath),
             });
             const visionResult = scaffoldVision({
@@ -330,14 +333,31 @@ export async function runInit(flags) {
                 options,
                 globalInstall: config.globalInstall,
             });
-            console.log(`  context-mode codex mcp: ${contextModeResult.codexMcp.action === 'identical' ? 'already configured' : contextModeResult.codexMcp.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.codexMcp.targetPath}`);
-            console.log(`  context-mode codex hooks: ${contextModeResult.codexHooks.action === 'identical' ? 'already configured' : contextModeResult.codexHooks.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.codexHooks.targetPath}`);
+            console.log(`  context-mode codex features: ${contextModeResult.codexFeatures.action === 'identical' ? 'already configured' : contextModeResult.codexFeatures.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.codexFeatures.targetPath}`);
             console.log(`  context-mode opencode config: ${contextModeResult.opencodeConfig.action === 'identical' ? 'already configured' : contextModeResult.opencodeConfig.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.opencodeConfig.targetPath}`);
+            console.log('  context-mode codex plugin: uses bundled .codex-plugin/mcp.json + hooks.json; ensure node is on the Codex PATH');
         }
         // CI runners (GitHub Actions, etc.) set CI=true but don't have optional
         // developer-workstation tools (omx, gstack, rtk) available. Failures from
         // these installations must not fail the postinstall in that context.
         const isCiEnvironment = process.env.CI === 'true' || process.env.CI === '1';
+        if (isCiEnvironment) {
+            console.log('  codex cli: - skipped (CI environment)');
+        }
+        else {
+            const codexCliResult = ensureCodexCli({ options });
+            switch (codexCliResult.kind) {
+                case 'codex-cli-ok':
+                    console.log(codexCliResult.installed ? '  codex cli: ✓ installed' : '  codex cli: ✓');
+                    break;
+                case 'codex-cli-skipped-dry-run':
+                    console.log('  codex cli: skipped (--dry-run)');
+                    break;
+                case 'codex-cli-unavailable':
+                    console.warn(`  codex cli: ⚠ ${codexCliResult.hint}`);
+                    break;
+            }
+        }
         let omxFailure = null;
         if (isCiEnvironment && presets.includes('omx')) {
             console.log('  omx setup: - skipped (CI environment)');
@@ -584,8 +604,8 @@ export async function runInit(flags) {
         if (options.dryRun)
             console.log(`  would-change:    ${summary['skipped-dry']}`);
         if (summary.drifted > 0) {
-            console.log('\n  Note: some files exist with different content and were left unchanged.\n' +
-                '  Review the drift or re-run with `--overwrite` to replace them.');
+            console.log('\n  Note: some consumer-owned files exist with different content and were left unchanged.\n' +
+                '  Review the drift or re-run with `--overwrite` to force eligible managed files.');
         }
         if (!options.dryRun) {
             const visibilityAudit = auditHostSkillVisibility({
@@ -701,9 +721,9 @@ export function registerInitCommand(cli, commandName = 'init') {
         .option('--with <skills>', withHelp)
         .option('--host <hosts>', 'Comma-separated host targets: codex, claude, opencode, all')
         .option('--all', 'Install every skill (Tier-1 + Tier-2 + all Tier-3)')
-        .option('--overwrite', 'Replace consumer customizations (default: leave divergent files untouched)')
+        .option('--overwrite', 'Force full-file replacement for eligible managed files (default: reconcile owned content and preserve divergent consumer files)')
         .option('--dry-run', 'Show what would change without writing anything')
-        .option('--yes', 'Accept defaults, skip interactive prompts')
+        .option('--yes', 'Accept defaults, skip interactive prompts (default behavior)')
         .option('--cwd <dir>', 'Working tree to scaffold into (default: process.cwd())')
         .option('--strict', 'Abort if any compatibility check fails (default: warn and continue)')
         .option('--project', 'Configure OMX/OMC in project scope instead of the default user scope')

@@ -218,6 +218,9 @@ export function ensureOmx(input) {
             return { kind: 'omx-not-found', hint: NOT_FOUND_HINT };
         }
     }
+    else {
+        spawn('vp', ['update', '-g', 'oh-my-codex'], { stdio: 'inherit' });
+    }
     const result = spawn('omx', ['setup', '--yes', '--scope', scope], {
         cwd: input.repoRoot,
         stdio: ['ignore', 'inherit', 'inherit'],

@@ -21,7 +21,8 @@
  * `.opencode/package.json` (per docs); we don't add any.
  *
  * Idempotent: if the plugin file already exists with identical content,
- * leaves it alone. Re-runs of `wp setup` do not duplicate.
+ * leaves it alone. Re-runs of `wp setup` refresh this generated file to the
+ * current webpresso-owned content.
  */
 import { join } from 'node:path';
 import { writeFileMerged } from '#cli/commands/init/merge';
@@ -77,6 +78,9 @@ export const WebpressoDevLinkPlugin = async ({ $, directory }) => {
 `;
 export function scaffoldOpencodePlugin(input) {
     const targetPath = join(input.repoRoot, OPENCODE_PLUGIN_RELATIVE_PATH);
-    return writeFileMerged(targetPath, OPENCODE_PLUGIN_CONTENT, input.options);
+    return writeFileMerged(targetPath, OPENCODE_PLUGIN_CONTENT, {
+        ...input.options,
+        ownership: 'generated-whole-file',
+    });
 }
 //# sourceMappingURL=index.js.map

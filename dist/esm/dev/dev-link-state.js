@@ -9,7 +9,7 @@
  * The file is gitignored on the consumer side (per-developer dev opt-in);
  * its absence means CI / no-dev-link path → all readers no-op silently.
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 export const STATE_FILE_RELATIVE_PATH = '.webpresso/webpresso-dev-link.json';
 /**
@@ -26,8 +26,6 @@ export const STATE_FILE_RELATIVE_PATH = '.webpresso/webpresso-dev-link.json';
  */
 export function readDevLinkState(consumerCwd) {
     const path = join(consumerCwd, STATE_FILE_RELATIVE_PATH);
-    if (!existsSync(path))
-        return null;
     let raw;
     try {
         raw = JSON.parse(readFileSync(path, 'utf8'));

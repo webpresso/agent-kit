@@ -26,6 +26,7 @@ export const TIER2_SKILLS = [
 /** Always-installed skill (rendered separately). Excluded from the generic copy. */
 export const RENDERED_SKILLS = ['monorepo-navigation'];
 const ALWAYS_COPY_SUBDIRS = ['commands', 'workflows', 'guides'];
+const GENERATED_WHOLE_FILE = { ownership: 'generated-whole-file' };
 /** Top-level catalog files emitted once on fresh setup (never overwritten). */
 const FRESH_COPY_FILES = ['correlate.allow.yaml'];
 export function scaffoldAgent(input) {
@@ -37,13 +38,16 @@ export function scaffoldAgent(input) {
         const src = join(catalogAgent, subdir);
         const dst = join(targetAgent, subdir);
         if (existsSync(src)) {
-            results.push(...copyDirectoryMerged(src, dst, options));
+            results.push(...copyDirectoryMerged(src, dst, { ...options, ...GENERATED_WHOLE_FILE }));
         }
     }
-    // Top-level catalog README (when present) — small, always safe to mirror.
+    // Top-level catalog README is a generated surface owned by webpresso.
     const topReadme = join(catalogAgent, 'README.md');
     if (existsSync(topReadme)) {
-        results.push(copyFileMerged(topReadme, join(targetAgent, 'README.md'), options));
+        results.push(copyFileMerged(topReadme, join(targetAgent, 'README.md'), {
+            ...options,
+            ...GENERATED_WHOLE_FILE,
+        }));
     }
     // Fresh-only top-level files — emitted once to the consumer's .agent/.
     // These are committed to the consumer repo (not gitignored) so cloud agents

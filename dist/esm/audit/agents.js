@@ -22,7 +22,7 @@ export function auditAgents(rootDirectory = process.cwd()) {
     let checked = 0;
     const packageJson = readJsonFile(join(root, 'package.json'));
     const packageName = typeof packageJson.name === 'string' ? packageJson.name : undefined;
-    const isSelfHost = packageName === 'webpresso';
+    const isSelfHost = packageName === 'webpresso' || packageName === '@webpresso/agent-kit';
     const config = readConfig(root);
     checked += 1;
     checkNonEmptyFile(root, 'AGENTS.md', violations, 'AGENTS.md is required at repo root and must be non-empty.');
@@ -288,18 +288,22 @@ function checkSetupAgentScript(root, packageJson, overrideCommand, violations) {
 }
 function checkAgentKitDevDependency(root, packageJson, violations) {
     const devDependencies = (packageJson.devDependencies ?? {});
-    const version = devDependencies['webpresso'];
+    const packageName = typeof packageJson.name === 'string' ? packageJson.name : '';
+    const version = devDependencies['webpresso'] ?? devDependencies['@webpresso/agent-kit'];
     const scripts = (packageJson.scripts ?? {});
     const setupAgent = typeof scripts['setup:agent'] === 'string' ? scripts['setup:agent'] : '';
     const postinstall = typeof scripts.postinstall === 'string' ? scripts.postinstall : '';
     const usesGlobalWpConsumerMode = setupAgent === 'wp setup' && postinstall.includes('wp-restore-dev-links');
+    if (packageName === '@webpresso/agent-kit') {
+        return;
+    }
     if (usesGlobalWpConsumerMode) {
         return;
     }
     if (typeof version !== 'string' || version.trim().length === 0) {
         violations.push({
             file: 'package.json',
-            message: 'Missing devDependency `webpresso`. Run `vp install -D webpresso` then `vp install`.',
+            message: 'Missing devDependency `webpresso` or `@webpresso/agent-kit`. Run `vp install -D <package>` then `vp install`.',
         });
     }
 }

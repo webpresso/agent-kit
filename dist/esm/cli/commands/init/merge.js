@@ -21,7 +21,8 @@ export function writeFileMerged(targetPath, incoming, opts = {}) {
     if (existingContent === incoming) {
         return { targetPath, action: 'identical' };
     }
-    if (opts.overwrite) {
+    const shouldOverwrite = opts.overwrite === true || opts.ownership === 'generated-whole-file';
+    if (shouldOverwrite) {
         if (opts.dryRun)
             return { targetPath, action: 'skipped-dry' };
         writeFileSync(targetPath, incoming);
