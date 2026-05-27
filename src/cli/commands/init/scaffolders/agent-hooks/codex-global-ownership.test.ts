@@ -16,13 +16,13 @@ function ownedHook(overrides: Record<string, unknown> = {}): Record<string, unkn
 }
 
 describe('isPresetOwnedGlobalCodexHook', () => {
-  it('accepts context-mode global Codex hooks', () => {
+  it('rejects legacy context-mode global Codex hooks because the plugin owns them', () => {
     expect(
       isPresetOwnedGlobalCodexHook(
         ownedHook({ command: 'context-mode hook codex sessionstart' }),
         EXPECTED_SOURCE_PATHS,
       ),
-    ).toBe(true)
+    ).toBe(false)
   })
 
   it('accepts OMX global Codex hooks', () => {

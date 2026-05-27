@@ -533,7 +533,7 @@ describe('scaffoldAgentHooks', () => {
     expect(batchWrites).toHaveLength(1)
   })
 
-  it('can refresh trusted hashes for preset-owned global Codex hooks after setup rewrites ~/.codex/hooks.json', async () => {
+  it('refreshes only OMX preset-owned global Codex hooks after setup rewrites ~/.codex/hooks.json', async () => {
     const globalHooksPath = join(repoRoot, '.codex-home', 'hooks.json')
     mkdirSync(join(repoRoot, '.codex-home'), { recursive: true })
     writeFileSync(globalHooksPath, JSON.stringify({ hooks: {} }, null, 2))
@@ -644,10 +644,6 @@ describe('scaffoldAgentHooks', () => {
           {
             keyPath: 'hooks.state',
             value: {
-              [`${globalHooksPath}:pre_tool_use:0:0`]: {
-                enabled: true,
-                trusted_hash: 'sha256:ctx123',
-              },
               [`${globalHooksPath}:pre_tool_use:1:0`]: {
                 enabled: true,
                 trusted_hash: 'sha256:omx123',

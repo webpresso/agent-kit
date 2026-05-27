@@ -24,7 +24,7 @@ export function isPresetOwnedGlobalCodexHook(
   if (typeof candidate.command !== 'string' || candidate.command.trim() === '') return false
   if (!isExpectedSourcePath(candidate.sourcePath, expectedSourcePaths)) return false
 
-  return isContextModeCodexCommand(candidate.command) || isOmxCodexCommand(candidate.command)
+  return isOmxCodexCommand(candidate.command)
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -37,10 +37,6 @@ function isExpectedSourcePath(sourcePath: string, expectedSourcePaths: readonly 
   return expectedSourcePaths.some(
     (expectedPath) => normalize(expectedPath) === normalizedSourcePath,
   )
-}
-
-function isContextModeCodexCommand(command: string): boolean {
-  return command.startsWith('context-mode hook codex ')
 }
 
 function isOmxCodexCommand(command: string): boolean {

@@ -7,7 +7,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SpinnerFactory } from '../spinner.js'
 import {
   ensureContextMode,
-  patchCodexContextModeHooks,
   patchOpenCodeContextModeConfig,
   upsertCodexContextModeFeatures,
 } from './index.js'
@@ -51,53 +50,6 @@ describe('context-mode preset', () => {
     expect(next).toContain('[features]\ncodex_hooks = false\nhooks = true\nplugin_hooks = true')
     expect(next).toContain('[projects."/repo"]')
     expect(next).not.toContain('codex_hooks = true')
-  })
-
-  it('patches Codex hooks with the context-mode hook chain', () => {
-    const next = patchCodexContextModeHooks({})
-    const hooks = next.hooks as Record<
-      string,
-      Array<{ matcher?: string; hooks: Array<{ command: string }> }>
-    >
-    expect(hooks.PreToolUse[0]?.matcher).toContain('context-mode')
-    expect(hooks.PostToolUse[0]?.hooks[0]?.command).toBe('context-mode hook codex posttooluse')
-    expect(hooks.SessionStart[0]?.hooks[0]?.command).toBe('context-mode hook codex sessionstart')
-    expect(hooks.UserPromptSubmit[0]?.hooks[0]?.command).toBe(
-      'context-mode hook codex userpromptsubmit',
-    )
-    expect(hooks.Stop[0]?.hooks[0]?.command).toBe('context-mode hook codex stop')
-    // New: compaction event coverage
-    expect(hooks.PreCompact[0]?.hooks[0]?.command).toBe('context-mode hook codex precompact')
-    expect(hooks.PostCompact[0]?.hooks[0]?.command).toBe('context-mode hook codex postcompact')
-  })
-
-  it('generates PreCompact and PostCompact hooks for compaction-event support', () => {
-    const next = patchCodexContextModeHooks({})
-    const hooks = next.hooks as Record<
-      string,
-      Array<{ matcher?: string; hooks: Array<{ command: string }> }>
-    >
-    expect(hooks.PreCompact).toHaveLength(1)
-    expect(hooks.PreCompact[0]?.hooks[0]).toStrictEqual({
-      type: 'command',
-      command: 'context-mode hook codex precompact',
-    })
-    expect(hooks.PostCompact).toHaveLength(1)
-    expect(hooks.PostCompact[0]?.hooks[0]).toStrictEqual({
-      type: 'command',
-      command: 'context-mode hook codex postcompact',
-    })
-  })
-
-  it('does not duplicate PreCompact/PostCompact hooks on idempotent re-run', () => {
-    const first = patchCodexContextModeHooks({})
-    const second = patchCodexContextModeHooks(first)
-    const hooks = second.hooks as Record<
-      string,
-      Array<{ matcher?: string; hooks: Array<{ command: string }> }>
-    >
-    expect(hooks.PreCompact).toHaveLength(1)
-    expect(hooks.PostCompact).toHaveLength(1)
   })
 
   it('patches OpenCode config with mcp + plugin entries', () => {
