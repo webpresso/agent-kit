@@ -2,14 +2,7 @@ import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
 
-import {
-  normalizeActSecretsWithOptions,
-  resolveCiActSecretProfile,
-  listMissingRequiredSecrets,
-  pickAllowedSecrets,
-  writeTempSecretsFile,
-} from '#ci/act-helper.js'
-import { buildPublicCiActArgs, sanitizePublicCiActArgv } from '#ci/act-runner.js'
+import { buildPublicCiActCommand, sanitizePublicCiActArgv } from '#ci/act-runner.js'
 import { runSecretGateCommand } from '#secret-gate/runner.js'
 import { clipRawOutput, createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 import { redactText } from './_shared/redact.js'
@@ -24,9 +17,6 @@ const inputSchema = z
       .optional()
       .default('pull_request'),
     eventPath: z.string().optional(),
-    secretProfile: z.enum(['none', 'github-api', 'neon-control-plane']).optional(),
-    strictSecrets: z.boolean().optional().default(true),
-    mapGithubPatToToken: z.boolean().optional().default(false),
     envProfile: z.string().optional().default('secrets-only'),
     timeoutMs: z
       .number()
@@ -42,65 +32,21 @@ const inputSchema = z
   .strict()
 
 const outputSchema = createSummaryOutputSchema({
-  counts: z.object({
-    secretCount: z.number(),
-    missingRequiredCount: z.number(),
-  }),
   details: z.object({
     command: z.object({ command: z.string(), args: z.array(z.string()) }),
-    profile: z.string(),
-    missingRequired: z.array(z.string()),
+    envProfile: z.string(),
   }),
 })
 
-function buildInternalActCommandArgs(
-  input: z.infer<typeof inputSchema>,
-  secretsPath: string,
-): string[] {
-  return [...buildPublicCiActArgs(input), '--secret-file', secretsPath]
-}
-
-function publicCommandDetails(input: z.infer<typeof inputSchema>, secretsPath?: string) {
-  const actArgs = secretsPath
-    ? buildInternalActCommandArgs(input, secretsPath)
-    : buildPublicCiActArgs(input)
-  return sanitizePublicCiActArgv({ command: 'act', args: actArgs, actArgs }).actArgs
-}
-
-function buildPayload(
-  input: z.infer<typeof inputSchema>,
-  missingRequired: string[],
-  secretCount: number,
-) {
-  return {
-    passed: false,
-    summary: `ci-act missing required secrets for profile ${
-      resolveCiActSecretProfile({
-        workflowPath: input.workflowPath,
-        jobName: input.job,
-        explicitProfileId: input.secretProfile,
-      }).id
-    }`,
-    counts: {
-      secretCount,
-      missingRequiredCount: missingRequired.length,
-    },
-    details: {
-      command: { command: 'act', args: publicCommandDetails(input) },
-      profile: resolveCiActSecretProfile({
-        workflowPath: input.workflowPath,
-        jobName: input.job,
-        explicitProfileId: input.secretProfile,
-      }).id,
-      missingRequired,
-    },
-  }
+function publicCommandDetails(input: z.infer<typeof inputSchema>) {
+  const command = sanitizePublicCiActArgv(buildPublicCiActCommand(input))
+  return { command: command.command, args: [...command.args] }
 }
 
 const tool: ToolDescriptor = {
   name: 'wp_ci_act',
   description:
-    'Run local GitHub Actions workflows through `act` via the public secret-gate contract (`with-secrets --env-profile ...`).',
+    'Run local GitHub Actions workflows through `act` via the public secret contract (`wp config secrets ...`, then `with-secrets -- act ...`).',
   inputSchema,
   outputSchema,
   annotations: {
@@ -110,78 +56,48 @@ const tool: ToolDescriptor = {
   },
   handler: async (raw, extra) => {
     const input = inputSchema.parse(raw ?? {})
-    const profile = resolveCiActSecretProfile({
-      workflowPath: input.workflowPath,
-      jobName: input.job,
-      explicitProfileId: input.secretProfile,
-    })
-    const secrets = normalizeActSecretsWithOptions(
-      [pickAllowedSecrets(process.env as Record<string, string>, profile.allowedKeys)],
-      { mapGithubPatToToken: input.mapGithubPatToToken },
-    )
-    const missingRequired = listMissingRequiredSecrets(secrets, profile.requiredKeys)
-    if (input.strictSecrets && missingRequired.length > 0) {
-      return createSummaryResult(
-        buildPayload(input, missingRequired, Object.keys(secrets).length),
-        {
-          isError: true,
+    const command = buildPublicCiActCommand(input)
+    if (!input.execute) {
+      return createSummaryResult({
+        passed: true,
+        summary: `ci-act dry-run prepared via env profile ${input.envProfile}`,
+        details: {
+          command: publicCommandDetails(input),
+          envProfile: input.envProfile,
         },
-      )
+      })
     }
 
-    const temp = writeTempSecretsFile(secrets)
-    try {
-      const actArgs = buildInternalActCommandArgs(input, temp.path)
-      if (!input.execute) {
-        return createSummaryResult({
-          passed: true,
-          summary: `ci-act dry-run prepared for profile ${profile.id}`,
-          counts: {
-            secretCount: Object.keys(secrets).length,
-            missingRequiredCount: missingRequired.length,
-          },
-          details: {
-            command: { command: 'act', args: publicCommandDetails(input, temp.path) },
-            profile: profile.id,
-            missingRequired,
-          },
-        })
-      }
-
-      const result = await runSecretGateCommand({
-        cwd: input.cwd,
-        envProfile: input.envProfile,
-        command: 'act',
-        args: actArgs,
-        timeoutMs: input.timeoutMs,
-        signal: extra?.signal,
-      })
-      const merged = [result.stdout, result.stderr].filter(Boolean).join('\n')
-      const redacted = redactText(merged)
-      const clipped = clipRawOutput(redacted, 4_000, { toolName: 'wp_ci_act' })
-      return createSummaryResult({
+    const result = await runSecretGateCommand({
+      cwd: input.cwd,
+      envProfile: input.envProfile,
+      command: 'act',
+      args: command.actArgs,
+      timeoutMs: input.timeoutMs,
+      signal: extra?.signal,
+    })
+    const merged = [result.stdout, result.stderr].filter(Boolean).join('\n')
+    const redacted = redactText(merged)
+    const clipped = clipRawOutput(redacted, 4_000, { toolName: 'wp_ci_act' })
+    const toolExecutionFailed = result.timedOut || result.aborted
+    return createSummaryResult(
+      {
         passed: result.exitCode === 0,
         summary:
           result.exitCode === 0
-            ? `ci-act finished successfully via profile ${profile.id}`
-            : `ci-act failed with exit ${result.exitCode} via profile ${profile.id}`,
+            ? `ci-act finished successfully via env profile ${input.envProfile}`
+            : `ci-act failed with exit ${result.exitCode} via env profile ${input.envProfile}`,
         exitCode: result.exitCode,
-        counts: {
-          secretCount: Object.keys(secrets).length,
-          missingRequiredCount: missingRequired.length,
-        },
         details: {
-          command: { command: 'act', args: publicCommandDetails(input, temp.path) },
-          profile: profile.id,
-          missingRequired,
+          command: publicCommandDetails(input),
+          envProfile: input.envProfile,
         },
         ...clipped,
         ...(result.timedOut ? { failures: [{ message: 'timed out while running act' }] } : {}),
         ...(result.aborted ? { failures: [{ message: 'aborted by client signal' }] } : {}),
-      })
-    } finally {
-      temp.cleanup()
-    }
+      },
+      toolExecutionFailed ? { isError: true } : {},
+    )
   },
 }
 

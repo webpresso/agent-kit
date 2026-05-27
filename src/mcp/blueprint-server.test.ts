@@ -934,6 +934,29 @@ describe('wp_blueprint_task_next — ensureFresh-before-read (Task 2.5)', () => 
     expect(ensureFresh).not.toHaveBeenCalled()
     expect(pushEvent).not.toHaveBeenCalled()
   })
+
+  it('falls back to local replica when ensureFresh times out', async () => {
+    vi.stubEnv('AK_BLUEPRINT_READ_FRESH_TIMEOUT_MS', '1')
+
+    const pushEvent = vi.fn<SyncAdapter['pushEvent']>().mockResolvedValue(undefined)
+    const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockImplementation(
+      () => new Promise<void>(() => {}),
+    )
+    _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }))
+
+    const result = await callTool(tools, 'wp_blueprint_task_next', {})
+    const data = parseResult(result) as { task: unknown; failures: string[] }
+
+    expect(result.isError).toStrictEqual(false)
+    expect(data.task).toBeNull()
+    expect(data.failures).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Platform freshness refresh skipped: ensureFresh timed out'),
+      ]),
+    )
+    expect(ensureFresh).toHaveBeenCalledOnce()
+    expect(pushEvent).not.toHaveBeenCalled()
+  })
 })
 
 // ---------------------------------------------------------------------------

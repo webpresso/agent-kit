@@ -764,12 +764,34 @@ async function handleTaskNext(cwd: string, raw: unknown): Promise<ToolHandlerRes
   const resolvedProject = await resolveToolProject(cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
+  const failures: string[] = []
 
   // Platform-first: refresh local replica before reading so the result reflects remote state.
   // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
   const adapter = await resolveSyncAdapter(projectCwd)
   if (adapter !== null) {
-    await adapter.ensureFresh(blueprint !== undefined ? { slug: blueprint } : undefined)
+    const timeoutMs = Math.max(
+      1,
+      Number.parseInt(process.env['AK_BLUEPRINT_READ_FRESH_TIMEOUT_MS'] ?? '5000', 10) || 5000,
+    )
+    try {
+      await Promise.race([
+        adapter.ensureFresh(blueprint !== undefined ? { slug: blueprint } : undefined),
+        new Promise<never>((_, reject) => {
+          setTimeout(
+            () =>
+              reject(
+                new Error(`ensureFresh timed out after ${timeoutMs}ms during wp_blueprint_task_next`),
+              ),
+            timeoutMs,
+          )
+        }),
+      ])
+    } catch (error) {
+      failures.push(
+        `Platform freshness refresh skipped: ${error instanceof Error ? error.message : toStr(error)}`,
+      )
+    }
   }
 
   const target = dbPath(projectCwd)
@@ -777,7 +799,7 @@ async function handleTaskNext(cwd: string, raw: unknown): Promise<ToolHandlerRes
     return jsonContent({
       summary: 'No blueprint DB found',
       task: null,
-      failures: [],
+      failures,
       bytes: 0,
       tokensSaved: 0,
     })
@@ -843,7 +865,7 @@ async function handleTaskNext(cwd: string, raw: unknown): Promise<ToolHandlerRes
             wave: task.wave,
           }
         : null,
-      failures: [],
+      failures,
       bytes: 0,
       tokensSaved: 0,
     }
