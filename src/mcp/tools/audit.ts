@@ -33,6 +33,7 @@ const KINDS = [
   'docs-frontmatter',
   'blueprint-lifecycle',
   'architecture-drift',
+  'absolute-path-policy',
   'roadmap-links',
   'bundle-budget',
   'commit-message',
@@ -198,6 +199,16 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
         details: auditResult,
       }
     }
+    case 'absolute-path-policy': {
+      const { auditAbsolutePathPolicy } = await import('#audit/absolute-path-policy')
+      const auditResult = auditAbsolutePathPolicy(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
     case 'roadmap-links': {
       const { auditRoadmapLinks } = await import('#audit/roadmap-links')
       const auditResult = auditRoadmapLinks(input.cwd ?? input.directory ?? process.cwd())
@@ -330,7 +341,7 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
 const tool: ToolDescriptor = {
   name: 'wp_audit',
   description:
-    'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-lifecycle, architecture-drift, roadmap-links, bundle-budget, commit-message, tech-debt, hook-surface, package-surface, no-relative-package-scripts). Returns {passed, kind, details}.',
+    'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-lifecycle, architecture-drift, absolute-path-policy, roadmap-links, bundle-budget, commit-message, tech-debt, hook-surface, package-surface, no-relative-package-scripts). Returns {passed, kind, details}.',
   inputSchema,
   outputSchema,
   annotations: {

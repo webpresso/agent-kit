@@ -257,16 +257,20 @@ repo's secret manager wrapper (e.g. Doppler, 1Password, AWS Secrets Manager).
 ### Scripts Location
 
 - **Never** create a root-level `/scripts/` folder if the repo has a
-  dedicated scripts package (e.g. `apps/scripts/src/`).
+  dedicated command/runtime surface (e.g. `src/ci/`, `src/audit/`, or a
+  repo-owned scripts package).
 - All scripts go in the dedicated scripts package.
 - Run with the repo's script-runner recipe.
 
-### Finding Repo Root
+### Executable Path Anchors
 
-- **Never** use `resolve(import.meta.dirname, '../..')` or any hardcoded `..`
-  chain to find repo root.
-- **Always** use a repo-provided helper like `findProjectRoot()` from a
-  shared utility package.
+- **Never** use `resolve(import.meta.dirname, '../..')`, `join(__dirname, './x')`,
+  `new URL('../x', import.meta.url)`, or any other hardcoded relative
+  filesystem path in executable code or config.
+- **Always** use a repo-provided helper or runtime-provided absolute base path
+  as the anchor.
+- When available, enforce this through the shared `wp audit absolute-path-policy`
+  surface rather than a repo-local duplicate scanner.
 - Packages live at varying depths — hardcoded relative paths break when files
   move.
 
@@ -283,9 +287,9 @@ interchangeable.
 
 ### Suites
 
-- `apps/e2e/tests/journeys/` (or equivalent): real persisted critical user
+- a real critical-path journey suite (or equivalent): persisted user
   workflows.
-- `apps/e2e/tests/smoke/`: route health, accessibility canaries, quarantined
+- a smoke/canary suite: route health, accessibility canaries, quarantined
   flows, and non-persistent checks.
 - Sibling feature suites (e.g. `admin/`, `notifications/`): domain-specific
   browser coverage that still must follow the same realism rules.

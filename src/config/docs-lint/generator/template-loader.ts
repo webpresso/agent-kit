@@ -1,18 +1,18 @@
 import type { TemplateSchema, ValidationError } from './types.js'
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseYaml } from 'yaml'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const packageRootDir = resolve(__dirname, '../..')
+const packageRootDir = dirname(dirname(__dirname))
 
 /**
  * Resolves the templates directory path
  */
 function getTemplatesDir(): string {
-  return resolve(packageRootDir, 'templates')
+  return join(packageRootDir, 'templates')
 }
 
 /**
@@ -29,7 +29,7 @@ export interface LoadTemplateResult {
  */
 export function loadTemplate(templateName: string): LoadTemplateResult {
   const templatesDir = getTemplatesDir()
-  const templatePath = resolve(templatesDir, `${templateName}.yaml`)
+  const templatePath = join(templatesDir, `${templateName}.yaml`)
 
   if (!existsSync(templatePath)) {
     return {

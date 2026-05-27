@@ -5,5 +5,6 @@ set -eu
 WP="$(git rev-parse --show-toplevel)/node_modules/.bin/wp"
 [ -x "$WP" ] || WP=wp
 bun scripts/check-no-dev-vars.ts
+"$WP" audit absolute-path-policy --root .
 bun scripts/audit-secret-provider-quarantine.ts
 "$WP" audit guardrails

@@ -23,6 +23,7 @@ export type AuditKind =
   | 'memory-unified'
   | 'compile-drift'
   | 'architecture-drift'
+  | 'absolute-path-policy'
   | 'agent-cost'
   | 'blueprint-db-consistency'
   | 'blueprint-lifecycle-sql'

@@ -38,6 +38,10 @@ const architectureDriftMock = {
   auditArchitectureDrift: vi.fn(),
 }
 
+const absolutePathPolicyMock = {
+  auditAbsolutePathPolicy: vi.fn(),
+}
+
 const viteLocalMock = {
   runBundleBudgetCli: vi.fn(),
 }
@@ -47,6 +51,7 @@ vi.mock('#audit/agents', () => agentsAuditMock)
 vi.mock('#audit/tech-debt', () => techDebtMock)
 vi.mock('#audit/ai-contracts', () => aiContractsMock)
 vi.mock('#audit/architecture-drift', () => architectureDriftMock)
+vi.mock('#audit/absolute-path-policy', () => absolutePathPolicyMock)
 vi.mock('../../vite/local.js', () => viteLocalMock)
 vi.mock('node:child_process', () => ({ spawn: spawnMock }))
 
@@ -76,9 +81,10 @@ function failingAudit() {
   return { ok: false, title: 't', checked: 1, violations: [{ message: 'boom' }] }
 }
 
-function parsePayload(
-  result: { structuredContent?: unknown; content: ReadonlyArray<{ type: string; text?: string }> },
-) {
+function parsePayload(result: {
+  structuredContent?: unknown
+  content: ReadonlyArray<{ type: string; text?: string }>
+}) {
   return result.structuredContent as {
     passed: boolean
     summary: string
@@ -97,6 +103,7 @@ beforeEach(() => {
   techDebtMock.auditTechDebt.mockReset()
   aiContractsMock.auditAiContracts.mockReset()
   architectureDriftMock.auditArchitectureDrift.mockReset()
+  absolutePathPolicyMock.auditAbsolutePathPolicy.mockReset()
   viteLocalMock.runBundleBudgetCli.mockReset()
   spawnMock.mockReset()
   repoGuardrailsMock.formatRepoAuditReport.mockReturnValue('formatted report')
@@ -118,7 +125,9 @@ describe('wp_audit tool', () => {
       expect(payload.passed).toBe(true)
       expect(payload.summary).toBe('catalog-drift audit passed (1 checked)')
       expect(payload.kind).toBe('catalog-drift')
-      expect((result.content[0] as { text: string }).text).toBe('catalog-drift audit passed (1 checked)')
+      expect((result.content[0] as { text: string }).text).toBe(
+        'catalog-drift audit passed (1 checked)',
+      )
     })
 
     it('docs-frontmatter -> auditDocsFrontmatter', async () => {
@@ -175,6 +184,15 @@ describe('wp_audit tool', () => {
       const payload = parsePayload(result)
       expect(payload.passed).toBe(true)
       expect(payload.kind).toBe('architecture-drift')
+    })
+
+    it('absolute-path-policy -> auditAbsolutePathPolicy', async () => {
+      absolutePathPolicyMock.auditAbsolutePathPolicy.mockReturnValue(passingAudit())
+      const result = await akAuditTool.handler({ kind: 'absolute-path-policy' })
+      expect(absolutePathPolicyMock.auditAbsolutePathPolicy).toHaveBeenCalledTimes(1)
+      const payload = parsePayload(result)
+      expect(payload.passed).toBe(true)
+      expect(payload.kind).toBe('absolute-path-policy')
     })
 
     it('bundle-budget -> runBundleBudgetCli with directory arg', async () => {

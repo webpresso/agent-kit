@@ -1,7 +1,7 @@
 /**
  * `audit-hooks` scaffolder preset.
  *
- * Extends `.husky/pre-commit` to ensure the shared secret check is present.
+ * Extends `.husky/pre-commit` to ensure the shared policy checks are present.
  *
  * Additive: appends lines only when not already present (idempotent).
  * Does not remove existing content.
@@ -27,10 +27,30 @@ export interface ScaffoldAuditHooksResult {
 const AUDIT_HOOK_LINES = [
   '# webpresso audit hooks (staged mode — fast)',
   'bun scripts/check-no-dev-vars.ts',
+  'wp audit absolute-path-policy --root .',
   'bun scripts/audit-secret-provider-quarantine.ts',
 ] as const
 
 const SHEBANG = '#!/bin/sh\n'
+
+function hasEquivalentLine(existingContent: string, line: string): boolean {
+  if (existingContent.includes(line)) return true
+
+  if (line === '# webpresso audit hooks (staged mode — fast)') {
+    return (
+      existingContent.includes('check-no-dev-vars.ts') &&
+      (existingContent.includes('wp audit absolute-path-policy --root .') ||
+        existingContent.includes('"$WP" audit absolute-path-policy --root .')) &&
+      existingContent.includes('audit-secret-provider-quarantine.ts')
+    )
+  }
+
+  if (line === 'wp audit absolute-path-policy --root .') {
+    return existingContent.includes('"$WP" audit absolute-path-policy --root .')
+  }
+
+  return false
+}
 
 /**
  * Append audit hook lines to `.husky/pre-commit` if not already present.
@@ -57,7 +77,7 @@ export function scaffoldAuditHooks(input: ScaffoldAuditHooksInput): ScaffoldAudi
   }
 
   // Determine which lines are missing
-  const missingLines = AUDIT_HOOK_LINES.filter((line) => !existingContent.includes(line))
+  const missingLines = AUDIT_HOOK_LINES.filter((line) => !hasEquivalentLine(existingContent, line))
 
   if (missingLines.length === 0) {
     return { preCommitPath, action: 'identical' }

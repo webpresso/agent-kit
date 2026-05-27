@@ -33,6 +33,7 @@ describe('scaffoldAuditHooks', () => {
     expect(content).toContain('#!/bin/sh')
     expect(content).toContain('# webpresso audit hooks (staged mode — fast)')
     expect(content).toContain('bun scripts/check-no-dev-vars.ts')
+    expect(content).toContain('wp audit absolute-path-policy --root .')
     expect(content).toContain('bun scripts/audit-secret-provider-quarantine.ts')
     expect(content).not.toContain('skill-sizes')
     expect(content).not.toContain('broken-refs')
@@ -42,7 +43,19 @@ describe('scaffoldAuditHooks', () => {
     await mkdir(path.join(tmpDir, '.husky'), { recursive: true })
     await writeFile(
       preCommitPath(tmpDir),
-      '#!/bin/sh\n# webpresso audit hooks (staged mode — fast)\nbun scripts/check-no-dev-vars.ts\nbun scripts/audit-secret-provider-quarantine.ts\n',
+      '#!/bin/sh\n# webpresso audit hooks (staged mode — fast)\nbun scripts/check-no-dev-vars.ts\nwp audit absolute-path-policy --root .\nbun scripts/audit-secret-provider-quarantine.ts\n',
+      'utf8',
+    )
+
+    const result = scaffoldAuditHooks({ repoRoot: tmpDir, options: {} })
+    expect(result.action).toBe('identical')
+  })
+
+  it('treats the templated \"$WP\" absolute-path audit line as equivalent', async () => {
+    await mkdir(path.join(tmpDir, '.husky'), { recursive: true })
+    await writeFile(
+      preCommitPath(tmpDir),
+      '#!/usr/bin/env sh\nset -eu\nWP=\"$(git rev-parse --show-toplevel)/node_modules/.bin/wp\"\n[ -x \"$WP\" ] || WP=wp\nbun scripts/check-no-dev-vars.ts\n\"$WP\" audit absolute-path-policy --root .\nbun scripts/audit-secret-provider-quarantine.ts\n',
       'utf8',
     )
 
@@ -61,6 +74,7 @@ describe('scaffoldAuditHooks', () => {
     expect(content).toContain('pnpm lint')
     expect(content).toContain('# webpresso audit hooks (staged mode — fast)')
     expect(content).toContain('bun scripts/check-no-dev-vars.ts')
+    expect(content).toContain('wp audit absolute-path-policy --root .')
     expect(content).toContain('bun scripts/audit-secret-provider-quarantine.ts')
   })
 
@@ -82,6 +96,7 @@ describe('scaffoldAuditHooks', () => {
     const headerCount = (content.match(/# webpresso audit hooks/g) ?? []).length
     expect(headerCount).toStrictEqual(1)
     expect(content).toContain('bun scripts/check-no-dev-vars.ts')
+    expect(content).toContain('wp audit absolute-path-policy --root .')
     expect(content).toContain('bun scripts/audit-secret-provider-quarantine.ts')
   })
 

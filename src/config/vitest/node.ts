@@ -3,7 +3,7 @@
  *
  * Usage in vitest.config.ts:
  * ```ts
- * import { nodeConfig } from 'webpresso/vitest/node'
+ * import { nodeConfig } from '@webpresso/agent-kit/vitest/node'
  * import { defineConfig, mergeConfig } from 'vite-plus/test/config'
  *
  * export default mergeConfig(nodeConfig, defineConfig({
@@ -14,7 +14,7 @@
 
 import type { UserWorkspaceConfig, ViteUserConfigExport } from 'vite-plus/test/config'
 
-import { dirname } from 'node:path'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite-plus/test/config'
 
@@ -24,18 +24,20 @@ import { resolvedExecArgv, resolvedMaxWorkers, resolvedPool } from './pool-defau
 import { assertNonWorkersVitest4 } from './version-guard.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+const configDir = __dirname
+const distConfigDir = dirname(dirname(configDir))
 
 assertNonWorkersVitest4({ caller: 'nodeConfig' })
 
-// Route bun:sqlite → better-sqlite3 shim so Node-based vitest can load `webpresso/blueprint`.
+// Route bun:sqlite → better-sqlite3 shim so Node-based vitest can load `@webpresso/agent-kit/blueprint`.
 const bunSqliteAlias = [
   {
     find: /^bun:sqlite$/,
-    replacement: fileURLToPath(new URL('../../__mocks__/bun-sqlite.js', import.meta.url)),
+    replacement: join(distConfigDir, '__mocks__', 'bun-sqlite.js'),
   },
 ] as const
 
-// Force webpresso through Vite's transform so the bun:sqlite alias applies even when imported from node_modules.
+// Force @webpresso/agent-kit through Vite's transform so the bun:sqlite alias applies even when imported from node_modules.
 const webpressoInline = {
   deps: { inline: [/webpresso/] },
 } as const
@@ -55,7 +57,7 @@ export interface CreateNodeProjectsOptions {
  *
  * Usage in vitest.config.ts:
  * ```ts
- * import { nodeConfig, createNodeProjects } from 'webpresso/vitest/node'
+ * import { nodeConfig, createNodeProjects } from '@webpresso/agent-kit/vitest/node'
  * import { mergeConfig } from 'vite-plus/test/config'
  *
  * export default mergeConfig(nodeConfig, {
@@ -126,7 +128,7 @@ export function createNodeProjects(
         execArgv: resolvedExecArgv,
         onConsoleLog: () => false,
         silent: process.env.VITEST_CONSOLE === '1' ? false : 'passed-only',
-        setupFiles: [fileURLToPath(new URL('./node-setup.js', import.meta.url))],
+        setupFiles: [join(configDir, 'node-setup.js')],
         include: integrationInclude,
         exclude: ['**/.stryker-tmp/**', 'node_modules/**'],
         reporters: ['default', createFlakinessReporter()],
@@ -146,7 +148,7 @@ export const nodeConfig = defineConfig({
     globals: true,
     restoreMocks: true,
     environment: 'node',
-    setupFiles: [fileURLToPath(new URL('./node-setup.js', import.meta.url))],
+    setupFiles: [join(configDir, 'node-setup.js')],
     onConsoleLog: () => false, // Suppress all console output
     pool: resolvedPool,
     // Suppress console output in tests by default.

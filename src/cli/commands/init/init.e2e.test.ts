@@ -210,7 +210,6 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, '.actrc'))).toBe(true)
       expect(existsSync(path.join(repo, '.husky', 'pre-commit'))).toBe(true)
       expect(existsSync(path.join(repo, 'scripts', 'check-no-dev-vars.ts'))).toBe(true)
-      expect(existsSync(path.join(repo, 'scripts', 'verify-absolute-path-policy.ts'))).toBe(true)
 
       // Future-proof guard: PreToolUse should be fail-closed (deny JSON
       // fallback), not silent fail-open `|| true`.
@@ -241,7 +240,6 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
 
       expect(existsSync(path.join(repo, 'docs', 'templates', 'blueprint.md'))).toBe(true)
       expect(existsSync(path.join(repo, 'scripts', 'check-no-dev-vars.ts'))).toBe(true)
-      expect(existsSync(path.join(repo, 'scripts', 'verify-absolute-path-policy.ts'))).toBe(true)
       expect(existsSync(path.join(repo, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(
         true,
       )

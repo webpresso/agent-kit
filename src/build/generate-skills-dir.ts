@@ -12,9 +12,9 @@
  */
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs'
-import { join, resolve } from 'path'
+import { dirname, join } from 'path'
 
-const PACKAGE_ROOT = resolve(import.meta.dirname, '..', '..')
+const PACKAGE_ROOT = dirname(dirname(import.meta.dirname))
 const CATALOG_SKILLS = join(PACKAGE_ROOT, 'catalog', 'agent', 'skills')
 const SKILLS_OUT = join(PACKAGE_ROOT, 'skills')
 

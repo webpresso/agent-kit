@@ -61,6 +61,9 @@ describe('scaffoldBaseKit', () => {
     expect(pkg['packageManager']).toBe('pnpm@11.1.1')
     expect((pkg['devDependencies'] as Record<string, string>)['webpresso']).toBe('latest')
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
+    expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
+      'WP_SKIP_UPDATE_CHECK=1 wp audit absolute-path-policy --root .',
+    )
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
       'bun scripts/check-no-dev-vars.ts',
     )
@@ -85,6 +88,9 @@ describe('scaffoldBaseKit', () => {
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
     expect((pkg['devDependencies'] as Record<string, string>)['webpresso']).toBe('^0.2.0')
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
+    expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
+      'WP_SKIP_UPDATE_CHECK=1 wp audit absolute-path-policy --root .',
+    )
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
       'bun scripts/check-no-dev-vars.ts',
     )
@@ -110,6 +116,9 @@ describe('scaffoldBaseKit', () => {
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('vp exec wp setup')
+    expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
+      'WP_SKIP_UPDATE_CHECK=1 wp audit absolute-path-policy --root .',
+    )
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
       'bun scripts/check-no-dev-vars.ts',
     )
@@ -126,6 +135,7 @@ describe('scaffoldBaseKit', () => {
       name: 'consumer-app',
       scripts: {
         'setup:agent': 'wp setup',
+        'verify:paths': 'echo custom path check',
         'verify:secrets': 'echo custom secret check',
         prepare: 'pnpm -C packages prebuild',
       },
@@ -138,6 +148,9 @@ describe('scaffoldBaseKit', () => {
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('pnpm -C packages prebuild')
+    expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
+      'echo custom path check',
+    )
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
       'echo custom secret check',
     )
@@ -169,6 +182,9 @@ describe('scaffoldBaseKit', () => {
       (pkg['devDependencies'] as Record<string, string> | undefined)?.['webpresso'],
     ).toBeUndefined()
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
+    expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
+      'WP_SKIP_UPDATE_CHECK=1 wp audit absolute-path-policy --root .',
+    )
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
       'bun scripts/check-no-dev-vars.ts',
     )
@@ -195,6 +211,19 @@ describe('scaffoldBaseKit', () => {
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
     expect(pkg['packageManager']).toBe('pnpm@11.5.0')
+  })
+
+  it('scaffolds verify:paths onto the shared wp audit surface', () => {
+    const catalogDir = resolveCatalogDir()
+    scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
+
+    const pkg = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as Record<
+      string,
+      unknown
+    >
+    expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
+      'WP_SKIP_UPDATE_CHECK=1 wp audit absolute-path-policy --root .',
+    )
   })
 
   it('does NOT overwrite an existing .gitignore even with --overwrite', () => {

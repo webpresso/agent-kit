@@ -58,11 +58,20 @@ Always match the source code's import style.
 Any cross-directory import that reaches outside the current directory
 generally wants a subpath import instead.
 
-### Cross-Package Path Traversal via `__dirname`
+### Hardcoded Relative Filesystem Paths in Executable Code / Config
 
-`resolve(__dirname, '../../..')` patterns to find "repo root" or to reach
-into another package are fragile. Provide a repo-utility helper (e.g.
-`findProjectRoot()`) and ban the raw traversal patterns.
+`resolve(__dirname, '../../..')`, `join(import.meta.dirname, './fixture.json')`,
+and `new URL('../../../schema.sql', import.meta.url)` are all brittle. They
+quietly encode file depth into runtime behavior and break when files move,
+bundled output changes shape, or the same module is consumed from a different
+package boundary.
+
+Provide an explicit absolute anchor instead (for example a repo-root helper,
+package-root helper, or runtime-provided absolute base path), then derive child
+paths from that anchor without `./` / `../` traversal.
+
+Prefer the shared `wp audit absolute-path-policy` surface over a consumer-local
+duplicate scanner when the repo has been scaffolded by agent-kit.
 
 ## Adding a New Restriction
 

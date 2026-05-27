@@ -89,9 +89,11 @@ function mergePackageJson(
 
   const scripts = (pkg['scripts'] ?? {}) as Record<string, string>
   const hasSetupAgent = typeof scripts['setup:agent'] === 'string'
+  const hasVerifyPaths = typeof scripts['verify:paths'] === 'string'
   const hasVerifySecrets = typeof scripts['verify:secrets'] === 'string'
   const hasSecretQuarantineAudit = typeof scripts['audit:secret-provider-quarantine'] === 'string'
   const hasPrepareScript = typeof scripts['prepare'] === 'string'
+  const verifyPathsScript = 'WP_SKIP_UPDATE_CHECK=1 wp audit absolute-path-policy --root .'
   const verifySecretsScript = 'bun scripts/check-no-dev-vars.ts'
   const secretQuarantineAuditScript = 'bun scripts/audit-secret-provider-quarantine.ts'
 
@@ -105,6 +107,7 @@ function mergePackageJson(
     alreadyHasPm &&
     (shouldSkipSelfInstall || shouldManageAgentKitAsGlobal || hasAgentKitDevDep) &&
     (shouldSkipSelfInstall || hasSetupAgent) &&
+    (shouldSkipSelfInstall || hasVerifyPaths) &&
     (shouldSkipSelfInstall || hasVerifySecrets) &&
     (shouldSkipSelfInstall || hasSecretQuarantineAudit) &&
     (shouldSkipSelfInstall || hasPrepareScript)
@@ -129,6 +132,9 @@ function mergePackageJson(
 
   if (!shouldSkipSelfInstall && !hasSetupAgent) {
     scripts['setup:agent'] = 'wp setup'
+  }
+  if (!shouldSkipSelfInstall && !hasVerifyPaths) {
+    scripts['verify:paths'] = verifyPathsScript
   }
   if (!shouldSkipSelfInstall && !hasVerifySecrets) {
     scripts['verify:secrets'] = verifySecretsScript

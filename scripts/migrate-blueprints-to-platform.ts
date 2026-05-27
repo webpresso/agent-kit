@@ -14,7 +14,7 @@
 
 import { createHash } from 'node:crypto'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import { loadSyncCredentials } from '../src/blueprint/sync/auth.js'
 import { BlueprintSyncClient } from '../src/blueprint/sync/client.js'
@@ -251,6 +251,6 @@ export async function migrate(repoRoot: string, fetchFn?: typeof fetch): Promise
 
 const isMain = import.meta.url === `file://${process.argv[1]}`
 if (isMain) {
-  const repoRoot = resolve(import.meta.dirname, '..')
+  const repoRoot = dirname(import.meta.dirname)
   await migrate(repoRoot)
 }

@@ -90,6 +90,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
   'compile-drift': async (root) => (await import('#audit/compile-drift')).auditCompileDrift(root),
   'architecture-drift': async (root) =>
     (await import('#audit/architecture-drift')).auditArchitectureDrift(root),
+  'absolute-path-policy': async (root) =>
+    (await import('#audit/absolute-path-policy')).auditAbsolutePathPolicy(root),
   'agent-cost': async (root) => (await import('#audit/agent-cost')).auditAgentCost(root),
   'blueprint-db-consistency': async (root) =>
     (await import('#audit/blueprint-db-consistency')).auditBlueprintDbConsistency(root),
@@ -130,7 +132,9 @@ const REPO_AUDIT_KINDS = Object.keys(REPO_AUDIT_REGISTRY)
 
 export function resolveGuardrailAuditKinds(root: string): string[] {
   if (isAgentKitRoot(root)) return REPO_AUDIT_KINDS
-  return REPO_AUDIT_KINDS.filter((kind) => kind !== 'ai-contracts')
+  return REPO_AUDIT_KINDS.filter(
+    (kind) => kind !== 'ai-contracts' && kind !== 'absolute-path-policy',
+  )
 }
 
 function isAgentKitRoot(root: string): boolean {

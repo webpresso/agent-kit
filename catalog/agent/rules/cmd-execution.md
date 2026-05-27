@@ -90,6 +90,8 @@ cd <repo-root> && ./node_modules/.bin/oxfmt --write --ignore-path .gitignore
 
 ## Other Rules
 
+- MCP tools are the primary agent-facing surface when available. If no MCP tool
+  exists for the operation, use the repo-owned wrapper command.
 - Agent-facing commands should use MCP tools, `wp ...`, or repo scripts through
   `vp run ...`. The raw TypeScript/Bun CLI entrypoint is an implementation
   detail, not an instruction surface for users or agents.
