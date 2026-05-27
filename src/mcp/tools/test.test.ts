@@ -83,18 +83,16 @@ describe('wp_test tool', () => {
       const [cmd, args] = spawnMock.mock.calls[0]!
       expect(cmd).toBe('vp')
       expect(args).toEqual(['run', '--filter', 'x', 'test'])
-      // Result is wrapped in MCP content blocks with JSON-serialized payload.
+      // Result is wrapped in MCP content blocks with a terse text summary and
+      // the full machine-readable payload in structuredContent.
       expect(result.content[0]).toMatchObject({ type: 'text' })
-      const payload = JSON.parse((result.content[0] as { text: string }).text) as Record<
-        string,
-        unknown
-      >
-      expect(result.structuredContent).toEqual(payload)
+      const payload = result.structuredContent as Record<string, unknown>
       expect(payload).toMatchObject({
         passed: true,
         summary: 'tests passed for 1 package',
         exitCode: 0,
       })
+      expect((result.content[0] as { text: string }).text).toBe('tests passed for 1 package')
     })
 
     it('preserves file filters when package targets are provided on the vp path', async () => {
@@ -138,7 +136,7 @@ describe('wp_test tool', () => {
       spawnMock.mockReturnValue(fakeChild({ stdout: 'x'.repeat(5_000), exitCode: 1 }))
 
       const result = await akTestTool.handler({ packages: ['x'] })
-      const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      const payload = result.structuredContent as {
         passed: boolean
         summary: string
         rawOutput?: string
@@ -160,7 +158,7 @@ describe('wp_test tool', () => {
       const promise = akTestTool.handler({ packages: ['x'] }, { signal: controller.signal })
       controller.abort()
       const result = await promise
-      const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      const payload = result.structuredContent as {
         aborted?: boolean
         failures?: Array<{ message: string }>
       }
@@ -175,7 +173,7 @@ describe('wp_test tool', () => {
       spawnMock.mockReturnValue(fakeChild({ hang: true, killCapture }))
 
       const result = await akTestTool.handler({ packages: ['x'], timeoutMs: 1 })
-      const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      const payload = result.structuredContent as {
         passed: boolean
         summary: string
         timedOut?: boolean

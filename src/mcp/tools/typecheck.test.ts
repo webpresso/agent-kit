@@ -96,13 +96,12 @@ describe('wp_typecheck tool', () => {
       )
 
       const result = await akTypecheckTool.handler({})
-      const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      const payload = result.structuredContent as {
         passed: boolean
         summary: string
         counts: { errorCount: number }
         details: { errors: { file: string; line: number; code: string; message: string }[] }
       }
-      expect(result.structuredContent).toEqual(payload)
 
       expect(payload.passed).toBe(false)
       expect(payload.summary).toBe('typecheck failed with 1 error')
@@ -120,7 +119,7 @@ describe('wp_typecheck tool', () => {
       spawnMock.mockReturnValue(fakeChild({ stdout: '', exitCode: 0 }))
 
       const result = await akTypecheckTool.handler({})
-      const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      const payload = result.structuredContent as {
         passed: boolean
         summary: string
         counts: { errorCount: number }
@@ -133,13 +132,14 @@ describe('wp_typecheck tool', () => {
         counts: { errorCount: 0 },
         details: { errors: [] },
       })
+      expect((result.content[0] as { text: string }).text).toBe('typecheck passed')
     })
 
     it('clips long raw typecheck output and marks it truncated', async () => {
       spawnMock.mockReturnValue(fakeChild({ stdout: 'x'.repeat(5_000), exitCode: 1 }))
 
       const result = await akTypecheckTool.handler({})
-      const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      const payload = result.structuredContent as {
         rawOutput?: string
         truncated?: boolean
       }

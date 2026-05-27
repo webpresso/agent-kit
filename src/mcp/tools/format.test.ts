@@ -54,10 +54,7 @@ describe('wp_format tool', () => {
     spawnMock.mockReturnValue(fakeChild({ stdout: 'Finished\n', exitCode: 0 }))
 
     const result = await akFormatTool.handler({})
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as Record<
-      string,
-      unknown
-    >
+    const payload = result.structuredContent as Record<string, unknown>
 
     expect(spawnMock).toHaveBeenCalledOnce()
     const [cmd, args] = spawnMock.mock.calls[0]!
@@ -67,16 +64,14 @@ describe('wp_format tool', () => {
       passed: true,
       summary: 'format applied',
     })
+    expect((result.content[0] as { text: string }).text).toBe('format applied')
   })
 
   it('passes --check and returns passed=false on dirty', async () => {
     spawnMock.mockReturnValue(fakeChild({ stderr: 'a.ts not formatted\n', exitCode: 1 }))
 
     const result = await akFormatTool.handler({ check: true })
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as Record<
-      string,
-      unknown
-    >
+    const payload = result.structuredContent as Record<string, unknown>
 
     const [, args] = spawnMock.mock.calls[0]!
     expect(args).toEqual(['--check', '--ignore-path', '.gitignore'])
@@ -90,7 +85,7 @@ describe('wp_format tool', () => {
     spawnMock.mockReturnValue(fakeChild({ error: enoent }))
 
     const result = await akFormatTool.handler({})
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+    const payload = result.structuredContent as {
       passed: boolean
       summary: string
       details?: { spawnError?: string }
@@ -106,7 +101,7 @@ describe('wp_format tool', () => {
     spawnMock.mockReturnValue(fakeChild({ stderr: `WARN ${'y'.repeat(5_000)}`, exitCode: 1 }))
 
     const result = await akFormatTool.handler({ check: true })
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+    const payload = result.structuredContent as {
       rawOutput?: string
       truncated?: boolean
     }

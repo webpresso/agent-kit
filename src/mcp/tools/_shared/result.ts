@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { z } from 'zod'
 
 const DEFAULT_RAW_OUTPUT_LIMIT = 4_000
+const DEFAULT_SUMMARY_TEXT_LIMIT = 240
 
 export const failureSchema = z.object({
   file: z.string().optional(),
@@ -77,14 +78,20 @@ export function clipRawOutput(
 
 export function createSummaryResult<TPayload extends SummaryFirstPayload>(
   payload: TPayload,
-  options: { isError?: boolean } = {},
+  options: { isError?: boolean; text?: string } = {},
 ) {
-  const text = JSON.stringify(payload)
+  const text = clipSummaryText(options.text ?? payload.summary)
   return {
     content: [{ type: 'text' as const, text }],
     structuredContent: payload,
     ...(options.isError ? { isError: true } : {}),
   }
+}
+
+function clipSummaryText(text: string): string {
+  const normalized = text.trim()
+  if (normalized.length <= DEFAULT_SUMMARY_TEXT_LIMIT) return normalized
+  return `${normalized.slice(0, DEFAULT_SUMMARY_TEXT_LIMIT - 1).trimEnd()}…`
 }
 
 function persistToolLog(toolName: string, output: string): string {

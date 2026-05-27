@@ -16,8 +16,10 @@ vi.mock('../../e2e/execution.js', () => ({
 
 import akE2eTool from './e2e.js'
 
-function parsePayload(result: { content: ReadonlyArray<{ type: string; text?: string }> }) {
-  return JSON.parse((result.content[0] as { text: string }).text) as Record<string, unknown>
+function parsePayload(
+  result: { structuredContent?: unknown; content: ReadonlyArray<{ type: string; text?: string }> },
+) {
+  return result.structuredContent as Record<string, unknown>
 }
 
 beforeEach(() => {
@@ -78,7 +80,6 @@ describe('wp_e2e tool', () => {
     expect(runCommandConfigs).toHaveBeenCalledWith(commands, { signal: undefined })
 
     const payload = parsePayload(result)
-    expect(result.structuredContent).toEqual(payload)
     expect(payload).toMatchObject({
       passed: true,
       summary: 'e2e passed: 1 suite, 1 command',
@@ -90,6 +91,7 @@ describe('wp_e2e tool', () => {
       },
       rawOutput: 'ok\n',
     })
+    expect((result.content[0] as { text: string }).text).toBe('e2e passed: 1 suite, 1 command')
     expect((payload.details as { commands: unknown[] }).commands).toEqual(commands)
   })
 
@@ -116,7 +118,6 @@ describe('wp_e2e tool', () => {
 
     const result = await akE2eTool.handler({ suite: 'platform-api' })
     const payload = parsePayload(result)
-    expect(result.structuredContent).toEqual(payload)
 
     expect(payload).toMatchObject({
       passed: false,
@@ -155,7 +156,6 @@ describe('wp_e2e tool', () => {
 
     const result = await akE2eTool.handler({ suite: 'smoke' })
     const payload = parsePayload(result)
-    expect(result.structuredContent).toEqual(payload)
     expect(payload.rawOutput).toHaveLength(4_000)
     expect(payload.truncated).toBe(true)
     expect(payload.logPath).toMatch(/^logs\//)

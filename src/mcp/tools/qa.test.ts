@@ -123,7 +123,7 @@ describe('wp_qa tool', () => {
     testHandler.mockResolvedValue(wrapPayload(testPayload))
 
     const result = await akQaTool.handler({})
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+    const payload = result.structuredContent as {
       passed: boolean
       summary: string
       details: {
@@ -137,10 +137,10 @@ describe('wp_qa tool', () => {
         }
       }
     }
-    expect(result.structuredContent).toEqual(payload)
 
     expect(payload.passed).toBe(true)
     expect(payload.summary).toBe('qa passed')
+    expect((result.content[0] as { text: string }).text).toBe('qa passed')
     expect(payload.details.lint).toEqual({ passed: true, summary: 'lint passed', failures: [] })
     expect(payload.details.typecheck).toEqual({
       passed: true,
@@ -173,7 +173,7 @@ describe('wp_qa tool', () => {
     testHandler.mockResolvedValue(wrapPayload(expected.details.test))
 
     const result = await akQaTool.handler({})
-    const payload = JSON.parse((result.content[0] as { text: string }).text)
+    const payload = result.structuredContent
 
     expect(payload).toEqual(expected)
   })
@@ -219,7 +219,7 @@ describe('wp_qa tool', () => {
     )
 
     const result = await akQaTool.handler({})
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+    const payload = result.structuredContent as {
       details: {
         lint: Record<string, unknown>
         typecheck: Record<string, unknown>
@@ -271,7 +271,7 @@ describe('wp_qa tool', () => {
     )
 
     const result = await akQaTool.handler({})
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+    const payload = result.structuredContent as {
       details: {
         test: {
           failures: Array<{ file?: string; message: string; code?: string }>
@@ -335,7 +335,7 @@ describe('wp_qa tool', () => {
     )
 
     const result = await akQaTool.handler({})
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+    const payload = result.structuredContent as {
       passed: boolean
       summary: string
       details: {
@@ -371,7 +371,7 @@ describe('wp_qa tool', () => {
     )
 
     const result = await akQaTool.handler({})
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+    const payload = result.structuredContent as {
       passed: boolean
       summary: string
       details: {
@@ -403,7 +403,7 @@ describe('wp_qa tool', () => {
     )
 
     const result = await akQaTool.handler({})
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+    const payload = result.structuredContent as {
       passed: boolean
       details: {
         lint: { passed: boolean; unwrapError?: string }
@@ -429,7 +429,7 @@ describe('wp_qa tool', () => {
     )
 
     const result = await akQaTool.handler({})
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+    const payload = result.structuredContent as {
       passed: boolean
       details: {
         lint: { passed: boolean; unwrapError?: string }
@@ -518,7 +518,7 @@ describe('wp_qa tool', () => {
     )
 
     const result = await akQaTool.handler({ cwd: '/some/repo' })
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+    const payload = result.structuredContent as {
       passed: boolean
       summary: string
     }
@@ -549,7 +549,7 @@ describe('wp_qa tool', () => {
     )
 
     const result = await akQaTool.handler({ cwd: '/some/repo' })
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+    const payload = result.structuredContent as {
       passed: boolean
       summary: string
     }
@@ -574,7 +574,7 @@ describe('wp_qa tool', () => {
     )
 
     const result = await akQaTool.handler({ cwd: '/some/repo' })
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+    const payload = result.structuredContent as {
       passed: boolean
       summary: string
     }

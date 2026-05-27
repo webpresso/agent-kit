@@ -76,8 +76,10 @@ function failingAudit() {
   return { ok: false, title: 't', checked: 1, violations: [{ message: 'boom' }] }
 }
 
-function parsePayload(result: { content: ReadonlyArray<{ type: string; text?: string }> }) {
-  return JSON.parse((result.content[0] as { text: string }).text) as {
+function parsePayload(
+  result: { structuredContent?: unknown; content: ReadonlyArray<{ type: string; text?: string }> },
+) {
+  return result.structuredContent as {
     passed: boolean
     summary: string
     kind: string
@@ -113,10 +115,10 @@ describe('wp_audit tool', () => {
       const result = await akAuditTool.handler({ kind: 'catalog-drift' })
       expect(repoGuardrailsMock.auditCatalogDrift).toHaveBeenCalledTimes(1)
       const payload = parsePayload(result)
-      expect(result.structuredContent).toEqual(payload)
       expect(payload.passed).toBe(true)
       expect(payload.summary).toBe('catalog-drift audit passed (1 checked)')
       expect(payload.kind).toBe('catalog-drift')
+      expect((result.content[0] as { text: string }).text).toBe('catalog-drift audit passed (1 checked)')
     })
 
     it('docs-frontmatter -> auditDocsFrontmatter', async () => {

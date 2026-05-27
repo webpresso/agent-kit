@@ -84,17 +84,14 @@ describe('wp_lint tool', () => {
     spawnMock.mockReturnValue(fakeChild({ stdout: '[]', exitCode: 0 }))
 
     const result = await akLintTool.handler({ files: ['a.ts'] })
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as Record<
-      string,
-      unknown
-    >
-    expect(result.structuredContent).toEqual(payload)
+    const payload = result.structuredContent as Record<string, unknown>
     expect(payload).toMatchObject({
       passed: true,
       summary: 'lint passed via vp lint',
       counts: { issueCount: 0 },
       details: { issues: [] },
     })
+    expect((result.content[0] as { text: string }).text).toBe('lint passed via vp lint')
   })
 
   it('parses oxlint JSON output into structured issues', async () => {
@@ -134,7 +131,7 @@ describe('wp_lint tool', () => {
     spawnMock.mockReturnValue(fakeChild({ stdout: oxlintReport, exitCode: 1 }))
 
     const result = await akLintTool.handler({ files: ['a.ts', 'b.ts'] })
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+    const payload = result.structuredContent as {
       passed: boolean
       summary?: string
       details: {
@@ -172,7 +169,7 @@ describe('wp_lint tool', () => {
     spawnMock.mockReturnValue(fakeChild({ stdout: '{not json', exitCode: 1 }))
 
     const result = await akLintTool.handler({})
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+    const payload = result.structuredContent as {
       passed: boolean
       summary?: string
       details?: { issues: unknown[]; parseError?: string }
@@ -187,7 +184,7 @@ describe('wp_lint tool', () => {
     spawnMock.mockReturnValue(fakeChild({ stdout: '{"x": 1}', exitCode: 1 }))
 
     const result = await akLintTool.handler({})
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+    const payload = result.structuredContent as {
       details?: { parseError?: string }
     }
     expect(payload.details?.parseError).toMatch(/not a JSON array/)
@@ -211,7 +208,7 @@ describe('wp_lint tool', () => {
     )
 
     const result = await akLintTool.handler({ files: ['a.ts'] })
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+    const payload = result.structuredContent as {
       passed: boolean
       counts?: { issueCount: number }
       details?: {
@@ -237,7 +234,7 @@ describe('wp_lint tool', () => {
 
     const result = await akLintTool.handler({})
     expect(spawnMock.mock.calls.length).toBe(1)
-    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+    const payload = result.structuredContent as {
       passed: boolean
       summary?: string
       details?: { spawnError?: string }
