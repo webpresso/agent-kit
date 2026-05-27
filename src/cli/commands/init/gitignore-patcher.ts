@@ -64,6 +64,7 @@ export const GENERATED_PATHS_BLOCK: GitignoreBlock = {
     '.opencode/',
     '.codex/',
     '.claude/settings.json',
+    '.claude/agents/',
     '.claude/hooks/',
     '.claude/rules/',
     '.claude/skills/',

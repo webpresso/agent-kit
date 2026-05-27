@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 
@@ -19,11 +19,11 @@ let tmpDir: string
 let tools: ToolMap
 const tempDirs: string[] = []
 
-beforeEach(async () => {
+beforeAll(async () => {
   ;({ tmpDir, tools } = await makeLazyBlueprintHarness('ak-bs-list-base-'))
 })
 
-afterEach(() => {
+afterAll(() => {
   cleanupTempDir(tmpDir)
   while (tempDirs.length > 0) cleanupTempDir(tempDirs.pop())
 })
