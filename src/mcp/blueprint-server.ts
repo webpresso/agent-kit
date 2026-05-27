@@ -9,7 +9,7 @@
  * Platform-first sync (Task 2.1):
  *   When a SyncAdapter is available (credentials present, not disabled), mutations
  *   push a BlueprintPlatformEvent before updating local markdown/SQLite.
- *   Iron rule: AK_BLUEPRINT_PLATFORM_DISABLED=1 skips the adapter entirely — the
+ *   Iron rule: WP_BLUEPRINT_PLATFORM_DISABLED=1 skips the adapter entirely — the
  *   markdown-canonical path runs byte-identically to the pre-migration behaviour.
  */
 
@@ -132,13 +132,13 @@ export function _setSyncAdapterFactory(factory: SyncAdapterFactory | null): void
 /**
  * Resolve the sync adapter for the current request.
  *
- * Iron rule: returns `null` when `AK_BLUEPRINT_PLATFORM_DISABLED=1` regardless
+ * Iron rule: returns `null` when `WP_BLUEPRINT_PLATFORM_DISABLED=1` regardless
  * of any injected factory — the caller must skip all platform operations.
  *
  * @param cwd - repo working directory, used to locate the replica DB file.
  */
 async function resolveSyncAdapter(cwd: string): Promise<SyncAdapter | null> {
-  if (process.env['AK_BLUEPRINT_PLATFORM_DISABLED'] === '1') return null
+  if (process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] === '1') return null
 
   if (_syncAdapterFactory !== null) {
     return _syncAdapterFactory()
@@ -179,6 +179,61 @@ async function resolveSyncAdapter(cwd: string): Promise<SyncAdapter | null> {
   return {
     pushEvent: (event) => client.pushEvent(event),
     ensureFresh: (opts) => manager.ensureFresh(opts),
+  }
+}
+
+const DEFAULT_PLATFORM_MUTATION_TIMEOUT_MS = 5_000
+
+function readPlatformMutationTimeoutMs(): number {
+  const parsed = Number.parseInt(
+    process.env['WP_BLUEPRINT_PLATFORM_MUTATION_TIMEOUT_MS'] ?? String(DEFAULT_PLATFORM_MUTATION_TIMEOUT_MS),
+    10,
+  )
+  return Math.max(1, Number.isFinite(parsed) ? parsed : DEFAULT_PLATFORM_MUTATION_TIMEOUT_MS)
+}
+
+async function awaitPlatformMutationStep(
+  promise: Promise<void>,
+  label: string,
+  timeoutMs: number,
+): Promise<void> {
+  await Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      setTimeout(
+        () => reject(new Error(`${label} timed out after ${timeoutMs}ms`)),
+        timeoutMs,
+      )
+    }),
+  ])
+}
+
+async function runPlatformMutationSync(
+  adapter: SyncAdapter | null,
+  options: {
+    readonly label: string
+    readonly event?: Parameters<SyncAdapter['pushEvent']>[0]
+    readonly ensureFreshSlug?: string
+  },
+): Promise<void> {
+  if (adapter === null) return
+
+  const timeoutMs = readPlatformMutationTimeoutMs()
+  try {
+    if (options.event) {
+      await awaitPlatformMutationStep(adapter.pushEvent(options.event), `${options.label} pushEvent`, timeoutMs)
+    }
+    if (options.ensureFreshSlug) {
+      await awaitPlatformMutationStep(
+        adapter.ensureFresh({ slug: options.ensureFreshSlug }),
+        `${options.label} ensureFresh`,
+        timeoutMs,
+      )
+    }
+  } catch (error) {
+    throw new Error(
+      `${options.label} platform sync failed: ${error instanceof Error ? error.message : toStr(error)}`,
+    )
   }
 }
 
@@ -542,11 +597,14 @@ function runValidate(filePath: string): { valid: boolean; gaps: string[] } {
     if (!v || String(v).trim() === '') gaps.push(`Missing or empty frontmatter field: ${f}`)
   }
   const body = fm.content
-  if (!/#### Task\s+\S/.test(body)) gaps.push('No "#### Task" sections found')
+  const taskHeaderRegex = /^####\s+(?:\[[^\]]+\]\s+)?Task\s+\S/m
+  if (!taskHeaderRegex.test(body)) gaps.push('No "#### Task" sections found')
   for (const block of body
-    .split(/(?=#### Task\s)/)
-    .filter((b) => b.trim().startsWith('#### Task'))) {
-    const label = /#### Task\s+([\d.]+[:\s]+.+)/.exec(block)?.[1]?.trim() ?? '(unknown)'
+    .split(/(?=^####\s+(?:\[[^\]]+\]\s+)?Task\s)/m)
+    .filter((b) => /^####\s+(?:\[[^\]]+\]\s+)?Task\s/.test(b.trimStart()))) {
+    const label =
+      /^####\s+(?:\[[^\]]+\]\s+)?Task\s+([\d.]+[:\s]+.+)/m.exec(block)?.[1]?.trim() ??
+      '(unknown)'
     if (!block.includes('**Acceptance:**') && !block.includes('**Acceptance criteria:**'))
       gaps.push(`Task "${label}" is missing **Acceptance:** subsection`)
   }
@@ -640,22 +698,27 @@ async function handleNew(cwd: string, raw: unknown): Promise<ToolHandlerResult> 
   const targetPath = path.join(resolveBlueprintRoot(cwd), 'draft', slug, '_overview.md')
 
   // Platform-first path: push event to register the blueprint before returning the scaffold.
-  // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
+  // Iron rule: resolveSyncAdapter() returns null when WP_BLUEPRINT_PLATFORM_DISABLED=1.
   const adapter = await resolveSyncAdapter(cwd)
-  if (adapter !== null) {
-    await adapter.pushEvent({
-      eventId: randomUUID(),
-      repoId: process.env['AK_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
-      occurredAt: new Date().toISOString(),
-      type: 'blueprint.created',
-      payload: {
+  try {
+    await runPlatformMutationSync(adapter, {
+      label: 'wp_blueprint_new',
+      event: {
+        eventId: randomUUID(),
+        repoId: process.env['WP_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
+        occurredAt: new Date().toISOString(),
         type: 'blueprint.created',
-        slug,
-        title,
-        complexity,
-        status: 'draft',
+        payload: {
+          type: 'blueprint.created',
+          slug,
+          title,
+          complexity,
+          status: 'draft',
+        },
       },
     })
+  } catch (e) {
+    return err('wp_blueprint_new failed', toStr(e))
   }
 
   return jsonContent({
@@ -714,12 +777,12 @@ async function handleTaskNext(
   const failures: string[] = []
 
   // Platform-first: refresh local replica before reading so the result reflects remote state.
-  // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
+  // Iron rule: resolveSyncAdapter() returns null when WP_BLUEPRINT_PLATFORM_DISABLED=1.
   const adapter = await resolveSyncAdapter(projectCwd)
   if (adapter !== null) {
     const timeoutMs = Math.max(
       1,
-      Number.parseInt(process.env['AK_BLUEPRINT_READ_FRESH_TIMEOUT_MS'] ?? '5000', 10) || 5000,
+      Number.parseInt(process.env['WP_BLUEPRINT_READ_FRESH_TIMEOUT_MS'] ?? '5000', 10) || 5000,
     )
     try {
       await Promise.race([
@@ -900,23 +963,30 @@ async function handleTaskAdvance(
     }
 
     // Platform-first path: push event + pull fresh replica before local update.
-    // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
+    // Iron rule: resolveSyncAdapter() returns null when WP_BLUEPRINT_PLATFORM_DISABLED=1.
     const adapter = await resolveSyncAdapter(projectCwd)
-    if (adapter !== null && blueprintSlug !== null && oldStatus !== null) {
-      await adapter.pushEvent({
-        eventId: randomUUID(),
-        repoId: process.env['AK_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
-        occurredAt: new Date().toISOString(),
-        type: 'task.status_changed',
-        payload: {
-          type: 'task.status_changed',
-          blueprintSlug,
-          taskId: task_id,
-          fromStatus: oldStatus,
-          toStatus: to,
-        },
-      })
-      await adapter.ensureFresh({ slug: blueprintSlug })
+    if (blueprintSlug !== null && oldStatus !== null) {
+      try {
+        await runPlatformMutationSync(adapter, {
+          label: 'wp_blueprint_task_advance',
+          event: {
+            eventId: randomUUID(),
+            repoId: process.env['WP_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
+            occurredAt: new Date().toISOString(),
+            type: 'task.status_changed',
+            payload: {
+              type: 'task.status_changed',
+              blueprintSlug,
+              taskId: task_id,
+              fromStatus: oldStatus,
+              toStatus: to,
+            },
+          },
+          ensureFreshSlug: blueprintSlug,
+        })
+      } catch (e) {
+        return err('wp_blueprint_task_advance failed', toStr(e))
+      }
     }
 
     // Always update local markdown + SQLite.
@@ -1139,22 +1209,27 @@ async function handlePromote(
       `Blueprint "${slug}" not validated since last write. Run wp_blueprint_validate first.`,
     )
   // Platform-first path: push event + pull fresh replica before local move.
-  // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
+  // Iron rule: resolveSyncAdapter() returns null when WP_BLUEPRINT_PLATFORM_DISABLED=1.
   const adapter = await resolveSyncAdapter(projectCwd)
-  if (adapter !== null) {
-    await adapter.pushEvent({
-      eventId: randomUUID(),
-      repoId: process.env['AK_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
-      occurredAt: new Date().toISOString(),
-      type: 'blueprint.status_changed',
-      payload: {
+  try {
+    await runPlatformMutationSync(adapter, {
+      label: 'wp_blueprint_promote',
+      event: {
+        eventId: randomUUID(),
+        repoId: process.env['WP_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
+        occurredAt: new Date().toISOString(),
         type: 'blueprint.status_changed',
-        slug,
-        fromStatus: currentState,
-        toStatus: to_state,
+        payload: {
+          type: 'blueprint.status_changed',
+          slug,
+          fromStatus: currentState,
+          toStatus: to_state,
+        },
       },
+      ensureFreshSlug: slug,
     })
-    await adapter.ensureFresh({ slug })
+  } catch (e) {
+    return err('wp_blueprint_promote failed', toStr(e))
   }
 
   const { renameSync } = await import('node:fs')
@@ -1237,20 +1312,25 @@ async function handleFinalize(
   }
 
   // Platform-first path: push event + pull fresh replica before local move.
-  // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
+  // Iron rule: resolveSyncAdapter() returns null when WP_BLUEPRINT_PLATFORM_DISABLED=1.
   const adapter = await resolveSyncAdapter(projectCwd)
-  if (adapter !== null) {
-    await adapter.pushEvent({
-      eventId: randomUUID(),
-      repoId: process.env['AK_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
-      occurredAt: new Date().toISOString(),
-      type: 'blueprint.finalized',
-      payload: {
+  try {
+    await runPlatformMutationSync(adapter, {
+      label: 'wp_blueprint_finalize',
+      event: {
+        eventId: randomUUID(),
+        repoId: process.env['WP_BLUEPRINT_PLATFORM_REPO_ID'] ?? 'local',
+        occurredAt: new Date().toISOString(),
         type: 'blueprint.finalized',
-        slug,
+        payload: {
+          type: 'blueprint.finalized',
+          slug,
+        },
       },
+      ensureFreshSlug: slug,
     })
-    await adapter.ensureFresh({ slug })
+  } catch (e) {
+    return err('wp_blueprint_finalize failed', toStr(e))
   }
 
   const { renameSync } = await import('node:fs')

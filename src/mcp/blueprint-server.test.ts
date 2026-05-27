@@ -2,7 +2,7 @@
  * Tests for the blueprint MCP server (Tasks 2.1–2.5).
  *
  * Task 2.1 tests exercise `wp_blueprint_task_advance` with platform-first path,
- * iron rule regression (AK_BLUEPRINT_PLATFORM_DISABLED=1), and null-credentials
+ * iron rule regression (WP_BLUEPRINT_PLATFORM_DISABLED=1), and null-credentials
  * fallback — all patterns established here for Wave 2 tasks 2.2-2.7 to copy.
  *
  * Task 2.2 tests exercise `wp_blueprint_promote` platform-first path.
@@ -484,8 +484,8 @@ describe('wp_blueprint_task_advance', () => {
     expect(md).toContain('**Status:** in-progress')
   })
 
-  it('does NOT call pushEvent when AK_BLUEPRINT_PLATFORM_DISABLED=1 (iron rule)', async () => {
-    vi.stubEnv('AK_BLUEPRINT_PLATFORM_DISABLED', '1')
+  it('does NOT call pushEvent when WP_BLUEPRINT_PLATFORM_DISABLED=1 (iron rule)', async () => {
+    vi.stubEnv('WP_BLUEPRINT_PLATFORM_DISABLED', '1')
 
     const pushEvent = vi.fn<SyncAdapter['pushEvent']>().mockResolvedValue(undefined)
     const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockResolvedValue(undefined)
@@ -657,8 +657,8 @@ describe('wp_blueprint_promote — platform-first (Task 2.2)', () => {
     expect(ensureFresh).toHaveBeenCalledOnce()
   })
 
-  it('does NOT call pushEvent when AK_BLUEPRINT_PLATFORM_DISABLED=1 (iron rule)', async () => {
-    vi.stubEnv('AK_BLUEPRINT_PLATFORM_DISABLED', '1')
+  it('does NOT call pushEvent when WP_BLUEPRINT_PLATFORM_DISABLED=1 (iron rule)', async () => {
+    vi.stubEnv('WP_BLUEPRINT_PLATFORM_DISABLED', '1')
 
     const pushEvent = vi.fn<SyncAdapter['pushEvent']>().mockResolvedValue(undefined)
     const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockResolvedValue(undefined)
@@ -679,6 +679,35 @@ describe('wp_blueprint_promote — platform-first (Task 2.2)', () => {
     // Iron rule: no platform calls when disabled
     expect(pushEvent).not.toHaveBeenCalled()
     expect(ensureFresh).not.toHaveBeenCalled()
+  })
+
+  it('fails fast when ensureFresh times out during promote', async () => {
+    vi.stubEnv('WP_BLUEPRINT_PLATFORM_MUTATION_TIMEOUT_MS', '1')
+
+    const pushEvent = vi.fn<SyncAdapter['pushEvent']>().mockResolvedValue(undefined)
+    const ensureFresh = vi
+      .fn<SyncAdapter['ensureFresh']>()
+      .mockImplementation(() => new Promise<void>(() => {}))
+    _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }))
+
+    const { localTools } = await setupWithPromoteBlueprint()
+
+    const result = await callTool(localTools, 'wp_blueprint_promote', {
+      slug: PROMOTE_SLUG,
+      to_state: 'planned',
+    })
+    const data = parseResult(result) as { failures: string[] }
+
+    expect(result.isError).toStrictEqual(true)
+    expect(data.failures).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          'wp_blueprint_promote platform sync failed: wp_blueprint_promote ensureFresh timed out',
+        ),
+      ]),
+    )
+    expect(pushEvent).toHaveBeenCalledOnce()
+    expect(ensureFresh).toHaveBeenCalledOnce()
   })
 })
 
@@ -785,8 +814,8 @@ describe('wp_blueprint_finalize — platform-first (Task 2.3)', () => {
     expect(ensureFresh).toHaveBeenCalledOnce()
   })
 
-  it('does NOT call pushEvent when AK_BLUEPRINT_PLATFORM_DISABLED=1 (iron rule)', async () => {
-    vi.stubEnv('AK_BLUEPRINT_PLATFORM_DISABLED', '1')
+  it('does NOT call pushEvent when WP_BLUEPRINT_PLATFORM_DISABLED=1 (iron rule)', async () => {
+    vi.stubEnv('WP_BLUEPRINT_PLATFORM_DISABLED', '1')
 
     const pushEvent = vi.fn<SyncAdapter['pushEvent']>().mockResolvedValue(undefined)
     const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockResolvedValue(undefined)
@@ -807,6 +836,7 @@ describe('wp_blueprint_finalize — platform-first (Task 2.3)', () => {
     expect(pushEvent).not.toHaveBeenCalled()
     expect(ensureFresh).not.toHaveBeenCalled()
   })
+
 })
 
 // ---------------------------------------------------------------------------
@@ -858,8 +888,8 @@ describe('wp_blueprint_new — platform-first (Task 2.4)', () => {
     expect(ensureFresh).not.toHaveBeenCalled()
   })
 
-  it('does NOT call pushEvent when AK_BLUEPRINT_PLATFORM_DISABLED=1 (iron rule)', async () => {
-    vi.stubEnv('AK_BLUEPRINT_PLATFORM_DISABLED', '1')
+  it('does NOT call pushEvent when WP_BLUEPRINT_PLATFORM_DISABLED=1 (iron rule)', async () => {
+    vi.stubEnv('WP_BLUEPRINT_PLATFORM_DISABLED', '1')
 
     const pushEvent = vi.fn<SyncAdapter['pushEvent']>().mockResolvedValue(undefined)
     const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockResolvedValue(undefined)
@@ -876,6 +906,33 @@ describe('wp_blueprint_new — platform-first (Task 2.4)', () => {
 
     // Iron rule: no platform calls when disabled
     expect(pushEvent).not.toHaveBeenCalled()
+    expect(ensureFresh).not.toHaveBeenCalled()
+  })
+
+  it('fails fast when pushEvent times out during new', async () => {
+    vi.stubEnv('WP_BLUEPRINT_PLATFORM_MUTATION_TIMEOUT_MS', '1')
+
+    const pushEvent = vi
+      .fn<SyncAdapter['pushEvent']>()
+      .mockImplementation(() => new Promise<void>(() => {}))
+    const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockResolvedValue(undefined)
+    _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }))
+
+    const result = await callTool(tools, 'wp_blueprint_new', {
+      title: 'Timed Out New Feature',
+      goal_prompt: 'Trigger a fast pushEvent timeout.',
+    })
+    const data = parseResult(result) as { failures: string[] }
+
+    expect(result.isError).toStrictEqual(true)
+    expect(data.failures).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(
+          'wp_blueprint_new platform sync failed: wp_blueprint_new pushEvent timed out',
+        ),
+      ]),
+    )
+    expect(pushEvent).toHaveBeenCalledOnce()
     expect(ensureFresh).not.toHaveBeenCalled()
   })
 })
@@ -926,8 +983,8 @@ describe('wp_blueprint_task_next — ensureFresh-before-read (Task 2.5)', () => 
     expect(pushEvent).not.toHaveBeenCalled()
   })
 
-  it('does NOT call ensureFresh when AK_BLUEPRINT_PLATFORM_DISABLED=1 (iron rule)', async () => {
-    vi.stubEnv('AK_BLUEPRINT_PLATFORM_DISABLED', '1')
+  it('does NOT call ensureFresh when WP_BLUEPRINT_PLATFORM_DISABLED=1 (iron rule)', async () => {
+    vi.stubEnv('WP_BLUEPRINT_PLATFORM_DISABLED', '1')
 
     const pushEvent = vi.fn<SyncAdapter['pushEvent']>().mockResolvedValue(undefined)
     const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockResolvedValue(undefined)
@@ -945,7 +1002,7 @@ describe('wp_blueprint_task_next — ensureFresh-before-read (Task 2.5)', () => 
   })
 
   it('falls back to local replica when ensureFresh times out', async () => {
-    vi.stubEnv('AK_BLUEPRINT_READ_FRESH_TIMEOUT_MS', '1')
+    vi.stubEnv('WP_BLUEPRINT_READ_FRESH_TIMEOUT_MS', '1')
 
     const pushEvent = vi.fn<SyncAdapter['pushEvent']>().mockResolvedValue(undefined)
     const ensureFresh = vi
