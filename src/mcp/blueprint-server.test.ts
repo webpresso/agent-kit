@@ -21,6 +21,7 @@ import {
   mkdirSync,
   writeFileSync,
   readFileSync,
+  realpathSync,
   rmSync,
   existsSync,
   renameSync,
@@ -30,8 +31,15 @@ import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 
+import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
+import { applyVerification } from '#verification.js'
+
 import type { ToolRegistrar, ToolHandler, ToolHandlerResult } from './auto-discover.js'
-import { registerBlueprintTools, _setSyncAdapterFactory } from './blueprint-server.js'
+import {
+  registerBlueprintServer,
+  registerBlueprintTools,
+  _setSyncAdapterFactory,
+} from './blueprint-server.js'
 import type { SyncAdapter } from './blueprint-server.js'
 
 // ---------------------------------------------------------------------------
@@ -403,6 +411,7 @@ describe('wp_blueprint_task_advance', () => {
   /** Re-register tools after writing the fixture so the DB is cold-started with it. */
   async function setupWithBlueprint(): Promise<{
     overviewPath: string
+    localTmpDir: string
     localTools: Map<string, { name: string; handler: ToolHandler }>
   }> {
     const localTmpDir = mkdtempSync(path.join(tmpdir(), 'ak-bs-adv-'))
@@ -412,7 +421,7 @@ describe('wp_blueprint_task_advance', () => {
     const overviewPath = writeBlueprintFixture(localTmpDir)
     const { registrar, tools: t } = makeRegistrar()
     await registerBlueprintTools(registrar, localTmpDir)
-    return { overviewPath, localTools: t }
+    return { overviewPath, localTmpDir, localTools: t }
   }
 
   afterEach(() => {
@@ -427,9 +436,10 @@ describe('wp_blueprint_task_advance', () => {
     const mockAdapter: SyncAdapter = { pushEvent, ensureFresh }
     _setSyncAdapterFactory(() => mockAdapter)
 
-    const { overviewPath, localTools } = await setupWithBlueprint()
+    const { overviewPath, localTmpDir, localTools } = await setupWithBlueprint()
 
     const result = await callTool(localTools, 'wp_blueprint_task_advance', {
+      project_id: localTmpDir,
       task_id: '1.1',
       to: 'in-progress',
     })
@@ -474,11 +484,12 @@ describe('wp_blueprint_task_advance', () => {
     // Even if someone injects an adapter, DISABLED must win
     _setSyncAdapterFactory(() => mockAdapter)
 
-    const { overviewPath, localTools } = await setupWithBlueprint()
+    const { overviewPath, localTmpDir, localTools } = await setupWithBlueprint()
 
     // Use 'blocked' instead of 'done' — 'done' is now forbidden via wp_blueprint_task_advance
     // (Task 3.2: done requires evidence via wp_blueprint_task_verify)
     const result = await callTool(localTools, 'wp_blueprint_task_advance', {
+      project_id: localTmpDir,
       task_id: '1.1',
       to: 'blocked',
     })
@@ -502,9 +513,10 @@ describe('wp_blueprint_task_advance', () => {
     // Factory returns null = no credentials available
     _setSyncAdapterFactory(() => null)
 
-    const { overviewPath, localTools } = await setupWithBlueprint()
+    const { overviewPath, localTmpDir, localTools } = await setupWithBlueprint()
 
     const result = await callTool(localTools, 'wp_blueprint_task_advance', {
+      project_id: localTmpDir,
       task_id: '1.1',
       to: 'blocked',
     })
@@ -1027,24 +1039,13 @@ describe('wp_blueprint_list', () => {
     const overviewPath = path.join(localTmpDir, 'blueprints', 'draft', 'stale-bp', '_overview.md')
     writeFileSync(overviewPath, VALID_BLUEPRINT, 'utf8')
 
-    execSync('git init -q', { cwd: localTmpDir })
-    execSync('git config user.email "test@example.com"', { cwd: localTmpDir })
-    execSync('git config user.name "Test User"', { cwd: localTmpDir })
-    execSync('git add . && git commit -qm "init"', { cwd: localTmpDir })
-
     const { registrar: lr, tools: lt } = makeRegistrar()
     await registerBlueprintTools(lr, localTmpDir)
-
-    const completedDir = path.join(localTmpDir, 'blueprints', 'completed', 'stale-bp')
-    mkdirSync(path.dirname(completedDir), { recursive: true })
-    renameSync(path.dirname(overviewPath), completedDir)
-    const movedOverview = path.join(completedDir, '_overview.md')
-    const updated = readFileSync(movedOverview, 'utf8').replace(
-      'status: draft',
-      'status: completed',
+    writeFileSync(
+      `${resolveBlueprintProjectionDbPath(localTmpDir)}.meta.json`,
+      JSON.stringify({ head_at_ingest: 'deadbeef'.repeat(5), ingested_at: 1 }) + '\n',
+      'utf8',
     )
-    writeFileSync(movedOverview, updated, 'utf8')
-    execSync('git add -A && git commit -qm "move"', { cwd: localTmpDir })
 
     const result = await callTool(lt, 'wp_blueprint_list', {})
     const data = parseResult(result) as {
@@ -1124,24 +1125,13 @@ describe('wp_blueprint_get', () => {
     const overviewPath = path.join(localTmpDir, 'blueprints', 'draft', 'stale-get', '_overview.md')
     writeFileSync(overviewPath, VALID_BLUEPRINT, 'utf8')
 
-    execSync('git init -q', { cwd: localTmpDir })
-    execSync('git config user.email "test@example.com"', { cwd: localTmpDir })
-    execSync('git config user.name "Test User"', { cwd: localTmpDir })
-    execSync('git add . && git commit -qm "init"', { cwd: localTmpDir })
-
     const { registrar: lr, tools: lt } = makeRegistrar()
     await registerBlueprintTools(lr, localTmpDir)
-
-    const completedDir = path.join(localTmpDir, 'blueprints', 'completed', 'stale-get')
-    mkdirSync(path.dirname(completedDir), { recursive: true })
-    renameSync(path.dirname(overviewPath), completedDir)
-    const movedOverview = path.join(completedDir, '_overview.md')
-    const updated = readFileSync(movedOverview, 'utf8').replace(
-      'status: draft',
-      'status: completed',
+    writeFileSync(
+      `${resolveBlueprintProjectionDbPath(localTmpDir)}.meta.json`,
+      JSON.stringify({ head_at_ingest: 'deadbeef'.repeat(5), ingested_at: 1 }) + '\n',
+      'utf8',
     )
-    writeFileSync(movedOverview, updated, 'utf8')
-    execSync('git add -A && git commit -qm "move"', { cwd: localTmpDir })
 
     const result = await callTool(lt, 'wp_blueprint_get', { slug: 'stale-get' })
     const data = parseResult(result) as {
@@ -1316,6 +1306,7 @@ describe('wp_blueprint_task_advance — refuses to:done (Task 3.2)', () => {
     _setSyncAdapterFactory(() => null)
 
     const result = await callTool(tools, 'wp_blueprint_task_advance', {
+      project_id: tmpDir,
       task_id: '1.1',
       to: 'done',
     })
@@ -1335,6 +1326,7 @@ describe('wp_blueprint_task_advance — refuses to:done (Task 3.2)', () => {
 
     // This uses the global tools which has an empty DB; expect task-not-found error (not the done guard)
     const result = await callTool(tools, 'wp_blueprint_task_advance', {
+      project_id: tmpDir,
       task_id: 'nonexistent.99',
       to: 'in-progress',
     })
@@ -1454,10 +1446,10 @@ describe('wp_blueprint_task_verify — Task 3.2', () => {
   })
 
   it('fails when evidence has zero pass items (all fail items)', async () => {
-    const { localTools } = await setupWithVerifyBlueprint()
+    const { localTmpDir, localTools } = await setupWithVerifyBlueprint()
 
     const result = await callTool(localTools, 'wp_blueprint_task_verify', {
-      project_id: localTools.size > 0 ? 'test' : 'test', // placeholder, handler uses cwd
+      project_id: localTmpDir,
       slug: VERIFY_SLUG,
       task_id: '1.1',
       evidence: [
@@ -1478,10 +1470,10 @@ describe('wp_blueprint_task_verify — Task 3.2', () => {
 
   it('succeeds and writes markdown + re-ingests when valid evidence provided', async () => {
     _setSyncAdapterFactory(() => null)
-    const { overviewPath, localTools } = await setupWithVerifyBlueprint()
+    const { overviewPath, localTmpDir, localTools } = await setupWithVerifyBlueprint()
 
     const result = await callTool(localTools, 'wp_blueprint_task_verify', {
-      project_id: 'test',
+      project_id: localTmpDir,
       slug: VERIFY_SLUG,
       task_id: '1.1',
       evidence: [
@@ -1515,7 +1507,7 @@ describe('wp_blueprint_task_verify — Task 3.2', () => {
 
   it('is idempotent: second call with same canonical evidence returns idempotent: true', async () => {
     _setSyncAdapterFactory(() => null)
-    const { localTools } = await setupWithVerifyBlueprint()
+    const { overviewPath, localTmpDir, localTools } = await setupWithVerifyBlueprint()
 
     const evidence = [
       {
@@ -1527,18 +1519,15 @@ describe('wp_blueprint_task_verify — Task 3.2', () => {
       },
     ]
 
-    // First call
-    const first = await callTool(localTools, 'wp_blueprint_task_verify', {
-      project_id: 'test',
-      slug: VERIFY_SLUG,
-      task_id: '1.1',
-      evidence,
-    })
-    expect(first.isError).toStrictEqual(false)
+    const seeded = applyVerification(readFileSync(overviewPath, 'utf8'), '1.1', evidence)
+    if (!seeded.ok) {
+      throw new Error(`Expected verification seeding to succeed: ${seeded.failures.join('; ')}`)
+    }
+    writeFileSync(overviewPath, seeded.markdown, 'utf8')
 
-    // Second call with identical evidence
+    // Single idempotency check against already-recorded verification
     const second = await callTool(localTools, 'wp_blueprint_task_verify', {
-      project_id: 'test',
+      project_id: localTmpDir,
       slug: VERIFY_SLUG,
       task_id: '1.1',
       evidence,
@@ -1713,5 +1702,113 @@ describe('Task 3.3 — wp_blueprint_get with aggregate scope', () => {
     expect(result.isError).toStrictEqual(false)
     const data = parseResult(result) as Record<string, unknown>
     expect('scope' in data).toBe(false)
+  })
+})
+
+describe('nested workspace blueprint targeting', () => {
+  const cleanups: string[] = []
+
+  afterEach(() => {
+    while (cleanups.length > 0) {
+      const dir = cleanups.pop()
+      if (!dir) continue
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('wp_blueprint_projects scope=current returns descendant repos instead of the ancestor git container', async () => {
+    const ancestorRepo = mkdtempSync(path.join(tmpdir(), 'ak-bp-workspace-ancestor-'))
+    cleanups.push(ancestorRepo)
+    mkdirSync(path.join(ancestorRepo, '.git'), { recursive: true })
+
+    const workspaceDir = path.join(ancestorRepo, 'webpresso')
+    mkdirSync(workspaceDir, { recursive: true })
+
+    const monorepo = path.join(workspaceDir, 'monorepo')
+    mkdirSync(path.join(monorepo, 'blueprints', 'planned'), { recursive: true })
+    writeFileSync(path.join(monorepo, 'package.json'), JSON.stringify({ name: 'monorepo' }), 'utf8')
+    writeFileSync(path.join(monorepo, 'blueprints', 'planned', 'one.md'), '# one\n')
+
+    const framework = path.join(workspaceDir, 'framework')
+    mkdirSync(path.join(framework, 'blueprints', 'draft'), { recursive: true })
+    writeFileSync(path.join(framework, 'package.json'), JSON.stringify({ name: 'framework' }), 'utf8')
+    writeFileSync(path.join(framework, 'blueprints', 'draft', 'two.md'), '# two\n')
+
+    const { registrar: localRegistrar, tools: localTools } = makeRegistrar()
+    await registerBlueprintServer(localRegistrar, {
+      cwd: workspaceDir,
+      existingToolNames: new Set(),
+    })
+
+    const result = await callTool(localTools, 'wp_blueprint_projects', { scope: 'current' })
+    const data = parseResult(result) as {
+      projects: Array<{ worktree_path: string }>
+    }
+
+    expect(data.projects.some((project) => project.worktree_path === realpathSync(monorepo))).toBe(true)
+    expect(data.projects.some((project) => project.worktree_path === realpathSync(framework))).toBe(true)
+    expect(data.projects.some((project) => project.worktree_path === realpathSync(ancestorRepo))).toBe(false)
+  })
+
+  it('explicit project_id routes create through the targeted nested repo', async () => {
+    const ancestorRepo = mkdtempSync(path.join(tmpdir(), 'ak-bp-workspace-target-'))
+    cleanups.push(ancestorRepo)
+    mkdirSync(path.join(ancestorRepo, '.git'), { recursive: true })
+
+    const workspaceDir = path.join(ancestorRepo, 'webpresso')
+    mkdirSync(workspaceDir, { recursive: true })
+
+    const monorepo = path.join(workspaceDir, 'monorepo')
+    mkdirSync(path.join(monorepo, '.agent'), { recursive: true })
+    writeFileSync(path.join(monorepo, 'package.json'), JSON.stringify({ name: 'monorepo' }), 'utf8')
+
+    const { registrar: localRegistrar, tools: localTools } = makeRegistrar()
+    await registerBlueprintTools(localRegistrar, workspaceDir)
+
+    const createResult = await callTool(localTools, 'wp_blueprint_create', {
+      project_id: monorepo,
+      title: 'Nested Repo Blueprint',
+      goal: 'Verify explicit project targeting inside a workspace container',
+    })
+    const created = parseResult(createResult) as { slug: string; path: string }
+
+    expect(created.slug).toBe('nested-repo-blueprint')
+    expect(created.path).toContain(path.join('monorepo', 'blueprints', 'draft'))
+    expect(existsSync(created.path)).toBe(true)
+  })
+
+  it('explicit project_id routes get through the targeted nested repo', async () => {
+    const ancestorRepo = mkdtempSync(path.join(tmpdir(), 'ak-bp-workspace-target-get-'))
+    cleanups.push(ancestorRepo)
+    mkdirSync(path.join(ancestorRepo, '.git'), { recursive: true })
+
+    const workspaceDir = path.join(ancestorRepo, 'webpresso')
+    mkdirSync(workspaceDir, { recursive: true })
+
+    const monorepo = path.join(workspaceDir, 'monorepo')
+    mkdirSync(path.join(monorepo, '.agent'), { recursive: true })
+    writeFileSync(path.join(monorepo, 'package.json'), JSON.stringify({ name: 'monorepo' }), 'utf8')
+    const bpSlug = 'nested-existing-blueprint'
+    const overviewPath = path.join(monorepo, 'blueprints', 'draft', bpSlug, '_overview.md')
+    mkdirSync(path.dirname(overviewPath), { recursive: true })
+    writeFileSync(overviewPath, VALID_BLUEPRINT, 'utf8')
+
+    const { registrar: seedRegistrar } = makeRegistrar()
+    await registerBlueprintTools(seedRegistrar, monorepo)
+
+    const { registrar: localRegistrar, tools: localTools } = makeRegistrar()
+    await registerBlueprintTools(localRegistrar, workspaceDir)
+
+    const getResult = await callTool(localTools, 'wp_blueprint_get', {
+      project_id: monorepo,
+      slug: bpSlug,
+    })
+    const fetched = parseResult(getResult) as {
+      blueprint: { slug: string } | null
+      failures: string[]
+    }
+
+    expect(fetched.failures).toStrictEqual([])
+    expect(fetched.blueprint?.slug).toBe(bpSlug)
   })
 })
