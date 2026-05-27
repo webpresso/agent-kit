@@ -117,6 +117,11 @@ type SyncAdapterFactory = () => SyncAdapter | null
  * blueprint-server.ts never statically depends on the HTTP client).
  */
 let _syncAdapterFactory: SyncAdapterFactory | null = null
+const PROJECT_RESOLUTION_CACHE_TTL_MS = 15_000
+const _recentProjectLists = new Map<
+  string,
+  { readonly at: number; readonly projects: readonly BlueprintProjectRef[] }
+>()
 
 /**
  * Override the adapter factory — for tests only.
@@ -126,6 +131,20 @@ let _syncAdapterFactory: SyncAdapterFactory | null = null
  */
 export function _setSyncAdapterFactory(factory: SyncAdapterFactory | null): void {
   _syncAdapterFactory = factory
+}
+
+function readRecentProjectList(cwd: string): readonly BlueprintProjectRef[] | null {
+  const cached = _recentProjectLists.get(cwd)
+  if (!cached) return null
+  if (Date.now() - cached.at > PROJECT_RESOLUTION_CACHE_TTL_MS) {
+    _recentProjectLists.delete(cwd)
+    return null
+  }
+  return cached.projects
+}
+
+function writeRecentProjectList(cwd: string, projects: readonly BlueprintProjectRef[]): void {
+  _recentProjectLists.set(cwd, { at: Date.now(), projects })
 }
 
 /**
@@ -375,8 +394,6 @@ async function resolveToolProject(
   cwd: string,
   projectId: string | undefined,
 ): Promise<{ cwd: string; project_id: string | null } | ToolHandlerResult> {
-  const projects = await resolveBlueprintProjects({ cwd })
-
   if (projectId !== undefined) {
     const resolvedPath = (() => {
       try {
@@ -385,6 +402,30 @@ async function resolveToolProject(
         return null
       }
     })()
+
+    const cachedProjects = readRecentProjectList(cwd)
+    if (cachedProjects) {
+      const cachedMatch =
+        cachedProjects.find(
+          (project) =>
+            project.project_id === projectId ||
+            project.worktree_path === projectId ||
+            project.repo_path === projectId ||
+            (resolvedPath !== null &&
+              (project.worktree_path === resolvedPath || project.repo_path === resolvedPath)),
+        ) ?? null
+
+      if (cachedMatch) {
+        return { cwd: cachedMatch.worktree_path, project_id: cachedMatch.project_id }
+      }
+    }
+
+    if (resolvedPath !== null) {
+      return { cwd: resolvedPath, project_id: null }
+    }
+
+    const projects = await resolveBlueprintProjects({ cwd })
+    writeRecentProjectList(cwd, projects)
 
     const match =
       projects.find(
@@ -400,16 +441,15 @@ async function resolveToolProject(
       return { cwd: match.worktree_path, project_id: match.project_id }
     }
 
-    if (resolvedPath !== null) {
-      return { cwd: resolvedPath, project_id: null }
-    }
-
     return projectDisambiguationError(
       `Project "${projectId}" not found`,
       'Call wp_blueprint_projects to pick an explicit project_id or pass a valid project path.',
       projects,
     )
   }
+
+  const projects = await resolveBlueprintProjects({ cwd })
+  writeRecentProjectList(cwd, projects)
 
   const current = projects.find((project) => project.source === PROJECT_SOURCES.current) ?? null
   if (current) {
@@ -781,7 +821,9 @@ async function handleTaskNext(cwd: string, raw: unknown): Promise<ToolHandlerRes
           setTimeout(
             () =>
               reject(
-                new Error(`ensureFresh timed out after ${timeoutMs}ms during wp_blueprint_task_next`),
+                new Error(
+                  `ensureFresh timed out after ${timeoutMs}ms during wp_blueprint_task_next`,
+                ),
               ),
             timeoutMs,
           )
@@ -2492,6 +2534,7 @@ async function handleProjects(
     projects: filteredProjects,
     warnings,
   }
+  writeRecentProjectList(cwd, projects)
 
   if (rootsState.unsupported) {
     payload.next_action = makeNextAction(
