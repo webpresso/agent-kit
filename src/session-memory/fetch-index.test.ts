@@ -24,14 +24,22 @@ afterEach(() => {
 describe('fetchAndIndex', () => {
   it('fetches HTML, converts it to markdown-ish chunks, and indexes it', async () => {
     const s = store()
-    await fetchAndIndex({ url: 'https://example.com/a#frag', store: s, fetchImpl: vi.fn(async () => response('<h1>Hello</h1><p>session memory</p>', 'text/html')) })
+    await fetchAndIndex({
+      url: 'https://example.com/a#frag',
+      store: s,
+      fetchImpl: vi.fn(async () => response('<h1>Hello</h1><p>session memory</p>', 'text/html')),
+    })
     expect(s.search({ query: 'session', limit: 1 })[0]?.text).toContain('session memory')
     s.close()
   })
 
   it('fetches JSON as structured chunks and indexes it', async () => {
     const s = store()
-    await fetchAndIndex({ url: 'https://example.com/data', store: s, fetchImpl: vi.fn(async () => response('{"name":"memory"}', 'application/json')) })
+    await fetchAndIndex({
+      url: 'https://example.com/data',
+      store: s,
+      fetchImpl: vi.fn(async () => response('{"name":"memory"}', 'application/json')),
+    })
     expect(s.search({ query: 'memory', limit: 1 })[0]?.text).toContain('memory')
     s.close()
   })

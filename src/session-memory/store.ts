@@ -105,15 +105,23 @@ export class SessionMemoryStore {
     this.db.prepare<[string]>('DELETE FROM session_memory_chunks_fts WHERE id = ?').run(chunk.id)
     this.db.prepare<[string]>('DELETE FROM session_memory_chunks_tri WHERE id = ?').run(chunk.id)
     this.db
-      .prepare<[string, string, string]>('INSERT INTO session_memory_chunks_fts (id, source, text) VALUES (?, ?, ?)')
+      .prepare<[string, string, string]>(
+        'INSERT INTO session_memory_chunks_fts (id, source, text) VALUES (?, ?, ?)',
+      )
       .run(chunk.id, chunk.source, chunk.text)
     this.db
-      .prepare<[string, string, string]>('INSERT INTO session_memory_chunks_tri (id, source, text) VALUES (?, ?, ?)')
+      .prepare<[string, string, string]>(
+        'INSERT INTO session_memory_chunks_tri (id, source, text) VALUES (?, ?, ?)',
+      )
       .run(chunk.id, chunk.source, chunk.text)
     this.insertsSinceOptimize += 1
     if (this.insertsSinceOptimize >= OPTIMIZE_INTERVAL) {
-      this.db.exec("INSERT INTO session_memory_chunks_fts(session_memory_chunks_fts) VALUES('optimize')")
-      this.db.exec("INSERT INTO session_memory_chunks_tri(session_memory_chunks_tri) VALUES('optimize')")
+      this.db.exec(
+        "INSERT INTO session_memory_chunks_fts(session_memory_chunks_fts) VALUES('optimize')",
+      )
+      this.db.exec(
+        "INSERT INTO session_memory_chunks_tri(session_memory_chunks_tri) VALUES('optimize')",
+      )
       this.insertsSinceOptimize = 0
     }
   }
@@ -139,7 +147,9 @@ export class SessionMemoryStore {
   }
 
   count(): number {
-    const row = this.db.prepare<[], { count: number }>('SELECT COUNT(*) AS count FROM session_memory_chunks').get()
+    const row = this.db
+      .prepare<[], { count: number }>('SELECT COUNT(*) AS count FROM session_memory_chunks')
+      .get()
     return row?.count ?? 0
   }
 
@@ -151,7 +161,9 @@ export class SessionMemoryStore {
   ): SessionMemorySearchResult[] {
     const table = tier === 'porter' ? 'session_memory_chunks_fts' : 'session_memory_chunks_tri'
     const sourceFilter = source ? 'AND c.source = ?' : ''
-    const params = source ? [query, source, limit] as [string, string, number] : [query, limit] as [string, number]
+    const params = source
+      ? ([query, source, limit] as [string, string, number])
+      : ([query, limit] as [string, number])
     const rows = this.db
       .prepare<typeof params, ChunkRow & { score: number }>(
         `SELECT c.id, c.source, c.text, c.metadata_json, c.created_at, bm25(${table}) * -1 AS score
@@ -165,16 +177,30 @@ export class SessionMemoryStore {
     return rows.map((row) => this.mapResult(row, row.score, tier))
   }
 
-  private searchLevenshtein(query: string, source: string | undefined, limit: number): SessionMemorySearchResult[] {
+  private searchLevenshtein(
+    query: string,
+    source: string | undefined,
+    limit: number,
+  ): SessionMemorySearchResult[] {
     const rows = source
-      ? this.db.prepare<[string], ChunkRow>('SELECT id, source, text, metadata_json, created_at FROM session_memory_chunks WHERE source = ?').all(source)
-      : this.db.prepare<[], ChunkRow>('SELECT id, source, text, metadata_json, created_at FROM session_memory_chunks').all()
+      ? this.db
+          .prepare<[string], ChunkRow>(
+            'SELECT id, source, text, metadata_json, created_at FROM session_memory_chunks WHERE source = ?',
+          )
+          .all(source)
+      : this.db
+          .prepare<[], ChunkRow>(
+            'SELECT id, source, text, metadata_json, created_at FROM session_memory_chunks',
+          )
+          .all()
     const queryTokens = tokenize(query)
     return rows
       .map((row) => {
         const textTokens = tokenize(row.text)
         const bestDistance = Math.min(
-          ...queryTokens.map((needle) => Math.min(...textTokens.map((token) => levenshtein(needle, token)))),
+          ...queryTokens.map((needle) =>
+            Math.min(...textTokens.map((token) => levenshtein(needle, token))),
+          ),
         )
         const idfWeight = 1 + Math.log(1 + rows.length / Math.max(1, textTokens.length))
         return { row, score: idfWeight / (1 + bestDistance) }

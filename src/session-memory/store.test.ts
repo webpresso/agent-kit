@@ -20,7 +20,11 @@ describe('SessionMemoryStore', () => {
   it('indexes chunks and returns top five porter matches', () => {
     const s = store()
     for (let i = 0; i < 100; i += 1) {
-      s.indexChunk({ id: `chunk-${i}`, source: 'global', text: i < 8 ? `foo note ${i}` : `bar note ${i}` })
+      s.indexChunk({
+        id: `chunk-${i}`,
+        source: 'global',
+        text: i < 8 ? `foo note ${i}` : `bar note ${i}`,
+      })
     }
     expect(s.search({ query: 'foo', limit: 5 })).toHaveLength(5)
     expect(s.search({ query: 'foo', limit: 5 }).every((row) => row.text.includes('foo'))).toBe(true)

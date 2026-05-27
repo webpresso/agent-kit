@@ -1,9 +1,7 @@
 /**
  * `audit-hooks` scaffolder preset.
  *
- * Extends `.husky/pre-commit` to wire staged-mode audit commands for:
- *   - `wp audit skill-sizes --staged`
- *   - `wp audit broken-refs --staged`
+ * Extends `.husky/pre-commit` to ensure the shared secret check is present.
  *
  * Additive: appends lines only when not already present (idempotent).
  * Does not remove existing content.
@@ -13,10 +11,10 @@ import path from 'node:path';
 /**
  * Lines to append to `.husky/pre-commit` (each must be idempotently checked).
  */
-// Previously included wp audit skill-sizes and wp audit broken-refs --staged,
-// but those verbs were removed from the audit surface. Pre-commit now only
-// writes the comment header; the main guardrails gate lives in pre-commit.tmpl.
-const AUDIT_HOOK_LINES = ['# webpresso audit hooks (staged mode — fast)'];
+const AUDIT_HOOK_LINES = [
+    '# webpresso audit hooks (staged mode — fast)',
+    'bun scripts/check-no-dev-vars.ts',
+];
 const SHEBANG = '#!/bin/sh\n';
 /**
  * Append audit hook lines to `.husky/pre-commit` if not already present.

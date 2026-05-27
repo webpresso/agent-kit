@@ -70,6 +70,8 @@ export default defineConfig({
       { find: /^#test/, replacement: resolve(__dirname, 'src/test/index.ts') },
       { find: /^#e2e$/, replacement: resolve(__dirname, 'src/e2e/index.ts') },
       { find: /^#e2e\/(.*)/, replacement: resolve(__dirname, 'src/e2e/$1') },
+      // Blueprint root modules imported as #module.js — must precede the #* catch-all
+      { find: /^#([^.]+)\.js$/, replacement: resolve(__dirname, 'src/blueprint/$1.ts') },
       // Fallback: remaining "#*" maps to src/blueprint/*
       { find: /^#(.*)/, replacement: resolve(__dirname, 'src/blueprint/$1') },
     ],

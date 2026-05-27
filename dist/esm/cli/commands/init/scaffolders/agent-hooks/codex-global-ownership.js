@@ -15,7 +15,7 @@ export function isPresetOwnedGlobalCodexHook(metadata, expectedSourcePaths) {
         return false;
     if (!isExpectedSourcePath(candidate.sourcePath, expectedSourcePaths))
         return false;
-    return isContextModeCodexCommand(candidate.command) || isOmxCodexCommand(candidate.command);
+    return isOmxCodexCommand(candidate.command);
 }
 function isObject(value) {
     return typeof value === 'object' && value !== null;
@@ -25,9 +25,6 @@ function isExpectedSourcePath(sourcePath, expectedSourcePaths) {
         return false;
     const normalizedSourcePath = normalize(sourcePath);
     return expectedSourcePaths.some((expectedPath) => normalize(expectedPath) === normalizedSourcePath);
-}
-function isContextModeCodexCommand(command) {
-    return command.startsWith('context-mode hook codex ');
 }
 function isOmxCodexCommand(command) {
     return /codex-native-hook(?:\.js)?/u.test(command) || /oh-my-codex/u.test(command);

@@ -928,12 +928,12 @@ created: 2026-01-01
 ---
 # @feature
 
-#### Task 1.1: Add tests for @webpresso/runtime
+#### Task 1.1: Add tests for @webpresso/webpresso
 **Status:** todo
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0]!.targetPackage).toBe('runtime')
+      expect(result.tasks[0]!.targetPackage).toBe('webpresso')
     })
 
     it('should extract target package from "in pkg-name" pattern without @ prefix', () => {

@@ -65,6 +65,7 @@
       "#blueprint/sync/client.js": ["./src/blueprint/sync/client.ts"],
       "#projects.js": ["./src/blueprint/projects.ts"],
       "#next-action.js": ["./src/blueprint/next-action.ts"],
+      "#*.js": ["./src/blueprint/*.ts"],
       "#*": ["./src/blueprint/*"]
     }
   },

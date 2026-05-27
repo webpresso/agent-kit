@@ -5,7 +5,7 @@
  * All dispatch logic lives in audit-core.ts (no process.exit there).
  */
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { runAuditDispatch } from './audit-core.js';
 import { runStryker } from '#audit/run-stryker';
@@ -55,11 +55,13 @@ const REPO_AUDIT_REGISTRY = {
     'gitignore-agent-surfaces': async (root) => (await import('#audit/gitignore-agent-surfaces')).auditGitignoreAgentSurfaces(root),
     'memory-unified': async (root) => (await import('#audit/memory-unified')).auditMemoryUnified(root),
     'compile-drift': async (root) => (await import('#audit/compile-drift')).auditCompileDrift(root),
+    'architecture-drift': async (root) => (await import('#audit/architecture-drift')).auditArchitectureDrift(root),
     'agent-cost': async (root) => (await import('#audit/agent-cost')).auditAgentCost(root),
     'blueprint-db-consistency': async (root) => (await import('#audit/blueprint-db-consistency')).auditBlueprintDbConsistency(root),
     'blueprint-lifecycle-sql': async (root) => (await import('#audit/blueprint-lifecycle-sql')).auditBlueprintLifecycleSql(root),
     'tech-debt-cadence': async (root) => (await import('#audit/tech-debt-cadence')).auditTechDebtCadence(root),
     'cross-repo-correlation': async (root) => (await import('#audit/cross-repo-correlation')).auditCrossRepoCorrelationAsRepoResult(root),
+    'ai-contracts': async (root) => (await import('#audit/ai-contracts')).auditAiContracts(root),
     'hook-surface': async (root) => (await import('#audit/hook-surface')).auditHookSurfaceAsRepoResult(root),
     rules: async (root) => runContentAudit(root, 'rule'),
     skills: async (root) => runContentAudit(root, 'skill'),
@@ -83,6 +85,22 @@ async function runContentAudit(root, kind) {
     };
 }
 const REPO_AUDIT_KINDS = Object.keys(REPO_AUDIT_REGISTRY);
+export function resolveGuardrailAuditKinds(root) {
+    if (isAgentKitRoot(root))
+        return REPO_AUDIT_KINDS;
+    return REPO_AUDIT_KINDS.filter((kind) => kind !== 'ai-contracts');
+}
+function isAgentKitRoot(root) {
+    try {
+        const packageJson = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+        if (packageJson.name === '@webpresso/agent-kit')
+            return true;
+    }
+    catch {
+        // Fall through to source-layout detection below.
+    }
+    return existsSync(path.join(root, 'src/mcp/tools/_shared/result.ts'));
+}
 const SCRIPT_AUDIT_KINDS = ['tph', 'tph-e2e'];
 const SPECIAL_AUDIT_KINDS = [
     'bundle-budget',
@@ -178,6 +196,7 @@ export function registerAuditCommand(cli) {
         .option('--vision-path <path>', "Path to VISION.md for the 'vision' audit (default: VISION.md)")
         .option('--staged', 'Only audit git-staged files (fast pre-commit mode)')
         .action(async (kind, target, options) => {
+        const auditRoot = options.root ?? target ?? process.cwd();
         const outcome = await runAuditDispatch(kind, target ? [target] : [], options, {
             root: process.cwd(),
             runStryker: (cwd) => runStryker(cwd),
@@ -201,7 +220,9 @@ export function registerAuditCommand(cli) {
             },
             resolveScript: resolveAuditScript,
             buildBundleBudgetArgs,
-            knownRepoKinds: REPO_AUDIT_KINDS,
+            knownRepoKinds: kind === 'guardrails' || kind === 'quality'
+                ? resolveGuardrailAuditKinds(auditRoot)
+                : REPO_AUDIT_KINDS,
         });
         switch (outcome.kind) {
             case 'invalid-usage': {

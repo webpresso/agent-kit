@@ -1,6 +1,12 @@
 import { Database } from '#db/sqlite.js'
 
-import type { RestoreInput, RestoredSessionEvent, SessionCaptureInput, SnapshotInput, SnapshotResult } from './types.js'
+import type {
+  RestoreInput,
+  RestoredSessionEvent,
+  SessionCaptureInput,
+  SnapshotInput,
+  SnapshotResult,
+} from './types.js'
 
 type EventRow = {
   session_id: string
@@ -96,12 +102,24 @@ export class SessionMemorySessionStore {
         `INSERT INTO sessions (agent_id, snapshot_id, repo_hash, created_at, status, content_json)
          VALUES (?, ?, ?, ?, ?, ?)`,
       )
-      .run(input.agentId ?? 'default', snapshotId, input.repoHash, new Date().toISOString(), status, JSON.stringify({ events: included, content }))
+      .run(
+        input.agentId ?? 'default',
+        snapshotId,
+        input.repoHash,
+        new Date().toISOString(),
+        status,
+        JSON.stringify({ events: included, content }),
+      )
     return { snapshotId, sessionId, status, eventCount: included.length, content }
   }
 
   restore(input: RestoreInput): RestoredSessionEvent[] {
-    const query = input.query.trim().split(/\s+/u).filter(Boolean).map((token) => `"${token.replaceAll('"', '""')}"`).join(' ')
+    const query = input.query
+      .trim()
+      .split(/\s+/u)
+      .filter(Boolean)
+      .map((token) => `"${token.replaceAll('"', '""')}"`)
+      .join(' ')
     if (!query) return []
     const rows = this.db
       .prepare<[string, string, number], EventRow & { score: number }>(

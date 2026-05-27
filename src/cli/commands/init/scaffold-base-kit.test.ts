@@ -26,6 +26,7 @@ describe('scaffoldBaseKit', () => {
     expect(actions).not.toContain('skipped-dry')
 
     expect(existsSync(join(repoRoot, '.gitignore'))).toBe(true)
+    expect(existsSync(join(repoRoot, '.actrc'))).toBe(true)
     expect(existsSync(join(repoRoot, '.editorconfig'))).toBe(true)
     expect(existsSync(join(repoRoot, 'pnpm-workspace.yaml'))).toBe(true)
     expect(existsSync(join(repoRoot, '.secretlintrc.json'))).toBe(true)
@@ -33,6 +34,9 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, '.husky', 'pre-commit'))).toBe(true)
     expect(existsSync(join(repoRoot, '.husky', 'commit-msg'))).toBe(true)
     expect(existsSync(join(repoRoot, '.github', 'workflows', 'ci.webpresso.yml'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'scripts', 'check-no-dev-vars.ts'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'test', '.gitkeep'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'e2e', '.gitkeep'))).toBe(true)
   })
 
   it('dry-run does not write files', () => {
@@ -56,6 +60,10 @@ describe('scaffoldBaseKit', () => {
     expect(pkg['packageManager']).toBe('pnpm@11.1.1')
     expect((pkg['devDependencies'] as Record<string, string>)['webpresso']).toBe('latest')
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
+    expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
+      'bun scripts/check-no-dev-vars.ts',
+    )
+    expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
   })
 
   it('adds only missing bootstrap fields for consumers', () => {
@@ -73,6 +81,10 @@ describe('scaffoldBaseKit', () => {
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
     expect((pkg['devDependencies'] as Record<string, string>)['webpresso']).toBe('^0.2.0')
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
+    expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
+      'bun scripts/check-no-dev-vars.ts',
+    )
+    expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
     expect((pkg['scripts'] as Record<string, string>)['test']).toBe('vitest')
   })
 
@@ -91,7 +103,34 @@ describe('scaffoldBaseKit', () => {
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('vp exec wp setup')
+    expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
+      'bun scripts/check-no-dev-vars.ts',
+    )
+    expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
     expect((pkg['devDependencies'] as Record<string, string>)['webpresso']).toBe('^0.2.0')
+  })
+
+  it('preserves a consumer-provided verify:secrets script', () => {
+    const pkgPath = join(repoRoot, 'package.json')
+    const initial = {
+      name: 'consumer-app',
+      scripts: {
+        'setup:agent': 'wp setup',
+        'verify:secrets': 'echo custom secret check',
+        prepare: 'pnpm -C packages prebuild',
+      },
+      devDependencies: { webpresso: '^0.2.0' },
+    }
+    writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
+
+    const catalogDir = resolveCatalogDir()
+    scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
+
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
+    expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('pnpm -C packages prebuild')
+    expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
+      'echo custom secret check',
+    )
   })
 
   it('does not inject a local webpresso devDependency when the repo opts into globalInstall', () => {
@@ -117,6 +156,10 @@ describe('scaffoldBaseKit', () => {
       (pkg['devDependencies'] as Record<string, string> | undefined)?.['webpresso'],
     ).toBeUndefined()
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
+    expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
+      'bun scripts/check-no-dev-vars.ts',
+    )
+    expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
   })
 
   it('does not downgrade packageManager when repo already has pnpm@11+', () => {

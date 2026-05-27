@@ -1,11 +1,18 @@
 ---
 type: blueprint
-status: planned
+status: parked
 complexity: M
 created: '2026-05-13'
-last_updated: '2026-05-13'
-progress: '0/17 tasks done (0%) — planned; 4 new Phase 5 tasks added (output sandboxing / context-mode replacement parity)'
+last_updated: '2026-05-27'
+progress: '0% (parked — 0/17 tasks; deferred by operator request)'
 depends_on: []
+parked_reason: |
+  Parked by operator request. The in-process better-sqlite3 + FTS5 v1 path
+  remains the preferred Lane 2 design, but implementation is deferred until
+  prerequisite work lands: context-mode opt-in (draft BP), session-store WAL
+  hardening, and the ak-bench session-memory harness to gate ship vs. further
+  parking. Supersedes the earlier Letta-based v1 direction (see sibling parked
+  blueprints).
 tags:
   - session-memory
   - sqlite
@@ -19,6 +26,9 @@ tags:
 ---
 
 # wp session memory v1 — in-process SQLite + FTS5 (TS engine)
+
+> **STATUS: PARKED.** See `parked_reason` in frontmatter. Do not start execution
+> until unparked.
 
 ## Product wedge anchor
 

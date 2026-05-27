@@ -5,10 +5,14 @@ import { writeFileMerged } from './merge.js';
 const TEMPLATE_MAP = [
     ['.editorconfig.tmpl', '.editorconfig'],
     ['.secretlintrc.json.tmpl', '.secretlintrc.json'],
+    ['.actrc.tmpl', '.actrc'],
     ['commitlint.config.ts.tmpl', 'commitlint.config.ts'],
+    ['scripts/check-no-dev-vars.ts.tmpl', 'scripts/check-no-dev-vars.ts'],
     ['.husky/pre-commit.tmpl', '.husky/pre-commit'],
     ['.husky/commit-msg.tmpl', '.husky/commit-msg'],
     ['.github/workflows/ci.webpresso.yml.tmpl', '.github/workflows/ci.webpresso.yml'],
+    ['test/.gitkeep.tmpl', 'test/.gitkeep'],
+    ['e2e/.gitkeep.tmpl', 'e2e/.gitkeep'],
 ];
 /**
  * Bootstrap-only templates: the scaffolder writes them when absent (so a
@@ -63,6 +67,9 @@ function mergePackageJson(repoRoot, options, globalInstall = false) {
     const packageName = typeof pkg['name'] === 'string' ? pkg['name'] : undefined;
     const scripts = (pkg['scripts'] ?? {});
     const hasSetupAgent = typeof scripts['setup:agent'] === 'string';
+    const hasVerifySecrets = typeof scripts['verify:secrets'] === 'string';
+    const hasPrepareScript = typeof scripts['prepare'] === 'string';
+    const verifySecretsScript = 'bun scripts/check-no-dev-vars.ts';
     const devDeps = (pkg['devDependencies'] ?? {});
     const hasAgentKitDevDep = typeof devDeps['webpresso'] === 'string';
     const shouldSkipSelfInstall = packageName === 'webpresso';
@@ -70,7 +77,9 @@ function mergePackageJson(repoRoot, options, globalInstall = false) {
     if (alreadyHasEngines &&
         alreadyHasPm &&
         (shouldSkipSelfInstall || shouldManageAgentKitAsGlobal || hasAgentKitDevDep) &&
-        (shouldSkipSelfInstall || hasSetupAgent)) {
+        (shouldSkipSelfInstall || hasSetupAgent) &&
+        (shouldSkipSelfInstall || hasVerifySecrets) &&
+        (shouldSkipSelfInstall || hasPrepareScript)) {
         return { targetPath: pkgPath, action: 'identical' };
     }
     pkg['engines'] = { ...existing, node: engines.node };
@@ -89,6 +98,12 @@ function mergePackageJson(repoRoot, options, globalInstall = false) {
     pkg['devDependencies'] = devDeps;
     if (!shouldSkipSelfInstall && !hasSetupAgent) {
         scripts['setup:agent'] = 'wp setup';
+    }
+    if (!shouldSkipSelfInstall && !hasVerifySecrets) {
+        scripts['verify:secrets'] = verifySecretsScript;
+    }
+    if (!shouldSkipSelfInstall && !hasPrepareScript) {
+        scripts['prepare'] = 'husky';
     }
     if (Object.keys(scripts).length > 0) {
         pkg['scripts'] = scripts;

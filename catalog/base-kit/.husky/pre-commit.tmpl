@@ -4,4 +4,5 @@ set -eu
 # that rely on the global install (no local webpresso devDep).
 WP="$(git rev-parse --show-toplevel)/node_modules/.bin/wp"
 [ -x "$WP" ] || WP=wp
+bun scripts/check-no-dev-vars.ts
 "$WP" audit guardrails

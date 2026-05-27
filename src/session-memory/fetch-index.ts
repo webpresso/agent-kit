@@ -31,7 +31,10 @@ function htmlToMarkdown(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/giu, '')
     .replace(/<style[\s\S]*?<\/style>/giu, '')
-    .replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/giu, (_match, level: string, text: string) => `${'#'.repeat(Number(level))} ${stripTags(text)}\n`)
+    .replace(
+      /<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/giu,
+      (_match, level: string, text: string) => `${'#'.repeat(Number(level))} ${stripTags(text)}\n`,
+    )
     .replace(/<li[^>]*>([\s\S]*?)<\/li>/giu, (_match, text: string) => `- ${stripTags(text)}\n`)
     .replace(/<p[^>]*>([\s\S]*?)<\/p>/giu, (_match, text: string) => `${stripTags(text)}\n\n`)
     .replace(/<br\s*\/?>/giu, '\n')
@@ -46,7 +49,10 @@ function htmlToMarkdown(html: string): string {
 }
 
 function stripTags(html: string): string {
-  return html.replace(/<[^>]+>/gu, ' ').replace(/[ \t\n]+/gu, ' ').trim()
+  return html
+    .replace(/<[^>]+>/gu, ' ')
+    .replace(/[ \t\n]+/gu, ' ')
+    .trim()
 }
 
 function toIndexableText(body: string, contentType: string): string {
@@ -56,7 +62,10 @@ function toIndexableText(body: string, contentType: string): string {
 }
 
 function chunkText(text: string, source: string): SessionMemoryChunk[] {
-  const paragraphs = text.split(/\n{2,}/u).map((part) => part.trim()).filter(Boolean)
+  const paragraphs = text
+    .split(/\n{2,}/u)
+    .map((part) => part.trim())
+    .filter(Boolean)
   const groups = paragraphs.length > 0 ? paragraphs : [text]
   return groups.map((part, index) => ({
     id: createHash('sha256').update(`${source}\n${index}\n${part}`).digest('hex').slice(0, 24),

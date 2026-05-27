@@ -86,6 +86,7 @@
     "#next-action.js": "./blueprint/next-action.js",
     "#types/execution-backend": "./blueprint/types/execution-backend.js",
     "#types/execution-backend.js": "./blueprint/types/execution-backend.js",
+    "#*.js": "./blueprint/*.js",
     "#*": "./blueprint/*.js"
   }
 }

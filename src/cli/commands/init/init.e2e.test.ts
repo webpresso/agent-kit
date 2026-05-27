@@ -210,6 +210,30 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.stdout).not.toContain('context-mode opencode config')
     })
 
+    it('bootstrap: --with base-kit on an empty repo creates docs/hooks/scripts/act/test/e2e/ci scaffolds', () => {
+      const r = runAk(['setup', '--yes', '--with', 'base-kit', '--cwd', repo], {
+        PATH: pathWithFakeOmxOk(),
+        HOME: fakeHome,
+        WP_SKIP_GSTACK: '1',
+      })
+      expect(r.code).toBe(0)
+      expect(r.stdout).toContain('wp init: done.')
+
+      expect(existsSync(path.join(repo, '.agent'))).toBe(true)
+      expect(existsSync(path.join(repo, 'AGENTS.md'))).toBe(true)
+      expect(existsSync(path.join(repo, 'blueprints'))).toBe(true)
+      expect(existsSync(path.join(repo, '.webpressorc.json'))).toBe(true)
+
+      expect(existsSync(path.join(repo, 'docs', 'templates', 'blueprint.md'))).toBe(true)
+      expect(existsSync(path.join(repo, 'scripts', 'check-no-dev-vars.ts'))).toBe(true)
+      expect(existsSync(path.join(repo, '.husky', 'pre-commit'))).toBe(true)
+      expect(existsSync(path.join(repo, '.husky', 'commit-msg'))).toBe(true)
+      expect(existsSync(path.join(repo, '.actrc'))).toBe(true)
+      expect(existsSync(path.join(repo, 'test', '.gitkeep'))).toBe(true)
+      expect(existsSync(path.join(repo, 'e2e', '.gitkeep'))).toBe(true)
+      expect(existsSync(path.join(repo, '.github', 'workflows', 'ci.webpresso.yml'))).toBe(true)
+    })
+
     it('--with context-mode: enables gated Codex plugin hooks when requested', () => {
       const r = runAk(['setup', '--yes', '--with', 'context-mode', '--cwd', repo], {
         PATH: pathWithFakeOmxOk(),

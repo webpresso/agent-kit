@@ -18,7 +18,6 @@ export type EnsureContextModeResult = {
     installed: boolean;
 };
 export declare function upsertCodexContextModeFeatures(raw: string): string;
-export declare function patchCodexContextModeHooks(existing: Record<string, unknown>): Record<string, unknown>;
 export declare function patchOpenCodeContextModeConfig(existing: Record<string, unknown>, agentKitCommand?: string[]): Record<string, unknown>;
 export declare function ensureContextMode(input: EnsureContextModeInput): EnsureContextModeResult;
 //# sourceMappingURL=index.d.ts.map

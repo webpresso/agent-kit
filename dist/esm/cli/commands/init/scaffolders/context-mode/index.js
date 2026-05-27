@@ -3,7 +3,6 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { patchJsonFile } from '#cli/commands/init/merge';
-import { hoistTopLevelEvents } from '#cli/commands/init/scaffolders/agent-hooks/index';
 import { agentKitMcpLaunchCommand, findWebpressoMcpEntry, } from '#cli/commands/init/scaffolders/codex-mcp/index';
 import { makeNoopSpinnerFactory } from '#cli/commands/init/scaffolders/spinner';
 import { checkVersionPin } from '#cli/commands/init/scaffolders/version-pin';
@@ -11,21 +10,12 @@ const CODEX_CONTEXT_MODE_FEATURES = {
     plugin_hooks: 'true',
     hooks: 'true',
 };
-const CONTEXT_MODE_CODEX_PRETOOL_MATCHER = 'local_shell|shell|shell_command|exec_command|container.exec|Bash|Shell|grep_files|mcp__plugin_context-mode_context-mode__ctx_execute|mcp__plugin_context-mode_context-mode__ctx_execute_file|mcp__plugin_context-mode_context-mode__ctx_batch_execute';
 function defaultCodexConfigPath() {
     const codexHome = process.env.CODEX_HOME || join(process.env.HOME || homedir(), '.codex');
     return join(codexHome, 'config.toml');
 }
 function defaultOpenCodeConfigPath(repoRoot) {
     return join(repoRoot, 'opencode.json');
-}
-function ensureGroup(groups, group) {
-    const command = group.hooks[0]?.command;
-    if (!command)
-        return groups;
-    const exists = groups.some((candidate) => candidate.matcher === group.matcher &&
-        candidate.hooks.some((hook) => hook.command === command));
-    return exists ? groups : [...groups, group];
 }
 export function upsertCodexContextModeFeatures(raw) {
     const trimmed = raw.trimEnd();
@@ -64,42 +54,6 @@ export function upsertCodexContextModeFeatures(raw) {
     }
     body.push(...trailingBlankLines);
     return [...lines.slice(0, start + 1), ...body, ...lines.slice(end)].join('\n') + '\n';
-}
-// Legacy helper retained for migrations/tests that need to normalize an older
-// manual `$CODEX_HOME/hooks.json`. New setup paths use the context-mode Codex
-// plugin manifest instead: MCP comes from `.codex-plugin/mcp.json`, skills from
-// `skills/`, and bundled hooks from `.codex-plugin/hooks.json`. While Codex keeps
-// those surfaces behind feature gates, `wp setup --with context-mode` writes
-// `[features].hooks = true` and `[features].plugin_hooks = true` to config.toml.
-export function patchCodexContextModeHooks(existing) {
-    const migrated = hoistTopLevelEvents(existing);
-    const hooks = { ...(migrated.hooks ?? {}) };
-    hooks.PreToolUse = ensureGroup(hooks.PreToolUse ?? [], {
-        matcher: CONTEXT_MODE_CODEX_PRETOOL_MATCHER,
-        hooks: [{ type: 'command', command: 'context-mode hook codex pretooluse' }],
-    });
-    hooks.PostToolUse = ensureGroup(hooks.PostToolUse ?? [], {
-        hooks: [{ type: 'command', command: 'context-mode hook codex posttooluse' }],
-    });
-    hooks.SessionStart = ensureGroup(hooks.SessionStart ?? [], {
-        hooks: [{ type: 'command', command: 'context-mode hook codex sessionstart' }],
-    });
-    hooks.UserPromptSubmit = ensureGroup(hooks.UserPromptSubmit ?? [], {
-        hooks: [{ type: 'command', command: 'context-mode hook codex userpromptsubmit' }],
-    });
-    hooks.Stop = ensureGroup(hooks.Stop ?? [], {
-        hooks: [{ type: 'command', command: 'context-mode hook codex stop' }],
-    });
-    hooks.PreCompact = ensureGroup(hooks.PreCompact ?? [], {
-        hooks: [{ type: 'command', command: 'context-mode hook codex precompact' }],
-    });
-    hooks.PostCompact = ensureGroup(hooks.PostCompact ?? [], {
-        hooks: [{ type: 'command', command: 'context-mode hook codex postcompact' }],
-    });
-    return {
-        ...migrated,
-        hooks,
-    };
 }
 export function patchOpenCodeContextModeConfig(existing, agentKitCommand = ['vp', 'exec', 'wp', 'mcp']) {
     const currentMcp = existing.mcp && typeof existing.mcp === 'object' && !Array.isArray(existing.mcp)

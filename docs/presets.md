@@ -205,17 +205,31 @@ current.
 
 ### `audit-hooks`
 
-Extends `.husky/pre-commit` (after `base-kit`) with two staged-mode audit hooks:
+Extends `.husky/pre-commit` (after `base-kit`) with a pre-commit secret check.
 
 ```bash
-wp audit skill-sizes --staged
-wp audit broken-refs --staged
+bun scripts/check-no-dev-vars.ts
 ```
 
-`--staged` mode scans only the files in the current git staging area, so the
-pre-commit check typically runs in under a second.
+This check scans the repo for files named `.dev.vars`, `.dev.vars.example`,
+or any `.dev.vars.*` variant before allowing commit to proceed.
 
 **Requires:** `base-kit` (runs `wp setup --with husky` first if not already set up).
+
+### `base-kit` (tier-3)
+
+`wp setup --with base-kit` is the minimum local bootstrap for a fresh repo and
+writes the following core defaults:
+
+- `docs/templates/*` template catalog
+- `.actrc` defaults for local GitHub Actions local test runner parity
+- `.husky/pre-commit` + `.husky/commit-msg`
+- `scripts/check-no-dev-vars.ts` + `verify:secrets` script wiring
+- `.github/workflows/ci.webpresso.yml`
+- empty `test/` and `e2e/` seed directories
+
+There is no external network/tool dependency for this option; the scaffolding is
+file-system-only plus local `package.json` metadata updates.
 
 ## Adding new presets
 

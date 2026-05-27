@@ -39,10 +39,13 @@ export interface ArchitectureDriftOptions {
 
 const DEFAULT_CONTRACT_PATH = 'docs/architecture.contract.json'
 const DEFAULT_BLUEPRINT_GLOBS = ['blueprints/**/*.md'] as const
-const DEFAULT_ARCHITECTURE_DOC_GLOBS = ['docs/architecture*.md', 'docs/architecture/**/*.md'] as const
+const DEFAULT_ARCHITECTURE_DOC_GLOBS = [
+  'docs/architecture*.md',
+  'docs/architecture/**/*.md',
+] as const
 const DEFAULT_CHANGE_MARKERS = [
   'data flow',
-   'state machine',
+  'state machine',
   'runtime topology',
   'port',
   'ports/adapters',
@@ -92,7 +95,10 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string')
 }
 
-function parseBlueprintPolicy(value: unknown, prefix: string): ArchitectureBlueprintPolicy | string {
+function parseBlueprintPolicy(
+  value: unknown,
+  prefix: string,
+): ArchitectureBlueprintPolicy | string {
   if (!isRecord(value)) return `${prefix} must be an object`
   for (const key of [
     'blueprintGlobs',
@@ -100,17 +106,20 @@ function parseBlueprintPolicy(value: unknown, prefix: string): ArchitectureBluep
     'architectureChangeMarkers',
     'exemptStatuses',
   ] as const) {
-    if (value[key] !== undefined && !isStringArray(value[key])) return `${prefix}.${key} must be an array of strings`
+    if (value[key] !== undefined && !isStringArray(value[key]))
+      return `${prefix}.${key} must be an array of strings`
   }
   for (const key of [
     'enabled',
     'requireArchitectureLinks',
     'requireBeforeAfterWhenArchitectureChanging',
   ] as const) {
-    if (value[key] !== undefined && typeof value[key] !== 'boolean') return `${prefix}.${key} must be a boolean`
+    if (value[key] !== undefined && typeof value[key] !== 'boolean')
+      return `${prefix}.${key} must be a boolean`
   }
   for (const key of ['beforeHeading', 'afterHeading'] as const) {
-    if (value[key] !== undefined && typeof value[key] !== 'string') return `${prefix}.${key} must be a string`
+    if (value[key] !== undefined && typeof value[key] !== 'string')
+      return `${prefix}.${key} must be a string`
   }
   return value as unknown as ArchitectureBlueprintPolicy
 }
@@ -298,15 +307,24 @@ function extractFrontmatterValue(content: string, key: string): string | null {
   const end = content.indexOf('\n---', 4)
   if (end === -1) return null
   const frontmatter = content.slice(4, end)
-  const match = frontmatter.match(new RegExp(`^${escapeRegExp(key)}:\\s*["']?([^"'\\n]+)["']?\\s*$`, 'm'))
+  const match = frontmatter.match(
+    new RegExp(`^${escapeRegExp(key)}:\\s*["']?([^"'\\n]+)["']?\\s*$`, 'm'),
+  )
   return match?.[1]?.trim() ?? null
 }
 
 function hasHeading(content: string, heading: string): boolean {
-  const expected = heading.trim().replace(/^#+\s*/u, '').toLowerCase()
-  return content
-    .split('\n')
-    .some((line) => line.replace(/^#+\s*/u, '').trim().toLowerCase() === expected)
+  const expected = heading
+    .trim()
+    .replace(/^#+\s*/u, '')
+    .toLowerCase()
+  return content.split('\n').some(
+    (line) =>
+      line
+        .replace(/^#+\s*/u, '')
+        .trim()
+        .toLowerCase() === expected,
+  )
 }
 
 function findMissingArchitectureDocRefs(
@@ -419,7 +437,9 @@ export function auditArchitectureDrift(
       ok: false,
       title: 'architecture drift',
       checked: 1,
-      violations: [makeViolation(contractRelPath, `architecture contract is invalid JSON: ${message}`)],
+      violations: [
+        makeViolation(contractRelPath, `architecture contract is invalid JSON: ${message}`),
+      ],
     }
   }
 
@@ -442,7 +462,9 @@ export function auditArchitectureDrift(
   ]) {
     checked += 1
     if (!existsSync(path.resolve(root, requiredFile))) {
-      violations.push(makeViolation(contractRelPath, `required architecture file missing: ${requiredFile}`))
+      violations.push(
+        makeViolation(contractRelPath, `required architecture file missing: ${requiredFile}`),
+      )
     }
   }
 

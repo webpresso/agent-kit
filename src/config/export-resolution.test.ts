@@ -156,4 +156,25 @@ describe('webpresso folded package exports', () => {
 
     expect(packageJson.bin).toMatchObject(docsLintBins)
   })
+
+  it('maps blueprint #module.js imports without doubling the .js extension', async () => {
+    const packageJson = await readCanonicalPackageJson()
+    const imports = packageJson.imports as Record<string, string> | undefined
+
+    expect(imports?.['#*.js']).toBe('./src/blueprint/*.ts')
+
+    const distPackageJsonPath = join(repositoryRoot, 'dist/esm/package.json')
+    let distPackageJson: { imports?: Record<string, string> }
+    try {
+      distPackageJson = JSON.parse(await readFile(distPackageJsonPath, 'utf8')) as {
+        imports?: Record<string, string>
+      }
+    } catch {
+      return
+    }
+
+    expect(distPackageJson.imports?.['#*.js']).toBe('./blueprint/*.js')
+
+    await import(join(repositoryRoot, 'dist/esm/blueprint/db/cold-start.js'))
+  })
 })

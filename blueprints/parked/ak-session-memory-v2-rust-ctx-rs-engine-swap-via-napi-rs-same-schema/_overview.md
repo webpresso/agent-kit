@@ -1,12 +1,16 @@
 ---
 type: blueprint
-status: planned
+status: parked
 complexity: L
 created: '2026-05-13'
-last_updated: '2026-05-13'
-progress: '0/17 tasks done (planned, refinement-applied — needs manual git mv from draft/ to planned/)'
+last_updated: '2026-05-27'
+progress: '0% (parked with v1 — 0/17 tasks)'
 depends_on:
   - ak-session-memory-v1-in-process-sqlite-fts5-via-better-sqlite3
+parked_reason: |
+  Parked with v1 by operator request. The Rust ctx-rs engine swap (same schema,
+  same wp_session_* MCP surface) remains the planned v2 follow-on after v1 ships.
+  Resume when v1 is unparked and benchmark/SLO evidence warrants the perf pass.
 tags:
   - session-memory
   - rust
@@ -20,6 +24,8 @@ tags:
 ---
 
 # wp session memory v2 — Rust ctx-rs engine swap (same schema)
+
+> **STATUS: PARKED.** Depends on parked v1. See `parked_reason` in frontmatter.
 
 ## Product wedge anchor
 
