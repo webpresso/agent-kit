@@ -21,7 +21,9 @@ describe('blueprint-server test architecture guard', () => {
       'blueprint-server.get-projection.test.ts',
       'blueprint-server.context-projection.test.ts',
       'blueprint-server.verify-idempotency.test.ts',
-      'blueprint-server.platform-first.test.ts',
+      'blueprint-server.platform-first.task-advance.test.ts',
+      'blueprint-server.platform-first.lifecycle.test.ts',
+      'blueprint-server.platform-first.scaffold-read.test.ts',
       'blueprint-server.platform-timeouts.test.ts',
     ]
 
@@ -29,6 +31,7 @@ describe('blueprint-server test architecture guard', () => {
       expect(existsSync(path.join(mcpDir, file)), `${file} should exist`).toBe(true)
     }
     expect(existsSync(path.join(mcpDir, 'blueprint-server.read-projection.test.ts'))).toBe(false)
+    expect(existsSync(path.join(mcpDir, 'blueprint-server.platform-first.test.ts'))).toBe(false)
   })
 
   it('keeps split files under bounded serial-size budgets', () => {
@@ -37,7 +40,9 @@ describe('blueprint-server test architecture guard', () => {
     expect(lineCount('blueprint-server.get-projection.test.ts')).toBeLessThanOrEqual(140)
     expect(lineCount('blueprint-server.context-projection.test.ts')).toBeLessThanOrEqual(140)
     expect(lineCount('blueprint-server.verify-idempotency.test.ts')).toBeLessThanOrEqual(320)
-    expect(lineCount('blueprint-server.platform-first.test.ts')).toBeLessThanOrEqual(760)
+    expect(lineCount('blueprint-server.platform-first.task-advance.test.ts')).toBeLessThanOrEqual(160)
+    expect(lineCount('blueprint-server.platform-first.lifecycle.test.ts')).toBeLessThanOrEqual(180)
+    expect(lineCount('blueprint-server.platform-first.scaffold-read.test.ts')).toBeLessThanOrEqual(180)
     expect(lineCount('blueprint-server.platform-timeouts.test.ts')).toBeLessThanOrEqual(280)
   })
 
@@ -64,7 +69,7 @@ describe('blueprint-server test architecture guard', () => {
       (file) =>
         file.endsWith('.ts') &&
         !file.endsWith('.test.ts') &&
-        file !== 'blueprint-server.test-harness.ts',
+        !file.endsWith('.test-harness.ts'),
     )
 
     for (const file of productionMcpFiles) {
