@@ -36,6 +36,9 @@ jobs:
   auth-preflight:
     name: Auth preflight
     runs-on: ubicloud-standard-2
+    permissions:
+      contents: read
+      packages: read
     outputs:
       repo_access_ok: ${{ steps.repo.outputs.repo_access_ok }}
       action_downloads_ok: ${{ steps.actions.outputs.action_downloads_ok }}
@@ -78,23 +81,24 @@ jobs:
         shell: bash
         env:
           GH_PACKAGES_TOKEN: ${{ github.token }}
+          GITHUB_API_URL: ${{ github.api_url }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
           if [ -z "${GH_PACKAGES_TOKEN:-}" ]; then
             echo "packages_token_ok=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          tmp_npmrc="$(mktemp)"
-          trap 'rm -f "$tmp_npmrc"' EXIT
-          printf '%s\n' \
-            '@webpresso:registry=https://npm.pkg.github.com' \
-            "//npm.pkg.github.com/:_authToken=${GH_PACKAGES_TOKEN}" \
-            >"$tmp_npmrc"
-          if ! NPM_CONFIG_USERCONFIG="$tmp_npmrc" npm view @webpresso/agent-kit@latest dist.tarball --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
-            echo "packages_token_ok=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if NPM_CONFIG_USERCONFIG="$tmp_npmrc" npm pack @webpresso/agent-kit@latest --registry=https://npm.pkg.github.com --ignore-scripts --pack-destination "${RUNNER_TEMP:-/tmp}" >/dev/null 2>&1; then
+          owner="${GITHUB_REPOSITORY_OWNER:-${GITHUB_REPOSITORY%%/*}}"
+          api_base="${GITHUB_API_URL:-https://api.github.com}"
+          if curl -fsS \
+            -H "Authorization: Bearer ${GH_PACKAGES_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "${api_base}/orgs/${owner}/packages?package_type=npm&per_page=1" >/dev/null 2>&1 || \
+            curl -fsS \
+              -H "Authorization: Bearer ${GH_PACKAGES_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "${api_base}/users/${owner}/packages?package_type=npm&per_page=1" >/dev/null 2>&1; then
             echo "packages_token_ok=true" >> "$GITHUB_OUTPUT"
           else
             echo "packages_token_ok=false" >> "$GITHUB_OUTPUT"

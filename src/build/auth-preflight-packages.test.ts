@@ -3,43 +3,35 @@ import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const repositoryRoot = resolve(import.meta.dirname, '..', '..')
-const packageJsonPath = join(repositoryRoot, 'package.json')
 const workflowPaths = [
   join(repositoryRoot, '.github', 'workflows', 'ci.webpresso.yml'),
   join(repositoryRoot, '.github', 'workflows', 'bundle-smoke.yml'),
   join(repositoryRoot, '.github', 'workflows', 'release.yml'),
 ] as const
 
-function readPackageJson(): { dependencies?: Record<string, string> } {
-  return JSON.parse(readFileSync(packageJsonPath, 'utf8')) as {
-    dependencies?: Record<string, string>
-  }
-}
-
 function readWorkflow(path: string): string {
   return readFileSync(path, 'utf8')
 }
 
-function extractProbedPackages(workflow: string): string[] {
-  return [...workflow.matchAll(/npm (?:view|pack) (@webpresso\/[^@\s]+)@latest/g)].map(
-    (match) => match[1]!,
+function extractPackageProbeUrls(workflow: string): string[] {
+  return [...workflow.matchAll(/\$\{api_base\}\/(?:orgs|users)\/\$\{owner\}\/packages\?package_type=npm&per_page=1/g)].map(
+    (match) => match[0]!,
   )
 }
 
 describe('auth preflight package probes', () => {
-  it('probes the agent-kit package instead of requiring the framework package', () => {
-    const deps = readPackageJson().dependencies ?? {}
-    expect(deps['@webpresso/webpresso']).toBeUndefined()
-    expect(deps['@webpresso/runtime-storage']).toBeUndefined()
-
+  it('checks package registry access without requiring an existing latest package', () => {
     for (const workflowPath of workflowPaths) {
       const workflow = readWorkflow(workflowPath)
-      expect(extractProbedPackages(workflow)).toEqual([
-        '@webpresso/agent-kit',
-        '@webpresso/agent-kit',
+      expect(workflow.includes('packages: read')).toBe(true)
+      expect(workflow.includes('npm view @webpresso/agent-kit@latest')).toBe(false)
+      expect(workflow.includes('npm pack @webpresso/agent-kit@latest')).toBe(false)
+      expect(workflow.includes('GITHUB_API_URL: ${{ github.api_url }}')).toBe(true)
+      expect(workflow.includes('GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}')).toBe(true)
+      expect(extractPackageProbeUrls(workflow)).toEqual([
+        '${api_base}/orgs/${owner}/packages?package_type=npm&per_page=1',
+        '${api_base}/users/${owner}/packages?package_type=npm&per_page=1',
       ])
-      expect(workflow.includes('@webpresso/webpresso@latest')).toBe(false)
-      expect(workflow.includes('@webpresso/runtime@latest')).toBe(false)
     }
   })
 })
