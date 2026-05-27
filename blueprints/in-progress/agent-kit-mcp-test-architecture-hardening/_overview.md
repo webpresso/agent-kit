@@ -45,7 +45,12 @@ Harden the MCP blueprint-server test architecture by splitting monolithic covera
   - `src/mcp/blueprint-server.get-projection.test.ts`
   - `src/mcp/blueprint-server.context-projection.test.ts`
 - Split verify/idempotency coverage into `src/mcp/blueprint-server.verify-idempotency.test.ts`.
-- Kept platform-first mutation coverage in its dedicated file and moved duplicated timeout guard assertions to `src/mcp/blueprint-server.platform-timeouts.test.ts`.
+- Split platform-first mutation/read coverage into:
+  - `src/mcp/blueprint-server.platform-first.task-advance.test.ts`
+  - `src/mcp/blueprint-server.platform-first.lifecycle.test.ts`
+  - `src/mcp/blueprint-server.platform-first.scaffold-read.test.ts`
+- Added `src/mcp/blueprint-server.platform-first.test-harness.ts` so platform adapter wiring and fixture setup stay consistent across those files.
+- Moved duplicated timeout guard assertions to `src/mcp/blueprint-server.platform-timeouts.test.ts`.
 - Made promote tests deterministic by writing an explicit future validation timestamp after validation setup.
 - Aligned adjacent registration/workflow tests with the hardened projection contract: registration is lightweight and never repairs projections; stale aggregate projects report `next_action.kind: "reingest_project"`; missing projection DBs may lazy-create.
 - Removed brittle wall-clock assertions from MCP workflow/fixture tests and the blueprint DB migration bulk-insert test; those tests now assert behavior, while performance is guarded by external `wp_test` timing evidence.
@@ -55,7 +60,7 @@ Harden the MCP blueprint-server test architecture by splitting monolithic covera
 - `wp_test` on list/get/context projection split with `timeoutMs: 45000`: **pass, 17.97s**; verify rerun **pass, 16.40s**.
 - `wp_test` on the 7-file blueprint-server target batch with `timeoutMs: 45000`: **pass, 35.19s**; verify rerun **pass, 31.40s**.
 - `wp_test` on `src/mcp/blueprint-server.test.ts` with `timeoutMs: 120000`: **pass, 12.76s** (measurement only; not a target cap).
-- `wp_test` on `src/mcp/blueprint-server.platform-first.test.ts` with `timeoutMs: 45000`: **pass, 20.03s**.
+- `wp_test` on split platform-first files + architecture guard (`task-advance`, `lifecycle`, `scaffold-read`, `test-architecture`) with `timeoutMs: 45000`: **pass, 15.89s**.
 - `wp_test` on `src/mcp/blueprint-server.verify-idempotency.test.ts` with `timeoutMs: 45000`: **pass, 5.60s**; verify rerun **pass, 5.13s**.
 - `wp_test` on `src/mcp/blueprint-server.platform-timeouts.test.ts` with `timeoutMs: 45000`: **pass, 4.05s**; verify rerun **pass, 4.41s**.
 - `wp_typecheck`: **pass**; verify rerun **pass**.
@@ -72,6 +77,8 @@ Harden the MCP blueprint-server test architecture by splitting monolithic covera
 - Adjacent MCP batch after removing in-test wall-clock flakes: `wp_test` on registration/workflow/projects/project-resolver/validation/fixture tests with `timeoutMs: 45000`: **pass, 27.23s**.
 - Adjacent timing-risk cleanup: `wp_test` on registration/workflow/fixture/migrations tests with `timeoutMs: 45000`: **pass, 33.94s**.
 - Current final checks: `wp_lint` on adjacent touched files: **pass**; `wp_typecheck`: **pass**; `wp_qa` on adjacent touched files: **pass, 19.42s**.
+- Full split-batch proof: `wp_test` on the 10-file blueprint-server target (`test`, split platform-first files, timeouts, list/get/context, verify-idempotency, architecture) with `timeoutMs: 45000`: **pass, 34.83s**.
+- Guard hardening: architecture test now forbids in-test wall-clock assertion patterns across `blueprint-server*.test.ts`, preventing flaky local-budget reintroduction.
 
 ## Tasks
 

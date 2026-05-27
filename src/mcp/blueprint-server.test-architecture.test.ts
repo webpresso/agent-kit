@@ -48,10 +48,15 @@ describe('blueprint-server test architecture guard', () => {
 
   it('does not hide performance issues with in-file concurrency or oversized timeout literals', () => {
     const blueprintServerTests = readdirSync(mcpDir).filter(
-      (file) => file.startsWith('blueprint-server') && file.endsWith('.test.ts'),
+      (file) =>
+        file.startsWith('blueprint-server') &&
+        file.endsWith('.test.ts') &&
+        file !== 'blueprint-server.test-architecture.test.ts',
     )
     const inFileConcurrencyToken = 'test.' + 'concurrent'
     const oldTimeoutCapToken = '120' + '000'
+    const wallClockStartToken = 'Date.' + 'now()'
+    const wallClockAssertToken = 'toBeLessThan('
 
     for (const file of blueprintServerTests) {
       const source = readRelative(file)
@@ -61,6 +66,13 @@ describe('blueprint-server test architecture guard', () => {
       expect(source, `${file} must not bake in old 120s runner caps`).not.toContain(
         oldTimeoutCapToken,
       )
+      expect(source, `${file} must avoid local wall-clock flakes (${wallClockStartToken})`).not.toContain(
+        wallClockStartToken,
+      )
+      expect(
+        source,
+        `${file} must avoid local wall-clock budget asserts (${wallClockAssertToken})`,
+      ).not.toContain(wallClockAssertToken)
     }
   })
 

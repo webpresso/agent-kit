@@ -199,6 +199,17 @@ alongside agent-sourced symlinks — typically `.markdownlint.json` in
 are listed in `ALLOWED_REAL_FILES` in `consumers.ts`; the symlinker
 leaves them alone.
 
+## What to track vs ignore under `.claude/`
+
+- **Track** deliberate repo-owned surfaces like committed `.claude/commands/*.md`
+  symlinks (when a repo uses them) and any explicitly documented real files
+  allowed alongside them.
+- **Ignore** generated/runtime-only subpaths such as `.claude/rules/`,
+  `.claude/skills/`, `.claude/worktrees/`, and local scheduler/runtime state.
+- Avoid blanket `.claude/` ignores in shared defaults unless the repo
+  intentionally wants the entire directory local-only; blanket ignores can hide
+  deliberate committed instruction surfaces.
+
 ## Library API
 
 For programmatic use (e.g., custom tooling, tests):

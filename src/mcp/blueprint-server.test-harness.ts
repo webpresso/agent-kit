@@ -2,7 +2,10 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { tmpdir } from 'node:os'
 
+import { openDb } from '#db/connection.js'
+import { ingestBlueprints } from '#db/ingester.js'
 import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
+import { recordProjectionMetadata } from '#freshness.js'
 
 import type { ToolHandler, ToolHandlerResult, ToolRegistrar } from './auto-discover.js'
 import { registerBlueprintTools } from './blueprint-server.js'
@@ -88,8 +91,22 @@ export async function makeProjectionBackedBlueprintHarness(
 ): Promise<{ tmpDir: string; tools: ToolMap; overviewPaths: string[] }> {
   const tmpDir = createTempBlueprintRepo(prefix)
   const overviewPaths = fixtures.map((fixture) => writeBlueprintFixture(tmpDir, fixture).overviewPath)
+  await bootstrapBlueprintProjection(tmpDir)
   const tools = await registerBlueprintToolMap(tmpDir)
   return { tmpDir, tools, overviewPaths }
+}
+
+export async function bootstrapBlueprintProjection(cwd: string): Promise<string> {
+  const dbFile = resolveBlueprintProjectionDbPath(cwd)
+  mkdirSync(path.dirname(dbFile), { recursive: true })
+  const conn = openDb(dbFile)
+  try {
+    await ingestBlueprints({ db: conn.db, cwd })
+  } finally {
+    conn.close()
+  }
+  recordProjectionMetadata({ dbPath: dbFile, cwd, ingestedAt: Date.now() })
+  return dbFile
 }
 
 export function cleanupTempDir(dir: string | undefined): void {

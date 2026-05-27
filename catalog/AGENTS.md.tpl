@@ -44,9 +44,18 @@ Claude Code's plugin marketplace in user scope when `claude` is on `PATH`.
 `wp setup --project` is current-state migration wording; public replacement:
 `webpresso agent setup --project`. `wp setup` also repairs the managed
 `.gitignore` block for regenerated agent surfaces so repo-local `.codex/`,
-`.omx/`, `.agent/`, and IDE projection outputs stay out of Git. `wp setup` /
-`wp sync` remain current-state bootstrap commands; public replacements are
-`webpresso agent setup` / `webpresso agent sync`.
+`.omx/`, `.agent/`, and generated IDE projection outputs stay out of Git.
+Tracked vs ignored rule of thumb:
+
+- **Track** deliberate repo-owned instruction surfaces (for example
+  `AGENTS.md`, committed `.claude/commands/*.md` symlinks when the repo uses
+  them, and canonical sources such as `agent-rules/` / `agent-skills/`).
+- **Ignore** regenerated or local-only surfaces (for example `.agent/`,
+  `.agents/`, generated `.claude/rules/`, `.claude/skills/`,
+  `.claude/worktrees/`, editor-local state, and other runtime projections).
+
+`wp setup` / `wp sync` remain current-state bootstrap commands; public
+replacements are `webpresso agent setup` / `webpresso agent sync`.
 
 ## Plan
 

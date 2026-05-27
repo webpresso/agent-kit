@@ -78,7 +78,6 @@ describe('wp_blueprint_get — read/projection contract', () => {
       'ak-bs-stale-get-',
       'stale-get',
     )
-    await callTool(localTools, 'wp_blueprint_list', {})
     writeStaleProjectionMetadata(localTmpDir)
 
     const result = await callTool(localTools, 'wp_blueprint_get', { slug: 'stale-get' })

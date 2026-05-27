@@ -33,6 +33,16 @@ surfaces.
 You do not need to learn those pieces individually. Run setup again any time;
 it is idempotent and preserves consumer-owned files.
 
+### What gets committed vs ignored
+
+- **Commit** canonical sources and any deliberate repo-owned instruction files.
+- **Ignore** regenerated/runtime surfaces such as `.agent/`, `.agents/`,
+  generated `.claude/rules/`, `.claude/skills/`, `.claude/worktrees/`, and
+  similar projection outputs.
+- Do **not** blanket-ignore `.claude/` unless the repo intentionally treats the
+  entire directory as local-only; some repos may deliberately commit selected
+  `.claude/*` files while still ignoring generated subpaths.
+
 ## Verify
 
 ```bash

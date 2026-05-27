@@ -91,7 +91,6 @@ describe('wp_blueprint_list — read/projection contract', () => {
       'ak-bs-stale-list-',
       'stale-bp',
     )
-    await callTool(localTools, 'wp_blueprint_list', {})
     writeStaleProjectionMetadata(localTmpDir)
 
     const result = await callTool(localTools, 'wp_blueprint_list', {})

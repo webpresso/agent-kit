@@ -52,16 +52,32 @@ describe('generated agent-surface gitignore block', () => {
         '.codex/skills/verify/SKILL.md',
         '.codex/prompts/planner.md',
         '.omx/setup-scope.json',
+        '.claude/settings.json',
+        '.claude/hooks/check-gstack.sh',
       ],
       { cwd: repo, encoding: 'utf8' },
     )
     expect(ignored.status).toBe(0)
     expect(ignored.stdout.trim().split('\n').toSorted()).toEqual([
+      '.claude/hooks/check-gstack.sh',
+      '.claude/settings.json',
       '.codex/agents/planner.toml',
       '.codex/prompts/planner.md',
       '.codex/skills/verify/SKILL.md',
       '.omx/setup-scope.json',
     ])
+  })
+
+  it('ignores local Claude runtime noise without requiring a blanket .claude/ ignore', () => {
+    const result = patchGitignore(join(repo, '.gitignore'), GENERATED_PATHS_BLOCK, {
+      overwrite: true,
+    })
+    expect(result.action).toBe('created')
+
+    const after = readFileSync(join(repo, '.gitignore'), 'utf8')
+    expect(after).toContain('.claude/settings.json')
+    expect(after).toContain('.claude/hooks/')
+    expect(after).not.toContain('\n.claude/\n')
   })
 
   it('is idempotent after setup has moved the block to the end', () => {
