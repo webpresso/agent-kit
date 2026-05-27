@@ -394,3 +394,14 @@ package. Install one dependency, then import the subpath you need:
 
 Oxlint consumers should use `oxlint.config.ts` and import the TypeScript config
 surface from `webpresso/oxlint`.
+
+## Session memory
+
+Agent-kit includes zero-cloud session memory for local agents. It captures tool/session events into an in-process SQLite database with FTS5 search so future turns can restore relevant context without an external memory service, embedding provider, Docker service, or API key.
+
+- **Enabled by default:** no setup flag is required because the v1 engine is local-only and low cost.
+- **Data location:** per-repo databases live under `~/.webpresso/sessions/<repo-hash>.db`, outside the repository and out of Git.
+- **Disable:** set `WP_SESSION_MEMORY=0` (or `WEBPRESSO_SESSION_MEMORY=0` for compatibility) in the agent process environment to skip capture/restore hooks as they land.
+- **Privacy:** all indexing/search happens on the local machine. Session memory makes zero cloud calls and emits no telemetry.
+
+See [docs/guides/session-memory.md](docs/guides/session-memory.md) for the event flow and schema.
