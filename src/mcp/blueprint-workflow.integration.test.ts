@@ -15,7 +15,7 @@
  * The 5s budget is enforced as an assertion, not a timeout config.
  *
  * Note: this test must be added to vitest.stryker.config.ts exclude list
- * because it calls ingestAll which scans the filesystem — a heavyweight
+ * because it calls ingestBlueprints which scans the filesystem — a heavyweight
  * operation not suitable for Stryker's forks pool.
  */
 
@@ -26,7 +26,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { openDb } from '#db/connection.js'
 import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
-import { ingestAll } from '#db/ingester.js'
+import { ingestBlueprints } from '#db/ingester.js'
 import { aggregateBlueprintRows } from '#aggregate.js'
 import { recordProjectionMetadata } from '#freshness.js'
 import { buildBlueprintFixture } from '#mcp/__fixtures__/blueprint-fixture.js'
@@ -110,7 +110,7 @@ describe('blueprint MCP workflow — single worktree smoke', () => {
 
     const conn = openDb(dbFile)
     try {
-      await ingestAll({ db: conn.db, cwd: fixture.dir })
+      await ingestBlueprints({ db: conn.db, cwd: fixture.dir })
     } finally {
       conn.close()
     }
@@ -177,7 +177,7 @@ async function ingestFixture(dir: string): Promise<void> {
   mkdirSync(dirname(dbFile), { recursive: true })
   const conn = openDb(dbFile)
   try {
-    await ingestAll({ db: conn.db, cwd: dir })
+    await ingestBlueprints({ db: conn.db, cwd: dir })
   } finally {
     conn.close()
   }

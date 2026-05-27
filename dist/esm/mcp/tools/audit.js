@@ -28,11 +28,13 @@ const KINDS = [
     'package-surface',
     'docs-frontmatter',
     'blueprint-lifecycle',
+    'architecture-drift',
     'roadmap-links',
     'bundle-budget',
     'commit-message',
     'tech-debt',
     'hook-surface',
+    'ai-contracts',
     'no-relative-package-scripts',
 ];
 const inputSchema = z.object({
@@ -148,6 +150,16 @@ async function dispatch(input) {
                 details: auditResult,
             };
         }
+        case 'architecture-drift': {
+            const { auditArchitectureDrift } = await import('#audit/architecture-drift');
+            const auditResult = auditArchitectureDrift(input.cwd ?? input.directory ?? process.cwd());
+            return {
+                passed: auditResult.ok,
+                summary: summarizeRepoAudit(kind, auditResult),
+                kind,
+                details: auditResult,
+            };
+        }
         case 'roadmap-links': {
             const { auditRoadmapLinks } = await import('#audit/roadmap-links');
             const auditResult = auditRoadmapLinks(input.cwd ?? input.directory ?? process.cwd());
@@ -180,6 +192,16 @@ async function dispatch(input) {
         case 'tech-debt': {
             const { auditTechDebt } = await import('#audit/tech-debt');
             const auditResult = auditTechDebt(input.cwd ?? input.directory ?? process.cwd());
+            return {
+                passed: auditResult.ok,
+                summary: summarizeRepoAudit(kind, auditResult),
+                kind,
+                details: auditResult,
+            };
+        }
+        case 'ai-contracts': {
+            const { auditAiContracts } = await import('#audit/ai-contracts');
+            const auditResult = auditAiContracts(input.cwd ?? input.directory ?? process.cwd());
             return {
                 passed: auditResult.ok,
                 summary: summarizeRepoAudit(kind, auditResult),
@@ -266,7 +288,7 @@ async function dispatch(input) {
 }
 const tool = {
     name: 'wp_audit',
-    description: 'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-lifecycle, roadmap-links, bundle-budget, commit-message, tech-debt, hook-surface, package-surface, no-relative-package-scripts). Returns {passed, kind, details}.',
+    description: 'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-lifecycle, architecture-drift, roadmap-links, bundle-budget, commit-message, tech-debt, hook-surface, package-surface, no-relative-package-scripts). Returns {passed, kind, details}.',
     inputSchema,
     outputSchema,
     annotations: {

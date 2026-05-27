@@ -181,6 +181,33 @@ describe('auditRoadmapLinks', () => {
     ])
   })
 
+  test('keeps completed legacy cross-repo parent_roadmap labels soft in strict mode', () => {
+    const root = tempRepo()
+    writeOverview(
+      root,
+      'completed',
+      'child-a',
+      [
+        '---',
+        'type: blueprint',
+        'status: completed',
+        'complexity: S',
+        "created: '2026-05-06'",
+        "last_updated: '2026-05-06'",
+        `parent_roadmap: ${JSON.stringify(
+          'cross-repo: webpresso/monorepo → webpresso/blueprints/completed/webpresso-public-extraction-roadmap',
+        )}`,
+        '---',
+        '# Child',
+      ].join('\n'),
+    )
+
+    const strict = auditRoadmapLinks(root, { failOrphans: true })
+
+    expect(strict.ok).toBe(true)
+    expect(strict.violations).toEqual([])
+  })
+
   test('fails active children that use cross-repo parent_roadmap labels', () => {
     const root = tempRepo()
     writeOverview(root, 'planned', 'child-a', child('cross-repo: webpresso/monorepo → roadmap-a'))

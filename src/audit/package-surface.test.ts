@@ -91,10 +91,10 @@ describe('package-surface audit', () => {
 
   test('passes current compatibility packages without an explicit contract', () => {
     const root = tempRepo()
-    mkdirSync(join(root, 'packages', 'runtime'), { recursive: true })
-    writeJson(join(root, 'packages', 'runtime', 'package.json'), {
-      name: '@webpresso/runtime',
-      version: '0.5.5',
+    mkdirSync(join(root, 'packages', 'ui'), { recursive: true })
+    writeJson(join(root, 'packages', 'ui', 'package.json'), {
+      name: '@webpresso/ui',
+      version: '0.1.0',
       private: false,
     })
     writeFileSync(join(root, 'README.md'), 'Use @webpresso/webpresso/runtime.\n')
@@ -158,6 +158,51 @@ describe('package-surface audit', () => {
         }),
       ]),
     )
+  })
+
+  test('skips deep content and secret scans for generated dist artifacts', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'dist'), { recursive: true })
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/webpresso',
+      version: '0.1.0',
+      private: false,
+      files: ['dist'],
+    })
+    writeFileSync(
+      join(root, 'dist', 'index.js'),
+      'token ghp_123456789012345678901234567890123456 and @repo/generated\n',
+    )
+
+    const result = auditPackageSurface(root)
+
+    expect(result.ok).toBe(true)
+    expect(result.violations).toEqual([])
+  })
+
+  test('supports contract-configured deep-scan exclusions for future generated directories', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'generated-docs'), { recursive: true })
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/webpresso',
+      version: '0.1.0',
+      private: false,
+      files: ['generated-docs'],
+    })
+    writeJson(join(root, 'package-surface.json'), {
+      tarball: {
+        deepScanExcludedPathPrefixes: ['generated-docs/'],
+      },
+    })
+    writeFileSync(
+      join(root, 'generated-docs', 'index.md'),
+      'token ghp_123456789012345678901234567890123456 and @repo/generated\n',
+    )
+
+    const result = auditPackageSurface(root)
+
+    expect(result.ok).toBe(true)
+    expect(result.violations).toEqual([])
   })
 
   test('stages publishable packed files for external scanners', () => {

@@ -36,6 +36,10 @@ const NOT_FOUND_HINT =
 type OmxSetupScope = 'user' | 'project'
 type Spawn = typeof spawnSync
 
+function shouldSkipOmxRefresh(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.WP_SKIP_UPDATE_CHECK === '1'
+}
+
 function defaultCodexConfigPath(): string {
   const codexHome = process.env.CODEX_HOME || join(process.env.HOME || homedir(), '.codex')
   return join(codexHome, 'config.toml')
@@ -259,7 +263,7 @@ export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
     if (probe.error || (probe.status !== null && probe.status !== 0)) {
       return { kind: 'omx-not-found', hint: NOT_FOUND_HINT }
     }
-  } else {
+  } else if (!shouldSkipOmxRefresh()) {
     spawn('vp', ['update', '-g', 'oh-my-codex'], { stdio: 'inherit' })
   }
 

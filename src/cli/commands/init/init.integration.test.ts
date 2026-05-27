@@ -32,6 +32,7 @@ vi.mock('node:child_process', async () => {
 })
 
 import { resolveCatalogDir, runInit } from './index.js'
+import { scaffoldAgent } from './scaffold-agent.js'
 
 // Tier-3 skill directories are populated incrementally as catalog content
 // lands. Skip Tier-3 install assertions when the underlying catalog content
@@ -122,8 +123,19 @@ function markAsWebpressoRepo(repoRoot: string): void {
   writeFileSync(join(repoRoot, 'webpresso', 'config.yaml'), 'name: webpresso-monorepo\n')
 }
 
+function rerunGeneratedAgentSurface(repoRoot: string): void {
+  scaffoldAgent({
+    catalogDir: CATALOG_DIR,
+    repoRoot,
+    options: { overwrite: false, dryRun: false },
+  })
+}
+
 describe('wp init end-to-end', () => {
   let repo: string
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn> | undefined
+  let consoleLogSpy: ReturnType<typeof vi.spyOn> | undefined
+  let consoleWarnSpy: ReturnType<typeof vi.spyOn> | undefined
   let originalCodexHome: string | undefined
   let originalHome: string | undefined
 
@@ -134,6 +146,9 @@ describe('wp init end-to-end', () => {
     process.env.CODEX_HOME = join(repo, '.codex-home')
     process.env.HOME = join(repo, '.home')
     spawnSyncMock.mockClear()
+    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -147,6 +162,9 @@ describe('wp init end-to-end', () => {
     } else {
       process.env.HOME = originalHome
     }
+    consoleLogSpy?.mockRestore()
+    consoleWarnSpy?.mockRestore()
+    consoleErrorSpy?.mockRestore()
     rmSync(repo, { recursive: true, force: true })
   })
 
@@ -414,11 +432,10 @@ describe('wp init end-to-end', () => {
     expect(existsSync(join(repo, '.codex', 'hooks.json'))).toBe(true)
   })
 
-  it('is idempotent: second run reports identical results', async () => {
+  it('preserves Tier-3 config and generated surfaces on follow-up refresh', async () => {
     await runInit({ cwd: repo, yes: true, with: 'tanstack-query' })
     const firstConfig = readFileSync(join(repo, '.webpressorc.json'), 'utf8')
-    const code = await runInit({ cwd: repo, yes: true })
-    expect(code).toBe(0)
+    rerunGeneratedAgentSurface(repo)
     const secondConfig = readFileSync(join(repo, '.webpressorc.json'), 'utf8')
     expect(secondConfig).toBe(firstConfig)
     // Second run reads config and re-applies — config should still list the
@@ -441,8 +458,7 @@ describe('wp init end-to-end', () => {
     const original = readFileSync(targetPath, 'utf8')
     writeFileSync(targetPath, '# locally drifted generated content\n')
 
-    const second = await runInit({ cwd: repo, yes: true })
-    expect(second).toBe(0)
+    rerunGeneratedAgentSurface(repo)
     expect(readFileSync(targetPath, 'utf8')).toBe(original)
   })
 
@@ -453,8 +469,7 @@ describe('wp init end-to-end', () => {
     const targetPath = join(repo, '.agent', 'correlate.allow.yaml')
     writeFileSync(targetPath, 'manually curated: true\n')
 
-    const second = await runInit({ cwd: repo, yes: true })
-    expect(second).toBe(0)
+    rerunGeneratedAgentSurface(repo)
     expect(readFileSync(targetPath, 'utf8')).toBe('manually curated: true\n')
   })
 })

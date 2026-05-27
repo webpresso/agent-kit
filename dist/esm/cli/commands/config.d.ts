@@ -1,7 +1,26 @@
 import type { CAC } from 'cac';
-import type { SecretManagerName, SecretsConfig } from '@webpresso/runtime/env';
-import { secretManagerRegistry } from '@webpresso/runtime/env';
 type OutputWriter = Pick<NodeJS.WriteStream, 'write'>;
+export type SecretManagerName = 'doppler' | 'infisical';
+export interface SecretsConfig {
+    readonly manager: SecretManagerName;
+    readonly projectId: string;
+    readonly projectLabel?: string;
+}
+interface SecretManagerAvailability {
+    readonly available: boolean;
+    readonly detail?: string;
+}
+interface SecretManagerAuthentication {
+    readonly authenticated: boolean;
+    readonly detail?: string;
+}
+interface SecretManagerAdapter {
+    readonly displayName: string;
+    checkAvailability(): Promise<SecretManagerAvailability>;
+    checkAuthentication(options: {
+        workspace: string;
+    }): Promise<SecretManagerAuthentication>;
+}
 export interface ConfigCommandOptions {
     readonly cwd?: string;
     readonly json?: boolean;
@@ -26,7 +45,7 @@ export interface SecretsConfigCommandDeps {
         manager: SecretManagerName;
         projectId: string;
     }>;
-    readonly registry?: Pick<typeof secretManagerRegistry, 'get'>;
+    readonly registry?: Pick<Map<SecretManagerName, SecretManagerAdapter>, 'get'>;
     readonly stdout?: OutputWriter;
     readonly stderr?: OutputWriter;
 }

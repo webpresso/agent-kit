@@ -72,6 +72,31 @@ describe('ensureOmx', () => {
     })
   })
 
+  it('skips the global OMX refresh when WP_SKIP_UPDATE_CHECK=1', () => {
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    const previous = process.env.WP_SKIP_UPDATE_CHECK
+    process.env.WP_SKIP_UPDATE_CHECK = '1'
+
+    try {
+      const result = ensureOmx({
+        repoRoot: '/tmp/repo',
+        options: { overwrite: false, dryRun: false },
+        spawn,
+      })
+
+      expect(result).toEqual({ kind: 'omx-ok', installed: false, removedProjectFiles: [] })
+      expect(spawn).toHaveBeenCalledTimes(2)
+      expect(spawn).toHaveBeenNthCalledWith(1, 'omx', ['--version'], { encoding: 'utf8' })
+      expect(spawn).toHaveBeenNthCalledWith(2, 'omx', ['setup', '--yes', '--scope', 'user'], {
+        cwd: '/tmp/repo',
+        stdio: ['ignore', 'inherit', 'inherit'],
+      })
+    } finally {
+      if (previous === undefined) delete process.env.WP_SKIP_UPDATE_CHECK
+      else process.env.WP_SKIP_UPDATE_CHECK = previous
+    }
+  })
+
   it('returns omx-not-found when the fallback install fails', () => {
     const spawn = makeSpawn([
       { status: null, error: Object.assign(new Error('ENOENT'), { code: 'ENOENT' }) },

@@ -37,6 +37,7 @@ describe('hooks/doctor', () => {
 
   const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
   const pkgJson = join(repoRoot, 'package.json')
+  const distPkgJson = join(repoRoot, 'dist/esm', 'package.json')
   const pluginJson = join(repoRoot, '.claude-plugin', 'plugin.json')
   const builtMcpCli = join(repoRoot, 'dist/esm/mcp/cli.js')
   const rtkMarker = join(repoRoot, '.agent', '.rtk-requested')
@@ -115,6 +116,55 @@ describe('hooks/doctor', () => {
       const mcpCheck = result.checks.find((c) => c.name === 'MCP server liveness')
       expect(mcpCheck?.ok).toBe(true)
       expect(mcpCheck?.detail).toContain('skipped')
+    })
+
+    it('skips nested dist manifests and resolves the real package root in built mode', async () => {
+      const knownPaths = new Set([
+        pkgJson,
+        distPkgJson,
+        pluginJson,
+        join(repoRoot, 'src/hooks/pretool-guard/index.ts'),
+        join(repoRoot, 'src/hooks/post-tool/lint-after-edit.ts'),
+        join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
+        join(repoRoot, 'src/hooks/guard-switch/index.ts'),
+        join(repoRoot, 'src/hooks/sessionstart/index.ts'),
+        join(repoRoot, 'src/hooks/test-quality-check.ts'),
+      ])
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (String(path) === rtkMarker) throw new Error('ENOENT')
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockStatSync.mockReturnValue({ mode: 0o755 } as unknown as ReturnType<typeof statSync>)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === distPkgJson) {
+          return JSON.stringify({ name: '@webpresso/agent-kit', type: 'module' })
+        }
+        if (String(path) === pkgJson) {
+          return JSON.stringify({
+            bin: {
+              'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
+              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
+              'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
+              'wp-guard-switch': './src/hooks/guard-switch/index.ts',
+              'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
+              'wp-test-quality-check': './src/hooks/test-quality-check.ts',
+            },
+          })
+        }
+        if (String(path) === pluginJson) {
+          return JSON.stringify({ version: '0.1.0', hooks: {}, mcpServers: {} })
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+      mockHealthyHookProbe()
+
+      vi.stubGlobal('process', fakeProcess())
+
+      const { runHooksDoctor } = await import('#hooks/doctor')
+      const result = await runHooksDoctor({ skipMcp: true })
+      expect(result.ok).toBe(true)
+      expect(result.checks.find((check) => check.name === 'plugin.json integrity')?.ok).toBe(true)
     })
 
     it('reports hook probe stdin EPIPE instead of throwing an unhandled error', async () => {

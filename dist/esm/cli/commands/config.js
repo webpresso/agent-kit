@@ -1,4 +1,10 @@
-import { getSecretsConfigPath, readSecretsConfig, runSecretManagerSetup, secretManagerRegistry, writeSecretsConfig, } from '@webpresso/runtime/env';
+let runtimeCache;
+async function loadSecretsRuntime() {
+    if (!runtimeCache) {
+        runtimeCache = Function('specifier', 'return import(specifier)')('@webpresso/webpresso/runtime/env').then((mod) => mod);
+    }
+    return runtimeCache;
+}
 function commandError(message, exitCode = 1) {
     const error = new Error(message);
     error.exitCode = exitCode;
@@ -14,8 +20,9 @@ function writeLine(writer, message) {
     writer.write(`${message}\n`);
 }
 async function getStatus(cwd, deps) {
-    const path = (deps.getPath ?? getSecretsConfigPath)(cwd);
-    const config = (deps.readConfig ?? readSecretsConfig)(cwd);
+    const runtime = deps.getPath && deps.readConfig ? undefined : await loadSecretsRuntime();
+    const path = (deps.getPath ?? runtime?.getSecretsConfigPath ?? (() => ''))(cwd);
+    const config = (deps.readConfig ?? runtime?.readSecretsConfig ?? (() => null))(cwd);
     if (!config) {
         return {
             configured: false,
@@ -25,7 +32,7 @@ async function getStatus(cwd, deps) {
             detail: 'No secret manager configured.',
         };
     }
-    const adapter = (deps.registry ?? secretManagerRegistry).get(config.manager) ?? null;
+    const adapter = (deps.registry ?? runtime?.secretManagerRegistry)?.get(config.manager) ?? null;
     if (!adapter) {
         return {
             configured: true,
@@ -118,8 +125,13 @@ export async function runSecretsConfigCommand(action, positional, options = {}, 
                 projectId,
                 ...(options.label ? { projectLabel: options.label } : {}),
             };
-            (deps.writeConfig ?? writeSecretsConfig)(config, cwd);
-            const payload = { ok: true, path: (deps.getPath ?? getSecretsConfigPath)(cwd), config };
+            const runtime = deps.writeConfig && deps.getPath ? undefined : await loadSecretsRuntime();
+            (deps.writeConfig ?? runtime?.writeSecretsConfig ?? (() => undefined))(config, cwd);
+            const payload = {
+                ok: true,
+                path: (deps.getPath ?? runtime?.getSecretsConfigPath ?? (() => ''))(cwd),
+                config,
+            };
             if (options.json)
                 writeJson(stdout, payload);
             else
@@ -127,10 +139,13 @@ export async function runSecretsConfigCommand(action, positional, options = {}, 
             return 0;
         }
         case 'setup': {
-            const result = await (deps.setup ?? runSecretManagerSetup)({ cwd });
+            const runtime = deps.setup && deps.getPath ? undefined : await loadSecretsRuntime();
+            const result = await (deps.setup ??
+                runtime?.runSecretManagerSetup ??
+                (() => Promise.reject(commandError('Secret-manager runtime unavailable'))))({ cwd });
             const payload = {
                 ok: true,
-                path: (deps.getPath ?? getSecretsConfigPath)(cwd),
+                path: (deps.getPath ?? runtime?.getSecretsConfigPath ?? (() => ''))(cwd),
                 config: { manager: result.manager, projectId: result.projectId },
             };
             if (options.json)

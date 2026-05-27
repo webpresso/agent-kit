@@ -24,8 +24,8 @@ export function auditRoadmapLinks(rootDirectory = process.cwd(), options = {}) {
     const roadmaps = records.filter((record) => record.type === 'parent-roadmap');
     const localChildrenByRoadmap = new Map();
     for (const child of records.filter((record) => record.type !== 'parent-roadmap' && record.parentRoadmap)) {
-        if (ACTIVE_BLUEPRINT_STATUSES.has(child.status) &&
-            !isLocalParentRoadmapReference(child.parentRoadmap ?? '')) {
+        const isCrossRepoParentReference = !isLocalParentRoadmapReference(child.parentRoadmap ?? '');
+        if (ACTIVE_BLUEPRINT_STATUSES.has(child.status) && isCrossRepoParentReference) {
             violations.push({
                 file: child.file,
                 message: 'Active blueprint parent_roadmap must reference a local roadmap slug/path; use cross_repo_depends_on plus GitHub links for cross-repo relationships',
@@ -34,7 +34,7 @@ export function auditRoadmapLinks(rootDirectory = process.cwd(), options = {}) {
         }
         const parent = resolveParentRoadmap(child.parentRoadmap ?? '', byKey);
         if (!parent) {
-            if (options.failOrphans === true) {
+            if (options.failOrphans === true && !isCrossRepoParentReference) {
                 violations.push({
                     file: child.file,
                     message: `Blueprint declares parent_roadmap ${JSON.stringify(child.parentRoadmap)} but no local parent-roadmap resolves to it`,

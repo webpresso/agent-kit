@@ -1,15 +1,42 @@
 import type { CAC } from 'cac'
-import type { SecretManagerName, SecretsConfig } from '@webpresso/runtime/env'
-
-import {
-  getSecretsConfigPath,
-  readSecretsConfig,
-  runSecretManagerSetup,
-  secretManagerRegistry,
-  writeSecretsConfig,
-} from '@webpresso/runtime/env'
 
 type OutputWriter = Pick<NodeJS.WriteStream, 'write'>
+
+export type SecretManagerName = 'doppler' | 'infisical'
+
+export interface SecretsConfig {
+  readonly manager: SecretManagerName
+  readonly projectId: string
+  readonly projectLabel?: string
+}
+
+interface SecretManagerAvailability {
+  readonly available: boolean
+  readonly detail?: string
+}
+
+interface SecretManagerAuthentication {
+  readonly authenticated: boolean
+  readonly detail?: string
+}
+
+interface SecretManagerAdapter {
+  readonly displayName: string
+  checkAvailability(): Promise<SecretManagerAvailability>
+  checkAuthentication(options: { workspace: string }): Promise<SecretManagerAuthentication>
+}
+
+interface SecretsRuntime {
+  getSecretsConfigPath(cwd?: string): string
+  readSecretsConfig(cwd?: string): SecretsConfig | null
+  writeSecretsConfig(config: SecretsConfig, cwd?: string): void
+  runSecretManagerSetup(options?: {
+    cwd?: string
+  }): Promise<{ manager: SecretManagerName; projectId: string }>
+  secretManagerRegistry: Pick<Map<SecretManagerName, SecretManagerAdapter>, 'get'>
+}
+
+let runtimeCache: Promise<SecretsRuntime> | undefined
 
 export interface ConfigCommandOptions {
   readonly cwd?: string
@@ -34,9 +61,18 @@ export interface SecretsConfigCommandDeps {
   readonly setup?: (options?: {
     cwd?: string
   }) => Promise<{ manager: SecretManagerName; projectId: string }>
-  readonly registry?: Pick<typeof secretManagerRegistry, 'get'>
+  readonly registry?: Pick<Map<SecretManagerName, SecretManagerAdapter>, 'get'>
   readonly stdout?: OutputWriter
   readonly stderr?: OutputWriter
+}
+
+async function loadSecretsRuntime(): Promise<SecretsRuntime> {
+  if (!runtimeCache) {
+    runtimeCache = (
+      Function('specifier', 'return import(specifier)') as (specifier: string) => Promise<unknown>
+    )('@webpresso/webpresso/runtime/env').then((mod) => mod as SecretsRuntime)
+  }
+  return runtimeCache
 }
 
 function commandError(message: string, exitCode = 1): Error & { exitCode: number } {
@@ -61,8 +97,9 @@ async function getStatus(
   cwd: string | undefined,
   deps: SecretsConfigCommandDeps,
 ): Promise<SecretsConfigStatus> {
-  const path = (deps.getPath ?? getSecretsConfigPath)(cwd)
-  const config = (deps.readConfig ?? readSecretsConfig)(cwd)
+  const runtime = deps.getPath && deps.readConfig ? undefined : await loadSecretsRuntime()
+  const path = (deps.getPath ?? runtime?.getSecretsConfigPath ?? (() => ''))(cwd)
+  const config = (deps.readConfig ?? runtime?.readSecretsConfig ?? (() => null))(cwd)
   if (!config) {
     return {
       configured: false,
@@ -73,7 +110,7 @@ async function getStatus(
     }
   }
 
-  const adapter = (deps.registry ?? secretManagerRegistry).get(config.manager) ?? null
+  const adapter = (deps.registry ?? runtime?.secretManagerRegistry)?.get(config.manager) ?? null
   if (!adapter) {
     return {
       configured: true,
@@ -175,17 +212,27 @@ export async function runSecretsConfigCommand(
         projectId,
         ...(options.label ? { projectLabel: options.label } : {}),
       }
-      ;(deps.writeConfig ?? writeSecretsConfig)(config, cwd)
-      const payload = { ok: true, path: (deps.getPath ?? getSecretsConfigPath)(cwd), config }
+      const runtime = deps.writeConfig && deps.getPath ? undefined : await loadSecretsRuntime()
+      ;(deps.writeConfig ?? runtime?.writeSecretsConfig ?? (() => undefined))(config, cwd)
+      const payload = {
+        ok: true,
+        path: (deps.getPath ?? runtime?.getSecretsConfigPath ?? (() => ''))(cwd),
+        config,
+      }
       if (options.json) writeJson(stdout, payload)
       else writeLine(stdout, `Configured ${manager} project ${projectId}`)
       return 0
     }
     case 'setup': {
-      const result = await (deps.setup ?? runSecretManagerSetup)({ cwd })
+      const runtime = deps.setup && deps.getPath ? undefined : await loadSecretsRuntime()
+      const result = await (
+        deps.setup ??
+        runtime?.runSecretManagerSetup ??
+        (() => Promise.reject(commandError('Secret-manager runtime unavailable')))
+      )({ cwd })
       const payload = {
         ok: true,
-        path: (deps.getPath ?? getSecretsConfigPath)(cwd),
+        path: (deps.getPath ?? runtime?.getSecretsConfigPath ?? (() => ''))(cwd),
         config: { manager: result.manager, projectId: result.projectId },
       }
       if (options.json) writeJson(stdout, payload)

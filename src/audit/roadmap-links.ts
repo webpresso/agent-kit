@@ -53,10 +53,9 @@ export function auditRoadmapLinks(
   for (const child of records.filter(
     (record) => record.type !== 'parent-roadmap' && record.parentRoadmap,
   )) {
-    if (
-      ACTIVE_BLUEPRINT_STATUSES.has(child.status) &&
-      !isLocalParentRoadmapReference(child.parentRoadmap ?? '')
-    ) {
+    const isCrossRepoParentReference = !isLocalParentRoadmapReference(child.parentRoadmap ?? '')
+
+    if (ACTIVE_BLUEPRINT_STATUSES.has(child.status) && isCrossRepoParentReference) {
       violations.push({
         file: child.file,
         message:
@@ -67,7 +66,7 @@ export function auditRoadmapLinks(
 
     const parent = resolveParentRoadmap(child.parentRoadmap ?? '', byKey)
     if (!parent) {
-      if (options.failOrphans === true) {
+      if (options.failOrphans === true && !isCrossRepoParentReference) {
         violations.push({
           file: child.file,
           message: `Blueprint declares parent_roadmap ${JSON.stringify(child.parentRoadmap)} but no local parent-roadmap resolves to it`,

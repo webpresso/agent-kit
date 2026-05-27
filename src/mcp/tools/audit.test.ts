@@ -10,35 +10,37 @@
 
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
-const repoGuardrailsMock = ({
+const { spawnMock } = vi.hoisted(() => ({
+  spawnMock: vi.fn(),
+}))
+
+const repoGuardrailsMock = {
   auditCatalogDrift: vi.fn(),
   auditCommitMessageFile: vi.fn(),
   auditDocsFrontmatter: vi.fn(),
   auditBlueprintLifecycle: vi.fn(),
   formatRepoAuditReport: vi.fn(() => 'formatted report'),
-})
+}
 
-const agentsAuditMock = ({
+const agentsAuditMock = {
   auditAgents: vi.fn(),
-})
+}
 
-const techDebtMock = ({
+const techDebtMock = {
   auditTechDebt: vi.fn(),
-})
+}
 
-const aiContractsMock = ({
+const aiContractsMock = {
   auditAiContracts: vi.fn(),
-})
+}
 
-const architectureDriftMock = ({
+const architectureDriftMock = {
   auditArchitectureDrift: vi.fn(),
-})
+}
 
-const viteLocalMock = ({
+const viteLocalMock = {
   runBundleBudgetCli: vi.fn(),
-})
-
-const spawnMock = vi.fn()
+}
 
 vi.mock('#audit/repo-guardrails', () => repoGuardrailsMock)
 vi.mock('#audit/agents', () => agentsAuditMock)

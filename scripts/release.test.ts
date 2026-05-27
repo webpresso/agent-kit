@@ -11,7 +11,7 @@
  * whose `build` script is a no-op (`node -e "process.exit(0)"`). The script
  * therefore exercises every git step end-to-end without depending on tshy.
  */
-import { execSync } from 'node:child_process'
+import { execSync, spawnSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -20,10 +20,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 const SCRIPT_PATH = resolve(__dirname, 'release.ts')
 
 interface Fixture {
+  binDir: string
   repoDir: string
   remoteDir: string
   cleanup: () => void
 }
+
+const fixtureForCwd = new Map<string, Fixture>()
 
 function git(cwd: string, args: string): string {
   return execSync(`git ${args}`, { cwd, encoding: 'utf8' }).toString()
@@ -33,28 +36,33 @@ function runScript(
   cwd: string,
   flags: readonly string[],
 ): { stdout: string; stderr: string; status: number } {
-  const argString = flags.join(' ')
-  try {
-    const stdout = execSync(`bun "${SCRIPT_PATH}" ${argString}`, {
+  const result = spawnSync(
+    process.execPath,
+    ['--experimental-strip-types', SCRIPT_PATH, ...flags],
+    {
       cwd,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
-    }).toString()
-    return { stdout, stderr: '', status: 0 }
-  } catch (err: unknown) {
-    const e = err as { stdout?: Buffer; stderr?: Buffer; status?: number }
-    return {
-      stdout: e.stdout?.toString() ?? '',
-      stderr: e.stderr?.toString() ?? '',
-      status: e.status ?? 1,
-    }
+      env: {
+        ...process.env,
+        PATH: [fixtureForCwd.get(cwd)?.binDir, process.env.PATH].filter(Boolean).join(':'),
+      },
+    },
+  )
+
+  return {
+    stdout: result.stdout ?? '',
+    stderr: result.stderr ?? '',
+    status: result.status ?? 1,
   }
 }
 
 function createFixture({ withRemote = false }: { withRemote?: boolean } = {}): Fixture {
   const root = mkdtempSync(join(tmpdir(), 'wp-release-'))
+  const binDir = join(root, 'bin')
   const repoDir = join(root, 'repo')
   const remoteDir = join(root, 'remote.git')
+  mkdirSync(binDir, { recursive: true })
   mkdirSync(repoDir, { recursive: true })
 
   // Initialize repo with a default branch named `main` so the assertion below
@@ -83,6 +91,16 @@ function createFixture({ withRemote = false }: { withRemote?: boolean } = {}): F
   writeFileSync(join(repoDir, 'dist', 'index.js'), '// fake build output\n')
   // Gitignore dist/ to mirror the real repo and confirm the script's `-f` flag works.
   writeFileSync(join(repoDir, '.gitignore'), 'dist/\n')
+  writeFileSync(
+    join(binDir, 'pnpm'),
+    [
+      '#!/bin/sh',
+      `node -e "const fs=require('fs'); const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); const build=String(pkg.scripts?.build||''); process.exit(build.includes('process.exit(1)')?1:0)"`,
+      '',
+    ].join('\n'),
+    'utf8',
+  )
+  execSync(`chmod +x "${join(binDir, 'pnpm')}"`)
 
   git(repoDir, 'add package.json .gitignore')
   git(repoDir, 'commit -m "initial commit"')
@@ -93,7 +111,8 @@ function createFixture({ withRemote = false }: { withRemote?: boolean } = {}): F
     git(repoDir, `remote add origin "${remoteDir}"`)
   }
 
-  return {
+  const fixture = {
+    binDir,
     repoDir,
     remoteDir,
     cleanup: () => {
@@ -101,9 +120,13 @@ function createFixture({ withRemote = false }: { withRemote?: boolean } = {}): F
         execSync(`rm -rf "${root}"`)
       } catch {
         // ignore cleanup failures in tests
+      } finally {
+        fixtureForCwd.delete(repoDir)
       }
     },
-  }
+  } satisfies Fixture
+  fixtureForCwd.set(repoDir, fixture)
+  return fixture
 }
 
 describe('scripts/release.ts', () => {

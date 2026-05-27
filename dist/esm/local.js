@@ -6,6 +6,7 @@
  *
  * Populated in Phase 1.
  */
+export { auditAiContracts } from './audit/ai-contracts.js';
 export { auditBlueprintLifecycle, auditCatalogDrift, auditCommitMessageFile, auditDocsFrontmatter, formatRepoAuditReport, validateCommitMessage, } from './audit/repo-guardrails.js';
 export { auditVision } from './audit/vision-doc.js';
 export { analyzeViteDistBundleBudget, bundleBudgetCliHelp, parseBundleBudgetCliArgs, runBundleBudgetCli, } from './vite/local.js';

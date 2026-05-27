@@ -31,6 +31,8 @@ declare const inputSchema: z.ZodObject<{
         "docs-frontmatter": "docs-frontmatter";
         "catalog-drift": "catalog-drift";
         "package-surface": "package-surface";
+        "architecture-drift": "architecture-drift";
+        "ai-contracts": "ai-contracts";
     }>;
     cwd: z.ZodOptional<z.ZodString>;
     directory: z.ZodOptional<z.ZodString>;

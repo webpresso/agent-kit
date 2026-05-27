@@ -58,7 +58,25 @@ export interface RunHooksDoctorOptions {
 function resolvePackageRoot(): string | null {
   let dir = dirname(fileURLToPath(import.meta.url))
   while (dir !== dirname(dir)) {
-    if (tryAccess(join(dir, 'package.json'))) return dir
+    const pkgPath = join(dir, 'package.json')
+    if (tryAccess(pkgPath)) {
+      try {
+        const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as {
+          bin?: Record<string, unknown>
+        }
+        if (
+          typeof pkg.bin?.wp === 'string' ||
+          tryAccess(join(dir, '.claude-plugin', 'plugin.json')) ||
+          tryAccess(join(dir, 'bin', 'wp.js')) ||
+          tryAccess(join(dir, 'src', 'cli', 'cli.ts')) ||
+          tryAccess(join(dir, 'dist', 'esm', 'cli', 'cli.js'))
+        ) {
+          return dir
+        }
+      } catch {
+        // Ignore malformed or nested manifests that are not the package root.
+      }
+    }
     dir = dirname(dir)
   }
   return null
@@ -156,7 +174,7 @@ function resolveRequestedHosts(
   return mode === 'skip' ? [] : hostNames && hostNames.length > 0 ? hostNames : defaults
 }
 
-function checkRtkOnPath(cwd?: string): Promise<DoctorCheck | null> {
+export function checkRtkOnPath(cwd?: string): Promise<DoctorCheck | null> {
   if (!wasRtkRequested(cwd)) return Promise.resolve(null)
 
   return new Promise<DoctorCheck>((resolve) => {

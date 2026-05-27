@@ -7,6 +7,7 @@
  * Populated in Phase 1.
  */
 export type __WebpressoLocalEntrypointReserved = never;
+export { auditAiContracts } from './audit/ai-contracts.js';
 export { auditBlueprintLifecycle, auditCatalogDrift, auditCommitMessageFile, auditDocsFrontmatter, formatRepoAuditReport, validateCommitMessage, } from './audit/repo-guardrails.js';
 export type { BlueprintLifecycleOptions, CatalogDriftOptions, CommitMessageOptions, DocsFrontmatterOptions, RepoAuditResult, RepoAuditViolation, } from './audit/repo-guardrails.js';
 export { auditVision } from './audit/vision-doc.js';

@@ -13,6 +13,9 @@ import { existsSync, mkdirSync, readFileSync, rmdirSync, rmSync, writeFileSync }
 import { homedir } from 'node:os';
 import { dirname, join, resolve, sep } from 'node:path';
 const NOT_FOUND_HINT = 'omx (oh-my-codex) is not on PATH after `vp install -g oh-my-codex`. Install it manually and re-run.';
+function shouldSkipOmxRefresh(env = process.env) {
+    return env.WP_SKIP_UPDATE_CHECK === '1';
+}
 function defaultCodexConfigPath() {
     const codexHome = process.env.CODEX_HOME || join(process.env.HOME || homedir(), '.codex');
     return join(codexHome, 'config.toml');
@@ -218,7 +221,7 @@ export function ensureOmx(input) {
             return { kind: 'omx-not-found', hint: NOT_FOUND_HINT };
         }
     }
-    else {
+    else if (!shouldSkipOmxRefresh()) {
         spawn('vp', ['update', '-g', 'oh-my-codex'], { stdio: 'inherit' });
     }
     const result = spawn('omx', ['setup', '--yes', '--scope', scope], {

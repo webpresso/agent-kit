@@ -15,6 +15,10 @@ export type EnsureCodexCliResult =
 const NOT_FOUND_HINT =
   'codex is not on PATH after `vp install -g @openai/codex`. Install it manually and re-run.'
 
+function shouldSkipCodexRefresh(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.WP_SKIP_UPDATE_CHECK === '1'
+}
+
 export function ensureCodexCli(input: EnsureCodexCliInput): EnsureCodexCliResult {
   if (input.options.dryRun) return { kind: 'codex-cli-skipped-dry-run' }
 
@@ -31,7 +35,7 @@ export function ensureCodexCli(input: EnsureCodexCliInput): EnsureCodexCliResult
     if (probe.error || (probe.status !== null && probe.status !== 0)) {
       return { kind: 'codex-cli-unavailable', hint: NOT_FOUND_HINT }
     }
-  } else {
+  } else if (!shouldSkipCodexRefresh()) {
     spawn('vp', ['update', '-g', '@openai/codex'], { stdio: 'inherit' })
   }
 

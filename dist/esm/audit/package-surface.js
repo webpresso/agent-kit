@@ -15,12 +15,6 @@ const DEFAULT_COMPATIBILITY_PUBLIC_PACKAGES = [
     '@webpresso/db-branching-neon',
     '@webpresso/layout-compiler',
     '@webpresso/layout-schema',
-    '@webpresso/runtime',
-    '@webpresso/runtime-decision',
-    '@webpresso/runtime-format',
-    '@webpresso/runtime-http',
-    '@webpresso/runtime-storage',
-    '@webpresso/runtime-validation',
     '@webpresso/schema-engine',
     '@webpresso/schema-frontend',
     '@webpresso/schema-loaders',
@@ -42,7 +36,6 @@ const DEFAULT_STALE_LINKS = [];
 const DEFAULT_REFERENCE_BASELINES = {
     '@webpresso/webpresso': '0.3.6',
     webpresso: '0.18.18',
-    '@webpresso/runtime': '0.5.5',
     '@webpresso/db-branching': '0.2.4',
     '@webpresso/db-branching-neon': '0.2.4',
 };
@@ -108,6 +101,7 @@ const DEFAULT_FORBIDDEN_TARBALL_CONTENT_PATTERNS = [
     '/sk-[A-Za-z0-9]{32,}/',
     '/-----BEGIN [A-Z ]*PRIVATE KEY-----/',
 ];
+const DEFAULT_DEEP_SCAN_EXCLUDED_PATH_PREFIXES = ['dist/'];
 const SECRETLINT_DEFAULT_CONFIG = JSON.stringify({
     rules: [{ id: '@secretlint/secretlint-rule-preset-recommend' }],
 });
@@ -244,6 +238,10 @@ function auditPackedTarballSurface(root, contract, violations) {
     ]);
     const allowedContentRules = compileMatchRules(tarball.allowedContentPatterns ?? []);
     const allowedSecretlintMessageIds = new Set(tarball.allowedSecretlintMessageIds ?? []);
+    const deepScanExcludedPathPrefixes = [
+        ...DEFAULT_DEEP_SCAN_EXCLUDED_PATH_PREFIXES,
+        ...(tarball.deepScanExcludedPathPrefixes ?? []),
+    ];
     let checked = 0;
     for (const candidate of packages) {
         let packedFiles;
@@ -269,16 +267,18 @@ function auditPackedTarballSurface(root, contract, violations) {
                 });
             }
         }
-        checked += auditPackedTarballContent(root, candidate, packedFiles, forbiddenContentRules, allowedContentRules, allowedPathRules, violations);
-        checked += auditPackedTarballSecrets(root, candidate, packedFiles, forbiddenPathRules, allowedPathRules, allowedSecretlintMessageIds, violations);
+        checked += auditPackedTarballContent(root, candidate, packedFiles, forbiddenContentRules, allowedContentRules, allowedPathRules, deepScanExcludedPathPrefixes, violations);
+        checked += auditPackedTarballSecrets(root, candidate, packedFiles, forbiddenPathRules, allowedPathRules, allowedSecretlintMessageIds, deepScanExcludedPathPrefixes, violations);
     }
     return checked;
 }
-function auditPackedTarballContent(root, candidate, packedFiles, forbiddenRules, allowedRules, allowedPathRules, violations) {
+function auditPackedTarballContent(root, candidate, packedFiles, forbiddenRules, allowedRules, allowedPathRules, deepScanExcludedPathPrefixes, violations) {
     let checked = 0;
     for (const packedFile of packedFiles) {
         const repoRelative = packageFileToRepoRelative(root, candidate, packedFile.path);
         if (matchesAny(allowedPathRules, packedFile.path, repoRelative))
+            continue;
+        if (isExcludedFromDeepScan(packedFile.path, repoRelative, deepScanExcludedPathPrefixes))
             continue;
         const text = readPackedText(join(candidate.packageRoot, packedFile.path));
         if (text === undefined)
@@ -297,7 +297,7 @@ function auditPackedTarballContent(root, candidate, packedFiles, forbiddenRules,
     }
     return checked;
 }
-function auditPackedTarballSecrets(root, candidate, packedFiles, forbiddenPathRules, allowedPathRules, allowedMessageIds, violations) {
+function auditPackedTarballSecrets(root, candidate, packedFiles, forbiddenPathRules, allowedPathRules, allowedMessageIds, deepScanExcludedPathPrefixes, violations) {
     const packageRelativeRoot = relativePath(root, candidate.packageRoot);
     const secretlintCandidates = packedFiles.filter((packedFile) => {
         const repoRelative = packageFileToRepoRelative(root, candidate, packedFile.path);
@@ -305,6 +305,9 @@ function auditPackedTarballSecrets(root, candidate, packedFiles, forbiddenPathRu
             return false;
         if (matchesAny(forbiddenPathRules, packedFile.path, repoRelative))
             return false;
+        if (isExcludedFromDeepScan(packedFile.path, repoRelative, deepScanExcludedPathPrefixes)) {
+            return false;
+        }
         return isSecretlintCandidate(packedFile.path);
     });
     if (secretlintCandidates.length === 0)
@@ -391,15 +394,7 @@ function stagePackedFiles(root, destinationRoot, candidate, packedFiles) {
 function runSecretlint(stageRoot, packageRoot) {
     const rcPath = findSecretlintRc(packageRoot);
     const outputFile = join(stageRoot, '.secretlint-output.json');
-    const args = [
-        'exec',
-        'secretlint',
-        '--format',
-        'json',
-        '--output',
-        outputFile,
-        '--no-gitignore',
-    ];
+    const args = ['exec', 'secretlint', '--format', 'json', '--output', outputFile, '--no-gitignore'];
     if (rcPath) {
         args.push('--secretlintrc', rcPath);
     }
@@ -409,7 +404,7 @@ function runSecretlint(stageRoot, packageRoot) {
     args.push(join(stageRoot, '**/*'));
     try {
         execFileSync('pnpm', args, {
-            cwd: packageRoot,
+            cwd: process.cwd(),
             encoding: 'utf8',
             stdio: ['ignore', 'pipe', 'pipe'],
             maxBuffer: 20 * 1024 * 1024,
@@ -485,6 +480,24 @@ function normalizeSecretlintMessages(output) {
 }
 function resolveSecretlintFilePath(stageRoot, filePath) {
     return filePath.startsWith(stageRoot) ? filePath : resolve(stageRoot, filePath);
+}
+function isExcludedFromDeepScan(packedPath, repoRelativePath, pathPrefixes) {
+    const normalizedPackedPath = normalizePackedPath(packedPath);
+    const normalizedRepoRelative = normalizePackedPath(repoRelativePath);
+    return pathPrefixes.some((prefix) => {
+        const normalizedPrefix = normalizePackedPrefix(prefix);
+        return (normalizedPackedPath === normalizedPrefix.slice(0, -1) ||
+            normalizedPackedPath.startsWith(normalizedPrefix) ||
+            normalizedRepoRelative === normalizedPrefix.slice(0, -1) ||
+            normalizedRepoRelative.startsWith(normalizedPrefix));
+    });
+}
+function normalizePackedPath(value) {
+    return value.replace(/\\/g, '/').replace(/^\.?\//, '');
+}
+function normalizePackedPrefix(value) {
+    const normalized = normalizePackedPath(value);
+    return normalized.endsWith('/') ? normalized : `${normalized}/`;
 }
 function auditReferenceConsumerFreshness(root, baselines, violations) {
     const workspaceFile = join(root, 'pnpm-workspace.yaml');

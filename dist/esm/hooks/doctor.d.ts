@@ -26,6 +26,7 @@ export interface RunHooksDoctorOptions {
     /** Override the working directory used to detect RTK marker files. Defaults to process.cwd(). */
     cwd?: string;
 }
+export declare function checkRtkOnPath(cwd?: string): Promise<DoctorCheck | null>;
 export declare function runHooksDoctor(opts?: RunHooksDoctorOptions): Promise<DoctorResult>;
 export declare function printHooksDoctor(opts?: RunHooksDoctorOptions): Promise<number>;
 export {};

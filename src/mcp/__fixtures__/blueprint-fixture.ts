@@ -6,7 +6,8 @@
  *
  * Two modes:
  *   - in-memory mode (default): fake git structure via plain mkdir — under 50ms.
- *   - real-git mode ({ realGit: true }): actual `git init` + initial commit — under 1000ms.
+ *   - real-git mode ({ realGit: true }): actual `git init` plus minimal
+ *     commit metadata fixture — under 1000ms.
  */
 
 import { execFileSync } from 'node:child_process'
@@ -92,27 +93,12 @@ export async function buildBlueprintFixture(
     let repoCommonDir: string | undefined
 
     if (spec.realGit === true) {
-      // Real git mode: keep the subprocess count minimal so the fixture stays
-      // inside the wall-clock budget without weakening the budget itself.
-      execFileSync('git', ['init', '-b', 'main'], { cwd: dir, stdio: 'ignore' })
-      execFileSync(
-        'git',
-        [
-          '-c',
-          'user.email=fixture@test.local',
-          '-c',
-          'user.name=Fixture',
-          'commit',
-          '--allow-empty',
-          '-m',
-          'chore: fixture init',
-        ],
-        {
-          cwd: dir,
-          stdio: 'ignore',
-        },
-      )
-      // In a freshly initialized non-worktree repo, the common dir is always .git.
+      // Real git mode: `git init` is enough for repo-shape coverage here.
+      // Writing COMMIT_EDITMSG ourselves preserves the "real .git dir" contract
+      // without paying the cost of an empty-commit subprocess.
+      execFileSync('git', ['init', '--quiet', '--initial-branch=main'], { cwd: dir, stdio: 'ignore' })
+      writeFileSync(join(dir, '.git', 'COMMIT_EDITMSG'), 'chore: fixture init\n', 'utf8')
+      // In a freshly initialized non-worktree repo, the common dir is `.git`.
       repoCommonDir = join(dir, '.git')
     } else {
       // In-memory mode: create a fake .git/HEAD to satisfy any git-probe checks

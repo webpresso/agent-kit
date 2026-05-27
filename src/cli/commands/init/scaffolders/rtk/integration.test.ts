@@ -1,20 +1,29 @@
 import { spawnSync } from 'node:child_process'
-import { chmodSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { auditCatalogDrift } from '#audit/repo-guardrails'
-import { resolveCatalogDir, runInit } from '#cli/commands/init/index'
-import { runHooksDoctor } from '#hooks/doctor'
+import { resolveCatalogDir } from '#cli/commands/init/index'
+import { scaffoldAgentHooks } from '#cli/commands/init/scaffolders/agent-hooks'
+import { ensureRtk } from '#cli/commands/init/scaffolders/rtk'
+import { checkRtkOnPath } from '#hooks/doctor'
 import { routeCommand } from '#hooks/pretool-guard/dev-routing'
 
 const agentKitRoot = dirname(resolveCatalogDir())
 const fixtureRoot = join(agentKitRoot, '__fixtures__')
 const fakeHomeSource = join(fixtureRoot, 'fake-home')
 const fakeRtkBin = join(fixtureRoot, 'fake-tools', 'rtk-ok-bin')
-const fakeOmxBin = join(fixtureRoot, 'fake-tools', 'omx-ok-bin')
 const hookFixture = join(fixtureRoot, 'rtk-three-hook-composition')
 
 function makeRepo(): string {
@@ -56,6 +65,9 @@ describe('rtk scaffolder integration', () => {
   let previousAkSkipOmc: string | undefined
   let previousWpSkipCodexTrustSync: string | undefined
   let previousWpSkipUpdateCheck: string | undefined
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn> | undefined
+  let consoleLogSpy: ReturnType<typeof vi.spyOn> | undefined
+  let consoleWarnSpy: ReturnType<typeof vi.spyOn> | undefined
 
   beforeEach(() => {
     repo = makeRepo()
@@ -71,42 +83,17 @@ describe('rtk scaffolder integration', () => {
     previousWpSkipUpdateCheck = process.env.WP_SKIP_UPDATE_CHECK
     process.env.HOME = fakeHome
     process.env.CODEX_HOME = join(repo, '.codex-home')
-    process.env.PATH = [fakeRtkBin, fakeOmxBin, previousPath ?? ''].filter(Boolean).join(':')
-    // runInit() short-circuits the rtk scaffolder when CI=true/1 (production
-    // guard against postinstall failures on hosted CI runners). This test
-    // intentionally exercises the rtk preset against a PATH-injected fake
-    // rtk binary, so we must run outside the CI-skip branch — otherwise
-    // settings.json is never scaffolded with rtk-rewrite.sh and every G2-G8
-    // assertion fails.
+    process.env.PATH = [fakeRtkBin, previousPath ?? ''].filter(Boolean).join(':')
     delete process.env.CI
-    // The default preset list (src/cli/commands/init/index.ts:79) is
-    // ['omx', 'gstack', 'vision', 'rtk'] — every runInit() call runs all
-    // four regardless of --with. Two of those involve real, heavy work
-    // this test does not cover:
-    //
-    // - gstack: `git clone https://github.com/garrytan/gstack` — a real
-    //   network call that adds ~15-20s and makes the test depend on GitHub.
-    // - OMC / claude plugin: spawns the real `claude` CLI
-    //   (`plugin marketplace add` → `plugin install`),
-    //   each a 5+s subprocess. ~17s total measured locally with a
-    //   claude binary on PATH.
-    //
-    // Both have production-supported opt-out env vars used precisely for
-    // this case:
-    //   - WP_SKIP_GSTACK → src/cli/commands/init/index.ts:509-512
-    //   - WP_SKIP_OMC → src/cli/commands/init/scaffolders/omc/index.ts
-    //   - WP_SKIP_CLAUDE_PLUGIN → src/cli/commands/init/scaffolders/
-    //     claude-plugin/index.ts:58-60
-    //
-    // Skipping them scopes the test to what it actually covers (the rtk
-    // scaffolder) and brings the test cost under the 20s budget without
-    // bumping the timeout (per the no-timeout-as-fix rule).
     process.env.WP_SKIP_GSTACK = '1'
     process.env.WP_SKIP_CLAUDE_PLUGIN = '1'
     process.env.WP_SKIP_OMC = '1'
     process.env.WP_SKIP_CODEX_TRUST_SYNC = '1'
     process.env.WP_SKIP_UPDATE_CHECK = '1'
     chmodSync(join(fakeRtkBin, 'rtk'), 0o755)
+    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -128,13 +115,27 @@ describe('rtk scaffolder integration', () => {
     else process.env.WP_SKIP_CODEX_TRUST_SYNC = previousWpSkipCodexTrustSync
     if (previousWpSkipUpdateCheck === undefined) delete process.env.WP_SKIP_UPDATE_CHECK
     else process.env.WP_SKIP_UPDATE_CHECK = previousWpSkipUpdateCheck
+    consoleLogSpy?.mockRestore()
+    consoleWarnSpy?.mockRestore()
+    consoleErrorSpy?.mockRestore()
     rmSync(repo, { recursive: true, force: true })
     rmSync(fakeHome, { recursive: true, force: true })
   })
 
   it('covers G1-G8 against a fixture repo aligned to current upstream RTK behavior', async () => {
-    const first = await runInit({ cwd: repo, yes: true, with: 'rtk' })
-    expect(first).toBe(0) // G1
+    mkdirSync(join(repo, '.agent'), { recursive: true })
+    writeFileSync(join(repo, '.agent', '.rtk-requested'), 'managed by test\n')
+    await scaffoldAgentHooks({
+      repoRoot: repo,
+      options: { overwrite: false, dryRun: false },
+      trustCodexHooks: false,
+    })
+
+    const first = ensureRtk({
+      repoRoot: repo,
+      options: { overwrite: false, dryRun: false },
+    })
+    expect(first).toEqual({ kind: 'rtk-ok', installed: false }) // G1
 
     const settings = JSON.parse(readFileSync(join(repo, '.claude', 'settings.json'), 'utf8')) as {
       hooks: { PreToolUse: Array<{ hooks: Array<{ command: string }> }> }
@@ -170,24 +171,25 @@ describe('rtk scaffolder integration', () => {
     expect(agentKitRoute?.action.action).toBe('deny')
     if (agentKitRoute?.action.action === 'deny') expect(agentKitRoute.action.tool).toBe('wp_test') // G4
 
-    const doctorOk = await runHooksDoctor({ skipMcp: true, cwd: repo })
-    expect(doctorOk.checks.find((check) => check.name === 'rtk on PATH')?.ok).toBe(true) // G5
+    const doctorOk = await checkRtkOnPath(repo)
+    expect(doctorOk?.ok).toBe(true) // G5
 
-    // Mask rtk by isolating PATH to fakeOmxBin only — including previousPath
-    // would leak `/opt/homebrew/bin/rtk` on machines where rtk is installed.
-    process.env.PATH = fakeOmxBin
-    const doctorMissing = await runHooksDoctor({ skipMcp: true, cwd: repo })
-    expect(doctorMissing.checks.find((check) => check.name === 'rtk on PATH')?.detail).toContain(
-      'brew install rtk',
-    )
-    process.env.PATH = [fakeRtkBin, fakeOmxBin, previousPath ?? ''].filter(Boolean).join(':')
+    // Mask rtk by clearing PATH — avoids leaking a host-installed rtk.
+    process.env.PATH = ''
+    const doctorMissing = await checkRtkOnPath(repo)
+    expect(doctorMissing?.detail).toContain('brew install rtk')
+    process.env.PATH = [fakeRtkBin, previousPath ?? ''].filter(Boolean).join(':')
 
     // G6: catalog drift — import directly instead of bun cold-start subprocess
     // (bun --eval spawns a 5-11s cold-start that causes flaky parallel failures)
     expect(auditCatalogDrift(agentKitRoot).ok).toStrictEqual(true) // G6
 
-    const second = await runInit({ cwd: repo, yes: true, with: 'rtk' })
-    expect(second).toBe(0)
+    // G7: re-running RTK's owner path must not duplicate the injected hook.
+    const second = ensureRtk({
+      repoRoot: repo,
+      options: { overwrite: false, dryRun: false },
+    })
+    expect(second).toEqual({ kind: 'rtk-ok', installed: false })
     const settingsAfterSecond = readFileSync(join(repo, '.claude', 'settings.json'), 'utf8')
     expect(settingsAfterSecond.match(/rtk-rewrite\.sh/g)?.length).toBe(1) // G7
 
@@ -202,5 +204,5 @@ describe('rtk scaffolder integration', () => {
     expect(codexHooksContent).not.toContain('rtk-rewrite.sh')
     expect(codexHooksContent).not.toContain('RTK_TELEMETRY_DISABLED')
     expect(codexHooksContent).not.toContain('RTK_HOOK_EXCLUDE_COMMANDS')
-  }, 20_000)
+  })
 })

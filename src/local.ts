@@ -9,6 +9,7 @@
 
 export type __WebpressoLocalEntrypointReserved = never
 
+export { auditAiContracts } from './audit/ai-contracts.js'
 export {
   auditBlueprintLifecycle,
   auditCatalogDrift,

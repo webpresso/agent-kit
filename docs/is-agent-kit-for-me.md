@@ -35,7 +35,7 @@ If you match 0-2: webpresso is usable but you will need to customize. Start with
 - **Blueprint lifecycle** — draft a plan, move it through planned → in-progress → completed, audit adherence with `wp audit blueprint-lifecycle`.
 - **Multi-CLI runners** — `wp blueprint exec` (or `/pll`) runs your blueprint via Claude Code subagent, Codex CLI, or a CLI-agnostic local-worktree backend. Pick per task or let env-detection decide.
 - **Zero-config setup** — `wp setup` wires Claude Code plugin, Codex hooks, gstack, context-mode, and rtk in one command.
-- **Audit composite** — 8 audits ship by default: catalog-drift, docs-frontmatter, blueprint-lifecycle, bundle-budget, tph, commit-message, tech-debt, no-relative-parent-imports.
+- **Audit composite** — the shipped audit registry covers lifecycle, package-surface, docs, commit, and AI-contract drift; `wp audit guardrails` runs the composite gate.
 - **Mutation engine** — `wp audit mutation` gates merges on a Stryker score; `wp audit quality` gives a composite score.
 - **Template library** — `wp blueprint new --template <name>` scaffolds a blueprint from a curated template so your first blueprint isn't a blank page.
 

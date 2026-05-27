@@ -1,6 +1,18 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 
-import { runSecretsConfigCommand } from './config.js'
+vi.mock('@webpresso/webpresso/runtime/env', () => ({
+  getSecretsConfigPath: () => '/repo/.git/webpresso/secrets.json',
+  readSecretsConfig: () => null,
+  runSecretManagerSetup: async () => ({ manager: 'doppler', projectId: 'mock-project' }),
+  secretManagerRegistry: new Map(),
+  writeSecretsConfig: () => {},
+}))
+
+let runSecretsConfigCommand: typeof import('./config.js').runSecretsConfigCommand
+
+beforeAll(async () => {
+  ;({ runSecretsConfigCommand } = await import('./config.js'))
+})
 
 function makeWriter() {
   const chunks: string[] = []
