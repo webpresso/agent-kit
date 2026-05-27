@@ -9,30 +9,29 @@ Webpresso is adopter zero of agent-kit. Before agent-kit existed, the
 repo hosted the Blueprint runtime, symlinker, `blueprint-plan`
 validator, and `audit-tph` scripts as separate internal concerns:
 
-| Internal path | Moved into agent-kit at | Import change |
+| Historical concern | Now lives in agent-kit at | Import change |
 |---|---|---|
-| `packages/cli/blueprint/src/*` | `packages/cli/agent-kit/src/blueprint/*` | `@webpresso/blueprint` → `@webpresso/agent-kit/blueprint` |
-| `packages/cli/blueprint/src/local.ts` | `packages/cli/agent-kit/src/blueprint/local.ts` | `@webpresso/blueprint/local` → `@webpresso/agent-kit/blueprint/local` |
-| `packages/foundation/docs-linter/src/validators/blueprint-plan.ts` | `packages/cli/agent-kit/src/docs-linter/blueprint-plan.ts` | Import from `@webpresso/agent-kit/docs-linter` |
-| `apps/scripts/src/audit/audit-tph.ts` | `packages/cli/agent-kit/src/audit/audit-tph.ts` | Invoke via `wp audit tph` CLI |
-| `apps/scripts/src/audit/audit-tph-e2e.ts` | `packages/cli/agent-kit/src/audit/audit-tph-e2e.ts` | Invoke via `wp audit tph-e2e` |
-| `apps/scripts/src/maintenance/symlinker.ts` | `packages/cli/agent-kit/src/symlinker/` | Invoke via `wp sync` (use `wp sync --check` for drift) |
+| legacy blueprint package source | `src/blueprint/*` | `@webpresso/blueprint` → `@webpresso/agent-kit/blueprint` |
+| legacy blueprint local entrypoint | `src/blueprint/local.ts` | `@webpresso/blueprint/local` → `@webpresso/agent-kit/blueprint/local` |
+| legacy blueprint-plan validator | `src/docs-linter/blueprint-plan.ts` | Import from `@webpresso/agent-kit/docs-linter` |
+| legacy TPH audit script | `src/audit/audit-tph.ts` | Invoke via `wp audit tph` CLI |
+| legacy TPH E2E audit script | `src/audit/audit-tph-e2e.ts` | Invoke via `wp audit tph-e2e` |
+| legacy symlinker maintenance surface | `src/symlinker/` | Invoke via `wp sync` (use `wp sync --check` for drift) |
 
 ## The migration plan
 
-For webpresso, the full migration is tracked as a blueprint at
-`webpresso/blueprints/planned/adopt-webpresso-agent-kit/_overview.md`.
-It's split into four phases:
+For webpresso, the historical migration was split into four phases:
 
 1. **Codemod imports + add workspace dep** — every `@webpresso/blueprint*`
    import becomes `@webpresso/agent-kit/blueprint*`, agent-kit is added
    as a workspace dep alongside the old blueprint package to keep the
    tree green during transition. ~20 files.
 2. **Cut pre-commit hooks + `just` recipes** — rewire the Husky pre-commit
-   that invoked `apps/scripts/src/maintenance/symlinker.ts` to use
+   that invoked the old symlinker maintenance entrypoint to use
    `wp sync --check` instead. Same for the `just audit-tph` recipe.
-3. **Delete the internal originals** — `packages/cli/blueprint/`,
-   `blueprint-plan.ts`, `audit-tph*.ts`, `symlinker.ts` + its test.
+3. **Delete the internal originals** — the legacy blueprint package,
+   `blueprint-plan.ts`, `audit-tph*.ts`, and the old symlinker maintenance
+   entrypoint.
 4. **Validation** — `wp blueprint list` + `wp blueprint audit --strict`
    must produce byte-identical output pre- and post-migration.
    Full `just e2e blueprint-creation` runs green.
@@ -67,7 +66,7 @@ If you happen to have forked or vendored webpresso's blueprint code:
 ## Invariants preserved during webpresso's migration
 
 - **`wp blueprint list` / `audit --strict` output is byte-identical.**
-- **Every blueprint file in `webpresso/blueprints/` passes
+- **Every blueprint file in the historical webpresso migration set passes
   `wp blueprint audit --strict`.** (Agentkit's validator is the same
   code as the old `blueprint-plan.ts`, just repackaged — so this should
   pass by construction.)
