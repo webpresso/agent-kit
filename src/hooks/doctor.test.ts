@@ -84,11 +84,7 @@ describe('hooks/doctor', () => {
 
     it('finds the owning package root instead of stopping at dist/esm/package.json', async () => {
       const distPackage = join(repoRoot, 'dist', 'esm', 'package.json')
-      const knownPaths = new Set([
-        pkgJson,
-        pluginJson,
-        distPackage,
-      ])
+      const knownPaths = new Set([pkgJson, pluginJson, distPackage])
 
       mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
         if (knownPaths.has(String(path))) return

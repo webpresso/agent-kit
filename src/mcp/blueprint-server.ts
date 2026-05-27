@@ -753,7 +753,10 @@ async function handleValidate(cwd: string, raw: unknown): Promise<ToolHandlerRes
   })
 }
 
-const taskNextSchema = z.object({ blueprint: z.string().optional(), project_id: z.string().optional() })
+const taskNextSchema = z.object({
+  blueprint: z.string().optional(),
+  project_id: z.string().optional(),
+})
 async function handleTaskNext(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = taskNextSchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_task_next validation error', p.error.message)
@@ -1044,7 +1047,10 @@ async function handleTaskVerify(cwd: string, raw: unknown): Promise<ToolHandlerR
     canonicalizeEvidenceList(existingEvidence) === incomingCanonical
   ) {
     const nextPayload = parseStructuredJson(
-      await handleTaskNext(projectCwd, { blueprint: slug, project_id: resolvedProject.project_id ?? projectCwd }),
+      await handleTaskNext(projectCwd, {
+        blueprint: slug,
+        project_id: resolvedProject.project_id ?? projectCwd,
+      }),
     )
     const payload: Record<string, unknown> = {
       summary: `Task "${task_id}" verification is already recorded (idempotent)`,
@@ -1096,7 +1102,10 @@ async function handleTaskVerify(cwd: string, raw: unknown): Promise<ToolHandlerR
 
   const b = bytes(result.markdown)
   const nextPayload = parseStructuredJson(
-    await handleTaskNext(projectCwd, { blueprint: slug, project_id: resolvedProject.project_id ?? projectCwd }),
+    await handleTaskNext(projectCwd, {
+      blueprint: slug,
+      project_id: resolvedProject.project_id ?? projectCwd,
+    }),
   )
   const payload: Record<string, unknown> = {
     summary: `Task "${task_id}" verified and marked done`,
@@ -2002,7 +2011,10 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
   registrar.registerTool(
     'wp_blueprint_task_next',
     'Return the next ready task (all deps done). Accepts optional project_id for nested-workspace disambiguation. Returns { summary, task }.',
-    { type: 'object', properties: { blueprint: { type: 'string' }, project_id: { type: 'string' } } },
+    {
+      type: 'object',
+      properties: { blueprint: { type: 'string' }, project_id: { type: 'string' } },
+    },
     undefined,
     (r) => handleTaskNext(cwd, r),
     { title: 'Blueprint Task Next', readOnlyHint: true, openWorldHint: false },

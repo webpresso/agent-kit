@@ -1731,7 +1731,11 @@ describe('nested workspace blueprint targeting', () => {
 
     const framework = path.join(workspaceDir, 'framework')
     mkdirSync(path.join(framework, 'blueprints', 'draft'), { recursive: true })
-    writeFileSync(path.join(framework, 'package.json'), JSON.stringify({ name: 'framework' }), 'utf8')
+    writeFileSync(
+      path.join(framework, 'package.json'),
+      JSON.stringify({ name: 'framework' }),
+      'utf8',
+    )
     writeFileSync(path.join(framework, 'blueprints', 'draft', 'two.md'), '# two\n')
 
     const { registrar: localRegistrar, tools: localTools } = makeRegistrar()
@@ -1745,9 +1749,15 @@ describe('nested workspace blueprint targeting', () => {
       projects: Array<{ worktree_path: string }>
     }
 
-    expect(data.projects.some((project) => project.worktree_path === realpathSync(monorepo))).toBe(true)
-    expect(data.projects.some((project) => project.worktree_path === realpathSync(framework))).toBe(true)
-    expect(data.projects.some((project) => project.worktree_path === realpathSync(ancestorRepo))).toBe(false)
+    expect(data.projects.some((project) => project.worktree_path === realpathSync(monorepo))).toBe(
+      true,
+    )
+    expect(data.projects.some((project) => project.worktree_path === realpathSync(framework))).toBe(
+      true,
+    )
+    expect(
+      data.projects.some((project) => project.worktree_path === realpathSync(ancestorRepo)),
+    ).toBe(false)
   })
 
   it('explicit project_id routes create through the targeted nested repo', async () => {
