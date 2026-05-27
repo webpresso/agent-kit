@@ -26,12 +26,14 @@ describe('resolveGuardrailAuditKinds', () => {
     const root = makeRoot('monorepo')
 
     expect(resolveGuardrailAuditKinds(root)).not.toContain('ai-contracts')
+    expect(resolveGuardrailAuditKinds(root)).toContain('architecture-drift')
   })
 
   test('keeps AI contract guardrails active for agent-kit', () => {
     const root = makeRoot('@webpresso/agent-kit')
 
     expect(resolveGuardrailAuditKinds(root)).toContain('ai-contracts')
+    expect(resolveGuardrailAuditKinds(root)).toContain('architecture-drift')
   })
 
   test('keeps AI contract guardrails active for repos that own the MCP helper surface', () => {

@@ -10,31 +10,41 @@
 
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
-const repoGuardrailsMock = vi.hoisted(() => ({
+const repoGuardrailsMock = ({
   auditCatalogDrift: vi.fn(),
   auditCommitMessageFile: vi.fn(),
   auditDocsFrontmatter: vi.fn(),
   auditBlueprintLifecycle: vi.fn(),
   formatRepoAuditReport: vi.fn(() => 'formatted report'),
-}))
+})
 
-const agentsAuditMock = vi.hoisted(() => ({
+const agentsAuditMock = ({
   auditAgents: vi.fn(),
-}))
+})
 
-const techDebtMock = vi.hoisted(() => ({
+const techDebtMock = ({
   auditTechDebt: vi.fn(),
-}))
+})
 
-const viteLocalMock = vi.hoisted(() => ({
+const aiContractsMock = ({
+  auditAiContracts: vi.fn(),
+})
+
+const architectureDriftMock = ({
+  auditArchitectureDrift: vi.fn(),
+})
+
+const viteLocalMock = ({
   runBundleBudgetCli: vi.fn(),
-}))
+})
 
-const spawnMock = vi.hoisted(() => vi.fn())
+const spawnMock = vi.fn()
 
 vi.mock('#audit/repo-guardrails', () => repoGuardrailsMock)
 vi.mock('#audit/agents', () => agentsAuditMock)
 vi.mock('#audit/tech-debt', () => techDebtMock)
+vi.mock('#audit/ai-contracts', () => aiContractsMock)
+vi.mock('#audit/architecture-drift', () => architectureDriftMock)
 vi.mock('../../vite/local.js', () => viteLocalMock)
 vi.mock('node:child_process', () => ({ spawn: spawnMock }))
 
@@ -81,6 +91,8 @@ beforeEach(() => {
   }
   agentsAuditMock.auditAgents.mockReset()
   techDebtMock.auditTechDebt.mockReset()
+  aiContractsMock.auditAiContracts.mockReset()
+  architectureDriftMock.auditArchitectureDrift.mockReset()
   viteLocalMock.runBundleBudgetCli.mockReset()
   spawnMock.mockReset()
   repoGuardrailsMock.formatRepoAuditReport.mockReturnValue('formatted report')
@@ -141,6 +153,24 @@ describe('wp_audit tool', () => {
       const result = await akAuditTool.handler({ kind: 'tech-debt' })
       expect(techDebtMock.auditTechDebt).toHaveBeenCalledTimes(1)
       expect(parsePayload(result).passed).toBe(true)
+    })
+
+    it('ai-contracts -> auditAiContracts', async () => {
+      aiContractsMock.auditAiContracts.mockReturnValue(passingAudit())
+      const result = await akAuditTool.handler({ kind: 'ai-contracts' })
+      expect(aiContractsMock.auditAiContracts).toHaveBeenCalledTimes(1)
+      const payload = parsePayload(result)
+      expect(payload.passed).toBe(true)
+      expect(payload.kind).toBe('ai-contracts')
+    })
+
+    it('architecture-drift -> auditArchitectureDrift', async () => {
+      architectureDriftMock.auditArchitectureDrift.mockReturnValue(passingAudit())
+      const result = await akAuditTool.handler({ kind: 'architecture-drift' })
+      expect(architectureDriftMock.auditArchitectureDrift).toHaveBeenCalledTimes(1)
+      const payload = parsePayload(result)
+      expect(payload.passed).toBe(true)
+      expect(payload.kind).toBe('architecture-drift')
     })
 
     it('bundle-budget -> runBundleBudgetCli with directory arg', async () => {

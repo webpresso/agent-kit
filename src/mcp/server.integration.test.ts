@@ -160,6 +160,9 @@ describe('mcp server integration', () => {
     expect(
       (akAudit?.inputSchema.properties?.kind as { enum?: unknown[] } | undefined)?.enum ?? [],
     ).toContain('agents')
+    expect(
+      (akAudit?.inputSchema.properties?.kind as { enum?: unknown[] } | undefined)?.enum ?? [],
+    ).toContain('architecture-drift')
   }, 20_000)
 
   // Regression: Claude Code 2.1.x and OpenCode call prompts/list and

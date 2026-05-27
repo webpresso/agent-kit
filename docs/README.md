@@ -22,7 +22,7 @@ The four moving parts:
    wp setup                                       # scaffold every IDE surface
    wp sync                                        # propagate .agent/ → IDE surfaces
    wp blueprint new "<goal>" --complexity M       # write a plan
-   wp audit guardrails                            # composite repo audit (8 checks)
+   wp audit guardrails                            # composite repo audit registry
    wp audit commit-message --require-lore         # enforce Lore trailers
    wp tech-debt new --severity high --category complexity
    wp skill list

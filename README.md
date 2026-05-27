@@ -40,6 +40,11 @@ opt-in.
 | context-mode | [GitHub](https://github.com/mksglu/context-mode) | Optional context-window and tool-output routing layer for teams that explicitly opt into `wp setup --with context-mode`. |
 | rulesync | [GitHub](https://github.com/dyoshikawa/rulesync) | Multi-runtime emission substrate used by webpresso instead of reimplementing each IDE format. |
 
+The AI reliability contract documented in this repo is also informed by
+[daronyondem/claude-architect-exam-guide](https://github.com/daronyondem/claude-architect-exam-guide),
+especially its emphasis on keeping deterministic guarantees in code, schemas,
+tool contracts, and audits rather than prompts alone.
+
 ## Runtime requirements
 
 Published `wp` / `webpresso` bins now ship as stable Node launchers. They prefer
@@ -203,7 +208,8 @@ wp_wp_wp_wp_wp_wp_wp_
 # After:  one composite, same registry powers pre-commit + CI + ship gate.
 wp audit guardrails
 # composes: catalog-drift + package-surface + blueprint-lifecycle + docs-frontmatter
-#         + no-relative-parent-imports + vision + commit-message
+#         + architecture-drift
+#         + no-relative-parent-imports + vision + commit-message + ai-contracts
 #         + tech-debt + bucket-boundary
 ```
 
@@ -278,9 +284,11 @@ That means one `wp setup` run can wire Codex's global MCP entry, Claude Code's u
 | `wp worktree new [branch] [--name <name>] [--prefix <prefix>]` | Create a git worktree and seed `.agent/`; no branch auto-generates `agent/<timestamp>-<suffix>` |
 | `wp worktree list` / `wp worktree remove <branch-or-path>` | List or remove worktrees (resolves by branch, basename, or path) |
 | `wp skill list` / `wp skill install <name>` | Browse and install catalog skills into the active IDE surfaces |
-| `wp audit guardrails` | Composite audit (8 checks) — wired into pre-commit, CI, ship gate |
+| `wp audit guardrails` | Composite audit registry — wired into pre-commit, CI, ship gate |
 | `wp audit quality` | `guardrails` + Stryker mutation testing |
+| `wp audit architecture-drift` | Verify architecture docs/contracts and active blueprint linkage/before-after policy |
 | `wp audit commit-message --require-lore` | Enforce Lore trailers on commit messages |
+| `wp audit ai-contracts` | Verify the AI reliability contract across summary-first MCP result surfaces |
 | `wp audit bundle-budget <dir> --max-js-asset-bytes 512000` | Vite bundle budget guard |
 | `wp audit vision` | Enforce `VISION.md` structure (frontmatter, ≤100 lines, ≤1500 words, required sections) |
 | `wp audit skill-sizes` | Check that skill files don't exceed size budget |

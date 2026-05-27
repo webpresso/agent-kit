@@ -23,7 +23,12 @@ function makeDeps(overrides: Partial<AuditDeps> = {}): AuditDeps {
     runCommitMessageAudit: vi.fn().mockReturnValue(okResult('commit-message')),
     resolveScript: vi.fn().mockReturnValue('/path/to/script.ts'),
     buildBundleBudgetArgs: vi.fn().mockReturnValue([]),
-    knownRepoKinds: ['catalog-drift', 'blueprint-lifecycle', 'docs-frontmatter'],
+    knownRepoKinds: [
+      'catalog-drift',
+      'blueprint-lifecycle',
+      'docs-frontmatter',
+      'architecture-drift',
+    ],
     ...overrides,
   }
 }
@@ -144,8 +149,8 @@ describe('runAuditDispatch', () => {
       expect(result.kind).toBe('aggregate-result')
       if (result.kind !== 'aggregate-result') return
       expect(result.code).toBe(0)
-      expect(result.results).toHaveLength(3) // 3 known kinds
-      expect(deps.runRepoAudit).toHaveBeenCalledTimes(3)
+      expect(result.results).toHaveLength(4)
+      expect(deps.runRepoAudit).toHaveBeenCalledTimes(4)
     })
 
     test('one failure → aggregate-result with code 1 and the failed audit reported', async () => {
@@ -162,6 +167,7 @@ describe('runAuditDispatch', () => {
         { name: 'catalog-drift', ok: true },
         { name: 'blueprint-lifecycle', ok: false },
         { name: 'docs-frontmatter', ok: true },
+        { name: 'architecture-drift', ok: true },
       ])
     })
 
@@ -171,6 +177,7 @@ describe('runAuditDispatch', () => {
       expect(deps.runRepoAudit).toHaveBeenCalledWith('catalog-drift', '/repo', noOptions)
       expect(deps.runRepoAudit).toHaveBeenCalledWith('blueprint-lifecycle', '/repo', noOptions)
       expect(deps.runRepoAudit).toHaveBeenCalledWith('docs-frontmatter', '/repo', noOptions)
+      expect(deps.runRepoAudit).toHaveBeenCalledWith('architecture-drift', '/repo', noOptions)
     })
   })
 
@@ -218,11 +225,11 @@ describe('runAuditDispatch', () => {
       const deps = makeDeps()
       await runAuditDispatch('quality', [], noOptions, deps)
       expect(deps.runStryker).toHaveBeenCalledOnce()
-      expect(deps.runRepoAudit).toHaveBeenCalledTimes(3)
+      expect(deps.runRepoAudit).toHaveBeenCalledTimes(4)
     })
   })
 
-  describe('registry-based kinds (catalog-drift, blueprint-lifecycle, docs-frontmatter)', () => {
+  describe('registry-based kinds (catalog-drift, blueprint-lifecycle, docs-frontmatter, architecture-drift)', () => {
     test('catalog-drift → calls runRepoAudit, returns repo-result', async () => {
       const deps = makeDeps()
       const auditResult = okResult('Catalog drift')
@@ -247,6 +254,19 @@ describe('runAuditDispatch', () => {
       const deps = makeDeps()
       await runAuditDispatch('docs-frontmatter', ['/target-root'], noOptions, deps)
       expect(deps.runRepoAudit).toHaveBeenCalledWith('docs-frontmatter', '/target-root', noOptions)
+    })
+
+    test('architecture-drift -> calls runRepoAudit, returns repo-result', async () => {
+      const deps = makeDeps()
+      const auditResult = okResult('Architecture drift')
+      ;(deps.runRepoAudit as ReturnType<typeof vi.fn>).mockResolvedValue(auditResult)
+      const result = await runAuditDispatch('architecture-drift', [], noOptions, deps)
+      expect(result).toStrictEqual({
+        kind: 'repo-result',
+        name: 'architecture-drift',
+        result: auditResult,
+      })
+      expect(deps.runRepoAudit).toHaveBeenCalledWith('architecture-drift', '/repo', noOptions)
     })
 
     test('failed repo audit → returns repo-result with ok: false', async () => {
