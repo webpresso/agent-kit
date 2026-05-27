@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.20.0
+
+### Minor Changes
+
+- 31484d9: Add public secret-manager parity commands and enforce local-only parent-roadmap rules with cross-repo blueprint linking via `cross_repo_depends_on` plus GitHub links.
+- 78ab6cb: Stabilize secret-gated CI and Worker MCP tools, decouple `wp config secrets`
+  from the framework runtime package, harden pretool routing so env-prefixed
+  context-mode test commands are forced through `wp_test`, and refresh public
+  command-boundary docs.
+
+### Patch Changes
+
+- e038e3a: Add the AI reliability contract audit/documentation surface, harden roadmap and package-surface audits, and speed up/fix QA guardrail coverage for init, hooks doctor, and publish/test workflows.
+- d9b5532: Add a shared `architecture-drift` audit for architecture contracts, blueprint linkage, and before/after architecture enforcement, and expose it through the CLI + MCP audit surfaces.
+- 0c63768: Avoid unnecessary blueprint projection re-ingest during tool registration, allow shared project resolver injection for blueprint server registration, and split heavy blueprint server tests so the MCP suite stays within verification budgets.
+- 0955be3: Fix GitHub Actions auth-preflight package probes so CI and release jobs verify package registry access without requiring an existing latest package version, and grant the preflight job explicit package-read permissions.
+- 52c31ec: Commit the remaining follow-up batch across workflow auth preflight, base-kit scaffolding, package import rules, session-memory surfaces, and blueprint parking updates.
+
 ## 0.19.0
 
 ### Minor Changes
