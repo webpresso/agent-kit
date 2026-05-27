@@ -15,7 +15,6 @@
  * All tests use an in-memory DB via a temp directory so they leave no state.
  */
 
-import { execSync } from 'node:child_process'
 import {
   mkdtempSync,
   mkdirSync,
@@ -24,7 +23,6 @@ import {
   realpathSync,
   rmSync,
   existsSync,
-  renameSync,
 } from 'node:fs'
 import path from 'node:path'
 import { tmpdir } from 'node:os'
@@ -939,9 +937,9 @@ describe('wp_blueprint_task_next — ensureFresh-before-read (Task 2.5)', () => 
     vi.stubEnv('AK_BLUEPRINT_READ_FRESH_TIMEOUT_MS', '1')
 
     const pushEvent = vi.fn<SyncAdapter['pushEvent']>().mockResolvedValue(undefined)
-    const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockImplementation(
-      () => new Promise<void>(() => {}),
-    )
+    const ensureFresh = vi
+      .fn<SyncAdapter['ensureFresh']>()
+      .mockImplementation(() => new Promise<void>(() => {}))
     _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }))
 
     const result = await callTool(tools, 'wp_blueprint_task_next', {})
@@ -1834,6 +1832,59 @@ describe('nested workspace blueprint targeting', () => {
 
     const getResult = await callTool(localTools, 'wp_blueprint_get', {
       project_id: monorepo,
+      slug: bpSlug,
+    })
+    const fetched = parseResult(getResult) as {
+      blueprint: { slug: string } | null
+      failures: string[]
+    }
+
+    expect(fetched.failures).toStrictEqual([])
+    expect(fetched.blueprint?.slug).toBe(bpSlug)
+  })
+
+  it('wp_blueprint_projects warms a recent project cache for explicit project_id lookups from another cwd', async () => {
+    const ancestorRepo = mkdtempSync(path.join(tmpdir(), 'ak-bp-workspace-cache-'))
+    cleanups.push(ancestorRepo)
+    mkdirSync(path.join(ancestorRepo, '.git'), { recursive: true })
+
+    const workspaceDir = path.join(ancestorRepo, 'webpresso')
+    mkdirSync(workspaceDir, { recursive: true })
+
+    const monorepo = path.join(workspaceDir, 'monorepo')
+    mkdirSync(path.join(monorepo, '.agent'), { recursive: true })
+    writeFileSync(path.join(monorepo, 'package.json'), JSON.stringify({ name: 'monorepo' }), 'utf8')
+    const bpSlug = 'cached-project-blueprint'
+    const overviewPath = path.join(monorepo, 'blueprints', 'draft', bpSlug, '_overview.md')
+    mkdirSync(path.dirname(overviewPath), { recursive: true })
+    writeFileSync(overviewPath, VALID_BLUEPRINT, 'utf8')
+
+    const { registrar: seedRegistrar } = makeRegistrar()
+    await registerBlueprintTools(seedRegistrar, monorepo)
+
+    const { registrar: warmRegistrar, tools: warmTools } = makeRegistrar()
+    await registerBlueprintServer(warmRegistrar, {
+      cwd: workspaceDir,
+      existingToolNames: new Set(),
+    })
+
+    const projectsResult = await callTool(warmTools, 'wp_blueprint_projects', { scope: 'current' })
+    const projectsPayload = parseResult(projectsResult) as {
+      projects: Array<{ project_id: string; worktree_path: string }>
+    }
+    const warmedProject = projectsPayload.projects.find(
+      (project) => project.worktree_path === realpathSync(monorepo),
+    )
+    expect(warmedProject?.project_id).toBeTruthy()
+
+    const unrelatedCwd = mkdtempSync(path.join(tmpdir(), 'ak-bp-unrelated-cwd-'))
+    cleanups.push(unrelatedCwd)
+
+    const { registrar: cachedRegistrar, tools: cachedTools } = makeRegistrar()
+    await registerBlueprintTools(cachedRegistrar, unrelatedCwd)
+
+    const getResult = await callTool(cachedTools, 'wp_blueprint_get', {
+      project_id: warmedProject?.project_id,
       slug: bpSlug,
     })
     const fetched = parseResult(getResult) as {

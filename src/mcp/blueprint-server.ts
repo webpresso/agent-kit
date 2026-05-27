@@ -118,9 +118,9 @@ type SyncAdapterFactory = () => SyncAdapter | null
  */
 let _syncAdapterFactory: SyncAdapterFactory | null = null
 const PROJECT_RESOLUTION_CACHE_TTL_MS = 15_000
-const _recentProjectLists = new Map<
+const _recentProjectIndex = new Map<
   string,
-  { readonly at: number; readonly projects: readonly BlueprintProjectRef[] }
+  { readonly at: number; readonly project: BlueprintProjectRef }
 >()
 
 /**
@@ -133,18 +133,33 @@ export function _setSyncAdapterFactory(factory: SyncAdapterFactory | null): void
   _syncAdapterFactory = factory
 }
 
-function readRecentProjectList(cwd: string): readonly BlueprintProjectRef[] | null {
-  const cached = _recentProjectLists.get(cwd)
-  if (!cached) return null
-  if (Date.now() - cached.at > PROJECT_RESOLUTION_CACHE_TTL_MS) {
-    _recentProjectLists.delete(cwd)
-    return null
+function readRecentProjectMatch(
+  projectId: string,
+  resolvedPath: string | null,
+): BlueprintProjectRef | null {
+  const keys = [projectId]
+  if (resolvedPath !== null) keys.push(resolvedPath)
+
+  for (const key of keys) {
+    const cached = _recentProjectIndex.get(key)
+    if (!cached) continue
+    if (Date.now() - cached.at > PROJECT_RESOLUTION_CACHE_TTL_MS) {
+      _recentProjectIndex.delete(key)
+      continue
+    }
+    return cached.project
   }
-  return cached.projects
+
+  return null
 }
 
 function writeRecentProjectList(cwd: string, projects: readonly BlueprintProjectRef[]): void {
-  _recentProjectLists.set(cwd, { at: Date.now(), projects })
+  const at = Date.now()
+  for (const project of projects) {
+    _recentProjectIndex.set(project.project_id, { at, project })
+    _recentProjectIndex.set(project.worktree_path, { at, project })
+    _recentProjectIndex.set(project.repo_path, { at, project })
+  }
 }
 
 /**
@@ -403,21 +418,9 @@ async function resolveToolProject(
       }
     })()
 
-    const cachedProjects = readRecentProjectList(cwd)
-    if (cachedProjects) {
-      const cachedMatch =
-        cachedProjects.find(
-          (project) =>
-            project.project_id === projectId ||
-            project.worktree_path === projectId ||
-            project.repo_path === projectId ||
-            (resolvedPath !== null &&
-              (project.worktree_path === resolvedPath || project.repo_path === resolvedPath)),
-        ) ?? null
-
-      if (cachedMatch) {
-        return { cwd: cachedMatch.worktree_path, project_id: cachedMatch.project_id }
-      }
+    const cachedMatch = readRecentProjectMatch(projectId, resolvedPath)
+    if (cachedMatch) {
+      return { cwd: cachedMatch.worktree_path, project_id: cachedMatch.project_id }
     }
 
     if (resolvedPath !== null) {
