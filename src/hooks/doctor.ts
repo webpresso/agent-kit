@@ -56,30 +56,38 @@ export interface RunHooksDoctorOptions {
 }
 
 function resolvePackageRoot(): string | null {
-  let dir = dirname(fileURLToPath(import.meta.url))
+  return findOwningPackageRoot(dirname(fileURLToPath(import.meta.url)))
+}
+
+export function findOwningPackageRoot(startDir: string): string | null {
+  let dir = startDir
+  let fallback: string | null = null
   while (dir !== dirname(dir)) {
-    const pkgPath = join(dir, 'package.json')
-    if (tryAccess(pkgPath)) {
-      try {
-        const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as {
-          bin?: Record<string, unknown>
-        }
-        if (
-          typeof pkg.bin?.wp === 'string' ||
-          tryAccess(join(dir, '.claude-plugin', 'plugin.json')) ||
-          tryAccess(join(dir, 'bin', 'wp.js')) ||
-          tryAccess(join(dir, 'src', 'cli', 'cli.ts')) ||
-          tryAccess(join(dir, 'dist', 'esm', 'cli', 'cli.js'))
-        ) {
-          return dir
-        }
-      } catch {
-        // Ignore malformed or nested manifests that are not the package root.
-      }
+    if (tryAccess(join(dir, 'package.json'))) {
+      if (fallback === null) fallback = dir
+      if (isOwningPackageRoot(dir)) return dir
     }
     dir = dirname(dir)
   }
-  return null
+  return fallback
+}
+
+function isOwningPackageRoot(dir: string): boolean {
+  try {
+    const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf-8')) as {
+      bin?: Record<string, string | unknown>
+    }
+    if (typeof pkg.bin?.['wp'] === 'string') return true
+  } catch {
+    // Ignore malformed package.json here and fall back to structural markers below.
+  }
+
+  return (
+    tryAccess(join(dir, '.claude-plugin', 'plugin.json')) ||
+    tryAccess(join(dir, 'bin', 'wp.js')) ||
+    tryAccess(join(dir, 'src', 'cli', 'cli.ts')) ||
+    tryAccess(join(dir, 'dist', 'esm', 'cli', 'cli.js'))
+  )
 }
 
 function resolveHookBin(binName: string): string | null {
