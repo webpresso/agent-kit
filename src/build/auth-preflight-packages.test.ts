@@ -35,3 +35,13 @@ describe('auth preflight package probes', () => {
     }
   })
 })
+
+
+describe('release workflow publish path', () => {
+  it('publishes with pnpm directly instead of changeset publish', () => {
+    const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
+    expect(workflow.includes('pnpm changeset publish')).toBe(false)
+    expect(workflow.includes('pnpm publish --no-git-checks')).toBe(true)
+    expect(workflow.includes("grep -qi 'cannot publish over the previously published version' \"$publish_log\"" )).toBe(true)
+  })
+})

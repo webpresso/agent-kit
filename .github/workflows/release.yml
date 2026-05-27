@@ -147,10 +147,18 @@ jobs:
           NODE_AUTH_TOKEN: ${{ github.token }}
         run: |
           set -o pipefail
-          pnpm changeset publish 2>&1 | tee /tmp/publish.log
+          publish_log=/tmp/publish.log
+          if pnpm publish --no-git-checks 2>&1 | tee "$publish_log"; then
+            echo "published=1" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           status=${PIPESTATUS[0]}
-          echo "published=$(grep -c 'New tag' /tmp/publish.log || true)" >> "$GITHUB_OUTPUT"
-          exit $status
+          if grep -qi 'cannot publish over the previously published version' "$publish_log"; then
+            echo "published=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "published=0" >> "$GITHUB_OUTPUT"
+          exit "$status"
       - name: Create marketplace release branch
         if: ${{ steps.publish.outputs.published != '0' && (github.event_name != 'workflow_dispatch' || inputs.dry-run != 'true') }}
         run: |
