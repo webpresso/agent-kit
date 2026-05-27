@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.20.1
+
+### Patch Changes
+
+- 9c646ac: Use direct pnpm package publishing in the release workflow after Changesets versioning, so GitHub Packages publishing no longer crashes inside the Changesets CLI publish path.
+
 ## 0.20.0
 
 ### Minor Changes
