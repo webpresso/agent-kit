@@ -184,6 +184,18 @@ describe('wp_audit tool', () => {
       expect(parsePayload(result).passed).toBe(true)
     })
 
+    it('bundle-budget does not treat cwd as the dist target', async () => {
+      viteLocalMock.runBundleBudgetCli.mockResolvedValue(0)
+      const result = await akAuditTool.handler({
+        kind: 'bundle-budget',
+        cwd: '/repo/agent-kit',
+      })
+      expect(viteLocalMock.runBundleBudgetCli).toHaveBeenCalledTimes(1)
+      const args = viteLocalMock.runBundleBudgetCli.mock.calls[0]![0] as string[]
+      expect(args).toEqual([])
+      expect(parsePayload(result).passed).toBe(true)
+    })
+
     it('tph -> spawns bun on the tph script', async () => {
       spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
       const result = await akAuditTool.handler({ kind: 'tph' })

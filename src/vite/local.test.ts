@@ -12,8 +12,10 @@ import {
 } from './local.js'
 
 const tempDirs: string[] = []
+const originalCwd = process.cwd()
 
 afterEach(async () => {
+  process.chdir(originalCwd)
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { force: true, recursive: true })))
 })
 
@@ -148,6 +150,25 @@ describe('runBundleBudgetCli', () => {
       const code = await runBundleBudgetCli(['--help'])
       expect(code).toBe(0)
     } finally {
+      err.mockRestore()
+    }
+  })
+
+  it('returns 0 and reports skip when the default dist HTML entry is absent', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'wp-bundle-budget-empty-'))
+    tempDirs.push(root)
+    process.chdir(root)
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    const err = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      const code = await runBundleBudgetCli([])
+      expect(code).toBe(0)
+      expect(log).toHaveBeenCalledWith(
+        'bundle-budget skipped: no default dist/index.html found. Pass --dist <dir> to audit a built Vite app.',
+      )
+      expect(err).not.toHaveBeenCalled()
+    } finally {
+      log.mockRestore()
       err.mockRestore()
     }
   })

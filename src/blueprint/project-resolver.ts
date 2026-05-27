@@ -28,7 +28,9 @@ export type ResolveProjectResult =
     }
 
 export interface ProjectResolver {
-  listVisibleProjects(options: ResolveBlueprintProjectsOptions): Promise<readonly BlueprintProjectRef[]>
+  listVisibleProjects(
+    options: ResolveBlueprintProjectsOptions,
+  ): Promise<readonly BlueprintProjectRef[]>
   resolve(target: ResolveProjectTarget): Promise<ResolveProjectResult>
   warm(projects: readonly BlueprintProjectRef[]): void
   invalidate(): void
@@ -44,9 +46,7 @@ interface CreateProjectResolverOptions {
 
 const DEFAULT_PROJECT_RESOLUTION_CACHE_TTL_MS = 15_000
 
-export function createProjectResolver(
-  options: CreateProjectResolverOptions = {},
-): ProjectResolver {
+export function createProjectResolver(options: CreateProjectResolverOptions = {}): ProjectResolver {
   const now = options.now ?? Date.now
   const ttlMs = options.ttlMs ?? DEFAULT_PROJECT_RESOLUTION_CACHE_TTL_MS
   const resolveProjects = options.resolveProjects ?? resolveBlueprintProjects
@@ -117,7 +117,7 @@ export function createProjectResolver(
         return { ok: true, cwd: resolvedPath, project_id: null }
       }
 
-      const projects = await listVisibleProjects({ cwd, ...(target.discovery ?? {}) })
+      const projects = await listVisibleProjects({ cwd, ...target.discovery })
       const match =
         projects.find(
           (project) =>
@@ -139,7 +139,7 @@ export function createProjectResolver(
       }
     }
 
-    const projects = await listVisibleProjects({ cwd, ...(target.discovery ?? {}) })
+    const projects = await listVisibleProjects({ cwd, ...target.discovery })
 
     const current = projects.find((project) => project.source === PROJECT_SOURCES.current) ?? null
     if (current) {

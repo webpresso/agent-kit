@@ -13,7 +13,7 @@
  *   markdown-canonical path runs byte-identically to the pre-migration behaviour.
  */
 
-import { existsSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { createHash, randomUUID } from 'node:crypto'
 import path from 'node:path'
 
@@ -36,11 +36,7 @@ import {
 import { applyVerification, parseVerificationBlock } from '#verification.js'
 import { makeNextAction } from '#next-action.js'
 import { PROJECT_SOURCES, type BlueprintProjectRef } from '#projects.js'
-import {
-  createProjectResolver,
-  type ProjectResolver,
-  type ResolveProjectResult,
-} from '#project-resolver.js'
+import { createProjectResolver, type ProjectResolver } from '#project-resolver.js'
 import { aggregateBlueprintRows, type ProjectReader } from '#aggregate.js'
 import { maybeHint } from './_tail-hints.js'
 import type { ToolHandlerResult, ToolRegistrar } from './auto-discover.js'
@@ -1017,7 +1013,7 @@ async function handleTaskVerify(
     canonicalizeEvidenceList(existingEvidence) === incomingCanonical
   ) {
     const nextPayload = parseStructuredJson(
-      await handleTaskNext(projectCwd, {
+      await handleTaskNext(projectResolver, projectCwd, {
         blueprint: slug,
         project_id: resolvedProject.project_id ?? projectCwd,
       }),
@@ -1072,7 +1068,7 @@ async function handleTaskVerify(
 
   const b = bytes(result.markdown)
   const nextPayload = parseStructuredJson(
-    await handleTaskNext(projectCwd, {
+    await handleTaskNext(projectResolver, projectCwd, {
       blueprint: slug,
       project_id: resolvedProject.project_id ?? projectCwd,
     }),
@@ -1400,7 +1396,11 @@ function staleProjectionResponse(
   })
 }
 
-async function handleBlueprintList(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
+async function handleBlueprintList(
+  projectResolver: ProjectResolver,
+  cwd: string,
+  raw: unknown,
+): Promise<ToolHandlerResult> {
   const p = listSchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_list validation error', p.error.message)
   const { status, limit, scope, project_id } = p.data
@@ -1952,7 +1952,11 @@ const summaryEnvelopeOutputSchema = {
   required: ['summary', 'failures', 'bytes', 'tokensSaved'],
 } as const
 
-export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: string): Promise<void> {
+export async function registerBlueprintTools(
+  registrar: ToolRegistrar,
+  cwd: string,
+  projectResolver: ProjectResolver = createProjectResolver(),
+): Promise<void> {
   const coldStart = await coldStartIfNeeded(cwd)
   if (!coldStart.rebuilt) {
     await reIngest(cwd)
@@ -2006,7 +2010,7 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
       properties: { blueprint: { type: 'string' }, project_id: { type: 'string' } },
     },
     undefined,
-    (r) => handleTaskNext(cwd, r),
+    (r) => handleTaskNext(projectResolver, cwd, r),
     { title: 'Blueprint Task Next', readOnlyHint: true, openWorldHint: false },
   )
 
@@ -2035,7 +2039,7 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
         next_action: nextActionOutputSchema,
       },
     },
-    (r) => handleTaskAdvance(cwd, r),
+    (r) => handleTaskAdvance(projectResolver, cwd, r),
     { title: 'Blueprint Task Advance', destructiveHint: false, openWorldHint: false },
   )
 
@@ -2055,7 +2059,7 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
       required: ['slug', 'to_state'],
     },
     undefined,
-    (r) => handlePromote(cwd, r),
+    (r) => handlePromote(projectResolver, cwd, r),
     { title: 'Blueprint Promote', destructiveHint: false, openWorldHint: false },
   )
 
@@ -2068,7 +2072,7 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
       required: ['slug'],
     },
     undefined,
-    (r) => handleFinalize(cwd, r),
+    (r) => handleFinalize(projectResolver, cwd, r),
     { title: 'Blueprint Finalize', destructiveHint: false, openWorldHint: false },
   )
 
@@ -2113,7 +2117,7 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
         'freshness_ok',
       ],
     },
-    (r) => handleBlueprintList(cwd, r),
+    (r) => handleBlueprintList(projectResolver, cwd, r),
     { title: 'Blueprint List', readOnlyHint: true, openWorldHint: false },
   )
 
@@ -2149,7 +2153,7 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
         'project_id',
       ],
     },
-    (r) => handleBlueprintGet(cwd, r),
+    (r) => handleBlueprintGet(projectResolver, cwd, r),
     { title: 'Blueprint Get', readOnlyHint: true, openWorldHint: false },
   )
 
@@ -2180,7 +2184,7 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
       },
       required: [...summaryEnvelopeOutputSchema.required, 'chunks', 'total_bytes', 'project_id'],
     },
-    (r) => handleBlueprintContext(cwd, r),
+    (r) => handleBlueprintContext(projectResolver, cwd, r),
     { title: 'Blueprint Context', readOnlyHint: true, openWorldHint: false },
   )
 
@@ -2217,7 +2221,7 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
         'next_action',
       ],
     },
-    (r) => handleBlueprintCreate(cwd, r),
+    (r) => handleBlueprintCreate(projectResolver, cwd, r),
     { title: 'Blueprint Create', destructiveHint: false, openWorldHint: false },
   )
 
@@ -2259,7 +2263,7 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
         next_action: nextActionOutputSchema,
       },
     },
-    (r) => handleTaskVerify(cwd, r),
+    (r) => handleTaskVerify(projectResolver, cwd, r),
     { title: 'Blueprint Task Verify', destructiveHint: false, openWorldHint: false },
   )
 }
@@ -2331,6 +2335,7 @@ export async function registerBlueprintServer(
   options: RegisterBlueprintServerOptions,
 ): Promise<void> {
   const cwd = options.cwd ?? process.cwd()
+  const projectResolver = createProjectResolver()
 
   // F13/E15: hard-fail on collision before doing any work — silent shadowing
   // would hide the conflict until a downstream tool-call surfaced it.
@@ -2343,7 +2348,7 @@ export async function registerBlueprintServer(
   }
 
   // Register the 8 existing structured-store tools.
-  await registerBlueprintTools(registrar, cwd)
+  await registerBlueprintTools(registrar, cwd, projectResolver)
 
   // Cached snapshot of the MCP client's roots, invalidated by list-changed.
   interface RootsCacheState {
@@ -2406,12 +2411,13 @@ export async function registerBlueprintServer(
       },
       required: [...summaryEnvelopeOutputSchema.required, 'projects', 'warnings'],
     },
-    async (input) => handleProjects(cwd, ensureRoots, input),
+    async (input) => handleProjects(projectResolver, cwd, ensureRoots, input),
     { title: 'Blueprint Projects', readOnlyHint: true, openWorldHint: false },
   )
 }
 
 async function handleProjects(
+  projectResolver: ProjectResolver,
   cwd: string,
   ensureRoots: () => Promise<{
     fetched: boolean
@@ -2426,7 +2432,7 @@ async function handleProjects(
   const parsed = scopeSchema.safeParse(raw)
   const rootsState = await ensureRoots()
 
-  const projects = await resolveBlueprintProjects({
+  const projects = await projectResolver.listVisibleProjects({
     cwd,
     rootsProvider:
       rootsState.roots.length > 0 ? async () => ({ roots: rootsState.roots }) : undefined,
@@ -2460,7 +2466,7 @@ async function handleProjects(
     projects: filteredProjects,
     warnings,
   }
-  writeRecentProjectList(cwd, projects)
+  projectResolver.warm(projects)
 
   if (rootsState.unsupported) {
     payload.next_action = makeNextAction(

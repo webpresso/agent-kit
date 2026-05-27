@@ -21,6 +21,13 @@ export interface BundleBudgetCliOptions extends BundleBudgetLimits {
   ignore: readonly string[]
 }
 
+interface BundleBudgetTargetStatus {
+  readonly distDir: string
+  readonly htmlPath: string
+  readonly hasDistDir: boolean
+  readonly hasHtmlEntry: boolean
+}
+
 export function analyzeViteDistBundleBudget(options: AnalyzeViteDistBundleBudgetOptions) {
   const distDir = path.resolve(options.distDir)
   const htmlEntry = options.htmlEntry ?? 'index.html'
@@ -109,6 +116,13 @@ export async function runBundleBudgetCli(
 ): Promise<number> {
   try {
     const options = parseBundleBudgetCliArgs(argv)
+    const target = inspectBundleBudgetTarget(options)
+    if (!hasExplicitBundleBudgetDistTarget(argv) && !target.hasHtmlEntry) {
+      console.log(
+        'bundle-budget skipped: no default dist/index.html found. Pass --dist <dir> to audit a built Vite app.',
+      )
+      return 0
+    }
     const result = analyzeViteDistBundleBudget(options)
     console.log(formatBundleBudgetReport(result))
     return result.ok ? 0 : 1
@@ -131,6 +145,26 @@ export function bundleBudgetCliHelp(): string {
     '  --max-html-eager-js-total-bytes <bytes>           Max total size for JS assets referenced by HTML',
     '  --ignore <substring>                              Ignore matching asset path; repeatable',
   ].join('\n')
+}
+
+function inspectBundleBudgetTarget(options: BundleBudgetCliOptions): BundleBudgetTargetStatus {
+  const distDir = path.resolve(options.distDir)
+  const htmlPath = path.join(distDir, options.htmlEntry)
+  return {
+    distDir,
+    htmlPath,
+    hasDistDir: existsSync(distDir),
+    hasHtmlEntry: existsSync(htmlPath),
+  }
+}
+
+function hasExplicitBundleBudgetDistTarget(argv: readonly string[]): boolean {
+  for (let index = 0; index < argv.length; index++) {
+    const arg = argv[index]
+    if (arg === '--dist' || arg === '-d') return true
+    if (arg && !arg.startsWith('-')) return true
+  }
+  return false
 }
 
 function readDistAssets(distDir: string): BundleBudgetAsset[] {
