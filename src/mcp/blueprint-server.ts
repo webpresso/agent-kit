@@ -304,6 +304,19 @@ async function reIngest(cwd: string): Promise<void> {
   })
 }
 
+async function ensureProjectionReady(cwd: string): Promise<void> {
+  const coldStart = await coldStartIfNeeded(cwd)
+  if (coldStart.rebuilt) return
+
+  const projectionFreshness = checkFreshness({
+    worktree_path: cwd,
+    db_path: dbPath(cwd),
+  })
+  if (!projectionFreshness.ok) {
+    await reIngest(cwd)
+  }
+}
+
 function findBlueprintDir(
   blueprintRoot: string,
   slug: string,
@@ -1957,10 +1970,7 @@ export async function registerBlueprintTools(
   cwd: string,
   projectResolver: ProjectResolver = createProjectResolver(),
 ): Promise<void> {
-  const coldStart = await coldStartIfNeeded(cwd)
-  if (!coldStart.rebuilt) {
-    await reIngest(cwd)
-  }
+  await ensureProjectionReady(cwd)
 
   registrar.registerTool(
     'wp_blueprint_query',
@@ -2295,6 +2305,7 @@ export async function registerBlueprintTools(
 export interface RegisterBlueprintServerOptions {
   readonly cwd?: string
   readonly existingToolNames: ReadonlySet<string>
+  readonly projectResolver?: ProjectResolver
   readonly getMcpRoots?: () => Promise<{
     readonly roots: ReadonlyArray<{ readonly uri: string; readonly name?: string }>
   }>
@@ -2335,7 +2346,7 @@ export async function registerBlueprintServer(
   options: RegisterBlueprintServerOptions,
 ): Promise<void> {
   const cwd = options.cwd ?? process.cwd()
-  const projectResolver = createProjectResolver()
+  const projectResolver = options.projectResolver ?? createProjectResolver()
 
   // F13/E15: hard-fail on collision before doing any work — silent shadowing
   // would hide the conflict until a downstream tool-call surfaced it.
