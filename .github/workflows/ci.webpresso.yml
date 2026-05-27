@@ -11,10 +11,6 @@ env:
   # surfaced by actions/checkout@v4, actions/setup-node@v4, and
   # pnpm/action-setup@v4 internally running on Node 20).
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-  # Keep `.npmrc`'s GitHub Packages token substitution available during
-  # `pnpm install --frozen-lockfile`; agent-kit no longer has a hard
-  # dependency on @webpresso/webpresso.
-  GH_PACKAGES_TOKEN: ${{ github.token }}
 
 jobs:
   auth-preflight:
@@ -60,33 +56,16 @@ jobs:
             fi
           done
           echo "action_downloads_ok=true" >> "$GITHUB_OUTPUT"
-      - name: Probe GitHub Packages token
+      - name: Mark package probe not required
         id: packages
         shell: bash
-        env:
-          GH_PACKAGES_TOKEN: ${{ github.token }}
-          GITHUB_API_URL: ${{ github.api_url }}
-          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
-          if [ -z "${GH_PACKAGES_TOKEN:-}" ]; then
-            echo "packages_token_ok=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          owner="${GITHUB_REPOSITORY_OWNER:-${GITHUB_REPOSITORY%%/*}}"
-          api_base="${GITHUB_API_URL:-https://api.github.com}"
-          if curl -fsS \
-            -H "Authorization: Bearer ${GH_PACKAGES_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "${api_base}/orgs/${owner}/packages?package_type=npm&per_page=1" >/dev/null 2>&1 || \
-            curl -fsS \
-              -H "Authorization: Bearer ${GH_PACKAGES_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              "${api_base}/users/${owner}/packages?package_type=npm&per_page=1" >/dev/null 2>&1; then
-            echo "packages_token_ok=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "packages_token_ok=false" >> "$GITHUB_OUTPUT"
-          fi
+          # agent-kit intentionally avoids an install-time dependency on
+          # GitHub Packages runtime leaf or umbrella packages. Keep the
+          # shared auth-preflight output contract, but mark package auth as
+          # not required for this repo's CI install path.
+          echo "packages_token_ok=true" >> "$GITHUB_OUTPUT"
       - name: Summarize auth preflight
         if: ${{ always() }}
         shell: bash

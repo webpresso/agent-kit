@@ -27,7 +27,6 @@
   "preferGlobal": true,
   "bin": {
     "wp": "./bin/wp.js",
-    "webpresso": "./bin/webpresso.js",
     "wp-pretool-guard": "./bin/wp-pretool-guard.js",
     "wp-post-tool": "./bin/wp-post-tool.js",
     "wp-stop-qa": "./bin/wp-stop-qa.js",
@@ -255,8 +254,6 @@
         "default": "./dist/esm/config/tsconfig/react-router.json"
       }
     },
-    "./tsconfig/webpresso.json": "./tsconfig/webpresso.json",
-    "./tsconfig/webpresso": "./tsconfig/webpresso.json",
     "./vitest/node": {
       "import": {
         "types": "./dist/esm/config/vitest/node.d.ts",
@@ -299,40 +296,10 @@
         "default": "./dist/esm/config/vitest/flakiness-reporter.js"
       }
     },
-    "./vitest/webpresso/node": {
-      "import": {
-        "types": "./dist/esm/config/vitest/webpresso-node.d.ts",
-        "default": "./dist/esm/config/vitest/webpresso-node.js"
-      }
-    },
-    "./vitest/webpresso/react": {
-      "import": {
-        "types": "./dist/esm/config/vitest/webpresso-react.d.ts",
-        "default": "./dist/esm/config/vitest/webpresso-react.js"
-      }
-    },
-    "./vitest/webpresso/react-router": {
-      "import": {
-        "types": "./dist/esm/config/vitest/webpresso-react-router.d.ts",
-        "default": "./dist/esm/config/vitest/webpresso-react-router.js"
-      }
-    },
-    "./vitest/webpresso/workers": {
-      "import": {
-        "types": "./dist/esm/config/vitest/webpresso-workers.d.ts",
-        "default": "./dist/esm/config/vitest/webpresso-workers.js"
-      }
-    },
     "./stryker": {
       "import": {
         "types": "./dist/esm/config/stryker/index.d.ts",
         "default": "./dist/esm/config/stryker/index.js"
-      }
-    },
-    "./stryker/webpresso": {
-      "import": {
-        "types": "./dist/esm/config/stryker/webpresso.d.ts",
-        "default": "./dist/esm/config/stryker/webpresso.js"
       }
     },
     "./oxlint": {
@@ -542,7 +509,7 @@
   },
   "scripts": {
     "setup:agent": "wp setup",
-    "build": "tshy && bun scripts/restore-direct-tsconfig-exports.ts && vp run chmod-bins && vp run link-self-bins",
+    "build": "tshy && vp run chmod-bins && vp run link-self-bins",
     "postbuild": "vp run generate-skills",
     "chmod-bins": "bun scripts/chmod-bins.ts",
     "link-self-bins": "bun scripts/link-self-bins.ts",
@@ -644,8 +611,6 @@
       "./tsconfig/library.json": "./src/config/tsconfig/library.json",
       "./tsconfig/react-library.json": "./src/config/tsconfig/react-library.json",
       "./tsconfig/react-router.json": "./src/config/tsconfig/react-router.json",
-      "./tsconfig/webpresso.json": "./src/config/tsconfig/webpresso.json",
-      "./tsconfig/webpresso": "./src/config/tsconfig/webpresso.json",
       "./vitest/node": "./src/config/vitest/node.ts",
       "./vitest/react": "./src/config/vitest/react.ts",
       "./vitest/react-router": "./src/config/vitest/react-router.ts",
@@ -653,12 +618,7 @@
       "./vitest/react-setup": "./src/config/vitest/react-setup.ts",
       "./vitest/react-setup.ts": "./src/config/vitest/react-setup.ts",
       "./vitest/flakiness-reporter": "./src/config/vitest/flakiness-reporter.ts",
-      "./vitest/webpresso/node": "./src/config/vitest/webpresso-node.ts",
-      "./vitest/webpresso/react": "./src/config/vitest/webpresso-react.ts",
-      "./vitest/webpresso/react-router": "./src/config/vitest/webpresso-react-router.ts",
-      "./vitest/webpresso/workers": "./src/config/vitest/webpresso-workers.ts",
       "./stryker": "./src/config/stryker/index.ts",
-      "./stryker/webpresso": "./src/config/stryker/webpresso.ts",
       "./oxlint": "./src/config/oxlint/index.ts",
       "./oxlint/import-hygiene": "./src/config/oxlint/import-hygiene.ts",
       "./oxlint/monorepo-paths": "./src/config/oxlint/monorepo-paths.ts",

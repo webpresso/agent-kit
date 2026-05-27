@@ -32,6 +32,13 @@ describe('folded docs-lint CLI parity', () => {
     expect(output).toContain('--fix')
   })
 
+  it('keeps the folded validate CLI on runtime-resolvable .js command imports', () => {
+    const source = readFileSync(validateCli, 'utf8')
+
+    expect(source).toContain('./commands/validate-command.js')
+    expect(source).not.toContain('./commands/validate-command.ts')
+  })
+
   it('smoke-runs the folded migrate CLI help entrypoint', () => {
     const output = runNodeHelp(migrateCli)
 

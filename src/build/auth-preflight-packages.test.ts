@@ -13,35 +13,50 @@ function readWorkflow(path: string): string {
   return readFileSync(path, 'utf8')
 }
 
-function extractPackageProbeUrls(workflow: string): string[] {
-  return [...workflow.matchAll(/\$\{api_base\}\/(?:orgs|users)\/\$\{owner\}\/packages\?package_type=npm&per_page=1/g)].map(
-    (match) => match[0]!,
-  )
+function readPackageManifest(): {
+  dependencies?: Record<string, string>
+  devDependencies?: Record<string, string>
+} {
+  return JSON.parse(readFileSync(join(repositoryRoot, 'package.json'), 'utf8')) as {
+    dependencies?: Record<string, string>
+    devDependencies?: Record<string, string>
+  }
 }
 
 describe('auth preflight package probes', () => {
-  it('checks package registry access without requiring an existing latest package', () => {
+  it('skips package registry probing when agent-kit has no install-time framework package dependency', () => {
+    const manifest = readPackageManifest()
+
+    expect(manifest.dependencies?.['@webpresso/runtime']).toBeUndefined()
+    expect(manifest.dependencies?.['@webpresso/webpresso']).toBeUndefined()
+    expect(manifest.devDependencies?.['@webpresso/runtime']).toBeUndefined()
+    expect(manifest.devDependencies?.['@webpresso/webpresso']).toBeUndefined()
+
     for (const workflowPath of workflowPaths) {
       const workflow = readWorkflow(workflowPath)
       expect(workflow.includes('packages: read')).toBe(true)
       expect(workflow.includes('npm view @webpresso/agent-kit@latest')).toBe(false)
       expect(workflow.includes('npm pack @webpresso/agent-kit@latest')).toBe(false)
-      expect(workflow.includes('GITHUB_API_URL: ${{ github.api_url }}')).toBe(true)
-      expect(workflow.includes('GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}')).toBe(true)
-      expect(extractPackageProbeUrls(workflow)).toEqual([
-        '${api_base}/orgs/${owner}/packages?package_type=npm&per_page=1',
-        '${api_base}/users/${owner}/packages?package_type=npm&per_page=1',
-      ])
+      expect(workflow.includes('npm view @webpresso/webpresso@latest')).toBe(false)
+      expect(workflow.includes('npm pack @webpresso/webpresso@latest')).toBe(false)
+      expect(workflow.includes('package_type=npm&per_page=1')).toBe(false)
+      expect(workflow.includes('echo "packages_token_ok=true" >> "$GITHUB_OUTPUT"')).toBe(true)
+      expect(workflow.includes('agent-kit intentionally avoids an install-time dependency')).toBe(
+        true,
+      )
     }
   })
 })
-
 
 describe('release workflow publish path', () => {
   it('publishes with pnpm directly instead of changeset publish', () => {
     const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
     expect(workflow.includes('pnpm changeset publish')).toBe(false)
     expect(workflow.includes('pnpm publish --no-git-checks')).toBe(true)
-    expect(workflow.includes("grep -qi 'cannot publish over the previously published version' \"$publish_log\"" )).toBe(true)
+    expect(
+      workflow.includes(
+        'grep -qi \'cannot publish over the previously published version\' "$publish_log"',
+      ),
+    ).toBe(true)
   })
 })

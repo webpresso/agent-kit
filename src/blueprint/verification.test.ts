@@ -80,6 +80,32 @@ function sampleMarkdown(): string {
   ].join('\n')
 }
 
+function sampleMarkdownWithAcceptanceAndBlock(): string {
+  return [
+    '---',
+    'type: blueprint',
+    'status: in-progress',
+    '---',
+    '',
+    '# Sample',
+    '',
+    '## Tasks',
+    '',
+    '#### [db] Task 1.1: First task',
+    '',
+    '**Status:** blocked',
+    '',
+    '**Blocked:** waiting on proof',
+    '',
+    '**Acceptance:**',
+    '- [ ] First criterion',
+    '- [ ] Second criterion',
+    '',
+    'Body paragraph.',
+    '',
+  ].join('\n')
+}
+
 describe('applyVerification', () => {
   it('rejects when evidence list is empty', () => {
     const result = applyVerification(sampleMarkdown(), '1.1', [])
@@ -146,6 +172,17 @@ describe('applyVerification', () => {
     // Task 1.2 must remain todo
     const task2Match = result.markdown.match(/#### Task 1\.2:[\s\S]+?(?=\n####|$)/)
     expect(task2Match?.[0]).toContain('**Status:** todo')
+  })
+
+  it('checks acceptance boxes and clears blocked state when verification completes a task', () => {
+    const result = applyVerification(sampleMarkdownWithAcceptanceAndBlock(), '1.1', [passingTest()])
+    if (!result.ok) throw new Error('expected success')
+
+    const task1Match = result.markdown.match(/#### \[db\] Task 1\.1:[\s\S]+?(?=\n####|$)/)
+    expect(task1Match?.[0]).toContain('**Status:** done')
+    expect(task1Match?.[0]).not.toContain('**Blocked:**')
+    expect(task1Match?.[0]).toContain('- [x] First criterion')
+    expect(task1Match?.[0]).toContain('- [x] Second criterion')
   })
 
   it('supports lane-prefixed task headings', () => {

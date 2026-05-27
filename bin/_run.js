@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export const BIN_ENTRYPOINTS = {
   wp: 'src/cli/cli.ts',
-  webpresso: 'src/cli/cli.ts',
   'wp-pretool-guard': 'src/hooks/pretool-guard/index.ts',
   'wp-post-tool': 'src/hooks/post-tool/lint-after-edit.ts',
   'wp-stop-qa': 'src/hooks/stop/qa-changed-files.ts',
@@ -25,6 +24,46 @@ export const BIN_ENTRYPOINTS = {
 
 function resolvePackageRoot() {
   return join(dirname(fileURLToPath(import.meta.url)), '..')
+}
+
+function normalizeNodeVersion(version) {
+  return version.replace(/^v/u, '')
+}
+
+function isExactNodeVersion(version) {
+  return /^\d+\.\d+\.\d+$/u.test(version)
+}
+
+function readTextIfExists(path) {
+  return existsSync(path) ? readFileSync(path, 'utf8').trim() : null
+}
+
+export function resolvePinnedNodeVersion(repoRoot = resolvePackageRoot()) {
+  const nodeVersionFile = readTextIfExists(join(repoRoot, '.node-version'))
+  if (nodeVersionFile && isExactNodeVersion(nodeVersionFile)) return nodeVersionFile
+
+  const nvmrc = readTextIfExists(join(repoRoot, '.nvmrc'))
+  if (nvmrc && isExactNodeVersion(nvmrc)) return nvmrc
+
+  const packageJsonPath = join(repoRoot, 'package.json')
+  if (!existsSync(packageJsonPath)) return null
+
+  try {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
+    const engineNode = packageJson?.engines?.node
+    return typeof engineNode === 'string' && isExactNodeVersion(engineNode) ? engineNode : null
+  } catch {
+    return null
+  }
+}
+
+export function resolveNodeRuntimeManager() {
+  const result = spawnSync('mise', ['--version'], { encoding: 'utf8' })
+  if (!result.error && (result.status === 0 || result.status === null)) {
+    return { kind: 'mise', command: 'mise' }
+  }
+
+  return null
 }
 
 function sourceToBuiltRelativePath(sourceRelativePath) {
@@ -49,6 +88,9 @@ export function buildLaunchPlan({
   builtExists,
   sourceExists,
   nodeExecPath = process.execPath,
+  currentNodeVersion = process.version,
+  pinnedNodeVersion = resolvePinnedNodeVersion(repoRoot),
+  runtimeManager = resolveNodeRuntimeManager(),
 }) {
   const sourceRelativePath = BIN_ENTRYPOINTS[binName]
   if (!sourceRelativePath) {
@@ -61,6 +103,36 @@ export function buildLaunchPlan({
 
   const hasBuilt = builtExists ?? existsSync(builtEntrypoint)
   if (hasBuilt) {
+    const normalizedCurrent = normalizeNodeVersion(currentNodeVersion)
+    if (
+      pinnedNodeVersion &&
+      isExactNodeVersion(pinnedNodeVersion) &&
+      normalizedCurrent !== pinnedNodeVersion
+    ) {
+      if (runtimeManager?.kind === 'mise') {
+        return {
+          mode: 'built',
+          runtime: runtimeManager.command,
+          entrypoint: builtEntrypoint,
+          args: [
+            'exec',
+            `node@${pinnedNodeVersion}`,
+            '--',
+            nodeExecPath,
+            builtEntrypoint,
+            ...forwardedArgs,
+          ],
+        }
+      }
+
+      throw new Error(
+        [
+          `Unable to launch ${binName}: current Node is ${normalizedCurrent}, but this package pins Node ${pinnedNodeVersion}.`,
+          'Install `mise` or switch to the pinned Node version before retrying.',
+        ].join(' '),
+      )
+    }
+
     return {
       mode: 'built',
       runtime: nodeExecPath,

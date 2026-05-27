@@ -9,7 +9,6 @@ const configFiles = [
   'library.json',
   'react-library.json',
   'react-router.json',
-  'webpresso.json',
 ] as const
 
 describe('bundled tsconfig JSON files', () => {

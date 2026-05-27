@@ -23,7 +23,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { escapeRegex } from '#utils/string'
 
 import { canonicalizeEvidenceList, type Evidence, evidenceListSchema } from './evidence.js'
-import { updateTaskStatus } from './markdown/helpers.js'
+import { completeTask } from './markdown/helpers.js'
 import {
   buildTaskHeaderRegexForId,
   buildTaskSectionBoundaryRegex,
@@ -108,8 +108,9 @@ export function applyVerification(
   // BEFORE we mutate status so we cleanly replace rather than append.
   const withoutExistingBlock = removeVerificationFromTask(markdown, taskId)
 
-  // Set status to done.
-  const withStatus = updateTaskStatus(withoutExistingBlock, taskId, 'done')
+  // Reuse the canonical task-completion mutation so verification and lifecycle
+  // completion cannot drift on status / blocked-state / acceptance behavior.
+  const withStatus = completeTask(withoutExistingBlock, taskId)
 
   // Insert the canonical block immediately after the status line of the
   // target task.

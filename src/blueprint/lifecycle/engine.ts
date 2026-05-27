@@ -5,7 +5,7 @@ import matter from 'gray-matter'
 
 import { parseBlueprint } from '#core/parser'
 import { lifecycleBlueprintStatusSchema } from '#core/schema'
-import { checkAllCheckboxes, updateBlockedReason, updateTaskStatus } from '#markdown/helpers'
+import { completeTask, updateBlockedReason, updateTaskStatus } from '#markdown/helpers'
 
 export type LifecycleTaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done'
 
@@ -126,9 +126,7 @@ function applyTaskIntent(
       return updateBlockedReason(updateTaskStatus(markdown, task.id, 'todo'), task.id, '')
     }
     case 'task_complete': {
-      const markedDone = updateTaskStatus(markdown, task.id, 'done')
-      const unblocked = updateBlockedReason(markedDone, task.id, '')
-      return checkAllCheckboxes(unblocked, task.id)
+      return completeTask(markdown, task.id)
     }
   }
 }

@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { BIN_ENTRYPOINTS, buildLaunchPlan, resolveInvokedBinName } from './_run.js'
+import {
+  BIN_ENTRYPOINTS,
+  buildLaunchPlan,
+  resolveInvokedBinName,
+  resolvePinnedNodeVersion,
+} from '../bin/_run.js'
 
 describe('bin launcher', () => {
   it('maps known public bin names to source entrypoints', () => {
     expect(BIN_ENTRYPOINTS.wp).toBe('src/cli/cli.ts')
-    expect(BIN_ENTRYPOINTS.webpresso).toBe('src/cli/cli.ts')
     expect(BIN_ENTRYPOINTS['wp-pretool-guard']).toBe('src/hooks/pretool-guard/index.ts')
     expect(BIN_ENTRYPOINTS['docs-lint']).toBe('src/config/docs-lint/cli/validate.ts')
   })
@@ -19,6 +23,9 @@ describe('bin launcher', () => {
         builtExists: true,
         sourceExists: true,
         nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
       }),
     ).toEqual({
       mode: 'built',
@@ -26,6 +33,51 @@ describe('bin launcher', () => {
       args: ['/repo/dist/esm/cli/cli.js', 'mcp'],
       entrypoint: '/repo/dist/esm/cli/cli.js',
     })
+  })
+
+  it('re-execs through mise when the built package pins a different exact Node version', () => {
+    expect(
+      buildLaunchPlan({
+        binName: 'wp',
+        repoRoot: '/repo',
+        forwardedArgs: ['blueprint', 'audit'],
+        builtExists: true,
+        sourceExists: true,
+        nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v25.9.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: { kind: 'mise', command: 'mise' },
+      }),
+    ).toEqual({
+      mode: 'built',
+      runtime: 'mise',
+      args: [
+        'exec',
+        'node@24.16.0',
+        '--',
+        '/usr/bin/node',
+        '/repo/dist/esm/cli/cli.js',
+        'blueprint',
+        'audit',
+      ],
+      entrypoint: '/repo/dist/esm/cli/cli.js',
+    })
+  })
+
+  it('fails clearly when the built package pins a different exact Node version and no manager is available', () => {
+    expect(() =>
+      buildLaunchPlan({
+        binName: 'wp',
+        repoRoot: '/repo',
+        forwardedArgs: [],
+        builtExists: true,
+        sourceExists: true,
+        nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v25.9.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
+      }),
+    ).toThrow(/pins Node 24\.16\.0/)
   })
 
   it('falls back to bun + source in a source checkout when dist is absent', () => {
@@ -37,6 +89,9 @@ describe('bin launcher', () => {
         builtExists: false,
         sourceExists: true,
         nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
       }),
     ).toEqual({
       mode: 'source',
@@ -55,6 +110,9 @@ describe('bin launcher', () => {
         builtExists: false,
         sourceExists: false,
         nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
       }),
     ).toThrow(/wp hooks doctor/)
   })
@@ -66,5 +124,9 @@ describe('bin launcher', () => {
     expect(resolveInvokedBinName(['/repo/bin/wp-sessionstart-routing.js'])).toBe(
       'wp-sessionstart-routing',
     )
+  })
+
+  it('reads the pinned exact Node version from package metadata when present', () => {
+    expect(resolvePinnedNodeVersion('/Users/ozby/repos/webpresso/agent-kit')).toBe('24.16.0')
   })
 })

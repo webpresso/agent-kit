@@ -3,7 +3,7 @@
  *
  * Usage in vitest.config.ts:
  * ```ts
- * import { reactRouterConfig } from 'webpresso/vitest/react-router'
+ * import { reactRouterConfig } from '@webpresso/agent-kit/vitest/react-router'
  * import { defineConfig, mergeConfig } from 'vite-plus/test/config'
  *
  * export default mergeConfig(reactRouterConfig, defineConfig({

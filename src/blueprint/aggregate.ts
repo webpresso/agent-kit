@@ -36,6 +36,7 @@ import type { Database } from '#db/sqlite.js'
 import { z } from 'zod'
 
 import { openDb } from '#db/connection.js'
+import { ensureProjectionReady } from '#projection-ready.js'
 
 import { checkFreshness } from './freshness.js'
 import { makeNextAction, type NextAction } from './next-action.js'
@@ -205,14 +206,31 @@ interface PerProjectOutcome<TRow> {
   readonly failure: AggregateFailure | null
 }
 
-function runOneProject<TRow>(
+async function runOneProject<TRow>(
   project: BlueprintProjectRef,
   read: ProjectReader<TRow>,
   openDbFor: (project: BlueprintProjectRef) => {
     readonly db: Database
     readonly close: () => void
   },
-): PerProjectOutcome<TRow> {
+): Promise<PerProjectOutcome<TRow>> {
+  try {
+    await ensureProjectionReady(project.worktree_path)
+  } catch (err) {
+    return {
+      project,
+      rows: [],
+      failure: {
+        project_id: project.project_id,
+        worktree_path: project.worktree_path,
+        next_action: makeNextAction(
+          'reingest_project',
+          `Failed to prepare projection at ${project.db_path}: ${stringifyError(err)}`,
+        ),
+      },
+    }
+  }
+
   // Freshness gate (Task 1.3 / F11) — refuse stale reads with a structured hint.
   const fresh = checkFreshness({
     worktree_path: project.worktree_path,
@@ -332,7 +350,7 @@ export async function aggregateBlueprintRows<TRow extends Record<string, unknown
 
   for (const project of selected) {
     visited.push({ project_id: project.project_id, worktree_path: project.worktree_path })
-    const outcome = runOneProject(project, options.read, openDbFor)
+    const outcome = await runOneProject(project, options.read, openDbFor)
     if (outcome.failure !== null) {
       failures.push(outcome.failure)
       continue

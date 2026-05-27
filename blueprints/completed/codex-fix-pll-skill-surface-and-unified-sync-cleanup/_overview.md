@@ -13,6 +13,8 @@ tags:
   - sync
   - cleanup
 completed_at: '2026-05-13'
+historical_zero_task_waiver: true
+historical_zero_task_rationale: Historical completed planning record predates the current task-checklist blueprint schema and remains as a concise migration note.
 ---
 
 # Codex Fix/PLL Skill Surface and Unified Sync Cleanup

@@ -20,10 +20,6 @@ const configModules = [
   { file: 'react.ts', exports: ['reactConfig'] },
   { file: 'react-router.ts', exports: ['reactRouterConfig'] },
   { file: 'workers.ts', exports: ['workersConfig'] },
-  { file: 'webpresso-node.ts', exports: ['webpressoNodeConfig', 'createWebpressoNodeProjects'] },
-  { file: 'webpresso-react.ts', exports: ['webpressoReactConfig'] },
-  { file: 'webpresso-react-router.ts', exports: ['webpressoReactRouterConfig'] },
-  { file: 'webpresso-workers.ts', exports: ['webpressoWorkersConfig'] },
 ]
 
 const helperModules = [
@@ -36,16 +32,6 @@ const configExpectations = {
   'react.ts': { exports: ['reactConfig'], environment: 'happy-dom' },
   'react-router.ts': { exports: ['reactRouterConfig'], environment: 'happy-dom' },
   'workers.ts': { exports: ['workersConfig'], environment: undefined },
-  'webpresso-node.ts': {
-    exports: ['webpressoNodeConfig', 'createWebpressoNodeProjects'],
-    environment: 'node',
-  },
-  'webpresso-react.ts': { exports: ['webpressoReactConfig'], environment: 'happy-dom' },
-  'webpresso-react-router.ts': {
-    exports: ['webpressoReactRouterConfig'],
-    environment: 'happy-dom',
-  },
-  'webpresso-workers.ts': { exports: ['webpressoWorkersConfig'], environment: undefined },
 } as const
 
 async function importLocal(file: string): Promise<ModuleExports> {
@@ -112,10 +98,6 @@ describe('folded vitest config parity', () => {
       'react-setup.ts',
       'flakiness-reporter.ts',
       'version-guard.ts',
-      'webpresso-node.ts',
-      'webpresso-react.ts',
-      'webpresso-react-router.ts',
-      'webpresso-workers.ts',
     ]
 
     for (const file of foldedFiles) {

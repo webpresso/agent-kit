@@ -1,11 +1,4 @@
-import {
-  mkdtempSync,
-  mkdirSync,
-  writeFileSync,
-  realpathSync,
-  rmSync,
-  existsSync,
-} from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, realpathSync, rmSync, existsSync } from 'node:fs'
 import path from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -265,7 +258,11 @@ describe('nested workspace blueprint targeting', () => {
 
     const framework = path.join(workspaceDir, 'framework')
     mkdirSync(path.join(framework, 'blueprints', 'draft'), { recursive: true })
-    writeFileSync(path.join(framework, 'package.json'), JSON.stringify({ name: 'framework' }), 'utf8')
+    writeFileSync(
+      path.join(framework, 'package.json'),
+      JSON.stringify({ name: 'framework' }),
+      'utf8',
+    )
     writeFileSync(path.join(framework, 'blueprints', 'draft', 'two.md'), '# two\n')
 
     const { registrar, tools: localTools } = makeRegistrar()

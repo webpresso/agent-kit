@@ -7,7 +7,7 @@ user-invocable: true
 
 # hello-webpresso
 
-Verifies webpresso setup is complete.
+Verifies wp setup is complete.
 
 ## Steps
 

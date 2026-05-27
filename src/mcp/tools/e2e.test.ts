@@ -16,9 +16,10 @@ vi.mock('../../e2e/execution.js', () => ({
 
 import akE2eTool from './e2e.js'
 
-function parsePayload(
-  result: { structuredContent?: unknown; content: ReadonlyArray<{ type: string; text?: string }> },
-) {
+function parsePayload(result: {
+  structuredContent?: unknown
+  content: ReadonlyArray<{ type: string; text?: string }>
+}) {
   return result.structuredContent as Record<string, unknown>
 }
 

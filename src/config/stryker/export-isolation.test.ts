@@ -3,7 +3,6 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { baseConfig } from './index.js'
-import { webpressoConfig } from './webpresso.js'
 
 const ROOT = import.meta.dirname
 
@@ -21,16 +20,6 @@ describe('stryker config parity', () => {
     })
   })
 
-  it('matches the existing Webpresso-only preset behavior', () => {
-    expect(webpressoConfig).toEqual({
-      ...baseConfig,
-      ignorePatterns: ['/.webpresso/**'],
-    })
-    expect(webpressoConfig.ignorePatterns).toEqual(['/.webpresso/**'])
-  })
-})
-
-describe('stryker config export isolation', () => {
   it('keeps portable stryker base free of Webpresso-only state paths', () => {
     const text = stripComments(readFileSync(join(ROOT, 'index.ts'), 'utf8'))
 
@@ -51,9 +40,7 @@ describe('stryker config export isolation', () => {
     expect(text).toContain('**/*.d.ts')
   })
 
-  it('keeps Webpresso-only ignore behavior in the webpresso preset', () => {
-    const text = readFileSync(join(ROOT, 'webpresso.ts'), 'utf8')
-
-    expect(text).toContain('.webpresso')
+  it('does not keep a branded webpresso preset file after the hard cut', () => {
+    expect(() => readFileSync(join(ROOT, 'webpresso.ts'), 'utf8')).toThrow()
   })
 })

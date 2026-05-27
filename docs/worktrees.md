@@ -7,8 +7,8 @@ last_updated: 2026-05-13
 
 ## Creating one with `wp`
 
-`wp`, `webpresso`, and `wp` are aliases for the same CLI. The worktree helper
-accepts an explicit branch, but can also generate one for quick agent lanes:
+`wp` is the current CLI entrypoint. The worktree helper accepts an explicit
+branch, but can also generate one for quick agent lanes:
 
 ```bash
 wp worktree new

@@ -14,6 +14,8 @@ tags:
   - audit
   - quality-engine
 parent_roadmap: 'cross-repo: webpresso/monorepo → webpresso/blueprints/completed/webpresso-public-extraction-roadmap'
+historical_zero_task_waiver: true
+historical_zero_task_rationale: Historical completed planning record predates the task-level blueprint format and is retained for roadmap continuity.
 ---
 
 # Agent-Kit Parity Pass

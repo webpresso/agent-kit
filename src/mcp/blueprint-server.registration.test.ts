@@ -1,107 +1,64 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import path from 'node:path'
-import { tmpdir } from 'node:os'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
-const mocks = vi.hoisted(() => ({
-  checkFreshness: vi.fn(),
-  coldStartIfNeeded: vi.fn(),
-  ingestAll: vi.fn(),
-  openDb: vi.fn(),
-  recordProjectionMetadata: vi.fn(),
-}))
+import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 
-vi.mock('#db/cold-start.js', () => ({
-  coldStartIfNeeded: mocks.coldStartIfNeeded,
-}))
-
-vi.mock('#db/connection.js', () => ({
-  openDb: mocks.openDb,
-}))
-
-vi.mock('#db/ingester.js', () => ({
-  ingestAll: mocks.ingestAll,
-}))
-
-vi.mock('#freshness.js', () => ({
-  checkFreshness: mocks.checkFreshness,
-  readCurrentHead: vi.fn(() => null),
-  readProjectionMetadata: vi.fn(() => null),
-  recordProjectionMetadata: mocks.recordProjectionMetadata,
-}))
-
+import {
+  cleanupTempDir,
+  createTempBlueprintRepo,
+  makeRegistrar,
+  writeStaleProjectionMetadata,
+} from './blueprint-server.test-harness.js'
 import { registerBlueprintTools } from './blueprint-server.js'
 
-function makeRegistrar() {
-  const registerTool = vi.fn()
-  return {
-    registerTool,
-    registeredToolNames: () =>
-      registerTool.mock.calls.map((call) => call[0] as string).sort((a, b) => a.localeCompare(b)),
-  }
-}
-
 describe('registerBlueprintTools bootstrap', () => {
-  let cwd: string
-
-  beforeEach(() => {
-    cwd = mkdtempSync(path.join(tmpdir(), 'ak-bs-registration-'))
-    mkdirSync(path.join(cwd, '.agent'), { recursive: true })
-    writeFileSync(path.join(cwd, 'package.json'), JSON.stringify({ name: 'test-repo' }), 'utf8')
-
-    mocks.coldStartIfNeeded.mockReset()
-    mocks.checkFreshness.mockReset()
-    mocks.ingestAll.mockReset()
-    mocks.openDb.mockReset()
-    mocks.recordProjectionMetadata.mockReset()
-
-    mocks.coldStartIfNeeded.mockResolvedValue({
-      rebuilt: false,
-      blueprintsCount: 0,
-      techDebtCount: 0,
-      durationMs: 0,
-    })
-    mocks.checkFreshness.mockReturnValue({
-      ok: true,
-      head: null,
-      ingestedAt: 1_700_000_000_000,
-    })
-    mocks.ingestAll.mockResolvedValue({
-      blueprintsIngested: 0,
-      techDebtIngested: 0,
-    })
-    mocks.openDb.mockReturnValue({
-      db: {},
-      close: vi.fn(),
-    })
-  })
+  let cwd: string | undefined
 
   afterEach(() => {
-    rmSync(cwd, { recursive: true, force: true })
+    cleanupTempDir(cwd)
+    cwd = undefined
   })
 
-  it('does not re-ingest during registration when the existing projection is already fresh', async () => {
-    const registrar = makeRegistrar()
+  it('registers the blueprint tool surface without creating or refreshing projections', async () => {
+    cwd = createTempBlueprintRepo('ak-bs-registration-')
+    const dbPath = resolveBlueprintProjectionDbPath(cwd)
+    const { registrar, tools } = makeRegistrar()
+
+    expect(existsSync(dbPath)).toBe(false)
 
     await registerBlueprintTools(registrar, cwd)
 
-    expect(mocks.coldStartIfNeeded).toHaveBeenCalledWith(cwd)
-    expect(mocks.checkFreshness).toHaveBeenCalledTimes(1)
-    expect(mocks.ingestAll).not.toHaveBeenCalled()
-    expect(registrar.registeredToolNames()).toContain('wp_blueprint_validate')
+    expect(existsSync(dbPath)).toBe(false)
+    expect([...tools.keys()].sort((a, b) => a.localeCompare(b))).toStrictEqual([
+      'wp_blueprint_context',
+      'wp_blueprint_create',
+      'wp_blueprint_depgraph',
+      'wp_blueprint_finalize',
+      'wp_blueprint_get',
+      'wp_blueprint_list',
+      'wp_blueprint_new',
+      'wp_blueprint_promote',
+      'wp_blueprint_query',
+      'wp_blueprint_task_advance',
+      'wp_blueprint_task_next',
+      'wp_blueprint_task_verify',
+      'wp_blueprint_validate',
+    ])
   })
 
-  it('re-ingests during registration when the existing projection is stale', async () => {
-    const registrar = makeRegistrar()
-    mocks.checkFreshness.mockReturnValue({
-      ok: false,
-      next_action: { type: 'reingest_project', reason: 'HEAD changed' },
-    })
+  it('does not hide stale-read contract issues by doing eager registration-time repair', async () => {
+    cwd = createTempBlueprintRepo('ak-bs-registration-stale-')
+    const dbPath = resolveBlueprintProjectionDbPath(cwd)
+    const { registrar, tools } = makeRegistrar()
+    writeFileSync(dbPath, '', 'utf8')
+    writeStaleProjectionMetadata(cwd)
+    const staleMetadata = readFileSync(`${dbPath}.meta.json`, 'utf8')
 
     await registerBlueprintTools(registrar, cwd)
 
-    expect(mocks.ingestAll).toHaveBeenCalledTimes(1)
-    expect(mocks.recordProjectionMetadata).toHaveBeenCalledTimes(1)
+    expect(existsSync(dbPath)).toBe(true)
+    expect(readFileSync(`${dbPath}.meta.json`, 'utf8')).toBe(staleMetadata)
+    expect(tools.has('wp_blueprint_list')).toBe(true)
   })
 })

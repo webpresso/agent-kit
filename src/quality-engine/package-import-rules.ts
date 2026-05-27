@@ -5,7 +5,7 @@
  * No hook-specific types or Claude runtime dependencies.
  *
  * Consumed by:
- * - @webpresso/claude-hooks (pretool-guard validator, thin adapter)
+ * - hook validators (thin adapters)
  * - CI scripts (future)
  *
  * @module
@@ -41,15 +41,19 @@ export interface BlockedResult {
   message: string
 }
 
+export type PackageImportProfile = 'generic' | 'webpresso'
+
+export interface PackageImportRuleOptions {
+  profile?: PackageImportProfile
+}
+
 // ============================================================================
 // Registry
 // ============================================================================
 
-/**
- * Shared function registry - single source of truth for detectable utilities.
- * These functions are available in shared packages and should not be redefined locally.
- */
-export const SHARED_FUNCTIONS: SharedFunction[] = [
+const GENERIC_SHARED_FUNCTIONS: SharedFunction[] = []
+
+const WEBPRESSO_SHARED_FUNCTIONS: SharedFunction[] = [
   // String utilities (@webpresso/webpresso/runtime/format/string)
   {
     name: 'capitalize',
@@ -391,8 +395,27 @@ export const SHARED_FUNCTIONS: SharedFunction[] = [
   },
 ]
 
-/** Set of function names for O(1) lookup */
+export const SHARED_FUNCTION_PROFILES: Record<PackageImportProfile, SharedFunction[]> = {
+  generic: GENERIC_SHARED_FUNCTIONS,
+  webpresso: WEBPRESSO_SHARED_FUNCTIONS,
+}
+
+/**
+ * Default generic shared function registry. Product-specific rules must opt into
+ * a profile explicitly instead of leaking through the generic surface.
+ */
+export const SHARED_FUNCTIONS: SharedFunction[] = SHARED_FUNCTION_PROFILES.generic
+
+/** Set of function names for O(1) lookup in the default generic profile */
 export const SHARED_FUNCTION_NAMES = new Set(SHARED_FUNCTIONS.map((f) => f.name))
+
+export function getSharedFunctions(profile: PackageImportProfile = 'generic'): SharedFunction[] {
+  return SHARED_FUNCTION_PROFILES[profile]
+}
+
+export function getSharedFunctionNames(profile: PackageImportProfile = 'generic'): Set<string> {
+  return new Set(getSharedFunctions(profile).map((f) => f.name))
+}
 
 // ============================================================================
 // Pure detection helpers
@@ -401,8 +424,11 @@ export const SHARED_FUNCTION_NAMES = new Set(SHARED_FUNCTIONS.map((f) => f.name)
 /**
  * Finds a shared function by name
  */
-function findSharedFunction(name: string): SharedFunction | undefined {
-  return SHARED_FUNCTIONS.find((f) => f.name === name)
+function findSharedFunction(
+  name: string,
+  profile: PackageImportProfile,
+): SharedFunction | undefined {
+  return getSharedFunctions(profile).find((f) => f.name === name)
 }
 
 /**
@@ -510,12 +536,16 @@ export function extractFunctionDefinitions(content: string): string[] {
  * Finds duplicate functions that exist in shared packages.
  * Pure function — accepts file content string, returns matching registry entries.
  */
-export function findDuplicateFunctions(fileContent: string): SharedFunction[] {
+export function findDuplicateFunctions(
+  fileContent: string,
+  options: PackageImportRuleOptions = {},
+): SharedFunction[] {
+  const profile = options.profile ?? 'generic'
   const definedFunctions = extractFunctionDefinitions(fileContent)
   const duplicates: SharedFunction[] = []
 
   for (const funcName of definedFunctions) {
-    const sharedFunc = findSharedFunction(funcName)
+    const sharedFunc = findSharedFunction(funcName, profile)
     if (sharedFunc) {
       duplicates.push(sharedFunc)
     }
@@ -539,12 +569,11 @@ export function createBlockedResult(sharedFunc: SharedFunction): BlockedResult {
     suggestion,
     package: sharedFunc.package,
     source: sharedFunc.source,
-    message: `Function '${sharedFunc.name}' already exists in ${sharedFunc.package}.
+    message: `Function '${sharedFunc.name}' already exists in a shared package.
 
-Use shared utility instead of redefining locally:
+Use a shared utility instead of redefining it locally:
   ${suggestion}
 
-This reduces code duplication and ensures consistency across the monorepo.
-See: AGENTS.md "Dynamic Package Targeting" section`,
+This reduces code duplication and keeps shared utilities consistent across the codebase.`,
   }
 }

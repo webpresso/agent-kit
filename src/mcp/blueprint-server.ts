@@ -20,10 +20,8 @@ import path from 'node:path'
 import matter from 'gray-matter'
 import { z } from 'zod'
 
-import { coldStartIfNeeded } from '#db/cold-start.js'
 import { openDb } from '#db/connection.js'
-import { ingestAll } from '#db/ingester.js'
-import { resolveBlueprintProjectionDbPath, withProjectionDbWriteLock } from '#db/paths.js'
+import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 import { findTemplate } from '#db/templates.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
 import { evidenceListSchema, canonicalizeEvidenceList } from '#evidence.js'
@@ -31,11 +29,11 @@ import {
   checkFreshness,
   readCurrentHead,
   readProjectionMetadata,
-  recordProjectionMetadata,
 } from '#freshness.js'
 import { applyVerification, parseVerificationBlock } from '#verification.js'
 import { makeNextAction } from '#next-action.js'
 import { PROJECT_SOURCES, type BlueprintProjectRef } from '#projects.js'
+import { ensureProjectionReady, reIngestProjection } from '#projection-ready.js'
 import { createProjectResolver, type ProjectResolver } from '#project-resolver.js'
 import { aggregateBlueprintRows, type ProjectReader } from '#aggregate.js'
 import { maybeHint } from './_tail-hints.js'
@@ -186,7 +184,8 @@ const DEFAULT_PLATFORM_MUTATION_TIMEOUT_MS = 5_000
 
 function readPlatformMutationTimeoutMs(): number {
   const parsed = Number.parseInt(
-    process.env['WP_BLUEPRINT_PLATFORM_MUTATION_TIMEOUT_MS'] ?? String(DEFAULT_PLATFORM_MUTATION_TIMEOUT_MS),
+    process.env['WP_BLUEPRINT_PLATFORM_MUTATION_TIMEOUT_MS'] ??
+      String(DEFAULT_PLATFORM_MUTATION_TIMEOUT_MS),
     10,
   )
   return Math.max(1, Number.isFinite(parsed) ? parsed : DEFAULT_PLATFORM_MUTATION_TIMEOUT_MS)
@@ -200,10 +199,7 @@ async function awaitPlatformMutationStep(
   await Promise.race([
     promise,
     new Promise<never>((_, reject) => {
-      setTimeout(
-        () => reject(new Error(`${label} timed out after ${timeoutMs}ms`)),
-        timeoutMs,
-      )
+      setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs)
     }),
   ])
 }
@@ -221,7 +217,11 @@ async function runPlatformMutationSync(
   const timeoutMs = readPlatformMutationTimeoutMs()
   try {
     if (options.event) {
-      await awaitPlatformMutationStep(adapter.pushEvent(options.event), `${options.label} pushEvent`, timeoutMs)
+      await awaitPlatformMutationStep(
+        adapter.pushEvent(options.event),
+        `${options.label} pushEvent`,
+        timeoutMs,
+      )
     }
     if (options.ensureFreshSlug) {
       await awaitPlatformMutationStep(
@@ -342,34 +342,7 @@ function openDbRW(cwd: string) {
 }
 
 async function reIngest(cwd: string): Promise<void> {
-  const target = dbPath(cwd)
-  await withProjectionDbWriteLock(cwd, async () => {
-    mkdirSync(path.dirname(target), { recursive: true })
-    const conn = openDb(target)
-    try {
-      await ingestAll({ db: conn.db, cwd })
-      recordProjectionMetadata({
-        dbPath: target,
-        cwd,
-        ingestedAt: Date.now(),
-      })
-    } finally {
-      conn.close()
-    }
-  })
-}
-
-async function ensureProjectionReady(cwd: string): Promise<void> {
-  const coldStart = await coldStartIfNeeded(cwd)
-  if (coldStart.rebuilt) return
-
-  const projectionFreshness = checkFreshness({
-    worktree_path: cwd,
-    db_path: dbPath(cwd),
-  })
-  if (!projectionFreshness.ok) {
-    await reIngest(cwd)
-  }
+  await reIngestProjection(cwd)
 }
 
 function findBlueprintDir(
@@ -603,8 +576,7 @@ function runValidate(filePath: string): { valid: boolean; gaps: string[] } {
     .split(/(?=^####\s+(?:\[[^\]]+\]\s+)?Task\s)/m)
     .filter((b) => /^####\s+(?:\[[^\]]+\]\s+)?Task\s/.test(b.trimStart()))) {
     const label =
-      /^####\s+(?:\[[^\]]+\]\s+)?Task\s+([\d.]+[:\s]+.+)/m.exec(block)?.[1]?.trim() ??
-      '(unknown)'
+      /^####\s+(?:\[[^\]]+\]\s+)?Task\s+([\d.]+[:\s]+.+)/m.exec(block)?.[1]?.trim() ?? '(unknown)'
     if (!block.includes('**Acceptance:**') && !block.includes('**Acceptance criteria:**'))
       gaps.push(`Task "${label}" is missing **Acceptance:** subsection`)
   }
@@ -629,6 +601,7 @@ async function handleQuery(cwd: string, raw: unknown): Promise<ToolHandlerResult
   if (!tmpl)
     return err(`Unknown query template: ${template_id}`, `Template "${template_id}" not found.`)
   try {
+    await ensureProjectionReady(cwd)
     const conn = openDbRW(cwd)
     let rows: unknown[]
     try {
@@ -774,6 +747,7 @@ async function handleTaskNext(
   const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
+  await ensureProjectionReady(projectCwd)
   const failures: string[] = []
 
   // Platform-first: refresh local replica before reading so the result reflects remote state.
@@ -906,6 +880,7 @@ async function handleTaskAdvance(
   const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
+  await ensureProjectionReady(projectCwd)
   const freshnessFailure = validateMutationFreshnessToken(
     projectCwd,
     head_at_ingest,
@@ -1056,6 +1031,7 @@ async function handleTaskVerify(
   const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
+  await ensureProjectionReady(projectCwd)
   const freshnessFailure = validateMutationFreshnessToken(
     projectCwd,
     head_at_ingest,
@@ -1278,6 +1254,7 @@ async function handleFinalize(
   const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
+  await ensureProjectionReady(projectCwd)
   const target = dbPath(projectCwd)
   if (!existsSync(target)) return err('wp_blueprint_finalize failed', 'Blueprint DB not found')
   const conn = openDb(target)
@@ -1370,6 +1347,7 @@ async function handleDepgraph(cwd: string, raw: unknown): Promise<ToolHandlerRes
   const p = depgraphSchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_depgraph validation error', p.error.message)
   const { from } = p.data
+  await ensureProjectionReady(cwd)
   const target = dbPath(cwd)
   if (!existsSync(target)) return err('wp_blueprint_depgraph failed', 'Blueprint DB not found')
   try {
@@ -1535,6 +1513,7 @@ async function handleBlueprintList(
   const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
+  await ensureProjectionReady(projectCwd)
   const target = dbPath(projectCwd)
   if (!existsSync(target))
     return jsonContent({
@@ -1717,6 +1696,7 @@ async function handleBlueprintGet(
   const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
+  await ensureProjectionReady(projectCwd)
   const target = dbPath(projectCwd)
   if (!existsSync(target))
     return jsonContent({
@@ -1811,6 +1791,7 @@ async function handleBlueprintContext(
   const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
+  await ensureProjectionReady(projectCwd)
   const target = dbPath(projectCwd)
   if (!existsSync(target))
     return jsonContent({
@@ -1967,6 +1948,7 @@ async function handleBlueprintCreate(
   const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
+  await ensureProjectionReady(projectCwd)
   const freshnessFailure = validateMutationFreshnessToken(
     projectCwd,
     head_at_ingest,
@@ -2050,8 +2032,6 @@ export async function registerBlueprintTools(
   cwd: string,
   projectResolver: ProjectResolver = createProjectResolver(),
 ): Promise<void> {
-  await ensureProjectionReady(cwd)
-
   registrar.registerTool(
     'wp_blueprint_query',
     'Run a pre-registered SQL template against the blueprint store. Returns { summary, rows_capped, rows, failures, bytes, tokensSaved }.',

@@ -103,7 +103,7 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
   </ownership_boundary>
 
   <package_guidance>
-    <rule>Consumers add the public webpresso package and import config helpers through webpresso/* subpath exports such as webpresso/oxlint, webpresso/vitest, webpresso/test-preset, webpresso/e2e-preset, webpresso/tsconfig, webpresso/docs-linter, webpresso/stryker, webpresso/launch, and webpresso/workers-test.</rule>
+    <rule>Consumers add @webpresso/agent-kit and import config helpers through @webpresso/agent-kit/* subpath exports such as @webpresso/agent-kit/oxlint, @webpresso/agent-kit/vitest/node, @webpresso/agent-kit/test-preset, @webpresso/agent-kit/e2e-preset, @webpresso/agent-kit/tsconfig/base.json, @webpresso/agent-kit/docs-lint, @webpresso/agent-kit/stryker, @webpresso/agent-kit/launch, and @webpresso/agent-kit/workers-test.</rule>
     <rule>Do not recommend adding retired split agent config packages for consumer projects; keep wp_* MCP tool names and wp-* hook bin names unchanged.</rule>
   </package_guidance>
 

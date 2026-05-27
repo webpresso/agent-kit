@@ -1,5 +1,5 @@
 /**
- * webpresso/workers-test
+ * @webpresso/agent-kit/workers-test
  *
  * Production-ready Cloudflare Workers test mocks.
  * Drop in BaseWorkerEnv, ExecutionContext, Hyperdrive, and Durable Object mocks

@@ -33,8 +33,8 @@ The public helper does not accept secret-bearing or mutation-oriented argv:
 - `--allow-host-mutation`
 - arbitrary passthrough argv
 - public `act --secret`, `--secret-file`, bind, volume, or container mutation flags
-- consumer repo-local adapter paths such as `apps/scripts/src/ci/act.ts` or
-  `apps/scripts/src/lib/with-secrets.ts`
+- consumer repo-local adapter paths such as `src/ci/act-helper.ts` or
+  `src/secret-gate/runner.ts`
 
 MCP may create an internal temporary `act --secret-file` after secrets have
 already crossed the approved secret-gate/profile boundary. Public structured

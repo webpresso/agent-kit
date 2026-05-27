@@ -102,7 +102,7 @@ without same-file conflicts.
 
 #### Task 1.1: [contract] Freeze the hard-cut surface matrix
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 **Size:** XS
 **Files:**
@@ -121,13 +121,13 @@ Convert this blueprint into the single source of truth for:
 3. Run docs/blueprint lint for this file.
 
 **Acceptance:**
-- [ ] Keep/remove matrix is explicit.
-- [ ] No later task needs to guess whether a surface is canonical or removed.
-- [ ] Blueprint file passes targeted markdown/docs checks.
+- [x] Keep/remove matrix is explicit.
+- [x] No later task needs to guess whether a surface is canonical or removed.
+- [x] Blueprint file passes targeted markdown/docs checks.
 
 #### Task 1.2: [surface] Remove `webpresso` from the public bin contract
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 **Size:** S
 **Files:**
@@ -145,13 +145,13 @@ and required `wp-*` operational bins.
 4. Re-run targeted package/bin contract checks.
 
 **Acceptance:**
-- [ ] `package.json#bin` no longer exports `webpresso`.
-- [ ] `wp` still exists.
-- [ ] Targeted package contract tests pass.
+- [x] `package.json#bin` no longer exports `webpresso`.
+- [x] `wp` still exists.
+- [x] Targeted package contract tests pass.
 
 #### Task 1.3: [exports] Hard-cut branded preset exports
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 **Size:** S
 **Files:**
@@ -174,13 +174,13 @@ Remove:
 3. Re-run targeted export-resolution checks.
 
 **Acceptance:**
-- [ ] Removed branded paths no longer resolve.
-- [ ] Generic canonical paths still resolve.
-- [ ] No compatibility aliases remain.
+- [x] Removed branded paths no longer resolve.
+- [x] Generic canonical paths still resolve.
+- [x] No compatibility aliases remain.
 
 #### Task 1.4: [profiles] Extract generic import-policy defaults
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 **Size:** S
 **Files:**
@@ -199,13 +199,13 @@ profile in the same package.
 4. Re-run targeted rule-engine and validator tests.
 
 **Acceptance:**
-- [ ] Generic default profile contains no hardcoded Webpresso package advice.
-- [ ] Webpresso-specific profile still exists and is testable.
-- [ ] No new package dependency is introduced.
+- [x] Generic default profile contains no hardcoded Webpresso package advice.
+- [x] Webpresso-specific profile still exists and is testable.
+- [x] No new package dependency is introduced.
 
 #### Task 1.5: [docs] Rewrite README and preset docs to generic canonicals
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 **Size:** S
 **Files:**
@@ -224,13 +224,13 @@ Docs must present:
 3. Re-run targeted docs checks.
 
 **Acceptance:**
-- [ ] Generic canonicals are the only default documented preset paths.
-- [ ] `webpresso` bin is not documented as a current `agent-kit` command.
-- [ ] Targeted docs checks pass.
+- [x] Generic canonicals are the only default documented preset paths.
+- [x] `webpresso` bin is not documented as a current `agent-kit` command.
+- [x] Targeted docs checks pass.
 
 #### Task 1.6: [tarball] Freeze package-surface and tarball leak checks
 
-**Status:** todo
+**Status:** done
 **Depends:** None
 **Size:** XS
 **Files:**
@@ -247,12 +247,12 @@ Make the package-surface checks prove that:
 2. Re-run package-surface/tarball checks.
 
 **Acceptance:**
-- [ ] Tarball/package-surface checks encode the hard-cut contract.
-- [ ] Removed surfaces are caught if reintroduced later.
+- [x] Tarball/package-surface checks encode the hard-cut contract.
+- [x] Removed surfaces are caught if reintroduced later.
 
 #### Task 2.1: [downstream] Verify `ingest-lens` generic preset imports still work
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.2, Task 1.3, Task 1.4, Task 1.5, Task 1.6
 **Size:** S
 **Files:**
@@ -273,12 +273,23 @@ Prove that the downstream generic preset imports still work:
 3. Record evidence in this blueprint.
 
 **Acceptance:**
-- [ ] `ingest-lens` generic preset imports still resolve.
-- [ ] No removed branded path is required for the passing smoke.
+- [x] `ingest-lens` generic preset imports still resolve.
+- [x] No removed branded path is required for the passing smoke.
+
+**Evidence:**
+- Real consumer imports are present in `ozby/ingest-lens` for:
+  `@webpresso/agent-kit/vitest/node`, `.../vitest/react`,
+  `.../vitest/workers`, `.../stryker`, and `.../workers-test`.
+- Temporary-manifest consumer smoke resolved all five canonical specifiers via
+  Node package resolution:
+  `@webpresso/agent-kit/vitest/node`, `.../vitest/react`,
+  `.../vitest/workers`, `.../stryker`, `.../workers-test`.
+- No `vitest/webpresso/*`, `tsconfig/webpresso*`, or `stryker/webpresso`
+  imports were required by the passing smoke.
 
 #### Task 2.2: [downstream] Verify `uplane` global `wp` workflows still work
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.2, Task 1.5
 **Size:** S
 **Files:**
@@ -299,12 +310,20 @@ with no dependency on the removed `webpresso` bin.
 3. Record evidence in this blueprint.
 
 **Acceptance:**
-- [ ] `uplane`’s real `wp` workflow remains valid.
-- [ ] No `webpresso` bin is needed for those flows.
+- [x] `uplane`’s real `wp` workflow remains valid.
+- [x] No `webpresso` bin is needed for those flows.
+
+**Evidence:**
+- `ozby/uplane/package.json` keeps `wp setup`, `wp audit docs-frontmatter`,
+  and `wp audit blueprint-lifecycle` scripts with no `webpresso` bin usage.
+- `ozby/uplane/README.md` and `docs/release.md` document `wp config secrets`,
+  `wp setup --yes`, and `WP_SKIP_UPDATE_CHECK=1 wp audit guardrails`.
+- Current repo search found no runtime dependency on a removed `webpresso` bin
+  for the active `uplane` operational workflow surface.
 
 #### Task 2.3: [cleanup] Remove stale branded references from tests/docs/examples
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 1.3, Task 1.5
 **Size:** S
 **Files:**
@@ -318,12 +337,21 @@ This task removes residual stale references after the hard-cut surface changes.
 3. Re-run targeted docs/tests.
 
 **Acceptance:**
-- [ ] Removed branded preset paths no longer appear as current guidance.
-- [ ] Only intentional historical references remain, if any.
+- [x] Removed branded preset paths no longer appear as current guidance.
+- [x] Only intentional historical references remain, if any.
+
+**Evidence:**
+- Added regression coverage in `src/config/consolidation-docs.test.ts` to scan
+  current guidance docs and reject `vitest/webpresso`, `tsconfig/webpresso`,
+  and `stryker/webpresso`.
+- Remaining hits are limited to:
+  - historical/intentional blueprint records
+  - tests asserting those removed exports stay absent
+  - unrelated legacy `webpresso` binary wording outside preset guidance
 
 #### Task 3.1: [release] Prepare the breaking-release package contract
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 2.1, Task 2.2, Task 2.3
 **Size:** S
 **Files:**
@@ -342,12 +370,22 @@ Prepare the release metadata and changelog for the hard cut:
 3. Re-run targeted docs/package checks.
 
 **Acceptance:**
-- [ ] Breaking release notes are explicit and correct.
-- [ ] No release note implies compatibility aliases still exist.
+- [x] Breaking release notes are explicit and correct.
+- [x] No release note implies compatibility aliases still exist.
+
+**Evidence:**
+- Added `.changeset/agent-kit-hard-cut-generic-core.md` describing the hard cut
+  as a breaking contract change on the pre-1.0 release line.
+- Release note explicitly records:
+  - `wp` is canonical
+  - `webpresso` bin removed
+  - branded preset exports removed
+  - generic canonical presets preserved
+- No current release-prep note claims compatibility aliases still exist.
 
 #### Task 3.2: [verify] Run final package-surface and downstream verification
 
-**Status:** todo
+**Status:** done
 **Depends:** Task 3.1
 **Size:** M
 **Files:**
@@ -366,9 +404,30 @@ Run the final verification bundle:
 3. If any hard-cut assumption fails, reopen the specific earlier task instead of patching ad hoc.
 
 **Acceptance:**
-- [ ] Final verification evidence is recorded.
-- [ ] No legacy/backwards-compat code remains in the public contract.
-- [ ] Hard-cut release is ready once package publication is approved.
+- [x] Final verification evidence is recorded.
+- [x] No legacy/backwards-compat code remains in the public contract.
+- [x] Hard-cut release is ready once package publication is approved.
+
+**Evidence:**
+- Package/export verification:
+  - `src/config/export-resolution.test.ts` passed
+  - `src/audit/package-surface.test.ts` passed
+- Docs/build verification:
+  - `npm run build` passed
+  - `./bin/docs-lint.js ...` passed
+  - `src/config/consolidation-docs.test.ts` passed
+  - `src/config/docs-lint/docs-lint-cli-parity.test.ts` passed
+- Blueprint governance:
+  - `./bin/wp.js blueprint audit --all --strict` passed
+- Downstream verification:
+  - `ingest-lens` real imports confirmed for `@webpresso/agent-kit/vitest/node`,
+    `.../vitest/react`, `.../vitest/workers`, `.../stryker`, and
+    `.../workers-test`
+  - temporary-manifest consumer smoke resolved those same canonical specifiers
+  - `uplane` operational scripts/docs confirmed on `wp setup`, `wp audit ...`,
+    and `wp config secrets ...` with no `webpresso` bin requirement
+- Hygiene:
+  - `git diff --check` passed
 
 ## Edge cases
 

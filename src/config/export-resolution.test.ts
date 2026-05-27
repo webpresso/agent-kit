@@ -7,15 +7,15 @@ import { describe, expect, it } from 'vitest'
 const repositoryRoot = process.cwd()
 
 const requiredSubpaths = [
-  'webpresso/tsconfig/base.json',
-  'webpresso/vitest/node',
-  'webpresso/stryker',
-  'webpresso/oxlint',
-  'webpresso/workers-test',
-  'webpresso/docs-lint',
-  'webpresso/launch',
-  'webpresso/test-preset',
-  'webpresso/e2e-preset',
+  '@webpresso/agent-kit/tsconfig/base.json',
+  '@webpresso/agent-kit/vitest/node',
+  '@webpresso/agent-kit/stryker',
+  '@webpresso/agent-kit/oxlint',
+  '@webpresso/agent-kit/workers-test',
+  '@webpresso/agent-kit/docs-lint',
+  '@webpresso/agent-kit/launch',
+  '@webpresso/agent-kit/test-preset',
+  '@webpresso/agent-kit/e2e-preset',
 ] as const
 
 const exportSourceTargets: Record<string, string> = {
@@ -24,8 +24,6 @@ const exportSourceTargets: Record<string, string> = {
   './tsconfig/library.json': './src/config/tsconfig/library.json',
   './tsconfig/react-library.json': './src/config/tsconfig/react-library.json',
   './tsconfig/react-router.json': './src/config/tsconfig/react-router.json',
-  './tsconfig/webpresso.json': './src/config/tsconfig/webpresso.json',
-  './tsconfig/webpresso': './src/config/tsconfig/webpresso.json',
   './vitest/node': './src/config/vitest/node.ts',
   './vitest/react': './src/config/vitest/react.ts',
   './vitest/react-router': './src/config/vitest/react-router.ts',
@@ -33,12 +31,7 @@ const exportSourceTargets: Record<string, string> = {
   './vitest/react-setup': './src/config/vitest/react-setup.ts',
   './vitest/react-setup.ts': './src/config/vitest/react-setup.ts',
   './vitest/flakiness-reporter': './src/config/vitest/flakiness-reporter.ts',
-  './vitest/webpresso/node': './src/config/vitest/webpresso-node.ts',
-  './vitest/webpresso/react': './src/config/vitest/webpresso-react.ts',
-  './vitest/webpresso/react-router': './src/config/vitest/webpresso-react-router.ts',
-  './vitest/webpresso/workers': './src/config/vitest/webpresso-workers.ts',
   './stryker': './src/config/stryker/index.ts',
-  './stryker/webpresso': './src/config/stryker/webpresso.ts',
   './oxlint': './src/config/oxlint/index.ts',
   './oxlint/import-hygiene': './src/config/oxlint/import-hygiene.ts',
   './oxlint/monorepo-paths': './src/config/oxlint/monorepo-paths.ts',
@@ -88,7 +81,7 @@ function exportedDefaultTarget(value: unknown): string | undefined {
   return (importValue as { default?: string }).default
 }
 
-describe('webpresso folded package exports', () => {
+describe('@webpresso/agent-kit package exports', () => {
   it('maps every folded subpath from source exports to public package exports', async () => {
     const packageJson = await readCanonicalPackageJson()
 
@@ -106,11 +99,16 @@ describe('webpresso folded package exports', () => {
     expect(packageJson.files).toContain('bin')
   })
 
-  it('maps tsconfig package exports directly to physical json files for TypeScript extends', async () => {
+  it('hard-cuts branded preset exports from the package contract', async () => {
     const packageJson = await readCanonicalPackageJson()
 
-    expect(packageJson.exports?.['./tsconfig/webpresso.json']).toBe('./tsconfig/webpresso.json')
-    expect(packageJson.exports?.['./tsconfig/webpresso']).toBe('./tsconfig/webpresso.json')
+    expect(packageJson.exports?.['./tsconfig/webpresso.json']).toBeUndefined()
+    expect(packageJson.exports?.['./tsconfig/webpresso']).toBeUndefined()
+    expect(packageJson.exports?.['./vitest/webpresso/node']).toBeUndefined()
+    expect(packageJson.exports?.['./vitest/webpresso/react']).toBeUndefined()
+    expect(packageJson.exports?.['./vitest/webpresso/react-router']).toBeUndefined()
+    expect(packageJson.exports?.['./vitest/webpresso/workers']).toBeUndefined()
+    expect(packageJson.exports?.['./stryker/webpresso']).toBeUndefined()
   })
 
   it('keeps hook bins and wires folded docs-lint bins to local entrypoints', async () => {
@@ -118,16 +116,15 @@ describe('webpresso folded package exports', () => {
 
     expect(packageJson.bin).toMatchObject({
       wp: './bin/wp.js',
-      webpresso: './bin/webpresso.js',
       'wp-pretool-guard': './bin/wp-pretool-guard.js',
       ...docsLintBins,
     })
   })
 
-  it('resolves key public subpaths through the canonical webpresso package manifest', async () => {
+  it('resolves key public subpaths through the canonical @webpresso/agent-kit package manifest', async () => {
     const packageJson = await readCanonicalPackageJson()
-    const tempDir = await mkdtemp(join(tmpdir(), 'webpresso-export-resolution-'))
-    const packageDir = join(tempDir, 'node_modules', 'webpresso')
+    const tempDir = await mkdtemp(join(tmpdir(), 'agent-kit-export-resolution-'))
+    const packageDir = join(tempDir, 'node_modules', '@webpresso', 'agent-kit')
 
     await mkdir(packageDir, { recursive: true })
     await writeFile(join(packageDir, 'package.json'), JSON.stringify(packageJson), 'utf8')

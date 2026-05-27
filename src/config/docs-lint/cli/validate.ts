@@ -40,7 +40,7 @@ if (options.help) {
 }
 
 const { help: _help, ...validateOptions } = options
-const modulePath = './commands/validate-command.ts'
+const modulePath = './commands/validate-command.js'
 const { createValidateCommand } = await import(modulePath)
 const exitCode = await createValidateCommand().run(validateOptions)
 process.exit(exitCode)

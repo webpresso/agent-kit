@@ -58,10 +58,7 @@ package with explicit subpath exports over new split packages.
 - Run `vp run lint:pkg` (publint / attw) before releasing to catch broken export
   maps.
 
-The public `webpresso` package is unscoped and published with
-`access: "public"`. It is both the frictionless globally-installed CLI
-(`vp install -g webpresso`) and the consumer dependency for folded agent
-config helpers via `webpresso/*` subpath exports.
+The public package is `@webpresso/agent-kit`. It is both the globally-installed CLI (`vp install -g @webpresso/agent-kit`) and the consumer dependency for config helpers via `@webpresso/agent-kit/*` subpath exports.
 
 ## Module format
 

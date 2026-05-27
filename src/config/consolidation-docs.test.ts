@@ -5,16 +5,11 @@ import { describe, expect, it } from 'vitest'
 
 const repositoryRoot = process.cwd()
 
-const canonicalSubpaths = [
-  'webpresso/tsconfig/base.json',
-  'webpresso/vitest/node',
-  'webpresso/stryker',
-  'webpresso/oxlint',
-  'webpresso/workers-test',
-  'webpresso/docs-lint',
-  'webpresso/launch',
-  'webpresso/test-preset',
-  'webpresso/e2e-preset',
+const currentGuidanceFiles = [
+  'README.md',
+  'docs/getting-started.md',
+  'docs/is-agent-kit-for-me.md',
+  'docs/ci-act.md',
 ] as const
 
 async function readRepoFile(path: string): Promise<string> {
@@ -22,14 +17,27 @@ async function readRepoFile(path: string): Promise<string> {
 }
 
 describe('consolidation docs', () => {
-  it('documents only canonical webpresso subpaths in the README', async () => {
+  it('keeps the README focused on the canonical package identity and the appendix link', async () => {
     const readme = await readRepoFile('README.md')
 
-    for (const canonicalSubpath of canonicalSubpaths) {
-      expect(readme).toContain(canonicalSubpath)
-    }
+    expect(readme).toContain('@webpresso/agent-kit')
+    expect(readme).toContain('docs/markdown-fact-check.md')
+  })
 
-    expect(readme).not.toContain('@webpresso/agent-')
+  it('keeps removed branded preset paths out of current guidance docs', async () => {
+    for (const file of currentGuidanceFiles) {
+      const content = await readRepoFile(file)
+
+      expect(content, `${file} should not teach removed vitest/webpresso presets`).not.toContain(
+        'vitest/webpresso',
+      )
+      expect(content, `${file} should not teach removed tsconfig/webpresso presets`).not.toContain(
+        'tsconfig/webpresso',
+      )
+      expect(content, `${file} should not teach removed stryker/webpresso presets`).not.toContain(
+        'stryker/webpresso',
+      )
+    }
   })
 
   it('removes the migration notice document after the hard cutover', async () => {
@@ -41,6 +49,6 @@ describe('consolidation docs', () => {
 
     expect(changelog).toContain('## 0.18.0')
     expect(changelog).toContain('Consolidate the former `@webpresso/agent-*` helper packages')
-    expect(changelog).toContain('webpresso/*` subpath exports')
+    expect(changelog).toContain('subpath exports')
   })
 })

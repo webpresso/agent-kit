@@ -85,6 +85,12 @@ export function checkAllCheckboxes(content: string, taskId: string): string {
   })
 }
 
+export function completeTask(content: string, taskId: string): string {
+  const markedDone = updateTaskStatus(content, taskId, 'done')
+  const unblocked = updateBlockedReason(markedDone, taskId, '')
+  return checkAllCheckboxes(unblocked, taskId)
+}
+
 export function updateBlockedReason(content: string, taskId: string, reason: string): string {
   const taskPattern = buildTaskPattern(taskId)
 

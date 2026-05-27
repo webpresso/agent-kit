@@ -1,12 +1,13 @@
 ---
 type: blueprint
 title: Agent-Kit Public Release Scrub
-status: planned
+status: completed
 owner: agent-kit
 complexity: M
 created: '2026-05-27'
 last_updated: '2026-05-27'
-progress: '0/6 tasks done (0%) - covers public-readiness gaps found in the 2026-05-27 exposure audit'
+completed_at: '2026-05-27'
+progress: '100% (6/6 tasks done, 0 blocked, reconciled after integrated worker execution on 2026-05-27)'
 depends_on: []
 cross_repo_depends_on: []
 tags:
@@ -87,7 +88,7 @@ Verified on 2026-05-27:
 
 #### Task 1.1: [security] Replace token-shaped fixtures with scanner-safe sentinels
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -117,7 +118,7 @@ secret detection.
 
 #### Task 1.2: [docs] Sanitize local paths and unrelated repository references
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -147,7 +148,7 @@ artifacts that captured absolute stack traces.
 
 #### Task 1.3: [docs] Rewrite monorepo extraction and internal implementation history
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.2
 
@@ -178,7 +179,7 @@ public contributor needs to understand or operate the package.
 
 #### Task 1.4: [release] Decide and document package visibility boundaries
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -209,7 +210,7 @@ different package.
 
 #### Task 1.5: [history] Choose and execute the public-history strategy
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1, Task 1.2, Task 1.3
 
@@ -239,7 +240,7 @@ verified snapshot.
 
 #### Task 1.6: [qa] Add a repeatable public-readiness gate
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.5
 

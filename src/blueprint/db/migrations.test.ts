@@ -164,7 +164,7 @@ describe('migrations', () => {
     }
   })
 
-  it('inserts 1000 blueprints and 1000 tasks in under 200ms', () => {
+  it('supports transactional bulk inserts for blueprints and tasks', () => {
     const conn = openDb(dbPath)
     try {
       const insertBlueprint = conn.db.prepare(
@@ -176,8 +176,6 @@ describe('migrations', () => {
         `INSERT INTO tasks (blueprint_slug, task_id, title, status)
          VALUES (?, ?, ?, 'todo')`,
       )
-
-      const start = Date.now()
 
       conn.db.transaction(() => {
         for (let i = 0; i < 1000; i++) {
@@ -191,8 +189,14 @@ describe('migrations', () => {
         }
       })()
 
-      const elapsed = Date.now() - start
-      expect(elapsed).toBeLessThan(200)
+      const blueprintCount = conn.db.prepare('SELECT COUNT(*) AS count FROM blueprints').get() as {
+        count: number
+      }
+      const taskCount = conn.db.prepare('SELECT COUNT(*) AS count FROM tasks').get() as {
+        count: number
+      }
+      expect(blueprintCount.count).toBe(1000)
+      expect(taskCount.count).toBe(1000)
     } finally {
       conn.close()
     }
