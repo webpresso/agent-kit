@@ -1,0 +1,1 @@
+{"version":3,"file":"test.d.ts","sourceRoot":"","sources":["../../../../src/mcp/tools/test.ts"],"names":[],"mappings":"AAAA;;;;;GAKG;AAEH,OAAO,EAAE,CAAC,EAAE,MAAM,KAAK,CAAA;AAEvB,OAAO,KAAK,EAAE,cAAc,EAAE,MAAM,oBAAoB,CAAA;AAOxD,QAAA,MAAM,WAAW;;;;;kBAON,CAAA;AAEX,MAAM,MAAM,WAAW,GAAG,CAAC,CAAC,KAAK,CAAC,OAAO,WAAW,CAAC,CAAA;AA4BrD,QAAA,MAAM,IAAI,EAAE,cAgDX,CAAA;AAED,eAAe,IAAI,CAAA"}
