@@ -1,7 +1,7 @@
 <!--
   AGENTS.md template.
 
-  `wp setup` renders this file with:
+  Current-state agent-kit scaffolding (`wp setup`; public replacement: `webpresso agent setup`) renders this file with:
   - Repository map: bulleted list of workspace packages inferred from
     pnpm-workspace.yaml / package.json workspaces.
   - Tech stack: short description generated from package.json + detected
@@ -13,9 +13,10 @@
   - Blueprints directory: defaults to `blueprints`. Override via
     .webpressorc.json#blueprintsDir.
 
-  Managed sections in this file are refreshed by agent-kit on `wp sync`.
-  Repo-specific edits belong only inside `user-owned` blocks; agent-kit
-  preserves those blocks verbatim when it rewrites managed content.
+  Managed sections in this file are refreshed by agent-kit. Current-state sync uses
+  `wp sync`; public replacement: `webpresso agent sync`. Repo-specific edits belong
+  only inside `user-owned` blocks; agent-kit preserves those blocks verbatim when it
+  rewrites managed content.
 -->
 
 <!-- >>> managed by webpresso (operating-contract) -->
@@ -33,16 +34,19 @@ No agent surfaces are tracked in git — everything is regenerated. After clonin
 vp install && vp run setup:agent  # setup:agent runs wp setup, which scaffolds .agent/, AGENTS.md, hooks, and runs wp sync
 ```
 
-webpresso is the single source of truth. To customize skills, commands, or
-workflows, edit them in webpresso's catalog and publish — not in
-individual repos. The default `omx` preset chains `omx setup --yes --scope user`
-and installs missing OMX through `vp install -g oh-my-codex`. The default `omc`
-preset ensures OMC through Claude Code's plugin marketplace in user scope when
-`claude` is on `PATH`. `wp setup --project` requests project-scoped OMX/OMC
-setup. `wp setup`
-also repairs the managed `.gitignore` block for regenerated agent surfaces so
-repo-local `.codex/`, `.omx/`, `.agent/`, and IDE projection outputs stay out
-of Git.
+agent-kit's catalog is the single source of truth for generated agent surfaces.
+Webpresso CLI owns the public command surface (`webpresso agent ...`). To
+customize skills, commands, or workflows, edit them in agent-kit's catalog and
+publish — not in individual repos. The default `omx` preset chains
+`omx setup --yes --scope user` and installs missing OMX through
+`vp install -g oh-my-codex`. The default `omc` preset ensures OMC through
+Claude Code's plugin marketplace in user scope when `claude` is on `PATH`.
+`wp setup --project` is current-state migration wording; public replacement:
+`webpresso agent setup --project`. `wp setup` also repairs the managed
+`.gitignore` block for regenerated agent surfaces so repo-local `.codex/`,
+`.omx/`, `.agent/`, and IDE projection outputs stay out of Git. `wp setup` /
+`wp sync` remain current-state bootstrap commands; public replacements are
+`webpresso agent setup` / `webpresso agent sync`.
 
 ## Plan
 
@@ -77,7 +81,8 @@ behavior and any broader checks this repo requires. Typical gates are:
 - lint / format check
 - affected tests
 - docs or blueprint validation when docs/plans changed
-- `wp sync --check` after `wp setup` to verify surfaces are in sync
+- current-state `wp sync --check` after `wp setup` to verify surfaces are in sync;
+  public replacement: `webpresso agent sync --check` after `webpresso agent setup`
 
 If a gate fails, fix the root cause or record the blocker with evidence.
 

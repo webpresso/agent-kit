@@ -104,7 +104,7 @@ describe('renderAgentsMd', () => {
     expect(rendered).toBe('custom/planning/')
   })
 
-  it('renders the catalog template with the single canonical bootstrap command', () => {
+  it('renders the catalog template with precise agent-kit ownership and future Webpresso CLI replacements', () => {
     const template = readFileSync(join(process.cwd(), 'catalog', 'AGENTS.md.tpl'), 'utf8')
     const rendered = renderAgentsMd(
       template,
@@ -118,6 +118,14 @@ describe('renderAgentsMd', () => {
     expect(rendered).toContain(
       'setup:agent runs wp setup, which scaffolds .agent/, AGENTS.md, hooks, and runs wp sync',
     )
+    expect(rendered).toContain("agent-kit's catalog is the single source of truth")
+    expect(rendered).toContain('Webpresso CLI owns the public command surface (`webpresso agent ...`)')
+    expect(rendered).toContain('`wp setup`; public replacement: `webpresso agent setup`')
+    expect(rendered).toContain('`wp sync`; public replacement: `webpresso agent sync`')
+    expect(rendered).toContain('`wp setup --project` is current-state migration wording')
+    expect(rendered).toContain('`webpresso agent setup --project`')
+    expect(rendered).toContain('`webpresso agent sync --check` after `webpresso agent setup`')
+    expect(rendered).not.toContain('webpresso is the single source of truth.')
     expect(rendered).toContain('<!-- >>> managed by webpresso (operating-contract) -->')
     expect(rendered).toContain('<!-- >>> user-owned (repo-customizations) -->')
     expect(rendered).not.toContain('wp symlink sync')
