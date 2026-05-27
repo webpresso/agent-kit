@@ -21,7 +21,7 @@ env:
 jobs:
   auth-preflight:
     name: Auth preflight
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     outputs:
       repo_access_ok: ${{ steps.repo.outputs.repo_access_ok }}
       action_downloads_ok: ${{ steps.actions.outputs.action_downloads_ok }}
