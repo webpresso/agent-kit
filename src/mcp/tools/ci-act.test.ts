@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import tool from './ci-act.js'
 
+const TEST_REDACTABLE_SECRET = 'TESTTOKENABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCDE'
+
 const runSecretGateCommandMock = vi.hoisted(() => vi.fn())
 
 vi.mock('#secret-gate/runner.js', () => ({
@@ -17,7 +19,7 @@ afterEach(() => {
 
 describe('wp_ci_act tool', () => {
   it('returns a sanitized dry-run command without executing act by default', async () => {
-    process.env.GITHUB_PAT = 'ghp_123456789012345678901234567890123456'
+    process.env.GITHUB_PAT = TEST_REDACTABLE_SECRET
     const result = await tool.handler({
       workflowPath: '.github/workflows/ci.yml',
       secretProfile: 'github-api',
@@ -31,7 +33,7 @@ describe('wp_ci_act tool', () => {
     const details = payload.details as { command: { args: string[] } }
     expect(details.command.args).toContain('--secret-file')
     expect(details.command.args).toContain('[INTERNAL_SECRET_FILE]')
-    expect(JSON.stringify(payload)).not.toContain('ghp_123456789012345678901234567890123456')
+    expect(JSON.stringify(payload)).not.toContain(TEST_REDACTABLE_SECRET)
     expect(JSON.stringify(payload)).not.toMatch(/wp-ci-act-[^" ]+secrets\.env/u)
   })
 
@@ -92,7 +94,7 @@ describe('wp_ci_act tool', () => {
   })
 
   it('redacts seeded fake secrets from execute output and metadata', async () => {
-    const fakeSecret = 'ghp_abcdefghijklmnopqrstuvwxyz1234567890ABCD'
+    const fakeSecret = TEST_REDACTABLE_SECRET
     runSecretGateCommandMock.mockResolvedValue({
       exitCode: 1,
       stdout: `GITHUB_TOKEN=${fakeSecret}`,

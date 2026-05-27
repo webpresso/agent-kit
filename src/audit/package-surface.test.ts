@@ -166,7 +166,7 @@ describe('package-surface audit', () => {
       private: false,
       files: ['README.md'],
     })
-    writeFileSync(join(root, 'README.md'), 'token ghp_123456789012345678901234567890123456\n')
+    writeFileSync(join(root, 'README.md'), 'https://scanner-safe:sentinel@example.com\n')
 
     const result = auditPackageSurface(root)
 
@@ -192,7 +192,7 @@ describe('package-surface audit', () => {
     })
     writeFileSync(
       join(root, 'dist', 'index.js'),
-      'token ghp_123456789012345678901234567890123456 and @repo/generated\n',
+      'https://scanner-safe:sentinel@example.com and @repo/generated\n',
     )
 
     const result = auditPackageSurface(root)
@@ -217,7 +217,7 @@ describe('package-surface audit', () => {
     })
     writeFileSync(
       join(root, 'generated-docs', 'index.md'),
-      'token ghp_123456789012345678901234567890123456 and @repo/generated\n',
+      'https://scanner-safe:sentinel@example.com and @repo/generated\n',
     )
 
     const result = auditPackageSurface(root)
