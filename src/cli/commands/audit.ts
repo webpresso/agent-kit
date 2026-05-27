@@ -9,7 +9,7 @@ import type { RepoAuditResult } from '#audit/repo-guardrails'
 import type { CAC } from 'cac'
 
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { runAuditDispatch } from './audit-core.js'
@@ -88,6 +88,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
   'memory-unified': async (root) =>
     (await import('#audit/memory-unified')).auditMemoryUnified(root),
   'compile-drift': async (root) => (await import('#audit/compile-drift')).auditCompileDrift(root),
+  'architecture-drift': async (root) =>
+    (await import('#audit/architecture-drift')).auditArchitectureDrift(root),
   'agent-cost': async (root) => (await import('#audit/agent-cost')).auditAgentCost(root),
   'blueprint-db-consistency': async (root) =>
     (await import('#audit/blueprint-db-consistency')).auditBlueprintDbConsistency(root),
@@ -97,6 +99,7 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     (await import('#audit/tech-debt-cadence')).auditTechDebtCadence(root),
   'cross-repo-correlation': async (root) =>
     (await import('#audit/cross-repo-correlation')).auditCrossRepoCorrelationAsRepoResult(root),
+  'ai-contracts': async (root) => (await import('#audit/ai-contracts')).auditAiContracts(root),
   'hook-surface': async (root) =>
     (await import('#audit/hook-surface')).auditHookSurfaceAsRepoResult(root),
   rules: async (root) => runContentAudit(root, 'rule'),
@@ -124,6 +127,24 @@ async function runContentAudit(root: string, kind: 'rule' | 'skill'): Promise<Re
 }
 
 const REPO_AUDIT_KINDS = Object.keys(REPO_AUDIT_REGISTRY)
+
+export function resolveGuardrailAuditKinds(root: string): string[] {
+  if (isAgentKitRoot(root)) return REPO_AUDIT_KINDS
+  return REPO_AUDIT_KINDS.filter((kind) => kind !== 'ai-contracts')
+}
+
+function isAgentKitRoot(root: string): boolean {
+  try {
+    const packageJson = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')) as {
+      name?: unknown
+    }
+    if (packageJson.name === '@webpresso/agent-kit') return true
+  } catch {
+    // Fall through to source-layout detection below.
+  }
+
+  return existsSync(path.join(root, 'src/mcp/tools/_shared/result.ts'))
+}
 
 const SCRIPT_AUDIT_KINDS = ['tph', 'tph-e2e'] as const
 const SPECIAL_AUDIT_KINDS = [
@@ -233,6 +254,7 @@ export function registerAuditCommand(cli: CAC): void {
     .option('--staged', 'Only audit git-staged files (fast pre-commit mode)')
     .action(
       async (kind: string | undefined, target: string | undefined, options: AuditActionOptions) => {
+        const auditRoot = options.root ?? target ?? process.cwd()
         const outcome = await runAuditDispatch(kind, target ? [target] : [], options, {
           root: process.cwd(),
           runStryker: (cwd) => runStryker(cwd),
@@ -255,7 +277,10 @@ export function registerAuditCommand(cli: CAC): void {
           },
           resolveScript: resolveAuditScript,
           buildBundleBudgetArgs,
-          knownRepoKinds: REPO_AUDIT_KINDS,
+          knownRepoKinds:
+            kind === 'guardrails' || kind === 'quality'
+              ? resolveGuardrailAuditKinds(auditRoot)
+              : REPO_AUDIT_KINDS,
         })
 
         switch (outcome.kind) {
