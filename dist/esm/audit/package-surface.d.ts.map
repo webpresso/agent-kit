@@ -1,0 +1,1 @@
+{"version":3,"file":"package-surface.d.ts","sourceRoot":"","sources":["../../../src/audit/package-surface.ts"],"names":[],"mappings":"AAaA,OAAO,KAAK,EAAE,eAAe,EAAsB,MAAM,sBAAsB,CAAA;AAuK/E,wBAAgB,mBAAmB,CAAC,aAAa,GAAE,MAAsB,GAAG,eAAe,CAkE1F;AAED,wBAAgB,8BAA8B,CAC5C,aAAa,EAAE,MAAM,EACrB,oBAAoB,EAAE,MAAM,GAC3B;IAAE,YAAY,EAAE,MAAM,CAAC;IAAC,SAAS,EAAE,MAAM,CAAA;CAAE,CAc7C"}
