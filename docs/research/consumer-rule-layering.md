@@ -5,9 +5,9 @@ date: 2026-05-06
 last_updated: '2026-05-06'
 audience: agent-kit maintainers
 related:
-  - webpresso/monorepo/package.json (postinstall: wp setup --overwrite)
-  - webpresso/agent-kit/src/cli/commands/init/merge.ts
-  - webpresso/agent-kit/catalog/agent/rules/
+  - "webpresso/monorepo/package.json (postinstall: wp setup --overwrite)"
+  - "webpresso/agent-kit/src/cli/commands/init/merge.ts"
+  - "webpresso/agent-kit/catalog/agent/rules/"
 ---
 
 # Research: consumer rule layering for agent-kit

@@ -108,7 +108,7 @@ The Lane 1–4 ownership model in [`catalog/agent/rules/gstack-routing.md`](../.
 
 ### Tech Stack Fit
 
-- Webpresso already ships **two** dev-time runtimes: Bun-distributed Node CLIs (`wp`, `wp`) and **Rust binaries via RTK** ([`/Users/ozby/.claude/RTK.md`](../../../../.claude/RTK.md) on the workspace). Adding a third runtime for a context-reduction layer raises the install matrix without unblocking a wedge.
+- Webpresso already ships **two** dev-time runtime lanes: Bun-distributed Node CLIs (`wp` and its wrapper bins) and **Rust binaries via RTK** (documented in the workstation-local `~/.claude/RTK.md` guide). Adding a third runtime for a context-reduction layer raises the install matrix without unblocking a wedge.
 - The build-side fit for a Rust addition is acceptable (rmcp is mature, single-binary distribution via `cargo-dist` is well-trodden). The fit problem is product, not engineering.
 
 ### Trade-offs for Current Stage

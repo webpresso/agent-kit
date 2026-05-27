@@ -7,7 +7,7 @@ related_blueprints:
   - agent-asset-compiler-multi-runtime
   - agent-knowledge-graph-mcp
   - blueprint-structured-store
-status: research-complete
+status: archived
 recommendation: revise-all-three-blueprints
 ---
 

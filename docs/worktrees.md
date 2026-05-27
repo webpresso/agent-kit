@@ -79,4 +79,4 @@ surface instead:
 vp install && vp run setup:agent
 ```
 
-See also: [`/Users/ozby/repos/webpresso/webpresso/VISION.md`](/Users/ozby/repos/webpresso/webpresso/VISION.md)
+See also: [VISION](../VISION.md).

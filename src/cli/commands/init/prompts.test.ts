@@ -32,8 +32,17 @@ describe('resolveTier3Selection', () => {
     expect(r.selected.toSorted()).toEqual([...TIER3_SKILLS].toSorted())
   })
 
-  it('returns the --with subset when --with is set', async () => {
+  it('keeps base-kit default-on when --with is set', async () => {
     const r = await resolveTier3Selection({ withFlag: 'tanstack-query' })
+    expect(r.source).toBe('with')
+    expect(r.selected).toEqual(['base-kit', 'tanstack-query'])
+  })
+
+  it('allows explicit base-kit opt-out with --without', async () => {
+    const r = await resolveTier3Selection({
+      withFlag: 'tanstack-query',
+      withoutFlag: 'base-kit',
+    })
     expect(r.source).toBe('with')
     expect(r.selected).toEqual(['tanstack-query'])
   })
@@ -44,6 +53,12 @@ describe('resolveTier3Selection', () => {
     )
   })
 
+  it('throws on unknown --without names', async () => {
+    await expect(resolveTier3Selection({ withoutFlag: 'does-not-exist' })).rejects.toThrow(
+      /Unknown Tier-3 skills in --without/,
+    )
+  })
+
   it('reuses existing config when no flags', async () => {
     const r = await resolveTier3Selection({
       existing: ['tanstack-query'],
@@ -51,7 +66,7 @@ describe('resolveTier3Selection', () => {
       yesFlag: true,
     })
     expect(r.source).toBe('existing')
-    expect(r.selected).toEqual(['tanstack-query'])
+    expect(r.selected).toEqual(['base-kit', 'tanstack-query'])
   })
 
   it('defaults to base-kit with --yes and no existing config', async () => {

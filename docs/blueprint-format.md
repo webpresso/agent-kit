@@ -100,8 +100,8 @@ last_updated: 2026-05-06
 
 | Wave | Blueprints | Dependencies |
 | --- | --- | --- |
-| Wave 0 | [api-hardening](../planned/api-hardening/_overview.md) | None |
-| Wave 1 | [ui-polish](../planned/ui-polish/_overview.md) | api-hardening |
+| Wave 0 | `agent-kit-public-release-scrub` | None |
+| Wave 1 | `ai-reliability-contract-roadmap` | `agent-kit-public-release-scrub` |
 ```
 
 Child blueprints link back with `parent_roadmap:`:

@@ -236,8 +236,8 @@ wp audit guardrails
 - Line 23 — "Plugin runtime contract" paragraph (move to CONTRIBUTING.md)
 - Line 25 — "Plugin dev mode" paragraph (move to CONTRIBUTING.md — already linked there)
 - Lines 38–40 — "Why two paths" paragraph (compress to one sentence in the install matrix)
-- Lines 73–88 — entire "OMX compatibility" / Codex MCP server TOML block (move to `docs/codex-setup.md` or `docs/presets.md` — already exists)
-- Lines 93–112 — entire `context-mode` preset block (move to `docs/presets.md`)
+- Lines 73–88 — entire "OMX compatibility" / Codex MCP server TOML block (move to `docs/codex-setup.md` or `docs/add-ons.md` — already exists)
+- Lines 93–112 — entire `context-mode` preset block (move to `docs/add-ons.md`)
 - Lines 219–235 — Vite Guardrails + Portable Test surfaces (move to `docs/api-surfaces.md` — these are not first-impression content)
 
 ### Lines to fix

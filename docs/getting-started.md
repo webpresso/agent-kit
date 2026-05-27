@@ -1,317 +1,59 @@
 ---
 type: guide
-last_updated: '2026-05-22'
+last_updated: '2026-05-27'
 ---
 
-# Getting started with `webpresso`
+# Getting started
 
-This guide takes a fresh repo from zero to a fully wired blueprint +
-agent-surface setup in five minutes.
-
-webpresso solves the repo bootstrap problem for AI coding agents. It gives a
-project one canonical agent contract, then scaffolds the files, hooks, skills,
-MCP entries, quality gates, and planning surfaces that Claude Code, Codex CLI,
-Cursor, Windsurf, Gemini, OpenCode, and compatible agents expect.
-
-## Prerequisites
-
-- **Node.js ≥24** — required. Published `wp` / `webpresso` bins are stable Node
-  launchers that prefer packaged `dist/esm`.
-- **Bun ≥1** — required for source-checkout fallback, local webpresso
-  development, and repo workflows that execute TypeScript entrypoints directly.
-  Install bun first:
-  ```bash
-  curl -fsSL https://bun.sh/install | bash
-  ```
-- Vite+ `vp` on `PATH` (webpresso routes package and script workflows through `vp`).
-- A git repo.
+webpresso makes a repo ready for AI coding agents in one pass.
 
 ## Install
 
 ```bash
-vp install -g webpresso
+vp install -g @webpresso/agent-kit
+wp setup
 ```
 
+Done.
 
-The `wp`, `webpresso`, and `wp` bins are now available globally:
+Your repo now has one shared agent contract across the supported coding-agent
+surfaces.
 
-```bash
-wp --version
-wp --version   # alias — same binary
-```
+## What changed
 
-> **Pinned-version devDependency path** (library imports, CI with reproducible
-> lockfiles): `vp install -D webpresso && vp exec wp setup`.
+`wp setup` adds the repo bootstrap webpresso owns:
 
-## Diagnose and repair bootstrap drift
+- `AGENTS.md`
+- `.agent/` canonical commands, skills, rules, guides, and workflows
+- generated agent surfaces
+- blueprint lifecycle folders and docs templates
+- safe hook wiring
+- gitignore protection for regenerated agent files
 
-If hooks, MCP wiring, or local live-source linking drift, start with:
+You do not need to learn those pieces individually. Run setup again any time;
+it is idempotent and preserves consumer-owned files.
+
+## Verify
 
 ```bash
 wp hooks doctor
+wp audit guardrails
 ```
 
-Preferred repairs:
-
-- refresh generated hook/plugin surfaces: `wp setup`
-- restore a broken live-source dev-link: `vp install` or
-  `vp run dev:link --consumer <repo>`
-- if `vp install` fails with `403` on `@webpresso/*`, fix
-  `GH_PACKAGES_TOKEN` / GitHub Packages auth first, then retry
-
-## Scaffold your repo
+If either command reports drift, run:
 
 ```bash
 wp setup
 ```
 
-`wp setup` (alias: `wp setup`, `wp init`) is idempotent. It:
+## Add-ons
 
-1. Creates `.agent/{commands,skills,workflows,rules,guides}/` and populates
-   them with the catalog's Tier-1 blueprint-native + Tier-2 methodology
-   content.
-2. Creates IDE surfaces as **symlinks** pointing at `.agent/`:
-   - `.claude/commands/` + `.claude/skills/` (directory-mode skills link
-     — also serves OpenCode via its `.claude/skills/` fallback)
-   - `.cursor/commands/`, `.windsurf/commands/`, `.opencode/commands/`
-   - `.agents/skills/<name>/` (per-skill links — covers Codex CLI +
-     Amp + OpenCode's `.agents/skills/` fallback in one surface)
-3. Generates `.gemini/commands/*.toml` by transforming each `.agent/commands/*.md`
-   (Gemini CLI wants TOML, not markdown).
-4. Converges managed hook surfaces for supported agents. In particular, when
-   Codex project hooks already exist in `.codex/hooks.json`, setup preserves
-   unrelated commands, rewrites managed `wp-*` hook commands to the current
-   canonical form, and prunes stale legacy `ak-*` webpresso hook commands left
-   behind by older setups.
-5. Runs non-interactively with defaults unless you explicitly opt into another
-   flow.
-6. Creates `docs/templates/{blueprint,guide,research,postmortem,system,adr,runbook,tech-debt}.md`
-   (with `blueprint.yaml` variant).
-7. Creates `blueprints/{completed,in-progress,planned,parked,archived}/`
-   with `.gitkeep` placeholders and a generalized `README.md` explaining
-   the lifecycle.
-6. Creates `AGENTS.md` at the repo root (only if none exists) from the
-   template, filling `{{REPOSITORY_MAP}}` by scanning your
-   `pnpm-workspace.yaml` / `package.json` workspaces.
-7. Writes `.webpressorc.json` capturing your choices for idempotent re-runs.
+Start with the default setup. Reach for add-ons only when the repo genuinely
+needs one: [Add-ons](./add-ons.md).
 
-Re-running `wp setup` refreshes the sections, structured config keys, and
-generated files that webpresso owns. Divergent consumer-owned whole files are
-left untouched and reported as drift unless you explicitly pass
-`--overwrite`.
+## Package note
 
-### Opt into tech-specific skills
-
-```bash
-wp setup --with tanstack-query,better-auth-best-practices
-```
-
-Tier-3 tech skills are opt-in because they only apply if your stack
-includes those libraries. Available:
-
-- `tanstack-query` — React Query patterns + anti-patterns.
-- `better-auth-best-practices` — auth setup guidance.
-- `react-doctor` — React diagnostic runbook.
-- `frontend-design`, `web-design-guidelines`, `visual-verdict`, `web-clone`
-  — design workflow skills.
-- `vercel-react-best-practices` — Vercel/React deployment hygiene.
-- `monorepo-navigation` — scaffolded per-repo from `pnpm-workspace.yaml`
-  with `{{TODO}}` placeholders for fields needing human judgment.
-
-### Bundled tooling installed by default
-
-```bash
-wp setup
-```
-
-Default setup also wires in tooling that lives outside the skill catalog:
-
-- [`omx`](https://oh-my-codex.dev/docs.html) / [`oh-my-codex`](https://github.com/Yeachan-Heo/oh-my-codex)
-  chains `omx setup --yes --scope user` so the operator-workflow execution
-  layer is set up alongside webpresso with shared user auth by default. Use
-  `wp setup --project` to request project-scoped OMX setup instead. If `omx`
-  is missing, setup first runs `vp install -g oh-my-codex` and then retries.
-  Setup also repairs the managed `.gitignore` block so regenerated `.codex/`,
-  `.omx/`, `.agent/`, and IDE projection outputs stay out of Git.
-- [`omc`](https://omc.vibetip.help/docs/getting-started) / [`oh-my-claudecode`](https://github.com/Yeachan-Heo/oh-my-claudecode)
-  is the Claude-side sibling to OMX. When `claude` is on `PATH`, setup ensures
-  OMC through Claude Code's plugin marketplace in user scope by default:
-  `claude plugin marketplace add --scope user https://github.com/Yeachan-Heo/oh-my-claudecode`
-  followed by `claude plugin install --scope user oh-my-claudecode`. Use
-  `wp setup --project` to request project-scoped OMC plugin installation.
-  Upstream also documents an npm runtime path (`oh-my-claude-sisyphus`), but
-  webpresso uses the Claude Code plugin marketplace path for setup.
-- [`gstack`](https://gstack.lol/) / [`garrytan/gstack`](https://github.com/garrytan/gstack)
-  ensures the gstack skill registry is installed at
-  `~/.claude/skills/gstack/` (clones + runs `./setup --team` if missing,
-  no-op if already there). Provides `/qa`, `/ship`, `/review`, etc.
-- `vision` — drops a starter `VISION.md` at repo root from the webpresso
-  template. Runs by default. Pairs with the `vision` audit (part of the
-  `guardrails` composite) so every consumer keeps a structured, ≤100-line
-  vision under enforcement.
-- `lore-commits` — installs a `.husky/commit-msg` hook that enforces
-  Lore Commit Protocol trailers via `wp audit commit-message` when requested
-  with `--with lore-commits`.
-
-Presets and Tier-3 skills can be combined freely in the same `--with`
-flag. Full reference: [`presets.md`](./presets.md).
-
-After setup, every non-`--dry-run` run also probes `bun --version`,
-`vp --version`, and `actionlint --version`, printing install hints if any are
-missing — this is informational, never blocks the run. Setup also refreshes
-managed CLI dependencies through `vp`: Codex via `vp update -g @openai/codex`,
-OMX via `vp update -g oh-my-codex`, and context-mode via
-`vp update -g context-mode` when those tools are already present.
-
-### Preview without writing
-
-```bash
-wp setup --dry-run
-```
-
-Shows the diff `wp setup` would write, then exits. Useful before your
-first real run.
-
-This preview mode is write-free: it does not create scaffold files, helper hook
-scripts, IDE config files, or spawn external preset installers.
-
-## Write your first blueprint
-
-```bash
-wp blueprint new "Add real-time notifications via SSE" --complexity M
-```
-
-Creates `blueprints/draft/add-real-time-notifications-via-sse/_overview.md`
-from `docs/templates/blueprint.md`, with frontmatter filled in
-(`status: draft`, `complexity: M`, `created:` today, etc.).
-
-> **Blueprint root** — generic repos use `blueprints/` at the repo root;
-> repos with a `webpresso/config.yaml` sentinel use `webpresso/blueprints/`.
-> Override either default by setting `"blueprintsDir": "<path>"` in
-> `.webpressorc.json`.
-
-Edit the file, then:
-
-```bash
-# Harden the plan (fact-check, split coarse tasks, align deps)
-wp blueprint refine add-real-time-notifications-via-sse
-# Or invoke /plan-refine inside Claude Code — the skill lives at
-# .agent/skills/plan-refine/SKILL.md (installed by wp setup).
-
-# Move draft → planned once it's execution-ready
-wp blueprint move add-real-time-notifications-via-sse planned
-
-# Audit format and lifecycle state
-wp blueprint audit --strict
-```
-
-See [`lifecycle.md`](./lifecycle.md) for the full state machine.
-
-## Keep the agent surface in sync
-
-When you edit `.agent/commands/<foo>.md`, the `.claude/`, `.cursor/`,
-`.windsurf/`, `.opencode/`, `.agents/`, and `.gemini/` consumer surfaces
-drift. Run:
-
-```bash
-wp sync
-```
-
-or add it to your pre-commit:
-
-```bash
-# .husky/pre-commit
-wp sync --check    # exits 1 if drift detected
-```
-
-`.claude/commands/` + `.claude/skills/` use real filesystem symlinks
-(no content to keep in sync — the symlink points at `.agent/`).
-`.gemini/commands/*.toml` are transformed artifacts (regenerated from
-the `.md` source on every sync). See [`symlinker.md`](./symlinker.md)
-for details.
-
-## Compile to all IDE surfaces
-
-After `wp setup`, run:
-
-```bash
-wp compile
-```
-
-This reads `.agent/skills/`, `.agent/commands/`, `.agent/agents/`, and `.agent/memory/` and emits:
-- `.claude/rules/` — Claude Code rule symlinks
-- `.claude/skills/` — Claude Code skills
-- `.agents/skills/` — Codex CLI and OpenCode skill surfaces
-- `.cursor/rules/` — Cursor rules
-- `.windsurf/skills/` — Windsurf skills
-- `.gemini/commands/` — Gemini CLI commands
-
-Outputs are gitignored (regeneratable). `wp compile` is idempotent — re-running with no source changes is a no-op.
-
-**First-time setup with example skill:**
-
-```bash
-wp setup --with base-kit --with example-skill
-wp compile
-# → .agent/skills/hello-webpresso/SKILL.md created
-# → all 6 IDE surfaces populated
-```
-
-Use `wp audit compile-drift` in CI to catch any surfaces that diverge from the `.agent/` source.
-
-## Run project commands
-
-Use the repo-owned `vp` facade for package and script workflows. Agent-kit exposes portable wrappers for common quality gates, so prefer `wp test`, `wp lint`, `wp typecheck`, `wp format`, or the equivalent `vp run <script>` entry when the consumer repo defines one.
-
-## Add a custom command or skill
-
-Drop a file under `.agent/`:
-
-```bash
-cat > .agent/commands/my-command.md <<EOF
----
-description: "Do the thing"
-argument-hint: "<target>"
-allowed-tools: Bash, Read
----
-
-# My command
-
-…
-EOF
-
-wp sync
-```
-
-Claude Code picks it up via `.claude/commands/my-command.md` (the
-symlink). OpenCode picks it up via `.opencode/commands/my-command.md`.
-Gemini CLI picks it up via `.gemini/commands/my-command.toml` (the
-transformed artifact). All point back at the same
-`.agent/commands/my-command.md` source. For skills, Codex and Amp
-discover them via `.agents/skills/<name>/SKILL.md`; Claude Code discovers
-them via `.claude/skills/<name>/SKILL.md`; OpenCode discovers them via
-either of those fallbacks.
-
-## Blueprint structured store
-
-Once you have blueprints, agents can query them via SQLite instead of reading raw markdown:
-
-```bash
-wp blueprint db build                        # cold-start: projects all markdown → SQLite
-wp blueprint db query next-ready-task        # what's the next unblocked task?
-wp blueprint db browse                       # Datasette UI (pip install datasette first)
-```
-
-The store is rebuilt from markdown on demand — it's never the source of truth, just
-a fast query layer. See [`blueprint-db-cookbook.md`](./blueprint-db-cookbook.md) for
-all nine pre-registered query templates.
-
-## Next steps
-
-- [`blueprint-format.md`](./blueprint-format.md) — the markdown +
-  frontmatter spec for blueprints.
-- [`lifecycle.md`](./lifecycle.md) — state machine + transitions.
-- [`architecture.md`](./architecture.md) — three-layer model + `wp compile` pipeline.
-- [`blueprint-db-cookbook.md`](./blueprint-db-cookbook.md) — SQLite query templates.
-- [`skills-catalog.md`](./skills-catalog.md) — what ships in the catalog +
-  upstream refresh plan.
+As of 2026-05-27, the source/GitHub Packages package is
+`@webpresso/agent-kit`; public npm `webpresso` is still a placeholder until the
+cutover completes. Current package references live in
+[`markdown-fact-check.md`](./markdown-fact-check.md).

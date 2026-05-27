@@ -283,7 +283,7 @@ Update docs so users and future agents understand why hook trust is auto-synced,
 **Files:**
 
 - Modify: `docs/hook-matrix.md`
-- Modify: `docs/getting-started.md` or `docs/presets.md`, whichever is the closest setup/troubleshooting surface after inspecting existing text
+- Modify: `docs/getting-started.md` or `docs/add-ons.md`, whichever is the closest setup/troubleshooting surface after inspecting existing text
 - Modify: `docs/research/2026-05-14-codex-official-types-hook-trust-alignment.md` only if implementation findings invalidate the recommendation
 
 **Steps (TDD):**
@@ -291,7 +291,7 @@ Update docs so users and future agents understand why hook trust is auto-synced,
 1. Add concise setup docs for app-server-derived trust sync.
 2. Add caveat: user-authored hooks are not auto-trusted by agent-kit.
 3. Add troubleshooting notes for missing `codex`, app-server failure, failure warnings, and manual `/hooks` inspection.
-4. Run: `bun run lint docs/hook-matrix.md docs/getting-started.md docs/presets.md` for touched docs.
+4. Run: `bun run lint docs/hook-matrix.md docs/getting-started.md docs/add-ons.md` for touched docs.
 5. Run docs checks if affected frontmatter/link rules require it: `bun run docs:check`.
 
 **Acceptance:**

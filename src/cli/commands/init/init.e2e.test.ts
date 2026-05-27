@@ -210,6 +210,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, '.actrc'))).toBe(true)
       expect(existsSync(path.join(repo, '.husky', 'pre-commit'))).toBe(true)
       expect(existsSync(path.join(repo, 'scripts', 'check-no-dev-vars.ts'))).toBe(true)
+      expect(existsSync(path.join(repo, 'scripts', 'verify-absolute-path-policy.ts'))).toBe(true)
 
       // Future-proof guard: PreToolUse should be fail-closed (deny JSON
       // fallback), not silent fail-open `|| true`.
@@ -240,6 +241,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
 
       expect(existsSync(path.join(repo, 'docs', 'templates', 'blueprint.md'))).toBe(true)
       expect(existsSync(path.join(repo, 'scripts', 'check-no-dev-vars.ts'))).toBe(true)
+      expect(existsSync(path.join(repo, 'scripts', 'verify-absolute-path-policy.ts'))).toBe(true)
       expect(existsSync(path.join(repo, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(
         true,
       )
@@ -451,7 +453,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.code).toBe(0)
       // Locks in the auto-generated help so adding a preset to PRESETS
       // automatically surfaces in --help and docs/code can't drift
-      // (the original gap that prompted docs/presets.md to exist).
+      // (the original gap that prompted docs/add-ons.md to exist).
       expect(r.stdout).toContain('Presets:')
       expect(r.stdout).toContain('context-mode')
       expect(r.stdout).toContain('lore-commits')

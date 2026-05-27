@@ -1,15 +1,27 @@
 ---
-title: GitHub Action — webpresso/webpresso-action
+title: GitHub Action
 type: guide
-last_updated: 2026-05-11
+last_updated: 2026-05-27
 ---
 
-# GitHub Action — webpresso/webpresso-action
+# GitHub Action
 
-The reusable GitHub Action for CI audit integration lives in a **separate repo**:
-`webpresso/webpresso-action` (to be created at `/tmp/wp-action-repo` — push to GitHub before v0.15.0 ships).
+The GitHub Action lives in a separate repo:
+`webpresso/webpresso-action`.
 
-## Quick start (once the repo is pushed)
+## Status
+
+This doc is a placeholder reference, not part of the core setup flow.
+
+Most users should start with:
+
+```bash
+wp setup
+```
+
+and add CI wiring later.
+
+## Intended usage
 
 ```yaml
 # .github/workflows/webpresso.yml
@@ -20,26 +32,13 @@ jobs:
       pr-comment: true
 ```
 
-## What it does
+The action is intended to run the repo audit in CI and optionally post a PR
+comment.
 
-Runs `wp audit --all --json` and posts a structured PR comment when `pr-comment: true`.
+## Local equivalent
 
-The action source is at `/tmp/wp-action-repo/` — push to `webpresso/webpresso-action` on GitHub
-as a public repo before the v0.15.0 release. Tag it `v1` after first push.
+Before depending on the action, make sure this passes locally:
 
-## Consumer rollout (Task 5.2)
-
-For monorepo and ingest-lens to adopt v0.15.0:
-
-1. Delete legacy outputs (one-time, before bumping):
-   ```bash
-   rm -rf .claude/rules/ .claude/skills/ .agents/skills/ .cursor/rules/ .windsurf/skills/
-   rm -f .windsurfrules .cursorrules
-   # Remove wp cursor-windsurf-sync from package.json scripts if present
-   ```
-2. Bump `webpresso` to `0.15.0`
-3. Run `wp setup --with base-kit --with example-skill`
-4. Run `wp compile`
-5. Run `wp audit --all` (verify clean)
-6. Add `.github/workflows/webpresso.yml` with the action above
-7. Commit with lore-protocol message
+```bash
+wp audit --all
+```

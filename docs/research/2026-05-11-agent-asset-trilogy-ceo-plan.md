@@ -4,7 +4,7 @@ title: Agent-asset trilogy — CEO plan (May 2026 SELECTIVE EXPANSION review)
 date: 2026-05-11
 last_updated: 2026-05-11
 mode: SELECTIVE_EXPANSION
-status: ACTIVE
+status: active
 related_blueprints:
   - agent-asset-compiler-multi-runtime
   - agent-knowledge-graph-mcp

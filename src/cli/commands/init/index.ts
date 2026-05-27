@@ -96,6 +96,7 @@ function parsePresets(withFlag: string | undefined): Preset[] {
 
 export interface InitFlags {
   with?: string
+  without?: string
   host?: string
   all?: boolean
   overwrite?: boolean
@@ -211,6 +212,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
   try {
     const selection = await resolveTier3Selection({
       withFlag: withFlagWithoutPresets,
+      withoutFlag: flags.without,
       allFlag: flags.all,
       yesFlag: acceptDefaults,
       existing: existingConfig?.installed.tier3Skills,
@@ -843,10 +845,13 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
     `Comma-separated Tier-3 skills and/or presets to install ` +
     `(non-interactive). Presets: ${PRESETS.join(', ')}. ` +
     `Tier-3 skills are listed by 'wp skill list'.`
+  const withoutHelp =
+    `Comma-separated Tier-3 skills to opt out of. ` + `base-kit is default-on unless passed here.`
 
   cli
     .command(commandName, description)
     .option('--with <skills>', withHelp)
+    .option('--without <skills>', withoutHelp)
     .option('--host <hosts>', 'Comma-separated host targets: codex, claude, opencode, all')
     .option('--all', 'Install every skill (Tier-1 + Tier-2 + all Tier-3)')
     .option(
