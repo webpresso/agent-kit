@@ -5,8 +5,10 @@ owner: agent-kit
 status: planned
 complexity: M
 created: 2026-05-26
-last_updated: 2026-05-26
+last_updated: 2026-05-27
 refined: 2026-05-26
+depends_on:
+  - planned/agent-kit-public-release-scrub
 scope_repo: /Users/ozby/repos/webpresso/agent-kit
 cross_repo_touch:
   - /Users/ozby/repos/webpresso/monorepo
@@ -91,6 +93,7 @@ Future user-facing setup command: `webpresso agent setup`.
 | `wp-setup-hook-surface-framework` | Framework-owned committed hook templates currently converge on `wp-*` hook helper names and reject `ak-*` drift. | Treat `wp-*` hook helpers as current implementation details, not public CLI aliases; future docs must name `webpresso agent setup` for user setup. |
 | `wp-setup-hook-surface-projector` | Agent-kit owns setup/projection behavior and must converge stale local `.codex/hooks.json` from mixed `ak-*` + `wp-*` state. | Keep projector implementation in agent-kit, but expose the user entry through the agent bundle. Any test still invoking `wp setup` must be labeled current-state until the cutover lands. |
 | `unified-cli-public-cutover` | `@webpresso/cli` owns public `webpresso`, `@webpresso/cli-host` owns shared runtime only, `@webpresso/cli-contract` owns bundle contracts, and `@webpresso-internal/cli` owns internal distribution. | Export the agent bundle and remove agent-kit public bin ownership in the same release wave that the monorepo mounts the bundle. |
+| `planned/agent-kit-public-release-scrub` | Agent-kit must be scanner-clean and disclosure-reviewed before any public repository visibility change. | Keep CLI/package visibility decisions aligned with the public-release scrub, and do not treat CLI cutover as permission to publish the repo. |
 
 ## Technology Choices
 

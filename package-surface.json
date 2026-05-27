@@ -2,6 +2,11 @@
   "staleLinks": [
     "webpresso/monorepo/webpresso/blueprints/draft/webpresso-public-extraction-roadmap"
   ],
+  "referenceConsumerBaselines": {
+    "@webpresso/webpresso": "0.3.6",
+    "@webpresso/db-branching": "0.2.4",
+    "@webpresso/db-branching-neon": "0.2.4"
+  },
   "tarball": {
     "forbiddenContentPatterns": [
       "ozby/ingest-lens",

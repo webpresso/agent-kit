@@ -683,14 +683,17 @@ Keep this task separate from reversible code prep.
 
 1. Confirm `NPM_TOKEN`/OTP and package ownership for `webpresso` and the
    `@webpresso/agent-*` packages.
-2. Run the release pipeline or `bun scripts/publish-webpresso.ts` according to
+2. Confirm the operation is package-tarball publication only. If the same
+   release event also makes the source repository or Git history public,
+   complete `planned/agent-kit-public-release-scrub` first.
+3. Run the release pipeline or `bun scripts/publish-webpresso.ts` according to
    repo release instructions.
-3. Verify `npm view webpresso version` returns the expected non-placeholder
+4. Verify `npm view webpresso version` returns the expected non-placeholder
    release version and confirm packed exports after publish.
-4. Run `npm deprecate <package-spec> "<migration message>"` for the old package
+5. Run `npm deprecate <package-spec> "<migration message>"` for the old package
    ranges only after the replacement package is visible.
-5. Verify `npm view <old-package> deprecated` returns the migration message.
-6. Record release evidence in the final report.
+6. Verify `npm view <old-package> deprecated` returns the migration message.
+7. Record release evidence in the final report.
 
 **Acceptance:**
 
@@ -719,6 +722,7 @@ Keep this task separate from reversible code prep.
 | Type | Reference | Relationship |
 | --- | --- | --- |
 | Upstream | Public `webpresso` staging/publish path in `scripts/publish-webpresso.ts` | This blueprint depends on the staged name swap to publish `webpresso`. |
+| Related planned | `planned/agent-kit-public-release-scrub` | This blueprint can publish a vetted `webpresso` tarball without exposing repo history; any source-repository public release must wait for the scrub. |
 | Related completed | `fold-webpresso-quality-engine-into-webpresso-agent-kit` pattern (referenced by prior plan) | Reuse extraction-parity and staged package verification discipline. |
 | Sibling | `ozby/ingest-lens` or operator-selected consumer PR | Provides external migration proof; do not edit from this repo without explicit checkout. |
 
