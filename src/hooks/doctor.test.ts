@@ -81,6 +81,40 @@ describe('hooks/doctor', () => {
       expect(result.ok).toBe(false)
     })
 
+    it('finds the owning package root instead of stopping at dist/esm/package.json', async () => {
+      const distPackage = join(repoRoot, 'dist', 'esm', 'package.json')
+      const knownPaths = new Set([
+        pkgJson,
+        pluginJson,
+        distPackage,
+      ])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === distPackage) {
+          return JSON.stringify({ type: 'module' })
+        }
+        if (String(path) === pkgJson) {
+          return JSON.stringify({
+            bin: {
+              wp: './bin/wp.js',
+            },
+          })
+        }
+        if (String(path) === pluginJson) {
+          return JSON.stringify({ version: '0.1.0', hooks: {}, mcpServers: {} })
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+
+      const { findOwningPackageRoot } = await import('#hooks/doctor')
+      const resolved = findOwningPackageRoot(join(repoRoot, 'dist', 'esm', 'hooks'))
+      expect(resolved).toBe(repoRoot)
+    })
+
     it('skips executable check on win32', async () => {
       // `node:os` is mocked at the top level of the file (linux). For this
       // test the win32 branch is gated by `process.platform`, set via the

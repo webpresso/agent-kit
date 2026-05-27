@@ -56,12 +56,33 @@ export interface RunHooksDoctorOptions {
 }
 
 function resolvePackageRoot(): string | null {
-  let dir = dirname(fileURLToPath(import.meta.url))
+  return findOwningPackageRoot(dirname(fileURLToPath(import.meta.url)))
+}
+
+export function findOwningPackageRoot(startDir: string): string | null {
+  let dir = startDir
+  let fallback: string | null = null
   while (dir !== dirname(dir)) {
-    if (tryAccess(join(dir, 'package.json'))) return dir
+    if (tryAccess(join(dir, 'package.json'))) {
+      if (fallback === null) fallback = dir
+      if (isOwningPackageRoot(dir)) return dir
+    }
     dir = dirname(dir)
   }
-  return null
+  return fallback
+}
+
+function isOwningPackageRoot(dir: string): boolean {
+  try {
+    const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf-8')) as {
+      bin?: Record<string, string>
+    }
+    if (typeof pkg.bin?.['wp'] === 'string') return true
+  } catch {
+    // Ignore malformed package.json here and fall back to structural markers below.
+  }
+
+  return tryAccess(join(dir, '.claude-plugin', 'plugin.json'))
 }
 
 function resolveHookBin(binName: string): string | null {
