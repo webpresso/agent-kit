@@ -89,6 +89,27 @@ describe('package-surface audit', () => {
     )
   })
 
+  test('does not match unscoped webpresso baseline inside a scoped @webpresso/webpresso lock entry', () => {
+    const root = tempRepo()
+    writeJson(join(root, 'package-surface.json'), {
+      referenceConsumerBaselines: {
+        webpresso: '0.18.18',
+      },
+    })
+    writeFileSync(join(root, 'pnpm-lock.yaml'), "'@webpresso/webpresso@0.3.8':\n")
+
+    const result = auditPackageSurface(root)
+
+    expect(result.violations).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: 'pnpm-lock.yaml',
+          message: expect.stringContaining('webpresso resolves to 0.3.8'),
+        }),
+      ]),
+    )
+  })
+
   test('passes current compatibility packages without an explicit contract', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'packages', 'ui'), { recursive: true })

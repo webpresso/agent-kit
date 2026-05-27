@@ -689,7 +689,10 @@ function findCatalogRange(workspaceText: string, packageName: string): string | 
 
 function findLockVersion(lockText: string, packageName: string): string | undefined {
   const escapedName = escapeRegExp(packageName)
-  const match = new RegExp(`${escapedName}@(\\d+\\.\\d+\\.\\d+(?:[-+][^'":\\s]+)?)`).exec(lockText)
+  const match = new RegExp(
+    `(?:^|[\\n\\s'"])${escapedName}@(\\d+\\.\\d+\\.\\d+(?:[-+][^'":\\s]+)?)(?=['":\\s]|$)`,
+    'm',
+  ).exec(lockText)
   return match?.[1]
 }
 
