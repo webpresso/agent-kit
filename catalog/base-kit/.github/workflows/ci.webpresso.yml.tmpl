@@ -32,6 +32,8 @@ jobs:
         with:
           bun-version: latest
       - run: pnpm install --frozen-lockfile
+      - run: pnpm run verify:secrets
+      - run: pnpm run audit:secret-provider-quarantine
       - run: pnpm run typecheck
       - run: pnpm run lint
 

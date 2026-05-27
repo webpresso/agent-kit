@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { buildSecretGateCommand, runSecretGateCommand } from './runner.js'
 
 describe('secret-gate runner', () => {
-  it('builds command through with-secrets env-profile contract', () => {
+  it('builds command through the canonical with-secrets shell contract by default', () => {
     const command = buildSecretGateCommand({
       command: 'act',
       args: ['-W', '.github/workflows/ci.yml'],
@@ -11,7 +11,7 @@ describe('secret-gate runner', () => {
 
     expect(command).toEqual({
       command: 'with-secrets',
-      args: ['--env-profile', 'secrets-only', '--', 'act', '-W', '.github/workflows/ci.yml'],
+      args: ['--', 'act', '-W', '.github/workflows/ci.yml'],
     })
   })
 

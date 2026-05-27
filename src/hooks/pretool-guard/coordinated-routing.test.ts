@@ -198,6 +198,28 @@ describe('coordinated routing pipeline', () => {
       expect(parsed.hookSpecificOutput?.permissionDecision).toBe('deny')
       expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain('wp_test')
     })
+
+    it('ctx_execute shell code with env-prefixed vitest → deny with wp_test guidance', async () => {
+      const processValidation = await getRunner()
+      try {
+        processValidation(
+          makeContextExecuteInput(
+            'WP_SKIP_UPDATE_CHECK=1 vp exec vitest run src/mcp/blueprint-server.test.ts 2>&1 | tail -120',
+          ),
+        )
+      } catch {
+        // process.exit throws
+      }
+      const output = getLastOutput()
+      const parsed = JSON.parse(output) as {
+        hookSpecificOutput?: {
+          permissionDecision?: string
+          permissionDecisionReason?: string
+        }
+      }
+      expect(parsed.hookSpecificOutput?.permissionDecision).toBe('deny')
+      expect(parsed.hookSpecificOutput?.permissionDecisionReason).toContain('wp_test')
+    })
   })
 
   // Category 7: Repeated dev-workflow commands stay denied

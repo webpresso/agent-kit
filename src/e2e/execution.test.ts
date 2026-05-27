@@ -72,6 +72,32 @@ describe('e2e execution helpers', () => {
     expect(result).toBe(groups)
   })
 
+  it('uses generic planner when runner is explicitly requested, even if host adapter exists', async () => {
+    const groups = [{ batchKey: 'generic', runs: [] }]
+    const buildExecutionPlan = vi.fn(() => [{ batchKey: 'host', runs: [] }])
+    loadConfiguredHostAdapter.mockResolvedValue({
+      adapter: {
+        buildExecutionPlan,
+      },
+    })
+    planGenericE2eRun.mockReturnValue(groups)
+
+    const result = await createE2eExecutionPlan({
+      runner: 'vitest',
+      files: ['src/cli/commands/init/init.e2e.test.ts'],
+    })
+
+    expect(planGenericE2eRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runner: 'vitest',
+        files: ['src/cli/commands/init/init.e2e.test.ts'],
+      }),
+    )
+    expect(buildExecutionPlan).not.toHaveBeenCalled()
+    expect(planE2eRun).not.toHaveBeenCalled()
+    expect(result).toBe(groups)
+  })
+
   it('falls through to planE2eRun when host adapter has no custom builder', async () => {
     const adapter = {
       listSuites: vi.fn(),

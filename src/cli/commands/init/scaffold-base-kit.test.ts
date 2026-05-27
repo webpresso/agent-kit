@@ -35,6 +35,7 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, '.husky', 'commit-msg'))).toBe(true)
     expect(existsSync(join(repoRoot, '.github', 'workflows', 'ci.webpresso.yml'))).toBe(true)
     expect(existsSync(join(repoRoot, 'scripts', 'check-no-dev-vars.ts'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'test', '.gitkeep'))).toBe(true)
     expect(existsSync(join(repoRoot, 'e2e', '.gitkeep'))).toBe(true)
   })
@@ -63,6 +64,9 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
       'bun scripts/check-no-dev-vars.ts',
     )
+    expect((pkg['scripts'] as Record<string, string>)['audit:secret-provider-quarantine']).toBe(
+      'bun scripts/audit-secret-provider-quarantine.ts',
+    )
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
   })
 
@@ -83,6 +87,9 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
       'bun scripts/check-no-dev-vars.ts',
+    )
+    expect((pkg['scripts'] as Record<string, string>)['audit:secret-provider-quarantine']).toBe(
+      'bun scripts/audit-secret-provider-quarantine.ts',
     )
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
     expect((pkg['scripts'] as Record<string, string>)['test']).toBe('vitest')
@@ -105,6 +112,9 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('vp exec wp setup')
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
       'bun scripts/check-no-dev-vars.ts',
+    )
+    expect((pkg['scripts'] as Record<string, string>)['audit:secret-provider-quarantine']).toBe(
+      'bun scripts/audit-secret-provider-quarantine.ts',
     )
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
     expect((pkg['devDependencies'] as Record<string, string>)['webpresso']).toBe('^0.2.0')
@@ -130,6 +140,9 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('pnpm -C packages prebuild')
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
       'echo custom secret check',
+    )
+    expect((pkg['scripts'] as Record<string, string>)['audit:secret-provider-quarantine']).toBe(
+      'bun scripts/audit-secret-provider-quarantine.ts',
     )
   })
 
@@ -158,6 +171,9 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
       'bun scripts/check-no-dev-vars.ts',
+    )
+    expect((pkg['scripts'] as Record<string, string>)['audit:secret-provider-quarantine']).toBe(
+      'bun scripts/audit-secret-provider-quarantine.ts',
     )
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
   })

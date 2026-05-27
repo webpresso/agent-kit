@@ -209,6 +209,7 @@ Extends `.husky/pre-commit` (after `base-kit`) with a pre-commit secret check.
 
 ```bash
 bun scripts/check-no-dev-vars.ts
+bun scripts/audit-secret-provider-quarantine.ts
 ```
 
 This check scans the repo for files named `.dev.vars`, `.dev.vars.example`,
@@ -225,11 +226,16 @@ writes the following core defaults:
 - `.actrc` defaults for local GitHub Actions local test runner parity
 - `.husky/pre-commit` + `.husky/commit-msg`
 - `scripts/check-no-dev-vars.ts` + `verify:secrets` script wiring
+- `scripts/audit-secret-provider-quarantine.ts` + `audit:secret-provider-quarantine` script wiring
 - `.github/workflows/ci.webpresso.yml`
 - empty `test/` and `e2e/` seed directories
 
 There is no external network/tool dependency for this option; the scaffolding is
 file-system-only plus local `package.json` metadata updates.
+
+Default behavior note: when `wp setup` runs without an explicit Tier-3
+selection (`--with` / `--all` / existing config), `base-kit` is selected by
+default.
 
 ## Adding new presets
 

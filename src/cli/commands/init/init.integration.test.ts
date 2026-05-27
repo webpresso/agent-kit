@@ -216,7 +216,7 @@ describe('wp init end-to-end', () => {
     const companionFiles = findCompanionFiles(repo)
     expect(companionFiles).toEqual([])
 
-    // No tier-3 skills installed by default — unified sync filters by allowedSkillSlugs
+    // Only base-kit is installed by default; other Tier-3 skills remain opt-in.
     expect(existsSync(join(repo, '.agent', 'skills', 'tanstack-query'))).toBe(false)
 
     // monorepo-navigation is rendered into the canonical consumer-owned skill
@@ -262,7 +262,7 @@ describe('wp init end-to-end', () => {
     const rc = JSON.parse(readFileSync(join(repo, '.webpressorc.json'), 'utf8')) as {
       installed: { tier3Skills: string[] }
     }
-    expect(rc.installed.tier3Skills).toEqual([])
+    expect(rc.installed.tier3Skills).toEqual(['base-kit'])
   })
 
   it('installs Tier-3 skills when --with is passed', async () => {
@@ -297,7 +297,7 @@ describe('wp init end-to-end', () => {
       installed: { tier3Skills: string[] }
     }
     expect(rc.blueprintsDir).toBe('webpresso/blueprints')
-    expect(rc.installed.tier3Skills).toEqual([])
+    expect(rc.installed.tier3Skills).toEqual(['base-kit'])
 
     const agents = readFileSync(join(repo, 'AGENTS.md'), 'utf8')
     expect(agents).toContain('[`webpresso/blueprints/`](./webpresso/blueprints/)')

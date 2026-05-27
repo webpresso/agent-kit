@@ -27,6 +27,7 @@ export interface ScaffoldAuditHooksResult {
 const AUDIT_HOOK_LINES = [
   '# webpresso audit hooks (staged mode — fast)',
   'bun scripts/check-no-dev-vars.ts',
+  'bun scripts/audit-secret-provider-quarantine.ts',
 ] as const
 
 const SHEBANG = '#!/bin/sh\n'

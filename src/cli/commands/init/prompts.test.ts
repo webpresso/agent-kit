@@ -54,15 +54,15 @@ describe('resolveTier3Selection', () => {
     expect(r.selected).toEqual(['tanstack-query'])
   })
 
-  it('defaults to empty with --yes and no existing config', async () => {
+  it('defaults to base-kit with --yes and no existing config', async () => {
     const r = await resolveTier3Selection({ yesFlag: true, isTTY: true })
     expect(r.source).toBe('default')
-    expect(r.selected).toEqual([])
+    expect(r.selected).toEqual(['base-kit'])
   })
 
-  it('defaults to empty when stdin is not a TTY', async () => {
+  it('defaults to base-kit when stdin is not a TTY', async () => {
     const r = await resolveTier3Selection({ isTTY: false })
     expect(r.source).toBe('default')
-    expect(r.selected).toEqual([])
+    expect(r.selected).toEqual(['base-kit'])
   })
 })

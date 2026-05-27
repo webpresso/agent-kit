@@ -15,6 +15,9 @@ import {
 
 function codexBinCommand(repoRoot: string, name: string): string {
   const binPath = join(repoRoot, 'node_modules', '.bin', name)
+  if (name === 'wp-pretool-guard') {
+    return `[ -x "${binPath}" ] && "${binPath}" || printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp-pretool-guard is unavailable. Run vp install or wp setup."}}'`
+  }
   return `[ -x "${binPath}" ] && "${binPath}" || true`
 }
 
@@ -1297,7 +1300,7 @@ hooks:
     expect(postToolCommands).toContain(codexBinCommand(repoRoot, 'wp-post-tool'))
   })
 
-  it('gracefully no-ops Codex hook commands before node_modules bins exist instead of failing with 127', async () => {
+  it('fails closed for missing wp-pretool-guard and fails open for other missing Codex hook bins', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {} })
 
     const siblingCwd = mkdtempSync(join(repoRoot, 'codex-missing-bins-'))
@@ -1305,24 +1308,49 @@ hooks:
       hooks: Record<string, Array<{ hooks: Array<{ command: string }> }>>
     }
 
-    const commands = [
-      'SessionStart',
-      'PreToolUse',
-      'PostToolUse',
-      'UserPromptSubmit',
-      'Stop',
-    ].flatMap((event) =>
-      (codex.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
-    )
+    const commandByEvent = {
+      SessionStart: (codex.hooks.SessionStart ?? []).flatMap((group) =>
+        group.hooks.map((hook) => hook.command),
+      ),
+      PreToolUse: (codex.hooks.PreToolUse ?? []).flatMap((group) =>
+        group.hooks.map((hook) => hook.command),
+      ),
+      PostToolUse: (codex.hooks.PostToolUse ?? []).flatMap((group) =>
+        group.hooks.map((hook) => hook.command),
+      ),
+      UserPromptSubmit: (codex.hooks.UserPromptSubmit ?? []).flatMap((group) =>
+        group.hooks.map((hook) => hook.command),
+      ),
+      Stop: (codex.hooks.Stop ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
+    }
 
-    expect(commands.length).toBeGreaterThan(0)
-    for (const command of commands) {
-      const result = spawnSync('sh', ['-lc', command], {
+    const runFromSibling = (command: string) =>
+      spawnSync('sh', ['-c', command], {
         cwd: siblingCwd,
         encoding: 'utf8',
         env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
       })
-      expect(result.status, command).toBe(0)
+
+    const preTool = commandByEvent.PreToolUse[0]
+    expect(preTool).toBeTypeOf('string')
+    const preToolResult = runFromSibling(preTool ?? '')
+    expect(preToolResult.status, preTool).toBe(0)
+    expect(preToolResult.stdout).toContain('"hookEventName":"PreToolUse"')
+    expect(preToolResult.stdout).toContain('"permissionDecision":"deny"')
+    expect(preToolResult.stdout).toContain('"wp-pretool-guard is unavailable.')
+
+    const failOpenEvents: Array<keyof typeof commandByEvent> = [
+      'SessionStart',
+      'PostToolUse',
+      'UserPromptSubmit',
+      'Stop',
+    ]
+    for (const event of failOpenEvents) {
+      for (const command of commandByEvent[event]) {
+        const result = runFromSibling(command)
+        expect(result.status, `${event}: ${command}`).toBe(0)
+        expect(result.stdout, `${event}: ${command}`).toBe('')
+      }
     }
   })
 
@@ -1364,7 +1392,7 @@ hooks:
     }
     const command = codex.hooks.Stop[0]?.hooks[0]?.command
 
-    const result = spawnSync('sh', ['-lc', command ?? ''], {
+    const result = spawnSync('sh', ['-c', command ?? ''], {
       cwd: siblingCwd,
       encoding: 'utf8',
     })
@@ -1396,7 +1424,7 @@ hooks:
 
     expect(commands.length).toBeGreaterThan(0)
     for (const command of commands) {
-      const result = spawnSync('sh', ['-lc', command], {
+      const result = spawnSync('sh', ['-c', command], {
         cwd: siblingCwd,
         encoding: 'utf8',
         env: {
@@ -1430,7 +1458,7 @@ hooks:
 
     expect(commands.length).toBeGreaterThan(0)
     for (const command of commands) {
-      const result = spawnSync('sh', ['-lc', command], {
+      const result = spawnSync('sh', ['-c', command], {
         cwd: siblingCwd,
         encoding: 'utf8',
         env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },

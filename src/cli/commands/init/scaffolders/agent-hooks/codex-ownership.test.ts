@@ -41,7 +41,7 @@ describe('isWebpressoOwnedCodexHook', () => {
       isWebpressoOwnedCodexHook(
         ownedHook({
           command:
-            '[ -x "/repo/node_modules/.bin/wp-post-tool" ] && "/repo/node_modules/.bin/wp-post-tool" || true',
+            '[ -x "/repo/node_modules/.bin/wp-post-tool" ] && "/repo/node_modules/.bin/wp-post-tool" || printf "%s\\n" "{}"',
         }),
         EXPECTED_SOURCE_PATHS,
       ),

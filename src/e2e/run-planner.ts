@@ -17,18 +17,33 @@ export interface GenericE2ePlanInput extends E2eCommandRequest {
   config?: string
 }
 
+function defaultConfigPathForRunner(
+  runner: E2eStepDefinition['runner'] | undefined,
+): string | undefined {
+  switch (runner) {
+    case 'vitest':
+      return 'vitest.config.ts'
+    case 'command':
+      return undefined
+    case 'playwright':
+    default:
+      return 'playwright.config.ts'
+  }
+}
+
 export function planGenericE2eRun(input: GenericE2ePlanInput): PlannedE2eRunGroup[] {
+  const runner = input.runner ?? 'playwright'
   const suite = defineE2eSuite({
     id: input.suite ?? 'default',
     fileMatchers: [],
     batchKey: input.suite ?? 'default',
     steps: [
       {
-        runner: input.runner ?? 'playwright',
+        runner,
         logName: input.suite ?? 'default',
-        configPath: input.config ?? 'playwright.config.ts',
-        supportsHeaded: input.runner !== 'vitest' && input.runner !== 'command',
-        supportsDebug: input.runner !== 'vitest' && input.runner !== 'command',
+        configPath: input.config ?? defaultConfigPathForRunner(runner),
+        supportsHeaded: runner !== 'vitest' && runner !== 'command',
+        supportsDebug: runner !== 'vitest' && runner !== 'command',
       },
     ],
   })

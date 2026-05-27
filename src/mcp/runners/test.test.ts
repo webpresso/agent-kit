@@ -11,7 +11,16 @@ vi.mock('node:child_process', () => ({
   spawn: spawnMock,
 }))
 
-function fakeChild(opts: { stdout?: string; stderr?: string; exitCode?: number } = {}): unknown {
+function fakeChild(
+  opts: {
+    stdout?: string
+    stderr?: string
+    exitCode?: number
+    hang?: boolean
+    killCapture?: { signal: NodeJS.Signals | null }
+  } = {},
+): unknown {
+  let closeFn: ((code: number | null, signal?: NodeJS.Signals | null) => void) | null = null
   return {
     stdout: {
       on: (event: string, fn: (data: Buffer) => void) => {
@@ -23,8 +32,15 @@ function fakeChild(opts: { stdout?: string; stderr?: string; exitCode?: number }
         if (event === 'data' && opts.stderr) fn(Buffer.from(opts.stderr))
       },
     },
-    on: (event: string, fn: (code: number) => void) => {
-      if (event === 'close') queueMicrotask(() => fn(opts.exitCode ?? 0))
+    on: (event: string, fn: (code: number | null, signal?: NodeJS.Signals | null) => void) => {
+      if (event === 'close') {
+        closeFn = fn
+        if (!opts.hang) queueMicrotask(() => fn(opts.exitCode ?? 0))
+      }
+    },
+    kill: (signal: NodeJS.Signals) => {
+      if (opts.killCapture) opts.killCapture.signal = signal
+      if (closeFn) queueMicrotask(() => closeFn?.(null, signal))
     },
   }
 }
@@ -152,6 +168,20 @@ describe('test runner', () => {
     expect(result.passed).toBe(false)
     expect(result.exitCode).toBe(1)
     expect(result.output).toContain('oops')
+  })
+
+  it('stops package iteration after a timed out package', async () => {
+    const killCapture: { signal: NodeJS.Signals | null } = { signal: null }
+    spawnMock
+      .mockReturnValueOnce(fakeChild({ hang: true, killCapture }))
+      .mockReturnValueOnce(fakeChild({ stdout: 'should-not-run\n', exitCode: 0 }))
+
+    const result = await runTests({ packages: ['a', 'b'], timeoutMs: 1 })
+
+    expect(spawnMock).toHaveBeenCalledTimes(1)
+    expect(killCapture.signal).toBe('SIGTERM')
+    expect(result.passed).toBe(false)
+    expect(result.timedOut).toBe(true)
   })
 
   it('runs bare `vp run test` when no packages or files given', async () => {

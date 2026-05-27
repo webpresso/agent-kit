@@ -11,11 +11,9 @@ env:
   # surfaced by actions/checkout@v4, actions/setup-node@v4, and
   # pnpm/action-setup@v4 internally running on Node 20).
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-  # Authenticate to GitHub Packages so `pnpm install --frozen-lockfile`
-  # can fetch @webpresso/* scoped deps (e.g. @webpresso/webpresso). `.npmrc` references ${GH_PACKAGES_TOKEN};
-  # without this env entry the substitution becomes empty and pnpm gets
-  # 401 Unauthorized. Mirrors release.yml's per-job auth wiring at
-  # workflow scope so check/test/wp-audits all inherit it.
+  # Keep `.npmrc`'s GitHub Packages token substitution available during
+  # `pnpm install --frozen-lockfile`; agent-kit no longer has a hard
+  # dependency on @webpresso/webpresso.
   GH_PACKAGES_TOKEN: ${{ github.token }}
 
 jobs:
@@ -76,11 +74,11 @@ jobs:
             '@webpresso:registry=https://npm.pkg.github.com' \
             "//npm.pkg.github.com/:_authToken=${GH_PACKAGES_TOKEN}" \
             >"$tmp_npmrc"
-          if ! NPM_CONFIG_USERCONFIG="$tmp_npmrc" npm view @webpresso/webpresso@latest dist.tarball --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
+          if ! NPM_CONFIG_USERCONFIG="$tmp_npmrc" npm view @webpresso/agent-kit@latest dist.tarball --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
             echo "packages_token_ok=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if NPM_CONFIG_USERCONFIG="$tmp_npmrc" npm pack @webpresso/webpresso@latest --registry=https://npm.pkg.github.com --ignore-scripts --pack-destination "${RUNNER_TEMP:-/tmp}" >/dev/null 2>&1; then
+          if NPM_CONFIG_USERCONFIG="$tmp_npmrc" npm pack @webpresso/agent-kit@latest --registry=https://npm.pkg.github.com --ignore-scripts --pack-destination "${RUNNER_TEMP:-/tmp}" >/dev/null 2>&1; then
             echo "packages_token_ok=true" >> "$GITHUB_OUTPUT"
           else
             echo "packages_token_ok=false" >> "$GITHUB_OUTPUT"

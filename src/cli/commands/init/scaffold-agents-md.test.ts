@@ -119,7 +119,9 @@ describe('renderAgentsMd', () => {
       'setup:agent runs wp setup, which scaffolds .agent/, AGENTS.md, hooks, and runs wp sync',
     )
     expect(rendered).toContain("agent-kit's catalog is the single source of truth")
-    expect(rendered).toContain('Webpresso CLI owns the public command surface (`webpresso agent ...`)')
+    expect(rendered).toContain(
+      'Webpresso CLI owns the public command surface (`webpresso agent ...`)',
+    )
     expect(rendered).toContain('`wp setup`; public replacement: `webpresso agent setup`')
     expect(rendered).toContain('`wp sync`; public replacement: `webpresso agent sync`')
     expect(rendered).toContain('`wp setup --project` is current-state migration wording')

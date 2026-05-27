@@ -128,41 +128,47 @@ describe('mcp server integration', () => {
       inputSchema: { type: string; properties?: Record<string, unknown> }
       outputSchema?: { type: string; properties?: Record<string, unknown> }
     }>
-    const akTest = tools.find((t) => t.name === 'wp_test')
-    expect(akTest).toBeDefined()
-    expect(akTest?.inputSchema.type).toBe('object')
-    expect(akTest?.inputSchema.properties).toMatchObject({
+    const wpTest = tools.find((t) => t.name === 'wp_test')
+    expect(wpTest).toBeDefined()
+    expect(wpTest?.inputSchema.type).toBe('object')
+    expect(wpTest?.inputSchema.properties).toMatchObject({
       packages: expect.any(Object),
       files: expect.any(Object),
     })
-    expect(akTest?.inputSchema.properties).not.toHaveProperty('backend')
-    expect(akTest?.inputSchema.properties).not.toHaveProperty('suite')
-    expect(akTest?.outputSchema?.properties).toMatchObject({
+    expect(wpTest?.inputSchema.properties).not.toHaveProperty('backend')
+    expect(wpTest?.inputSchema.properties).not.toHaveProperty('suite')
+    expect(wpTest?.outputSchema?.properties).toMatchObject({
       passed: expect.any(Object),
       summary: expect.any(Object),
     })
 
-    const akE2e = tools.find((t) => t.name === 'wp_e2e')
-    expect(akE2e).toBeDefined()
-    expect(akE2e?.inputSchema.properties).toMatchObject({
+    const wpE2e = tools.find((t) => t.name === 'wp_e2e')
+    expect(wpE2e).toBeDefined()
+    expect(wpE2e?.inputSchema.properties).toMatchObject({
       suite: expect.any(Object),
       files: expect.any(Object),
       headed: expect.any(Object),
     })
-    expect(akE2e?.outputSchema?.properties).toMatchObject({
+    expect(wpE2e?.outputSchema?.properties).toMatchObject({
       passed: expect.any(Object),
       summary: expect.any(Object),
       details: expect.any(Object),
     })
 
-    const akAudit = tools.find((t) => t.name === 'wp_audit')
-    expect(akAudit).toBeDefined()
+    const wpAudit = tools.find((t) => t.name === 'wp_audit')
+    expect(wpAudit).toBeDefined()
     expect(
-      (akAudit?.inputSchema.properties?.kind as { enum?: unknown[] } | undefined)?.enum ?? [],
+      (wpAudit?.inputSchema.properties?.kind as { enum?: unknown[] } | undefined)?.enum ?? [],
     ).toContain('agents')
     expect(
-      (akAudit?.inputSchema.properties?.kind as { enum?: unknown[] } | undefined)?.enum ?? [],
+      (wpAudit?.inputSchema.properties?.kind as { enum?: unknown[] } | undefined)?.enum ?? [],
     ).toContain('architecture-drift')
+
+    const names = tools.map((t) => t.name)
+    expect(names).toEqual(
+      expect.arrayContaining(['wp_worker_tail', 'wp_ci_act', 'wp_lint', 'wp_qa', 'wp_typecheck']),
+    )
+    expect(names.filter((name) => name.startsWith('ak_'))).toEqual([])
   }, 20_000)
 
   // Regression: Claude Code 2.1.x and OpenCode call prompts/list and

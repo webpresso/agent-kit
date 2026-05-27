@@ -1,12 +1,7 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest'
-
-vi.mock('@webpresso/webpresso/runtime/env', () => ({
-  getSecretsConfigPath: () => '/repo/.git/webpresso/secrets.json',
-  readSecretsConfig: () => null,
-  runSecretManagerSetup: async () => ({ manager: 'doppler', projectId: 'mock-project' }),
-  secretManagerRegistry: new Map(),
-  writeSecretsConfig: () => {},
-}))
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 let runSecretsConfigCommand: typeof import('./config.js').runSecretsConfigCommand
 
@@ -26,6 +21,19 @@ function makeWriter() {
     output: () => chunks.join(''),
   }
 }
+
+const tempRoots: string[] = []
+
+function makeRepo() {
+  const root = mkdtempSync(join(tmpdir(), 'wp-config-secrets-'))
+  mkdirSync(join(root, '.git'))
+  tempRoots.push(root)
+  return root
+}
+
+afterEach(() => {
+  while (tempRoots.length > 0) rmSync(tempRoots.pop()!, { recursive: true, force: true })
+})
 
 describe('wp config secrets', () => {
   it('shows setup guidance when no config exists', async () => {
@@ -71,6 +79,36 @@ describe('wp config secrets', () => {
     expect(stdout.output()).toContain('Configured doppler project ozby-shell')
   })
 
+  it('persists explicit selections without loading the webpresso framework runtime', async () => {
+    const root = makeRepo()
+    const stdout = makeWriter()
+    const exitCode = await runSecretsConfigCommand(
+      'set',
+      ['infisical', 'shell-worker'],
+      { cwd: root, label: 'Shell Worker' },
+      { stdout: stdout.writer },
+    )
+
+    const configPath = join(root, '.git', 'webpresso', 'secrets.json')
+    expect(exitCode).toBe(0)
+    expect(existsSync(configPath)).toBe(true)
+    expect(JSON.parse(readFileSync(configPath, 'utf8'))).toEqual({
+      manager: 'infisical',
+      projectId: 'shell-worker',
+      projectLabel: 'Shell Worker',
+    })
+
+    const show = makeWriter()
+    await expect(
+      runSecretsConfigCommand('show', [], { cwd: root, json: true }, { stdout: show.writer }),
+    ).resolves.toBe(0)
+    expect(JSON.parse(show.output())).toMatchObject({
+      configured: true,
+      path: configPath,
+      config: { manager: 'infisical', projectId: 'shell-worker' },
+    })
+  })
+
   it('reports healthy status when the selected adapter is available and authenticated', async () => {
     const stdout = makeWriter()
     const exitCode = await runSecretsConfigCommand(
@@ -97,7 +135,13 @@ describe('wp config secrets', () => {
     expect(stdout.output()).toContain('authenticated: yes')
   })
 
-  it('delegates setup to the shared runtime flow', async () => {
+  it('returns a deterministic setup diagnostic when no setup dependency is injected', async () => {
+    await expect(runSecretsConfigCommand('setup', [], { cwd: makeRepo() })).rejects.toThrow(
+      /Interactive secret-manager setup is not bundled/,
+    )
+  })
+
+  it('supports injected setup flows without requiring a framework runtime', async () => {
     const setup = vi.fn(async () => ({ manager: 'doppler' as const, projectId: 'ozby-shell' }))
     const stdout = makeWriter()
     const exitCode = await runSecretsConfigCommand(
@@ -117,5 +161,12 @@ describe('wp config secrets', () => {
       ok: true,
       config: { manager: 'doppler', projectId: 'ozby-shell' },
     })
+  })
+
+  it('guards against reintroducing a required framework runtime import', () => {
+    const commandSource = readFileSync(resolve(import.meta.dirname, 'config.ts'), 'utf8')
+
+    expect(commandSource).not.toContain('@webpresso/webpresso/runtime/env')
+    expect(commandSource).not.toContain("import('@webpresso/webpresso")
   })
 })

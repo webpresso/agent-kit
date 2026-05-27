@@ -27,17 +27,18 @@ function extractProbedPackages(workflow: string): string[] {
 }
 
 describe('auth preflight package probes', () => {
-  it('probe a published direct dependency instead of a framework-internal leaf package', () => {
+  it('probes the agent-kit package instead of requiring the framework package', () => {
     const deps = readPackageJson().dependencies ?? {}
-    expect(deps['@webpresso/webpresso']).toBeDefined()
+    expect(deps['@webpresso/webpresso']).toBeUndefined()
     expect(deps['@webpresso/runtime-storage']).toBeUndefined()
 
     for (const workflowPath of workflowPaths) {
       const workflow = readWorkflow(workflowPath)
       expect(extractProbedPackages(workflow)).toEqual([
-        '@webpresso/webpresso',
-        '@webpresso/webpresso',
+        '@webpresso/agent-kit',
+        '@webpresso/agent-kit',
       ])
+      expect(workflow.includes('@webpresso/webpresso@latest')).toBe(false)
       expect(workflow.includes('@webpresso/runtime@latest')).toBe(false)
     }
   })

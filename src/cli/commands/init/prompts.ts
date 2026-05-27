@@ -4,7 +4,7 @@
  * Kept deliberately minimal: we don't pull in an interactive prompt library.
  * If the user runs `wp init` in a TTY without flags, we use `node:readline/promises`
  * to ask a single yes/no per Tier-3 skill. If stdin isn't a TTY and no flags
- * are provided, we default to installing Tier-1/Tier-2 only.
+ * are provided, we default to installing the `base-kit` Tier-3 bootstrap.
  */
 import { createInterface } from 'node:readline/promises'
 
@@ -19,6 +19,7 @@ export const TIER3_SKILLS = [
 ] as const
 
 export type Tier3Skill = (typeof TIER3_SKILLS)[number]
+const DEFAULT_TIER3_SKILLS: readonly Tier3Skill[] = ['base-kit']
 
 export interface ResolveSkillsInput {
   withFlag?: string
@@ -82,7 +83,7 @@ export async function resolveTier3Selection(
   }
 
   if (input.yesFlag || !input.isTTY) {
-    return { selected: [], aborted: false, source: 'default' }
+    return { selected: [...DEFAULT_TIER3_SKILLS], aborted: false, source: 'default' }
   }
 
   return interactivePrompt(input)

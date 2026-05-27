@@ -10,9 +10,11 @@ catalogs, planning conventions, drift checks, and quality gates. Those surfaces
 then diverge across Claude Code, Codex, Cursor, Windsurf, Gemini, OpenCode, and
 local CI.
 
-Webpresso packages that operating layer. The published package is
-`webpresso`; it exposes the `wp`, `webpresso`, and `wp` CLI aliases
-that scaffold, sync, audit, and refresh the surfaces each tool expects.
+Webpresso packages that operating layer. During the v0.x migration the
+published package exposes working `wp` and `webpresso` command aliases that
+scaffold, sync, audit, and refresh the surfaces each tool expects. Durable
+public CLI branding is being consolidated under the `webpresso ...` command
+family; `wp_*` names in this README refer to MCP tools, not CLI brands.
 
 ## What does webpresso do?
 
@@ -23,8 +25,10 @@ that scaffold, sync, audit, and refresh the surfaces each tool expects.
   and `.agents/`.
 - Installs or refreshes companion workflow tools that stay owned by their own
   projects, then wires them into the repo where appropriate.
-- Provides `wp_*` MCP tools and `wp` / `wp` CLI commands for tests, lint,
-  typecheck, E2E, audits, blueprints, skills, and tech-debt lifecycle work.
+- Provides `wp_*` MCP tools for tests, lint, typecheck, E2E, audits,
+  blueprints, local CI act, Worker tail, skills, and tech-debt lifecycle work;
+  current `wp ...` CLI examples are v0.x migration examples, not durable public
+  brand commitments.
 
 ## Companion tools and links
 
@@ -47,7 +51,7 @@ tool contracts, and audits rather than prompts alone.
 
 ## Runtime requirements
 
-Published `wp` / `webpresso` bins now ship as stable Node launchers. They prefer
+Current v0.x `wp` and `webpresso` bins ship as Node launchers. They prefer
 packaged `dist/esm` output and only fall back to `bun + src/*.ts` when you are
 running directly from a source checkout.
 
@@ -167,7 +171,7 @@ Migration details:
 wp setup
 ```
 
-`wp setup` (alias: `wp setup`) is re-runnable. By default it refreshes the sections, structured config keys, and generated surfaces that webpresso owns, while leaving divergent consumer-owned files untouched and reported as drift. Use `--overwrite` only when you intentionally want full-file replacement for eligible managed files. Hooks are patched additively into `.claude/settings.json` and `.codex/hooks.json` — your custom hooks survive. Setup also repairs the managed `.gitignore` block so regenerated `.codex/`, `.omx/`, `.agent/`, and IDE projection outputs stay out of Git.
+Current v0.x `wp setup` / `webpresso setup` is re-runnable. By default it refreshes the sections, structured config keys, and generated surfaces that webpresso owns, while leaving divergent consumer-owned files untouched and reported as drift. Use `--overwrite` only when you intentionally want full-file replacement for eligible managed files. Hooks are patched additively into `.claude/settings.json` and `.codex/hooks.json` — your custom hooks survive. Setup also repairs the managed `.gitignore` block so regenerated `.codex/`, `.omx/`, `.agent/`, and IDE projection outputs stay out of Git.
 
 ### 3. Implementation plans that don't rot
 
@@ -228,7 +232,7 @@ Two paths exist because Codex CLI doesn't ship a plugin marketplace yet ([config
 /plugin install webpresso@webpresso
 ```
 
-You get: hooks (PreToolUse, PostToolUse, Stop, SessionStart), the `wp` MCP server with seven tools (`wp_test`, `wp_e2e`, `wp_lint`, `wp_typecheck`, `wp_qa`, `wp_audit`, `wp_blueprint`), slash commands, and the skills catalog. Pin to release tags — `main` does not ship `dist/`. Hot-reload from source: see [CONTRIBUTING.md](./CONTRIBUTING.md#edge-local-plugin-link-hot-reload-hooks-from-source).
+You get: hooks (PreToolUse, PostToolUse, Stop, SessionStart), the `wp` MCP server with tools such as `wp_test`, `wp_e2e`, `wp_lint`, `wp_typecheck`, `wp_qa`, `wp_audit`, `wp_blueprint`, `wp_ci_act`, and `wp_worker_tail`, slash commands, and the skills catalog. Pin to release tags — `main` does not ship `dist/`. Hot-reload from source: see [CONTRIBUTING.md](./CONTRIBUTING.md#edge-local-plugin-link-hot-reload-hooks-from-source).
 
 ### Path B — global install + `wp setup`
 
@@ -239,7 +243,7 @@ wp setup
 
 Required for Codex CLI, OpenCode, Cursor, Gemini, and any IDE without a plugin marketplace. Same hooks, scaffolded into `.claude/settings.json` AND `.codex/hooks.json`. Library imports (`defineAgentKitConfig`, `createAkTestCommandConfig`) flow through this path too.
 
-If the `claude` CLI is on PATH, `wp setup` / `wp setup` now also attempts to ensure the **Claude Code user-scope marketplace + plugin** automatically:
+If the `claude` CLI is on PATH, current v0.x `wp setup` / `webpresso setup` now also attempts to ensure the **Claude Code user-scope marketplace + plugin** automatically:
 
 ```bash
 claude plugin marketplace add --scope user <webpresso-package-root>
@@ -249,7 +253,7 @@ claude plugin update --scope user webpresso@webpresso
 
 That means one `wp setup` run can wire Codex's global MCP entry, Claude Code's user-global webpresso plugin state, OMX, and OMC. Webpresso uses OMC's Claude Code plugin marketplace path: when `claude` is on `PATH`, setup runs `claude plugin marketplace add --scope user https://github.com/Yeachan-Heo/oh-my-claudecode` and `claude plugin install --scope user oh-my-claudecode`; `wp setup --project` requests project-scoped OMX/OMC instead. Set `WP_SKIP_CLAUDE_PLUGIN=1` or `WP_SKIP_OMC=1` to opt out. See [`docs/getting-started.md`](./docs/getting-started.md) for the full setup matrix and [`docs/presets.md`](./docs/presets.md) for `--with` presets (`omx`, `omc`, `gstack`, `context-mode`, `playwright-mcp`, `vision`, `lore-commits`, `rtk`, `base-kit`).
 
-> **Pinned-version devDependency:** `vp install -D webpresso && vp exec wp setup`. `wp` is a working alias for all `wp` commands.
+> **Pinned-version devDependency:** `vp install -D webpresso && vp exec wp setup`. `wp` is the current v0.x setup alias; durable public command ownership is expected to consolidate under `webpresso ...`.
 
 ## IDE support matrix
 
@@ -261,9 +265,24 @@ That means one `wp setup` run can wire Codex's global MCP entry, Claude Code's u
 | Cursor / Windsurf | `.cursor/skills/` / `.windsurf/skills/` | Path B (`wp setup`) |
 | Gemini CLI | `.gemini/commands/*.toml` (TOML transform) | Path B (`wp setup`) |
 
-## `wp` / `wp` CLI reference
+## Current v0.x CLI reference
 
-`wp` is the primary bin alias. `webpresso` and `wp` are working aliases for all commands.
+The examples below use the current `wp` setup alias because that is what the
+package ships today. Treat them as migration-era CLI examples; durable public
+command ownership is expected to consolidate under `webpresso ...`. MCP tool
+names such as `wp_test`, `wp_ci_act`, and `wp_worker_tail` remain canonical
+agent tool names.
+
+### Secret-aware local CI and Worker tail
+
+Agents should use the canonical MCP tools for secret-scoped execution:
+`wp_ci_act` for local GitHub Actions and `wp_worker_tail` for Cloudflare Worker
+logs. Those tools route through the provider-neutral shell contract
+`with-secrets -- <cmd>`; downstream helper references should use
+`act-with-webpresso` for local CI adoption. Configure secret-manager metadata
+with current v0.x `wp config secrets ...` examples, or
+`webpresso config secrets ...` where the installed package exposes that bin.
+Do not treat `wp ...` examples as durable public CLI branding.
 
 | Command | What it does |
 | --- | --- |
@@ -301,12 +320,13 @@ That means one `wp setup` run can wire Codex's global MCP entry, Claude Code's u
 | `wp compile` | Compile `.agent/` to all 6 IDE surfaces (wraps rulesync) |
 | `wp test`, `wp e2e`, `wp lint`, `wp typecheck`, `wp format` | Portable command surface — same flags work in every consumer repo |
 | `wp err <cmd>` | Run a command and print only failure-looking lines |
-| `wp hooks doctor` | Verify hook bins are installed, executable, MCP reachable |
+| `wp hooks doctor` | Verify hook bins are installed/executable, MCP reachable, and `.codex/hooks.json` command paths resolve |
 | `wp doctor` | Repo audit health check with remediation hints |
 | `wp mcp` | Run the webpresso MCP server over stdio |
 | `wp docs lint <file>` | Lint a research or blueprint doc |
 
-Run `wp <command> --help` (or `wp <command> --help`) for full flags.
+Run `wp <command> --help` for current v0.x examples, or
+`webpresso <command> --help` where the installed package exposes that bin.
 
 ## Blueprint structured store
 

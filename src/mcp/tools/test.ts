@@ -19,6 +19,7 @@ const inputSchema = z
     cwd: z.string().optional(),
     packages: z.array(z.string()).optional(),
     files: z.array(z.string()).optional(),
+    timeoutMs: z.number().int().positive().max(120_000).optional(),
   })
   .strict()
 
@@ -39,6 +40,15 @@ function summarizeScope(input: AkTestInput): string {
     return `${input.files.length} file${input.files.length === 1 ? '' : 's'}`
   }
   return 'workspace'
+}
+
+function summarizeOutcome(input: AkTestInput, result: testRunner.TestResult): string {
+  const scope = summarizeScope(input)
+  if (result.timedOut) return `tests timed out for ${scope}`
+  if (result.aborted) return `tests aborted for ${scope}`
+  return result.passed
+    ? `tests passed for ${scope}`
+    : `tests failed for ${scope} (exit ${result.exitCode})`
 }
 
 const tool: ToolDescriptor = {
@@ -67,19 +77,19 @@ const tool: ToolDescriptor = {
       packages: input.packages,
       files: input.files,
       signal: extra?.signal,
+      timeoutMs: input.timeoutMs,
     })
     const { transform: _transform, ...compact } = applyOutputTransform(result.output, {
       toolName: 'wp_test',
     })
     const payload = {
       passed: result.passed,
-      summary: result.passed
-        ? `tests passed for ${summarizeScope(input)}`
-        : `tests failed for ${summarizeScope(input)} (exit ${result.exitCode})`,
+      summary: summarizeOutcome(input, result),
       exitCode: result.exitCode,
       details: {
         packages: input.packages,
         files: input.files,
+        timeoutMs: input.timeoutMs,
       },
       ...compact,
       timedOut: result.timedOut || undefined,
@@ -87,7 +97,7 @@ const tool: ToolDescriptor = {
       ...(result.timedOut ? { failures: [{ message: 'test command timed out' }] } : {}),
       ...(result.aborted ? { failures: [{ message: 'aborted by client signal' }] } : {}),
     }
-    return createSummaryResult(payload)
+    return createSummaryResult(payload, result.timedOut || result.aborted ? { isError: true } : {})
   },
 }
 

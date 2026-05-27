@@ -55,6 +55,10 @@ export interface RunHooksDoctorOptions {
   cwd?: string
 }
 
+interface CodexHooksFile {
+  hooks?: Record<string, Array<{ matcher?: string; hooks?: Array<{ command?: string }> }>>
+}
+
 function resolvePackageRoot(): string | null {
   return findOwningPackageRoot(dirname(fileURLToPath(import.meta.url)))
 }
@@ -151,6 +155,84 @@ function tryAccess(file: string): boolean {
     return true
   } catch {
     return false
+  }
+}
+
+const ABS_BIN_PATTERN = /["'](?<path>\/[^"']*node_modules\/\.bin\/wp-[\w-]+)["']/gu
+const REL_BIN_PATTERN = /["'](?<path>\.\/node_modules\/\.bin\/wp-[\w-]+)["']/gu
+
+function extractOwnedCodexHookBinPaths(command: string, cwd: string): string[] {
+  const paths = new Set<string>()
+  for (const match of command.matchAll(ABS_BIN_PATTERN)) {
+    const p = match.groups?.path
+    if (p) paths.add(p)
+  }
+  for (const match of command.matchAll(REL_BIN_PATTERN)) {
+    const p = match.groups?.path
+    if (p) paths.add(resolve(cwd, p))
+  }
+  return [...paths]
+}
+
+function checkConsumerCodexHookPaths(cwd = process.cwd()): DoctorCheck {
+  const hooksPath = join(cwd, '.codex', 'hooks.json')
+  if (!tryAccess(hooksPath)) {
+    return {
+      name: 'consumer codex hook command paths',
+      ok: true,
+      detail: 'skipped (no .codex/hooks.json)',
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(readFileSync(hooksPath, 'utf-8')) as CodexHooksFile
+    const commandPaths = new Set<string>()
+    for (const groups of Object.values(parsed.hooks ?? {})) {
+      for (const group of groups ?? []) {
+        for (const hook of group.hooks ?? []) {
+          if (typeof hook.command !== 'string') continue
+          for (const path of extractOwnedCodexHookBinPaths(hook.command, cwd)) {
+            commandPaths.add(path)
+          }
+        }
+      }
+    }
+
+    if (commandPaths.size === 0) {
+      return {
+        name: 'consumer codex hook command paths',
+        ok: true,
+        detail: 'no wp-* node_modules hook paths found in .codex/hooks.json',
+      }
+    }
+
+    const missing: string[] = []
+    for (const binPath of commandPaths) {
+      if (!tryAccess(binPath) || (platform() !== 'win32' && !isExecutable(binPath))) {
+        missing.push(binPath)
+      }
+    }
+
+    if (missing.length > 0) {
+      const preview = missing.slice(0, 3).join(', ')
+      return {
+        name: 'consumer codex hook command paths',
+        ok: false,
+        detail: `missing/non-executable hook bins (${missing.length}): ${preview}`,
+      }
+    }
+
+    return {
+      name: 'consumer codex hook command paths',
+      ok: true,
+      detail: `${commandPaths.size} hook bin path(s) resolvable`,
+    }
+  } catch (error) {
+    return {
+      name: 'consumer codex hook command paths',
+      ok: false,
+      detail: `failed to parse .codex/hooks.json: ${error instanceof Error ? error.message : String(error)}`,
+    }
   }
 }
 
@@ -620,6 +702,8 @@ export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<
     const probe = await probeHookBin(file!, bin.checkStdin)
     checks.push({ name: bin.name, ok: probe.ok, detail: probe.detail })
   }
+
+  checks.push(checkConsumerCodexHookPaths(opts.cwd))
 
   checks.push({ name: 'plugin.json integrity', ...checkPluginJson() })
 

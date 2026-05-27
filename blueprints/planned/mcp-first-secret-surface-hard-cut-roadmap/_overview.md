@@ -5,8 +5,8 @@ status: planned
 owner: agent-kit
 complexity: M
 created: '2026-05-26'
-last_updated: '2026-05-26'
-progress: '0/1 local child lanes ready (0%) - documentary cross-repo roadmap aligned on 2026-05-26'
+last_updated: '2026-05-27'
+progress: '1/1 local child lanes completed (100%) - local child finalized on 2026-05-27'
 depends_on: []
 tags:
   - mcp
@@ -58,20 +58,20 @@ Verified constraints on 2026-05-26:
 
 | Wave | Blueprints | Dependencies |
 | --- | --- | --- |
-| **Wave 0** | `planned/secret-aware-worker-tail-mcp` | Documentary upstream dependency on the framework “public secret surface hard cut” blueprint |
+| **Wave 0** | `completed/secret-aware-worker-tail-mcp` | Documentary upstream dependency on the framework “public secret surface hard cut” blueprint |
 
 ## Cross-plan references
 
 | Blueprint | Relationship | Required alignment |
 | --- | --- | --- |
-| [`webpresso/framework — public-secret-surface-hard-cut`](https://github.com/webpresso/framework/tree/main/blueprints/planned) | Documentary upstream dependency | Must remove public secret-selection legacy before downstream contracts are called “hard cut”. |
+| [`webpresso/framework — public-secret-surface-hard-cut`](https://github.com/webpresso/framework/tree/main/blueprints/completed) | Documentary upstream dependency | Must remove public secret-selection legacy; completed lane defines the hard-cut contract consumed downstream. |
 | [`webpresso/monorepo — secret-aware-ci-act-helper-adoption`](https://github.com/webpresso/monorepo/tree/main/webpresso/blueprints/planned) | Documentary first-party adopter | Must adopt the stabilized public CI/tail/helper contract instead of source-path wrappers. |
 | [`ozby/ingest-lens — public-ci-surface-adoption`](https://github.com/ozby/ingest-lens/tree/main/blueprints/planned) | Documentary external consumer adopter | Must reflect `act-with-webpresso`, `wp_*`, and `with-secrets -- <cmd>` as the real current baseline. |
 | [`webpresso/agent-kit — blueprint-authoring-surface-hardening`](https://github.com/webpresso/agent-kit/tree/main/blueprints/draft) | Sibling follow-up blueprint | Holds the split-out blueprint-authoring tasks previously bundled into the CI/tail child. |
 
 ## Validation notes
 
-- `wp audit roadmap-links` can only validate the local `planned/secret-aware-worker-tail-mcp`
+- `wp audit roadmap-links` can only validate the local `completed/secret-aware-worker-tail-mcp`
   backlink in this repo.
 - Cross-repo consistency must be checked by validating each child blueprint and
   keeping the cross-plan reference tables synchronized.

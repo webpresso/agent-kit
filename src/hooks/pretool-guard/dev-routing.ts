@@ -88,6 +88,8 @@ const ROUTING_RULES: RoutingRule[] = [
   {
     prefixes: [
       'wrangler tail',
+      'with-secrets -- wrangler tail',
+      'with-secrets wrangler tail',
       'vp exec wrangler tail',
       'pnpm exec wrangler tail',
       'doppler run -- wrangler tail',
@@ -96,8 +98,23 @@ const ROUTING_RULES: RoutingRule[] = [
     ],
     guidanceType: 'qa',
     guidance:
-      'Use wp_worker_tail MCP tool instead — secret-aware Worker tail output is bounded, redacted, and routed through the shared secret-provider gate',
+      'Use wp_worker_tail MCP tool instead — Worker tail output is bounded, redacted, and routed through the canonical `with-secrets -- wrangler tail ...` secret-gate contract',
     tool: 'wp_worker_tail',
+  },
+  {
+    prefixes: [
+      'act',
+      'with-secrets -- act',
+      'with-secrets act',
+      'vp exec act',
+      'pnpm exec act',
+      'doppler run -- act',
+      'infisical run -- act',
+    ],
+    guidanceType: 'qa',
+    guidance:
+      'Use wp_ci_act MCP tool instead — CI act execution is bounded and routed through the canonical `with-secrets -- act ...` secret-gate contract',
+    tool: 'wp_ci_act',
   },
   {
     prefixes: [
@@ -128,7 +145,7 @@ const SOURCE_ENTRYPOINT_RULES: SourceEntrypointRule[] = [
     scriptSuffixes: ['apps/scripts/src/ci/act.ts'],
     tool: 'wp_ci_act',
     guidance:
-      'Use a secret-aware webpresso MCP wrapper for CI act execution instead — raw Bun source execution bypasses MCP output bounds and the repo secret-provider gate',
+      'Use wp_ci_act MCP tool instead — raw source execution bypasses MCP output bounds and the canonical `with-secrets -- act ...` secret-gate contract',
   },
 ]
 
@@ -169,6 +186,13 @@ const VP_COMMAND_PREFIX = /^vp\s+(?<rest>.+)$/u
 const PNPM_COMMAND_PREFIX = /^pnpm\s+(?<rest>.+)$/u
 const COREPACK_PACKAGE_MANAGER_PREFIX =
   /^corepack\s+(?<manager>pnpm|pnpx|yarn|yarnpkg|npm|npx)(?:@[^\s]+)?(?<rest>\s+[\s\S]+)?$/u
+const ENV_ASSIGNMENT_VALUE_PATTERN = String.raw`(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\S*)`
+const ENV_ASSIGNMENT_PREFIX_PATTERN = String.raw`(?:[A-Za-z_][A-Za-z0-9_]*=${ENV_ASSIGNMENT_VALUE_PATTERN}\s+)+`
+const ENV_ASSIGNMENT_PREFIX = new RegExp(`^(?:${ENV_ASSIGNMENT_PREFIX_PATTERN})`, 'u')
+const ENV_COMMAND_ASSIGNMENT_PREFIX = new RegExp(
+  `^env\\s+(?:${ENV_ASSIGNMENT_PREFIX_PATTERN})`,
+  'u',
+)
 const PACKAGE_MANAGER_PREFIXES = new Set(['vp', 'pnpm', 'just'])
 const TOOL_SHIM_EXTENSION = /\.(?:cmd|ps1|bat)$/iu
 const SOURCE_RUNTIME_BINS = new Set(['tsx', 'ts-node', 'node', 'bun'])
@@ -219,7 +243,7 @@ const PACKAGE_MANAGER_FLAG_ONLY = new Set([
   '--ignore-scripts',
 ])
 const TOOL_PROXY_BINS = new Set(['corepack'])
-const SECRET_WRAPPER_BINS = new Set(['doppler', 'infisical'])
+const SECRET_WRAPPER_BINS = new Set(['with-secrets', 'doppler', 'infisical'])
 const PNPM_BUILTIN_SUBCOMMANDS = new Set([
   'add',
   'approve-builds',
@@ -306,8 +330,21 @@ function stripCorepackPackageManagerProxy(command: string): string {
   return `${match.groups.manager}${rest}`.trim()
 }
 
+function stripLeadingEnvironmentAssignments(command: string): string {
+  let next = command.trim()
+  while (next) {
+    const updated = next
+      .replace(ENV_COMMAND_ASSIGNMENT_PREFIX, '')
+      .replace(ENV_ASSIGNMENT_PREFIX, '')
+      .trim()
+    if (updated === next) return next
+    next = updated
+  }
+  return next
+}
+
 export function normalizeCommandForRouting(command: string): string {
-  const trimmed = stripCorepackPackageManagerProxy(command.trim())
+  const trimmed = stripCorepackPackageManagerProxy(stripLeadingEnvironmentAssignments(command))
   let match = VP_COMMAND_PREFIX.exec(trimmed)
   let next = trimmed
   let prefix = 'vp'
@@ -374,7 +411,9 @@ function getRuleDirectToolBins(prefixes: string[]): Set<string> {
       continue
     }
 
-    if (command && !PACKAGE_MANAGER_PREFIXES.has(command)) bins.add(command)
+    if (command && !PACKAGE_MANAGER_PREFIXES.has(command) && !SECRET_WRAPPER_BINS.has(command)) {
+      bins.add(command)
+    }
   }
 
   return bins
@@ -595,9 +634,13 @@ function extractInlineCommands(code: string): string[] {
     .map(escapedRegexToken)
     .join('|')
   const normalizedCode = code.replace(/\\\r?\n\s*/gu, ' ').replace(/^\s*#.*$/gmu, '')
-  const regex = new RegExp(`(?:^|[;&|]\\s*)(${starterPattern})\\b([^\\n;]*)`, 'gmu')
+  const envAssignmentPattern = String.raw`(?:(?:env\s+)?${ENV_ASSIGNMENT_PREFIX_PATTERN})?`
+  const regex = new RegExp(
+    `(?:^|[;&|]\\s*)(${envAssignmentPattern}(?:${starterPattern})\\b[^\\n;]*)`,
+    'gmu',
+  )
   for (const match of normalizedCode.matchAll(regex)) {
-    const command = `${match[1] ?? ''}${match[2] ?? ''}`.replace(/\s+/gu, ' ').trim()
+    const command = `${match[1] ?? ''}`.replace(/\s+/gu, ' ').trim()
     if (command) commands.push(command)
   }
   return commands

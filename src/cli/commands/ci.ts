@@ -11,6 +11,7 @@ import { runSecretGateCommand } from '#secret-gate/runner.js'
 
 export const CI_COMMAND_HELP = [
   'Run repository CI helpers through the portable, secret-safe wp surface.',
+  'Configure secret access with `wp config secrets ...`; execution shells through `with-secrets -- <cmd>`.',
   '',
   'Examples:',
   '  wp ci act --workflow ci-e2e',

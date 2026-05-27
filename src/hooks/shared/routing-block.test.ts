@@ -47,6 +47,15 @@ describe('WP_ROUTING_BLOCK', () => {
     expect(WP_ROUTING_BLOCK).toContain('wp_audit')
   })
 
+  it('routes local act and Worker tail commands to shipped MCP tool names', () => {
+    expect(WP_ROUTING_BLOCK).toContain('wp_ci_act')
+    expect(WP_ROUTING_BLOCK).toContain('wp_worker_tail')
+    expect(WP_ROUTING_BLOCK).toContain('with-secrets -- act')
+    expect(WP_ROUTING_BLOCK).toContain('with-secrets -- wrangler tail')
+    expect(WP_ROUTING_BLOCK).not.toContain('ak_ci_act')
+    expect(WP_ROUTING_BLOCK).not.toContain('ak_worker_tail')
+  })
+
   it('mentions tph-e2e as an wp_audit usage', () => {
     expect(WP_ROUTING_BLOCK).toContain('tph-e2e')
     expect(WP_ROUTING_BLOCK).toContain('wp_audit(kind="tph-e2e")')

@@ -205,6 +205,20 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, 'AGENTS.md'))).toBe(true)
       expect(existsSync(path.join(repo, 'blueprints'))).toBe(true)
       expect(existsSync(path.join(repo, '.webpressorc.json'))).toBe(true)
+      // Default-on base-kit: minimum bootstrap artifacts should exist even when
+      // --with is omitted.
+      expect(existsSync(path.join(repo, '.actrc'))).toBe(true)
+      expect(existsSync(path.join(repo, '.husky', 'pre-commit'))).toBe(true)
+      expect(existsSync(path.join(repo, 'scripts', 'check-no-dev-vars.ts'))).toBe(true)
+
+      // Future-proof guard: PreToolUse should be fail-closed (deny JSON
+      // fallback), not silent fail-open `|| true`.
+      const codex = JSON.parse(readFileSync(path.join(repo, '.codex', 'hooks.json'), 'utf8')) as {
+        hooks: { PreToolUse?: Array<{ hooks?: Array<{ command?: string }> }> }
+      }
+      const preToolCommand = codex.hooks.PreToolUse?.[0]?.hooks?.[0]?.command ?? ''
+      expect(preToolCommand).toContain('"permissionDecision":"deny"')
+      expect(preToolCommand).not.toContain('|| true')
       expect(r.stdout).toContain('wp init: done.')
       expect(r.stdout).not.toContain('context-mode codex features')
       expect(r.stdout).not.toContain('context-mode opencode config')
@@ -226,6 +240,9 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
 
       expect(existsSync(path.join(repo, 'docs', 'templates', 'blueprint.md'))).toBe(true)
       expect(existsSync(path.join(repo, 'scripts', 'check-no-dev-vars.ts'))).toBe(true)
+      expect(existsSync(path.join(repo, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(
+        true,
+      )
       expect(existsSync(path.join(repo, '.husky', 'pre-commit'))).toBe(true)
       expect(existsSync(path.join(repo, '.husky', 'commit-msg'))).toBe(true)
       expect(existsSync(path.join(repo, '.actrc'))).toBe(true)

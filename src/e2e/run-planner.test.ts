@@ -103,6 +103,34 @@ describe('planGenericE2eRun', () => {
       },
     ])
   })
+
+  it('uses vitest.config.ts by default for generic vitest runs', () => {
+    expect(
+      planGenericE2eRun({
+        runner: 'vitest',
+        files: ['e2e/smoke.e2e.ts'],
+      }),
+    ).toEqual([
+      {
+        batchKey: 'default',
+        envProfile: undefined,
+        env: undefined,
+        runs: [
+          {
+            suiteId: 'default',
+            batchKey: 'default',
+            envProfile: undefined,
+            runner: 'vitest',
+            logName: 'default',
+            reportDir: undefined,
+            command: 'pnpm',
+            args: ['exec', 'vitest', 'run', '--config', 'vitest.config.ts', 'e2e/smoke.e2e.ts'],
+            env: undefined,
+          },
+        ],
+      },
+    ])
+  })
 })
 
 describe('planE2eRun', () => {

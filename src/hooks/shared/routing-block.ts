@@ -6,7 +6,8 @@
  */
 export const WP_ROUTING_BLOCK: string = `<wp_routing>
   <description>
-    Use the wp_* MCP tools for all test, lint, typecheck, qa, and audit operations.
+    Use the wp_* MCP tools for all test, lint, typecheck, qa, audit, local CI act,
+    and Cloudflare Worker tail operations.
     If context-mode plugin routing is present, let it own ctx_* data-processing nudges.
     These tools return structured, summary-first results and keep output concise.
   </description>
@@ -35,6 +36,14 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
     <row>
       <trigger>auditing blueprints, catalog drift, bundle budget, docs frontmatter</trigger>
       <tool>wp_audit</tool>
+    </row>
+    <row>
+      <trigger>running act, local GitHub Actions, with-secrets -- act, vp exec act, pnpm exec act</trigger>
+      <tool>wp_ci_act</tool>
+    </row>
+    <row>
+      <trigger>wrangler tail, with-secrets -- wrangler tail, Cloudflare Worker logs</trigger>
+      <tool>wp_worker_tail</tool>
     </row>
     <row>
       <trigger>e2e testing philosophy audit, tph-e2e</trigger>
@@ -74,6 +83,18 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
       <forbidden>just audit</forbidden>
       <usage>Use kind="tph-e2e" for the E2E testing-philosophy audit. This audits E2E quality rules; it does not execute the E2E suite itself.</usage>
     </tool>
+    <tool name="wp_ci_act">
+      <category>dev-workflow</category>
+      <trigger>running act, local GitHub Actions, with-secrets -- act, vp exec act, pnpm exec act</trigger>
+      <forbidden>act, vp exec act, pnpm exec act</forbidden>
+      <usage>Use the wp_ci_act MCP tool for local GitHub Actions execution. The tool uses the public secret contract: configure with wp config secrets ... and execute through with-secrets -- act ... internally.</usage>
+    </tool>
+    <tool name="wp_worker_tail">
+      <category>dev-workflow</category>
+      <trigger>wrangler tail, with-secrets -- wrangler tail, Cloudflare Worker logs</trigger>
+      <forbidden>wrangler tail, with-secrets -- wrangler tail</forbidden>
+      <usage>Use the wp_worker_tail MCP tool for Cloudflare Worker tail logs. The tool routes through the canonical with-secrets -- wrangler tail ... contract and returns bounded redacted output.</usage>
+    </tool>
   </tools>
 
   <ownership_boundary>
@@ -96,6 +117,12 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
     <command>oxlint</command>
     <command>markdownlint-cli2</command>
     <command>tsc</command>
+    <command>act</command>
+    <command>vp exec act</command>
+    <command>pnpm exec act</command>
+    <command>wrangler tail</command>
+    <command>with-secrets -- act</command>
+    <command>with-secrets -- wrangler tail</command>
   </forbidden_alternatives>
 
   <output_format>

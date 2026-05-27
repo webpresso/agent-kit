@@ -75,7 +75,6 @@ const DEFAULT_FORBIDDEN_PUBLIC_NAME_PATTERNS = [
 const DEFAULT_STALE_LINKS: string[] = []
 
 const DEFAULT_REFERENCE_BASELINES: Readonly<Record<string, string>> = {
-  '@webpresso/webpresso': '0.3.6',
   webpresso: '0.18.18',
   '@webpresso/db-branching': '0.2.4',
   '@webpresso/db-branching-neon': '0.2.4',

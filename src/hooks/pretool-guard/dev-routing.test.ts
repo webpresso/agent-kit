@@ -43,6 +43,18 @@ describe('routeCommand', () => {
     if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_test')
   })
 
+  it('env-prefixed vitest commands → deny and route to wp_test', async () => {
+    const routeCommand = await getRoute()
+    for (const command of [
+      'WP_SKIP_UPDATE_CHECK=1 vp exec vitest run src/mcp/blueprint-server.test.ts',
+      'env WP_SKIP_UPDATE_CHECK=1 vp exec vitest run src/mcp/blueprint-server.test.ts',
+    ]) {
+      const result = routeCommand(command)
+      expect(result?.action.action, command).toBe('deny')
+      if (result?.action.action === 'deny') expect(result.action.tool).toBe('wp_test')
+    }
+  })
+
   it('vitest run → deny', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('vitest run')
@@ -169,8 +181,28 @@ describe('routeCommand', () => {
       expect(result?.action.action).toBe('deny')
       if (result?.action.action === 'deny') {
         expect(result.action.tool).toBe('wp_ci_act')
-        expect(result.action.guidance).toContain('secret-aware')
-        expect(result.action.guidance).toContain('secret-provider gate')
+        expect(result.action.guidance).toContain('wp_ci_act')
+        expect(result.action.guidance).toContain('with-secrets -- act')
+        expect(result.action.guidance).not.toMatch(/\bak_/u)
+      }
+    }
+  })
+
+  it('raw and secret-gated act commands deny with wp_ci_act guidance', async () => {
+    const routeCommand = await getRoute()
+    for (const command of [
+      'act -W .github/workflows/ci.webpresso.yml',
+      'with-secrets -- act -W .github/workflows/ci.webpresso.yml',
+      'vp exec act -W .github/workflows/ci.webpresso.yml',
+      'pnpm exec act -W .github/workflows/ci.webpresso.yml',
+    ]) {
+      const result = routeCommand(command)
+      expect(result?.action.action).toBe('deny')
+      if (result?.action.action === 'deny') {
+        expect(result.action.tool).toBe('wp_ci_act')
+        expect(result.action.guidance).toContain('wp_ci_act')
+        expect(result.action.guidance).toContain('with-secrets -- act')
+        expect(result.action.guidance).not.toMatch(/\bak_/u)
       }
     }
   })
@@ -179,6 +211,7 @@ describe('routeCommand', () => {
     const routeCommand = await getRoute()
     for (const command of [
       'wrangler tail webpresso-chef-alpha --env preview --status error',
+      'with-secrets -- wrangler tail webpresso-chef-alpha --format json',
       'pnpm exec wrangler tail webpresso-chef-alpha',
       'doppler run -- wrangler tail webpresso-chef-alpha --format json',
       '/repo/node_modules/.bin/wrangler tail webpresso-chef-alpha',
@@ -187,7 +220,41 @@ describe('routeCommand', () => {
       expect(result?.action.action).toBe('deny')
       if (result?.action.action === 'deny') {
         expect(result.action.tool).toBe('wp_worker_tail')
+        expect(result.action.guidance).toContain('wp_worker_tail')
+        expect(result.action.guidance).toContain('with-secrets -- wrangler tail')
+        expect(result.action.guidance).not.toMatch(/\bak_/u)
       }
+    }
+  })
+
+  it('verification and secret-aware routing guidance names only shipped wp_* MCP tools', async () => {
+    const routeCommand = await getRoute()
+    for (const [command, expectedTool] of [
+      ['vp exec vitest run', 'wp_test'],
+      ['vp exec oxlint .', 'wp_lint'],
+      ['vp exec tsc --noEmit', 'wp_typecheck'],
+      ['vp exec prettier README.md --write', 'wp_format'],
+      ['vp exec markdownlint-cli2 README.md', 'wp_qa'],
+      ['vp exec playwright test e2e/smoke.spec.ts', 'wp_e2e'],
+      ['with-secrets -- wrangler tail webpresso-chef-alpha --format json', 'wp_worker_tail'],
+      ['with-secrets -- act -W .github/workflows/ci.webpresso.yml', 'wp_ci_act'],
+    ] as const) {
+      const result = routeCommand(command)
+      expect(result?.action.action, command).toBe('deny')
+      if (result?.action.action === 'deny') {
+        expect(result.action.tool, command).toBe(expectedTool)
+        expect(result.action.guidance, command).toContain(expectedTool)
+        expect(result.action.guidance, command).toContain('MCP tool')
+        expect(result.action.guidance, command).not.toMatch(/\bak_/u)
+        expect(result.action.guidance, command).not.toMatch(/durable public CLI alias/u)
+      }
+    }
+  })
+
+  it('legacy ak_* tool names are not accepted as routable replacements', async () => {
+    const routeCommand = await getRoute()
+    for (const command of ['ak_test', 'ak_lint', 'ak_worker_tail', 'ak_ci_act']) {
+      expect(routeCommand(command)).toBeNull()
     }
   })
 
@@ -326,14 +393,29 @@ describe('routeCommand', () => {
         'wp_test',
       ],
       [
+        'WP_SKIP_UPDATE_CHECK=1 vp exec vitest run src/mcp/blueprint-server.test.ts 2>&1 | tail -120',
+        'WP_SKIP_UPDATE_CHECK=1 vp exec vitest run src/mcp/blueprint-server.test.ts 2>&1 | tail -120',
+        'wp_test',
+      ],
+      [
+        'env WP_SKIP_UPDATE_CHECK=1 vp exec vitest run src/mcp/blueprint-server.test.ts',
+        'env WP_SKIP_UPDATE_CHECK=1 vp exec vitest run src/mcp/blueprint-server.test.ts',
+        'wp_test',
+      ],
+      [
         'corepack pnpm@10 --dir apps/e2e exec playwright test e2e/smoke.spec.ts',
         'corepack pnpm@10 --dir apps/e2e exec playwright test e2e/smoke.spec.ts',
         'wp_e2e',
       ],
       [
-        'doppler run -- wrangler tail webpresso-chef-alpha --format json',
-        'doppler run -- wrangler tail webpresso-chef-alpha --format json',
+        'with-secrets -- wrangler tail webpresso-chef-alpha --format json',
+        'with-secrets -- wrangler tail webpresso-chef-alpha --format json',
         'wp_worker_tail',
+      ],
+      [
+        'with-secrets -- act -W .github/workflows/ci.webpresso.yml',
+        'with-secrets -- act -W .github/workflows/ci.webpresso.yml',
+        'wp_ci_act',
       ],
       [
         'bun apps/scripts/src/ci/act.ts --workflow ci-generated-live-validation',

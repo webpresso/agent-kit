@@ -129,9 +129,14 @@ Use **cross-repo** references for everything outside the repo:
 3. `cross_repo_depends_on:` is the only supported frontmatter field for executable
    cross-repo dependencies.
 4. Cross-repo references in body text must use **GitHub links**, not local filesystem
-   paths such as `/Users/...` or `../other-repo/...`.
+   paths such as `<local-absolute-path>/...` or `../other-repo/...`.
 5. A parent-roadmap's `## Quick Reference (Execution Waves)` section is for **local
    auditable children only**. Do not list external blueprints there.
+6. Public downstream examples must distinguish current CLI examples from durable
+   public command ownership. Use canonical MCP tool names such as `wp_test`,
+   `wp_ci_act`, and `wp_worker_tail` when naming agent tools. Treat `wp ...`
+   command snippets as current-state examples; future unified public command
+   ownership belongs to the `webpresso ...` CLI surface.
 
 Canonical cross-repo dependency example:
 
@@ -147,9 +152,9 @@ Canonical documentary cross-plan link example:
 ```markdown
 ## Cross-Plan References
 
-| Blueprint | Relationship |
-| --- | --- |
-| [ozby/ingest-lens: public-ci-surface-adoption](https://github.com/ozby/ingest-lens/blob/main/blueprints/planned/public-ci-surface-adoption/_overview.md) | Downstream adoption lane |
+| Blueprint | Relationship | Required alignment |
+| --- | --- | --- |
+| [ozby/ingest-lens: public-ci-surface-adoption](https://github.com/ozby/ingest-lens/blob/main/blueprints/planned/public-ci-surface-adoption/_overview.md) | Downstream adoption lane | Use `act-with-webpresso`, `with-secrets -- <cmd>`, and canonical MCP `wp_*` tool names. |
 ```
 
 Validation and discovery surfaces:
@@ -199,6 +204,22 @@ others are conventional but not enforced.
 ## Risks                           # optional
 ## Technology Choices              # optional
 ```
+
+## Public wording and command names
+
+Blueprints that affect downstream adopters must keep command ownership
+explicit:
+
+- Use `wp_*` names for MCP tools, for example `wp_test`, `wp_ci_act`, and
+  `wp_worker_tail`.
+- Treat `wp ...` CLI examples as current-state or migration examples unless the
+  blueprint explicitly owns durable public CLI branding.
+- Do not introduce legacy AK-prefixed aliases as replacement tool names.
+- For secret-gated local execution, describe the public shell contract as
+  `with-secrets -- <cmd>` and downstream CI adoption as `act-with-webpresso`.
+- Public cross-plan references must use GitHub URLs and must not include local
+  absolute paths, sibling-repo filesystem paths, or private historical context
+  that is unrelated to the public plan.
 
 ## Task block rules (enforced)
 

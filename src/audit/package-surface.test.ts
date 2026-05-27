@@ -89,6 +89,23 @@ describe('package-surface audit', () => {
     )
   })
 
+  test('does not carry a default @webpresso/webpresso reference-consumer baseline', () => {
+    const root = tempRepo()
+    writeJson(join(root, 'package-surface.json'), {})
+    writeFileSync(join(root, 'pnpm-lock.yaml'), "'@webpresso/webpresso@0.1.1':\n")
+
+    const result = auditPackageSurface(root)
+
+    expect(result.violations).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: 'pnpm-lock.yaml',
+          message: expect.stringContaining('@webpresso/webpresso resolves to 0.1.1'),
+        }),
+      ]),
+    )
+  })
+
   test('does not match unscoped webpresso baseline inside a scoped @webpresso/webpresso lock entry', () => {
     const root = tempRepo()
     writeJson(join(root, 'package-surface.json'), {

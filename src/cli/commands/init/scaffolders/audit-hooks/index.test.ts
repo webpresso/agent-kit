@@ -33,6 +33,7 @@ describe('scaffoldAuditHooks', () => {
     expect(content).toContain('#!/bin/sh')
     expect(content).toContain('# webpresso audit hooks (staged mode — fast)')
     expect(content).toContain('bun scripts/check-no-dev-vars.ts')
+    expect(content).toContain('bun scripts/audit-secret-provider-quarantine.ts')
     expect(content).not.toContain('skill-sizes')
     expect(content).not.toContain('broken-refs')
   })
@@ -41,7 +42,7 @@ describe('scaffoldAuditHooks', () => {
     await mkdir(path.join(tmpDir, '.husky'), { recursive: true })
     await writeFile(
       preCommitPath(tmpDir),
-      '#!/bin/sh\n# webpresso audit hooks (staged mode — fast)\nbun scripts/check-no-dev-vars.ts\n',
+      '#!/bin/sh\n# webpresso audit hooks (staged mode — fast)\nbun scripts/check-no-dev-vars.ts\nbun scripts/audit-secret-provider-quarantine.ts\n',
       'utf8',
     )
 
@@ -60,6 +61,7 @@ describe('scaffoldAuditHooks', () => {
     expect(content).toContain('pnpm lint')
     expect(content).toContain('# webpresso audit hooks (staged mode — fast)')
     expect(content).toContain('bun scripts/check-no-dev-vars.ts')
+    expect(content).toContain('bun scripts/audit-secret-provider-quarantine.ts')
   })
 
   it('is idempotent on a file that had the old dead verbs — does not add them again', async () => {
@@ -80,6 +82,7 @@ describe('scaffoldAuditHooks', () => {
     const headerCount = (content.match(/# webpresso audit hooks/g) ?? []).length
     expect(headerCount).toStrictEqual(1)
     expect(content).toContain('bun scripts/check-no-dev-vars.ts')
+    expect(content).toContain('bun scripts/audit-secret-provider-quarantine.ts')
   })
 
   it('skips writes in dry-run mode', async () => {

@@ -35,7 +35,12 @@ import {
 } from '#freshness.js'
 import { applyVerification, parseVerificationBlock } from '#verification.js'
 import { makeNextAction } from '#next-action.js'
-import { PROJECT_SOURCES, resolveBlueprintProjects, type BlueprintProjectRef } from '#projects.js'
+import { PROJECT_SOURCES, type BlueprintProjectRef } from '#projects.js'
+import {
+  createProjectResolver,
+  type ProjectResolver,
+  type ResolveProjectResult,
+} from '#project-resolver.js'
 import { aggregateBlueprintRows, type ProjectReader } from '#aggregate.js'
 import { maybeHint } from './_tail-hints.js'
 import type { ToolHandlerResult, ToolRegistrar } from './auto-discover.js'
@@ -117,11 +122,6 @@ type SyncAdapterFactory = () => SyncAdapter | null
  * blueprint-server.ts never statically depends on the HTTP client).
  */
 let _syncAdapterFactory: SyncAdapterFactory | null = null
-const PROJECT_RESOLUTION_CACHE_TTL_MS = 15_000
-const _recentProjectIndex = new Map<
-  string,
-  { readonly at: number; readonly project: BlueprintProjectRef }
->()
 
 /**
  * Override the adapter factory — for tests only.
@@ -131,35 +131,6 @@ const _recentProjectIndex = new Map<
  */
 export function _setSyncAdapterFactory(factory: SyncAdapterFactory | null): void {
   _syncAdapterFactory = factory
-}
-
-function readRecentProjectMatch(
-  projectId: string,
-  resolvedPath: string | null,
-): BlueprintProjectRef | null {
-  const keys = [projectId]
-  if (resolvedPath !== null) keys.push(resolvedPath)
-
-  for (const key of keys) {
-    const cached = _recentProjectIndex.get(key)
-    if (!cached) continue
-    if (Date.now() - cached.at > PROJECT_RESOLUTION_CACHE_TTL_MS) {
-      _recentProjectIndex.delete(key)
-      continue
-    }
-    return cached.project
-  }
-
-  return null
-}
-
-function writeRecentProjectList(cwd: string, projects: readonly BlueprintProjectRef[]): void {
-  const at = Date.now()
-  for (const project of projects) {
-    _recentProjectIndex.set(project.project_id, { at, project })
-    _recentProjectIndex.set(project.worktree_path, { at, project })
-    _recentProjectIndex.set(project.repo_path, { at, project })
-  }
 }
 
 /**
@@ -406,93 +377,13 @@ function projectDisambiguationError(
 }
 
 async function resolveToolProject(
+  projectResolver: ProjectResolver,
   cwd: string,
   projectId: string | undefined,
 ): Promise<{ cwd: string; project_id: string | null } | ToolHandlerResult> {
-  if (projectId !== undefined) {
-    const resolvedPath = (() => {
-      try {
-        return realpathSync(projectId)
-      } catch {
-        return null
-      }
-    })()
-
-    const cachedMatch = readRecentProjectMatch(projectId, resolvedPath)
-    if (cachedMatch) {
-      return { cwd: cachedMatch.worktree_path, project_id: cachedMatch.project_id }
-    }
-
-    if (resolvedPath !== null) {
-      return { cwd: resolvedPath, project_id: null }
-    }
-
-    const projects = await resolveBlueprintProjects({ cwd })
-    writeRecentProjectList(cwd, projects)
-
-    const match =
-      projects.find(
-        (project) =>
-          project.project_id === projectId ||
-          project.worktree_path === projectId ||
-          project.repo_path === projectId ||
-          (resolvedPath !== null &&
-            (project.worktree_path === resolvedPath || project.repo_path === resolvedPath)),
-      ) ?? null
-
-    if (match) {
-      return { cwd: match.worktree_path, project_id: match.project_id }
-    }
-
-    return projectDisambiguationError(
-      `Project "${projectId}" not found`,
-      'Call wp_blueprint_projects to pick an explicit project_id or pass a valid project path.',
-      projects,
-    )
-  }
-
-  const projects = await resolveBlueprintProjects({ cwd })
-  writeRecentProjectList(cwd, projects)
-
-  const current = projects.find((project) => project.source === PROJECT_SOURCES.current) ?? null
-  if (current) {
-    return { cwd: current.worktree_path, project_id: current.project_id }
-  }
-
-  const currentScopeProjects = projects.filter(
-    (project) => project.source === PROJECT_SOURCES.recursive_scan,
-  )
-  if (currentScopeProjects.length === 1) {
-    const onlyProject = currentScopeProjects[0]
-    if (!onlyProject) {
-      return err('project resolution failed', 'Recursive current project selection was empty')
-    }
-    return { cwd: onlyProject.worktree_path, project_id: onlyProject.project_id }
-  }
-
-  if (currentScopeProjects.length > 1) {
-    return projectDisambiguationError(
-      'Multiple blueprint projects found under the current working directory',
-      'Call wp_blueprint_projects and pass an explicit project_id to the blueprint tool you want to run.',
-      currentScopeProjects,
-    )
-  }
-
-  if (projects.length === 1) {
-    const onlyProject = projects[0]
-    if (!onlyProject) return err('project resolution failed', 'Single project selection was empty')
-    return { cwd: onlyProject.worktree_path, project_id: onlyProject.project_id }
-  }
-
-  if (projects.length > 1) {
-    return projectDisambiguationError(
-      'Multiple blueprint projects are visible from the current workspace',
-      'Call wp_blueprint_projects and pass an explicit project_id to disambiguate.',
-      projects,
-    )
-  }
-
-  return { cwd, project_id: null }
+  const resolved = await projectResolver.resolve({ cwd, projectId })
+  if (resolved.ok) return { cwd: resolved.cwd, project_id: resolved.project_id }
+  return projectDisambiguationError(resolved.summary, resolved.hint, resolved.candidates)
 }
 
 function finishPayload(payload: Record<string, unknown>): ToolHandlerResult {
@@ -800,11 +691,15 @@ const taskNextSchema = z.object({
   blueprint: z.string().optional(),
   project_id: z.string().optional(),
 })
-async function handleTaskNext(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
+async function handleTaskNext(
+  projectResolver: ProjectResolver,
+  cwd: string,
+  raw: unknown,
+): Promise<ToolHandlerResult> {
   const p = taskNextSchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_task_next validation error', p.error.message)
   const { blueprint, project_id } = p.data
-  const resolvedProject = await resolveToolProject(cwd, project_id)
+  const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
   const failures: string[] = []
@@ -928,11 +823,15 @@ const advanceSchema = z.object({
   request_id: z.string().min(1).optional(),
   head_at_ingest: z.string().nullable().optional(),
 })
-async function handleTaskAdvance(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
+async function handleTaskAdvance(
+  projectResolver: ProjectResolver,
+  cwd: string,
+  raw: unknown,
+): Promise<ToolHandlerResult> {
   const p = advanceSchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_task_advance validation error', p.error.message)
   const { project_id, task_id, to, request_id, head_at_ingest } = p.data
-  const resolvedProject = await resolveToolProject(cwd, project_id)
+  const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
   const freshnessFailure = validateMutationFreshnessToken(
@@ -1067,11 +966,15 @@ const taskVerifySchema = z.object({
   head_at_ingest: z.string().nullable().optional(),
 })
 
-async function handleTaskVerify(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
+async function handleTaskVerify(
+  projectResolver: ProjectResolver,
+  cwd: string,
+  raw: unknown,
+): Promise<ToolHandlerResult> {
   const p = taskVerifySchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_task_verify validation error', p.error.message)
   const { project_id, slug, task_id, evidence, request_id, head_at_ingest } = p.data
-  const resolvedProject = await resolveToolProject(cwd, project_id)
+  const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
   const freshnessFailure = validateMutationFreshnessToken(
@@ -1199,11 +1102,15 @@ const promoteSchema = z.object({
   slug: z.string(),
   to_state: z.enum(['planned', 'in-progress', 'completed', 'parked', 'archived']),
 })
-async function handlePromote(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
+async function handlePromote(
+  projectResolver: ProjectResolver,
+  cwd: string,
+  raw: unknown,
+): Promise<ToolHandlerResult> {
   const p = promoteSchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_promote validation error', p.error.message)
   const { project_id, slug, to_state } = p.data
-  const resolvedProject = await resolveToolProject(cwd, project_id)
+  const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
   const root = resolveBlueprintRoot(projectCwd)
@@ -1276,11 +1183,15 @@ async function handlePromote(cwd: string, raw: unknown): Promise<ToolHandlerResu
 }
 
 const finalizeSchema = z.object({ project_id: z.string().optional(), slug: z.string() })
-async function handleFinalize(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
+async function handleFinalize(
+  projectResolver: ProjectResolver,
+  cwd: string,
+  raw: unknown,
+): Promise<ToolHandlerResult> {
   const p = finalizeSchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_finalize validation error', p.error.message)
   const { project_id, slug } = p.data
-  const resolvedProject = await resolveToolProject(cwd, project_id)
+  const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
   const target = dbPath(projectCwd)
@@ -1528,7 +1439,7 @@ async function handleBlueprintList(cwd: string, raw: unknown): Promise<ToolHandl
   }
 
   // Single-project path: scope is 'current' or omitted
-  const resolvedProject = await resolveToolProject(cwd, project_id)
+  const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
   const target = dbPath(projectCwd)
@@ -1604,7 +1515,11 @@ interface TaskRow {
   lane: string | null
 }
 
-async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
+async function handleBlueprintGet(
+  projectResolver: ProjectResolver,
+  cwd: string,
+  raw: unknown,
+): Promise<ToolHandlerResult> {
   const p = getSchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_get validation error', p.error.message)
   const { slug, scope, project_id } = p.data
@@ -1706,7 +1621,7 @@ async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandle
   }
 
   // Single-project path
-  const resolvedProject = await resolveToolProject(cwd, project_id)
+  const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
   const target = dbPath(projectCwd)
@@ -1791,12 +1706,16 @@ const contextSchema = ReadTarget.extend({
   task_id: z.string().optional(),
 })
 
-async function handleBlueprintContext(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
+async function handleBlueprintContext(
+  projectResolver: ProjectResolver,
+  cwd: string,
+  raw: unknown,
+): Promise<ToolHandlerResult> {
   const p = contextSchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_context validation error', p.error.message)
   const { slug, task_id, project_id } = p.data
 
-  const resolvedProject = await resolveToolProject(cwd, project_id)
+  const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
   const target = dbPath(projectCwd)
@@ -1944,11 +1863,15 @@ const createSchema = MutationTarget.extend({
   head_at_ingest: z.string().nullable().optional(),
 })
 
-async function handleBlueprintCreate(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
+async function handleBlueprintCreate(
+  projectResolver: ProjectResolver,
+  cwd: string,
+  raw: unknown,
+): Promise<ToolHandlerResult> {
   const p = createSchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_create validation error', p.error.message)
   const { project_id, title, goal, complexity, tags, request_id, head_at_ingest } = p.data
-  const resolvedProject = await resolveToolProject(cwd, project_id)
+  const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
   if ('content' in resolvedProject) return resolvedProject
   const projectCwd = resolvedProject.cwd
   const freshnessFailure = validateMutationFreshnessToken(

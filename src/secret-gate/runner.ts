@@ -34,9 +34,11 @@ const SIGNAL_TO_EXIT_CODE: Readonly<Partial<Record<NodeJS.Signals, number>>> = {
 }
 
 export function buildSecretGateCommand(options: SecretGateCommandOptions): SecretGateCommand {
-  const runner = (options.runner ?? 'with-secrets').trim()
-  const envProfile = (options.envProfile ?? 'secrets-only').trim()
-  const args = ['--env-profile', envProfile, '--', options.command, ...(options.args ?? [])]
+  const runner = options.runner?.trim() || 'with-secrets'
+  const envProfile = options.envProfile?.trim()
+  const args = envProfile
+    ? ['--env-profile', envProfile, '--', options.command, ...(options.args ?? [])]
+    : ['--', options.command, ...(options.args ?? [])]
   return { command: runner, args }
 }
 

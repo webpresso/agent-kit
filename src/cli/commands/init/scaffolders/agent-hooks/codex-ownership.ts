@@ -16,7 +16,7 @@ type KnownWebpressoCodexBin = (typeof KNOWN_WEBPRESSO_CODEX_BINS)[number]
 const KNOWN_WEBPRESSO_CODEX_BIN_SET = new Set<string>(KNOWN_WEBPRESSO_CODEX_BINS)
 const NODE_MODULES_BIN_PATTERN = /^(?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+)$/u
 const GUARDED_NODE_MODULES_BIN_PATTERN =
-  /^\[ -x (["']?)((?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+))\1 \] && \1\2\1 \|\| true$/u
+  /^\[ -x (["']?)((?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+))\1 \] && \1\2\1 \|\| (?:true|printf .+)$/u
 
 export interface CodexHookOwnershipMetadata {
   readonly isManaged?: unknown

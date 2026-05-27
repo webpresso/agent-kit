@@ -10,6 +10,25 @@ export async function createE2eExecutionPlan(
   input: GenericE2ePlanInput,
   cwd = process.cwd(),
 ): Promise<PlannedE2eRunGroup[]> {
+  // Explicit runner/config requests are generic-by-intent. Bypass host adapters
+  // so MCP callers can force a specific runner without inheriting suite defaults
+  // (e.g. host Playwright config when runner=vitest).
+  if (input.runner || input.config) {
+    return planGenericE2eRun({
+      suite: input.suite,
+      runner: input.runner,
+      config: input.config,
+      files: toArray(input.files),
+      headed: input.headed,
+      debug: input.debug,
+      reuseReset: input.reuseReset,
+      noSupervisor: input.noSupervisor,
+      workers: input.workers,
+      testList: input.testList,
+      passthrough: input.passthrough,
+    })
+  }
+
   const hostAdapter = await loadConfiguredHostAdapter(cwd)
   const files = toArray(input.files)
 

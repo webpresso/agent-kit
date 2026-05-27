@@ -1,3 +1,6 @@
+import { spawnSync } from 'node:child_process'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
 import type { CAC } from 'cac'
 
 type OutputWriter = Pick<NodeJS.WriteStream, 'write'>
@@ -36,8 +39,6 @@ interface SecretsRuntime {
   secretManagerRegistry: Pick<Map<SecretManagerName, SecretManagerAdapter>, 'get'>
 }
 
-let runtimeCache: Promise<SecretsRuntime> | undefined
-
 export interface ConfigCommandOptions {
   readonly cwd?: string
   readonly json?: boolean
@@ -66,19 +67,106 @@ export interface SecretsConfigCommandDeps {
   readonly stderr?: OutputWriter
 }
 
-async function loadSecretsRuntime(): Promise<SecretsRuntime> {
-  if (!runtimeCache) {
-    runtimeCache = (
-      Function('specifier', 'return import(specifier)') as (specifier: string) => Promise<unknown>
-    )('@webpresso/webpresso/runtime/env').then((mod) => mod as SecretsRuntime)
-  }
-  return runtimeCache
-}
-
 function commandError(message: string, exitCode = 1): Error & { exitCode: number } {
   const error = new Error(message) as Error & { exitCode: number }
   error.exitCode = exitCode
   return error
+}
+
+const secretManagerRegistry = new Map<SecretManagerName, SecretManagerAdapter>([
+  ['doppler', createCliDiagnosticAdapter({ binary: 'doppler', displayName: 'Doppler' })],
+  ['infisical', createCliDiagnosticAdapter({ binary: 'infisical', displayName: 'Infisical' })],
+])
+
+const localSecretsRuntime: SecretsRuntime = {
+  getSecretsConfigPath,
+  readSecretsConfig,
+  writeSecretsConfig,
+  runSecretManagerSetup: async () => {
+    throw commandError(
+      [
+        'Interactive secret-manager setup is not bundled with agent-kit.',
+        'Configure your manager CLI, then run: wp config secrets set <doppler|infisical> <project-id>',
+      ].join(' '),
+    )
+  },
+  secretManagerRegistry,
+}
+
+function createCliDiagnosticAdapter(options: {
+  binary: SecretManagerName
+  displayName: string
+}): SecretManagerAdapter {
+  return {
+    displayName: options.displayName,
+    async checkAvailability() {
+      const result = spawnSync(options.binary, ['--version'], { stdio: 'ignore' })
+      if (!result.error && result.status === 0) return { available: true }
+      return {
+        available: false,
+        detail: `${options.displayName} CLI is not available on PATH.`,
+      }
+    },
+    async checkAuthentication() {
+      return {
+        authenticated: false,
+        detail: [
+          `${options.displayName} CLI is installed, but agent-kit does not inspect manager auth state or fetch secrets.`,
+          `Run the manager login flow, then verify execution with: with-secrets -- <cmd>`,
+        ].join(' '),
+      }
+    },
+  }
+}
+
+function getSecretsConfigPath(cwd: string = process.cwd()): string {
+  return join(findConfigRoot(cwd), 'webpresso', 'secrets.json')
+}
+
+function readSecretsConfig(cwd?: string): SecretsConfig | null {
+  const path = getSecretsConfigPath(cwd)
+  if (!existsSync(path)) return null
+  const parsed = JSON.parse(readFileSync(path, 'utf8')) as Partial<SecretsConfig>
+  if (!isSecretManagerName(parsed.manager) || typeof parsed.projectId !== 'string') {
+    throw commandError(`Invalid secret manager config at ${path}`)
+  }
+  return {
+    manager: parsed.manager,
+    projectId: parsed.projectId,
+    ...(typeof parsed.projectLabel === 'string' ? { projectLabel: parsed.projectLabel } : {}),
+  }
+}
+
+function writeSecretsConfig(config: SecretsConfig, cwd?: string): void {
+  const path = getSecretsConfigPath(cwd)
+  mkdirSync(dirname(path), { recursive: true })
+  writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 })
+}
+
+function findConfigRoot(cwd: string): string {
+  const start = resolve(cwd)
+  let current = start
+  while (true) {
+    const gitPath = join(current, '.git')
+    if (existsSync(gitPath)) {
+      const resolvedGitPath = resolveGitPath(gitPath, current)
+      if (resolvedGitPath) return resolvedGitPath
+    }
+    const parent = dirname(current)
+    if (parent === current) return join(start, '.webpresso')
+    current = parent
+  }
+}
+
+function resolveGitPath(gitPath: string, repositoryPath: string): string | undefined {
+  try {
+    const text = readFileSync(gitPath, 'utf8')
+    const match = /^gitdir:\\s*(.+)$/u.exec(text.trim())
+    if (!match) return undefined
+    return resolve(repositoryPath, match[1]!)
+  } catch {
+    return gitPath
+  }
 }
 
 function isSecretManagerName(value: string | undefined): value is SecretManagerName {
@@ -97,9 +185,9 @@ async function getStatus(
   cwd: string | undefined,
   deps: SecretsConfigCommandDeps,
 ): Promise<SecretsConfigStatus> {
-  const runtime = deps.getPath && deps.readConfig ? undefined : await loadSecretsRuntime()
-  const path = (deps.getPath ?? runtime?.getSecretsConfigPath ?? (() => ''))(cwd)
-  const config = (deps.readConfig ?? runtime?.readSecretsConfig ?? (() => null))(cwd)
+  const runtime = localSecretsRuntime
+  const path = (deps.getPath ?? runtime.getSecretsConfigPath)(cwd)
+  const config = (deps.readConfig ?? runtime.readSecretsConfig)(cwd)
   if (!config) {
     return {
       configured: false,
@@ -110,7 +198,7 @@ async function getStatus(
     }
   }
 
-  const adapter = (deps.registry ?? runtime?.secretManagerRegistry)?.get(config.manager) ?? null
+  const adapter = (deps.registry ?? runtime.secretManagerRegistry).get(config.manager) ?? null
   if (!adapter) {
     return {
       configured: true,
@@ -212,11 +300,11 @@ export async function runSecretsConfigCommand(
         projectId,
         ...(options.label ? { projectLabel: options.label } : {}),
       }
-      const runtime = deps.writeConfig && deps.getPath ? undefined : await loadSecretsRuntime()
-      ;(deps.writeConfig ?? runtime?.writeSecretsConfig ?? (() => undefined))(config, cwd)
+      const runtime = localSecretsRuntime
+      ;(deps.writeConfig ?? runtime.writeSecretsConfig)(config, cwd)
       const payload = {
         ok: true,
-        path: (deps.getPath ?? runtime?.getSecretsConfigPath ?? (() => ''))(cwd),
+        path: (deps.getPath ?? runtime.getSecretsConfigPath)(cwd),
         config,
       }
       if (options.json) writeJson(stdout, payload)
@@ -224,15 +312,11 @@ export async function runSecretsConfigCommand(
       return 0
     }
     case 'setup': {
-      const runtime = deps.setup && deps.getPath ? undefined : await loadSecretsRuntime()
-      const result = await (
-        deps.setup ??
-        runtime?.runSecretManagerSetup ??
-        (() => Promise.reject(commandError('Secret-manager runtime unavailable')))
-      )({ cwd })
+      const runtime = localSecretsRuntime
+      const result = await (deps.setup ?? runtime.runSecretManagerSetup)({ cwd })
       const payload = {
         ok: true,
-        path: (deps.getPath ?? runtime?.getSecretsConfigPath ?? (() => ''))(cwd),
+        path: (deps.getPath ?? runtime.getSecretsConfigPath)(cwd),
         config: { manager: result.manager, projectId: result.projectId },
       }
       if (options.json) writeJson(stdout, payload)

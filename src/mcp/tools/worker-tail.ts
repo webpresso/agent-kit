@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
 
-import { runSecretGateCommand } from '#secret-gate/runner.js'
+import { buildSecretGateCommand, runSecretGateCommand } from '#secret-gate/runner.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 import { redactText } from './_shared/redact.js'
 
@@ -22,10 +22,11 @@ const inputSchema = z
     versionId: z.string().optional(),
     timeoutMs: z.number().int().positive().max(120_000).optional().default(30_000),
     maxEvents: z.number().int().positive().max(200).optional().default(20),
-    envProfile: z.string().optional().default('secrets-only'),
     execute: z.boolean().optional().default(false),
   })
   .strict()
+
+const MAX_OUTPUT_BYTES = 64 * 1024
 
 const outputSchema = createSummaryOutputSchema({
   counts: z.object({
@@ -81,21 +82,22 @@ const tool: ToolDescriptor = {
   handler: async (raw, extra) => {
     const input = inputSchema.parse(raw ?? {})
     const args = buildWranglerTailArgs(input)
+    const command = buildSecretGateCommand({ command: 'wrangler', args })
     if (!input.execute) {
       return createSummaryResult({
         passed: true,
         summary: `worker-tail dry-run prepared for ${input.worker}`,
         counts: { eventCount: 0 },
-        details: { command: { command: 'wrangler', args } },
+        details: { command },
       })
     }
 
     const result = await runSecretGateCommand({
       cwd: input.cwd,
-      envProfile: input.envProfile,
       command: 'wrangler',
       args,
       timeoutMs: input.timeoutMs,
+      maxOutputBytes: MAX_OUTPUT_BYTES,
       signal: extra?.signal,
     })
     const combined = [result.stdout, result.stderr].filter(Boolean).join('\n')
@@ -110,7 +112,7 @@ const tool: ToolDescriptor = {
         : `worker-tail failed with exit ${result.exitCode}`,
       exitCode: result.exitCode,
       counts: { eventCount: events.length },
-      details: { command: { command: 'wrangler', args } },
+      details: { command },
       events,
       rawOutput: redactedOutput,
     })

@@ -17,6 +17,10 @@ const TEMPLATE_MAP: Array<[string, string]> = [
   ['.actrc.tmpl', '.actrc'],
   ['commitlint.config.ts.tmpl', 'commitlint.config.ts'],
   ['scripts/check-no-dev-vars.ts.tmpl', 'scripts/check-no-dev-vars.ts'],
+  [
+    'scripts/audit-secret-provider-quarantine.ts.tmpl',
+    'scripts/audit-secret-provider-quarantine.ts',
+  ],
   ['.husky/pre-commit.tmpl', '.husky/pre-commit'],
   ['.husky/commit-msg.tmpl', '.husky/commit-msg'],
   ['.github/workflows/ci.webpresso.yml.tmpl', '.github/workflows/ci.webpresso.yml'],
@@ -86,8 +90,10 @@ function mergePackageJson(
   const scripts = (pkg['scripts'] ?? {}) as Record<string, string>
   const hasSetupAgent = typeof scripts['setup:agent'] === 'string'
   const hasVerifySecrets = typeof scripts['verify:secrets'] === 'string'
+  const hasSecretQuarantineAudit = typeof scripts['audit:secret-provider-quarantine'] === 'string'
   const hasPrepareScript = typeof scripts['prepare'] === 'string'
   const verifySecretsScript = 'bun scripts/check-no-dev-vars.ts'
+  const secretQuarantineAuditScript = 'bun scripts/audit-secret-provider-quarantine.ts'
 
   const devDeps = (pkg['devDependencies'] ?? {}) as Record<string, string>
   const hasAgentKitDevDep = typeof devDeps['webpresso'] === 'string'
@@ -100,6 +106,7 @@ function mergePackageJson(
     (shouldSkipSelfInstall || shouldManageAgentKitAsGlobal || hasAgentKitDevDep) &&
     (shouldSkipSelfInstall || hasSetupAgent) &&
     (shouldSkipSelfInstall || hasVerifySecrets) &&
+    (shouldSkipSelfInstall || hasSecretQuarantineAudit) &&
     (shouldSkipSelfInstall || hasPrepareScript)
   ) {
     return { targetPath: pkgPath, action: 'identical' }
@@ -125,6 +132,9 @@ function mergePackageJson(
   }
   if (!shouldSkipSelfInstall && !hasVerifySecrets) {
     scripts['verify:secrets'] = verifySecretsScript
+  }
+  if (!shouldSkipSelfInstall && !hasSecretQuarantineAudit) {
+    scripts['audit:secret-provider-quarantine'] = secretQuarantineAuditScript
   }
   if (!shouldSkipSelfInstall && !hasPrepareScript) {
     scripts['prepare'] = 'husky'

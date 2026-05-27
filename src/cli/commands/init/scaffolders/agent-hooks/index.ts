@@ -32,14 +32,25 @@ import {
 // active session cwd points at a sibling repo, so Codex hook commands must be
 // path-stable and not depend on the caller's cwd.
 //
-// CC_BIN wraps the command in a guard so it exits 0 gracefully when node_modules
-// hasn't been installed yet (e.g. a fresh worktree before `vp install` completes).
-// Without the guard every hook fires an error on first session start in new worktrees.
+// Hook command wrappers:
+// - default: fail-open to keep fresh repos usable while dependencies install
+// - pretool guard: fail-closed (explicit deny JSON) so policy cannot silently
+//   bypass when the guard binary is missing/non-executable.
+const PRETOOL_GUARD_BIN = 'wp-pretool-guard'
+const PRETOOL_GUARD_MISSING_DENY = `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp-pretool-guard is unavailable. Run vp install or wp setup."}}'`
+
+function buildGuardedHookCommand(binPath: string, name: string): string {
+  if (name === PRETOOL_GUARD_BIN) {
+    return `[ -x "${binPath}" ] && "${binPath}" || ${PRETOOL_GUARD_MISSING_DENY}`
+  }
+  return `[ -x "${binPath}" ] && "${binPath}" || true`
+}
+
 const CC_BIN = (name: string) =>
-  `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}" || true`
+  buildGuardedHookCommand(`$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}`, name)
 const CODEX_BIN = (repoRoot: string) => (name: string) => {
   const binPath = resolve(repoRoot, 'node_modules', '.bin', name)
-  return `[ -x "${binPath}" ] && "${binPath}" || true`
+  return buildGuardedHookCommand(binPath, name)
 }
 
 type HookEntry = { type: string; command: string; timeout?: number }
@@ -89,11 +100,11 @@ function findHookIndexByCommand(hooks: HookEntry[], command: string): number {
 const SCRIPT_EXTENSIONS = ['sh', 'ts', 'js', 'mjs', 'cjs', 'py'] as const
 const DIRECT_NODE_MODULES_BIN_PATTERN = /^(?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+)$/u
 const GUARDED_NODE_MODULES_BIN_PATTERN =
-  /^\[ -x (["']?)((?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+))\1 \] && \1\2\1 \|\| true$/u
+  /^\[ -x (["']?)((?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+))\1 \] && \1\2\1 \|\| (?:true|printf .+)$/u
 const DIRECT_CLAUDE_NODE_MODULES_BIN_PATTERN =
   /^["']?\$CLAUDE_PROJECT_DIR\/node_modules\/\.bin\/([\w-]+)["']?$/u
 const GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN =
-  /^\[ -x (["']?)\$CLAUDE_PROJECT_DIR\/node_modules\/\.bin\/([\w-]+)\1 \] && \1\$CLAUDE_PROJECT_DIR\/node_modules\/\.bin\/\2\1 \|\| true$/u
+  /^\[ -x (["']?)\$CLAUDE_PROJECT_DIR\/node_modules\/\.bin\/([\w-]+)\1 \] && \1\$CLAUDE_PROJECT_DIR\/node_modules\/\.bin\/\2\1 \|\| (?:true|printf .+)$/u
 // Capture the basename of any path that ends in a known script extension.
 // Handles trailing chars (quote, space, end-of-string).
 const SCRIPT_BASENAME_PATTERN = new RegExp(

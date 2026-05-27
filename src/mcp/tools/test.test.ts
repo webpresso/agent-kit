@@ -169,5 +169,25 @@ describe('wp_test tool', () => {
       expect(payload.aborted).toBe(true)
       expect(payload.failures?.[0]?.message).toMatch(/aborted/)
     })
+
+    it('marks timed out test execution as isError: true with a timeout summary', async () => {
+      const killCapture: { signal: NodeJS.Signals | null } = { signal: null }
+      spawnMock.mockReturnValue(fakeChild({ hang: true, killCapture }))
+
+      const result = await akTestTool.handler({ packages: ['x'], timeoutMs: 1 })
+      const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+        passed: boolean
+        summary: string
+        timedOut?: boolean
+        failures?: Array<{ message: string }>
+      }
+
+      expect(killCapture.signal).toBe('SIGTERM')
+      expect(result.isError).toBe(true)
+      expect(payload.passed).toBe(false)
+      expect(payload.summary).toBe('tests timed out for 1 package')
+      expect(payload.timedOut).toBe(true)
+      expect(payload.failures?.[0]?.message).toMatch(/timed out/i)
+    })
   })
 })

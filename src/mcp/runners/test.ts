@@ -3,10 +3,10 @@ import { join } from 'node:path'
 
 import { isRunFailure, runCommand as runSharedCommand } from '#mcp/tools/_shared/run-command'
 
-// Keep the runner's own deadline below common MCP client call ceilings so a
-// slow workspace suite returns a structured `timedOut` payload and the spawned
-// Vitest process group is cleaned up before the client drops the request.
-const DEFAULT_TEST_TIMEOUT_MS = 105_000
+// Keep the runner's own deadline comfortably below common MCP client call
+// ceilings so slow suites fail fast with a structured `timedOut` payload
+// instead of appearing to hang.
+const DEFAULT_TEST_TIMEOUT_MS = 30_000
 
 export interface TestRunInput {
   /** Working tree to run from. Defaults to `CLAUDE_PROJECT_DIR` or `process.cwd()`. */
@@ -37,17 +37,19 @@ export interface TestResult {
  */
 export async function runTests(input: TestRunInput): Promise<TestResult> {
   const cwd = input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
+  const timeoutMs = input.timeoutMs ?? DEFAULT_TEST_TIMEOUT_MS
   if (input.packages && input.packages.length > 0) {
     let combinedOutput = ''
     let firstFailure = 0
     let timedOut = false
     let aborted = false
     for (const pkg of input.packages) {
-      const result = await runPackageScopedTests(cwd, pkg, input)
+      const result = await runPackageScopedTests(cwd, pkg, { ...input, timeoutMs })
       combinedOutput += result.output
       if (!result.passed && firstFailure === 0) firstFailure = result.exitCode
       if (result.timedOut) timedOut = true
       if (result.aborted) aborted = true
+      if (result.timedOut || result.aborted) break
     }
     return {
       passed: firstFailure === 0,
@@ -63,13 +65,13 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
       return runCommand(
         'vp',
         ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color', ...input.files],
-        { ...input, cwd },
+        { ...input, cwd, timeoutMs },
       )
     }
-    return runCommand('vp', ['run', 'test', '--', ...input.files], { ...input, cwd })
+    return runCommand('vp', ['run', 'test', '--', ...input.files], { ...input, cwd, timeoutMs })
   }
 
-  return runCommand('vp', ['run', 'test'], { ...input, cwd })
+  return runCommand('vp', ['run', 'test'], { ...input, cwd, timeoutMs })
 }
 
 function runPackageScopedTests(
