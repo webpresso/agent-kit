@@ -13,7 +13,7 @@
  *   markdown-canonical path runs byte-identically to the pre-migration behaviour.
  */
 
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import { createHash, randomUUID } from 'node:crypto'
 import path from 'node:path'
 
@@ -35,7 +35,7 @@ import {
 } from '#freshness.js'
 import { applyVerification, parseVerificationBlock } from '#verification.js'
 import { makeNextAction } from '#next-action.js'
-import { resolveBlueprintProjects } from '#projects.js'
+import { PROJECT_SOURCES, resolveBlueprintProjects, type BlueprintProjectRef } from '#projects.js'
 import { aggregateBlueprintRows, type ProjectReader } from '#aggregate.js'
 import { maybeHint } from './_tail-hints.js'
 import type { ToolHandlerResult, ToolRegistrar } from './auto-discover.js'
@@ -340,6 +340,118 @@ function appendHint(
   if (h) payload['tail_hint'] = h
 }
 
+function projectCandidateView(project: BlueprintProjectRef): Record<string, unknown> {
+  return {
+    project_id: project.project_id,
+    label: project.label,
+    worktree_path: project.worktree_path,
+    repo_path: project.repo_path,
+    source: project.source,
+    has_blueprints: project.has_blueprints,
+  }
+}
+
+function projectDisambiguationError(
+  summary: string,
+  hint: string,
+  projects: ReadonlyArray<BlueprintProjectRef>,
+): ToolHandlerResult {
+  return jsonContent(
+    {
+      summary,
+      failures: [hint],
+      next_action: {
+        ...makeNextAction('disambiguate_slug', hint),
+        candidates: projects.map(projectCandidateView),
+      },
+      bytes: 0,
+      tokensSaved: 0,
+    },
+    true,
+  )
+}
+
+async function resolveToolProject(
+  cwd: string,
+  projectId: string | undefined,
+): Promise<{ cwd: string; project_id: string | null } | ToolHandlerResult> {
+  const projects = await resolveBlueprintProjects({ cwd })
+
+  if (projectId !== undefined) {
+    const resolvedPath = (() => {
+      try {
+        return realpathSync(projectId)
+      } catch {
+        return null
+      }
+    })()
+
+    const match =
+      projects.find(
+        (project) =>
+          project.project_id === projectId ||
+          project.worktree_path === projectId ||
+          project.repo_path === projectId ||
+          (resolvedPath !== null &&
+            (project.worktree_path === resolvedPath || project.repo_path === resolvedPath)),
+      ) ?? null
+
+    if (match) {
+      return { cwd: match.worktree_path, project_id: match.project_id }
+    }
+
+    if (resolvedPath !== null) {
+      return { cwd: resolvedPath, project_id: null }
+    }
+
+    return projectDisambiguationError(
+      `Project "${projectId}" not found`,
+      'Call wp_blueprint_projects to pick an explicit project_id or pass a valid project path.',
+      projects,
+    )
+  }
+
+  const current = projects.find((project) => project.source === PROJECT_SOURCES.current) ?? null
+  if (current) {
+    return { cwd: current.worktree_path, project_id: current.project_id }
+  }
+
+  const currentScopeProjects = projects.filter(
+    (project) => project.source === PROJECT_SOURCES.recursive_scan,
+  )
+  if (currentScopeProjects.length === 1) {
+    const onlyProject = currentScopeProjects[0]
+    if (!onlyProject) {
+      return err('project resolution failed', 'Recursive current project selection was empty')
+    }
+    return { cwd: onlyProject.worktree_path, project_id: onlyProject.project_id }
+  }
+
+  if (currentScopeProjects.length > 1) {
+    return projectDisambiguationError(
+      'Multiple blueprint projects found under the current working directory',
+      'Call wp_blueprint_projects and pass an explicit project_id to the blueprint tool you want to run.',
+      currentScopeProjects,
+    )
+  }
+
+  if (projects.length === 1) {
+    const onlyProject = projects[0]
+    if (!onlyProject) return err('project resolution failed', 'Single project selection was empty')
+    return { cwd: onlyProject.worktree_path, project_id: onlyProject.project_id }
+  }
+
+  if (projects.length > 1) {
+    return projectDisambiguationError(
+      'Multiple blueprint projects are visible from the current workspace',
+      'Call wp_blueprint_projects and pass an explicit project_id to disambiguate.',
+      projects,
+    )
+  }
+
+  return { cwd, project_id: null }
+}
+
 function finishPayload(payload: Record<string, unknown>): ToolHandlerResult {
   payload['bytes'] = bytes(JSON.stringify(payload))
   return jsonContent(payload)
@@ -641,20 +753,23 @@ async function handleValidate(cwd: string, raw: unknown): Promise<ToolHandlerRes
   })
 }
 
-const taskNextSchema = z.object({ blueprint: z.string().optional() })
+const taskNextSchema = z.object({ blueprint: z.string().optional(), project_id: z.string().optional() })
 async function handleTaskNext(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = taskNextSchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_task_next validation error', p.error.message)
-  const { blueprint } = p.data
+  const { blueprint, project_id } = p.data
+  const resolvedProject = await resolveToolProject(cwd, project_id)
+  if ('content' in resolvedProject) return resolvedProject
+  const projectCwd = resolvedProject.cwd
 
   // Platform-first: refresh local replica before reading so the result reflects remote state.
   // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
-  const adapter = await resolveSyncAdapter(cwd)
+  const adapter = await resolveSyncAdapter(projectCwd)
   if (adapter !== null) {
     await adapter.ensureFresh(blueprint !== undefined ? { slug: blueprint } : undefined)
   }
 
-  const target = dbPath(cwd)
+  const target = dbPath(projectCwd)
   if (!existsSync(target))
     return jsonContent({
       summary: 'No blueprint DB found',
@@ -663,7 +778,7 @@ async function handleTaskNext(cwd: string, raw: unknown): Promise<ToolHandlerRes
       bytes: 0,
       tokensSaved: 0,
     })
-  const taskNextFreshness = checkFreshness({ worktree_path: cwd, db_path: target })
+  const taskNextFreshness = checkFreshness({ worktree_path: projectCwd, db_path: target })
   if (!taskNextFreshness.ok) {
     return staleProjectionResponse('Blueprint projection is stale', taskNextFreshness.next_action, {
       task: null,
@@ -729,7 +844,7 @@ async function handleTaskNext(cwd: string, raw: unknown): Promise<ToolHandlerRes
       bytes: 0,
       tokensSaved: 0,
     }
-    if (w0cnt >= 3) appendHint(payload, cwd, 'PLL_PARALLEL')
+    if (w0cnt >= 3) appendHint(payload, projectCwd, 'PLL_PARALLEL')
     return finishPayload(payload)
   } catch (e) {
     return err('wp_blueprint_task_next failed', toStr(e))
@@ -737,6 +852,7 @@ async function handleTaskNext(cwd: string, raw: unknown): Promise<ToolHandlerRes
 }
 
 const advanceSchema = z.object({
+  project_id: z.string(),
   task_id: z.string(),
   to: z.enum(['todo', 'in-progress', 'blocked', 'done', 'dropped']),
   request_id: z.string().min(1).optional(),
@@ -745,9 +861,12 @@ const advanceSchema = z.object({
 async function handleTaskAdvance(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = advanceSchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_task_advance validation error', p.error.message)
-  const { task_id, to, request_id, head_at_ingest } = p.data
+  const { project_id, task_id, to, request_id, head_at_ingest } = p.data
+  const resolvedProject = await resolveToolProject(cwd, project_id)
+  if ('content' in resolvedProject) return resolvedProject
+  const projectCwd = resolvedProject.cwd
   const freshnessFailure = validateMutationFreshnessToken(
-    cwd,
+    projectCwd,
     head_at_ingest,
     'wp_blueprint_task_advance',
     'wp_blueprint_list',
@@ -756,7 +875,7 @@ async function handleTaskAdvance(cwd: string, raw: unknown): Promise<ToolHandler
   const payloadHash = hashMutationPayload({ task_id, to })
   const replay =
     request_id !== undefined
-      ? readMutationReplay(cwd, 'wp_blueprint_task_advance', request_id, payloadHash)
+      ? readMutationReplay(projectCwd, 'wp_blueprint_task_advance', request_id, payloadHash)
       : null
   if (replay) return replay
 
@@ -778,7 +897,7 @@ async function handleTaskAdvance(cwd: string, raw: unknown): Promise<ToolHandler
     )
   }
 
-  const target = dbPath(cwd)
+  const target = dbPath(projectCwd)
   if (!existsSync(target)) return err('wp_blueprint_task_advance failed', 'Blueprint DB not found')
   try {
     const conn = openDb(target)
@@ -804,7 +923,7 @@ async function handleTaskAdvance(cwd: string, raw: unknown): Promise<ToolHandler
 
     // Platform-first path: push event + pull fresh replica before local update.
     // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
-    const adapter = await resolveSyncAdapter(cwd)
+    const adapter = await resolveSyncAdapter(projectCwd)
     if (adapter !== null && blueprintSlug !== null && oldStatus !== null) {
       await adapter.pushEvent({
         eventId: randomUUID(),
@@ -839,7 +958,7 @@ async function handleTaskAdvance(cwd: string, raw: unknown): Promise<ToolHandler
       writeFileSync(filePath, lines.join('\n'), 'utf8')
     }
     try {
-      await reIngest(cwd)
+      await reIngest(projectCwd)
     } catch {
       /* non-fatal */
     }
@@ -854,7 +973,13 @@ async function handleTaskAdvance(cwd: string, raw: unknown): Promise<ToolHandler
       tokensSaved: 0,
     }
     if (request_id !== undefined) {
-      recordMutationReplay(cwd, 'wp_blueprint_task_advance', request_id, payloadHash, payload)
+      recordMutationReplay(
+        projectCwd,
+        'wp_blueprint_task_advance',
+        request_id,
+        payloadHash,
+        payload,
+      )
     }
     return finishPayload(payload)
   } catch (e) {
@@ -876,8 +1001,11 @@ async function handleTaskVerify(cwd: string, raw: unknown): Promise<ToolHandlerR
   const p = taskVerifySchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_task_verify validation error', p.error.message)
   const { project_id, slug, task_id, evidence, request_id, head_at_ingest } = p.data
+  const resolvedProject = await resolveToolProject(cwd, project_id)
+  if ('content' in resolvedProject) return resolvedProject
+  const projectCwd = resolvedProject.cwd
   const freshnessFailure = validateMutationFreshnessToken(
-    project_id,
+    projectCwd,
     head_at_ingest,
     'wp_blueprint_task_verify',
     'wp_blueprint_get',
@@ -886,12 +1014,12 @@ async function handleTaskVerify(cwd: string, raw: unknown): Promise<ToolHandlerR
   const payloadHash = hashMutationPayload({ slug, task_id, evidence })
   const replay =
     request_id !== undefined
-      ? readMutationReplay(cwd, 'wp_blueprint_task_verify', request_id, payloadHash)
+      ? readMutationReplay(projectCwd, 'wp_blueprint_task_verify', request_id, payloadHash)
       : null
   if (replay) return replay
 
   // Locate the blueprint markdown file on disk
-  const root = resolveBlueprintRoot(cwd)
+  const root = resolveBlueprintRoot(projectCwd)
   const found = findBlueprintDir(root, slug, ALL_STATES)
   if (!found) {
     return err(
@@ -915,7 +1043,9 @@ async function handleTaskVerify(cwd: string, raw: unknown): Promise<ToolHandlerR
     existingEvidence !== null &&
     canonicalizeEvidenceList(existingEvidence) === incomingCanonical
   ) {
-    const nextPayload = parseStructuredJson(await handleTaskNext(cwd, { blueprint: slug }))
+    const nextPayload = parseStructuredJson(
+      await handleTaskNext(projectCwd, { blueprint: slug, project_id: resolvedProject.project_id ?? projectCwd }),
+    )
     const payload: Record<string, unknown> = {
       summary: `Task "${task_id}" verification is already recorded (idempotent)`,
       status: 'done',
@@ -933,7 +1063,7 @@ async function handleTaskVerify(cwd: string, raw: unknown): Promise<ToolHandlerR
       tokensSaved: 0,
     }
     if (request_id !== undefined) {
-      recordMutationReplay(cwd, 'wp_blueprint_task_verify', request_id, payloadHash, payload)
+      recordMutationReplay(projectCwd, 'wp_blueprint_task_verify', request_id, payloadHash, payload)
     }
     return finishPayload(payload)
   }
@@ -959,13 +1089,15 @@ async function handleTaskVerify(cwd: string, raw: unknown): Promise<ToolHandlerR
 
   // Re-ingest so the DB projection reflects the completed status
   try {
-    await reIngest(cwd)
+    await reIngest(projectCwd)
   } catch {
     /* non-fatal */
   }
 
   const b = bytes(result.markdown)
-  const nextPayload = parseStructuredJson(await handleTaskNext(cwd, { blueprint: slug }))
+  const nextPayload = parseStructuredJson(
+    await handleTaskNext(projectCwd, { blueprint: slug, project_id: resolvedProject.project_id ?? projectCwd }),
+  )
   const payload: Record<string, unknown> = {
     summary: `Task "${task_id}" verified and marked done`,
     status: 'done',
@@ -981,20 +1113,24 @@ async function handleTaskVerify(cwd: string, raw: unknown): Promise<ToolHandlerR
     tokensSaved: 0,
   }
   if (request_id !== undefined) {
-    recordMutationReplay(cwd, 'wp_blueprint_task_verify', request_id, payloadHash, payload)
+    recordMutationReplay(projectCwd, 'wp_blueprint_task_verify', request_id, payloadHash, payload)
   }
   return finishPayload(payload)
 }
 
 const promoteSchema = z.object({
+  project_id: z.string().optional(),
   slug: z.string(),
   to_state: z.enum(['planned', 'in-progress', 'completed', 'parked', 'archived']),
 })
 async function handlePromote(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = promoteSchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_promote validation error', p.error.message)
-  const { slug, to_state } = p.data
-  const root = resolveBlueprintRoot(cwd)
+  const { project_id, slug, to_state } = p.data
+  const resolvedProject = await resolveToolProject(cwd, project_id)
+  if ('content' in resolvedProject) return resolvedProject
+  const projectCwd = resolvedProject.cwd
+  const root = resolveBlueprintRoot(projectCwd)
   const found = findBlueprintDir(root, slug, ALL_STATES)
   if (!found)
     return err(
@@ -1003,7 +1139,7 @@ async function handlePromote(cwd: string, raw: unknown): Promise<ToolHandlerResu
     )
   const { dir: currentDir, state: currentState } = found
   const overviewPath = path.join(currentDir, '_overview.md')
-  const ts = readVt(cwd)
+  const ts = readVt(projectCwd)
   const mtime = existsSync(overviewPath) ? statSync(overviewPath).mtimeMs : 0
   if ((ts[slug] ?? 0) < mtime)
     return err(
@@ -1012,7 +1148,7 @@ async function handlePromote(cwd: string, raw: unknown): Promise<ToolHandlerResu
     )
   // Platform-first path: push event + pull fresh replica before local move.
   // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
-  const adapter = await resolveSyncAdapter(cwd)
+  const adapter = await resolveSyncAdapter(projectCwd)
   if (adapter !== null) {
     await adapter.pushEvent({
       eventId: randomUUID(),
@@ -1044,7 +1180,7 @@ async function handlePromote(cwd: string, raw: unknown): Promise<ToolHandlerResu
     writeFileSync(destOverview, matter.stringify(fm.content, fm.data), 'utf8')
   }
   try {
-    await reIngest(cwd)
+    await reIngest(projectCwd)
   } catch {
     /* non-fatal */
   }
@@ -1058,16 +1194,20 @@ async function handlePromote(cwd: string, raw: unknown): Promise<ToolHandlerResu
     bytes: 0,
     tokensSaved: 0,
   }
-  if (currentState === 'draft' && to_state === 'planned') appendHint(payload, cwd, 'PLAN_REFINE')
+  if (currentState === 'draft' && to_state === 'planned')
+    appendHint(payload, projectCwd, 'PLAN_REFINE')
   return finishPayload(payload)
 }
 
-const finalizeSchema = z.object({ slug: z.string() })
+const finalizeSchema = z.object({ project_id: z.string().optional(), slug: z.string() })
 async function handleFinalize(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = finalizeSchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_finalize validation error', p.error.message)
-  const { slug } = p.data
-  const target = dbPath(cwd)
+  const { project_id, slug } = p.data
+  const resolvedProject = await resolveToolProject(cwd, project_id)
+  if ('content' in resolvedProject) return resolvedProject
+  const projectCwd = resolvedProject.cwd
+  const target = dbPath(projectCwd)
   if (!existsSync(target)) return err('wp_blueprint_finalize failed', 'Blueprint DB not found')
   const conn = openDb(target)
   let openTasks: Array<{ task_id: string; status: string }>
@@ -1085,7 +1225,7 @@ async function handleFinalize(cwd: string, raw: unknown): Promise<ToolHandlerRes
       'wp_blueprint_finalize refused',
       `Blueprint "${slug}" has open tasks: ${openTasks.map((t) => `${t.task_id} (${t.status})`).join(', ')}`,
     )
-  const root = resolveBlueprintRoot(cwd)
+  const root = resolveBlueprintRoot(projectCwd)
   const found = findBlueprintDir(root, slug, NON_COMPLETED)
   if (!found) {
     const alreadyDone = path.join(root, 'completed', slug)
@@ -1102,7 +1242,7 @@ async function handleFinalize(cwd: string, raw: unknown): Promise<ToolHandlerRes
 
   // Platform-first path: push event + pull fresh replica before local move.
   // Iron rule: resolveSyncAdapter() returns null when AK_BLUEPRINT_PLATFORM_DISABLED=1.
-  const adapter = await resolveSyncAdapter(cwd)
+  const adapter = await resolveSyncAdapter(projectCwd)
   if (adapter !== null) {
     await adapter.pushEvent({
       eventId: randomUUID(),
@@ -1133,7 +1273,7 @@ async function handleFinalize(cwd: string, raw: unknown): Promise<ToolHandlerRes
     writeFileSync(destOverview, matter.stringify(fm.content, fm.data), 'utf8')
   }
   try {
-    await reIngest(cwd)
+    await reIngest(projectCwd)
   } catch {
     /* non-fatal */
   }
@@ -1145,7 +1285,7 @@ async function handleFinalize(cwd: string, raw: unknown): Promise<ToolHandlerRes
     bytes: 0,
     tokensSaved: 0,
   }
-  if (hasRecentAuditFinding(cwd)) appendHint(payload, cwd, 'AUDIT_FIX')
+  if (hasRecentAuditFinding(projectCwd)) appendHint(payload, projectCwd, 'AUDIT_FIX')
   return finishPayload(payload)
 }
 
@@ -1276,7 +1416,7 @@ function staleProjectionResponse(
 async function handleBlueprintList(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = listSchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_list validation error', p.error.message)
-  const { status, limit, scope } = p.data
+  const { status, limit, scope, project_id } = p.data
 
   // Multi-project path: scope is 'roots', 'workspace', or 'all'
   const isMultiScope = scope === 'roots' || scope === 'workspace' || scope === 'all'
@@ -1284,7 +1424,7 @@ async function handleBlueprintList(cwd: string, raw: unknown): Promise<ToolHandl
   if (isMultiScope) {
     try {
       const target: { scope: typeof scope; project_id?: string } = { scope }
-      if (p.data.project_id) target.project_id = p.data.project_id
+      if (project_id) target.project_id = project_id
 
       const result = await aggregateBlueprintRows<BpRow>({
         target,
@@ -1312,7 +1452,10 @@ async function handleBlueprintList(cwd: string, raw: unknown): Promise<ToolHandl
   }
 
   // Single-project path: scope is 'current' or omitted
-  const target = dbPath(cwd)
+  const resolvedProject = await resolveToolProject(cwd, project_id)
+  if ('content' in resolvedProject) return resolvedProject
+  const projectCwd = resolvedProject.cwd
+  const target = dbPath(projectCwd)
   if (!existsSync(target))
     return jsonContent({
       summary: 'No blueprint DB found — run wp_blueprint_new or trigger a re-ingest',
@@ -1324,11 +1467,11 @@ async function handleBlueprintList(cwd: string, raw: unknown): Promise<ToolHandl
       tokensSaved: 0,
     })
 
-  const listFreshness = checkFreshness({ worktree_path: cwd, db_path: target })
+  const listFreshness = checkFreshness({ worktree_path: projectCwd, db_path: target })
   if (!listFreshness.ok) {
     return staleProjectionResponse('Blueprint projection is stale', listFreshness.next_action, {
       blueprints: [],
-      project_id: p.data.project_id ?? cwd,
+      project_id: resolvedProject.project_id ?? projectCwd,
       freshness_ok: false,
     })
   }
@@ -1351,7 +1494,7 @@ async function handleBlueprintList(cwd: string, raw: unknown): Promise<ToolHandl
     return jsonContent({
       summary: `Found ${rows.length} blueprint(s)${status ? ` with status "${status}"` : ''}`,
       blueprints: rows,
-      project_id: p.data.project_id ?? cwd,
+      project_id: resolvedProject.project_id ?? projectCwd,
       freshness_ok: true,
       failures: [],
       bytes: b,
@@ -1388,14 +1531,14 @@ interface TaskRow {
 async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = getSchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_get validation error', p.error.message)
-  const { slug, scope } = p.data
+  const { slug, scope, project_id } = p.data
 
   const isMultiScope = scope === 'roots' || scope === 'workspace' || scope === 'all'
 
   if (isMultiScope) {
     try {
       const readTarget: { scope: typeof scope; project_id?: string } = { scope }
-      if (p.data.project_id) readTarget.project_id = p.data.project_id
+      if (project_id) readTarget.project_id = project_id
 
       const result = await aggregateBlueprintRows<BpDetailRow>({
         target: readTarget,
@@ -1487,7 +1630,10 @@ async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandle
   }
 
   // Single-project path
-  const target = dbPath(cwd)
+  const resolvedProject = await resolveToolProject(cwd, project_id)
+  if ('content' in resolvedProject) return resolvedProject
+  const projectCwd = resolvedProject.cwd
+  const target = dbPath(projectCwd)
   if (!existsSync(target))
     return jsonContent({
       summary: 'No blueprint DB found',
@@ -1498,14 +1644,14 @@ async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandle
       tokensSaved: 0,
     })
 
-  const getFreshness = checkFreshness({ worktree_path: cwd, db_path: target })
+  const getFreshness = checkFreshness({ worktree_path: projectCwd, db_path: target })
   if (!getFreshness.ok) {
     return staleProjectionResponse('Blueprint projection is stale', getFreshness.next_action, {
       blueprint: null,
       content_hash: null,
       ingested_at: null,
       head_at_ingest: null,
-      project_id: p.data.project_id ?? cwd,
+      project_id: resolvedProject.project_id ?? projectCwd,
     })
   }
 
@@ -1554,7 +1700,7 @@ async function handleBlueprintGet(cwd: string, raw: unknown): Promise<ToolHandle
       content_hash: blueprint.content_hash,
       ingested_at: blueprint.ingested_at,
       head_at_ingest: headAtIngest,
-      project_id: p.data.project_id ?? cwd,
+      project_id: resolvedProject.project_id ?? projectCwd,
       failures: [],
       bytes: b,
       tokensSaved: 0,
@@ -1572,9 +1718,12 @@ const contextSchema = ReadTarget.extend({
 async function handleBlueprintContext(cwd: string, raw: unknown): Promise<ToolHandlerResult> {
   const p = contextSchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_context validation error', p.error.message)
-  const { slug, task_id } = p.data
+  const { slug, task_id, project_id } = p.data
 
-  const target = dbPath(cwd)
+  const resolvedProject = await resolveToolProject(cwd, project_id)
+  if ('content' in resolvedProject) return resolvedProject
+  const projectCwd = resolvedProject.cwd
+  const target = dbPath(projectCwd)
   if (!existsSync(target))
     return jsonContent({
       summary: 'No blueprint DB found',
@@ -1586,7 +1735,7 @@ async function handleBlueprintContext(cwd: string, raw: unknown): Promise<ToolHa
       tokensSaved: 0,
     })
 
-  const contextFreshness = checkFreshness({ worktree_path: cwd, db_path: target })
+  const contextFreshness = checkFreshness({ worktree_path: projectCwd, db_path: target })
   if (!contextFreshness.ok) {
     return staleProjectionResponse('Blueprint projection is stale', contextFreshness.next_action, {
       chunks: [],
@@ -1594,7 +1743,7 @@ async function handleBlueprintContext(cwd: string, raw: unknown): Promise<ToolHa
       content_hash: null,
       ingested_at: null,
       head_at_ingest: null,
-      project_id: p.data.project_id ?? cwd,
+      project_id: resolvedProject.project_id ?? projectCwd,
     })
   }
 
@@ -1700,7 +1849,7 @@ async function handleBlueprintContext(cwd: string, raw: unknown): Promise<ToolHa
       content_hash: blueprint.content_hash,
       ingested_at: blueprint.ingested_at,
       head_at_ingest: headAtIngest,
-      project_id: p.data.project_id ?? cwd,
+      project_id: resolvedProject.project_id ?? projectCwd,
       failures: [],
       bytes: b,
       tokensSaved: 0,
@@ -1723,8 +1872,11 @@ async function handleBlueprintCreate(cwd: string, raw: unknown): Promise<ToolHan
   const p = createSchema.safeParse(raw)
   if (!p.success) return err('wp_blueprint_create validation error', p.error.message)
   const { project_id, title, goal, complexity, tags, request_id, head_at_ingest } = p.data
+  const resolvedProject = await resolveToolProject(cwd, project_id)
+  if ('content' in resolvedProject) return resolvedProject
+  const projectCwd = resolvedProject.cwd
   const freshnessFailure = validateMutationFreshnessToken(
-    project_id,
+    projectCwd,
     head_at_ingest,
     'wp_blueprint_create',
     'wp_blueprint_list',
@@ -1733,13 +1885,13 @@ async function handleBlueprintCreate(cwd: string, raw: unknown): Promise<ToolHan
   const payloadHash = hashMutationPayload({ title, goal, complexity, tags: tags ?? [] })
   const replay =
     request_id !== undefined
-      ? readMutationReplay(cwd, 'wp_blueprint_create', request_id, payloadHash)
+      ? readMutationReplay(projectCwd, 'wp_blueprint_create', request_id, payloadHash)
       : null
   if (replay) return replay
 
   const today = new Date().toISOString().split('T')[0] ?? ''
   const slug = titleToSlug(title)
-  const root = resolveBlueprintRoot(cwd)
+  const root = resolveBlueprintRoot(projectCwd)
   const targetDir = path.join(root, 'draft', slug)
   const overviewPath = path.join(targetDir, '_overview.md')
 
@@ -1752,7 +1904,7 @@ async function handleBlueprintCreate(cwd: string, raw: unknown): Promise<ToolHan
     writeFileSync(overviewPath, content, 'utf8')
 
     // Re-ingest so the DB reflects the new blueprint
-    await reIngest(cwd)
+    await reIngest(projectCwd)
 
     const b = bytes(content)
     const payload: Record<string, unknown> = {
@@ -1769,7 +1921,7 @@ async function handleBlueprintCreate(cwd: string, raw: unknown): Promise<ToolHan
       tokensSaved: 0,
     }
     if (request_id !== undefined) {
-      recordMutationReplay(cwd, 'wp_blueprint_create', request_id, payloadHash, payload)
+      recordMutationReplay(projectCwd, 'wp_blueprint_create', request_id, payloadHash, payload)
     }
     return finishPayload(payload)
   } catch (e) {
@@ -1849,8 +2001,8 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
 
   registrar.registerTool(
     'wp_blueprint_task_next',
-    'Return the next ready task (all deps done). Returns { summary, task }.',
-    { type: 'object', properties: { blueprint: { type: 'string' } } },
+    'Return the next ready task (all deps done). Accepts optional project_id for nested-workspace disambiguation. Returns { summary, task }.',
+    { type: 'object', properties: { blueprint: { type: 'string' }, project_id: { type: 'string' } } },
     undefined,
     (r) => handleTaskNext(cwd, r),
     { title: 'Blueprint Task Next', readOnlyHint: true, openWorldHint: false },
@@ -1862,12 +2014,13 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
     {
       type: 'object',
       properties: {
+        project_id: { type: 'string' },
         task_id: { type: 'string' },
         to: { type: 'string', enum: ['todo', 'in-progress', 'blocked', 'done', 'dropped'] },
         request_id: { type: 'string' },
         head_at_ingest: { type: ['string', 'null'] },
       },
-      required: ['task_id', 'to'],
+      required: ['project_id', 'task_id', 'to'],
     },
     {
       ...summaryEnvelopeOutputSchema,
@@ -1890,6 +2043,7 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
     {
       type: 'object',
       properties: {
+        project_id: { type: 'string' },
         slug: { type: 'string' },
         to_state: {
           type: 'string',
@@ -1905,8 +2059,12 @@ export async function registerBlueprintTools(registrar: ToolRegistrar, cwd: stri
 
   registrar.registerTool(
     'wp_blueprint_finalize',
-    'Finalize a blueprint (move to completed). Refuses if any tasks are not done/dropped. Returns { summary, new_path }.',
-    { type: 'object', properties: { slug: { type: 'string' } }, required: ['slug'] },
+    'Finalize a blueprint (move to completed). Accepts optional project_id for nested-workspace disambiguation. Refuses if any tasks are not done/dropped. Returns { summary, new_path }.',
+    {
+      type: 'object',
+      properties: { project_id: { type: 'string' }, slug: { type: 'string' } },
+      required: ['slug'],
+    },
     undefined,
     (r) => handleFinalize(cwd, r),
     { title: 'Blueprint Finalize', destructiveHint: false, openWorldHint: false },
@@ -2246,7 +2404,7 @@ export async function registerBlueprintServer(
       },
       required: [...summaryEnvelopeOutputSchema.required, 'projects', 'warnings'],
     },
-    async () => handleProjects(cwd, ensureRoots),
+    async (input) => handleProjects(cwd, ensureRoots, input),
     { title: 'Blueprint Projects', readOnlyHint: true, openWorldHint: false },
   )
 }
@@ -2258,7 +2416,12 @@ async function handleProjects(
     roots: ReadonlyArray<{ readonly uri: string; readonly name?: string }>
     unsupported: boolean
   }>,
+  raw: unknown,
 ): Promise<ToolHandlerResult> {
+  const scopeSchema = z.object({
+    scope: z.enum(['current', 'roots', 'workspace', 'all']).optional(),
+  })
+  const parsed = scopeSchema.safeParse(raw)
   const rootsState = await ensureRoots()
 
   const projects = await resolveBlueprintProjects({
@@ -2266,18 +2429,33 @@ async function handleProjects(
     rootsProvider:
       rootsState.roots.length > 0 ? async () => ({ roots: rootsState.roots }) : undefined,
   })
+  const scope = parsed.success ? (parsed.data.scope ?? 'all') : 'all'
+  const filteredProjects = projects.filter((project) => {
+    if (scope === 'all') return true
+    if (scope === 'current') {
+      return (
+        project.source === PROJECT_SOURCES.current ||
+        project.source === PROJECT_SOURCES.recursive_scan
+      )
+    }
+    if (scope === 'roots') return project.source === PROJECT_SOURCES.mcp_roots
+    return (
+      project.source === PROJECT_SOURCES.workspace_config ||
+      project.source === PROJECT_SOURCES.git_worktree
+    )
+  })
 
   const warnings: string[] = []
   if (rootsState.unsupported) warnings.push('unsupported_roots')
 
   const summary =
-    projects.length === 0
+    filteredProjects.length === 0
       ? 'No blueprint-bearing projects found'
-      : `Found ${projects.length} project${projects.length === 1 ? '' : 's'}`
+      : `Found ${filteredProjects.length} project${filteredProjects.length === 1 ? '' : 's'}`
 
   const payload: Record<string, unknown> = {
     summary,
-    projects,
+    projects: filteredProjects,
     warnings,
   }
 

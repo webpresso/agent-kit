@@ -259,6 +259,36 @@ describe('resolveBlueprintProjects — duplicate de-dupe via realpath', () => {
   })
 })
 
+describe('resolveBlueprintProjects — nested workspace containers', () => {
+  it('prefers descendant project discovery over an ancestor git root when cwd is a workspace container', async () => {
+    const ancestorRepo = mkroot('wp-workspace-ancestor-')
+    gitMarker(ancestorRepo)
+
+    const workspaceDir = join(ancestorRepo, 'webpresso')
+    mkdirSync(workspaceDir, { recursive: true })
+
+    const monorepo = join(workspaceDir, 'monorepo')
+    mkdirSync(join(monorepo, 'blueprints', 'planned'), { recursive: true })
+    writeFileSync(join(monorepo, 'package.json'), JSON.stringify({ name: 'monorepo' }), 'utf8')
+    writeFileSync(join(monorepo, 'blueprints', 'planned', 'one.md'), '# one\n')
+
+    const framework = join(workspaceDir, 'framework')
+    mkdirSync(join(framework, 'blueprints', 'draft'), { recursive: true })
+    writeFileSync(join(framework, 'package.json'), JSON.stringify({ name: 'framework' }), 'utf8')
+    writeFileSync(join(framework, 'blueprints', 'draft', 'two.md'), '# two\n')
+
+    const result = await resolveBlueprintProjects({
+      cwd: workspaceDir,
+      env: {},
+      git: stubGit({ enabled: false }),
+    })
+
+    expect(result.some((ref) => ref.worktree_path === realpathSync(monorepo))).toBe(true)
+    expect(result.some((ref) => ref.worktree_path === realpathSync(framework))).toBe(true)
+    expect(result.some((ref) => ref.worktree_path === ancestorRepo)).toBe(false)
+  })
+})
+
 describe('resolveBlueprintProjects — recursive scan caps', () => {
   it('respects depth cap (depth ≤ 3)', async () => {
     const root = mkroot()

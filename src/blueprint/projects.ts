@@ -34,7 +34,7 @@ import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { platform as osPlatform } from 'node:os'
-import { basename, join } from 'node:path'
+import { basename, join, sep } from 'node:path'
 
 import { parseWorktreePorcelain } from '#cli/commands/worktree/router-dispatch'
 import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
@@ -157,6 +157,7 @@ export async function resolveBlueprintProjects(
   const caps = options.caps ?? RECURSIVE_SCAN_LIMITS
   const now = options.now ?? Date.now
   const env = options.env ?? process.env
+  const rawCwd = safeRealpath(options.cwd ?? process.cwd())
 
   const seen = new Map<string, BlueprintProjectRef>()
   const order: string[] = []
@@ -170,8 +171,22 @@ export async function resolveBlueprintProjects(
 
   // 1. Current project ------------------------------------------------------
   const currentRoot = resolveCurrentRoot(options.cwd, env)
-  if (currentRoot) {
+  const scanCurrentDescendants =
+    rawCwd !== null && (currentRoot === null || !samePath(rawCwd, currentRoot))
+      ? recursiveScan([rawCwd], caps, now).filter((dir) => !samePath(dir, rawCwd))
+      : []
+  const shouldSuppressAncestorCurrentRoot =
+    currentRoot !== null &&
+    rawCwd !== null &&
+    !samePath(currentRoot, rawCwd) &&
+    !isWithin(rawCwd, currentRoot) &&
+    scanCurrentDescendants.length > 0
+
+  if (currentRoot && !shouldSuppressAncestorCurrentRoot) {
     record(buildRef(currentRoot, PROJECT_SOURCES.current, git))
+  }
+  for (const dir of scanCurrentDescendants) {
+    record(buildRef(dir, PROJECT_SOURCES.recursive_scan, git))
   }
 
   // 2. MCP roots ------------------------------------------------------------
@@ -417,6 +432,14 @@ function safeRealpath(path: string): string | null {
   } catch {
     return null
   }
+}
+
+function samePath(a: string, b: string): boolean {
+  return a === b
+}
+
+function isWithin(parent: string, child: string): boolean {
+  return child === parent || child.startsWith(`${parent}${sep}`)
 }
 
 // ---------------------------------------------------------------------------
