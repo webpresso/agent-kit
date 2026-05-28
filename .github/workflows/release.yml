@@ -170,7 +170,7 @@ jobs:
             exit 0
           fi
 
-          git commit -m "chore: release v${version} [dist]"
+          HUSKY=0 git commit -m "chore: release v${version} [dist]"
           git push origin "HEAD:refs/heads/${branch}"
 
       - name: Verify no GitHub Release object exists
