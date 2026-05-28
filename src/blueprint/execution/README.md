@@ -17,9 +17,12 @@ Blueprint-backed execution over OMX.
 - `webpresso/blueprints/` is the canonical plan store.
 - `.omx/state/` is runtime/session/backend state only.
 - `.omx/plans/` is derived handoff metadata only, never the canonical plan.
+- Completion authority stays in Blueprint task-local canonical verification
+  evidence; OMX runtime progress and handoff files cannot mark work complete on
+  their own.
 - When `.omx/plans/` exists, handoff files may carry optional provenance links
-  (for example Codex thread / goal and OMX session / ledger pointers), but
-  those links remain correlation metadata only.
+  such as Codex thread / goal and OMX session / ledger pointers. Those links
+  are correlation metadata only, not plan authority.
 
 These types are intentionally backend-oriented but backend-agnostic. Runtime
 implementation code should consume them later without redefining the contract.
