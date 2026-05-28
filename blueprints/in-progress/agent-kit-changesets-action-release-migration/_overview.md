@@ -1,7 +1,7 @@
 ---
 type: blueprint
 title: Agent Kit Changesets Action release migration
-status: planned
+status: in-progress
 complexity: L
 owner: ozby
 created: 2026-05-28T00:00:00.000Z
