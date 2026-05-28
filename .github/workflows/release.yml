@@ -114,10 +114,12 @@ jobs:
         run: |
           set -euo pipefail
           version=$(node -p "require('./package.json').version")
+          mainline_commit=$(git log --first-parent --format=%H -n 1 -- package.json)
           {
             echo "version=$version"
             echo "tag=v${version}"
             echo "branch=release/v${version}"
+            echo "mainline_commit=$mainline_commit"
           } >> "$GITHUB_OUTPUT"
 
       - name: Create mainline release tag when missing
@@ -126,15 +128,22 @@ jobs:
         run: |
           set -euo pipefail
           tag='${{ steps.release_meta.outputs.tag }}'
+          target_commit='${{ steps.release_meta.outputs.mainline_commit }}'
+          current_local_tag=''
           if git rev-parse "${tag}^{commit}" >/dev/null 2>&1; then
-            echo "Tag ${tag} already exists locally."
-          else
-            git tag "${tag}" HEAD
+            current_local_tag=$(git rev-parse "${tag}^{commit}")
           fi
-          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
-            echo "Tag ${tag} already exists on origin; skipping push."
+          if [ "$current_local_tag" != "$target_commit" ]; then
+            git tag -f "${tag}" "$target_commit"
+          fi
+          current_remote_tag=''
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/tmp/release-tag-ref.txt 2>/dev/null; then
+            current_remote_tag=$(awk '{print $1}' /tmp/release-tag-ref.txt)
+          fi
+          if [ "$current_remote_tag" = "$target_commit" ]; then
+            echo "Tag ${tag} already exists on origin at ${target_commit}; skipping push."
           else
-            git push origin "refs/tags/${tag}"
+            git push --force origin "refs/tags/${tag}"
           fi
 
       - name: Verify tag points at the published mainline commit
@@ -143,9 +152,9 @@ jobs:
         run: |
           set -euo pipefail
           tag_commit=$(git rev-parse "${{ steps.release_meta.outputs.tag }}^{commit}")
-          head_commit=$(git rev-parse HEAD)
-          if [ "$tag_commit" != "$head_commit" ]; then
-            echo "Expected tag ${{ steps.release_meta.outputs.tag }} to point at HEAD ($head_commit), got $tag_commit" >&2
+          mainline_commit='${{ steps.release_meta.outputs.mainline_commit }}'
+          if [ "$tag_commit" != "$mainline_commit" ]; then
+            echo "Expected tag ${{ steps.release_meta.outputs.tag }} to point at published mainline commit ($mainline_commit), got $tag_commit" >&2
             exit 1
           fi
 
