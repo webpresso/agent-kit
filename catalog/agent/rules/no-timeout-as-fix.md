@@ -76,3 +76,15 @@ timeouts instead of fixed:
 
 In every case, the larger timeout shipped a slower, less reliable test
 suite and hid the real defect for weeks.
+
+## Current repo-specific applications
+
+- **Blueprint MCP discovery:** if `wp_blueprint_projects`, `wp_blueprint_list`,
+  or adjacent resolver paths stall on roots fetches, git worktree probes, or
+  recursive discovery, the fix is to bound those external calls and degrade to
+  partial results + warnings (for example `roots_fetch_timeout` /
+  `project_discovery_timeout`) — **never** to raise the MCP/tool timeout.
+- **Hook runtime failures:** if a Codex hook only fails under a sanitized hook
+  environment, the fix is to make the invoked binaries path-stable (usually
+  absolute-path resolution in setup/scaffolding) — **not** to add retries or
+  larger hook timeouts.

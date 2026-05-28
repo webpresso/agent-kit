@@ -2,13 +2,16 @@
 type: blueprint
 title: Agent-Kit CLI Bundle Cutover
 owner: agent-kit
-status: planned
+status: parked
 complexity: M
 created: 2026-05-26
-last_updated: 2026-05-27
+last_updated: 2026-05-28
 refined: 2026-05-26
+parked_reason: |
+  Paused by operator decision to wait for public Agent Kit publish before
+  continuing CLI bundle cutover work and downstream adopter launches.
 depends_on:
-  - planned/agent-kit-public-release-scrub
+  - completed/agent-kit-public-release-scrub
 scope_repo: /Users/ozby/repos/webpresso/agent-kit
 cross_repo_touch:
   - /Users/ozby/repos/webpresso/monorepo
@@ -28,6 +31,9 @@ aligned_blueprints:
 ## Product wedge anchor
 
 Agent setup stays a first-class Webpresso capability without making agent-kit a competing CLI brand. Developers get one command surface (`webpresso agent ...`) while maintainers keep agent-kit as the package/source owner for generated agent surfaces.
+
+**Lifecycle note (2026-05-28):** Parked after operator instruction to wait for
+public Agent Kit publish before resuming this cutover work.
 
 
 ## Goal

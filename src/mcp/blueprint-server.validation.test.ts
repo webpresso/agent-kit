@@ -71,7 +71,7 @@ describe('wp_blueprint_validate lane headers', () => {
   let tools: Map<string, RegisteredTool>
 
   beforeEach(async () => {
-    tmpDir = mkdtempSync(path.join(tmpdir(), 'ak-bs-validate-'))
+    tmpDir = mkdtempSync(path.join(tmpdir(), 'wp-bs-validate-'))
     const { registrar, tools: map } = makeRegistrar()
     tools = map
     await registerBlueprintTools(registrar, tmpDir)

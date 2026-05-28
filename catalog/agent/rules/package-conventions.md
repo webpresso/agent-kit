@@ -7,7 +7,7 @@ scope: repo
 applies_to: [agents]
 related: []
 created: '2026-05-07'
-last_reviewed: '2026-05-07'
+last_reviewed: '2026-05-28'
 paths: 
   - '**/*.ts'
   - 'package.json'
@@ -16,21 +16,24 @@ paths:
 
 # Webpresso Public Package Conventions
 
-These rules apply across all webpresso public packages and derivatives. For
-consumer-facing agent config helpers, prefer the single public `webpresso`
-package with explicit subpath exports over new split packages.
+These rules apply to this repository and downstream consumers. The canonical
+package identity is `@webpresso/agent-kit`; do not use unscoped `webpresso` as
+the package contract.
 
 ## Import hygiene
 
 - **No `../` parent-relative imports.** Use workspace package deps or subpath
   exports. `import { x } from '../../utils'` is always wrong; find the
   package that exports it and add it as a dep.
-- **Use `webpresso/*` subpaths for folded agent config.** Consumers should add
-  the public `webpresso` package and import from subpath exports such as
-  `webpresso/oxlint`, `webpresso/vitest`, `webpresso/test-preset`,
-  `webpresso/e2e-preset`, `webpresso/tsconfig`, `webpresso/docs-linter`,
-  `webpresso/stryker`, `webpresso/launch`, and `webpresso/workers-test`.
-  Do not tell consumers to install retired split agent config packages.
+- **Use `@webpresso/agent-kit/*` subpaths for folded agent config.** Consumers
+  should add `@webpresso/agent-kit` and import subpaths such as
+  `@webpresso/agent-kit/oxlint`, `@webpresso/agent-kit/vitest/node`,
+  `@webpresso/agent-kit/test-preset`, `@webpresso/agent-kit/e2e-preset`,
+  `@webpresso/agent-kit/tsconfig/base.json`,
+  `@webpresso/agent-kit/docs-lint`, `@webpresso/agent-kit/stryker`,
+  `@webpresso/agent-kit/launch`, and `@webpresso/agent-kit/workers-test`.
+  Do not tell consumers to install retired split `@webpresso/agent-*` config
+  packages.
 - **No `.mjs` source files.** Write `.ts` with a Bun/Node shebang or as a
   plain module. Never convert existing `.ts` to `.mjs`. Config files that a
   tool requires in `.mjs` are the only documented exception, and only when the
@@ -48,7 +51,8 @@ package with explicit subpath exports over new split packages.
 
 ## Publishing & registry
 
-- The canonical public package is unscoped `webpresso` on npmjs.org.
+- The canonical package is `@webpresso/agent-kit`.
+- Publish target is GitHub Packages (`npm.pkg.github.com`) via scoped auth.
 - Auth via `NPM_TOKEN` in CI. Never hardcode tokens or create `.env` files
   with credentials.
 - `prepublishOnly` builds the package before every publish. If a
@@ -57,8 +61,6 @@ package with explicit subpath exports over new split packages.
 - All public packages are `"type": "module"` — ESM-only output.
 - Run `vp run lint:pkg` (publint / attw) before releasing to catch broken export
   maps.
-
-The public package is `@webpresso/agent-kit`. It is both the globally-installed CLI (`vp install -g @webpresso/agent-kit`) and the consumer dependency for config helpers via `@webpresso/agent-kit/*` subpath exports.
 
 ## Module format
 

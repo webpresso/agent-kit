@@ -25,7 +25,7 @@ describe('isPresetOwnedGlobalCodexHook', () => {
     ).toBe(false)
   })
 
-  it('accepts OMX global Codex hooks', () => {
+  it('rejects raw OMX global Codex hooks after the hard cut', () => {
     expect(
       isPresetOwnedGlobalCodexHook(
         ownedHook({
@@ -34,7 +34,22 @@ describe('isPresetOwnedGlobalCodexHook', () => {
         }),
         EXPECTED_SOURCE_PATHS,
       ),
+    ).toBe(false)
+  })
+
+  it('accepts the managed OMX global launcher basename and still rejects generic shell launchers', () => {
+    expect(
+      isPresetOwnedGlobalCodexHook(
+        ownedHook({ command: '"/Users/test/.codex/managed-hooks/wp-global-codex-omx-hook.sh"' }),
+        EXPECTED_SOURCE_PATHS,
+      ),
     ).toBe(true)
+    expect(
+      isPresetOwnedGlobalCodexHook(
+        ownedHook({ command: '"/Users/test/.codex/managed-hooks/arbitrary-hook.sh"' }),
+        EXPECTED_SOURCE_PATHS,
+      ),
+    ).toBe(false)
   })
 
   it('rejects repo-local webpresso hook commands from the global selector', () => {

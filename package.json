@@ -531,6 +531,7 @@
     "blueprints:check": "WP_SKIP_UPDATE_CHECK=1 wp audit blueprint-lifecycle",
     "docs:check": "WP_SKIP_UPDATE_CHECK=1 wp audit docs-frontmatter",
     "catalog:check": "WP_SKIP_UPDATE_CHECK=1 wp audit catalog-drift",
+    "license:check": "WP_SKIP_UPDATE_CHECK=1 bun src/cli/cli.ts audit open-source-licenses && bash scripts/verify-no-context-mode.sh",
     "imports:check": "WP_SKIP_UPDATE_CHECK=1 wp audit no-relative-parent-imports",
     "verify:secrets": "bun scripts/check-no-dev-vars.ts",
     "audit:secret-provider-quarantine": "bun scripts/audit-secret-provider-quarantine.ts",
@@ -540,7 +541,8 @@
     "qa": "vp run build && vp run typecheck && vp run lint && vp run format:check && vp run test && vp run lint:pkg && vp run audits:check",
     "changeset": "changeset",
     "changeset:status": "changeset status",
-    "license:check": "WP_SKIP_UPDATE_CHECK=1 bun src/cli/cli.ts audit open-source-licenses && bash scripts/verify-no-context-mode.sh"
+    "verify:paths": "WP_SKIP_UPDATE_CHECK=1 wp audit absolute-path-policy --root .",
+    "prepare": "husky"
   },
   "dependencies": {
     "@vitejs/plugin-react": "catalog:",
@@ -583,7 +585,8 @@
     "tshy": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "webpresso": "latest"
   },
   "tshy": {
     "dialects": [
@@ -660,7 +663,7 @@
     "selfLink": false
   },
   "engines": {
-    "node": "24.16.0"
+    "node": ">=24"
   },
   "packageManager": "pnpm@11.1.1"
 }

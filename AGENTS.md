@@ -1,7 +1,7 @@
 <!--
   AGENTS.md template.
 
-  `wp setup` renders this file with:
+  Current-state agent-kit scaffolding (`wp setup`; public replacement: `webpresso agent setup`) renders this file with:
   - Repository map: bulleted list of workspace packages inferred from
     pnpm-workspace.yaml / package.json workspaces.
   - Tech stack: short description generated from package.json + detected
@@ -13,9 +13,10 @@
   - Blueprints directory: defaults to `blueprints`. Override via
     .webpressorc.json#blueprintsDir.
 
-  Managed sections in this file are refreshed by agent-kit on `wp sync`.
-  Repo-specific edits belong only inside `user-owned` blocks; agent-kit
-  preserves those blocks verbatim when it rewrites managed content.
+  Managed sections in this file are refreshed by agent-kit. Current-state sync uses
+  `wp sync`; public replacement: `webpresso agent sync`. Repo-specific edits belong
+  only inside `user-owned` blocks; agent-kit preserves those blocks verbatim when it
+  rewrites managed content.
 -->
 
 <!-- >>> managed by webpresso (operating-contract) -->
@@ -33,16 +34,28 @@ No agent surfaces are tracked in git — everything is regenerated. After clonin
 vp install && vp run setup:agent  # setup:agent runs wp setup, which scaffolds .agent/, AGENTS.md, hooks, and runs wp sync
 ```
 
-webpresso is the single source of truth. To customize skills, commands, or
-workflows, edit them in webpresso's catalog and publish — not in
-individual repos. The default `omx` preset chains `omx setup --yes --scope user`
-and installs missing OMX through `vp install -g oh-my-codex`. The default `omc`
-preset ensures OMC through Claude Code's plugin marketplace in user scope when
-`claude` is on `PATH`. `wp setup --project` requests project-scoped OMX/OMC
-setup. `wp setup`
-also repairs the managed `.gitignore` block for regenerated agent surfaces so
-repo-local `.codex/`, `.omx/`, `.agent/`, and IDE projection outputs stay out
-of Git.
+agent-kit's catalog is the single source of truth for generated agent surfaces.
+Webpresso CLI owns the public command surface (`webpresso agent ...`). To
+customize skills, commands, or workflows, edit them in agent-kit's catalog and
+publish — not in individual repos. The default `omx` preset chains
+`omx setup --yes --scope user` and installs missing OMX through
+`vp install -g oh-my-codex`. The default `omc` preset ensures OMC through
+Claude Code's plugin marketplace in user scope when `claude` is on `PATH`.
+`wp setup --project` is current-state migration wording; public replacement:
+`webpresso agent setup --project`. `wp setup` also repairs the managed
+`.gitignore` block for regenerated agent surfaces so repo-local `.codex/`,
+`.omx/`, `.agent/`, and generated IDE projection outputs stay out of Git.
+Tracked vs ignored rule of thumb:
+
+- **Track** deliberate repo-owned instruction surfaces (for example
+  `AGENTS.md`, committed `.claude/commands/*.md` symlinks when the repo uses
+  them, and canonical sources such as `agent-rules/` / `agent-skills/`).
+- **Ignore** regenerated or local-only surfaces (for example `.agent/`,
+  `.agents/`, generated `.claude/rules/`, `.claude/skills/`,
+  `.claude/worktrees/`, editor-local state, and other runtime projections).
+
+`wp setup` / `wp sync` remain current-state bootstrap commands; public
+replacements are `webpresso agent setup` / `webpresso agent sync`.
 
 ## Plan
 
@@ -63,19 +76,31 @@ Use this repo's task runner or package scripts instead of guessing commands from
 memory. If a wrapped command exists, prefer it over direct tool invocation so the
 repo can apply its environment, caching, and policy consistently.
 
-Before large edits, inspect nearby patterns and reuse existing utilities. Avoid
-new dependencies unless the task explicitly requires them.
+Before large edits, inspect nearby patterns and reuse existing utilities. Apply
+DRY, SOLID, YAGNI, and KISS as design filters; avoid new abstractions or
+dependencies unless the task explicitly requires them. Full details:
+`.agent/rules/engineering-principles.md`.
+
+Never use hardcoded relative filesystem paths in executable code or config.
+Derive absolute paths from an explicit absolute anchor instead (for example a
+repo-root helper, package-root helper, or runtime-provided absolute base
+path).
 
 ## Verify
 
 Before claiming completion, run the narrowest checks that prove the changed
 behavior and any broader checks this repo requires. Typical gates are:
 
+- agent-kit MCP tools first when available; otherwise the repo-owned wrapper
+  command
 - typecheck
 - lint / format check
 - affected tests
+- repo policy checks such as `verify:paths` / `verify:secrets` when setup
+  scaffolded them
 - docs or blueprint validation when docs/plans changed
-- `wp sync --check` after `wp setup` to verify surfaces are in sync
+- current-state `wp sync --check` after `wp setup` to verify surfaces are in sync;
+  public replacement: `webpresso agent sync --check` after `webpresso agent setup`
 
 If a gate fails, fix the root cause or record the blocker with evidence.
 
@@ -89,8 +114,20 @@ architecture decisions in this repo's ADR or planning location if one exists.
 <!-- >>> user-owned (repo-customizations) -->
 ## Repo-specific customizations
 
-Add repo-local instructions, preferences, and exceptions here. Content inside
-this block is preserved verbatim across `wp sync` runs.
+- Global Codex hook commands must be **path-stable**: do not rely on bare
+  `context-mode`, `node`, or other PATH-resolved binaries in generated hook
+  runtime surfaces. Repair this in setup/scaffolders, not by hand-editing
+  `~/.codex/hooks.json`.
+- Blueprint/MCP discovery paths must be **bounded and degradable**: roots
+  fetches, git probes, and project discovery should return partial results +
+  warnings when slow, never hang the transport.
+- Discovery-specific timeout policy for MCP/blueprint tools is non-negotiable:
+  partial results + warning fields are preferred to raising global tool
+  timeouts or adding retry/backoff loops.
+- Timeout failures are diagnostics, not fixes. Do not raise timeouts to make
+  hook or MCP hangs disappear; follow `.agent/rules/no-timeout-as-fix.md`.
+- Keep these repo-local expectations aligned with `.agent/rules/agent-guide.md`
+  and the active blueprint tasks before changing hook or MCP runtime behavior.
 <!-- <<< user-owned (repo-customizations) -->
 
 <!-- >>> managed by webpresso (planning-and-release) -->
@@ -99,13 +136,23 @@ this block is preserved verbatim across `wp sync` runs.
 - Do not commit secrets or credentials.
 - Do not create or persist secret-bearing files like `.env`, `.env.local`, `.env.*.local`,
   `.dev.vars`, or `.dev.vars.example` in the repository.
-- Keep the secret check TypeScript-only: pre-commit and `verify:secrets` must execute
-  `bun scripts/check-no-dev-vars.ts`.
+- Route secret-scoped commands through the repo contract (`wp config secrets` +
+  `with-secrets -- <cmd>`); do not hardwire provider-specific wrappers in repo
+  scripts/docs.
+- Keep secret/path checks on shared audit surfaces when available: pre-commit
+  and repo scripts should route through `wp audit absolute-path-policy`,
+  local secret policy verification, and `audit-secret-provider-quarantine`.
 - Do not commit agent surfaces (`.agent/`, `.agents/`, `.gemini/`, `.cursor/`,
   `.windsurf/`, `.omx/`, `.omc/`, `.codex/`, `.opencode/`) — they are gitignored and
   regenerated by `wp setup` / `omx setup`.
 - Do not hand-edit generated or derived surfaces; edit the catalog in agent-kit.
 - Do not bypass hooks or verification gates to force a change through.
+- Do not use hardcoded relative filesystem paths in executable code or config;
+  derive absolute paths from an explicit anchor.
+- Treat publishable package tarballs as public disclosure surfaces even when a
+  registry is currently restricted; verify packed contents before changing
+  `files`, `bin`, `exports`, release workflows, or catalog assets. Full
+  details: `.agent/rules/public-package-safety.md`.
 - Do not assume Webpresso-specific paths, tools, or runtimes exist unless this
   repo documents them.
 - Surface conflicts between this file and deeper repo instructions instead of
@@ -156,7 +203,7 @@ Full details: `.agent/rules/package-conventions.md`
 
 ## Repository map
 
-- `webpresso` — `.`
+- `@webpresso/agent-kit` — `.`
 
 ## Tech stack
 

@@ -2,15 +2,15 @@ import { mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 
 import {
   PROJECT_SOURCES,
+  RECURSIVE_SCAN_LIMITS,
   projectIdV1,
   resolveBlueprintProjects,
-  RECURSIVE_SCAN_LIMITS,
   type BlueprintProjectRef,
   type GitProbe,
   type RootsProvider,
@@ -209,6 +209,52 @@ describe('resolveBlueprintProjects — workspace config', () => {
       workspaceRepos: ['/this/path/does/not/exist/xyz123'],
     })
     expect(result.some((r) => r.worktree_path === '/this/path/does/not/exist/xyz123')).toBe(false)
+  })
+})
+
+describe('resolveBlueprintProjects — default git subprocess timeout hardening', () => {
+  it('passes explicit timeouts to git discovery subprocesses and falls back cleanly on timeout', async () => {
+    const root = mkroot('wp-slow-git-')
+    gitMarker(root)
+    writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'slow-git-root' }), 'utf8')
+
+    const execFileSync = vi.fn(() => {
+      const error = new Error('spawnSync git ETIMEDOUT') as Error & { code?: string }
+      error.code = 'ETIMEDOUT'
+      throw error
+    })
+
+    vi.resetModules()
+    vi.doMock('node:child_process', () => ({ execFileSync }))
+
+    try {
+      const projects = await import('./projects.js')
+      const result = await projects.resolveBlueprintProjects({
+        cwd: root,
+        env: { ...process.env, CLAUDE_PROJECT_DIR: root },
+      })
+
+      expect(result[0]?.worktree_path).toBe(root)
+      expect(result[0]?.source).toBe(PROJECT_SOURCES.current)
+      const gitCalls = execFileSync.mock.calls.filter(
+        (call) =>
+          call[0] === 'git' &&
+          Array.isArray(call[2]?.stdio) &&
+          call[2].stdio[0] === 'ignore' &&
+          call[2].stdio[1] === 'pipe' &&
+          call[2].stdio[2] === 'ignore',
+      )
+      expect(gitCalls.length).toBeGreaterThan(0)
+      for (const call of gitCalls) {
+        expect(call[2]).toMatchObject({
+          timeout: projects.GIT_DISCOVERY_TIMEOUT_MS,
+          killSignal: 'SIGKILL',
+        })
+      }
+    } finally {
+      vi.doUnmock('node:child_process')
+      vi.resetModules()
+    }
   })
 })
 

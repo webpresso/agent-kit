@@ -569,7 +569,7 @@ describe('scaffoldAgentHooks', () => {
                 eventName: 'pre_tool_use',
                 handlerType: 'command',
                 matcher: 'Bash',
-                command: 'node "/tmp/oh-my-codex/dist/scripts/codex-native-hook.js"',
+                command: '"/Users/test/.codex/managed-hooks/wp-global-codex-omx-hook.sh"',
                 timeoutSec: 5,
                 statusMessage: null,
                 sourcePath: globalHooksPath,
@@ -614,7 +614,7 @@ describe('scaffoldAgentHooks', () => {
                 eventName: 'pre_tool_use',
                 handlerType: 'command',
                 matcher: 'Bash',
-                command: 'node "/tmp/oh-my-codex/dist/scripts/codex-native-hook.js"',
+                command: '"/Users/test/.codex/managed-hooks/wp-global-codex-omx-hook.sh"',
                 timeoutSec: 5,
                 statusMessage: null,
                 sourcePath: globalHooksPath,
@@ -1249,7 +1249,7 @@ hooks:
     ).toBe('Bash|apply_patch|Edit|Write|mcp__.*')
   })
 
-  it('preserves wrapped Codex hooks (e.g. OMX entries) and adds wp-* alongside', async () => {
+  it('rewrites wrapped Codex OMX hooks to the managed launcher family and adds wp-* alongside', async () => {
     const codexPath = join(repoRoot, '.codex', 'hooks.json')
     mkdirSync(join(repoRoot, '.codex'), { recursive: true })
     writeFileSync(
@@ -1276,8 +1276,17 @@ hooks:
       hooks: { SessionStart: Array<{ hooks: Array<{ command: string }> }> }
     }
     const sessionCmds = codex.hooks.SessionStart.flatMap((g) => g.hooks.map((h) => h.command))
-    expect(sessionCmds.some((c) => c.includes('omx/codex-native-hook'))).toBe(true)
+    expect(sessionCmds.some((c) => c.includes('codex-native-hook'))).toBe(false)
+    expect(
+      sessionCmds.some((c) => c.includes('.codex/managed-hooks/wp-global-codex-omx-hook.sh')),
+    ).toBe(true)
     expect(sessionCmds).toContain(codexBinCommand(repoRoot, 'wp-sessionstart-routing'))
+    expect(
+      readFileSync(
+        join(repoRoot, '.codex', 'managed-hooks', 'wp-global-codex-omx-hook.sh'),
+        'utf8',
+      ),
+    ).toContain('exec ')
   })
 
   it('writes Codex hook commands as absolute node_modules bin paths', async () => {
@@ -1402,7 +1411,7 @@ hooks:
   })
 
   it('executes every generated Claude hook command successfully from outside repo root', async () => {
-    await scaffoldAgentHooks({ repoRoot, options: {} })
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
     installFakeWebpressoBins(repoRoot)
 
     const siblingCwd = mkdtempSync(join(repoRoot, 'claude-smoke-'))
@@ -1423,22 +1432,20 @@ hooks:
     )
 
     expect(commands.length).toBeGreaterThan(0)
-    for (const command of commands) {
-      const result = spawnSync('sh', ['-c', command], {
-        cwd: siblingCwd,
-        encoding: 'utf8',
-        env: {
-          PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
-          HOME: process.env.HOME,
-          CLAUDE_PROJECT_DIR: repoRoot,
-        },
-      })
-      expect(result.status, command).toBe(0)
-    }
+    const result = spawnSync('sh', ['-c', ['set -e', ...commands].join('\n')], {
+      cwd: siblingCwd,
+      encoding: 'utf8',
+      env: {
+        PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
+        HOME: process.env.HOME,
+        CLAUDE_PROJECT_DIR: repoRoot,
+      },
+    })
+    expect(result.status).toBe(0)
   })
 
   it('executes every generated Codex hook command successfully from a sibling cwd', async () => {
-    await scaffoldAgentHooks({ repoRoot, options: {} })
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
     installFakeWebpressoBins(repoRoot)
 
     const siblingCwd = mkdtempSync(join(repoRoot, 'codex-smoke-'))
@@ -1457,14 +1464,12 @@ hooks:
     )
 
     expect(commands.length).toBeGreaterThan(0)
-    for (const command of commands) {
-      const result = spawnSync('sh', ['-c', command], {
-        cwd: siblingCwd,
-        encoding: 'utf8',
-        env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
-      })
-      expect(result.status, command).toBe(0)
-    }
+    const result = spawnSync('sh', ['-c', ['set -e', ...commands].join('\n')], {
+      cwd: siblingCwd,
+      encoding: 'utf8',
+      env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+    })
+    expect(result.status).toBe(0)
   })
 })
 

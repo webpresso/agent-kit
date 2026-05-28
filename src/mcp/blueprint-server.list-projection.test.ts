@@ -7,6 +7,7 @@ import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 import {
   callTool,
   cleanupTempDir,
+  makeEmptyProjectionBlueprintHarness,
   makeLazyBlueprintHarness,
   makeProjectionBackedBlueprintHarness,
   parseResult,
@@ -20,7 +21,7 @@ let tools: ToolMap
 const tempDirs: string[] = []
 
 beforeAll(async () => {
-  ;({ tmpDir, tools } = await makeLazyBlueprintHarness('ak-bs-list-base-'))
+  ;({ tmpDir, tools } = await makeEmptyProjectionBlueprintHarness('wp-bs-list-base-'))
 })
 
 afterAll(() => {
@@ -51,7 +52,7 @@ describe('wp_blueprint_list — read/projection contract', () => {
   })
 
   it('lazily creates the DB when it is missing', async () => {
-    const { tmpDir: localTmpDir, tools: localTools } = await makeLazyBlueprintHarness('ak-bs-list-')
+    const { tmpDir: localTmpDir, tools: localTools } = await makeLazyBlueprintHarness('wp-bs-list-')
     tempDirs.push(localTmpDir)
     const dbFile = resolveBlueprintProjectionDbPath(localTmpDir)
 
@@ -71,7 +72,7 @@ describe('wp_blueprint_list — read/projection contract', () => {
   })
 
   it('filters by status when provided', async () => {
-    const { tools: localTools } = await makeSingleBlueprintHarness('ak-bs-list-filter-', 'list-test')
+    const { tools: localTools } = await makeSingleBlueprintHarness('wp-bs-list-filter-', 'list-test')
 
     const result = await callTool(localTools, 'wp_blueprint_list', { status: 'draft' })
     const data = parseResult<{
@@ -88,7 +89,7 @@ describe('wp_blueprint_list — read/projection contract', () => {
 
   it('returns next_action reingest_project when HEAD changed after ingest on single-project path', async () => {
     const { tmpDir: localTmpDir, tools: localTools } = await makeSingleBlueprintHarness(
-      'ak-bs-stale-list-',
+      'wp-bs-stale-list-',
       'stale-bp',
     )
     writeStaleProjectionMetadata(localTmpDir)

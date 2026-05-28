@@ -45,6 +45,27 @@ function fakeChild(
   }
 }
 
+function writeVitestWorkspace(root: string): void {
+  writeFileSync(
+    join(root, 'package.json'),
+    JSON.stringify({
+      scripts: { test: 'vitest run' },
+      devDependencies: { vitest: '^4.0.0' },
+    }),
+  )
+}
+
+function writeTestFiles(root: string, count: number): string[] {
+  const files: string[] = []
+  mkdirSync(join(root, 'src'), { recursive: true })
+  for (let index = 1; index <= count; index += 1) {
+    const relative = `src/spec-${index}.test.ts`
+    writeFileSync(join(root, relative), `import { it, expect } from 'vitest'\nit('spec-${index}', () => expect(1).toBe(1))\n`)
+    files.push(relative)
+  }
+  return files
+}
+
 const originalProjectDir = process.env.CLAUDE_PROJECT_DIR
 let defaultRoot: string | undefined
 
@@ -192,11 +213,19 @@ describe('test runner', () => {
     expect(args).toEqual(['run', 'test'])
   })
 
+  it('records workspace command scope when bare workspace run times out', async () => {
+    const killCapture: { signal: NodeJS.Signals | null } = { signal: null }
+    spawnMock.mockReturnValue(fakeChild({ hang: true, killCapture }))
+
+    const result = await runTests({ timeoutMs: 1 })
+
+    expect(killCapture.signal).toBe('SIGTERM')
+    expect(result.timedOut).toBe(true)
+    expect(result.failureScope).toBe('workspace command')
+  })
+
   it('uses the repo test script for workspace runs even when the root declares vitest', async () => {
-    writeFileSync(
-      join(defaultRoot!, 'package.json'),
-      JSON.stringify({ scripts: { test: 'vitest run' }, devDependencies: { vitest: '^4.0.0' } }),
-    )
+    writeVitestWorkspace(defaultRoot!)
     spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
 
     await runTests({})
@@ -204,6 +233,163 @@ describe('test runner', () => {
     const [cmd, args] = spawnMock.mock.calls[0]!
     expect(cmd).toBe('vp')
     expect(args).toEqual(['run', 'test'])
+  })
+
+  it('shards root vitest workspace runs across discovered test files', async () => {
+    writeVitestWorkspace(defaultRoot!)
+    const files = writeTestFiles(defaultRoot!, 6)
+    spawnMock.mockReturnValue(fakeChild({ stdout: '{}\n', exitCode: 0 }))
+
+    await runTests({})
+
+    expect(spawnMock).toHaveBeenCalledTimes(2)
+    const shardCalls = spawnMock.mock.calls.map((call) => call[1] as string[])
+    for (const args of shardCalls) {
+      expect(args.slice(0, 6)).toEqual([
+        'exec',
+        '--',
+        'vitest',
+        'run',
+        '--reporter=json',
+        '--no-color',
+      ])
+    }
+
+    const executedFiles = shardCalls.flatMap((args) => args.slice(6)).sort()
+    expect(executedFiles).toEqual(files.sort())
+  })
+
+  it('shards explicit vitest file filters across multiple runs when the list is large', async () => {
+    writeVitestWorkspace(defaultRoot!)
+    const files = writeTestFiles(defaultRoot!, 6)
+    spawnMock.mockReturnValue(fakeChild({ stdout: '{}\n', exitCode: 0 }))
+
+    await runTests({ files })
+
+    expect(spawnMock).toHaveBeenCalledTimes(2)
+    const shardCalls = spawnMock.mock.calls.map((call) => call[1] as string[])
+    for (const args of shardCalls) {
+      expect(args.slice(0, 6)).toEqual([
+        'exec',
+        '--',
+        'vitest',
+        'run',
+        '--reporter=json',
+        '--no-color',
+      ])
+    }
+
+    const executedFiles = shardCalls.flatMap((args) => args.slice(6)).sort()
+    expect(executedFiles).toEqual(files.sort())
+  })
+
+  it('can disable workspace sharding explicitly for root vitest workspaces', async () => {
+    writeVitestWorkspace(defaultRoot!)
+    writeTestFiles(defaultRoot!, 6)
+    spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
+
+    await runTests({ workspaceSharding: { enabled: false } })
+
+    expect(spawnMock).toHaveBeenCalledTimes(1)
+    const [cmd, args] = spawnMock.mock.calls[0]!
+    expect(cmd).toBe('vp')
+    expect(args).toEqual(['run', 'test'])
+  })
+
+  it('respects custom shard sizing controls for larger workspaces', async () => {
+    writeVitestWorkspace(defaultRoot!)
+    const files = writeTestFiles(defaultRoot!, 10)
+    spawnMock.mockReturnValue(fakeChild({ stdout: '{}\n', exitCode: 0 }))
+
+    await runTests({
+      workspaceSharding: {
+        minFilesToShard: 2,
+        targetFilesPerShard: 2,
+        maxShards: 3,
+      },
+    })
+
+    expect(spawnMock).toHaveBeenCalledTimes(3)
+    const shardCalls = spawnMock.mock.calls.map((call) => call[1] as string[])
+    const executedFiles = shardCalls.flatMap((args) => args.slice(6)).sort()
+    expect(executedFiles).toEqual(files.sort())
+  })
+
+  it('fails with timed out shard scope when a workspace vitest shard hangs', async () => {
+    writeVitestWorkspace(defaultRoot!)
+    writeTestFiles(defaultRoot!, 6)
+    const killCapture: { signal: NodeJS.Signals | null } = { signal: null }
+    spawnMock
+      .mockReturnValueOnce(fakeChild({ hang: true, killCapture }))
+      .mockReturnValueOnce(fakeChild({ stdout: 'should-not-run\n', exitCode: 0 }))
+
+    const result = await runTests({ timeoutMs: 1 })
+
+    expect(spawnMock).toHaveBeenCalledTimes(1)
+    expect(killCapture.signal).toBe('SIGTERM')
+    expect(result.passed).toBe(false)
+    expect(result.timedOut).toBe(true)
+    expect(result.output).toContain('scope: shard 1/2')
+  })
+
+  it('fails meaningfully when the global test budget is exhausted before a shard starts', async () => {
+    writeVitestWorkspace(defaultRoot!)
+    writeTestFiles(defaultRoot!, 6)
+    const nowSpy = vi.spyOn(Date, 'now')
+    nowSpy.mockReturnValueOnce(1_000_000)
+    nowSpy.mockReturnValueOnce(1_090_001)
+    try {
+      const result = await runTests({})
+
+      expect(spawnMock).not.toHaveBeenCalled()
+      expect(result.passed).toBe(false)
+      expect(result.timedOut).toBe(true)
+      expect(result.failureScope).toBe('overall test budget')
+      expect(result.output).toContain('Global test budget exhausted before shard 1/2')
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+
+  it('uses explicit timeoutMs as the default total budget for shard sequences', async () => {
+    writeVitestWorkspace(defaultRoot!)
+    writeTestFiles(defaultRoot!, 6)
+    spawnMock.mockReturnValue(fakeChild({ stdout: '{}\n', exitCode: 0 }))
+    const nowSpy = vi.spyOn(Date, 'now')
+    nowSpy.mockReturnValueOnce(1_000_000)
+    nowSpy.mockReturnValueOnce(1_000_000)
+    nowSpy.mockReturnValueOnce(1_090_001)
+    try {
+      const result = await runTests({ timeoutMs: 120_000 })
+
+      expect(spawnMock).toHaveBeenCalledTimes(2)
+      expect(result.passed).toBe(true)
+      expect(result.timedOut).toBe(false)
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
+
+  it('respects custom total budget for package sequences', async () => {
+    spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
+    const nowSpy = vi.spyOn(Date, 'now')
+    nowSpy.mockReturnValueOnce(1_000_000)
+    nowSpy.mockReturnValueOnce(1_000_000)
+    nowSpy.mockReturnValueOnce(1_000_011)
+    try {
+      const result = await runTests({
+        packages: ['a', 'b'],
+        workspaceSharding: { totalBudgetMs: 10 },
+      })
+
+      expect(spawnMock).toHaveBeenCalledTimes(1)
+      expect(result.passed).toBe(false)
+      expect(result.timedOut).toBe(true)
+      expect(result.failureScope).toBe('overall test budget')
+      expect(result.output).toContain('Global test budget exhausted before package b')
+    } finally {
+      nowSpy.mockRestore()
+    }
   })
 
   it('runs `vp run test -- <files>` when files are given without packages', async () => {

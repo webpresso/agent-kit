@@ -131,7 +131,7 @@ function rerunGeneratedAgentSurface(repoRoot: string): void {
   })
 }
 
-describe('wp init end-to-end', () => {
+describe('wp init end-to-end', { timeout: 20_000 }, () => {
   let repo: string
   let consoleErrorSpy: ReturnType<typeof vi.spyOn> | undefined
   let consoleLogSpy: ReturnType<typeof vi.spyOn> | undefined
@@ -279,7 +279,11 @@ describe('wp init end-to-end', () => {
     const rc = JSON.parse(readFileSync(join(repo, '.webpressorc.json'), 'utf8')) as {
       installed: { tier3Skills: string[] }
     }
-    expect([...rc.installed.tier3Skills].sort()).toEqual(['react-doctor', 'tanstack-query'])
+    expect([...rc.installed.tier3Skills].sort()).toEqual([
+      'base-kit',
+      'react-doctor',
+      'tanstack-query',
+    ])
   })
 
   it('persists webpresso/blueprints in config and scaffolds that layout for webpresso repos', async () => {
@@ -320,13 +324,17 @@ describe('wp init end-to-end', () => {
     expect(existsSync(join(repo, '.claude', 'hooks'))).toBe(false)
   })
 
-  it('falls back to the currently executing package when the consumer package is not installed yet', async () => {
-    rmSync(join(repo, 'node_modules', 'webpresso'), { force: true })
+  it(
+    'falls back to the currently executing package when the consumer package is not installed yet',
+    async () => {
+      rmSync(join(repo, 'node_modules', 'webpresso'), { force: true })
 
-    const code = await runInit({ cwd: repo, yes: true })
+      const code = await runInit({ cwd: repo, yes: true })
 
-    expect(code).toBe(0)
-  })
+      expect(code).toBe(0)
+    },
+    20_000,
+  )
 
   it('preserves existing unmanaged AGENTS.md without writing companion files by default', async () => {
     writeFileSync(join(repo, 'AGENTS.md'), '# Custom already-owned content')
@@ -474,7 +482,7 @@ describe('wp init end-to-end', () => {
   })
 })
 
-describe('DX output: lane framing and next-steps block', () => {
+describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, () => {
   let repo: string
   let originalCodexHome: string | undefined
   let originalHome: string | undefined

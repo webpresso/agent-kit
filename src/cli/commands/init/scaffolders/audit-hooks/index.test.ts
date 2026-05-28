@@ -51,11 +51,11 @@ describe('scaffoldAuditHooks', () => {
     expect(result.action).toBe('identical')
   })
 
-  it('treats the templated \"$WP\" absolute-path audit line as equivalent', async () => {
+  it('treats the templated "$WP" absolute-path audit line as equivalent', async () => {
     await mkdir(path.join(tmpDir, '.husky'), { recursive: true })
     await writeFile(
       preCommitPath(tmpDir),
-      '#!/usr/bin/env sh\nset -eu\nWP=\"$(git rev-parse --show-toplevel)/node_modules/.bin/wp\"\n[ -x \"$WP\" ] || WP=wp\nbun scripts/check-no-dev-vars.ts\n\"$WP\" audit absolute-path-policy --root .\nbun scripts/audit-secret-provider-quarantine.ts\n',
+      '#!/usr/bin/env sh\nset -eu\nWP="$(git rev-parse --show-toplevel)/node_modules/.bin/wp"\n[ -x "$WP" ] || WP=wp\nbun scripts/check-no-dev-vars.ts\n"$WP" audit absolute-path-policy --root .\nbun scripts/audit-secret-provider-quarantine.ts\n',
       'utf8',
     )
 

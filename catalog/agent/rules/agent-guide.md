@@ -208,6 +208,25 @@ checks — the behavior must be deterministic.
 - Timeout tests that rely on wall-clock sleeps when fake timers would prove
   the same behavior faster and more reliably
 
+### Hook and discovery-specific requirements
+
+- **Generated hook runtimes must be path-stable.** If setup or scaffolding
+  writes executable hook commands, prefer absolute binary paths or a
+  repo-controlled absolute anchor. Do not depend on the host PATH inside Codex,
+  Claude, CI, or other sanitized hook environments.
+- **Repair generated runtime state at the source.** If a generated hook surface
+  is broken or duplicated, fix the owning scaffolder/setup path and add a
+  regression test. Do not treat hand-editing generated `.codex/`, `.claude/`,
+  or user-home runtime files as the durable solution.
+- **Discovery paths must degrade, not hang.** MCP roots fetches, git probes,
+  and project/worktree discovery must have explicit budgets and return partial
+  structured results with warnings when a dependency is slow or unavailable.
+- **Contract requirement:** discovery tool lanes (`wp_blueprint_projects`,
+  `wp_blueprint_list`, `wp_blueprint_get` aggregate scope) must return partial
+  results and warning signals instead of blocking on any single slow external
+  dependency. No workflow is allowed to “fix” this by raising global MCP/tool
+  deadlines alone.
+
 ## Network Resilience
 
 Retry logic belongs in the **HTTP / data-access layer**, not in React hooks

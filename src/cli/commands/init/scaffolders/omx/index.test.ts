@@ -35,7 +35,15 @@ describe('ensureOmx', () => {
       options: { overwrite: false, dryRun: false },
       spawn,
     })
-    expect(result).toEqual({ kind: 'omx-ok', installed: false, removedProjectFiles: [] })
+    expect(result).toMatchObject({
+      kind: 'omx-ok',
+      installed: false,
+      removedProjectFiles: [],
+      codexGlobalHooks: { repaired: false },
+    })
+    if (result.kind === 'omx-ok') {
+      expect(result.codexGlobalHooks.targetPath.endsWith('/hooks.json')).toBe(true)
+    }
     expect(spawn).toHaveBeenCalledTimes(3)
   })
 
@@ -62,7 +70,15 @@ describe('ensureOmx', () => {
       options: { overwrite: false, dryRun: false },
       spawn,
     })
-    expect(result).toEqual({ kind: 'omx-ok', installed: true, removedProjectFiles: [] })
+    expect(result).toMatchObject({
+      kind: 'omx-ok',
+      installed: true,
+      removedProjectFiles: [],
+      codexGlobalHooks: { repaired: false },
+    })
+    if (result.kind === 'omx-ok') {
+      expect(result.codexGlobalHooks.targetPath.endsWith('/hooks.json')).toBe(true)
+    }
     expect(spawn).toHaveBeenNthCalledWith(2, 'vp', ['install', '-g', 'oh-my-codex'], {
       stdio: 'inherit',
     })
@@ -84,7 +100,15 @@ describe('ensureOmx', () => {
         spawn,
       })
 
-      expect(result).toEqual({ kind: 'omx-ok', installed: false, removedProjectFiles: [] })
+      expect(result).toMatchObject({
+        kind: 'omx-ok',
+        installed: false,
+        removedProjectFiles: [],
+        codexGlobalHooks: { repaired: false },
+      })
+      if (result.kind === 'omx-ok') {
+        expect(result.codexGlobalHooks.targetPath.endsWith('/hooks.json')).toBe(true)
+      }
       expect(spawn).toHaveBeenCalledTimes(2)
       expect(spawn).toHaveBeenNthCalledWith(1, 'omx', ['--version'], { encoding: 'utf8' })
       expect(spawn).toHaveBeenNthCalledWith(2, 'omx', ['setup', '--yes', '--scope', 'user'], {
@@ -177,7 +201,12 @@ describe('ensureOmx', () => {
       configPath,
     })
 
-    expect(result).toEqual({ kind: 'omx-ok', installed: false, removedProjectFiles: [] })
+    expect(result).toMatchObject({
+      kind: 'omx-ok',
+      installed: false,
+      removedProjectFiles: [],
+      codexGlobalHooks: { repaired: false, targetPath: join(dir, 'hooks.json') },
+    })
     expect(readFileSync(configPath, 'utf8')).toBe(
       '[features]\nhooks = true\ngoals = true\n\n[mcp_servers.playwright]\nenabled = true\n',
     )

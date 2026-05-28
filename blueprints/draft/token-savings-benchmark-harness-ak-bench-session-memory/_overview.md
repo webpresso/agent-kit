@@ -1,4 +1,6 @@
 ---
+title: Token-savings benchmark harness `wp bench session-memory`
+owner: agent-kit
 type: blueprint
 status: draft
 complexity: M
@@ -103,7 +105,13 @@ Score: **A** — ready for `/pll`.
 
 #### [infra] Task 1.1: Manifest pinning + version capture
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"command":"bun test scripts/bench/lib/manifest.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-28T10:20:00.000Z"}]
+```
 
 **Depends:** None
 
@@ -126,14 +134,19 @@ Build the manifest module that captures and verifies pinned tool versions at run
 
 **Acceptance:**
 
-- [ ] Manifest captures bun/claude/node/model/plugin SHAs
-- [ ] Verification throws on any mismatch with named diff
-- [ ] Initial `manifest.lock.json` committed with current versions
-- [ ] Tests pass; lint + typecheck clean
-
+- [x] Manifest captures bun/claude/node/model/plugin SHAs
+- [x] Verification throws on any mismatch with named diff
+- [x] Initial `manifest.lock.json` committed with current versions
+- [x] Tests pass; lint + typecheck clean
 #### [infra] Task 1.2: Usage extractor (parses stream-json)
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"command":"bun test scripts/bench/lib/usage-extractor.test.ts --coverage","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-28T13:44:00+02:00"},{"actor":"codex","allow_manual":true,"description":"Smoke-checked extraction against sample-stream and opencode fixtures via direct module import.","kind":"manual","log_excerpt":"sample fixture yielded duration_ms=6225 with zero tokens; opencode fixture yielded input_tokens=41074 and output_tokens=2 without throwing.","result":"pass","ts":"2026-05-28T13:44:10+02:00"}]
+```
 
 **Depends:** None
 
@@ -157,14 +170,19 @@ Parse `claude --print --output-format stream-json` output into a typed `Usage` r
 
 **Acceptance:**
 
-- [ ] Returns typed `Usage` record from valid stream-json
-- [ ] Returns empty `tools[]` when no tool calls; populated array when tool calls present
-- [ ] Survives malformed lines (returns partial result, not throws)
-- [ ] Coverage ≥ 90% on extractor module
-
+- [x] Returns typed `Usage` record from valid stream-json
+- [x] Returns empty `tools[]` when no tool calls; populated array when tool calls present
+- [x] Survives malformed lines (returns partial result, not throws)
+- [x] Coverage ≥ 90% on extractor module
 #### [infra] Task 1.3: Cost aggregator (cost math)
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"command":"bun test scripts/bench/lib/cost-aggregator.test.ts --coverage","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-28T13:47:30+02:00"},{"actor":"codex","allow_manual":true,"description":"Pinned Sonnet 4.5 pricing against Anthropic's official pricing docs and smoke-checked cost aggregation over three hand-calculated cases.","kind":"manual","log_excerpt":"As fetched on 2026-05-28 from docs.anthropic.com/en/docs/about-claude/pricing: Claude Sonnet 4.5 shows $3/MTok input, $3.75/MTok 5m cache writes, $0.30/MTok cache reads, and $15/MTok output. Smoke costs: [3, 3.525, 1.728123].","result":"pass","ts":"2026-05-28T13:47:45+02:00"}]
+```
 
 **Depends:** None
 
@@ -187,17 +205,22 @@ Compute effective cost from a `Usage` record using cached pricing. Formula: `cos
 
 **Acceptance:**
 
-- [ ] Cost math matches manual calculation on 3 hand-checked cases (committed as test)
-- [ ] Aggregator computes mean, std, n correctly
-- [ ] Pricing JSON validates against zod schema with model alias + 4 prices
+- [x] Cost math matches manual calculation on 3 hand-checked cases (committed as test)
+- [x] Aggregator computes mean, std, n correctly
+- [x] Pricing JSON validates against zod schema with model alias + 4 prices
 
 ---
-
 ### Phase 2: Variant runner + transcript [Complexity: M]
 
 #### [backend] Task 2.1: Transcript recorder
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"command":"bun test scripts/bench/lib/transcript-recorder.test.ts --coverage","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-28T13:52:00+02:00"},{"actor":"codex","allow_manual":true,"description":"Smoke-recorded a two-event stream and inspected the emitted transcript JSONL for deterministic SHA-256 event IDs and replayable event payloads.","kind":"manual","log_excerpt":"Recorded assistant/result events with event_id values ea9c139e... and 9ee9f846..., preserved recorded_at_ms from source timestamps, and confirmed byte-identical reruns in the unit test.","result":"pass","ts":"2026-05-28T13:52:10+02:00"}]
+```
 
 **Depends:** Task 1.2
 
@@ -218,10 +241,9 @@ Record full conversation transcript (every tool call, every model response) to `
 
 **Acceptance:**
 
-- [ ] Output JSONL is replayable (each line is valid JSON)
-- [ ] event_id reproducible: same input → same hash
-- [ ] Reproducibility test: 2 runs → byte-identical files (modulo timestamps)
-
+- [x] Output JSONL is replayable (each line is valid JSON)
+- [x] event_id reproducible: same input → same hash
+- [x] Reproducibility test: 2 runs → byte-identical files (modulo timestamps)
 #### [backend] Task 2.2: Variant runner
 
 **Status:** todo
@@ -481,7 +503,13 @@ Two acceptable modes:
 
 #### [qa] Task 1.4: Live-CLI fixture refresh gate
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"command":"bun test scripts/bench/lib/refresh-cli-fixture.test.ts --coverage","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-28T14:08:10+02:00"},{"command":"bun test scripts/bench/lib/usage-extractor.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-28T14:08:12+02:00"},{"actor":"codex","allow_manual":true,"description":"Confirmed the PR CI workflow now runs the committed live-fixture gate alongside usage-extractor tests, and the refresh script exits non-zero on schema drift in the test harness.","kind":"manual","log_excerpt":"ci.webpresso.yml includes a pull_request-only 'Bench fixture compatibility gate' running bun test scripts/bench/lib/usage-extractor.test.ts and bun test scripts/bench/lib/refresh-cli-fixture.test.ts. The drift test asserts checkLiveFixture rejects with 'CLI fixture schema drift detected'.","result":"pass","ts":"2026-05-28T14:08:20+02:00"}]
+```
 
 **Depends:** Task 1.2 (usage-extractor.ts)
 
@@ -492,8 +520,8 @@ The mocked claude CLI test only catches schema drift if the fixture matches toda
 - Modify: `scripts/bench/__fixtures__/sample-stream.jsonl` (versioned)
 
 **Acceptance:**
-- [ ] Script captures fresh fixture, diffs against pinned, exits non-zero on schema drift
-- [ ] Run on every PR that touches `usage-extractor.ts` (CI gate)
+- [x] Script captures fresh fixture, diffs against pinned, exits non-zero on schema drift
+- [x] Run on every PR that touches `usage-extractor.ts` (CI gate)
 
 ## Refinement summary
 
@@ -515,7 +543,6 @@ The mocked claude CLI test only catches schema drift if the fixture matches toda
 ## Decisions applied (2026-05-14, post-Codex)
 
 User answered 3 refinement questions; these decisions reshape the blueprint:
-
 ### D1: Cache isolation → 3-vendor abstraction with explicit support tiers
 
 **User answers (cumulative):**

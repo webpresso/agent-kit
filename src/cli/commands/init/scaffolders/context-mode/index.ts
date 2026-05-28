@@ -8,6 +8,11 @@ import {
   agentKitMcpLaunchCommand,
   findWebpressoMcpEntry,
 } from '#cli/commands/init/scaffolders/codex-mcp/index'
+import {
+  defaultCodexHooksPathFromConfig,
+  normalizeGlobalCodexHooksFile,
+  resolveBinaryOnPath,
+} from '#cli/commands/init/scaffolders/agent-hooks/codex-global-normalize'
 import { makeNoopSpinnerFactory, type SpinnerFactory } from '#cli/commands/init/scaffolders/spinner'
 import { checkVersionPin } from '#cli/commands/init/scaffolders/version-pin'
 
@@ -25,6 +30,7 @@ export interface EnsureContextModeInput {
 
 export type EnsureContextModeResult = {
   codexFeatures: MergeResult
+  codexGlobalHooks: MergeResult
   opencodeConfig: MergeResult
   installed: boolean
 }
@@ -142,7 +148,7 @@ const CONTEXT_MODE_NOT_FOUND_HINT =
 function ensureContextModeBinary(
   spawn: typeof spawnSync,
   spinner: { start(): void; succeed(t?: string): void; fail(t?: string): void },
-): { installed: boolean; version: string } {
+): { installed: boolean; version: string; binaryPath: string } {
   let installed = false
   spinner.start()
   let probe = spawn('context-mode', ['--help'], { stdio: 'ignore' })
@@ -166,15 +172,20 @@ function ensureContextModeBinary(
   // Detect installed version for pin check
   const versionProbe = spawn('context-mode', ['--version'], { encoding: 'utf8' })
   const version = String(versionProbe.stdout ?? '').trim()
+  const binaryPath = resolveBinaryOnPath('context-mode')
+  if (binaryPath === null) {
+    spinner.fail('context-mode path not resolvable after install')
+    throw new Error(CONTEXT_MODE_NOT_FOUND_HINT)
+  }
 
   spinner.succeed('context-mode ready')
-  return { installed, version }
+  return { installed, version, binaryPath }
 }
 
 export function ensureContextMode(input: EnsureContextModeInput): EnsureContextModeResult {
   const spawn = input.spawn ?? spawnSync
   const spinner = (input.spinnerFactory ?? makeNoopSpinnerFactory())('context-mode')
-  const { installed, version } = ensureContextModeBinary(spawn, spinner)
+  const { installed, version, binaryPath } = ensureContextModeBinary(spawn, spinner)
 
   const pinCheck = checkVersionPin(
     'context_mode',
@@ -190,9 +201,15 @@ export function ensureContextMode(input: EnsureContextModeInput): EnsureContextM
 
   const codexConfigPath = input.codexConfigPath ?? defaultCodexConfigPath()
   const opencodeConfigPath = input.opencodeConfigPath ?? defaultOpenCodeConfigPath(input.repoRoot)
+  const codexHooksPath = defaultCodexHooksPathFromConfig(codexConfigPath)
 
   return {
     codexFeatures: ensureCodexContextModeFeatures(codexConfigPath, input.options),
+    codexGlobalHooks: normalizeGlobalCodexHooksFile(
+      codexHooksPath,
+      { contextModeBinary: binaryPath },
+      input.options,
+    ),
     opencodeConfig: patchJsonFile(
       opencodeConfigPath,
       (existing) =>

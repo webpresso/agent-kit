@@ -18,8 +18,9 @@ paths:
 
 # Changesets Release Workflow
 
-All webpresso public packages use **Changesets** for version management and
-publishing. The legacy tag-push + `release-package.yml` pattern is retired.
+This repository uses **Changesets** for version management and publishing.
+The active package identity here is `@webpresso/agent-kit` and the publish
+target is GitHub Packages (`npm.pkg.github.com`).
 
 ## Never do these
 
@@ -33,8 +34,8 @@ publishing. The legacy tag-push + `release-package.yml` pattern is retired.
   tarball but leave git history incoherent.
 - **Never** publish from a dirty working tree. Run `git status` first; commit
   or stash everything before `changeset publish`.
-- **Never** call `vp publish` directly — always go through the CI workflow
-  so the Changesets lifecycle stays coherent.
+- **Never** treat `webpresso` (unscoped) as this repo's canonical release
+  package. This repo ships `@webpresso/agent-kit`.
 
 ## Commit sequence — mandatory every release
 
@@ -46,12 +47,12 @@ publishing. The legacy tag-push + `release-package.yml` pattern is retired.
 ```
 
 Steps 2-3 happen on the feature branch alongside the code change. There is
-no manual `vp run changeset version` or `vp run changeset publish` step for
-established repos — CI owns those entirely.
+no manual `vp run changeset version` or `vp run changeset publish` step in the
+normal path — CI owns those for this repository.
 
-## How releases work (CI-driven, direct-publish on push to main)
+## How releases work (CI-driven, direct-publish on push to `main`)
 
-**This repo uses a direct-publish flow — there is no "Version Packages" PR.**
+**This repo uses a direct-publish flow — there is no \"Version Packages\" PR.**
 
 When a feature branch with a `.changeset/<slug>.md` file merges to `main`,
 `release.yml` runs the following sequence automatically:
@@ -61,7 +62,8 @@ When a feature branch with a `.changeset/<slug>.md` file merges to `main`,
    `CHANGELOG.md`, removes the consumed `.changeset/<slug>.md` files, and
    syncs `.claude-plugin/marketplace.json` to match the new version.
 2. `git push` — commits the version bump directly to `main`.
-3. `vp run changeset publish` — publishes `webpresso` to public npmjs.org.
+3. `pnpm publish --no-git-checks` — publishes `@webpresso/agent-kit` to
+   GitHub Packages using repo-scoped auth.
 4. CI creates a `release/v<version>` branch with compiled `dist/` committed
    for Claude Code marketplace consumers.
 
@@ -87,10 +89,10 @@ vp run changeset pre enter alpha       # creates .changeset/pre.json
 # 4. Create the initial changeset and commit it
 cat > .changeset/initial-release.md << 'EOF'
 ---
-"webpresso": minor
+"@webpresso/agent-kit": minor
 ---
 
-Initial public extraction from Webpresso monorepo.
+Initial release for @webpresso/agent-kit.
 EOF
 git add .changeset/ && git commit -m "chore: add initial changeset"
 
@@ -103,16 +105,13 @@ for established repos — CI owns both steps. Manual execution bypasses the
 
 ## Release workflow (self-contained Changesets)
 
-The active pattern for the three public repos (`webpresso/framework/`,
-`webpresso/ui-kit/`, `webpresso/`) is a **self-contained
-`release.yml`** that calls the Changesets CLI directly — **not** the legacy
-`release-package.yml@main` reusable workflow from a previous era.
-Copy `webpresso/.github/workflows/release.yml` verbatim when
-bootstrapping a new public repo.
+The active pattern is a self-contained `release.yml` in this repository that
+handles versioning and publish end-to-end. Do not reintroduce legacy
+reusable-release workflow templates here.
 
 ## Required repo files
 
-Every webpresso public package must have:
+This repository must have:
 ```
 .npmrc               # @webpresso:registry=https://npm.pkg.github.com + auth token env-var
 .changeset/config.json   # access: "restricted", baseBranch: "main"
@@ -125,13 +124,11 @@ Without `.npmrc`, CI publish fails auth. Without `@changesets/cli` in
 ## Changeset config
 
 `.changeset/config.json` in each repo:
-- `access: "public"` — public npm publish for the canonical `webpresso` package.
+- `access: "restricted"` — scoped/private-by-default publish contract.
 - `baseBranch: "main"`.
 - `updateInternalDependencies: "patch"`.
-- `webpresso/webpresso` additionally uses `fixed: [all 8 packages]` for
-  lockstep versioning across the framework umbrella.
 
-## webpresso marketplace specifics
+## Marketplace specifics
 
 After publishing, CI creates a `release/v<version>` branch with `dist/`
 committed. Claude Code marketplace consumers **must** pin to
@@ -139,7 +136,7 @@ committed. Claude Code marketplace consumers **must** pin to
 
 ```jsonc
 // marketplace.json consumer reference
-{ "source": { "repo": "webpresso/webpresso", "ref": "release/v0.2.0" } }
+{ "source": { "repo": "OWNER/REPO", "ref": "release/v0.2.0" } }
 ```
 
 ### marketplace.json version sync (automated)

@@ -4,6 +4,8 @@ import path from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
+import type { ProjectResolver } from '#project-resolver.js'
+
 import type { ToolHandler, ToolHandlerResult, ToolRegistrar } from './auto-discover.js'
 import { registerBlueprintServer, registerBlueprintTools } from './blueprint-server.js'
 
@@ -74,5 +76,30 @@ describe('blueprint-server project resolver integration', () => {
     const payload = parseResult(await callTool(tools, 'wp_blueprint_projects', {}))
     expect(typeof payload.summary).toBe('string')
     expect(Array.isArray(payload.projects)).toBe(true)
+  })
+
+  it('wp_blueprint_list current-scope path falls back when resolver discovery times out', async () => {
+    const oldTimeout = process.env.WP_BLUEPRINT_PROJECT_DISCOVERY_TIMEOUT_MS
+    process.env.WP_BLUEPRINT_PROJECT_DISCOVERY_TIMEOUT_MS = '1'
+
+    const cwd = mkroot('wp-blueprint-list-timeout-')
+    const hangingResolver: ProjectResolver = {
+      listVisibleProjects: () => new Promise(() => undefined),
+      resolve: () => new Promise(() => undefined),
+      warm: () => undefined,
+      invalidate: () => undefined,
+    }
+
+    try {
+      const { registrar, tools } = makeRegistrar()
+      await registerBlueprintTools(registrar, cwd, hangingResolver)
+
+      const payload = parseResult(await callTool(tools, 'wp_blueprint_list', {}))
+      expect(typeof payload.summary).toBe('string')
+      expect(Array.isArray(payload.blueprints)).toBe(true)
+    } finally {
+      if (oldTimeout === undefined) delete process.env.WP_BLUEPRINT_PROJECT_DISCOVERY_TIMEOUT_MS
+      else process.env.WP_BLUEPRINT_PROJECT_DISCOVERY_TIMEOUT_MS = oldTimeout
+    }
   })
 })

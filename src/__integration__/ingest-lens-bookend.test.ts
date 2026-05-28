@@ -80,8 +80,7 @@ describeIfIngestLens('ingest-lens BOOKEND compact QA integration', () => {
       const result = await akQaTool.handler({
         files: seededFiles.map((file) => file.target),
       })
-      const text = (result.content[0] as { text: string }).text
-      const payload = JSON.parse(text) as {
+      const payload = result.structuredContent as {
         passed: boolean
         details: Record<string, { failures?: unknown[]; bytes?: number }>
       }

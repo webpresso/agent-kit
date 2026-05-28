@@ -338,7 +338,8 @@ describe('mcp server integration', () => {
     )?.[0]
     expect(textBlock?.type).toBe('text')
     expect(typeof textBlock?.text).toBe('string')
-    expect(JSON.parse(textBlock!.text!)).toEqual(callResponse?.result?.structuredContent)
+    expect(textBlock?.text).toBe(callResponse?.result?.structuredContent?.summary)
+    expect(() => JSON.parse(textBlock!.text!)).toThrow()
   })
 
   // Task 2.1: the structured blueprint surface (8 existing tools + the new

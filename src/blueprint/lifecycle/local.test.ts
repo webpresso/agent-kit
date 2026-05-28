@@ -9,6 +9,7 @@ import {
   isValidBlueprintSlug,
   resolveBlueprintFile,
 } from './local.js'
+import { writeVerification } from '../verification.js'
 
 const BLUEPRINT_TEMPLATE = `---
 type: blueprint
@@ -45,6 +46,28 @@ function writeConsumerBlueprint(projectRoot: string, status: string, slug: strin
   return filePath
 }
 
+async function attachPassingVerification(filePath: string, projectRoot: string): Promise<void> {
+  const result = await writeVerification({
+    filePath,
+    taskId: '1.1',
+    evidence: [
+      {
+        kind: 'test',
+        command: 'pnpm exec vitest run src/blueprint/lifecycle/local.test.ts',
+        exit_code: 0,
+        result: 'pass',
+        ts: '2026-05-28T12:00:00.000Z',
+      },
+    ],
+    cwd: projectRoot,
+    reingest: async () => {},
+  })
+
+  if (!result.ok) {
+    throw new Error(result.failures.join('; '))
+  }
+}
+
 describe('applyBlueprintLifecycleToFile', () => {
   const tempDirs: string[] = []
 
@@ -59,7 +82,8 @@ describe('applyBlueprintLifecycleToFile', () => {
     tempDirs.push(projectRoot)
     mkdirSync(path.join(projectRoot, 'webpresso'), { recursive: true })
     writeFileSync(path.join(projectRoot, 'webpresso', 'config.yaml'), 'project:\n  name: test\n')
-    writeBlueprint(projectRoot, 'in-progress', 'test-blueprint')
+    const filePath = writeBlueprint(projectRoot, 'in-progress', 'test-blueprint')
+    await attachPassingVerification(filePath, projectRoot)
 
     const result = await applyBlueprintLifecycleToFile(projectRoot, 'test-blueprint', {
       type: 'finalize',
@@ -94,7 +118,8 @@ describe('applyBlueprintLifecycleToFile', () => {
     const projectRoot = await mkdtemp(path.join(tmpdir(), 'wp-lifecycle-generic-'))
     tempDirs.push(projectRoot)
     writeFileSync(path.join(projectRoot, 'package.json'), '{"name":"consumer"}')
-    writeConsumerBlueprint(projectRoot, 'in-progress', 'test-blueprint')
+    const filePath = writeConsumerBlueprint(projectRoot, 'in-progress', 'test-blueprint')
+    await attachPassingVerification(filePath, projectRoot)
 
     const result = await applyBlueprintLifecycleToFile(projectRoot, 'test-blueprint', {
       type: 'finalize',
@@ -117,7 +142,8 @@ describe('applyBlueprintLifecycleToFile', () => {
     tempDirs.push(projectRoot)
     mkdirSync(path.join(projectRoot, 'webpresso'), { recursive: true })
     writeFileSync(path.join(projectRoot, 'webpresso', 'config.yaml'), 'project:\n  name: test\n')
-    writeBlueprint(projectRoot, 'in-progress', 'test-blueprint')
+    const filePath = writeBlueprint(projectRoot, 'in-progress', 'test-blueprint')
+    await attachPassingVerification(filePath, projectRoot)
     writeBlueprint(projectRoot, 'in-progress', 'other-blueprint')
 
     await applyBlueprintLifecycleToFile(projectRoot, 'test-blueprint', {

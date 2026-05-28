@@ -1,6 +1,6 @@
 ---
 type: research
-last_updated: '2026-05-27'
+last_updated: '2026-05-28'
 ---
 
 # Markdown fact-check and package references
@@ -15,9 +15,10 @@ If you just want to use the product, read:
 
 ## Current package identity
 
-- Source package in this repo: `@webpresso/agent-kit` `0.20.1`
-- Public npm `webpresso`: still `0.0.0-placeholder` as of 2026-05-27
-- Current source/GitHub Packages exports still use `@webpresso/agent-kit/*`
+- Source package in this repo: `@webpresso/agent-kit` `0.21.0`
+- Canonical release contract for this repo is `@webpresso/agent-kit`
+- Current source/GitHub Packages exports use `@webpresso/agent-kit/*`
+- `webpresso` (unscoped) is not this repo's canonical runtime package identity
 
 ## Current doc truths
 

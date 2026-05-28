@@ -23,7 +23,7 @@ describe('wp_blueprint_task_advance — platform-first', () => {
 
   async function setupWithBlueprint() {
     const harness = await makePlatformBlueprintHarness({
-      prefix: 'ak-bs-adv-',
+      prefix: 'wp-bs-adv-',
       stateDir: 'in-progress',
       slug: blueprintSlug,
       content: ADVANCE_BLUEPRINT,
@@ -104,7 +104,7 @@ describe('wp_blueprint_task_advance — platform-first', () => {
 
   it('returns error when task_id does not exist in DB', async () => {
     installNullSyncAdapter()
-    const harness = await makePlatformHarness('ak-bs-adv-empty-')
+    const harness = await makePlatformHarness('wp-bs-adv-empty-')
     tempDirs.push(harness.tmpDir)
 
     const result = await callTool(harness.tools, 'wp_blueprint_task_advance', {

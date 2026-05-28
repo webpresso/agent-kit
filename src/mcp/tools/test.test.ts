@@ -46,6 +46,26 @@ function fakeChild(
   }
 }
 
+function writeVitestWorkspace(root: string): void {
+  writeFileSync(
+    join(root, 'package.json'),
+    JSON.stringify({
+      scripts: { test: 'vitest run' },
+      devDependencies: { vitest: '^4.0.0' },
+    }),
+  )
+}
+
+function writeTestFiles(root: string, count: number): void {
+  mkdirSync(join(root, 'src'), { recursive: true })
+  for (let index = 1; index <= count; index += 1) {
+    writeFileSync(
+      join(root, `src/spec-${index}.test.ts`),
+      `import { it, expect } from 'vitest'\nit('spec-${index}', () => expect(1).toBe(1))\n`,
+    )
+  }
+}
+
 const originalProjectDir = process.env.CLAUDE_PROJECT_DIR
 
 afterEach(() => {
@@ -132,6 +152,15 @@ describe('wp_test tool', () => {
       expect(spawnMock).not.toHaveBeenCalled()
     })
 
+    it('rejects invalid workspace sharding inputs', async () => {
+      await expect(
+        akTestTool.handler({ workspaceSharding: { maxShards: 1 }, packages: ['x'] }),
+      ).rejects.toSatisfy((error: unknown) => {
+        return error instanceof Error && /maxShards/i.test(error.message)
+      })
+      expect(spawnMock).not.toHaveBeenCalled()
+    })
+
     it('clips long raw test output and marks it truncated', async () => {
       spawnMock.mockReturnValue(fakeChild({ stdout: 'x'.repeat(5_000), exitCode: 1 }))
 
@@ -183,9 +212,123 @@ describe('wp_test tool', () => {
       expect(killCapture.signal).toBe('SIGTERM')
       expect(result.isError).toBe(true)
       expect(payload.passed).toBe(false)
-      expect(payload.summary).toBe('tests timed out for 1 package')
+      expect(payload.summary).toBe('tests timed out for 1 package (package x)')
       expect(payload.timedOut).toBe(true)
       expect(payload.failures?.[0]?.message).toMatch(/timed out/i)
+    })
+
+    it('surfaces timed out shard scope for root vitest workspace runs', async () => {
+      writeVitestWorkspace(dir)
+      writeTestFiles(dir, 6)
+      const killCapture: { signal: NodeJS.Signals | null } = { signal: null }
+      spawnMock
+        .mockReturnValueOnce(fakeChild({ hang: true, killCapture }))
+        .mockReturnValueOnce(fakeChild({ stdout: 'should-not-run\n', exitCode: 0 }))
+
+      const result = await akTestTool.handler({ timeoutMs: 1 })
+      const payload = result.structuredContent as {
+        passed: boolean
+        summary: string
+        details?: { failureScope?: string }
+        timedOut?: boolean
+      }
+
+      expect(killCapture.signal).toBe('SIGTERM')
+      expect(payload.passed).toBe(false)
+      expect(payload.timedOut).toBe(true)
+      expect(payload.summary).toMatch(/tests timed out for workspace/)
+      expect(payload.summary).toMatch(/shard 1\/2/)
+      expect(payload.details?.failureScope).toMatch(/shard 1\/2/)
+    })
+
+    it('allows disabling workspace sharding via tool input', async () => {
+      writeVitestWorkspace(dir)
+      writeTestFiles(dir, 6)
+      spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
+
+      const result = await akTestTool.handler({ workspaceSharding: { enabled: false } })
+      const payload = result.structuredContent as {
+        passed: boolean
+        details?: { workspaceSharding?: { enabled?: boolean } }
+      }
+      const [cmd, args] = spawnMock.mock.calls[0]!
+
+      expect(cmd).toBe('vp')
+      expect(args).toEqual(['run', 'test'])
+      expect(payload.passed).toBe(true)
+      expect(payload.details?.workspaceSharding?.enabled).toBe(false)
+    })
+
+    it('shards explicit vitest file filters when workspace sharding is enabled', async () => {
+      writeVitestWorkspace(dir)
+      writeTestFiles(dir, 6)
+      const files = Array.from({ length: 6 }, (_, index) => `src/spec-${index + 1}.test.ts`)
+      spawnMock.mockReturnValue(fakeChild({ stdout: '{}\n', exitCode: 0 }))
+
+      const result = await akTestTool.handler({ files })
+      const payload = result.structuredContent as {
+        passed: boolean
+        details?: { workspaceSharding?: { enabled?: boolean } }
+      }
+
+      expect(spawnMock).toHaveBeenCalledTimes(2)
+      const shardCalls = spawnMock.mock.calls.map((call) => call[1] as string[])
+      for (const args of shardCalls) {
+        expect(args.slice(0, 6)).toEqual([
+          'exec',
+          '--',
+          'vitest',
+          'run',
+          '--reporter=json',
+          '--no-color',
+        ])
+      }
+      expect(payload.passed).toBe(true)
+      expect(payload.details?.workspaceSharding?.enabled).not.toBe(false)
+    })
+
+    it('surfaces global test budget exhaustion with a meaningful scope', async () => {
+      writeVitestWorkspace(dir)
+      writeTestFiles(dir, 6)
+      const nowSpy = vi.spyOn(Date, 'now')
+      nowSpy.mockReturnValueOnce(1_000_000)
+      nowSpy.mockReturnValueOnce(1_090_001)
+      try {
+        const result = await akTestTool.handler({})
+        const payload = result.structuredContent as {
+          passed: boolean
+          summary: string
+          timedOut?: boolean
+          details?: { failureScope?: string }
+        }
+
+        expect(spawnMock).not.toHaveBeenCalled()
+        expect(payload.passed).toBe(false)
+        expect(payload.timedOut).toBe(true)
+        expect(payload.summary).toMatch(/overall test budget/)
+        expect(payload.details?.failureScope).toBe('overall test budget')
+      } finally {
+        nowSpy.mockRestore()
+      }
+    })
+
+    it('surfaces workspace-command scope when bare workspace run times out', async () => {
+      const killCapture: { signal: NodeJS.Signals | null } = { signal: null }
+      spawnMock.mockReturnValue(fakeChild({ hang: true, killCapture }))
+
+      const result = await akTestTool.handler({ timeoutMs: 1 })
+      const payload = result.structuredContent as {
+        passed: boolean
+        summary: string
+        timedOut?: boolean
+        details?: { failureScope?: string }
+      }
+
+      expect(killCapture.signal).toBe('SIGTERM')
+      expect(payload.passed).toBe(false)
+      expect(payload.timedOut).toBe(true)
+      expect(payload.summary).toContain('workspace command')
+      expect(payload.details?.failureScope).toBe('workspace command')
     })
   })
 })

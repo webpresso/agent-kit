@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 
 import {
   callTool,
   cleanupTempDir,
-  makeLazyBlueprintHarness,
+  makeEmptyProjectionBlueprintHarness,
   makeProjectionBackedBlueprintHarness,
   parseResult,
   type ToolMap,
@@ -15,13 +15,16 @@ let tmpDir: string
 let tools: ToolMap
 const tempDirs: string[] = []
 
-beforeEach(async () => {
-  ;({ tmpDir, tools } = await makeLazyBlueprintHarness('ak-bs-get-base-'))
+beforeAll(async () => {
+  ;({ tmpDir, tools } = await makeEmptyProjectionBlueprintHarness('wp-bs-get-base-'))
 })
 
 afterEach(() => {
-  cleanupTempDir(tmpDir)
   while (tempDirs.length > 0) cleanupTempDir(tempDirs.pop())
+})
+
+afterAll(() => {
+  cleanupTempDir(tmpDir)
 })
 
 async function makeSingleBlueprintHarness(prefix: string, slug: string) {
@@ -48,7 +51,7 @@ describe('wp_blueprint_get — read/projection contract', () => {
 
   it('returns blueprint with tasks and freshness metadata when found', async () => {
     const bpSlug = 'get-test-blueprint'
-    const { tools: localTools } = await makeSingleBlueprintHarness('ak-bs-get-', bpSlug)
+    const { tools: localTools } = await makeSingleBlueprintHarness('wp-bs-get-', bpSlug)
 
     const result = await callTool(localTools, 'wp_blueprint_get', { slug: bpSlug })
     const data = parseResult<{
@@ -75,7 +78,7 @@ describe('wp_blueprint_get — read/projection contract', () => {
 
   it('returns next_action reingest_project when HEAD changed after ingest on single-project path', async () => {
     const { tmpDir: localTmpDir, tools: localTools } = await makeSingleBlueprintHarness(
-      'ak-bs-stale-get-',
+      'wp-bs-stale-get-',
       'stale-get',
     )
     writeStaleProjectionMetadata(localTmpDir)

@@ -412,7 +412,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
         `  context-mode opencode config: ${contextModeResult.opencodeConfig.action === 'identical' ? 'already configured' : contextModeResult.opencodeConfig.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.opencodeConfig.targetPath}`,
       )
       console.log(
-        '  context-mode codex plugin: uses bundled .codex-plugin/mcp.json + hooks.json; ensure node is on the Codex PATH',
+        `  context-mode codex hooks: ${contextModeResult.codexGlobalHooks.action === 'identical' ? 'already path-stable' : contextModeResult.codexGlobalHooks.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓ path-stable'} ${contextModeResult.codexGlobalHooks.targetPath}`,
       )
     }
 
@@ -457,6 +457,9 @@ export async function runInit(flags: InitFlags): Promise<number> {
               `  omx project-scope cleanup: ✓ removed ${omxResult.removedProjectFiles.length} tracked file(s)`,
             )
           }
+          console.log(
+            `  omx codex hooks: ${omxResult.codexGlobalHooks.repaired ? '✓ path-stable' : 'already path-stable'} ${omxResult.codexGlobalHooks.targetPath}`,
+          )
           break
         case 'omx-skipped-dry-run':
           console.log('  omx setup: skipped (--dry-run)')

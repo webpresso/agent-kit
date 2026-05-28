@@ -20,6 +20,16 @@ const inputSchema = z
     packages: z.array(z.string()).optional(),
     files: z.array(z.string()).optional(),
     timeoutMs: z.number().int().positive().max(120_000).optional(),
+    workspaceSharding: z
+      .object({
+        enabled: z.boolean().optional(),
+        minFilesToShard: z.number().int().min(2).max(10_000).optional(),
+        targetFilesPerShard: z.number().int().min(1).max(10_000).optional(),
+        maxShards: z.number().int().min(2).max(128).optional(),
+        totalBudgetMs: z.number().int().min(1_000).max(3_600_000).optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
 
@@ -29,6 +39,17 @@ const outputSchema = createSummaryOutputSchema({
   details: z.object({
     packages: z.array(z.string()).optional(),
     files: z.array(z.string()).optional(),
+    workspaceSharding: z
+      .object({
+        enabled: z.boolean().optional(),
+        minFilesToShard: z.number().optional(),
+        targetFilesPerShard: z.number().optional(),
+        maxShards: z.number().optional(),
+        totalBudgetMs: z.number().optional(),
+      })
+      .optional(),
+    failureScope: z.string().optional(),
+    timeoutMs: z.number().optional(),
   }),
 })
 
@@ -44,11 +65,12 @@ function summarizeScope(input: AkTestInput): string {
 
 function summarizeOutcome(input: AkTestInput, result: testRunner.TestResult): string {
   const scope = summarizeScope(input)
-  if (result.timedOut) return `tests timed out for ${scope}`
-  if (result.aborted) return `tests aborted for ${scope}`
+  const scopeSuffix = result.failureScope ? ` (${result.failureScope})` : ''
+  if (result.timedOut) return `tests timed out for ${scope}${scopeSuffix}`
+  if (result.aborted) return `tests aborted for ${scope}${scopeSuffix}`
   return result.passed
     ? `tests passed for ${scope}`
-    : `tests failed for ${scope} (exit ${result.exitCode})`
+    : `tests failed for ${scope}${scopeSuffix} (exit ${result.exitCode})`
 }
 
 const tool: ToolDescriptor = {
@@ -78,6 +100,7 @@ const tool: ToolDescriptor = {
       files: input.files,
       signal: extra?.signal,
       timeoutMs: input.timeoutMs,
+      workspaceSharding: input.workspaceSharding,
     })
     const { transform: _transform, ...compact } = applyOutputTransform(result.output, {
       toolName: 'wp_test',
@@ -89,6 +112,8 @@ const tool: ToolDescriptor = {
       details: {
         packages: input.packages,
         files: input.files,
+        workspaceSharding: input.workspaceSharding,
+        failureScope: result.failureScope,
         timeoutMs: input.timeoutMs,
       },
       ...compact,

@@ -1,6 +1,12 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
-import { callTool, parseResult } from './blueprint-server.test-harness.js'
+import {
+  callTool,
+  cleanupTempDir,
+  makeEmptyProjectionBlueprintHarness,
+  parseResult,
+  type ToolMap,
+} from './blueprint-server.test-harness.js'
 import {
   installMockSyncAdapter,
   makePlatformHarness,
@@ -16,7 +22,7 @@ describe('wp_blueprint_new — platform-first', () => {
   })
 
   async function setup() {
-    const harness = await makePlatformHarness('ak-bs-new-')
+    const harness = await makePlatformHarness('wp-bs-new-')
     tempDirs.push(harness.tmpDir)
     return harness
   }
@@ -74,21 +80,23 @@ describe('wp_blueprint_new — platform-first', () => {
 
 describe('wp_blueprint_task_next — ensureFresh-before-read', () => {
   const tempDirs: string[] = []
+  let tmpDir: string
+  let tools: ToolMap
+
+  beforeAll(async () => {
+    ;({ tmpDir, tools } = await makeEmptyProjectionBlueprintHarness('wp-bs-next-'))
+  })
 
   afterEach(() => {
     resetPlatformFirstTestState(tempDirs)
-    tempDirs.splice(0)
   })
 
-  async function setup() {
-    const harness = await makePlatformHarness('ak-bs-next-')
-    tempDirs.push(harness.tmpDir)
-    return harness
-  }
+  afterAll(() => {
+    cleanupTempDir(tmpDir)
+  })
 
   it('calls ensureFresh before reading when adapter is available', async () => {
     const { pushEvent, ensureFresh } = installMockSyncAdapter()
-    const { tools } = await setup()
 
     const result = await callTool(tools, 'wp_blueprint_task_next', {})
     const data = parseResult<{ task: unknown }>(result)
@@ -101,7 +109,6 @@ describe('wp_blueprint_task_next — ensureFresh-before-read', () => {
 
   it('calls ensureFresh with slug when blueprint filter is specified', async () => {
     const { pushEvent, ensureFresh } = installMockSyncAdapter()
-    const { tools } = await setup()
 
     const result = await callTool(tools, 'wp_blueprint_task_next', {
       blueprint: 'some-slug',
@@ -116,7 +123,6 @@ describe('wp_blueprint_task_next — ensureFresh-before-read', () => {
   it('does NOT call ensureFresh when WP_BLUEPRINT_PLATFORM_DISABLED=1', async () => {
     vi.stubEnv('WP_BLUEPRINT_PLATFORM_DISABLED', '1')
     const { pushEvent, ensureFresh } = installMockSyncAdapter()
-    const { tools } = await setup()
 
     const result = await callTool(tools, 'wp_blueprint_task_next', {})
     const data = parseResult<{ task: unknown }>(result)
@@ -131,7 +137,6 @@ describe('wp_blueprint_task_next — ensureFresh-before-read', () => {
     vi.stubEnv('WP_BLUEPRINT_READ_FRESH_TIMEOUT_MS', '1')
     const { pushEvent, ensureFresh } = installMockSyncAdapter()
     ensureFresh.mockImplementation(() => new Promise<void>(() => {}))
-    const { tools } = await setup()
 
     const result = await callTool(tools, 'wp_blueprint_task_next', {})
     const data = parseResult<{ task: unknown; failures: string[] }>(result)

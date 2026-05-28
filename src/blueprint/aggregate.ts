@@ -36,8 +36,6 @@ import type { Database } from '#db/sqlite.js'
 import { z } from 'zod'
 
 import { openDb } from '#db/connection.js'
-import { ensureProjectionReady } from '#projection-ready.js'
-
 import { checkFreshness } from './freshness.js'
 import { makeNextAction, type NextAction } from './next-action.js'
 import {
@@ -214,24 +212,9 @@ async function runOneProject<TRow>(
     readonly close: () => void
   },
 ): Promise<PerProjectOutcome<TRow>> {
-  try {
-    await ensureProjectionReady(project.worktree_path)
-  } catch (err) {
-    return {
-      project,
-      rows: [],
-      failure: {
-        project_id: project.project_id,
-        worktree_path: project.worktree_path,
-        next_action: makeNextAction(
-          'reingest_project',
-          `Failed to prepare projection at ${project.db_path}: ${stringifyError(err)}`,
-        ),
-      },
-    }
-  }
-
-  // Freshness gate (Task 1.3 / F11) — refuse stale reads with a structured hint.
+  // Freshness gate (Task 1.3 / F11) — refuse stale or missing projections with
+  // a structured hint. Read-only aggregate calls must not auto-rebuild DBs:
+  // callers need an explicit per-project failure they can surface or repair.
   const fresh = checkFreshness({
     worktree_path: project.worktree_path,
     db_path: project.db_path,

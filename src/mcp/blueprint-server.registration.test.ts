@@ -21,7 +21,7 @@ describe('registerBlueprintTools bootstrap', () => {
   })
 
   it('registers the blueprint tool surface without creating or refreshing projections', async () => {
-    cwd = createTempBlueprintRepo('ak-bs-registration-')
+    cwd = createTempBlueprintRepo('wp-bs-registration-')
     const dbPath = resolveBlueprintProjectionDbPath(cwd)
     const { registrar, tools } = makeRegistrar()
 
@@ -48,7 +48,7 @@ describe('registerBlueprintTools bootstrap', () => {
   })
 
   it('does not hide stale-read contract issues by doing eager registration-time repair', async () => {
-    cwd = createTempBlueprintRepo('ak-bs-registration-stale-')
+    cwd = createTempBlueprintRepo('wp-bs-registration-stale-')
     const dbPath = resolveBlueprintProjectionDbPath(cwd)
     const { registrar, tools } = makeRegistrar()
     writeFileSync(dbPath, '', 'utf8')

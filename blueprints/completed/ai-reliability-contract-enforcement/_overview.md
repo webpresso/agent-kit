@@ -1,19 +1,20 @@
 ---
 type: blueprint
 title: AI reliability contract enforcement
-status: planned
+status: completed
 owner: agent-kit
 complexity: M
 created: '2026-05-27'
-last_updated: '2026-05-27'
-progress: '0/4 tasks done (0%) - created from the Daron guide best-practice implementation plan'
+last_updated: '2026-05-28'
+completed_at: '2026-05-28'
+progress: '100% (4/4 tasks done, 0 blocked) - local AI reliability contract enforcement completed and verified on 2026-05-28'
 depends_on: []
 tags:
   - ai
   - audit
   - mcp
   - docs
-parent_roadmap: planned/ai-reliability-contract-roadmap
+parent_roadmap: in-progress/ai-reliability-contract-roadmap
 ---
 
 # AI reliability contract enforcement
@@ -56,7 +57,7 @@ Verified on 2026-05-27:
 
 #### Task 1.1: [audit] Add `wp audit ai-contracts`
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -82,13 +83,13 @@ summary-first MCP result helper, the MCP discovery contract, and the core
 
 **Acceptance:**
 
-- [ ] `wp audit ai-contracts` resolves through the CLI audit registry
-- [ ] Contract violations point to exact files and markers
-- [ ] `wp_typecheck` passes
+- [x] `wp audit ai-contracts` resolves through the CLI audit registry
+- [x] Contract violations point to exact files and markers
+- [x] `wp_typecheck` passes
 
 #### Task 1.2: [docs] Publish the canonical contract doc
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -113,13 +114,13 @@ summary-first outputs, and consumer adoption boundaries.
 
 **Acceptance:**
 
-- [ ] Consumers have one canonical AI reliability contract doc
-- [ ] README references the new audit surface
-- [ ] Docs checks pass
+- [x] Consumers have one canonical AI reliability contract doc
+- [x] README references the new audit surface
+- [x] Docs checks pass
 
 #### Task 1.3: [mcp] Extend `wp_audit` MCP coverage for `ai-contracts`
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1, Task 1.2
 
@@ -142,13 +143,13 @@ can use the same contract gate without shelling out.
 
 **Acceptance:**
 
-- [ ] `wp_audit` accepts `kind: "ai-contracts"`
-- [ ] MCP payloads stay summary-first and structured
-- [ ] `wp_typecheck` passes
+- [x] `wp_audit` accepts `kind: "ai-contracts"`
+- [x] MCP payloads stay summary-first and structured
+- [x] `wp_typecheck` passes
 
 #### Task 1.4: [blueprint] Add the roadmap + local child blueprint
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1, Task 1.2
 
@@ -171,9 +172,9 @@ lane.
 
 **Acceptance:**
 
-- [ ] Parent roadmap and local child blueprint are lifecycle-valid
-- [ ] Cross-repo documentary references are explicit
-- [ ] `wp audit roadmap-links --strict` passes
+- [x] Parent roadmap and local child blueprint are lifecycle-valid
+- [x] Cross-repo documentary references are explicit
+- [x] `wp audit roadmap-links --strict` passes
 
 ## Verification Gates
 

@@ -52,10 +52,13 @@ describe('ensureOmx project-scope cleanup integration', () => {
       spawn: makeOmxOnlyMockSpawn(),
     })
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       kind: 'omx-ok',
       installed: false,
       removedProjectFiles: ['.codex/config.toml', '.omx/setup-scope.json'],
+      codexGlobalHooks: {
+        repaired: false,
+      },
     })
     expect(existsSync(join(repoRoot, '.codex', 'config.toml'))).toBe(false)
     expect(existsSync(join(repoRoot, '.omx', 'setup-scope.json'))).toBe(false)
@@ -76,7 +79,14 @@ describe('ensureOmx project-scope cleanup integration', () => {
       spawn: makeOmxOnlyMockSpawn(),
     })
 
-    expect(result).toEqual({ kind: 'omx-ok', installed: false, removedProjectFiles: [] })
+    expect(result).toMatchObject({
+      kind: 'omx-ok',
+      installed: false,
+      removedProjectFiles: [],
+      codexGlobalHooks: {
+        repaired: false,
+      },
+    })
     expect(existsSync(join(repoRoot, '.omx', 'setup-scope.json'))).toBe(true)
   })
 })

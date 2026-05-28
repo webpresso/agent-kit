@@ -1,11 +1,12 @@
 ---
 type: blueprint
-title: Agent-Kit MCP test architecture hardening for deterministic, fast verification
-status: in-progress
+title: 'Agent-Kit MCP test architecture hardening for deterministic, fast verification'
+status: completed
 complexity: L
 owner: agent
-created: 2026-05-27
-last_updated: 2026-05-27
+created: 2026-05-27T00:00:00.000Z
+last_updated: 2026-05-28T00:00:00.000Z
+completed_at: '2026-05-28'
 ---
 
 ## Product wedge anchor
@@ -16,7 +17,7 @@ last_updated: 2026-05-27
 
 ## Summary
 
-Harden the MCP blueprint-server test architecture by splitting monolithic coverage, sharing setup helpers, preserving missing-vs-stale projection contracts, and removing timestamp-order flakes in promote tests.
+Harden the MCP blueprint-server test architecture by splitting monolithic coverage, sharing setup helpers, preserving missing-vs-stale projection contracts, removing timestamp-order flakes in promote tests, and extending the same deterministic contract to blueprint project discovery so slow roots/git scans degrade with warnings instead of hanging the tool call.
 
 ## Verification-performance contract
 
@@ -35,6 +36,9 @@ Harden the MCP blueprint-server test architecture by splitting monolithic covera
 - **F5 — MEDIUM:** Shared temp-repo/tool-registration/result parsing setup was duplicated across MCP test files.
 - **F6 — MEDIUM:** The timeout problem is local to MCP/blueprint verification architecture; no global isolation policy change is needed.
 - **F7 — HIGH:** In-test wall-clock assertions are deterministic flake sources under Vitest worker contention; timing should be measured by bounded `wp_test` batches, not by `Date.now()` assertions inside contract tests.
+- **F8 — CRITICAL:** `wp_blueprint_projects` / aggregate blueprint discovery still lacks an explicit guard around roots fetches and top-level discovery, so a slow dependency can consume the full transport timeout.
+- **F9 — HIGH:** Git-backed project discovery currently uses unbounded subprocess calls; a slow `git worktree list` / `rev-parse` path can stall otherwise healthy MCP reads.
+- **F10 — HIGH:** Discovery timeout handling must degrade to partial structured results + warnings; transport-level hangs are not an acceptable user contract.
 
 ## Implementation notes
 
@@ -54,6 +58,35 @@ Harden the MCP blueprint-server test architecture by splitting monolithic covera
 - Made promote tests deterministic by writing an explicit future validation timestamp after validation setup.
 - Aligned adjacent registration/workflow tests with the hardened projection contract: registration is lightweight and never repairs projections; stale aggregate projects report `next_action.kind: "reingest_project"`; missing projection DBs may lazy-create.
 - Removed brittle wall-clock assertions from MCP workflow/fixture tests and the blueprint DB migration bulk-insert test; those tests now assert behavior, while performance is guarded by external `wp_test` timing evidence.
+- Added an empty-projection test harness for read-only empty-DB assertions so tests that do not exercise lazy missing-DB repair no longer pay per-test cold-start ingestion.
+- Promoted get/context/list read-only base harnesses, platform timeout fixtures, verify empty-DB setup, and platform task-next read fixtures to suite-scoped or pre-projected setup while preserving per-test adapter/env reset and per-test isolation for mutating scenarios.
+- Hardened the architecture guard so read-only projection suites cannot reintroduce `makeLazyBlueprintHarness` inside `beforeEach`; the guard includes an old-pattern fixture assertion proving the detector catches the regression.
+- Follow-up lane approved: discovery-path hardening will reuse the same “bounded external boundary + deterministic degradation” contract rather than inventing a looser timeout policy for `wp_blueprint_projects` / `wp_blueprint_list`.
+
+## Cross-plan references
+
+| Blueprint | Relationship | Required alignment |
+| --- | --- | --- |
+| `blueprints/draft/codex-global-hook-runtime-hardening/_overview.md` | Sibling runtime-hardening child | Shares the same no-timeout-as-fix and deterministic-boundary rules; hook runtime and blueprint MCP discovery must converge on bounded, path-stable behavior. |
+
+## Quick Reference (Remaining Execution Waves)
+
+| Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
+| --- | --- | --- | --- | --- |
+| **Wave 0** | 6.1, 6.2 | None | 2 agents | XS-S |
+| **Wave 1** | 6.3 | 6.1, 6.2 | 1 agent | S |
+| **Critical path** | 6.1 → 6.3 | — | 2 waves | S |
+
+### Parallel Metrics Snapshot (Remaining Work)
+
+| Metric | Formula / Meaning | Target | Actual |
+| --- | --- | --- | --- |
+| RW0 | Ready tasks in Wave 0 | ≥ 2 | 2 |
+| CPR | total_tasks / critical_path_length | ≥ 2.5 | 3 / 2 = 1.5 |
+| DD | dependency_edges / total_tasks | ≤ 2.0 | 2 / 3 = 0.67 |
+| CP | same-file overlaps per wave | 0 | 0 |
+
+Refinement delta: this lane stays intentionally narrow because the remaining work is a bounded hardening pass over shared discovery code, not a fresh multi-surface feature build.
 
 ## Timing evidence
 
@@ -79,6 +112,9 @@ Harden the MCP blueprint-server test architecture by splitting monolithic covera
 - Current final checks: `wp_lint` on adjacent touched files: **pass**; `wp_typecheck`: **pass**; `wp_qa` on adjacent touched files: **pass, 19.42s**.
 - Full split-batch proof: `wp_test` on the 10-file blueprint-server target (`test`, split platform-first files, timeouts, list/get/context, verify-idempotency, architecture) with `timeoutMs: 45000`: **pass, 34.83s**.
 - Guard hardening: architecture test now forbids in-test wall-clock assertion patterns across `blueprint-server*.test.ts`, preventing flaky local-budget reintroduction.
+- Stabilization baseline: the same 10-file target initially hit the unchanged 45s cap with repeated empty-projection cold starts still visible in output; this confirmed setup churn, not assertion behavior, was the remaining risk.
+- Post-stabilization 10-file target with `timeoutMs: 45000`: **pass, 35.00s**; consecutive reruns **pass, 42.86s** and **pass, 41.55s**.
+- Post-stabilization diagnostic controls with `timeoutMs: 45000`: first 5-file batch (`test`, platform-first task/lifecycle/scaffold-read, timeouts) **pass, 28.81s**; second 5-file batch (list/get/context, verify-idempotency, architecture) **pass, 24.30s**.
 
 ## Tasks
 
@@ -191,3 +227,88 @@ Harden the MCP blueprint-server test architecture by splitting monolithic covera
 - [x] The blueprint documents the accepted steady-state target.
 - [x] Future regressions can be compared against a known baseline.
 - [x] Automated architecture guard prevents silent re-monolithing, speculative `test.concurrent`, old 120s timeout literals, and production imports of the test harness.
+
+#### [mcp-core] Task 6.1: Bound blueprint roots fetch and top-level discovery
+
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"command":"pnpm exec vitest run src/mcp/blueprint-server.projects.timeouts.test.ts src/blueprint/projects.test.ts src/mcp/blueprint-server.project-resolver.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-28T13:00:58.000Z"}]
+```
+
+**Depends:** None
+
+Add explicit timeout guards around the `registerBlueprintServer()` roots cache
+fetch and `handleProjects()` / aggregate discovery entrypoints so slow external
+dependencies return bounded structured warnings instead of consuming the full
+transport timeout. Preserve backward-compatible payload shape; add warnings and
+`next_action` only.
+
+**Files:**
+
+- Modify: `src/mcp/blueprint-server.ts`
+- Modify: `src/mcp/blueprint-server.projects.test.ts`
+- Modify: `src/mcp/blueprint-server.project-resolver.test.ts`
+
+**Acceptance:**
+
+- [x] Slow roots/discovery paths return within a fixed local budget
+- [x] Tool output degrades to partial results + warnings, not transport timeout
+- [x] Existing successful read paths keep their current structured output contract
+#### [projects-core] Task 6.2: Bound git-backed project discovery subprocesses
+
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"command":"pnpm exec vitest run src/blueprint/projects.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-28T13:00:58.000Z"}]
+```
+
+**Depends:** None
+
+Add explicit subprocess deadlines to git-backed discovery helpers in
+`src/blueprint/projects.ts` and treat deadline expiry as a soft failure for the
+offending repo/worktree contribution. Keep recursive scan caps unchanged; the
+hardening target is roots/git, not scan breadth inflation.
+
+**Files:**
+
+- Modify: `src/blueprint/projects.ts`
+- Modify: `src/blueprint/projects.test.ts`
+
+**Acceptance:**
+
+- [x] Git probes cannot block discovery indefinitely
+- [x] Timeout/slow-git paths are covered by deterministic tests
+- [x] Successful worktree discovery behavior remains intact under normal timing
+#### [docs/qa] Task 6.3: Codify discovery hard decisions and prove the bounded contract
+
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"command":"pnpm exec vitest run src/mcp/blueprint-server.projects.timeouts.test.ts src/blueprint/projects.test.ts src/mcp/blueprint-server.project-resolver.test.ts src/mcp/blueprint-server.projects.workspace-targeting.test.ts src/mcp/blueprint-server.projects.aggregate-scope.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-28T13:02:12.000Z"}]
+```
+
+**Depends:** Task 6.1, Task 6.2
+
+After the code-path hardening lands, update durable repo instructions so future
+work cannot regress by “fixing” discovery hangs with bigger timeouts. Then run
+the narrowest targeted verification proving the old hang path now returns
+bounded structured output.
+
+**Files:**
+
+- Modify: `.agent/rules/no-timeout-as-fix.md`
+- Modify: `.agent/rules/agent-guide.md`
+- Modify: `AGENTS.md`
+
+**Acceptance:**
+
+- [x] Repo instructions explicitly forbid timeout inflation for discovery hangs
+- [x] Repo instructions require bounded degradation for hook/discovery runtimes
+- [x] Targeted MCP tests document the new bounded contract with evidence

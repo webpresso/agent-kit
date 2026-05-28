@@ -1,6 +1,10 @@
 import { normalize } from 'node:path'
 
 import type { CommandHookMetadata } from '#codex/app-server/types.js'
+import {
+  MANAGED_OMX_GLOBAL_HOOK_BASENAME,
+  extractManagedLauncherBasename,
+} from './codex-global-normalize.js'
 
 interface CodexGlobalHookOwnershipMetadata {
   readonly isManaged?: unknown
@@ -40,5 +44,7 @@ function isExpectedSourcePath(sourcePath: string, expectedSourcePaths: readonly 
 }
 
 function isOmxCodexCommand(command: string): boolean {
-  return /codex-native-hook(?:\.js)?/u.test(command) || /oh-my-codex/u.test(command)
+  const launcherBasename = extractManagedLauncherBasename(command)
+  if (launcherBasename === MANAGED_OMX_GLOBAL_HOOK_BASENAME) return true
+  return false
 }

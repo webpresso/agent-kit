@@ -258,7 +258,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       })
       expect(r.code).toBe(0)
       expect(r.stdout).toContain('context-mode codex features')
-      expect(r.stdout).toContain('context-mode codex plugin')
+      expect(r.stdout).toContain('context-mode codex hooks')
       expect(r.stdout).toContain('context-mode opencode config')
     })
 

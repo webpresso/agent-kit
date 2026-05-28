@@ -47,7 +47,7 @@ export function parseResult<T = unknown>(result: ToolHandlerResult): T {
   return JSON.parse(text.text) as T
 }
 
-export function createTempBlueprintRepo(prefix = 'ak-bs-test-'): string {
+export function createTempBlueprintRepo(prefix = 'wp-bs-test-'): string {
   const dir = mkdtempSync(path.join(tmpdir(), prefix))
   mkdirSync(path.join(dir, '.agent'), { recursive: true })
   mkdirSync(path.join(dir, 'blueprints', 'draft'), { recursive: true })
@@ -78,9 +78,30 @@ export async function registerBlueprintToolMap(cwd: string): Promise<ToolMap> {
 }
 
 export async function makeLazyBlueprintHarness(
-  prefix = 'ak-bs-test-',
+  prefix = 'wp-bs-test-',
 ): Promise<{ tmpDir: string; tools: ToolMap }> {
   const tmpDir = createTempBlueprintRepo(prefix)
+  const tools = await registerBlueprintToolMap(tmpDir)
+  return { tmpDir, tools }
+}
+
+export function createEmptyBlueprintProjection(cwd: string): string {
+  const dbFile = resolveBlueprintProjectionDbPath(cwd)
+  mkdirSync(path.dirname(dbFile), { recursive: true })
+  const conn = openDb(dbFile)
+  try {
+    recordProjectionMetadata({ dbPath: dbFile, cwd, ingestedAt: Date.now() })
+  } finally {
+    conn.close()
+  }
+  return dbFile
+}
+
+export async function makeEmptyProjectionBlueprintHarness(
+  prefix = 'wp-bs-empty-projection-',
+): Promise<{ tmpDir: string; tools: ToolMap }> {
+  const tmpDir = createTempBlueprintRepo(prefix)
+  createEmptyBlueprintProjection(tmpDir)
   const tools = await registerBlueprintToolMap(tmpDir)
   return { tmpDir, tools }
 }
@@ -138,7 +159,7 @@ export function makeLocalBlueprintRepo(
   dir: string
   overviewPath: string
 } {
-  const dir = createTempBlueprintRepo('ak-bs-local-bp-')
+  const dir = createTempBlueprintRepo('wp-bs-local-bp-')
   const { overviewPath } = writeBlueprintFixture(dir, { stateDir: 'draft', slug, content })
   return { dir, overviewPath }
 }

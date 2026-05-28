@@ -14,6 +14,11 @@ import { homedir } from 'node:os'
 import { dirname, join, resolve, sep } from 'node:path'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
+import {
+  defaultCodexHooksPathFromConfig,
+  normalizeGlobalCodexHooksFile,
+  resolveBinaryOnPath,
+} from '#cli/commands/init/scaffolders/agent-hooks/codex-global-normalize'
 
 export interface EnsureOmxInput {
   repoRoot: string
@@ -26,7 +31,12 @@ export interface EnsureOmxInput {
 }
 
 export type EnsureOmxResult =
-  | { kind: 'omx-ok'; installed: boolean; removedProjectFiles: string[] }
+  | {
+      kind: 'omx-ok'
+      installed: boolean
+      removedProjectFiles: string[]
+      codexGlobalHooks: { readonly repaired: boolean; readonly targetPath: string }
+    }
   | { kind: 'omx-skipped-dry-run' }
   | { kind: 'omx-not-found'; hint: string }
   | { kind: 'omx-spawn-failed'; exitCode: number }
@@ -277,10 +287,24 @@ export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
   }
 
   migrateDeprecatedCodexHooksFeatureFlagInConfig(configPath)
+  const nodeBinary = resolveBinaryOnPath('node')
+  const globalHooksResult = normalizeGlobalCodexHooksFile(
+    defaultCodexHooksPathFromConfig(configPath),
+    { nodeBinary },
+    input.options,
+  )
   const removedProjectFiles =
     scope === 'user' && previousScope === 'project'
       ? removeTrackedProjectScopedOmxFiles(input.repoRoot, spawn)
       : []
 
-  return { kind: 'omx-ok', installed, removedProjectFiles }
+  return {
+    kind: 'omx-ok',
+    installed,
+    removedProjectFiles,
+    codexGlobalHooks: {
+      repaired: globalHooksResult.action === 'overwritten' || globalHooksResult.action === 'created',
+      targetPath: globalHooksResult.targetPath,
+    },
+  }
 }

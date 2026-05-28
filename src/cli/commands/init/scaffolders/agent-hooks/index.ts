@@ -16,6 +16,10 @@ import { join, resolve } from 'node:path'
 import { type MergeOptions, type MergeResult, patchJsonFile } from '#cli/commands/init/merge'
 import { CodexAppServerClient } from '#codex/app-server/client.js'
 import type { CodexAppServerApi } from '#codex/app-server/types.js'
+import {
+  normalizeGlobalCodexHooksFile,
+  resolveBinaryOnPath,
+} from '#cli/commands/init/scaffolders/agent-hooks/codex-global-normalize'
 import { isPresetOwnedGlobalCodexHook } from './codex-global-ownership.js'
 import {
   syncCodexHookTrustWithAppServer,
@@ -692,6 +696,21 @@ export async function scaffoldAgentHooks(
       (existing) => patchClaudeUserSettings(existing),
       input.options,
     ),
+  }
+  const codexHooksPath = join(input.repoRoot, '.codex', 'hooks.json')
+  const codexNormalization = normalizeGlobalCodexHooksFile(
+    codexHooksPath,
+    {
+      contextModeBinary: resolveBinaryOnPath('context-mode'),
+      nodeBinary: process.execPath,
+    },
+    input.options,
+  )
+  if (
+    (result.codex.action === 'identical' || result.codex.action === 'created') &&
+    codexNormalization.action === 'overwritten'
+  ) {
+    result.codex = { ...codexNormalization }
   }
   if (input.trustCodexHooks !== false) {
     await trustCodexWebpressoHooksForRepo(input)

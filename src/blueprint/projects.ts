@@ -98,6 +98,8 @@ export const RECURSIVE_SCAN_LIMITS: RecursiveScanLimits = {
   timeoutMs: 2000,
 }
 
+export const GIT_DISCOVERY_TIMEOUT_MS = 100
+
 export const RECURSIVE_SCAN_IGNORED_DIRS: ReadonlySet<string> = new Set([
   'node_modules',
   '.git',
@@ -466,6 +468,8 @@ function runGit(cwd: string, args: ReadonlyArray<string>): string | null {
       cwd,
       stdio: ['ignore', 'pipe', 'ignore'],
       encoding: 'utf8',
+      timeout: GIT_DISCOVERY_TIMEOUT_MS,
+      killSignal: 'SIGKILL',
     })
     return typeof out === 'string' ? out.trim() : null
   } catch {
