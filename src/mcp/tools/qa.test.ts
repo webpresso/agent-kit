@@ -39,7 +39,7 @@ vi.mock('./test.js', () => ({
   },
 }))
 
-import akQaTool from './qa.js'
+import wpQaTool from './qa.js'
 
 const fixtureDir = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__')
 
@@ -59,9 +59,9 @@ function delayedResolve<T>(value: T, ms: number): Promise<T> {
 
 describe('wp_qa tool', () => {
   it('exposes the expected descriptor surface', () => {
-    expect(akQaTool.name).toBe('wp_qa')
-    expect(typeof akQaTool.description).toBe('string')
-    expect(akQaTool.handler).toBeTypeOf('function')
+    expect(wpQaTool.name).toBe('wp_qa')
+    expect(typeof wpQaTool.description).toBe('string')
+    expect(wpQaTool.handler).toBeTypeOf('function')
   })
 
   it('runs all three sub-tools concurrently (Promise.all parallelism)', async () => {
@@ -87,7 +87,7 @@ describe('wp_qa tool', () => {
         delayedResolve(wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }), 100),
       )
 
-      const resultPromise = akQaTool.handler({})
+      const resultPromise = wpQaTool.handler({})
 
       // handler() calls all three via Promise.all synchronously before the
       // first await suspends. With frozen timers no setTimeout has fired yet,
@@ -122,7 +122,7 @@ describe('wp_qa tool', () => {
     typecheckHandler.mockResolvedValue(wrapPayload(typecheckPayload))
     testHandler.mockResolvedValue(wrapPayload(testPayload))
 
-    const result = await akQaTool.handler({})
+    const result = await wpQaTool.handler({})
     const payload = result.structuredContent as {
       passed: boolean
       summary: string
@@ -172,7 +172,7 @@ describe('wp_qa tool', () => {
     typecheckHandler.mockResolvedValue(wrapPayload(expected.details.typecheck))
     testHandler.mockResolvedValue(wrapPayload(expected.details.test))
 
-    const result = await akQaTool.handler({})
+    const result = await wpQaTool.handler({})
     const payload = result.structuredContent
 
     expect(payload).toEqual(expected)
@@ -218,7 +218,7 @@ describe('wp_qa tool', () => {
       }),
     )
 
-    const result = await akQaTool.handler({})
+    const result = await wpQaTool.handler({})
     const payload = result.structuredContent as {
       details: {
         lint: Record<string, unknown>
@@ -270,7 +270,7 @@ describe('wp_qa tool', () => {
       }),
     )
 
-    const result = await akQaTool.handler({})
+    const result = await wpQaTool.handler({})
     const payload = result.structuredContent as {
       details: {
         test: {
@@ -305,7 +305,7 @@ describe('wp_qa tool', () => {
       },
     }
 
-    const result = akQaTool.outputSchema.safeParse(invalid)
+    const result = wpQaTool.outputSchema.safeParse(invalid)
     expect(result.success).toBe(false)
   })
 
@@ -334,7 +334,7 @@ describe('wp_qa tool', () => {
       wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }),
     )
 
-    const result = await akQaTool.handler({})
+    const result = await wpQaTool.handler({})
     const payload = result.structuredContent as {
       passed: boolean
       summary: string
@@ -370,7 +370,7 @@ describe('wp_qa tool', () => {
       }),
     )
 
-    const result = await akQaTool.handler({})
+    const result = await wpQaTool.handler({})
     const payload = result.structuredContent as {
       passed: boolean
       summary: string
@@ -402,7 +402,7 @@ describe('wp_qa tool', () => {
       wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }),
     )
 
-    const result = await akQaTool.handler({})
+    const result = await wpQaTool.handler({})
     const payload = result.structuredContent as {
       passed: boolean
       details: {
@@ -428,7 +428,7 @@ describe('wp_qa tool', () => {
       wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }),
     )
 
-    const result = await akQaTool.handler({})
+    const result = await wpQaTool.handler({})
     const payload = result.structuredContent as {
       passed: boolean
       details: {
@@ -443,7 +443,7 @@ describe('wp_qa tool', () => {
   // Regression: `wp_qa` used to call sub-handlers with empty `{}`, blocking
   // any scoped run. The new schema threads `files` (→ lint+test) and
   // `packages` (→ typecheck+test) verbatim.
-  it('forwards `fiwp_` to lint and test, `packages` to typecheck and test', async () => {
+  it('forwards files/packages to the same sub-tools as before and test budgets only to wp_test', async () => {
     lintHandler.mockReset()
     typecheckHandler.mockReset()
     testHandler.mockReset()
@@ -455,11 +455,46 @@ describe('wp_qa tool', () => {
       wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }),
     )
 
-    await akQaTool.handler({ files: ['a.ts'], packages: ['p1'] })
+    await wpQaTool.handler({
+      files: ['a.ts'],
+      packages: ['p1'],
+      timeoutMs: 5_000,
+      workspaceSharding: { totalBudgetMs: 5_000 },
+    })
 
     expect(lintHandler).toHaveBeenCalledWith({ files: ['a.ts'] }, undefined)
     expect(typecheckHandler).toHaveBeenCalledWith({ packages: ['p1'] }, undefined)
-    expect(testHandler).toHaveBeenCalledWith({ files: ['a.ts'], packages: ['p1'] }, undefined)
+    expect(testHandler).toHaveBeenCalledWith(
+      {
+        files: ['a.ts'],
+        packages: ['p1'],
+        timeoutMs: 5_000,
+        workspaceSharding: { totalBudgetMs: 5_000 },
+      },
+      undefined,
+    )
+  })
+
+  it('rejects invalid test-budget combinations before calling any sub-tool', async () => {
+    lintHandler.mockReset()
+    typecheckHandler.mockReset()
+    testHandler.mockReset()
+
+    await expect(
+      wpQaTool.handler({
+        timeoutMs: 5_000,
+        workspaceSharding: { totalBudgetMs: 6_000 },
+      }),
+    ).rejects.toSatisfy(
+      (error: unknown) =>
+        error instanceof Error &&
+        /totalBudgetMs/i.test(error.message) &&
+        /timeoutMs/i.test(error.message),
+    )
+
+    expect(lintHandler).not.toHaveBeenCalled()
+    expect(typecheckHandler).not.toHaveBeenCalled()
+    expect(testHandler).not.toHaveBeenCalled()
   })
 
   // Regression: composition bugs (a sub-tool returning a non-text block or
@@ -477,7 +512,7 @@ describe('wp_qa tool', () => {
       wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }),
     )
 
-    const result = await akQaTool.handler({})
+    const result = await wpQaTool.handler({})
     expect(result.isError).toBe(true)
   })
 
@@ -499,7 +534,7 @@ describe('wp_qa tool', () => {
       wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }),
     )
 
-    const result = await akQaTool.handler({})
+    const result = await wpQaTool.handler({})
     expect(result.isError).toBeUndefined()
   })
 
@@ -517,7 +552,7 @@ describe('wp_qa tool', () => {
       wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }),
     )
 
-    const result = await akQaTool.handler({ cwd: '/some/repo' })
+    const result = await wpQaTool.handler({ cwd: '/some/repo' })
     const payload = result.structuredContent as {
       passed: boolean
       summary: string
@@ -548,7 +583,7 @@ describe('wp_qa tool', () => {
       wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }),
     )
 
-    const result = await akQaTool.handler({ cwd: '/some/repo' })
+    const result = await wpQaTool.handler({ cwd: '/some/repo' })
     const payload = result.structuredContent as {
       passed: boolean
       summary: string
@@ -573,7 +608,7 @@ describe('wp_qa tool', () => {
       wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0 }),
     )
 
-    const result = await akQaTool.handler({ cwd: '/some/repo' })
+    const result = await wpQaTool.handler({ cwd: '/some/repo' })
     const payload = result.structuredContent as {
       passed: boolean
       summary: string

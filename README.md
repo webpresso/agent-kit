@@ -23,6 +23,10 @@ preserves consumer-owned files.
 - **Hooks that help** — generated hooks steer common work through repo quality gates.
 - **Blueprints by default** — planning files and templates are ready when the task needs them, and Blueprint markdown stays the canonical plan while OMX handoff files remain derived metadata.
 - **Agent-friendly checks** — tests, lint, typecheck, E2E, and audits are easy to run and cite.
+- **Context-efficient evidence** — `wp_*` MCP wrappers return compact,
+  structured test/lint/typecheck/audit summaries instead of dumping raw logs into
+  the model, with optional context-mode and RTK add-ons for heavier raw-output
+  workflows.
 
 ## Why it exists
 
@@ -40,6 +44,27 @@ Those copies drift. webpresso makes the repo feel like one product again:
 ```bash
 wp setup
 ```
+
+## Why agents keep more useful context
+
+Coding agents waste context in two predictable ways: duplicated repo guidance and
+verbose tool output. Agent Kit attacks both:
+
+- **Compact quality evidence:** `wp_test`, `wp_lint`, `wp_typecheck`, `wp_qa`,
+  `wp_e2e`, and `wp_audit` are MCP-first wrappers that return summary-first
+  JSON, clipped raw output, and budget metadata such as `bytes` and
+  `tokensSaved`. See [`docs/qa-output.md`](docs/qa-output.md).
+- **Optional context-mode lane:** repos that want FTS5-backed tool-output
+  indexing and recall can opt in with `wp setup --with context-mode`; it is not
+  bundled by default. See
+  [`docs/migration/context-mode-opt-in.md`](docs/migration/context-mode-opt-in.md).
+- **Optional RTK lane:** when supported, RTK handles shell-output filtering as an
+  add-on rather than a replacement for Agent Kit's repo policy and MCP wrappers.
+  See [`docs/add-ons.md`](docs/add-ons.md).
+
+The result: agents spend more of the window on code, plans, decisions, and
+errors that matter, and less on repeated instructions or thousand-line command
+logs.
 
 ## Add-ons
 

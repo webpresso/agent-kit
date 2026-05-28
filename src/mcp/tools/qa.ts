@@ -23,23 +23,34 @@ import { z } from 'zod'
 
 import type { ToolDescriptor, ToolHandlerResult } from '#mcp/auto-discover'
 import { createSummaryOutputSchema, createSummaryResult, failureSchema } from './_shared/result.js'
+import {
+  MCP_SAFE_TEST_BUDGET_MS,
+  refineTestBudgetContract,
+  workspaceShardingInputSchema,
+} from './_shared/test-budget.js'
 import { detectUiChanges } from './_shared/ui-detection.js'
 import lintTool from './lint.js'
 import testTool from './test.js'
 import typecheckTool from './typecheck.js'
 
-const inputSchema = z.object({
-  // Forwarded to all three sub-tools so cross-repo invocation works (e.g.
-  // run webpresso's QA from a session launched in monorepo).
-  cwd: z.string().optional(),
-  // Forwarded to `wp_lint.files` and `wp_test.files` so a scoped QA on
-  // changed files is possible. `wp_typecheck` ignores files (it operates on
-  // tsconfig projects).
-  files: z.array(z.string()).optional(),
-  // Forwarded to `wp_typecheck.packages` and `wp_test.packages` to scope
-  // the run to specific workspace packages.
-  packages: z.array(z.string()).optional(),
-})
+const inputSchema = z
+  .object({
+    // Forwarded to all three sub-tools so cross-repo invocation works (e.g.
+    // run webpresso's QA from a session launched in monorepo).
+    cwd: z.string().optional(),
+    // Forwarded to `wp_lint.files` and `wp_test.files` so a scoped QA on
+    // changed files is possible. `wp_typecheck` ignores files (it operates on
+    // tsconfig projects).
+    files: z.array(z.string()).optional(),
+    // Forwarded to `wp_typecheck.packages` and `wp_test.packages` to scope
+    // the run to specific workspace packages.
+    packages: z.array(z.string()).optional(),
+    // Forwarded only to `wp_test` so QA callers can use the same safe test
+    // budget contract without widening lint/typecheck inputs.
+    timeoutMs: z.number().int().positive().max(MCP_SAFE_TEST_BUDGET_MS).optional(),
+    workspaceSharding: workspaceShardingInputSchema.optional(),
+  })
+  .superRefine(refineTestBudgetContract)
 
 export type AkQaInput = z.infer<typeof inputSchema>
 
@@ -220,7 +231,16 @@ const tool: ToolDescriptor = {
     const [lintResult, typecheckResult, testResult] = await Promise.all([
       lintTool.handler({ cwd: input.cwd, files: input.files }, extra),
       typecheckTool.handler({ cwd: input.cwd, packages: input.packages }, extra),
-      testTool.handler({ cwd: input.cwd, files: input.files, packages: input.packages }, extra),
+      testTool.handler(
+        {
+          cwd: input.cwd,
+          files: input.files,
+          packages: input.packages,
+          timeoutMs: input.timeoutMs,
+          workspaceSharding: input.workspaceSharding,
+        },
+        extra,
+      ),
     ])
 
     const lint = toCompactLeaf(unwrap(lintResult))

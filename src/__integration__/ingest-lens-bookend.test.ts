@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
-import akQaTool from '../mcp/tools/qa.js'
+import wpQaTool from '../mcp/tools/qa.js'
 import { seededLintErrorSource } from './fixtures/seeded-lint-error.js'
 import { seededTypeErrorSource } from './fixtures/seeded-type-error.js'
 
@@ -77,7 +77,7 @@ describeIfIngestLens('ingest-lens BOOKEND compact QA integration', () => {
         .filter(Boolean)
         .join(':')
       process.chdir(workerRoot)
-      const result = await akQaTool.handler({
+      const result = await wpQaTool.handler({
         files: seededFiles.map((file) => file.target),
       })
       const payload = result.structuredContent as {

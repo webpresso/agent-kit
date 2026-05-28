@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import akTestTool from './test.js'
+import wpTestTool from './test.js'
 
 const spawnMock = vi.hoisted(() => vi.fn())
 
@@ -79,9 +79,9 @@ afterEach(() => {
 
 describe('wp_test tool', () => {
   it('exposes the expected descriptor surface', () => {
-    expect(akTestTool.name).toBe('wp_test')
-    expect(typeof akTestTool.description).toBe('string')
-    expect(akTestTool.handler).toBeTypeOf('function')
+    expect(wpTestTool.name).toBe('wp_test')
+    expect(typeof wpTestTool.description).toBe('string')
+    expect(wpTestTool.handler).toBeTypeOf('function')
   })
 
   describe('vp runner', () => {
@@ -99,7 +99,7 @@ describe('wp_test tool', () => {
     it('routes package tests through `vp`', async () => {
       spawnMock.mockReturnValue(fakeChild({ stdout: 'ok\n', exitCode: 0 }))
 
-      const result = await akTestTool.handler({ packages: ['x'] })
+      const result = await wpTestTool.handler({ packages: ['x'] })
       const [cmd, args] = spawnMock.mock.calls[0]!
       expect(cmd).toBe('vp')
       expect(args).toEqual(['run', '--filter', 'x', 'test'])
@@ -123,7 +123,7 @@ describe('wp_test tool', () => {
       )
       spawnMock.mockReturnValue(fakeChild({ stdout: '{}\n', exitCode: 0 }))
 
-      await akTestTool.handler({ packages: ['x'], files: ['src/example.test.ts'] })
+      await wpTestTool.handler({ packages: ['x'], files: ['src/example.test.ts'] })
       const [cmd, args] = spawnMock.mock.calls[0]!
       expect(cmd).toBe('vp')
       expect(args).toEqual([
@@ -140,7 +140,7 @@ describe('wp_test tool', () => {
     })
 
     it('rejects `suite` as an unknown input key', async () => {
-      await expect(akTestTool.handler({ suite: 'e2e', packages: ['x'] })).rejects.toSatisfy(
+      await expect(wpTestTool.handler({ suite: 'e2e', packages: ['x'] })).rejects.toSatisfy(
         (error: unknown) => {
           return (
             error instanceof Error &&
@@ -154,17 +154,52 @@ describe('wp_test tool', () => {
 
     it('rejects invalid workspace sharding inputs', async () => {
       await expect(
-        akTestTool.handler({ workspaceSharding: { maxShards: 1 }, packages: ['x'] }),
+        wpTestTool.handler({ workspaceSharding: { maxShards: 1 }, packages: ['x'] }),
       ).rejects.toSatisfy((error: unknown) => {
         return error instanceof Error && /maxShards/i.test(error.message)
       })
       expect(spawnMock).not.toHaveBeenCalled()
     })
 
+    it('rejects tool budgets above the MCP-safe maximum before spawning', async () => {
+      await expect(wpTestTool.handler({ timeoutMs: 110_001, packages: ['x'] })).rejects.toSatisfy(
+        (error: unknown) => error instanceof Error && /timeoutMs/i.test(error.message),
+      )
+      await expect(
+        wpTestTool.handler({
+          timeoutMs: 110_000,
+          workspaceSharding: { totalBudgetMs: 110_001 },
+          packages: ['x'],
+        }),
+      ).rejects.toSatisfy(
+        (error: unknown) =>
+          error instanceof Error &&
+          /workspaceSharding/i.test(error.message) &&
+          /totalBudgetMs/i.test(error.message),
+      )
+      expect(spawnMock).not.toHaveBeenCalled()
+    })
+
+    it('rejects totalBudgetMs greater than timeoutMs before spawning', async () => {
+      await expect(
+        wpTestTool.handler({
+          timeoutMs: 5_000,
+          workspaceSharding: { totalBudgetMs: 6_000 },
+          packages: ['x'],
+        }),
+      ).rejects.toSatisfy(
+        (error: unknown) =>
+          error instanceof Error &&
+          /totalBudgetMs/i.test(error.message) &&
+          /timeoutMs/i.test(error.message),
+      )
+      expect(spawnMock).not.toHaveBeenCalled()
+    })
+
     it('clips long raw test output and marks it truncated', async () => {
       spawnMock.mockReturnValue(fakeChild({ stdout: 'x'.repeat(5_000), exitCode: 1 }))
 
-      const result = await akTestTool.handler({ packages: ['x'] })
+      const result = await wpTestTool.handler({ packages: ['x'] })
       const payload = result.structuredContent as {
         passed: boolean
         summary: string
@@ -184,7 +219,7 @@ describe('wp_test tool', () => {
       spawnMock.mockReturnValue(fakeChild({ hang: true, killCapture }))
       const controller = new AbortController()
 
-      const promise = akTestTool.handler({ packages: ['x'] }, { signal: controller.signal })
+      const promise = wpTestTool.handler({ packages: ['x'] }, { signal: controller.signal })
       controller.abort()
       const result = await promise
       const payload = result.structuredContent as {
@@ -201,7 +236,7 @@ describe('wp_test tool', () => {
       const killCapture: { signal: NodeJS.Signals | null } = { signal: null }
       spawnMock.mockReturnValue(fakeChild({ hang: true, killCapture }))
 
-      const result = await akTestTool.handler({ packages: ['x'], timeoutMs: 1 })
+      const result = await wpTestTool.handler({ packages: ['x'], timeoutMs: 1 })
       const payload = result.structuredContent as {
         passed: boolean
         summary: string
@@ -225,7 +260,7 @@ describe('wp_test tool', () => {
         .mockReturnValueOnce(fakeChild({ hang: true, killCapture }))
         .mockReturnValueOnce(fakeChild({ stdout: 'should-not-run\n', exitCode: 0 }))
 
-      const result = await akTestTool.handler({ timeoutMs: 1 })
+      const result = await wpTestTool.handler({ timeoutMs: 1 })
       const payload = result.structuredContent as {
         passed: boolean
         summary: string
@@ -246,7 +281,7 @@ describe('wp_test tool', () => {
       writeTestFiles(dir, 6)
       spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
 
-      const result = await akTestTool.handler({ workspaceSharding: { enabled: false } })
+      const result = await wpTestTool.handler({ workspaceSharding: { enabled: false } })
       const payload = result.structuredContent as {
         passed: boolean
         details?: { workspaceSharding?: { enabled?: boolean } }
@@ -265,7 +300,7 @@ describe('wp_test tool', () => {
       const files = Array.from({ length: 6 }, (_, index) => `src/spec-${index + 1}.test.ts`)
       spawnMock.mockReturnValue(fakeChild({ stdout: '{}\n', exitCode: 0 }))
 
-      const result = await akTestTool.handler({ files })
+      const result = await wpTestTool.handler({ files })
       const payload = result.structuredContent as {
         passed: boolean
         details?: { workspaceSharding?: { enabled?: boolean } }
@@ -294,7 +329,7 @@ describe('wp_test tool', () => {
       nowSpy.mockReturnValueOnce(1_000_000)
       nowSpy.mockReturnValueOnce(1_090_001)
       try {
-        const result = await akTestTool.handler({})
+        const result = await wpTestTool.handler({})
         const payload = result.structuredContent as {
           passed: boolean
           summary: string
@@ -316,7 +351,7 @@ describe('wp_test tool', () => {
       const killCapture: { signal: NodeJS.Signals | null } = { signal: null }
       spawnMock.mockReturnValue(fakeChild({ hang: true, killCapture }))
 
-      const result = await akTestTool.handler({ timeoutMs: 1 })
+      const result = await wpTestTool.handler({ timeoutMs: 1 })
       const payload = result.structuredContent as {
         passed: boolean
         summary: string

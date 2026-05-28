@@ -13,24 +13,21 @@ import { applyOutputTransform } from '#output-transforms/index'
 
 import { resolveProjectRoot } from './_shared/project-root.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
+import {
+  MCP_SAFE_TEST_BUDGET_MS,
+  refineTestBudgetContract,
+  workspaceShardingInputSchema,
+} from './_shared/test-budget.js'
 
 const inputSchema = z
   .object({
     cwd: z.string().optional(),
     packages: z.array(z.string()).optional(),
     files: z.array(z.string()).optional(),
-    timeoutMs: z.number().int().positive().max(120_000).optional(),
-    workspaceSharding: z
-      .object({
-        enabled: z.boolean().optional(),
-        minFilesToShard: z.number().int().min(2).max(10_000).optional(),
-        targetFilesPerShard: z.number().int().min(1).max(10_000).optional(),
-        maxShards: z.number().int().min(2).max(128).optional(),
-        totalBudgetMs: z.number().int().min(1_000).max(3_600_000).optional(),
-      })
-      .strict()
-      .optional(),
+    timeoutMs: z.number().int().positive().max(MCP_SAFE_TEST_BUDGET_MS).optional(),
+    workspaceSharding: workspaceShardingInputSchema.optional(),
   })
+  .superRefine(refineTestBudgetContract)
   .strict()
 
 export type AkTestInput = z.infer<typeof inputSchema>
