@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.21.4
+
+### Patch Changes
+
+- 576c51a: Migrate agent-kit releases to Changesets Action with trusted-publishing support, and make `wp ci act` able to run no-secret local CI rehearsals without requiring an external `with-secrets` wrapper.
+
 ## 0.21.0
 
 ### Minor Changes
