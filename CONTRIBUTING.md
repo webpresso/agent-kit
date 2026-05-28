@@ -112,8 +112,9 @@ it alongside your code change.
    **"Version Packages"** PR that bumps `package.json#version` and updates
    `CHANGELOG.md`.
 3. A maintainer reviews and merges the Version PR.
-4. CI publishes via `pnpm run release:publish`, which calls
-   `npm publish --provenance --access public`.
+4. CI publishes via `pnpm run release:publish`, which wraps
+   `npm publish --provenance --access public` and treats the
+   already-published rerun path as idempotent success.
 5. CI verifies the `v<version>` tag on the mainline version-bump commit and
    creates a `release/v<version>` compatibility branch with `dist/` committed
    for marketplace consumers.

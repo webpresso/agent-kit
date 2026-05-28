@@ -523,7 +523,7 @@
     "generate-skills": "bun src/build/generate-skills-dir.ts",
     "sync-marketplace-version": "bun scripts/sync-marketplace-version.ts",
     "version": "changeset version && vp run sync-marketplace-version",
-    "release:publish": "pnpm run build && npm publish --provenance --access public",
+    "release:publish": "bun scripts/release-publish.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:mutation": "bun stryker run stryker.config.ts",

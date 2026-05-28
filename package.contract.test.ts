@@ -111,9 +111,7 @@ describe('tooling umbrella package contract', () => {
       access: 'public',
     })
     expect(changeset.access).toBe('public')
-    expect(pkg.scripts?.['release:publish']).toBe(
-      'pnpm run build && npm publish --provenance --access public',
-    )
+    expect(pkg.scripts?.['release:publish']).toBe('bun scripts/release-publish.ts')
   })
 
   it('exports the canonical tooling subpaths needed by external consumers', () => {
