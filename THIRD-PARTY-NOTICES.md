@@ -31,19 +31,22 @@ the project MIT license unless noted otherwise in their frontmatter.
 These skills document how to invoke external CLIs or packages. Their upstream
 binaries are **not** bundled in `@webpresso/agent-kit`.
 
-## Optional runtime integrations (not bundled)
+## Runtime integrations (not bundled)
 
-Default `wp setup` does **not** install these. When enabled with
-`wp setup --with <name>`, consumers accept the upstream license separately.
+These integrations invoke or install external tools separately; their upstream
+binaries are **not** bundled in `@webpresso/agent-kit`. The table below records
+whether each integration is part of the current default `wp setup` preset set or
+requires explicit `wp setup --with <name>` opt-in. Consumers accept the upstream
+license separately when an integration is installed.
 
-| Integration | Upstream | License |
-| --- | --- | --- |
-| `context-mode` | [mksglu/context-mode](https://github.com/mksglu/context-mode) | Elastic-2.0 (source-available) |
-| `playwright-mcp` | [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp) | Apache-2.0 |
-| `gstack` | [garrytan/gstack](https://github.com/garrytan/gstack) | MIT |
-| `omx` / `oh-my-codex` | [oh-my-codex](https://oh-my-codex.dev/) | MIT |
-| `omc` / `oh-my-claudecode` | [Yeachan-Heo/oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) | MIT |
-| `rtk` | [rtk-ai/rtk](https://github.com/rtk-ai/rtk) | MIT |
+| Integration | Default behavior | Upstream | License |
+| --- | --- | --- | --- |
+| `context-mode` | In the default preset set; skipped in CI or when `WP_SKIP_CONTEXT_MODE=1`. | [mksglu/context-mode](https://github.com/mksglu/context-mode) | Elastic-2.0 (source-available) |
+| `playwright-mcp` | Opt-in. | [microsoft/playwright-mcp](https://github.com/microsoft/playwright-mcp) | Apache-2.0 |
+| `gstack` | In the default preset set; skipped in CI or when `WP_SKIP_GSTACK=1`. | [garrytan/gstack](https://github.com/garrytan/gstack) | MIT |
+| `omx` / `oh-my-codex` | In the default preset set; skipped in CI. | [oh-my-codex](https://oh-my-codex.dev/) | MIT |
+| `omc` / `oh-my-claudecode` | In the default preset set; skipped when `WP_SKIP_OMC=1` or the `claude` CLI is unavailable. | [Yeachan-Heo/oh-my-claudecode](https://github.com/Yeachan-Heo/oh-my-claudecode) | MIT |
+| `rtk` | In the default preset set; skipped in CI or when `WP_SKIP_RTK=1`. | [rtk-ai/rtk](https://github.com/rtk-ai/rtk) | Apache-2.0 |
 
 `scripts/verify-no-context-mode.sh` and `wp audit open-source-licenses` ensure
 `context-mode` never appears in the default published npm dependency graph.
