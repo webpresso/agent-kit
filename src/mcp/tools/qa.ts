@@ -27,7 +27,7 @@ import {
   MCP_SAFE_TEST_BUDGET_MS,
   refineTestBudgetContract,
   workspaceShardingInputSchema,
-} from './_shared/test-budget.js'
+} from './_shared/test-budget-contract.js'
 import { detectUiChanges } from './_shared/ui-detection.js'
 import lintTool from './lint.js'
 import testTool from './test.js'

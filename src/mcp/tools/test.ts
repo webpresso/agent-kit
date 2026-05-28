@@ -17,7 +17,7 @@ import {
   MCP_SAFE_TEST_BUDGET_MS,
   refineTestBudgetContract,
   workspaceShardingInputSchema,
-} from './_shared/test-budget.js'
+} from './_shared/test-budget-contract.js'
 
 const inputSchema = z
   .object({
