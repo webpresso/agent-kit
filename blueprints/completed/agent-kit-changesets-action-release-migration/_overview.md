@@ -1,12 +1,12 @@
 ---
 type: blueprint
 title: Agent Kit Changesets Action release migration
-status: in-progress
+status: completed
 complexity: L
 owner: ozby
 created: 2026-05-28T00:00:00.000Z
 last_updated: '2026-05-28'
-progress: '57% (4/7 tasks done, 0 blocked, 1 in progress, updated 2026-05-29)'
+progress: '100% (7/7 tasks done, 0 blocked, updated 2026-05-29)'
 ---
 
 ## Product wedge anchor
@@ -232,7 +232,7 @@ Refinement delta:
 
 #### Task 2.3: [evidence] Make verification executable and reproducible
 
-**Status:** todo
+**Status:** done
 **Wave:** 1
 **Depends:** Task 2.2
 
@@ -316,7 +316,7 @@ gh release list --limit 20 \
 
 #### Task 3.1: [cutover] Perform attended production migration
 
-**Status:** todo
+**Status:** done
 **Wave:** 2
 **Depends:** Task 2.3
 
@@ -340,7 +340,7 @@ gh release list --limit 20 \
 
 #### Task 3.2: [smoke] Verify published package and marketplace consumer reality
 
-**Status:** todo
+**Status:** done
 **Wave:** 2
 **Depends:** Task 3.1
 
