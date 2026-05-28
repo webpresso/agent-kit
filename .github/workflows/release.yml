@@ -93,8 +93,22 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           HUSKY: '0'
 
+      - name: Probe published package version for artifact follow-up
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.changesets.outputs.hasChangesets == 'false' }}
+        id: publish_probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          if npm view "${package_name}@${version}" version --json >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Resolve published version for artifacts
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.changesets.outputs.published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_probe.outputs.published == 'true' }}
         id: release_meta
         shell: bash
         run: |
@@ -107,7 +121,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Verify tag points at the published mainline commit
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.changesets.outputs.published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_probe.outputs.published == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -119,7 +133,7 @@ jobs:
           fi
 
       - name: Create marketplace compatibility branch
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.changesets.outputs.published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_probe.outputs.published == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -143,7 +157,7 @@ jobs:
           git push origin "HEAD:refs/heads/${branch}"
 
       - name: Verify no GitHub Release object exists
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.changesets.outputs.published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_probe.outputs.published == 'true' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -163,7 +177,7 @@ jobs:
             echo ""
             echo "- dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run || false }}"
             echo "- hasChangesets: ${{ steps.changesets.outputs.hasChangesets || 'n/a' }}"
-            echo "- published: ${{ steps.changesets.outputs.published || 'false' }}"
+            echo "- published: ${{ steps.publish_probe.outputs.published || steps.changesets.outputs.published || 'false' }}"
             echo "- publishedPackages: ${{ steps.changesets.outputs.publishedPackages || '[]' }}"
             echo "- version: ${{ steps.release_meta.outputs.version || 'n/a' }}"
             echo "- tag: ${{ steps.release_meta.outputs.tag || 'n/a' }}"
