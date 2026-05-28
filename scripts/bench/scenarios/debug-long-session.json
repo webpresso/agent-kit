@@ -1,0 +1,105 @@
+{
+  "scenario_id": "debug-long-session",
+  "version": 1,
+  "description": "Ten-turn debugging session that intentionally accumulates enough repository context, logs, and recall prompts to force baseline compaction before the final recall questions.",
+  "worst_case_token_count": 238000,
+  "prompt_turns": [
+    {
+      "session_id": "debug-session-1",
+      "turn_idx": 0,
+      "role": "user",
+      "text": "Inspect the failing background sync worker and summarize the top three suspected causes without changing code.",
+      "estimated_tokens": 22000
+    },
+    {
+      "session_id": "debug-session-1",
+      "turn_idx": 1,
+      "role": "assistant",
+      "text": "The worker likely fails because retry state leaks across jobs, the queue adapter swallows 429s, and the sync cursor is not checkpointed after partial success.",
+      "estimated_tokens": 19000
+    },
+    {
+      "session_id": "debug-session-1",
+      "turn_idx": 2,
+      "role": "user",
+      "text": "Search the queue package, the retry middleware, and the worker metrics path; collect every place that mentions sync cursor, retry budget, and rate limit backoff.",
+      "estimated_tokens": 26000
+    },
+    {
+      "session_id": "debug-session-1",
+      "turn_idx": 3,
+      "role": "assistant",
+      "text": "The search surfaced retry budget enforcement in queue-runner.ts, backoff jitter in retry-policy.ts, and cursor persistence in sync-state.ts.",
+      "estimated_tokens": 18000
+    },
+    {
+      "session_id": "debug-session-1",
+      "turn_idx": 4,
+      "role": "user",
+      "text": "Read the implicated files and explain which state survives retries, which metrics are emitted, and where a partial-success cursor can be lost.",
+      "estimated_tokens": 28000
+    },
+    {
+      "session_id": "debug-session-1",
+      "turn_idx": 5,
+      "role": "assistant",
+      "text": "State survives retries in the in-memory retry ledger, metrics emit queue depth and retry attempts, and partial-success cursor loss happens before the final checkpoint write.",
+      "estimated_tokens": 19000
+    },
+    {
+      "session_id": "debug-session-1",
+      "turn_idx": 6,
+      "role": "user",
+      "text": "Propose a minimal fix and note what evidence we would need later to prove the bug is actually fixed.",
+      "estimated_tokens": 22000
+    },
+    {
+      "session_id": "debug-session-1",
+      "turn_idx": 7,
+      "role": "assistant",
+      "text": "The minimal fix is to checkpoint the cursor before acknowledging partial success and to preserve rate-limit metadata in retry state; later proof needs a targeted retry regression test and an end-to-end queue replay.",
+      "estimated_tokens": 21000
+    },
+    {
+      "session_id": "debug-session-1",
+      "turn_idx": 8,
+      "role": "user",
+      "text": "Without rereading files, answer recall questions about the retry ledger, checkpoint location, and the test evidence you recommended.",
+      "estimated_tokens": 32000
+    },
+    {
+      "session_id": "debug-session-1",
+      "turn_idx": 9,
+      "role": "assistant",
+      "text": "The retry ledger is in queue-runner.ts, the checkpoint must move ahead of partial-success acknowledgement in sync-state.ts, and the recommended evidence is a retry regression plus queue replay.",
+      "estimated_tokens": 31000
+    }
+  ],
+  "expected_tool_calls": [
+    "search_files",
+    "read_file",
+    "wp_session_search"
+  ],
+  "qrels": [
+    {
+      "question": "Which file held the retry ledger state?",
+      "expected_substring_in_response": "queue-runner.ts"
+    },
+    {
+      "question": "Where can the partial-success cursor be lost?",
+      "expected_substring_in_response": "before the final checkpoint write"
+    },
+    {
+      "question": "Which file should move the checkpoint ahead of acknowledgement?",
+      "expected_substring_in_response": "sync-state.ts"
+    },
+    {
+      "question": "Which evidence proves the bug is fixed later?",
+      "expected_substring_in_response": "retry regression test"
+    },
+    {
+      "question": "What second proof did the assistant recommend beyond the regression test?",
+      "expected_substring_in_response": "queue replay"
+    }
+  ]
+}

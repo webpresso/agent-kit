@@ -5,7 +5,9 @@ import matter from 'gray-matter'
 
 import { parseBlueprint } from '#core/parser'
 import { lifecycleBlueprintStatusSchema } from '#core/schema'
-import { completeTask, updateBlockedReason, updateTaskStatus } from '#markdown/helpers'
+import type { Evidence } from '#evidence.js'
+import { updateBlockedReason, updateTaskStatus } from '#markdown/helpers'
+import { applyVerification, assertAllTasksHaveCanonicalPassingEvidence } from '#verification.js'
 
 export type LifecycleTaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done'
 
@@ -17,6 +19,7 @@ export type BlueprintLifecycleIntent =
   | { type: 'task_block'; taskId: string; reason: string }
   | { type: 'task_unblock'; taskId: string }
   | { type: 'task_complete'; taskId: string }
+  | { type: 'task_verify'; taskId: string; evidence: readonly Evidence[] }
 
 export interface BlueprintLifecycleResult {
   auditEvents: string[]
@@ -78,7 +81,7 @@ function assertTaskExists(blueprint: Blueprint, taskId: string) {
   return task
 }
 
-function assertTaskDoneRequirements(blueprint: Blueprint): void {
+function assertTaskDoneRequirements(markdown: string, blueprint: Blueprint): void {
   for (const task of blueprint.tasks) {
     if (task.status !== 'done') {
       throw new Error(
@@ -93,6 +96,11 @@ function assertTaskDoneRequirements(blueprint: Blueprint): void {
       )
     }
   }
+
+  assertAllTasksHaveCanonicalPassingEvidence(
+    markdown,
+    blueprint.tasks.map((task) => task.id),
+  )
 }
 
 function applyTaskIntent(
@@ -126,7 +134,16 @@ function applyTaskIntent(
       return updateBlockedReason(updateTaskStatus(markdown, task.id, 'todo'), task.id, '')
     }
     case 'task_complete': {
-      return completeTask(markdown, task.id)
+      throw new Error(
+        `Task ${task.id} cannot be completed without evidence; use task_verify / wp_blueprint_task_verify`,
+      )
+    }
+    case 'task_verify': {
+      const result = applyVerification(markdown, task.id, intent.evidence)
+      if (!result.ok) {
+        throw new Error(result.failures.join('; '))
+      }
+      return result.markdown
     }
   }
 }
@@ -166,7 +183,7 @@ export function applyBlueprintLifecycle(
       auditEvents.push(`blueprint.park:${slug}`)
       break
     case 'finalize': {
-      assertTaskDoneRequirements(blueprint)
+      assertTaskDoneRequirements(markdown, blueprint)
       targetStatus = 'completed'
       auditEvents.push(`blueprint.finalize:${slug}`)
       break

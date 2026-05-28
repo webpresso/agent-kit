@@ -35,6 +35,29 @@ describe('bin launcher', () => {
     })
   })
 
+  it('prefers source when the source checkout is newer than the built entrypoint', () => {
+    expect(
+      buildLaunchPlan({
+        binName: 'wp',
+        repoRoot: '/repo',
+        forwardedArgs: ['bench', 'session-memory', '--dry-run'],
+        builtExists: true,
+        sourceExists: true,
+        builtMtimeMs: 100,
+        sourceMtimeMs: 200,
+        nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
+      }),
+    ).toEqual({
+      mode: 'source',
+      runtime: 'bun',
+      args: ['/repo/src/cli/cli.ts', 'bench', 'session-memory', '--dry-run'],
+      entrypoint: '/repo/src/cli/cli.ts',
+    })
+  })
+
   it('re-execs through mise when the built package pins a different exact Node version', () => {
     expect(
       buildLaunchPlan({

@@ -93,6 +93,8 @@ jobs:
         with:
           bun-version: latest
       - run: pnpm install --frozen-lockfile
+      - name: Open-source license surface
+        run: pnpm run license:check
       - run: pnpm run typecheck
       - run: pnpm run lint
 
@@ -112,6 +114,11 @@ jobs:
           bun-version: latest
       - run: pnpm install --frozen-lockfile
       - run: pnpm run test
+      - name: Bench fixture compatibility gate
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          bun test scripts/bench/lib/usage-extractor.test.ts
+          bun test scripts/bench/lib/refresh-cli-fixture.test.ts
 
   wp-audits:
     runs-on: ubicloud-standard-2

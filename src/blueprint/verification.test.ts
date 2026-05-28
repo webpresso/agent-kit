@@ -14,7 +14,10 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Evidence } from './evidence.js'
 import {
   applyVerification,
+  assertAllTasksHaveCanonicalPassingEvidence,
+  assertTaskHasCanonicalPassingEvidence,
   parseVerificationBlock,
+  readTaskVerification,
   serializeVerificationBlock,
   writeVerification,
   VERIFICATION_BLOCK_HEADER,
@@ -250,6 +253,27 @@ describe('applyVerification', () => {
 
     const parsed = parseVerificationBlock(block)
     expect(parsed).toStrictEqual(evidence)
+  })
+
+  it('reads verification evidence from the requested task only', () => {
+    const result = applyVerification(sampleMarkdown(), '1.1', [passingTest()])
+    if (!result.ok) throw new Error('expected success')
+
+    expect(readTaskVerification(result.markdown, '1.1')).toStrictEqual([passingTest()])
+    expect(readTaskVerification(result.markdown, '1.2')).toBeNull()
+  })
+
+  it('does not let one task evidence satisfy another task', () => {
+    const result = applyVerification(sampleMarkdown(), '1.1', [passingTest()])
+    if (!result.ok) throw new Error('expected success')
+
+    expect(() => assertTaskHasCanonicalPassingEvidence(result.markdown, '1.1')).not.toThrow()
+    expect(() => assertTaskHasCanonicalPassingEvidence(result.markdown, '1.2')).toThrow(
+      /Task 1\.2 is missing task-local canonical verification evidence/,
+    )
+    expect(() =>
+      assertAllTasksHaveCanonicalPassingEvidence(result.markdown, ['1.1', '1.2']),
+    ).toThrow(/Task 1\.2/)
   })
 
   it('preserves task content outside the status/verification region', () => {

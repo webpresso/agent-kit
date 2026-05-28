@@ -91,7 +91,10 @@ export {
 // Verification block markdown helper (consumed by wp_blueprint_task_verify).
 export {
   applyVerification,
+  assertAllTasksHaveCanonicalPassingEvidence,
+  assertTaskHasCanonicalPassingEvidence,
   parseVerificationBlock,
+  readTaskVerification,
   serializeVerificationBlock,
   VERIFICATION_BLOCK_HEADER,
   type VerificationFailure,
@@ -103,6 +106,12 @@ export {
 // Utilities (pure functions)
 export { calculateFreshness, type FreshnessScore } from './utils/freshness.js'
 export {
+  type BlueprintDerivedHandoff,
+  type BlueprintDerivedHandoffCodexGoal,
+  blueprintDerivedHandoffCodexGoalSchema,
+  type BlueprintDerivedHandoffOmxContext,
+  blueprintDerivedHandoffOmxContextSchema,
+  blueprintDerivedHandoffSchema,
   executionBackendSchema,
   type BlueprintExecutionAdapter,
   type BlueprintExecutionBackend,

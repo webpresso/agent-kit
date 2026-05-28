@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -73,6 +73,15 @@ function sourceToBuiltRelativePath(sourceRelativePath) {
   return `dist/esm/${sourceRelativePath.slice(4).replace(/\.ts$/u, '.js')}`
 }
 
+function buildSourceLaunchPlan(sourceEntrypoint, forwardedArgs) {
+  return {
+    mode: 'source',
+    runtime: process.env.BUN ?? 'bun',
+    entrypoint: sourceEntrypoint,
+    args: [sourceEntrypoint, ...forwardedArgs],
+  }
+}
+
 export function resolveInvokedBinName(argv = process.argv.slice(1)) {
   const invoked = argv[0]
   if (typeof invoked !== 'string' || invoked.length === 0) {
@@ -91,6 +100,8 @@ export function buildLaunchPlan({
   currentNodeVersion = process.version,
   pinnedNodeVersion = resolvePinnedNodeVersion(repoRoot),
   runtimeManager = resolveNodeRuntimeManager(),
+  builtMtimeMs,
+  sourceMtimeMs,
 }) {
   const sourceRelativePath = BIN_ENTRYPOINTS[binName]
   if (!sourceRelativePath) {
@@ -102,6 +113,22 @@ export function buildLaunchPlan({
   const sourceEntrypoint = join(repoRoot, sourceRelativePath)
 
   const hasBuilt = builtExists ?? existsSync(builtEntrypoint)
+  const hasSource = sourceExists ?? existsSync(sourceEntrypoint)
+  const resolvedBuiltMtimeMs =
+    builtMtimeMs ?? (builtExists === undefined && hasBuilt ? statSync(builtEntrypoint).mtimeMs : null)
+  const resolvedSourceMtimeMs =
+    sourceMtimeMs ??
+    (sourceExists === undefined && hasSource ? statSync(sourceEntrypoint).mtimeMs : null)
+  const shouldPreferSource =
+    hasSource &&
+    typeof resolvedBuiltMtimeMs === 'number' &&
+    typeof resolvedSourceMtimeMs === 'number' &&
+    resolvedSourceMtimeMs > resolvedBuiltMtimeMs
+
+  if (shouldPreferSource) {
+    return buildSourceLaunchPlan(sourceEntrypoint, forwardedArgs)
+  }
+
   if (hasBuilt) {
     const normalizedCurrent = normalizeNodeVersion(currentNodeVersion)
     if (
@@ -141,14 +168,8 @@ export function buildLaunchPlan({
     }
   }
 
-  const hasSource = sourceExists ?? existsSync(sourceEntrypoint)
   if (hasSource) {
-    return {
-      mode: 'source',
-      runtime: process.env.BUN ?? 'bun',
-      entrypoint: sourceEntrypoint,
-      args: [sourceEntrypoint, ...forwardedArgs],
-    }
+    return buildSourceLaunchPlan(sourceEntrypoint, forwardedArgs)
   }
 
   throw new Error(

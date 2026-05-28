@@ -2,12 +2,15 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ToolHandler, ToolHandlerResult, ToolRegistrar } from './auto-discover.js'
 import { _setSyncAdapterFactory, registerBlueprintTools } from './blueprint-server.js'
 import type { SyncAdapter } from './blueprint-server.js'
-import { markBlueprintValidated } from './blueprint-server.test-harness.js'
+import { FINALIZE_BLUEPRINT } from './blueprint-server.platform-first.test-harness.js'
+import {
+  markBlueprintValidated,
+} from './blueprint-server.test-harness.js'
 
 type RegisteredTool = { name: string; handler: ToolHandler }
 
@@ -70,35 +73,6 @@ Blueprint fixture for promote timeout coverage.
 `
 
 const FINALIZE_SLUG = 'finalize-timeout-blueprint'
-const FINALIZE_BLUEPRINT = `---
-type: blueprint
-title: Finalize Timeout Blueprint
-status: in-progress
-complexity: M
-owner: alice
-created: '2026-01-15'
-last_updated: '2026-04-01'
----
-
-## Product wedge anchor
-
-- **Stage outcome:** Phase 1 — finalize this blueprint
-- **Consuming surface:** /blueprints/finalize
-- **New user-visible capability:** Maintainers can finalize the blueprint.
-
-## Summary
-
-Blueprint fixture for finalize timeout coverage.
-
-#### Task 1.1: Finalize safely
-
-**Status:** done
-**Wave:** 0
-
-**Acceptance:**
-- [x] Finalize succeeds
-`
-
 async function makeTools(
   prefix: string,
   blueprint: { stateDir: string; slug: string; content: string } | null,
@@ -124,15 +98,52 @@ async function makeTools(
 
 describe('wp_blueprint platform timeout guards', () => {
   const tmpDirs: string[] = []
+  let promoteTools: Map<string, RegisteredTool>
+  let newTools: Map<string, RegisteredTool>
+  let finalizeTools: Map<string, RegisteredTool>
+
+  beforeAll(async () => {
+    const promoteHarness = await makeTools('wp-bs-promote-timeout-', {
+      stateDir: 'draft',
+      slug: PROMOTE_SLUG,
+      content: PROMOTE_BLUEPRINT,
+    })
+    tmpDirs.push(promoteHarness.tmpDir)
+    promoteTools = promoteHarness.tools
+    const overviewPath = path.join(
+      promoteHarness.tmpDir,
+      'blueprints',
+      'draft',
+      PROMOTE_SLUG,
+      '_overview.md',
+    )
+    await callTool(promoteTools, 'wp_blueprint_validate', { path: overviewPath })
+    markBlueprintValidated(promoteHarness.tmpDir, PROMOTE_SLUG)
+
+    const newHarness = await makeTools('wp-bs-new-timeout-', null)
+    tmpDirs.push(newHarness.tmpDir)
+    newTools = newHarness.tools
+
+    const finalizeHarness = await makeTools('wp-bs-finalize-timeout-', {
+      stateDir: 'in-progress',
+      slug: FINALIZE_SLUG,
+      content: FINALIZE_BLUEPRINT,
+    })
+    tmpDirs.push(finalizeHarness.tmpDir)
+    finalizeTools = finalizeHarness.tools
+  })
 
   beforeEach(() => {
     vi.stubEnv('WP_BLUEPRINT_PLATFORM_MUTATION_TIMEOUT_MS', '1')
   })
 
   afterEach(() => {
-    while (tmpDirs.length > 0) rmSync(tmpDirs.pop()!, { recursive: true, force: true })
     _setSyncAdapterFactory(null)
     vi.unstubAllEnvs()
+  })
+
+  afterAll(() => {
+    while (tmpDirs.length > 0) rmSync(tmpDirs.pop()!, { recursive: true, force: true })
   })
 
   it('fails fast when ensureFresh times out during promote', async () => {
@@ -142,17 +153,7 @@ describe('wp_blueprint platform timeout guards', () => {
       .mockImplementation(() => new Promise<void>(() => {}))
     _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }))
 
-    const { tmpDir, tools } = await makeTools('ak-bs-promote-timeout-', {
-      stateDir: 'draft',
-      slug: PROMOTE_SLUG,
-      content: PROMOTE_BLUEPRINT,
-    })
-    tmpDirs.push(tmpDir)
-    const overviewPath = path.join(tmpDir, 'blueprints', 'draft', PROMOTE_SLUG, '_overview.md')
-    await callTool(tools, 'wp_blueprint_validate', { path: overviewPath })
-    markBlueprintValidated(tmpDir, PROMOTE_SLUG)
-
-    const result = await callTool(tools, 'wp_blueprint_promote', {
+    const result = await callTool(promoteTools, 'wp_blueprint_promote', {
       slug: PROMOTE_SLUG,
       to_state: 'planned',
     })
@@ -177,10 +178,7 @@ describe('wp_blueprint platform timeout guards', () => {
     const ensureFresh = vi.fn<SyncAdapter['ensureFresh']>().mockResolvedValue(undefined)
     _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }))
 
-    const { tmpDir, tools } = await makeTools('ak-bs-new-timeout-', null)
-    tmpDirs.push(tmpDir)
-
-    const result = await callTool(tools, 'wp_blueprint_new', {
+    const result = await callTool(newTools, 'wp_blueprint_new', {
       title: 'Timed Out New Feature',
       goal_prompt: 'Trigger a fast pushEvent timeout.',
     })
@@ -205,14 +203,7 @@ describe('wp_blueprint platform timeout guards', () => {
       .mockImplementation(() => new Promise<void>(() => {}))
     _setSyncAdapterFactory(() => ({ pushEvent, ensureFresh }))
 
-    const { tmpDir, tools } = await makeTools('ak-bs-finalize-timeout-', {
-      stateDir: 'in-progress',
-      slug: FINALIZE_SLUG,
-      content: FINALIZE_BLUEPRINT,
-    })
-    tmpDirs.push(tmpDir)
-
-    const result = await callTool(tools, 'wp_blueprint_finalize', { slug: FINALIZE_SLUG })
+    const result = await callTool(finalizeTools, 'wp_blueprint_finalize', { slug: FINALIZE_SLUG })
     const data = parseResult(result) as { failures: string[] }
 
     expect(result.isError).toStrictEqual(true)

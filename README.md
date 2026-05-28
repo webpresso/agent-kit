@@ -66,4 +66,5 @@ Experimental v0.x. Public APIs may change before v1.
 
 ## License
 
-MIT
+MIT — see [LICENSE](./LICENSE). Vendored catalog skills and optional integration
+licenses are documented in [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md).

@@ -43,6 +43,7 @@ const SUPPORTED_COMMANDS = [
   'mcp',
   'hooks',
   'gain',
+  'bench',
 ] as const
 
 const ROOT_HELP = [
@@ -55,6 +56,7 @@ const ROOT_HELP = [
   '  config                Repo configuration (secrets set/show/status/setup)',
   '  gain                  Show token savings from RTK — run after any AI session',
   '  sync                  Sync agent rules + skills across IDE surfaces (--kind, --check)',
+  '  bench                 Run the session-memory benchmark harness',
   '',
   'Quality:',
   '  audit                 Run packaged audits (bundle budgets, repo guardrails, TPH, tech-debt)',
@@ -242,6 +244,11 @@ export async function main(): Promise<number> {
     case 'gain': {
       const { registerGainCommand } = await import('./commands/gain/index.js')
       registerGainCommand(cli)
+      break
+    }
+    case 'bench': {
+      const { registerBenchCommand } = await import('./commands/bench/index.js')
+      registerBenchCommand(cli)
       break
     }
     case 'worktree': {

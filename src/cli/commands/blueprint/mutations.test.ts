@@ -19,6 +19,12 @@ import {
 // Fixtures
 // ---------------------------------------------------------------------------
 
+const TASK_VERIFICATION_BLOCK = `**Verification:**
+
+\`\`\`webpresso-evidence-v1
+[{"command":"wp_test --files src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-28T12:00:00.000Z"}]
+\`\`\``
+
 const OVERVIEW_WITH_TASKS = `---
 type: blueprint
 status: planned
@@ -68,10 +74,12 @@ A blueprint with all tasks done.
 
 #### Task 1.1: First task
 **Status:** done
+${TASK_VERIFICATION_BLOCK}
 - [x] Did it
 
 #### Task 1.2: Second task
 **Status:** done
+${TASK_VERIFICATION_BLOCK}
 - [x] Did that too
 `
 
@@ -96,10 +104,11 @@ A blueprint with one incomplete task.
 
 #### Task 1.1: First task
 **Status:** done
+${TASK_VERIFICATION_BLOCK}
 - [x] Done
 
 #### Task 1.2: Incomplete task
-**Status:** in-progress
+**Status:** in_progress
 - [ ] Still going
 `
 
@@ -164,10 +173,13 @@ function queryBlueprintStatus(repoDir: string, slug: string): string | null {
 // Test lifecycle
 // ---------------------------------------------------------------------------
 
-let tmpRepoDir: string
+let tmpRepoDir = ''
 
 afterEach(() => {
-  rmSync(tmpRepoDir, { recursive: true, force: true })
+  if (tmpRepoDir !== '') {
+    rmSync(tmpRepoDir, { recursive: true, force: true })
+    tmpRepoDir = ''
+  }
 })
 
 // ---------------------------------------------------------------------------
@@ -175,9 +187,8 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('advanceTask', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
-    await seedDb(tmpRepoDir)
   })
 
   it('updates the correct Status line in markdown', async () => {
@@ -192,10 +203,10 @@ describe('advanceTask', () => {
     expect(statusAfter12).toBe('**Status:** todo')
   })
 
-  it('updates the status field to the new value', async () => {
-    const result = await advanceTask(tmpRepoDir, 'my-feature', '1.1', 'done')
-    expect(result.oldStatus).toBe('todo')
-    expect(result.newStatus).toBe('done')
+  it('refuses to advance directly to done without evidence', async () => {
+    await expect(advanceTask(tmpRepoDir, 'my-feature', '1.1', 'done')).rejects.toThrow(
+      /wp_blueprint_task_verify/,
+    )
   })
 
   it('is idempotent — already same status returns a message and exits cleanly', async () => {
@@ -213,6 +224,8 @@ describe('advanceTask', () => {
   })
 
   it('re-ingests after change — DB row is updated', async () => {
+    await seedDb(tmpRepoDir)
+
     // Verify initial state
     const beforeStatus = queryTaskStatus(tmpRepoDir, 'my-feature', '1.1')
     expect(beforeStatus).toBe('todo')
@@ -254,7 +267,6 @@ describe('advanceTask', () => {
 describe('promoteBlueprint', () => {
   it('moves directory to the target state folder and updates frontmatter', async () => {
     tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
-    await seedDb(tmpRepoDir)
 
     const result = await promoteBlueprint(tmpRepoDir, 'my-feature', 'in-progress')
 
@@ -281,7 +293,6 @@ describe('promoteBlueprint', () => {
 
   it('sets completed_at when promoting to completed', async () => {
     tmpRepoDir = makeRepo('completable', OVERVIEW_ALL_DONE, 'in-progress')
-    await seedDb(tmpRepoDir)
 
     const result = await promoteBlueprint(tmpRepoDir, 'completable', 'completed')
     const content = readFileSync(result.newPath, 'utf8')
@@ -290,7 +301,6 @@ describe('promoteBlueprint', () => {
 
   it('refuses to complete when tasks are not done', async () => {
     tmpRepoDir = makeRepo('my-blocked', OVERVIEW_MIXED_STATUS, 'in-progress')
-    await seedDb(tmpRepoDir)
 
     await expect(promoteBlueprint(tmpRepoDir, 'my-blocked', 'completed')).rejects.toThrow(
       /tasks are not done/,
@@ -299,7 +309,6 @@ describe('promoteBlueprint', () => {
 
   it('lists the blocking task IDs in the refusal message', async () => {
     tmpRepoDir = makeRepo('my-blocked', OVERVIEW_MIXED_STATUS, 'in-progress')
-    await seedDb(tmpRepoDir)
 
     await expect(promoteBlueprint(tmpRepoDir, 'my-blocked', 'completed')).rejects.toThrow('1.2')
   })
@@ -313,7 +322,6 @@ describe('promoteBlueprint', () => {
 
   it('can park a blueprint', async () => {
     tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
-    await seedDb(tmpRepoDir)
 
     const result = await promoteBlueprint(tmpRepoDir, 'my-feature', 'parked')
     expect(result.newState).toBe('parked')
@@ -328,7 +336,6 @@ describe('promoteBlueprint', () => {
 describe('finalizeBlueprint', () => {
   it('is equivalent to promoteBlueprint to completed', async () => {
     tmpRepoDir = makeRepo('completable', OVERVIEW_ALL_DONE, 'in-progress')
-    await seedDb(tmpRepoDir)
 
     const result = await finalizeBlueprint(tmpRepoDir, 'completable')
     expect(result.newState).toBe('completed')
@@ -337,7 +344,6 @@ describe('finalizeBlueprint', () => {
 
   it('refuses when tasks are not done', async () => {
     tmpRepoDir = makeRepo('my-blocked', OVERVIEW_MIXED_STATUS, 'in-progress')
-    await seedDb(tmpRepoDir)
 
     await expect(finalizeBlueprint(tmpRepoDir, 'my-blocked')).rejects.toThrow(/tasks are not done/)
   })
@@ -350,7 +356,6 @@ describe('finalizeBlueprint', () => {
 describe('atomic write', () => {
   it('original file is unchanged if an error occurs before write completes', async () => {
     tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
-    await seedDb(tmpRepoDir)
 
     const originalContent = readOverview(tmpRepoDir, 'my-feature', 'planned')
 
@@ -378,9 +383,8 @@ function makeMockAdapter(): {
 }
 
 describe('advanceTask — platform-first sync', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
-    await seedDb(tmpRepoDir)
   })
 
   afterEach(() => {
@@ -416,10 +420,10 @@ describe('advanceTask — platform-first sync', () => {
     const { adapter } = makeMockAdapter()
     _setSyncAdapterForCli(() => adapter)
 
-    await advanceTask(tmpRepoDir, 'my-feature', '1.1', 'done')
+    await advanceTask(tmpRepoDir, 'my-feature', '1.1', 'in-progress')
 
     const content = readOverview(tmpRepoDir, 'my-feature', 'planned')
-    expect(content).toContain('**Status:** done')
+    expect(content).toContain('**Status:** in-progress')
   })
 
   it('does not call pushEvent when WP_BLUEPRINT_PLATFORM_DISABLED=1', async () => {
@@ -444,15 +448,16 @@ describe('advanceTask — platform-first sync', () => {
 
     // Reset and run without adapter at all — same result expected
     const tmpRepoDir2 = makeRepo('my-feature', before, 'planned')
-    await seedDb(tmpRepoDir2)
     delete process.env['WP_BLUEPRINT_PLATFORM_DISABLED']
     _setSyncAdapterForCli(() => null)
 
-    await advanceTask(tmpRepoDir2, 'my-feature', '1.1', 'in-progress')
-    const afterNullAdapter = readOverview(tmpRepoDir2, 'my-feature', 'planned')
-
-    expect(afterDisabled).toStrictEqual(afterNullAdapter)
-    rmSync(tmpRepoDir2, { recursive: true, force: true })
+    try {
+      await advanceTask(tmpRepoDir2, 'my-feature', '1.1', 'in-progress')
+      const afterNullAdapter = readOverview(tmpRepoDir2, 'my-feature', 'planned')
+      expect(afterDisabled).toStrictEqual(afterNullAdapter)
+    } finally {
+      rmSync(tmpRepoDir2, { recursive: true, force: true })
+    }
   })
 
   it('does not call pushEvent when already at target status (idempotent path)', async () => {
@@ -471,9 +476,8 @@ describe('advanceTask — platform-first sync', () => {
 // ---------------------------------------------------------------------------
 
 describe('resolveSyncAdapterForCli — production default path', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
-    await seedDb(tmpRepoDir)
   })
 
   afterEach(() => {
@@ -517,7 +521,6 @@ describe('promoteBlueprint — platform-first sync', () => {
 
   it('calls pushEvent with blueprint.status_changed and ensureFresh when adapter is available', async () => {
     tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
-    await seedDb(tmpRepoDir)
 
     const { adapter, pushEvent, ensureFresh } = makeMockAdapter()
     _setSyncAdapterForCli(() => adapter)
@@ -543,7 +546,6 @@ describe('promoteBlueprint — platform-first sync', () => {
 
   it('still moves the directory and updates frontmatter when adapter is available', async () => {
     tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
-    await seedDb(tmpRepoDir)
 
     const { adapter } = makeMockAdapter()
     _setSyncAdapterForCli(() => adapter)
@@ -557,7 +559,6 @@ describe('promoteBlueprint — platform-first sync', () => {
 
   it('does not call pushEvent when WP_BLUEPRINT_PLATFORM_DISABLED=1', async () => {
     tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
-    await seedDb(tmpRepoDir)
 
     process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
     const { adapter, pushEvent } = makeMockAdapter()
@@ -571,7 +572,6 @@ describe('promoteBlueprint — platform-first sync', () => {
   it('disabled path produces byte-identical frontmatter output', async () => {
     // Run with platform disabled — uses markdown-canonical path
     tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
-    await seedDb(tmpRepoDir)
     process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
 
     const result1 = await promoteBlueprint(tmpRepoDir, 'my-feature', 'in-progress')
@@ -580,13 +580,14 @@ describe('promoteBlueprint — platform-first sync', () => {
     // Run with null adapter — same path
     delete process.env['WP_BLUEPRINT_PLATFORM_DISABLED']
     const tmpRepoDir2 = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
-    await seedDb(tmpRepoDir2)
     _setSyncAdapterForCli(() => null)
 
-    const result2 = await promoteBlueprint(tmpRepoDir2, 'my-feature', 'in-progress')
-    const contentNullAdapter = readFileSync(result2.newPath, 'utf8')
-
-    expect(contentDisabled).toStrictEqual(contentNullAdapter)
-    rmSync(tmpRepoDir2, { recursive: true, force: true })
+    try {
+      const result2 = await promoteBlueprint(tmpRepoDir2, 'my-feature', 'in-progress')
+      const contentNullAdapter = readFileSync(result2.newPath, 'utf8')
+      expect(contentDisabled).toStrictEqual(contentNullAdapter)
+    } finally {
+      rmSync(tmpRepoDir2, { recursive: true, force: true })
+    }
   })
 })

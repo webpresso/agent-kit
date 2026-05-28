@@ -17,6 +17,7 @@ import { randomUUID } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
+import { parseBlueprint } from '#core/parser'
 import { openDb } from '#db/connection.js'
 import { ingestAll } from '#db/ingester.js'
 import { migrateLegacyAgentDb } from '#db/legacy-migration.js'
@@ -26,6 +27,7 @@ import {
   withProjectionDbWriteLock,
 } from '#db/paths.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
+import { assertAllTasksHaveCanonicalPassingEvidence } from '#verification.js'
 
 // ---------------------------------------------------------------------------
 // Platform-first sync adapter (injectable for tests, Tasks 2.6 + 2.7)
@@ -313,6 +315,10 @@ async function advanceTaskLocked(
 
   const { lineIndex, currentStatus } = result
 
+  if (toStatus === 'done') {
+    throw new Error('Use wp_blueprint_task_verify to mark tasks done with evidence')
+  }
+
   if (currentStatus === toStatus) {
     return {
       blueprintSlug,
@@ -402,6 +408,18 @@ async function promoteBlueprintLocked(
 
   // Guard: refuse to complete if any tasks are not done/dropped
   if (toState === 'completed') {
+    const markdown = readFileSync(overviewPath, 'utf8')
+    const blueprint = parseBlueprint(markdown, slug)
+    const unfinished = blueprint.tasks.filter((task) => task.status !== 'done')
+    if (unfinished.length > 0) {
+      const list = unfinished.map((task) => `${task.id} (${task.status})`).join(', ')
+      throw new Error(`Cannot promote "${slug}" to completed: the following tasks are not done: ${list}`)
+    }
+    assertAllTasksHaveCanonicalPassingEvidence(
+      markdown,
+      blueprint.tasks.map((task) => task.id),
+    )
+
     const target = dbPath(cwd)
     if (existsSync(target)) {
       const conn = openDb(target)

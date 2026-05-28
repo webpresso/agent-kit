@@ -21,7 +21,13 @@ export interface PlatformBlueprintHarness extends PlatformHarness {
   readonly overviewPath: string
 }
 
-export async function makePlatformHarness(prefix = 'ak-bs-platform-test-'): Promise<PlatformHarness> {
+const TASK_VERIFICATION_BLOCK = `**Verification:**
+
+\`\`\`webpresso-evidence-v1
+[{"command":"wp_test --files src/mcp/blueprint-server.platform-first.lifecycle.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-28T12:00:00.000Z"}]
+\`\`\``
+
+export async function makePlatformHarness(prefix = 'wp-bs-platform-test-'): Promise<PlatformHarness> {
   const tmpDir = createTempBlueprintRepo(prefix)
   const tools = await registerBlueprintToolMap(tmpDir)
   return { tmpDir, tools }
@@ -154,7 +160,96 @@ Blueprint used to test finalize.
 
 **Status:** done
 **Wave:** 0
+${TASK_VERIFICATION_BLOCK}
 
 **Acceptance:**
 - [x] The blueprint is finalized
+`
+
+export const FINALIZE_BLUEPRINT_UNVERIFIED = `---
+type: blueprint
+title: Finalize Test Blueprint
+status: in-progress
+complexity: S
+owner: tester
+created: '2026-01-01'
+last_updated: '2026-05-01'
+---
+
+## Product wedge anchor
+
+- **Stage outcome:** Phase 1 — ship finalize feature
+- **Consuming surface:** /finalize route
+- **New user-visible capability:** Users can finalize blueprints.
+
+## Summary
+
+Blueprint used to test finalize rejection without verification.
+
+#### Task 1.1: The finalize task
+
+**Status:** done
+**Wave:** 0
+
+**Acceptance:**
+- [x] The blueprint is finalized
+`
+
+export const PROMOTE_TO_COMPLETED_BLUEPRINT = `---
+type: blueprint
+title: Promote Completed Test Blueprint
+status: in-progress
+complexity: S
+owner: tester
+created: '2026-01-01'
+last_updated: '2026-05-01'
+---
+
+## Product wedge anchor
+
+- **Stage outcome:** Phase 1 — complete promote feature
+- **Consuming surface:** /promote route
+- **New user-visible capability:** Users can promote blueprints to completed.
+
+## Summary
+
+Blueprint used to test completed promotion.
+
+#### Task 1.1: The promote task
+
+**Status:** done
+**Wave:** 0
+${TASK_VERIFICATION_BLOCK}
+
+**Acceptance:**
+- [x] The blueprint is promoted
+`
+
+export const PROMOTE_TO_COMPLETED_BLUEPRINT_UNVERIFIED = `---
+type: blueprint
+title: Promote Completed Test Blueprint
+status: in-progress
+complexity: S
+owner: tester
+created: '2026-01-01'
+last_updated: '2026-05-01'
+---
+
+## Product wedge anchor
+
+- **Stage outcome:** Phase 1 — complete promote feature
+- **Consuming surface:** /promote route
+- **New user-visible capability:** Users can promote blueprints to completed.
+
+## Summary
+
+Blueprint used to test completed promotion rejection without verification.
+
+#### Task 1.1: The promote task
+
+**Status:** done
+**Wave:** 0
+
+**Acceptance:**
+- [x] The blueprint is promoted
 `

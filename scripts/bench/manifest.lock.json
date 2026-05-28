@@ -1,0 +1,11 @@
+{
+  "bun": "1.3.13",
+  "claude": "2.1.146 (Claude Code)",
+  "node": "v24.16.0",
+  "model": "unknown",
+  "plugins": {
+    "main": "304e80ecc992de693b0d17e1aa04cb1560733876",
+    "v1": "304e80ecc992de693b0d17e1aa04cb1560733876",
+    "v2": "304e80ecc992de693b0d17e1aa04cb1560733876"
+  }
+}

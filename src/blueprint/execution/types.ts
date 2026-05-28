@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { evidenceListSchema, type Evidence } from '#evidence.js'
 import { executionBackendSchema, type BlueprintExecutionBackend } from '#types/execution-backend.js'
 
 const LEGACY_BLUEPRINT_ROOT_SEGMENT = 'webpresso/blueprints/'
@@ -68,6 +69,45 @@ export type BlueprintLaunchSpec = z.infer<typeof blueprintLaunchSpecSchema>
 export const blueprintExecutionSpecSchema = blueprintLaunchSpecSchema
 export type BlueprintExecutionSpec = BlueprintLaunchSpec
 
+export const blueprintDerivedHandoffCodexGoalSchema = z.object({
+  objective_hash: z.string().min(1).optional(),
+  status_at_handoff: z.string().min(1).optional(),
+  thread_id: z.string().min(1).optional(),
+})
+export type BlueprintDerivedHandoffCodexGoal = z.infer<
+  typeof blueprintDerivedHandoffCodexGoalSchema
+>
+
+export const blueprintDerivedHandoffOmxContextSchema = z.object({
+  execution_id: z.string().min(1).optional(),
+  goal_id: z.string().min(1).optional(),
+  ledger_path: z.string().min(1).optional(),
+  mode: z.string().min(1).optional(),
+  plan_path: z.string().min(1).optional(),
+  session_id: z.string().min(1).optional(),
+  state_paths: z.array(z.string().min(1)).optional(),
+})
+export type BlueprintDerivedHandoffOmxContext = z.infer<
+  typeof blueprintDerivedHandoffOmxContextSchema
+>
+
+export const blueprintDerivedHandoffSchema = z.object({
+  blueprint_path: z
+    .string()
+    .min(1)
+    .refine(isBlueprintPath, 'blueprint_path must point at blueprints/ or webpresso/blueprints'),
+  blueprint_slug: z.string().min(1),
+  codex_goal: blueprintDerivedHandoffCodexGoalSchema.optional(),
+  content_hash: z.string().min(1),
+  derived: z.literal(true),
+  generated_at: z.string().min(1).optional(),
+  generated_by: z.string().min(1).optional(),
+  head_at_ingest: z.string().min(1).nullable(),
+  ['non-authoritative']: z.literal(true),
+  omx_context: blueprintDerivedHandoffOmxContextSchema.optional(),
+})
+export type BlueprintDerivedHandoff = z.infer<typeof blueprintDerivedHandoffSchema>
+
 export const runtimeStateStatusSchema = z.enum([
   'pending',
   'running',
@@ -80,12 +120,14 @@ export type RuntimeStateStatus = z.infer<typeof runtimeStateStatusSchema>
 
 export const runtimeStateSnapshotSchema = z.object({
   backend: executionBackendSchema,
+  evidence: evidenceListSchema.optional(),
   executionId: z.string().min(1),
   status: runtimeStateStatusSchema,
   taskId: z.string().optional(),
   updatedAt: z.string().min(1),
 })
 export type RuntimeStateSnapshot = z.infer<typeof runtimeStateSnapshotSchema>
+export type RuntimeStateSnapshotEvidence = Evidence
 
 export interface BlueprintExecutionAdapter {
   readonly backend: BlueprintExecutionBackend

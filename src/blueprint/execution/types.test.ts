@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  blueprintDerivedHandoffSchema,
   blueprintExecutionPolicySchema,
   blueprintExecutionSpecSchema,
   blueprintLaunchSpecSchema,
@@ -177,6 +178,78 @@ describe('blueprintExecutionSpecSchema', () => {
     })
 
     expect(result.blueprintSlug).toBe('in-progress/test-plan')
+  })
+})
+
+describe('blueprintDerivedHandoffSchema', () => {
+  it('accepts derived handoff frontmatter with optional Codex and OMX provenance links', () => {
+    const result = blueprintDerivedHandoffSchema.parse({
+      blueprint_path: 'blueprints/in-progress/test-plan/_overview.md',
+      blueprint_slug: 'in-progress/test-plan',
+      codex_goal: {
+        objective_hash: 'sha256:goal-abc',
+        status_at_handoff: 'active',
+        thread_id: '019e6da9-9002-7b63-a261-88b5844453a0',
+      },
+      content_hash: 'abc123',
+      derived: true,
+      generated_at: '2026-05-28T10:00:00Z',
+      generated_by: 'wp blueprint handoff',
+      head_at_ingest: null,
+      'non-authoritative': true,
+      omx_context: {
+        execution_id: 'team-123',
+        goal_id: 'G002',
+        ledger_path: '.omx/ultragoal/ledger.jsonl',
+        mode: 'team',
+        plan_path: '.omx/ultragoal/goals.json',
+        session_id: 'omx-1779961577929-bg63ul',
+        state_paths: ['.omx/state/team/team-123', '.omx/state/native-stop-state.json'],
+      },
+    })
+
+    expect(result.blueprint_slug).toBe('in-progress/test-plan')
+    expect(result.codex_goal?.thread_id).toBe('019e6da9-9002-7b63-a261-88b5844453a0')
+    expect(result.omx_context?.ledger_path).toBe('.omx/ultragoal/ledger.jsonl')
+  })
+
+  it('rejects handoffs that point back into .omx/plans', () => {
+    expect(() =>
+      blueprintDerivedHandoffSchema.parse({
+        blueprint_path: '.omx/plans/prd-test.md',
+        blueprint_slug: 'prd-test',
+        content_hash: 'abc123',
+        derived: true,
+        head_at_ingest: 'deadbeef',
+        'non-authoritative': true,
+      }),
+    ).toThrow(/blueprint_path must point at blueprints\/ or webpresso\/blueprints/)
+  })
+
+  it('rejects invalid optional provenance shapes', () => {
+    const result = blueprintDerivedHandoffSchema.safeParse({
+      blueprint_path: 'blueprints/in-progress/test-plan/_overview.md',
+      blueprint_slug: 'in-progress/test-plan',
+      codex_goal: {
+        thread_id: 123,
+      },
+      content_hash: 'abc123',
+      derived: true,
+      head_at_ingest: 'deadbeef',
+      'non-authoritative': true,
+    })
+
+    expect(result.success).toBe(false)
+    if (result.success) {
+      throw new Error('Expected parse failure for invalid optional provenance')
+    }
+    expect(result.error.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: ['codex_goal', 'thread_id'],
+        }),
+      ]),
+    )
   })
 })
 

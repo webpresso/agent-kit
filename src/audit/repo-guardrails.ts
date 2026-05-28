@@ -3,6 +3,8 @@ import { join, relative, resolve, sep } from 'node:path'
 
 import matter from 'gray-matter'
 
+import { blueprintDerivedHandoffSchema } from '#execution/types'
+
 import { validateLoreTrailers } from './commit-message-lore.js'
 
 export interface RepoAuditViolation {
@@ -662,173 +664,89 @@ function auditLegacyOmxPlans(root: string): {
   violations: RepoAuditViolation[]
 } {
   const plansRoot = join(root, '.omx', 'plans')
-  const contractsRoot = join(root, '.omx', 'contracts')
-  const lifecycleRoot = join(root, '.omx', 'state', 'lifecycle')
-  const contractPath = join(contractsRoot, 'workspace-boundary-contract.md')
   const violations: RepoAuditViolation[] = []
   let checked = 0
 
-  const prdFiles = readDirectoryEntries(plansRoot).filter((file) => /^prd-.+\.md$/.test(file))
-  const testSpecFiles = readDirectoryEntries(plansRoot).filter((file) =>
-    /^test-spec-.+\.md$/.test(file),
-  )
-  const lifecycleFiles = readDirectoryEntries(lifecycleRoot).filter((file) =>
-    file.endsWith('.json'),
-  )
-  const hasLegacySurface =
-    existsSync(contractPath) ||
-    prdFiles.length > 0 ||
-    testSpecFiles.length > 0 ||
-    lifecycleFiles.length > 0
+  const planFiles = readDirectoryEntries(plansRoot).filter((file) => file.endsWith('.md'))
+  const hasLegacySurface = planFiles.length > 0
 
   if (!hasLegacySurface) return { checked, violations }
 
-  if (!existsSync(plansRoot)) {
-    violations.push({
-      file: relativePath(root, plansRoot),
-      message: 'Missing .omx/plans directory',
-    })
-  }
-
-  if (!existsSync(contractsRoot)) {
-    violations.push({
-      file: relativePath(root, contractsRoot),
-      message: 'Missing .omx/contracts directory',
-    })
-  }
-
-  if (!existsSync(lifecycleRoot)) {
-    violations.push({
-      file: relativePath(root, lifecycleRoot),
-      message: 'Missing .omx/state/lifecycle directory',
-    })
-  }
-
-  checked += 1
-  const contractContent = readTextIfExists(contractPath)
-  if (!contractContent) {
-    violations.push({
-      file: relativePath(root, contractPath),
-      message: 'Missing workspace boundary contract',
-    })
-  } else {
-    for (const marker of ['# Workspace boundary contract', '## Workspace classifications']) {
-      if (!contractContent.includes(marker)) {
-        violations.push({
-          file: relativePath(root, contractPath),
-          message: `workspace-boundary-contract.md is missing required marker: ${marker}`,
-        })
-      }
-    }
-  }
-
-  if (prdFiles.length === 0) {
-    violations.push({
-      file: relativePath(root, plansRoot),
-      message: 'Missing at least one PRD artifact under .omx/plans',
-    })
-  }
-
-  if (testSpecFiles.length === 0) {
-    violations.push({
-      file: relativePath(root, plansRoot),
-      message: 'Missing at least one test spec artifact under .omx/plans',
-    })
-  }
-
-  if (lifecycleFiles.length === 0) {
-    violations.push({
-      file: relativePath(root, lifecycleRoot),
-      message: 'Missing at least one lifecycle artifact under .omx/state/lifecycle',
-    })
-  }
-
-  for (const file of prdFiles) {
+  for (const file of planFiles) {
     checked += 1
     const content = readTextIfExists(join(plansRoot, file))
-    if (!content?.includes('# PRD:')) {
+    if (!content) continue
+    const relativeFile = relativePath(root, join(plansRoot, file))
+    const parsed = matter(content)
+    if (/^#\s+(?:PRD|Test Spec):/im.test(content) || /^#\s+(?:PRD|Test Spec):/im.test(parsed.content)) {
       violations.push({
-        file: relativePath(root, join(plansRoot, file)),
-        message: `${file} is missing a PRD heading`,
+        file: relativeFile,
+        message:
+          '.omx/plans must be a derived blueprint handoff, not an authoritative PRD/test-spec',
       })
     }
-  }
 
-  for (const file of testSpecFiles) {
-    checked += 1
-    const content = readTextIfExists(join(plansRoot, file))
-    if (!content?.includes('# Test Spec:')) {
-      violations.push({
-        file: relativePath(root, join(plansRoot, file)),
-        message: `${file} is missing a test spec heading`,
-      })
-    }
-  }
-
-  for (const file of lifecycleFiles) {
-    checked += 1
-    const lifecycleContent = readTextIfExists(join(lifecycleRoot, file))
-    if (!lifecycleContent) continue
-
-    try {
-      const parsed = JSON.parse(lifecycleContent) as {
-        artifacts?: unknown
-        slug?: unknown
-        status?: unknown
-      }
-      if (typeof parsed.slug !== 'string' || parsed.slug.length === 0) {
+    const frontmatter = parsed.data as Record<string, unknown>
+    for (const [field, marker] of [
+      ['derived', 'derived: true'],
+      ['non-authoritative', 'non-authoritative: true'],
+      ['blueprint_slug', 'blueprint_slug:'],
+      ['blueprint_path', 'blueprint_path:'],
+      ['content_hash', 'content_hash:'],
+      ['head_at_ingest', 'head_at_ingest:'],
+    ] as const) {
+      if (frontmatter[field] === undefined) {
         violations.push({
-          file: relativePath(root, join(lifecycleRoot, file)),
-          message: `Lifecycle state requires a slug (${file})`,
+          file: relativeFile,
+          message: `.omx/plans handoff is missing required derived-handoff marker: ${marker}`,
         })
       }
-      if (typeof parsed.status !== 'string' || parsed.status.length === 0) {
-        violations.push({
-          file: relativePath(root, join(lifecycleRoot, file)),
-          message: `Lifecycle state requires a status (${file})`,
-        })
-      }
-      if (
-        !parsed.artifacts ||
-        typeof parsed.artifacts !== 'object' ||
-        Array.isArray(parsed.artifacts)
-      ) {
-        violations.push({
-          file: relativePath(root, join(lifecycleRoot, file)),
-          message: `Lifecycle state requires an artifacts object (${file})`,
-        })
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
+    }
+
+    if (frontmatter.derived !== undefined && frontmatter.derived !== true) {
       violations.push({
-        file: relativePath(root, join(lifecycleRoot, file)),
-        message: `Lifecycle state JSON is invalid in ${file}: ${message}`,
+        file: relativeFile,
+        message: '.omx/plans handoff is missing required derived-handoff marker: derived: true',
       })
     }
-  }
 
-  const files = [...prdFiles, ...testSpecFiles]
-  const slugs = new Map<string, Set<string>>()
-  for (const file of files) {
-    const match = /^(prd|test-spec)-(.+)\.md$/.exec(file)
-    if (!match?.[1] || !match[2]) continue
-    const slugFiles = slugs.get(match[2]) ?? new Set<string>()
-    slugFiles.add(match[1])
-    slugs.set(match[2], slugFiles)
-  }
-
-  for (const [slug, slugFiles] of slugs.entries()) {
-    if (!slugFiles.has('prd')) {
+    if (
+      frontmatter['non-authoritative'] !== undefined &&
+      frontmatter['non-authoritative'] !== true
+    ) {
       violations.push({
-        file: relativePath(root, join(plansRoot, `prd-${slug}.md`)),
-        message: 'Missing legacy PRD plan',
+        file: relativeFile,
+        message:
+          '.omx/plans handoff is missing required derived-handoff marker: non-authoritative: true',
       })
     }
-    if (!slugFiles.has('test-spec')) {
+
+    if (
+      typeof frontmatter.blueprint_path === 'string' &&
+      !/^(?:.*\/)?(?:blueprints|webpresso\/blueprints)\//.test(frontmatter.blueprint_path)
+    ) {
       violations.push({
-        file: relativePath(root, join(plansRoot, `test-spec-${slug}.md`)),
-        message: 'Missing legacy test spec plan',
+        file: relativeFile,
+        message: '.omx/plans handoff blueprint_path must point at blueprints/',
       })
+    }
+
+    const validated = blueprintDerivedHandoffSchema.safeParse(frontmatter)
+    if (!validated.success) {
+      for (const issue of validated.error.issues) {
+        const path = issue.path.join('.')
+        if (
+          issue.path[0] === 'codex_goal' ||
+          issue.path[0] === 'omx_context' ||
+          issue.path[0] === 'generated_at' ||
+          issue.path[0] === 'generated_by'
+        ) {
+          violations.push({
+            file: relativeFile,
+            message: `.omx/plans handoff has invalid optional provenance field ${path}: ${issue.message}`,
+          })
+        }
+      }
     }
   }
 

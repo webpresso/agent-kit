@@ -1,0 +1,91 @@
+{
+  "scenario_id": "resumable-task",
+  "version": 1,
+  "description": "Two-session resumable work item that tests whether the agent can recover prior decisions after a pause and compaction without rereading the entire codebase.",
+  "worst_case_token_count": 241000,
+  "prompt_turns": [
+    {
+      "session_id": "resume-session-1",
+      "turn_idx": 0,
+      "role": "user",
+      "text": "Audit the hook runtime path resolution and note every place where bare PATH lookups still exist.",
+      "estimated_tokens": 23000
+    },
+    {
+      "session_id": "resume-session-1",
+      "turn_idx": 1,
+      "role": "assistant",
+      "text": "Bare PATH lookups remain in the Codex hook generator, the MCP doctor helper, and the local runtime shim.",
+      "estimated_tokens": 18000
+    },
+    {
+      "session_id": "resume-session-1",
+      "turn_idx": 2,
+      "role": "user",
+      "text": "Propose the narrowest repair that keeps hook commands path-stable and bounded under timeout pressure.",
+      "estimated_tokens": 26000
+    },
+    {
+      "session_id": "resume-session-1",
+      "turn_idx": 3,
+      "role": "assistant",
+      "text": "The repair is to derive absolute binary paths during setup, pass them through generated surfaces, and keep discovery calls degradable instead of increasing timeouts.",
+      "estimated_tokens": 19000
+    },
+    {
+      "session_id": "resume-session-2",
+      "turn_idx": 4,
+      "role": "user",
+      "text": "Resume from the last checkpoint and answer from memory only: which three components still had bare PATH lookups, what is the approved repair, and what timeout anti-pattern must stay forbidden?",
+      "estimated_tokens": 36000
+    },
+    {
+      "session_id": "resume-session-2",
+      "turn_idx": 5,
+      "role": "assistant",
+      "text": "The remaining bare PATH lookups were in the hook generator, MCP doctor helper, and runtime shim; the approved repair is setup-time absolute binary derivation; increasing timeouts to hide hangs stays forbidden.",
+      "estimated_tokens": 33000
+    },
+    {
+      "session_id": "resume-session-2",
+      "turn_idx": 6,
+      "role": "user",
+      "text": "State the repository-specific policy on slow discovery calls and explain why partial results matter.",
+      "estimated_tokens": 28000
+    },
+    {
+      "session_id": "resume-session-2",
+      "turn_idx": 7,
+      "role": "assistant",
+      "text": "Slow discovery calls must return partial results plus warnings instead of hanging the transport, because bounded degradable output is safer than global timeouts or retries.",
+      "estimated_tokens": 28000
+    }
+  ],
+  "expected_tool_calls": [
+    "search_files",
+    "read_file",
+    "wp_session_search"
+  ],
+  "qrels": [
+    {
+      "question": "Which three components still had bare PATH lookups?",
+      "expected_substring_in_response": "hook generator"
+    },
+    {
+      "question": "What was the approved repair for path stability?",
+      "expected_substring_in_response": "setup-time absolute binary derivation"
+    },
+    {
+      "question": "Which timeout anti-pattern must stay forbidden?",
+      "expected_substring_in_response": "increasing timeouts"
+    },
+    {
+      "question": "How should slow discovery calls fail safely?",
+      "expected_substring_in_response": "partial results plus warnings"
+    },
+    {
+      "question": "Why do bounded partial results matter?",
+      "expected_substring_in_response": "safer than global timeouts"
+    }
+  ]
+}

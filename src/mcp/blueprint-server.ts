@@ -13,13 +13,14 @@
  *   markdown-canonical path runs byte-identically to the pre-migration behaviour.
  */
 
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import { createHash, randomUUID } from 'node:crypto'
 import path from 'node:path'
 
 import matter from 'gray-matter'
 import { z } from 'zod'
 
+import { parseBlueprint } from '#core/parser'
 import { openDb } from '#db/connection.js'
 import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 import { findTemplate } from '#db/templates.js'
@@ -30,12 +31,17 @@ import {
   readCurrentHead,
   readProjectionMetadata,
 } from '#freshness.js'
-import { applyVerification, parseVerificationBlock } from '#verification.js'
+import {
+  applyVerification,
+  assertAllTasksHaveCanonicalPassingEvidence,
+  readTaskVerification,
+} from '#verification.js'
 import { makeNextAction } from '#next-action.js'
 import { PROJECT_SOURCES, type BlueprintProjectRef } from '#projects.js'
 import { ensureProjectionReady, reIngestProjection } from '#projection-ready.js'
 import { createProjectResolver, type ProjectResolver } from '#project-resolver.js'
 import { aggregateBlueprintRows, type ProjectReader } from '#aggregate.js'
+import { resolveProjectRoot } from '#mcp/tools/_shared/project-root.js'
 import { maybeHint } from './_tail-hints.js'
 import type { ToolHandlerResult, ToolRegistrar } from './auto-discover.js'
 
@@ -243,6 +249,8 @@ async function runPlatformMutationSync(
 
 const VALIDATE_TS_FILE = '.validate-timestamps.json'
 const ROWS_CAP = 200
+const DEFAULT_ROOTS_FETCH_TIMEOUT_MS = 750
+const DEFAULT_PROJECT_DISCOVERY_TIMEOUT_MS = 1_500
 const LIFECYCLE_ADVICE =
   'After creating: /plan-refine to harden; /plan-eng-review to validate; ' +
   'wp_blueprint_promote draft→planned when ready; /pll for parallel execution; ' +
@@ -290,6 +298,29 @@ const dbPath = (cwd: string) => resolveBlueprintProjectionDbPath(cwd)
 const vtPath = (cwd: string) => path.join(cwd, '.agent', VALIDATE_TS_FILE)
 const bytes = (s: string) => Buffer.byteLength(s, 'utf8')
 const toStr = (e: unknown) => (e instanceof Error ? e.message : String(e))
+
+function readBoundedTimeoutMs(envKey: string, fallback: number): number {
+  const parsed = Number.parseInt(process.env[envKey] ?? String(fallback), 10)
+  return Math.max(1, Number.isFinite(parsed) ? parsed : fallback)
+}
+
+async function awaitBounded<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+): Promise<{ timedOut: false; value: T } | { timedOut: true }> {
+  let timeoutId: NodeJS.Timeout | undefined
+  try {
+    const value = await Promise.race([
+      promise.then((resolved) => ({ timedOut: false as const, value: resolved })),
+      new Promise<{ timedOut: true }>((resolve) => {
+        timeoutId = setTimeout(() => resolve({ timedOut: true }), timeoutMs)
+      }),
+    ])
+    return value
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId)
+  }
+}
 
 function jsonContent(payload: unknown, isError = false): ToolHandlerResult {
   return {
@@ -413,12 +444,59 @@ function projectDisambiguationError(
   )
 }
 
+function resolveFallbackProjectCwd(cwd: string): string {
+  try {
+    return realpathSync(resolveProjectRoot({ cwd, env: process.env }))
+  } catch {
+    try {
+      return realpathSync(cwd)
+    } catch {
+      return cwd
+    }
+  }
+}
+
+function buildFallbackCurrentProject(cwd: string): BlueprintProjectRef {
+  const worktreePath = resolveFallbackProjectCwd(cwd)
+  const blueprintRoot = resolveBlueprintRoot(worktreePath)
+  const hasBlueprints =
+    existsSync(blueprintRoot) && (() => statSync(blueprintRoot).isDirectory())()
+  return {
+    project_id: worktreePath,
+    label: path.basename(worktreePath) || worktreePath,
+    repo_path: worktreePath,
+    worktree_path: worktreePath,
+    source: PROJECT_SOURCES.current,
+    has_blueprints: hasBlueprints,
+    db_path: dbPath(worktreePath),
+  }
+}
+
 async function resolveToolProject(
   projectResolver: ProjectResolver,
   cwd: string,
   projectId: string | undefined,
 ): Promise<{ cwd: string; project_id: string | null } | ToolHandlerResult> {
-  const resolved = await projectResolver.resolve({ cwd, projectId })
+  const timed = await awaitBounded(
+    projectResolver.resolve({ cwd, projectId }),
+    readBoundedTimeoutMs(
+      'WP_BLUEPRINT_PROJECT_DISCOVERY_TIMEOUT_MS',
+      DEFAULT_PROJECT_DISCOVERY_TIMEOUT_MS,
+    ),
+  )
+  if (timed.timedOut) {
+    if (projectId === undefined) return { cwd: resolveFallbackProjectCwd(cwd), project_id: null }
+    try {
+      return { cwd: realpathSync(projectId), project_id: null }
+    } catch {
+      return projectDisambiguationError(
+        'Project discovery timed out',
+        'Project discovery timed out. Retry with an explicit project path or call wp_blueprint_projects for a narrower target.',
+        [],
+      )
+    }
+  }
+  const resolved = timed.value
   if (resolved.ok) return { cwd: resolved.cwd, project_id: resolved.project_id }
   return projectDisambiguationError(resolved.summary, resolved.hint, resolved.candidates)
 }
@@ -1066,7 +1144,7 @@ async function handleTaskVerify(
   // We check this BEFORE calling applyVerification to avoid whitespace normalization drift
   // making `result.markdown !== markdownBefore` always true even for identical evidence.
   const incomingCanonical = canonicalizeEvidenceList(evidence)
-  const existingEvidence = parseVerificationBlock(markdownBefore)
+  const existingEvidence = readTaskVerification(markdownBefore, task_id)
   if (
     existingEvidence !== null &&
     canonicalizeEvidenceList(existingEvidence) === incomingCanonical
@@ -1184,6 +1262,14 @@ async function handlePromote(
       'wp_blueprint_promote refused',
       `Blueprint "${slug}" not validated since last write. Run wp_blueprint_validate first.`,
     )
+
+  if (to_state === 'completed') {
+    try {
+      assertBlueprintCanComplete(overviewPath, slug)
+    } catch (error) {
+      return err('wp_blueprint_promote refused', toStr(error))
+    }
+  }
   // Platform-first path: push event + pull fresh replica before local move.
   // Iron rule: resolveSyncAdapter() returns null when WP_BLUEPRINT_PLATFORM_DISABLED=1.
   const adapter = await resolveSyncAdapter(projectCwd)
@@ -1288,6 +1374,12 @@ async function handleFinalize(
     return err('wp_blueprint_finalize failed', `Blueprint "${slug}" not found`)
   }
 
+  try {
+    assertBlueprintCanComplete(path.join(found.dir, '_overview.md'), slug)
+  } catch (error) {
+    return err('wp_blueprint_finalize refused', toStr(error))
+  }
+
   // Platform-first path: push event + pull fresh replica before local move.
   // Iron rule: resolveSyncAdapter() returns null when WP_BLUEPRINT_PLATFORM_DISABLED=1.
   const adapter = await resolveSyncAdapter(projectCwd)
@@ -1340,6 +1432,21 @@ async function handleFinalize(
   }
   if (hasRecentAuditFinding(projectCwd)) appendHint(payload, projectCwd, 'AUDIT_FIX')
   return finishPayload(payload)
+}
+
+function assertBlueprintCanComplete(overviewPath: string, slug: string): void {
+  const markdown = readFileSync(overviewPath, 'utf8')
+  const blueprint = parseBlueprint(markdown, slug)
+  const unfinished = blueprint.tasks.filter((task) => task.status !== 'done')
+  if (unfinished.length > 0) {
+    const list = unfinished.map((task) => `${task.id} (${task.status})`).join(', ')
+    throw new Error(`Cannot complete "${slug}": the following tasks are not done: ${list}`)
+  }
+
+  assertAllTasksHaveCanonicalPassingEvidence(
+    markdown,
+    blueprint.tasks.map((task) => task.id),
+  )
 }
 
 const depgraphSchema = z.object({ from: z.string() })
@@ -1467,6 +1574,52 @@ function staleProjectionResponse(
   })
 }
 
+function listCurrentProjectBlueprintRows(
+  cwd: string,
+  options: { readonly status?: string; readonly limit: number },
+): BpRow[] {
+  const target = dbPath(cwd)
+  if (!existsSync(target)) return []
+  const conn = openDb(target)
+  try {
+    const sql = options.status
+      ? `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints WHERE status = ? ORDER BY ingested_at DESC LIMIT ?`
+      : `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints ORDER BY ingested_at DESC LIMIT ?`
+    return (options.status
+      ? conn.db.prepare(sql).all(options.status, options.limit)
+      : conn.db.prepare(sql).all(options.limit)) as unknown as BpRow[]
+  } finally {
+    conn.close()
+  }
+}
+
+function getCurrentProjectBlueprint(
+  cwd: string,
+  slug: string,
+): { blueprint: BpDetailRow | null; tasks: TaskRow[] } {
+  const target = dbPath(cwd)
+  if (!existsSync(target)) return { blueprint: null, tasks: [] }
+  const conn = openDb(target)
+  try {
+    const blueprint =
+      conn.db
+        .prepare<[string], BpDetailRow>(
+          `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints WHERE slug = ?`,
+        )
+        .get(slug) ?? null
+    const tasks = blueprint
+      ? (conn.db
+          .prepare<[string], TaskRow>(
+            `SELECT task_id, title, status, wave, lane FROM tasks WHERE blueprint_slug = ? ORDER BY id`,
+          )
+          .all(slug) as TaskRow[])
+      : []
+    return { blueprint, tasks }
+  } finally {
+    conn.close()
+  }
+}
+
 async function handleBlueprintList(
   projectResolver: ProjectResolver,
   cwd: string,
@@ -1484,11 +1637,32 @@ async function handleBlueprintList(
       const target: { scope: typeof scope; project_id?: string } = { scope }
       if (project_id) target.project_id = project_id
 
-      const result = await aggregateBlueprintRows<BpRow>({
-        target,
-        read: listBpReader,
-        resolveOptions: { cwd },
-      })
+      const timed = await awaitBounded(
+        aggregateBlueprintRows<BpRow>({
+          target,
+          read: listBpReader,
+          resolveOptions: { cwd },
+        }),
+        readBoundedTimeoutMs(
+          'WP_BLUEPRINT_PROJECT_DISCOVERY_TIMEOUT_MS',
+          DEFAULT_PROJECT_DISCOVERY_TIMEOUT_MS,
+        ),
+      )
+      if (timed.timedOut) {
+        const fallbackCwd = resolveFallbackProjectCwd(cwd)
+        const rows = listCurrentProjectBlueprintRows(fallbackCwd, { status, limit })
+        const b = bytes(JSON.stringify(rows))
+        return jsonContent({
+          summary: `Project discovery timed out; returning ${rows.length} blueprint(s) from the current project only`,
+          blueprints: rows,
+          failures: ['project_discovery_timeout'],
+          duplicate_slugs: [],
+          freshness_ok: false,
+          bytes: b,
+          tokensSaved: 0,
+        })
+      }
+      const result = timed.value
 
       let rows = result.rows as Array<BpRow & { project_id: string }>
       if (status) rows = rows.filter((r) => r.status === status)
@@ -1603,18 +1777,59 @@ async function handleBlueprintGet(
       const readTarget: { scope: typeof scope; project_id?: string } = { scope }
       if (project_id) readTarget.project_id = project_id
 
-      const result = await aggregateBlueprintRows<BpDetailRow>({
-        target: readTarget,
-        read: ({ db }) => {
-          const row = db
-            .prepare<[string], BpDetailRow>(
-              `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints WHERE slug = ?`,
-            )
-            .get(slug)
-          return row ? [row] : []
-        },
-        resolveOptions: { cwd },
-      })
+      const timed = await awaitBounded(
+        aggregateBlueprintRows<BpDetailRow>({
+          target: readTarget,
+          read: ({ db }) => {
+            const row = db
+              .prepare<[string], BpDetailRow>(
+                `SELECT slug, title, status, complexity, owner, last_updated, content_hash, ingested_at, file_path FROM blueprints WHERE slug = ?`,
+              )
+              .get(slug)
+            return row ? [row] : []
+          },
+          resolveOptions: { cwd },
+        }),
+        readBoundedTimeoutMs(
+          'WP_BLUEPRINT_PROJECT_DISCOVERY_TIMEOUT_MS',
+          DEFAULT_PROJECT_DISCOVERY_TIMEOUT_MS,
+        ),
+      )
+      if (timed.timedOut) {
+        const fallbackCwd = resolveFallbackProjectCwd(cwd)
+        const { blueprint, tasks } = getCurrentProjectBlueprint(fallbackCwd, slug)
+        if (!blueprint) {
+          return jsonContent({
+            summary: `Project discovery timed out before "${slug}" could be searched outside the current project`,
+            blueprint: null,
+            content_hash: null,
+            ingested_at: null,
+            head_at_ingest: null,
+            project_id: fallbackCwd,
+            next_action: makeNextAction(
+              'disambiguate_slug',
+              'Project discovery timed out. Retry with an explicit project_id or a narrower scope.',
+            ),
+            failures: ['project_discovery_timeout'],
+            bytes: 0,
+            tokensSaved: 0,
+          })
+        }
+        const blueprintWithTasks = { ...blueprint, tasks }
+        const b = bytes(JSON.stringify(blueprintWithTasks))
+        return jsonContent({
+          summary: `Project discovery timed out; returning current-project match for "${slug}"`,
+          blueprint: blueprintWithTasks,
+          content_hash: blueprint.content_hash,
+          ingested_at: blueprint.ingested_at,
+          head_at_ingest: readProjectionMetadata(dbPath(fallbackCwd))?.head_at_ingest ?? null,
+          project_id: fallbackCwd,
+          failures: ['project_discovery_timeout'],
+          bytes: b,
+          tokensSaved: 0,
+        })
+      }
+      const result = timed.value
 
       // Duplicate slug across projects — caller must disambiguate
       if (result.duplicate_slugs.includes(slug)) {
@@ -2426,8 +2641,9 @@ export async function registerBlueprintServer(
     fetched: boolean
     roots: ReadonlyArray<{ readonly uri: string; readonly name?: string }>
     unsupported: boolean
+    timedOut: boolean
   }
-  const cache: RootsCacheState = { fetched: false, roots: [], unsupported: false }
+  const cache: RootsCacheState = { fetched: false, roots: [], unsupported: false, timedOut: false }
 
   async function ensureRoots(): Promise<RootsCacheState> {
     if (cache.fetched) return cache
@@ -2435,18 +2651,31 @@ export async function registerBlueprintServer(
       cache.fetched = true
       cache.roots = []
       cache.unsupported = false
+      cache.timedOut = false
       return cache
     }
     try {
-      const response = await options.getMcpRoots()
+      const timed = await awaitBounded(
+        options.getMcpRoots(),
+        readBoundedTimeoutMs('WP_BLUEPRINT_ROOTS_TIMEOUT_MS', DEFAULT_ROOTS_FETCH_TIMEOUT_MS),
+      )
+      if (timed.timedOut) {
+        cache.fetched = true
+        cache.roots = []
+        cache.unsupported = false
+        cache.timedOut = true
+        return cache
+      }
       cache.fetched = true
-      cache.roots = response.roots
+      cache.roots = timed.value.roots
       cache.unsupported = false
+      cache.timedOut = false
     } catch {
       // Roots capability missing on the client — degrade gracefully.
       cache.fetched = true
       cache.roots = []
       cache.unsupported = true
+      cache.timedOut = false
     }
     return cache
   }
@@ -2456,6 +2685,7 @@ export async function registerBlueprintServer(
       cache.fetched = false
       cache.roots = []
       cache.unsupported = false
+      cache.timedOut = false
     })
   }
 
@@ -2494,6 +2724,7 @@ async function handleProjects(
     fetched: boolean
     roots: ReadonlyArray<{ readonly uri: string; readonly name?: string }>
     unsupported: boolean
+    timedOut: boolean
   }>,
   raw: unknown,
 ): Promise<ToolHandlerResult> {
@@ -2503,11 +2734,18 @@ async function handleProjects(
   const parsed = scopeSchema.safeParse(raw)
   const rootsState = await ensureRoots()
 
-  const projects = await projectResolver.listVisibleProjects({
-    cwd,
-    rootsProvider:
-      rootsState.roots.length > 0 ? async () => ({ roots: rootsState.roots }) : undefined,
-  })
+  const timedProjects = await awaitBounded(
+    projectResolver.listVisibleProjects({
+      cwd,
+      rootsProvider:
+        rootsState.roots.length > 0 ? async () => ({ roots: rootsState.roots }) : undefined,
+    }),
+    readBoundedTimeoutMs(
+      'WP_BLUEPRINT_PROJECT_DISCOVERY_TIMEOUT_MS',
+      DEFAULT_PROJECT_DISCOVERY_TIMEOUT_MS,
+    ),
+  )
+  const projects = timedProjects.timedOut ? [buildFallbackCurrentProject(cwd)] : timedProjects.value
   const scope = parsed.success ? (parsed.data.scope ?? 'all') : 'all'
   const filteredProjects = projects.filter((project) => {
     if (scope === 'all') return true
@@ -2526,18 +2764,22 @@ async function handleProjects(
 
   const warnings: string[] = []
   if (rootsState.unsupported) warnings.push('unsupported_roots')
+  if (rootsState.timedOut) warnings.push('roots_fetch_timeout')
+  if (timedProjects.timedOut) warnings.push('project_discovery_timeout')
 
   const summary =
     filteredProjects.length === 0
       ? 'No blueprint-bearing projects found'
-      : `Found ${filteredProjects.length} project${filteredProjects.length === 1 ? '' : 's'}`
+      : timedProjects.timedOut
+        ? `Project discovery timed out; returning ${filteredProjects.length} current-project result${filteredProjects.length === 1 ? '' : 's'}`
+        : `Found ${filteredProjects.length} project${filteredProjects.length === 1 ? '' : 's'}`
 
   const payload: Record<string, unknown> = {
     summary,
     projects: filteredProjects,
     warnings,
   }
-  projectResolver.warm(projects)
+  if (!timedProjects.timedOut) projectResolver.warm(projects)
 
   if (rootsState.unsupported) {
     payload.next_action = makeNextAction(

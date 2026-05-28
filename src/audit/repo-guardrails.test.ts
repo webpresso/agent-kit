@@ -162,7 +162,7 @@ describe('repo guardrail audits', () => {
     ).toBe(false)
   })
 
-  test('blueprint lifecycle audit preserves legacy .omx contract and lifecycle checks', () => {
+  test('blueprint lifecycle audit enforces derived-only .omx handoff markers when legacy OMX checks are enabled', () => {
     const root = tempRepo()
     mkdirSync(join(root, '.omx', 'plans'), { recursive: true })
     writeFileSync(join(root, '.omx', 'plans', 'prd-route-split.md'), '# PRD: Route split\n')
@@ -179,30 +179,30 @@ describe('repo guardrail audits', () => {
     expect(missingLegacy.violations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          message: 'Missing .omx/contracts directory',
+          message:
+            '.omx/plans must be a derived blueprint handoff, not an authoritative PRD/test-spec',
         }),
         expect.objectContaining({
-          message: 'Missing .omx/state/lifecycle directory',
-        }),
-        expect.objectContaining({
-          message: 'Missing workspace boundary contract',
-        }),
-        expect.objectContaining({
-          message: 'Missing at least one lifecycle artifact under .omx/state/lifecycle',
+          message:
+            '.omx/plans handoff is missing required derived-handoff marker: derived: true',
         }),
       ]),
     )
 
-    mkdirSync(join(root, '.omx', 'contracts'), { recursive: true })
-    mkdirSync(join(root, '.omx', 'state', 'lifecycle'), { recursive: true })
-    writeFileSync(
-      join(root, '.omx', 'contracts', 'workspace-boundary-contract.md'),
-      ['# Workspace boundary contract', '', '## Workspace classifications', ''].join('\n'),
-    )
-    writeFileSync(
-      join(root, '.omx', 'state', 'lifecycle', 'route-split.json'),
-      JSON.stringify({ slug: 'route-split', status: 'planned', artifacts: {} }),
-    )
+    const derivedHandoff = [
+      '---',
+      'derived: true',
+      'non-authoritative: true',
+      'blueprint_slug: route-split',
+      'blueprint_path: blueprints/planned/route-split/_overview.md',
+      'content_hash: abc123',
+      'head_at_ingest: def456',
+      '---',
+      '',
+      '# Derived Blueprint Handoff',
+    ].join('\n')
+    writeFileSync(join(root, '.omx', 'plans', 'prd-route-split.md'), derivedHandoff)
+    writeFileSync(join(root, '.omx', 'plans', 'test-spec-route-split.md'), derivedHandoff)
 
     expect(auditBlueprintLifecycle(root, { includeLegacyOmx: true }).ok).toBe(true)
   })
@@ -1130,198 +1130,134 @@ describe('auditBlueprintLifecycle — branch coverage', () => {
   })
 })
 
-describe('auditLegacyOmxPlans — branch coverage via auditBlueprintLifecycle', () => {
-  function buildLegacyBase(root: string) {
+describe('auditLegacyOmxPlans — derived OMX handoff hardcut', () => {
+  function writeDerivedHandoff(root: string, file = 'blueprint-handoff.md') {
     mkdirSync(join(root, '.omx', 'plans'), { recursive: true })
-    mkdirSync(join(root, '.omx', 'contracts'), { recursive: true })
-    mkdirSync(join(root, '.omx', 'state', 'lifecycle'), { recursive: true })
     writeFileSync(
-      join(root, '.omx', 'contracts', 'workspace-boundary-contract.md'),
-      ['# Workspace boundary contract', '', '## Workspace classifications', ''].join('\n'),
-    )
-    writeFileSync(join(root, '.omx', 'plans', 'prd-feature.md'), '# PRD: Feature\n')
-    writeFileSync(join(root, '.omx', 'plans', 'test-spec-feature.md'), '# Test Spec: Feature\n')
-    writeFileSync(
-      join(root, '.omx', 'state', 'lifecycle', 'feature.json'),
-      JSON.stringify({ slug: 'feature', status: 'planned', artifacts: {} }),
+      join(root, '.omx', 'plans', file),
+      [
+        '---',
+        'derived: true',
+        'non-authoritative: true',
+        'blueprint_slug: hardcut-blueprint',
+        'blueprint_path: blueprints/in-progress/hardcut-blueprint/_overview.md',
+        'content_hash: abc123',
+        'head_at_ingest: def456',
+        'codex_goal:',
+        '  thread_id: 019e6da9-9002-7b63-a261-88b5844453a0',
+        '  status_at_handoff: active',
+        'omx_context:',
+        '  session_id: omx-1779961577929-bg63ul',
+        '  ledger_path: .omx/ultragoal/ledger.jsonl',
+        '---',
+        '',
+        '# Derived Blueprint Handoff',
+        '',
+        'This file is a launch pointer only; the blueprint is canonical.',
+      ].join('\n'),
     )
   }
 
-  test('valid full legacy structure passes all checks', () => {
+  test('absence of .omx/plans stays valid', () => {
     const root = tempRepo()
-    buildLegacyBase(root)
     const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
     expect(result.ok).toBe(true)
+    expect(result.checked).toBe(0)
   })
 
-  test('contract missing required marker "# Workspace boundary contract" produces violation', () => {
+  test('derived blueprint handoff passes hardcut checks', () => {
     const root = tempRepo()
-    buildLegacyBase(root)
-    writeFileSync(
-      join(root, '.omx', 'contracts', 'workspace-boundary-contract.md'),
-      ['## Workspace classifications', ''].join('\n'),
-    )
+    writeDerivedHandoff(root)
     const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
+    expect(result.ok).toBe(true)
+    expect(result.checked).toBe(1)
+  })
+
+  test('authoritative PRD/test-spec files are rejected even when present under .omx/plans', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, '.omx', 'plans'), { recursive: true })
+    writeFileSync(join(root, '.omx', 'plans', 'prd-feature.md'), '# PRD: Feature\n')
+    writeFileSync(join(root, '.omx', 'plans', 'test-spec-feature.md'), '# Test Spec: Feature\n')
+
+    const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
+
     expect(result.ok).toBe(false)
     expect(
       result.violations.some((v: RepoAuditViolation) =>
-        v.message.includes('# Workspace boundary contract'),
+        v.message.includes('derived blueprint handoff, not an authoritative PRD/test-spec'),
       ),
     ).toBe(true)
   })
 
-  test('contract missing required marker "## Workspace classifications" produces violation', () => {
+  test('handoff missing required derived markers is rejected', () => {
     const root = tempRepo()
-    buildLegacyBase(root)
+    mkdirSync(join(root, '.omx', 'plans'), { recursive: true })
     writeFileSync(
-      join(root, '.omx', 'contracts', 'workspace-boundary-contract.md'),
-      ['# Workspace boundary contract', ''].join('\n'),
+      join(root, '.omx', 'plans', 'handoff.md'),
+      [
+        '---',
+        'derived: true',
+        'blueprint_slug: hardcut-blueprint',
+        '---',
+        '# Derived Blueprint Handoff',
+      ].join('\n'),
     )
+
     const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
+
     expect(result.ok).toBe(false)
     expect(
       result.violations.some((v: RepoAuditViolation) =>
-        v.message.includes('## Workspace classifications'),
+        v.message.includes('missing required derived-handoff marker: non-authoritative'),
+      ),
+    ).toBe(true)
+    expect(
+      result.violations.some((v: RepoAuditViolation) =>
+        v.message.includes('missing required derived-handoff marker: content_hash:'),
       ),
     ).toBe(true)
   })
 
-  test('prd file missing "# PRD:" heading produces violation', () => {
+  test('handoff blueprint_path must point at blueprints/', () => {
     const root = tempRepo()
-    buildLegacyBase(root)
-    writeFileSync(join(root, '.omx', 'plans', 'prd-feature.md'), '# Not a PRD heading\n')
+    writeDerivedHandoff(root)
+    const file = join(root, '.omx', 'plans', 'blueprint-handoff.md')
+    writeFileSync(
+      file,
+      readFileSync(file, 'utf8').replace(
+        'blueprint_path: blueprints/in-progress/hardcut-blueprint/_overview.md',
+        'blueprint_path: .omx/plans/prd-feature.md',
+      ),
+    )
+
     const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
+
     expect(result.ok).toBe(false)
     expect(
       result.violations.some((v: RepoAuditViolation) =>
-        v.message.includes('missing a PRD heading'),
+        v.message.includes('blueprint_path must point at blueprints/'),
       ),
     ).toBe(true)
   })
 
-  test('test-spec file missing "# Test Spec:" heading produces violation', () => {
+  test('handoff rejects malformed optional provenance metadata', () => {
     const root = tempRepo()
-    buildLegacyBase(root)
-    writeFileSync(join(root, '.omx', 'plans', 'test-spec-feature.md'), '# Not a test spec\n')
-    const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
-    expect(result.ok).toBe(false)
-    expect(
-      result.violations.some((v: RepoAuditViolation) =>
-        v.message.includes('missing a test spec heading'),
+    writeDerivedHandoff(root)
+    const file = join(root, '.omx', 'plans', 'blueprint-handoff.md')
+    writeFileSync(
+      file,
+      readFileSync(file, 'utf8').replace(
+        'thread_id: 019e6da9-9002-7b63-a261-88b5844453a0',
+        'thread_id:\n    - invalid',
       ),
-    ).toBe(true)
-  })
-
-  test('lifecycle JSON with no slug produces slug violation', () => {
-    const root = tempRepo()
-    buildLegacyBase(root)
-    writeFileSync(
-      join(root, '.omx', 'state', 'lifecycle', 'feature.json'),
-      JSON.stringify({ status: 'planned', artifacts: {} }),
     )
-    const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
-    expect(result.ok).toBe(false)
-    expect(
-      result.violations.some((v: RepoAuditViolation) => v.message.includes('requires a slug')),
-    ).toBe(true)
-  })
 
-  test('lifecycle JSON with empty slug produces slug violation', () => {
-    const root = tempRepo()
-    buildLegacyBase(root)
-    writeFileSync(
-      join(root, '.omx', 'state', 'lifecycle', 'feature.json'),
-      JSON.stringify({ slug: '', status: 'planned', artifacts: {} }),
-    )
     const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
-    expect(result.ok).toBe(false)
-    expect(
-      result.violations.some((v: RepoAuditViolation) => v.message.includes('requires a slug')),
-    ).toBe(true)
-  })
 
-  test('lifecycle JSON with no status produces status violation', () => {
-    const root = tempRepo()
-    buildLegacyBase(root)
-    writeFileSync(
-      join(root, '.omx', 'state', 'lifecycle', 'feature.json'),
-      JSON.stringify({ slug: 'feature', artifacts: {} }),
-    )
-    const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
-    expect(result.ok).toBe(false)
-    expect(
-      result.violations.some((v: RepoAuditViolation) => v.message.includes('requires a status')),
-    ).toBe(true)
-  })
-
-  test('lifecycle JSON with no artifacts object produces artifacts violation', () => {
-    const root = tempRepo()
-    buildLegacyBase(root)
-    writeFileSync(
-      join(root, '.omx', 'state', 'lifecycle', 'feature.json'),
-      JSON.stringify({ slug: 'feature', status: 'planned' }),
-    )
-    const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
     expect(result.ok).toBe(false)
     expect(
       result.violations.some((v: RepoAuditViolation) =>
-        v.message.includes('requires an artifacts object'),
-      ),
-    ).toBe(true)
-  })
-
-  test('lifecycle JSON with artifacts as array produces artifacts violation', () => {
-    const root = tempRepo()
-    buildLegacyBase(root)
-    writeFileSync(
-      join(root, '.omx', 'state', 'lifecycle', 'feature.json'),
-      JSON.stringify({ slug: 'feature', status: 'planned', artifacts: [] }),
-    )
-    const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
-    expect(result.ok).toBe(false)
-    expect(
-      result.violations.some((v: RepoAuditViolation) =>
-        v.message.includes('requires an artifacts object'),
-      ),
-    ).toBe(true)
-  })
-
-  test('invalid JSON in lifecycle file produces JSON-parse violation', () => {
-    const root = tempRepo()
-    buildLegacyBase(root)
-    writeFileSync(join(root, '.omx', 'state', 'lifecycle', 'feature.json'), 'not valid json')
-    const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
-    expect(result.ok).toBe(false)
-    expect(
-      result.violations.some((v: RepoAuditViolation) => v.message.includes('JSON is invalid')),
-    ).toBe(true)
-  })
-
-  // Slug cross-reference: prd exists but test-spec is missing → "Missing legacy test spec plan"
-  test('prd without matching test-spec produces missing-test-spec violation', () => {
-    const root = tempRepo()
-    buildLegacyBase(root)
-    // Remove test-spec-feature.md but keep prd-feature.md
-    writeFileSync(join(root, '.omx', 'plans', 'prd-orphan.md'), '# PRD: Orphan\n')
-    const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
-    expect(result.ok).toBe(false)
-    expect(
-      result.violations.some((v: RepoAuditViolation) =>
-        v.message.includes('Missing legacy test spec plan'),
-      ),
-    ).toBe(true)
-  })
-
-  // test-spec exists but prd is missing → "Missing legacy PRD plan"
-  test('test-spec without matching prd produces missing-prd violation', () => {
-    const root = tempRepo()
-    buildLegacyBase(root)
-    writeFileSync(join(root, '.omx', 'plans', 'test-spec-orphan.md'), '# Test Spec: Orphan\n')
-    const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
-    expect(result.ok).toBe(false)
-    expect(
-      result.violations.some((v: RepoAuditViolation) =>
-        v.message.includes('Missing legacy PRD plan'),
+        v.message.includes('invalid optional provenance field codex_goal.thread_id'),
       ),
     ).toBe(true)
   })

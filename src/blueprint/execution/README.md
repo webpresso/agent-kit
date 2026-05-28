@@ -16,7 +16,10 @@ Blueprint-backed execution over OMX.
 
 - `webpresso/blueprints/` is the canonical plan store.
 - `.omx/state/` is runtime/session/backend state only.
-- `.omx/plans/` is not part of the Blueprint execution source of truth.
+- `.omx/plans/` is derived handoff metadata only, never the canonical plan.
+- When `.omx/plans/` exists, handoff files may carry optional provenance links
+  (for example Codex thread / goal and OMX session / ledger pointers), but
+  those links remain correlation metadata only.
 
 These types are intentionally backend-oriented but backend-agnostic. Runtime
 implementation code should consume them later without redefining the contract.

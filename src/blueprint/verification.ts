@@ -212,6 +212,50 @@ export function parseVerificationBlock(block: string): readonly Evidence[] | nul
   return parsed.data
 }
 
+/**
+ * Read the canonical verification evidence recorded inside a specific task
+ * section only. This intentionally does not scan the whole markdown buffer:
+ * evidence for Task 1.1 must never satisfy Task 1.2 idempotency, sync, or
+ * finalization checks.
+ */
+export function readTaskVerification(markdown: string, taskId: string): readonly Evidence[] | null {
+  const section = readTaskSection(markdown, taskId)
+  if (section === null) return null
+  return parseVerificationBlock(section)
+}
+
+/**
+ * Assert that a task has its own canonical verification block with at least
+ * one passing evidence item. Returns the task-local evidence on success.
+ */
+export function assertTaskHasCanonicalPassingEvidence(
+  markdown: string,
+  taskId: string,
+): readonly Evidence[] {
+  const evidence = readTaskVerification(markdown, taskId)
+  if (evidence === null) {
+    throw new Error(`Task ${taskId} is missing task-local canonical verification evidence`)
+  }
+
+  if (!evidence.some((item) => item.result === 'pass')) {
+    throw new Error(`Task ${taskId} verification contains no passing evidence`)
+  }
+
+  return evidence
+}
+
+/**
+ * Assert that each supplied task id has task-local canonical passing evidence.
+ */
+export function assertAllTasksHaveCanonicalPassingEvidence(
+  markdown: string,
+  taskIds: readonly string[],
+): void {
+  for (const taskId of taskIds) {
+    assertTaskHasCanonicalPassingEvidence(markdown, taskId)
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Internals
 // ---------------------------------------------------------------------------
@@ -232,6 +276,22 @@ function removeVerificationFromTask(markdown: string, taskId: string): string {
   return mapTaskSection(markdown, taskId, (section) => {
     return section.replace(VERIFICATION_BLOCK_PATTERN, '\n\n').replace(/\n{3,}/g, '\n\n')
   })
+}
+
+function readTaskSection(markdown: string, taskId: string): string | null {
+  const headerPattern = buildTaskHeaderRegexForId(taskId)
+  const headerMatch = markdown.match(headerPattern)
+  if (!headerMatch || headerMatch.index === undefined) return null
+
+  const startIndex = headerMatch.index
+  const restOfContent = markdown.slice(startIndex + headerMatch[0].length)
+  const nextSectionMatch = restOfContent.match(buildTaskSectionBoundaryRegex())
+  const endIndex =
+    nextSectionMatch?.index !== undefined
+      ? startIndex + headerMatch[0].length + nextSectionMatch.index
+      : markdown.length
+
+  return markdown.slice(startIndex, endIndex)
 }
 
 function insertVerificationAfterStatus(markdown: string, taskId: string, block: string): string {
@@ -269,7 +329,7 @@ function mapTaskSection(
   const restOfContent = markdown.slice(startIndex + headerMatch[0].length)
   const nextSectionMatch = restOfContent.match(buildTaskSectionBoundaryRegex())
 
-  const endIndex = nextSectionMatch?.index
+  const endIndex = nextSectionMatch?.index !== undefined
     ? startIndex + headerMatch[0].length + nextSectionMatch.index
     : markdown.length
 

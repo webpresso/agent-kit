@@ -1,0 +1,91 @@
+{
+  "scenario_id": "multi-file-refactor",
+  "version": 1,
+  "description": "Eight-turn refactor planning exercise across multiple modules that front-loads file discovery and later tests whether the agent recalls design constraints after compaction.",
+  "worst_case_token_count": 226000,
+  "prompt_turns": [
+    {
+      "session_id": "refactor-session-1",
+      "turn_idx": 0,
+      "role": "user",
+      "text": "Map all entry points for the session-memory cache adapter and list which packages import it directly.",
+      "estimated_tokens": 24000
+    },
+    {
+      "session_id": "refactor-session-1",
+      "turn_idx": 1,
+      "role": "assistant",
+      "text": "The adapter is entered through the CLI hook, the MCP retriever, and the AI memory saver; direct imports live in the CLI package and the memory tooling package.",
+      "estimated_tokens": 17000
+    },
+    {
+      "session_id": "refactor-session-1",
+      "turn_idx": 2,
+      "role": "user",
+      "text": "Read the top importers and identify duplicated path validation, duplicate JSON parsing, and any assumptions about absolute paths.",
+      "estimated_tokens": 29000
+    },
+    {
+      "session_id": "refactor-session-1",
+      "turn_idx": 3,
+      "role": "assistant",
+      "text": "Duplicate path validation appears in the CLI helper and file tool, duplicate JSON parsing appears in the retriever and saver, and both assume repo-root anchored absolute paths.",
+      "estimated_tokens": 18000
+    },
+    {
+      "session_id": "refactor-session-1",
+      "turn_idx": 4,
+      "role": "user",
+      "text": "Draft a refactor plan that deletes the duplicate parsing path and preserves the absolute-path policy without adding dependencies.",
+      "estimated_tokens": 25000
+    },
+    {
+      "session_id": "refactor-session-1",
+      "turn_idx": 5,
+      "role": "assistant",
+      "text": "The plan centralizes parsing in one utility, reuses the existing path validator, and keeps absolute-path derivation anchored at repo helpers.",
+      "estimated_tokens": 17000
+    },
+    {
+      "session_id": "refactor-session-1",
+      "turn_idx": 6,
+      "role": "user",
+      "text": "Now answer recall questions from memory only: where was duplicate JSON parsing, what constraint blocks new dependencies, and what path anchor must stay in place?",
+      "estimated_tokens": 32000
+    },
+    {
+      "session_id": "refactor-session-1",
+      "turn_idx": 7,
+      "role": "assistant",
+      "text": "Duplicate JSON parsing was in the retriever and saver, new dependencies are blocked by repo policy, and absolute-path derivation must stay anchored at repo-root helpers.",
+      "estimated_tokens": 30000
+    }
+  ],
+  "expected_tool_calls": [
+    "search_files",
+    "read_file",
+    "wp_session_search"
+  ],
+  "qrels": [
+    {
+      "question": "Which components duplicated JSON parsing?",
+      "expected_substring_in_response": "retriever and saver"
+    },
+    {
+      "question": "Which importers duplicated path validation?",
+      "expected_substring_in_response": "CLI helper and file tool"
+    },
+    {
+      "question": "What repo policy blocks new dependencies?",
+      "expected_substring_in_response": "without adding dependencies"
+    },
+    {
+      "question": "What anchor must absolute paths keep using?",
+      "expected_substring_in_response": "repo-root helpers"
+    },
+    {
+      "question": "What was the consolidation strategy for parsing?",
+      "expected_substring_in_response": "centralizes parsing in one utility"
+    }
+  ]
+}

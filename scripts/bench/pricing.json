@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "model": "claude-sonnet-4-5",
+      "aliases": ["claude-sonnet-4-5", "sonnet-4.5", "claude-sonnet-4.5"],
+      "effective_on": "2026-05-28",
+      "source": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+      "input_per_mtok_usd": 3,
+      "output_per_mtok_usd": 15,
+      "cache_write_per_mtok_usd": 3.75,
+      "cache_read_per_mtok_usd": 0.3
+    }
+  ]
+}

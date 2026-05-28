@@ -1,0 +1,25 @@
+{
+  "scenario_id": "debug-long-session",
+  "qrels": [
+    {
+      "question": "Which file held the retry ledger state?",
+      "expected_substring_in_response": "queue-runner.ts"
+    },
+    {
+      "question": "Where can the partial-success cursor be lost?",
+      "expected_substring_in_response": "before the final checkpoint write"
+    },
+    {
+      "question": "Which file should move the checkpoint ahead of acknowledgement?",
+      "expected_substring_in_response": "sync-state.ts"
+    },
+    {
+      "question": "Which evidence proves the bug is fixed later?",
+      "expected_substring_in_response": "retry regression test"
+    },
+    {
+      "question": "What second proof did the assistant recommend beyond the regression test?",
+      "expected_substring_in_response": "queue replay"
+    }
+  ]
+}

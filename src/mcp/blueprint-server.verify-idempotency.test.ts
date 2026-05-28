@@ -1,15 +1,16 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 
 import { applyVerification } from '#verification.js'
 
 import { _setSyncAdapterFactory } from './blueprint-server.js'
 import {
+  bootstrapBlueprintProjection,
   callTool,
   cleanupTempDir,
-  makeLazyBlueprintHarness,
+  makeEmptyProjectionBlueprintHarness,
   makeProjectionBackedBlueprintHarness,
   parseResult,
   type ToolMap,
@@ -49,34 +50,31 @@ Blueprint used to test task verification.
 
 let tmpDir: string
 let tools: ToolMap
-const tempDirs: string[] = []
+let verifyTmpDir: string
+let verifyOverviewPath: string
+let verifyTools: ToolMap
 
-beforeEach(async () => {
-  ;({ tmpDir, tools } = await makeLazyBlueprintHarness('ak-bs-verify-empty-'))
-})
-
-afterEach(() => {
-  _setSyncAdapterFactory(null)
-  vi.unstubAllEnvs()
-  cleanupTempDir(tmpDir)
-  while (tempDirs.length > 0) cleanupTempDir(tempDirs.pop())
-})
-
-async function setupWithVerifyBlueprint(): Promise<{
-  overviewPath: string
-  localTmpDir: string
-  localTools: ToolMap
-}> {
-  const harness = await makeProjectionBackedBlueprintHarness('ak-bs-ver-', [
+beforeAll(async () => {
+  ;({ tmpDir, tools } = await makeEmptyProjectionBlueprintHarness('wp-bs-verify-empty-'))
+  const harness = await makeProjectionBackedBlueprintHarness('wp-bs-ver-', [
     { stateDir: 'in-progress', slug: VERIFY_SLUG, content: VERIFY_BLUEPRINT },
   ])
-  tempDirs.push(harness.tmpDir)
-  return {
-    overviewPath: harness.overviewPaths[0]!,
-    localTmpDir: harness.tmpDir,
-    localTools: harness.tools,
-  }
-}
+  verifyTmpDir = harness.tmpDir
+  verifyOverviewPath = harness.overviewPaths[0]!
+  verifyTools = harness.tools
+})
+
+beforeEach(async () => {
+  _setSyncAdapterFactory(null)
+  vi.unstubAllEnvs()
+  writeFileSync(verifyOverviewPath, VERIFY_BLUEPRINT, 'utf8')
+  await bootstrapBlueprintProjection(verifyTmpDir)
+})
+
+afterAll(() => {
+  cleanupTempDir(tmpDir)
+  cleanupTempDir(verifyTmpDir)
+})
 
 describe('wp_blueprint_task_advance — refuses to:done (Task 3.2)', () => {
   it('returns error with next_action verify_task when to is done', async () => {
@@ -154,10 +152,8 @@ describe('wp_blueprint_task_verify — Task 3.2', () => {
   })
 
   it('fails when evidence has zero pass items (all fail items)', async () => {
-    const { localTmpDir, localTools } = await setupWithVerifyBlueprint()
-
-    const result = await callTool(localTools, 'wp_blueprint_task_verify', {
-      project_id: localTmpDir,
+    const result = await callTool(verifyTools, 'wp_blueprint_task_verify', {
+      project_id: verifyTmpDir,
       slug: VERIFY_SLUG,
       task_id: '1.1',
       evidence: [
@@ -177,11 +173,8 @@ describe('wp_blueprint_task_verify — Task 3.2', () => {
   })
 
   it('succeeds and writes markdown + re-ingests when valid evidence provided', async () => {
-    _setSyncAdapterFactory(() => null)
-    const { overviewPath, localTmpDir, localTools } = await setupWithVerifyBlueprint()
-
-    const result = await callTool(localTools, 'wp_blueprint_task_verify', {
-      project_id: localTmpDir,
+    const result = await callTool(verifyTools, 'wp_blueprint_task_verify', {
+      project_id: verifyTmpDir,
       slug: VERIFY_SLUG,
       task_id: '1.1',
       evidence: [
@@ -206,7 +199,7 @@ describe('wp_blueprint_task_verify — Task 3.2', () => {
     expect(typeof data.next_summary).toBe('string')
     expect(data.failures).toStrictEqual([])
 
-    const md = readFileSync(overviewPath, 'utf8')
+    const md = readFileSync(verifyOverviewPath, 'utf8')
     expect(md).toContain('**Status:** done')
     expect(md).toContain('**Verification:**')
     expect(md).toContain('webpresso-evidence-v1')
@@ -214,9 +207,6 @@ describe('wp_blueprint_task_verify — Task 3.2', () => {
   })
 
   it('is idempotent: second call with same canonical evidence returns idempotent: true', async () => {
-    _setSyncAdapterFactory(() => null)
-    const { overviewPath, localTmpDir, localTools } = await setupWithVerifyBlueprint()
-
     const evidence = [
       {
         kind: 'test',
@@ -227,14 +217,14 @@ describe('wp_blueprint_task_verify — Task 3.2', () => {
       },
     ]
 
-    const seeded = applyVerification(readFileSync(overviewPath, 'utf8'), '1.1', evidence)
+    const seeded = applyVerification(readFileSync(verifyOverviewPath, 'utf8'), '1.1', evidence)
     if (!seeded.ok) {
       throw new Error(`Expected verification seeding to succeed: ${seeded.failures.join('; ')}`)
     }
-    writeFileSync(overviewPath, seeded.markdown, 'utf8')
+    writeFileSync(verifyOverviewPath, seeded.markdown, 'utf8')
 
-    const second = await callTool(localTools, 'wp_blueprint_task_verify', {
-      project_id: localTmpDir,
+    const second = await callTool(verifyTools, 'wp_blueprint_task_verify', {
+      project_id: verifyTmpDir,
       slug: VERIFY_SLUG,
       task_id: '1.1',
       evidence,
