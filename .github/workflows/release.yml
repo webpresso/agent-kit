@@ -120,6 +120,23 @@ jobs:
             echo "branch=release/v${version}"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Create mainline release tag when missing
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_probe.outputs.published == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag='${{ steps.release_meta.outputs.tag }}'
+          if git rev-parse "${tag}^{commit}" >/dev/null 2>&1; then
+            echo "Tag ${tag} already exists locally."
+          else
+            git tag "${tag}" HEAD
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+            echo "Tag ${tag} already exists on origin; skipping push."
+          else
+            git push origin "refs/tags/${tag}"
+          fi
+
       - name: Verify tag points at the published mainline commit
         if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_probe.outputs.published == 'true' }}
         shell: bash
