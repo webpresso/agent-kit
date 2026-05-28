@@ -72,6 +72,24 @@ describe('wp root command surface', () => {
     expect(result.stdout.join('\n')).toContain('show <slug>')
   })
 
+  it('routes wp bench to bench help', async () => {
+    const result = await runAk(['bench', '--help'])
+
+    expect(result.code).toBe(0)
+    expect(result.stdout.join('\n')).toContain('wp bench')
+    expect(result.stdout.join('\n')).toContain('session-memory')
+    expect(result.stdout.join('\n')).toContain('wp bench session-memory --help')
+  })
+
+  it('routes wp bench session-memory to command-specific help', async () => {
+    const result = await runAk(['bench', 'session-memory', '--help'])
+
+    expect(result.code).toBe(0)
+    expect(result.stdout.join('\n')).toContain('wp bench session-memory')
+    expect(result.stdout.join('\n')).toContain('--output-root <path>')
+    expect(result.stdout.join('\n')).toContain('--dry-run')
+  })
+
   it("redirects 'wp skills' to 'wp skill' with a helpful rename error", async () => {
     const result = await runAk(['skills', 'refresh'])
 

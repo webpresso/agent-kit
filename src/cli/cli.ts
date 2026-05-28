@@ -99,6 +99,8 @@ export async function main(): Promise<number> {
   const wantsHelp = argv.includes('--help') || argv.includes('-h')
   const isNestedBlueprintHelp = command === 'blueprint' && wantsHelp && argv.length > 4
   const isRoadmapHelp = command === 'roadmap' && wantsHelp
+  const isNestedBenchHelp = command === 'bench' && wantsHelp && argv.length > 4
+  const isBenchHelp = command === 'bench' && wantsHelp
 
   if (wantsVersion && (!command || command.startsWith('-'))) {
     console.log(VERSION)
@@ -119,6 +121,18 @@ export async function main(): Promise<number> {
   if (isRoadmapHelp) {
     const { getRoadmapHelpText } = await import('./commands/roadmap.js')
     console.log(getRoadmapHelpText())
+    return 0
+  }
+
+  if (isNestedBenchHelp) {
+    const { getBenchSessionMemoryCommandHelpText } = await import('./commands/bench/index.js')
+    console.log(getBenchSessionMemoryCommandHelpText())
+    return 0
+  }
+
+  if (isBenchHelp) {
+    const { getBenchHelpText } = await import('./commands/bench/index.js')
+    console.log(getBenchHelpText())
     return 0
   }
 

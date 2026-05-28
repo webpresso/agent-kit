@@ -1,9 +1,30 @@
 import type { CAC } from 'cac'
 
 import {
+  getBenchSessionMemoryCommandHelpText,
   getBenchSessionMemoryHelpText,
   runBenchSessionMemoryCommand,
 } from '#cli/commands/bench/session-memory.js'
+
+export function getBenchHelpText(): string {
+  return [
+    'wp bench',
+    '',
+    'Run the session-memory benchmark harness.',
+    '',
+    'Commands:',
+    '  session-memory  Run the session-memory benchmark harness.',
+    '',
+    'Examples:',
+    '  wp bench session-memory --dry-run',
+    '  wp bench session-memory --scenario debug-long-session --variant baseline --trials 1',
+    '  wp bench session-memory --scenario all --all-variants',
+    '',
+    'Run `wp bench session-memory --help` for command-specific help.',
+  ].join('\n')
+}
+
+export { getBenchSessionMemoryCommandHelpText }
 
 export function registerBenchCommand(cli: CAC): void {
   cli

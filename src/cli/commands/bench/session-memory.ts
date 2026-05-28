@@ -178,6 +178,29 @@ export function getBenchSessionMemoryHelpText(): string {
   ].join('\n')
 }
 
+export function getBenchSessionMemoryCommandHelpText(): string {
+  return [
+    'wp bench session-memory',
+    '',
+    'Run the session-memory benchmark harness.',
+    '',
+    'Options:',
+    '  --scenario <id>     Scenario id or "all" (default: all)',
+    '  --variant <id>      Single variant id to run',
+    '  --all-variants      Run baseline, context-mode, v1, and v2',
+    '  --dry-run           Validate manifest, scenarios, and env without API calls',
+    '  --trials <n>        Trials per cell',
+    '  --model <name>      Pricing model alias to use for cost math',
+    '  --output-root <path>  Override the bench output root directory',
+    '  -h, --help          Display this message',
+    '',
+    'Examples:',
+    '  wp bench session-memory --dry-run',
+    '  wp bench session-memory --scenario debug-long-session --variant baseline --trials 1',
+    '  wp bench session-memory --scenario all --all-variants',
+  ].join('\n')
+}
+
 function stableStringify(value: unknown): string {
   if (Array.isArray(value)) {
     return `[${value.map((item) => stableStringify(item)).join(',')}]`
