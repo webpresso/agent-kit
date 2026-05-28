@@ -14,9 +14,10 @@ metadata:
   author: vercel
   version: '1.0.0'
   argument-hint: <file-or-pattern>
+license: MIT
 upstream: 
-  source: null
-  last_synced: "2026-04-22"
+  source: https://github.com/vercel-labs/agent-skills/tree/main/skills/web-design-guidelines
+  last_synced: "2026-05-28"
 ---
 
 # Web Interface Guidelines

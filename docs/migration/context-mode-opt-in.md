@@ -60,9 +60,10 @@ wp setup --with context-mode
    wp setup --with context-mode
    ```
 
-4. Restart Codex with `node` visible on `PATH`. If the default context-mode
-   storage root is not writable from the Codex process, launch Codex with an
-   absolute writable root:
+4. Re-run setup after upgrading OMX or context-mode so managed Codex hook
+   launchers stay in sync with the currently resolved runtime paths. If the
+   default context-mode storage root is not writable from the Codex process,
+   launch Codex with an absolute writable root:
 
    ```bash
    CONTEXT_MODE_DIR="$HOME/.codex-context-mode" codex
@@ -70,11 +71,13 @@ wp setup --with context-mode
 
 ## Clean-install verification
 
-Run the default dependency-tree check:
+Run the license surface checks:
 
 ```bash
-bash scripts/verify-no-context-mode.sh
+pnpm run license:check
 ```
 
-This script packs the current package, installs it into a temp project, and
-fails if `context-mode` appears in the resulting dependency tree.
+That runs `wp audit open-source-licenses` (root `LICENSE`, `THIRD-PARTY-NOTICES.md`,
+vendored skill provenance, and tarball inclusion) and
+`scripts/verify-no-context-mode.sh`, which packs the current package and fails if
+`context-mode` appears in the resulting dependency metadata.

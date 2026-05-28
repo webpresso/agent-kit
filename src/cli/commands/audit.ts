@@ -104,6 +104,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
   'ai-contracts': async (root) => (await import('#audit/ai-contracts')).auditAiContracts(root),
   'hook-surface': async (root) =>
     (await import('#audit/hook-surface')).auditHookSurfaceAsRepoResult(root),
+  'open-source-licenses': async (root) =>
+    (await import('#audit/open-source-licenses')).auditOpenSourceLicenses(root),
   rules: async (root) => runContentAudit(root, 'rule'),
   skills: async (root) => runContentAudit(root, 'skill'),
 }

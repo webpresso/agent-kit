@@ -14,6 +14,9 @@ license: MIT
 metadata: 
   author: boristane
   version: '1.0.0'
+upstream:
+  source: https://github.com/boristane/agent-skills/tree/main/skills/logging-best-practices
+  last_synced: "2026-05-28"
 ---
 
 # Logging Best Practices Skill

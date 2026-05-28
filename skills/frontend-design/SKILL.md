@@ -10,10 +10,10 @@ created: '2026-05-07'
 last_reviewed: '2026-05-07'
 name: frontend-design
 description: Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, artifacts, posters, or applications (examples include websites, landing pages, dashboards, React components, HTML/CSS layouts, or when styling/beautifying any web UI). Generates creative, polished code and UI design that avoids generic AI aesthetics.
-license: Complete terms in LICENSE.txt
+license: Apache-2.0
 upstream: 
-  source: null
-  last_synced: "2026-04-22"
+  source: https://github.com/anthropics/skills/tree/main/skills/frontend-design
+  last_synced: "2026-05-28"
 ---
 
 This skill guides creation of distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. Implement real working code with exceptional attention to aesthetic details and creative choices.

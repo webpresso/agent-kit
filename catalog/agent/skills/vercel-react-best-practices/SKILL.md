@@ -15,8 +15,8 @@ metadata:
   author: vercel
   version: '1.0.0'
 upstream: 
-  source: null
-  last_synced: "2026-04-22"
+  source: https://github.com/vercel-labs/agent-skills/tree/main/skills/react-best-practices
+  last_synced: "2026-05-28"
 ---
 
 # Vercel React Best Practices

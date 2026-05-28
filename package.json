@@ -50,6 +50,8 @@
     "skills",
     "commands",
     ".claude-plugin",
+    "LICENSE",
+    "THIRD-PARTY-NOTICES.md",
     "README.md"
   ],
   "type": "module",
@@ -537,7 +539,8 @@
     "hooks:doctor:ci": "WP_SKIP_UPDATE_CHECK=1 wp hooks doctor --skip-mcp",
     "qa": "vp run build && vp run typecheck && vp run lint && vp run format:check && vp run test && vp run lint:pkg && vp run audits:check",
     "changeset": "changeset",
-    "changeset:status": "changeset status"
+    "changeset:status": "changeset status",
+    "license:check": "WP_SKIP_UPDATE_CHECK=1 bun src/cli/cli.ts audit open-source-licenses && bash scripts/verify-no-context-mode.sh"
   },
   "dependencies": {
     "@vitejs/plugin-react": "catalog:",

@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "skills": [
+    {
+      "slug": "frontend-design",
+      "license": "Apache-2.0",
+      "licenseFile": "LICENSE.txt",
+      "upstream": "https://github.com/anthropics/skills/tree/main/skills/frontend-design",
+      "lastSynced": "2026-05-28"
+    },
+    {
+      "slug": "vercel-react-best-practices",
+      "license": "MIT",
+      "upstream": "https://github.com/vercel-labs/agent-skills/tree/main/skills/react-best-practices",
+      "lastSynced": "2026-05-28"
+    },
+    {
+      "slug": "logging-best-practices",
+      "license": "MIT",
+      "upstream": "https://github.com/boristane/agent-skills/tree/main/skills/logging-best-practices",
+      "lastSynced": "2026-05-28"
+    },
+    {
+      "slug": "web-design-guidelines",
+      "license": "MIT",
+      "upstream": "https://github.com/vercel-labs/agent-skills/tree/main/skills/web-design-guidelines",
+      "lastSynced": "2026-05-28"
+    }
+  ]
+}

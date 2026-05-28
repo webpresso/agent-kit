@@ -11,9 +11,10 @@ last_reviewed: '2026-05-07'
 name: react-doctor
 description: Diagnose and fix React codebase health issues. Use when reviewing React code, fixing performance problems, auditing security, or improving code quality.
 version: 1.0.0
+license: MIT
 upstream: 
-  source: null
-  last_synced: "2026-04-22"
+  source: https://github.com/millionco/react-doctor/tree/main/packages/react-doctor
+  last_synced: "2026-05-28"
 ---
 
 # React Doctor
