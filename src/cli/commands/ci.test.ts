@@ -58,6 +58,28 @@ describe('wp ci command', () => {
     ])
   })
 
+  it('builds direct act argv for no-secret profiles', () => {
+    const command = buildCiActCommand(
+      {
+        workflow: 'ci-e2e',
+        envProfile: 'public',
+      },
+      '/repo',
+    )
+
+    expect(command.command).toBe('act')
+    expect(command.args).toEqual([
+      'pull_request',
+      '-W',
+      '/repo/.github/workflows/ci-e2e.yml',
+      '-P',
+      'ubicloud-standard-2=ghcr.io/catthehacker/ubuntu:full-latest',
+      '--rm',
+      '--container-architecture',
+      'linux/amd64',
+    ])
+  })
+
   it('does not expose legacy unsafe argv in the public helper contract', () => {
     const command = buildCiActCommand({ workflow: 'ci-e2e' }, '/repo')
     expect(command.args.join(' ')).not.toContain('--chef-token')

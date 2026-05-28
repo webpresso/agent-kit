@@ -1,22 +1,24 @@
-# Changesets-driven release workflow.
+# Changesets Action release workflow.
 #
 # Flow:
-#   1. Contributors commit changesets on feature branches.
-#   2. On push to main, the workflow versions packages in an isolated worktree,
-#      builds the release artifact, publishes to the public npm registry, then
-#      commits the version bump back to main only after publish succeeds.
-#   3. After the version bump lands, the workflow creates a release/v<N> branch
-#      with compiled dist/ for marketplace consumers.
+#   1. Contributors merge changeset files to main from feature branches.
+#   2. The action opens/updates a "Version Packages" PR using `pnpm run version`.
+#   3. When the version PR lands on main, the action publishes through
+#      `pnpm run release:publish`.
 #
-# Dry runs stay non-mutating: they version/build/pack in the temporary
-# worktree only, with no publish, no push to main, and no release branch.
+# Initial rollout policy:
+#   - public npm publish: yes
+#   - auto-created GitHub Releases: no
+#   - compatibility branch/tag behavior: handled separately from the publish path
 #
 # Trusted publishing note:
-#   - npm trusted publishing is preferred and this workflow is OIDC-ready.
-#   - If the npm trusted publisher is not configured yet, npm may fall back to
-#     NODE_AUTH_TOKEN from secrets.NPM_TOKEN on the publish step only.
+#   - npm trusted publishing is preferred.
+#   - This workflow is OIDC-ready (`id-token: write`) and expects npm-side
+#     trusted publisher configuration before steady-state production use.
+#   - For first-package bootstrap or migration rehearsals, you may temporarily
+#     provide `NPM_TOKEN` as a repo secret; it is scoped to the publish step only.
 #
-# To dry-run: gh workflow run release.yml -f dry-run=true
+# To dry-run the version path: gh workflow run release.yml -f dry-run=true
 
 name: Release
 
@@ -42,67 +44,12 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
-  auth-preflight:
-    name: Auth preflight
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
-    outputs:
-      repo_access_ok: ${{ steps.repo.outputs.repo_access_ok }}
-      action_downloads_ok: ${{ steps.actions.outputs.action_downloads_ok }}
-      packages_token_ok: ${{ steps.packages.outputs.packages_token_ok }}
-    steps:
-      - name: Probe repository access
-        id: repo
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          if git ls-remote "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD >/dev/null 2>&1; then
-            echo "repo_access_ok=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "repo_access_ok=false" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Probe public action downloads
-        id: actions
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          urls=(
-            "https://api.github.com/repos/actions/checkout/tarball/refs/tags/v5"
-            "https://api.github.com/repos/pnpm/action-setup/tarball/refs/tags/v6"
-            "https://api.github.com/repos/actions/setup-node/tarball/refs/tags/v5"
-            "https://api.github.com/repos/oven-sh/setup-bun/tarball/refs/tags/v2"
-          )
-          for url in "${urls[@]}"; do
-            if ! curl -fsSIL -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" "$url" >/dev/null; then
-              echo "action_downloads_ok=false" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-          done
-          echo "action_downloads_ok=true" >> "$GITHUB_OUTPUT"
-      - name: Mark package probe not required
-        id: packages
-        shell: bash
-        run: |
-          set -euo pipefail
-          # agent-kit intentionally avoids an install-time dependency on
-          # GitHub Packages runtime leaf or umbrella packages. Keep the
-          # shared auth-preflight output contract, but mark package auth as
-          # not required for this repo's release install path.
-          echo "packages_token_ok=true" >> "$GITHUB_OUTPUT"
-
   release:
     name: Release
     runs-on: ubuntu-latest
-    needs: auth-preflight
-    if: ${{ needs.auth-preflight.outputs.repo_access_ok == 'true' && needs.auth-preflight.outputs.action_downloads_ok == 'true' && needs.auth-preflight.outputs.packages_token_ok == 'true' }}
     permissions:
       contents: write
+      pull-requests: write
       id-token: write
     steps:
       - uses: actions/checkout@v5
@@ -110,126 +57,102 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: '24.16.0'
           registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Resolve release mode
-        id: mode
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "dry_run=${{ github.event_name == 'workflow_dispatch' && inputs['dry-run'] || false }}" >> "$GITHUB_OUTPUT"
-
-      - name: Prepare isolated release worktree
-        id: prep
-        shell: bash
-        run: |
-          set -euo pipefail
-          release_dir="$RUNNER_TEMP/release-worktree"
-          rm -rf "$release_dir"
-          git worktree add --detach "$release_dir" "$GITHUB_SHA"
-          echo "release_dir=$release_dir" >> "$GITHUB_OUTPUT"
-
       - name: Install dependencies
-        working-directory: ${{ steps.prep.outputs.release_dir }}
         run: pnpm install --frozen-lockfile
 
-      - name: Version packages
-        id: version
-        working-directory: ${{ steps.prep.outputs.release_dir }}
+      - name: Validate version path (dry run)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run == true }}
         shell: bash
         run: |
           set -euo pipefail
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
           pnpm run version
-          version=$(node -p "require('./package.json').version")
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "branch=release/v${version}" >> "$GITHUB_OUTPUT"
-
-      - name: Build release artifact
-        working-directory: ${{ steps.prep.outputs.release_dir }}
-        run: pnpm run build
-
-      - name: Validate release tarball (dry run)
-        if: ${{ steps.mode.outputs.dry_run == 'true' }}
-        working-directory: ${{ steps.prep.outputs.release_dir }}
-        shell: bash
-        run: |
-          set -euo pipefail
           npm pack --dry-run --json > "$RUNNER_TEMP/npm-pack-dry-run.json"
           node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/npm-pack-dry-run.json','utf8')); const pack=Array.isArray(data)?data[0]:data; console.log(JSON.stringify({filename:pack.filename, unpackedSize:pack.unpackedSize, files:pack.files?.length}, null, 2));"
 
-      - name: Publish to npm
-        if: ${{ steps.mode.outputs.dry_run != 'true' }}
-        id: publish
-        working-directory: ${{ steps.prep.outputs.release_dir }}
-        shell: bash
+      - name: Create Release Pull Request or Publish
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != true }}
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          version: pnpm run version
+          publish: pnpm run release:publish
+          createGithubReleases: false
+          commit: Version Packages
+          title: Version Packages
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: 'true'
-        run: |
-          set -euo pipefail
-          publish_log="$RUNNER_TEMP/npm-publish.log"
-          if npm publish --provenance --access public 2>&1 | tee "$publish_log"; then
-            echo "publish_status=published" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          HUSKY: '0'
 
-          status=${PIPESTATUS[0]}
-          if grep -Eqi 'cannot publish over the previously published version|you cannot publish over the previously published versions' "$publish_log"; then
-            echo "publish_status=already-published" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          exit "$status"
-
-      - name: Commit version bump to main
-        if: ${{ steps.mode.outputs.dry_run != 'true' }}
-        id: commit_main
-        working-directory: ${{ steps.prep.outputs.release_dir }}
+      - name: Resolve published version for artifacts
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.changesets.outputs.published == 'true' }}
+        id: release_meta
         shell: bash
         run: |
           set -euo pipefail
-          git add -A
-          if git diff --staged --quiet; then
-            echo "committed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git commit -m "chore: version packages"
-          git push origin HEAD:main
-          echo "committed=true" >> "$GITHUB_OUTPUT"
+          version=$(node -p "require('./package.json').version")
+          {
+            echo "version=$version"
+            echo "tag=v${version}"
+            echo "branch=release/v${version}"
+          } >> "$GITHUB_OUTPUT"
 
-      - name: Create marketplace release branch
-        if: ${{ steps.mode.outputs.dry_run != 'true' }}
-        id: release_branch
-        working-directory: ${{ steps.prep.outputs.release_dir }}
+      - name: Verify tag points at the published mainline commit
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.changesets.outputs.published == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
-          branch='${{ steps.version.outputs.branch }}'
-          version='${{ steps.version.outputs.version }}'
+          tag_commit=$(git rev-parse "${{ steps.release_meta.outputs.tag }}^{commit}")
+          head_commit=$(git rev-parse HEAD)
+          if [ "$tag_commit" != "$head_commit" ]; then
+            echo "Expected tag ${{ steps.release_meta.outputs.tag }} to point at HEAD ($head_commit), got $tag_commit" >&2
+            exit 1
+          fi
+
+      - name: Create marketplace compatibility branch
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.changesets.outputs.published == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch='${{ steps.release_meta.outputs.branch }}'
+          version='${{ steps.release_meta.outputs.version }}'
+          base_commit=$(git rev-parse "${{ steps.release_meta.outputs.tag }}^{commit}")
 
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
-            echo "created=false" >> "$GITHUB_OUTPUT"
+            echo "Compatibility branch $branch already exists; skipping creation."
             exit 0
           fi
 
-          git switch -C "$branch"
+          git switch -C "$branch" "$base_commit"
           git add -f dist/
           if git diff --staged --quiet; then
-            echo "created=false" >> "$GITHUB_OUTPUT"
+            echo "No dist changes to commit for $branch; skipping branch creation."
             exit 0
           fi
 
           git commit -m "chore: release v${version} [dist]"
           git push origin "HEAD:refs/heads/${branch}"
-          echo "created=true" >> "$GITHUB_OUTPUT"
+
+      - name: Verify no GitHub Release object exists
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.changesets.outputs.published == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "${{ steps.release_meta.outputs.tag }}" >/dev/null 2>&1; then
+            echo "GitHub Release object exists for ${{ steps.release_meta.outputs.tag }} but createGithubReleases is disabled." >&2
+            exit 1
+          fi
 
       - name: Release summary
         if: ${{ always() }}
@@ -238,9 +161,11 @@ jobs:
           {
             echo "## Release summary"
             echo ""
-            echo "- dry_run: ${{ steps.mode.outputs.dry_run }}"
-            echo "- version: ${{ steps.version.outputs.version }}"
-            echo "- publish_status: ${{ steps.publish.outputs.publish_status || 'skipped' }}"
-            echo "- main_commit_pushed: ${{ steps.commit_main.outputs.committed || 'false' }}"
-            echo "- release_branch_created: ${{ steps.release_branch.outputs.created || 'false' }}"
+            echo "- dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run || false }}"
+            echo "- hasChangesets: ${{ steps.changesets.outputs.hasChangesets || 'n/a' }}"
+            echo "- published: ${{ steps.changesets.outputs.published || 'false' }}"
+            echo "- publishedPackages: ${{ steps.changesets.outputs.publishedPackages || '[]' }}"
+            echo "- version: ${{ steps.release_meta.outputs.version || 'n/a' }}"
+            echo "- tag: ${{ steps.release_meta.outputs.tag || 'n/a' }}"
+            echo "- release_branch: ${{ steps.release_meta.outputs.branch || 'n/a' }}"
           } >> "$GITHUB_STEP_SUMMARY"

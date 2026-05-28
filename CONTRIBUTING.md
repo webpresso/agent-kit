@@ -89,8 +89,8 @@ server will fail to start with "file not found" errors.
 
 `dist/` is in `.gitignore` on `main`, which keeps day-to-day diffs clean. Releases
 are driven by [Changesets](https://github.com/changesets/changesets): contributors
-describe their changes in a changeset file, CI opens a "Version Packages" PR to
-bump versions, and merging that PR publishes to GitHub Packages and creates a
+describe their changes in a changeset file, CI opens a **Version Packages** PR to
+bump versions, and merging that PR publishes to the public npm registry and creates a
 `release/v<version>` branch where `dist/` is committed for marketplace consumers.
 
 ### Describing a change (contributors)
@@ -112,11 +112,12 @@ it alongside your code change.
    **"Version Packages"** PR that bumps `package.json#version` and updates
    `CHANGELOG.md`.
 3. A maintainer reviews and merges the Version PR.
-4. CI detects no pending changesets and runs:
-   - `pnpm changeset publish` → builds, publishes to GitHub Packages, creates a
-     `v<version>` GitHub Release with the changeset summary as release notes.
-   - Creates a `release/v<version>` branch with `dist/` committed for marketplace
-     consumers.
+4. CI publishes via `pnpm run release:publish`, which calls
+   `npm publish --provenance --access public`.
+5. CI verifies the `v<version>` tag on the mainline version-bump commit and
+   creates a `release/v<version>` compatibility branch with `dist/` committed
+   for marketplace consumers.
+6. GitHub Release objects are disabled in the initial rollout.
 
 ### Checking pending changeset status
 

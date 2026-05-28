@@ -33,9 +33,14 @@ const SIGNAL_TO_EXIT_CODE: Readonly<Partial<Record<NodeJS.Signals, number>>> = {
   SIGTERM: 15,
 }
 
+const DIRECT_ENV_PROFILES = new Set(['none', 'public'])
+
 export function buildSecretGateCommand(options: SecretGateCommandOptions): SecretGateCommand {
   const runner = options.runner?.trim() || 'with-secrets'
   const envProfile = options.envProfile?.trim()
+  if (runner === 'with-secrets' && envProfile && DIRECT_ENV_PROFILES.has(envProfile)) {
+    return { command: options.command, args: [...(options.args ?? [])] }
+  }
   const args = envProfile
     ? ['--env-profile', envProfile, '--', options.command, ...(options.args ?? [])]
     : ['--', options.command, ...(options.args ?? [])]

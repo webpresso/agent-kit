@@ -50,24 +50,20 @@ Steps 2-3 happen on the feature branch alongside the code change. There is
 no manual `vp run changeset version` or `vp run changeset publish` step in the
 normal path — CI owns those for this repository.
 
-## How releases work (CI-driven, direct-publish on push to `main`)
-
-**This repo uses a direct-publish flow — there is no \"Version Packages\" PR.**
+## How releases work (CI-driven Version PR + publish on merge)
 
 When a feature branch with a `.changeset/<slug>.md` file merges to `main`,
 `release.yml` runs the following sequence automatically:
 
-1. `vp run version` — runs `changeset version &&
-   vp run sync-marketplace-version`. This bumps `package.json`, updates
-   `CHANGELOG.md`, removes the consumed `.changeset/<slug>.md` files, and
-   syncs `.claude-plugin/marketplace.json` to match the new version.
-2. `npm publish --provenance --access public` — publishes
-   `@webpresso/agent-kit` to the public npm registry using the workflow-owned
-   publish path.
-3. `git push` — commits the version bump back to `main` only after publish
-   succeeds or the version is already published.
-4. CI creates a `release/v<version>` branch with compiled `dist/` committed
-   for Claude Code marketplace consumers.
+1. `changesets/action` opens or updates a **Version Packages** PR.
+2. The action runs `pnpm run version`, which preserves the canonical version
+   path: `changeset version && vp run sync-marketplace-version`.
+3. When the Version PR is merged, CI runs `pnpm run release:publish`, which
+   calls `npm publish --provenance --access public`.
+4. After publish, CI verifies the `v<version>` tag on the mainline version-bump
+   commit and creates `release/v<version>` as the separate dist-carrying
+   compatibility branch for marketplace consumers.
+5. GitHub Release objects are disabled in the initial rollout.
 
 The workflow supports a manual dry-run trigger:
 ```bash
@@ -102,8 +98,9 @@ git add .changeset/ && git commit -m "chore: add initial changeset"
 ```
 
 **Do NOT run `vp run changeset version` or `vp run changeset publish` manually**
-for established repos — CI owns both steps. Manual execution bypasses the
-`sync-marketplace-version` script and the release branch flow.
+for established repos — CI owns both steps through `changesets/action`. Manual
+execution bypasses the Version PR flow, the release branch contract, and the
+evidence gates.
 
 ## Release workflow (self-contained Changesets)
 

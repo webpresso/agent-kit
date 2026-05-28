@@ -52,6 +52,26 @@ describe('public ci act runner contract', () => {
     expect(command.args.slice(0, 4)).toEqual(['--env-profile', 'secrets-only', '--', 'act'])
   })
 
+  it('uses direct act invocation for no-secret profiles', () => {
+    const command = buildPublicCiActCommand({
+      cwd: '/repo',
+      workflow: 'ci-e2e',
+      envProfile: 'public',
+    })
+
+    expect(command.command).toBe('act')
+    expect(command.args).toEqual([
+      'pull_request',
+      '-W',
+      '/repo/.github/workflows/ci-e2e.yml',
+      '-P',
+      'ubicloud-standard-2=ghcr.io/catthehacker/ubuntu:full-latest',
+      '--rm',
+      '--container-architecture',
+      'linux/amd64',
+    ])
+  })
+
   it('hard-rejects legacy unsafe act flags if a caller tries to append them', () => {
     expect(() => assertNoForbiddenCiActArgs(['--chef-token', 'token'])).toThrow('--chef-token')
     expect(() => assertNoForbiddenCiActArgs(['--bind'])).toThrow('--bind')

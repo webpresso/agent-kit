@@ -1,1 +1,1 @@
-../../catalog/agent/rules/repo-restrictions.md
+../../../../../.vite-plus/packages/@webpresso/agent-kit/lib/node_modules/@webpresso/agent-kit/catalog/agent/rules/repo-restrictions.md

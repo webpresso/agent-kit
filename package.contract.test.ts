@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 
 const REPO_ROOT = process.cwd()
 const PACKAGE_JSON_PATH = join(REPO_ROOT, 'package.json')
+const CHANGESET_CONFIG_PATH = join(REPO_ROOT, '.changeset', 'config.json')
 const NPMRC_PATH = join(REPO_ROOT, '.npmrc')
 const PACKAGE_SURFACE_PATH = join(REPO_ROOT, 'package-surface.json')
 const FORBIDDEN_TARBALL_PATHS = [
@@ -16,9 +17,9 @@ const FORBIDDEN_TARBALL_PATHS = [
   /^dist\/esm\/ai-prompts\//,
 ]
 
-let packedTarballPathsCache: string[] | undefined
-let packedManifestCache:
+let packedTarballArtifactCache:
   | {
+      paths: string[]
       dependencies?: Record<string, string>
       devDependencies?: Record<string, string>
       optionalDependencies?: Record<string, string>
@@ -26,39 +27,49 @@ let packedManifestCache:
     }
   | undefined
 
-function readPackedTarballPaths() {
-  if (packedTarballPathsCache) return packedTarballPathsCache
-  const raw = execFileSync('npm', ['pack', '--dry-run', '--json'], {
-    cwd: REPO_ROOT,
-    encoding: 'utf8',
-  })
-  const entries = JSON.parse(raw) as Array<{ files?: Array<{ path?: string }> }>
-  packedTarballPathsCache =
-    entries[0]?.files
-      ?.map((file) => file.path)
-      .filter((path): path is string => typeof path === 'string') ?? []
-  return packedTarballPathsCache
+function parseNpmJson<T>(raw: string): T {
+  const start = raw.indexOf('[')
+  if (start === -1) {
+    throw new Error(`npm JSON output missing JSON payload: ${raw}`)
+  }
+  return JSON.parse(raw.slice(start)) as T
 }
 
-function readPackedPackageManifest() {
-  if (packedManifestCache) return packedManifestCache
+function readPackedTarballArtifact() {
+  if (packedTarballArtifactCache) return packedTarballArtifactCache
   const raw = execFileSync('npm', ['pack', '--json'], {
     cwd: REPO_ROOT,
     encoding: 'utf8',
+    env: {
+      ...process.env,
+      HUSKY: '0',
+    },
   })
-  const entries = JSON.parse(raw) as Array<{ filename?: string }>
+  const entries = parseNpmJson<Array<{ filename?: string }>>(raw)
   const tarballName = entries[0]?.filename
   if (!tarballName) {
     throw new Error('npm pack did not return a tarball filename')
   }
   const tarballPath = join(REPO_ROOT, tarballName)
   try {
+    const paths = execFileSync('tar', ['-tf', tarballPath], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+    })
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => line.replace(/^package\//, ''))
+      .filter(Boolean)
     const manifest = execFileSync('tar', ['-xOf', tarballPath, 'package/package.json'], {
       cwd: REPO_ROOT,
       encoding: 'utf8',
     })
-    packedManifestCache = JSON.parse(manifest) as typeof packedManifestCache
-    return packedManifestCache
+    packedTarballArtifactCache = {
+      ...(JSON.parse(manifest) as Omit<NonNullable<typeof packedTarballArtifactCache>, 'paths'>),
+      paths,
+    }
+    return packedTarballArtifactCache
   } finally {
     rmSync(tarballPath, { force: true })
   }
@@ -88,6 +99,10 @@ describe('tooling umbrella package contract', () => {
     const pkg = JSON.parse(readFileSync(PACKAGE_JSON_PATH, 'utf8')) as {
       name: string
       publishConfig?: { registry?: string; access?: string }
+      scripts?: Record<string, string>
+    }
+    const changeset = JSON.parse(readFileSync(CHANGESET_CONFIG_PATH, 'utf8')) as {
+      access?: string
     }
 
     expect(pkg.name).toBe('@webpresso/agent-kit')
@@ -95,6 +110,10 @@ describe('tooling umbrella package contract', () => {
       registry: 'https://registry.npmjs.org/',
       access: 'public',
     })
+    expect(changeset.access).toBe('public')
+    expect(pkg.scripts?.['release:publish']).toBe(
+      'pnpm run build && npm publish --provenance --access public',
+    )
   })
 
   it('exports the canonical tooling subpaths needed by external consumers', () => {
@@ -138,18 +157,26 @@ describe('tooling umbrella package contract', () => {
     )
   })
 
-  it('packs no banned internal tarball artifacts', () => {
-    const packedPaths = readPackedTarballPaths()
-    const banned = packedPaths.filter((path) =>
-      FORBIDDEN_TARBALL_PATHS.some((pattern) => pattern.test(path)),
-    )
+  it(
+    'packs no banned internal tarball artifacts',
+    () => {
+      const packedPaths = readPackedTarballArtifact().paths
+      const banned = packedPaths.filter((path) =>
+        FORBIDDEN_TARBALL_PATHS.some((pattern) => pattern.test(path)),
+      )
 
-    expect(banned).toEqual([])
-  })
+      expect(banned).toEqual([])
+    },
+    30_000,
+  )
 
-  it('packs a manifest with no workspace-only catalog specifiers', () => {
-    const packedManifest = readPackedPackageManifest()
+  it(
+    'packs a manifest with no workspace-only catalog specifiers',
+    () => {
+      const packedManifest = readPackedTarballArtifact()
 
-    expect(listPackedManifestCatalogSpecifiers(packedManifest)).toEqual([])
-  })
+      expect(listPackedManifestCatalogSpecifiers(packedManifest)).toEqual([])
+    },
+    30_000,
+  )
 })

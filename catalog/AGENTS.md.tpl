@@ -166,7 +166,9 @@ All packages in the webpresso public umbrella use **Changesets**. Never push
 To ship a change:
 1. `vp run changeset` — describe the change and select the bump type.
 2. Commit the generated `.changeset/<name>.md` alongside your code.
-3. Merge to `main`. The release workflow versions the package and publishes it
+3. Merge to `main`. The release workflow opens or updates a **Version Packages**
+   PR.
+4. Merge the **Version Packages** PR. The workflow then publishes the package
    to the public npm registry.
 
 ```bash

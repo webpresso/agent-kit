@@ -1,1 +1,1 @@
-../../catalog/agent/rules/generated-code-governance.md
+../../../../../.vite-plus/packages/@webpresso/agent-kit/lib/node_modules/@webpresso/agent-kit/catalog/agent/rules/generated-code-governance.md

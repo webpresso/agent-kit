@@ -40,4 +40,28 @@ describe('secret-gate runner', () => {
       args: ['--env-profile', 'database', '--', 'wrangler', 'tail', 'api-worker'],
     })
   })
+
+  it('bypasses the with-secrets wrapper for no-secret profiles', () => {
+    const command = buildSecretGateCommand({
+      envProfile: 'public',
+      command: 'act',
+      args: ['-W', '.github/workflows/ci.yml'],
+    })
+
+    expect(command).toEqual({
+      command: 'act',
+      args: ['-W', '.github/workflows/ci.yml'],
+    })
+  })
+
+  it('executes commands directly for no-secret profiles', async () => {
+    const result = await runSecretGateCommand({
+      envProfile: 'public',
+      command: '/bin/echo',
+      args: ['hello'],
+    })
+
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('hello')
+  })
 })

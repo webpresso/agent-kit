@@ -3,10 +3,9 @@ import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const repositoryRoot = resolve(import.meta.dirname, '..', '..')
-const workflowPaths = [
+const authPreflightWorkflowPaths = [
   join(repositoryRoot, '.github', 'workflows', 'ci.webpresso.yml'),
   join(repositoryRoot, '.github', 'workflows', 'bundle-smoke.yml'),
-  join(repositoryRoot, '.github', 'workflows', 'release.yml'),
 ] as const
 
 function readWorkflow(path: string): string {
@@ -32,7 +31,7 @@ describe('auth preflight package probes', () => {
     expect(manifest.devDependencies?.['@webpresso/runtime']).toBeUndefined()
     expect(manifest.devDependencies?.['@webpresso/webpresso']).toBeUndefined()
 
-    for (const workflowPath of workflowPaths) {
+    for (const workflowPath of authPreflightWorkflowPaths) {
       const workflow = readWorkflow(workflowPath)
       expect(workflow.includes('packages: read')).toBe(true)
       expect(workflow.includes('npm view @webpresso/agent-kit@latest')).toBe(false)
@@ -53,7 +52,10 @@ describe('release workflow publish path', () => {
     const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
     expect(workflow.includes('pnpm changeset publish')).toBe(false)
     expect(workflow.includes('pnpm publish --no-git-checks')).toBe(false)
-    expect(workflow.includes('npm publish --provenance --access public')).toBe(true)
-    expect(workflow.includes('cannot publish over the previously published version')).toBe(true)
+    expect(workflow.includes('changesets/action@v1')).toBe(true)
+    expect(workflow.includes('version: pnpm run version')).toBe(true)
+    expect(workflow.includes('publish: pnpm run release:publish')).toBe(true)
+    expect(workflow.includes('createGithubReleases: false')).toBe(true)
+    expect(workflow.includes('pull-requests: write')).toBe(true)
   })
 })

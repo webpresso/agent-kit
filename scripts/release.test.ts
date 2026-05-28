@@ -213,6 +213,20 @@ describe('scripts/release.ts', () => {
       const current = git(f.repoDir, 'rev-parse --abbrev-ref HEAD').trim()
       expect(current).toBe('main')
     })
+
+    it('tags the mainline commit and keeps the dist commit on the compatibility branch', () => {
+      const f = fixture!
+      const mainBefore = git(f.repoDir, 'rev-parse HEAD').trim()
+      const result = runScript(f.repoDir, ['--dry-run'])
+
+      expect(result.status, `script failed: ${result.stderr}`).toBe(0)
+
+      const tagCommit = git(f.repoDir, 'rev-parse v9.9.9^{commit}').trim()
+      const branchCommit = git(f.repoDir, 'rev-parse release/v9.9.9').trim()
+
+      expect(tagCommit).toBe(mainBefore)
+      expect(branchCommit).not.toBe(mainBefore)
+    })
   })
 
   describe('script artifact', () => {

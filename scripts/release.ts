@@ -18,11 +18,12 @@
  *   1. Validate the working tree is clean (no unstaged or staged changes).
  *   2. Run `pnpm build` to populate `dist/`.
  *   3. Read the version from `package.json`.
- *   4. Create a release branch `release/v<version>` from HEAD.
- *      (`main` is never polluted with a `dist/` commit.)
- *   5. `git add -f dist/` so the gitignore does not block the addition.
- *   6. Create a release commit on the release branch.
- *   7. Tag the release commit `v<version>` with an annotated tag.
+ *   4. Create/verify the annotated tag `v<version>` on the current HEAD
+ *      (the published version-bump commit on `main`).
+ *   5. Create a separate compatibility branch `release/v<version>` from that
+ *      tagged commit.
+ *   6. `git add -f dist/` so the gitignore does not block the addition.
+ *   7. Create the dist compatibility commit on the release branch.
  *   8. Push the tag and branch to `origin` (skipped in --dry-run).
  *   9. Restore the original branch (always — even on failure mid-flight,
  *      we attempt restoration in a finally-style guard).
@@ -32,11 +33,10 @@
  * irreversible (tags are public), and accidentally invoking the bare
  * `pnpm release` should never push.
  *
- * Note: in dry-run mode the local branch + commit + tag ARE created (so the
- * test fixture and the user can inspect them). Only the `git push` step is
- * skipped. Re-running dry-run after the first invocation will fail because
- * the branch + tag already exist locally — that is intentional; clean them
- * up with `git branch -D release/vX && git tag -d vX` before retrying.
+ * Note: in dry-run mode the local tag + branch + dist commit ARE created (so
+ * the user/test fixture can inspect them). Only the remote push steps are
+ * skipped. Re-running dry-run after the first invocation will fail because the
+ * local tag + branch already exist — clean them up before retrying.
  */
 
 import { execSync, spawnSync } from 'node:child_process'
@@ -141,32 +141,31 @@ function main() {
     fail(`pnpm build failed: ${err.message}`)
   }
 
-  // 3. Read version.
+  // 3. Read version + capture the mainline commit that should own the tag.
   const version = readPackageVersion()
   const tag = `v${version}`
   const releaseBranch = `release/${tag}`
+  const publishedCommit = capture('git', ['rev-parse', 'HEAD'])
   log(`[release] step 3/8: version is ${version} → tag ${tag}, branch ${releaseBranch}`)
 
-  // 4. Create release branch from HEAD. We always do this in dry-run too so
-  // the script is observable end-to-end and the test can assert on local
-  // git state.
-  log(`[release] step 4/8: creating branch ${releaseBranch}`)
+  // 4. Tag the published/mainline commit explicitly before branching.
+  log(`[release] step 4/8: tagging ${tag} on ${publishedCommit}`)
   let onReleaseBranch = false
   try {
-    run('git', ['checkout', '-b', releaseBranch])
+    run('git', ['tag', '-a', tag, publishedCommit, '-m', tag])
+
+    // 5. Create the compatibility branch from the tagged mainline commit.
+    log(`[release] step 5/8: creating branch ${releaseBranch} from ${publishedCommit}`)
+    run('git', ['checkout', '-b', releaseBranch, publishedCommit])
     onReleaseBranch = true
 
-    // 5. Force-add dist/.
-    log('[release] step 5/8: git add -f dist')
+    // 6. Force-add dist/.
+    log('[release] step 6/8: git add -f dist')
     run('git', ['add', '-f', 'dist'])
 
-    // 6. Commit.
-    log('[release] step 6/8: creating release commit')
+    // 7. Commit the compatibility dist artifacts on the branch.
+    log('[release] step 7/8: creating compatibility dist commit')
     run('git', ['commit', '-m', `chore(release): ${tag} dist artifacts`])
-
-    // 7. Tag.
-    log(`[release] step 7/8: tagging ${tag}`)
-    run('git', ['tag', '-a', tag, '-m', tag])
 
     // 8. Push (or pretend to).
     if (dryRun) {

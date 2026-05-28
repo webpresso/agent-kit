@@ -5,7 +5,8 @@ status: in-progress
 complexity: L
 owner: ozby
 created: 2026-05-28T00:00:00.000Z
-last_updated: 2026-05-28T00:00:00.000Z
+last_updated: '2026-05-28'
+progress: '57% (4/7 tasks done, 0 blocked, 1 in progress, updated 2026-05-29)'
 ---
 
 ## Product wedge anchor
@@ -108,7 +109,13 @@ Refinement delta:
 
 #### Task 1.1: [decision] Lock release semantics and public publish contract
 
-**Status:** todo
+**Status:** done
+**Verification:**
+
+```webpresso-evidence-v1
+[{"command":"actionlint .github/workflows/release.yml","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-28T22:29:00Z"},{"actor":"assistant","allow_manual":true,"description":"Verified the release driver/public access contract now uses Changesets Action with explicit public publish settings.","kind":"manual","log_excerpt":"release.yml now uses changesets/action@v1 with version=pnpm run version and publish=pnpm run release:publish; .changeset/config.json access is public; package.json publishConfig.access is public; release:publish is defined.","result":"pass","ts":"2026-05-28T22:29:00Z"}]
+```
+
 **Wave:** 0
 **Depends:** None
 
@@ -125,15 +132,20 @@ Refinement delta:
 5. Document the accepted atomicity tradeoff explicitly in the blueprint and release docs/tests.
 
 **Acceptance:**
-- [ ] Workflow uses `changesets/action`.
-- [ ] `version: pnpm run version`
-- [ ] `publish: pnpm run release:publish`
-- [ ] `.changeset/config.json` and `package.json` both encode public access.
-- [ ] `release:publish` is the only publish command path used by CI.
-
+- [x] Workflow uses `changesets/action`.
+- [x] `version: pnpm run version`
+- [x] `publish: pnpm run release:publish`
+- [x] `.changeset/config.json` and `package.json` both encode public access.
+- [x] `release:publish` is the only publish command path used by CI.
 #### Task 1.2: [contract] Lock tag / compatibility-branch / no-release-object behavior
 
-**Status:** todo
+**Status:** done
+**Verification:**
+
+```webpresso-evidence-v1
+[{"command":"pnpm exec vitest run src/build/auth-preflight-packages.test.ts scripts/release.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-28T22:29:00Z"},{"actor":"assistant","allow_manual":true,"description":"Verified explicit tag/compatibility-branch/no-release-object semantics are encoded in the workflow and helper contract.","kind":"manual","log_excerpt":"workflow now resolves version/tag/branch metadata, verifies v<version> points at HEAD via ^{commit}, creates release/v<version> separately from that tagged commit, and fails if a GitHub Release object exists.","result":"pass","ts":"2026-05-28T22:29:00Z"}]
+```
+
 **Wave:** 0
 **Depends:** Task 1.1
 
@@ -149,14 +161,19 @@ Refinement delta:
 4. Make the rerun/already-published path preserve those semantics.
 
 **Acceptance:**
-- [ ] `v<version>` proof is against `v<version>^{commit}` on `main`.
-- [ ] compatibility branch behavior is explicit and tested.
-- [ ] no GitHub Release object is auto-created.
-- [ ] rerun behavior is explicit and testable.
-
+- [x] `v<version>` proof is against `v<version>^{commit}` on `main`.
+- [x] compatibility branch behavior is explicit and tested.
+- [x] no GitHub Release object is auto-created.
+- [x] rerun behavior is explicit and testable.
 #### Task 2.1: [coverage] Extend release contract tests and docs sweep
 
-**Status:** todo
+**Status:** done
+**Verification:**
+
+```webpresso-evidence-v1
+[{"command":"pnpm exec vitest run src/build/auth-preflight-packages.test.ts src/build/validate-marketplace.test.ts package.contract.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-28T22:35:00Z"},{"command":"wp sync --check","exit_code":0,"kind":"integration","result":"pass","target_files":["catalog/AGENTS.md.tpl","AGENTS.md","catalog/agent/rules/changeset-release.md","CONTRIBUTING.md"],"ts":"2026-05-28T22:35:00Z"},{"actor":"assistant","allow_manual":true,"description":"Verified the release contract tests/docs/template sweep now agree on the Changesets Action model.","kind":"manual","log_excerpt":"Updated catalog/AGENTS.md.tpl, AGENTS.md, catalog/agent/rules/changeset-release.md, CONTRIBUTING.md, package.contract.test.ts, and release contract tests; wp sync repaired generated surfaces and wp sync --check returned in sync.","result":"pass","ts":"2026-05-28T22:35:00Z"}]
+```
+
 **Wave:** 1
 **Depends:** Task 1.1, Task 1.2
 
@@ -178,13 +195,17 @@ Refinement delta:
 5. Sweep contradictory authored docs.
 
 **Acceptance:**
-- [ ] `src/build/validate-marketplace.test.ts` passes and is part of the release gate.
-- [ ] `catalog/AGENTS.md.tpl` is updated and `AGENTS.md` verifies via `wp sync --check`.
-- [ ] `CONTRIBUTING.md`, `AGENTS.md`, and release rule docs all agree on the new release model.
-
+- [x] `src/build/validate-marketplace.test.ts` passes and is part of the release gate.
+- [x] `catalog/AGENTS.md.tpl` is updated and `AGENTS.md` verifies via `wp sync --check`.
+- [x] `CONTRIBUTING.md`, `AGENTS.md`, and release rule docs all agree on the new release model.
 #### Task 2.2: [sandbox] Rehearse trusted publishing in a concrete sandbox
 
-**Status:** todo
+**Status:** done
+**Verification:**
+
+```webpresso-evidence-v1
+[{"command":"gh run watch 26605192796 -R webpresso/agent-kit-release-sandbox --exit-status","exit_code":0,"kind":"integration","result":"pass","ts":"2026-05-29T00:09:00Z"},{"command":"gh pr merge 1 -R webpresso/agent-kit-release-sandbox --merge --delete-branch","exit_code":0,"kind":"integration","result":"pass","ts":"2026-05-29T00:10:00Z"},{"command":"npm view @webpresso/agent-kit-sandbox version dist-tags --json","exit_code":0,"kind":"integration","result":"pass","ts":"2026-05-29T00:13:00Z"},{"actor":"assistant","allow_manual":true,"description":"Verified the sandbox Changesets Action flow opened a Version Packages PR, merged it, and published @webpresso/agent-kit-sandbox@0.21.4 via GitHub Actions with signed provenance after trusted publisher configuration was corrected.","kind":"manual","log_excerpt":"Run 26605192796 created the Version Packages PR; merge-triggered run 26605224920 used OIDC/trusted publishing, emitted a signed provenance statement to Sigstore, and advanced the package to 0.21.4 once the npm trusted publisher tuple was corrected.","result":"pass","ts":"2026-05-29T00:13:00Z"}]
+```
 **Wave:** 1
 **Depends:** Task 1.1, Task 1.2, Task 2.1
 
