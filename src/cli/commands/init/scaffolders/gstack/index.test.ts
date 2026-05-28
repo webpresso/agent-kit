@@ -27,6 +27,10 @@ function makeSpinnerFactory() {
   return { factory, start, succeed, fail }
 }
 
+function createFakeEnv() {
+  return {} as NodeJS.ProcessEnv
+}
+
 describe('ensureGstack', () => {
   it('returns gstack-updated and skips codex when codex is not detected', () => {
     const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
@@ -43,6 +47,7 @@ describe('ensureGstack', () => {
       spawn,
       exists,
       detectCodex: () => false,
+      env: createFakeEnv(),
     })
     expect(result).toEqual({
       kind: 'gstack-updated',
@@ -58,14 +63,14 @@ describe('ensureGstack', () => {
       cwd: '/fake/gstack',
       stdio: 'inherit',
     })
-    expect(spawn).toHaveBeenNthCalledWith(2, './setup', ['--team'], {
+    expect(spawn).toHaveBeenNthCalledWith(2, './setup', ['--team', '--quiet'], {
       cwd: '/fake/gstack',
       stdio: 'inherit',
     })
   })
 
-  it('returns gstack-updated and materializes codex when detected', () => {
-    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+  it('returns gstack-updated and materializes codex with the default fast host policy when detected', () => {
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }])
     const exists = vi.fn(
       (target: string | import('node:buffer').Buffer | URL) =>
         String(target) === '/fake/gstack/setup' ||
@@ -81,21 +86,26 @@ describe('ensureGstack', () => {
       spawn,
       exists,
       detectCodex: () => true,
+      env: createFakeEnv(),
     })
     expect(result).toEqual({
       kind: 'gstack-updated',
       root: '/fake/gstack',
       codex: { kind: 'gstack-codex-installed', skillsRoot: '/fake-home/.codex/skills' },
     })
-    expect(spawn).toHaveBeenCalledTimes(2)
-    expect(spawn).toHaveBeenNthCalledWith(2, './setup', ['--host', 'auto', '--team'], {
+    expect(spawn).toHaveBeenCalledTimes(3)
+    expect(spawn).toHaveBeenNthCalledWith(2, './setup', ['--team', '--quiet'], {
+      cwd: '/fake/gstack',
+      stdio: 'inherit',
+    })
+    expect(spawn).toHaveBeenNthCalledWith(3, './setup', ['--host', 'codex', '--team', '--quiet'], {
       cwd: '/fake/gstack',
       stdio: 'inherit',
     })
   })
 
   it('returns gstack-updated and reports codex updated when codex skills already exist', () => {
-    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }])
     const exists = vi.fn((target: string | import('node:buffer').Buffer | URL) => {
       const value = String(target)
       return (
@@ -114,6 +124,7 @@ describe('ensureGstack', () => {
       spawn,
       exists,
       detectCodex: () => true,
+      env: createFakeEnv(),
     })
     expect(result).toEqual({
       kind: 'gstack-updated',
@@ -130,6 +141,7 @@ describe('ensureGstack', () => {
       options: { overwrite: false, dryRun: true },
       spawn,
       exists,
+      env: createFakeEnv(),
     })
     expect(result).toEqual({ kind: 'gstack-skipped-dry-run' })
     expect(spawn).not.toHaveBeenCalled()
@@ -147,6 +159,7 @@ describe('ensureGstack', () => {
       spawn,
       exists,
       detectCodex: () => false,
+      env: createFakeEnv(),
     })
     expect(result).toEqual({
       kind: 'gstack-installed',
@@ -164,7 +177,7 @@ describe('ensureGstack', () => {
       ['clone', '--depth', '1', 'https://github.com/garrytan/gstack.git', '/fake/gstack'],
       { stdio: 'inherit' },
     )
-    expect(spawn).toHaveBeenNthCalledWith(2, './setup', ['--team'], {
+    expect(spawn).toHaveBeenNthCalledWith(2, './setup', ['--team', '--quiet'], {
       cwd: '/fake/gstack',
       stdio: 'inherit',
     })
@@ -179,6 +192,8 @@ describe('ensureGstack', () => {
       options: { overwrite: false, dryRun: false },
       spawn,
       exists,
+      detectCodex: () => false,
+      env: createFakeEnv(),
     })
     expect(result).toEqual({ kind: 'gstack-clone-failed', exitCode: 128 })
     expect(spawn).toHaveBeenCalledTimes(1)
@@ -197,6 +212,7 @@ describe('ensureGstack', () => {
       spawn,
       exists,
       detectCodex: () => false,
+      env: createFakeEnv(),
     })
     expect(result).toEqual({ kind: 'gstack-pull-failed', exitCode: 9 })
   })
@@ -211,12 +227,13 @@ describe('ensureGstack', () => {
       spawn,
       exists,
       detectCodex: () => false,
+      env: createFakeEnv(),
     })
     expect(result).toEqual({ kind: 'gstack-setup-failed', exitCode: 7, command: '--team' })
   })
 
   it('returns gstack-setup-failed when combined codex/team setup exits non-zero', () => {
-    const spawn = makeSpawn([{ status: 0 }, { status: 12 }])
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 12 }])
     const exists = vi.fn(
       (target: string | import('node:buffer').Buffer | URL) =>
         String(target) === '/fake/gstack/setup' ||
@@ -232,17 +249,18 @@ describe('ensureGstack', () => {
       spawn,
       exists,
       detectCodex: () => true,
+      env: createFakeEnv(),
     })
     expect(result).toEqual({
       kind: 'gstack-setup-failed',
       exitCode: 12,
-      command: '--host auto --team',
+      command: '--host codex --team',
     })
   })
 
   it('calls spinner.succeed() for checkout + codex materialization success', () => {
     const { factory, start, succeed, fail } = makeSpinnerFactory()
-    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }])
     const exists = vi.fn(
       (target: string | import('node:buffer').Buffer | URL) =>
         String(target) === '/fake/gstack/setup' ||
@@ -259,6 +277,7 @@ describe('ensureGstack', () => {
       exists,
       detectCodex: () => true,
       spinnerFactory: factory,
+      env: createFakeEnv(),
     })
     expect(result).toEqual({
       kind: 'gstack-updated',
@@ -266,13 +285,13 @@ describe('ensureGstack', () => {
       codex: { kind: 'gstack-codex-installed', skillsRoot: '/fake-home/.codex/skills' },
     })
     expect(start).toHaveBeenCalled()
-    expect(succeed).toHaveBeenCalledTimes(2)
+    expect(succeed).toHaveBeenCalledTimes(1)
     expect(fail).not.toHaveBeenCalled()
   })
 
   it('calls spinner.fail() when codex materialization fails', () => {
     const { factory, start, succeed, fail } = makeSpinnerFactory()
-    const spawn = makeSpawn([{ status: 0 }, { status: 12 }])
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 12 }])
     const exists = vi.fn(
       (target: string | import('node:buffer').Buffer | URL) =>
         String(target) === '/fake/gstack/setup' ||
@@ -289,14 +308,141 @@ describe('ensureGstack', () => {
       exists,
       detectCodex: () => true,
       spinnerFactory: factory,
+      env: createFakeEnv(),
     })
     expect(result).toEqual({
       kind: 'gstack-setup-failed',
       exitCode: 12,
-      command: '--host auto --team',
+      command: '--host codex --team',
     })
     expect(start).toHaveBeenCalled()
     expect(succeed).not.toHaveBeenCalled()
     expect(fail).toHaveBeenCalledTimes(1)
+  })
+
+  it('supports full mode via WP_GSTACK_MODE=full', () => {
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    const exists = vi.fn(
+      (target: string | import('node:buffer').Buffer | URL) =>
+        String(target) === '/fake/gstack/setup' || String(target) === '/fake/gstack/.git',
+    )
+    const env = createFakeEnv()
+    env.WP_GSTACK_MODE = 'full'
+    const result = ensureGstack({
+      repoRoot: '/tmp/repo',
+      installRoot: '/fake/gstack',
+      codexSkillsRoot: '/fake-home/.codex/skills',
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      exists,
+      detectCodex: () => false,
+      env,
+    })
+    expect(result).toEqual({
+      kind: 'gstack-updated',
+      root: '/fake/gstack',
+      codex: {
+        kind: 'gstack-codex-skipped',
+        reason: 'not-detected',
+        skillsRoot: '/fake-home/.codex/skills',
+      },
+    })
+    expect(spawn).toHaveBeenNthCalledWith(2, './setup', ['--host', 'auto', '--team', '--quiet'], {
+      cwd: '/fake/gstack',
+      stdio: 'inherit',
+    })
+  })
+
+  it('supports explicit host overrides via WP_GSTACK_HOSTS', () => {
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    const exists = vi.fn(
+      (target: string | import('node:buffer').Buffer | URL) =>
+        String(target) === '/fake/gstack/setup' ||
+        String(target) === '/fake/gstack/.git' ||
+        String(target) === '/fake-home/.codex/config.toml',
+    )
+    const env = createFakeEnv()
+    env.WP_GSTACK_HOSTS = 'codex'
+    const result = ensureGstack({
+      repoRoot: '/tmp/repo',
+      installRoot: '/fake/gstack',
+      codexConfigPath: '/fake-home/.codex/config.toml',
+      codexSkillsRoot: '/fake-home/.codex/skills',
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      exists,
+      detectCodex: () => true,
+      env,
+    })
+    expect(result).toEqual({
+      kind: 'gstack-updated',
+      root: '/fake/gstack',
+      codex: { kind: 'gstack-codex-installed', skillsRoot: '/fake-home/.codex/skills' },
+    })
+    expect(spawn).toHaveBeenNthCalledWith(2, './setup', ['--host', 'codex', '--team', '--quiet'], {
+      cwd: '/fake/gstack',
+      stdio: 'inherit',
+    })
+  })
+
+  it('treats explicit codex host overrides as requested even when detection is false', () => {
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    const exists = vi.fn(
+      (target: string | import('node:buffer').Buffer | URL) =>
+        String(target) === '/fake/gstack/setup' || String(target) === '/fake/gstack/.git',
+    )
+    const env = createFakeEnv()
+    env.WP_GSTACK_HOSTS = 'codex'
+    const result = ensureGstack({
+      repoRoot: '/tmp/repo',
+      installRoot: '/fake/gstack',
+      codexSkillsRoot: '/fake-home/.codex/skills',
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      exists,
+      detectCodex: () => false,
+      env,
+    })
+    expect(result).toEqual({
+      kind: 'gstack-updated',
+      root: '/fake/gstack',
+      codex: { kind: 'gstack-codex-installed', skillsRoot: '/fake-home/.codex/skills' },
+    })
+    expect(spawn).toHaveBeenNthCalledWith(2, './setup', ['--host', 'codex', '--team', '--quiet'], {
+      cwd: '/fake/gstack',
+      stdio: 'inherit',
+    })
+  })
+
+  it('emits bounded phase logs by default', () => {
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }])
+    const exists = vi.fn(
+      (target: string | import('node:buffer').Buffer | URL) =>
+        String(target) === '/fake/gstack/setup' ||
+        String(target) === '/fake/gstack/.git' ||
+        String(target) === '/fake-home/.codex/config.toml',
+    )
+    const log = vi.fn()
+    let tick = 0
+    ensureGstack({
+      repoRoot: '/tmp/repo',
+      installRoot: '/fake/gstack',
+      codexConfigPath: '/fake-home/.codex/config.toml',
+      codexSkillsRoot: '/fake-home/.codex/skills',
+      options: { overwrite: false, dryRun: false },
+      spawn,
+      exists,
+      detectCodex: () => true,
+      env: createFakeEnv(),
+      log,
+      now: () => {
+        tick += 1000
+        return tick
+      },
+    })
+    expect(log).toHaveBeenCalledWith('  gstack: refreshing Claude/team integration...')
+    expect(log).toHaveBeenCalledWith('  gstack: refreshing Claude/team integration done (1.0s)')
+    expect(log).toHaveBeenCalledWith('  gstack: refreshing Codex integration...')
+    expect(log).toHaveBeenCalledWith('  gstack: refreshing Codex integration done (1.0s)')
   })
 })

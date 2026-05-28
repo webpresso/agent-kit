@@ -8,9 +8,9 @@
  *
  * Detection for the canonical checkout is path-based, NOT PATH-based: gstack
  * itself is not a CLI binary on $PATH. Checkout bootstrap is a clone +
- * `./setup --team`. When Codex is detected, webpresso runs gstack's official
- * `./setup --host auto --team` flow from that same checkout so one setup pass
- * can refresh both Claude/team mode and Codex materialization.
+ * `./setup --team`. When Codex is detected, webpresso runs gstack's explicit
+ * `./setup --host codex --team` flow from that same checkout so Codex is
+ * materialized without accidentally fanning out to every host binary on PATH.
  *
  * Side-effect outside the consumer repo: writes to the user's home dir.
  * This is intentional — gstack is global by design.
@@ -44,12 +44,18 @@ export interface EnsureGstackInput {
   }) => boolean
   /** DI seam for spinner. Defaults to noop when !process.stdout.isTTY, ora otherwise. */
   spinnerFactory?: SpinnerFactory
+  /** DI seam for environment-backed host/output policy. */
+  env?: NodeJS.ProcessEnv
+  /** DI seam for user-visible progress lines. */
+  log?: (message: string) => void
+  /** DI seam for timing. */
+  now?: () => number
 }
 
 export type GstackCodexResult =
   | { kind: 'gstack-codex-installed'; skillsRoot: string }
   | { kind: 'gstack-codex-updated'; skillsRoot: string }
-  | { kind: 'gstack-codex-skipped'; reason: 'not-detected'; skillsRoot: string }
+  | { kind: 'gstack-codex-skipped'; reason: 'not-detected' | 'not-requested'; skillsRoot: string }
 
 export type EnsureGstackResult =
   | { kind: 'gstack-installed'; root: string; codex: GstackCodexResult }
@@ -73,23 +79,113 @@ function defaultCodexSkillsRoot(): string {
   return path.join(process.env.HOME || homedir(), '.codex', 'skills')
 }
 
-type GstackSetupArgs = ['--team'] | ['--host', 'auto', '--team']
-type GstackSetupCommand = '--team' | '--host auto --team'
+type GstackSetupHost = 'auto' | 'codex'
+type GstackSetupArgs = ['--team'] | ['--host', GstackSetupHost, '--team']
+type GstackSetupCommand = '--team' | `--host ${GstackSetupHost} --team`
+type GstackSetupStep = { args: GstackSetupArgs; command: GstackSetupCommand; label: string }
 
-function formatSetupCommand(args: GstackSetupArgs): GstackSetupCommand {
-  return args[0] === '--team' ? '--team' : '--host auto --team'
+function formatDurationMs(ms: number): string {
+  return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`
+}
+
+function isVerboseGstack(env: NodeJS.ProcessEnv): boolean {
+  return env.WP_VERBOSE_GSTACK === '1'
+}
+
+function parseHostList(value: string): Array<'claude' | 'codex' | 'auto'> | null {
+  const hosts = value
+    .split(',')
+    .map((host) => host.trim())
+    .filter(Boolean)
+
+  if (hosts.length === 0) return null
+  if (hosts.includes('auto')) return ['auto']
+  if (hosts.some((host) => host !== 'claude' && host !== 'codex')) return null
+  return [...new Set(hosts)] as Array<'claude' | 'codex'>
+}
+
+function resolveSetupSteps(input: {
+  codexDetected: boolean
+  env: NodeJS.ProcessEnv
+  log: (message: string) => void
+}): GstackSetupStep[] {
+  const explicitHosts = input.env.WP_GSTACK_HOSTS?.trim()
+  if (explicitHosts) {
+    const parsed = parseHostList(explicitHosts)
+    if (!parsed) {
+      input.log(
+        `  gstack: ignoring invalid WP_GSTACK_HOSTS=${JSON.stringify(explicitHosts)}; falling back to default fast mode`,
+      )
+    } else {
+      return parsed.map((host) =>
+        host === 'claude'
+          ? {
+              args: ['--team'],
+              command: '--team',
+              label: 'refreshing Claude/team integration',
+            }
+          : host === 'codex'
+            ? {
+                args: ['--host', 'codex', '--team'],
+                command: '--host codex --team',
+                label: 'refreshing Codex integration',
+              }
+            : {
+                args: ['--host', 'auto', '--team'],
+                command: '--host auto --team',
+                label: 'refreshing all detected gstack hosts',
+              },
+      )
+    }
+  }
+
+  if (input.env.WP_GSTACK_MODE === 'full') {
+    return [
+      {
+        args: ['--host', 'auto', '--team'],
+        command: '--host auto --team',
+        label: 'refreshing all detected gstack hosts',
+      },
+    ]
+  }
+
+  const steps: GstackSetupStep[] = [
+    {
+      args: ['--team'],
+      command: '--team',
+      label: 'refreshing Claude/team integration',
+    },
+  ]
+  if (input.codexDetected) {
+    steps.push({
+      args: ['--host', 'codex', '--team'],
+      command: '--host codex --team',
+      label: 'refreshing Codex integration',
+    })
+  }
+  return steps
 }
 
 function runSetup(
   root: string,
   spawn: typeof spawnSync,
-  args: GstackSetupArgs,
+  step: GstackSetupStep,
+  env: NodeJS.ProcessEnv,
+  log: (message: string) => void,
+  now: () => number,
 ): { ok: boolean; exitCode: number; command: GstackSetupCommand } {
+  const startedAt = now()
+  const verbose = isVerboseGstack(env)
+  const args = verbose ? step.args : [...step.args, '--quiet']
+  log(`  gstack: ${step.label}...`)
   const result = spawn('./setup', args, { cwd: root, stdio: 'inherit' })
+  if (result.status === 0) {
+    log(`  gstack: ${step.label} done (${formatDurationMs(now() - startedAt)})`)
+  }
   return {
     ok: result.status === 0,
     exitCode: result.status ?? -1,
-    command: formatSetupCommand(args),
+    command: step.command,
   }
 }
 
@@ -101,48 +197,6 @@ function defaultDetectCodex(input: {
   if (input.exists(input.codexConfigPath)) return true
   const probe = input.spawn('codex', ['--version'], { stdio: 'ignore' })
   return probe.status === 0
-}
-
-function ensureCodexHost(input: {
-  root: string
-  spawn: typeof spawnSync
-  exists: typeof existsSync
-  detectCodex: (input: {
-    spawn: typeof spawnSync
-    exists: typeof existsSync
-    codexConfigPath: string
-  }) => boolean
-  codexConfigPath: string
-  codexSkillsRoot: string
-  spinner: ReturnType<SpinnerFactory>
-}):
-  | GstackCodexResult
-  | { kind: 'gstack-setup-failed'; exitCode: number; command: GstackSetupCommand } {
-  const codexDetected = input.detectCodex({
-    spawn: input.spawn,
-    exists: input.exists,
-    codexConfigPath: input.codexConfigPath,
-  })
-  if (!codexDetected) {
-    return {
-      kind: 'gstack-codex-skipped',
-      reason: 'not-detected',
-      skillsRoot: input.codexSkillsRoot,
-    }
-  }
-
-  const hadSkills = input.exists(path.join(input.codexSkillsRoot, 'gstack'))
-  input.spinner.start()
-  const setup = runSetup(input.root, input.spawn, ['--host', 'auto', '--team'])
-  if (!setup.ok) {
-    input.spinner.fail('gstack codex setup failed')
-    return { kind: 'gstack-setup-failed', exitCode: setup.exitCode, command: setup.command }
-  }
-
-  input.spinner.succeed(hadSkills ? 'gstack codex updated' : 'gstack codex installed')
-  return hadSkills
-    ? { kind: 'gstack-codex-updated', skillsRoot: input.codexSkillsRoot }
-    : { kind: 'gstack-codex-installed', skillsRoot: input.codexSkillsRoot }
 }
 
 /**
@@ -157,12 +211,56 @@ export function ensureGstack(input: EnsureGstackInput): EnsureGstackResult {
   const spawn = input.spawn ?? spawnSync
   const exists = input.exists ?? existsSync
   const detectCodex = input.detectCodex ?? defaultDetectCodex
+  const env = input.env ?? process.env
+  const log = input.log ?? console.log
+  const now = input.now ?? Date.now
   const root = input.installRoot ?? defaultInstallRoot()
   const codexConfigPath = input.codexConfigPath ?? defaultCodexConfigPath()
   const codexSkillsRoot = input.codexSkillsRoot ?? defaultCodexSkillsRoot()
   const spinner = (input.spinnerFactory ?? makeNoopSpinnerFactory())('gstack')
   const hasSetup = exists(path.join(root, 'setup'))
   const hasGitDir = exists(path.join(root, '.git'))
+  const codexDetected = detectCodex({
+    spawn,
+    exists,
+    codexConfigPath,
+  })
+  const hadCodexSkills = exists(path.join(codexSkillsRoot, 'gstack'))
+  const steps = resolveSetupSteps({ codexDetected, env, log })
+  const requestsCodex = steps.some((step) => step.command === '--host codex --team')
+  const usesAutoHosts = steps.some((step) => step.command === '--host auto --team')
+
+  const finalizeCodexResult = (): GstackCodexResult => {
+    if (requestsCodex) {
+      return hadCodexSkills
+        ? { kind: 'gstack-codex-updated', skillsRoot: codexSkillsRoot }
+        : { kind: 'gstack-codex-installed', skillsRoot: codexSkillsRoot }
+    }
+    if (usesAutoHosts) {
+      if (!codexDetected) {
+        return {
+          kind: 'gstack-codex-skipped',
+          reason: 'not-detected',
+          skillsRoot: codexSkillsRoot,
+        }
+      }
+      return hadCodexSkills
+        ? { kind: 'gstack-codex-updated', skillsRoot: codexSkillsRoot }
+        : { kind: 'gstack-codex-installed', skillsRoot: codexSkillsRoot }
+    }
+    if (!codexDetected) {
+      return {
+        kind: 'gstack-codex-skipped',
+        reason: 'not-detected',
+        skillsRoot: codexSkillsRoot,
+      }
+    }
+    return {
+      kind: 'gstack-codex-skipped',
+      reason: 'not-requested',
+      skillsRoot: codexSkillsRoot,
+    }
+  }
 
   if (hasSetup) {
     if (hasGitDir) {
@@ -177,26 +275,15 @@ export function ensureGstack(input: EnsureGstackInput): EnsureGstackResult {
       }
     }
 
-    spinner.start()
-    const codex = ensureCodexHost({
-      root,
-      spawn,
-      exists,
-      detectCodex,
-      codexConfigPath,
-      codexSkillsRoot,
-      spinner,
-    })
-    if (codex.kind === 'gstack-setup-failed') return codex
-
-    if (codex.kind === 'gstack-codex-skipped') {
-      const setup = runSetup(root, spawn, ['--team'])
+    for (const step of steps) {
+      const setup = runSetup(root, spawn, step, env, log, now)
       if (!setup.ok) {
-        spinner.fail('gstack setup failed')
+        spinner.fail(step.command === '--team' ? 'gstack setup failed' : 'gstack codex setup failed')
         return { kind: 'gstack-setup-failed', exitCode: setup.exitCode, command: setup.command }
       }
     }
 
+    const codex = finalizeCodexResult()
     spinner.succeed('gstack updated')
     return { kind: 'gstack-updated', root, codex }
   }
@@ -210,25 +297,15 @@ export function ensureGstack(input: EnsureGstackInput): EnsureGstackResult {
     return { kind: 'gstack-clone-failed', exitCode: clone.status ?? -1 }
   }
 
-  const codex = ensureCodexHost({
-    root,
-    spawn,
-    exists,
-    detectCodex,
-    codexConfigPath,
-    codexSkillsRoot,
-    spinner,
-  })
-  if (codex.kind === 'gstack-setup-failed') return codex
-
-  if (codex.kind === 'gstack-codex-skipped') {
-    const setup = runSetup(root, spawn, ['--team'])
+  for (const step of steps) {
+    const setup = runSetup(root, spawn, step, env, log, now)
     if (!setup.ok) {
-      spinner.fail('gstack setup failed')
+      spinner.fail(step.command === '--team' ? 'gstack setup failed' : 'gstack codex setup failed')
       return { kind: 'gstack-setup-failed', exitCode: setup.exitCode, command: setup.command }
     }
   }
 
+  const codex = finalizeCodexResult()
   spinner.succeed('gstack installed')
   return { kind: 'gstack-installed', root, codex }
 }

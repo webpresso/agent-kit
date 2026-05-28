@@ -1,11 +1,14 @@
 import type { Blueprint } from '#core/parser'
+import type { Evidence } from '#evidence.js'
 import type { BlueprintExecutionMetadata } from '#execution/metadata'
 import type { BlueprintLifecycleIntent } from '#lifecycle/engine'
 
 import { z } from 'zod'
 
 import { parseBlueprint } from '#core/parser'
+import { evidenceListSchema } from '#evidence.js'
 import { applyBlueprintLifecycle } from '#lifecycle/engine'
+import { assertAllTasksHaveCanonicalPassingEvidence } from '#verification.js'
 
 import { writeBlueprintExecutionMetadata } from './metadata.js'
 import {
@@ -31,6 +34,7 @@ export type OmxTeamTaskStatus = z.infer<typeof omxTeamTaskStatusSchema>
 export const omxTeamTaskSnapshotSchema = z.object({
   description: z.string().optional(),
   error: z.string().optional(),
+  evidence: evidenceListSchema.optional(),
   result: z.string().optional(),
   runtimeTaskId: z.string().min(1),
   status: omxTeamTaskStatusSchema,
@@ -120,7 +124,7 @@ function applyProjectedIntent(
   const nextStatus =
     intent.type === 'task_start'
       ? 'in_progress'
-      : intent.type === 'task_complete'
+      : intent.type === 'task_verify'
         ? 'done'
         : intent.type === 'task_block'
           ? 'blocked'
@@ -197,9 +201,11 @@ export function projectBlueprintLifecycleFromRuntime(
           : null
         : runtimeTask.status === 'completed'
           ? currentStatus !== 'done'
-            ? ({
-                type: 'task_complete',
+            ? taskVerifyIntent(binding.blueprintTaskId, runtimeTask.evidence) ??
+              ({
+                type: 'task_block',
                 taskId: binding.blueprintTaskId,
+                reason: buildMissingEvidenceReason(binding.blueprintTaskId),
               } satisfies BlueprintLifecycleIntent)
             : null
           : runtimeTask.status === 'blocked' || runtimeTask.status === 'failed'
@@ -224,8 +230,22 @@ export function projectBlueprintLifecycleFromRuntime(
   const allProjectedDone =
     bridge.tasks.length > 0 &&
     bridge.tasks.every((binding) => projectedStatuses.get(binding.blueprintTaskId) === 'done')
+  const allProjectedDoneHavePassingEvidence =
+    allProjectedDone &&
+    bridge.tasks.every((binding) => {
+      if (projectedStatuses.get(binding.blueprintTaskId) !== 'done') {
+        return true
+      }
+      const runtimeTask = runtimeTasksById.get(binding.runtimeTaskId)
+      return runtimeTask?.status === 'completed' && hasPassingEvidence(runtimeTask.evidence)
+    })
 
-  if (status === 'completed' && allProjectedDone && blueprint.status !== 'completed') {
+  if (
+    status === 'completed' &&
+    allProjectedDone &&
+    allProjectedDoneHavePassingEvidence &&
+    blueprint.status !== 'completed'
+  ) {
     intents.push({ type: 'finalize' })
   }
 
@@ -236,6 +256,7 @@ export function normalizeOmxTeamTaskSnapshot(input: Record<string, unknown>): Om
   return omxTeamTaskSnapshotSchema.parse({
     description: typeof input.description === 'string' ? input.description : undefined,
     error: typeof input.error === 'string' ? input.error : undefined,
+    evidence: Array.isArray(input.evidence) ? input.evidence : undefined,
     result: typeof input.result === 'string' ? input.result : undefined,
     runtimeTaskId: typeof input.id === 'string' ? input.id : String(input.id ?? ''),
     status: input.status,
@@ -280,14 +301,46 @@ function buildBlockedReason(snapshot: RuntimeStateSnapshot): string {
   return `${statusPrefix} in ${snapshot.backend} execution ${snapshot.executionId}${taskSuffix}.`
 }
 
-function shouldFinalizeBlueprint(blueprint: Blueprint, snapshot: RuntimeStateSnapshot): boolean {
-  return (
-    snapshot.status === 'completed' &&
-    blueprint.status !== 'completed' &&
-    blueprint.status !== 'archived' &&
-    blueprint.tasks.length > 0 &&
-    blueprint.tasks.every((task) => task.status === 'done')
-  )
+function buildMissingEvidenceReason(taskId: string): string {
+  return `Runtime reported task ${taskId} completed without task-local verification evidence.`
+}
+
+function hasPassingEvidence(evidence: readonly Evidence[] | undefined): evidence is Evidence[] {
+  return Array.isArray(evidence) && evidence.some((item) => item.result === 'pass')
+}
+
+function taskVerifyIntent(
+  taskId: string,
+  evidence: readonly Evidence[] | undefined,
+): Extract<BlueprintLifecycleIntent, { type: 'task_verify' }> | null {
+  if (!hasPassingEvidence(evidence)) return null
+  return { type: 'task_verify', taskId, evidence }
+}
+
+function shouldFinalizeBlueprint(
+  markdown: string,
+  blueprint: Blueprint,
+  snapshot: RuntimeStateSnapshot,
+): boolean {
+  if (
+    snapshot.status !== 'completed' ||
+    blueprint.status === 'completed' ||
+    blueprint.status === 'archived' ||
+    blueprint.tasks.length === 0 ||
+    !blueprint.tasks.every((task) => task.status === 'done')
+  ) {
+    return false
+  }
+
+  try {
+    assertAllTasksHaveCanonicalPassingEvidence(
+      markdown,
+      blueprint.tasks.map((task) => task.id),
+    )
+    return true
+  } catch {
+    return false
+  }
 }
 
 function applyIntent(
@@ -299,7 +352,7 @@ function applyIntent(
     | { type: 'finalize' }
     | { type: 'task_start'; taskId: string }
     | { type: 'task_block'; taskId: string; reason: string }
-    | { type: 'task_complete'; taskId: string },
+    | { type: 'task_verify'; taskId: string; evidence: readonly Evidence[] },
 ): string {
   const result = applyBlueprintLifecycle(markdown, slug, intent)
   appliedTransitions.push(intent.type)
@@ -363,15 +416,22 @@ export function applyRuntimeProgressSnapshot(
     }
 
     if (snapshot.status === 'completed' && task.status !== 'done') {
-      nextMarkdown = applyIntent(nextMarkdown, slug, appliedTransitions, {
-        type: 'task_complete',
-        taskId: snapshot.taskId,
-      })
+      const verifyIntent = taskVerifyIntent(snapshot.taskId, snapshot.evidence)
+      nextMarkdown = applyIntent(
+        nextMarkdown,
+        slug,
+        appliedTransitions,
+        verifyIntent ?? {
+          type: 'task_block',
+          taskId: snapshot.taskId,
+          reason: buildMissingEvidenceReason(snapshot.taskId),
+        },
+      )
       nextBlueprint = parseBlueprint(nextMarkdown, slug)
     }
   }
 
-  if (shouldFinalizeBlueprint(nextBlueprint, snapshot)) {
+  if (shouldFinalizeBlueprint(nextMarkdown, nextBlueprint, snapshot)) {
     nextMarkdown = applyIntent(nextMarkdown, slug, appliedTransitions, { type: 'finalize' })
     nextBlueprint = parseBlueprint(nextMarkdown, slug)
   }

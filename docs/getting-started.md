@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-05-27'
+last_updated: '2026-05-28'
 ---
 
 # Getting started
@@ -18,6 +18,17 @@ Done.
 
 Your repo now has one shared agent contract across the supported coding-agent
 surfaces.
+
+If `wp setup` needs gstack tuning on a workstation with multiple agent CLIs
+installed, use:
+
+- `WP_GSTACK_MODE=full wp setup` to refresh every detected gstack host
+- `WP_GSTACK_HOSTS=codex wp setup` or `WP_GSTACK_HOSTS=claude,codex wp setup`
+  to pin the host set explicitly
+- `WP_VERBOSE_GSTACK=1 wp setup` to show raw upstream gstack output alongside
+  the bounded phase progress
+- `WP_SKIP_GSTACK=1 wp setup` only when you intentionally want to skip gstack
+  entirely
 
 ## What changed
 
@@ -63,7 +74,6 @@ needs one: [Add-ons](./add-ons.md).
 
 ## Package note
 
-As of 2026-05-27, the source/GitHub Packages package is
-`@webpresso/agent-kit`; public npm `webpresso` is still a placeholder until the
-cutover completes. Current package references live in
+As of 2026-05-28, the canonical package identity for this repo is
+`@webpresso/agent-kit`. Package references and release-contract notes live in
 [`markdown-fact-check.md`](./markdown-fact-check.md).

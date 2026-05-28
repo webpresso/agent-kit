@@ -67,6 +67,10 @@ const LAUNCH_SPEC = {
   ],
 } satisfies BlueprintLaunchSpec
 
+function passingTestEvidence(ts: string) {
+  return [{ kind: 'test', command: 'vp test', exit_code: 0, result: 'pass', ts }] as const
+}
+
 describe('buildBlueprintProgressBridgeState', () => {
   it('maps OMX team tasks back to blueprint task ids using Task <id> prefixes', () => {
     const bridge = buildBlueprintProgressBridgeState(
@@ -128,6 +132,7 @@ describe('projectBlueprintLifecycleFromRuntime', () => {
         subject: 'Task 1.1: Launch execution',
       }),
       normalizeOmxTeamTaskSnapshot({
+        evidence: passingTestEvidence('2026-04-10T12:01:00Z'),
         id: '2',
         status: 'completed',
         subject: 'Task 1.2: Verify launch',
@@ -137,7 +142,11 @@ describe('projectBlueprintLifecycleFromRuntime', () => {
     expect(projection.status).toBe('running')
     expect(projection.intents).toEqual([
       { type: 'task_start', taskId: '1.1' },
-      { type: 'task_complete', taskId: '1.2' },
+      {
+        type: 'task_verify',
+        taskId: '1.2',
+        evidence: passingTestEvidence('2026-04-10T12:01:00Z'),
+      },
     ])
   })
 
@@ -180,6 +189,58 @@ describe('projectBlueprintLifecycleFromRuntime', () => {
 
     const completed = projectBlueprintLifecycleFromRuntime(blueprint, bridge, [
       normalizeOmxTeamTaskSnapshot({
+        evidence: passingTestEvidence('2026-04-10T12:01:00Z'),
+        id: '1',
+        status: 'completed',
+        subject: 'Task 1.1: Launch execution',
+      }),
+      normalizeOmxTeamTaskSnapshot({
+        evidence: passingTestEvidence('2026-04-10T12:02:00Z'),
+        id: '2',
+        status: 'completed',
+        subject: 'Task 1.2: Verify launch',
+      }),
+    ])
+
+    expect(completed.status).toBe('completed')
+    expect(completed.intents).toEqual([
+      {
+        type: 'task_verify',
+        taskId: '1.1',
+        evidence: passingTestEvidence('2026-04-10T12:01:00Z'),
+      },
+      {
+        type: 'task_verify',
+        taskId: '1.2',
+        evidence: passingTestEvidence('2026-04-10T12:02:00Z'),
+      },
+      { type: 'finalize' },
+    ])
+  })
+
+  it('does not finalize projected completion without passing evidence for every done task', () => {
+    const blueprint = parseBlueprint(BLUEPRINT_MARKDOWN, 'in-progress/test-blueprint')
+    const bridge = buildBlueprintProgressBridgeState(
+      LAUNCH_SPEC,
+      'team-a',
+      [
+        normalizeOmxTeamTaskSnapshot({
+          id: '1',
+          status: 'pending',
+          subject: 'Task 1.1: Launch execution',
+        }),
+        normalizeOmxTeamTaskSnapshot({
+          id: '2',
+          status: 'pending',
+          subject: 'Task 1.2: Verify launch',
+        }),
+      ],
+      '2026-04-10T12:00:00Z',
+    )
+
+    const completed = projectBlueprintLifecycleFromRuntime(blueprint, bridge, [
+      normalizeOmxTeamTaskSnapshot({
+        evidence: passingTestEvidence('2026-04-10T12:01:00Z'),
         id: '1',
         status: 'completed',
         subject: 'Task 1.1: Launch execution',
@@ -193,9 +254,16 @@ describe('projectBlueprintLifecycleFromRuntime', () => {
 
     expect(completed.status).toBe('completed')
     expect(completed.intents).toEqual([
-      { type: 'task_complete', taskId: '1.1' },
-      { type: 'task_complete', taskId: '1.2' },
-      { type: 'finalize' },
+      {
+        type: 'task_verify',
+        taskId: '1.1',
+        evidence: passingTestEvidence('2026-04-10T12:01:00Z'),
+      },
+      {
+        type: 'task_block',
+        taskId: '1.2',
+        reason: 'Runtime reported task 1.2 completed without task-local verification evidence.',
+      },
     ])
   })
 })

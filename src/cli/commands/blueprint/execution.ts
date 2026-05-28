@@ -10,6 +10,7 @@ import type {
   BlueprintExecutionBackend,
   BlueprintLaunchSpec,
   BlueprintProgressBridgeState,
+  Evidence,
   OmxTeamTaskSnapshot,
   RuntimeStateStatus,
 } from '#index'
@@ -302,6 +303,7 @@ export async function reconcileBlueprintRuntimeSnapshot(
   slug: string,
   snapshot: {
     backend: BlueprintExecutionBackend
+    evidence?: readonly Evidence[]
     executionId: string
     status: RuntimeStateStatus
     taskId?: string
@@ -402,7 +404,10 @@ export async function syncBlueprintExecutionProgress(
 
   if (
     projection.intents.some(
-      (intent) => intent.type === 'task_complete' || intent.type === 'finalize',
+      (intent) =>
+        intent.type === 'task_complete' ||
+        intent.type === 'task_verify' ||
+        intent.type === 'finalize',
     )
   ) {
     assertCompletionEvidence(evidence, metadata.executionId)
