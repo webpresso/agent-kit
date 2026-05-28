@@ -109,7 +109,7 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
     )
   }, 240_000)
 
-  it('default setup leaves context-mode out of host configs', () => {
+  it('default setup configures context-mode host entries', () => {
     const install = run('vp', ['install', '--ignore-scripts'], repo, {})
     expect(install.code).toBe(0)
 
@@ -125,14 +125,14 @@ describe.skipIf(!RUN_HOST_SMOKE)('wp setup host smoke', () => {
     expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).toContain(
       '[mcp_servers.webpresso]',
     )
-    expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).not.toContain('context-mode')
-    expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).not.toContain(
+    expect(readFileSync(path.join(repo, 'opencode.json'), 'utf8')).toContain('context-mode')
+    expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).toContain(
       '[mcp_servers.context-mode]',
     )
-    expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).not.toContain(
+    expect(readFileSync(path.join(codexHome, 'config.toml'), 'utf8')).toContain(
       'plugin_hooks = true',
     )
-    expect(readFileSync(path.join(codexHome, 'hooks.json'), 'utf8')).not.toContain(
+    expect(readFileSync(path.join(codexHome, 'hooks.json'), 'utf8')).toContain(
       'context-mode hook codex pretooluse',
     )
   }, 240_000)

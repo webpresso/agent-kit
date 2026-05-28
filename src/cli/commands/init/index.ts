@@ -81,7 +81,7 @@ const PRESETS = [
   'vision',
 ] as const
 type Preset = (typeof PRESETS)[number]
-const DEFAULT_PRESETS: readonly Preset[] = ['omx', 'omc', 'gstack', 'vision', 'rtk']
+const DEFAULT_PRESETS: readonly Preset[] = ['omx', 'omc', 'gstack', 'vision', 'rtk', 'context-mode']
 const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested')
 
 function parsePresets(withFlag: string | undefined): Preset[] {
@@ -399,7 +399,19 @@ export async function runInit(flags: InitFlags): Promise<number> {
       presetResults.push(visionResult)
     }
 
-    if (presets.includes('context-mode')) {
+    // CI runners (GitHub Actions, etc.) set CI=true but don't have optional
+    // developer-workstation tools (omx, gstack, rtk, context-mode) available.
+    // Failures from these installations must not fail the postinstall in that
+    // context.
+    const isCiEnvironment = process.env.CI === 'true' || process.env.CI === '1'
+
+    if (process.env.WP_SKIP_CONTEXT_MODE === '1') {
+      console.warn(
+        '  context-mode: ⚠ WP_SKIP_CONTEXT_MODE=1 — skipping. context-mode provides ctx_* context reduction and recall lanes.',
+      )
+    } else if (isCiEnvironment && presets.includes('context-mode')) {
+      console.log('  context-mode: - skipped (CI environment)')
+    } else if (presets.includes('context-mode')) {
       const contextModeResult = ensureContextMode({
         repoRoot: consumer.repoRoot,
         options,
@@ -415,11 +427,6 @@ export async function runInit(flags: InitFlags): Promise<number> {
         `  context-mode codex hooks: ${contextModeResult.codexGlobalHooks.action === 'identical' ? 'already path-stable' : contextModeResult.codexGlobalHooks.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓ path-stable'} ${contextModeResult.codexGlobalHooks.targetPath}`,
       )
     }
-
-    // CI runners (GitHub Actions, etc.) set CI=true but don't have optional
-    // developer-workstation tools (omx, gstack, rtk) available. Failures from
-    // these installations must not fail the postinstall in that context.
-    const isCiEnvironment = process.env.CI === 'true' || process.env.CI === '1'
 
     if (isCiEnvironment) {
       console.log('  codex cli: - skipped (CI environment)')

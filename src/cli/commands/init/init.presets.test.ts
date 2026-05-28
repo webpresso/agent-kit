@@ -373,7 +373,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(codexCalls.length).toBeGreaterThanOrEqual(1)
       expect(bunCalls).toHaveLength(1)
       // vp is used by setup preflight, the always-on runtime check, and managed tool updates.
-      expect(vpCalls).toHaveLength(4)
+      expect(vpCalls).toHaveLength(5)
       expect(actionlintCalls).toHaveLength(1)
       expect(codexCalls[0]?.[1]).toEqual(['--version'])
       expect(bunCalls[0]?.[1]).toEqual(['--version'])
@@ -385,6 +385,11 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(
         vpCalls.some(
           (call) => JSON.stringify(call[1]) === JSON.stringify(['update', '-g', '@openai/codex']),
+        ),
+      ).toBe(true)
+      expect(
+        vpCalls.some(
+          (call) => JSON.stringify(call[1]) === JSON.stringify(['update', '-g', 'context-mode']),
         ),
       ).toBe(true)
       expect(

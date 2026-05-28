@@ -399,11 +399,10 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(existsSync(join(repo, '.cursor', 'rules'))).toBe(true)
     // .windsurf/skills now hosts copied skills
     expect(existsSync(join(repo, '.windsurf', 'skills'))).toBe(true)
-    // opencode.json is gated behind `--with context-mode` per the 2026-05-15
-    // opt-in migration (docs/migration/context-mode-opt-in.md). A bare
-    // `runInit` must NOT write it; if this flips, context-mode silently
-    // re-defaulted.
-    expect(existsSync(join(repo, 'opencode.json'))).toBe(false)
+    // context-mode is part of the default workstation lane, so normal setup
+    // writes the shared OpenCode config without requiring `--with context-mode`.
+    expect(existsSync(join(repo, 'opencode.json'))).toBe(true)
+    expect(readFileSync(join(repo, 'opencode.json'), 'utf8')).toContain('context-mode')
     // agent-hooks scaffolder writes hook config
     expect(existsSync(join(repo, '.claude', 'settings.json'))).toBe(true)
     expect(existsSync(join(repo, '.codex', 'hooks.json'))).toBe(true)

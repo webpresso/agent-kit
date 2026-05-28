@@ -183,6 +183,19 @@ function ensureContextModeBinary(
 }
 
 export function ensureContextMode(input: EnsureContextModeInput): EnsureContextModeResult {
+  const codexConfigPath = input.codexConfigPath ?? defaultCodexConfigPath()
+  const opencodeConfigPath = input.opencodeConfigPath ?? defaultOpenCodeConfigPath(input.repoRoot)
+  const codexHooksPath = defaultCodexHooksPathFromConfig(codexConfigPath)
+
+  if (input.options.dryRun) {
+    return {
+      codexFeatures: { targetPath: codexConfigPath, action: 'skipped-dry' },
+      codexGlobalHooks: { targetPath: codexHooksPath, action: 'skipped-dry' },
+      opencodeConfig: { targetPath: opencodeConfigPath, action: 'skipped-dry' },
+      installed: false,
+    }
+  }
+
   const spawn = input.spawn ?? spawnSync
   const spinner = (input.spinnerFactory ?? makeNoopSpinnerFactory())('context-mode')
   const { installed, version, binaryPath } = ensureContextModeBinary(spawn, spinner)
@@ -198,10 +211,6 @@ export function ensureContextMode(input: EnsureContextModeInput): EnsureContextM
     }
     console.warn(pinCheck.warning)
   }
-
-  const codexConfigPath = input.codexConfigPath ?? defaultCodexConfigPath()
-  const opencodeConfigPath = input.opencodeConfigPath ?? defaultOpenCodeConfigPath(input.repoRoot)
-  const codexHooksPath = defaultCodexHooksPathFromConfig(codexConfigPath)
 
   return {
     codexFeatures: ensureCodexContextModeFeatures(codexConfigPath, input.options),

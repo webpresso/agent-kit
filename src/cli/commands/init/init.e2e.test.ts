@@ -220,8 +220,8 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(preToolCommand).toContain('"permissionDecision":"deny"')
       expect(preToolCommand).not.toContain('|| true')
       expect(r.stdout).toContain('wp init: done.')
-      expect(r.stdout).not.toContain('context-mode codex features')
-      expect(r.stdout).not.toContain('context-mode opencode config')
+      expect(r.stdout).toContain('context-mode codex features')
+      expect(r.stdout).toContain('context-mode opencode config')
     })
 
     it('bootstrap: --with base-kit on an empty repo creates docs/hooks/scripts/act/test/e2e/ci scaffolds', () => {
