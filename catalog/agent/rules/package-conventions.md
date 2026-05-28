@@ -52,12 +52,18 @@ the package contract.
 ## Publishing & registry
 
 - The canonical package is `@webpresso/agent-kit`.
-- Publish target is GitHub Packages (`npm.pkg.github.com`) via scoped auth.
-- Auth via `NPM_TOKEN` in CI. Never hardcode tokens or create `.env` files
-  with credentials.
+- Publish target is the public npm registry (`https://registry.npmjs.org/`).
+- Keep checked-in npm config pointed at the public npm registry; do not remap
+  the `@webpresso` scope to GitHub Packages.
+- Auth belongs only to publish flows. Prefer npm trusted publishing; otherwise
+  use `NPM_TOKEN` in CI/manual publish contexts. Never hardcode tokens or
+  create `.env` files with credentials.
 - `prepublishOnly` builds the package before every publish. If a
   package outputs a `dist/`, it must have `prepublishOnly: "vp run build"` (or
   equivalent) so that Changesets publishing always ships built output.
+- Scoped public npm releases must publish with public visibility. Encode that
+  in `package.json#publishConfig.access` unless a deeper release workflow owns
+  the flag explicitly.
 - All public packages are `"type": "module"` — ESM-only output.
 - Run `vp run lint:pkg` (publint / attw) before releasing to catch broken export
   maps.

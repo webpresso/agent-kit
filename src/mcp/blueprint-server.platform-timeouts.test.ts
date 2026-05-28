@@ -8,9 +8,7 @@ import type { ToolHandler, ToolHandlerResult, ToolRegistrar } from './auto-disco
 import { _setSyncAdapterFactory, registerBlueprintTools } from './blueprint-server.js'
 import type { SyncAdapter } from './blueprint-server.js'
 import { FINALIZE_BLUEPRINT } from './blueprint-server.platform-first.test-harness.js'
-import {
-  markBlueprintValidated,
-} from './blueprint-server.test-harness.js'
+import { markBlueprintValidated } from './blueprint-server.test-harness.js'
 
 type RegisteredTool = { name: string; handler: ToolHandler }
 

@@ -41,8 +41,8 @@ function roundUsd(value: number): number {
 }
 
 function resolvePricingEntry(model: string, pricing: PricingTable): PricingEntry {
-  const entry = pricing.entries.find((candidate) =>
-    candidate.model === model || candidate.aliases.includes(model),
+  const entry = pricing.entries.find(
+    (candidate) => candidate.model === model || candidate.aliases.includes(model),
   )
 
   if (!entry) {
@@ -79,8 +79,7 @@ export function aggregateCosts(usages: Usage[], pricing: PricingTable, model: st
 
   const total = roundUsd(costs.reduce((sum, value) => sum + value, 0))
   const mean = roundUsd(total / n)
-  const variance =
-    costs.reduce((sum, value) => sum + (value - mean) ** 2, 0) / n
+  const variance = costs.reduce((sum, value) => sum + (value - mean) ** 2, 0) / n
   const std = roundUsd(Math.sqrt(variance))
 
   return { mean, std, n, total }

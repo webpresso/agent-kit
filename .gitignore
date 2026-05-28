@@ -18,6 +18,8 @@ tsconfig.tsbuildinfo
 # Testing
 coverage/
 .nyc_output/
+.test-plan-service/
+.test-reports/
 
 # E2E Testing
 playwright-report/
@@ -261,6 +263,7 @@ agent-rules/ts-coding-conventions.md
 .claude/agents/
 .claude/hooks/
 .claude/rules/
+.claude/settings.local.json
 .claude/skills/
 .claude/worktrees/
 .claude/scheduled_tasks.lock

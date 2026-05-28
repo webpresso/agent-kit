@@ -535,7 +535,7 @@ function runSecretlint(stageRoot: string, packageRoot: string): unknown {
 
   try {
     execFileSync('pnpm', args, {
-      cwd: process.cwd(),
+      cwd: packageRoot,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
       maxBuffer: 20 * 1024 * 1024,

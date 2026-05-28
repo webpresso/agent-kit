@@ -7,6 +7,13 @@
     "@webpresso/db-branching-neon": "0.2.4"
   },
   "tarball": {
+    "forbiddenPathPatterns": [
+      "/^dist\\/.*\\.map$/",
+      "/^dist\\/.*__integration__\\//",
+      "/^dist\\/.*__mocks__\\//",
+      "/^dist\\/.*runners\\/evals\\//",
+      "/^dist\\/esm\\/ai-prompts\\//"
+    ],
     "forbiddenContentPatterns": [
       "ozby/ingest-lens",
       "webpresso/monorepo"

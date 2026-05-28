@@ -115,7 +115,8 @@ export function buildLaunchPlan({
   const hasBuilt = builtExists ?? existsSync(builtEntrypoint)
   const hasSource = sourceExists ?? existsSync(sourceEntrypoint)
   const resolvedBuiltMtimeMs =
-    builtMtimeMs ?? (builtExists === undefined && hasBuilt ? statSync(builtEntrypoint).mtimeMs : null)
+    builtMtimeMs ??
+    (builtExists === undefined && hasBuilt ? statSync(builtEntrypoint).mtimeMs : null)
   const resolvedSourceMtimeMs =
     sourceMtimeMs ??
     (sourceExists === undefined && hasSource ? statSync(sourceEntrypoint).mtimeMs : null)

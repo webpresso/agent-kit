@@ -19,10 +19,7 @@ interface TestBudgetLike {
   }
 }
 
-export function refineTestBudgetContract(
-  input: TestBudgetLike,
-  ctx: z.RefinementCtx,
-): void {
+export function refineTestBudgetContract(input: TestBudgetLike, ctx: z.RefinementCtx): void {
   const totalBudgetMs = input.workspaceSharding?.totalBudgetMs
   if (
     input.timeoutMs !== undefined &&

@@ -101,7 +101,7 @@ and lost the docker dependency."
 
 LANE MODEL (same as v1, faster + lighter):
   1  agent-kit + ctx-rs (FFI)   wp_session_*    MIT (both)
-  2  — DROPPED —                —               (context-mode out)
+  2  current default context lane  context-mode/ctx_*  Elastic-2.0 external
   3  rtk (upstream)             bash filter     MIT
   4  gstack (upstream)          /skill          MIT
 

@@ -326,7 +326,9 @@ function buildBalancedShards(
     })
 
   for (const candidate of sortedByWeight) {
-    const lightestBucket = buckets.reduce((best, bucket) => (bucket.bytes < best.bytes ? bucket : best))
+    const lightestBucket = buckets.reduce((best, bucket) =>
+      bucket.bytes < best.bytes ? bucket : best,
+    )
     lightestBucket.files.push(candidate.file)
     lightestBucket.bytes += candidate.bytes
   }

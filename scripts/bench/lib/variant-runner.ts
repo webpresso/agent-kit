@@ -87,7 +87,9 @@ export async function runCell(input: RunCellInput): Promise<RunResult> {
   const apiKey = input.apiKeys?.[envKey] ?? process.env[envKey]
   const env = {
     ...Object.fromEntries(
-      Object.entries(process.env).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+      Object.entries(process.env).filter(
+        (entry): entry is [string, string] => typeof entry[1] === 'string',
+      ),
     ),
     HOME: homeDir,
     ...(apiKey ? { ANTHROPIC_API_KEY: apiKey } : {}),

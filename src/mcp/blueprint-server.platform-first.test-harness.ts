@@ -27,7 +27,9 @@ const TASK_VERIFICATION_BLOCK = `**Verification:**
 [{"command":"wp_test --files src/mcp/blueprint-server.platform-first.lifecycle.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-05-28T12:00:00.000Z"}]
 \`\`\``
 
-export async function makePlatformHarness(prefix = 'wp-bs-platform-test-'): Promise<PlatformHarness> {
+export async function makePlatformHarness(
+  prefix = 'wp-bs-platform-test-',
+): Promise<PlatformHarness> {
   const tmpDir = createTempBlueprintRepo(prefix)
   const tools = await registerBlueprintToolMap(tmpDir)
   return { tmpDir, tools }

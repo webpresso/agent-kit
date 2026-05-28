@@ -7,7 +7,7 @@ scope: repo
 applies_to: [agents]
 related: []
 created: '2026-05-07'
-last_reviewed: '2026-05-12'
+last_reviewed: '2026-05-28'
 paths: 
   - '.changeset/**'
   - '.github/workflows/*.yml'
@@ -20,7 +20,7 @@ paths:
 
 This repository uses **Changesets** for version management and publishing.
 The active package identity here is `@webpresso/agent-kit` and the publish
-target is GitHub Packages (`npm.pkg.github.com`).
+target is the public npm registry (`https://registry.npmjs.org/`).
 
 ## Never do these
 
@@ -43,7 +43,7 @@ target is GitHub Packages (`npm.pkg.github.com`).
 1. Implement changes + commit code
 2. vp run changeset          # creates .changeset/<slug>.md
 3. git add .changeset/<slug>.md && git commit -m "chore: add changeset"
-4. Merge to main           # CI runs version bump + publish automatically
+4. Merge to main           # CI runs version bump + public npm publish automatically
 ```
 
 Steps 2-3 happen on the feature branch alongside the code change. There is
@@ -61,9 +61,11 @@ When a feature branch with a `.changeset/<slug>.md` file merges to `main`,
    vp run sync-marketplace-version`. This bumps `package.json`, updates
    `CHANGELOG.md`, removes the consumed `.changeset/<slug>.md` files, and
    syncs `.claude-plugin/marketplace.json` to match the new version.
-2. `git push` — commits the version bump directly to `main`.
-3. `pnpm publish --no-git-checks` — publishes `@webpresso/agent-kit` to
-   GitHub Packages using repo-scoped auth.
+2. `npm publish --provenance --access public` — publishes
+   `@webpresso/agent-kit` to the public npm registry using the workflow-owned
+   publish path.
+3. `git push` — commits the version bump back to `main` only after publish
+   succeeds or the version is already published.
 4. CI creates a `release/v<version>` branch with compiled `dist/` committed
    for Claude Code marketplace consumers.
 
@@ -113,20 +115,24 @@ reusable-release workflow templates here.
 
 This repository must have:
 ```
-.npmrc               # @webpresso:registry=https://npm.pkg.github.com + auth token env-var
-.changeset/config.json   # access: "restricted", baseBranch: "main"
+.npmrc               # public npm registry defaults only; no GitHub Packages remap
+.changeset/config.json   # baseBranch: "main"
 @changesets/cli      # in devDependencies
 ```
 
-Without `.npmrc`, CI publish fails auth. Without `@changesets/cli` in
-`devDependencies`, `vp run changeset` is unavailable in CI.
+Without `@changesets/cli` in `devDependencies`, `vp run changeset` is
+unavailable in CI.
 
 ## Changeset config
 
 `.changeset/config.json` in each repo:
-- `access: "restricted"` — scoped/private-by-default publish contract.
 - `baseBranch: "main"`.
 - `updateInternalDependencies: "patch"`.
+
+For the first scoped public npm release, the effective publish path must set
+public visibility (for example via `package.json#publishConfig.access` or an
+explicit workflow flag). Do not leave the release contract depending on a
+restricted/private default.
 
 ## Marketplace specifics
 

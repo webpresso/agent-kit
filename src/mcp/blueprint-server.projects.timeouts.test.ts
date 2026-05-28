@@ -42,7 +42,9 @@ describe('bounded roots/discovery guard lane', () => {
       }>(result)
 
       expect(data.warnings).toContain('roots_fetch_timeout')
-      expect(data.projects.some((project) => project.worktree_path === currentProjectPath)).toBe(true)
+      expect(data.projects.some((project) => project.worktree_path === currentProjectPath)).toBe(
+        true,
+      )
     } finally {
       if (oldTimeout === undefined) delete process.env.WP_BLUEPRINT_ROOTS_TIMEOUT_MS
       else process.env.WP_BLUEPRINT_ROOTS_TIMEOUT_MS = oldTimeout

@@ -72,7 +72,10 @@ describe('wp_blueprint_list — read/projection contract', () => {
   })
 
   it('filters by status when provided', async () => {
-    const { tools: localTools } = await makeSingleBlueprintHarness('wp-bs-list-filter-', 'list-test')
+    const { tools: localTools } = await makeSingleBlueprintHarness(
+      'wp-bs-list-filter-',
+      'list-test',
+    )
 
     const result = await callTool(localTools, 'wp_blueprint_list', { status: 'draft' })
     const data = parseResult<{

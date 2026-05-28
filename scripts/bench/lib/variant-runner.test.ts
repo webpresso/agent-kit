@@ -106,18 +106,18 @@ describe('variant-runner', () => {
     const spawn: VariantSpawn = async (_cmd, options) => {
       seenEnv = options.env
       return {
-      exitCode: 0,
-      stdout: JSON.stringify({
-        type: 'result',
-        duration_ms: 1,
-        usage: {
-          input_tokens: 0,
-          output_tokens: 0,
-          cache_creation_input_tokens: 0,
-          cache_read_input_tokens: 0,
-        },
-      }),
-      stderr: '',
+        exitCode: 0,
+        stdout: JSON.stringify({
+          type: 'result',
+          duration_ms: 1,
+          usage: {
+            input_tokens: 0,
+            output_tokens: 0,
+            cache_creation_input_tokens: 0,
+            cache_read_input_tokens: 0,
+          },
+        }),
+        stderr: '',
       }
     }
 

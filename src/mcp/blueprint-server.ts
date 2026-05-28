@@ -26,11 +26,7 @@ import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 import { findTemplate } from '#db/templates.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
 import { evidenceListSchema, canonicalizeEvidenceList } from '#evidence.js'
-import {
-  checkFreshness,
-  readCurrentHead,
-  readProjectionMetadata,
-} from '#freshness.js'
+import { checkFreshness, readCurrentHead, readProjectionMetadata } from '#freshness.js'
 import {
   applyVerification,
   assertAllTasksHaveCanonicalPassingEvidence,
@@ -459,8 +455,7 @@ function resolveFallbackProjectCwd(cwd: string): string {
 function buildFallbackCurrentProject(cwd: string): BlueprintProjectRef {
   const worktreePath = resolveFallbackProjectCwd(cwd)
   const blueprintRoot = resolveBlueprintRoot(worktreePath)
-  const hasBlueprints =
-    existsSync(blueprintRoot) && (() => statSync(blueprintRoot).isDirectory())()
+  const hasBlueprints = existsSync(blueprintRoot) && (() => statSync(blueprintRoot).isDirectory())()
   return {
     project_id: worktreePath,
     label: path.basename(worktreePath) || worktreePath,

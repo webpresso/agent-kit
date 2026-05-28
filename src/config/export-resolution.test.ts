@@ -53,11 +53,11 @@ const exportSourceTargets: Record<string, string> = {
 }
 
 const docsLintBins = {
-  'docs-check-internal-links': './bin/docs-check-internal-links.js',
-  'docs-check-refs': './bin/docs-check-refs.js',
-  'docs-check-stale': './bin/docs-check-stale.js',
-  'docs-lint': './bin/docs-lint.js',
-  'docs-migrate': './bin/docs-migrate.js',
+  'docs-check-internal-links': 'bin/docs-check-internal-links.js',
+  'docs-check-refs': 'bin/docs-check-refs.js',
+  'docs-check-stale': 'bin/docs-check-stale.js',
+  'docs-lint': 'bin/docs-lint.js',
+  'docs-migrate': 'bin/docs-migrate.js',
 } as const
 
 type PackageJson = {
@@ -115,8 +115,8 @@ describe('@webpresso/agent-kit package exports', () => {
     const packageJson = await readCanonicalPackageJson()
 
     expect(packageJson.bin).toMatchObject({
-      wp: './bin/wp.js',
-      'wp-pretool-guard': './bin/wp-pretool-guard.js',
+      wp: 'bin/wp.js',
+      'wp-pretool-guard': 'bin/wp-pretool-guard.js',
       ...docsLintBins,
     })
   })

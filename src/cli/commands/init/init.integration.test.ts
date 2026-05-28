@@ -324,17 +324,13 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(existsSync(join(repo, '.claude', 'hooks'))).toBe(false)
   })
 
-  it(
-    'falls back to the currently executing package when the consumer package is not installed yet',
-    async () => {
-      rmSync(join(repo, 'node_modules', 'webpresso'), { force: true })
+  it('falls back to the currently executing package when the consumer package is not installed yet', async () => {
+    rmSync(join(repo, 'node_modules', 'webpresso'), { force: true })
 
-      const code = await runInit({ cwd: repo, yes: true })
+    const code = await runInit({ cwd: repo, yes: true })
 
-      expect(code).toBe(0)
-    },
-    20_000,
-  )
+    expect(code).toBe(0)
+  }, 20_000)
 
   it('preserves existing unmanaged AGENTS.md without writing companion files by default', async () => {
     writeFileSync(join(repo, 'AGENTS.md'), '# Custom already-owned content')

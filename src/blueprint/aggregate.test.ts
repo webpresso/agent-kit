@@ -267,32 +267,28 @@ describe('aggregateBlueprintRows — scope selector', () => {
     expect(result.rows.map((r) => r.slug)).toStrictEqual(['beta'])
   })
 
-  it(
-    'explicit project_id outranks scope',
-    async () => {
-      const a = newProject({ seed: [{ slug: 'alpha' }] })
-      const b = newProject({ seed: [{ slug: 'beta' }] })
+  it('explicit project_id outranks scope', async () => {
+    const a = newProject({ seed: [{ slug: 'alpha' }] })
+    const b = newProject({ seed: [{ slug: 'beta' }] })
 
-      // This test performs two aggregate reads plus project discovery and can
-      // exceed the default 10s budget under full-suite load even though the
-      // isolated runtime is ~5s.
-      const wide = await aggregateBlueprintRows<BlueprintListRow>(
-        callerOpts({ current: a.worktree, mcpRoots: [b.worktree] }, 'all'),
-      )
-      const idForB = wide.projects.find((p) => p.worktree_path === b.worktree)?.project_id
-      expect(typeof idForB).toBe('string')
+    // This test performs two aggregate reads plus project discovery and can
+    // exceed the default 10s budget under full-suite load even though the
+    // isolated runtime is ~5s.
+    const wide = await aggregateBlueprintRows<BlueprintListRow>(
+      callerOpts({ current: a.worktree, mcpRoots: [b.worktree] }, 'all'),
+    )
+    const idForB = wide.projects.find((p) => p.worktree_path === b.worktree)?.project_id
+    expect(typeof idForB).toBe('string')
 
-      const result = await aggregateBlueprintRows<BlueprintListRow>({
-        target: { project_id: idForB as string, scope: 'all' },
-        read: listAllBlueprints,
-        resolveOptions: asResolveOptions({ current: a.worktree, mcpRoots: [b.worktree] }),
-      })
+    const result = await aggregateBlueprintRows<BlueprintListRow>({
+      target: { project_id: idForB as string, scope: 'all' },
+      read: listAllBlueprints,
+      resolveOptions: asResolveOptions({ current: a.worktree, mcpRoots: [b.worktree] }),
+    })
 
-      expect(result.rows.map((r) => r.slug)).toStrictEqual(['beta'])
-      expect(result.projects.length).toBe(1)
-    },
-    20_000,
-  )
+    expect(result.rows.map((r) => r.slug)).toStrictEqual(['beta'])
+    expect(result.projects.length).toBe(1)
+  }, 20_000)
 })
 
 describe('aggregateBlueprintRows — per-project failure isolation', () => {
@@ -344,7 +340,7 @@ describe('aggregateBlueprintRows — per-project failure isolation', () => {
     expect(result.failures.length).toBe(1)
     expect(result.failures[0]?.next_action.kind).toBe('reingest_project')
     expect(result.failures[0]?.next_action.hint).toMatch(/boom-from-reader/)
-  })
+  }, 20_000)
 
   it('a missing DB file (rebuild_db) is reported as a per-project failure, not thrown', async () => {
     const a = newProject({ seed: [{ slug: 'alpha' }] })

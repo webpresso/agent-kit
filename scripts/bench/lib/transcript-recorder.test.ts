@@ -29,8 +29,22 @@ describe('transcript-recorder', () => {
   it('recordStream writes one replayable JSONL line per event with deterministic sha256 event IDs', async () => {
     const outPath = join(dir, 'run-a', 'transcript.jsonl')
     const source = [
-      JSON.stringify({ type: 'assistant', timestamp: 1000, message: { content: [{ type: 'text', text: 'hi' }] } }),
-      JSON.stringify({ type: 'result', timestamp: 1005, duration_ms: 5, usage: { input_tokens: 10, output_tokens: 2, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 } }),
+      JSON.stringify({
+        type: 'assistant',
+        timestamp: 1000,
+        message: { content: [{ type: 'text', text: 'hi' }] },
+      }),
+      JSON.stringify({
+        type: 'result',
+        timestamp: 1005,
+        duration_ms: 5,
+        usage: {
+          input_tokens: 10,
+          output_tokens: 2,
+          cache_creation_input_tokens: 0,
+          cache_read_input_tokens: 0,
+        },
+      }),
     ].join('\n')
 
     const recorded = await recordStream(toStream(source), outPath, 'scenario-debug')
@@ -55,7 +69,11 @@ describe('transcript-recorder', () => {
     const source = [
       'not-json',
       JSON.stringify({ type: 'system', timestamp: 1, subtype: 'init' }),
-      JSON.stringify({ type: 'assistant', timestamp: 2, message: { content: [{ type: 'text', text: 'ok' }] } }),
+      JSON.stringify({
+        type: 'assistant',
+        timestamp: 2,
+        message: { content: [{ type: 'text', text: 'ok' }] },
+      }),
     ].join('\n')
 
     const outA = join(dir, 'run-a', 'transcript.jsonl')

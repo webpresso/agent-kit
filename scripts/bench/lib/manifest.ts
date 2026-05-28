@@ -186,7 +186,9 @@ export function verifyManifest(captured: Manifest, pinned: Manifest): void {
   }
 }
 
-export function loadManifest(lockPath = resolve(REPO_ROOT, 'scripts/bench/manifest.lock.json')): Manifest {
+export function loadManifest(
+  lockPath = resolve(REPO_ROOT, 'scripts/bench/manifest.lock.json'),
+): Manifest {
   const raw = readFileSync(lockPath, 'utf8')
   const parsed = JSON.parse(raw) as Manifest
   return {
@@ -211,7 +213,8 @@ export function resolveWorkspaceConfig(env: NodeJS.ProcessEnv = process.env): Wo
   }
 
   if (mode === 'isolated') {
-    const hasAdminKey = typeof env.ANTHROPIC_ADMIN_KEY === 'string' && env.ANTHROPIC_ADMIN_KEY.length > 0
+    const hasAdminKey =
+      typeof env.ANTHROPIC_ADMIN_KEY === 'string' && env.ANTHROPIC_ADMIN_KEY.length > 0
     return {
       mode,
       cacheDisclaimer: hasAdminKey

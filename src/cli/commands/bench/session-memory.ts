@@ -240,7 +240,10 @@ function resolveVariants(input: RunBenchSessionMemoryInput): BenchVariant[] {
   return ['baseline']
 }
 
-function resolveSelectedScenarios(allScenarios: Scenario[], input: RunBenchSessionMemoryInput): Scenario[] {
+function resolveSelectedScenarios(
+  allScenarios: Scenario[],
+  input: RunBenchSessionMemoryInput,
+): Scenario[] {
   const requested = input.scenario ?? 'all'
   if (requested === 'all') {
     return allScenarios
@@ -284,19 +287,18 @@ function apiKeyMapFromEnv(env: NodeJS.ProcessEnv): Record<string, string | undef
 }
 
 async function loadRuntimeModules(): Promise<RuntimeModules> {
-  const [
-    manifestModule,
-    scenarioModule,
-    costModule,
-    runnerModule,
-    reportModule,
-  ] = await Promise.all([
-    import(pathToFileURL(resolve(REPO_ROOT, 'scripts', 'bench', 'lib', 'manifest.ts')).href),
-    import(pathToFileURL(resolve(REPO_ROOT, 'scripts', 'bench', 'scenarios', '_schema.ts')).href),
-    import(pathToFileURL(resolve(REPO_ROOT, 'scripts', 'bench', 'lib', 'cost-aggregator.ts')).href),
-    import(pathToFileURL(resolve(REPO_ROOT, 'scripts', 'bench', 'lib', 'variant-runner.ts')).href),
-    import(pathToFileURL(resolve(REPO_ROOT, 'scripts', 'bench', 'lib', 'report-writer.ts')).href),
-  ])
+  const [manifestModule, scenarioModule, costModule, runnerModule, reportModule] =
+    await Promise.all([
+      import(pathToFileURL(resolve(REPO_ROOT, 'scripts', 'bench', 'lib', 'manifest.ts')).href),
+      import(pathToFileURL(resolve(REPO_ROOT, 'scripts', 'bench', 'scenarios', '_schema.ts')).href),
+      import(
+        pathToFileURL(resolve(REPO_ROOT, 'scripts', 'bench', 'lib', 'cost-aggregator.ts')).href
+      ),
+      import(
+        pathToFileURL(resolve(REPO_ROOT, 'scripts', 'bench', 'lib', 'variant-runner.ts')).href
+      ),
+      import(pathToFileURL(resolve(REPO_ROOT, 'scripts', 'bench', 'lib', 'report-writer.ts')).href),
+    ])
 
   return {
     aggregateCosts: costModule.aggregateCosts,
@@ -393,8 +395,12 @@ export async function runBenchSessionMemoryCommand(
         )
       }
 
-      const okResults = results.filter((result): result is Extract<RunResult, { ok: true }> => result.ok)
-      const failed = results.find((result): result is Extract<RunResult, { ok: false }> => !result.ok)
+      const okResults = results.filter(
+        (result): result is Extract<RunResult, { ok: true }> => result.ok,
+      )
+      const failed = results.find(
+        (result): result is Extract<RunResult, { ok: false }> => !result.ok,
+      )
       const costSummary =
         okResults.length > 0
           ? runtime.aggregateCosts(

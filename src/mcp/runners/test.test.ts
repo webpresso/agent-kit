@@ -60,7 +60,10 @@ function writeTestFiles(root: string, count: number): string[] {
   mkdirSync(join(root, 'src'), { recursive: true })
   for (let index = 1; index <= count; index += 1) {
     const relative = `src/spec-${index}.test.ts`
-    writeFileSync(join(root, relative), `import { it, expect } from 'vitest'\nit('spec-${index}', () => expect(1).toBe(1))\n`)
+    writeFileSync(
+      join(root, relative),
+      `import { it, expect } from 'vitest'\nit('spec-${index}', () => expect(1).toBe(1))\n`,
+    )
     files.push(relative)
   }
   return files

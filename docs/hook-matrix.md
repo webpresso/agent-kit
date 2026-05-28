@@ -83,8 +83,10 @@ concise warning and leaves the hooks reviewable in Codex with `/hooks`.
 ## MCP redirect guarantee
 
 When MCP is ready, forbidden-command deny reasons lead with a literal
-`mcp__webpresso__wp_*` tool name. Current recorded examples live in:
+`mcp__webpresso__wp_*` tool name. Current recorded examples live in the
+`webpresso/src/hooks/pretool-guard/validators/__fixtures__/redirect-format/`
+fixture set:
 
-- [`/Users/ozby/repos/webpresso/webpresso/src/hooks/pretool-guard/validators/__fixtures__/redirect-format/ingest-lens.txt`](/Users/ozby/repos/webpresso/webpresso/src/hooks/pretool-guard/validators/__fixtures__/redirect-format/ingest-lens.txt)
-- [`/Users/ozby/repos/webpresso/webpresso/src/hooks/pretool-guard/validators/__fixtures__/redirect-format/monorepo.txt`](/Users/ozby/repos/webpresso/webpresso/src/hooks/pretool-guard/validators/__fixtures__/redirect-format/monorepo.txt)
-- [`/Users/ozby/repos/webpresso/webpresso/src/hooks/pretool-guard/validators/__fixtures__/redirect-format/runtime.txt`](/Users/ozby/repos/webpresso/webpresso/src/hooks/pretool-guard/validators/__fixtures__/redirect-format/runtime.txt)
+- `ingest-lens.txt`
+- `monorepo.txt`
+- `runtime.txt`

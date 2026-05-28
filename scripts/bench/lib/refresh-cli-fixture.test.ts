@@ -24,12 +24,26 @@ describe('refresh-cli-fixture gate', () => {
 
   it('treats same schema with different values as compatible', () => {
     const committed = [
-      JSON.stringify({ type: 'assistant', message: { usage: { input_tokens: 0, output_tokens: 0 } } }),
-      JSON.stringify({ type: 'result', duration_ms: 1, usage: { input_tokens: 2, output_tokens: 3 } }),
+      JSON.stringify({
+        type: 'assistant',
+        message: { usage: { input_tokens: 0, output_tokens: 0 } },
+      }),
+      JSON.stringify({
+        type: 'result',
+        duration_ms: 1,
+        usage: { input_tokens: 2, output_tokens: 3 },
+      }),
     ].join('\n')
     const fresh = [
-      JSON.stringify({ type: 'assistant', message: { usage: { input_tokens: 99, output_tokens: 88 } } }),
-      JSON.stringify({ type: 'result', duration_ms: 777, usage: { input_tokens: 4, output_tokens: 5 } }),
+      JSON.stringify({
+        type: 'assistant',
+        message: { usage: { input_tokens: 99, output_tokens: 88 } },
+      }),
+      JSON.stringify({
+        type: 'result',
+        duration_ms: 777,
+        usage: { input_tokens: 4, output_tokens: 5 },
+      }),
     ].join('\n')
 
     expect(diffFixtureSchema(committed, fresh)).toStrictEqual([])

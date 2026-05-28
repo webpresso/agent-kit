@@ -82,7 +82,8 @@ For agent-kit's case (auto-sync from `catalog/` → `.codex/`, `.gemini/`, `.cur
 
 ### `.codex/hooks.json` regeneration is non-portable
 
-- The 8a31e2a `CODEX_BIN` change made `scaffoldAgentHooks` produce absolute paths (`/Users/ozby/...`) per machine
+- The 8a31e2a `CODEX_BIN` change made `scaffoldAgentHooks` produce
+  per-machine absolute home-directory paths
 - This file CAN'T be team-shared in current form
 - Adding to gitignore is the simplest fix; alternative is reverting `CODEX_BIN` to relative form, which would un-fix the codex hook trust path-stability story (codex needs absolute paths for trust verification)
 - Best path forward: keep `CODEX_BIN` absolute (correct for codex trust); gitignore the regenerated file; consumers regenerate fresh on `wp setup`
@@ -135,7 +136,8 @@ Confidence: **high** for items 1-4 (canonical patterns, well-cited). Medium for 
 
 Conditions that would change the recommendation:
 - If `.codex/prompts/` turns out to also be auto-regenerated → extend the gitignore simplification to ignore it too
-- If a downstream consumer (ozby/ingest-lens) depends on the tracked `.codex/agents/` content → coordinate the cleanup with their `wp setup` flow
+- If a downstream consumer such as `ingest-lens` depends on the tracked
+  `.codex/agents/` content → coordinate the cleanup with their `wp setup` flow
 
 ## Sources
 

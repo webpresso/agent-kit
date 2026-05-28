@@ -1,7 +1,7 @@
 /**
  * `wp hooks doctor` — post-install plugin health verification.
  *
- * Verifies the webpresso plugin installation is healthy:
+ * Verifies the agent-kit plugin installation is healthy:
  * - all hook bins exist
  * - bins are executable (skip on win32)
  * - bins respond to empty stdin with exit 0 + JSON
@@ -799,7 +799,7 @@ export async function printHooksDoctor(opts: RunHooksDoctorOptions = {}): Promis
       '  • If live-source linking is broken: `vp install` or `vp run dev:link --consumer <repo>`',
     )
     console.error(
-      '  • If install failed with 403 on @webpresso/*: fix `GH_PACKAGES_TOKEN` / GitHub Packages auth, then rerun `vp install`',
+      '  • If install failed resolving @webpresso/agent-kit: make sure this repo uses the public npm registry, then rerun `vp install`',
     )
   }
 

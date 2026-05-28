@@ -42,16 +42,22 @@ describe('normalizeGlobalCodexHooksJson', () => {
       },
     }
 
-    const result = normalizeGlobalCodexHooksJson(hooks, {
-      contextModeBinary: '/abs/context-mode',
-    }, '/managed')
+    const result = normalizeGlobalCodexHooksJson(
+      hooks,
+      {
+        contextModeBinary: '/abs/context-mode',
+      },
+      '/managed',
+    )
 
     expect(result.changed).toBe(true)
     expect(result.value.hooks).toStrictEqual({
       PostToolUse: [
         {
           matcher: '',
-          hooks: [{ type: 'command', command: '"/managed/wp-global-codex-context-mode-posttooluse.sh"' }],
+          hooks: [
+            { type: 'command', command: '"/managed/wp-global-codex-context-mode-posttooluse.sh"' },
+          ],
         },
       ],
     })
@@ -98,10 +104,14 @@ describe('normalizeGlobalCodexHooksJson', () => {
       },
     }
 
-    const result = normalizeGlobalCodexHooksJson(hooks, {
-      contextModeBinary: '/abs/context-mode',
-      nodeBinary: '/abs/node',
-    }, '/managed')
+    const result = normalizeGlobalCodexHooksJson(
+      hooks,
+      {
+        contextModeBinary: '/abs/context-mode',
+        nodeBinary: '/abs/node',
+      },
+      '/managed',
+    )
 
     expect(result.changed).toBe(false)
     expect(result.value).toStrictEqual(hooks)
@@ -115,7 +125,9 @@ describe('normalizeGlobalCodexHooksJson', () => {
       JSON.stringify(
         {
           hooks: {
-            PostToolUse: [{ hooks: [{ type: 'command', command: 'context-mode hook codex posttooluse' }] }],
+            PostToolUse: [
+              { hooks: [{ type: 'command', command: 'context-mode hook codex posttooluse' }] },
+            ],
             Stop: [
               {
                 hooks: [
@@ -140,8 +152,9 @@ describe('normalizeGlobalCodexHooksJson', () => {
     const managedDir = defaultManagedCodexHooksDir(hooksPath)
 
     expect(result.action).toBe('overwritten')
-    expect(readFileSync(path.join(managedDir, 'wp-global-codex-context-mode-posttooluse.sh'), 'utf8'))
-      .toBe('#!/bin/sh\nexec "/abs/context-mode" hook codex posttooluse "$@"\n')
+    expect(
+      readFileSync(path.join(managedDir, 'wp-global-codex-context-mode-posttooluse.sh'), 'utf8'),
+    ).toBe('#!/bin/sh\nexec "/abs/context-mode" hook codex posttooluse "$@"\n')
     expect(readFileSync(path.join(managedDir, 'wp-global-codex-omx-hook.sh'), 'utf8')).toBe(
       '#!/bin/sh\nexec "/abs/node" "/tmp/oh-my-codex/dist/scripts/codex-native-hook.js" "$@"\n',
     )

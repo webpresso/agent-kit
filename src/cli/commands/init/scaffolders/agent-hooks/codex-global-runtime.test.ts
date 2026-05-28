@@ -48,9 +48,13 @@ describe('global Codex hook runtime contract', () => {
       ['-c', `"${fakeContextMode}" hook codex posttooluse >/dev/null 2>&1`],
       { env },
     )
-    const absNode = spawnSync('/bin/sh', ['-c', `"${fakeNode}" "${fakeHookScript}" >/dev/null 2>&1`], {
-      env,
-    })
+    const absNode = spawnSync(
+      '/bin/sh',
+      ['-c', `"${fakeNode}" "${fakeHookScript}" >/dev/null 2>&1`],
+      {
+        env,
+      },
+    )
 
     expect(bareContextMode.status).not.toBe(0)
     expect(bareNode.status).not.toBe(0)

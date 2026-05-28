@@ -71,13 +71,19 @@ describe('cost-aggregator', () => {
   })
 
   it('costOf throws when the pricing table does not have the requested model', () => {
-    expect(() => costOf({
-      input_tokens: 1,
-      output_tokens: 1,
-      cache_creation_input_tokens: 1,
-      cache_read_input_tokens: 1,
-      duration_ms: 1,
-    }, PRICING, 'missing-model')).toThrowError('Missing pricing for model: missing-model')
+    expect(() =>
+      costOf(
+        {
+          input_tokens: 1,
+          output_tokens: 1,
+          cache_creation_input_tokens: 1,
+          cache_read_input_tokens: 1,
+          duration_ms: 1,
+        },
+        PRICING,
+        'missing-model',
+      ),
+    ).toThrowError('Missing pricing for model: missing-model')
   })
 
   it('pricing JSON validates against the zod schema with aliases and four prices', () => {

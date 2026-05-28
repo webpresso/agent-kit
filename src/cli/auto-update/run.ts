@@ -2,7 +2,7 @@
  * Auto-update orchestrator.
  *
  * `runUpdateFlow(version)` is the single entry point called from bootstrap.ts.
- * It checks the npm registry for a newer version of webpresso and,
+ * It checks the npm registry for a newer version of @webpresso/agent-kit and,
  * when one is available:
  *   1. Writes a cache entry to the state root (read by the SessionStart banner).
  *   2. Prints a one-line update notice to stderr.
@@ -11,8 +11,8 @@
  * The function NEVER throws — all errors are sunk to logUpdateError per D13.
  *
  * ## Registry note
- * Version checks use the npm registry for the canonical public `webpresso`
- * package.
+ * Version checks use the public npm registry for the canonical
+ * `@webpresso/agent-kit` package.
  */
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
@@ -25,7 +25,7 @@ import { scheduleDeferredInstall } from './installer.js'
 import { logUpdateError } from './log.js'
 import { shouldSkipAutoInstall } from './skip.js'
 
-const GH_NPM_URL = 'https://registry.npmjs.org/webpresso'
+const PUBLIC_NPM_URL = 'https://registry.npmjs.org/@webpresso%2Fagent-kit'
 const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000 // 24 hours
 const CACHE_FILENAME = 'update-notifier-cache.json'
 
@@ -62,12 +62,8 @@ async function writeCache(cachePath: string, data: UpdateCache): Promise<void> {
 }
 
 export async function fetchLatestRelease(): Promise<string | null> {
-  const token = process.env.GH_PACKAGES_TOKEN ?? process.env.GITHUB_TOKEN
-  if (token === undefined) return null
-
-  const res = await fetch(GH_NPM_URL, {
+  const res = await fetch(PUBLIC_NPM_URL, {
     headers: {
-      Authorization: `Bearer ${token}`,
       Accept: 'application/json',
     },
   })
@@ -116,7 +112,7 @@ export async function runUpdateFlow(version: string): Promise<void> {
 
     // Notify on stderr — safe for all modes (MCP is gated upstream via shouldSkipUpdateCheck)
     process.stderr.write(
-      `\n  webpresso ${version} → ${latest} available\n  Auto-install scheduled for next \`wp\` invocation.\n\n`,
+      `\n  @webpresso/agent-kit ${version} → ${latest} available\n  Auto-install scheduled for next \`wp\` invocation.\n\n`,
     )
 
     if (shouldSkipAutoInstall(process.env)) return

@@ -59,13 +59,7 @@ export function writeBlueprintFixture(
   cwd: string,
   fixture: BlueprintFixture,
 ): { overviewPath: string } {
-  const overviewPath = path.join(
-    cwd,
-    'blueprints',
-    fixture.stateDir,
-    fixture.slug,
-    '_overview.md',
-  )
+  const overviewPath = path.join(cwd, 'blueprints', fixture.stateDir, fixture.slug, '_overview.md')
   mkdirSync(path.dirname(overviewPath), { recursive: true })
   writeFileSync(overviewPath, fixture.content, 'utf8')
   return { overviewPath }
@@ -111,7 +105,9 @@ export async function makeProjectionBackedBlueprintHarness(
   fixtures: readonly BlueprintFixture[],
 ): Promise<{ tmpDir: string; tools: ToolMap; overviewPaths: string[] }> {
   const tmpDir = createTempBlueprintRepo(prefix)
-  const overviewPaths = fixtures.map((fixture) => writeBlueprintFixture(tmpDir, fixture).overviewPath)
+  const overviewPaths = fixtures.map(
+    (fixture) => writeBlueprintFixture(tmpDir, fixture).overviewPath,
+  )
   await bootstrapBlueprintProjection(tmpDir)
   const tools = await registerBlueprintToolMap(tmpDir)
   return { tmpDir, tools, overviewPaths }
@@ -134,7 +130,11 @@ export function cleanupTempDir(dir: string | undefined): void {
   if (dir) rmSync(dir, { recursive: true, force: true })
 }
 
-export function markBlueprintValidated(cwd: string, slug: string, timestamp = Date.now() + 10_000): void {
+export function markBlueprintValidated(
+  cwd: string,
+  slug: string,
+  timestamp = Date.now() + 10_000,
+): void {
   const validateTimestampPath = path.join(cwd, '.agent', '.validate-timestamps.json')
   mkdirSync(path.dirname(validateTimestampPath), { recursive: true })
   writeFileSync(

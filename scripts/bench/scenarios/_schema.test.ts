@@ -18,12 +18,17 @@ describe('bench scenario schema', () => {
 
     const resumable = scenarios.find((scenario) => scenario.scenario_id === 'resumable-task')
     expect(resumable).toBeDefined()
-    expect(new Set(resumable?.prompt_turns.map((turn) => turn.session_id))).toHaveProperty('size', 2)
+    expect(new Set(resumable?.prompt_turns.map((turn) => turn.session_id))).toHaveProperty(
+      'size',
+      2,
+    )
   })
 
   it('keeps the standalone debug recall file in sync with the inline debug scenario qrels', () => {
     const scenarios = loadAllScenarios()
-    const debugScenario = scenarios.find((scenario) => scenario.scenario_id === 'debug-long-session')
+    const debugScenario = scenarios.find(
+      (scenario) => scenario.scenario_id === 'debug-long-session',
+    )
     const debugRecall = loadDebugRecallFile()
 
     expect(DEBUG_QRELS_FILE.endsWith('debug-recall.json')).toBe(true)

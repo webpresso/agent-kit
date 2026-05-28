@@ -6,12 +6,24 @@
 
 ## Install
 
+Requires Node.js 24 or newer.
+
+Install from the public npm registry:
+
 ```bash
-vp install -g @webpresso/agent-kit
+npm install -g @webpresso/agent-kit
 wp setup
 ```
 
 That's the product.
+
+No private registry setup is required.
+
+If you do not want a global install, run it one-shot instead:
+
+```bash
+npm exec --yes --package @webpresso/agent-kit@latest -- wp setup
+```
 
 `wp setup` is safe to run again. It refreshes the webpresso-owned pieces and
 preserves consumer-owned files.

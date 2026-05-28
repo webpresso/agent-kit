@@ -3,7 +3,7 @@ type: blueprint
 status: parked
 complexity: L
 created: '2026-05-13'
-last_updated: '2026-05-27'
+last_updated: '2026-05-28'
 progress: '0% (parked with v1 — 0/17 tasks)'
 depends_on:
   - ak-session-memory-v1-in-process-sqlite-fts5-via-better-sqlite3
@@ -25,6 +25,8 @@ tags:
 
 # wp session memory v2 — Rust ctx-rs engine swap (same schema)
 
+> **2026-05-28 alignment:** Do not use this parked replacement blueprint to remove `context-mode` from default setup. `context-mode` is the current default external workstation lane; these blueprints are only future MIT replacement ideas.
+>
 > **STATUS: PARKED.** Depends on parked v1. See `parked_reason` in frontmatter.
 
 ## Product wedge anchor
@@ -88,7 +90,7 @@ schema is the contract.
 
 LANE MODEL (same as v1, faster):
   1  agent-kit + ctx-rs (FFI)   wp_session_*    MIT
-  2  — DROPPED —                —               (context-mode out)
+  2  current default context lane  context-mode/ctx_*  Elastic-2.0 external
   3  rtk (upstream)             bash filter     MIT
   4  gstack (upstream)          /skill          MIT
 

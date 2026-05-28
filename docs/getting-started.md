@@ -7,10 +7,19 @@ last_updated: '2026-05-28'
 
 webpresso makes a repo ready for AI coding agents in one pass.
 
+## Requirements
+
+- Node.js 24 or newer
+- A git-tracked repo you want to wire up for coding agents
+
 ## Install
 
+Install `@webpresso/agent-kit` from the public npm registry, then run setup in
+your repo root:
+
 ```bash
-vp install -g @webpresso/agent-kit
+cd your-repo
+npm install -g @webpresso/agent-kit
 wp setup
 ```
 
@@ -18,6 +27,15 @@ Done.
 
 Your repo now has one shared agent contract across the supported coding-agent
 surfaces.
+
+No private registry setup is required.
+
+If you prefer not to keep a global install around, use the one-shot form:
+
+```bash
+cd your-repo
+npm exec --yes --package @webpresso/agent-kit@latest -- wp setup
+```
 
 If `wp setup` needs gstack tuning on a workstation with multiple agent CLIs
 installed, use:

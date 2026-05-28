@@ -2,12 +2,12 @@
  * Package-manager detection for the auto-update installer.
  *
  * Returns the `{manager, command}` tuple that the installer can use to
- * re-install `webpresso` globally, OR returns `{abort: <reason>}`
+ * re-install `@webpresso/agent-kit` globally, OR returns `{abort: <reason>}`
  * when no safe install command can be inferred (e.g. devDep install, Volta
  * shim, unknown manager). The caller turns `abort` into a notify-only outcome.
  *
  * Detection priority:
- *   0. Source/git install — argv1 resolves into the webpresso/webpresso clone
+ *   0. Source/git install — argv1 resolves into the canonical source clone
  *      → `git -C <repo> pull` (works for symlink dev installs).
  *   1. `process.env.npm_config_user_agent` — most reliable; set by the
  *      manager whenever the CLI is launched via the manager's run wrapper.
@@ -35,17 +35,17 @@ export interface DetectAbort {
 
 export type DetectResult = DetectSuccess | DetectAbort
 
-export const GH_PACKAGE_NAME = 'webpresso'
-export const GH_PACKAGES_REGISTRY = 'https://registry.npmjs.org'
+export const PUBLIC_PACKAGE_NAME = '@webpresso/agent-kit'
+export const PUBLIC_NPM_REGISTRY = 'https://registry.npmjs.org'
 
 const VP_INSTALL_COMMAND = [
   'vp',
   'install',
   '-g',
-  GH_PACKAGE_NAME,
+  PUBLIC_PACKAGE_NAME,
   '--',
   '--registry',
-  GH_PACKAGES_REGISTRY,
+  PUBLIC_NPM_REGISTRY,
 ]
 
 const INSTALL_COMMANDS: Record<Exclude<ManagerName, 'git'>, string[]> = {
@@ -57,8 +57,8 @@ const INSTALL_COMMANDS: Record<Exclude<ManagerName, 'git'>, string[]> = {
 }
 
 /**
- * Detect whether argv1 is a symlink pointing into the webpresso/webpresso
- * source clone. Returns the git worktree root if so, null otherwise.
+ * Detect whether argv1 is a symlink pointing into a supported source clone.
+ * Returns the git worktree root if so, null otherwise.
  * Exported for testability.
  */
 export function detectGitInstall(argv1: string): string | null {
@@ -73,7 +73,9 @@ export function detectGitInstall(argv1: string): string | null {
       encoding: 'utf-8',
       stdio: ['ignore', 'pipe', 'ignore'],
     }).trim()
-    if (remote.includes('webpresso/webpresso')) return topLevel
+    if (remote.includes('webpresso/agent-kit') || remote.includes('webpresso/webpresso')) {
+      return topLevel
+    }
   } catch {
     // not inside a git repo or not the right repo
   }
@@ -81,7 +83,7 @@ export function detectGitInstall(argv1: string): string | null {
 }
 
 /**
- * Detect the package manager that owns the running `webpresso` binary.
+ * Detect the package manager that owns the running `wp` / agent-kit binary.
  * Pure function modulo `realpathSync` and `execFileSync` — call sites mock
  * those for tests.
  */
@@ -114,7 +116,7 @@ export function detect(env: NodeJS.ProcessEnv, argv0: string): DetectResult {
     if (fromPath !== null) {
       if (!confirmInstalledGlobally(realpath, env)) {
         return {
-          abort: `webpresso is not a global install (path ${realpath}); auto-install disabled.`,
+          abort: `${PUBLIC_PACKAGE_NAME} is not a global install (path ${realpath}); auto-install disabled.`,
         }
       }
       return { manager: fromPath, command: INSTALL_COMMANDS[fromPath] }
@@ -123,7 +125,7 @@ export function detect(env: NodeJS.ProcessEnv, argv0: string): DetectResult {
 
   // Priority 5 — give up; the caller falls back to notify-only.
   return {
-    abort: 'Unable to detect a package manager for webpresso; auto-install disabled.',
+    abort: `Unable to detect a package manager for ${PUBLIC_PACKAGE_NAME}; auto-install disabled.`,
   }
 }
 
@@ -191,10 +193,10 @@ export function matchStoreMarker(realpath: string): Exclude<ManagerName, 'git'> 
 export function detectShim(realpath: string): string | null {
   const segments = splitPathSegments(realpath)
   if (segments.includes('.volta')) {
-    return 'webpresso is managed by Volta; run `volta install webpresso` to upgrade.'
+    return `${PUBLIC_PACKAGE_NAME} is managed by Volta; run \`volta install ${PUBLIC_PACKAGE_NAME}\` to upgrade.`
   }
   if (segments.includes('.asdf')) {
-    return 'webpresso is managed by asdf; run `asdf reshim nodejs` after upgrading the runtime.'
+    return `${PUBLIC_PACKAGE_NAME} is managed by asdf; reinstall ${PUBLIC_PACKAGE_NAME} after upgrading the runtime, then run \`asdf reshim nodejs\`.`
   }
   return null
 }

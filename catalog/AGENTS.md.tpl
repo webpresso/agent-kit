@@ -1,7 +1,7 @@
 <!--
   AGENTS.md template.
 
-  Current-state agent-kit scaffolding (`wp setup`; public replacement: `webpresso agent setup`) renders this file with:
+  Current-state agent-kit scaffolding (`wp setup`) renders this file with:
   - Repository map: bulleted list of workspace packages inferred from
     pnpm-workspace.yaml / package.json workspaces.
   - Tech stack: short description generated from package.json + detected
@@ -13,10 +13,9 @@
   - Blueprints directory: defaults to `blueprints`. Override via
     .webpressorc.json#blueprintsDir.
 
-  Managed sections in this file are refreshed by agent-kit. Current-state sync uses
-  `wp sync`; public replacement: `webpresso agent sync`. Repo-specific edits belong
-  only inside `user-owned` blocks; agent-kit preserves those blocks verbatim when it
-  rewrites managed content.
+  Managed sections in this file are refreshed by agent-kit. Sync uses `wp sync`.
+  Repo-specific edits belong only inside `user-owned` blocks; agent-kit preserves
+  those blocks verbatim when it rewrites managed content.
 -->
 
 <!-- >>> managed by webpresso (operating-contract) -->
@@ -35,15 +34,14 @@ vp install && vp run setup:agent  # setup:agent runs wp setup, which scaffolds .
 ```
 
 agent-kit's catalog is the single source of truth for generated agent surfaces.
-Webpresso CLI owns the public command surface (`webpresso agent ...`). To
-customize skills, commands, or workflows, edit them in agent-kit's catalog and
-publish — not in individual repos. The default `omx` preset chains
+`wp` is the canonical public CLI surface for setup, sync, and repo automation.
+To customize skills, commands, or workflows, edit them in agent-kit's catalog
+and publish — not in individual repos. The default `omx` preset chains
 `omx setup --yes --scope user` and installs missing OMX through
 `vp install -g oh-my-codex`. The default `omc` preset ensures OMC through
 Claude Code's plugin marketplace in user scope when `claude` is on `PATH`.
-`wp setup --project` is current-state migration wording; public replacement:
-`webpresso agent setup --project`. `wp setup` also repairs the managed
-`.gitignore` block for regenerated agent surfaces so repo-local `.codex/`,
+`wp setup` also repairs the managed `.gitignore` block for regenerated agent
+surfaces so repo-local `.codex/`,
 `.omx/`, `.agent/`, and generated IDE projection outputs stay out of Git.
 Tracked vs ignored rule of thumb:
 
@@ -54,8 +52,7 @@ Tracked vs ignored rule of thumb:
   `.agents/`, generated `.claude/rules/`, `.claude/skills/`,
   `.claude/worktrees/`, editor-local state, and other runtime projections).
 
-`wp setup` / `wp sync` remain current-state bootstrap commands; public
-replacements are `webpresso agent setup` / `webpresso agent sync`.
+`wp setup` / `wp sync` are the canonical bootstrap commands.
 
 ## Plan
 
@@ -99,8 +96,7 @@ behavior and any broader checks this repo requires. Typical gates are:
 - repo policy checks such as `verify:paths` / `verify:secrets` when setup
   scaffolded them
 - docs or blueprint validation when docs/plans changed
-- current-state `wp sync --check` after `wp setup` to verify surfaces are in sync;
-  public replacement: `webpresso agent sync --check` after `webpresso agent setup`
+- `wp sync --check` after `wp setup` to verify surfaces are in sync
 
 If a gate fails, fix the root cause or record the blocker with evidence.
 
@@ -170,8 +166,8 @@ All packages in the webpresso public umbrella use **Changesets**. Never push
 To ship a change:
 1. `vp run changeset` — describe the change and select the bump type.
 2. Commit the generated `.changeset/<name>.md` alongside your code.
-3. Merge to `main`. CI opens a **"Version Packages"** PR automatically.
-4. Merge that PR — CI publishes to GitHub Packages.
+3. Merge to `main`. The release workflow versions the package and publishes it
+   to the public npm registry.
 
 ```bash
 vp run changeset:status   # see pending changesets
@@ -184,8 +180,9 @@ Full protocol: `.agent/rules/changeset-release.md`
 - No `../` parent-relative imports — use workspace deps + subpath exports.
 - No `.mjs` source files — write `.ts` (with Bun/Node shebang if needed).
 - Use `vp` as the command facade (`vp install`, `vp run <script>`) so Vite+ selects the repo-declared package-manager substrate. Do not call `npm`, `npx`, or raw package-manager globals for repo workflows unless a deeper repo instruction explicitly requires it.
-- All packages: `"type": "module"`, `publishConfig` → GitHub Packages registry.
-- Auth: `GH_PACKAGES_TOKEN` env var consumed by `.npmrc`. Never hardcode tokens.
+- All packages: `"type": "module"`, `publishConfig` → public npm registry.
+- Auth: use npm trusted publishing where available, or scope `NPM_TOKEN` to
+  publish-only flows. Never hardcode tokens.
 
 Full details: `.agent/rules/package-conventions.md`
 

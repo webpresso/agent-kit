@@ -9,7 +9,9 @@ export const SAMPLE_FIXTURE_PATH = resolve(testDir, '..', '__fixtures__', 'sampl
 type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue }
 type JsonRecord = { [key: string]: JsonValue }
 
-export type CaptureCli = (args: string[]) => Promise<{ exitCode: number; stdout: string; stderr: string }>
+export type CaptureCli = (
+  args: string[],
+) => Promise<{ exitCode: number; stdout: string; stderr: string }>
 
 export type SchemaLine = {
   type: string
@@ -117,7 +119,9 @@ export function diffFixtureSchema(committedRaw: string, freshRaw: string): strin
   return diffs
 }
 
-async function captureViaClaude(args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+async function captureViaClaude(
+  args: string[],
+): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   const proc = Bun.spawn(['claude', ...args], {
     stdout: 'pipe',
     stderr: 'pipe',
@@ -138,7 +142,9 @@ export async function checkLiveFixture(
 
   const result = await capture(['--print', '--verbose', '--output-format', 'stream-json', 'say hi'])
   if (result.exitCode !== 0) {
-    throw new Error(`Failed to capture fresh fixture: ${result.stderr.trim() || result.stdout.trim()}`)
+    throw new Error(
+      `Failed to capture fresh fixture: ${result.stderr.trim() || result.stdout.trim()}`,
+    )
   }
 
   const freshFixture = extractFixtureLines(result.stdout)

@@ -177,6 +177,37 @@ describe('runInit() — omx + gstack presets (integration)', () => {
   })
 
   describe('--with omc', () => {
+    let originalSkipGstack: string | undefined
+    let originalSkipRtk: string | undefined
+    let originalSkipClaudePlugin: string | undefined
+
+    beforeEach(() => {
+      originalSkipGstack = process.env.WP_SKIP_GSTACK
+      originalSkipRtk = process.env.WP_SKIP_RTK
+      originalSkipClaudePlugin = process.env.WP_SKIP_CLAUDE_PLUGIN
+      process.env.WP_SKIP_GSTACK = '1'
+      process.env.WP_SKIP_RTK = '1'
+      process.env.WP_SKIP_CLAUDE_PLUGIN = '1'
+    })
+
+    afterEach(() => {
+      if (originalSkipGstack === undefined) {
+        delete process.env.WP_SKIP_GSTACK
+      } else {
+        process.env.WP_SKIP_GSTACK = originalSkipGstack
+      }
+      if (originalSkipRtk === undefined) {
+        delete process.env.WP_SKIP_RTK
+      } else {
+        process.env.WP_SKIP_RTK = originalSkipRtk
+      }
+      if (originalSkipClaudePlugin === undefined) {
+        delete process.env.WP_SKIP_CLAUDE_PLUGIN
+      } else {
+        process.env.WP_SKIP_CLAUDE_PLUGIN = originalSkipClaudePlugin
+      }
+    })
+
     it('installs OMC through user-scoped Claude Code plugin commands by default', async () => {
       const code = await runInit({ cwd: repo, yes: true, with: 'omc' })
 

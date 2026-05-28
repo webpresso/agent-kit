@@ -329,9 +329,10 @@ function mapTaskSection(
   const restOfContent = markdown.slice(startIndex + headerMatch[0].length)
   const nextSectionMatch = restOfContent.match(buildTaskSectionBoundaryRegex())
 
-  const endIndex = nextSectionMatch?.index !== undefined
-    ? startIndex + headerMatch[0].length + nextSectionMatch.index
-    : markdown.length
+  const endIndex =
+    nextSectionMatch?.index !== undefined
+      ? startIndex + headerMatch[0].length + nextSectionMatch.index
+      : markdown.length
 
   const before = markdown.slice(0, startIndex)
   const section = markdown.slice(startIndex, endIndex)

@@ -1,14 +1,18 @@
 {
   "name": "@webpresso/agent-kit",
-  "version": "0.21.0",
+  "version": "0.21.3",
   "private": false,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/webpresso/agent-kit.git"
   },
+  "homepage": "https://github.com/webpresso/agent-kit#readme",
+  "bugs": {
+    "url": "https://github.com/webpresso/agent-kit/issues"
+  },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
-    "access": "restricted"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "description": "One command scaffolds a repo so every AI coding agent (Claude Code, Codex CLI, Cursor, Windsurf, Gemini, OpenCode) shares the same context, hooks, and quality gates. The `wp` CLI: blueprints, skills catalog, lore commits, tech-debt lifecycle, audit composite.",
   "keywords": [
@@ -26,24 +30,28 @@
   "license": "MIT",
   "preferGlobal": true,
   "bin": {
-    "wp": "./bin/wp.js",
-    "wp-pretool-guard": "./bin/wp-pretool-guard.js",
-    "wp-post-tool": "./bin/wp-post-tool.js",
-    "wp-stop-qa": "./bin/wp-stop-qa.js",
-    "wp-guard-switch": "./bin/wp-guard-switch.js",
-    "wp-test-quality-check": "./bin/wp-test-quality-check.js",
-    "wp-sessionstart-routing": "./bin/wp-sessionstart-routing.js",
-    "wp-check-dev-link": "./bin/wp-check-dev-link.js",
-    "wp-restore-dev-links": "./bin/wp-restore-dev-links.js",
-    "docs-check-internal-links": "./bin/docs-check-internal-links.js",
-    "docs-check-refs": "./bin/docs-check-refs.js",
-    "docs-check-stale": "./bin/docs-check-stale.js",
-    "docs-lint": "./bin/docs-lint.js",
-    "docs-migrate": "./bin/docs-migrate.js"
+    "wp": "bin/wp.js",
+    "wp-pretool-guard": "bin/wp-pretool-guard.js",
+    "wp-post-tool": "bin/wp-post-tool.js",
+    "wp-stop-qa": "bin/wp-stop-qa.js",
+    "wp-guard-switch": "bin/wp-guard-switch.js",
+    "wp-test-quality-check": "bin/wp-test-quality-check.js",
+    "wp-sessionstart-routing": "bin/wp-sessionstart-routing.js",
+    "wp-check-dev-link": "bin/wp-check-dev-link.js",
+    "wp-restore-dev-links": "bin/wp-restore-dev-links.js",
+    "docs-check-internal-links": "bin/docs-check-internal-links.js",
+    "docs-check-refs": "bin/docs-check-refs.js",
+    "docs-check-stale": "bin/docs-check-stale.js",
+    "docs-lint": "bin/docs-lint.js",
+    "docs-migrate": "bin/docs-migrate.js"
   },
   "files": [
     "bin",
     "dist",
+    "!dist/**/*.map",
+    "!dist/**/__integration__/**",
+    "!dist/**/__mocks__/**",
+    "!dist/**/runners/evals/**",
     "tsconfig",
     "catalog",
     "just",
@@ -490,12 +498,6 @@
         "default": "./dist/esm/ai-memory/hierarchy/*.js"
       }
     },
-    "./ai-prompts": {
-      "import": {
-        "types": "./dist/esm/ai-prompts/index.d.ts",
-        "default": "./dist/esm/ai-prompts/index.js"
-      }
-    },
     "./ai-tools": {
       "import": {
         "types": "./dist/esm/ai-tools/index.d.ts",
@@ -516,6 +518,8 @@
     "chmod-bins": "bun scripts/chmod-bins.ts",
     "link-self-bins": "bun scripts/link-self-bins.ts",
     "dev:link": "bun scripts/link-edge-local.ts",
+    "prepack": "bun src/build/package-manifest.ts prepare",
+    "postpack": "bun src/build/package-manifest.ts restore",
     "generate-skills": "bun src/build/generate-skills-dir.ts",
     "sync-marketplace-version": "bun scripts/sync-marketplace-version.ts",
     "version": "changeset version && vp run sync-marketplace-version",
@@ -535,6 +539,7 @@
     "imports:check": "WP_SKIP_UPDATE_CHECK=1 wp audit no-relative-parent-imports",
     "verify:secrets": "bun scripts/check-no-dev-vars.ts",
     "audit:secret-provider-quarantine": "bun scripts/audit-secret-provider-quarantine.ts",
+    "public:readiness": "bun scripts/public-readiness.ts",
     "audits:check": "WP_SKIP_UPDATE_CHECK=1 wp audit guardrails && vp run hooks:doctor:ci",
     "hooks:doctor": "WP_SKIP_UPDATE_CHECK=1 wp hooks doctor",
     "hooks:doctor:ci": "WP_SKIP_UPDATE_CHECK=1 wp hooks doctor --skip-mcp",
@@ -545,47 +550,47 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "catalog:",
-    "@manypkg/find-root": "catalog:",
+    "@vitejs/plugin-react": "^6.0.1",
+    "@manypkg/find-root": "^3.1.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "better-sqlite3": "^12.9.0",
     "cac": "^7.0.0",
     "env-paths": "^4.0.0",
     "glob": "^13.0.6",
-    "gray-matter": "catalog:",
+    "gray-matter": "^4.0.3",
     "js-yaml": "^4.1.0",
     "ora": "^8.2.0",
     "proper-lockfile": "^4.1.2",
     "remark": "^15.0.1",
-    "remark-frontmatter": "catalog:",
+    "remark-frontmatter": "^5.0.0",
     "remark-validate-links": "^13.1.0",
     "rulesync": "8.15.1",
     "ts-pattern": "^5.9.0",
-    "vite-plus": "catalog:",
-    "yaml": "catalog:",
-    "zod": "catalog:",
+    "vite-plus": "^0.1.19",
+    "yaml": "^2.8.1",
+    "zod": "^4.4.3",
     "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "catalog:",
+    "@arethetypeswrong/cli": "^0.18.2",
     "@changesets/cli": "^2.31.0",
-    "@secretlint/secretlint-rule-preset-recommend": "catalog:",
-    "@stryker-mutator/core": "catalog:",
-    "@stryker-mutator/typescript-checker": "catalog:",
-    "@stryker-mutator/vitest-runner": "catalog:",
+    "@secretlint/secretlint-rule-preset-recommend": "^13.0.2",
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/typescript-checker": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/bun": "^1.1.14",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "catalog:",
+    "@types/node": "^25.6.2",
     "husky": "^9.0.0",
     "oxfmt": "^0.48.0",
     "oxlint": "^1.63.0",
     "publint": "^0.3.20",
-    "secretlint": "catalog:",
-    "tshy": "catalog:",
-    "typescript": "catalog:",
-    "vite": "catalog:",
-    "vitest": "catalog:",
+    "secretlint": "^13.0.2",
+    "tshy": "^4.1.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.11",
+    "vitest": "^4.1.5",
     "webpresso": "latest"
   },
   "tshy": {
@@ -595,7 +600,9 @@
     "exclude": [
       "src/**/*.test.ts",
       "src/**/*.integration.test.ts",
-      "src/**/__fixtures__/**"
+      "src/**/__fixtures__/**",
+      "src/**/__integration__/**",
+      "src/runners/evals/**"
     ],
     "exports": {
       ".": "./src/index.ts",
@@ -656,7 +663,6 @@
       "./ai-memory/checkpoint/*": "./src/ai-memory/checkpoint/*.ts",
       "./ai-memory/facts/*": "./src/ai-memory/facts/*.ts",
       "./ai-memory/hierarchy/*": "./src/ai-memory/hierarchy/*.ts",
-      "./ai-prompts": "./src/ai-prompts/index.ts",
       "./ai-tools": "./src/ai-tools/index.ts",
       "./runners": "./src/runners/index.ts"
     },

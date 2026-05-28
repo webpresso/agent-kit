@@ -278,7 +278,9 @@ export function ensureGstack(input: EnsureGstackInput): EnsureGstackResult {
     for (const step of steps) {
       const setup = runSetup(root, spawn, step, env, log, now)
       if (!setup.ok) {
-        spinner.fail(step.command === '--team' ? 'gstack setup failed' : 'gstack codex setup failed')
+        spinner.fail(
+          step.command === '--team' ? 'gstack setup failed' : 'gstack codex setup failed',
+        )
         return { kind: 'gstack-setup-failed', exitCode: setup.exitCode, command: setup.command }
       }
     }

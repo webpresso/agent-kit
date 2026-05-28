@@ -201,12 +201,12 @@ export function projectBlueprintLifecycleFromRuntime(
           : null
         : runtimeTask.status === 'completed'
           ? currentStatus !== 'done'
-            ? taskVerifyIntent(binding.blueprintTaskId, runtimeTask.evidence) ??
+            ? (taskVerifyIntent(binding.blueprintTaskId, runtimeTask.evidence) ??
               ({
                 type: 'task_block',
                 taskId: binding.blueprintTaskId,
                 reason: buildMissingEvidenceReason(binding.blueprintTaskId),
-              } satisfies BlueprintLifecycleIntent)
+              } satisfies BlueprintLifecycleIntent))
             : null
           : runtimeTask.status === 'blocked' || runtimeTask.status === 'failed'
             ? currentStatus !== 'done'

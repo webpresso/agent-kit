@@ -25,7 +25,6 @@ import { assertNonWorkersVitest4 } from './version-guard.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const configDir = __dirname
-const distConfigDir = dirname(dirname(configDir))
 
 assertNonWorkersVitest4({ caller: 'nodeConfig' })
 
@@ -33,7 +32,7 @@ assertNonWorkersVitest4({ caller: 'nodeConfig' })
 const bunSqliteAlias = [
   {
     find: /^bun:sqlite$/,
-    replacement: join(distConfigDir, '__mocks__', 'bun-sqlite.js'),
+    replacement: join(configDir, 'bun-sqlite-shim.js'),
   },
 ] as const
 

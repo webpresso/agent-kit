@@ -49,14 +49,11 @@ describe('auth preflight package probes', () => {
 })
 
 describe('release workflow publish path', () => {
-  it('publishes with pnpm directly instead of changeset publish', () => {
+  it('publishes with npm public/provenance flow instead of legacy changeset or GitHub Packages publish', () => {
     const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
     expect(workflow.includes('pnpm changeset publish')).toBe(false)
-    expect(workflow.includes('pnpm publish --no-git-checks')).toBe(true)
-    expect(
-      workflow.includes(
-        'grep -qi \'cannot publish over the previously published version\' "$publish_log"',
-      ),
-    ).toBe(true)
+    expect(workflow.includes('pnpm publish --no-git-checks')).toBe(false)
+    expect(workflow.includes('npm publish --provenance --access public')).toBe(true)
+    expect(workflow.includes('cannot publish over the previously published version')).toBe(true)
   })
 })

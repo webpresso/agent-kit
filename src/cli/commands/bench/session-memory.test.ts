@@ -35,9 +35,27 @@ const TEST_SCENARIO = {
   description: 'debug',
   worst_case_token_count: 210000,
   prompt_turns: [
-    { session_id: 's1', turn_idx: 0, role: 'user' as const, text: 'inspect issue', estimated_tokens: 1000 },
-    { session_id: 's1', turn_idx: 1, role: 'assistant' as const, text: 'summary', estimated_tokens: 1000 },
-    { session_id: 's1', turn_idx: 2, role: 'user' as const, text: 'answer recall', estimated_tokens: 1000 },
+    {
+      session_id: 's1',
+      turn_idx: 0,
+      role: 'user' as const,
+      text: 'inspect issue',
+      estimated_tokens: 1000,
+    },
+    {
+      session_id: 's1',
+      turn_idx: 1,
+      role: 'assistant' as const,
+      text: 'summary',
+      estimated_tokens: 1000,
+    },
+    {
+      session_id: 's1',
+      turn_idx: 2,
+      role: 'user' as const,
+      text: 'answer recall',
+      estimated_tokens: 1000,
+    },
   ],
   expected_tool_calls: ['search_files'],
   qrels: [
@@ -49,11 +67,13 @@ const TEST_SCENARIO = {
   ],
 }
 
-function makeDeps(options: {
-  onRunCell?: ReturnType<typeof vi.fn>
-  onVerifyManifest?: ReturnType<typeof vi.fn>
-  tempDir?: string
-} = {}) {
+function makeDeps(
+  options: {
+    onRunCell?: ReturnType<typeof vi.fn>
+    onVerifyManifest?: ReturnType<typeof vi.fn>
+    tempDir?: string
+  } = {},
+) {
   const runCell =
     options.onRunCell ??
     vi.fn(async () => ({
@@ -119,7 +139,9 @@ describe('wp bench session-memory', () => {
 
   it('documents dry-run and single-cell examples', () => {
     expect(getBenchSessionMemoryHelpText()).toContain('wp bench session-memory --dry-run')
-    expect(getBenchSessionMemoryHelpText()).toContain('--scenario debug-long-session --variant baseline --trials 1')
+    expect(getBenchSessionMemoryHelpText()).toContain(
+      '--scenario debug-long-session --variant baseline --trials 1',
+    )
   })
 
   it('creates deterministic run ids from the manifest hash', () => {

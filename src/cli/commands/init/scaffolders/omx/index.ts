@@ -303,7 +303,8 @@ export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
     installed,
     removedProjectFiles,
     codexGlobalHooks: {
-      repaired: globalHooksResult.action === 'overwritten' || globalHooksResult.action === 'created',
+      repaired:
+        globalHooksResult.action === 'overwritten' || globalHooksResult.action === 'created',
       targetPath: globalHooksResult.targetPath,
     },
   }

@@ -6,7 +6,12 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { createProjectResolver } from '#project-resolver.js'
 
-import { callTool, makeRegistrar, parseResult, VALID_BLUEPRINT } from './blueprint-server.test-harness.js'
+import {
+  callTool,
+  makeRegistrar,
+  parseResult,
+  VALID_BLUEPRINT,
+} from './blueprint-server.test-harness.js'
 import { registerBlueprintServer, registerBlueprintTools } from './blueprint-server.js'
 
 describe('nested workspace blueprint targeting', () => {
@@ -35,7 +40,11 @@ describe('nested workspace blueprint targeting', () => {
 
     const framework = path.join(workspaceDir, 'framework')
     mkdirSync(path.join(framework, 'blueprints', 'draft'), { recursive: true })
-    writeFileSync(path.join(framework, 'package.json'), JSON.stringify({ name: 'framework' }), 'utf8')
+    writeFileSync(
+      path.join(framework, 'package.json'),
+      JSON.stringify({ name: 'framework' }),
+      'utf8',
+    )
     writeFileSync(path.join(framework, 'blueprints', 'draft', 'two.md'), '# two\n')
 
     const { registrar, tools } = makeRegistrar()

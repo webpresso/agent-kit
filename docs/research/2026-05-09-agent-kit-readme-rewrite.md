@@ -22,7 +22,11 @@ verdict: adopt
 
 ## What This Is
 
-A pre-rewrite research pass for `README.md` at `/Users/ozby/repos/webpresso/agent-kit/README.md`. Inputs: README best-practice consensus (2026), AI-slop detection literature, four competitor READMEs in the agent-tooling space, and agent-kit's own `VISION.md` and CLI surface. Output: a recommended structure, draft opener variants, and a copy/pasteable five-pair before/after table.
+A pre-rewrite research pass for this repo's `README.md`. Inputs: README
+best-practice consensus (2026), AI-slop detection literature, four competitor
+READMEs in the agent-tooling space, and agent-kit's own `VISION.md` and CLI
+surface. Output: a recommended structure, draft opener variants, and a
+copy/pasteable five-pair before/after table.
 
 ## State of the Art (2026)
 
@@ -264,8 +268,11 @@ wp audit guardrails
 - [10] [alirezarezvani/claude-skills](https://github.com/alirezarezvani/claude-skills) — competitor in skills-library category, positioning contrast.
 - [11] [sickn33/antigravity-awesome-skills](https://github.com/sickn33/antigravity-awesome-skills) — competitor in skills-library category, positioning contrast.
 - [12] [LLMs Have Revived These 5 Anti-Patterns](https://medium.com/according-to-context/llms-have-revived-these-5-anti-patterns-in-software-engineering-e685159fc4d8) — engineering blog, medium credibility, AI-slop characterisation.
-- [13] [agent-kit VISION.md](../../VISION.md) — own vision doc, internal source, the pain hook lives here.
-- [14] [Existing research — Context-mode Plugin Architecture for Agent-Kit Adoption](./2026-04-26-context-mode-plugin-architecture.md) — internal research, prior session, gives the architectural framing for "why context-mode is our positioning peer."
+- [13] [agent-kit VISION.md](../../VISION.md) — own vision doc, in-repo source;
+  the pain hook lives here.
+- [14] [Existing research — Context-mode Plugin Architecture for Agent-Kit Adoption](./2026-04-26-context-mode-plugin-architecture.md) — earlier in-repo
+  research note that gives the architectural framing for "why context-mode is
+  our positioning peer."
 
 ## Verdict
 

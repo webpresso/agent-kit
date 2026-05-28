@@ -183,8 +183,7 @@ describe('repo guardrail audits', () => {
             '.omx/plans must be a derived blueprint handoff, not an authoritative PRD/test-spec',
         }),
         expect.objectContaining({
-          message:
-            '.omx/plans handoff is missing required derived-handoff marker: derived: true',
+          message: '.omx/plans handoff is missing required derived-handoff marker: derived: true',
         }),
       ]),
     )

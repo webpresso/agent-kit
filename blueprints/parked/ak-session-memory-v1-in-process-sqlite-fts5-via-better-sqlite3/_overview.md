@@ -3,15 +3,17 @@ type: blueprint
 status: parked
 complexity: M
 created: '2026-05-13'
-last_updated: '2026-05-27'
+last_updated: '2026-05-28'
 progress: '0% (parked — 0/17 tasks; deferred by operator request)'
 depends_on: []
 parked_reason: |
   Parked by operator request. The in-process better-sqlite3 + FTS5 v1 path
-  remains the preferred Lane 2 design, but implementation is deferred until
-  prerequisite work lands: context-mode opt-in (draft BP), session-store WAL
-  hardening, and the ak-bench session-memory harness to gate ship vs. further
-  parking. Supersedes the earlier Letta-based v1 direction (see sibling parked
+  remains the preferred future MIT Lane 2 design, but implementation is
+  deferred until the default context-mode workstation lane stabilizes,
+  session-store WAL hardening lands, and the ak-bench session-memory harness can
+  gate ship vs. further parking. Do not use this parked blueprint to remove
+  context-mode from default setup; the old opt-in plan is archived as superseded.
+  Supersedes the earlier Letta-based v1 direction (see sibling parked
   blueprints).
 tags:
   - session-memory
@@ -87,11 +89,12 @@ external dependency.
 │  SessionStart:  ak-sessionstart on source=compact (restore) │
 └─────────────────────────────────────────────────────────────┘
 
-LANE MODEL (final, all permissive, all in-process):
-  1  agent-kit + TS session engine   wp_session_*   MIT
-  2  — DROPPED —                     —              (context-mode out)
-  3  rtk (upstream)                  bash filter    MIT
-  4  gstack (upstream)               /skill         MIT
+LANE MODEL (future MIT replacement target; not current setup contract):
+  1  agent-kit + TS session engine   wp_session_*       MIT
+  2  future in-process context lane  wp_session_*       MIT target
+     current default lane            context-mode/ctx_* Elastic-2.0 external
+  3  rtk (upstream)                  bash filter        Apache-2.0
+  4  gstack (upstream)               /skill             MIT
 
 ON-DISK SCHEMA (forward-compatible with v2 Rust engine):
   sources(id INTEGER PK, label TEXT, indexed_at INTEGER, chunk_count INTEGER)

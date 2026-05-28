@@ -86,6 +86,8 @@ describe('report-writer', () => {
     writeReport(report, outPath)
 
     expect(readFileSync(outPath, 'utf8')).toContain('- dry_run: yes')
-    expect(readFileSync(outPath, 'utf8')).toContain('| debug-long-session | baseline | 1 | ok | 0 | 0 | 0 |')
+    expect(readFileSync(outPath, 'utf8')).toContain(
+      '| debug-long-session | baseline | 1 | ok | 0 | 0 | 0 |',
+    )
   })
 })

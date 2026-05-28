@@ -678,7 +678,10 @@ function auditLegacyOmxPlans(root: string): {
     if (!content) continue
     const relativeFile = relativePath(root, join(plansRoot, file))
     const parsed = matter(content)
-    if (/^#\s+(?:PRD|Test Spec):/im.test(content) || /^#\s+(?:PRD|Test Spec):/im.test(parsed.content)) {
+    if (
+      /^#\s+(?:PRD|Test Spec):/im.test(content) ||
+      /^#\s+(?:PRD|Test Spec):/im.test(parsed.content)
+    ) {
       violations.push({
         file: relativeFile,
         message:

@@ -44,7 +44,7 @@ Claude Code
 
 Codex
   ├─ repo layer: .codex/hooks.json for agent-kit/OMX-managed local hooks
-  ├─ global layer: ~/.codex/hooks.json for context-mode/Codex-native hooks
+  ├─ user layer: user-level Codex hooks for context-mode/Codex-native hooks
   ├─ expected composition: multiple owners may share an event
   └─ drift condition: same owner/command duplicated without an explicit exception
 
@@ -69,9 +69,11 @@ The Anthropic spec explicitly says hooks run in parallel and there is no priorit
 
 In the actual installed state on this workspace:
 
-- `~/.claude/settings.json` PreToolUse `Bash` matcher: `rtk hook claude` (user settings).
-- `~/.claude/plugins/cache/context-mode/.../hooks/pretooluse.mjs` (plugin layer): rewrites Bash → `ctx_execute`.
-- `/Users/ozby/repos/webpresso/agent-kit/.claude/settings.json` PreToolUse `Bash|Write|Edit|MultiEdit`: `wp-pretool-guard` (project settings).
+- the user-level Claude settings register `rtk hook claude` for the
+  PreToolUse `Bash` matcher.
+- the installed context-mode plugin hook rewrites Bash → `ctx_execute`.
+- this repo's `.claude/settings.json` registers `wp-pretool-guard` for
+  PreToolUse `Bash|Write|Edit|MultiEdit`.
 
 `wp-pretool-guard` is a **validator** (verified: `src/hooks/pretool-guard/validators/*` — `forbidden-commands.test.ts`, `dangerous-commands.ts`, `mcp-redirect.ts`, `package-imports.ts`, `plan-frontmatter.ts`, `test-quality.ts`). It does not call `updatedInput`. So the actual race is **only** between RTK and context-mode.
 
@@ -81,9 +83,14 @@ The structural fix is *"only one rewriter per matcher"*: have context-mode itsel
 
 **Verdict: VALID but requires confirmation against the repo's ownership guidance.**
 
-Verified mechanism: RTK's `rtk hook claude` is registered on the `Bash` matcher. When context-mode wins the race and rewrites `tool_input` to `ctx_execute(language:"shell", code:"...")`, the tool name changes from `Bash` to `mcp__plugin_context-mode_context-mode__ctx_execute` — RTK's matcher no longer applies. RTK is bypassed.
+Verified mechanism: RTK's `rtk hook claude` is registered on the `Bash`
+matcher. When context-mode wins the race and rewrites `tool_input` to
+`ctx_execute(language:"shell", code:"...")`, the tool no longer enters through
+the `Bash` matcher — RTK's matcher no longer applies. RTK is bypassed.
 
-The fix is in context-mode's local fork at `hooks/pretooluse.mjs`. When rewriting `Bash`→`ctx_execute`, wrap the inner code with `rtk` if `rtk` is on `$PATH`:
+The fix is in the checked-out context-mode source at `hooks/pretooluse.mjs`.
+When rewriting `Bash`→`ctx_execute`, wrap the inner code with `rtk` if `rtk`
+is on `$PATH`:
 
 ```js
 const wrap = process.env.PATH?.includes("/opt/homebrew/bin") && existsSync("/opt/homebrew/bin/rtk")
@@ -102,7 +109,11 @@ The bigger risk: RTK's filtering inside the sandbox might double-process output 
 
 The repo's lane model does not require collapsing every `SessionStart` block into a single owner. The useful distinction is not *"one block vs many blocks"*; it is *"non-overlapping responsibilities vs overlapping rewrites."* Multiple owners can share an event if each block stays in its own lane.
 
-Trying to consolidate the blocks into a single `wp-sessionstart-routing` emission would: (1) couple context-mode's content to agent-kit's release cadence, (2) violate the explicit non-goal *"Hand-maintaining generated hook/config surfaces as the final solution,"* and (3) require agent-kit to know context-mode's internal injection format.
+Trying to consolidate the blocks into a single `wp-sessionstart-routing`
+emission would: (1) couple context-mode's content to agent-kit's release
+cadence, (2) violate the explicit non-goal *"Hand-maintaining generated
+hook/config surfaces as the final solution,"* and (3) require agent-kit to
+know context-mode's implementation-specific injection format.
 
 The right framing is **content density per block**, not block count. Each owner should emit a tight, non-redundant block. The current waste isn't *"three blocks fire"* — it's *"each block restates rules the others already cover."* That's a content question for each owner, not a coordination problem.
 
@@ -145,7 +156,11 @@ The current draft blueprint should stay strict about this invariant: **at most o
 
 ### 3. Fix RTK invisibility inside `ctx_execute` (one-line patch in your fork)
 
-In `/Users/ozby/repos/ozby/context-mode/hooks/pretooluse.mjs`, when emitting `updatedInput.code` for the shell language, prefix with `rtk ` if `rtk` is on PATH and the command isn't already an `rtk *` invocation. This recovers RTK's per-command filtering inside the context-mode sandbox without expanding RTK's ownership lane.
+In the checked-out `context-mode` source's `hooks/pretooluse.mjs`, when
+emitting `updatedInput.code` for the shell language, prefix with `rtk ` if
+`rtk` is on PATH and the command isn't already an `rtk *` invocation. This
+recovers RTK's per-command filtering inside the context-mode sandbox without
+expanding RTK's ownership lane.
 
 **Verify cost before committing:** measure raw vs. RTK-wrapped output size on a real `ctx_execute(shell, "git log -100")` — RTK filters first, context-mode indexes the filtered output. If RTK's compression > context-mode's indexing overhead, ship it. If not, skip.
 
@@ -155,7 +170,11 @@ Don't merge blocks. Instead, audit each owner's SessionStart payload for *conten
 
 ### 5. Confirm `compact` matcher coverage in context-mode's Codex generator
 
-The next adjacent follow-up after the current audit blueprint is to confirm `compact`-related coverage in context-mode's Codex scaffolder. Context-mode's Codex hook generator may be missing `PreCompact`/`PostCompact` coverage that exists in its Claude Code plugin. Confirm in the upstream context-mode repo at `~/.claude/plugins/cache/context-mode/.../hooks/codex/*.mjs` and file the gap upstream.
+The next adjacent follow-up after the current audit blueprint is to confirm
+`compact`-related coverage in context-mode's Codex scaffolder. Context-mode's
+Codex hook generator may be missing `PreCompact`/`PostCompact` coverage that
+exists in its Claude Code plugin. Confirm in the installed context-mode Codex
+hook bundle's `hooks/codex/*.mjs` files and file the gap upstream.
 
 ## Conditions under which this changes
 
@@ -171,7 +190,12 @@ The next adjacent follow-up after the current audit blueprint is to confirm `com
 4. [catalog/agent/rules/gstack-routing.md](../../catalog/agent/rules/gstack-routing.md) — Lane 1–4 ownership rule. Type: in-repo rule. Credibility: authoritative. Sentiment: neutral.
 5. [agent-kit/src/hooks/sessionstart/index.ts](../../src/hooks/sessionstart/index.ts) — agent-kit's SessionStart hook implementation; F3 fact-check comment on `compact` matcher requirement. Type: in-repo source. Credibility: authoritative. Sentiment: neutral.
 6. [agent-kit/src/hooks/pretool-guard/validators/](../../src/hooks/pretool-guard/validators/) — verified: pretool-guard is a multi-validator, not a rewriter. Type: in-repo source. Credibility: authoritative. Sentiment: neutral.
-7. Local `ozby/context-mode` fork, `hooks/pretooluse.mjs` — context-mode's PreToolUse hook source (215 lines); confirms self-heal + rewrite mechanism. Type: forked source. Credibility: high. Sentiment: neutral.
-8. Local installed `rtk` tool, `rtk hook claude --help` — verified RTK 0.39.0 registers as `Bash`-matcher PreToolUse only; 38 verbs in proxy table. Type: installed tool. Credibility: authoritative. Sentiment: neutral.
+7. Checked-out `context-mode` source, `hooks/pretooluse.mjs` — context-mode's
+   PreToolUse hook source (215 lines); confirms self-heal + rewrite mechanism.
+   Type: forked source. Credibility: high. Sentiment: neutral.
+8. Locally installed `rtk` tool, `rtk hook claude --help` — verified RTK
+   0.39.0 registers as `Bash`-matcher PreToolUse only; 38 verbs in proxy
+   table. Type: installed tool. Credibility: authoritative. Sentiment:
+   neutral.
 9. [blog.vincentqiao.com/en/posts/claude-code-settings-hooks](https://blog.vincentqiao.com/en/posts/claude-code-settings-hooks/) — independent deep dive on hook configuration semantics. Type: independent practitioner. Credibility: medium-high. Sentiment: neutral.
 10. [claudefa.st/blog/tools/hooks/hooks-guide](https://claudefa.st/blog/tools/hooks/hooks-guide) — community guide to 12 lifecycle events. Type: independent practitioner. Credibility: medium. Sentiment: neutral.

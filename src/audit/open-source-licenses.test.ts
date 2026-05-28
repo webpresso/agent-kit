@@ -12,16 +12,12 @@ function writeJson(path: string, value: unknown) {
 }
 
 describe('open-source-licenses audit', () => {
-  test(
-    'passes for the agent-kit repository',
-    () => {
-      const result = auditOpenSourceLicenses(repoRoot)
+  test('passes for the agent-kit repository', () => {
+    const result = auditOpenSourceLicenses(repoRoot)
 
-      expect(result.ok).toBe(true)
-      expect(result.violations).toEqual([])
-    },
-    60_000,
-  )
+    expect(result.ok).toBe(true)
+    expect(result.violations).toEqual([])
+  }, 60_000)
 
   test('flags missing root LICENSE and notices files', () => {
     const root = mkdtempSync(join(tmpdir(), 'webpresso-open-source-licenses-'))

@@ -413,7 +413,9 @@ async function promoteBlueprintLocked(
     const unfinished = blueprint.tasks.filter((task) => task.status !== 'done')
     if (unfinished.length > 0) {
       const list = unfinished.map((task) => `${task.id} (${task.status})`).join(', ')
-      throw new Error(`Cannot promote "${slug}" to completed: the following tasks are not done: ${list}`)
+      throw new Error(
+        `Cannot promote "${slug}" to completed: the following tasks are not done: ${list}`,
+      )
     }
     assertAllTasksHaveCanonicalPassingEvidence(
       markdown,

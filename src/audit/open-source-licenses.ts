@@ -24,9 +24,7 @@ const MANIFEST_RELATIVE_PATH = join('catalog', 'agent', 'skills', 'third-party-m
 const REQUIRED_ROOT_FILES = ['LICENSE', 'THIRD-PARTY-NOTICES.md'] as const
 const REQUIRED_PACKED_FILES = ['LICENSE', 'THIRD-PARTY-NOTICES.md'] as const
 
-export function auditOpenSourceLicenses(
-  rootDirectory: string = process.cwd(),
-): RepoAuditResult {
+export function auditOpenSourceLicenses(rootDirectory: string = process.cwd()): RepoAuditResult {
   const root = resolve(rootDirectory)
   const violations: RepoAuditViolation[] = []
   let checked = 0
@@ -216,10 +214,12 @@ function readPackedPackageSurface(root: string): {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
     })
-    const record = (JSON.parse(packJson) as Array<{
-      filename: string
-      files?: Array<{ path: string }>
-    }>)[0]
+    const record = (
+      JSON.parse(packJson) as Array<{
+        filename: string
+        files?: Array<{ path: string }>
+      }>
+    )[0]
     if (!record) {
       return { paths: [], hasContextModeDependency: false }
     }

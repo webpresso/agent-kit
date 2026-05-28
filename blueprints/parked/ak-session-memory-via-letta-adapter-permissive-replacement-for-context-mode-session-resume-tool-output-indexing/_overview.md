@@ -38,7 +38,7 @@ tags:
 
 ## Problem Statement
 
-Today the only path to "agent remembers tool calls across compaction" is context-mode (ELv2). The Elastic License 2.0 forbids hosting the software as a managed service and restricts redistribution. webpresso's open-sourcing effort cannot recommend or bundle ELv2 software in agent-kit's setup flow.
+Today the only path to "agent remembers tool calls across compaction" is context-mode (ELv2). The Elastic License 2.0 forbids hosting the software as a managed service and restricts redistribution. webpresso's open-sourcing effort must not bundle ELv2 software in the package tarball; the current setup flow may request context-mode as an external default workstation lane while preserving package-boundary verification.
 
 Adjacent permissive options (mem0, Letta, mcp-memory-service) were surveyed in
 `docs/research/permissive-memory-landscape.md` (to be created). The user picked
@@ -84,7 +84,7 @@ that setup invisible to the consumer.
 
 LANE MODEL (revised, permissive only):
   1  agent-kit + Letta adapter   wp_session_*    MIT (adapter) + Apache-2 (Letta)
-  2  — DROPPED —                 —               (context-mode out)
+  2  current default context lane  context-mode/ctx_*  Elastic-2.0 external
   3  rtk (upstream)              bash filter     MIT
   4  gstack (upstream)           /skill          MIT
 

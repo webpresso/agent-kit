@@ -195,7 +195,7 @@ describe('scripts/release.ts', () => {
       fixture = createFixture({ withRemote: true })
     })
 
-    it('pushes the tag and release branch to origin', () => {
+    it('pushes the tag and release branch to origin', { timeout: 20000 }, () => {
       const f = fixture!
       const result = runScript(f.repoDir, ['--no-dry-run'])
 

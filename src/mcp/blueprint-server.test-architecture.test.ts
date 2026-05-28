@@ -78,10 +78,14 @@ describe('blueprint-server test architecture guard', () => {
     expect(lineCount('blueprint-server.get-projection.test.ts')).toBeLessThanOrEqual(140)
     expect(lineCount('blueprint-server.context-projection.test.ts')).toBeLessThanOrEqual(140)
     expect(lineCount('blueprint-server.verify-idempotency.test.ts')).toBeLessThanOrEqual(320)
-    expect(lineCount('blueprint-server.platform-first.task-advance.test.ts')).toBeLessThanOrEqual(160)
+    expect(lineCount('blueprint-server.platform-first.task-advance.test.ts')).toBeLessThanOrEqual(
+      160,
+    )
     expect(lineCount('blueprint-server.platform-first.lifecycle.test.ts')).toBeLessThanOrEqual(180)
     expect(lineCount('blueprint-server.platform-first.finalize.test.ts')).toBeLessThanOrEqual(120)
-    expect(lineCount('blueprint-server.platform-first.scaffold-read.test.ts')).toBeLessThanOrEqual(180)
+    expect(lineCount('blueprint-server.platform-first.scaffold-read.test.ts')).toBeLessThanOrEqual(
+      180,
+    )
     expect(lineCount('blueprint-server.platform-timeouts.test.ts')).toBeLessThanOrEqual(280)
   })
 
@@ -99,15 +103,17 @@ describe('blueprint-server test architecture guard', () => {
 
     for (const file of blueprintServerTests) {
       const source = readRelative(file)
-      expect(source, `${file} must rely on file splitting, not ${inFileConcurrencyToken}`).not.toContain(
-        inFileConcurrencyToken,
-      )
+      expect(
+        source,
+        `${file} must rely on file splitting, not ${inFileConcurrencyToken}`,
+      ).not.toContain(inFileConcurrencyToken)
       expect(source, `${file} must not bake in old 120s runner caps`).not.toContain(
         oldTimeoutCapToken,
       )
-      expect(source, `${file} must avoid local wall-clock flakes (${wallClockStartToken})`).not.toContain(
-        wallClockStartToken,
-      )
+      expect(
+        source,
+        `${file} must avoid local wall-clock flakes (${wallClockStartToken})`,
+      ).not.toContain(wallClockStartToken)
       expect(
         source,
         `${file} must avoid local wall-clock budget asserts (${wallClockAssertToken})`,
@@ -138,9 +144,7 @@ describe('blueprint-server test architecture guard', () => {
   it('keeps the shared test harness out of production MCP modules', () => {
     const productionMcpFiles = readdirSync(mcpDir).filter(
       (file) =>
-        file.endsWith('.ts') &&
-        !file.endsWith('.test.ts') &&
-        !file.endsWith('.test-harness.ts'),
+        file.endsWith('.ts') && !file.endsWith('.test.ts') && !file.endsWith('.test-harness.ts'),
     )
 
     for (const file of productionMcpFiles) {
