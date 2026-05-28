@@ -26,6 +26,16 @@ One directory per blueprint, with `_overview.md` as the canonical entry
 point. Supporting files (research notes, data fixtures, etc.) can live
 alongside as `research/*.md`, `data/*.json`, etc.
 
+When OMX or other runtimes materialize execution handoffs, keep that split
+explicit:
+
+- `blueprints/<state>/<slug>/_overview.md` is the canonical plan.
+- `.omx/state/` is runtime/session state only.
+- `.omx/plans/` is derived handoff metadata only, never a second plan store.
+- Completion authority stays with task-local canonical verification evidence in
+  the blueprint; runtime progress or handoff files cannot mark work complete on
+  their own.
+
 ## Frontmatter
 
 ```yaml

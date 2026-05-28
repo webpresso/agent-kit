@@ -21,7 +21,7 @@ preserves consumer-owned files.
 - **One repo brain** — major coding agents read the same operating contract.
 - **Skills that travel** — repo skills show up across supported agent surfaces.
 - **Hooks that help** — generated hooks steer common work through repo quality gates.
-- **Blueprints by default** — planning files and templates are ready when the task needs them.
+- **Blueprints by default** — planning files and templates are ready when the task needs them, and Blueprint markdown stays the canonical plan while OMX handoff files remain derived metadata.
 - **Agent-friendly checks** — tests, lint, typecheck, E2E, and audits are easy to run and cite.
 
 ## Why it exists
