@@ -19,7 +19,7 @@ aligned_blueprints:
   - planned/agent-kit-public-release-scrub
   - >-
     in-progress/consolidate-all-webpresso-agent-sub-packages-into-webpresso-itself-with-subpath-exports-consumers-go-from-6-8-pinned-devdeps-down-to-one-webpresso
-  - planned/mcp-first-secret-surface-hard-cut-roadmap
+  - parked/mcp-first-secret-surface-hard-cut-roadmap
 tags:
   - mcp
   - wrangler
@@ -27,7 +27,7 @@ tags:
   - secrets
   - ci
   - hooks
-parent_roadmap: planned/mcp-first-secret-surface-hard-cut-roadmap
+parent_roadmap: parked/mcp-first-secret-surface-hard-cut-roadmap
 completed_at: '2026-05-27'
 ---
 
@@ -52,7 +52,7 @@ Verified on 2026-05-26:
 - The remaining upstream gap is in `framework`, where public secret legacy still
   exists.
 - The previous blueprint also mixed in blueprint-authoring tasks, which now
-  live in `draft/blueprint-authoring-surface-hardening`.
+  live in `archived/blueprint-authoring-surface-hardening`.
 - This lane preserves canonical MCP `wp_*` tool names. It does not decide
   durable public CLI command ownership; current `wp ...` CLI examples are
   migration-era/current-state examples, and future unified command ownership is
@@ -352,11 +352,11 @@ out of this lane.
 
 | Blueprint | Relationship | Required alignment |
 | --- | --- | --- |
-| `planned/mcp-first-secret-surface-hard-cut-roadmap` | Local parent roadmap | Must list this child in its wave map. |
+| `parked/mcp-first-secret-surface-hard-cut-roadmap` | Local parent roadmap | Must list this child in its wave map. |
 | [`webpresso/framework: public-secret-surface-hard-cut`](https://github.com/webpresso/framework/blob/main/blueprints/completed/public-secret-surface-hard-cut/_overview.md) | Documentary upstream dependency | Defines the finalized public secret contract consumed here. |
 | [`webpresso/monorepo: secret-aware-ci-act-helper-adoption`](https://github.com/webpresso/monorepo/blob/main/webpresso/blueprints/planned/secret-aware-ci-act-helper-adoption/_overview.md) | Documentary downstream adopter | Must consume this stabilized surface instead of raw source-path wrappers. |
 | [`ozby/ingest-lens: public-ci-surface-adoption`](https://github.com/ozby/ingest-lens/blob/main/blueprints/planned/public-ci-surface-adoption/_overview.md) | Documentary downstream adopter | Must use `act-with-webpresso`, `with-secrets -- <cmd>`, and `wp_*` naming. |
-| `draft/blueprint-authoring-surface-hardening` | Sibling follow-up | Holds the split-out blueprint-authoring work. |
+| `archived/blueprint-authoring-surface-hardening` | Sibling follow-up | Holds the split-out blueprint-authoring work. |
 
 ## Risks and edge cases
 

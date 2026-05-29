@@ -52,7 +52,7 @@ Verified constraints on 2026-05-26:
 | Umbrella artifact | Local `type: parent-roadmap` in `agent-kit` | Matches current blueprint conventions and local roadmap audit support. |
 | Cross-repo linkage | Documentary references outside `agent-kit` | Current audit implementation cannot validate external children. |
 | Canonical agent surface | `wp_*` MCP tools plus `wp config secrets ...` and `with-secrets -- <cmd>` | Matches the currently shipped surface. |
-| Unrelated scope | Split blueprint-authoring hardening into a separate draft blueprint | Keeps the CI/tail/secret roadmap executable and narrow. |
+| Unrelated scope | Split blueprint-authoring hardening into a separate archived historical blueprint | Keeps the CI/tail/secret roadmap executable and narrow without implying that the split-out placeholder is still a live local lane. |
 
 ## Quick Reference (Execution Waves)
 
@@ -67,7 +67,7 @@ Verified constraints on 2026-05-26:
 | [`webpresso/framework — public-secret-surface-hard-cut`](https://github.com/webpresso/framework/tree/main/blueprints/completed) | Documentary upstream dependency | Must remove public secret-selection legacy; completed lane defines the hard-cut contract consumed downstream. |
 | [`webpresso/monorepo — secret-aware-ci-act-helper-adoption`](https://github.com/webpresso/monorepo/tree/main/webpresso/blueprints/planned) | Documentary first-party adopter | Must adopt the stabilized public CI/tail/helper contract instead of source-path wrappers. |
 | [`ozby/ingest-lens — public-ci-surface-adoption`](https://github.com/ozby/ingest-lens/tree/main/blueprints/planned) | Documentary external consumer adopter | Must reflect `act-with-webpresso`, `wp_*`, and `with-secrets -- <cmd>` as the real current baseline. |
-| [`webpresso/agent-kit — blueprint-authoring-surface-hardening`](https://github.com/webpresso/agent-kit/tree/main/blueprints/draft) | Sibling follow-up blueprint | Holds the split-out blueprint-authoring tasks previously bundled into the CI/tail child. |
+| [`webpresso/agent-kit — blueprint-authoring-surface-hardening`](https://github.com/webpresso/agent-kit/tree/main/blueprints/archived/blueprint-authoring-surface-hardening) | Historical sibling blueprint | Preserves the split-out blueprint-authoring history and remains outside this roadmap’s executable scope. |
 
 ## Validation notes
 

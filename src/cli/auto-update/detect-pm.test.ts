@@ -27,6 +27,7 @@ import {
   detect,
   detectGitInstall,
   detectShim,
+  formatLegacyCommandReplacementMessage,
   matchStoreMarker,
   parseUserAgent,
 } from './detect-pm.js'
@@ -248,6 +249,34 @@ describe('detect — priority 0: git/source install', () => {
       manager: 'git',
       command: ['git', '-C', '/Users/me/repos/webpresso/webpresso', 'pull'],
     })
+  })
+})
+
+describe('formatLegacyCommandReplacementMessage', () => {
+  it('maps stale setup, sync, audit, docs, skills, hooks, test, e2e, and tech-debt commands', () => {
+    expect(formatLegacyCommandReplacementMessage('wp setup')).toContain(
+      '`webpresso agent setup`',
+    )
+    expect(formatLegacyCommandReplacementMessage('wp sync')).toContain('`webpresso agent sync`')
+    expect(formatLegacyCommandReplacementMessage('wp audit')).toContain('`webpresso agent audit`')
+    expect(formatLegacyCommandReplacementMessage('wp docs lint')).toContain(
+      '`webpresso agent docs lint`',
+    )
+    expect(formatLegacyCommandReplacementMessage('wp skill')).toContain(
+      '`webpresso agent skills`',
+    )
+    expect(formatLegacyCommandReplacementMessage('wp hooks doctor')).toContain(
+      '`webpresso agent hooks doctor`',
+    )
+    expect(formatLegacyCommandReplacementMessage('wp test')).toContain('`webpresso agent test`')
+    expect(formatLegacyCommandReplacementMessage('wp e2e')).toContain('`webpresso agent e2e`')
+    expect(formatLegacyCommandReplacementMessage('wp tech-debt')).toContain(
+      '`webpresso agent tech-debt`',
+    )
+  })
+
+  it('returns null for commands without a known replacement', () => {
+    expect(formatLegacyCommandReplacementMessage('wp mystery')).toBeNull()
   })
 })
 

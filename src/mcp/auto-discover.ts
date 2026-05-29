@@ -75,10 +75,35 @@ export interface ToolRegistrar {
   ): void
 }
 
+export function registerToolDescriptor(
+  server: ToolRegistrar,
+  descriptor: ToolDescriptor,
+): ToolDescriptor {
+  const jsonSchema = toJsonSchema(descriptor.inputSchema)
+  const outputSchema = descriptor.outputSchema ? toJsonSchema(descriptor.outputSchema) : undefined
+  server.registerTool(
+    descriptor.name,
+    descriptor.description,
+    jsonSchema,
+    outputSchema,
+    descriptor.handler,
+    descriptor.annotations,
+  )
+  return descriptor
+}
+
+export function registerToolDescriptors(
+  server: ToolRegistrar,
+  descriptors: readonly ToolDescriptor[],
+): ToolDescriptor[] {
+  return descriptors.map((descriptor) => registerToolDescriptor(server, descriptor))
+}
+
 const SKIP_SUFFIXES = ['.test.ts', '.test.js', '.integration.test.ts', '.integration.test.js']
 const SUPPORTED_EXTENSIONS = new Set(['.ts', '.js', '.mjs', '.cjs'])
 
 function shouldSkip(file: string): boolean {
+  if (file.startsWith('_')) return true
   if (file.endsWith('.d.ts') || file.endsWith('.d.ts.map')) return true
   if (file.endsWith('.js.map') || file.endsWith('.ts.map')) return true
   for (const suffix of SKIP_SUFFIXES) {
@@ -155,7 +180,7 @@ export async function discoverTools(
   toolsDir: string,
 ): Promise<ToolDescriptor[]> {
   const entries = await readdir(toolsDir, { withFileTypes: true })
-  const registered: ToolDescriptor[] = []
+  const loaded: ToolDescriptor[] = []
 
   for (const entry of entries) {
     if (!entry.isFile()) continue
@@ -172,18 +197,8 @@ export async function discoverTools(
       throw new Error(`Tool file ${fullPath} default export is malformed (missing name or handler)`)
     }
 
-    const jsonSchema = toJsonSchema(descriptor.inputSchema)
-    const outputSchema = descriptor.outputSchema ? toJsonSchema(descriptor.outputSchema) : undefined
-    server.registerTool(
-      descriptor.name,
-      descriptor.description,
-      jsonSchema,
-      outputSchema,
-      descriptor.handler,
-      descriptor.annotations,
-    )
-    registered.push(descriptor)
+    loaded.push(descriptor)
   }
 
-  return registered
+  return registerToolDescriptors(server, loaded)
 }

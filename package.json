@@ -166,6 +166,12 @@
         "default": "./dist/esm/index.js"
       }
     },
+    "./bundle": {
+      "import": {
+        "types": "./dist/esm/cli/bundle/index.d.ts",
+        "default": "./dist/esm/cli/bundle/index.js"
+      }
+    },
     "./blueprint": {
       "import": {
         "types": "./dist/esm/blueprint/index.d.ts",
@@ -513,6 +519,8 @@
   "scripts": {
     "setup:agent": "wp setup",
     "build": "tshy && vp run chmod-bins && vp run link-self-bins",
+    "build:runtime-binaries": "bun scripts/build-runtime-binaries.ts",
+    "stage:plugin-runtime": "bun scripts/stage-plugin-runtime-artifacts.ts",
     "postbuild": "vp run generate-skills && vp run sync-doc-templates",
     "chmod-bins": "bun scripts/chmod-bins.ts",
     "link-self-bins": "bun scripts/link-self-bins.ts",
@@ -525,9 +533,9 @@
     "version": "changeset version && vp run sync-marketplace-version",
     "release:publish": "bun scripts/release-publish.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --exclude '**/*.integration.test.ts' && vitest run --no-file-parallelism .integration.test.ts",
-    "test:unit": "vitest run --exclude '**/*.integration.test.ts'",
-    "test:integration": "vitest run --no-file-parallelism .integration.test.ts",
+    "test": "vitest run --exclude '**/*.integration.test.ts' --maxWorkers 1 && vitest run --no-file-parallelism .integration.test.ts --testTimeout 30000",
+    "test:unit": "vitest run --exclude '**/*.integration.test.ts' --maxWorkers 1",
+    "test:integration": "vitest run --no-file-parallelism .integration.test.ts --testTimeout 30000",
     "test:mutation": "bun stryker run stryker.config.ts",
     "eval": "bun src/runners/evals/index.ts",
     "lint": "vp lint",
@@ -610,6 +618,7 @@
     ],
     "exports": {
       ".": "./src/index.ts",
+      "./bundle": "./src/cli/bundle/index.ts",
       "./blueprint": "./src/blueprint/index.ts",
       "./blueprint/local": "./src/blueprint/local.ts",
       "./blueprint/tech-debt": "./src/blueprint/tech-debt/index.ts",

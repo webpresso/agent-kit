@@ -159,6 +159,7 @@ describe('tooling umbrella package contract', () => {
     }
     const exports = pkg.exports ?? {}
 
+    expect(exports).toHaveProperty('./bundle')
     expect(exports).toHaveProperty('./vitest/node')
     expect(exports).toHaveProperty('./vitest/react')
     expect(exports).toHaveProperty('./vitest/workers')

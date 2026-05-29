@@ -22,6 +22,7 @@ export default defineConfig({
       { find: /^#secret-gate\/(.*)/, replacement: resolve(__dirname, 'src/secret-gate/$1') },
       { find: /^#mcp\/(.*)/, replacement: resolve(__dirname, 'src/mcp/$1') },
       { find: /^#content\/(.*)/, replacement: resolve(__dirname, 'src/content/$1') },
+      { find: /^#runtime\/(.*)/, replacement: resolve(__dirname, 'src/runtime/$1') },
       { find: /^#tool-runtime$/, replacement: resolve(__dirname, 'src/tool-runtime/index.ts') },
       { find: /^#tool-runtime\/(.*)/, replacement: resolve(__dirname, 'src/tool-runtime/$1') },
       {

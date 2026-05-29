@@ -101,6 +101,9 @@
       "#content/*": [
         "./src/content/*"
       ],
+      "#runtime/*": [
+        "./src/runtime/*.ts"
+      ],
       "#output-transforms/*": [
         "./src/output-transforms/*"
       ],

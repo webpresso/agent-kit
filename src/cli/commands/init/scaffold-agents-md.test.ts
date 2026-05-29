@@ -119,10 +119,12 @@ describe('renderAgentsMd', () => {
       'setup:agent runs wp setup, which scaffolds .agent/, AGENTS.md, hooks, and runs wp sync',
     )
     expect(rendered).toContain("agent-kit's catalog is the single source of truth")
-    expect(rendered).toContain('`wp` is the canonical public CLI surface')
-    expect(rendered).toContain('`wp setup` / `wp sync` are the canonical bootstrap commands.')
-    expect(rendered).not.toContain('webpresso agent setup')
-    expect(rendered).not.toContain('webpresso agent sync')
+    expect(rendered).toContain(
+      'Agent-kit owns the generated agent surfaces in this file; the Webpresso CLI host owns the end-user command surface.',
+    )
+    expect(rendered).toContain('Current-state bootstrap commands remain `wp setup` / `wp sync`')
+    expect(rendered).toContain('future unified CLI replacements are `webpresso agent setup`')
+    expect(rendered).toContain('`webpresso agent sync`')
     expect(rendered).not.toContain('webpresso is the single source of truth.')
     expect(rendered).toContain('<!-- >>> managed by webpresso (operating-contract) -->')
     expect(rendered).toContain('<!-- >>> user-owned (repo-customizations) -->')

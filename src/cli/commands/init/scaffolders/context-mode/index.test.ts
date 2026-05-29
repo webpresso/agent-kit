@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -26,12 +26,22 @@ function makeSpinnerFactory(): {
 
 describe('context-mode preset', () => {
   let repoRoot: string
+  let originalPath: string | undefined
 
   beforeEach(() => {
+    originalPath = process.env.PATH
     repoRoot = mkdtempSync(join(tmpdir(), 'wp-context-mode-'))
+    const fakeBinDir = join(repoRoot, 'bin')
+    const fakeContextMode = join(fakeBinDir, 'context-mode')
+    mkdirSync(fakeBinDir, { recursive: true })
+    writeFileSync(fakeContextMode, '#!/usr/bin/env sh\necho 1.2.3\n', 'utf8')
+    chmodSync(fakeContextMode, 0o755)
+    process.env.PATH = `${fakeBinDir}:${originalPath ?? ''}`
   })
 
   afterEach(() => {
+    if (originalPath === undefined) delete process.env.PATH
+    else process.env.PATH = originalPath
     rmSync(repoRoot, { recursive: true, force: true })
   })
 

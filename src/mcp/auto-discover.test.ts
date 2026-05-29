@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
-import { discoverTools, type ToolDescriptor } from './auto-discover.js'
+import { discoverTools, registerToolDescriptors, type ToolDescriptor } from './auto-discover.js'
 
 interface RegisteredCall {
   name: string
@@ -39,6 +39,24 @@ function writeToolFile(dir: string, fileName: string, body: string): string {
 }
 
 describe('discoverTools', () => {
+  it('registers provided tool descriptors without filesystem discovery', () => {
+    const fake = makeFakeServer()
+    const descriptor: ToolDescriptor = {
+      name: 'compiled_fixture',
+      description: 'compiled fixture',
+      inputSchema: z.object({ value: z.string() }),
+      handler: async () => ({ content: [{ type: 'text', text: 'ok' }] }),
+    }
+
+    const registered = registerToolDescriptors(fake.server, [descriptor])
+
+    expect(registered).toEqual([descriptor])
+    expect(fake.calls).toHaveLength(1)
+    expect(fake.calls[0]?.name).toBe('compiled_fixture')
+    expect(fake.calls[0]?.description).toBe('compiled fixture')
+    expect(fake.calls[0]?.handler).toBe(descriptor.handler)
+  })
+
   it('discovers and registers a tool from a *.js file', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'wp-mcp-discover-'))
     writeToolFile(
@@ -93,6 +111,28 @@ describe('discoverTools', () => {
         '}',
       ].join('\n'),
     )
+    const fake = makeFakeServer()
+    await discoverTools(fake.server, dir)
+    expect(fake.calls.map((c) => c.name)).toEqual(['good'])
+  })
+
+  it('skips underscore-prefixed helper modules', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'wp-mcp-discover-helper-'))
+    writeToolFile(
+      dir,
+      'good.js',
+      [
+        'const fakeShape = { _def: { typeName: "ZodObject", shape: () => ({}) }, parse: (x) => x }',
+        'export default {',
+        '  name: "good",',
+        '  description: "good",',
+        '  inputSchema: fakeShape,',
+        '  handler: async () => ({ content: [{ type: "text", text: "ok" }] }),',
+        '}',
+      ].join('\n'),
+    )
+    writeToolFile(dir, '_registry.js', 'export const COMPILED_TOOL_REGISTRY = []\n')
+
     const fake = makeFakeServer()
     await discoverTools(fake.server, dir)
     expect(fake.calls.map((c) => c.name)).toEqual(['good'])

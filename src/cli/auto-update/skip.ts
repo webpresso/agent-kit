@@ -40,7 +40,7 @@ export const CI_ENV_KEYS = [
   'JENKINS_URL',
 ] as const
 
-const SKIP_SUBCOMMANDS = new Set(['mcp'])
+const SKIP_SUBCOMMANDS = new Set(['mcp', 'hook'])
 
 export function shouldSkipUpdateCheck(env: NodeJS.ProcessEnv, argv: string[]): boolean {
   if (hasInformationalFlag(argv)) return true

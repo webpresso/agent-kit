@@ -16,7 +16,6 @@ import {
   ListToolsRequestSchema,
   RootsListChangedNotificationSchema,
 } from '@modelcontextprotocol/sdk/types.js'
-import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -26,35 +25,15 @@ import {
   type ToolAnnotations,
   type ToolHandler,
   type ToolRegistrar,
+  registerToolDescriptors,
 } from './auto-discover.js'
 import { registerBlueprintServer } from './blueprint-server.js'
+import { COMPILED_TOOL_REGISTRY } from './tools/_registry.js'
+import { readOwnedPackageVersion } from '#runtime/package-version.js'
 
 const SERVER_NAME = 'webpresso'
 
-// Walk upward from this module's location until we find package.json. Works
-// for both src/mcp/server.ts (dev) and dist/esm/mcp/server.js (built) without
-// hardcoding asymmetric `../../..` counts.
-const MAX_UPWARD_LEVELS = 8
-
-function readPackageVersion(): string {
-  let dir = dirname(fileURLToPath(import.meta.url))
-  for (let i = 0; i < MAX_UPWARD_LEVELS; i++) {
-    const candidate = join(dir, 'package.json')
-    if (existsSync(candidate)) {
-      const pkg = JSON.parse(readFileSync(candidate, 'utf-8')) as { version?: unknown }
-      // Some build outputs emit a marker `package.json` (e.g. `{ "type": "module" }`)
-      // without a version. Skip those and keep walking so we land on the real
-      // package root, instead of throwing the moment we see any package.json.
-      if (typeof pkg.version === 'string' && pkg.version.length > 0) return pkg.version
-    }
-    const parent = dirname(dir)
-    if (parent === dir) break
-    dir = parent
-  }
-  throw new Error('Cannot locate a versioned package.json relative to webpresso MCP server module')
-}
-
-const SERVER_VERSION = readPackageVersion()
+const SERVER_VERSION = readOwnedPackageVersion(import.meta.url)
 
 interface RegisteredTool {
   name: string
@@ -72,6 +51,14 @@ function defaultToolsDir(): string {
   return join(here, 'tools')
 }
 
+export type ToolLoadMode = 'filesystem' | 'registry'
+
+function resolveDefaultToolLoadMode(): ToolLoadMode {
+  return process.env.WP_MCP_TOOL_MODE === 'registry' || process.env.WP_COMPILED_RUNTIME === '1'
+    ? 'registry'
+    : 'filesystem'
+}
+
 export interface CreateServerOptions {
   /**
    * Directory to scan for tool descriptors. Defaults to `./tools` relative to
@@ -79,6 +66,12 @@ export interface CreateServerOptions {
    * `vp run build`.
    */
   toolsDir?: string
+  /**
+   * Tool loading strategy. Use `registry` for compiled runtime execution where
+   * runtime directory scans are unsafe, and `filesystem` for dev/test disk
+   * discovery.
+   */
+  toolLoadMode?: ToolLoadMode
   /**
    * Repo working directory passed through to the blueprint structured-store
    * registrar (Task 2.1). Defaults to `process.cwd()`. Tests inject a tmpdir.
@@ -107,7 +100,12 @@ export async function createServer(options: CreateServerOptions = {}): Promise<S
     },
   }
 
-  await discoverTools(registrar, options.toolsDir ?? defaultToolsDir())
+  const toolLoadMode = options.toolLoadMode ?? resolveDefaultToolLoadMode()
+  if (toolLoadMode === 'registry') {
+    registerToolDescriptors(registrar, COMPILED_TOOL_REGISTRY)
+  } else {
+    await discoverTools(registrar, options.toolsDir ?? defaultToolsDir())
+  }
 
   // Task 2.1: register the blueprint structured-store tools AFTER auto-discover
   // so any tool-name collision surfaces here as a thrown error rather than

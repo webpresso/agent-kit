@@ -16,7 +16,7 @@ tags:
   - audit
   - mcp
   - docs
-parent_roadmap: in-progress/ai-reliability-contract-roadmap
+parent_roadmap: parked/ai-reliability-contract-roadmap
 ---
 
 # AI reliability contract enforcement
@@ -161,7 +161,7 @@ lane.
 
 **Files:**
 
-- Create: `blueprints/planned/ai-reliability-contract-roadmap/_overview.md`
+- Create: `blueprints/parked/ai-reliability-contract-roadmap/_overview.md`
 - Create: `blueprints/planned/ai-reliability-contract-enforcement/_overview.md`
 
 **Steps (TDD):**
@@ -192,7 +192,7 @@ lane.
 
 | Blueprint | Relationship | Required alignment |
 | --- | --- | --- |
-| `planned/ai-reliability-contract-roadmap` | Local parent roadmap | Must list this child in Wave 0. |
+| `parked/ai-reliability-contract-roadmap` | Local parent roadmap | Must list this child in Wave 0. |
 | [`ozby/ingest-lens: adopt-ai-reliability-contract`](https://github.com/ozby/ingest-lens/tree/main/blueprints/planned) | Documentary downstream adopter | Will implement provenance/confidence/replay adoption once this audit/doc surface is stable. |
 
 ## Risks and edge cases

@@ -41,6 +41,7 @@ const SUPPORTED_COMMANDS = [
   'tech-debt',
   'worktree',
   'mcp',
+  'hook',
   'hooks',
   'gain',
   'bench',
@@ -248,6 +249,11 @@ export async function main(): Promise<number> {
     case 'mcp': {
       const { registerMcpCommand } = await import('./commands/mcp.js')
       registerMcpCommand(cli)
+      break
+    }
+    case 'hook': {
+      const { registerHookCommand } = await import('./commands/hook.js')
+      registerHookCommand(cli)
       break
     }
     case 'hooks': {

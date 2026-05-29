@@ -425,8 +425,8 @@ created: ${staleDateStr}
     })
   })
 
-  describe('mutant-killing: handleParseSummaryError ZodError malformed summary', () => {
-    it('should include the path of the invalid field in malformed message', async () => {
+  describe('legacy frontmatter defaults', () => {
+    it('should default omitted complexity instead of marking the plan malformed', async () => {
       const planDir = path.join(testDir, 'webpresso/blueprints/zod-err-detail')
       await fs.mkdir(planDir, { recursive: true })
       await fs.writeFile(
@@ -439,14 +439,13 @@ status: in-progress
 `,
       )
 
-      // Should return malformed summary with error details
       const plans = await service.list()
-      const malformedPlan = plans.find((p) => p.name === 'zod-err-detail')
-      expect(malformedPlan).toMatchObject({
+      const plan = plans.find((p) => p.name === 'zod-err-detail')
+      expect(plan).toMatchObject({
         name: 'zod-err-detail',
-        malformed: expect.stringContaining('Invalid frontmatter'),
+        complexity: 'M',
       })
-      expect(malformedPlan?.malformed).toContain('complexity')
+      expect(plan).not.toHaveProperty('malformed')
     })
   })
 })
