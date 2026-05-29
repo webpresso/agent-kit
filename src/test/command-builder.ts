@@ -1,4 +1,5 @@
 import type { ResolvedTestTarget } from './target-resolver.js'
+import { getManagedRunner } from '#tool-runtime'
 
 export interface CommandConfig {
   command: string
@@ -20,6 +21,7 @@ export interface TestCommandOptions {
   concurrencyLimit?: number
   log?: VpRunLogMode
   passthrough?: readonly string[]
+  filterOutput?: boolean
 }
 
 export function buildTestCommand(
@@ -52,8 +54,12 @@ export function buildVpTestCommand(
     args.push('--', ...passthrough)
   }
 
+  const resolution = getManagedRunner('vp', { filterOutput: options.filterOutput })
   const env = buildVpRunEnv(options)
-  return env ? { command: 'vp', args, env } : { command: 'vp', args }
+  const mergedArgs = [...resolution.args, ...args]
+  return env
+    ? { command: resolution.command, args: mergedArgs, env }
+    : { command: resolution.command, args: mergedArgs }
 }
 
 export function buildVitestCommand(
@@ -83,7 +89,8 @@ export function buildVitestCommand(
 
   args.push(...buildVitestPassthrough(options), ...testFiles)
 
-  return { command: 'vitest', args }
+  const resolution = getManagedRunner('vitest', { filterOutput: options.filterOutput })
+  return { command: resolution.command, args: [...resolution.args, ...args] }
 }
 
 export function getVpTestTask(

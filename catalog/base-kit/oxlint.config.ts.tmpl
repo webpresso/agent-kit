@@ -1,0 +1,24 @@
+import { config } from '@webpresso/agent-kit/oxlint'
+
+export default {
+  ...config,
+  env: {
+    builtin: true,
+    node: true,
+  },
+  ignorePatterns: [
+    'dist',
+    'node_modules',
+    'reports',
+    '.stryker-tmp',
+    '.agent',
+    '.agents',
+    '.claude',
+    '.codex',
+    '.cursor',
+    '.gemini',
+    '.opencode',
+    '.omx',
+    '.windsurf',
+  ],
+}

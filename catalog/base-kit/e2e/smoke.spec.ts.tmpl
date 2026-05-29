@@ -1,0 +1,9 @@
+import { expect, test } from '@playwright/test'
+
+const smokePageUrl = new URL('./fixtures/smoke.html', import.meta.url).href
+
+test('opens the file-based smoke page', async ({ page }) => {
+  await page.goto(smokePageUrl)
+  await expect(page.getByRole('heading', { name: 'Agent Kit quality scaffold' })).toBeVisible()
+  await expect(page.getByTestId('status')).toHaveText('ready')
+})

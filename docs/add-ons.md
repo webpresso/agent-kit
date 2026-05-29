@@ -1,12 +1,18 @@
 ---
 type: guide
-last_updated: '2026-05-28'
+last_updated: '2026-05-29'
 ---
 
 # Add-ons
 
-Think of this page as the integration shelf: some integrations are requested by
-the default setup, and some are explicit opt-ins.
+Think of this page as the integration shelf. It is separate from the repo
+bootstrap.
+
+- **Default repo bootstrap:** `base-kit` creates the starter quality scaffold
+  and package scripts when files are absent.
+- **Default workstation presets:** `omx`, `omc`, `gstack`, `vision`, `rtk`, and
+  `context-mode` are requested by default and degrade when the matching host or
+  auth is missing.
 
 Most repos should only run:
 
@@ -43,7 +49,9 @@ external integration instead.
 ## Default bootstrap
 
 `wp setup` already handles the default repo contract, hooks, blueprints,
-templates, local guardrails, and the default workstation preset set.
+templates, local guardrails, and `base-kit` quality files. Those generated
+quality files are absent-only: replace the starter sample with real code/tests,
+and reruns preserve your files.
 
 Most users should never need to think about those pieces individually. When a
 row says “in the default preset set,” it means `wp setup` includes that preset

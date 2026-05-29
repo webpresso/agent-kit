@@ -1,10 +1,12 @@
 ---
 type: blueprint
+title: Replace context-mode with a persistent MIT ai-memory tool stack
 status: parked
 complexity: L
+owner: agent-kit
 created: '2026-05-14'
-last_updated: '2026-05-15'
-progress: '0% (parked — refined to current repo layout on 2026-05-15; awaits BP A + WAL BP + benchmark harness)'
+last_updated: '2026-05-29'
+progress: 'Parked on 2026-05-29: ELv2 default exposure is already addressed, the WAL prerequisite is completed, and the token-savings harness is now in progress; this remains longer-horizon product work pending benchmark verdicts and an explicit unpark decision'
 depends_on:
   - make-context-mode-an-opt-in-dependency-in-agent-kit-so-consumers-can-ship-without-the-elv2-plugin-loaded-by-default
   - harden-session-store-multi-window-wal-safety-with-deterministic-concurrency-tests-across-all-session-tools

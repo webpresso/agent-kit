@@ -8,26 +8,26 @@ describe('wp test command helpers', () => {
     expect(TEST_COMMAND_HELP).toContain('wp test --file apps/cli2/src/commands/target.test.ts')
   })
 
-  it('builds package-target commands with passthrough args', () => {
+  it('builds package-target commands through the managed runtime core with passthrough args', () => {
     expect(
       createAkTestCommandConfig({
         package: ['cli2'],
         passthrough: ['--reporter=dot'],
       }),
     ).toEqual({
-      command: 'vp',
-      args: ['run', 'cli2', 'test', '--', '--reporter=dot'],
+      command: 'rtk',
+      args: ['vp', 'run', 'cli2', 'test', '--', '--reporter=dot'],
     })
   })
 
-  it('builds file-target commands', () => {
+  it('builds file-target commands through the managed runtime core', () => {
     expect(
       createAkTestCommandConfig({
         file: ['apps/cli2/src/commands/target.test.ts'],
       }),
     ).toEqual({
-      command: 'vitest',
-      args: ['run', 'apps/cli2/src/commands/target.test.ts'],
+      command: 'rtk',
+      args: ['vp', 'exec', 'vitest', 'run', 'apps/cli2/src/commands/target.test.ts'],
     })
   })
 })

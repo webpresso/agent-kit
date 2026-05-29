@@ -1,5 +1,9 @@
 ---
 type: blueprint
+title: "Harden Plugin Hooks: suppress-stderr and MCP Readiness Sentinel"
+owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 status: completed
 complexity: XS
 created: 2026-04-26
@@ -15,6 +19,12 @@ tags:
 ---
 
 # Harden Plugin Hooks: suppress-stderr and MCP Readiness Sentinel
+## Product wedge anchor
+
+- **Stage outcome:** the completed Harden Plugin Hooks: suppress-stderr and MCP Readiness Sentinel work remains truthfully represented in the blueprint lifecycle and continues to describe the shipped outcome of this lane.
+- **Consuming surface:** the repo-local agent-kit surfaces and docs touched by this completed lane.
+- **New user-visible capability:** none new in this cleanup pass; the capability shipped already, and this blueprint now stays structurally valid as a completed record.
+
 
 > **2026-04-28 update:** Task 1.1 (stderr suppression) is absorbed into the coordinated blueprint's [Task 1.2](../coordinated-pre-tool-hook-unified-hook-process-for-context-mode-agent-kit/_overview.md#infra-task-12-shared-stderr-suppression-and-hook-entry-bootstrapping) which provides a shared `hook-bootstrap.ts` used by all hook entry points. Task 1.2 (MCP readiness sentinel) remains here.
 
@@ -116,3 +126,7 @@ Both tasks are independent and can be applied in any order. Neither changes obse
 - **Windows ppid unreliability:** On Windows, each hook invocation spawns in a new process with a different ppid. `sentinelPath()` based on ppid will never match across invocations. `isMcpReady()` explicitly returns false on Windows to avoid false positives — routing simply falls through on Windows until a cross-platform session-id strategy is added.
 - **Sentinel stale after SIGKILL:** If the MCP server is killed with SIGKILL (no cleanup), the sentinel file remains. The PID probe (`process.kill(pid, 0)`) handles this: if the PID has been recycled to a different process, it will return true (false positive). Mitigation: sentinel content should be checked for process name or start time if this becomes a real issue.
 - **tmpdir PID wrap on multi-user systems:** On shared hosts where PIDs wrap rapidly (e.g. containerized CI), two different MCP server processes from different users could share the same ppid value, causing a stale-hit false positive. The sentinel file is in tmpdir which is typically per-user, so this is only a risk if tmpdir itself is shared.
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

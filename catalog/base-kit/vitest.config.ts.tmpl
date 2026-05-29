@@ -1,0 +1,12 @@
+import { nodeConfig } from '@webpresso/agent-kit/vitest/node'
+import { defineConfig, mergeConfig } from 'vitest/config'
+
+export default mergeConfig(
+  nodeConfig,
+  defineConfig({
+    test: {
+      include: ['src/**/*.test.ts'],
+      exclude: ['e2e/**', 'node_modules/**', '.stryker-tmp/**'],
+    },
+  }),
+)

@@ -54,6 +54,7 @@ export interface E2eCommandRequest {
   workers?: number | string
   testList?: string
   passthrough?: readonly string[]
+  filterOutput?: boolean
 }
 
 export interface E2eExecutionRequest extends E2eCommandRequest {

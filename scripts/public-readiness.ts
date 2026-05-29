@@ -100,6 +100,12 @@ for (const [name, command, args, env] of [
     ['./bin/docs-lint.js', 'README.md', 'docs/getting-started.md', 'docs/README.md'],
     process.env,
   ] as const,
+  [
+    'packed-consumer-setup-smoke',
+    'bun',
+    ['scripts/public-consumer-smoke.ts', '--setup-only'],
+    { ...process.env, WP_SKIP_UPDATE_CHECK: '1' },
+  ] as const,
 ]) {
   const r = run(command, args, env)
   results.push(r.ok ? pass(name, 'ok') : fail(name, `exit ${r.code}`))

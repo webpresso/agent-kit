@@ -5,86 +5,86 @@ import { buildTestCommand, buildVitestCommand, buildVpTestCommand } from './comm
 describe('buildVpTestCommand', () => {
   it('builds a vp package test command', () => {
     expect(buildVpTestCommand(['cli2'])).toEqual({
-      command: 'vp',
-      args: ['run', 'cli2', 'test'],
+      command: 'rtk',
+      args: ['vp', 'run', 'cli2', 'test'],
     })
   })
 
   it('builds explicit vp task ids for scoped package targets', () => {
     expect(buildVpTestCommand(['@repo/logger'])).toEqual({
-      command: 'vp',
-      args: ['run', '@repo/logger#test'],
+      command: 'rtk',
+      args: ['vp', 'run', '@repo/logger#test'],
     })
   })
 
   it('builds vp test command with no-cache option', () => {
     expect(buildVpTestCommand(['cli2'], { noCache: true })).toEqual({
-      command: 'vp',
-      args: ['run', 'cli2', '--no-cache', 'test'],
+      command: 'rtk',
+      args: ['vp', 'run', 'cli2', '--no-cache', 'test'],
     })
   })
 
   it('builds vp test command with cache option', () => {
     expect(buildVpTestCommand(['cli2'], { cache: true })).toEqual({
-      command: 'vp',
-      args: ['run', 'cli2', '--cache', 'test'],
+      command: 'rtk',
+      args: ['vp', 'run', 'cli2', '--cache', 'test'],
     })
   })
 
   it('builds vp test command with parallel option', () => {
     expect(buildVpTestCommand(['cli2'], { parallel: true })).toEqual({
-      command: 'vp',
-      args: ['run', 'cli2', '--parallel', 'test'],
+      command: 'rtk',
+      args: ['vp', 'run', 'cli2', '--parallel', 'test'],
     })
   })
 
   it('builds vp test command with mutation task', () => {
     expect(buildVpTestCommand(['cli2'], { mutation: true })).toEqual({
-      command: 'vp',
-      args: ['run', 'cli2', 'test:mutation'],
+      command: 'rtk',
+      args: ['vp', 'run', 'cli2', 'test:mutation'],
     })
   })
 
   it('builds vp test command with workers task', () => {
     expect(buildVpTestCommand(['cli2'], { workers: true })).toEqual({
-      command: 'vp',
-      args: ['run', 'cli2', 'test:workers'],
+      command: 'rtk',
+      args: ['vp', 'run', 'cli2', 'test:workers'],
     })
   })
 
   it('builds vp test command with watch task', () => {
     expect(buildVpTestCommand(['cli2'], { watch: true })).toEqual({
-      command: 'vp',
-      args: ['run', 'cli2', 'test:watch'],
+      command: 'rtk',
+      args: ['vp', 'run', 'cli2', 'test:watch'],
     })
   })
 
   it('builds vp test command with concurrency limit', () => {
     expect(buildVpTestCommand(['cli2'], { concurrencyLimit: 4 })).toEqual({
-      command: 'vp',
-      args: ['run', 'cli2', '--concurrency-limit', '4', 'test'],
+      command: 'rtk',
+      args: ['vp', 'run', 'cli2', '--concurrency-limit', '4', 'test'],
       env: { VP_RUN_CONCURRENCY_LIMIT: '4' },
     })
   })
 
   it('builds vp test command with log mode', () => {
     expect(buildVpTestCommand(['cli2'], { log: 'labeled' })).toEqual({
-      command: 'vp',
-      args: ['run', 'cli2', '--log', 'labeled', 'test'],
+      command: 'rtk',
+      args: ['vp', 'run', 'cli2', '--log', 'labeled', 'test'],
     })
   })
 
   it('keeps explicit vp task id unchanged', () => {
     expect(buildVpTestCommand(['cli2#test:watch'])).toEqual({
-      command: 'vp',
-      args: ['run', 'cli2#test:watch'],
+      command: 'rtk',
+      args: ['vp', 'run', 'cli2#test:watch'],
     })
   })
 
   it('builds vp test with multiple filters including scoped', () => {
     expect(buildVpTestCommand(['cli2', '@repo/logger'])).toEqual({
-      command: 'vp',
-      args: ['run', 'cli2', '@repo/logger#test', 'test'],
+      command: 'rtk',
+      args: ['vp', 'run', 'cli2', '@repo/logger#test', 'test'],
     })
   })
 
@@ -97,8 +97,9 @@ describe('buildVpTestCommand', () => {
         log: 'grouped',
       }),
     ).toEqual({
-      command: 'vp',
+      command: 'rtk',
       args: [
+        'vp',
         'run',
         'cli2',
         '--concurrency-limit',
@@ -116,8 +117,8 @@ describe('buildVpTestCommand', () => {
 
   it('builds vp test with scoped filter that has a path', () => {
     expect(buildVpTestCommand(['@scope/pkg/src/test.ts'], {})).toEqual({
-      command: 'vp',
-      args: ['run', '@scope/pkg/src/test.ts#test'],
+      command: 'rtk',
+      args: ['vp', 'run', '@scope/pkg/src/test.ts#test'],
     })
   })
 })
@@ -125,8 +126,8 @@ describe('buildVpTestCommand', () => {
 describe('buildVitestCommand', () => {
   it('builds a direct vitest file command', () => {
     expect(buildVitestCommand(['apps/cli2/src/commands/target.test.ts'])).toEqual({
-      command: 'vitest',
-      args: ['run', 'apps/cli2/src/commands/target.test.ts'],
+      command: 'rtk',
+      args: ['vp', 'exec', 'vitest', 'run', 'apps/cli2/src/commands/target.test.ts'],
     })
   })
 
@@ -136,8 +137,11 @@ describe('buildVitestCommand', () => {
         testNamePattern: 'target',
       }),
     ).toEqual({
-      command: 'vitest',
+      command: 'rtk',
       args: [
+        'vp',
+        'exec',
+        'vitest',
         'run',
         '--config',
         'vitest.config.ts',
@@ -150,8 +154,8 @@ describe('buildVitestCommand', () => {
 
   it('builds vitest watch command', () => {
     expect(buildVitestCommand(['apps/cli2/src/commands/target.test.ts'], { watch: true })).toEqual({
-      command: 'vitest',
-      args: ['--watch', 'apps/cli2/src/commands/target.test.ts'],
+      command: 'rtk',
+      args: ['vp', 'exec', 'vitest', '--watch', 'apps/cli2/src/commands/target.test.ts'],
     })
   })
 
@@ -159,8 +163,16 @@ describe('buildVitestCommand', () => {
     expect(
       buildVitestCommand(['vitest.node.config.ts', 'apps/cli2/src/commands/target.test.ts']),
     ).toEqual({
-      command: 'vitest',
-      args: ['run', '--config', 'vitest.node.config.ts', 'apps/cli2/src/commands/target.test.ts'],
+      command: 'rtk',
+      args: [
+        'vp',
+        'exec',
+        'vitest',
+        'run',
+        '--config',
+        'vitest.node.config.ts',
+        'apps/cli2/src/commands/target.test.ts',
+      ],
     })
   })
 
@@ -168,8 +180,16 @@ describe('buildVitestCommand', () => {
     expect(
       buildVitestCommand(['vitest.config.mts', 'apps/cli2/src/commands/target.test.ts']),
     ).toEqual({
-      command: 'vitest',
-      args: ['run', '--config', 'vitest.config.mts', 'apps/cli2/src/commands/target.test.ts'],
+      command: 'rtk',
+      args: [
+        'vp',
+        'exec',
+        'vitest',
+        'run',
+        '--config',
+        'vitest.config.mts',
+        'apps/cli2/src/commands/target.test.ts',
+      ],
     })
   })
 
@@ -186,8 +206,16 @@ describe('buildVitestCommand', () => {
         passthrough: ['--runInBand'],
       }),
     ).toEqual({
-      command: 'vitest',
-      args: ['run', '--coverage', '--runInBand', 'apps/cli2/src/commands/target.test.ts'],
+      command: 'rtk',
+      args: [
+        'vp',
+        'exec',
+        'vitest',
+        'run',
+        '--coverage',
+        '--runInBand',
+        'apps/cli2/src/commands/target.test.ts',
+      ],
     })
   })
 })
@@ -195,8 +223,8 @@ describe('buildVitestCommand', () => {
 describe('buildTestCommand', () => {
   it('uses vp for package targets', () => {
     expect(buildTestCommand({ type: 'package', values: ['cli2'] })).toEqual({
-      command: 'vp',
-      args: ['run', 'cli2', 'test'],
+      command: 'rtk',
+      args: ['vp', 'run', 'cli2', 'test'],
     })
   })
 
@@ -204,8 +232,8 @@ describe('buildTestCommand', () => {
     expect(
       buildTestCommand({ type: 'file', values: ['apps/cli2/src/commands/target.test.ts'] }),
     ).toEqual({
-      command: 'vitest',
-      args: ['run', 'apps/cli2/src/commands/target.test.ts'],
+      command: 'rtk',
+      args: ['vp', 'exec', 'vitest', 'run', 'apps/cli2/src/commands/target.test.ts'],
     })
   })
 })

@@ -4,6 +4,8 @@ title: 'Agent-Kit MCP test architecture hardening for deterministic, fast verifi
 status: completed
 complexity: L
 owner: agent
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 created: 2026-05-27T00:00:00.000Z
 last_updated: 2026-05-28T00:00:00.000Z
 completed_at: '2026-05-28'
@@ -312,3 +314,7 @@ bounded structured output.
 - [x] Repo instructions explicitly forbid timeout inflation for discovery hangs
 - [x] Repo instructions require bounded degradation for hook/discovery runtimes
 - [x] Targeted MCP tests document the new bounded contract with evidence
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

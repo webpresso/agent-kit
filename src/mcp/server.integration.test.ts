@@ -368,6 +368,8 @@ describe('mcp server integration', () => {
       expect.arrayContaining([
         'wp_blueprint_query',
         'wp_blueprint_new',
+        'wp_blueprint_put',
+        'wp_blueprint_transition',
         'wp_blueprint_validate',
         'wp_blueprint_task_next',
         'wp_blueprint_task_advance',
@@ -375,6 +377,13 @@ describe('mcp server integration', () => {
         'wp_blueprint_finalize',
         'wp_blueprint_depgraph',
         'wp_blueprint_projects',
+      ]),
+    )
+    expect(names).not.toEqual(
+      expect.arrayContaining([
+        'wp_blueprint_put',
+        'wp_blueprint_patch',
+        'wp_blueprint_write_markdown',
       ]),
     )
     // Auto-discovered non-blueprint tools must still be present alongside.

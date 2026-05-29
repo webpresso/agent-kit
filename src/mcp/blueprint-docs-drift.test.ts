@@ -19,6 +19,8 @@ const REQUIRED_CANONICAL_TOOLS = [
   'wp_blueprint_get',
   'wp_blueprint_context',
   'wp_blueprint_create',
+  'wp_blueprint_put',
+  'wp_blueprint_transition',
   'wp_blueprint_task_advance',
   'wp_blueprint_task_verify',
 ] as const
@@ -53,6 +55,7 @@ describe('blueprint docs drift', () => {
     const commandsDoc = read('commands/blueprint.md')
     expect(commandsDoc).toContain('request_id')
     expect(commandsDoc).toContain('wp_blueprint_create')
+    expect(commandsDoc).toContain('wp_blueprint_put')
     expect(commandsDoc).toContain('wp_blueprint_task_advance')
     expect(commandsDoc).toContain('wp_blueprint_task_verify')
   })
@@ -62,6 +65,36 @@ describe('blueprint docs drift', () => {
     expect(commandsDoc).toContain('head_at_ingest')
     expect(commandsDoc).toContain('wp_blueprint_list')
     expect(commandsDoc).toContain('wp_blueprint_get')
+  })
+
+  it('documents the v1 put/transition boundary and deferred semantic patch model', () => {
+    const commandsDoc = read('commands/blueprint.md')
+    expect(commandsDoc).toContain('wp_blueprint_put')
+    expect(commandsDoc).toContain('wp_blueprint_transition')
+    expect(commandsDoc).toContain('wp_blueprint_patch')
+    expect(commandsDoc).toContain('semantic')
+    expect(commandsDoc).toContain('add_task')
+    expect(commandsDoc).toContain('update_task')
+    expect(commandsDoc).toContain('set_summary')
+    expect(commandsDoc).toContain('replace_decision')
+    expect(commandsDoc).toContain('is **not** part of the v1 canonical surface')
+  })
+
+  it('documents MCP Apps as an optional follow-on layered over the structured tools', () => {
+    const commandsDoc = read('commands/blueprint.md')
+    const lifecycleDoc = read('docs/lifecycle.md')
+
+    expect(commandsDoc).toContain('MCP Apps')
+    expect(commandsDoc).toContain('enhancement')
+    expect(commandsDoc).toContain('Hosts without MCP Apps support')
+    expect(commandsDoc).toContain('wp_blueprint_put')
+    expect(commandsDoc).toContain('wp_blueprint_transition')
+
+    expect(lifecycleDoc).toContain('MCP Apps editor follow-on (v2)')
+    expect(lifecycleDoc).toContain('follow-on enhancement')
+    expect(lifecycleDoc).toContain('do not support MCP Apps')
+    expect(lifecycleDoc).toContain('wp_blueprint_put')
+    expect(lifecycleDoc).toContain('wp_blueprint_transition')
   })
 
   it('contains no stale legacy facade references', () => {

@@ -15,15 +15,15 @@ describe('wp typecheck command', () => {
 
   it('builds the default no-emit command with stable non-pretty output', () => {
     expect(buildTypecheckCommand()).toEqual({
-      command: 'tsc',
-      args: ['--noEmit', '--pretty', 'false'],
+      command: 'rtk',
+      args: ['tsc', '--noEmit', '--pretty', 'false'],
     })
   })
 
   it('can preserve pretty output when requested', () => {
     expect(buildTypecheckCommand({ pretty: true })).toEqual({
-      command: 'tsc',
-      args: ['--noEmit'],
+      command: 'rtk',
+      args: ['tsc', '--noEmit'],
     })
   })
 
@@ -37,8 +37,8 @@ describe('wp typecheck command', () => {
     )
 
     expect(buildTypecheckCommand({ cwd })).toEqual({
-      command: 'vp',
-      args: ['run', 'check-types'],
+      command: 'rtk',
+      args: ['vp', 'run', 'check-types'],
     })
   })
 
@@ -52,6 +52,6 @@ describe('wp typecheck command', () => {
       stderr: '',
     }))
     expect(runTypecheckCommand({}, { run })).toBe(2)
-    expect(run).toHaveBeenCalledWith('tsc', ['--noEmit', '--pretty', 'false'])
+    expect(run).toHaveBeenCalledWith('rtk', ['tsc', '--noEmit', '--pretty', 'false'])
   })
 })

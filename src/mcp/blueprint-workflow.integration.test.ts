@@ -30,6 +30,7 @@ import { aggregateBlueprintRows } from '#aggregate.js'
 import { recordProjectionMetadata } from '#freshness.js'
 import { buildBlueprintFixture } from '#mcp/__fixtures__/blueprint-fixture.js'
 import type { ToolHandlerResult } from '#mcp/auto-discover.js'
+import { cleanupTempDir, createTempBlueprintRepo } from './blueprint-server.test-harness.js'
 
 // ---------------------------------------------------------------------------
 // Fake ToolRegistrar — captures handlers by name so tests can call directly
@@ -171,6 +172,162 @@ describe('blueprint MCP workflow — single worktree smoke', () => {
     expect(taskChunk?.content).toContain('Setup the environment')
 
     // Batch-level wp_test timing is the performance guard for this workflow.
+  })
+
+  it('happy path: create → put → transition without direct markdown edits', async () => {
+    const repoDir = createTempBlueprintRepo('wp-bs-workflow-put-transition-')
+    cleanups.push(() => cleanupTempDir(repoDir))
+
+    process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+
+    const { registerBlueprintTools } = await import('#mcp/blueprint-server.js')
+    const { registrar, getHandler } = makeFakeRegistrar()
+    await registerBlueprintTools(registrar, repoDir)
+
+    const createResult = await getHandler('wp_blueprint_create')({
+      project_id: repoDir,
+      title: 'Structured workflow blueprint',
+      goal: 'Prove the create put transition sequence',
+      complexity: 'S',
+    })
+    const createPayload = parsePayload(createResult)
+    expect(createResult.isError).toBeFalsy()
+    const slug = createPayload['slug'] as string
+
+    const getBeforePut = await getHandler('wp_blueprint_get')({
+      project_id: repoDir,
+      slug,
+    })
+    const beforePutPayload = parsePayload(getBeforePut)
+
+    const putResult = await getHandler('wp_blueprint_put')({
+      project_id: repoDir,
+      slug,
+      head_at_ingest: beforePutPayload['head_at_ingest'],
+      document: {
+        type: 'blueprint',
+        title: 'Structured workflow blueprint',
+        status: 'draft',
+        complexity: 'S',
+        owner: 'agent-kit',
+        created: '2026-05-29',
+        last_updated: '2026-05-29',
+        product_wedge_anchor: {
+          stage_outcome: 'Phase 1 — prove the create put transition flow',
+          consuming_surface: 'wp blueprint MCP workflow',
+          new_user_visible_capability:
+            'Blueprints can be authored and advanced without direct markdown editing',
+        },
+        summary: 'Integration proof for Task 2.1.',
+        tasks: [
+          {
+            id: '1.1',
+            title: 'Author the blueprint through structured input',
+            status: 'todo',
+            wave: '0',
+            acceptance: ['Blueprint markdown is rendered from structured input'],
+          },
+        ],
+      },
+    })
+    const putPayload = parsePayload(putResult)
+    expect(putResult.isError).toBeFalsy()
+    expect(putPayload['status']).toBe('draft')
+
+    const transitionResult = await getHandler('wp_blueprint_transition')({
+      project_id: repoDir,
+      slug,
+      to_state: 'planned',
+      expected_version: putPayload['content_hash'],
+    })
+    const transitionPayload = parsePayload(transitionResult)
+    expect(transitionResult.isError).toBeFalsy()
+    expect(transitionPayload['new_status']).toBe('planned')
+
+    const finalGet = await getHandler('wp_blueprint_get')({
+      project_id: repoDir,
+      slug,
+    })
+    const finalPayload = parsePayload(finalGet)
+    const finalBlueprint = finalPayload['blueprint'] as {
+      status: string
+      title: string
+      tasks: Array<{ title: string }>
+    }
+    expect(finalPayload['content_hash']).toBe(transitionPayload['content_hash'])
+    expect(finalBlueprint.status).toBe('planned')
+    expect(finalBlueprint.title).toBe('Structured workflow blueprint')
+    expect(finalBlueprint.tasks[0]?.title).toBe('Author the blueprint through structured input')
+  })
+
+  it('promote now returns revision metadata from the shared transition path', async () => {
+    const repoDir = createTempBlueprintRepo('wp-bs-workflow-promote-transition-')
+    cleanups.push(() => cleanupTempDir(repoDir))
+
+    process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+
+    const { registerBlueprintTools } = await import('#mcp/blueprint-server.js')
+    const { registrar, getHandler } = makeFakeRegistrar()
+    await registerBlueprintTools(registrar, repoDir)
+
+    const createResult = await getHandler('wp_blueprint_create')({
+      project_id: repoDir,
+      title: 'Promote through transition blueprint',
+      goal: 'Prove promote reuses the transition primitive',
+      complexity: 'S',
+    })
+    const createPayload = parsePayload(createResult)
+    expect(createResult.isError).toBeFalsy()
+
+    const getBeforePut = await getHandler('wp_blueprint_get')({
+      project_id: repoDir,
+      slug: createPayload['slug'],
+    })
+    const beforePutPayload = parsePayload(getBeforePut)
+
+    const putResult = await getHandler('wp_blueprint_put')({
+      project_id: repoDir,
+      slug: createPayload['slug'],
+      head_at_ingest: beforePutPayload['head_at_ingest'],
+      document: {
+        type: 'blueprint',
+        title: 'Promote through transition blueprint',
+        status: 'draft',
+        complexity: 'S',
+        owner: 'agent-kit',
+        created: '2026-05-29',
+        last_updated: '2026-05-29',
+        product_wedge_anchor: {
+          stage_outcome: 'Phase 1 — prove promote reuses transition revision metadata',
+          consuming_surface: 'wp blueprint MCP workflow',
+          new_user_visible_capability:
+            'Promote returns revision metadata after structured authoring',
+        },
+        summary: 'Integration proof for the promote wrapper around transition.',
+        tasks: [
+          {
+            id: '1.1',
+            title: 'Author the blueprint before promote',
+            status: 'todo',
+            wave: '0',
+            acceptance: ['Blueprint has the required structured authoring fields'],
+          },
+        ],
+      },
+    })
+    expect(putResult.isError).toBeFalsy()
+
+    const promoteResult = await getHandler('wp_blueprint_promote')({
+      project_id: repoDir,
+      slug: createPayload['slug'],
+      to_state: 'planned',
+    })
+    const promotePayload = parsePayload(promoteResult)
+    expect(promoteResult.isError).toBeFalsy()
+    expect(promotePayload['to_state']).toBe('planned')
+    expect(typeof promotePayload['content_hash']).toBe('string')
+    expect(promotePayload['revision']).toBe(promotePayload['content_hash'])
+    expect(typeof promotePayload['ingested_at']).toBe('number')
   })
 })
 

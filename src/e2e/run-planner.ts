@@ -116,6 +116,7 @@ function planE2eRunsFromSuites(options: {
         workers: options.request.workers,
         testList: options.request.testList,
         passthrough: options.request.passthrough,
+        filterOutput: options.request.filterOutput,
       })
 
       runs.push({

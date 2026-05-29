@@ -3,9 +3,19 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { runFormat } from './index.js'
-
+const getManagedRunner = vi.hoisted(() => vi.fn())
 const spawnMock = vi.hoisted(() => vi.fn())
+
+vi.mock('#tool-runtime', () => ({
+  getManagedRunner,
+}))
+
+getManagedRunner.mockReturnValue({
+  command: 'oxfmt',
+  args: [],
+})
+
+import { runFormat } from './index.js'
 
 vi.mock('node:child_process', () => ({
   spawn: spawnMock,
@@ -54,11 +64,17 @@ function makeFixtureDir(): string {
 }
 
 afterEach(() => {
+  getManagedRunner.mockReset()
+  getManagedRunner.mockReturnValue({
+    command: 'oxfmt',
+    args: [],
+  })
   spawnMock.mockReset()
 })
 
 describe('runFormat', () => {
   it('returns passed=true when oxfmt exits 0 on already-formatted files', async () => {
+    getManagedRunner.mockReturnValue({ command: 'oxfmt', args: [] })
     spawnMock.mockReturnValue(fakeChild({ stdout: 'Finished in 5ms\n', exitCode: 0 }))
     const dir = makeFixtureDir()
     writeFileSync(join(dir, 'a.ts'), "const x = 'hi'\n")
@@ -67,6 +83,11 @@ describe('runFormat', () => {
 
     expect(result.passed).toBe(true)
     expect(result.exitCode).toBe(0)
+    expect(getManagedRunner).toHaveBeenCalledWith('oxfmt', {
+      fallbackCommand: 'oxfmt',
+      fallbackArgs: [],
+      filterOutput: false,
+    })
     const [cmd, args] = spawnMock.mock.calls[0]!
     expect(cmd).toBe('oxfmt')
     expect(args).toEqual(['--write', '--ignore-path', '.gitignore', 'a.ts'])

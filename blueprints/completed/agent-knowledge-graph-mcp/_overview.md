@@ -4,6 +4,8 @@ title: Agent-asset minimal audit slice — three audit verbs + tech-debt loop
 status: completed
 complexity: S
 owner: ozby
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 created: 2026-05-11
 last_updated: 2026-05-11
 promoted_to_planned: 2026-05-11
@@ -248,3 +250,7 @@ Parallelization score: A.
 4. ✅ **Pre-commit hook integration (D4)** — yes
 
 Blueprint ready to promote `draft/` → `planned/`.
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

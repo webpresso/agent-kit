@@ -1,4 +1,5 @@
 import type { CommandConfig, E2eStepCommandOptions } from './types.js'
+import { getManagedRunner } from '#tool-runtime'
 
 import path from 'node:path'
 
@@ -20,10 +21,14 @@ function buildPlaywrightCommand(options: E2eStepCommandOptions): CommandConfig {
   }
 
   const { baseDir, configArg, files } = resolveRunnerPaths(step.configPath, options.files ?? [])
-  const args = [...buildPnpmExecPrefix(baseDir), 'playwright', 'test', '--config', configArg]
+  const resolution = withBaseDir(
+    getManagedRunner('playwright', { filterOutput: options.filterOutput }),
+    baseDir,
+  )
+  const args = [...resolution.args, 'test', '--config', configArg]
   appendPlaywrightFlags(args, options)
   args.push(...(step.fixedArgs ?? []), ...files, ...(options.passthrough ?? []))
-  return { command: 'pnpm', args }
+  return { command: resolution.command, args }
 }
 
 function buildVitestE2eCommand(options: E2eStepCommandOptions): CommandConfig {
@@ -33,12 +38,16 @@ function buildVitestE2eCommand(options: E2eStepCommandOptions): CommandConfig {
   }
 
   const { baseDir, configArg, files } = resolveRunnerPaths(step.configPath, options.files ?? [])
-  const args = [...buildPnpmExecPrefix(baseDir), 'vitest', 'run', '--config', configArg]
+  const resolution = withBaseDir(
+    getManagedRunner('vitest', { filterOutput: options.filterOutput }),
+    baseDir,
+  )
+  const args = [...resolution.args, 'run', '--config', configArg]
   if (options.workers !== undefined) {
     args.push('--poolOptions.threads.maxThreads', String(options.workers))
   }
   args.push(...(step.fixedArgs ?? []), ...files, ...(options.passthrough ?? []))
-  return { command: 'pnpm', args }
+  return { command: resolution.command, args }
 }
 
 function buildCustomCommand(options: E2eStepCommandOptions): CommandConfig {
@@ -83,10 +92,6 @@ function appendPlaywrightFlags(args: string[], options: E2eStepCommandOptions): 
   }
 }
 
-function buildPnpmExecPrefix(baseDir: string): string[] {
-  return baseDir === '.' ? ['exec'] : ['--dir', baseDir, 'exec']
-}
-
 function resolveRunnerPaths(
   configPath: string,
   files: readonly string[],
@@ -118,4 +123,30 @@ function resolveRunnerPaths(
       return normalizedFile
     }),
   }
+}
+
+function withBaseDir(
+  resolution: { command: string; args: readonly string[] },
+  baseDir: string,
+): CommandConfig {
+  if (baseDir === '.') {
+    return { command: resolution.command, args: [...resolution.args] }
+  }
+
+  if (resolution.command === 'vp') {
+    return {
+      command: resolution.command,
+      args: ['--dir', baseDir, ...resolution.args],
+    }
+  }
+
+  const [wrappedCommand, ...wrappedArgs] = resolution.args
+  if (resolution.command === 'rtk' && wrappedCommand === 'vp') {
+    return {
+      command: resolution.command,
+      args: ['vp', '--dir', baseDir, ...wrappedArgs],
+    }
+  }
+
+  return { command: resolution.command, args: [...resolution.args] }
 }

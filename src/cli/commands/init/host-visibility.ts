@@ -41,6 +41,7 @@ export interface AuditHostSkillVisibilityInput {
 }
 
 export function parseAgentHosts(value: string | undefined): AgentHost[] {
+  if (value?.trim() === 'none') return []
   if (!value || value.trim().length === 0 || value.trim() === 'all') return [...AGENT_HOSTS]
   const out: AgentHost[] = []
   const unknown: string[] = []
@@ -52,7 +53,7 @@ export function parseAgentHosts(value: string | undefined): AgentHost[] {
   }
   if (unknown.length > 0) {
     throw new Error(
-      `Unknown host(s): ${unknown.join(', ')}. Expected one of: ${AGENT_HOSTS.join(', ')}, all.`,
+      `Unknown host(s): ${unknown.join(', ')}. Expected one of: ${AGENT_HOSTS.join(', ')}, all, none.`,
     )
   }
   return [...new Set(out)]
@@ -96,7 +97,7 @@ export function hostSkillRoots(
 export function auditHostSkillVisibility(
   input: AuditHostSkillVisibilityInput,
 ): HostVisibilityAudit {
-  const selectedHosts = input.hosts && input.hosts.length > 0 ? [...input.hosts] : [...AGENT_HOSTS]
+  const selectedHosts = input.hosts ? [...input.hosts] : [...AGENT_HOSTS]
   const requiredCapabilities =
     input.requiredCapabilities && input.requiredCapabilities.length > 0
       ? [...input.requiredCapabilities]

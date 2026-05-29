@@ -1,5 +1,9 @@
 ---
 type: blueprint
+title: "Coordinated PreToolUse Hook: Unified Hook Process for context-mode + agent-kit"
+owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 status: completed
 complexity: L
 created: 2026-04-28
@@ -18,6 +22,12 @@ tags:
 ---
 
 # Coordinated PreToolUse Hook: Unified Hook Process for context-mode + agent-kit
+## Product wedge anchor
+
+- **Stage outcome:** the completed Coordinated PreToolUse Hook: Unified Hook Process for context-mode + agent-kit work remains truthfully represented in the blueprint lifecycle and continues to describe the shipped outcome of this lane.
+- **Consuming surface:** the repo-local agent-kit surfaces and docs touched by this completed lane.
+- **New user-visible capability:** none new in this cleanup pass; the capability shipped already, and this blueprint now stays structurally valid as a completed record.
+
 
 **Goal:** Merge context-mode and agent-kit PreToolUse hooks into a single Node.js process that handles all routing, validation, and passthrough logic — eliminating the redundant second process spawn per tool call and preventing hook-order conflicts where context-mode wraps dev commands into `ctx_execute` before agent-kit can deny them.
 
@@ -456,3 +466,7 @@ Updated scope:
 - Agent-kit plugin manifest: `.claude-plugin/plugin.json`
 - Sibling blueprint: `pretooluse-dev-command-routing-intercept-just-pnpm-commands-and-redirect-to-ak-mcp-tools`
 - Sibling blueprint: `sessionstart-routing-block-inject-ak-tool-routing-rules-at-session-start`
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

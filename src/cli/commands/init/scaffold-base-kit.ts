@@ -10,6 +10,47 @@ export interface ScaffoldBaseKitInput {
   globalInstall?: boolean
 }
 
+export interface RuntimeContractGuidance {
+  keepLocalAuthoringDeps: string[]
+  reviewForRemovalDeps: string[]
+}
+
+interface PackageJsonLike {
+  dependencies?: Record<string, string>
+  devDependencies?: Record<string, string>
+  [key: string]: unknown
+}
+
+const AUTHORING_TIME_DEPENDENCIES = [
+  'vitest',
+  '@playwright/test',
+  '@testing-library/jest-dom',
+  'typescript',
+] as const
+
+const EXECUTION_ONLY_REVIEW_DEPENDENCIES = [
+  'oxlint',
+  'oxfmt',
+  'prettier',
+  'markdownlint-cli2',
+  'stryker',
+] as const
+
+export function collectRuntimeContractGuidance(
+  packageJson: PackageJsonLike | null | undefined,
+): RuntimeContractGuidance {
+  const deps = {
+    ...readDependencyBucket(packageJson?.['dependencies']),
+    ...readDependencyBucket(packageJson?.['devDependencies']),
+  }
+  const installed = new Set(Object.keys(deps))
+
+  return {
+    keepLocalAuthoringDeps: AUTHORING_TIME_DEPENDENCIES.filter((name) => installed.has(name)),
+    reviewForRemovalDeps: EXECUTION_ONLY_REVIEW_DEPENDENCIES.filter((name) => installed.has(name)),
+  }
+}
+
 /** Template files relative to `catalog/base-kit/`, and their target paths relative to repoRoot. */
 const TEMPLATE_MAP: Array<[string, string]> = [
   ['.editorconfig.tmpl', '.editorconfig'],
@@ -27,6 +68,21 @@ const TEMPLATE_MAP: Array<[string, string]> = [
   ['test/.gitkeep.tmpl', 'test/.gitkeep'],
   ['e2e/.gitkeep.tmpl', 'e2e/.gitkeep'],
 ]
+
+/** Consumer-owned quality scaffold: create for fresh repos, never clobber. */
+const QUALITY_BOOTSTRAP_ONLY_MAP: Array<[string, string]> = [
+  ['tsconfig.json.tmpl', 'tsconfig.json'],
+  ['vitest.config.ts.tmpl', 'vitest.config.ts'],
+  ['oxlint.config.ts.tmpl', 'oxlint.config.ts'],
+  ['stryker.config.ts.tmpl', 'stryker.config.ts'],
+  ['playwright.config.ts.tmpl', 'playwright.config.ts'],
+  ['src/quality-sample.ts.tmpl', 'src/quality-sample.ts'],
+  ['src/quality-sample.test.ts.tmpl', 'src/quality-sample.test.ts'],
+  ['e2e/fixtures/smoke.html.tmpl', 'e2e/fixtures/smoke.html'],
+  ['e2e/smoke.spec.ts.tmpl', 'e2e/smoke.spec.ts'],
+]
+
+export const BASE_KIT_QUALITY_TARGETS = QUALITY_BOOTSTRAP_ONLY_MAP.map(([, targetRel]) => targetRel)
 
 /**
  * Bootstrap-only templates: the scaffolder writes them when absent (so a
@@ -93,24 +149,65 @@ function mergePackageJson(
   const hasVerifySecrets = typeof scripts['verify:secrets'] === 'string'
   const hasSecretQuarantineAudit = typeof scripts['audit:secret-provider-quarantine'] === 'string'
   const hasPrepareScript = typeof scripts['prepare'] === 'string'
+  const hasLintScript = typeof scripts['lint'] === 'string'
+  const hasTypecheckScript = typeof scripts['typecheck'] === 'string'
+  const hasTestScript =
+    typeof scripts['test'] === 'string' && !isNpmInitPlaceholderTestScript(scripts['test'])
+  const hasMutationScript = typeof scripts['mutation'] === 'string'
+  const hasTestMutationScript = typeof scripts['test:mutation'] === 'string'
+  const hasE2eScript = typeof scripts['e2e'] === 'string'
+  const hasQaScript = typeof scripts['qa'] === 'string'
   const verifyPathsScript = 'WP_SKIP_UPDATE_CHECK=1 wp audit absolute-path-policy --root .'
   const verifySecretsScript = 'bun scripts/check-no-dev-vars.ts'
   const secretQuarantineAuditScript = 'bun scripts/audit-secret-provider-quarantine.ts'
+  const lintScript = 'wp lint src e2e *.config.ts'
+  const typecheckScript = 'wp typecheck'
+  const testScript = 'wp test --file vitest.config.ts'
+  const mutationScript = 'wp test --mutation'
+  const testMutationScript = 'stryker run stryker.config.ts'
+  const e2eScript = 'playwright install chromium && wp e2e --config playwright.config.ts'
+  const qaScript = [
+    'wp lint src e2e *.config.ts',
+    'wp typecheck',
+    'wp test --file vitest.config.ts',
+    'wp test --mutation',
+    'playwright install chromium && wp e2e --config playwright.config.ts',
+  ].join(' && ')
 
   const devDeps = (pkg['devDependencies'] ?? {}) as Record<string, string>
-  const hasAgentKitDevDep = typeof devDeps['webpresso'] === 'string'
-  const shouldSkipSelfInstall = packageName === 'webpresso'
+  const hasAgentKitDevDep = typeof devDeps['@webpresso/agent-kit'] === 'string'
+  const hasLegacyAgentKitDevDep = typeof devDeps['webpresso'] === 'string'
+  const shouldSkipSelfInstall = packageName === '@webpresso/agent-kit' || packageName === 'webpresso'
   const shouldManageAgentKitAsGlobal = globalInstall && !shouldSkipSelfInstall
+  const requiredAuthoringDeps: Record<string, string> = {
+    '@playwright/test': 'latest',
+    '@stryker-mutator/core': 'latest',
+    '@stryker-mutator/vitest-runner': 'latest',
+    '@types/node': 'latest',
+    typescript: 'latest',
+    vitest: 'latest',
+  }
 
   if (
     alreadyHasEngines &&
     alreadyHasPm &&
-    (shouldSkipSelfInstall || shouldManageAgentKitAsGlobal || hasAgentKitDevDep) &&
+    (shouldSkipSelfInstall ||
+      shouldManageAgentKitAsGlobal ||
+      hasAgentKitDevDep ||
+      hasLegacyAgentKitDevDep) &&
+    Object.keys(requiredAuthoringDeps).every((name) => typeof devDeps[name] === 'string') &&
     (shouldSkipSelfInstall || hasSetupAgent) &&
     (shouldSkipSelfInstall || hasVerifyPaths) &&
     (shouldSkipSelfInstall || hasVerifySecrets) &&
     (shouldSkipSelfInstall || hasSecretQuarantineAudit) &&
-    (shouldSkipSelfInstall || hasPrepareScript)
+    (shouldSkipSelfInstall || hasPrepareScript) &&
+    hasLintScript &&
+    hasTypecheckScript &&
+    hasTestScript &&
+    hasMutationScript &&
+    hasTestMutationScript &&
+    hasE2eScript &&
+    hasQaScript
   ) {
     return { targetPath: pkgPath, action: 'identical' }
   }
@@ -122,11 +219,21 @@ function mergePackageJson(
   if (!devDeps['husky']) {
     devDeps['husky'] = '^9.0.0'
   }
-  if (!shouldSkipSelfInstall && !shouldManageAgentKitAsGlobal && !hasAgentKitDevDep) {
+  if (
+    !shouldSkipSelfInstall &&
+    !shouldManageAgentKitAsGlobal &&
+    !hasAgentKitDevDep &&
+    !hasLegacyAgentKitDevDep
+  ) {
     // Keep consumers on the currently published dist-tag rather than a
     // repo-internal path. Do not wire this through `prepare`: `wp` is not
     // reliably on PATH during `vp install`, so `setup:agent` stays opt-in.
-    devDeps['webpresso'] = 'latest'
+    devDeps['@webpresso/agent-kit'] = 'latest'
+  }
+  for (const [name, version] of Object.entries(requiredAuthoringDeps)) {
+    if (!devDeps[name]) {
+      devDeps[name] = version
+    }
   }
   pkg['devDependencies'] = devDeps
 
@@ -144,6 +251,27 @@ function mergePackageJson(
   }
   if (!shouldSkipSelfInstall && !hasPrepareScript) {
     scripts['prepare'] = 'husky'
+  }
+  if (!hasLintScript) {
+    scripts['lint'] = lintScript
+  }
+  if (!hasTypecheckScript) {
+    scripts['typecheck'] = typecheckScript
+  }
+  if (!hasTestScript) {
+    scripts['test'] = testScript
+  }
+  if (!hasMutationScript) {
+    scripts['mutation'] = mutationScript
+  }
+  if (!hasTestMutationScript) {
+    scripts['test:mutation'] = testMutationScript
+  }
+  if (!hasE2eScript) {
+    scripts['e2e'] = e2eScript
+  }
+  if (!hasQaScript) {
+    scripts['qa'] = qaScript
   }
   if (Object.keys(scripts).length > 0) {
     pkg['scripts'] = scripts
@@ -188,6 +316,24 @@ export function scaffoldBaseKit(input: ScaffoldBaseKitInput): MergeResult[] {
     results.push({ targetPath, action: 'created' })
   }
 
+  for (const [tmplRel, targetRel] of QUALITY_BOOTSTRAP_ONLY_MAP) {
+    const tmplPath = join(baseKitDir, tmplRel)
+    if (!existsSync(tmplPath)) continue
+    const targetPath = join(repoRoot, targetRel)
+    if (existsSync(targetPath)) {
+      results.push({ targetPath, action: 'identical' })
+      continue
+    }
+    const content = readFileSync(tmplPath, 'utf8')
+    if (options.dryRun) {
+      results.push({ targetPath, action: 'skipped-dry' })
+      continue
+    }
+    mkdirSync(dirname(targetPath), { recursive: true })
+    writeFileSync(targetPath, content)
+    results.push({ targetPath, action: 'created' })
+  }
+
   // Make husky hook files executable
   if (!options.dryRun) {
     for (const [tmplRel, targetRel] of TEMPLATE_MAP) {
@@ -206,4 +352,21 @@ export function scaffoldBaseKit(input: ScaffoldBaseKitInput): MergeResult[] {
 
   results.push(mergePackageJson(repoRoot, options, globalInstall))
   return results
+}
+
+function readDependencyBucket(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object') {
+    return {}
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (entry): entry is [string, string] =>
+        typeof entry[0] === 'string' && typeof entry[1] === 'string',
+    ),
+  )
+}
+
+function isNpmInitPlaceholderTestScript(value: string): boolean {
+  return /^echo ['"]?Error: no test specified['"]? && exit 1$/u.test(value.trim())
 }

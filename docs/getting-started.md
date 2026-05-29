@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-05-28'
+last_updated: '2026-05-29'
 ---
 
 # Getting started
@@ -23,7 +23,9 @@ npm install -g @webpresso/agent-kit
 wp setup
 ```
 
-Done.
+Done. The fresh-repo promise is zero hand-wiring: setup creates the starter
+quality scaffold, scripts, and agent surfaces. It does not promise zero
+authoring-time dependencies forever.
 
 Your repo now has one shared agent contract across the supported coding-agent
 surfaces.
@@ -56,11 +58,24 @@ installed, use:
 - `.agent/` canonical commands, skills, rules, guides, and workflows
 - generated agent surfaces
 - blueprint lifecycle folders and docs templates
+- `base-kit` quality scaffold: `tsconfig.json`, `vitest.config.ts`,
+  `oxlint.config.ts`, `stryker.config.ts`, `playwright.config.ts`, starter unit
+  tests, and a file-based Playwright smoke page
+- package scripts for `lint`, `typecheck`, `test`, `mutation`, `e2e`, and `qa`
 - safe hook wiring
 - gitignore protection for regenerated agent files
 
 You do not need to learn those pieces individually. Run setup again any time;
 it is idempotent and preserves consumer-owned files.
+
+If you replace the seeded `src/quality-sample.ts`, `src/quality-sample.test.ts`,
+or `e2e/smoke.spec.ts` files with real app code, `wp setup` will not recreate or
+overwrite them as long as those paths still exist. Delete the starter files only
+after your real tests and e2e specs are in place.
+
+Codex and Claude surfaces are conditional on the matching host being installed
+and available. Missing CLIs, skipped presets, or unauthenticated hosts should
+show as skipped or warning lines in setup output, not as silent success.
 
 ### What gets committed vs ignored
 
@@ -83,6 +98,12 @@ If either command reports drift, run:
 
 ```bash
 wp setup
+```
+
+Public npm rehearsals use the packed artifact, not the local checkout:
+
+```bash
+vp run public:consumer-smoke -- --setup-only
 ```
 
 ## Add-ons

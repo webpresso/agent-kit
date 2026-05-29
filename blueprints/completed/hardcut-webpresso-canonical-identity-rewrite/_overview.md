@@ -5,6 +5,8 @@ status: completed
 completed_at: '2026-05-25'
 complexity: L
 owner: agent
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 created: '2026-05-23'
 last_updated: '2026-05-25'
 progress: '100% (9/9 tasks done, 0 blocked, updated 2026-05-25)'
@@ -559,3 +561,7 @@ handoff checklist and evidence needed to finish the hardcut outside git.
 | Max parallel agents | 4 |
 | Total tasks | 9 |
 | Blueprint compliant | 9/9 |
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

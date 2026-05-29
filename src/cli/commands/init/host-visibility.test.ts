@@ -42,6 +42,7 @@ describe('host skill visibility', () => {
   it('parses explicit host selections without aliases', () => {
     expect(parseAgentHosts(undefined)).toEqual(['codex', 'claude', 'opencode'])
     expect(parseAgentHosts('all')).toEqual(['codex', 'claude', 'opencode'])
+    expect(parseAgentHosts('none')).toEqual([])
     expect(parseAgentHosts('codex,opencode')).toEqual(['codex', 'opencode'])
     expect(() => parseAgentHosts('legacy-codex')).toThrow(/Unknown host/)
   })
@@ -97,5 +98,12 @@ describe('host skill visibility', () => {
     })
     expect(audit.results[0]?.status).toBe('visible-now')
     expect(audit.results[0]?.restartRequired).toBe(false)
+  })
+
+  it('audits no host capabilities when host selection is empty', () => {
+    const audit = auditHostSkillVisibility({ repoRoot, homeDir, hosts: [] })
+
+    expect(audit.selectedHosts).toEqual([])
+    expect(audit.results).toEqual([])
   })
 })

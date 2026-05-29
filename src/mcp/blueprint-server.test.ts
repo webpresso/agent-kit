@@ -6,7 +6,7 @@
  * workers without rebuilding unrelated cold-start fixtures.
  */
 
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
@@ -89,5 +89,104 @@ describe('wp_blueprint_create', () => {
     if (parsed.success) {
       expect('scope' in parsed.data).toBe(false)
     }
+  })
+})
+
+describe('wp_blueprint_put', () => {
+  const document = {
+    type: 'blueprint',
+    title: 'Structured Put Blueprint',
+    status: 'draft',
+    complexity: 'S',
+    owner: 'tester',
+    created: '2026-05-29',
+    last_updated: '2026-05-29',
+    product_wedge_anchor: {
+      stage_outcome: 'Phase 1 — prove structured blueprint upserts',
+      consuming_surface: 'wp blueprint MCP tools',
+      new_user_visible_capability: 'Users can upsert a blueprint via structured input',
+    },
+    summary: 'Blueprint used to test the whole-document put path.',
+    tasks: [
+      {
+        id: '1.1',
+        title: 'Write the first structured task',
+        status: 'todo',
+        wave: '0',
+        acceptance: ['The first structured task exists in markdown'],
+      },
+    ],
+  } as const
+
+  it('writes markdown from structured input and returns revision metadata', async () => {
+    const result = await callTool(tools, 'wp_blueprint_put', {
+      project_id: tmpDir,
+      slug: 'structured-put-blueprint',
+      document,
+    })
+    const data = parseResult(result) as {
+      slug: string
+      path: string
+      status: string
+      content_hash: string
+      revision: string
+      failures: string[]
+    }
+
+    expect(result.isError).toStrictEqual(false)
+    expect(data.slug).toBe('structured-put-blueprint')
+    expect(data.status).toBe('draft')
+    expect(data.content_hash).toBeTruthy()
+    expect(data.revision).toBe(data.content_hash)
+    expect(existsSync(data.path)).toBe(true)
+    const written = readFileSync(data.path, 'utf8')
+    expect(written).toContain('## Product wedge anchor')
+    expect(written).toContain('## Summary')
+    expect(written).toContain('#### Task 1.1: Write the first structured task')
+    expect(data.failures).toStrictEqual([])
+  })
+
+  it('replaces an existing blueprint deterministically and re-ingests the new content hash', async () => {
+    const first = await callTool(tools, 'wp_blueprint_put', {
+      project_id: tmpDir,
+      slug: 'structured-put-blueprint',
+      document,
+    })
+    const firstData = parseResult(first) as { content_hash: string; path: string }
+
+    const second = await callTool(tools, 'wp_blueprint_put', {
+      project_id: tmpDir,
+      slug: 'structured-put-blueprint',
+      document: {
+        ...document,
+        summary: 'Blueprint used to test deterministic replacement.',
+      },
+    })
+    const secondData = parseResult(second) as { content_hash: string; path: string }
+
+    expect(second.isError).toStrictEqual(false)
+    expect(secondData.content_hash).not.toBe(firstData.content_hash)
+    expect(readFileSync(secondData.path, 'utf8')).toContain(
+      'Blueprint used to test deterministic replacement.',
+    )
+
+    const getResult = await callTool(tools, 'wp_blueprint_get', {
+      project_id: tmpDir,
+      slug: 'structured-put-blueprint',
+    })
+    const getData = parseResult(getResult) as { content_hash: string }
+    expect(getData.content_hash).toBe(secondData.content_hash)
+  })
+
+  it('returns validation error when required structured fields are missing', async () => {
+    const result = await callTool(tools, 'wp_blueprint_put', {
+      project_id: tmpDir,
+      slug: 'structured-put-blueprint',
+      document: {
+        title: 'Broken Blueprint',
+      },
+    })
+
+    expect(result.isError).toStrictEqual(true)
   })
 })

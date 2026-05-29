@@ -1,5 +1,6 @@
 import type { CAC } from 'cac'
 import type { SpawnSyncReturns } from 'node:child_process'
+import { getManagedRunner } from '#tool-runtime'
 
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
@@ -39,15 +40,20 @@ export function registerTypecheckCommand(cli: CAC): void {
 export function buildTypecheckCommand(options: TypecheckOptions = {}): TypecheckCommandConfig {
   const cwd = options.cwd ?? process.cwd()
   if (hasCheckTypesScript(cwd)) {
+    const resolution = getManagedRunner('vp')
     return {
-      command: 'vp',
-      args: ['run', 'check-types'],
+      command: resolution.command,
+      args: [...resolution.args, 'run', 'check-types'],
     }
   }
 
+  const resolution = getManagedRunner('tsc', {
+    fallbackCommand: 'tsc',
+    fallbackArgs: [],
+  })
   return {
-    command: 'tsc',
-    args: ['--noEmit', ...(options.pretty ? [] : ['--pretty', 'false'])],
+    command: resolution.command,
+    args: [...resolution.args, '--noEmit', ...(options.pretty ? [] : ['--pretty', 'false'])],
   }
 }
 

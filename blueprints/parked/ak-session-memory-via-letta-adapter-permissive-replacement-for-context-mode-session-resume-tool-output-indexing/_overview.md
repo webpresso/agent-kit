@@ -1,10 +1,12 @@
 ---
 type: blueprint
+title: wp session memory v1 — Letta adapter (permissive replacement for context-mode)
 status: parked
 complexity: M
+owner: agent-kit
 created: '2026-05-13'
-last_updated: '2026-05-13'
-progress: '0% (parked at refinement Phase 1 — see parking_reason)'
+last_updated: '2026-05-29'
+progress: 'Parked on 2026-05-29 after Letta fact-check invalidated the original memory-hierarchy rationale; retained only as a documented rejected direction pending no further local execution'
 depends_on: []
 parked_reason: |
   /plan-refine Phase 1 fact-check (Letta tech) revealed that Letta's

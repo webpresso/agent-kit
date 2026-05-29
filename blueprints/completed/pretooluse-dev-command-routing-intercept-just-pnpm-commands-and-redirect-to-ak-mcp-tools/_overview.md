@@ -1,5 +1,9 @@
 ---
 type: blueprint
+title: "PreToolUse Dev-Command Routing: Intercept just/pnpm Commands \u2192 ak MCP Tools"
+owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 status: completed
 complexity: M
 created: 2026-04-26
@@ -18,6 +22,12 @@ tags:
 ---
 
 # PreToolUse Dev-Command Routing: Intercept just/pnpm Commands → ak MCP Tools
+## Product wedge anchor
+
+- **Stage outcome:** the completed PreToolUse Dev-Command Routing: Intercept just/pnpm Commands → ak MCP Tools work remains truthfully represented in the blueprint lifecycle and continues to describe the shipped outcome of this lane.
+- **Consuming surface:** the repo-local agent-kit surfaces and docs touched by this completed lane.
+- **New user-visible capability:** none new in this cleanup pass; the capability shipped already, and this blueprint now stays structurally valid as a completed record.
+
 
 > **2026-04-28 update:** Tasks 1.1 (routing table), 1.2 (formatter), and 1.3 (runner integration) are absorbed into [`coordinated-pre-tool-hook`](../coordinated-pre-tool-hook-unified-hook-process-for-context-mode-agent-kit/_overview.md) which merges context-mode + agent-kit routing into one hook process. Task 1.4 (integration tests) remains here as verification. See the coordinated blueprint for the merged routing table including context-mode sandbox rules.
 
@@ -165,3 +175,7 @@ Four tasks in three waves. Wave 0 (parallel): routing logic + formatter. Wave 1 
 
 - O_EXCL guidance throttle relies on `process.ppid` as session identity on macOS/Linux. On Windows Git Bash each hook invocation may have a different ppid — fall back to no throttle (always show guidance) on Windows rather than never showing it.
 - NFS volumes do not support O_EXCL atomicity. Non-EEXIST errors from O_EXCL must always-deny (never silent suppression) to avoid routing bypass on NFS.
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

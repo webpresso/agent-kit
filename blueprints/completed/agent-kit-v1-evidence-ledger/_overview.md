@@ -1,5 +1,8 @@
 ---
 type: blueprint
+owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 title: agent-kit v1.0 — Evidence Ledger + Multi-CLI Runner
 status: completed
 complexity: L
@@ -1167,3 +1170,7 @@ because Task 4.1 depends on its fixture output.
 - **CROSS-MODEL:** strong agreement on Runner under-specification (X3) and templates unblock (X4); X1 wedge pivot accepted; X2 v1.0 timing left unresolved.
 - **UNRESOLVED:** X2 — v1.0 SemVer-stable declaration gated on external adopter.
 - **VERDICT:** CEO + ENG (×2) + REFINE CLEARED — Blueprint promoted to `planned/` and ready for `/pll` or direct implementation. **Do not declare v1.0 SemVer-stable until X2 resolves.**
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

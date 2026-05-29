@@ -4,6 +4,8 @@ title: Blueprint structured store — custom MCP over SQLite + cross-repo correl
 status: completed
 complexity: L
 owner: ozby
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 created: 2026-05-11
 last_updated: 2026-05-11
 promoted_to_planned: 2026-05-11
@@ -585,3 +587,7 @@ Blueprint ready to promote `draft/` → `planned/`.
 | State (v0.13.0) | `blueprint-structured-store` | SQLite + permission-aware cross-repo | Blueprints, tasks, risks, tech-debt, correlations | SQL templates via custom MCP |
 
 All three: markdown is canonical, embedded DBs are derived, MCP tools answer agent questions in the right idiom for the question shape. Cross-repo coordination respects org/project/visibility boundaries by default.
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

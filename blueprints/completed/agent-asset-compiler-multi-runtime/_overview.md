@@ -4,6 +4,8 @@ title: Agent-asset compiler — rulesync wrap + plugin manifests + AGENTS.md mer
 status: completed
 complexity: M
 owner: ozby
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 created: 2026-05-11
 last_updated: 2026-05-11
 promoted_to_planned: 2026-05-11
@@ -499,3 +501,7 @@ All open questions from prior revision resolved by CEO review 2026-05-11:
 8. ✅ **AGENTS.md root ownership semantics (explicit decision — 2026-05-11 post-Codex audit)** — Root `AGENTS.md` is classified as **payload** (committed, generated). This is a deliberate semantic change from the prior convention where AGENTS.md was consumer-owned and not rewritten by tooling. Decision: `wp compile` writes and owns root `AGENTS.md`; consumers MUST NOT hand-edit it (use `.agent/memory/AGENTS.md` or `memory.merge.yaml` directives instead). The generated-file policy table in Architecture is the single source of truth. `wp audit memory-unified` warns if CLAUDE.md does not import `@AGENTS.md`. This decision is load-bearing — implementors must not soften it to "wp compile writes it if missing" or any partial-generation path.
 
 Blueprint ready to promote `draft/` → `planned/`.
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

@@ -9,6 +9,7 @@
 
 import { isMissingBinary, isRunFailure, runCommand } from '#mcp/tools/_shared/run-command'
 import { resolveProjectRoot } from '#mcp/tools/_shared/project-root'
+import { getManagedRunner } from '#tool-runtime'
 
 export interface FormatResult {
   readonly passed: boolean
@@ -58,7 +59,12 @@ export async function runFormat(options: RunFormatOptions = {}): Promise<FormatR
   args.push('--ignore-path', '.gitignore')
   if (options.files && options.files.length > 0) args.push(...options.files)
 
-  const outcome = await runCommand('oxfmt', args, runOptions)
+  const resolution = getManagedRunner('oxfmt', {
+    fallbackCommand: 'oxfmt',
+    fallbackArgs: [],
+    filterOutput: false,
+  })
+  const outcome = await runCommand(resolution.command, [...resolution.args, ...args], runOptions)
 
   if (isRunFailure(outcome)) {
     if (isMissingBinary(outcome)) {

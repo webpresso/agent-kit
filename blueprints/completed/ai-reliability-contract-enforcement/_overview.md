@@ -3,6 +3,8 @@ type: blueprint
 title: AI reliability contract enforcement
 status: completed
 owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 complexity: M
 created: '2026-05-27'
 last_updated: '2026-05-28'
@@ -200,3 +202,7 @@ lane.
 | Audit becomes too implementation-specific and blocks harmless refactors. | MEDIUM | Keep checks focused on contract markers, not exact formatting. |
 | Docs drift from the real enforcement surface. | HIGH | Gate on both the doc and the code/test contract markers. |
 | Cross-repo adoption stalls and leaves the contract theoretical. | MEDIUM | Keep the documentary downstream blueprint explicit in the roadmap. |
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

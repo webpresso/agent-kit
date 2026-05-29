@@ -1,5 +1,7 @@
 ---
 type: blueprint
+title: "Promote Parent Roadmaps to First-Class"
+owner: agent-kit
 status: completed
 complexity: M
 created: '2026-04-25'
@@ -17,6 +19,12 @@ parent_roadmap: 'cross-repo: webpresso/monorepo → webpresso/blueprints/complet
 ---
 
 # Promote Parent Roadmaps to First-Class
+## Product wedge anchor
+
+- **Stage outcome:** the completed Promote Parent Roadmaps to First-Class work remains truthfully represented in the blueprint lifecycle and continues to describe the shipped outcome of this lane.
+- **Consuming surface:** the repo-local agent-kit surfaces and docs touched by this completed lane.
+- **New user-visible capability:** none new in this cleanup pass; the capability shipped already, and this blueprint now stays structurally valid as a completed record.
+
 
 **Goal:** Stop hiding `type: parent-roadmap` blueprints from `wp blueprint list`. Make the parent → child → `/pll` lane dispatch chain explicit and audited, so a single `wp blueprint list` invocation gives both strategic context (which roadmaps are active) and tactical options (which child lanes are pickable).
 

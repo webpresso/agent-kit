@@ -1,17 +1,22 @@
 ---
 type: blueprint
+title: wp session memory v1 — in-process SQLite + FTS5 (TS engine)
 status: parked
 complexity: M
+owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 created: '2026-05-13'
-last_updated: '2026-05-28'
-progress: '0% (parked — 0/17 tasks; deferred by operator request)'
+last_updated: '2026-05-29'
+progress: 'Parked on 2026-05-29: still operator-deferred even though WAL hardening is complete and the token-savings benchmark harness is now active; do not start until explicitly unparked'
 depends_on: []
 parked_reason: |
   Parked by operator request. The in-process better-sqlite3 + FTS5 v1 path
   remains the preferred future MIT Lane 2 design, but implementation is
-  deferred until the default context-mode workstation lane stabilizes,
-  session-store WAL hardening lands, and the ak-bench session-memory harness can
-  gate ship vs. further parking. Do not use this parked blueprint to remove
+  deferred until the default context-mode workstation lane stabilizes and the
+  ak-bench session-memory harness can gate ship vs. further parking. Session-store
+  WAL hardening is now complete, but that prerequisite does not override the
+  operator parking decision. Do not use this parked blueprint to remove
   context-mode from default setup; the old opt-in plan is archived as superseded.
   Supersedes the earlier Letta-based v1 direction (see sibling parked
   blueprints).
@@ -694,3 +699,7 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 | **Critical path** | 5 waves |
 | **Total tasks** | 17 (13 original + 4 Phase 5 output sandboxing) |
 | **Blueprint compliant** | 17/17 |
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

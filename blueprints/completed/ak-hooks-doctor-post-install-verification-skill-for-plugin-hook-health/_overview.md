@@ -1,5 +1,9 @@
 ---
 type: blueprint
+title: "ak-hooks-doctor: Post-Install Verification Skill for Plugin Hook Health"
+owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 status: completed
 complexity: S
 created: 2026-04-26
@@ -17,6 +21,12 @@ tags:
 ---
 
 # ak-hooks-doctor: Post-Install Verification Skill for Plugin Hook Health
+## Product wedge anchor
+
+- **Stage outcome:** the completed ak-hooks-doctor: Post-Install Verification Skill for Plugin Hook Health work remains truthfully represented in the blueprint lifecycle and continues to describe the shipped outcome of this lane.
+- **Consuming surface:** the repo-local agent-kit surfaces and docs touched by this completed lane.
+- **New user-visible capability:** none new in this cleanup pass; the capability shipped already, and this blueprint now stays structurally valid as a completed record.
+
 
 > **2026-04-28 update:** After the coordinated hook ships, the doctor must also verify: (1) the single coordinated hook process is active (not the old 2-process setup), (2) context-mode MCP server is reachable via `ctx_doctor` tool, (3) the coordinated routing table covers all expected command patterns. Added as Task 2.1 in the coordinated blueprint scope.
 
@@ -155,3 +165,7 @@ Post-install verification for agent-kit plugin hooks. Surfaces broken bin paths,
 - Does not implement self-healing or auto-reinstall (context-mode's self-heal block is cited as a code smell in the research)
 - Does not check Codex `.codex/hooks.json` integration (separate concern)
 - Does not replace `wp audit` — this is plugin-health-specific, not repo-health
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

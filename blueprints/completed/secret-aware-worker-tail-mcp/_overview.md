@@ -3,6 +3,8 @@ type: blueprint
 title: Secret-aware Worker Tail and CI Act MCP completion
 status: completed
 owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 complexity: M
 created: '2026-05-23'
 last_updated: '2026-05-27'
@@ -362,3 +364,7 @@ out of this lane.
 | --- | --- | --- |
 | Hook guidance changes diverge from actual registered tool names. | HIGH | Gate the change with MCP integration tests that assert `wp_*` names explicitly. |
 | This repo re-plans framework work locally instead of consuming the final contract. | HIGH | Keep the framework child as an explicit dependency and scope this blueprint to consumer stabilization only. |
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

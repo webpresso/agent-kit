@@ -39,12 +39,16 @@ describe('registerBlueprintTools bootstrap', () => {
       'wp_blueprint_list',
       'wp_blueprint_new',
       'wp_blueprint_promote',
+      'wp_blueprint_put',
       'wp_blueprint_query',
       'wp_blueprint_task_advance',
       'wp_blueprint_task_next',
       'wp_blueprint_task_verify',
+      'wp_blueprint_transition',
       'wp_blueprint_validate',
     ])
+    expect(tools.has('wp_blueprint_patch')).toBe(false)
+    expect(tools.has('wp_blueprint_write_markdown')).toBe(false)
   })
 
   it('does not hide stale-read contract issues by doing eager registration-time repair', async () => {

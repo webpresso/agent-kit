@@ -4,6 +4,8 @@ title: Agent Kit Changesets Action release migration
 status: completed
 complexity: L
 owner: ozby
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 created: 2026-05-28T00:00:00.000Z
 last_updated: '2026-05-28'
 progress: '100% (7/7 tasks done, 0 blocked, updated 2026-05-29)'
@@ -356,3 +358,7 @@ gh release list --limit 20 \
 - [ ] published-package smoke install succeeds
 - [ ] marketplace consumer smoke against `release/v<version>` succeeds
 - [ ] final evidence proves consumer reality, not only orchestration correctness
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

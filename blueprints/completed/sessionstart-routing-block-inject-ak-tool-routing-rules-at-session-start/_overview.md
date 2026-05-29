@@ -1,5 +1,9 @@
 ---
 type: blueprint
+title: "SessionStart Routing Block: Inject wp_* Tool Routing Rules at Session Start"
+owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 status: completed
 complexity: S
 created: 2026-04-26
@@ -18,6 +22,12 @@ tags:
 > **2026-04-28 update:** Task 1.1 (routing-block.ts) must now include context-mode tool references in the `<wp_routing>` XML block — a coordinated decision table showing when to use `wp_*` vs `ctx_*` tools. The coordinated blueprint eliminates the PreToolUse conflict this blueprint relied on; the routing block should reflect the unified routing table from the coordinated blueprint.
 
 # SessionStart Routing Block: Inject wp_* Tool Routing Rules at Session Start
+## Product wedge anchor
+
+- **Stage outcome:** the completed SessionStart Routing Block: Inject wp_* Tool Routing Rules at Session Start work remains truthfully represented in the blueprint lifecycle and continues to describe the shipped outcome of this lane.
+- **Consuming surface:** the repo-local agent-kit surfaces and docs touched by this completed lane.
+- **New user-visible capability:** none new in this cleanup pass; the capability shipped already, and this blueprint now stays structurally valid as a completed record.
+
 
 Update the `ak-sessionstart-routing` hook to inject an `<wp_routing>` XML block alongside `.agent/routing.md` content at session start. This block tells Claude — before it tries anything — to use `wp_test`, `wp_lint`, `wp_qa`, `wp_typecheck`, `wp_audit` instead of raw shell commands. The model learns the routing rules once per session from `additionalContext`, keeping all subsequent tool calls clean.
 
@@ -116,3 +126,7 @@ Two tasks: (1) define the routing block content, (2) integrate it into the sessi
 
 - **Routing block repeated per compaction (token cost):** With `compact` included in the matcher, every compaction re-injects the routing block. If compactions are frequent (e.g. large sessions with many tool calls), this adds ~200-400 tokens per compaction. Acceptable for now; can be optimized by tracking injection state if cost becomes material.
 - **MCP tools not available when block fires:** The routing block fires at SessionStart, before the MCP server has connected. Claude receives the routing instructions but cannot immediately verify `wp_*` tools are available. This is intentional — the block sets expectations; actual MCP availability is enforced at PreToolUse time by the `pretooluse-dev-command-routing` blueprint.
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

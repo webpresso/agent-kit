@@ -9,6 +9,7 @@
 
 import { isRunFailure, runCommand } from '#mcp/tools/_shared/run-command'
 import { resolveProjectRoot } from '#mcp/tools/_shared/project-root'
+import { getManagedRunner } from '#tool-runtime'
 
 export interface LintIssue {
   readonly file: string
@@ -148,7 +149,8 @@ export async function runLint(options: RunLintOptions = {}): Promise<LintResult>
     lintArgs.push('.')
   }
 
-  const vpOutcome = await runCommand('vp', lintArgs, runOptions)
+  const resolution = getManagedRunner('vp', { filterOutput: false })
+  const vpOutcome = await runCommand(resolution.command, [...resolution.args, ...lintArgs], runOptions)
   if (isRunFailure(vpOutcome)) {
     return {
       passed: false,

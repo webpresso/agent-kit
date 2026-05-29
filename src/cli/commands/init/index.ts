@@ -8,7 +8,7 @@ import type { CAC } from 'cac'
  * config keys, and generated surfaces it owns while leaving consumer-owned
  * divergent files untouched unless `--overwrite` is passed.
  */
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -36,7 +36,11 @@ import { GENERATED_PATHS_BLOCK, patchGitignore } from './gitignore-patcher.js'
 import { scaffoldAgentsMd } from './scaffold-agents-md.js'
 import { scaffoldBlueprints } from './scaffold-blueprints.js'
 import { scaffoldDocs } from './scaffold-docs.js'
-import { scaffoldBaseKit } from './scaffold-base-kit.js'
+import {
+  BASE_KIT_QUALITY_TARGETS,
+  collectRuntimeContractGuidance,
+  scaffoldBaseKit,
+} from './scaffold-base-kit.js'
 import { scaffoldMonorepoNav } from './scaffold-monorepo-nav.js'
 import {
   REQUIRED_CORE_CAPABILITIES,
@@ -144,6 +148,49 @@ function inferBlueprintsDirOverride(
     return undefined
   }
   return relativePath
+}
+
+function readPackageJsonSafe(repoRoot: string): Record<string, unknown> | null {
+  const packageJsonPath = join(repoRoot, 'package.json')
+  if (!existsSync(packageJsonPath)) {
+    return null
+  }
+
+  try {
+    return JSON.parse(readFileSync(packageJsonPath, 'utf8')) as Record<string, unknown>
+  } catch {
+    return null
+  }
+}
+
+function printRuntimeContractGuidance(
+  packageJson:
+    | { dependencies?: Record<string, string>; devDependencies?: Record<string, string> }
+    | Record<string, unknown>
+    | null
+    | undefined,
+): void {
+  const guidance = collectRuntimeContractGuidance(packageJson)
+
+  console.log('\nRuntime-owned tooling contract:')
+  console.log('  wp now owns execution for test, e2e, lint, format, and typecheck.')
+  console.log(
+    '  Keep local dependencies that your tests, configs, or tsconfig types import directly.',
+  )
+
+  if (guidance.keepLocalAuthoringDeps.length > 0) {
+    console.log(
+      `  Keep local authoring deps when imported directly: ${guidance.keepLocalAuthoringDeps.join(', ')}`,
+    )
+  }
+
+  if (guidance.reviewForRemovalDeps.length > 0) {
+    console.log(
+      `  Review execution-only deps for removal if they only powered local binaries: ${guidance.reviewForRemovalDeps.join(', ')}`,
+    )
+  }
+
+  console.log('  Do not blanket-remove devDependencies just because wp can execute the tool.')
 }
 
 export async function runInit(flags: InitFlags): Promise<number> {
@@ -724,6 +771,19 @@ export async function runInit(flags: InitFlags): Promise<number> {
     console.log(`  drifted:         ${summary.drifted}`)
     if (options.dryRun) console.log(`  would-change:    ${summary['skipped-dry']}`)
 
+    if (tier3Selection.includes('base-kit')) {
+      const qualityTargets = new Set(BASE_KIT_QUALITY_TARGETS)
+      const qualityResults = baseKitResults.filter((result) =>
+        qualityTargets.has(relative(consumer.repoRoot, result.targetPath).replaceAll('\\', '/')),
+      )
+      const qualityCreated = qualityResults.filter((result) => result.action === 'created').length
+      const qualityPreserved = qualityResults.filter((result) => result.action === 'identical').length
+      const qualityDryRun = qualityResults.filter((result) => result.action === 'skipped-dry').length
+      console.log(
+        `  repo quality scaffold: ${options.dryRun ? `${qualityDryRun} would be created` : `${qualityCreated} created, ${qualityPreserved} preserved`}`,
+      )
+    }
+
     if (summary.drifted > 0) {
       console.log(
         '\n  Note: some consumer-owned files exist with different content and were left unchanged.\n' +
@@ -745,8 +805,12 @@ export async function runInit(flags: InitFlags): Promise<number> {
       writeConfig(consumer.repoRoot, config)
 
       console.log('\nHost skill visibility:')
-      for (const line of summarizeHostVisibility(consumer.repoRoot, visibilityAudit)) {
-        console.log(line)
+      if (visibilityAudit.selectedHosts.length === 0) {
+        console.log('  hosts: - skipped (--host none)')
+      } else {
+        for (const line of summarizeHostVisibility(consumer.repoRoot, visibilityAudit)) {
+          console.log(line)
+        }
       }
 
       const missing = visibilityAudit.results.filter((result) => result.status === 'not-visible')
@@ -779,7 +843,11 @@ export async function runInit(flags: InitFlags): Promise<number> {
       }
     }
 
-    console.log('\nwp init: done.')
+    printRuntimeContractGuidance(
+      options.dryRun ? consumer.packageJson : readPackageJsonSafe(consumer.repoRoot) ?? consumer.packageJson,
+    )
+
+    console.log('\nwp init: setup phases finished.')
     if (omxFailure === 'not-found') return EXIT_SETUP_FAIL
     if (omxFailure === 'spawn-failed') return EXIT_WRITE_FAIL
     if (gstackFailure === 'clone-failed') return EXIT_WRITE_FAIL
@@ -817,7 +885,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
       console.log(
         [
           '',
-          '✅ Setup complete.',
+          '✅ Setup complete for the verified phases above.',
           '',
           '  Next: wp blueprint new "your first task"',
           '        wp gain          # token savings after your first session',
@@ -862,7 +930,7 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
     .command(commandName, description)
     .option('--with <skills>', withHelp)
     .option('--without <skills>', withoutHelp)
-    .option('--host <hosts>', 'Comma-separated host targets: codex, claude, opencode, all')
+    .option('--host <hosts>', 'Comma-separated host targets: codex, claude, opencode, all, none')
     .option('--all', 'Install every skill (Tier-1 + Tier-2 + all Tier-3)')
     .option(
       '--overwrite',

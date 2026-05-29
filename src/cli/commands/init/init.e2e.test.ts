@@ -219,7 +219,12 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       const preToolCommand = codex.hooks.PreToolUse?.[0]?.hooks?.[0]?.command ?? ''
       expect(preToolCommand).toContain('"permissionDecision":"deny"')
       expect(preToolCommand).not.toContain('|| true')
-      expect(r.stdout).toContain('wp init: done.')
+      expect(r.stdout).toContain('wp init: setup phases finished.')
+      expect(r.stdout).toContain('Runtime-owned tooling contract:')
+      expect(r.stdout).toContain('wp now owns execution for test, e2e, lint, format, and typecheck.')
+      expect(r.stdout).toContain(
+        'Do not blanket-remove devDependencies just because wp can execute the tool.',
+      )
       expect(r.stdout).toContain('context-mode codex features')
       expect(r.stdout).toContain('context-mode opencode config')
     })
@@ -231,7 +236,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         WP_SKIP_GSTACK: '1',
       })
       expect(r.code).toBe(0)
-      expect(r.stdout).toContain('wp init: done.')
+      expect(r.stdout).toContain('wp init: setup phases finished.')
 
       expect(existsSync(path.join(repo, '.agent'))).toBe(true)
       expect(existsSync(path.join(repo, 'AGENTS.md'))).toBe(true)

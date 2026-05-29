@@ -1,5 +1,7 @@
 ---
 type: blueprint
+title: "Route Monorepo QA Through agent-kit"
+owner: agent-kit
 status: completed
 complexity: M
 created: '2026-05-06'
@@ -17,6 +19,12 @@ tags:
 ---
 
 # Route Monorepo QA Through agent-kit
+## Product wedge anchor
+
+- **Stage outcome:** the completed Route Monorepo QA Through agent-kit work remains truthfully represented in the blueprint lifecycle and continues to describe the shipped outcome of this lane.
+- **Consuming surface:** the repo-local agent-kit surfaces and docs touched by this completed lane.
+- **New user-visible capability:** none new in this cleanup pass; the capability shipped already, and this blueprint now stays structurally valid as a completed record.
+
 
 **Goal:** Close the compact-QA caveat for the **Monorepo** by deciding and
 implementing the safest bridge from `webpresso/monorepo` `just qa` to compact

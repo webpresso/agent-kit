@@ -20,8 +20,9 @@ describe('wp e2e command helpers', () => {
         testList: '.tmp/e2e-list.txt',
       }),
     ).toEqual({
-      command: 'pnpm',
+      command: 'rtk',
       args: [
+        'vp',
         'exec',
         'playwright',
         'test',

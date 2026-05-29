@@ -4,6 +4,8 @@ title: "WP Blueprint MCP resource-oriented tools with freshness and idempotency"
 status: completed
 complexity: M
 owner: "agent"
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 created: '2026-05-22'
 last_updated: '2026-05-22'
 progress: '100% (8/8 tasks done)'
@@ -552,3 +554,7 @@ the implementation changes the published public surface.
 - `$team` — use with `$ultragoal` if parallelizing implementation lanes.
 - `$autoresearch-goal` — not needed unless new MCP/API evidence conflicts.
 - `$performance-goal` — not applicable; this is an API/DX correctness change.
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

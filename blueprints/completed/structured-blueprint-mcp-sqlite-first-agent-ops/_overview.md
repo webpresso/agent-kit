@@ -4,6 +4,8 @@ title: Structured blueprint MCP — SQLite-first multi-project agent operations
 status: completed
 complexity: XL
 owner: ozby
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 created: '2026-05-13'
 last_updated: '2026-05-14'
 progress: '12/12 tasks done'
@@ -740,3 +742,7 @@ Round 2 (2026-05-13) added findings F9–F18 from a fresh adversarial pass plus 
 | Total tasks | 12 |
 | New artefacts pinned | Evidence Contract; `project_id_v1` spec; recursive scan caps; `NextAction` discriminated union; two-lock policy; legacy DB migration |
 | Blueprint compliant | Pending targeted audit |
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

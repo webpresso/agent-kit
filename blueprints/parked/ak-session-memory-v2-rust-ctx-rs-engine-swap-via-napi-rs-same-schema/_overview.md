@@ -1,10 +1,14 @@
 ---
 type: blueprint
+title: wp session memory v2 — Rust ctx-rs engine swap (same schema)
 status: parked
 complexity: L
+owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 created: '2026-05-13'
 last_updated: '2026-05-28'
-progress: '0% (parked with v1 — 0/17 tasks)'
+progress: 'Parked on 2026-05-29 with v1 still operator-deferred; this remains the planned post-v1 performance follow-on once benchmark/SLO evidence warrants unpark'
 depends_on:
   - ak-session-memory-v1-in-process-sqlite-fts5-via-better-sqlite3
 parked_reason: |
@@ -646,3 +650,7 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 | **Critical path** | 5 waves |
 | **Total tasks** | 17 (13 original + 4 Phase 6 output-sandboxing) |
 | **Blueprint compliant** | 17/17 |
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

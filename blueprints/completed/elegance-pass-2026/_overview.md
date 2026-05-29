@@ -1,5 +1,9 @@
 ---
 type: blueprint
+title: "Elegance Pass 2026: Bootstrap Reliability + Catalog Distribution"
+owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 status: completed
 complexity: L
 created: 2026-05-04T00:00:00.000Z
@@ -810,3 +814,7 @@ This is the only path; no `wp migrate` subcommand. Failure messages in Task 2.3 
 - `wp migrate` for catalog format upgrades — premature
 - cc-switch integration — different audience layer
 - Migrating existing global hooks into per-skill SKILL.md (see R1)
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

@@ -1,10 +1,12 @@
 ---
 type: blueprint
+title: wp session memory v2 — Rust ctx-rs engine (replaces Letta, preserves v1 API)
 status: parked
 complexity: L
+owner: agent-kit
 created: '2026-05-13'
-last_updated: '2026-05-13'
-progress: '0% (parked — depends on parked v1)'
+last_updated: '2026-05-29'
+progress: 'Parked on 2026-05-29: depends on the still-parked v1 direction; surviving Rust/napi findings are preserved, but the API-preserving engine swap cannot proceed until v1 is explicitly unparked and re-locked'
 depends_on:
   - ak-session-memory-via-letta-adapter-permissive-replacement-for-context-mode-session-resume-tool-output-indexing
 parked_reason: |

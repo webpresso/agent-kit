@@ -1,5 +1,9 @@
 ---
 type: blueprint
+title: "Agent-Kit Parity Pass"
+owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 status: completed
 complexity: L
 created: '2026-04-25'
@@ -19,6 +23,12 @@ historical_zero_task_rationale: Historical completed planning record predates th
 ---
 
 # Agent-Kit Parity Pass
+## Product wedge anchor
+
+- **Stage outcome:** the completed Agent-Kit Parity Pass work remains truthfully represented in the blueprint lifecycle and continues to describe the shipped outcome of this lane.
+- **Consuming surface:** the repo-local agent-kit surfaces and docs touched by this completed lane.
+- **New user-visible capability:** none new in this cleanup pass; the capability shipped already, and this blueprint now stays structurally valid as a completed record.
+
 
 **Goal:** Close the table-stakes gap with the rest of the agent-kit ecosystem (rulesync, AGENTS.md spec, Claude Skills, etc.) and absorb `quality-engine` as another audit family inside `@webpresso/agent-kit`. Lean on audits as the brand wedge.
 
@@ -63,3 +73,21 @@ External research (2026-04-25) — see roadmap Decision 3/4 — identified concr
 - Supersedes: `quality-engine` portion of `completed/extract-foundation-packages` Wave 1 plan
 - Sibling: `planned/consolidate-runtime-umbrella`, `planned/expand-tooling-umbrella`, `planned/promote-parent-roadmaps`
 - External reference: `dyoshikawa/rulesync` README, `agents.md` spec, `agentskills.io`
+
+## Tasks
+
+#### Task 1.1: Preserve this historical completed parity record without reopening execution
+
+**Status:** done
+
+**Wave:** 0
+
+**Files:**
+- Historical record only
+
+**Acceptance:**
+- [x] The completed parity outcome remains documented without pretending there is unfinished local work in this blueprint.
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

@@ -1,5 +1,9 @@
 ---
 type: blueprint
+title: "Scaffold an Audit-Clean Baseline"
+owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 status: completed
 complexity: M
 created: '2026-04-25'
@@ -15,6 +19,12 @@ tags:
 ---
 
 # Scaffold an Audit-Clean Baseline
+## Product wedge anchor
+
+- **Stage outcome:** the completed Scaffold an Audit-Clean Baseline work remains truthfully represented in the blueprint lifecycle and continues to describe the shipped outcome of this lane.
+- **Consuming surface:** the repo-local agent-kit surfaces and docs touched by this completed lane.
+- **New user-visible capability:** none new in this cleanup pass; the capability shipped already, and this blueprint now stays structurally valid as a completed record.
+
 
 **Goal:** Make `wp setup` leave a consumer repo at an audit-clean baseline without manual cleanup, and tighten the remaining gaps between setup, audits, and post-install diagnostics.
 
@@ -115,6 +125,10 @@ For this blueprint, toolchain/setup follow-up scope is limited to:
 **Status:** done
 
 **Why retained:** historical dependency marker only; this blueprint should not reopen it.
+
+**Acceptance:**
+
+- [x] This historical dependency marker remains documented without reopening already-landed `draft/` lifecycle support.
 
 **Evidence (2026-05-06):** `src/audit/repo-guardrails.ts` includes `draft` in `DEFAULT_BLUEPRINT_STATUSES`; draft coverage exists in `src/audit/repo-guardrails.test.ts`.
 
@@ -231,6 +245,10 @@ Reframe the old top-level `wp doctor` idea around the repo's current doctor surf
 
 **Why retained:** prevents duplicate implementation. OMX/gstack preset work already lives in `src/cli/commands/init/index.ts`; RTK extension already landed in the completed RTK blueprint.
 
+**Acceptance:**
+
+- [x] Legacy OMX/gstack tracer-bullet scope is explicitly marked complete/stale so it does not re-enter the active backlog.
+
 #### [agent-kit] Task 5.1: Reconcile Claude setup guidance with current plugin-dir flow
 
 **Status:** done
@@ -297,3 +315,7 @@ Critical path now: **2.1 -> 2.3 -> 6.1**, with doctor/guidance work parallel aft
 - Completed sibling for plugin/install-flow evolution: `blueprints/completed/agent-kit-claude-plugin-marketplace/_overview.md`
 - Completed sibling for hook/plugin doctor surface: `blueprints/completed/ak-hooks-doctor-post-install-verification-skill-for-plugin-hook-health/_overview.md`
 - Related planned work: `blueprints/planned/promote-parent-roadmaps/_overview.md`
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

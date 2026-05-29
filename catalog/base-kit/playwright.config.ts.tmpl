@@ -1,0 +1,11 @@
+import { defineConfig } from '@playwright/test'
+import { createPlaywrightE2ePreset } from '@webpresso/agent-kit/e2e-preset/playwright'
+
+const preset = createPlaywrightE2ePreset({ testDir: './e2e' })
+
+export default defineConfig({
+  ...preset,
+  use: {
+    ...preset.use,
+  },
+})

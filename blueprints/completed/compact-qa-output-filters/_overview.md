@@ -1,5 +1,7 @@
 ---
 type: blueprint
+title: "Compact QA Output Filters (rtk-inspired)"
+owner: agent-kit
 status: completed
 complexity: M
 created: '2026-05-06'

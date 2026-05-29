@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { resolveCatalogDir } from './index.js'
-import { scaffoldBaseKit } from './scaffold-base-kit.js'
+import { collectRuntimeContractGuidance, scaffoldBaseKit } from './scaffold-base-kit.js'
 
 describe('scaffoldBaseKit', () => {
   let repoRoot: string
@@ -36,6 +36,15 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, '.github', 'workflows', 'ci.webpresso.yml'))).toBe(true)
     expect(existsSync(join(repoRoot, 'scripts', 'check-no-dev-vars.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'tsconfig.json'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'vitest.config.ts'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'oxlint.config.ts'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'stryker.config.ts'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'playwright.config.ts'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'src', 'quality-sample.ts'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'src', 'quality-sample.test.ts'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'e2e', 'fixtures', 'smoke.html'))).toBe(true)
+    expect(existsSync(join(repoRoot, 'e2e', 'smoke.spec.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'test', '.gitkeep'))).toBe(true)
     expect(existsSync(join(repoRoot, 'e2e', '.gitkeep'))).toBe(true)
   })
@@ -59,8 +68,33 @@ describe('scaffoldBaseKit', () => {
     >
     expect((pkg['engines'] as Record<string, string>)['node']).toBe('>=24')
     expect(pkg['packageManager']).toBe('pnpm@11.1.1')
-    expect((pkg['devDependencies'] as Record<string, string>)['webpresso']).toBe('latest')
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
+      'latest',
+    )
+    expect((pkg['devDependencies'] as Record<string, string>)['typescript']).toBe('latest')
+    expect((pkg['devDependencies'] as Record<string, string>)['vitest']).toBe('latest')
+    expect((pkg['devDependencies'] as Record<string, string>)['@playwright/test']).toBe('latest')
+    expect((pkg['devDependencies'] as Record<string, string>)['@stryker-mutator/core']).toBe(
+      'latest',
+    )
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
+    expect((pkg['scripts'] as Record<string, string>)['lint']).toBe(
+      'wp lint src e2e *.config.ts',
+    )
+    expect((pkg['scripts'] as Record<string, string>)['typecheck']).toBe('wp typecheck')
+    expect((pkg['scripts'] as Record<string, string>)['test']).toBe(
+      'wp test --file vitest.config.ts',
+    )
+    expect((pkg['scripts'] as Record<string, string>)['mutation']).toBe('wp test --mutation')
+    expect((pkg['scripts'] as Record<string, string>)['test:mutation']).toBe(
+      'stryker run stryker.config.ts',
+    )
+    expect((pkg['scripts'] as Record<string, string>)['e2e']).toBe(
+      'playwright install chromium && wp e2e --config playwright.config.ts',
+    )
+    expect((pkg['scripts'] as Record<string, string>)['qa']).toContain(
+      'wp lint src e2e *.config.ts',
+    )
     expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
       'WP_SKIP_UPDATE_CHECK=1 wp audit absolute-path-policy --root .',
     )
@@ -78,7 +112,7 @@ describe('scaffoldBaseKit', () => {
     const initial = {
       name: 'consumer-app',
       scripts: { test: 'vitest' },
-      devDependencies: { webpresso: '^0.2.0' },
+      devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
 
@@ -86,7 +120,9 @@ describe('scaffoldBaseKit', () => {
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
-    expect((pkg['devDependencies'] as Record<string, string>)['webpresso']).toBe('^0.2.0')
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
+      '^0.2.0',
+    )
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
     expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
       'WP_SKIP_UPDATE_CHECK=1 wp audit absolute-path-policy --root .',
@@ -99,15 +135,41 @@ describe('scaffoldBaseKit', () => {
     )
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
     expect((pkg['scripts'] as Record<string, string>)['test']).toBe('vitest')
+    expect((pkg['scripts'] as Record<string, string>)['lint']).toBe(
+      'wp lint src e2e *.config.ts',
+    )
   })
 
-  it('preserves consumer-owned setup:agent and existing webpresso devDependency', () => {
+  it('replaces npm init placeholder test script with the starter test lane', () => {
+    const pkgPath = join(repoRoot, 'package.json')
+    writeFileSync(
+      pkgPath,
+      JSON.stringify(
+        {
+          name: 'consumer-app',
+          scripts: { test: 'echo "Error: no test specified" && exit 1' },
+        },
+        null,
+        2,
+      ),
+    )
+
+    const catalogDir = resolveCatalogDir()
+    scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
+
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
+    expect((pkg['scripts'] as Record<string, string>)['test']).toBe(
+      'wp test --file vitest.config.ts',
+    )
+  })
+
+  it('preserves consumer-owned setup:agent and existing agent-kit devDependency', () => {
     const pkgPath = join(repoRoot, 'package.json')
     mkdirSync(repoRoot, { recursive: true })
     const initial = {
       name: 'consumer-app',
       scripts: { 'setup:agent': 'vp exec wp setup' },
-      devDependencies: { webpresso: '^0.2.0' },
+      devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
 
@@ -126,7 +188,9 @@ describe('scaffoldBaseKit', () => {
       'bun scripts/audit-secret-provider-quarantine.ts',
     )
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
-    expect((pkg['devDependencies'] as Record<string, string>)['webpresso']).toBe('^0.2.0')
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
+      '^0.2.0',
+    )
   })
 
   it('preserves a consumer-provided verify:secrets script', () => {
@@ -139,7 +203,7 @@ describe('scaffoldBaseKit', () => {
         'verify:secrets': 'echo custom secret check',
         prepare: 'pnpm -C packages prebuild',
       },
-      devDependencies: { webpresso: '^0.2.0' },
+      devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
 
@@ -179,7 +243,7 @@ describe('scaffoldBaseKit', () => {
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
     expect(
-      (pkg['devDependencies'] as Record<string, string> | undefined)?.['webpresso'],
+      (pkg['devDependencies'] as Record<string, string> | undefined)?.['@webpresso/agent-kit'],
     ).toBeUndefined()
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
     expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
@@ -202,7 +266,7 @@ describe('scaffoldBaseKit', () => {
       packageManager: 'pnpm@11.5.0',
       engines: { node: '>=24' },
       scripts: { 'setup:agent': 'wp setup' },
-      devDependencies: { webpresso: '^0.18.0' },
+      devDependencies: { '@webpresso/agent-kit': '^0.18.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
 
@@ -257,8 +321,34 @@ describe('scaffoldBaseKit', () => {
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
-    expect((pkg['devDependencies'] as Record<string, string>)['webpresso']).toBeUndefined()
-    expect(pkg['scripts']).toBeUndefined()
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBeUndefined()
+    expect((pkg['scripts'] as Record<string, string>)['test']).toBe(
+      'wp test --file vitest.config.ts',
+    )
+  })
+
+  it('does NOT overwrite existing quality configs or sample files even with --overwrite', () => {
+    const consumerFiles: Array<[string, string]> = [
+      ['tsconfig.json', '{"compilerOptions":{"strict":false}}\n'],
+      ['vitest.config.ts', 'export default {}\n'],
+      ['oxlint.config.ts', 'export default {}\n'],
+      ['stryker.config.ts', 'export default {}\n'],
+      ['playwright.config.ts', 'export default {}\n'],
+      [join('src', 'quality-sample.ts'), 'export const owned = true\n'],
+      [join('e2e', 'smoke.spec.ts'), 'export const owned = true\n'],
+    ]
+    for (const [relativePath, content] of consumerFiles) {
+      const targetPath = join(repoRoot, relativePath)
+      mkdirSync(join(targetPath, '..'), { recursive: true })
+      writeFileSync(targetPath, content)
+    }
+
+    const catalogDir = resolveCatalogDir()
+    scaffoldBaseKit({ catalogDir, repoRoot, options: { overwrite: true } })
+
+    for (const [relativePath, content] of consumerFiles) {
+      expect(readFileSync(join(repoRoot, relativePath), 'utf8')).toBe(content)
+    }
   })
 
   it('identical run produces only identical/skipped results', () => {
@@ -268,5 +358,21 @@ describe('scaffoldBaseKit', () => {
 
     const nonIdentical = results2.filter((r) => r.action !== 'identical')
     expect(nonIdentical).toHaveLength(0)
+  })
+
+  it('separates local authoring deps from execution-only removal candidates', () => {
+    expect(
+      collectRuntimeContractGuidance({
+        devDependencies: {
+          vitest: '^3.0.0',
+          '@playwright/test': '^1.55.0',
+          oxlint: '^1.0.0',
+          oxfmt: '^1.0.0',
+        },
+      }),
+    ).toEqual({
+      keepLocalAuthoringDeps: ['vitest', '@playwright/test'],
+      reviewForRemovalDeps: ['oxlint', 'oxfmt'],
+    })
   })
 })

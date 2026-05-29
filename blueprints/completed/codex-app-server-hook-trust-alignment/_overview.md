@@ -1,5 +1,9 @@
 ---
 type: blueprint
+title: "Codex App-server Hook Trust Alignment"
+owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 status: completed
 completed_at: '2026-05-14'
 complexity: M
@@ -15,6 +19,12 @@ tags:
 ---
 
 # Codex App-server Hook Trust Alignment
+## Product wedge anchor
+
+- **Stage outcome:** the completed Codex App-server Hook Trust Alignment work remains truthfully represented in the blueprint lifecycle and continues to describe the shipped outcome of this lane.
+- **Consuming surface:** the repo-local agent-kit surfaces and docs touched by this completed lane.
+- **New user-visible capability:** none new in this cleanup pass; the capability shipped already, and this blueprint now stays structurally valid as a completed record.
+
 
 **Goal:** Replace agent-kit's Codex hook auto-trust implementation with a clean official-runtime path that asks the installed `codex app-server` for hook `key`/`currentHash`, writes trust state through `config/batchWrite`, and deletes the manual hash-mirroring implementation. If app-server trust sync cannot run, setup must fail loudly or warn explicitly without pretending hooks are trusted.
 
@@ -382,3 +392,7 @@ Update docs so users and future agents understand why hook trust is auto-synced,
 | Max parallel agents | 2 |
 | Total tasks | 6 |
 | Blueprint compliant | 6/6 |
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

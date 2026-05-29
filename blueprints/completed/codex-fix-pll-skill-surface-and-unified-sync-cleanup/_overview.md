@@ -1,5 +1,9 @@
 ---
 type: blueprint
+title: "Codex Fix/PLL Skill Surface and Unified Sync Cleanup"
+owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 status: completed
 complexity: S
 created: '2026-05-13'
@@ -18,6 +22,12 @@ historical_zero_task_rationale: Historical completed planning record predates th
 ---
 
 # Codex Fix/PLL Skill Surface and Unified Sync Cleanup
+## Product wedge anchor
+
+- **Stage outcome:** the completed Codex Fix/PLL Skill Surface and Unified Sync Cleanup work remains truthfully represented in the blueprint lifecycle and continues to describe the shipped outcome of this lane.
+- **Consuming surface:** the repo-local agent-kit surfaces and docs touched by this completed lane.
+- **New user-visible capability:** none new in this cleanup pass; the capability shipped already, and this blueprint now stays structurally valid as a completed record.
+
 
 ## Goal
 
@@ -49,3 +59,21 @@ Make `fix`, `verify`, and `pll` available through Codex-compatible skill surface
 ## Notes
 
 - Full `pnpm run format:check` still reports pre-existing unrelated drift in `src/audit/hook-surface*.ts` and `src/symlinker/index.ts`; those files are outside this blueprint's change set and were not reformatted here.
+
+## Tasks
+
+#### Task 1.1: Preserve this historical completed fix/pll cleanup record without reopening execution
+
+**Status:** done
+
+**Wave:** 0
+
+**Files:**
+- Historical record only
+
+**Acceptance:**
+- [x] The completed fix/pll cleanup outcome remains documented without pretending there is unfinished local work in this blueprint.
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

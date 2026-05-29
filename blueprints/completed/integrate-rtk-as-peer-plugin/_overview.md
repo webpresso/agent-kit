@@ -1,5 +1,7 @@
 ---
 type: blueprint
+title: "Integrate rtk as a Peer Plugin"
+owner: agent-kit
 status: completed
 complexity: S
 created: '2026-05-06'

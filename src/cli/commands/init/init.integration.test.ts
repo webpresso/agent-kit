@@ -179,6 +179,18 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     }
   })
 
+  it('supports a no-host fresh bootstrap with explicit degraded reporting', async () => {
+    const code = await runInit({ cwd: repo, yes: true, host: 'none' })
+
+    expect(code).toBe(0)
+    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('repo quality scaffold:'))
+    expect(consoleLogSpy).toHaveBeenCalledWith('  hosts: - skipped (--host none)')
+    const rc = JSON.parse(readFileSync(join(repo, '.webpressorc.json'), 'utf8')) as {
+      hosts?: { selected?: string[] }
+    }
+    expect(rc.hosts?.selected).toEqual([])
+  })
+
   it('scaffolds .agent/, docs/templates/, blueprints/, AGENTS.md, .webpressorc.json', async () => {
     const code = await runInit({ cwd: repo, yes: true })
     expect(code).toBe(0)
@@ -237,6 +249,29 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(existsSync(join(repo, 'docs', 'templates', 'blueprint.md'))).toBe(true)
     expect(existsSync(join(repo, 'docs', 'templates', 'adr.md'))).toBe(true)
 
+    // Default base-kit quality scaffold
+    expect(existsSync(join(repo, 'tsconfig.json'))).toBe(true)
+    expect(existsSync(join(repo, 'vitest.config.ts'))).toBe(true)
+    expect(existsSync(join(repo, 'oxlint.config.ts'))).toBe(true)
+    expect(existsSync(join(repo, 'stryker.config.ts'))).toBe(true)
+    expect(existsSync(join(repo, 'playwright.config.ts'))).toBe(true)
+    expect(existsSync(join(repo, 'src', 'quality-sample.ts'))).toBe(true)
+    expect(existsSync(join(repo, 'src', 'quality-sample.test.ts'))).toBe(true)
+    expect(existsSync(join(repo, 'e2e', 'fixtures', 'smoke.html'))).toBe(true)
+    expect(existsSync(join(repo, 'e2e', 'smoke.spec.ts'))).toBe(true)
+    const packageJson = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')) as {
+      scripts: Record<string, string>
+      devDependencies: Record<string, string>
+    }
+    expect(packageJson.scripts.lint).toBe('wp lint src e2e *.config.ts')
+    expect(packageJson.scripts.typecheck).toBe('wp typecheck')
+    expect(packageJson.scripts.test).toBe('wp test --file vitest.config.ts')
+    expect(packageJson.scripts.mutation).toBe('wp test --mutation')
+    expect(packageJson.scripts.e2e).toBe(
+      'playwright install chromium && wp e2e --config playwright.config.ts',
+    )
+    expect(packageJson.devDependencies['@webpresso/agent-kit']).toBe('latest')
+
     // Blueprints
     expect(existsSync(join(repo, 'blueprints', 'planned', '.gitkeep'))).toBe(true)
     expect(existsSync(join(repo, 'blueprints', 'in-progress', '.gitkeep'))).toBe(true)
@@ -284,6 +319,43 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
       'react-doctor',
       'tanstack-query',
     ])
+  })
+
+  it('prints runtime-owned migration guidance without blanket dependency removal advice', async () => {
+    writeFileSync(
+      join(repo, 'package.json'),
+      JSON.stringify(
+        {
+          name: '@acme/demo',
+          private: true,
+          dependencies: { react: '^18.0.0', hono: '^4.0.0' },
+          devDependencies: {
+            vitest: '^2.0.0',
+            '@playwright/test': '^1.55.0',
+            oxlint: '^1.0.0',
+            oxfmt: '^1.0.0',
+          },
+        },
+        null,
+        2,
+      ),
+    )
+
+    const code = await runInit({ cwd: repo, yes: true })
+    expect(code).toBe(0)
+
+    const logOutput = consoleLogSpy?.mock.calls.flat().join('\n') ?? ''
+    expect(logOutput).toContain('Runtime-owned tooling contract:')
+    expect(logOutput).toContain('wp now owns execution for test, e2e, lint, format, and typecheck.')
+    expect(logOutput).toContain(
+      'Keep local authoring deps when imported directly: vitest, @playwright/test',
+    )
+    expect(logOutput).toContain(
+      'Review execution-only deps for removal if they only powered local binaries: oxlint, oxfmt',
+    )
+    expect(logOutput).toContain(
+      'Do not blanket-remove devDependencies just because wp can execute the tool.',
+    )
   })
 
   it('persists webpresso/blueprints in config and scaffolds that layout for webpresso repos', async () => {

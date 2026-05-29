@@ -21,6 +21,7 @@ import matter from 'gray-matter'
 import { z } from 'zod'
 
 import { parseBlueprint } from '#core/parser'
+import { setBlueprintFrontmatterFields } from '#lifecycle/engine'
 import { openDb } from '#db/connection.js'
 import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 import { findTemplate } from '#db/templates.js'
@@ -183,6 +184,15 @@ async function resolveSyncAdapter(cwd: string): Promise<SyncAdapter | null> {
 }
 
 const DEFAULT_PLATFORM_MUTATION_TIMEOUT_MS = 5_000
+
+function todayIsoDate(): string {
+  return new Date().toISOString().split('T')[0] ?? new Date().toISOString()
+}
+
+function formatBlueprintProgress(totalTasks: number, doneTasks: number, blockedTasks: number): string {
+  const percent = totalTasks === 0 ? 0 : Math.round((doneTasks / totalTasks) * 100)
+  return `${percent}% (${doneTasks}/${totalTasks} tasks done, ${blockedTasks} blocked, updated ${todayIsoDate()})`
+}
 
 function readPlatformMutationTimeoutMs(): number {
   const parsed = Number.parseInt(
@@ -372,6 +382,24 @@ async function reIngest(cwd: string): Promise<void> {
   await reIngestProjection(cwd)
 }
 
+async function persistBlueprintMarkdown(input: {
+  projectCwd: string
+  slug: string
+  overviewPath: string
+  markdown: string
+}) {
+  const { projectCwd, slug, overviewPath, markdown } = input
+  mkdirSync(path.dirname(overviewPath), { recursive: true })
+  parseBlueprint(markdown, slug)
+  writeFileSync(overviewPath, markdown, 'utf8')
+  await reIngest(projectCwd)
+  const refreshed = getCurrentProjectBlueprint(projectCwd, slug)
+  if (!refreshed.blueprint) {
+    throw new Error(`Blueprint "${slug}" did not appear in the projection after write`)
+  }
+  return refreshed.blueprint
+}
+
 function findBlueprintDir(
   blueprintRoot: string,
   slug: string,
@@ -503,6 +531,8 @@ function finishPayload(payload: Record<string, unknown>): ToolHandlerResult {
 
 type MutationToolName =
   | 'wp_blueprint_create'
+  | 'wp_blueprint_put'
+  | 'wp_blueprint_transition'
   | 'wp_blueprint_task_advance'
   | 'wp_blueprint_task_verify'
 
@@ -1250,13 +1280,6 @@ async function handlePromote(
     )
   const { dir: currentDir, state: currentState } = found
   const overviewPath = path.join(currentDir, '_overview.md')
-  const ts = readVt(projectCwd)
-  const mtime = existsSync(overviewPath) ? statSync(overviewPath).mtimeMs : 0
-  if ((ts[slug] ?? 0) < mtime)
-    return err(
-      'wp_blueprint_promote refused',
-      `Blueprint "${slug}" not validated since last write. Run wp_blueprint_validate first.`,
-    )
 
   if (to_state === 'completed') {
     try {
@@ -1288,39 +1311,33 @@ async function handlePromote(
   } catch (e) {
     return err('wp_blueprint_promote failed', toStr(e))
   }
-
-  const { renameSync } = await import('node:fs')
-  const destDir = path.join(root, to_state, slug)
-  mkdirSync(path.dirname(destDir), { recursive: true })
   try {
-    renameSync(currentDir, destDir)
+    const transitioned = await applyLocalBlueprintTransition({
+      found,
+      projectCwd,
+      slug,
+      to_state,
+    })
+    const payload: Record<string, unknown> = {
+      summary: `Blueprint "${slug}" promoted from "${currentState}" to "${to_state}"`,
+      slug,
+      from_state: currentState,
+      to_state,
+      new_path: transitioned.overviewPath,
+      status: transitioned.blueprint.status,
+      content_hash: transitioned.blueprint.content_hash,
+      revision: transitioned.blueprint.content_hash,
+      ingested_at: transitioned.blueprint.ingested_at,
+      failures: [],
+      bytes: 0,
+      tokensSaved: 0,
+    }
+    if (currentState === 'draft' && to_state === 'planned')
+      appendHint(payload, projectCwd, 'PLAN_REFINE')
+    return finishPayload(payload)
   } catch (e) {
-    return err('wp_blueprint_promote failed', `Directory move error: ${toStr(e)}`)
+    return err('wp_blueprint_promote failed', toStr(e))
   }
-  const destOverview = path.join(destDir, '_overview.md')
-  if (existsSync(destOverview)) {
-    const fm = matter(readFileSync(destOverview, 'utf8'))
-    fm.data['status'] = to_state
-    writeFileSync(destOverview, matter.stringify(fm.content, fm.data), 'utf8')
-  }
-  try {
-    await reIngest(projectCwd)
-  } catch {
-    /* non-fatal */
-  }
-  const payload: Record<string, unknown> = {
-    summary: `Blueprint "${slug}" promoted from "${currentState}" to "${to_state}"`,
-    slug,
-    from_state: currentState,
-    to_state,
-    new_path: destOverview,
-    failures: [],
-    bytes: 0,
-    tokensSaved: 0,
-  }
-  if (currentState === 'draft' && to_state === 'planned')
-    appendHint(payload, projectCwd, 'PLAN_REFINE')
-  return finishPayload(payload)
 }
 
 const finalizeSchema = z.object({ project_id: z.string().optional(), slug: z.string() })
@@ -1396,37 +1413,30 @@ async function handleFinalize(
   } catch (e) {
     return err('wp_blueprint_finalize failed', toStr(e))
   }
-
-  const { renameSync } = await import('node:fs')
-  const destDir = path.join(root, 'completed', slug)
-  mkdirSync(path.dirname(destDir), { recursive: true })
   try {
-    renameSync(found.dir, destDir)
+    const transitioned = await applyLocalBlueprintTransition({
+      found,
+      projectCwd,
+      slug,
+      to_state: 'completed',
+    })
+    const payload: Record<string, unknown> = {
+      summary: `Blueprint "${slug}" finalized and moved to completed`,
+      slug,
+      new_path: transitioned.overviewPath,
+      status: transitioned.blueprint.status,
+      content_hash: transitioned.blueprint.content_hash,
+      revision: transitioned.blueprint.content_hash,
+      ingested_at: transitioned.blueprint.ingested_at,
+      failures: [],
+      bytes: 0,
+      tokensSaved: 0,
+    }
+    if (hasRecentAuditFinding(projectCwd)) appendHint(payload, projectCwd, 'AUDIT_FIX')
+    return finishPayload(payload)
   } catch (e) {
-    return err('wp_blueprint_finalize failed', `Directory move error: ${toStr(e)}`)
+    return err('wp_blueprint_finalize failed', toStr(e))
   }
-  const destOverview = path.join(destDir, '_overview.md')
-  if (existsSync(destOverview)) {
-    const fm = matter(readFileSync(destOverview, 'utf8'))
-    fm.data['status'] = 'completed'
-    fm.data['completed_at'] = new Date().toISOString().split('T')[0] ?? ''
-    writeFileSync(destOverview, matter.stringify(fm.content, fm.data), 'utf8')
-  }
-  try {
-    await reIngest(projectCwd)
-  } catch {
-    /* non-fatal */
-  }
-  const payload: Record<string, unknown> = {
-    summary: `Blueprint "${slug}" finalized and moved to completed`,
-    slug,
-    new_path: destOverview,
-    failures: [],
-    bytes: 0,
-    tokensSaved: 0,
-  }
-  if (hasRecentAuditFinding(projectCwd)) appendHint(payload, projectCwd, 'AUDIT_FIX')
-  return finishPayload(payload)
 }
 
 function assertBlueprintCanComplete(overviewPath: string, slug: string): void {
@@ -2147,6 +2157,289 @@ const createSchema = MutationTarget.extend({
   head_at_ingest: z.string().nullable().optional(),
 })
 
+const putTaskSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  status: z.enum(['todo', 'in-progress', 'blocked', 'done', 'dropped']).default('todo'),
+  wave: z.string().optional(),
+  lane: z.string().optional(),
+  description: z.string().optional(),
+  acceptance: z.array(z.string().min(1)).min(1),
+})
+
+const putDocumentSchema = z.object({
+  type: z.literal('blueprint').default('blueprint'),
+  title: z.string().min(1),
+  status: z.enum(['draft', 'planned', 'in-progress', 'completed', 'parked', 'archived']),
+  complexity: z.enum(['XS', 'S', 'M', 'L', 'XL']),
+  owner: z.string().min(1),
+  created: z.string().min(1),
+  last_updated: z.string().min(1),
+  progress: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  product_wedge_anchor: z.object({
+    stage_outcome: z.string().min(1),
+    consuming_surface: z.string().min(1),
+    new_user_visible_capability: z.string().min(1),
+  }),
+  summary: z.string().min(1),
+  tasks: z.array(putTaskSchema).min(1),
+})
+
+const putSchema = MutationTarget.extend({
+  slug: z.string().min(1),
+  document: putDocumentSchema,
+  request_id: z.string().min(1).optional(),
+  head_at_ingest: z.string().nullable().optional(),
+})
+
+function renderBlueprintMarkdownFromDocument(
+  slug: string,
+  document: z.infer<typeof putDocumentSchema>,
+): string {
+  const frontmatter = [
+    '---',
+    `type: ${document.type}`,
+    `title: ${document.title}`,
+    `status: ${document.status}`,
+    `complexity: ${document.complexity}`,
+    `owner: ${document.owner}`,
+    `created: '${document.created}'`,
+    `last_updated: '${document.last_updated}'`,
+    ...(document.progress ? [`progress: ${JSON.stringify(document.progress)}`] : []),
+    ...(document.tags && document.tags.length > 0
+      ? ['tags:', ...document.tags.map((tag) => `  - ${tag}`)]
+      : []),
+    '---',
+    '',
+  ]
+
+  const sections = [
+    `# ${document.title}`,
+    '',
+    '## Product wedge anchor',
+    '',
+    `- **Stage outcome:** ${document.product_wedge_anchor.stage_outcome}`,
+    `- **Consuming surface:** ${document.product_wedge_anchor.consuming_surface}`,
+    `- **New user-visible capability:** ${document.product_wedge_anchor.new_user_visible_capability}`,
+    '',
+    '## Summary',
+    '',
+    document.summary,
+    '',
+  ]
+
+  const taskBlocks = document.tasks.flatMap((task) => [
+    `#### Task ${task.id}: ${task.title}`,
+    '',
+    `**Status:** ${task.status}`,
+    ...(task.wave ? [`**Wave:** ${task.wave}`] : []),
+    ...(task.lane ? [`**Lane:** ${task.lane}`] : []),
+    ...(task.description ? ['', task.description] : []),
+    '',
+    '**Acceptance:**',
+    ...task.acceptance.map((item) => `- [ ] ${item}`),
+    '',
+  ])
+
+  return [...frontmatter, ...sections, ...taskBlocks].join('\n').trimEnd() + '\n'
+}
+
+async function handleBlueprintPut(
+  projectResolver: ProjectResolver,
+  cwd: string,
+  raw: unknown,
+): Promise<ToolHandlerResult> {
+  const p = putSchema.safeParse(raw)
+  if (!p.success) return err('wp_blueprint_put validation error', p.error.message)
+  const { project_id, slug, document, request_id, head_at_ingest } = p.data
+  const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
+  if ('content' in resolvedProject) return resolvedProject
+  const projectCwd = resolvedProject.cwd
+  await ensureProjectionReady(projectCwd)
+  const freshnessFailure = validateMutationFreshnessToken(
+    projectCwd,
+    head_at_ingest,
+    'wp_blueprint_put',
+    'wp_blueprint_get',
+  )
+  if (freshnessFailure) return freshnessFailure
+
+  const payloadHash = hashMutationPayload({ slug, document })
+  const replay =
+    request_id !== undefined
+      ? readMutationReplay(projectCwd, 'wp_blueprint_put', request_id, payloadHash)
+      : null
+  if (replay) return replay
+
+  const root = resolveBlueprintRoot(projectCwd)
+  const found = findBlueprintDir(root, slug, ALL_STATES)
+  if (found && found.state !== document.status) {
+    return err(
+      'wp_blueprint_put refused',
+      `Blueprint "${slug}" currently lives in "${found.state}" and cannot be rewritten as "${document.status}" without a lifecycle transition.`,
+    )
+  }
+  if (!found && document.status !== 'draft') {
+    return err(
+      'wp_blueprint_put refused',
+      `New blueprint "${slug}" must start in "draft"; use wp_blueprint_transition for later lifecycle moves.`,
+    )
+  }
+
+  const overviewPath = found
+    ? path.join(found.dir, '_overview.md')
+    : path.join(root, document.status, slug, '_overview.md')
+  try {
+    const markdown = renderBlueprintMarkdownFromDocument(slug, document)
+    const blueprint = await persistBlueprintMarkdown({
+      projectCwd,
+      slug,
+      overviewPath,
+      markdown,
+    })
+    const payload: Record<string, unknown> = {
+      summary: `Blueprint "${slug}" written to ${overviewPath}`,
+      slug,
+      path: overviewPath,
+      status: blueprint.status,
+      content_hash: blueprint.content_hash,
+      ingested_at: blueprint.ingested_at,
+      revision: blueprint.content_hash,
+      idempotent: false,
+      failures: [],
+      next_action: makeNextAction(
+        'verify_task',
+        'Blueprint written. Next: validate or transition the latest revision token through the structured surface.',
+      ),
+      project_id: resolvedProject.project_id ?? projectCwd,
+    }
+    if (request_id !== undefined) {
+      recordMutationReplay(projectCwd, 'wp_blueprint_put', request_id, payloadHash, payload)
+    }
+    return finishPayload(payload)
+  } catch (e) {
+    return err('wp_blueprint_put failed', toStr(e))
+  }
+}
+
+const transitionSchema = MutationTarget.extend({
+  slug: z.string().min(1),
+  to_state: z.enum(['draft', 'planned', 'in-progress', 'completed', 'parked', 'archived']),
+  expected_version: z.string().min(1),
+})
+
+async function handleBlueprintTransition(
+  projectResolver: ProjectResolver,
+  cwd: string,
+  raw: unknown,
+): Promise<ToolHandlerResult> {
+  const p = transitionSchema.safeParse(raw)
+  if (!p.success) return err('wp_blueprint_transition validation error', p.error.message)
+  const { project_id, slug, to_state, expected_version } = p.data
+  const resolvedProject = await resolveToolProject(projectResolver, cwd, project_id)
+  if ('content' in resolvedProject) return resolvedProject
+  const projectCwd = resolvedProject.cwd
+  await ensureProjectionReady(projectCwd)
+  const target = dbPath(projectCwd)
+  if (!existsSync(target)) return err('wp_blueprint_transition failed', 'Blueprint DB not found')
+  const current = getCurrentProjectBlueprint(projectCwd, slug)
+  if (!current.blueprint) {
+    return err('wp_blueprint_transition failed', `Blueprint "${slug}" not found`)
+  }
+  if (current.blueprint.content_hash !== expected_version) {
+    return jsonContent(
+      {
+        summary: `wp_blueprint_transition rejected a stale blueprint revision`,
+        failures: [
+          `expected_version "${expected_version}" does not match current content hash "${current.blueprint.content_hash}"`,
+        ],
+        error: 'stale_blueprint_revision',
+        next_action: makeNextAction(
+          'reingest_project',
+          'Call wp_blueprint_get again to fetch the latest content_hash before retrying the transition.',
+        ),
+        bytes: 0,
+        tokensSaved: 0,
+      },
+      true,
+    )
+  }
+
+  const root = resolveBlueprintRoot(projectCwd)
+  const found = findBlueprintDir(root, slug, ALL_STATES)
+  if (!found) return err('wp_blueprint_transition failed', `Blueprint "${slug}" not found on disk`)
+  try {
+    const refreshed = await applyLocalBlueprintTransition({
+      found,
+      projectCwd,
+      slug,
+      to_state,
+    })
+    return finishPayload({
+      summary: `Blueprint "${slug}" transitioned to ${to_state}`,
+      slug,
+      old_status: current.blueprint.status,
+      new_status: to_state,
+      status: refreshed.blueprint.status,
+      content_hash: refreshed.blueprint.content_hash,
+      revision: refreshed.blueprint.content_hash,
+      ingested_at: refreshed.blueprint.ingested_at,
+      failures: [],
+      project_id: resolvedProject.project_id ?? projectCwd,
+    })
+  } catch (e) {
+    return err('wp_blueprint_transition failed', toStr(e))
+  }
+}
+
+async function applyLocalBlueprintTransition(input: {
+  projectCwd: string
+  slug: string
+  to_state: string
+  found: { dir: string; state: string }
+}) {
+  const { projectCwd, slug, to_state, found } = input
+  const root = resolveBlueprintRoot(projectCwd)
+  const overviewPath = path.join(found.dir, '_overview.md')
+  const parsed = runValidate(overviewPath)
+  if (!parsed.valid) {
+    throw new Error(parsed.gaps.join('; '))
+  }
+  const markdown = readFileSync(overviewPath, 'utf8')
+  const currentBlueprint = parseBlueprint(markdown, slug)
+  const updated = setBlueprintFrontmatterFields(markdown, {
+    status: to_state,
+    last_updated: todayIsoDate(),
+    completed_at: to_state === 'completed' ? todayIsoDate() : undefined,
+    progress: formatBlueprintProgress(
+      currentBlueprint.tasks.length,
+      currentBlueprint.tasks.filter((task) => task.status === 'done').length,
+      currentBlueprint.tasks.filter((task) => task.status === 'blocked').length,
+    ),
+  })
+  parseBlueprint(updated, slug)
+  const destDir = path.join(root, to_state, slug)
+  mkdirSync(path.dirname(destDir), { recursive: true })
+  let finalOverviewPath = overviewPath
+  if (found.state !== to_state) {
+    const { renameSync } = await import('node:fs')
+    renameSync(found.dir, destDir)
+    finalOverviewPath = path.join(destDir, '_overview.md')
+  }
+  writeFileSync(finalOverviewPath, updated, 'utf8')
+  await reIngest(projectCwd)
+  const refreshed = getCurrentProjectBlueprint(projectCwd, slug)
+  if (!refreshed.blueprint) {
+    throw new Error(`Blueprint "${slug}" did not appear in the projection after transition`)
+  }
+  return {
+    blueprint: refreshed.blueprint,
+    overviewPath: finalOverviewPath,
+    fromState: found.state,
+  }
+}
+
 async function handleBlueprintCreate(
   projectResolver: ProjectResolver,
   cwd: string,
@@ -2185,10 +2478,12 @@ async function handleBlueprintCreate(
       .replace(/{COMPLEXITY}/g, complexity)
       .replace(/{DATE}/g, today)
       .replace('{GOAL}', goal)
-    writeFileSync(overviewPath, content, 'utf8')
-
-    // Re-ingest so the DB reflects the new blueprint
-    await reIngest(projectCwd)
+    await persistBlueprintMarkdown({
+      projectCwd,
+      slug,
+      overviewPath,
+      markdown: content,
+    })
 
     const b = bytes(content)
     const payload: Record<string, unknown> = {
@@ -2271,6 +2566,74 @@ export async function registerBlueprintTools(
     undefined,
     (r) => handleNew(cwd, r),
     { title: 'Blueprint New', readOnlyHint: true, openWorldHint: false },
+  )
+
+  registrar.registerTool(
+    'wp_blueprint_put',
+    'Create or replace a blueprint from a structured whole-document payload. Renders markdown, validates it, re-ingests the projection, and returns revision metadata.',
+    {
+      type: 'object',
+      properties: {
+        project_id: { type: 'string' },
+        slug: { type: 'string' },
+        document: { type: 'object' },
+        request_id: { type: 'string' },
+        head_at_ingest: { type: ['string', 'null'] },
+      },
+      required: ['project_id', 'slug', 'document'],
+    },
+    {
+      ...summaryEnvelopeOutputSchema,
+      properties: {
+        ...summaryEnvelopeOutputSchema.properties,
+        slug: { type: 'string' },
+        path: { type: 'string' },
+        status: { type: 'string' },
+        content_hash: { type: 'string' },
+        ingested_at: { type: 'number' },
+        revision: { type: 'string' },
+        idempotent: { type: 'boolean' },
+        project_id: { type: 'string' },
+        next_action: nextActionOutputSchema,
+      },
+    },
+    (r) => handleBlueprintPut(projectResolver, cwd, r),
+    { title: 'Blueprint Put', destructiveHint: false, openWorldHint: false },
+  )
+
+  registrar.registerTool(
+    'wp_blueprint_transition',
+    'Transition a blueprint lifecycle state using an expected revision token. Revalidates the latest markdown, rewrites frontmatter atomically, re-ingests the projection, and returns updated revision metadata.',
+    {
+      type: 'object',
+      properties: {
+        project_id: { type: 'string' },
+        slug: { type: 'string' },
+        to_state: {
+          type: 'string',
+          enum: ['draft', 'planned', 'in-progress', 'completed', 'parked', 'archived'],
+        },
+        expected_version: { type: 'string' },
+      },
+      required: ['project_id', 'slug', 'to_state', 'expected_version'],
+    },
+    {
+      ...summaryEnvelopeOutputSchema,
+      properties: {
+        ...summaryEnvelopeOutputSchema.properties,
+        slug: { type: 'string' },
+        old_status: { type: 'string' },
+        new_status: { type: 'string' },
+        status: { type: 'string' },
+        content_hash: { type: 'string' },
+        revision: { type: 'string' },
+        ingested_at: { type: 'number' },
+        project_id: { type: 'string' },
+        next_action: nextActionOutputSchema,
+      },
+    },
+    (r) => handleBlueprintTransition(projectResolver, cwd, r),
+    { title: 'Blueprint Transition', destructiveHint: false, openWorldHint: false },
   )
 
   registrar.registerTool(

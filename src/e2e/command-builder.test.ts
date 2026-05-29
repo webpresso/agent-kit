@@ -13,8 +13,8 @@ describe('buildE2eCommand', () => {
         },
       }),
     ).toEqual({
-      command: 'pnpm',
-      args: ['--dir', 'apps/e2e', 'exec', 'playwright', 'test', '--config', 'playwright.config.ts'],
+      command: 'rtk',
+      args: ['vp', '--dir', 'apps/e2e', 'exec', 'playwright', 'test', '--config', 'playwright.config.ts'],
     })
   })
 
@@ -33,8 +33,9 @@ describe('buildE2eCommand', () => {
         testList: '.tmp/e2e-list.txt',
       }),
     ).toEqual({
-      command: 'pnpm',
+      command: 'rtk',
       args: [
+        'vp',
         '--dir',
         'apps/e2e',
         'exec',
@@ -63,8 +64,9 @@ describe('buildE2eCommand', () => {
         },
       }),
     ).toEqual({
-      command: 'pnpm',
+      command: 'rtk',
       args: [
+        'vp',
         '--dir',
         'apps/workers/platform-api/e2e',
         'exec',

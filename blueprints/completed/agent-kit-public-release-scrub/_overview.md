@@ -3,6 +3,8 @@ type: blueprint
 title: Agent-Kit Public Release Scrub
 status: completed
 owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 complexity: M
 created: '2026-05-27'
 last_updated: '2026-05-27'
@@ -321,3 +323,7 @@ package release from being confused with a public Git-history release.
 | Make the repository public immediately and rely on scanner false-positive triage. | Public hosts may still flag the repo, and the known monorepo/local-path disclosure remains unresolved. |
 | Delete all blueprints before publishing. | Blueprints are the durable planning surface; targeted sanitization preserves useful public history. |
 | Treat GitHub Packages references as secret. | Registry and environment-variable placeholders are not secrets; the task is to document intentional visibility. |
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

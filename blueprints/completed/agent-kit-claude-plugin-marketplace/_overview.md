@@ -1,5 +1,9 @@
 ---
 type: blueprint
+title: "Agent-Kit Claude Code Plugin & Marketplace"
+owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 status: completed
 complexity: L
 created: '2026-04-26'
@@ -21,6 +25,12 @@ completed_at: '2026-04-26'
 ---
 
 # Agent-Kit Claude Code Plugin & Marketplace
+## Product wedge anchor
+
+- **Stage outcome:** the completed Agent-Kit Claude Code Plugin & Marketplace work remains truthfully represented in the blueprint lifecycle and continues to describe the shipped outcome of this lane.
+- **Consuming surface:** the repo-local agent-kit surfaces and docs touched by this completed lane.
+- **New user-visible capability:** none new in this cleanup pass; the capability shipped already, and this blueprint now stays structurally valid as a completed record.
+
 
 **Goal:** Promote `webpresso/agent-kit` from a skills-only Claude Code plugin into a full plugin (skills + commands + hooks + MCP server) distributed via a `marketplace.json` in the same repo, so consumers install everything with `/plugin marketplace add webpresso/agent-kit && /plugin install agent-kit@webpresso` instead of hand-wiring `pnpm add @webpresso/agent-kit` + `.claude/settings.json`.
 
@@ -585,3 +595,7 @@ The original blueprint specified "remove the `agent-hooks` scaffolder" once the 
 | **Max parallel agents** | 4 (Wave 2) |
 | **Total tasks** | 12 (was 10 — added 1.4 split + 5.1) |
 | **Blueprint compliant** | 12/12 (all have Status, Depends, Files, Steps (TDD), Acceptance) |
+## Historical verification note
+
+This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
+

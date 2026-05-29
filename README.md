@@ -26,8 +26,51 @@ If you do not want a global install, run it one-shot instead:
 npm exec --yes --package @webpresso/agent-kit@latest -- wp setup
 ```
 
-`wp setup` is safe to run again. It refreshes the webpresso-owned pieces and
+`wp setup` is safe to run again. It refreshes the webpresso-owned pieces,
+creates the default `base-kit` quality scaffold when files are absent, and
 preserves consumer-owned files.
+
+The guarantee is **zero hand-wiring**, not zero local dependencies. Fresh repos
+get starter `tsconfig`, Vitest, Oxlint, Stryker, Playwright, unit-test, and
+file-based e2e smoke assets. Repos still keep authoring-time dependencies that
+their configs and tests import directly.
+
+Default workstation presets are separate from repo bootstrap. `omx`, `omc`,
+`gstack`, `vision`, `rtk`, and `context-mode` are requested by default and
+degrade with explicit skipped/warning output when the matching host or auth is
+unavailable. The repo bootstrap is `base-kit`.
+
+### Execution-owned vs authoring-owned dependencies
+
+`wp` now owns **execution** for the generic tool lanes it manages:
+
+- test / mutation
+- e2e
+- lint
+- format
+- typecheck
+
+That does **not** mean every local devDependency should disappear.
+
+- Keep local dependencies that your repo **imports directly** from tests,
+  config files, or tsconfig types — for example `vitest`,
+  `@playwright/test`, `@testing-library/jest-dom`, or `typescript`.
+- Review execution-only binaries for removal **only if** they were installed
+  just to invoke them locally and nothing imports them directly — for example
+  `oxlint`, `oxfmt`, or `markdownlint-cli2`.
+
+`wp setup` prints this migration guidance after scaffolding so consumers do not
+accidentally strip authoring-time dependencies just because `wp` can execute
+the tool.
+
+Public install claims are checked against the packed artifact with:
+
+```bash
+vp run public:consumer-smoke -- --setup-only
+```
+
+Use the full smoke without `--setup-only` when you want to install the generated
+starter dependencies and run the generated quality commands.
 
 ## What it does
 
