@@ -82,4 +82,37 @@ export const baseConfig = {
   incrementalFile: 'reports/stryker-incremental.json',
 }
 
+/**
+ * Extends baseConfig with TypeScript checker defaults.
+ * Use this in any TypeScript package instead of baseConfig directly.
+ *
+ * @example
+ * import { typescriptBaseConfig } from '@webpresso/agent-kit/stryker'
+ *
+ * export default { ...typescriptBaseConfig }
+ * // or, for packages with a CF-pool vitest config:
+ * export default { ...typescriptBaseConfig, vitest: { configFile: 'vitest.stryker.config.ts' } }
+ */
+export const typescriptBaseConfig = {
+  ...baseConfig,
+  checkers: ['typescript'],
+  tsconfigFile: 'tsconfig.json',
+}
+
+/**
+ * Extends typescriptBaseConfig for Cloudflare Workers packages whose vitest config
+ * uses @cloudflare/vitest-pool-workers (incompatible with Stryker's pool injection).
+ * Points to a per-package vitest.stryker.config.ts that uses the standard forks pool
+ * and excludes any tests that require CF runtime globals (cloudflare:test).
+ *
+ * @example
+ * import { typescriptWorkersBaseConfig } from '@webpresso/agent-kit/stryker'
+ *
+ * export default { ...typescriptWorkersBaseConfig }
+ */
+export const typescriptWorkersBaseConfig = {
+  ...typescriptBaseConfig,
+  vitest: { configFile: 'vitest.stryker.config.ts' },
+}
+
 export default baseConfig

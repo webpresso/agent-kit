@@ -116,6 +116,8 @@
     "#tool-runtime": "./src/tool-runtime/index.ts",
     "#tool-runtime/*.js": "./src/tool-runtime/*.ts",
     "#tool-runtime/*": "./src/tool-runtime/*.ts",
+    "#runtime/*.js": "./src/runtime/*.ts",
+    "#runtime/*": "./src/runtime/*.ts",
     "#output-transforms/*.js": "./src/output-transforms/*.ts",
     "#output-transforms/*": "./src/output-transforms/*.ts",
     "#lint/*.js": "./src/lint/*.ts",
@@ -301,6 +303,12 @@
       "import": {
         "types": "./dist/esm/config/stryker/index.d.ts",
         "default": "./dist/esm/config/stryker/index.js"
+      }
+    },
+    "./mutation": {
+      "import": {
+        "types": "./dist/esm/mutation/affected.d.ts",
+        "default": "./dist/esm/mutation/affected.js"
       }
     },
     "./oxlint": {
@@ -546,15 +554,15 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "^6.0.1",
     "@manypkg/find-root": "^3.1.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "better-sqlite3": "^12.9.0",
+    "@vitejs/plugin-react": "^6.0.2",
+    "better-sqlite3": "^12.10.0",
     "cac": "^7.0.0",
     "env-paths": "^4.0.0",
     "glob": "^13.0.6",
     "gray-matter": "^4.0.3",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.1.1",
     "ora": "^8.2.0",
     "proper-lockfile": "^4.1.2",
     "remark": "^15.0.1",
@@ -562,8 +570,8 @@
     "remark-validate-links": "^13.1.0",
     "rulesync": "8.15.1",
     "ts-pattern": "^5.9.0",
-    "vite-plus": "^0.1.19",
-    "yaml": "^2.8.1",
+    "vite-plus": "^0.1.22",
+    "yaml": "^2.9.0",
     "zod": "^4.4.3",
     "zod-to-json-schema": "^3.25.2"
   },
@@ -575,18 +583,18 @@
     "@stryker-mutator/typescript-checker": "^9.6.1",
     "@stryker-mutator/vitest-runner": "^9.6.1",
     "@types/better-sqlite3": "^7.6.13",
-    "@types/bun": "^1.1.14",
+    "@types/bun": "^1.3.14",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^25.6.2",
-    "husky": "^9.0.0",
+    "@types/node": "^25.9.1",
+    "husky": "^9.1.7",
     "oxfmt": "^0.48.0",
-    "oxlint": "^1.63.0",
-    "publint": "^0.3.20",
+    "oxlint": "^1.67.0",
+    "publint": "^0.3.21",
     "secretlint": "^13.0.2",
     "tshy": "^4.1.2",
     "typescript": "^6.0.3",
-    "vite": "^8.0.11",
-    "vitest": "^4.1.5",
+    "vite": "^8.0.14",
+    "vitest": "^4.1.7",
     "webpresso": "latest"
   },
   "tshy": {
@@ -626,6 +634,7 @@
       "./vitest/react-setup.ts": "./src/config/vitest/react-setup.ts",
       "./vitest/flakiness-reporter": "./src/config/vitest/flakiness-reporter.ts",
       "./stryker": "./src/config/stryker/index.ts",
+      "./mutation": "./src/mutation/affected.ts",
       "./oxlint": "./src/config/oxlint/index.ts",
       "./oxlint/import-hygiene": "./src/config/oxlint/import-hygiene.ts",
       "./oxlint/monorepo-paths": "./src/config/oxlint/monorepo-paths.ts",
