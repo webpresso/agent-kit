@@ -1,16 +1,22 @@
 import { readdirSync } from 'node:fs'
 import path from 'node:path'
 
-import { resolvePackageAsset } from '#utils/package-assets.js'
+import { resolvePackageAssetPreferred } from '#utils/package-assets.js'
 
 export type TemplateEntry = { name: string; path: string }
 
 /**
- * Default templates directory: docs/templates/ resolved relative to the
- * package root (same strategy as resolveRepoBlueprintTemplatePath in router.ts).
+ * Default templates directory: docs/templates/ in a source checkout, falling
+ * back to the shipped catalog/docs/templates/ in the published package (same
+ * strategy as resolveRepoBlueprintTemplatePath in router.ts).
  */
 function defaultTemplatesDir(): string {
-  return path.dirname(resolvePackageAsset('docs/templates/blueprint.md'))
+  return path.dirname(
+    resolvePackageAssetPreferred([
+      'docs/templates/blueprint.md',
+      'catalog/docs/templates/blueprint.md',
+    ]),
+  )
 }
 
 /**

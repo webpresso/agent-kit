@@ -29,7 +29,7 @@ import {
   serializeBlueprint,
   validateAllTasksDone,
 } from '#local'
-import { resolvePackageAsset } from '#utils/package-assets'
+import { resolvePackageAssetPreferred } from '#utils/package-assets'
 
 import {
   describeBlueprintExecutionRuntime,
@@ -214,7 +214,10 @@ function assertBlueprintCanMoveToStatus(blueprint: Blueprint, nextStatus: Bluepr
  * when the lookup fails in unrelated contexts (e.g. `wp --help`).
  */
 function resolveRepoBlueprintTemplatePath(): string {
-  return resolvePackageAsset('docs/templates/blueprint.md')
+  return resolvePackageAssetPreferred([
+    'docs/templates/blueprint.md',
+    'catalog/docs/templates/blueprint.md',
+  ])
 }
 
 function todayIsoDate(): string {

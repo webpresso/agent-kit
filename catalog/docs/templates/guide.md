@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: "YYYY-MM-DD"
+last_updated: "2026-05-27"
 ---
 
 # {{Title}}

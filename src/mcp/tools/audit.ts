@@ -16,10 +16,9 @@
  */
 
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
 import { z } from 'zod'
 
-import { resolvePackageAsset } from '#utils/package-assets'
+import { resolveAuditScriptPath } from '#audit/resolve-audit-script'
 import type { ToolDescriptor } from '#mcp/auto-discover'
 import { applyOutputTransform } from '#output-transforms/index'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
@@ -91,12 +90,7 @@ const outputSchema = createSummaryOutputSchema({
 })
 
 function resolveAuditScript(name: string): string {
-  // Source layout: `src/mcp/tools/audit.ts` → `../../audit/<name>`.
-  const fromSource = new URL(`../../audit/${name}`, import.meta.url)
-  if (existsSync(fromSource)) {
-    return fromSource.pathname
-  }
-  return resolvePackageAsset(`src/audit/${name}`)
+  return resolveAuditScriptPath(name, { moduleUrl: import.meta.url })
 }
 
 async function runScript(script: string): Promise<{ exitCode: number; output: string }> {

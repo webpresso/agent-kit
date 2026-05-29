@@ -15,6 +15,7 @@ import path from 'node:path'
 import { runAuditDispatch } from './audit-core.js'
 import type { AuditActionOptions } from './audit-core.js'
 import { runStryker } from '#audit/run-stryker'
+import { resolveAuditScriptPath } from '#audit/resolve-audit-script'
 
 /**
  * Registry of repo-level (RepoAuditResult-shaped) audits — single source of
@@ -171,13 +172,7 @@ const AUDIT_KINDS = [
 const AUDIT_KIND_LIST = AUDIT_KINDS.join(', ')
 
 function resolveAuditScript(name: 'audit-tph.ts' | 'audit-tph-e2e.ts'): string {
-  const fromSource = new URL(`../../audit/${name}`, import.meta.url)
-  if (existsSync(fromSource)) {
-    return fromSource.pathname
-  }
-  const bundleDir = path.dirname(new URL(import.meta.url).pathname)
-  const packageRoot = path.resolve(bundleDir, '..')
-  return path.join(packageRoot, 'src', 'audit', name)
+  return resolveAuditScriptPath(name, { moduleUrl: import.meta.url })
 }
 
 async function runAuditScript(script: string, extraArgs: readonly string[]): Promise<number> {

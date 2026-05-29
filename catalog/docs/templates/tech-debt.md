@@ -5,6 +5,7 @@ severity: '{{severity}}'
 category: '{{category}}'
 review_cadence: quarterly
 last_reviewed: '{{date}}'
+last_updated: '2026-05-27'
 created: '{{date}}'
 linked_blueprints: []
 affected_modules: []

@@ -8,7 +8,7 @@ import path from 'node:path'
 import { type Blueprint, parseBlueprint } from '#core/parser'
 import { scanBlueprintDirectory } from '#service/scanner'
 import { resolveBlueprintRoot } from '#utils/blueprint-root'
-import { resolvePackageAsset } from '#utils/package-assets'
+import { resolvePackageAssetPreferred } from '#utils/package-assets'
 
 type BlueprintDocumentType = 'blueprint' | 'parent-roadmap'
 
@@ -21,7 +21,10 @@ const RESERVED_BLUEPRINT_SLUGS = new Set([
   'archived',
 ])
 
-const DEFAULT_TEMPLATE_PATH = resolvePackageAsset('docs/templates/blueprint.md')
+const DEFAULT_TEMPLATE_PATH = resolvePackageAssetPreferred([
+  'docs/templates/blueprint.md',
+  'catalog/docs/templates/blueprint.md',
+])
 
 export interface CreateBlueprintDraftInput {
   complexity: PlanComplexity
