@@ -114,7 +114,7 @@ jobs:
         run: |
           set -euo pipefail
           version=$(node -p "require('./package.json').version")
-          mainline_commit=$(git log --first-parent --format=%H -n 1 -- package.json)
+          mainline_commit=$(node -e "const { execFileSync } = require('node:child_process'); const version = require('./package.json').version; const commits = execFileSync('git', ['rev-list', '--first-parent', 'HEAD'], { encoding: 'utf8' }).trim().split('\\n').filter(Boolean); const readVersionAt = (rev) => { try { return JSON.parse(execFileSync('git', ['show', rev + ':package.json'], { encoding: 'utf8' })).version } catch { return null } }; let candidate = null; for (const commit of commits) { const commitVersion = readVersionAt(commit); if (commitVersion === version) { candidate = commit; continue; } if (candidate) break; } if (!candidate) throw new Error('Could not locate first-parent commit carrying package version ' + version); process.stdout.write(candidate)")
           {
             echo "version=$version"
             echo "tag=v${version}"
