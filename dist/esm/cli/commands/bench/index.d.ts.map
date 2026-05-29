@@ -1,0 +1,1 @@
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../../../../src/cli/commands/bench/index.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,GAAG,EAAE,MAAM,KAAK,CAAA;AAE9B,OAAO,EACL,oCAAoC,EAGrC,MAAM,uCAAuC,CAAA;AAE9C,wBAAgB,gBAAgB,IAAI,MAAM,CAgBzC;AAED,OAAO,EAAE,oCAAoC,EAAE,CAAA;AAE/C,wBAAgB,oBAAoB,CAAC,GAAG,EAAE,GAAG,GAAG,IAAI,CAoDnD"}
