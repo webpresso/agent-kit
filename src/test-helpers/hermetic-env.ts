@@ -21,10 +21,13 @@ import { beforeEach } from 'vitest'
  * environment. Tests that exercise these variables set them explicitly in their
  * own body (which runs after this hook), so behavior coverage is unaffected.
  */
-const LEAKY_ENV_KEYS = ['CLAUDE_PROJECT_DIR', 'WP_SKIP_UPDATE_CHECK'] as const
+export const LEAKY_ENV_KEYS = ['CLAUDE_PROJECT_DIR', 'WP_SKIP_UPDATE_CHECK'] as const
 
-beforeEach(() => {
+/** Delete every agent-session-leaked env var so each test starts hermetic. */
+export function resetLeakyEnv(): void {
   for (const key of LEAKY_ENV_KEYS) {
     delete process.env[key]
   }
-})
+}
+
+beforeEach(resetLeakyEnv)

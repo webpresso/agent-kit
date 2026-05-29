@@ -3,7 +3,7 @@ type: research
 title: "MCP/Vitest Test Architecture Risks After Blueprint-Server Split"
 subject: "Other MCP/Vitest test architecture risks after the blueprint-server split"
 date: 2026-05-27
-last_updated: 2026-05-27
+last_updated: 2026-05-29
 confidence: high
 verdict: assess
 ---
@@ -159,6 +159,41 @@ Confidence:
 - **High** for the two adjacent MCP stale-test risks because `wp_test` failed directly and the implementation evidence explains why.
 - **Medium** for broader large-file risks because line count and external research are warning signs, not proof of current failure.
 - **Not 100%** because exhaustive certainty would require repeated full-suite runs under varied order, worker count, OS load, and CI conditions. The available evidence is strong, but finite.
+
+## Update — 2026-05-29: environment-dependency risk materialized and resolved
+
+The environment-dependency failure mode this report flagged (shared state /
+environment dependencies surfacing as parallel "flakes", and agents misreading
+them as product regressions) materialized concretely and is now fixed. The
+root cause was narrower than the "stale assumptions" hypothesis above: the
+suite leaked two agent-session env vars into the test process.
+
+- `CLAUDE_PROJECT_DIR` — `resolveProjectRoot` ranks it above the discovered
+  `cwd`, so the MCP blueprint-server suites targeted the real repo + its shared
+  projection DB (wrong-data assertions + lock-contention timeouts) whenever run
+  inside a Claude Code / Codex session.
+- `WP_SKIP_UPDATE_CHECK` — suppressed the managed-CLI refresh spawn that the
+  init scaffolder tests assert, dropping spawn-count assertions.
+- The heavy `runInit` integration suite passed in isolation but breached the
+  10s budget only under full-suite parallel CPU contention.
+
+Resolution (consistent with this report's "parallelize with isolation, don't
+raise the bound" stance):
+
+- `src/test-helpers/hermetic-env.ts` resets both vars before each test
+  (wired via `vitest.config.ts#setupFiles`; the Stryker config inherits it
+  through `mergeConfig`).
+- `test` split into a parallel unit phase plus a `--no-file-parallelism`
+  integration phase so each integration file gets the full machine — per
+  `no-timeout-as-fix`, the 10s bound was kept and the contention removed.
+- `init.presets.test.ts` renamed to `init.presets.integration.test.ts` to
+  match the `*.integration.test.ts` convention and land in the isolated lane.
+
+Evidence: green under agent conditions (`CLAUDE_PROJECT_DIR` set) — unit 4945
+passed / 9 skipped (364 files), integration 238 passed (25 files). Landed as
+`8bd47e01` (hermetic-env + setupFiles) and `8eba46f1` (lane split + rename).
+This closes recommended actions 1–2; actions 3–4 (measure large non-MCP files,
+add guards) remain open.
 
 ## Sources
 
