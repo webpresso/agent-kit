@@ -89,6 +89,7 @@ const SKIP_DIRECTORIES = new Set([
   '.omx',
   '.omc',
   '.stryker-tmp',
+  '.webpresso-packed-surface',
   'node_modules',
   'dist',
   'build',

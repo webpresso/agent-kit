@@ -4,9 +4,5 @@
   "description": "Fixture that models @webpresso/cli as the public command host and @webpresso/agent-kit as the agent bundle/provider.",
   "scripts": {
     "setup:agent": "webpresso agent setup"
-  },
-  "devDependencies": {
-    "@repo/cli": "workspace:*",
-    "@webpresso/agent-kit": "workspace:*"
   }
 }

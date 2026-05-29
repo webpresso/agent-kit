@@ -1,3 +1,6 @@
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -6,6 +9,8 @@ import {
   resolveInvokedBinName,
   resolvePinnedNodeVersion,
 } from '../bin/_run.js'
+
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 const RUNTIME_MANIFEST = {
   binaryName: 'wp',
@@ -256,6 +261,6 @@ describe('bin launcher', () => {
   })
 
   it('reads the pinned exact Node version from package metadata when present', () => {
-    expect(resolvePinnedNodeVersion('/Users/ozby/repos/webpresso/agent-kit')).toBe('24.16.0')
+    expect(resolvePinnedNodeVersion(REPO_ROOT)).toBe('24.16.0')
   })
 })
