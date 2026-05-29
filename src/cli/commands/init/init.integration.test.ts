@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -138,13 +139,21 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
   let consoleWarnSpy: ReturnType<typeof vi.spyOn> | undefined
   let originalCodexHome: string | undefined
   let originalHome: string | undefined
+  let originalPath: string | undefined
 
   beforeEach(() => {
     repo = makeTempRepo()
     originalCodexHome = process.env.CODEX_HOME
     originalHome = process.env.HOME
+    originalPath = process.env.PATH
     process.env.CODEX_HOME = join(repo, '.codex-home')
     process.env.HOME = join(repo, '.home')
+    const fakeBinDir = join(repo, 'bin')
+    const fakeContextMode = join(fakeBinDir, 'context-mode')
+    mkdirSync(fakeBinDir, { recursive: true })
+    writeFileSync(fakeContextMode, '#!/usr/bin/env sh\necho 1.2.3\n', 'utf8')
+    chmodSync(fakeContextMode, 0o755)
+    process.env.PATH = `${fakeBinDir}:${originalPath ?? ''}`
     spawnSyncMock.mockClear()
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -161,6 +170,11 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
       delete process.env.HOME
     } else {
       process.env.HOME = originalHome
+    }
+    if (originalPath === undefined) {
+      delete process.env.PATH
+    } else {
+      process.env.PATH = originalPath
     }
     consoleLogSpy?.mockRestore()
     consoleWarnSpy?.mockRestore()
@@ -551,6 +565,7 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
   let repo: string
   let originalCodexHome: string | undefined
   let originalHome: string | undefined
+  let originalPath: string | undefined
   let logLines: string[]
   let originalLog: typeof console.log
 
@@ -558,8 +573,15 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
     repo = makeTempRepo()
     originalCodexHome = process.env.CODEX_HOME
     originalHome = process.env.HOME
+    originalPath = process.env.PATH
     process.env.CODEX_HOME = join(repo, '.codex-home')
     process.env.HOME = join(repo, '.home')
+    const fakeBinDir = join(repo, 'bin')
+    const fakeContextMode = join(fakeBinDir, 'context-mode')
+    mkdirSync(fakeBinDir, { recursive: true })
+    writeFileSync(fakeContextMode, '#!/usr/bin/env sh\necho 1.2.3\n', 'utf8')
+    chmodSync(fakeContextMode, 0o755)
+    process.env.PATH = `${fakeBinDir}:${originalPath ?? ''}`
     spawnSyncMock.mockClear()
     logLines = []
     originalLog = console.log
@@ -579,6 +601,11 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
       delete process.env.HOME
     } else {
       process.env.HOME = originalHome
+    }
+    if (originalPath === undefined) {
+      delete process.env.PATH
+    } else {
+      process.env.PATH = originalPath
     }
     rmSync(repo, { recursive: true, force: true })
   })

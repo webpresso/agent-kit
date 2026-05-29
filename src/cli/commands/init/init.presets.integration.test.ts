@@ -8,7 +8,7 @@
  * against a tmpdir per test, so we also assert the agent surface is laid
  * down correctly when presets are active.
  */
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -51,14 +51,22 @@ describe('runInit() — omx + gstack presets (integration)', () => {
   let originalCodexHome: string | undefined
   let originalHome: string | undefined
   let originalCi: string | undefined
+  let originalPath: string | undefined
 
   beforeEach(() => {
     repo = makeRepo()
     originalCodexHome = process.env.CODEX_HOME
     originalHome = process.env.HOME
     originalCi = process.env.CI
+    originalPath = process.env.PATH
     process.env.CODEX_HOME = join(repo, '.codex-home')
     process.env.HOME = join(repo, '.home')
+    const fakeBinDir = join(repo, 'bin')
+    const fakeContextMode = join(fakeBinDir, 'context-mode')
+    mkdirSync(fakeBinDir, { recursive: true })
+    writeFileSync(fakeContextMode, '#!/usr/bin/env sh\necho 1.2.3\n', 'utf8')
+    chmodSync(fakeContextMode, 0o755)
+    process.env.PATH = `${fakeBinDir}:${originalPath ?? ''}`
     // runInit() short-circuits the omx/gstack/rtk scaffolders when CI=true/1
     // (production guard against postinstall failures on hosted CI runners
     // that don't carry these dev-workstation tools). The integration tests
@@ -87,6 +95,11 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       delete process.env.CI
     } else {
       process.env.CI = originalCi
+    }
+    if (originalPath === undefined) {
+      delete process.env.PATH
+    } else {
+      process.env.PATH = originalPath
     }
     rmSync(repo, { recursive: true, force: true })
   })
