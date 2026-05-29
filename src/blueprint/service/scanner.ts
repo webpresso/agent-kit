@@ -54,6 +54,14 @@ type SpecialFolderType = (typeof SPECIAL_FOLDERS)[number]
 
 /** Standard plan overview filename */
 const OVERVIEW_FILENAME = '_overview.md'
+const BLUEPRINT_STATUS_FOLDERS = new Set([
+  'draft',
+  'planned',
+  'parked',
+  'in-progress',
+  'completed',
+  'archived',
+])
 
 /**
  * Check if a path component is a special folder.
@@ -72,6 +80,10 @@ function findSpecialFolderType(pathSegments: string[]): SpecialFolderType | unde
     }
   }
   return undefined
+}
+
+function isStatusFolder(name: string): boolean {
+  return BLUEPRINT_STATUS_FOLDERS.has(name)
 }
 
 /**
@@ -93,15 +105,30 @@ function extractSlugAndGroup(
   // Get relative path from base directory
   const relPath = relative(baseDir, fullPath)
 
-  // Split into segments and remove the document filename
-  const segments = relPath.split('/').filter((s) => s !== filePattern && s !== '')
+  const relSegments = relPath.split('/').filter((s) => s !== '')
+  const segments = [...relSegments]
+
+  if (!segments.length) {
+    return { slug: '', group: null }
+  }
+
+  if (filePattern === OVERVIEW_FILENAME) {
+    if (segments[segments.length - 1] === filePattern) {
+      segments.pop()
+    }
+  } else {
+    const last = segments[segments.length - 1] ?? ''
+    if (last === filePattern) {
+      segments[segments.length - 1] = last.replace(/\.md$/i, '')
+    }
+  }
 
   if (!segments.length) {
     return { slug: '', group: null }
   }
 
   // Filter out special folders from the slug calculation for group determination
-  const nonSpecialSegments = segments.filter((s) => !isSpecialFolder(s))
+  const nonSpecialSegments = segments.filter((s) => !isSpecialFolder(s) && !isStatusFolder(s))
 
   // The slug is the full path (including special folders)
   const slug = segments.join('/')
@@ -113,7 +140,9 @@ function extractSlugAndGroup(
   let group: string | null = null
 
   // Find the first non-special segment
-  const firstNonSpecialIndex = segments.findIndex((s) => !isSpecialFolder(s))
+  const firstNonSpecialIndex = segments.findIndex(
+    (s) => !isSpecialFolder(s) && !isStatusFolder(s),
+  )
 
   if (firstNonSpecialIndex >= 0 && nonSpecialSegments.length >= 2) {
     // There's a group structure: first non-special segment is the group
@@ -197,6 +226,18 @@ function processEntry(
       results.push(plan)
     }
     return
+  }
+
+  if (
+    filePattern === OVERVIEW_FILENAME &&
+    entry.endsWith('.md') &&
+    entry !== 'README.md' &&
+    entry !== OVERVIEW_FILENAME
+  ) {
+    const plan = processPlanFile(fullPath, baseDir, includeSpecialFolders, entry)
+    if (plan) {
+      results.push(plan)
+    }
   }
 }
 

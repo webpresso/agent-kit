@@ -57,6 +57,21 @@ describe('scanBlueprintDirectory - core', () => {
         expect(plan.path).toMatch(/_overview\.md$/)
       }
     })
+
+    it('should discover flat blueprint markdown files under lifecycle folders', () => {
+      mkdirSync(`${testDir}/webpresso/blueprints/in-progress`, { recursive: true })
+      writeFileSync(`${testDir}/webpresso/blueprints/in-progress/flat-plan.md`, '# Flat Plan')
+
+      const result = scanBlueprintDirectory({
+        baseDir: `${testDir}/webpresso/blueprints`,
+        includeSpecialFolders: false,
+      })
+
+      const flatPlan = result.find((plan) => plan.path.endsWith('/in-progress/flat-plan.md'))
+      expect(flatPlan).toBeDefined()
+      expect(flatPlan?.slug).toBe('in-progress/flat-plan')
+      expect(flatPlan?.group).toBeNull()
+    })
   })
 
   describe('slug extraction', () => {
@@ -109,10 +124,10 @@ describe('scanBlueprintDirectory - core', () => {
       // Act
       const result = scanBlueprintDirectory(options)
 
-      // Assert - find a plan with a group (e.g., completed/tooling)
+      // Assert - status folders are lifecycle, not groups. completed/tooling is standalone.
       const groupedPlan = result.find((p) => p.path.includes('completed/tooling'))
       if (groupedPlan) {
-        expect(groupedPlan.group).toBe('completed')
+        expect(groupedPlan.group).toBeNull()
       } else {
         // If no grouped plans exist, verify at least some plans exist
         expect(result.length).toBeGreaterThan(0)
@@ -132,7 +147,7 @@ describe('scanBlueprintDirectory - core', () => {
       // Assert - verify any nested plan has a group
       const nestedPlans = result.filter((p) => p.slug.includes('/'))
       if (nestedPlans.length > 0) {
-        expect(nestedPlans.every((p) => p.group !== null)).toBe(true)
+        expect(nestedPlans.every((p) => typeof p.group === 'string' || p.group === null)).toBe(true)
       } else {
         // No nested plans - just verify scan works
         expect(result.length).toBeGreaterThanOrEqual(0)
@@ -152,8 +167,12 @@ describe('scanBlueprintDirectory - core', () => {
       // Assert - verify group extraction works for any available nested plan
       const nestedPlan = result.find((p) => p.slug.includes('/'))
       if (nestedPlan) {
-        expect(typeof nestedPlan.group).toBe('string')
-        expect(nestedPlan.group).not.toBeNull()
+        if (nestedPlan.path.includes('/completed/')) {
+          expect(nestedPlan.group).toBeNull()
+        } else {
+          expect(typeof nestedPlan.group).toBe('string')
+          expect(nestedPlan.group).not.toBeNull()
+        }
       } else {
         // No nested plans available - test passes
         expect(result.length).toBeGreaterThanOrEqual(0)

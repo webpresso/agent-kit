@@ -73,7 +73,7 @@ export const crossRepoDependencySchema = z.object({
  * Required fields:
  * - type: `blueprint` or `parent-roadmap`
  * - status: Current plan status
- * - complexity: Estimated effort using t-shirt sizing
+ * - complexity: Estimated effort using t-shirt sizing (defaults to `M` when omitted for legacy blueprints)
  *
  * Optional fields:
  * - last_updated: Date plan was last modified (YYYY-MM-DD)
@@ -86,7 +86,7 @@ export const planFrontmatterSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
   status: planStatusSchema,
-  complexity: complexitySchema,
+  complexity: complexitySchema.default('M'),
   last_updated: z.union([z.string(), z.date()]).optional(),
   created: z.union([z.string(), z.date()]).optional(),
   progress: z.string().optional(),

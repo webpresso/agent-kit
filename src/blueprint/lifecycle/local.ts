@@ -118,11 +118,23 @@ export async function applyBlueprintLifecycleToFile(
   const location = await resolveBlueprintFile(projectRoot, slug)
   const raw = await readFile(location.path, 'utf-8')
   const mutation = applyBlueprintLifecycle(raw, location.slug, intent)
+  const relativeSlug = relativeBlueprintSlug(location.slug)
+  const isFlatFile = path.basename(location.path) !== '_overview.md'
   const sourceDir = path.dirname(location.path)
-  const targetDir = path.join(baseDir, mutation.targetStatus, relativeBlueprintSlug(location.slug))
-  const targetPath = path.join(targetDir, '_overview.md')
+  const targetDir = isFlatFile
+    ? path.join(baseDir, mutation.targetStatus, path.dirname(relativeSlug))
+    : path.join(baseDir, mutation.targetStatus, relativeSlug)
+  const targetPath = isFlatFile
+    ? path.join(baseDir, mutation.targetStatus, `${relativeSlug}.md`)
+    : path.join(targetDir, '_overview.md')
 
-  if (sourceDir !== targetDir) {
+  if (isFlatFile) {
+    if (location.path !== targetPath) {
+      await mkdir(path.dirname(targetPath), { recursive: true })
+      await rename(location.path, targetPath)
+      await tryRemoveEmptyParent(sourceDir)
+    }
+  } else if (sourceDir !== targetDir) {
     await mkdir(path.dirname(targetDir), { recursive: true })
     await rename(sourceDir, targetDir)
     await tryRemoveEmptyParent(path.dirname(sourceDir))
@@ -132,7 +144,7 @@ export async function applyBlueprintLifecycleToFile(
 
   return {
     ...mutation,
-    moved: sourceDir !== targetDir,
+    moved: isFlatFile ? location.path !== targetPath : sourceDir !== targetDir,
     path: targetPath,
     slug: location.slug,
   }

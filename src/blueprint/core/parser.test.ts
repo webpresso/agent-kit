@@ -56,6 +56,28 @@ describe('PlanParser', () => {
       expect(plan.lastUpdated).toBe('2026-01-01')
     })
 
+    it('defaults missing complexity to M for legacy blueprints', () => {
+      const legacyPlan = `---
+type: blueprint
+status: planned
+last_updated: 2026-01-01
+created: 2026-01-01
+---
+
+# @legacy-feature
+
+#### Task 1.1: Keep legacy blueprint parseable
+
+**Status:** todo
+
+**Depends:** None
+`
+
+      const plan = parseBlueprint(legacyPlan, '@legacy-feature')
+
+      expect(plan.complexity).toBe('M')
+    })
+
     it('should extract tasks from markdown headings', () => {
       // Act
       const plan = parseBlueprint(PLAN_WITH_TASKS, '@feature')

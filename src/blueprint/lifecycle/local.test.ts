@@ -46,6 +46,14 @@ function writeConsumerBlueprint(projectRoot: string, status: string, slug: strin
   return filePath
 }
 
+function writeFlatConsumerBlueprint(projectRoot: string, status: string, slug: string): string {
+  const dir = path.join(projectRoot, 'blueprints', status)
+  mkdirSync(dir, { recursive: true })
+  const filePath = path.join(dir, `${slug}.md`)
+  writeFileSync(filePath, BLUEPRINT_TEMPLATE.replace('status: planned', `status: ${status}`))
+  return filePath
+}
+
 async function attachPassingVerification(filePath: string, projectRoot: string): Promise<void> {
   const result = await writeVerification({
     filePath,
@@ -137,6 +145,26 @@ describe('applyBlueprintLifecycleToFile', () => {
     expect(existsSync(path.join(projectRoot, 'webpresso'))).toBe(false)
   })
 
+  it('moves flat markdown consumer blueprints within top-level blueprints/', async () => {
+    const projectRoot = await mkdtemp(path.join(tmpdir(), 'wp-lifecycle-flat-generic-'))
+    tempDirs.push(projectRoot)
+    writeFileSync(path.join(projectRoot, 'package.json'), '{"name":"consumer"}')
+    const filePath = writeFlatConsumerBlueprint(projectRoot, 'planned', 'test-blueprint')
+    await attachPassingVerification(filePath, projectRoot)
+
+    const result = await applyBlueprintLifecycleToFile(projectRoot, 'test-blueprint', {
+      type: 'start',
+    })
+
+    expect(result.moved).toBe(true)
+    expect(existsSync(path.join(projectRoot, 'blueprints', 'planned', 'test-blueprint.md'))).toBe(
+      false,
+    )
+    expect(existsSync(path.join(projectRoot, 'blueprints', 'in-progress', 'test-blueprint.md'))).toBe(
+      true,
+    )
+  })
+
   it('preserves source parent directory when other blueprints remain', async () => {
     const projectRoot = await mkdtemp(path.join(tmpdir(), 'wp-lifecycle-preserve-'))
     tempDirs.push(projectRoot)
@@ -224,6 +252,21 @@ describe('resolveBlueprintFile', () => {
     const suffix = await resolveBlueprintFile(projectRoot, 'platform-web-explosion')
     expect(suffix.path).toBe(expectedPath)
     expect(suffix.slug).toBe('in-progress/alpha/platform-web-explosion')
+  })
+
+  it('resolves flat markdown consumer blueprints by suffix match', async () => {
+    const projectRoot = await mkdtemp(path.join(tmpdir(), 'wp-resolve-flat-valid-'))
+    tempDirs.push(projectRoot)
+    writeFileSync(path.join(projectRoot, 'package.json'), '{"name":"consumer"}')
+    const expectedPath = writeFlatConsumerBlueprint(projectRoot, 'in-progress', 'flat-blueprint')
+
+    const exact = await resolveBlueprintFile(projectRoot, 'in-progress/flat-blueprint')
+    expect(exact.path).toBe(expectedPath)
+    expect(exact.slug).toBe('in-progress/flat-blueprint')
+
+    const suffix = await resolveBlueprintFile(projectRoot, 'flat-blueprint')
+    expect(suffix.path).toBe(expectedPath)
+    expect(suffix.slug).toBe('in-progress/flat-blueprint')
   })
 
   it('rejects duplicate slugs across lifecycle folders with an explicit ambiguity message', async () => {
