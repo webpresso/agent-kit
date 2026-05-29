@@ -59,7 +59,7 @@ export function diffDocTemplateMirror(): string[] {
 }
 
 /** Regenerate the mirror from the source: copy every file, drop orphans. */
-export function syncDocTemplateMirror(): number {
+function syncDocTemplateMirror(): number {
   mkdirSync(MIRROR_DIR, { recursive: true })
   const sourceFiles = listFiles(SOURCE_DIR)
   for (const name of listFiles(MIRROR_DIR)) {
