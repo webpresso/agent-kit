@@ -267,9 +267,7 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(packageJson.scripts.typecheck).toBe('wp typecheck')
     expect(packageJson.scripts.test).toBe('wp test --file vitest.config.ts')
     expect(packageJson.scripts.mutation).toBe('wp test --mutation')
-    expect(packageJson.scripts.e2e).toBe(
-      'playwright install chromium && wp e2e --config playwright.config.ts',
-    )
+    expect(packageJson.scripts.e2e).toBe('wp e2e --config playwright.config.ts')
     expect(packageJson.devDependencies['@webpresso/agent-kit']).toBe('latest')
 
     // Blueprints

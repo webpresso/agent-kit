@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -79,7 +79,11 @@ function packCurrentArtifact(): string {
   if (!filename) {
     throw new Error('npm pack did not report a filename')
   }
-  return resolve(ROOT, filename)
+  const packedPath = resolve(ROOT, filename)
+  const stagedPath = join(tempRoot, filename)
+  copyFileSync(packedPath, stagedPath)
+  rmSync(packedPath, { force: true })
+  return stagedPath
 }
 
 function assertSetupContract(repo: string): RunResult[] {
@@ -173,15 +177,18 @@ try {
 
     if (!setupOnly) {
       pinPackedAgentKitDependency(repo, tarball)
-    results.push(run('npm', ['install'], repo, setupEnv, 10 * 60 * 1000))
-      results.push(run('npm', ['run', 'lint'], repo, setupEnv))
-      results.push(run('npm', ['run', 'typecheck'], repo, setupEnv))
-      results.push(run('npm', ['run', 'test'], repo, setupEnv))
-      if (includeMutation) {
-      results.push(run('npm', ['run', 'mutation'], repo, setupEnv, 10 * 60 * 1000))
+      const install = run('npm', ['install'], repo, setupEnv, 10 * 60 * 1000)
+      results.push(install)
+      if (install.ok) {
+        results.push(run('npm', ['run', 'lint'], repo, setupEnv))
+        results.push(run('npm', ['run', 'typecheck'], repo, setupEnv))
+        results.push(run('npm', ['run', 'test'], repo, setupEnv))
+        if (includeMutation) {
+          results.push(run('npm', ['run', 'mutation'], repo, setupEnv, 10 * 60 * 1000))
+        }
+        results.push(run('npm', ['run', 'e2e'], repo, setupEnv))
+        results.push(run('npm', ['run', 'qa'], repo, setupEnv))
       }
-      results.push(run('npm', ['run', 'e2e'], repo, setupEnv))
-      results.push(run('npm', ['run', 'qa'], repo, setupEnv))
     }
   }
 } finally {

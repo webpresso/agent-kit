@@ -1,11 +1,10 @@
 import { defineConfig } from '@playwright/test'
-import { createPlaywrightE2ePreset } from '@webpresso/agent-kit/e2e-preset/playwright'
-
-const preset = createPlaywrightE2ePreset({ testDir: './e2e' })
 
 export default defineConfig({
-  ...preset,
+  testDir: './e2e',
+  fullyParallel: true,
+  reporter: [['list']],
   use: {
-    ...preset.use,
+    trace: 'retain-on-failure',
   },
 })

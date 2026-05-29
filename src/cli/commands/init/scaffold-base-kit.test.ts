@@ -67,6 +67,7 @@ describe('scaffoldBaseKit', () => {
       unknown
     >
     expect((pkg['engines'] as Record<string, string>)['node']).toBe('>=24')
+    expect(pkg['type']).toBe('module')
     expect(pkg['packageManager']).toBe('pnpm@11.1.1')
     expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
       'latest',
@@ -90,7 +91,7 @@ describe('scaffoldBaseKit', () => {
       'stryker run stryker.config.ts',
     )
     expect((pkg['scripts'] as Record<string, string>)['e2e']).toBe(
-      'playwright install chromium && wp e2e --config playwright.config.ts',
+      'wp e2e --config playwright.config.ts',
     )
     expect((pkg['scripts'] as Record<string, string>)['qa']).toContain(
       'wp lint src e2e *.config.ts',

@@ -1,6 +1,6 @@
 import { config } from '@webpresso/agent-kit/oxlint'
 
-export default {
+const oxlintConfig: Record<string, unknown> = {
   ...config,
   env: {
     builtin: true,
@@ -22,3 +22,5 @@ export default {
     '.windsurf',
   ],
 }
+
+export default oxlintConfig

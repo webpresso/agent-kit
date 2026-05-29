@@ -165,13 +165,13 @@ function mergePackageJson(
   const testScript = 'wp test --file vitest.config.ts'
   const mutationScript = 'wp test --mutation'
   const testMutationScript = 'stryker run stryker.config.ts'
-  const e2eScript = 'playwright install chromium && wp e2e --config playwright.config.ts'
+  const e2eScript = 'wp e2e --config playwright.config.ts'
   const qaScript = [
     'wp lint src e2e *.config.ts',
     'wp typecheck',
     'wp test --file vitest.config.ts',
     'wp test --mutation',
-    'playwright install chromium && wp e2e --config playwright.config.ts',
+    'wp e2e --config playwright.config.ts',
   ].join(' && ')
 
   const devDeps = (pkg['devDependencies'] ?? {}) as Record<string, string>
@@ -214,6 +214,7 @@ function mergePackageJson(
 
   pkg['engines'] = { ...existing, node: engines.node }
   if (!alreadyHasPm) pkg['packageManager'] = packageManager
+  if (typeof pkg['type'] !== 'string') pkg['type'] = 'module'
 
   // Ensure husky is in devDependencies so `vp exec husky init` works
   if (!devDeps['husky']) {
