@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.21.5
+
+### Patch Changes
+
+- 52bbede: Make `wp setup` bootstrap a fresh public consumer repo with a zero-hand-wiring quality scaffold.
+
+  - Generate absent-only TypeScript, Vitest, Oxlint, Stryker, and Playwright config plus starter source/unit/e2e smoke files through the default `base-kit` path.
+  - Add default package scripts and authoring-time dev dependencies while preserving existing consumer-owned config and scripts on rerun.
+  - Add a packed-artifact consumer smoke rehearsal that verifies `npm exec --package <tarball> -- wp setup --yes --host none` and the generated lint/typecheck/test/e2e/qa commands.
+
+- b549865: Fix packaged-asset resolution that worked in a source checkout but broke in the published package.
+
+  - `wp audit tph` / `tph-e2e` (and the `wp_audit` MCP tool) resolved the Bun audit script to a `src/audit/*.ts` path the npm tarball never ships (`files` lists `dist`, not `src`), so the audit failed with `bun: Module not found`. A shared, tested resolver now anchors on the caller's module URL and prefers the dev `.ts`, falling back to the compiled `dist/esm/audit/*.js` the build emits.
+  - `wp blueprint new` and template listing resolved `docs/templates/blueprint.md`, which is also not shipped (only `catalog/docs/templates/` is). A new `resolvePackageAssetPreferred` prefers the source `docs/templates/` and falls back to the shipped `catalog/docs/templates/` — the fallback `router.ts` already documented but never implemented.
+  - `docs/templates/` (canonical) and `catalog/docs/templates/` (the shipped + `wp init`-scaffolded mirror) had silently diverged across 9 files. The mirror is now regenerated from the canonical at `postbuild` and guarded by a drift test.
+
 ## 0.21.4
 
 ### Patch Changes
