@@ -139,15 +139,22 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
   let consoleWarnSpy: ReturnType<typeof vi.spyOn> | undefined
   let originalCodexHome: string | undefined
   let originalHome: string | undefined
+  let originalCi: string | undefined
   let originalPath: string | undefined
 
   beforeEach(() => {
     repo = makeTempRepo()
     originalCodexHome = process.env.CODEX_HOME
     originalHome = process.env.HOME
+    originalCi = process.env.CI
     originalPath = process.env.PATH
     process.env.CODEX_HOME = join(repo, '.codex-home')
     process.env.HOME = join(repo, '.home')
+    // These end-to-end tests exercise the default workstation lane. GitHub
+    // Actions exports CI=true, which intentionally skips optional workstation
+    // scaffolders, so pin the environment to the same non-CI contract the tests
+    // assert while restoring the caller's value after each test.
+    delete process.env.CI
     const fakeBinDir = join(repo, 'bin')
     const fakeContextMode = join(fakeBinDir, 'context-mode')
     mkdirSync(fakeBinDir, { recursive: true })
@@ -170,6 +177,11 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
       delete process.env.HOME
     } else {
       process.env.HOME = originalHome
+    }
+    if (originalCi === undefined) {
+      delete process.env.CI
+    } else {
+      process.env.CI = originalCi
     }
     if (originalPath === undefined) {
       delete process.env.PATH
