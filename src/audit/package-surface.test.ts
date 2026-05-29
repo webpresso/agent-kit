@@ -229,6 +229,7 @@ describe('package-surface audit', () => {
     })
     writeJson(join(root, 'package-surface.json'), {
       tarball: {
+        allowedPathPatterns: ['package.json'],
         deepScanExcludedPathPrefixes: ['generated-docs/'],
       },
     })

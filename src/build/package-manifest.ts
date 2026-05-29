@@ -11,6 +11,8 @@ import { join } from 'node:path'
 
 import { parse as parseYaml } from 'yaml'
 
+import { RUNTIME_TARGETS } from './runtime-targets.js'
+
 type DependencySection =
   | 'dependencies'
   | 'devDependencies'
@@ -128,6 +130,15 @@ export function createPackedManifest(
 
   if ('bin' in packedManifest) {
     packedManifest.bin = normalizePackedBinField(packedManifest.bin)
+  }
+
+  if (typeof manifest.version === 'string') {
+    packedManifest.optionalDependencies = {
+      ...packedManifest.optionalDependencies,
+      ...Object.fromEntries(
+        RUNTIME_TARGETS.map((target) => [target.packageName, manifest.version as string]),
+      ),
+    }
   }
 
   return packedManifest

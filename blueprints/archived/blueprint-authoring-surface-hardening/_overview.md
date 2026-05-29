@@ -1,47 +1,57 @@
 ---
 type: blueprint
 title: Blueprint authoring surface hardening
-status: parked
+status: archived
 owner: agent-kit
 complexity: M
 created: '2026-05-26'
 last_updated: '2026-05-29'
-progress: 'parked on 2026-05-29: placeholder split-scope draft with no executable tasks; structured authoring control-plane work already landed in the completed wp MCP surface blueprint'
+progress: '100% (superseded by completed structured blueprint authoring control-plane work; placeholder retired on 2026-05-29)'
 depends_on: []
 tags:
   - blueprint-authoring
   - validation
   - scaffold
   - repair
+  - superseded
 ---
 
-# Blueprint authoring surface hardening
+# Archived: Blueprint authoring surface hardening
 
-## Product wedge anchor
+## Decision
 
-- **Stage outcome:** keep the old split-scope placeholder from reappearing as
-  active work now that structured blueprint authoring shipped elsewhere.
-- **Consuming surface:** none directly; this parked placeholder only preserves
-  the historical split and points readers to the completed structured
-  authoring control-plane blueprint.
-- **New user-visible capability:** none; the user-visible authoring outcome now
-  lives in the completed `wp_blueprint_put` / `wp_blueprint_transition` work.
+Archive this placeholder. Do **not** reopen it as a parked execution lane.
 
-## Summary
+The blueprint-authoring control-plane work that justified this placeholder is
+already represented by the completed
+`completed/replace-markdown-first-blueprint-authoring-with-a-structured-wp-mcp-surface`
+blueprint. Keeping a separate parked placeholder would imply there is still a
+local executable lane here when the remaining work, if any, should instead be
+scoped as a fresh follow-on blueprint with new evidence.
 
-This draft holds the blueprint-authoring scope that was previously bundled into
-`planned/secret-aware-worker-tail-mcp`:
+## Why this placeholder was retired
 
-- scaffold variants,
-- repair flows,
-- index/search helpers,
-- and validator/fix-hint hardening.
+- The structured authoring outcome already shipped locally via
+  `wp_blueprint_put` and `wp_blueprint_transition`.
+- This file never developed executable tasks beyond preserving the historical
+  split from the CI/tail/secret lane.
+- The old cross-references still pointed at outdated lifecycle paths
+  (`planned/secret-aware-worker-tail-mcp`, sibling `planned/...` roadmap paths),
+  which is a sign this record is historical context rather than a live plan.
 
-It remains intentionally separate from the MCP-first CI/tail/secret roadmap so
-that execution lanes touching public CI and secret contracts stay narrow and
-auditable.
+## Replacement implementation
 
-## Current scope candidates
+Use the completed structured authoring blueprint as the authoritative record:
+
+- `blueprints/completed/replace-markdown-first-blueprint-authoring-with-a-structured-wp-mcp-surface/_overview.md`
+
+If new blueprint-authoring work appears later (for example scaffold variants,
+repair UX, or additional validation flows), create a new blueprint with fresh
+fact-checked scope instead of reviving this retired placeholder.
+
+## Historical scope that was split out
+
+The retired placeholder had preserved these potential areas:
 
 - `src/blueprint/scaffold.ts`
 - `src/blueprint/repair.ts`
@@ -53,19 +63,12 @@ auditable.
 
 | Blueprint | Relationship |
 | --- | --- |
-| `planned/secret-aware-worker-tail-mcp` | Scope donor; no longer owns the blueprint-authoring tasks. |
-| `planned/mcp-first-secret-surface-hard-cut-roadmap` | Sibling reference only; not a child lane of that roadmap. |
+| `completed/secret-aware-worker-tail-mcp` | Historical scope donor; no longer owns blueprint-authoring tasks. |
+| `parked/mcp-first-secret-surface-hard-cut-roadmap` | Historical sibling roadmap only; this placeholder is not a child lane. |
+| `completed/replace-markdown-first-blueprint-authoring-with-a-structured-wp-mcp-surface` | Replacement authoritative implementation record. |
 
-## Tasks
+## Archived tasks
 
-#### Task 1.1: Keep this placeholder parked and point operators at the completed structured authoring lane
-
-**Status:** todo
-
-**Wave:** 0
-
-**Files:**
-- `blueprints/completed/replace-markdown-first-blueprint-authoring-with-a-structured-wp-mcp-surface/_overview.md`
-
-**Acceptance:**
-- [ ] This placeholder remains non-executable and clearly superseded by the completed structured authoring blueprint.
+- [x] Retire the non-executable parked placeholder.
+- [x] Point operators to the completed structured authoring control-plane lane.
+- [x] Require any future blueprint-authoring work to start as a new evidence-backed blueprint.

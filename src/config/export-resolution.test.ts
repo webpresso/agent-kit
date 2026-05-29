@@ -111,6 +111,13 @@ describe('@webpresso/agent-kit package exports', () => {
     expect(packageJson.exports?.['./stryker/webpresso']).toBeUndefined()
   })
 
+  it('exports the local agent bundle prep surface', async () => {
+    const packageJson = await readCanonicalPackageJson()
+
+    expect(packageJson.tshy?.exports?.['./bundle']).toBe('./src/cli/bundle/index.ts')
+    expect(packageJson.exports?.['./bundle']).toBeDefined()
+  })
+
   it('keeps hook bins and wires folded docs-lint bins to local entrypoints', async () => {
     const packageJson = await readCanonicalPackageJson()
 

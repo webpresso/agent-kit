@@ -89,6 +89,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
   'memory-unified': async (root) =>
     (await import('#audit/memory-unified')).auditMemoryUnified(root),
   'compile-drift': async (root) => (await import('#audit/compile-drift')).auditCompileDrift(root),
+  'no-legacy-cli-bin': async (root) =>
+    (await import('#audit/no-legacy-cli-bin')).auditNoLegacyCliBin(root),
   'architecture-drift': async (root) =>
     (await import('#audit/architecture-drift')).auditArchitectureDrift(root),
   'absolute-path-policy': async (root) =>

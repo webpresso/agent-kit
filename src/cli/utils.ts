@@ -6,8 +6,10 @@
  * (getProjectRoot) so this package has no @webpresso/* runtime dependencies.
  */
 
-import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
+import { existsSync } from 'node:fs'
+
+import { readOwnedPackageVersion } from '#runtime/package-version.js'
 
 // ---------------------------------------------------------------------------
 // Project root resolution
@@ -161,26 +163,5 @@ export function formatUnknownCommandError(
  * having to know how many `..` segments to append.
  */
 export function readPackageVersion(metaUrl: string): string {
-  const url = new URL(metaUrl)
-  let dir = path.dirname(url.pathname)
-  for (let i = 0; i < 6; i++) {
-    const candidate = path.join(dir, 'package.json')
-    if (existsSync(candidate)) {
-      try {
-        const parsed = JSON.parse(readFileSync(candidate, 'utf-8')) as {
-          name?: string
-          version?: string
-        }
-        if (parsed.name === 'webpresso') {
-          return parsed.version ?? '0.0.0'
-        }
-      } catch {
-        // keep walking
-      }
-    }
-    const parent = path.dirname(dir)
-    if (parent === dir) break
-    dir = parent
-  }
-  return '0.0.0'
+  return readOwnedPackageVersion(metaUrl)
 }

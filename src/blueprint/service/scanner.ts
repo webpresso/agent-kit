@@ -116,6 +116,10 @@ function extractSlugAndGroup(
     if (segments[segments.length - 1] === filePattern) {
       segments.pop()
     }
+  } else if (filePattern.toLowerCase() === 'readme.md') {
+    if (segments[segments.length - 1] === filePattern) {
+      segments.pop()
+    }
   } else {
     const last = segments[segments.length - 1] ?? ''
     if (last === filePattern) {
@@ -127,8 +131,9 @@ function extractSlugAndGroup(
     return { slug: '', group: null }
   }
 
-  // Filter out special folders from the slug calculation for group determination
-  const nonSpecialSegments = segments.filter((s) => !isSpecialFolder(s) && !isStatusFolder(s))
+  // Filter out archival special folders from group determination. Lifecycle
+  // status folders are part of the public slug and remain valid groups.
+  const nonSpecialSegments = segments.filter((s) => !isSpecialFolder(s))
 
   // The slug is the full path (including special folders)
   const slug = segments.join('/')
@@ -140,9 +145,7 @@ function extractSlugAndGroup(
   let group: string | null = null
 
   // Find the first non-special segment
-  const firstNonSpecialIndex = segments.findIndex(
-    (s) => !isSpecialFolder(s) && !isStatusFolder(s),
-  )
+  const firstNonSpecialIndex = segments.findIndex((s) => !isSpecialFolder(s))
 
   if (firstNonSpecialIndex >= 0 && nonSpecialSegments.length >= 2) {
     // There's a group structure: first non-special segment is the group
@@ -156,7 +159,7 @@ function extractSlugAndGroup(
  * Check if an entry should be skipped during directory traversal.
  */
 function shouldSkipEntry(entry: string): boolean {
-  return entry.startsWith('.') || entry === 'node_modules'
+  return entry.startsWith('.') || entry.startsWith('__') || entry === 'node_modules'
 }
 
 /**
@@ -228,11 +231,14 @@ function processEntry(
     return
   }
 
+  const relativeParentSegments = relative(baseDir, dir).split('/').filter((s) => s !== '')
   if (
     filePattern === OVERVIEW_FILENAME &&
     entry.endsWith('.md') &&
     entry !== 'README.md' &&
-    entry !== OVERVIEW_FILENAME
+    entry !== OVERVIEW_FILENAME &&
+    relativeParentSegments.length === 1 &&
+    isStatusFolder(relativeParentSegments[0] ?? '')
   ) {
     const plan = processPlanFile(fullPath, baseDir, includeSpecialFolders, entry)
     if (plan) {

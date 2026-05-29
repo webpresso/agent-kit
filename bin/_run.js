@@ -22,6 +22,15 @@ export const BIN_ENTRYPOINTS = {
   'docs-migrate': 'src/config/docs-lint/cli/migrate.ts',
 }
 
+const RUNTIME_BIN_ARGS = {
+  wp: [],
+  'wp-pretool-guard': ['hook', 'pretool-guard'],
+  'wp-post-tool': ['hook', 'post-tool'],
+  'wp-stop-qa': ['hook', 'stop-qa'],
+  'wp-guard-switch': ['hook', 'guard-switch'],
+  'wp-sessionstart-routing': ['hook', 'sessionstart-routing'],
+}
+
 function resolvePackageRoot() {
   return join(dirname(fileURLToPath(import.meta.url)), '..')
 }
@@ -36,6 +45,46 @@ function isExactNodeVersion(version) {
 
 function readTextIfExists(path) {
   return existsSync(path) ? readFileSync(path, 'utf8').trim() : null
+}
+
+function readRuntimeManifest(repoRoot) {
+  const manifestPath = join(repoRoot, 'bin', 'runtime-manifest.json')
+  if (!existsSync(manifestPath)) return null
+
+  try {
+    return JSON.parse(readFileSync(manifestPath, 'utf8'))
+  } catch (error) {
+    throw new Error(
+      `Unable to read compiled runtime manifest at ${manifestPath}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    )
+  }
+}
+
+function resolveRuntimeTarget(manifest, platform, arch) {
+  const targets = Array.isArray(manifest?.targets) ? manifest.targets : []
+  return targets.find((target) => target?.os === platform && target?.cpu === arch) ?? null
+}
+
+function runtimeBinaryFilename(manifest, target) {
+  const binaryName = typeof manifest?.binaryName === 'string' ? manifest.binaryName : 'wp'
+  return target?.os === 'win32' ? `${binaryName}.exe` : binaryName
+}
+
+function runtimePackageDirName(packageName) {
+  return String(packageName).split('/').at(-1)
+}
+
+function resolveRuntimeBinaryCandidates(repoRoot, manifest, target) {
+  const filename = runtimeBinaryFilename(manifest, target)
+  const packageDir = runtimePackageDirName(target.packageName)
+  return [
+    join(repoRoot, 'bin', 'runtime', target.id, filename),
+    join(repoRoot, 'dist', 'runtime', target.id, filename),
+    join(repoRoot, '..', packageDir, 'bin', filename),
+    join(repoRoot, 'node_modules', '@webpresso', packageDir, 'bin', filename),
+  ]
 }
 
 export function resolvePinnedNodeVersion(repoRoot = resolvePackageRoot()) {
@@ -82,6 +131,62 @@ function buildSourceLaunchPlan(sourceEntrypoint, forwardedArgs) {
   }
 }
 
+function buildRuntimeLaunchPlan({
+  binName,
+  repoRoot,
+  forwardedArgs,
+  platform,
+  arch,
+  runtimeManifest,
+  runtimeBinaryExists,
+  runtimeBinaryPath,
+  forceCompiledRuntime,
+}) {
+  const selectorArgs = RUNTIME_BIN_ARGS[binName]
+  if (!selectorArgs) return null
+
+  const manifest = runtimeManifest ?? readRuntimeManifest(repoRoot)
+  if (!manifest) return null
+
+  const target = resolveRuntimeTarget(manifest, platform, arch)
+  if (!target) {
+    if (!forceCompiledRuntime) return null
+    throw new Error(
+      `Unable to launch ${binName}: no compiled runtime target for ${platform}/${arch}.`,
+    )
+  }
+
+  const candidates = runtimeBinaryPath
+    ? [runtimeBinaryPath]
+    : resolveRuntimeBinaryCandidates(repoRoot, manifest, target)
+  const binaryPath = candidates.find((candidate) =>
+    runtimeBinaryExists ? runtimeBinaryExists(candidate) : existsSync(candidate),
+  )
+
+  if (!binaryPath) {
+    if (!forceCompiledRuntime) return null
+    throw new Error(
+      [
+        `Unable to launch ${binName}: compiled runtime target ${target.id} is missing.`,
+        `Looked for ${candidates.join(', ')}.`,
+        'Run `wp hooks doctor` to diagnose the install, or rebuild/reinstall the runtime package.',
+      ].join(' '),
+    )
+  }
+
+  return {
+    mode: 'runtime',
+    runtime: binaryPath,
+    entrypoint: binaryPath,
+    args: [...selectorArgs, ...forwardedArgs],
+    env: {
+      ...process.env,
+      WP_COMPILED_RUNTIME: '1',
+      WP_MCP_TOOL_MODE: 'registry',
+    },
+  }
+}
+
 export function resolveInvokedBinName(argv = process.argv.slice(1)) {
   const invoked = argv[0]
   if (typeof invoked !== 'string' || invoked.length === 0) {
@@ -94,8 +199,14 @@ export function buildLaunchPlan({
   binName,
   repoRoot = resolvePackageRoot(),
   forwardedArgs = process.argv.slice(2),
+  platform = process.platform,
+  arch = process.arch,
   builtExists,
   sourceExists,
+  runtimeBinaryExists,
+  runtimeBinaryPath,
+  runtimeManifest,
+  forceCompiledRuntime = process.env.WP_FORCE_COMPILED_RUNTIME === '1',
   nodeExecPath = process.execPath,
   currentNodeVersion = process.version,
   pinnedNodeVersion = resolvePinnedNodeVersion(repoRoot),
@@ -107,6 +218,19 @@ export function buildLaunchPlan({
   if (!sourceRelativePath) {
     throw new Error(`Unknown webpresso bin: ${binName}`)
   }
+
+  const runtimePlan = buildRuntimeLaunchPlan({
+    binName,
+    repoRoot,
+    forwardedArgs,
+    platform,
+    arch,
+    runtimeManifest,
+    runtimeBinaryExists,
+    runtimeBinaryPath,
+    forceCompiledRuntime,
+  })
+  if (runtimePlan) return runtimePlan
 
   const builtRelativePath = sourceToBuiltRelativePath(sourceRelativePath)
   const builtEntrypoint = join(repoRoot, builtRelativePath)
@@ -183,7 +307,10 @@ export function buildLaunchPlan({
 
 export function runNamedBin(binName, argv = process.argv.slice(2)) {
   const plan = buildLaunchPlan({ binName, forwardedArgs: argv })
-  const child = spawnSync(plan.runtime, plan.args, { stdio: 'inherit' })
+  const child = spawnSync(plan.runtime, plan.args, {
+    stdio: 'inherit',
+    env: plan.env ?? process.env,
+  })
 
   if (child.error) {
     const detail =

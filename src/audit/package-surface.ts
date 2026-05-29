@@ -525,6 +525,7 @@ function stagePackedFiles(
 function runSecretlint(stageRoot: string, packageRoot: string): unknown {
   const rcPath = findSecretlintRc(packageRoot)
   const outputFile = join(stageRoot, '.secretlint-output.json')
+  const toolRoot = findSecretlintToolRoot(packageRoot) ?? findSecretlintToolRoot(process.cwd())
   const args = ['exec', 'secretlint', '--format', 'json', '--output', outputFile, '--no-gitignore']
   if (rcPath) {
     args.push('--secretlintrc', rcPath)
@@ -535,7 +536,7 @@ function runSecretlint(stageRoot: string, packageRoot: string): unknown {
 
   try {
     execFileSync('pnpm', args, {
-      cwd: packageRoot,
+      cwd: toolRoot ?? packageRoot,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
       maxBuffer: 20 * 1024 * 1024,
@@ -548,6 +549,16 @@ function runSecretlint(stageRoot: string, packageRoot: string): unknown {
     throw error
   } finally {
     rmSync(outputFile, { force: true })
+  }
+}
+
+function findSecretlintToolRoot(start: string): string | undefined {
+  let current = resolve(start)
+  while (true) {
+    if (existsSync(join(current, 'node_modules', '.bin', 'secretlint'))) return current
+    const parent = dirname(current)
+    if (parent === current) return undefined
+    current = parent
   }
 }
 

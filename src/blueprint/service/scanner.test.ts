@@ -70,7 +70,7 @@ describe('scanBlueprintDirectory - core', () => {
       const flatPlan = result.find((plan) => plan.path.endsWith('/in-progress/flat-plan.md'))
       expect(flatPlan).toBeDefined()
       expect(flatPlan?.slug).toBe('in-progress/flat-plan')
-      expect(flatPlan?.group).toBeNull()
+      expect(flatPlan?.group).toBe('in-progress')
     })
   })
 
@@ -124,10 +124,10 @@ describe('scanBlueprintDirectory - core', () => {
       // Act
       const result = scanBlueprintDirectory(options)
 
-      // Assert - status folders are lifecycle, not groups. completed/tooling is standalone.
+      // Assert - lifecycle status folders are preserved as groups.
       const groupedPlan = result.find((p) => p.path.includes('completed/tooling'))
       if (groupedPlan) {
-        expect(groupedPlan.group).toBeNull()
+        expect(groupedPlan.group).toBe('completed')
       } else {
         // If no grouped plans exist, verify at least some plans exist
         expect(result.length).toBeGreaterThan(0)
@@ -167,12 +167,8 @@ describe('scanBlueprintDirectory - core', () => {
       // Assert - verify group extraction works for any available nested plan
       const nestedPlan = result.find((p) => p.slug.includes('/'))
       if (nestedPlan) {
-        if (nestedPlan.path.includes('/completed/')) {
-          expect(nestedPlan.group).toBeNull()
-        } else {
-          expect(typeof nestedPlan.group).toBe('string')
-          expect(nestedPlan.group).not.toBeNull()
-        }
+        expect(typeof nestedPlan.group).toBe('string')
+        expect(nestedPlan.group).not.toBeNull()
       } else {
         // No nested plans available - test passes
         expect(result.length).toBeGreaterThanOrEqual(0)

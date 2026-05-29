@@ -78,8 +78,8 @@ This is a parent roadmap, not an implementation plan
   })
 
   describe('error handling during plan parsing', () => {
-    it('should return malformed summary for Zod validation failures', async () => {
-      // Arrange - create plan with invalid frontmatter (missing required fields)
+    it('should apply legacy frontmatter defaults when optional fields are omitted', async () => {
+      // Arrange - create legacy plan frontmatter that relies on schema defaults.
       const planDir = path.join(testDir, 'webpresso/blueprints/invalid-plan')
       await fs.mkdir(planDir, { recursive: true })
       await fs.writeFile(
@@ -87,24 +87,25 @@ This is a parent roadmap, not an implementation plan
         `---
 type: blueprint
 status: in-progress
-# Missing complexity and dates - will fail Zod validation
+# Missing complexity and dates - complexity defaults to M for legacy blueprints
 ---
 # Invalid Plan
 `,
       )
 
-      // Act - should not throw, but return malformed summary
+      // Act - should not throw; omitted complexity is a supported legacy shape.
       const plans = await service.list()
 
-      // Assert - invalid plan should be included with malformed flag
+      // Assert - legacy plan should be included as a normal summary.
       const invalidPlan = plans.find((p) => p.name === 'invalid-plan')
       expect(invalidPlan).toMatchObject({
         name: 'invalid-plan',
-        malformed: expect.stringContaining('Invalid frontmatter'),
         status: 'in-progress',
+        complexity: 'M',
         taskCount: 0,
         progress: 0,
       })
+      expect(invalidPlan).not.toHaveProperty('malformed')
     })
 
     it('should return malformed summary for generic parsing errors', async () => {

@@ -89,10 +89,7 @@ export function formatStopHookOutput(result: StopHookResult): string {
   return JSON.stringify(result)
 }
 
-if (
-  process.argv[1] &&
-  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
-) {
+export async function main(): Promise<void> {
   runHook(
     // `Stop` is latency-sensitive and user-visible. Until webpresso grows a
     // deferred execution plane, broad typecheck/test sweeps stay off the hot
@@ -100,4 +97,11 @@ if (
     (_input) => null,
     formatStopHookOutput,
   )
+}
+
+if (
+  process.argv[1] &&
+  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
+) {
+  void main()
 }

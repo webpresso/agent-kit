@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Patch Changes
+
+- Export a local `@webpresso/agent-kit/bundle` prep surface that packages the future
+  `webpresso agent ...` command inventory for the external CLI host mount.
+- Add exact replacement-command diagnostics for stale `wp ...` agent commands so
+  migration guidance points to the future `webpresso agent ...` family.
+- Document the truthful repo-local completion boundary: this repo now prepares the
+  bundle/fixture/docs surface, while the actual public host-mounted cutover remains
+  an external monorepo/framework lane.
+
 ## 0.21.5
 
 ### Patch Changes

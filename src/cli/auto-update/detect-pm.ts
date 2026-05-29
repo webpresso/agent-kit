@@ -22,6 +22,8 @@ import { execFileSync } from 'node:child_process'
 import { realpathSync } from 'node:fs'
 import { delimiter, dirname, sep } from 'node:path'
 
+import { getLegacyAgentCommandReplacement } from '#cli/bundle/agent-command-inventory.js'
+
 export type ManagerName = 'npm' | 'pnpm' | 'yarn' | 'bun' | 'vp' | 'git'
 
 export interface DetectSuccess {
@@ -54,6 +56,12 @@ const INSTALL_COMMANDS: Record<Exclude<ManagerName, 'git'>, string[]> = {
   yarn: VP_INSTALL_COMMAND,
   bun: VP_INSTALL_COMMAND,
   vp: VP_INSTALL_COMMAND,
+}
+
+export function formatLegacyCommandReplacementMessage(legacyCommand: string): string | null {
+  const replacement = getLegacyAgentCommandReplacement(legacyCommand)
+  if (replacement === null) return null
+  return `Legacy agent-kit command \`${legacyCommand}\` has a future replacement: \`${replacement}\`.`
 }
 
 /**

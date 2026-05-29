@@ -290,8 +290,8 @@ do not depend on ad-hoc manual scanning.
 | --- | --- | --- |
 | `planned/agent-kit-cli-bundle-cutover` | Local sibling dependency | Public command/package boundary decisions must align with this scrub before public release. |
 | `in-progress/consolidate-all-webpresso-agent-sub-packages-into-webpresso-itself-with-subpath-exports-consumers-go-from-6-8-pinned-devdeps-down-to-one-webpresso` | Local sibling release gate | The `webpresso` npm objective may proceed with tarball/package-surface evidence; repository-public visibility still waits for this scrub. |
-| `planned/mcp-first-secret-surface-hard-cut-roadmap` | Related secret-surface roadmap | Secret-surface naming remains separate from repository-publication scanning. |
-| `planned/secret-aware-worker-tail-mcp` | Related MCP/secret implementation lane | Test fixtures touched here must keep that lane's CI/tool behavior intact. |
+| `parked/mcp-first-secret-surface-hard-cut-roadmap` | Related secret-surface roadmap | Secret-surface naming remains separate from repository-publication scanning. |
+| `completed/secret-aware-worker-tail-mcp` | Related MCP/secret implementation lane | Test fixtures touched here must keep that lane's CI/tool behavior intact. |
 
 ## Cross-Repo Parallel Map
 

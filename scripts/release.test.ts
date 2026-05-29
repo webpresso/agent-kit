@@ -12,12 +12,18 @@
  * therefore exercises every git step end-to-end without depending on tshy.
  */
 import { execSync, spawnSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 const SCRIPT_PATH = resolve(__dirname, 'release.ts')
+const FAST_GIT_ENV = {
+  ...process.env,
+  GIT_CONFIG_COUNT: '1',
+  GIT_CONFIG_KEY_0: 'core.fsync',
+  GIT_CONFIG_VALUE_0: 'none',
+}
 
 interface Fixture {
   binDir: string
@@ -29,7 +35,7 @@ interface Fixture {
 const fixtureForCwd = new Map<string, Fixture>()
 
 function git(cwd: string, args: string): string {
-  return execSync(`git ${args}`, { cwd, encoding: 'utf8' }).toString()
+  return execSync(`git ${args}`, { cwd, encoding: 'utf8', env: FAST_GIT_ENV }).toString()
 }
 
 function runScript(
@@ -37,14 +43,14 @@ function runScript(
   flags: readonly string[],
 ): { stdout: string; stderr: string; status: number } {
   const result = spawnSync(
-    process.execPath,
-    ['--experimental-strip-types', SCRIPT_PATH, ...flags],
+    'bun',
+    [SCRIPT_PATH, ...flags],
     {
       cwd,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
       env: {
-        ...process.env,
+        ...FAST_GIT_ENV,
         PATH: [fixtureForCwd.get(cwd)?.binDir, process.env.PATH].filter(Boolean).join(':'),
       },
     },
@@ -95,7 +101,8 @@ function createFixture({ withRemote = false }: { withRemote?: boolean } = {}): F
     join(binDir, 'pnpm'),
     [
       '#!/bin/sh',
-      `node -e "const fs=require('fs'); const pkg=JSON.parse(fs.readFileSync('package.json','utf8')); const build=String(pkg.scripts?.build||''); process.exit(build.includes('process.exit(1)')?1:0)"`,
+      "grep -q 'process.exit(1)' package.json && exit 1",
+      'exit 0',
       '',
     ].join('\n'),
     'utf8',
@@ -117,7 +124,7 @@ function createFixture({ withRemote = false }: { withRemote?: boolean } = {}): F
     remoteDir,
     cleanup: () => {
       try {
-        execSync(`rm -rf "${root}"`)
+        rmSync(root, { recursive: true, force: true })
       } catch {
         // ignore cleanup failures in tests
       } finally {

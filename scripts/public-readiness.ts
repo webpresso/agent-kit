@@ -115,6 +115,7 @@ for (const [name, command, args, env] of [
 const pkg = JSON.parse(read('package.json')) as {
   name?: string
   publishConfig?: { registry?: string; access?: string }
+  scripts?: Record<string, string>
 }
 
 if (pkg.name !== '@webpresso/agent-kit') {
@@ -132,6 +133,43 @@ if (pkg.name !== '@webpresso/agent-kit') {
   )
 } else {
   results.push(pass('package-metadata', '@webpresso/agent-kit + public npm publishConfig present'))
+}
+
+const runtimeManifestPath = 'bin/runtime-manifest.json'
+const runtimeBuildScript = 'scripts/build-runtime-binaries.ts'
+const runtimeStageScript = 'scripts/stage-plugin-runtime-artifacts.ts'
+if (!existsSync(resolve(ROOT, runtimeManifestPath))) {
+  results.push(fail('compiled-runtime-manifest', `${runtimeManifestPath} missing`))
+} else if (!existsSync(resolve(ROOT, runtimeBuildScript))) {
+  results.push(fail('compiled-runtime-build-script', `${runtimeBuildScript} missing`))
+} else if (!existsSync(resolve(ROOT, runtimeStageScript))) {
+  results.push(fail('compiled-runtime-stage-script', `${runtimeStageScript} missing`))
+} else {
+  const runtimeManifest = JSON.parse(read(runtimeManifestPath)) as {
+    binaryName?: string
+    targets?: Array<{ id?: string; bunTarget?: string; packageName?: string }>
+  }
+  const targets = runtimeManifest.targets ?? []
+  const scripts = pkg.scripts ?? {}
+  if (
+    runtimeManifest.binaryName !== 'wp' ||
+    targets.length < 5 ||
+    targets.some((target) => !target.id || !target.bunTarget || !target.packageName)
+  ) {
+    results.push(fail('compiled-runtime-target-matrix', 'runtime manifest is incomplete'))
+  } else if (
+    !scripts['build:runtime-binaries']?.includes(runtimeBuildScript) ||
+    !scripts['stage:plugin-runtime']?.includes(runtimeStageScript)
+  ) {
+    results.push(fail('compiled-runtime-package-scripts', 'runtime scripts are not wired'))
+  } else {
+    results.push(
+      pass(
+        'compiled-runtime-lane',
+        `${targets.length} target manifest plus build/stage scripts are wired`,
+      ),
+    )
+  }
 }
 
 // 3) Tarball surface

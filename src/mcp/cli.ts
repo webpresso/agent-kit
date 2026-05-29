@@ -16,6 +16,7 @@ import { createServer } from './server.js'
 export async function runStdioServer(): Promise<void> {
   const server = await createServer()
   const transport = new StdioServerTransport()
+  const settle = Promise.withResolvers<void>()
 
   let shuttingDown = false
   const shutdown = async (): Promise<void> => {
@@ -23,10 +24,16 @@ export async function runStdioServer(): Promise<void> {
     shuttingDown = true
     deleteSentinel()
     try {
+      await transport.close()
+    } catch {
+      /* ignore transport close errors during shutdown */
+    }
+    try {
       await server.close()
     } catch {
       /* ignore close errors during shutdown */
     }
+    settle.resolve()
   }
   process.on('SIGINT', () => {
     void shutdown().then(() => process.exit(0))
@@ -34,9 +41,22 @@ export async function runStdioServer(): Promise<void> {
   process.on('SIGTERM', () => {
     void shutdown().then(() => process.exit(0))
   })
+  process.stdin.on('end', () => {
+    void shutdown()
+  })
+  process.stdin.on('close', () => {
+    void shutdown()
+  })
+  transport.onclose = () => {
+    void shutdown()
+  }
+  transport.onerror = () => {
+    void shutdown()
+  }
 
   await server.connect(transport)
   writeSentinel()
+  await settle.promise
 }
 
 import { realpathSync } from 'node:fs'

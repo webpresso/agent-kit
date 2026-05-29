@@ -49,8 +49,11 @@ describe('plugin.json manifest', () => {
 
   it('preserves base fields', () => {
     const m = readManifest()
+    const packageJson = JSON.parse(readFileSync(join(PACKAGE_ROOT, 'package.json'), 'utf8')) as {
+      version: string
+    }
     expect(typeof m.name).toBe('string')
-    expect(typeof m.version).toBe('string')
+    expect(m.version).toBe(packageJson.version)
     expect(typeof m.description).toBe('string')
     expect(m.skills).toBe('./skills')
   })

@@ -1,8 +1,9 @@
-import { spawn } from 'node:child_process'
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { existsSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { afterAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(__dirname, '..', '..')
@@ -12,89 +13,21 @@ const builtCliPath = resolve(repoRoot, 'dist/esm/mcp/cli.js')
 const cliPath = existsSync(sourceCliPath) ? sourceCliPath : builtCliPath
 const cliRuntime = cliPath.endsWith('.ts') ? 'bun' : 'node'
 
-interface JsonRpcRequest {
-  jsonrpc: '2.0'
-  id: number
-  method: string
-  params?: Record<string, unknown>
-}
-
-interface JsonRpcResponse {
-  jsonrpc: '2.0'
-  id: number
-  result?: Record<string, unknown>
-  error?: { code: number; message: string }
-}
-
-const startedChildren: { kill: (signal?: NodeJS.Signals) => boolean }[] = []
-afterAll(() => {
-  for (const child of startedChildren) child.kill('SIGTERM')
-})
-
-async function callServer(...requests: JsonRpcRequest[]): Promise<JsonRpcResponse[]> {
-  return new Promise((res, rej) => {
-    const child = spawn(cliRuntime, [cliPath], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, NODE_ENV: 'test' },
-    })
-    startedChildren.push(child)
-
-    let stdoutBuf = ''
-    let stderrBuf = ''
-    const responses: JsonRpcResponse[] = []
-    let resolved = false
-
-    const timeout = setTimeout(() => {
-      if (!resolved) {
-        child.kill('SIGTERM')
-        rej(
-          new Error(
-            `MCP server timed out. stdout=${JSON.stringify(stdoutBuf)} stderr=${JSON.stringify(stderrBuf)}`,
-          ),
-        )
-      }
-    }, 15000)
-
-    child.stdout.on('data', (chunk: Buffer) => {
-      stdoutBuf += chunk.toString('utf8')
-      let nl = stdoutBuf.indexOf('\n')
-      while (nl !== -1) {
-        const line = stdoutBuf.slice(0, nl).trim()
-        stdoutBuf = stdoutBuf.slice(nl + 1)
-        if (line) {
-          try {
-            responses.push(JSON.parse(line))
-          } catch {
-            /* ignore non-JSON line */
-          }
-        }
-        nl = stdoutBuf.indexOf('\n')
-      }
-      if (responses.length >= requests.length && !resolved) {
-        resolved = true
-        clearTimeout(timeout)
-        child.kill('SIGTERM')
-        res(responses)
-      }
-    })
-
-    child.stderr.on('data', (c: Buffer) => {
-      stderrBuf += c.toString('utf8')
-    })
-
-    child.on('error', (err) => {
-      if (!resolved) {
-        resolved = true
-        clearTimeout(timeout)
-        rej(err)
-      }
-    })
-
-    for (const req of requests) {
-      child.stdin.write(`${JSON.stringify(req)}\n`)
-    }
-    child.stdin.end()
+async function withClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
+  const transport = new StdioClientTransport({
+    command: cliRuntime,
+    args: [cliPath],
+    env: { ...process.env, NODE_ENV: 'test' },
   })
+  const client = new Client({ name: 'webpresso-test', version: '0.0.0' })
+
+  try {
+    await client.connect(transport)
+    return await fn(client)
+  } finally {
+    await client.close().catch(() => undefined)
+    await transport.close().catch(() => undefined)
+  }
 }
 
 describe('mcp server integration', () => {
@@ -106,28 +39,12 @@ describe('mcp server integration', () => {
   }
 
   it('responds to tools/list with wp_test registered and a JSON Schema', async () => {
-    const responses = await callServer(
-      {
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'initialize',
-        params: {
-          protocolVersion: '2024-11-05',
-          capabilities: {},
-          clientInfo: { name: 'webpresso-test', version: '0.0.0' },
-        },
-      },
-      { jsonrpc: '2.0', id: 2, method: 'tools/list' },
-    )
-
-    const listResponse = responses.find((r) => r.id === 2)
-    expect(listResponse).toBeDefined()
-    const tools = (listResponse?.result?.tools ?? []) as Array<{
+    const tools = await withClient(async (client) => (await client.listTools()).tools as Array<{
       name: string
       description?: string
       inputSchema: { type: string; properties?: Record<string, unknown> }
       outputSchema?: { type: string; properties?: Record<string, unknown> }
-    }>
+    }>)
     const wpTest = tools.find((t) => t.name === 'wp_test')
     expect(wpTest).toBeDefined()
     expect(wpTest?.inputSchema.type).toBe('object')
@@ -179,53 +96,28 @@ describe('mcp server integration', () => {
   // methods. Without this fix, webpresso tools never surface in
   // Claude Code's deferred-tool registry.
   it('responds to prompts/list and resources/list without -32601 (transport-poisoning workaround)', async () => {
-    const responses = await callServer(
-      {
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'initialize',
-        params: {
-          protocolVersion: '2024-11-05',
-          capabilities: {},
-          clientInfo: { name: 'webpresso-test', version: '0.0.0' },
-        },
-      },
-      { jsonrpc: '2.0', id: 2, method: 'prompts/list' },
-      { jsonrpc: '2.0', id: 3, method: 'resources/list' },
-      { jsonrpc: '2.0', id: 4, method: 'resources/templates/list' },
-      { jsonrpc: '2.0', id: 5, method: 'tools/list' },
-    )
+    const { prompts, resources, resourceTemplates, tools } = await withClient(async (client) => ({
+      prompts: await client.listPrompts(),
+      resources: await client.listResources(),
+      resourceTemplates: await client.listResourceTemplates(),
+      tools: (await client.listTools()).tools as Array<{
+        name: string
+      }>,
+    }))
 
-    for (const id of [2, 3, 4, 5]) {
-      const r = responses.find((res) => res.id === id)
-      expect(r, `id=${id} response`).toBeDefined()
-      expect(r?.error, `id=${id} should not error`).toBeUndefined()
-    }
-    expect(responses.find((r) => r.id === 2)?.result).toEqual({ prompts: [] })
-    expect(responses.find((r) => r.id === 3)?.result).toEqual({ resources: [] })
-    expect(responses.find((r) => r.id === 4)?.result).toEqual({ resourceTemplates: [] })
-    // Most important: tools/list still works AFTER the prompts/resources calls.
-    const tools = (responses.find((r) => r.id === 5)?.result?.tools ?? []) as Array<{
+    expect(prompts).toMatchObject({ prompts: [] })
+    expect(resources).toMatchObject({ resources: [] })
+    expect(resourceTemplates).toMatchObject({ resourceTemplates: [] })
+    const listedTools = tools as Array<{
       name: string
     }>
-    expect(tools.map((t) => t.name)).toEqual(
+    expect(listedTools.map((t) => t.name)).toEqual(
       expect.arrayContaining(['wp_lint', 'wp_qa', 'wp_test', 'wp_e2e', 'wp_typecheck', 'wp_audit']),
     )
   }, 20_000)
 
   it('advertises prompts and resources capabilities so clients know to list them', async () => {
-    const responses = await callServer({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'initialize',
-      params: {
-        protocolVersion: '2024-11-05',
-        capabilities: {},
-        clientInfo: { name: 'webpresso-test', version: '0.0.0' },
-      },
-    })
-    const init = responses.find((r) => r.id === 1)
-    const caps = init?.result?.capabilities as Record<string, unknown> | undefined
+    const caps = await withClient(async (client) => client.getServerCapabilities())
     expect(caps).toBeDefined()
     expect(caps).toHaveProperty('tools')
     expect(caps).toHaveProperty('prompts')
@@ -233,7 +125,7 @@ describe('mcp server integration', () => {
   })
 
   it('passes through tool outputSchema in tools/list and structuredContent in tools/call', async () => {
-    const filePath = resolve(sourceToolsDir, '__structured-content-plumbing-fixture.js')
+    const filePath = resolve(sourceToolsDir, 'zz-structured-content-plumbing-fixture.js')
     writeFileSync(
       filePath,
       [
@@ -255,44 +147,24 @@ describe('mcp server integration', () => {
     )
 
     try {
-      const responses = await callServer(
-        {
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'initialize',
-          params: {
-            protocolVersion: '2024-11-05',
-            capabilities: {},
-            clientInfo: { name: 'webpresso-test', version: '0.0.0' },
-          },
-        },
-        { jsonrpc: '2.0', id: 2, method: 'tools/list' },
-        {
-          jsonrpc: '2.0',
-          id: 3,
-          method: 'tools/call',
-          params: {
-            name: 'zz_structured_content_plumbing',
-            arguments: { value: 'hi' },
-          },
-        },
-      )
-
-      const listResponse = responses.find((r) => r.id === 2)
-      const tools = (listResponse?.result?.tools ?? []) as Array<{
-        name: string
-        outputSchema?: Record<string, unknown>
-      }>
+      const { tools, callResponse } = await withClient(async (client) => ({
+        tools: (await client.listTools()).tools as Array<{
+          name: string
+          outputSchema?: Record<string, unknown>
+        }>,
+        callResponse: await client.callTool({
+          name: 'zz_structured_content_plumbing',
+          arguments: { value: 'hi' },
+        }),
+      }))
       const fixture = tools.find((t) => t.name === 'zz_structured_content_plumbing')
       expect(fixture?.outputSchema).toEqual({ type: 'object', bareShape: true })
 
-      const callResponse = responses.find((r) => r.id === 3)
-      expect(callResponse?.error).toBeUndefined()
-      expect(callResponse?.result?.structuredContent).toEqual({
+      expect(callResponse.structuredContent).toEqual({
         ok: true,
         echoed: { value: 'hi' },
       })
-      expect(callResponse?.result?.content).toEqual([
+      expect(callResponse.content).toEqual([
         {
           type: 'text',
           text: '{"ok":true,"echoed":{"value":"hi"}}',
@@ -304,41 +176,24 @@ describe('mcp server integration', () => {
   }, 20_000)
 
   it('returns structuredContent for a real built-in tool with outputSchema', async () => {
-    const responses = await callServer(
-      {
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'initialize',
-        params: {
-          protocolVersion: '2024-11-05',
-          capabilities: {},
-          clientInfo: { name: 'webpresso-test', version: '0.0.0' },
-        },
-      },
-      {
-        jsonrpc: '2.0',
-        id: 2,
-        method: 'tools/call',
-        params: {
-          name: 'wp_audit',
-          arguments: { kind: 'docs-frontmatter', directory: process.cwd() },
-        },
-      },
+    const callResponse = await withClient((client) =>
+      client.callTool({
+        name: 'wp_audit',
+        arguments: { kind: 'docs-frontmatter', directory: process.cwd() },
+      }),
     )
 
-    const callResponse = responses.find((r) => r.id === 2)
-    expect(callResponse?.error).toBeUndefined()
-    expect(callResponse?.result?.structuredContent).toMatchObject({
+    expect(callResponse.structuredContent).toMatchObject({
       passed: expect.any(Boolean),
       summary: expect.any(String),
       kind: 'docs-frontmatter',
     })
     const textBlock = (
-      callResponse?.result?.content as Array<{ type?: string; text?: string }> | undefined
+      callResponse.content as Array<{ type?: string; text?: string }> | undefined
     )?.[0]
     expect(textBlock?.type).toBe('text')
     expect(typeof textBlock?.text).toBe('string')
-    expect(textBlock?.text).toBe(callResponse?.result?.structuredContent?.summary)
+    expect(textBlock?.text).toBe(callResponse.structuredContent?.summary)
     expect(() => JSON.parse(textBlock!.text!)).toThrow()
   })
 
@@ -346,23 +201,9 @@ describe('mcp server integration', () => {
   // `wp_blueprint_projects` aggregate) must be advertised by the main server,
   // not just available via direct registrar tests.
   it('advertises the 9 structured blueprint tools in tools/list (Task 2.1)', async () => {
-    const responses = await callServer(
-      {
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'initialize',
-        params: {
-          protocolVersion: '2024-11-05',
-          capabilities: {},
-          clientInfo: { name: 'webpresso-test', version: '0.0.0' },
-        },
-      },
-      { jsonrpc: '2.0', id: 2, method: 'tools/list' },
-    )
-
-    const tools = (responses.find((r) => r.id === 2)?.result?.tools ?? []) as Array<{
+    const tools = await withClient(async (client) => (await client.listTools()).tools as Array<{
       name: string
-    }>
+    }>)
     const names = tools.map((t) => t.name)
     expect(names).toEqual(
       expect.arrayContaining([

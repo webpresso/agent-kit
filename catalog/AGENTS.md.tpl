@@ -34,7 +34,7 @@ vp install && vp run setup:agent  # setup:agent runs wp setup, which scaffolds .
 ```
 
 agent-kit's catalog is the single source of truth for generated agent surfaces.
-`wp` is the canonical public CLI surface for setup, sync, and repo automation.
+Agent-kit owns the generated agent surfaces in this file; the Webpresso CLI host owns the end-user command surface.
 To customize skills, commands, or workflows, edit them in agent-kit's catalog
 and publish — not in individual repos. The default `omx` preset chains
 `omx setup --yes --scope user` and installs missing OMX through
@@ -52,7 +52,7 @@ Tracked vs ignored rule of thumb:
   `.agents/`, generated `.claude/rules/`, `.claude/skills/`,
   `.claude/worktrees/`, editor-local state, and other runtime projections).
 
-`wp setup` / `wp sync` are the canonical bootstrap commands.
+Current-state bootstrap commands remain `wp setup` / `wp sync`; future unified CLI replacements are `webpresso agent setup` / `webpresso agent sync`.
 
 ## Plan
 
@@ -96,7 +96,7 @@ behavior and any broader checks this repo requires. Typical gates are:
 - repo policy checks such as `verify:paths` / `verify:secrets` when setup
   scaffolded them
 - docs or blueprint validation when docs/plans changed
-- `wp sync --check` after `wp setup` to verify surfaces are in sync
+- `wp sync --check` after `wp setup` to verify surfaces are in sync today; treat `webpresso agent setup` / `webpresso agent sync` as the future cutover replacements
 
 If a gate fails, fix the root cause or record the blocker with evidence.
 

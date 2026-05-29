@@ -7,6 +7,19 @@ import {
   resolvePinnedNodeVersion,
 } from '../bin/_run.js'
 
+const RUNTIME_MANIFEST = {
+  binaryName: 'wp',
+  targets: [
+    {
+      id: 'linux-x64',
+      bunTarget: 'bun-linux-x64',
+      os: 'linux',
+      cpu: 'x64',
+      packageName: '@webpresso/agent-kit-runtime-linux-x64',
+    },
+  ],
+}
+
 describe('bin launcher', () => {
   it('maps known public bin names to source entrypoints', () => {
     expect(BIN_ENTRYPOINTS.wp).toBe('src/cli/cli.ts')
@@ -33,6 +46,99 @@ describe('bin launcher', () => {
       args: ['/repo/dist/esm/cli/cli.js', 'mcp'],
       entrypoint: '/repo/dist/esm/cli/cli.js',
     })
+  })
+
+  it('prefers staged compiled runtime artifacts for runtime-owned hook bins', () => {
+    const plan = buildLaunchPlan({
+      binName: 'wp-pretool-guard',
+      repoRoot: '/repo',
+      forwardedArgs: ['--verbose'],
+      platform: 'linux',
+      arch: 'x64',
+      runtimeManifest: RUNTIME_MANIFEST,
+      runtimeBinaryExists: (path) => path === '/repo/bin/runtime/linux-x64/wp',
+      builtExists: true,
+      sourceExists: true,
+      nodeExecPath: '/usr/bin/node',
+      currentNodeVersion: 'v24.16.0',
+      pinnedNodeVersion: '24.16.0',
+      runtimeManager: null,
+    })
+
+    expect(plan.mode).toBe('runtime')
+    expect(plan.runtime).toBe('/repo/bin/runtime/linux-x64/wp')
+    expect(plan.entrypoint).toBe('/repo/bin/runtime/linux-x64/wp')
+    expect(plan.args).toEqual(['hook', 'pretool-guard', '--verbose'])
+    expect(plan.env).toMatchObject({
+      WP_COMPILED_RUNTIME: '1',
+      WP_MCP_TOOL_MODE: 'registry',
+    })
+  })
+
+  it('does not route docs bins through the compiled runtime selector', () => {
+    expect(
+      buildLaunchPlan({
+        binName: 'docs-lint',
+        repoRoot: '/repo',
+        forwardedArgs: ['README.md'],
+      platform: 'linux',
+      arch: 'x64',
+      runtimeManifest: RUNTIME_MANIFEST,
+      runtimeBinaryExists: () => true,
+        builtExists: true,
+        sourceExists: true,
+        nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
+      }).mode,
+    ).toBe('built')
+  })
+
+  it('keeps source-checkout fallback when a compiled runtime artifact is not present', () => {
+    expect(
+      buildLaunchPlan({
+        binName: 'wp-stop-qa',
+        repoRoot: '/repo',
+        forwardedArgs: [],
+      platform: 'linux',
+      arch: 'x64',
+      runtimeManifest: RUNTIME_MANIFEST,
+      runtimeBinaryExists: () => false,
+        builtExists: false,
+        sourceExists: true,
+        nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
+      }),
+    ).toEqual({
+      mode: 'source',
+      runtime: 'bun',
+      args: ['/repo/src/hooks/stop/qa-changed-files.ts'],
+      entrypoint: '/repo/src/hooks/stop/qa-changed-files.ts',
+    })
+  })
+
+  it('fails clearly when a caller explicitly requires an unavailable compiled runtime', () => {
+    expect(() =>
+      buildLaunchPlan({
+        binName: 'wp',
+        repoRoot: '/repo',
+        forwardedArgs: [],
+      platform: 'freebsd',
+      arch: 'x64',
+      runtimeManifest: RUNTIME_MANIFEST,
+      runtimeBinaryExists: () => false,
+        forceCompiledRuntime: true,
+        builtExists: true,
+        sourceExists: true,
+        nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
+      }),
+    ).toThrow(/no compiled runtime target for freebsd\/x64/)
   })
 
   it('prefers source when the source checkout is newer than the built entrypoint', () => {

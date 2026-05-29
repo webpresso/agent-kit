@@ -57,11 +57,11 @@ This blueprint converts the audit into a concrete execution plan. It also introd
 
 - `blueprints/completed/agent-kit-public-release-scrub/_overview.md` — prior scrub plan and earlier public-history strategy lane.
 - `docs/research/2026-05-28-public-npm-cutover-checklist.md` — current audit-driven ranked checklist.
-- `blueprints/planned/mcp-first-secret-surface-hard-cut-roadmap/_overview.md` — secret-surface hardening context; keep `wp_*` canonical surfaces and avoid reintroducing public secret legacy while changing release/docs.
+- `blueprints/parked/mcp-first-secret-surface-hard-cut-roadmap/_overview.md` — secret-surface hardening context; keep `wp_*` canonical surfaces and avoid reintroducing public secret legacy while changing release/docs.
 - `blueprints/in-progress/agent-kit-hard-cut-to-generic-core-with-wp-as-the-only-canonical-cli/_overview.md` — public package/docs changes must preserve `wp` as the only canonical CLI and avoid reopening removed `webpresso` bin / branded preset decisions.
 - `blueprints/in-progress/consolidate-all-webpresso-agent-sub-packages-into-webpresso-itself-with-subpath-exports-consumers-go-from-6-8-pinned-devdeps-down-to-one-webpresso/_overview.md` — package identity stays `@webpresso/agent-kit`; tarball/export/doc changes must not conflict with subpath-export consolidation or release-contract locking.
 - `blueprints/in-progress/make-wp-own-generic-tool-runtime-for-consumers/_overview.md` — package-surface and workflow changes touching `files`, `bin`, `exports`, or runtime-owned commands must respect the runtime-ownership boundary and package-surface gates already in progress.
-- `blueprints/in-progress/ai-reliability-contract-roadmap/_overview.md` — public docs cleanup should not silently break current AI reliability contract language/consumer-alignment work without explicit cross-plan note.
+- `blueprints/parked/ai-reliability-contract-roadmap/_overview.md` — public docs cleanup should not silently break current AI reliability contract language/consumer-alignment work without explicit cross-plan note.
 
 ## Active blueprint alignment rules
 

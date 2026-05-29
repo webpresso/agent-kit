@@ -111,6 +111,26 @@ describe('createPackedManifest', () => {
     }
   })
 
+  it('adds platform runtime packages to the packed optional dependency surface', () => {
+    const manifest = createPackedManifest(
+      {
+        name: '@webpresso/agent-kit',
+        version: '1.2.3',
+        optionalDependencies: { existing: '^1.0.0' },
+      },
+      { catalog: {} },
+    )
+
+    expect(manifest.optionalDependencies).toMatchObject({
+      existing: '^1.0.0',
+      '@webpresso/agent-kit-runtime-darwin-arm64': '1.2.3',
+      '@webpresso/agent-kit-runtime-darwin-x64': '1.2.3',
+      '@webpresso/agent-kit-runtime-linux-x64': '1.2.3',
+      '@webpresso/agent-kit-runtime-linux-arm64': '1.2.3',
+      '@webpresso/agent-kit-runtime-windows-x64': '1.2.3',
+    })
+  })
+
   it('prunes orphaned dist subtrees during prepare and restores them afterwards', () => {
     const fixtureDir = mkdtempSync(join(tmpdir(), 'wp-package-manifest-prune-'))
 
