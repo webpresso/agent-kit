@@ -5,16 +5,6 @@
  * For Workers-safe functions, use the main 'webpresso/blueprint' entry point.
  */
 
-// DAG Local (Node.js-only utilities, re-exported for CLI convenience)
-export type {
-  FalseDependency,
-  ParallelizeResult,
-  TaskFiles,
-  TaskPairAnalysis,
-} from './dag/local/independence.js'
-export { createMockPackageGraph, IndependenceDetector } from './dag/local/independence.js'
-export { createMockFileSystem, PackageGraph, realFileSystem } from './dag/local/package-graph.js'
-
 // Workers-safe exports for convenience (explicit re-export to avoid wildcard)
 export {
   type AcceptanceCriteria,

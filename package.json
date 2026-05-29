@@ -14,7 +14,7 @@
     "registry": "https://registry.npmjs.org/",
     "access": "public"
   },
-  "description": "One command scaffolds a repo so every AI coding agent (Claude Code, Codex CLI, Cursor, Windsurf, Gemini, OpenCode) shares the same context, hooks, and quality gates. The `wp` CLI: blueprints, skills catalog, lore commits, tech-debt lifecycle, audit composite.",
+  "description": "TypeScript infrastructure for AI-agent-driven development: the `wp` CLI + MCP server give agents planning (blueprints), tests, mutation, e2e, CI, docs, and tech-debt — summary-first so they keep context, and enforced as pre-commit/CI contracts. Manages AGENTS.md / CLAUDE.md and per-agent surfaces.",
   "keywords": [
     "agent",
     "webpresso",
@@ -171,12 +171,6 @@
       "import": {
         "types": "./dist/esm/blueprint/dag/index.d.ts",
         "default": "./dist/esm/blueprint/dag/index.js"
-      }
-    },
-    "./blueprint/dag/local": {
-      "import": {
-        "types": "./dist/esm/blueprint/dag/local/index.d.ts",
-        "default": "./dist/esm/blueprint/dag/local/index.js"
       }
     },
     "./blueprint/local": {
@@ -612,7 +606,6 @@
       ".": "./src/index.ts",
       "./blueprint": "./src/blueprint/index.ts",
       "./blueprint/dag": "./src/blueprint/dag/index.ts",
-      "./blueprint/dag/local": "./src/blueprint/dag/local/index.ts",
       "./blueprint/local": "./src/blueprint/local.ts",
       "./blueprint/tech-debt": "./src/blueprint/tech-debt/index.ts",
       "./blueprint/test-utils": "./src/blueprint/test-utils/blueprint-mocks.ts",
