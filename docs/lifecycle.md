@@ -166,8 +166,9 @@ wp blueprint move <slug> archived                # keep record
 wp blueprint logs <slug>                          # audit-event history
 ```
 
-The `wp_blueprint_depgraph` MCP tool renders a blueprint's task dependency
-graph as mermaid (backed by `src/blueprint/graph/`).
+The `wp_blueprint_depgraph` MCP tool returns a blueprint's dependency graph as
+structured `nodes` + `edges` (read from the SQLite projection, including
+cross-repo edges).
 
 ## Canonical state vs derived state (OMX, SQLite)
 

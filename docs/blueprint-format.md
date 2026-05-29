@@ -264,7 +264,8 @@ The `[lane]` prefix on task titles (`#### [frontend] Task 1.1: ...`,
 `#### [backend] Task 1.2: ...`) is a soft convention used by parallel
 execution tooling (`/pll`) to group independent tasks into worktrees.
 Lane names are free-form strings (`frontend`, `backend`, `migration`,
-`cleanup`, etc.) — the executor just uses them to partition the DAG.
+`cleanup`, etc.) — the `/pll` adapter uses them to partition work
+across worktrees.
 
 Tasks without a `[lane]` marker are treated as unlabeled — fine for
 blueprints that don't need parallel execution.
@@ -316,11 +317,13 @@ See `src/blueprint/lifecycle/engine.ts` for the full intent vocabulary
 (`start`, `park`, `finalize`, `task_start`, `task_block`, `task_unblock`,
 `task_complete`).
 
-## DAG + graph
+## Dependency graph
 
-A blueprint's task graph is parsed from the `**Depends on:**` lines
-into a directed acyclic graph. `wp blueprint graph <slug>` renders
-that DAG as Mermaid, and the DAG executor (`wp blueprint exec <slug>`)
-walks it respecting dependencies.
-
-For details on the graph runtime, see `src/blueprint/dag/` source.
+A blueprint's task dependencies are parsed from the `**Depends on:**`
+lines into a directed acyclic graph and persisted to the SQLite
+projection. The `wp_blueprint_depgraph` MCP tool returns that graph as
+structured `nodes` + `edges` (including cross-repo edges). `wp blueprint
+exec <slug>` hands the blueprint to a runtime backend (for example the
+OMX `/pll` adapter), which walks the dependencies to run independent
+tasks in parallel — execution is delegated to that adapter, not the
+package core.

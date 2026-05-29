@@ -167,12 +167,6 @@
         "default": "./dist/esm/blueprint/index.js"
       }
     },
-    "./blueprint/dag": {
-      "import": {
-        "types": "./dist/esm/blueprint/dag/index.d.ts",
-        "default": "./dist/esm/blueprint/dag/index.js"
-      }
-    },
     "./blueprint/local": {
       "import": {
         "types": "./dist/esm/blueprint/local.d.ts",
@@ -605,7 +599,6 @@
     "exports": {
       ".": "./src/index.ts",
       "./blueprint": "./src/blueprint/index.ts",
-      "./blueprint/dag": "./src/blueprint/dag/index.ts",
       "./blueprint/local": "./src/blueprint/local.ts",
       "./blueprint/tech-debt": "./src/blueprint/tech-debt/index.ts",
       "./blueprint/test-utils": "./src/blueprint/test-utils/blueprint-mocks.ts",

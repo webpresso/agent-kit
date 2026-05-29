@@ -16,10 +16,11 @@ description: Methodology for refining, fact-checking, and hardening implementati
 >
 > Blueprint hardening and lifecycle infrastructure are production-ready:
 >
-> - Kahn's Algorithm DAG analysis (fully tested)
-> - `ParallelExecutor` concurrency engine with abort, timeout, per-type limits
-> - Blueprint dependency format and validation
-> - Failed tasks block dependents automatically
+> - Blueprint dependency parsing, format validation, and the lifecycle state
+>   machine with evidence-gated task completion (fully tested, in-package)
+> - Parallel execution is delegated to the `/pll` runtime adapter (OMX), which
+>   batches independent tasks by dependency order and blocks dependents of
+>   failed tasks
 >
 > **Remaining gaps:** execution docs and wrappers must stay aligned with the currently shipped runtime and CLI surface.
 

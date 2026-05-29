@@ -40,9 +40,14 @@ its output is **summary-first** (agents keep context) and it is **enforced**
 
 - **Planning** — blueprints: markdown plans with a lifecycle
   (`wp audit blueprint-lifecycle`) and a dependency-aware task graph.
-  `wp_blueprint_depgraph` renders it as mermaid, and optional runtime adapters
-  (OMX `/pll`) consume the graph to run independent tasks in parallel. See
-  [`docs/lifecycle.md`](docs/lifecycle.md).
+  `wp_blueprint_depgraph` returns its dependency graph (nodes + edges), and
+  optional runtime adapters (OMX `/pll`) use those dependencies to run
+  independent tasks in parallel.
+  Authoring now has a structured control plane: `wp_blueprint_put` writes the
+  blueprint from typed input and `wp_blueprint_transition` advances lifecycle
+  state with revision-aware optimistic concurrency. A future MCP Apps editor is
+  explicitly a follow-on enhancement layered on top of those tools, not a
+  separate required write surface. See [`docs/lifecycle.md`](docs/lifecycle.md).
 - **Tests, types, lint** — `wp_test`, `wp_typecheck`, `wp_lint` over your
   vitest/oxlint setup.
 - **Mutation testing** — `wp audit mutation` (Stryker) catches tests that pass

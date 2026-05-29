@@ -52,18 +52,6 @@ export {
   type BlueprintLifecycleResult,
   type LifecycleTaskStatus,
 } from './lifecycle/engine.js'
-// Graph model + Mermaid integration
-export {
-  type GraphEdge,
-  type GraphEdgeType,
-  type GraphLayout,
-  type GraphNode,
-  type GraphNodeType,
-  type NormalizedGraph,
-  parseMermaidToGraph,
-  serializeGraphToMermaid,
-  taskGraphToNormalizedGraph,
-} from './graph/index.js'
 // Query types
 export type {
   BlueprintQueryFilters,
