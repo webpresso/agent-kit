@@ -89,11 +89,6 @@ function isStatusFolder(name: string): boolean {
   return BLUEPRINT_STATUS_FOLDERS.has(name)
 }
 
-function isLegacyWebpressoBlueprintRoot(baseDir: string): boolean {
-  const normalized = baseDir.replace(/\\/g, '/')
-  return normalized.endsWith('/webpresso/blueprints') || normalized === 'webpresso/blueprints'
-}
-
 /**
  * Extract the slug and group from a plan path.
  *
@@ -272,13 +267,6 @@ function processPlanFile(
   filePattern: string = BLUEPRINT_OVERVIEW_FILENAME,
 ): ScannedBlueprint | null {
   const relativePath = relative(baseDir, fullPath)
-
-  if (
-    !isLegacyWebpressoBlueprintRoot(baseDir) &&
-    !parseBlueprintDocumentRelativePath(relativePath)
-  ) {
-    return null
-  }
 
   // Skip files in hidden directories (defense-in-depth check)
   if (containsHiddenDirectory(relativePath)) {
