@@ -20,7 +20,7 @@ Refine a blueprint by applying the canonical plan-refine methodology to the actu
 
 ## What This Command Does
 
-Edits `blueprints/*/<slug>/_overview.md` so the blueprint is:
+Edits the canonical blueprint markdown (`blueprints/*/<slug>.md` by default, or `blueprints/*/<slug>/_overview.md` for folder-shaped plans) so the blueprint is:
 
 - fact-checked against current docs and repo reality
 - aligned with planning and testing rules
@@ -32,7 +32,7 @@ Edits `blueprints/*/<slug>/_overview.md` so the blueprint is:
 ### Step 1: Locate the blueprint
 
 ```bash
-find blueprints -name "_overview.md" -path "*/$SLUG/*"
+find blueprints \\( -path "*/$SLUG.md" -o -path "*/$SLUG/_overview.md" \\)
 ```
 
 If no matching blueprint exists, stop and report that.
@@ -83,7 +83,7 @@ Run the blueprint parser check:
 wp blueprint show <slug>
 ```
 
-If the refinement changes markdown structure enough to warrant a lint pass, also run your repo's markdown linter against `blueprints/*/<slug>/_overview.md` (for example, `just lint-md` with webpresso's just recipes).
+If the refinement changes markdown structure enough to warrant a lint pass, also run your repo's markdown linter against the canonical blueprint markdown for that slug (for example, `just lint-md` with webpresso's just recipes).
 
 ### Step 6: Report the outcome
 

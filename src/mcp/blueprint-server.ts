@@ -2645,7 +2645,7 @@ export async function registerBlueprintTools(
 
   registrar.registerTool(
     'wp_blueprint_validate',
-    'Validate _overview.md structure. Returns { valid, gaps }. Must pass before wp_blueprint_promote.',
+    'Validate canonical blueprint markdown structure (`<slug>.md` or `<slug>/_overview.md`). Returns { valid, gaps }. Must pass before wp_blueprint_promote.',
     { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] },
     undefined,
     (r) => handleValidate(cwd, r),
@@ -2666,7 +2666,7 @@ export async function registerBlueprintTools(
 
   registrar.registerTool(
     'wp_blueprint_task_advance',
-    'Advance task status. Edits _overview.md and re-syncs DB. Accepts optional request_id for idempotent retries and optional head_at_ingest from wp_blueprint_get/wp_blueprint_list to reject stale writes. Returns { summary, old_status, new_status, idempotent }.',
+    'Advance task status. Edits the canonical blueprint markdown and re-syncs DB. Accepts optional request_id for idempotent retries and optional head_at_ingest from wp_blueprint_get/wp_blueprint_list to reject stale writes. Returns { summary, old_status, new_status, idempotent }.',
     {
       type: 'object',
       properties: {
@@ -2840,7 +2840,7 @@ export async function registerBlueprintTools(
 
   registrar.registerTool(
     'wp_blueprint_create',
-    'Create a new blueprint markdown under blueprints/draft/<slug>/_overview.md and re-ingest. Accepts optional request_id for idempotent retries and optional head_at_ingest from wp_blueprint_projects/wp_blueprint_list to reject stale writes. Returns { slug, path, next_action, idempotent }.',
+    'Create a new blueprint markdown under blueprints/draft/<slug>.md by default (folder-shaped `<slug>/_overview.md` remains supported elsewhere) and re-ingest. Accepts optional request_id for idempotent retries and optional head_at_ingest from wp_blueprint_projects/wp_blueprint_list to reject stale writes. Returns { slug, path, next_action, idempotent }.',
     {
       type: 'object',
       properties: {

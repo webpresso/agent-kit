@@ -22,6 +22,8 @@ wp blueprint start <slug>
 wp blueprint show <slug>
 
 # 3. Execute via the parallel orchestration surface
+/pll blueprints/in-progress/<slug>.md
+# or, for folder-shaped blueprints:
 /pll blueprints/in-progress/<slug>/_overview.md
 
 # 4. Monitor and complete

@@ -41,6 +41,7 @@ It does three things:
 
 ```text
 /pll tasks.md
+/pll blueprints/in-progress/my-blueprint.md
 /pll blueprints/in-progress/my-blueprint/_overview.md
 ```
 
@@ -162,6 +163,7 @@ If the model would diverge between the two surfaces, fix the contract instead of
 ```text
 /pll "lint auth, lint utils, typecheck auth [depends: 1], test auth [depends: 3]"
 
+/pll blueprints/in-progress/converge-omx-and-blueprint-planning-surfaces.md
 /pll blueprints/in-progress/converge-omx-and-blueprint-planning-surfaces/_overview.md
 
 /pll
