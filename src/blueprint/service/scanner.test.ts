@@ -97,6 +97,25 @@ describe('scanBlueprintDirectory - core', () => {
       expect(result.some((plan) => plan.path.endsWith('/folder-plan/notes.md'))).toBe(false)
     })
 
+    it('preserves legacy nested webpresso blueprint slugs', () => {
+      mkdirSync(`${testDir}/webpresso/blueprints/agile-workflows/git-task-store`, {
+        recursive: true,
+      })
+      writeFileSync(
+        `${testDir}/webpresso/blueprints/agile-workflows/git-task-store/_overview.md`,
+        '# Legacy Nested Plan',
+      )
+
+      const result = scanBlueprintDirectory({
+        baseDir: `${testDir}/webpresso/blueprints`,
+        includeSpecialFolders: false,
+      })
+
+      const nested = result.find((plan) => plan.slug === 'agile-workflows/git-task-store')
+      expect(nested).toBeDefined()
+      expect(nested?.group).toBe('agile-workflows')
+    })
+
     it('fails when flat and folder shapes reuse the same slug', () => {
       mkdirSync(`${testDir}/webpresso/blueprints/planned/duplicate-plan`, { recursive: true })
       writeFileSync(`${testDir}/webpresso/blueprints/planned/duplicate-plan.md`, '# Flat Plan')
@@ -382,8 +401,8 @@ describe('scanBlueprintDirectory - core', () => {
 
       const result = scanBlueprintDirectory(options)
 
-      // Only canonical lifecycle-root blueprints are discovered.
-      expect(result.length).toBe(1)
+      // Legacy Webpresso roots still discover non-status nested plans.
+      expect(result.length).toBe(2)
       expect(result.every((p) => p.path.startsWith(absoluteBase))).toBe(true)
     })
 

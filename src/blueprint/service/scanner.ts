@@ -14,6 +14,15 @@ import {
   parseBlueprintDocumentRelativePath,
 } from '#utils/document-paths.js'
 
+const BLUEPRINT_STATUS_FOLDERS = new Set([
+  'draft',
+  'planned',
+  'parked',
+  'in-progress',
+  'completed',
+  'archived',
+])
+
 /**
  * Represents a scanned plan with path and metadata extracted from directory structure.
  */
@@ -74,6 +83,15 @@ function findSpecialFolderType(pathSegments: string[]): SpecialFolderType | unde
     }
   }
   return undefined
+}
+
+function isStatusFolder(name: string): boolean {
+  return BLUEPRINT_STATUS_FOLDERS.has(name)
+}
+
+function isLegacyWebpressoBlueprintRoot(baseDir: string): boolean {
+  const normalized = baseDir.replace(/\\/g, '/')
+  return normalized.endsWith('/webpresso/blueprints') || normalized === 'webpresso/blueprints'
 }
 
 /**
@@ -234,9 +252,12 @@ function processEntry(
     entry.endsWith('.md') &&
     entry !== 'README.md'
   ) {
-    const plan = processPlanFile(fullPath, baseDir, includeSpecialFolders, entry)
-    if (plan) {
-      results.push(plan)
+    const relativeParentSegments = relative(baseDir, dir).split('/').filter((s) => s !== '')
+    if (relativeParentSegments.length === 1 && isStatusFolder(relativeParentSegments[0] ?? '')) {
+      const plan = processPlanFile(fullPath, baseDir, includeSpecialFolders, entry)
+      if (plan) {
+        results.push(plan)
+      }
     }
   }
 }
@@ -252,7 +273,10 @@ function processPlanFile(
 ): ScannedBlueprint | null {
   const relativePath = relative(baseDir, fullPath)
 
-  if (!parseBlueprintDocumentRelativePath(relativePath)) {
+  if (
+    !isLegacyWebpressoBlueprintRoot(baseDir) &&
+    !parseBlueprintDocumentRelativePath(relativePath)
+  ) {
     return null
   }
 
