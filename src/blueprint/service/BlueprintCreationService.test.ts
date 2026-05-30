@@ -43,8 +43,7 @@ describe('BlueprintCreationService', () => {
         'webpresso',
         'blueprints',
         'draft',
-        'unify-the-blueprint-creation-command',
-        '_overview.md',
+        'unify-the-blueprint-creation-command.md',
       ),
     )
     expect(draft.markdown).toContain('# Unify the blueprint creation command')
@@ -112,6 +111,55 @@ last_updated: 2026-04-02
     })
 
     expect(draft.slug).toBe('unify-the-blueprint-creation-command-2')
+  })
+
+  it('writes a flat draft file by default', async () => {
+    const service = new BlueprintCreationService(projectRoot, { templatePath })
+
+    const created = await service.create({
+      complexity: 'M',
+      goal: 'Ship flat blueprint drafts by default',
+    })
+
+    expect(created.relativeFilePath).toBe('webpresso/blueprints/draft/ship-flat-blueprint-drafts-by-default.md')
+    await expect(readFile(created.outputPath, 'utf-8')).resolves.toContain(
+      '# Ship flat blueprint drafts by default',
+    )
+  })
+
+  it('treats an existing flat blueprint as a slug collision', async () => {
+    const service = new BlueprintCreationService(projectRoot, { templatePath })
+    await mkdir(path.join(projectRoot, 'webpresso', 'blueprints', 'planned'), { recursive: true })
+    await writeFile(
+      path.join(
+        projectRoot,
+        'webpresso',
+        'blueprints',
+        'planned',
+        'ship-flat-blueprint-drafts-by-default.md',
+      ),
+      `---
+type: blueprint
+status: planned
+complexity: S
+created: 2026-04-02
+last_updated: 2026-04-02
+---
+
+# Existing
+
+#### Task 1.1: Existing task
+
+**Status:** todo
+`,
+    )
+
+    const draft = await service.compileDraft({
+      complexity: 'M',
+      goal: 'Ship flat blueprint drafts by default',
+    })
+
+    expect(draft.slug).toBe('ship-flat-blueprint-drafts-by-default-2')
   })
 
   it('embeds a planning summary instead of relying on external OMX plan artifacts', async () => {

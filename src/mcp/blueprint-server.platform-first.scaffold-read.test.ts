@@ -42,7 +42,7 @@ describe('wp_blueprint_new — platform-first', () => {
     }>(result)
 
     expect(result.isError).toStrictEqual(false)
-    expect(data.target_path).toMatch(/_overview\.md$/)
+    expect(data.target_path).toMatch(/\.md$/)
     expect(data.template).toContain('Platform New Feature')
 
     expect(pushEvent).toHaveBeenCalledOnce()

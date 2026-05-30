@@ -166,6 +166,27 @@ describe('ingestBlueprints', () => {
     }
   })
 
+  it('ingests canonical flat-file blueprints alongside folder blueprints', async () => {
+    writeFileSync(
+      path.join(tmpRepoDir, 'blueprints', 'planned', 'flat-plan.md'),
+      BLUEPRINT_CONTENT.replace('# My Feature Blueprint', '# Flat Plan Blueprint'),
+      'utf8',
+    )
+
+    const conn = openDb(dbPath)
+    try {
+      const result = await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir })
+      expect(result.blueprintsIngested).toBe(3)
+
+      const rows = conn.db.prepare('SELECT slug FROM blueprints ORDER BY slug').all() as Array<{
+        slug: string
+      }>
+      expect(rows.map((r) => r.slug)).toStrictEqual(['flat-plan', 'my-feature', 'old-task'])
+    } finally {
+      conn.close()
+    }
+  })
+
   it('stores tasks, tags, risks, and edge cases for each blueprint', async () => {
     const conn = openDb(dbPath)
     try {

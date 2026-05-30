@@ -7,7 +7,7 @@
  *
  * Checks (when enabled):
  * 1. Every `blueprints` row's `file_path` actually exists on disk.
- * 2. Every blueprint `_overview.md` on disk has a corresponding DB row.
+ * 2. Every canonical blueprint markdown file on disk has a corresponding DB row.
  * 3. `content_hash` in DB matches the current SHA-256 of the file content.
  */
 
@@ -15,7 +15,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { glob } from 'glob'
+import { scanBlueprintDirectory } from '#service/scanner.js'
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 
@@ -99,12 +99,10 @@ export async function auditBlueprintDbConsistency(cwd: string): Promise<RepoAudi
     // -----------------------------------------------------------------------
     const dbPaths = new Set(rows.map((r) => r.file_path))
 
-    // Blueprints follow blueprints/<status>/<slug>/_overview.md convention
-    const overviewFiles = await glob('blueprints/**/_overview.md', {
-      cwd,
-      absolute: false,
-      ignore: ['node_modules/**'],
-    })
+    const overviewFiles = scanBlueprintDirectory({
+      baseDir: path.join(cwd, 'blueprints'),
+      includeSpecialFolders: true,
+    }).map((entry) => path.relative(cwd, entry.path).replace(/\\/g, '/'))
 
     checked += overviewFiles.length
 

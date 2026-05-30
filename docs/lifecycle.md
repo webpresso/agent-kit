@@ -14,12 +14,12 @@ it have lots of transitions.
 
 | State | Directory | Semantics |
 |---|---|---|
-| `draft` | `blueprints/draft/<slug>/` | Freshly created. Still being scoped. May reference unverified claims. Not ready to execute. |
-| `planned` | `blueprints/planned/<slug>/` | Refined, fact-checked, task graph ready. Can be picked up by an agent. Tasks haven't started. |
-| `in-progress` | `blueprints/in-progress/<slug>/` | At least one task has started. Progress tracked in `_overview.md` frontmatter (`progress:` field) and via per-task `**Status:**` annotations. |
-| `completed` | `blueprints/completed/<slug>/` | Every task marked `done`. Acceptance criteria ticked. Ready for archival. |
-| `archived` | `blueprints/archived/<slug>/` | Historical record. Read-only. |
-| `parked` | `blueprints/parked/<slug>/` | Paused indefinitely. Reason captured in frontmatter. Resumes into `planned/` or `in-progress/`. |
+| `draft` | `blueprints/draft/<slug>.md` by default, or `blueprints/draft/<slug>/_overview.md` | Freshly created. Still being scoped. May reference unverified claims. Not ready to execute. |
+| `planned` | `blueprints/planned/<slug>.md` by default, or `blueprints/planned/<slug>/_overview.md` | Refined, fact-checked, task graph ready. Can be picked up by an agent. Tasks haven't started. |
+| `in-progress` | `blueprints/in-progress/<slug>.md` by default, or `blueprints/in-progress/<slug>/_overview.md` | At least one task has started. Progress is tracked in the canonical blueprint markdown frontmatter (`progress:` field) and via per-task `**Status:**` annotations. |
+| `completed` | `blueprints/completed/<slug>.md` by default, or `blueprints/completed/<slug>/_overview.md` | Every task marked `done`. Acceptance criteria ticked. Ready for archival. |
+| `archived` | `blueprints/archived/<slug>.md` by default, or `blueprints/archived/<slug>/_overview.md` | Historical record. Read-only. |
+| `parked` | `blueprints/parked/<slug>.md` by default, or `blueprints/parked/<slug>/_overview.md` | Paused indefinitely. Reason captured in frontmatter. Resumes into `planned/` or `in-progress/`. |
 
 ## Transitions
 
@@ -172,7 +172,7 @@ cross-repo edges).
 
 ## Canonical state vs derived state (OMX, SQLite)
 
-The committed markdown `_overview.md` remains the persisted project record, but
+The committed canonical blueprint markdown remains the persisted project record, but
 the **canonical public authoring surface** is now the structured MCP mutation
 path (`wp_blueprint_put` for whole-document writes and
 `wp_blueprint_transition` for lifecycle moves). Everything else is a derived
@@ -181,7 +181,7 @@ plane.
 
 ```mermaid
 flowchart TD
-    MD["Blueprint markdown — _overview.md<br/>CANONICAL source of truth"]
+    MD["Blueprint markdown — <slug>.md or _overview.md<br/>CANONICAL source of truth"]
     MD -->|wp blueprint db build| SQL["SQLite projection<br/>read-only · query via MCP tools"]
     MD -->|optional runtime adapter| OMX["OMX /pll runtime state<br/>derived handoff snapshot"]
 ```

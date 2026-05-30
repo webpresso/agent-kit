@@ -1066,6 +1066,18 @@ describe('auditBlueprintLifecycle — branch coverage', () => {
     expect(result.checked).toBe(1)
   })
 
+  test('flat blueprint with correct type and status is counted and validated', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'blueprints', 'in-progress'), { recursive: true })
+    writeFileSync(
+      join(root, 'blueprints', 'in-progress', 'my-feature.md'),
+      ['---', 'type: blueprint', 'status: in-progress', '---', '# My Feature'].join('\n'),
+    )
+    const result = auditBlueprintLifecycle(root)
+    expect(result.ok).toBe(true)
+    expect(result.checked).toBe(1)
+  })
+
   test('blueprint with wrong type produces type violation', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'blueprints', 'draft', 'bp'), { recursive: true })
@@ -1105,14 +1117,27 @@ describe('auditBlueprintLifecycle — branch coverage', () => {
     expect(result.checked).toBe(1)
   })
 
-  test('non-directory entries in status folder are skipped', () => {
+  test('non-canonical markdown files directly under status folders are skipped only when not canonical blueprint files', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'blueprints', 'draft'), { recursive: true })
     // write a file (not a directory) inside the status folder
-    writeFileSync(join(root, 'blueprints', 'draft', 'stray-file.md'), '# stray')
+    writeFileSync(join(root, 'blueprints', 'draft', 'README.md'), '# stray')
     const result = auditBlueprintLifecycle(root)
     expect(result.ok).toBe(true)
     expect(result.checked).toBe(0)
+  })
+
+  test('folder blueprints with markdown but no _overview.md fail loudly', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'blueprints', 'planned', 'missing-overview'), { recursive: true })
+    writeFileSync(join(root, 'blueprints', 'planned', 'missing-overview', 'notes.md'), '# notes')
+    const result = auditBlueprintLifecycle(root)
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations.some((violation: RepoAuditViolation) =>
+        violation.message.includes('must include _overview.md'),
+      ),
+    ).toBe(true)
   })
 
   test('includeLegacyOmx false does not add legacy checked count', () => {

@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -88,6 +88,21 @@ describe('auditBlueprintLifecycleSql — DB file gate', () => {
     // Title comes from the fallback audit
     expect(result.title).toContain('Blueprint lifecycle')
   })
+
+  it('falls back to markdown auditing when the DB exists but contains zero blueprints', async () => {
+    openDb(dbPath).close()
+    mkdirSync(path.join(cwd, 'blueprints', 'planned'), { recursive: true })
+    writeFileSync(
+      path.join(cwd, 'blueprints', 'planned', 'fallback-plan.md'),
+      ['---', 'type: blueprint', 'status: planned', 'complexity: S', '---', '# Fallback'].join(
+        '\n',
+      ),
+    )
+
+    const result = await auditBlueprintLifecycleSql(cwd)
+    expect(result.ok).toBe(true)
+    expect(result.checked).toBe(1)
+  })
 })
 
 describe('auditBlueprintLifecycleSql — with DB present', () => {
@@ -130,6 +145,28 @@ describe('auditBlueprintLifecycleSql — with DB present', () => {
       })
       insertTask(conn.db, {
         blueprintSlug: 'active-wip',
+        taskId: '1.1',
+        status: 'todo',
+      })
+    } finally {
+      conn.close()
+    }
+
+    const result = await auditBlueprintLifecycleSql(cwd)
+    expect(result.ok).toBe(true)
+    expect(result.violations).toHaveLength(0)
+  })
+
+  it('accepts flat blueprint file paths when status matches the lifecycle directory', async () => {
+    const conn = openDb(dbPath)
+    try {
+      insertBlueprint(conn.db, {
+        slug: 'flat-wip',
+        status: 'in-progress',
+        filePath: 'blueprints/in-progress/flat-wip.md',
+      })
+      insertTask(conn.db, {
+        blueprintSlug: 'flat-wip',
         taskId: '1.1',
         status: 'todo',
       })

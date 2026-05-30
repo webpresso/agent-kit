@@ -36,6 +36,12 @@ const SKIP_PATTERNS = [
 export function shouldSkipFile(filePath: string): boolean {
   if (!filePath) return false
   const normalized = filePath.startsWith('/') ? filePath.slice(1) : filePath
+  if (
+    normalized.startsWith('blueprints/') ||
+    normalized.startsWith('webpresso/blueprints/')
+  ) {
+    return false
+  }
   return SKIP_PATTERNS.some((pattern) => pattern.test(normalized))
 }
 

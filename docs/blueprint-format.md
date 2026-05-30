@@ -5,7 +5,8 @@ last_updated: '2026-04-25'
 
 # Blueprint format specification
 
-A blueprint is a single Markdown file at `blueprints/<state>/<slug>/_overview.md`
+A blueprint is a single Markdown file at either `blueprints/<state>/<slug>.md`
+or `blueprints/<state>/<slug>/_overview.md`
 with mandatory YAML frontmatter and a specific heading structure. This
 document is the authoritative spec — the `blueprint-plan` docs-linter
 enforces these rules.
@@ -22,14 +23,16 @@ enforces these rules.
 └── parked/             # paused indefinitely
 ```
 
-One directory per blueprint, with `_overview.md` as the canonical entry
-point. Supporting files (research notes, data fixtures, etc.) can live
-alongside as `research/*.md`, `data/*.json`, etc.
+Flat files are the default shape. Use one directory per blueprint only when the
+blueprint needs sibling docs, with `_overview.md` as the canonical entry point.
+Supporting files (research notes, data fixtures, etc.) can live alongside as
+peer files inside that folder shape.
 
 When OMX or other runtimes materialize execution handoffs, keep that split
 explicit:
 
-- `blueprints/<state>/<slug>/_overview.md` is the canonical plan.
+- `blueprints/<state>/<slug>.md` is the default canonical plan.
+- `blueprints/<state>/<slug>/_overview.md` is the folder-shape canonical plan.
 - `.omx/state/` is runtime/session state only.
 - `.omx/plans/` is derived handoff metadata only, never a second plan store.
 - Completion authority stays with task-local canonical verification evidence in
@@ -297,7 +300,7 @@ import {
   planFrontmatterSchema,
 } from 'webpresso/blueprint'
 
-const parsed = parseBlueprint(await readFile(overviewPath, 'utf-8'))
+const parsed = parseBlueprint(await readFile(blueprintPath, 'utf-8'))
 // parsed: { frontmatter, tasks, phases, acceptanceCriteria, ... }
 ```
 
@@ -309,7 +312,7 @@ import {
   applyBlueprintLifecycleToFile,
 } from 'webpresso/blueprint/local'
 
-await applyBlueprintLifecycleToFile(overviewPath, { type: 'start' })
+await applyBlueprintLifecycleToFile(projectRoot, 'planned/my-blueprint', { type: 'start' })
 // Updates frontmatter status and task[0].status; rewrites the file.
 ```
 

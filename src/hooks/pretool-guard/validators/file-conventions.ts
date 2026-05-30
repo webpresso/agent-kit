@@ -57,7 +57,7 @@ export function validateFileConventions(input: ToolInput): ValidationResult {
     return { validator: 'file-conventions', passed: false, message: nonCanonicalPlanningViolation }
   }
 
-  const blueprintPathViolation = getBlueprintPathViolation(normalized)
+  const blueprintPathViolation = getBlueprintPathViolation(normalized, undefined, input.cwd)
   if (blueprintPathViolation) {
     return { validator: 'file-conventions', passed: false, message: blueprintPathViolation }
   }

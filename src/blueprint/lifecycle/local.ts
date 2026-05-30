@@ -6,6 +6,7 @@ import path from 'node:path'
 import { applyBlueprintLifecycle } from '#lifecycle/engine'
 import { scanBlueprintDirectory } from '#service/scanner'
 import { resolveBlueprintRoot } from '#utils/blueprint-root'
+import { getBlueprintDocumentPaths } from '#utils/document-paths.js'
 
 export interface ResolvedBlueprintFile {
   path: string
@@ -121,12 +122,9 @@ export async function applyBlueprintLifecycleToFile(
   const relativeSlug = relativeBlueprintSlug(location.slug)
   const isFlatFile = path.basename(location.path) !== '_overview.md'
   const sourceDir = path.dirname(location.path)
-  const targetDir = isFlatFile
-    ? path.join(baseDir, mutation.targetStatus, path.dirname(relativeSlug))
-    : path.join(baseDir, mutation.targetStatus, relativeSlug)
-  const targetPath = isFlatFile
-    ? path.join(baseDir, mutation.targetStatus, `${relativeSlug}.md`)
-    : path.join(targetDir, '_overview.md')
+  const targetDocumentPaths = getBlueprintDocumentPaths(baseDir, mutation.targetStatus, relativeSlug)
+  const targetDir = targetDocumentPaths.directory
+  const targetPath = isFlatFile ? targetDocumentPaths.flat : targetDocumentPaths.folder
 
   if (isFlatFile) {
     if (location.path !== targetPath) {

@@ -69,6 +69,20 @@ export async function auditBlueprintLifecycleSql(cwd: string): Promise<RepoAudit
   let checked = 0
 
   try {
+    const allBlueprints = db
+      .prepare<[], BlueprintStatusRow>(
+        'SELECT slug, status, file_path, progress_pct FROM blueprints',
+      )
+      .all()
+
+    if (allBlueprints.length === 0) {
+      const { auditBlueprintLifecycle } = await import('./repo-guardrails.js')
+      const markdownAudit = auditBlueprintLifecycle(cwd)
+      if (markdownAudit.checked > 0) {
+        return markdownAudit
+      }
+    }
+
     // -----------------------------------------------------------------------
     // 1. in-progress blueprints with 0 tasks
     // -----------------------------------------------------------------------
@@ -96,12 +110,6 @@ export async function auditBlueprintLifecycleSql(cwd: string): Promise<RepoAudit
     //    Derive the directory segment from the file_path and compare to status.
     //    Blueprint file_path convention: blueprints/<status>/<slug>/_overview.md
     // -----------------------------------------------------------------------
-    const allBlueprints = db
-      .prepare<[], BlueprintStatusRow>(
-        'SELECT slug, status, file_path, progress_pct FROM blueprints',
-      )
-      .all()
-
     checked += allBlueprints.length
     for (const row of allBlueprints) {
       // Derive directory status from the path: second segment after 'blueprints/'

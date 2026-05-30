@@ -21,6 +21,7 @@ tags: []
 - Draft slug: `{{slug}}`
 - Output path: `{{output_path}}`
 - Generated command: `wp blueprint new "{{description}}" --complexity {{complexity}}`
+- Default shape: flat file (`blueprints/<status>/<slug>.md`)
 - Validation scope: parser compliance before write
 
 ## Architecture Overview

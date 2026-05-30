@@ -12,6 +12,7 @@ import { readBlueprintExecutionMetadata } from '#execution/metadata'
 import { BlueprintService } from '#service/BlueprintService'
 import { scanBlueprintDirectory } from '#service/scanner'
 import { resolveBlueprintRoot } from '#utils/blueprint-root'
+import { parseBlueprintDocumentRelativePath } from '#utils/document-paths.js'
 
 import { relativeBlueprintSlug } from './local.js'
 
@@ -41,10 +42,13 @@ interface LifecycleAuditFrontmatter {
 
 function isBlueprintOverview(file: string): boolean {
   const normalized = file.replace(/\\/g, '/')
-  return (
-    normalized.endsWith('/_overview.md') &&
-    (normalized.includes('webpresso/blueprints/') || normalized.includes('blueprints/'))
-  )
+  const roots = ['webpresso/blueprints/', 'blueprints/']
+  for (const root of roots) {
+    const index = normalized.indexOf(root)
+    if (index === -1) continue
+    return parseBlueprintDocumentRelativePath(normalized.slice(index + root.length)) !== null
+  }
+  return false
 }
 
 function normalizePath(file: string): string {

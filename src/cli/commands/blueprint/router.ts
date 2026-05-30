@@ -10,6 +10,7 @@ import { blueprintToSpecKit } from '#export/spec-kit/index'
 
 import { getProjectRoot } from '#cli/utils'
 import { resolveBlueprintRoot } from '#utils/blueprint-root'
+import { getBlueprintDocumentPaths } from '#utils/document-paths.js'
 import {
   applyBlueprintLifecycleToFile,
   BlueprintCreationService,
@@ -580,15 +581,17 @@ export async function moveBlueprint(
   const projectRoot = resolveProjectRoot(options.projectRoot)
   const nextStatus = normalizeBlueprintStatus(status)
   const location = await resolveBlueprintLocation(slug, projectRoot)
+  const isFlatFile = path.basename(location.path) !== '_overview.md'
   const sourceDir = path.dirname(location.path)
-  const targetDir = path.join(
+  const targetPaths = getBlueprintDocumentPaths(
     resolveBlueprintRoot(projectRoot),
     nextStatus,
     relativeBlueprintSlug(location.slug),
   )
-  const targetPath = path.join(targetDir, '_overview.md')
+  const targetDir = targetPaths.directory
+  const targetPath = isFlatFile ? targetPaths.flat : targetPaths.folder
 
-  if (sourceDir === targetDir && location.blueprint.status === nextStatus) {
+  if (location.path === targetPath && location.blueprint.status === nextStatus) {
     return {
       fromPath: location.path,
       fromStatus: location.blueprint.status,
@@ -609,9 +612,9 @@ export async function moveBlueprint(
 
   assertBlueprintCanMoveToStatus(location.blueprint, nextStatus)
 
-  if (sourceDir !== targetDir) {
-    await mkdir(path.dirname(targetDir), { recursive: true })
-    await rename(sourceDir, targetDir)
+  if (location.path !== targetPath) {
+    await mkdir(path.dirname(targetPath), { recursive: true })
+    await rename(isFlatFile ? location.path : sourceDir, isFlatFile ? targetPath : targetDir)
   }
 
   const updated = await writeBlueprintWithStatus(targetPath, location.blueprint, nextStatus)
@@ -620,10 +623,10 @@ export async function moveBlueprint(
     fromPath: location.path,
     fromStatus: location.blueprint.status,
     message:
-      sourceDir === targetDir
+      location.path === targetPath
         ? `Updated blueprint ${location.slug} to ${nextStatus}.`
         : `Moved blueprint ${location.slug} to ${nextStatus}.`,
-    moved: sourceDir !== targetDir,
+    moved: location.path !== targetPath,
     slug: location.slug,
     toPath: targetPath,
     toStatus: nextStatus,

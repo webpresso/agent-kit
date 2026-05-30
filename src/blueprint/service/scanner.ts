@@ -9,6 +9,10 @@ import { existsSync, readdirSync, statSync } from 'node:fs'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 
 import { resolveBlueprintRoot } from '#utils/blueprint-root'
+import {
+  BLUEPRINT_OVERVIEW_FILENAME,
+  parseBlueprintDocumentRelativePath,
+} from '#utils/document-paths.js'
 
 /**
  * Represents a scanned plan with path and metadata extracted from directory structure.
@@ -53,16 +57,6 @@ const SPECIAL_FOLDERS = ['_completed', '_future', '_deprioritized'] as const
 type SpecialFolderType = (typeof SPECIAL_FOLDERS)[number]
 
 /** Standard plan overview filename */
-const OVERVIEW_FILENAME = '_overview.md'
-const BLUEPRINT_STATUS_FOLDERS = new Set([
-  'draft',
-  'planned',
-  'parked',
-  'in-progress',
-  'completed',
-  'archived',
-])
-
 /**
  * Check if a path component is a special folder.
  */
@@ -82,10 +76,6 @@ function findSpecialFolderType(pathSegments: string[]): SpecialFolderType | unde
   return undefined
 }
 
-function isStatusFolder(name: string): boolean {
-  return BLUEPRINT_STATUS_FOLDERS.has(name)
-}
-
 /**
  * Extract the slug and group from a plan path.
  *
@@ -100,10 +90,18 @@ function isStatusFolder(name: string): boolean {
 function extractSlugAndGroup(
   fullPath: string,
   baseDir: string,
-  filePattern: string = OVERVIEW_FILENAME,
+  filePattern: string = BLUEPRINT_OVERVIEW_FILENAME,
 ): { slug: string; group: string | null } {
-  // Get relative path from base directory
   const relPath = relative(baseDir, fullPath)
+  const canonicalDocument = parseBlueprintDocumentRelativePath(relPath)
+
+  if (canonicalDocument) {
+    const slug = `${canonicalDocument.state}/${canonicalDocument.slug}`
+    return {
+      slug,
+      group: canonicalDocument.state,
+    }
+  }
 
   const relSegments = relPath.split('/').filter((s) => s !== '')
   const segments = [...relSegments]
@@ -112,7 +110,7 @@ function extractSlugAndGroup(
     return { slug: '', group: null }
   }
 
-  if (filePattern === OVERVIEW_FILENAME) {
+  if (filePattern === BLUEPRINT_OVERVIEW_FILENAME) {
     if (segments[segments.length - 1] === filePattern) {
       segments.pop()
     }
@@ -231,14 +229,10 @@ function processEntry(
     return
   }
 
-  const relativeParentSegments = relative(baseDir, dir).split('/').filter((s) => s !== '')
   if (
-    filePattern === OVERVIEW_FILENAME &&
+    filePattern === BLUEPRINT_OVERVIEW_FILENAME &&
     entry.endsWith('.md') &&
-    entry !== 'README.md' &&
-    entry !== OVERVIEW_FILENAME &&
-    relativeParentSegments.length === 1 &&
-    isStatusFolder(relativeParentSegments[0] ?? '')
+    entry !== 'README.md'
   ) {
     const plan = processPlanFile(fullPath, baseDir, includeSpecialFolders, entry)
     if (plan) {
@@ -254,9 +248,13 @@ function processPlanFile(
   fullPath: string,
   baseDir: string,
   includeSpecialFolders: boolean,
-  filePattern: string = OVERVIEW_FILENAME,
+  filePattern: string = BLUEPRINT_OVERVIEW_FILENAME,
 ): ScannedBlueprint | null {
   const relativePath = relative(baseDir, fullPath)
+
+  if (!parseBlueprintDocumentRelativePath(relativePath)) {
+    return null
+  }
 
   // Skip files in hidden directories (defense-in-depth check)
   if (containsHiddenDirectory(relativePath)) {
@@ -338,6 +336,24 @@ export function scanDocumentDirectory(options: GenericScanOptions): ScannedBluep
   const results: ScannedBlueprint[] = []
   scanDirectory(absoluteBaseDir, absoluteBaseDir, filePattern, includeSpecialFolders, results)
 
+  const duplicates = new Map<string, string[]>()
+  for (const result of results) {
+    const existing = duplicates.get(result.slug)
+    if (existing) {
+      existing.push(result.path)
+    } else {
+      duplicates.set(result.slug, [result.path])
+    }
+  }
+
+  const duplicate = Array.from(duplicates.entries()).find(([, paths]) => paths.length > 1)
+  if (duplicate) {
+    const [slug, paths] = duplicate
+    throw new Error(
+      `Duplicate blueprint slug "${slug}" found in multiple canonical shapes: ${paths.join(', ')}`,
+    )
+  }
+
   return results
 }
 
@@ -353,7 +369,7 @@ export function scanBlueprintDirectory(options?: ScanOptions): ScannedBlueprint[
 
   return scanDocumentDirectory({
     baseDir,
-    filePattern: OVERVIEW_FILENAME,
+    filePattern: BLUEPRINT_OVERVIEW_FILENAME,
     includeSpecialFolders,
   })
 }

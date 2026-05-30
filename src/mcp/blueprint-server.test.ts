@@ -45,7 +45,7 @@ describe('wp_blueprint_create', () => {
     }
     expect(result.isError).toStrictEqual(false)
     expect(data.slug).toBe('my-created-blueprint')
-    expect(data.path).toContain('_overview.md')
+    expect(data.path).toContain('.md')
     expect(existsSync(data.path)).toBe(true)
     expect(data.next_action.kind).toBe('verify_task')
     expect(data.failures).toStrictEqual([])

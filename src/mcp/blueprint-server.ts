@@ -26,6 +26,8 @@ import { openDb } from '#db/connection.js'
 import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 import { findTemplate } from '#db/templates.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
+import { getBlueprintDocumentPaths } from '#utils/document-paths.js'
+import type { BlueprintStatus } from '#utils/document-paths.js'
 import { evidenceListSchema, canonicalizeEvidenceList } from '#evidence.js'
 import { checkFreshness, readCurrentHead, readProjectionMetadata } from '#freshness.js'
 import {
@@ -385,13 +387,13 @@ async function reIngest(cwd: string): Promise<void> {
 async function persistBlueprintMarkdown(input: {
   projectCwd: string
   slug: string
-  overviewPath: string
+  blueprintPath: string
   markdown: string
 }) {
-  const { projectCwd, slug, overviewPath, markdown } = input
-  mkdirSync(path.dirname(overviewPath), { recursive: true })
+  const { projectCwd, slug, blueprintPath, markdown } = input
+  mkdirSync(path.dirname(blueprintPath), { recursive: true })
   parseBlueprint(markdown, slug)
-  writeFileSync(overviewPath, markdown, 'utf8')
+  writeFileSync(blueprintPath, markdown, 'utf8')
   await reIngest(projectCwd)
   const refreshed = getCurrentProjectBlueprint(projectCwd, slug)
   if (!refreshed.blueprint) {
@@ -403,11 +405,12 @@ async function persistBlueprintMarkdown(input: {
 function findBlueprintDir(
   blueprintRoot: string,
   slug: string,
-  states: readonly string[],
-): { dir: string; state: string } | null {
+  states: readonly BlueprintStatus[],
+): { dir: string; path: string; shape: 'flat' | 'folder'; state: BlueprintStatus } | null {
   for (const state of states) {
-    const d = path.join(blueprintRoot, state, slug)
-    if (existsSync(d)) return { dir: d, state }
+    const paths = getBlueprintDocumentPaths(blueprintRoot, state, slug)
+    if (existsSync(paths.flat)) return { dir: path.dirname(paths.flat), path: paths.flat, shape: 'flat', state }
+    if (existsSync(paths.directory)) return { dir: paths.directory, path: paths.folder, shape: 'folder', state }
   }
   return null
 }
@@ -771,7 +774,7 @@ async function handleNew(cwd: string, raw: unknown): Promise<ToolHandlerResult> 
   }
   const b = bytes(template)
   const slug = titleToSlug(title)
-  const targetPath = path.join(resolveBlueprintRoot(cwd), 'draft', slug, '_overview.md')
+  const targetPath = getBlueprintDocumentPaths(resolveBlueprintRoot(cwd), 'draft', slug).flat
 
   // Platform-first path: push event to register the blueprint before returning the scaffold.
   // Iron rule: resolveSyncAdapter() returns null when WP_BLUEPRINT_PLATFORM_DISABLED=1.
@@ -1158,7 +1161,7 @@ async function handleTaskVerify(
       `Blueprint "${slug}" not found in any state directory`,
     )
   }
-  const filePath = path.join(found.dir, '_overview.md')
+  const filePath = found.path
   if (!existsSync(filePath)) {
     return err('wp_blueprint_task_verify failed', `Blueprint overview not found at ${filePath}`)
   }
@@ -1278,8 +1281,8 @@ async function handlePromote(
       'wp_blueprint_promote failed',
       `Blueprint "${slug}" not found in any state directory`,
     )
-  const { dir: currentDir, state: currentState } = found
-  const overviewPath = path.join(currentDir, '_overview.md')
+  const { state: currentState } = found
+  const overviewPath = found.path
 
   if (to_state === 'completed') {
     try {
@@ -1387,7 +1390,7 @@ async function handleFinalize(
   }
 
   try {
-    assertBlueprintCanComplete(path.join(found.dir, '_overview.md'), slug)
+    assertBlueprintCanComplete(found.path, slug)
   } catch (error) {
     return err('wp_blueprint_finalize refused', toStr(error))
   }
@@ -2288,14 +2291,14 @@ async function handleBlueprintPut(
   }
 
   const overviewPath = found
-    ? path.join(found.dir, '_overview.md')
-    : path.join(root, document.status, slug, '_overview.md')
+    ? found.path
+    : getBlueprintDocumentPaths(root, document.status as BlueprintStatus, slug).flat
   try {
     const markdown = renderBlueprintMarkdownFromDocument(slug, document)
     const blueprint = await persistBlueprintMarkdown({
       projectCwd,
       slug,
-      overviewPath,
+      blueprintPath: overviewPath,
       markdown,
     })
     const payload: Record<string, unknown> = {
@@ -2397,11 +2400,11 @@ async function applyLocalBlueprintTransition(input: {
   projectCwd: string
   slug: string
   to_state: string
-  found: { dir: string; state: string }
+  found: { dir: string; path: string; shape: 'flat' | 'folder'; state: string }
 }) {
   const { projectCwd, slug, to_state, found } = input
   const root = resolveBlueprintRoot(projectCwd)
-  const overviewPath = path.join(found.dir, '_overview.md')
+  const overviewPath = found.path
   const parsed = runValidate(overviewPath)
   if (!parsed.valid) {
     throw new Error(parsed.gaps.join('; '))
@@ -2419,13 +2422,18 @@ async function applyLocalBlueprintTransition(input: {
     ),
   })
   parseBlueprint(updated, slug)
-  const destDir = path.join(root, to_state, slug)
-  mkdirSync(path.dirname(destDir), { recursive: true })
+  const destination = getBlueprintDocumentPaths(root, to_state as BlueprintStatus, slug)
+  mkdirSync(path.dirname(found.shape === 'flat' ? destination.flat : destination.directory), {
+    recursive: true,
+  })
   let finalOverviewPath = overviewPath
   if (found.state !== to_state) {
     const { renameSync } = await import('node:fs')
-    renameSync(found.dir, destDir)
-    finalOverviewPath = path.join(destDir, '_overview.md')
+    renameSync(
+      found.shape === 'flat' ? overviewPath : found.dir,
+      found.shape === 'flat' ? destination.flat : destination.directory,
+    )
+    finalOverviewPath = found.shape === 'flat' ? destination.flat : destination.folder
   }
   writeFileSync(finalOverviewPath, updated, 'utf8')
   await reIngest(projectCwd)
@@ -2469,11 +2477,10 @@ async function handleBlueprintCreate(
   const today = new Date().toISOString().split('T')[0] ?? ''
   const slug = titleToSlug(title)
   const root = resolveBlueprintRoot(projectCwd)
-  const targetDir = path.join(root, 'draft', slug)
-  const overviewPath = path.join(targetDir, '_overview.md')
+  const overviewPath = getBlueprintDocumentPaths(root, 'draft', slug).flat
 
   try {
-    mkdirSync(targetDir, { recursive: true })
+    mkdirSync(path.dirname(overviewPath), { recursive: true })
     const content = BLUEPRINT_TEMPLATE.replace(/{TITLE}/g, title)
       .replace(/{COMPLEXITY}/g, complexity)
       .replace(/{DATE}/g, today)
@@ -2481,7 +2488,7 @@ async function handleBlueprintCreate(
     await persistBlueprintMarkdown({
       projectCwd,
       slug,
-      overviewPath,
+      blueprintPath: overviewPath,
       markdown: content,
     })
 

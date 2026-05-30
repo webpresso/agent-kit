@@ -4,6 +4,11 @@ import { join, relative, resolve, sep } from 'node:path'
 import matter from 'gray-matter'
 
 import { blueprintDerivedHandoffSchema } from '#execution/types'
+import {
+  BLUEPRINT_OVERVIEW_FILENAME,
+  isBlueprintSupportingMarkdownRelativePath,
+  parseBlueprintDocumentRelativePath,
+} from '#utils/document-paths.js'
 
 import { validateLoreTrailers } from './commit-message-lore.js'
 
@@ -309,37 +314,66 @@ export function auditBlueprintLifecycle(
     if (!existsSync(statusRoot)) continue
 
     for (const entry of readdirSync(statusRoot, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue
-      const overviewPath = join(statusRoot, entry.name, '_overview.md')
-      checked += 1
+      if (!entry.isDirectory() && !entry.isFile()) continue
 
-      if (!existsSync(overviewPath)) {
-        violations.push({
-          file: relativePath(root, overviewPath),
-          message: 'Missing _overview.md',
-        })
+      const canonicalPath = entry.isDirectory()
+        ? join(statusRoot, entry.name, BLUEPRINT_OVERVIEW_FILENAME)
+        : join(statusRoot, entry.name)
+      const relativeBlueprintPath = relative(blueprintsRoot, canonicalPath)
+      const parsedPath = parseBlueprintDocumentRelativePath(relativeBlueprintPath)
+
+      if (entry.isDirectory()) {
+        checked += 1
+        if (!existsSync(canonicalPath)) {
+          const hasNestedMarkdown = readdirSync(join(statusRoot, entry.name), {
+            withFileTypes: true,
+          }).some(
+            (nested) => nested.isFile() && nested.name.endsWith('.md') && nested.name !== 'README.md',
+          )
+
+          if (hasNestedMarkdown) {
+            violations.push({
+              file: relativePath(root, canonicalPath),
+              message: 'Blueprint folders with supporting markdown must include _overview.md',
+            })
+          } else {
+            violations.push({
+              file: relativePath(root, canonicalPath),
+              message: 'Missing _overview.md',
+            })
+          }
+          continue
+        }
+      } else {
+        if (!parsedPath || isBlueprintSupportingMarkdownRelativePath(relativeBlueprintPath)) {
+          continue
+        }
+        checked += 1
+      }
+
+      if (!parsedPath) {
         continue
       }
 
-      const raw = readFileSync(overviewPath, 'utf8')
+      const raw = readFileSync(canonicalPath, 'utf8')
       const frontmatter = matter(raw).data as Record<string, unknown>
       if (frontmatter.type !== 'blueprint' && frontmatter.type !== 'parent-roadmap') {
         violations.push({
-          file: relativePath(root, overviewPath),
-          message: 'Blueprint overview must use type: blueprint or parent-roadmap',
+          file: relativePath(root, canonicalPath),
+          message: 'Blueprint markdown must use type: blueprint or parent-roadmap',
         })
       }
 
       if (frontmatter.status !== status) {
         violations.push({
-          file: relativePath(root, overviewPath),
+          file: relativePath(root, canonicalPath),
           message: `Blueprint status must match folder (${status})`,
         })
       }
 
       violations.push(
         ...validateBlueprintLinkingFrontmatter({
-          file: relativePath(root, overviewPath),
+          file: relativePath(root, canonicalPath),
           frontmatter,
           status,
         }),

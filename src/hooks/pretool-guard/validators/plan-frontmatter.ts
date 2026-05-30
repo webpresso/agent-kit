@@ -3,7 +3,11 @@ import type { ToolInput, ValidationResult } from '#hooks/shared/types'
 import jsYaml from 'js-yaml'
 
 import { getContent, getFilePath } from '#hooks/shared/types'
-import { getNonCanonicalPlanningPathViolation, isBlueprintPath } from './path-contract.js'
+import {
+  getNonCanonicalPlanningPathViolation,
+  isBlueprintPath,
+  isCanonicalBlueprintDocumentPath,
+} from './path-contract.js'
 import { createSkipResult } from './skip-result.js'
 
 // Keep aligned with webpresso/blueprint planStatusSchema + plan type enum.
@@ -20,8 +24,8 @@ function shouldValidatePath(filePath: string): boolean {
   const normalized = filePath.startsWith('/') ? filePath.slice(1) : filePath
   const nonCanonicalPlanningPath = getNonCanonicalPlanningPathViolation(normalized)
   const currentPath = isBlueprintPath(normalized)
-  const isOverviewFile = normalized.endsWith('/README.md') || normalized.endsWith('/_overview.md')
-  return !nonCanonicalPlanningPath && currentPath && isOverviewFile
+  const isCanonicalBlueprintDoc = isCanonicalBlueprintDocumentPath(normalized)
+  return !nonCanonicalPlanningPath && currentPath && isCanonicalBlueprintDoc
 }
 
 export function extractFrontmatterBlock(content: string): string | null {

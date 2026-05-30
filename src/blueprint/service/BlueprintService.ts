@@ -22,6 +22,7 @@ import { type Blueprint, parseBlueprint } from '#core/parser'
 import { applyBlueprintLifecycleToFile } from '#lifecycle/local'
 import { resolveBlueprintRoot } from '#utils/blueprint-root'
 import { emitTraceArtifact, generateBlueprintLifecycleTrace } from '#utils/decision-trace-artifacts'
+import { getBlueprintDocumentCandidates } from '#utils/document-paths.js'
 import { BlueprintNotFoundError } from '#utils/errors'
 
 import {
@@ -132,30 +133,34 @@ export class BlueprintService extends TrackedDocumentService<
 
   async get(slug: string): Promise<Blueprint> {
     // Try direct path first (supports both 'in-progress/foo' and 'foo')
-    const planPath = path.join(this.baseDir, slug, '_overview.md')
-    try {
-      await fs.access(planPath)
-      const content = await fs.readFile(planPath, 'utf-8')
-      return parseBlueprint(content, slug)
-    } catch {
-      // Scan all plans to find a match by slug
-      const scannedPlans = scanBlueprintDirectory({
-        baseDir: this.baseDir,
-        includeSpecialFolders: true,
-      })
-
-      const found = scannedPlans.find((p) => p.slug === slug || p.slug.endsWith(`/${slug}`))
-      if (!found) {
-        throw new BlueprintNotFoundError(
-          slug,
-          planPath,
-          scannedPlans.map((p) => p.slug),
-        )
+    const directCandidates = getBlueprintDocumentCandidates(this.baseDir, slug)
+    for (const candidate of directCandidates) {
+      try {
+        await fs.access(candidate)
+        const content = await fs.readFile(candidate, 'utf-8')
+        return parseBlueprint(content, slug)
+      } catch {
+        // Keep trying the remaining canonical shapes before falling back to a scan.
       }
-
-      const content = await fs.readFile(found.path, 'utf-8')
-      return parseBlueprint(content, found.slug)
     }
+
+    const searchedPath = directCandidates[0] ?? path.join(this.baseDir, slug, '_overview.md')
+    const scannedPlans = scanBlueprintDirectory({
+      baseDir: this.baseDir,
+      includeSpecialFolders: true,
+    })
+
+    const found = scannedPlans.find((p) => p.slug === slug || p.slug.endsWith(`/${slug}`))
+    if (!found) {
+      throw new BlueprintNotFoundError(
+        slug,
+        searchedPath,
+        scannedPlans.map((p) => p.slug),
+      )
+    }
+
+    const content = await fs.readFile(found.path, 'utf-8')
+    return parseBlueprint(content, found.slug)
   }
 
   async query(options?: BlueprintQueryOptions): Promise<BlueprintQueryResult> {
@@ -243,8 +248,19 @@ export class BlueprintService extends TrackedDocumentService<
    * @returns Array of TechDebtRecord objects
    */
   async getLinkedTechDebt(bpSlug: string): Promise<TechDebtRecord[]> {
-    const blueprintPath = path.join(this.baseDir, bpSlug, '_overview.md')
-    const content = await fs.readFile(blueprintPath, 'utf-8')
+    const directCandidates = getBlueprintDocumentCandidates(this.baseDir, bpSlug)
+    let resolvedBlueprintPath: string | null = null
+    for (const candidate of directCandidates) {
+      try {
+        await fs.access(candidate)
+        resolvedBlueprintPath = candidate
+        break
+      } catch {
+        // Keep trying the other canonical shape.
+      }
+    }
+    const filePath = resolvedBlueprintPath ?? directCandidates[0] ?? path.join(this.baseDir, bpSlug, '_overview.md')
+    const content = await fs.readFile(filePath, 'utf-8')
     const parsed = matter(content)
     const data = JSON.parse(JSON.stringify(parsed.data)) as Record<string, unknown>
     const linkedTechDebtSlugs = (data.linked_tech_debt_slugs as string[]) ?? []

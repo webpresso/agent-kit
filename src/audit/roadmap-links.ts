@@ -2,6 +2,12 @@ import matter from 'gray-matter'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, relative, resolve, sep } from 'node:path'
 
+import {
+  BLUEPRINT_OVERVIEW_FILENAME,
+  isBlueprintSupportingMarkdownRelativePath,
+  parseBlueprintDocumentRelativePath,
+} from '#utils/document-paths.js'
+
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 
 export interface RoadmapLinksOptions {
@@ -32,7 +38,7 @@ const BLUEPRINT_STATUSES = [
 const BLUEPRINT_STATUS_PATTERN = BLUEPRINT_STATUSES.join('|')
 const ACTIVE_BLUEPRINT_STATUSES = new Set(['draft', 'planned', 'in-progress', 'parked'])
 const LOCAL_BLUEPRINT_REFERENCE_PATTERN = new RegExp(
-  String.raw`^(?:blueprints/)?(?:${BLUEPRINT_STATUS_PATTERN})/[A-Za-z0-9._-]+(?:/_overview\.md)?$`,
+  String.raw`^(?:blueprints/)?(?:${BLUEPRINT_STATUS_PATTERN})/[A-Za-z0-9._-]+(?:\.md|/_overview\.md)?$`,
 )
 const GITHUB_URL_PATTERN = /https?:\/\/github\.com\//i
 const ABSOLUTE_FILE_REFERENCE_PATTERN = /(?:^|[\s(])(?:\/|[A-Za-z]:[\\/]|file:\/\/)/i
@@ -158,23 +164,36 @@ function readBlueprintRecords(root: string, blueprintsRoot: string): BlueprintLi
     if (!existsSync(statusRoot)) continue
 
     for (const entry of readdirSync(statusRoot, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue
-      const overviewPath = join(statusRoot, entry.name, '_overview.md')
-      if (!existsSync(overviewPath)) continue
+      const canonicalPath = entry.isDirectory()
+        ? join(statusRoot, entry.name, BLUEPRINT_OVERVIEW_FILENAME)
+        : entry.isFile() && entry.name.endsWith('.md')
+          ? join(statusRoot, entry.name)
+          : null
+      if (!canonicalPath || !existsSync(canonicalPath)) continue
 
-      const raw = readFileSync(overviewPath, 'utf8')
+      const relativeBlueprintPath = relative(blueprintsRoot, canonicalPath)
+      if (
+        !parseBlueprintDocumentRelativePath(relativeBlueprintPath) ||
+        isBlueprintSupportingMarkdownRelativePath(relativeBlueprintPath)
+      ) {
+        continue
+      }
+
+      const raw = readFileSync(canonicalPath, 'utf8')
       const data = matter(raw).data as Record<string, unknown>
       const type = data.type === 'parent-roadmap' ? 'parent-roadmap' : 'blueprint'
       const parentRoadmap =
         typeof data.parent_roadmap === 'string' && data.parent_roadmap.trim()
           ? data.parent_roadmap.trim()
           : undefined
-      const key = `${status}/${entry.name}`
+      const parsedPath = parseBlueprintDocumentRelativePath(relativeBlueprintPath)
+      if (!parsedPath) continue
+      const key = `${status}/${parsedPath.slug}`
 
       records.push({
-        file: relativePath(root, overviewPath),
+        file: relativePath(root, canonicalPath),
         key,
-        name: entry.name,
+        name: parsedPath.slug,
         ...(parentRoadmap ? { parentRoadmap } : {}),
         raw,
         slug: key,
@@ -197,7 +216,9 @@ function indexBlueprints(
     byKey.set(record.name, record)
     byKey.set(`blueprints/${record.key}`, record)
     byKey.set(`blueprints/${record.key}/_overview.md`, record)
+    byKey.set(`blueprints/${record.key}.md`, record)
     byKey.set(`${record.key}/_overview.md`, record)
+    byKey.set(`${record.key}.md`, record)
   }
   return byKey
 }
@@ -205,13 +226,13 @@ function indexBlueprints(
 function extractWaveMapChildren(markdown: string): Set<string> {
   const refs = new Set<string>()
   const pathPattern = new RegExp(
-    String.raw`(?:blueprints/)?(${BLUEPRINT_STATUS_PATTERN})/([A-Za-z0-9._-]+)(?:/_overview\.md)?`,
+    String.raw`(?:blueprints/)?(${BLUEPRINT_STATUS_PATTERN})/([A-Za-z0-9._-]+)(?:\.md|/_overview\.md)?`,
     'g',
   )
 
   for (const match of markdown.matchAll(pathPattern)) {
     const status = match[1]
-    const slug = match[2]
+    const slug = match[2]?.replace(/\.md$/, '')
     if (!status || !slug) continue
     refs.add(`${status}/${slug}`)
   }

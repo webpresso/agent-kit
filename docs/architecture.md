@@ -77,8 +77,9 @@ Deliberately NOT generated:
 
 **Location:** worktree-scoped at `<state-root>/blueprints/<worktree-id>.db` (gitignored; rebuilt on cold start)
 
-`wp blueprint db build` (or any MCP read tool) projects all
-`blueprints/**/_overview.md` into a SQLite store per worktree. Agents use the
+`wp blueprint db build` (or any MCP read tool) projects all canonical
+blueprint markdown (`blueprints/<status>/<slug>.md` and
+`blueprints/<status>/<slug>/_overview.md`) into a SQLite store per worktree. Agents use the
 structured MCP tools (`wp_blueprint_list`, `wp_blueprint_get`,
 `wp_blueprint_context`, etc.) instead of reading raw markdown files. Humans
 browse it with `wp blueprint db browse` (Datasette).

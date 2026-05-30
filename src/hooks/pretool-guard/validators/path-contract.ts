@@ -1,16 +1,17 @@
+import { existsSync } from 'node:fs'
+import path from 'node:path'
+import {
+  BLUEPRINT_OVERVIEW_FILENAME,
+  getBlueprintAlternateDocumentPath,
+  isBlueprintSupportingMarkdownRelativePath,
+  isBlueprintStatus,
+  parseBlueprintDocumentRelativePath,
+} from '#utils/document-paths.js'
+
 export const BLUEPRINTS_ROOT = 'webpresso/blueprints'
 const DEFAULT_BLUEPRINTS_ROOT = 'blueprints'
 export const TECH_DEBT_ROOT = 'webpresso/tech-debt'
 const DEFAULT_TECH_DEBT_ROOT = 'tech-debt'
-const BLUEPRINT_STATUSES = new Set([
-  'draft',
-  'planned',
-  'parked',
-  'in-progress',
-  'completed',
-  'archived',
-])
-const KEBAB_CASE_SEGMENT = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 // Both canonical blueprint-root layouts accepted by default.
 const CANONICAL_BLUEPRINTS_ROOTS = [BLUEPRINTS_ROOT, DEFAULT_BLUEPRINTS_ROOT] as const
@@ -22,6 +23,19 @@ function normalizePlanningPath(filePath: string): string {
 
 function matchesRoot(normalized: string, root: string): boolean {
   return normalized === root || normalized.startsWith(`${root}/`)
+}
+
+function stripBlueprintRoot(
+  normalized: string,
+  roots: readonly string[],
+): { relativePath: string; root: string } | null {
+  for (const root of roots) {
+    if (normalized === root) return { relativePath: '', root }
+    if (normalized.startsWith(`${root}/`)) {
+      return { relativePath: normalized.slice(root.length + 1), root }
+    }
+  }
+  return null
 }
 
 /**
@@ -87,51 +101,80 @@ export function isCanonicalBlueprintOverviewPath(
   filePath: string,
   blueprintsRoot?: string,
 ): boolean {
+  const parsed = getCanonicalBlueprintDocument(filePath, blueprintsRoot)
+  return parsed?.shape === 'folder'
+}
+
+export function isCanonicalBlueprintDocumentPath(
+  filePath: string,
+  blueprintsRoot?: string,
+): boolean {
+  return getCanonicalBlueprintDocument(filePath, blueprintsRoot) !== null
+}
+
+function getCanonicalBlueprintDocument(
+  filePath: string,
+  blueprintsRoot?: string,
+) {
   const normalized = normalizePlanningPath(filePath)
   const roots = blueprintsRoot ? [blueprintsRoot] : CANONICAL_BLUEPRINTS_ROOTS
-  return roots.some((root) => {
-    const rootParts = root.split('/')
-    const parts = normalized.split('/')
-    const n = rootParts.length
-    return (
-      parts.length === n + 3 &&
-      parts.slice(0, n).join('/') === root &&
-      BLUEPRINT_STATUSES.has(parts[n] ?? '') &&
-      KEBAB_CASE_SEGMENT.test(parts[n + 1] ?? '') &&
-      parts[n + 2] === '_overview.md'
-    )
-  })
+  const stripped = stripBlueprintRoot(normalized, roots)
+  return stripped ? parseBlueprintDocumentRelativePath(stripped.relativePath) : null
 }
 
 export function getBlueprintPathViolation(
   filePath: string,
   blueprintsRoot?: string,
+  cwd: string = process.cwd(),
 ): string | null {
   const normalized = normalizePlanningPath(filePath)
 
   if (!isBlueprintPath(normalized, blueprintsRoot)) return null
 
-  if (
-    normalized.endsWith('/_overview.md') &&
-    !isCanonicalBlueprintOverviewPath(normalized, blueprintsRoot)
-  ) {
-    const root = blueprintsRoot ?? BLUEPRINTS_ROOT
-    return `Blueprint overview files must live at ${root}/<status>/<slug>/_overview.md. Got: ${normalized}`
+  const roots = blueprintsRoot ? [blueprintsRoot] : CANONICAL_BLUEPRINTS_ROOTS
+  const stripped = stripBlueprintRoot(normalized, roots)
+  if (!stripped) {
+    return null
   }
 
-  const roots = blueprintsRoot ? [blueprintsRoot] : CANONICAL_BLUEPRINTS_ROOTS
-  for (const root of roots) {
-    const rootParts = root.split('/')
-    const parts = normalized.split('/')
-    const n = rootParts.length
-    if (
-      parts.length === n + 2 &&
-      parts.slice(0, n).join('/') === root &&
-      BLUEPRINT_STATUSES.has(parts[n] ?? '') &&
-      normalized.endsWith('.md')
-    ) {
-      return `Blueprint markdown files cannot live directly under a status directory. Move this file to ${root}/${parts[n]}/<slug>/_overview.md or place supporting docs inside ${root}/${parts[n]}/<slug>/. Got: ${normalized}`
+  const parsed = parseBlueprintDocumentRelativePath(stripped.relativePath)
+  if (parsed) {
+    const blueprintRoot = path.isAbsolute(filePath)
+      ? path.join(path.parse(filePath).root, stripped.root)
+      : path.join(cwd, stripped.root)
+    const currentPath = path.isAbsolute(filePath) ? filePath : path.join(cwd, normalized)
+    const alternate = getBlueprintAlternateDocumentPath(blueprintRoot, currentPath)
+    if (alternate && existsSync(alternate)) {
+      return `Blueprint slug "${parsed.state}/${parsed.slug}" cannot exist in both flat and folder forms. Remove either ${path.relative(cwd, filePath).replace(/\\/g, '/')} or ${path.relative(cwd, alternate).replace(/\\/g, '/')}.`
     }
+    return null
+  }
+
+  const parts = stripped.relativePath.split('/').filter((segment) => segment.length > 0)
+  const [state, slug, doc] = parts
+  const root = stripped.root
+
+  if (parts.length === 2 && typeof doc === 'undefined' && typeof slug === 'string' && slug.endsWith('.md')) {
+    return `Blueprint markdown under ${root}/<status>/ must be either <slug>.md or <slug>/${BLUEPRINT_OVERVIEW_FILENAME}. Got: ${normalized}`
+  }
+
+  if (parts.length === 3 && doc === BLUEPRINT_OVERVIEW_FILENAME) {
+    return `Blueprint overview files must live at ${root}/<status>/<slug>/${BLUEPRINT_OVERVIEW_FILENAME}. Got: ${normalized}`
+  }
+
+  if (
+    parts.length === 3 &&
+    isBlueprintSupportingMarkdownRelativePath(stripped.relativePath)
+  ) {
+    const canonicalOverviewPath = path.join(cwd, root, state ?? '', slug ?? '', BLUEPRINT_OVERVIEW_FILENAME)
+    if (!existsSync(canonicalOverviewPath)) {
+      return `Supporting blueprint markdown requires ${root}/${state}/${slug}/${BLUEPRINT_OVERVIEW_FILENAME}. Got: ${normalized}`
+    }
+    return null
+  }
+
+  if (parts.length >= 3 && isBlueprintStatus(state)) {
+    return `Blueprint markdown must use one of ${root}/<status>/<slug>.md or ${root}/<status>/<slug>/${BLUEPRINT_OVERVIEW_FILENAME}. Supporting markdown is only allowed beside ${BLUEPRINT_OVERVIEW_FILENAME}. Got: ${normalized}`
   }
 
   return null

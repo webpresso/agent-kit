@@ -4,6 +4,7 @@ description: Blueprint template for features/initiatives
 notes:
   - 'This file describes the current preferred blueprint structure, not an immutable final schema.'
   - 'Repo-wide validity is determined by the live blueprint parser/audit rules, not by requiring every optional section below.'
+  - 'Default creation shape: blueprints/<status>/<slug>.md. Folder-based blueprints remain valid at blueprints/<status>/<slug>/_overview.md when sibling docs are needed.'
 
 frontmatter:
   required:
@@ -12,7 +13,7 @@ frontmatter:
       description: Must be exactly "blueprint"
     status:
       enum: [draft, planned, parked, in-progress, completed, archived]
-      description: Current plan status (must match folder placement)
+      description: Current plan status (must match lifecycle placement)
     complexity:
       enum: [XS, S, M, L, XL]
       description: Estimated complexity
@@ -81,21 +82,18 @@ sections:
 
 location:
   patterns:
-    - 'blueprints/*/_overview.md'
+    - 'blueprints/*/*.md'
     - 'blueprints/*/*/_overview.md'
-    - 'blueprints/*/*/*/_overview.md'
-    - 'blueprints/completed/*/_overview.md'
-    - 'blueprints/planned/*/_overview.md'
-    - 'blueprints/parked/*/_overview.md'
-    - 'blueprints/in-progress/*/_overview.md'
-    - 'blueprints/draft/*/_overview.md'
-  exclude:
-    - 'blueprints/draft/*.md' # Standalone draft trackers such as deferred backlog
+    - 'blueprints/completed/*.md'
+    - 'blueprints/planned/*.md'
+    - 'blueprints/parked/*.md'
+    - 'blueprints/in-progress/*.md'
+    - 'blueprints/draft/*.md'
 
 naming:
-  pattern: '_overview.md'
+  pattern: '<slug>.md or _overview.md'
   case: exact
-  notes: 'Use _overview.md for high-level summary. Detailed phases go in phase-N-name.md files.'
+  notes: 'Use <slug>.md by default. Use folder + _overview.md when the blueprint needs sibling markdown docs.'
 
 task_format:
   heading:

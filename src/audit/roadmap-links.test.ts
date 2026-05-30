@@ -15,6 +15,12 @@ function writeOverview(root: string, status: string, slug: string, markdown: str
   writeFileSync(join(dir, '_overview.md'), markdown)
 }
 
+function writeFlatBlueprint(root: string, status: string, slug: string, markdown: string) {
+  const dir = join(root, 'blueprints', status)
+  mkdirSync(dir, { recursive: true })
+  writeFileSync(join(dir, `${slug}.md`), markdown)
+}
+
 function roadmap(markdownBody: string = '') {
   const body =
     markdownBody.trim().length > 0 && !markdownBody.includes('## Quick Reference (Execution Waves)')
@@ -75,6 +81,22 @@ describe('auditRoadmapLinks', () => {
     expect(result.ok).toBe(true)
     expect(result.checked).toBe(1)
     expect(result.violations).toEqual([])
+  })
+
+  test('passes for flat-file roadmap and child references', () => {
+    const root = tempRepo()
+    writeFlatBlueprint(
+      root,
+      'planned',
+      'roadmap-a',
+      roadmap('| Wave 0 | planned/child-a.md |'),
+    )
+    writeFlatBlueprint(root, 'planned', 'child-a', child('roadmap-a'))
+
+    const result = auditRoadmapLinks(root)
+
+    expect(result.ok).toBe(true)
+    expect(result.checked).toBe(1)
   })
 
   test('fails when roadmap wave map references a missing child', () => {

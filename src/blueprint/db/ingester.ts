@@ -3,13 +3,15 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { Database } from '#db/sqlite.js'
-import { glob } from 'glob'
 
 import { parseBlueprintForDb } from './parser/blueprint-db-parser.js'
 import { parseTechDebtForDb } from './parser/tech-debt-db-parser.js'
 import { resolvesCrossRepo } from '#cross-repo/resolver.js'
+import { scanBlueprintDirectory } from '#service/scanner.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
+import { parseBlueprintDocumentRelativePath } from '#utils/document-paths.js'
 import { resolveTechDebtRoot } from '#utils/tech-debt-root.js'
+import { glob } from 'glob'
 import type { RunnerEvent } from '#runners/types'
 
 export interface IngestOptions {
@@ -29,9 +31,13 @@ export interface IngestResult {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function deriveSlugFromBlueprintPath(filePath: string): string {
-  // blueprints/<status>/<slug>/_overview.md  →  slug is the grandparent dir name
-  return path.basename(path.dirname(filePath))
+function deriveSlugFromBlueprintPath(filePath: string, blueprintRoot: string): string {
+  const relativePath = path.relative(blueprintRoot, filePath)
+  const parsed = parseBlueprintDocumentRelativePath(relativePath)
+  if (!parsed) {
+    throw new Error(`Not a canonical blueprint document: ${filePath}`)
+  }
+  return parsed.slug
 }
 
 function deriveSlugFromTechDebtPath(filePath: string): string {
@@ -78,9 +84,9 @@ function isAllowedCrossOrg(db: Database, sourceOrg: string, targetOrg: string): 
 // Blueprint ingester
 // ---------------------------------------------------------------------------
 
-function upsertBlueprint(db: Database, filePath: string, _cwd: string): void {
+function upsertBlueprint(db: Database, filePath: string, blueprintRoot: string): void {
   const content = readFileSync(filePath, 'utf8')
-  const slug = deriveSlugFromBlueprintPath(filePath)
+  const slug = deriveSlugFromBlueprintPath(filePath, blueprintRoot)
   const parsed = parseBlueprintForDb(content, filePath, slug)
 
   const now = Date.now()
@@ -374,19 +380,21 @@ export async function ingestBlueprints(opts: IngestOptions): Promise<IngestResul
   let ingested = 0
 
   const blueprintRoot = resolveBlueprintRoot(cwd)
-  const pattern = path.join(blueprintRoot, '**', '_overview.md').replace(/\\/g, '/')
-  const files = await glob(pattern, { absolute: true, nodir: true })
+  const files = scanBlueprintDirectory({
+    baseDir: blueprintRoot,
+    includeSpecialFolders: true,
+  }).map((entry) => entry.path)
 
   for (const filePath of files) {
     try {
       const content = readFileSync(filePath, 'utf8')
-      const slug = deriveSlugFromBlueprintPath(filePath)
+      const slug = deriveSlugFromBlueprintPath(filePath, blueprintRoot)
       const newHash = createHash('sha256').update(content).digest('hex')
 
       if (!dryRun) {
         const existing = existingBlueprintHash(db, slug)
         if (existing === newHash) continue
-        upsertBlueprint(db, filePath, cwd)
+        upsertBlueprint(db, filePath, blueprintRoot)
       }
       ingested++
     } catch (err) {

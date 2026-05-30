@@ -72,6 +72,46 @@ describe('scanBlueprintDirectory - core', () => {
       expect(flatPlan?.slug).toBe('in-progress/flat-plan')
       expect(flatPlan?.group).toBe('in-progress')
     })
+
+    it('discovers both flat and folder blueprint shapes in one scan', () => {
+      mkdirSync(`${testDir}/webpresso/blueprints/planned`, { recursive: true })
+      mkdirSync(`${testDir}/webpresso/blueprints/planned/folder-plan`, { recursive: true })
+      writeFileSync(`${testDir}/webpresso/blueprints/planned/flat-plan.md`, '# Flat Plan')
+      writeFileSync(
+        `${testDir}/webpresso/blueprints/planned/folder-plan/_overview.md`,
+        '# Folder Plan',
+      )
+      writeFileSync(
+        `${testDir}/webpresso/blueprints/planned/folder-plan/notes.md`,
+        '# Supporting Doc',
+      )
+
+      const result = scanBlueprintDirectory({
+        baseDir: `${testDir}/webpresso/blueprints`,
+        includeSpecialFolders: false,
+      })
+
+      expect(result.map((plan) => plan.slug)).toEqual(
+        expect.arrayContaining(['planned/flat-plan', 'planned/folder-plan']),
+      )
+      expect(result.some((plan) => plan.path.endsWith('/folder-plan/notes.md'))).toBe(false)
+    })
+
+    it('fails when flat and folder shapes reuse the same slug', () => {
+      mkdirSync(`${testDir}/webpresso/blueprints/planned/duplicate-plan`, { recursive: true })
+      writeFileSync(`${testDir}/webpresso/blueprints/planned/duplicate-plan.md`, '# Flat Plan')
+      writeFileSync(
+        `${testDir}/webpresso/blueprints/planned/duplicate-plan/_overview.md`,
+        '# Folder Plan',
+      )
+
+      expect(() =>
+        scanBlueprintDirectory({
+          baseDir: `${testDir}/webpresso/blueprints`,
+          includeSpecialFolders: false,
+        }),
+      ).toThrow(/Duplicate blueprint slug "planned\/duplicate-plan"/)
+    })
   })
 
   describe('slug extraction', () => {
@@ -342,8 +382,8 @@ describe('scanBlueprintDirectory - core', () => {
 
       const result = scanBlueprintDirectory(options)
 
-      // Should find exactly 2 non-special plans: my-feature and completed/tooling
-      expect(result.length).toBe(2)
+      // Only canonical lifecycle-root blueprints are discovered.
+      expect(result.length).toBe(1)
       expect(result.every((p) => p.path.startsWith(absoluteBase))).toBe(true)
     })
 

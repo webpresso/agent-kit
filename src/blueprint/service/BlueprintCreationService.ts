@@ -8,11 +8,13 @@ import path from 'node:path'
 import { type Blueprint, parseBlueprint } from '#core/parser'
 import { scanBlueprintDirectory } from '#service/scanner'
 import { resolveBlueprintRoot } from '#utils/blueprint-root'
+import { getBlueprintDocumentPaths } from '#utils/document-paths.js'
 import { resolvePackageAssetPreferred } from '#utils/package-assets'
 
 type BlueprintDocumentType = 'blueprint' | 'parent-roadmap'
+type BlueprintStatus = 'draft' | 'planned' | 'parked' | 'in-progress' | 'completed' | 'archived'
 
-const RESERVED_BLUEPRINT_SLUGS = new Set([
+const RESERVED_BLUEPRINT_SLUGS = new Set<BlueprintStatus>([
   'draft',
   'planned',
   'parked',
@@ -101,7 +103,7 @@ function assertGoalProducesUsableSlug(goal: string, slug: string): void {
     throw new Error(`Blueprint goal "${goal}" could not be converted into a valid slug.`)
   }
 
-  if (RESERVED_BLUEPRINT_SLUGS.has(slug)) {
+  if (RESERVED_BLUEPRINT_SLUGS.has(slug as BlueprintStatus)) {
     throw new Error(`Blueprint goal "${goal}" resolves to reserved slug "${slug}".`)
   }
 }
@@ -258,7 +260,7 @@ export class BlueprintCreationService {
 
     const slug = this.resolveCollisionSafeSlug(baseSlug)
     const title = sentenceCase(goal)
-    const outputPath = path.join(this.blueprintsRoot, 'draft', slug, '_overview.md')
+    const outputPath = getBlueprintDocumentPaths(this.blueprintsRoot, 'draft', slug).flat
     const relativeFilePath = toPortableRelativePath(this.projectRoot, outputPath)
     const date = formatDate(this.now())
     const template =
@@ -307,13 +309,13 @@ export class BlueprintCreationService {
   async create(input: CreateBlueprintDraftInput): Promise<CreatedBlueprintDraft> {
     const draft = await this.compileDraft(input)
     const draftRoot = path.join(this.blueprintsRoot, 'draft')
-    const finalDir = path.dirname(draft.outputPath)
+    const finalPath = draft.outputPath
 
     await mkdir(draftRoot, { recursive: true })
-    await mkdir(path.dirname(finalDir), { recursive: true })
+    await mkdir(path.dirname(finalPath), { recursive: true })
 
     const tempDir = await mkdtemp(path.join(draftRoot, `${draft.slug}.tmp-`))
-    const tempPath = path.join(tempDir, '_overview.md')
+    const tempPath = path.join(tempDir, `${draft.slug}.md`)
 
     try {
       await writeFile(tempPath, draft.markdown, 'utf-8')
@@ -324,7 +326,8 @@ export class BlueprintCreationService {
         throw new Error(validation.error ?? 'Generated blueprint failed validation.')
       }
 
-      await rename(tempDir, finalDir)
+      await rename(tempPath, finalPath)
+      await rm(tempDir, { force: true, recursive: true })
 
       return {
         ...draft,
@@ -363,9 +366,10 @@ export class BlueprintCreationService {
 }
 
 function blueprintDirectoryExists(blueprintsRoot: string, slug: string): boolean {
-  return [...RESERVED_BLUEPRINT_SLUGS].some((status) =>
-    existsSync(path.join(blueprintsRoot, status, slug)),
-  )
+  return [...RESERVED_BLUEPRINT_SLUGS].some((status) => {
+    const paths = getBlueprintDocumentPaths(blueprintsRoot, status, slug)
+    return existsSync(paths.directory) || existsSync(paths.flat)
+  })
 }
 
 async function removeIfEmpty(directory: string): Promise<void> {

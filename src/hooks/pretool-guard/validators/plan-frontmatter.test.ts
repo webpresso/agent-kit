@@ -247,6 +247,7 @@ describe('detectWrongTaskFormat', () => {
 // ---------------------------------------------------------------------------
 describe('validatePlanFrontmatter', () => {
   const validBlueprintPath = 'webpresso/blueprints/planned/my-feat/_overview.md'
+  const validFlatBlueprintPath = 'webpresso/blueprints/planned/my-flat-feat.md'
 
   function writeInput(filePath: string, content: string): ToolInput {
     return { tool_input: { file_path: filePath, content } }
@@ -345,6 +346,13 @@ describe('validatePlanFrontmatter', () => {
     const content =
       '---\ntype: blueprint\nstatus: in-progress\ncomplexity: L\n---\n# Plan\n\n#### Task 1.1: First\n#### Task 1.2: Second'
     const result = validatePlanFrontmatter(writeInput(validBlueprintPath, content))
+    expect(result.passed).toBe(true)
+  })
+
+  it('validates flat-file blueprints the same way as folder blueprints', () => {
+    const content =
+      '---\ntype: blueprint\nstatus: planned\ncomplexity: M\n---\n# Plan\n\n#### Task 1.1: First'
+    const result = validatePlanFrontmatter(writeInput(validFlatBlueprintPath, content))
     expect(result.passed).toBe(true)
   })
 
