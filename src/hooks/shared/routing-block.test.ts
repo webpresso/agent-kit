@@ -68,9 +68,16 @@ describe('WP_ROUTING_BLOCK', () => {
     expect(WP_ROUTING_BLOCK).toContain('just qa')
     expect(WP_ROUTING_BLOCK).toContain('just lint-md')
     expect(WP_ROUTING_BLOCK).toContain('vitest')
+    expect(WP_ROUTING_BLOCK).toContain('npx vitest')
+    expect(WP_ROUTING_BLOCK).toContain('npm exec -- vitest')
+    expect(WP_ROUTING_BLOCK).toContain('yarn vitest')
+    expect(WP_ROUTING_BLOCK).toContain('bunx vitest')
+    expect(WP_ROUTING_BLOCK).toContain('node ./node_modules/vitest/vitest.mjs')
     expect(WP_ROUTING_BLOCK).toContain('oxlint')
+    expect(WP_ROUTING_BLOCK).toContain('node ./node_modules/oxlint/bin/oxlint')
     expect(WP_ROUTING_BLOCK).toContain('markdownlint-cli2')
     expect(WP_ROUTING_BLOCK).toContain('tsc')
+    expect(WP_ROUTING_BLOCK).toContain('node ./node_modules/typescript/bin/tsc')
   })
 
   it('routes markdown lint commands through wp_qa', () => {
@@ -89,6 +96,15 @@ describe('WP_ROUTING_BLOCK', () => {
     expect(WP_ROUTING_BLOCK).toContain('<ownership_boundary>')
     expect(WP_ROUTING_BLOCK).toContain('Context-mode owns ctx_* routing')
     expect(WP_ROUTING_BLOCK).not.toContain('<tool name="ctx_execute">')
+  })
+
+  it('defines wp CLI fallback and hook diagnostic guidance', () => {
+    expect(WP_ROUTING_BLOCK).toContain('matching wp CLI command')
+    expect(WP_ROUTING_BLOCK).toContain('Do not fall through to raw tool bins under node_modules')
+    expect(WP_ROUTING_BLOCK).toContain('<hook_diagnostics>')
+    expect(WP_ROUTING_BLOCK).toContain('Prefer wp hook &lt;name&gt;')
+    expect(WP_ROUTING_BLOCK).toContain('Direct wp-* hook bins remain generated-hook runtime internals')
+    expect(WP_ROUTING_BLOCK).not.toContain('use just recipes directly')
   })
 
   it('routes folded agent config helpers through @webpresso/agent-kit subpath exports', () => {

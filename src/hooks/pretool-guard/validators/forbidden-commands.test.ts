@@ -7,6 +7,7 @@ import type { ToolInput } from '#hooks/shared/types'
 
 import {
   applySuggestionModifiers,
+  BLOCKED_RAW_NODE_MODULE_TOOLS,
   BLOCKED_SCRIPTS,
   BLOCKED_TOOLS,
   COMMAND_RULES,
@@ -24,6 +25,24 @@ import {
   VALIDATOR_NAME,
   validateForbiddenCommands,
 } from './forbidden-commands.js'
+
+const RAW_NODE_MODULE_TOOL_CASES = [
+  {
+    command: 'node ./node_modules/vitest/vitest.mjs run src/example.test.ts',
+    category: 'test',
+    suggestion: 'wp_test',
+  },
+  {
+    command: 'node ./node_modules/typescript/bin/tsc --noEmit --pretty false',
+    category: 'typecheck',
+    suggestion: 'wp_typecheck',
+  },
+  {
+    command: 'node ./node_modules/oxlint/bin/oxlint src',
+    category: 'lint',
+    suggestion: 'wp_lint',
+  },
+] as const
 
 // ---------------------------------------------------------------------------
 // Exported constants
@@ -47,6 +66,14 @@ describe('exported constants', () => {
 
   it('BLOCKED_SCRIPTS is a non-empty array', () => {
     expect(BLOCKED_SCRIPTS.length).toBeGreaterThan(0)
+  })
+
+  it('BLOCKED_RAW_NODE_MODULE_TOOLS covers raw wrappers audited in session', () => {
+    expect(BLOCKED_RAW_NODE_MODULE_TOOLS.map(({ modulePath }) => modulePath)).toStrictEqual([
+      'vitest/vitest.mjs',
+      'typescript/bin/tsc',
+      'oxlint/bin/oxlint',
+    ])
   })
 
   it('COMMAND_RULES is a non-empty array', () => {
@@ -77,6 +104,33 @@ describe('generateRules', () => {
     const vitestRule = rules.find((r) => r.pattern.test('vp exec vitest'))
     expect(vitestRule).toBeDefined()
     expect(vitestRule!.suggestion).toContain('wp_test')
+  })
+
+  it('includes package-runner vitest aliases as blocked rules', () => {
+    const rules = generateRules()
+    for (const command of [
+      'pnpm exec vitest run',
+      'npm exec vitest run',
+      'npm exec -- vitest run',
+      'npx vitest run',
+      'yarn vitest run',
+      'yarn exec vitest run',
+      'bunx vitest run',
+    ]) {
+      const vitestRule = rules.find((rule) => rule.pattern.test(command))
+      expect(vitestRule, command).toBeDefined()
+      expect(vitestRule!.suggestion, command).toContain('wp_test')
+    }
+  })
+
+  it('includes raw node_modules tool wrappers as blocked rules', () => {
+    const rules = generateRules()
+
+    for (const { command, suggestion } of RAW_NODE_MODULE_TOOL_CASES) {
+      const rule = rules.find((r) => r.pattern.test(command))
+      expect(rule, command).toBeDefined()
+      expect(rule!.suggestion, command).toContain(suggestion)
+    }
   })
 
   it('includes vp run test as a blocked rule', () => {
@@ -282,6 +336,32 @@ describe('findMatchingRule', () => {
     const rule = findMatchingRule('vp exec markdownlint-cli2 README.md')
     expect(rule).toBeDefined()
     expect(rule!.suggestion).toContain('wp_qa')
+  })
+
+  it('matches package-runner vitest aliases', () => {
+    for (const command of [
+      'pnpm exec vitest run',
+      'npm exec vitest run',
+      'npm exec -- vitest run',
+      'npx vitest run',
+      'yarn vitest run',
+      'yarn exec vitest run',
+      'bunx vitest run',
+    ]) {
+      const rule = findMatchingRule(command)
+      expect(rule, command).toBeDefined()
+      expect(rule!.category, command).toBe('test')
+      expect(rule!.suggestion, command).toContain('wp_test')
+    }
+  })
+
+  it('matches raw node_modules tool wrappers', () => {
+    for (const { command, category, suggestion } of RAW_NODE_MODULE_TOOL_CASES) {
+      const rule = findMatchingRule(command)
+      expect(rule, command).toBeDefined()
+      expect(rule!.category, command).toBe(category)
+      expect(rule!.suggestion, command).toContain(suggestion)
+    }
   })
 })
 
@@ -776,6 +856,32 @@ describe('validateForbiddenCommands', () => {
     const result = validateForbiddenCommands(bashInput('vp exec vitest run'))
     expect(result.passed).toBe(false)
     expect('command' in result && result.category).toBe('test')
+  })
+
+  it('blocks package-runner vitest aliases', () => {
+    for (const command of [
+      'pnpm exec vitest run',
+      'npm exec vitest run',
+      'npm exec -- vitest run',
+      'npx vitest run',
+      'yarn vitest run',
+      'yarn exec vitest run',
+      'bunx vitest run',
+    ]) {
+      const result = validateForbiddenCommands(bashInput(command))
+      expect(result.passed, command).toBe(false)
+      expect('command' in result && result.category, command).toBe('test')
+      expect('command' in result && result.suggestion, command).toContain('wp_test')
+    }
+  })
+
+  it('blocks raw node_modules tool wrappers', () => {
+    for (const { command, category, suggestion } of RAW_NODE_MODULE_TOOL_CASES) {
+      const result = validateForbiddenCommands(bashInput(command))
+      expect(result.passed, command).toBe(false)
+      expect('command' in result && result.category, command).toBe(category)
+      expect('command' in result && result.suggestion, command).toContain(suggestion)
+    }
   })
 
   it('blocks vp exec drizzle-kit', () => {

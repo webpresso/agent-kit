@@ -8,6 +8,7 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
   <description>
     Use the wp_* MCP tools for all test, lint, typecheck, qa, audit, local CI act,
     and Cloudflare Worker tail operations.
+    If a wp_* MCP tool is stale or unavailable, use the matching wp CLI command.
     If context-mode plugin routing is present, let it own ctx_* data-processing nudges.
     These tools return structured, summary-first results and keep output concise.
   </description>
@@ -55,7 +56,7 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
     <tool name="wp_test">
       <category>dev-workflow</category>
       <trigger>running tests, verifying test suite, check if tests pass</trigger>
-      <forbidden>just test, pnpm test, vitest</forbidden>
+      <forbidden>just test, pnpm test, vitest, npx vitest, npm exec -- vitest, yarn vitest, bunx vitest, node ./node_modules/vitest/vitest.mjs</forbidden>
     </tool>
     <tool name="wp_e2e">
       <category>dev-workflow</category>
@@ -65,12 +66,12 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
     <tool name="wp_lint">
       <category>dev-workflow</category>
       <trigger>linting, code style checks, lint errors</trigger>
-      <forbidden>just lint, oxlint</forbidden>
+      <forbidden>just lint, oxlint, node ./node_modules/oxlint/bin/oxlint</forbidden>
     </tool>
     <tool name="wp_typecheck">
       <category>dev-workflow</category>
       <trigger>type checking, TypeScript errors, type errors</trigger>
-      <forbidden>tsc</forbidden>
+      <forbidden>tsc, node ./node_modules/typescript/bin/tsc</forbidden>
     </tool>
     <tool name="wp_qa">
       <category>dev-workflow</category>
@@ -102,6 +103,11 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
     <rule>Context-mode owns ctx_* routing when that plugin is installed.</rule>
   </ownership_boundary>
 
+  <hook_diagnostics>
+    <rule>Prefer wp hook &lt;name&gt; over direct wp-&lt;hook-bin&gt; calls when a wp hook command exists.</rule>
+    <rule>Direct wp-* hook bins remain generated-hook runtime internals, not recommended agent diagnostics.</rule>
+  </hook_diagnostics>
+
   <package_guidance>
     <rule>Consumers add @webpresso/agent-kit and import config helpers through @webpresso/agent-kit/* subpath exports such as @webpresso/agent-kit/oxlint, @webpresso/agent-kit/vitest/node, @webpresso/agent-kit/test-preset, @webpresso/agent-kit/e2e-preset, @webpresso/agent-kit/tsconfig/base.json, @webpresso/agent-kit/docs-lint, @webpresso/agent-kit/stryker, @webpresso/agent-kit/launch, and @webpresso/agent-kit/workers-test.</rule>
     <rule>Do not recommend adding retired split agent config packages for consumer projects; keep wp_* MCP tool names and wp-* hook bin names unchanged.</rule>
@@ -114,9 +120,16 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
     <command>just qa</command>
     <command>just lint-md</command>
     <command>vitest</command>
+    <command>npx vitest</command>
+    <command>npm exec -- vitest</command>
+    <command>yarn vitest</command>
+    <command>bunx vitest</command>
+    <command>node ./node_modules/vitest/vitest.mjs</command>
     <command>oxlint</command>
+    <command>node ./node_modules/oxlint/bin/oxlint</command>
     <command>markdownlint-cli2</command>
     <command>tsc</command>
+    <command>node ./node_modules/typescript/bin/tsc</command>
     <command>act</command>
     <command>vp exec act</command>
     <command>pnpm exec act</command>
@@ -133,7 +146,8 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
   </output_format>
 
   <fallback>
-    When MCP tools are unavailable, use just recipes directly and keep output brief.
+    When MCP tools are unavailable or stale, use the matching wp CLI command and keep output brief.
+    Do not fall through to raw tool bins under node_modules when a wp wrapper exists.
     .omx is runtime/state only; it is not a direct hook surface.
   </fallback>
 </wp_routing>`

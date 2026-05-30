@@ -47,6 +47,12 @@ interface BlockedScriptSpec {
   suggestion: string
 }
 
+interface BlockedRawNodeModulesToolSpec {
+  modulePath: string
+  category: CommandCategory
+  suggestion: string
+}
+
 interface RedirectOptions {
   mcpReady?: boolean
   mcp?: MCPRedirectConfig
@@ -72,8 +78,18 @@ const E2E_HINT = 'wp_e2e MCP tool'
 const ENV_HINT = 'Use the repo-approved environment wrapper for secret-bearing commands'
 const TASK_TARGET_HINT = 'Use the repo-approved vp facade or MCP tool instead of raw execution'
 
-const EXEC_RUNNERS = ['vp exec'] as const
-const DIRECT_RUNNERS = ['vp'] as const
+const EXEC_RUNNERS = [
+  'vp exec',
+  'pnpm exec',
+  'npm exec',
+  'npm exec --',
+  'npx',
+  'pnpx',
+  'yarn exec',
+  'yarn dlx',
+  'bunx',
+] as const
+const DIRECT_RUNNERS = ['vp', 'pnpm', 'yarn', 'yarnpkg'] as const
 const SCRIPT_RUNNERS = ['vp run', 'vp', 'pnpm', 'pnpm run', 'just'] as const
 
 export const BLOCKED_TOOLS: BlockedToolSpec[] = [
@@ -115,6 +131,12 @@ export const BLOCKED_SCRIPTS: BlockedScriptSpec[] = [
   { script: 'qa', category: 'unknown', suggestion: QA_HINT },
 ]
 
+export const BLOCKED_RAW_NODE_MODULE_TOOLS: BlockedRawNodeModulesToolSpec[] = [
+  { modulePath: 'vitest/vitest.mjs', category: 'test', suggestion: TEST_HINT },
+  { modulePath: 'typescript/bin/tsc', category: 'typecheck', suggestion: TYPECHECK_HINT },
+  { modulePath: 'oxlint/bin/oxlint', category: 'lint', suggestion: LINT_HINT },
+]
+
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
@@ -122,6 +144,10 @@ function escapeRegex(s: string): string {
 function buildToolPattern(prefix: string, tool: string): RegExp {
   const escaped = prefix ? `${escapeRegex(prefix)} ${escapeRegex(tool)}` : escapeRegex(tool)
   return new RegExp(`^${escaped}(\\s|$)`)
+}
+
+function buildRawNodeModulesToolPattern(modulePath: string): RegExp {
+  return new RegExp(`^node\\s+(?:\\.\\/)?node_modules\\/${escapeRegex(modulePath)}(?:\\s|$)`)
 }
 
 export function generateRules(): CommandRule[] {
@@ -163,6 +189,14 @@ export function generateRules(): CommandRule[] {
         suggestion: spec.suggestion,
       })
     }
+  }
+
+  for (const spec of BLOCKED_RAW_NODE_MODULE_TOOLS) {
+    rules.push({
+      pattern: buildRawNodeModulesToolPattern(spec.modulePath),
+      category: spec.category,
+      suggestion: spec.suggestion,
+    })
   }
 
   rules.push(
