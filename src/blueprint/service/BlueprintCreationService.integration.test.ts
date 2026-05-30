@@ -35,11 +35,15 @@ describe('BlueprintCreationService integration', () => {
     expect(created.blueprint.status).toBe('draft')
     expect(created.blueprint.tasks.length).toBeGreaterThan(0)
     expect(await readFile(created.path, 'utf-8')).toContain('# Customer runtime contract')
-    expect(
-      existsSync(
-        path.join(projectRoot, 'webpresso', 'blueprints', 'draft', 'customer-runtime-contract'),
+    expect(created.path).toBe(
+      path.join(
+        projectRoot,
+        'webpresso',
+        'blueprints',
+        'draft',
+        'customer-runtime-contract.md',
       ),
-    ).toBe(true)
+    )
   })
 
   it('cleans up temporary output when validation fails before rename', async () => {
