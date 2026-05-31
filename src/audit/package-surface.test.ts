@@ -1,6 +1,6 @@
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { describe, expect, test } from 'vitest'
 
 import { auditPackageSurface, stagePublishableTarballSurface } from './package-surface.js'
@@ -14,6 +14,22 @@ function writeJson(path: string, value: unknown) {
 }
 
 describe('package-surface audit', () => {
+  test('current package exposes the wp-extension public subpath contract', () => {
+    const root = resolve(import.meta.dirname, '..', '..')
+    const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
+      exports?: Record<string, { import?: { types?: string; default?: string } }>
+      imports?: Record<string, string>
+      tshy?: { exports?: Record<string, string> }
+    }
+
+    expect(pkg.exports?.['./wp-extension']?.import).toEqual({
+      types: './dist/esm/wp-extension/index.d.ts',
+      default: './dist/esm/wp-extension/index.js',
+    })
+    expect(pkg.imports?.['#wp-extension']).toBe('./src/wp-extension/index.ts')
+    expect(pkg.tshy?.exports?.['./wp-extension']).toBe('./src/wp-extension/index.ts')
+  })
+
   test('flags publishable @webpresso packages outside the contract', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'packages', 'bad'), { recursive: true })

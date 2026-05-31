@@ -56,11 +56,13 @@ export interface LoadWpExtensionsOptions {
 }
 
 interface PackageJsonLike {
+  readonly name?: string
   readonly dependencies?: Record<string, unknown>
   readonly devDependencies?: Record<string, unknown>
   readonly optionalDependencies?: Record<string, unknown>
   readonly webpresso?: {
     readonly wpExtension?: unknown
+    readonly wpExtensions?: unknown
   }
 }
 
@@ -75,10 +77,19 @@ export async function loadWpExtensions(
 
   const rootManifestPath = join(cwd, 'package.json')
   const rootManifest = readJsonFile(rootManifestPath) as PackageJsonLike | undefined
-  const packageNames = collectDependencyNames(rootManifest)
+  const enabled = collectEnabledExtensionPackageNames(rootManifest)
   const loaded: LoadedWpExtension[] = []
+  for (const warning of enabled.warnings) {
+    loaded.push({
+      packageName: rootManifest?.name ?? '<root>',
+      specifier: 'webpresso.wpExtensions',
+      compatible: false,
+      detected: false,
+      warnings: [warning],
+    })
+  }
 
-  for (const packageName of packageNames) {
+  for (const packageName of enabled.packageNames) {
     const packageJsonPath = tryResolve(() =>
       resolveFrom(rootManifestPath, `${packageName}/package.json`),
     )
@@ -238,8 +249,45 @@ export function isWpExtensionV1(value: unknown): value is WpExtensionV1 {
   )
 }
 
-function collectDependencyNames(manifest: PackageJsonLike | undefined): string[] {
-  if (!manifest) return []
+function collectEnabledExtensionPackageNames(manifest: PackageJsonLike | undefined): {
+  readonly packageNames: readonly string[]
+  readonly warnings: readonly string[]
+} {
+  if (!manifest) return { packageNames: [], warnings: [] }
+  const enabled = manifest.webpresso?.wpExtensions
+  if (enabled === undefined || enabled === false) return { packageNames: [], warnings: [] }
+
+  const dependencyNames = collectDependencyNames(manifest)
+  if (enabled === true) return { packageNames: dependencyNames, warnings: [] }
+
+  if (!Array.isArray(enabled)) {
+    return {
+      packageNames: [],
+      warnings: ['root package webpresso.wpExtensions must be true or an array of package names'],
+    }
+  }
+
+  const dependencySet = new Set(dependencyNames)
+  const packageNames: string[] = []
+  const warnings: string[] = []
+  for (const entry of enabled) {
+    if (typeof entry !== 'string' || entry.trim().length === 0) {
+      warnings.push('root package webpresso.wpExtensions contains a non-string package name')
+      continue
+    }
+    const packageName = entry.trim()
+    if (!dependencySet.has(packageName)) {
+      warnings.push(
+        `root package enables wp extension "${packageName}" but it is not a direct dependency`,
+      )
+      continue
+    }
+    packageNames.push(packageName)
+  }
+  return { packageNames: [...new Set(packageNames)], warnings }
+}
+
+function collectDependencyNames(manifest: PackageJsonLike): string[] {
 
   const packageNames = new Set<string>()
   for (const section of ['dependencies', 'devDependencies', 'optionalDependencies'] as const) {

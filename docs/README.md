@@ -1,6 +1,6 @@
 ---
 type: docs-index
-last_updated: '2026-05-28'
+last_updated: '2026-05-31'
 ---
 
 # webpresso docs
@@ -19,6 +19,7 @@ Core references:
 - [Lifecycle](./lifecycle.md)
 - [Skills catalog](./skills-catalog.md)
 - [Package references](./markdown-fact-check.md)
+- [`wp` extension runtime](./wp-extension-runtime.md)
 
 Maintainer release gate:
 

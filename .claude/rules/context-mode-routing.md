@@ -1,1 +1,1 @@
-../../../../../.vite-plus/packages/@webpresso/agent-kit/lib/node_modules/@webpresso/agent-kit/catalog/agent/rules/context-mode-routing.md
+../../catalog/agent/rules/context-mode-routing.md

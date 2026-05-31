@@ -1,1 +1,1 @@
-../../../../../.vite-plus/packages/@webpresso/agent-kit/lib/node_modules/@webpresso/agent-kit/catalog/agent/rules/agent-guide.md
+../../catalog/agent/rules/agent-guide.md

@@ -32,13 +32,80 @@ describe('wp extension runtime helpers', () => {
     expect(isWpExtensionV1({})).toBe(false)
   })
 
+  it('starts cleanly when no extension package is installed', async () => {
+    const loaded = await loadWpExtensions({
+      cwd: '/repo',
+      hostVersion: '0.1.5',
+      readJsonFile: (path) => (path === '/repo/package.json' ? { dependencies: {} } : undefined),
+      resolveFrom: () => {
+        throw new Error('must not resolve dependencies when none are declared')
+      },
+      importModule: async () => {
+        throw new Error('must not import modules when none are declared')
+      },
+    })
+
+    expect(loaded).toEqual([])
+  })
+
+  it('does not load extension packages until the root repo opts in', async () => {
+    const loaded = await loadWpExtensions({
+      cwd: '/repo',
+      hostVersion: '0.1.5',
+      readJsonFile: (path) => {
+        if (path === '/repo/package.json') return { dependencies: { framework: '1.0.0' } }
+        if (path === '/deps/framework/package.json') {
+          return { webpresso: { wpExtension: 'framework/wp-extension' } }
+        }
+        return undefined
+      },
+      resolveFrom: () => {
+        throw new Error('must not resolve extension packages without root opt-in')
+      },
+      importModule: async () => {
+        throw new Error('must not import extension packages without root opt-in')
+      },
+    })
+
+    expect(loaded).toEqual([])
+  })
+
+  it('warns when the root extension allowlist names a missing dependency', async () => {
+    const loaded = await loadWpExtensions({
+      cwd: '/repo',
+      hostVersion: '0.1.5',
+      readJsonFile: (path) =>
+        path === '/repo/package.json'
+          ? {
+              name: 'consumer',
+              webpresso: { wpExtensions: ['missing-framework'] },
+              dependencies: {},
+            }
+          : undefined,
+      resolveFrom: () => {
+        throw new Error('must not resolve missing dependencies')
+      },
+      importModule: async () => {
+        throw new Error('must not import missing dependencies')
+      },
+    })
+
+    expect(loaded[0]).toMatchObject({
+      packageName: 'consumer',
+      specifier: 'webpresso.wpExtensions',
+      compatible: false,
+      detected: false,
+    })
+    expect(loaded[0]?.warnings[0]).toContain('not a direct dependency')
+  })
+
   it('discovers and loads compatible extensions from dependency manifests', async () => {
     const loaded = await loadWpExtensions({
       cwd: '/repo',
       hostVersion: '0.1.5',
       readJsonFile: (path) => {
         if (path === '/repo/package.json') {
-          return { dependencies: { '@webpresso/webpresso': 'workspace:*' } }
+          return { webpresso: { wpExtensions: true }, dependencies: { '@webpresso/webpresso': 'workspace:*' } }
         }
         if (path === '/deps/framework/package.json') {
           return { webpresso: { wpExtension: '@webpresso/webpresso/wp-extension' } }
@@ -77,7 +144,7 @@ describe('wp extension runtime helpers', () => {
       cwd: '/repo',
       hostVersion: '0.2.0',
       readJsonFile: (path) => {
-        if (path === '/repo/package.json') return { dependencies: { framework: '1.0.0' } }
+        if (path === '/repo/package.json') return { webpresso: { wpExtensions: true }, dependencies: { framework: '1.0.0' } }
         if (path === '/deps/framework/package.json') {
           return { webpresso: { wpExtension: 'framework/wp-extension' } }
         }
@@ -97,6 +164,36 @@ describe('wp extension runtime helpers', () => {
 
     expect(loaded[0]?.compatible).toBe(false)
     expect(loaded[0]?.warnings[0]).toContain('requires host ^0.1.0')
+  })
+
+  it('warns when the extension module cannot be resolved', async () => {
+    const loaded = await loadWpExtensions({
+      cwd: '/repo',
+      hostVersion: '0.1.5',
+      readJsonFile: (path) => {
+        if (path === '/repo/package.json') return { webpresso: { wpExtensions: true }, dependencies: { framework: '1.0.0' } }
+        if (path === '/deps/framework/package.json') {
+          return { webpresso: { wpExtension: 'framework/wp-extension' } }
+        }
+        return undefined
+      },
+      resolveFrom: (from, specifier) => {
+        if (from === '/repo/package.json' && specifier === 'framework/package.json') {
+          return '/deps/framework/package.json'
+        }
+        throw new Error(`unresolved: ${from} -> ${specifier}`)
+      },
+      importModule: async () => {
+        throw new Error('must not import unresolved modules')
+      },
+    })
+
+    expect(loaded[0]).toMatchObject({
+      packageName: 'framework',
+      compatible: false,
+      detected: false,
+    })
+    expect(loaded[0]?.warnings[0]).toContain('could not resolve wp extension')
   })
 
   it('skips alias collisions against base commands and earlier extensions', () => {
@@ -135,12 +232,48 @@ describe('wp extension runtime helpers', () => {
     ])
   })
 
+  it('only accepts aliases from compatible extensions that detect the current repo', () => {
+    const detected = {
+      packageName: 'framework-detected',
+      specifier: 'detected',
+      extension: makeExtension(),
+      compatible: true,
+      detected: true,
+      warnings: [],
+    }
+    const mismatched = {
+      packageName: 'framework-mismatched',
+      specifier: 'mismatched',
+      extension: makeExtension({ aliases: [{ name: 'serve', commandName: 'project' }] }),
+      compatible: true,
+      detected: false,
+      warnings: [],
+    }
+    const incompatible = {
+      packageName: 'framework-incompatible',
+      specifier: 'incompatible',
+      extension: makeExtension({ aliases: [{ name: 'start', commandName: 'project' }] }),
+      compatible: false,
+      detected: true,
+      warnings: ['requires host ^9.0.0'],
+    }
+
+    const result = resolveAcceptedExtensionAliases(
+      [detected, mismatched, incompatible],
+      [],
+      ['project'],
+    )
+
+    expect([...result.aliases.keys()]).toEqual(['dev'])
+    expect(result.warnings).toEqual([])
+  })
+
   it('surfaces invalid extension modules as warnings', async () => {
     const loaded = await loadWpExtensions({
       cwd: '/repo',
       hostVersion: '0.1.5',
       readJsonFile: (path) => {
-        if (path === '/repo/package.json') return { dependencies: { framework: '1.0.0' } }
+        if (path === '/repo/package.json') return { webpresso: { wpExtensions: true }, dependencies: { framework: '1.0.0' } }
         if (path === '/deps/framework/package.json')
           return { webpresso: { wpExtension: 'framework/wp-extension' } }
         return undefined
@@ -165,7 +298,7 @@ describe('wp extension runtime helpers', () => {
       cwd: '/repo',
       hostVersion: '0.1.5',
       readJsonFile: (path) => {
-        if (path === '/repo/package.json') return { dependencies: { framework: '1.0.0' } }
+        if (path === '/repo/package.json') return { webpresso: { wpExtensions: true }, dependencies: { framework: '1.0.0' } }
         if (path === '/deps/framework/package.json') {
           return { webpresso: { wpExtension: 'framework/wp-extension' } }
         }

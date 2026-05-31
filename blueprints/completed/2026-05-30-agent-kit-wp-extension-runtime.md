@@ -1,10 +1,10 @@
 ---
 type: blueprint
-status: planned
+status: completed
 complexity: L
 created: '2026-05-30'
-last_updated: '2026-05-30'
-progress: '0% (drafted)'
+last_updated: '2026-05-31'
+progress: '100% (completed)'
 depends_on:
   - 2026-05-30-cross-project-wp-execution-map
 tags:
@@ -62,7 +62,7 @@ base wp host
 
 #### [runtime] Task 1.1: Define `WpExtensionV1` and manifest rules
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -85,13 +85,13 @@ extension breakage.
 
 **Acceptance:**
 
-- [ ] Extension discovery field and module shape are explicitly defined.
-- [ ] Host-range compatibility is part of the contract.
-- [ ] Tests pin the public contract.
+- [x] Extension discovery field and module shape are explicitly defined.
+- [x] Host-range compatibility is part of the contract.
+- [x] Tests pin the public contract.
 
 #### [runtime] Task 1.2: Implement extension discovery and load diagnostics
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -113,15 +113,15 @@ taking down the entire CLI where avoidable.
 
 **Acceptance:**
 
-- [ ] Base `wp` starts without any extension installed.
-- [ ] Missing or broken extensions yield warnings, not silent failure.
-- [ ] Host-range mismatches are diagnosed clearly.
+- [x] Base `wp` starts without any extension installed.
+- [x] Missing or broken extensions yield warnings, not silent failure.
+- [x] Host-range mismatches are diagnosed clearly.
 
 ### Phase 2: command and alias safety [Complexity: M]
 
 #### [cli] Task 1.3: Add repo-aware alias gating
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1, Task 1.2
 
@@ -143,13 +143,13 @@ collision exists.
 
 **Acceptance:**
 
-- [ ] Base command precedence is absolute.
-- [ ] Conflicting aliases warn and skip.
-- [ ] Aliases only appear in matching repos.
+- [x] Base command precedence is absolute.
+- [x] Conflicting aliases warn and skip.
+- [x] Aliases only appear in matching repos.
 
 #### [qa] Task 1.4: Cover degradation paths and package-surface behavior
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1, Task 1.2
 
@@ -170,15 +170,15 @@ degradation-path tests and public-package-safety coverage must be explicit.
 
 **Acceptance:**
 
-- [ ] Extension runtime exports are covered by package-surface tests.
-- [ ] Failure modes are visible and test-pinned.
-- [ ] No private/internal content leaks into public package surfaces.
+- [x] Extension runtime exports are covered by package-surface tests.
+- [x] Failure modes are visible and test-pinned.
+- [x] No private/internal content leaks into public package surfaces.
 
 ### Phase 3: downstream handoff [Complexity: S]
 
 #### [docs] Task 2.1: Document extension consumption for framework and future packages
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.3, Task 1.4
 
@@ -199,8 +199,8 @@ framework-specific implementation details.
 
 **Acceptance:**
 
-- [ ] Downstream packages have a clear extension contract to follow.
-- [ ] The docs keep framework-specific behavior out of the base runtime guide.
+- [x] Downstream packages have a clear extension contract to follow.
+- [x] The docs keep framework-specific behavior out of the base runtime guide.
 
 ## Verification Gates
 
@@ -244,3 +244,18 @@ framework-specific implementation details.
 | --------- | ---------- | ------- | --- |
 | Extension host | `@webpresso/agent-kit` | workspace | Base `wp` runtime |
 | First extension path | `@webpresso/webpresso/wp-extension` | workspace | Locked downstream consumer/provider |
+
+
+## Completion Evidence
+
+- Implemented extension contract and loader in `src/wp-extension/index.ts`.
+- Wired extension command and alias registration through `src/cli/wp-extensions.ts`
+  and `src/cli/cli.ts`.
+- Added regression coverage for no-extension startup, unresolved extension
+  diagnostics, host-range mismatch, repo-detection alias gating, export
+  isolation, and package-surface subpath exposure.
+- Added downstream contract documentation in `docs/wp-extension-runtime.md` and
+  linked it from `docs/README.md`.
+- Verification on 2026-05-31:
+  - `wp test src/wp-extension/index.test.ts src/wp-extension/export-isolation.test.ts src/cli/wp-extensions.test.ts src/audit/package-surface.test.ts src/config/export-resolution.test.ts` — pass.
+  - `wp lint src/wp-extension/index.test.ts src/wp-extension/export-isolation.test.ts src/audit/package-surface.test.ts docs/README.md docs/wp-extension-runtime.md` — pass.
