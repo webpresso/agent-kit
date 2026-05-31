@@ -694,12 +694,5 @@
   "engines": {
     "node": ">=24"
   },
-  "packageManager": "pnpm@11.1.1",
-  "optionalDependencies": {
-    "@webpresso/agent-kit-runtime-darwin-arm64": "0.21.5",
-    "@webpresso/agent-kit-runtime-darwin-x64": "0.21.5",
-    "@webpresso/agent-kit-runtime-linux-x64": "0.21.5",
-    "@webpresso/agent-kit-runtime-linux-arm64": "0.21.5",
-    "@webpresso/agent-kit-runtime-windows-x64": "0.21.5"
-  }
+  "packageManager": "pnpm@11.1.1"
 }
