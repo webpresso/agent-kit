@@ -40,14 +40,14 @@ export function buildTypecheckCommand(options: TypecheckOptions = {}): Typecheck
   const cwd = options.cwd ?? process.cwd()
   const checkTypesScript = getPackageScript(cwd, 'check-types')
   if (checkTypesScript && !isRecursiveWpScript(checkTypesScript, 'typecheck')) {
-    const resolution = getManagedRunner('vp')
+    const resolution = getManagedRunner('vp', { outputPolicy: 'structured' })
     return {
       command: resolution.command,
       args: [...resolution.args, 'run', 'check-types'],
     }
   }
 
-  const resolution = getManagedRunner('tsc')
+  const resolution = getManagedRunner('tsc', { outputPolicy: 'structured' })
   return {
     command: resolution.command,
     args: [...resolution.args, '--noEmit', ...(options.pretty ? [] : ['--pretty', 'false'])],
