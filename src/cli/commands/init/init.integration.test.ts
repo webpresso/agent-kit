@@ -310,7 +310,9 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(existsSync(join(repo, '.agent', 'planning', 'state'))).toBe(false)
     expect(existsSync(join(repo, '.agent', 'planning', 'notepad.md'))).toBe(false)
     expect(existsSync(join(repo, '.agent', 'planning', 'project-memory.json'))).toBe(false)
-    expect(agents).toMatch(/Materialized by setup:[\s\S]*`\.agent\/planning\/plans\/`/)
+    expect(agents).toMatch(
+      /Materialized by setup:[\s\S]*`blueprints\/`[\s\S]*PRDs, test specs, and other blueprint-owned planning artifacts should live[\s\S]*configured blueprint root \(`blueprints\/`\)/,
+    )
     expect(agents).toMatch(
       /Generated on demand \(not created by setup\):[\s\S]*`\.agent\/planning\/contracts\/`[\s\S]*`\.agent\/planning\/state\/`[\s\S]*`\.agent\/planning\/notepad\.md`[\s\S]*`\.agent\/planning\/project-memory\.json`/,
     )
