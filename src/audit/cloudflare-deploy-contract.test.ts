@@ -146,6 +146,46 @@ describe('auditCloudflareDeployContract', () => {
     ).toBe(true)
   })
 
+  it('fails when a Durable Object target uses workers_dev_env', async () => {
+    const root = makeRepo(
+      `
+      export const webpressoConfig = {
+        deploy: {
+          cloudflare: {
+            lanes: {
+              dev: { wranglerEnvName: 'dev' },
+              preview_main: { wranglerEnvName: 'preview-main' },
+              preview_pr: { wranglerEnvNamePattern: 'preview-pr-<n>' },
+              prd: { wranglerEnvName: 'production', deployedWorkerNameMode: 'top_level_name' },
+            },
+            production: { metadataPath: 'infra/release-metadata.production.json' },
+            targets: [
+              {
+                id: 'api',
+                type: 'single_worker',
+                topLevelWorkerName: 'ingest-lens-api',
+                previewTransport: 'workers_dev_env',
+                durableObjectBindings: [{ name: 'TOPIC_ROOMS', className: 'TopicRoom' }],
+                vars: { ALLOWED_ORIGIN: 'https://preview-main.example.com' },
+                requiredSecrets: ['DOPPLER_TOKEN'],
+                storageMode: 'isolated',
+                destroyMode: 'wrangler_delete_env',
+                productionStrategyDefault: 'direct',
+              },
+            ],
+          },
+        },
+      }
+    `,
+      { writeMetadata: true },
+    )
+    const result = await auditCloudflareDeployContract(root)
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations?.some((item) => item.message.includes('must use previewTransport "custom_domain_env"')),
+    ).toBe(true)
+  })
+
   it('passes with metadata present and a valid custom-domain target', async () => {
     const root = makeRepo(
       `

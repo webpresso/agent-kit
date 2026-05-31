@@ -75,11 +75,38 @@ const cloudflareTargetSchema = z
   })
   .strict()
   .superRefine((target, ctx) => {
+    const isDurableObjectTarget = (target.durableObjectBindings?.length ?? 0) > 0;
+
     if (target.previewTransport === 'custom_domain_env' && !target.routeSpec) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['routeSpec'],
         message: 'routeSpec is required when previewTransport is "custom_domain_env".',
+      })
+    }
+
+    if (isDurableObjectTarget && target.previewTransport !== 'custom_domain_env') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['previewTransport'],
+        message:
+          'Durable Object targets must use previewTransport "custom_domain_env" unless a future explicit exception contract is introduced.',
+      })
+    }
+
+    if (isDurableObjectTarget && Object.keys(target.vars).length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['vars'],
+        message: 'Durable Object targets must declare at least one env-specific var.',
+      })
+    }
+
+    if (isDurableObjectTarget && target.requiredSecrets.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['requiredSecrets'],
+        message: 'Durable Object targets must declare at least one required secret name.',
       })
     }
 

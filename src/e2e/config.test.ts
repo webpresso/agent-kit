@@ -351,4 +351,104 @@ describe('validateWebpressoConfig', () => {
         - deploy.cloudflare.targets.0.blastRadiusDoc: blastRadiusDoc is required when storageMode is "shared_via_script_name".]
     `)
   })
+
+  it('rejects Durable Object targets that use workers_dev_env preview transport', () => {
+    expect(() =>
+      validateWebpressoConfig(
+        {
+          deploy: {
+            cloudflare: {
+              lanes: {
+                dev: { wranglerEnvName: 'dev' },
+                preview_main: { wranglerEnvName: 'preview-main' },
+                preview_pr: { wranglerEnvNamePattern: 'preview-pr-<n>' },
+                prd: {
+                  wranglerEnvName: 'production',
+                  deployedWorkerNameMode: 'top_level_name',
+                },
+              },
+              production: {
+                metadataPath: 'infra/release-metadata.production.json',
+              },
+              targets: [
+                {
+                  id: 'api',
+                  type: 'single_worker',
+                  topLevelWorkerName: 'ingest-lens-api',
+                  previewTransport: 'workers_dev_env',
+                  durableObjectBindings: [
+                    {
+                      name: 'TOPIC_ROOMS',
+                      className: 'TopicRoom',
+                    },
+                  ],
+                  vars: {
+                    ALLOWED_ORIGIN: 'https://preview-main.example.com',
+                  },
+                  requiredSecrets: ['DOPPLER_TOKEN'],
+                  storageMode: 'isolated',
+                  destroyMode: 'wrangler_delete_env',
+                  productionStrategyDefault: 'direct',
+                },
+              ],
+            },
+          },
+        },
+        '/repo/webpresso.config.ts',
+      ),
+    ).toThrowErrorMatchingInlineSnapshot(`
+      [WebpressoConfigValidationError: Invalid webpresso config at /repo/webpresso.config.ts:
+        - deploy.cloudflare.targets.0.previewTransport: Durable Object targets must use previewTransport "custom_domain_env" unless a future explicit exception contract is introduced.]
+    `)
+  })
+
+  it('rejects Durable Object targets without env-specific vars and required secret names', () => {
+    expect(() =>
+      validateWebpressoConfig(
+        {
+          deploy: {
+            cloudflare: {
+              lanes: {
+                dev: { wranglerEnvName: 'dev' },
+                preview_main: { wranglerEnvName: 'preview-main' },
+                preview_pr: { wranglerEnvNamePattern: 'preview-pr-<n>' },
+                prd: {
+                  wranglerEnvName: 'production',
+                  deployedWorkerNameMode: 'top_level_name',
+                },
+              },
+              production: {
+                metadataPath: 'infra/release-metadata.production.json',
+              },
+              targets: [
+                {
+                  id: 'api',
+                  type: 'single_worker',
+                  topLevelWorkerName: 'ingest-lens-api',
+                  previewTransport: 'custom_domain_env',
+                  routeSpec: { pattern: 'api.preview-main.example.com' },
+                  durableObjectBindings: [
+                    {
+                      name: 'TOPIC_ROOMS',
+                      className: 'TopicRoom',
+                    },
+                  ],
+                  vars: {},
+                  requiredSecrets: [],
+                  storageMode: 'isolated',
+                  destroyMode: 'wrangler_delete_env',
+                  productionStrategyDefault: 'direct',
+                },
+              ],
+            },
+          },
+        },
+        '/repo/webpresso.config.ts',
+      ),
+    ).toThrowErrorMatchingInlineSnapshot(`
+      [WebpressoConfigValidationError: Invalid webpresso config at /repo/webpresso.config.ts:
+        - deploy.cloudflare.targets.0.vars: Durable Object targets must declare at least one env-specific var.
+        - deploy.cloudflare.targets.0.requiredSecrets: Durable Object targets must declare at least one required secret name.]
+    `)
+  })
 })

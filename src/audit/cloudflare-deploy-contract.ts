@@ -47,6 +47,8 @@ export async function auditCloudflareDeployContract(root: string): Promise<RepoA
   }
 
   for (const target of cloudflare.targets) {
+    const isDurableObjectTarget = (target.durableObjectBindings?.length ?? 0) > 0
+
     if (target.previewTransport === 'custom_domain_env' && !target.routeSpec) {
       violations.push(
         violation(
@@ -61,6 +63,33 @@ export async function auditCloudflareDeployContract(root: string): Promise<RepoA
         violation(
           configPath,
           `target ${target.id} declares durableObjectBindings but provides no env-specific bindings`,
+        ),
+      )
+    }
+
+    if (isDurableObjectTarget && target.previewTransport !== 'custom_domain_env') {
+      violations.push(
+        violation(
+          configPath,
+          `target ${target.id} is a Durable Object consumer and must use previewTransport "custom_domain_env"`,
+        ),
+      )
+    }
+
+    if (isDurableObjectTarget && Object.keys(target.vars).length === 0) {
+      violations.push(
+        violation(
+          configPath,
+          `target ${target.id} is a Durable Object consumer and must declare at least one env-specific var`,
+        ),
+      )
+    }
+
+    if (isDurableObjectTarget && target.requiredSecrets.length === 0) {
+      violations.push(
+        violation(
+          configPath,
+          `target ${target.id} is a Durable Object consumer and must declare at least one required secret name`,
         ),
       )
     }
