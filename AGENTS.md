@@ -157,9 +157,10 @@ architecture decisions in this repo's ADR or planning location if one exists.
 ## Durable planning surface
 
 - Materialized by setup: blueprint lifecycle directories under
-  `blueprints/` (`planned/`, `in-progress/`, `completed/`) and durable
-  plan files under `.agent/planning/plans/` when PRDs or test specs
-  are generated.
+  `blueprints/` (`planned/`, `in-progress/`, `completed/`).
+- PRDs, test specs, and other blueprint-owned planning artifacts should live
+  under the configured blueprint root (`blueprints/`), colocated with
+  the blueprint they refine, rather than under the durable planning root.
 - Generated on demand (not created by setup): boundary contracts at
   `.agent/planning/contracts/`, lifecycle state at
   `.agent/planning/state/`, session notes at

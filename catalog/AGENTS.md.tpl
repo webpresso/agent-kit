@@ -145,9 +145,10 @@ this block is preserved verbatim across `wp sync` runs.
 ## Durable planning surface
 
 - Materialized by setup: blueprint lifecycle directories under
-  `{{BLUEPRINTS_DIR}}/` (`planned/`, `in-progress/`, `completed/`) and durable
-  plan files under `{{DURABLE_PLANNING_ROOT}}plans/` when PRDs or test specs
-  are generated.
+  `{{BLUEPRINTS_DIR}}/` (`planned/`, `in-progress/`, `completed/`).
+- PRDs, test specs, and other blueprint-owned planning artifacts should live
+  under the configured blueprint root (`{{BLUEPRINTS_DIR}}/`), colocated with
+  the blueprint they refine, rather than under the durable planning root.
 - Generated on demand (not created by setup): boundary contracts at
   `{{DURABLE_PLANNING_ROOT}}contracts/`, lifecycle state at
   `{{DURABLE_PLANNING_ROOT}}state/`, session notes at
