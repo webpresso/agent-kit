@@ -9,7 +9,7 @@ related:
   - package-conventions
   - repo-restrictions
 created: '2026-05-26'
-last_reviewed: '2026-05-26'
+last_reviewed: '2026-05-31'
 paths:
   - 'package.json'
   - '.npmignore'
@@ -54,3 +54,26 @@ publish workflow, registry, or catalog assets:
 
 If the tarball includes a denied class of content, the package is not ready to
 publish. Fix the package surface instead of documenting the leak as acceptable.
+
+## Shared deploy-contract surfaces stay provider-neutral
+
+If a public package or template documents the approved Durable Object preview
+lanes contract, keep the shared surface policy-only:
+
+- treat `dev`, `preview_main`, `preview_pr_<n>`, and `prd` as internal lane
+  IDs, not as Cloudflare-facing environment names;
+- derive provider env names separately and make them dash-safe;
+- document that Durable Object-backed previews must not depend on Preview
+  URLs; the default is custom-domain environment previews, with
+  `workers_dev_env` reserved for explicit exception cases;
+- keep the canonical production release metadata path at
+  `infra/release-metadata.production.json`;
+- require the consuming repo's workflow/verifier to fail closed for
+  migration-bearing Durable Object releases;
+- keep provider-specific plumbing, secrets, bindings, and release mechanics
+  out of shared `@webpresso/agent-kit` code, docs, and examples.
+
+Shared packages may define the contract and the guardrail names
+(`verify:deploy-contract`, metadata path, internal lane IDs), but the
+provider-specific implementation belongs in the consuming repo that owns the
+deployment target.

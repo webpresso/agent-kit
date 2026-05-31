@@ -64,3 +64,36 @@ jobs:
           WP="$(pwd)/node_modules/.bin/wp"
           [ -x "$WP" ] || WP=wp
           "$WP" audit guardrails
+
+  deploy-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: pnpm install --frozen-lockfile
+      - name: Verify deploy-contract gate when production release metadata is present
+        run: |
+          set -euo pipefail
+
+          METADATA_PATH='infra/release-metadata.production.json'
+
+          if [ ! -f "$METADATA_PATH" ]; then
+            echo "No production release metadata present at $METADATA_PATH; skipping deploy-contract gate."
+            exit 0
+          fi
+
+          if ! node -e "const pkg=require('./package.json'); process.exit(pkg.scripts && pkg.scripts['verify:deploy-contract'] ? 0 : 1)"; then
+            echo "::error::Detected $METADATA_PATH but no verify:deploy-contract script."
+            echo "::error::Repos adopting the shared deploy contract must keep agent-kit provider-neutral and supply a repo-owned deploy verifier."
+            echo "::error::That verifier owns provider-specific env-name derivation, Preview-URL prohibitions for DO previews, and must fail closed for migration-bearing Durable Object releases."
+            exit 1
+          fi
+
+          pnpm run verify:deploy-contract

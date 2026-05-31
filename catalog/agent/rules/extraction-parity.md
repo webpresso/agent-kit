@@ -7,7 +7,7 @@ scope: repo
 applies_to: [agents, humans]
 related: [blueprint-scoping]
 created: '2026-05-11'
-last_reviewed: '2026-05-11'
+last_reviewed: '2026-05-31'
 ---
 
 # Extraction parity — byte-identity + mutation-score verification
@@ -141,6 +141,32 @@ Reference in the blueprint overview:
 **Verification standard:** byte-identity + mutation-score parity
 (see `catalog/agent/rules/extraction-parity.md`).
 ```
+
+---
+
+## 5. Deploy-contract relocation parity
+
+If the relocation touches shared deploy-contract material (workflow templates,
+policy docs, fixtures, or verifier handoff docs), parity evidence must also
+state that these semantics remained unchanged:
+
+- internal lane IDs stay internal and remain exactly `dev`, `preview_main`,
+  `preview_pr_<n>`, and `prd`;
+- cloud/provider-facing environment names are derived separately and must be
+  dash-safe rather than reusing the internal lane IDs as public contract;
+- Durable Object-backed previews do **not** rely on provider Preview URLs;
+  custom-domain environment previews are the default and `workers_dev_env` is
+  exception-only;
+- production release metadata stays anchored at
+  `infra/release-metadata.production.json`;
+- migration-bearing Durable Object releases fail closed in the consuming
+  repo's deploy verifier/workflow;
+- provider-specific deployment plumbing does not move into shared
+  `@webpresso/agent-kit` surfaces during the extraction.
+
+When any of the above changes intentionally, the move is no longer "pure
+relocation" and the blueprint must document the contract delta explicitly
+instead of claiming parity.
 
 ---
 

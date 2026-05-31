@@ -3,6 +3,14 @@ import { z } from 'zod'
 export const WEBPRESSO_CONFIG_FILE_NAME = 'webpresso.config.ts'
 export const WEBPRESSO_CONFIG_EXPORT_NAME = 'webpressoConfig'
 
+const wranglerEnvNameSchema = z
+  .string()
+  .min(1, 'wranglerEnvName must not be empty.')
+  .regex(
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+    'wranglerEnvName must be dash-safe lowercase letters, numbers, and hyphens only.',
+  )
+
 const e2eWebpressoConfigSchema = z
   .object({
     hostAdapterModule: z.string().min(1, 'e2e.hostAdapterModule must not be empty.'),
@@ -10,9 +18,41 @@ const e2eWebpressoConfigSchema = z
   })
   .strict()
 
+const cloudflareDeployLaneSchema = z
+  .object({
+    wranglerEnvName: wranglerEnvNameSchema,
+  })
+  .strict()
+
+const productionCloudflareDeployLaneSchema = cloudflareDeployLaneSchema.extend({
+  wranglerEnvName: wranglerEnvNameSchema.refine((value) => value === 'production', {
+    message: 'deploy.cloudflare.lanes.prd.wranglerEnvName must be "production".',
+  }),
+})
+
+const cloudflareDeployConfigSchema = z
+  .object({
+    lanes: z
+      .object({
+        dev: cloudflareDeployLaneSchema,
+        preview_main: cloudflareDeployLaneSchema,
+        preview_pr: cloudflareDeployLaneSchema,
+        prd: productionCloudflareDeployLaneSchema,
+      })
+      .strict(),
+  })
+  .strict()
+
+const deployWebpressoConfigSchema = z
+  .object({
+    cloudflare: cloudflareDeployConfigSchema.optional(),
+  })
+  .strict()
+
 const webpressoConfigSchema = z
   .object({
     e2e: e2eWebpressoConfigSchema.optional(),
+    deploy: deployWebpressoConfigSchema.optional(),
   })
   .strict()
 
