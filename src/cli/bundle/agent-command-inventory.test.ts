@@ -41,9 +41,7 @@ describe('AGENT_COMMAND_INVENTORY', () => {
     expect(getLegacyAgentCommandReplacement('wp audit')).toBe('webpresso agent audit')
     expect(getLegacyAgentCommandReplacement('wp skill')).toBe('webpresso agent skills')
     expect(getLegacyAgentCommandReplacement('wp docs lint')).toBe('webpresso agent docs lint')
-    expect(getLegacyAgentCommandReplacement('wp hooks doctor')).toBe(
-      'webpresso agent hooks doctor',
-    )
+    expect(getLegacyAgentCommandReplacement('wp hooks doctor')).toBe('webpresso agent hooks doctor')
     expect(getLegacyAgentCommandReplacement('wp blueprint')).toBe('webpresso agent blueprint')
     expect(getLegacyAgentCommandReplacement('wp test')).toBe('webpresso agent test')
     expect(getLegacyAgentCommandReplacement('wp e2e')).toBe('webpresso agent e2e')

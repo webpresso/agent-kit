@@ -16,6 +16,7 @@ const requiredSubpaths = [
   '@webpresso/agent-kit/launch',
   '@webpresso/agent-kit/test-preset',
   '@webpresso/agent-kit/e2e-preset',
+  '@webpresso/agent-kit/wp-extension',
 ] as const
 
 const exportSourceTargets: Record<string, string> = {
@@ -50,6 +51,7 @@ const exportSourceTargets: Record<string, string> = {
   './test-preset/vitest': './src/config/test-preset/vitest.ts',
   './e2e-preset': './src/config/e2e-preset/index.ts',
   './e2e-preset/playwright': './src/config/e2e-preset/playwright.ts',
+  './wp-extension': './src/wp-extension/index.ts',
 }
 
 const docsLintBins = {

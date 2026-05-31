@@ -5,23 +5,30 @@ export interface ManagedRunnerResolution {
   readonly source: 'managed' | 'fallback'
 }
 
+export type ManagedRunnerOutputPolicy = 'rtk-filtered' | 'structured'
+
 export interface ResolveRunnerOptions {
   readonly fallbackCommand?: string
   readonly fallbackArgs?: readonly string[]
+  /** @deprecated Use {@link outputPolicy} for explicit output routing. */
   readonly filterOutput?: boolean
+  readonly outputPolicy?: ManagedRunnerOutputPolicy
 }
 
-const MANAGED_TOOL_PREFIX: Readonly<Record<string, { command: string; args: readonly string[] }>> = {
-  playwright: { command: 'vp', args: ['exec', 'playwright'] },
-  vitest: { command: 'vp', args: ['exec', 'vitest'] },
-  vp: { command: 'vp', args: [] },
-}
+const MANAGED_TOOL_PREFIX: Readonly<Record<string, { command: string; args: readonly string[] }>> =
+  {
+    oxfmt: { command: 'vp', args: ['exec', 'oxfmt'] },
+    playwright: { command: 'vp', args: ['exec', 'playwright'] },
+    tsc: { command: 'vp', args: ['exec', 'tsc'] },
+    vitest: { command: 'vp', args: ['exec', 'vitest'] },
+    vp: { command: 'vp', args: [] },
+  }
 
 function withOptionalRtk(
   resolution: ManagedRunnerResolution,
-  filterOutput: boolean,
+  outputPolicy: ManagedRunnerOutputPolicy,
 ): ManagedRunnerResolution {
-  if (!filterOutput) return resolution
+  if (outputPolicy !== 'rtk-filtered') return resolution
   return {
     ...resolution,
     command: 'rtk',
@@ -38,7 +45,8 @@ export function resolveRunner(
     throw new Error('tool runtime resolution requires a non-empty tool name')
   }
 
-  const filterOutput = options.filterOutput ?? true
+  const outputPolicy: ManagedRunnerOutputPolicy =
+    options.outputPolicy ?? (options.filterOutput === false ? 'structured' : 'rtk-filtered')
   const managed = MANAGED_TOOL_PREFIX[normalized]
   if (managed) {
     return withOptionalRtk(
@@ -48,7 +56,7 @@ export function resolveRunner(
         args: [...managed.args],
         source: 'managed',
       },
-      filterOutput,
+      outputPolicy,
     )
   }
 
@@ -60,7 +68,7 @@ export function resolveRunner(
         args: [...(options.fallbackArgs ?? [])],
         source: 'fallback',
       },
-      filterOutput,
+      outputPolicy,
     )
   }
 

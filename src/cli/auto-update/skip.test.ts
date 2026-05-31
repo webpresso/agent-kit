@@ -130,6 +130,20 @@ describe('shouldSkipUpdateCheck — CI detection', () => {
   })
 })
 
+describe('shouldSkipUpdateCheck — package lifecycle contexts', () => {
+  it('returns true when npm_lifecycle_event is set by a package script', () => {
+    expect(shouldSkipUpdateCheck({ npm_lifecycle_event: 'test' }, argv('typecheck'))).toStrictEqual(
+      true,
+    )
+  })
+
+  it('returns true when npm_package_json is present from a package lifecycle', () => {
+    expect(
+      shouldSkipUpdateCheck({ npm_package_json: '/repo/package.json' }, argv('format')),
+    ).toStrictEqual(true)
+  })
+})
+
 describe('shouldSkipUpdateCheck — WP_SKIP_AUTO_INSTALL is NOT a skip signal', () => {
   it('returns false when only WP_SKIP_AUTO_INSTALL=1 is set', () => {
     // Per plan: WP_SKIP_AUTO_INSTALL gates only the install side; notify

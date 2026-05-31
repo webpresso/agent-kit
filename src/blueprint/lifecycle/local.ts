@@ -122,7 +122,11 @@ export async function applyBlueprintLifecycleToFile(
   const relativeSlug = relativeBlueprintSlug(location.slug)
   const isFlatFile = path.basename(location.path) !== '_overview.md'
   const sourceDir = path.dirname(location.path)
-  const targetDocumentPaths = getBlueprintDocumentPaths(baseDir, mutation.targetStatus, relativeSlug)
+  const targetDocumentPaths = getBlueprintDocumentPaths(
+    baseDir,
+    mutation.targetStatus,
+    relativeSlug,
+  )
   const targetDir = targetDocumentPaths.directory
   const targetPath = isFlatFile ? targetDocumentPaths.flat : targetDocumentPaths.folder
 

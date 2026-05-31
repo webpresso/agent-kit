@@ -80,7 +80,7 @@ describe('runLint', () => {
     const result = await runLint({ cwd: dir, files: ['a.ts'] })
 
     expect(result.passed).toBe(true)
-    expect(getManagedRunner).toHaveBeenCalledWith('vp', { filterOutput: false })
+    expect(getManagedRunner).toHaveBeenCalledWith('vp', { outputPolicy: 'structured' })
     const [cmd, args] = spawnMock.mock.calls[0]!
     expect(cmd).toBe('vp')
     expect(args).toEqual(['lint', '--format=json', 'a.ts'])

@@ -52,7 +52,7 @@ describe('release workflow publish path', () => {
     const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
     expect(workflow.includes('pnpm changeset publish')).toBe(false)
     expect(workflow.includes('pnpm publish --no-git-checks')).toBe(false)
-    expect(workflow.includes('changesets/action@v1')).toBe(true)
+    expect(workflow).toMatch(/uses:\s+changesets\/action@/)
     expect(workflow.includes('version: pnpm run version')).toBe(true)
     expect(workflow.includes('publish: pnpm run release:publish')).toBe(true)
     expect(workflow.includes('createGithubReleases: false')).toBe(true)

@@ -191,7 +191,11 @@ function todayIsoDate(): string {
   return new Date().toISOString().split('T')[0] ?? new Date().toISOString()
 }
 
-function formatBlueprintProgress(totalTasks: number, doneTasks: number, blockedTasks: number): string {
+function formatBlueprintProgress(
+  totalTasks: number,
+  doneTasks: number,
+  blockedTasks: number,
+): string {
   const percent = totalTasks === 0 ? 0 : Math.round((doneTasks / totalTasks) * 100)
   return `${percent}% (${doneTasks}/${totalTasks} tasks done, ${blockedTasks} blocked, updated ${todayIsoDate()})`
 }
@@ -409,8 +413,10 @@ function findBlueprintDir(
 ): { dir: string; path: string; shape: 'flat' | 'folder'; state: BlueprintStatus } | null {
   for (const state of states) {
     const paths = getBlueprintDocumentPaths(blueprintRoot, state, slug)
-    if (existsSync(paths.flat)) return { dir: path.dirname(paths.flat), path: paths.flat, shape: 'flat', state }
-    if (existsSync(paths.directory)) return { dir: paths.directory, path: paths.folder, shape: 'folder', state }
+    if (existsSync(paths.flat))
+      return { dir: path.dirname(paths.flat), path: paths.flat, shape: 'flat', state }
+    if (existsSync(paths.directory))
+      return { dir: paths.directory, path: paths.folder, shape: 'folder', state }
   }
   return null
 }

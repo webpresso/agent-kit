@@ -328,7 +328,8 @@ export function auditBlueprintLifecycle(
           const hasNestedMarkdown = readdirSync(join(statusRoot, entry.name), {
             withFileTypes: true,
           }).some(
-            (nested) => nested.isFile() && nested.name.endsWith('.md') && nested.name !== 'README.md',
+            (nested) =>
+              nested.isFile() && nested.name.endsWith('.md') && nested.name !== 'README.md',
           )
 
           if (hasNestedMarkdown) {

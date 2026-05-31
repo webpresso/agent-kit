@@ -17,8 +17,7 @@ describe('stage-plugin-runtime-artifacts', () => {
     expect(operations[0]).toMatchObject({
       source: '/repo/dist/runtime/darwin-arm64/wp',
       pluginDestination: '/repo/bin/runtime/darwin-arm64/wp',
-      packageBinaryDestination:
-        '/repo/dist/runtime-packages/agent-kit-runtime-darwin-arm64/bin/wp',
+      packageBinaryDestination: '/repo/dist/runtime-packages/agent-kit-runtime-darwin-arm64/bin/wp',
       packageManifestDestination:
         '/repo/dist/runtime-packages/agent-kit-runtime-darwin-arm64/package.json',
     })
@@ -60,9 +59,7 @@ describe('stage-plugin-runtime-artifacts', () => {
 
       const [operation] = buildRuntimeStageOperations({ rootDir: root })
       expect(readFileSync(operation!.pluginDestination, 'utf8')).toBe('runtime:darwin-arm64')
-      expect(readFileSync(operation!.packageBinaryDestination, 'utf8')).toBe(
-        'runtime:darwin-arm64',
-      )
+      expect(readFileSync(operation!.packageBinaryDestination, 'utf8')).toBe('runtime:darwin-arm64')
       expect(existsSync(operation!.packageManifestDestination)).toBe(true)
       expect(JSON.parse(readFileSync(operation!.packageManifestDestination, 'utf8')).version).toBe(
         '9.8.7',

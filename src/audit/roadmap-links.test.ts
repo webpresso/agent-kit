@@ -85,12 +85,7 @@ describe('auditRoadmapLinks', () => {
 
   test('passes for flat-file roadmap and child references', () => {
     const root = tempRepo()
-    writeFlatBlueprint(
-      root,
-      'planned',
-      'roadmap-a',
-      roadmap('| Wave 0 | planned/child-a.md |'),
-    )
+    writeFlatBlueprint(root, 'planned', 'roadmap-a', roadmap('| Wave 0 | planned/child-a.md |'))
     writeFlatBlueprint(root, 'planned', 'child-a', child('roadmap-a'))
 
     const result = auditRoadmapLinks(root)

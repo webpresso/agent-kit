@@ -64,7 +64,7 @@ ingest-lens / edge-matte
 | **Wave 1** | 1.2, 1.3 | Task 1.1 | 2 agents | S |
 | **Wave 2** | 2.1, 2.2, 2.3 | Wave 1 | 3 agents | S-M |
 | **Wave 3** | 3.1 | Wave 2 | 1 agent | M |
-| **Critical path** | 1.1 → 1.2 → 2.1 → 3.1 | -- | 4 waves | L |
+| **Critical path** | 1.1 → 1.2 → 2.1 → 2.3 → 3.1 | -- | 4 waves | L |
 
 ### Parallel Metrics Snapshot
 
@@ -201,9 +201,9 @@ Keep the framework extension separate from thin-consumer repo migrations so
 
 **Files:**
 
-- Create: `/Users/ozby/repos/webpresso/framework/blueprints/planned/2026-05-30-framework-wp-extension.md`
-- Create: `/Users/ozby/repos/ozby/ingest-lens/blueprints/planned/2026-05-30-ingest-lens-wp-thin-consumer.md`
-- Create: `/Users/ozby/repos/ozby/edge-matte/blueprints/planned/2026-05-30-edge-matte-wp-thin-consumer.md`
+- Create: `framework/blueprints/planned/2026-05-30-framework-wp-extension.md`
+- Create: `ingest-lens/blueprints/planned/2026-05-30-ingest-lens-wp-thin-consumer.md`
+- Create: `edge-matte/blueprints/planned/2026-05-30-edge-matte-wp-thin-consumer.md`
 
 **Steps (TDD):**
 
@@ -229,7 +229,7 @@ monorepo downstream of framework extraction and thin-consumer learnings.
 
 **Files:**
 
-- Create: `/Users/ozby/repos/webpresso/monorepo/webpresso/blueprints/planned/2026-05-30-monorepo-wp-first-framework-consumer.md`
+- Create: `monorepo/webpresso/blueprints/planned/2026-05-30-monorepo-wp-first-framework-consumer.md`
 
 **Steps (TDD):**
 
@@ -276,7 +276,8 @@ cross-project implementation.
 | Gate | Command | Success Criteria |
 | ---- | ------- | ---------------- |
 | Blueprint lifecycle | `wp audit blueprint-lifecycle` | Zero lifecycle violations |
-| Cross-plan consistency | repo-local blueprint validation/audit | No broken references |
+| Cross-plan consistency | `wp blueprint audit` | No broken references from this map to repo-local plans |
+| Cross-repo smoke matrix | `wp setup --yes --cwd <repo>` then `wp --version && wp install --help && wp test --help` | All participating repos boot with `@webpresso/agent-kit` ownership and no raw-command regressions in public surfaces |
 
 ## Cross-Plan References
 

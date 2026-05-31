@@ -60,9 +60,7 @@ export async function runFormat(options: RunFormatOptions = {}): Promise<FormatR
   if (options.files && options.files.length > 0) args.push(...options.files)
 
   const resolution = getManagedRunner('oxfmt', {
-    fallbackCommand: 'oxfmt',
-    fallbackArgs: [],
-    filterOutput: false,
+    outputPolicy: 'structured',
   })
   const outcome = await runCommand(resolution.command, [...resolution.args, ...args], runOptions)
 

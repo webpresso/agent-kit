@@ -42,19 +42,15 @@ function runScript(
   cwd: string,
   flags: readonly string[],
 ): { stdout: string; stderr: string; status: number } {
-  const result = spawnSync(
-    'bun',
-    [SCRIPT_PATH, ...flags],
-    {
-      cwd,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: {
-        ...FAST_GIT_ENV,
-        PATH: [fixtureForCwd.get(cwd)?.binDir, process.env.PATH].filter(Boolean).join(':'),
-      },
+  const result = spawnSync('bun', [SCRIPT_PATH, ...flags], {
+    cwd,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...FAST_GIT_ENV,
+      PATH: [fixtureForCwd.get(cwd)?.binDir, process.env.PATH].filter(Boolean).join(':'),
     },
-  )
+  })
 
   return {
     stdout: result.stdout ?? '',
@@ -99,12 +95,7 @@ function createFixture({ withRemote = false }: { withRemote?: boolean } = {}): F
   writeFileSync(join(repoDir, '.gitignore'), 'dist/\n')
   writeFileSync(
     join(binDir, 'pnpm'),
-    [
-      '#!/bin/sh',
-      "grep -q 'process.exit(1)' package.json && exit 1",
-      'exit 0',
-      '',
-    ].join('\n'),
+    ['#!/bin/sh', "grep -q 'process.exit(1)' package.json && exit 1", 'exit 0', ''].join('\n'),
     'utf8',
   )
   execSync(`chmod +x "${join(binDir, 'pnpm')}"`)

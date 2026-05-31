@@ -79,9 +79,7 @@ describe('scaffoldBaseKit', () => {
       'latest',
     )
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
-    expect((pkg['scripts'] as Record<string, string>)['lint']).toBe(
-      'wp lint src e2e *.config.ts',
-    )
+    expect((pkg['scripts'] as Record<string, string>)['lint']).toBe('wp lint src e2e *.config.ts')
     expect((pkg['scripts'] as Record<string, string>)['typecheck']).toBe('wp typecheck')
     expect((pkg['scripts'] as Record<string, string>)['test']).toBe(
       'wp test --file vitest.config.ts',
@@ -97,7 +95,7 @@ describe('scaffoldBaseKit', () => {
       'wp lint src e2e *.config.ts',
     )
     expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
-      'WP_SKIP_UPDATE_CHECK=1 wp audit absolute-path-policy --root .',
+      'wp audit absolute-path-policy --root .',
     )
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
       'bun scripts/check-no-dev-vars.ts',
@@ -126,7 +124,7 @@ describe('scaffoldBaseKit', () => {
     )
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
     expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
-      'WP_SKIP_UPDATE_CHECK=1 wp audit absolute-path-policy --root .',
+      'wp audit absolute-path-policy --root .',
     )
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
       'bun scripts/check-no-dev-vars.ts',
@@ -136,9 +134,7 @@ describe('scaffoldBaseKit', () => {
     )
     expect((pkg['scripts'] as Record<string, string>)['prepare']).toBe('husky')
     expect((pkg['scripts'] as Record<string, string>)['test']).toBe('vitest')
-    expect((pkg['scripts'] as Record<string, string>)['lint']).toBe(
-      'wp lint src e2e *.config.ts',
-    )
+    expect((pkg['scripts'] as Record<string, string>)['lint']).toBe('wp lint src e2e *.config.ts')
   })
 
   it('replaces npm init placeholder test script with the starter test lane', () => {
@@ -180,7 +176,7 @@ describe('scaffoldBaseKit', () => {
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('vp exec wp setup')
     expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
-      'WP_SKIP_UPDATE_CHECK=1 wp audit absolute-path-policy --root .',
+      'wp audit absolute-path-policy --root .',
     )
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
       'bun scripts/check-no-dev-vars.ts',
@@ -248,7 +244,7 @@ describe('scaffoldBaseKit', () => {
     ).toBeUndefined()
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
     expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
-      'WP_SKIP_UPDATE_CHECK=1 wp audit absolute-path-policy --root .',
+      'wp audit absolute-path-policy --root .',
     )
     expect((pkg['scripts'] as Record<string, string>)['verify:secrets']).toBe(
       'bun scripts/check-no-dev-vars.ts',
@@ -287,7 +283,7 @@ describe('scaffoldBaseKit', () => {
       unknown
     >
     expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
-      'WP_SKIP_UPDATE_CHECK=1 wp audit absolute-path-policy --root .',
+      'wp audit absolute-path-policy --root .',
     )
   })
 
@@ -322,7 +318,9 @@ describe('scaffoldBaseKit', () => {
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBeUndefined()
+    expect(
+      (pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit'],
+    ).toBeUndefined()
     expect((pkg['scripts'] as Record<string, string>)['test']).toBe(
       'wp test --file vitest.config.ts',
     )

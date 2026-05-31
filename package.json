@@ -116,6 +116,9 @@
     "#tool-runtime": "./src/tool-runtime/index.ts",
     "#tool-runtime/*.js": "./src/tool-runtime/*.ts",
     "#tool-runtime/*": "./src/tool-runtime/*.ts",
+    "#wp-extension": "./src/wp-extension/index.ts",
+    "#wp-extension/*.js": "./src/wp-extension/*.ts",
+    "#wp-extension/*": "./src/wp-extension/*.ts",
     "#runtime/*.js": "./src/runtime/*.ts",
     "#runtime/*": "./src/runtime/*.ts",
     "#output-transforms/*.js": "./src/output-transforms/*.ts",
@@ -467,6 +470,12 @@
         "default": "./dist/esm/typecheck/index.js"
       }
     },
+    "./wp-extension": {
+      "import": {
+        "types": "./dist/esm/wp-extension/index.d.ts",
+        "default": "./dist/esm/wp-extension/index.js"
+      }
+    },
     "./vite": {
       "import": {
         "types": "./dist/esm/vite/index.d.ts",
@@ -532,34 +541,34 @@
     "sync-marketplace-version": "bun scripts/sync-marketplace-version.ts",
     "version": "changeset version && vp run sync-marketplace-version",
     "release:publish": "bun scripts/release-publish.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "wp typecheck",
     "test": "vitest run --exclude '**/*.integration.test.ts' --maxWorkers 1 && vitest run --no-file-parallelism .integration.test.ts --testTimeout 30000",
     "test:unit": "vitest run --exclude '**/*.integration.test.ts' --maxWorkers 1",
     "test:integration": "vitest run --no-file-parallelism .integration.test.ts --testTimeout 30000",
     "test:mutation": "bun stryker run stryker.config.ts",
     "eval": "bun src/runners/evals/index.ts",
-    "lint": "vp lint",
-    "lint:fix": "vp lint --fix",
-    "format": "WP_SKIP_UPDATE_CHECK=1 wp format",
-    "format:check": "WP_SKIP_UPDATE_CHECK=1 wp format --check",
+    "lint": "wp lint",
+    "lint:fix": "wp lint --fix",
+    "format": "wp format",
+    "format:check": "wp format --check",
     "lint:pkg": "publint && attw --pack . && (command -v claude >/dev/null 2>&1 && claude plugin validate . || true)",
-    "blueprints:check": "WP_SKIP_UPDATE_CHECK=1 wp audit blueprint-lifecycle",
-    "docs:check": "WP_SKIP_UPDATE_CHECK=1 wp audit docs-frontmatter",
-    "catalog:check": "WP_SKIP_UPDATE_CHECK=1 wp audit catalog-drift",
-    "license:check": "WP_SKIP_UPDATE_CHECK=1 bun src/cli/cli.ts audit open-source-licenses && bash scripts/verify-no-context-mode.sh",
-    "imports:check": "WP_SKIP_UPDATE_CHECK=1 wp audit no-relative-parent-imports",
+    "blueprints:check": "wp audit blueprint-lifecycle",
+    "docs:check": "wp audit docs-frontmatter",
+    "catalog:check": "wp audit catalog-drift",
+    "license:check": "wp audit open-source-licenses && bash scripts/verify-no-context-mode.sh",
+    "imports:check": "wp audit no-relative-parent-imports",
     "verify:secrets": "bun scripts/check-no-dev-vars.ts",
     "audit:secret-provider-quarantine": "bun scripts/audit-secret-provider-quarantine.ts",
     "workflow-actions:check": "bun scripts/check-workflow-action-pins.ts",
     "public:consumer-smoke": "bun scripts/public-consumer-smoke.ts",
     "public:readiness": "bun scripts/public-readiness.ts",
-    "audits:check": "WP_SKIP_UPDATE_CHECK=1 wp audit guardrails && vp run workflow-actions:check && vp run hooks:doctor:ci",
-    "hooks:doctor": "WP_SKIP_UPDATE_CHECK=1 wp hooks doctor",
-    "hooks:doctor:ci": "WP_SKIP_UPDATE_CHECK=1 wp hooks doctor --skip-mcp",
+    "audits:check": "wp audit guardrails && vp run workflow-actions:check && vp run hooks:doctor:ci",
+    "hooks:doctor": "wp hooks doctor",
+    "hooks:doctor:ci": "wp hooks doctor --skip-mcp",
     "qa": "vp run build && vp run typecheck && vp run lint && vp run format:check && vp run test && vp run lint:pkg && vp run audits:check",
     "changeset": "changeset",
     "changeset:status": "changeset status",
-    "verify:paths": "WP_SKIP_UPDATE_CHECK=1 wp audit absolute-path-policy --root .",
+    "verify:paths": "wp audit absolute-path-policy --root .",
     "prepare": "husky"
   },
   "dependencies": {
@@ -670,6 +679,7 @@
       "./symlinker": "./src/symlinker/index.ts",
       "./test": "./src/test/index.ts",
       "./typecheck": "./src/typecheck/index.ts",
+      "./wp-extension": "./src/wp-extension/index.ts",
       "./vite": "./src/vite/index.ts",
       "./vite/local": "./src/vite/local.ts",
       "./ai-memory": "./src/ai-memory/index.ts",
@@ -684,5 +694,12 @@
   "engines": {
     "node": ">=24"
   },
-  "packageManager": "pnpm@11.1.1"
+  "packageManager": "pnpm@11.1.1",
+  "optionalDependencies": {
+    "@webpresso/agent-kit-runtime-darwin-arm64": "0.21.5",
+    "@webpresso/agent-kit-runtime-darwin-x64": "0.21.5",
+    "@webpresso/agent-kit-runtime-linux-x64": "0.21.5",
+    "@webpresso/agent-kit-runtime-linux-arm64": "0.21.5",
+    "@webpresso/agent-kit-runtime-windows-x64": "0.21.5"
+  }
 }

@@ -259,7 +259,10 @@ export class BlueprintService extends TrackedDocumentService<
         // Keep trying the other canonical shape.
       }
     }
-    const filePath = resolvedBlueprintPath ?? directCandidates[0] ?? path.join(this.baseDir, bpSlug, '_overview.md')
+    const filePath =
+      resolvedBlueprintPath ??
+      directCandidates[0] ??
+      path.join(this.baseDir, bpSlug, '_overview.md')
     const content = await fs.readFile(filePath, 'utf-8')
     const parsed = matter(content)
     const data = JSON.parse(JSON.stringify(parsed.data)) as Record<string, unknown>

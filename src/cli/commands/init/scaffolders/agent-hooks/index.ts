@@ -357,21 +357,31 @@ function normalizeCodexAgentKitCommands(hooks: HooksMap, repoRoot: string): Hook
   return normalized
 }
 
-function pruneLegacyClaudeAgentKitCommands(hooks: HooksMap): HooksMap {
+function normalizeClaudeAgentKitCommands(hooks: HooksMap): HooksMap {
   const normalized: HooksMap = {}
 
   for (const [event, groups] of Object.entries(hooks)) {
-    const keptGroups = groups
-      .map((group) => {
-        const keptHooks = group.hooks.filter((hook) => {
-          const classification = classifyWebpressoHookBin(extractClaudeBinName(hook.command))
-          return classification === null || classification.kind !== 'legacy'
-        })
-        return keptHooks.length > 0 ? { ...group, hooks: keptHooks } : null
-      })
-      .filter((group): group is HookGroup => group !== null)
+    const normalizedGroups = groups.reduce<HookGroup[]>((dedupedGroups, group) => {
+      const nextGroup = {
+        ...group,
+        hooks: group.hooks.flatMap((hook) => {
+          const command = hook.command
+          if (typeof command !== 'string') return hook
+          const classification = classifyWebpressoHookBin(extractClaudeBinName(command))
+          if (classification === null) return hook
+          if (classification.kind === 'legacy') return []
+          return {
+            ...hook,
+            command: CC_BIN(classification.binName),
+          }
+        }),
+      }
+      if (nextGroup.hooks.length === 0) return dedupedGroups
 
-    if (keptGroups.length > 0) normalized[event] = keptGroups
+      return ensureGroup(dedupedGroups, nextGroup)
+    }, [])
+
+    if (normalizedGroups.length > 0) normalized[event] = normalizedGroups
   }
 
   return normalized
@@ -448,7 +458,7 @@ function patchClaudeSettings(
   existing: Record<string, unknown>,
   skillHooks: readonly SkillHook[],
 ): Record<string, unknown> {
-  const existingHooks = pruneLegacyClaudeAgentKitCommands((existing.hooks ?? {}) as HooksMap)
+  const existingHooks = normalizeClaudeAgentKitCommands((existing.hooks ?? {}) as HooksMap)
   const withSkills = mergeSkillHooks(existingHooks, skillHooks)
   const webpresso = buildWebpressoHookGroups({
     resolveBin: CC_BIN,

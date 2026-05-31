@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { globSync } from 'glob'
 
+import { getPackageScript, isRecursiveWpScript, packageUsesVitest } from '#cli/package-scripts.js'
 import { isRunFailure, runCommand as runSharedCommand } from '#mcp/tools/_shared/run-command'
 
 // Keep the runner's own deadline comfortably below common MCP client call
@@ -99,6 +100,19 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
   const workspaceShardRuns = createWorkspaceVitestShardRuns(cwd, workspaceSharding)
   if (workspaceShardRuns && workspaceShardRuns.length > 0) {
     return runScopedSequence(cwd, workspaceShardRuns, input, workspaceSharding)
+  }
+
+  if (shouldBypassWorkspaceTestScript(cwd)) {
+    const result = await runCommand(
+      'vp',
+      ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color'],
+      {
+        ...input,
+        cwd,
+        timeoutMs: commandTimeoutMs,
+      },
+    )
+    return withFailureScope(result, 'workspace vitest command')
   }
 
   const result = await runCommand('vp', ['run', 'test'], {
@@ -298,6 +312,12 @@ function hasRootVitestTestScript(cwd: string): boolean {
   if (!scripts || typeof scripts !== 'object' || Array.isArray(scripts)) return false
   const testScript = (scripts as Record<string, unknown>).test
   return typeof testScript === 'string' && /\bvitest\b/.test(testScript)
+}
+
+function shouldBypassWorkspaceTestScript(cwd: string): boolean {
+  const testScript = getPackageScript(cwd, 'test')
+  if (!testScript || !isRecursiveWpScript(testScript, 'test')) return false
+  return packageUsesVitest(cwd)
 }
 
 function discoverVitestFiles(cwd: string): string[] {

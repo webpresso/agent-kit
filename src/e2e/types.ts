@@ -1,3 +1,5 @@
+import type { ManagedRunnerOutputPolicy } from '#tool-runtime'
+
 export type E2eRunnerKind = 'playwright' | 'vitest' | 'command'
 
 export interface CommandConfig {
@@ -55,6 +57,7 @@ export interface E2eCommandRequest {
   testList?: string
   passthrough?: readonly string[]
   filterOutput?: boolean
+  outputPolicy?: ManagedRunnerOutputPolicy
 }
 
 export interface E2eExecutionRequest extends E2eCommandRequest {

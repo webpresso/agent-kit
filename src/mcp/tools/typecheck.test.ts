@@ -68,10 +68,10 @@ describe('wp_typecheck tool', () => {
       expect(spawnMock).toHaveBeenCalledTimes(2)
       const [cmd0, args0] = spawnMock.mock.calls[0]!
       const [cmd1, args1] = spawnMock.mock.calls[1]!
-      expect(cmd0).toBe('tsc')
-      expect(args0).toEqual(['--noEmit', '-p', join('a', 'tsconfig.json')])
-      expect(cmd1).toBe('tsc')
-      expect(args1).toEqual(['--noEmit', '-p', join('b', 'tsconfig.json')])
+      expect(cmd0).toBe('vp')
+      expect(args0).toEqual(['exec', 'tsc', '--noEmit', '-p', join('a', 'tsconfig.json')])
+      expect(cmd1).toBe('vp')
+      expect(args1).toEqual(['exec', 'tsc', '--noEmit', '-p', join('b', 'tsconfig.json')])
     })
 
     it('spawns plain `tsc --noEmit` when no packages given', async () => {
@@ -81,8 +81,8 @@ describe('wp_typecheck tool', () => {
 
       expect(spawnMock).toHaveBeenCalledTimes(1)
       const [cmd, args] = spawnMock.mock.calls[0]!
-      expect(cmd).toBe('tsc')
-      expect(args).toEqual(['--noEmit'])
+      expect(cmd).toBe('vp')
+      expect(args).toEqual(['exec', 'tsc', '--noEmit'])
     })
   })
 

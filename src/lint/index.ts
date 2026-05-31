@@ -149,8 +149,12 @@ export async function runLint(options: RunLintOptions = {}): Promise<LintResult>
     lintArgs.push('.')
   }
 
-  const resolution = getManagedRunner('vp', { filterOutput: false })
-  const vpOutcome = await runCommand(resolution.command, [...resolution.args, ...lintArgs], runOptions)
+  const resolution = getManagedRunner('vp', { outputPolicy: 'structured' })
+  const vpOutcome = await runCommand(
+    resolution.command,
+    [...resolution.args, ...lintArgs],
+    runOptions,
+  )
   if (isRunFailure(vpOutcome)) {
     return {
       passed: false,

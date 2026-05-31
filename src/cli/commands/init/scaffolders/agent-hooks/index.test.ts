@@ -21,6 +21,14 @@ function codexBinCommand(repoRoot: string, name: string): string {
   return `[ -x "${binPath}" ] && "${binPath}" || true`
 }
 
+function claudeBinCommand(name: string): string {
+  const binPath = `$CLAUDE_PROJECT_DIR/node_modules/.bin/${name}`
+  if (name === 'wp-pretool-guard') {
+    return `[ -x "${binPath}" ] && "${binPath}" || printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp-pretool-guard is unavailable. Run vp install or wp setup."}}'`
+  }
+  return `[ -x "${binPath}" ] && "${binPath}" || true`
+}
+
 const WEBPRESSO_HOOK_BINS = [
   'wp-sessionstart-routing',
   'wp-check-dev-link',
@@ -278,6 +286,41 @@ describe('scaffoldAgentHooks', () => {
       g.hooks.map((h) => h.command),
     ).filter((cmd) => cmd.includes('check-gstack.sh'))
     expect(gstackSkillMatches).toHaveLength(1)
+  })
+
+  it('rewrites stale Claude wp-pretool-guard wrappers to the managed fail-closed form without duplicates', async () => {
+    const settingsPath = join(repoRoot, '.claude', 'settings.json')
+    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
+    const staleGuard =
+      '[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-pretool-guard" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-pretool-guard" || true'
+    writeFileSync(
+      settingsPath,
+      JSON.stringify(
+        {
+          hooks: {
+            PreToolUse: [
+              {
+                matcher: 'Bash|Write|Edit|MultiEdit',
+                hooks: [{ type: 'command', command: staleGuard, timeout: 5 }],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+
+    await scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const settings = JSON.parse(readFileSync(settingsPath, 'utf8')) as {
+      hooks: { PreToolUse: Array<{ matcher?: string; hooks: Array<{ command: string }> }> }
+    }
+    const wpPretoolGuards = settings.hooks.PreToolUse.flatMap((group) =>
+      group.hooks.map((hook) => hook.command),
+    ).filter((command) => command.includes('wp-pretool-guard'))
+
+    expect(wpPretoolGuards).toStrictEqual([claudeBinCommand('wp-pretool-guard')])
   })
 
   it('does not duplicate the wp-check-dev-link entry on a second scaffold', async () => {

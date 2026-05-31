@@ -238,6 +238,23 @@ describe('test runner', () => {
     expect(args).toEqual(['run', 'test'])
   })
 
+  it('bypasses a recursive workspace wp test script and runs vitest directly', async () => {
+    writeFileSync(
+      join(defaultRoot!, 'package.json'),
+      JSON.stringify({
+        scripts: { test: 'wp test' },
+        devDependencies: { vitest: '^4.0.0' },
+      }),
+    )
+    spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
+
+    await runTests({})
+
+    const [cmd, args] = spawnMock.mock.calls[0]!
+    expect(cmd).toBe('vp')
+    expect(args).toEqual(['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color'])
+  })
+
   it('shards root vitest workspace runs across discovered test files', async () => {
     writeVitestWorkspace(defaultRoot!)
     const files = writeTestFiles(defaultRoot!, 6)

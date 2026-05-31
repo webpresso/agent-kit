@@ -112,10 +112,7 @@ export function isCanonicalBlueprintDocumentPath(
   return getCanonicalBlueprintDocument(filePath, blueprintsRoot) !== null
 }
 
-function getCanonicalBlueprintDocument(
-  filePath: string,
-  blueprintsRoot?: string,
-) {
+function getCanonicalBlueprintDocument(filePath: string, blueprintsRoot?: string) {
   const normalized = normalizePlanningPath(filePath)
   const roots = blueprintsRoot ? [blueprintsRoot] : CANONICAL_BLUEPRINTS_ROOTS
   const stripped = stripBlueprintRoot(normalized, roots)
@@ -154,7 +151,12 @@ export function getBlueprintPathViolation(
   const [state, slug, doc] = parts
   const root = stripped.root
 
-  if (parts.length === 2 && typeof doc === 'undefined' && typeof slug === 'string' && slug.endsWith('.md')) {
+  if (
+    parts.length === 2 &&
+    typeof doc === 'undefined' &&
+    typeof slug === 'string' &&
+    slug.endsWith('.md')
+  ) {
     return `Blueprint markdown under ${root}/<status>/ must be either <slug>.md or <slug>/${BLUEPRINT_OVERVIEW_FILENAME}. Got: ${normalized}`
   }
 
@@ -162,11 +164,14 @@ export function getBlueprintPathViolation(
     return `Blueprint overview files must live at ${root}/<status>/<slug>/${BLUEPRINT_OVERVIEW_FILENAME}. Got: ${normalized}`
   }
 
-  if (
-    parts.length === 3 &&
-    isBlueprintSupportingMarkdownRelativePath(stripped.relativePath)
-  ) {
-    const canonicalOverviewPath = path.join(cwd, root, state ?? '', slug ?? '', BLUEPRINT_OVERVIEW_FILENAME)
+  if (parts.length === 3 && isBlueprintSupportingMarkdownRelativePath(stripped.relativePath)) {
+    const canonicalOverviewPath = path.join(
+      cwd,
+      root,
+      state ?? '',
+      slug ?? '',
+      BLUEPRINT_OVERVIEW_FILENAME,
+    )
     if (!existsSync(canonicalOverviewPath)) {
       return `Supporting blueprint markdown requires ${root}/${state}/${slug}/${BLUEPRINT_OVERVIEW_FILENAME}. Got: ${normalized}`
     }

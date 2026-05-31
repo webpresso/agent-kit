@@ -39,12 +39,15 @@ describe('mcp server integration', () => {
   }
 
   it('responds to tools/list with wp_test registered and a JSON Schema', async () => {
-    const tools = await withClient(async (client) => (await client.listTools()).tools as Array<{
-      name: string
-      description?: string
-      inputSchema: { type: string; properties?: Record<string, unknown> }
-      outputSchema?: { type: string; properties?: Record<string, unknown> }
-    }>)
+    const tools = await withClient(
+      async (client) =>
+        (await client.listTools()).tools as Array<{
+          name: string
+          description?: string
+          inputSchema: { type: string; properties?: Record<string, unknown> }
+          outputSchema?: { type: string; properties?: Record<string, unknown> }
+        }>,
+    )
     const wpTest = tools.find((t) => t.name === 'wp_test')
     expect(wpTest).toBeDefined()
     expect(wpTest?.inputSchema.type).toBe('object')
@@ -201,9 +204,12 @@ describe('mcp server integration', () => {
   // `wp_blueprint_projects` aggregate) must be advertised by the main server,
   // not just available via direct registrar tests.
   it('advertises the 9 structured blueprint tools in tools/list (Task 2.1)', async () => {
-    const tools = await withClient(async (client) => (await client.listTools()).tools as Array<{
-      name: string
-    }>)
+    const tools = await withClient(
+      async (client) =>
+        (await client.listTools()).tools as Array<{
+          name: string
+        }>,
+    )
     const names = tools.map((t) => t.name)
     expect(names).toEqual(
       expect.arrayContaining([

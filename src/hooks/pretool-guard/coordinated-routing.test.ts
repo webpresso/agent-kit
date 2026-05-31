@@ -63,6 +63,11 @@ describe('coordinated routing pipeline', () => {
   describe('Phase 1: dev-workflow → deny', () => {
     const devCommands = [
       'vp exec vitest run',
+      'pnpm exec vitest run',
+      'npm exec -- vitest run',
+      'npx vitest run',
+      'yarn vitest run',
+      'bunx vitest run',
       'vitest src/',
       'vp exec oxlint .',
       'oxlint .',

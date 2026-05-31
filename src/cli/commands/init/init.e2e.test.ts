@@ -221,7 +221,9 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(preToolCommand).not.toContain('|| true')
       expect(r.stdout).toContain('wp init: setup phases finished.')
       expect(r.stdout).toContain('Runtime-owned tooling contract:')
-      expect(r.stdout).toContain('wp now owns execution for test, e2e, lint, format, and typecheck.')
+      expect(r.stdout).toContain(
+        'wp now owns execution for test, e2e, lint, format, and typecheck.',
+      )
       expect(r.stdout).toContain(
         'Do not blanket-remove devDependencies just because wp can execute the tool.',
       )
