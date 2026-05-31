@@ -17,6 +17,10 @@ const KNOWN_WEBPRESSO_CODEX_BIN_SET = new Set<string>(KNOWN_WEBPRESSO_CODEX_BINS
 const NODE_MODULES_BIN_PATTERN = /^(?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+)$/u
 const GUARDED_NODE_MODULES_BIN_PATTERN =
   /^\[ -x (["']?)((?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+))\1 \] && \1\2\1 \|\| (?:true|printf .+)$/u
+const MANAGED_LAUNCHER_PATTERN =
+  /^(?:["']?)((?:\.\/|\/.*\/)?\.codex\/managed-hooks\/((?:wp|ak)-[\w-]+)\.sh)(?:["']?)$/u
+const GUARDED_MANAGED_LAUNCHER_PATTERN =
+  /^\[ -x (["']?)((?:\.\/|\/.*\/)?\.codex\/managed-hooks\/((?:wp|ak)-[\w-]+)\.sh)\1 \] && \1\2\1 \|\| (?:true|printf .+)$/u
 
 export interface CodexHookOwnershipMetadata {
   readonly isManaged?: unknown
@@ -64,9 +68,14 @@ function extractDirectNodeModulesBin(command: string): string | null {
   const normalizedCommand = stripSingleShellQuotePair(command.trim())
   const match = NODE_MODULES_BIN_PATTERN.exec(normalizedCommand)
   if (match?.[1]) return match[1]
+  const managedLauncherMatch = MANAGED_LAUNCHER_PATTERN.exec(normalizedCommand)
+  if (managedLauncherMatch?.[2]) return managedLauncherMatch[2]
 
   const guardedMatch = GUARDED_NODE_MODULES_BIN_PATTERN.exec(command.trim())
-  return guardedMatch?.[3] ?? null
+  if (guardedMatch?.[3]) return guardedMatch[3]
+
+  const guardedManagedLauncherMatch = GUARDED_MANAGED_LAUNCHER_PATTERN.exec(command.trim())
+  return guardedManagedLauncherMatch?.[3] ?? null
 }
 
 function stripSingleShellQuotePair(value: string): string {

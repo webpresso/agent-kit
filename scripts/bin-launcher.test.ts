@@ -169,6 +169,29 @@ describe('bin launcher', () => {
     })
   })
 
+  it('keeps latency-sensitive hook bins on built dist even when source is newer', () => {
+    expect(
+      buildLaunchPlan({
+        binName: 'wp-guard-switch',
+        repoRoot: '/repo',
+        forwardedArgs: [],
+        builtExists: true,
+        sourceExists: true,
+        builtMtimeMs: 100,
+        sourceMtimeMs: 200,
+        nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
+      }),
+    ).toEqual({
+      mode: 'built',
+      runtime: '/usr/bin/node',
+      args: ['/repo/dist/esm/hooks/guard-switch/index.js'],
+      entrypoint: '/repo/dist/esm/hooks/guard-switch/index.js',
+    })
+  })
+
   it('re-execs through mise when the built package pins a different exact Node version', () => {
     expect(
       buildLaunchPlan({
