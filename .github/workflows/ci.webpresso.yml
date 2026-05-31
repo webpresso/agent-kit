@@ -93,6 +93,12 @@ jobs:
         with:
           bun-version: latest
       - run: pnpm install --frozen-lockfile
+      - name: Link in-tree wp bins
+        # pnpm adds node_modules/.bin to PATH for package scripts, but does not
+        # self-link this package's own bin entries during install. The check job
+        # intentionally exercises wp-first scripts before build, so create the
+        # same local shims that build creates via link-self-bins.
+        run: pnpm run link-self-bins
       - name: Open-source license surface
         run: pnpm run license:check
       - run: pnpm run typecheck

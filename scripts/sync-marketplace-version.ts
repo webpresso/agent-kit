@@ -1,7 +1,7 @@
 /**
- * Keeps .claude-plugin/marketplace.json#metadata.version and #version in sync
- * with package.json#version. Run automatically as part of `changeset version`
- * so the marketplace manifest never drifts after a release bump.
+ * Keeps Claude plugin publishing manifests and snapshots in sync with
+ * package.json#version. Run automatically as part of `changeset version`
+ * so marketplace/plugin metadata never drifts after a release bump.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -9,20 +9,32 @@ import { fileURLToPath } from 'node:url'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const marketplacePath = resolve(repoRoot, '.claude-plugin', 'marketplace.json')
+const pluginPath = resolve(repoRoot, '.claude-plugin', 'plugin.json')
+const pluginFixturePath = resolve(repoRoot, '__fixtures__', 'plugin-manifest', 'expected.json')
 
 const { version } = JSON.parse(readFileSync(resolve(repoRoot, 'package.json'), 'utf8')) as {
   version: string
 }
 
-const manifest = JSON.parse(readFileSync(marketplacePath, 'utf8')) as Record<string, unknown> & {
+const marketplaceManifest = JSON.parse(readFileSync(marketplacePath, 'utf8')) as Record<string, unknown> & {
   metadata?: { version?: string }
   version?: string
 }
 
-manifest.version = version
-if (manifest.metadata && typeof manifest.metadata === 'object') {
-  manifest.metadata.version = version
+marketplaceManifest.version = version
+if (marketplaceManifest.metadata && typeof marketplaceManifest.metadata === 'object') {
+  marketplaceManifest.metadata.version = version
 }
 
-writeFileSync(marketplacePath, JSON.stringify(manifest, null, 2) + '\n')
-console.log(`marketplace.json synced to ${version}`)
+const pluginManifest = JSON.parse(readFileSync(pluginPath, 'utf8')) as Record<string, unknown> & {
+  version?: string
+}
+
+pluginManifest.version = version
+
+const pluginJson = JSON.stringify(pluginManifest, null, 2) + '\n'
+
+writeFileSync(marketplacePath, JSON.stringify(marketplaceManifest, null, 2) + '\n')
+writeFileSync(pluginPath, pluginJson)
+writeFileSync(pluginFixturePath, pluginJson)
+console.log(`Claude plugin manifests synced to ${version}`)
