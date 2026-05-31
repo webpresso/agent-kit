@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -229,12 +229,15 @@ describe('tooling umbrella package contract', () => {
     const { tarballPath, cleanup } = createPackedTarball()
     const tmpRoot = mkdtempSync(join(tmpdir(), 'wp-packed-consumer-'))
     const launcherRoot = mkdtempSync(join(tmpdir(), 'wp-packed-launcher-'))
+    const packedPackageRoot = join(launcherRoot, 'package')
     const fakeHome = join(tmpRoot, '.home')
     const fakeCodexHome = join(tmpRoot, '.codex-home')
 
     try {
       execFileSync('git', ['init', '-q'], { cwd: tmpRoot, encoding: 'utf8' })
       execFileSync('git', ['init', '-q'], { cwd: launcherRoot, encoding: 'utf8' })
+      execFileSync('tar', ['-xzf', tarballPath, '-C', launcherRoot], { encoding: 'utf8' })
+      symlinkSync(join(REPO_ROOT, 'node_modules'), join(packedPackageRoot, 'node_modules'), 'junction')
       writeFileSync(
         join(tmpRoot, 'package.json'),
         JSON.stringify(
@@ -254,8 +257,8 @@ describe('tooling umbrella package contract', () => {
       )
 
       const output = execFileSync(
-        'npm',
-        ['exec', '--yes', '--package', tarballPath, '--', 'wp', 'setup', '--yes', '--cwd', tmpRoot],
+        process.execPath,
+        [join(packedPackageRoot, 'bin', 'wp.js'), 'setup', '--yes', '--cwd', tmpRoot],
         {
           cwd: launcherRoot,
           encoding: 'utf8',

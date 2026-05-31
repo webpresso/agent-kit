@@ -3,8 +3,8 @@ type: blueprint
 status: planned
 complexity: L
 created: '2026-05-30'
-last_updated: '2026-05-30'
-progress: '0% (drafted)'
+last_updated: '2026-05-31'
+progress: '35% (agent-kit base blueprint completed)'
 depends_on: []
 tags:
   - wp
@@ -82,7 +82,7 @@ graph lands before the repo-local blueprints branch in parallel. Score: **B-**.
 
 #### [docs] Task 1.1: Lock the cross-repo ownership and dependency graph
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -185,9 +185,9 @@ cleanup.
 
 **Acceptance:**
 
-- [ ] The base-wp blueprint exists and links back to this umbrella plan.
-- [ ] It does not mix framework-specific behavior into agent-kit.
-- [ ] Lifecycle audit passes.
+- [x] The base-wp blueprint exists and links back to this umbrella plan.
+- [x] It does not mix framework-specific behavior into agent-kit.
+- [x] Lifecycle audit passes.
 
 #### [docs] Task 2.2: Create the framework-extension and thin-consumer blueprints
 

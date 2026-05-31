@@ -11,19 +11,10 @@ describe('wp package-manager commands', () => {
     expect(PACKAGE_MANAGER_VERBS).toEqual(['install', 'add', 'remove', 'update', 'exec', 'run'])
   })
 
-  it('routes install through managed vp', () => {
-    expect(
-      buildPackageManagerCommand('install', ['node', 'wp', 'install', '--frozen-lockfile']),
-    ).toEqual({
+  it.each(PACKAGE_MANAGER_VERBS)('routes %s through managed vp', (verb) => {
+    expect(buildPackageManagerCommand(verb, ['node', 'wp', verb, '--flag', 'value'])).toEqual({
       command: 'vp',
-      args: ['install', '--frozen-lockfile'],
-    })
-  })
-
-  it('routes add through managed vp and preserves flags', () => {
-    expect(buildPackageManagerCommand('add', ['node', 'wp', 'add', '-D', 'zod'])).toEqual({
-      command: 'vp',
-      args: ['add', '-D', 'zod'],
+      args: [verb, '--flag', 'value'],
     })
   })
 

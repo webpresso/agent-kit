@@ -1,10 +1,10 @@
 ---
 type: blueprint
-status: planned
+status: completed
 complexity: L
 created: '2026-05-30'
-last_updated: '2026-05-30'
-progress: '0% (drafted)'
+last_updated: '2026-05-31'
+progress: '100% (completed)'
 depends_on:
   - 2026-05-30-cross-project-wp-execution-map
 tags:
@@ -26,7 +26,7 @@ toolchain routing internal, and removing public leakage of raw `vp`, direct
 - Goal input: `Base wp surface in agent-kit`
 - Complexity: `L`
 - Draft slug: `2026-05-30-agent-kit-base-wp-core`
-- Output path: `blueprints/planned/2026-05-30-agent-kit-base-wp-core.md`
+- Output path: `blueprints/completed/2026-05-30-agent-kit-base-wp-core.md`
 - Validation scope: parser compliance + package-surface safety
 
 ## Architecture Overview
@@ -73,7 +73,7 @@ but package-surface cleanup stays downstream to avoid export/bin conflicts.
 
 #### [cli] Task 1.1: Add first-class package verbs to base `wp`
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -98,13 +98,13 @@ be public UX, not just internal helpers.
 
 **Acceptance:**
 
-- [ ] Base `wp` exposes package verbs directly.
-- [ ] Delegation happens through managed `vp`, not public raw shell snippets.
-- [ ] Tests pin the public command surface.
+- [x] Base `wp` exposes package verbs directly.
+- [x] Delegation happens through managed `vp`, not public raw shell snippets.
+- [x] Tests pin the public command surface.
 
 #### [runtime] Task 1.2: Finish managed tool runner routing
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -129,15 +129,15 @@ command ultimately needs `vp exec`.
 
 **Acceptance:**
 
-- [ ] No runtime path spawns bare `tsc`.
-- [ ] Public test/typecheck/lint/format flows do not require direct tool commands.
-- [ ] Managed runner tests cover the intended delegate contracts.
+- [x] No runtime path spawns bare `tsc`.
+- [x] Public test/typecheck/lint/format flows do not require direct tool commands.
+- [x] Managed runner tests cover the intended delegate contracts.
 
 ### Phase 2: public-surface cleanup [Complexity: M]
 
 #### [docs] Task 1.3: Migrate public docs, scripts, and workflows to `wp`-first language
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1
 
@@ -162,13 +162,13 @@ delegate or explicit low-level escape hatch.
 
 **Acceptance:**
 
-- [ ] Public docs/scripts prefer `wp` for common workflows.
-- [ ] Remaining `vp` mentions are clearly internal or exceptional.
-- [ ] Contract tests guard against regressions.
+- [x] Public docs/scripts prefer `wp` for common workflows.
+- [x] Remaining `vp` mentions are clearly internal or exceptional.
+- [x] Contract tests guard against regressions.
 
 #### [qa] Task 1.4: Keep package scripts and lifecycle hooks recursion-safe
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1, Task 1.2
 
@@ -189,15 +189,15 @@ Generalize the existing recursion-safety work beyond `wp test` and
 
 **Acceptance:**
 
-- [ ] Self-recursive wrapper paths bypass safely.
-- [ ] Package-lifecycle chatter stays internal and automatic.
-- [ ] Guard behavior is covered by tests.
+- [x] Self-recursive wrapper paths bypass safely.
+- [x] Package-lifecycle chatter stays internal and automatic.
+- [x] Guard behavior is covered by tests.
 
 ### Phase 3: package-surface safety [Complexity: S]
 
 #### [qa] Task 2.1: Verify new public bins/exports stay package-safe
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.3, Task 1.4
 
@@ -219,9 +219,16 @@ verification must be part of the plan, not an afterthought.
 
 **Acceptance:**
 
-- [ ] Package-surface tests cover the new base `wp` surface.
-- [ ] Tarball/bin/export checks are part of the final verification gates.
-- [ ] No private content leaks onto public package surfaces.
+- [x] Package-surface tests cover the new base `wp` surface.
+- [x] Tarball/bin/export checks are part of the final verification gates.
+- [x] No private content leaks onto public package surfaces.
+
+## Completion Evidence
+
+- `wp` top-level package verbs are implemented in `src/cli/commands/package-manager.ts` and registered from `src/cli/cli.ts`.
+- Managed runner routing keeps `tsc`, `vitest`, `oxlint`, and `oxfmt` behind the `vp exec` delegate in `src/tool-runtime/resolve-runner.ts`.
+- Recursive package-script bypass behavior is covered by `src/cli/package-scripts.test.ts` and the test command builder.
+- Package-surface and public-command guardrails are covered by `package.contract.test.ts`, `scripts/bin-launcher.test.ts`, and `src/audit/no-legacy-cli-bin.test.ts`.
 
 ## Verification Gates
 
