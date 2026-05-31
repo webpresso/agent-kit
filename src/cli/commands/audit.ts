@@ -93,6 +93,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     (await import('#audit/no-legacy-cli-bin')).auditNoLegacyCliBin(root),
   'architecture-drift': async (root) =>
     (await import('#audit/architecture-drift')).auditArchitectureDrift(root),
+  'cloudflare-deploy-contract': async (root) =>
+    (await import('#audit/cloudflare-deploy-contract')).auditCloudflareDeployContract(root),
   'absolute-path-policy': async (root) =>
     (await import('#audit/absolute-path-policy')).auditAbsolutePathPolicy(root),
   'agent-cost': async (root) => (await import('#audit/agent-cost')).auditAgentCost(root),

@@ -32,6 +32,7 @@ const KINDS = [
   'docs-frontmatter',
   'blueprint-lifecycle',
   'architecture-drift',
+  'cloudflare-deploy-contract',
   'absolute-path-policy',
   'roadmap-links',
   'bundle-budget',
@@ -186,6 +187,18 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
     case 'architecture-drift': {
       const { auditArchitectureDrift } = await import('#audit/architecture-drift')
       const auditResult = auditArchitectureDrift(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
+    case 'cloudflare-deploy-contract': {
+      const { auditCloudflareDeployContract } = await import('#audit/cloudflare-deploy-contract')
+      const auditResult = await auditCloudflareDeployContract(
+        input.cwd ?? input.directory ?? process.cwd(),
+      )
       return {
         passed: auditResult.ok,
         summary: summarizeRepoAudit(kind, auditResult),

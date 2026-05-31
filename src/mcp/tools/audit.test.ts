@@ -38,6 +38,10 @@ const architectureDriftMock = {
   auditArchitectureDrift: vi.fn(),
 }
 
+const cloudflareDeployContractMock = {
+  auditCloudflareDeployContract: vi.fn(),
+}
+
 const absolutePathPolicyMock = {
   auditAbsolutePathPolicy: vi.fn(),
 }
@@ -51,6 +55,7 @@ vi.mock('#audit/agents', () => agentsAuditMock)
 vi.mock('#audit/tech-debt', () => techDebtMock)
 vi.mock('#audit/ai-contracts', () => aiContractsMock)
 vi.mock('#audit/architecture-drift', () => architectureDriftMock)
+vi.mock('#audit/cloudflare-deploy-contract', () => cloudflareDeployContractMock)
 vi.mock('#audit/absolute-path-policy', () => absolutePathPolicyMock)
 vi.mock('../../vite/local.js', () => viteLocalMock)
 vi.mock('node:child_process', () => ({ spawn: spawnMock }))
@@ -103,6 +108,7 @@ beforeEach(() => {
   techDebtMock.auditTechDebt.mockReset()
   aiContractsMock.auditAiContracts.mockReset()
   architectureDriftMock.auditArchitectureDrift.mockReset()
+  cloudflareDeployContractMock.auditCloudflareDeployContract.mockReset()
   absolutePathPolicyMock.auditAbsolutePathPolicy.mockReset()
   viteLocalMock.runBundleBudgetCli.mockReset()
   spawnMock.mockReset()
@@ -184,6 +190,15 @@ describe('wp_audit tool', () => {
       const payload = parsePayload(result)
       expect(payload.passed).toBe(true)
       expect(payload.kind).toBe('architecture-drift')
+    })
+
+    it('cloudflare-deploy-contract -> auditCloudflareDeployContract', async () => {
+      cloudflareDeployContractMock.auditCloudflareDeployContract.mockResolvedValue(passingAudit())
+      const result = await akAuditTool.handler({ kind: 'cloudflare-deploy-contract' })
+      expect(cloudflareDeployContractMock.auditCloudflareDeployContract).toHaveBeenCalledTimes(1)
+      const payload = parsePayload(result)
+      expect(payload.passed).toBe(true)
+      expect(payload.kind).toBe('cloudflare-deploy-contract')
     })
 
     it('absolute-path-policy -> auditAbsolutePathPolicy', async () => {

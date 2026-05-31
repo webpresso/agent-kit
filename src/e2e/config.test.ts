@@ -17,9 +17,16 @@ describe('defineWebpressoConfig', () => {
           lanes: {
             dev: { wranglerEnvName: 'dev' },
             preview_main: { wranglerEnvName: 'preview-main' },
-            preview_pr: { wranglerEnvName: 'preview-pr' },
-            prd: { wranglerEnvName: 'production' },
+            preview_pr: { wranglerEnvNamePattern: 'preview-pr-<n>' },
+            prd: {
+              wranglerEnvName: 'production',
+              deployedWorkerNameMode: 'top_level_name',
+            },
           },
+          production: {
+            metadataPath: 'infra/release-metadata.production.json',
+          },
+          targets: [],
         },
       },
     })
@@ -33,9 +40,16 @@ describe('defineWebpressoConfig', () => {
           lanes: {
             dev: { wranglerEnvName: 'dev' },
             preview_main: { wranglerEnvName: 'preview-main' },
-            preview_pr: { wranglerEnvName: 'preview-pr' },
-            prd: { wranglerEnvName: 'production' },
+            preview_pr: { wranglerEnvNamePattern: 'preview-pr-<n>' },
+            prd: {
+              wranglerEnvName: 'production',
+              deployedWorkerNameMode: 'top_level_name',
+            },
           },
+          production: {
+            metadataPath: 'infra/release-metadata.production.json',
+          },
+          targets: [],
         },
       },
     })
@@ -56,9 +70,16 @@ describe('validateWebpressoConfig', () => {
               lanes: {
                 dev: { wranglerEnvName: 'dev' },
                 preview_main: { wranglerEnvName: 'preview-main' },
-                preview_pr: { wranglerEnvName: 'preview-pr' },
-                prd: { wranglerEnvName: 'production' },
+                preview_pr: { wranglerEnvNamePattern: 'preview-pr-<n>' },
+                prd: {
+                  wranglerEnvName: 'production',
+                  deployedWorkerNameMode: 'top_level_name',
+                },
               },
+              production: {
+                metadataPath: 'infra/release-metadata.production.json',
+              },
+              targets: [],
             },
           },
         },
@@ -70,9 +91,16 @@ describe('validateWebpressoConfig', () => {
           lanes: {
             dev: { wranglerEnvName: 'dev' },
             preview_main: { wranglerEnvName: 'preview-main' },
-            preview_pr: { wranglerEnvName: 'preview-pr' },
-            prd: { wranglerEnvName: 'production' },
+            preview_pr: { wranglerEnvNamePattern: 'preview-pr-<n>' },
+            prd: {
+              wranglerEnvName: 'production',
+              deployedWorkerNameMode: 'top_level_name',
+            },
           },
+          production: {
+            metadataPath: 'infra/release-metadata.production.json',
+          },
+          targets: [],
         },
       },
     })
@@ -100,9 +128,16 @@ describe('validateWebpressoConfig', () => {
               lanes: {
                 dev: { wranglerEnvName: 'dev_env' },
                 preview_main: { wranglerEnvName: 'preview-main' },
-                preview_pr: { wranglerEnvName: 'preview-pr' },
-                prd: { wranglerEnvName: 'production' },
+                preview_pr: { wranglerEnvNamePattern: 'preview-pr-<n>' },
+                prd: {
+                  wranglerEnvName: 'production',
+                  deployedWorkerNameMode: 'top_level_name',
+                },
               },
+              production: {
+                metadataPath: 'infra/release-metadata.production.json',
+              },
+              targets: [],
             },
           },
         },
@@ -123,9 +158,16 @@ describe('validateWebpressoConfig', () => {
               lanes: {
                 dev: { wranglerEnvName: 'dev' },
                 preview_main: { wranglerEnvName: 'preview-main' },
-                preview_pr: { wranglerEnvName: 'preview-pr' },
-                prd: { wranglerEnvName: 'prd' },
+                preview_pr: { wranglerEnvNamePattern: 'preview-pr-<n>' },
+                prd: {
+                  wranglerEnvName: 'prd',
+                  deployedWorkerNameMode: 'top_level_name',
+                },
               },
+              production: {
+                metadataPath: 'infra/release-metadata.production.json',
+              },
+              targets: [],
             },
           },
         },
@@ -146,8 +188,15 @@ describe('validateWebpressoConfig', () => {
               lanes: {
                 dev: { wranglerEnvName: 'dev' },
                 preview_main: { wranglerEnvName: 'preview-main' },
-                prd: { wranglerEnvName: 'production' },
+                prd: {
+                  wranglerEnvName: 'production',
+                  deployedWorkerNameMode: 'top_level_name',
+                },
               },
+              production: {
+                metadataPath: 'infra/release-metadata.production.json',
+              },
+              targets: [],
             },
           },
         },
@@ -156,6 +205,150 @@ describe('validateWebpressoConfig', () => {
     ).toThrowErrorMatchingInlineSnapshot(`
       [WebpressoConfigValidationError: Invalid webpresso config at /repo/webpresso.config.ts:
         - deploy.cloudflare.lanes.preview_pr: Invalid input: expected object, received undefined]
+    `)
+  })
+
+  it('rejects preview_pr env-name patterns that are not dash-safe', () => {
+    expect(() =>
+      validateWebpressoConfig(
+        {
+          deploy: {
+            cloudflare: {
+              lanes: {
+                dev: { wranglerEnvName: 'dev' },
+                preview_main: { wranglerEnvName: 'preview-main' },
+                preview_pr: { wranglerEnvNamePattern: 'preview_pr_<n>' },
+                prd: {
+                  wranglerEnvName: 'production',
+                  deployedWorkerNameMode: 'top_level_name',
+                },
+              },
+              production: {
+                metadataPath: 'infra/release-metadata.production.json',
+              },
+              targets: [],
+            },
+          },
+        },
+        '/repo/webpresso.config.ts',
+      ),
+    ).toThrowErrorMatchingInlineSnapshot(`
+      [WebpressoConfigValidationError: Invalid webpresso config at /repo/webpresso.config.ts:
+        - deploy.cloudflare.lanes.preview_pr.wranglerEnvNamePattern: wranglerEnvNamePattern must be dash-safe and end with -<n>.]
+    `)
+  })
+
+  it('rejects production metadata paths that drift from the shared contract', () => {
+    expect(() =>
+      validateWebpressoConfig(
+        {
+          deploy: {
+            cloudflare: {
+              lanes: {
+                dev: { wranglerEnvName: 'dev' },
+                preview_main: { wranglerEnvName: 'preview-main' },
+                preview_pr: { wranglerEnvNamePattern: 'preview-pr-<n>' },
+                prd: {
+                  wranglerEnvName: 'production',
+                  deployedWorkerNameMode: 'top_level_name',
+                },
+              },
+              production: {
+                metadataPath: 'infra/release.json',
+              },
+              targets: [],
+            },
+          },
+        },
+        '/repo/webpresso.config.ts',
+      ),
+    ).toThrowErrorMatchingInlineSnapshot(`
+      [WebpressoConfigValidationError: Invalid webpresso config at /repo/webpresso.config.ts:
+        - deploy.cloudflare.production.metadataPath: Invalid input: expected "infra/release-metadata.production.json"]
+    `)
+  })
+
+  it('rejects custom-domain previews without routeSpec', () => {
+    expect(() =>
+      validateWebpressoConfig(
+        {
+          deploy: {
+            cloudflare: {
+              lanes: {
+                dev: { wranglerEnvName: 'dev' },
+                preview_main: { wranglerEnvName: 'preview-main' },
+                preview_pr: { wranglerEnvNamePattern: 'preview-pr-<n>' },
+                prd: {
+                  wranglerEnvName: 'production',
+                  deployedWorkerNameMode: 'top_level_name',
+                },
+              },
+              production: {
+                metadataPath: 'infra/release-metadata.production.json',
+              },
+              targets: [
+                {
+                  id: 'api',
+                  type: 'single_worker',
+                  topLevelWorkerName: 'edge-matte',
+                  previewTransport: 'custom_domain_env',
+                  vars: {},
+                  requiredSecrets: [],
+                  storageMode: 'isolated',
+                  destroyMode: 'wrangler_delete_env',
+                  productionStrategyDefault: 'direct',
+                },
+              ],
+            },
+          },
+        },
+        '/repo/webpresso.config.ts',
+      ),
+    ).toThrowErrorMatchingInlineSnapshot(`
+      [WebpressoConfigValidationError: Invalid webpresso config at /repo/webpresso.config.ts:
+        - deploy.cloudflare.targets.0.routeSpec: routeSpec is required when previewTransport is "custom_domain_env".]
+    `)
+  })
+
+  it('rejects shared_via_script_name targets without blastRadiusDoc', () => {
+    expect(() =>
+      validateWebpressoConfig(
+        {
+          deploy: {
+            cloudflare: {
+              lanes: {
+                dev: { wranglerEnvName: 'dev' },
+                preview_main: { wranglerEnvName: 'preview-main' },
+                preview_pr: { wranglerEnvNamePattern: 'preview-pr-<n>' },
+                prd: {
+                  wranglerEnvName: 'production',
+                  deployedWorkerNameMode: 'top_level_name',
+                },
+              },
+              production: {
+                metadataPath: 'infra/release-metadata.production.json',
+              },
+              targets: [
+                {
+                  id: 'api',
+                  type: 'single_worker',
+                  topLevelWorkerName: 'ingest-lens-api',
+                  previewTransport: 'workers_dev_env',
+                  vars: {},
+                  requiredSecrets: [],
+                  storageMode: 'shared_via_script_name',
+                  destroyMode: 'wrangler_delete_env',
+                  productionStrategyDefault: 'gradual',
+                },
+              ],
+            },
+          },
+        },
+        '/repo/webpresso.config.ts',
+      ),
+    ).toThrowErrorMatchingInlineSnapshot(`
+      [WebpressoConfigValidationError: Invalid webpresso config at /repo/webpresso.config.ts:
+        - deploy.cloudflare.targets.0.blastRadiusDoc: blastRadiusDoc is required when storageMode is "shared_via_script_name".]
     `)
   })
 })

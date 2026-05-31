@@ -23,6 +23,7 @@ export type AuditKind =
   | 'memory-unified'
   | 'compile-drift'
   | 'architecture-drift'
+  | 'cloudflare-deploy-contract'
   | 'absolute-path-policy'
   | 'agent-cost'
   | 'blueprint-db-consistency'

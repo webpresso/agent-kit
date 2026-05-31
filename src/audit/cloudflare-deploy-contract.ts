@@ -1,0 +1,84 @@
+import { existsSync } from 'node:fs'
+import path from 'node:path'
+
+import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
+import { loadWebpressoConfigSafe } from '#e2e/load-host-adapter'
+
+function violation(file: string, message: string): RepoAuditViolation {
+  return { file, message }
+}
+
+export async function auditCloudflareDeployContract(root: string): Promise<RepoAuditResult> {
+  let loaded
+  try {
+    loaded = await loadWebpressoConfigSafe({ cwd: root })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return {
+      ok: false,
+      title: 'Cloudflare deploy contract',
+      checked: 1,
+      violations: [violation(path.join(root, 'webpresso.config.ts'), message)],
+    }
+  }
+
+  const configPath = loaded?.configPath ?? path.join(root, 'webpresso.config.ts')
+  const cloudflare = loaded?.config.deploy?.cloudflare
+
+  if (!cloudflare) {
+    return {
+      ok: true,
+      title: 'Cloudflare deploy contract',
+      checked: 0,
+      violations: [],
+    }
+  }
+
+  const violations: RepoAuditViolation[] = []
+
+  const metadataPath = path.join(root, cloudflare.production.metadataPath)
+  if (!existsSync(metadataPath)) {
+    violations.push(
+      violation(
+        configPath,
+        `shared deploy contract requires ${cloudflare.production.metadataPath} to exist`,
+      ),
+    )
+  }
+
+  for (const target of cloudflare.targets) {
+    if (target.previewTransport === 'custom_domain_env' && !target.routeSpec) {
+      violations.push(
+        violation(
+          configPath,
+          `target ${target.id} uses custom_domain_env but does not declare routeSpec`,
+        ),
+      )
+    }
+
+    if (target.durableObjectBindings && target.durableObjectBindings.length === 0) {
+      violations.push(
+        violation(
+          configPath,
+          `target ${target.id} declares durableObjectBindings but provides no env-specific bindings`,
+        ),
+      )
+    }
+
+    if (target.storageMode === 'shared_via_script_name' && !target.blastRadiusDoc) {
+      violations.push(
+        violation(
+          configPath,
+          `target ${target.id} uses shared_via_script_name without blastRadiusDoc`,
+        ),
+      )
+    }
+  }
+
+  return {
+    ok: violations.length === 0,
+    title: 'Cloudflare deploy contract',
+    checked: 1 + cloudflare.targets.length,
+    violations,
+  }
+}
