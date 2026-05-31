@@ -14,7 +14,16 @@ describe('buildE2eCommand', () => {
       }),
     ).toEqual({
       command: 'rtk',
-      args: ['vp', '--dir', 'apps/e2e', 'exec', 'playwright', 'test', '--config', 'playwright.config.ts'],
+      args: [
+        'vp',
+        '--dir',
+        'apps/e2e',
+        'exec',
+        'playwright',
+        'test',
+        '--config',
+        'playwright.config.ts',
+      ],
     })
   })
 
@@ -92,6 +101,22 @@ describe('buildE2eCommand', () => {
     ).toEqual({
       command: 'pnpm',
       args: ['exec', 'tsx', 'scripts/codegen-url.ts', '--flag', 'sdk/example.ts'],
+    })
+  })
+
+  it('forwards explicit outputPolicy through managed runners', () => {
+    expect(
+      buildE2eCommand({
+        step: {
+          runner: 'playwright',
+          logName: 'journeys',
+          configPath: 'apps/e2e/playwright.config.ts',
+        },
+        outputPolicy: 'structured',
+      }),
+    ).toEqual({
+      command: 'vp',
+      args: ['--dir', 'apps/e2e', 'exec', 'playwright', 'test', '--config', 'playwright.config.ts'],
     })
   })
 })

@@ -15,15 +15,15 @@ describe('wp typecheck command', () => {
 
   it('builds the default no-emit command with stable non-pretty output', () => {
     expect(buildTypecheckCommand()).toEqual({
-      command: 'rtk',
-      args: ['tsc', '--noEmit', '--pretty', 'false'],
+      command: 'vp',
+      args: ['exec', 'tsc', '--noEmit', '--pretty', 'false'],
     })
   })
 
   it('can preserve pretty output when requested', () => {
     expect(buildTypecheckCommand({ pretty: true })).toEqual({
-      command: 'rtk',
-      args: ['tsc', '--noEmit'],
+      command: 'vp',
+      args: ['exec', 'tsc', '--noEmit'],
     })
   })
 
@@ -37,8 +37,23 @@ describe('wp typecheck command', () => {
     )
 
     expect(buildTypecheckCommand({ cwd })).toEqual({
-      command: 'rtk',
-      args: ['vp', 'run', 'check-types'],
+      command: 'vp',
+      args: ['run', 'check-types'],
+    })
+  })
+
+  it('bypasses a recursive check-types script and falls back to managed tsc', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'wp-typecheck-recursive-'))
+    tempDirs.push(cwd)
+    writeFileSync(
+      join(cwd, 'package.json'),
+      JSON.stringify({ scripts: { 'check-types': 'wp typecheck' } }),
+      'utf8',
+    )
+
+    expect(buildTypecheckCommand({ cwd })).toEqual({
+      command: 'vp',
+      args: ['exec', 'tsc', '--noEmit', '--pretty', 'false'],
     })
   })
 
@@ -52,6 +67,6 @@ describe('wp typecheck command', () => {
       stderr: '',
     }))
     expect(runTypecheckCommand({}, { run })).toBe(2)
-    expect(run).toHaveBeenCalledWith('rtk', ['tsc', '--noEmit', '--pretty', 'false'])
+    expect(run).toHaveBeenCalledWith('vp', ['exec', 'tsc', '--noEmit', '--pretty', 'false'])
   })
 })

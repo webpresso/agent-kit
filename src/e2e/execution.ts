@@ -26,6 +26,7 @@ export async function createE2eExecutionPlan(
       workers: input.workers,
       testList: input.testList,
       passthrough: input.passthrough,
+      outputPolicy: input.outputPolicy,
       filterOutput: input.filterOutput,
     })
   }
@@ -46,6 +47,7 @@ export async function createE2eExecutionPlan(
       workers: input.workers,
       testList: input.testList,
       passthrough: input.passthrough,
+      outputPolicy: input.outputPolicy,
       filterOutput: input.filterOutput,
     })
   }
@@ -62,6 +64,7 @@ export async function createE2eExecutionPlan(
       workers: input.workers,
       testList: input.testList,
       passthrough: input.passthrough,
+      outputPolicy: input.outputPolicy,
       filterOutput: input.filterOutput,
     })
   }
@@ -70,14 +73,15 @@ export async function createE2eExecutionPlan(
     hostAdapter: hostAdapter.adapter,
     suite: input.suite,
     file: files,
-      headed: input.headed,
-      debug: input.debug,
-      workers: input.workers,
-      testList: input.testList,
-      passthrough: input.passthrough,
-      filterOutput: input.filterOutput,
-    })
-  }
+    headed: input.headed,
+    debug: input.debug,
+    workers: input.workers,
+    testList: input.testList,
+    passthrough: input.passthrough,
+    outputPolicy: input.outputPolicy,
+    filterOutput: input.filterOutput,
+  })
+}
 
 export function plannedGroupsToCommandConfigs(
   groups: readonly PlannedE2eRunGroup[],

@@ -58,7 +58,7 @@ interface RunResult {
 }
 
 function installFakeAgentKitBins(repoRoot: string): void {
-  const binDir = path.join(repoRoot, 'node_modules', '.bin')
+  const binDir = path.join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'bin')
   mkdirSync(binDir, { recursive: true })
   for (const name of [
     'wp-sessionstart-routing',
@@ -68,8 +68,8 @@ function installFakeAgentKitBins(repoRoot: string): void {
     'wp-guard-switch',
     'wp-stop-qa',
   ]) {
-    const binPath = path.join(binDir, name)
-    writeFileSync(binPath, '#!/bin/sh\nexit 0\n', 'utf8')
+    const binPath = path.join(binDir, `${name}.js`)
+    writeFileSync(binPath, '#!/usr/bin/env node\nprocess.exit(0)\n', 'utf8')
     chmodSync(binPath, 0o755)
   }
 }
@@ -221,7 +221,9 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(preToolCommand).not.toContain('|| true')
       expect(r.stdout).toContain('wp init: setup phases finished.')
       expect(r.stdout).toContain('Runtime-owned tooling contract:')
-      expect(r.stdout).toContain('wp now owns execution for test, e2e, lint, format, and typecheck.')
+      expect(r.stdout).toContain(
+        'wp now owns execution for test, e2e, lint, format, and typecheck.',
+      )
       expect(r.stdout).toContain(
         'Do not blanket-remove devDependencies just because wp can execute the tool.',
       )
@@ -309,9 +311,14 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         group.hooks.map((hook) => hook.command),
       )
 
-      const sessionRoutingBin = path.join(repo, 'node_modules', '.bin', 'wp-sessionstart-routing')
-      const stopQaBin = path.join(repo, 'node_modules', '.bin', 'wp-stop-qa')
-      // CODEX_BIN produces guarded commands: `[ -x "<abs>" ] && "<abs>" || true`
+      const sessionRoutingBin = path.join(
+        repo,
+        '.codex',
+        'managed-hooks',
+        'wp-sessionstart-routing.sh',
+      )
+      const stopQaBin = path.join(repo, '.codex', 'managed-hooks', 'wp-stop-qa.sh')
+      // CODEX_BIN produces guarded commands: `[ -x '<abs>' ] && '<abs>' || true`
       expect(
         sessionCommands.some(
           (cmd) => cmd.includes(sessionRoutingBin) && !cmd.includes('./node_modules'),
@@ -328,6 +335,8 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(stopCommands.every((cmd) => !cmd.includes('./node_modules/.bin/wp-stop-qa'))).toBe(
         true,
       )
+      expect(sessionCommands.every((cmd) => !cmd.includes('node_modules/.bin'))).toBe(true)
+      expect(stopCommands.every((cmd) => !cmd.includes('node_modules/.bin'))).toBe(true)
 
       installFakeAgentKitBins(repo)
       const siblingCwd = mkdtempSync(path.join(repo, 'codex-runtime-'))
@@ -335,7 +344,7 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         .flatMap((event) =>
           (codex.hooks[event] ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
         )
-        .filter((command) => command.includes('/node_modules/.bin/wp-'))
+        .filter((command) => command.includes('/.codex/managed-hooks/wp-'))
 
       for (const command of allCommands) {
         const result = spawnSync('sh', ['-lc', command], {

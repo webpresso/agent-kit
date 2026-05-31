@@ -36,9 +36,7 @@ export function isBlueprintSlugSegment(value: string | undefined): value is stri
   return value !== undefined && BLUEPRINT_SLUG_SEGMENT_PATTERN.test(value)
 }
 
-export function parseBlueprintDocumentRelativePath(
-  filePath: string,
-): BlueprintDocumentPath | null {
+export function parseBlueprintDocumentRelativePath(filePath: string): BlueprintDocumentPath | null {
   const normalized = normalizeBlueprintPath(filePath)
   const parts = normalized.split('/').filter((segment) => segment.length > 0)
   const [state, second, third] = parts

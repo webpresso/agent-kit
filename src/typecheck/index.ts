@@ -14,6 +14,7 @@ import { globSync } from 'glob'
 
 import { isRunFailure, runCommand, type RunResult } from '#mcp/tools/_shared/run-command'
 import { resolveProjectRoot } from '#mcp/tools/_shared/project-root'
+import { getManagedRunner } from '#tool-runtime'
 
 export interface TscError {
   readonly file: string
@@ -144,18 +145,27 @@ export async function runTypecheck(options: RunTypecheckOptions = {}): Promise<T
   const workspaceGlobs = targets ? readWorkspaceGlobs(cwd) : null
 
   const runs: RunResult[] = []
+  const resolution = getManagedRunner('tsc', { outputPolicy: 'structured' })
   if (targets) {
     for (const pkg of targets) {
       const resolvedTarget = resolveTypecheckTarget(cwd, pkg, workspaceGlobs)
       const tsconfig = join(resolvedTarget, 'tsconfig.json')
-      const outcome = await runCommand('tsc', ['--noEmit', '-p', tsconfig], runOptions)
+      const outcome = await runCommand(
+        resolution.command,
+        [...resolution.args, '--noEmit', '-p', tsconfig],
+        runOptions,
+      )
       if (isRunFailure(outcome)) {
         throw outcome.error
       }
       runs.push(outcome)
     }
   } else {
-    const outcome = await runCommand('tsc', ['--noEmit'], runOptions)
+    const outcome = await runCommand(
+      resolution.command,
+      [...resolution.args, '--noEmit'],
+      runOptions,
+    )
     if (isRunFailure(outcome)) {
       throw outcome.error
     }

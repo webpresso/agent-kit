@@ -6,7 +6,8 @@ import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 // `wp` remains the canonical public CLI in AGENTS.md. This audit only guards
 // retired compatibility aliases from leaking into active user-facing surfaces.
 const LEGACY_COMMAND_PATTERN = /\b(?:ak|cli2|wk)\s+[a-z][\w:-]*(?:\s+[a-z][\w:-]*)*/giu
-const INTERNAL_HELPER_PATTERN = /\bwp-(?:pretool-guard|post-tool|stop-qa|guard-switch|sessionstart-routing|check-dev-link)\b/u
+const INTERNAL_HELPER_PATTERN =
+  /\bwp-(?:pretool-guard|post-tool|stop-qa|guard-switch|sessionstart-routing|check-dev-link)\b/u
 const REPLACEMENT_PATTERN = /\bwebpresso agent [a-z][\w:-]*(?: [a-z][\w:-]*)*/iu
 const MIGRATION_MARKER_PATTERN = /\b(?:current-state|migration-only|replacement|future)\b/iu
 // Scan current user-facing/documentation inputs only. Source tests and completed/parked

@@ -45,8 +45,10 @@ export async function runHookCommand(name: string): Promise<void> {
 }
 
 export function registerHookCommand(cli: CAC): void {
-  cli.command('hook <name>', 'Run an internal plugin hook entrypoint').action(async (name: string) => {
-    await runHookCommand(name)
-    return 0
-  })
+  cli
+    .command('hook <name>', 'Run an internal plugin hook entrypoint')
+    .action(async (name: string) => {
+      await runHookCommand(name)
+      return 0
+    })
 }

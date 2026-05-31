@@ -160,9 +160,9 @@ describe('applyBlueprintLifecycleToFile', () => {
     expect(existsSync(path.join(projectRoot, 'blueprints', 'planned', 'test-blueprint.md'))).toBe(
       false,
     )
-    expect(existsSync(path.join(projectRoot, 'blueprints', 'in-progress', 'test-blueprint.md'))).toBe(
-      true,
-    )
+    expect(
+      existsSync(path.join(projectRoot, 'blueprints', 'in-progress', 'test-blueprint.md')),
+    ).toBe(true)
   })
 
   it('preserves source parent directory when other blueprints remain', async () => {

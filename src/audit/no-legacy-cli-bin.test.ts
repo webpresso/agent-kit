@@ -53,7 +53,8 @@ describe('auditNoLegacyCliBin', () => {
 
   it('ignores historical completed blueprint evidence', () => {
     const root = createFixture({
-      'blueprints/completed/old/_overview.md': 'Historical evidence mentions `ak bench session-memory`.\n',
+      'blueprints/completed/old/_overview.md':
+        'Historical evidence mentions `ak bench session-memory`.\n',
     })
 
     const result = auditNoLegacyCliBin(root)

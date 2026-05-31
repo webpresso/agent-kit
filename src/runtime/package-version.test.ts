@@ -42,9 +42,14 @@ describe('readOwnedPackageVersion', () => {
     )
     const nested = path.join(root, 'dist', 'esm', 'mcp')
     mkdirSync(nested, { recursive: true })
-    writeFileSync(path.join(nested, 'package.json'), JSON.stringify({ name: 'other', version: '9.9.9' }))
+    writeFileSync(
+      path.join(nested, 'package.json'),
+      JSON.stringify({ name: 'other', version: '9.9.9' }),
+    )
 
-    expect(readOwnedPackageVersion(pathToFileURL(path.join(nested, 'server.js')).href)).toBe('2.3.4')
+    expect(readOwnedPackageVersion(pathToFileURL(path.join(nested, 'server.js')).href)).toBe(
+      '2.3.4',
+    )
   })
 
   it('returns a stable placeholder when no owned package is found', async () => {

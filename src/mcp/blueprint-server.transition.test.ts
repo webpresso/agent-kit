@@ -142,7 +142,10 @@ describe('wp_blueprint_transition', () => {
     parseResult(putResult) as { content_hash: string }
 
     // Break structure after put to exercise transition-time revalidation.
-    const raw = readFileSync(overviewPath, 'utf8').replace('## Product wedge anchor', '## Missing wedge')
+    const raw = readFileSync(overviewPath, 'utf8').replace(
+      '## Product wedge anchor',
+      '## Missing wedge',
+    )
     await import('node:fs/promises').then(({ writeFile }) => writeFile(overviewPath, raw, 'utf8'))
     await bootstrapBlueprintProjection(tmpDir)
     const refreshed = await callTool(tools, 'wp_blueprint_get', {

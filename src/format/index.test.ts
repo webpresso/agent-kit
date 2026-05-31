@@ -11,8 +11,8 @@ vi.mock('#tool-runtime', () => ({
 }))
 
 getManagedRunner.mockReturnValue({
-  command: 'oxfmt',
-  args: [],
+  command: 'vp',
+  args: ['exec', 'oxfmt'],
 })
 
 import { runFormat } from './index.js'
@@ -66,15 +66,15 @@ function makeFixtureDir(): string {
 afterEach(() => {
   getManagedRunner.mockReset()
   getManagedRunner.mockReturnValue({
-    command: 'oxfmt',
-    args: [],
+    command: 'vp',
+    args: ['exec', 'oxfmt'],
   })
   spawnMock.mockReset()
 })
 
 describe('runFormat', () => {
   it('returns passed=true when oxfmt exits 0 on already-formatted files', async () => {
-    getManagedRunner.mockReturnValue({ command: 'oxfmt', args: [] })
+    getManagedRunner.mockReturnValue({ command: 'vp', args: ['exec', 'oxfmt'] })
     spawnMock.mockReturnValue(fakeChild({ stdout: 'Finished in 5ms\n', exitCode: 0 }))
     const dir = makeFixtureDir()
     writeFileSync(join(dir, 'a.ts'), "const x = 'hi'\n")
@@ -83,14 +83,10 @@ describe('runFormat', () => {
 
     expect(result.passed).toBe(true)
     expect(result.exitCode).toBe(0)
-    expect(getManagedRunner).toHaveBeenCalledWith('oxfmt', {
-      fallbackCommand: 'oxfmt',
-      fallbackArgs: [],
-      filterOutput: false,
-    })
+    expect(getManagedRunner).toHaveBeenCalledWith('oxfmt', { outputPolicy: 'structured' })
     const [cmd, args] = spawnMock.mock.calls[0]!
-    expect(cmd).toBe('oxfmt')
-    expect(args).toEqual(['--write', '--ignore-path', '.gitignore', 'a.ts'])
+    expect(cmd).toBe('vp')
+    expect(args).toEqual(['exec', 'oxfmt', '--write', '--ignore-path', '.gitignore', 'a.ts'])
   })
 
   it('passes --check and returns passed=false when oxfmt finds unformatted files', async () => {
@@ -104,7 +100,7 @@ describe('runFormat', () => {
     expect(result.exitCode).toBe(1)
     expect(result.output).toContain('not formatted')
     const [, args] = spawnMock.mock.calls[0]!
-    expect(args).toEqual(['--check', '--ignore-path', '.gitignore', 'a.ts'])
+    expect(args).toEqual(['exec', 'oxfmt', '--check', '--ignore-path', '.gitignore', 'a.ts'])
   })
 
   it('without check, invokes --write and reports passed when oxfmt exits 0', async () => {
@@ -118,7 +114,7 @@ describe('runFormat', () => {
     expect(result.passed).toBe(true)
     expect(result.fixedFiles).toBeDefined()
     const [, args] = spawnMock.mock.calls[0]!
-    expect(args[0]).toBe('--write')
+    expect(args.slice(0, 3)).toEqual(['exec', 'oxfmt', '--write'])
     expect(args).toContain('--ignore-path')
     // Sanity: the file path the test created is real on disk so the test isn't
     // relying on side effects from the (mocked) spawn itself.

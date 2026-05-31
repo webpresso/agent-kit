@@ -1,5 +1,5 @@
 import type { CommandConfig, E2eStepCommandOptions } from './types.js'
-import { getManagedRunner } from '#tool-runtime'
+import { type ManagedRunnerOutputPolicy, getManagedRunner } from '#tool-runtime'
 
 import path from 'node:path'
 
@@ -22,7 +22,9 @@ function buildPlaywrightCommand(options: E2eStepCommandOptions): CommandConfig {
 
   const { baseDir, configArg, files } = resolveRunnerPaths(step.configPath, options.files ?? [])
   const resolution = withBaseDir(
-    getManagedRunner('playwright', { filterOutput: options.filterOutput }),
+    getManagedRunner('playwright', {
+      outputPolicy: resolveOutputPolicy(options.outputPolicy, options.filterOutput),
+    }),
     baseDir,
   )
   const args = [...resolution.args, 'test', '--config', configArg]
@@ -39,7 +41,9 @@ function buildVitestE2eCommand(options: E2eStepCommandOptions): CommandConfig {
 
   const { baseDir, configArg, files } = resolveRunnerPaths(step.configPath, options.files ?? [])
   const resolution = withBaseDir(
-    getManagedRunner('vitest', { filterOutput: options.filterOutput }),
+    getManagedRunner('vitest', {
+      outputPolicy: resolveOutputPolicy(options.outputPolicy, options.filterOutput),
+    }),
     baseDir,
   )
   const args = [...resolution.args, 'run', '--config', configArg]
@@ -149,4 +153,12 @@ function withBaseDir(
   }
 
   return { command: resolution.command, args: [...resolution.args] }
+}
+
+function resolveOutputPolicy(
+  outputPolicy: ManagedRunnerOutputPolicy | undefined,
+  filterOutput: boolean | undefined,
+): ManagedRunnerOutputPolicy {
+  if (outputPolicy) return outputPolicy
+  return filterOutput === false ? 'structured' : 'rtk-filtered'
 }

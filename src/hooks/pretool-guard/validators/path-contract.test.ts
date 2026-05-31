@@ -57,11 +57,7 @@ describe('path-contract', () => {
       '# folder',
     )
 
-    const violation = getBlueprintPathViolation(
-      'blueprints/planned/my-feature.md',
-      undefined,
-      root,
-    )
+    const violation = getBlueprintPathViolation('blueprints/planned/my-feature.md', undefined, root)
     expect(violation).toContain('cannot exist in both flat and folder forms')
   })
 })

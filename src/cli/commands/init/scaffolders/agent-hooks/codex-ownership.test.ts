@@ -36,6 +36,24 @@ describe('isWebpressoOwnedCodexHook', () => {
     ).toBe(true)
   })
 
+  it('accepts managed local Codex launcher commands', () => {
+    expect(
+      isWebpressoOwnedCodexHook(
+        ownedHook({ command: '"/repo/.codex/managed-hooks/wp-post-tool.sh"' }),
+        EXPECTED_SOURCE_PATHS,
+      ),
+    ).toBe(true)
+    expect(
+      isWebpressoOwnedCodexHook(
+        ownedHook({
+          command:
+            '[ -x "/repo/.codex/managed-hooks/wp-post-tool.sh" ] && "/repo/.codex/managed-hooks/wp-post-tool.sh" || true',
+        }),
+        EXPECTED_SOURCE_PATHS,
+      ),
+    ).toBe(true)
+  })
+
   it('accepts guarded absolute node_modules bin commands', () => {
     expect(
       isWebpressoOwnedCodexHook(

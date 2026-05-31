@@ -121,7 +121,9 @@ last_updated: 2026-04-02
       goal: 'Ship flat blueprint drafts by default',
     })
 
-    expect(created.relativeFilePath).toBe('webpresso/blueprints/draft/ship-flat-blueprint-drafts-by-default.md')
+    expect(created.relativeFilePath).toBe(
+      'webpresso/blueprints/draft/ship-flat-blueprint-drafts-by-default.md',
+    )
     await expect(readFile(created.outputPath, 'utf-8')).resolves.toContain(
       '# Ship flat blueprint drafts by default',
     )

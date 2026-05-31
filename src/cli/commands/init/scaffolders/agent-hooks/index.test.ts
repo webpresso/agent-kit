@@ -1,5 +1,14 @@
-import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { spawnSync } from 'node:child_process'
+import {
+  accessSync,
+  chmodSync,
+  constants,
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs'
+import { spawn, spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -13,8 +22,20 @@ import {
   trustCodexPresetHooksForUser,
 } from './index.js'
 
+function quoteShell(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`
+}
+
 function codexBinCommand(repoRoot: string, name: string): string {
-  const binPath = join(repoRoot, 'node_modules', '.bin', name)
+  const binPath = quoteShell(join(repoRoot, '.codex', 'managed-hooks', `${name}.sh`))
+  if (name === 'wp-pretool-guard') {
+    return `[ -x ${binPath} ] && ${binPath} || printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp-pretool-guard is unavailable. Run vp install or wp setup."}}'`
+  }
+  return `[ -x ${binPath} ] && ${binPath} || true`
+}
+
+function claudeBinCommand(name: string): string {
+  const binPath = `$CLAUDE_PROJECT_DIR/.claude/hooks/managed/${name}.sh`
   if (name === 'wp-pretool-guard') {
     return `[ -x "${binPath}" ] && "${binPath}" || printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp-pretool-guard is unavailable. Run vp install or wp setup."}}'`
   }
@@ -31,12 +52,42 @@ const WEBPRESSO_HOOK_BINS = [
 ] as const
 
 function installFakeWebpressoBins(repoRoot: string): void {
-  mkdirSync(join(repoRoot, 'node_modules', '.bin'), { recursive: true })
+  const binDir = join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'bin')
+  mkdirSync(binDir, { recursive: true })
   for (const bin of WEBPRESSO_HOOK_BINS) {
-    const binPath = join(repoRoot, 'node_modules', '.bin', bin)
-    writeFileSync(binPath, '#!/bin/sh\nprintf "{}\\n"\n', 'utf8')
+    const binPath = join(binDir, `${bin}.js`)
+    writeFileSync(binPath, '#!/usr/bin/env node\nprocess.stdout.write("{}\\n")\n', 'utf8')
     chmodSync(binPath, 0o755)
   }
+}
+
+async function runShellCommand(
+  command: string,
+  options: {
+    cwd: string
+    env?: NodeJS.ProcessEnv
+  },
+): Promise<{ status: number | null; stdout: string; stderr: string; command: string }> {
+  return await new Promise((resolve, reject) => {
+    const child = spawn('sh', ['-c', command], {
+      cwd: options.cwd,
+      env: options.env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+
+    let stdout = ''
+    let stderr = ''
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk.toString()
+    })
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk.toString()
+    })
+    child.on('error', reject)
+    child.on('close', (status) => {
+      resolve({ status, stdout, stderr, command })
+    })
+  })
 }
 
 describe('scaffoldAgentHooks', () => {
@@ -191,6 +242,9 @@ describe('scaffoldAgentHooks', () => {
     expect(() =>
       readFileSync(join(repoRoot, '.claude', 'hooks', 'check-gstack.sh'), 'utf8'),
     ).toThrow()
+    expect(() =>
+      readFileSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-check-dev-link.sh'), 'utf8'),
+    ).toThrow()
   })
 
   it('wires wp-check-dev-link as a SessionStart hook in both Claude and Codex', async () => {
@@ -209,6 +263,39 @@ describe('scaffoldAgentHooks', () => {
     expect(claudeCommands.some((cmd) => cmd.includes('wp-check-dev-link'))).toBe(true)
     expect(claudeCommands.some((cmd) => cmd.includes('$CLAUDE_PROJECT_DIR'))).toBe(true)
     expect(codexCommands).toContain(codexBinCommand(repoRoot, 'wp-check-dev-link'))
+    expect(
+      readFileSync(join(repoRoot, '.claude', 'hooks', 'managed', 'wp-check-dev-link.sh'), 'utf8'),
+    ).toContain(process.execPath)
+    expect(
+      readFileSync(join(repoRoot, '.codex', 'managed-hooks', 'wp-check-dev-link.sh'), 'utf8'),
+    ).toContain(process.execPath)
+  })
+
+  it('repairs managed hook launcher execute bits on repeated setup', async () => {
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    const launcherPath = join(repoRoot, '.codex', 'managed-hooks', 'wp-check-dev-link.sh')
+    chmodSync(launcherPath, 0o644)
+
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    expect(() => accessSync(launcherPath, constants.X_OK)).not.toThrow()
+  })
+
+  it('does not run package-manager shell shims through node in managed launchers', async () => {
+    mkdirSync(join(repoRoot, 'node_modules', '.bin'), { recursive: true })
+    const shimPath = join(repoRoot, 'node_modules', '.bin', 'wp-guard-switch')
+    writeFileSync(shimPath, '#!/bin/sh\nexit 42\n', 'utf8')
+    chmodSync(shimPath, 0o755)
+
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    const launcher = readFileSync(
+      join(repoRoot, '.codex', 'managed-hooks', 'wp-guard-switch.sh'),
+      'utf8',
+    )
+    expect(launcher).toContain('/bin/wp-guard-switch.js')
+    expect(launcher).not.toContain('node_modules/.bin/wp-guard-switch')
   })
 
   it('dedupes pre-existing wrapped script hooks against the raw incoming form', async () => {
@@ -278,6 +365,41 @@ describe('scaffoldAgentHooks', () => {
       g.hooks.map((h) => h.command),
     ).filter((cmd) => cmd.includes('check-gstack.sh'))
     expect(gstackSkillMatches).toHaveLength(1)
+  })
+
+  it('rewrites stale Claude wp-pretool-guard wrappers to the managed fail-closed form without duplicates', async () => {
+    const settingsPath = join(repoRoot, '.claude', 'settings.json')
+    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
+    const staleGuard =
+      '[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-pretool-guard" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp-pretool-guard" || true'
+    writeFileSync(
+      settingsPath,
+      JSON.stringify(
+        {
+          hooks: {
+            PreToolUse: [
+              {
+                matcher: 'Bash|Write|Edit|MultiEdit',
+                hooks: [{ type: 'command', command: staleGuard, timeout: 5 }],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+
+    await scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const settings = JSON.parse(readFileSync(settingsPath, 'utf8')) as {
+      hooks: { PreToolUse: Array<{ matcher?: string; hooks: Array<{ command: string }> }> }
+    }
+    const wpPretoolGuards = settings.hooks.PreToolUse.flatMap((group) =>
+      group.hooks.map((hook) => hook.command),
+    ).filter((command) => command.includes('wp-pretool-guard'))
+
+    expect(wpPretoolGuards).toStrictEqual([claudeBinCommand('wp-pretool-guard')])
   })
 
   it('does not duplicate the wp-check-dev-link entry on a second scaffold', async () => {
@@ -1289,7 +1411,7 @@ hooks:
     ).toContain('exec ')
   })
 
-  it('writes Codex hook commands as absolute node_modules bin paths', async () => {
+  it('writes Codex hook commands as managed local launchers', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {} })
 
     const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
@@ -1309,8 +1431,8 @@ hooks:
     expect(postToolCommands).toContain(codexBinCommand(repoRoot, 'wp-post-tool'))
   })
 
-  it('fails closed for missing wp-pretool-guard and fails open for other missing Codex hook bins', async () => {
-    await scaffoldAgentHooks({ repoRoot, options: {} })
+  it('fails closed for missing wp-pretool-guard launcher and fails open for other missing Codex hook launchers', async () => {
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 
     const siblingCwd = mkdtempSync(join(repoRoot, 'codex-missing-bins-'))
     const codex = JSON.parse(readFileSync(join(repoRoot, '.codex', 'hooks.json'), 'utf8')) as {
@@ -1331,6 +1453,10 @@ hooks:
         group.hooks.map((hook) => hook.command),
       ),
       Stop: (codex.hooks.Stop ?? []).flatMap((group) => group.hooks.map((hook) => hook.command)),
+    }
+
+    for (const bin of WEBPRESSO_HOOK_BINS) {
+      chmodSync(join(repoRoot, '.codex', 'managed-hooks', `${bin}.sh`), 0o644)
     }
 
     const runFromSibling = (command: string) =>
@@ -1354,21 +1480,37 @@ hooks:
       'UserPromptSubmit',
       'Stop',
     ]
-    for (const event of failOpenEvents) {
-      for (const command of commandByEvent[event]) {
-        const result = runFromSibling(command)
-        expect(result.status, `${event}: ${command}`).toBe(0)
-        expect(result.stdout, `${event}: ${command}`).toBe('')
-      }
+    const failOpenResults = await Promise.all(
+      failOpenEvents.flatMap((event) =>
+        commandByEvent[event].map(async (command) => ({
+          event,
+          command,
+          result: await runShellCommand(command, {
+            cwd: siblingCwd,
+            env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+          }),
+        })),
+      ),
+    )
+    for (const { event, command, result } of failOpenResults) {
+      expect(result.status, `${event}: ${command}`).toBe(0)
+      expect(result.stdout, `${event}: ${command}`).toBe('')
     }
   })
 
   it('keeps Codex hook commands executable from a sibling cwd instead of failing with 127', async () => {
-    await scaffoldAgentHooks({ repoRoot, options: {} })
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 
-    const binPath = join(repoRoot, 'node_modules', '.bin', 'wp-pretool-guard')
-    mkdirSync(join(repoRoot, 'node_modules', '.bin'), { recursive: true })
-    writeFileSync(binPath, '#!/bin/sh\nprintf "{}\\n"\n', 'utf8')
+    const binPath = join(
+      repoRoot,
+      'node_modules',
+      '@webpresso',
+      'agent-kit',
+      'bin',
+      'wp-pretool-guard.js',
+    )
+    mkdirSync(join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'bin'), { recursive: true })
+    writeFileSync(binPath, '#!/usr/bin/env node\nprocess.stdout.write("{}\\n")\n', 'utf8')
     chmodSync(binPath, 0o755)
 
     const siblingCwd = mkdtempSync(join(repoRoot, 'sibling-'))
@@ -1388,11 +1530,18 @@ hooks:
   })
 
   it('keeps the Codex Stop hook executable from a sibling cwd instead of failing with 127', async () => {
-    await scaffoldAgentHooks({ repoRoot, options: {} })
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 
-    const binPath = join(repoRoot, 'node_modules', '.bin', 'wp-stop-qa')
-    mkdirSync(join(repoRoot, 'node_modules', '.bin'), { recursive: true })
-    writeFileSync(binPath, '#!/bin/sh\nexit 0\n', 'utf8')
+    const binPath = join(
+      repoRoot,
+      'node_modules',
+      '@webpresso',
+      'agent-kit',
+      'bin',
+      'wp-stop-qa.js',
+    )
+    mkdirSync(join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'bin'), { recursive: true })
+    writeFileSync(binPath, '#!/usr/bin/env node\nprocess.exit(0)\n', 'utf8')
     chmodSync(binPath, 0o755)
 
     const siblingCwd = mkdtempSync(join(repoRoot, 'sibling-stop-'))
@@ -1432,16 +1581,22 @@ hooks:
     )
 
     expect(commands.length).toBeGreaterThan(0)
-    const result = spawnSync('sh', ['-c', ['set -e', ...commands].join('\n')], {
-      cwd: siblingCwd,
-      encoding: 'utf8',
-      env: {
-        PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
-        HOME: process.env.HOME,
-        CLAUDE_PROJECT_DIR: repoRoot,
-      },
-    })
-    expect(result.status).toBe(0)
+    const results = await Promise.all(
+      commands.map((command) =>
+        runShellCommand(command, {
+          cwd: siblingCwd,
+          env: {
+            PATH: '/usr/bin:/bin:/usr/sbin:/sbin',
+            HOME: process.env.HOME,
+            CLAUDE_PROJECT_DIR: repoRoot,
+          },
+        }),
+      ),
+    )
+
+    for (const result of results) {
+      expect(result.status, `${result.command}\n${result.stderr}`).toBe(0)
+    }
   })
 
   it('executes every generated Codex hook command successfully from a sibling cwd', async () => {
@@ -1464,12 +1619,18 @@ hooks:
     )
 
     expect(commands.length).toBeGreaterThan(0)
-    const result = spawnSync('sh', ['-c', ['set -e', ...commands].join('\n')], {
-      cwd: siblingCwd,
-      encoding: 'utf8',
-      env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
-    })
-    expect(result.status).toBe(0)
+    const results = await Promise.all(
+      commands.map((command) =>
+        runShellCommand(command, {
+          cwd: siblingCwd,
+          env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+        }),
+      ),
+    )
+
+    for (const result of results) {
+      expect(result.status, `${result.command}\n${result.stderr}`).toBe(0)
+    }
   })
 })
 

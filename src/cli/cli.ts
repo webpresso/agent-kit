@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 
 import { bootstrapAk } from './bootstrap.js'
 import { formatUnknownCommandError, normalizeArgv, readPackageVersion } from './utils.js'
+import { registerWpExtensions, resolveWpCommandAlias } from './wp-extensions.js'
 
 const VERSION = readPackageVersion(import.meta.url)
 
@@ -45,6 +46,12 @@ const SUPPORTED_COMMANDS = [
   'hooks',
   'gain',
   'bench',
+  'install',
+  'add',
+  'remove',
+  'update',
+  'exec',
+  'run',
 ] as const
 
 const ROOT_HELP = [
@@ -58,6 +65,12 @@ const ROOT_HELP = [
   '  gain                  Show token savings from RTK — run after any AI session',
   '  sync                  Sync agent rules + skills across IDE surfaces (--kind, --check)',
   '  bench                 Run the session-memory benchmark harness',
+  '  install               Install dependencies through the managed vp facade',
+  '  add                   Add dependencies through the managed vp facade',
+  '  remove                Remove dependencies through the managed vp facade',
+  '  update                Update dependencies through the managed vp facade',
+  '  exec                  Run a binary through the managed vp facade',
+  '  run                   Run a package script through the managed vp facade',
   '',
   'Quality:',
   '  audit                 Run packaged audits (bundle budgets, repo guardrails, TPH, tech-debt)',
@@ -139,7 +152,17 @@ export async function main(): Promise<number> {
 
   await bootstrapAk(VERSION, argv)
 
-  switch (command) {
+  const extensionRuntime = await registerWpExtensions({
+    cli,
+    cwd: process.cwd(),
+    env: process.env,
+    hostVersion: VERSION,
+    baseCommands: [...SUPPORTED_COMMANDS],
+  })
+  for (const warning of extensionRuntime.warnings) console.error(warning)
+  const resolvedCommand = resolveWpCommandAlias(command, extensionRuntime.aliasMap)
+
+  switch (resolvedCommand) {
     case 'blueprint': {
       const { registerBlueprintRouter } = await import('./commands/blueprint/router.js')
       registerBlueprintRouter(cli)
@@ -193,7 +216,7 @@ export async function main(): Promise<number> {
     case 'setup':
     case 'init': {
       const { registerInitCommand } = await import('./commands/init/index.js')
-      registerInitCommand(cli, command)
+      registerInitCommand(cli, resolvedCommand)
       break
     }
     case 'dev': {
@@ -271,14 +294,26 @@ export async function main(): Promise<number> {
       registerBenchCommand(cli)
       break
     }
+    case 'install':
+    case 'add':
+    case 'remove':
+    case 'update':
+    case 'exec':
+    case 'run': {
+      const { registerPackageManagerCommand } = await import('./commands/package-manager.js')
+      registerPackageManagerCommand(cli, resolvedCommand)
+      break
+    }
     case 'worktree': {
       const { registerWorktreeRouter } = await import('./commands/worktree/router.js')
       registerWorktreeRouter(cli)
       break
     }
     default: {
-      console.error(formatUnknownCommandError(command, SUPPORTED_COMMANDS))
-      return 1
+      if (!resolvedCommand || !extensionRuntime.commandNames.includes(resolvedCommand)) {
+        console.error(formatUnknownCommandError(command, SUPPORTED_COMMANDS))
+        return 1
+      }
     }
   }
 
@@ -286,7 +321,11 @@ export async function main(): Promise<number> {
   cli.version(VERSION)
 
   try {
-    cli.parse(argv, { run: false })
+    const effectiveArgv =
+      resolvedCommand && resolvedCommand !== command
+        ? [argv[0] ?? 'node', argv[1] ?? 'wp', resolvedCommand, ...argv.slice(3)]
+        : argv
+    cli.parse(effectiveArgv, { run: false })
     const result = await cli.runMatchedCommand()
     return typeof result === 'number' ? result : 0
   } catch (error) {

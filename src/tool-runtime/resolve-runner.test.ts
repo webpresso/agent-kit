@@ -13,10 +13,28 @@ describe('resolveRunner', () => {
   })
 
   it('supports explicitly opting out of RTK filtering for managed runners', () => {
-    expect(resolveRunner('vitest', { filterOutput: false })).toEqual({
+    expect(resolveRunner('vitest', { outputPolicy: 'structured' })).toEqual({
       tool: 'vitest',
       command: 'vp',
       args: ['exec', 'vitest'],
+      source: 'managed',
+    })
+  })
+
+  it('resolves tsc through managed vp exec instead of a bare binary', () => {
+    expect(resolveRunner('tsc', { outputPolicy: 'structured' })).toEqual({
+      tool: 'tsc',
+      command: 'vp',
+      args: ['exec', 'tsc'],
+      source: 'managed',
+    })
+  })
+
+  it('resolves oxfmt through managed vp exec instead of a bare binary', () => {
+    expect(resolveRunner('oxfmt', { outputPolicy: 'structured' })).toEqual({
+      tool: 'oxfmt',
+      command: 'vp',
+      args: ['exec', 'oxfmt'],
       source: 'managed',
     })
   })
@@ -32,6 +50,30 @@ describe('resolveRunner', () => {
       command: 'rtk',
       args: ['vp', 'exec', 'custom-tool'],
       source: 'fallback',
+    })
+  })
+
+  it('supports explicit structured output for fallback runners', () => {
+    expect(
+      resolveRunner('custom-tool', {
+        fallbackCommand: 'vp',
+        fallbackArgs: ['exec', 'custom-tool'],
+        outputPolicy: 'structured',
+      }),
+    ).toEqual({
+      tool: 'custom-tool',
+      command: 'vp',
+      args: ['exec', 'custom-tool'],
+      source: 'fallback',
+    })
+  })
+
+  it('accepts legacy filterOutput false as a structured-output selector', () => {
+    expect(resolveRunner('tsc', { filterOutput: false })).toEqual({
+      tool: 'tsc',
+      command: 'vp',
+      args: ['exec', 'tsc'],
+      source: 'managed',
     })
   })
 })

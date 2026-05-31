@@ -2,14 +2,17 @@ import {
   resolveRunner,
   type ManagedRunnerResolution,
   type ResolveRunnerOptions,
+  type ManagedRunnerOutputPolicy,
 } from './resolve-runner.js'
 
 const runtimeCache = new Map<string, ManagedRunnerResolution>()
 
 function cacheKey(tool: string, options: ResolveRunnerOptions): string {
+  const outputPolicy =
+    options.outputPolicy ?? (options.filterOutput === false ? 'structured' : 'rtk-filtered')
   return JSON.stringify({
     tool,
-    filterOutput: options.filterOutput ?? true,
+    outputPolicy,
     fallbackCommand: options.fallbackCommand ?? null,
     fallbackArgs: options.fallbackArgs ?? [],
   })
@@ -32,4 +35,4 @@ export function clearManagedRunnerCache(): void {
   runtimeCache.clear()
 }
 
-export type { ManagedRunnerResolution, ResolveRunnerOptions }
+export type { ManagedRunnerOutputPolicy, ManagedRunnerResolution, ResolveRunnerOptions }

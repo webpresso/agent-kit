@@ -157,7 +157,7 @@ function mergePackageJson(
   const hasTestMutationScript = typeof scripts['test:mutation'] === 'string'
   const hasE2eScript = typeof scripts['e2e'] === 'string'
   const hasQaScript = typeof scripts['qa'] === 'string'
-  const verifyPathsScript = 'WP_SKIP_UPDATE_CHECK=1 wp audit absolute-path-policy --root .'
+  const verifyPathsScript = 'wp audit absolute-path-policy --root .'
   const verifySecretsScript = 'bun scripts/check-no-dev-vars.ts'
   const secretQuarantineAuditScript = 'bun scripts/audit-secret-provider-quarantine.ts'
   const lintScript = 'wp lint src e2e *.config.ts'
@@ -177,7 +177,8 @@ function mergePackageJson(
   const devDeps = (pkg['devDependencies'] ?? {}) as Record<string, string>
   const hasAgentKitDevDep = typeof devDeps['@webpresso/agent-kit'] === 'string'
   const hasLegacyAgentKitDevDep = typeof devDeps['webpresso'] === 'string'
-  const shouldSkipSelfInstall = packageName === '@webpresso/agent-kit' || packageName === 'webpresso'
+  const shouldSkipSelfInstall =
+    packageName === '@webpresso/agent-kit' || packageName === 'webpresso'
   const shouldManageAgentKitAsGlobal = globalInstall && !shouldSkipSelfInstall
   const requiredAuthoringDeps: Record<string, string> = {
     '@playwright/test': 'latest',

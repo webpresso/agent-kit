@@ -22,6 +22,16 @@ export const BIN_ENTRYPOINTS = {
   'docs-migrate': 'src/config/docs-lint/cli/migrate.ts',
 }
 
+const LATENCY_SENSITIVE_BUILT_BINS = new Set([
+  'wp-pretool-guard',
+  'wp-post-tool',
+  'wp-stop-qa',
+  'wp-guard-switch',
+  'wp-test-quality-check',
+  'wp-sessionstart-routing',
+  'wp-check-dev-link',
+])
+
 const RUNTIME_BIN_ARGS = {
   wp: [],
   'wp-pretool-guard': ['hook', 'pretool-guard'],
@@ -129,6 +139,10 @@ function buildSourceLaunchPlan(sourceEntrypoint, forwardedArgs) {
     entrypoint: sourceEntrypoint,
     args: [sourceEntrypoint, ...forwardedArgs],
   }
+}
+
+function shouldPreferBuiltDist(binName) {
+  return LATENCY_SENSITIVE_BUILT_BINS.has(binName)
 }
 
 function buildRuntimeLaunchPlan({
@@ -245,6 +259,7 @@ export function buildLaunchPlan({
     sourceMtimeMs ??
     (sourceExists === undefined && hasSource ? statSync(sourceEntrypoint).mtimeMs : null)
   const shouldPreferSource =
+    !shouldPreferBuiltDist(binName) &&
     hasSource &&
     typeof resolvedBuiltMtimeMs === 'number' &&
     typeof resolvedSourceMtimeMs === 'number' &&

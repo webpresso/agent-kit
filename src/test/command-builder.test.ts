@@ -1,6 +1,16 @@
-import { describe, expect, it } from 'vitest'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { afterEach, describe, expect, it } from 'vitest'
 
 import { buildTestCommand, buildVitestCommand, buildVpTestCommand } from './command-builder.js'
+
+const tempDirs: string[] = []
+
+afterEach(() => {
+  while (tempDirs.length > 0) rmSync(tempDirs.pop()!, { recursive: true, force: true })
+})
 
 describe('buildVpTestCommand', () => {
   it('builds a vp package test command', () => {
@@ -64,6 +74,13 @@ describe('buildVpTestCommand', () => {
       command: 'rtk',
       args: ['vp', 'run', 'cli2', '--concurrency-limit', '4', 'test'],
       env: { VP_RUN_CONCURRENCY_LIMIT: '4' },
+    })
+  })
+
+  it('forwards explicit outputPolicy to resolve raw runner output', () => {
+    expect(buildVpTestCommand(['cli2'], { outputPolicy: 'structured' })).toEqual({
+      command: 'vp',
+      args: ['run', 'cli2', 'test'],
     })
   })
 
@@ -216,6 +233,44 @@ describe('buildVitestCommand', () => {
         '--runInBand',
         'apps/cli2/src/commands/target.test.ts',
       ],
+    })
+  })
+})
+
+describe('buildTestCommand recursion safety', () => {
+  it('bypasses vp run when the local test script recursively invokes wp test', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'wp-test-recursive-'))
+    tempDirs.push(cwd)
+    writeFileSync(
+      join(cwd, 'package.json'),
+      JSON.stringify({
+        scripts: { test: 'wp test' },
+        devDependencies: { vitest: '^4.0.0' },
+      }),
+      'utf8',
+    )
+
+    expect(buildTestCommand({ type: 'all', values: [] }, { cwd })).toEqual({
+      command: 'rtk',
+      args: ['vp', 'exec', 'vitest', 'run'],
+    })
+  })
+
+  it('keeps custom non-recursive test scripts on vp run', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'wp-test-custom-'))
+    tempDirs.push(cwd)
+    writeFileSync(
+      join(cwd, 'package.json'),
+      JSON.stringify({
+        scripts: { test: 'node scripts/test.js' },
+        devDependencies: { vitest: '^4.0.0' },
+      }),
+      'utf8',
+    )
+
+    expect(buildTestCommand({ type: 'all', values: [] }, { cwd })).toEqual({
+      command: 'rtk',
+      args: ['vp', 'run', 'test'],
     })
   })
 })

@@ -35,6 +35,8 @@ describe('wp root command surface', () => {
     expect(SUPPORTED_COMMANDS).toContain('setup')
     expect(SUPPORTED_COMMANDS).toContain('init')
     expect(SUPPORTED_COMMANDS).toContain('roadmap')
+    expect(SUPPORTED_COMMANDS).toContain('install')
+    expect(SUPPORTED_COMMANDS).toContain('run')
   })
 
   it('advertises setup without the unavailable skills refresh action', async () => {
@@ -42,6 +44,9 @@ describe('wp root command surface', () => {
 
     expect(result.code).toBe(0)
     expect(result.stdout.join('\n')).toContain('setup                 Scaffold a consumer repo')
+    expect(result.stdout.join('\n')).toContain(
+      'install               Install dependencies through the managed vp facade',
+    )
     expect(result.stdout.join('\n')).toContain(
       'roadmap               List or show parent roadmaps directly',
     )

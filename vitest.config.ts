@@ -25,6 +25,8 @@ export default defineConfig({
       { find: /^#runtime\/(.*)/, replacement: resolve(__dirname, 'src/runtime/$1') },
       { find: /^#tool-runtime$/, replacement: resolve(__dirname, 'src/tool-runtime/index.ts') },
       { find: /^#tool-runtime\/(.*)/, replacement: resolve(__dirname, 'src/tool-runtime/$1') },
+      { find: /^#wp-extension$/, replacement: resolve(__dirname, 'src/wp-extension/index.ts') },
+      { find: /^#wp-extension\/(.*)/, replacement: resolve(__dirname, 'src/wp-extension/$1') },
       {
         find: /^#output-transforms\/(.*)/,
         replacement: resolve(__dirname, 'src/output-transforms/$1'),
@@ -81,7 +83,12 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts', 'src/**/*.integration.test.ts', 'scripts/**/*.test.ts'],
+    include: [
+      'src/**/*.test.ts',
+      'src/**/*.integration.test.ts',
+      'scripts/**/*.test.ts',
+      '*.test.ts',
+    ],
     exclude: ['**/node_modules/**', '**/dist/**'],
     // Reset agent-session-leaked env (CLAUDE_PROJECT_DIR, WP_SKIP_UPDATE_CHECK)
     // before every test so the suite is hermetic regardless of launch env.

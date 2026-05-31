@@ -777,8 +777,12 @@ export async function runInit(flags: InitFlags): Promise<number> {
         qualityTargets.has(relative(consumer.repoRoot, result.targetPath).replaceAll('\\', '/')),
       )
       const qualityCreated = qualityResults.filter((result) => result.action === 'created').length
-      const qualityPreserved = qualityResults.filter((result) => result.action === 'identical').length
-      const qualityDryRun = qualityResults.filter((result) => result.action === 'skipped-dry').length
+      const qualityPreserved = qualityResults.filter(
+        (result) => result.action === 'identical',
+      ).length
+      const qualityDryRun = qualityResults.filter(
+        (result) => result.action === 'skipped-dry',
+      ).length
       console.log(
         `  repo quality scaffold: ${options.dryRun ? `${qualityDryRun} would be created` : `${qualityCreated} created, ${qualityPreserved} preserved`}`,
       )
@@ -844,7 +848,9 @@ export async function runInit(flags: InitFlags): Promise<number> {
     }
 
     printRuntimeContractGuidance(
-      options.dryRun ? consumer.packageJson : readPackageJsonSafe(consumer.repoRoot) ?? consumer.packageJson,
+      options.dryRun
+        ? consumer.packageJson
+        : (readPackageJsonSafe(consumer.repoRoot) ?? consumer.packageJson),
     )
 
     console.log('\nwp init: setup phases finished.')

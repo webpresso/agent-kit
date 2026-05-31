@@ -1,5 +1,6 @@
 import type { ResolvedTestTarget } from './target-resolver.js'
-import { getManagedRunner } from '#tool-runtime'
+import { type ManagedRunnerOutputPolicy, getManagedRunner } from '#tool-runtime'
+import { getPackageScript, isRecursiveWpScript, packageUsesVitest } from '#cli/package-scripts.js'
 
 export interface CommandConfig {
   command: string
@@ -10,6 +11,7 @@ export interface CommandConfig {
 export type VpRunLogMode = 'interleaved' | 'labeled' | 'grouped'
 
 export interface TestCommandOptions {
+  cwd?: string
   watch?: boolean
   coverage?: boolean
   testNamePattern?: string
@@ -22,12 +24,17 @@ export interface TestCommandOptions {
   log?: VpRunLogMode
   passthrough?: readonly string[]
   filterOutput?: boolean
+  outputPolicy?: ManagedRunnerOutputPolicy
 }
 
 export function buildTestCommand(
   target: ResolvedTestTarget,
   options: TestCommandOptions = {},
 ): CommandConfig {
+  if (target.type === 'all' && shouldBypassRecursiveWpTest(options.cwd ?? process.cwd())) {
+    return buildVitestCommand([], options)
+  }
+
   if (target.type === 'file') {
     return buildVitestCommand(target.values, options)
   }
@@ -41,7 +48,8 @@ export function buildVpTestCommand(
 ): CommandConfig {
   const task = getVpTestTask(options)
   const resolvedFilters = filters.map((filter) => formatVpRunFilter(filter, task))
-  const explicitTargets = resolvedFilters.every(isExplicitVpTaskTarget)
+  const explicitTargets =
+    resolvedFilters.length > 0 && resolvedFilters.every(isExplicitVpTaskTarget)
   const args = ['run', ...resolvedFilters]
 
   appendVpRunOptions(args, options)
@@ -54,7 +62,9 @@ export function buildVpTestCommand(
     args.push('--', ...passthrough)
   }
 
-  const resolution = getManagedRunner('vp', { filterOutput: options.filterOutput })
+  const resolution = getManagedRunner('vp', {
+    outputPolicy: resolveOutputPolicy(options.outputPolicy, options.filterOutput),
+  })
   const env = buildVpRunEnv(options)
   const mergedArgs = [...resolution.args, ...args]
   return env
@@ -89,7 +99,9 @@ export function buildVitestCommand(
 
   args.push(...buildVitestPassthrough(options), ...testFiles)
 
-  const resolution = getManagedRunner('vitest', { filterOutput: options.filterOutput })
+  const resolution = getManagedRunner('vitest', {
+    outputPolicy: resolveOutputPolicy(options.outputPolicy, options.filterOutput),
+  })
   return { command: resolution.command, args: [...resolution.args, ...args] }
 }
 
@@ -149,4 +161,18 @@ function buildVitestPassthrough(options: TestCommandOptions): string[] {
 
 function isVitestConfigFile(file: string): boolean {
   return /^vitest(?:\.[\w-]+)?\.config\.(?:ts|mts|cts|js|mjs|cjs)$/u.test(file)
+}
+
+function resolveOutputPolicy(
+  outputPolicy: ManagedRunnerOutputPolicy | undefined,
+  filterOutput: boolean | undefined,
+): ManagedRunnerOutputPolicy {
+  if (outputPolicy) return outputPolicy
+  return filterOutput === false ? 'structured' : 'rtk-filtered'
+}
+
+function shouldBypassRecursiveWpTest(cwd: string): boolean {
+  const testScript = getPackageScript(cwd, 'test')
+  if (!testScript || !isRecursiveWpScript(testScript, 'test')) return false
+  return packageUsesVitest(cwd)
 }

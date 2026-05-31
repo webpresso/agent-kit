@@ -1,9 +1,9 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
-import { describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 const REPO_ROOT = process.cwd()
 const PACKAGE_JSON_PATH = join(REPO_ROOT, 'package.json')
@@ -18,15 +18,16 @@ const FORBIDDEN_TARBALL_PATHS = [
   /^dist\/esm\/ai-prompts\//,
 ]
 
-let packedTarballArtifactCache:
-  | {
-      paths: string[]
-      dependencies?: Record<string, string>
-      devDependencies?: Record<string, string>
-      optionalDependencies?: Record<string, string>
-      peerDependencies?: Record<string, string>
-    }
-  | undefined
+type PackedTarballArtifact = {
+  tarballPath: string
+  paths: string[]
+  dependencies?: Record<string, string>
+  devDependencies?: Record<string, string>
+  optionalDependencies?: Record<string, string>
+  peerDependencies?: Record<string, string>
+}
+
+let packedTarballArtifactCache: PackedTarballArtifact | undefined
 let packedDistBuilt = false
 
 function parseNpmJson<T>(raw: string): T {
@@ -39,19 +40,34 @@ function parseNpmJson<T>(raw: string): T {
 
 function ensureBuiltPackedDist() {
   if (packedDistBuilt) return
-  execFileSync('vp', ['run', 'build'], {
+  execFileSync('./node_modules/.bin/tshy', [], {
     cwd: REPO_ROOT,
     encoding: 'utf8',
     env: {
       ...process.env,
       HUSKY: '0',
-      WP_SKIP_UPDATE_CHECK: '1',
+    },
+  })
+  execFileSync('bun', ['scripts/chmod-bins.ts'], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      HUSKY: '0',
+    },
+  })
+  execFileSync('bun', ['scripts/link-self-bins.ts'], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      HUSKY: '0',
     },
   })
   packedDistBuilt = true
 }
 
-function readPackedTarballArtifact() {
+function ensurePackedTarballArtifact() {
   if (packedTarballArtifactCache) return packedTarballArtifactCache
   ensureBuiltPackedDist()
   const raw = execFileSync('npm', ['pack', '--json'], {
@@ -68,28 +84,29 @@ function readPackedTarballArtifact() {
     throw new Error('npm pack did not return a tarball filename')
   }
   const tarballPath = join(REPO_ROOT, tarballName)
-  try {
-    const paths = execFileSync('tar', ['-tf', tarballPath], {
-      cwd: REPO_ROOT,
-      encoding: 'utf8',
-    })
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => line.replace(/^package\//, ''))
-      .filter(Boolean)
-    const manifest = execFileSync('tar', ['-xOf', tarballPath, 'package/package.json'], {
-      cwd: REPO_ROOT,
-      encoding: 'utf8',
-    })
-    packedTarballArtifactCache = {
-      ...(JSON.parse(manifest) as Omit<NonNullable<typeof packedTarballArtifactCache>, 'paths'>),
-      paths,
-    }
-    return packedTarballArtifactCache
-  } finally {
-    rmSync(tarballPath, { force: true })
+  const paths = execFileSync('tar', ['-tf', tarballPath], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+  })
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^package\//, ''))
+    .filter(Boolean)
+  const manifest = execFileSync('tar', ['-xOf', tarballPath, 'package/package.json'], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+  })
+  packedTarballArtifactCache = {
+    ...(JSON.parse(manifest) as Omit<PackedTarballArtifact, 'paths' | 'tarballPath'>),
+    tarballPath,
+    paths,
   }
+  return packedTarballArtifactCache
+}
+
+function readPackedTarballArtifact() {
+  return ensurePackedTarballArtifact()
 }
 
 function listPackedManifestCatalogSpecifiers(pkg: {
@@ -112,26 +129,23 @@ function listPackedManifestCatalogSpecifiers(pkg: {
 }
 
 function createPackedTarball(): { tarballPath: string; cleanup: () => void } {
-  ensureBuiltPackedDist()
-  const raw = execFileSync('npm', ['pack', '--json'], {
-    cwd: REPO_ROOT,
-    encoding: 'utf8',
-    env: {
-      ...process.env,
-      HUSKY: '0',
-    },
-  })
-  const entries = parseNpmJson<Array<{ filename?: string }>>(raw)
-  const tarballName = entries[0]?.filename
-  if (!tarballName) {
-    throw new Error('npm pack did not return a tarball filename')
-  }
-  const tarballPath = join(REPO_ROOT, tarballName)
+  const artifact = ensurePackedTarballArtifact()
   return {
-    tarballPath,
-    cleanup: () => rmSync(tarballPath, { force: true }),
+    tarballPath: artifact.tarballPath,
+    cleanup: () => {},
   }
 }
+
+beforeAll(() => {
+  ensurePackedTarballArtifact()
+}, 120_000)
+
+afterAll(() => {
+  if (packedTarballArtifactCache) {
+    rmSync(packedTarballArtifactCache.tarballPath, { force: true })
+    packedTarballArtifactCache = undefined
+  }
+})
 
 describe('tooling umbrella package contract', () => {
   it('ships the tooling umbrella as scoped @webpresso/agent-kit on the public npm registry', () => {
@@ -169,6 +183,7 @@ describe('tooling umbrella package contract', () => {
     expect(exports).toHaveProperty('./tsconfig/react-router.json')
     expect(exports).toHaveProperty('./stryker')
     expect(exports).toHaveProperty('./workers-test')
+    expect(exports).toHaveProperty('./wp-extension')
   })
 
   it('keeps checked-in npm config on the public registry path', () => {
@@ -195,101 +210,90 @@ describe('tooling umbrella package contract', () => {
     )
   })
 
-  it(
-    'packs no banned internal tarball artifacts',
-    () => {
-      const packedPaths = readPackedTarballArtifact().paths
-      const banned = packedPaths.filter((path) =>
-        FORBIDDEN_TARBALL_PATHS.some((pattern) => pattern.test(path)),
+  it('packs no banned internal tarball artifacts', () => {
+    const packedPaths = readPackedTarballArtifact().paths
+    const banned = packedPaths.filter((path) =>
+      FORBIDDEN_TARBALL_PATHS.some((pattern) => pattern.test(path)),
+    )
+
+    expect(banned).toEqual([])
+  }, 30_000)
+
+  it('packs a manifest with no workspace-only catalog specifiers', () => {
+    const packedManifest = readPackedTarballArtifact()
+
+    expect(listPackedManifestCatalogSpecifiers(packedManifest)).toEqual([])
+  }, 30_000)
+
+  it('packed consumers receive runtime-owned setup guidance without losing authoring deps', () => {
+    const { tarballPath, cleanup } = createPackedTarball()
+    const tmpRoot = mkdtempSync(join(tmpdir(), 'wp-packed-consumer-'))
+    const launcherRoot = mkdtempSync(join(tmpdir(), 'wp-packed-launcher-'))
+    const packedPackageRoot = join(launcherRoot, 'package')
+    const fakeHome = join(tmpRoot, '.home')
+    const fakeCodexHome = join(tmpRoot, '.codex-home')
+
+    try {
+      execFileSync('git', ['init', '-q'], { cwd: tmpRoot, encoding: 'utf8' })
+      execFileSync('git', ['init', '-q'], { cwd: launcherRoot, encoding: 'utf8' })
+      execFileSync('tar', ['-xzf', tarballPath, '-C', launcherRoot], { encoding: 'utf8' })
+      symlinkSync(join(REPO_ROOT, 'node_modules'), join(packedPackageRoot, 'node_modules'), 'junction')
+      writeFileSync(
+        join(tmpRoot, 'package.json'),
+        JSON.stringify(
+          {
+            name: 'packed-consumer-smoke',
+            private: true,
+            devDependencies: {
+              vitest: '^2.1.0',
+              '@playwright/test': '^1.55.0',
+              oxlint: '^1.0.0',
+              oxfmt: '^1.0.0',
+            },
+          },
+          null,
+          2,
+        ) + '\n',
       )
 
-      expect(banned).toEqual([])
-    },
-    30_000,
-  )
-
-  it(
-    'packs a manifest with no workspace-only catalog specifiers',
-    () => {
-      const packedManifest = readPackedTarballArtifact()
-
-      expect(listPackedManifestCatalogSpecifiers(packedManifest)).toEqual([])
-    },
-    30_000,
-  )
-
-  it(
-    'packed consumers receive runtime-owned setup guidance without losing authoring deps',
-    () => {
-      const { tarballPath, cleanup } = createPackedTarball()
-      const tmpRoot = mkdtempSync(join(tmpdir(), 'wp-packed-consumer-'))
-      const launcherRoot = mkdtempSync(join(tmpdir(), 'wp-packed-launcher-'))
-      const fakeHome = join(tmpRoot, '.home')
-      const fakeCodexHome = join(tmpRoot, '.codex-home')
-
-      try {
-        execFileSync('git', ['init', '-q'], { cwd: tmpRoot, encoding: 'utf8' })
-        execFileSync('git', ['init', '-q'], { cwd: launcherRoot, encoding: 'utf8' })
-        writeFileSync(
-          join(tmpRoot, 'package.json'),
-          JSON.stringify(
-            {
-              name: 'packed-consumer-smoke',
-              private: true,
-              devDependencies: {
-                vitest: '^2.1.0',
-                '@playwright/test': '^1.55.0',
-                oxlint: '^1.0.0',
-                oxfmt: '^1.0.0',
-              },
-            },
-            null,
-            2,
-          ) + '\n',
-        )
-
-        const output = execFileSync(
-          'npm',
-          ['exec', '--yes', '--package', tarballPath, '--', 'wp', 'setup', '--yes', '--cwd', tmpRoot],
-          {
-            cwd: launcherRoot,
-            encoding: 'utf8',
-            env: {
-              ...process.env,
-              CI: '1',
-              CODEX_HOME: fakeCodexHome,
-              HOME: fakeHome,
-              HUSKY: '0',
-              WP_SKIP_CLAUDE_PLUGIN: '1',
-              WP_SKIP_CONTEXT_MODE: '1',
-              WP_SKIP_GSTACK: '1',
-              WP_SKIP_OMC: '1',
-              WP_SKIP_RTK: '1',
-              WP_SKIP_UPDATE_CHECK: '1',
-            },
-            stdio: ['ignore', 'pipe', 'pipe'],
+      const output = execFileSync(
+        process.execPath,
+        [join(packedPackageRoot, 'bin', 'wp.js'), 'setup', '--yes', '--cwd', tmpRoot],
+        {
+          cwd: launcherRoot,
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            CI: '1',
+            CODEX_HOME: fakeCodexHome,
+            HOME: fakeHome,
+            HUSKY: '0',
+            WP_SKIP_CLAUDE_PLUGIN: '1',
+            WP_SKIP_CONTEXT_MODE: '1',
+            WP_SKIP_GSTACK: '1',
+            WP_SKIP_OMC: '1',
+            WP_SKIP_RTK: '1',
+            WP_SKIP_UPDATE_CHECK: '1',
           },
-        )
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      )
 
-        expect(output).toContain('Runtime-owned tooling contract:')
-        expect(output).toContain(
-          'wp now owns execution for test, e2e, lint, format, and typecheck.',
-        )
-        expect(output).toContain(
-          'Keep local authoring deps when imported directly: vitest, @playwright/test',
-        )
-        expect(output).toContain(
-          'Review execution-only deps for removal if they only powered local binaries: oxlint, oxfmt',
-        )
-        expect(output).toContain(
-          'Do not blanket-remove devDependencies just because wp can execute the tool.',
-        )
-      } finally {
-        cleanup()
-        rmSync(launcherRoot, { force: true, recursive: true })
-        rmSync(tmpRoot, { force: true, recursive: true })
-      }
-    },
-    120_000,
-  )
+      expect(output).toContain('Runtime-owned tooling contract:')
+      expect(output).toContain('wp now owns execution for test, e2e, lint, format, and typecheck.')
+      expect(output).toContain(
+        'Keep local authoring deps when imported directly: vitest, @playwright/test',
+      )
+      expect(output).toContain(
+        'Review execution-only deps for removal if they only powered local binaries: oxlint, oxfmt',
+      )
+      expect(output).toContain(
+        'Do not blanket-remove devDependencies just because wp can execute the tool.',
+      )
+    } finally {
+      cleanup()
+      rmSync(launcherRoot, { force: true, recursive: true })
+      rmSync(tmpRoot, { force: true, recursive: true })
+    }
+  }, 120_000)
 })

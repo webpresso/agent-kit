@@ -46,6 +46,7 @@ export function shouldSkipUpdateCheck(env: NodeJS.ProcessEnv, argv: string[]): b
   if (hasInformationalFlag(argv)) return true
   if (argv[2] !== undefined && SKIP_SUBCOMMANDS.has(argv[2])) return true
   if (env.WP_SKIP_UPDATE_CHECK === '1') return true
+  if (isPackageLifecycleEnvironment(env)) return true
   if (isCiEnvironment(env)) return true
   return false
 }
@@ -79,4 +80,13 @@ function isCiEnvironment(env: NodeJS.ProcessEnv): boolean {
     if (value !== undefined && value !== '' && value !== 'false' && value !== '0') return true
   }
   return false
+}
+
+function isPackageLifecycleEnvironment(env: NodeJS.ProcessEnv): boolean {
+  const lifecycleEvent = env.npm_lifecycle_event
+  const packageJsonPath = env.npm_package_json
+  return Boolean(
+    (lifecycleEvent && lifecycleEvent.trim().length > 0) ||
+    (packageJsonPath && packageJsonPath.trim().length > 0),
+  )
 }

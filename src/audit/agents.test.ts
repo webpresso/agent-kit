@@ -13,6 +13,14 @@ function writeJson(path: string, value: unknown): void {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`)
 }
 
+function managedCodexHookCommand(root: string, binName: string): string {
+  return join(root, '.codex', 'managed-hooks', `${binName}.sh`)
+}
+
+function managedClaudeHookCommand(binName: string): string {
+  return `$CLAUDE_PROJECT_DIR/.claude/hooks/managed/${binName}.sh`
+}
+
 function seedConsumerRepo(root: string): void {
   mkdirSync(join(root, '.agent', 'rules'), { recursive: true })
   mkdirSync(join(root, '.claude', 'rules'), { recursive: true })
@@ -36,24 +44,28 @@ function seedConsumerRepo(root: string): void {
     worktree: { symlinkDirectories: ['.claude'] },
     hooks: {
       SessionStart: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] },
+        {
+          hooks: [
+            { type: 'command', command: managedClaudeHookCommand('wp-sessionstart-routing') },
+          ],
+        },
       ],
       PreToolUse: [
         {
           matcher: 'Bash|Write|Edit',
-          hooks: [{ type: 'command', command: './node_modules/.bin/wp-pretool-guard' }],
+          hooks: [{ type: 'command', command: managedClaudeHookCommand('wp-pretool-guard') }],
         },
       ],
       PostToolUse: [
         {
           matcher: 'Write|Edit',
-          hooks: [{ type: 'command', command: './node_modules/.bin/wp-post-tool' }],
+          hooks: [{ type: 'command', command: managedClaudeHookCommand('wp-post-tool') }],
         },
       ],
       UserPromptSubmit: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-guard-switch' }] },
+        { hooks: [{ type: 'command', command: managedClaudeHookCommand('wp-guard-switch') }] },
       ],
-      Stop: [{ hooks: [{ type: 'command', command: './node_modules/.bin/wp-stop-qa' }] }],
+      Stop: [{ hooks: [{ type: 'command', command: managedClaudeHookCommand('wp-stop-qa') }] }],
     },
   })
   // Canonical Codex schema is wrapped under "hooks" — matches what the
@@ -61,24 +73,33 @@ function seedConsumerRepo(root: string): void {
   writeJson(join(root, '.codex', 'hooks.json'), {
     hooks: {
       SessionStart: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] },
+        {
+          hooks: [
+            {
+              type: 'command',
+              command: managedCodexHookCommand(root, 'wp-sessionstart-routing'),
+            },
+          ],
+        },
       ],
       PreToolUse: [
         {
           matcher: 'Bash|Edit|Write',
-          hooks: [{ type: 'command', command: './node_modules/.bin/wp-pretool-guard' }],
+          hooks: [{ type: 'command', command: managedCodexHookCommand(root, 'wp-pretool-guard') }],
         },
       ],
       PostToolUse: [
         {
           matcher: 'Edit|Write',
-          hooks: [{ type: 'command', command: './node_modules/.bin/wp-post-tool' }],
+          hooks: [{ type: 'command', command: managedCodexHookCommand(root, 'wp-post-tool') }],
         },
       ],
       UserPromptSubmit: [
-        { hooks: [{ type: 'command', command: './node_modules/.bin/wp-guard-switch' }] },
+        { hooks: [{ type: 'command', command: managedCodexHookCommand(root, 'wp-guard-switch') }] },
       ],
-      Stop: [{ hooks: [{ type: 'command', command: './node_modules/.bin/wp-stop-qa' }] }],
+      Stop: [
+        { hooks: [{ type: 'command', command: managedCodexHookCommand(root, 'wp-stop-qa') }] },
+      ],
     },
   })
 

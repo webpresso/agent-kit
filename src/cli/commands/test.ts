@@ -15,6 +15,7 @@ export const TEST_COMMAND_HELP = [
 ].join('\n')
 
 export interface AkTestCommandInput extends TestCommandOptions {
+  cwd?: string
   package?: readonly string[] | string
   file?: readonly string[] | string
   targets?: readonly string[] | string
@@ -28,7 +29,7 @@ export function createAkTestCommandConfig(input: AkTestCommandInput): CommandCon
     positional: toArray(input.targets),
   })
 
-  return buildTestCommand(target, input)
+  return buildTestCommand(target, { ...input, cwd: input.cwd })
 }
 
 export function registerTestCommand(cli: CAC): void {
@@ -50,6 +51,7 @@ export function registerTestCommand(cli: CAC): void {
     .action((targets: string[] | string | undefined, flags: Record<string, unknown>) => {
       const rawArgv = process.argv.slice(2)
       const command = createAkTestCommandConfig({
+        cwd: process.cwd(),
         package: flags.package as string | string[] | undefined,
         file: flags.file as string | string[] | undefined,
         targets: targets ?? [],
