@@ -1,164 +1,126 @@
 # @webpresso/agent-kit
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![CI](https://github.com/webpresso/agent-kit/actions/workflows/ci.webpresso.yml/badge.svg)](https://github.com/webpresso/agent-kit/actions/workflows/ci.webpresso.yml)
+
 > TypeScript infrastructure for AI-agent-driven development. One `wp` runtime
 > gives agents planning, tests, mutation, e2e, CI, docs, and debt tracking —
 > all summary-first so they keep context, and enforced as contracts so docs,
 > intent, and code can't drift. MIT. Experimental v0.x.
 
-## Install
+## What it is
 
-Requires Node.js 24 or newer.
+`@webpresso/agent-kit` is a TypeScript toolkit — the `wp` CLI plus an MCP
+server — that gives AI coding agents a summary-first, contract-enforced way to
+plan, test, and keep a repo correct.
 
-Install from the public npm registry:
+## Why use it
+
+- **Agents keep context.** The `wp_*` MCP tools return summary-first JSON
+  (failures + `bytes` + `tokensSaved`), not thousand-line logs.
+- **Docs, plans, and code can't silently diverge.** Every audit runs as both an
+  MCP tool and a pre-commit/CI gate.
+- **Zero hand-wiring onboarding.** `wp setup` scaffolds the quality config and
+  keeps `AGENTS.md` / `CLAUDE.md` plus per-agent surfaces in sync.
+
+## Quick start
+
+Requires Node.js 24 or newer. No private registry setup is required.
 
 ```bash
-npm install -g @webpresso/agent-kit
-wp setup
+npm install -g @webpresso/agent-kit && wp setup
 ```
 
-That's the product.
-
-No private registry setup is required.
-
-If you do not want a global install, run it one-shot instead:
+Prefer not to install globally? Run it one-shot:
 
 ```bash
 npm exec --yes --package @webpresso/agent-kit@latest -- wp setup
 ```
 
-`wp setup` is safe to run again. It refreshes the webpresso-owned pieces,
-creates the default `base-kit` quality scaffold when files are absent, and
-preserves consumer-owned files.
+**Success signal:** `wp setup` completes and is idempotent. On a fresh repo it
+scaffolds the `base-kit` quality assets (`tsconfig`, Vitest, Oxlint, Stryker,
+Playwright, unit-test and file-based e2e smoke assets), wires `AGENTS.md` /
+`CLAUDE.md` plus per-agent command/skill/hook surfaces, and prints
+execution-owned vs authoring-owned dependency migration guidance. Re-running
+refreshes the webpresso-owned pieces and preserves consumer-owned files.
 
-The guarantee is **zero hand-wiring**, not zero local dependencies. Fresh repos
-get starter `tsconfig`, Vitest, Oxlint, Stryker, Playwright, unit-test, and
-file-based e2e smoke assets. Repos still keep authoring-time dependencies that
-their configs and tests import directly.
+`wp` owns **execution** for the generic tool lanes it manages (test / mutation /
+e2e / lint / format / typecheck). That does **not** mean every local
+devDependency disappears — keep dependencies your repo imports directly (e.g.
+`vitest`, `@playwright/test`, `typescript`); review execution-only binaries
+(e.g. `oxlint`, `oxfmt`) for removal only when nothing imports them. See
+[`docs/getting-started.md`](docs/getting-started.md).
 
-Default workstation presets are separate from repo bootstrap. `omx`, `omc`,
-`gstack`, `vision`, `rtk`, and `context-mode` are requested by default and
-degrade with explicit skipped/warning output when the matching host or auth is
-unavailable. The repo bootstrap is `base-kit`.
-
-### Execution-owned vs authoring-owned dependencies
-
-`wp` now owns **execution** for the generic tool lanes it manages:
-
-- test / mutation
-- e2e
-- lint
-- format
-- typecheck
-
-That does **not** mean every local devDependency should disappear.
-
-- Keep local dependencies that your repo **imports directly** from tests,
-  config files, or tsconfig types — for example `vitest`,
-  `@playwright/test`, `@testing-library/jest-dom`, or `typescript`.
-- Review execution-only binaries for removal **only if** they were installed
-  just to invoke them locally and nothing imports them directly — for example
-  `oxlint`, `oxfmt`, or `markdownlint-cli2`.
-
-`wp setup` prints this migration guidance after scaffolding so consumers do not
-accidentally strip authoring-time dependencies just because `wp` can execute
-the tool.
-
-Public install claims are checked against the packed artifact with:
+Verify install claims against the packed artifact:
 
 ```bash
 vp run public:consumer-smoke -- --setup-only
 ```
 
-Use the full smoke without `--setup-only` when you want to install the generated
-starter dependencies and run the generated quality commands.
+## Features
 
-## What it does
+| Capability | What it does | Proof |
+| --- | --- | --- |
+| **`wp setup` onboarding** | Idempotent scaffolder for the base-kit quality config + `AGENTS.md` / `CLAUDE.md` wiring | [`src/cli/commands/init/`](src/cli/commands/init/), verified by [`scripts/public-consumer-smoke.ts`](scripts/public-consumer-smoke.ts) |
+| **Summary-first `wp_*` MCP tools** | `wp_test` / `wp_typecheck` / `wp_lint` / `wp_qa` / `wp_e2e` / `wp_format` / `wp_ci_act` / `wp_audit` return JSON with `bytes` / `tokensSaved` budget metadata | [`src/mcp/tools/`](src/mcp/tools/) (each with co-located `.test.ts`), [`src/mcp/server.integration.test.ts`](src/mcp/server.integration.test.ts) |
+| **MCP server + CLI surface** | Registers the tool set and exposes it to agents | [`src/mcp/server.ts`](src/mcp/server.ts), [`src/mcp/cli.ts`](src/mcp/cli.ts), [`src/mcp/cli.integration.test.ts`](src/mcp/cli.integration.test.ts) |
+| **Blueprint runtime** | Lifecycle states, dependency-aware task graph, structured authoring control plane (`wp_blueprint_depgraph` / `put` / `transition`) | [`src/mcp/blueprint-server.ts`](src/mcp/blueprint-server.ts), [`docs/lifecycle.md`](docs/lifecycle.md), [`docs/blueprint-format.md`](docs/blueprint-format.md) |
+| **Audit contract family** | `blueprint-lifecycle`, `docs-frontmatter`, `catalog-drift`, `vision`, `architecture-drift`, `bundle-budget`, `commit-message` (Lore), `tech-debt`, `absolute-path-policy`, `open-source-licenses`, … — each runs as a `wp_audit` MCP tool **and** a pre-commit/CI gate | [`src/audit/`](src/audit/), [`src/mcp/tools/audit.ts`](src/mcp/tools/audit.ts), [`.github/workflows/ci.webpresso.yml`](.github/workflows/ci.webpresso.yml) |
+| **Symlinker** | Syncs canonical `.agent/` to per-IDE surfaces (Codex/Amp skills, Gemini TOML commands) via rulesync | [`src/symlinker/index.ts`](src/symlinker/index.ts), [`src/symlinker/symlinker.integration.test.ts`](src/symlinker/symlinker.integration.test.ts), [`docs/symlinker.md`](docs/symlinker.md) |
+| **Mutation testing** | `wp audit mutation` (Stryker) catches tests that pass without asserting | [`src/config/stryker/`](src/config/stryker/), `./stryker` + `./mutation` exports |
+| **Tech-debt lifecycle** | `accepted → needs-remediation → monitoring → resolved`, auto-filed from failing audits | [`src/blueprint/tech-debt/`](src/blueprint/tech-debt/), [`src/cli/commands/tech-debt/`](src/cli/commands/tech-debt/) |
+| **Shared config subpaths** | `tsconfig/*`, `vitest/*`, `oxlint/*`, `workers-test`, `test-preset`, `e2e-preset`, `docs-lint`, `launch` | [`package.json` exports](package.json), [`src/config/`](src/config/) |
+| **Claude Code plugin** | Ships as a plugin; `vp run lint:pkg` runs `claude plugin validate .` | `.claude-plugin/` (in `package.json#files`) |
 
-`wp` is the toolkit agents use to do real work in a repo. Every piece is built
-on two properties that make it *agent-grade* rather than yet-another-bundle:
-its output is **summary-first** (agents keep context) and it is **enforced**
-(pre-commit + CI gates, not just available).
+## Architecture
 
-### The toolkit
-
-- **Planning** — blueprints: markdown plans with a lifecycle
-  (`wp audit blueprint-lifecycle`) and a dependency-aware task graph.
-  `wp_blueprint_depgraph` returns its dependency graph (nodes + edges), and
-  optional runtime adapters (OMX `/pll`) use those dependencies to run
-  independent tasks in parallel.
-  Authoring now has a structured control plane: `wp_blueprint_put` writes the
-  blueprint from typed input and `wp_blueprint_transition` advances lifecycle
-  state with revision-aware optimistic concurrency. A future MCP Apps editor is
-  explicitly a follow-on enhancement layered on top of those tools, not a
-  separate required write surface. See [`docs/lifecycle.md`](docs/lifecycle.md).
-- **Tests, types, lint** — `wp_test`, `wp_typecheck`, `wp_lint` over your
-  vitest/oxlint setup.
-- **Mutation testing** — `wp audit mutation` (Stryker) catches tests that pass
-  without actually asserting.
-- **End-to-end** — `wp_e2e` runs suite-aware Playwright flows.
-- **CI, locally** — `wp_ci_act` runs your GitHub Actions through `act` behind
-  the repo secret contract.
-- **Docs** — `wp docs lint` and `wp audit docs-frontmatter` keep docs
-  structured and current.
-- **Tech-debt** — `wp tech-debt` tracks debt through a status lifecycle
-  (accepted → needs-remediation → monitoring → resolved), auto-filed from
-  failing audits.
-
-### What makes it agent-grade
-
-- **Summary-first output** — the `wp_*` MCP wrappers return summary-first JSON
-  with clipped raw output and budget metadata (`bytes`, `tokensSaved`), and
-  `wp setup` wires the `rtk` and `context-mode` output-filtering lanes by
-  default (skipped in CI and via `WP_SKIP_RTK=1` / `WP_SKIP_CONTEXT_MODE=1`;
-  never bundled in the package). Agents reason over the failure set, not the
-  thousand-line log. See [`docs/qa-output.md`](docs/qa-output.md).
-- **Enforced as contracts** — `wp audit vision` keeps `VISION.md` current,
-  `wp audit architecture-drift` keeps architecture docs aligned with the
-  implementation they describe, `wp audit bundle-budget` caps client output,
-  and the Lore commit protocol (`wp audit commit-message --require-lore`)
-  records the *why* behind each change. Every audit runs as a `wp_audit` MCP
-  tool **and** as a pre-commit and CI gate — so intent, docs, and code can't
-  silently diverge.
-- **One operating contract, managed for you** — `wp` generates and keeps your
-  `AGENTS.md`, `CLAUDE.md`, and each agent's command, skill, and hook surfaces
-  in sync, emitted through rulesync across every supported runtime (see
-  [`catalog/agent/rules/supported-agent-clis.md`](catalog/agent/rules/supported-agent-clis.md)).
-  `AGENTS.md` is the standard; `wp` keeps everything around it coherent.
-
-## Why it exists
-
-Sharing instructions across agents is largely solved: `AGENTS.md` is the
-standard, and emitters like rulesync fan one source out to every runtime. `wp`
-manages that layer for you — but the hard part of agent-driven development isn't
-a missing instruction file. It is keeping agents **effective** (they burn the
-context window on verbose tool output) and keeping the repo **correct** (docs,
-plans, and code drift apart as agents move fast).
-
-`wp` is the TypeScript layer for both: summary-first tooling so the window goes
-to code, and enforced contracts so the work stays coherent.
-
-```bash
-wp setup
+```
+                 ┌──────────────────────────────────────────┐
+   AI agent  ───▶ │  MCP server  (summary-first wp_* tools)   │
+   (Claude /      │  test · typecheck · lint · qa · e2e ·     │
+    Codex)        │  format · ci-act · audit · blueprint_*    │
+                 └───────────────┬──────────────────────────┘
+   human     ───▶  wp CLI  ──────┤  (same logic, shell surface)
+                                 ▼
+        ┌────────────┬───────────────┬───────────────┬─────────────┐
+        │ Blueprints │ Audit family  │ Symlinker      │ base-kit     │
+        │ lifecycle  │ MCP + CI gate │ .agent/ → IDEs │ scaffold     │
+        └────────────┴───────────────┴───────────────┴─────────────┘
 ```
 
-## Add-ons
+Two properties make it *agent-grade*: output is **summary-first** (agents keep
+context) and tooling is **enforced** (pre-commit + CI gates, not just
+available). See [`docs/qa-output.md`](docs/qa-output.md) and
+[`VISION.md`](./VISION.md).
 
-Most repos should start with the default setup. Extra integrations and their
-default/opt-in behavior are documented in [`docs/add-ons.md`](docs/add-ons.md).
+## Verify
 
-## Package references
+**Fast contributor check** — narrowest scope that proves a change:
 
-If you need config subpaths or dependency references, use the appendix:
-[`docs/markdown-fact-check.md`](docs/markdown-fact-check.md).
+```bash
+vp run typecheck   # wp typecheck — no TS errors
+vp run lint        # wp lint (oxlint) — no violations
+vp run test        # unit then integration vitest suites — all green
+```
 
-## Docs
+**Full maintainer check** (bookend — run once at start, once at end):
 
-- [Getting started](docs/getting-started.md)
-- [Is webpresso for me?](docs/is-agent-kit-for-me.md)
-- [Blueprint lifecycle](docs/lifecycle.md)
-- [Add-ons](docs/add-ons.md)
-- [Blueprint format](docs/blueprint-format.md)
-- [Skills catalog](docs/skills-catalog.md)
+```bash
+vp run qa          # build + typecheck + lint + format:check + test + lint:pkg + audits:check
+```
+
+`vp run qa` exits 0 when every stage passes. The package-surface gate runs
+separately as `vp run lint:pkg` (publint + attw `--pack`, plus `claude plugin
+validate` when `claude` is present).
+
+## Contribute / Security / License
+
+- [CONTRIBUTING.md](./CONTRIBUTING.md) — setup, verify commands, Lore Commit
+  Protocol, and the Changesets release flow.
+- [SECURITY.md](./SECURITY.md) — private vulnerability reporting.
+- [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) — Contributor Covenant.
+- [CHANGELOG.md](./CHANGELOG.md) — release history (Changesets-managed).
+- [VISION.md](./VISION.md) — why this exists and where it's going.
 
 ## Status
 
