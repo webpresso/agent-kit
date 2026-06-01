@@ -1,35 +1,31 @@
 import { describe, expect, it } from 'vitest'
 
-import { resolveLocalPackageEntrypoint, resolveNodeRuntimeCommand } from './local-package-entrypoint.js'
 import { resolveRunner } from './resolve-runner.js'
 
 describe('resolveRunner', () => {
   it('uses RTK-filtered managed runners by default', () => {
-    const vitestEntrypoint = resolveLocalPackageEntrypoint(process.cwd(), 'vitest', 'vitest.mjs')
     expect(resolveRunner('vitest')).toEqual({
       tool: 'vitest',
       command: 'rtk',
-      args: [resolveNodeRuntimeCommand(), vitestEntrypoint!],
+      args: ['vp', 'exec', 'vitest'],
       source: 'managed',
     })
   })
 
   it('supports explicitly opting out of RTK filtering for managed runners', () => {
-    const vitestEntrypoint = resolveLocalPackageEntrypoint(process.cwd(), 'vitest', 'vitest.mjs')
     expect(resolveRunner('vitest', { outputPolicy: 'structured' })).toEqual({
       tool: 'vitest',
-      command: resolveNodeRuntimeCommand(),
-      args: [vitestEntrypoint!],
+      command: 'vp',
+      args: ['exec', 'vitest'],
       source: 'managed',
     })
   })
 
-  it('resolves tsc through the local TypeScript entrypoint when available', () => {
-    const tscEntrypoint = resolveLocalPackageEntrypoint(process.cwd(), 'typescript', 'bin/tsc')
+  it('resolves tsc through managed vp exec instead of a bare binary', () => {
     expect(resolveRunner('tsc', { outputPolicy: 'structured' })).toEqual({
       tool: 'tsc',
-      command: resolveNodeRuntimeCommand(),
-      args: [tscEntrypoint!],
+      command: 'vp',
+      args: ['exec', 'tsc'],
       source: 'managed',
     })
   })
@@ -73,13 +69,11 @@ describe('resolveRunner', () => {
   })
 
   it('accepts legacy filterOutput false as a structured-output selector', () => {
-    const tscEntrypoint = resolveLocalPackageEntrypoint(process.cwd(), 'typescript', 'bin/tsc')
     expect(resolveRunner('tsc', { filterOutput: false })).toEqual({
       tool: 'tsc',
-      command: resolveNodeRuntimeCommand(),
-      args: [tscEntrypoint!],
+      command: 'vp',
+      args: ['exec', 'tsc'],
       source: 'managed',
     })
   })
-
 })

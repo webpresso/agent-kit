@@ -4,17 +4,9 @@ import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { resolveLocalPackageEntrypoint, resolveNodeRuntimeCommand } from '#tool-runtime/local-package-entrypoint.js'
 import { createAkTestCommandConfig, TEST_COMMAND_HELP } from './test.js'
 
 const tempDirs: string[] = []
-
-function expectedVitestRunner(cwd: string): { command: string; args: string[] } {
-  const vitestEntrypoint = resolveLocalPackageEntrypoint(cwd, 'vitest', 'vitest.mjs')
-  return vitestEntrypoint
-    ? { command: 'rtk', args: [resolveNodeRuntimeCommand(), vitestEntrypoint] }
-    : { command: 'rtk', args: ['vp', 'exec', 'vitest'] }
-}
 
 afterEach(() => {
   while (tempDirs.length > 0) rmSync(tempDirs.pop()!, { recursive: true, force: true })
@@ -39,14 +31,13 @@ describe('wp test command helpers', () => {
   })
 
   it('builds file-target commands through the managed runtime core', () => {
-    const runner = expectedVitestRunner(process.cwd())
     expect(
       createAkTestCommandConfig({
         file: ['apps/cli2/src/commands/target.test.ts'],
       }),
     ).toEqual({
-      command: runner.command,
-      args: [...runner.args, 'run', 'apps/cli2/src/commands/target.test.ts'],
+      command: 'rtk',
+      args: ['vp', 'exec', 'vitest', 'run', 'apps/cli2/src/commands/target.test.ts'],
     })
   })
 

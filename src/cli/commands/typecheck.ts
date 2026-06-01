@@ -2,7 +2,6 @@ import type { CAC } from 'cac'
 import type { SpawnSyncReturns } from 'node:child_process'
 import { getManagedRunner } from '#tool-runtime'
 import { getPackageScript, isRecursiveWpScript } from '#cli/package-scripts.js'
-import { runTypecheck } from '../../typecheck/index.js'
 
 import { spawnSync } from 'node:child_process'
 
@@ -26,9 +25,6 @@ export interface TypecheckCommandConfig {
 
 export interface TypecheckCommandDeps {
   readonly run?: (command: string, args: readonly string[]) => SpawnSyncReturns<string>
-  readonly runTypecheck?: typeof runTypecheck
-  readonly stderr?: Pick<NodeJS.WriteStream, 'write'>
-  readonly stdout?: Pick<NodeJS.WriteStream, 'write'>
 }
 
 export function registerTypecheckCommand(cli: CAC): void {
@@ -51,44 +47,21 @@ export function buildTypecheckCommand(options: TypecheckOptions = {}): Typecheck
     }
   }
 
-  const resolution = getManagedRunner('tsc', { cwd, outputPolicy: 'structured' })
+  const resolution = getManagedRunner('tsc', { outputPolicy: 'structured' })
   return {
     command: resolution.command,
     args: [...resolution.args, '--noEmit', ...(options.pretty ? [] : ['--pretty', 'false'])],
   }
 }
 
-export async function runTypecheckCommand(
+export function runTypecheckCommand(
   options: TypecheckOptions = {},
   deps: TypecheckCommandDeps = {},
-): Promise<number> {
-  const cwd = options.cwd ?? process.cwd()
-  const checkTypesScript = getPackageScript(cwd, 'check-types')
-
-  if (checkTypesScript && !isRecursiveWpScript(checkTypesScript, 'typecheck')) {
-    const command = buildTypecheckCommand(options)
-    const result = (deps.run ?? defaultRun)(command.command, command.args)
-    if (typeof result.status === 'number') return result.status
-    return 1
-  }
-
-  try {
-    const result = await (deps.runTypecheck ?? runTypecheck)({
-      cwd,
-      pretty: options.pretty,
-    })
-
-    if (result.output) {
-      ;(deps.stdout ?? process.stdout).write(result.output)
-    }
-
-    return result.passed ? 0 : 1
-  } catch (error) {
-    ;(deps.stderr ?? process.stderr).write(
-      `${error instanceof Error ? error.message : String(error)}\n`,
-    )
-    return 1
-  }
+): number {
+  const command = buildTypecheckCommand(options)
+  const result = (deps.run ?? defaultRun)(command.command, command.args)
+  if (typeof result.status === 'number') return result.status
+  return 1
 }
 
 function defaultRun(command: string, args: readonly string[]): SpawnSyncReturns<string> {
