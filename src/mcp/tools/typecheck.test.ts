@@ -66,12 +66,12 @@ describe('wp_typecheck tool', () => {
       await akTypecheckTool.handler({ packages: ['a', 'b'] })
 
       expect(spawnMock).toHaveBeenCalledTimes(2)
-      const [cmd0, args0] = spawnMock.mock.calls[0]!
-      const [cmd1, args1] = spawnMock.mock.calls[1]!
-      expect(cmd0).toBe('vp')
-      expect(args0).toEqual(['exec', 'tsc', '--noEmit', '-p', join('a', 'tsconfig.json')])
-      expect(cmd1).toBe('vp')
-      expect(args1).toEqual(['exec', 'tsc', '--noEmit', '-p', join('b', 'tsconfig.json')])
+      const [, args0, opts0] = spawnMock.mock.calls[0]!
+      const [, args1, opts1] = spawnMock.mock.calls[1]!
+      expect(args0.slice(-5)).toEqual(['--noEmit', '-p', 'tsconfig.json', '--pretty', 'false'])
+      expect(opts0).toMatchObject({ cwd: join(dir, 'a') })
+      expect(args1.slice(-5)).toEqual(['--noEmit', '-p', 'tsconfig.json', '--pretty', 'false'])
+      expect(opts1).toMatchObject({ cwd: join(dir, 'b') })
     })
 
     it('spawns plain `tsc --noEmit` when no packages given', async () => {
@@ -80,9 +80,8 @@ describe('wp_typecheck tool', () => {
       await akTypecheckTool.handler({})
 
       expect(spawnMock).toHaveBeenCalledTimes(1)
-      const [cmd, args] = spawnMock.mock.calls[0]!
-      expect(cmd).toBe('vp')
-      expect(args).toEqual(['exec', 'tsc', '--noEmit'])
+      const [, args] = spawnMock.mock.calls[0]!
+      expect(args.slice(-3)).toEqual(['--noEmit', '--pretty', 'false'])
     })
   })
 

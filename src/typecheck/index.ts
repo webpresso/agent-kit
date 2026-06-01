@@ -15,6 +15,7 @@ import { globSync } from 'glob'
 import { isRunFailure, runCommand, type RunResult } from '#mcp/tools/_shared/run-command'
 import { resolveProjectRoot } from '#mcp/tools/_shared/project-root'
 import { getManagedRunner } from '#tool-runtime'
+import { resolveLocalPackageEntrypoint } from '#tool-runtime/local-package-entrypoint'
 
 export interface TscError {
   readonly file: string
@@ -45,6 +46,8 @@ export interface RunTypecheckOptions {
   readonly timeoutMs?: number
   /** Optional cancellation signal propagated to the child process(es). */
   readonly signal?: AbortSignal
+  /** Preserve TypeScript pretty output. Defaults to TypeScript's own default. */
+  readonly pretty?: boolean
 }
 
 const DEFAULT_TYPECHECK_TIMEOUT_MS = 10 * 60 * 1_000
@@ -101,6 +104,47 @@ function resolveTypecheckTarget(
   return target
 }
 
+function discoverWorkspaceTypecheckTargets(cwd: string, workspaceGlobs: readonly string[]): string[] {
+  const seen = new Set<string>()
+  const targets: string[] = []
+
+  for (const workspaceGlob of workspaceGlobs) {
+    const packageJsonPattern = join(workspaceGlob, 'package.json').replaceAll('\\', '/')
+    const packageJsonPaths = globSync(packageJsonPattern, {
+      cwd,
+      nodir: true,
+      absolute: false,
+    })
+
+    for (const packageJsonPath of packageJsonPaths) {
+      const packageDirectory = packageJsonPath.slice(0, -'/package.json'.length)
+      if (seen.has(packageDirectory)) {
+        continue
+      }
+
+      if (!existsSync(join(cwd, packageDirectory, 'tsconfig.json'))) {
+        continue
+      }
+
+      seen.add(packageDirectory)
+      targets.push(packageDirectory)
+    }
+  }
+
+  return targets.toSorted((left, right) => left.localeCompare(right))
+}
+
+function hasLocalTypescriptRuntime(cwd: string): boolean {
+  return resolveLocalPackageEntrypoint(cwd, 'typescript', 'bin/tsc') !== undefined
+}
+
+function buildTscArgs(
+  baseArgs: readonly string[],
+  options: Pick<RunTypecheckOptions, 'pretty'>,
+): string[] {
+  return options.pretty ? [...baseArgs] : [...baseArgs, '--pretty', 'false']
+}
+
 /**
  * Parse `tsc --noEmit` stdout into structured `{file, line, code, message}`
  * entries. Lines that don't match the diagnostic format are ignored so
@@ -134,42 +178,77 @@ export function parseTscOutput(raw: string): TscError[] {
  */
 export async function runTypecheck(options: RunTypecheckOptions = {}): Promise<TypecheckResult> {
   const cwd = resolveProjectRoot(options.cwd ? { explicitCwd: options.cwd } : {})
-  const runOptions = {
+  const baseRunOptions = {
     timeoutMs: options.timeoutMs ?? DEFAULT_TYPECHECK_TIMEOUT_MS,
     signal: options.signal,
-    cwd,
   }
 
   const targets: readonly string[] | null =
     options.packages && options.packages.length > 0 ? options.packages : null
-  const workspaceGlobs = targets ? readWorkspaceGlobs(cwd) : null
+  const workspaceGlobs = readWorkspaceGlobs(cwd)
 
   const runs: RunResult[] = []
-  const resolution = getManagedRunner('tsc', { outputPolicy: 'structured' })
   if (targets) {
     for (const pkg of targets) {
       const resolvedTarget = resolveTypecheckTarget(cwd, pkg, workspaceGlobs)
-      const tsconfig = join(resolvedTarget, 'tsconfig.json')
+      const packageCwd = join(cwd, resolvedTarget)
+      const resolution = getManagedRunner('tsc', {
+        cwd: packageCwd,
+        outputPolicy: 'structured',
+      })
       const outcome = await runCommand(
         resolution.command,
-        [...resolution.args, '--noEmit', '-p', tsconfig],
-        runOptions,
+        [...resolution.args, ...buildTscArgs(['--noEmit', '-p', 'tsconfig.json'], options)],
+        { ...baseRunOptions, cwd: packageCwd },
       )
       if (isRunFailure(outcome)) {
         throw outcome.error
       }
       runs.push(outcome)
     }
-  } else {
+  } else if (hasLocalTypescriptRuntime(cwd) || !workspaceGlobs || workspaceGlobs.length === 0) {
+    const resolution = getManagedRunner('tsc', { cwd, outputPolicy: 'structured' })
     const outcome = await runCommand(
       resolution.command,
-      [...resolution.args, '--noEmit'],
-      runOptions,
+      [...resolution.args, ...buildTscArgs(['--noEmit'], options)],
+      { ...baseRunOptions, cwd },
     )
     if (isRunFailure(outcome)) {
       throw outcome.error
     }
     runs.push(outcome)
+  } else {
+    const workspaceTargets = discoverWorkspaceTypecheckTargets(cwd, workspaceGlobs)
+
+    if (workspaceTargets.length === 0) {
+      const resolution = getManagedRunner('tsc', { cwd, outputPolicy: 'structured' })
+      const outcome = await runCommand(
+        resolution.command,
+        [...resolution.args, ...buildTscArgs(['--noEmit'], options)],
+        { ...baseRunOptions, cwd },
+      )
+      if (isRunFailure(outcome)) {
+        throw outcome.error
+      }
+      runs.push(outcome)
+    } else {
+      for (const workspaceTarget of workspaceTargets) {
+        const packageCwd = join(cwd, workspaceTarget)
+        const resolution = getManagedRunner('tsc', {
+          cwd: packageCwd,
+          outputPolicy: 'structured',
+        })
+        const outcome = await runCommand(
+          resolution.command,
+          [...resolution.args, ...buildTscArgs(['--noEmit', '-p', 'tsconfig.json'], options)],
+          { ...baseRunOptions, cwd: packageCwd },
+        )
+        if (isRunFailure(outcome)) {
+          throw outcome.error
+        }
+        runs.push(outcome)
+      }
+    }
   }
 
   const combinedStdout = runs.map((r) => r.stdout).join('')

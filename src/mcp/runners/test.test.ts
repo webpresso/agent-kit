@@ -53,6 +53,15 @@ function writeVitestWorkspace(root: string): void {
       devDependencies: { vitest: '^4.0.0' },
     }),
   )
+  writeVitestEntrypoint(root)
+}
+
+function writeVitestEntrypoint(root: string): string {
+  const vitestRoot = join(root, 'node_modules', 'vitest')
+  mkdirSync(vitestRoot, { recursive: true })
+  writeFileSync(join(vitestRoot, 'package.json'), JSON.stringify({ name: 'vitest' }))
+  writeFileSync(join(vitestRoot, 'vitest.mjs'), '')
+  return join(vitestRoot, 'vitest.mjs')
 }
 
 function writeTestFiles(root: string, count: number): string[] {
@@ -67,6 +76,20 @@ function writeTestFiles(root: string, count: number): string[] {
     files.push(relative)
   }
   return files
+}
+
+function expectManagedVitestCall(
+  call: readonly unknown[],
+  entrypoint: string,
+  expectedArgs: readonly string[],
+): void {
+  expect(call[0]).toBe(process.execPath)
+  expect(call[1]).toEqual([entrypoint, ...expectedArgs])
+}
+
+function vitestFileArgs(args: readonly string[]): string[] {
+  const endOfOptions = args.indexOf('--no-color')
+  return args.slice(endOfOptions + 1)
 }
 
 const originalProjectDir = process.env.CLAUDE_PROJECT_DIR
@@ -110,16 +133,12 @@ describe('test runner', () => {
         join(root, 'packages', 'a', 'package.json'),
         JSON.stringify({ devDependencies: { vitest: '^4.0.0' } }),
       )
+      const entrypoint = writeVitestEntrypoint(root)
       spawnMock.mockReturnValueOnce(fakeChild({ stdout: '{}\n', exitCode: 0 }))
 
       await runTests({ packages: ['a'] })
 
-      expect(spawnMock.mock.calls[0]![1]).toEqual([
-        'exec',
-        '--filter',
-        'a',
-        '--',
-        'vitest',
+      expectManagedVitestCall(spawnMock.mock.calls[0]!, entrypoint, [
         'run',
         '--reporter=json',
         '--no-color',
@@ -138,16 +157,12 @@ describe('test runner', () => {
         join(root, 'packages', 'a', 'package.json'),
         JSON.stringify({ devDependencies: { vitest: '^4.0.0' } }),
       )
+      const entrypoint = writeVitestEntrypoint(root)
       spawnMock.mockReturnValueOnce(fakeChild({ stdout: '{}\n', exitCode: 0 }))
 
       await runTests({ packages: ['a'], files: ['src/a.test.ts'] })
 
-      expect(spawnMock.mock.calls[0]![1]).toEqual([
-        'exec',
-        '--filter',
-        'a',
-        '--',
-        'vitest',
+      expectManagedVitestCall(spawnMock.mock.calls[0]!, entrypoint, [
         'run',
         '--reporter=json',
         '--no-color',
@@ -182,6 +197,17 @@ describe('test runner', () => {
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
+  })
+
+  it('preserves package-manager filter semantics for unresolved package targets', async () => {
+    writeVitestWorkspace(defaultRoot!)
+    spawnMock.mockReturnValueOnce(fakeChild({ stdout: 'ok\n', exitCode: 0 }))
+
+    await runTests({ packages: ['missing-package'] })
+
+    const [cmd, args] = spawnMock.mock.calls[0]!
+    expect(cmd).toBe('vp')
+    expect(args).toEqual(['run', '--filter', 'missing-package', 'test'])
   })
 
   it('aggregates failure when one package fails', async () => {
@@ -246,13 +272,16 @@ describe('test runner', () => {
         devDependencies: { vitest: '^4.0.0' },
       }),
     )
+    const entrypoint = writeVitestEntrypoint(defaultRoot!)
     spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
 
     await runTests({})
 
-    const [cmd, args] = spawnMock.mock.calls[0]!
-    expect(cmd).toBe('vp')
-    expect(args).toEqual(['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color'])
+    expectManagedVitestCall(spawnMock.mock.calls[0]!, entrypoint, [
+      'run',
+      '--reporter=json',
+      '--no-color',
+    ])
   })
 
   it('shards root vitest workspace runs across discovered test files', async () => {
@@ -265,17 +294,14 @@ describe('test runner', () => {
     expect(spawnMock).toHaveBeenCalledTimes(2)
     const shardCalls = spawnMock.mock.calls.map((call) => call[1] as string[])
     for (const args of shardCalls) {
-      expect(args.slice(0, 6)).toEqual([
-        'exec',
-        '--',
-        'vitest',
+      expect(args.slice(1, 4)).toEqual([
         'run',
         '--reporter=json',
         '--no-color',
       ])
     }
 
-    const executedFiles = shardCalls.flatMap((args) => args.slice(6)).sort()
+    const executedFiles = shardCalls.flatMap(vitestFileArgs).sort()
     expect(executedFiles).toEqual(files.sort())
   })
 
@@ -289,17 +315,14 @@ describe('test runner', () => {
     expect(spawnMock).toHaveBeenCalledTimes(2)
     const shardCalls = spawnMock.mock.calls.map((call) => call[1] as string[])
     for (const args of shardCalls) {
-      expect(args.slice(0, 6)).toEqual([
-        'exec',
-        '--',
-        'vitest',
+      expect(args.slice(1, 4)).toEqual([
         'run',
         '--reporter=json',
         '--no-color',
       ])
     }
 
-    const executedFiles = shardCalls.flatMap((args) => args.slice(6)).sort()
+    const executedFiles = shardCalls.flatMap(vitestFileArgs).sort()
     expect(executedFiles).toEqual(files.sort())
   })
 
@@ -331,7 +354,7 @@ describe('test runner', () => {
 
     expect(spawnMock).toHaveBeenCalledTimes(3)
     const shardCalls = spawnMock.mock.calls.map((call) => call[1] as string[])
-    const executedFiles = shardCalls.flatMap((args) => args.slice(6)).sort()
+    const executedFiles = shardCalls.flatMap(vitestFileArgs).sort()
     expect(executedFiles).toEqual(files.sort())
   })
 
@@ -425,21 +448,57 @@ describe('test runner', () => {
       join(defaultRoot!, 'package.json'),
       JSON.stringify({ scripts: { test: 'vitest run' }, devDependencies: { vitest: '^4.0.0' } }),
     )
+    const entrypoint = writeVitestEntrypoint(defaultRoot!)
     spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
 
     await runTests({ files: ['a.test.ts', 'b.test.ts'] })
 
-    const [cmd, args] = spawnMock.mock.calls[0]!
-    expect(cmd).toBe('vp')
-    expect(args).toEqual([
-      'exec',
-      '--',
-      'vitest',
+    expectManagedVitestCall(spawnMock.mock.calls[0]!, entrypoint, [
       'run',
       '--reporter=json',
       '--no-color',
       'a.test.ts',
       'b.test.ts',
     ])
+  })
+
+  it('resolves root vitest through the managed package entrypoint when .bin is absent', async () => {
+    writeVitestWorkspace(defaultRoot!)
+    const entrypoint = join(defaultRoot!, 'node_modules', 'vitest', 'vitest.mjs')
+    spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
+
+    await runTests({ files: ['vitest.config.ts'] })
+
+    expectManagedVitestCall(spawnMock.mock.calls[0]!, entrypoint, [
+      'run',
+      '--config',
+      'vitest.config.ts',
+      '--reporter=json',
+      '--no-color',
+    ])
+  })
+
+  it('records file-filter scope when managed vitest file runs fail', async () => {
+    writeVitestWorkspace(defaultRoot!)
+    spawnMock.mockReturnValue(fakeChild({ stderr: 'boom\n', exitCode: 1 }))
+
+    const result = await runTests({ files: ['src/failing.test.ts'] })
+
+    expect(result.passed).toBe(false)
+    expect(result.failureScope).toBe('file-filter command')
+  })
+
+  it('records workspace vitest scope when recursive workspace bypass fails', async () => {
+    writeFileSync(
+      join(defaultRoot!, 'package.json'),
+      JSON.stringify({ scripts: { test: 'wp test' }, devDependencies: { vitest: '^4.0.0' } }),
+    )
+    writeVitestEntrypoint(defaultRoot!)
+    spawnMock.mockReturnValue(fakeChild({ stderr: 'boom\n', exitCode: 1 }))
+
+    const result = await runTests({})
+
+    expect(result.passed).toBe(false)
+    expect(result.failureScope).toBe('workspace vitest command')
   })
 })

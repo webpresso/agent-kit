@@ -1,9 +1,10 @@
 import { existsSync, readFileSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join, relative } from 'node:path'
 import { globSync } from 'glob'
 
 import { getPackageScript, isRecursiveWpScript, packageUsesVitest } from '#cli/package-scripts.js'
 import { isRunFailure, runCommand as runSharedCommand } from '#mcp/tools/_shared/run-command'
+import { buildVitestCommand, type CommandConfig } from '#test'
 
 // Keep the runner's own deadline comfortably below common MCP client call
 // ceilings so slow suites fail fast with a structured `timedOut` payload
@@ -82,11 +83,12 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
       if (fileShardRuns && fileShardRuns.length > 0) {
         return runScopedSequence(cwd, fileShardRuns, input, workspaceSharding)
       }
-      const result = await runCommand(
-        'vp',
-        ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color', ...input.files],
-        { ...input, cwd, timeoutMs: commandTimeoutMs },
-      )
+      const command = buildManagedVitestRun(cwd, input.files)
+      const result = await runCommand(command.command, command.args, {
+        ...input,
+        cwd,
+        timeoutMs: commandTimeoutMs,
+      })
       return withFailureScope(result, 'file-filter command')
     }
     const result = await runCommand('vp', ['run', 'test', '--', ...input.files], {
@@ -103,15 +105,12 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
   }
 
   if (shouldBypassWorkspaceTestScript(cwd)) {
-    const result = await runCommand(
-      'vp',
-      ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color'],
-      {
-        ...input,
-        cwd,
-        timeoutMs: commandTimeoutMs,
-      },
-    )
+    const command = buildManagedVitestRun(cwd)
+    const result = await runCommand(command.command, command.args, {
+      ...input,
+      cwd,
+      timeoutMs: commandTimeoutMs,
+    })
     return withFailureScope(result, 'workspace vitest command')
   }
 
@@ -125,6 +124,7 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
 
 interface ScopedRun {
   readonly scope: string
+  readonly command: string
   readonly args: readonly string[]
 }
 
@@ -207,7 +207,7 @@ async function runScopedSequence(
       )
       break
     }
-    const result = await runCommand('vp', run.args, {
+    const result = await runCommand(run.command, run.args, {
       cwd,
       signal: input.signal,
       timeoutMs: getScopedCommandTimeoutMs(input, remainingMs),
@@ -283,7 +283,7 @@ function createWorkspaceVitestShardRuns(
 
   return shards.map((filesInShard, index) => ({
     scope: `shard ${index + 1}/${shardTotal} (${filesInShard.length} files)`,
-    args: ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color', ...filesInShard],
+    ...buildManagedVitestRun(cwd, filesInShard),
   }))
 }
 
@@ -300,7 +300,7 @@ function createVitestShardRunsFromFiles(
 
   return shards.map((filesInShard, index) => ({
     scope: `file shard ${index + 1}/${shardTotal} (${filesInShard.length} files)`,
-    args: ['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color', ...filesInShard],
+    ...buildManagedVitestRun(cwd, filesInShard),
   }))
 }
 
@@ -374,21 +374,12 @@ function runPackageScopedTests(
   const files = input.files
   const options = { cwd, signal: input.signal, timeoutMs: input.timeoutMs }
   if (usesVitest(cwd, packageName)) {
-    return runCommand(
-      'vp',
-      [
-        'exec',
-        '--filter',
-        packageName,
-        '--',
-        'vitest',
-        'run',
-        '--reporter=json',
-        '--no-color',
-        ...(files ?? []),
-      ],
-      options,
+    const packageCwd = findPackageDirectory(cwd, packageName) ?? cwd
+    const command = buildManagedVitestRun(
+      packageCwd,
+      files ? normalizeFilesForCommandCwd(cwd, packageCwd, files) : [],
     )
+    return runCommand(command.command, command.args, { ...options, cwd: packageCwd })
   }
 
   if (files && files.length > 0) {
@@ -410,16 +401,49 @@ function usesVitest(cwd: string, packageName?: string): boolean {
 }
 
 function findPackageJson(cwd: string, packageName?: string): string | undefined {
-  const candidates = packageName
-    ? [
-        join(cwd, 'packages', packageName, 'package.json'),
-        join(cwd, 'apps', packageName, 'package.json'),
-        join(cwd, packageName, 'package.json'),
-        join(cwd, 'package.json'),
-      ]
-    : [join(cwd, 'package.json')]
+  if (!packageName) {
+    const rootPackageJson = join(cwd, 'package.json')
+    return existsSync(rootPackageJson) ? rootPackageJson : undefined
+  }
 
-  return candidates.find((candidate) => existsSync(candidate))
+  const candidates = [
+    join(cwd, 'packages', packageName, 'package.json'),
+    join(cwd, 'apps', packageName, 'package.json'),
+    join(cwd, packageName, 'package.json'),
+  ]
+
+  const workspacePackageJson = candidates.find((candidate) => existsSync(candidate))
+  if (workspacePackageJson) return workspacePackageJson
+
+  const rootPackageJson = join(cwd, 'package.json')
+  if (!existsSync(rootPackageJson)) return undefined
+  const rootPackage = readPackage(rootPackageJson)
+  return rootPackage.name === packageName ? rootPackageJson : undefined
+}
+
+function findPackageDirectory(cwd: string, packageName: string): string | undefined {
+  const packageJson = findPackageJson(cwd, packageName)
+  return packageJson ? dirname(packageJson) : undefined
+}
+
+function normalizeFilesForCommandCwd(
+  rootCwd: string,
+  commandCwd: string,
+  files: readonly string[],
+): string[] {
+  const packagePrefix = relative(rootCwd, commandCwd)
+  if (!packagePrefix || packagePrefix.startsWith('..')) return [...files]
+  return files.map((file) =>
+    file.startsWith(`${packagePrefix}/`) ? file.slice(packagePrefix.length + 1) : file,
+  )
+}
+
+function buildManagedVitestRun(cwd: string, files: readonly string[] = []): CommandConfig {
+  return buildVitestCommand(files, {
+    cwd,
+    outputPolicy: 'structured',
+    passthrough: ['--reporter=json', '--no-color'],
+  })
 }
 
 function readPackage(file: string): Record<string, unknown> {

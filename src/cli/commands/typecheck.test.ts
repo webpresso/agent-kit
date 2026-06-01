@@ -4,6 +4,7 @@ import { join } from 'node:path'
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { resolveLocalPackageEntrypoint, resolveNodeRuntimeCommand } from '#tool-runtime/local-package-entrypoint.js'
 import { buildTypecheckCommand, runTypecheckCommand } from './typecheck'
 
 describe('wp typecheck command', () => {
@@ -14,16 +15,18 @@ describe('wp typecheck command', () => {
   })
 
   it('builds the default no-emit command with stable non-pretty output', () => {
+    const tscEntrypoint = resolveLocalPackageEntrypoint(process.cwd(), 'typescript', 'bin/tsc')
     expect(buildTypecheckCommand()).toEqual({
-      command: 'vp',
-      args: ['exec', 'tsc', '--noEmit', '--pretty', 'false'],
+      command: resolveNodeRuntimeCommand(),
+      args: [tscEntrypoint!, '--noEmit', '--pretty', 'false'],
     })
   })
 
   it('can preserve pretty output when requested', () => {
+    const tscEntrypoint = resolveLocalPackageEntrypoint(process.cwd(), 'typescript', 'bin/tsc')
     expect(buildTypecheckCommand({ pretty: true })).toEqual({
-      command: 'vp',
-      args: ['exec', 'tsc', '--noEmit'],
+      command: resolveNodeRuntimeCommand(),
+      args: [tscEntrypoint!, '--noEmit'],
     })
   })
 
@@ -57,7 +60,15 @@ describe('wp typecheck command', () => {
     })
   })
 
-  it('returns the child process exit status', () => {
+  it('returns the child process exit status for explicit check-types scripts', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'wp-typecheck-runner-'))
+    tempDirs.push(cwd)
+    writeFileSync(
+      join(cwd, 'package.json'),
+      JSON.stringify({ scripts: { 'check-types': 'tsgo --noEmit' } }),
+      'utf8',
+    )
+
     const run = vi.fn(() => ({
       status: 2,
       signal: null,
@@ -66,7 +77,34 @@ describe('wp typecheck command', () => {
       stdout: '',
       stderr: '',
     }))
-    expect(runTypecheckCommand({}, { run })).toBe(2)
-    expect(run).toHaveBeenCalledWith('vp', ['exec', 'tsc', '--noEmit', '--pretty', 'false'])
+    return runTypecheckCommand({ cwd }, { run }).then((status) => {
+      expect(status).toBe(2)
+      expect(run).toHaveBeenCalledWith('vp', ['run', 'check-types'])
+    })
+  })
+
+  it('uses the shared portable runner when the local typecheck script is recursive', async () => {
+    const runPortableTypecheck = vi.fn().mockResolvedValue({
+      passed: false,
+      errorCount: 1,
+      errors: [],
+      output: 'TS1234 boom\n',
+    })
+    const stdout = { write: vi.fn() }
+
+    await expect(
+      runTypecheckCommand(
+        { pretty: false },
+        {
+          runTypecheck: runPortableTypecheck,
+          stdout,
+        },
+      ),
+    ).resolves.toBe(1)
+    expect(runPortableTypecheck).toHaveBeenCalledWith({
+      cwd: process.cwd(),
+      pretty: false,
+    })
+    expect(stdout.write).toHaveBeenCalledWith('TS1234 boom\n')
   })
 })
