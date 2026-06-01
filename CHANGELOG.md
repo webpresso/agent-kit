@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.24.0
+
+### Minor Changes
+
+- 4368b6b: `cloudflare-deploy-contract` audit now validates the production release metadata file: it must be valid JSON, and a release that declares `durableObjectMigration: "required"` must use `rolloutMode: "direct"`. Invalid JSON or a non-direct rollout for a Durable Object migration is reported as a loud audit violation rather than passing silently.
+- d98ed6e: The e2e host-adapter config loader now accepts an `agent-kit.config.ts` file (exporting `agentKitConfig`) in addition to the existing `webpresso.config.ts` (`webpressoConfig`). When both files are present it fails loudly with a `WebpressoConfigAmbiguousError` rather than silently picking one, and export-name errors now name the specific export expected for the resolved file.
+
 ## 0.23.0
 
 ### Minor Changes
