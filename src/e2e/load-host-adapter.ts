@@ -5,6 +5,7 @@ import { dirname, resolve, parse } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import {
+  WEBPRESSO_CONFIG_CANDIDATES,
   WEBPRESSO_CONFIG_EXPORT_NAME,
   WEBPRESSO_CONFIG_FILE_NAME,
   type WebpressoConfig,
@@ -41,11 +42,19 @@ export class WebpressoConfigLoadError extends Error {
 }
 
 export class WebpressoConfigExportError extends Error {
-  constructor(public readonly configPath: string) {
-    super(
-      `Expected ${WEBPRESSO_CONFIG_FILE_NAME} at ${configPath} to export ${WEBPRESSO_CONFIG_EXPORT_NAME}.`,
-    )
+  constructor(
+    public readonly configPath: string,
+    public readonly exportName: string = WEBPRESSO_CONFIG_EXPORT_NAME,
+  ) {
+    super(`Expected config at ${configPath} to export ${exportName}.`)
     this.name = 'WebpressoConfigExportError'
+  }
+}
+
+export class WebpressoConfigAmbiguousError extends Error {
+  constructor(public readonly configPaths: readonly string[]) {
+    super(`Multiple Webpresso config files found: ${configPaths.join(', ')}`)
+    this.name = 'WebpressoConfigAmbiguousError'
   }
 }
 
@@ -90,9 +99,16 @@ export function resolveWebpressoConfigPath(cwd: string = process.cwd()): string 
 
 export function findWebpressoConfigPath(cwd: string = process.cwd()): string | null {
   for (const searchDir of getSearchDirectories(cwd)) {
-    const configPath = getWebpressoConfigPath(searchDir)
-    if (existsSync(configPath)) {
-      return configPath
+    const configPaths = WEBPRESSO_CONFIG_CANDIDATES.map((candidate) =>
+      resolve(searchDir, candidate.fileName),
+    ).filter((configPath) => existsSync(configPath))
+
+    if (configPaths.length > 1) {
+      throw new WebpressoConfigAmbiguousError(configPaths)
+    }
+
+    if (configPaths.length === 1) {
+      return configPaths[0]!
     }
   }
 
@@ -106,13 +122,14 @@ export async function loadWebpressoConfig(
   const configModule = await loadModuleNamespace(pathToFileURL(configPath).href, (cause) => {
     throw new WebpressoConfigLoadError(configPath, cause)
   })
+  const exportName = expectedConfigExportName(configPath)
 
-  if (!(WEBPRESSO_CONFIG_EXPORT_NAME in configModule)) {
-    throw new WebpressoConfigExportError(configPath)
+  if (!(exportName in configModule)) {
+    throw new WebpressoConfigExportError(configPath, exportName)
   }
 
   return {
-    config: validateWebpressoConfig(configModule[WEBPRESSO_CONFIG_EXPORT_NAME], configPath),
+    config: validateWebpressoConfig(configModule[exportName], configPath),
     configPath,
   }
 }
@@ -202,6 +219,13 @@ function resolveModuleSpecifier(moduleSpecifier: string, configPath: string): st
   }
 
   return moduleSpecifier
+}
+
+function expectedConfigExportName(configPath: string): string {
+  const candidate = WEBPRESSO_CONFIG_CANDIDATES.find((item) =>
+    configPath.endsWith(item.fileName),
+  )
+  return candidate?.exportName ?? WEBPRESSO_CONFIG_EXPORT_NAME
 }
 
 async function loadModuleNamespace(

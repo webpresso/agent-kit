@@ -2,6 +2,18 @@ import { z } from 'zod'
 
 export const WEBPRESSO_CONFIG_FILE_NAME = 'webpresso.config.ts'
 export const WEBPRESSO_CONFIG_EXPORT_NAME = 'webpressoConfig'
+export const AGENT_KIT_CONFIG_FILE_NAME = 'agent-kit.config.ts'
+export const AGENT_KIT_CONFIG_EXPORT_NAME = 'agentKitConfig'
+export const WEBPRESSO_CONFIG_CANDIDATES = [
+  {
+    fileName: AGENT_KIT_CONFIG_FILE_NAME,
+    exportName: AGENT_KIT_CONFIG_EXPORT_NAME,
+  },
+  {
+    fileName: WEBPRESSO_CONFIG_FILE_NAME,
+    exportName: WEBPRESSO_CONFIG_EXPORT_NAME,
+  },
+] as const
 
 const wranglerEnvNameSchema = z
   .string()
