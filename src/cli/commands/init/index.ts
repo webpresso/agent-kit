@@ -54,6 +54,7 @@ import {
   trustCodexWebpressoHooksForRepo,
   trustCodexPresetHooksForUser,
 } from './scaffolders/agent-hooks/index.js'
+import { ensureAgentKitGlobal } from './scaffolders/agent-kit-global/index.js'
 import { scaffoldAuditHooks } from './scaffolders/audit-hooks/index.js'
 import { ensureClaudeCodeUserPlugin } from './scaffolders/claude-plugin/index.js'
 import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js'
@@ -614,6 +615,41 @@ export async function runInit(flags: InitFlags): Promise<number> {
           `  codex webpresso mcp: ⚠ no install root found (checked ${webpressoMcpResult.checked.length} paths). Install webpresso globally (\`bun add -g webpresso\`) or via the Claude plugin to wire up codex MCP.`,
         )
         break
+    }
+
+    // Self-update the ONE globally-distributed agent-kit binary (PATH `wp`,
+    // plugin MCP, hooks all resolve to it), mirroring omx/omc/codex/claude.
+    // Non-fatal: a failed refresh never fails consumer setup, and it skips
+    // cleanly on a source/git clone, on `WP_SKIP_AUTO_INSTALL=1`, and in CI.
+    if (isCiEnvironment) {
+      console.log('  agent-kit global: - skipped (CI environment)')
+    } else {
+      const agentKitGlobalResult = ensureAgentKitGlobal({ options })
+      switch (agentKitGlobalResult.kind) {
+        case 'agent-kit-global-updated':
+          console.log('  agent-kit global: ✓ refreshed via vp install -g')
+          break
+        case 'agent-kit-global-skipped-dry-run':
+          console.log('  agent-kit global: skipped (--dry-run)')
+          break
+        case 'agent-kit-global-skipped-opt-out':
+          console.log('  agent-kit global: skipped (WP_SKIP_AUTO_INSTALL=1)')
+          break
+        case 'agent-kit-global-skipped-source-clone':
+          console.log(
+            `  agent-kit global: - skipped (running from source clone ${agentKitGlobalResult.repoRoot})`,
+          )
+          break
+        case 'agent-kit-global-skipped-no-vp':
+          console.warn(`  agent-kit global: ⚠ ${agentKitGlobalResult.hint}`)
+          break
+        case 'agent-kit-global-failed':
+          console.warn(
+            `  agent-kit global: ⚠ \`${agentKitGlobalResult.command.join(' ')}\` exited with ${agentKitGlobalResult.exitCode}; ` +
+              'the existing global binary is unchanged. Re-run `wp setup` once the registry is reachable.',
+          )
+          break
+      }
     }
 
     const claudePluginResult = ensureClaudeCodeUserPlugin({

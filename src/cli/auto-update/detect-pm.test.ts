@@ -23,6 +23,7 @@ import { execFileSync } from 'node:child_process'
 import { realpathSync } from 'node:fs'
 
 import {
+  buildVpGlobalInstallCommand,
   confirmInstalledGlobally,
   detect,
   detectGitInstall,
@@ -42,6 +43,24 @@ beforeEach(() => {
   realpathSyncMock.mockImplementation((p) => String(p))
   execFileSyncMock.mockImplementation(() => {
     throw new Error('not a git repo')
+  })
+})
+
+describe('buildVpGlobalInstallCommand', () => {
+  it('returns the global-install command with no dead --registry flag', () => {
+    // npmjs.org is the default registry, and a global --registry does not
+    // override a scoped @webpresso:registry mapping — so the flag is dropped.
+    expect(buildVpGlobalInstallCommand()).toStrictEqual([
+      'vp',
+      'install',
+      '-g',
+      '@webpresso/agent-kit',
+    ])
+  })
+
+  it('is the command surfaced by detect() for a resolved manager', () => {
+    const result = detect({ npm_config_user_agent: 'pnpm/10.33.0 node/v22' }, '/path/to/bin')
+    expect(result).toStrictEqual({ manager: 'pnpm', command: buildVpGlobalInstallCommand() })
   })
 })
 
@@ -281,15 +300,7 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     const result = detect({ npm_config_user_agent: 'pnpm/10.33.0 node/v22' }, '/path/to/bin')
     expect(result).toStrictEqual({
       manager: 'pnpm',
-      command: [
-        'vp',
-        'install',
-        '-g',
-        '@webpresso/agent-kit',
-        '--',
-        '--registry',
-        'https://registry.npmjs.org',
-      ],
+      command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
     })
   })
 
@@ -297,15 +308,7 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     const result = detect({ npm_config_user_agent: 'npm/10.2.4 node/v22' }, '/path/to/bin')
     expect(result).toStrictEqual({
       manager: 'npm',
-      command: [
-        'vp',
-        'install',
-        '-g',
-        '@webpresso/agent-kit',
-        '--',
-        '--registry',
-        'https://registry.npmjs.org',
-      ],
+      command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
     })
   })
 
@@ -313,15 +316,7 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     const result = detect({ npm_config_user_agent: 'yarn/1.22.22 node/v22' }, '/path/to/bin')
     expect(result).toStrictEqual({
       manager: 'yarn',
-      command: [
-        'vp',
-        'install',
-        '-g',
-        '@webpresso/agent-kit',
-        '--',
-        '--registry',
-        'https://registry.npmjs.org',
-      ],
+      command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
     })
   })
 
@@ -329,15 +324,7 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     const result = detect({ npm_config_user_agent: 'bun/1.1.0 node/v22' }, '/path/to/bin')
     expect(result).toStrictEqual({
       manager: 'bun',
-      command: [
-        'vp',
-        'install',
-        '-g',
-        '@webpresso/agent-kit',
-        '--',
-        '--registry',
-        'https://registry.npmjs.org',
-      ],
+      command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
     })
   })
 
@@ -349,15 +336,7 @@ describe('detect — priority 1: npm_config_user_agent', () => {
     )
     expect(result).toStrictEqual({
       manager: 'npm',
-      command: [
-        'vp',
-        'install',
-        '-g',
-        '@webpresso/agent-kit',
-        '--',
-        '--registry',
-        'https://registry.npmjs.org',
-      ],
+      command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
     })
   })
 })
@@ -368,15 +347,7 @@ describe('detect — priority 2: realpath walk', () => {
     const result = detect({}, '/Users/me/bin/webpresso')
     expect(result).toStrictEqual({
       manager: 'pnpm',
-      command: [
-        'vp',
-        'install',
-        '-g',
-        '@webpresso/agent-kit',
-        '--',
-        '--registry',
-        'https://registry.npmjs.org',
-      ],
+      command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
     })
   })
 
@@ -385,15 +356,7 @@ describe('detect — priority 2: realpath walk', () => {
     const result = detect({}, '/Users/me/.bun/bin/webpresso')
     expect(result).toStrictEqual({
       manager: 'bun',
-      command: [
-        'vp',
-        'install',
-        '-g',
-        '@webpresso/agent-kit',
-        '--',
-        '--registry',
-        'https://registry.npmjs.org',
-      ],
+      command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
     })
   })
 
@@ -404,15 +367,7 @@ describe('detect — priority 2: realpath walk', () => {
     const result = detect({}, '/opt/homebrew/bin/webpresso')
     expect(result).toStrictEqual({
       manager: 'npm',
-      command: [
-        'vp',
-        'install',
-        '-g',
-        '@webpresso/agent-kit',
-        '--',
-        '--registry',
-        'https://registry.npmjs.org',
-      ],
+      command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
     })
   })
 })

@@ -40,15 +40,24 @@ export type DetectResult = DetectSuccess | DetectAbort
 export const PUBLIC_PACKAGE_NAME = '@webpresso/agent-kit'
 export const PUBLIC_NPM_REGISTRY = 'https://registry.npmjs.org'
 
-const VP_INSTALL_COMMAND = [
-  'vp',
-  'install',
-  '-g',
-  PUBLIC_PACKAGE_NAME,
-  '--',
-  '--registry',
-  PUBLIC_NPM_REGISTRY,
-]
+/**
+ * Canonical global-install command for the public agent-kit.
+ *
+ * No `--registry` flag: npmjs.org is already the default registry, and a global
+ * `--registry` does NOT override a scoped `@webpresso:registry` mapping
+ * (npm/pnpm resolve the scope first). The flag was therefore redundant when no
+ * scope override exists and ineffective when one does. To force-public inside a
+ * repo that scopes `@webpresso` to a private registry, use the scoped form
+ * `--@webpresso:registry=${PUBLIC_NPM_REGISTRY}` instead.
+ *
+ * Exported so the `wp setup` self-update scaffolder reuses the exact same
+ * command (single source of truth — see `ensureAgentKitGlobal`).
+ */
+export function buildVpGlobalInstallCommand(): [string, ...string[]] {
+  return ['vp', 'install', '-g', PUBLIC_PACKAGE_NAME]
+}
+
+const VP_INSTALL_COMMAND = buildVpGlobalInstallCommand()
 
 const INSTALL_COMMANDS: Record<Exclude<ManagerName, 'git'>, string[]> = {
   npm: VP_INSTALL_COMMAND,
