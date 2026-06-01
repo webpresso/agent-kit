@@ -8,7 +8,19 @@ import { auditCloudflareDeployContract } from './cloudflare-deploy-contract.js'
 
 const tempDirs: string[] = []
 
-function makeRepo(configBody: string, options: { writeMetadata?: boolean } = {}) {
+function makeRepo(
+  configBody: string,
+  options: {
+    writeMetadata?: boolean
+    configFileName?: 'webpresso.config.ts' | 'agent-kit.config.ts'
+    metadata?: {
+      releaseKind: 'version_pr' | 'manual_hotfix'
+      durableObjectMigration: 'none' | 'required'
+      rolloutMode: 'direct' | 'gradual'
+      requiredChecks: string[]
+    }
+  } = {},
+) {
   const root = mkdtempSync(path.join(os.tmpdir(), 'wp-cloudflare-deploy-contract-'))
   tempDirs.push(root)
   writeFileSync(
@@ -16,17 +28,19 @@ function makeRepo(configBody: string, options: { writeMetadata?: boolean } = {})
     JSON.stringify({ name: 'consumer', type: 'module' }),
     'utf8',
   )
-  writeFileSync(path.join(root, 'webpresso.config.ts'), configBody, 'utf8')
+  writeFileSync(path.join(root, options.configFileName ?? 'webpresso.config.ts'), configBody, 'utf8')
   if (options.writeMetadata) {
     mkdirSync(path.join(root, 'infra'), { recursive: true })
     writeFileSync(
       path.join(root, 'infra/release-metadata.production.json'),
-      JSON.stringify({
-        releaseKind: 'version_pr',
-        durableObjectMigration: 'none',
-        rolloutMode: 'direct',
-        requiredChecks: [],
-      }),
+      JSON.stringify(
+        options.metadata ?? {
+          releaseKind: 'version_pr',
+          durableObjectMigration: 'none',
+          rolloutMode: 'direct',
+          requiredChecks: [],
+        },
+      ),
       'utf8',
     )
   }
@@ -67,6 +81,78 @@ describe('auditCloudflareDeployContract', () => {
     const result = await auditCloudflareDeployContract(root)
     expect(result.ok).toBe(false)
     expect(result.violations?.[0]?.message).toContain('infra/release-metadata.production.json')
+  })
+
+  it('loads the deploy contract from agent-kit.config.ts with agentKitConfig export', async () => {
+    const root = makeRepo(
+      `
+      export const agentKitConfig = {
+        deploy: {
+          cloudflare: {
+            lanes: {
+              dev: { wranglerEnvName: 'dev' },
+              preview_main: { wranglerEnvName: 'preview-main' },
+              preview_pr: { wranglerEnvNamePattern: 'preview-pr-<n>' },
+              prd: { wranglerEnvName: 'production', deployedWorkerNameMode: 'top_level_name' },
+            },
+            production: { metadataPath: 'infra/release-metadata.production.json' },
+            targets: [
+              {
+                id: 'api',
+                type: 'single_worker',
+                topLevelWorkerName: 'edge-matte',
+                previewTransport: 'workers_dev_env',
+                vars: {},
+                requiredSecrets: [],
+                storageMode: 'isolated',
+                destroyMode: 'wrangler_delete_env',
+                productionStrategyDefault: 'direct',
+              },
+            ],
+          },
+        },
+      }
+    `,
+      { writeMetadata: true, configFileName: 'agent-kit.config.ts' },
+    )
+    const result = await auditCloudflareDeployContract(root)
+    expect(result.ok).toBe(true)
+    expect(result.checked).toBe(2)
+  })
+
+  it('fails closed when release metadata requests gradual rollout for a Durable Object migration', async () => {
+    const root = makeRepo(
+      `
+      export const webpressoConfig = {
+        deploy: {
+          cloudflare: {
+            lanes: {
+              dev: { wranglerEnvName: 'dev' },
+              preview_main: { wranglerEnvName: 'preview-main' },
+              preview_pr: { wranglerEnvNamePattern: 'preview-pr-<n>' },
+              prd: { wranglerEnvName: 'production', deployedWorkerNameMode: 'top_level_name' },
+            },
+            production: { metadataPath: 'infra/release-metadata.production.json' },
+            targets: [],
+          },
+        },
+      }
+    `,
+      {
+        writeMetadata: true,
+        metadata: {
+          releaseKind: 'version_pr',
+          durableObjectMigration: 'required',
+          rolloutMode: 'gradual',
+          requiredChecks: ['production-smoke'],
+        },
+      },
+    )
+    const result = await auditCloudflareDeployContract(root)
+    expect(result.ok).toBe(false)
+    expect(result.violations?.some((item) => item.message.includes('rolloutMode "direct"'))).toBe(
+      true,
+    )
   })
 
   it('fails when a custom-domain target omits routeSpec', async () => {
