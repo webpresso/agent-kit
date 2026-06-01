@@ -2,7 +2,7 @@ import type { CAC } from 'cac'
 import type { SpawnSyncReturns } from 'node:child_process'
 import { getManagedRunner } from '#tool-runtime'
 import { getPackageScript, isRecursiveWpScript } from '#cli/package-scripts.js'
-import { runTypecheck } from '../../typecheck/index.js'
+import { runTypecheck } from '#typecheck/index.js'
 
 import { spawnSync } from 'node:child_process'
 
