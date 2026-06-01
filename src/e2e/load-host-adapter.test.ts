@@ -70,6 +70,49 @@ describe('load-host-adapter', () => {
     expect(loadedAdapter?.exportName).toBe('webpressoE2eHostAdapter')
   })
 
+  it('walks upward to find agent-kit.config.ts and loads agentKitConfig', async () => {
+    const nestedDir = join(testDir, 'apps', 'e2e')
+    mkdirSync(nestedDir, { recursive: true })
+
+    writeFileSync(
+      join(testDir, 'agent-kit.config.ts'),
+      [
+        'export const agentKitConfig = {',
+        "  e2e: { hostAdapterModule: './adapter.ts' },",
+        '}',
+        '',
+      ].join('\n'),
+      'utf8',
+    )
+    writeFileSync(
+      join(testDir, 'adapter.ts'),
+      [
+        'export const webpressoE2eHostAdapter = {',
+        "  listSuites: () => [{ id: 'agent-kit', fileMatchers: ['tests/'], batchKey: 'agent-kit', steps: [] }],",
+        "  resolveSuiteId: (name) => name === 'agent-kit' ? 'agent-kit' : null,",
+        '  normalizeFilePath: (file) => file,',
+        "  resolveSuiteForFile: (file) => ({ normalizedPath: file, suiteId: 'agent-kit' }),",
+        '}',
+        '',
+      ].join('\n'),
+      'utf8',
+    )
+
+    expect(findWebpressoConfigPath(nestedDir)).toBe(join(testDir, 'agent-kit.config.ts'))
+    const loadedAdapter = await loadHostAdapter({ cwd: nestedDir })
+    expect(loadedAdapter?.configPath).toBe(join(testDir, 'agent-kit.config.ts'))
+    expect(loadedAdapter?.adapter.resolveSuiteId('agent-kit')).toBe('agent-kit')
+  })
+
+  it('rejects duplicate root config files instead of merging deploy contract sources', async () => {
+    writeFileSync(join(testDir, WEBPRESSO_CONFIG_FILE_NAME), 'export const webpressoConfig = {}\n')
+    writeFileSync(join(testDir, 'agent-kit.config.ts'), 'export const agentKitConfig = {}\n')
+
+    await expect(loadWebpressoConfigSafe({ cwd: testDir })).rejects.toThrow(
+      /Multiple Webpresso config files found/u,
+    )
+  })
+
   it('fails when the root config file does not export webpressoConfig', async () => {
     writeFileSync(
       join(testDir, WEBPRESSO_CONFIG_FILE_NAME),
