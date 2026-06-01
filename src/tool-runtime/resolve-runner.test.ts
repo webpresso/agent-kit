@@ -1,31 +1,35 @@
 import { describe, expect, it } from 'vitest'
 
+import { resolveLocalPackageEntrypoint, resolveNodeRuntimeCommand } from './local-package-entrypoint.js'
 import { resolveRunner } from './resolve-runner.js'
 
 describe('resolveRunner', () => {
   it('uses RTK-filtered managed runners by default', () => {
+    const vitestEntrypoint = resolveLocalPackageEntrypoint(process.cwd(), 'vitest', 'vitest.mjs')
     expect(resolveRunner('vitest')).toEqual({
       tool: 'vitest',
       command: 'rtk',
-      args: ['vp', 'exec', 'vitest'],
+      args: [resolveNodeRuntimeCommand(), vitestEntrypoint!],
       source: 'managed',
     })
   })
 
   it('supports explicitly opting out of RTK filtering for managed runners', () => {
+    const vitestEntrypoint = resolveLocalPackageEntrypoint(process.cwd(), 'vitest', 'vitest.mjs')
     expect(resolveRunner('vitest', { outputPolicy: 'structured' })).toEqual({
       tool: 'vitest',
-      command: 'vp',
-      args: ['exec', 'vitest'],
+      command: resolveNodeRuntimeCommand(),
+      args: [vitestEntrypoint!],
       source: 'managed',
     })
   })
 
-  it('resolves tsc through managed vp exec instead of a bare binary', () => {
+  it('resolves tsc through the local TypeScript entrypoint when available', () => {
+    const tscEntrypoint = resolveLocalPackageEntrypoint(process.cwd(), 'typescript', 'bin/tsc')
     expect(resolveRunner('tsc', { outputPolicy: 'structured' })).toEqual({
       tool: 'tsc',
-      command: 'vp',
-      args: ['exec', 'tsc'],
+      command: resolveNodeRuntimeCommand(),
+      args: [tscEntrypoint!],
       source: 'managed',
     })
   })
@@ -69,11 +73,13 @@ describe('resolveRunner', () => {
   })
 
   it('accepts legacy filterOutput false as a structured-output selector', () => {
+    const tscEntrypoint = resolveLocalPackageEntrypoint(process.cwd(), 'typescript', 'bin/tsc')
     expect(resolveRunner('tsc', { filterOutput: false })).toEqual({
       tool: 'tsc',
-      command: 'vp',
-      args: ['exec', 'tsc'],
+      command: resolveNodeRuntimeCommand(),
+      args: [tscEntrypoint!],
       source: 'managed',
     })
   })
+
 })

@@ -4,9 +4,17 @@ import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { resolveLocalPackageEntrypoint, resolveNodeRuntimeCommand } from '#tool-runtime/local-package-entrypoint.js'
 import { buildTestCommand, buildVitestCommand, buildVpTestCommand } from './command-builder.js'
 
 const tempDirs: string[] = []
+
+function expectedVitestRunner(cwd: string): { command: string; args: string[] } {
+  const vitestEntrypoint = resolveLocalPackageEntrypoint(cwd, 'vitest', 'vitest.mjs')
+  return vitestEntrypoint
+    ? { command: 'rtk', args: [resolveNodeRuntimeCommand(), vitestEntrypoint] }
+    : { command: 'rtk', args: ['vp', 'exec', 'vitest'] }
+}
 
 afterEach(() => {
   while (tempDirs.length > 0) rmSync(tempDirs.pop()!, { recursive: true, force: true })
@@ -142,23 +150,23 @@ describe('buildVpTestCommand', () => {
 
 describe('buildVitestCommand', () => {
   it('builds a direct vitest file command', () => {
+    const runner = expectedVitestRunner(process.cwd())
     expect(buildVitestCommand(['apps/cli2/src/commands/target.test.ts'])).toEqual({
-      command: 'rtk',
-      args: ['vp', 'exec', 'vitest', 'run', 'apps/cli2/src/commands/target.test.ts'],
+      command: runner.command,
+      args: [...runner.args, 'run', 'apps/cli2/src/commands/target.test.ts'],
     })
   })
 
   it('separates config files from test files', () => {
+    const runner = expectedVitestRunner(process.cwd())
     expect(
       buildVitestCommand(['vitest.config.ts', 'apps/cli2/src/commands/target.test.ts'], {
         testNamePattern: 'target',
       }),
     ).toEqual({
-      command: 'rtk',
+      command: runner.command,
       args: [
-        'vp',
-        'exec',
-        'vitest',
+        ...runner.args,
         'run',
         '--config',
         'vitest.config.ts',
@@ -170,21 +178,25 @@ describe('buildVitestCommand', () => {
   })
 
   it('builds vitest watch command', () => {
+    const runner = expectedVitestRunner(process.cwd())
     expect(buildVitestCommand(['apps/cli2/src/commands/target.test.ts'], { watch: true })).toEqual({
-      command: 'rtk',
-      args: ['vp', 'exec', 'vitest', '--watch', 'apps/cli2/src/commands/target.test.ts'],
+      command: runner.command,
+      args: [
+        ...runner.args,
+        '--watch',
+        'apps/cli2/src/commands/target.test.ts',
+      ],
     })
   })
 
   it('handles vitest config with suffix like vitest.node.config.ts', () => {
+    const runner = expectedVitestRunner(process.cwd())
     expect(
       buildVitestCommand(['vitest.node.config.ts', 'apps/cli2/src/commands/target.test.ts']),
     ).toEqual({
-      command: 'rtk',
+      command: runner.command,
       args: [
-        'vp',
-        'exec',
-        'vitest',
+        ...runner.args,
         'run',
         '--config',
         'vitest.node.config.ts',
@@ -194,14 +206,13 @@ describe('buildVitestCommand', () => {
   })
 
   it('handles vitest config with .mts extension', () => {
+    const runner = expectedVitestRunner(process.cwd())
     expect(
       buildVitestCommand(['vitest.config.mts', 'apps/cli2/src/commands/target.test.ts']),
     ).toEqual({
-      command: 'rtk',
+      command: runner.command,
       args: [
-        'vp',
-        'exec',
-        'vitest',
+        ...runner.args,
         'run',
         '--config',
         'vitest.config.mts',
@@ -217,17 +228,16 @@ describe('buildVitestCommand', () => {
   })
 
   it('passes coverage and passthrough opts to vitest', () => {
+    const runner = expectedVitestRunner(process.cwd())
     expect(
       buildVitestCommand(['apps/cli2/src/commands/target.test.ts'], {
         coverage: true,
         passthrough: ['--runInBand'],
       }),
     ).toEqual({
-      command: 'rtk',
+      command: runner.command,
       args: [
-        'vp',
-        'exec',
-        'vitest',
+        ...runner.args,
         'run',
         '--coverage',
         '--runInBand',
@@ -284,11 +294,12 @@ describe('buildTestCommand', () => {
   })
 
   it('uses vitest for file targets', () => {
+    const runner = expectedVitestRunner(process.cwd())
     expect(
       buildTestCommand({ type: 'file', values: ['apps/cli2/src/commands/target.test.ts'] }),
     ).toEqual({
-      command: 'rtk',
-      args: ['vp', 'exec', 'vitest', 'run', 'apps/cli2/src/commands/target.test.ts'],
+      command: runner.command,
+      args: [...runner.args, 'run', 'apps/cli2/src/commands/target.test.ts'],
     })
   })
 })
