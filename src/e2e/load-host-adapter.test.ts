@@ -104,13 +104,42 @@ describe('load-host-adapter', () => {
     expect(loadedAdapter?.adapter.resolveSuiteId('agent-kit')).toBe('agent-kit')
   })
 
-  it('rejects duplicate root config files instead of merging deploy contract sources', async () => {
-    writeFileSync(join(testDir, WEBPRESSO_CONFIG_FILE_NAME), 'export const webpressoConfig = {}\n')
-    writeFileSync(join(testDir, 'agent-kit.config.ts'), 'export const agentKitConfig = {}\n')
-
-    await expect(loadWebpressoConfigSafe({ cwd: testDir })).rejects.toThrow(
-      /Multiple Webpresso config files found/u,
+  it('prefers agent-kit.config.ts when a legacy webpresso.config.ts bridge also exists', async () => {
+    writeFileSync(
+      join(testDir, WEBPRESSO_CONFIG_FILE_NAME),
+      [
+        "import { agentKitConfig } from './agent-kit.config.ts'",
+        'export const webpressoConfig = agentKitConfig',
+        '',
+      ].join('\n'),
     )
+    writeFileSync(
+      join(testDir, 'agent-kit.config.ts'),
+      [
+        'export const agentKitConfig = {',
+        "  e2e: { hostAdapterModule: './adapter.ts' },",
+        '}',
+        '',
+      ].join('\n'),
+    )
+    writeFileSync(
+      join(testDir, 'adapter.ts'),
+      [
+        'export const webpressoE2eHostAdapter = {',
+        "  listSuites: () => [{ id: 'canonical', fileMatchers: ['tests/'], batchKey: 'canonical', steps: [] }],",
+        "  resolveSuiteId: (name) => name === 'canonical' ? 'canonical' : null,",
+        '  normalizeFilePath: (file) => file,',
+        "  resolveSuiteForFile: (file) => ({ normalizedPath: file, suiteId: 'canonical' }),",
+        '}',
+        '',
+      ].join('\n'),
+      'utf8',
+    )
+
+    expect(findWebpressoConfigPath(testDir)).toBe(join(testDir, 'agent-kit.config.ts'))
+    await expect(loadHostAdapter({ cwd: testDir })).resolves.toMatchObject({
+      configPath: join(testDir, 'agent-kit.config.ts'),
+    })
   })
 
   it('fails when the root config file does not export webpressoConfig', async () => {

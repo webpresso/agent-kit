@@ -51,13 +51,6 @@ export class WebpressoConfigExportError extends Error {
   }
 }
 
-export class WebpressoConfigAmbiguousError extends Error {
-  constructor(public readonly configPaths: readonly string[]) {
-    super(`Multiple Webpresso config files found: ${configPaths.join(', ')}`)
-    this.name = 'WebpressoConfigAmbiguousError'
-  }
-}
-
 export class HostAdapterModuleLoadError extends Error {
   constructor(
     public readonly moduleSpecifier: string,
@@ -99,16 +92,11 @@ export function resolveWebpressoConfigPath(cwd: string = process.cwd()): string 
 
 export function findWebpressoConfigPath(cwd: string = process.cwd()): string | null {
   for (const searchDir of getSearchDirectories(cwd)) {
-    const configPaths = WEBPRESSO_CONFIG_CANDIDATES.map((candidate) =>
-      resolve(searchDir, candidate.fileName),
-    ).filter((configPath) => existsSync(configPath))
-
-    if (configPaths.length > 1) {
-      throw new WebpressoConfigAmbiguousError(configPaths)
-    }
-
-    if (configPaths.length === 1) {
-      return configPaths[0]!
+    for (const candidate of WEBPRESSO_CONFIG_CANDIDATES) {
+      const configPath = resolve(searchDir, candidate.fileName)
+      if (existsSync(configPath)) {
+        return configPath
+      }
     }
   }
 
