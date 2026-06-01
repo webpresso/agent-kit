@@ -3,6 +3,10 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { RUNTIME_TARGETS, runtimePackageDirName } from '../src/build/runtime-targets.js'
+import {
+  PUBLISH_RUNTIME_MATRIX_ENV,
+  shouldPublishRuntimeMatrix,
+} from '../src/build/release-policy.js'
 
 const ALREADY_PUBLISHED_PATTERNS = [
   /cannot publish over the previously published version/i,
@@ -32,36 +36,50 @@ if (exitCode(buildResult) !== 0) {
   process.exit(exitCode(buildResult))
 }
 
-const runtimeBuildResult = run('pnpm', ['run', 'build:runtime-binaries'])
-if (exitCode(runtimeBuildResult) !== 0) {
-  process.exit(exitCode(runtimeBuildResult))
-}
-
-const runtimeStageResult = run('pnpm', ['run', 'stage:plugin-runtime'])
-if (exitCode(runtimeStageResult) !== 0) {
-  process.exit(exitCode(runtimeStageResult))
-}
-
-const scriptDir = dirname(fileURLToPath(import.meta.url))
-const packageRoot = dirname(scriptDir)
-const runtimePackageRoot = resolve(packageRoot, 'dist', 'runtime-packages')
-for (const target of RUNTIME_TARGETS) {
-  const runtimePackage = runtimePackageDirName(target.packageName)
-  const runtimePublishResult = run(
-    'npm',
-    ['publish', '--provenance', '--access', 'public'],
-    resolve(runtimePackageRoot, runtimePackage),
-  )
-  if (exitCode(runtimePublishResult) !== 0) {
-    const combinedOutput = `${runtimePublishResult.stdout ?? ''}\n${runtimePublishResult.stderr ?? ''}`
-    if (ALREADY_PUBLISHED_PATTERNS.some((pattern) => pattern.test(combinedOutput))) {
-      process.stdout.write(
-        `[release:publish] ${runtimePackage} already published; treating as success\n`,
-      )
-      continue
-    }
-    process.exit(exitCode(runtimePublishResult))
+// The per-platform native runtime matrix is a deferred capability: the scoped
+// packages have never been created, the main package declares no
+// optionalDependencies on them, and the plugin still launches via node. A
+// first-time `npm publish` of a never-created scoped package returns 404, which
+// previously aborted the whole release before the main package published (the
+// 0.22.x publish stall). Gate it behind an explicit opt-in; default off.
+if (shouldPublishRuntimeMatrix(process.env)) {
+  const runtimeBuildResult = run('pnpm', ['run', 'build:runtime-binaries'])
+  if (exitCode(runtimeBuildResult) !== 0) {
+    process.exit(exitCode(runtimeBuildResult))
   }
+
+  const runtimeStageResult = run('pnpm', ['run', 'stage:plugin-runtime'])
+  if (exitCode(runtimeStageResult) !== 0) {
+    process.exit(exitCode(runtimeStageResult))
+  }
+
+  const scriptDir = dirname(fileURLToPath(import.meta.url))
+  const packageRoot = dirname(scriptDir)
+  const runtimePackageRoot = resolve(packageRoot, 'dist', 'runtime-packages')
+  for (const target of RUNTIME_TARGETS) {
+    const runtimePackage = runtimePackageDirName(target.packageName)
+    const runtimePublishResult = run(
+      'npm',
+      ['publish', '--provenance', '--access', 'public'],
+      resolve(runtimePackageRoot, runtimePackage),
+    )
+    if (exitCode(runtimePublishResult) !== 0) {
+      const combinedOutput = `${runtimePublishResult.stdout ?? ''}\n${runtimePublishResult.stderr ?? ''}`
+      if (ALREADY_PUBLISHED_PATTERNS.some((pattern) => pattern.test(combinedOutput))) {
+        process.stdout.write(
+          `[release:publish] ${runtimePackage} already published; treating as success\n`,
+        )
+        continue
+      }
+      process.exit(exitCode(runtimePublishResult))
+    }
+  }
+} else {
+  process.stdout.write(
+    `[release:publish] runtime matrix publish skipped (deferred). ` +
+      `Set ${PUBLISH_RUNTIME_MATRIX_ENV}=1 once the @webpresso/agent-kit-runtime-* ` +
+      `packages are bootstrapped on the registry to re-enable.\n`,
+  )
 }
 
 const publishResult = run('npm', ['publish', '--provenance', '--access', 'public'])
