@@ -121,6 +121,7 @@ validate` when `claude` is present).
 - [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) — Contributor Covenant.
 - [CHANGELOG.md](./CHANGELOG.md) — release history (Changesets-managed).
 - [VISION.md](./VISION.md) — why this exists and where it's going.
+- [docs/markdown-fact-check.md](./docs/markdown-fact-check.md) — appendix: fact-check of current-state documentation claims and package references.
 
 ## Status
 
