@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
@@ -6,6 +6,17 @@ import { loadWebpressoConfigSafe } from '#e2e/load-host-adapter'
 
 function violation(file: string, message: string): RepoAuditViolation {
   return { file, message }
+}
+
+type ProductionReleaseMetadata = {
+  releaseKind?: unknown
+  durableObjectMigration?: unknown
+  rolloutMode?: unknown
+  requiredChecks?: unknown
+}
+
+function readProductionMetadata(metadataPath: string): ProductionReleaseMetadata {
+  return JSON.parse(readFileSync(metadataPath, 'utf8')) as ProductionReleaseMetadata
 }
 
 export async function auditCloudflareDeployContract(root: string): Promise<RepoAuditResult> {
@@ -44,6 +55,29 @@ export async function auditCloudflareDeployContract(root: string): Promise<RepoA
         `shared deploy contract requires ${cloudflare.production.metadataPath} to exist`,
       ),
     )
+  } else {
+    try {
+      const metadata = readProductionMetadata(metadataPath)
+      if (
+        metadata.durableObjectMigration === 'required' &&
+        metadata.rolloutMode !== 'direct'
+      ) {
+        violations.push(
+          violation(
+            cloudflare.production.metadataPath,
+            'Durable Object migration releases must use rolloutMode "direct"',
+          ),
+        )
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      violations.push(
+        violation(
+          cloudflare.production.metadataPath,
+          `production release metadata must be valid JSON: ${message}`,
+        ),
+      )
+    }
   }
 
   for (const target of cloudflare.targets) {
