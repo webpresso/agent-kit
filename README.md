@@ -6,7 +6,7 @@
 > TypeScript infrastructure for AI-agent-driven development. One `wp` runtime
 > gives agents planning, tests, mutation, e2e, CI, docs, and debt tracking —
 > all summary-first so they keep context, and enforced as contracts so docs,
-> intent, and code can't drift. MIT. Experimental v0.x.
+> intent, and code can't drift. MIT. Active development.
 
 ## What it is
 
@@ -125,7 +125,8 @@ validate` when `claude` is present).
 
 ## Status
 
-Experimental v0.x. Public APIs may change before v1.
+Active development. Review [CHANGELOG.md](./CHANGELOG.md) before upgrading
+across minor versions.
 
 ## License
 
