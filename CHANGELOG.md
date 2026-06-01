@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.23.0
+
+### Minor Changes
+
+- d2ade47: `wp setup` now self-updates the globally-distributed `@webpresso/agent-kit` binary via `vp install -g`, mirroring how omx/omc/codex/claude keep their global installs fresh. The PATH `wp`, the Claude plugin MCP, and the agent hooks all resolve to this single global binary, so each setup keeps the next invocation everywhere on the latest published release. The refresh is non-fatal (a failed install never fails consumer setup) and skips cleanly on `--dry-run`, `WP_SKIP_AUTO_INSTALL=1`, a webpresso source/git clone (so a dev checkout is never clobbered), missing `vp`, and CI.
+- f662b9f: Add a shared Cloudflare deploy-contract config surface with dash-safe lane validation, CI template guidance, and a `cloudflare-deploy-contract` audit for repos that provide production release metadata.
+- becf228: Add the `wp` extension runtime contract, including explicit root opt-in discovery, public runtime documentation, and package-surface tests for the `./wp-extension` subpath.
+
+### Patch Changes
+
+- 909381c: Clarify that PRDs, test specs, and other blueprint-owned planning artifacts belong under the configured blueprint root instead of `.agent/planning/plans/`.
+- 8b7cfb9: Harden GitHub Actions workflows by pinning action references to immutable SHAs and adding an audit for mutable workflow action refs.
+
 ## 0.22.0
 
 ### Minor Changes
