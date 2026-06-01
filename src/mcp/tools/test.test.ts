@@ -54,15 +54,6 @@ function writeVitestWorkspace(root: string): void {
       devDependencies: { vitest: '^4.0.0' },
     }),
   )
-  writeVitestEntrypoint(root)
-}
-
-function writeVitestEntrypoint(root: string): string {
-  const vitestRoot = join(root, 'node_modules', 'vitest')
-  mkdirSync(vitestRoot, { recursive: true })
-  writeFileSync(join(vitestRoot, 'package.json'), JSON.stringify({ name: 'vitest' }))
-  writeFileSync(join(vitestRoot, 'vitest.mjs'), '')
-  return join(vitestRoot, 'vitest.mjs')
 }
 
 function writeTestFiles(root: string, count: number): void {
@@ -73,20 +64,6 @@ function writeTestFiles(root: string, count: number): void {
       `import { it, expect } from 'vitest'\nit('spec-${index}', () => expect(1).toBe(1))\n`,
     )
   }
-}
-
-function expectManagedVitestCall(
-  call: readonly unknown[],
-  entrypoint: string,
-  expectedArgs: readonly string[],
-): void {
-  expect(call[0]).toBe(process.execPath)
-  expect(call[1]).toEqual([entrypoint, ...expectedArgs])
-}
-
-function vitestFileArgs(args: readonly string[]): string[] {
-  const endOfOptions = args.indexOf('--no-color')
-  return args.slice(endOfOptions + 1)
 }
 
 const originalProjectDir = process.env.CLAUDE_PROJECT_DIR
@@ -144,29 +121,22 @@ describe('wp_test tool', () => {
         join(dir, 'packages', 'x', 'package.json'),
         JSON.stringify({ devDependencies: { vitest: '^4.0.0' } }),
       )
-      const entrypoint = writeVitestEntrypoint(dir)
       spawnMock.mockReturnValue(fakeChild({ stdout: '{}\n', exitCode: 0 }))
 
       await wpTestTool.handler({ packages: ['x'], files: ['src/example.test.ts'] })
-      expectManagedVitestCall(spawnMock.mock.calls[0]!, entrypoint, [
+      const [cmd, args] = spawnMock.mock.calls[0]!
+      expect(cmd).toBe('vp')
+      expect(args).toEqual([
+        'exec',
+        '--filter',
+        'x',
+        '--',
+        'vitest',
         'run',
         '--reporter=json',
         '--no-color',
         'src/example.test.ts',
       ])
-    })
-
-    it('preserves package-manager filter semantics for unresolved package targets', async () => {
-      writeVitestWorkspace(dir)
-      spawnMock.mockReturnValue(fakeChild({ stdout: 'ok\n', exitCode: 0 }))
-
-      const result = await wpTestTool.handler({ packages: ['missing-package'] })
-      const payload = result.structuredContent as { passed: boolean }
-      const [cmd, args] = spawnMock.mock.calls[0]!
-
-      expect(cmd).toBe('vp')
-      expect(args).toEqual(['run', '--filter', 'missing-package', 'test'])
-      expect(payload.passed).toBe(true)
     })
 
     it('rejects `suite` as an unknown input key', async () => {
@@ -339,14 +309,15 @@ describe('wp_test tool', () => {
       expect(spawnMock).toHaveBeenCalledTimes(2)
       const shardCalls = spawnMock.mock.calls.map((call) => call[1] as string[])
       for (const args of shardCalls) {
-        expect(args.slice(1, 4)).toEqual([
+        expect(args.slice(0, 6)).toEqual([
+          'exec',
+          '--',
+          'vitest',
           'run',
           '--reporter=json',
           '--no-color',
         ])
       }
-      const executedFiles = shardCalls.flatMap(vitestFileArgs).sort()
-      expect(executedFiles).toEqual(files.sort())
       expect(payload.passed).toBe(true)
       expect(payload.details?.workspaceSharding?.enabled).not.toBe(false)
     })

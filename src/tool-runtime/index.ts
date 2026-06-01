@@ -13,7 +13,6 @@ function cacheKey(tool: string, options: ResolveRunnerOptions): string {
   return JSON.stringify({
     tool,
     outputPolicy,
-    cwd: options.cwd ?? null,
     fallbackCommand: options.fallbackCommand ?? null,
     fallbackArgs: options.fallbackArgs ?? [],
   })

@@ -100,7 +100,6 @@ export function buildVitestCommand(
   args.push(...buildVitestPassthrough(options), ...testFiles)
 
   const resolution = getManagedRunner('vitest', {
-    cwd: options.cwd ?? process.cwd(),
     outputPolicy: resolveOutputPolicy(options.outputPolicy, options.filterOutput),
   })
   return { command: resolution.command, args: [...resolution.args, ...args] }

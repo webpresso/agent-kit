@@ -25,8 +25,6 @@ export default defineConfig({
       { find: /^#runtime\/(.*)/, replacement: resolve(__dirname, 'src/runtime/$1') },
       { find: /^#tool-runtime$/, replacement: resolve(__dirname, 'src/tool-runtime/index.ts') },
       { find: /^#tool-runtime\/(.*)/, replacement: resolve(__dirname, 'src/tool-runtime/$1') },
-      { find: /^#typecheck$/, replacement: resolve(__dirname, 'src/typecheck/index.ts') },
-      { find: /^#typecheck\/(.*)/, replacement: resolve(__dirname, 'src/typecheck/$1') },
       { find: /^#wp-extension$/, replacement: resolve(__dirname, 'src/wp-extension/index.ts') },
       { find: /^#wp-extension\/(.*)/, replacement: resolve(__dirname, 'src/wp-extension/$1') },
       {
