@@ -31,6 +31,7 @@ const SUPPORTED_COMMANDS = [
   'setup',
   'init',
   'dev',
+  'deploy',
   'doctor',
   'err',
   'test',
@@ -222,6 +223,11 @@ export async function main(): Promise<number> {
     case 'dev': {
       const { registerDevCommand } = await import('./commands/dev.js')
       registerDevCommand(cli)
+      break
+    }
+    case 'deploy': {
+      const { registerDeployCommand } = await import('./commands/deploy.js')
+      registerDeployCommand(cli)
       break
     }
     case 'doctor': {

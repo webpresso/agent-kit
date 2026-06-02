@@ -160,7 +160,9 @@
     "#types/execution-backend": "./src/blueprint/types/execution-backend.ts",
     "#types/execution-backend.js": "./src/blueprint/types/execution-backend.ts",
     "#*.js": "./src/blueprint/*.ts",
-    "#*": "./src/blueprint/*.ts"
+    "#*": "./src/blueprint/*.ts",
+    "#deploy/*.js": "./src/deploy/*.ts",
+    "#deploy/*": "./src/deploy/*.ts"
   },
   "exports": {
     ".": {
@@ -523,6 +525,12 @@
         "types": "./dist/esm/runners/index.d.ts",
         "default": "./dist/esm/runners/index.js"
       }
+    },
+    "./deploy": {
+      "import": {
+        "types": "./dist/esm/deploy/index.d.ts",
+        "default": "./dist/esm/deploy/index.js"
+      }
     }
   },
   "scripts": {
@@ -569,7 +577,9 @@
     "changeset": "changeset",
     "changeset:status": "changeset status",
     "verify:paths": "wp audit absolute-path-policy --root .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "mutation": "wp test --mutation",
+    "e2e": "wp e2e --config playwright.config.ts"
   },
   "dependencies": {
     "@manypkg/find-root": "^3.1.0",
@@ -591,28 +601,26 @@
     "vite-plus": "^0.1.22",
     "yaml": "^2.9.0",
     "zod": "^4.4.3",
-    "zod-to-json-schema": "^3.25.2"
+    "zod-to-json-schema": "^3.25.2",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7",
+    "oxlint": "^1.67.0",
+    "oxfmt": "^0.48.0",
+    "vite": "^8.0.14",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
     "@changesets/cli": "^2.31.0",
     "@secretlint/secretlint-rule-preset-recommend": "^13.0.2",
-    "@stryker-mutator/core": "^9.6.1",
-    "@stryker-mutator/typescript-checker": "^9.6.1",
-    "@stryker-mutator/vitest-runner": "^9.6.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/bun": "^1.3.14",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.9.1",
     "husky": "^9.1.7",
-    "oxfmt": "^0.48.0",
-    "oxlint": "^1.67.0",
     "publint": "^0.3.21",
     "secretlint": "^13.0.2",
     "tshy": "^4.1.2",
-    "typescript": "^6.0.3",
-    "vite": "^8.0.14",
-    "vitest": "^4.1.7",
     "webpresso": "latest"
   },
   "tshy": {
@@ -687,12 +695,20 @@
       "./ai-memory/facts/*": "./src/ai-memory/facts/*.ts",
       "./ai-memory/hierarchy/*": "./src/ai-memory/hierarchy/*.ts",
       "./ai-tools": "./src/ai-tools/index.ts",
-      "./runners": "./src/runners/index.ts"
+      "./runners": "./src/runners/index.ts",
+      "./deploy": "./src/deploy/index.ts"
     },
     "selfLink": false
   },
   "engines": {
     "node": ">=24"
   },
-  "packageManager": "pnpm@11.1.1"
+  "packageManager": "pnpm@11.1.1",
+  "optionalDependencies": {
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
+    "@stryker-mutator/typescript-checker": "^9.6.1",
+    "@playwright/test": "^1.55.0",
+    "wrangler": "^4.50.0"
+  }
 }

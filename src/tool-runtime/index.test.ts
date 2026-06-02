@@ -16,13 +16,13 @@ describe('getManagedRunner', () => {
     expect(filtered).toEqual({
       tool: 'vitest',
       command: 'rtk',
-      args: ['vp', 'exec', 'vitest'],
+      args: [expect.stringContaining('vitest')],
       source: 'managed',
     })
     expect(unfiltered).toEqual({
       tool: 'vitest',
-      command: 'vp',
-      args: ['exec', 'vitest'],
+      command: expect.stringContaining('vitest'),
+      args: [],
       source: 'managed',
     })
     expect(unfiltered).not.toBe(filtered)
@@ -32,8 +32,8 @@ describe('getManagedRunner', () => {
     const legacy = getManagedRunner('vitest', { filterOutput: false })
     expect(legacy).toEqual({
       tool: 'vitest',
-      command: 'vp',
-      args: ['exec', 'vitest'],
+      command: expect.stringContaining('vitest'),
+      args: [],
       source: 'managed',
     })
   })

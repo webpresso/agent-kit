@@ -130,23 +130,28 @@ export function processValidation(inputJson: string): void {
   const input = parseToolInput(inputJson)
   const command = isBashInput(input) ? getCommand(input) : null
   const routableCommands = [
-    ...(command ? [command] : []),
-    ...extractRoutableCommandsFromToolInput(input),
+    ...(command ? [{ command, alreadySandboxed: false }] : []),
+    ...extractRoutableCommandsFromToolInput(input).map((routedCommand) => ({
+      command: routedCommand,
+      alreadySandboxed: true,
+    })),
   ]
 
   for (const routedCommand of routableCommands) {
-    const decision = routeCommand(routedCommand)
+    const decision = routeCommand(routedCommand.command)
     if (decision !== null) {
       if (decision.action.action === 'deny') {
         // Phase 1: Dev-workflow routing — always authoritative (MCP-first)
         writeDenyDecision(decision.action.guidance)
         process.exit(0)
-      } else if (decision.action.action === 'sandbox') {
-        // Phase 2: Context-mode sandbox routing — always fires
+      } else if (decision.action.action === 'sandbox' && !routedCommand.alreadySandboxed) {
+        // Phase 2: Context-mode sandbox routing — fire only for raw tool calls.
+        // Commands already inside ctx_execute/ctx_batch_execute are already in
+        // the requested sandbox; re-denying them creates a ctx_execute loop.
         writeDenyDecision(decision.action.guidance)
         process.exit(0)
       }
-      // 'passthrough' → fall through to Phase 3
+      // 'passthrough' or already-sandboxed sandbox redirects → Phase 3
     }
   }
 

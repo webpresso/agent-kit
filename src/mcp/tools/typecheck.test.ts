@@ -68,10 +68,10 @@ describe('wp_typecheck tool', () => {
       expect(spawnMock).toHaveBeenCalledTimes(2)
       const [cmd0, args0] = spawnMock.mock.calls[0]!
       const [cmd1, args1] = spawnMock.mock.calls[1]!
-      expect(cmd0).toBe('vp')
-      expect(args0).toEqual(['exec', 'tsc', '--noEmit', '-p', join('a', 'tsconfig.json')])
-      expect(cmd1).toBe('vp')
-      expect(args1).toEqual(['exec', 'tsc', '--noEmit', '-p', join('b', 'tsconfig.json')])
+      expect(cmd0).toContain('typescript')
+      expect(args0).toEqual(['--noEmit', '-p', join('a', 'tsconfig.json')])
+      expect(cmd1).toContain('typescript')
+      expect(args1).toEqual(['--noEmit', '-p', join('b', 'tsconfig.json')])
     })
 
     it('spawns plain `tsc --noEmit` when no packages given', async () => {
@@ -81,8 +81,8 @@ describe('wp_typecheck tool', () => {
 
       expect(spawnMock).toHaveBeenCalledTimes(1)
       const [cmd, args] = spawnMock.mock.calls[0]!
-      expect(cmd).toBe('vp')
-      expect(args).toEqual(['exec', 'tsc', '--noEmit'])
+      expect(cmd).toContain('typescript')
+      expect(args).toEqual(['--noEmit'])
     })
   })
 
@@ -135,14 +135,41 @@ describe('wp_typecheck tool', () => {
       expect((result.content[0] as { text: string }).text).toBe('typecheck passed')
     })
 
-    it('clips long raw typecheck output and marks it truncated', async () => {
-      spawnMock.mockReturnValue(fakeChild({ stdout: 'x'.repeat(5_000), exitCode: 1 }))
+    it('bounds a runner failure (non-zero exit, no diagnostics) under the QA budget and logs it', async () => {
+      // Mirrors a broken consumer toolchain: the tsc runner crashes with a Node
+      // stack on stderr (no tsc-format diagnostics) instead of emitting errors.
+      const nodeStack = `node:internal/modules/cjs/loader:1479\n  throw err;\n  ^\nError: Cannot find module '/x/vite-plus/bin/vp'\n${'    at Module._resolveFilename (node:internal/modules/cjs/loader)\n'.repeat(40)}`
+      spawnMock.mockReturnValue(fakeChild({ stderr: nodeStack, exitCode: 1 }))
 
       const result = await akTypecheckTool.handler({})
       const payload = result.structuredContent as {
+        passed: boolean
+        summary: string
+        counts: { errorCount: number }
         rawOutput?: string
         truncated?: boolean
+        logPath?: string
+        bytes?: number
       }
+
+      expect(payload.passed).toBe(false)
+      expect(payload.summary).toBe('typecheck failed to run (no diagnostics parsed)')
+      expect(payload.counts.errorCount).toBe(0)
+      // The whole point: evidence stays inside the compact QA leaf budget…
+      expect(payload.bytes ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(800)
+      expect(Buffer.byteLength(payload.rawOutput ?? '')).toBeLessThanOrEqual(600)
+      // …and the full output is preserved in a log rather than dropped.
+      expect(payload.truncated).toBe(true)
+      expect(payload.logPath).toBeTruthy()
+    })
+
+    it('keeps the 4000 generic clip for long output that is not a bare failure', async () => {
+      // passed=true with no diagnostics → passthrough at the generic 4000 cap,
+      // unaffected by the runner-failure bound.
+      spawnMock.mockReturnValue(fakeChild({ stdout: 'x'.repeat(5_000), exitCode: 0 }))
+
+      const result = await akTypecheckTool.handler({})
+      const payload = result.structuredContent as { rawOutput?: string; truncated?: boolean }
       expect(payload.rawOutput).toHaveLength(4_000)
       expect(payload.truncated).toBe(true)
     })

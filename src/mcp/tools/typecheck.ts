@@ -21,6 +21,11 @@ import { getManagedRunner } from '#tool-runtime'
 
 import { resolveProjectRoot } from './_shared/project-root.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
+import {
+  boundRunnerFailureEvidence,
+  isRunnerFailure,
+  stripTransform,
+} from './_shared/runner-failure.js'
 import { isRunFailure, runCommand, type RunResult } from './_shared/run-command.js'
 
 const inputSchema = z.object({
@@ -140,9 +145,11 @@ function summarizeTypecheckResult(options: {
   errorCount: number
   timedOut: boolean
   aborted: boolean
+  failedWithoutDiagnostics: boolean
 }): string {
   if (options.timedOut) return 'typecheck timed out'
   if (options.aborted) return 'typecheck aborted'
+  if (options.failedWithoutDiagnostics) return 'typecheck failed to run (no diagnostics parsed)'
   if (options.passed) return 'typecheck passed'
   return `typecheck failed with ${options.errorCount} error${options.errorCount === 1 ? '' : 's'}`
 }
@@ -211,15 +218,28 @@ const tool: ToolDescriptor = {
     const timedOut = runs.some((r) => r.timedOut)
     const aborted = runs.some((r) => r.aborted)
 
-    const { transform: _transform, ...compact } = applyOutputTransform(
-      [combinedStdout, combinedStderr].filter(Boolean).join(''),
-      {
-        toolName: 'wp_typecheck',
-      },
-    )
+    const combinedOutput = [combinedStdout, combinedStderr].filter(Boolean).join('')
+    const failedWithoutDiagnostics = isRunnerFailure({
+      passed,
+      timedOut,
+      aborted,
+      parsedCount: errors.length,
+      output: combinedOutput,
+    })
+
+    const compact = failedWithoutDiagnostics
+      ? boundRunnerFailureEvidence(combinedOutput, 'wp_typecheck')
+      : stripTransform(applyOutputTransform(combinedOutput, { toolName: 'wp_typecheck' }))
+
     const payload = {
       passed,
-      summary: summarizeTypecheckResult({ passed, errorCount: errors.length, timedOut, aborted }),
+      summary: summarizeTypecheckResult({
+        passed,
+        errorCount: errors.length,
+        timedOut,
+        aborted,
+        failedWithoutDiagnostics,
+      }),
       counts: { errorCount: errors.length },
       details: { errors },
       ...compact,

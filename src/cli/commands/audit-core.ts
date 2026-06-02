@@ -24,6 +24,7 @@ export type AuditKind =
   | 'compile-drift'
   | 'architecture-drift'
   | 'cloudflare-deploy-contract'
+  | 'toolchain-isolation'
   | 'absolute-path-policy'
   | 'agent-cost'
   | 'blueprint-db-consistency'

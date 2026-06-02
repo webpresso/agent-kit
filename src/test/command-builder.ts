@@ -1,6 +1,6 @@
 import type { ResolvedTestTarget } from './target-resolver.js'
 import { type ManagedRunnerOutputPolicy, getManagedRunner } from '#tool-runtime'
-import { getPackageScript, isRecursiveWpScript, packageUsesVitest } from '#cli/package-scripts.js'
+import { getPackageScript, isRecursiveWpScript } from '#cli/package-scripts.js'
 
 export interface CommandConfig {
   command: string
@@ -32,7 +32,7 @@ export function buildTestCommand(
   options: TestCommandOptions = {},
 ): CommandConfig {
   if (target.type === 'all' && shouldBypassRecursiveWpTest(options.cwd ?? process.cwd())) {
-    return buildVitestCommand([], options)
+    return options.mutation ? buildStrykerCommand(options) : buildVitestCommand([], options)
   }
 
   if (target.type === 'file') {
@@ -105,6 +105,13 @@ export function buildVitestCommand(
   return { command: resolution.command, args: [...resolution.args, ...args] }
 }
 
+export function buildStrykerCommand(options: TestCommandOptions = {}): CommandConfig {
+  const resolution = getManagedRunner('stryker', {
+    outputPolicy: resolveOutputPolicy(options.outputPolicy, options.filterOutput),
+  })
+  return { command: resolution.command, args: [...resolution.args, 'run', 'stryker.config.ts'] }
+}
+
 export function getVpTestTask(
   options: Pick<TestCommandOptions, 'mutation' | 'workers' | 'watch'>,
 ): string {
@@ -173,6 +180,5 @@ function resolveOutputPolicy(
 
 function shouldBypassRecursiveWpTest(cwd: string): boolean {
   const testScript = getPackageScript(cwd, 'test')
-  if (!testScript || !isRecursiveWpScript(testScript, 'test')) return false
-  return packageUsesVitest(cwd)
+  return Boolean(testScript && isRecursiveWpScript(testScript, 'test'))
 }

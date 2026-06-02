@@ -177,8 +177,7 @@ function mergePackageJson(
   const devDeps = (pkg['devDependencies'] ?? {}) as Record<string, string>
   const hasAgentKitDevDep = typeof devDeps['@webpresso/agent-kit'] === 'string'
   const hasLegacyAgentKitDevDep = typeof devDeps['webpresso'] === 'string'
-  const shouldSkipSelfInstall =
-    packageName === '@webpresso/agent-kit' || packageName === 'webpresso'
+  const shouldSkipSelfInstall = isSelfPackageName(packageName)
   const shouldManageAgentKitAsGlobal = globalInstall && !shouldSkipSelfInstall
   const requiredAuthoringDeps: Record<string, string> = {
     '@playwright/test': 'latest',
@@ -284,10 +283,39 @@ function mergePackageJson(
   return { targetPath: pkgPath, action: 'overwritten' }
 }
 
+/** agent-kit's own package identities: scoped canonical + legacy unscoped. */
+const SELF_PACKAGE_NAMES: readonly string[] = ['@webpresso/agent-kit', 'webpresso']
+
+/** True when `name` is one of agent-kit's own package identities. */
+function isSelfPackageName(name: string | undefined): boolean {
+  return name !== undefined && SELF_PACKAGE_NAMES.includes(name)
+}
+
+/**
+ * True when `repoRoot` is agent-kit's own source repo (by package.json name).
+ * agent-kit dogfoods base-kit's scripts and shared templates, but the QUALITY
+ * starter samples (quality-sample.ts, e2e/smoke, sample configs) are teaching
+ * artifacts for FRESH consumer repos — scaffolding them into agent-kit's own
+ * source tree is pollution. This flag skips ONLY those samples.
+ */
+function isAgentKitSelfRepo(repoRoot: string): boolean {
+  try {
+    const pkg = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as {
+      name?: string
+    }
+    return isSelfPackageName(pkg.name)
+  } catch {
+    return false
+  }
+}
+
 export function scaffoldBaseKit(input: ScaffoldBaseKitInput): MergeResult[] {
   const { catalogDir, repoRoot, options, globalInstall = false } = input
   const baseKitDir = join(catalogDir, 'base-kit')
   const results: MergeResult[] = []
+  // Dogfooding boundary: agent-kit gets base-kit's scripts/templates but not the
+  // starter quality samples scaffolded into its own source tree.
+  const skipStarterSamples = isAgentKitSelfRepo(repoRoot)
 
   for (const [tmplRel, targetRel] of TEMPLATE_MAP) {
     const tmplPath = join(baseKitDir, tmplRel)
@@ -318,22 +346,24 @@ export function scaffoldBaseKit(input: ScaffoldBaseKitInput): MergeResult[] {
     results.push({ targetPath, action: 'created' })
   }
 
-  for (const [tmplRel, targetRel] of QUALITY_BOOTSTRAP_ONLY_MAP) {
-    const tmplPath = join(baseKitDir, tmplRel)
-    if (!existsSync(tmplPath)) continue
-    const targetPath = join(repoRoot, targetRel)
-    if (existsSync(targetPath)) {
-      results.push({ targetPath, action: 'identical' })
-      continue
+  if (!skipStarterSamples) {
+    for (const [tmplRel, targetRel] of QUALITY_BOOTSTRAP_ONLY_MAP) {
+      const tmplPath = join(baseKitDir, tmplRel)
+      if (!existsSync(tmplPath)) continue
+      const targetPath = join(repoRoot, targetRel)
+      if (existsSync(targetPath)) {
+        results.push({ targetPath, action: 'identical' })
+        continue
+      }
+      const content = readFileSync(tmplPath, 'utf8')
+      if (options.dryRun) {
+        results.push({ targetPath, action: 'skipped-dry' })
+        continue
+      }
+      mkdirSync(dirname(targetPath), { recursive: true })
+      writeFileSync(targetPath, content)
+      results.push({ targetPath, action: 'created' })
     }
-    const content = readFileSync(tmplPath, 'utf8')
-    if (options.dryRun) {
-      results.push({ targetPath, action: 'skipped-dry' })
-      continue
-    }
-    mkdirSync(dirname(targetPath), { recursive: true })
-    writeFileSync(targetPath, content)
-    results.push({ targetPath, action: 'created' })
   }
 
   // Make husky hook files executable

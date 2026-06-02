@@ -65,7 +65,10 @@ const cloudflareDurableObjectBindingSchema = z
   .object({
     name: z.string().min(1, 'durableObjectBindings[].name must not be empty.'),
     className: z.string().min(1, 'durableObjectBindings[].className must not be empty.'),
-    scriptName: z.string().min(1, 'durableObjectBindings[].scriptName must not be empty.').optional(),
+    scriptName: z
+      .string()
+      .min(1, 'durableObjectBindings[].scriptName must not be empty.')
+      .optional(),
   })
   .strict()
 
@@ -87,7 +90,7 @@ const cloudflareTargetSchema = z
   })
   .strict()
   .superRefine((target, ctx) => {
-    const isDurableObjectTarget = (target.durableObjectBindings?.length ?? 0) > 0;
+    const isDurableObjectTarget = (target.durableObjectBindings?.length ?? 0) > 0
 
     if (target.previewTransport === 'custom_domain_env' && !target.routeSpec) {
       ctx.addIssue({
@@ -152,6 +155,8 @@ const cloudflareDeployConfigSchema = z
 
 const deployWebpressoConfigSchema = z
   .object({
+    adapterModule: z.string().min(1, 'deploy.adapterModule must not be empty.').optional(),
+    adapterExport: z.string().min(1, 'deploy.adapterExport must not be empty.').optional(),
     cloudflare: cloudflareDeployConfigSchema.optional(),
   })
   .strict()
