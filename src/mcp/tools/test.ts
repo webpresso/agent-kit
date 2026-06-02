@@ -14,6 +14,11 @@ import { applyOutputTransform } from '#output-transforms/index'
 import { resolveProjectRoot } from './_shared/project-root.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 import {
+  boundRunnerFailureEvidence,
+  isRunnerFailure,
+  stripTransform,
+} from './_shared/runner-failure.js'
+import {
   MCP_SAFE_TEST_BUDGET_MS,
   refineTestBudgetContract,
   workspaceShardingInputSchema,
@@ -99,9 +104,20 @@ const tool: ToolDescriptor = {
       timeoutMs: input.timeoutMs,
       workspaceSharding: input.workspaceSharding,
     })
-    const { transform: _transform, ...compact } = applyOutputTransform(result.output, {
-      toolName: 'wp_test',
+    const transformed = stripTransform(applyOutputTransform(result.output, { toolName: 'wp_test' }))
+    // A non-zero exit whose output parsed zero test failures is a runner/launcher
+    // failure (e.g. a crashing runner printing a Node stack), not a test failure
+    // — bound it so a raw stack can't blow the QA evidence budget. Genuine
+    // failures (parsed >0) and passes keep the normal vitest transform.
+    const compact = isRunnerFailure({
+      passed: result.passed,
+      timedOut: result.timedOut ?? false,
+      aborted: result.aborted ?? false,
+      parsedCount: transformed.failures?.length ?? 0,
+      output: result.output,
     })
+      ? boundRunnerFailureEvidence(result.output, 'wp_test')
+      : transformed
     const payload = {
       passed: result.passed,
       summary: summarizeOutcome(input, result),

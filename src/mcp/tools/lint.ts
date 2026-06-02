@@ -21,6 +21,11 @@ import { applyOutputTransform } from '#output-transforms/index'
 
 import { resolveProjectRoot } from './_shared/project-root.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
+import {
+  boundRunnerFailureEvidence,
+  isRunnerFailure,
+  stripTransform,
+} from './_shared/runner-failure.js'
 import { isRunFailure, runCommand } from './_shared/run-command.js'
 
 const inputSchema = z.object({
@@ -226,16 +231,25 @@ const tool: ToolDescriptor = {
 
     if (!isRunFailure(vpOutcome)) {
       const { issues, parseError } = parseOxlintIssues(vpOutcome.stdout)
-      const { transform: _transform, ...compact } = applyOutputTransform(
-        vpOutcome.stdout || vpOutcome.stderr,
-        {
-          toolName: 'wp_lint-vp',
-        },
-      )
+      const lintOutput = vpOutcome.stdout || vpOutcome.stderr
+      const passed = vpOutcome.exitCode === 0
+      // A non-zero exit that parsed zero oxlint issues is a runner/launcher
+      // failure (e.g. a crashing `vp`), not a lint finding — bound it so a raw
+      // stack can't blow the QA evidence budget. Real issues (issueCount > 0)
+      // and clean passes keep the normal oxlint transform.
+      const compact = isRunnerFailure({
+        passed,
+        timedOut: vpOutcome.timedOut ?? false,
+        aborted: vpOutcome.aborted ?? false,
+        parsedCount: issues.length,
+        output: lintOutput,
+      })
+        ? boundRunnerFailureEvidence(lintOutput, 'wp_lint-vp')
+        : stripTransform(applyOutputTransform(lintOutput, { toolName: 'wp_lint-vp' }))
       const payload = {
-        passed: vpOutcome.exitCode === 0,
+        passed,
         summary: summarizeLintResult({
-          passed: vpOutcome.exitCode === 0,
+          passed,
           issueCount: issues.length,
           exitCode: vpOutcome.exitCode,
           parseError,

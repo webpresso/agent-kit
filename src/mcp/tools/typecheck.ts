@@ -16,11 +16,16 @@ import { globSync } from 'glob'
 import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
-import { applyOutputTransform, type TransformResult } from '#output-transforms/index'
+import { applyOutputTransform } from '#output-transforms/index'
 import { getManagedRunner } from '#tool-runtime'
 
 import { resolveProjectRoot } from './_shared/project-root.js'
-import { clipRawOutput, createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
+import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
+import {
+  boundRunnerFailureEvidence,
+  isRunnerFailure,
+  stripTransform,
+} from './_shared/runner-failure.js'
 import { isRunFailure, runCommand, type RunResult } from './_shared/run-command.js'
 
 const inputSchema = z.object({
@@ -55,13 +60,6 @@ export interface TscError {
 
 // Hard cap: a hung tsc invocation must surface as a timeout, never as a stall.
 const TYPECHECK_COMMAND_TIMEOUT_MS = 10 * 60 * 1_000
-
-// A non-zero exit with zero parseable diagnostics is a runner/launcher failure
-// (e.g. a missing `vp`/`tsc` binary printing a Node stack), not a type error.
-// Bound that evidence well under the compact QA leaf budget and persist the full
-// output to a log — otherwise a broken consumer toolchain dumps an unbounded
-// blob masquerading as typecheck output (regression: ingest-lens BOOKEND).
-const RUNNER_FAILURE_EVIDENCE_BUDGET = 600
 
 // Matches both standard tsc formats:
 //   src/foo.ts(5,12): error TS2304: Cannot find name 'bar'.
@@ -156,30 +154,6 @@ function summarizeTypecheckResult(options: {
   return `typecheck failed with ${options.errorCount} error${options.errorCount === 1 ? '' : 's'}`
 }
 
-function stripTransform(result: TransformResult): Omit<TransformResult, 'transform'> {
-  const { transform: _transform, ...rest } = result
-  return rest
-}
-
-/**
- * Compact, truthful evidence for a runner/launcher failure: clip to a small
- * budget and persist the full output to a log (via `clipRawOutput`) rather than
- * inlining the raw stack. Keeps the QA leaf inside its byte budget while the
- * `passed: false` + summary make the failure loud.
- */
-function boundRunnerFailureEvidence(raw: string): Omit<TransformResult, 'transform'> {
-  const clipped = clipRawOutput(raw, RUNNER_FAILURE_EVIDENCE_BUDGET, { toolName: 'wp_typecheck' })
-  const rawBytes = Buffer.byteLength(raw)
-  const bytes = Buffer.byteLength(clipped.rawOutput ?? '')
-  return {
-    ...clipped,
-    failures: [],
-    tier: 3,
-    bytes,
-    tokensSaved: Math.max(0, rawBytes - bytes),
-  }
-}
-
 const tool: ToolDescriptor = {
   name: 'wp_typecheck',
   description:
@@ -245,11 +219,16 @@ const tool: ToolDescriptor = {
     const aborted = runs.some((r) => r.aborted)
 
     const combinedOutput = [combinedStdout, combinedStderr].filter(Boolean).join('')
-    const failedWithoutDiagnostics =
-      !passed && !timedOut && !aborted && errors.length === 0 && combinedOutput.trim().length > 0
+    const failedWithoutDiagnostics = isRunnerFailure({
+      passed,
+      timedOut,
+      aborted,
+      parsedCount: errors.length,
+      output: combinedOutput,
+    })
 
     const compact = failedWithoutDiagnostics
-      ? boundRunnerFailureEvidence(combinedOutput)
+      ? boundRunnerFailureEvidence(combinedOutput, 'wp_typecheck')
       : stripTransform(applyOutputTransform(combinedOutput, { toolName: 'wp_typecheck' }))
 
     const payload = {

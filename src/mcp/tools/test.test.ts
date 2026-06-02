@@ -196,8 +196,13 @@ describe('wp_test tool', () => {
       expect(spawnMock).not.toHaveBeenCalled()
     })
 
-    it('clips long raw test output and marks it truncated', async () => {
-      spawnMock.mockReturnValue(fakeChild({ stdout: 'x'.repeat(5_000), exitCode: 1 }))
+    // Regression: a non-zero exit whose output parsed zero test failures is a
+    // runner crash, not test failures. Non-structured failing output (no
+    // FAIL/Error tokens) used to clip at the 4000 generic cap, blowing the QA
+    // evidence budget. Now bounded to the runner-failure budget + logged.
+    it('bounds a runner failure (non-zero exit, no parseable failures) under the QA budget', async () => {
+      const blob = 'runner bootstrap frame padding padding padding padding\n'.repeat(20)
+      spawnMock.mockReturnValue(fakeChild({ stdout: blob, exitCode: 1 }))
 
       const result = await wpTestTool.handler({ packages: ['x'] })
       const payload = result.structuredContent as {
@@ -206,12 +211,23 @@ describe('wp_test tool', () => {
         rawOutput?: string
         truncated?: boolean
         logPath?: string
+        bytes?: number
       }
       expect(payload.passed).toBe(false)
       expect(payload.summary).toMatch(/tests failed for 1 package/)
-      expect(payload.rawOutput).toHaveLength(4_000)
+      expect(payload.bytes ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(800)
+      expect(Buffer.byteLength(payload.rawOutput ?? '')).toBeLessThanOrEqual(600)
       expect(payload.truncated).toBe(true)
       expect(payload.logPath).toMatch(/^logs\//)
+    })
+
+    it('keeps the 4000 generic clip for long output that is not a bare failure', async () => {
+      spawnMock.mockReturnValue(fakeChild({ stdout: 'x'.repeat(5_000), exitCode: 0 }))
+
+      const result = await wpTestTool.handler({ packages: ['x'] })
+      const payload = result.structuredContent as { rawOutput?: string; truncated?: boolean }
+      expect(payload.rawOutput).toHaveLength(4_000)
+      expect(payload.truncated).toBe(true)
     })
 
     it('threads MCP cancellation into the underlying test process', async () => {

@@ -268,4 +268,29 @@ describe('wp_lint tool', () => {
     const result = await akLintTool.handler({})
     expect(result.isError).toBeUndefined()
   })
+
+  // Regression: a non-zero exit that parsed zero oxlint issues is a runner crash,
+  // not a lint finding. Non-structured output the oxlint fallback can't bound (no
+  // error/warning tokens) used to pass through near the 4000 cap, blowing the QA
+  // evidence budget. Now bounded to the runner-failure budget + logged.
+  it('bounds a runner failure (non-zero exit, no parseable issues) under the QA budget', async () => {
+    const blob = 'runner bootstrap frame padding padding padding padding\n'.repeat(20)
+    spawnMock.mockReturnValue(fakeChild({ stderr: blob, exitCode: 1 }))
+
+    const result = await akLintTool.handler({})
+    const payload = result.structuredContent as {
+      passed: boolean
+      counts: { issueCount: number }
+      rawOutput?: string
+      truncated?: boolean
+      logPath?: string
+      bytes?: number
+    }
+    expect(payload.passed).toBe(false)
+    expect(payload.counts.issueCount).toBe(0)
+    expect(payload.bytes ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(800)
+    expect(Buffer.byteLength(payload.rawOutput ?? '')).toBeLessThanOrEqual(600)
+    expect(payload.truncated).toBe(true)
+    expect(payload.logPath).toBeTruthy()
+  })
 })
