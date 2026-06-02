@@ -117,6 +117,13 @@ function shouldSkipDirectory(name: string): boolean {
     '.omx',
     '.omc',
     '.codex',
+    // Gitignored agent scratch (e.g. .claude/worktrees/*) — not the repo's own
+    // packages; auditing it produces false positives.
+    '.claude',
+    // Shipped skill templates / content — standalone app samples that
+    // legitimately use vite/tsc directly (no wp equivalent for dev/build), not
+    // the repo's wp-managed workspace packages.
+    'catalog',
   ].includes(name)
 }
 

@@ -57,6 +57,31 @@ describe('auditToolchainIsolation', () => {
     expect(result.violations).toHaveLength(1)
     expect(result.violations[0]?.message).toContain('devDependencies.wrangler')
   })
+
+  // Regression: the audit walked gitignored agent scratch (.claude/worktrees/*)
+  // and shipped skill templates under catalog/ (standalone app samples that
+  // legitimately use vite/tsc directly — there is no wp equivalent for
+  // dev/build/preview), producing false positives. Those are not the repo's
+  // own wp-managed workspace packages, so the walk must skip them.
+  it('skips gitignored agent scratch (.claude) and shipped content (catalog)', () => {
+    writePackage(root, {
+      scripts: { lint: 'wp lint' },
+      devDependencies: { '@webpresso/agent-kit': 'latest' },
+    })
+    mkdirSync(join(root, '.claude', 'worktrees', 'agent-x'), { recursive: true })
+    writePackage(join(root, '.claude', 'worktrees', 'agent-x'), {
+      devDependencies: { typescript: '^6.0.0' },
+    })
+    mkdirSync(join(root, 'catalog', 'agent', 'skills', 'x', 'templates'), { recursive: true })
+    writePackage(join(root, 'catalog', 'agent', 'skills', 'x', 'templates'), {
+      scripts: { build: 'vite build' },
+      devDependencies: { vite: '^8.0.0' },
+    })
+
+    const result = auditToolchainIsolation(root)
+
+    expect(result).toMatchObject({ ok: true, checked: 1 })
+  })
 })
 
 function writePackage(dir: string, value: unknown): void {
