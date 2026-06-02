@@ -8,9 +8,11 @@ import {
   WEBPRESSO_MCP_HEADER,
   PLAYWRIGHT_MCP_HEADER,
   agentKitMcpBlock,
+  ensureClaudePlaywrightMcp,
   ensureCodexWebpressoMcp,
   ensureCodexPlaywrightMcp,
   findWebpressoMcpEntry,
+  upsertClaudePlaywrightMcpServer,
   upsertWebpressoMcpServer,
   upsertPlaywrightMcpServer,
 } from './index.js'
@@ -87,6 +89,129 @@ describe('ensureCodexPlaywrightMcp', () => {
 
     expect(result).toEqual({ kind: 'codex-playwright-mcp-skipped-dry-run', path: configPath })
     expect(existsSync(configPath)).toBe(false)
+  })
+})
+
+describe('upsertClaudePlaywrightMcpServer', () => {
+  it('seeds mcpServers.playwright with the portable vp dlx launch on an empty file', () => {
+    const next = JSON.parse(upsertClaudePlaywrightMcpServer('')) as {
+      mcpServers: Record<string, { command: string; args: string[] }>
+    }
+
+    expect(next.mcpServers.playwright).toStrictEqual({
+      command: 'vp',
+      args: ['dlx', '@playwright/mcp@latest', '--caps=testing,storage,network,devtools'],
+    })
+  })
+
+  it('replaces a broken hardcoded bin path while preserving other servers', () => {
+    const raw = JSON.stringify({
+      mcpServers: {
+        context7: { type: 'http', url: 'https://mcp.context7.com/mcp' },
+        playwright: { command: '/Users/ozby/.bun/bin/playwright-mcp' },
+      },
+    })
+
+    const next = JSON.parse(upsertClaudePlaywrightMcpServer(raw)) as {
+      mcpServers: Record<string, { command: string; args?: string[]; url?: string }>
+    }
+
+    expect(next.mcpServers.context7).toStrictEqual({
+      type: 'http',
+      url: 'https://mcp.context7.com/mcp',
+    })
+    expect(next.mcpServers.playwright).toStrictEqual({
+      command: 'vp',
+      args: ['dlx', '@playwright/mcp@latest', '--caps=testing,storage,network,devtools'],
+    })
+  })
+
+  it('throws on a non-empty file that is not valid JSON', () => {
+    expect(() => upsertClaudePlaywrightMcpServer('not json {')).toThrow(/not valid JSON/)
+  })
+})
+
+describe('ensureClaudePlaywrightMcp', () => {
+  let dir: string | null = null
+
+  afterEach(() => {
+    if (dir) rmSync(dir, { recursive: true, force: true })
+    dir = null
+  })
+
+  it('writes a missing .mcp.json under the repo root', () => {
+    dir = mkdtempSync(join(tmpdir(), 'wp-claude-mcp-'))
+    const configPath = join(dir, '.mcp.json')
+
+    const result = ensureClaudePlaywrightMcp({
+      options: { overwrite: false, dryRun: false },
+      repoRoot: dir,
+    })
+
+    expect(result).toStrictEqual({ kind: 'claude-playwright-mcp-written', path: configPath })
+    const written = JSON.parse(readFileSync(configPath, 'utf8')) as {
+      mcpServers: Record<string, { command: string }>
+    }
+    expect(written.mcpServers.playwright.command).toBe('vp')
+  })
+
+  it('repairs a broken hardcoded playwright bin path in place', () => {
+    dir = mkdtempSync(join(tmpdir(), 'wp-claude-mcp-'))
+    const configPath = join(dir, '.mcp.json')
+    writeFileSync(
+      configPath,
+      `${JSON.stringify({ mcpServers: { playwright: { command: '/Users/ozby/.bun/bin/playwright-mcp' } } }, null, 2)}\n`,
+      'utf8',
+    )
+
+    const result = ensureClaudePlaywrightMcp({
+      options: { overwrite: false, dryRun: false },
+      configPath,
+      repoRoot: dir,
+    })
+
+    expect(result).toStrictEqual({ kind: 'claude-playwright-mcp-written', path: configPath })
+    expect(readFileSync(configPath, 'utf8')).not.toContain('/Users/ozby/.bun/bin/playwright-mcp')
+  })
+
+  it('is idempotent when the desired server is already present', () => {
+    dir = mkdtempSync(join(tmpdir(), 'wp-claude-mcp-'))
+    const configPath = join(dir, '.mcp.json')
+    ensureClaudePlaywrightMcp({ options: { overwrite: false, dryRun: false }, repoRoot: dir })
+
+    const result = ensureClaudePlaywrightMcp({
+      options: { overwrite: false, dryRun: false },
+      repoRoot: dir,
+    })
+
+    expect(result).toStrictEqual({ kind: 'claude-playwright-mcp-unchanged', path: configPath })
+  })
+
+  it('does not write in dry-run mode', () => {
+    dir = mkdtempSync(join(tmpdir(), 'wp-claude-mcp-'))
+    const configPath = join(dir, '.mcp.json')
+
+    const result = ensureClaudePlaywrightMcp({
+      options: { overwrite: false, dryRun: true },
+      repoRoot: dir,
+    })
+
+    expect(result).toStrictEqual({ kind: 'claude-playwright-mcp-skipped-dry-run', path: configPath })
+    expect(existsSync(configPath)).toBe(false)
+  })
+
+  it('leaves an invalid-JSON .mcp.json untouched and reports it', () => {
+    dir = mkdtempSync(join(tmpdir(), 'wp-claude-mcp-'))
+    const configPath = join(dir, '.mcp.json')
+    writeFileSync(configPath, 'not json {', 'utf8')
+
+    const result = ensureClaudePlaywrightMcp({
+      options: { overwrite: false, dryRun: false },
+      repoRoot: dir,
+    })
+
+    expect(result).toStrictEqual({ kind: 'claude-playwright-mcp-invalid-json', path: configPath })
+    expect(readFileSync(configPath, 'utf8')).toBe('not json {')
   })
 })
 

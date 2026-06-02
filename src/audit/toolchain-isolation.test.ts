@@ -76,6 +76,26 @@ describe('auditToolchainIsolation', () => {
 
     expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
   })
+
+  // Regression: the walk descended into the gitignored Claude Code agent
+  // surface (.claude/worktrees/* agent scratch carries vendored package
+  // manifests that are not the repo's own packages), producing false positives
+  // on local dev machines and in consumer repos that run agent worktrees.
+  it('skips the gitignored .claude agent worktree scratch', () => {
+    writePackage(root, {
+      scripts: { lint: 'wp lint' },
+      devDependencies: { '@webpresso/agent-kit': 'latest' },
+    })
+    mkdirSync(join(root, '.claude', 'worktrees', 'agent-x', 'packages', 'foo'), {
+      recursive: true,
+    })
+    writePackage(join(root, '.claude', 'worktrees', 'agent-x', 'packages', 'foo'), {
+      scripts: { typecheck: 'tsc --noEmit' },
+      devDependencies: { typescript: '^6.0.0' },
+    })
+
+    expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
+  })
 })
 
 function writePackage(dir: string, value: unknown): void {
