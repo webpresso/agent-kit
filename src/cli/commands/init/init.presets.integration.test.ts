@@ -144,6 +144,26 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(gitignore).toContain('.codex/')
       expect(gitignore).toContain('.omx/')
       expect(gitignore.trimEnd()).toMatch(/# <<< managed by webpresso \(generated\)$/)
+
+      const gitRmCalls = spawnSyncMock.mock.calls.filter(
+        (call) => call[0] === 'git' && Array.isArray(call[1]) && call[1][0] === 'rm',
+      )
+      expect(gitRmCalls).toHaveLength(1)
+      expect(gitRmCalls[0]?.[1]).toEqual(
+        expect.arrayContaining([
+          'rm',
+          '--cached',
+          '-r',
+          '--ignore-unmatch',
+          '--',
+          '.codex/',
+          '.omx/',
+          '.claude/settings.local.json',
+          '.claude/rules/',
+          '.claude/skills/',
+        ]),
+      )
+      expect(gitRmCalls[0]?.[2]).toMatchObject({ cwd: repo, encoding: 'utf8' })
     })
 
     it('returns EXIT_SETUP_FAIL when probe errors with ENOENT (omx not on PATH)', async () => {

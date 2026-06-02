@@ -11,6 +11,7 @@
  * drift). Other content in `.gitignore` — including unrelated managed blocks
  * from other scaffolders — is preserved verbatim.
  */
+import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
@@ -20,6 +21,12 @@ export interface GitignoreBlock {
   id: string
   patterns: readonly string[]
 }
+
+export type GeneratedIndexCleanupResult =
+  | { kind: 'skipped-dry-run'; pathspecs: readonly string[] }
+  | { kind: 'skipped-not-git'; pathspecs: readonly string[] }
+  | { kind: 'ok'; pathspecs: readonly string[]; removedPaths: readonly string[] }
+  | { kind: 'failed'; pathspecs: readonly string[]; exitCode: number | null; stderr: string }
 
 const BEGIN = (id: string): string => `# >>> managed by webpresso (${id})`
 const END = (id: string): string => `# <<< managed by webpresso (${id})`
@@ -64,6 +71,7 @@ export const GENERATED_PATHS_BLOCK: GitignoreBlock = {
     '.opencode/',
     '.codex/',
     '.claude/settings.json',
+    '.claude/settings.local.json',
     '.claude/agents/',
     '.claude/hooks/',
     '.claude/rules/',
@@ -85,6 +93,57 @@ export const GENERATED_PATHS_BLOCK: GitignoreBlock = {
     '.agent/.blueprints.snapshot.sql',
     '.agent/.tail-hint-history.jsonl',
   ],
+}
+
+function generatedPathspecs(block: GitignoreBlock): string[] {
+  return block.patterns
+    .map((pattern) => pattern.trim())
+    .filter((pattern) => pattern.length > 0)
+    .filter((pattern) => !pattern.startsWith('#'))
+    .filter((pattern) => !pattern.startsWith('!'))
+}
+
+function parseGitRmStdout(stdout: string): string[] {
+  return stdout
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('rm '))
+    .map((line) => line.replace(/^rm ['"]?/, '').replace(/['"]?$/, ''))
+}
+
+export function untrackGeneratedGitignoredPaths(
+  repoRoot: string,
+  block: GitignoreBlock = GENERATED_PATHS_BLOCK,
+  opts: Pick<MergeOptions, 'dryRun'> = {},
+): GeneratedIndexCleanupResult {
+  const pathspecs = generatedPathspecs(block)
+  if (opts.dryRun) return { kind: 'skipped-dry-run', pathspecs }
+  if (pathspecs.length === 0) return { kind: 'ok', pathspecs, removedPaths: [] }
+
+  const gitProbe = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  })
+  if (gitProbe.status !== 0) return { kind: 'skipped-not-git', pathspecs }
+
+  const gitRm = spawnSync(
+    'git',
+    ['rm', '--cached', '-r', '--ignore-unmatch', '--', ...pathspecs],
+    {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    },
+  )
+  if (gitRm.status !== 0) {
+    return {
+      kind: 'failed',
+      pathspecs,
+      exitCode: gitRm.status,
+      stderr: String(gitRm.stderr ?? '').trim(),
+    }
+  }
+
+  return { kind: 'ok', pathspecs, removedPaths: parseGitRmStdout(String(gitRm.stdout ?? '')) }
 }
 
 export function patchGitignore(

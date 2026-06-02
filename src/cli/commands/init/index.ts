@@ -32,7 +32,11 @@ import { scaffoldAgent, RENDERED_SKILLS, TIER1_SKILLS, TIER2_SKILLS } from './sc
 import { scaffoldAgentRules } from './scaffold-agent-rules.js'
 import { scaffoldAgentSkills } from './scaffold-agent-skills.js'
 import { scaffoldCatalogIgnore } from './scaffold-catalog-ignore.js'
-import { GENERATED_PATHS_BLOCK, patchGitignore } from './gitignore-patcher.js'
+import {
+  GENERATED_PATHS_BLOCK,
+  patchGitignore,
+  untrackGeneratedGitignoredPaths,
+} from './gitignore-patcher.js'
 import { scaffoldAgentsMd } from './scaffold-agents-md.js'
 import { scaffoldBlueprints } from './scaffold-blueprints.js'
 import { scaffoldDocs } from './scaffold-docs.js'
@@ -324,6 +328,11 @@ export async function runInit(flags: InitFlags): Promise<number> {
       join(consumer.repoRoot, '.gitignore'),
       GENERATED_PATHS_BLOCK,
       { dryRun: options.dryRun, overwrite: true },
+    )
+    const generatedIndexCleanupResult = untrackGeneratedGitignoredPaths(
+      consumer.repoRoot,
+      GENERATED_PATHS_BLOCK,
+      { dryRun: options.dryRun },
     )
 
     const baseKitResults = tier3Selection.includes('base-kit')
@@ -806,6 +815,16 @@ export async function runInit(flags: InitFlags): Promise<number> {
     console.log(`  overwritten:     ${summary.overwritten}`)
     console.log(`  drifted:         ${summary.drifted}`)
     if (options.dryRun) console.log(`  would-change:    ${summary['skipped-dry']}`)
+    if (generatedIndexCleanupResult.kind === 'ok') {
+      console.log(`  git index cleanup: ${generatedIndexCleanupResult.removedPaths.length} untracked`)
+    } else if (generatedIndexCleanupResult.kind === 'failed') {
+      console.warn(
+        `  git index cleanup: failed (git rm --cached exited ${generatedIndexCleanupResult.exitCode})`,
+      )
+      if (generatedIndexCleanupResult.stderr.length > 0) {
+        console.warn(`  git index cleanup stderr: ${generatedIndexCleanupResult.stderr}`)
+      }
+    }
 
     if (tier3Selection.includes('base-kit')) {
       const qualityTargets = new Set(BASE_KIT_QUALITY_TARGETS)
