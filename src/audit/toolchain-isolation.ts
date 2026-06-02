@@ -131,6 +131,11 @@ function shouldSkipDirectory(name: string): boolean {
     '.omx',
     '.omc',
     '.codex',
+    // Gitignored Claude Code agent surface — agent worktree scratch under
+    // .claude/worktrees/* carries vendored package manifests that are not the
+    // repo's own packages; walking it produces false positives on local dev
+    // machines and in consumer repos that run agent worktrees.
+    '.claude',
   ].includes(name)
 }
 
