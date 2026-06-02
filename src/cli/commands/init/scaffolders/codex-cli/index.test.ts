@@ -29,7 +29,7 @@ describe('ensureCodexCli', () => {
 
     expect(result).toEqual({ kind: 'codex-cli-ok', installed: false })
     expect(spawn).toHaveBeenNthCalledWith(1, 'codex', ['--version'], { encoding: 'utf8' })
-    expect(spawn).toHaveBeenNthCalledWith(2, 'vp', ['update', '-g', '@openai/codex'], {
+    expect(spawn).toHaveBeenNthCalledWith(2, 'vp', ['update', '-g', '--latest', '@openai/codex'], {
       stdio: 'inherit',
     })
   })

@@ -36,7 +36,11 @@ export function ensureCodexCli(input: EnsureCodexCliInput): EnsureCodexCliResult
       return { kind: 'codex-cli-unavailable', hint: NOT_FOUND_HINT }
     }
   } else if (!shouldSkipCodexRefresh()) {
-    spawn('vp', ['update', '-g', '@openai/codex'], { stdio: 'inherit' })
+    // `--latest` ignores the recorded semver range so the global is pulled to
+    // the absolute newest published release, matching the force-to-latest
+    // guarantee `vp install -g <bare>` gives the agent-kit self-update. Plain
+    // `vp update -g` is range-bound and can strand the global on an old major.
+    spawn('vp', ['update', '-g', '--latest', '@openai/codex'], { stdio: 'inherit' })
   }
 
   return { kind: 'codex-cli-ok', installed }
