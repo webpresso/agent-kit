@@ -63,7 +63,11 @@ import { scaffoldAuditHooks } from './scaffolders/audit-hooks/index.js'
 import { ensureClaudeCodeUserPlugin } from './scaffolders/claude-plugin/index.js'
 import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js'
 import { ensureCodexCli } from './scaffolders/codex-cli/index.js'
-import { ensureCodexWebpressoMcp, ensureCodexPlaywrightMcp } from './scaffolders/codex-mcp/index.js'
+import {
+  ensureCodexWebpressoMcp,
+  ensureCodexPlaywrightMcp,
+  ensureClaudePlaywrightMcp,
+} from './scaffolders/codex-mcp/index.js'
 import { scaffoldExampleSkill } from './scaffolders/example-skill/index.js'
 import { ensureGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
@@ -550,6 +554,29 @@ export async function runInit(flags: InitFlags): Promise<number> {
           break
         case 'codex-playwright-mcp-skipped-dry-run':
           console.log('  codex playwright mcp: skipped (--dry-run)')
+          break
+      }
+
+      const claudePlaywrightMcpResult = ensureClaudePlaywrightMcp({
+        options,
+        repoRoot: consumer.repoRoot,
+      })
+      switch (claudePlaywrightMcpResult.kind) {
+        case 'claude-playwright-mcp-written':
+          console.log(`  claude playwright mcp: ✓ ${claudePlaywrightMcpResult.path}`)
+          break
+        case 'claude-playwright-mcp-unchanged':
+          console.log(
+            `  claude playwright mcp: already configured at ${claudePlaywrightMcpResult.path}`,
+          )
+          break
+        case 'claude-playwright-mcp-skipped-dry-run':
+          console.log('  claude playwright mcp: skipped (--dry-run)')
+          break
+        case 'claude-playwright-mcp-invalid-json':
+          console.warn(
+            `  claude playwright mcp: ⚠ ${claudePlaywrightMcpResult.path} is not valid JSON; left unchanged`,
+          )
           break
       }
     }
