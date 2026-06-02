@@ -29,21 +29,21 @@ function makeSpawn(behaviors: Array<{ status: number | null; error?: Error }>) {
 
 describe('ensureOmx', () => {
   it('returns omx-ok when probe and setup both succeed', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'omx-ok-'))
+    const configPath = join(dir, 'config.toml')
     const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }])
     const result = ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
+      configPath,
     })
     expect(result).toMatchObject({
       kind: 'omx-ok',
       installed: false,
       removedProjectFiles: [],
-      codexGlobalHooks: { repaired: false },
+      codexGlobalHooks: { repaired: false, targetPath: join(dir, 'hooks.json') },
     })
-    if (result.kind === 'omx-ok') {
-      expect(result.codexGlobalHooks.targetPath.endsWith('/hooks.json')).toBe(true)
-    }
     expect(spawn).toHaveBeenCalledTimes(3)
   })
 
@@ -59,6 +59,8 @@ describe('ensureOmx', () => {
   })
 
   it('installs oh-my-codex when omx is not on PATH, then runs setup', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'omx-install-'))
+    const configPath = join(dir, 'config.toml')
     const spawn = makeSpawn([
       { status: null, error: Object.assign(new Error('ENOENT'), { code: 'ENOENT' }) },
       { status: 0 },
@@ -69,16 +71,14 @@ describe('ensureOmx', () => {
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
+      configPath,
     })
     expect(result).toMatchObject({
       kind: 'omx-ok',
       installed: true,
       removedProjectFiles: [],
-      codexGlobalHooks: { repaired: false },
+      codexGlobalHooks: { repaired: false, targetPath: join(dir, 'hooks.json') },
     })
-    if (result.kind === 'omx-ok') {
-      expect(result.codexGlobalHooks.targetPath.endsWith('/hooks.json')).toBe(true)
-    }
     expect(spawn).toHaveBeenNthCalledWith(2, 'vp', ['install', '-g', 'oh-my-codex'], {
       stdio: 'inherit',
     })
@@ -89,6 +89,8 @@ describe('ensureOmx', () => {
   })
 
   it('skips the global OMX refresh when WP_SKIP_UPDATE_CHECK=1', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'omx-skip-'))
+    const configPath = join(dir, 'config.toml')
     const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
     const previous = process.env.WP_SKIP_UPDATE_CHECK
     process.env.WP_SKIP_UPDATE_CHECK = '1'
@@ -98,17 +100,15 @@ describe('ensureOmx', () => {
         repoRoot: '/tmp/repo',
         options: { overwrite: false, dryRun: false },
         spawn,
+        configPath,
       })
 
       expect(result).toMatchObject({
         kind: 'omx-ok',
         installed: false,
         removedProjectFiles: [],
-        codexGlobalHooks: { repaired: false },
+        codexGlobalHooks: { repaired: false, targetPath: join(dir, 'hooks.json') },
       })
-      if (result.kind === 'omx-ok') {
-        expect(result.codexGlobalHooks.targetPath.endsWith('/hooks.json')).toBe(true)
-      }
       expect(spawn).toHaveBeenCalledTimes(2)
       expect(spawn).toHaveBeenNthCalledWith(1, 'omx', ['--version'], { encoding: 'utf8' })
       expect(spawn).toHaveBeenNthCalledWith(2, 'omx', ['setup', '--yes', '--scope', 'user'], {
