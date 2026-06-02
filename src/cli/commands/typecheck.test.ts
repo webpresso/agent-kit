@@ -4,6 +4,16 @@ import { join } from 'node:path'
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+// Resolver is mocked so these tests verify command ASSEMBLY deterministically,
+// independent of which tool bins are installed locally. The real local-bin vs
+// `vp exec` resolution is covered by resolve-runner.test.ts + the package-bin test.
+vi.mock('#tool-runtime', () => ({
+  getManagedRunner: (tool: string) =>
+    tool === 'vp'
+      ? { tool: 'vp', command: 'vp', args: [], source: 'managed' }
+      : { tool, command: tool, args: [], source: 'managed' },
+}))
+
 import { buildTypecheckCommand, runTypecheckCommand } from './typecheck'
 
 describe('wp typecheck command', () => {
@@ -15,15 +25,15 @@ describe('wp typecheck command', () => {
 
   it('builds the default no-emit command with stable non-pretty output', () => {
     expect(buildTypecheckCommand()).toEqual({
-      command: 'vp',
-      args: ['exec', 'tsc', '--noEmit', '--pretty', 'false'],
+      command: 'tsc',
+      args: ['--noEmit', '--pretty', 'false'],
     })
   })
 
   it('can preserve pretty output when requested', () => {
     expect(buildTypecheckCommand({ pretty: true })).toEqual({
-      command: 'vp',
-      args: ['exec', 'tsc', '--noEmit'],
+      command: 'tsc',
+      args: ['--noEmit'],
     })
   })
 
@@ -52,8 +62,8 @@ describe('wp typecheck command', () => {
     )
 
     expect(buildTypecheckCommand({ cwd })).toEqual({
-      command: 'vp',
-      args: ['exec', 'tsc', '--noEmit', '--pretty', 'false'],
+      command: 'tsc',
+      args: ['--noEmit', '--pretty', 'false'],
     })
   })
 
@@ -67,6 +77,6 @@ describe('wp typecheck command', () => {
       stderr: '',
     }))
     expect(runTypecheckCommand({}, { run })).toBe(2)
-    expect(run).toHaveBeenCalledWith('vp', ['exec', 'tsc', '--noEmit', '--pretty', 'false'])
+    expect(run).toHaveBeenCalledWith('tsc', ['--noEmit', '--pretty', 'false'])
   })
 })

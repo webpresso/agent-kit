@@ -1,6 +1,26 @@
 import type { E2eHostAdapter, E2eSuiteDefinition } from './types.js'
+import type { ManagedRunnerOutputPolicy, ResolveRunnerOptions } from '#tool-runtime'
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+// Resolver is mocked so these tests verify command ASSEMBLY deterministically,
+// independent of which tool bins are installed locally. The real local-bin vs
+// `vp exec` resolution is covered by resolve-runner.test.ts + the package-bin
+// test. The mock faithfully mirrors the real outputPolicy contract.
+vi.mock('#tool-runtime', () => ({
+  getManagedRunner: (tool: string, options: ResolveRunnerOptions = {}) => {
+    const base =
+      tool === 'vp'
+        ? { tool: 'vp', command: 'vp', args: [] as string[] }
+        : { tool, command: tool, args: [] as string[] }
+    const policy: ManagedRunnerOutputPolicy =
+      options.outputPolicy ?? (options.filterOutput === false ? 'structured' : 'rtk-filtered')
+    if (policy === 'rtk-filtered') {
+      return { ...base, command: 'rtk', args: [base.command, ...base.args], source: 'managed' }
+    }
+    return { ...base, source: 'managed' }
+  },
+}))
 
 import { groupPlannedE2eRuns, planE2eRun, planGenericE2eRun } from './run-planner.js'
 
@@ -89,8 +109,6 @@ describe('planGenericE2eRun', () => {
             reportDir: undefined,
             command: 'rtk',
             args: [
-              'vp',
-              'exec',
               'playwright',
               'test',
               '--config',
@@ -125,15 +143,7 @@ describe('planGenericE2eRun', () => {
             logName: 'default',
             reportDir: undefined,
             command: 'rtk',
-            args: [
-              'vp',
-              'exec',
-              'vitest',
-              'run',
-              '--config',
-              'vitest.config.ts',
-              'e2e/smoke.e2e.ts',
-            ],
+            args: ['vitest', 'run', '--config', 'vitest.config.ts', 'e2e/smoke.e2e.ts'],
             env: undefined,
           },
         ],
@@ -184,16 +194,7 @@ describe('planE2eRun', () => {
             logName: 'smoke',
             reportDir: undefined,
             command: 'rtk',
-            args: [
-              'vp',
-              '--dir',
-              'apps/e2e',
-              'exec',
-              'playwright',
-              'test',
-              '--config',
-              'playwright.config.ts',
-            ],
+            args: ['playwright', 'test', '--config', 'playwright.config.ts'],
             env: {
               E2E_SUITE: 'smoke',
               PLAYWRIGHT_BASE_URL: 'http://127.0.0.1:4173',
@@ -225,10 +226,6 @@ describe('planE2eRun', () => {
             reportDir: undefined,
             command: 'rtk',
             args: [
-              'vp',
-              '--dir',
-              'apps/workers/platform-api/e2e',
-              'exec',
               'vitest',
               'run',
               '--config',

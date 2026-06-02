@@ -144,7 +144,7 @@ describe('buildVitestCommand', () => {
   it('builds a direct vitest file command', () => {
     expect(buildVitestCommand(['apps/cli2/src/commands/target.test.ts'])).toEqual({
       command: 'rtk',
-      args: ['vp', 'exec', 'vitest', 'run', 'apps/cli2/src/commands/target.test.ts'],
+      args: [expect.stringContaining('vitest'), 'run', 'apps/cli2/src/commands/target.test.ts'],
     })
   })
 
@@ -156,9 +156,7 @@ describe('buildVitestCommand', () => {
     ).toEqual({
       command: 'rtk',
       args: [
-        'vp',
-        'exec',
-        'vitest',
+        expect.stringContaining('vitest'),
         'run',
         '--config',
         'vitest.config.ts',
@@ -172,7 +170,7 @@ describe('buildVitestCommand', () => {
   it('builds vitest watch command', () => {
     expect(buildVitestCommand(['apps/cli2/src/commands/target.test.ts'], { watch: true })).toEqual({
       command: 'rtk',
-      args: ['vp', 'exec', 'vitest', '--watch', 'apps/cli2/src/commands/target.test.ts'],
+      args: [expect.stringContaining('vitest'), '--watch', 'apps/cli2/src/commands/target.test.ts'],
     })
   })
 
@@ -182,9 +180,7 @@ describe('buildVitestCommand', () => {
     ).toEqual({
       command: 'rtk',
       args: [
-        'vp',
-        'exec',
-        'vitest',
+        expect.stringContaining('vitest'),
         'run',
         '--config',
         'vitest.node.config.ts',
@@ -199,9 +195,7 @@ describe('buildVitestCommand', () => {
     ).toEqual({
       command: 'rtk',
       args: [
-        'vp',
-        'exec',
-        'vitest',
+        expect.stringContaining('vitest'),
         'run',
         '--config',
         'vitest.config.mts',
@@ -225,9 +219,7 @@ describe('buildVitestCommand', () => {
     ).toEqual({
       command: 'rtk',
       args: [
-        'vp',
-        'exec',
-        'vitest',
+        expect.stringContaining('vitest'),
         'run',
         '--coverage',
         '--runInBand',
@@ -252,7 +244,7 @@ describe('buildTestCommand recursion safety', () => {
 
     expect(buildTestCommand({ type: 'all', values: [] }, { cwd })).toEqual({
       command: 'rtk',
-      args: ['vp', 'exec', 'vitest', 'run'],
+      args: [expect.stringContaining('vitest'), 'run'],
     })
   })
 
@@ -288,7 +280,7 @@ describe('buildTestCommand', () => {
       buildTestCommand({ type: 'file', values: ['apps/cli2/src/commands/target.test.ts'] }),
     ).toEqual({
       command: 'rtk',
-      args: ['vp', 'exec', 'vitest', 'run', 'apps/cli2/src/commands/target.test.ts'],
+      args: [expect.stringContaining('vitest'), 'run', 'apps/cli2/src/commands/target.test.ts'],
     })
   })
 })

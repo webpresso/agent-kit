@@ -1,4 +1,25 @@
-import { describe, expect, it } from 'vitest'
+import type { ManagedRunnerOutputPolicy, ResolveRunnerOptions } from '#tool-runtime'
+
+import { describe, expect, it, vi } from 'vitest'
+
+// Resolver is mocked so these tests verify command ASSEMBLY deterministically,
+// independent of which tool bins are installed locally. The real local-bin vs
+// `vp exec` resolution is covered by resolve-runner.test.ts + the package-bin
+// test. The mock faithfully mirrors the real outputPolicy contract.
+vi.mock('#tool-runtime', () => ({
+  getManagedRunner: (tool: string, options: ResolveRunnerOptions = {}) => {
+    const base =
+      tool === 'vp'
+        ? { tool: 'vp', command: 'vp', args: [] as string[] }
+        : { tool, command: tool, args: [] as string[] }
+    const policy: ManagedRunnerOutputPolicy =
+      options.outputPolicy ?? (options.filterOutput === false ? 'structured' : 'rtk-filtered')
+    if (policy === 'rtk-filtered') {
+      return { ...base, command: 'rtk', args: [base.command, ...base.args], source: 'managed' }
+    }
+    return { ...base, source: 'managed' }
+  },
+}))
 
 import { buildE2eCommand } from './command-builder.js'
 
@@ -14,16 +35,7 @@ describe('buildE2eCommand', () => {
       }),
     ).toEqual({
       command: 'rtk',
-      args: [
-        'vp',
-        '--dir',
-        'apps/e2e',
-        'exec',
-        'playwright',
-        'test',
-        '--config',
-        'playwright.config.ts',
-      ],
+      args: ['playwright', 'test', '--config', 'playwright.config.ts'],
     })
   })
 
@@ -44,10 +56,6 @@ describe('buildE2eCommand', () => {
     ).toEqual({
       command: 'rtk',
       args: [
-        'vp',
-        '--dir',
-        'apps/e2e',
-        'exec',
         'playwright',
         'test',
         '--config',
@@ -74,16 +82,7 @@ describe('buildE2eCommand', () => {
       }),
     ).toEqual({
       command: 'rtk',
-      args: [
-        'vp',
-        '--dir',
-        'apps/workers/platform-api/e2e',
-        'exec',
-        'vitest',
-        'run',
-        '--config',
-        'vitest.config.ts',
-      ],
+      args: ['vitest', 'run', '--config', 'vitest.config.ts'],
     })
   })
 
@@ -115,8 +114,8 @@ describe('buildE2eCommand', () => {
         outputPolicy: 'structured',
       }),
     ).toEqual({
-      command: 'vp',
-      args: ['--dir', 'apps/e2e', 'exec', 'playwright', 'test', '--config', 'playwright.config.ts'],
+      command: 'playwright',
+      args: ['test', '--config', 'playwright.config.ts'],
     })
   })
 })

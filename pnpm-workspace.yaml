@@ -2,6 +2,19 @@ packages:
   - .
   - apps/*
 
+# Managed toolchain bundle (toolchain-isolation): single source of truth so the
+# same tool can't drift across dependency buckets/workspaces. Pinned to latest.
+catalog:
+  '@playwright/test': ^1.60.0
+  '@stryker-mutator/core': ^9.6.1
+  '@stryker-mutator/typescript-checker': ^9.6.1
+  '@stryker-mutator/vitest-runner': ^9.6.1
+  tsx: ^4.22.4
+  typescript: ^6.0.3
+  vite: ^8.0.16
+  vitest: ^4.1.8
+  wrangler: ^4.97.0
+
 cleanupUnusedCatalogs: true
 
 confirmModulesPurge: false
