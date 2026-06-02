@@ -475,6 +475,19 @@ describe('routeCommand', () => {
     }
   })
 
+  it('extracts routed commands from Codex MCP alias payload fields', async () => {
+    const { extractRoutableCommandsFromToolInput } = await import('./dev-routing.js')
+    const commands = extractRoutableCommandsFromToolInput({
+      toolName: 'mcp__context_mode__ctx_execute',
+      toolInput: {
+        language: 'shell',
+        code: 'vp run build 2>&1 | tail -160',
+      },
+    })
+
+    expect(commands).toContain('vp run build 2>&1 | tail -160')
+  })
+
   it('extracts routed commands from plugin-prefixed context-mode MCP tool names', async () => {
     const { extractRoutableCommandsFromToolInput, routeCommand } = await import('./dev-routing.js')
     const commands = extractRoutableCommandsFromToolInput({

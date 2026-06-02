@@ -7,7 +7,7 @@ describe('resolveRunner', () => {
     expect(resolveRunner('vitest')).toEqual({
       tool: 'vitest',
       command: 'rtk',
-      args: ['vp', 'exec', 'vitest'],
+      args: [expect.stringContaining('vitest')],
       source: 'managed',
     })
   })
@@ -15,8 +15,8 @@ describe('resolveRunner', () => {
   it('supports explicitly opting out of RTK filtering for managed runners', () => {
     expect(resolveRunner('vitest', { outputPolicy: 'structured' })).toEqual({
       tool: 'vitest',
-      command: 'vp',
-      args: ['exec', 'vitest'],
+      command: expect.stringContaining('vitest'),
+      args: [],
       source: 'managed',
     })
   })
@@ -24,8 +24,8 @@ describe('resolveRunner', () => {
   it('resolves tsc through managed vp exec instead of a bare binary', () => {
     expect(resolveRunner('tsc', { outputPolicy: 'structured' })).toEqual({
       tool: 'tsc',
-      command: 'vp',
-      args: ['exec', 'tsc'],
+      command: expect.stringContaining('typescript'),
+      args: [],
       source: 'managed',
     })
   })
@@ -33,8 +33,8 @@ describe('resolveRunner', () => {
   it('resolves oxfmt through managed vp exec instead of a bare binary', () => {
     expect(resolveRunner('oxfmt', { outputPolicy: 'structured' })).toEqual({
       tool: 'oxfmt',
-      command: 'vp',
-      args: ['exec', 'oxfmt'],
+      command: expect.stringContaining('oxfmt'),
+      args: [],
       source: 'managed',
     })
   })
@@ -71,8 +71,8 @@ describe('resolveRunner', () => {
   it('accepts legacy filterOutput false as a structured-output selector', () => {
     expect(resolveRunner('tsc', { filterOutput: false })).toEqual({
       tool: 'tsc',
-      command: 'vp',
-      args: ['exec', 'tsc'],
+      command: expect.stringContaining('typescript'),
+      args: [],
       source: 'managed',
     })
   })

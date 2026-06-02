@@ -668,10 +668,17 @@ function isContextModeTool(toolName: unknown): boolean {
 
 export function extractRoutableCommandsFromToolInput(input: {
   tool_name?: string
+  toolName?: string
+  tool?: string
+  name?: string
   tool_input?: Record<string, unknown>
+  toolInput?: Record<string, unknown>
+  input?: Record<string, unknown>
+  arguments?: Record<string, unknown>
 }): string[] {
-  if (!isContextModeTool(input.tool_name)) return []
-  const toolInput = input.tool_input
+  const toolName = input.tool_name ?? input.toolName ?? input.tool ?? input.name
+  if (!isContextModeTool(toolName)) return []
+  const toolInput = input.tool_input ?? input.toolInput ?? input.input ?? input.arguments
   if (!toolInput || typeof toolInput !== 'object') return []
 
   const commands: string[] = []

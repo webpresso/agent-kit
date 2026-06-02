@@ -95,6 +95,8 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
     (await import('#audit/architecture-drift')).auditArchitectureDrift(root),
   'cloudflare-deploy-contract': async (root) =>
     (await import('#audit/cloudflare-deploy-contract')).auditCloudflareDeployContract(root),
+  'toolchain-isolation': async (root) =>
+    (await import('#audit/toolchain-isolation')).auditToolchainIsolation(root),
   'absolute-path-policy': async (root) =>
     (await import('#audit/absolute-path-policy')).auditAbsolutePathPolicy(root),
   'agent-cost': async (root) => (await import('#audit/agent-cost')).auditAgentCost(root),

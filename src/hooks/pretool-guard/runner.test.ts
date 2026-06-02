@@ -137,6 +137,21 @@ describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
 
   // ── Passthrough cases ─────────────────────────────────────────────────────
 
+  it('ctx_execute build command + MCP ready → exit 0, passthrough without ctx loop', () => {
+    writeMcpSentinel()
+    const payload = JSON.stringify({
+      toolName: 'mcp__context_mode__ctx_execute',
+      toolInput: {
+        language: 'shell',
+        code: 'cd /repo && vp run build 2>&1 | tail -160',
+      },
+    })
+    const { stdout, status } = runBinary(payload)
+    expect(status).toBe(0)
+    const parsed = JSON.parse(stdout) as Record<string, unknown>
+    expect(parsed).toEqual({})
+  })
+
   it('git status + MCP ready → exit 0, passthrough {} (not deny)', () => {
     writeMcpSentinel()
     const payload = JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'git status' } })

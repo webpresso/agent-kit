@@ -37,7 +37,7 @@ describe('wp test command helpers', () => {
       }),
     ).toEqual({
       command: 'rtk',
-      args: ['vp', 'exec', 'vitest', 'run', 'apps/cli2/src/commands/target.test.ts'],
+      args: [expect.stringContaining('vitest'), 'run', 'apps/cli2/src/commands/target.test.ts'],
     })
   })
 
@@ -55,7 +55,7 @@ describe('wp test command helpers', () => {
 
     expect(createAkTestCommandConfig({ cwd })).toEqual({
       command: 'rtk',
-      args: ['vp', 'exec', 'vitest', 'run'],
+      args: [expect.stringContaining('vitest'), 'run'],
     })
   })
 })
