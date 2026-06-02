@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.26.0
+
+### Minor Changes
+
+- c1f40e8: Add the generic `wp deploy` adapter contract plus a toolchain-isolation audit so consumer repos can delegate TypeScript/Vite/Vitest/Stryker/Playwright/Wrangler/Oxlint/tsx execution to agent-kit-owned wrappers instead of direct dependencies or scripts.
+
+### Patch Changes
+
+- 7c3cb08: Make `wp setup` remove legacy generated agent surfaces from the Git index after repairing the managed `.gitignore` block, preserving the files on disk while keeping generated `.claude` projections untracked.
+
 ## 0.25.0
 
 ### Minor Changes
