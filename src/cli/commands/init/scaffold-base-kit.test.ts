@@ -58,6 +58,31 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, '.gitignore'))).toBe(false)
   })
 
+  // Dogfooding boundary: agent-kit ships base-kit, so its own repo gets the
+  // script lane (proven by "skips self-install fields…") but NOT the starter
+  // quality SAMPLES — teaching artifacts for fresh consumer repos that would
+  // pollute agent-kit's source tree. Skipped for both self identities.
+  it.each(['@webpresso/agent-kit', 'webpresso'])(
+    'skips starter quality samples on the %s repo while keeping the script lane',
+    (selfName) => {
+      writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: selfName }))
+      const catalogDir = resolveCatalogDir()
+
+      scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
+
+      // Starter samples are NOT scaffolded into the tool's own source tree…
+      expect(existsSync(join(repoRoot, 'src', 'quality-sample.ts'))).toBe(false)
+      expect(existsSync(join(repoRoot, 'src', 'quality-sample.test.ts'))).toBe(false)
+      expect(existsSync(join(repoRoot, 'e2e', 'smoke.spec.ts'))).toBe(false)
+      expect(existsSync(join(repoRoot, 'oxlint.config.ts'))).toBe(false)
+      // …but the dogfooded script lane is still merged.
+      const pkg = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as {
+        scripts?: Record<string, string>
+      }
+      expect(pkg.scripts?.['test']).toBe('wp test --file vitest.config.ts')
+    },
+  )
+
   it('merges engines and packageManager into package.json', () => {
     const catalogDir = resolveCatalogDir()
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
