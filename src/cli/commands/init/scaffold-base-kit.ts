@@ -284,37 +284,8 @@ function mergePackageJson(
   return { targetPath: pkgPath, action: 'overwritten' }
 }
 
-const AGENT_KIT_PACKAGE_NAME = '@webpresso/agent-kit'
-
-/**
- * True when `repoRoot` is agent-kit's own source repo. base-kit is the bundle
- * agent-kit SHIPS to consumers; scaffolding it back into agent-kit itself
- * pollutes the source tree (quality-sample.ts, e2e/, playwright/oxlint configs)
- * and rewrites its `.gitignore`. The guard makes `scaffoldBaseKit` a no-op there.
- */
-function isAgentKitSelfRepo(repoRoot: string): boolean {
-  try {
-    const pkg = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as {
-      name?: string
-    }
-    return pkg.name === AGENT_KIT_PACKAGE_NAME
-  } catch {
-    return false
-  }
-}
-
 export function scaffoldBaseKit(input: ScaffoldBaseKitInput): MergeResult[] {
   const { catalogDir, repoRoot, options, globalInstall = false } = input
-  if (isAgentKitSelfRepo(repoRoot)) {
-    // Loud refusal rather than a silent no-op: base-kit is for consumer repos,
-    // and scaffolding it into agent-kit's own tree is the source-pollution
-    // footgun this guard exists to prevent.
-    console.warn(
-      "wp setup: refusing to scaffold base-kit into agent-kit's own repo " +
-        '(base-kit ships to consumers; scaffolding it here would pollute the source tree).',
-    )
-    return []
-  }
   const baseKitDir = join(catalogDir, 'base-kit')
   const results: MergeResult[] = []
 
