@@ -58,6 +58,29 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, '.gitignore'))).toBe(false)
   })
 
+  // Regression: base-kit is what agent-kit SHIPS to consumers. Scaffolding it
+  // into agent-kit's own repo pollutes the source tree (quality-sample.ts, e2e/,
+  // configs) and rewrites .gitignore — the footgun that put those files in the
+  // working tree during this session. Guard: no-op when repoRoot is agent-kit.
+  it("refuses to scaffold base-kit into agent-kit's own repo", () => {
+    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
+    const catalogDir = resolveCatalogDir()
+
+    const results = scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
+
+    expect(results).toEqual([])
+    expect(existsSync(join(repoRoot, 'src', 'quality-sample.ts'))).toBe(false)
+    expect(existsSync(join(repoRoot, 'playwright.config.ts'))).toBe(false)
+    expect(existsSync(join(repoRoot, 'e2e', 'smoke.spec.ts'))).toBe(false)
+    // package.json left exactly as written — not merged/rewritten.
+    const pkg = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as {
+      name?: string
+      engines?: unknown
+    }
+    expect(pkg.name).toBe('@webpresso/agent-kit')
+    expect(pkg.engines).toBeUndefined()
+  })
+
   it('merges engines and packageManager into package.json', () => {
     const catalogDir = resolveCatalogDir()
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
