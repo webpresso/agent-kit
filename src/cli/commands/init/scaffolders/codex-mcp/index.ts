@@ -25,10 +25,30 @@ import { dirname, join } from 'node:path'
 import type { MergeOptions } from '#cli/commands/init/merge'
 
 export const PLAYWRIGHT_MCP_SERVER_NAME = 'playwright'
+
+/**
+ * Single source of truth for how the Playwright MCP server is launched. Both
+ * the Codex TOML block and the Claude Code `.mcp.json` block render from these.
+ * The portable `vp dlx` facade fetches the npm-published server on demand, so
+ * there is no machine-specific bin path to rot — the failure mode a hand-
+ * authored `~/.bun/bin/playwright-mcp` entry hits the moment that global bin
+ * disappears (ENOENT on spawn).
+ */
+const PLAYWRIGHT_MCP_COMMAND = 'vp'
+const PLAYWRIGHT_MCP_ARGS: readonly string[] = [
+  'dlx',
+  '@playwright/mcp@latest',
+  '--caps=testing,storage,network,devtools',
+]
+
+function tomlStringArray(values: readonly string[]): string {
+  return `[${values.map((value) => `"${value}"`).join(', ')}]`
+}
+
 export const PLAYWRIGHT_MCP_HEADER = `[mcp_servers.${PLAYWRIGHT_MCP_SERVER_NAME}]`
 export const PLAYWRIGHT_MCP_BLOCK = `${PLAYWRIGHT_MCP_HEADER}
-command = "vp"
-args = ["dlx", "@playwright/mcp@latest", "--caps=testing,storage,network,devtools"]
+command = "${PLAYWRIGHT_MCP_COMMAND}"
+args = ${tomlStringArray(PLAYWRIGHT_MCP_ARGS)}
 enabled = true
 startup_timeout_sec = 30
 `
@@ -96,6 +116,100 @@ export function ensureCodexPlaywrightMcp(
   mkdirSync(dirname(configPath), { recursive: true })
   writeFileSync(configPath, next, 'utf8')
   return { kind: 'codex-playwright-mcp-written', path: configPath }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Claude Code `.mcp.json` Playwright registration
+//
+// Claude Code reads MCP servers from a project-root `.mcp.json` (JSON, not the
+// Codex TOML). `ak setup` previously scaffolded Playwright for Codex only, so
+// the Claude Code entry was hand-authored — and a hardcoded `~/.bun/bin/
+// playwright-mcp` path rots to ENOENT once that global bin disappears. Mirror
+// the Codex upsert here with the same portable `vp dlx` launch: every consumer
+// gets a self-resolving entry and a re-run repairs a broken one in place.
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface ClaudeMcpServer {
+  command: string
+  args: string[]
+}
+
+export function claudePlaywrightServer(): ClaudeMcpServer {
+  return { command: PLAYWRIGHT_MCP_COMMAND, args: [...PLAYWRIGHT_MCP_ARGS] }
+}
+
+function isJsonRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+type ParsedJson = { ok: true; value: unknown } | { ok: false }
+
+function parseJson(raw: string): ParsedJson {
+  try {
+    return { ok: true, value: JSON.parse(raw) as unknown }
+  } catch {
+    return { ok: false }
+  }
+}
+
+/**
+ * Upsert the `playwright` server into a `.mcp.json` document, preserving every
+ * other server (e.g. `context7`, `exa`) and any non-server top-level keys.
+ * Output is normalized to 2-space JSON with a trailing newline so repeated runs
+ * converge — idempotent after the first write.
+ */
+export function upsertClaudePlaywrightMcpServer(raw: string): string {
+  const parsed = raw.trim().length > 0 ? parseJson(raw) : { ok: true as const, value: {} }
+  if (!parsed.ok) {
+    throw new Error('cannot upsert playwright into .mcp.json: existing file is not valid JSON')
+  }
+  const root = isJsonRecord(parsed.value) ? parsed.value : {}
+  const servers = isJsonRecord(root.mcpServers) ? root.mcpServers : {}
+  const next = {
+    ...root,
+    mcpServers: {
+      ...servers,
+      [PLAYWRIGHT_MCP_SERVER_NAME]: claudePlaywrightServer(),
+    },
+  }
+  return `${JSON.stringify(next, null, 2)}\n`
+}
+
+export interface EnsureClaudePlaywrightMcpInput {
+  options: MergeOptions
+  /** Project root whose `.mcp.json` is managed. */
+  repoRoot: string
+  /** Test seam. Defaults to `<repoRoot>/.mcp.json`. */
+  configPath?: string
+}
+
+export type EnsureClaudePlaywrightMcpResult =
+  | { kind: 'claude-playwright-mcp-written'; path: string }
+  | { kind: 'claude-playwright-mcp-unchanged'; path: string }
+  | { kind: 'claude-playwright-mcp-skipped-dry-run'; path: string }
+  | { kind: 'claude-playwright-mcp-invalid-json'; path: string }
+
+export function ensureClaudePlaywrightMcp(
+  input: EnsureClaudePlaywrightMcpInput,
+): EnsureClaudePlaywrightMcpResult {
+  const configPath = input.configPath ?? join(input.repoRoot, '.mcp.json')
+  if (input.options.dryRun) {
+    return { kind: 'claude-playwright-mcp-skipped-dry-run', path: configPath }
+  }
+
+  const existing = existsSync(configPath) ? readFileSync(configPath, 'utf8') : ''
+  if (existing.trim().length > 0 && !parseJson(existing).ok) {
+    return { kind: 'claude-playwright-mcp-invalid-json', path: configPath }
+  }
+
+  const next = upsertClaudePlaywrightMcpServer(existing)
+  if (next === existing) {
+    return { kind: 'claude-playwright-mcp-unchanged', path: configPath }
+  }
+
+  mkdirSync(dirname(configPath), { recursive: true })
+  writeFileSync(configPath, next, 'utf8')
+  return { kind: 'claude-playwright-mcp-written', path: configPath }
 }
 
 // ────────────────────────────────────────────────────────────────────────────
