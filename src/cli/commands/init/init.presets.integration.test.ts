@@ -448,7 +448,8 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       ).toBe(true)
       expect(
         vpCalls.some(
-          (call) => JSON.stringify(call[1]) === JSON.stringify(['update', '-g', '@openai/codex']),
+          (call) =>
+            JSON.stringify(call[1]) === JSON.stringify(['update', '-g', '--latest', '@openai/codex']),
         ),
       ).toBe(true)
       expect(

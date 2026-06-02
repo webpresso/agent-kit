@@ -129,12 +129,12 @@ export function ensureCodexPlaywrightMcp(
 // gets a self-resolving entry and a re-run repairs a broken one in place.
 // ────────────────────────────────────────────────────────────────────────────
 
-export interface ClaudeMcpServer {
+type ClaudeMcpServer = {
   command: string
   args: string[]
 }
 
-export function claudePlaywrightServer(): ClaudeMcpServer {
+function claudePlaywrightServer(): ClaudeMcpServer {
   return { command: PLAYWRIGHT_MCP_COMMAND, args: [...PLAYWRIGHT_MCP_ARGS] }
 }
 
