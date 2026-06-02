@@ -78,7 +78,6 @@ export function auditToolchainIsolation(root: string): RepoAuditResult {
   }
 }
 
-
 function isExemptPackage(root: string, packagePath: string, pkg: PackageJson): boolean {
   if (pkg.name === '@webpresso/agent-kit') return true
 

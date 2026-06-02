@@ -15,15 +15,15 @@ describe('wp typecheck command', () => {
 
   it('builds the default no-emit command with stable non-pretty output', () => {
     expect(buildTypecheckCommand()).toEqual({
-      command: 'vp',
-      args: ['exec', 'tsc', '--noEmit', '--pretty', 'false'],
+      command: expect.stringContaining('typescript'),
+      args: ['--noEmit', '--pretty', 'false'],
     })
   })
 
   it('can preserve pretty output when requested', () => {
     expect(buildTypecheckCommand({ pretty: true })).toEqual({
-      command: 'vp',
-      args: ['exec', 'tsc', '--noEmit'],
+      command: expect.stringContaining('typescript'),
+      args: ['--noEmit'],
     })
   })
 
@@ -52,8 +52,8 @@ describe('wp typecheck command', () => {
     )
 
     expect(buildTypecheckCommand({ cwd })).toEqual({
-      command: 'vp',
-      args: ['exec', 'tsc', '--noEmit', '--pretty', 'false'],
+      command: expect.stringContaining('typescript'),
+      args: ['--noEmit', '--pretty', 'false'],
     })
   })
 
@@ -67,6 +67,10 @@ describe('wp typecheck command', () => {
       stderr: '',
     }))
     expect(runTypecheckCommand({}, { run })).toBe(2)
-    expect(run).toHaveBeenCalledWith('vp', ['exec', 'tsc', '--noEmit', '--pretty', 'false'])
+    expect(run).toHaveBeenCalledWith(expect.stringContaining('typescript'), [
+      '--noEmit',
+      '--pretty',
+      'false',
+    ])
   })
 })

@@ -10,7 +10,7 @@ vi.mock('#mcp/tools/_shared/run-command', () => ({
 import { runTypecheck } from './index.js'
 
 describe('runTypecheck', () => {
-  it('routes root typecheck through managed vp exec tsc', async () => {
+  it('routes root typecheck through the managed TypeScript runner', async () => {
     runCommand.mockResolvedValueOnce({
       stdout: '',
       stderr: '',
@@ -22,8 +22,8 @@ describe('runTypecheck', () => {
     await runTypecheck({ cwd: process.cwd() })
 
     expect(runCommand).toHaveBeenCalledWith(
-      'vp',
-      ['exec', 'tsc', '--noEmit'],
+      expect.stringContaining('typescript'),
+      ['--noEmit'],
       expect.objectContaining({ cwd: process.cwd() }),
     )
   })

@@ -10,32 +10,28 @@ describe('wp e2e command helpers', () => {
   })
 
   it('builds a Playwright command from generic flags', () => {
-    expect(
-      createAkE2eCommandConfig({
-        suite: 'smoke',
-        config: 'playwright.config.ts',
-        file: ['tests/smoke.spec.ts'],
-        headed: true,
-        workers: '2',
-        testList: '.tmp/e2e-list.txt',
-      }),
-    ).toEqual({
-      command: 'rtk',
-      args: [
-        'vp',
-        'exec',
-        'playwright',
-        'test',
-        '--config',
-        'playwright.config.ts',
-        '--headed',
-        '--workers',
-        '2',
-        '--test-list',
-        '.tmp/e2e-list.txt',
-        'tests/smoke.spec.ts',
-      ],
+    const command = createAkE2eCommandConfig({
+      suite: 'smoke',
+      config: 'playwright.config.ts',
+      file: ['tests/smoke.spec.ts'],
+      headed: true,
+      workers: '2',
+      testList: '.tmp/e2e-list.txt',
     })
+
+    expect(command.command).toBe('rtk')
+    expect(command.args).toEqual([
+      expect.stringContaining('@playwright'),
+      'test',
+      '--config',
+      'playwright.config.ts',
+      '--headed',
+      '--workers',
+      '2',
+      '--test-list',
+      '.tmp/e2e-list.txt',
+      'tests/smoke.spec.ts',
+    ])
   })
 
   it('merges group and run env into executable commands', () => {

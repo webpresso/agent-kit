@@ -20,16 +20,25 @@ function buildPlaywrightCommand(options: E2eStepCommandOptions): CommandConfig {
     throw new Error(`Step ${step.logName} uses runner "playwright" but does not define configPath.`)
   }
 
-  const { baseDir, configArg, files } = resolveRunnerPaths(step.configPath, options.files ?? [])
+  const paths = resolveRunnerPaths(step.configPath, options.files ?? [])
   const resolution = withBaseDir(
     getManagedRunner('playwright', {
       outputPolicy: resolveOutputPolicy(options.outputPolicy, options.filterOutput),
     }),
-    baseDir,
+    paths.baseDir,
   )
-  const args = [...resolution.args, 'test', '--config', configArg]
+  const args = [
+    ...resolution.args,
+    'test',
+    '--config',
+    resolution.usesBaseDir ? paths.relativeConfigArg : paths.rootConfigArg,
+  ]
   appendPlaywrightFlags(args, options)
-  args.push(...(step.fixedArgs ?? []), ...files, ...(options.passthrough ?? []))
+  args.push(
+    ...(step.fixedArgs ?? []),
+    ...(resolution.usesBaseDir ? paths.relativeFiles : paths.rootFiles),
+    ...(options.passthrough ?? []),
+  )
   return { command: resolution.command, args }
 }
 
@@ -39,18 +48,27 @@ function buildVitestE2eCommand(options: E2eStepCommandOptions): CommandConfig {
     throw new Error(`Step ${step.logName} uses runner "vitest" but does not define configPath.`)
   }
 
-  const { baseDir, configArg, files } = resolveRunnerPaths(step.configPath, options.files ?? [])
+  const paths = resolveRunnerPaths(step.configPath, options.files ?? [])
   const resolution = withBaseDir(
     getManagedRunner('vitest', {
       outputPolicy: resolveOutputPolicy(options.outputPolicy, options.filterOutput),
     }),
-    baseDir,
+    paths.baseDir,
   )
-  const args = [...resolution.args, 'run', '--config', configArg]
+  const args = [
+    ...resolution.args,
+    'run',
+    '--config',
+    resolution.usesBaseDir ? paths.relativeConfigArg : paths.rootConfigArg,
+  ]
   if (options.workers !== undefined) {
     args.push('--poolOptions.threads.maxThreads', String(options.workers))
   }
-  args.push(...(step.fixedArgs ?? []), ...files, ...(options.passthrough ?? []))
+  args.push(
+    ...(step.fixedArgs ?? []),
+    ...(resolution.usesBaseDir ? paths.relativeFiles : paths.rootFiles),
+    ...(options.passthrough ?? []),
+  )
   return { command: resolution.command, args }
 }
 
@@ -101,26 +119,36 @@ function resolveRunnerPaths(
   files: readonly string[],
 ): {
   baseDir: string
-  configArg: string
-  files: string[]
+  rootConfigArg: string
+  rootFiles: string[]
+  relativeConfigArg: string
+  relativeFiles: string[]
 } {
   const normalizedConfigPath = configPath.replace(/\\/gu, '/')
   const baseDir = path.posix.dirname(normalizedConfigPath)
-  const configArg = path.posix.basename(normalizedConfigPath)
+  const normalizedFiles = files.map((file) => file.replace(/\\/gu, '/'))
 
   if (baseDir === '.') {
     return {
       baseDir,
-      configArg: normalizedConfigPath,
-      files: [...files],
+      rootConfigArg: normalizedConfigPath,
+      rootFiles: normalizedFiles,
+      relativeConfigArg: normalizedConfigPath,
+      relativeFiles: normalizedFiles,
     }
   }
 
   return {
     baseDir,
-    configArg,
-    files: files.map((file) => {
-      const normalizedFile = file.replace(/\\/gu, '/')
+    rootConfigArg: normalizedConfigPath,
+    rootFiles: normalizedFiles.map((normalizedFile) => {
+      if (path.posix.isAbsolute(normalizedFile) || normalizedFile.startsWith(`${baseDir}/`)) {
+        return normalizedFile
+      }
+      return `${baseDir}/${normalizedFile}`
+    }),
+    relativeConfigArg: path.posix.basename(normalizedConfigPath),
+    relativeFiles: normalizedFiles.map((normalizedFile) => {
       if (path.posix.isAbsolute(normalizedFile) || normalizedFile.startsWith(`${baseDir}/`)) {
         return path.posix.relative(baseDir, normalizedFile)
       }
@@ -132,15 +160,15 @@ function resolveRunnerPaths(
 function withBaseDir(
   resolution: { command: string; args: readonly string[] },
   baseDir: string,
-): CommandConfig {
-  if (baseDir === '.') {
-    return { command: resolution.command, args: [...resolution.args] }
-  }
+): CommandConfig & { usesBaseDir: boolean } {
+  if (baseDir === '.')
+    return { command: resolution.command, args: [...resolution.args], usesBaseDir: true }
 
   if (resolution.command === 'vp') {
     return {
       command: resolution.command,
       args: ['--dir', baseDir, ...resolution.args],
+      usesBaseDir: true,
     }
   }
 
@@ -149,10 +177,11 @@ function withBaseDir(
     return {
       command: resolution.command,
       args: ['vp', '--dir', baseDir, ...wrappedArgs],
+      usesBaseDir: true,
     }
   }
 
-  return { command: resolution.command, args: [...resolution.args] }
+  return { command: resolution.command, args: [...resolution.args], usesBaseDir: false }
 }
 
 function resolveOutputPolicy(

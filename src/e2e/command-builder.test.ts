@@ -15,14 +15,10 @@ describe('buildE2eCommand', () => {
     ).toEqual({
       command: 'rtk',
       args: [
-        'vp',
-        '--dir',
-        'apps/e2e',
-        'exec',
-        'playwright',
+        expect.stringContaining('@playwright'),
         'test',
         '--config',
-        'playwright.config.ts',
+        'apps/e2e/playwright.config.ts',
       ],
     })
   })
@@ -44,21 +40,17 @@ describe('buildE2eCommand', () => {
     ).toEqual({
       command: 'rtk',
       args: [
-        'vp',
-        '--dir',
-        'apps/e2e',
-        'exec',
-        'playwright',
+        expect.stringContaining('@playwright'),
         'test',
         '--config',
-        'playwright.config.ts',
+        'apps/e2e/playwright.config.ts',
         '--headed',
         '--debug',
         '--workers',
         '2',
         '--test-list',
         '.tmp/e2e-list.txt',
-        'tests/journeys/login.spec.ts',
+        'apps/e2e/tests/journeys/login.spec.ts',
       ],
     })
   })
@@ -75,14 +67,10 @@ describe('buildE2eCommand', () => {
     ).toEqual({
       command: 'rtk',
       args: [
-        'vp',
-        '--dir',
-        'apps/workers/platform-api/e2e',
-        'exec',
-        'vitest',
+        expect.stringContaining('vitest'),
         'run',
         '--config',
-        'vitest.config.ts',
+        'apps/workers/platform-api/e2e/vitest.config.ts',
       ],
     })
   })
@@ -115,8 +103,8 @@ describe('buildE2eCommand', () => {
         outputPolicy: 'structured',
       }),
     ).toEqual({
-      command: 'vp',
-      args: ['--dir', 'apps/e2e', 'exec', 'playwright', 'test', '--config', 'playwright.config.ts'],
+      command: expect.stringContaining('@playwright'),
+      args: ['test', '--config', 'apps/e2e/playwright.config.ts'],
     })
   })
 })
