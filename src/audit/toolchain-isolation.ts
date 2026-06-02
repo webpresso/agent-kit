@@ -86,7 +86,8 @@ function isExemptPackage(root: string, packagePath: string, pkg: PackageJson): b
   // not live consumer package manifests. They intentionally demonstrate raw
   // framework CLIs in generated starter content and should not make agent-kit's
   // own audit fail.
-  if (relativePath.startsWith('catalog/') && relativePath.includes('/templates/')) return true
+  const unpackedPath = relativePath.replace(/^\.webpresso-packed-surface\//u, '')
+  if (unpackedPath.startsWith('catalog/') && unpackedPath.includes('/templates/')) return true
 
   return false
 }

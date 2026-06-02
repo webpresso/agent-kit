@@ -57,6 +57,25 @@ describe('auditToolchainIsolation', () => {
     expect(result.violations).toHaveLength(1)
     expect(result.violations[0]?.message).toContain('devDependencies.wrangler')
   })
+
+  it('exempts catalog template packages in packed release surfaces', () => {
+    const templateRoot = join(
+      root,
+      '.webpresso-packed-surface',
+      'catalog',
+      'agent',
+      'skills',
+      'tanstack-query',
+      'templates',
+    )
+    mkdirSync(templateRoot, { recursive: true })
+    writePackage(templateRoot, {
+      scripts: { build: 'vite build', lint: 'oxlint .' },
+      devDependencies: { typescript: '^6.0.0', vite: '^8.0.0', oxlint: '^1.0.0' },
+    })
+
+    expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
+  })
 })
 
 function writePackage(dir: string, value: unknown): void {
