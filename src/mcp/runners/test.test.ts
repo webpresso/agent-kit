@@ -200,12 +200,17 @@ describe('test runner', () => {
       .mockReturnValueOnce(fakeChild({ hang: true, killCapture }))
       .mockReturnValueOnce(fakeChild({ stdout: 'should-not-run\n', exitCode: 0 }))
 
-    const result = await runTests({ packages: ['a', 'b'], timeoutMs: 1 })
+    const result = await runTests({
+      packages: ['a', 'b'],
+      timeoutMs: 1,
+      workspaceSharding: { totalBudgetMs: 1_000 },
+    })
 
     expect(spawnMock).toHaveBeenCalledTimes(1)
     expect(killCapture.signal).toBe('SIGTERM')
     expect(result.passed).toBe(false)
     expect(result.timedOut).toBe(true)
+    expect(result.failureScope).toBe('package a')
   })
 
   it('runs bare `vp run test` when no packages or files given', async () => {
