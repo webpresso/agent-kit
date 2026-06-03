@@ -108,4 +108,55 @@ describe('config', () => {
     writeFileSync(join(dir, '.webpressorc.json'), '{not json')
     expect(readConfig(dir)).toBeNull()
   })
+
+  it('readConfig parses guard.packageManager and scriptRoutes, dropping invalid entries', () => {
+    writeFileSync(
+      join(dir, '.webpressorc.json'),
+      JSON.stringify({
+        version: '1',
+        installed: { tier3Skills: [] },
+        guard: {
+          packageManager: 'vp-only',
+          scriptRoutes: { 'docs:check': 'docs-frontmatter', bad: 42 },
+        },
+      }),
+    )
+    expect(readConfig(dir)?.guard).toEqual({
+      packageManager: 'vp-only',
+      scriptRoutes: { 'docs:check': 'docs-frontmatter' },
+    })
+  })
+
+  it('readConfig omits guard when absent or invalid', () => {
+    writeFileSync(
+      join(dir, '.webpressorc.json'),
+      JSON.stringify({
+        version: '1',
+        installed: { tier3Skills: [] },
+        guard: { packageManager: 'bogus', scriptRoutes: {} },
+      }),
+    )
+    expect(readConfig(dir)).toEqual(defaultConfig())
+  })
+
+  it('mergeConfig unions guard.scriptRoutes and overrides packageManager', () => {
+    const existing = {
+      ...defaultConfig(),
+      guard: { scriptRoutes: { 'docs:check': 'docs-frontmatter' } },
+    }
+    const incoming = {
+      ...defaultConfig(),
+      guard: {
+        packageManager: 'vp-only' as const,
+        scriptRoutes: { 'verify:paths': 'absolute-path-policy' },
+      },
+    }
+    expect(mergeConfig(existing, incoming).guard).toEqual({
+      packageManager: 'vp-only',
+      scriptRoutes: {
+        'docs:check': 'docs-frontmatter',
+        'verify:paths': 'absolute-path-policy',
+      },
+    })
+  })
 })

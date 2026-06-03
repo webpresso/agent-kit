@@ -2,6 +2,7 @@ import type { ToolInput, ValidationResult } from '#hooks/shared/types'
 
 import { readConfig } from '#cli/commands/init/config'
 import { getCommand, isBashInput } from '#hooks/shared/types'
+import { AUDIT_KINDS } from '#mcp/tools/_shared/audit-kinds'
 import { createSkipResult } from './skip-result.js'
 import { buildRedirectMessage, type MCPRedirectConfig } from './mcp-redirect.js'
 
@@ -541,6 +542,66 @@ export function createAuditResult(
   }
 }
 
+const AUDIT_KIND_SET: ReadonlySet<string> = new Set(AUDIT_KINDS)
+const WP_AUDIT_RE = /^wp\s+audit\s+([a-z0-9-]+)\b/u
+const SCRIPT_INVOCATION_RE = /^(?:pnpm run|vp run|npm run|pnpm|npm)\s+([A-Za-z0-9:_-]+)/u
+const RAW_PM_RE = /^(?:pnpm|npm)\b/u
+
+function loadGuardConfig(): NonNullable<ReturnType<typeof readConfig>>['guard'] {
+  const repoRoot = process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
+  return readConfig(repoRoot)?.guard
+}
+
+/** Build a guard redirect result; non-blocking ("[AUDIT] Would block") in audit mode. */
+function guardRedirect(message: string): ValidationResult {
+  if (process.env[AUDIT_MODE_ENV] === '1') {
+    return { validator: VALIDATOR_NAME, passed: true, message: `[AUDIT] Would block:\n${message}` }
+  }
+  return { validator: VALIDATOR_NAME, passed: false, message }
+}
+
+/** `wp audit <kind>` (CLI) → `wp_audit(kind=...)` (MCP). Generic; not gated on config. */
+function findWpAuditRedirect(command: string): string | undefined {
+  for (const variant of getCommandVariants(command)) {
+    const kind = WP_AUDIT_RE.exec(variant)?.[1]
+    if (kind && AUDIT_KIND_SET.has(kind)) {
+      return `"${variant}" denied — use the MCP audit tool: mcp__webpresso__wp_audit(kind="${kind}"). Returns structured, summary-first results.`
+    }
+  }
+  return undefined
+}
+
+/** Repo-declared `guard.scriptRoutes`: a package script mapped to an audit kind. */
+function findScriptRouteRedirect(
+  command: string,
+  routes: Record<string, string>,
+): string | undefined {
+  for (const variant of getCommandVariants(command)) {
+    const script = SCRIPT_INVOCATION_RE.exec(variant)?.[1]
+    if (!script) continue
+    const kind = routes[script]
+    if (!kind) continue
+    if (!AUDIT_KIND_SET.has(kind)) {
+      process.stderr.write(
+        `[forbidden-commands] guard.scriptRoutes["${script}"] -> "${kind}" is not a known audit kind; ignoring\n`,
+      )
+      continue
+    }
+    return `"${variant}" denied — this repo routes \`${script}\` to an audit: mcp__webpresso__wp_audit(kind="${kind}").`
+  }
+  return undefined
+}
+
+/** `guard.packageManager: 'vp-only'`: route any remaining raw pnpm/npm to the vp facade. */
+function findVpOnlyRedirect(command: string): string | undefined {
+  for (const variant of getCommandVariants(command)) {
+    if (RAW_PM_RE.test(variant)) {
+      return `"${variant}" denied — this repo is vp-only. Use the vp facade (\`vp install\`, \`vp run <script>\`, \`vp exec <bin>\`) or the matching wp_* MCP tool.`
+    }
+  }
+  return undefined
+}
+
 export function validateForbiddenCommands(
   input: ToolInput,
 ): ValidationResult | BlockedCommandResult {
@@ -554,6 +615,19 @@ export function validateForbiddenCommands(
   if (rule) {
     if (process.env[AUDIT_MODE_ENV] === '1') return createAuditResult(command, rule)
     return createBlockedResult(command, rule)
+  }
+
+  const wpAuditRedirect = findWpAuditRedirect(command)
+  if (wpAuditRedirect) return guardRedirect(wpAuditRedirect)
+
+  const guard = loadGuardConfig()
+  if (guard?.scriptRoutes) {
+    const redirect = findScriptRouteRedirect(command, guard.scriptRoutes)
+    if (redirect) return guardRedirect(redirect)
+  }
+  if (guard?.packageManager === 'vp-only') {
+    const redirect = findVpOnlyRedirect(command)
+    if (redirect) return guardRedirect(redirect)
   }
 
   return { validator: VALIDATOR_NAME, passed: true }

@@ -27,6 +27,7 @@ describe('resolveGuardrailAuditKinds', () => {
 
     expect(resolveGuardrailAuditKinds(root)).not.toContain('ai-contracts')
     expect(resolveGuardrailAuditKinds(root)).toContain('architecture-drift')
+    expect(resolveGuardrailAuditKinds(root)).toContain('no-first-party-mjs')
   })
 
   test('keeps AI contract guardrails active for agent-kit', () => {
@@ -34,6 +35,7 @@ describe('resolveGuardrailAuditKinds', () => {
 
     expect(resolveGuardrailAuditKinds(root)).toContain('ai-contracts')
     expect(resolveGuardrailAuditKinds(root)).toContain('architecture-drift')
+    expect(resolveGuardrailAuditKinds(root)).toContain('no-first-party-mjs')
   })
 
   test('keeps AI contract guardrails active for repos that own the MCP helper surface', () => {

@@ -83,6 +83,9 @@ describe('mcp server integration', () => {
     expect(
       (wpAudit?.inputSchema.properties?.kind as { enum?: unknown[] } | undefined)?.enum ?? [],
     ).toContain('architecture-drift')
+    expect(
+      (wpAudit?.inputSchema.properties?.kind as { enum?: unknown[] } | undefined)?.enum ?? [],
+    ).toContain('no-first-party-mjs')
 
     const names = tools.map((t) => t.name)
     expect(names).toEqual(
