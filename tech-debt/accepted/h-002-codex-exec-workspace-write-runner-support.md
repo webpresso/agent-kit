@@ -2,7 +2,7 @@
 type: tech-debt
 status: accepted
 severity: medium
-category: implementation
+category: dependency
 review_cadence: monthly
 last_reviewed: '2026-05-11'
 created: '2026-05-11'
