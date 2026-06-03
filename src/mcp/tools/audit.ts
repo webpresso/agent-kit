@@ -34,6 +34,7 @@ const KINDS = [
   'architecture-drift',
   'cloudflare-deploy-contract',
   'absolute-path-policy',
+  'no-first-party-mjs',
   'roadmap-links',
   'bundle-budget',
   'commit-message',
@@ -216,6 +217,16 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
         details: auditResult,
       }
     }
+    case 'no-first-party-mjs': {
+      const { auditNoFirstPartyMjs } = await import('#audit/no-first-party-mjs')
+      const auditResult = auditNoFirstPartyMjs(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
     case 'roadmap-links': {
       const { auditRoadmapLinks } = await import('#audit/roadmap-links')
       const auditResult = auditRoadmapLinks(input.cwd ?? input.directory ?? process.cwd())
@@ -348,7 +359,7 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
 const tool: ToolDescriptor = {
   name: 'wp_audit',
   description:
-    'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-lifecycle, architecture-drift, absolute-path-policy, roadmap-links, bundle-budget, commit-message, tech-debt, hook-surface, package-surface, no-relative-package-scripts). Returns {passed, kind, details}.',
+    'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-lifecycle, architecture-drift, absolute-path-policy, no-first-party-mjs, roadmap-links, bundle-budget, commit-message, tech-debt, hook-surface, package-surface, no-relative-package-scripts). Returns {passed, kind, details}.',
   inputSchema,
   outputSchema,
   annotations: {

@@ -46,6 +46,10 @@ const absolutePathPolicyMock = {
   auditAbsolutePathPolicy: vi.fn(),
 }
 
+const noFirstPartyMjsMock = {
+  auditNoFirstPartyMjs: vi.fn(),
+}
+
 const viteLocalMock = {
   runBundleBudgetCli: vi.fn(),
 }
@@ -57,6 +61,7 @@ vi.mock('#audit/ai-contracts', () => aiContractsMock)
 vi.mock('#audit/architecture-drift', () => architectureDriftMock)
 vi.mock('#audit/cloudflare-deploy-contract', () => cloudflareDeployContractMock)
 vi.mock('#audit/absolute-path-policy', () => absolutePathPolicyMock)
+vi.mock('#audit/no-first-party-mjs', () => noFirstPartyMjsMock)
 vi.mock('../../vite/local.js', () => viteLocalMock)
 vi.mock('node:child_process', () => ({ spawn: spawnMock }))
 
@@ -110,6 +115,7 @@ beforeEach(() => {
   architectureDriftMock.auditArchitectureDrift.mockReset()
   cloudflareDeployContractMock.auditCloudflareDeployContract.mockReset()
   absolutePathPolicyMock.auditAbsolutePathPolicy.mockReset()
+  noFirstPartyMjsMock.auditNoFirstPartyMjs.mockReset()
   viteLocalMock.runBundleBudgetCli.mockReset()
   spawnMock.mockReset()
   repoGuardrailsMock.formatRepoAuditReport.mockReturnValue('formatted report')
@@ -208,6 +214,15 @@ describe('wp_audit tool', () => {
       const payload = parsePayload(result)
       expect(payload.passed).toBe(true)
       expect(payload.kind).toBe('absolute-path-policy')
+    })
+
+    it('no-first-party-mjs -> auditNoFirstPartyMjs', async () => {
+      noFirstPartyMjsMock.auditNoFirstPartyMjs.mockReturnValue(passingAudit())
+      const result = await akAuditTool.handler({ kind: 'no-first-party-mjs' })
+      expect(noFirstPartyMjsMock.auditNoFirstPartyMjs).toHaveBeenCalledTimes(1)
+      const payload = parsePayload(result)
+      expect(payload.passed).toBe(true)
+      expect(payload.kind).toBe('no-first-party-mjs')
     })
 
     it('bundle-budget -> runBundleBudgetCli with directory arg', async () => {

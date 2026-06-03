@@ -26,6 +26,7 @@ export type AuditKind =
   | 'cloudflare-deploy-contract'
   | 'toolchain-isolation'
   | 'absolute-path-policy'
+  | 'no-first-party-mjs'
   | 'agent-cost'
   | 'blueprint-db-consistency'
   | 'blueprint-lifecycle-sql'

@@ -16,6 +16,12 @@ afterEach(() => {
 })
 
 describe('resolveProjectRoot', () => {
+  it('stays dynamically importable via the package import path', async () => {
+    const module = await import('#mcp/tools/_shared/project-root.js')
+    expect(module.resolveProjectRoot).toBeTypeOf('function')
+    expect(module.ProjectRootNotFoundError).toBeTypeOf('function')
+  })
+
   it('honors CLAUDE_PROJECT_DIR when set', () => {
     const dir = mkdtempSync(join(tmpdir(), 'wp-pr-env-'))
     expect(resolveProjectRoot({ env: { CLAUDE_PROJECT_DIR: dir }, cwd: '/nowhere' })).toBe(dir)
