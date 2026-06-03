@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.27.0
+
+### Minor Changes
+
+- 9494ece: feat(guard): config-driven pretool routing + expose `toolchain-isolation` over MCP
+
+  - `wp_audit` now accepts `kind: "toolchain-isolation"` (previously CLI-only),
+    so agents/consumers can run it through the MCP surface.
+  - The pretool guard redirects `wp audit <kind>` (CLI) to
+    `mcp__webpresso__wp_audit(kind=…)` for any known audit kind.
+  - New per-repo `.webpressorc.json` `guard` config (mechanism in agent-kit, data
+    in the repo):
+    - `guard.scriptRoutes`: maps a package script (e.g. `docs:check`) to a
+      `wp_audit` kind; unknown kinds are ignored with a warning.
+    - `guard.packageManager: 'vp-only'`: opt-in routing of raw `pnpm`/`npm`
+      invocations to the `vp` facade.
+  - Audit kinds are now a single shared source (`src/mcp/tools/_shared/audit-kinds.ts`)
+    consumed by both the `wp_audit` tool and the guard.
+
+  This lets consumers (e.g. edge-matte) delete bespoke repo-local pretool hooks
+  and rely on the shared guard surface.
+
+### Patch Changes
+
+- 356eada: fix(mcp): honor an explicit `cwd` over `CLAUDE_PROJECT_DIR` in `wp_lint`/`wp_test`
+
+  `resolveProjectRoot` checked `CLAUDE_PROJECT_DIR` before the caller-supplied
+  `cwd`. For a plugin-scope MCP server `CLAUDE_PROJECT_DIR` is the whole
+  session/workspace root, so `wp_lint`/`wp_test` given an explicit target repo
+  scanned every sibling repo instead of the requested project. An explicit `cwd`
+  that resolves to a project marker (`.git`, `pnpm-workspace.yaml`, or
+  `package.json`) now outranks `CLAUDE_PROJECT_DIR`; a markerless `cwd` still
+  falls back to `CLAUDE_PROJECT_DIR` and then throws (no silent widening to
+  `process.cwd()`).
+
 ## 0.26.3
 
 ### Patch Changes
