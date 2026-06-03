@@ -32,7 +32,10 @@ function sentinelPath(): string {
   return join(testTmpDir, `wp-mcp-ready-${SENTINEL_KEY}`)
 }
 
-function runBinary(stdin: string): { stdout: string; stderr: string; status: number } {
+function runBinary(
+  stdin: string,
+  extraEnv: Record<string, string | undefined> = {},
+): { stdout: string; stderr: string; status: number } {
   const result = spawnSync('node', [BINARY], {
     input: stdin,
     encoding: 'utf-8',
@@ -45,6 +48,7 @@ function runBinary(stdin: string): { stdout: string; stderr: string; status: num
       TMPDIR: testTmpDir,
       TMP: testTmpDir,
       TEMP: testTmpDir,
+      ...extraEnv,
     },
   })
   return {
@@ -60,6 +64,12 @@ function writeMcpSentinel(): void {
 
 function clearMcpSentinel(): void {
   if (existsSync(sentinelPath())) rmSync(sentinelPath())
+}
+
+function createRepoWithConfig(config: Record<string, unknown>): string {
+  const repoDir = mkdtempSync(join(testTmpDir, 'wp-guard-repo-'))
+  writeFileSync(join(repoDir, '.webpressorc.json'), JSON.stringify(config), 'utf-8')
+  return repoDir
 }
 
 describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
@@ -209,5 +219,43 @@ describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
       hookSpecificOutput: { permissionDecision: string }
     }
     expect(secondParsed.hookSpecificOutput.permissionDecision).toBe('deny')
+  })
+
+  it('consumer .webpressorc.json guard.scriptRoutes routes package scripts through canonical wp-pretool-guard', () => {
+    const repoDir = createRepoWithConfig({
+      version: '1',
+      installed: { tier3Skills: [] },
+      guard: { scriptRoutes: { 'docs:check': 'docs-frontmatter' } },
+    })
+    const payload = JSON.stringify({
+      tool_name: 'Bash',
+      tool_input: { command: 'pnpm run docs:check' },
+    })
+
+    const { stdout, stderr, status } = runBinary(payload, { CLAUDE_PROJECT_DIR: repoDir })
+
+    expect(status).toBe(2)
+    expect(stdout.trim()).toBe('')
+    expect(stderr).toContain('[forbidden-commands]')
+    expect(stderr).toContain('wp_audit(kind="docs-frontmatter")')
+  })
+
+  it('consumer .webpressorc.json guard.packageManager=vp-only routes raw pnpm through canonical wp-pretool-guard', () => {
+    const repoDir = createRepoWithConfig({
+      version: '1',
+      installed: { tier3Skills: [] },
+      guard: { packageManager: 'vp-only' },
+    })
+    const payload = JSON.stringify({
+      tool_name: 'Bash',
+      tool_input: { command: 'pnpm install --frozen-lockfile' },
+    })
+
+    const { stdout, stderr, status } = runBinary(payload, { CLAUDE_PROJECT_DIR: repoDir })
+
+    expect(status).toBe(2)
+    expect(stdout.trim()).toBe('')
+    expect(stderr).toContain('[forbidden-commands]')
+    expect(stderr).toContain('vp-only')
   })
 })
