@@ -75,4 +75,28 @@ describe('resolveProjectRoot', () => {
       }),
     ).toBe('/explicit')
   })
+
+  // Regression: a caller-supplied cwd that anchors at a real project root must
+  // outrank the ambient CLAUDE_PROJECT_DIR. For a plugin-scope MCP server,
+  // CLAUDE_PROJECT_DIR is the whole session/workspace root, so without this
+  // precedence `wp_lint`/`wp_test` given an explicit target repo scanned every
+  // sibling repo under the workspace root instead of the requested project.
+  it('an explicit cwd that resolves to a project marker outranks CLAUDE_PROJECT_DIR', () => {
+    const envRoot = mkdtempSync(join(tmpdir(), 'wp-pr-env-root-'))
+    const cwdRoot = mkdtempSync(join(tmpdir(), 'wp-pr-cwd-root-'))
+    writeFileSync(join(cwdRoot, 'pnpm-workspace.yaml'), '')
+    const nested = join(cwdRoot, 'apps', 'site')
+    mkdirSync(nested, { recursive: true })
+    expect(
+      resolveProjectRoot({ env: { CLAUDE_PROJECT_DIR: envRoot }, cwd: nested }),
+    ).toBe(cwdRoot)
+  })
+
+  // Boundary: an explicit cwd with no marker of its own still defers to
+  // CLAUDE_PROJECT_DIR (it does not fall through to process.cwd()).
+  it('an explicit cwd with no marker falls back to CLAUDE_PROJECT_DIR', () => {
+    const envRoot = mkdtempSync(join(tmpdir(), 'wp-pr-env-fallback-'))
+    const bare = mkdtempSync(join(tmpdir(), 'wp-pr-bare-cwd-'))
+    expect(resolveProjectRoot({ env: { CLAUDE_PROJECT_DIR: envRoot }, cwd: bare })).toBe(envRoot)
+  })
 })

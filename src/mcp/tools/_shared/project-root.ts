@@ -8,10 +8,15 @@
  * `oxlint` spawned with the inherited cwd would lint the wrong tree.
  *
  * Resolution order, first hit wins:
- *   1. `CLAUDE_PROJECT_DIR` env var (when set by Claude Code hooks).
- *   2. Walk up from `process.cwd()` looking for a marker:
- *      `.git`, `pnpm-workspace.yaml`, then `package.json`.
- *   3. Loud throw — diagnosing a wrong-tree lint silently is worse than
+ *   1. `explicitCwd` — caller says "use exactly this", no walk.
+ *   2. An explicitly-passed `cwd` walked up to a marker (`.git`,
+ *      `pnpm-workspace.yaml`, then `package.json`). A deliberate caller cwd
+ *      outranks `CLAUDE_PROJECT_DIR`, which for a plugin-scope MCP server is
+ *      the whole session/workspace root. If the passed cwd has no marker, fall
+ *      back to `CLAUDE_PROJECT_DIR`, then throw — do not widen to `process.cwd()`.
+ *   3. `CLAUDE_PROJECT_DIR` env var (when no explicit cwd was passed).
+ *   4. Walk up from `process.cwd()` looking for a marker.
+ *   5. Loud throw — diagnosing a wrong-tree lint silently is worse than
  *      forcing the caller to pass an explicit cwd.
  *
  * The walk searches `.git` and `pnpm-workspace.yaml` *before* `package.json`
@@ -53,17 +58,36 @@ export interface ResolveProjectRootOptions {
   readonly cwd?: string
 }
 
+/**
+ * Walk up from `start` to the nearest project root. Strong markers
+ * (`.git`, `pnpm-workspace.yaml`) anchor at the workspace root in preference to
+ * a closer weak marker (`package.json`) in a nested package dir.
+ */
+function walkToProjectRoot(start: string): string | null {
+  return walkUp(start, STRONG_MARKERS) ?? walkUp(start, WEWP_MARKERS)
+}
+
 export function resolveProjectRoot(options: ResolveProjectRootOptions = {}): string {
   if (options.explicitCwd) return options.explicitCwd
   const env = options.env ?? process.env
   const fromEnv = env.CLAUDE_PROJECT_DIR
+
+  // A caller-supplied cwd is a deliberate "scope to this project" signal and
+  // must outrank the ambient CLAUDE_PROJECT_DIR — for a plugin-scope MCP server
+  // that env var is the whole session/workspace root, so without this an
+  // explicit `wp_lint`/`wp_test` cwd would scan every sibling repo. Anchor at
+  // the cwd's project root; if it has no marker, defer to CLAUDE_PROJECT_DIR,
+  // then throw — never silently widen the search to process.cwd().
+  if (options.cwd) {
+    const fromCwd = walkToProjectRoot(options.cwd)
+    if (fromCwd) return fromCwd
+    if (fromEnv && fromEnv.length > 0) return fromEnv
+    throw new ProjectRootNotFoundError(options.cwd)
+  }
+
   if (fromEnv && fromEnv.length > 0) return fromEnv
-
-  const start = options.cwd ?? process.cwd()
-  const fromStrong = walkUp(start, STRONG_MARKERS)
-  if (fromStrong) return fromStrong
-  const fromWeak = walkUp(start, WEWP_MARKERS)
-  if (fromWeak) return fromWeak
-
+  const start = process.cwd()
+  const fromCwd = walkToProjectRoot(start)
+  if (fromCwd) return fromCwd
   throw new ProjectRootNotFoundError(start)
 }
