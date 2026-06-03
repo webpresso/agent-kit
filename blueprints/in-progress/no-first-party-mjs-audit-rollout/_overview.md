@@ -6,6 +6,7 @@ complexity: M
 owner: agent
 created: '2026-06-03'
 last_updated: '2026-06-03'
+progress: "67% (audit kind is wired through shared CLI/MCP surfaces and the orphan probe is retired; final public-contract proof is still pending)"
 ---
 
 # No first-party .mjs audit rollout
@@ -41,7 +42,7 @@ consumer-repo adoption work only for local cleanup plus workflow enforcement.
 **Files:**
 
 - `src/mcp/tools/_shared/project-root.test.ts`
-- `test-import-mcp.mjs`
+- delete `test-import-mcp.mjs`
 
 **Acceptance:**
 
