@@ -11,6 +11,7 @@ import {
   auditNoLinkProtocol,
   auditNoRelativePackageScripts,
   auditNoRelativeParentImports,
+  auditTestIsolation,
   formatRepoAuditReport,
   validateCommitMessage,
 } from './repo-guardrails.js'
@@ -1450,6 +1451,95 @@ describe('parseFrontmatter — branch coverage', () => {
     const result = auditDocsFrontmatter(root)
     expect(result.ok).toBe(false)
     expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('type'))).toBe(true)
+  })
+})
+
+describe('auditTestIsolation', () => {
+  // Assemble the forbidden token at runtime so THIS test file's own source
+  // lines never match the audit's regex when it scans src/ (the audit does a
+  // line-level scan and cannot distinguish a string literal from real code).
+  // The generated tmp fixtures still contain the literal `process.cwd()` after
+  // interpolation, so the audit sees the real pattern.
+  const CWD = 'process.cwd()'
+
+  test('flags a test that reads the catalog template source via process.cwd()', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'))
+    writeFileSync(
+      join(root, 'src', 'scaffold.test.ts'),
+      `const tpl = readFileSync(join(${CWD}, 'catalog', 'AGENTS.md.tpl'), 'utf8')\n`,
+    )
+    const result = auditTestIsolation(root)
+    expect(result.ok).toBe(false)
+    expect(result.checked).toBe(1)
+    expect(result.violations[0]?.message).toContain('Line 1:')
+    expect(result.violations[0]?.message).toContain('resolveCatalogDir()')
+  })
+
+  test('flags a test that writes the catalog source via process.cwd()', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'))
+    writeFileSync(
+      join(root, 'src', 'mutate.test.ts'),
+      `writeFileSync(resolve(${CWD}, 'catalog', 'agent', 'x.md'), 'oops')\n`,
+    )
+    const result = auditTestIsolation(root)
+    expect(result.ok).toBe(false)
+    expect(result.violations[0]?.file).toBe('src/mutate.test.ts')
+  })
+
+  test('passes when the test anchors catalog reads to resolveCatalogDir()', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'))
+    writeFileSync(
+      join(root, 'src', 'clean.test.ts'),
+      `const tpl = readFileSync(join(resolveCatalogDir(), 'AGENTS.md.tpl'), 'utf8')\n`,
+    )
+    const result = auditTestIsolation(root)
+    expect(result.ok).toBe(true)
+    expect(result.checked).toBe(1)
+  })
+
+  test('does not flag non-catalog process.cwd() paths (e.g. tmp dirs, fixtures)', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'))
+    writeFileSync(
+      join(root, 'src', 'other.test.ts'),
+      [
+        `const dir = join(${CWD}, 'test-temp-links')`,
+        `const fix = readFileSync(join(${CWD}, 'src/__fixtures__/x.json'), 'utf8')`,
+      ].join('\n') + '\n',
+    )
+    const result = auditTestIsolation(root)
+    expect(result.ok).toBe(true)
+  })
+
+  test('skips comment lines referencing the pattern', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'))
+    writeFileSync(
+      join(root, 'src', 'commented.test.ts'),
+      [
+        `// readFileSync(join(${CWD}, 'catalog', 'AGENTS.md.tpl'))`,
+        `/* join(${CWD}, 'catalog', 'x') */`,
+      ].join('\n') + '\n',
+    )
+    const result = auditTestIsolation(root)
+    expect(result.ok).toBe(true)
+  })
+
+  test('only inspects test files, not production source', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'))
+    // Production source resolving the catalog off cwd is out of this audit's
+    // scope (resolveCatalogDir lives in production and is the sanctioned path).
+    writeFileSync(
+      join(root, 'src', 'prod.ts'),
+      `const tpl = readFileSync(join(${CWD}, 'catalog', 'AGENTS.md.tpl'), 'utf8')\n`,
+    )
+    const result = auditTestIsolation(root)
+    expect(result.ok).toBe(true)
+    expect(result.checked).toBe(0)
   })
 })
 

@@ -14,6 +14,7 @@ import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { isHookName } from '#cli/commands/hook.js'
 import { type MergeOptions, type MergeResult, patchJsonFile } from '#cli/commands/init/merge'
 import { CodexAppServerClient } from '#codex/app-server/client.js'
 import type { CodexAppServerApi } from '#codex/app-server/types.js'
@@ -739,14 +740,70 @@ function resolvePackageRoot(): string {
   )
 }
 
+// Consumer-side runtime package directory for the current platform. Mirrors the
+// canonical target table in `src/build/runtime-targets.ts`; kept inline here to
+// avoid a deep cross-tree import for a small lookup. If that target list ever
+// changes, update both. Returns undefined for platforms with no compiled
+// runtime package.
+function compiledRuntimePackageDir(): string | undefined {
+  const osLabel = process.platform === 'win32' ? 'windows' : process.platform
+  const id = `${osLabel}-${process.arch}`
+  const known = new Set(['darwin-arm64', 'darwin-x64', 'linux-x64', 'linux-arm64', 'windows-x64'])
+  return known.has(id) ? `agent-kit-runtime-${id}` : undefined
+}
+
+/**
+ * Absolute path to the consumer's self-contained compiled `wp` binary, when the
+ * platform runtime package (`@webpresso/agent-kit-runtime-<platform>`) is
+ * installed. The compiled binary bundles its own runtime, so preferring it makes
+ * the hook launcher survive node-path staleness — an nvm/version change
+ * invalidates the captured absolute node path but not a self-contained binary.
+ * Returns undefined when no compiled runtime is installed (today's default), so
+ * the launcher keeps its absolute-node fallback unchanged.
+ */
+function resolveCompiledWpBinary(repoRoot: string): string | undefined {
+  const packageDir = compiledRuntimePackageDir()
+  if (!packageDir) return undefined
+  const filename = process.platform === 'win32' ? 'wp.exe' : 'wp'
+  const candidate = join(repoRoot, 'node_modules', '@webpresso', packageDir, 'bin', filename)
+  return existsSync(candidate) ? candidate : undefined
+}
+
+/**
+ * The `wp hook <sub>` subcommand a managed launcher should dispatch to via the
+ * compiled binary, or undefined when `binName` is not a dispatchable hook (e.g.
+ * `wp-check-dev-link`, which has no `wp hook` handler). The names map 1:1 by
+ * stripping the `wp-` prefix; `isHookName` is the single source of truth.
+ */
+function hookSubcommandFor(binName: string): string | undefined {
+  const sub = binName.startsWith('wp-') ? binName.slice(3) : binName
+  return isHookName(sub) ? sub : undefined
+}
+
 function renderManagedWebpressoHookLauncher(repoRoot: string, binName: string): string {
   const nodeBinary = quoteShell(process.execPath)
   const projectBinPath = quoteShell(resolveProjectHookBinPath(repoRoot, binName))
   const fallbackBinPath = quoteShell(resolvePackageHookBin(binName))
   const missingFallback = binName === PRETOOL_GUARD_BIN ? PRETOOL_GUARD_MISSING_DENY : 'exit 0'
 
+  // Prefer the self-contained compiled `wp` binary when it resolves: it bundles
+  // its own runtime, so it is immune to the node-path staleness that would break
+  // the absolute `$NODE_BINARY` path below. Only emitted for dispatchable hooks
+  // with an installed compiled runtime; otherwise the node path is unchanged.
+  const hookSub = hookSubcommandFor(binName)
+  const compiledWp = hookSub ? resolveCompiledWpBinary(repoRoot) : undefined
+  const compiledPreamble =
+    compiledWp !== undefined
+      ? `WP_BIN=${quoteShell(compiledWp)}
+if [ -x "$WP_BIN" ]; then
+  exec "$WP_BIN" hook ${hookSub} "$@"
+fi
+
+`
+      : ''
+
   return `#!/bin/sh
-NODE_BINARY=${nodeBinary}
+${compiledPreamble}NODE_BINARY=${nodeBinary}
 PROJECT_BIN_PATH=${projectBinPath}
 FALLBACK_BIN_PATH=${fallbackBinPath}
 

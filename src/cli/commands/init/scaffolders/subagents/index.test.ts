@@ -15,6 +15,8 @@ import { join } from 'node:path'
 import matter from 'gray-matter'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { resolveCatalogDir } from '#cli/commands/init/index.js'
+
 import { scaffoldSubagents } from './index.js'
 
 describe('scaffoldSubagents', () => {
@@ -123,7 +125,7 @@ describe('scaffoldSubagents', () => {
 
   it('keeps the canonical explorer agent read-only and fast', () => {
     const parsed = matter(
-      readFileSync(join(process.cwd(), 'catalog', 'agent', 'agents', 'explorer.md'), 'utf8'),
+      readFileSync(join(resolveCatalogDir(), 'agent', 'agents', 'explorer.md'), 'utf8'),
     )
     const tools = Array.isArray(parsed.data.tools) ? parsed.data.tools : []
 
