@@ -40,6 +40,16 @@ export interface AgentkitConfig {
     packageManager?: 'vp-only'
     scriptRoutes?: Record<string, string>
   }
+  /** Audit policy overrides. `mechanism` lives in agent-kit; this is per-repo
+   *  `data`. `toolchainIsolation.allowDependencies` lists dependency names that
+   *  are exempt from the toolchain-isolation audit because they are legitimate
+   *  app-specific runtimes (e.g. `tsx` for a Pulumi program's TS loader,
+   *  `@playwright/test` imported by e2e specs), not generic toolchain. */
+  audit?: {
+    toolchainIsolation?: {
+      allowDependencies?: string[]
+    }
+  }
   rules: {
     overrides: string[]
   }
@@ -108,6 +118,13 @@ export function readConfig(repoRoot: string): AgentkitConfig | null {
             ...(scriptRoutes ? { scriptRoutes } : {}),
           }
         : undefined
+    const auditConfig = parsed.audit as Partial<NonNullable<AgentkitConfig['audit']>> | undefined
+    const rawAllowDeps = auditConfig?.toolchainIsolation?.allowDependencies
+    const allowDependencies = Array.isArray(rawAllowDeps)
+      ? rawAllowDeps.filter((s): s is string => typeof s === 'string' && s.length > 0)
+      : []
+    const normalizedAudit =
+      allowDependencies.length > 0 ? { toolchainIsolation: { allowDependencies } } : undefined
     const selectedHosts = Array.isArray(hosts?.selected)
       ? hosts.selected.filter((s): s is AgentHost =>
           ['codex', 'claude', 'opencode'].includes(String(s)),
@@ -130,6 +147,7 @@ export function readConfig(repoRoot: string): AgentkitConfig | null {
       },
       ...(normalizedMcp ? { mcp: normalizedMcp } : {}),
       ...(normalizedGuard ? { guard: normalizedGuard } : {}),
+      ...(normalizedAudit ? { audit: normalizedAudit } : {}),
       rules: { overrides: overrides.filter((s): s is string => typeof s === 'string') },
       scripts: {
         'setup-agent': readOptionalString(scripts?.['setup-agent']),
@@ -176,12 +194,22 @@ export function mergeConfig(
           ...(mergedScriptRoutes ? { scriptRoutes: mergedScriptRoutes } : {}),
         }
       : undefined
+  const existingAllowDeps = existing.audit?.toolchainIsolation?.allowDependencies
+  const incomingAllowDeps = incoming.audit?.toolchainIsolation?.allowDependencies
+  const mergedAllowDeps =
+    existingAllowDeps || incomingAllowDeps
+      ? Array.from(new Set([...(existingAllowDeps ?? []), ...(incomingAllowDeps ?? [])])).toSorted()
+      : undefined
+  const mergedAudit = mergedAllowDeps
+    ? { toolchainIsolation: { allowDependencies: mergedAllowDeps } }
+    : undefined
   return {
     version: incoming.version,
     installed: { tier3Skills: tier3 },
     hosts: incoming.hosts ?? existing.hosts,
     ...(mergedMcp ? { mcp: mergedMcp } : {}),
     ...(mergedGuard ? { guard: mergedGuard } : {}),
+    ...(mergedAudit ? { audit: mergedAudit } : {}),
     rules: { overrides },
     scripts: {
       'setup-agent': incoming.scripts['setup-agent'] ?? existing.scripts['setup-agent'],
