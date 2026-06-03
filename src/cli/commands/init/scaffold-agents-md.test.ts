@@ -133,6 +133,7 @@ describe('renderAgentsMd', () => {
       '- Repository map: bulleted list of workspace packages inferred from',
     )
     expect(rendered).not.toContain('- - `')
+    expect(rendered).toContain('vp upgrade')
     expect(rendered).toContain('omx setup --yes --scope user')
     expect(rendered).not.toContain('omx setup --scope project')
   })

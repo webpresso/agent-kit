@@ -109,11 +109,15 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       const code = await runInit({ cwd: repo, yes: true, with: 'omx' })
       expect(code).toBe(EXIT_SUCCESS)
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
+      const vpUpgradeCalls = spawnSyncMock.mock.calls.filter(
+        (c) => c[0] === 'vp' && JSON.stringify(c[1]) === JSON.stringify(['upgrade']),
+      )
       const omxUpdateCalls = spawnSyncMock.mock.calls.filter(
         (c) =>
           c[0] === 'vp' && JSON.stringify(c[1]) === JSON.stringify(['update', '-g', 'oh-my-codex']),
       )
       expect(omxCalls).toHaveLength(2)
+      expect(vpUpgradeCalls).toHaveLength(1)
       expect(omxUpdateCalls).toHaveLength(1)
       expect(omxCalls[0]?.[1]).toEqual(['--version'])
       expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes', '--scope', 'user'])
@@ -437,10 +441,13 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(codexCalls.length).toBeGreaterThanOrEqual(1)
       expect(bunCalls).toHaveLength(1)
       // vp is used by setup preflight, the always-on runtime check, and managed tool updates.
-      expect(vpCalls).toHaveLength(5)
+      expect(vpCalls).toHaveLength(6)
       expect(actionlintCalls).toHaveLength(1)
       expect(codexCalls[0]?.[1]).toEqual(['--version'])
       expect(bunCalls[0]?.[1]).toEqual(['--version'])
+      expect(vpCalls.some((call) => JSON.stringify(call[1]) === JSON.stringify(['upgrade']))).toBe(
+        true,
+      )
       expect(
         vpCalls.some(
           (call) => JSON.stringify(call[1]) === JSON.stringify(['update', '-g', 'oh-my-codex']),
