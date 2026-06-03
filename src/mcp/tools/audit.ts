@@ -21,28 +21,10 @@ import { z } from 'zod'
 import { resolveAuditScriptPath } from '#audit/resolve-audit-script'
 import type { ToolDescriptor } from '#mcp/auto-discover'
 import { applyOutputTransform } from '#output-transforms/index'
+import { AUDIT_KINDS } from './_shared/audit-kinds.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
-const KINDS = [
-  'tph',
-  'tph-e2e',
-  'agents',
-  'catalog-drift',
-  'package-surface',
-  'docs-frontmatter',
-  'blueprint-lifecycle',
-  'architecture-drift',
-  'cloudflare-deploy-contract',
-  'absolute-path-policy',
-  'no-first-party-mjs',
-  'roadmap-links',
-  'bundle-budget',
-  'commit-message',
-  'tech-debt',
-  'hook-surface',
-  'ai-contracts',
-  'no-relative-package-scripts',
-] as const
+const KINDS = AUDIT_KINDS
 
 const inputSchema = z.object({
   kind: z.enum(KINDS),
@@ -220,6 +202,16 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
     case 'no-first-party-mjs': {
       const { auditNoFirstPartyMjs } = await import('#audit/no-first-party-mjs')
       const auditResult = auditNoFirstPartyMjs(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
+    case 'toolchain-isolation': {
+      const { auditToolchainIsolation } = await import('#audit/toolchain-isolation')
+      const auditResult = auditToolchainIsolation(input.cwd ?? input.directory ?? process.cwd())
       return {
         passed: auditResult.ok,
         summary: summarizeRepoAudit(kind, auditResult),

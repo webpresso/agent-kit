@@ -1,7 +1,8 @@
-import { readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import type { ToolInput } from '#hooks/shared/types'
 
@@ -1250,5 +1251,63 @@ describe('forbidden-commands edge cases', () => {
   it('matches vp exec oxlint with --fix flag', () => {
     const rule = findMatchingRule('vp exec oxlint --fix')
     expect(rule).toBeDefined()
+  })
+})
+
+describe('validateForbiddenCommands — wp audit + guard config routing', () => {
+  const originalProjectDir = process.env.CLAUDE_PROJECT_DIR
+  afterEach(() => {
+    if (originalProjectDir === undefined) delete process.env.CLAUDE_PROJECT_DIR
+    else process.env.CLAUDE_PROJECT_DIR = originalProjectDir
+  })
+
+  function bashInput(command: string): ToolInput {
+    return { tool_input: { command } }
+  }
+  function setRepoConfig(guard: unknown): void {
+    const dir = mkdtempSync(join(tmpdir(), 'wp-guard-'))
+    const config: Record<string, unknown> = { version: '1', installed: { tier3Skills: [] } }
+    if (guard !== undefined) config.guard = guard
+    writeFileSync(join(dir, '.webpressorc.json'), JSON.stringify(config))
+    process.env.CLAUDE_PROJECT_DIR = dir
+  }
+
+  it('redirects `wp audit <kind>` to the wp_audit MCP tool', () => {
+    setRepoConfig(undefined)
+    const result = validateForbiddenCommands(bashInput('wp audit catalog-drift'))
+    expect(result.passed).toBe(false)
+    expect(String(result.message)).toContain('wp_audit(kind="catalog-drift")')
+  })
+
+  it('does not redirect `wp audit <unknown-kind>`', () => {
+    setRepoConfig(undefined)
+    const result = validateForbiddenCommands(bashInput('wp audit not-a-real-kind'))
+    expect(result.passed).toBe(true)
+  })
+
+  it('routes a configured guard.scriptRoutes script to its audit kind', () => {
+    setRepoConfig({ scriptRoutes: { 'docs:check': 'docs-frontmatter' } })
+    const result = validateForbiddenCommands(bashInput('pnpm run docs:check'))
+    expect(result.passed).toBe(false)
+    expect(String(result.message)).toContain('wp_audit(kind="docs-frontmatter")')
+  })
+
+  it('ignores guard.scriptRoutes entries with an unknown audit kind', () => {
+    setRepoConfig({ scriptRoutes: { 'docs:check': 'bogus-kind' } })
+    const result = validateForbiddenCommands(bashInput('pnpm run docs:check'))
+    expect(result.passed).toBe(true)
+  })
+
+  it('routes raw pnpm to vp when guard.packageManager is vp-only', () => {
+    setRepoConfig({ packageManager: 'vp-only' })
+    const result = validateForbiddenCommands(bashInput('pnpm install'))
+    expect(result.passed).toBe(false)
+    expect(String(result.message)).toContain('vp-only')
+  })
+
+  it('does not apply vp-only routing without the config flag', () => {
+    setRepoConfig(undefined)
+    const result = validateForbiddenCommands(bashInput('pnpm install'))
+    expect(result.passed).toBe(true)
   })
 })

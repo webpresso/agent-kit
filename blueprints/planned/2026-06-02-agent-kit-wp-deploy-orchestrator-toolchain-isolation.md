@@ -6,7 +6,7 @@ status: planned
 complexity: L
 created: "2026-06-02"
 last_updated: "2026-06-03"
-progress: "0% (recovered from 2026-06-02 plan-reviewer transcripts; de-scoped per reviewer pushback; ozby.dev scaffold already landed with a consumer-owned deploy adapter)"
+progress: "REALITY (2026-06-03): wp deploy orchestrator, deploy.adapterModule/deploy.cloudflare config, managed-runner resolution, canonical lanes, and the toolchain-isolation audit are ALREADY SHIPPED in agent-kit — do not rebuild. Remaining deltas: expose toolchain-isolation over MCP (done), config-driven guard routing (done), react-library tsconfig types follow-up, fresh-clone proof. Superseded by master plan ~/.claude/plans/for-all-glistening-moon.md."
 review_target: internal multi-repo platform work
 depends_on: []
 tags:

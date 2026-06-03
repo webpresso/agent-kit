@@ -32,6 +32,14 @@ export interface AgentkitConfig {
     serverName?: string
     toolPrefix?: string
   }
+  /** Pretool-guard routing policy. `mechanism` lives in agent-kit; this is the
+   *  per-repo `data`. `scriptRoutes` maps a package-script name (e.g.
+   *  `docs:check`) to a `wp_audit` kind; `packageManager: 'vp-only'` opts into
+   *  routing all raw `pnpm`/`npm` invocations to the `vp` facade. */
+  guard?: {
+    packageManager?: 'vp-only'
+    scriptRoutes?: Record<string, string>
+  }
   rules: {
     overrides: string[]
   }
@@ -81,6 +89,25 @@ export function readConfig(repoRoot: string): AgentkitConfig | null {
       serverName || toolPrefix
         ? { ...(serverName ? { serverName } : {}), ...(toolPrefix ? { toolPrefix } : {}) }
         : undefined
+    const guard = parsed.guard as Partial<NonNullable<AgentkitConfig['guard']>> | undefined
+    const packageManager = guard?.packageManager === 'vp-only' ? ('vp-only' as const) : undefined
+    const rawScriptRoutes =
+      guard?.scriptRoutes && typeof guard.scriptRoutes === 'object'
+        ? Object.fromEntries(
+            Object.entries(guard.scriptRoutes).filter(
+              ([key, value]) => typeof key === 'string' && typeof value === 'string',
+            ),
+          )
+        : undefined
+    const scriptRoutes =
+      rawScriptRoutes && Object.keys(rawScriptRoutes).length > 0 ? rawScriptRoutes : undefined
+    const normalizedGuard =
+      packageManager || scriptRoutes
+        ? {
+            ...(packageManager ? { packageManager } : {}),
+            ...(scriptRoutes ? { scriptRoutes } : {}),
+          }
+        : undefined
     const selectedHosts = Array.isArray(hosts?.selected)
       ? hosts.selected.filter((s): s is AgentHost =>
           ['codex', 'claude', 'opencode'].includes(String(s)),
@@ -102,6 +129,7 @@ export function readConfig(repoRoot: string): AgentkitConfig | null {
         ...(visibility ? { visibility } : {}),
       },
       ...(normalizedMcp ? { mcp: normalizedMcp } : {}),
+      ...(normalizedGuard ? { guard: normalizedGuard } : {}),
       rules: { overrides: overrides.filter((s): s is string => typeof s === 'string') },
       scripts: {
         'setup-agent': readOptionalString(scripts?.['setup-agent']),
@@ -136,11 +164,24 @@ export function mergeConfig(
           ...incoming.mcp,
         }
       : undefined
+  const mergedScriptRoutes =
+    existing.guard?.scriptRoutes || incoming.guard?.scriptRoutes
+      ? { ...existing.guard?.scriptRoutes, ...incoming.guard?.scriptRoutes }
+      : undefined
+  const mergedGuard =
+    existing.guard || incoming.guard
+      ? {
+          ...existing.guard,
+          ...incoming.guard,
+          ...(mergedScriptRoutes ? { scriptRoutes: mergedScriptRoutes } : {}),
+        }
+      : undefined
   return {
     version: incoming.version,
     installed: { tier3Skills: tier3 },
     hosts: incoming.hosts ?? existing.hosts,
     ...(mergedMcp ? { mcp: mergedMcp } : {}),
+    ...(mergedGuard ? { guard: mergedGuard } : {}),
     rules: { overrides },
     scripts: {
       'setup-agent': incoming.scripts['setup-agent'] ?? existing.scripts['setup-agent'],
