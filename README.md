@@ -44,6 +44,15 @@ Playwright, unit-test and file-based e2e smoke assets), wires `AGENTS.md` /
 execution-owned vs authoring-owned dependency migration guidance. Re-running
 refreshes the webpresso-owned pieces and preserves consumer-owned files.
 
+> **`wp setup` is required for hooks.** The Claude Code hooks (PreToolUse guard,
+> Stop-QA gate, SessionStart routing, …) are installed by `wp setup` into your
+> repo's `.claude/settings.json`. They are intentionally **not** shipped in the
+> plugin manifest — declaring them in both places double-fires every hook (Claude
+> Code does not dedup across sources), and settings.json is the more reliable
+> surface. So enabling the plugin alone does **not** activate hooks; run
+> `wp setup`. Run `wp hooks doctor` to check — it warns if the managed hooks are
+> missing from `.claude/settings.json`.
+
 `wp` owns **execution** for the generic tool lanes it manages (test / mutation /
 e2e / lint / format / typecheck). That does **not** mean every local
 devDependency disappears — keep dependencies your repo imports directly (e.g.
