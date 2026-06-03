@@ -31,7 +31,7 @@ describe('ensureOmx', () => {
   it('returns omx-ok when probe and setup both succeed', () => {
     const dir = mkdtempSync(join(tmpdir(), 'omx-ok-'))
     const configPath = join(dir, 'config.toml')
-    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }])
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }, { status: 0 }])
     const result = ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
@@ -44,7 +44,8 @@ describe('ensureOmx', () => {
       removedProjectFiles: [],
       codexGlobalHooks: { repaired: false, targetPath: join(dir, 'hooks.json') },
     })
-    expect(spawn).toHaveBeenCalledTimes(3)
+    expect(spawn).toHaveBeenCalledTimes(4)
+    expect(spawn).toHaveBeenNthCalledWith(1, 'vp', ['upgrade'], { stdio: 'inherit' })
   })
 
   it('returns omx-skipped-dry-run without spawning anything', () => {
@@ -62,6 +63,7 @@ describe('ensureOmx', () => {
     const dir = mkdtempSync(join(tmpdir(), 'omx-install-'))
     const configPath = join(dir, 'config.toml')
     const spawn = makeSpawn([
+      { status: 0 },
       { status: null, error: Object.assign(new Error('ENOENT'), { code: 'ENOENT' }) },
       { status: 0 },
       { status: 0 },
@@ -79,16 +81,17 @@ describe('ensureOmx', () => {
       removedProjectFiles: [],
       codexGlobalHooks: { repaired: false, targetPath: join(dir, 'hooks.json') },
     })
-    expect(spawn).toHaveBeenNthCalledWith(2, 'vp', ['install', '-g', 'oh-my-codex'], {
+    expect(spawn).toHaveBeenNthCalledWith(1, 'vp', ['upgrade'], { stdio: 'inherit' })
+    expect(spawn).toHaveBeenNthCalledWith(3, 'vp', ['install', '-g', 'oh-my-codex'], {
       stdio: 'inherit',
     })
-    expect(spawn).toHaveBeenNthCalledWith(4, 'omx', ['setup', '--yes', '--scope', 'user'], {
+    expect(spawn).toHaveBeenNthCalledWith(5, 'omx', ['setup', '--yes', '--scope', 'user'], {
       cwd: '/tmp/repo',
       stdio: ['ignore', 'inherit', 'inherit'],
     })
   })
 
-  it('skips the global OMX refresh when WP_SKIP_UPDATE_CHECK=1', () => {
+  it('skips managed global tool refreshes when WP_SKIP_UPDATE_CHECK=1', () => {
     const dir = mkdtempSync(join(tmpdir(), 'omx-skip-'))
     const configPath = join(dir, 'config.toml')
     const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
@@ -123,6 +126,7 @@ describe('ensureOmx', () => {
 
   it('returns omx-not-found when the fallback install fails', () => {
     const spawn = makeSpawn([
+      { status: 0 },
       { status: null, error: Object.assign(new Error('ENOENT'), { code: 'ENOENT' }) },
       { status: 1 },
     ])
@@ -138,7 +142,7 @@ describe('ensureOmx', () => {
   })
 
   it('returns omx-not-found when probe exits non-zero', () => {
-    const spawn = makeSpawn([{ status: 127 }, { status: 0 }, { status: 127 }])
+    const spawn = makeSpawn([{ status: 0 }, { status: 127 }, { status: 0 }, { status: 127 }])
     const result = ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
@@ -148,7 +152,7 @@ describe('ensureOmx', () => {
   })
 
   it('returns omx-spawn-failed when setup itself fails', () => {
-    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 2 }])
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }, { status: 2 }])
     const result = ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
@@ -158,27 +162,27 @@ describe('ensureOmx', () => {
   })
 
   it('forces user scope for the setup invocation', () => {
-    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }])
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }, { status: 0 }])
     ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       spawn,
     })
-    expect(spawn).toHaveBeenNthCalledWith(3, 'omx', ['setup', '--yes', '--scope', 'user'], {
+    expect(spawn).toHaveBeenNthCalledWith(4, 'omx', ['setup', '--yes', '--scope', 'user'], {
       cwd: '/tmp/repo',
       stdio: ['ignore', 'inherit', 'inherit'],
     })
   })
 
   it('allows setup to request project scope explicitly', () => {
-    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }])
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }, { status: 0 }])
     ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
       scope: 'project',
       spawn,
     })
-    expect(spawn).toHaveBeenNthCalledWith(3, 'omx', ['setup', '--yes', '--scope', 'project'], {
+    expect(spawn).toHaveBeenNthCalledWith(4, 'omx', ['setup', '--yes', '--scope', 'project'], {
       cwd: '/tmp/repo',
       stdio: ['ignore', 'inherit', 'inherit'],
     })
@@ -193,7 +197,7 @@ describe('ensureOmx', () => {
       'utf8',
     )
 
-    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }])
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }, { status: 0 }])
     const result = ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },
@@ -288,7 +292,7 @@ describe('ensureOmx — deduplication of legacy hook trust state', () => {
       'utf8',
     )
 
-    const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+    const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }])
     ensureOmx({
       repoRoot: '/tmp/repo',
       options: { overwrite: false, dryRun: false },

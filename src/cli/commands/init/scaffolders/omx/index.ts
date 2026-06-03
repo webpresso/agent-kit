@@ -1,8 +1,9 @@
 /**
  * `omx` scaffolder preset.
  *
- * Ensures `omx` is installed, then chains `omx setup --yes --scope user` after the
- * webpresso scaffold completes. OMX (oh-my-codex) is the operator-workflow
+ * Refreshes Vite+ (`vp`), ensures `omx` is installed, then chains
+ * `omx setup --yes --scope user` after the webpresso scaffold completes.
+ * OMX (oh-my-codex) is the operator-workflow
  * execution layer; it manages its own scaffolding idempotently.
  *
  * Required when downstream features rely on `omx team` (see
@@ -46,7 +47,7 @@ const NOT_FOUND_HINT =
 type OmxSetupScope = 'user' | 'project'
 type Spawn = typeof spawnSync
 
-function shouldSkipOmxRefresh(env: NodeJS.ProcessEnv = process.env): boolean {
+function shouldSkipManagedToolRefresh(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.WP_SKIP_UPDATE_CHECK === '1'
 }
 
@@ -239,7 +240,8 @@ function pruneEmptyProjectScopedDirs(repoRoot: string, relativeFile: string): vo
 }
 
 /**
- * Ensure `omx` is on PATH then run `omx setup --yes --scope user` in the consumer repo.
+ * Refresh `vp`, ensure `omx` is on PATH, then run
+ * `omx setup --yes --scope user` in the consumer repo.
  * Idempotent: safe to run on every `wp setup`.
  */
 export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
@@ -261,6 +263,10 @@ export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
   }
 
   let installed = false
+  if (!shouldSkipManagedToolRefresh()) {
+    spawn('vp', ['upgrade'], { stdio: 'inherit' })
+  }
+
   let probe = spawn('omx', ['--version'], { encoding: 'utf8' })
   if (probe.error || (probe.status !== null && probe.status !== 0)) {
     const install = spawn('vp', ['install', '-g', 'oh-my-codex'], { stdio: 'inherit' })
@@ -273,7 +279,7 @@ export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
     if (probe.error || (probe.status !== null && probe.status !== 0)) {
       return { kind: 'omx-not-found', hint: NOT_FOUND_HINT }
     }
-  } else if (!shouldSkipOmxRefresh()) {
+  } else if (!shouldSkipManagedToolRefresh()) {
     spawn('vp', ['update', '-g', 'oh-my-codex'], { stdio: 'inherit' })
   }
 
