@@ -24,6 +24,8 @@ export interface DoctorCheck {
   name: string
   ok: boolean
   detail?: string
+  /** Advisory checks surface a warning but do not flip the doctor's exit code. */
+  advisory?: boolean
 }
 
 export interface DoctorResult {
@@ -681,6 +683,44 @@ function checkLiveSourceDevLink(cwd = process.cwd()): DoctorCheck | null {
   }
 }
 
+// Marker for the managed hook launchers `wp setup` writes under
+// `.claude/hooks/managed/` (CLAUDE_MANAGED_HOOK_SUBDIR in the agent-hooks
+// scaffolder). The plugin manifest no longer ships hooks (they double-fired
+// against these and were the less reliable surface), so settings.json is the
+// single source — if it does not reference them, the hooks are not installed.
+const MANAGED_HOOK_MARKER = 'hooks/managed/wp-pretool-guard'
+
+/**
+ * Verify the consumer's `.claude/settings.json` carries the managed agent-kit
+ * hook launchers. Since the hooks are single-sourced there (not in the plugin
+ * manifest), a missing reference means a plugin-only install that never ran
+ * `wp setup` — i.e. no agent-kit hooks are active.
+ */
+export function checkManagedHooksInstalled(cwd = process.cwd()): {
+  ok: boolean
+  detail?: string
+} {
+  const settingsPath = join(cwd, '.claude', 'settings.json')
+  if (!tryAccess(settingsPath)) {
+    return {
+      ok: false,
+      detail: 'no .claude/settings.json — run `wp setup` to install the agent-kit hooks',
+    }
+  }
+  try {
+    const raw = readFileSync(settingsPath, 'utf-8')
+    if (!raw.includes(MANAGED_HOOK_MARKER)) {
+      return {
+        ok: false,
+        detail: 'agent-kit hooks not found in .claude/settings.json — run `wp setup`',
+      }
+    }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, detail: `failed to read .claude/settings.json: ${String(err)}` }
+  }
+}
+
 export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<DoctorResult> {
   const checks: DoctorCheck[] = []
   const isWin = platform() === 'win32'
@@ -706,6 +746,11 @@ export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<
   checks.push(checkConsumerCodexHookPaths(opts.cwd))
 
   checks.push({ name: 'plugin.json integrity', ...checkPluginJson() })
+  checks.push({
+    name: 'managed hooks installed (.claude/settings.json)',
+    advisory: true,
+    ...checkManagedHooksInstalled(opts.cwd),
+  })
 
   if (opts.skipMcp) {
     checks.push({ name: 'MCP server liveness', ok: true, detail: 'skipped (--skip-mcp)' })
@@ -776,7 +821,7 @@ export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<
     }
   }
 
-  const nonMcpChecks = checks.filter((c) => !c.name.startsWith('MCP '))
+  const nonMcpChecks = checks.filter((c) => !c.name.startsWith('MCP ') && !c.advisory)
   const overallOk = nonMcpChecks.every((c) => c.ok)
 
   return { ok: overallOk, checks }
