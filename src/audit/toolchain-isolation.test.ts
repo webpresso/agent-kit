@@ -96,6 +96,29 @@ describe('auditToolchainIsolation', () => {
 
     expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
   })
+
+  it('exempts deps listed in .webpressorc.json audit.toolchainIsolation.allowDependencies', () => {
+    writeFileSync(
+      join(root, '.webpressorc.json'),
+      `${JSON.stringify({
+        version: '1',
+        installed: { tier3Skills: [] },
+        audit: { toolchainIsolation: { allowDependencies: ['tsx'] } },
+      })}\n`,
+    )
+    writePackage(root, {
+      scripts: { deploy: 'wp deploy' },
+      devDependencies: { tsx: '^4.0.0', wrangler: '^4.0.0', '@webpresso/agent-kit': 'latest' },
+    })
+
+    const result = auditToolchainIsolation(root)
+
+    // tsx is exempted by config; wrangler is not listed, so it still fails.
+    expect(result.ok).toBe(false)
+    expect(result.violations).toHaveLength(1)
+    expect(result.violations[0]?.message).toContain('devDependencies.wrangler')
+    expect(result.violations.map((violation) => violation.message).join()).not.toContain('tsx')
+  })
 })
 
 function writePackage(dir: string, value: unknown): void {

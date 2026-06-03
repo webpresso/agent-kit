@@ -1,6 +1,8 @@
 import { existsSync, readdirSync, readFileSync, type Dirent } from 'node:fs'
 import path from 'node:path'
 
+import { readConfig } from '#cli/commands/init/config'
+
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 
 const FORBIDDEN_DEPENDENCY_PATTERNS: readonly RegExp[] = [
@@ -34,6 +36,13 @@ type PackageJson = {
 export function auditToolchainIsolation(root: string): RepoAuditResult {
   const packagePaths = findPackageJsonFiles(root)
   const violations: RepoAuditViolation[] = []
+  // Per-repo runtime exemptions: dependency names the repo declares as
+  // legitimate app-specific runtimes (e.g. `tsx` for a Pulumi program's TS
+  // loader, `@playwright/test` imported by e2e specs) rather than generic
+  // toolchain. Mechanism here; data lives in the consumer's `.webpressorc.json`.
+  const allowDependencies = new Set(
+    readConfig(root)?.audit?.toolchainIsolation?.allowDependencies ?? [],
+  )
 
   for (const packagePath of packagePaths) {
     const pkg = readPackageJson(packagePath)
@@ -52,6 +61,7 @@ export function auditToolchainIsolation(root: string): RepoAuditResult {
     ] as const) {
       for (const depName of Object.keys(pkg[field] ?? {})) {
         if (!isForbiddenDependency(depName)) continue
+        if (allowDependencies.has(depName)) continue
         violations.push({
           file: packagePath,
           message: `${field}.${depName} is toolchain-owned; route it through @webpresso/agent-kit/wp instead of declaring it directly`,
