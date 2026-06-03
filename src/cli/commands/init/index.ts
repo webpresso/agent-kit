@@ -24,7 +24,11 @@ import {
   readConfig,
   writeConfig,
 } from './config.js'
-import { detectConsumer, warnIfNonLocalCli } from './detect-consumer.js'
+import {
+  detectConsumer,
+  isAgentKitTemplateSourceRepo,
+  warnIfNonLocalCli,
+} from './detect-consumer.js'
 import { runPreflight, DOCS_URL } from './preflight.js'
 import { type MergeOptions, type MergeResult, summarizeResults } from './merge.js'
 import { resolveTier3Selection } from './prompts.js'
@@ -119,6 +123,7 @@ export interface InitFlags {
   cwd?: string
   strict?: boolean
   project?: boolean
+  allowSelfScaffold?: boolean
 }
 
 export const EXIT_SUCCESS = 0
@@ -210,6 +215,22 @@ export async function runInit(flags: InitFlags): Promise<number> {
     console.error(
       `wp init: could not find a git repo (walked up from ${cwd}).\n` +
         `Run \`git init\` first, or pass --cwd pointing at a git working tree.`,
+    )
+    return EXIT_SETUP_FAIL
+  }
+
+  // Self-repo guard: agent-kit is the SOURCE of every agent-surface template
+  // (catalog/, the tracked .agent/.claude surfaces). Scaffolding into its own
+  // working tree overwrites those canonical sources — the footgun where a stray
+  // `wp setup` reported `overwritten: 2, drifted: 11, git index cleanup: 6
+  // untracked` against the live repo. Refuse loudly and write nothing unless the
+  // maintainer explicitly opts in with --allow-self-scaffold.
+  if (isAgentKitTemplateSourceRepo(consumer.packageJson?.name) && flags.allowSelfScaffold !== true) {
+    console.error(
+      `wp setup: refusing to scaffold @webpresso/agent-kit's own repo (${consumer.repoRoot}).\n` +
+        `  This repo is the source of the agent-surface templates; running setup here\n` +
+        `  overwrites the canonical sources under catalog/ and the tracked .agent/.claude surfaces.\n` +
+        `  To deliberately regenerate agent-kit's own surfaces, re-run with --allow-self-scaffold.`,
     )
     return EXIT_SETUP_FAIL
   }
@@ -1029,6 +1050,10 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
     .option('--cwd <dir>', 'Working tree to scaffold into (default: process.cwd())')
     .option('--strict', 'Abort if any compatibility check fails (default: warn and continue)')
     .option('--project', 'Configure OMX/OMC in project scope instead of the default user scope')
+    .option(
+      '--allow-self-scaffold',
+      "Override the self-repo guard to scaffold @webpresso/agent-kit's own template-source repo (maintainers only)",
+    )
     .action(async (flags: InitFlags) => {
       const code = await runInit(flags)
       if (code !== EXIT_SUCCESS) {

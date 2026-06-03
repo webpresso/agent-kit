@@ -6,12 +6,19 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { defaultConfig } from './config.js'
+import { resolveCatalogDir } from './index.js'
 import {
   mergeRenderedAgentsMd,
   renderAgentsMd,
   renderRepositoryMap,
   renderTechStack,
 } from './scaffold-agents-md.js'
+
+// Resolve the real catalog template via the package-anchored resolver
+// (walks from import.meta, the same path production uses) rather than
+// `process.cwd()`. This keeps the assertion pinned to the live template
+// while staying independent of the test runner's working directory.
+const AGENTS_MD_TEMPLATE_PATH = join(resolveCatalogDir(), 'AGENTS.md.tpl')
 
 function makeConsumer(overrides: Partial<ConsumerContext> = {}): ConsumerContext {
   return {
@@ -105,7 +112,7 @@ describe('renderAgentsMd', () => {
   })
 
   it('renders the catalog template with precise agent-kit ownership and future Webpresso CLI replacements', () => {
-    const template = readFileSync(join(process.cwd(), 'catalog', 'AGENTS.md.tpl'), 'utf8')
+    const template = readFileSync(AGENTS_MD_TEMPLATE_PATH, 'utf8')
     const rendered = renderAgentsMd(
       template,
       makeConsumer({
@@ -139,7 +146,7 @@ describe('renderAgentsMd', () => {
   })
 
   it('renders the configured blueprint directory in the catalog template', () => {
-    const template = readFileSync(join(process.cwd(), 'catalog', 'AGENTS.md.tpl'), 'utf8')
+    const template = readFileSync(AGENTS_MD_TEMPLATE_PATH, 'utf8')
     const rendered = renderAgentsMd(
       template,
       makeConsumer({

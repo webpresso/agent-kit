@@ -205,6 +205,41 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     }
   })
 
+  it("refuses to scaffold agent-kit's own template-source repo and writes nothing", async () => {
+    // Re-identify the temp repo as agent-kit's own package — the source tree
+    // for every agent-surface template. Setup must refuse rather than overwrite.
+    writeFileSync(
+      join(repo, 'package.json'),
+      JSON.stringify({ name: '@webpresso/agent-kit', private: true }, null, 2),
+    )
+
+    const code = await runInit({ cwd: repo, yes: true })
+
+    expect(code).toBe(1)
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('refusing to scaffold'))
+    // Writes nothing: no agent surface, no rc file, no AGENTS.md.
+    expect(existsSync(join(repo, '.webpressorc.json'))).toBe(false)
+    expect(existsSync(join(repo, '.agent'))).toBe(false)
+    expect(existsSync(join(repo, 'AGENTS.md'))).toBe(false)
+  })
+
+  it('proceeds past the self-repo guard when --allow-self-scaffold is set', async () => {
+    writeFileSync(
+      join(repo, 'package.json'),
+      JSON.stringify(
+        { name: '@webpresso/agent-kit', private: true, devDependencies: { vitest: '^2.0.0' } },
+        null,
+        2,
+      ),
+    )
+
+    const code = await runInit({ cwd: repo, yes: true, allowSelfScaffold: true })
+
+    expect(code).toBe(0)
+    // Proceeding past the guard scaffolds the workspace config marker.
+    expect(existsSync(join(repo, '.webpressorc.json'))).toBe(true)
+  })
+
   it('supports a no-host fresh bootstrap with explicit degraded reporting', async () => {
     const code = await runInit({ cwd: repo, yes: true, host: 'none' })
 

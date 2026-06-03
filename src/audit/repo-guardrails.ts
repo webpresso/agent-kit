@@ -1044,6 +1044,94 @@ function walkTsconfigParentPaths(
   return checked
 }
 
+export interface TestIsolationOptions {
+  /** Directory to scan for test files. Defaults to `src`. */
+  srcDir?: string
+  /** Test-file suffixes to inspect. Defaults to `.test.ts` / `.test.tsx`. */
+  extensions?: readonly string[]
+}
+
+const TEST_ISOLATION_SKIP_DIRS = new Set([
+  'node_modules',
+  'dist',
+  'build',
+  '.git',
+  '.cache',
+  '.next',
+  '.turbo',
+  '.omx',
+  '.stryker-tmp',
+  '.claude',
+  // Scaffolding templates become a downstream consumer's tree, not ours.
+  'template',
+  // Workspace-level scratch/archive space.
+  '_sandbox',
+])
+
+// `(join|resolve)(process.cwd(), ... 'catalog' ...)` — a test reaching into the
+// live catalog template source off the runner's working directory.
+const CWD_CATALOG_PATH_PATTERN = /\b(?:join|resolve)\s*\(\s*process\.cwd\(\)[^)]*\bcatalog\b/
+
+/**
+ * Fail if any `*.test.ts` reaches the repo's own `catalog/` template source
+ * through `process.cwd()`. The catalog tree is the source of every
+ * agent-surface template, so a `process.cwd()`-anchored path is both brittle
+ * (it depends on the runner's working directory) and the exact pattern behind
+ * the scaffold-agents-md footgun, where a test read the live
+ * `catalog/AGENTS.md.tpl` off cwd. Anchor catalog reads to the package via the
+ * import.meta-based `resolveCatalogDir()` helper instead, and write only into
+ * `mkdtemp`/`tmpdir` sandboxes.
+ */
+export function auditTestIsolation(
+  root: string,
+  options: TestIsolationOptions = {},
+): RepoAuditResult {
+  const srcDir = resolve(root, options.srcDir ?? 'src')
+  const extensions = options.extensions ?? ['.test.ts', '.test.tsx']
+  const violations: RepoAuditViolation[] = []
+  let checked = 0
+
+  function walk(dir: string): void {
+    if (!existsSync(dir)) return
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        if (TEST_ISOLATION_SKIP_DIRS.has(entry.name)) continue
+        walk(full)
+        continue
+      }
+      if (!entry.isFile()) continue
+      if (!extensions.some((ext) => entry.name.endsWith(ext))) continue
+
+      checked++
+      const content = readFileSync(full, 'utf-8')
+      const rel = relativePath(root, full)
+      const lines = content.split('\n')
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i] ?? ''
+        // Skip comment lines so prose referencing the pattern doesn't trip it.
+        if (/^\s*(?:\/\/|\/\*|\*)/.test(line)) continue
+        if (CWD_CATALOG_PATH_PATTERN.test(line)) {
+          violations.push({
+            file: rel,
+            message: `Line ${i + 1}: test reads the catalog template source via process.cwd() — anchor catalog reads to the package with resolveCatalogDir() (import.meta-based) so the test does not depend on the runner's working directory: ${line.trim()}`,
+          })
+        }
+      }
+    }
+  }
+
+  walk(srcDir)
+
+  return {
+    ok: violations.length === 0,
+    title: 'test-isolation',
+    checked,
+    violations,
+  }
+}
+
 function withFilePrefix(file: string, auditResult: RepoAuditResult): RepoAuditResult {
   return {
     ...auditResult,
