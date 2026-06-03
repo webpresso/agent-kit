@@ -298,6 +298,63 @@ describe('scaffoldAgentHooks', () => {
     expect(launcher).not.toContain('node_modules/.bin/wp-guard-switch')
   })
 
+  it('prefers the compiled wp binary in managed launchers when the runtime package is installed', async () => {
+    const osLabel = process.platform === 'win32' ? 'windows' : process.platform
+    const runtimeId = `${osLabel}-${process.arch}`
+    const known = new Set([
+      'darwin-arm64',
+      'darwin-x64',
+      'linux-x64',
+      'linux-arm64',
+      'windows-x64',
+    ])
+    // The resolver only fires for platforms with a published runtime target.
+    if (!known.has(runtimeId)) return
+
+    const wpFilename = process.platform === 'win32' ? 'wp.exe' : 'wp'
+    const runtimeBinDir = join(
+      repoRoot,
+      'node_modules',
+      '@webpresso',
+      `agent-kit-runtime-${runtimeId}`,
+      'bin',
+    )
+    mkdirSync(runtimeBinDir, { recursive: true })
+    const compiledWp = join(runtimeBinDir, wpFilename)
+    writeFileSync(compiledWp, '#!/bin/sh\nexit 0\n', 'utf8')
+    chmodSync(compiledWp, 0o755)
+
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    const guardLauncher = readFileSync(
+      join(repoRoot, '.claude', 'hooks', 'managed', 'wp-pretool-guard.sh'),
+      'utf8',
+    )
+    // Dispatchable hook: prefers the compiled binary via `wp hook <sub>` …
+    expect(guardLauncher).toContain(`WP_BIN='${compiledWp}'`)
+    expect(guardLauncher).toContain('exec "$WP_BIN" hook pretool-guard "$@"')
+    // … while keeping the absolute-node fallback intact.
+    expect(guardLauncher).toContain('NODE_BINARY=')
+    expect(guardLauncher).toContain('PROJECT_BIN_PATH=')
+
+    // Non-dispatchable hook (no `wp hook` handler) stays node-only.
+    const devLinkLauncher = readFileSync(
+      join(repoRoot, '.claude', 'hooks', 'managed', 'wp-check-dev-link.sh'),
+      'utf8',
+    )
+    expect(devLinkLauncher).not.toContain('WP_BIN=')
+  })
+
+  it('omits the compiled-wp preamble when no runtime package is installed', async () => {
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+    const guardLauncher = readFileSync(
+      join(repoRoot, '.claude', 'hooks', 'managed', 'wp-pretool-guard.sh'),
+      'utf8',
+    )
+    expect(guardLauncher).not.toContain('WP_BIN=')
+    expect(guardLauncher).toContain('NODE_BINARY=')
+  })
+
   it('dedupes pre-existing wrapped script hooks against the raw incoming form', async () => {
     // Regression: hasCommand previously only extracted node_modules/.bin/<name>
     // identifiers. Script paths like .claude/hooks/check-gstack-session.sh

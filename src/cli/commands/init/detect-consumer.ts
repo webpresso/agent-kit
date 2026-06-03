@@ -288,6 +288,21 @@ export function warnIfNonLocalCli(repoRoot: string, cliUrl: string = import.meta
   )
 }
 
+/**
+ * agent-kit's own package name — the source repo for every agent-surface
+ * template (`catalog/`, the tracked `.agent/`/`.claude/` surfaces). Scaffolding
+ * into this repo overwrites the canonical sources, so `wp setup` refuses it
+ * unless explicitly overridden. Distinct from base-kit's broader
+ * `SELF_PACKAGE_NAMES` (which also covers the legacy `webpresso` framework
+ * identity); only agent-kit hosts the catalog templates.
+ */
+export const AGENT_KIT_PACKAGE_NAME = '@webpresso/agent-kit'
+
+/** True when the consumer being scaffolded is agent-kit's own template-source repo. */
+export function isAgentKitTemplateSourceRepo(packageName: string | undefined): boolean {
+  return packageName === AGENT_KIT_PACKAGE_NAME
+}
+
 export function detectConsumer(startDir: string = process.cwd()): ConsumerContext | null {
   const repoRoot = findGitRoot(startDir)
   if (!repoRoot) return null
