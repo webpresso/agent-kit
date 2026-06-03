@@ -143,4 +143,69 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     const result = await auditBlueprintLifecycleSql(cwd)
     expect(result.violations.some((v) => v.message.includes('fully-done'))).toBe(false)
   })
+
+  it('catches an in-progress blueprint whose tasks are all done (finished, wrong lane)', async () => {
+    writeBlueprint(cwd, 'shipped-but-wip', {
+      status: 'in-progress',
+      tasks: [
+        { id: '1.1', status: 'done' },
+        { id: '1.2', status: 'done' },
+      ],
+    })
+    const result = await auditBlueprintLifecycleSql(cwd)
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations.some(
+        (v) => v.message.includes('shipped-but-wip') && /done\/dropped|in-progress/i.test(v.message),
+      ),
+    ).toBe(true)
+  })
+
+  it('treats a dropped task as terminal (done ∪ dropped) for the wrong-lane check', async () => {
+    writeBlueprint(cwd, 'descoped-wip', {
+      status: 'in-progress',
+      tasks: [
+        { id: '1.1', status: 'done' },
+        { id: '1.2', status: 'dropped' },
+      ],
+    })
+    const result = await auditBlueprintLifecycleSql(cwd)
+    expect(result.violations.some((v) => v.message.includes('descoped-wip'))).toBe(true)
+  })
+
+  it('catches a completed blueprint with a non-terminal task (untruthful status)', async () => {
+    writeBlueprint(cwd, 'claims-done', {
+      status: 'completed',
+      tasks: [
+        { id: '1.1', status: 'done' },
+        { id: '1.2', status: 'todo' },
+      ],
+    })
+    const result = await auditBlueprintLifecycleSql(cwd)
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations.some(
+        (v) => v.message.includes('claims-done') && /not done\/dropped|completed/i.test(v.message),
+      ),
+    ).toBe(true)
+  })
+
+  it('catches exceeding the in-progress WIP limit', async () => {
+    for (const slug of ['wip-a', 'wip-b', 'wip-c', 'wip-d']) {
+      writeBlueprint(cwd, slug, { status: 'in-progress', tasks: [{ id: '1.1', status: 'todo' }] })
+    }
+    const result = await auditBlueprintLifecycleSql(cwd)
+    expect(result.ok).toBe(false)
+    expect(result.violations.some((v) => /in-progress.*lane limit|lane limit/i.test(v.message))).toBe(
+      true,
+    )
+  })
+
+  it('allows up to the WIP limit', async () => {
+    for (const slug of ['wip-1', 'wip-2', 'wip-3']) {
+      writeBlueprint(cwd, slug, { status: 'in-progress', tasks: [{ id: '1.1', status: 'todo' }] })
+    }
+    const result = await auditBlueprintLifecycleSql(cwd)
+    expect(result.violations.some((v) => /lane limit/i.test(v.message))).toBe(false)
+  })
 })

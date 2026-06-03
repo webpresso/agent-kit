@@ -37,6 +37,12 @@ interface TaskInProgressRow {
   status: string
 }
 
+/** Lane limit: at most this many blueprints may sit in `in-progress/` at once. */
+const WIP_IN_PROGRESS_MAX = 3
+
+/** A task is "terminal" (counts as finished) when it is done OR intentionally dropped. */
+const TERMINAL_TASK_SQL = "('done','dropped')"
+
 export interface BlueprintLifecycleAuditOptions {
   /** Opt-in: also audit `.omx/plans/` derived-handoff governance (`--legacy-omx`). */
   readonly includeOmxPlans?: boolean
@@ -149,6 +155,69 @@ export async function auditBlueprintLifecycleSql(
       violations.push({
         file: row.file_path,
         message: `Blueprint '${row.slug}' is marked completed but progress_pct is ${row.progress_pct}% (expected 100)`,
+      })
+    }
+
+    // -----------------------------------------------------------------------
+    // 5. in-progress blueprints whose tasks are ALL terminal (done|dropped)
+    //    — finished work left in the in-progress lane. terminal = done ∪ dropped
+    //    so a de-scoped task doesn't keep a finished blueprint pinned forever.
+    // -----------------------------------------------------------------------
+    const allTerminalInProgress = db
+      .prepare<[], { slug: string; file_path: string; total: number }>(
+        `SELECT b.slug, b.file_path, COUNT(t.id) AS total
+         FROM blueprints b
+         JOIN tasks t ON t.blueprint_slug = b.slug
+         WHERE b.status = 'in-progress'
+         GROUP BY b.slug, b.file_path
+         HAVING COUNT(t.id) > 0
+            AND SUM(CASE WHEN t.status IN ${TERMINAL_TASK_SQL} THEN 1 ELSE 0 END) = COUNT(t.id)`,
+      )
+      .all()
+
+    checked += allTerminalInProgress.length
+    for (const row of allTerminalInProgress) {
+      violations.push({
+        file: row.file_path,
+        message: `Blueprint '${row.slug}' has all ${row.total} tasks done/dropped but is still in 'in-progress/' — move it to completed/ or reopen a task`,
+      })
+    }
+
+    // -----------------------------------------------------------------------
+    // 6. completed blueprints with a non-terminal task (status untruthful)
+    // -----------------------------------------------------------------------
+    const completedWithOpenTasks = db
+      .prepare<[], { slug: string; file_path: string }>(
+        `SELECT b.slug, b.file_path
+         FROM blueprints b
+         WHERE b.status = 'completed'
+           AND EXISTS (
+             SELECT 1 FROM tasks t
+             WHERE t.blueprint_slug = b.slug
+               AND t.status NOT IN ${TERMINAL_TASK_SQL}
+           )`,
+      )
+      .all()
+
+    checked += completedWithOpenTasks.length
+    for (const row of completedWithOpenTasks) {
+      violations.push({
+        file: row.file_path,
+        message: `Blueprint '${row.slug}' is marked completed but has tasks that are not done/dropped`,
+      })
+    }
+
+    // -----------------------------------------------------------------------
+    // 7. WIP limit — at most WIP_IN_PROGRESS_MAX blueprints in the in-progress lane
+    // -----------------------------------------------------------------------
+    const inProgressCountRows = db
+      .prepare<[], { n: number }>(`SELECT COUNT(*) AS n FROM blueprints WHERE status = 'in-progress'`)
+      .all()
+    const inProgressCount = inProgressCountRows[0]?.n ?? 0
+    checked += 1
+    if (inProgressCount > WIP_IN_PROGRESS_MAX) {
+      violations.push({
+        message: `${inProgressCount} blueprints are in-progress — the lane limit is ${WIP_IN_PROGRESS_MAX}; finish or park some before starting more`,
       })
     }
 
