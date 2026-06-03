@@ -20,7 +20,6 @@ import path from 'node:path'
 import { parseBlueprint } from '#core/parser'
 import { openDb } from '#db/connection.js'
 import { ingestAll } from '#db/ingester.js'
-import { migrateLegacyAgentDb } from '#db/legacy-migration.js'
 import {
   resolveBlueprintProjectionDbPath,
   withMarkdownWriteLock,
@@ -173,9 +172,6 @@ export interface PromoteBlueprintResult {
 // ---------------------------------------------------------------------------
 
 function dbPath(cwd: string): string {
-  // Migrate any legacy `.agent/.blueprints.db` once per process per repo
-  // before resolving the canonical worktree-scoped path.
-  migrateLegacyAgentDb(cwd)
   return resolveBlueprintProjectionDbPath(cwd)
 }
 

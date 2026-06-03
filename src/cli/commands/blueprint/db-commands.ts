@@ -6,7 +6,6 @@ import path from 'node:path'
 import { coldStartIfNeeded } from '#db/cold-start.js'
 import { openDb } from '#db/connection.js'
 import { ingestAll } from '#db/ingester.js'
-import { migrateLegacyAgentDb } from '#db/legacy-migration.js'
 import { resolveBlueprintProjectionDbPath, withProjectionDbWriteLock } from '#db/paths.js'
 import { runTemplate } from '#db/template-runner.js'
 
@@ -17,8 +16,6 @@ import { runTemplate } from '#db/template-runner.js'
 const METADATA_FILENAME = '.datasette-metadata.json'
 
 function agentDbPath(projectRoot: string): string {
-  // Migrate any legacy DB (idempotent + memoized) before resolving canonical path.
-  migrateLegacyAgentDb(projectRoot)
   return resolveBlueprintProjectionDbPath(projectRoot)
 }
 

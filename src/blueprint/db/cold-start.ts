@@ -3,7 +3,6 @@ import path from 'node:path'
 
 import { openDb } from './connection.js'
 import { ingestAll } from './ingester.js'
-import { migrateLegacyAgentDb } from './legacy-migration.js'
 import { resolveBlueprintProjectionDbPath, withProjectionDbWriteLock } from './paths.js'
 import { recordProjectionMetadata } from '#freshness.js'
 
@@ -16,9 +15,6 @@ export interface ColdStartResult {
 
 export async function coldStartIfNeeded(cwd: string): Promise<ColdStartResult> {
   const start = Date.now()
-
-  // F12/R10/E12: detect+migrate legacy `.agent/.blueprints.db` once per repo.
-  migrateLegacyAgentDb(cwd)
 
   const target = resolveBlueprintProjectionDbPath(cwd)
 

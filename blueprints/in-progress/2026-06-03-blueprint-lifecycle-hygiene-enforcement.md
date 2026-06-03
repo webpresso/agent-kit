@@ -6,7 +6,7 @@ status: in-progress
 complexity: L
 created: '2026-06-03'
 last_updated: '2026-06-03'
-progress: '13% (foundation audit rewrite and progress-rollup slice in flight, updated 2026-06-03)'
+progress: '20% (foundation audit rewrite, progress-rollup, and legacy-migration removal slices are in flight, updated 2026-06-03)'
 review_target: internal agent-kit governance
 depends_on: []
 cross_repo_depends_on: []
@@ -208,7 +208,7 @@ before `/pll`.
 
 #### [infra] Task 0.0: De-duplicate blueprint slugs + add a `slug-uniqueness` check (A1)
 
-**Status:** todo
+**Status:** in-progress
 
 **Depends:** None
 
