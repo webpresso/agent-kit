@@ -12,29 +12,12 @@ function readManifestRaw(): string {
   return readFileSync(PLUGIN_JSON, 'utf-8')
 }
 
-interface HookHandler {
-  type: string
-  command: string
-}
-
-interface HookEntry {
-  matcher?: string
-  hooks: HookHandler[]
-}
-
 interface PluginManifest {
   name: string
   version: string
   description: string
   skills: string
   commands: string
-  hooks: {
-    PreToolUse: HookEntry[]
-    PostToolUse: HookEntry[]
-    Stop: HookEntry[]
-    UserPromptSubmit: HookEntry[]
-    SessionStart: HookEntry[]
-  }
   mcpServers: Record<string, { command: string; args: string[] }>
 }
 
@@ -62,46 +45,19 @@ describe('plugin.json manifest', () => {
     expect(readManifest().commands).toBe('./commands')
   })
 
-  describe('hooks', () => {
-    it('PreToolUse matches Bash|Edit|Write|MultiEdit|WebFetch|Read|Grep and points at the stable node wrapper', () => {
-      const [entry] = readManifest().hooks.PreToolUse
-      expect(entry!.matcher).toBe('Bash|Edit|Write|MultiEdit|WebFetch|Read|Grep')
-      const [handler] = entry!.hooks
-      expect(handler!.type).toBe('command')
-      expect(handler!.command).toBe(`node ${PLUGIN_ROOT_VAR}/bin/wp-pretool-guard.js`)
-    })
-
-    it('PostToolUse matches Edit|Write and points at lint-after-edit', () => {
-      const [entry] = readManifest().hooks.PostToolUse
-      expect(entry!.matcher).toBe('Edit|Write')
-      const [handler] = entry!.hooks
-      expect(handler!.type).toBe('command')
-      expect(handler!.command).toBe(`node ${PLUGIN_ROOT_VAR}/bin/wp-post-tool.js`)
-    })
-
-    it('Stop has no matcher and points at qa-changed-files', () => {
-      const [entry] = readManifest().hooks.Stop
-      expect(entry!.matcher).toBeUndefined()
-      const [handler] = entry!.hooks
-      expect(handler!.type).toBe('command')
-      expect(handler!.command).toBe(`node ${PLUGIN_ROOT_VAR}/bin/wp-stop-qa.js`)
-    })
-
-    it('UserPromptSubmit points at guard-switch', () => {
-      const [entry] = readManifest().hooks.UserPromptSubmit
-      expect(entry!.matcher).toBeUndefined()
-      const [handler] = entry!.hooks
-      expect(handler!.type).toBe('command')
-      expect(handler!.command).toBe(`node ${PLUGIN_ROOT_VAR}/bin/wp-guard-switch.js`)
-    })
-
-    it('SessionStart matches startup|resume|compact and points at the stable session-start wrapper', () => {
-      const [entry] = readManifest().hooks.SessionStart
-      expect(entry!.matcher).toBe('startup|resume|compact')
-      const [handler] = entry!.hooks
-      expect(handler!.type).toBe('command')
-      expect(handler!.command).toBe(`node ${PLUGIN_ROOT_VAR}/bin/wp-sessionstart-routing.js`)
-    })
+  // Hooks are intentionally NOT declared in the plugin manifest. `wp setup`
+  // single-sources them into the consumer's .claude/settings.json instead.
+  // Declaring them here too would DOUBLE-FIRE: Claude Code does not dedup hooks
+  // across sources unless the command strings are identical, and the manifest's
+  // `node ${CLAUDE_PLUGIN_ROOT}/bin/*.js` command differs from the setup-written
+  // `.sh` launcher — so both run on every tool call (verified via a controlled
+  // `--plugin-dir` repro: a manifest hook and a settings.json hook with
+  // different commands both executed on a single Bash tool call). Plugin
+  // manifest hooks are also the less reliable surface (they fail to load in
+  // several Claude Code contexts), so settings.json is the single source.
+  it('declares NO hooks (single-sourced via wp setup into .claude/settings.json)', () => {
+    const manifest = JSON.parse(readManifestRaw()) as Record<string, unknown>
+    expect(manifest.hooks).toBeUndefined()
   })
 
   describe('mcpServers', () => {
