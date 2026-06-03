@@ -1,7 +1,7 @@
 import type { CAC } from 'cac'
 
+import { auditBlueprintLifecycleSql } from '#audit/blueprint-lifecycle-sql'
 import {
-  auditBlueprintLifecycle,
   auditCatalogDrift,
   auditDocsFrontmatter,
   formatRepoAuditReport,
@@ -11,7 +11,7 @@ export interface RunDoctorOptions {
   root?: string
   docsRoot?: string
   fix?: boolean
-  legacyOmx?: boolean
+  omxPlans?: boolean
 }
 
 const REMEDIATIONS: Record<string, string> = {
@@ -30,9 +30,7 @@ export async function runDoctor(options: RunDoctorOptions = {}): Promise<number>
         docsRoot: options.docsRoot,
         fix: options.fix,
       }),
-      auditBlueprintLifecycle(root, {
-        includeLegacyOmx: options.legacyOmx,
-      }),
+      await auditBlueprintLifecycleSql(root, { includeOmxPlans: options.omxPlans }),
     ]
 
     let failed = false
@@ -66,7 +64,7 @@ export function registerDoctorCommand(cli: CAC): void {
     .option('--root <dir>', 'Repository root to inspect')
     .option('--docs-root <dir>', 'Docs directory for docs-frontmatter')
     .option('--fix', 'Apply supported safe fixes during doctor (currently docs-frontmatter)')
-    .option('--legacy-omx', 'Include legacy .omx plan checks for blueprint-lifecycle')
+    .option('--omx-plans', 'Also audit .omx/plans derived-handoff governance for blueprint-lifecycle')
     .action(async (options: RunDoctorOptions) => {
       const code = await runDoctor(options)
       return code

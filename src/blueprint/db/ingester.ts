@@ -89,6 +89,15 @@ function upsertBlueprint(db: Database, filePath: string, blueprintRoot: string):
   const slug = deriveSlugFromBlueprintPath(filePath, blueprintRoot)
   const parsed = parseBlueprintForDb(content, filePath, slug)
 
+  // progress_pct: done-only roll-up over parsed tasks (single source of truth =
+  // the task checkboxes/status, never a hand-entered frontmatter field). `null`
+  // when there are no tasks (prose-completed plans, parent-roadmaps) so the
+  // "completed but < 100%" audit check skips them rather than flagging 0%.
+  const totalTaskCount = parsed.tasks.length
+  const doneTaskCount = parsed.tasks.filter((task) => task.status === 'done').length
+  const progressPct =
+    totalTaskCount === 0 ? null : Math.round((doneTaskCount / totalTaskCount) * 100)
+
   const now = Date.now()
 
   const upsertBp = db.prepare<
@@ -197,7 +206,7 @@ function upsertBlueprint(db: Database, filePath: string, blueprintRoot: string):
       parsed.created,
       parsed.lastUpdated,
       parsed.completedAt,
-      null, // progress_pct
+      progressPct, // progress_pct (done-only roll-up from tasks)
       null, // progress_text
       parsed.filePath,
       parsed.byteSize,

@@ -39,7 +39,7 @@ export interface DocsFrontmatterOptions {
 export interface BlueprintLifecycleOptions {
   blueprintsRoot?: string
   statuses?: readonly string[]
-  includeLegacyOmx?: boolean
+  includeOmxPlans?: boolean
 }
 
 export interface CommitMessageOptions {
@@ -382,8 +382,8 @@ export function auditBlueprintLifecycle(
     }
   }
 
-  if (options.includeLegacyOmx === true) {
-    const legacy = auditLegacyOmxPlans(root)
+  if (options.includeOmxPlans === true) {
+    const legacy = auditOmxPlanHandoffs(root)
     checked += legacy.checked
     violations.push(...legacy.violations)
   }
@@ -694,7 +694,7 @@ function applyDocsFrontmatterFix(
   return `${markdown.slice(0, end)}\n${lines.join('\n')}${markdown.slice(end)}`
 }
 
-function auditLegacyOmxPlans(root: string): {
+function auditOmxPlanHandoffs(root: string): {
   checked: number
   violations: RepoAuditViolation[]
 } {

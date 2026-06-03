@@ -1,29 +1,27 @@
 /**
- * `wp audit blueprint-lifecycle-sql` — SQL-backed rewrite of the existing
- * blueprint-lifecycle audit.
+ * `wp audit blueprint-lifecycle` — the single, deterministic blueprint-lifecycle
+ * audit.
  *
- * Uses the SQLite replica as the primary source when the DB file exists.
- * Falls back to the markdown-based audit when the DB has not been built yet.
+ * The verdict is a pure function of `markdown@HEAD`: this builds an EPHEMERAL
+ * in-memory SQLite projection from the repo's blueprint markdown
+ * (`buildEphemeralProjection`), runs the relational checks against it, and
+ * discards it. It also runs the structural markdown checks
+ * (`auditBlueprintLifecycle` — type / status-vs-folder / `_overview.md` presence /
+ * linking-frontmatter) and merges both result sets. No persistent on-disk
+ * projection is read, so the audit can never hit a stale/missing/locked DB and
+ * is identical across CLI, the `wp_audit` MCP tool, `wp doctor`, and CI.
  *
- * SQL checks (when DB exists):
+ * Relational checks (against the in-memory projection):
  * 1. Blueprints with status='in-progress' that have 0 tasks (invalid).
  * 2. Blueprints whose `status` column doesn't match the directory segment
- *    derived from `file_path` (e.g. stored in completed/ but status=in-progress).
+ *    derived from `file_path`.
  * 3. Tasks in state 'in-progress' whose dependencies are not all done.
  * 4. Blueprints with progress_pct < 100 but status='completed'.
  */
 
-import path from 'node:path'
-import { existsSync } from 'node:fs'
-
-import { migrateLegacyAgentDb } from '#db/legacy-migration.js'
-import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
+import { buildEphemeralProjection } from '#db/ephemeral-projection.js'
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
-
-// Legacy fallback path — kept for the brief window where a migration may have
-// just-happened (Task 1.1 / F12 / R10 / E12). Worktree-scoped path is canonical.
-const LEGACY_DB_PATH = path.join('.agent', '.blueprints.db')
 
 interface BlueprintStatusRow {
   slug: string
@@ -39,34 +37,27 @@ interface TaskInProgressRow {
   status: string
 }
 
-export async function auditBlueprintLifecycleSql(cwd: string): Promise<RepoAuditResult> {
-  // F12/R10/E12: trigger one-shot migration before resolving the DB so a stray
-  // legacy file is moved (and gone) before we count rows. After this call the
-  // canonical worktree-scoped path is the single source of truth.
-  migrateLegacyAgentDb(cwd)
+export interface BlueprintLifecycleAuditOptions {
+  /** Opt-in: also audit `.omx/plans/` derived-handoff governance (`--legacy-omx`). */
+  readonly includeOmxPlans?: boolean
+}
 
-  // Prefer the canonical worktree-scoped path. If the migration failed because
-  // the destination already existed, the warning is already logged; we trust
-  // the canonical DB and never read the legacy file in addition, which would
-  // double-count rows.
-  let dbFile: string
-  try {
-    dbFile = resolveBlueprintProjectionDbPath(cwd)
-  } catch {
-    dbFile = path.join(cwd, LEGACY_DB_PATH)
-  }
+export async function auditBlueprintLifecycleSql(
+  cwd: string = process.cwd(),
+  options: BlueprintLifecycleAuditOptions = {},
+): Promise<RepoAuditResult> {
+  // Structural markdown checks (type / status-vs-folder / _overview / linking /
+  // optional .omx-plan handoff governance). Run unconditionally and merged —
+  // this is NOT a fallback. Dynamic import keeps the heavy guardrails module off
+  // the hook-runtime hot path until the audit runs.
+  const { auditBlueprintLifecycle } = await import('./repo-guardrails.js')
+  const structural = auditBlueprintLifecycle(cwd, options)
 
-  if (!existsSync(dbFile)) {
-    // DB not yet built — fall back to markdown-based audit
-    const { auditBlueprintLifecycle } = await import('./repo-guardrails.js')
-    return auditBlueprintLifecycle(cwd)
-  }
+  const violations: RepoAuditViolation[] = [...structural.violations]
+  let checked = structural.checked
 
-  const { Database } = await import('#db/sqlite.js')
-  const db = new Database(dbFile, { readonly: true })
-
-  const violations: RepoAuditViolation[] = []
-  let checked = 0
+  const conn = await buildEphemeralProjection(cwd)
+  const { db } = conn
 
   try {
     const allBlueprints = db
@@ -74,14 +65,6 @@ export async function auditBlueprintLifecycleSql(cwd: string): Promise<RepoAudit
         'SELECT slug, status, file_path, progress_pct FROM blueprints',
       )
       .all()
-
-    if (allBlueprints.length === 0) {
-      const { auditBlueprintLifecycle } = await import('./repo-guardrails.js')
-      const markdownAudit = auditBlueprintLifecycle(cwd)
-      if (markdownAudit.checked > 0) {
-        return markdownAudit
-      }
-    }
 
     // -----------------------------------------------------------------------
     // 1. in-progress blueprints with 0 tasks
@@ -107,12 +90,10 @@ export async function auditBlueprintLifecycleSql(cwd: string): Promise<RepoAudit
 
     // -----------------------------------------------------------------------
     // 2. status/directory mismatch
-    //    Derive the directory segment from the file_path and compare to status.
     //    Blueprint file_path convention: blueprints/<status>/<slug>/_overview.md
     // -----------------------------------------------------------------------
     checked += allBlueprints.length
     for (const row of allBlueprints) {
-      // Derive directory status from the path: second segment after 'blueprints/'
       const segments = row.file_path.replace(/\\/g, '/').split('/')
       const blueprintsIdx = segments.lastIndexOf('blueprints')
       const dirStatus = blueprintsIdx >= 0 ? segments[blueprintsIdx + 1] : null
@@ -173,11 +154,11 @@ export async function auditBlueprintLifecycleSql(cwd: string): Promise<RepoAudit
 
     return {
       ok: violations.length === 0,
-      title: 'Blueprint lifecycle (SQL)',
+      title: 'Blueprint lifecycle',
       checked,
       violations,
     }
   } finally {
-    db.close()
+    conn.close()
   }
 }

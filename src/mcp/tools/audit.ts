@@ -158,8 +158,10 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
       }
     }
     case 'blueprint-lifecycle': {
-      const { auditBlueprintLifecycle } = await import('#audit/repo-guardrails')
-      const auditResult = auditBlueprintLifecycle(input.cwd ?? input.directory ?? process.cwd())
+      const { auditBlueprintLifecycleSql } = await import('#audit/blueprint-lifecycle-sql')
+      const auditResult = await auditBlueprintLifecycleSql(
+        input.cwd ?? input.directory ?? process.cwd(),
+      )
       return {
         passed: auditResult.ok,
         summary: summarizeRepoAudit(kind, auditResult),

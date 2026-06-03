@@ -2,11 +2,11 @@
 type: blueprint
 title: Blueprint lifecycle hygiene enforcement
 owner: ozby
-status: planned
+status: in-progress
 complexity: L
 created: '2026-06-03'
 last_updated: '2026-06-03'
-progress: '0% (0/15 tasks done, 0 blocked, updated 2026-06-03)'
+progress: '13% (foundation audit rewrite and progress-rollup slice in flight, updated 2026-06-03)'
 review_target: internal agent-kit governance
 depends_on: []
 cross_repo_depends_on: []
@@ -32,12 +32,12 @@ surfaces) so that honest status, fresh metadata, legal transitions, a
 non-stale README, and "no done work left in-progress" are all checked in CI and
 at edit time — not left to discipline.
 
-> **Planning note:** Produced from a three-agent investigation, then hardened
+> **Execution note:** Produced from a three-agent investigation, then hardened
 > through plan-refine (fact-check + adversarial + cross-plan), a `/codex review`
 > second opinion, and a deep-interview that **resolved all 9 open questions** (see
-> the **Decisions** section). No design questions remain open — the blueprint is
-> execution-ready in `planned/`; the only
-> remaining work is execution (Task 0.0 de-dup + Task 0.6 backfill).
+> the **Decisions** section). No design questions remain open — execution has
+> started on the foundation audit rewrite and progress-rollup slice; the
+> remaining work is completing the task graph below.
 
 ## Product wedge anchor
 
@@ -884,8 +884,8 @@ pattern per repo precedent, e.g. `.changeset/blueprint-lifecycle-hygiene.md`).
 
 ## Decisions (resolved 2026-06-03 via deep-interview)
 
-All 9 open questions are answered. The blueprint is ready for execution from
-`planned/` (pending the execution of Task 0.0 de-dup + Task 0.6 backfill, which the plan
+All 9 open questions are answered. The blueprint is now in active execution
+from `in-progress/` (pending the execution of Task 0.0 de-dup + Task 0.6 backfill, which the plan
 already sequences).
 
 | # | Question | Decision | Affects |
@@ -1008,6 +1008,6 @@ is YAGNI (already flagged drop/merge).
 | Findings total | 8 fact-check (F1-F8) + 9 adversarial (A1-A9) + 6 codex (C1-C6) + exec/skeptic/cross-plan |
 | CRITICAL / P1 | 1 (A1) + 3 codex P1 (C1-C3) |
 | Tasks (orig → now) | 12 → 15 (added 0.0, 0.5, 0.6, 4.2; dropped 3.2) |
-| Verdict | **READY for execution from `planned/`** — all 9 open questions resolved via deep-interview (2026-06-03) and folded into the tasks + Decisions Log. Remaining work is execution (Task 0.0 de-dup + 0.6 backfill), not open design questions. |
+| Verdict | **IN EXECUTION** — all 9 open questions were resolved via deep-interview (2026-06-03), and the foundation implementation slice is underway. Remaining work is completing the task graph and backfill, not resolving design ambiguity. |
 | Highest risk | False enforcement coverage (C1/C6/0.4): a check that's registered but doesn't actually run on the MCP/CI/pre-ingest surface |
 | Reviews run | plan-refine Phases 1-6 + `/codex review` + deep-interview — three review passes + decision interview |

@@ -15,28 +15,20 @@ function tempRepo(): string {
 
 function buildFakeCli() {
   let registeredAction:
-    | ((options: {
-        root?: string
-        docsRoot?: string
-        fix?: boolean
-        legacyOmx?: boolean
-      }) => Promise<number>)
+    | ((options: { root?: string; docsRoot?: string; fix?: boolean }) => Promise<number>)
     | undefined
 
+  // Flexible chainable stub: `.option()` is chainable any number of times and
+  // `.action()` is always available — not coupled to the exact option count.
+  const chain = {
+    option: (_flag: string, _desc: string) => chain,
+    action: (fn: typeof registeredAction) => {
+      registeredAction = fn
+    },
+  }
+
   const cli = {
-    command: (_name: string, _desc: string) => ({
-      option: (_flag: string, _desc: string) => ({
-        option: (_flag2: string, _desc2: string) => ({
-          option: (_flag3: string, _desc3: string) => ({
-            option: (_flag4: string, _desc4: string) => ({
-              action: (fn: typeof registeredAction) => {
-                registeredAction = fn
-              },
-            }),
-          }),
-        }),
-      }),
-    }),
+    command: (_name: string, _desc: string) => chain,
     getAction: () => registeredAction,
   }
 
