@@ -240,7 +240,7 @@ slug) rather than silently `ON CONFLICT DO UPDATE`-overwriting. Note the
 
 - [ ] Two blueprints with the same derived slug → violation naming both paths
 - [ ] Ingester refuses/flags a duplicate DB slug instead of silently overwriting (C6)
-- [ ] The live `…toolchain-isolation.md` duplicate is resolved (one canonical copy)
+- [x] The live `…toolchain-isolation.md` duplicate is resolved (one canonical copy)
 - [ ] Scoped lint + tests pass
 
 #### [infra] Task 0.1: CORE — one markdown→ephemeral-`:memory:` audit; delete persistent read path + markdown fallback; unify CLI/MCP (Option B)
