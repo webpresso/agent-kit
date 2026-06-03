@@ -32,11 +32,11 @@ surfaces) so that honest status, fresh metadata, legal transitions, a
 non-stale README, and "no done work left in-progress" are all checked in CI and
 at edit time — not left to discipline.
 
-> **Draft note:** Produced from a three-agent investigation, then hardened
+> **Planning note:** Produced from a three-agent investigation, then hardened
 > through plan-refine (fact-check + adversarial + cross-plan), a `/codex review`
 > second opinion, and a deep-interview that **resolved all 9 open questions** (see
-> the **Decisions** section). No design questions remain open — the draft is ready
-> to promote to `planned/` once the plan-audit checklist passes; the only
+> the **Decisions** section). No design questions remain open — the blueprint is
+> execution-ready in `planned/`; the only
 > remaining work is execution (Task 0.0 de-dup + Task 0.6 backfill).
 
 ## Product wedge anchor
@@ -47,8 +47,9 @@ at edit time — not left to discipline.
   bar in the workspace `CLAUDE.md`. Blueprint hygiene is part of the dev-workflow
   product agent-kit ships.
 - **Consuming surface:** `wp audit blueprint-lifecycle` (CLI + the `wp_audit`
-  MCP tool) run in `.github/workflows/ci.webpresso.yml`, and the pretool-guard
-  hook (`ak-pretool-guard`) that fires on every agent `git mv` / blueprint edit.
+  MCP tool) run in `.github/workflows/ci.webpresso.yml`, and the canonical
+  pretool-guard hook (`wp-pretool-guard`) that fires on every agent `git mv` /
+  blueprint edit.
 - **New user-visible capability:** a maintainer (or agent) running `wp audit
   blueprint-lifecycle` gets told, with a fixable message, when a blueprint is
   done-but-stuck, lying about progress, stale, illegally moved, or when the
@@ -180,18 +181,30 @@ before `/pll`.
 
 ---
 
-### Phase 0: Foundation — make the existing audit honest and CI-wired [Complexity: M]
+### Phase 0: Foundation — decouple the audit from the persistent DB [Complexity: M]
 
-> **(A1 — CRITICAL prerequisite, found in Phase 3 adversarial review.)** The slug
-> is derived from the **filename only** (`document-paths.ts:48-49`,
-> `second.slice(0,-3)`) and is the `blueprints` table PRIMARY KEY with
-> `ON CONFLICT(slug) DO UPDATE` (`ingester.ts:115-119`). Verified the repo
-> **currently** has the same filename in two state dirs —
-> `in-progress/2026-06-02-agent-kit-wp-deploy-orchestrator-toolchain-isolation.md`
-> **and** `planned/2026-06-02-…toolchain-isolation.md` — so they collapse to one
-> DB row; whichever ingests last wins and the other's status/tasks vanish. **Every
-> DB-derived check in this plan (0.2, 1.1, 1.2, 2.2, 3.x) reads a corrupted
-> substrate until this is fixed.** Task 0.0 is a hard gate on the rest of Phase 0.
+> **REVISED 2026-06-03 (plan-eng-review, Option B).** The audit no longer reads a
+> persistent on-disk projection. The single `blueprint-lifecycle` audit now parses
+> `blueprints/**` markdown and builds an **ephemeral in-memory SQLite projection**
+> (`:memory:`, via the existing ingester), runs the SQL checks, and discards it —
+> deterministic, zero persistent files, identical in CLI / MCP / CI. SQLite stays
+> the MCP query store (settled). Root cause this fixes: the audit died opening a
+> per-worktree persistent DB read-only (`blueprint-lifecycle-sql.ts:66`), and that
+> keying minted **126 ungc'd `blueprints.db` files across 87 repoKeys** under
+> `~/Library/Application Support/webpresso/`.
+>
+> **Phase 0 task changes vs the pre-fold version:**
+> - **0.1 = the core**: markdown → ephemeral `:memory:` projection audit; delete the persistent-DB read path **and** the markdown-fallback (`auditBlueprintLifecycle`); unify CLI+MCP on it; remove the `-sql` double-registration.
+> - **0.4 replaced**: was "DB-in-CI vs markdown-parity BLOCKER" (now moot) → **delete legacy migration** (`legacy-migration.ts`, `LEGACY_*`, `.agent/.blueprints.db`).
+> - **0.2 reframed**: `progress_pct` from task roll-up lives in the shared ingester → benefits both the ephemeral audit projection and the persistent MCP projection.
+> - **0.7 (new)**: persistent MCP projection → **per-repo keying** (not per-worktree) + GC + one-time prune of the 126 strays.
+> - **0.0 simplified**: slug-uniqueness is a **file-level** check (the ephemeral ingest also surfaces collisions); keep the persistent-ingester dup guard for the MCP side.
+>
+> **(A1, reframed.)** Slug is derived from filename only (`document-paths.ts:48`);
+> the repo currently has `2026-06-02-…toolchain-isolation.md` in **both**
+> `in-progress/` and `planned/`. Two files → one slug still collides in the
+> ephemeral projection's ingest, so the file-level slug-uniqueness check (0.0)
+> remains a real gate. Resolve the live duplicate before relying on any per-slug logic.
 
 #### [infra] Task 0.0: De-duplicate blueprint slugs + add a `slug-uniqueness` check (A1)
 
@@ -230,54 +243,50 @@ slug) rather than silently `ON CONFLICT DO UPDATE`-overwriting. Note the
 - [ ] The live `…toolchain-isolation.md` duplicate is resolved (one canonical copy)
 - [ ] Scoped lint + tests pass
 
-#### [infra] Task 0.1: Deduplicate the `blueprint-lifecycle` dispatch (remove `-sql` double-run)
+#### [infra] Task 0.1: CORE — one markdown→ephemeral-`:memory:` audit; delete persistent read path + markdown fallback; unify CLI/MCP (Option B)
 
 **Status:** todo
 
 **Depends:** None
 
-**(Phase 4 re-scope — the "add to `AUDIT_KINDS`" sub-goal is already done.)**
-Verified against committed source (`9494eced`): `audit-kinds.ts` now exists and
-`'blueprint-lifecycle'` is **already** in `AUDIT_KINDS` (it is a valid `wp_audit`
-kind today). The **still-valid** work: `blueprint-lifecycle` and
-`blueprint-lifecycle-sql` both dispatch to `auditBlueprintLifecycleSql`
-(`audit.ts:37-38` and `:109-110`) and `audit-core.ts:32` still carries the
-`'blueprint-lifecycle-sql'` union member, so `guardrails` runs it twice. Remove
-the duplicate `-sql` dispatch + union member (keep a deprecated alias only if a
-grep — **including consumer repos `ingest-lens`/`edge-matte` CI**, per A8 — finds
-a reference). **Re-verify all `file:line` citations after the in-flight
-`no-first-party-mjs-audit-rollout` lands (it owns these registration files).**
+The single source of the breakage and the divergence. Build a
+`buildEphemeralProjection(cwd)` that parses `blueprints/**` markdown (existing
+parser) and ingests into a `new Database(':memory:')` via the **existing
+ingester** (shared code → no schema drift), returns the DB. Rewrite the
+`blueprint-lifecycle` audit to call it, run the SQL checks, and close it. Then:
 
-**(C1 — CLI and MCP run DIFFERENT audits today; codex finding, the plan's #1
-premise was wrong.)** Verified: the CLI dispatches `blueprint-lifecycle` to the
-**SQL** audit (`audit.ts:37` → `auditBlueprintLifecycleSql`), but the **MCP**
-`wp_audit` tool dispatches the **markdown** audit
-(`src/mcp/tools/audit.ts:160-162` → `auditBlueprintLifecycle` from
-`repo-guardrails`). So every new SQL-side check in this plan would be invisible to
-`wp_audit` — yet the Product wedge anchor names "CLI **and** the `wp_audit` MCP
-tool" as the same consuming surface. **Point the MCP dispatch at the same audit
-as the CLI** (or, paired with Task 0.4's markdown-parity option, ensure both
-surfaces run the same check set). Without this, the MCP tool silently under-enforces.
+- **Delete the persistent-DB read path** (`blueprint-lifecycle-sql.ts:66`
+  `new Database(dbFile,{readonly:true})`, the `existsSync(dbFile)` gate, and the
+  `resolveBlueprintProjectionDbPath`-for-audit usage). No on-disk projection is
+  read by the audit ever again — kills the CANTOPEN/stale/WAL-readonly failure.
+- **Delete the markdown fallback** (`auditBlueprintLifecycle` in
+  `repo-guardrails.ts`) — there is now ONE audit, not a SQL-path + weaker-markdown
+  fallback. (C1/divergence + the non-determinism die together.)
+- **Unify dispatch**: CLI (`audit.ts:37`) and MCP (`src/mcp/tools/audit.ts:160-162`,
+  which today calls the markdown audit) both point at the one audit. Remove the
+  `blueprint-lifecycle-sql` double-registration (`audit.ts:109-110`,
+  `audit-core.ts:32`); grep consumer repos (`ingest-lens`/`edge-matte` CI) before
+  dropping the alias (A8).
+
+`'blueprint-lifecycle'` is already in `AUDIT_KINDS` (committed `9494eced`).
+Re-verify `file:line` after the in-flight `no-first-party-mjs-audit-rollout` lands.
 
 **Files:**
 
-- Modify: `src/cli/commands/audit.ts` (remove duplicate `-sql` dispatch)
-- Modify: `src/cli/commands/audit-core.ts` (drop `'blueprint-lifecycle-sql'` union member)
-- Modify: `src/mcp/tools/audit.ts` (`:160-162` — align MCP dispatch with the CLI audit) **(C1)**
-- Create/Modify: dispatch + registration tests next to the above (assert CLI and MCP run the same checks)
+- Create: `buildEphemeralProjection` helper (next to the ingester) + tests
+- Rewrite: `src/audit/blueprint-lifecycle-sql.ts` → ephemeral-projection audit (or rename to `blueprint-lifecycle.ts`)
+- Delete: the persistent-read path + `auditBlueprintLifecycle` markdown fallback in `src/audit/repo-guardrails.ts`
+- Modify: `src/cli/commands/audit.ts`, `src/cli/commands/audit-core.ts`, `src/mcp/tools/audit.ts` (unify dispatch, drop `-sql`)
+- Tests: audit runs identically with **no** persistent DB present; CLI + MCP exercise the same checks; runs once in `guardrails`
 
-**Steps (TDD):**
-
-1. Write a failing test asserting `blueprint-lifecycle` runs exactly once in `guardrails` **and** that CLI + MCP exercise the same check set.
-2. Run the scoped test recipe — verify FAIL.
-3. Collapse the registration; align the MCP dispatch; remove the double dispatch.
-4. Run the scoped test recipe — verify PASS.
+**Steps (TDD):** failing test (audit green/red identically with zero host state, CLI==MCP) → build ephemeral projection + rewrite audit + delete fallback/persistent-read → green.
 
 **Acceptance:**
 
-- [ ] `blueprint-lifecycle` runs exactly once under `wp audit guardrails`
-- [ ] **CLI `wp audit blueprint-lifecycle` and MCP `wp_audit(blueprint-lifecycle)` run the same check set** (C1)
-- [ ] No stray `blueprint-lifecycle-sql` kind without a referenced consumer
+- [ ] Audit builds an in-memory projection from markdown each run; reads **no** on-disk DB
+- [ ] CLI `wp audit blueprint-lifecycle` and MCP `wp_audit(blueprint-lifecycle)` run the **same** single audit
+- [ ] Deterministic on a fresh checkout with zero `~/Library/.../webpresso` state (CANTOPEN gone; no fallback)
+- [ ] `guardrails` runs it exactly once; no stray `blueprint-lifecycle-sql` kind
 - [ ] Scoped lint + tests pass
 
 #### [infra] Task 0.2: Compute `progress_pct` from the task roll-up at ingest
@@ -366,33 +375,60 @@ tasks. **Decided:** `dropped` is terminal (deep-interview).
 - [ ] `assertBlueprintCanComplete`, finalize, promote, and transition agree on terminal = `done ∪ dropped`
 - [ ] Existing transition tests stay green; scoped lint + tests pass
 
-#### [qa] Task 0.4: Decide DB-in-CI vs markdown-parity — **BLOCKER for all SQL-side value**
+#### [infra] Task 0.4: Delete the legacy `.agent/.blueprints.db` migration machinery
 
 **Status:** todo
 
-**Depends:** None
+**Depends:** Task 0.1
 
-**(Elevated — Phase 3 executor note.)** Verified: the CI `wp-audits` job
-(`ci.webpresso.yml:129`, checkout `:134`) runs `bun src/cli/cli.ts audit
-guardrails` (`:156`) and does **not** build `.blueprints.db` first. So today the
-SQL path *always* falls back to `auditBlueprintLifecycle` (`repo-guardrails.ts:302`),
-which has none of the SQL checks — meaning **every new SQL check in this plan
-(1.1, 1.2, 2.2-audit, 3.1, 3.2) is INERT in CI** until this is resolved. This is
-not "decide later"; it gates the whole SQL-side value. Choose: (a) add a
-"build projection DB" step before `audit guardrails` in CI, or (b) port the
-checks to a markdown-derived roll-up so the fallback has parity. (a) is preferred
-if a build step exists.
+**(Replaces the old "DB-in-CI vs markdown-parity BLOCKER" — moot under Option B:
+the audit builds its projection in memory, so there's no CI build step and no
+markdown fallback to keep at parity.)** With the audit decoupled, the
+pre-worktree-scoping legacy path is dead weight (pre-1.0, no external consumers).
+Delete it outright — no back-compat shim:
+
+- Delete `src/blueprint/db/legacy-migration.ts` + `migrateLegacyAgentDb` call sites.
+- Delete `LEGACY_AGENT_DIR` / `LEGACY_DB_FILENAME` / `LEGACY_LOCK_FILENAME` and the `.agent/.blueprints.db` fallbacks in `src/blueprint/db/paths.ts`.
+- A non-git directory now resolves to a single explicit temp/in-memory path, not `.agent/`.
 
 **Files:**
 
-- Modify: `src/audit/blueprint-lifecycle-sql.ts` and/or CI workflow (`.github/workflows/ci.webpresso.yml`)
-- Create: a test that runs the audit with **no** DB present and asserts the core checks still fire
+- Delete: `src/blueprint/db/legacy-migration.ts` (+ its test)
+- Modify: `src/blueprint/db/paths.ts` (drop `LEGACY_*` + legacy fallbacks), `blueprint-lifecycle-sql.ts` (drop the `migrateLegacyAgentDb` call), any other call sites
+- Tests: removal doesn't break non-git resolution
 
 **Acceptance:**
 
-- [ ] CI provably exercises the SQL checks (DB built first) OR the fallback has parity
-- [ ] Audit detects a done-but-in-progress / status≠dir violation with no DB present
-- [ ] Documented which path (build-DB-first vs markdown-parity) was chosen and why
+- [ ] `legacy-migration.ts` and all `LEGACY_*` constants/`.agent/.blueprints.db` handling are gone
+- [ ] No remaining reference to `migrateLegacyAgentDb`
+- [ ] Scoped lint + tests pass
+
+#### [infra] Task 0.7: Persistent MCP projection — per-repo keying + GC + prune strays
+
+**Status:** todo
+
+**Depends:** Task 0.1
+
+**(The sprawl fix for the MCP-side persistent projection — the audit no longer
+reads it, but MCP query/list/FTS still does.)** Verified: keying is
+`sha256(realpath(git-common-dir))[:16]/worktree/sha256(realpath(toplevel))[:8]`
+(`state-root.ts:57-70`) → **126 `blueprints.db` files across 87 repoKeys**, several
+repoKeys with 12–16 per-worktree DBs, zero GC, under `~/Library/Application
+Support/webpresso/`. Re-key the persistent projection to **per-repo** (drop the
+per-worktree segment for this surface; worktrees of one repo share the markdown
+anyway), add a GC pass (prune DBs whose repo path no longer exists / LRU TTL), and
+a one-time cleanup of the existing strays.
+
+**Files:**
+
+- Modify: `src/blueprint/db/paths.ts` / `src/paths/state-root.ts` (per-repo keying for the projection surface)
+- Create: GC routine + one-time prune + tests
+
+**Acceptance:**
+
+- [ ] Persistent projection path is per-repo, not per-worktree
+- [ ] GC prunes orphaned/stale projection DBs; one-time prune clears the 126 strays
+- [ ] MCP `wp_blueprint_list/get/query` still resolve the projection correctly
 - [ ] Scoped lint + tests pass
 
 #### [qa] Task 0.6: Backfill existing blueprints to the new contract (A2/A4)
@@ -848,8 +884,8 @@ pattern per repo precedent, e.g. `.changeset/blueprint-lifecycle-hygiene.md`).
 
 ## Decisions (resolved 2026-06-03 via deep-interview)
 
-All 9 open questions are answered. The draft is unblocked for `draft → planned`
-(pending the execution of Task 0.0 de-dup + Task 0.6 backfill, which the plan
+All 9 open questions are answered. The blueprint is ready for execution from
+`planned/` (pending the execution of Task 0.0 de-dup + Task 0.6 backfill, which the plan
 already sequences).
 
 | # | Question | Decision | Affects |
@@ -972,6 +1008,6 @@ is YAGNI (already flagged drop/merge).
 | Findings total | 8 fact-check (F1-F8) + 9 adversarial (A1-A9) + 6 codex (C1-C6) + exec/skeptic/cross-plan |
 | CRITICAL / P1 | 1 (A1) + 3 codex P1 (C1-C3) |
 | Tasks (orig → now) | 12 → 15 (added 0.0, 0.5, 0.6, 4.2; dropped 3.2) |
-| Verdict | **READY for `planned`** — all 9 open questions resolved via deep-interview (2026-06-03) and folded into the tasks + Decisions Log. Remaining work is execution (Task 0.0 de-dup + 0.6 backfill), not open design questions. |
+| Verdict | **READY for execution from `planned/`** — all 9 open questions resolved via deep-interview (2026-06-03) and folded into the tasks + Decisions Log. Remaining work is execution (Task 0.0 de-dup + 0.6 backfill), not open design questions. |
 | Highest risk | False enforcement coverage (C1/C6/0.4): a check that's registered but doesn't actually run on the MCP/CI/pre-ingest surface |
 | Reviews run | plan-refine Phases 1-6 + `/codex review` + deep-interview — three review passes + decision interview |
