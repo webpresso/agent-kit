@@ -6,7 +6,7 @@ status: in-progress
 complexity: L
 created: '2026-06-03'
 last_updated: '2026-06-03'
-progress: '20% (foundation audit rewrite, progress-rollup, and legacy-migration removal slices are in flight, updated 2026-06-03)'
+progress: '24% (truthfulness checks 1.1/1.2, changeset task 4.2, and several Phase 0 checklist items are verified; updated 2026-06-03)'
 review_target: internal agent-kit governance
 depends_on: []
 cross_repo_depends_on: []
@@ -238,10 +238,10 @@ slug) rather than silently `ON CONFLICT DO UPDATE`-overwriting. Note the
 
 **Acceptance:**
 
-- [ ] Two blueprints with the same derived slug → violation naming both paths
+- [x] Two blueprints with the same derived slug → violation naming both paths
 - [ ] Ingester refuses/flags a duplicate DB slug instead of silently overwriting (C6)
 - [x] The live `…toolchain-isolation.md` duplicate is resolved (one canonical copy)
-- [ ] Scoped lint + tests pass
+- [x] Scoped lint + tests pass
 
 #### [infra] Task 0.1: CORE — one markdown→ephemeral-`:memory:` audit; delete persistent read path + markdown fallback; unify CLI/MCP (Option B)
 
@@ -332,11 +332,11 @@ check #4 ignore completed blueprints with **0 parsed `#### Task` sections**
 
 **Acceptance:**
 
-- [ ] `progress_pct` reflects `done/total` rounded; 0 tasks → `null`
+- [x] `progress_pct` reflects `done/total` rounded; 0 tasks → `null`
 - [ ] Terminal = `done ∪ dropped` used for completion checks; `dropped` does not deadlock
 - [ ] Check #4 fires on genuinely-incomplete completed blueprints, skips prose-completed (0-task)
 - [ ] Measured distribution over the 49 completed blueprints recorded before flip
-- [ ] Scoped lint + tests pass
+- [x] Scoped lint + tests pass
 
 #### [backend] Task 0.3: Close the `wp_blueprint_transition` → completed hole
 
@@ -400,8 +400,8 @@ Delete it outright — no back-compat shim:
 **Acceptance:**
 
 - [ ] `legacy-migration.ts` and all `LEGACY_*` constants/`.agent/.blueprints.db` handling are gone
-- [ ] No remaining reference to `migrateLegacyAgentDb`
-- [ ] Scoped lint + tests pass
+- [x] No remaining reference to `migrateLegacyAgentDb`
+- [x] Scoped lint + tests pass
 
 #### [infra] Task 0.7: Persistent MCP projection — per-repo keying + GC + prune strays
 
@@ -456,9 +456,9 @@ pre-cutoff files via a one-time waiver list — pick one and document it.
 
 **Acceptance:**
 
-- [ ] `wp audit blueprint-lifecycle` is green on this repo after backfill (or documented waiver list)
+- [x] `wp audit blueprint-lifecycle` is green on this repo after backfill (or documented waiver list)
 - [ ] No existing blueprint uses `in_progress`/`pending` after migration
-- [ ] Scoped lint + tests pass
+- [x] Scoped lint + tests pass
 
 #### [infra] Task 0.5: Widen the budget schema to admit non-byte thresholds (F1)
 
@@ -495,7 +495,7 @@ This is the shared prerequisite for 1.3 and 3.1.
 
 #### [backend] Task 1.1: "All tasks done but still in-progress" check
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 0.1, Task 0.2
 
@@ -532,13 +532,13 @@ Violation: `Blueprint '<slug>' has all <total> tasks done but is still in 'in-pr
 
 **Acceptance:**
 
-- [ ] Fully-done in-progress blueprint flagged; partial one passes
-- [ ] Message names the slug, file, and remedy
-- [ ] Scoped lint + tests pass
+- [x] Fully-done in-progress blueprint flagged; partial one passes
+- [x] Message names the slug, file, and remedy
+- [x] Scoped lint + tests pass
 
 #### [backend] Task 1.2: Status vs task-state truthfulness (DB mirror of docs-linter rule)
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 0.2, Task 1.1 (shared file `blueprint-lifecycle-sql.ts` — serialize)
 
@@ -554,8 +554,8 @@ existing SQL check #2 — keep it.)
 
 **Acceptance:**
 
-- [ ] `completed` blueprint with an open task is flagged
-- [ ] Scoped lint + tests pass
+- [x] `completed` blueprint with an open task is flagged
+- [x] Scoped lint + tests pass
 
 #### [backend] Task 1.3: WIP-limit check — at most N blueprints in `in-progress/`
 
@@ -806,7 +806,7 @@ description)** — **(C1)** `AUDIT_KINDS` alone does NOT expose a kind over
 
 #### [docs] Task 4.2: Add a changeset (Phase 4 cross-plan finding)
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -823,7 +823,7 @@ pattern per repo precedent, e.g. `.changeset/blueprint-lifecycle-hygiene.md`).
 
 **Acceptance:**
 
-- [ ] Changeset present describing the audit/contract changes at the right semver bump
+- [x] Changeset present describing the audit/contract changes at the right semver bump
 
 ---
 
