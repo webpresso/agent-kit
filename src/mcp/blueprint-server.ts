@@ -1451,6 +1451,11 @@ async function handleFinalize(
 function assertBlueprintCanComplete(overviewPath: string, slug: string): void {
   const markdown = readFileSync(overviewPath, 'utf8')
   const blueprint = parseBlueprint(markdown, slug)
+  // NOTE: the MCP markdown parser's task-status union is todo|in_progress|blocked|done
+  // (no `dropped`), so completion requires every task `done` here. The
+  // terminal = done ∪ dropped semantics live on the DB/audit side; honoring them
+  // on this gate too requires the MCP parser to recognize `dropped` (follow-up,
+  // tied to the task-status-spelling convergence).
   const unfinished = blueprint.tasks.filter((task) => task.status !== 'done')
   if (unfinished.length > 0) {
     const list = unfinished.map((task) => `${task.id} (${task.status})`).join(', ')
@@ -2378,6 +2383,19 @@ async function handleBlueprintTransition(
   const root = resolveBlueprintRoot(projectCwd)
   const found = findBlueprintDir(root, slug, ALL_STATES)
   if (!found) return err('wp_blueprint_transition failed', `Blueprint "${slug}" not found on disk`)
+  // Transitioning to `completed` must satisfy the same open-task gate as
+  // finalize/promote — otherwise this path is a hole that completes a blueprint
+  // with unfinished work. (terminal = done ∪ dropped, see assertBlueprintCanComplete.)
+  if (to_state === 'completed') {
+    try {
+      assertBlueprintCanComplete(found.path, slug)
+    } catch (error) {
+      return err(
+        'wp_blueprint_transition failed',
+        error instanceof Error ? error.message : String(error),
+      )
+    }
+  }
   try {
     const refreshed = await applyLocalBlueprintTransition({
       found,

@@ -42,7 +42,7 @@ export const lifecycleBlueprintStatusSchema = z.enum([
 /**
  * Canonical task statuses for blueprint lifecycle management.
  */
-export const taskStatusSchema = z.enum(['todo', 'in_progress', 'blocked', 'done'])
+export const taskStatusSchema = z.enum(['todo', 'in_progress', 'blocked', 'done', 'dropped'])
 
 /**
  * Valid complexity values using t-shirt sizing.

@@ -36,7 +36,7 @@ const EXECUTABLE_BLUEPRINT_STATUSES = new Set([
   'completed',
   'archived',
 ])
-const TASK_STATUSES = new Set(['todo', 'in_progress', 'blocked', 'done'])
+const TASK_STATUSES = new Set(['todo', 'in_progress', 'blocked', 'done', 'dropped'])
 
 /**
  * Result of finding wrong task headers.
@@ -364,7 +364,7 @@ function createTaskStatusInvalidError(
     file: filePath,
     severity: 'error',
     source: 'blueprint-format',
-    message: `Task ${taskId} has invalid status "${status}". Use only: todo, in_progress, blocked, done.`,
+    message: `Task ${taskId} has invalid status "${status}". Use only: todo, in_progress, blocked, done, dropped.`,
     ruleId: 'blueprint-task-status-invalid',
   }
 }

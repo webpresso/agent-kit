@@ -165,4 +165,23 @@ describe('wp_blueprint_transition', () => {
     const data = parseResult(result) as { failures: string[] }
     expect(data.failures[0]).toMatch(/product wedge anchor/i)
   })
+
+  it('refuses to transition directly to completed while a task is still open (closes the finalize-bypass hole)', async () => {
+    const getResult = await callTool(tools, 'wp_blueprint_get', {
+      project_id: tmpDir,
+      slug: TRANSITION_SLUG,
+    })
+    const before = parseResult(getResult) as { content_hash: string }
+
+    const result = await callTool(tools, 'wp_blueprint_transition', {
+      project_id: tmpDir,
+      slug: TRANSITION_SLUG,
+      to_state: 'completed',
+      expected_version: before.content_hash,
+    })
+
+    expect(result.isError).toStrictEqual(true)
+    const data = parseResult(result) as { failures: string[] }
+    expect(data.failures.some((f) => /not done/i.test(f))).toBe(true)
+  })
 })
