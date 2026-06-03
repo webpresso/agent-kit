@@ -4,63 +4,6 @@
   "description": "Webpresso agent-kit: blueprints, skills, lore commit protocol, tech-debt lifecycle",
   "skills": "./skills",
   "commands": "./commands",
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash|Edit|Write|MultiEdit|WebFetch|Read|Grep",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/bin/wp-pretool-guard.js"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/bin/wp-post-tool.js",
-            "timeout": 15
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/bin/wp-stop-qa.js"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/bin/wp-guard-switch.js",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": "startup|resume|compact",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node ${CLAUDE_PLUGIN_ROOT}/bin/wp-sessionstart-routing.js"
-          }
-        ]
-      }
-    ]
-  },
   "mcpServers": {
     "webpresso": {
       "command": "node",
