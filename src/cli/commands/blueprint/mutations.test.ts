@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { openDb } from '#db/connection.js'
 import { ingestBlueprints } from '#db/ingester.js'
+import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 
 import {
   _setSyncAdapterForCli,
@@ -108,7 +109,7 @@ ${TASK_VERIFICATION_BLOCK}
 - [x] Done
 
 #### Task 1.2: Incomplete task
-**Status:** in_progress
+**Status:** in-progress
 - [ ] Still going
 `
 
@@ -125,10 +126,17 @@ function makeRepo(blueprintSlug: string, content: string, state = 'planned'): st
   return dir
 }
 
+function makeFlatRepo(blueprintSlug: string, content: string, state = 'planned'): string {
+  const dir = mkdtempSync(path.join(tmpdir(), 'wp-mutations-flat-test-'))
+  mkdirSync(path.join(dir, 'blueprints', state), { recursive: true })
+  writeFileSync(path.join(dir, 'blueprints', state, `${blueprintSlug}.md`), content, 'utf8')
+  writeFileSync(path.join(dir, 'package.json'), '{"name":"test-consumer"}', 'utf8')
+  return dir
+}
+
 async function seedDb(repoDir: string): Promise<void> {
-  const agentDir = path.join(repoDir, '.agent')
-  mkdirSync(agentDir, { recursive: true })
-  const dbFilePath = path.join(agentDir, '.blueprints.db')
+  const dbFilePath = resolveBlueprintProjectionDbPath(repoDir)
+  mkdirSync(path.dirname(dbFilePath), { recursive: true })
   const conn = openDb(dbFilePath)
   try {
     await ingestBlueprints({ db: conn.db, cwd: repoDir })
@@ -142,7 +150,7 @@ function readOverview(repoDir: string, slug: string, state: string): string {
 }
 
 function queryTaskStatus(repoDir: string, blueprintSlug: string, taskId: string): string | null {
-  const dbFilePath = path.join(repoDir, '.agent', '.blueprints.db')
+  const dbFilePath = resolveBlueprintProjectionDbPath(repoDir)
   const conn = openDb(dbFilePath)
   try {
     const row = conn.db
@@ -157,7 +165,7 @@ function queryTaskStatus(repoDir: string, blueprintSlug: string, taskId: string)
 }
 
 function queryBlueprintStatus(repoDir: string, slug: string): string | null {
-  const dbFilePath = path.join(repoDir, '.agent', '.blueprints.db')
+  const dbFilePath = resolveBlueprintProjectionDbPath(repoDir)
   const conn = openDb(dbFilePath)
   try {
     const row = conn.db
@@ -340,6 +348,18 @@ describe('finalizeBlueprint', () => {
     const result = await finalizeBlueprint(tmpRepoDir, 'completable')
     expect(result.newState).toBe('completed')
     expect(result.newPath).toContain(path.join('completed', 'completable'))
+  })
+
+  it('finalizes flat-file blueprints through the same mutation path', async () => {
+    tmpRepoDir = makeFlatRepo('flat-completable', OVERVIEW_ALL_DONE, 'in-progress')
+
+    const result = await finalizeBlueprint(tmpRepoDir, 'flat-completable')
+
+    expect(result.newState).toBe('completed')
+    expect(result.newPath).toContain(path.join('completed', 'flat-completable.md'))
+    expect(() =>
+      readFileSync(path.join(tmpRepoDir, 'blueprints', 'completed', 'flat-completable.md'), 'utf8'),
+    ).not.toThrow()
   })
 
   it('refuses when tasks are not done', async () => {

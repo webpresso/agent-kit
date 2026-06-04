@@ -81,7 +81,7 @@ describe('applyBlueprintLifecycle', () => {
       type: 'task_start',
       taskId: '1.1',
     })
-    expect(started.markdown).toContain('**Status:** in_progress')
+    expect(started.markdown).toContain('**Status:** in-progress')
 
     const blocked = applyBlueprintLifecycle(started.markdown, 'planned/sample-blueprint', {
       type: 'task_block',
@@ -105,7 +105,7 @@ describe('applyBlueprintLifecycle', () => {
 
     expect(startedTask.targetStatus).toBe('in-progress')
     expect(startedTask.markdown).toContain('status: in-progress')
-    expect(startedTask.markdown).toContain('**Status:** in_progress')
+    expect(startedTask.markdown).toContain('**Status:** in-progress')
   })
 
   it('unblocks tasks back to todo and clears blocked reason', () => {

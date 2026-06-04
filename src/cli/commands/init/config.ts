@@ -24,6 +24,11 @@ export interface AgentkitConfig {
   installed: {
     tier3Skills: string[]
   }
+  audit?: {
+    toolchainIsolation?: {
+      allowDependencies?: string[]
+    }
+  }
   hosts?: {
     selected: AgentHost[]
     requiredCapabilities: string[]
@@ -74,6 +79,7 @@ function parseConfigFile(path: string): AgentkitConfig | null {
     const raw = readFileSync(path, 'utf8')
     const parsed = JSON.parse(raw) as Partial<AgentkitConfig>
     const installed = parsed.installed as Partial<AgentkitConfig['installed']> | undefined
+    const audit = parsed.audit as Partial<NonNullable<AgentkitConfig['audit']>> | undefined
     const mcp = parsed.mcp as Partial<NonNullable<AgentkitConfig['mcp']>> | undefined
     const hosts = parsed.hosts as Partial<NonNullable<AgentkitConfig['hosts']>> | undefined
     const rules = parsed.rules as Partial<AgentkitConfig['rules']> | undefined
@@ -107,6 +113,20 @@ function parseConfigFile(path: string): AgentkitConfig | null {
             ...(scriptRoutes ? { scriptRoutes } : {}),
           }
         : undefined
+    const rawToolchainIsolation = audit?.toolchainIsolation as
+      | Partial<NonNullable<NonNullable<AgentkitConfig['audit']>['toolchainIsolation']>>
+      | undefined
+    const allowDependencies = Array.isArray(rawToolchainIsolation?.allowDependencies)
+      ? rawToolchainIsolation.allowDependencies.filter((value): value is string => typeof value === 'string')
+      : undefined
+    const normalizedAudit =
+      allowDependencies && allowDependencies.length > 0
+        ? {
+            toolchainIsolation: {
+              allowDependencies,
+            },
+          }
+        : undefined
     const selectedHosts = Array.isArray(hosts?.selected)
       ? hosts.selected.filter((s): s is AgentHost =>
           ['codex', 'claude', 'opencode'].includes(String(s)),
@@ -127,6 +147,7 @@ function parseConfigFile(path: string): AgentkitConfig | null {
         requiredCapabilities,
         ...(visibility ? { visibility } : {}),
       },
+      ...(normalizedAudit ? { audit: normalizedAudit } : {}),
       ...(normalizedMcp ? { mcp: normalizedMcp } : {}),
       ...(normalizedGuard ? { guard: normalizedGuard } : {}),
       rules: { overrides: overrides.filter((s): s is string => typeof s === 'string') },
@@ -173,6 +194,20 @@ export function mergeConfig(
           ...incoming.mcp,
         }
       : undefined
+  const mergedAllowDependencies = Array.from(
+    new Set([
+      ...(existing.audit?.toolchainIsolation?.allowDependencies ?? []),
+      ...(incoming.audit?.toolchainIsolation?.allowDependencies ?? []),
+    ]),
+  ).toSorted()
+  const mergedAudit =
+    mergedAllowDependencies.length > 0
+      ? {
+          toolchainIsolation: {
+            allowDependencies: mergedAllowDependencies,
+          },
+        }
+      : undefined
   const mergedScriptRoutes =
     existing.guard?.scriptRoutes || incoming.guard?.scriptRoutes
       ? { ...existing.guard?.scriptRoutes, ...incoming.guard?.scriptRoutes }
@@ -189,6 +224,7 @@ export function mergeConfig(
     version: incoming.version,
     installed: { tier3Skills: tier3 },
     hosts: incoming.hosts ?? existing.hosts,
+    ...(mergedAudit ? { audit: mergedAudit } : {}),
     ...(mergedMcp ? { mcp: mergedMcp } : {}),
     ...(mergedGuard ? { guard: mergedGuard } : {}),
     rules: { overrides },

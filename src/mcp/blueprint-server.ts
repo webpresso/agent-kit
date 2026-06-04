@@ -677,9 +677,22 @@ function runValidate(filePath: string): { valid: boolean; gaps: string[] } {
   } catch (e) {
     return { valid: false, gaps: [`Frontmatter parse error: ${toStr(e)}`] }
   }
-  for (const f of ['type', 'title', 'status', 'complexity', 'owner'] as const) {
+  const blueprintStatus = String((fm.data as Record<string, unknown>)['status'] ?? '').trim()
+  const requiredFields =
+    blueprintStatus === 'draft'
+      ? (['type', 'status'] as const)
+      : (['type', 'title', 'status', 'complexity', 'owner', 'last_updated'] as const)
+  for (const f of requiredFields) {
     const v = (fm.data as Record<string, unknown>)[f]
     if (!v || String(v).trim() === '') gaps.push(`Missing or empty frontmatter field: ${f}`)
+  }
+  const complexity = String((fm.data as Record<string, unknown>)['complexity'] ?? '').trim()
+  if (complexity && !['XS', 'S', 'M', 'L', 'XL'].includes(complexity)) {
+    gaps.push(`Invalid frontmatter field: complexity (${complexity})`)
+  }
+  const lastUpdated = String((fm.data as Record<string, unknown>)['last_updated'] ?? '').trim()
+  if (lastUpdated && !/^\d{4}-\d{2}-\d{2}$/.test(lastUpdated.replace(/^['"]|['"]$/g, ''))) {
+    gaps.push(`Invalid frontmatter field: last_updated (${lastUpdated})`)
   }
   const body = fm.content
   const taskHeaderRegex = /^####\s+(?:\[[^\]]+\]\s+)?Task\s+\S/m
@@ -1451,12 +1464,9 @@ async function handleFinalize(
 function assertBlueprintCanComplete(overviewPath: string, slug: string): void {
   const markdown = readFileSync(overviewPath, 'utf8')
   const blueprint = parseBlueprint(markdown, slug)
-  // NOTE: the MCP markdown parser's task-status union is todo|in_progress|blocked|done
-  // (no `dropped`), so completion requires every task `done` here. The
-  // terminal = done ∪ dropped semantics live on the DB/audit side; honoring them
-  // on this gate too requires the MCP parser to recognize `dropped` (follow-up,
-  // tied to the task-status-spelling convergence).
-  const unfinished = blueprint.tasks.filter((task) => task.status !== 'done')
+  const unfinished = blueprint.tasks.filter(
+    (task) => task.status !== 'done' && task.status !== 'dropped',
+  )
   if (unfinished.length > 0) {
     const list = unfinished.map((task) => `${task.id} (${task.status})`).join(', ')
     throw new Error(`Cannot complete "${slug}": the following tasks are not done: ${list}`)
@@ -1464,7 +1474,7 @@ function assertBlueprintCanComplete(overviewPath: string, slug: string): void {
 
   assertAllTasksHaveCanonicalPassingEvidence(
     markdown,
-    blueprint.tasks.map((task) => task.id),
+    blueprint.tasks.filter((task) => task.status !== 'dropped').map((task) => task.id),
   )
 }
 

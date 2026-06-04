@@ -1,5 +1,7 @@
 ---
 type: blueprint
+title: MCP managed Vitest launcher finalization
+owner: ozby
 status: planned
 complexity: M
 created: '2026-06-01'

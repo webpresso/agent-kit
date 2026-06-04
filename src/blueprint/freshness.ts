@@ -49,6 +49,8 @@ export interface ProjectionMetadata {
   readonly head_at_ingest: string | null
   /** Epoch milliseconds at which the projection was last written. */
   readonly ingested_at: number
+  /** Absolute worktree path that produced this projection, when known. */
+  readonly worktree_path?: string
 }
 
 export type FreshnessResult =
@@ -86,10 +88,11 @@ export function readCurrentHead(cwd: string): string | null {
 
 function isProjectionMetadata(value: unknown): value is ProjectionMetadata {
   if (value === null || typeof value !== 'object') return false
-  const obj = value as { head_at_ingest?: unknown; ingested_at?: unknown }
+  const obj = value as { head_at_ingest?: unknown; ingested_at?: unknown; worktree_path?: unknown }
   const headOk = obj.head_at_ingest === null || typeof obj.head_at_ingest === 'string'
   const tsOk = typeof obj.ingested_at === 'number' && Number.isFinite(obj.ingested_at)
-  return headOk && tsOk
+  const worktreeOk = obj.worktree_path === undefined || typeof obj.worktree_path === 'string'
+  return headOk && tsOk && worktreeOk
 }
 
 // ---------------------------------------------------------------------------
@@ -123,6 +126,7 @@ export function recordProjectionMetadata(input: RecordProjectionMetadataInput): 
   const metadata: ProjectionMetadata = {
     head_at_ingest: readCurrentHead(input.cwd),
     ingested_at: input.ingestedAt,
+    worktree_path: input.cwd,
   }
   writeFileSync(sidecarPath(input.dbPath), JSON.stringify(metadata, null, 2) + '\n', 'utf8')
   return metadata

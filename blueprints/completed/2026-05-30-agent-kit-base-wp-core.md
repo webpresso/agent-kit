@@ -1,5 +1,7 @@
 ---
 type: blueprint
+title: "Agent Kit: base `wp` core"
+owner: ozby
 status: completed
 complexity: L
 created: '2026-05-30'

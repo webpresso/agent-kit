@@ -1,5 +1,7 @@
 ---
 type: blueprint
+title: Agent-kit single global native binary + MCP `-32000` fix
+owner: ozby
 status: planned
 complexity: L
 created: '2026-06-01'
@@ -169,7 +171,9 @@ root version (no drift).
 
 #### [setup] Task 1.3: `ensureAgentKitGlobal` — `vp install -g` + stage host `bin/wp`
 
-**Status:** part (a) `vp install -g` self-update **DONE + verified**; part (b) host `bin/wp`
+**Status:** blocked
+**Blocked:** Waiting on Task 1.2 / Task 1.5 to publish and stage a real host `bin/wp`; part (a) is already complete.
+**Progress note:** part (a) `vp install -g` self-update **DONE + verified**; part (b) host `bin/wp`
 staging **deferred to the publish gate (Task 1.5)** — the runtime matrix is dormant
 (`bin/runtime/` absent, runtime packages unpublished / npm 404), so there is no host
 binary to copy until Task 1.1/1.5 build + publish them. Splitting keeps the reversible

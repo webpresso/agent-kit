@@ -26,6 +26,10 @@ const blueprintLifecycleSqlMock = {
   auditBlueprintLifecycleSql: vi.fn(),
 }
 
+const blueprintReadmeDriftMock = {
+  auditBlueprintReadmeDrift: vi.fn(),
+}
+
 const agentsAuditMock = {
   auditAgents: vi.fn(),
 }
@@ -63,6 +67,7 @@ const viteLocalMock = {
 }
 
 vi.mock('#audit/repo-guardrails', () => repoGuardrailsMock)
+vi.mock('#audit/blueprint-readme-drift', () => blueprintReadmeDriftMock)
 vi.mock('#audit/blueprint-lifecycle-sql', () => blueprintLifecycleSqlMock)
 vi.mock('#audit/agents', () => agentsAuditMock)
 vi.mock('#audit/tech-debt', () => techDebtMock)
@@ -126,6 +131,7 @@ beforeEach(() => {
   cloudflareDeployContractMock.auditCloudflareDeployContract.mockReset()
   absolutePathPolicyMock.auditAbsolutePathPolicy.mockReset()
   noFirstPartyMjsMock.auditNoFirstPartyMjs.mockReset()
+  blueprintReadmeDriftMock.auditBlueprintReadmeDrift.mockReset()
   blueprintLifecycleSqlMock.auditBlueprintLifecycleSql.mockReset()
   toolchainIsolationMock.auditToolchainIsolation.mockReset()
   viteLocalMock.runBundleBudgetCli.mockReset()
@@ -158,6 +164,13 @@ describe('wp_audit tool', () => {
       repoGuardrailsMock.auditDocsFrontmatter.mockReturnValue(passingAudit())
       const result = await akAuditTool.handler({ kind: 'docs-frontmatter' })
       expect(repoGuardrailsMock.auditDocsFrontmatter).toHaveBeenCalledTimes(1)
+      expect(parsePayload(result).passed).toBe(true)
+    })
+
+    it('blueprint-readme-drift -> auditBlueprintReadmeDrift', async () => {
+      blueprintReadmeDriftMock.auditBlueprintReadmeDrift.mockReturnValue(passingAudit())
+      const result = await akAuditTool.handler({ kind: 'blueprint-readme-drift' })
+      expect(blueprintReadmeDriftMock.auditBlueprintReadmeDrift).toHaveBeenCalledTimes(1)
       expect(parsePayload(result).passed).toBe(true)
     })
 

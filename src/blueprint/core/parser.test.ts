@@ -559,7 +559,7 @@ created: 2026-01-01
       expect(result.tasks[0]!.acceptanceCriteria).toEqual({ total: 3, checked: 3 })
     })
 
-    it('derives in_progress when ONE checkbox is checked out of many (checked > 0 and checked < total)', () => {
+    it('derives in-progress when ONE checkbox is checked out of many (checked > 0 and checked < total)', () => {
       const plan = `---
 type: blueprint
 status: in-progress
@@ -570,7 +570,7 @@ created: 2026-01-01
 # @feature
 
 #### Task 1.1: Partial
-**Status:** in_progress
+**Status:** in-progress
 
 - [x] A
 - [ ] B
@@ -601,7 +601,7 @@ created: 2026-01-01
     })
 
     it('explicit status overrides derived checkbox status', () => {
-      // derived would be 'in_progress' (1 of 2 checked) but explicit says 'blocked'
+      // derived would be 'in-progress' (1 of 2 checked) but explicit says 'blocked'
       const plan = `---
 type: blueprint
 status: in-progress
@@ -691,7 +691,7 @@ created: 2026-01-01
       expect(result.tasks[0]!.acceptanceCriteria).toEqual({ total: 0, checked: 0 })
     })
 
-    it('derives in_progress when some checkboxes are checked', () => {
+    it('derives in-progress when some checkboxes are checked', () => {
       const plan = `---
 type: blueprint
 status: in-progress
@@ -787,7 +787,7 @@ created: 2026-01-01
 ---
 # @feature
 
-#### [in_progress] Task 1.1: With status prefix
+#### [in-progress] Task 1.1: With status prefix
 **Status:** todo
 **Depends:** None
 `

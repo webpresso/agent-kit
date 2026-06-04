@@ -18,4 +18,14 @@ describe('bundled tsconfig JSON files', () => {
 
     expect(() => JSON.parse(target.toString('utf8'))).not.toThrow()
   })
+
+  it('react-library preset owns the React ambient types it requires', async () => {
+    const repositoryRoot = process.cwd()
+    const target = await readFile(join(repositoryRoot, 'src', 'config', 'tsconfig', 'react-library.json'))
+    const parsed = JSON.parse(target.toString('utf8')) as {
+      compilerOptions?: { types?: string[] }
+    }
+
+    expect(parsed.compilerOptions?.types).toEqual(['react', 'react-dom'])
+  })
 })

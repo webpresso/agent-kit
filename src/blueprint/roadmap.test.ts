@@ -47,7 +47,7 @@ parent_roadmap: roadmap-2026
 ---
 # In progress
 #### Task 1.1: Work
-**Status:** in_progress
+**Status:** in-progress
 `,
       'in-progress-child',
     )

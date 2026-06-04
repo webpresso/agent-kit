@@ -15,11 +15,10 @@ import { createHash } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
+import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 import { scanBlueprintDirectory } from '#service/scanner.js'
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
-
-const DB_PATH = path.join('.agent', '.blueprints.db')
 const _DISABLED_RESULT: RepoAuditResult = {
   ok: true,
   title: 'Blueprint DB consistency (SQL)',
@@ -48,7 +47,7 @@ export async function auditBlueprintDbConsistency(cwd: string): Promise<RepoAudi
     }
   }
 
-  const dbFile = path.join(cwd, DB_PATH)
+  const dbFile = resolveBlueprintProjectionDbPath(cwd)
   if (!existsSync(dbFile)) {
     return {
       ok: true,

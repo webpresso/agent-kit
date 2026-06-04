@@ -1058,17 +1058,25 @@ describe('blueprint lifecycle enforcement', () => {
     expect(result.message).toContain('mcp__webpresso__wp_blueprint(...)')
   })
 
-  it('blocks git mv targeting blueprint lifecycle dirs', () => {
+  it('allows a legal git mv lifecycle transition', () => {
     const result = validateForbiddenCommands(
       bashInput('git mv blueprints/draft/my-bp blueprints/planned/my-bp'),
     )
-    expect(result.passed).toBe(false)
-    expect('command' in result && result.category).toBe('blueprint')
+    expect(result.passed).toBe(true)
   })
 
-  it('blocks echo && git mv blueprints/... (git mv as sub-variant)', () => {
+  it('blocks an illegal git mv lifecycle transition and names the legal targets', () => {
     const result = validateForbiddenCommands(
-      bashInput('echo info && git mv blueprints/draft/foo blueprints/planned/foo'),
+      bashInput('git mv blueprints/draft/foo blueprints/completed/foo'),
+    )
+    expect(result.passed).toBe(false)
+    expect('command' in result && result.category).toBe('blueprint')
+    expect('message' in result && result.message).toContain('planned, archived')
+  })
+
+  it('blocks echo && illegal git mv blueprints/... (git mv as sub-variant)', () => {
+    const result = validateForbiddenCommands(
+      bashInput('echo info && git mv blueprints/draft/foo blueprints/completed/foo'),
     )
     expect(result.passed).toBe(false)
     expect('command' in result && result.category).toBe('blueprint')

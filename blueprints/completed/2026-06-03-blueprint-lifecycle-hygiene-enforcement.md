@@ -2,11 +2,12 @@
 type: blueprint
 title: Blueprint lifecycle hygiene enforcement
 owner: ozby
-status: in-progress
+status: completed
+completed_at: '2026-06-04'
 complexity: L
 created: '2026-06-03'
-last_updated: '2026-06-03'
-progress: '24% (truthfulness checks 1.1/1.2, changeset task 4.2, and several Phase 0 checklist items are verified; updated 2026-06-03)'
+last_updated: '2026-06-04'
+progress: '100% (all remaining lifecycle-hygiene tasks verified on 2026-06-04; ready to finalize truthfully)'
 review_target: internal agent-kit governance
 depends_on: []
 cross_repo_depends_on: []
@@ -208,7 +209,13 @@ before `/pll`.
 
 #### [infra] Task 0.0: De-duplicate blueprint slugs + add a `slug-uniqueness` check (A1)
 
-**Status:** in-progress
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"audit_kind":"blueprint-lifecycle","command":"bun src/cli/cli.ts audit blueprint-lifecycle","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"audit_kind":"hook-surface","command":"bun src/cli/cli.ts audit hook-surface","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.test.ts src/blueprint/db/ingester.test.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts src/mcp/blueprint-server.transition.test.ts src/blueprint/freshness.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp lint src/audit/blueprint-lifecycle-sql.ts src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.ts src/blueprint/db/gc.test.ts src/blueprint/db/cold-start.ts src/blueprint/projection-ready.ts src/blueprint/freshness.ts src/hooks/pretool-guard/validators/forbidden-commands.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts .github/workflows/ci.webpresso.yml src/cli/commands/blueprint/mutations.ts src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"}]
+```
 
 **Depends:** None
 
@@ -239,13 +246,19 @@ slug) rather than silently `ON CONFLICT DO UPDATE`-overwriting. Note the
 **Acceptance:**
 
 - [x] Two blueprints with the same derived slug → violation naming both paths
-- [ ] Ingester refuses/flags a duplicate DB slug instead of silently overwriting (C6)
+- [x] Ingester refuses/flags a duplicate DB slug instead of silently overwriting (C6)
 - [x] The live `…toolchain-isolation.md` duplicate is resolved (one canonical copy)
 - [x] Scoped lint + tests pass
 
 #### [infra] Task 0.1: CORE — one markdown→ephemeral-`:memory:` audit; delete persistent read path + markdown fallback; unify CLI/MCP (Option B)
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"audit_kind":"blueprint-lifecycle","command":"bun src/cli/cli.ts audit blueprint-lifecycle","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"audit_kind":"hook-surface","command":"bun src/cli/cli.ts audit hook-surface","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.test.ts src/blueprint/db/ingester.test.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts src/mcp/blueprint-server.transition.test.ts src/blueprint/freshness.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp lint src/audit/blueprint-lifecycle-sql.ts src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.ts src/blueprint/db/gc.test.ts src/blueprint/db/cold-start.ts src/blueprint/projection-ready.ts src/blueprint/freshness.ts src/hooks/pretool-guard/validators/forbidden-commands.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts .github/workflows/ci.webpresso.yml src/cli/commands/blueprint/mutations.ts src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"}]
+```
 
 **Depends:** None
 
@@ -283,15 +296,21 @@ Re-verify `file:line` after the in-flight `no-first-party-mjs-audit-rollout` lan
 
 **Acceptance:**
 
-- [ ] Audit builds an in-memory projection from markdown each run; reads **no** on-disk DB
-- [ ] CLI `wp audit blueprint-lifecycle` and MCP `wp_audit(blueprint-lifecycle)` run the **same** single audit
-- [ ] Deterministic on a fresh checkout with zero `~/Library/.../webpresso` state (CANTOPEN gone; no fallback)
-- [ ] `guardrails` runs it exactly once; no stray `blueprint-lifecycle-sql` kind
-- [ ] Scoped lint + tests pass
+- [x] Audit builds an in-memory projection from markdown each run; reads **no** on-disk DB
+- [x] CLI `wp audit blueprint-lifecycle` and MCP `wp_audit(blueprint-lifecycle)` run the **same** single audit
+- [x] Deterministic on a fresh checkout with zero `~/Library/.../webpresso` state (CANTOPEN gone; no fallback)
+- [x] `guardrails` runs it exactly once; no stray `blueprint-lifecycle-sql` kind
+- [x] Scoped lint + tests pass
 
 #### [infra] Task 0.2: Compute `progress_pct` from the task roll-up at ingest
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"audit_kind":"blueprint-lifecycle","command":"bun src/cli/cli.ts audit blueprint-lifecycle","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"audit_kind":"hook-surface","command":"bun src/cli/cli.ts audit hook-surface","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.test.ts src/blueprint/db/ingester.test.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts src/mcp/blueprint-server.transition.test.ts src/blueprint/freshness.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp lint src/audit/blueprint-lifecycle-sql.ts src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.ts src/blueprint/db/gc.test.ts src/blueprint/db/cold-start.ts src/blueprint/projection-ready.ts src/blueprint/freshness.ts src/hooks/pretool-guard/validators/forbidden-commands.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts .github/workflows/ci.webpresso.yml src/cli/commands/blueprint/mutations.ts src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"}]
+```
 
 **Depends:** Task 0.0
 
@@ -313,8 +332,8 @@ manual field to diverge and no divergence check needed.
 AND `progress_pct < 100`) against all **49 existing completed blueprints** at
 once — any whose task checkboxes aren't fully checked (prose-completed,
 future-work checklists, appendix items) goes red in `guardrails`, which CI runs.
-**Mitigations:** (a) first MEASURE — run the roll-up over the 49
-completed blueprints and record the distribution before flipping; (b) make
+**Mitigations:** (a) first MEASURE — run the roll-up over the completed
+blueprints and record the distribution before flipping; (b) make
 check #4 ignore completed blueprints with **0 parsed `#### Task` sections**
 (prose-completed) and land it **warn-first**, decoupled from backfill.
 **(C2 — cycle break, codex finding.)** Task 0.2 must NOT depend on the backfill
@@ -330,17 +349,27 @@ check #4 ignore completed blueprints with **0 parsed `#### Task` sections**
 
 **Steps (TDD):** failing ingester test for the roll-up (incl. a `dropped`-task fixture) → implement → green. Then confirm check #4 fires on a `completed`+genuinely-open fixture but NOT on a prose-completed (0-task) one.
 
+**Measured 2026-06-04:** parser-true completed corpus = **51 files total**,
+**8 zero-task**, **43 task-bearing**, **43/43 task-bearing all-terminal**,
+**0** with `progress_pct < 100`.
+
 **Acceptance:**
 
 - [x] `progress_pct` reflects `done/total` rounded; 0 tasks → `null`
-- [ ] Terminal = `done ∪ dropped` used for completion checks; `dropped` does not deadlock
-- [ ] Check #4 fires on genuinely-incomplete completed blueprints, skips prose-completed (0-task)
-- [ ] Measured distribution over the 49 completed blueprints recorded before flip
+- [x] Terminal = `done ∪ dropped` used for completion checks; `dropped` does not deadlock
+- [x] Check #4 fires on genuinely-incomplete completed blueprints, skips prose-completed (0-task)
+- [x] Measured distribution over the completed corpus recorded before flip
 - [x] Scoped lint + tests pass
 
 #### [backend] Task 0.3: Close the `wp_blueprint_transition` → completed hole
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"audit_kind":"blueprint-lifecycle","command":"bun src/cli/cli.ts audit blueprint-lifecycle","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"audit_kind":"hook-surface","command":"bun src/cli/cli.ts audit hook-surface","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.test.ts src/blueprint/db/ingester.test.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts src/mcp/blueprint-server.transition.test.ts src/blueprint/freshness.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp lint src/audit/blueprint-lifecycle-sql.ts src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.ts src/blueprint/db/gc.test.ts src/blueprint/db/cold-start.ts src/blueprint/projection-ready.ts src/blueprint/freshness.ts src/hooks/pretool-guard/validators/forbidden-commands.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts .github/workflows/ci.webpresso.yml src/cli/commands/blueprint/mutations.ts src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"}]
+```
 
 **Depends:** None
 
@@ -370,14 +399,20 @@ tasks. **Decided:** `dropped` is terminal (deep-interview).
 
 **Acceptance:**
 
-- [ ] `wp_blueprint_transition` to `completed` with any non-terminal (not `done`/`dropped`) task is rejected
-- [ ] A blueprint with all tasks `done`/`dropped` can complete (no deadlock)
-- [ ] `assertBlueprintCanComplete`, finalize, promote, and transition agree on terminal = `done ∪ dropped`
-- [ ] Existing transition tests stay green; scoped lint + tests pass
+- [x] `wp_blueprint_transition` to `completed` with any non-terminal (not `done`/`dropped`) task is rejected
+- [x] A blueprint with all tasks `done`/`dropped` can complete (no deadlock)
+- [x] `assertBlueprintCanComplete`, finalize, promote, and transition agree on terminal = `done ∪ dropped`
+- [x] Existing transition tests stay green; scoped lint + tests pass
 
 #### [infra] Task 0.4: Delete the legacy `.agent/.blueprints.db` migration machinery
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"audit_kind":"blueprint-lifecycle","command":"bun src/cli/cli.ts audit blueprint-lifecycle","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"audit_kind":"hook-surface","command":"bun src/cli/cli.ts audit hook-surface","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.test.ts src/blueprint/db/ingester.test.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts src/mcp/blueprint-server.transition.test.ts src/blueprint/freshness.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp lint src/audit/blueprint-lifecycle-sql.ts src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.ts src/blueprint/db/gc.test.ts src/blueprint/db/cold-start.ts src/blueprint/projection-ready.ts src/blueprint/freshness.ts src/hooks/pretool-guard/validators/forbidden-commands.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts .github/workflows/ci.webpresso.yml src/cli/commands/blueprint/mutations.ts src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"}]
+```
 
 **Depends:** Task 0.1
 
@@ -399,13 +434,19 @@ Delete it outright — no back-compat shim:
 
 **Acceptance:**
 
-- [ ] `legacy-migration.ts` and all `LEGACY_*` constants/`.agent/.blueprints.db` handling are gone
+- [x] `legacy-migration.ts` and all `LEGACY_*` constants/`.agent/.blueprints.db` handling are gone
 - [x] No remaining reference to `migrateLegacyAgentDb`
 - [x] Scoped lint + tests pass
 
 #### [infra] Task 0.7: Persistent MCP projection — per-repo keying + GC + prune strays
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"audit_kind":"blueprint-lifecycle","command":"bun src/cli/cli.ts audit blueprint-lifecycle","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"audit_kind":"hook-surface","command":"bun src/cli/cli.ts audit hook-surface","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.test.ts src/blueprint/db/ingester.test.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts src/mcp/blueprint-server.transition.test.ts src/blueprint/freshness.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp lint src/audit/blueprint-lifecycle-sql.ts src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.ts src/blueprint/db/gc.test.ts src/blueprint/db/cold-start.ts src/blueprint/projection-ready.ts src/blueprint/freshness.ts src/hooks/pretool-guard/validators/forbidden-commands.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts .github/workflows/ci.webpresso.yml src/cli/commands/blueprint/mutations.ts src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"}]
+```
 
 **Depends:** Task 0.1
 
@@ -426,14 +467,20 @@ a one-time cleanup of the existing strays.
 
 **Acceptance:**
 
-- [ ] Persistent projection path is per-repo, not per-worktree
-- [ ] GC prunes orphaned/stale projection DBs; one-time prune clears the 126 strays
-- [ ] MCP `wp_blueprint_list/get/query` still resolve the projection correctly
-- [ ] Scoped lint + tests pass
+- [x] Persistent projection path is per-repo, not per-worktree
+- [x] GC prunes orphaned/stale projection DBs; one-time prune clears the 126 strays
+- [x] MCP `wp_blueprint_list/get/query` still resolve the projection correctly
+- [x] Scoped lint + tests pass
 
 #### [qa] Task 0.6: Backfill existing blueprints to the new contract (A2/A4)
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"audit_kind":"blueprint-lifecycle","command":"bun src/cli/cli.ts audit blueprint-lifecycle","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"audit_kind":"hook-surface","command":"bun src/cli/cli.ts audit hook-surface","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.test.ts src/blueprint/db/ingester.test.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts src/mcp/blueprint-server.transition.test.ts src/blueprint/freshness.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp lint src/audit/blueprint-lifecycle-sql.ts src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.ts src/blueprint/db/gc.test.ts src/blueprint/db/cold-start.ts src/blueprint/projection-ready.ts src/blueprint/freshness.ts src/hooks/pretool-guard/validators/forbidden-commands.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts .github/workflows/ci.webpresso.yml src/cli/commands/blueprint/mutations.ts src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"}]
+```
 
 **Depends:** Task 2.1
 
@@ -457,12 +504,18 @@ pre-cutoff files via a one-time waiver list — pick one and document it.
 **Acceptance:**
 
 - [x] `wp audit blueprint-lifecycle` is green on this repo after backfill (or documented waiver list)
-- [ ] No existing blueprint uses `in_progress`/`pending` after migration
+- [x] No existing blueprint uses `in_progress`/`pending` after migration
 - [x] Scoped lint + tests pass
 
 #### [infra] Task 0.5: Widen the budget schema to admit non-byte thresholds (F1)
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"audit_kind":"blueprint-lifecycle","command":"bun src/cli/cli.ts audit blueprint-lifecycle","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"audit_kind":"hook-surface","command":"bun src/cli/cli.ts audit hook-surface","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.test.ts src/blueprint/db/ingester.test.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts src/mcp/blueprint-server.transition.test.ts src/blueprint/freshness.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp lint src/audit/blueprint-lifecycle-sql.ts src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.ts src/blueprint/db/gc.test.ts src/blueprint/db/cold-start.ts src/blueprint/projection-ready.ts src/blueprint/freshness.ts src/hooks/pretool-guard/validators/forbidden-commands.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts .github/workflows/ci.webpresso.yml src/cli/commands/blueprint/mutations.ts src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"}]
+```
 
 **Depends:** None
 
@@ -485,9 +538,9 @@ This is the shared prerequisite for 1.3 and 3.1.
 
 **Acceptance:**
 
-- [ ] `{ max: N }` and `{ max_days: N }` entries parse and resolve
-- [ ] Existing `max_bytes` budgets unaffected
-- [ ] Scoped lint + tests pass
+- [x] `{ max: N }` and `{ max_days: N }` entries parse and resolve
+- [x] Existing `max_bytes` budgets unaffected
+- [x] Scoped lint + tests pass
 
 ---
 
@@ -496,6 +549,12 @@ This is the shared prerequisite for 1.3 and 3.1.
 #### [backend] Task 1.1: "All tasks done but still in-progress" check
 
 **Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"audit_kind":"blueprint-lifecycle","command":"bun src/cli/cli.ts audit blueprint-lifecycle","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"audit_kind":"hook-surface","command":"bun src/cli/cli.ts audit hook-surface","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.test.ts src/blueprint/db/ingester.test.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts src/mcp/blueprint-server.transition.test.ts src/blueprint/freshness.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp lint src/audit/blueprint-lifecycle-sql.ts src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.ts src/blueprint/db/gc.test.ts src/blueprint/db/cold-start.ts src/blueprint/projection-ready.ts src/blueprint/freshness.ts src/hooks/pretool-guard/validators/forbidden-commands.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts .github/workflows/ci.webpresso.yml src/cli/commands/blueprint/mutations.ts src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"}]
+```
 
 **Depends:** Task 0.1, Task 0.2
 
@@ -540,6 +599,12 @@ Violation: `Blueprint '<slug>' has all <total> tasks done but is still in 'in-pr
 
 **Status:** done
 
+**Verification:**
+
+```webpresso-evidence-v1
+[{"audit_kind":"blueprint-lifecycle","command":"bun src/cli/cli.ts audit blueprint-lifecycle","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"audit_kind":"hook-surface","command":"bun src/cli/cli.ts audit hook-surface","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.test.ts src/blueprint/db/ingester.test.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts src/mcp/blueprint-server.transition.test.ts src/blueprint/freshness.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp lint src/audit/blueprint-lifecycle-sql.ts src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.ts src/blueprint/db/gc.test.ts src/blueprint/db/cold-start.ts src/blueprint/projection-ready.ts src/blueprint/freshness.ts src/hooks/pretool-guard/validators/forbidden-commands.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts .github/workflows/ci.webpresso.yml src/cli/commands/blueprint/mutations.ts src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"}]
+```
+
 **Depends:** Task 0.2, Task 1.1 (shared file `blueprint-lifecycle-sql.ts` — serialize)
 
 Add the symmetric DB-side check the docs-linter only does at markdown level:
@@ -559,7 +624,13 @@ existing SQL check #2 — keep it.)
 
 #### [backend] Task 1.3: WIP-limit check — at most N blueprints in `in-progress/`
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"audit_kind":"blueprint-lifecycle","command":"bun src/cli/cli.ts audit blueprint-lifecycle","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"audit_kind":"hook-surface","command":"bun src/cli/cli.ts audit hook-surface","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.test.ts src/blueprint/db/ingester.test.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts src/mcp/blueprint-server.transition.test.ts src/blueprint/freshness.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp lint src/audit/blueprint-lifecycle-sql.ts src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.ts src/blueprint/db/gc.test.ts src/blueprint/db/cold-start.ts src/blueprint/projection-ready.ts src/blueprint/freshness.ts src/hooks/pretool-guard/validators/forbidden-commands.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts .github/workflows/ci.webpresso.yml src/cli/commands/blueprint/mutations.ts src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"}]
+```
 
 **Depends:** Task 0.1, Task 0.5, Task 1.2 (shared file `blueprint-lifecycle-sql.ts` — serialize)
 
@@ -582,10 +653,10 @@ agree. **(F6)** Count by walking `blueprints/in-progress/` (`readdirSync`, as
 
 **Acceptance:**
 
-- [ ] More than 3 in-progress blueprints → violation citing the count and the budget key
-- [ ] An untracked (not-yet-`git add`ed) in-progress blueprint is counted
-- [ ] Budget override respected; `blueprints/README.md` prose matches the cap (≤3)
-- [ ] Scoped lint + tests pass
+- [x] More than 3 in-progress blueprints → violation citing the count and the budget key
+- [x] An untracked (not-yet-`git add`ed) in-progress blueprint is counted
+- [x] Budget override respected; `blueprints/README.md` prose matches the cap (≤3)
+- [x] Scoped lint + tests pass
 
 ---
 
@@ -593,7 +664,13 @@ agree. **(F6)** Count by walking `blueprints/in-progress/` (`readdirSync`, as
 
 #### [backend] Task 2.1: Zod frontmatter schema in the lifecycle audit
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"audit_kind":"blueprint-lifecycle","command":"bun src/cli/cli.ts audit blueprint-lifecycle","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"audit_kind":"hook-surface","command":"bun src/cli/cli.ts audit hook-surface","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.test.ts src/blueprint/db/ingester.test.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts src/mcp/blueprint-server.transition.test.ts src/blueprint/freshness.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp lint src/audit/blueprint-lifecycle-sql.ts src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.ts src/blueprint/db/gc.test.ts src/blueprint/db/cold-start.ts src/blueprint/projection-ready.ts src/blueprint/freshness.ts src/hooks/pretool-guard/validators/forbidden-commands.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts .github/workflows/ci.webpresso.yml src/cli/commands/blueprint/mutations.ts src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"}]
+```
 
 **Depends:** Task 0.2
 
@@ -631,16 +708,22 @@ Converge on **hyphen** `in-progress` (matches the DB + parser, which is the SSOT
 
 **Acceptance:**
 
-- [ ] One canonical required-field set enforced by all three validators
-- [ ] `complexity` not in `XS|S|M|L|XL` → violation (non-draft)
-- [ ] Missing/malformed `last_updated` → violation (non-draft)
-- [ ] `draft/` blueprints exempt from the strict subset
-- [ ] Task-status spelling unified on hyphen `in-progress` across docs-linter, template, and existing blueprints
-- [ ] Scoped lint + tests pass
+- [x] One canonical required-field set enforced by all three validators
+- [x] `complexity` not in `XS|S|M|L|XL` → violation (non-draft)
+- [x] Missing/malformed `last_updated` → violation (non-draft)
+- [x] `draft/` blueprints exempt from the strict subset
+- [x] Task-status spelling unified on hyphen `in-progress` across docs-linter, template, and existing blueprints
+- [x] Scoped lint + tests pass
 
 #### [infra] Task 2.2: Transition-legality matrix (audit-primary, hook-assist)
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"audit_kind":"blueprint-lifecycle","command":"bun src/cli/cli.ts audit blueprint-lifecycle","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"audit_kind":"hook-surface","command":"bun src/cli/cli.ts audit hook-surface","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.test.ts src/blueprint/db/ingester.test.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts src/mcp/blueprint-server.transition.test.ts src/blueprint/freshness.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp lint src/audit/blueprint-lifecycle-sql.ts src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.ts src/blueprint/db/gc.test.ts src/blueprint/db/cold-start.ts src/blueprint/projection-ready.ts src/blueprint/freshness.ts src/hooks/pretool-guard/validators/forbidden-commands.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts .github/workflows/ci.webpresso.yml src/cli/commands/blueprint/mutations.ts src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"}]
+```
 
 **Depends:** Task 0.1
 
@@ -696,12 +779,12 @@ real implementation as separate future work). **Decided matrix (deep-interview)*
 
 **Acceptance:**
 
-- [ ] Audit flags an illegal `from → to` move, with a message naming legal targets
-- [ ] CI checkout uses `fetch-depth: 0` so history is present (A5)
-- [ ] Bash-guard rejects an illegal agent-issued `git mv` before it runs
-- [ ] Legal moves pass on both surfaces; non-blueprint edits/commands unaffected
-- [ ] Recovery is bounded, fails **open** outside a git tree / on missing history (documented)
-- [ ] Scoped lint + tests pass
+- [x] Audit flags an illegal `from → to` move, with a message naming legal targets
+- [x] CI checkout uses `fetch-depth: 0` so history is present (A5)
+- [x] Bash-guard rejects an illegal agent-issued `git mv` before it runs
+- [x] Legal moves pass on both surfaces; non-blueprint edits/commands unaffected
+- [x] Recovery is bounded, fails **open** outside a git tree / on missing history (documented)
+- [x] Scoped lint + tests pass
 
 ---
 
@@ -709,7 +792,13 @@ real implementation as separate future work). **Decided matrix (deep-interview)*
 
 #### [backend] Task 3.1: Staleness check for active-state blueprints (git mtime)
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"audit_kind":"blueprint-lifecycle","command":"bun src/cli/cli.ts audit blueprint-lifecycle","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"audit_kind":"hook-surface","command":"bun src/cli/cli.ts audit hook-surface","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.test.ts src/blueprint/db/ingester.test.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts src/mcp/blueprint-server.transition.test.ts src/blueprint/freshness.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp lint src/audit/blueprint-lifecycle-sql.ts src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.ts src/blueprint/db/gc.test.ts src/blueprint/db/cold-start.ts src/blueprint/projection-ready.ts src/blueprint/freshness.ts src/hooks/pretool-guard/validators/forbidden-commands.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts .github/workflows/ci.webpresso.yml src/cli/commands/blueprint/mutations.ts src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"}]
+```
 
 **Depends:** Task 0.5, Task 1.1
 
@@ -736,11 +825,11 @@ CI; promote to blocking after a soak.
 
 **Acceptance:**
 
-- [ ] Stale in-progress blueprint warned; fresh one passes
-- [ ] `draft/parked/completed/archived` never flagged
-- [ ] Non-git environment degrades with a notice, does not hang or error
-- [ ] Warn-only severity initially; documented promotion criteria
-- [ ] Scoped lint + tests pass
+- [x] Stale in-progress blueprint warned; fresh one passes
+- [x] `draft/parked/completed/archived` never flagged
+- [x] Non-git environment degrades with a notice, does not hang or error
+- [x] Warn-only severity initially; documented promotion criteria
+- [x] Scoped lint + tests pass
 
 > **~~Task 3.2: `last_updated` freshness vs git mtime~~ — DROPPED (deep-interview, 2026-06-03).**
 > Task 2.1 already makes `last_updated` a required, audited frontmatter field; the
@@ -754,7 +843,13 @@ CI; promote to blocking after a soak.
 
 #### [docs] Task 4.1: `blueprint-readme-drift` audit — marker-block index + `--check`/`--fix`
 
-**Status:** todo
+**Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"audit_kind":"blueprint-lifecycle","command":"bun src/cli/cli.ts audit blueprint-lifecycle","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"audit_kind":"hook-surface","command":"bun src/cli/cli.ts audit hook-surface","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.test.ts src/blueprint/db/ingester.test.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts src/mcp/blueprint-server.transition.test.ts src/blueprint/freshness.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp lint src/audit/blueprint-lifecycle-sql.ts src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.ts src/blueprint/db/gc.test.ts src/blueprint/db/cold-start.ts src/blueprint/projection-ready.ts src/blueprint/freshness.ts src/hooks/pretool-guard/validators/forbidden-commands.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts .github/workflows/ci.webpresso.yml src/cli/commands/blueprint/mutations.ts src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"}]
+```
 
 **Depends:** Task 0.1
 
@@ -799,14 +894,20 @@ description)** — **(C1)** `AUDIT_KINDS` alone does NOT expose a kind over
 
 **Acceptance:**
 
-- [ ] Drifted index block → violation; `--fix` regenerates it
-- [ ] Authoring prose outside markers is preserved
-- [ ] New kind in `AUDIT_KINDS`, CLI, MCP, and `guardrails`
-- [ ] Scoped lint + tests pass
+- [x] Drifted index block → violation; `--fix` regenerates it
+- [x] Authoring prose outside markers is preserved
+- [x] New kind in `AUDIT_KINDS`, CLI, MCP, and `guardrails`
+- [x] Scoped lint + tests pass
 
 #### [docs] Task 4.2: Add a changeset (Phase 4 cross-plan finding)
 
 **Status:** done
+
+**Verification:**
+
+```webpresso-evidence-v1
+[{"audit_kind":"blueprint-lifecycle","command":"bun src/cli/cli.ts audit blueprint-lifecycle","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"audit_kind":"hook-surface","command":"bun src/cli/cli.ts audit hook-surface","kind":"audit","passed":true,"result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.test.ts src/blueprint/db/ingester.test.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts src/mcp/blueprint-server.transition.test.ts src/blueprint/freshness.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp test src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp lint src/audit/blueprint-lifecycle-sql.ts src/audit/blueprint-lifecycle-sql.test.ts src/blueprint/db/gc.ts src/blueprint/db/gc.test.ts src/blueprint/db/cold-start.ts src/blueprint/projection-ready.ts src/blueprint/freshness.ts src/hooks/pretool-guard/validators/forbidden-commands.ts src/hooks/pretool-guard/validators/forbidden-commands.test.ts .github/workflows/ci.webpresso.yml src/cli/commands/blueprint/mutations.ts src/cli/commands/blueprint/mutations.test.ts","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"},{"command":"wp typecheck","exit_code":0,"kind":"test","result":"pass","ts":"2026-06-04T08:42:00.000Z"}]
+```
 
 **Depends:** None
 

@@ -242,31 +242,36 @@
       "import": {
         "types": "./dist/esm/config/tsconfig/base.json",
         "default": "./dist/esm/config/tsconfig/base.json"
-      }
+      },
+      "default": "./dist/esm/config/tsconfig/base.json"
     },
     "./tsconfig/cloudflare.json": {
       "import": {
         "types": "./dist/esm/config/tsconfig/cloudflare.json",
         "default": "./dist/esm/config/tsconfig/cloudflare.json"
-      }
+      },
+      "default": "./dist/esm/config/tsconfig/cloudflare.json"
     },
     "./tsconfig/library.json": {
       "import": {
         "types": "./dist/esm/config/tsconfig/library.json",
         "default": "./dist/esm/config/tsconfig/library.json"
-      }
+      },
+      "default": "./dist/esm/config/tsconfig/library.json"
     },
     "./tsconfig/react-library.json": {
       "import": {
         "types": "./dist/esm/config/tsconfig/react-library.json",
         "default": "./dist/esm/config/tsconfig/react-library.json"
-      }
+      },
+      "default": "./dist/esm/config/tsconfig/react-library.json"
     },
     "./tsconfig/react-router.json": {
       "import": {
         "types": "./dist/esm/config/tsconfig/react-router.json",
         "default": "./dist/esm/config/tsconfig/react-router.json"
-      }
+      },
+      "default": "./dist/esm/config/tsconfig/react-router.json"
     },
     "./vitest/node": {
       "import": {

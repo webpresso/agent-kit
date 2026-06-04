@@ -1,6 +1,7 @@
 ---
 type: blueprint
 title: Ship `wp` as compiled Bun runtime artifacts while keeping the library surface Node-safe
+owner: ozby
 status: completed
 complexity: L
 created: '2026-05-29'

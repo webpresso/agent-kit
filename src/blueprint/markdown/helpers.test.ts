@@ -424,10 +424,10 @@ More content below`
 
 - [ ] Install dependencies`
 
-      const result = updateTaskStatus(input, '1.1', 'in_progress')
+      const result = updateTaskStatus(input, '1.1', 'in-progress')
 
-      expect(result).toContain('**Status:** in_progress')
-      expect(result).toMatch(/#### Task 1\.1: Setup\n+\*\*Status:\*\* in_progress/)
+      expect(result).toContain('**Status:** in-progress')
+      expect(result).toMatch(/#### Task 1\.1: Setup\n+\*\*Status:\*\* in-progress/)
     })
 
     it('updates an existing status line', () => {

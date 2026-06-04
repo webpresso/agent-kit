@@ -64,7 +64,7 @@ export function extractCheckboxStatus(section: string): CheckboxStatus {
     if (checked === total) {
       status = 'done'
     } else if (checked > 0) {
-      status = 'in_progress'
+      status = 'in-progress'
     }
   }
 

@@ -24,7 +24,9 @@ export async function toBlueprintRecord(
     const planStatus: BlueprintStatus = isBlueprintStatus(plan.status) ? plan.status : 'draft'
     const lastUpdated = plan.lastUpdated ? new Date(plan.lastUpdated) : new Date()
     const freshness = calculateFreshness(lastUpdated, planStatus)
-    const tasksCompleted = plan.tasks.filter((task) => task.status === 'done').length
+    const tasksCompleted = plan.tasks.filter(
+      (task) => task.status === 'done' || task.status === 'dropped',
+    ).length
 
     return {
       name: slug,

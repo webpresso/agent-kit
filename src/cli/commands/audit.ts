@@ -34,6 +34,10 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
   'catalog-drift': async (root) => (await import('#audit/repo-guardrails')).auditCatalogDrift(root),
   'package-surface': async (root) =>
     (await import('#audit/package-surface')).auditPackageSurface(root),
+  'blueprint-readme-drift': async (root, options) =>
+    (await import('#audit/blueprint-readme-drift')).auditBlueprintReadmeDrift(root, {
+      fix: options.fix,
+    }),
   'blueprint-lifecycle': async (root, options) =>
     (await import('#audit/blueprint-lifecycle-sql')).auditBlueprintLifecycleSql(root, {
       includeOmxPlans: options.omxPlans,

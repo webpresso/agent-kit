@@ -1,5 +1,9 @@
 ---
 type: blueprint
+title: Cross-project `wp` downstream execution map
+owner: ozby
+historical_zero_task_waiver: true
+historical_zero_task_rationale: Historical completed planning record predates the task-level blueprint format and is retained as a durable downstream execution map.
 status: completed
 complexity: L
 created: '2026-05-30'

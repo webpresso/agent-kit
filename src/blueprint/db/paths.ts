@@ -9,12 +9,10 @@
  *
  * We adopt the **two-lock** policy:
  *
- * 1. **Projection DB lock — `'worktree'` scope.**
- *    The SQLite file at `getSurfacePath('blueprints/blueprints.db', 'worktree', cwd)`
- *    is a per-worktree derived artifact. Concurrent writers in the **same**
- *    worktree (cold-start + mutation re-ingest, two ingest paths, etc.) must
- *    serialize against the projection. Cross-worktree writers target distinct
- *    DB files, so they do not need this lock.
+ * 1. **Projection DB lock — `'repo'` scope.**
+ *    The SQLite file at `getSurfacePath('blueprints/blueprints.db', 'repo', cwd)`
+ *    is a per-repo derived artifact shared by worktrees of the same repository.
+ *    Concurrent writers therefore serialize at repo scope.
  *
  * 2. **Markdown-mutation lock — `'repo'` scope.**
  *    The `blueprints/` markdown directory is git-tracked and shared across
@@ -31,26 +29,21 @@
  * raise `LockTimeoutError` on failure. Read-only paths may proceed without a
  * lock (they take a consistent SQLite snapshot regardless).
  *
- * ## Legacy fallback
+ * ## Non-git fallback
  *
  * Non-git temp repos (most tests, ad-hoc directories) cannot resolve a repo
- * key. For those we keep the historical `<cwd>/.agent/.blueprints.db` layout
- * so existing fixtures and bootstrap flows continue to work.
- *
- * For git repos that still carry a stray `.agent/.blueprints.db` from a
- * previous webpresso version, see `legacy-migration.ts`.
+ * key. Those callers use a deterministic user-state path keyed by the absolute
+ * cwd rather than writing legacy `.agent/.blueprints.db` artifacts into the
+ * repo itself.
  */
 
-import { mkdirSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { mkdirSync, realpathSync } from 'node:fs'
 import path from 'node:path'
 
 import lockfile from 'proper-lockfile'
 
-import { getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
-
-export const LEGACY_AGENT_DIR = '.agent'
-export const LEGACY_DB_FILENAME = '.blueprints.db'
-export const LEGACY_LOCK_FILENAME = '.blueprints.lock'
+import { getStateRoot, getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
 
 const SURFACE_DB = 'blueprints/blueprints.db'
 const SURFACE_DB_LOCK = 'blueprints/blueprints.db.lock'
@@ -71,37 +64,35 @@ export class LockTimeoutError extends Error {
   }
 }
 
-function legacyAgentPath(cwd: string, filename: string): string {
-  return path.join(cwd, LEGACY_AGENT_DIR, filename)
+function nonGitStatePath(cwd: string, filename: string): string {
+  const absoluteCwd = realpathSync(cwd)
+  const cwdKey = createHash('sha256').update(absoluteCwd).digest('hex').slice(0, 16)
+  return path.join(getStateRoot(), 'non-git', cwdKey, filename)
 }
 
 /**
- * Resolve the worktree-scoped projection DB path.
+ * Resolve the repo-scoped projection DB path.
  *
- * In a git repo: `<state-root>/<repoKey>/worktree/<wtKey>/blueprints/blueprints.db`.
- * Outside a git repo: legacy `<cwd>/.agent/.blueprints.db` (no isolation).
+ * In a git repo: `<state-root>/<repoKey>/blueprints/blueprints.db`.
+ * Outside a git repo: deterministic user-state fallback keyed by absolute cwd.
  */
 export function resolveBlueprintProjectionDbPath(cwd: string): string {
   try {
-    return getSurfacePath(SURFACE_DB, 'worktree', cwd)
+    return getSurfacePath(SURFACE_DB, 'repo', cwd)
   } catch (err) {
-    if (err instanceof NotInGitRepoError) return legacyAgentPath(cwd, LEGACY_DB_FILENAME)
+    if (err instanceof NotInGitRepoError) return nonGitStatePath(cwd, '.blueprints.db')
     throw err
   }
 }
 
 /**
- * Resolve the worktree-scoped lock file for the projection DB.
- *
- * Lives next to the DB so a single `mkdir -p` covers both. Cross-worktree
- * writers do not contend on this lock; see `resolveBlueprintMarkdownLockPath`
- * for the cross-worktree case.
+ * Resolve the repo-scoped lock file for the projection DB.
  */
 export function resolveBlueprintProjectionDbLockPath(cwd: string): string {
   try {
-    return getSurfacePath(SURFACE_DB_LOCK, 'worktree', cwd)
+    return getSurfacePath(SURFACE_DB_LOCK, 'repo', cwd)
   } catch (err) {
-    if (err instanceof NotInGitRepoError) return legacyAgentPath(cwd, LEGACY_LOCK_FILENAME)
+    if (err instanceof NotInGitRepoError) return nonGitStatePath(cwd, '.blueprints.lock')
     throw err
   }
 }
@@ -117,7 +108,7 @@ export function resolveBlueprintMarkdownLockPath(cwd: string): string {
     return getSurfacePath(SURFACE_MARKDOWN_LOCK, 'repo', cwd)
   } catch (err) {
     if (err instanceof NotInGitRepoError) {
-      return legacyAgentPath(cwd, '.blueprints.markdown.lock')
+      return nonGitStatePath(cwd, '.blueprints.markdown.lock')
     }
     throw err
   }
@@ -165,7 +156,7 @@ async function acquireWriteLockAt(
 }
 
 /**
- * Acquire the worktree-scoped projection-DB write lock.
+ * Acquire the repo-scoped projection-DB write lock.
  *
  * Throws `LockTimeoutError` on failure — there is no silent "proceeds anyway"
  * escape. Read-only callers should not use this helper.

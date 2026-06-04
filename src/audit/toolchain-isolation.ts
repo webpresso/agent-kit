@@ -1,6 +1,8 @@
 import { existsSync, readdirSync, readFileSync, type Dirent } from 'node:fs'
 import path from 'node:path'
 
+import { readConfig } from '#cli/commands/init/config'
+
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 
 const FORBIDDEN_DEPENDENCY_PATTERNS: readonly RegExp[] = [
@@ -32,6 +34,9 @@ type PackageJson = {
 }
 
 export function auditToolchainIsolation(root: string): RepoAuditResult {
+  const allowDependencies = new Set(
+    readConfig(root)?.audit?.toolchainIsolation?.allowDependencies ?? [],
+  )
   const packagePaths = findPackageJsonFiles(root)
   const violations: RepoAuditViolation[] = []
 
@@ -52,6 +57,7 @@ export function auditToolchainIsolation(root: string): RepoAuditResult {
     ] as const) {
       for (const depName of Object.keys(pkg[field] ?? {})) {
         if (!isForbiddenDependency(depName)) continue
+        if (allowDependencies.has(depName)) continue
         violations.push({
           file: packagePath,
           message: `${field}.${depName} is toolchain-owned; route it through @webpresso/agent-kit/wp instead of declaring it directly`,
@@ -131,6 +137,7 @@ function shouldSkipDirectory(name: string): boolean {
     '.omx',
     '.omc',
     '.codex',
+    '.windsurf',
     // Gitignored Claude Code agent surface — agent worktree scratch under
     // .claude/worktrees/* carries vendored package manifests that are not the
     // repo's own packages; walking it produces false positives on local dev

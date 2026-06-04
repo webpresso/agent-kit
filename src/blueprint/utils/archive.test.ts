@@ -123,10 +123,10 @@ describe('validateAllTasksDone', () => {
       expect(result.message).toBe('1 task incomplete: Task 1.2 (todo)')
     })
 
-    it('returns invalid for plan with in_progress tasks', () => {
+    it('returns invalid for plan with in-progress tasks', () => {
       const tasks = [
         createTask('1.1', 'Task 1', 'done', 2, 2),
-        createTask('1.2', 'Task 2', 'in_progress', 3, 2),
+        createTask('1.2', 'Task 2', 'in-progress', 3, 2),
       ]
       const plan = createPlan(tasks)
 
@@ -134,15 +134,15 @@ describe('validateAllTasksDone', () => {
 
       expect(result.valid).toBe(false)
       expect(result.incompleteTasks).toEqual([
-        { id: '1.2', title: 'Task 2', status: 'in_progress' },
+        { id: '1.2', title: 'Task 2', status: 'in-progress' },
       ])
-      expect(result.message).toBe('1 task incomplete: Task 1.2 (in_progress)')
+      expect(result.message).toBe('1 task incomplete: Task 1.2 (in-progress)')
     })
 
     it('returns invalid for plan with all tasks incomplete', () => {
       const tasks = [
         createTask('1.1', 'Task 1', 'todo', 3, 0),
-        createTask('1.2', 'Task 2', 'in_progress', 2, 1),
+        createTask('1.2', 'Task 2', 'in-progress', 2, 1),
       ]
       const plan = createPlan(tasks)
 
@@ -150,7 +150,7 @@ describe('validateAllTasksDone', () => {
 
       expect(result.valid).toBe(false)
       expect(result.incompleteTasks).toHaveLength(2)
-      expect(result.message).toBe('2 tasks incomplete: Task 1.1 (todo), Task 1.2 (in_progress)')
+      expect(result.message).toBe('2 tasks incomplete: Task 1.1 (todo), Task 1.2 (in-progress)')
     })
   })
 
@@ -195,7 +195,7 @@ describe('validateAllTasksDone', () => {
 
     it('handles multiple incomplete tasks with different statuses', () => {
       const tasks = [
-        createTask('1.1', 'Parser', 'in_progress', 3, 2),
+        createTask('1.1', 'Parser', 'in-progress', 3, 2),
         createTask('1.2', 'Validator', 'todo', 2, 0),
         createTask('2.1', 'Tests', 'todo', 4, 0),
         createTask('2.2', 'Docs', 'done', 1, 1),
@@ -207,12 +207,12 @@ describe('validateAllTasksDone', () => {
       expect(result.valid).toBe(false)
       expect(result.incompleteTasks).toHaveLength(3)
       expect(result.incompleteTasks).toEqual([
-        { id: '1.1', title: 'Parser', status: 'in_progress' },
+        { id: '1.1', title: 'Parser', status: 'in-progress' },
         { id: '1.2', title: 'Validator', status: 'todo' },
         { id: '2.1', title: 'Tests', status: 'todo' },
       ])
       expect(result.message).toBe(
-        '3 tasks incomplete: Task 1.1 (in_progress), Task 1.2 (todo), Task 2.1 (todo)',
+        '3 tasks incomplete: Task 1.1 (in-progress), Task 1.2 (todo), Task 2.1 (todo)',
       )
     })
 
@@ -259,22 +259,22 @@ describe('validateAllTasksDone', () => {
     it('uses plural "tasks" for multiple incomplete tasks', () => {
       const tasks = [
         createTask('1.1', 'Task 1', 'todo', 0, 0),
-        createTask('1.2', 'Task 2', 'in_progress', 2, 1),
+        createTask('1.2', 'Task 2', 'in-progress', 2, 1),
       ]
       const plan = createPlan(tasks)
 
       const result = validateAllTasksDone(plan)
 
-      expect(result.message).toBe('2 tasks incomplete: Task 1.1 (todo), Task 1.2 (in_progress)')
+      expect(result.message).toBe('2 tasks incomplete: Task 1.1 (todo), Task 1.2 (in-progress)')
     })
 
     it('includes all incomplete tasks in message', () => {
       const tasks = [
         createTask('1.1', 'Alpha', 'todo', 0, 0),
-        createTask('1.2', 'Beta', 'in_progress', 3, 2),
+        createTask('1.2', 'Beta', 'in-progress', 3, 2),
         createTask('2.1', 'Gamma', 'todo', 2, 0),
         createTask('2.2', 'Delta', 'done', 1, 1),
-        createTask('3.1', 'Epsilon', 'in_progress', 4, 1),
+        createTask('3.1', 'Epsilon', 'in-progress', 4, 1),
       ]
       const plan = createPlan(tasks)
 
@@ -282,9 +282,9 @@ describe('validateAllTasksDone', () => {
 
       expect(result.message).toContain('4 tasks incomplete')
       expect(result.message).toContain('Task 1.1 (todo)')
-      expect(result.message).toContain('Task 1.2 (in_progress)')
+      expect(result.message).toContain('Task 1.2 (in-progress)')
       expect(result.message).toContain('Task 2.1 (todo)')
-      expect(result.message).toContain('Task 3.1 (in_progress)')
+      expect(result.message).toContain('Task 3.1 (in-progress)')
       expect(result.message).not.toContain('Task 2.2')
     })
   })
@@ -331,7 +331,7 @@ created: 2026-02-01
 ## Phase 1
 
 #### Task 1.1: First Task
-**Status:** in_progress
+**Status:** in-progress
 
 - [x] Criteria 1
 - [ ] Criteria 2

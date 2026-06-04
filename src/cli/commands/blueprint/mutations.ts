@@ -2,7 +2,8 @@
  * Blueprint mutation verbs — advanceTask, promoteBlueprint, finalizeBlueprint
  *
  * All mutations:
- *   1. Edit the canonical _overview.md on disk (atomic tmp+rename)
+ *   1. Edit the canonical blueprint markdown document on disk (flat `.md` or
+ *      folder `_overview.md`) via atomic tmp+rename
  *   2. Re-ingest into the structured-store DB via ingestAll
  *
  * Platform-first sync (Tasks 2.6 + 2.7):
@@ -25,6 +26,7 @@ import {
   withMarkdownWriteLock,
   withProjectionDbWriteLock,
 } from '#db/paths.js'
+import { type BlueprintShape, getBlueprintDocumentPaths } from '#utils/document-paths.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root.js'
 import { assertAllTasksHaveCanonicalPassingEvidence } from '#verification.js'
 
@@ -175,13 +177,28 @@ function dbPath(cwd: string): string {
   return resolveBlueprintProjectionDbPath(cwd)
 }
 
-function findBlueprintDir(
+function findBlueprintDocument(
   blueprintRoot: string,
   slug: string,
-): { dir: string; state: string } | null {
+): { dir: string; documentPath: string; shape: BlueprintShape; state: string } | null {
   for (const state of ALL_STATES) {
-    const d = path.join(blueprintRoot, state, slug)
-    if (existsSync(d)) return { dir: d, state }
+    const paths = getBlueprintDocumentPaths(blueprintRoot, state, slug)
+    if (existsSync(paths.flat)) {
+      return {
+        dir: path.dirname(paths.flat),
+        documentPath: paths.flat,
+        shape: 'flat',
+        state,
+      }
+    }
+    if (existsSync(paths.folder)) {
+      return {
+        dir: paths.directory,
+        documentPath: paths.folder,
+        shape: 'folder',
+        state,
+      }
+    }
   }
   return null
 }
@@ -267,7 +284,7 @@ function findTaskStatusLine(
 // ---------------------------------------------------------------------------
 
 /**
- * Advance a task's status in its blueprint's _overview.md, then re-ingest.
+ * Advance a task's status in its blueprint markdown document, then re-ingest.
  *
  * Atomic: writes to a temp file then renames onto the original.
  * Idempotent: if the task is already at `toStatus`, reports "already <toStatus>" and exits cleanly.
@@ -289,19 +306,14 @@ async function advanceTaskLocked(
   toStatus: TaskStatus,
 ): Promise<AdvanceTaskResult> {
   const blueprintRoot = resolveBlueprintRoot(cwd)
-  const found = findBlueprintDir(blueprintRoot, blueprintSlug)
+  const found = findBlueprintDocument(blueprintRoot, blueprintSlug)
   if (!found) {
     throw new Error(
       `Blueprint "${blueprintSlug}" not found in any state directory under ${blueprintRoot}`,
     )
   }
 
-  const overviewPath = path.join(found.dir, '_overview.md')
-  if (!existsSync(overviewPath)) {
-    throw new Error(`Blueprint overview not found: ${overviewPath}`)
-  }
-
-  const content = readFileSync(overviewPath, 'utf8')
+  const content = readFileSync(found.documentPath, 'utf8')
   const lines = content.split('\n')
 
   const result = findTaskStatusLine(lines, taskId)
@@ -351,7 +363,7 @@ async function advanceTaskLocked(
   updatedLines[lineIndex] = `**Status:** ${toStatus}`
   const newContent = updatedLines.join('\n')
 
-  atomicWriteFile(overviewPath, newContent)
+  atomicWriteFile(found.documentPath, newContent)
   await reIngestDb(cwd)
 
   return {
@@ -390,32 +402,34 @@ async function promoteBlueprintLocked(
   toState: 'planned' | 'in-progress' | 'completed' | 'parked',
 ): Promise<PromoteBlueprintResult> {
   const blueprintRoot = resolveBlueprintRoot(cwd)
-  const found = findBlueprintDir(blueprintRoot, slug)
+  const found = findBlueprintDocument(blueprintRoot, slug)
   if (!found) {
     throw new Error(`Blueprint "${slug}" not found in any state directory under ${blueprintRoot}`)
   }
 
-  const { dir: currentDir, state: currentState } = found
-  const overviewPath = path.join(currentDir, '_overview.md')
-
-  if (!existsSync(overviewPath)) {
-    throw new Error(`Blueprint overview not found: ${overviewPath}`)
-  }
+  const {
+    dir: currentDir,
+    documentPath: currentDocumentPath,
+    shape,
+    state: currentState,
+  } = found
 
   // Guard: refuse to complete if any tasks are not done/dropped
   if (toState === 'completed') {
-    const markdown = readFileSync(overviewPath, 'utf8')
+    const markdown = readFileSync(currentDocumentPath, 'utf8')
     const blueprint = parseBlueprint(markdown, slug)
-    const unfinished = blueprint.tasks.filter((task) => task.status !== 'done')
+    const unfinished = blueprint.tasks.filter(
+      (task) => task.status !== 'done' && task.status !== 'dropped',
+    )
     if (unfinished.length > 0) {
       const list = unfinished.map((task) => `${task.id} (${task.status})`).join(', ')
       throw new Error(
-        `Cannot promote "${slug}" to completed: the following tasks are not done: ${list}`,
+        `Cannot promote "${slug}" to completed: the following tasks are not done/dropped: ${list}`,
       )
     }
     assertAllTasksHaveCanonicalPassingEvidence(
       markdown,
-      blueprint.tasks.map((task) => task.id),
+      blueprint.tasks.filter((task) => task.status === 'done').map((task) => task.id),
     )
 
     const target = dbPath(cwd)
@@ -462,34 +476,36 @@ async function promoteBlueprintLocked(
   // Always update local markdown + SQLite.
   // Platform-first: these become derived artifacts; disabled: these are canonical.
   // Update frontmatter in the current location first, then move
-  let content = readFileSync(overviewPath, 'utf8')
+  let content = readFileSync(currentDocumentPath, 'utf8')
   content = updateFrontmatterStatus(content, toState)
   if (toState === 'completed') {
     const today = new Date().toISOString().split('T')[0] ?? new Date().toISOString()
     content = upsertCompletedAt(content, today)
   }
 
-  const destDir = path.join(blueprintRoot, toState, slug)
-  const destOverviewPath = path.join(destDir, '_overview.md')
+  const targetPaths = getBlueprintDocumentPaths(blueprintRoot, toState, slug)
+  const destDir = targetPaths.directory
+  const destDocumentPath = shape === 'flat' ? targetPaths.flat : targetPaths.folder
 
-  if (currentDir === destDir) {
+  if (currentDocumentPath === destDocumentPath) {
     // Same directory — only update frontmatter
-    atomicWriteFile(overviewPath, content)
+    atomicWriteFile(currentDocumentPath, content)
     await reIngestDb(cwd)
     return {
       slug,
       oldState: currentState,
       newState: toState,
-      newPath: overviewPath,
-      message: `Promoted ${slug}: ${currentState} → ${toState} (path unchanged: ${overviewPath})`,
+      newPath: currentDocumentPath,
+      message: `Promoted ${slug}: ${currentState} → ${toState} (path unchanged: ${currentDocumentPath})`,
     }
   }
 
-  // Write updated content to current location first, then move directory
-  atomicWriteFile(overviewPath, content)
+  // Write updated content to the current location first, then move the owning
+  // file/directory according to the blueprint shape.
+  atomicWriteFile(currentDocumentPath, content)
 
   mkdirSync(path.dirname(destDir), { recursive: true })
-  renameSync(currentDir, destDir)
+  renameSync(shape === 'flat' ? currentDocumentPath : currentDir, shape === 'flat' ? destDocumentPath : destDir)
 
   await reIngestDb(cwd)
 
@@ -497,8 +513,8 @@ async function promoteBlueprintLocked(
     slug,
     oldState: currentState,
     newState: toState,
-    newPath: destOverviewPath,
-    message: `Promoted ${slug}: ${currentState} → ${toState} (new path: ${destOverviewPath})`,
+    newPath: destDocumentPath,
+    message: `Promoted ${slug}: ${currentState} → ${toState} (new path: ${destDocumentPath})`,
   }
 }
 

@@ -27,6 +27,8 @@ describe('DEFAULT_BUDGETS', () => {
     expect(DEFAULT_BUDGETS['agents-md-section-each'].max_bytes).toBe(4096)
     expect(DEFAULT_BUDGETS['agents-md-section-each'].suggest_compact_at).toBe(0.75)
     expect(DEFAULT_BUDGETS['skill-md-total-each'].max_bytes).toBe(16384)
+    expect(DEFAULT_BUDGETS['blueprint-wip-in-progress-max'].max).toBe(3)
+    expect(DEFAULT_BUDGETS['blueprint-stale-in-progress-days'].max_days).toBe(14)
   })
 })
 
@@ -74,6 +76,26 @@ describe('loadBudgets', () => {
     )
     // Defaults still present
     expect(budgets['codex-skill-listing-total'].max_bytes).toBe(7000)
+  })
+
+  it('accepts count and day based budgets from config file', async () => {
+    const agentDir = path.join(tmpDir, '.agent')
+    await mkdir(agentDir, { recursive: true })
+    await writeFile(
+      path.join(agentDir, '.audit-budgets.yaml'),
+      [
+        'budgets:',
+        '  blueprint-wip-in-progress-max:',
+        '    max: 5',
+        '  blueprint-stale-in-progress-days:',
+        '    max_days: 21',
+      ].join('\n'),
+      'utf8',
+    )
+
+    const budgets = loadBudgets(tmpDir)
+    expect(budgets['blueprint-wip-in-progress-max'].max).toBe(5)
+    expect(budgets['blueprint-stale-in-progress-days'].max_days).toBe(21)
   })
 
   it('falls back to defaults on malformed YAML', async () => {

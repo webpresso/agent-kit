@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { openDb } from './connection.js'
 import { ingestBlueprints, ingestAll, ingestRunnerEvent } from './ingester.js'
 import { coldStartIfNeeded } from './cold-start.js'
+import { resolveBlueprintProjectionDbPath } from './paths.js'
 import type { RunnerEvent } from '#runners/types'
 
 // ---------------------------------------------------------------------------
@@ -136,12 +137,19 @@ function makeTempRepo(): string {
 let tmpRepoDir: string
 let dbPath: string
 
+function cleanupProjectionArtifacts(cwd: string): void {
+  const projectionPath = resolveBlueprintProjectionDbPath(cwd)
+  rmSync(path.dirname(projectionPath), { recursive: true, force: true })
+}
+
 beforeEach(() => {
   tmpRepoDir = makeTempRepo()
   dbPath = path.join(tmpRepoDir, 'test.db')
+  cleanupProjectionArtifacts(tmpRepoDir)
 })
 
 afterEach(() => {
+  cleanupProjectionArtifacts(tmpRepoDir)
   rmSync(tmpRepoDir, { recursive: true, force: true })
 })
 
@@ -187,6 +195,35 @@ describe('ingestBlueprints', () => {
     }
   })
 
+  it('surfaces duplicate slugs instead of silently overwriting rows', async () => {
+    mkdirSync(path.join(tmpRepoDir, 'blueprints', 'completed', 'my-feature'), {
+      recursive: true,
+    })
+    writeFileSync(
+      path.join(tmpRepoDir, 'blueprints', 'completed', 'my-feature', '_overview.md'),
+      COMPLETED_BLUEPRINT_CONTENT.replace('# Old Task', '# My Feature Blueprint (Completed)'),
+      'utf8',
+    )
+
+    const conn = openDb(dbPath)
+    try {
+      const result = await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir })
+
+      expect(
+        result.errors.some((error) =>
+          error.includes('duplicate slug "my-feature" appears in multiple blueprint documents'),
+        ),
+      ).toBe(true)
+
+      const rows = conn.db.prepare('SELECT slug FROM blueprints ORDER BY slug').all() as Array<{
+        slug: string
+      }>
+      expect(rows.map((r) => r.slug)).toStrictEqual(['old-task'])
+    } finally {
+      conn.close()
+    }
+  })
+
   it('stores tasks, tags, risks, and edge cases for each blueprint', async () => {
     const conn = openDb(dbPath)
     try {
@@ -215,6 +252,53 @@ describe('ingestBlueprints', () => {
         .all('my-feature') as Array<{ edge_id: string }>
       expect(edges).toHaveLength(1)
       expect(edges[0]?.edge_id).toBe('E1')
+    } finally {
+      conn.close()
+    }
+  })
+
+  it('derives progress_pct from done tasks only and leaves prose-completed blueprints null', async () => {
+    writeFileSync(
+      path.join(tmpRepoDir, 'blueprints', 'planned', 'my-feature', '_overview.md'),
+      `---
+type: blueprint
+status: planned
+complexity: S
+owner: alice
+created: '2026-01-15'
+last_updated: '2026-04-01'
+---
+
+# My Feature Blueprint
+
+#### Task 1.1: Done work
+**Status:** done
+- [x] done
+
+#### Task 1.2: De-scoped work
+**Status:** dropped
+- [ ] dropped
+
+#### Task 1.3: Remaining work
+**Status:** todo
+- [ ] todo
+`,
+      'utf8',
+    )
+
+    const conn = openDb(dbPath)
+    try {
+      await ingestBlueprints({ db: conn.db, cwd: tmpRepoDir })
+
+      const planned = conn.db
+        .prepare('SELECT progress_pct FROM blueprints WHERE slug = ?')
+        .get('my-feature') as { progress_pct: number | null }
+      const completed = conn.db
+        .prepare('SELECT progress_pct FROM blueprints WHERE slug = ?')
+        .get('old-task') as { progress_pct: number | null }
+
+      expect(planned.progress_pct).toBe(33)
+      expect(completed.progress_pct).toBeNull()
     } finally {
       conn.close()
     }
@@ -569,25 +653,23 @@ describe('ingestRunnerEvent', () => {
 
 describe('coldStartIfNeeded', () => {
   it('creates the DB when missing and returns rebuilt=true', async () => {
-    const agentDir = path.join(tmpRepoDir, '.agent')
-    mkdirSync(agentDir, { recursive: true })
-    const target = path.join(agentDir, '.blueprints.db')
+    const target = resolveBlueprintProjectionDbPath(tmpRepoDir)
 
     const result = await coldStartIfNeeded(tmpRepoDir)
 
     expect(result.rebuilt).toBe(true)
     expect(existsSync(target)).toBe(true)
+    expect(existsSync(`${target}.meta.json`)).toBe(true)
     expect(result.blueprintsCount).toBeGreaterThanOrEqual(0)
   })
 
   it('is a no-op when DB already exists', async () => {
-    const agentDir = path.join(tmpRepoDir, '.agent')
-    mkdirSync(agentDir, { recursive: true })
-    const target = path.join(agentDir, '.blueprints.db')
+    const target = resolveBlueprintProjectionDbPath(tmpRepoDir)
 
     // First call creates the DB
     await coldStartIfNeeded(tmpRepoDir)
     expect(existsSync(target)).toBe(true)
+    expect(existsSync(`${target}.meta.json`)).toBe(true)
 
     // Second call must be a no-op
     const result = await coldStartIfNeeded(tmpRepoDir)
@@ -598,12 +680,11 @@ describe('coldStartIfNeeded', () => {
   })
 
   it('populates blueprint and tech-debt rows on first cold-start', async () => {
-    const agentDir = path.join(tmpRepoDir, '.agent')
-    mkdirSync(agentDir, { recursive: true })
-    const target = path.join(agentDir, '.blueprints.db')
+    const target = resolveBlueprintProjectionDbPath(tmpRepoDir)
 
     const result = await coldStartIfNeeded(tmpRepoDir)
     expect(result.rebuilt).toBe(true)
+    expect(existsSync(`${target}.meta.json`)).toBe(true)
 
     // Verify rows by opening the DB we just built
     const conn = openDb(target)

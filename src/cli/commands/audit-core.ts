@@ -5,6 +5,7 @@ export type AuditKind =
   | 'tph-e2e'
   | 'bundle-budget'
   | 'commit-message'
+  | 'blueprint-readme-drift'
   | 'blueprint-lifecycle'
   | 'roadmap-links'
   | 'docs-frontmatter'

@@ -171,7 +171,7 @@ function extractCheckboxStatus(section: string): {
     if (checked === total) {
       status = 'done'
     } else if (checked > 0) {
-      status = 'in_progress'
+      status = 'in-progress'
     }
   }
 
@@ -185,7 +185,8 @@ function extractExplicitTaskStatus(section: string): BlueprintTaskStatus | undef
   const statusMatch = section.match(/\*\*Status:\*\*\s*(.+)/i)
   if (!statusMatch?.[1]) return undefined
 
-  const parsed = taskStatusSchema.safeParse(statusMatch[1].trim())
+  const normalizedStatus = statusMatch[1].trim().replace(/\bin_progress\b/gi, 'in-progress')
+  const parsed = taskStatusSchema.safeParse(normalizedStatus)
   if (!parsed.success) {
     throw new Error(
       `Invalid task status "${statusMatch[1].trim()}". Valid statuses: ${taskStatusSchema.options.join(', ')}`,

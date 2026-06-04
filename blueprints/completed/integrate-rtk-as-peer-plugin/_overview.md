@@ -2,6 +2,8 @@
 type: blueprint
 title: "Integrate rtk as a Peer Plugin"
 owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 status: completed
 complexity: S
 created: '2026-05-06'

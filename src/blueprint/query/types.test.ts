@@ -196,8 +196,8 @@ describe('isTaskStatus', () => {
       expect(isTaskStatus('todo')).toBe(true)
     })
 
-    it('returns true for "in_progress"', () => {
-      expect(isTaskStatus('in_progress')).toBe(true)
+    it('returns true for "in-progress"', () => {
+      expect(isTaskStatus('in-progress')).toBe(true)
     })
 
     it('returns true for "done"', () => {
@@ -222,8 +222,8 @@ describe('isTaskStatus', () => {
       expect(isTaskStatus('completed')).toBe(false)
     })
 
-    it('returns false for "in-progress" (hyphenated)', () => {
-      expect(isTaskStatus('in-progress')).toBe(false)
+    it('returns false for "in_progress" (underscored)', () => {
+      expect(isTaskStatus('in_progress')).toBe(false)
     })
 
     it('returns false for "invalid"', () => {

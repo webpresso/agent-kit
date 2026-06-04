@@ -160,6 +160,27 @@ describe('config', () => {
     })
   })
 
+  it('readConfig preserves audit.toolchainIsolation.allowDependencies', () => {
+    writeFileSync(
+      join(dir, '.webpressorc.json'),
+      JSON.stringify({
+        version: '1',
+        installed: { tier3Skills: [] },
+        audit: {
+          toolchainIsolation: {
+            allowDependencies: ['tsx', 42],
+          },
+        },
+      }),
+    )
+
+    expect(readConfig(dir)?.audit).toEqual({
+      toolchainIsolation: {
+        allowDependencies: ['tsx'],
+      },
+    })
+  })
+
   it('readConfig omits guard when absent or invalid', () => {
     writeFileSync(
       join(dir, '.webpressorc.json'),
@@ -190,6 +211,17 @@ describe('config', () => {
         'docs:check': 'docs-frontmatter',
         'verify:paths': 'absolute-path-policy',
       },
+    })
+  })
+
+  it('mergeConfig preserves incoming audit.toolchainIsolation.allowDependencies', () => {
+    const incoming = {
+      ...defaultConfig(),
+      audit: { toolchainIsolation: { allowDependencies: ['tsx'] } },
+    }
+
+    expect(mergeConfig(defaultConfig(), incoming).audit).toEqual({
+      toolchainIsolation: { allowDependencies: ['tsx'] },
     })
   })
 })

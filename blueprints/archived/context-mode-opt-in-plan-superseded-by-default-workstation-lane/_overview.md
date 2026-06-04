@@ -1,5 +1,7 @@
 ---
 type: blueprint
+title: "Superseded: do not make context-mode opt-in by default"
+owner: ozby
 status: archived
 complexity: XS
 created: '2026-05-14'

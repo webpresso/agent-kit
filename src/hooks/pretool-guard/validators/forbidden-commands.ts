@@ -1,6 +1,11 @@
 import type { ToolInput, ValidationResult } from '#hooks/shared/types'
 
 import { readConfig } from '#cli/commands/init/config'
+import {
+  getLegalLifecycleTargets,
+  isLegalLifecycleTransition,
+  parseLifecycleBlueprintStatus,
+} from '#lifecycle/transition-matrix.js'
 import { getCommand, isBashInput } from '#hooks/shared/types'
 import { AUDIT_KINDS } from '#mcp/tools/_shared/audit-kinds'
 import { createSkipResult } from './skip-result.js'
@@ -67,7 +72,12 @@ export const DOCS_REF = 'AGENTS.md "Forbidden Commands (CRITICAL)" section'
 const DB_HINT = 'Use the database MCP/tooling entrypoint instead of direct CLI execution'
 const BLUEPRINT_HINT =
   'wp blueprint new|list|audit — use wp_blueprint MCP tool for lifecycle transitions'
-const BLUEPRINT_LIFECYCLE_DIRS = '(draft|planned|in-progress|completed|archived)'
+const BLUEPRINT_LIFECYCLE_DIRS = '(draft|planned|in-progress|parked|completed|archived)'
+const BLUEPRINT_GIT_MV_RULE: CommandRule = {
+  pattern: /^git\s+mv\b/,
+  category: 'blueprint',
+  suggestion: BLUEPRINT_HINT,
+}
 const LINT_BASE = 'wp_lint MCP tool with package/file scope'
 const LINT_HINT = `${LINT_BASE} [--fix] [--fix-unsafe]`
 const FORMAT_HINT = 'wp_format MCP tool'
@@ -214,12 +224,6 @@ export function generateRules(): CommandRule[] {
     },
     {
       pattern: new RegExp(`^mkdir\\b.*blueprints\\/${BLUEPRINT_LIFECYCLE_DIRS}`),
-      category: 'blueprint',
-      suggestion: BLUEPRINT_HINT,
-    },
-    {
-      // git mv is an alternative to bare mv for tracked files — same bypass vector.
-      pattern: new RegExp(`^git\\s+mv\\b.*blueprints\\/${BLUEPRINT_LIFECYCLE_DIRS}`),
       category: 'blueprint',
       suggestion: BLUEPRINT_HINT,
     },
@@ -424,6 +428,42 @@ export function splitTopLevelCommands(command: string): string[] {
   return segments
 }
 
+function splitShellArgs(command: string): string[] {
+  return command.match(/"[^"]*"|'[^']*'|\S+/g) ?? []
+}
+
+function unquoteShellArg(arg: string): string {
+  return arg.replace(/^['"]|['"]$/g, '')
+}
+
+function extractBlueprintLifecycleStatusFromPathArg(arg: string): ReturnType<
+  typeof parseLifecycleBlueprintStatus
+> {
+  const normalized = unquoteShellArg(arg).replace(/\\/g, '/')
+  const match = normalized.match(
+    /(?:^|\/)blueprints\/(draft|planned|in-progress|parked|completed|archived)(?:\/|$)/,
+  )
+  return parseLifecycleBlueprintStatus(match?.[1] ?? '')
+}
+
+function findIllegalBlueprintGitMv(command: string): {
+  segment: string
+  from: NonNullable<ReturnType<typeof parseLifecycleBlueprintStatus>>
+  to: NonNullable<ReturnType<typeof parseLifecycleBlueprintStatus>>
+} | null {
+  for (const segment of splitTopLevelCommands(command.trim())) {
+    if (!/^git\s+mv\b/.test(segment)) continue
+    const args = splitShellArgs(segment)
+    if (args.length < 4) continue
+    const from = extractBlueprintLifecycleStatusFromPathArg(args[2] ?? '')
+    const to = extractBlueprintLifecycleStatusFromPathArg(args[3] ?? '')
+    if (!from || !to) continue
+    if (isLegalLifecycleTransition(from, to)) return null
+    return { segment, from, to }
+  }
+  return null
+}
+
 export function findMatchingRule(command: string): CommandRule | undefined {
   for (const variant of getCommandVariants(command)) {
     const rule = COMMAND_RULES.find((r) => r.pattern.test(variant))
@@ -610,6 +650,20 @@ export function validateForbiddenCommands(
 
   const command = getCommand(input)
   if (!command) return createSkipResult(VALIDATOR_NAME, 'No command found')
+
+  const illegalBlueprintGitMv = findIllegalBlueprintGitMv(command)
+  if (illegalBlueprintGitMv) {
+    const decoratedRule: CommandRule = {
+      ...BLUEPRINT_GIT_MV_RULE,
+      suggestion:
+        `${BLUEPRINT_HINT}. Illegal transition ${illegalBlueprintGitMv.from} → ` +
+        `${illegalBlueprintGitMv.to}; legal targets: ` +
+        `${getLegalLifecycleTargets(illegalBlueprintGitMv.from).join(', ') || '(none)'}`,
+    }
+    if (process.env[AUDIT_MODE_ENV] === '1')
+      return createAuditResult(illegalBlueprintGitMv.segment, decoratedRule)
+    return createBlockedResult(illegalBlueprintGitMv.segment, decoratedRule)
+  }
 
   const rule = findMatchingRule(command)
   if (rule) {

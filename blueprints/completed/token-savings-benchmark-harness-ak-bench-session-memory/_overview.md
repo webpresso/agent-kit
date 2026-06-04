@@ -1,6 +1,8 @@
 ---
 title: Token-savings benchmark harness `wp bench session-memory`
 owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 type: blueprint
 status: completed
 complexity: M

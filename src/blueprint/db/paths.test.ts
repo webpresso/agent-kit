@@ -53,12 +53,12 @@ afterEach(() => {
 })
 
 describe('resolveBlueprintProjectionDbPath', () => {
-  it('returns a worktree-scoped path inside a git repo', () => {
+  it('returns a repo-scoped path inside a git repo', () => {
     const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     try {
       initGitRepo(repo)
       const dbPath = resolveBlueprintProjectionDbPath(repo)
-      expect(dbPath).toContain(`${path.sep}worktree${path.sep}`)
+      expect(dbPath).not.toContain(`${path.sep}worktree${path.sep}`)
       expect(dbPath).toMatch(/blueprints[/\\]blueprints\.db$/)
       expect(dbPath.startsWith(stateRootDir)).toBe(true)
       expect(dbPath.startsWith(repo)).toBe(false)
@@ -67,17 +67,20 @@ describe('resolveBlueprintProjectionDbPath', () => {
     }
   })
 
-  it('returns legacy .agent path outside a git repo', () => {
+  it('returns a deterministic user-state path outside a git repo', () => {
     const nonGit = mkdtempSync(path.join(tmpdir(), 'wp-nogit-'))
     try {
       const dbPath = resolveBlueprintProjectionDbPath(nonGit)
-      expect(dbPath).toStrictEqual(path.join(nonGit, '.agent', '.blueprints.db'))
+      expect(dbPath.startsWith(stateRootDir)).toBe(true)
+      expect(dbPath).toContain(`${path.sep}non-git${path.sep}`)
+      expect(dbPath).toMatch(/[/\\]\.blueprints\.db$/)
+      expect(dbPath.startsWith(nonGit)).toBe(false)
     } finally {
       rmSync(nonGit, { recursive: true, force: true })
     }
   })
 
-  it('resolves different projection paths for two worktrees of the same repo', () => {
+  it('resolves the same projection path for two worktrees of the same repo', () => {
     const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     const wtParent = mkdtempSync(path.join(tmpdir(), 'wp-wt-parent-'))
     const wtDir = path.join(wtParent, 'alt')
@@ -90,14 +93,7 @@ describe('resolveBlueprintProjectionDbPath', () => {
       const dbMain = resolveBlueprintProjectionDbPath(repo)
       _clearCacheForTests()
       const dbAlt = resolveBlueprintProjectionDbPath(wtDir)
-      expect(dbMain).not.toStrictEqual(dbAlt)
-      const mainParts = dbMain.split(path.sep)
-      const altParts = dbAlt.split(path.sep)
-      const mainIdx = mainParts.indexOf('worktree')
-      const altIdx = altParts.indexOf('worktree')
-      const repoKeyMain = mainParts[mainIdx - 1]
-      const repoKeyAlt = altParts[altIdx - 1]
-      expect(repoKeyMain).toStrictEqual(repoKeyAlt)
+      expect(dbMain).toStrictEqual(dbAlt)
     } finally {
       try {
         execSync(`git worktree remove --force "${wtDir}"`, { cwd: repo })
@@ -111,7 +107,7 @@ describe('resolveBlueprintProjectionDbPath', () => {
 })
 
 describe('lock-scope policy', () => {
-  it('projection DB lock is worktree-scoped (sibling to DB)', () => {
+  it('projection DB lock is repo-scoped (sibling to DB)', () => {
     const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     try {
       initGitRepo(repo)
@@ -275,12 +271,13 @@ describe('write-lock acquisition (no silent escape)', () => {
     }
   })
 
-  it('legacy non-git lock path lives under <cwd>/.agent', async () => {
+  it('non-git lock path lives under the user-state non-git surface', async () => {
     const nonGit = mkdtempSync(path.join(tmpdir(), 'wp-nogit-'))
     try {
-      mkdirSync(path.join(nonGit, '.agent'), { recursive: true })
       const lockPath = resolveBlueprintProjectionDbLockPath(nonGit)
-      expect(lockPath).toStrictEqual(path.join(nonGit, '.agent', '.blueprints.lock'))
+      expect(lockPath.startsWith(stateRootDir)).toBe(true)
+      expect(lockPath).toContain(`${path.sep}non-git${path.sep}`)
+      expect(lockPath).toMatch(/[/\\]\.blueprints\.lock$/)
     } finally {
       rmSync(nonGit, { recursive: true, force: true })
     }

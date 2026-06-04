@@ -1,6 +1,8 @@
 ---
 type: blueprint
 title: "Replace markdown-first blueprint authoring with a structured wp MCP surface"
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 status: completed
 complexity: M
 owner: agent-kit

@@ -96,6 +96,54 @@ describe('auditToolchainIsolation', () => {
 
     expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
   })
+
+  it('skips generated .windsurf surfaces during the package walk', () => {
+    writePackage(root, {
+      scripts: { lint: 'wp lint' },
+      devDependencies: { '@webpresso/agent-kit': 'latest' },
+    })
+    mkdirSync(join(root, '.windsurf', 'skills', 'tanstack-query', 'templates'), {
+      recursive: true,
+    })
+    writePackage(join(root, '.windsurf', 'skills', 'tanstack-query', 'templates'), {
+      scripts: { build: 'vite build' },
+      devDependencies: { vite: '^8.0.0' },
+    })
+
+    expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
+  })
+
+  it('honors .webpressorc.json audit.toolchainIsolation.allowDependencies', () => {
+    writeFileSync(
+      join(root, '.webpressorc.json'),
+      `${JSON.stringify(
+        {
+          version: '1',
+          installed: { tier3Skills: [] },
+          audit: {
+            toolchainIsolation: {
+              allowDependencies: ['tsx'],
+            },
+          },
+          rules: { overrides: [] },
+          scripts: {},
+          durablePlanningRoot: '.agent/planning/',
+        },
+        null,
+        2,
+      )}\n`,
+    )
+    mkdirSync(join(root, 'infra'), { recursive: true })
+    writePackage(join(root, 'infra'), {
+      devDependencies: { tsx: '^4.21.0', '@webpresso/agent-kit': 'latest' },
+      scripts: { check: 'wp typecheck' },
+    })
+
+    const result = auditToolchainIsolation(root)
+
+    expect(result).toMatchObject({ ok: true, checked: 1 })
+    expect(result.violations).toEqual([])
+  })
 })
 
 function writePackage(dir: string, value: unknown): void {
