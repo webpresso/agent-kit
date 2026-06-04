@@ -540,7 +540,7 @@
   },
   "scripts": {
     "setup:agent": "wp setup",
-    "build": "tshy && vp run chmod-bins && vp run link-self-bins",
+    "build": "tshy && bun src/build/normalize-tsconfig-json-exports.ts && vp run chmod-bins && vp run link-self-bins",
     "build:runtime-binaries": "bun scripts/build-runtime-binaries.ts",
     "stage:plugin-runtime": "bun scripts/stage-plugin-runtime-artifacts.ts",
     "postbuild": "vp run generate-skills && vp run sync-doc-templates",

@@ -359,6 +359,10 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(existsSync(join(repo, 'src', 'quality-sample.test.ts'))).toBe(true)
     expect(existsSync(join(repo, 'e2e', 'fixtures', 'smoke.html'))).toBe(true)
     expect(existsSync(join(repo, 'e2e', 'smoke.spec.ts'))).toBe(true)
+    const tsconfigJson = JSON.parse(readFileSync(join(repo, 'tsconfig.json'), 'utf8')) as {
+      extends?: string
+    }
+    expect(tsconfigJson.extends).toBe('@webpresso/agent-kit/tsconfig/base.json')
     const packageJson = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')) as {
       scripts: Record<string, string>
       devDependencies: Record<string, string>
