@@ -11,6 +11,7 @@ import {
   executeBlueprintDbSubcommand,
 } from './db-commands.js'
 import { openDb } from '#db/connection.js'
+import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -132,9 +133,9 @@ describe('dbBuild', () => {
     expect(existsSync(result.dbPath)).toBe(true)
   })
 
-  it('returns the correct dbPath inside .agent/', async () => {
+  it('returns the canonical projection dbPath for the project root', async () => {
     const result = await dbBuild(tmpRepoDir)
-    expect(result.dbPath).toBe(path.join(tmpRepoDir, '.agent', '.blueprints.db'))
+    expect(result.dbPath).toBe(resolveBlueprintProjectionDbPath(tmpRepoDir))
   })
 
   it('can be called twice without deleting the DB (idempotent upsert)', async () => {

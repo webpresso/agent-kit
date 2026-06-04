@@ -24,10 +24,6 @@ export interface AgentkitConfig {
   installed: {
     tier3Skills: string[]
   }
-  /** Audit policy overrides. `mechanism` lives in agent-kit; this is per-repo
-   *  `data`. `toolchainIsolation.allowDependencies` lists dependency names that
-   *  are exempt from the toolchain-isolation audit because they are legitimate
-   *  app-specific runtimes, not generic toolchain. */
   audit?: {
     toolchainIsolation?: {
       allowDependencies?: string[]

@@ -8,15 +8,31 @@ import { runDocsLint } from './docs-core.js'
 
 const VALID_BLUEPRINT = `---
 doc-type: blueprint
-status: planned
+type: blueprint
+title: My Plan
+status: draft
 complexity: M
+owner: alice
+created: '2026-01-15'
+last_updated: '2026-04-01'
 ---
 
 # My Plan
 
+## Product wedge anchor
+
+- **Stage outcome:** Phase 1
+- **Consuming surface:** /docs
+- **New user-visible capability:** Users can read the plan.
+
+## Summary
+
+Minimal valid blueprint fixture.
+
 #### Task 1.1: Do something
 
 **Status:** todo
+**Wave:** 0
 
 - [ ] step one
 `

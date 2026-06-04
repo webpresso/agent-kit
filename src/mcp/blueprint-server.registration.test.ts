@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import path from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
@@ -55,6 +56,7 @@ describe('registerBlueprintTools bootstrap', () => {
     cwd = createTempBlueprintRepo('wp-bs-registration-stale-')
     const dbPath = resolveBlueprintProjectionDbPath(cwd)
     const { registrar, tools } = makeRegistrar()
+    mkdirSync(path.dirname(dbPath), { recursive: true })
     writeFileSync(dbPath, '', 'utf8')
     writeStaleProjectionMetadata(cwd)
     const staleMetadata = readFileSync(`${dbPath}.meta.json`, 'utf8')
