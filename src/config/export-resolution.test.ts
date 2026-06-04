@@ -104,7 +104,7 @@ describe('@webpresso/agent-kit package exports', () => {
     expect(packageJson.files).toContain('bin')
   })
 
-  it('adds top-level default targets for tsconfig json exports so tsconfig extends can resolve them', async () => {
+  it('exposes default targets for tsconfig json exports so tsconfig extends can resolve them', async () => {
     const packageJson = await readCanonicalPackageJson()
     for (const subpath of [
       './tsconfig/base.json',
@@ -113,9 +113,9 @@ describe('@webpresso/agent-kit package exports', () => {
       './tsconfig/react-library.json',
       './tsconfig/react-router.json',
     ] as const) {
-      expect(packageJson.exports?.[subpath]).toMatchObject({
-        default: expect.stringMatching(/^\.\/dist\/esm\/config\/tsconfig\/.+\.json$/u),
-      })
+      expect(exportedDefaultTarget(packageJson.exports?.[subpath])).toMatch(
+        /^\.\/dist\/esm\/config\/tsconfig\/.+\.json$/u,
+      )
     }
   })
 
