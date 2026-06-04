@@ -34,11 +34,13 @@ type PackageJson = {
 }
 
 export function auditToolchainIsolation(root: string): RepoAuditResult {
+  const packagePaths = findPackageJsonFiles(root)
+  const violations: RepoAuditViolation[] = []
+  // Per-repo runtime exemptions: dependency names the repo declares as
+  // legitimate app-specific runtimes rather than generic toolchain.
   const allowDependencies = new Set(
     readConfig(root)?.audit?.toolchainIsolation?.allowDependencies ?? [],
   )
-  const packagePaths = findPackageJsonFiles(root)
-  const violations: RepoAuditViolation[] = []
 
   for (const packagePath of packagePaths) {
     const pkg = readPackageJson(packagePath)

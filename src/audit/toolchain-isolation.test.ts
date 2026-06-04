@@ -113,7 +113,7 @@ describe('auditToolchainIsolation', () => {
     expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
   })
 
-  it('honors .webpressorc.json audit.toolchainIsolation.allowDependencies', () => {
+  it('honors .webpressorc.json audit.toolchainIsolation.allowDependencies while still flagging unlisted tool deps', () => {
     writeFileSync(
       join(root, '.webpressorc.json'),
       `${JSON.stringify(
@@ -135,14 +135,20 @@ describe('auditToolchainIsolation', () => {
     )
     mkdirSync(join(root, 'infra'), { recursive: true })
     writePackage(join(root, 'infra'), {
-      devDependencies: { tsx: '^4.21.0', '@webpresso/agent-kit': 'latest' },
+      devDependencies: {
+        tsx: '^4.21.0',
+        wrangler: '^4.0.0',
+        '@webpresso/agent-kit': 'latest',
+      },
       scripts: { check: 'wp typecheck' },
     })
 
     const result = auditToolchainIsolation(root)
 
-    expect(result).toMatchObject({ ok: true, checked: 1 })
-    expect(result.violations).toEqual([])
+    expect(result).toMatchObject({ ok: false, checked: 1 })
+    expect(result.violations).toHaveLength(1)
+    expect(result.violations[0]?.message).toContain('devDependencies.wrangler')
+    expect(result.violations.map((violation) => violation.message).join()).not.toContain('tsx')
   })
 })
 

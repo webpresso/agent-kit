@@ -160,7 +160,7 @@ describe('config', () => {
     })
   })
 
-  it('readConfig preserves audit.toolchainIsolation.allowDependencies', () => {
+  it('readConfig parses audit.toolchainIsolation.allowDependencies, dropping invalid values', () => {
     writeFileSync(
       join(dir, '.webpressorc.json'),
       JSON.stringify({
@@ -168,7 +168,7 @@ describe('config', () => {
         installed: { tier3Skills: [] },
         audit: {
           toolchainIsolation: {
-            allowDependencies: ['tsx', 42],
+            allowDependencies: ['tsx', 42, ''],
           },
         },
       }),
@@ -179,6 +179,19 @@ describe('config', () => {
         allowDependencies: ['tsx'],
       },
     })
+  })
+
+  it('readConfig omits audit when allowDependencies is empty or absent', () => {
+    writeFileSync(
+      join(dir, '.webpressorc.json'),
+      JSON.stringify({
+        version: '1',
+        installed: { tier3Skills: [] },
+        audit: { toolchainIsolation: { allowDependencies: [] } },
+      }),
+    )
+
+    expect(readConfig(dir)).toEqual(defaultConfig())
   })
 
   it('readConfig omits guard when absent or invalid', () => {
@@ -214,14 +227,18 @@ describe('config', () => {
     })
   })
 
-  it('mergeConfig preserves incoming audit.toolchainIsolation.allowDependencies', () => {
-    const incoming = {
+  it('mergeConfig unions audit.toolchainIsolation.allowDependencies', () => {
+    const existing = {
       ...defaultConfig(),
       audit: { toolchainIsolation: { allowDependencies: ['tsx'] } },
     }
+    const incoming = {
+      ...defaultConfig(),
+      audit: { toolchainIsolation: { allowDependencies: ['@playwright/test'] } },
+    }
 
-    expect(mergeConfig(defaultConfig(), incoming).audit).toEqual({
-      toolchainIsolation: { allowDependencies: ['tsx'] },
+    expect(mergeConfig(existing, incoming).audit).toEqual({
+      toolchainIsolation: { allowDependencies: ['@playwright/test', 'tsx'] },
     })
   })
 })

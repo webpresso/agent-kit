@@ -24,6 +24,10 @@ export interface AgentkitConfig {
   installed: {
     tier3Skills: string[]
   }
+  /** Audit policy overrides. `mechanism` lives in agent-kit; this is per-repo
+   *  `data`. `toolchainIsolation.allowDependencies` lists dependency names that
+   *  are exempt from the toolchain-isolation audit because they are legitimate
+   *  app-specific runtimes, not generic toolchain. */
   audit?: {
     toolchainIsolation?: {
       allowDependencies?: string[]
@@ -117,7 +121,9 @@ function parseConfigFile(path: string): AgentkitConfig | null {
       | Partial<NonNullable<NonNullable<AgentkitConfig['audit']>['toolchainIsolation']>>
       | undefined
     const allowDependencies = Array.isArray(rawToolchainIsolation?.allowDependencies)
-      ? rawToolchainIsolation.allowDependencies.filter((value): value is string => typeof value === 'string')
+      ? rawToolchainIsolation.allowDependencies.filter(
+          (value): value is string => typeof value === 'string' && value.length > 0,
+        )
       : undefined
     const normalizedAudit =
       allowDependencies && allowDependencies.length > 0
