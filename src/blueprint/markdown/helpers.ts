@@ -118,7 +118,7 @@ export function updateBlockedReason(content: string, taskId: string, reason: str
 export function updateTaskStatus(
   content: string,
   taskId: string,
-  status: 'todo' | 'in_progress' | 'blocked' | 'done',
+  status: 'todo' | 'in-progress' | 'blocked' | 'done' | 'dropped',
 ): string {
   const taskPattern = buildTaskPattern(taskId)
 

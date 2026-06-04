@@ -2,7 +2,7 @@
 type: tech-debt
 status: accepted
 severity: low
-category: implementation
+category: complexity
 review_cadence: quarterly
 last_reviewed: '2026-05-11'
 created: '2026-05-11'

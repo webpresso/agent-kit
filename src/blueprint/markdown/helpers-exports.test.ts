@@ -59,8 +59,8 @@ A-->B
     const blocked = updateBlockedReason(input, '1.1', 'Testing')
     expect(blocked).toContain('**Blocked:** Testing')
 
-    const withStatus = updateTaskStatus(input, '1.1', 'in_progress')
-    expect(withStatus).toContain('**Status:** in_progress')
+    const withStatus = updateTaskStatus(input, '1.1', 'in-progress')
+    expect(withStatus).toContain('**Status:** in-progress')
 
     // Test extractCodeBlocks
     expect(extractCodeBlocks(codeBlockInput, 'mermaid')).toEqual(['graph TD\nA-->B'])

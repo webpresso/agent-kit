@@ -29,6 +29,39 @@ describe('config', () => {
     expect(readConfig(dir)).toBeNull()
   })
 
+  it('reads legacy .agent-kitrc.json as a one-way migration source', () => {
+    writeFileSync(
+      join(dir, '.agent-kitrc.json'),
+      JSON.stringify({
+        version: '1',
+        installed: { tier3Skills: ['tanstack-query'] },
+        hosts: {
+          selected: ['codex'],
+          requiredCapabilities: ['verify'],
+        },
+        rules: { overrides: ['repo-restrictions'] },
+        scripts: { 'setup-agent': 'wp setup' },
+        durablePlanningRoot: '.agent/planning/',
+        blueprintsDir: 'plans',
+        globalInstall: true,
+      }),
+    )
+
+    expect(readConfig(dir)).toEqual({
+      ...defaultConfig(),
+      installed: { tier3Skills: ['tanstack-query'] },
+      hosts: {
+        selected: ['codex'],
+        requiredCapabilities: ['verify'],
+      },
+      rules: { overrides: ['repo-restrictions'] },
+      scripts: { 'setup-agent': 'wp setup' },
+      durablePlanningRoot: '.agent/planning/',
+      blueprintsDir: 'plans',
+      globalInstall: true,
+    })
+  })
+
   it('writeConfig + readConfig round-trip', () => {
     const cfg = {
       ...defaultConfig(),
@@ -127,6 +160,40 @@ describe('config', () => {
     })
   })
 
+  it('readConfig parses audit.toolchainIsolation.allowDependencies, dropping invalid values', () => {
+    writeFileSync(
+      join(dir, '.webpressorc.json'),
+      JSON.stringify({
+        version: '1',
+        installed: { tier3Skills: [] },
+        audit: {
+          toolchainIsolation: {
+            allowDependencies: ['tsx', 42, ''],
+          },
+        },
+      }),
+    )
+
+    expect(readConfig(dir)?.audit).toEqual({
+      toolchainIsolation: {
+        allowDependencies: ['tsx'],
+      },
+    })
+  })
+
+  it('readConfig omits audit when allowDependencies is empty or absent', () => {
+    writeFileSync(
+      join(dir, '.webpressorc.json'),
+      JSON.stringify({
+        version: '1',
+        installed: { tier3Skills: [] },
+        audit: { toolchainIsolation: { allowDependencies: [] } },
+      }),
+    )
+
+    expect(readConfig(dir)).toEqual(defaultConfig())
+  })
+
   it('readConfig omits guard when absent or invalid', () => {
     writeFileSync(
       join(dir, '.webpressorc.json'),
@@ -160,30 +227,6 @@ describe('config', () => {
     })
   })
 
-  it('readConfig parses audit.toolchainIsolation.allowDependencies, dropping non-strings', () => {
-    writeFileSync(
-      join(dir, '.webpressorc.json'),
-      JSON.stringify({
-        version: '1',
-        installed: { tier3Skills: [] },
-        audit: { toolchainIsolation: { allowDependencies: ['tsx', 42, ''] } },
-      }),
-    )
-    expect(readConfig(dir)?.audit).toEqual({ toolchainIsolation: { allowDependencies: ['tsx'] } })
-  })
-
-  it('readConfig omits audit when allowDependencies is empty or absent', () => {
-    writeFileSync(
-      join(dir, '.webpressorc.json'),
-      JSON.stringify({
-        version: '1',
-        installed: { tier3Skills: [] },
-        audit: { toolchainIsolation: { allowDependencies: [] } },
-      }),
-    )
-    expect(readConfig(dir)).toEqual(defaultConfig())
-  })
-
   it('mergeConfig unions audit.toolchainIsolation.allowDependencies', () => {
     const existing = {
       ...defaultConfig(),
@@ -193,6 +236,7 @@ describe('config', () => {
       ...defaultConfig(),
       audit: { toolchainIsolation: { allowDependencies: ['@playwright/test'] } },
     }
+
     expect(mergeConfig(existing, incoming).audit).toEqual({
       toolchainIsolation: { allowDependencies: ['@playwright/test', 'tsx'] },
     })

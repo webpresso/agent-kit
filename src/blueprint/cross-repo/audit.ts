@@ -16,8 +16,8 @@
 
 import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import path from 'node:path'
 
+import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 import { Database } from '#db/sqlite.js'
 
 import type { AllowlistEntry } from './resolver.js'
@@ -76,13 +76,11 @@ interface AllowlistRow {
 // Main audit
 // ---------------------------------------------------------------------------
 
-const DB_PATH = path.join('.agent', '.blueprints.db')
-
 export async function auditCrossRepoCorrelation(
   cwd: string,
   _dryRun?: boolean,
 ): Promise<CrossRepoAuditResult> {
-  const dbFile = path.join(cwd, DB_PATH)
+  const dbFile = resolveBlueprintProjectionDbPath(cwd)
   if (!existsSync(dbFile)) {
     // No DB — nothing to audit
     return { pass: true, leaks: [], missingAllowlists: [] }
@@ -219,7 +217,7 @@ export interface FixResult {
  * It must be invoked explicitly via `wp fix cross-repo-leak <slug>`.
  */
 export async function fixCrossRepoLeak(cwd: string, blueprintSlug: string): Promise<FixResult> {
-  const dbFile = path.join(cwd, DB_PATH)
+  const dbFile = resolveBlueprintProjectionDbPath(cwd)
   if (!existsSync(dbFile)) {
     return { fixed: false, reason: 'DB file not found' }
   }

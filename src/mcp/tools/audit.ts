@@ -157,9 +157,21 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
         details: auditResult,
       }
     }
+    case 'blueprint-readme-drift': {
+      const { auditBlueprintReadmeDrift } = await import('#audit/blueprint-readme-drift')
+      const auditResult = auditBlueprintReadmeDrift(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
     case 'blueprint-lifecycle': {
-      const { auditBlueprintLifecycle } = await import('#audit/repo-guardrails')
-      const auditResult = auditBlueprintLifecycle(input.cwd ?? input.directory ?? process.cwd())
+      const { auditBlueprintLifecycleSql } = await import('#audit/blueprint-lifecycle-sql')
+      const auditResult = await auditBlueprintLifecycleSql(
+        input.cwd ?? input.directory ?? process.cwd(),
+      )
       return {
         passed: auditResult.ok,
         summary: summarizeRepoAudit(kind, auditResult),
@@ -351,7 +363,7 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
 const tool: ToolDescriptor = {
   name: 'wp_audit',
   description:
-    'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-lifecycle, architecture-drift, absolute-path-policy, no-first-party-mjs, roadmap-links, bundle-budget, commit-message, tech-debt, hook-surface, package-surface, no-relative-package-scripts). Returns {passed, kind, details}.',
+    'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-readme-drift, blueprint-lifecycle, architecture-drift, absolute-path-policy, no-first-party-mjs, roadmap-links, bundle-budget, commit-message, tech-debt, hook-surface, package-surface, no-relative-package-scripts). Returns {passed, kind, details}.',
   inputSchema,
   outputSchema,
   annotations: {

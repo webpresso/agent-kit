@@ -123,7 +123,7 @@ function applyProjectedIntent(
 
   const nextStatus =
     intent.type === 'task_start'
-      ? 'in_progress'
+      ? 'in-progress'
       : intent.type === 'task_verify'
         ? 'done'
         : intent.type === 'task_block'
@@ -327,7 +327,7 @@ function shouldFinalizeBlueprint(
     blueprint.status === 'completed' ||
     blueprint.status === 'archived' ||
     blueprint.tasks.length === 0 ||
-    !blueprint.tasks.every((task) => task.status === 'done')
+    !blueprint.tasks.every((task) => task.status === 'done' || task.status === 'dropped')
   ) {
     return false
   }
@@ -335,7 +335,7 @@ function shouldFinalizeBlueprint(
   try {
     assertAllTasksHaveCanonicalPassingEvidence(
       markdown,
-      blueprint.tasks.map((task) => task.id),
+      blueprint.tasks.filter((task) => task.status === 'done').map((task) => task.id),
     )
     return true
   } catch {
@@ -405,6 +405,7 @@ export function applyRuntimeProgressSnapshot(
     if (
       (snapshot.status === 'blocked' || snapshot.status === 'failed') &&
       task.status !== 'done' &&
+      task.status !== 'dropped' &&
       task.status !== 'blocked'
     ) {
       nextMarkdown = applyIntent(nextMarkdown, slug, appliedTransitions, {
@@ -415,7 +416,7 @@ export function applyRuntimeProgressSnapshot(
       nextBlueprint = parseBlueprint(nextMarkdown, slug)
     }
 
-    if (snapshot.status === 'completed' && task.status !== 'done') {
+    if (snapshot.status === 'completed' && task.status !== 'done' && task.status !== 'dropped') {
       const verifyIntent = taskVerifyIntent(snapshot.taskId, snapshot.evidence)
       nextMarkdown = applyIntent(
         nextMarkdown,

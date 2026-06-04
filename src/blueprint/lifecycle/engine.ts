@@ -9,7 +9,7 @@ import type { Evidence } from '#evidence.js'
 import { updateBlockedReason, updateTaskStatus } from '#markdown/helpers'
 import { applyVerification, assertAllTasksHaveCanonicalPassingEvidence } from '#verification.js'
 
-export type LifecycleTaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done'
+export type LifecycleTaskStatus = 'todo' | 'in-progress' | 'blocked' | 'done' | 'dropped'
 
 export type BlueprintLifecycleIntent =
   | { type: 'start' }
@@ -60,7 +60,9 @@ function assertExecutableStatus(status: string): LifecycleBlueprintStatus {
 
 function formatProgress(blueprint: Blueprint): string {
   const total = blueprint.tasks.length
-  const done = blueprint.tasks.filter((task) => task.status === 'done').length
+  const done = blueprint.tasks.filter(
+    (task) => task.status === 'done' || task.status === 'dropped',
+  ).length
   const blocked = blueprint.tasks.filter((task) => task.status === 'blocked').length
   const percent = total === 0 ? 0 : Math.round((done / total) * 100)
   return `${percent}% (${done}/${total} tasks done, ${blocked} blocked, updated ${todayIsoDate()})`
@@ -82,25 +84,28 @@ function assertTaskExists(blueprint: Blueprint, taskId: string) {
 }
 
 function assertTaskDoneRequirements(markdown: string, blueprint: Blueprint): void {
+  const tasksRequiringEvidence: string[] = []
+
   for (const task of blueprint.tasks) {
-    if (task.status !== 'done') {
+    if (task.status !== 'done' && task.status !== 'dropped') {
       throw new Error(
         `Blueprint ${blueprint.name} cannot finalize: Task ${task.id} is ${task.status}`,
       )
     }
 
     const { checked, total } = task.acceptanceCriteria
-    if (total > 0 && checked !== total) {
+    if (task.status === 'done' && total > 0 && checked !== total) {
       throw new Error(
         `Blueprint ${blueprint.name} cannot finalize: Task ${task.id} has ${checked}/${total} acceptance criteria checked`,
       )
     }
+
+    if (task.status === 'done') {
+      tasksRequiringEvidence.push(task.id)
+    }
   }
 
-  assertAllTasksHaveCanonicalPassingEvidence(
-    markdown,
-    blueprint.tasks.map((task) => task.id),
-  )
+  assertAllTasksHaveCanonicalPassingEvidence(markdown, tasksRequiringEvidence)
 }
 
 function applyTaskIntent(
@@ -112,14 +117,14 @@ function applyTaskIntent(
 
   switch (intent.type) {
     case 'task_start': {
-      if (task.status === 'done') {
-        throw new Error(`Task ${task.id} is already done`)
+      if (task.status === 'done' || task.status === 'dropped') {
+        throw new Error(`Task ${task.id} is already ${task.status}`)
       }
-      return updateBlockedReason(updateTaskStatus(markdown, task.id, 'in_progress'), task.id, '')
+      return updateBlockedReason(updateTaskStatus(markdown, task.id, 'in-progress'), task.id, '')
     }
     case 'task_block': {
-      if (task.status === 'done') {
-        throw new Error(`Task ${task.id} is already done`)
+      if (task.status === 'done' || task.status === 'dropped') {
+        throw new Error(`Task ${task.id} is already ${task.status}`)
       }
       const reason = intent.reason.trim()
       if (!reason) {

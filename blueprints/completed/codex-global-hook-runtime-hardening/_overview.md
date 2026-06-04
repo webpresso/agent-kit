@@ -101,8 +101,8 @@ hermetic and scoped to runtime contract proof.
 
 **Acceptance:**
 
-- [ ] Bare-command failure is reproduced deterministically
-- [ ] Absolute-path success is proven under the same sanitized env
+- [x] Bare-command failure is reproduced deterministically
+- [x] Absolute-path success is proven under the same sanitized env
 
 #### [hooks-core] Task 1.2: Add global Codex hook normalization helper
 
@@ -122,9 +122,9 @@ repeated setup runs converge on the same output.
 
 **Acceptance:**
 
-- [ ] Bare runtime commands normalize to setup-managed launcher paths
-- [ ] Duplicate legacy entries collapse deterministically
-- [ ] Re-running normalization is a no-op on already-normalized state
+- [x] Bare runtime commands normalize to setup-managed launcher paths
+- [x] Duplicate legacy entries collapse deterministically
+- [x] Re-running normalization is a no-op on already-normalized state
 
 #### [ops-test] Task 1.3: Extend ownership/selection tests for global hook cleanup
 
@@ -143,8 +143,8 @@ and unrelated user-owned commands.
 
 **Acceptance:**
 
-- [ ] Cleanup candidates are classified explicitly in tests
-- [ ] Unrelated user-owned global hook commands are preserved
+- [x] Cleanup candidates are classified explicitly in tests
+- [x] Unrelated user-owned global hook commands are preserved
 
 #### [hooks-integration] Task 2.1: Wire normalization into setup and preset repair flow
 
@@ -164,8 +164,8 @@ the primary remediation with actual launcher-generation/runtime repair logic.
 
 **Acceptance:**
 
-- [ ] Setup repairs generated global Codex hook runtime state automatically
-- [ ] Setup output documents the repair instead of delegating to operator PATH debugging
+- [x] Setup repairs generated global Codex hook runtime state automatically
+- [x] Setup output documents the repair instead of delegating to operator PATH debugging
 
 #### [ops-guard] Task 2.2: Add doctor/audit coverage for broken global Codex runtime state
 
@@ -184,8 +184,8 @@ entries.
 
 **Acceptance:**
 
-- [ ] Doctor flags bare runtime commands in generated global Codex hooks
-- [ ] Audit surfaces catch duplicate/broken generated runtime state
+- [x] Doctor flags bare runtime commands in generated global Codex hooks
+- [x] Audit surfaces catch duplicate/broken generated runtime state
 
 #### [docs/contract] Task 2.3: Codify hard decisions into durable agent instructions
 
@@ -205,9 +205,9 @@ than oral history.
 
 **Acceptance:**
 
-- [ ] Repo instructions forbid PATH-dependent generated global hook commands
-- [ ] Repo instructions point runtime regressions back to setup/scaffolder fixes
-- [ ] Repo instructions forbid masking these failures with timeout inflation
+- [x] Repo instructions forbid PATH-dependent generated global hook commands
+- [x] Repo instructions point runtime regressions back to setup/scaffolder fixes
+- [x] Repo instructions forbid masking these failures with timeout inflation
 
 #### [qa] Task 3.1: Run targeted runtime smoke gates
 
@@ -224,9 +224,9 @@ runtime failure path is fixed and the new repair/doctor contracts are stable.
 
 **Acceptance:**
 
-- [ ] Targeted runtime tests pass
-- [ ] Touched-file lint/typecheck passes
-- [ ] Evidence is recorded in the blueprint before promotion
+- [x] Targeted runtime tests pass
+- [x] Touched-file lint/typecheck passes
+- [x] Evidence is recorded in the blueprint before promotion
 ## Historical verification note
 
 This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.

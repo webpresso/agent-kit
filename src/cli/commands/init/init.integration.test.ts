@@ -240,6 +240,45 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(existsSync(join(repo, '.webpressorc.json'))).toBe(true)
   })
 
+  it('migrates legacy .agent-kitrc.json state into .webpressorc.json on setup', async () => {
+    writeFileSync(
+      join(repo, '.agent-kitrc.json'),
+      JSON.stringify(
+        {
+          version: '1',
+          installed: { tier3Skills: ['base-kit', 'tanstack-query'] },
+          hosts: {
+            selected: ['codex'],
+            requiredCapabilities: ['verify'],
+          },
+          rules: { overrides: ['repo-restrictions'] },
+          scripts: {},
+          durablePlanningRoot: '.agent/planning/',
+          blueprintsDir: 'plans',
+          globalInstall: true,
+        },
+        null,
+        2,
+      ),
+    )
+
+    const code = await runInit({ cwd: repo, yes: true })
+
+    expect(code).toBe(0)
+    const rc = JSON.parse(readFileSync(join(repo, '.webpressorc.json'), 'utf8')) as {
+      installed: { tier3Skills: string[] }
+      hosts?: { selected?: string[] }
+      rules?: { overrides?: string[] }
+      blueprintsDir?: string
+      globalInstall?: boolean
+    }
+    expect(rc.installed.tier3Skills).toEqual(['base-kit', 'tanstack-query'])
+    expect(rc.hosts?.selected).toEqual(['codex'])
+    expect(rc.rules?.overrides).toEqual(['repo-restrictions'])
+    expect(rc.blueprintsDir).toBe('plans')
+    expect(rc.globalInstall).toBe(true)
+  })
+
   it('supports a no-host fresh bootstrap with explicit degraded reporting', async () => {
     const code = await runInit({ cwd: repo, yes: true, host: 'none' })
 
@@ -320,6 +359,10 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(existsSync(join(repo, 'src', 'quality-sample.test.ts'))).toBe(true)
     expect(existsSync(join(repo, 'e2e', 'fixtures', 'smoke.html'))).toBe(true)
     expect(existsSync(join(repo, 'e2e', 'smoke.spec.ts'))).toBe(true)
+    const tsconfigJson = JSON.parse(readFileSync(join(repo, 'tsconfig.json'), 'utf8')) as {
+      extends?: string
+    }
+    expect(tsconfigJson.extends).toBe('@webpresso/agent-kit/tsconfig/base.json')
     const packageJson = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')) as {
       scripts: Record<string, string>
       devDependencies: Record<string, string>

@@ -10,6 +10,7 @@ import { REQUIRED_CORE_CAPABILITIES } from './host-visibility.js'
 
 export const CONFIG_VERSION = '1'
 export const CONFIG_FILENAME = '.webpressorc.json'
+export const LEGACY_CONFIG_FILENAME = '.agent-kitrc.json'
 export const DEFAULT_DURABLE_PLANNING_ROOT = '.agent/planning/'
 
 function readOptionalString(value: unknown): string | undefined {
@@ -22,6 +23,11 @@ export interface AgentkitConfig {
   version: string
   installed: {
     tier3Skills: string[]
+  }
+  audit?: {
+    toolchainIsolation?: {
+      allowDependencies?: string[]
+    }
   }
   hosts?: {
     selected: AgentHost[]
@@ -39,16 +45,6 @@ export interface AgentkitConfig {
   guard?: {
     packageManager?: 'vp-only'
     scriptRoutes?: Record<string, string>
-  }
-  /** Audit policy overrides. `mechanism` lives in agent-kit; this is per-repo
-   *  `data`. `toolchainIsolation.allowDependencies` lists dependency names that
-   *  are exempt from the toolchain-isolation audit because they are legitimate
-   *  app-specific runtimes (e.g. `tsx` for a Pulumi program's TS loader,
-   *  `@playwright/test` imported by e2e specs), not generic toolchain. */
-  audit?: {
-    toolchainIsolation?: {
-      allowDependencies?: string[]
-    }
   }
   rules: {
     overrides: string[]
@@ -78,13 +74,12 @@ export function defaultConfig(): AgentkitConfig {
   }
 }
 
-export function readConfig(repoRoot: string): AgentkitConfig | null {
-  const path = join(repoRoot, CONFIG_FILENAME)
-  if (!existsSync(path)) return null
+function parseConfigFile(path: string): AgentkitConfig | null {
   try {
     const raw = readFileSync(path, 'utf8')
     const parsed = JSON.parse(raw) as Partial<AgentkitConfig>
     const installed = parsed.installed as Partial<AgentkitConfig['installed']> | undefined
+    const audit = parsed.audit as Partial<NonNullable<AgentkitConfig['audit']>> | undefined
     const mcp = parsed.mcp as Partial<NonNullable<AgentkitConfig['mcp']>> | undefined
     const hosts = parsed.hosts as Partial<NonNullable<AgentkitConfig['hosts']>> | undefined
     const rules = parsed.rules as Partial<AgentkitConfig['rules']> | undefined
@@ -118,13 +113,22 @@ export function readConfig(repoRoot: string): AgentkitConfig | null {
             ...(scriptRoutes ? { scriptRoutes } : {}),
           }
         : undefined
-    const auditConfig = parsed.audit as Partial<NonNullable<AgentkitConfig['audit']>> | undefined
-    const rawAllowDeps = auditConfig?.toolchainIsolation?.allowDependencies
-    const allowDependencies = Array.isArray(rawAllowDeps)
-      ? rawAllowDeps.filter((s): s is string => typeof s === 'string' && s.length > 0)
-      : []
+    const rawToolchainIsolation = audit?.toolchainIsolation as
+      | Partial<NonNullable<NonNullable<AgentkitConfig['audit']>['toolchainIsolation']>>
+      | undefined
+    const allowDependencies = Array.isArray(rawToolchainIsolation?.allowDependencies)
+      ? rawToolchainIsolation.allowDependencies.filter(
+          (value): value is string => typeof value === 'string' && value.length > 0,
+        )
+      : undefined
     const normalizedAudit =
-      allowDependencies.length > 0 ? { toolchainIsolation: { allowDependencies } } : undefined
+      allowDependencies && allowDependencies.length > 0
+        ? {
+            toolchainIsolation: {
+              allowDependencies,
+            },
+          }
+        : undefined
     const selectedHosts = Array.isArray(hosts?.selected)
       ? hosts.selected.filter((s): s is AgentHost =>
           ['codex', 'claude', 'opencode'].includes(String(s)),
@@ -145,9 +149,9 @@ export function readConfig(repoRoot: string): AgentkitConfig | null {
         requiredCapabilities,
         ...(visibility ? { visibility } : {}),
       },
+      ...(normalizedAudit ? { audit: normalizedAudit } : {}),
       ...(normalizedMcp ? { mcp: normalizedMcp } : {}),
       ...(normalizedGuard ? { guard: normalizedGuard } : {}),
-      ...(normalizedAudit ? { audit: normalizedAudit } : {}),
       rules: { overrides: overrides.filter((s): s is string => typeof s === 'string') },
       scripts: {
         'setup-agent': readOptionalString(scripts?.['setup-agent']),
@@ -162,6 +166,16 @@ export function readConfig(repoRoot: string): AgentkitConfig | null {
   } catch {
     return null
   }
+}
+
+export function readConfig(repoRoot: string): AgentkitConfig | null {
+  const configPath = join(repoRoot, CONFIG_FILENAME)
+  if (existsSync(configPath)) return parseConfigFile(configPath)
+
+  const legacyConfigPath = join(repoRoot, LEGACY_CONFIG_FILENAME)
+  if (existsSync(legacyConfigPath)) return parseConfigFile(legacyConfigPath)
+
+  return null
 }
 
 export function mergeConfig(
@@ -182,6 +196,20 @@ export function mergeConfig(
           ...incoming.mcp,
         }
       : undefined
+  const mergedAllowDependencies = Array.from(
+    new Set([
+      ...(existing.audit?.toolchainIsolation?.allowDependencies ?? []),
+      ...(incoming.audit?.toolchainIsolation?.allowDependencies ?? []),
+    ]),
+  ).toSorted()
+  const mergedAudit =
+    mergedAllowDependencies.length > 0
+      ? {
+          toolchainIsolation: {
+            allowDependencies: mergedAllowDependencies,
+          },
+        }
+      : undefined
   const mergedScriptRoutes =
     existing.guard?.scriptRoutes || incoming.guard?.scriptRoutes
       ? { ...existing.guard?.scriptRoutes, ...incoming.guard?.scriptRoutes }
@@ -194,22 +222,13 @@ export function mergeConfig(
           ...(mergedScriptRoutes ? { scriptRoutes: mergedScriptRoutes } : {}),
         }
       : undefined
-  const existingAllowDeps = existing.audit?.toolchainIsolation?.allowDependencies
-  const incomingAllowDeps = incoming.audit?.toolchainIsolation?.allowDependencies
-  const mergedAllowDeps =
-    existingAllowDeps || incomingAllowDeps
-      ? Array.from(new Set([...(existingAllowDeps ?? []), ...(incomingAllowDeps ?? [])])).toSorted()
-      : undefined
-  const mergedAudit = mergedAllowDeps
-    ? { toolchainIsolation: { allowDependencies: mergedAllowDeps } }
-    : undefined
   return {
     version: incoming.version,
     installed: { tier3Skills: tier3 },
     hosts: incoming.hosts ?? existing.hosts,
+    ...(mergedAudit ? { audit: mergedAudit } : {}),
     ...(mergedMcp ? { mcp: mergedMcp } : {}),
     ...(mergedGuard ? { guard: mergedGuard } : {}),
-    ...(mergedAudit ? { audit: mergedAudit } : {}),
     rules: { overrides },
     scripts: {
       'setup-agent': incoming.scripts['setup-agent'] ?? existing.scripts['setup-agent'],

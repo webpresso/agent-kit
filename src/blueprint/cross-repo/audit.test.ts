@@ -13,6 +13,7 @@ import Database from 'better-sqlite3'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { openDb } from '../db/connection.js'
+import { resolveBlueprintProjectionDbPath } from '../db/paths.js'
 import { auditCrossRepoCorrelation, fixCrossRepoLeak } from './audit.js'
 
 // ---------------------------------------------------------------------------
@@ -83,8 +84,8 @@ let conn: ReturnType<typeof openDb>
 
 beforeEach(() => {
   tmpDir = mkdtempSync(path.join(tmpdir(), 'wp-audit-xrepo-'))
-  mkdirSync(path.join(tmpDir, '.agent'), { recursive: true })
-  dbPath = path.join(tmpDir, '.agent', '.blueprints.db')
+  dbPath = resolveBlueprintProjectionDbPath(tmpDir)
+  mkdirSync(path.dirname(dbPath), { recursive: true })
   conn = openDb(dbPath)
 })
 

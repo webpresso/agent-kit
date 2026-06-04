@@ -5,6 +5,7 @@ export type AuditKind =
   | 'tph-e2e'
   | 'bundle-budget'
   | 'commit-message'
+  | 'blueprint-readme-drift'
   | 'blueprint-lifecycle'
   | 'roadmap-links'
   | 'docs-frontmatter'
@@ -29,7 +30,6 @@ export type AuditKind =
   | 'no-first-party-mjs'
   | 'agent-cost'
   | 'blueprint-db-consistency'
-  | 'blueprint-lifecycle-sql'
   | 'tech-debt-cadence'
   | 'cross-repo-correlation'
   | 'ai-contracts'
@@ -59,7 +59,7 @@ export interface AuditActionOptions {
   htmlEntry?: string
   ignore?: string | string[]
   json?: boolean
-  legacyOmx?: boolean
+  omxPlans?: boolean
   loreWarn?: boolean
   maxHtmlEagerJsAssetBytes?: string
   maxHtmlEagerJsTotalBytes?: string

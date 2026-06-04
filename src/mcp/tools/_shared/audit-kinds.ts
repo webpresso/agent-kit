@@ -14,6 +14,7 @@ export const AUDIT_KINDS = [
   'catalog-drift',
   'package-surface',
   'docs-frontmatter',
+  'blueprint-readme-drift',
   'blueprint-lifecycle',
   'architecture-drift',
   'cloudflare-deploy-contract',

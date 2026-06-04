@@ -34,8 +34,14 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
   'catalog-drift': async (root) => (await import('#audit/repo-guardrails')).auditCatalogDrift(root),
   'package-surface': async (root) =>
     (await import('#audit/package-surface')).auditPackageSurface(root),
-  'blueprint-lifecycle': async (root, _options) =>
-    (await import('#audit/blueprint-lifecycle-sql')).auditBlueprintLifecycleSql(root),
+  'blueprint-readme-drift': async (root, options) =>
+    (await import('#audit/blueprint-readme-drift')).auditBlueprintReadmeDrift(root, {
+      fix: options.fix,
+    }),
+  'blueprint-lifecycle': async (root, options) =>
+    (await import('#audit/blueprint-lifecycle-sql')).auditBlueprintLifecycleSql(root, {
+      includeOmxPlans: options.omxPlans,
+    }),
   'roadmap-links': async (root, options) =>
     (await import('#audit/roadmap-links')).auditRoadmapLinks(root, {
       failOrphans: options.strict,
@@ -106,8 +112,6 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
   'agent-cost': async (root) => (await import('#audit/agent-cost')).auditAgentCost(root),
   'blueprint-db-consistency': async (root) =>
     (await import('#audit/blueprint-db-consistency')).auditBlueprintDbConsistency(root),
-  'blueprint-lifecycle-sql': async (root) =>
-    (await import('#audit/blueprint-lifecycle-sql')).auditBlueprintLifecycleSql(root),
   'tech-debt-cadence': async (root) =>
     (await import('#audit/tech-debt-cadence')).auditTechDebtCadence(root),
   'cross-repo-correlation': async (root) =>
@@ -255,7 +259,7 @@ export function registerAuditCommand(cli: CAC): void {
       '--lore-warn',
       'Warn about missing Lore trailers but always exit 0 (soft adoption mode)',
     )
-    .option('--legacy-omx', 'Include legacy .omx plan checks for blueprint-lifecycle')
+    .option('--omx-plans', 'Also audit .omx/plans derived-handoff governance for blueprint-lifecycle')
     .option('--html-entry <file>', 'HTML entry relative to dist for bundle-budget')
     .option('--max-js-asset-bytes <bytes>', 'Max size for any generated JS asset')
     .option('--max-html-eager-js-asset-bytes <bytes>', 'Max size for any HTML-eager JS asset')

@@ -1,29 +1,37 @@
 /**
- * `wp audit blueprint-lifecycle-sql` — SQL-backed rewrite of the existing
- * blueprint-lifecycle audit.
+ * `wp audit blueprint-lifecycle` — the single, deterministic blueprint-lifecycle
+ * audit.
  *
- * Uses the SQLite replica as the primary source when the DB file exists.
- * Falls back to the markdown-based audit when the DB has not been built yet.
+ * The verdict is a pure function of `markdown@HEAD`: this builds an EPHEMERAL
+ * in-memory SQLite projection from the repo's blueprint markdown
+ * (`buildEphemeralProjection`), runs the relational checks against it, and
+ * discards it. It also runs the structural markdown checks
+ * (`auditBlueprintLifecycle` — type / status-vs-folder / `_overview.md` presence /
+ * linking-frontmatter) and merges both result sets. No persistent on-disk
+ * projection is read, so the audit can never hit a stale/missing/locked DB and
+ * is identical across CLI, the `wp_audit` MCP tool, `wp doctor`, and CI.
  *
- * SQL checks (when DB exists):
+ * Relational checks (against the in-memory projection):
  * 1. Blueprints with status='in-progress' that have 0 tasks (invalid).
  * 2. Blueprints whose `status` column doesn't match the directory segment
- *    derived from `file_path` (e.g. stored in completed/ but status=in-progress).
+ *    derived from `file_path`.
  * 3. Tasks in state 'in-progress' whose dependencies are not all done.
  * 4. Blueprints with progress_pct < 100 but status='completed'.
  */
 
+import { execFileSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { existsSync } from 'node:fs'
 
-import { migrateLegacyAgentDb } from '#db/legacy-migration.js'
-import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
+import {
+  getLegalLifecycleTargets,
+  isLegalLifecycleTransition,
+  parseLifecycleBlueprintStatus,
+} from '#lifecycle/transition-matrix.js'
+import { buildEphemeralProjection } from '#db/ephemeral-projection.js'
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
-
-// Legacy fallback path — kept for the brief window where a migration may have
-// just-happened (Task 1.1 / F12 / R10 / E12). Worktree-scoped path is canonical.
-const LEGACY_DB_PATH = path.join('.agent', '.blueprints.db')
+import { loadBudgets } from './_budgets.js'
 
 interface BlueprintStatusRow {
   slug: string
@@ -39,34 +47,186 @@ interface TaskInProgressRow {
   status: string
 }
 
-export async function auditBlueprintLifecycleSql(cwd: string): Promise<RepoAuditResult> {
-  // F12/R10/E12: trigger one-shot migration before resolving the DB so a stray
-  // legacy file is moved (and gone) before we count rows. After this call the
-  // canonical worktree-scoped path is the single source of truth.
-  migrateLegacyAgentDb(cwd)
+/** A task is "terminal" (counts as finished) when it is done OR intentionally dropped. */
+const TERMINAL_TASK_SQL = "('done','dropped')"
+const STALENESS_SCOPE = new Set(['in-progress'])
+const STALENESS_WARNING_PREFIX = '[warn]'
 
-  // Prefer the canonical worktree-scoped path. If the migration failed because
-  // the destination already existed, the warning is already logged; we trust
-  // the canonical DB and never read the legacy file in addition, which would
-  // double-count rows.
-  let dbFile: string
+function isGitHistoryAvailable(cwd: string): boolean {
   try {
-    dbFile = resolveBlueprintProjectionDbPath(cwd)
+    execFileSync('git', ['rev-parse', '--show-toplevel'], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 1_500,
+    })
+    return true
   } catch {
-    dbFile = path.join(cwd, LEGACY_DB_PATH)
+    return false
+  }
+}
+
+function readLastGitTouchIso(cwd: string, filePath: string): string | null {
+  try {
+    const repoRelativePath = path.isAbsolute(filePath) ? path.relative(cwd, filePath) : filePath
+    const out = execFileSync('git', ['log', '-1', '--format=%cI', '--', repoRelativePath], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 1_500,
+    }).trim()
+    return out.length > 0 ? out : null
+  } catch {
+    return null
+  }
+}
+
+function ageInDays(isoTimestamp: string, nowMs: number): number | null {
+  const touchedAtMs = Date.parse(isoTimestamp)
+  if (Number.isNaN(touchedAtMs)) return null
+  return Math.floor((nowMs - touchedAtMs) / 86_400_000)
+}
+
+function readFrontmatterStatus(markdown: string): string | null {
+  const frontmatterBody = readFrontmatterBody(markdown)
+  if (!frontmatterBody) return null
+  const statusMatch = frontmatterBody.match(/^status:\s*(.+)$/m)
+  if (!statusMatch?.[1]) return null
+  return statusMatch[1].trim().replace(/^['"]|['"]$/g, '')
+}
+
+function readFrontmatterBody(markdown: string): string | null {
+  const frontmatterMatch = markdown.match(/^---\n([\s\S]*?)\n---/m)
+  return frontmatterMatch?.[1] ?? null
+}
+
+function hasHistoricalVerificationGapWaiver(markdown: string): boolean {
+  const frontmatterBody = readFrontmatterBody(markdown)
+  if (!frontmatterBody) return false
+  return /^historical_verification_gap_waiver:\s*true\s*$/m.test(frontmatterBody)
+}
+
+interface GitHistoryEntry {
+  readonly revision: string
+  readonly filePath: string
+}
+
+function listBlueprintHistoryEntries(cwd: string, filePath: string): GitHistoryEntry[] {
+  try {
+    const repoRelativePath = path.isAbsolute(filePath) ? path.relative(cwd, filePath) : filePath
+    let trackedPath = repoRelativePath.replace(/\\/g, '/')
+    const out = execFileSync(
+      'git',
+      ['log', '--follow', '--format=commit:%H', '--name-status', '--', trackedPath],
+      {
+        cwd,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 1_500,
+        maxBuffer: 1024 * 1024,
+      },
+    )
+
+    const history: GitHistoryEntry[] = []
+    let currentRevision: string | null = null
+    let currentPathAtRevision: string | null = null
+    let nextTrackedPath = trackedPath
+
+    const flushEntry = (): void => {
+      if (!currentRevision || !currentPathAtRevision) return
+      history.push({ revision: currentRevision, filePath: currentPathAtRevision })
+      trackedPath = nextTrackedPath
+    }
+
+    for (const rawLine of out.split('\n')) {
+      const line = rawLine.trim()
+      if (!line) continue
+      if (line.startsWith('commit:')) {
+        flushEntry()
+        currentRevision = line.slice('commit:'.length).trim()
+        currentPathAtRevision = trackedPath
+        nextTrackedPath = trackedPath
+        continue
+      }
+
+      const parts = line.split('\t')
+      const status = parts[0]?.trim() ?? ''
+      if (!status.startsWith('R')) continue
+
+      const oldPath = parts[1]?.trim().replace(/\\/g, '/')
+      const newPath = parts[2]?.trim().replace(/\\/g, '/')
+      if (oldPath && newPath && newPath === currentPathAtRevision) {
+        nextTrackedPath = oldPath
+      }
+    }
+
+    flushEntry()
+    return history
+  } catch {
+    return []
+  }
+}
+
+function readHistoricalFile(cwd: string, revision: string, filePath: string): string | null {
+  try {
+    return execFileSync('git', ['show', `${revision}:${filePath}`], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 1_500,
+      maxBuffer: 1024 * 1024,
+    })
+  } catch {
+    return null
+  }
+}
+
+function readPreviousLifecycleStatusFromGit(
+  cwd: string,
+  filePath: string,
+  currentStatus: string,
+): string | null {
+  const history = listBlueprintHistoryEntries(cwd, filePath)
+  if (history.length < 2) return null
+
+  for (const entry of history.slice(1)) {
+    const markdown = readHistoricalFile(cwd, entry.revision, entry.filePath)
+    if (!markdown) continue
+    const status = readFrontmatterStatus(markdown)
+    if (!status || status === currentStatus) continue
+    return status
   }
 
-  if (!existsSync(dbFile)) {
-    // DB not yet built — fall back to markdown-based audit
-    const { auditBlueprintLifecycle } = await import('./repo-guardrails.js')
-    return auditBlueprintLifecycle(cwd)
-  }
+  return null
+}
 
-  const { Database } = await import('#db/sqlite.js')
-  const db = new Database(dbFile, { readonly: true })
+export interface BlueprintLifecycleAuditOptions {
+  /** Opt-in: also audit `.omx/plans/` derived-handoff governance (`--legacy-omx`). */
+  readonly includeOmxPlans?: boolean
+}
 
-  const violations: RepoAuditViolation[] = []
-  let checked = 0
+export async function auditBlueprintLifecycleSql(
+  cwd: string = process.cwd(),
+  options: BlueprintLifecycleAuditOptions = {},
+): Promise<RepoAuditResult> {
+  const budgets = loadBudgets(cwd)
+  const wipInProgressMax = budgets['blueprint-wip-in-progress-max'].max ?? 3
+  const staleInProgressDays = budgets['blueprint-stale-in-progress-days'].max_days ?? 14
+
+  // Structural markdown checks (type / status-vs-folder / _overview / linking /
+  // optional .omx-plan handoff governance). Run unconditionally and merged —
+  // this is NOT a fallback. Dynamic import keeps the heavy guardrails module off
+  // the hook-runtime hot path until the audit runs.
+  const { auditBlueprintLifecycle } = await import('./repo-guardrails.js')
+  const structural = auditBlueprintLifecycle(cwd, options)
+
+  const violations: RepoAuditViolation[] = [...structural.violations]
+  const advisoryViolations: RepoAuditViolation[] = []
+  let checked = structural.checked
+  const titleNotices: string[] = []
+
+  const conn = await buildEphemeralProjection(cwd)
+  const { db } = conn
 
   try {
     const allBlueprints = db
@@ -74,14 +234,6 @@ export async function auditBlueprintLifecycleSql(cwd: string): Promise<RepoAudit
         'SELECT slug, status, file_path, progress_pct FROM blueprints',
       )
       .all()
-
-    if (allBlueprints.length === 0) {
-      const { auditBlueprintLifecycle } = await import('./repo-guardrails.js')
-      const markdownAudit = auditBlueprintLifecycle(cwd)
-      if (markdownAudit.checked > 0) {
-        return markdownAudit
-      }
-    }
 
     // -----------------------------------------------------------------------
     // 1. in-progress blueprints with 0 tasks
@@ -107,12 +259,10 @@ export async function auditBlueprintLifecycleSql(cwd: string): Promise<RepoAudit
 
     // -----------------------------------------------------------------------
     // 2. status/directory mismatch
-    //    Derive the directory segment from the file_path and compare to status.
     //    Blueprint file_path convention: blueprints/<status>/<slug>/_overview.md
     // -----------------------------------------------------------------------
     checked += allBlueprints.length
     for (const row of allBlueprints) {
-      // Derive directory status from the path: second segment after 'blueprints/'
       const segments = row.file_path.replace(/\\/g, '/').split('/')
       const blueprintsIdx = segments.lastIndexOf('blueprints')
       const dirStatus = blueprintsIdx >= 0 ? segments[blueprintsIdx + 1] : null
@@ -156,28 +306,163 @@ export async function auditBlueprintLifecycleSql(cwd: string): Promise<RepoAudit
     const incompleteCompleted = db
       .prepare<[], { slug: string; file_path: string; progress_pct: number }>(
         `SELECT slug, file_path, progress_pct
-         FROM blueprints
-         WHERE status = 'completed'
-           AND progress_pct IS NOT NULL
-           AND progress_pct < 100`,
+          FROM blueprints
+          WHERE status = 'completed'
+            AND progress_pct IS NOT NULL
+            AND progress_pct < 100`,
       )
       .all()
 
     checked += incompleteCompleted.length
     for (const row of incompleteCompleted) {
+      const hasNonTerminalTask = db
+        .prepare<[string], { open_tasks: number }>(
+          `SELECT COUNT(*) AS open_tasks
+             FROM tasks
+            WHERE blueprint_slug = ?
+              AND status NOT IN ${TERMINAL_TASK_SQL}`,
+        )
+        .get(row.slug)
+      if ((hasNonTerminalTask?.open_tasks ?? 0) === 0) continue
       violations.push({
         file: row.file_path,
         message: `Blueprint '${row.slug}' is marked completed but progress_pct is ${row.progress_pct}% (expected 100)`,
       })
     }
 
+    // -----------------------------------------------------------------------
+    // 5. in-progress blueprints whose tasks are ALL terminal (done|dropped)
+    //    — finished work left in the in-progress lane. terminal = done ∪ dropped
+    //    so a de-scoped task doesn't keep a finished blueprint pinned forever.
+    // -----------------------------------------------------------------------
+    const allTerminalInProgress = db
+      .prepare<[], { slug: string; file_path: string; total: number }>(
+        `SELECT b.slug, b.file_path, COUNT(t.id) AS total
+         FROM blueprints b
+         JOIN tasks t ON t.blueprint_slug = b.slug
+         WHERE b.status = 'in-progress'
+         GROUP BY b.slug, b.file_path
+         HAVING COUNT(t.id) > 0
+            AND SUM(CASE WHEN t.status IN ${TERMINAL_TASK_SQL} THEN 1 ELSE 0 END) = COUNT(t.id)`,
+      )
+      .all()
+
+    checked += allTerminalInProgress.length
+    for (const row of allTerminalInProgress) {
+      violations.push({
+        file: row.file_path,
+        message: `Blueprint '${row.slug}' has all ${row.total} tasks done/dropped but is still in 'in-progress/' — move it to completed/ or reopen a task`,
+      })
+    }
+
+    // -----------------------------------------------------------------------
+    // 6. completed blueprints with a non-terminal task (status untruthful)
+    // -----------------------------------------------------------------------
+    const completedWithOpenTasks = db
+      .prepare<[], { slug: string; file_path: string }>(
+        `SELECT b.slug, b.file_path
+         FROM blueprints b
+         WHERE b.status = 'completed'
+           AND EXISTS (
+             SELECT 1 FROM tasks t
+             WHERE t.blueprint_slug = b.slug
+               AND t.status NOT IN ${TERMINAL_TASK_SQL}
+           )`,
+      )
+      .all()
+
+    checked += completedWithOpenTasks.length
+    for (const row of completedWithOpenTasks) {
+      violations.push({
+        file: row.file_path,
+        message: `Blueprint '${row.slug}' is marked completed but has tasks that are not done/dropped`,
+      })
+    }
+
+    // -----------------------------------------------------------------------
+    // 7. WIP limit — at most the configured max blueprints in the in-progress lane
+    // -----------------------------------------------------------------------
+    const inProgressCountRows = db
+      .prepare<[], { n: number }>(`SELECT COUNT(*) AS n FROM blueprints WHERE status = 'in-progress'`)
+      .all()
+    const inProgressCount = inProgressCountRows[0]?.n ?? 0
+    checked += 1
+    if (inProgressCount > wipInProgressMax) {
+      violations.push({
+        message: `${inProgressCount} blueprints are in-progress — the lane limit is ${wipInProgressMax} (budget: blueprint-wip-in-progress-max); finish or park some before starting more`,
+      })
+    }
+
+    // -----------------------------------------------------------------------
+    // 8. Staleness — warn (do not fail) when an in-progress blueprint has not
+    //    been touched in git within the configured day budget.
+    // -----------------------------------------------------------------------
+    const staleCandidates = allBlueprints.filter((row) => STALENESS_SCOPE.has(row.status))
+    checked += staleCandidates.length
+    if (staleCandidates.length > 0) {
+      if (isGitHistoryAvailable(cwd)) {
+        const nowMs = Date.now()
+        for (const row of staleCandidates) {
+          const lastTouchIso = readLastGitTouchIso(cwd, row.file_path)
+          if (lastTouchIso === null) continue
+          const ageDays = ageInDays(lastTouchIso, nowMs)
+          if (ageDays === null || ageDays <= staleInProgressDays) continue
+          advisoryViolations.push({
+            file: row.file_path,
+            message:
+              `${STALENESS_WARNING_PREFIX} Blueprint '${row.slug}' is stale: last git touch was ` +
+              `${lastTouchIso.slice(0, 10)} (${ageDays} days ago), exceeding ` +
+              `blueprint-stale-in-progress-days=${staleInProgressDays}`,
+          })
+        }
+      } else {
+        titleNotices.push('staleness check skipped outside git')
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // 9. Transition legality — best effort, based on previous lifecycle status
+    //    observed in git history. Missing history fails open by design.
+    // -----------------------------------------------------------------------
+    checked += allBlueprints.length
+    if (allBlueprints.length === 0) {
+      // Nothing to reconcile against history, so suppress the outside-git notice.
+    } else if (isGitHistoryAvailable(cwd)) {
+      for (const row of allBlueprints) {
+        const currentMarkdown = readFileSync(row.file_path, 'utf8')
+        if (hasHistoricalVerificationGapWaiver(currentMarkdown)) continue
+
+        const currentStatus = parseLifecycleBlueprintStatus(row.status)
+        if (!currentStatus) continue
+        const previousRaw = readPreviousLifecycleStatusFromGit(cwd, row.file_path, currentStatus)
+        if (!previousRaw) continue
+        const previousStatus = parseLifecycleBlueprintStatus(previousRaw)
+        if (!previousStatus) continue
+        if (isLegalLifecycleTransition(previousStatus, currentStatus)) continue
+
+        violations.push({
+          file: row.file_path,
+          message:
+            `Blueprint '${row.slug}' moved from '${previousStatus}' to '${currentStatus}', which is illegal; ` +
+            `legal targets from '${previousStatus}' are: ${getLegalLifecycleTargets(previousStatus).join(', ') || '(none)'}`,
+        })
+      }
+    } else {
+      titleNotices.push('transition history check skipped outside git')
+    }
+
+    const title =
+      titleNotices.length === 0
+        ? 'Blueprint lifecycle'
+        : `Blueprint lifecycle — ${titleNotices.join('; ')}`
+
     return {
       ok: violations.length === 0,
-      title: 'Blueprint lifecycle (SQL)',
+      title,
       checked,
-      violations,
+      violations: [...violations, ...advisoryViolations],
     }
   } finally {
-    db.close()
+    conn.close()
   }
 }

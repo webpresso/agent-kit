@@ -32,7 +32,7 @@ describe('extractCheckboxStatus', () => {
     expect(result).toEqual({ total: 2, checked: 0, status: 'todo' })
   })
 
-  it('returns in_progress status with some checked', () => {
+  it('returns in-progress status with some checked', () => {
     const section = `
 #### Task 1.1: Setup
 - [x] First item
@@ -40,7 +40,7 @@ describe('extractCheckboxStatus', () => {
 - [ ] Third item
 `
     const result = extractCheckboxStatus(section)
-    expect(result).toEqual({ total: 3, checked: 1, status: 'in_progress' })
+    expect(result).toEqual({ total: 3, checked: 1, status: 'in-progress' })
   })
 
   it('returns done status with all checked', () => {
@@ -61,7 +61,7 @@ describe('extractCheckboxStatus', () => {
 - [ ] Second item
 `
     const result = extractCheckboxStatus(section)
-    expect(result).toEqual({ total: 2, checked: 1, status: 'in_progress' })
+    expect(result).toEqual({ total: 2, checked: 1, status: 'in-progress' })
   })
 
   it('handles lane-prefixed task headers', () => {
@@ -71,7 +71,7 @@ describe('extractCheckboxStatus', () => {
 - [ ] Second item
 `
     const result = extractCheckboxStatus(section)
-    expect(result).toEqual({ total: 2, checked: 1, status: 'in_progress' })
+    expect(result).toEqual({ total: 2, checked: 1, status: 'in-progress' })
   })
 })
 

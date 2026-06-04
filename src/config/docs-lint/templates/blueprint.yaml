@@ -104,7 +104,7 @@ task_format:
       - 'These are the current accepted task-heading forms enforced by the validator.'
       - 'Lane prefix is optional but recommended. Common lanes: [schema], [backend], [ui], [infra], [docs], [qa].'
   required_metadata:
-    - '**Status:** todo|in_progress|blocked|done'
+    - '**Status:** todo|in-progress|blocked|done'
   notes:
     - 'Task metadata rules here reflect the current validator contract.'
     - 'Acceptance checkboxes are evidence, not the lifecycle source of truth.'

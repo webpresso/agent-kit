@@ -3,10 +3,11 @@
  *
  * Demonstrates the two-lock policy in action:
  *  - Same worktree: two concurrent ingest paths serialize via the
- *    `'worktree'`-scoped projection-DB lock.
- *  - Cross-worktree: two concurrent markdown writers (one per worktree)
- *    serialize via the `'repo'`-scoped markdown lock; the projection DBs
- *    themselves are independent so each ingest path runs against its own DB.
+ *    repo-scoped projection-DB lock.
+ *  - Cross-worktree: writers from two worktrees of the same repo serialize
+ *    via the shared repo-scoped markdown lock.
+ *  - Cross-worktree projection writes also serialize because the projection DB
+ *    itself is repo-scoped and shared across worktrees of the same repo.
  *
  * The serialization signal is the temporal **non-overlap** of the critical
  * sections under each lock, not the final row count (we are not testing DB
@@ -162,7 +163,7 @@ describe('concurrent ingest — markdown lock (repo scope, cross-worktree)', () 
     }
   })
 
-  it('cross-worktree projection DBs do not contend on the same lock', async () => {
+  it('cross-worktree projection DB writers share the same repo-scoped lock', async () => {
     const repo = mkdtempSync(path.join(tmpdir(), 'wp-repo-'))
     const wtParent = mkdtempSync(path.join(tmpdir(), 'wp-wt-parent-'))
     const wtDir = path.join(wtParent, 'alt')
@@ -172,7 +173,7 @@ describe('concurrent ingest — markdown lock (repo scope, cross-worktree)', () 
       execSync('git add . && git commit -q -m init', { cwd: repo })
       execSync(`git worktree add -q -b alt-wt2 "${wtDir}"`, { cwd: repo })
 
-      expect(resolveBlueprintProjectionDbLockPath(repo)).not.toBe(
+      expect(resolveBlueprintProjectionDbLockPath(repo)).toBe(
         resolveBlueprintProjectionDbLockPath(wtDir),
       )
 
@@ -189,7 +190,7 @@ describe('concurrent ingest — markdown lock (repo scope, cross-worktree)', () 
       expect(spans).toHaveLength(2)
       const [first, second] =
         spans[0]!.start < spans[1]!.start ? [spans[0]!, spans[1]!] : [spans[1]!, spans[0]!]
-      expect(overlaps(first, second)).toBe(true)
+      expect(overlaps(first, second)).toBe(false)
     } finally {
       try {
         execSync(`git worktree remove --force "${wtDir}"`, { cwd: repo })

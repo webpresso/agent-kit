@@ -2,6 +2,8 @@
 type: blueprint
 title: "Promote Parent Roadmaps to First-Class"
 owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 status: completed
 complexity: M
 created: '2026-04-25'

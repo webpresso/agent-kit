@@ -173,7 +173,7 @@ describe('repo guardrail audits', () => {
     )
 
     const missingLegacy = auditBlueprintLifecycle(root, {
-      includeLegacyOmx: true,
+      includeOmxPlans: true,
     })
 
     expect(missingLegacy.ok).toBe(false)
@@ -204,7 +204,7 @@ describe('repo guardrail audits', () => {
     writeFileSync(join(root, '.omx', 'plans', 'prd-route-split.md'), derivedHandoff)
     writeFileSync(join(root, '.omx', 'plans', 'test-spec-route-split.md'), derivedHandoff)
 
-    expect(auditBlueprintLifecycle(root, { includeLegacyOmx: true }).ok).toBe(true)
+    expect(auditBlueprintLifecycle(root, { includeOmxPlans: true }).ok).toBe(true)
   })
 
   test('blueprint lifecycle audit enforces folder/status agreement and required overview files', () => {
@@ -322,8 +322,11 @@ describe('repo guardrail audits', () => {
       [
         '---',
         'type: blueprint',
+        'title: Child',
+        'owner: alice',
         'status: planned',
         'complexity: M',
+        'last_updated: 2026-06-04',
         'depends_on: []',
         'cross_repo_depends_on:',
         '  - repo: webpresso/framework',
@@ -347,8 +350,11 @@ describe('repo guardrail audits', () => {
       [
         '---',
         'type: blueprint',
+        'title: Child',
+        'owner: alice',
         'status: completed',
         'complexity: M',
+        'last_updated: 2026-06-04',
         'parent_roadmap: "cross-repo: webpresso/monorepo → roadmap-a"',
         '---',
         '# Child',
@@ -1060,7 +1066,17 @@ describe('auditBlueprintLifecycle — branch coverage', () => {
     mkdirSync(join(root, 'blueprints', 'in-progress', 'my-feature'), { recursive: true })
     writeFileSync(
       join(root, 'blueprints', 'in-progress', 'my-feature', '_overview.md'),
-      ['---', 'type: blueprint', 'status: in-progress', '---', '# My Feature'].join('\n'),
+      [
+        '---',
+        'type: blueprint',
+        'title: My Feature',
+        'owner: alice',
+        'status: in-progress',
+        'complexity: M',
+        'last_updated: 2026-06-04',
+        '---',
+        '# My Feature',
+      ].join('\n'),
     )
     const result = auditBlueprintLifecycle(root)
     expect(result.ok).toBe(true)
@@ -1072,11 +1088,76 @@ describe('auditBlueprintLifecycle — branch coverage', () => {
     mkdirSync(join(root, 'blueprints', 'in-progress'), { recursive: true })
     writeFileSync(
       join(root, 'blueprints', 'in-progress', 'my-feature.md'),
-      ['---', 'type: blueprint', 'status: in-progress', '---', '# My Feature'].join('\n'),
+      [
+        '---',
+        'type: blueprint',
+        'title: My Feature',
+        'owner: alice',
+        'status: in-progress',
+        'complexity: M',
+        'last_updated: 2026-06-04',
+        '---',
+        '# My Feature',
+      ].join('\n'),
     )
     const result = auditBlueprintLifecycle(root)
     expect(result.ok).toBe(true)
     expect(result.checked).toBe(1)
+  })
+
+  test('non-draft blueprints require title, owner, complexity, and last_updated', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'blueprints', 'planned', 'missing-fields'), { recursive: true })
+    writeFileSync(
+      join(root, 'blueprints', 'planned', 'missing-fields', '_overview.md'),
+      ['---', 'type: blueprint', 'status: planned', '---', '# Missing Fields'].join('\n'),
+    )
+    const result = auditBlueprintLifecycle(root)
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations.some((v: RepoAuditViolation) => v.message.includes('title')),
+    ).toBe(true)
+    expect(
+      result.violations.some((v: RepoAuditViolation) => v.message.includes('owner')),
+    ).toBe(true)
+    expect(
+      result.violations.some((v: RepoAuditViolation) => v.message.includes('last_updated')),
+    ).toBe(true)
+  })
+
+  test('non-draft blueprints reject invalid complexity enum', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'blueprints', 'planned', 'bad-complexity'), { recursive: true })
+    writeFileSync(
+      join(root, 'blueprints', 'planned', 'bad-complexity', '_overview.md'),
+      [
+        '---',
+        'type: blueprint',
+        'title: Bad Complexity',
+        'owner: alice',
+        'status: planned',
+        'complexity: XXL',
+        'last_updated: 2026-06-04',
+        '---',
+        '# Bad Complexity',
+      ].join('\n'),
+    )
+    const result = auditBlueprintLifecycle(root)
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations.some((v: RepoAuditViolation) => v.message.includes('complexity')),
+    ).toBe(true)
+  })
+
+  test('draft blueprints remain exempt from the strict required-field subset', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'blueprints', 'draft', 'loose-draft'), { recursive: true })
+    writeFileSync(
+      join(root, 'blueprints', 'draft', 'loose-draft', '_overview.md'),
+      ['---', 'type: blueprint', 'status: draft', '---', '# Loose Draft'].join('\n'),
+    )
+    const result = auditBlueprintLifecycle(root)
+    expect(result.ok).toBe(true)
   })
 
   test('blueprint with wrong type produces type violation', () => {
@@ -1141,15 +1222,15 @@ describe('auditBlueprintLifecycle — branch coverage', () => {
     ).toBe(true)
   })
 
-  test('includeLegacyOmx false does not add legacy checked count', () => {
+  test('includeOmxPlans false does not add legacy checked count', () => {
     const root = tempRepo()
-    const result = auditBlueprintLifecycle(root, { includeLegacyOmx: false })
+    const result = auditBlueprintLifecycle(root, { includeOmxPlans: false })
     expect(result.checked).toBe(0)
   })
 
   test('legacy omx: no legacy surface → no violations and checked stays 0', () => {
     const root = tempRepo()
-    const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
+    const result = auditBlueprintLifecycle(root, { includeOmxPlans: true })
     expect(result.ok).toBe(true)
     expect(result.checked).toBe(0)
   })
@@ -1185,7 +1266,7 @@ describe('auditLegacyOmxPlans — derived OMX handoff hardcut', () => {
 
   test('absence of .omx/plans stays valid', () => {
     const root = tempRepo()
-    const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
+    const result = auditBlueprintLifecycle(root, { includeOmxPlans: true })
     expect(result.ok).toBe(true)
     expect(result.checked).toBe(0)
   })
@@ -1193,7 +1274,7 @@ describe('auditLegacyOmxPlans — derived OMX handoff hardcut', () => {
   test('derived blueprint handoff passes hardcut checks', () => {
     const root = tempRepo()
     writeDerivedHandoff(root)
-    const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
+    const result = auditBlueprintLifecycle(root, { includeOmxPlans: true })
     expect(result.ok).toBe(true)
     expect(result.checked).toBe(1)
   })
@@ -1204,7 +1285,7 @@ describe('auditLegacyOmxPlans — derived OMX handoff hardcut', () => {
     writeFileSync(join(root, '.omx', 'plans', 'prd-feature.md'), '# PRD: Feature\n')
     writeFileSync(join(root, '.omx', 'plans', 'test-spec-feature.md'), '# Test Spec: Feature\n')
 
-    const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
+    const result = auditBlueprintLifecycle(root, { includeOmxPlans: true })
 
     expect(result.ok).toBe(false)
     expect(
@@ -1228,7 +1309,7 @@ describe('auditLegacyOmxPlans — derived OMX handoff hardcut', () => {
       ].join('\n'),
     )
 
-    const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
+    const result = auditBlueprintLifecycle(root, { includeOmxPlans: true })
 
     expect(result.ok).toBe(false)
     expect(
@@ -1255,7 +1336,7 @@ describe('auditLegacyOmxPlans — derived OMX handoff hardcut', () => {
       ),
     )
 
-    const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
+    const result = auditBlueprintLifecycle(root, { includeOmxPlans: true })
 
     expect(result.ok).toBe(false)
     expect(
@@ -1277,7 +1358,7 @@ describe('auditLegacyOmxPlans — derived OMX handoff hardcut', () => {
       ),
     )
 
-    const result = auditBlueprintLifecycle(root, { includeLegacyOmx: true })
+    const result = auditBlueprintLifecycle(root, { includeOmxPlans: true })
 
     expect(result.ok).toBe(false)
     expect(

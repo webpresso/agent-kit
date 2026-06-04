@@ -5,18 +5,18 @@ import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { openDb } from '../blueprint/db/connection.js'
+import { resolveBlueprintProjectionDbPath } from '../blueprint/db/paths.js'
 import { auditTechDebtCadence } from './tech-debt-cadence.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeTempRepo(): { cwd: string; agentDir: string; dbPath: string } {
+function makeTempRepo(): { cwd: string; dbPath: string } {
   const cwd = mkdtempSync(path.join(tmpdir(), 'wp-audit-td-cadence-'))
-  const agentDir = path.join(cwd, '.agent')
-  mkdirSync(agentDir, { recursive: true })
-  const dbPath = path.join(agentDir, '.blueprints.db')
-  return { cwd, agentDir, dbPath }
+  const dbPath = resolveBlueprintProjectionDbPath(cwd)
+  mkdirSync(path.dirname(dbPath), { recursive: true })
+  return { cwd, dbPath }
 }
 
 interface InsertTechDebtOpts {

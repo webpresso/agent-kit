@@ -89,6 +89,15 @@ function upsertBlueprint(db: Database, filePath: string, blueprintRoot: string):
   const slug = deriveSlugFromBlueprintPath(filePath, blueprintRoot)
   const parsed = parseBlueprintForDb(content, filePath, slug)
 
+  // progress_pct: honest done-only roll-up over parsed tasks (single source of
+  // truth = the task checkboxes/status, never a hand-entered frontmatter field).
+  // `null` when there are no tasks (prose-completed plans, parent-roadmaps) so
+  // the "completed but < 100%" audit check skips them rather than flagging 0%.
+  const totalTaskCount = parsed.tasks.length
+  const doneTaskCount = parsed.tasks.filter((task) => task.status === 'done').length
+  const progressPct =
+    totalTaskCount === 0 ? null : Math.round((doneTaskCount / totalTaskCount) * 100)
+
   const now = Date.now()
 
   const upsertBp = db.prepare<
@@ -197,7 +206,7 @@ function upsertBlueprint(db: Database, filePath: string, blueprintRoot: string):
       parsed.created,
       parsed.lastUpdated,
       parsed.completedAt,
-      null, // progress_pct
+      progressPct, // progress_pct (terminal-task roll-up from tasks)
       null, // progress_text
       parsed.filePath,
       parsed.byteSize,
@@ -384,11 +393,43 @@ export async function ingestBlueprints(opts: IngestOptions): Promise<IngestResul
     baseDir: blueprintRoot,
     includeSpecialFolders: true,
   }).map((entry) => entry.path)
+  const filesBySlug = new Map<string, string[]>()
+
+  for (const filePath of files) {
+    try {
+      const slug = deriveSlugFromBlueprintPath(filePath, blueprintRoot)
+      const existing = filesBySlug.get(slug)
+      if (existing) {
+        existing.push(filePath)
+      } else {
+        filesBySlug.set(slug, [filePath])
+      }
+    } catch (err) {
+      const msg = `[ingester] Blueprint failed: ${filePath}: ${String(err)}`
+      process.stderr.write(msg + '\n')
+      errors.push(msg)
+    }
+  }
+
+  const duplicateSlugs = new Set<string>()
+  for (const [slug, slugFiles] of filesBySlug) {
+    if (slugFiles.length <= 1) {
+      continue
+    }
+
+    duplicateSlugs.add(slug)
+    const msg = `[ingester] Blueprint failed: duplicate slug "${slug}" appears in multiple blueprint documents: ${slugFiles.join(', ')}`
+    process.stderr.write(msg + '\n')
+    errors.push(msg)
+  }
 
   for (const filePath of files) {
     try {
       const content = readFileSync(filePath, 'utf8')
       const slug = deriveSlugFromBlueprintPath(filePath, blueprintRoot)
+      if (duplicateSlugs.has(slug)) {
+        continue
+      }
       const newHash = createHash('sha256').update(content).digest('hex')
 
       if (!dryRun) {

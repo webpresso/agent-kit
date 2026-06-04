@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, realpathSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
@@ -43,11 +43,11 @@ function fail(root: string, message: string): RepoAuditResult {
 }
 
 function resolveCanonicalRepoRoot(rootDirectory: string): { ok: true; root: string } | RepoAuditResult {
-  const requestedRoot = resolve(rootDirectory)
+  const requestedRoot = realpathSync.native(resolve(rootDirectory))
   let gitRoot: string
 
   try {
-    gitRoot = resolve(
+    gitRoot = realpathSync.native(
       execFileSync('git', ['rev-parse', '--show-toplevel'], {
         cwd: requestedRoot,
         encoding: 'utf8',
@@ -89,6 +89,7 @@ function listTrackedFiles(root: string): string[] {
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
+    .filter((relativePath) => existsSync(join(root, relativePath)))
 }
 
 export function auditNoFirstPartyMjs(rootDirectory: string = process.cwd()): RepoAuditResult {

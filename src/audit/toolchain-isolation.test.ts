@@ -97,24 +97,55 @@ describe('auditToolchainIsolation', () => {
     expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
   })
 
-  it('exempts deps listed in .webpressorc.json audit.toolchainIsolation.allowDependencies', () => {
+  it('skips generated .windsurf surfaces during the package walk', () => {
+    writePackage(root, {
+      scripts: { lint: 'wp lint' },
+      devDependencies: { '@webpresso/agent-kit': 'latest' },
+    })
+    mkdirSync(join(root, '.windsurf', 'skills', 'tanstack-query', 'templates'), {
+      recursive: true,
+    })
+    writePackage(join(root, '.windsurf', 'skills', 'tanstack-query', 'templates'), {
+      scripts: { build: 'vite build' },
+      devDependencies: { vite: '^8.0.0' },
+    })
+
+    expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
+  })
+
+  it('honors .webpressorc.json audit.toolchainIsolation.allowDependencies while still flagging unlisted tool deps', () => {
     writeFileSync(
       join(root, '.webpressorc.json'),
-      `${JSON.stringify({
-        version: '1',
-        installed: { tier3Skills: [] },
-        audit: { toolchainIsolation: { allowDependencies: ['tsx'] } },
-      })}\n`,
+      `${JSON.stringify(
+        {
+          version: '1',
+          installed: { tier3Skills: [] },
+          audit: {
+            toolchainIsolation: {
+              allowDependencies: ['tsx'],
+            },
+          },
+          rules: { overrides: [] },
+          scripts: {},
+          durablePlanningRoot: '.agent/planning/',
+        },
+        null,
+        2,
+      )}\n`,
     )
-    writePackage(root, {
-      scripts: { deploy: 'wp deploy' },
-      devDependencies: { tsx: '^4.0.0', wrangler: '^4.0.0', '@webpresso/agent-kit': 'latest' },
+    mkdirSync(join(root, 'infra'), { recursive: true })
+    writePackage(join(root, 'infra'), {
+      devDependencies: {
+        tsx: '^4.21.0',
+        wrangler: '^4.0.0',
+        '@webpresso/agent-kit': 'latest',
+      },
+      scripts: { check: 'wp typecheck' },
     })
 
     const result = auditToolchainIsolation(root)
 
-    // tsx is exempted by config; wrangler is not listed, so it still fails.
-    expect(result.ok).toBe(false)
+    expect(result).toMatchObject({ ok: false, checked: 1 })
     expect(result.violations).toHaveLength(1)
     expect(result.violations[0]?.message).toContain('devDependencies.wrangler')
     expect(result.violations.map((violation) => violation.message).join()).not.toContain('tsx')

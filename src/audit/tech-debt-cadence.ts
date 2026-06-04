@@ -12,12 +12,10 @@
  *    AND were created more than 90 days ago.
  */
 
-import path from 'node:path'
 import { existsSync } from 'node:fs'
 
+import { resolveBlueprintProjectionDbPath } from '#db/paths.js'
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
-
-const DB_PATH = path.join('.agent', '.blueprints.db')
 
 interface TechDebtRow {
   slug: string
@@ -39,7 +37,7 @@ export async function auditTechDebtCadence(cwd: string): Promise<RepoAuditResult
     }
   }
 
-  const dbFile = path.join(cwd, DB_PATH)
+  const dbFile = resolveBlueprintProjectionDbPath(cwd)
   if (!existsSync(dbFile)) {
     return {
       ok: true,

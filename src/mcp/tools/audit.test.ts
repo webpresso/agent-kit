@@ -22,6 +22,14 @@ const repoGuardrailsMock = {
   formatRepoAuditReport: vi.fn(() => 'formatted report'),
 }
 
+const blueprintLifecycleSqlMock = {
+  auditBlueprintLifecycleSql: vi.fn(),
+}
+
+const blueprintReadmeDriftMock = {
+  auditBlueprintReadmeDrift: vi.fn(),
+}
+
 const agentsAuditMock = {
   auditAgents: vi.fn(),
 }
@@ -59,6 +67,8 @@ const viteLocalMock = {
 }
 
 vi.mock('#audit/repo-guardrails', () => repoGuardrailsMock)
+vi.mock('#audit/blueprint-readme-drift', () => blueprintReadmeDriftMock)
+vi.mock('#audit/blueprint-lifecycle-sql', () => blueprintLifecycleSqlMock)
 vi.mock('#audit/agents', () => agentsAuditMock)
 vi.mock('#audit/tech-debt', () => techDebtMock)
 vi.mock('#audit/ai-contracts', () => aiContractsMock)
@@ -121,6 +131,8 @@ beforeEach(() => {
   cloudflareDeployContractMock.auditCloudflareDeployContract.mockReset()
   absolutePathPolicyMock.auditAbsolutePathPolicy.mockReset()
   noFirstPartyMjsMock.auditNoFirstPartyMjs.mockReset()
+  blueprintReadmeDriftMock.auditBlueprintReadmeDrift.mockReset()
+  blueprintLifecycleSqlMock.auditBlueprintLifecycleSql.mockReset()
   toolchainIsolationMock.auditToolchainIsolation.mockReset()
   viteLocalMock.runBundleBudgetCli.mockReset()
   spawnMock.mockReset()
@@ -155,6 +167,13 @@ describe('wp_audit tool', () => {
       expect(parsePayload(result).passed).toBe(true)
     })
 
+    it('blueprint-readme-drift -> auditBlueprintReadmeDrift', async () => {
+      blueprintReadmeDriftMock.auditBlueprintReadmeDrift.mockReturnValue(passingAudit())
+      const result = await akAuditTool.handler({ kind: 'blueprint-readme-drift' })
+      expect(blueprintReadmeDriftMock.auditBlueprintReadmeDrift).toHaveBeenCalledTimes(1)
+      expect(parsePayload(result).passed).toBe(true)
+    })
+
     it('agents -> auditAgents', async () => {
       agentsAuditMock.auditAgents.mockReturnValue(passingAudit())
       const result = await akAuditTool.handler({ kind: 'agents' })
@@ -164,10 +183,10 @@ describe('wp_audit tool', () => {
       expect(payload.kind).toBe('agents')
     })
 
-    it('blueprint-lifecycle -> auditBlueprintLifecycle', async () => {
-      repoGuardrailsMock.auditBlueprintLifecycle.mockReturnValue(passingAudit())
+    it('blueprint-lifecycle -> auditBlueprintLifecycleSql (ephemeral projection)', async () => {
+      blueprintLifecycleSqlMock.auditBlueprintLifecycleSql.mockResolvedValue(passingAudit())
       const result = await akAuditTool.handler({ kind: 'blueprint-lifecycle' })
-      expect(repoGuardrailsMock.auditBlueprintLifecycle).toHaveBeenCalledTimes(1)
+      expect(blueprintLifecycleSqlMock.auditBlueprintLifecycleSql).toHaveBeenCalledTimes(1)
       expect(parsePayload(result).passed).toBe(true)
     })
 

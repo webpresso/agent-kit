@@ -81,5 +81,6 @@ When no explicit task list is supplied, ground lane selection in `wp blueprint l
 ```bash
 /pll "lint auth, lint utils, typecheck api [depends: lint auth], test api [depends: typecheck api]"
 /pll tasks.md --max=6
+/pll blueprints/in-progress/new-launch.md
 /pll blueprints/in-progress/new-launch/_overview.md
 ```

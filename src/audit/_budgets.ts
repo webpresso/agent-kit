@@ -10,10 +10,15 @@ import path from 'node:path'
 import { z } from 'zod'
 
 const budgetEntrySchema = z.object({
-  max_bytes: z.number().int().positive(),
+  max_bytes: z.number().int().positive().optional(),
+  max: z.number().int().positive().optional(),
+  max_days: z.number().int().positive().optional(),
   suggest_compact_at: z.number().min(0).max(1).optional(),
   warn_pct: z.number().min(1).optional(),
 })
+  .refine((entry) => entry.max_bytes !== undefined || entry.max !== undefined || entry.max_days !== undefined, {
+    message: 'budget entry must define at least one of max_bytes, max, or max_days',
+  })
 
 const budgetFileSchema = z.object({
   budgets: z.record(z.string(), budgetEntrySchema),
@@ -24,12 +29,25 @@ export const DEFAULT_BUDGETS = {
   'claude-skill-description-each': { max_bytes: 800 },
   'agents-md-section-each': { max_bytes: 4096, suggest_compact_at: 0.75 },
   'skill-md-total-each': { max_bytes: 16384 },
-} as const satisfies Record<string, { max_bytes: number; suggest_compact_at?: number }>
+  'blueprint-wip-in-progress-max': { max: 3 },
+  'blueprint-stale-in-progress-days': { max_days: 14 },
+} as const satisfies Record<
+  string,
+  {
+    max_bytes?: number
+    max?: number
+    max_days?: number
+    suggest_compact_at?: number
+    warn_pct?: number
+  }
+>
 
 export type BudgetKey = keyof typeof DEFAULT_BUDGETS
 
 export type BudgetEntry = {
-  max_bytes: number
+  max_bytes?: number
+  max?: number
+  max_days?: number
   suggest_compact_at?: number
   warn_pct?: number
 }

@@ -272,7 +272,10 @@ export async function runInit(flags: InitFlags): Promise<number> {
   const presets = parsePresets(flags.with)
   let selectedHosts
   try {
-    selectedHosts = parseAgentHosts(flags.host)
+    selectedHosts =
+      flags.host === undefined
+        ? (existingConfig?.hosts?.selected ?? parseAgentHosts(undefined))
+        : parseAgentHosts(flags.host)
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error))
     return EXIT_SETUP_FAIL

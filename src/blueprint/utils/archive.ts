@@ -28,8 +28,8 @@ export interface ValidationResult {
  * Validates that all tasks in a plan are complete.
  *
  * A task is considered complete when:
- * - status === 'done'
- * - All acceptance criteria checkboxes are checked
+ * - status === 'done' or 'dropped'
+ * - If status === 'done', all acceptance criteria checkboxes are checked
  *
  * @param plan - The plan to validate
  * @returns Validation result with details of incomplete tasks
@@ -80,6 +80,10 @@ function findIncompleteTasks(tasks: Task[]): IncompleteTask[] {
  * @returns True if task is complete
  */
 function isTaskComplete(task: Task): boolean {
+  if (task.status === 'dropped') {
+    return true
+  }
+
   // Task must have status 'done'
   if (task.status !== 'done') {
     return false

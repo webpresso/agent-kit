@@ -4,6 +4,8 @@ title: Context-tool productivity benchmark suite — Codex CLI track
 status: parked
 complexity: L
 owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 created: '2026-05-13'
 last_updated: '2026-05-29'
 progress: 'Parked on 2026-05-29 as a narrower predecessor track superseded locally by the in-progress vendor-neutral `wp bench session-memory` harness; unresolved Codex invocation and hook-gate details remain documentary inputs to that broader lane'

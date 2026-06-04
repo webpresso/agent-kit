@@ -99,7 +99,7 @@ Each task lives under a phase heading (`### Phase N: <name>`):
 ```markdown
 #### [lane] Task 1.1: Short imperative name
 
-- [ ] **Status:** todo | in_progress | blocked | done
+- [ ] **Status:** todo | in-progress | blocked | done
 - **Depends on:** — | Task 1.2 | Task 1.2, Task 2.3
 - **Files:** path/to/file.ts, path/to/other.ts
 - **Change:** one-liner describing the delta.
@@ -114,10 +114,10 @@ leaves `todo`, and to `completed` only when every task reaches `done`.
 ```mermaid
 stateDiagram-v2
     [*] --> todo
-    todo --> in_progress : task <id> start
-    in_progress --> blocked : task <id> block --reason
-    blocked --> in_progress : task <id> unblock
-    in_progress --> done : task <id> complete (needs evidence)
+    todo --> in-progress : task <id> start
+    in-progress --> blocked : task <id> block --reason
+    blocked --> in-progress : task <id> unblock
+    in-progress --> done : task <id> complete (needs evidence)
     done --> [*]
 ```
 
@@ -128,9 +128,9 @@ Rules (enforced by the `blueprint-plan` docs-linter validator at
 - Task IDs are numeric dotted (`1.1`, `1.2a`, `2.3.1`), never bare.
 - Dependencies use the `Task X.Y` form, not bare `X.Y`.
 - Executable blueprints (`status: planned|in-progress|completed`) must
-  use canonical task statuses only: `todo | in_progress | blocked | done`.
+  use canonical task statuses only: `todo | in-progress | blocked | done`.
 - Every executable task must include explicit `**Status:**`.
-- `in_progress → done` requires recorded evidence (`wp blueprint task <slug>
+- `in-progress → done` requires recorded evidence (`wp blueprint task <slug>
   <id> verify`); the engine refuses to complete a task without it.
 
 ## Blueprint scoping rule
@@ -157,7 +157,7 @@ wp blueprint audit <slug> --strict               # format + lifecycle check
 wp blueprint audit --all --strict                # everything
 wp blueprint move <slug> planned                 # transition (audit-gated)
 wp blueprint start <slug>                        # planned → in-progress
-wp blueprint task <slug> 1.1 start               # task → in_progress
+wp blueprint task <slug> 1.1 start               # task → in-progress
 wp blueprint task <slug> 1.1 complete            # task → done
 wp blueprint task <slug> 1.1 block --reason "<why>"
 wp blueprint task <slug> 1.1 unblock
@@ -189,7 +189,7 @@ flowchart TD
 - **SQLite projection** — a queryable mirror of the markdown for agents (see
   the SQLite section below). Derived; rebuilt with `wp blueprint db build`.
 - **OMX runtime state** — when the optional OMX `/pll` adapter runs a blueprint,
-  it keeps its own runtime snapshot (mapping each task's `todo|in_progress|
+  it keeps its own runtime snapshot (mapping each task's `todo|in-progress|
   blocked|done` to OMX team-task status). It is a handoff/derived layer, not
   required for the public package core: Agent Kit exposes the Blueprint DAG and
   lifecycle primitives, and runtime-specific adapters such as OMX consume them.

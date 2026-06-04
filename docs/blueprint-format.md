@@ -199,7 +199,7 @@ others are conventional but not enforced.
 ### Phase 1: <Name> [Complexity: <S|M|L>]
 
 #### [lane] Task 1.1: <Name>       # REQUIRED task block
-- [ ] **Status:** todo | in_progress | blocked | done
+- [ ] **Status:** todo | in-progress | blocked | done
 - **Depends on:** — | Task 1.2
 - **Files:** …
 - **Change:** …
@@ -251,7 +251,7 @@ The docs-linter flags any of:
    - ❌ `**Depends on:** 1.2, 3.4`
 
 4. **Non-canonical task status.** Executable blueprints use only these
-   statuses: `todo`, `in_progress`, `blocked`, `done`. No `wip`, `pending`,
+   statuses: `todo`, `in-progress`, `blocked`, `done`. No `wip`, `pending`,
    `tbd`, etc.
 
 5. **Missing `**Status:**`.** Every executable task must have an explicit

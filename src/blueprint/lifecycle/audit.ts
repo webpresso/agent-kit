@@ -205,11 +205,11 @@ function validateBlueprintEngineSemantics(
 
   if (blueprint.status === 'completed') {
     for (const task of blueprint.tasks) {
-      if (task.status !== 'done') {
+      if (task.status !== 'done' && task.status !== 'dropped') {
         issues.push({
           file,
           level: 'error',
-          message: `Blueprint status is completed but task ${task.id} is "${task.status}" (expected "done").`,
+          message: `Blueprint status is completed but task ${task.id} is "${task.status}" (expected "done" or "dropped").`,
         })
       }
     }
@@ -263,7 +263,9 @@ function validateExecutionMetadataTruth(file: string, blueprint: Blueprint): Blu
   }
 
   if (metadata.status === 'completed') {
-    const incompleteTasks = blueprint.tasks.filter((task) => task.status !== 'done')
+    const incompleteTasks = blueprint.tasks.filter(
+      (task) => task.status !== 'done' && task.status !== 'dropped',
+    )
     if (blueprint.status !== 'completed') {
       issues.push({
         file,
@@ -310,19 +312,19 @@ function validateExecutionMetadataTruth(file: string, blueprint: Blueprint): Blu
   if (
     (metadata.status === 'blocked' || metadata.status === 'failed') &&
     blueprint.tasks.length > 0 &&
-    blueprint.tasks.every((task) => task.status === 'done')
+    blueprint.tasks.every((task) => task.status === 'done' || task.status === 'dropped')
   ) {
     issues.push({
       file,
       level: 'error',
-      message: `Blueprint execution is ${metadata.status} but every task is marked done; failed or blocked runtime work must not appear completed.`,
+      message: `Blueprint execution is ${metadata.status} but every task is marked done/dropped; failed or blocked runtime work must not appear completed.`,
     })
   }
 
   return issues
 }
 
-const lifecycleTaskStatuses = new Set(['todo', 'in_progress', 'blocked', 'done'])
+const lifecycleTaskStatuses = new Set(['todo', 'in-progress', 'blocked', 'done', 'dropped'])
 
 function validateBlueprintPlacement(file: string, blueprint: Blueprint): BlueprintAuditIssue[] {
   const issues: BlueprintAuditIssue[] = []

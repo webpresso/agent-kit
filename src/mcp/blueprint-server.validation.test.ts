@@ -66,6 +66,29 @@ A well-formed blueprint using lane-prefixed task headers.
 - [ ] The thing is done
 `
 
+const DRAFT_BLUEPRINT_STRICT_FIELDS_EXEMPT = `---
+type: blueprint
+status: draft
+---
+
+## Product wedge anchor
+
+- **Stage outcome:** Phase 1 — ship feature X
+- **Consuming surface:** /dashboard route
+- **New user-visible capability:** Users can see feature X on the dashboard.
+
+## Summary
+
+A draft blueprint that intentionally omits title/owner/complexity/last_updated.
+
+#### Task 1.1: Draft task
+
+**Status:** todo
+
+**Acceptance:**
+- [ ] The draft task exists
+`
+
 describe('wp_blueprint_validate lane headers', () => {
   let tmpDir: string
   let tools: Map<string, RegisteredTool>
@@ -85,6 +108,20 @@ describe('wp_blueprint_validate lane headers', () => {
     const overviewPath = path.join(tmpDir, 'blueprints', 'draft', 'lane-feature', '_overview.md')
     mkdirSync(path.dirname(overviewPath), { recursive: true })
     writeFileSync(overviewPath, VALID_BLUEPRINT_WITH_LANE, 'utf8')
+
+    const result = await callTool(tools, 'wp_blueprint_validate', { path: overviewPath })
+    const data = parseResult(result) as { valid: boolean; gaps: string[]; summary: string }
+
+    expect(result.isError).toStrictEqual(false)
+    expect(data.valid).toBe(true)
+    expect(data.gaps).toStrictEqual([])
+    expect(data.summary).toContain('is valid')
+  })
+
+  it('exempts drafts from the strict required frontmatter subset', async () => {
+    const overviewPath = path.join(tmpDir, 'blueprints', 'draft', 'draft-exempt', '_overview.md')
+    mkdirSync(path.dirname(overviewPath), { recursive: true })
+    writeFileSync(overviewPath, DRAFT_BLUEPRINT_STRICT_FIELDS_EXEMPT, 'utf8')
 
     const result = await callTool(tools, 'wp_blueprint_validate', { path: overviewPath })
     const data = parseResult(result) as { valid: boolean; gaps: string[]; summary: string }

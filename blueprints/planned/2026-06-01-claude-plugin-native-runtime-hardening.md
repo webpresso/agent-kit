@@ -1,5 +1,7 @@
 ---
 type: blueprint
+title: Claude plugin native runtime hardening
+owner: ozby
 status: planned
 complexity: L
 created: '2026-06-01'
@@ -143,7 +145,8 @@ Refinement delta: CPR is below the ideal parallel target because plugin manifest
 
 #### [manifest] Task 1.1: Lock Claude plugin launcher policy
 
-**Status:** SUPERSEDED → canonical blueprint Task 1.4 (pure-native `plugin.json` +
+**Status:** dropped
+**Dropped:** superseded by canonical blueprint Task 1.4 (pure-native `plugin.json` +
 manifest tests). Do not execute here. The allowed launcher is the real staged
 `${CLAUDE_PLUGIN_ROOT}/bin/wp` (args `["mcp"]` / `["hook","<name>"]`); manifest
 tests reject `node`, `bun`, any `*.js` entrypoint, and any symlinked target.
@@ -209,7 +212,8 @@ Add regression tests proving the package/readiness lane fails when runtime packa
 
 #### [runtime] Task 2.1: Wire platform runtime packages as optional dependencies
 
-**Status:** SUPERSEDED → canonical blueprint Task 1.2. Do not execute here. Note
+**Status:** dropped
+**Dropped:** superseded by canonical blueprint Task 1.2. Do not execute here. Note
 the design correction: the manifest names `bin/wp` directly, so there is **no**
 separate `wp-agent-kit-runtime` bin — each runtime package ships its native `wp`.
 
@@ -239,7 +243,8 @@ Use the existing `RUNTIME_TARGETS` matrix to declare all platform runtime packag
 
 #### [stage] Task 2.2: Stage native runtime artifacts into plugin/package surfaces
 
-**Status:** SUPERSEDED → canonical blueprint Task 1.3 (stage the host binary to a
+**Status:** dropped
+**Dropped:** superseded by canonical blueprint Task 1.3 (stage the host binary to a
 real `${packageRoot}/bin/wp`). Do not execute here.
 
 **Depends:** Task 1.2
@@ -270,7 +275,8 @@ Make staging copy the runtime manifest and target binaries into the package/plug
 
 #### [plugin] Task 3.1: Move Claude plugin MCP/hooks to the native bin
 
-**Status:** SUPERSEDED → canonical blueprint Task 1.4. Do not execute here.
+**Status:** dropped
+**Dropped:** superseded by canonical blueprint Task 1.4. Do not execute here.
 
 **Depends:** Task 2.1, Task 2.2
 

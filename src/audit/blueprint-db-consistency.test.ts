@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { openDb } from '../blueprint/db/connection.js'
+import { resolveBlueprintProjectionDbPath } from '../blueprint/db/paths.js'
 import { auditBlueprintDbConsistency } from './blueprint-db-consistency.js'
 
 // ---------------------------------------------------------------------------
@@ -16,12 +17,11 @@ function sha256(content: string): string {
   return createHash('sha256').update(content, 'utf8').digest('hex')
 }
 
-function makeTempRepo(): { cwd: string; agentDir: string; dbPath: string } {
+function makeTempRepo(): { cwd: string; dbPath: string } {
   const cwd = mkdtempSync(path.join(tmpdir(), 'wp-audit-bp-db-test-'))
-  const agentDir = path.join(cwd, '.agent')
-  mkdirSync(agentDir, { recursive: true })
-  const dbPath = path.join(agentDir, '.blueprints.db')
-  return { cwd, agentDir, dbPath }
+  const dbPath = resolveBlueprintProjectionDbPath(cwd)
+  mkdirSync(path.dirname(dbPath), { recursive: true })
+  return { cwd, dbPath }
 }
 
 const OVERVIEW_CONTENT = `---

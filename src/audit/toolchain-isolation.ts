@@ -37,9 +37,7 @@ export function auditToolchainIsolation(root: string): RepoAuditResult {
   const packagePaths = findPackageJsonFiles(root)
   const violations: RepoAuditViolation[] = []
   // Per-repo runtime exemptions: dependency names the repo declares as
-  // legitimate app-specific runtimes (e.g. `tsx` for a Pulumi program's TS
-  // loader, `@playwright/test` imported by e2e specs) rather than generic
-  // toolchain. Mechanism here; data lives in the consumer's `.webpressorc.json`.
+  // legitimate app-specific runtimes rather than generic toolchain.
   const allowDependencies = new Set(
     readConfig(root)?.audit?.toolchainIsolation?.allowDependencies ?? [],
   )
@@ -141,6 +139,7 @@ function shouldSkipDirectory(name: string): boolean {
     '.omx',
     '.omc',
     '.codex',
+    '.windsurf',
     // Gitignored Claude Code agent surface — agent worktree scratch under
     // .claude/worktrees/* carries vendored package manifests that are not the
     // repo's own packages; walking it produces false positives on local dev

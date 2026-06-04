@@ -114,9 +114,9 @@ secret detection.
 
 **Acceptance:**
 
-- [ ] Current tracked tree has zero Gitleaks findings.
-- [ ] Redaction and package-surface tests still prove realistic behavior.
-- [ ] No test fixture contains realistic public-token prefixes.
+- [x] Current tracked tree has zero Gitleaks findings.
+- [x] Redaction and package-surface tests still prove realistic behavior.
+- [x] No test fixture contains realistic public-token prefixes.
 
 #### Task 1.2: [docs] Sanitize local paths and unrelated repository references
 
@@ -143,10 +143,10 @@ artifacts that captured absolute stack traces.
 
 **Acceptance:**
 
-- [ ] Public-facing tracked files no longer contain local absolute paths.
-- [ ] Unrelated project names are removed or intentionally documented as public
+- [x] Public-facing tracked files no longer contain local absolute paths.
+- [x] Unrelated project names are removed or intentionally documented as public
       external references.
-- [ ] `wp_audit({"kind":"blueprint-lifecycle"})` passes.
+- [x] `wp_audit({"kind":"blueprint-lifecycle"})` passes.
 
 #### Task 1.3: [docs] Rewrite monorepo extraction and internal implementation history
 
@@ -174,10 +174,10 @@ public contributor needs to understand or operate the package.
 
 **Acceptance:**
 
-- [ ] Active docs do not expose private roadmap names or local monorepo paths.
-- [ ] Planned blueprints describe current public package boundaries, not
+- [x] Active docs do not expose private roadmap names or local monorepo paths.
+- [x] Planned blueprints describe current public package boundaries, not
       extraction mechanics.
-- [ ] Historical notes that remain are intentionally public and allowlisted.
+- [x] Historical notes that remain are intentionally public and allowlisted.
 
 #### Task 1.4: [release] Decide and document package visibility boundaries
 
@@ -206,9 +206,9 @@ different package.
 
 **Acceptance:**
 
-- [ ] Public docs state the intended package/registry boundary.
-- [ ] Internal helper bins are not presented as public commands.
-- [ ] CLI cutover remains aligned with this public-release scrub.
+- [x] Public docs state the intended package/registry boundary.
+- [x] Internal helper bins are not presented as public commands.
+- [x] CLI cutover remains aligned with this public-release scrub.
 
 #### Task 1.5: [history] Choose and execute the public-history strategy
 
@@ -234,11 +234,11 @@ verified snapshot.
 
 **Acceptance:**
 
-- [ ] Full public history has zero unresolved scanner findings, or the public
+- [x] Full public history has zero unresolved scanner findings, or the public
       repo starts from a clean verified snapshot.
-- [ ] Deleted-file findings from old package locations are not present in the
+- [x] Deleted-file findings from old package locations are not present in the
       public repository history.
-- [ ] The release decision is documented with reproducible verification steps.
+- [x] The release decision is documented with reproducible verification steps.
 
 #### Task 1.6: [qa] Add a repeatable public-readiness gate
 
@@ -265,11 +265,11 @@ do not depend on ad-hoc manual scanning.
 
 **Acceptance:**
 
-- [ ] A future maintainer can run one documented public-readiness command or
+- [x] A future maintainer can run one documented public-readiness command or
       checklist.
-- [ ] The gate covers current tree, public history/snapshot, package surface,
+- [x] The gate covers current tree, public history/snapshot, package surface,
       catalog drift, hook surface, and blueprint lifecycle.
-- [ ] The operating contract and package scripts do not reference missing secret
+- [x] The operating contract and package scripts do not reference missing secret
       verification commands.
 
 ## Verification Gates

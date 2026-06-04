@@ -36,7 +36,7 @@ const EXECUTABLE_BLUEPRINT_STATUSES = new Set([
   'completed',
   'archived',
 ])
-const TASK_STATUSES = new Set(['todo', 'in_progress', 'blocked', 'done'])
+const TASK_STATUSES = new Set(['todo', 'in-progress', 'blocked', 'done', 'dropped'])
 
 /**
  * Result of finding wrong task headers.
@@ -364,7 +364,7 @@ function createTaskStatusInvalidError(
     file: filePath,
     severity: 'error',
     source: 'blueprint-format',
-    message: `Task ${taskId} has invalid status "${status}". Use only: todo, in_progress, blocked, done.`,
+    message: `Task ${taskId} has invalid status "${status}". Use only: todo, in-progress, blocked, done, dropped.`,
     ruleId: 'blueprint-task-status-invalid',
   }
 }
@@ -417,7 +417,7 @@ function createCompletedRequiresAllDoneError(
     file: filePath,
     severity: 'error',
     source: 'blueprint-format',
-    message: `Blueprint status is completed but task ${taskId} is "${taskStatus}" (expected "done").`,
+    message: `Blueprint status is completed but task ${taskId} is "${taskStatus}" (expected "done" or "dropped").`,
     ruleId: 'blueprint-completed-requires-all-done',
   }
 }
@@ -430,6 +430,50 @@ function validateLifecycleContract(filePath: string, content: string): Validatio
   if (!status || !EXECUTABLE_BLUEPRINT_STATUSES.has(status)) {
     errors.push(createBlueprintStatusError(filePath, status ?? '(missing)'))
     return errors
+  }
+
+  if (status !== 'draft') {
+    const title = frontmatter?.title?.trim()
+    const owner = frontmatter?.owner?.trim()
+    const complexity = extractComplexity(content)
+    const lastUpdated = frontmatter?.last_updated?.trim()
+
+    if (!title) {
+      errors.push({
+        file: filePath,
+        severity: 'error',
+        source: 'blueprint-format',
+        message: 'Blueprint is missing required frontmatter field: title.',
+        ruleId: 'blueprint-title-required',
+      })
+    }
+    if (!owner) {
+      errors.push({
+        file: filePath,
+        severity: 'error',
+        source: 'blueprint-format',
+        message: 'Blueprint is missing required frontmatter field: owner.',
+        ruleId: 'blueprint-owner-required',
+      })
+    }
+    if (!['XS', 'S', 'M', 'L', 'XL'].includes(complexity)) {
+      errors.push({
+        file: filePath,
+        severity: 'error',
+        source: 'blueprint-format',
+        message: `Blueprint complexity "${complexity}" is invalid. Use only: XS, S, M, L, XL.`,
+        ruleId: 'blueprint-complexity-invalid',
+      })
+    }
+    if (!lastUpdated || !/^\d{4}-\d{2}-\d{2}$/.test(lastUpdated.replace(/^['"]|['"]$/g, ''))) {
+      errors.push({
+        file: filePath,
+        severity: 'error',
+        source: 'blueprint-format',
+        message: 'Blueprint is missing valid frontmatter field: last_updated (YYYY-MM-DD).',
+        ruleId: 'blueprint-last-updated-required',
+      })
+    }
   }
 
   const taskBlocks = extractTaskBlocks(content)
@@ -471,7 +515,7 @@ function validateLifecycleContract(filePath: string, content: string): Validatio
       if (!taskStatus || !TASK_STATUSES.has(taskStatus)) {
         continue
       }
-      if (taskStatus !== 'done') {
+      if (taskStatus !== 'done' && taskStatus !== 'dropped') {
         errors.push(createCompletedRequiresAllDoneError(filePath, task.id, taskStatus))
       }
     }

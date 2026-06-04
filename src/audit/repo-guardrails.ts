@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join, relative, resolve, sep } from 'node:path'
 
 import matter from 'gray-matter'
+import { z } from 'zod'
 
 import { blueprintDerivedHandoffSchema } from '#execution/types'
 import {
@@ -39,7 +40,7 @@ export interface DocsFrontmatterOptions {
 export interface BlueprintLifecycleOptions {
   blueprintsRoot?: string
   statuses?: readonly string[]
-  includeLegacyOmx?: boolean
+  includeOmxPlans?: boolean
 }
 
 export interface CommitMessageOptions {
@@ -107,6 +108,13 @@ const ABSOLUTE_FILE_REFERENCE_PATTERN = /^(?:\/|[A-Za-z]:[\\/]|file:\/\/)/i
 const LEGACY_CROSS_REPO_LABEL_PATTERN = /^cross-repo:/i
 const GITHUB_REPO_PATTERN = /^[^/\s]+\/[^/\s]+$/
 const BLUEPRINT_SLUG_PATTERN = /^[A-Za-z0-9._-]+$/
+const BLUEPRINT_COMPLEXITIES = ['XS', 'S', 'M', 'L', 'XL'] as const
+const blueprintLifecycleRequiredFrontmatterSchema = z.object({
+  title: z.string().trim().min(1),
+  owner: z.string().trim().min(1),
+  complexity: z.enum(BLUEPRINT_COMPLEXITIES),
+  last_updated: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+})
 
 export function auditCatalogDrift(
   rootDirectory: string = process.cwd(),
@@ -372,6 +380,46 @@ export function auditBlueprintLifecycle(
         })
       }
 
+      if (status !== 'draft') {
+        const frontmatterValidation = blueprintLifecycleRequiredFrontmatterSchema.safeParse({
+          title:
+            typeof frontmatter.title === 'string'
+              ? frontmatter.title
+              : String(frontmatter.title ?? ''),
+          owner:
+            typeof frontmatter.owner === 'string'
+              ? frontmatter.owner
+              : String(frontmatter.owner ?? ''),
+          complexity:
+            typeof frontmatter.complexity === 'string'
+              ? frontmatter.complexity
+              : String(frontmatter.complexity ?? ''),
+          last_updated:
+            frontmatter.last_updated instanceof Date
+              ? (frontmatter.last_updated.toISOString().split('T')[0] ?? '')
+              : typeof frontmatter.last_updated === 'string'
+                ? frontmatter.last_updated
+                : String(frontmatter.last_updated ?? ''),
+        })
+
+        if (!frontmatterValidation.success) {
+          for (const issue of frontmatterValidation.error.issues) {
+            const field = String(issue.path[0] ?? '')
+            const message =
+              field === 'complexity'
+                ? `Blueprint complexity must be one of ${BLUEPRINT_COMPLEXITIES.join(', ')}`
+                : field === 'last_updated'
+                  ? 'Blueprint last_updated must be a YYYY-MM-DD date'
+                  : `Blueprint is missing required frontmatter field: ${field}`
+
+            violations.push({
+              file: relativePath(root, canonicalPath),
+              message,
+            })
+          }
+        }
+      }
+
       violations.push(
         ...validateBlueprintLinkingFrontmatter({
           file: relativePath(root, canonicalPath),
@@ -382,8 +430,8 @@ export function auditBlueprintLifecycle(
     }
   }
 
-  if (options.includeLegacyOmx === true) {
-    const legacy = auditLegacyOmxPlans(root)
+  if (options.includeOmxPlans === true) {
+    const legacy = auditOmxPlanHandoffs(root)
     checked += legacy.checked
     violations.push(...legacy.violations)
   }
@@ -694,7 +742,7 @@ function applyDocsFrontmatterFix(
   return `${markdown.slice(0, end)}\n${lines.join('\n')}${markdown.slice(end)}`
 }
 
-function auditLegacyOmxPlans(root: string): {
+function auditOmxPlanHandoffs(root: string): {
   checked: number
   violations: RepoAuditViolation[]
 } {

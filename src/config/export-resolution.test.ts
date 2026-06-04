@@ -77,6 +77,9 @@ function exportedDefaultTarget(value: unknown): string | undefined {
   if (typeof value === 'string') return value
   if (!value || typeof value !== 'object') return undefined
 
+  const topLevelDefault = (value as { default?: string }).default
+  if (typeof topLevelDefault === 'string') return topLevelDefault
+
   const importValue = (value as { import?: unknown }).import
   if (!importValue || typeof importValue !== 'object') return undefined
 
@@ -99,6 +102,21 @@ describe('@webpresso/agent-kit package exports', () => {
     expect(packageJson.files).not.toContain('docs')
     expect(packageJson.files).toContain('dist')
     expect(packageJson.files).toContain('bin')
+  })
+
+  it('exposes default targets for tsconfig json exports so tsconfig extends can resolve them', async () => {
+    const packageJson = await readCanonicalPackageJson()
+    for (const subpath of [
+      './tsconfig/base.json',
+      './tsconfig/cloudflare.json',
+      './tsconfig/library.json',
+      './tsconfig/react-library.json',
+      './tsconfig/react-router.json',
+    ] as const) {
+      expect(exportedDefaultTarget(packageJson.exports?.[subpath])).toMatch(
+        /^\.\/dist\/esm\/config\/tsconfig\/.+\.json$/u,
+      )
+    }
   })
 
   it('hard-cuts branded preset exports from the package contract', async () => {

@@ -2,6 +2,8 @@
 type: blueprint
 title: Agent-Kit CLI Bundle Cutover
 owner: agent-kit
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 status: completed
 complexity: M
 created: 2026-05-26T00:00:00.000Z

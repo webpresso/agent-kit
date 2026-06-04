@@ -309,7 +309,12 @@ describe('validateBlueprintPlan', () => {
 
   it('returns empty array for correct Blueprint format', () => {
     const content = `---
+type: blueprint
+title: Correct Format
+owner: test
 status: in-progress
+complexity: M
+last_updated: 2026-06-04
 ---
 #### Task 1.1: Correct Format
 **Status:** todo
@@ -409,7 +414,12 @@ status: in-progress
 
   it('handles complex plan with correct format', () => {
     const content = `---
+type: blueprint
+title: My Plan
+owner: test
 status: in-progress
+complexity: M
+last_updated: 2026-06-04
 ---
 # My Plan
 
@@ -730,9 +740,12 @@ created: 2026-02-16
   it('passes when completed plan has Completion Summary', () => {
     const content = `---
 type: blueprint
+title: My Plan
+owner: test
 status: completed
 complexity: XS
 created: 2026-02-16
+last_updated: 2026-06-04
 ---
 
 # My Plan
@@ -747,8 +760,11 @@ Content`
   it('skips validation when plan is in-progress', () => {
     const content = `---
 type: blueprint
+title: My Plan
+owner: test
 status: in-progress
 complexity: L
+last_updated: 2026-06-04
 ---
 
 # My Plan
@@ -765,8 +781,11 @@ describe('validateBlueprintPlan - engine semantics (blocked tasks / completed)',
   it('allows blocked task when blueprint status is planned', () => {
     const content = `---
 type: blueprint
+title: Plan
+owner: test
 status: planned
 complexity: M
+last_updated: 2026-06-04
 ---
 
 # Plan
@@ -881,9 +900,12 @@ No completion summary`
   it('validates completed blueprint missing completion summary', () => {
     const content = `---
 type: blueprint
+title: My Plan
+owner: test
 status: completed
 complexity: L
 created: 2026-02-16
+last_updated: 2026-06-04
 ---
 
 # My Plan

@@ -460,7 +460,7 @@ last_updated: 2026-05-04
 - \`packages/cli/cli-utils/src/wrangler-launch-descriptor.ts\`
 
 #### Task 1.1: Active
-**Status:** in_progress
+**Status:** in-progress
 
 **Depends:** None
 
@@ -971,7 +971,7 @@ last_updated: 2026-04-02
 - \`pnpm-workspace.yaml\`
 
 #### Task 1.1: Active
-**Status:** in_progress
+**Status:** in-progress
 
 **Depends:** None
 
@@ -1010,7 +1010,7 @@ last_updated: 2026-04-02
 - \`pnpm-lock.yaml\`
 
 #### Task 1.1: Active
-**Status:** in_progress
+**Status:** in-progress
 
 **Depends:** None
 
@@ -1049,7 +1049,7 @@ last_updated: 2026-04-02
 - \`apps/web/package.json\`
 
 #### Task 1.1: Active
-**Status:** in_progress
+**Status:** in-progress
 
 **Depends:** None
 
@@ -1088,7 +1088,7 @@ last_updated: 2026-04-02
 - \`package.json.bak\`
 
 #### Task 1.1: Active
-**Status:** in_progress
+**Status:** in-progress
 
 **Depends:** None
 
@@ -1393,7 +1393,7 @@ last_updated: 2026-05-03
 **Files:** \`package.json\`, \`pnpm-workspace.yaml\`, \`pnpm-lock.yaml\`, \`apps/web/package.json\`, \`src/feature.ts\`
 
 #### Task 1.1: Active
-**Status:** in_progress
+**Status:** in-progress
 
 **Depends:** None
 

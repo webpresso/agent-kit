@@ -226,11 +226,11 @@ Refinement delta:
 4. Rerun to prove already-published/idempotent behavior.
 
 **Acceptance:**
-- [ ] sandbox publish succeeds with provenance
-- [ ] `v<version>` tag exists on the mainline version-bump commit
-- [ ] `release/v<version>` compatibility branch exists and carries the dist commit
-- [ ] no GitHub Release object exists
-- [ ] rerun behavior is captured and acceptable
+- [x] sandbox publish succeeds with provenance
+- [x] `v<version>` tag exists on the mainline version-bump commit
+- [x] `release/v<version>` compatibility branch exists and carries the dist commit
+- [x] no GitHub Release object exists
+- [x] rerun behavior is captured and acceptable
 
 #### Task 2.3: [evidence] Make verification executable and reproducible
 
@@ -313,8 +313,8 @@ gh release list --limit 20 \
 ```
 
 **Acceptance:**
-- [ ] every required artifact path is produced by executable commands
-- [ ] no verification step requires executor guesswork
+- [x] every required artifact path is produced by executable commands
+- [x] no verification step requires executor guesswork
 
 #### Task 3.1: [cutover] Perform attended production migration
 
@@ -335,10 +335,10 @@ gh release list --limit 20 \
 4. Capture tag, branch, publish, and no-release-object evidence.
 
 **Acceptance:**
-- [ ] production `changesets/action` path publishes successfully
-- [ ] mainline version-bump commit is tagged with `v<version>`
-- [ ] `release/v<version>` compatibility branch exists and passes smoke checks
-- [ ] no GitHub Release object exists
+- [x] production `changesets/action` path publishes successfully
+- [x] mainline version-bump commit is tagged with `v<version>`
+- [x] `release/v<version>` compatibility branch exists and passes smoke checks
+- [x] no GitHub Release object exists
 
 #### Task 3.2: [smoke] Verify published package and marketplace consumer reality
 
@@ -355,9 +355,9 @@ gh release list --limit 20 \
 3. Record both results in the evidence directory.
 
 **Acceptance:**
-- [ ] published-package smoke install succeeds
-- [ ] marketplace consumer smoke against `release/v<version>` succeeds
-- [ ] final evidence proves consumer reality, not only orchestration correctness
+- [x] published-package smoke install succeeds
+- [x] marketplace consumer smoke against `release/v<version>` succeeds
+- [x] final evidence proves consumer reality, not only orchestration correctness
 ## Historical verification note
 
 This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.

@@ -30,7 +30,7 @@ const BLUEPRINT_HELP = [
 ].join('\n')
 
 export function formatTaskLine(task: Blueprint['tasks'][number]): string {
-  const checkbox = task.status === 'done' ? 'x' : ' '
+  const checkbox = task.status === 'done' || task.status === 'dropped' ? 'x' : ' '
   return `- [${checkbox}] ${task.id} ${task.title}`
 }
 
@@ -165,7 +165,9 @@ export function formatBlueprintSummaries(summaries: BlueprintSummary[]): string 
 }
 
 export function formatBlueprintDetails(result: ShowBlueprintResult): string {
-  const doneTasks = result.blueprint.tasks.filter((task) => task.status === 'done').length
+  const doneTasks = result.blueprint.tasks.filter(
+    (task) => task.status === 'done' || task.status === 'dropped',
+  ).length
   const header = [
     `title: ${result.blueprint.title}`,
     `slug: ${result.slug}`,
