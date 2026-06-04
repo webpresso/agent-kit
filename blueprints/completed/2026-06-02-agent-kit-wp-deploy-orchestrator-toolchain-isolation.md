@@ -3,6 +3,7 @@ type: blueprint
 title: "agent-kit: wp deploy orchestrator + toolchain-isolation audit"
 owner: ozby
 status: completed
+historical_verification_gap_waiver: true
 complexity: L
 created: "2026-06-02"
 last_updated: "2026-06-04"
