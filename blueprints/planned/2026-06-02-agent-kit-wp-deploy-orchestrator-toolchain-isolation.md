@@ -20,12 +20,15 @@ tags:
 
 # agent-kit: wp deploy orchestrator + toolchain-isolation audit
 
-**Goal:** Make `@webpresso/agent-kit` own the generic dev/deploy *toolchain* so a
-consumer can build, test, typecheck, lint, and deploy a Cloudflare Worker with
-its only direct dev dependency being `@webpresso/agent-kit`. Add a
-provider-agnostic `wp deploy` orchestrator and a `wp audit toolchain-isolation`
-gate. Provider-specific plumbing (Cloudflare/Pulumi/Neon) stays in each
-consumer's deploy adapter — it does **not** move into shared agent-kit surfaces.
+**Goal:** Make `@webpresso/agent-kit` own the generic dev/deploy *toolchain*
+runtime so a consumer can build, test, typecheck, lint, and deploy a
+Cloudflare Worker through the **global `wp` + required `wp setup`** contract.
+This does **not** mean "zero install" or "no repo-local shared packages":
+consumers may still keep root dependencies such as `@webpresso/agent-kit` when
+they import its config/runtime subpaths. Add a provider-agnostic `wp deploy`
+orchestrator and a `wp audit toolchain-isolation` gate. Provider-specific
+plumbing (Cloudflare/Pulumi/Neon) stays in each consumer's deploy adapter — it
+does **not** move into shared agent-kit surfaces.
 
 This is the **parent/upstream** blueprint. The three consumer blueprints depend
 on it:
@@ -46,15 +49,17 @@ de-scope.
 
 ## Product wedge anchor
 
-- **Stage outcome:** Prove the agent-kit extraction works for a brand-new 3rd-party
-  consumer with zero local toolchain — the "does this work for a 3rd party" bar
-  in the workspace `CLAUDE.md` / `VISION.md` facade-first model.
+- **Stage outcome:** Prove the agent-kit extraction works for a brand-new
+  3rd-party consumer through the explicit global-install contract — the "does
+  this work for a 3rd party" bar in the workspace `CLAUDE.md` / `VISION.md`
+  facade-first model.
 - **Consuming surface:** `wp deploy --lane prd` and `wp deploy --lane prd --dry-run`
   invoked from `ozby/ozby-dev` (`package.json` scripts already reference them);
   later adopted by edge-matte and ingest-lens.
 - **New user-visible capability:** a consumer can deploy a Cloudflare Worker and
-  pass full QA without any of tsc/vite/vitest/stryker/playwright/wrangler/oxlint
-  as a direct dependency — they come transitively through `@webpresso/agent-kit`.
+  pass full QA through global `wp` surfaces without owning generic tool runtime
+  packages directly, while still keeping any root shared-package imports the
+  repo actually uses.
 
 ## Architecture Overview
 
@@ -88,6 +93,7 @@ AFTER
 | Lane IDs | `dev`, `preview_main`, `preview_pr_<n>`, `prd` (underscores). | V1 used dashed `preview-main`/`preview-pr-<n>` — violates the canonical internal lane IDs in `extraction-parity.md`. Cloud/provider-facing names are derived separately and dash-safe. |
 | Reuse `launch` primitive | Build `wp deploy` on the existing `./launch` / `@webpresso/agent-tools-launch` primitive instead of a parallel stack. | V1 duplicated launch. Avoid two orchestration stacks. |
 | Heavy dependency footprint | Accepted for the toolchain that ozby.dev's strict model requires; do not silently balloon all consumers. | Forcing every consumer to pull wrangler/vite/etc. as agent-kit hard deps was a V1 cost flagged by reviewers; gate behind managed-runner resolution so weight is opt-in via what the consumer actually invokes. |
+| Toolchain isolation semantics | "Strict" means no consumer-owned generic tool runtime, not "no bootstrap" and not "no root shared-package deps ever". | The finalized contract is global `wp` + `wp setup`, with `.webpressorc.json` as the live repo config and root `@webpresso/agent-kit` still allowed where subpath imports require it. |
 | Provider plumbing publication | Cloudflare/Pulumi helper stays private/internal by default. | Mirrors the edge-matte deploy-contract blueprint boundary; any public promotion needs a separate package-surface blueprint + tarball/denied-content audit. |
 
 ## Quick Reference (Execution Waves)

@@ -10,6 +10,7 @@ import { REQUIRED_CORE_CAPABILITIES } from './host-visibility.js'
 
 export const CONFIG_VERSION = '1'
 export const CONFIG_FILENAME = '.webpressorc.json'
+export const LEGACY_CONFIG_FILENAME = '.agent-kitrc.json'
 export const DEFAULT_DURABLE_PLANNING_ROOT = '.agent/planning/'
 
 function readOptionalString(value: unknown): string | undefined {
@@ -68,9 +69,7 @@ export function defaultConfig(): AgentkitConfig {
   }
 }
 
-export function readConfig(repoRoot: string): AgentkitConfig | null {
-  const path = join(repoRoot, CONFIG_FILENAME)
-  if (!existsSync(path)) return null
+function parseConfigFile(path: string): AgentkitConfig | null {
   try {
     const raw = readFileSync(path, 'utf8')
     const parsed = JSON.parse(raw) as Partial<AgentkitConfig>
@@ -144,6 +143,16 @@ export function readConfig(repoRoot: string): AgentkitConfig | null {
   } catch {
     return null
   }
+}
+
+export function readConfig(repoRoot: string): AgentkitConfig | null {
+  const configPath = join(repoRoot, CONFIG_FILENAME)
+  if (existsSync(configPath)) return parseConfigFile(configPath)
+
+  const legacyConfigPath = join(repoRoot, LEGACY_CONFIG_FILENAME)
+  if (existsSync(legacyConfigPath)) return parseConfigFile(legacyConfigPath)
+
+  return null
 }
 
 export function mergeConfig(

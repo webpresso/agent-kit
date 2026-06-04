@@ -29,6 +29,39 @@ describe('config', () => {
     expect(readConfig(dir)).toBeNull()
   })
 
+  it('reads legacy .agent-kitrc.json as a one-way migration source', () => {
+    writeFileSync(
+      join(dir, '.agent-kitrc.json'),
+      JSON.stringify({
+        version: '1',
+        installed: { tier3Skills: ['tanstack-query'] },
+        hosts: {
+          selected: ['codex'],
+          requiredCapabilities: ['verify'],
+        },
+        rules: { overrides: ['repo-restrictions'] },
+        scripts: { 'setup-agent': 'wp setup' },
+        durablePlanningRoot: '.agent/planning/',
+        blueprintsDir: 'plans',
+        globalInstall: true,
+      }),
+    )
+
+    expect(readConfig(dir)).toEqual({
+      ...defaultConfig(),
+      installed: { tier3Skills: ['tanstack-query'] },
+      hosts: {
+        selected: ['codex'],
+        requiredCapabilities: ['verify'],
+      },
+      rules: { overrides: ['repo-restrictions'] },
+      scripts: { 'setup-agent': 'wp setup' },
+      durablePlanningRoot: '.agent/planning/',
+      blueprintsDir: 'plans',
+      globalInstall: true,
+    })
+  })
+
   it('writeConfig + readConfig round-trip', () => {
     const cfg = {
       ...defaultConfig(),
