@@ -189,7 +189,7 @@ jobs:
 
           git restore --source=HEAD --staged --worktree package.json
           git switch -C "$branch" "$base_commit"
-          git add -f dist/
+          git add -f dist/esm/
           if git diff --staged --quiet; then
             echo "No dist changes to commit for $branch; skipping branch creation."
             exit 0
