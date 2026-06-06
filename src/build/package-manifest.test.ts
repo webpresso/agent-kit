@@ -59,6 +59,58 @@ describe('createPackedManifest', () => {
     ).toThrow('Missing pnpm catalog entry for vite')
   })
 
+  it('rejects non-publishable local dependency protocols before packing', () => {
+    const linkUrlSpecifier = `${'link:'}//../local`
+
+    expect(() =>
+      createPackedManifest(
+        {
+          dependencies: { local: linkUrlSpecifier },
+        },
+        { catalog: {} },
+      ),
+    ).toThrow(
+      `Cannot pack dependencies.local with non-publishable link: specifier ${JSON.stringify(linkUrlSpecifier)}`,
+    )
+
+    expect(() =>
+      createPackedManifest(
+        {
+          optionalDependencies: { local: 'workspace:*' },
+        },
+        { catalog: {} },
+      ),
+    ).toThrow(
+      'Cannot pack optionalDependencies.local with non-publishable workspace: specifier "workspace:*"',
+    )
+
+    expect(() =>
+      createPackedManifest(
+        {
+          devDependencies: { local: 'file:../local' },
+        },
+        { catalog: {} },
+      ),
+    ).toThrow(
+      'Cannot pack devDependencies.local with non-publishable file: specifier "file:../local"',
+    )
+  })
+
+  it('rejects non-publishable local dependency protocols resolved from catalogs', () => {
+    const linkUrlSpecifier = `${'link:'}//../local`
+
+    expect(() =>
+      createPackedManifest(
+        {
+          dependencies: { local: 'catalog:' },
+        },
+        { catalog: { local: linkUrlSpecifier } },
+      ),
+    ).toThrow(
+      `Cannot pack dependencies.local with non-publishable link: specifier ${JSON.stringify(linkUrlSpecifier)}`,
+    )
+  })
+
   it('normalizes packed bin paths so npm publish --dry-run retains them', () => {
     const manifest = createPackedManifest(
       {
@@ -212,6 +264,37 @@ describe('createPackedManifest', () => {
         optionalDependencies?: Record<string, string>
       }
       expect(restored.optionalDependencies).toEqual({ existing: '^1.0.0' })
+    } finally {
+      rmSync(fixtureDir, { force: true, recursive: true })
+    }
+  })
+
+  it('fails prepack before rewriting package.json when catalog resolution produces a local protocol', () => {
+    const fixtureDir = mkdtempSync(join(tmpdir(), 'wp-package-manifest-local-protocol-'))
+    const linkUrlSpecifier = `${'link:'}//../local`
+    const originalPackageJson = `${JSON.stringify(
+      {
+        name: '@webpresso/agent-kit',
+        version: '1.2.3',
+        dependencies: { local: 'catalog:' },
+      },
+      null,
+      2,
+    )}\n`
+
+    try {
+      writeFileSync(
+        join(fixtureDir, 'pnpm-workspace.yaml'),
+        `catalog:\n  local: ${linkUrlSpecifier}\n`,
+        'utf8',
+      )
+      writeFileSync(join(fixtureDir, 'package.json'), originalPackageJson, 'utf8')
+
+      expect(() => preparePackedManifest(fixtureDir)).toThrow(
+        `Cannot pack dependencies.local with non-publishable link: specifier ${JSON.stringify(linkUrlSpecifier)}`,
+      )
+      expect(readFileSync(join(fixtureDir, 'package.json'), 'utf8')).toBe(originalPackageJson)
+      expect(existsSync(join(fixtureDir, '.package.json.prepack.backup'))).toBe(false)
     } finally {
       rmSync(fixtureDir, { force: true, recursive: true })
     }

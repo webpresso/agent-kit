@@ -53,6 +53,53 @@ describe('bin launcher', () => {
     })
   })
 
+  it('routes wp mcp through the compiled runtime when the host runtime package is present', () => {
+    const plan = buildLaunchPlan({
+      binName: 'wp',
+      repoRoot: '/repo',
+      forwardedArgs: ['mcp'],
+      platform: 'linux',
+      arch: 'x64',
+      runtimeManifest: RUNTIME_MANIFEST,
+      runtimeBinaryExists: (path) => path === '/repo/bin/runtime/linux-x64/wp',
+      builtExists: true,
+      sourceExists: true,
+      nodeExecPath: '/usr/bin/node',
+      currentNodeVersion: 'v24.16.0',
+      pinnedNodeVersion: '24.16.0',
+      runtimeManager: null,
+    })
+
+    expect(plan.mode).toBe('runtime')
+    expect(plan.runtime).toBe('/repo/bin/runtime/linux-x64/wp')
+    expect(plan.args).toEqual(['mcp'])
+  })
+
+  it('keeps wp setup on the built JS launcher even when the host runtime package is present', () => {
+    expect(
+      buildLaunchPlan({
+        binName: 'wp',
+        repoRoot: '/repo',
+        forwardedArgs: ['setup', '--yes'],
+        platform: 'linux',
+        arch: 'x64',
+        runtimeManifest: RUNTIME_MANIFEST,
+        runtimeBinaryExists: () => true,
+        builtExists: true,
+        sourceExists: true,
+        nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
+      }),
+    ).toEqual({
+      mode: 'built',
+      runtime: '/usr/bin/node',
+      args: ['/repo/dist/esm/cli/cli.js', 'setup', '--yes'],
+      entrypoint: '/repo/dist/esm/cli/cli.js',
+    })
+  })
+
   it('prefers staged compiled runtime artifacts for runtime-owned hook bins', () => {
     const plan = buildLaunchPlan({
       binName: 'wp-pretool-guard',

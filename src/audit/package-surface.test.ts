@@ -13,6 +13,9 @@ import {
   evaluateAgentKitTarballSizeBudget,
 } from '#build/runtime-surface-policy.js'
 
+const ROOT_WP_DISPATCHER =
+  "#!/usr/bin/env node\n\nimport { runNamedBin } from './_run.js'\n\nrunNamedBin('wp')\n"
+
 function tempRepo() {
   return mkdtempSync(join(tmpdir(), 'webpresso-package-surface-'))
 }
@@ -343,7 +346,7 @@ describe('package-surface audit', () => {
       })}\n`,
     )
     writeFileSync(join(root, 'bin', 'runtime', 'darwin-arm64', 'wp'), 'native runtime\n')
-    writeFileSync(join(root, 'bin', 'wp'), 'native launcher\n')
+    writeFileSync(join(root, 'bin', 'wp'), ROOT_WP_DISPATCHER)
     chmodSync(join(root, 'bin', 'runtime', 'darwin-arm64', 'wp'), 0o755)
     chmodSync(join(root, 'bin', 'wp'), 0o755)
 
@@ -379,7 +382,7 @@ describe('package-surface audit', () => {
         targets: [{ id: 'darwin-arm64', os: 'darwin' }],
       })}\n`,
     )
-    writeFileSync(join(root, 'bin', 'wp'), 'native launcher\n')
+    writeFileSync(join(root, 'bin', 'wp'), ROOT_WP_DISPATCHER)
     writeFileSync(
       join(root, 'dist', 'runtime-packages', 'agent-kit-runtime-darwin-arm64', 'bin', 'wp'),
       'runtime payload\n',
@@ -420,12 +423,44 @@ describe('package-surface audit', () => {
         targets: [{ id: 'darwin-arm64', os: 'darwin' }],
       })}\n`,
     )
-    writeFileSync(join(root, 'bin', 'wp'), 'native launcher\n')
+    writeFileSync(join(root, 'bin', 'wp'), ROOT_WP_DISPATCHER)
     chmodSync(join(root, 'bin', 'wp'), 0o755)
 
     const result = auditPackageSurface(root)
 
     expect(result.ok).toBe(true)
+  })
+
+  test('fails when packed @webpresso/agent-kit root bin/wp is a native binary instead of the dispatcher', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'bin'), { recursive: true })
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/agent-kit',
+      version: '0.28.0',
+      private: false,
+      files: ['bin/runtime-manifest.json', 'bin/wp'],
+      bin: { wp: 'bin/wp' },
+    })
+    writeFileSync(
+      join(root, 'bin', 'runtime-manifest.json'),
+      `${JSON.stringify({
+        binaryName: 'wp',
+        targets: [{ id: 'linux-x64', os: 'linux' }],
+      })}\n`,
+    )
+    writeFileSync(join(root, 'bin', 'wp'), Buffer.from([0x7f, 0x45, 0x4c, 0x46, 0]))
+    chmodSync(join(root, 'bin', 'wp'), 0o755)
+
+    const result = auditPackageSurface(root)
+
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations.some(
+        (violation) =>
+          violation.file === 'bin/wp' &&
+          violation.message.includes('cross-platform JS dispatcher'),
+      ),
+    ).toBe(true)
   })
 
   test('enforces an explicit tarball size budget for thin-root native runtime surfaces', () => {

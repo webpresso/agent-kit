@@ -6,6 +6,8 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { preparePackedManifest, restorePackedManifest } from '../src/build/package-manifest.js'
+
 interface RunResult {
   readonly command: string
   readonly ok: boolean
@@ -81,7 +83,13 @@ function ensurePackableNativeRuntime(): RunResult[] {
 }
 
 function packCurrentArtifact(): string {
-  const raw = runOrThrow('npm', ['pack', '--json'], ROOT)
+  let raw: string
+  try {
+    preparePackedManifest(ROOT)
+    raw = runOrThrow('npm', ['pack', '--ignore-scripts', '--json'], ROOT)
+  } finally {
+    restorePackedManifest(ROOT)
+  }
   const parsed = JSON.parse(raw.match(/\[.*\]/s)?.[0] ?? '[]') as Array<{ filename?: string }>
   const filename = parsed[0]?.filename
   if (!filename) {

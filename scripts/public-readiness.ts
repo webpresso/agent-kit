@@ -68,6 +68,13 @@ function read(path: string): string {
   return readFileSync(resolve(ROOT, path), 'utf8')
 }
 
+function isRootWpDispatcher(path: string): boolean {
+  const buffer = readFileSync(path)
+  if (buffer.includes(0)) return false
+  const text = buffer.toString('utf8')
+  return text.startsWith('#!/usr/bin/env node') && text.includes("runNamedBin('wp')")
+}
+
 function fail(name: string, detail: string): CheckResult {
   return { name, status: 'FAIL', detail }
 }
@@ -274,11 +281,15 @@ const runtimeManifest = existsSync(resolve(ROOT, runtimeManifestPath))
 
 const stagedLauncherPath = resolve(ROOT, 'bin', 'wp')
   if (!existsSync(stagedLauncherPath)) {
-    results.push(fail('staged-native-launcher', 'bin/wp missing'))
+    results.push(fail('root-wp-dispatcher', 'bin/wp missing'))
   } else if (lstatSync(stagedLauncherPath).isSymbolicLink()) {
-    results.push(fail('staged-native-launcher', 'bin/wp must be a real file, not a symlink'))
+    results.push(fail('root-wp-dispatcher', 'bin/wp must be a real file, not a symlink'))
+  } else if (!isRootWpDispatcher(stagedLauncherPath)) {
+    results.push(
+      fail('root-wp-dispatcher', 'bin/wp must be the cross-platform JS dispatcher, not a native binary'),
+    )
   } else {
-    results.push(pass('staged-native-launcher', 'bin/wp present as a real file'))
+    results.push(pass('root-wp-dispatcher', 'bin/wp present as the JS dispatcher'))
   }
 
 const pluginManifestPath = resolve(ROOT, '.claude-plugin', 'plugin.json')
@@ -299,7 +310,13 @@ const pluginManifestPath = resolve(ROOT, '.claude-plugin', 'plugin.json')
   }
 
 // 3) Tarball surface
-  const pack = run('npm', ['pack', '--dry-run', '--json'])
+  let pack: ReturnType<typeof run> = { code: 1, ok: false, stdout: '' }
+  try {
+    preparePackedManifest(ROOT)
+    pack = run('npm', ['pack', '--ignore-scripts', '--dry-run', '--json'])
+  } finally {
+    restorePackedManifest(ROOT)
+  }
   if (!pack.ok) {
     results.push(fail('npm-pack', `exit ${pack.code}`))
   } else {

@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { preparePackedManifest, restorePackedManifest } from '../src/build/package-manifest.js'
 import { RUNTIME_TARGETS, runtimePackageDirName } from '../src/build/runtime-targets.js'
 import {
   PUBLISH_RUNTIME_MATRIX_ENV,
@@ -31,6 +32,9 @@ function exitCode(result: ReturnType<typeof run>): number {
   return result.status ?? 1
 }
 
+const scriptDir = dirname(fileURLToPath(import.meta.url))
+const packageRoot = dirname(scriptDir)
+
 const buildResult = run('pnpm', ['run', 'build'])
 if (exitCode(buildResult) !== 0) {
   process.exit(exitCode(buildResult))
@@ -50,8 +54,6 @@ if (shouldPublishRuntimeMatrix(process.env)) {
     process.exit(exitCode(runtimeStageResult))
   }
 
-  const scriptDir = dirname(fileURLToPath(import.meta.url))
-  const packageRoot = dirname(scriptDir)
   const runtimePackageRoot = resolve(packageRoot, 'dist', 'runtime-packages')
   for (const target of RUNTIME_TARGETS) {
     const runtimePackage = runtimePackageDirName(target.packageName)
@@ -79,15 +81,32 @@ if (shouldPublishRuntimeMatrix(process.env)) {
   )
 }
 
-const publishResult = run('npm', ['publish', '--provenance', '--access', 'public'])
-if (exitCode(publishResult) === 0) {
-  process.exit(0)
+let publishExitCode = 1
+let rootManifestPrepared = false
+
+try {
+  preparePackedManifest(packageRoot)
+  rootManifestPrepared = true
+
+  const publishResult = run('npm', [
+    'publish',
+    '--ignore-scripts',
+    '--provenance',
+    '--access',
+    'public',
+  ])
+  publishExitCode = exitCode(publishResult)
+  if (publishExitCode !== 0) {
+    const combinedOutput = `${publishResult.stdout ?? ''}\n${publishResult.stderr ?? ''}`
+    if (ALREADY_PUBLISHED_PATTERNS.some((pattern) => pattern.test(combinedOutput))) {
+      process.stdout.write('[release:publish] version already published; treating as success\n')
+      publishExitCode = 0
+    }
+  }
+} finally {
+  if (rootManifestPrepared) {
+    restorePackedManifest(packageRoot)
+  }
 }
 
-const combinedOutput = `${publishResult.stdout ?? ''}\n${publishResult.stderr ?? ''}`
-if (ALREADY_PUBLISHED_PATTERNS.some((pattern) => pattern.test(combinedOutput))) {
-  process.stdout.write('[release:publish] version already published; treating as success\n')
-  process.exit(0)
-}
-
-process.exit(exitCode(publishResult))
+process.exit(publishExitCode)

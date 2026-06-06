@@ -34,6 +34,8 @@ const DEPENDENCY_SECTIONS = [
   'peerDependencies',
 ] as const satisfies readonly DependencySection[]
 
+const NON_PUBLISHABLE_DEPENDENCY_PROTOCOLS = ['link:', 'workspace:', 'file:'] as const
+
 const BACKUP_FILENAME = '.package.json.prepack.backup'
 const DIST_BACKUP_DIRNAME = '.dist-prepack-backup'
 
@@ -111,6 +113,21 @@ export function resolveCatalogSpecifier(
   return resolved
 }
 
+function assertPublishableDependencySpecifier(
+  section: DependencySection,
+  dependencyName: string,
+  version: string,
+) {
+  const blockedProtocol = NON_PUBLISHABLE_DEPENDENCY_PROTOCOLS.find((protocol) =>
+    version.startsWith(protocol),
+  )
+  if (!blockedProtocol) return
+
+  throw new Error(
+    `Cannot pack ${section}.${dependencyName} with non-publishable ${blockedProtocol} specifier ${JSON.stringify(version)}`,
+  )
+}
+
 export function createPackedManifest(
   manifest: PackageManifest,
   workspaceCatalogs: WorkspaceCatalogs,
@@ -121,10 +138,11 @@ export function createPackedManifest(
     const dependencies = manifest[section]
     if (!dependencies) continue
     packedManifest[section] = Object.fromEntries(
-      Object.entries(dependencies).map(([dependencyName, version]) => [
-        dependencyName,
-        resolveCatalogSpecifier(dependencyName, version, workspaceCatalogs),
-      ]),
+      Object.entries(dependencies).map(([dependencyName, version]) => {
+        const resolvedVersion = resolveCatalogSpecifier(dependencyName, version, workspaceCatalogs)
+        assertPublishableDependencySpecifier(section, dependencyName, resolvedVersion)
+        return [dependencyName, resolvedVersion]
+      }),
     )
   }
 

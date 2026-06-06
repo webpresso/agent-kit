@@ -1,12 +1,20 @@
 #!/usr/bin/env sh
 set -eu
-# Prefer local node_modules/.bin/wp; fall back to global wp for repos
-# that rely on the global install (no local agent-kit devDep).
-WP="$(git rev-parse --show-toplevel)/node_modules/.bin/wp"
-[ -x "$WP" ] || WP=wp
-"$WP" audit guardrails
+
+ROOT="$(git rev-parse --show-toplevel)"
+LOCAL_WP="$ROOT/node_modules/.bin/wp"
+
+run_wp() {
+  if [ -x "$LOCAL_WP" ]; then
+    "$LOCAL_WP" "$@"
+  else
+    bun "$ROOT/src/cli/cli.ts" "$@"
+  fi
+}
+
+run_wp audit guardrails
 # agent-kit audit hooks (staged mode — fast)
 # webpresso audit hooks (staged mode — fast)
-bun scripts/check-no-dev-vars.ts
-wp audit absolute-path-policy --root .
-bun scripts/audit-secret-provider-quarantine.ts
+bun "$ROOT/scripts/check-no-dev-vars.ts"
+run_wp audit absolute-path-policy --root "$ROOT"
+bun "$ROOT/scripts/audit-secret-provider-quarantine.ts"

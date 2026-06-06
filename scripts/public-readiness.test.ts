@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -89,5 +92,13 @@ describe('public-readiness runtime policy helpers', () => {
         unpackedSize: AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES + 1,
       }),
     ).toMatchObject({ sizeOk: false, unpackedOk: false })
+  })
+
+  it('packs the prepared manifest with scripts disabled to avoid double prepack', () => {
+    const source = readFileSync(join(import.meta.dirname, 'public-readiness.ts'), 'utf8')
+    const packIndex = source.indexOf("['pack', '--ignore-scripts', '--dry-run', '--json']")
+
+    expect(packIndex).toBeGreaterThan(source.indexOf('preparePackedManifest(ROOT)'))
+    expect(source.indexOf('restorePackedManifest(ROOT)', packIndex)).toBeGreaterThan(packIndex)
   })
 })

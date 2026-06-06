@@ -13,7 +13,6 @@ import { dirname, resolve } from 'node:path'
 import {
   RUNTIME_BINARY_NAME,
   RUNTIME_TARGETS,
-  resolveRuntimeTarget,
   runtimeBinaryFilename,
   runtimePackageDirName,
   type RuntimeTarget,
@@ -136,28 +135,6 @@ export function stageRuntimeArtifacts({
     staged.push(operation.pluginDestination)
     staged.push(operation.packageBinaryDestination)
     staged.push(operation.packageManifestDestination)
-  }
-
-  const hostTarget = resolveRuntimeTarget()
-  if (hostTarget) {
-    const filename = runtimeBinaryFilename(hostTarget)
-    const hostSource = resolve(rootDir, 'bin', 'runtime', hostTarget.id, filename)
-    const hostDestination = resolve(rootDir, 'bin', RUNTIME_BINARY_NAME)
-    if (!existsSync(hostSource)) {
-      const message = `missing staged host runtime artifact for ${hostTarget.id}: ${hostSource}`
-      if (allowMissing) {
-        staged.push(message)
-        return staged
-      }
-      throw new Error(message)
-    }
-    if (dryRun) {
-      staged.push(`${hostSource} -> ${hostDestination}`)
-      return staged
-    }
-    copyFileSync(hostSource, hostDestination)
-    chmodSync(hostDestination, 0o755)
-    staged.push(hostDestination)
   }
 
   return staged

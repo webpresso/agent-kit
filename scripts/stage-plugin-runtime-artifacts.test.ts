@@ -4,7 +4,6 @@ import { dirname, join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { resolveRuntimeTarget, runtimeBinaryFilename } from '../src/build/runtime-targets.js'
 import {
   buildRuntimeStageOperations,
   renderRuntimePackageManifest,
@@ -44,7 +43,6 @@ describe('stage-plugin-runtime-artifacts', () => {
 
   it('copies compiled artifacts and writes runtime package manifests', () => {
     const root = mkdtempSync(join(tmpdir(), 'wp-runtime-stage-'))
-    const hostTarget = resolveRuntimeTarget()
 
     try {
       writeFileSync(
@@ -66,12 +64,7 @@ describe('stage-plugin-runtime-artifacts', () => {
       expect(JSON.parse(readFileSync(operation!.packageManifestDestination, 'utf8')).version).toBe(
         '9.8.7',
       )
-      if (hostTarget) {
-        expect(readFileSync(join(root, 'bin', 'wp'), 'utf8')).toBe(`runtime:${hostTarget.id}`)
-        expect(readFileSync(join(root, 'bin', 'wp'), 'utf8')).toBe(
-          readFileSync(join(root, 'bin', 'runtime', hostTarget.id, runtimeBinaryFilename(hostTarget)), 'utf8'),
-        )
-      }
+      expect(existsSync(join(root, 'bin', 'wp'))).toBe(false)
     } finally {
       rmSync(root, { force: true, recursive: true })
     }

@@ -461,6 +461,11 @@ function auditAgentKitNativeRuntimeSurface(
       file: relativePath(root, stagedLauncherPath),
       message: 'Publishable native launcher bin/wp must be a real file, not a symlink',
     })
+  } else if (!isRootWpDispatcher(stagedLauncherPath)) {
+    violations.push({
+      file: relativePath(root, stagedLauncherPath),
+      message: 'Publishable native launcher bin/wp must be the cross-platform JS dispatcher, not a native binary',
+    })
   }
 
   const sizeBudget = evaluateAgentKitTarballSizeBudget(packEntry)
@@ -506,6 +511,11 @@ function auditPackedTarballContent(
     }
   }
   return checked
+}
+
+function isRootWpDispatcher(path: string): boolean {
+  const text = readPackedText(path)
+  return Boolean(text?.startsWith('#!/usr/bin/env node') && text.includes("runNamedBin('wp')"))
 }
 
 function auditPackedTarballSecrets(

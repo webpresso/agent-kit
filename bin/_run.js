@@ -41,6 +41,8 @@ const RUNTIME_BIN_ARGS = {
   'wp-sessionstart-routing': ['hook', 'sessionstart-routing'],
 }
 
+const RUNTIME_WP_SUBCOMMANDS = new Set(['mcp'])
+
 function resolvePackageRoot() {
   return join(dirname(fileURLToPath(import.meta.url)), '..')
 }
@@ -158,6 +160,10 @@ function buildRuntimeLaunchPlan({
 }) {
   const selectorArgs = RUNTIME_BIN_ARGS[binName]
   if (!selectorArgs) return null
+  if (binName === 'wp') {
+    const subcommand = forwardedArgs[0]
+    if (!RUNTIME_WP_SUBCOMMANDS.has(subcommand) && !forceCompiledRuntime) return null
+  }
 
   const manifest = runtimeManifest ?? readRuntimeManifest(repoRoot)
   if (!manifest) return null
