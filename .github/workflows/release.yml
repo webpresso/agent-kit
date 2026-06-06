@@ -187,6 +187,7 @@ jobs:
             exit 0
           fi
 
+          git restore --source=HEAD --staged --worktree package.json
           git switch -C "$branch" "$base_commit"
           git add -f dist/
           if git diff --staged --quiet; then
