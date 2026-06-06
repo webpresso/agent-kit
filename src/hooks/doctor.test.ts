@@ -106,7 +106,7 @@ describe('hooks/doctor', () => {
         if (String(path) === pkgJson) {
           return JSON.stringify({
             bin: {
-              wp: './bin/wp.js',
+              wp: './bin/wp',
             },
           })
         }

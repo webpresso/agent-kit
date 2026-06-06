@@ -66,7 +66,7 @@ describe('ensureAgentKitGlobal', () => {
       options: WRITE_OPTIONS,
       spawn,
       env: {},
-      argv1: '/Users/dev/repos/webpresso/agent-kit/bin/wp.js',
+      argv1: '/Users/dev/repos/webpresso/agent-kit/bin/wp',
       detectGit: () => '/Users/dev/repos/webpresso/agent-kit',
     })
     expect(result).toStrictEqual({

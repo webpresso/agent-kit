@@ -90,6 +90,11 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Stage native runtime artifacts
+        run: |
+          pnpm run build:runtime-binaries
+          pnpm run stage:plugin-runtime
+
       - name: Run bundle smoke
         # WP_SKIP_GSTACK and WP_SKIP_RTK skip optional network-dependent
         # scaffolders (git clone / binary download) that require external

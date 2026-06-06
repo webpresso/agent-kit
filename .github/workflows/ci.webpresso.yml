@@ -95,6 +95,10 @@ jobs:
         with:
           bun-version: latest
       - run: pnpm install --frozen-lockfile
+      - name: Stage native runtime artifacts
+        run: |
+          pnpm run build:runtime-binaries
+          pnpm run stage:plugin-runtime
       - name: Link in-tree wp bins
         # pnpm adds node_modules/.bin to PATH for package scripts, but does not
         # self-link this package's own bin entries during install. The check job
@@ -121,6 +125,10 @@ jobs:
         with:
           bun-version: latest
       - run: pnpm install --frozen-lockfile
+      - name: Stage native runtime artifacts
+        run: |
+          pnpm run build:runtime-binaries
+          pnpm run stage:plugin-runtime
       - run: pnpm run test
       - name: Bench fixture compatibility gate
         if: ${{ github.event_name == 'pull_request' }}
@@ -145,6 +153,10 @@ jobs:
         with:
           bun-version: latest
       - run: pnpm install --frozen-lockfile
+      - name: Stage native runtime artifacts
+        run: |
+          pnpm run build:runtime-binaries
+          pnpm run stage:plugin-runtime
       - name: Stage packed surface for external scanning
         run: |
           rm -rf .webpresso-packed-surface
