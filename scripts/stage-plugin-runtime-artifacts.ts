@@ -77,6 +77,10 @@ export function renderRuntimePackageManifest(target: RuntimeTarget, version: str
       description: `Compiled ${target.id} runtime for @webpresso/agent-kit`,
       license: 'MIT',
       type: 'module',
+      repository: {
+        type: 'git',
+        url: 'https://github.com/webpresso/agent-kit',
+      },
       os: [target.os],
       cpu: [target.cpu],
       publishConfig: {

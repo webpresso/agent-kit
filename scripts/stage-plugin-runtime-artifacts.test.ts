@@ -30,6 +30,10 @@ describe('stage-plugin-runtime-artifacts', () => {
     expect(manifest).toMatchObject({
       name: '@webpresso/agent-kit-runtime-darwin-arm64',
       version: '1.2.3',
+      repository: {
+        type: 'git',
+        url: 'https://github.com/webpresso/agent-kit',
+      },
       os: ['darwin'],
       cpu: ['arm64'],
       publishConfig: {
