@@ -3,7 +3,15 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, test } from 'vitest'
 
-import { auditPackageSurface, stagePublishableTarballSurface } from './package-surface.js'
+import {
+  auditPackageSurface,
+  stagePublishableTarballSurface,
+} from './package-surface.js'
+import {
+  AGENT_KIT_TARBALL_SIZE_BUDGET_BYTES,
+  AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES,
+  evaluateAgentKitTarballSizeBudget,
+} from '#build/runtime-surface-policy.js'
 
 function tempRepo() {
   return mkdtempSync(join(tmpdir(), 'webpresso-package-surface-'))
@@ -285,6 +293,86 @@ describe('package-surface audit', () => {
     expect(result.fileCount).toBeGreaterThanOrEqual(3)
     expect(readText(join(destination, 'README.md'))).toContain('hello')
     expect(readText(join(destination, 'bin', 'webpresso.js'))).toContain('console.log')
+  })
+
+  test('requires native runtime artifacts on the packed @webpresso/agent-kit surface', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'bin', 'runtime', 'darwin-arm64'), { recursive: true })
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/agent-kit',
+      version: '0.28.0',
+      private: false,
+      files: ['bin'],
+      bin: { wp: 'bin/wp' },
+    })
+    writeFileSync(
+      join(root, 'bin', 'runtime-manifest.json'),
+      `${JSON.stringify({
+        binaryName: 'wp',
+        targets: [{ id: 'darwin-arm64', os: 'darwin' }],
+      })}\n`,
+    )
+
+    const result = auditPackageSurface(root)
+
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations.some(
+        (violation) =>
+          violation.file === 'bin/wp' &&
+          violation.message.includes('native launcher'),
+      ),
+    ).toBe(true)
+    expect(
+      result.violations.some(
+        (violation) =>
+          violation.file === 'bin/runtime/darwin-arm64/wp' &&
+          violation.message.includes('required native runtime artifact'),
+      ),
+    ).toBe(true)
+  })
+
+  test('accepts packed @webpresso/agent-kit surfaces with staged native runtime artifacts', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'bin', 'runtime', 'darwin-arm64'), { recursive: true })
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/agent-kit',
+      version: '0.28.0',
+      private: false,
+      files: ['bin'],
+      bin: { wp: 'bin/wp' },
+    })
+    writeFileSync(
+      join(root, 'bin', 'runtime-manifest.json'),
+      `${JSON.stringify({
+        binaryName: 'wp',
+        targets: [{ id: 'darwin-arm64', os: 'darwin' }],
+      })}\n`,
+    )
+    writeFileSync(join(root, 'bin', 'runtime', 'darwin-arm64', 'wp'), 'native runtime\n')
+    writeFileSync(join(root, 'bin', 'wp'), 'native launcher\n')
+    chmodSync(join(root, 'bin', 'runtime', 'darwin-arm64', 'wp'), 0o755)
+    chmodSync(join(root, 'bin', 'wp'), 0o755)
+
+    const result = auditPackageSurface(root)
+
+    expect(result.ok).toBe(true)
+  })
+
+  test('enforces an explicit tarball size budget for duplicated native runtime surfaces', () => {
+    expect(
+      evaluateAgentKitTarballSizeBudget({
+        size: AGENT_KIT_TARBALL_SIZE_BUDGET_BYTES,
+        unpackedSize: AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES,
+      }),
+    ).toMatchObject({ sizeOk: true, unpackedOk: true })
+
+    expect(
+      evaluateAgentKitTarballSizeBudget({
+        size: AGENT_KIT_TARBALL_SIZE_BUDGET_BYTES + 1,
+        unpackedSize: AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES + 1,
+      }),
+    ).toMatchObject({ sizeOk: false, unpackedOk: false })
   })
 })
 

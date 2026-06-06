@@ -24,16 +24,15 @@ import {
   lstatSync,
   mkdirSync,
   readlinkSync,
-  realpathSync,
   renameSync,
   symlinkSync,
   unlinkSync,
 } from 'node:fs'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { STATE_FILE_RELATIVE_PATH, readDevLinkState } from '#dev/dev-link-state'
+import { isDirectEntrypoint } from '#hooks/shared/direct-entrypoint'
 
 export type RestoreOutcome =
   | { kind: 'no-state-file' }
@@ -137,8 +136,7 @@ function timestamp(): string {
 }
 
 if (
-  process.argv[1] &&
-  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
+  isDirectEntrypoint(import.meta.url)
 ) {
   const result = restoreDevLinks()
   process.exit(result.exitCode)

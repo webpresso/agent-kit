@@ -1,14 +1,13 @@
 {
   "name": "webpresso",
-  "version": "0.28.0",
+  "version": "0.29.0",
   "description": "Webpresso agent-kit: blueprints, skills, lore commit protocol, tech-debt lifecycle",
   "skills": "./skills",
   "commands": "./commands",
   "mcpServers": {
     "webpresso": {
-      "command": "node",
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/wp",
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/bin/wp.js",
         "mcp"
       ]
     }

@@ -10,12 +10,16 @@
  * - installed host CLIs (Codex/OpenCode/Claude) can see the expected surfaces
  */
 
-import { accessSync, constants, readFileSync, statSync } from 'node:fs'
+import { accessSync, constants, lstatSync, readFileSync, statSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { platform } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join, resolve } from 'node:path'
 
+import {
+  findAgentKitPackageRoot,
+  resolveAgentKitPackageRoot,
+  type ResolveAgentKitPackageRootOptions,
+} from '#cli/commands/init/package-root'
 import { STATE_FILE_RELATIVE_PATH, readDevLinkState } from '#dev/dev-link-state'
 import { detectDevLinkBreakage, formatBreakageMessage } from '#hooks/check-dev-link/index'
 import { isMcpReady } from './shared/mcp-sentinel.js'
@@ -31,6 +35,15 @@ export interface DoctorCheck {
 export interface DoctorResult {
   ok: boolean
   checks: DoctorCheck[]
+}
+
+interface NativePluginRuntimeStatus {
+  readonly launchMode: 'native' | 'legacy-js' | 'custom' | 'missing'
+  readonly targetId?: string
+  readonly manifestPath?: string
+  readonly stagedBinPath?: string
+  readonly runtimeTargetPath?: string
+  readonly reason?: string
 }
 
 const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested')
@@ -62,38 +75,27 @@ interface CodexHooksFile {
 }
 
 function resolvePackageRoot(): string | null {
-  return findOwningPackageRoot(dirname(fileURLToPath(import.meta.url)))
+  return resolvePackageRootForRuntime()
+}
+
+export interface ResolvePackageRootForRuntimeOptions {
+  readonly moduleUrl?: string
+  readonly execPath?: string
+  readonly argv0?: string
+  readonly argv1?: string
+  readonly pathEnv?: string
+  readonly pathExtEnv?: string
+  readonly platform?: NodeJS.Platform
+}
+
+export function resolvePackageRootForRuntime(
+  options: ResolvePackageRootForRuntimeOptions = {},
+): string | null {
+  return resolveAgentKitPackageRoot(options satisfies ResolveAgentKitPackageRootOptions)
 }
 
 export function findOwningPackageRoot(startDir: string): string | null {
-  let dir = startDir
-  let fallback: string | null = null
-  while (dir !== dirname(dir)) {
-    if (tryAccess(join(dir, 'package.json'))) {
-      if (fallback === null) fallback = dir
-      if (isOwningPackageRoot(dir)) return dir
-    }
-    dir = dirname(dir)
-  }
-  return fallback
-}
-
-function isOwningPackageRoot(dir: string): boolean {
-  try {
-    const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf-8')) as {
-      bin?: Record<string, string | unknown>
-    }
-    if (typeof pkg.bin?.['wp'] === 'string') return true
-  } catch {
-    // Ignore malformed package.json here and fall back to structural markers below.
-  }
-
-  return (
-    tryAccess(join(dir, '.claude-plugin', 'plugin.json')) ||
-    tryAccess(join(dir, 'bin', 'wp.js')) ||
-    tryAccess(join(dir, 'src', 'cli', 'cli.ts')) ||
-    tryAccess(join(dir, 'dist', 'esm', 'cli', 'cli.js'))
-  )
+  return findAgentKitPackageRoot(startDir)
 }
 
 function resolveHookBin(binName: string): string | null {
@@ -430,6 +432,191 @@ function checkPluginJson(): { ok: boolean; detail?: string } {
   }
 }
 
+function formatNativeRuntimeDetail(status: NativePluginRuntimeStatus): string {
+  return [
+    `launchMode=${status.launchMode}`,
+    status.targetId ? `targetId=${status.targetId}` : null,
+    status.manifestPath ? `manifest=${status.manifestPath}` : null,
+    status.stagedBinPath ? `stagedBin=${status.stagedBinPath}` : null,
+    status.runtimeTargetPath ? `targetBin=${status.runtimeTargetPath}` : null,
+    status.reason ? `reason=${status.reason}` : null,
+  ]
+    .filter((value): value is string => value !== null)
+    .join(', ')
+}
+
+export function checkNativePluginRuntime(): DoctorCheck {
+  const root = resolvePluginRoot()
+  if (!root) {
+    return {
+      name: 'native plugin runtime',
+      ok: false,
+      detail: formatNativeRuntimeDetail({
+        launchMode: 'missing',
+        reason: 'plugin root not found',
+      }),
+    }
+  }
+
+  const pluginJsonPath = join(root, '.claude-plugin', 'plugin.json')
+  const manifestPath = join(root, 'bin', 'runtime-manifest.json')
+  const stagedBinPath = join(root, 'bin', 'wp')
+
+  if (!tryAccess(pluginJsonPath)) {
+    return {
+      name: 'native plugin runtime',
+      ok: false,
+      detail: formatNativeRuntimeDetail({
+        launchMode: 'missing',
+        manifestPath,
+        stagedBinPath,
+        reason: 'plugin manifest missing',
+      }),
+    }
+  }
+
+  try {
+    const pluginManifest = JSON.parse(readFileSync(pluginJsonPath, 'utf-8')) as {
+      mcpServers?: Record<string, { command?: string; args?: string[] }>
+    }
+    const server = pluginManifest.mcpServers?.webpresso
+    const launchMode: NativePluginRuntimeStatus['launchMode'] =
+      server?.command === '${CLAUDE_PLUGIN_ROOT}/bin/wp' &&
+      Array.isArray(server.args) &&
+      server.args.length === 1 &&
+      server.args[0] === 'mcp'
+        ? 'native'
+        : server?.command === 'node' ||
+            (server?.args ?? []).some((arg) => arg.endsWith('wp.js'))
+          ? 'legacy-js'
+          : server
+            ? 'custom'
+            : 'missing'
+
+    if (!tryAccess(manifestPath)) {
+      return {
+        name: 'native plugin runtime',
+        ok: false,
+        detail: formatNativeRuntimeDetail({
+          launchMode,
+          manifestPath,
+          stagedBinPath,
+          reason: 'runtime manifest missing',
+        }),
+      }
+    }
+
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      binaryName?: string
+      targets?: Array<{ id?: string; os?: string; cpu?: string }>
+    }
+    const target = manifest.targets?.find(
+      (candidate) => candidate.os === process.platform && candidate.cpu === process.arch,
+    )
+    const targetId = target?.id
+    const targetFilename = target?.os === 'win32' ? `${manifest.binaryName ?? 'wp'}.exe` : manifest.binaryName ?? 'wp'
+    const runtimeTargetPath = targetId
+      ? join(root, 'bin', 'runtime', targetId, targetFilename)
+      : undefined
+
+    if (!targetId || !runtimeTargetPath) {
+      return {
+        name: 'native plugin runtime',
+        ok: false,
+        detail: formatNativeRuntimeDetail({
+          launchMode,
+          manifestPath,
+          stagedBinPath,
+          reason: `no runtime target for ${process.platform}/${process.arch}`,
+        }),
+      }
+    }
+
+    if (!tryAccess(stagedBinPath)) {
+      return {
+        name: 'native plugin runtime',
+        ok: false,
+        detail: formatNativeRuntimeDetail({
+          launchMode,
+          targetId,
+          manifestPath,
+          stagedBinPath,
+          runtimeTargetPath,
+          reason: 'staged native launcher missing',
+        }),
+      }
+    }
+
+    if (lstatSync(stagedBinPath).isSymbolicLink()) {
+      return {
+        name: 'native plugin runtime',
+        ok: false,
+        detail: formatNativeRuntimeDetail({
+          launchMode,
+          targetId,
+          manifestPath,
+          stagedBinPath,
+          runtimeTargetPath,
+          reason: 'staged native launcher is a symlink',
+        }),
+      }
+    }
+
+    if (!tryAccess(runtimeTargetPath)) {
+      return {
+        name: 'native plugin runtime',
+        ok: false,
+        detail: formatNativeRuntimeDetail({
+          launchMode,
+          targetId,
+          manifestPath,
+          stagedBinPath,
+          runtimeTargetPath,
+          reason: 'target runtime binary missing',
+        }),
+      }
+    }
+
+    if (launchMode !== 'native') {
+      return {
+        name: 'native plugin runtime',
+        ok: false,
+        detail: formatNativeRuntimeDetail({
+          launchMode,
+          targetId,
+          manifestPath,
+          stagedBinPath,
+          runtimeTargetPath,
+          reason: 'plugin manifest is not using the native launcher',
+        }),
+      }
+    }
+
+    return {
+      name: 'native plugin runtime',
+      ok: true,
+      detail: formatNativeRuntimeDetail({
+        launchMode,
+        targetId,
+        manifestPath,
+        stagedBinPath,
+        runtimeTargetPath,
+      }),
+    }
+  } catch (error) {
+    return {
+      name: 'native plugin runtime',
+      ok: false,
+      detail: formatNativeRuntimeDetail({
+        launchMode: 'missing',
+        manifestPath,
+        stagedBinPath,
+        reason: error instanceof Error ? error.message : String(error),
+      }),
+    }
+  }
+}
+
 async function checkMcpServer(): Promise<{ ok: boolean; detail?: string; skipped?: boolean }> {
   if (isMcpReady()) {
     return { ok: true, detail: 'MCP server already running (sentinel found)', skipped: true }
@@ -746,6 +933,7 @@ export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<
   checks.push(checkConsumerCodexHookPaths(opts.cwd))
 
   checks.push({ name: 'plugin.json integrity', ...checkPluginJson() })
+  checks.push({ advisory: true, ...checkNativePluginRuntime() })
   checks.push({
     name: 'managed hooks installed (.claude/settings.json)',
     advisory: true,

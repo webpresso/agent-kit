@@ -56,6 +56,12 @@
       "#audit/*": [
         "./src/audit/*.ts"
       ],
+      "#build/*.js": [
+        "./src/build/*.ts"
+      ],
+      "#build/*": [
+        "./src/build/*.ts"
+      ],
       "#docs-linter/*": [
         "./src/docs-linter/*.ts"
       ],

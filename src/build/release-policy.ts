@@ -1,29 +1,20 @@
 /**
- * Release-time policy decisions for the publish pipeline.
+ * Release-time policy decisions for the native runtime publish pipeline.
  *
- * The per-platform native runtime packages (`@webpresso/agent-kit-runtime-*`)
- * are a deferred capability: they are not yet created on the registry, the main
- * package declares no `optionalDependencies` on them, and the plugin manifest
- * still launches via the node entrypoint rather than a staged native `bin/wp`.
- *
- * Until that native-distribution work is intentionally activated, the release
- * MUST NOT attempt to publish the matrix: a first-time `npm publish` of a
- * never-created scoped package returns 404, which previously aborted the entire
- * release before the main `@webpresso/agent-kit` package published (the root
- * cause of the 0.22.x publish stall).
- *
- * The matrix publish is therefore gated behind an explicit opt-in. When the
- * native-distribution feature lands, the release workflow sets
- * `WP_PUBLISH_RUNTIME_MATRIX=1` (after bootstrapping the scoped packages on the
- * registry) to turn it back on.
+ * The canonical package surface now includes the per-platform
+ * `@webpresso/agent-kit-runtime-*` packages plus the staged native `bin/wp`
+ * launcher, so release publishes the runtime matrix by default. Operators may
+ * still set `WP_PUBLISH_RUNTIME_MATRIX=0` to force a diagnostics-only dry lane
+ * when debugging a broken registry/bootstrap environment, but the normal
+ * shipping path is "publish the matrix".
  */
 export const PUBLISH_RUNTIME_MATRIX_ENV = 'WP_PUBLISH_RUNTIME_MATRIX'
 
 /**
  * Whether the release pipeline should build, stage, and publish the per-platform
- * native runtime matrix. Defaults to `false` (matrix deferred); enabled only
- * when `WP_PUBLISH_RUNTIME_MATRIX=1` is set explicitly.
+ * native runtime matrix. Defaults to `true`; only an explicit
+ * `WP_PUBLISH_RUNTIME_MATRIX=0` disables the matrix.
  */
 export function shouldPublishRuntimeMatrix(env: NodeJS.ProcessEnv): boolean {
-  return env[PUBLISH_RUNTIME_MATRIX_ENV] === '1'
+  return env[PUBLISH_RUNTIME_MATRIX_ENV] !== '0'
 }

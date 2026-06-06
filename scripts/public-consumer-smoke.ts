@@ -72,6 +72,13 @@ function runOrThrow(
   })
 }
 
+function ensurePackableNativeRuntime(): RunResult[] {
+  return [
+    run('bun', ['scripts/build-runtime-binaries.ts'], ROOT),
+    run('bun', ['scripts/stage-plugin-runtime-artifacts.ts'], ROOT),
+  ]
+}
+
 function packCurrentArtifact(): string {
   const raw = runOrThrow('npm', ['pack', '--json'], ROOT)
   const parsed = JSON.parse(raw.match(/\[.*\]/s)?.[0] ?? '[]') as Array<{ filename?: string }>
@@ -151,6 +158,13 @@ try {
     }
   }
   if (canContinue) {
+    const runtimePreparation = ensurePackableNativeRuntime()
+    results.push(...runtimePreparation)
+    if (runtimePreparation.some((result) => !result.ok)) {
+      canContinue = false
+    }
+  }
+  if (canContinue) {
     tarball = packCurrentArtifact()
     results.push(run('git', ['init', repo], tempRoot))
     results.push(run('npm', ['init', '--yes'], repo))
@@ -159,6 +173,7 @@ try {
       ...process.env,
       CI: 'true',
       HOME: home,
+      WP_SKIP_AUTO_INSTALL: '1',
       WP_SKIP_CLAUDE_PLUGIN: '1',
       WP_SKIP_CONTEXT_MODE: '1',
       WP_SKIP_GSTACK: '1',

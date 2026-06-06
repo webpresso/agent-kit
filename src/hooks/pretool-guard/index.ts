@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
-import { realpathSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { main as runMain } from './runner.js'
+import { isDirectEntrypoint } from '#hooks/shared/direct-entrypoint'
 
 export type { AggregateResult } from './runner.js'
 export {
@@ -16,8 +15,7 @@ export {
 export { VALIDATORS } from './validators/index.js'
 
 if (
-  process.argv[1] &&
-  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
+  isDirectEntrypoint(import.meta.url)
 ) {
   runMain()
 }

@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 import type { ToolInput, ValidationResult } from '#hooks/shared/types'
 
-import { realpathSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 
 import { isGuardEnabled } from '#hooks/guard-switch/state'
 import { readStdinJson, suppressStderr } from '#hooks/shared/hook-bootstrap'
@@ -11,6 +9,7 @@ import { getCommand, getFilePath, isBashInput, parseToolInput } from '#hooks/sha
 import { logRun } from './logger.js'
 import { extractRoutableCommandsFromToolInput, routeCommand } from './dev-routing.js'
 import { VALIDATORS } from './validators/index.js'
+import { isDirectEntrypoint } from '#hooks/shared/direct-entrypoint'
 
 const RED = '\x1b[31m'
 const YELLOW = '\x1b[33m'
@@ -181,8 +180,7 @@ export async function main(): Promise<void> {
 }
 
 if (
-  process.argv[1] &&
-  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
+  isDirectEntrypoint(import.meta.url)
 ) {
   main()
 }

@@ -1,12 +1,13 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import type { Database } from '#db/sqlite.js'
+import { resolvePackageAssetPreferred } from '#utils/package-assets.js'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-
-const MIGRATIONS_DIR = __dirname
+const MIGRATIONS_DIR = resolvePackageAssetPreferred([
+  'src/blueprint/db/migrations',
+  'dist/esm/blueprint/db/migrations',
+])
 
 function ensureSchemaVersionTable(db: Database): void {
   db.exec(

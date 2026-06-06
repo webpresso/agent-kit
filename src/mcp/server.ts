@@ -44,17 +44,33 @@ interface RegisteredTool {
   annotations?: ToolAnnotations
 }
 
+function modulePathFromUrl(moduleUrl: string): string | null {
+  try {
+    return fileURLToPath(moduleUrl)
+  } catch {
+    return null
+  }
+}
+
+export function isBunSingleFileModuleUrl(moduleUrl: string): boolean {
+  const modulePath = modulePathFromUrl(moduleUrl)
+  return modulePath === '/$bunfs/root' || modulePath?.startsWith('/$bunfs/root/') === true
+}
+
 function defaultToolsDir(): string {
   // import.meta.url resolves to either src/mcp/server.ts (dev/test via vitest)
   // or dist/esm/mcp/server.js (built). The tools directory is colocated.
-  const here = dirname(fileURLToPath(import.meta.url))
+  const modulePath = modulePathFromUrl(import.meta.url)
+  const here = dirname(modulePath ?? fileURLToPath(import.meta.url))
   return join(here, 'tools')
 }
 
 export type ToolLoadMode = 'filesystem' | 'registry'
 
-function resolveDefaultToolLoadMode(): ToolLoadMode {
-  return process.env.WP_MCP_TOOL_MODE === 'registry' || process.env.WP_COMPILED_RUNTIME === '1'
+export function resolveDefaultToolLoadMode(moduleUrl = import.meta.url): ToolLoadMode {
+  return process.env.WP_MCP_TOOL_MODE === 'registry' ||
+    process.env.WP_COMPILED_RUNTIME === '1' ||
+    isBunSingleFileModuleUrl(moduleUrl)
     ? 'registry'
     : 'filesystem'
 }

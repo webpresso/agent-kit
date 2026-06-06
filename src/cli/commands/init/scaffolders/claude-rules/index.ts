@@ -14,11 +14,11 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import type { MergeOptions, MergeResult } from '#cli/commands/init/merge'
 import { readConfig } from '#cli/commands/init/config'
 import { readPackageJson } from '#cli/commands/init/detect-consumer'
+import { resolveAgentKitPackageRootOrThrow } from '#cli/commands/init/package-root'
 
 export interface ScaffoldClaudeRulesInput {
   repoRoot: string
@@ -96,16 +96,10 @@ function writeOverrideRule(
 }
 
 function resolveCurrentPackageRoot(): string {
-  let dir = dirname(fileURLToPath(import.meta.url))
-  for (let depth = 0; depth < 8; depth++) {
-    if (existsSync(join(dir, 'package.json')) && existsSync(join(dir, 'catalog'))) {
-      return dir
-    }
-    const parent = dirname(dir)
-    if (parent === dir) break
-    dir = parent
-  }
-  throw new Error('wp init: could not locate the webpresso package root for claude-rules fallback.')
+  return resolveAgentKitPackageRootOrThrow(
+    'wp init: could not locate the webpresso package root for claude-rules fallback.',
+    { requireCatalog: true },
+  )
 }
 
 export function scaffoldClaudeRules(input: ScaffoldClaudeRulesInput): MergeResult[] {

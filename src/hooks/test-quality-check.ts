@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 import { resolveActiveWorktreeRoot } from './shared/worktree-root.js'
-import { readFileSync, realpathSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
+import { readFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 
+import { isDirectEntrypoint } from '#hooks/shared/direct-entrypoint'
 import {
   findMutationGamingPatterns,
   findTautologicalAssertions,
@@ -74,8 +74,7 @@ export function runTestQualityCheck(
 }
 
 if (
-  process.argv[1] &&
-  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
+  isDirectEntrypoint(import.meta.url)
 ) {
   runTestQualityCheck()
 }

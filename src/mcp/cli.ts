@@ -9,6 +9,7 @@
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 
+import { isDirectEntrypoint } from '#hooks/shared/direct-entrypoint'
 import { deleteSentinel, writeSentinel } from '#hooks/shared/mcp-sentinel'
 
 import { createServer } from './server.js'
@@ -59,15 +60,8 @@ export async function runStdioServer(): Promise<void> {
   await settle.promise
 }
 
-import { realpathSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 
-const isDirectInvocation =
-  typeof process !== 'undefined' &&
-  process.argv[1] !== undefined &&
-  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
-
-if (isDirectInvocation) {
+if (isDirectEntrypoint(import.meta.url)) {
   runStdioServer().catch((err: unknown) => {
     process.stderr.write(`wp mcp: ${err instanceof Error ? err.message : String(err)}\n`)
     process.exit(1)

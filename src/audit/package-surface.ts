@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process'
 import {
   copyFileSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -12,6 +13,11 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, join, relative, resolve } from 'node:path'
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
+import {
+  AGENT_KIT_TARBALL_SIZE_BUDGET_BYTES,
+  AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES,
+  evaluateAgentKitTarballSizeBudget,
+} from '#build/runtime-surface-policy.js'
 
 interface PackageSurfaceTarballContract {
   forbiddenPathPatterns?: readonly string[]
@@ -163,6 +169,18 @@ interface PackedFileRecord {
 
 interface NpmPackDryRunEntry {
   files?: PackedFileRecord[]
+  size?: number
+  unpackedSize?: number
+}
+
+interface RuntimeManifestTarget {
+  readonly id?: string
+  readonly os?: string
+}
+
+interface RuntimeManifestRecord {
+  readonly binaryName?: string
+  readonly targets?: readonly RuntimeManifestTarget[]
 }
 
 interface MatchRule {
@@ -259,7 +277,10 @@ export function stagePublishableTarballSurface(
   const packages = discoverPublishablePackages(root)
   let fileCount = 0
   for (const candidate of packages) {
-    const packedFiles = readPackedFiles(candidate.packageRoot)
+    const packEntry = readPackedEntry(candidate.packageRoot)
+    const packedFiles = Array.isArray(packEntry.files)
+      ? packEntry.files.filter((item): item is PackedFileRecord => Boolean(item?.path))
+      : []
     stagePackedFiles(root, destinationRoot, candidate, packedFiles)
     fileCount += packedFiles.length
   }
@@ -334,9 +355,9 @@ function auditPackedTarballSurface(
 
   let checked = 0
   for (const candidate of packages) {
-    let packedFiles: PackedFileRecord[]
+    let packEntry: NpmPackDryRunEntry
     try {
-      packedFiles = readPackedFiles(candidate.packageRoot)
+      packEntry = readPackedEntry(candidate.packageRoot)
     } catch (error) {
       violations.push({
         file: relativePath(root, candidate.packageFile),
@@ -345,6 +366,9 @@ function auditPackedTarballSurface(
       checked += 1
       continue
     }
+    const packedFiles = Array.isArray(packEntry.files)
+      ? packEntry.files.filter((item): item is PackedFileRecord => Boolean(item?.path))
+      : []
 
     checked += packedFiles.length
     for (const packedFile of packedFiles) {
@@ -359,6 +383,8 @@ function auditPackedTarballSurface(
         })
       }
     }
+
+    checked += auditAgentKitNativeRuntimeSurface(root, candidate, packEntry, packedFiles, violations)
 
     checked += auditPackedTarballContent(
       root,
@@ -384,6 +410,70 @@ function auditPackedTarballSurface(
   }
 
   return checked
+}
+
+function auditAgentKitNativeRuntimeSurface(
+  root: string,
+  candidate: PackageCandidate,
+  packEntry: NpmPackDryRunEntry,
+  packedFiles: readonly PackedFileRecord[],
+  violations: RepoAuditViolation[],
+): number {
+  if (candidate.name !== '@webpresso/agent-kit') return 0
+
+  const manifestPath = join(candidate.packageRoot, 'bin', 'runtime-manifest.json')
+  if (!existsSync(manifestPath)) {
+    violations.push({
+      file: relativePath(root, join(candidate.packageRoot, 'bin', 'runtime-manifest.json')),
+      message: 'Native runtime manifest is missing from the publishable package surface',
+    })
+    return 1
+  }
+
+  const packedPaths = new Set(packedFiles.map((file) => file.path))
+  const manifest = readJsonObject<RuntimeManifestRecord>(manifestPath)
+  const binaryName = manifest.binaryName ?? 'wp'
+  const requiredPackedPaths = new Set<string>(['bin/runtime-manifest.json', 'bin/wp'])
+
+  for (const target of manifest.targets ?? []) {
+    if (!target.id) continue
+    const filename = target.os === 'win32' ? `${binaryName}.exe` : binaryName
+    requiredPackedPaths.add(`bin/runtime/${target.id}/${filename}`)
+  }
+
+  for (const requiredPath of requiredPackedPaths) {
+    if (packedPaths.has(requiredPath)) continue
+    violations.push({
+      file: relativePath(root, join(candidate.packageRoot, requiredPath)),
+      message: `Publishable tarball is missing required native runtime artifact ${requiredPath}`,
+    })
+  }
+
+  const stagedLauncherPath = join(candidate.packageRoot, 'bin', 'wp')
+  if (!existsSync(stagedLauncherPath)) {
+    violations.push({
+      file: relativePath(root, stagedLauncherPath),
+      message: 'Publishable native launcher bin/wp is missing',
+    })
+  } else if (lstatSync(stagedLauncherPath).isSymbolicLink()) {
+    violations.push({
+      file: relativePath(root, stagedLauncherPath),
+      message: 'Publishable native launcher bin/wp must be a real file, not a symlink',
+    })
+  }
+
+  const sizeBudget = evaluateAgentKitTarballSizeBudget(packEntry)
+  if (!sizeBudget.sizeOk || !sizeBudget.unpackedOk) {
+    violations.push({
+      file: relativePath(root, candidate.packageFile),
+      message:
+        `Publishable tarball exceeds native-runtime size budget: size=${sizeBudget.size}/` +
+        `${AGENT_KIT_TARBALL_SIZE_BUDGET_BYTES}, unpacked=${sizeBudget.unpackedSize}/` +
+        `${AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES}`,
+    })
+  }
+
+  return requiredPackedPaths.size + 2
 }
 
 function auditPackedTarballContent(
@@ -493,18 +583,15 @@ function discoverPublishablePackages(root: string): PackageCandidate[] {
   return packages
 }
 
-function readPackedFiles(packageRoot: string): PackedFileRecord[] {
+function readPackedEntry(packageRoot: string): NpmPackDryRunEntry {
   const raw = execFileSync('npm', ['pack', '--dry-run', '--json'], {
     cwd: packageRoot,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   const entries = JSON.parse(raw) as unknown
-  if (!Array.isArray(entries) || entries.length === 0) return []
-  const first = entries[0] as NpmPackDryRunEntry
-  return Array.isArray(first.files)
-    ? first.files.filter((item): item is PackedFileRecord => Boolean(item?.path))
-    : []
+  if (!Array.isArray(entries) || entries.length === 0) return {}
+  return (entries[0] as NpmPackDryRunEntry) ?? {}
 }
 
 function stagePackedFiles(

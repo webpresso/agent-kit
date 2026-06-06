@@ -1,8 +1,15 @@
 #!/usr/bin/env bun
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, lstatSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+
+import {
+  AGENT_KIT_TARBALL_SIZE_BUDGET_BYTES,
+  AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES,
+  evaluateAgentKitTarballSizeBudget,
+} from '../src/build/runtime-surface-policy.js'
+import { createPackedManifest, readWorkspaceCatalogs } from '../src/build/package-manifest.js'
 
 type Status = 'PASS' | 'FAIL' | 'BLOCKED'
 
@@ -10,6 +17,15 @@ interface CheckResult {
   readonly name: string
   readonly status: Status
   readonly detail: string
+}
+
+interface RuntimeManifestRecord {
+  readonly binaryName?: string
+  readonly targets?: Array<{ id?: string; os?: string; bunTarget?: string; packageName?: string }>
+}
+
+interface PluginManifestRecord {
+  readonly mcpServers?: Record<string, { command?: string; args?: string[] }>
 }
 
 const ROOT = process.cwd()
@@ -55,6 +71,48 @@ function blocked(name: string, detail: string): CheckResult {
   return { name, status: 'BLOCKED', detail }
 }
 
+export function listMissingRuntimeOptionalDependencies(
+  runtimeManifest: RuntimeManifestRecord,
+  packageVersion: string,
+  optionalDependencies: Record<string, string> = {},
+): string[] {
+  return (runtimeManifest.targets ?? [])
+    .filter((target) => !target.packageName || optionalDependencies[target.packageName] !== packageVersion)
+    .map((target) => target.packageName ?? target.id ?? 'unknown-target')
+}
+
+export function evaluatePluginNativeLauncherPolicy(pluginManifest: PluginManifestRecord): {
+  readonly commandOk: boolean
+  readonly argsOk: boolean
+  readonly command?: string
+  readonly args: readonly string[]
+} {
+  const server = pluginManifest.mcpServers?.webpresso
+  const args = Array.isArray(server?.args) ? server.args : []
+  return {
+    commandOk: server?.command === '${CLAUDE_PLUGIN_ROOT}/bin/wp',
+    argsOk: args.length === 1 && args[0] === 'mcp',
+    command: server?.command,
+    args,
+  }
+}
+
+export function listMissingPackedRuntimePaths(
+  runtimeManifest: RuntimeManifestRecord,
+  packedFiles: readonly string[],
+): string[] {
+  const requiredRuntimePaths = new Set<string>(['bin/runtime-manifest.json', 'bin/wp'])
+  for (const target of runtimeManifest.targets ?? []) {
+    if (!target.id) continue
+    const filename =
+      target.os === 'win32'
+        ? `${runtimeManifest.binaryName ?? 'wp'}.exe`
+        : runtimeManifest.binaryName ?? 'wp'
+    requiredRuntimePaths.add(`bin/runtime/${target.id}/${filename}`)
+  }
+  return [...requiredRuntimePaths].filter((path) => !packedFiles.includes(path))
+}
+
 function countMatches(paths: string[], patterns: RegExp[]): string[] {
   const hits: string[] = []
   for (const path of paths) {
@@ -77,10 +135,11 @@ function blueprintTaskStatus(taskId: string): string | null {
   return match?.[1]?.toLowerCase() ?? null
 }
 
-const results: CheckResult[] = []
+if (import.meta.main) {
+  const results: CheckResult[] = []
 
-// 1) Existing gate commands
-for (const [name, command, args, env] of [
+  // 1) Existing gate commands
+  for (const [name, command, args, env] of [
   ['forbidden-env-files', 'bun', ['scripts/check-no-dev-vars.ts'], process.env] as const,
   [
     'secret-provider-quarantine',
@@ -103,80 +162,137 @@ for (const [name, command, args, env] of [
   [
     'packed-consumer-setup-smoke',
     'bun',
-    ['scripts/public-consumer-smoke.ts', '--setup-only'],
+    ['scripts/public-consumer-smoke.ts', '--setup-only', '--skip-build'],
     { ...process.env, WP_SKIP_UPDATE_CHECK: '1' },
   ] as const,
-]) {
-  const r = run(command, args, env)
-  results.push(r.ok ? pass(name, 'ok') : fail(name, `exit ${r.code}`))
-}
+  ]) {
+    const r = run(command, args, env)
+    results.push(r.ok ? pass(name, 'ok') : fail(name, `exit ${r.code}`))
+  }
 
 // 2) Package identity / metadata
 const pkg = JSON.parse(read('package.json')) as {
   name?: string
+  version?: string
+  bin?: Record<string, string>
+  optionalDependencies?: Record<string, string>
   publishConfig?: { registry?: string; access?: string }
   scripts?: Record<string, string>
 }
+const packedPkg = createPackedManifest(
+  pkg,
+  readWorkspaceCatalogs(resolve(ROOT, 'pnpm-workspace.yaml')),
+) as typeof pkg
 
-if (pkg.name !== '@webpresso/agent-kit') {
-  results.push(fail('package-name', `expected @webpresso/agent-kit, got ${pkg.name ?? 'missing'}`))
-} else if (pkg.publishConfig?.registry !== 'https://registry.npmjs.org/') {
-  results.push(
-    fail(
-      'publish-registry',
-      `expected https://registry.npmjs.org/, got ${pkg.publishConfig?.registry ?? 'missing'}`,
-    ),
-  )
-} else if (pkg.publishConfig?.access !== 'public') {
-  results.push(
-    fail('publish-access', `expected public, got ${pkg.publishConfig?.access ?? 'missing'}`),
-  )
-} else {
-  results.push(pass('package-metadata', '@webpresso/agent-kit + public npm publishConfig present'))
-}
+  if (pkg.name !== '@webpresso/agent-kit') {
+    results.push(
+      fail('package-name', `expected @webpresso/agent-kit, got ${pkg.name ?? 'missing'}`),
+    )
+  } else if (pkg.publishConfig?.registry !== 'https://registry.npmjs.org/') {
+    results.push(
+      fail(
+        'publish-registry',
+        `expected https://registry.npmjs.org/, got ${pkg.publishConfig?.registry ?? 'missing'}`,
+      ),
+    )
+  } else if (pkg.publishConfig?.access !== 'public') {
+    results.push(
+      fail('publish-access', `expected public, got ${pkg.publishConfig?.access ?? 'missing'}`),
+    )
+  } else {
+    results.push(
+      pass('package-metadata', '@webpresso/agent-kit + public npm publishConfig present'),
+    )
+  }
 
 const runtimeManifestPath = 'bin/runtime-manifest.json'
 const runtimeBuildScript = 'scripts/build-runtime-binaries.ts'
 const runtimeStageScript = 'scripts/stage-plugin-runtime-artifacts.ts'
-if (!existsSync(resolve(ROOT, runtimeManifestPath))) {
-  results.push(fail('compiled-runtime-manifest', `${runtimeManifestPath} missing`))
-} else if (!existsSync(resolve(ROOT, runtimeBuildScript))) {
-  results.push(fail('compiled-runtime-build-script', `${runtimeBuildScript} missing`))
-} else if (!existsSync(resolve(ROOT, runtimeStageScript))) {
-  results.push(fail('compiled-runtime-stage-script', `${runtimeStageScript} missing`))
-} else {
-  const runtimeManifest = JSON.parse(read(runtimeManifestPath)) as {
-    binaryName?: string
-    targets?: Array<{ id?: string; bunTarget?: string; packageName?: string }>
-  }
-  const targets = runtimeManifest.targets ?? []
-  const scripts = pkg.scripts ?? {}
-  if (
-    runtimeManifest.binaryName !== 'wp' ||
-    targets.length < 5 ||
-    targets.some((target) => !target.id || !target.bunTarget || !target.packageName)
-  ) {
-    results.push(fail('compiled-runtime-target-matrix', 'runtime manifest is incomplete'))
-  } else if (
-    !scripts['build:runtime-binaries']?.includes(runtimeBuildScript) ||
-    !scripts['stage:plugin-runtime']?.includes(runtimeStageScript)
-  ) {
-    results.push(fail('compiled-runtime-package-scripts', 'runtime scripts are not wired'))
+  if (!existsSync(resolve(ROOT, runtimeManifestPath))) {
+    results.push(fail('compiled-runtime-manifest', `${runtimeManifestPath} missing`))
+  } else if (!existsSync(resolve(ROOT, runtimeBuildScript))) {
+    results.push(fail('compiled-runtime-build-script', `${runtimeBuildScript} missing`))
+  } else if (!existsSync(resolve(ROOT, runtimeStageScript))) {
+    results.push(fail('compiled-runtime-stage-script', `${runtimeStageScript} missing`))
   } else {
+    const runtimeManifest = JSON.parse(read(runtimeManifestPath)) as RuntimeManifestRecord
+    const targets = runtimeManifest.targets ?? []
+    const scripts = pkg.scripts ?? {}
+    if (
+      runtimeManifest.binaryName !== 'wp' ||
+      targets.length < 5 ||
+      targets.some((target) => !target.id || !target.bunTarget || !target.packageName)
+    ) {
+      results.push(fail('compiled-runtime-target-matrix', 'runtime manifest is incomplete'))
+    } else if (
+      !scripts['build:runtime-binaries']?.includes(runtimeBuildScript) ||
+      !scripts['stage:plugin-runtime']?.includes(runtimeStageScript)
+    ) {
+      results.push(fail('compiled-runtime-package-scripts', 'runtime scripts are not wired'))
+    } else {
+      results.push(
+        pass(
+          'compiled-runtime-lane',
+          `${targets.length} target manifest plus build/stage scripts are wired`,
+        ),
+      )
+    }
+  }
+
+const runtimeManifest = existsSync(resolve(ROOT, runtimeManifestPath))
+  ? (JSON.parse(read(runtimeManifestPath)) as RuntimeManifestRecord)
+  : null
+
+  if (runtimeManifest?.targets?.length && typeof pkg.version === 'string') {
+    const missingOptionalDeps = listMissingRuntimeOptionalDependencies(
+      runtimeManifest,
+      pkg.version,
+      packedPkg.optionalDependencies,
+    )
     results.push(
-      pass(
-        'compiled-runtime-lane',
-        `${targets.length} target manifest plus build/stage scripts are wired`,
-      ),
+      missingOptionalDeps.length === 0
+        ? pass(
+            'runtime-optional-dependencies',
+            `${runtimeManifest.targets.length} runtime packages locked to ${pkg.version}`,
+          )
+        : fail(
+            'runtime-optional-dependencies',
+            `missing/mismatched optional deps: ${missingOptionalDeps.join(', ')}`,
+          ),
     )
   }
-}
+
+const stagedLauncherPath = resolve(ROOT, 'bin', 'wp')
+  if (!existsSync(stagedLauncherPath)) {
+    results.push(fail('staged-native-launcher', 'bin/wp missing'))
+  } else if (lstatSync(stagedLauncherPath).isSymbolicLink()) {
+    results.push(fail('staged-native-launcher', 'bin/wp must be a real file, not a symlink'))
+  } else {
+    results.push(pass('staged-native-launcher', 'bin/wp present as a real file'))
+  }
+
+const pluginManifestPath = resolve(ROOT, '.claude-plugin', 'plugin.json')
+  if (!existsSync(pluginManifestPath)) {
+    results.push(fail('plugin-native-launcher-policy', '.claude-plugin/plugin.json missing'))
+  } else {
+    const launcherPolicy = evaluatePluginNativeLauncherPolicy(
+      JSON.parse(readFileSync(pluginManifestPath, 'utf8')) as PluginManifestRecord,
+    )
+    results.push(
+      launcherPolicy.commandOk && launcherPolicy.argsOk
+        ? pass('plugin-native-launcher-policy', 'plugin manifest launches native bin/wp directly')
+        : fail(
+            'plugin-native-launcher-policy',
+            `expected \${CLAUDE_PLUGIN_ROOT}/bin/wp mcp, got ${launcherPolicy.command ?? 'missing'} ${launcherPolicy.args.join(' ')}`.trim(),
+          ),
+    )
+  }
 
 // 3) Tarball surface
-const pack = run('npm', ['pack', '--dry-run', '--json'])
-if (!pack.ok) {
-  results.push(fail('npm-pack', `exit ${pack.code}`))
-} else {
+  const pack = run('npm', ['pack', '--dry-run', '--json'])
+  if (!pack.ok) {
+    results.push(fail('npm-pack', `exit ${pack.code}`))
+  } else {
   const parsed = JSON.parse(pack.stdout.match(/\[.*\]/s)?.[0] ?? '[]')[0] as
     | { files?: Array<{ path: string }>; size?: number; unpackedSize?: number }
     | undefined
@@ -185,6 +301,9 @@ if (!pack.ok) {
   const integration = files.filter((p) => p.includes('__integration__/')).length
   const mocks = files.filter((p) => p.includes('__mocks__/')).length
   const evals = files.filter((p) => p.includes('runners/evals/')).length
+  const missingRuntimePaths = runtimeManifest
+    ? listMissingPackedRuntimePaths(runtimeManifest, files)
+    : []
   if (maps || integration || mocks || evals) {
     results.push(
       fail(
@@ -200,7 +319,30 @@ if (!pack.ok) {
       ),
     )
   }
-}
+  const sizeBudget = evaluateAgentKitTarballSizeBudget(parsed ?? {})
+    results.push(
+      sizeBudget.sizeOk && sizeBudget.unpackedOk
+        ? pass(
+            'tarball-size-budget',
+            `size=${sizeBudget.size}, unpacked=${sizeBudget.unpackedSize}`,
+          )
+        : fail(
+            'tarball-size-budget',
+            `size=${sizeBudget.size}/${AGENT_KIT_TARBALL_SIZE_BUDGET_BYTES}, unpacked=${sizeBudget.unpackedSize}/${AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES}`,
+          ),
+    )
+    results.push(
+      missingRuntimePaths.length === 0
+        ? pass(
+            'tarball-native-runtime-surface',
+            `${runtimeManifest ? runtimeManifest.targets?.length ?? 0 : 0} target runtime artifacts packed`,
+          )
+        : fail(
+            'tarball-native-runtime-surface',
+            `missing packed runtime artifacts: ${missingRuntimePaths.join(', ')}`,
+          ),
+    )
+  }
 
 // 4) Negative stale-literal checks on shipped/public surfaces
 const shippedSurfacePaths = [
@@ -228,14 +370,14 @@ const staleHits = countMatches(shippedSurfacePaths, [
   /ozby\/context-mode/,
 ])
 
-results.push(
-  staleHits.length === 0
-    ? pass(
-        'stale-surface-literals',
-        'no stale registry/auth/local-path literals on shipped/public surfaces',
-      )
-    : fail('stale-surface-literals', staleHits.join('; ')),
-)
+  results.push(
+    staleHits.length === 0
+      ? pass(
+          'stale-surface-literals',
+          'no stale registry/auth/local-path literals on shipped/public surfaces',
+        )
+      : fail('stale-surface-literals', staleHits.join('; ')),
+  )
 
 // 5) Positive public-target assertions for updater/help surfaces
 const updaterSurface =
@@ -249,49 +391,52 @@ const updaterHasRegistry =
 const doctorHasPackage =
   doctorSurface.includes('@webpresso/agent-kit') || doctorSurface.includes('public npm')
 
-if (!updaterHasPackage || !updaterHasRegistry || !doctorHasPackage) {
-  results.push(
-    fail(
-      'public-target-positive-assertions',
-      `updaterHasPackage=${updaterHasPackage}, updaterHasRegistry=${updaterHasRegistry}, doctorHasPackage=${doctorHasPackage}`,
-    ),
-  )
-} else {
-  results.push(
-    pass(
-      'public-target-positive-assertions',
-      'updater/help surfaces resolve to the intended public package + npm registry target',
-    ),
-  )
-}
+  if (!updaterHasPackage || !updaterHasRegistry || !doctorHasPackage) {
+    results.push(
+      fail(
+        'public-target-positive-assertions',
+        `updaterHasPackage=${updaterHasPackage}, updaterHasRegistry=${updaterHasRegistry}, doctorHasPackage=${doctorHasPackage}`,
+      ),
+    )
+  } else {
+    results.push(
+      pass(
+        'public-target-positive-assertions',
+        'updater/help surfaces resolve to the intended public package + npm registry target',
+      ),
+    )
+  }
 
 // 6) Generated artifact regression
 const testPlanFiles = run('git', ['ls-files', '.test-plan-service/**'])
-results.push(
-  testPlanFiles.stdout.trim() === ''
-    ? pass('tracked-generated-artifacts', 'no tracked .test-plan-service artifacts')
-    : fail('tracked-generated-artifacts', testPlanFiles.stdout.trim()),
-)
+  results.push(
+    testPlanFiles.stdout.trim() === ''
+      ? pass('tracked-generated-artifacts', 'no tracked .test-plan-service artifacts')
+      : fail('tracked-generated-artifacts', testPlanFiles.stdout.trim()),
+  )
 
 // 7) History strategy evidence
-if (!existsSync(HISTORY_AUDIT_PATH)) {
-  results.push(
-    fail('history-audit-artifact', 'missing docs/research/2026-05-28-agent-kit-history-audit.md'),
-  )
-} else {
-  const audit = readFileSync(HISTORY_AUDIT_PATH, 'utf8')
-  const classificationMatch = audit.match(/Classification:\s+`([^`]+)`/)
-  const classification = classificationMatch?.[1] ?? 'missing'
-  if (
-    classification !== 'rewrite-required' &&
-    classification !== 'clean-public-snapshot-preferred' &&
-    classification !== 'forward-only-acceptable'
-  ) {
-    results.push(fail('history-audit-artifact', `unexpected classification ${classification}`))
+  if (!existsSync(HISTORY_AUDIT_PATH)) {
+    results.push(
+      fail(
+        'history-audit-artifact',
+        'missing docs/research/2026-05-28-agent-kit-history-audit.md',
+      ),
+    )
   } else {
-    results.push(pass('history-audit-artifact', classification))
+    const audit = readFileSync(HISTORY_AUDIT_PATH, 'utf8')
+    const classificationMatch = audit.match(/Classification:\s+`([^`]+)`/)
+    const classification = classificationMatch?.[1] ?? 'missing'
+    if (
+      classification !== 'rewrite-required' &&
+      classification !== 'clean-public-snapshot-preferred' &&
+      classification !== 'forward-only-acceptable'
+    ) {
+      results.push(fail('history-audit-artifact', `unexpected classification ${classification}`))
+    } else {
+      results.push(pass('history-audit-artifact', classification))
+    }
   }
-}
 
 // 8) Repo visibility readiness is intentionally separate
 const historyClassification =
@@ -309,46 +454,49 @@ if (repoView.ok) {
   }
 }
 
-if (repoAlreadyPublic) {
-  results.push(
-    pass(
-      'repo-visibility-readiness',
-      'repository already public; snapshot strategy superseded by operator override',
-    ),
+  if (repoAlreadyPublic) {
+    results.push(
+      pass(
+        'repo-visibility-readiness',
+        'repository already public; snapshot strategy superseded by operator override',
+      ),
+    )
+  } else if (historyClassification === 'forward-only-acceptable') {
+    results.push(pass('repo-visibility-readiness', 'forward-only-acceptable'))
+  } else if (
+    (historyClassification === 'clean-public-snapshot-preferred' ||
+      historyClassification === 'rewrite-required') &&
+    task43 === 'done'
+  ) {
+    results.push(pass('repo-visibility-readiness', `${historyClassification} executed`))
+  } else if (
+    historyClassification === 'clean-public-snapshot-preferred' ||
+    historyClassification === 'rewrite-required'
+  ) {
+    results.push(
+      blocked('repo-visibility-readiness', `${historyClassification}; Task 4.3 still pending`),
+    )
+  } else {
+    results.push(
+      fail('repo-visibility-readiness', 'missing or invalid history strategy evidence'),
+    )
+  }
+
+  const packageFailures = results.filter(
+    (r) => ['FAIL'].includes(r.status) && r.name !== 'repo-visibility-readiness',
   )
-} else if (historyClassification === 'forward-only-acceptable') {
-  results.push(pass('repo-visibility-readiness', 'forward-only-acceptable'))
-} else if (
-  (historyClassification === 'clean-public-snapshot-preferred' ||
-    historyClassification === 'rewrite-required') &&
-  task43 === 'done'
-) {
-  results.push(pass('repo-visibility-readiness', `${historyClassification} executed`))
-} else if (
-  historyClassification === 'clean-public-snapshot-preferred' ||
-  historyClassification === 'rewrite-required'
-) {
-  results.push(
-    blocked('repo-visibility-readiness', `${historyClassification}; Task 4.3 still pending`),
-  )
-} else {
-  results.push(fail('repo-visibility-readiness', 'missing or invalid history strategy evidence'))
+  const repoVisibilityResult = results.find((r) => r.name === 'repo-visibility-readiness')
+
+  const packageStatus: Status = packageFailures.length === 0 ? 'PASS' : 'FAIL'
+  const repoStatus: Status = repoVisibilityResult?.status ?? 'FAIL'
+
+  console.log(`Package readiness: ${packageStatus}`)
+  console.log(`Repo visibility readiness: ${repoStatus}`)
+  console.log('')
+  for (const result of results) {
+    console.log(`[${result.status}] ${result.name}: ${result.detail}`)
+  }
+
+  if (packageStatus === 'FAIL') process.exit(1)
+  if (REQUIRE_REPO_VISIBILITY && repoStatus !== 'PASS') process.exit(1)
 }
-
-const packageFailures = results.filter(
-  (r) => ['FAIL'].includes(r.status) && r.name !== 'repo-visibility-readiness',
-)
-const repoVisibilityResult = results.find((r) => r.name === 'repo-visibility-readiness')
-
-const packageStatus: Status = packageFailures.length === 0 ? 'PASS' : 'FAIL'
-const repoStatus: Status = repoVisibilityResult?.status ?? 'FAIL'
-
-console.log(`Package readiness: ${packageStatus}`)
-console.log(`Repo visibility readiness: ${repoStatus}`)
-console.log('')
-for (const result of results) {
-  console.log(`[${result.status}] ${result.name}: ${result.detail}`)
-}
-
-if (packageStatus === 'FAIL') process.exit(1)
-if (REQUIRE_REPO_VISIBILITY && repoStatus !== 'PASS') process.exit(1)

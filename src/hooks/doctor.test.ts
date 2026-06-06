@@ -8,11 +8,12 @@ vi.mock('node:os', () => ({ platform: () => 'linux' }))
 vi.mock('node:child_process', () => ({ spawn: vi.fn() }))
 
 import { spawn } from 'node:child_process'
-import { accessSync, existsSync, readFileSync, readlinkSync, statSync } from 'node:fs'
+import { accessSync, existsSync, lstatSync, readFileSync, readlinkSync, statSync } from 'node:fs'
 
 const mockSpawn = vi.mocked(spawn)
 const mockAccessSync = vi.mocked(accessSync)
 const mockExistsSync = vi.mocked(existsSync)
+const mockLstatSync = vi.mocked(lstatSync)
 const mockReadFileSync = vi.mocked(readFileSync)
 const mockReadlinkSync = vi.mocked(readlinkSync)
 const mockStatSync = vi.mocked(statSync)
@@ -21,7 +22,15 @@ describe('hooks/doctor', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     vi.stubEnv('WP_DOCTOR_MCP_TIMEOUT_MS', '1000')
-    mockExistsSync.mockReturnValue(false)
+    mockExistsSync.mockImplementation(((path: Parameters<typeof existsSync>[0]) => {
+      try {
+        mockAccessSync(path)
+        return true
+      } catch {
+        return false
+      }
+    }) as typeof existsSync)
+    mockLstatSync.mockReturnValue({ isSymbolicLink: () => false } as ReturnType<typeof lstatSync>)
   })
   afterEach(() => {
     vi.unstubAllEnvs()
@@ -109,6 +118,68 @@ describe('hooks/doctor', () => {
 
       const { findOwningPackageRoot } = await import('#hooks/doctor')
       const resolved = findOwningPackageRoot(join(repoRoot, 'dist', 'esm', 'hooks'))
+      expect(resolved).toBe(repoRoot)
+    })
+
+    it('resolves the owning package root from the PATH launcher when moduleUrl is virtual', async () => {
+      const stagedBin = join(repoRoot, 'bin', 'wp')
+      const knownPaths = new Set([pkgJson, stagedBin])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === pkgJson) {
+          return JSON.stringify({
+            bin: {
+              wp: './bin/wp',
+            },
+          })
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+
+      const { resolvePackageRootForRuntime } = await import('#hooks/doctor')
+      const resolved = resolvePackageRootForRuntime({
+        moduleUrl: 'file:///__bunfs__/root/wp',
+        execPath: '/usr/bin/node',
+        argv0: 'wp',
+        argv1: 'setup',
+        pathEnv: join(repoRoot, 'bin'),
+      })
+      expect(resolved).toBe(repoRoot)
+    })
+
+    it('resolves the owning package root from a Windows PATH shim when moduleUrl is virtual', async () => {
+      const stagedBin = join(repoRoot, 'bin', 'wp.cmd')
+      const knownPaths = new Set([pkgJson, stagedBin])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === pkgJson) {
+          return JSON.stringify({
+            bin: {
+              wp: './bin/wp',
+            },
+          })
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+
+      const { resolvePackageRootForRuntime } = await import('#hooks/doctor')
+      const resolved = resolvePackageRootForRuntime({
+        moduleUrl: 'file:///__bunfs__/root/wp',
+        execPath: 'C:\\Program Files\\nodejs\\node.exe',
+        argv0: 'wp',
+        argv1: 'setup',
+        pathEnv: join(repoRoot, 'bin'),
+        pathExtEnv: '.COM;.EXE;.BAT;.CMD',
+        platform: 'win32',
+      })
       expect(resolved).toBe(repoRoot)
     })
 
@@ -916,6 +987,83 @@ describe('hooks/doctor', () => {
       const { checkManagedHooksInstalled } = await import('#hooks/doctor')
       const result = checkManagedHooksInstalled('/repo')
       expect(result.ok).toBe(true)
+    })
+  })
+
+  describe('checkNativePluginRuntime', () => {
+    it('reports native launch mode, target id, manifest path, and staged bin when runtime artifacts are present', async () => {
+      const hostTargetId = `linux-${process.arch}`
+      const runtimeTargetPath = join(repoRoot, 'bin', 'runtime', hostTargetId, 'wp')
+      const knownPaths = new Set([pkgJson, pluginJson, join(repoRoot, 'bin', 'runtime-manifest.json'), join(repoRoot, 'bin', 'wp'), runtimeTargetPath])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === pkgJson) {
+          return JSON.stringify({ bin: { wp: './bin/wp' } })
+        }
+        if (String(path) === pluginJson) {
+          return JSON.stringify({
+            version: '0.28.0',
+            mcpServers: { webpresso: { command: '${CLAUDE_PLUGIN_ROOT}/bin/wp', args: ['mcp'] } },
+          })
+        }
+        if (String(path) === join(repoRoot, 'bin', 'runtime-manifest.json')) {
+          return JSON.stringify({
+            binaryName: 'wp',
+            targets: [{ id: hostTargetId, os: 'linux', cpu: process.arch }],
+          })
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+
+      const { checkNativePluginRuntime } = await import('#hooks/doctor')
+      const result = checkNativePluginRuntime()
+
+      expect(result.ok).toBe(true)
+      expect(result.detail).toContain('launchMode=native')
+      expect(result.detail).toContain(`targetId=${hostTargetId}`)
+      expect(result.detail).toContain('manifest=')
+      expect(result.detail).toContain('stagedBin=')
+    })
+
+    it('surfaces legacy launch mode and missing staged bin reasons without suggesting timeouts', async () => {
+      const hostTargetId = `linux-${process.arch}`
+      const runtimeManifestPath = join(repoRoot, 'bin', 'runtime-manifest.json')
+      const knownPaths = new Set([pkgJson, pluginJson, runtimeManifestPath])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === pkgJson) {
+          return JSON.stringify({ bin: { wp: './bin/wp' } })
+        }
+        if (String(path) === pluginJson) {
+          return JSON.stringify({
+            version: '0.28.0',
+            mcpServers: { webpresso: { command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/bin/wp.js', 'mcp'] } },
+          })
+        }
+        if (String(path) === runtimeManifestPath) {
+          return JSON.stringify({
+            binaryName: 'wp',
+            targets: [{ id: hostTargetId, os: 'linux', cpu: process.arch }],
+          })
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+
+      const { checkNativePluginRuntime } = await import('#hooks/doctor')
+      const result = checkNativePluginRuntime()
+
+      expect(result.ok).toBe(false)
+      expect(result.detail).toContain('launchMode=legacy-js')
+      expect(result.detail).toContain('reason=staged native launcher missing')
+      expect(result.detail).not.toContain('timeout')
     })
   })
 })

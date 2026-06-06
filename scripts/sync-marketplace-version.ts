@@ -8,13 +8,15 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const packagePath = resolve(repoRoot, 'package.json')
 const marketplacePath = resolve(repoRoot, '.claude-plugin', 'marketplace.json')
 const pluginPath = resolve(repoRoot, '.claude-plugin', 'plugin.json')
 const pluginFixturePath = resolve(repoRoot, '__fixtures__', 'plugin-manifest', 'expected.json')
 
-const { version } = JSON.parse(readFileSync(resolve(repoRoot, 'package.json'), 'utf8')) as {
+const packageManifest = JSON.parse(readFileSync(packagePath, 'utf8')) as {
   version: string
 }
+const { version } = packageManifest
 
 const marketplaceManifest = JSON.parse(readFileSync(marketplacePath, 'utf8')) as Record<string, unknown> & {
   metadata?: { version?: string }
@@ -37,4 +39,5 @@ const pluginJson = JSON.stringify(pluginManifest, null, 2) + '\n'
 writeFileSync(marketplacePath, JSON.stringify(marketplaceManifest, null, 2) + '\n')
 writeFileSync(pluginPath, pluginJson)
 writeFileSync(pluginFixturePath, pluginJson)
+writeFileSync(packagePath, JSON.stringify(packageManifest, null, 2) + '\n')
 console.log(`Claude plugin manifests synced to ${version}`)

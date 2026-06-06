@@ -25,8 +25,21 @@
  * warn-only contract as the codex-cli scaffolder).
  */
 import { spawnSync } from 'node:child_process'
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+} from 'node:fs'
+import { dirname, join } from 'node:path'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
+import {
+  findAgentKitPackageRoot,
+  resolveAgentKitPackageRoot,
+} from '#cli/commands/init/package-root'
 import { makeNoopSpinnerFactory, type SpinnerFactory } from '#cli/commands/init/scaffolders/spinner'
 import {
   buildVpGlobalInstallCommand,
@@ -44,21 +57,100 @@ export interface EnsureAgentKitGlobalInput {
   argv1?: string
   /** DI seam for source/git-clone detection. */
   detectGit?: (argv1: string) => string | null
+  /** DI seam for tests/global installs; defaults to the package root owning argv1/import. */
+  packageRoot?: string
+  /** DI seam for staging-root fallback when argv1 cannot be mapped back to the owning package. */
+  resolvePackageRootForStaging?: (argv1: string) => string | null
   /** DI seam for spinner. Defaults to noop when !process.stdout.isTTY. */
   spinnerFactory?: SpinnerFactory
 }
 
 export type EnsureAgentKitGlobalResult =
-  | { kind: 'agent-kit-global-updated'; command: readonly string[] }
+  | { kind: 'agent-kit-global-updated'; command: readonly string[]; stagedBin?: string }
   | { kind: 'agent-kit-global-skipped-dry-run' }
   | { kind: 'agent-kit-global-skipped-opt-out' }
   | { kind: 'agent-kit-global-skipped-source-clone'; repoRoot: string }
   | { kind: 'agent-kit-global-skipped-no-vp'; hint: string }
   | { kind: 'agent-kit-global-failed'; exitCode: number; command: readonly string[] }
+  | { kind: 'agent-kit-global-staging-failed'; reason: string; command: readonly string[] }
 
 const NO_VP_HINT =
   'vp (vite-plus) is not on PATH; cannot refresh the global ' +
   `${PUBLIC_PACKAGE_NAME}. Install vite-plus, then re-run \`wp setup\`.`
+
+interface RuntimeManifestTarget {
+  readonly id?: string
+  readonly os?: NodeJS.Platform
+  readonly cpu?: NodeJS.Architecture
+  readonly packageName?: string
+}
+
+interface RuntimeManifest {
+  readonly binaryName?: string
+  readonly targets?: RuntimeManifestTarget[]
+}
+
+function resolvePackageRootForStaging(argv1: string): string | null {
+  const fromArgv = argv1.length > 0 ? findAgentKitPackageRoot(argv1) : null
+  if (fromArgv) return fromArgv
+  return resolveAgentKitPackageRoot({ moduleUrl: import.meta.url })
+}
+
+function runtimeFilename(manifest: RuntimeManifest, target: RuntimeManifestTarget): string {
+  const binaryName = manifest.binaryName ?? 'wp'
+  return target.os === 'win32' ? `${binaryName}.exe` : binaryName
+}
+
+function runtimePackageDirName(packageName: string): string {
+  return packageName.split('/').at(-1) ?? packageName
+}
+
+function resolveHostRuntimeBinary(packageRoot: string): {
+  readonly source: string
+  readonly targetId: string
+} | null {
+  const manifestPath = join(packageRoot, 'bin', 'runtime-manifest.json')
+  if (!existsSync(manifestPath)) return null
+
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as RuntimeManifest
+  const target = manifest.targets?.find(
+    (candidate) => candidate.os === process.platform && candidate.cpu === process.arch,
+  )
+  if (!target?.id || !target.packageName) return null
+
+  const filename = runtimeFilename(manifest, target)
+  const candidates = [
+    join(packageRoot, 'bin', 'runtime', target.id, filename),
+    join(packageRoot, 'dist', 'runtime', target.id, filename),
+    join(packageRoot, '..', runtimePackageDirName(target.packageName), 'bin', filename),
+    join(
+      packageRoot,
+      'node_modules',
+      '@webpresso',
+      runtimePackageDirName(target.packageName),
+      'bin',
+      filename,
+    ),
+  ]
+  const source = candidates.find((candidate) => existsSync(candidate))
+  return source ? { source, targetId: target.id } : null
+}
+
+function stageHostRuntimeLauncher(packageRoot: string): string | null {
+  const runtime = resolveHostRuntimeBinary(packageRoot)
+  if (!runtime) return null
+
+  const destination = join(packageRoot, 'bin', 'wp')
+  mkdirSync(dirname(destination), { recursive: true })
+  copyFileSync(runtime.source, destination)
+  chmodSync(destination, 0o755)
+
+  const stat = statSync(destination)
+  if (!stat.isFile()) {
+    throw new Error(`staged ${destination} for ${runtime.targetId} is not a regular file`)
+  }
+  return destination
+}
 
 /**
  * Refresh the single global `@webpresso/agent-kit` install via `vp install -g`.
@@ -96,6 +188,38 @@ export function ensureAgentKitGlobal(
     return { kind: 'agent-kit-global-failed', exitCode: install.status ?? -1, command }
   }
 
+  let stagedBin: string | undefined
+  const packageRoot =
+    input.packageRoot ??
+    (input.resolvePackageRootForStaging ?? resolvePackageRootForStaging)(argv1)
+  if (!packageRoot) {
+    spinner.fail('agent-kit native launcher staging failed')
+    return {
+      kind: 'agent-kit-global-staging-failed',
+      reason: 'could not resolve the owning @webpresso/agent-kit package root for staging',
+      command,
+    }
+  }
+
+  try {
+    stagedBin = stageHostRuntimeLauncher(packageRoot) ?? undefined
+    if (!stagedBin) {
+      spinner.fail('agent-kit native launcher staging failed')
+      return {
+        kind: 'agent-kit-global-staging-failed',
+        reason: `could not resolve a host runtime binary under ${packageRoot}`,
+        command,
+      }
+    }
+  } catch (error) {
+    spinner.fail('agent-kit native launcher staging failed')
+    return {
+      kind: 'agent-kit-global-staging-failed',
+      reason: error instanceof Error ? error.message : String(error),
+      command,
+    }
+  }
+
   spinner.succeed('agent-kit global up to date')
-  return { kind: 'agent-kit-global-updated', command }
+  return { kind: 'agent-kit-global-updated', command, stagedBin }
 }

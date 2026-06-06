@@ -1,18 +1,63 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-/**
- * Walk up from this file's location looking for `relativeFromRoot`. Returns the
- * first existing match, or `null` if none is found within the ancestor budget.
- */
-function findPackageAsset(relativeFromRoot: string): string | null {
-  let dir = path.dirname(new URL(import.meta.url).pathname)
+interface FindPackageAssetOptions {
+  readonly moduleUrl?: string
+  readonly cwd?: string
+  readonly execPath?: string
+  readonly argv0?: string
+  readonly argv1?: string
+}
+
+function isBunVirtualPath(filePath: string): boolean {
+  return filePath === '/$bunfs/root' || filePath.startsWith('/$bunfs/root/')
+}
+
+function modulePathFromUrl(moduleUrl: string): string | null {
+  try {
+    return fileURLToPath(moduleUrl)
+  } catch {
+    return null
+  }
+}
+
+function isUsableStartPath(filePath: string | null | undefined): filePath is string {
+  return typeof filePath === 'string' && filePath.length > 0 && !isBunVirtualPath(filePath)
+}
+
+function findFromStartPath(startPath: string, relativeFromRoot: string): string | null {
+  let dir = path.dirname(startPath)
   for (let i = 0; i < 8; i++) {
     const candidate = path.join(dir, relativeFromRoot)
     if (existsSync(candidate)) return candidate
     const parent = path.dirname(dir)
     if (parent === dir) break
     dir = parent
+  }
+  return null
+}
+
+/**
+ * Walk up from this file's location looking for `relativeFromRoot`. Returns the
+ * first existing match, or `null` if none is found within the ancestor budget.
+ */
+export function findPackageAsset(
+  relativeFromRoot: string,
+  options: FindPackageAssetOptions = {},
+): string | null {
+  const starts = [
+    modulePathFromUrl(options.moduleUrl ?? import.meta.url),
+    options.argv1 ?? process.argv[1],
+    options.execPath ?? process.execPath,
+    options.argv0 ?? process.argv[0],
+    path.join(options.cwd ?? process.cwd(), 'package.json'),
+  ]
+
+  for (const start of starts) {
+    if (!isUsableStartPath(start)) continue
+    const found = findFromStartPath(start, relativeFromRoot)
+    if (found) return found
   }
   return null
 }
