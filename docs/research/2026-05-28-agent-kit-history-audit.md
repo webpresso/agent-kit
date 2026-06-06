@@ -117,7 +117,7 @@ These hits are not rewrite triggers by themselves, but they do make public full-
 
 - `GH_PACKAGES_TOKEN` appears in **87 matching commits**
   - sample files:
-    - `.github/workflows/ci.webpresso.yml`
+    - `.github/workflows/ci.yml`
     - `.github/workflows/release.yml`
     - `.github/workflows/bundle-smoke.yml`
     - `.npmrc`

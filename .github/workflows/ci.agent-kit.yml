@@ -1,4 +1,4 @@
-name: CI (webpresso baseline)
+name: CI (agent-kit self)
 
 on:
   push:

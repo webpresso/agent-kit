@@ -64,7 +64,11 @@ const TEMPLATE_MAP: Array<[string, string]> = [
   ],
   ['.husky/pre-commit.tmpl', '.husky/pre-commit'],
   ['.husky/commit-msg.tmpl', '.husky/commit-msg'],
-  ['.github/workflows/ci.webpresso.yml.tmpl', '.github/workflows/ci.webpresso.yml'],
+  [
+    '.github/actions/setup-webpresso/action.yml.tmpl',
+    '.github/actions/setup-webpresso/action.yml',
+  ],
+  ['.github/workflows/ci.yml.tmpl', '.github/workflows/ci.yml'],
   ['test/.gitkeep.tmpl', 'test/.gitkeep'],
   ['e2e/.gitkeep.tmpl', 'e2e/.gitkeep'],
 ]

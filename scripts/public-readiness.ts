@@ -359,7 +359,7 @@ const shippedSurfacePaths = [
   'catalog/AGENTS.md.tpl',
   'catalog/agent/rules/package-conventions.md',
   'catalog/agent/rules/changeset-release.md',
-  'catalog/base-kit/.github/workflows/ci.webpresso.yml.tmpl',
+  'catalog/base-kit/.github/workflows/ci.yml.tmpl',
 ]
 
 const staleHits = countMatches(shippedSurfacePaths, [

@@ -255,7 +255,10 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(existsSync(path.join(repo, '.actrc'))).toBe(true)
       expect(existsSync(path.join(repo, 'test', '.gitkeep'))).toBe(true)
       expect(existsSync(path.join(repo, 'e2e', '.gitkeep'))).toBe(true)
-      expect(existsSync(path.join(repo, '.github', 'workflows', 'ci.webpresso.yml'))).toBe(true)
+      expect(existsSync(path.join(repo, '.github', 'actions', 'setup-webpresso', 'action.yml'))).toBe(
+        true,
+      )
+      expect(existsSync(path.join(repo, '.github', 'workflows', 'ci.yml'))).toBe(true)
     })
 
     it('--with context-mode: enables gated Codex plugin hooks when requested', () => {

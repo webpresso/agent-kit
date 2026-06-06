@@ -25,6 +25,7 @@ const requiredFiles = [
   'oxlint.config.ts',
   'stryker.config.ts',
   'playwright.config.ts',
+  '.github/actions/setup-webpresso/action.yml',
   'src/quality-sample.ts',
   'src/quality-sample.test.ts',
   'e2e/fixtures/smoke.html',

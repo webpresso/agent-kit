@@ -33,7 +33,10 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, 'commitlint.config.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, '.husky', 'pre-commit'))).toBe(true)
     expect(existsSync(join(repoRoot, '.husky', 'commit-msg'))).toBe(true)
-    expect(existsSync(join(repoRoot, '.github', 'workflows', 'ci.webpresso.yml'))).toBe(true)
+    expect(existsSync(join(repoRoot, '.github', 'actions', 'setup-webpresso', 'action.yml'))).toBe(
+      true,
+    )
+    expect(existsSync(join(repoRoot, '.github', 'workflows', 'ci.yml'))).toBe(true)
     expect(existsSync(join(repoRoot, 'scripts', 'check-no-dev-vars.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'tsconfig.json'))).toBe(true)
@@ -47,6 +50,15 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, 'e2e', 'smoke.spec.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'test', '.gitkeep'))).toBe(true)
     expect(existsSync(join(repoRoot, 'e2e', '.gitkeep'))).toBe(true)
+
+    const workflow = readFileSync(join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8')
+    expect(workflow).toContain('\n  check:\n')
+    expect(workflow).toContain('\n  e2e:\n')
+    expect(workflow).toContain('\n  architecture-drift:\n')
+    expect(workflow).toContain('\n  deploy-verify:\n')
+    expect(workflow).not.toContain('\n  test:\n')
+    expect(workflow).not.toContain('\n  wp-audits:\n')
+    expect(workflow).not.toContain('\n  deploy-contract:\n')
   })
 
   it('dry-run does not write files', () => {

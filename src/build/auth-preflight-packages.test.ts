@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 const repositoryRoot = resolve(import.meta.dirname, '..', '..')
 const authPreflightWorkflowPaths = [
-  join(repositoryRoot, '.github', 'workflows', 'ci.webpresso.yml'),
+  join(repositoryRoot, '.github', 'workflows', 'ci.agent-kit.yml'),
   join(repositoryRoot, '.github', 'workflows', 'bundle-smoke.yml'),
 ] as const
 

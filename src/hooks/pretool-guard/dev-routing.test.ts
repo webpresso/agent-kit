@@ -191,10 +191,10 @@ describe('routeCommand', () => {
   it('raw and secret-gated act commands deny with wp_ci_act guidance', async () => {
     const routeCommand = await getRoute()
     for (const command of [
-      'act -W .github/workflows/ci.webpresso.yml',
-      'with-secrets -- act -W .github/workflows/ci.webpresso.yml',
-      'vp exec act -W .github/workflows/ci.webpresso.yml',
-      'pnpm exec act -W .github/workflows/ci.webpresso.yml',
+      'act -W .github/workflows/ci.yml',
+      'with-secrets -- act -W .github/workflows/ci.yml',
+      'vp exec act -W .github/workflows/ci.yml',
+      'pnpm exec act -W .github/workflows/ci.yml',
     ]) {
       const result = routeCommand(command)
       expect(result?.action.action).toBe('deny')
@@ -237,7 +237,7 @@ describe('routeCommand', () => {
       ['vp exec markdownlint-cli2 README.md', 'wp_qa'],
       ['vp exec playwright test e2e/smoke.spec.ts', 'wp_e2e'],
       ['with-secrets -- wrangler tail webpresso-chef-alpha --format json', 'wp_worker_tail'],
-      ['with-secrets -- act -W .github/workflows/ci.webpresso.yml', 'wp_ci_act'],
+      ['with-secrets -- act -W .github/workflows/ci.yml', 'wp_ci_act'],
     ] as const) {
       const result = routeCommand(command)
       expect(result?.action.action, command).toBe('deny')
@@ -413,8 +413,8 @@ describe('routeCommand', () => {
         'wp_worker_tail',
       ],
       [
-        'with-secrets -- act -W .github/workflows/ci.webpresso.yml',
-        'with-secrets -- act -W .github/workflows/ci.webpresso.yml',
+        'with-secrets -- act -W .github/workflows/ci.yml',
+        'with-secrets -- act -W .github/workflows/ci.yml',
         'wp_ci_act',
       ],
       [

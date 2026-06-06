@@ -1,7 +1,7 @@
 # @webpresso/agent-kit
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![CI](https://github.com/webpresso/agent-kit/actions/workflows/ci.webpresso.yml/badge.svg)](https://github.com/webpresso/agent-kit/actions/workflows/ci.webpresso.yml)
+[![CI](https://github.com/webpresso/agent-kit/actions/workflows/ci.agent-kit.yml/badge.svg)](https://github.com/webpresso/agent-kit/actions/workflows/ci.agent-kit.yml)
 
 > TypeScript infrastructure for AI-agent-driven development. One `wp` runtime
 > gives agents planning, tests, mutation, e2e, CI, docs, and debt tracking —
@@ -74,7 +74,7 @@ vp run public:consumer-smoke -- --setup-only
 | **Summary-first `wp_*` MCP tools** | `wp_test` / `wp_typecheck` / `wp_lint` / `wp_qa` / `wp_e2e` / `wp_format` / `wp_ci_act` / `wp_audit` return JSON with `bytes` / `tokensSaved` budget metadata | [`src/mcp/tools/`](src/mcp/tools/) (each with co-located `.test.ts`), [`src/mcp/server.integration.test.ts`](src/mcp/server.integration.test.ts) |
 | **MCP server + CLI surface** | Registers the tool set and exposes it to agents | [`src/mcp/server.ts`](src/mcp/server.ts), [`src/mcp/cli.ts`](src/mcp/cli.ts), [`src/mcp/cli.integration.test.ts`](src/mcp/cli.integration.test.ts) |
 | **Blueprint runtime** | Lifecycle states, dependency-aware task graph, structured authoring control plane (`wp_blueprint_depgraph` / `put` / `transition`) | [`src/mcp/blueprint-server.ts`](src/mcp/blueprint-server.ts), [`docs/lifecycle.md`](docs/lifecycle.md), [`docs/blueprint-format.md`](docs/blueprint-format.md) |
-| **Audit contract family** | `blueprint-lifecycle`, `docs-frontmatter`, `catalog-drift`, `vision`, `architecture-drift`, `bundle-budget`, `commit-message` (Lore), `tech-debt`, `absolute-path-policy`, `open-source-licenses`, … — each runs as a `wp_audit` MCP tool **and** a pre-commit/CI gate | [`src/audit/`](src/audit/), [`src/mcp/tools/audit.ts`](src/mcp/tools/audit.ts), [`.github/workflows/ci.webpresso.yml`](.github/workflows/ci.webpresso.yml) |
+| **Audit contract family** | `blueprint-lifecycle`, `docs-frontmatter`, `catalog-drift`, `vision`, `architecture-drift`, `bundle-budget`, `commit-message` (Lore), `tech-debt`, `absolute-path-policy`, `open-source-licenses`, … — each runs as a `wp_audit` MCP tool **and** a pre-commit/CI gate | [`src/audit/`](src/audit/), [`src/mcp/tools/audit.ts`](src/mcp/tools/audit.ts), [`.github/workflows/ci.agent-kit.yml`](.github/workflows/ci.agent-kit.yml) |
 | **Symlinker** | Syncs canonical `.agent/` to per-IDE surfaces (Codex/Amp skills, Gemini TOML commands) via rulesync | [`src/symlinker/index.ts`](src/symlinker/index.ts), [`src/symlinker/symlinker.integration.test.ts`](src/symlinker/symlinker.integration.test.ts), [`docs/symlinker.md`](docs/symlinker.md) |
 | **Mutation testing** | `wp audit mutation` (Stryker) catches tests that pass without asserting | [`src/config/stryker/`](src/config/stryker/), `./stryker` + `./mutation` exports |
 | **Tech-debt lifecycle** | `accepted → needs-remediation → monitoring → resolved`, auto-filed from failing audits | [`src/blueprint/tech-debt/`](src/blueprint/tech-debt/), [`src/cli/commands/tech-debt/`](src/cli/commands/tech-debt/) |

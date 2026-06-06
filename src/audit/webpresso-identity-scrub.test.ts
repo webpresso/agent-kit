@@ -11,7 +11,7 @@ const LIVE_SURFACES = [
   'docs/skills-catalog.md',
   'catalog/agent/rules/changeset-release.md',
   'catalog/AGENTS.md.tpl',
-  '.github/workflows/ci.webpresso.yml',
+  '.github/workflows/ci.agent-kit.yml',
   'AGENTS.md',
 ] as const
 
