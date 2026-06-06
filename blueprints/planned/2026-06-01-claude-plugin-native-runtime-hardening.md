@@ -5,8 +5,8 @@ owner: ozby
 status: planned
 complexity: M
 created: '2026-06-01'
-last_updated: '2026-06-05'
-progress: '80% residual work complete (package-surface/public-readiness coverage and hooks-doctor diagnostics landed + tested; local runtime staging + package-surface verification passed; installed-plugin native smoke remains external/open)'
+last_updated: '2026-06-06'
+progress: '80% residual work complete (package-surface/public-readiness coverage and hooks-doctor diagnostics landed + tested; local runtime staging + package-surface verification passed; installed-plugin native smoke remains external/open after the thin-root root-tarball cutover publishes successfully)'
 depends_on: []
 tags:
   - claude-plugin
@@ -66,16 +66,19 @@ single-global-binary architecture, not a deferred fallback. `bin/wp.js` →
 `bin/_run.js` remains only the **source-dev** launcher for running from an
 uncompiled clone (dev vs prod), not a parallel production shim.
 
-**Current repo check (2026-06-05, refreshed):** the residual has narrowed. `.claude-plugin/plugin.json`
+**Current repo check (2026-06-06, refreshed):** the residual has narrowed. `.claude-plugin/plugin.json`
 now launches `${CLAUDE_PLUGIN_ROOT}/bin/wp mcp`, `src/hooks/doctor.ts` reports native launch mode /
 target / staged-bin / missing-artifact reasons, and the package-surface/public-readiness proof lane
-now flags missing `bin/wp` + `bin/runtime/**` artifacts. What remains is the external installed-plugin
-smoke after real runtime artifacts are built/published/staged.
+now flags missing `bin/wp` + staged runtime artifacts. The new blocker before external smoke is the
+thin-root root-tarball cutover in `2026-06-06-agent-kit-thin-root-package-surface-release-unblock.md`,
+which removes root-packed runtime payload trees while preserving the published native contract. What
+remains here is the external installed-plugin smoke after that publish succeeds.
 
-> **Execution alignment (2026-06-05).** Keep this blueprint in `planned/` as the **follow-on residual
-> lane** while `2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md` owns the active cutover.
-> Start only the remaining residual proof after the canonical publish/cutover evidence exists; no new
-> blueprint is needed while the remaining scope stays within Task 1.2, Task 3.2, and Task 4.1.
+> **Execution alignment (2026-06-06).** Keep this blueprint in `planned/` as the **follow-on residual
+> lane** while `2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md` owns the active cutover
+> and the in-progress `2026-06-06-agent-kit-thin-root-package-surface-release-unblock.md` owns the
+> root-tarball unblock. Start the remaining residual proof only after thin-root publish/cutover evidence exists;
+> no new blueprint is needed while the remaining scope stays within Task 1.2, Task 3.2, and Task 4.1.
 
 ## Fact Check Findings
 

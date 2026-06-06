@@ -9,7 +9,10 @@ import {
   AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES,
   evaluateAgentKitTarballSizeBudget,
 } from '../src/build/runtime-surface-policy.js'
-import { createPackedManifest, readWorkspaceCatalogs } from '../src/build/package-manifest.js'
+import {
+  preparePackedManifest,
+  restorePackedManifest,
+} from '../src/build/package-manifest.js'
 
 type Status = 'PASS' | 'FAIL' | 'BLOCKED'
 
@@ -33,8 +36,14 @@ const REQUIRE_REPO_VISIBILITY = process.argv.includes('--require-repo-visibility
 const HISTORY_AUDIT_PATH = resolve(ROOT, 'docs/research/2026-05-28-agent-kit-history-audit.md')
 const BLUEPRINT_PATH = resolve(
   ROOT,
-  'blueprints/in-progress/agent-kit-public-npm-cutover-implementation/_overview.md',
+  'blueprints/in-progress/2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md',
 )
+
+const DENIED_PACKED_RUNTIME_PREFIXES = [
+  'bin/runtime/',
+  'dist/runtime/',
+  'dist/runtime-packages/',
+] as const
 
 function run(
   command: string,
@@ -98,19 +107,17 @@ export function evaluatePluginNativeLauncherPolicy(pluginManifest: PluginManifes
 }
 
 export function listMissingPackedRuntimePaths(
-  runtimeManifest: RuntimeManifestRecord,
+  _runtimeManifest: RuntimeManifestRecord,
   packedFiles: readonly string[],
 ): string[] {
   const requiredRuntimePaths = new Set<string>(['bin/runtime-manifest.json', 'bin/wp'])
-  for (const target of runtimeManifest.targets ?? []) {
-    if (!target.id) continue
-    const filename =
-      target.os === 'win32'
-        ? `${runtimeManifest.binaryName ?? 'wp'}.exe`
-        : runtimeManifest.binaryName ?? 'wp'
-    requiredRuntimePaths.add(`bin/runtime/${target.id}/${filename}`)
-  }
   return [...requiredRuntimePaths].filter((path) => !packedFiles.includes(path))
+}
+
+export function listPackedRuntimePayloadLeaks(packedFiles: readonly string[]): string[] {
+  return packedFiles.filter((path) =>
+    DENIED_PACKED_RUNTIME_PREFIXES.some((prefix) => path.startsWith(prefix)),
+  )
 }
 
 function countMatches(paths: string[], patterns: RegExp[]): string[] {
@@ -179,11 +186,6 @@ const pkg = JSON.parse(read('package.json')) as {
   publishConfig?: { registry?: string; access?: string }
   scripts?: Record<string, string>
 }
-const packedPkg = createPackedManifest(
-  pkg,
-  readWorkspaceCatalogs(resolve(ROOT, 'pnpm-workspace.yaml')),
-) as typeof pkg
-
   if (pkg.name !== '@webpresso/agent-kit') {
     results.push(
       fail('package-name', `expected @webpresso/agent-kit, got ${pkg.name ?? 'missing'}`),
@@ -243,17 +245,25 @@ const runtimeManifest = existsSync(resolve(ROOT, runtimeManifestPath))
   ? (JSON.parse(read(runtimeManifestPath)) as RuntimeManifestRecord)
   : null
 
+  let preparedPkg: typeof pkg | null = null
+  try {
+    preparePackedManifest(ROOT)
+    preparedPkg = JSON.parse(read('package.json')) as typeof pkg
+  } finally {
+    restorePackedManifest(ROOT)
+  }
+
   if (runtimeManifest?.targets?.length && typeof pkg.version === 'string') {
     const missingOptionalDeps = listMissingRuntimeOptionalDependencies(
       runtimeManifest,
       pkg.version,
-      packedPkg.optionalDependencies,
+      preparedPkg?.optionalDependencies,
     )
     results.push(
       missingOptionalDeps.length === 0
         ? pass(
             'runtime-optional-dependencies',
-            `${runtimeManifest.targets.length} runtime packages locked to ${pkg.version}`,
+            `${runtimeManifest.targets.length} prepared runtime packages locked to ${pkg.version}`,
           )
         : fail(
             'runtime-optional-dependencies',
@@ -304,6 +314,7 @@ const pluginManifestPath = resolve(ROOT, '.claude-plugin', 'plugin.json')
   const missingRuntimePaths = runtimeManifest
     ? listMissingPackedRuntimePaths(runtimeManifest, files)
     : []
+  const leakedRuntimePayloadPaths = listPackedRuntimePayloadLeaks(files)
   if (maps || integration || mocks || evals) {
     results.push(
       fail(
@@ -332,14 +343,23 @@ const pluginManifestPath = resolve(ROOT, '.claude-plugin', 'plugin.json')
           ),
     )
     results.push(
-      missingRuntimePaths.length === 0
+      missingRuntimePaths.length === 0 && leakedRuntimePayloadPaths.length === 0
         ? pass(
             'tarball-native-runtime-surface',
-            `${runtimeManifest ? runtimeManifest.targets?.length ?? 0 : 0} target runtime artifacts packed`,
+            'thin-root tarball keeps manifest + launcher and excludes runtime payload trees',
           )
         : fail(
             'tarball-native-runtime-surface',
-            `missing packed runtime artifacts: ${missingRuntimePaths.join(', ')}`,
+            [
+              missingRuntimePaths.length
+                ? `missing required packed runtime paths: ${missingRuntimePaths.join(', ')}`
+                : null,
+              leakedRuntimePayloadPaths.length
+                ? `denied packed runtime payloads: ${leakedRuntimePayloadPaths.join(', ')}`
+                : null,
+            ]
+              .filter((value): value is string => value !== null)
+              .join('; '),
           ),
     )
   }

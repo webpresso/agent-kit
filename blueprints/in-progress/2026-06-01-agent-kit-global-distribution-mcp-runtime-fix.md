@@ -5,8 +5,8 @@ owner: ozby
 status: in-progress
 complexity: L
 created: '2026-06-01'
-last_updated: '2026-06-05'
-progress: '85% (active native-runtime execution lane; changeset, runtime optional-deps/publish policy, host-bin staging code, pure-native manifest, targeted proof-lane tests, and local runtime staging/package-surface verification landed; external publish + Claude cutover smoke remain open)'
+last_updated: '2026-06-06'
+progress: '85% (active native-runtime execution lane; changeset, runtime optional-deps/publish policy, host-bin staging code, pure-native manifest, targeted proof-lane tests, and local runtime staging/package-surface verification landed; thin-root root-tarball cutover is now the first blocker before external publish + Claude cutover smoke)'
 depends_on: []
 tags:
   - mcp
@@ -47,24 +47,28 @@ sets `WP_COMPILED_RUNTIME=1` + `WP_MCP_TOOL_MODE=registry`), then `node dist`, t
 `optionalDependencies` contains non-runtime tooling only, `bin/runtime/` is unstaged, and `@webpresso/agent-kit-runtime-*` is
 unpublished (npm 404); latest is still 0.21.5 → everything falls back to broken node-dist.
 
-**Current repo check (2026-06-05, refreshed):** the package has advanced to **0.28.0**, and the
-runtime/package plumbing is now materially cut over in-repo: root `optionalDependencies` declare the
-5 `@webpresso/agent-kit-runtime-*` packages at the root version, release policy now publishes the
-runtime matrix by default, `package.json#bin.wp` points at `bin/wp`, `.claude-plugin/plugin.json`
-launches `${CLAUDE_PLUGIN_ROOT}/bin/wp mcp`, and `ensureAgentKitGlobal` / staging now know how to
-copy the host runtime to a real `bin/wp`. Because the current delivery contract intentionally keeps
-the plugin/root tarball self-contained **and** publishes per-platform runtime packages, the repo now
-also enforces explicit tarball size / unpacked-size budgets on that duplicated surface instead of
-leaving growth unbounded. The remaining gap is **external proof**, not repo code:
-publish the matrix, stage real runtime artifacts, then run the one-off Claude cutover smoke.
+**Current repo check (2026-06-06, refreshed):** the package has advanced to **0.29.0**, and the
+runtime/package plumbing is now materially cut over in-repo: prepared root `optionalDependencies`
+declare the 5 `@webpresso/agent-kit-runtime-*` packages at the root version, release policy now
+publishes the runtime matrix by default, `package.json#bin.wp` points at `bin/wp`,
+`.claude-plugin/plugin.json` launches `${CLAUDE_PLUGIN_ROOT}/bin/wp mcp`, and
+`ensureAgentKitGlobal` / staging now know how to copy the host runtime to a real `bin/wp`.
+However, the earlier self-contained-root assumption has now been withdrawn: after runtime build +
+stage populate the publishable trees, the root tarball still packs `bin/runtime/**`,
+`dist/runtime/**`, and `dist/runtime-packages/**`, producing an oversized root package that fails
+publish. The remaining repo-owned blocker is therefore the thin-root package-surface cutover in
+`2026-06-06-agent-kit-thin-root-package-surface-release-unblock.md`; external publish/cutover proof
+comes only after that blocker clears.
 Recent completed blueprints on 2026-06-02/03 mean this plan should **reuse** the canonical public-surface
 and lifecycle proof lanes (`wp_audit(kind="package-surface")`, `scripts/public-readiness.ts`,
 `wp_audit(kind="blueprint-lifecycle")`) rather than invent new audit surfaces.
 
-> **Execution alignment (2026-06-05).** This is the **only in-progress native-runtime blueprint**.
-> Keep `2026-06-01-claude-plugin-native-runtime-hardening.md` in `planned/` as the residual follow-on
-> proof lane, and do **not** open a fourth cutover blueprint unless publish/cutover reveals genuinely
-> new repo-owned scope that is not already covered by Task 1.5 or the hardening residual.
+> **Execution alignment (2026-06-06).** This remains the canonical in-progress native-runtime
+> blueprint, but publish/cutover execution is now explicitly blocked on the in-progress thin-root
+> package-surface cutover in `2026-06-06-agent-kit-thin-root-package-surface-release-unblock.md`.
+> Keep `2026-06-01-claude-plugin-native-runtime-hardening.md` in `planned/` as the downstream
+> residual proof lane, and do **not** open additional cutover blueprints unless publish/cutover
+> reveals genuinely new repo-owned scope outside Task 1.5, the thin-root plan, and the hardening residual.
 
 **Target (decided): pure-native plugin launch, no node.** The manifest points directly at a host
 native binary that is a real file in the plugin root:
@@ -106,6 +110,9 @@ directory.
 
 - Supersedes the MCP-failure framing of `2026-06-01-claude-plugin-native-runtime-hardening.md`
   (re-scoped to launcher-determinism hardening; must not claim to fix `-32000`).
+- Blocked for release/publish closeout by
+  `2026-06-06-agent-kit-thin-root-package-surface-release-unblock.md`
+  (root tarball must stop packing runtime payload trees before Task 1.5 can complete).
 - Unrelated to `2026-06-01-mcp-managed-vitest-launcher-finalization.md` (vitest seam).
 - Reuses the proof surfaces hardened by `blueprints/completed/2026-06-02-agent-kit-wp-deploy-orchestrator-toolchain-isolation.md`
   and `blueprints/completed/2026-06-03-blueprint-lifecycle-hygiene-enforcement.md`.
@@ -274,7 +281,7 @@ server name `webpresso` unchanged.
 #### [qa] Task 1.5: Cutover + verify native single-binary MCP
 
 **Status:** blocked
-**Blocked:** Requires published runtime packages plus the external Claude plugin cutover / `initialize` smoke, which was not runnable from this repo-only session.
+**Blocked:** First unblock is `2026-06-06-agent-kit-thin-root-package-surface-release-unblock.md` (the root tarball still packs staged runtime payload trees and fails publish). After that lands, Task 1.5 still requires published runtime packages plus the external Claude plugin cutover / `initialize` smoke, which is not runnable from this repo-only session.
 **Repo-local evidence (2026-06-05):** staged `./bin/wp mcp` now answers the MCP handshake directly from the native binary; `initialize` + `notifications/initialized` + `tools/list` returned 25 tools. `./bin/wp hooks --host claude --hosts skip` also passes with native runtime diagnostics (`launchMode=native`, `targetId=darwin-arm64`). After native Bun asset-resolution fixes, `./bin/wp audit guardrails`, `./bin/wp audit package-surface`, and `scripts/public-readiness.ts` also pass against the staged runtime surface. This proves the repo-local native MCP/runtime path but does not replace the external installed-Claude cutover proof below.
 **Registry evidence (2026-06-06):** read-only npm registry probes showed
 `@webpresso/agent-kit@0.28.0` is already published with the old `bin/wp.js`
@@ -292,7 +299,7 @@ read-only registry probes show `@webpresso/agent-kit@0.29.0` and all five
 `@webpresso/agent-kit-runtime-*` packages at `0.29.0` return 404, so `0.29.0`
 is the correct next publish target.
 
-**Depends:** Task 1.1, Task 1.2, Task 1.3, Task 1.4
+**Depends:** Task 1.1, Task 1.2, Task 1.3, Task 1.4, thin-root package-surface release unblock blueprint (`2026-06-06-agent-kit-thin-root-package-surface-release-unblock.md`)
 
 One-off cutover (global config, outside the repo). Remove the duplicate `enabledPlugins.agent-kit`
 entry; refresh the global install with the published fix; verify native launch.

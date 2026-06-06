@@ -15,11 +15,12 @@ Each subdirectory represents a lifecycle state:
 | ----- | ----: | ----------- |
 | `draft/` | 0 | early-stage sketches. Expect churn; move to `planned/` once scoped. |
 | `planned/` | 1 | committed-to specs, ready to pick up. |
-| `in-progress/` | 2 | actively being executed. At most 3 active blueprints per lane. |
+| `in-progress/` | 3 | actively being executed. At most 3 active blueprints per lane. |
 | `completed/` | 46 | execution finished and verified. Kept for reference. |
 | `parked/` | 9 | intentionally paused. Include a reason in the spec's frontmatter. |
 | `archived/` | 2 | superseded or abandoned. Not deleted — the record matters. |
 <!-- END: blueprint-index -->
+
 
 
 
@@ -41,11 +42,13 @@ Each subdirectory represents a lifecycle state:
 Move files with `git mv` so history follows the spec through its lifecycle.
 
 
-## Active work (2026-06-05)
+## Active work (2026-06-06)
 
 | Blueprint | Path | Purpose |
 | --------- | ---- | ------- |
-| Global distribution MCP runtime fix | [`in-progress/2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md`](./in-progress/2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md) | Canonical owner of the native runtime/package cutover, real `bin/wp` staging, and the remaining publish + Claude cutover proof. |
+| Global distribution MCP runtime fix | [`in-progress/2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md`](./in-progress/2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md) | Canonical owner of the native runtime/package cutover; the current first blocker is the thin-root root-tarball cutover before publish + Claude cutover proof can finish. |
+| Agent-kit thin-root package-surface release unblock | [`in-progress/2026-06-06-agent-kit-thin-root-package-surface-release-unblock.md`](./in-progress/2026-06-06-agent-kit-thin-root-package-surface-release-unblock.md) | Local thin-root proof, review, and UltraQA are complete; the remaining step is merging to `main` and rerunning hosted `Release` so `@webpresso/agent-kit@0.29.0` can publish. |
+| MCP managed Vitest launcher finalization | [`in-progress/2026-06-01-mcp-managed-vitest-launcher-finalization.md`](./in-progress/2026-06-01-mcp-managed-vitest-launcher-finalization.md) | Verification-closeout lane still tracked in `in-progress/`; implementation is complete, but the lifecycle file has not yet been promoted. |
 
 ## Recently completed (2026-06-05)
 
@@ -56,7 +59,7 @@ Move files with `git mv` so history follows the spec through its lifecycle.
 | No first-party `.mjs` audit rollout | [`completed/no-first-party-mjs-audit-rollout/_overview.md`](./completed/no-first-party-mjs-audit-rollout/_overview.md) | Shared audit surface, CLI/MCP registration, orphan-probe retirement, and public-contract proof are complete. |
 | `wp` deploy orchestrator + toolchain isolation | [`completed/2026-06-02-agent-kit-wp-deploy-orchestrator-toolchain-isolation.md`](./completed/2026-06-02-agent-kit-wp-deploy-orchestrator-toolchain-isolation.md) | Deploy/adapt/audit surfaces were already shipped; closeout completed with the React preset types fix plus fresh repo-local proof. |
 
-## Planned next-up (2026-06-05)
+## Planned next-up (2026-06-06)
 
 | Blueprint | Path | Purpose |
 | --------- | ---- | ------- |

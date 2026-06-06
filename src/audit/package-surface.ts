@@ -431,21 +431,22 @@ function auditAgentKitNativeRuntimeSurface(
   }
 
   const packedPaths = new Set(packedFiles.map((file) => file.path))
-  const manifest = readJsonObject<RuntimeManifestRecord>(manifestPath)
-  const binaryName = manifest.binaryName ?? 'wp'
   const requiredPackedPaths = new Set<string>(['bin/runtime-manifest.json', 'bin/wp'])
-
-  for (const target of manifest.targets ?? []) {
-    if (!target.id) continue
-    const filename = target.os === 'win32' ? `${binaryName}.exe` : binaryName
-    requiredPackedPaths.add(`bin/runtime/${target.id}/${filename}`)
-  }
+  const deniedPackedPrefixes = ['bin/runtime/', 'dist/runtime/', 'dist/runtime-packages/']
 
   for (const requiredPath of requiredPackedPaths) {
     if (packedPaths.has(requiredPath)) continue
     violations.push({
       file: relativePath(root, join(candidate.packageRoot, requiredPath)),
       message: `Publishable tarball is missing required native runtime artifact ${requiredPath}`,
+    })
+  }
+
+  for (const packedPath of packedPaths) {
+    if (!deniedPackedPrefixes.some((prefix) => packedPath.startsWith(prefix))) continue
+    violations.push({
+      file: relativePath(root, join(candidate.packageRoot, packedPath)),
+      message: `Publishable tarball contains denied native runtime payload ${packedPath}`,
     })
   }
 
@@ -473,7 +474,7 @@ function auditAgentKitNativeRuntimeSurface(
     })
   }
 
-  return requiredPackedPaths.size + 2
+  return requiredPackedPaths.size + 2 + packedFiles.length
 }
 
 function auditPackedTarballContent(

@@ -295,14 +295,14 @@ describe('package-surface audit', () => {
     expect(readText(join(destination, 'bin', 'webpresso.js'))).toContain('console.log')
   })
 
-  test('requires native runtime artifacts on the packed @webpresso/agent-kit surface', () => {
+  test('requires manifest + launcher on the packed @webpresso/agent-kit thin-root surface', () => {
     const root = tempRepo()
-    mkdirSync(join(root, 'bin', 'runtime', 'darwin-arm64'), { recursive: true })
+    mkdirSync(join(root, 'bin'), { recursive: true })
     writeJson(join(root, 'package.json'), {
       name: '@webpresso/agent-kit',
       version: '0.28.0',
       private: false,
-      files: ['bin'],
+      files: ['bin/runtime-manifest.json'],
       bin: { wp: 'bin/wp' },
     })
     writeFileSync(
@@ -323,16 +323,9 @@ describe('package-surface audit', () => {
           violation.message.includes('native launcher'),
       ),
     ).toBe(true)
-    expect(
-      result.violations.some(
-        (violation) =>
-          violation.file === 'bin/runtime/darwin-arm64/wp' &&
-          violation.message.includes('required native runtime artifact'),
-      ),
-    ).toBe(true)
   })
 
-  test('accepts packed @webpresso/agent-kit surfaces with staged native runtime artifacts', () => {
+  test('fails when packed @webpresso/agent-kit surfaces include denied runtime payload trees', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'bin', 'runtime', 'darwin-arm64'), { recursive: true })
     writeJson(join(root, 'package.json'), {
@@ -356,10 +349,86 @@ describe('package-surface audit', () => {
 
     const result = auditPackageSurface(root)
 
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations.some(
+        (violation) =>
+          violation.file === 'bin/runtime/darwin-arm64/wp' &&
+          violation.message.includes('denied native runtime payload'),
+      ),
+    ).toBe(true)
+  })
+
+  test('fails when packed @webpresso/agent-kit surfaces include denied dist/runtime-packages payloads', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'bin'), { recursive: true })
+    mkdirSync(join(root, 'dist', 'runtime-packages', 'agent-kit-runtime-darwin-arm64', 'bin'), {
+      recursive: true,
+    })
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/agent-kit',
+      version: '0.28.0',
+      private: false,
+      files: ['bin/runtime-manifest.json', 'bin/wp', 'dist/runtime-packages'],
+      bin: { wp: 'bin/wp' },
+    })
+    writeFileSync(
+      join(root, 'bin', 'runtime-manifest.json'),
+      `${JSON.stringify({
+        binaryName: 'wp',
+        targets: [{ id: 'darwin-arm64', os: 'darwin' }],
+      })}\n`,
+    )
+    writeFileSync(join(root, 'bin', 'wp'), 'native launcher\n')
+    writeFileSync(
+      join(root, 'dist', 'runtime-packages', 'agent-kit-runtime-darwin-arm64', 'bin', 'wp'),
+      'runtime payload\n',
+    )
+    chmodSync(join(root, 'bin', 'wp'), 0o755)
+    chmodSync(
+      join(root, 'dist', 'runtime-packages', 'agent-kit-runtime-darwin-arm64', 'bin', 'wp'),
+      0o755,
+    )
+
+    const result = auditPackageSurface(root)
+
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations.some(
+        (violation) =>
+          violation.file ===
+            'dist/runtime-packages/agent-kit-runtime-darwin-arm64/bin/wp' &&
+          violation.message.includes('denied native runtime payload'),
+      ),
+    ).toBe(true)
+  })
+
+  test('accepts packed @webpresso/agent-kit thin-root surfaces with manifest + launcher only', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'bin'), { recursive: true })
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/agent-kit',
+      version: '0.28.0',
+      private: false,
+      files: ['bin/runtime-manifest.json', 'bin/wp'],
+      bin: { wp: 'bin/wp' },
+    })
+    writeFileSync(
+      join(root, 'bin', 'runtime-manifest.json'),
+      `${JSON.stringify({
+        binaryName: 'wp',
+        targets: [{ id: 'darwin-arm64', os: 'darwin' }],
+      })}\n`,
+    )
+    writeFileSync(join(root, 'bin', 'wp'), 'native launcher\n')
+    chmodSync(join(root, 'bin', 'wp'), 0o755)
+
+    const result = auditPackageSurface(root)
+
     expect(result.ok).toBe(true)
   })
 
-  test('enforces an explicit tarball size budget for duplicated native runtime surfaces', () => {
+  test('enforces an explicit tarball size budget for thin-root native runtime surfaces', () => {
     expect(
       evaluateAgentKitTarballSizeBudget({
         size: AGENT_KIT_TARBALL_SIZE_BUDGET_BYTES,

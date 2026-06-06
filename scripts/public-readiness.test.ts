@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   evaluatePluginNativeLauncherPolicy,
+  listPackedRuntimePayloadLeaks,
   listMissingPackedRuntimePaths,
   listMissingRuntimeOptionalDependencies,
 } from './public-readiness.js'
@@ -53,17 +54,28 @@ describe('public-readiness runtime policy helpers', () => {
     })
   })
 
-  it('flags missing packed runtime artifacts including the staged host launcher', () => {
+  it('flags missing packed thin-root artifacts including the staged host launcher', () => {
     expect(
       listMissingPackedRuntimePaths(runtimeManifest, ['bin/runtime-manifest.json']),
+    ).toEqual(['bin/wp'])
+  })
+
+  it('flags denied packed runtime payload trees', () => {
+    expect(
+      listPackedRuntimePayloadLeaks([
+        'bin/runtime/darwin-arm64/wp',
+        'dist/runtime/darwin-arm64/wp',
+        'dist/runtime-packages/agent-kit-runtime-darwin-arm64/bin/wp',
+        'bin/wp',
+      ]),
     ).toEqual([
-      'bin/wp',
       'bin/runtime/darwin-arm64/wp',
-      'bin/runtime/windows-x64/wp.exe',
+      'dist/runtime/darwin-arm64/wp',
+      'dist/runtime-packages/agent-kit-runtime-darwin-arm64/bin/wp',
     ])
   })
 
-  it('enforces an explicit tarball size budget for the duplicated runtime surface', () => {
+  it('enforces an explicit tarball size budget for the thin-root runtime surface', () => {
     expect(
       evaluateAgentKitTarballSizeBudget({
         size: AGENT_KIT_TARBALL_SIZE_BUDGET_BYTES,

@@ -1,5 +1,13 @@
 import { spawnSync } from 'node:child_process'
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -158,6 +166,52 @@ describe('createPackedManifest', () => {
       restorePackedManifest(fixtureDir)
       expect(existsSync(join(fixtureDir, 'dist', 'esm', 'keep'))).toBe(true)
       expect(existsSync(join(fixtureDir, 'dist', 'esm', 'ai-prompts'))).toBe(true)
+    } finally {
+      rmSync(fixtureDir, { force: true, recursive: true })
+    }
+  })
+
+  it('rewrites the real package.json optionalDependencies during prepare and restores afterwards', () => {
+    const fixtureDir = mkdtempSync(join(tmpdir(), 'wp-package-manifest-runtime-'))
+
+    try {
+      writeFileSync(join(fixtureDir, 'pnpm-workspace.yaml'), 'catalog: {}\n', 'utf8')
+      writeFileSync(
+        join(fixtureDir, 'package.json'),
+        `${JSON.stringify(
+          {
+            name: '@webpresso/agent-kit',
+            version: '1.2.3',
+            optionalDependencies: { existing: '^1.0.0' },
+          },
+          null,
+          2,
+        )}\n`,
+        'utf8',
+      )
+
+      preparePackedManifest(fixtureDir)
+      const prepared = JSON.parse(
+        readFileSync(join(fixtureDir, 'package.json'), 'utf8'),
+      ) as {
+        optionalDependencies?: Record<string, string>
+      }
+      expect(prepared.optionalDependencies).toMatchObject({
+        existing: '^1.0.0',
+        '@webpresso/agent-kit-runtime-darwin-arm64': '1.2.3',
+        '@webpresso/agent-kit-runtime-darwin-x64': '1.2.3',
+        '@webpresso/agent-kit-runtime-linux-x64': '1.2.3',
+        '@webpresso/agent-kit-runtime-linux-arm64': '1.2.3',
+        '@webpresso/agent-kit-runtime-windows-x64': '1.2.3',
+      })
+
+      restorePackedManifest(fixtureDir)
+      const restored = JSON.parse(
+        readFileSync(join(fixtureDir, 'package.json'), 'utf8'),
+      ) as {
+        optionalDependencies?: Record<string, string>
+      }
+      expect(restored.optionalDependencies).toEqual({ existing: '^1.0.0' })
     } finally {
       rmSync(fixtureDir, { force: true, recursive: true })
     }

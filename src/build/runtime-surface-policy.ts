@@ -1,5 +1,5 @@
-export const AGENT_KIT_TARBALL_SIZE_BUDGET_BYTES = 650_000_000
-export const AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES = 1_700_000_000
+export const AGENT_KIT_TARBALL_SIZE_BUDGET_BYTES = 29_704_296
+export const AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES = 86_643_227
 
 export interface TarballSizeBudgetInput {
   readonly size?: number
