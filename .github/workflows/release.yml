@@ -68,6 +68,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Stage native runtime artifacts
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run == true }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm run build:runtime-binaries
+          pnpm run stage:plugin-runtime
+
       - name: Validate version path (dry run)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run == true }}
         shell: bash
@@ -76,6 +84,14 @@ jobs:
           pnpm run version
           npm pack --dry-run --json > "$RUNNER_TEMP/npm-pack-dry-run.json"
           node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/npm-pack-dry-run.json','utf8')); const pack=Array.isArray(data)?data[0]:data; console.log(JSON.stringify({filename:pack.filename, unpackedSize:pack.unpackedSize, files:pack.files?.length}, null, 2));"
+
+      - name: Stage native runtime artifacts
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != true }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm run build:runtime-binaries
+          pnpm run stage:plugin-runtime
 
       - name: Create Release Pull Request or Publish
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != true }}
