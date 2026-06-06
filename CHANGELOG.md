@@ -1,10 +1,17 @@
 # Changelog
 
+## 0.29.1
+
+### Patch Changes
+
+- 2cb8e98: Future-proof root package publishing by explicitly preparing the packed manifest during release publish, preventing local dependency protocols from reaching published metadata and preserving runtime optional dependency metadata.
+
 ## 0.29.0
 
 ### Minor Changes
 
 - 2c6baf5: Make `blueprint-lifecycle` audit deterministic and fix the related lifecycle gaps.
+
   - **Ephemeral, deterministic audit.** `wp audit blueprint-lifecycle` now builds an
     in-memory SQLite projection from the blueprint markdown on every run instead of
     reading a persistent per-worktree DB. The verdict is a pure function of the
@@ -37,6 +44,7 @@
 ### Minor Changes
 
 - 9494ece: feat(guard): config-driven pretool routing + expose `toolchain-isolation` over MCP
+
   - `wp_audit` now accepts `kind: "toolchain-isolation"` (previously CLI-only),
     so agents/consumers can run it through the MCP surface.
   - The pretool guard redirects `wp audit <kind>` (CLI) to
@@ -137,6 +145,7 @@
 ### Minor Changes
 
 - 83f7160: Support both canonical blueprint shapes:
+
   - `blueprints/<status>/<slug>.md`
   - `blueprints/<status>/<slug>/_overview.md`
 
@@ -166,6 +175,7 @@
 ### Patch Changes
 
 - 52bbede: Make `wp setup` bootstrap a fresh public consumer repo with a zero-hand-wiring quality scaffold.
+
   - Generate absent-only TypeScript, Vitest, Oxlint, Stryker, and Playwright config plus starter source/unit/e2e smoke files through the default `base-kit` path.
   - Add default package scripts and authoring-time dev dependencies while preserving existing consumer-owned config and scripts on rerun.
   - Add a packed-artifact consumer smoke rehearsal that verifies `npm exec --package <tarball> -- wp setup --yes --host none` and the generated lint/typecheck/test/e2e/qa commands.
@@ -186,6 +196,7 @@
 ### Minor Changes
 
 - 6034aa8: Hard-cut `@webpresso/agent-kit` to its generic reusable core:
+
   - keep `wp` as the only canonical CLI surface
   - remove the `webpresso` bin from the package contract
   - remove branded preset exports (`vitest/webpresso/*`, `tsconfig/webpresso*`, `stryker/webpresso`)
@@ -305,6 +316,7 @@
   every PR, breaking the validation tests that asserted the new shape.
 
   The modernized template:
+
   - Pins `actions/checkout@v5`, `actions/setup-node@v5`,
     `pnpm/action-setup@v6` (drops the now-redundant explicit pnpm version;
     v6 reads `packageManager` from package.json).
@@ -505,6 +517,7 @@
   ## New features
 
   ### Agent-asset compiler (multi-runtime)
+
   - `wp_compile` — thin wrapper over `rulesync generate --targets <list>` with O_EXCL lock, content-hash idempotency, and SHA-256 source hash manifest (`.agent/.compile-manifest.json`)
   - Four plugin manifest emitters: Claude Code (`.claude-plugin/plugin.json`), Codex (`.codex-plugin/`), Cursor (`.cursor-plugin/`), Gemini (`gemini-extension.json`)
   - AGENTS.md section-keyed merger with `memory.merge.yaml` directives (replace/append/prepend/delete/rotate); provenance JSON; rotation safeguards (opt-in, shallow-clone detection, dry-run)
@@ -516,6 +529,7 @@
   - OSS positioning docs: `docs/positioning-vs-rulesync.md`, `docs/wedge-experience/demo.sh`
 
   ### Minimal audit slice
+
   - `wp audit skill-sizes` — checks skills against configurable budgets in `.agent/.audit-budgets.yaml`
   - `wp audit broken-refs` — walks `.agent/**/*.md` for unresolved relative links and `@AGENTS.md` imports; supports `--staged` mode for pre-commit
   - `wp audit memory-rotation` — surfaces AGENTS.md rotation events from `.agent/.rotation-log.jsonl`
@@ -523,6 +537,7 @@
   - `wp setup --with husky` extended with pre-commit hooks for staged-mode audits
 
   ### Blueprint structured store (SQLite)
+
   - `better-sqlite3` SQLite projection of all blueprint markdown; cold-start rebuild from canonical markdown
   - Custom MCP server with 8 tools: `wp_blueprint_query`, `_new`, `_validate`, `_task_next`, `_task_advance`, `_promote`, `_finalize`, `_depgraph`
   - 9 pre-registered SQL query templates; `docs/blueprint-db-cookbook.md`
@@ -532,11 +547,13 @@
   - Three SQL-backed audits (alpha-gated via `WP_USE_SQL_AUDITS=1`): `blueprint-db-consistency`, `blueprint-lifecycle-sql`, `tech-debt-cadence`
 
   ## Breaking changes
+
   - `wp cursor-windsurf-sync` is removed. Use `wp compile` instead.
   - `.agent/` symlink-era outputs replaced by rulesync-emitted files. Run `wp setup --with base-kit --with example-skill && wp compile` on fresh install.
   - Internal consumers (monorepo, ingest-lens) require a one-time cleanup: delete legacy `.windsurfrules`, `.cursorrules`, and old symlinks before bumping to v0.15.0. See `docs/positioning-vs-rulesync.md` for the rollout guide.
 
   ## Dependencies added
+
   - `rulesync@8.15.1` (exact pin)
   - `remark@15.0.1`, `remark-validate-links@13.1.0`, `remark-frontmatter@5.0.0`
   - `better-sqlite3@^12.9.0` + `@types/better-sqlite3`
@@ -546,10 +563,12 @@
 ### Minor Changes
 
 - 3b5d862: Two stale-`@webpresso/utils` surfaces fixed in agent-kit:
+
   1. **`src/ai-tools/`** (5 files): the AI-tool implementations imported
      `getErrorMessage` / `formatBytes` / `StorageAdapter` / `SearchMatch`
      from `@webpresso/utils/{errors,format,storage-adapter}`. Now route
      through:
+
      - `@webpresso/runtime-format/errors` (getErrorMessage)
      - `@webpresso/runtime-format/format` (formatBytes)
      - `@webpresso/runtime-storage/storage-adapter` (StorageAdapter, SearchMatch)
@@ -595,6 +614,7 @@
   `BlueprintCreationService` hardcoded `webpresso/blueprints` while `resolveBlueprintRoot`
   (used by list, lifecycle moves, audit, execution) was context-aware, causing creation and
   reads to point at different directories in non-webpresso consumer repos.
+
   - Add `blueprintsDir?: string` to `.agent-kitrc.json` / `AgentkitConfig` as the
     highest-priority override — bypasses all directory detection.
   - `resolveBlueprintRoot` now reads `.agent-kitrc.json#blueprintsDir` first.
@@ -710,6 +730,7 @@
 - 85b63d5: Add ./ai-memory and ./ai-prompts subpaths — memory primitives (checkpoint, facts, hierarchy) and prompt/debate primitives extracted from the Webpresso monorepo.
 - 85b63d5: Add ./ai-tools subpath — file operation tools (read, write, search, list) for AI agents using a StorageAdapter interface, extracted from the Webpresso monorepo.
 - ba84d37: Cross-runtime dev-link auto-restore + warning. Three new pieces:
+
   - **`ak-restore-dev-links` bin** — consumer postinstall helper. Reads
     `<consumer>/.webpresso/agent-kit-dev-link.json` (written by
     `pnpm dev:link --consumer …`) and re-creates the
@@ -960,6 +981,7 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 - 2db1b01: Fix the rtk scaffolder so `wp setup` actually installs rtk.
 
   The previous scaffolder shipped two unverified guesses:
+
   1. `brew install rtk-ai/rtk/rtk` via `tap "rtk-ai/rtk"` — that tap does not
      exist (`https://github.com/rtk-ai/homebrew-rtk` returns 404), so every
      `wp setup` on macOS hit `rtk-not-found` and silently degraded. The real
@@ -1014,6 +1036,7 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
   is spawned and no workspace re-parse happens.
 
   Files updated:
+
   - `catalog/base-kit/.husky/pre-commit.tmpl`
   - `catalog/base-kit/.husky/commit-msg.tmpl`
   - `catalog/base-kit/.github/workflows/ci.webpresso.yml.tmpl`
@@ -1095,6 +1118,7 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
   The codex-mcp scaffolder previously only managed the Playwright MCP block; users who wanted agent-kit's MCP server reachable from Codex had to hand-edit `~/.codex/config.toml`. The Claude Code side was always self-registered via the plugin manifest, so this gap was Codex-only.
 
   The new `ensureCodexAgentKitMcp` helper probes for an agent-kit install at scaffold time:
+
   1. Claude plugin install (`~/.claude/plugins/cache/agent-kit/agent-kit/`)
   2. bun global (`~/.bun/install/global/node_modules/@webpresso/agent-kit/`)
   3. pnpm global (`$(pnpm root -g)/@webpresso/agent-kit/`)
@@ -1105,6 +1129,7 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
   Migration note: when the unified-cli sibling cutover lands and `webpresso mcp serve` becomes the canonical entrypoint, this scaffolder collapses to writing a fixed `command = "webpresso", args = ["mcp", "serve"]` block — the install-detection probe goes away.
 
   New exports from `@webpresso/agent-kit`'s codex-mcp scaffolder for downstream consumers:
+
   - `ensureCodexAgentKitMcp({ options, configPath?, entryPath?, probe? })`
   - `findAgentKitMcpEntry({ candidates?, pnpmGlobalRoot?, npmGlobalRoot? })`
   - `agentKitMcpBlock(entryPath)`, `upsertAgentKitMcpServer(raw, entryPath)`
@@ -1117,6 +1142,7 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 - 12fwp_2: Consumer-rule + consumer-skill wp_mitives, unified `wp sync` command, and removal of legacy sync commands.
 
   **New primitives**
+
   - `wp lint [--fix] [--no-pnpm-fallback]` — wraps `oxlint` (with `pnpm lint` fallback) and prints structured issues. Mirrors the `wp_lint` MCP tool. Exit code matches lint result.
   - `wp format [--check]` — wraps `oxfmt` to format the workspace in place; `--check` exits 1 on any unformatted file (CI / pre-commit friendly). No fallback — `oxfmt` must be installed.
   - `wp_format` MCP tool — same shape as `wp_lint`, returns the standard summary-first payload, sets `isError: true` when `oxfmt` is missing on PATH.
@@ -1128,21 +1154,25 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
   - Shared `src/content/{schema,loader,audit,dispatch}.ts` module — single source of truth for both kinds; per-kind difference is parameterized (file vs dir).
 
   **Unified sync replaces copy-on-install**
+
   - New `wp sync [--kind rules|skills] [--check]` command. `--check` exits 1 on drift (CI-friendly); regular run prints "restart your IDE" when files were written.
   - Per-IDE distribution: symlink for `.agent/{rules,skills}/`, `.codex/agents/`, `.claude/skills/`; copy for `.cursor/rules/`, `.windsurf/skills/`; TOML transform for `.gemini/commands/`.
   - `wp setup` no longer copies catalog rules/skills into `.agent/` — instead invokes `wp sync` post-scaffold. Result: zero `.new` sidecars on `pnpm install`, fully idempotent re-runs, no drift surface.
   - pnpm `.pnpm/<version>/` instability absorbed via `realpathSync` on catalog dir.
 
   **Breaking changes (pre-1.0 minor)**
+
   - `wp symlink sync` removed. Use `wp sync`.
   - `wp cursor-windsurf-sync` removed. Use `wp sync`.
   - `wp skills` (plural) renamed to `wp skill` (singular) — matches `wp blueprint` / `wp tech-debt` convention. The `install`/`uninstall` actions survive but with new semantics: registry-only edit to `.agent-kitrc.json#installed.tier3Skills` (no copy). Running `wp skills` now errors with a redirect message.
   - `wp setup --overwrite` no longer touches `.agent/rules/` or `.agent/skills/` — they are derived from sync. Existing `--overwrite` semantics for `AGENTS.md`, `.claude/settings.json`, `.codex/hooks.json`, `docs/templates/` are unchanged.
 
   **Catalog promotions**
+
   - Three universal rules promoted into `catalog/agent/rules/`: `no-timeout-as-fix.md`, `pre-implementation.md`, `ts-coding-conventions.md`.
 
   **Migration notes for consumers**
+
   - After upgrading, run `pnpm install` once. `agent-rules/` and `agent-skills/` are scaffolded with `.gitkeep` + README. Add repo-specific rules via `wp rule new <slug>` rather than editing canonical files.
   - Slug collisions between consumer rules/skills and catalog content are hard audit failures — pick a different slug or upstream the change.
   - Add `wp audit rules` and `wp audit skills` to your CI checklist.
