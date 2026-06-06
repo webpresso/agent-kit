@@ -58,7 +58,7 @@ describe('createPackedManifest', () => {
         version: '1.0.0',
         license: 'MIT',
         bin: {
-          wp: './bin/wp.js',
+          wp: './bin/wp',
           'docs-lint': 'bin/docs-lint.js',
         },
       },
@@ -68,7 +68,7 @@ describe('createPackedManifest', () => {
     }
 
     expect(manifest.bin).toEqual({
-      wp: 'bin/wp.js',
+      wp: 'bin/wp',
       'docs-lint': 'bin/docs-lint.js',
     })
 
@@ -82,7 +82,7 @@ describe('createPackedManifest', () => {
         'utf8',
       )
       writeFileSync(
-        join(fixtureDir, 'bin', 'wp.js'),
+        join(fixtureDir, 'bin', 'wp'),
         '#!/usr/bin/env node\nconsole.log("wp")\n',
         'utf8',
       )
@@ -91,7 +91,7 @@ describe('createPackedManifest', () => {
         '#!/usr/bin/env node\nconsole.log("docs-lint")\n',
         'utf8',
       )
-      chmodSync(join(fixtureDir, 'bin', 'wp.js'), 0o755)
+      chmodSync(join(fixtureDir, 'bin', 'wp'), 0o755)
       chmodSync(join(fixtureDir, 'bin', 'docs-lint.js'), 0o755)
 
       const result = spawnSync('npm', ['publish', '--dry-run', '--access', 'public'], {

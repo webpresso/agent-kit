@@ -11,11 +11,14 @@
  */
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join, resolve } from 'node:path'
 
 import { isHookName } from '#cli/commands/hook.js'
 import { type MergeOptions, type MergeResult, patchJsonFile } from '#cli/commands/init/merge'
+import {
+  type ResolveAgentKitPackageRootOptions,
+  resolveAgentKitPackageRootOrThrow,
+} from '#cli/commands/init/package-root'
 import { CodexAppServerClient } from '#codex/app-server/client.js'
 import type { CodexAppServerApi } from '#codex/app-server/types.js'
 import {
@@ -33,6 +36,7 @@ import {
   isTaggedSkillHook,
   type SkillHook,
 } from './skill-hooks.js'
+import { resolveRuntimeTarget, runtimePackageDirName } from '#build/runtime-targets.js'
 
 // Claude Code uses $CLAUDE_PROJECT_DIR. Codex hook runners can execute while the
 // active session cwd points at a sibling repo, so Codex hook commands must be
@@ -722,34 +726,23 @@ function resolveProjectHookBinPath(repoRoot: string, binName: string): string {
 }
 
 function resolvePackageHookBin(binName: string): string {
-  return join(resolvePackageRoot(), 'bin', `${binName}.js`)
+  return join(resolvePackageRootForHookLaunchers(), 'bin', `${binName}.js`)
 }
 
-function resolvePackageRoot(): string {
-  let dir = dirname(fileURLToPath(import.meta.url))
-  for (let depth = 0; depth < 10; depth++) {
-    if (existsSync(join(dir, 'package.json')) && existsSync(join(dir, 'bin', 'wp.js'))) {
-      return dir
-    }
-    const parent = dirname(dir)
-    if (parent === dir) break
-    dir = parent
-  }
-  throw new Error(
+export type ResolvePackageRootForHookLaunchersOptions = ResolveAgentKitPackageRootOptions
+
+export function resolvePackageRootForHookLaunchers(
+  options: ResolvePackageRootForHookLaunchersOptions = {},
+): string {
+  return resolveAgentKitPackageRootOrThrow(
     'wp setup: could not locate @webpresso/agent-kit package root for hook launchers.',
+    options,
   )
 }
 
-// Consumer-side runtime package directory for the current platform. Mirrors the
-// canonical target table in `src/build/runtime-targets.ts`; kept inline here to
-// avoid a deep cross-tree import for a small lookup. If that target list ever
-// changes, update both. Returns undefined for platforms with no compiled
-// runtime package.
 function compiledRuntimePackageDir(): string | undefined {
-  const osLabel = process.platform === 'win32' ? 'windows' : process.platform
-  const id = `${osLabel}-${process.arch}`
-  const known = new Set(['darwin-arm64', 'darwin-x64', 'linux-x64', 'linux-arm64', 'windows-x64'])
-  return known.has(id) ? `agent-kit-runtime-${id}` : undefined
+  const target = resolveRuntimeTarget()
+  return target ? runtimePackageDirName(target.packageName) : undefined
 }
 
 /**

@@ -16,6 +16,7 @@ export default defineConfig({
       { find: /^#cli\/(.*)/, replacement: resolve(__dirname, 'src/cli/$1') },
       { find: /^#dev\/(.*)/, replacement: resolve(__dirname, 'src/dev/$1') },
       { find: /^#audit\/(.*)/, replacement: resolve(__dirname, 'src/audit/$1') },
+      { find: /^#build\/(.*)/, replacement: resolve(__dirname, 'src/build/$1') },
       { find: /^#docs-linter\/(.*)/, replacement: resolve(__dirname, 'src/docs-linter/$1') },
       { find: /^#ci\/(.*)/, replacement: resolve(__dirname, 'src/ci/$1') },
       { find: /^#hooks\/(.*)/, replacement: resolve(__dirname, 'src/hooks/$1') },

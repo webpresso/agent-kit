@@ -1,11 +1,10 @@
 #!/usr/bin/env bun
 import { runHook } from '#hooks/shared/hook-bootstrap'
-import { realpathSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { setGuardEnabled } from './state.js'
+import { isDirectEntrypoint } from '#hooks/shared/direct-entrypoint'
 
 export async function main(): Promise<void> {
-  runHook(
+  await runHook(
     (input) => {
       const normalized = ((input as { prompt?: string }).prompt ?? '').toLowerCase().trim()
       if (normalized === 'guard off') {
@@ -25,8 +24,7 @@ export async function main(): Promise<void> {
 }
 
 if (
-  process.argv[1] &&
-  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
+  isDirectEntrypoint(import.meta.url)
 ) {
   void main()
 }

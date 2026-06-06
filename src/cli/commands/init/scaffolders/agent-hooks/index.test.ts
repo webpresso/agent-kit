@@ -6,17 +6,20 @@ import {
   mkdtempSync,
   mkdirSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs'
 import { spawn, spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { resolveRuntimeTarget, runtimePackageDirName } from '#build/runtime-targets.js'
 
 import {
   buildWebpressoHookGroups,
   classifyWebpressoHookBin,
   hoistTopLevelEvents,
+  resolvePackageRootForHookLaunchers,
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
   trustCodexPresetHooksForUser,
@@ -298,25 +301,37 @@ describe('scaffoldAgentHooks', () => {
     expect(launcher).not.toContain('node_modules/.bin/wp-guard-switch')
   })
 
+  it('resolves the packaged hook-launcher root from PATH when moduleUrl is virtual', () => {
+    const packageRoot = mkdtempSync(join(tmpdir(), 'wp-hook-launcher-root-'))
+    try {
+      mkdirSync(join(packageRoot, 'bin'), { recursive: true })
+      writeFileSync(join(packageRoot, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
+      writeFileSync(join(packageRoot, 'bin', 'wp'), '')
+
+      const resolved = resolvePackageRootForHookLaunchers({
+        moduleUrl: 'file:///__bunfs__/root/wp',
+        execPath: '/usr/bin/node',
+        argv0: 'wp',
+        argv1: 'setup',
+        pathEnv: join(packageRoot, 'bin'),
+      })
+
+      expect(resolved).toBe(packageRoot)
+    } finally {
+      rmSync(packageRoot, { recursive: true, force: true })
+    }
+  })
+
   it('prefers the compiled wp binary in managed launchers when the runtime package is installed', async () => {
-    const osLabel = process.platform === 'win32' ? 'windows' : process.platform
-    const runtimeId = `${osLabel}-${process.arch}`
-    const known = new Set([
-      'darwin-arm64',
-      'darwin-x64',
-      'linux-x64',
-      'linux-arm64',
-      'windows-x64',
-    ])
-    // The resolver only fires for platforms with a published runtime target.
-    if (!known.has(runtimeId)) return
+    const runtimeTarget = resolveRuntimeTarget()
+    if (!runtimeTarget) return
 
     const wpFilename = process.platform === 'win32' ? 'wp.exe' : 'wp'
     const runtimeBinDir = join(
       repoRoot,
       'node_modules',
       '@webpresso',
-      `agent-kit-runtime-${runtimeId}`,
+      runtimePackageDirName(runtimeTarget.packageName),
       'bin',
     )
     mkdirSync(runtimeBinDir, { recursive: true })

@@ -15,14 +15,14 @@
  * Always emits — never returns null. WP_ROUTING_BLOCK is always prepended.
  * If `.agent/routing.md` exists and is non-empty, it is appended after the block.
  */
-import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import { WP_ROUTING_BLOCK } from '#hooks/shared/routing-block'
 
 import { readUpdateBanner } from './update-banner.js'
+import { isDirectEntrypoint } from '#hooks/shared/direct-entrypoint'
 
 export { WP_ROUTING_BLOCK }
 export const MAX_BYTES = 200 * 1024
@@ -129,8 +129,7 @@ export async function main(): Promise<void> {
 }
 
 if (
-  process.argv[1] &&
-  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
+  isDirectEntrypoint(import.meta.url)
 ) {
   void main()
 }

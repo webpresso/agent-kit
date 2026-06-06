@@ -36,12 +36,9 @@ if (exitCode(buildResult) !== 0) {
   process.exit(exitCode(buildResult))
 }
 
-// The per-platform native runtime matrix is a deferred capability: the scoped
-// packages have never been created, the main package declares no
-// optionalDependencies on them, and the plugin still launches via node. A
-// first-time `npm publish` of a never-created scoped package returns 404, which
-// previously aborted the whole release before the main package published (the
-// 0.22.x publish stall). Gate it behind an explicit opt-in; default off.
+// The native runtime matrix is part of the canonical public package surface.
+// Publish it before the root package so consumers can resolve the staged native
+// launcher from the same version cut.
 if (shouldPublishRuntimeMatrix(process.env)) {
   const runtimeBuildResult = run('pnpm', ['run', 'build:runtime-binaries'])
   if (exitCode(runtimeBuildResult) !== 0) {
@@ -76,9 +73,9 @@ if (shouldPublishRuntimeMatrix(process.env)) {
   }
 } else {
   process.stdout.write(
-    `[release:publish] runtime matrix publish skipped (deferred). ` +
-      `Set ${PUBLISH_RUNTIME_MATRIX_ENV}=1 once the @webpresso/agent-kit-runtime-* ` +
-      `packages are bootstrapped on the registry to re-enable.\n`,
+    `[release:publish] runtime matrix publish skipped by explicit override. ` +
+      `Unset ${PUBLISH_RUNTIME_MATRIX_ENV} or set it to 1 to publish the ` +
+      `@webpresso/agent-kit-runtime-* packages.\n`,
   )
 }
 

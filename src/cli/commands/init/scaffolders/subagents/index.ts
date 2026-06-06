@@ -8,10 +8,10 @@ import {
   symlinkSync,
 } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import type { MergeOptions, MergeResult } from '#cli/commands/init/merge'
 import { readPackageJson } from '#cli/commands/init/detect-consumer'
+import { resolveAgentKitPackageRootOrThrow } from '#cli/commands/init/package-root'
 
 export interface ScaffoldSubagentsInput {
   repoRoot: string
@@ -56,16 +56,10 @@ function detectMode(repoRoot: string): SubagentsMode {
 }
 
 function resolveCurrentPackageRoot(): string {
-  let dir = dirname(fileURLToPath(import.meta.url))
-  for (let depth = 0; depth < 8; depth++) {
-    if (existsSync(join(dir, 'package.json')) && existsSync(join(dir, 'catalog'))) {
-      return dir
-    }
-    const parent = dirname(dir)
-    if (parent === dir) break
-    dir = parent
-  }
-  throw new Error('wp init: could not locate the webpresso package root for subagents fallback.')
+  return resolveAgentKitPackageRootOrThrow(
+    'wp init: could not locate the webpresso package root for subagents fallback.',
+    { requireCatalog: true },
+  )
 }
 
 export function scaffoldSubagents(input: ScaffoldSubagentsInput): MergeResult[] {

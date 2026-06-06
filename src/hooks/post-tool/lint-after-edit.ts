@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 import type { ToolInput } from '#hooks/shared/types'
 
-import { existsSync, realpathSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { extname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { runHook } from '#hooks/shared/hook-bootstrap'
 import { getFilePath } from '#hooks/shared/types'
+import { isDirectEntrypoint } from '#hooks/shared/direct-entrypoint'
 
 export const LINTABLE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.json', '.css'] as const
 
@@ -53,7 +53,7 @@ export function processPostToolUse(input: ToolInput, projectDir: string): boolea
 }
 
 export async function main(): Promise<void> {
-  runHook(
+  await runHook(
     (input) => {
       const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd()
       processPostToolUse(input as ToolInput, projectDir)
@@ -64,8 +64,7 @@ export async function main(): Promise<void> {
 }
 
 if (
-  process.argv[1] &&
-  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
+  isDirectEntrypoint(import.meta.url)
 ) {
   void main()
 }

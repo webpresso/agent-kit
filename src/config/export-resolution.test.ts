@@ -142,7 +142,7 @@ describe('@webpresso/agent-kit package exports', () => {
     const packageJson = await readCanonicalPackageJson()
 
     expect(packageJson.bin).toMatchObject({
-      wp: 'bin/wp.js',
+      wp: 'bin/wp',
       'wp-pretool-guard': 'bin/wp-pretool-guard.js',
       ...docsLintBins,
     })

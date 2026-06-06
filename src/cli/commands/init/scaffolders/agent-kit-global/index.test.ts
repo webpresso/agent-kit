@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
 
@@ -63,7 +66,7 @@ describe('ensureAgentKitGlobal', () => {
       options: WRITE_OPTIONS,
       spawn,
       env: {},
-      argv1: '/Users/dev/repos/webpresso/agent-kit/bin/wp.js',
+      argv1: '/Users/dev/repos/webpresso/agent-kit/bin/wp',
       detectGit: () => '/Users/dev/repos/webpresso/agent-kit',
     })
     expect(result).toStrictEqual({
@@ -87,7 +90,7 @@ describe('ensureAgentKitGlobal', () => {
     expect(calls).toStrictEqual([{ cmd: 'vp', args: ['--version'] }])
   })
 
-  it('refreshes the global install via the canonical vp install -g command', () => {
+  it('fails loudly when install succeeds but no staging root can be resolved', () => {
     const { spawn, calls } = makeSpawn()
     const result = ensureAgentKitGlobal({
       options: WRITE_OPTIONS,
@@ -95,15 +98,122 @@ describe('ensureAgentKitGlobal', () => {
       env: {},
       argv1: '/usr/local/bin/wp',
       detectGit: () => null,
+      resolvePackageRootForStaging: () => null,
     })
     expect(result).toStrictEqual({
-      kind: 'agent-kit-global-updated',
+      kind: 'agent-kit-global-staging-failed',
+      reason: 'could not resolve the owning @webpresso/agent-kit package root for staging',
       command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
     })
     expect(calls).toStrictEqual([
       { cmd: 'vp', args: ['--version'] },
       { cmd: 'vp', args: ['install', '-g', '@webpresso/agent-kit'] },
     ])
+  })
+
+  it('stages the host runtime binary to a real plugin-root bin/wp file after refresh', () => {
+    const root = mkdtempSync(join(tmpdir(), 'wp-agent-kit-global-'))
+    const hostTarget =
+      process.platform === 'win32'
+        ? { id: 'windows-x64', os: 'win32', cpu: 'x64' }
+        : { id: `${process.platform}-${process.arch}`, os: process.platform, cpu: process.arch }
+    const binaryName = hostTarget.os === 'win32' ? 'wp.exe' : 'wp'
+    const runtimePath = join(root, 'bin', 'runtime', hostTarget.id, binaryName)
+    const { spawn } = makeSpawn()
+
+    try {
+      mkdirSync(dirname(runtimePath), { recursive: true })
+      writeFileSync(
+        join(root, 'package.json'),
+        `${JSON.stringify({ name: '@webpresso/agent-kit' })}\n`,
+        'utf8',
+      )
+      writeFileSync(
+        join(root, 'bin', 'runtime-manifest.json'),
+        `${JSON.stringify({
+          binaryName: 'wp',
+          targets: [
+            {
+              ...hostTarget,
+              packageName: `@webpresso/agent-kit-runtime-${hostTarget.id}`,
+            },
+          ],
+        })}\n`,
+        'utf8',
+      )
+      writeFileSync(runtimePath, `native:${hostTarget.id}`, 'utf8')
+
+      const result = ensureAgentKitGlobal({
+        options: WRITE_OPTIONS,
+        spawn,
+        env: {},
+        argv1: join(root, 'bin', 'wp.js'),
+        detectGit: () => null,
+        packageRoot: root,
+      })
+
+      expect(result).toStrictEqual({
+        kind: 'agent-kit-global-updated',
+        command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
+        stagedBin: join(root, 'bin', 'wp'),
+      })
+      expect(existsSync(join(root, 'bin', 'wp'))).toBe(true)
+      expect(readFileSync(join(root, 'bin', 'wp'), 'utf8')).toBe(`native:${hostTarget.id}`)
+    } finally {
+      rmSync(root, { force: true, recursive: true })
+    }
+  })
+
+  it('uses the staging-root fallback when argv1 does not map back to the owning package', () => {
+    const root = mkdtempSync(join(tmpdir(), 'wp-agent-kit-global-fallback-'))
+    const hostTarget =
+      process.platform === 'win32'
+        ? { id: 'windows-x64', os: 'win32', cpu: 'x64' }
+        : { id: `${process.platform}-${process.arch}`, os: process.platform, cpu: process.arch }
+    const binaryName = hostTarget.os === 'win32' ? 'wp.exe' : 'wp'
+    const runtimePath = join(root, 'bin', 'runtime', hostTarget.id, binaryName)
+    const { spawn } = makeSpawn()
+
+    try {
+      mkdirSync(dirname(runtimePath), { recursive: true })
+      writeFileSync(
+        join(root, 'package.json'),
+        `${JSON.stringify({ name: '@webpresso/agent-kit', bin: { wp: 'bin/wp' } })}\n`,
+        'utf8',
+      )
+      writeFileSync(
+        join(root, 'bin', 'runtime-manifest.json'),
+        `${JSON.stringify({
+          binaryName: 'wp',
+          targets: [
+            {
+              ...hostTarget,
+              packageName: `@webpresso/agent-kit-runtime-${hostTarget.id}`,
+            },
+          ],
+        })}\n`,
+        'utf8',
+      )
+      writeFileSync(runtimePath, `fallback:${hostTarget.id}`, 'utf8')
+
+      const result = ensureAgentKitGlobal({
+        options: WRITE_OPTIONS,
+        spawn,
+        env: {},
+        argv1: '/usr/local/bin/wp',
+        detectGit: () => null,
+        resolvePackageRootForStaging: () => root,
+      })
+
+      expect(result).toStrictEqual({
+        kind: 'agent-kit-global-updated',
+        command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
+        stagedBin: join(root, 'bin', 'wp'),
+      })
+      expect(readFileSync(join(root, 'bin', 'wp'), 'utf8')).toBe(`fallback:${hostTarget.id}`)
+    } finally {
+      rmSync(root, { force: true, recursive: true })
+    }
   })
 
   it('reports failure (non-fatal) when the install command exits non-zero', () => {

@@ -36,9 +36,9 @@ vp install && vp run setup:agent  # setup:agent runs wp setup, which scaffolds .
 agent-kit's catalog is the single source of truth for generated agent surfaces.
 Agent-kit owns the generated agent surfaces in this file; the Webpresso CLI host owns the end-user command surface.
 To customize skills, commands, or workflows, edit them in agent-kit's catalog
-and publish — not in individual repos. The default `omx` preset chains
-`omx setup --yes --scope user` and installs missing OMX through
-`vp install -g oh-my-codex`. The default `omc` preset ensures OMC through
+and publish — not in individual repos. The default `omx` preset refreshes
+Vite+ through `vp upgrade`, chains `omx setup --yes --scope user`, and installs
+missing OMX through `vp install -g oh-my-codex`. The default `omc` preset ensures OMC through
 Claude Code's plugin marketplace in user scope when `claude` is on `PATH`.
 `wp setup` also repairs the managed `.gitignore` block for regenerated agent
 surfaces so repo-local `.codex/`,

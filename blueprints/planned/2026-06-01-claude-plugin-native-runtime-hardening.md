@@ -3,10 +3,10 @@ type: blueprint
 title: Claude plugin native runtime hardening
 owner: ozby
 status: planned
-complexity: L
+complexity: M
 created: '2026-06-01'
-last_updated: '2026-06-01'
-progress: '0% (reconciled to pure-native; distribution scope folded into the global-distribution blueprint, residual = readiness coverage + hooks-doctor diagnostics)'
+last_updated: '2026-06-05'
+progress: '80% residual work complete (package-surface/public-readiness coverage and hooks-doctor diagnostics landed + tested; local runtime staging + package-surface verification passed; installed-plugin native smoke remains external/open)'
 depends_on: []
 tags:
   - claude-plugin
@@ -66,6 +66,17 @@ single-global-binary architecture, not a deferred fallback. `bin/wp.js` →
 `bin/_run.js` remains only the **source-dev** launcher for running from an
 uncompiled clone (dev vs prod), not a parallel production shim.
 
+**Current repo check (2026-06-05, refreshed):** the residual has narrowed. `.claude-plugin/plugin.json`
+now launches `${CLAUDE_PLUGIN_ROOT}/bin/wp mcp`, `src/hooks/doctor.ts` reports native launch mode /
+target / staged-bin / missing-artifact reasons, and the package-surface/public-readiness proof lane
+now flags missing `bin/wp` + `bin/runtime/**` artifacts. What remains is the external installed-plugin
+smoke after real runtime artifacts are built/published/staged.
+
+> **Execution alignment (2026-06-05).** Keep this blueprint in `planned/` as the **follow-on residual
+> lane** while `2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md` owns the active cutover.
+> Start only the remaining residual proof after the canonical publish/cutover evidence exists; no new
+> blueprint is needed while the remaining scope stays within Task 1.2, Task 3.2, and Task 4.1.
+
 ## Fact Check Findings
 
 | ID | Severity | Claim | Verified reality | Blueprint fix |
@@ -113,33 +124,36 @@ Execution ownership now splits cleanly:
 - The MCP `-32000` fix is **not** here — see
   `2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md`.
 - Unrelated to `2026-06-01-mcp-managed-vitest-launcher-finalization.md`.
+- Reuse the proof surfaces hardened by
+  `blueprints/completed/2026-06-02-agent-kit-wp-deploy-orchestrator-toolchain-isolation.md`
+  and `blueprints/completed/2026-06-03-blueprint-lifecycle-hygiene-enforcement.md`.
 
 ## Quick Reference (Execution Waves)
 
 > **Post-reconciliation, only the residual executes here:** Task 1.2
 > (readiness/package-surface coverage) and Task 3.2 (`wp hooks doctor`
 > diagnostics), verified by Task 4.1. Tasks 1.1, 2.1, 2.2, and 3.1 are
-> **superseded** by the global-distribution blueprint and are not run from this
-> plan. The wave table below is retained for historical context.
+> **superseded** by the global-distribution blueprint and remain here only as
+> traceability notes.
 
 | Wave | Tasks | Dependencies | Parallelizable | Effort (T-shirt) |
 | --- | --- | --- | --- | --- |
-| Wave 0 | 1.1, 1.2 | None | 2 agents | S |
-| Wave 1 | 2.1, 2.2 | Wave 0 | 2 agents | S-M |
-| Wave 2 | 3.1, 3.2 | Wave 1 | 2 agents | S |
-| Wave 3 | 4.1 | Wave 2 | 1 agent | S |
-| Critical path | 1.1 → 2.1 → 3.1 → 4.1 | — | 4 waves | L |
+| Wave 0 | 1.2, 3.2 | None | 2 agents | S |
+| Wave 1 | 4.1 | Wave 0 | 1 agent | S |
+| Critical path | 1.2 → 4.1 | — | 2 waves | M |
 
 ### Parallel Metrics Snapshot
 
 | Metric | Formula / Meaning | Target | Actual |
 | --- | --- | --- | --- |
 | RW0 | Ready tasks in Wave 0 | ≥ 2 | 2 |
-| CPR | total_tasks / critical_path_length | ≥ 2.5 | 1.75 |
-| DD | dependency_edges / total_tasks | ≤ 2.0 | 1.0 |
+| CPR | total_executable_tasks / critical_path_length | ≥ 2.5 | 1.5 |
+| DD | executable_dependency_edges / total_executable_tasks | ≤ 2.0 | 0.67 |
 | CP | same-file overlaps per wave | 0 | 0 |
 
-Refinement delta: CPR is below the ideal parallel target because plugin manifest, packaging, diagnostics, and release checks intentionally serialize around shared package surfaces. This is acceptable for a safety-critical launcher fix.
+Refinement delta: the historical table overstated the executable scope after ownership reconciliation.
+The residual plan now exposes only the three live tasks, removes false dependencies on dropped work,
+and keeps CP = 0. CPR stays below target because this is now a deliberately narrow proof lane.
 
 ## Phase 1: failing policy and package tests [Complexity: M]
 
@@ -177,15 +191,14 @@ Add tests that reject bare `node`, bare `bun`, global `wp`, and `bin/wp.js` in C
 
 #### [package] Task 1.2: Prove packed/installed runtime artifacts are required
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
-**Status (residual — UNIQUE to this blueprint):** todo. This is the one Phase-1
-task that is NOT superseded — it extends readiness/package-surface coverage so a
-plugin can never ship missing its native runtime artifacts. Coordinate with the
-canonical blueprint's Task 1.2 (which adds the optional-deps) but keep this
-coverage check here.
+This is the one Phase-1 task that is NOT superseded — it extends
+readiness/package-surface coverage so a plugin can never ship missing its
+native runtime artifacts. Coordinate with the canonical blueprint's Task 1.2
+(which adds the optional-deps) but keep this coverage check here.
 
 Add regression tests proving the package/readiness lane fails when runtime packages, runtime manifest, the real staged `${packageRoot}/bin/wp` launcher, or staged `bin/runtime` artifacts are missing.
 
@@ -204,9 +217,9 @@ Add regression tests proving the package/readiness lane fails when runtime packa
 
 **Acceptance:**
 
-- [ ] Readiness fails before publish if native runtime artifacts are absent.
-- [ ] Readiness checks the packed package surface, not only source-tree files.
-- [ ] Package-surface audit remains passing.
+- [x] Readiness fails before publish if native runtime artifacts are absent.
+- [x] Readiness checks the packed package surface, not only source-tree files.
+- [x] Package-surface audit now fails on missing native runtime artifacts until staging occurs, then passes once local runtime artifacts are built/staged (verified 2026-06-05).
 
 ## Phase 2: runtime dependency and staging repair [Complexity: M]
 
@@ -304,9 +317,9 @@ Update Claude plugin MCP and hook commands to use the real staged `${CLAUDE_PLUG
 
 #### [doctor] Task 3.2: Add native runtime startup diagnostics
 
-**Status:** todo
+**Status:** done
 
-**Depends:** Task 2.1, Task 2.2
+**Depends:** None
 
 Teach hooks doctor to report native runtime availability and give actionable missing-artifact diagnostics without recommending timeout increases.
 
@@ -325,19 +338,43 @@ Teach hooks doctor to report native runtime availability and give actionable mis
 
 **Acceptance:**
 
-- [ ] Doctor reports launch mode, target id, manifest path, staged `${CLAUDE_PLUGIN_ROOT}/bin/wp` path, and missing reason.
-- [ ] Doctor does not suggest raising Claude MCP/hook timeouts.
-- [ ] Diagnostics are bounded and degradable.
+- [x] Doctor reports launch mode, target id, manifest path, staged `${CLAUDE_PLUGIN_ROOT}/bin/wp` path, and missing reason.
+- [x] Doctor does not suggest raising Claude MCP/hook timeouts.
+- [x] Diagnostics are bounded and degradable.
 
-## Phase 4: release/readiness verification [Complexity: S]
+## Phase 4: residual verification after canonical cutover [Complexity: S]
 
-#### [qa] Task 4.1: Verify package and installed-plugin smoke
+#### [qa] Task 4.1: Reuse canonical cutover evidence and verify residual smoke
 
-**Status:** todo
+**Status:** blocked
+**Blocked:** Local proof now reaches built/staged runtime artifacts plus a passing `package-surface`
+audit, but this residual lane can only run **after**
+`2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md` Task 1.5 has produced real publish +
+Claude cutover evidence. That external proof was not available from this repo-only session.
+**Repo-local evidence (2026-06-05):** staged native `./bin/wp mcp` answers the MCP handshake
+(`initialize` + `notifications/initialized` + `tools/list`) with 25 tools, and
+`./bin/wp hooks --host claude --hosts skip` reports `launchMode=native`, `targetId=darwin-arm64`,
+and the staged/target binary paths successfully. The staged native binary also passes
+`./bin/wp audit guardrails` and `./bin/wp audit package-surface`; public readiness passes after
+packing the runtime surface. This is local runtime evidence only; the two installed-Claude
+acceptance items below remain blocked on canonical Task 1.5.
+**Registry evidence (2026-06-06):** npm already has
+`@webpresso/agent-kit@0.28.0` published with the old `bin/wp.js` launcher
+surface, and the five runtime matrix packages for `0.28.0` are not published.
+The local Changesets version-package step has now advanced the repo to
+`0.29.0`; source install remains CI-safe while `prepack` injects the runtime
+optional dependencies into the packed/published manifest at `0.29.0`. Read-only
+registry probes show the root and all five runtime packages at `0.29.0` are not
+published yet. This confirms the residual hardening smoke must wait for the
+canonical `0.29.0` runtime matrix publish, root publish, and installed Claude
+plugin cutover evidence; this blueprint must not open a second publish lane.
 
-**Depends:** Task 3.1, Task 3.2
+**Depends:** Task 1.2, Task 3.2, `2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md` Task 1.5
 
-Run the narrow and package-surface checks that prove the plugin would install with native runtime artifacts and start Claude MCP without the JS launcher seam.
+This task does **not** own a second standalone cutover lane. It reuses the canonical publish +
+Claude cutover evidence from `2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md` Task 1.5,
+then verifies only the residual hardening concerns: diagnostics/readiness surfaces still describe the
+effective native launcher correctly after the canonical cutover is in place.
 
 **Files:**
 
@@ -349,11 +386,15 @@ Run the narrow and package-surface checks that prove the plugin would install wi
 2. Run `wp_typecheck`.
 3. Run `wp_lint` for changed files.
 4. Run `wp_audit(kind="package-surface")` and public readiness.
-5. Run an installed-plugin smoke that proves the effective launcher is the real staged native `${CLAUDE_PLUGIN_ROOT}/bin/wp` (no `node` in the process tree).
+5. Reuse the publish + Claude cutover evidence from canonical Task 1.5, then run only the residual
+   installed-plugin smoke needed to confirm doctor/readiness surfaces still describe the effective
+   staged native `${CLAUDE_PLUGIN_ROOT}/bin/wp` launcher correctly (no new standalone cutover flow).
 
 **Acceptance:**
 
-- [ ] All targeted tests pass.
-- [ ] Package-surface and public-readiness checks pass.
-- [ ] Smoke output proves `WP_COMPILED_RUNTIME=1` or equivalent native-mode evidence.
-- [ ] No timeout setting was increased.
+- [x] All targeted tests pass.
+- [x] Package-surface/public-readiness proof now fails correctly when native artifacts are absent.
+- [x] Local runtime build + staging produces a passing `package-surface` audit for the publishable surface.
+- [ ] Canonical Task 1.5 publish + Claude cutover evidence exists and is referenced here.
+- [ ] Residual smoke confirms `wp hooks doctor` / readiness surfaces still match the effective native launcher after canonical cutover.
+- [x] No timeout setting was increased.

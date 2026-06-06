@@ -1,12 +1,11 @@
 #!/usr/bin/env bun
 import { globSync } from 'glob'
 import { execSync } from 'node:child_process'
-import { realpathSync } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { runHook } from '#hooks/shared/hook-bootstrap'
 import { isLintableFile, isSkippedPath } from '#hooks/post-tool/lint-after-edit'
+import { isDirectEntrypoint } from '#hooks/shared/direct-entrypoint'
 
 const TYPECHECKABLE_EXTENSIONS = new Set(['.ts', '.tsx'])
 
@@ -90,7 +89,7 @@ export function formatStopHookOutput(result: StopHookResult): string {
 }
 
 export async function main(): Promise<void> {
-  runHook(
+  await runHook(
     // `Stop` is latency-sensitive and user-visible. Until webpresso grows a
     // deferred execution plane, broad typecheck/test sweeps stay off the hot
     // path instead of shelling synchronously at turn end.
@@ -100,8 +99,7 @@ export async function main(): Promise<void> {
 }
 
 if (
-  process.argv[1] &&
-  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
+  isDirectEntrypoint(import.meta.url)
 ) {
   void main()
 }

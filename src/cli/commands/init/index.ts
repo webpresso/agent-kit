@@ -10,7 +10,6 @@ import type { CAC } from 'cac'
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, relative } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { isTelemetryEnabled, reportTthw } from '#telemetry/setup-tthw'
 import { readPackageVersion } from '#cli/utils'
@@ -44,6 +43,7 @@ import {
 import { scaffoldAgentsMd } from './scaffold-agents-md.js'
 import { scaffoldBlueprints } from './scaffold-blueprints.js'
 import { scaffoldDocs } from './scaffold-docs.js'
+import { resolveAgentKitPackageRoot } from './package-root.js'
 import {
   BASE_KIT_QUALITY_TARGETS,
   collectRuntimeContractGuidance,
@@ -131,21 +131,22 @@ export const EXIT_SETUP_FAIL = 1
 export const EXIT_USER_ABORT = 2
 export const EXIT_WRITE_FAIL = 3
 
-export function resolveCatalogDir(): string {
-  // The `catalog/` directory is bundled alongside `package.json` in the
-  // published tarball (see `files` in package.json). To locate it at both
-  // development time (src/cli/commands/init/index.ts) and at runtime (dist/cli.js),
-  // we walk up from this module looking for the nearest package.json.
-  let dir = dirname(fileURLToPath(import.meta.url))
-  for (let depth = 0; depth < 8; depth++) {
-    if (existsSync(join(dir, 'package.json'))) {
-      const candidate = join(dir, 'catalog')
-      if (existsSync(candidate)) return candidate
-    }
-    const parent = dirname(dir)
-    if (parent === dir) break
-    dir = parent
-  }
+export interface ResolveCatalogDirOptions {
+  readonly moduleUrl?: string
+  readonly execPath?: string
+  readonly argv0?: string
+  readonly argv1?: string
+  readonly pathEnv?: string
+}
+
+export function resolveCatalogDir(options: ResolveCatalogDirOptions = {}): string {
+  // The published native `bin/wp` binary executes from its own on-disk path,
+  // while the bundled module URL can resolve inside Bun's virtual filesystem.
+  // Probe both the module location and the real executable path so packed
+  // installs still find the shipped `catalog/` directory.
+  const root = resolveAgentKitPackageRoot({ ...options, requireCatalog: true })
+  if (root) return join(root, 'catalog')
+
   throw new Error(
     'wp init: could not locate the webpresso catalog directory. The package may be broken.',
   )
@@ -707,6 +708,12 @@ export async function runInit(flags: InitFlags): Promise<number> {
           console.warn(
             `  agent-kit global: ⚠ \`${agentKitGlobalResult.command.join(' ')}\` exited with ${agentKitGlobalResult.exitCode}; ` +
               'the existing global binary is unchanged. Re-run `wp setup` once the registry is reachable.',
+          )
+          break
+        case 'agent-kit-global-staging-failed':
+          console.warn(
+            `  agent-kit global: ⚠ native bin/wp staging failed (${agentKitGlobalResult.reason}); ` +
+              'the Claude plugin may keep using the previous cached launcher until the runtime package is rebuilt/reinstalled.',
           )
           break
       }

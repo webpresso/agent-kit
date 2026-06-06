@@ -61,11 +61,26 @@ describe('plugin.json manifest', () => {
   })
 
   describe('mcpServers', () => {
-    it('declares the webpresso stdio server via the stable node wrapper', () => {
+    it('declares the webpresso stdio server via the staged native wp binary', () => {
       const server = readManifest().mcpServers['webpresso']
       expect(server).toBeDefined()
-      expect(server!.command).toBe('node')
-      expect(server!.args).toEqual([`${PLUGIN_ROOT_VAR}/bin/wp.js`, 'mcp'])
+      expect(server!.command).toBe(`${PLUGIN_ROOT_VAR}/bin/wp`)
+      expect(server!.args).toEqual(['mcp'])
+    })
+
+    it('rejects JS, shell-runtime, and global launchers for Claude startup', () => {
+      const manifest = readManifest()
+      const launchValues = Object.values(manifest.mcpServers).flatMap((server) => [
+        server.command,
+        ...server.args,
+      ])
+
+      expect(launchValues).not.toContain('node')
+      expect(launchValues).not.toContain('bun')
+      expect(launchValues).not.toContain('wp')
+      expect(launchValues.some((value) => value.endsWith('.js'))).toBe(false)
+      expect(launchValues.some((value) => value.includes('/node_modules/.bin/'))).toBe(false)
+      expect(launchValues).toContain(`${PLUGIN_ROOT_VAR}/bin/wp`)
     })
   })
 

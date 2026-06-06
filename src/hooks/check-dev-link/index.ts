@@ -13,11 +13,11 @@
  * instead of the live source declared in `.webpresso/webpresso-dev-link.json`.
  * Always exits 0; never blocks session start.
  */
-import { readlinkSync, realpathSync } from 'node:fs'
+import { readlinkSync } from 'node:fs'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 import { STATE_FILE_RELATIVE_PATH, type DevLinkState, readDevLinkState } from '#dev/dev-link-state'
+import { isDirectEntrypoint } from '#hooks/shared/direct-entrypoint'
 
 export interface DevLinkBreakage {
   expected: string
@@ -94,8 +94,7 @@ export async function main(): Promise<void> {
 }
 
 if (
-  process.argv[1] &&
-  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
+  isDirectEntrypoint(import.meta.url)
 ) {
   void main()
 }
