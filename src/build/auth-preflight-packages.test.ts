@@ -58,4 +58,20 @@ describe('release workflow publish path', () => {
     expect(workflow.includes('createGithubReleases: false')).toBe(true)
     expect(workflow.includes('pull-requests: write')).toBe(true)
   })
+
+  it('does not stage native runtime artifacts into the changesets version-PR working tree', () => {
+    const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
+    const changesetsActionIndex = workflow.indexOf('uses: changesets/action@')
+    const beforeChangesetsAction = workflow.slice(0, changesetsActionIndex)
+    const runtimeStageBlocks = beforeChangesetsAction.match(/- name: Stage native runtime artifacts[\s\S]*?(?=\n\s*- name:|$)/g) ?? []
+
+    expect(runtimeStageBlocks).toHaveLength(1)
+    expect(runtimeStageBlocks[0]).toContain(
+      "if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run == true }}",
+    )
+    expect(runtimeStageBlocks[0]).not.toContain(
+      "if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != true }}",
+    )
+    expect(workflow).toContain('publish: pnpm run release:publish')
+  })
 })
