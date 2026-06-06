@@ -1,0 +1,78 @@
+import { existsSync, lstatSync, mkdirSync, readdirSync, readlinkSync, rmSync, symlinkSync, } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
+import { readPackageJson } from '#cli/commands/init/detect-consumer';
+import { resolveAgentKitPackageRootOrThrow } from '#cli/commands/init/package-root';
+function detectMode(repoRoot) {
+    const pkg = readPackageJson(repoRoot).info;
+    if (pkg?.name === 'webpresso') {
+        return {
+            mode: 'self',
+            sourceRoot: join(repoRoot, 'catalog', 'agent', 'agents'),
+        };
+    }
+    const installedPackageJsonPath = join(repoRoot, 'node_modules', 'webpresso', 'package.json');
+    const installedAgentsRoot = join(repoRoot, 'node_modules', 'webpresso', 'catalog', 'agent', 'agents');
+    if (existsSync(installedPackageJsonPath) && existsSync(installedAgentsRoot)) {
+        return {
+            mode: 'consumer',
+            sourceRoot: installedAgentsRoot,
+        };
+    }
+    return {
+        mode: 'package-fallback',
+        sourceRoot: join(resolveCurrentPackageRoot(), 'catalog', 'agent', 'agents'),
+    };
+}
+function resolveCurrentPackageRoot() {
+    return resolveAgentKitPackageRootOrThrow('wp init: could not locate the webpresso package root for subagents fallback.', { requireCatalog: true });
+}
+export function scaffoldSubagents(input) {
+    const { repoRoot, options } = input;
+    const mode = detectMode(repoRoot);
+    const sourceRoot = mode.sourceRoot;
+    const targetRoot = join(repoRoot, '.claude', 'agents');
+    const results = [];
+    if (!existsSync(sourceRoot))
+        return results;
+    const entries = readdirSync(sourceRoot).filter((f) => f.endsWith('.md') && f !== 'README.md');
+    if (entries.length === 0)
+        return results;
+    if (!options.dryRun) {
+        mkdirSync(targetRoot, { recursive: true });
+    }
+    for (const name of entries) {
+        const sourcePath = join(sourceRoot, name);
+        const targetPath = join(targetRoot, name);
+        const symTarget = relative(dirname(targetPath), sourcePath);
+        if (options.dryRun) {
+            results.push({ targetPath, action: 'created' });
+            continue;
+        }
+        try {
+            const stat = lstatSync(targetPath);
+            if (stat.isSymbolicLink()) {
+                const currentTarget = readlinkSync(targetPath);
+                if (currentTarget === symTarget) {
+                    results.push({ targetPath, action: 'identical' });
+                }
+                else if (options.overwrite) {
+                    rmSync(targetPath);
+                    symlinkSync(symTarget, targetPath);
+                    results.push({ targetPath, action: 'overwritten' });
+                }
+                else {
+                    results.push({ targetPath, action: 'drifted' });
+                }
+            }
+            else {
+                results.push({ targetPath, action: 'identical' });
+            }
+        }
+        catch {
+            symlinkSync(symTarget, targetPath);
+            results.push({ targetPath, action: 'created' });
+        }
+    }
+    return results;
+}
+//# sourceMappingURL=index.js.map
