@@ -1,0 +1,24 @@
+import { z } from 'zod';
+export const MCP_SAFE_TEST_BUDGET_MS = 110_000;
+export const workspaceShardingInputSchema = z
+    .object({
+    enabled: z.boolean().optional(),
+    minFilesToShard: z.number().int().min(2).max(10_000).optional(),
+    targetFilesPerShard: z.number().int().min(1).max(10_000).optional(),
+    maxShards: z.number().int().min(2).max(128).optional(),
+    totalBudgetMs: z.number().int().min(1_000).max(MCP_SAFE_TEST_BUDGET_MS).optional(),
+})
+    .strict();
+export function refineTestBudgetContract(input, ctx) {
+    const totalBudgetMs = input.workspaceSharding?.totalBudgetMs;
+    if (input.timeoutMs !== undefined &&
+        totalBudgetMs !== undefined &&
+        totalBudgetMs > input.timeoutMs) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['workspaceSharding', 'totalBudgetMs'],
+            message: 'workspaceSharding.totalBudgetMs must be less than or equal to timeoutMs',
+        });
+    }
+}
+//# sourceMappingURL=test-budget-contract.js.map

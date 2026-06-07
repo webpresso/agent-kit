@@ -1,0 +1,1 @@
+{"version":3,"file":"no-first-party-mjs.d.ts","sourceRoot":"","sources":["../../../src/audit/no-first-party-mjs.ts"],"names":[],"mappings":"AAIA,OAAO,KAAK,EAAE,eAAe,EAAsB,MAAM,sBAAsB,CAAA;AAgB/E,wBAAgB,4BAA4B,CAAC,YAAY,EAAE,MAAM,GAAG,OAAO,CAK1E;AAED,wBAAgB,6BAA6B,CAAC,YAAY,EAAE,SAAS,MAAM,EAAE,GAAG,MAAM,EAAE,CAMvF;AA6DD,wBAAgB,oBAAoB,CAAC,aAAa,GAAE,MAAsB,GAAG,eAAe,CAiB3F"}
