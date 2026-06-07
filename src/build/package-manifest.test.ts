@@ -257,6 +257,56 @@ describe('createPackedManifest', () => {
     }
   })
 
+  it('strips built sourceMappingURL comments for packing and restores them afterwards', () => {
+    const fixtureDir = mkdtempSync(join(tmpdir(), 'wp-package-manifest-sourcemap-comments-'))
+    const setupFilePath = join(
+      fixtureDir,
+      'dist',
+      'esm',
+      'config',
+      'vitest',
+      'node-setup.js',
+    )
+    const declarationFilePath = join(
+      fixtureDir,
+      'dist',
+      'esm',
+      'config',
+      'vitest',
+      'node-setup.d.ts',
+    )
+    const setupWithMap =
+      'export const __nodeSetupModule = true;\n//# sourceMappingURL=node-setup.js.map\n'
+    const declarationWithMap =
+      'export declare const __nodeSetupModule = true;\n//# sourceMappingURL=node-setup.d.ts.map\n'
+
+    try {
+      mkdirSync(join(fixtureDir, 'dist', 'esm', 'config', 'vitest'), { recursive: true })
+      writeFileSync(join(fixtureDir, 'pnpm-workspace.yaml'), 'catalog: {}\n', 'utf8')
+      writeFileSync(
+        join(fixtureDir, 'package.json'),
+        `${JSON.stringify({ name: '@webpresso/agent-kit', version: '0.29.2' }, null, 2)}\n`,
+        'utf8',
+      )
+      writeFileSync(setupFilePath, setupWithMap, 'utf8')
+      writeFileSync(declarationFilePath, declarationWithMap, 'utf8')
+
+      preparePackedManifest(fixtureDir)
+      expect(readFileSync(setupFilePath, 'utf8')).toBe(
+        'export const __nodeSetupModule = true;\n',
+      )
+      expect(readFileSync(declarationFilePath, 'utf8')).toBe(
+        'export declare const __nodeSetupModule = true;\n',
+      )
+
+      restorePackedManifest(fixtureDir)
+      expect(readFileSync(setupFilePath, 'utf8')).toBe(setupWithMap)
+      expect(readFileSync(declarationFilePath, 'utf8')).toBe(declarationWithMap)
+    } finally {
+      rmSync(fixtureDir, { force: true, recursive: true })
+    }
+  })
+
   it('rewrites the real package.json optionalDependencies during prepare and restores afterwards', () => {
     const fixtureDir = mkdtempSync(join(tmpdir(), 'wp-package-manifest-runtime-'))
 

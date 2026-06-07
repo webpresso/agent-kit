@@ -8,7 +8,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import { parse as parseYaml } from 'yaml'
 
@@ -41,6 +41,8 @@ const BACKUP_FILENAME = '.package.json.prepack.backup'
 const DIST_BACKUP_DIRNAME = '.dist-prepack-backup'
 const MIGRATION_SQL_BACKUP_DIRNAME = '.migration-sql-prepack-backup'
 const MIGRATION_SQL_ASSET_DIR = 'blueprint/db/migrations'
+const SOURCEMAP_COMMENT_BACKUP_DIRNAME = '.sourcemap-comments-prepack-backup'
+const SOURCEMAP_COMMENT_PATTERN = /^\s*\/\/# sourceMappingURL=.*(?:\r?\n|$)/gmu
 
 function asStringMap(value: unknown): Record<string, string> | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
@@ -267,6 +269,81 @@ function restoreMigrationSqlAssets(rootDir: string) {
   rmSync(backupDir, { force: true, recursive: true })
 }
 
+function listBuiltTextFiles(rootDir: string): string[] {
+  const distRoot = join(rootDir, 'dist', 'esm')
+  if (!existsSync(distRoot)) return []
+
+  const files: string[] = []
+  const visit = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const entryPath = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        visit(entryPath)
+      } else if (entry.name.endsWith('.js') || entry.name.endsWith('.d.ts')) {
+        files.push(entryPath)
+      }
+    }
+  }
+  visit(distRoot)
+  return files.sort()
+}
+
+function relativeDistPath(rootDir: string, filePath: string): string {
+  const distRoot = join(rootDir, 'dist', 'esm')
+  return filePath.slice(distRoot.length + 1)
+}
+
+function stripPackedSourcemapComments(rootDir: string) {
+  const backupDir = join(rootDir, SOURCEMAP_COMMENT_BACKUP_DIRNAME)
+  if (existsSync(backupDir)) {
+    throw new Error(`Source map comment prepack backup already exists at ${backupDir}`)
+  }
+
+  let stripped = false
+  for (const filePath of listBuiltTextFiles(rootDir)) {
+    const existing = readFileSync(filePath, 'utf8')
+    const next = existing.replace(SOURCEMAP_COMMENT_PATTERN, '')
+    if (next === existing) continue
+
+    const backupPath = join(backupDir, relativeDistPath(rootDir, filePath))
+    mkdirSync(dirname(backupPath), { recursive: true })
+    writeText(backupPath, existing)
+    writeText(filePath, next)
+    stripped = true
+  }
+
+  if (!stripped && existsSync(backupDir)) {
+    rmSync(backupDir, { force: true, recursive: true })
+  }
+}
+
+function restorePackedSourcemapComments(rootDir: string) {
+  const backupDir = join(rootDir, SOURCEMAP_COMMENT_BACKUP_DIRNAME)
+  if (!existsSync(backupDir)) return
+
+  const restore = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const entryPath = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        restore(entryPath)
+        continue
+      }
+
+      const targetPath = join(
+        rootDir,
+        'dist',
+        'esm',
+        entryPath.slice(backupDir.length + 1),
+      )
+      mkdirSync(dirname(targetPath), { recursive: true })
+      writeText(targetPath, readFileSync(entryPath, 'utf8'))
+    }
+  }
+
+  restore(backupDir)
+  rmSync(backupDir, { force: true, recursive: true })
+}
+
 export function preparePackedManifest(rootDir: string) {
   const packageJsonPath = join(rootDir, 'package.json')
   const workspacePath = join(rootDir, 'pnpm-workspace.yaml')
@@ -282,6 +359,7 @@ export function preparePackedManifest(rootDir: string) {
   writeText(backupPath, originalManifestText)
   pruneOrphanedDistSubtrees(rootDir)
   stageMigrationSqlAssets(rootDir)
+  stripPackedSourcemapComments(rootDir)
   writeJson(packageJsonPath, packedManifest)
 }
 
@@ -291,6 +369,7 @@ export function restorePackedManifest(rootDir: string) {
   if (!existsSync(backupPath)) return
   writeText(packageJsonPath, readFileSync(backupPath, 'utf8'))
   rmSync(backupPath, { force: true })
+  restorePackedSourcemapComments(rootDir)
   restoreMigrationSqlAssets(rootDir)
   restorePrunedDistSubtrees(rootDir)
 }
