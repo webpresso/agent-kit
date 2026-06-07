@@ -9,27 +9,33 @@ vi.mock('#hooks/doctor', () => ({
 import { registerHooksCommand } from './hooks.js'
 
 function buildFakeCli() {
-  let registeredAction:
-    | ((
-        _action: string | undefined,
-        options: {
-          skipMcp?: boolean
-          hosts?: 'auto' | 'skip' | 'required'
-          host?: Array<'codex' | 'opencode' | 'claude'>
-        },
-      ) => Promise<number>)
-    | undefined
+  type HooksDoctorAction = (
+    _action: string | undefined,
+    options: {
+      skipMcp?: boolean
+      hosts?: 'auto' | 'skip' | 'required'
+      host?: Array<'codex' | 'opencode' | 'claude'>
+    },
+  ) => Promise<number | void>
+
+  const registeredActions = new Map<string, HooksDoctorAction>()
+  let currentCommandName: string | undefined
 
   const chain = {
     option: (_flag: string, _desc: string, _config?: unknown) => chain,
-    action: (fn: typeof registeredAction) => {
-      registeredAction = fn
+    action: (fn: HooksDoctorAction) => {
+      if (currentCommandName) {
+        registeredActions.set(currentCommandName, fn)
+      }
     },
   }
 
   const cli = {
-    command: (_name: string, _desc: string) => chain,
-    getAction: () => registeredAction,
+    command: (name: string, _desc: string) => {
+      currentCommandName = name
+      return chain
+    },
+    getAction: (name = 'hooks [action]') => registeredActions.get(name),
   }
 
   return cli
