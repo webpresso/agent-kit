@@ -2,20 +2,16 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
-import { clearManagedRunnerCache, setRtkAvailabilityProbeForTest } from '#tool-runtime'
+import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
 import { buildTestCommand, buildVitestCommand, buildVpTestCommand } from './command-builder.js'
 
 const tempDirs: string[] = []
 
-beforeEach(() => {
-  setRtkAvailabilityProbeForTest(true)
-})
+installManagedRunnerHermeticHooks()
 
 afterEach(() => {
-  setRtkAvailabilityProbeForTest(null)
-  clearManagedRunnerCache()
   while (tempDirs.length > 0) rmSync(tempDirs.pop()!, { recursive: true, force: true })
 })
 

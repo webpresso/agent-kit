@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-import { setRtkAvailabilityProbeForTest } from '#tool-runtime'
+import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
 
 import {
   buildPackageManagerCommand,
@@ -8,15 +8,9 @@ import {
   runPackageManagerCommand,
 } from './package-manager.js'
 
+installManagedRunnerHermeticHooks()
+
 describe('wp package-manager commands', () => {
-  beforeEach(() => {
-    setRtkAvailabilityProbeForTest(true)
-  })
-
-  afterEach(() => {
-    setRtkAvailabilityProbeForTest(null)
-  })
-
   it('publishes the supported top-level verbs', () => {
     expect(PACKAGE_MANAGER_VERBS).toEqual(['install', 'add', 'remove', 'update', 'exec', 'run'])
   })

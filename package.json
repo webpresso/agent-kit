@@ -122,6 +122,8 @@
     "#tool-runtime": "./src/tool-runtime/index.ts",
     "#tool-runtime/*.js": "./src/tool-runtime/*.ts",
     "#tool-runtime/*": "./src/tool-runtime/*.ts",
+    "#test-helpers/*.js": "./src/test-helpers/*.ts",
+    "#test-helpers/*": "./src/test-helpers/*.ts",
     "#wp-extension": "./src/wp-extension/index.ts",
     "#wp-extension/*.js": "./src/wp-extension/*.ts",
     "#wp-extension/*": "./src/wp-extension/*.ts",

@@ -2,21 +2,18 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { setRtkAvailabilityProbeForTest } from '#tool-runtime'
+import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
 
 import { buildTypecheckCommand, runTypecheckCommand } from './typecheck'
 
 describe('wp typecheck command', () => {
   const tempDirs: string[] = []
 
-  beforeEach(() => {
-    setRtkAvailabilityProbeForTest(true)
-  })
+  installManagedRunnerHermeticHooks()
 
   afterEach(() => {
-    setRtkAvailabilityProbeForTest(null)
     for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true })
   })
 

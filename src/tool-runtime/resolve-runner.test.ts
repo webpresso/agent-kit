@@ -1,16 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
+import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
 import { resolveRunner, setRtkAvailabilityProbeForTest } from './resolve-runner.js'
 
+installManagedRunnerHermeticHooks()
+
 describe('resolveRunner', () => {
-  beforeEach(() => {
-    setRtkAvailabilityProbeForTest(true)
-  })
-
-  afterEach(() => {
-    setRtkAvailabilityProbeForTest(null)
-  })
-
   it('uses RTK-filtered managed runners by default', () => {
     expect(resolveRunner('vitest')).toEqual({
       tool: 'vitest',

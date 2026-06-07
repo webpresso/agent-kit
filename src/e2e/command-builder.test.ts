@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
+import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
 import { buildE2eCommand } from './command-builder.js'
+
+installManagedRunnerHermeticHooks()
 
 describe('buildE2eCommand', () => {
   it('builds a Playwright command for suite config', () => {

@@ -1,19 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
-import {
-  clearManagedRunnerCache,
-  getManagedRunner,
-  setRtkAvailabilityProbeForTest,
-} from './index.js'
+import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
+import { getManagedRunner, setRtkAvailabilityProbeForTest } from './index.js'
 
-beforeEach(() => {
-  setRtkAvailabilityProbeForTest(true)
-})
-
-afterEach(() => {
-  setRtkAvailabilityProbeForTest(null)
-  clearManagedRunnerCache()
-})
+installManagedRunnerHermeticHooks()
 
 describe('getManagedRunner', () => {
   it('caches identical resolutions without leaking output mode across cache entries', () => {
