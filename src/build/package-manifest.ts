@@ -1,4 +1,5 @@
 import {
+  copyFileSync,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -38,6 +39,8 @@ const NON_PUBLISHABLE_DEPENDENCY_PROTOCOLS = ['link:', 'workspace:', 'file:'] as
 
 const BACKUP_FILENAME = '.package.json.prepack.backup'
 const DIST_BACKUP_DIRNAME = '.dist-prepack-backup'
+const MIGRATION_SQL_BACKUP_DIRNAME = '.migration-sql-prepack-backup'
+const MIGRATION_SQL_ASSET_DIR = 'blueprint/db/migrations'
 
 function asStringMap(value: unknown): Record<string, string> | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
@@ -217,6 +220,53 @@ function restorePrunedDistSubtrees(rootDir: string) {
   rmSync(backupRoot, { force: true, recursive: true })
 }
 
+function listSqlFiles(dir: string): string[] {
+  if (!existsSync(dir)) return []
+  return readdirSync(dir).filter((entry) => entry.endsWith('.sql')).sort()
+}
+
+function stageMigrationSqlAssets(rootDir: string) {
+  const sourceDir = join(rootDir, 'src', MIGRATION_SQL_ASSET_DIR)
+  if (!existsSync(sourceDir)) return
+
+  const sourceSqlFiles = listSqlFiles(sourceDir)
+  if (sourceSqlFiles.length === 0) return
+
+  const targetDir = join(rootDir, 'dist', 'esm', MIGRATION_SQL_ASSET_DIR)
+  const backupDir = join(rootDir, MIGRATION_SQL_BACKUP_DIRNAME)
+  if (existsSync(backupDir)) {
+    throw new Error(`Migration SQL prepack backup already exists at ${backupDir}`)
+  }
+
+  mkdirSync(targetDir, { recursive: true })
+  mkdirSync(backupDir, { recursive: true })
+
+  for (const file of listSqlFiles(targetDir)) {
+    renameSync(join(targetDir, file), join(backupDir, file))
+  }
+
+  for (const file of sourceSqlFiles) {
+    copyFileSync(join(sourceDir, file), join(targetDir, file))
+  }
+}
+
+function restoreMigrationSqlAssets(rootDir: string) {
+  const backupDir = join(rootDir, MIGRATION_SQL_BACKUP_DIRNAME)
+  if (!existsSync(backupDir)) return
+
+  const targetDir = join(rootDir, 'dist', 'esm', MIGRATION_SQL_ASSET_DIR)
+  for (const file of listSqlFiles(targetDir)) {
+    rmSync(join(targetDir, file), { force: true })
+  }
+
+  mkdirSync(targetDir, { recursive: true })
+  for (const file of listSqlFiles(backupDir)) {
+    renameSync(join(backupDir, file), join(targetDir, file))
+  }
+
+  rmSync(backupDir, { force: true, recursive: true })
+}
+
 export function preparePackedManifest(rootDir: string) {
   const packageJsonPath = join(rootDir, 'package.json')
   const workspacePath = join(rootDir, 'pnpm-workspace.yaml')
@@ -231,6 +281,7 @@ export function preparePackedManifest(rootDir: string) {
 
   writeText(backupPath, originalManifestText)
   pruneOrphanedDistSubtrees(rootDir)
+  stageMigrationSqlAssets(rootDir)
   writeJson(packageJsonPath, packedManifest)
 }
 
@@ -240,6 +291,7 @@ export function restorePackedManifest(rootDir: string) {
   if (!existsSync(backupPath)) return
   writeText(packageJsonPath, readFileSync(backupPath, 'utf8'))
   rmSync(backupPath, { force: true })
+  restoreMigrationSqlAssets(rootDir)
   restorePrunedDistSubtrees(rootDir)
 }
 

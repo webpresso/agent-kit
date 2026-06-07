@@ -223,6 +223,40 @@ describe('createPackedManifest', () => {
     }
   })
 
+  it('stages blueprint migration SQL assets into dist for npm packing and restores afterwards', () => {
+    const fixtureDir = mkdtempSync(join(tmpdir(), 'wp-package-manifest-migration-assets-'))
+    const migrationSourceDir = join(fixtureDir, 'src', 'blueprint', 'db', 'migrations')
+    const migrationDistDir = join(fixtureDir, 'dist', 'esm', 'blueprint', 'db', 'migrations')
+
+    try {
+      mkdirSync(migrationSourceDir, { recursive: true })
+      mkdirSync(migrationDistDir, { recursive: true })
+      writeFileSync(join(fixtureDir, 'pnpm-workspace.yaml'), 'catalog: {}\n', 'utf8')
+      writeFileSync(
+        join(fixtureDir, 'package.json'),
+        `${JSON.stringify({ name: '@webpresso/agent-kit', version: '0.29.1' }, null, 2)}\n`,
+        'utf8',
+      )
+      writeFileSync(join(migrationSourceDir, '0001_seed.sql'), 'CREATE TABLE blueprints();\n')
+      writeFileSync(join(migrationSourceDir, '0002_request_id_ledger.sql'), 'CREATE TABLE x();\n')
+      writeFileSync(join(migrationDistDir, 'run.js'), 'export {};\n')
+
+      preparePackedManifest(fixtureDir)
+      expect(readFileSync(join(migrationDistDir, '0001_seed.sql'), 'utf8')).toContain(
+        'CREATE TABLE blueprints',
+      )
+      expect(existsSync(join(migrationDistDir, '0002_request_id_ledger.sql'))).toBe(true)
+      expect(existsSync(join(migrationDistDir, 'run.js'))).toBe(true)
+
+      restorePackedManifest(fixtureDir)
+      expect(existsSync(join(migrationDistDir, '0001_seed.sql'))).toBe(false)
+      expect(existsSync(join(migrationDistDir, '0002_request_id_ledger.sql'))).toBe(false)
+      expect(existsSync(join(migrationDistDir, 'run.js'))).toBe(true)
+    } finally {
+      rmSync(fixtureDir, { force: true, recursive: true })
+    }
+  })
+
   it('rewrites the real package.json optionalDependencies during prepare and restores afterwards', () => {
     const fixtureDir = mkdtempSync(join(tmpdir(), 'wp-package-manifest-runtime-'))
 
