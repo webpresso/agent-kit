@@ -57,6 +57,11 @@ import {
   serializeHostVisibility,
   summarizeHostVisibility,
 } from './host-visibility.js'
+import { WP_HOOK_SPECS } from './scaffolders/agent-hooks/ir.js'
+import {
+  buildProposedHooksMapFromSpecs,
+  generateHooksDryRunDiff,
+} from './scaffolders/agent-hooks/report.js'
 import {
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
@@ -420,6 +425,18 @@ export async function runInit(flags: InitFlags): Promise<number> {
       options,
       trustCodexHooks: false,
     })
+
+    if (options.dryRun) {
+      const proposedMap = buildProposedHooksMapFromSpecs(WP_HOOK_SPECS)
+      const dryRunDiff = generateHooksDryRunDiff(
+        join(consumer.repoRoot, '.claude', 'settings.json'),
+        join(consumer.repoRoot, '.codex', 'hooks.json'),
+        proposedMap,
+        proposedMap,
+      )
+      process.stdout.write(dryRunDiff + '\n')
+    }
+
     const auditHooksResult = scaffoldAuditHooks({ repoRoot: consumer.repoRoot, options })
     const opencodePluginResult = scaffoldOpencodePlugin({ repoRoot: consumer.repoRoot, options })
     let claudeRulesResults: MergeResult[] = []
