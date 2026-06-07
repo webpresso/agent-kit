@@ -100,8 +100,10 @@ describe('@webpresso/agent-kit package exports', () => {
 
     expect(packageJson.files).not.toContain('src')
     expect(packageJson.files).not.toContain('docs')
-    expect(packageJson.files).toContain('dist')
-    expect(packageJson.files).toContain('bin')
+    expect(packageJson.files).toContain('dist/esm')
+    expect(packageJson.files).toContain('!dist/**/*.map')
+    expect(packageJson.files).toContain('bin/wp')
+    expect(packageJson.files).toContain('bin/*.js')
   })
 
   it('exposes default targets for tsconfig json exports so tsconfig extends can resolve them', async () => {
