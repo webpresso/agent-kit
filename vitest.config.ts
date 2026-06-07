@@ -20,6 +20,8 @@ export default defineConfig({
       { find: /^#docs-linter\/(.*)/, replacement: resolve(__dirname, 'src/docs-linter/$1') },
       { find: /^#ci\/(.*)/, replacement: resolve(__dirname, 'src/ci/$1') },
       { find: /^#hooks\/(.*)/, replacement: resolve(__dirname, 'src/hooks/$1') },
+      { find: /^#launcher\/(.*)\.js$/, replacement: resolve(__dirname, 'src/launcher/$1.ts') },
+      { find: /^#launcher\/(.*)$/, replacement: resolve(__dirname, 'src/launcher/$1') },
       { find: /^#secret-gate\/(.*)/, replacement: resolve(__dirname, 'src/secret-gate/$1') },
       { find: /^#mcp\/(.*)/, replacement: resolve(__dirname, 'src/mcp/$1') },
       { find: /^#content\/(.*)/, replacement: resolve(__dirname, 'src/content/$1') },

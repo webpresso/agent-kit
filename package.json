@@ -161,6 +161,7 @@
     "#blueprint/sync/types.js": "./src/blueprint/sync/types.ts",
     "#blueprint/sync/auth.js": "./src/blueprint/sync/auth.ts",
     "#blueprint/sync/client.js": "./src/blueprint/sync/client.ts",
+    "#export/spec-kit/index": "./src/blueprint/export/spec-kit/index.ts",
     "#projects.js": "./src/blueprint/projects.ts",
     "#next-action.js": "./src/blueprint/next-action.ts",
     "#types/execution-backend": "./src/blueprint/types/execution-backend.ts",
