@@ -65,7 +65,8 @@ export function createVitestAliasEntriesFromPackageImports(
     .sort(compareImportSpecificity)
     .map(([specifier, target]) => ({
       find: buildFindPattern(specifier),
-      replacement: resolve(repoRoot, replaceWildcards(target.slice(2))),
+      // Strip .ts so Vite's resolver handles both foo.ts and foo/index.ts.
+      replacement: resolve(repoRoot, replaceWildcards(target.slice(2).replace(/\.ts$/, ''))),
     }))
 }
 

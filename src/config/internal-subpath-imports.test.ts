@@ -12,20 +12,21 @@ describe('internal subpath imports', () => {
   it('derives Vitest aliases from package.json imports with specific patterns before catch-alls', () => {
     const aliases = createVitestAliasEntriesFromPackageImports(readCanonicalPackageImports())
 
+    // Paths are extensionless — Vite's resolver handles .ts / index.ts fallback.
     expect(resolveVitestAliasSpecifier('#launcher/root-contract.js', aliases)).toBe(
-      resolve(process.cwd(), 'src/launcher/root-contract.ts'),
+      resolve(process.cwd(), 'src/launcher/root-contract'),
     )
     expect(resolveVitestAliasSpecifier('#utils/blueprint-root', aliases)).toBe(
-      resolve(process.cwd(), 'src/blueprint/utils/blueprint-root.ts'),
+      resolve(process.cwd(), 'src/blueprint/utils/blueprint-root'),
     )
     expect(resolveVitestAliasSpecifier('#sync/client.js', aliases)).toBe(
-      resolve(process.cwd(), 'src/blueprint/sync/client.ts'),
+      resolve(process.cwd(), 'src/blueprint/sync/client'),
     )
     expect(resolveVitestAliasSpecifier('#tool-runtime', aliases)).toBe(
-      resolve(process.cwd(), 'src/tool-runtime/index.ts'),
+      resolve(process.cwd(), 'src/tool-runtime/index'),
     )
     expect(resolveVitestAliasSpecifier('#codex/app-server/client.js', aliases)).toBe(
-      resolve(process.cwd(), 'src/codex/app-server/client.ts'),
+      resolve(process.cwd(), 'src/codex/app-server/client'),
     )
   })
 })
