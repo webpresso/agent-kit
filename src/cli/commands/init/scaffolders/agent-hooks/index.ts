@@ -38,7 +38,12 @@ import {
 } from './skill-hooks.js'
 import { resolveRuntimeTarget, runtimePackageDirName } from '#build/runtime-targets.js'
 import { buildClaudeHookGroups } from './emitters/claude.js'
-import { type HookEntry, type HookGroup, type HooksMap, HOOK_EVENT_NAMES } from './ir.js'
+import {
+  type HookGroup,
+  type HooksMap,
+  type MatcherSet,
+  HOOK_EVENT_NAMES,
+} from './ir.js'
 import { ensureGroup, mergeAgentKitGroups } from './merge.js'
 
 export type { MatcherSet } from './ir.js'
@@ -86,36 +91,10 @@ const CODEX_BIN = (repoRoot: string) => (name: string) => {
   return buildGuardedHookCommand(codexManagedHookLauncherPath(repoRoot, name), name)
 }
 
-// HookEntry, HookGroup, HooksMap, HOOK_EVENT_NAMES are imported from ./ir.js
+// HookGroup, HooksMap, HOOK_EVENT_NAMES are imported from ./ir.js
 // MatcherSet is re-exported from ./ir.js (export type above)
 // ensureGroup, mergeAgentKitGroups are imported from ./merge.js
 
-/**
- * Detect whether `groups` already contain a hook that invokes the same target
- * as `command`. The "target" is whatever uniquely identifies the script being
- * launched, regardless of shell-wrapping (e.g. `[ -x X ] && X || true` vs the
- * raw `X` invocation).
- *
- * Two extractors run in order; the first match wins:
- *   1. `node_modules/.bin/<name>` — installed bin (existing precedent).
- *   2. `<basename>.<sh|ts|js|mjs|cjs|py>` — script file (covers
- *      `.claude/hooks/check-gstack-session.sh`, `bun apps/scripts/foo.ts`,
- *      etc.). Both wrapped and raw forms map to the same basename so dedup
- *      catches them.
- *
- * Falls back to exact-string match when neither extractor applies.
- */
-function commandMatches(left: string, right: string): boolean {
-  if (left === right) return true
-  const leftTarget = extractCommandTarget(left)
-  return leftTarget !== null && extractCommandTarget(right) === leftTarget
-}
-
-function findHookIndexByCommand(hooks: HookEntry[], command: string): number {
-  return hooks.findIndex((hook) => commandMatches(hook.command, command))
-}
-
-const SCRIPT_EXTENSIONS = ['sh', 'ts', 'js', 'mjs', 'cjs', 'py'] as const
 const DIRECT_NODE_MODULES_BIN_PATTERN = /^(?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+)$/u
 const GUARDED_NODE_MODULES_BIN_PATTERN =
   /^\[ -x (["']?)((?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+))\1 \] && \1\2\1 \|\| (?:true|printf .+)$/u
@@ -127,12 +106,6 @@ const DIRECT_MANAGED_HOOK_LAUNCHER_PATTERN =
   /^(?:["']?)((?:\$CLAUDE_PROJECT_DIR\/\.claude\/hooks\/managed|(?:\.\/|\/.*\/)?\.claude\/hooks\/managed|(?:\.\/|\/.*\/)?\.codex\/managed-hooks)\/((?:wp|ak)-[\w-]+)\.sh)(?:["']?)$/u
 const GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN =
   /^\[ -x (["']?)((?:\$CLAUDE_PROJECT_DIR\/\.claude\/hooks\/managed|(?:\.\/|\/.*\/)?\.claude\/hooks\/managed|(?:\.\/|\/.*\/)?\.codex\/managed-hooks)\/((?:wp|ak)-[\w-]+)\.sh)\1 \] && \1\2\1 \|\| (?:true|printf .+)$/u
-// Capture the basename of any path that ends in a known script extension.
-// Handles trailing chars (quote, space, end-of-string).
-const SCRIPT_BASENAME_PATTERN = new RegExp(
-  String.raw`([\w-]+\.(?:${SCRIPT_EXTENSIONS.join('|')}))(?=$|["'\s])`,
-  'u',
-)
 const WEBPRESSO_HOOK_BIN_NAMES = new Set([
   'wp-sessionstart-routing',
   'wp-check-dev-link',
@@ -197,19 +170,6 @@ function stripSingleShellQuotePair(value: string): string {
     return value.slice(1, -1)
   }
   return value
-}
-
-/**
- * Return a stable identifier for the script that `command` invokes, or null
- * when none can be extracted (e.g. an opaque shell expression). Used by
- * `hasCommand` for dedup across wrapped/raw invocation forms.
- */
-function extractCommandTarget(command: string): string | null {
-  const binName = extractAgentKitCodexBinName(command)
-  if (binName !== null) return `bin:${binName}`
-  const scriptMatch = SCRIPT_BASENAME_PATTERN.exec(command)
-  if (scriptMatch !== null) return `script:${scriptMatch[1]}`
-  return null
 }
 
 // ensureGroup and mergeAgentKitGroups are imported from ./merge.js
