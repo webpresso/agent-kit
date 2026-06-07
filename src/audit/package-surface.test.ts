@@ -323,7 +323,7 @@ describe('package-surface audit', () => {
       result.violations.some(
         (violation) =>
           violation.file === 'bin/wp' &&
-          violation.message.includes('native launcher'),
+          violation.message.includes('root launcher contract failed'),
       ),
     ).toBe(true)
   })

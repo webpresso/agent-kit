@@ -9,17 +9,37 @@
  * down correctly when presets are active.
  */
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { PassThrough } from 'node:stream'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const spawnSyncMock = vi.fn()
+const spawnMock = vi.fn()
+
+class FakeAsyncChild extends EventEmitter {
+  readonly stdout = new PassThrough()
+  readonly stderr = new PassThrough()
+  readonly pid = 1234
+  readonly kill = vi.fn(() => true)
+
+  constructor() {
+    super()
+    queueMicrotask(() => {
+      this.stdout.end()
+      this.stderr.end()
+      this.emit('close', 0, null)
+    })
+  }
+}
 
 vi.mock('node:child_process', async () => {
   const actual = await vi.importActual<typeof import('node:child_process')>('node:child_process')
   return {
     ...actual,
+    spawn: (...args: unknown[]) => spawnMock(...args),
     spawnSync: (...args: unknown[]) => spawnSyncMock(...args),
   }
 })
@@ -78,6 +98,8 @@ describe('runInit() — omx + gstack presets (integration)', () => {
     delete process.env.CI
     spawnSyncMock.mockReset()
     spawnSyncMock.mockImplementation(() => okSpawnResult)
+    spawnMock.mockReset()
+    spawnMock.mockImplementation(() => new FakeAsyncChild())
   })
 
   afterEach(() => {
@@ -311,7 +333,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(code).toBe(EXIT_SUCCESS)
       // The exact spawn calls depend on whether the host has gstack installed;
       // we only assert that if a clone happened, it was for the right repo.
-      const gitCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'git')
+      const gitCalls = spawnMock.mock.calls.filter((c) => c[0] === 'git')
       for (const call of gitCalls) {
         if (call[1]?.[0] === 'clone') {
           expect(call[1]).toContain('https://github.com/garrytan/gstack.git')
@@ -321,7 +343,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
 
     it('--dry-run does not invoke git or ./setup', async () => {
       await runInit({ cwd: repo, yes: true, with: 'gstack', 'dry-run': true })
-      const gstackCalls = spawnSyncMock.mock.calls.filter(
+      const gstackCalls = spawnMock.mock.calls.filter(
         (c) => c[0] === 'git' || c[0] === './setup',
       )
       expect(gstackCalls).toHaveLength(0)
@@ -429,7 +451,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
     it('runs default external presets and probes bun/vp/actionlint without --with flags', async () => {
       await runInit({ cwd: repo, yes: true })
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
-      const gstackCloneCalls = spawnSyncMock.mock.calls.filter(
+      const gstackCloneCalls = spawnMock.mock.calls.filter(
         (c) => c[0] === 'git' && Array.isArray(c[1]) && c[1][0] === 'clone',
       )
       const codexCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'codex')
@@ -483,10 +505,11 @@ describe('runInit() — omx + gstack presets (integration)', () => {
 
     it('accepts CLI-normalized dryRun and skips external setup work', async () => {
       await runInit({ cwd: repo, yes: true, dryRun: true })
-      const externalSetupCalls = spawnSyncMock.mock.calls.filter((c) =>
-        ['omx', 'claude', 'git', './setup', 'rtk', 'bun', 'codex', 'actionlint'].includes(
-          String(c[0]),
-        ),
+      const externalSetupCalls = [...spawnSyncMock.mock.calls, ...spawnMock.mock.calls].filter(
+        (c) =>
+          ['omx', 'claude', 'git', './setup', 'rtk', 'bun', 'codex', 'actionlint'].includes(
+            String(c[0]),
+          ),
       )
       const vpCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'vp')
 
@@ -505,7 +528,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       // 'rejects unknown Tier-3 names' test in init.integration.test.ts.
       const code = await runInit({ cwd: repo, yes: true, with: 'made-up-preset' })
       expect(code).toBe(EXIT_SETUP_FAIL)
-      const externalCalls = spawnSyncMock.mock.calls.filter(
+      const externalCalls = [...spawnSyncMock.mock.calls, ...spawnMock.mock.calls].filter(
         (c) => c[0] === 'omx' || c[0] === 'git' || c[0] === './setup',
       )
       // No external calls because we exit before the preset block runs.

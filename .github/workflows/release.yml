@@ -12,11 +12,11 @@
 #   - compatibility branch/tag behavior: handled separately from the publish path
 #
 # Trusted publishing note:
-#   - npm trusted publishing is preferred.
-#   - This workflow is OIDC-ready (`id-token: write`) and expects npm-side
-#     trusted publisher configuration before steady-state production use.
-#   - For first-package bootstrap or migration rehearsals, you may temporarily
-#     provide `NPM_TOKEN` as a repo secret; it is scoped to the publish step only.
+#   - npm trusted publishing is required for this workflow.
+#   - The publish job uses OIDC (`id-token: write`) and expects npm-side trusted
+#     publisher configuration for this repository/workflow/package tuple.
+#   - Do not add `NPM_TOKEN` or `NODE_AUTH_TOKEN` fallbacks; token publishing is
+#     intentionally disabled for Webpresso repos.
 #
 # To dry-run the version path: gh workflow run release.yml -f dry-run=true
 
@@ -97,7 +97,6 @@ jobs:
           title: Version Packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           HUSKY: '0'
 
       - name: Probe published package version for artifact follow-up

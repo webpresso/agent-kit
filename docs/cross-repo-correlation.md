@@ -2,7 +2,7 @@
 type: guide
 title: Cross-Repo Correlation
 description: How webpresso tracks and audits cross-repository blueprint dependencies.
-last_updated: '2026-05-11'
+last_updated: '2026-06-07'
 ---
 
 # Cross-Repo Correlation
@@ -34,8 +34,8 @@ Example:
 depends_on: []
 cross_repo_depends_on:
   - repo: webpresso/agent-kit
-    slug: secret-aware-worker-tail-mcp
-    require_status: planned
+    slug: 2026-06-02-agent-kit-wp-deploy-orchestrator-toolchain-isolation
+    require_status: completed
 ```
 
 ```markdown
@@ -43,7 +43,7 @@ cross_repo_depends_on:
 
 | Blueprint | Relationship |
 | --- | --- |
-| [webpresso/agent-kit: secret-aware-worker-tail-mcp](https://github.com/webpresso/agent-kit/blob/main/blueprints/planned/secret-aware-worker-tail-mcp/_overview.md) | Upstream MCP helper/export lane |
+| [webpresso/agent-kit: 2026-06-02-agent-kit-wp-deploy-orchestrator-toolchain-isolation](https://github.com/webpresso/agent-kit/blob/main/blueprints/completed/2026-06-02-agent-kit-wp-deploy-orchestrator-toolchain-isolation.md) | Upstream managed deploy/toolchain contract |
 ```
 
 ## The 7 requirements

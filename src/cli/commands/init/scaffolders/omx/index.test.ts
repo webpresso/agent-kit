@@ -1,6 +1,6 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import { describe, expect, it, vi } from 'vitest'
 
@@ -8,6 +8,7 @@ import {
   ensureOmx,
   migrateDeprecatedCodexHooksFeatureFlag,
   deduplicateCodexHookTrustState,
+  repairInstalledOmxPluginHooks,
 } from './index.js'
 
 function makeSpawn(behaviors: Array<{ status: number | null; error?: Error }>) {
@@ -214,6 +215,118 @@ describe('ensureOmx', () => {
     expect(readFileSync(configPath, 'utf8')).toBe(
       '[features]\nhooks = true\ngoals = true\n\n[mcp_servers.playwright]\nenabled = true\n',
     )
+  })
+
+  it('repairs installed OMX plugin hook commands to use an absolute node path after setup', () => {
+    const codexHome = mkdtempSync(join(tmpdir(), 'wp-omx-plugin-home-'))
+    const configPath = join(codexHome, 'config.toml')
+    const hooksDir = join(
+      codexHome,
+      'plugins',
+      'cache',
+      'oh-my-codex-local',
+      'oh-my-codex',
+      '0.18.10',
+      'hooks',
+    )
+    mkdirSync(hooksDir, { recursive: true })
+    writeFileSync(join(hooksDir, 'omx-command.json'), '{}\n', 'utf8')
+    writeFileSync(join(hooksDir, 'codex-native-hook.mjs'), '// hook\n', 'utf8')
+    writeFileSync(
+      join(hooksDir, 'hooks.json'),
+      JSON.stringify(
+        {
+          hooks: {
+            UserPromptSubmit: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command: 'node "${PLUGIN_ROOT}/hooks/codex-native-hook.mjs"',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+      'utf8',
+    )
+
+    const previousPath = process.env.PATH
+    process.env.PATH = `${dirname(process.execPath)}:${previousPath ?? ''}`
+
+    try {
+      const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }, { status: 0 }])
+      ensureOmx({
+        repoRoot: '/tmp/repo',
+        options: { overwrite: false, dryRun: false },
+        spawn,
+        configPath,
+      })
+
+      const rewritten = JSON.parse(readFileSync(join(hooksDir, 'hooks.json'), 'utf8')) as {
+        hooks: { UserPromptSubmit: Array<{ hooks: Array<{ command: string }> }> }
+      }
+      const command = rewritten.hooks.UserPromptSubmit[0]?.hooks[0]?.command
+      expect(command).toContain('"${PLUGIN_ROOT}/hooks/codex-native-hook.mjs"')
+      expect(command).not.toBe('node "${PLUGIN_ROOT}/hooks/codex-native-hook.mjs"')
+      expect(command?.startsWith('"')).toBe(true)
+    } finally {
+      if (previousPath === undefined) delete process.env.PATH
+      else process.env.PATH = previousPath
+    }
+  })
+})
+
+describe('repairInstalledOmxPluginHooks', () => {
+  it('rewrites only OMX plugin hook files with bare node commands', () => {
+    const codexHome = mkdtempSync(join(tmpdir(), 'wp-omx-plugin-repair-'))
+    const targetHooksDir = join(codexHome, 'plugins', 'cache', 'plugin-a', 'omx', '1.0.0', 'hooks')
+    const untouchedHooksDir = join(codexHome, 'plugins', 'cache', 'plugin-b', 'other', '1.0.0', 'hooks')
+
+    mkdirSync(targetHooksDir, { recursive: true })
+    mkdirSync(untouchedHooksDir, { recursive: true })
+
+    writeFileSync(join(targetHooksDir, 'omx-command.json'), '{}\n', 'utf8')
+    writeFileSync(join(targetHooksDir, 'codex-native-hook.mjs'), '// hook\n', 'utf8')
+    writeFileSync(
+      join(targetHooksDir, 'hooks.json'),
+      JSON.stringify(
+        {
+          hooks: {
+            Stop: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command: 'node "${PLUGIN_ROOT}/hooks/codex-native-hook.mjs"',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+      'utf8',
+    )
+
+    writeFileSync(join(untouchedHooksDir, 'hooks.json'), '{"hooks":{}}\n', 'utf8')
+
+    const repaired = repairInstalledOmxPluginHooks(codexHome, '/abs/node')
+
+    expect(repaired).toStrictEqual([join(targetHooksDir, 'hooks.json')])
+    const rewritten = JSON.parse(readFileSync(join(targetHooksDir, 'hooks.json'), 'utf8')) as {
+      hooks: { Stop: Array<{ hooks: Array<{ command: string }> }> }
+    }
+    expect(rewritten.hooks.Stop[0]?.hooks[0]?.command).toBe(
+      '"/abs/node" "${PLUGIN_ROOT}/hooks/codex-native-hook.mjs"',
+    )
+    expect(readFileSync(join(untouchedHooksDir, 'hooks.json'), 'utf8')).toBe('{"hooks":{}}\n')
   })
 })
 

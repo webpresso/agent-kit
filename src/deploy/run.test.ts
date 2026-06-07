@@ -60,4 +60,34 @@ describe('createDeployPlan', () => {
       'Invalid deploy lane',
     )
   })
+
+  it('supports a custom adapterExport while keeping the adapterModule contract intact', async () => {
+    writeFileSync(
+      join(root, 'agent-kit.config.ts'),
+      "export const agentKitConfig = { deploy: { adapterModule: './deploy-adapter.ts', adapterExport: 'customDeployAdapter' } }\n",
+    )
+    writeFileSync(
+      join(root, 'deploy-adapter.ts'),
+      [
+        'export const customDeployAdapter = {',
+        '  createPlan: (request) => ({',
+        '    schemaVersion: 1,',
+        '    lane: request.lane,',
+        "    provider: 'cloudflare',",
+        '    requiredCredentials: [],',
+        "    steps: [{ kind: 'managed-tool', id: 'deploy', tool: 'wrangler', args: ['deploy', '--dry-run'] }],",
+        '  }),',
+        '}',
+        '',
+      ].join('\n'),
+    )
+
+    await expect(createDeployPlan({ cwd: root, lane: 'prd', dryRun: true })).resolves.toMatchObject(
+      {
+        lane: 'prd',
+        provider: 'cloudflare',
+        steps: [{ kind: 'managed-tool', tool: 'wrangler' }],
+      },
+    )
+  })
 })

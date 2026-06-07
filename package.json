@@ -109,6 +109,8 @@
     "#config/e2e-preset/*": "./src/config/e2e-preset/*.ts",
     "#hooks/*.js": "./src/hooks/*.ts",
     "#hooks/*": "./src/hooks/*.ts",
+    "#launcher/*.js": "./src/launcher/*.ts",
+    "#launcher/*": "./src/launcher/*.ts",
     "#ci/*.js": "./src/ci/*.ts",
     "#ci/*": "./src/ci/*.ts",
     "#secret-gate/*.js": "./src/secret-gate/*.ts",
@@ -246,36 +248,31 @@
       "import": {
         "types": "./dist/esm/config/tsconfig/base.json",
         "default": "./dist/esm/config/tsconfig/base.json"
-      },
-      "default": "./dist/esm/config/tsconfig/base.json"
+      }
     },
     "./tsconfig/cloudflare.json": {
       "import": {
         "types": "./dist/esm/config/tsconfig/cloudflare.json",
         "default": "./dist/esm/config/tsconfig/cloudflare.json"
-      },
-      "default": "./dist/esm/config/tsconfig/cloudflare.json"
+      }
     },
     "./tsconfig/library.json": {
       "import": {
         "types": "./dist/esm/config/tsconfig/library.json",
         "default": "./dist/esm/config/tsconfig/library.json"
-      },
-      "default": "./dist/esm/config/tsconfig/library.json"
+      }
     },
     "./tsconfig/react-library.json": {
       "import": {
         "types": "./dist/esm/config/tsconfig/react-library.json",
         "default": "./dist/esm/config/tsconfig/react-library.json"
-      },
-      "default": "./dist/esm/config/tsconfig/react-library.json"
+      }
     },
     "./tsconfig/react-router.json": {
       "import": {
         "types": "./dist/esm/config/tsconfig/react-router.json",
         "default": "./dist/esm/config/tsconfig/react-router.json"
-      },
-      "default": "./dist/esm/config/tsconfig/react-router.json"
+      }
     },
     "./vitest/node": {
       "import": {

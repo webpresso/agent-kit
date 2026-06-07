@@ -678,10 +678,10 @@ export async function runInit(flags: InitFlags): Promise<number> {
         break
     }
 
-    // Self-update the ONE globally-distributed agent-kit binary (PATH `wp`,
-    // plugin MCP, hooks all resolve to it), mirroring omx/omc/codex/claude.
-    // Non-fatal: a failed refresh never fails consumer setup, and it skips
-    // cleanly on a source/git clone, on `WP_SKIP_AUTO_INSTALL=1`, and in CI.
+    // Self-update the globally-distributed agent-kit install that backs PATH
+    // `wp`, mirroring omx/omc/codex/claude. Non-fatal: a failed refresh never
+    // fails consumer setup, and it skips cleanly on a source/git clone, on
+    // `WP_SKIP_AUTO_INSTALL=1`, and in CI.
     if (isCiEnvironment) {
       console.log('  agent-kit global: - skipped (CI environment)')
     } else {
@@ -710,10 +710,10 @@ export async function runInit(flags: InitFlags): Promise<number> {
               'the existing global binary is unchanged. Re-run `wp setup` once the registry is reachable.',
           )
           break
-        case 'agent-kit-global-staging-failed':
+        case 'agent-kit-global-repair-failed':
           console.warn(
-            `  agent-kit global: ⚠ native bin/wp staging failed (${agentKitGlobalResult.reason}); ` +
-              'the Claude plugin may keep using the previous cached launcher until the runtime package is rebuilt/reinstalled.',
+            `  agent-kit global: ⚠ root bin/wp launcher repair failed (${agentKitGlobalResult.reason}); ` +
+              'the global install may be inconsistent until it is rebuilt or reinstalled.',
           )
           break
       }
@@ -758,7 +758,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
     } else if (isCiEnvironment && presets.includes('gstack')) {
       console.log('  gstack: - skipped (CI environment)')
     } else if (presets.includes('gstack')) {
-      const gstackResult = ensureGstack({ repoRoot: consumer.repoRoot, options })
+      const gstackResult = await ensureGstack({ repoRoot: consumer.repoRoot, options })
       switch (gstackResult.kind) {
         case 'gstack-installed':
           console.log(`  gstack: ✓ installed at ${gstackResult.root}`)
@@ -792,17 +792,36 @@ export async function runInit(flags: InitFlags): Promise<number> {
           console.log('  gstack: skipped (--dry-run)')
           break
         case 'gstack-clone-failed':
-          console.error(`  gstack: ✗ git clone exited with ${gstackResult.exitCode}`)
+          console.error(
+            gstackResult.reason === 'signal-interrupted'
+              ? `  gstack: ✗ interrupted while running git clone`
+              : gstackResult.reason === 'inactivity-timeout'
+                ? `  gstack: ✗ git clone timed out after inactivity`
+                : `  gstack: ✗ git clone exited with ${gstackResult.exitCode}`,
+          )
+          console.error(`  gstack: log ${gstackResult.logPath}`)
           gstackFailure = 'clone-failed'
           break
         case 'gstack-pull-failed':
-          console.error(`  gstack: ✗ git pull exited with ${gstackResult.exitCode}`)
+          console.error(
+            gstackResult.reason === 'signal-interrupted'
+              ? `  gstack: ✗ interrupted while running git pull`
+              : gstackResult.reason === 'inactivity-timeout'
+                ? `  gstack: ✗ git pull timed out after inactivity`
+                : `  gstack: ✗ git pull exited with ${gstackResult.exitCode}`,
+          )
+          console.error(`  gstack: log ${gstackResult.logPath}`)
           gstackFailure = 'pull-failed'
           break
         case 'gstack-setup-failed':
           console.error(
-            `  gstack: ✗ ./setup ${gstackResult.command} exited with ${gstackResult.exitCode}`,
+            gstackResult.reason === 'signal-interrupted'
+              ? `  gstack: ✗ interrupted while running ./setup ${gstackResult.command}`
+              : gstackResult.reason === 'inactivity-timeout'
+                ? `  gstack: ✗ ./setup ${gstackResult.command} timed out after inactivity`
+                : `  gstack: ✗ ./setup ${gstackResult.command} exited with ${gstackResult.exitCode}`,
           )
+          console.error(`  gstack: log ${gstackResult.logPath}`)
           gstackFailure = 'setup-failed'
           break
       }

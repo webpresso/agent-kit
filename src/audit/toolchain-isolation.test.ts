@@ -44,6 +44,43 @@ describe('auditToolchainIsolation', () => {
     expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
   })
 
+  it('allows a local deploy adapter and EdgeMatte-style vp/wp split when generic tools stay upstream-owned', () => {
+    writePackage(root, {
+      scripts: {
+        qa: 'vp run qa',
+        typecheck: 'wp typecheck',
+        'deploy:dry-run': 'wp deploy --lane prd --dry-run',
+      },
+      devDependencies: { '@webpresso/agent-kit': 'latest' },
+    })
+    writeFileSync(
+      join(root, 'agent-kit.config.ts'),
+      [
+        'export const agentKitConfig = {',
+        "  deploy: { adapterModule: './deploy-adapter.ts' },",
+        '}',
+        '',
+      ].join('\n'),
+    )
+    writeFileSync(
+      join(root, 'deploy-adapter.ts'),
+      [
+        'export const webpressoDeployAdapter = {',
+        '  createPlan: (request) => ({',
+        '    schemaVersion: 1,',
+        '    lane: request.lane,',
+        "    provider: 'cloudflare',",
+        '    requiredCredentials: [],',
+        "    steps: [{ kind: 'managed-tool', id: 'deploy', tool: 'wrangler', args: ['deploy', '--dry-run'] }],",
+        '  }),',
+        '}',
+        '',
+      ].join('\n'),
+    )
+
+    expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
+  })
+
   it('walks workspace package.json files while skipping node_modules', () => {
     mkdirSync(join(root, 'apps', 'client'), { recursive: true })
     mkdirSync(join(root, 'node_modules', 'vite'), { recursive: true })

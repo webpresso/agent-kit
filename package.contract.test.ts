@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -217,6 +217,8 @@ describe('tooling umbrella package contract', () => {
     )
 
     expect(banned).toEqual([])
+    expect(packedPaths).toContain('bin/wp')
+    expect(packedPaths).not.toContain('bin/wp.js')
   }, 30_000)
 
   it('packs a manifest with no workspace-only catalog specifiers', () => {
@@ -256,9 +258,11 @@ describe('tooling umbrella package contract', () => {
         ) + '\n',
       )
 
+      chmodSync(join(packedPackageRoot, 'bin', 'wp'), 0o755)
+
       const output = execFileSync(
-        process.execPath,
-        [join(packedPackageRoot, 'bin', 'wp.js'), 'setup', '--yes', '--cwd', tmpRoot],
+        join(packedPackageRoot, 'bin', 'wp'),
+        ['setup', '--yes', '--cwd', tmpRoot],
         {
           cwd: launcherRoot,
           encoding: 'utf8',

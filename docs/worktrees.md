@@ -7,8 +7,9 @@ last_updated: 2026-05-13
 
 ## Creating one with `wp`
 
-`wp` is the current CLI entrypoint. The worktree helper accepts an explicit
-branch, but can also generate one for quick agent lanes:
+The package `bin` entrypoint is hard-cut to `bin/wp`, surfaced to users as
+`wp`. The worktree helper accepts an explicit branch, but can also generate one
+for quick agent lanes:
 
 ```bash
 wp worktree new

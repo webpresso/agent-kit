@@ -57,6 +57,14 @@ The planned hardening blueprint remains downstream residual work. The active in-
 blueprint stays the canonical upstream owner of the end-to-end native cutover, but its publish task
 is blocked until this thin-root package-surface cutover lands.
 
+> **Architecture note (2026-06-07).** This completed blueprint remains the canonical
+> root-package thin-root decision: root `package.json#bin.wp` stays `bin/wp`, the
+> root package keeps a real root launcher while native payload ownership stays
+> externalized, and the root tarball must not repack runtime payload trees.
+> Future launcher-policy cleanup belongs to
+> `blueprints/completed/2026-06-07-root-launcher-contract-and-hook-ownership-alignment.md`;
+> do not reopen or demote this completed release-unblock lane for that follow-up.
+
 ## Architecture Overview
 
 ```text

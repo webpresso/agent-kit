@@ -10,6 +10,8 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs'
+import { EventEmitter } from 'node:events'
+import { PassThrough } from 'node:stream'
 import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -22,11 +24,29 @@ const spawnSyncMock = vi.fn(() => ({
   output: [],
   signal: null,
 }))
+const spawnMock = vi.fn()
+
+class FakeAsyncChild extends EventEmitter {
+  readonly stdout = new PassThrough()
+  readonly stderr = new PassThrough()
+  readonly pid = 1234
+  readonly kill = vi.fn(() => true)
+
+  constructor() {
+    super()
+    queueMicrotask(() => {
+      this.stdout.end()
+      this.stderr.end()
+      this.emit('close', 0, null)
+    })
+  }
+}
 
 vi.mock('node:child_process', async () => {
   const actual = await vi.importActual<typeof import('node:child_process')>('node:child_process')
   return {
     ...actual,
+    spawn: (..._args: Parameters<typeof import('node:child_process').spawn>) => spawnMock(),
     spawnSync: (..._args: Parameters<typeof import('node:child_process').spawnSync>) =>
       spawnSyncMock(),
   }
@@ -162,6 +182,8 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     chmodSync(fakeContextMode, 0o755)
     process.env.PATH = `${fakeBinDir}:${originalPath ?? ''}`
     spawnSyncMock.mockClear()
+    spawnMock.mockClear()
+    spawnMock.mockImplementation(() => new FakeAsyncChild())
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -675,6 +697,8 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
     chmodSync(fakeContextMode, 0o755)
     process.env.PATH = `${fakeBinDir}:${originalPath ?? ''}`
     spawnSyncMock.mockClear()
+    spawnMock.mockClear()
+    spawnMock.mockImplementation(() => new FakeAsyncChild())
     logLines = []
     originalLog = console.log
     console.log = (...args: unknown[]): void => {

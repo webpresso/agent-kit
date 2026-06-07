@@ -2,7 +2,6 @@ import { execFileSync } from 'node:child_process'
 import {
   copyFileSync,
   existsSync,
-  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -18,6 +17,11 @@ import {
   AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES,
   evaluateAgentKitTarballSizeBudget,
 } from '#build/runtime-surface-policy.js'
+import {
+  formatRootLauncherContractFailure,
+  rootContractMode,
+  validateRootLauncherContract,
+} from '#launcher/root-contract.js'
 
 interface PackageSurfaceTarballContract {
   forbiddenPathPatterns?: readonly string[]
@@ -171,16 +175,6 @@ interface NpmPackDryRunEntry {
   files?: PackedFileRecord[]
   size?: number
   unpackedSize?: number
-}
-
-interface RuntimeManifestTarget {
-  readonly id?: string
-  readonly os?: string
-}
-
-interface RuntimeManifestRecord {
-  readonly binaryName?: string
-  readonly targets?: readonly RuntimeManifestTarget[]
 }
 
 interface MatchRule {
@@ -451,20 +445,13 @@ function auditAgentKitNativeRuntimeSurface(
   }
 
   const stagedLauncherPath = join(candidate.packageRoot, 'bin', 'wp')
-  if (!existsSync(stagedLauncherPath)) {
+  const stagedLauncherStatus = validateRootLauncherContract(stagedLauncherPath)
+  if (!stagedLauncherStatus.ok) {
     violations.push({
       file: relativePath(root, stagedLauncherPath),
-      message: 'Publishable native launcher bin/wp is missing',
-    })
-  } else if (lstatSync(stagedLauncherPath).isSymbolicLink()) {
-    violations.push({
-      file: relativePath(root, stagedLauncherPath),
-      message: 'Publishable native launcher bin/wp must be a real file, not a symlink',
-    })
-  } else if (!isRootWpDispatcher(stagedLauncherPath)) {
-    violations.push({
-      file: relativePath(root, stagedLauncherPath),
-      message: 'Publishable native launcher bin/wp must be the cross-platform JS dispatcher, not a native binary',
+      message:
+        `Publishable root launcher contract failed (${rootContractMode}): ` +
+        formatRootLauncherContractFailure(stagedLauncherStatus, 'bin/wp'),
     })
   }
 
@@ -511,11 +498,6 @@ function auditPackedTarballContent(
     }
   }
   return checked
-}
-
-function isRootWpDispatcher(path: string): boolean {
-  const text = readPackedText(path)
-  return Boolean(text?.startsWith('#!/usr/bin/env node') && text.includes("runNamedBin('wp')"))
 }
 
 function auditPackedTarballSecrets(

@@ -4,6 +4,8 @@ title: Claude plugin native runtime hardening
 owner: ozby
 status: completed
 completed_at: '2026-06-07'
+historical_verification_gap_waiver: true
+historical_verification_gap_rationale: The completed state is truthful and fully evidenced, but the direct planned→completed move was already pushed to main. Preserve lifecycle truth without rewriting published history; grandfather this one transition gap explicitly.
 complexity: M
 created: '2026-06-01'
 last_updated: '2026-06-07'
@@ -66,6 +68,13 @@ minimal fix is **withdrawn**: native per-platform binaries are the intended
 single-global-binary architecture, not a deferred fallback. `bin/wp.js` →
 `bin/_run.js` remains only the **source-dev** launcher for running from an
 uncompiled clone (dev vs prod), not a parallel production shim.
+
+> **Architecture note (2026-06-07).** The phrase **pure-native, no node** applies
+> to plugin-owned native launch surfaces such as `${CLAUDE_PLUGIN_ROOT}/bin/wp`
+> for MCP/hooks. It does **not** prohibit the root npm package from keeping
+> `package.json#bin.wp = bin/wp` where root `bin/wp` is the JavaScript dispatcher
+> described by
+> `blueprints/completed/2026-06-07-root-launcher-contract-and-hook-ownership-alignment.md`.
 
 **Current repo check (2026-06-06, refreshed):** the residual has narrowed. `.claude-plugin/plugin.json`
 now launches `${CLAUDE_PLUGIN_ROOT}/bin/wp mcp`, `src/hooks/doctor.ts` reports native launch mode /

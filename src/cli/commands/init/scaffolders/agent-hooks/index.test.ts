@@ -947,6 +947,53 @@ hooks:
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
   })
 
+  it('keeps skill-managed Stop wp commands quiet on stdout', async () => {
+    const verifySkillDir = join(repoRoot, '.agent', 'skills', 'verify')
+    mkdirSync(verifySkillDir, { recursive: true })
+    writeFileSync(
+      join(verifySkillDir, 'SKILL.md'),
+      `---
+name: verify
+hooks:
+  Stop:
+    - command: wp audit agents
+      timeout: 20
+---
+
+# Verify
+`,
+    )
+
+    const binDir = join(repoRoot, 'node_modules', '.bin')
+    mkdirSync(binDir, { recursive: true })
+    const wpBin = join(binDir, 'wp')
+    writeFileSync(wpBin, '#!/bin/sh\necho "Agent surfaces: OK (3 checked)"\n')
+    chmodSync(wpBin, 0o755)
+
+    await scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const settings = JSON.parse(
+      readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8'),
+    ) as {
+      hooks: {
+        Stop: Array<{ hooks: Array<{ command: string }> }>
+      }
+    }
+    const command = settings.hooks.Stop.flatMap((group) => group.hooks)
+      .map((hook) => hook.command)
+      .find((candidate) => candidate.includes('# from-skill: verify'))
+
+    expect(command).toBeDefined()
+    const result = spawnSync('sh', ['-c', command ?? ''], {
+      cwd: repoRoot,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: repoRoot },
+      encoding: 'utf8',
+    })
+
+    expect(result.status).toBe(0)
+    expect(result.stdout).toBe('')
+  })
+
   it('prunes stale legacy Claude ak-* hook commands while preserving unrelated hooks', async () => {
     const settingsPath = join(repoRoot, '.claude', 'settings.json')
     mkdirSync(join(repoRoot, '.claude'), { recursive: true })

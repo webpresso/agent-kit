@@ -6,7 +6,7 @@ status: completed
 historical_verification_gap_waiver: true
 complexity: L
 created: "2026-06-02"
-last_updated: "2026-06-04"
+last_updated: "2026-06-07"
 progress: "COMPLETED (2026-06-04): the shipped deploy/audit surfaces were grounded as already present; the remaining repo-local delta (`react-library.json` owning `types: [\"react\", \"react-dom\"]`) is implemented and covered by regression proof. Repo-local closeout proof passed via `wp test src/cli/commands/init/config.test.ts src/cli/commands/init/init.integration.test.ts`, `wp typecheck`, `wp lint src/cli/commands/init/config.ts src/cli/commands/init/index.ts src/cli/commands/init/config.test.ts src/cli/commands/init/init.integration.test.ts`, `wp audit blueprint-lifecycle --legacy-omx`, `wp test src/config/tsconfig/tsconfig-parity.test.ts src/config/export-resolution.test.ts`, and `bun scripts/public-consumer-smoke.ts --setup-only --skip-build`. Downstream consumer dry-run adoption remains owned by their blueprints."
 review_target: internal multi-repo platform work
 depends_on: []
@@ -35,8 +35,13 @@ This is the **parent/upstream** blueprint. The three consumer blueprints depend
 on it:
 
 - ozby.dev — `ozby/ozby-dev/blueprints/in-progress/2026-06-02-ozby-dev-strict-agent-kit-dogfood.md`
-- edge-matte — `ozby/edge-matte/blueprints/planned/2026-06-02-edge-matte-wp-deploy-adapter-toolchain-isolation.md`
-- ingest-lens — `ozby/ingest-lens/blueprints/planned/2026-06-02-ingest-lens-wp-deploy-adapter-toolchain-isolation.md`
+- edge-matte — `ozby/edge-matte/blueprints/planned/2026-06-02-edge-matte-wp-deploy-adapter-toolchain-isolation.md` (documentary split-consumer adopter; keep `vp` + `wp` and local deploy specifics)
+- ingest-lens — `ozby/ingest-lens/blueprints/planned/2026-06-02-ingest-lens-wp-deploy-adapter-toolchain-isolation.md` (documentary `wp`-first adopter; QA/CI stays on canonical `wp_*` + secret-gate surfaces)
+
+Because those child blueprints live in other repos, they are documentary
+cross-repo references here. `wp audit roadmap-links` in `agent-kit` cannot
+validate them; the durable local coordination artifact is
+`blueprints/completed/2026-05-30-cross-project-wp-execution-map.md`.
 
 ## Provenance
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, lstatSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import {
@@ -9,6 +9,12 @@ import {
   AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES,
   evaluateAgentKitTarballSizeBudget,
 } from '../src/build/runtime-surface-policy.js'
+import {
+  formatRootLauncherContractFailure,
+  formatRootLauncherContractSuccess,
+  rootContractMode,
+  validateRootLauncherContract,
+} from '../src/launcher/root-contract.js'
 import {
   preparePackedManifest,
   restorePackedManifest,
@@ -66,13 +72,6 @@ function run(
 
 function read(path: string): string {
   return readFileSync(resolve(ROOT, path), 'utf8')
-}
-
-function isRootWpDispatcher(path: string): boolean {
-  const buffer = readFileSync(path)
-  if (buffer.includes(0)) return false
-  const text = buffer.toString('utf8')
-  return text.startsWith('#!/usr/bin/env node') && text.includes("runNamedBin('wp')")
 }
 
 function fail(name: string, detail: string): CheckResult {
@@ -280,17 +279,18 @@ const runtimeManifest = existsSync(resolve(ROOT, runtimeManifestPath))
   }
 
 const stagedLauncherPath = resolve(ROOT, 'bin', 'wp')
-  if (!existsSync(stagedLauncherPath)) {
-    results.push(fail('root-wp-dispatcher', 'bin/wp missing'))
-  } else if (lstatSync(stagedLauncherPath).isSymbolicLink()) {
-    results.push(fail('root-wp-dispatcher', 'bin/wp must be a real file, not a symlink'))
-  } else if (!isRootWpDispatcher(stagedLauncherPath)) {
-    results.push(
-      fail('root-wp-dispatcher', 'bin/wp must be the cross-platform JS dispatcher, not a native binary'),
-    )
-  } else {
-    results.push(pass('root-wp-dispatcher', 'bin/wp present as the JS dispatcher'))
-  }
+  const stagedLauncherStatus = validateRootLauncherContract(stagedLauncherPath)
+  results.push(
+    stagedLauncherStatus.ok
+      ? pass(
+          'root-wp-dispatcher',
+          `${formatRootLauncherContractSuccess('bin/wp')} (contract=${rootContractMode})`,
+        )
+      : fail(
+          'root-wp-dispatcher',
+          `${formatRootLauncherContractFailure(stagedLauncherStatus, 'bin/wp')} (contract=${rootContractMode})`,
+        ),
+  )
 
 const pluginManifestPath = resolve(ROOT, '.claude-plugin', 'plugin.json')
   if (!existsSync(pluginManifestPath)) {

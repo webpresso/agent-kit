@@ -57,6 +57,10 @@ describe('release workflow publish path', () => {
     expect(workflow.includes('publish: pnpm run release:publish')).toBe(true)
     expect(workflow.includes('createGithubReleases: false')).toBe(true)
     expect(workflow.includes('pull-requests: write')).toBe(true)
+    expect(workflow.includes('id-token: write')).toBe(true)
+    expect(workflow.includes('secrets.NPM_TOKEN')).toBe(false)
+    expect(workflow.includes('NPM_TOKEN:')).toBe(false)
+    expect(workflow.includes('NODE_AUTH_TOKEN:')).toBe(false)
   })
 
   it('does not stage native runtime artifacts into the changesets version-PR working tree', () => {

@@ -279,7 +279,8 @@ function materializeClaudeSkillCommand(skillHook: SkillHook): string {
   const tag = buildSkillTag(skillHook.skillName)
   if (skillHook.command.startsWith('wp ')) {
     const args = skillHook.command.slice(3)
-    return `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp" ${args} || true ${tag}`
+    const stdoutPolicy = skillHook.event === 'Stop' ? ' >/dev/null' : ''
+    return `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp" ${args}${stdoutPolicy} || true ${tag}`
   }
   return `${skillHook.command} ${tag}`
 }

@@ -71,6 +71,12 @@ and lifecycle proof lanes (`wp_audit(kind="package-surface")`, `scripts/public-r
 > residual proof lane, and do **not** open additional cutover blueprints unless publish/cutover
 > reveals genuinely new repo-owned scope outside Task 1.5, the thin-root plan, and the hardening residual.
 
+> **Post-ship launcher-owner note (2026-06-07).** The publish/cutover is completed.
+> Any remaining cleanup that separates root launcher ownership from plugin-cache
+> hook ownership now belongs to
+> `blueprints/completed/2026-06-07-root-launcher-contract-and-hook-ownership-alignment.md`,
+> not this completed native-distribution lane.
+
 **Target (decided): pure-native plugin launch, no node.** The manifest points directly at a host
 native binary that is a real file in the plugin root:
 ```json

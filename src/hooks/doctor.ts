@@ -15,6 +15,7 @@ import { spawn } from 'node:child_process'
 import { platform } from 'node:os'
 import { join, resolve } from 'node:path'
 
+import { repairInstalledOmxPluginHooks } from '#cli/commands/init/scaffolders/omx/index.js'
 import {
   findAgentKitPackageRoot,
   resolveAgentKitPackageRoot,
@@ -22,6 +23,12 @@ import {
 } from '#cli/commands/init/package-root'
 import { STATE_FILE_RELATIVE_PATH, readDevLinkState } from '#dev/dev-link-state'
 import { detectDevLinkBreakage, formatBreakageMessage } from '#hooks/check-dev-link/index'
+import {
+  expectedRootWpBinRelativePath,
+  formatRootLauncherContractFailure,
+  rootContractMode,
+  validateRootLauncherContract,
+} from '#launcher/root-contract.js'
 import { isMcpReady } from './shared/mcp-sentinel.js'
 
 export interface DoctorCheck {
@@ -38,7 +45,7 @@ export interface DoctorResult {
 }
 
 interface NativePluginRuntimeStatus {
-  readonly launchMode: 'native' | 'legacy-js' | 'custom' | 'missing'
+  readonly launchMode: 'native' | 'stale-node-launcher' | 'custom' | 'missing'
   readonly targetId?: string
   readonly manifestPath?: string
   readonly stagedBinPath?: string
@@ -445,6 +452,90 @@ function formatNativeRuntimeDetail(status: NativePluginRuntimeStatus): string {
     .join(', ')
 }
 
+function isSourceCheckoutWithRuntimeTooling(root: string): boolean {
+  return (
+    tryAccess(join(root, 'src', 'cli', 'cli.ts')) &&
+    tryAccess(join(root, 'scripts', 'build-runtime-binaries.ts')) &&
+    tryAccess(join(root, 'scripts', 'stage-plugin-runtime-artifacts.ts'))
+  )
+}
+
+export function checkRootLauncherContract(): DoctorCheck {
+  const root = resolvePackageRoot()
+  if (!root) {
+    return {
+      name: 'root launcher contract',
+      ok: false,
+      detail: `contract=${rootContractMode}, expected=${expectedRootWpBinRelativePath}, reason=package root not found`,
+    }
+  }
+
+  const launcherPath = join(root, expectedRootWpBinRelativePath)
+  const status = validateRootLauncherContract(launcherPath)
+  const detail = [
+    `contract=${rootContractMode}`,
+    `expected=${expectedRootWpBinRelativePath}`,
+    status.ok
+      ? 'root bin/wp is the JS dispatcher; plugin-owned native launch surfaces stay separate'
+      : `reason=${formatRootLauncherContractFailure(status, expectedRootWpBinRelativePath)}`,
+  ].join(', ')
+
+  return { name: 'root launcher contract', ok: status.ok, detail }
+}
+
+export function checkOmxPluginCacheStaleSurfaceRepair(options: {
+  codexHome?: string
+  nodeBinary?: string
+  repair?: (codexHome: string, nodeBinary: string) => string[]
+} = {}): DoctorCheck {
+  const codexHome = options.codexHome ?? process.env.CODEX_HOME ?? join(process.env.HOME || '', '.codex')
+  if (!codexHome) {
+    return {
+      name: 'OMX plugin-cache stale-surface repair',
+      ok: true,
+      detail: 'skipped (CODEX_HOME/HOME unavailable; durable ownership belongs to OMX setup/plugin generation)',
+    }
+  }
+
+  const nodeBinary = options.nodeBinary ?? process.execPath
+  if (!nodeBinary) {
+    return {
+      name: 'OMX plugin-cache stale-surface repair',
+      ok: true,
+      detail: 'skipped (absolute node path unavailable; durable ownership belongs to OMX setup/plugin generation)',
+    }
+  }
+
+  const repair = options.repair ?? repairInstalledOmxPluginHooks
+  let repairedPaths: string[]
+  try {
+    repairedPaths = repair(codexHome, nodeBinary)
+  } catch {
+    return {
+      name: 'OMX plugin-cache stale-surface repair',
+      ok: true,
+      detail:
+        'skipped (could not inspect OMX plugin-cache hooks; durable ownership belongs to OMX setup/plugin generation)',
+    }
+  }
+  if (repairedPaths.length === 0) {
+    return {
+      name: 'OMX plugin-cache stale-surface repair',
+      ok: true,
+      detail:
+        'no positively identified stale OMX plugin-cache hook surfaces; durable ownership belongs to OMX setup/plugin generation',
+    }
+  }
+
+  return {
+    name: 'OMX plugin-cache stale-surface repair',
+    ok: true,
+    detail:
+      `bounded stale-surface repair rewrote ${repairedPaths.length} positively identified stale ` +
+      'OMX plugin-cache hook surface(s); durable ownership belongs to OMX setup/plugin generation',
+  }
+}
+
 export function checkNativePluginRuntime(): DoctorCheck {
   const root = resolvePluginRoot()
   if (!root) {
@@ -488,7 +579,7 @@ export function checkNativePluginRuntime(): DoctorCheck {
         ? 'native'
         : server?.command === 'node' ||
             (server?.args ?? []).some((arg) => arg.endsWith('wp.js'))
-          ? 'legacy-js'
+          ? 'stale-node-launcher'
           : server
             ? 'custom'
             : 'missing'
@@ -563,6 +654,22 @@ export function checkNativePluginRuntime(): DoctorCheck {
     }
 
     if (!tryAccess(runtimeTargetPath)) {
+      if (launchMode === 'native' && isSourceCheckoutWithRuntimeTooling(root)) {
+        return {
+          name: 'native plugin runtime',
+          ok: true,
+          detail: formatNativeRuntimeDetail({
+            launchMode,
+            targetId,
+            manifestPath,
+            stagedBinPath,
+            runtimeTargetPath,
+            reason:
+              'skipped (source checkout runtime payload not staged; run build:runtime-binaries then stage:plugin-runtime to verify the plugin-native lane locally)',
+          }),
+        }
+      }
+
       return {
         name: 'native plugin runtime',
         ok: false,
@@ -933,7 +1040,9 @@ export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<
   checks.push(checkConsumerCodexHookPaths(opts.cwd))
 
   checks.push({ name: 'plugin.json integrity', ...checkPluginJson() })
+  checks.push({ advisory: true, ...checkRootLauncherContract() })
   checks.push({ advisory: true, ...checkNativePluginRuntime() })
+  checks.push({ advisory: true, ...checkOmxPluginCacheStaleSurfaceRepair() })
   checks.push({
     name: 'managed hooks installed (.claude/settings.json)',
     advisory: true,

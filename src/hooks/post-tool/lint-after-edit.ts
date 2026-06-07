@@ -35,7 +35,7 @@ export function shouldLintFile(input: ToolInput): boolean {
 }
 
 /**
- * Hot-path compatibility shim.
+ * Hot-path stub.
  *
  * `PostToolUse` fires for every eligible edit/write, so broad shell-outs here
  * add latency on the critical path. Until the deferred execution plane exists,

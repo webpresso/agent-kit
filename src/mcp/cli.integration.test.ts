@@ -20,7 +20,7 @@ describe('wp mcp CLI integration', () => {
   it('initializes over stdio and lists registered tools without exiting early', async () => {
     transport = new StdioClientTransport({
       command: process.execPath,
-      args: [join(PACKAGE_ROOT, 'bin', 'wp.js'), 'mcp'],
+      args: [join(PACKAGE_ROOT, 'bin', 'wp'), 'mcp'],
       env: {
         ...process.env,
         WP_SKIP_UPDATE_CHECK: '1',

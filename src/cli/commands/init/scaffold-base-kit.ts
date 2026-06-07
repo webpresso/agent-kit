@@ -107,6 +107,9 @@ export const BASE_KIT_QUALITY_TARGETS = QUALITY_BOOTSTRAP_ONLY_MAP.map(([, targe
  * unmasking 23k+ generated artifacts to git status.
  */
 const BOOTSTRAP_ONLY_MAP: Array<[string, string]> = [
+  ['Brewfile.tmpl', 'Brewfile'],
+  ['.node-version.tmpl', '.node-version'],
+  ['.nvmrc.tmpl', '.nvmrc'],
   ['.gitignore.tmpl', '.gitignore'],
   ['pnpm-workspace.yaml.tmpl', 'pnpm-workspace.yaml'],
 ]

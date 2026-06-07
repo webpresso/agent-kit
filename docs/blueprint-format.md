@@ -156,7 +156,7 @@ Canonical cross-repo dependency example:
 ```yaml
 cross_repo_depends_on:
   - repo: ozby/ingest-lens
-    slug: public-ci-surface-adoption
+    slug: 2026-06-02-ingest-lens-wp-deploy-adapter-toolchain-isolation
     require_status: planned
 ```
 
@@ -167,7 +167,8 @@ Canonical documentary cross-plan link example:
 
 | Blueprint | Relationship | Required alignment |
 | --- | --- | --- |
-| [ozby/ingest-lens: public-ci-surface-adoption](https://github.com/ozby/ingest-lens/blob/main/blueprints/planned/public-ci-surface-adoption/_overview.md) | Downstream adoption lane | Use `act-with-webpresso`, `with-secrets -- <cmd>`, and canonical MCP `wp_*` tool names. |
+| [ozby/ingest-lens: 2026-06-02-ingest-lens-wp-deploy-adapter-toolchain-isolation](https://github.com/ozby/ingest-lens/blob/main/blueprints/planned/2026-06-02-ingest-lens-wp-deploy-adapter-toolchain-isolation.md) | Downstream `wp`-first thin-consumer lane | Use shipped `wp deploy`, `wp ci act`, and canonical `wp_*` tool names; keep deploy specifics behind the local adapter seam. |
+| [ozby/edge-matte: 2026-06-02-edge-matte-wp-deploy-adapter-toolchain-isolation](https://github.com/ozby/edge-matte/blob/main/blueprints/planned/2026-06-02-edge-matte-wp-deploy-adapter-toolchain-isolation.md) | Downstream split-consumer lane | Preserve the `vp` + `wp` split and local deploy specifics; only remove direct tool ownership when the shared surface already exists. |
 ```
 
 Validation and discovery surfaces:

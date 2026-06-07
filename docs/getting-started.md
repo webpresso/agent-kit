@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-05-29'
+last_updated: '2026-06-07'
 ---
 
 # Getting started
@@ -30,6 +30,10 @@ authoring-time dependencies forever.
 Your repo now has one shared agent contract across the supported coding-agent
 surfaces.
 
+The root launcher contract is a hard cut: the package `bin` entrypoint is
+`bin/wp`, `wp` resolves through that file, and there is no `bin/wp.js`
+compatibility shim to preserve or repair.
+
 No private registry setup is required.
 
 If you prefer not to keep a global install around, use the one-shot form:
@@ -47,8 +51,16 @@ installed, use:
   to pin the host set explicitly
 - `WP_VERBOSE_GSTACK=1 wp setup` to show raw upstream gstack output alongside
   the bounded phase progress
+- `WP_GSTACK_INACTIVITY_MS=900000 wp setup` to raise the inactivity guard on
+  slow or proxied networks; if you still need more detail, pair it with
+  `WP_VERBOSE_GSTACK=1`
 - `WP_SKIP_GSTACK=1 wp setup` only when you intentionally want to skip gstack
   entirely
+
+`wp setup` writes one gstack session log per run under webpresso's state-root
+storage and prints the log path on failures. On Windows, timeout/interrupt
+cleanup is best-effort direct-child termination only; the wrapper does not
+guarantee grandchild teardown there.
 
 ## What changed
 

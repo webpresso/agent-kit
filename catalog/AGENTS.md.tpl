@@ -184,8 +184,8 @@ Full protocol: `.agent/rules/changeset-release.md`
 - No `.mjs` source files — write `.ts` (with Bun/Node shebang if needed).
 - Use `vp` as the command facade (`vp install`, `vp run <script>`) so Vite+ selects the repo-declared package-manager substrate. Do not call `npm`, `npx`, or raw package-manager globals for repo workflows unless a deeper repo instruction explicitly requires it.
 - All packages: `"type": "module"`, `publishConfig` → public npm registry.
-- Auth: use npm trusted publishing where available, or scope `NPM_TOKEN` to
-  publish-only flows. Never hardcode tokens.
+- Auth: use npm trusted publishing/OIDC only. Do not use `NPM_TOKEN` or
+  `NODE_AUTH_TOKEN` publish fallbacks in Webpresso repos.
 
 Full details: `.agent/rules/package-conventions.md`
 

@@ -79,7 +79,6 @@ export function isAgentKitPackageRoot(
     existsSync(join(dir, 'bin', 'wp')) ||
     existsSync(join(dir, 'bin', 'wp.cmd')) ||
     existsSync(join(dir, 'bin', 'wp.exe')) ||
-    existsSync(join(dir, 'bin', 'wp.js')) ||
     existsSync(join(dir, '.claude-plugin', 'plugin.json')) ||
     existsSync(join(dir, 'src', 'cli', 'cli.ts')) ||
     existsSync(join(dir, 'dist', 'esm', 'cli', 'cli.js'))

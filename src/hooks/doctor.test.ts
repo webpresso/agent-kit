@@ -30,7 +30,11 @@ describe('hooks/doctor', () => {
         return false
       }
     }) as typeof existsSync)
-    mockLstatSync.mockReturnValue({ isSymbolicLink: () => false } as ReturnType<typeof lstatSync>)
+    mockLstatSync.mockReturnValue(
+      { isSymbolicLink: () => false, isFile: () => true, mode: 0o100755 } as ReturnType<
+        typeof lstatSync
+      >,
+    )
   })
   afterEach(() => {
     vi.unstubAllEnvs()
@@ -1029,7 +1033,7 @@ describe('hooks/doctor', () => {
       expect(result.detail).toContain('stagedBin=')
     })
 
-    it('surfaces legacy launch mode and missing staged bin reasons without suggesting timeouts', async () => {
+    it('surfaces stale node-launcher drift and missing staged bin reasons without suggesting timeouts', async () => {
       const hostTargetId = `linux-${process.arch}`
       const runtimeManifestPath = join(repoRoot, 'bin', 'runtime-manifest.json')
       const knownPaths = new Set([pkgJson, pluginJson, runtimeManifestPath])
@@ -1061,9 +1065,244 @@ describe('hooks/doctor', () => {
       const result = checkNativePluginRuntime()
 
       expect(result.ok).toBe(false)
-      expect(result.detail).toContain('launchMode=legacy-js')
+      expect(result.detail).toContain('launchMode=stale-node-launcher')
       expect(result.detail).toContain('reason=staged native launcher missing')
       expect(result.detail).not.toContain('timeout')
+    })
+
+    it('fails when the target runtime binary is missing even if root bin/wp is the JS dispatcher', async () => {
+      const hostTargetId = `linux-${process.arch}`
+      const runtimeManifestPath = join(repoRoot, 'bin', 'runtime-manifest.json')
+      const stagedBinPath = join(repoRoot, 'bin', 'wp')
+      const runtimeTargetPath = join(repoRoot, 'bin', 'runtime', hostTargetId, 'wp')
+      const knownPaths = new Set([pkgJson, pluginJson, runtimeManifestPath, stagedBinPath])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === pkgJson) {
+          return JSON.stringify({ bin: { wp: './bin/wp' } })
+        }
+        if (String(path) === pluginJson) {
+          return JSON.stringify({
+            version: '0.28.0',
+            mcpServers: { webpresso: { command: '${CLAUDE_PLUGIN_ROOT}/bin/wp', args: ['mcp'] } },
+          })
+        }
+        if (String(path) === runtimeManifestPath) {
+          return JSON.stringify({
+            binaryName: 'wp',
+            targets: [{ id: hostTargetId, os: 'linux', cpu: process.arch }],
+          })
+        }
+        if (String(path) === stagedBinPath) {
+          return "#!/usr/bin/env node\n\nimport { runNamedBin } from './_run.js'\n\nrunNamedBin('wp')\n"
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+
+      const { checkNativePluginRuntime } = await import('#hooks/doctor')
+      const result = checkNativePluginRuntime()
+
+      expect(result.ok).toBe(false)
+      expect(result.detail).toContain('launchMode=native')
+      expect(result.detail).toContain(`targetBin=${runtimeTargetPath}`)
+      expect(result.detail).toContain('reason=target runtime binary missing')
+    })
+
+    it('skips unstaged source checkouts instead of warning about a missing target runtime binary', async () => {
+      const hostTargetId = `linux-${process.arch}`
+      const runtimeManifestPath = join(repoRoot, 'bin', 'runtime-manifest.json')
+      const stagedBinPath = join(repoRoot, 'bin', 'wp')
+      const runtimeBuildScriptPath = join(repoRoot, 'scripts', 'build-runtime-binaries.ts')
+      const runtimeStageScriptPath = join(repoRoot, 'scripts', 'stage-plugin-runtime-artifacts.ts')
+      const sourceCliPath = join(repoRoot, 'src', 'cli', 'cli.ts')
+      const knownPaths = new Set([
+        pkgJson,
+        pluginJson,
+        runtimeManifestPath,
+        stagedBinPath,
+        runtimeBuildScriptPath,
+        runtimeStageScriptPath,
+        sourceCliPath,
+      ])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === pkgJson) {
+          return JSON.stringify({ bin: { wp: './bin/wp' } })
+        }
+        if (String(path) === pluginJson) {
+          return JSON.stringify({
+            version: '0.28.0',
+            mcpServers: { webpresso: { command: '${CLAUDE_PLUGIN_ROOT}/bin/wp', args: ['mcp'] } },
+          })
+        }
+        if (String(path) === runtimeManifestPath) {
+          return JSON.stringify({
+            binaryName: 'wp',
+            targets: [{ id: hostTargetId, os: 'linux', cpu: process.arch }],
+          })
+        }
+        if (String(path) === stagedBinPath) {
+          return "#!/usr/bin/env node\n\nimport { runNamedBin } from './_run.js'\n\nrunNamedBin('wp')\n"
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+
+      const { checkNativePluginRuntime } = await import('#hooks/doctor')
+      const result = checkNativePluginRuntime()
+
+      expect(result.ok).toBe(true)
+      expect(result.detail).toContain('launchMode=native')
+      expect(result.detail).toContain('skipped')
+      expect(result.detail).toContain('source checkout')
+      expect(result.detail).toContain('build:runtime-binaries')
+      expect(result.detail).toContain('stage:plugin-runtime')
+    })
+
+    it('still rejects missing native runtime payloads when the staged launcher is not JavaScript', async () => {
+      const hostTargetId = `linux-${process.arch}`
+      const runtimeManifestPath = join(repoRoot, 'bin', 'runtime-manifest.json')
+      const stagedBinPath = join(repoRoot, 'bin', 'wp')
+      const knownPaths = new Set([pkgJson, pluginJson, runtimeManifestPath, stagedBinPath])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === pkgJson) {
+          return JSON.stringify({ bin: { wp: './bin/wp' } })
+        }
+        if (String(path) === pluginJson) {
+          return JSON.stringify({
+            version: '0.28.0',
+            mcpServers: { webpresso: { command: '${CLAUDE_PLUGIN_ROOT}/bin/wp', args: ['mcp'] } },
+          })
+        }
+        if (String(path) === runtimeManifestPath) {
+          return JSON.stringify({
+            binaryName: 'wp',
+            targets: [{ id: hostTargetId, os: 'linux', cpu: process.arch }],
+          })
+        }
+        if (String(path) === stagedBinPath) {
+          return 'native-binary-placeholder'
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+
+      const { checkNativePluginRuntime } = await import('#hooks/doctor')
+      const result = checkNativePluginRuntime()
+
+      expect(result.ok).toBe(false)
+      expect(result.detail).toContain('reason=target runtime binary missing')
+    })
+
+    it('does not let the root JS dispatcher mask a stale node-launcher plugin manifest', async () => {
+      const hostTargetId = `linux-${process.arch}`
+      const runtimeManifestPath = join(repoRoot, 'bin', 'runtime-manifest.json')
+      const stagedBinPath = join(repoRoot, 'bin', 'wp')
+      const runtimeTargetPath = join(repoRoot, 'bin', 'runtime', hostTargetId, 'wp')
+      const knownPaths = new Set([pkgJson, pluginJson, runtimeManifestPath, stagedBinPath])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === pkgJson) {
+          return JSON.stringify({ bin: { wp: './bin/wp' } })
+        }
+        if (String(path) === pluginJson) {
+          return JSON.stringify({
+            version: '0.28.0',
+            mcpServers: { webpresso: { command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/bin/wp.js', 'mcp'] } },
+          })
+        }
+        if (String(path) === runtimeManifestPath) {
+          return JSON.stringify({
+            binaryName: 'wp',
+            targets: [{ id: hostTargetId, os: 'linux', cpu: process.arch }],
+          })
+        }
+        if (String(path) === stagedBinPath) {
+          return "#!/usr/bin/env node\n\nimport { runNamedBin } from './_run.js'\n\nrunNamedBin('wp')\n"
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+
+      const { checkNativePluginRuntime } = await import('#hooks/doctor')
+      const result = checkNativePluginRuntime()
+
+      expect(result.ok).toBe(false)
+      expect(result.detail).toContain('launchMode=stale-node-launcher')
+      expect(result.detail).toContain(`targetBin=${runtimeTargetPath}`)
+      expect(result.detail).toContain('reason=target runtime binary missing')
+    })
+  })
+
+  describe('checkRootLauncherContract', () => {
+    it('reports the explicit root launcher contract and JS-dispatcher boundary', async () => {
+      const launcherPath = join(repoRoot, 'bin', 'wp')
+      const knownPaths = new Set([pkgJson, pluginJson, launcherPath])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === pkgJson) return JSON.stringify({ bin: { wp: './bin/wp' } })
+        if (String(path) === pluginJson) return JSON.stringify({ version: '0.28.0', mcpServers: {} })
+        if (String(path) === launcherPath) {
+          return "#!/usr/bin/env node\n\nimport { runNamedBin } from './_run.js'\n\nrunNamedBin('wp')\n"
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+      mockStatSync.mockReturnValue({ isFile: () => true, mode: 0o100755 } as ReturnType<typeof statSync>)
+
+      const { checkRootLauncherContract } = await import('#hooks/doctor')
+      const result = checkRootLauncherContract()
+
+      expect(result.ok).toBe(true)
+      expect(result.detail).toContain('contract=js-dispatcher-externalized-runtime')
+      expect(result.detail).toContain('expected=bin/wp')
+      expect(result.detail).toContain('plugin-owned native launch surfaces stay separate')
+    })
+  })
+
+  describe('checkOmxPluginCacheStaleSurfaceRepair', () => {
+    it('labels bounded rewrites as stale-surface repair', async () => {
+      const { checkOmxPluginCacheStaleSurfaceRepair } = await import('#hooks/doctor')
+      const result = checkOmxPluginCacheStaleSurfaceRepair({
+        codexHome: '/tmp/.codex',
+        nodeBinary: '/abs/node',
+        repair: () => ['/tmp/.codex/plugins/cache/oh-my-codex-local/oh-my-codex/0.18.10/hooks/hooks.json'],
+      })
+
+      expect(result.ok).toBe(true)
+      expect(result.detail).toContain('bounded stale-surface repair')
+      expect(result.detail).toContain('positively identified stale OMX plugin-cache hook surface')
+      expect(result.detail).toContain('durable ownership belongs to OMX setup/plugin generation')
+    })
+
+    it('reports cleanly when no stale OMX hook surfaces are positively identified', async () => {
+      const { checkOmxPluginCacheStaleSurfaceRepair } = await import('#hooks/doctor')
+      const result = checkOmxPluginCacheStaleSurfaceRepair({
+        codexHome: '/tmp/.codex',
+        nodeBinary: '/abs/node',
+        repair: () => [],
+      })
+
+      expect(result.ok).toBe(true)
+      expect(result.detail).toContain('no positively identified stale OMX plugin-cache hook surfaces')
+      expect(result.detail).toContain('durable ownership belongs to OMX setup/plugin generation')
     })
   })
 })
