@@ -2,13 +2,20 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { clearManagedRunnerCache, setRtkAvailabilityProbeForTest } from '#tool-runtime'
 import { createAkTestCommandConfig, TEST_COMMAND_HELP } from './test.js'
 
 const tempDirs: string[] = []
 
+beforeEach(() => {
+  setRtkAvailabilityProbeForTest(true)
+})
+
 afterEach(() => {
+  setRtkAvailabilityProbeForTest(null)
+  clearManagedRunnerCache()
   while (tempDirs.length > 0) rmSync(tempDirs.pop()!, { recursive: true, force: true })
 })
 

@@ -1,8 +1,18 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { clearManagedRunnerCache, setRtkAvailabilityProbeForTest } from '#tool-runtime'
 import { createAkE2eCommandConfig, E2E_COMMAND_HELP, plannedGroupsToCommandConfigs } from './e2e.js'
 
 describe('wp e2e command helpers', () => {
+  beforeEach(() => {
+    setRtkAvailabilityProbeForTest(true)
+  })
+
+  afterEach(() => {
+    setRtkAvailabilityProbeForTest(null)
+    clearManagedRunnerCache()
+  })
+
   it('documents the generic E2E flag surface', () => {
     expect(E2E_COMMAND_HELP).toContain('wp e2e --suite smoke')
     expect(E2E_COMMAND_HELP).toContain('--test-list')
