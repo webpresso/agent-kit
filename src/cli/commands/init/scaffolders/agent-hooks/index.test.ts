@@ -904,9 +904,13 @@ hooks:
       group.hooks.map((hook) => hook.command),
     )
     expect(stopCommands.some((command) => command.includes('wp-stop-qa'))).toBe(true)
+    // BP1: skill commands resolve wp via the launcher chain (project bin →
+    // package-root fallback) instead of the bare project bin invocation.
     expect(
-      stopCommands.some((command) =>
-        command.includes('"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp" audit agents'),
+      stopCommands.some(
+        (command) =>
+          command.includes('"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp"') &&
+          command.includes('audit agents'),
       ),
     ).toBe(true)
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
@@ -1927,5 +1931,126 @@ describe('buildWebpressoHookGroups', () => {
     expect(result.SessionStart?.[0]?.hooks[0]?.command).toContain('$CLAUDE_PROJECT_DIR')
     expect(result.SessionStart?.[0]?.hooks[0]?.command).toContain('wp-sessionstart-routing')
     expect(result.PreToolUse?.[0]?.matcher).toBe('Bash|Write|Edit|MultiEdit')
+  })
+})
+
+describe('BP1 hotfix: launcher chain, node fallback, gstack stdin scoping, stop-qa timeout', () => {
+  let repoRoot: string
+
+  beforeEach(() => {
+    repoRoot = mkdtempSync(join(tmpdir(), 'wp-agent-hooks-bp1-'))
+  })
+
+  afterEach(() => {
+    rmSync(repoRoot, { recursive: true, force: true })
+  })
+
+  it('materializes skill wp-commands with a package-root fallback and a visible skip warning', async () => {
+    const skillDir = join(repoRoot, '.agent', 'skills', 'verify')
+    mkdirSync(skillDir, { recursive: true })
+    writeFileSync(
+      join(skillDir, 'SKILL.md'),
+      [
+        '---',
+        'hooks:',
+        '  Stop:',
+        '    - command: wp audit agents',
+        '      timeout: 20',
+        '---',
+        '',
+        '# verify',
+        '',
+      ].join('\n'),
+      'utf8',
+    )
+
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    const settings = JSON.parse(
+      readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8'),
+    ) as {
+      hooks: { Stop: Array<{ hooks: Array<{ command: string }> }> }
+    }
+    const stopCommand = settings.hooks.Stop.flatMap((group) =>
+      group.hooks.map((hook) => hook.command),
+    ).find((command) => command.includes('# from-skill: verify'))
+    expect(stopCommand).toBeDefined()
+    // Falls back to the agent-kit package root when the project bin is absent
+    // (the workspace-root case where the Stop gate used to silently no-op).
+    expect(stopCommand).toContain(
+      quoteShell(join(resolvePackageRootForHookLaunchers(), 'bin', 'wp')),
+    )
+    // Skipped runs warn on stderr instead of silently succeeding.
+    expect(stopCommand).toContain('>&2')
+    expect(stopCommand).not.toContain('|| true')
+  })
+
+  it('renders shim launchers with a command -v node fallback and no duplicated exit 0', async () => {
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+    for (const bin of WEBPRESSO_HOOK_BINS) {
+      const launcher = readFileSync(
+        join(repoRoot, '.claude', 'hooks', 'managed', `${bin}.sh`),
+        'utf8',
+      )
+      expect(launcher).toContain('command -v node')
+      expect(launcher).not.toMatch(/exit 0\s+exit 0/u)
+    }
+    // Non-guard hooks warn on stderr (never silently skip); guard stays fail-closed.
+    const devLink = readFileSync(
+      join(repoRoot, '.claude', 'hooks', 'managed', 'wp-check-dev-link.sh'),
+      'utf8',
+    )
+    expect(devLink).toContain('>&2')
+    const guard = readFileSync(
+      join(repoRoot, '.claude', 'hooks', 'managed', 'wp-pretool-guard.sh'),
+      'utf8',
+    )
+    expect(guard).toContain('permissionDecision')
+  })
+
+  it('scopes the gstack PreToolUse check to gstack-owned skills via stdin', async () => {
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+    const checkGstackPath = join(repoRoot, '.claude', 'hooks', 'check-gstack.sh')
+    const checkGstack = readFileSync(checkGstackPath, 'utf8')
+    expect(checkGstack).toContain('"skill"')
+    expect(checkGstack).toContain('case "$skill" in')
+
+    // HOME without gstack so the missing-gstack branch is exercised.
+    const nonGstack = spawnSync('sh', [checkGstackPath], {
+      input: JSON.stringify({ tool_name: 'Skill', tool_input: { skill: 'webpresso:qa' } }),
+      encoding: 'utf8',
+      env: { ...process.env, HOME: repoRoot },
+    })
+    expect(nonGstack.stdout).not.toContain('permissionDecision')
+
+    const gstackOwned = spawnSync('sh', [checkGstackPath], {
+      input: JSON.stringify({ tool_name: 'Skill', tool_input: { skill: 'browse' } }),
+      encoding: 'utf8',
+      env: { ...process.env, HOME: repoRoot },
+    })
+    expect(gstackOwned.stdout).toContain('"permissionDecision":"deny"')
+  })
+
+  it('regenerates the gstack check scripts when the template changes', async () => {
+    const hooksDir = join(repoRoot, '.claude', 'hooks')
+    mkdirSync(hooksDir, { recursive: true })
+    writeFileSync(join(hooksDir, 'check-gstack.sh'), '#!/bin/sh\nexit 1\n', 'utf8')
+
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    const content = readFileSync(join(hooksDir, 'check-gstack.sh'), 'utf8')
+    expect(content).toContain('case "$skill" in')
+  })
+
+  it('emits a measured timeout for the wp-stop-qa Stop hook', () => {
+    const groups = buildWebpressoHookGroups({
+      resolveBin: (name) => name,
+      matchers: { preToolUse: 'Bash', postToolUse: 'Write' },
+    })
+    const stopEntry = groups.Stop?.flatMap((group) => group.hooks).find((hook) =>
+      hook.command.includes('wp-stop-qa'),
+    )
+    expect(stopEntry?.timeout).toBeGreaterThan(0)
+    expect(stopEntry?.timeout).toBeLessThan(60)
   })
 })

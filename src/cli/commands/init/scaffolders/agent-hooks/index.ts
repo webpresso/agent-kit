@@ -280,7 +280,13 @@ function materializeClaudeSkillCommand(skillHook: SkillHook): string {
   if (skillHook.command.startsWith('wp ')) {
     const args = skillHook.command.slice(3)
     const stdoutPolicy = skillHook.event === 'Stop' ? ' >/dev/null' : ''
-    return `[ -x "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp" ] && "$CLAUDE_PROJECT_DIR/node_modules/.bin/wp" ${args}${stdoutPolicy} || true ${tag}`
+    // Resolve `wp` via the project bin first, then the agent-kit package root
+    // (workspace roots without a local install used to silently no-op here —
+    // the Stop `wp audit agents` gate never ran). When neither resolves, warn
+    // on stderr instead of swallowing the skip behind `|| true`.
+    const fallbackWp = quoteShell(join(resolvePackageRootForHookLaunchers(), 'bin', 'wp'))
+    const verb = args.split(/\s+/u)[0]?.replaceAll(/[^\w-]/gu, '') || 'hook'
+    return `_WPSKILL="$CLAUDE_PROJECT_DIR/node_modules/.bin/wp"; [ -x "$_WPSKILL" ] || _WPSKILL=${fallbackWp}; if [ -x "$_WPSKILL" ]; then "$_WPSKILL" ${args}${stdoutPolicy}; else echo "webpresso: skill hook (wp ${verb}) skipped: wp not found; run vp install or wp setup" >&2; fi ${tag}`
   }
   return `${skillHook.command} ${tag}`
 }
@@ -347,7 +353,11 @@ export function buildWebpressoHookGroups(input: {
     ],
     Stop: [
       {
-        hooks: [{ type: 'command', command: resolveBin('wp-stop-qa') }],
+        // Timeout measured 2026-06-07: wp-stop-qa cold start 0.33s / warm
+        // ~0.18s (5 samples, empty stdin, this repo). 10s = measured cold
+        // ×30 headroom for large-repo git scans on cold FS caches, still 6×
+        // tighter than the 60s harness default (no-timeout-as-fix rule).
+        hooks: [{ type: 'command', command: resolveBin('wp-stop-qa'), timeout: 10 }],
       },
     ],
   }
@@ -689,11 +699,74 @@ export interface ScaffoldAgentHooksResult {
 
 // Fast existence check — no network, no install, sub-10ms.
 // Installation is handled by `wp setup` (gstack scaffolder runs by default).
+// Reads the Skill tool payload from stdin and denies ONLY gstack-owned
+// skills; an unconditional deny used to block every skill (webpresso, OMC,
+// …) whenever gstack was missing (2026-06 audit).
+const GSTACK_OWNED_SKILLS = [
+  '_gstack-command',
+  'autoplan',
+  'benchmark',
+  'benchmark-models',
+  'browse',
+  'canary',
+  'careful',
+  'codex',
+  'connect-chrome',
+  'context-restore',
+  'context-save',
+  'cso',
+  'design-consultation',
+  'design-html',
+  'design-review',
+  'design-shotgun',
+  'devex-review',
+  'document-generate',
+  'document-release',
+  'freeze',
+  'gstack-upgrade',
+  'guard',
+  'health',
+  'investigate',
+  'land-and-deploy',
+  'landing-report',
+  'learn',
+  'make-pdf',
+  'office-hours',
+  'pair-agent',
+  'plan-ceo-review',
+  'plan-design-review',
+  'plan-devex-review',
+  'plan-eng-review',
+  'plan-tune',
+  'qa',
+  'qa-only',
+  'retro',
+  'review',
+  'scrape',
+  'setup-browser-cookies',
+  'setup-deploy',
+  'setup-gbrain',
+  'ship',
+  'skillify',
+  'spec',
+  'sync-gbrain',
+  'unfreeze',
+] as const
+
 const GSTACK_CHECK_SH = `#!/bin/sh
 if [ -d "$HOME/.claude/skills/gstack/bin" ]; then
   exit 0
 fi
-printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"gstack is not installed. Fix: run \`wp setup\` then restart Claude Code."}}\\n'
+payload="$(cat 2>/dev/null || true)"
+skill="$(printf '%s' "$payload" | sed -n 's/.*"skill"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p' | head -n 1)"
+case "$skill" in
+  ${GSTACK_OWNED_SKILLS.join('|')}|ios-*)
+    printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"gstack is not installed (a gstack-owned skill was requested). Fix: run \`wp setup\` then restart Claude Code."}}\\n'
+    ;;
+  *)
+    exit 0
+    ;;
+esac
 `
 
 // SessionStart soft warning — emits additionalContext, never blocks.
@@ -709,16 +782,19 @@ function ensureGstackHooks(repoRoot: string, options: MergeOptions = {}): void {
   const hooksDir = join(repoRoot, '.claude', 'hooks')
   mkdirSync(hooksDir, { recursive: true })
 
-  const preToolPath = join(hooksDir, 'check-gstack.sh')
-  if (!existsSync(preToolPath)) {
-    writeFileSync(preToolPath, GSTACK_CHECK_SH, 'utf8')
-    chmodSync(preToolPath, 0o755)
-  }
-
-  const sessionPath = join(hooksDir, 'check-gstack-session.sh')
-  if (!existsSync(sessionPath)) {
-    writeFileSync(sessionPath, GSTACK_SESSION_SH, 'utf8')
-    chmodSync(sessionPath, 0o755)
+  // Overwrite-on-change (mirrors ensureManagedWebpressoHookLaunchers) so
+  // template fixes actually reach existing repos on regen — write-once kept
+  // the unconditional-deny bug alive in every previously scaffolded repo.
+  const gstackScripts: ReadonlyArray<readonly [string, string]> = [
+    ['check-gstack.sh', GSTACK_CHECK_SH],
+    ['check-gstack-session.sh', GSTACK_SESSION_SH],
+  ]
+  for (const [name, content] of gstackScripts) {
+    const scriptPath = join(hooksDir, name)
+    if (!existsSync(scriptPath) || readFileSync(scriptPath, 'utf8') !== content) {
+      writeFileSync(scriptPath, content, 'utf8')
+    }
+    chmodSync(scriptPath, 0o755)
   }
 }
 
@@ -778,7 +854,13 @@ function renderManagedWebpressoHookLauncher(repoRoot: string, binName: string): 
   const nodeBinary = quoteShell(process.execPath)
   const projectBinPath = quoteShell(resolveProjectHookBinPath(repoRoot, binName))
   const fallbackBinPath = quoteShell(resolvePackageHookBin(binName))
-  const missingFallback = binName === PRETOOL_GUARD_BIN ? PRETOOL_GUARD_MISSING_DENY : 'exit 0'
+  // Guard fails closed (explicit deny JSON); every other hook warns on stderr
+  // instead of silently exiting — a silently-disabled hook hid the broken
+  // node pin for weeks (2026-06 audit).
+  const missingFallback =
+    binName === PRETOOL_GUARD_BIN
+      ? PRETOOL_GUARD_MISSING_DENY
+      : `echo "webpresso hook ${binName} skipped: runtime not found; run vp install or wp setup" >&2`
 
   // Prefer the self-contained compiled `wp` binary when it resolves: it bundles
   // its own runtime, so it is immune to the node-path staleness that would break
@@ -796,12 +878,19 @@ fi
 `
       : ''
 
+  // Node resolution chain: pinned absolute path (survives sanitized hook
+  // environments) -> `command -v node` (survives runtime version bumps that
+  // stale the pin). Only after both fail does the missing-fallback fire.
   return `#!/bin/sh
 ${compiledPreamble}NODE_BINARY=${nodeBinary}
 PROJECT_BIN_PATH=${projectBinPath}
 FALLBACK_BIN_PATH=${fallbackBinPath}
 
 if [ ! -x "$NODE_BINARY" ]; then
+  NODE_BINARY="$(command -v node 2>/dev/null || true)"
+fi
+
+if [ -z "$NODE_BINARY" ] || [ ! -x "$NODE_BINARY" ]; then
   ${missingFallback}
   exit 0
 fi

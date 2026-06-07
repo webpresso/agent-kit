@@ -395,6 +395,7 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(packageJson.scripts.mutation).toBe('wp test --mutation')
     expect(packageJson.scripts.e2e).toBe('wp e2e --config playwright.config.ts')
     expect(packageJson.devDependencies['@webpresso/agent-kit']).toBe('latest')
+    expect(packageJson.devDependencies['@stryker-mutator/typescript-checker']).toBe('latest')
 
     // Blueprints
     expect(existsSync(join(repo, 'blueprints', 'planned', '.gitkeep'))).toBe(true)
@@ -615,9 +616,13 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
       group.hooks.map((hook) => hook.command),
     )
     expect(stopCommands.some((command) => command.includes('wp-stop-qa'))).toBe(true)
+    // BP1: skill commands resolve wp via the launcher chain (project bin →
+    // package-root fallback) instead of the bare project bin invocation.
     expect(
-      stopCommands.some((command) =>
-        command.includes('"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp" audit agents'),
+      stopCommands.some(
+        (command) =>
+          command.includes('"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp"') &&
+          command.includes('audit agents'),
       ),
     ).toBe(true)
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
