@@ -58,9 +58,12 @@ installed, use:
   entirely
 
 `wp setup` writes one gstack session log per run under webpresso's state-root
-storage and prints the log path on failures. On Windows, timeout/interrupt
-cleanup is best-effort direct-child termination only; the wrapper does not
-guarantee grandchild teardown there.
+storage and prints the log path on failures. In quiet mode, the wrapper stays
+concise but now emits periodic "still running" heartbeat lines when an external
+gstack step is alive without fresh output; that keeps long phases like browser
+install/extraction from looking dead without dumping raw child logs by default.
+On Windows, timeout/interrupt cleanup is best-effort direct-child termination
+only; the wrapper does not guarantee grandchild teardown there.
 
 ## What changed
 
