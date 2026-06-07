@@ -36,7 +36,7 @@ const REQUIRE_REPO_VISIBILITY = process.argv.includes('--require-repo-visibility
 const HISTORY_AUDIT_PATH = resolve(ROOT, 'docs/research/2026-05-28-agent-kit-history-audit.md')
 const BLUEPRINT_PATH = resolve(
   ROOT,
-  'blueprints/in-progress/2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md',
+  'blueprints/completed/2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md',
 )
 
 const DENIED_PACKED_RUNTIME_PREFIXES = [

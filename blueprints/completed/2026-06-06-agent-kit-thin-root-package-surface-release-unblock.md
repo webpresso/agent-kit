@@ -2,11 +2,12 @@
 type: blueprint
 title: Agent-kit thin-root package-surface release unblock
 owner: ozby
-status: in-progress
+status: completed
+completed_at: '2026-06-07'
 complexity: M
 created: '2026-06-06'
-last_updated: '2026-06-06'
-progress: '80% (Task 1.0/1.1/1.2 complete with staged thin-root proof, review approval, and UltraQA pass; hosted Release rerun on main remains)'
+last_updated: '2026-06-07'
+progress: '100% (thin-root pack surface shipped; public-readiness and package-surface pass on the staged tree; remote tag and npm registry confirm the hosted Release published @webpresso/agent-kit@0.29.3 without the old ERR_STRING_TOO_LONG blocker)'
 depends_on: []
 tags:
   - distribution
@@ -94,9 +95,9 @@ After (thin-root B)
 
 ## Cross-references
 
-- **Upstream:** `blueprints/in-progress/2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md`
+- **Upstream:** `blueprints/completed/2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md`
   — owns the native runtime cutover, but Task 1.5 is blocked until this blueprint lands.
-- **Downstream:** `blueprints/planned/2026-06-01-claude-plugin-native-runtime-hardening.md`
+- **Downstream:** `blueprints/completed/2026-06-01-claude-plugin-native-runtime-hardening.md`
   — launcher-diagnostics / installed-plugin residual after publish is unblocked.
 
 ## Quick Reference (Execution Waves)
@@ -122,8 +123,8 @@ as the first blocker before publish/cutover proof.
 
 **Files:**
 
-- Modify: `blueprints/in-progress/2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md`
-- Modify: `blueprints/planned/2026-06-01-claude-plugin-native-runtime-hardening.md`
+- Modify: `blueprints/completed/2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md`
+- Modify: `blueprints/completed/2026-06-01-claude-plugin-native-runtime-hardening.md`
 - Modify: `blueprints/README.md`
 
 **Acceptance:**
@@ -212,8 +213,11 @@ with thin-root assertions, using the staged thin-root measurement from Task 1.1.
 
 #### [release] Task 1.3: Prove the thin-root surface locally and rerun hosted Release
 
-**Status:** blocked
-**Blocked:** Hosted `Release` proof requires these changes merged to `main`; local staged proof, review, and UltraQA are complete.
+**Status:** done
+**Done (2026-06-07):** local staged proof remained green, `bun scripts/public-readiness.ts` passed,
+and read-only release evidence now exists: remote tag `v0.29.3` plus npm registry `latest=0.29.3`
+for `@webpresso/agent-kit` confirm the hosted Release completed without reintroducing the old
+root-tarball failure mode.
 
 **Depends:** Task 1.2
 
@@ -236,7 +240,7 @@ publish blocker is actually gone.
 **Acceptance:**
 
 - [x] All tarball proofs run against a staged runtime tree, not an unstaged checkout.
-- [ ] Hosted `Release` completes publish of `@webpresso/agent-kit` on `main`; the root package no longer fails with `ERR_STRING_TOO_LONG` or any new package-surface/tarball-size error.
+- [x] Hosted `Release` completed publish of `@webpresso/agent-kit@0.29.3` on `main`; the root package no longer failed with `ERR_STRING_TOO_LONG` or a new package-surface/tarball-size error.
 
 ## Verification Gates
 

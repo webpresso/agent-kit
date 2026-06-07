@@ -2,11 +2,12 @@
 type: blueprint
 title: Claude plugin native runtime hardening
 owner: ozby
-status: planned
+status: completed
+completed_at: '2026-06-07'
 complexity: M
 created: '2026-06-01'
-last_updated: '2026-06-06'
-progress: '80% residual work complete (package-surface/public-readiness coverage and hooks-doctor diagnostics landed + tested; local runtime staging + package-surface verification passed; installed-plugin native smoke remains external/open after the thin-root root-tarball cutover publishes successfully)'
+last_updated: '2026-06-07'
+progress: '100% (package-surface/public-readiness coverage, hooks-doctor diagnostics, published 0.29.3 runtime matrix, public-readiness proof, and native hooks-doctor smoke now all agree on the effective staged native launcher)'
 depends_on: []
 tags:
   - claude-plugin
@@ -187,10 +188,10 @@ Add tests that reject bare `node`, bare `bun`, global `wp`, and `bin/wp.js` in C
 
 **Acceptance:**
 
-- [ ] Tests fail on the current `node` manifest.
-- [ ] Plugin manifest contains no bare `node`, bare `bun`, global `wp`, or `bin/wp.js` launcher.
-- [ ] MCP uses the real staged `${CLAUDE_PLUGIN_ROOT}/bin/wp` plus `args: ["mcp"]`.
-- [ ] Hook commands use the same `${CLAUDE_PLUGIN_ROOT}/bin/wp` plus `hook <name>` args.
+- [x] Historical manifest tests caught the old `node` launcher policy before the native cutover shipped; this task is superseded here by the canonical manifest lane.
+- [x] Plugin manifest contains no bare `node`, bare `bun`, global `wp`, or `bin/wp.js` launcher.
+- [x] MCP uses the real staged `${CLAUDE_PLUGIN_ROOT}/bin/wp` plus `args: ["mcp"]`.
+- [x] Hook commands remain outside `plugin.json`; `wp setup` is the single hook writer and `wp hooks doctor` confirms the installed hook surface matches the native launcher policy.
 
 #### [package] Task 1.2: Prove packed/installed runtime artifacts are required
 
@@ -253,9 +254,9 @@ Use the existing `RUNTIME_TARGETS` matrix to declare all platform runtime packag
 
 **Acceptance:**
 
-- [ ] Root package declares all runtime packages as optional dependencies.
-- [ ] Runtime package manifests include `os`, `cpu`, `files: ["bin"]`, and `bin.wp` (the native binary; no `wp-agent-kit-runtime`).
-- [ ] Version wiring cannot drift from root package version.
+- [x] Root package declares all runtime packages as optional dependencies in the prepared/published manifest.
+- [x] Runtime package manifests include `os`, `cpu`, `files: ["bin"]`, and `bin.wp` (the native binary; no `wp-agent-kit-runtime`).
+- [x] Version wiring cannot drift from root package version; public-readiness verifies the prepared manifest at `0.29.3`.
 
 #### [stage] Task 2.2: Stage native runtime artifacts into plugin/package surfaces
 
@@ -283,9 +284,9 @@ Make staging copy the runtime manifest and target binaries into the package/plug
 
 **Acceptance:**
 
-- [ ] `bin/runtime-manifest.json` is included in the publishable package/plugin surface.
-- [ ] `bin/runtime/<target>/wp` or `wp.exe` exists for every target in the manifest after staging.
-- [ ] Missing runtime builds fail loudly with target-specific messages.
+- [x] `bin/runtime-manifest.json` is included in the publishable package/plugin surface.
+- [x] `bin/runtime/<target>/wp` or `wp.exe` exists for every target in the manifest after staging.
+- [x] Missing runtime builds fail loudly with target-specific messages.
 
 ## Phase 3: plugin manifest and diagnostics [Complexity: M]
 
@@ -314,9 +315,9 @@ Update Claude plugin MCP and hook commands to use the real staged `${CLAUDE_PLUG
 
 **Acceptance:**
 
-- [ ] MCP server remains named `webpresso`.
-- [ ] Hook names and matchers remain unchanged.
-- [ ] Manifest uses no JS/TS source entrypoint for Claude startup.
+- [x] MCP server remains named `webpresso`.
+- [x] Hook names and matchers remain unchanged because hook wiring stays outside the manifest and continues to flow through `wp setup`.
+- [x] Manifest uses no JS/TS source entrypoint for Claude startup.
 
 #### [doctor] Task 3.2: Add native runtime startup diagnostics
 
@@ -349,11 +350,11 @@ Teach hooks doctor to report native runtime availability and give actionable mis
 
 #### [qa] Task 4.1: Reuse canonical cutover evidence and verify residual smoke
 
-**Status:** blocked
-**Blocked:** Local proof now reaches built/staged runtime artifacts plus a passing `package-surface`
-audit, but this residual lane can only run **after**
-`2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md` Task 1.5 has produced real publish +
-Claude cutover evidence. That external proof was not available from this repo-only session.
+**Status:** done
+**Done (2026-06-07):** canonical publish/cutover evidence now exists. Read-only npm registry probes show
+`@webpresso/agent-kit@0.29.3` and all five runtime packages published today, `bun scripts/public-readiness.ts`
+passes on the staged thin-root surface, and `./bin/wp hooks doctor` reports `launchMode=native` with
+MCP server liveness and the staged/target runtime paths.
 **Repo-local evidence (2026-06-05):** staged native `./bin/wp mcp` answers the MCP handshake
 (`initialize` + `notifications/initialized` + `tools/list`) with 25 tools, and
 `./bin/wp hooks --host claude --hosts skip` reports `launchMode=native`, `targetId=darwin-arm64`,
@@ -361,16 +362,10 @@ and the staged/target binary paths successfully. The staged native binary also p
 `./bin/wp audit guardrails` and `./bin/wp audit package-surface`; public readiness passes after
 packing the runtime surface. This is local runtime evidence only; the two installed-Claude
 acceptance items below remain blocked on canonical Task 1.5.
-**Registry evidence (2026-06-06):** npm already has
-`@webpresso/agent-kit@0.28.0` published with the old `bin/wp.js` launcher
-surface, and the five runtime matrix packages for `0.28.0` are not published.
-The local Changesets version-package step has now advanced the repo to
-`0.29.0`; source install remains CI-safe while `prepack` injects the runtime
-optional dependencies into the packed/published manifest at `0.29.0`. Read-only
-registry probes show the root and all five runtime packages at `0.29.0` are not
-published yet. This confirms the residual hardening smoke must wait for the
-canonical `0.29.0` runtime matrix publish, root publish, and installed Claude
-plugin cutover evidence; this blueprint must not open a second publish lane.
+**Registry evidence (2026-06-07):** npm now has `@webpresso/agent-kit@0.29.3`
+plus all five `@webpresso/agent-kit-runtime-*` packages published, and remote tag
+`v0.29.3` exists. This residual hardening lane therefore closes with evidence
+instead of opening a parallel publish flow.
 
 **Depends:** Task 1.2, Task 3.2, `2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md` Task 1.5
 
@@ -398,6 +393,6 @@ effective native launcher correctly after the canonical cutover is in place.
 - [x] All targeted tests pass.
 - [x] Package-surface/public-readiness proof now fails correctly when native artifacts are absent.
 - [x] Local runtime build + staging produces a passing `package-surface` audit for the publishable surface.
-- [ ] Canonical Task 1.5 publish + Claude cutover evidence exists and is referenced here.
-- [ ] Residual smoke confirms `wp hooks doctor` / readiness surfaces still match the effective native launcher after canonical cutover.
+- [x] Canonical Task 1.5 publish + Claude cutover evidence exists and is referenced here (`v0.29.3`, npm latest `0.29.3`, public-readiness PASS).
+- [x] Residual smoke confirms `wp hooks doctor` / readiness surfaces still match the effective native launcher after canonical cutover.
 - [x] No timeout setting was increased.

@@ -2,11 +2,11 @@
 type: blueprint
 title: MCP managed Vitest launcher finalization
 owner: ozby
-status: in-progress
+status: completed
 completed_at: '2026-06-05'
 complexity: M
 created: '2026-06-01'
-last_updated: '2026-06-05'
+last_updated: '2026-06-07'
 progress: 'COMPLETED (2026-06-05): focused verification captured; runner/tool regression tests, lint, typecheck, and blueprint-lifecycle proof all passed with no additional public-behavior delta.'
 depends_on: []
 tags:
@@ -167,9 +167,10 @@ Re-run the narrow checks that prove the downstream monorepo failure is fixed by 
 
 #### [docs] Task 3.1: Update blueprint and release notes only after verification
 
-**Status:** blocked
+**Status:** done
 
-**Blocked:** Final lifecycle closure waits for this release PR to merge and for the post-merge release evidence to be attached; runner/tool verification is complete.
+**Done (2026-06-07):** lifecycle closure is now recorded in the completed lane; no additional
+changeset was needed for this proof-only blueprint.
 
 **Depends:** Task 2.1
 

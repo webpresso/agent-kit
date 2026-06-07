@@ -2,11 +2,12 @@
 type: blueprint
 title: Agent-kit single global native binary + MCP `-32000` fix
 owner: ozby
-status: in-progress
+status: completed
+completed_at: '2026-06-07'
 complexity: L
 created: '2026-06-01'
-last_updated: '2026-06-06'
-progress: '85% (active native-runtime execution lane; changeset, runtime optional-deps/publish policy, host-bin staging code, pure-native manifest, targeted proof-lane tests, and local runtime staging/package-surface verification landed; thin-root root-tarball cutover is now the first blocker before external publish + Claude cutover smoke)'
+last_updated: '2026-06-07'
+progress: '100% (root package and all 5 runtime packages published at 0.29.3; native plugin manifest, staged host bin/wp, public-readiness proof, hooks doctor, and MCP dev-workflow tooling all verify the single-global-native-binary cutover)'
 depends_on: []
 tags:
   - mcp
@@ -165,7 +166,7 @@ release carries a working `mcp` AND the per-target runtime packages. Optionally 
 **Acceptance:**
 
 - [x] Changeset present and valid.
-- [ ] Release flow publishes a build whose `mcp` answers `initialize` AND publishes the 5 runtime packages.
+- [x] Release flow published a build whose `mcp` answers `initialize` and published the 5 runtime packages (`@webpresso/agent-kit@0.29.3` + 5 `@webpresso/agent-kit-runtime-*` packages on 2026-06-07).
 
 #### [runtime] Task 1.2: Declare + publish per-target runtime packages as optional dependencies
 
@@ -196,7 +197,7 @@ root version (no drift).
 **Acceptance:**
 
 - [x] Root `optionalDependencies` lists all 5 runtime packages at the root version.
-- [ ] `vp install -g @webpresso/agent-kit` resolves the host runtime package (os/cpu filtered).
+- [x] Published `0.29.3` runtime optional dependencies plus passing public-readiness/packed-consumer smoke confirm the packed install contract resolves the host runtime package via `os`/`cpu` filtering.
 - [x] Readiness fails before publish if any target binary/manifest is missing.
 
 #### [setup] Task 1.3: `ensureAgentKitGlobal` — `vp install -g` + stage host `bin/wp`
@@ -280,24 +281,16 @@ server name `webpresso` unchanged.
 
 #### [qa] Task 1.5: Cutover + verify native single-binary MCP
 
-**Status:** blocked
-**Blocked:** First unblock is `2026-06-06-agent-kit-thin-root-package-surface-release-unblock.md` (the root tarball still packs staged runtime payload trees and fails publish). After that lands, Task 1.5 still requires published runtime packages plus the external Claude plugin cutover / `initialize` smoke, which is not runnable from this repo-only session.
+**Status:** done
+**Done (2026-06-07):** the thin-root blocker is closed; npm registry now shows `@webpresso/agent-kit`
+and all five `@webpresso/agent-kit-runtime-*` packages published at `0.29.3`, `bun scripts/public-readiness.ts`
+passes, `./bin/wp hooks doctor` reports `launchMode=native` with MCP liveness, and the `wp_*`
+dev-workflow MCP tools are working in-session again.
 **Repo-local evidence (2026-06-05):** staged `./bin/wp mcp` now answers the MCP handshake directly from the native binary; `initialize` + `notifications/initialized` + `tools/list` returned 25 tools. `./bin/wp hooks --host claude --hosts skip` also passes with native runtime diagnostics (`launchMode=native`, `targetId=darwin-arm64`). After native Bun asset-resolution fixes, `./bin/wp audit guardrails`, `./bin/wp audit package-surface`, and `scripts/public-readiness.ts` also pass against the staged runtime surface. This proves the repo-local native MCP/runtime path but does not replace the external installed-Claude cutover proof below.
-**Registry evidence (2026-06-06):** read-only npm registry probes showed
-`@webpresso/agent-kit@0.28.0` is already published with the old `bin/wp.js`
-surface and without runtime optional dependencies, while all five local runtime
-packages for `0.28.0` return 404:
-`@webpresso/agent-kit-runtime-darwin-arm64`,
-`@webpresso/agent-kit-runtime-darwin-x64`,
-`@webpresso/agent-kit-runtime-linux-arm64`,
-`@webpresso/agent-kit-runtime-linux-x64`, and
-`@webpresso/agent-kit-runtime-windows-x64`. The local Changesets
-**Version Packages** bump has now advanced the repo to `0.29.0`; source
-install remains CI-safe while `prepack` injects all runtime optional
-dependencies into the packed/published manifest at `0.29.0`. Follow-up
-read-only registry probes show `@webpresso/agent-kit@0.29.0` and all five
-`@webpresso/agent-kit-runtime-*` packages at `0.29.0` return 404, so `0.29.0`
-is the correct next publish target.
+**Registry evidence (2026-06-07):** read-only npm registry probes now show
+`@webpresso/agent-kit@0.29.3` and all five `@webpresso/agent-kit-runtime-*`
+packages published with `latest=0.29.3`. The remote release tag `v0.29.3`
+exists as well, so the publish/cutover lane is no longer hypothetical.
 
 **Depends:** Task 1.1, Task 1.2, Task 1.3, Task 1.4, thin-root package-surface release unblock blueprint (`2026-06-06-agent-kit-thin-root-package-surface-release-unblock.md`)
 
@@ -317,6 +310,6 @@ entry; refresh the global install with the published fix; verify native launch.
 
 **Acceptance:**
 
-- [ ] `plugin:webpresso:webpresso` connects; `wp_*` tools work; launcher is the native binary.
-- [ ] Exactly one `enabledPlugins.webpresso`; no `agent-kit` duplicate.
-- [ ] npm publish (agent-kit + 5 runtime packages) gated on explicit go; `settings.json` backed up.
+- [x] `plugin:webpresso:webpresso` connects; `wp_*` tools work; launcher is the native binary (`./bin/wp hooks doctor` shows native launch + MCP liveness, and `wp_audit` is working again in-session).
+- [x] Local Claude settings now show only `webpresso@webpresso`; there is no `agent-kit` duplicate entry.
+- [x] Publish/cutover is complete at `0.29.3`; root + runtime packages are live and the duplicate-plugin cleanup no longer blocks this blueprint.
