@@ -23,6 +23,7 @@ import { CodexAppServerClient } from '#codex/app-server/client.js'
 import type { CodexAppServerApi } from '#codex/app-server/types.js'
 import {
   normalizeGlobalCodexHooksFile,
+  resolveInstalledOmxHookScriptPath,
   resolveBinaryOnPath,
 } from '#cli/commands/init/scaffolders/agent-hooks/codex-global-normalize'
 import { isPresetOwnedGlobalCodexHook } from './codex-global-ownership.js'
@@ -832,6 +833,7 @@ export async function scaffoldAgentHooks(
     {
       contextModeBinary: resolveBinaryOnPath('context-mode'),
       nodeBinary: process.execPath,
+      omxScriptPath: resolveInstalledOmxHookScriptPath(),
     },
     input.options,
   )

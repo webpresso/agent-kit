@@ -279,6 +279,111 @@ describe('ensureOmx', () => {
       else process.env.PATH = previousPath
     }
   })
+
+  it('rewrites an already-managed global OMX wrapper to the current stable script path', () => {
+    const homeDir = mkdtempSync(join(tmpdir(), 'wp-omx-managed-wrapper-home-'))
+    const previousHome = process.env.HOME
+    process.env.HOME = homeDir
+
+    const codexHome = join(homeDir, '.codex')
+    mkdirSync(codexHome, { recursive: true })
+    const configPath = join(codexHome, 'config.toml')
+    const hooksPath = join(codexHome, 'hooks.json')
+    const managedDir = join(codexHome, 'managed-hooks')
+    mkdirSync(managedDir, { recursive: true })
+    mkdirSync(
+      join(
+        homeDir,
+        '.vite-plus',
+        'packages',
+        'oh-my-codex',
+        'lib',
+        'node_modules',
+        'oh-my-codex',
+        'dist',
+        'scripts',
+      ),
+      { recursive: true },
+    )
+
+    writeFileSync(
+      join(
+        homeDir,
+        '.vite-plus',
+        'packages',
+        'oh-my-codex',
+        'lib',
+        'node_modules',
+        'oh-my-codex',
+        'dist',
+        'scripts',
+        'codex-native-hook.js',
+      ),
+      '// stable hook\n',
+      'utf8',
+    )
+    writeFileSync(
+      hooksPath,
+      JSON.stringify(
+        {
+          hooks: {
+            Stop: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command: `"${join(managedDir, 'wp-global-codex-omx-hook.sh')}"`,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+      'utf8',
+    )
+    writeFileSync(
+      join(managedDir, 'wp-global-codex-omx-hook.sh'),
+      '#!/bin/sh\nexec "/stale/node" "/stale/codex-native-hook.js" "$@"\n',
+      'utf8',
+    )
+
+    try {
+      const spawn = makeSpawn([{ status: 0 }, { status: 0 }, { status: 0 }, { status: 0 }])
+      const result = ensureOmx({
+        repoRoot: '/tmp/repo',
+        options: { overwrite: false, dryRun: false },
+        spawn,
+        configPath,
+      })
+
+      expect(result).toMatchObject({
+        kind: 'omx-ok',
+        codexGlobalHooks: { repaired: true, targetPath: hooksPath },
+      })
+      const rewritten = readFileSync(join(managedDir, 'wp-global-codex-omx-hook.sh'), 'utf8')
+      expect(rewritten).toContain('command -v node')
+      expect(rewritten).toContain(
+        `HOOK_SCRIPT="${join(
+          homeDir,
+          '.vite-plus',
+          'packages',
+          'oh-my-codex',
+          'lib',
+          'node_modules',
+          'oh-my-codex',
+          'dist',
+          'scripts',
+          'codex-native-hook.js',
+        )}"`,
+      )
+    } finally {
+      if (previousHome === undefined) delete process.env.HOME
+      else process.env.HOME = previousHome
+    }
+  })
 })
 
 describe('repairInstalledOmxPluginHooks', () => {

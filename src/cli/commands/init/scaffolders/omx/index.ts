@@ -26,6 +26,7 @@ import type { MergeOptions } from '#cli/commands/init/merge'
 import {
   defaultCodexHooksPathFromConfig,
   normalizeGlobalCodexHooksFile,
+  resolveInstalledOmxHookScriptPath,
   resolveBinaryOnPath,
 } from '#cli/commands/init/scaffolders/agent-hooks/codex-global-normalize'
 
@@ -402,7 +403,7 @@ export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
   }
   const globalHooksResult = normalizeGlobalCodexHooksFile(
     defaultCodexHooksPathFromConfig(configPath),
-    { nodeBinary },
+    { nodeBinary, omxScriptPath: resolveInstalledOmxHookScriptPath() },
     input.options,
   )
   const removedProjectFiles =
