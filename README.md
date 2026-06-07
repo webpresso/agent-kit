@@ -141,3 +141,24 @@ across minor versions.
 
 MIT — see [LICENSE](./LICENSE). Vendored catalog skills and runtime integration
 licenses are documented in [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md).
+
+## Platform support
+
+webpresso hooks are tested on macOS and Linux. **Windows is a declared non-goal** for this release:
+- Hook binaries use POSIX shell scripts
+- Path handling assumes `/` separators
+- Windows users: run inside WSL2 or a POSIX-compatible environment
+
+This is tracked in the [capability matrix](src/cli/commands/docs/generate-capability-matrix.ts).
+
+## Hooks system
+
+webpresso ships a typed hooks-orchestrator for Claude Code, Codex CLI, and Cursor.
+See [docs/hooks-quickstart.md](docs/hooks-quickstart.md) to get started.
+
+Key CLIs:
+- `wp hooks status` — show per-vendor hook states
+- `wp hooks demo` — simulate hook dispatch (no real changes)
+- `wp hooks doctor` — diagnose hook problems
+- `wp setup --with hooks` — install or update hooks
+- `wp setup --dry-run` — preview changes without applying
