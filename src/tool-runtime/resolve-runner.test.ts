@@ -1,8 +1,16 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { resolveRunner } from './resolve-runner.js'
+import { resolveRunner, setRtkAvailabilityProbeForTest } from './resolve-runner.js'
 
 describe('resolveRunner', () => {
+  beforeEach(() => {
+    setRtkAvailabilityProbeForTest(true)
+  })
+
+  afterEach(() => {
+    setRtkAvailabilityProbeForTest(null)
+  })
+
   it('uses RTK-filtered managed runners by default', () => {
     expect(resolveRunner('vitest')).toEqual({
       tool: 'vitest',
@@ -72,6 +80,16 @@ describe('resolveRunner', () => {
     expect(resolveRunner('tsc', { filterOutput: false })).toEqual({
       tool: 'tsc',
       command: expect.stringContaining('typescript'),
+      args: [],
+      source: 'managed',
+    })
+  })
+
+  it('degrades to unwrapped command when rtk is unavailable', () => {
+    setRtkAvailabilityProbeForTest(false)
+    expect(resolveRunner('vitest')).toEqual({
+      tool: 'vitest',
+      command: expect.stringContaining('vitest'),
       args: [],
       source: 'managed',
     })

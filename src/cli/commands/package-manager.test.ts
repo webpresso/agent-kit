@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { setRtkAvailabilityProbeForTest } from '#tool-runtime'
 
 import {
   buildPackageManagerCommand,
@@ -7,14 +9,22 @@ import {
 } from './package-manager.js'
 
 describe('wp package-manager commands', () => {
+  beforeEach(() => {
+    setRtkAvailabilityProbeForTest(true)
+  })
+
+  afterEach(() => {
+    setRtkAvailabilityProbeForTest(null)
+  })
+
   it('publishes the supported top-level verbs', () => {
     expect(PACKAGE_MANAGER_VERBS).toEqual(['install', 'add', 'remove', 'update', 'exec', 'run'])
   })
 
   it.each(PACKAGE_MANAGER_VERBS)('routes %s through managed vp', (verb) => {
     expect(buildPackageManagerCommand(verb, ['node', 'wp', verb, '--flag', 'value'])).toEqual({
-      command: 'vp',
-      args: [verb, '--flag', 'value'],
+      command: 'rtk',
+      args: ['vp', verb, '--flag', 'value'],
     })
   })
 
@@ -22,8 +32,8 @@ describe('wp package-manager commands', () => {
     expect(
       buildPackageManagerCommand('exec', ['node', 'wp', 'exec', '--', 'vitest', 'run']),
     ).toEqual({
-      command: 'vp',
-      args: ['exec', '--', 'vitest', 'run'],
+      command: 'rtk',
+      args: ['vp', 'exec', '--', 'vitest', 'run'],
     })
   })
 
@@ -38,6 +48,6 @@ describe('wp package-manager commands', () => {
     }))
 
     expect(runPackageManagerCommand('run', { run })).toBe(7)
-    expect(run).toHaveBeenCalledWith('vp', ['run'])
+    expect(run).toHaveBeenCalledWith('rtk', ['vp', 'run'])
   })
 })
