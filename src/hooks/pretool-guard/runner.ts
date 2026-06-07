@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 import type { ToolInput, ValidationResult } from '#hooks/shared/types'
 
-
 import { isGuardEnabled } from '#hooks/guard-switch/state'
 import { readStdinJson, suppressStderr } from '#hooks/shared/hook-bootstrap'
-import { getCommand, getFilePath, isBashInput, parseToolInput } from '#hooks/shared/types'
+import { buildDenyEnvelope, getCommand, getFilePath, isBashInput, parseToolInput } from '#hooks/shared/types'
 
 import { logRun } from './logger.js'
 import { extractRoutableCommandsFromToolInput, routeCommand } from './dev-routing.js'
@@ -108,15 +107,13 @@ export function handleParseError(error: unknown, inputJson: string): never {
   process.exit(2)
 }
 
+function generateLogId(): string {
+  return crypto.randomUUID().slice(0, 8)
+}
+
 function writeDenyDecision(permissionDecisionReason: string): void {
   process.stdout.write(
-    JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: 'PreToolUse',
-        permissionDecision: 'deny',
-        permissionDecisionReason,
-      },
-    }),
+    JSON.stringify(buildDenyEnvelope({ reason: permissionDecisionReason, logId: generateLogId() })),
   )
 }
 
