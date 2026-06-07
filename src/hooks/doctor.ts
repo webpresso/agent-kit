@@ -16,6 +16,11 @@ import { platform } from 'node:os'
 import { join, resolve } from 'node:path'
 
 import { repairInstalledOmxPluginHooks } from '#cli/commands/init/scaffolders/omx/index.js'
+import type { HooksMap } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
+import {
+  diffHooksManifest,
+  readHooksManifest,
+} from '#cli/commands/init/scaffolders/agent-hooks/manifest.js'
 import {
   findAgentKitPackageRoot,
   resolveAgentKitPackageRoot,
@@ -1015,6 +1020,121 @@ export function checkManagedHooksInstalled(cwd = process.cwd()): {
   }
 }
 
+/**
+ * Parse the installed hooks from `.claude/settings.json` into a HooksMap.
+ * Returns an empty map when the file is absent or unparseable.
+ */
+function readInstalledClaudeHooks(cwd: string): HooksMap {
+  const settingsPath = join(cwd, '.claude', 'settings.json')
+  if (!tryAccess(settingsPath)) return {}
+  try {
+    const raw = readFileSync(settingsPath, 'utf-8')
+    const parsed = JSON.parse(raw) as {
+      hooks?: Record<string, Array<{ matcher?: string; hooks?: Array<{ type?: string; command?: string; timeout?: number }> }>>
+    }
+    const result: HooksMap = {}
+    for (const [event, groups] of Object.entries(parsed.hooks ?? {})) {
+      result[event] = (groups ?? []).map((g) => ({
+        ...(g.matcher !== undefined ? { matcher: g.matcher } : {}),
+        hooks: (g.hooks ?? []).map((h) => ({
+          type: h.type ?? 'command',
+          command: h.command ?? '',
+          ...(h.timeout !== undefined ? { timeout: h.timeout } : {}),
+        })),
+      }))
+    }
+    return result
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Parse the installed hooks from `.codex/hooks.json` into a HooksMap.
+ * Returns an empty map when the file is absent or unparseable.
+ */
+function readInstalledCodexHooks(cwd: string): HooksMap {
+  const hooksPath = join(cwd, '.codex', 'hooks.json')
+  if (!tryAccess(hooksPath)) return {}
+  try {
+    const raw = readFileSync(hooksPath, 'utf-8')
+    const parsed = JSON.parse(raw) as {
+      hooks?: Record<string, Array<{ matcher?: string; hooks?: Array<{ type?: string; command?: string; timeout?: number }> }>>
+    }
+    const result: HooksMap = {}
+    for (const [event, groups] of Object.entries(parsed.hooks ?? {})) {
+      result[event] = (groups ?? []).map((g) => ({
+        ...(g.matcher !== undefined ? { matcher: g.matcher } : {}),
+        hooks: (g.hooks ?? []).map((h) => ({
+          type: h.type ?? 'command',
+          command: h.command ?? '',
+          ...(h.timeout !== undefined ? { timeout: h.timeout } : {}),
+        })),
+      }))
+    }
+    return result
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Compare the installed hooks against the `.webpresso/hooks-manifest.json`.
+ * Reports advisory findings per hook entry (ok / missing / unknown).
+ * When the manifest is absent, emits a single info-level advisory prompting
+ * the user to run `wp setup`.
+ */
+export function checkHooksManifest(cwd = process.cwd()): DoctorCheck {
+  const manifest = readHooksManifest(cwd)
+  if (manifest === null) {
+    return {
+      name: 'hooks manifest',
+      ok: true,
+      advisory: true,
+      detail: 'no .webpresso/hooks-manifest.json — run `wp setup` to generate it',
+    }
+  }
+
+  const installedClaude = readInstalledClaudeHooks(cwd)
+  const installedCodex = readInstalledCodexHooks(cwd)
+  const diffs = diffHooksManifest(manifest, { claude: installedClaude, codex: installedCodex })
+
+  const missing = diffs.filter((d) => d.verdict === 'missing')
+  const unknown = diffs.filter((d) => d.verdict === 'unknown')
+
+  if (missing.length === 0 && unknown.length === 0) {
+    return {
+      name: 'hooks manifest',
+      ok: true,
+      advisory: true,
+      detail: `${diffs.length} hook entry/entries match manifest`,
+    }
+  }
+
+  const parts: string[] = []
+  if (missing.length > 0) {
+    const preview = missing
+      .slice(0, 2)
+      .map((d) => `${d.vendor}/${d.event}`)
+      .join(', ')
+    parts.push(`${missing.length} missing (${preview}${missing.length > 2 ? ', …' : ''}) — run \`wp setup\``)
+  }
+  if (unknown.length > 0) {
+    const preview = unknown
+      .slice(0, 2)
+      .map((d) => `${d.vendor}/${d.event}`)
+      .join(', ')
+    parts.push(`${unknown.length} unknown (${preview}${unknown.length > 2 ? ', …' : ''}) — hand-edited?`)
+  }
+
+  return {
+    name: 'hooks manifest',
+    ok: false,
+    advisory: true,
+    detail: parts.join('; '),
+  }
+}
+
 export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<DoctorResult> {
   const checks: DoctorCheck[] = []
   const isWin = platform() === 'win32'
@@ -1117,6 +1237,8 @@ export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<
       }
     }
   }
+
+  checks.push(checkHooksManifest(opts.cwd))
 
   const nonMcpChecks = checks.filter((c) => !c.name.startsWith('MCP ') && !c.advisory)
   const overallOk = nonMcpChecks.every((c) => c.ok)
