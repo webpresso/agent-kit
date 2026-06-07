@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.29.2
+
+### Patch Changes
+
+- 9d2eb69: Ship blueprint SQLite migration SQL assets in the published package so `wp audit blueprint-lifecycle` can initialize ephemeral projection databases for npm consumers.
+
 ## 0.29.1
 
 ### Patch Changes
