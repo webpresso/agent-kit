@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.29.3
+
+### Patch Changes
+
+- 322a46c: Strip stale source map references from packed build files so consumers do not see missing `.map` warnings when using published Vitest setup helpers.
+
 ## 0.29.2
 
 ### Patch Changes
