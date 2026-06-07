@@ -29,4 +29,29 @@ export function registerHooksCommand(cli: CAC): void {
         return code
       },
     )
+
+  cli
+    .command(
+      'hooks dispatch <event>',
+      'Find hooks registered for an event and print what would fire (dry-run)',
+    )
+    .option('--dry-run', 'Print hooks that would fire without executing them (default: true)')
+    .option('--vendor <vendor>', 'Agent CLI to read hook config from: claude | codex', {
+      default: 'claude',
+    })
+    .action(
+      async (
+        event: string,
+        options: {
+          dryRun?: boolean
+          vendor?: string
+        },
+      ) => {
+        const { dispatchCommand } = await import('#hooks/dispatch/index.js')
+        const vendorArg = options.vendor === 'codex' ? 'codex' : 'claude'
+        const extraArgs: string[] = []
+        if (options.dryRun === true) extraArgs.push('--dry-run')
+        await dispatchCommand([event, '--vendor', vendorArg, ...extraArgs])
+      },
+    )
 }
