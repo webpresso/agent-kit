@@ -122,6 +122,9 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['devDependencies'] as Record<string, string>)['@stryker-mutator/core']).toBe(
       'latest',
     )
+    expect(
+      (pkg['devDependencies'] as Record<string, string>)['@stryker-mutator/typescript-checker'],
+    ).toBe('latest')
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
     expect((pkg['scripts'] as Record<string, string>)['lint']).toBe('wp lint src e2e *.config.ts')
     expect((pkg['scripts'] as Record<string, string>)['typecheck']).toBe('wp typecheck')

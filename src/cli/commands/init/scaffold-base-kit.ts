@@ -189,6 +189,7 @@ function mergePackageJson(
   const requiredAuthoringDeps: Record<string, string> = {
     '@playwright/test': 'latest',
     '@stryker-mutator/core': 'latest',
+    '@stryker-mutator/typescript-checker': 'latest',
     '@stryker-mutator/vitest-runner': 'latest',
     '@types/node': 'latest',
     typescript: 'latest',
