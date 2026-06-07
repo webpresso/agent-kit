@@ -37,6 +37,7 @@ export type AuditKind =
   | 'quality'
   | 'guardrails'
   | 'hook-surface'
+  | 'hook-vendor-drift'
   | 'no-relative-package-scripts'
 
 export type AuditOutcome =
