@@ -37,6 +37,11 @@ import {
   type SkillHook,
 } from './skill-hooks.js'
 import { resolveRuntimeTarget, runtimePackageDirName } from '#build/runtime-targets.js'
+import { buildClaudeHookGroups } from './emitters/claude.js'
+import { type HookEntry, type HookGroup, type HooksMap, HOOK_EVENT_NAMES } from './ir.js'
+import { ensureGroup, mergeAgentKitGroups } from './merge.js'
+
+export type { MatcherSet } from './ir.js'
 
 // Claude Code uses $CLAUDE_PROJECT_DIR. Codex hook runners can execute while the
 // active session cwd points at a sibling repo, so Codex hook commands must be
@@ -81,24 +86,9 @@ const CODEX_BIN = (repoRoot: string) => (name: string) => {
   return buildGuardedHookCommand(codexManagedHookLauncherPath(repoRoot, name), name)
 }
 
-type HookEntry = { type: string; command: string; timeout?: number }
-type HookGroup = { matcher?: string; hooks: HookEntry[] }
-type HooksMap = Record<string, HookGroup[]>
-
-// Canonical hook event names recognised by both Claude Code and Codex CLI.
-// Used by `hoistTopLevelEvents` to identify legacy flat-form keys to migrate.
-const HOOK_EVENT_NAMES = [
-  'SessionStart',
-  'PreToolUse',
-  'PostToolUse',
-  'UserPromptSubmit',
-  'Stop',
-] as const
-
-export type MatcherSet = {
-  preToolUse: string
-  postToolUse: string
-}
+// HookEntry, HookGroup, HooksMap, HOOK_EVENT_NAMES are imported from ./ir.js
+// MatcherSet is re-exported from ./ir.js (export type above)
+// ensureGroup, mergeAgentKitGroups are imported from ./merge.js
 
 /**
  * Detect whether `groups` already contain a hook that invokes the same target
@@ -222,38 +212,7 @@ function extractCommandTarget(command: string): string | null {
   return null
 }
 
-function ensureGroup(groups: HookGroup[], group: HookGroup): HookGroup[] {
-  const incomingHook = group.hooks[0]
-  if (!incomingHook) return groups
-
-  let changed = false
-  const nextGroups = groups.map((existingGroup) => {
-    const hookIndex = findHookIndexByCommand(existingGroup.hooks, incomingHook.command)
-    if (hookIndex === -1) return existingGroup
-
-    changed = true
-    const hooks = existingGroup.hooks.map((hook, index) =>
-      index === hookIndex
-        ? {
-            ...hook,
-            ...incomingHook,
-            // Preserve the consumer's already-materialized command form when
-            // only the matcher/timeout changed. Codex command path migration is
-            // handled by normalizeCodexAgentKitCommands before this merge.
-            command: hook.command,
-          }
-        : hook,
-    )
-    return {
-      ...existingGroup,
-      ...(group.matcher !== undefined ? { matcher: group.matcher } : {}),
-      hooks,
-    }
-  })
-
-  if (changed) return nextGroups
-  return [...groups, group]
-}
+// ensureGroup and mergeAgentKitGroups are imported from ./merge.js
 
 function orderStopGroups(groups: HookGroup[]): HookGroup[] {
   return [...groups].sort((left, right) => {
@@ -316,63 +275,18 @@ function mergeSkillHooks(hooks: HooksMap, skillHooks: readonly SkillHook[]): Hoo
 // ── Shared webpresso hook construction ───────────────────────────────────────
 
 /**
- * Construct the canonical 5 wp-* hook groups (SessionStart, PreToolUse,
- * PostToolUse, UserPromptSubmit, Stop). Single source of truth — adding a
- * new wp-* hook is one append here and propagates to both surfaces.
+ * Construct the canonical wp-* hook groups (SessionStart, PreToolUse,
+ * PostToolUse, UserPromptSubmit, Stop). Delegates to buildClaudeHookGroups
+ * in emitters/claude.ts which reads from WP_HOOK_SPECS in ir.ts.
+ *
+ * Kept exported for backward compatibility — callers should prefer
+ * buildClaudeHookGroups directly.
  */
 export function buildWebpressoHookGroups(input: {
   resolveBin: (name: string) => string
   matchers: MatcherSet
 }): HooksMap {
-  const { resolveBin, matchers } = input
-  return {
-    SessionStart: [
-      {
-        hooks: [{ type: 'command', command: resolveBin('wp-sessionstart-routing'), timeout: 5 }],
-      },
-      {
-        hooks: [{ type: 'command', command: resolveBin('wp-check-dev-link'), timeout: 5 }],
-      },
-    ],
-    PreToolUse: [
-      {
-        matcher: matchers.preToolUse,
-        hooks: [{ type: 'command', command: resolveBin('wp-pretool-guard'), timeout: 5 }],
-      },
-    ],
-    PostToolUse: [
-      {
-        matcher: matchers.postToolUse,
-        hooks: [{ type: 'command', command: resolveBin('wp-post-tool'), timeout: 15 }],
-      },
-    ],
-    UserPromptSubmit: [
-      {
-        hooks: [{ type: 'command', command: resolveBin('wp-guard-switch'), timeout: 5 }],
-      },
-    ],
-    Stop: [
-      {
-        // Timeout measured 2026-06-07: wp-stop-qa cold start 0.33s / warm
-        // ~0.18s (5 samples, empty stdin, this repo). 10s = measured cold
-        // ×30 headroom for large-repo git scans on cold FS caches, still 6×
-        // tighter than the 60s harness default (no-timeout-as-fix rule).
-        hooks: [{ type: 'command', command: resolveBin('wp-stop-qa'), timeout: 10 }],
-      },
-    ],
-  }
-}
-
-function mergeAgentKitGroups(existing: HooksMap, addition: HooksMap): HooksMap {
-  const result: HooksMap = { ...existing }
-  for (const [event, groups] of Object.entries(addition)) {
-    let target = result[event] ?? []
-    for (const group of groups) {
-      target = ensureGroup(target, group)
-    }
-    result[event] = target
-  }
-  return result
+  return buildClaudeHookGroups(input)
 }
 
 function normalizeCodexAgentKitCommands(hooks: HooksMap, repoRoot: string): HooksMap {
