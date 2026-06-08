@@ -28,6 +28,7 @@ export default defineConfig({
     exclude: ['**/node_modules/**', '**/dist/**'],
     // Reset agent-session-leaked env (CLAUDE_PROJECT_DIR, WP_SKIP_UPDATE_CHECK)
     // before every test so the suite is hermetic regardless of launch env.
+    globalSetup: ['./src/test-helpers/global-setup.ts'],
     setupFiles: ['./src/test-helpers/hermetic-env.ts'],
     globals: false,
     testTimeout: 10_000,

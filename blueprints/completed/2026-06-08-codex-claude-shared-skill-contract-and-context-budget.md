@@ -10,6 +10,7 @@ progress: '100% (6/6 tasks complete; shared-favorites contract, opt-in projectio
 depends_on:
   - blueprints/completed/2026-06-08-hooks-orchestrator-contract-series.md
 cross_repo_depends_on: []
+historical_verification_gap_waiver: true
 tags:
   - setup
   - codex
