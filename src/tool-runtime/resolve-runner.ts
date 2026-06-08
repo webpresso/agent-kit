@@ -45,10 +45,29 @@ const MANAGED_TOOL_PREFIX: Readonly<Record<string, ManagedToolSpec>> = {
 
 let rtkAvailable: boolean | null = null
 
+// The real token-killer `rtk` exposes a `gain` analytics subcommand (see
+// RTK.md); the unrelated `reachingforthejack/rtk` (Rust Type Kit) collision
+// binary does not. Probe that capability instead of `--version`, which *any*
+// `rtk` on PATH answers with exit 0 — trusting it would route wrapped commands
+// (typecheck/qa/test gates) through a foreign binary that may mangle args or
+// drop the wrapped exit code, masking a failing gate as green.
+const RTK_CAPABILITY_ARGS = ['gain', '--help'] as const
+// Measured cold cost of `rtk gain --help` is ~11ms; 3s is generous headroom.
+// A probe that exceeds it is a broken or wrong binary, so degrade to unfiltered
+// output rather than let a hung `rtk` stall every wrapped command (per
+// no-timeout-as-fix: the bound surfaces the fault, it does not silence it).
+const RTK_PROBE_TIMEOUT_MS = 3000
+
 function probeRtkAvailability(): boolean {
   if (rtkAvailable !== null) return rtkAvailable
   try {
-    const result = spawnSync('rtk', ['--version'], { encoding: 'utf8', windowsHide: true })
+    const result = spawnSync('rtk', RTK_CAPABILITY_ARGS, {
+      encoding: 'utf8',
+      windowsHide: true,
+      timeout: RTK_PROBE_TIMEOUT_MS,
+    })
+    // A timeout yields status === null (+ signal), so the strict === 0 check
+    // already degrades on hang without a separate branch.
     rtkAvailable = result.status === 0
   } catch {
     rtkAvailable = false

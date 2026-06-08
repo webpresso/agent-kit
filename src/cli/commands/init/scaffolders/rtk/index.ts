@@ -23,6 +23,13 @@ export type EnsureRtkResult =
 const NOT_FOUND_HINT =
   'rtk is not on PATH. Install it manually (macOS: `brew install rtk`) and re-run.'
 
+// `rtk --version` answers in ~10ms; 3s is generous headroom. Bounding the
+// presence probe keeps a hung/wrong binary from stalling `wp setup`. The
+// `brew install` / `rtk init` calls below are intentionally left unbounded —
+// they are user-driven installs with inherited stdio where a fixed deadline
+// would wrongly kill a legitimately slow run.
+const RTK_PROBE_TIMEOUT_MS = 3000
+
 export function ensureRtk(input: EnsureRtkInput): EnsureRtkResult {
   if (input.options.dryRun) return { kind: 'rtk-skipped-dry-run' }
 
@@ -31,7 +38,7 @@ export function ensureRtk(input: EnsureRtkInput): EnsureRtkResult {
 
   let installed = false
   spinner.start()
-  let probe = spawn('rtk', ['--version'], { encoding: 'utf8' })
+  let probe = spawn('rtk', ['--version'], { encoding: 'utf8', timeout: RTK_PROBE_TIMEOUT_MS })
   if (probe.error || (probe.status !== null && probe.status !== 0)) {
     if (process.platform !== 'darwin') {
       spinner.fail('rtk not found')
@@ -45,7 +52,7 @@ export function ensureRtk(input: EnsureRtkInput): EnsureRtkResult {
     }
 
     installed = true
-    probe = spawn('rtk', ['--version'], { encoding: 'utf8' })
+    probe = spawn('rtk', ['--version'], { encoding: 'utf8', timeout: RTK_PROBE_TIMEOUT_MS })
     if (probe.error || (probe.status !== null && probe.status !== 0)) {
       spinner.fail('rtk not found after install')
       return { kind: 'rtk-not-found', hint: NOT_FOUND_HINT }

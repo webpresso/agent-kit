@@ -55,7 +55,10 @@ describe('ensureRtk', () => {
     })
 
     expect(result).toEqual({ kind: 'rtk-ok', installed: false })
-    expect(spawn).toHaveBeenNthCalledWith(1, 'rtk', ['--version'], { encoding: 'utf8' })
+    expect(spawn).toHaveBeenNthCalledWith(1, 'rtk', ['--version'], {
+      encoding: 'utf8',
+      timeout: 3000,
+    })
     expect(spawn).toHaveBeenNthCalledWith(
       2,
       'rtk',

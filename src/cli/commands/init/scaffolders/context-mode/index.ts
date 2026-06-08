@@ -252,13 +252,19 @@ function ensureCodexContextModeFeatures(configPath: string, options: MergeOption
 const CONTEXT_MODE_NOT_FOUND_HINT =
   'context-mode is not on PATH after `vp install -g context-mode`. Install it manually and re-run.'
 
+// Bound the quick presence/version probes so a hung/wrong binary can't stall
+// `wp setup`. The `vp install`/`vp update` calls stay unbounded — they are
+// network/install workloads where a fixed deadline would wrongly kill a slow
+// run (per no-timeout-as-fix).
+const PROBE_TIMEOUT_MS = 3000
+
 function ensureContextModeBinary(
   spawn: typeof spawnSync,
   spinner: { start(): void; succeed(t?: string): void; fail(t?: string): void },
 ): { installed: boolean; version: string; binaryPath: string } {
   let installed = false
   spinner.start()
-  let probe = spawn('context-mode', ['--help'], { stdio: 'ignore' })
+  let probe = spawn('context-mode', ['--help'], { stdio: 'ignore', timeout: PROBE_TIMEOUT_MS })
   if (probe.error || (probe.status !== null && probe.status !== 0)) {
     const install = spawn('vp', ['install', '-g', 'context-mode'], { stdio: 'inherit' })
     if (install.status !== 0) {
@@ -267,7 +273,7 @@ function ensureContextModeBinary(
     }
 
     installed = true
-    probe = spawn('context-mode', ['--help'], { stdio: 'ignore' })
+    probe = spawn('context-mode', ['--help'], { stdio: 'ignore', timeout: PROBE_TIMEOUT_MS })
     if (probe.error || (probe.status !== null && probe.status !== 0)) {
       spinner.fail('context-mode not found after install')
       throw new Error(CONTEXT_MODE_NOT_FOUND_HINT)
@@ -277,7 +283,10 @@ function ensureContextModeBinary(
   }
 
   // Detect installed version for pin check
-  const versionProbe = spawn('context-mode', ['--version'], { encoding: 'utf8' })
+  const versionProbe = spawn('context-mode', ['--version'], {
+    encoding: 'utf8',
+    timeout: PROBE_TIMEOUT_MS,
+  })
   const version = String(versionProbe.stdout ?? '').trim()
   const binaryPath = resolveBinaryOnPath('context-mode')
   if (binaryPath === null) {

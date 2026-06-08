@@ -53,6 +53,13 @@ export type EnsureOmxResult =
 
 const NOT_FOUND_HINT =
   'omx (oh-my-codex) is not on PATH after `vp install -g oh-my-codex`. Install it manually and re-run.'
+
+// Quick, deterministic subprocesses (version probes, git queries) get a bound
+// so a hung/wrong binary can't stall `wp setup`. The `vp install`/`vp update`/
+// `omx setup` calls below are intentionally left unbounded: they are
+// network/install workloads with inherited stdio where a fixed deadline would
+// wrongly kill a legitimately slow run (per no-timeout-as-fix).
+const PROBE_TIMEOUT_MS = 3000
 type OmxSetupScope = 'user' | 'project'
 type Spawn = typeof spawnSync
 type HookEntry = { type?: string; command?: string; timeout?: number }
@@ -292,6 +299,7 @@ function removeTrackedProjectScopedOmxFiles(repoRoot: string, spawn: Spawn): str
   const listed = spawn('git', ['ls-files', '-z', '--', '.codex', '.omx'], {
     cwd: repoRoot,
     encoding: 'utf8',
+    timeout: PROBE_TIMEOUT_MS,
   })
 
   if (listed.error) {
@@ -371,7 +379,7 @@ export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
     spawn('vp', ['upgrade'], { stdio: 'inherit' })
   }
 
-  let probe = spawn('omx', ['--version'], { encoding: 'utf8' })
+  let probe = spawn('omx', ['--version'], { encoding: 'utf8', timeout: PROBE_TIMEOUT_MS })
   if (probe.error || (probe.status !== null && probe.status !== 0)) {
     const install = spawn('vp', ['install', '-g', 'oh-my-codex'], { stdio: 'inherit' })
     if (install.status !== 0) {
@@ -379,7 +387,7 @@ export function ensureOmx(input: EnsureOmxInput): EnsureOmxResult {
     }
 
     installed = true
-    probe = spawn('omx', ['--version'], { encoding: 'utf8' })
+    probe = spawn('omx', ['--version'], { encoding: 'utf8', timeout: PROBE_TIMEOUT_MS })
     if (probe.error || (probe.status !== null && probe.status !== 0)) {
       return { kind: 'omx-not-found', hint: NOT_FOUND_HINT }
     }

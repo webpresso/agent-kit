@@ -114,7 +114,10 @@ describe('ensureOmx', () => {
         codexGlobalHooks: { repaired: false, targetPath: join(dir, 'hooks.json') },
       })
       expect(spawn).toHaveBeenCalledTimes(2)
-      expect(spawn).toHaveBeenNthCalledWith(1, 'omx', ['--version'], { encoding: 'utf8' })
+      expect(spawn).toHaveBeenNthCalledWith(1, 'omx', ['--version'], {
+        encoding: 'utf8',
+        timeout: 3000,
+      })
       expect(spawn).toHaveBeenNthCalledWith(2, 'omx', ['setup', '--yes', '--scope', 'user'], {
         cwd: '/tmp/repo',
         stdio: ['ignore', 'inherit', 'inherit'],
