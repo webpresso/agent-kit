@@ -40,12 +40,7 @@ import {
 import type { HooksManifest } from './manifest.js'
 import { resolveRuntimeTarget, runtimePackageDirName } from '#build/runtime-targets.js'
 import { buildClaudeHookGroups } from './emitters/claude.js'
-import {
-  type HookGroup,
-  type HooksMap,
-  type MatcherSet,
-  HOOK_EVENT_NAMES,
-} from './ir.js'
+import { type HookGroup, type HooksMap, type MatcherSet, HOOK_EVENT_NAMES } from './ir.js'
 import { ensureGroup, mergeAgentKitGroups } from './merge.js'
 
 export type { MatcherSet } from './ir.js'
