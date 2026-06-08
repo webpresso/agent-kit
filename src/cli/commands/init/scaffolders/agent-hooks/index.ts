@@ -40,7 +40,13 @@ import {
 import type { HooksManifest } from './manifest.js'
 import { resolveRuntimeTarget, runtimePackageDirName } from '#build/runtime-targets.js'
 import { buildClaudeHookGroups } from './emitters/claude.js'
-import { type HookGroup, type HooksMap, type MatcherSet, HOOK_EVENT_NAMES } from './ir.js'
+import {
+  type HookGroup,
+  type HooksMap,
+  type MatcherSet,
+  HOOK_EVENT_NAMES,
+  WP_HOOK_SPECS,
+} from './ir.js'
 import { ensureGroup, mergeAgentKitGroups } from './merge.js'
 
 export type { MatcherSet } from './ir.js'
@@ -51,10 +57,12 @@ export type { MatcherSet } from './ir.js'
 //
 // Hook command wrappers:
 // - default: fail-open to keep fresh repos usable while dependencies install
+// - json-only hooks: fail-open with `{}` on stdout to preserve Codex's JSON contract
 // - pretool guard: fail-closed (explicit deny JSON) so policy cannot silently
 //   bypass when the guard binary is missing/non-executable.
 const PRETOOL_GUARD_BIN = 'wp-pretool-guard'
 const PRETOOL_GUARD_MISSING_DENY = `printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp-pretool-guard is unavailable. Run vp install or wp setup."}}'`
+const JSON_ONLY_HOOK_FALLBACK = `printf '%s\\n' '{}'`
 const CLAUDE_MANAGED_HOOK_SUBDIR = '.claude/hooks/managed'
 const CODEX_MANAGED_HOOK_SUBDIR = '.codex/managed-hooks'
 
@@ -75,12 +83,21 @@ function quoteHookCommandPath(value: string): string {
   return quoteShell(value)
 }
 
+const HOOK_SPEC_BY_BIN = new Map(WP_HOOK_SPECS.map((spec) => [spec.bin, spec]))
+
+function isJsonOnlyHookBin(name: string): boolean {
+  return HOOK_SPEC_BY_BIN.get(name)?.jsonOnly === true
+}
+
+function missingLauncherFallbackCommand(name: string): string {
+  if (isJsonOnlyHookBin(name)) return JSON_ONLY_HOOK_FALLBACK
+  if (name === PRETOOL_GUARD_BIN) return PRETOOL_GUARD_MISSING_DENY
+  return 'true'
+}
+
 function buildGuardedHookCommand(binPath: string, name: string): string {
   const quotedBinPath = quoteHookCommandPath(binPath)
-  if (name === PRETOOL_GUARD_BIN) {
-    return `[ -x ${quotedBinPath} ] && ${quotedBinPath} || ${PRETOOL_GUARD_MISSING_DENY}`
-  }
-  return `[ -x ${quotedBinPath} ] && ${quotedBinPath} || true`
+  return `[ -x ${quotedBinPath} ] && ${quotedBinPath} || ${missingLauncherFallbackCommand(name)}`
 }
 
 const CC_BIN = (name: string) => buildGuardedHookCommand(claudeManagedHookLauncherPath(name), name)
@@ -876,13 +893,16 @@ function renderManagedWebpressoHookLauncher(repoRoot: string, binName: string): 
   const nodeBinary = quoteShell(process.execPath)
   const projectBinPath = quoteShell(resolveProjectHookBinPath(repoRoot, binName))
   const fallbackBinPath = quoteShell(resolvePackageHookBin(binName))
-  // Guard fails closed (explicit deny JSON); every other hook warns on stderr
-  // instead of silently exiting — a silently-disabled hook hid the broken
-  // node pin for weeks (2026-06 audit).
-  const missingFallback =
-    binName === PRETOOL_GUARD_BIN
+  const missingRuntimeWarning = `echo "webpresso hook ${binName} skipped: runtime not found; run vp install or wp setup" >&2`
+  // Guard fails closed (explicit deny JSON); json-only hooks keep Codex stdout
+  // parseable; every other hook warns on stderr instead of silently exiting — a
+  // silently-disabled hook hid the broken node pin for weeks (2026-06 audit).
+  const missingFallback = isJsonOnlyHookBin(binName)
+    ? `${missingRuntimeWarning}
+  ${JSON_ONLY_HOOK_FALLBACK}`
+    : binName === PRETOOL_GUARD_BIN
       ? PRETOOL_GUARD_MISSING_DENY
-      : `echo "webpresso hook ${binName} skipped: runtime not found; run vp install or wp setup" >&2`
+      : missingRuntimeWarning
 
   // Prefer the self-contained compiled `wp` binary when it resolves: it bundles
   // its own runtime, so it is immune to the node-path staleness that would break

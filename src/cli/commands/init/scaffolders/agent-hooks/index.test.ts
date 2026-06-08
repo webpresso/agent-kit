@@ -31,6 +31,9 @@ function quoteShell(value: string): string {
 
 function codexBinCommand(repoRoot: string, name: string): string {
   const binPath = quoteShell(join(repoRoot, '.codex', 'managed-hooks', `${name}.sh`))
+  if (name === 'wp-stop-qa') {
+    return `[ -x ${binPath} ] && ${binPath} || printf '%s\\n' '{}'`
+  }
   if (name === 'wp-pretool-guard') {
     return `[ -x ${binPath} ] && ${binPath} || printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp-pretool-guard is unavailable. Run vp install or wp setup."}}'`
   }
@@ -39,6 +42,9 @@ function codexBinCommand(repoRoot: string, name: string): string {
 
 function claudeBinCommand(name: string): string {
   const binPath = `$CLAUDE_PROJECT_DIR/.claude/hooks/managed/${name}.sh`
+  if (name === 'wp-stop-qa') {
+    return `[ -x "${binPath}" ] && "${binPath}" || printf '%s\\n' '{}'`
+  }
   if (name === 'wp-pretool-guard') {
     return `[ -x "${binPath}" ] && "${binPath}" || printf '%s\\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"wp-pretool-guard is unavailable. Run vp install or wp setup."}}'`
   }
@@ -1554,7 +1560,7 @@ hooks:
     expect(postToolCommands).toContain(codexBinCommand(repoRoot, 'wp-post-tool'))
   })
 
-  it('fails closed for missing wp-pretool-guard launcher and fails open for other missing Codex hook launchers', async () => {
+  it('fails closed for missing wp-pretool-guard launcher, emits JSON for missing Stop launcher, and fails open for other missing Codex hook launchers', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
 
     const siblingCwd = mkdtempSync(join(repoRoot, 'codex-missing-bins-'))
@@ -1597,11 +1603,25 @@ hooks:
     expect(preToolResult.stdout).toContain('"permissionDecision":"deny"')
     expect(preToolResult.stdout).toContain('"wp-pretool-guard is unavailable.')
 
+    const stopResults = await Promise.all(
+      commandByEvent.Stop.map(async (command) => ({
+        command,
+        result: await runShellCommand(command, {
+          cwd: siblingCwd,
+          env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+        }),
+      })),
+    )
+    for (const { command, result } of stopResults) {
+      expect(result.status, `Stop: ${command}`).toBe(0)
+      expect(result.stdout, `Stop: ${command}`).toBe('{}\n')
+      expect(() => JSON.parse(result.stdout)).not.toThrow()
+    }
+
     const failOpenEvents: Array<keyof typeof commandByEvent> = [
       'SessionStart',
       'PostToolUse',
       'UserPromptSubmit',
-      'Stop',
     ]
     const failOpenResults = await Promise.all(
       failOpenEvents.flatMap((event) =>
@@ -1619,6 +1639,27 @@ hooks:
       expect(result.status, `${event}: ${command}`).toBe(0)
       expect(result.stdout, `${event}: ${command}`).toBe('')
     }
+  })
+
+  it('managed Codex Stop launcher emits JSON passthrough when the runtime is unavailable', async () => {
+    await scaffoldAgentHooks({ repoRoot, options: {}, trustCodexHooks: false })
+
+    const launcherPath = join(repoRoot, '.codex', 'managed-hooks', 'wp-stop-qa.sh')
+    writeFileSync(
+      launcherPath,
+      readFileSync(launcherPath, 'utf8').replace(process.execPath, '/missing/nonexistent-node'),
+      'utf8',
+    )
+    const result = spawnSync('sh', [launcherPath], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+    })
+
+    expect(result.status).toBe(0)
+    expect(result.stderr).toContain('webpresso hook wp-stop-qa skipped: runtime not found')
+    expect(result.stdout).toBe('{}\n')
+    expect(() => JSON.parse(result.stdout)).not.toThrow()
   })
 
   it('keeps Codex hook commands executable from a sibling cwd instead of failing with 127', async () => {

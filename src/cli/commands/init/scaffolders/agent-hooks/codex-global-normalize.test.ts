@@ -1,4 +1,5 @@
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
@@ -167,16 +168,95 @@ describe('normalizeGlobalCodexHooksJson', () => {
         '\n' +
         'if [ -z "$NODE_BINARY" ] || [ ! -x "$NODE_BINARY" ]; then\n' +
         '  echo "OMX Codex hook skipped: node runtime not found; rerun omx setup or wp setup" >&2\n' +
+        "  printf '%s\\n' '{}'\n" +
         '  exit 0\n' +
         'fi\n' +
         '\n' +
         'if [ ! -f "$HOOK_SCRIPT" ]; then\n' +
         '  echo "OMX Codex hook skipped: hook script not found; rerun omx setup or wp setup" >&2\n' +
+        "  printf '%s\\n' '{}'\n" +
         '  exit 0\n' +
         'fi\n' +
         '\n' +
         'exec "$NODE_BINARY" "$HOOK_SCRIPT" "$@"\n',
     )
+  })
+
+  it('shared OMX global launcher emits JSON passthrough when node is missing', () => {
+    const root = mkroot('wp-codex-global-missing-node-')
+    const hooksPath = path.join(root, 'hooks.json')
+    writeFileSync(
+      hooksPath,
+      JSON.stringify({
+        hooks: {
+          Stop: [
+            {
+              hooks: [
+                {
+                  type: 'command',
+                  command: 'node "/tmp/oh-my-codex/dist/scripts/codex-native-hook.js"',
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    )
+
+    normalizeGlobalCodexHooksFile(hooksPath, {
+      nodeBinary: '/missing/nonexistent-node',
+    })
+
+    const launcherPath = path.join(
+      defaultManagedCodexHooksDir(hooksPath),
+      'wp-global-codex-omx-hook.sh',
+    )
+    const result = spawnSync('sh', [launcherPath], {
+      encoding: 'utf8',
+      env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+    })
+
+    expect(result.status).toBe(0)
+    expect(result.stderr).toContain('node runtime not found')
+    expect(result.stdout).toBe('{}\n')
+    expect(() => JSON.parse(result.stdout)).not.toThrow()
+  })
+
+  it('shared OMX global launcher emits JSON passthrough when the hook script is missing', () => {
+    const root = mkroot('wp-codex-global-missing-script-')
+    const hooksPath = path.join(root, 'hooks.json')
+    writeFileSync(
+      hooksPath,
+      JSON.stringify({
+        hooks: {
+          Stop: [
+            {
+              hooks: [
+                {
+                  type: 'command',
+                  command: 'node "/tmp/oh-my-codex/dist/scripts/codex-native-hook.js"',
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    )
+
+    normalizeGlobalCodexHooksFile(hooksPath, {
+      nodeBinary: process.execPath,
+    })
+
+    const launcherPath = path.join(
+      defaultManagedCodexHooksDir(hooksPath),
+      'wp-global-codex-omx-hook.sh',
+    )
+    const result = spawnSync('sh', [launcherPath], { encoding: 'utf8' })
+
+    expect(result.status).toBe(0)
+    expect(result.stderr).toContain('hook script not found')
+    expect(result.stdout).toBe('{}\n')
+    expect(() => JSON.parse(result.stdout)).not.toThrow()
   })
 
   it('refreshes an already-normalized OMX launcher when setup knows the current hook script path', () => {

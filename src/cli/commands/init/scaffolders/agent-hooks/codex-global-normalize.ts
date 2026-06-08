@@ -50,6 +50,8 @@ type LauncherFile = {
   readonly content: string
 }
 
+const CODEX_JSON_PASSTHROUGH = `printf '%s\\n' '{}'`
+
 export function resolveBinaryOnPath(
   command: string,
   pathValue: string = process.env.PATH ?? '',
@@ -371,11 +373,13 @@ fi
 
 if [ -z "$NODE_BINARY" ] || [ ! -x "$NODE_BINARY" ]; then
   echo "OMX Codex hook skipped: node runtime not found; rerun omx setup or wp setup" >&2
+  ${CODEX_JSON_PASSTHROUGH}
   exit 0
 fi
 
 if [ ! -f "$HOOK_SCRIPT" ]; then
   echo "OMX Codex hook skipped: hook script not found; rerun omx setup or wp setup" >&2
+  ${CODEX_JSON_PASSTHROUGH}
   exit 0
 fi
 

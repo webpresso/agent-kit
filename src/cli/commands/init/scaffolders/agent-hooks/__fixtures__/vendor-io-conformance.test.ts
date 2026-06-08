@@ -70,12 +70,13 @@ describe('vendor hook I/O conformance spec', () => {
   })
 
   describe('Codex CLI', () => {
-    it.todo(
-      'Stop and SubagentStop hooks: stdout MUST be JSON — plain text is invalid per docs',
+    it('Stop and SubagentStop hooks: stdout MUST be JSON — plain text is invalid per docs', () => {
       // Contract: for Stop and SubagentStop events, Codex requires the hook
       // to emit valid JSON on stdout. Plain text output is not accepted and
       // results in a hook execution error.
-    )
+      expect(() => JSON.parse('{}\n')).not.toThrow()
+      expect(() => JSON.parse('plain text\n')).toThrow()
+    })
 
     it.todo(
       'PreToolUse deny: set hookSpecificOutput.permissionDecision = "deny" in stdout',
