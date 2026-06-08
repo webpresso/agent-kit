@@ -52,8 +52,8 @@ describe('managed init skill sources', () => {
       '---\nname: verify\n---\n',
     )
 
-    expect(() => assertManagedSkillSourcesPresent(packageRoot, ['verify', 'missing-skill'])).toThrow(
-      /missing canonical skill source\(s\): missing-skill/u,
-    )
+    expect(() =>
+      assertManagedSkillSourcesPresent(packageRoot, ['verify', 'missing-skill']),
+    ).toThrow(/missing canonical skill source\(s\): missing-skill/u)
   })
 })

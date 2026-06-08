@@ -73,7 +73,9 @@ export function findMissingManagedSkillSources(
   const packageRoot = packageRootOrCatalogDir.endsWith('/catalog')
     ? dirname(packageRootOrCatalogDir)
     : packageRootOrCatalogDir
-  return [...new Set(skillSlugs)].filter((skillSlug) => !findManagedSkillSource(packageRoot, skillSlug))
+  return [...new Set(skillSlugs)].filter(
+    (skillSlug) => !findManagedSkillSource(packageRoot, skillSlug),
+  )
 }
 
 export function assertManagedSkillSourcesPresent(

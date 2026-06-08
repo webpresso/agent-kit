@@ -11,8 +11,8 @@ bootstrap.
 - **Default repo bootstrap:** `base-kit` creates the starter quality scaffold
   and package scripts when files are absent.
 - **Default shared Webpresso skills:** `fix`, `verify`, `testing-philosophy`,
-  `plan-refine`, and `pll` are projected into supported host-visible surfaces
-  by default.
+  `plan-refine`, `pll`, and `best-practice-research` are projected into
+  supported host-visible surfaces by default.
 - **Default workstation presets:** `omx`, `omc`, `gstack`, `vision`, `rtk`, and
   `context-mode` are requested by default and degrade when the matching host or
   auth is missing.

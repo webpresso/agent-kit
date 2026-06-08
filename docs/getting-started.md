@@ -105,6 +105,7 @@ Guaranteed by default across Codex and Claude host-visible surfaces:
 - `testing-philosophy`
 - `plan-refine`
 - `pll`
+- `best-practice-research`
 
 Available as explicit opt-ins rather than default prompt baggage:
 

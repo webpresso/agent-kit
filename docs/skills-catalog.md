@@ -40,6 +40,8 @@ available unless you explicitly opt out of the relevant host/runtime.
 - `testing-philosophy/` — backs `/tph`; defines the "no bullshit tests" rules
 - `plan-refine/` — backs `/plan-refine`; 6-step refinement pipeline
 - `pll/` — backs `/pll`; blueprint-aware parallel execution adapter
+- `best-practice-research/` — shared best-practice research workflow for
+  current official/upstream guidance before planning or implementation
 
 ### Tier 2 — Shared add-ons (opt-in)
 
@@ -181,7 +183,7 @@ when there is a concrete upstream contract.
 | Category | Count |
 |---|---|
 | Commands | 10 |
-| Skills (shared favorites) | 5 |
+| Skills (shared favorites) | 6 |
 | Skills (shared + rendered opt-ins) | 4 |
 | Skills (tech/library opt-in) | 6 |
 | Workflows | 7 |
@@ -190,7 +192,7 @@ when there is a concrete upstream contract.
 | Doc templates | 8 |
 | `AGENTS.md.tpl` | 1 |
 
-Total catalog size: **50 primary files** (plus the support files inside
+Total catalog size: **51 primary files** (plus the support files inside
 multi-file skills like `tanstack-query/` and the reference example in
 `monorepo-navigation/examples/`).
 
