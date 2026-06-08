@@ -19,6 +19,7 @@ import {
   buildWebpressoHookGroups,
   classifyWebpressoHookBin,
   hoistTopLevelEvents,
+  hookSubcommandFor,
   resolvePackageRootForHookLaunchers,
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
@@ -98,6 +99,18 @@ async function runShellCommand(
     })
   })
 }
+
+describe('hookSubcommandFor (compiled-wp dispatch gate)', () => {
+  it('returns the wp hook subcommand for dispatchable managed hooks', () => {
+    expect(hookSubcommandFor('wp-pretool-guard')).toStrictEqual('pretool-guard')
+    expect(hookSubcommandFor('wp-check-dev-link')).toStrictEqual('check-dev-link')
+  })
+
+  it('returns undefined for a non-dispatchable bin (no wp hook handler) so its launcher stays node-only', () => {
+    expect(hookSubcommandFor('wp-not-a-real-hook')).toStrictEqual(undefined)
+    expect(hookSubcommandFor('some-third-party-hook')).toStrictEqual(undefined)
+  })
+})
 
 describe('scaffoldAgentHooks', () => {
   let repoRoot: string
@@ -361,12 +374,17 @@ describe('scaffoldAgentHooks', () => {
     expect(guardLauncher).toContain('NODE_BINARY=')
     expect(guardLauncher).toContain('PROJECT_BIN_PATH=')
 
-    // Non-dispatchable hook (no `wp hook` handler) stays node-only.
+    // check-dev-link is also a dispatchable hook (it has a `wp hook
+    // check-dev-link` handler in HOOK_HANDLERS), so its launcher likewise
+    // prefers the compiled binary. The "only dispatchable hooks get the
+    // preamble" gate is locked separately by the hookSubcommandFor unit test
+    // below.
     const devLinkLauncher = readFileSync(
       join(repoRoot, '.claude', 'hooks', 'managed', 'wp-check-dev-link.sh'),
       'utf8',
     )
-    expect(devLinkLauncher).not.toContain('WP_BIN=')
+    expect(devLinkLauncher).toContain(`WP_BIN='${compiledWp}'`)
+    expect(devLinkLauncher).toContain('exec "$WP_BIN" hook check-dev-link "$@"')
   })
 
   it('omits the compiled-wp preamble when no runtime package is installed', async () => {

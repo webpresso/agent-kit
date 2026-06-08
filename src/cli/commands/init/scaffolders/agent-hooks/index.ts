@@ -872,7 +872,7 @@ function resolveCompiledWpBinary(repoRoot: string): string | undefined {
  * `wp-check-dev-link`, which has no `wp hook` handler). The names map 1:1 by
  * stripping the `wp-` prefix; `isHookName` is the single source of truth.
  */
-function hookSubcommandFor(binName: string): string | undefined {
+export function hookSubcommandFor(binName: string): string | undefined {
   const sub = binName.startsWith('wp-') ? binName.slice(3) : binName
   return isHookName(sub) ? sub : undefined
 }
