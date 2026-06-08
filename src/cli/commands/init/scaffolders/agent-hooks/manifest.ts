@@ -56,7 +56,8 @@ function normalizeHooksManifest(parsed: unknown): HooksManifest | null {
 
   return {
     version: 1,
-    generatedAt: typeof manifest.generatedAt === 'string' ? manifest.generatedAt : new Date().toISOString(),
+    generatedAt:
+      typeof manifest.generatedAt === 'string' ? manifest.generatedAt : new Date().toISOString(),
     claude: manifest.claude ?? {},
     codex: manifest.codex ?? {},
     vendorState,

@@ -32,6 +32,8 @@ import { runPreflight, DOCS_URL } from './preflight.js'
 import { type MergeOptions, type MergeResult, summarizeResults } from './merge.js'
 import { resolveTier3Selection } from './prompts.js'
 import {
+  assertManagedSkillSourcesPresent,
+  isProjectedManagedSkillSlug,
   scaffoldAgent,
   SHARED_FAVORITE_SKILLS,
 } from './scaffold-agent.js'
@@ -339,7 +341,10 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
   // `wp setup` reported `overwritten: 2, drifted: 11, git index cleanup: 6
   // untracked` against the live repo. Refuse loudly and write nothing unless the
   // maintainer explicitly opts in with --allow-self-scaffold.
-  if (isAgentKitTemplateSourceRepo(consumer.packageJson?.name) && flags.allowSelfScaffold !== true) {
+  if (
+    isAgentKitTemplateSourceRepo(consumer.packageJson?.name) &&
+    flags.allowSelfScaffold !== true
+  ) {
     console.error(
       `wp setup: refusing to scaffold @webpresso/agent-kit's own repo (${consumer.repoRoot}).\n` +
         `  This repo is the source of the agent-surface templates; running setup here\n` +
@@ -435,7 +440,9 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
   if (options.dryRun) console.log('  mode: DRY RUN (no writes)')
   if (options.overwrite)
     console.log('  mode: --overwrite (force full-file replacement for eligible managed files)')
-  console.log(`  opt-in skills: ${tier3Selection.length > 0 ? tier3Selection.join(', ') : '(none)'}`)
+  console.log(
+    `  opt-in skills: ${tier3Selection.length > 0 ? tier3Selection.join(', ') : '(none)'}`,
+  )
 
   // Unconditional: workspace config is always needed for cross-repo correlation.
   if (!options.dryRun) {
@@ -508,7 +515,11 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     // hook entries). Rendered repo-local skills are written into the
     // consumer-owned `agent-skills/` tree first, then projected like every
     // other skill.
-    const allowedSkillSlugs = new Set<string>([...SHARED_FAVORITE_SKILLS, ...tier3Selection])
+    const allowedSkillSlugs = new Set<string>([
+      ...SHARED_FAVORITE_SKILLS,
+      ...tier3Selection.filter(isProjectedManagedSkillSlug),
+    ])
+    assertManagedSkillSourcesPresent(catalogDir, [...allowedSkillSlugs])
     if (!options.dryRun) {
       runUnifiedSync({
         catalogDir: join(catalogDir, 'agent'),
@@ -1032,7 +1043,9 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     console.log(`  drifted:         ${summary.drifted}`)
     if (options.dryRun) console.log(`  would-change:    ${summary['skipped-dry']}`)
     if (generatedIndexCleanupResult.kind === 'ok') {
-      console.log(`  git index cleanup: ${generatedIndexCleanupResult.removedPaths.length} untracked`)
+      console.log(
+        `  git index cleanup: ${generatedIndexCleanupResult.removedPaths.length} untracked`,
+      )
     } else if (generatedIndexCleanupResult.kind === 'failed') {
       console.warn(
         `  git index cleanup: failed (git rm --cached exited ${generatedIndexCleanupResult.exitCode})`,
@@ -1214,7 +1227,10 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
       'Force full-file replacement for eligible managed files (default: reconcile owned content and preserve divergent consumer files)',
     )
     .option('--dry-run', 'Show what would change without writing anything')
-    .option('--restore-hooks', 'Restore managed Claude/Codex hook config from .webpresso/hooks-manifest.json')
+    .option(
+      '--restore-hooks',
+      'Restore managed Claude/Codex hook config from .webpresso/hooks-manifest.json',
+    )
     .option('--disable-hooks <vendor>', 'Disable managed hooks for claude, codex, or all')
     .option('--yes', 'Accept defaults, skip interactive prompts (default behavior)')
     .option('--cwd <dir>', 'Working tree to scaffold into (default: process.cwd())')

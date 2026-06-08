@@ -3,12 +3,11 @@ import type { CAC } from 'cac'
 import { runFormat } from '#format/index'
 
 export const FORMAT_COMMAND_HELP = [
-  'Format the workspace via the managed formatting surface. Writes in place by default.',
+  'Format the workspace via the portable wp surface. Writes in place by default.',
   '',
   'Examples:',
   '  wp format            # rewrite files in place',
   '  wp format --check    # exit 1 on any unformatted file (no writes)',
-  '  wp format README.md docs/getting-started.md   # format markdown targets too',
 ].join('\n')
 
 export function registerFormatCommand(cli: CAC): void {
@@ -23,10 +22,9 @@ export function registerFormatCommand(cli: CAC): void {
       })
 
       if (!result.ok) {
-        // Surface the missing-binary message and the install hint to the user
-        // and exit non-zero so CI / husky / agent loops fail loud.
+        // Surface the missing-binary message to the user and exit non-zero so
+        // CI / husky / agent loops fail loud.
         console.error(result.message)
-        console.error('Install with: vp install -D oxfmt')
         return 1
       }
 

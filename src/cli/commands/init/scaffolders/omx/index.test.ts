@@ -390,7 +390,15 @@ describe('repairInstalledOmxPluginHooks', () => {
   it('rewrites only OMX plugin hook files with bare node commands', () => {
     const codexHome = mkdtempSync(join(tmpdir(), 'wp-omx-plugin-repair-'))
     const targetHooksDir = join(codexHome, 'plugins', 'cache', 'plugin-a', 'omx', '1.0.0', 'hooks')
-    const untouchedHooksDir = join(codexHome, 'plugins', 'cache', 'plugin-b', 'other', '1.0.0', 'hooks')
+    const untouchedHooksDir = join(
+      codexHome,
+      'plugins',
+      'cache',
+      'plugin-b',
+      'other',
+      '1.0.0',
+      'hooks',
+    )
 
     mkdirSync(targetHooksDir, { recursive: true })
     mkdirSync(untouchedHooksDir, { recursive: true })

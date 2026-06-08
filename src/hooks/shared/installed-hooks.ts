@@ -5,19 +5,13 @@ import type { HooksMap } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 
 export type InstalledHookVendor = 'claude' | 'codex'
 
-export function resolveInstalledHooksPath(
-  repoRoot: string,
-  vendor: InstalledHookVendor,
-): string {
+export function resolveInstalledHooksPath(repoRoot: string, vendor: InstalledHookVendor): string {
   return vendor === 'claude'
     ? join(repoRoot, '.claude', 'settings.json')
     : join(repoRoot, '.codex', 'hooks.json')
 }
 
-export function readInstalledHooksMap(
-  repoRoot: string,
-  vendor: InstalledHookVendor,
-): HooksMap {
+export function readInstalledHooksMap(repoRoot: string, vendor: InstalledHookVendor): HooksMap {
   const configPath = resolveInstalledHooksPath(repoRoot, vendor)
   if (!existsSync(configPath)) {
     return {}

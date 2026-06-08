@@ -103,7 +103,9 @@ describe('WP_ROUTING_BLOCK', () => {
     expect(WP_ROUTING_BLOCK).toContain('Do not fall through to raw tool bins under node_modules')
     expect(WP_ROUTING_BLOCK).toContain('<hook_diagnostics>')
     expect(WP_ROUTING_BLOCK).toContain('Prefer wp hook &lt;name&gt;')
-    expect(WP_ROUTING_BLOCK).toContain('Direct wp-* hook bins remain generated-hook runtime internals')
+    expect(WP_ROUTING_BLOCK).toContain(
+      'Direct wp-* hook bins remain generated-hook runtime internals',
+    )
     expect(WP_ROUTING_BLOCK).not.toContain('use just recipes directly')
   })
 

@@ -407,12 +407,7 @@ async function promoteBlueprintLocked(
     throw new Error(`Blueprint "${slug}" not found in any state directory under ${blueprintRoot}`)
   }
 
-  const {
-    dir: currentDir,
-    documentPath: currentDocumentPath,
-    shape,
-    state: currentState,
-  } = found
+  const { dir: currentDir, documentPath: currentDocumentPath, shape, state: currentState } = found
 
   // Guard: refuse to complete if any tasks are not done/dropped
   if (toState === 'completed') {
@@ -505,7 +500,10 @@ async function promoteBlueprintLocked(
   atomicWriteFile(currentDocumentPath, content)
 
   mkdirSync(path.dirname(destDir), { recursive: true })
-  renameSync(shape === 'flat' ? currentDocumentPath : currentDir, shape === 'flat' ? destDocumentPath : destDir)
+  renameSync(
+    shape === 'flat' ? currentDocumentPath : currentDir,
+    shape === 'flat' ? destDocumentPath : destDir,
+  )
 
   await reIngestDb(cwd)
 

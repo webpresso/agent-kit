@@ -6,21 +6,21 @@
 export const HOOK_STATUS = {
   installed: 'installed',
   generatedInactive: 'generated-inactive', // generated but vendor toggle off
-  pendingTrust: 'pending-trust',            // Codex: awaiting trust confirmation
-  enforcing: 'enforcing',                   // guard-class hook actively denying
-  degraded: 'degraded',                     // hook running but errors
-  disabled: 'disabled',                     // explicitly disabled
+  pendingTrust: 'pending-trust', // Codex: awaiting trust confirmation
+  enforcing: 'enforcing', // guard-class hook actively denying
+  degraded: 'degraded', // hook running but errors
+  disabled: 'disabled', // explicitly disabled
 } as const
 
 export type HookStatus = (typeof HOOK_STATUS)[keyof typeof HOOK_STATUS]
 
 export type HookStatusDetail = {
-  readonly hook: string          // bin name, e.g. 'wp-pretool-guard'
-  readonly event: string         // e.g. 'PreToolUse'
+  readonly hook: string // bin name, e.g. 'wp-pretool-guard'
+  readonly event: string // e.g. 'PreToolUse'
   readonly vendor: 'claude' | 'codex' | 'cursor'
   readonly status: HookStatus
-  readonly reason?: string       // only when degraded/disabled
-  readonly nextCommand?: string  // suggested fix command, e.g. 'wp setup'
+  readonly reason?: string // only when degraded/disabled
+  readonly nextCommand?: string // suggested fix command, e.g. 'wp setup'
 }
 
 const COL_WIDTHS = {

@@ -14,16 +14,16 @@ const BASE_OPTIONS = {
 describe('dispatch', () => {
   it('throws for an unknown event with a list of valid events', async () => {
     const hooksMap: HooksMap = {}
-    await expect(
-      dispatch(hooksMap, { ...BASE_OPTIONS, event: 'UnknownEvent' }),
-    ).rejects.toThrow(/Valid events:/)
+    await expect(dispatch(hooksMap, { ...BASE_OPTIONS, event: 'UnknownEvent' })).rejects.toThrow(
+      /Valid events:/,
+    )
   })
 
   it('throws error message that includes the invalid event name', async () => {
     const hooksMap: HooksMap = {}
-    await expect(
-      dispatch(hooksMap, { ...BASE_OPTIONS, event: 'BogusEvent' }),
-    ).rejects.toThrow(/BogusEvent/)
+    await expect(dispatch(hooksMap, { ...BASE_OPTIONS, event: 'BogusEvent' })).rejects.toThrow(
+      /BogusEvent/,
+    )
   })
 
   it('returns empty hooks array for a valid event with no registered hooks', async () => {

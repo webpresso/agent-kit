@@ -271,7 +271,10 @@ export function registerAuditCommand(cli: CAC): void {
       '--lore-warn',
       'Warn about missing Lore trailers but always exit 0 (soft adoption mode)',
     )
-    .option('--omx-plans', 'Also audit .omx/plans derived-handoff governance for blueprint-lifecycle')
+    .option(
+      '--omx-plans',
+      'Also audit .omx/plans derived-handoff governance for blueprint-lifecycle',
+    )
     .option('--html-entry <file>', 'HTML entry relative to dist for bundle-budget')
     .option('--max-js-asset-bytes <bytes>', 'Max size for any generated JS asset')
     .option('--max-html-eager-js-asset-bytes <bytes>', 'Max size for any HTML-eager JS asset')

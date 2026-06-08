@@ -186,7 +186,10 @@ describe('wp_blueprint_transition', () => {
   })
 
   it('allows transitioning to completed when all remaining tasks are dropped', async () => {
-    const raw = readFileSync(overviewPath, 'utf8').replace('**Status:** todo', '**Status:** dropped')
+    const raw = readFileSync(overviewPath, 'utf8').replace(
+      '**Status:** todo',
+      '**Status:** dropped',
+    )
     await import('node:fs/promises').then(({ writeFile }) => writeFile(overviewPath, raw, 'utf8'))
     await bootstrapBlueprintProjection(tmpDir)
 

@@ -9,7 +9,8 @@ import { buildClaudeHookGroups } from './claude.js'
  * inputs. This is the extraction-parity evidence per extraction-parity.md.
  */
 describe('buildClaudeHookGroups (byte-parity)', () => {
-  const resolveBin = (name: string) => `[ -x "/repo/.claude/hooks/managed/${name}.sh" ] && "/repo/.claude/hooks/managed/${name}.sh" || true`
+  const resolveBin = (name: string) =>
+    `[ -x "/repo/.claude/hooks/managed/${name}.sh" ] && "/repo/.claude/hooks/managed/${name}.sh" || true`
   const matchers = {
     preToolUse: 'Bash|Write|Edit|MultiEdit',
     postToolUse: 'Write|Edit|MultiEdit',

@@ -75,7 +75,7 @@ describe('root launcher contract', () => {
       mkdirSync(join(root, 'bin'), { recursive: true })
       writeFileSync(
         launcherPath,
-        "#!/usr/bin/env node\n\nimport { runNamedBin } from './_run.js'\n\nrunNamedBin(\"wp\")\n",
+        '#!/usr/bin/env node\n\nimport { runNamedBin } from \'./_run.js\'\n\nrunNamedBin("wp")\n',
         'utf8',
       )
       chmodSync(launcherPath, 0o755)

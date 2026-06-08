@@ -128,8 +128,6 @@ export async function main(): Promise<void> {
   process.exit(0)
 }
 
-if (
-  isDirectEntrypoint(import.meta.url)
-) {
+if (isDirectEntrypoint(import.meta.url)) {
   void main()
 }

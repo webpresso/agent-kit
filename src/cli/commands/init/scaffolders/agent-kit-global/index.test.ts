@@ -1,12 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -23,9 +16,7 @@ type SpawnReturn = { status: number | null; error?: Error; stdout?: string }
  */
 type ScaffolderSpawn = NonNullable<Parameters<typeof ensureAgentKitGlobal>[0]['spawn']>
 
-function makeSpawn(
-  responses: { probe?: SpawnReturn; install?: SpawnReturn } = {},
-): {
+function makeSpawn(responses: { probe?: SpawnReturn; install?: SpawnReturn } = {}): {
   spawn: ScaffolderSpawn
   calls: Array<{ cmd: string; args: readonly string[] }>
 } {

@@ -131,8 +131,6 @@ export function auditBlueprintReadmeDrift(
     ok: isInSync,
     title: 'Blueprint README drift',
     checked: 1,
-    violations: isInSync
-      ? []
-      : [{ file: README_RELATIVE_PATH, message: README_STALE_MESSAGE }],
+    violations: isInSync ? [] : [{ file: README_RELATIVE_PATH, message: README_STALE_MESSAGE }],
   }
 }

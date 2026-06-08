@@ -87,9 +87,7 @@ describe('resolveProjectRoot', () => {
     writeFileSync(join(cwdRoot, 'pnpm-workspace.yaml'), '')
     const nested = join(cwdRoot, 'apps', 'site')
     mkdirSync(nested, { recursive: true })
-    expect(
-      resolveProjectRoot({ env: { CLAUDE_PROJECT_DIR: envRoot }, cwd: nested }),
-    ).toBe(cwdRoot)
+    expect(resolveProjectRoot({ env: { CLAUDE_PROJECT_DIR: envRoot }, cwd: nested })).toBe(cwdRoot)
   })
 
   // Boundary: an explicit cwd with no marker of its own still defers to

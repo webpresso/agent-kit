@@ -1,7 +1,3 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
@@ -52,55 +48,31 @@ afterEach(() => {
 })
 
 describe('runFormat', () => {
-  it('formats markdown file targets without invoking oxfmt', async () => {
-    const cwd = mkdtempSync(join(tmpdir(), 'wp-format-md-'))
-    const file = join(cwd, 'guide.md')
-    writeFileSync(file, '# Guide\n\n* one\n* two\n')
+  it('delegates formatting to the managed formatter backend', async () => {
+    spawnMock.mockReturnValue(fakeChild({ stdout: 'Finished\n', exitCode: 0 }))
 
-    const result = await runFormat({ cwd, files: ['guide.md'] })
+    const result = await runFormat({ files: ['src'] })
 
     expect(result).toMatchObject({
       passed: true,
       exitCode: 0,
+      output: 'Finished\n',
     })
-    expect(result.output).toContain('guide.md markdown formatted')
-    expect(spawnMock).not.toHaveBeenCalled()
-    expect(readFileSync(file, 'utf8')).toContain('- one')
+    const [cmd, args] = spawnMock.mock.calls[0]!
+    expect(cmd).toContain('oxfmt')
+    expect(args).toEqual(['--write', '--ignore-path', '.gitignore', 'src'])
   })
 
-  it('fails check mode when markdown targets need formatting', async () => {
-    const cwd = mkdtempSync(join(tmpdir(), 'wp-format-md-check-'))
-    const file = join(cwd, 'guide.md')
-    const original = '# Guide\n\n* one\n'
-    writeFileSync(file, original)
+  it('forwards check mode to the managed formatter backend', async () => {
+    spawnMock.mockReturnValue(fakeChild({ stderr: 'needs formatting\n', exitCode: 1 }))
 
-    const result = await runFormat({ cwd, files: ['guide.md'], check: true })
+    const result = await runFormat({ check: true, files: ['src'] })
 
     expect(result).toMatchObject({
       passed: false,
       exitCode: 1,
     })
-    expect(result.output).toContain('guide.md needs markdown formatting')
-    expect(readFileSync(file, 'utf8')).toBe(original)
-    expect(spawnMock).not.toHaveBeenCalled()
-  })
-
-  it('routes only non-markdown targets through oxfmt when mixed files are provided', async () => {
-    const cwd = mkdtempSync(join(tmpdir(), 'wp-format-mixed-'))
-    writeFileSync(join(cwd, 'README.md'), '# Readme\n\n* one\n')
-    writeFileSync(join(cwd, 'sample.ts'), 'export const x=1\n')
-    spawnMock.mockReturnValue(fakeChild({ stdout: 'sample.ts\n', exitCode: 0 }))
-
-    const result = await runFormat({ cwd, files: ['README.md', 'sample.ts'] })
-
-    expect(result).toMatchObject({
-      passed: true,
-      exitCode: 0,
-    })
-    const [cmd, args] = spawnMock.mock.calls[0]!
-    expect(cmd).toContain('oxfmt')
-    expect(args).toEqual(['--write', '--ignore-path', '.gitignore', 'sample.ts'])
-    expect(result.output).toContain('README.md markdown formatted')
-    expect(result.output).toContain('sample.ts')
+    const [, args] = spawnMock.mock.calls[0]!
+    expect(args).toEqual(['--check', '--ignore-path', '.gitignore', 'src'])
   })
 })

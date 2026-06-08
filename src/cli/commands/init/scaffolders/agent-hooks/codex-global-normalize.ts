@@ -82,7 +82,9 @@ export function resolveBinaryOnPath(
   return null
 }
 
-export function resolveInstalledOmxHookScriptPath(homeDir: string = process.env.HOME || homedir()): string | null {
+export function resolveInstalledOmxHookScriptPath(
+  homeDir: string = process.env.HOME || homedir(),
+): string | null {
   const stableCandidates = [
     join(
       homeDir,

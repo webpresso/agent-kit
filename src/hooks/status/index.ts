@@ -7,8 +7,16 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { formatStatusLine, HOOK_STATUS, type HookStatusDetail, type HookStatus } from '#hooks/shared/vocabulary.js'
-import { readHooksManifest, type HookVendorState } from '#cli/commands/init/scaffolders/agent-hooks/manifest.js'
+import {
+  formatStatusLine,
+  HOOK_STATUS,
+  type HookStatusDetail,
+  type HookStatus,
+} from '#hooks/shared/vocabulary.js'
+import {
+  readHooksManifest,
+  type HookVendorState,
+} from '#cli/commands/init/scaffolders/agent-hooks/manifest.js'
 import type { HookGroup, HooksMap } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 import { WP_HOOK_SPECS as IR_HOOK_SPECS } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 
@@ -75,7 +83,10 @@ export function deriveHookStatus(options: DeriveHookStatusOptions): readonly Hoo
       hook: spec.hook,
       event: spec.event,
       vendor,
-      status: vendorState === 'disabled' ? HOOK_STATUS.disabled : specStatus(spec, present, manifestExists),
+      status:
+        vendorState === 'disabled'
+          ? HOOK_STATUS.disabled
+          : specStatus(spec, present, manifestExists),
     }
   })
 
@@ -95,9 +106,10 @@ function readHooksMap(filePath: string): HooksMap {
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
     const obj = parsed as Record<string, unknown>
     // Codex wraps events under a top-level `hooks` key.
-    const candidate = typeof obj['hooks'] === 'object' && obj['hooks'] !== null && !Array.isArray(obj['hooks'])
-      ? obj['hooks'] as Record<string, unknown>
-      : obj
+    const candidate =
+      typeof obj['hooks'] === 'object' && obj['hooks'] !== null && !Array.isArray(obj['hooks'])
+        ? (obj['hooks'] as Record<string, unknown>)
+        : obj
     // Flatten to HooksMap: keep only array-valued event keys.
     const result: HooksMap = {}
     for (const [key, value] of Object.entries(candidate)) {
@@ -132,9 +144,7 @@ function resolveRepoRoot(): string {
 }
 
 function hooksFilePath(vendor: 'claude' | 'codex', repoRoot: string): string {
-  return vendor === 'claude'
-    ? resolveClaudeSettingsPath(repoRoot)
-    : resolveCodexHooksPath(repoRoot)
+  return vendor === 'claude' ? resolveClaudeSettingsPath(repoRoot) : resolveCodexHooksPath(repoRoot)
 }
 
 function printVendorStatus(
@@ -167,7 +177,9 @@ export async function statusCommand(argv: readonly string[]): Promise<void> {
   const manifestExists = manifest !== null
 
   if (!manifestExists) {
-    process.stdout.write('No hooks manifest found. Run `wp setup` to regenerate managed hook state.\n')
+    process.stdout.write(
+      'No hooks manifest found. Run `wp setup` to regenerate managed hook state.\n',
+    )
   }
 
   for (const vendor of vendors) {

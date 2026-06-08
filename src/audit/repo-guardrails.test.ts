@@ -1114,12 +1114,12 @@ describe('auditBlueprintLifecycle — branch coverage', () => {
     )
     const result = auditBlueprintLifecycle(root)
     expect(result.ok).toBe(false)
-    expect(
-      result.violations.some((v: RepoAuditViolation) => v.message.includes('title')),
-    ).toBe(true)
-    expect(
-      result.violations.some((v: RepoAuditViolation) => v.message.includes('owner')),
-    ).toBe(true)
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('title'))).toBe(
+      true,
+    )
+    expect(result.violations.some((v: RepoAuditViolation) => v.message.includes('owner'))).toBe(
+      true,
+    )
     expect(
       result.violations.some((v: RepoAuditViolation) => v.message.includes('last_updated')),
     ).toBe(true)

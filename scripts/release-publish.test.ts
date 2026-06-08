@@ -16,7 +16,9 @@ describe('release-publish runtime lane', () => {
     )
     expect(source).toContain('for (const target of RUNTIME_TARGETS)')
     expect(source).toContain('resolve(runtimePackageRoot, runtimePackage)')
-    expect(rootPublishIndex).toBeGreaterThan(source.indexOf('for (const target of RUNTIME_TARGETS)'))
+    expect(rootPublishIndex).toBeGreaterThan(
+      source.indexOf('for (const target of RUNTIME_TARGETS)'),
+    )
   })
 
   it('explicitly prepares and restores the packed root manifest around root publish', () => {
@@ -26,9 +28,7 @@ describe('release-publish runtime lane', () => {
     expect(source).toContain('preparePackedManifest(packageRoot)')
     expect(source).toContain('restorePackedManifest(packageRoot)')
     expect(source.indexOf('preparePackedManifest(packageRoot)')).toBeLessThan(rootPublishIndex)
-    expect(source.indexOf('restorePackedManifest(packageRoot)')).toBeGreaterThan(
-      rootPublishIndex,
-    )
+    expect(source.indexOf('restorePackedManifest(packageRoot)')).toBeGreaterThan(rootPublishIndex)
     expect(source).toContain("'--ignore-scripts'")
   })
 })

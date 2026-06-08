@@ -73,12 +73,19 @@ function summarizeProjectedState(
   ].join('; ')
 }
 
-function uniqueRepoRoots(currentRoot: string, workspaceRepos: readonly string[], includeWorkspace: boolean): string[] {
+function uniqueRepoRoots(
+  currentRoot: string,
+  workspaceRepos: readonly string[],
+  includeWorkspace: boolean,
+): string[] {
   if (!includeWorkspace) return [currentRoot]
   return [...new Set([currentRoot, ...workspaceRepos])]
 }
 
-function formatReport(report: HooksUpgradeTargetReport, stdout: Pick<NodeJS.WriteStream, 'write'>): void {
+function formatReport(
+  report: HooksUpgradeTargetReport,
+  stdout: Pick<NodeJS.WriteStream, 'write'>,
+): void {
   stdout.write(`wp hooks upgrade: ${report.repoRoot}\n`)
   stdout.write(`  scope: ${report.mode}\n`)
   stdout.write(`  mode: ${report.apply ? 'apply' : 'dry-run'}\n`)
@@ -122,7 +129,11 @@ export async function upgradeHooksForRepo(
     (vendor) => manifest.vendorState[vendor] === 'disabled',
   )
   if (disabledVendors.length > 0) {
-    const disabledMutation = disableManagedHooksFromManifest(scaffoldInput, nextManifest, disabledVendors)
+    const disabledMutation = disableManagedHooksFromManifest(
+      scaffoldInput,
+      nextManifest,
+      disabledVendors,
+    )
     results = [
       ...results,
       ...[disabledMutation.claude, disabledMutation.codex].filter(

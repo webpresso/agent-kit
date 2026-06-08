@@ -13,9 +13,7 @@ export interface ManagedRunnerHarnessOptions {
  * Tests that need a different lane can still override the probe explicitly in
  * their own body; this hook only establishes the per-test baseline.
  */
-export function installManagedRunnerHermeticHooks(
-  options: ManagedRunnerHarnessOptions = {},
-): void {
+export function installManagedRunnerHermeticHooks(options: ManagedRunnerHarnessOptions = {}): void {
   const { rtkAvailable = true } = options
 
   beforeEach(() => {

@@ -205,7 +205,10 @@ describe('OPENCODE_PLUGIN_CONTENT', () => {
           input: { tool: string; args: { command?: string } },
           output: { args: { command?: string } },
         ) => Promise<void>
-        'shell.env': (input: { cwd: string }, output: { env: Record<string, string> }) => Promise<void>
+        'shell.env': (
+          input: { cwd: string },
+          output: { env: Record<string, string> },
+        ) => Promise<void>
       }>
     }
 

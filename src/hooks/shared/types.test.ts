@@ -7,7 +7,9 @@ describe('buildDenyEnvelope', () => {
     const envelope = buildDenyEnvelope({ reason: 'Command is forbidden' })
     expect(envelope.hookSpecificOutput.permissionDecision).toStrictEqual('deny')
     expect(envelope.hookSpecificOutput.hookEventName).toStrictEqual('PreToolUse')
-    expect(envelope.hookSpecificOutput.permissionDecisionReason).toStrictEqual('Command is forbidden')
+    expect(envelope.hookSpecificOutput.permissionDecisionReason).toStrictEqual(
+      'Command is forbidden',
+    )
     // Must be serialisable
     expect(() => JSON.stringify(envelope)).not.toThrow()
   })
@@ -70,7 +72,9 @@ describe('buildInfraDenyEnvelope', () => {
 
   it('includes the reason in permissionDecisionReason', () => {
     const envelope = buildInfraDenyEnvelope({ reason: 'Guard binary missing' })
-    expect(envelope.hookSpecificOutput.permissionDecisionReason).toStrictEqual('Guard binary missing')
+    expect(envelope.hookSpecificOutput.permissionDecisionReason).toStrictEqual(
+      'Guard binary missing',
+    )
   })
 
   it('is serialisable to valid JSON', () => {

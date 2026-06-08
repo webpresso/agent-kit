@@ -84,10 +84,7 @@ function countHooks(map: HooksMap): number {
 }
 
 /** Compute changes between before/after HooksMaps for one vendor. */
-function computeVendorChanges(
-  beforeMap: HooksMap,
-  afterMap: HooksMap,
-): readonly HookChange[] {
+function computeVendorChanges(beforeMap: HooksMap, afterMap: HooksMap): readonly HookChange[] {
   const beforeEntries = collectEntries(beforeMap)
   const afterEntries = collectEntries(afterMap)
   const changes: HookChange[] = []
@@ -151,10 +148,7 @@ function formatVendorBlock(report: VendorReport): string {
  * @param after  - The manifest produced by the current setup run.
  * @returns A multi-line string ready for display.
  */
-export function generateSetupReport(
-  before: HooksManifest | null,
-  after: HooksManifest,
-): string {
+export function generateSetupReport(before: HooksManifest | null, after: HooksManifest): string {
   const beforeClaude: HooksMap = before?.claude ?? {}
   const beforeCodex: HooksMap = before?.codex ?? {}
 

@@ -1242,9 +1242,11 @@ export function buildHooksDoctorFixPlan(cwd = process.cwd()): HookFixResult {
  * by design. When both run, Claude Code fires all matching PreToolUse hooks
  * concurrently; a deny from either wins.
  */
-export function checkThirdPartyHookCoexistence(options: {
-  claudeConfigDir?: string
-} = {}): DoctorCheck {
+export function checkThirdPartyHookCoexistence(
+  options: {
+    claudeConfigDir?: string
+  } = {},
+): DoctorCheck {
   const configDir =
     options.claudeConfigDir ??
     process.env.CLAUDE_CONFIG_DIR ??

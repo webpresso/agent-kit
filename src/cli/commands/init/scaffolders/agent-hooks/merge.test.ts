@@ -5,9 +5,7 @@ import type { HookGroup, HooksMap } from './ir.js'
 
 describe('ensureGroup', () => {
   it('appends a new group when no matching command exists', () => {
-    const groups: HookGroup[] = [
-      { hooks: [{ type: 'command', command: 'existing-cmd' }] },
-    ]
+    const groups: HookGroup[] = [{ hooks: [{ type: 'command', command: 'existing-cmd' }] }]
     const incoming: HookGroup = {
       hooks: [{ type: 'command', command: 'new-cmd' }],
     }
@@ -62,10 +60,24 @@ describe('ensureGroup', () => {
   it('preserves command from existing hook (not incoming) on match', () => {
     // The consumer's already-materialized command form must be preserved
     const existing: HookGroup = {
-      hooks: [{ type: 'command', command: '[ -x "/repo/.codex/managed-hooks/wp-stop-qa.sh" ] && "/repo/.codex/managed-hooks/wp-stop-qa.sh" || true', timeout: 5 }],
+      hooks: [
+        {
+          type: 'command',
+          command:
+            '[ -x "/repo/.codex/managed-hooks/wp-stop-qa.sh" ] && "/repo/.codex/managed-hooks/wp-stop-qa.sh" || true',
+          timeout: 5,
+        },
+      ],
     }
     const incoming: HookGroup = {
-      hooks: [{ type: 'command', command: '[ -x "/new-repo/.codex/managed-hooks/wp-stop-qa.sh" ] && "/new-repo/.codex/managed-hooks/wp-stop-qa.sh" || true', timeout: 10 }],
+      hooks: [
+        {
+          type: 'command',
+          command:
+            '[ -x "/new-repo/.codex/managed-hooks/wp-stop-qa.sh" ] && "/new-repo/.codex/managed-hooks/wp-stop-qa.sh" || true',
+          timeout: 10,
+        },
+      ],
     }
     const result = ensureGroup([existing], incoming)
     expect(result).toHaveLength(1)

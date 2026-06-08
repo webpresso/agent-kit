@@ -53,7 +53,10 @@ export function pruneProjectionArtifacts(
   let pruned = 0
   for (const repoRoot of safeListDirs(stateRoot)) {
     const repoScopedDb = path.join(repoRoot, 'blueprints', 'blueprints.db')
-    if (repoScopedDb !== preserveDbPath && shouldPruneRepoScopedProjection(repoScopedDb, now, ttlMs)) {
+    if (
+      repoScopedDb !== preserveDbPath &&
+      shouldPruneRepoScopedProjection(repoScopedDb, now, ttlMs)
+    ) {
       pruned += removeProjection(repoScopedDb)
     }
 

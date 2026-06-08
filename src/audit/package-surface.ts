@@ -378,7 +378,13 @@ function auditPackedTarballSurface(
       }
     }
 
-    checked += auditAgentKitNativeRuntimeSurface(root, candidate, packEntry, packedFiles, violations)
+    checked += auditAgentKitNativeRuntimeSurface(
+      root,
+      candidate,
+      packEntry,
+      packedFiles,
+      violations,
+    )
 
     checked += auditPackedTarballContent(
       root,

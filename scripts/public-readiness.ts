@@ -15,10 +15,7 @@ import {
   rootContractMode,
   validateRootLauncherContract,
 } from '../src/launcher/root-contract.js'
-import {
-  preparePackedManifest,
-  restorePackedManifest,
-} from '../src/build/package-manifest.js'
+import { preparePackedManifest, restorePackedManifest } from '../src/build/package-manifest.js'
 
 type Status = 'PASS' | 'FAIL' | 'BLOCKED'
 
@@ -92,7 +89,10 @@ export function listMissingRuntimeOptionalDependencies(
   optionalDependencies: Record<string, string> = {},
 ): string[] {
   return (runtimeManifest.targets ?? [])
-    .filter((target) => !target.packageName || optionalDependencies[target.packageName] !== packageVersion)
+    .filter(
+      (target) =>
+        !target.packageName || optionalDependencies[target.packageName] !== packageVersion,
+    )
     .map((target) => target.packageName ?? target.id ?? 'unknown-target')
 }
 
@@ -153,45 +153,45 @@ if (import.meta.main) {
 
   // 1) Existing gate commands
   for (const [name, command, args, env] of [
-  ['forbidden-env-files', 'bun', ['scripts/check-no-dev-vars.ts'], process.env] as const,
-  [
-    'secret-provider-quarantine',
-    'bun',
-    ['scripts/audit-secret-provider-quarantine.ts'],
-    process.env,
-  ] as const,
-  [
-    'package-surface-audit',
-    'bun',
-    ['src/cli/cli.ts', 'audit', 'package-surface'],
-    { ...process.env, WP_SKIP_UPDATE_CHECK: '1' },
-  ] as const,
-  [
-    'install-docs-lint',
-    'node',
-    ['./bin/docs-lint.js', 'README.md', 'docs/getting-started.md', 'docs/README.md'],
-    process.env,
-  ] as const,
-  [
-    'packed-consumer-setup-smoke',
-    'bun',
-    ['scripts/public-consumer-smoke.ts', '--setup-only', '--skip-build'],
-    { ...process.env, WP_SKIP_UPDATE_CHECK: '1' },
-  ] as const,
+    ['forbidden-env-files', 'bun', ['scripts/check-no-dev-vars.ts'], process.env] as const,
+    [
+      'secret-provider-quarantine',
+      'bun',
+      ['scripts/audit-secret-provider-quarantine.ts'],
+      process.env,
+    ] as const,
+    [
+      'package-surface-audit',
+      'bun',
+      ['src/cli/cli.ts', 'audit', 'package-surface'],
+      { ...process.env, WP_SKIP_UPDATE_CHECK: '1' },
+    ] as const,
+    [
+      'install-docs-lint',
+      'node',
+      ['./bin/docs-lint.js', 'README.md', 'docs/getting-started.md', 'docs/README.md'],
+      process.env,
+    ] as const,
+    [
+      'packed-consumer-setup-smoke',
+      'bun',
+      ['scripts/public-consumer-smoke.ts', '--setup-only', '--skip-build'],
+      { ...process.env, WP_SKIP_UPDATE_CHECK: '1' },
+    ] as const,
   ]) {
     const r = run(command, args, env)
     results.push(r.ok ? pass(name, 'ok') : fail(name, `exit ${r.code}`))
   }
 
-// 2) Package identity / metadata
-const pkg = JSON.parse(read('package.json')) as {
-  name?: string
-  version?: string
-  bin?: Record<string, string>
-  optionalDependencies?: Record<string, string>
-  publishConfig?: { registry?: string; access?: string }
-  scripts?: Record<string, string>
-}
+  // 2) Package identity / metadata
+  const pkg = JSON.parse(read('package.json')) as {
+    name?: string
+    version?: string
+    bin?: Record<string, string>
+    optionalDependencies?: Record<string, string>
+    publishConfig?: { registry?: string; access?: string }
+    scripts?: Record<string, string>
+  }
   if (pkg.name !== '@webpresso/agent-kit') {
     results.push(
       fail('package-name', `expected @webpresso/agent-kit, got ${pkg.name ?? 'missing'}`),
@@ -213,9 +213,9 @@ const pkg = JSON.parse(read('package.json')) as {
     )
   }
 
-const runtimeManifestPath = 'bin/runtime-manifest.json'
-const runtimeBuildScript = 'scripts/build-runtime-binaries.ts'
-const runtimeStageScript = 'scripts/stage-plugin-runtime-artifacts.ts'
+  const runtimeManifestPath = 'bin/runtime-manifest.json'
+  const runtimeBuildScript = 'scripts/build-runtime-binaries.ts'
+  const runtimeStageScript = 'scripts/stage-plugin-runtime-artifacts.ts'
   if (!existsSync(resolve(ROOT, runtimeManifestPath))) {
     results.push(fail('compiled-runtime-manifest', `${runtimeManifestPath} missing`))
   } else if (!existsSync(resolve(ROOT, runtimeBuildScript))) {
@@ -247,9 +247,9 @@ const runtimeStageScript = 'scripts/stage-plugin-runtime-artifacts.ts'
     }
   }
 
-const runtimeManifest = existsSync(resolve(ROOT, runtimeManifestPath))
-  ? (JSON.parse(read(runtimeManifestPath)) as RuntimeManifestRecord)
-  : null
+  const runtimeManifest = existsSync(resolve(ROOT, runtimeManifestPath))
+    ? (JSON.parse(read(runtimeManifestPath)) as RuntimeManifestRecord)
+    : null
 
   let preparedPkg: typeof pkg | null = null
   try {
@@ -278,7 +278,7 @@ const runtimeManifest = existsSync(resolve(ROOT, runtimeManifestPath))
     )
   }
 
-const stagedLauncherPath = resolve(ROOT, 'bin', 'wp')
+  const stagedLauncherPath = resolve(ROOT, 'bin', 'wp')
   const stagedLauncherStatus = validateRootLauncherContract(stagedLauncherPath)
   results.push(
     stagedLauncherStatus.ok
@@ -292,7 +292,7 @@ const stagedLauncherPath = resolve(ROOT, 'bin', 'wp')
         ),
   )
 
-const pluginManifestPath = resolve(ROOT, '.claude-plugin', 'plugin.json')
+  const pluginManifestPath = resolve(ROOT, '.claude-plugin', 'plugin.json')
   if (!existsSync(pluginManifestPath)) {
     results.push(fail('plugin-native-launcher-policy', '.claude-plugin/plugin.json missing'))
   } else {
@@ -309,7 +309,7 @@ const pluginManifestPath = resolve(ROOT, '.claude-plugin', 'plugin.json')
     )
   }
 
-// 3) Tarball surface
+  // 3) Tarball surface
   let pack: ReturnType<typeof run> = { code: 1, ok: false, stdout: '' }
   try {
     preparePackedManifest(ROOT)
@@ -320,34 +320,34 @@ const pluginManifestPath = resolve(ROOT, '.claude-plugin', 'plugin.json')
   if (!pack.ok) {
     results.push(fail('npm-pack', `exit ${pack.code}`))
   } else {
-  const parsed = JSON.parse(pack.stdout.match(/\[.*\]/s)?.[0] ?? '[]')[0] as
-    | { files?: Array<{ path: string }>; size?: number; unpackedSize?: number }
-    | undefined
-  const files = parsed?.files?.map((f) => f.path) ?? []
-  const maps = files.filter((p) => p.endsWith('.map')).length
-  const integration = files.filter((p) => p.includes('__integration__/')).length
-  const mocks = files.filter((p) => p.includes('__mocks__/')).length
-  const evals = files.filter((p) => p.includes('runners/evals/')).length
-  const missingRuntimePaths = runtimeManifest
-    ? listMissingPackedRuntimePaths(runtimeManifest, files)
-    : []
-  const leakedRuntimePayloadPaths = listPackedRuntimePayloadLeaks(files)
-  if (maps || integration || mocks || evals) {
-    results.push(
-      fail(
-        'tarball-banned-paths',
-        `maps=${maps}, integration=${integration}, mocks=${mocks}, evals=${evals}`,
-      ),
-    )
-  } else {
-    results.push(
-      pass(
-        'tarball-banned-paths',
-        `entryCount=${files.length}, size=${parsed?.size ?? 0}, unpacked=${parsed?.unpackedSize ?? 0}`,
-      ),
-    )
-  }
-  const sizeBudget = evaluateAgentKitTarballSizeBudget(parsed ?? {})
+    const parsed = JSON.parse(pack.stdout.match(/\[.*\]/s)?.[0] ?? '[]')[0] as
+      | { files?: Array<{ path: string }>; size?: number; unpackedSize?: number }
+      | undefined
+    const files = parsed?.files?.map((f) => f.path) ?? []
+    const maps = files.filter((p) => p.endsWith('.map')).length
+    const integration = files.filter((p) => p.includes('__integration__/')).length
+    const mocks = files.filter((p) => p.includes('__mocks__/')).length
+    const evals = files.filter((p) => p.includes('runners/evals/')).length
+    const missingRuntimePaths = runtimeManifest
+      ? listMissingPackedRuntimePaths(runtimeManifest, files)
+      : []
+    const leakedRuntimePayloadPaths = listPackedRuntimePayloadLeaks(files)
+    if (maps || integration || mocks || evals) {
+      results.push(
+        fail(
+          'tarball-banned-paths',
+          `maps=${maps}, integration=${integration}, mocks=${mocks}, evals=${evals}`,
+        ),
+      )
+    } else {
+      results.push(
+        pass(
+          'tarball-banned-paths',
+          `entryCount=${files.length}, size=${parsed?.size ?? 0}, unpacked=${parsed?.unpackedSize ?? 0}`,
+        ),
+      )
+    }
+    const sizeBudget = evaluateAgentKitTarballSizeBudget(parsed ?? {})
     results.push(
       sizeBudget.sizeOk && sizeBudget.unpackedOk
         ? pass(
@@ -381,31 +381,31 @@ const pluginManifestPath = resolve(ROOT, '.claude-plugin', 'plugin.json')
     )
   }
 
-// 4) Negative stale-literal checks on shipped/public surfaces
-const shippedSurfacePaths = [
-  'README.md',
-  'AGENTS.md',
-  'docs/README.md',
-  'docs/getting-started.md',
-  '.npmrc',
-  'package.json',
-  '.github/workflows/release.yml',
-  'src/cli/auto-update/run.ts',
-  'src/cli/auto-update/detect-pm.ts',
-  'src/hooks/doctor.ts',
-  'catalog/AGENTS.md.tpl',
-  'catalog/agent/rules/package-conventions.md',
-  'catalog/agent/rules/changeset-release.md',
-  'catalog/base-kit/.github/workflows/ci.yml.tmpl',
-]
+  // 4) Negative stale-literal checks on shipped/public surfaces
+  const shippedSurfacePaths = [
+    'README.md',
+    'AGENTS.md',
+    'docs/README.md',
+    'docs/getting-started.md',
+    '.npmrc',
+    'package.json',
+    '.github/workflows/release.yml',
+    'src/cli/auto-update/run.ts',
+    'src/cli/auto-update/detect-pm.ts',
+    'src/hooks/doctor.ts',
+    'catalog/AGENTS.md.tpl',
+    'catalog/agent/rules/package-conventions.md',
+    'catalog/agent/rules/changeset-release.md',
+    'catalog/base-kit/.github/workflows/ci.yml.tmpl',
+  ]
 
-const staleHits = countMatches(shippedSurfacePaths, [
-  /npm\.pkg\.github\.com/,
-  /GH_PACKAGES_TOKEN/,
-  /\/Users\/ozby/,
-  /~\/\.claude/,
-  /ozby\/context-mode/,
-])
+  const staleHits = countMatches(shippedSurfacePaths, [
+    /npm\.pkg\.github\.com/,
+    /GH_PACKAGES_TOKEN/,
+    /\/Users\/ozby/,
+    /~\/\.claude/,
+    /ozby\/context-mode/,
+  ])
 
   results.push(
     staleHits.length === 0
@@ -416,17 +416,17 @@ const staleHits = countMatches(shippedSurfacePaths, [
       : fail('stale-surface-literals', staleHits.join('; ')),
   )
 
-// 5) Positive public-target assertions for updater/help surfaces
-const updaterSurface =
-  read('src/cli/auto-update/detect-pm.ts') + '\n' + read('src/cli/auto-update/run.ts')
-const doctorSurface = read('src/hooks/doctor.ts')
-const updaterHasPackage = updaterSurface.includes('@webpresso/agent-kit')
-const updaterHasRegistry =
-  updaterSurface.includes('https://registry.npmjs.org') &&
-  (updaterSurface.includes('@webpresso%2Fagent-kit') ||
-    updaterSurface.includes('@webpresso/agent-kit'))
-const doctorHasPackage =
-  doctorSurface.includes('@webpresso/agent-kit') || doctorSurface.includes('public npm')
+  // 5) Positive public-target assertions for updater/help surfaces
+  const updaterSurface =
+    read('src/cli/auto-update/detect-pm.ts') + '\n' + read('src/cli/auto-update/run.ts')
+  const doctorSurface = read('src/hooks/doctor.ts')
+  const updaterHasPackage = updaterSurface.includes('@webpresso/agent-kit')
+  const updaterHasRegistry =
+    updaterSurface.includes('https://registry.npmjs.org') &&
+    (updaterSurface.includes('@webpresso%2Fagent-kit') ||
+      updaterSurface.includes('@webpresso/agent-kit'))
+  const doctorHasPackage =
+    doctorSurface.includes('@webpresso/agent-kit') || doctorSurface.includes('public npm')
 
   if (!updaterHasPackage || !updaterHasRegistry || !doctorHasPackage) {
     results.push(
@@ -444,21 +444,18 @@ const doctorHasPackage =
     )
   }
 
-// 6) Generated artifact regression
-const testPlanFiles = run('git', ['ls-files', '.test-plan-service/**'])
+  // 6) Generated artifact regression
+  const testPlanFiles = run('git', ['ls-files', '.test-plan-service/**'])
   results.push(
     testPlanFiles.stdout.trim() === ''
       ? pass('tracked-generated-artifacts', 'no tracked .test-plan-service artifacts')
       : fail('tracked-generated-artifacts', testPlanFiles.stdout.trim()),
   )
 
-// 7) History strategy evidence
+  // 7) History strategy evidence
   if (!existsSync(HISTORY_AUDIT_PATH)) {
     results.push(
-      fail(
-        'history-audit-artifact',
-        'missing docs/research/2026-05-28-agent-kit-history-audit.md',
-      ),
+      fail('history-audit-artifact', 'missing docs/research/2026-05-28-agent-kit-history-audit.md'),
     )
   } else {
     const audit = readFileSync(HISTORY_AUDIT_PATH, 'utf8')
@@ -475,21 +472,21 @@ const testPlanFiles = run('git', ['ls-files', '.test-plan-service/**'])
     }
   }
 
-// 8) Repo visibility readiness is intentionally separate
-const historyClassification =
-  results.find((r) => r.name === 'history-audit-artifact' && r.status === 'PASS')?.detail ??
-  'missing'
-const task43 = blueprintTaskStatus('4.3')
-const repoView = run('gh', ['repo', 'view', '--json', 'isPrivate,nameWithOwner'])
-let repoAlreadyPublic = false
-if (repoView.ok) {
-  try {
-    const parsed = JSON.parse(repoView.stdout) as { isPrivate?: boolean }
-    repoAlreadyPublic = parsed.isPrivate === false
-  } catch {
-    // ignore parse failure; fall through to blueprint/history logic
+  // 8) Repo visibility readiness is intentionally separate
+  const historyClassification =
+    results.find((r) => r.name === 'history-audit-artifact' && r.status === 'PASS')?.detail ??
+    'missing'
+  const task43 = blueprintTaskStatus('4.3')
+  const repoView = run('gh', ['repo', 'view', '--json', 'isPrivate,nameWithOwner'])
+  let repoAlreadyPublic = false
+  if (repoView.ok) {
+    try {
+      const parsed = JSON.parse(repoView.stdout) as { isPrivate?: boolean }
+      repoAlreadyPublic = parsed.isPrivate === false
+    } catch {
+      // ignore parse failure; fall through to blueprint/history logic
+    }
   }
-}
 
   if (repoAlreadyPublic) {
     results.push(
@@ -514,9 +511,7 @@ if (repoView.ok) {
       blocked('repo-visibility-readiness', `${historyClassification}; Task 4.3 still pending`),
     )
   } else {
-    results.push(
-      fail('repo-visibility-readiness', 'missing or invalid history strategy evidence'),
-    )
+    results.push(fail('repo-visibility-readiness', 'missing or invalid history strategy evidence'))
   }
 
   const packageFailures = results.filter(

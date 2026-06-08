@@ -98,8 +98,6 @@ export async function main(): Promise<void> {
   )
 }
 
-if (
-  isDirectEntrypoint(import.meta.url)
-) {
+if (isDirectEntrypoint(import.meta.url)) {
   void main()
 }

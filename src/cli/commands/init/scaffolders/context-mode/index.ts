@@ -63,7 +63,8 @@ function quoteShell(value: string): string {
 function stripOuterQuotes(value: string): string {
   if (
     value.length >= 2 &&
-    ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'")))
+    ((value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'")))
   ) {
     return value.slice(1, -1)
   }
@@ -118,7 +119,11 @@ function normalizeClaudeContextModeHooks(
 
   let changed = false
   const nextSessionStart = sessionStart.map((group) => {
-    if (!group || typeof group !== 'object' || !Array.isArray((group as { hooks?: unknown }).hooks)) {
+    if (
+      !group ||
+      typeof group !== 'object' ||
+      !Array.isArray((group as { hooks?: unknown }).hooks)
+    ) {
       return group
     }
 

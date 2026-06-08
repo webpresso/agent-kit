@@ -53,7 +53,7 @@ describe('wp_format tool', () => {
     expect(akFormatTool.handler).toBeTypeOf('function')
   })
 
-  it('returns passed=true when oxfmt exits 0 (no check)', async () => {
+  it('returns passed=true when the formatter backend exits 0 (no check)', async () => {
     spawnMock.mockReturnValue(fakeChild({ stdout: 'Finished\n', exitCode: 0 }))
 
     const result = await akFormatTool.handler({})
@@ -96,8 +96,8 @@ describe('wp_format tool', () => {
 
     expect(result.isError).toBe(true)
     expect(payload.passed).toBe(false)
-    expect(payload.summary).toMatch(/oxfmt binary missing/)
-    expect(payload.details?.spawnError).toMatch(/oxfmt binary not found/)
+    expect(payload.summary).toMatch(/formatter backend missing/)
+    expect(payload.details?.spawnError).toMatch(/binary not found/)
   })
 
   it('clips long output and marks it truncated', async () => {
@@ -112,16 +112,23 @@ describe('wp_format tool', () => {
     expect(payload.truncated).toBe(true)
   })
 
-  it('supports file-targeted markdown formatting without spawning oxfmt', async () => {
+  it('forwards explicit file targets to the formatter backend', async () => {
     const cwd = mkdtempSync(join(tmpdir(), 'wp-format-tool-md-'))
     writeFileSync(join(cwd, 'README.md'), '# Test\n\n* one\n')
+    spawnMock.mockReturnValue(
+      fakeChild({ stderr: 'Expected at least one target file.\n', exitCode: 2 }),
+    )
 
     const result = await akFormatTool.handler({ check: true, cwd, files: ['README.md'] })
     const payload = result.structuredContent as Record<string, unknown>
 
-    expect(spawnMock).not.toHaveBeenCalled()
+    expect(spawnMock).toHaveBeenCalledOnce()
+    const [, args] = spawnMock.mock.calls[0]!
+    expect(args).toEqual(['--check', '--ignore-path', '.gitignore', 'README.md'])
     expect(payload.passed).toBe(false)
     expect(payload.summary).toMatch(/format check failed/)
-    expect((payload.rawOutput as string | undefined) ?? '').toContain('README.md needs markdown formatting')
+    expect((payload.rawOutput as string | undefined) ?? '').toContain(
+      'Expected at least one target file',
+    )
   })
 })

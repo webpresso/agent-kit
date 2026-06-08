@@ -42,7 +42,8 @@ export const CAPABILITY_MATRIX: readonly VendorCapability[] = [
     codex: 'full',
     cursor: 'full',
     opencode: 'full',
-    notes: 'Cursor requires project hooks.json with version: 1; OpenCode bridges via session.created + experimental.session.compacting',
+    notes:
+      'Cursor requires project hooks.json with version: 1; OpenCode bridges via session.created + experimental.session.compacting',
   },
   {
     event: 'PreToolUse',
@@ -75,7 +76,8 @@ export const CAPABILITY_MATRIX: readonly VendorCapability[] = [
     codex: 'full',
     cursor: 'partial',
     opencode: 'unsupported',
-    notes: 'Cursor maps to beforeSubmitPrompt (third-party compat toggle required); OpenCode has no before-submit-prompt equivalent',
+    notes:
+      'Cursor maps to beforeSubmitPrompt (third-party compat toggle required); OpenCode has no before-submit-prompt equivalent',
   },
   {
     event: 'Stop',
@@ -83,7 +85,8 @@ export const CAPABILITY_MATRIX: readonly VendorCapability[] = [
     codex: 'full',
     cursor: 'full',
     opencode: 'unsupported',
-    notes: 'Cursor maps to afterShell; OpenCode has no turn-end/stop lifecycle event. Codex mandates JSON-only stdout for Stop (plain text is invalid)',
+    notes:
+      'Cursor maps to afterShell; OpenCode has no turn-end/stop lifecycle event. Codex mandates JSON-only stdout for Stop (plain text is invalid)',
   },
   {
     event: 'PermissionRequest',
@@ -100,7 +103,8 @@ export const CAPABILITY_MATRIX: readonly VendorCapability[] = [
     codex: 'partial',
     cursor: 'unsupported',
     opencode: 'unsupported',
-    notes: 'Native-only event; current managed wp-* surface does not emit a dedicated subagent-start hook. Codex mandates JSON-only stdout for SubagentStop',
+    notes:
+      'Native-only event; current managed wp-* surface does not emit a dedicated subagent-start hook. Codex mandates JSON-only stdout for SubagentStop',
   },
   {
     event: 'SubagentStop',
@@ -108,7 +112,8 @@ export const CAPABILITY_MATRIX: readonly VendorCapability[] = [
     codex: 'partial',
     cursor: 'unsupported',
     opencode: 'unsupported',
-    notes: 'Native-only event; current managed wp-* surface does not emit a dedicated subagent-stop hook. Codex mandates JSON-only stdout (plain text is invalid)',
+    notes:
+      'Native-only event; current managed wp-* surface does not emit a dedicated subagent-stop hook. Codex mandates JSON-only stdout (plain text is invalid)',
   },
   {
     event: 'SessionEnd',

@@ -42,6 +42,7 @@ describe('host skill visibility', () => {
       'testing-philosophy',
       'plan-refine',
       'pll',
+      'best-practice-research',
     ])
   })
 
@@ -93,6 +94,7 @@ describe('host skill visibility', () => {
       ['testing-philosophy', 'not-visible'],
       ['plan-refine', 'visible-after-restart'],
       ['pll', 'not-visible'],
+      ['best-practice-research', 'not-visible'],
     ])
   })
 

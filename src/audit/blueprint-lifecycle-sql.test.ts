@@ -151,7 +151,9 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.ok).toBe(false)
     expect(
       result.violations.some(
-        (v) => v.message.includes('mismatched') && /status|directory|completed|in-progress/i.test(v.message),
+        (v) =>
+          v.message.includes('mismatched') &&
+          /status|directory|completed|in-progress/i.test(v.message),
       ),
     ).toBe(true)
   })
@@ -206,7 +208,8 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
     expect(result.ok).toBe(false)
     expect(
       result.violations.some(
-        (v) => v.message.includes('shipped-but-wip') && /done\/dropped|in-progress/i.test(v.message),
+        (v) =>
+          v.message.includes('shipped-but-wip') && /done\/dropped|in-progress/i.test(v.message),
       ),
     ).toBe(true)
   })
@@ -414,9 +417,7 @@ describe('auditBlueprintLifecycleSql — deterministic (markdown → ephemeral p
 
     const result = await auditBlueprintLifecycleSql(cwd)
     expect(
-      result.violations.some(
-        (v) => v.message.includes('legacy-gap') && /illegal/i.test(v.message),
-      ),
+      result.violations.some((v) => v.message.includes('legacy-gap') && /illegal/i.test(v.message)),
     ).toBe(false)
   })
 })

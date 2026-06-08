@@ -1,9 +1,9 @@
 /**
  * `wp_format` MCP tool.
  *
- * Runs `oxfmt` on the resolved project root. By default writes fixes in
- * place; pass `check: true` to verify formatting without writing (useful
- * for CI / pre-commit). Returns the standard summary-first payload:
+ * Runs the repo formatting surface on the resolved project root. By default
+ * writes fixes in place; pass `check: true` to verify formatting without
+ * writing (useful for CI / pre-commit). Returns the standard summary-first payload:
  *
  *   {
  *     passed: boolean,
@@ -12,8 +12,8 @@
  *     details: { spawnError?: string },
  *   }
  *
- * No fallback — `oxfmt` must be on PATH. When missing, the tool returns
- * `isError: true` with a clear install hint.
+ * No fallback — the managed formatter backend must be on PATH. When missing,
+ * the tool returns `isError: true` with a clear install hint.
  */
 
 import { z } from 'zod'
@@ -41,7 +41,7 @@ const outputSchema = createSummaryOutputSchema({
 const tool: ToolDescriptor = {
   name: 'wp_format',
   description:
-    'Run formatter via the repo formatting surface. By default writes fixes in place; pass `check: true` to verify without writing. Supports file-targeted markdown formatting and code formatting through the managed toolchain.',
+    'Run formatter via the repo formatting surface. By default writes fixes in place; pass `check: true` to verify without writing.',
   inputSchema,
   outputSchema,
   annotations: {
@@ -66,8 +66,8 @@ const tool: ToolDescriptor = {
       return createSummaryResult(
         {
           passed: false,
-          summary: /oxfmt binary not found/u.test(message)
-            ? 'format could not start: oxfmt binary missing on PATH'
+          summary: /binary not found/u.test(message)
+            ? 'format could not start: formatter backend missing on PATH'
             : 'format could not start',
           exitCode: 1,
           details: { spawnError: message },

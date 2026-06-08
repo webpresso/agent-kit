@@ -311,7 +311,10 @@ describe('scaffoldAgentHooks', () => {
     const packageRoot = mkdtempSync(join(tmpdir(), 'wp-hook-launcher-root-'))
     try {
       mkdirSync(join(packageRoot, 'bin'), { recursive: true })
-      writeFileSync(join(packageRoot, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
+      writeFileSync(
+        join(packageRoot, 'package.json'),
+        JSON.stringify({ name: '@webpresso/agent-kit' }),
+      )
       writeFileSync(join(packageRoot, 'bin', 'wp'), '')
 
       const resolved = resolvePackageRootForHookLaunchers({

@@ -24,9 +24,7 @@ const claudeMap: HooksMap = {
       hooks: [{ type: 'command', command: 'node_modules/.bin/wp-pretool-guard', timeout: 5 }],
     },
   ],
-  Stop: [
-    { hooks: [{ type: 'command', command: 'node_modules/.bin/wp-stop-qa', timeout: 10 }] },
-  ],
+  Stop: [{ hooks: [{ type: 'command', command: 'node_modules/.bin/wp-stop-qa', timeout: 10 }] }],
 }
 
 const codexMap: HooksMap = {
@@ -40,9 +38,7 @@ const codexMap: HooksMap = {
   PreToolUse: [
     {
       matcher: 'Bash|apply_patch',
-      hooks: [
-        { type: 'command', command: '/repo/node_modules/.bin/wp-pretool-guard', timeout: 5 },
-      ],
+      hooks: [{ type: 'command', command: '/repo/node_modules/.bin/wp-pretool-guard', timeout: 5 }],
     },
   ],
   Stop: [

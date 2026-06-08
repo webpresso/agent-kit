@@ -1341,7 +1341,9 @@ describe('hooks/doctor', () => {
       mockAccessSync.mockImplementation((() => undefined) as typeof accessSync)
       mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
         if (String(path) === registryPath) {
-          return JSON.stringify({ plugins: { 'context-mode@context-mode': [{ version: '1.0.0', scope: 'user' }] } })
+          return JSON.stringify({
+            plugins: { 'context-mode@context-mode': [{ version: '1.0.0', scope: 'user' }] },
+          })
         }
         return ''
       }) as typeof readFileSync)
@@ -1361,7 +1363,11 @@ describe('hooks/doctor', () => {
           return JSON.stringify({
             plugins: {
               'oh-my-claudecode@omc': [
-                { version: '4.13.7', scope: 'user', installPath: '/tmp/.claude/plugins/cache/omc/oh-my-claudecode/4.13.7' },
+                {
+                  version: '4.13.7',
+                  scope: 'user',
+                  installPath: '/tmp/.claude/plugins/cache/omc/oh-my-claudecode/4.13.7',
+                },
               ],
             },
           })

@@ -61,7 +61,9 @@ describe('simulateHookDemo', () => {
       hooksMap: {
         SessionStart: [
           {
-            hooks: [{ type: 'command', command: '/repo/node_modules/.bin/wp-sessionstart-routing' }],
+            hooks: [
+              { type: 'command', command: '/repo/node_modules/.bin/wp-sessionstart-routing' },
+            ],
           },
         ],
       },
@@ -93,7 +95,9 @@ describe('demoCommand', () => {
         PreToolUse: [
           {
             matcher: 'Bash|Edit|Write',
-            hooks: [{ type: 'command', command: './node_modules/.bin/wp-pretool-guard', timeout: 5 }],
+            hooks: [
+              { type: 'command', command: './node_modules/.bin/wp-pretool-guard', timeout: 5 },
+            ],
           },
         ],
       },

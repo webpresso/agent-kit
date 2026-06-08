@@ -21,7 +21,11 @@ function writeInstalledHooks(repoRoot: string): void {
     JSON.stringify(
       {
         hooks: {
-          SessionStart: [{ hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] }],
+          SessionStart: [
+            {
+              hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }],
+            },
+          ],
         },
       },
       null,
@@ -65,7 +69,9 @@ describe('upgradeHooksForRepo', () => {
     writeHooksManifest(
       repoRoot,
       {
-        SessionStart: [{ hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] }],
+        SessionStart: [
+          { hooks: [{ type: 'command', command: './node_modules/.bin/wp-sessionstart-routing' }] },
+        ],
       },
       {
         SessionStart: [

@@ -358,9 +358,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
 
     it('--dry-run does not invoke git or ./setup', async () => {
       await runInitSilently({ cwd: repo, yes: true, with: 'gstack', 'dry-run': true })
-      const gstackCalls = spawnMock.mock.calls.filter(
-        (c) => c[0] === 'git' || c[0] === './setup',
-      )
+      const gstackCalls = spawnMock.mock.calls.filter((c) => c[0] === 'git' || c[0] === './setup')
       expect(gstackCalls).toHaveLength(0)
     })
   })
@@ -493,7 +491,8 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(
         vpCalls.some(
           (call) =>
-            JSON.stringify(call[1]) === JSON.stringify(['update', '-g', '--latest', '@openai/codex']),
+            JSON.stringify(call[1]) ===
+            JSON.stringify(['update', '-g', '--latest', '@openai/codex']),
         ),
       ).toBe(true)
       expect(

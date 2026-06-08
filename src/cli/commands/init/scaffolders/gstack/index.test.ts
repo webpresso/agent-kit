@@ -698,7 +698,9 @@ describe('ensureGstack', () => {
   })
 
   it('installs temporary signal listeners, cleans them up, and returns an interrupt failure', async () => {
-    const signalTarget = new EventEmitter() as unknown as NonNullable<EnsureGstackInput['signalTarget']> &
+    const signalTarget = new EventEmitter() as unknown as NonNullable<
+      EnsureGstackInput['signalTarget']
+    > &
       EventEmitter
     let spawnedChild: FakeChild | null = null
     const spawn = makeSpawn([
@@ -772,7 +774,10 @@ describe('ensureGstack', () => {
       {
         autoClose: false,
         onSpawn: (child) => {
-          setTimeout(() => child.stdout.write('\u001B[2mDownloading Chrome for Testing...\u001B[22m\n'), 1_100)
+          setTimeout(
+            () => child.stdout.write('\u001B[2mDownloading Chrome for Testing...\u001B[22m\n'),
+            1_100,
+          )
           setTimeout(() => {
             child.stdout.end()
             child.stderr.end()
@@ -852,8 +857,9 @@ describe('ensureGstack', () => {
       }),
     )
     expect(
-      log.mock.calls.some(([message]) =>
-        typeof message === 'string' && message.includes('still cloning canonical checkout'),
+      log.mock.calls.some(
+        ([message]) =>
+          typeof message === 'string' && message.includes('still cloning canonical checkout'),
       ),
     ).toBe(true)
   })

@@ -224,7 +224,9 @@ function restorePrunedDistSubtrees(rootDir: string) {
 
 function listSqlFiles(dir: string): string[] {
   if (!existsSync(dir)) return []
-  return readdirSync(dir).filter((entry) => entry.endsWith('.sql')).sort()
+  return readdirSync(dir)
+    .filter((entry) => entry.endsWith('.sql'))
+    .sort()
 }
 
 function stageMigrationSqlAssets(rootDir: string) {
@@ -329,12 +331,7 @@ function restorePackedSourcemapComments(rootDir: string) {
         continue
       }
 
-      const targetPath = join(
-        rootDir,
-        'dist',
-        'esm',
-        entryPath.slice(backupDir.length + 1),
-      )
+      const targetPath = join(rootDir, 'dist', 'esm', entryPath.slice(backupDir.length + 1))
       mkdirSync(dirname(targetPath), { recursive: true })
       writeText(targetPath, readFileSync(entryPath, 'utf8'))
     }

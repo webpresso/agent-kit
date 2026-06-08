@@ -80,7 +80,7 @@ const ROOT_HELP = [
   '  test                  Run tests through the portable webpresso surface',
   '  typecheck             Typecheck the current workspace through the portable wp surface',
   '  lint                  Lint via oxlint (with pnpm fallback)',
-  '  format                Format via oxfmt (--check for CI/husky)',
+  '  format                Format through the portable wp surface (--check for CI/husky)',
   '  e2e                   Build and run E2E commands through the portable webpresso surface',
   '  ci                    Run repository CI helpers through the portable wp surface',
   '',

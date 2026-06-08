@@ -67,7 +67,10 @@ describe('release workflow publish path', () => {
     const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
     const changesetsActionIndex = workflow.indexOf('uses: changesets/action@')
     const beforeChangesetsAction = workflow.slice(0, changesetsActionIndex)
-    const runtimeStageBlocks = beforeChangesetsAction.match(/- name: Stage native runtime artifacts[\s\S]*?(?=\n\s*- name:|$)/g) ?? []
+    const runtimeStageBlocks =
+      beforeChangesetsAction.match(
+        /- name: Stage native runtime artifacts[\s\S]*?(?=\n\s*- name:|$)/g,
+      ) ?? []
 
     expect(runtimeStageBlocks).toHaveLength(1)
     expect(runtimeStageBlocks[0]).toContain(

@@ -42,7 +42,9 @@ function fail(root: string, message: string): RepoAuditResult {
   }
 }
 
-function resolveCanonicalRepoRoot(rootDirectory: string): { ok: true; root: string } | RepoAuditResult {
+function resolveCanonicalRepoRoot(
+  rootDirectory: string,
+): { ok: true; root: string } | RepoAuditResult {
   const requestedRoot = realpathSync.native(resolve(rootDirectory))
   let gitRoot: string
 

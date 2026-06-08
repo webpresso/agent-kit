@@ -18,7 +18,10 @@ const packageManifest = JSON.parse(readFileSync(packagePath, 'utf8')) as {
 }
 const { version } = packageManifest
 
-const marketplaceManifest = JSON.parse(readFileSync(marketplacePath, 'utf8')) as Record<string, unknown> & {
+const marketplaceManifest = JSON.parse(readFileSync(marketplacePath, 'utf8')) as Record<
+  string,
+  unknown
+> & {
   metadata?: { version?: string }
   version?: string
 }

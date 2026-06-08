@@ -2,7 +2,11 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 import type { ResolvedTestTarget } from './target-resolver.js'
-import { type ManagedRunnerOutputPolicy, getManagedRunner, resolveOutputPolicy } from '#tool-runtime'
+import {
+  type ManagedRunnerOutputPolicy,
+  getManagedRunner,
+  resolveOutputPolicy,
+} from '#tool-runtime'
 import { getPackageScript, isRecursiveWpScript } from '#cli/package-scripts.js'
 
 export interface CommandConfig {
@@ -117,7 +121,13 @@ export function buildStrykerCommand(options: TestCommandOptions = {}): CommandCo
     const strykerResolution = getManagedRunner('stryker', { outputPolicy: 'structured' })
     return {
       command: tsxResolution.command,
-      args: [...tsxResolution.args, strykerResolution.command, ...strykerResolution.args, 'run', configFile],
+      args: [
+        ...tsxResolution.args,
+        strykerResolution.command,
+        ...strykerResolution.args,
+        'run',
+        configFile,
+      ],
     }
   }
 

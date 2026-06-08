@@ -14,8 +14,6 @@ export {
 } from './runner.js'
 export { VALIDATORS } from './validators/index.js'
 
-if (
-  isDirectEntrypoint(import.meta.url)
-) {
+if (isDirectEntrypoint(import.meta.url)) {
   runMain()
 }

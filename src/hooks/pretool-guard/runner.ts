@@ -3,7 +3,13 @@ import type { ToolInput, ValidationResult } from '#hooks/shared/types'
 
 import { isGuardEnabled } from '#hooks/guard-switch/state'
 import { readStdinJson, suppressStderr } from '#hooks/shared/hook-bootstrap'
-import { buildDenyEnvelope, getCommand, getFilePath, isBashInput, parseToolInput } from '#hooks/shared/types'
+import {
+  buildDenyEnvelope,
+  getCommand,
+  getFilePath,
+  isBashInput,
+  parseToolInput,
+} from '#hooks/shared/types'
 
 import { logRun } from './logger.js'
 import { extractRoutableCommandsFromToolInput, routeCommand } from './dev-routing.js'
@@ -176,8 +182,6 @@ export async function main(): Promise<void> {
   }
 }
 
-if (
-  isDirectEntrypoint(import.meta.url)
-) {
+if (isDirectEntrypoint(import.meta.url)) {
   main()
 }

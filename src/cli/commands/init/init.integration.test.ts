@@ -453,9 +453,7 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(existsSync(join(repo, '.agent', 'skills', 'systematic-debugging', 'SKILL.md'))).toBe(
       true,
     )
-    expect(existsSync(join(repo, '.agent', 'skills', 'monorepo-navigation', 'SKILL.md'))).toBe(
-      true,
-    )
+    expect(existsSync(join(repo, '.agent', 'skills', 'monorepo-navigation', 'SKILL.md'))).toBe(true)
 
     const rc = JSON.parse(readFileSync(join(repo, '.webpressorc.json'), 'utf8')) as {
       installed: { tier3Skills: string[] }

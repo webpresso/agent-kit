@@ -3,10 +3,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, test } from 'vitest'
 
-import {
-  auditPackageSurface,
-  stagePublishableTarballSurface,
-} from './package-surface.js'
+import { auditPackageSurface, stagePublishableTarballSurface } from './package-surface.js'
 import {
   AGENT_KIT_TARBALL_SIZE_BUDGET_BYTES,
   AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES,
@@ -399,8 +396,7 @@ describe('package-surface audit', () => {
     expect(
       result.violations.some(
         (violation) =>
-          violation.file ===
-            'dist/runtime-packages/agent-kit-runtime-darwin-arm64/bin/wp' &&
+          violation.file === 'dist/runtime-packages/agent-kit-runtime-darwin-arm64/bin/wp' &&
           violation.message.includes('denied native runtime payload'),
       ),
     ).toBe(true)
@@ -457,8 +453,7 @@ describe('package-surface audit', () => {
     expect(
       result.violations.some(
         (violation) =>
-          violation.file === 'bin/wp' &&
-          violation.message.includes('cross-platform JS dispatcher'),
+          violation.file === 'bin/wp' && violation.message.includes('cross-platform JS dispatcher'),
       ),
     ).toBe(true)
   })

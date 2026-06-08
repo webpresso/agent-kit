@@ -264,7 +264,9 @@ describe('coordinated routing pipeline', () => {
 
       // The decision and reason must be identical across concurrent invocations —
       // only the per-call logId (unique for tracing) is allowed to differ.
-      type HookOutput = { hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string } }
+      type HookOutput = {
+        hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string }
+      }
       const first = JSON.parse(firstOutput) as HookOutput
       const second = JSON.parse(secondOutput) as HookOutput
       expect(first.hookSpecificOutput?.permissionDecision).toBe('deny')

@@ -60,10 +60,7 @@ export function buildQaCommand(options: { cwd?: string } = {}): QaCommandConfig 
   }
 }
 
-export function runQaCommand(
-  options: { cwd?: string } = {},
-  deps: QaCommandDeps = {},
-): number {
+export function runQaCommand(options: { cwd?: string } = {}, deps: QaCommandDeps = {}): number {
   const command = buildQaCommand(options)
   if (!command) {
     writeStderr(deps.stderr ?? process.stderr, RECURSIVE_QA_MESSAGE)

@@ -19,7 +19,11 @@ describe('parseWithFlag', () => {
 
 describe('validateTier3Names', () => {
   it('splits valid from invalid', () => {
-    const { valid, invalid } = validateTier3Names(['tanstack-query', 'systematic-debugging', 'nonsense'])
+    const { valid, invalid } = validateTier3Names([
+      'tanstack-query',
+      'systematic-debugging',
+      'nonsense',
+    ])
     expect(valid).toEqual(['tanstack-query', 'systematic-debugging'])
     expect(invalid).toEqual(['nonsense'])
   })

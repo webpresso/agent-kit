@@ -28,7 +28,11 @@ function makeRepo(
     JSON.stringify({ name: 'consumer', type: 'module' }),
     'utf8',
   )
-  writeFileSync(path.join(root, options.configFileName ?? 'webpresso.config.ts'), configBody, 'utf8')
+  writeFileSync(
+    path.join(root, options.configFileName ?? 'webpresso.config.ts'),
+    configBody,
+    'utf8',
+  )
   if (options.writeMetadata) {
     mkdirSync(path.join(root, 'infra'), { recursive: true })
     writeFileSync(
@@ -268,7 +272,9 @@ describe('auditCloudflareDeployContract', () => {
     const result = await auditCloudflareDeployContract(root)
     expect(result.ok).toBe(false)
     expect(
-      result.violations?.some((item) => item.message.includes('must use previewTransport "custom_domain_env"')),
+      result.violations?.some((item) =>
+        item.message.includes('must use previewTransport "custom_domain_env"'),
+      ),
     ).toBe(true)
   })
 

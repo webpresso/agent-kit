@@ -58,9 +58,9 @@ describe('public-readiness runtime policy helpers', () => {
   })
 
   it('flags missing packed thin-root artifacts including the staged host launcher', () => {
-    expect(
-      listMissingPackedRuntimePaths(runtimeManifest, ['bin/runtime-manifest.json']),
-    ).toEqual(['bin/wp'])
+    expect(listMissingPackedRuntimePaths(runtimeManifest, ['bin/runtime-manifest.json'])).toEqual([
+      'bin/wp',
+    ])
   })
 
   it('flags denied packed runtime payload trees', () => {

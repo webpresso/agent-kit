@@ -117,9 +117,7 @@ export function buildDenyEnvelope(options: {
 }
 
 /** Build an infrastructure-failure deny envelope. */
-export function buildInfraDenyEnvelope(options: {
-  readonly reason: string
-}): InfraDenyEnvelope {
+export function buildInfraDenyEnvelope(options: { readonly reason: string }): InfraDenyEnvelope {
   return {
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',

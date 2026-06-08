@@ -17,7 +17,7 @@ const SYMBOL: Readonly<Record<SupportLevel, string>> = {
 
 const FOOTER = [
   '',
-  '*unmapped: event exists in vendor but is not mapped through Cursor\'s third-party compatibility layer*',
+  "*unmapped: event exists in vendor but is not mapped through Cursor's third-party compatibility layer*",
   '*unsupported: vendor does not support this event*',
   '*Source: catalog/agent/rules/supported-agent-clis.md*',
 ].join('\n')

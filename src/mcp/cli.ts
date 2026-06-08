@@ -60,7 +60,6 @@ export async function runStdioServer(): Promise<void> {
   await settle.promise
 }
 
-
 if (isDirectEntrypoint(import.meta.url)) {
   runStdioServer().catch((err: unknown) => {
     process.stderr.write(`wp mcp: ${err instanceof Error ? err.message : String(err)}\n`)

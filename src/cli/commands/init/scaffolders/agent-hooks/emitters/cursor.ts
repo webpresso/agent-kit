@@ -2,12 +2,7 @@ import type { MatcherSet } from '#cli/commands/init/scaffolders/agent-hooks/ir.j
 import { WP_HOOK_SPECS } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 import type { CursorHooksConfig } from '#cli/commands/init/scaffolders/agent-hooks/schemas/cursor-hooks.schema.js'
 
-type CursorEventName =
-  | 'sessionStart'
-  | 'preToolUse'
-  | 'postToolUse'
-  | 'beforeSubmitPrompt'
-  | 'stop'
+type CursorEventName = 'sessionStart' | 'preToolUse' | 'postToolUse' | 'beforeSubmitPrompt' | 'stop'
 
 const CURSOR_EVENT_MAP = {
   SessionStart: 'sessionStart',
