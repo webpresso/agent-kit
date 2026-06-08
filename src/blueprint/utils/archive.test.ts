@@ -6,6 +6,8 @@ import type { Blueprint, Task } from '#core/parser'
 import type { BlueprintTaskStatus } from '#core/schema'
 
 import * as fs from 'node:fs/promises'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -342,10 +344,9 @@ created: 2026-02-01
 - [ ] Criteria 1
 `
 
-  beforeEach(async () => {
-    testDir = path.join(process.cwd(), `test-tmp-archive-${Date.now()}`)
+  beforeEach(() => {
+    testDir = mkdtempSync(path.join(tmpdir(), 'arc-bp-'))
     projectPath = testDir
-    await fs.mkdir(testDir, { recursive: true })
   })
 
   afterEach(async () => {
@@ -583,10 +584,9 @@ describe('archiveBlueprint - regex precision (kills \\S+ → \\S mutant)', () =>
   let testDir: string
   let projectPath: string
 
-  beforeEach(async () => {
-    testDir = path.join(process.cwd(), `test-tmp-regex-${Date.now()}`)
+  beforeEach(() => {
+    testDir = mkdtempSync(path.join(tmpdir(), 'arc-regex-'))
     projectPath = testDir
-    await fs.mkdir(testDir, { recursive: true })
   })
 
   afterEach(async () => {
