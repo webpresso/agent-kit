@@ -1,9 +1,9 @@
-import type { MigratorDeps } from '#config/docs-lint/cli/interfaces'
+import type { FileSystem, MigratorDeps } from '#config/docs-lint/cli/interfaces'
 import type { DocType, MigrationResult } from '#config/docs-lint/index'
 
 import { glob } from 'glob'
 import { existsSync } from 'node:fs'
-import { copyFile, readFile, writeFile } from 'node:fs/promises'
+import { copyFile, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import { relative } from 'node:path'
 
 import { getNonCanonicalPlanningPathViolation } from '#config/docs-lint/cli/planning-path'
@@ -14,6 +14,20 @@ import {
 } from '#config/docs-lint/parsers/bold-metadata'
 import { generateFrontmatter, parseFrontmatter } from '#config/docs-lint/parsers/frontmatter'
 import { detectDocType } from '#config/docs-lint/schemas/index'
+
+/**
+ * Filesystem surface required for the atomic backup write.
+ *
+ * The shared {@link FileSystem} interface intentionally stays narrow; the
+ * backup path additionally needs an atomic `rename` (same-filesystem move) and
+ * an `unlink` for temp cleanup. The real adapter constructed in
+ * {@link createMigrateCommand} supplies both, and tests inject fakes that do
+ * too, so the cast at the call site is sound.
+ */
+type AtomicBackupFs = FileSystem & {
+  rename(oldPath: string, newPath: string): Promise<void>
+  unlink(path: string): Promise<void>
+}
 
 export interface MigrateOptions {
   files?: string[]
@@ -282,10 +296,36 @@ export class MigrateCommand {
     if (!options.backup) return
 
     const backupPath = `${filePath}.bak`
+    // Skip if a backup already exists — this preserves the FIRST (true
+    // original) backup across re-runs. Do NOT change this semantics.
     if (this.deps.fs.existsSync(backupPath)) {
       this.deps.logger.warn(`${relativePath}: Backup already exists, skipping backup creation`)
-    } else {
-      await this.deps.fs.copyFile(filePath, backupPath)
+      return
+    }
+
+    // The real adapter and the test fakes both provide rename + unlink; the
+    // shared FileSystem interface stays narrow, so narrow here at the call site.
+    const fs = this.deps.fs as AtomicBackupFs
+
+    // Write the backup atomically: copy to a unique temp path in the same
+    // directory (so the rename is atomic on the same filesystem), then rename
+    // it into place. If copyFile/rename is interrupted, the destination .bak
+    // is never a partial file — the temp is cleaned up in `finally`. Without
+    // this, an interrupted copy would leave a corrupt .bak that the
+    // existsSync-skip above would then preserve permanently as the "original".
+    const tempPath = `${backupPath}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    try {
+      await fs.copyFile(filePath, tempPath)
+      await fs.rename(tempPath, backupPath)
+    } finally {
+      // Clean up the temp if it still exists (copy failed, or rename failed
+      // before consuming it). Swallow ENOENT-style cleanup errors: the rename
+      // already moved the temp away on the success path.
+      try {
+        await fs.unlink(tempPath)
+      } catch {
+        // temp already renamed into place or never created — nothing to clean.
+      }
     }
   }
 
@@ -326,7 +366,11 @@ export function createMigrateCommand(deps?: MigratorDeps): MigrateCommand {
       writeFile: (path: string, content: string) => writeFile(path, content, 'utf-8'),
       copyFile: (src: string, dest: string) => copyFile(src, dest),
       existsSync: (path: string) => existsSync(path),
-    },
+      rename: (oldPath: string, newPath: string) => rename(oldPath, newPath),
+      unlink: (path: string) => unlink(path),
+      // Extra rename/unlink beyond the FileSystem interface are intentional —
+      // handleBackup narrows deps.fs to AtomicBackupFs for the atomic write.
+    } as AtomicBackupFs,
     logger: consoleLogger,
     process: {
       cwd: () => process.cwd(),
