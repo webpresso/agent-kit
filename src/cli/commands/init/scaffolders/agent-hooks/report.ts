@@ -21,6 +21,8 @@ import type { HooksManifest } from '#cli/commands/init/scaffolders/agent-hooks/m
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export type OutputWriter = Pick<NodeJS.WriteStream, 'write'>
+
 type HookChangeSymbol = '+' | '-' | '~'
 
 type HookChange = {
@@ -40,8 +42,18 @@ type VendorReport = {
 
 /** Extract the bin name from a command string for display. */
 function extractBinLabel(command: string): string {
+  const skillTagMatch = /# from-skill: ([\w-]+)/u.exec(command)
+  if (skillTagMatch?.[1]) return skillTagMatch[1]
+
+  const launcherMatch = /((?:wp|ak)-[\w-]+)\.sh\b/u.exec(command)
+  if (launcherMatch?.[1]) return launcherMatch[1]
+
+  const hookMatches = [...command.matchAll(/\b((?:wp|ak)-[\w-]+)\b/gu)]
+  const hookMatch = hookMatches.at(-1)?.[1]
+  if (hookMatch) return hookMatch
+
   const parts = command.split(/[\s/\\]/)
-  const last = parts[parts.length - 1]
+  const last = parts[parts.length - 1]?.replaceAll(/["']/gu, '')
   return last ?? command
 }
 
@@ -176,8 +188,9 @@ export function generateSetupReport(
 export function printSetupReport(
   before: HooksManifest | null,
   after: HooksManifest,
+  writer: OutputWriter = process.stdout,
 ): void {
-  process.stdout.write(generateSetupReport(before, after) + '\n')
+  writer.write(generateSetupReport(before, after) + '\n')
 }
 
 // ── Proposed map builder ──────────────────────────────────────────────────────

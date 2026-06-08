@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 
 import { buildClaudeHookGroups } from '#cli/commands/init/scaffolders/agent-hooks/emitters/claude.js'
 import { buildCodexHookGroups } from '#cli/commands/init/scaffolders/agent-hooks/emitters/codex.js'
+import { buildCursorHooksConfig } from '#cli/commands/init/scaffolders/agent-hooks/emitters/cursor.js'
 import { claudeHooksSchema } from './claude-hooks.schema.js'
 import { codexHooksSchema } from './codex-hooks.schema.js'
 import { cursorHooksSchema } from './cursor-hooks.schema.js'
@@ -45,16 +46,11 @@ describe('vendor hook schemas', () => {
     expect(result.success).toBe(true)
   })
 
-  it('a valid cursor config with version:1 parses against cursorHooksSchema', () => {
-    const config = {
-      version: 1,
-      preToolUse: [
-        {
-          matcher: 'Bash',
-          hooks: [{ type: 'command' as const, command: '/repo/node_modules/.bin/wp-pretool-guard' }],
-        },
-      ],
-    }
+  it('buildCursorHooksConfig() output parses against cursorHooksSchema', () => {
+    const config = buildCursorHooksConfig({
+      resolveBin: makeResolveBin('/repo/node_modules/.bin'),
+      matchers: TEST_MATCHERS,
+    })
     const result = cursorHooksSchema.safeParse(config)
     expect(result.success).toBe(true)
   })

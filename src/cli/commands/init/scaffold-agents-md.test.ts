@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 import { defaultConfig } from './config.js'
 import { resolveCatalogDir } from './index.js'
 import {
+  AGENTS_MD_MAX_BYTES,
   mergeRenderedAgentsMd,
   renderAgentsMd,
   renderRepositoryMap,
@@ -143,6 +144,20 @@ describe('renderAgentsMd', () => {
     expect(rendered).toContain('vp upgrade')
     expect(rendered).toContain('omx setup --yes --scope user')
     expect(rendered).not.toContain('omx setup --scope project')
+  })
+
+  it('keeps the generated default template under the prompt budget', () => {
+    const template = readFileSync(AGENTS_MD_TEMPLATE_PATH, 'utf8')
+    const rendered = renderAgentsMd(
+      template,
+      makeConsumer({
+        packageJson: { name: '@acme/app', dependencies: { react: '^18' }, devDependencies: {} },
+      }),
+      defaultConfig(),
+    )
+
+    expect(Buffer.byteLength(rendered, 'utf8')).toBeLessThanOrEqual(AGENTS_MD_MAX_BYTES)
+    expect(rendered).toContain('Keep the generated default `AGENTS.md` under 8 KB.')
   })
 
   it('renders the configured blueprint directory in the catalog template', () => {

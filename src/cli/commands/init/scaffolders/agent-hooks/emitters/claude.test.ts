@@ -56,7 +56,7 @@ describe('buildClaudeHookGroups (byte-parity)', () => {
     expect(result['Stop']?.[0]?.hooks[0]?.timeout).toStrictEqual(10)
   })
 
-  it('produces groups for all 5 canonical events', () => {
+  it('produces groups for the managed emitted event subset', () => {
     const result = buildClaudeHookGroups({ resolveBin, matchers })
     const events = Object.keys(result)
     expect(events).toContain('SessionStart')

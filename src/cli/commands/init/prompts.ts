@@ -1,14 +1,23 @@
 /**
- * Tier-3 skill selection — `--with`, `--all`, and an optional TTY prompt.
+ * Opt-in skill selection — `--with`, `--all`, and an optional TTY prompt.
+ *
+ * Default shared favorites are always projected; this module governs the
+ * non-default add-ons only:
+ *   - shared add-ons (systematic-debugging, test-driven-development,
+ *     deep-research)
+ *   - rendered add-on (monorepo-navigation)
+ *   - Tier-3 skills such as base-kit and framework/domain extras
  *
  * Kept deliberately minimal: we don't pull in an interactive prompt library.
- * If the user runs `wp init` in a TTY without flags, we use `node:readline/promises`
- * to ask a single yes/no per Tier-3 skill. If stdin isn't a TTY and no flags
- * are provided, we default to installing the `base-kit` Tier-3 bootstrap.
- * `base-kit` is default-on for every selection mode; use `--without base-kit`
- * to opt out explicitly.
+ * If the user runs `wp init` in a TTY without flags, we use
+ * `node:readline/promises` to ask a single yes/no per opt-in skill. If stdin
+ * isn't a TTY and no flags are provided, we default to installing the
+ * `base-kit` bootstrap. `base-kit` is default-on for every selection mode; use
+ * `--without base-kit` to opt out explicitly.
  */
 import { createInterface } from 'node:readline/promises'
+
+import { OPTIONAL_SHARED_SKILLS, RENDERED_SKILLS } from './scaffold-agent.js'
 
 export const TIER3_SKILLS = [
   'base-kit',
@@ -22,6 +31,8 @@ export const TIER3_SKILLS = [
 
 export type Tier3Skill = (typeof TIER3_SKILLS)[number]
 const DEFAULT_TIER3_SKILLS: readonly Tier3Skill[] = ['base-kit']
+export const OPT_IN_SHARED_SKILLS = [...OPTIONAL_SHARED_SKILLS, ...RENDERED_SKILLS] as const
+export const OPT_IN_SKILLS = [...OPT_IN_SHARED_SKILLS, ...TIER3_SKILLS] as const
 
 export interface ResolveSkillsInput {
   withFlag?: string
@@ -54,7 +65,7 @@ export function validateTier3Names(names: readonly string[]): {
 } {
   const valid: string[] = []
   const invalid: string[] = []
-  const allowed: ReadonlySet<string> = new Set<string>(TIER3_SKILLS)
+  const allowed: ReadonlySet<string> = new Set<string>(OPT_IN_SKILLS)
   for (const name of names) {
     if (allowed.has(name)) valid.push(name)
     else invalid.push(name)
@@ -67,7 +78,7 @@ function validateWithoutFlag(raw: string | undefined): string[] {
   const { valid, invalid } = validateTier3Names(requested)
   if (invalid.length > 0) {
     throw new Error(
-      `Unknown Tier-3 skills in --without: ${invalid.join(', ')}\nAvailable: ${TIER3_SKILLS.join(', ')}`,
+      `Unknown opt-in skills in --without: ${invalid.join(', ')}\nAvailable: ${OPT_IN_SKILLS.join(', ')}`,
     )
   }
   return valid
@@ -80,7 +91,7 @@ function defaultOnUnlessOptedOut(
   const without = new Set(validateWithoutFlag(withoutFlag))
   const withDefault = new Set<string>([...DEFAULT_TIER3_SKILLS, ...selected])
   for (const skill of without) withDefault.delete(skill)
-  return TIER3_SKILLS.filter((skill) => withDefault.has(skill))
+  return OPT_IN_SKILLS.filter((skill) => withDefault.has(skill))
 }
 
 export async function resolveTier3Selection(
@@ -88,7 +99,7 @@ export async function resolveTier3Selection(
 ): Promise<ResolveSkillsResult> {
   if (input.allFlag) {
     return {
-      selected: defaultOnUnlessOptedOut(TIER3_SKILLS, input.withoutFlag),
+      selected: defaultOnUnlessOptedOut(OPT_IN_SKILLS, input.withoutFlag),
       aborted: false,
       source: 'all',
     }
@@ -99,7 +110,7 @@ export async function resolveTier3Selection(
     const { valid, invalid } = validateTier3Names(requested)
     if (invalid.length > 0) {
       throw new Error(
-        `Unknown Tier-3 skills: ${invalid.join(', ')}\nAvailable: ${TIER3_SKILLS.join(', ')}`,
+        `Unknown opt-in skills: ${invalid.join(', ')}\nAvailable: ${OPT_IN_SKILLS.join(', ')}`,
       )
     }
     return {
@@ -141,9 +152,9 @@ async function interactivePrompt(input: ResolveSkillsInput): Promise<ResolveSkil
   const selected: string[] = []
   try {
     ;(input.outputStream ?? process.stdout).write(
-      'Tier-3 skill selection (press Enter to skip, y to include, q to abort):\n',
+      'Opt-in skill selection (press Enter to skip, y to include, q to abort):\n',
     )
-    for (const skill of TIER3_SKILLS) {
+    for (const skill of OPT_IN_SKILLS) {
       if (skill === 'base-kit') {
         selected.push(skill)
         ;(input.outputStream ?? process.stdout).write(

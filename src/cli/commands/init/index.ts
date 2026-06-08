@@ -31,7 +31,10 @@ import {
 import { runPreflight, DOCS_URL } from './preflight.js'
 import { type MergeOptions, type MergeResult, summarizeResults } from './merge.js'
 import { resolveTier3Selection } from './prompts.js'
-import { scaffoldAgent, RENDERED_SKILLS, TIER1_SKILLS, TIER2_SKILLS } from './scaffold-agent.js'
+import {
+  scaffoldAgent,
+  SHARED_FAVORITE_SKILLS,
+} from './scaffold-agent.js'
 import { scaffoldAgentRules } from './scaffold-agent-rules.js'
 import { scaffoldAgentSkills } from './scaffold-agent-skills.js'
 import { scaffoldCatalogIgnore } from './scaffold-catalog-ignore.js'
@@ -61,8 +64,19 @@ import { WP_HOOK_SPECS } from './scaffolders/agent-hooks/ir.js'
 import {
   buildProposedHooksMapFromSpecs,
   generateHooksDryRunDiff,
+  printSetupReport,
+  type OutputWriter,
 } from './scaffolders/agent-hooks/report.js'
 import {
+  readHooksManifest,
+  type HookManifestVendor,
+  withHookVendorState,
+  writeHooksManifest,
+} from './scaffolders/agent-hooks/manifest.js'
+import {
+  disableManagedHooksFromManifest,
+  type ManagedHookVendor,
+  restoreManagedHooksFromManifest,
   scaffoldAgentHooks,
   trustCodexWebpressoHooksForRepo,
   trustCodexPresetHooksForUser,
@@ -72,6 +86,10 @@ import { scaffoldAuditHooks } from './scaffolders/audit-hooks/index.js'
 import { ensureClaudeCodeUserPlugin } from './scaffolders/claude-plugin/index.js'
 import { scaffoldClaudeRules } from './scaffolders/claude-rules/index.js'
 import { ensureCodexCli } from './scaffolders/codex-cli/index.js'
+import {
+  normalizeGlobalCodexHooksFile,
+  resolveBinaryOnPath,
+} from './scaffolders/agent-hooks/codex-global-normalize.js'
 import {
   ensureCodexWebpressoMcp,
   ensureCodexPlaywrightMcp,
@@ -124,6 +142,10 @@ export interface InitFlags {
   overwrite?: boolean
   'dry-run'?: boolean
   dryRun?: boolean
+  'restore-hooks'?: boolean
+  restoreHooks?: boolean
+  'disable-hooks'?: string
+  disableHooks?: string
   yes?: boolean
   cwd?: string
   strict?: boolean
@@ -135,6 +157,10 @@ export const EXIT_SUCCESS = 0
 export const EXIT_SETUP_FAIL = 1
 export const EXIT_USER_ABORT = 2
 export const EXIT_WRITE_FAIL = 3
+
+export interface InitCommandDeps {
+  readonly stdout?: OutputWriter
+}
 
 export interface ResolveCatalogDirOptions {
   readonly moduleUrl?: string
@@ -213,7 +239,89 @@ function printRuntimeContractGuidance(
   console.log('  Do not blanket-remove devDependencies just because wp can execute the tool.')
 }
 
-export async function runInit(flags: InitFlags): Promise<number> {
+function parseDisableHooksTarget(value: string | undefined): readonly ManagedHookVendor[] | null {
+  if (value === undefined) return null
+  if (value === 'all') return ['claude', 'codex']
+  if (value === 'claude' || value === 'codex') return [value]
+  return null
+}
+
+async function runHooksRecovery(
+  repoRoot: string,
+  flags: InitFlags,
+  options: MergeOptions,
+): Promise<number> {
+  const restoreHooks = flags.restoreHooks ?? flags['restore-hooks'] ?? false
+  const disableHooksValue = flags.disableHooks ?? flags['disable-hooks']
+  const disableVendors = parseDisableHooksTarget(disableHooksValue)
+
+  if (restoreHooks && disableHooksValue !== undefined) {
+    console.error('wp setup: choose either `--restore-hooks` or `--disable-hooks`, not both.')
+    return EXIT_SETUP_FAIL
+  }
+
+  if (!restoreHooks && disableHooksValue === undefined) {
+    return EXIT_SUCCESS
+  }
+
+  if (disableHooksValue !== undefined && disableVendors === null) {
+    console.error('wp setup: `--disable-hooks` must be one of: claude, codex, all.')
+    return EXIT_SETUP_FAIL
+  }
+
+  const manifest = readHooksManifest(repoRoot)
+  if (manifest === null) {
+    console.error('wp setup: no .webpresso/hooks-manifest.json found — run `wp setup` first.')
+    return EXIT_SETUP_FAIL
+  }
+
+  const scaffoldInput = { repoRoot, options, trustCodexHooks: false } as const
+  const selectedVendors = disableVendors ?? (['claude', 'codex'] as const)
+  const mutationResult = restoreHooks
+    ? restoreManagedHooksFromManifest(scaffoldInput, manifest)
+    : disableManagedHooksFromManifest(scaffoldInput, manifest, selectedVendors)
+
+  const nextManifest = restoreHooks
+    ? withHookVendorState(manifest, ['claude', 'codex'], 'enabled')
+    : withHookVendorState(manifest, selectedVendors as readonly HookManifestVendor[], 'disabled')
+
+  if (!options.dryRun) {
+    writeHooksManifest(repoRoot, nextManifest.claude, nextManifest.codex, nextManifest.vendorState)
+  }
+
+  if (mutationResult.codex !== undefined) {
+    const codexHooksPath = join(repoRoot, '.codex', 'hooks.json')
+    normalizeGlobalCodexHooksFile(
+      codexHooksPath,
+      {
+        contextModeBinary: resolveBinaryOnPath('context-mode'),
+        nodeBinary: process.execPath,
+      },
+      options,
+    )
+    if (restoreHooks) {
+      await trustCodexWebpressoHooksForRepo(scaffoldInput)
+    }
+  }
+
+  const results = [mutationResult.claude, mutationResult.codex].filter(
+    (result): result is MergeResult => result !== undefined,
+  )
+  const summary = summarizeResults(results)
+
+  console.log(`wp setup: ${restoreHooks ? 'restoring' : 'disabling'} managed hooks in ${repoRoot}`)
+  if (options.dryRun) console.log('  mode: DRY RUN (no writes)')
+  console.log(`  created:         ${summary.created}`)
+  console.log(`  identical:       ${summary.identical}`)
+  console.log(`  overwritten:     ${summary.overwritten}`)
+  if (options.dryRun) console.log(`  would-change:    ${summary['skipped-dry']}`)
+  console.log('  → Run `wp hooks status` to verify hook states')
+
+  return EXIT_SUCCESS
+}
+
+export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Promise<number> {
+  const stdout = deps.stdout ?? process.stdout
   const startMs = Date.now()
   const cwd = flags.cwd ?? process.cwd()
   const consumer = detectConsumer(cwd)
@@ -272,6 +380,15 @@ export async function runInit(flags: InitFlags): Promise<number> {
     overwrite: flags.overwrite ?? false,
     dryRun: flags.dryRun ?? flags['dry-run'] ?? false,
   }
+
+  const hooksRecoveryExit = await runHooksRecovery(consumer.repoRoot, flags, options)
+  if (
+    (flags.restoreHooks ?? flags['restore-hooks'] ?? false) ||
+    (flags.disableHooks ?? flags['disable-hooks']) !== undefined
+  ) {
+    return hooksRecoveryExit
+  }
+
   const acceptDefaults = flags.yes ?? true
 
   const existingConfig = readConfig(consumer.repoRoot)
@@ -318,9 +435,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
   if (options.dryRun) console.log('  mode: DRY RUN (no writes)')
   if (options.overwrite)
     console.log('  mode: --overwrite (force full-file replacement for eligible managed files)')
-  console.log(
-    `  Tier-3 skills: ${tier3Selection.length > 0 ? tier3Selection.join(', ') : '(none)'}`,
-  )
+  console.log(`  opt-in skills: ${tier3Selection.length > 0 ? tier3Selection.join(', ') : '(none)'}`)
 
   // Unconditional: workspace config is always needed for cross-repo correlation.
   if (!options.dryRun) {
@@ -393,12 +508,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
     // hook entries). Rendered repo-local skills are written into the
     // consumer-owned `agent-skills/` tree first, then projected like every
     // other skill.
-    const allowedSkillSlugs = new Set<string>([
-      ...TIER1_SKILLS,
-      ...TIER2_SKILLS,
-      ...RENDERED_SKILLS,
-      ...tier3Selection,
-    ])
+    const allowedSkillSlugs = new Set<string>([...SHARED_FAVORITE_SKILLS, ...tier3Selection])
     if (!options.dryRun) {
       runUnifiedSync({
         catalogDir: join(catalogDir, 'agent'),
@@ -420,6 +530,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
       ...(blueprintsDir ? { blueprintsDir } : {}),
     })
 
+    const previousHooksManifest = readHooksManifest(consumer.repoRoot)
     let agentHooksResult = await scaffoldAgentHooks({
       repoRoot: consumer.repoRoot,
       options,
@@ -434,7 +545,15 @@ export async function runInit(flags: InitFlags): Promise<number> {
         proposedMap,
         proposedMap,
       )
-      process.stdout.write(dryRunDiff + '\n')
+      stdout.write(dryRunDiff + '\n')
+    } else {
+      writeHooksManifest(
+        consumer.repoRoot,
+        agentHooksResult.manifest.claude,
+        agentHooksResult.manifest.codex,
+        agentHooksResult.manifest.vendorState,
+      )
+      printSetupReport(previousHooksManifest, agentHooksResult.manifest, stdout)
     }
 
     const auditHooksResult = scaffoldAuditHooks({ repoRoot: consumer.repoRoot, options })
@@ -528,6 +647,9 @@ export async function runInit(flags: InitFlags): Promise<number> {
       )
       console.log(
         `  context-mode codex hooks: ${contextModeResult.codexGlobalHooks.action === 'identical' ? 'already path-stable' : contextModeResult.codexGlobalHooks.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓ path-stable'} ${contextModeResult.codexGlobalHooks.targetPath}`,
+      )
+      console.log(
+        `  context-mode claude hooks: ${contextModeResult.claudeGlobalHooks.action === 'identical' ? 'already path-stable' : contextModeResult.claudeGlobalHooks.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓ path-stable'} ${contextModeResult.claudeGlobalHooks.targetPath}`,
       )
     }
 
@@ -1075,23 +1197,25 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
   // updates --help. Prevents the docs/code drift we discovered when
   // omx + gstack landed without surfacing in --help.
   const withHelp =
-    `Comma-separated Tier-3 skills and/or presets to install ` +
+    `Comma-separated opt-in skills and/or presets to install ` +
     `(non-interactive). Presets: ${PRESETS.join(', ')}. ` +
-    `Tier-3 skills are listed by 'wp skill list'.`
+    `Opt-in skills are listed by 'wp skill list'.`
   const withoutHelp =
-    `Comma-separated Tier-3 skills to opt out of. ` + `base-kit is default-on unless passed here.`
+    `Comma-separated opt-in skills to opt out of. ` + `base-kit is default-on unless passed here.`
 
   cli
     .command(commandName, description)
     .option('--with <skills>', withHelp)
     .option('--without <skills>', withoutHelp)
     .option('--host <hosts>', 'Comma-separated host targets: codex, claude, opencode, all, none')
-    .option('--all', 'Install every skill (Tier-1 + Tier-2 + all Tier-3)')
+    .option('--all', 'Install shared favorites plus every opt-in skill')
     .option(
       '--overwrite',
       'Force full-file replacement for eligible managed files (default: reconcile owned content and preserve divergent consumer files)',
     )
     .option('--dry-run', 'Show what would change without writing anything')
+    .option('--restore-hooks', 'Restore managed Claude/Codex hook config from .webpresso/hooks-manifest.json')
+    .option('--disable-hooks <vendor>', 'Disable managed hooks for claude, codex, or all')
     .option('--yes', 'Accept defaults, skip interactive prompts (default behavior)')
     .option('--cwd <dir>', 'Working tree to scaffold into (default: process.cwd())')
     .option('--strict', 'Abort if any compatibility check fails (default: warn and continue)')

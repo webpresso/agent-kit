@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 
 import { patchJsonFile, type MergeOptions, type MergeResult } from '#cli/commands/init/merge'
 import {
@@ -21,8 +21,10 @@ export interface EnsureContextModeInput {
   options: MergeOptions
   spawn?: typeof spawnSync
   codexConfigPath?: string
+  claudeSettingsPath?: string
   opencodeConfigPath?: string
   pinFilePath?: string
+  nodeBinary?: string
   strict?: boolean
   spinnerFactory?: SpinnerFactory
   globalInstall?: boolean
@@ -31,6 +33,7 @@ export interface EnsureContextModeInput {
 export type EnsureContextModeResult = {
   codexFeatures: MergeResult
   codexGlobalHooks: MergeResult
+  claudeGlobalHooks: MergeResult
   opencodeConfig: MergeResult
   installed: boolean
 }
@@ -47,6 +50,105 @@ function defaultCodexConfigPath(): string {
 
 function defaultOpenCodeConfigPath(repoRoot: string): string {
   return join(repoRoot, 'opencode.json')
+}
+
+function defaultClaudeSettingsPath(): string {
+  return join(process.env.HOME || homedir(), '.claude', 'settings.json')
+}
+
+function quoteShell(value: string): string {
+  return `'${value.replaceAll("'", `'\\''`)}'`
+}
+
+function stripOuterQuotes(value: string): string {
+  if (
+    value.length >= 2 &&
+    ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'")))
+  ) {
+    return value.slice(1, -1)
+  }
+  return value
+}
+
+function resolveNodeBinaryOverride(explicit: string | undefined): string | null {
+  if (explicit) return explicit
+  if (basename(process.execPath).startsWith('node')) return process.execPath
+  return resolveBinaryOnPath('node')
+}
+
+function normalizeClaudeContextModeCommand(
+  command: string,
+  nodeBinary: string,
+  scriptPath: string,
+): string {
+  const trimmed = command.trim()
+  const desired = `${quoteShell(nodeBinary)} ${quoteShell(scriptPath)}`
+  if (trimmed === desired) return command
+
+  if (stripOuterQuotes(trimmed) === scriptPath) return desired
+
+  const bareNodeMatch = /^node\s+(.+)$/u.exec(trimmed)
+  if (bareNodeMatch && stripOuterQuotes(bareNodeMatch[1]!.trim()) === scriptPath) {
+    return desired
+  }
+
+  return command
+}
+
+function normalizeClaudeContextModeHooks(
+  settingsPath: string,
+  nodeBinary: string | null,
+  options: MergeOptions,
+): MergeResult {
+  if (!existsSync(settingsPath) || !nodeBinary) {
+    return { targetPath: settingsPath, action: options.dryRun ? 'skipped-dry' : 'identical' }
+  }
+
+  const scriptPath = join(dirname(settingsPath), 'hooks', 'context-mode-cache-heal.mjs')
+  const raw = readFileSync(settingsPath, 'utf8')
+  const parsed = JSON.parse(raw) as Record<string, unknown>
+  const hooksRoot =
+    parsed.hooks && typeof parsed.hooks === 'object' && !Array.isArray(parsed.hooks)
+      ? { ...(parsed.hooks as Record<string, unknown>) }
+      : null
+  const sessionStart = Array.isArray(hooksRoot?.SessionStart) ? hooksRoot.SessionStart : null
+  if (!hooksRoot || !sessionStart) {
+    return { targetPath: settingsPath, action: 'identical' }
+  }
+
+  let changed = false
+  const nextSessionStart = sessionStart.map((group) => {
+    if (!group || typeof group !== 'object' || !Array.isArray((group as { hooks?: unknown }).hooks)) {
+      return group
+    }
+
+    const hooks = (group as { hooks: Array<Record<string, unknown>> }).hooks
+    let groupChanged = false
+    const nextHooks = hooks.map((hook) => {
+      const command = typeof hook.command === 'string' ? hook.command : null
+      if (!command) return hook
+      const nextCommand = normalizeClaudeContextModeCommand(command, nodeBinary, scriptPath)
+      if (nextCommand === command) return hook
+      changed = true
+      groupChanged = true
+      return { ...hook, command: nextCommand }
+    })
+
+    return groupChanged ? { ...group, hooks: nextHooks } : group
+  })
+
+  if (!changed) return { targetPath: settingsPath, action: 'identical' }
+  if (options.dryRun) return { targetPath: settingsPath, action: 'skipped-dry' }
+
+  const next = {
+    ...parsed,
+    hooks: {
+      ...hooksRoot,
+      SessionStart: nextSessionStart,
+    },
+  }
+  writeFileSync(settingsPath, `${JSON.stringify(next, null, 2)}\n`, 'utf8')
+  return { targetPath: settingsPath, action: 'overwritten' }
 }
 
 export function upsertCodexContextModeFeatures(raw: string): string {
@@ -185,12 +287,14 @@ function ensureContextModeBinary(
 export function ensureContextMode(input: EnsureContextModeInput): EnsureContextModeResult {
   const codexConfigPath = input.codexConfigPath ?? defaultCodexConfigPath()
   const opencodeConfigPath = input.opencodeConfigPath ?? defaultOpenCodeConfigPath(input.repoRoot)
+  const claudeSettingsPath = input.claudeSettingsPath ?? defaultClaudeSettingsPath()
   const codexHooksPath = defaultCodexHooksPathFromConfig(codexConfigPath)
 
   if (input.options.dryRun) {
     return {
       codexFeatures: { targetPath: codexConfigPath, action: 'skipped-dry' },
       codexGlobalHooks: { targetPath: codexHooksPath, action: 'skipped-dry' },
+      claudeGlobalHooks: { targetPath: claudeSettingsPath, action: 'skipped-dry' },
       opencodeConfig: { targetPath: opencodeConfigPath, action: 'skipped-dry' },
       installed: false,
     }
@@ -217,6 +321,11 @@ export function ensureContextMode(input: EnsureContextModeInput): EnsureContextM
     codexGlobalHooks: normalizeGlobalCodexHooksFile(
       codexHooksPath,
       { contextModeBinary: binaryPath },
+      input.options,
+    ),
+    claudeGlobalHooks: normalizeClaudeContextModeHooks(
+      claudeSettingsPath,
+      resolveNodeBinaryOverride(input.nodeBinary),
       input.options,
     ),
     opencodeConfig: patchJsonFile(

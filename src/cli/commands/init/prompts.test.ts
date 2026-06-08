@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  OPT_IN_SKILLS,
   parseWithFlag,
   resolveTier3Selection,
-  TIER3_SKILLS,
   validateTier3Names,
 } from './prompts.js'
 
@@ -19,17 +19,17 @@ describe('parseWithFlag', () => {
 
 describe('validateTier3Names', () => {
   it('splits valid from invalid', () => {
-    const { valid, invalid } = validateTier3Names(['tanstack-query', 'nonsense'])
-    expect(valid).toEqual(['tanstack-query'])
+    const { valid, invalid } = validateTier3Names(['tanstack-query', 'systematic-debugging', 'nonsense'])
+    expect(valid).toEqual(['tanstack-query', 'systematic-debugging'])
     expect(invalid).toEqual(['nonsense'])
   })
 })
 
 describe('resolveTier3Selection', () => {
-  it('returns all Tier-3 skills when --all', async () => {
+  it('returns all opt-in skills when --all', async () => {
     const r = await resolveTier3Selection({ allFlag: true })
     expect(r.source).toBe('all')
-    expect(r.selected.toSorted()).toEqual([...TIER3_SKILLS].toSorted())
+    expect(r.selected.toSorted()).toEqual([...OPT_IN_SKILLS].toSorted())
   })
 
   it('keeps base-kit default-on when --with is set', async () => {
@@ -49,13 +49,13 @@ describe('resolveTier3Selection', () => {
 
   it('throws on unknown --with names', async () => {
     await expect(resolveTier3Selection({ withFlag: 'does-not-exist' })).rejects.toThrow(
-      /Unknown Tier-3 skills/,
+      /Unknown opt-in skills/,
     )
   })
 
   it('throws on unknown --without names', async () => {
     await expect(resolveTier3Selection({ withoutFlag: 'does-not-exist' })).rejects.toThrow(
-      /Unknown Tier-3 skills in --without/,
+      /Unknown opt-in skills in --without/,
     )
   })
 
@@ -79,5 +79,13 @@ describe('resolveTier3Selection', () => {
     const r = await resolveTier3Selection({ isTTY: false })
     expect(r.source).toBe('default')
     expect(r.selected).toEqual(['base-kit'])
+  })
+
+  it('allows shared add-ons and rendered skills to be explicitly opted in', async () => {
+    const r = await resolveTier3Selection({
+      withFlag: 'systematic-debugging,monorepo-navigation',
+    })
+    expect(r.source).toBe('with')
+    expect(r.selected).toEqual(['systematic-debugging', 'monorepo-navigation', 'base-kit'])
   })
 })

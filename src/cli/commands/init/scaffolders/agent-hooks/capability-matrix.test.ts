@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { CAPABILITY_MATRIX } from './capability-matrix.js'
-import { HOOK_EVENT_NAMES } from './ir.js'
+import { HOOK_EVENT_NAMES, MANAGED_HOOK_EVENT_NAMES } from './ir.js'
 
 describe('CAPABILITY_MATRIX', () => {
   it('contains an entry for every canonical HOOK_EVENT_NAME', () => {
@@ -11,11 +11,12 @@ describe('CAPABILITY_MATRIX', () => {
     }
   })
 
-  it('claude column is full for all 5 canonical events', () => {
+  it('claude column is full only for the emitted managed hook-event subset', () => {
+    const managedEvents = new Set(MANAGED_HOOK_EVENT_NAMES)
     for (const event of HOOK_EVENT_NAMES) {
       const entry = CAPABILITY_MATRIX.find((c) => c.event === event)
       expect(entry).toBeDefined()
-      expect(entry?.claude).toStrictEqual('full')
+      expect(entry?.claude === 'full').toStrictEqual(managedEvents.has(event))
     }
   })
 
@@ -24,9 +25,31 @@ describe('CAPABILITY_MATRIX', () => {
     expect(stop?.codex).toStrictEqual('full')
   })
 
-  it('codex UserPromptSubmit is unsupported', () => {
+  it('codex UserPromptSubmit is full because setup emits it today', () => {
     const ups = CAPABILITY_MATRIX.find((c) => c.event === 'UserPromptSubmit')
-    expect(ups?.codex).toStrictEqual('unsupported')
+    expect(ups?.codex).toStrictEqual('full')
+  })
+
+  it('richer native events are recorded as partial/unmapped rather than falsely marked full', () => {
+    const permissionRequest = CAPABILITY_MATRIX.find((c) => c.event === 'PermissionRequest')
+    const sessionEnd = CAPABILITY_MATRIX.find((c) => c.event === 'SessionEnd')
+    const preCompact = CAPABILITY_MATRIX.find((c) => c.event === 'PreCompact')
+
+    expect(permissionRequest).toMatchObject({
+      claude: 'partial',
+      codex: 'partial',
+      cursor: 'unmapped',
+    })
+    expect(sessionEnd).toMatchObject({
+      claude: 'partial',
+      codex: 'unsupported',
+      cursor: 'unsupported',
+    })
+    expect(preCompact).toMatchObject({
+      claude: 'partial',
+      codex: 'partial',
+      cursor: 'unsupported',
+    })
   })
 
   it('all support levels are valid SupportLevel values', () => {
@@ -40,9 +63,11 @@ describe('CAPABILITY_MATRIX', () => {
 
   it('has entries for all extended events beyond the 5 canonical ones', () => {
     const extended = [
+      'PostToolUseFailure',
       'PermissionRequest',
       'SubagentStart',
       'SubagentStop',
+      'SessionEnd',
       'PreCompact',
       'PostCompact',
     ]

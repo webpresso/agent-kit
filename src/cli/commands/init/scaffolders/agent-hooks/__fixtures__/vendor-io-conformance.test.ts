@@ -55,10 +55,15 @@ describe('vendor hook I/O conformance spec', () => {
         SessionStart: [{ hooks: [{ type: 'command', command: '/bin/test' }] }],
         PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: '/bin/test' }] }],
         PostToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: '/bin/test' }] }],
+        PostToolUseFailure: [{ matcher: 'Bash', hooks: [{ type: 'command', command: '/bin/test' }] }],
         UserPromptSubmit: [{ hooks: [{ type: 'command', command: '/bin/test' }] }],
         Stop: [{ hooks: [{ type: 'command', command: '/bin/test' }] }],
         SubagentStart: [{ hooks: [{ type: 'command', command: '/bin/test' }] }],
         SubagentStop: [{ hooks: [{ type: 'command', command: '/bin/test' }] }],
+        PermissionRequest: [{ matcher: 'Bash', hooks: [{ type: 'command', command: '/bin/test' }] }],
+        SessionEnd: [{ hooks: [{ type: 'command', command: '/bin/test' }] }],
+        PreCompact: [{ matcher: 'auto', hooks: [{ type: 'command', command: '/bin/test' }] }],
+        PostCompact: [{ matcher: 'auto', hooks: [{ type: 'command', command: '/bin/test' }] }],
       }
       expect(claudeHooksSchema.safeParse(config).success).toBe(true)
     })

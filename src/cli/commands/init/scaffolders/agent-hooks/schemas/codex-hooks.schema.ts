@@ -13,6 +13,7 @@ const codexHookCommandSchema = z.object({
   type: z.literal('command'),
   command: z.string(),
   timeout: z.number().optional(),
+  statusMessage: z.string().optional(),
 })
 
 const codexHookGroupSchema = z.object({

@@ -23,11 +23,6 @@ describe('detectDrift', () => {
       'PostToolUse',
       'UserPromptSubmit',
       'Stop',
-      'PermissionRequest',
-      'SubagentStart',
-      'SubagentStop',
-      'PreCompact',
-      'PostCompact',
     ])
     const findings = detectDrift({ claude: claudeFullEvents, codex: new Set() })
     const claudeWarnings = findings.filter((f) => f.vendor === 'claude' && f.severity === 'warning')
@@ -70,21 +65,14 @@ describe('detectDrift', () => {
   })
 
   test('happy path: all matrix events installed, no unknown events → no findings', () => {
-    // Build a set containing ALL events from the matrix (not just 'full')
-    // to simulate a fully-populated hooks file
-    const allMatrixEvents = new Set([
+    const allFullEvents = new Set([
       'SessionStart',
       'PreToolUse',
       'PostToolUse',
       'UserPromptSubmit',
       'Stop',
-      'PermissionRequest',
-      'SubagentStart',
-      'SubagentStop',
-      'PreCompact',
-      'PostCompact',
     ])
-    const findings = detectDrift({ claude: allMatrixEvents, codex: allMatrixEvents })
+    const findings = detectDrift({ claude: allFullEvents, codex: allFullEvents })
     // Only warnings possible: entries where support != 'full' but event is installed
     // (no errors since all events are in the matrix). Warnings only fire when
     // support='full' but event is absent — here all events are present.
@@ -127,13 +115,31 @@ describe('detectDrift', () => {
     })
   })
 
-  test('codex UserPromptSubmit is unsupported in matrix → no warning when absent', () => {
-    // codex support for UserPromptSubmit is 'unsupported', not 'full',
-    // so an absent UserPromptSubmit in codex installed should NOT produce a warning
+  test('codex UserPromptSubmit is full in matrix → warning when absent', () => {
     const findings = detectDrift({ claude: new Set(), codex: new Set() })
     const codexUserPromptWarning = findings.find(
       (f) => f.vendor === 'codex' && f.event === 'UserPromptSubmit' && f.severity === 'warning',
     )
-    expect(codexUserPromptWarning).toBeUndefined()
+    expect(codexUserPromptWarning).toStrictEqual({
+      event: 'UserPromptSubmit',
+      vendor: 'codex',
+      expected: 'full',
+      actual: 'absent',
+      severity: 'warning',
+    })
+  })
+
+  test('partial matrix entries do not warn when absent', () => {
+    const findings = detectDrift({ claude: new Set(), codex: new Set() })
+    expect(
+      findings.find(
+        (f) => f.vendor === 'codex' && f.event === 'PermissionRequest' && f.severity === 'warning',
+      ),
+    ).toBeUndefined()
+    expect(
+      findings.find(
+        (f) => f.vendor === 'claude' && f.event === 'SessionEnd' && f.severity === 'warning',
+      ),
+    ).toBeUndefined()
   })
 })

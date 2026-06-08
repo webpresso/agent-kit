@@ -9,7 +9,7 @@ import { join } from 'node:path'
 
 import { formatStatusLine, HOOK_STATUS, type HookStatusDetail, type HookStatus } from '#hooks/shared/vocabulary.js'
 import { readHooksManifest, type HookVendorState } from '#cli/commands/init/scaffolders/agent-hooks/manifest.js'
-import type { HookEntry, HookGroup, HooksMap } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
+import type { HookGroup, HooksMap } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 import { WP_HOOK_SPECS as IR_HOOK_SPECS } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 
 // ── Canonical hook spec list ──────────────────────────────────────────────────
@@ -101,7 +101,7 @@ function readHooksMap(filePath: string): HooksMap {
     // Flatten to HooksMap: keep only array-valued event keys.
     const result: HooksMap = {}
     for (const [key, value] of Object.entries(candidate)) {
-      if (Array.isArray(value)) result[key] = value as readonly HookGroup[]
+      if (Array.isArray(value)) result[key] = value as HookGroup[]
     }
     return result
   } catch {

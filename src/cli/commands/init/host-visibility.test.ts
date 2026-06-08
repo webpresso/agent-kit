@@ -35,8 +35,14 @@ describe('host skill visibility', () => {
     rmSync(homeDir, { recursive: true, force: true })
   })
 
-  it('treats verify and plan-refine as core required capabilities', () => {
-    expect(REQUIRED_CORE_CAPABILITIES).toEqual(['verify', 'plan-refine'])
+  it('treats the shared favorites as core required capabilities', () => {
+    expect(REQUIRED_CORE_CAPABILITIES).toEqual([
+      'fix',
+      'verify',
+      'testing-philosophy',
+      'plan-refine',
+      'pll',
+    ])
   })
 
   it('parses explicit host selections without aliases', () => {
@@ -82,8 +88,11 @@ describe('host skill visibility', () => {
 
     const audit = auditHostSkillVisibility({ repoRoot, homeDir, hosts: ['opencode'] })
     expect(audit.results.map((r) => [r.capability, r.status])).toEqual([
+      ['fix', 'not-visible'],
       ['verify', 'visible-after-restart'],
+      ['testing-philosophy', 'not-visible'],
       ['plan-refine', 'visible-after-restart'],
+      ['pll', 'not-visible'],
     ])
   })
 

@@ -234,4 +234,62 @@ describe('context-mode preset', () => {
     const mcp = next.mcp as Record<string, { command: unknown }>
     expect(mcp['webpresso'].command).toEqual(['vp', 'exec', 'wp', 'mcp'])
   })
+
+  it('normalizes the Claude context-mode cache-heal hook to an absolute node launch', () => {
+    const codexConfigPath = join(repoRoot, '.codex', 'config.toml')
+    const opencodeConfigPath = join(repoRoot, 'opencode.json')
+    const claudeSettingsPath = join(repoRoot, '.home', '.claude', 'settings.json')
+    const cacheHealPath = join(repoRoot, '.home', '.claude', 'hooks', 'context-mode-cache-heal.mjs')
+    const nodeBinary = join(repoRoot, 'bin', 'node')
+
+    mkdirSync(join(repoRoot, '.home', '.claude', 'hooks'), { recursive: true })
+    writeFileSync(cacheHealPath, '#!/usr/bin/env node\nprocess.exit(0)\n', 'utf8')
+    writeFileSync(nodeBinary, '#!/usr/bin/env sh\nexit 0\n', 'utf8')
+    chmodSync(nodeBinary, 0o755)
+    writeFileSync(
+      claudeSettingsPath,
+      `${JSON.stringify(
+        {
+          hooks: {
+            SessionStart: [{ hooks: [{ type: 'command', command: `"${cacheHealPath}"` }] }],
+          },
+        },
+        null,
+        2,
+      )}\n`,
+      'utf8',
+    )
+
+    const result = ensureContextMode({
+      repoRoot,
+      options: {},
+      codexConfigPath,
+      claudeSettingsPath,
+      opencodeConfigPath,
+      nodeBinary,
+      spawn: (() => ({ status: 0, error: undefined })) as never,
+    })
+
+    expect(result.claudeGlobalHooks.action).toBe('overwritten')
+    expect(readFileSync(claudeSettingsPath, 'utf8')).toContain(`'${nodeBinary}' '${cacheHealPath}'`)
+  })
+
+  it('does not create Claude global settings when the file is absent', () => {
+    const codexConfigPath = join(repoRoot, '.codex', 'config.toml')
+    const opencodeConfigPath = join(repoRoot, 'opencode.json')
+    const claudeSettingsPath = join(repoRoot, '.home', '.claude', 'settings.json')
+
+    const result = ensureContextMode({
+      repoRoot,
+      options: {},
+      codexConfigPath,
+      claudeSettingsPath,
+      opencodeConfigPath,
+      nodeBinary: join(repoRoot, 'bin', 'node'),
+      spawn: (() => ({ status: 0, error: undefined })) as never,
+    })
+
+    expect(result.claudeGlobalHooks.action).toBe('identical')
+    expect(() => readFileSync(claudeSettingsPath, 'utf8')).toThrow()
+  })
 })

@@ -33,6 +33,7 @@ export const cursorHooksSchema = z.object({
   postToolUse: z.array(cursorHookGroupSchema).optional(),
   beforeSubmitPrompt: z.array(cursorHookGroupSchema).optional(),
   sessionStart: z.array(cursorHookGroupSchema).optional(),
+  stop: z.array(cursorHookGroupSchema).optional(),
 })
 
 export type CursorHooksConfig = z.infer<typeof cursorHooksSchema>

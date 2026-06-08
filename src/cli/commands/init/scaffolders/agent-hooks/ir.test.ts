@@ -25,6 +25,20 @@ describe('WP_HOOK_SPECS', () => {
     }
   })
 
+  it('HOOK_EVENT_NAMES includes the wider documented lifecycle used by dispatch/demo tooling', () => {
+    expect(HOOK_EVENT_NAMES).toEqual(
+      expect.arrayContaining([
+        'PostToolUseFailure',
+        'PermissionRequest',
+        'SubagentStart',
+        'SubagentStop',
+        'SessionEnd',
+        'PreCompact',
+        'PostCompact',
+      ]),
+    )
+  })
+
   it('specs with matcher reference valid MatcherSet keys', () => {
     const validMatcherKeys = new Set<string>(['preToolUse', 'postToolUse'])
     for (const spec of WP_HOOK_SPECS) {

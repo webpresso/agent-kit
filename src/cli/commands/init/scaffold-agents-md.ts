@@ -34,6 +34,8 @@ const TECH_STACK_RULES: Array<{ dep: RegExp; label: string }> = [
   { dep: /^typescript$/, label: 'TypeScript' },
 ]
 
+export const AGENTS_MD_MAX_BYTES = 8_000
+
 export function renderRepositoryMap(consumer: ConsumerContext): string {
   const packages = consumer.workspacePackages
   if (packages.length === 0) {

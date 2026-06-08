@@ -76,10 +76,22 @@ type HostCheckMode = 'auto' | 'skip' | 'required'
 
 export interface RunHooksDoctorOptions {
   skipMcp?: boolean
+  fix?: boolean
   hosts?: HostCheckMode
   hostNames?: Array<'codex' | 'opencode' | 'claude'>
   /** Override the working directory used to detect RTK marker files. Defaults to process.cwd(). */
   cwd?: string
+  /** Test seam for the safe restore path used by `wp hooks doctor --fix`. */
+  runRestoreFix?: (cwd: string) => Promise<number>
+}
+
+export type HookFixStatus = 'fixed' | 'prepared' | 'requires-approval' | 'blocked'
+
+export interface HookFixResult {
+  readonly status: HookFixStatus
+  readonly detail: string
+  readonly preservedFiles?: readonly string[]
+  readonly nextCommand?: string
 }
 
 interface CodexHooksFile {
@@ -1117,14 +1129,18 @@ export function checkHooksManifest(cwd = process.cwd()): DoctorCheck {
       .slice(0, 2)
       .map((d) => `${d.vendor}/${d.event}`)
       .join(', ')
-    parts.push(`${missing.length} missing (${preview}${missing.length > 2 ? ', …' : ''}) — run \`wp setup\``)
+    parts.push(
+      `${missing.length} missing (${preview}${missing.length > 2 ? ', …' : ''}) — run \`wp setup --restore-hooks\``,
+    )
   }
   if (unknown.length > 0) {
     const preview = unknown
       .slice(0, 2)
       .map((d) => `${d.vendor}/${d.event}`)
       .join(', ')
-    parts.push(`${unknown.length} unknown (${preview}${unknown.length > 2 ? ', …' : ''}) — hand-edited?`)
+    parts.push(
+      `${unknown.length} unknown (${preview}${unknown.length > 2 ? ', …' : ''}) — hand-edited? review with \`wp hooks status\``,
+    )
   }
 
   return {
@@ -1132,6 +1148,95 @@ export function checkHooksManifest(cwd = process.cwd()): DoctorCheck {
     ok: false,
     advisory: true,
     detail: parts.join('; '),
+  }
+}
+
+function hooksConfigPath(vendor: 'claude' | 'codex', cwd: string): string {
+  return vendor === 'claude' ? join(cwd, '.claude', 'settings.json') : join(cwd, '.codex', 'hooks.json')
+}
+
+function existingHookConfigPaths(cwd: string): readonly string[] {
+  return (['claude', 'codex'] as const)
+    .map((vendor) => hooksConfigPath(vendor, cwd))
+    .filter((filePath) => tryAccess(filePath))
+}
+
+async function defaultRunRestoreFix(cwd: string): Promise<number> {
+  const { runInit } = await import('#cli/commands/init/index.js')
+  return await runInit(
+    { cwd, yes: true, restoreHooks: true },
+    { stdout: { write: () => true } },
+  )
+}
+
+export function buildHooksDoctorFixPlan(cwd = process.cwd()): HookFixResult {
+  const manifest = readHooksManifest(cwd)
+  const preservedFiles = existingHookConfigPaths(cwd)
+
+  if (manifest === null) {
+    return {
+      status: 'requires-approval',
+      detail:
+        'no hooks manifest exists; doctor will not run full `wp setup` automatically because that can rewrite broader repo-managed surfaces',
+      preservedFiles,
+      nextCommand: 'wp setup',
+    }
+  }
+
+  const installedClaude = readInstalledClaudeHooks(cwd)
+  const installedCodex = readInstalledCodexHooks(cwd)
+  const diffs = diffHooksManifest(manifest, { claude: installedClaude, codex: installedCodex })
+  const missing = diffs.filter((d) => d.verdict === 'missing')
+  const unknown = diffs.filter((d) => d.verdict === 'unknown')
+
+  if (unknown.length > 0) {
+    const affectedFiles = [...new Set(unknown.map((diff) => hooksConfigPath(diff.vendor, cwd)))]
+    return {
+      status: 'blocked',
+      detail:
+        'installed hooks exist outside the manifest; doctor will not overwrite potentially hand-edited hook config automatically',
+      preservedFiles: affectedFiles,
+      nextCommand: 'wp hooks status',
+    }
+  }
+
+  if (missing.length === 0) {
+    return {
+      status: 'fixed',
+      detail: 'managed hooks already match the manifest; no hook restore was needed',
+    }
+  }
+
+  return {
+    status: 'prepared',
+    detail:
+      'managed hooks are missing but the manifest is present and there are no unknown installed hooks; safe restore path is ready',
+    preservedFiles,
+    nextCommand: 'wp setup --restore-hooks',
+  }
+}
+
+async function applyHooksDoctorFixPlan(
+  plan: HookFixResult,
+  cwd: string,
+  runRestoreFix: (cwd: string) => Promise<number>,
+): Promise<HookFixResult> {
+  if (plan.status !== 'prepared') return plan
+
+  const exitCode = await runRestoreFix(cwd)
+  if (exitCode === 0) {
+    return {
+      status: 'fixed',
+      detail: 'restored managed hooks from the manifest via `wp setup --restore-hooks`',
+      preservedFiles: plan.preservedFiles,
+    }
+  }
+
+  return {
+    status: 'blocked',
+    detail: `safe restore path failed with exit code ${exitCode}`,
+    preservedFiles: plan.preservedFiles,
+    nextCommand: plan.nextCommand,
   }
 }
 
@@ -1247,12 +1352,53 @@ export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<
 }
 
 export async function printHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<number> {
-  const result = await runHooksDoctor(opts)
+  let result = await runHooksDoctor(opts)
+  let fixResult: HookFixResult | null = null
+
+  if (opts.fix) {
+    const cwd = opts.cwd ?? process.cwd()
+    if (result.ok) {
+      fixResult = {
+        status: 'fixed',
+        detail: 'doctor found no failing non-advisory checks; no changes were needed',
+      }
+    } else {
+      const plan = buildHooksDoctorFixPlan(cwd)
+      fixResult =
+        plan.status === 'fixed'
+          ? {
+              status: 'blocked',
+              detail:
+                'doctor found failing checks outside the safe manifest-restore path; no automatic fix was applied',
+              nextCommand: 'wp hooks doctor',
+            }
+          : await applyHooksDoctorFixPlan(
+              plan,
+              cwd,
+              opts.runRestoreFix ?? defaultRunRestoreFix,
+            )
+
+      if (fixResult.status === 'fixed') {
+        result = await runHooksDoctor({ ...opts, fix: false, runRestoreFix: undefined })
+      }
+    }
+  }
 
   for (const check of result.checks) {
     const icon = check.ok ? '[x]' : '[ ]'
     const detail = check.detail ? `: ${check.detail}` : ''
     console.error(`${icon} ${check.name}${detail}`)
+  }
+
+  if (fixResult) {
+    console.error('')
+    console.error(`[~] hooks fix: ${fixResult.status}: ${fixResult.detail}`)
+    if ((fixResult.preservedFiles?.length ?? 0) > 0) {
+      console.error(`    preserved: ${fixResult.preservedFiles!.join(', ')}`)
+    }
+    if (fixResult.nextCommand) {
+      console.error(`    next: ${fixResult.nextCommand}`)
+    }
   }
 
   if (!result.ok) {

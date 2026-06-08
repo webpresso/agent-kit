@@ -6,12 +6,15 @@
  * scaffolders + `runUnifiedSync` projection. This module now only handles
  * commands, workflows, guides, and the top-level catalog README.
  *
- * Tier exports remain because the init orchestrator uses them to compute
+ * Skill-set exports remain because the init orchestrator uses them to compute
  * the allowed-skill set passed to the unified sync filter.
  *
- * - Tier-1 (fix, verify, testing-philosophy, plan-refine, pll) — always.
- * - Tier-2 (systematic-debugging, test-driven-development, deep-research) — always.
- * - monorepo-navigation — always (rendered via a separate scaffold step).
+ * - Shared favorites (fix, verify, testing-philosophy, plan-refine, pll) —
+ *   guaranteed across Codex + Claude by default.
+ * - Shared add-ons (systematic-debugging, test-driven-development,
+ *   deep-research) — opt-in.
+ * - monorepo-navigation — rendered as a consumer-owned source skill, but not
+ *   projected into host-visible surfaces unless explicitly opted in.
  * - Tier-3 — only on opt-in via --with / --all / interactive prompt.
  */
 import { existsSync } from 'node:fs'
@@ -24,14 +27,23 @@ import {
   type MergeResult,
 } from './merge.js'
 
-export const TIER1_SKILLS = ['fix', 'verify', 'testing-philosophy', 'plan-refine', 'pll'] as const
-export const TIER2_SKILLS = [
+export const SHARED_FAVORITE_SKILLS = [
+  'fix',
+  'verify',
+  'testing-philosophy',
+  'plan-refine',
+  'pll',
+] as const
+export const TIER1_SKILLS = SHARED_FAVORITE_SKILLS
+
+export const OPTIONAL_SHARED_SKILLS = [
   'systematic-debugging',
   'test-driven-development',
   'deep-research',
 ] as const
+export const TIER2_SKILLS = OPTIONAL_SHARED_SKILLS
 
-/** Always-installed skill (rendered separately). Excluded from the generic copy. */
+/** Rendered separately into agent-skills/, but projected only on explicit opt-in. */
 export const RENDERED_SKILLS = ['monorepo-navigation'] as const
 
 export interface ScaffoldAgentInput {

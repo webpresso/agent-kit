@@ -152,11 +152,16 @@ function rerunGeneratedAgentSurface(repoRoot: string): void {
   })
 }
 
+function readJsonFile<T>(path: string): T {
+  return JSON.parse(readFileSync(path, 'utf8')) as T
+}
+
 describe('wp init end-to-end', { timeout: 20_000 }, () => {
   let repo: string
   let consoleErrorSpy: ReturnType<typeof vi.spyOn> | undefined
   let consoleLogSpy: ReturnType<typeof vi.spyOn> | undefined
   let consoleWarnSpy: ReturnType<typeof vi.spyOn> | undefined
+  let stdoutWriteSpy: ReturnType<typeof vi.spyOn> | undefined
   let originalCodexHome: string | undefined
   let originalHome: string | undefined
   let originalCi: string | undefined
@@ -187,6 +192,7 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    stdoutWriteSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
   })
 
   afterEach(() => {
@@ -213,6 +219,7 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     consoleLogSpy?.mockRestore()
     consoleWarnSpy?.mockRestore()
     consoleErrorSpy?.mockRestore()
+    stdoutWriteSpy?.mockRestore()
     rmSync(repo, { recursive: true, force: true })
   })
 
@@ -327,7 +334,7 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(existsSync(join(repo, '.agents', 'skills', 'pll', 'SKILL.md'))).toBe(true)
     expect(existsSync(join(repo, '.agent', 'skills', 'testing-philosophy', 'SKILL.md'))).toBe(true)
     expect(existsSync(join(repo, '.agent', 'skills', 'systematic-debugging', 'SKILL.md'))).toBe(
-      true,
+      false,
     )
     expect(existsSync(join(repo, '.agent', 'workflows'))).toBe(true)
     expect(existsSync(join(repo, '.agent', 'rules'))).toBe(true)
@@ -350,11 +357,11 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     const companionFiles = findCompanionFiles(repo)
     expect(companionFiles).toEqual([])
 
-    // Only base-kit is installed by default; other Tier-3 skills remain opt-in.
+    // Only base-kit is installed by default; other opt-in skills remain opt-in.
     expect(existsSync(join(repo, '.agent', 'skills', 'tanstack-query'))).toBe(false)
 
     // monorepo-navigation is rendered into the canonical consumer-owned skill
-    // tree, then projected into generated host surfaces.
+    // tree, but stays out of generated host-visible surfaces by default.
     const navSkill = join(repo, 'agent-skills', 'monorepo-navigation', 'SKILL.md')
     expect(existsSync(navSkill)).toBe(true)
     const navBody = readFileSync(navSkill, 'utf8')
@@ -362,9 +369,11 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(navBody).toContain('@acme/api')
     expect(navBody).toContain('@acme/ui')
     expect(navBody).not.toContain('{{PROJECT_NAME}}')
-    expect(existsSync(join(repo, '.agent', 'skills', 'monorepo-navigation', 'SKILL.md'))).toBe(true)
+    expect(existsSync(join(repo, '.agent', 'skills', 'monorepo-navigation', 'SKILL.md'))).toBe(
+      false,
+    )
     expect(existsSync(join(repo, '.agents', 'skills', 'monorepo-navigation', 'SKILL.md'))).toBe(
-      true,
+      false,
     )
 
     // Docs
@@ -412,7 +421,7 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(existsSync(join(repo, '.agent', 'planning', 'notepad.md'))).toBe(false)
     expect(existsSync(join(repo, '.agent', 'planning', 'project-memory.json'))).toBe(false)
     expect(agents).toMatch(
-      /Materialized by setup:[\s\S]*`blueprints\/`[\s\S]*PRDs, test specs, and other blueprint-owned planning artifacts should live[\s\S]*configured blueprint root \(`blueprints\/`\)/,
+      /Materialized by setup:[\s\S]*blueprint lifecycle directories under `blueprints\/`[\s\S]*Put blueprint-owned PRDs and test specs under `blueprints\/`/,
     )
     expect(agents).toMatch(
       /Generated on demand \(not created by setup\):[\s\S]*`\.agent\/planning\/contracts\/`[\s\S]*`\.agent\/planning\/state\/`[\s\S]*`\.agent\/planning\/notepad\.md`[\s\S]*`\.agent\/planning\/project-memory\.json`/,
@@ -427,8 +436,12 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(rc.installed.tier3Skills).toEqual(['base-kit'])
   })
 
-  it('installs Tier-3 skills when --with is passed', async () => {
-    const code = await runInit({ cwd: repo, yes: true, with: 'tanstack-query,react-doctor' })
+  it('installs opt-in skills when --with is passed', async () => {
+    const code = await runInit({
+      cwd: repo,
+      yes: true,
+      with: 'tanstack-query,react-doctor,systematic-debugging,monorepo-navigation',
+    })
     expect(code).toBe(0)
 
     if (HAS_TANSTACK) {
@@ -437,13 +450,21 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     if (HAS_REACT_DOCTOR) {
       expect(existsSync(join(repo, '.agent', 'skills', 'react-doctor', 'SKILL.md'))).toBe(true)
     }
+    expect(existsSync(join(repo, '.agent', 'skills', 'systematic-debugging', 'SKILL.md'))).toBe(
+      true,
+    )
+    expect(existsSync(join(repo, '.agent', 'skills', 'monorepo-navigation', 'SKILL.md'))).toBe(
+      true,
+    )
 
     const rc = JSON.parse(readFileSync(join(repo, '.webpressorc.json'), 'utf8')) as {
       installed: { tier3Skills: string[] }
     }
     expect([...rc.installed.tier3Skills].sort()).toEqual([
       'base-kit',
+      'monorepo-navigation',
       'react-doctor',
+      'systematic-debugging',
       'tanstack-query',
     ])
   })
@@ -504,12 +525,12 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
 
     const agents = readFileSync(join(repo, 'AGENTS.md'), 'utf8')
     expect(agents).toContain('[`webpresso/blueprints/`](./webpresso/blueprints/)')
-    expect(agents).toContain('`webpresso/blueprints/` (`planned/`, `in-progress/`, `completed/`)')
+    expect(agents).toContain('blueprint lifecycle directories under `webpresso/blueprints/`')
     expect(agents).not.toContain('./blueprints/')
     expect(agents).not.toContain('{{BLUEPRINTS_DIR}}')
   })
 
-  it('rejects unknown Tier-3 names with exit code 1', async () => {
+  it('rejects unknown opt-in skill names with exit code 1', async () => {
     const code = await runInit({ cwd: repo, yes: true, with: 'not-a-real-skill' })
     expect(code).toBe(1)
   })
@@ -636,16 +657,70 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
 
     // agent-hooks scaffolder writes .codex/hooks.json
     expect(existsSync(join(repo, '.codex', 'hooks.json'))).toBe(true)
+    expect(existsSync(join(repo, '.webpresso', 'hooks-manifest.json'))).toBe(true)
   })
 
-  it('preserves Tier-3 config and generated surfaces on follow-up refresh', async () => {
+  it('disables and restores managed hooks through the manifest', async () => {
+    expect(await runInit({ cwd: repo, yes: true })).toBe(0)
+
+    const codexHooksPath = join(repo, '.codex', 'hooks.json')
+    const manifestPath = join(repo, '.webpresso', 'hooks-manifest.json')
+
+    const originalCodex = readJsonFile<{ hooks: Record<string, unknown> }>(codexHooksPath)
+    expect(JSON.stringify(originalCodex)).toContain('wp-pretool-guard')
+
+    expect(await runInit({ cwd: repo, yes: true, disableHooks: 'codex' })).toBe(0)
+
+    const disabledCodex = readJsonFile<{ hooks: Record<string, unknown> }>(codexHooksPath)
+    const disabledManifest = readJsonFile<{
+      vendorState: { claude: 'enabled' | 'disabled'; codex: 'enabled' | 'disabled' }
+    }>(manifestPath)
+    expect(JSON.stringify(disabledCodex)).not.toContain('wp-pretool-guard')
+    expect(disabledManifest.vendorState.codex).toBe('disabled')
+    expect(disabledManifest.vendorState.claude).toBe('enabled')
+
+    expect(await runInit({ cwd: repo, yes: true, restoreHooks: true })).toBe(0)
+
+    const restoredCodex = readJsonFile<{ hooks: Record<string, unknown> }>(codexHooksPath)
+    const restoredManifest = readJsonFile<{
+      vendorState: { claude: 'enabled' | 'disabled'; codex: 'enabled' | 'disabled' }
+    }>(manifestPath)
+    expect(JSON.stringify(restoredCodex)).toContain('wp-pretool-guard')
+    expect(restoredManifest.vendorState.codex).toBe('enabled')
+    expect(restoredManifest.vendorState.claude).toBe('enabled')
+  })
+
+  it('does not mutate hook configs in disable-hooks dry-run mode', async () => {
+    expect(await runInit({ cwd: repo, yes: true })).toBe(0)
+
+    const codexHooksPath = join(repo, '.codex', 'hooks.json')
+    const before = readFileSync(codexHooksPath, 'utf8')
+
+    expect(await runInit({ cwd: repo, yes: true, disableHooks: 'codex', dryRun: true })).toBe(0)
+
+    expect(readFileSync(codexHooksPath, 'utf8')).toBe(before)
+  })
+
+  it('fails restore-hooks when the hooks manifest is missing', async () => {
+    expect(await runInit({ cwd: repo, yes: true })).toBe(0)
+    rmSync(join(repo, '.webpresso', 'hooks-manifest.json'))
+
+    const code = await runInit({ cwd: repo, yes: true, restoreHooks: true })
+
+    expect(code).toBe(1)
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('no .webpresso/hooks-manifest.json found'),
+    )
+  })
+
+  it('preserves opt-in skill config and generated surfaces on follow-up refresh', async () => {
     await runInit({ cwd: repo, yes: true, with: 'tanstack-query' })
     const firstConfig = readFileSync(join(repo, '.webpressorc.json'), 'utf8')
     rerunGeneratedAgentSurface(repo)
     const secondConfig = readFileSync(join(repo, '.webpressorc.json'), 'utf8')
     expect(secondConfig).toBe(firstConfig)
     // Second run reads config and re-applies — config should still list the
-    // Tier-3 skill the first run opted into.
+    // Opt-in skill the first run selected.
     const rc = JSON.parse(secondConfig) as {
       installed: { tier3Skills: string[] }
     }
@@ -687,6 +762,7 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
   let originalPath: string | undefined
   let logLines: string[]
   let originalLog: typeof console.log
+  const silentStdout = { write: () => true }
 
   beforeEach(() => {
     repo = makeTempRepo()
@@ -732,7 +808,7 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
   })
 
   it('prints lane framing after a successful run', async () => {
-    await runInit({ cwd: repo, yes: true })
+    await runInit({ cwd: repo, yes: true }, { stdout: silentStdout })
     const allOutput = logLines.join('\n')
     expect(allOutput).toContain('wp_*')
     expect(allOutput).toContain('ctx_*')
@@ -741,21 +817,21 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
   })
 
   it('prints next-steps block (wp blueprint new, wp gain) on non-dry-run', async () => {
-    await runInit({ cwd: repo, yes: true })
+    await runInit({ cwd: repo, yes: true }, { stdout: silentStdout })
     const allOutput = logLines.join('\n')
     expect(allOutput).toContain('wp blueprint new')
     expect(allOutput).toContain('wp gain')
   })
 
   it('prints Claude plugin auto-enable status on non-dry-run', async () => {
-    await runInit({ cwd: repo, yes: true })
+    await runInit({ cwd: repo, yes: true }, { stdout: silentStdout })
     const allOutput = logLines.join('\n')
     expect(allOutput).toContain('claude plugin:')
     expect(allOutput).toContain('webpresso@webpresso')
   })
 
   it('reports OMC setup status through the default setup preset', async () => {
-    await runInit({ cwd: repo, yes: true })
+    await runInit({ cwd: repo, yes: true }, { stdout: silentStdout })
     const allOutput = logLines.join('\n')
     expect(allOutput).toContain('omc plugin:')
     if (process.env.CI) {
@@ -766,14 +842,14 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
   })
 
   it('omits next-steps block in --dry-run mode', async () => {
-    await runInit({ cwd: repo, yes: true, 'dry-run': true })
+    await runInit({ cwd: repo, yes: true, 'dry-run': true }, { stdout: silentStdout })
     const allOutput = logLines.join('\n')
     expect(allOutput).not.toContain('wp blueprint new')
     expect(allOutput).not.toContain('wp gain')
   })
 
   it('lane framing is present even in --dry-run mode', async () => {
-    await runInit({ cwd: repo, yes: true, 'dry-run': true })
+    await runInit({ cwd: repo, yes: true, 'dry-run': true }, { stdout: silentStdout })
     const allOutput = logLines.join('\n')
     expect(allOutput).toContain('wp_*')
     expect(allOutput).toContain('ctx_*')

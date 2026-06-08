@@ -1,8 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
-
 import type { HooksMap } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 import { HOOK_EVENT_NAMES } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
+import { readInstalledHooksMap } from '#hooks/shared/installed-hooks.js'
 
 export type DispatchOptions = {
   readonly event: string
@@ -62,38 +60,6 @@ export async function dispatch(
   }
 }
 
-function readHooksMap(repoRoot: string, vendor: 'claude' | 'codex'): HooksMap {
-  const configPath =
-    vendor === 'claude'
-      ? join(repoRoot, '.claude', 'settings.json')
-      : join(repoRoot, '.codex', 'hooks.json')
-
-  if (!existsSync(configPath)) {
-    return {}
-  }
-
-  const raw: unknown = JSON.parse(readFileSync(configPath, 'utf8'))
-
-  if (typeof raw !== 'object' || raw === null) {
-    return {}
-  }
-
-  // Claude settings.json wraps hooks under a `hooks` key.
-  // Codex hooks.json may use a `hooks` wrapper or flat top-level events.
-  const withHooks = raw as Record<string, unknown>
-  const hookSource =
-    typeof withHooks['hooks'] === 'object' && withHooks['hooks'] !== null
-      ? (withHooks['hooks'] as Record<string, unknown>)
-      : withHooks
-
-  const result: HooksMap = {}
-  for (const [key, value] of Object.entries(hookSource)) {
-    if (!Array.isArray(value)) continue
-    result[key] = value as HooksMap[string]
-  }
-  return result
-}
-
 function printResult(result: DispatchResult): void {
   const { event, vendor, hooks } = result
   if (hooks.length === 0) {
@@ -144,7 +110,7 @@ export async function dispatchCommand(argv: readonly string[]): Promise<void> {
   }
 
   const repoRoot = process.cwd()
-  const hooksMap = readHooksMap(repoRoot, vendor)
+  const hooksMap = readInstalledHooksMap(repoRoot, vendor)
 
   let result: DispatchResult
   try {

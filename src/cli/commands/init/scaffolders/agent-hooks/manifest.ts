@@ -12,14 +12,56 @@ import { dirname, join } from 'node:path'
 
 import type { HooksMap } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 
+export const HOOK_MANIFEST_VENDORS = ['claude', 'codex'] as const
+export type HookManifestVendor = (typeof HOOK_MANIFEST_VENDORS)[number]
+export type HookVendorState = 'enabled' | 'disabled'
+export type HookVendorStateMap = Record<HookManifestVendor, HookVendorState>
+
 export type HooksManifest = {
   readonly version: 1
   readonly generatedAt: string // ISO timestamp
   readonly claude: HooksMap
   readonly codex: HooksMap
+  readonly vendorState: HookVendorStateMap
 }
 
 export const MANIFEST_PATH = '.webpresso/hooks-manifest.json'
+
+function defaultVendorState(): HookVendorStateMap {
+  return { claude: 'enabled', codex: 'enabled' }
+}
+
+function normalizeHooksManifest(parsed: unknown): HooksManifest | null {
+  if (
+    parsed === null ||
+    typeof parsed !== 'object' ||
+    !('version' in parsed) ||
+    (parsed as { version: unknown }).version !== 1
+  ) {
+    return null
+  }
+
+  const manifest = parsed as {
+    version: 1
+    generatedAt?: unknown
+    claude?: HooksMap
+    codex?: HooksMap
+    vendorState?: Partial<Record<HookManifestVendor, HookVendorState>>
+  }
+
+  const vendorState = {
+    ...defaultVendorState(),
+    ...(manifest.vendorState === undefined ? {} : manifest.vendorState),
+  } satisfies HookVendorStateMap
+
+  return {
+    version: 1,
+    generatedAt: typeof manifest.generatedAt === 'string' ? manifest.generatedAt : new Date().toISOString(),
+    claude: manifest.claude ?? {},
+    codex: manifest.codex ?? {},
+    vendorState,
+  }
+}
 
 /**
  * Write the hooks manifest to disk at `<repoRoot>/.webpresso/hooks-manifest.json`.
@@ -29,6 +71,7 @@ export function writeHooksManifest(
   repoRoot: string,
   claude: HooksMap,
   codex: HooksMap,
+  vendorState: HookVendorStateMap = defaultVendorState(),
 ): void {
   const manifestPath = join(repoRoot, MANIFEST_PATH)
   mkdirSync(dirname(manifestPath), { recursive: true })
@@ -37,6 +80,7 @@ export function writeHooksManifest(
     generatedAt: new Date().toISOString(),
     claude,
     codex,
+    vendorState,
   }
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf-8')
 }
@@ -49,16 +93,7 @@ export function readHooksManifest(repoRoot: string): HooksManifest | null {
   const manifestPath = join(repoRoot, MANIFEST_PATH)
   try {
     const raw = readFileSync(manifestPath, 'utf-8')
-    const parsed: unknown = JSON.parse(raw)
-    if (
-      parsed !== null &&
-      typeof parsed === 'object' &&
-      'version' in parsed &&
-      (parsed as { version: unknown }).version === 1
-    ) {
-      return parsed as HooksManifest
-    }
-    return null
+    return normalizeHooksManifest(JSON.parse(raw))
   } catch {
     return null
   }
@@ -115,6 +150,9 @@ export function diffHooksManifest(
       for (const group of groups) {
         for (const hook of group.hooks) {
           const key = `${event}:${hook.command}`
+          if (manifest.vendorState[vendor] === 'disabled' && !currentCommands.has(key)) {
+            continue
+          }
           diffs.push({
             event,
             command: hook.command,
@@ -144,4 +182,20 @@ export function diffHooksManifest(
   }
 
   return diffs
+}
+
+export function withHookVendorState(
+  manifest: HooksManifest,
+  vendors: readonly HookManifestVendor[],
+  state: HookVendorState,
+): HooksManifest {
+  const vendorState: HookVendorStateMap = { ...manifest.vendorState }
+  for (const vendor of vendors) {
+    vendorState[vendor] = state
+  }
+
+  return {
+    ...manifest,
+    vendorState,
+  }
 }

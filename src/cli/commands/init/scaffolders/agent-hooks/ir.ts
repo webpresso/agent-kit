@@ -7,18 +7,32 @@
  * output formats.
  */
 
-export type HookEntry = { type: string; command: string; timeout?: number }
+export type HookEntry = {
+  type: string
+  command: string
+  timeout?: number
+  statusMessage?: string
+}
 export type HookGroup = { matcher?: string; hooks: HookEntry[] }
 export type HooksMap = Record<string, HookGroup[]>
 
-// Canonical hook event names recognised by both Claude Code and Codex CLI.
-// Used by `hoistTopLevelEvents` to identify legacy flat-form keys to migrate.
+// Known hook event names across the documented Claude/Codex lifecycle. Used by
+// migration/validation paths to identify legacy flat-form keys and by CLI
+// helpers like `wp hooks dispatch` / `wp hooks demo` to accept a wider event
+// vocabulary than the narrower managed `wp-*` emission subset.
 export const HOOK_EVENT_NAMES = [
   'SessionStart',
   'PreToolUse',
   'PostToolUse',
+  'PostToolUseFailure',
   'UserPromptSubmit',
   'Stop',
+  'PermissionRequest',
+  'SubagentStart',
+  'SubagentStop',
+  'SessionEnd',
+  'PreCompact',
+  'PostCompact',
 ] as const
 
 export type MatcherSet = {
@@ -53,3 +67,13 @@ export const WP_HOOK_SPECS: readonly HookSpec[] = [
   { event: 'UserPromptSubmit', bin: 'wp-guard-switch', timeout: 5 },
   { event: 'Stop', bin: 'wp-stop-qa', timeout: 10 },
 ]
+
+/**
+ * The subset of HOOK_EVENT_NAMES that webpresso currently emits as managed
+ * `wp-*` hooks today. Wider lifecycle names remain accepted by dispatch/demo
+ * and represented in the capability matrix, but not every host-known event has
+ * a managed hook group yet.
+ */
+export const MANAGED_HOOK_EVENT_NAMES = [
+  ...new Set(WP_HOOK_SPECS.map((spec) => spec.event)),
+] as readonly (typeof HOOK_EVENT_NAMES)[number][]

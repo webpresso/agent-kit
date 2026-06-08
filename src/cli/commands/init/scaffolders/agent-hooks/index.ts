@@ -37,6 +37,7 @@ import {
   isTaggedSkillHook,
   type SkillHook,
 } from './skill-hooks.js'
+import type { HooksManifest } from './manifest.js'
 import { resolveRuntimeTarget, runtimePackageDirName } from '#build/runtime-targets.js'
 import { buildClaudeHookGroups } from './emitters/claude.js'
 import {
@@ -381,16 +382,70 @@ function patchClaudeSettings(
   skillHooks: readonly SkillHook[],
 ): Record<string, unknown> {
   const existingHooks = normalizeClaudeAgentKitCommands((existing.hooks ?? {}) as HooksMap)
-  const withSkills = mergeSkillHooks(existingHooks, skillHooks)
+  const merged = mergeAgentKitGroups(existingHooks, buildManagedClaudeHooks(skillHooks))
+
+  return withClaudeWorktreeSettings(existing, {
+    ...merged,
+    Stop: orderStopGroups(merged.Stop ?? []),
+  })
+}
+
+function withClaudeWorktreeSettings(
+  existing: Record<string, unknown>,
+  hooks: HooksMap,
+): Record<string, unknown> {
+  // Claude-only extras: gstack soft-warning at SessionStart (non-blocking)
+  const worktree = existing.worktree as Record<string, unknown> | undefined
+  const symlinkDirectories = Array.isArray(worktree?.symlinkDirectories)
+    ? worktree?.symlinkDirectories.filter((value): value is string => typeof value === 'string')
+    : []
+  const normalizedSymlinkDirectories = symlinkDirectories.includes('.claude')
+    ? symlinkDirectories
+    : [...symlinkDirectories, '.claude']
+
+  return {
+    ...existing,
+    worktree: {
+      ...worktree,
+      symlinkDirectories: normalizedSymlinkDirectories,
+    },
+    hooks,
+  }
+}
+
+// ── Codex CLI (.codex/hooks.json) ────────────────────────────────────────────
+// Schema is wrapped under top-level `hooks` (Codex docs: developers.openai.com/codex/hooks).
+// Codex can run hooks for Bash, apply_patch, and MCP tool calls. Keep MCP
+// routing visible to the guard so ctx/context-mode shells that wrap quality
+// commands are denied before execution instead of silently bypassing wp_* MCPs.
+// File edits go through apply_patch; "Edit"/"Write" are accepted matcher aliases.
+
+const CODEX_MATCHERS: MatcherSet = {
+  preToolUse: 'Bash|apply_patch|Edit|Write|mcp__.*',
+  postToolUse: 'Edit|Write',
+}
+
+function patchCodexHooks(
+  existing: Record<string, unknown>,
+  repoRoot: string,
+): Record<string, unknown> {
+  const migrated = hoistTopLevelEvents(existing)
+  const existingHooks = normalizeCodexAgentKitCommands((migrated.hooks ?? {}) as HooksMap, repoRoot)
+  return {
+    ...migrated,
+    hooks: mergeAgentKitGroups(existingHooks, buildManagedCodexHooks(repoRoot)),
+  }
+}
+
+function buildManagedClaudeHooks(skillHooks: readonly SkillHook[]): HooksMap {
+  const withSkills = mergeSkillHooks({}, skillHooks)
   const webpresso = buildWebpressoHookGroups({
     resolveBin: CC_BIN,
     matchers: CLAUDE_MATCHERS,
   })
   const merged = mergeAgentKitGroups(withSkills, webpresso)
 
-  // Claude-only extras: gstack soft-warning at SessionStart (non-blocking)
-  // and a Skill-matcher PreToolUse hook for stricter enforcement.
-  const withClaudeExtras: HooksMap = {
+  return {
     ...merged,
     SessionStart: ensureGroup(merged.SessionStart ?? [], {
       hooks: [
@@ -413,51 +468,43 @@ function patchClaudeSettings(
     }),
     Stop: orderStopGroups(merged.Stop ?? []),
   }
-
-  const worktree = existing.worktree as Record<string, unknown> | undefined
-  const symlinkDirectories = Array.isArray(worktree?.symlinkDirectories)
-    ? worktree?.symlinkDirectories.filter((value): value is string => typeof value === 'string')
-    : []
-  const normalizedSymlinkDirectories = symlinkDirectories.includes('.claude')
-    ? symlinkDirectories
-    : [...symlinkDirectories, '.claude']
-
-  return {
-    ...existing,
-    worktree: {
-      ...worktree,
-      symlinkDirectories: normalizedSymlinkDirectories,
-    },
-    hooks: withClaudeExtras,
-  }
 }
 
-// ── Codex CLI (.codex/hooks.json) ────────────────────────────────────────────
-// Schema is wrapped under top-level `hooks` (Codex docs: developers.openai.com/codex/hooks).
-// Codex can run hooks for Bash, apply_patch, and MCP tool calls. Keep MCP
-// routing visible to the guard so ctx/context-mode shells that wrap quality
-// commands are denied before execution instead of silently bypassing wp_* MCPs.
-// File edits go through apply_patch; "Edit"/"Write" are accepted matcher aliases.
-
-const CODEX_MATCHERS: MatcherSet = {
-  preToolUse: 'Bash|apply_patch|Edit|Write|mcp__.*',
-  postToolUse: 'Edit|Write',
-}
-
-function patchCodexHooks(
-  existing: Record<string, unknown>,
-  repoRoot: string,
-): Record<string, unknown> {
-  const migrated = hoistTopLevelEvents(existing)
-  const existingHooks = normalizeCodexAgentKitCommands((migrated.hooks ?? {}) as HooksMap, repoRoot)
-  const webpresso = buildWebpressoHookGroups({
+function buildManagedCodexHooks(repoRoot: string): HooksMap {
+  return buildWebpressoHookGroups({
     resolveBin: CODEX_BIN(repoRoot),
     matchers: CODEX_MATCHERS,
   })
-  return {
-    ...migrated,
-    hooks: mergeAgentKitGroups(existingHooks, webpresso),
+}
+
+function collectManagedCommandSet(hooks: HooksMap): ReadonlyMap<string, ReadonlySet<string>> {
+  return new Map(
+    Object.entries(hooks).map(([event, groups]) => [
+      event,
+      new Set(groups.flatMap((group) => group.hooks.map((hook) => hook.command))),
+    ]),
+  )
+}
+
+function removeManagedHooks(existingHooks: HooksMap, managedHooks: HooksMap): HooksMap {
+  const managedCommands = collectManagedCommandSet(managedHooks)
+  const next: HooksMap = {}
+
+  for (const [event, groups] of Object.entries(existingHooks)) {
+    const commands = managedCommands.get(event)
+    const filteredGroups = groups
+      .map((group) => ({
+        ...group,
+        hooks: group.hooks.filter((hook) => !commands?.has(hook.command)),
+      }))
+      .filter((group) => group.hooks.length > 0)
+
+    if (filteredGroups.length > 0) {
+      next[event] = filteredGroups
+    }
   }
+
+  return next
 }
 
 export type CodexTrustSyncWarning = {
@@ -570,6 +617,108 @@ export interface ScaffoldAgentHooksResult {
   claude: MergeResult
   codex: MergeResult
   claudeUser: MergeResult
+  manifest: HooksManifest
+}
+
+export type ManagedHookVendor = 'claude' | 'codex'
+
+type ManagedHookMutationResult = Partial<Record<ManagedHookVendor, MergeResult>>
+
+function patchClaudeHooksFromManifest(
+  existing: Record<string, unknown>,
+  manifest: HooksManifest,
+): Record<string, unknown> {
+  const existingHooks = normalizeClaudeAgentKitCommands((existing.hooks ?? {}) as HooksMap)
+  const merged = mergeAgentKitGroups(existingHooks, manifest.claude)
+  return withClaudeWorktreeSettings(existing, {
+    ...merged,
+    Stop: orderStopGroups(merged.Stop ?? []),
+  })
+}
+
+function patchCodexHooksFromManifest(
+  existing: Record<string, unknown>,
+  repoRoot: string,
+  manifest: HooksManifest,
+): Record<string, unknown> {
+  const migrated = hoistTopLevelEvents(existing)
+  const existingHooks = normalizeCodexAgentKitCommands((migrated.hooks ?? {}) as HooksMap, repoRoot)
+  return {
+    ...migrated,
+    hooks: mergeAgentKitGroups(existingHooks, manifest.codex),
+  }
+}
+
+function disableClaudeHooksFromManifest(
+  existing: Record<string, unknown>,
+  manifest: HooksManifest,
+): Record<string, unknown> {
+  const existingHooks = normalizeClaudeAgentKitCommands((existing.hooks ?? {}) as HooksMap)
+  return withClaudeWorktreeSettings(existing, removeManagedHooks(existingHooks, manifest.claude))
+}
+
+function disableCodexHooksFromManifest(
+  existing: Record<string, unknown>,
+  repoRoot: string,
+  manifest: HooksManifest,
+): Record<string, unknown> {
+  const migrated = hoistTopLevelEvents(existing)
+  const existingHooks = normalizeCodexAgentKitCommands((migrated.hooks ?? {}) as HooksMap, repoRoot)
+  return {
+    ...migrated,
+    hooks: removeManagedHooks(existingHooks, manifest.codex),
+  }
+}
+
+export function restoreManagedHooksFromManifest(
+  input: ScaffoldAgentHooksInput,
+  manifest: HooksManifest,
+  vendors: readonly ManagedHookVendor[] = ['claude', 'codex'],
+): ManagedHookMutationResult {
+  ensureGstackHooks(input.repoRoot, input.options)
+  ensureManagedWebpressoHookLaunchers(input.repoRoot, input.options)
+
+  const result: ManagedHookMutationResult = {}
+  if (vendors.includes('claude')) {
+    result.claude = patchJsonFile(
+      join(input.repoRoot, '.claude', 'settings.json'),
+      (existing) => patchClaudeHooksFromManifest(existing, manifest),
+      input.options,
+    )
+  }
+  if (vendors.includes('codex')) {
+    result.codex = patchJsonFile(
+      join(input.repoRoot, '.codex', 'hooks.json'),
+      (existing) => patchCodexHooksFromManifest(existing, input.repoRoot, manifest),
+      input.options,
+    )
+  }
+
+  return result
+}
+
+export function disableManagedHooksFromManifest(
+  input: ScaffoldAgentHooksInput,
+  manifest: HooksManifest,
+  vendors: readonly ManagedHookVendor[],
+): ManagedHookMutationResult {
+  const result: ManagedHookMutationResult = {}
+  if (vendors.includes('claude')) {
+    result.claude = patchJsonFile(
+      join(input.repoRoot, '.claude', 'settings.json'),
+      (existing) => disableClaudeHooksFromManifest(existing, manifest),
+      input.options,
+    )
+  }
+  if (vendors.includes('codex')) {
+    result.codex = patchJsonFile(
+      join(input.repoRoot, '.codex', 'hooks.json'),
+      (existing) => disableCodexHooksFromManifest(existing, input.repoRoot, manifest),
+      input.options,
+    )
+  }
+
+  return result
 }
 
 // Fast existence check — no network, no install, sub-10ms.
@@ -810,6 +959,13 @@ export async function scaffoldAgentHooks(
   ensureGstackHooks(input.repoRoot, input.options)
   ensureManagedWebpressoHookLaunchers(input.repoRoot, input.options)
   const skillHooks = extractSkillHooks(join(input.repoRoot, '.agent', 'skills'))
+  const manifest: HooksManifest = {
+    version: 1,
+    generatedAt: new Date().toISOString(),
+    claude: buildManagedClaudeHooks(skillHooks),
+    codex: buildManagedCodexHooks(input.repoRoot),
+    vendorState: { claude: 'enabled', codex: 'enabled' },
+  }
   const result = {
     claude: patchJsonFile(
       join(input.repoRoot, '.claude', 'settings.json'),
@@ -826,6 +982,7 @@ export async function scaffoldAgentHooks(
       (existing) => patchClaudeUserSettings(existing),
       input.options,
     ),
+    manifest,
   }
   const codexHooksPath = join(input.repoRoot, '.codex', 'hooks.json')
   const codexNormalization = normalizeGlobalCodexHooksFile(

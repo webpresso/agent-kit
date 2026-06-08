@@ -1305,4 +1305,100 @@ describe('hooks/doctor', () => {
       expect(result.detail).toContain('durable ownership belongs to OMX setup/plugin generation')
     })
   })
+
+  describe('buildHooksDoctorFixPlan', () => {
+    it('returns requires-approval when the hooks manifest is missing', async () => {
+      const knownPaths = new Set([
+        '/repo/.claude/settings.json',
+        '/repo/.codex/hooks.json',
+      ])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+
+      const { buildHooksDoctorFixPlan } = await import('#hooks/doctor')
+      const result = buildHooksDoctorFixPlan('/repo')
+
+      expect(result.status).toBe('requires-approval')
+      expect(result.nextCommand).toBe('wp setup')
+      expect(result.preservedFiles).toEqual([
+        '/repo/.claude/settings.json',
+        '/repo/.codex/hooks.json',
+      ])
+    })
+
+    it('returns blocked when installed hooks are unknown to the manifest', async () => {
+      const manifestPath = '/repo/.webpresso/hooks-manifest.json'
+      const settingsPath = '/repo/.claude/settings.json'
+      const knownPaths = new Set([manifestPath, settingsPath])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === manifestPath) {
+          return JSON.stringify({
+            version: 1,
+            generatedAt: '2026-06-08T00:00:00.000Z',
+            claude: {},
+            codex: {},
+            vendorState: { claude: 'enabled', codex: 'enabled' },
+          })
+        }
+        if (String(path) === settingsPath) {
+          return JSON.stringify({
+            hooks: {
+              PreToolUse: [{ hooks: [{ type: 'command', command: 'wp-pretool-guard' }] }],
+            },
+          })
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+
+      const { buildHooksDoctorFixPlan } = await import('#hooks/doctor')
+      const result = buildHooksDoctorFixPlan('/repo')
+
+      expect(result.status).toBe('blocked')
+      expect(result.nextCommand).toBe('wp hooks status')
+      expect(result.preservedFiles).toEqual(['/repo/.claude/settings.json'])
+    })
+
+    it('returns prepared when manifest-backed hooks are missing but there are no unknown installed hooks', async () => {
+      const manifestPath = '/repo/.webpresso/hooks-manifest.json'
+      const settingsPath = '/repo/.claude/settings.json'
+      const knownPaths = new Set([manifestPath, settingsPath])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === manifestPath) {
+          return JSON.stringify({
+            version: 1,
+            generatedAt: '2026-06-08T00:00:00.000Z',
+            claude: {
+              PreToolUse: [{ hooks: [{ type: 'command', command: 'wp-pretool-guard' }] }],
+            },
+            codex: {},
+            vendorState: { claude: 'enabled', codex: 'enabled' },
+          })
+        }
+        if (String(path) === settingsPath) {
+          return JSON.stringify({ hooks: {} })
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+
+      const { buildHooksDoctorFixPlan } = await import('#hooks/doctor')
+      const result = buildHooksDoctorFixPlan('/repo')
+
+      expect(result.status).toBe('prepared')
+      expect(result.nextCommand).toBe('wp setup --restore-hooks')
+      expect(result.preservedFiles).toEqual(['/repo/.claude/settings.json'])
+    })
+  })
 })

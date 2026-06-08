@@ -113,4 +113,14 @@ describe('dispatch', () => {
     })
     expect(result.vendor).toStrictEqual('codex')
   })
+
+  it('accepts extended documented lifecycle events even when no hooks are registered', async () => {
+    const hooksMap: HooksMap = {}
+    const result = await dispatch(hooksMap, { ...BASE_OPTIONS, event: 'PreCompact' })
+    expect(result).toStrictEqual({
+      event: 'PreCompact',
+      vendor: 'claude',
+      hooks: [],
+    })
+  })
 })
