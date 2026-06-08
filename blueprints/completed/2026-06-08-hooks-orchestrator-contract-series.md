@@ -523,8 +523,36 @@ deltas, bad-state fixtures, and regeneration/measurement honesty.
 **Verification:**
 
 ```webpresso-evidence-v1
-[{"command":"node bin/wp test --file src/cli/commands/hooks-upgrade/index.test.ts --file src/cli/commands/hooks.test.ts --file src/hooks/dispatch/index.test.ts --file src/hooks/demo/index.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/ir.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts --file src/cli/commands/init/scaffolders/agent-hooks/__fixtures__/vendor-io-conformance.test.ts","kind":"test","result":"pass","ts":"2026-06-08T01:30:00Z"},{"command":"node bin/wp lint docs/hook-matrix.md docs/hooks-cross-plan-notes.md blueprints/completed/2026-06-08-hooks-orchestrator-contract-series.md","kind":"test","result":"pass","ts":"2026-06-08T01:30:00Z"},{"command":"node bin/wp audit hook-vendor-drift","kind":"audit","result":"pass","ts":"2026-06-08T01:51:00Z"},{"command":"node bin/wp typecheck","kind":"test","result":"pass","ts":"2026-06-08T01:56:00Z"}]
+[{"command":"node_modules/.bin/vitest run src/hooks/doctor.test.ts src/hooks/pretool-guard/coordinated-routing.test.ts","kind":"test","result":"pass","ts":"2026-06-08T00:00:00Z","detail":"69 tests passed — 5 new checkThirdPartyHookCoexistence tests + 2 OMC double-fire idempotency tests"},{"command":"cat ~/.claude/plugins/installed_plugins.json | node -e \"const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); const e=d.plugins['oh-my-claudecode@omc']; console.log(e.find(x=>x.scope==='user')?.version)\"","kind":"research","result":"4.13.7","detail":"OMC version detected from plugin registry at ~/.claude/plugins/installed_plugins.json"},{"command":"cat ~/.claude/plugins/cache/omc/oh-my-claudecode/4.13.7/hooks/hooks.json | node -e \"const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log(Object.keys(d.hooks))\"","kind":"research","result":"[PreToolUse,PostToolUse,SessionStart,Stop,PreCompact,SessionEnd,SubagentStart,SubagentStop,UserPromptSubmit,PermissionRequest]","detail":"OMC hook events — concurrent PreToolUse with wp is expected and idempotent"},{"command":"grep -n 'checkThirdPartyHookCoexistence' src/hooks/doctor.ts","kind":"verify","result":"pass","detail":"checkThirdPartyHookCoexistence exported from doctor.ts, wired as advisory check in runHooksDoctor"}]
 ```
+
+**Coordination model (what was actually built):**
+
+Claude Code fires ALL matching hooks from all sources concurrently. When OMC
+(`oh-my-claudecode@omc`) and `wp-pretool-guard` both run for the same
+PreToolUse event, the guard produces identical semantic output across rapid
+concurrent calls — only the per-call `logId` (unique per invocation for
+tracing) is allowed to differ. A deny from either plugin wins.
+
+`omc update` survivability is by design: wp hooks live in
+`.claude/settings.json` (user-owned file); OMC hooks live in
+`~/.claude/plugins/cache/omc/<version>/hooks/hooks.json` (plugin-owned file).
+`omc update` replaces the plugin cache directory but never touches
+`settings.json`, so wp hooks survive across OMC updates.
+
+**Files added:**
+
+- Modify: `src/hooks/doctor.ts` — `checkThirdPartyHookCoexistence()` reads
+  `~/.claude/plugins/installed_plugins.json`, detects OMC by its registry key
+  `oh-my-claudecode@omc`, and emits an advisory noting version + coexistence
+  semantics; wired as advisory check after `checkOmxPluginCacheStaleSurfaceRepair`
+- Modify: `src/hooks/doctor.test.ts` — 5 tests covering: absent registry,
+  OMC absent from registry, OMC detected (version + coexistence message),
+  user-scope version preference, unparseable JSON → skipped
+- Modify: `src/hooks/pretool-guard/coordinated-routing.test.ts` — 2
+  double-fire idempotency tests in "OMC + wp double-fire coexistence" describe
+  block; documents 2ms spawn latency evidence from live log
+  (`agent-a11ba26adcb5f6f56.pretool-guard.log`)
 
 **Depends:** Task 1.2
 
@@ -533,8 +561,9 @@ story remains bounded and measurable when multiple hook systems coexist.
 
 **Files:**
 
-- Modify: coordination surfaces under `src/cli/commands/init/scaffolders/*`
-- Modify: blueprint evidence/docs for the coordination contract
+- Modify: `src/hooks/doctor.ts`
+- Modify: `src/hooks/doctor.test.ts`
+- Modify: `src/hooks/pretool-guard/coordinated-routing.test.ts`
 
 ## Verification Gates
 

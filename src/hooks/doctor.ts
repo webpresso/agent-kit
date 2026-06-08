@@ -500,17 +500,21 @@ export function checkRootLauncherContract(): DoctorCheck {
   return { name: 'root launcher contract', ok: status.ok, detail }
 }
 
-export function checkOmxPluginCacheStaleSurfaceRepair(options: {
-  codexHome?: string
-  nodeBinary?: string
-  repair?: (codexHome: string, nodeBinary: string) => string[]
-} = {}): DoctorCheck {
-  const codexHome = options.codexHome ?? process.env.CODEX_HOME ?? join(process.env.HOME || '', '.codex')
+export function checkOmxPluginCacheStaleSurfaceRepair(
+  options: {
+    codexHome?: string
+    nodeBinary?: string
+    repair?: (codexHome: string, nodeBinary: string) => string[]
+  } = {},
+): DoctorCheck {
+  const codexHome =
+    options.codexHome ?? process.env.CODEX_HOME ?? join(process.env.HOME || '', '.codex')
   if (!codexHome) {
     return {
       name: 'OMX plugin-cache stale-surface repair',
       ok: true,
-      detail: 'skipped (CODEX_HOME/HOME unavailable; durable ownership belongs to OMX setup/plugin generation)',
+      detail:
+        'skipped (CODEX_HOME/HOME unavailable; durable ownership belongs to OMX setup/plugin generation)',
     }
   }
 
@@ -519,7 +523,8 @@ export function checkOmxPluginCacheStaleSurfaceRepair(options: {
     return {
       name: 'OMX plugin-cache stale-surface repair',
       ok: true,
-      detail: 'skipped (absolute node path unavailable; durable ownership belongs to OMX setup/plugin generation)',
+      detail:
+        'skipped (absolute node path unavailable; durable ownership belongs to OMX setup/plugin generation)',
     }
   }
 
@@ -594,8 +599,7 @@ export function checkNativePluginRuntime(): DoctorCheck {
       server.args.length === 1 &&
       server.args[0] === 'mcp'
         ? 'native'
-        : server?.command === 'node' ||
-            (server?.args ?? []).some((arg) => arg.endsWith('wp.js'))
+        : server?.command === 'node' || (server?.args ?? []).some((arg) => arg.endsWith('wp.js'))
           ? 'stale-node-launcher'
           : server
             ? 'custom'
@@ -622,7 +626,8 @@ export function checkNativePluginRuntime(): DoctorCheck {
       (candidate) => candidate.os === process.platform && candidate.cpu === process.arch,
     )
     const targetId = target?.id
-    const targetFilename = target?.os === 'win32' ? `${manifest.binaryName ?? 'wp'}.exe` : manifest.binaryName ?? 'wp'
+    const targetFilename =
+      target?.os === 'win32' ? `${manifest.binaryName ?? 'wp'}.exe` : (manifest.binaryName ?? 'wp')
     const runtimeTargetPath = targetId
       ? join(root, 'bin', 'runtime', targetId, targetFilename)
       : undefined
@@ -1042,7 +1047,13 @@ function readInstalledClaudeHooks(cwd: string): HooksMap {
   try {
     const raw = readFileSync(settingsPath, 'utf-8')
     const parsed = JSON.parse(raw) as {
-      hooks?: Record<string, Array<{ matcher?: string; hooks?: Array<{ type?: string; command?: string; timeout?: number }> }>>
+      hooks?: Record<
+        string,
+        Array<{
+          matcher?: string
+          hooks?: Array<{ type?: string; command?: string; timeout?: number }>
+        }>
+      >
     }
     const result: HooksMap = {}
     for (const [event, groups] of Object.entries(parsed.hooks ?? {})) {
@@ -1071,7 +1082,13 @@ function readInstalledCodexHooks(cwd: string): HooksMap {
   try {
     const raw = readFileSync(hooksPath, 'utf-8')
     const parsed = JSON.parse(raw) as {
-      hooks?: Record<string, Array<{ matcher?: string; hooks?: Array<{ type?: string; command?: string; timeout?: number }> }>>
+      hooks?: Record<
+        string,
+        Array<{
+          matcher?: string
+          hooks?: Array<{ type?: string; command?: string; timeout?: number }>
+        }>
+      >
     }
     const result: HooksMap = {}
     for (const [event, groups] of Object.entries(parsed.hooks ?? {})) {
@@ -1152,7 +1169,9 @@ export function checkHooksManifest(cwd = process.cwd()): DoctorCheck {
 }
 
 function hooksConfigPath(vendor: 'claude' | 'codex', cwd: string): string {
-  return vendor === 'claude' ? join(cwd, '.claude', 'settings.json') : join(cwd, '.codex', 'hooks.json')
+  return vendor === 'claude'
+    ? join(cwd, '.claude', 'settings.json')
+    : join(cwd, '.codex', 'hooks.json')
 }
 
 function existingHookConfigPaths(cwd: string): readonly string[] {
@@ -1163,10 +1182,7 @@ function existingHookConfigPaths(cwd: string): readonly string[] {
 
 async function defaultRunRestoreFix(cwd: string): Promise<number> {
   const { runInit } = await import('#cli/commands/init/index.js')
-  return await runInit(
-    { cwd, yes: true, restoreHooks: true },
-    { stdout: { write: () => true } },
-  )
+  return await runInit({ cwd, yes: true, restoreHooks: true }, { stdout: { write: () => true } })
 }
 
 export function buildHooksDoctorFixPlan(cwd = process.cwd()): HookFixResult {
@@ -1213,6 +1229,74 @@ export function buildHooksDoctorFixPlan(cwd = process.cwd()): HookFixResult {
       'managed hooks are missing but the manifest is present and there are no unknown installed hooks; safe restore path is ready',
     preservedFiles,
     nextCommand: 'wp setup --restore-hooks',
+  }
+}
+
+/**
+ * Detect competing hook plugins (e.g. oh-my-claudecode / OMC) in the Claude
+ * plugin registry and report the expected coexistence model.
+ *
+ * wp hooks live in `.claude/settings.json` (user-owned). Third-party plugin
+ * hooks live inside each plugin's own cache directory. `omc update` replaces
+ * the plugin cache but never touches `settings.json`, so wp hooks survive
+ * by design. When both run, Claude Code fires all matching PreToolUse hooks
+ * concurrently; a deny from either wins.
+ */
+export function checkThirdPartyHookCoexistence(options: {
+  claudeConfigDir?: string
+} = {}): DoctorCheck {
+  const configDir =
+    options.claudeConfigDir ??
+    process.env.CLAUDE_CONFIG_DIR ??
+    join(process.env.HOME ?? '', '.claude')
+  const registryPath = join(configDir, 'plugins', 'installed_plugins.json')
+
+  if (!tryAccess(registryPath)) {
+    return {
+      name: 'third-party hook coexistence',
+      ok: true,
+      detail: 'no Claude plugin registry found; single-plugin mode',
+    }
+  }
+
+  let omcVersion: string | undefined
+  try {
+    const raw = readFileSync(registryPath, 'utf-8')
+    const parsed = JSON.parse(raw) as {
+      plugins?: Record<string, Array<{ version?: string; scope?: string }>>
+    }
+    const omcEntries = parsed.plugins?.['oh-my-claudecode@omc']
+    if (Array.isArray(omcEntries) && omcEntries.length > 0) {
+      // Prefer user-scope entry for version label; fall back to first entry
+      const userEntry = omcEntries.find((e) => e.scope === 'user') ?? omcEntries[0]
+      omcVersion = userEntry?.version
+    }
+  } catch {
+    return {
+      name: 'third-party hook coexistence',
+      ok: true,
+      detail: 'could not read plugin registry; skipped',
+    }
+  }
+
+  if (!omcVersion) {
+    return {
+      name: 'third-party hook coexistence',
+      ok: true,
+      detail: 'no competing hook plugins detected',
+    }
+  }
+
+  return {
+    name: 'third-party hook coexistence',
+    ok: true,
+    // Concurrent double-fire on PreToolUse is expected: Claude runs all matching
+    // hooks from all sources simultaneously; a deny from either wins. wp hooks in
+    // settings.json survive omc update because that command only replaces the
+    // plugin cache directory, not settings.json.
+    detail:
+      `OMC ${omcVersion} detected — concurrent PreToolUse double-fire is expected and idempotent; ` +
+      'wp hooks in settings.json survive omc update (separate files)',
   }
 }
 
@@ -1268,6 +1352,7 @@ export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<
   checks.push({ advisory: true, ...checkRootLauncherContract() })
   checks.push({ advisory: true, ...checkNativePluginRuntime() })
   checks.push({ advisory: true, ...checkOmxPluginCacheStaleSurfaceRepair() })
+  checks.push({ advisory: true, ...checkThirdPartyHookCoexistence() })
   checks.push({
     name: 'managed hooks installed (.claude/settings.json)',
     advisory: true,
@@ -1372,11 +1457,7 @@ export async function printHooksDoctor(opts: RunHooksDoctorOptions = {}): Promis
                 'doctor found failing checks outside the safe manifest-restore path; no automatic fix was applied',
               nextCommand: 'wp hooks doctor',
             }
-          : await applyHooksDoctorFixPlan(
-              plan,
-              cwd,
-              opts.runRestoreFix ?? defaultRunRestoreFix,
-            )
+          : await applyHooksDoctorFixPlan(plan, cwd, opts.runRestoreFix ?? defaultRunRestoreFix)
 
       if (fixResult.status === 'fixed') {
         result = await runHooksDoctor({ ...opts, fix: false, runRestoreFix: undefined })
