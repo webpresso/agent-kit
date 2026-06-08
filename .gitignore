@@ -95,6 +95,12 @@ tmp/
 # Generated reports (mutation, coverage summaries, audit dumps)
 reports/
 
+# Prepack backup artifacts — transient publish-time staging/restore state
+.package.json.prepack.backup
+.dist-prepack-backup/
+.migration-sql-prepack-backup/
+.sourcemap-comments-prepack-backup/
+
 # Stryker scratch — written next to stryker.config when running locally
 stryker-setup-*.js
 

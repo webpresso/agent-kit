@@ -9,13 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { preparePackedManifest, restorePackedManifest } from '../src/build/package-manifest.js'
 import { AGENTS_MD_MAX_BYTES } from '../src/cli/commands/init/scaffold-agents-md.js'
 
-const SHARED_FAVORITES = [
-  'fix',
-  'verify',
-  'testing-philosophy',
-  'plan-refine',
-  'pll',
-] as const
+const SHARED_FAVORITES = ['fix', 'verify', 'testing-philosophy', 'plan-refine', 'pll'] as const
 
 const DEFAULT_ABSENT_SKILLS = [
   'systematic-debugging',
@@ -176,13 +170,13 @@ function assertSetupContract(repo: string): RunResult[] {
   }
 
   const agentsPath = join(repo, 'AGENTS.md')
-  const agentsBytes = existsSync(agentsPath) ? Buffer.byteLength(readFileSync(agentsPath), 'utf8') : 0
+  const agentsBytes = existsSync(agentsPath)
+    ? Buffer.byteLength(readFileSync(agentsPath), 'utf8')
+    : 0
   results.push({
     command: 'assert AGENTS.md prompt budget',
     ok: agentsBytes <= AGENTS_MD_MAX_BYTES,
-    detail: existsSync(agentsPath)
-      ? `${agentsBytes}/${AGENTS_MD_MAX_BYTES} bytes`
-      : 'missing',
+    detail: existsSync(agentsPath) ? `${agentsBytes}/${AGENTS_MD_MAX_BYTES} bytes` : 'missing',
   })
 
   return results

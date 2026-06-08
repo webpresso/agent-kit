@@ -20,6 +20,15 @@ import {
 } from './package-manifest.js'
 
 describe('createPackedManifest', () => {
+  it('keeps transient prepack backup artifacts gitignored', () => {
+    const gitignore = readFileSync(join(process.cwd(), '.gitignore'), 'utf8')
+
+    expect(gitignore).toContain('.package.json.prepack.backup')
+    expect(gitignore).toContain('.dist-prepack-backup/')
+    expect(gitignore).toContain('.migration-sql-prepack-backup/')
+    expect(gitignore).toContain('.sourcemap-comments-prepack-backup/')
+  })
+
   it('replaces workspace catalog specifiers across dependency sections', () => {
     const manifest = createPackedManifest(
       {
@@ -259,14 +268,7 @@ describe('createPackedManifest', () => {
 
   it('strips built sourceMappingURL comments for packing and restores them afterwards', () => {
     const fixtureDir = mkdtempSync(join(tmpdir(), 'wp-package-manifest-sourcemap-comments-'))
-    const setupFilePath = join(
-      fixtureDir,
-      'dist',
-      'esm',
-      'config',
-      'vitest',
-      'node-setup.js',
-    )
+    const setupFilePath = join(fixtureDir, 'dist', 'esm', 'config', 'vitest', 'node-setup.js')
     const declarationFilePath = join(
       fixtureDir,
       'dist',
@@ -292,9 +294,7 @@ describe('createPackedManifest', () => {
       writeFileSync(declarationFilePath, declarationWithMap, 'utf8')
 
       preparePackedManifest(fixtureDir)
-      expect(readFileSync(setupFilePath, 'utf8')).toBe(
-        'export const __nodeSetupModule = true;\n',
-      )
+      expect(readFileSync(setupFilePath, 'utf8')).toBe('export const __nodeSetupModule = true;\n')
       expect(readFileSync(declarationFilePath, 'utf8')).toBe(
         'export declare const __nodeSetupModule = true;\n',
       )
@@ -327,9 +327,7 @@ describe('createPackedManifest', () => {
       )
 
       preparePackedManifest(fixtureDir)
-      const prepared = JSON.parse(
-        readFileSync(join(fixtureDir, 'package.json'), 'utf8'),
-      ) as {
+      const prepared = JSON.parse(readFileSync(join(fixtureDir, 'package.json'), 'utf8')) as {
         optionalDependencies?: Record<string, string>
       }
       expect(prepared.optionalDependencies).toMatchObject({
@@ -342,9 +340,7 @@ describe('createPackedManifest', () => {
       })
 
       restorePackedManifest(fixtureDir)
-      const restored = JSON.parse(
-        readFileSync(join(fixtureDir, 'package.json'), 'utf8'),
-      ) as {
+      const restored = JSON.parse(readFileSync(join(fixtureDir, 'package.json'), 'utf8')) as {
         optionalDependencies?: Record<string, string>
       }
       expect(restored.optionalDependencies).toEqual({ existing: '^1.0.0' })

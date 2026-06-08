@@ -54,11 +54,13 @@ Make `fix`, `verify`, and `pll` available through Codex-compatible skill surface
 - `pnpm run typecheck` — PASS.
 - `pnpm run lint` — PASS.
 - Legacy source-entrypoint format check for changed files — PASS. Prefer
-  `wp format --check` or `vp run format:check` for current work.
+  `wp format --check` for current work.
 
 ## Notes
 
-- Full `pnpm run format:check` still reports pre-existing unrelated drift in `src/audit/hook-surface*.ts` and `src/symlinker/index.ts`; those files are outside this blueprint's change set and were not reformatted here.
+- Full `wp format --check` still reported pre-existing unrelated drift in
+  `src/audit/hook-surface*.ts` and `src/symlinker/index.ts`; those files were
+  outside this blueprint's change set and were not reformatted there.
 
 ## Tasks
 
@@ -76,4 +78,3 @@ Make `fix`, `verify`, and `pll` available through Codex-compatible skill surface
 ## Historical verification note
 
 This blueprint contains done tasks recorded before the current per-task `**Verification:**` convention was consistently enforced. It remains a truthful historical record, but should not be treated as having retroactively reconstructed evidence beyond the repository and audit state captured elsewhere.
-

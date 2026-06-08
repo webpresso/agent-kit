@@ -1,15 +1,26 @@
 import { execFileSync } from 'node:child_process'
-import { chmodSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it } from 'vitest'
 
 const REPO_ROOT = process.cwd()
 const PACKAGE_JSON_PATH = join(REPO_ROOT, 'package.json')
+const DIST_SENTINEL = join(REPO_ROOT, 'dist', 'esm', 'index.js')
 const CHANGESET_CONFIG_PATH = join(REPO_ROOT, '.changeset', 'config.json')
 const NPMRC_PATH = join(REPO_ROOT, '.npmrc')
 const PACKAGE_SURFACE_PATH = join(REPO_ROOT, 'package-surface.json')
+const ORIGINAL_PACKAGE_JSON_TEXT = readFileSync(PACKAGE_JSON_PATH, 'utf8')
 const FORBIDDEN_TARBALL_PATHS = [
   /^dist\/.*\.map$/,
   /^dist\/.*__integration__\//,
@@ -30,6 +41,21 @@ type PackedTarballArtifact = {
 let packedTarballArtifactCache: PackedTarballArtifact | undefined
 let packedDistBuilt = false
 
+function collectExportTypeTargets(value: unknown): string[] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return []
+
+  const current =
+    typeof (value as { types?: unknown }).types === 'string'
+      ? [(value as { types: string }).types]
+      : []
+
+  return current.concat(
+    ...Object.values(value as Record<string, unknown>).map((nested) =>
+      collectExportTypeTargets(nested),
+    ),
+  )
+}
+
 function parseNpmJson<T>(raw: string): T {
   const start = raw.indexOf('[')
   if (start === -1) {
@@ -40,14 +66,25 @@ function parseNpmJson<T>(raw: string): T {
 
 function ensureBuiltPackedDist() {
   if (packedDistBuilt) return
-  execFileSync('./node_modules/.bin/tshy', [], {
-    cwd: REPO_ROOT,
-    encoding: 'utf8',
-    env: {
-      ...process.env,
-      HUSKY: '0',
-    },
-  })
+  // globalSetup runs tshy + normalize before workers fork; skip if already built.
+  if (!existsSync(DIST_SENTINEL)) {
+    execFileSync('./node_modules/.bin/tshy', [], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        HUSKY: '0',
+      },
+    })
+    execFileSync('bun', ['src/build/normalize-tsconfig-json-exports.ts'], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        HUSKY: '0',
+      },
+    })
+  }
   execFileSync('bun', ['scripts/chmod-bins.ts'], {
     cwd: REPO_ROOT,
     encoding: 'utf8',
@@ -136,14 +173,16 @@ function createPackedTarball(): { tarballPath: string; cleanup: () => void } {
   }
 }
 
-beforeAll(() => {
-  ensurePackedTarballArtifact()
-}, 120_000)
-
 afterAll(() => {
   if (packedTarballArtifactCache) {
     rmSync(packedTarballArtifactCache.tarballPath, { force: true })
     packedTarballArtifactCache = undefined
+  }
+  if (readFileSync(PACKAGE_JSON_PATH, 'utf8') !== ORIGINAL_PACKAGE_JSON_TEXT) {
+    // Atomic restore: concurrent bun processes must never see a truncated package.json.
+    const tmpPath = `${PACKAGE_JSON_PATH}.writing`
+    writeFileSync(tmpPath, ORIGINAL_PACKAGE_JSON_TEXT)
+    renameSync(tmpPath, PACKAGE_JSON_PATH)
   }
 })
 
@@ -184,6 +223,20 @@ describe('tooling umbrella package contract', () => {
     expect(exports).toHaveProperty('./stryker')
     expect(exports).toHaveProperty('./workers-test')
     expect(exports).toHaveProperty('./wp-extension')
+  })
+
+  it('never advertises non-declaration files as export type targets', () => {
+    const pkg = JSON.parse(readFileSync(PACKAGE_JSON_PATH, 'utf8')) as {
+      exports?: Record<string, unknown>
+    }
+
+    const badTypeTargets = Object.entries(pkg.exports ?? {}).flatMap(([subpath, entry]) =>
+      collectExportTypeTargets(entry)
+        .filter((target) => !/\.d\.(?:cts|mts|ts)$/u.test(target))
+        .map((target) => `${subpath} -> ${target}`),
+    )
+
+    expect(badTypeTargets).toEqual([])
   })
 
   it('keeps checked-in npm config on the public registry path', () => {
@@ -239,7 +292,11 @@ describe('tooling umbrella package contract', () => {
       execFileSync('git', ['init', '-q'], { cwd: tmpRoot, encoding: 'utf8' })
       execFileSync('git', ['init', '-q'], { cwd: launcherRoot, encoding: 'utf8' })
       execFileSync('tar', ['-xzf', tarballPath, '-C', launcherRoot], { encoding: 'utf8' })
-      symlinkSync(join(REPO_ROOT, 'node_modules'), join(packedPackageRoot, 'node_modules'), 'junction')
+      symlinkSync(
+        join(REPO_ROOT, 'node_modules'),
+        join(packedPackageRoot, 'node_modules'),
+        'junction',
+      )
       writeFileSync(
         join(tmpRoot, 'package.json'),
         JSON.stringify(

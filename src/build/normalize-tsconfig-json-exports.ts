@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 type ExportEntry =
@@ -23,7 +23,6 @@ export function normalizeTsconfigJsonExports(manifest: PackageManifest): Package
   for (const [subpath, entry] of Object.entries(manifest.exports)) {
     if (!subpath.startsWith(TSCONFIG_EXPORT_PREFIX) || !subpath.endsWith('.json')) continue
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue
-    if (typeof entry.default === 'string') continue
 
     const importDefault =
       typeof entry.import === 'string'
@@ -32,16 +31,42 @@ export function normalizeTsconfigJsonExports(manifest: PackageManifest): Package
           ? entry.import.default
           : undefined
 
-    if (typeof importDefault !== 'string') continue
+    const nextDefault = typeof entry.default === 'string' ? entry.default : importDefault
+    if (typeof nextDefault !== 'string') continue
 
-    normalizedExports[subpath] = {
+    const nextImport =
+      typeof entry.import === 'string'
+        ? entry.import
+        : entry.import && typeof entry.import === 'object'
+          ? entry.import.default
+            ? { default: entry.import.default }
+            : undefined
+          : undefined
+
+    const nextEntry = {
       ...entry,
-      default: importDefault,
-    }
+      ...(nextImport === undefined ? {} : { import: nextImport }),
+      default: nextDefault,
+    } satisfies Exclude<ExportEntry, string>
+
+    if (JSON.stringify(nextEntry) === JSON.stringify(entry)) continue
+
+    normalizedExports[subpath] = nextEntry
     changed = true
   }
 
   return changed ? { ...manifest, exports: normalizedExports } : manifest
+}
+
+/**
+ * Write `content` to `destPath` atomically via a temp file + rename so
+ * concurrent readers (e.g. bun resolving #-subpath imports) never see a
+ * truncated or empty intermediate state.
+ */
+export function atomicWriteFile(destPath: string, content: string): void {
+  const tmpPath = `${destPath}.writing`
+  writeFileSync(tmpPath, content, 'utf8')
+  renameSync(tmpPath, destPath)
 }
 
 if (import.meta.main) {
@@ -49,6 +74,6 @@ if (import.meta.main) {
   const manifest = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as PackageManifest
   const normalized = normalizeTsconfigJsonExports(manifest)
   if (normalized !== manifest) {
-    writeFileSync(packageJsonPath, `${JSON.stringify(normalized, null, 2)}\n`, 'utf8')
+    atomicWriteFile(packageJsonPath, `${JSON.stringify(normalized, null, 2)}\n`)
   }
 }

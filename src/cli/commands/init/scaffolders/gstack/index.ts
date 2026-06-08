@@ -20,6 +20,7 @@ import { createHash } from 'node:crypto'
 import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
+import { stripVTControlCharacters } from 'node:util'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
 import { getStateRoot, getSurfacePath } from '#paths/state-root.js'
@@ -154,7 +155,7 @@ function formatDurationMs(ms: number): string {
 }
 
 function stripAnsi(text: string): string {
-  return text.replace(/\x1B\[[0-9;]*m/g, '')
+  return stripVTControlCharacters(text)
 }
 
 function summarizeChunk(text: string): string | null {
@@ -480,7 +481,10 @@ async function runLoggedCommand(input: {
             ? `  gstack: still ${input.spec.label} (${formatDurationMs(now - startedAt)} elapsed; last child output ${formatDurationMs(quietForMs)} ago: ${lastOutputSummary})`
             : `  gstack: still ${input.spec.label} (${formatDurationMs(now - startedAt)} elapsed; no child output yet)`
           input.log(message)
-          appendSessionLog(input.logPath, `\n[gstack] heartbeat ${input.spec.name}: ${message.trim()}\n`)
+          appendSessionLog(
+            input.logPath,
+            `\n[gstack] heartbeat ${input.spec.name}: ${message.trim()}\n`,
+          )
         }
         scheduleHeartbeat()
       }, input.heartbeatIntervalMs)
@@ -641,9 +645,12 @@ function buildFailureResult(input: {
   stage: 'clone' | 'pull' | 'setup'
   outcome: GstackCommandOutcome
   logPath: string
-}): Extract<EnsureGstackResult, {
-  kind: 'gstack-clone-failed' | 'gstack-pull-failed' | 'gstack-setup-failed'
-}> {
+}): Extract<
+  EnsureGstackResult,
+  {
+    kind: 'gstack-clone-failed' | 'gstack-pull-failed' | 'gstack-setup-failed'
+  }
+> {
   const base = {
     exitCode: input.outcome.exitCode,
     reason: input.outcome.reason ?? 'exit-nonzero',
@@ -826,5 +833,7 @@ export async function ensureGstack(input: EnsureGstackInput): Promise<EnsureGsta
   if (isVerboseGstack(env)) {
     log(`  gstack: session log ${logPath}`)
   }
-  return hasSetup ? { kind: 'gstack-updated', root, codex } : { kind: 'gstack-installed', root, codex }
+  return hasSetup
+    ? { kind: 'gstack-updated', root, codex }
+    : { kind: 'gstack-installed', root, codex }
 }

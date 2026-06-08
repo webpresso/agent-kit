@@ -249,35 +249,30 @@
     },
     "./tsconfig/base.json": {
       "import": {
-        "types": "./dist/esm/config/tsconfig/base.json",
         "default": "./dist/esm/config/tsconfig/base.json"
       },
       "default": "./dist/esm/config/tsconfig/base.json"
     },
     "./tsconfig/cloudflare.json": {
       "import": {
-        "types": "./dist/esm/config/tsconfig/cloudflare.json",
         "default": "./dist/esm/config/tsconfig/cloudflare.json"
       },
       "default": "./dist/esm/config/tsconfig/cloudflare.json"
     },
     "./tsconfig/library.json": {
       "import": {
-        "types": "./dist/esm/config/tsconfig/library.json",
         "default": "./dist/esm/config/tsconfig/library.json"
       },
       "default": "./dist/esm/config/tsconfig/library.json"
     },
     "./tsconfig/react-library.json": {
       "import": {
-        "types": "./dist/esm/config/tsconfig/react-library.json",
         "default": "./dist/esm/config/tsconfig/react-library.json"
       },
       "default": "./dist/esm/config/tsconfig/react-library.json"
     },
     "./tsconfig/react-router.json": {
       "import": {
-        "types": "./dist/esm/config/tsconfig/react-router.json",
         "default": "./dist/esm/config/tsconfig/react-router.json"
       },
       "default": "./dist/esm/config/tsconfig/react-router.json"
@@ -624,7 +619,7 @@
     "tsx": "^4.21.0"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.18.2",
+    "@arethetypeswrong/cli": "^0.18.3",
     "@changesets/cli": "^2.31.0",
     "@secretlint/secretlint-rule-preset-recommend": "^13.0.2",
     "@types/better-sqlite3": "^7.6.13",

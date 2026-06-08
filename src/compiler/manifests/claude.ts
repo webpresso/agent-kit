@@ -27,6 +27,10 @@ export async function emitManifest(opts: ManifestEmitOptions): Promise<void> {
     name: 'webpresso',
     version: opts.version,
     description: 'Webpresso: blueprint lifecycle, skill compiler, audits for Claude Code',
+    author: {
+      name: 'Webpresso',
+      url: 'https://github.com/webpresso',
+    },
     skills: opts.skills.map((name) => ({ path: `skills/${name}/SKILL.md` })),
     mcpServers: {},
     hooks: {},

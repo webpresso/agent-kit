@@ -139,6 +139,7 @@ describe('bin launcher', () => {
         runtimeBinaryExists: () => true,
         builtExists: true,
         sourceExists: true,
+        sourceNeedsSourceLaunch: false,
         nodeExecPath: '/usr/bin/node',
         currentNodeVersion: 'v24.16.0',
         pinnedNodeVersion: '24.16.0',
@@ -193,7 +194,7 @@ describe('bin launcher', () => {
     ).toThrow(/no compiled runtime target for freebsd\/x64/)
   })
 
-  it('prefers source when the source checkout is newer than the built entrypoint', () => {
+  it('prefers source for wp when the cli tree requires a source launch', () => {
     expect(
       buildLaunchPlan({
         binName: 'wp',
@@ -201,8 +202,7 @@ describe('bin launcher', () => {
         forwardedArgs: ['bench', 'session-memory', '--dry-run'],
         builtExists: true,
         sourceExists: true,
-        builtMtimeMs: 100,
-        sourceMtimeMs: 200,
+        sourceNeedsSourceLaunch: true,
         nodeExecPath: '/usr/bin/node',
         currentNodeVersion: 'v24.16.0',
         pinnedNodeVersion: '24.16.0',

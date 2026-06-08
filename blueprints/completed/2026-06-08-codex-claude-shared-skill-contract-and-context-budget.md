@@ -2,13 +2,13 @@
 type: blueprint
 title: "Codex/Claude shared skill contract and context budget"
 owner: agent-kit
-status: planned
+status: completed
 complexity: M
 created: '2026-06-08'
 last_updated: '2026-06-08'
-progress: '0% (planned)'
+progress: '100% (6/6 tasks complete; shared-favorites contract, opt-in projection, AGENTS budget guard, consumer smoke, and regression coverage verified on 2026-06-08)'
 depends_on:
-  - blueprints/in-progress/2026-06-08-hooks-orchestrator-contract-series.md
+  - blueprints/completed/2026-06-08-hooks-orchestrator-contract-series.md
 cross_repo_depends_on: []
 tags:
   - setup
@@ -28,6 +28,7 @@ tags:
 - Shared default contract: `fix`, `verify`, `testing-philosophy`, `plan-refine`, `pll`
 - Global prerequisites: OMX and gstack stay user-scope/global-first
 - Default exclusions to validate: `systematic-debugging`, `test-driven-development`, `deep-research`, `monorepo-navigation`
+- This run closed the remaining gap between source truth and packed-consumer verification by rebuilding the package surface before re-running the public consumer smoke.
 
 ## Key Decisions
 
@@ -51,7 +52,7 @@ tags:
 
 #### [agent-kit] Task 1.1: Lock the shared favorites set used by host-visible default projection
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -65,13 +66,13 @@ Change setup/sync defaults so Codex and Claude always see the same shared favori
 
 **Acceptance:**
 
-- [ ] Shared favorites are the only guaranteed default Webpresso host-visible skills.
-- [ ] Host-visibility checks gate the shared favorites, not the old narrower pair.
-- [ ] OMX/gstack behavior is unchanged.
+- [x] Shared favorites are the only guaranteed default Webpresso host-visible skills.
+- [x] Host-visibility checks gate the shared favorites, not the old narrower pair.
+- [x] OMX/gstack behavior is unchanged.
 
 #### [agent-kit] Task 1.2: Move Tier-2 and rendered navigation skill projection behind explicit opt-in
 
-**Status:** todo
+**Status:** done
 
 **Depends:** None
 
@@ -85,15 +86,15 @@ Keep the source skills available, but stop projecting `systematic-debugging`, `t
 
 **Acceptance:**
 
-- [ ] Default setup omits Tier-2 and `monorepo-navigation` from generated host-visible skill roots.
-- [ ] Explicit opt-in still projects them.
-- [ ] Existing Tier-3/base-kit behavior remains compatible.
+- [x] Default setup omits Tier-2 and `monorepo-navigation` from generated host-visible skill roots.
+- [x] Explicit opt-in still projects them.
+- [x] Existing Tier-3/base-kit behavior remains compatible.
 
 ### Phase 2: Reduce prompt bloat without breaking parity [Complexity: S]
 
 #### [docs] Task 2.1: Shrink the generated root AGENTS contract and add a hard budget
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.1
 
@@ -108,13 +109,13 @@ Trim the generated template to durable command contracts and safety/ownership ru
 
 **Acceptance:**
 
-- [ ] Generated default `AGENTS.md` is under the locked byte budget.
-- [ ] Repo-specific user-owned blocks remain preserved.
-- [ ] Required install/setup wording still matches the current product contract.
+- [x] Generated default `AGENTS.md` is under the locked byte budget.
+- [x] Repo-specific user-owned blocks remain preserved.
+- [x] Required install/setup wording still matches the current product contract.
 
 #### [qa] Task 2.2: Add shared-favorites and prompt-budget smoke coverage
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 1.2
 
@@ -126,15 +127,15 @@ Extend the public consumer smoke to assert the default shared favorites are pres
 
 **Acceptance:**
 
-- [ ] Smoke proves both Codex and Claude default roots contain the shared favorites.
-- [ ] Smoke proves Tier-2 and `monorepo-navigation` are absent by default.
-- [ ] Smoke fails if the generated default `AGENTS.md` exceeds budget.
+- [x] Smoke proves both Codex and Claude default roots contain the shared favorites.
+- [x] Smoke proves Tier-2 and `monorepo-navigation` are absent by default.
+- [x] Smoke fails if the generated default `AGENTS.md` exceeds budget.
 
 ### Phase 3: Verify the cross-host continuity contract [Complexity: S]
 
 #### [qa] Task 3.1: Add targeted host-visibility and consumer-contract regression checks
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 2.1
 
@@ -147,12 +148,12 @@ Refresh targeted tests so the host-visibility contract and unified consumer expe
 
 **Acceptance:**
 
-- [ ] Host-visibility tests assert the new shared favorite set.
-- [ ] Config/default tests stay aligned with the same required capabilities.
+- [x] Host-visibility tests assert the new shared favorite set.
+- [x] Config/default tests stay aligned with the same required capabilities.
 
 #### [qa] Task 3.2: Re-run blueprint/readme drift and targeted setup verification
 
-**Status:** todo
+**Status:** done
 
 **Depends:** Task 2.2
 
@@ -160,8 +161,8 @@ Keep the blueprint surface and generated repo surfaces in sync after the new pla
 
 **Acceptance:**
 
-- [ ] Blueprint lifecycle/readme state reflects the new planned blueprint.
-- [ ] Setup-focused tests and smoke pass with the narrowed default projection.
+- [x] Blueprint lifecycle/readme state reflects the new planned blueprint.
+- [x] Setup-focused tests and smoke pass with the narrowed default projection.
 
 ## Verification Gates
 
@@ -172,6 +173,16 @@ Keep the blueprint surface and generated repo surfaces in sync after the new pla
 | Lint | `wp lint` on touched files | Zero violations |
 | Blueprint drift | `wp audit blueprint-readme-drift` | No drift |
 | Consumer smoke | `bun scripts/public-consumer-smoke.ts --setup-only --skip-build` | Shared favorites present, non-favorites absent, AGENTS budget green |
+
+## Fresh verification evidence
+
+- `node bin/wp test --file src/cli/commands/init/host-visibility.test.ts --file src/cli/commands/init/prompts.test.ts --file src/cli/commands/init/config.test.ts --file src/cli/commands/init/scaffold-agents-md.test.ts --file src/cli/commands/init/init.integration.test.ts` ✅
+- `node bin/wp lint src/cli/commands/init/host-visibility.ts src/cli/commands/init/host-visibility.test.ts src/cli/commands/init/prompts.ts src/cli/commands/init/prompts.test.ts src/cli/commands/init/config.ts src/cli/commands/init/config.test.ts src/cli/commands/init/scaffold-agents-md.ts src/cli/commands/init/scaffold-agents-md.test.ts scripts/public-consumer-smoke.ts` ✅
+- `node bin/wp typecheck` ✅
+- `vp run build` ✅
+- `bun scripts/public-consumer-smoke.ts --setup-only --skip-build` ✅
+- `node bin/wp audit blueprint-readme-drift` ✅
+- `node bin/wp audit blueprint-lifecycle` ✅
 
 ## Non-goals
 
