@@ -6,37 +6,25 @@
  */
 
 import type { HookEntry, HookGroup, HooksMap } from './ir.js'
+import {
+  DIRECT_CLAUDE_NODE_MODULES_BIN_PATTERN,
+  DIRECT_MANAGED_HOOK_LAUNCHER_PATTERN,
+  DIRECT_NODE_MODULES_BIN_PATTERN,
+  GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN,
+  GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN,
+  GUARDED_NODE_MODULES_BIN_PATTERN,
+  stripSingleShellQuotePair,
+} from './shell-identity.js'
 
 function findHookIndexByCommand(hooks: HookEntry[], command: string): number {
   return hooks.findIndex((hook) => commandMatches(hook.command, command))
 }
 
 const SCRIPT_EXTENSIONS = ['sh', 'ts', 'js', 'mjs', 'cjs', 'py'] as const
-const DIRECT_NODE_MODULES_BIN_PATTERN = /^(?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+)$/u
-const GUARDED_NODE_MODULES_BIN_PATTERN =
-  /^\[ -x (["']?)((?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+))\1 \] && \1\2\1 \|\| (?:true|printf .+)$/u
-const DIRECT_CLAUDE_NODE_MODULES_BIN_PATTERN =
-  /^["']?\$CLAUDE_PROJECT_DIR\/node_modules\/\.bin\/([\w-]+)["']?$/u
-const GUARDED_CLAUDE_NODE_MODULES_BIN_PATTERN =
-  /^\[ -x (["']?)\$CLAUDE_PROJECT_DIR\/node_modules\/\.bin\/([\w-]+)\1 \] && \1\$CLAUDE_PROJECT_DIR\/node_modules\/\.bin\/\2\1 \|\| (?:true|printf .+)$/u
-const DIRECT_MANAGED_HOOK_LAUNCHER_PATTERN =
-  /^(?:["']?)((?:\$CLAUDE_PROJECT_DIR\/\.claude\/hooks\/managed|(?:\.\/|\/.*\/)?\.claude\/hooks\/managed|(?:\.\/|\/.*\/)?\.codex\/managed-hooks)\/((?:wp|ak)-[\w-]+)\.sh)(?:["']?)$/u
-const GUARDED_MANAGED_HOOK_LAUNCHER_PATTERN =
-  /^\[ -x (["']?)((?:\$CLAUDE_PROJECT_DIR\/\.claude\/hooks\/managed|(?:\.\/|\/.*\/)?\.claude\/hooks\/managed|(?:\.\/|\/.*\/)?\.codex\/managed-hooks)\/((?:wp|ak)-[\w-]+)\.sh)\1 \] && \1\2\1 \|\| (?:true|printf .+)$/u
 const SCRIPT_BASENAME_PATTERN = new RegExp(
   String.raw`([\w-]+\.(?:${SCRIPT_EXTENSIONS.join('|')}))(?=$|["'\s])`,
   'u',
 )
-
-function stripSingleShellQuotePair(value: string): string {
-  if (value.length < 2) return value
-  const first = value[0]
-  const last = value[value.length - 1]
-  if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
-    return value.slice(1, -1)
-  }
-  return value
-}
 
 function extractAgentKitBinName(command: string): string | null {
   const normalizedCommand = stripSingleShellQuotePair(command.trim())

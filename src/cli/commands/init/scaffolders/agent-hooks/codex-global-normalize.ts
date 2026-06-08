@@ -12,6 +12,7 @@ import { homedir } from 'node:os'
 import { basename, delimiter, dirname, join } from 'node:path'
 
 import type { MergeOptions, MergeResult } from '#cli/commands/init/merge'
+import { stripSingleShellQuotePair } from './shell-identity.js'
 
 type HookEntry = { type?: string; command?: string; timeout?: number }
 type HookGroup = { matcher?: string; hooks?: HookEntry[] }
@@ -419,16 +420,6 @@ function parseOmxHookCommand(
   if (!match?.[1]) return null
   const trailingArgs = match[2]?.trim().length ? match[2].trim().split(/\s+/u) : []
   return { scriptPath: match[1], trailingArgs }
-}
-
-function stripSingleShellQuotePair(value: string): string {
-  if (value.length < 2) return value
-  const first = value[0]
-  const last = value[value.length - 1]
-  if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
-    return value.slice(1, -1)
-  }
-  return value
 }
 
 export function isManagedContextModeGlobalLauncherBasename(basenameValue: string): boolean {
