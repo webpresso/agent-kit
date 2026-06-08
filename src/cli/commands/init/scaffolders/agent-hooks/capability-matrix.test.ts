@@ -58,7 +58,54 @@ describe('CAPABILITY_MATRIX', () => {
       expect(validLevels.has(entry.claude)).toStrictEqual(true)
       expect(validLevels.has(entry.codex)).toStrictEqual(true)
       expect(validLevels.has(entry.cursor)).toStrictEqual(true)
+      expect(validLevels.has(entry.opencode)).toStrictEqual(true)
     }
+  })
+
+  it('opencode column: SessionStart/PreToolUse/PostToolUse are full (plugin bridges them)', () => {
+    const bridged = ['SessionStart', 'PreToolUse', 'PostToolUse'] as const
+    for (const event of bridged) {
+      const entry = CAPABILITY_MATRIX.find((c) => c.event === event)
+      expect(entry?.opencode).toStrictEqual('full')
+    }
+  })
+
+  it('opencode column: UserPromptSubmit/Stop/SubagentStart/SubagentStop/SessionEnd/PostCompact are unsupported', () => {
+    const degraded = [
+      'UserPromptSubmit',
+      'Stop',
+      'SubagentStart',
+      'SubagentStop',
+      'SessionEnd',
+      'PostCompact',
+    ] as const
+    for (const event of degraded) {
+      const entry = CAPABILITY_MATRIX.find((c) => c.event === event)
+      expect(entry?.opencode).toStrictEqual('unsupported')
+    }
+  })
+
+  it('opencode column: PermissionRequest/PreCompact are partial (limited lifecycle parity)', () => {
+    const partial = ['PermissionRequest', 'PreCompact'] as const
+    for (const event of partial) {
+      const entry = CAPABILITY_MATRIX.find((c) => c.event === event)
+      expect(entry?.opencode).toStrictEqual('partial')
+    }
+  })
+
+  it('cursor PermissionRequest is unmapped (not in third-party compat table)', () => {
+    const entry = CAPABILITY_MATRIX.find((c) => c.event === 'PermissionRequest')
+    expect(entry?.cursor).toStrictEqual('unmapped')
+  })
+
+  it('Stop notes document Codex JSON-only stdout requirement', () => {
+    const stop = CAPABILITY_MATRIX.find((c) => c.event === 'Stop')
+    expect(stop?.notes).toContain('JSON-only')
+  })
+
+  it('SubagentStop notes document Codex JSON-only stdout requirement', () => {
+    const subagentStop = CAPABILITY_MATRIX.find((c) => c.event === 'SubagentStop')
+    expect(subagentStop?.notes).toContain('JSON-only')
   })
 
   it('has entries for all extended events beyond the 5 canonical ones', () => {

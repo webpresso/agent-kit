@@ -24,11 +24,12 @@ const FOOTER = [
 
 export function generateCapabilityMatrix(): string {
   const header = '## Hook Capability Matrix\n'
-  const tableHeader = '| Event | Claude Code | Codex CLI | Cursor |'
-  const tableSeparator = '|---|---|---|---|'
+  const tableHeader = '| Event | Claude Code | Codex CLI | Cursor | OpenCode |'
+  const tableSeparator = '|---|---|---|---|---|'
 
   const rows = CAPABILITY_MATRIX.map(
-    (cap) => `| ${cap.event} | ${SYMBOL[cap.claude]} | ${SYMBOL[cap.codex]} | ${SYMBOL[cap.cursor]} |`,
+    (cap) =>
+      `| ${cap.event} | ${SYMBOL[cap.claude]} | ${SYMBOL[cap.codex]} | ${SYMBOL[cap.cursor]} | ${SYMBOL[cap.opencode]} |`,
   )
 
   return [header, tableHeader, tableSeparator, ...rows, FOOTER].join('\n')

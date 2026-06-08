@@ -76,4 +76,14 @@ describe('WP_HOOK_SPECS', () => {
       expect(Number.isInteger(spec.timeout)).toStrictEqual(true)
     }
   })
+
+  it('wp-stop-qa has jsonOnly: true (Codex mandates JSON-only stdout for Stop)', () => {
+    const stop = WP_HOOK_SPECS.find((s) => s.bin === 'wp-stop-qa')
+    expect(stop?.jsonOnly).toStrictEqual(true)
+  })
+
+  it('only Stop events are currently marked jsonOnly', () => {
+    const jsonOnlySpecs = WP_HOOK_SPECS.filter((s) => s.jsonOnly === true)
+    expect(jsonOnlySpecs.map((s) => s.event)).toStrictEqual(['Stop'])
+  })
 })

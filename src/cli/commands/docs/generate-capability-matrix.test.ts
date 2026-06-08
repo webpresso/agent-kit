@@ -6,8 +6,8 @@ import { generateCapabilityMatrix } from './generate-capability-matrix.js'
 describe('generateCapabilityMatrix', () => {
   it('returns a string containing all event names from CAPABILITY_MATRIX', () => {
     const result = generateCapabilityMatrix()
-    for (const event of Object.keys(CAPABILITY_MATRIX)) {
-      expect(result).toContain(event)
+    for (const entry of CAPABILITY_MATRIX) {
+      expect(result).toContain(entry.event)
     }
   })
 
@@ -16,6 +16,7 @@ describe('generateCapabilityMatrix', () => {
     expect(result).toContain('Claude Code')
     expect(result).toContain('Codex CLI')
     expect(result).toContain('Cursor')
+    expect(result).toContain('OpenCode')
   })
 
   it('contains the checkmark symbol for full entries', () => {
@@ -35,8 +36,8 @@ describe('generateCapabilityMatrix', () => {
 
   it('has a header row and a separator row', () => {
     const result = generateCapabilityMatrix()
-    expect(result).toContain('| Event | Claude Code | Codex CLI | Cursor |')
-    expect(result).toContain('|---|---|---|---|')
+    expect(result).toContain('| Event | Claude Code | Codex CLI | Cursor | OpenCode |')
+    expect(result).toContain('|---|---|---|---|---|')
   })
 
   it('contains the footer note', () => {

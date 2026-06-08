@@ -382,7 +382,10 @@ function patchClaudeSettings(
   skillHooks: readonly SkillHook[],
 ): Record<string, unknown> {
   const existingHooks = normalizeClaudeAgentKitCommands((existing.hooks ?? {}) as HooksMap)
-  const merged = mergeAgentKitGroups(existingHooks, buildManagedClaudeHooks(skillHooks))
+  // Strip stale skill-managed hooks from existing before merging; current
+  // skill hooks are re-added by buildManagedClaudeHooks below.
+  const cleanedExistingHooks = mergeSkillHooks(existingHooks, [])
+  const merged = mergeAgentKitGroups(cleanedExistingHooks, buildManagedClaudeHooks(skillHooks))
 
   return withClaudeWorktreeSettings(existing, {
     ...merged,
