@@ -1,6 +1,10 @@
-import { describe, expect, test } from 'vitest'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
-import { detectDrift } from './hook-vendor-drift.js'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+
+import { auditHookVendorDrift, detectDrift } from './hook-vendor-drift.js'
 
 describe('detectDrift', () => {
   test('empty installed events + non-empty matrix → warnings for each full entry', () => {
@@ -132,14 +136,77 @@ describe('detectDrift', () => {
   test('partial matrix entries do not warn when absent', () => {
     const findings = detectDrift({ claude: new Set(), codex: new Set() })
     expect(
-      findings.find(
+      findings.some(
         (f) => f.vendor === 'codex' && f.event === 'PermissionRequest' && f.severity === 'warning',
       ),
-    ).toBeUndefined()
+    ).toBe(false)
     expect(
-      findings.find(
+      findings.some(
         (f) => f.vendor === 'claude' && f.event === 'SessionEnd' && f.severity === 'warning',
       ),
-    ).toBeUndefined()
+    ).toBe(false)
+  })
+})
+
+describe('auditHookVendorDrift (file I/O)', () => {
+  let repoRoot: string
+
+  beforeEach(() => {
+    repoRoot = mkdtempSync(join(tmpdir(), 'hook-vendor-drift-'))
+    // Silence the audit's console reporting in the test output.
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    rmSync(repoRoot, { recursive: true, force: true })
+  })
+
+  test('absent vendor configs → warnings only, exit 0 (no parse error)', async () => {
+    const report = await auditHookVendorDrift({ repoRoot })
+    expect(report.exitCode).toBe(0)
+    expect(report.findings.some((f) => f.severity === 'error')).toBe(false)
+  })
+
+  test('malformed .claude/settings.json is surfaced as an error, NOT a silent "no drift"', async () => {
+    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
+    writeFileSync(join(repoRoot, '.claude', 'settings.json'), '{ this is not json', 'utf8')
+
+    const report = await auditHookVendorDrift({ repoRoot })
+
+    expect(report.exitCode).toBe(1)
+    const parseError = report.findings.find(
+      (f) => f.vendor === 'claude' && f.event === '.claude/settings.json',
+    )
+    expect(parseError?.severity).toBe('error')
+    expect(parseError?.actual).toContain('invalid JSON')
+  })
+
+  test('malformed .codex/hooks.json is surfaced as an error, NOT a silent "no drift"', async () => {
+    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
+    writeFileSync(join(repoRoot, '.codex', 'hooks.json'), 'not json at all', 'utf8')
+
+    const report = await auditHookVendorDrift({ repoRoot })
+
+    expect(report.exitCode).toBe(1)
+    const parseError = report.findings.find(
+      (f) => f.vendor === 'codex' && f.event === '.codex/hooks.json',
+    )
+    expect(parseError?.severity).toBe('error')
+    expect(parseError?.actual).toContain('invalid JSON')
+  })
+
+  test('a JSON array (not object) settings file is surfaced as an error', async () => {
+    mkdirSync(join(repoRoot, '.claude'), { recursive: true })
+    writeFileSync(join(repoRoot, '.claude', 'settings.json'), '[]', 'utf8')
+
+    const report = await auditHookVendorDrift({ repoRoot })
+
+    expect(report.exitCode).toBe(1)
+    expect(
+      report.findings.some(
+        (f) => f.event === '.claude/settings.json' && f.actual === 'not a JSON object',
+      ),
+    ).toBe(true)
   })
 })

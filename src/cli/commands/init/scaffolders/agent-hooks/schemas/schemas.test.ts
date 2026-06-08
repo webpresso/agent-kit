@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from 'vitest'
 
+import { buildWebpressoHookGroups } from '#cli/commands/init/scaffolders/agent-hooks/index.js'
 import { buildClaudeHookGroups } from '#cli/commands/init/scaffolders/agent-hooks/emitters/claude.js'
 import { buildCodexHookGroups } from '#cli/commands/init/scaffolders/agent-hooks/emitters/codex.js'
 import { buildCursorHooksConfig } from '#cli/commands/init/scaffolders/agent-hooks/emitters/cursor.js'
@@ -35,11 +36,28 @@ describe('vendor hook schemas', () => {
     expect(result.success).toBe(true)
   })
 
+  // The codex emitter exists as a Tier-1 vendor-output contract; this proves it
+  // conforms even though production codex output is currently built by the
+  // shared `buildWebpressoHookGroups` path (asserted separately below).
   it('buildCodexHookGroups() output wrapped in { hooks } parses against codexHooksSchema', () => {
     const inner = buildCodexHookGroups({
       resolveBin: makeCodexResolveBin('node_modules/.bin'),
       matchers: TEST_MATCHERS,
       repoRoot: '/repo',
+    })
+    const wrapped = { hooks: inner }
+    const result = codexHooksSchema.safeParse(wrapped)
+    expect(result.success).toBe(true)
+  })
+
+  // Fidelity guard: validate the ACTUAL production codex builder
+  // (buildManagedCodexHooks → buildWebpressoHookGroups + codex resolver), not
+  // only the unwired buildCodexHookGroups emitter, so a regression in the real
+  // emitted output is caught.
+  it('production codex hook groups (buildWebpressoHookGroups) parse against codexHooksSchema', () => {
+    const inner = buildWebpressoHookGroups({
+      resolveBin: makeResolveBin('/repo/node_modules/.bin'),
+      matchers: TEST_MATCHERS,
     })
     const wrapped = { hooks: inner }
     const result = codexHooksSchema.safeParse(wrapped)

@@ -45,10 +45,10 @@ describe('formatStatusLine', () => {
     expect(line).toContain('enforcing')
   })
 
-  it('includes reason when degraded', () => {
+  it('includes reason when present', () => {
     const detail: HookStatusDetail = {
       ...base,
-      status: 'degraded',
+      status: 'disabled',
       reason: 'binary not found',
     }
     const line = formatStatusLine(detail)
@@ -58,11 +58,11 @@ describe('formatStatusLine', () => {
   it('includes nextCommand when present', () => {
     const detail: HookStatusDetail = {
       ...base,
-      status: 'pending-trust',
-      nextCommand: 'codex trust',
+      status: 'disabled',
+      nextCommand: 'wp setup',
     }
     const line = formatStatusLine(detail)
-    expect(line).toContain('codex trust')
+    expect(line).toContain('wp setup')
   })
 
   it('does not include reason or nextCommand suffix when absent', () => {

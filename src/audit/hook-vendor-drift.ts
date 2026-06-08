@@ -16,7 +16,10 @@ import { CAPABILITY_MATRIX } from '#cli/commands/init/scaffolders/agent-hooks/ca
 
 export type DriftFinding = {
   readonly event: string
-  readonly vendor: 'claude' | 'codex' | 'cursor'
+  // Only the vendors `detectDrift` actually inspects. Cursor hooks are not yet
+  // emitted to an installed file, so there is nothing to compare; add it here
+  // when a cursor reader lands.
+  readonly vendor: 'claude' | 'codex'
   readonly expected: string
   readonly actual: string
   readonly severity: 'error' | 'warning'
@@ -104,70 +107,93 @@ export function detectDrift(
 // File readers
 // ---------------------------------------------------------------------------
 
-function readClaudeInstalledEvents(repoRoot: string): ReadonlySet<string> {
-  const settingsPath = path.join(repoRoot, '.claude', 'settings.json')
-  if (!existsSync(settingsPath)) return new Set<string>()
-
-  let raw: string
-  try {
-    raw = readFileSync(settingsPath, 'utf8')
-  } catch {
-    return new Set<string>()
-  }
-
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    return new Set<string>()
-  }
-
-  if (typeof parsed !== 'object' || parsed === null) return new Set<string>()
-
-  const record = parsed as Record<string, unknown>
-  const hooks = record['hooks']
-  if (typeof hooks !== 'object' || hooks === null || Array.isArray(hooks)) {
-    return new Set<string>()
-  }
-
-  return new Set(Object.keys(hooks as Record<string, unknown>))
+/**
+ * Result of reading a vendor config file. Distinguishes "absent" (fine — no
+ * managed hooks installed) from "present but unparseable" (a real fault that
+ * must be surfaced, NOT silently treated as zero installed events — otherwise a
+ * corrupt `.claude/settings.json` reports a false "no drift" and the CI gate
+ * passes on a broken config).
+ */
+type InstalledEventsRead = {
+  readonly events: ReadonlySet<string>
+  readonly parseError?: string
 }
 
-function readCodexInstalledEvents(repoRoot: string): ReadonlySet<string> {
-  const hooksPath = path.join(repoRoot, '.codex', 'hooks.json')
-  if (!existsSync(hooksPath)) return new Set<string>()
+type JsonObjectRead =
+  | { readonly kind: 'absent' }
+  | { readonly kind: 'ok'; readonly value: Record<string, unknown> }
+  | { readonly kind: 'error'; readonly message: string }
+
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function readJsonObjectFile(filePath: string): JsonObjectRead {
+  if (!existsSync(filePath)) return { kind: 'absent' }
 
   let raw: string
   try {
-    raw = readFileSync(hooksPath, 'utf8')
-  } catch {
-    return new Set<string>()
+    raw = readFileSync(filePath, 'utf8')
+  } catch (error: unknown) {
+    return { kind: 'error', message: `unreadable (${describeError(error)})` }
   }
 
   let parsed: unknown
   try {
     parsed = JSON.parse(raw)
-  } catch {
-    return new Set<string>()
+  } catch (error: unknown) {
+    return { kind: 'error', message: `invalid JSON (${describeError(error)})` }
   }
 
-  if (typeof parsed !== 'object' || parsed === null) return new Set<string>()
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { kind: 'error', message: 'not a JSON object' }
+  }
+  return { kind: 'ok', value: parsed as Record<string, unknown> }
+}
 
-  const record = parsed as Record<string, unknown>
+function readClaudeInstalledEvents(repoRoot: string): InstalledEventsRead {
+  const read = readJsonObjectFile(path.join(repoRoot, '.claude', 'settings.json'))
+  if (read.kind === 'absent') return { events: new Set<string>() }
+  if (read.kind === 'error') return { events: new Set<string>(), parseError: read.message }
+
+  const hooks = read.value['hooks']
+  if (typeof hooks !== 'object' || hooks === null || Array.isArray(hooks)) {
+    return { events: new Set<string>() }
+  }
+  return { events: new Set(Object.keys(hooks as Record<string, unknown>)) }
+}
+
+function readCodexInstalledEvents(repoRoot: string): InstalledEventsRead {
+  const read = readJsonObjectFile(path.join(repoRoot, '.codex', 'hooks.json'))
+  if (read.kind === 'absent') return { events: new Set<string>() }
+  if (read.kind === 'error') return { events: new Set<string>(), parseError: read.message }
 
   // Codex hooks.json canonical wrapped form: { "hooks": { Event: [...] } }
-  const hooksValue = record['hooks']
+  const hooksValue = read.value['hooks']
   if (typeof hooksValue === 'object' && hooksValue !== null && !Array.isArray(hooksValue)) {
-    return new Set(Object.keys(hooksValue as Record<string, unknown>))
+    return { events: new Set(Object.keys(hooksValue as Record<string, unknown>)) }
   }
-
   // Legacy flat form: { Event: [...] } at the root
-  return new Set(Object.keys(record))
+  return { events: new Set(Object.keys(read.value)) }
 }
 
 // ---------------------------------------------------------------------------
 // Main audit entry point
 // ---------------------------------------------------------------------------
+
+function configReadFinding(
+  vendor: 'claude' | 'codex',
+  configPath: string,
+  message: string,
+): DriftFinding {
+  return {
+    event: configPath,
+    vendor,
+    expected: 'parseable JSON object',
+    actual: message,
+    severity: 'error',
+  }
+}
 
 export async function auditHookVendorDrift(options: {
   repoRoot: string
@@ -175,12 +201,19 @@ export async function auditHookVendorDrift(options: {
 }): Promise<DriftReport> {
   const { repoRoot } = options
 
-  const installedEvents: Record<string, ReadonlySet<string>> = {
-    claude: readClaudeInstalledEvents(repoRoot),
-    codex: readCodexInstalledEvents(repoRoot),
-  }
+  const claude = readClaudeInstalledEvents(repoRoot)
+  const codex = readCodexInstalledEvents(repoRoot)
 
-  const findings = detectDrift(installedEvents)
+  const findings: DriftFinding[] = [
+    ...detectDrift({ claude: claude.events, codex: codex.events }),
+  ]
+  // A present-but-unparseable config is a hard error, not silent "no drift".
+  if (claude.parseError) {
+    findings.unshift(configReadFinding('claude', '.claude/settings.json', claude.parseError))
+  }
+  if (codex.parseError) {
+    findings.unshift(configReadFinding('codex', '.codex/hooks.json', codex.parseError))
+  }
 
   for (const f of findings) {
     const prefix = f.severity === 'error' ? '[error]' : '[warn] '

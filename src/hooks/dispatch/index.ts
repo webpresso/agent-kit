@@ -5,7 +5,6 @@ import { readInstalledHooksMap } from '#hooks/shared/installed-hooks.js'
 export type DispatchOptions = {
   readonly event: string
   readonly vendor: 'claude' | 'codex'
-  readonly dryRun: boolean
   readonly repoRoot: string
 }
 
@@ -18,16 +17,15 @@ export type DispatchResult = {
 export type DispatchedHook = {
   readonly command: string
   readonly matcher: string | undefined
-  readonly dryRun: true
 }
 
 /**
  * Core dispatch logic — pure and testable.
  *
  * Validates the event against HOOK_EVENT_NAMES, finds registered hook
- * groups for that event in the provided HooksMap, and returns a
- * DispatchResult. In dry-run mode (currently always true until live
- * invocation is wired), hooks are listed but not executed.
+ * groups for that event in the provided HooksMap, and returns the list of
+ * registered hooks. Hooks are listed, not executed; live subprocess
+ * invocation is a deferred follow-up.
  */
 export async function dispatch(
   hooksMap: HooksMap,
@@ -48,7 +46,6 @@ export async function dispatch(
       dispatched.push({
         command: hookEntry.command,
         matcher: group.matcher,
-        dryRun: true,
       })
     }
   }
@@ -66,7 +63,7 @@ function printResult(result: DispatchResult): void {
     console.log(`wp hooks dispatch: no hooks registered for "${event}" (vendor: ${vendor})`)
     return
   }
-  console.log(`wp hooks dispatch — event: ${event}, vendor: ${vendor}, dry-run: true`)
+  console.log(`wp hooks dispatch — event: ${event}, vendor: ${vendor}`)
   console.log('')
   for (const hook of hooks) {
     const matcherLabel = hook.matcher !== undefined ? `  matcher: ${hook.matcher}` : ''
@@ -75,11 +72,10 @@ function printResult(result: DispatchResult): void {
 }
 
 /**
- * CLI entry point for `wp hooks dispatch <event> [--dry-run] [--vendor <vendor>]`.
+ * CLI entry point for `wp hooks dispatch <event> [--vendor <vendor>]`.
  *
  * Parses argv, reads the vendor hook config, calls dispatch(), and prints
- * a formatted summary. Live invocation is deferred — dry-run is always
- * forced until a follow-up task wires real subprocess execution.
+ * the registered hooks for the event. Live subprocess invocation is deferred.
  */
 export async function dispatchCommand(argv: readonly string[]): Promise<void> {
   const args = [...argv]
@@ -94,16 +90,9 @@ export async function dispatchCommand(argv: readonly string[]): Promise<void> {
     args.splice(vendorIdx, 2)
   }
 
-  const dryRunIdx = args.indexOf('--dry-run')
-  if (dryRunIdx !== -1) {
-    args.splice(dryRunIdx, 1)
-  }
-  // Live invocation not yet wired — always dry-run for T4.
-  const dryRun = true
-
   const event = args[0]
   if (event === undefined || event.startsWith('--')) {
-    console.error('Usage: wp hooks dispatch <event> [--dry-run] [--vendor <claude|codex>]')
+    console.error('Usage: wp hooks dispatch <event> [--vendor <claude|codex>]')
     console.error(`Valid events: ${HOOK_EVENT_NAMES.join(', ')}`)
     process.exitCode = 1
     return
@@ -114,7 +103,7 @@ export async function dispatchCommand(argv: readonly string[]): Promise<void> {
 
   let result: DispatchResult
   try {
-    result = await dispatch(hooksMap, { event, vendor, dryRun, repoRoot })
+    result = await dispatch(hooksMap, { event, vendor, repoRoot })
   } catch (error: unknown) {
     console.error(error instanceof Error ? error.message : String(error))
     process.exitCode = 1

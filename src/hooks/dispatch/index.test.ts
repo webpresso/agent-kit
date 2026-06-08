@@ -7,7 +7,6 @@ const REPO_ROOT = '/tmp/test-repo'
 
 const BASE_OPTIONS = {
   vendor: 'claude' as const,
-  dryRun: true,
   repoRoot: REPO_ROOT,
 }
 
@@ -36,7 +35,7 @@ describe('dispatch', () => {
     })
   })
 
-  it('returns dispatched hooks with dryRun: true for a valid event', async () => {
+  it('returns the registered hooks for a valid event', async () => {
     const hooksMap: HooksMap = {
       SessionStart: [
         {
@@ -51,7 +50,6 @@ describe('dispatch', () => {
       {
         command: './node_modules/.bin/wp-sessionstart-routing',
         matcher: undefined,
-        dryRun: true,
       },
     ])
   })
@@ -70,7 +68,6 @@ describe('dispatch', () => {
       {
         command: './node_modules/.bin/wp-pretool-guard',
         matcher: 'Bash|Edit|Write',
-        dryRun: true,
       },
     ])
   })
@@ -101,7 +98,10 @@ describe('dispatch', () => {
       ],
     }
     const result = await dispatch(hooksMap, { ...BASE_OPTIONS, event: 'UserPromptSubmit' })
-    expect(result.hooks[0]?.matcher).toBeUndefined()
+    expect(result.hooks[0]).toStrictEqual({
+      command: './node_modules/.bin/wp-guard-switch',
+      matcher: undefined,
+    })
   })
 
   it('reflects the vendor in the result', async () => {

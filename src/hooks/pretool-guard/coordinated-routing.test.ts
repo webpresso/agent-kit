@@ -262,8 +262,7 @@ describe('coordinated routing pipeline', () => {
       }
       const secondOutput = getLastOutput()
 
-      // The decision and reason must be identical across concurrent invocations —
-      // only the per-call logId (unique for tracing) is allowed to differ.
+      // The decision and reason must be identical across concurrent invocations.
       type HookOutput = {
         hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string }
       }

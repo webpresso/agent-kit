@@ -1,14 +1,12 @@
 /**
- * Canonical failure vocabulary for hook status reporting.
- * Status terms per the X16 decision in the blueprint plan.
+ * Status vocabulary for hook status reporting. Only the states that
+ * `specStatus` (status/index.ts) actually produces are represented here; add a
+ * term when a producer for it lands, not before.
  */
 
 export const HOOK_STATUS = {
   installed: 'installed',
-  generatedInactive: 'generated-inactive', // generated but vendor toggle off
-  pendingTrust: 'pending-trust', // Codex: awaiting trust confirmation
   enforcing: 'enforcing', // guard-class hook actively denying
-  degraded: 'degraded', // hook running but errors
   disabled: 'disabled', // explicitly disabled
 } as const
 
@@ -39,7 +37,7 @@ function padRight(value: string, width: number): string {
  *
  * Example:
  *   PreToolUse           wp-pretool-guard             claude    enforcing
- *   SessionStart         wp-check-dev-link            codex     pending-trust  → run: codex trust
+ *   SessionStart         wp-check-dev-link            codex     disabled       → run: wp setup
  */
 export function formatStatusLine(detail: HookStatusDetail): string {
   const parts = [

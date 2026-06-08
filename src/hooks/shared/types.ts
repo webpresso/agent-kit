@@ -80,51 +80,15 @@ export type DenyEnvelope = {
     /** SHORT user-facing reason (≤80 chars) */
     readonly permissionDecisionReason: string
   }
-  /** When present, user can run `wp hooks deny --explain <logId>` for full context. */
-  readonly logId?: string
-  /** POLICY-ONLY: explains how to legitimately bypass the denial. */
-  readonly escapeHatch?: string
 }
 
-/**
- * The shape of an infrastructure-failure deny (guard binary missing, etc.).
- * Differs from policy deny: isInfraFailure is true and escapeHatch = 'wp setup'.
- */
-export type InfraDenyEnvelope = DenyEnvelope & {
-  readonly isInfraFailure: true
-}
-
-/** Build a policy deny envelope with an optional log ID and escape hatch. */
-export function buildDenyEnvelope(options: {
-  readonly reason: string
-  readonly logId?: string
-  readonly escapeHatch?: string
-}): DenyEnvelope {
-  const envelope: {
-    hookSpecificOutput: DenyEnvelope['hookSpecificOutput']
-    logId?: string
-    escapeHatch?: string
-  } = {
-    hookSpecificOutput: {
-      hookEventName: 'PreToolUse',
-      permissionDecision: 'deny',
-      permissionDecisionReason: options.reason,
-    },
-  }
-  if (options.logId !== undefined) envelope.logId = options.logId
-  if (options.escapeHatch !== undefined) envelope.escapeHatch = options.escapeHatch
-  return envelope
-}
-
-/** Build an infrastructure-failure deny envelope. */
-export function buildInfraDenyEnvelope(options: { readonly reason: string }): InfraDenyEnvelope {
+/** Build a policy deny envelope. */
+export function buildDenyEnvelope(options: { readonly reason: string }): DenyEnvelope {
   return {
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
       permissionDecision: 'deny',
       permissionDecisionReason: options.reason,
     },
-    isInfraFailure: true,
-    escapeHatch: 'wp setup',
   }
 }

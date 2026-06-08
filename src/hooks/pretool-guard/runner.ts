@@ -113,14 +113,8 @@ export function handleParseError(error: unknown, inputJson: string): never {
   process.exit(2)
 }
 
-function generateLogId(): string {
-  return crypto.randomUUID().slice(0, 8)
-}
-
 function writeDenyDecision(permissionDecisionReason: string): void {
-  process.stdout.write(
-    JSON.stringify(buildDenyEnvelope({ reason: permissionDecisionReason, logId: generateLogId() })),
-  )
+  process.stdout.write(JSON.stringify(buildDenyEnvelope({ reason: permissionDecisionReason })))
 }
 
 export function processValidation(inputJson: string): void {
