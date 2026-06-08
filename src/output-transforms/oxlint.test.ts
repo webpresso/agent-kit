@@ -6,7 +6,7 @@ import { oxlintTransform } from './oxlint.js'
 
 describe('oxlintTransform', () => {
   const fixture = (name: string) =>
-    readFileSync(join(process.cwd(), 'src/output-transforms/__fixtures__/oxlint', name), 'utf8')
+    readFileSync(join(import.meta.dirname, '__fixtures__/oxlint', name), 'utf8')
 
   it('compacts oxlint JSON output into file-line-rule messages', () => {
     const result = oxlintTransform(fixture('one-error.json'), {

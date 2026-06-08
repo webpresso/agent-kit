@@ -15,7 +15,7 @@ import { tscTransform } from './tsc.js'
 import { vitestTransform } from './vitest.js'
 import { rulesyncTransform } from './rulesync.js'
 
-const FIXTURES_DIR = join(process.cwd(), 'src/output-transforms/__fixtures__/edge')
+const FIXTURES_DIR = join(import.meta.dirname, '__fixtures__/edge')
 
 function edgeFixture(name: string): string {
   return readFileSync(join(FIXTURES_DIR, name), 'utf8')

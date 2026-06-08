@@ -1,19 +1,32 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { writeHooksManifest } from '#cli/commands/init/scaffolders/agent-hooks/manifest.js'
 
 import { hooksUpgradeCommand, upgradeHooksForRepo } from './index.js'
 
+const createdDirs: string[] = []
+
 function makeRepo(name: string): string {
   const repoRoot = mkdtempSync(path.join(tmpdir(), `${name}-`))
+  createdDirs.push(repoRoot)
   mkdirSync(path.join(repoRoot, '.claude'), { recursive: true })
   mkdirSync(path.join(repoRoot, '.codex'), { recursive: true })
   return repoRoot
 }
+
+beforeEach(() => {
+  createdDirs.length = 0
+})
+
+afterEach(() => {
+  for (const dir of createdDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
 
 function writeInstalledHooks(repoRoot: string): void {
   writeFileSync(

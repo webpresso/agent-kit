@@ -69,22 +69,17 @@ function writeTestFiles(root: string, count: number): string[] {
   return files
 }
 
-const originalProjectDir = process.env.CLAUDE_PROJECT_DIR
 let defaultRoot: string | undefined
 
 beforeEach(() => {
   defaultRoot = mkdtempSync(join(tmpdir(), 'wp-vp-default-'))
-  process.env.CLAUDE_PROJECT_DIR = defaultRoot
+  vi.stubEnv('CLAUDE_PROJECT_DIR', defaultRoot)
 })
 
 afterEach(() => {
   spawnMock.mockReset()
   if (defaultRoot) rmSync(defaultRoot, { recursive: true, force: true })
-  if (originalProjectDir === undefined) {
-    delete process.env.CLAUDE_PROJECT_DIR
-  } else {
-    process.env.CLAUDE_PROJECT_DIR = originalProjectDir
-  }
+  vi.unstubAllEnvs()
 })
 
 describe('test runner', () => {
@@ -104,7 +99,7 @@ describe('test runner', () => {
   it('runs vitest directly for package targets that declare vitest', async () => {
     const root = mkdtempSync(join(tmpdir(), 'wp-vp-vitest-'))
     try {
-      process.env.CLAUDE_PROJECT_DIR = root
+      vi.stubEnv('CLAUDE_PROJECT_DIR', root)
       mkdirSync(join(root, 'packages', 'a'), { recursive: true })
       writeFileSync(
         join(root, 'packages', 'a', 'package.json'),
@@ -132,7 +127,7 @@ describe('test runner', () => {
   it('preserves file filters when package targets declare vitest', async () => {
     const root = mkdtempSync(join(tmpdir(), 'wp-vp-vitest-files-'))
     try {
-      process.env.CLAUDE_PROJECT_DIR = root
+      vi.stubEnv('CLAUDE_PROJECT_DIR', root)
       mkdirSync(join(root, 'packages', 'a'), { recursive: true })
       writeFileSync(
         join(root, 'packages', 'a', 'package.json'),
@@ -161,7 +156,7 @@ describe('test runner', () => {
   it('preserves file filters for non-vitest package test scripts', async () => {
     const root = mkdtempSync(join(tmpdir(), 'wp-vp-script-files-'))
     try {
-      process.env.CLAUDE_PROJECT_DIR = root
+      vi.stubEnv('CLAUDE_PROJECT_DIR', root)
       mkdirSync(join(root, 'packages', 'a'), { recursive: true })
       writeFileSync(
         join(root, 'packages', 'a', 'package.json'),

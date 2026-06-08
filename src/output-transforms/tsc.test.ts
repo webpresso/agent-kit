@@ -6,7 +6,7 @@ import { tscTransform } from './tsc.js'
 
 describe('tscTransform', () => {
   const fixture = (name: string) =>
-    readFileSync(join(process.cwd(), 'src/output-transforms/__fixtures__/tsc', name), 'utf8')
+    readFileSync(join(import.meta.dirname, '__fixtures__/tsc', name), 'utf8')
 
   it('compacts tsc diagnostics and collapses duplicates', () => {
     const raw = [

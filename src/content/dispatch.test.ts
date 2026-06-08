@@ -7,11 +7,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import matter from 'gray-matter'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { dispatchContent } from './dispatch.js'
 
-const TODAY = new Date().toISOString().slice(0, 10)
+let TODAY: string
 
 interface Workspace {
   root: string
@@ -76,10 +76,14 @@ describe('dispatchContent', () => {
   let ws: Workspace
 
   beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'))
+    TODAY = new Date().toISOString().slice(0, 10)
     ws = makeWorkspace()
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     rmSync(ws.root, { recursive: true, force: true })
   })
 
