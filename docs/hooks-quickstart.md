@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-06-07'
+last_updated: '2026-06-08'
 ---
 
 # Hooks Quickstart
@@ -20,27 +20,19 @@ wp setup --with hooks
 wp hooks status
 ```
 
-Expected output shows each hook with its status: `installed`, `enforcing`, or `pending-trust`.
+Expected output shows each hook with its status: `installed`, `enforcing`, or `disabled`.
 
-## If hooks show `pending-trust` (Codex only)
+## If Codex hooks still need trust
 
-Codex requires explicit trust for hook definitions. Trust each hook:
+Codex may still require explicit trust for hook definitions after setup. If hooks are present but not executing, trust them:
 
 ```bash
 codex hooks trust
 ```
 
-## Test the hooks system
-
-```bash
-wp hooks demo
-```
-
-This runs a pure simulation — no real changes are made, no trust is consumed.
-
 ## Next steps
 
+- [Hooks demo](hooks-demo.md) — simulate hook outcomes without executing anything
 - [Doctor guide](hooks-doctor.md) — diagnose hook problems
-- [Demo guide](hooks-demo.md) — understand demo output
 - [Rollback guide](hooks-rollback.md) — restore or disable hooks
 - [Capability matrix](../src/cli/commands/docs/generate-capability-matrix.ts) — per-vendor event support

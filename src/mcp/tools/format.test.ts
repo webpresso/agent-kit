@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import akFormatTool from './format.js'
@@ -58,7 +61,7 @@ describe('wp_format tool', () => {
 
     expect(spawnMock).toHaveBeenCalledOnce()
     const [cmd, args] = spawnMock.mock.calls[0]!
-    expect(cmd).toBe('oxfmt')
+    expect(cmd).toContain('oxfmt')
     expect(args).toEqual(['--write', '--ignore-path', '.gitignore'])
     expect(payload).toMatchObject({
       passed: true,
@@ -107,5 +110,18 @@ describe('wp_format tool', () => {
     }
     expect(payload.rawOutput).toHaveLength(4_000)
     expect(payload.truncated).toBe(true)
+  })
+
+  it('supports file-targeted markdown formatting without spawning oxfmt', async () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'wp-format-tool-md-'))
+    writeFileSync(join(cwd, 'README.md'), '# Test\n\n* one\n')
+
+    const result = await akFormatTool.handler({ check: true, cwd, files: ['README.md'] })
+    const payload = result.structuredContent as Record<string, unknown>
+
+    expect(spawnMock).not.toHaveBeenCalled()
+    expect(payload.passed).toBe(false)
+    expect(payload.summary).toMatch(/format check failed/)
+    expect((payload.rawOutput as string | undefined) ?? '').toContain('README.md needs markdown formatting')
   })
 })

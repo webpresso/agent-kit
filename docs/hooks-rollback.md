@@ -24,16 +24,7 @@ wp setup --disable-hooks codex
 ```
 
 This removes the hooks from `.codex/hooks.json` while keeping the manifest intact.
-Re-enable with `wp setup --with hooks --vendor codex`.
-
-## Understanding `generated-inactive`
-
-`generated-inactive` means:
-- wp setup wrote the hook configuration files
-- But the hooks are not yet registered with the vendor's runtime
-- This happens when hooks are generated but the agent CLI hasn't been restarted
-
-Resolution: restart the agent CLI session.
+Re-enable with `wp setup --restore-hooks`.
 
 ## Full cleanup
 

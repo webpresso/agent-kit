@@ -1,41 +1,40 @@
 ---
 type: guide
-last_updated: '2026-06-07'
+last_updated: '2026-06-08'
 ---
 
-# wp hooks demo
+# Hooks demo
 
-`wp hooks demo` runs a pure simulation of the hook dispatch system.
+`wp hooks demo` is a pure simulation surface. It does **not** execute hooks,
+rewrite configs, mutate trust state, or write hook logs. It only renders the
+simulated verdicts for the current event/vendor/tool scenario.
 
-## What it does
+## Basic usage
 
-- Simulates hook execution for each event + vendor combination
-- Shows per-vendor verdicts (allowed/denied/bypassed)
-- Makes **no real changes**: no trust is consumed, no logs are written, no files are modified
-- Uses the same dispatch logic as the real hooks
-
-## Example output
-
-```
-[demo] SessionStart → claude: wp-sessionstart-routing → installed ✅
-[demo] SessionStart → codex: wp-sessionstart-routing → pending-trust ⚠️
-[demo] PreToolUse → claude: wp-pretool-guard → enforcing ✅
-[demo] PreToolUse → codex: wp-pretool-guard → enforcing ✅
-[demo] Stop → codex: wp-stop-qa → installed ✅ (stdout must be JSON)
+```bash
+wp hooks demo SessionStart
+wp hooks demo PreToolUse --tool Bash
+wp hooks demo Stop --vendor codex
 ```
 
-## How to interpret
+## Simulated verdicts
 
-| Status | Meaning |
-|---|---|
-| `installed` | Hook is registered and will run |
-| `enforcing` | Guard hook: failures become denials |
-| `pending-trust` | Codex hook not yet trusted — will be skipped until trusted |
-| `generated-inactive` | Hook was written by setup but not yet registered |
-| `disabled` | Hook was explicitly disabled |
-| `degraded` | Hook registered but configuration issue detected |
+- `would-run` — the hook is registered and would run for this scenario
+- `would-enforce` — the guard hook would run and enforce policy for this scenario
+- `skipped-matcher` — the hook is installed, but the simulated tool did not match its matcher
+- `disabled` — the vendor is explicitly disabled in `.webpresso/hooks-manifest.json`
+
+## Example
+
+```bash
+wp hooks demo PreToolUse --tool Bash
+```
+
+This prints a labeled simulation of the hooks that would fire for a `PreToolUse`
+event when the tool name is `Bash`.
 
 ## See also
 
-- `wp hooks status` — real status from installed configs
-- `wp hooks doctor` — diagnose configuration problems
+- `wp hooks status`
+- `wp hooks doctor`
+- `wp setup --restore-hooks`

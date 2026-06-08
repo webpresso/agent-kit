@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, statSync } from 'node:fs'
-import { basename, dirname, join } from 'node:path'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { basename, dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export const BIN_ENTRYPOINTS = {
@@ -147,6 +147,41 @@ function shouldPreferBuiltDist(binName) {
   return LATENCY_SENSITIVE_BUILT_BINS.has(binName)
 }
 
+function isRuntimeSourceFile(name) {
+  return (
+    name.endsWith('.ts') &&
+    !name.endsWith('.test.ts') &&
+    !name.endsWith('.integration.test.ts') &&
+    !name.endsWith('.spec.ts')
+  )
+}
+
+function runtimeSourceRequiresSourceLaunch(sourceRootDir, builtRootDir) {
+  if (!existsSync(sourceRootDir)) return false
+
+  const stack = [sourceRootDir]
+  while (stack.length > 0) {
+    const current = stack.pop()
+    if (!current) continue
+
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const sourcePath = join(current, entry.name)
+      if (entry.isDirectory()) {
+        stack.push(sourcePath)
+        continue
+      }
+      if (!entry.isFile() || !isRuntimeSourceFile(entry.name)) continue
+
+      const relPath = relative(sourceRootDir, sourcePath)
+      const builtPath = join(builtRootDir, relPath.replace(/\.ts$/u, '.js'))
+      if (!existsSync(builtPath)) return true
+      if (statSync(sourcePath).mtimeMs > statSync(builtPath).mtimeMs) return true
+    }
+  }
+
+  return false
+}
+
 function buildRuntimeLaunchPlan({
   binName,
   repoRoot,
@@ -233,6 +268,7 @@ export function buildLaunchPlan({
   runtimeManager = resolveNodeRuntimeManager(),
   builtMtimeMs,
   sourceMtimeMs,
+  sourceNeedsSourceLaunch,
 }) {
   const sourceRelativePath = BIN_ENTRYPOINTS[binName]
   if (!sourceRelativePath) {
@@ -261,15 +297,22 @@ export function buildLaunchPlan({
   const resolvedBuiltMtimeMs =
     builtMtimeMs ??
     (builtExists === undefined && hasBuilt ? statSync(builtEntrypoint).mtimeMs : null)
-  const resolvedSourceMtimeMs =
-    sourceMtimeMs ??
-    (sourceExists === undefined && hasSource ? statSync(sourceEntrypoint).mtimeMs : null)
+  const resolvedSourceNeedsSourceLaunch =
+    sourceNeedsSourceLaunch ??
+    (!shouldPreferBuiltDist(binName) &&
+      hasSource &&
+      (binName === 'wp'
+        ? runtimeSourceRequiresSourceLaunch(
+            join(repoRoot, 'src', 'cli'),
+            join(repoRoot, 'dist', 'esm', 'cli'),
+          )
+        : typeof sourceMtimeMs === 'number' && typeof resolvedBuiltMtimeMs === 'number'
+          ? sourceMtimeMs > resolvedBuiltMtimeMs
+          : hasBuilt && hasSource
+            ? statSync(sourceEntrypoint).mtimeMs > statSync(builtEntrypoint).mtimeMs
+            : false))
   const shouldPreferSource =
-    !shouldPreferBuiltDist(binName) &&
-    hasSource &&
-    typeof resolvedBuiltMtimeMs === 'number' &&
-    typeof resolvedSourceMtimeMs === 'number' &&
-    resolvedSourceMtimeMs > resolvedBuiltMtimeMs
+    !shouldPreferBuiltDist(binName) && hasSource && resolvedSourceNeedsSourceLaunch
 
   if (shouldPreferSource) {
     return buildSourceLaunchPlan(sourceEntrypoint, forwardedArgs)

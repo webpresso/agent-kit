@@ -35,6 +35,7 @@ describe('wp root command surface', () => {
     expect(SUPPORTED_COMMANDS).toContain('setup')
     expect(SUPPORTED_COMMANDS).toContain('init')
     expect(SUPPORTED_COMMANDS).toContain('roadmap')
+    expect(SUPPORTED_COMMANDS).toContain('qa')
     expect(SUPPORTED_COMMANDS).toContain('install')
     expect(SUPPORTED_COMMANDS).toContain('run')
   })
@@ -49,6 +50,9 @@ describe('wp root command surface', () => {
     )
     expect(result.stdout.join('\n')).toContain(
       'roadmap               List or show parent roadmaps directly',
+    )
+    expect(result.stdout.join('\n')).toContain(
+      'qa                    Run the repository QA gate through the portable wp surface',
     )
     expect(result.stdout.join('\n')).toContain('doctor                Run repo audit health checks')
     expect(result.stdout.join('\n')).toContain(

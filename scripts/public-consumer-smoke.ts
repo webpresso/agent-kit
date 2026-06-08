@@ -7,6 +7,22 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { preparePackedManifest, restorePackedManifest } from '../src/build/package-manifest.js'
+import { AGENTS_MD_MAX_BYTES } from '../src/cli/commands/init/scaffold-agents-md.js'
+
+const SHARED_FAVORITES = [
+  'fix',
+  'verify',
+  'testing-philosophy',
+  'plan-refine',
+  'pll',
+] as const
+
+const DEFAULT_ABSENT_SKILLS = [
+  'systematic-debugging',
+  'test-driven-development',
+  'deep-research',
+  'monorepo-navigation',
+] as const
 
 interface RunResult {
   readonly command: string
@@ -138,6 +154,37 @@ function assertSetupContract(repo: string): RunResult[] {
       detail: pkg.devDependencies?.[dep] ?? 'missing',
     })
   }
+
+  for (const hostRoot of ['.agents/skills', '.claude/skills'] as const) {
+    for (const skill of SHARED_FAVORITES) {
+      const target = join(repo, hostRoot, skill, 'SKILL.md')
+      results.push({
+        command: `assert shared favorite ${hostRoot}/${skill}`,
+        ok: existsSync(target),
+        detail: existsSync(target) ? 'ok' : 'missing',
+      })
+    }
+
+    for (const skill of DEFAULT_ABSENT_SKILLS) {
+      const target = join(repo, hostRoot, skill, 'SKILL.md')
+      results.push({
+        command: `assert default absent ${hostRoot}/${skill}`,
+        ok: !existsSync(target),
+        detail: existsSync(target) ? 'unexpectedly present' : 'ok',
+      })
+    }
+  }
+
+  const agentsPath = join(repo, 'AGENTS.md')
+  const agentsBytes = existsSync(agentsPath) ? Buffer.byteLength(readFileSync(agentsPath), 'utf8') : 0
+  results.push({
+    command: 'assert AGENTS.md prompt budget',
+    ok: agentsBytes <= AGENTS_MD_MAX_BYTES,
+    detail: existsSync(agentsPath)
+      ? `${agentsBytes}/${AGENTS_MD_MAX_BYTES} bytes`
+      : 'missing',
+  })
+
   return results
 }
 

@@ -29,6 +29,19 @@ With `--vendor` flag to check one vendor:
 wp hooks doctor --vendor codex
 ```
 
+Attempt the safe auto-repair lane:
+
+```bash
+wp hooks doctor --fix
+```
+
+`--fix` is intentionally honest:
+
+- **`fixed`** — doctor applied the safe manifest-backed restore path or found nothing to change
+- **`prepared`** — a safe restore path exists, but doctor is only describing it
+- **`requires-approval`** — a broader `wp setup` run would be needed, so doctor refuses to do it automatically
+- **`blocked`** — installed hook config appears hand-edited or otherwise unsafe to overwrite automatically
+
 ## Common scenarios
 
 ### All hooks show `missing`
@@ -36,6 +49,13 @@ wp hooks doctor --vendor codex
 The hooks were never installed or the config was reset. Re-run:
 ```bash
 wp setup --with hooks
+```
+
+If a manifest already exists, `wp hooks doctor --fix` can use the narrower
+restore path:
+
+```bash
+wp setup --restore-hooks
 ```
 
 ### Codex hooks show `pending-trust`
@@ -48,9 +68,13 @@ codex hooks trust
 ### Some hooks show `unknown`
 
 Hooks were added to the config outside of `wp setup`. These are safe but untracked.
-Run `wp setup --with hooks` to bring them under manifest management.
+Run `wp hooks status` first. `wp hooks doctor --fix` intentionally refuses to
+overwrite these hand-edited/untracked entries automatically and prints the
+preserved files it left untouched.
 
 ### Manifest absent
 
 If `.webpresso/hooks-manifest.json` is missing, doctor treats all installed hooks as `unknown`.
-Re-run `wp setup --with hooks` to regenerate the manifest.
+Re-run `wp setup` to regenerate the manifest. `wp hooks doctor --fix` reports
+this as `requires-approval` instead of silently running the broader setup flow
+for you.

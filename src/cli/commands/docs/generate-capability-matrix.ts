@@ -27,11 +27,8 @@ export function generateCapabilityMatrix(): string {
   const tableHeader = '| Event | Claude Code | Codex CLI | Cursor |'
   const tableSeparator = '|---|---|---|---|'
 
-  const rows = (Object.keys(CAPABILITY_MATRIX) as Array<keyof typeof CAPABILITY_MATRIX>).map(
-    (event) => {
-      const cap = CAPABILITY_MATRIX[event]
-      return `| ${event} | ${SYMBOL[cap.claude]} | ${SYMBOL[cap.codex]} | ${SYMBOL[cap.cursor]} |`
-    },
+  const rows = CAPABILITY_MATRIX.map(
+    (cap) => `| ${cap.event} | ${SYMBOL[cap.claude]} | ${SYMBOL[cap.codex]} | ${SYMBOL[cap.cursor]} |`,
   )
 
   return [header, tableHeader, tableSeparator, ...rows, FOOTER].join('\n')

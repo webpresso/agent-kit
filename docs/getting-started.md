@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-06-07'
+last_updated: '2026-06-08'
 ---
 
 # Getting started
@@ -70,7 +70,9 @@ only; the wrapper does not guarantee grandchild teardown there.
 `wp setup` adds the repo bootstrap webpresso owns:
 
 - `AGENTS.md`
-- `.agent/` canonical commands, skills, rules, guides, and workflows
+- `.agent/` canonical commands, workflows, guides, and generated support files
+- repo-owned source skill surfaces (`agent-skills/`, `agent-rules/`) when the
+  catalog or setup path uses them
 - generated agent surfaces
 - blueprint lifecycle folders and docs templates
 - `base-kit` quality scaffold: `tsconfig.json`, `vitest.config.ts`,
@@ -91,6 +93,28 @@ after your real tests and e2e specs are in place.
 Codex and Claude surfaces are conditional on the matching host being installed
 and available. Missing CLIs, skipped presets, or unauthenticated hosts should
 show as skipped or warning lines in setup output, not as silent success.
+
+### Default shared skills vs opt-ins
+
+The default cross-host Webpresso skill contract is intentionally curated.
+
+Guaranteed by default across Codex and Claude host-visible surfaces:
+
+- `fix`
+- `verify`
+- `testing-philosophy`
+- `plan-refine`
+- `pll`
+
+Available as explicit opt-ins rather than default prompt baggage:
+
+- `systematic-debugging`
+- `test-driven-development`
+- `deep-research`
+- `monorepo-navigation`
+
+That split keeps the “same useful core skills everywhere” contract while
+avoiding broad projection of the long tail into every host by default.
 
 ### What gets committed vs ignored
 
@@ -125,6 +149,12 @@ vp run public:consumer-smoke -- --setup-only
 
 Start with the default setup. Reach for add-ons only when the repo genuinely
 needs one: [Add-ons](./add-ons.md).
+
+## Blueprint root
+
+Fresh repos default to `blueprints/`, but the blueprint root is configurable.
+Set `.webpressorc.json#blueprintsDir` when a repo needs a different layout,
+such as `webpresso/blueprints` in a monorepo.
 
 ## Package note
 

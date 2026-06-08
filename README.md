@@ -44,6 +44,11 @@ Playwright, unit-test and file-based e2e smoke assets), wires `AGENTS.md` /
 execution-owned vs authoring-owned dependency migration guidance. Re-running
 refreshes the webpresso-owned pieces and preserves consumer-owned files.
 
+The default cross-host Webpresso skill contract is intentionally curated:
+`fix`, `verify`, `testing-philosophy`, `plan-refine`, and `pll` are the shared
+favorites projected by default, while broader methodology/library skills stay
+opt-in via `wp setup --with ...`.
+
 > **`wp setup` is required for hooks.** The Claude Code hooks (PreToolUse guard,
 > Stop-QA gate, SessionStart routing, …) are installed by `wp setup` into your
 > repo's `.claude/settings.json`. They are intentionally **not** shipped in the
@@ -70,7 +75,7 @@ vp run public:consumer-smoke -- --setup-only
 
 | Capability | What it does | Proof |
 | --- | --- | --- |
-| **`wp setup` onboarding** | Idempotent scaffolder for the base-kit quality config + `AGENTS.md` / `CLAUDE.md` wiring | [`src/cli/commands/init/`](src/cli/commands/init/), verified by [`scripts/public-consumer-smoke.ts`](scripts/public-consumer-smoke.ts) |
+| **`wp setup` onboarding** | Idempotent scaffolder for the base-kit quality config + `AGENTS.md` / `CLAUDE.md` wiring, with a curated shared-favorites default for host-visible Webpresso skills | [`src/cli/commands/init/`](src/cli/commands/init/), verified by [`scripts/public-consumer-smoke.ts`](scripts/public-consumer-smoke.ts) |
 | **Summary-first `wp_*` MCP tools** | `wp_test` / `wp_typecheck` / `wp_lint` / `wp_qa` / `wp_e2e` / `wp_format` / `wp_ci_act` / `wp_audit` return JSON with `bytes` / `tokensSaved` budget metadata | [`src/mcp/tools/`](src/mcp/tools/) (each with co-located `.test.ts`), [`src/mcp/server.integration.test.ts`](src/mcp/server.integration.test.ts) |
 | **MCP server + CLI surface** | Registers the tool set and exposes it to agents | [`src/mcp/server.ts`](src/mcp/server.ts), [`src/mcp/cli.ts`](src/mcp/cli.ts), [`src/mcp/cli.integration.test.ts`](src/mcp/cli.integration.test.ts) |
 | **Blueprint runtime** | Lifecycle states, dependency-aware task graph, structured authoring control plane (`wp_blueprint_depgraph` / `put` / `transition`) | [`src/mcp/blueprint-server.ts`](src/mcp/blueprint-server.ts), [`docs/lifecycle.md`](docs/lifecycle.md), [`docs/blueprint-format.md`](docs/blueprint-format.md) |
@@ -122,6 +127,17 @@ vp run qa          # build + typecheck + lint + format:check + test + lint:pkg +
 separately as `vp run lint:pkg` (publint + attw `--pack`, plus `claude plugin
 validate` when `claude` is present).
 
+## Defaults and opt-ins
+
+- Default cross-host favorites: `fix`, `verify`, `testing-philosophy`,
+  `plan-refine`, `pll`
+- Opt-in shared add-ons: `systematic-debugging`, `test-driven-development`,
+  `deep-research`
+- Opt-in rendered source skill: `monorepo-navigation`
+- Default blueprint root: `blueprints/`
+- Configurable blueprint root: `.webpressorc.json#blueprintsDir` (for example
+  `webpresso/blueprints` in monorepo layouts)
+
 ## Contribute / Security / License
 
 - [CONTRIBUTING.md](./CONTRIBUTING.md) — setup, verify commands, Lore Commit
@@ -158,7 +174,8 @@ See [docs/hooks-quickstart.md](docs/hooks-quickstart.md) to get started.
 
 Key CLIs:
 - `wp hooks status` — show per-vendor hook states
-- `wp hooks demo` — simulate hook dispatch (no real changes)
+- `wp hooks demo <event>` — simulate which hooks would run for an event
 - `wp hooks doctor` — diagnose hook problems
+- `wp hooks upgrade --workspace` — preview or apply manifest-backed hook refreshes across workspace repos
 - `wp setup --with hooks` — install or update hooks
 - `wp setup --dry-run` — preview changes without applying
