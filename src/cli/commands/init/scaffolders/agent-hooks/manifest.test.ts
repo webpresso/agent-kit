@@ -7,6 +7,7 @@ import type { HooksMap } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 import {
   diffHooksManifest,
   readHooksManifest,
+  withHookVendorState,
   writeHooksManifest,
 } from '#cli/commands/init/scaffolders/agent-hooks/manifest.js'
 
@@ -47,6 +48,7 @@ describe('manifest', () => {
         expect(typeof result?.generatedAt).toStrictEqual('string')
         expect(result?.claude).toStrictEqual(sampleClaudeMap)
         expect(result?.codex).toStrictEqual(sampleCodexMap)
+        expect(result?.vendorState).toStrictEqual({ claude: 'enabled', codex: 'enabled' })
       } finally {
         rmSync(dir, { recursive: true, force: true })
       }
@@ -84,6 +86,7 @@ describe('manifest', () => {
         generatedAt: new Date().toISOString(),
         claude: sampleClaudeMap,
         codex: {} as HooksMap,
+        vendorState: { claude: 'enabled', codex: 'enabled' } as const,
       }
       const current = { claude: sampleClaudeMap, codex: {} as HooksMap }
 
@@ -98,12 +101,13 @@ describe('manifest', () => {
         generatedAt: new Date().toISOString(),
         claude: sampleClaudeMap,
         codex: {} as HooksMap,
+        vendorState: { claude: 'enabled', codex: 'enabled' } as const,
       }
       // Empty current — nothing installed
       const current = { claude: {} as HooksMap, codex: {} as HooksMap }
 
       const diffs = diffHooksManifest(manifest, current)
-      expect(diffs.length).toBeGreaterThan(0)
+      expect(diffs.length).toStrictEqual(2)
       expect(diffs.every((d) => d.verdict === 'missing')).toStrictEqual(true)
     })
 
@@ -116,6 +120,7 @@ describe('manifest', () => {
         generatedAt: new Date().toISOString(),
         claude: {} as HooksMap,
         codex: {} as HooksMap,
+        vendorState: { claude: 'enabled', codex: 'enabled' } as const,
       }
       const current = { claude: extraMap, codex: {} as HooksMap }
 
@@ -149,6 +154,7 @@ describe('manifest', () => {
         generatedAt: new Date().toISOString(),
         claude: manifestClaudeMap,
         codex: {} as HooksMap,
+        vendorState: { claude: 'enabled', codex: 'enabled' } as const,
       }
       const current = { claude: currentClaudeMap, codex: {} as HooksMap }
 
@@ -159,6 +165,23 @@ describe('manifest', () => {
       expect(byVerdict['ok']).toStrictEqual(1)
       expect(byVerdict['missing']).toStrictEqual(1)
       expect(byVerdict['unknown']).toStrictEqual(1)
+    })
+
+    it('suppresses missing diffs for intentionally disabled vendors', () => {
+      const manifest = withHookVendorState(
+        {
+          version: 1,
+          generatedAt: new Date().toISOString(),
+          claude: sampleClaudeMap,
+          codex: {} as HooksMap,
+          vendorState: { claude: 'enabled', codex: 'enabled' },
+        },
+        ['claude'],
+        'disabled',
+      )
+
+      const diffs = diffHooksManifest(manifest, { claude: {} as HooksMap, codex: {} as HooksMap })
+      expect(diffs).toStrictEqual([])
     })
   })
 })

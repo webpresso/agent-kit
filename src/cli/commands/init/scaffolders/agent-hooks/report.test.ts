@@ -56,6 +56,7 @@ function makeManifest(claude: HooksMap, codex: HooksMap): HooksManifest {
     generatedAt: new Date().toISOString(),
     claude,
     codex,
+    vendorState: { claude: 'enabled', codex: 'enabled' },
   }
 }
 
@@ -101,12 +102,12 @@ describe('generateSetupReport', () => {
     expect(report).toContain('removed')
   })
 
-  it('generates a non-empty string', () => {
+  it('generates a report string with a change summary', () => {
     const after = makeManifest(claudeMap, codexMap)
     const report = generateSetupReport(null, after)
 
     expect(typeof report).toStrictEqual('string')
-    expect(report.length).toBeGreaterThan(0)
+    expect(report).toContain('Hooks change summary:')
   })
 
   it('always ends with the wp hooks status hint', () => {
@@ -118,18 +119,15 @@ describe('generateSetupReport', () => {
 })
 
 describe('printSetupReport', () => {
-  it('calls process.stdout.write with the generated report', () => {
-    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
-    try {
-      const after = makeManifest(claudeMap, codexMap)
-      printSetupReport(null, after)
+  it('writes the generated report to the provided writer', () => {
+    const writer = { write: vi.fn(() => true) }
+    const after = makeManifest(claudeMap, codexMap)
 
-      expect(writeSpy).toHaveBeenCalledOnce()
-      const written = writeSpy.mock.calls[0]?.[0]
-      expect(typeof written).toStrictEqual('string')
-      expect(String(written)).toContain('Hooks change summary:')
-    } finally {
-      writeSpy.mockRestore()
-    }
+    printSetupReport(null, after, writer)
+
+    expect(writer.write).toHaveBeenCalledOnce()
+    const written = writer.write.mock.calls[0]?.[0]
+    expect(typeof written).toStrictEqual('string')
+    expect(String(written)).toContain('Hooks change summary:')
   })
 })

@@ -14,12 +14,13 @@ Each subdirectory represents a lifecycle state:
 | State | Count | Description |
 | ----- | ----: | ----------- |
 | `draft/` | 0 | early-stage sketches. Expect churn; move to `planned/` once scoped. |
-| `planned/` | 0 | committed-to specs, ready to pick up. |
-| `in-progress/` | 1 | actively being executed. At most 3 active blueprints per lane. |
-| `completed/` | 52 | execution finished and verified. Kept for reference. |
+| `planned/` | 1 | committed-to specs, ready to pick up. |
+| `in-progress/` | 0 | actively being executed. At most 3 active blueprints per lane. |
+| `completed/` | 53 | execution finished and verified. Kept for reference. |
 | `parked/` | 9 | intentionally paused. Include a reason in the spec's frontmatter. |
 | `archived/` | 2 | superseded or abandoned. Not deleted — the record matters. |
 <!-- END: blueprint-index -->
+
 
 
 
@@ -61,4 +62,4 @@ _None currently._
 
 | Blueprint | Path | Purpose |
 | --------- | ---- | ------- |
-| _None currently queued_ | — | The 2026-06-07 root launcher hard cut already shipped as [`completed/2026-06-07-root-launcher-contract-and-hook-ownership-alignment.md`](./completed/2026-06-07-root-launcher-contract-and-hook-ownership-alignment.md): `bin/wp` is the package entrypoint, there is no `bin/wp.js` shim, and OMX repair is bounded to positively identified stale hook surfaces. |
+| Codex/Claude shared skill contract and context budget | [`planned/2026-06-08-codex-claude-shared-skill-contract-and-context-budget.md`](./planned/2026-06-08-codex-claude-shared-skill-contract-and-context-budget.md) | Preserve cross-host Webpresso favorites while shrinking default prompt surfaces and enforcing an 8 KB generated root `AGENTS.md` budget. |

@@ -5,37 +5,34 @@
  * WP_HOOK_SPECS, and prints an aligned status table.
  */
 import { existsSync, readFileSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 
 import { formatStatusLine, HOOK_STATUS, type HookStatusDetail, type HookStatus } from '#hooks/shared/vocabulary.js'
+import { readHooksManifest, type HookVendorState } from '#cli/commands/init/scaffolders/agent-hooks/manifest.js'
+import type { HookEntry, HookGroup, HooksMap } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
+import { WP_HOOK_SPECS as IR_HOOK_SPECS } from '#cli/commands/init/scaffolders/agent-hooks/ir.js'
 
 // ── Canonical hook spec list ──────────────────────────────────────────────────
 
 type HookSpec = {
-  readonly hook: string  // bin name, e.g. 'wp-pretool-guard'
-  readonly event: string // e.g. 'PreToolUse'
-  readonly isGuard: boolean // true → enforcing status when present
+  readonly hook: string
+  readonly event: string
+  readonly isGuard: boolean
 }
 
+// Hooks that actively deny tool calls when present (guard-class).
+const GUARD_BINS = new Set(['wp-pretool-guard'])
+
 /**
- * The canonical set of wp-* hooks that setup writes for each vendor.
- * Single source of truth for status derivation.
+ * Derived from the IR's WP_HOOK_SPECS — the single source of truth for
+ * hook bin names, events, and timeouts. `isGuard` is a status-display
+ * concern derived here rather than duplicated in ir.ts.
  */
-export const WP_HOOK_SPECS: readonly HookSpec[] = [
-  { hook: 'wp-sessionstart-routing', event: 'SessionStart', isGuard: false },
-  { hook: 'wp-check-dev-link', event: 'SessionStart', isGuard: false },
-  { hook: 'wp-pretool-guard', event: 'PreToolUse', isGuard: true },
-  { hook: 'wp-post-tool', event: 'PostToolUse', isGuard: false },
-  { hook: 'wp-guard-switch', event: 'UserPromptSubmit', isGuard: false },
-  { hook: 'wp-stop-qa', event: 'Stop', isGuard: false },
-] as const
-
-// ── HooksMap types (mirrors scaffolder inline types) ─────────────────────────
-
-type HookEntry = { readonly type: string; readonly command: string; readonly timeout?: number }
-type HookGroup = { readonly matcher?: string; readonly hooks: readonly HookEntry[] }
-type HooksMap = Record<string, readonly HookGroup[]>
+export const WP_HOOK_SPECS: readonly HookSpec[] = IR_HOOK_SPECS.map((spec) => ({
+  hook: spec.bin,
+  event: spec.event,
+  isGuard: GUARD_BINS.has(spec.bin),
+}))
 
 // ── Status derivation ─────────────────────────────────────────────────────────
 
@@ -51,7 +48,7 @@ function hookAppearsInMap(hooksMap: HooksMap, hookName: string): boolean {
 }
 
 function specStatus(spec: HookSpec, present: boolean, manifestExists: boolean): HookStatus {
-  if (!manifestExists) return HOOK_STATUS.generatedInactive
+  if (!manifestExists) return HOOK_STATUS.disabled
   if (!present) return HOOK_STATUS.disabled
   return spec.isGuard ? HOOK_STATUS.enforcing : HOOK_STATUS.installed
 }
@@ -60,6 +57,7 @@ type DeriveHookStatusOptions = {
   readonly hooksMap: HooksMap
   readonly vendor: 'claude' | 'codex'
   readonly manifestExists: boolean
+  readonly vendorState?: HookVendorState
 }
 
 /**
@@ -69,7 +67,7 @@ type DeriveHookStatusOptions = {
  * Sort order: event name then hook name.
  */
 export function deriveHookStatus(options: DeriveHookStatusOptions): readonly HookStatusDetail[] {
-  const { hooksMap, vendor, manifestExists } = options
+  const { hooksMap, vendor, manifestExists, vendorState = 'enabled' } = options
 
   const details = WP_HOOK_SPECS.map((spec): HookStatusDetail => {
     const present = hookAppearsInMap(hooksMap, spec.hook)
@@ -77,7 +75,7 @@ export function deriveHookStatus(options: DeriveHookStatusOptions): readonly Hoo
       hook: spec.hook,
       event: spec.event,
       vendor,
-      status: specStatus(spec, present, manifestExists),
+      status: vendorState === 'disabled' ? HOOK_STATUS.disabled : specStatus(spec, present, manifestExists),
     }
   })
 
@@ -119,10 +117,6 @@ function resolveCodexHooksPath(repoRoot: string): string {
   return join(repoRoot, '.codex', 'hooks.json')
 }
 
-function resolveManifestPath(repoRoot: string): string {
-  return join(repoRoot, '.webpresso', 'hooks-manifest.json')
-}
-
 // ── Command entry point ───────────────────────────────────────────────────────
 
 function parseVendorFlag(argv: readonly string[]): Array<'claude' | 'codex'> {
@@ -147,10 +141,11 @@ function printVendorStatus(
   vendor: 'claude' | 'codex',
   repoRoot: string,
   manifestExists: boolean,
+  vendorState: HookVendorState,
 ): void {
   const filePath = hooksFilePath(vendor, repoRoot)
   const hooksMap = readHooksMap(filePath)
-  const details = deriveHookStatus({ hooksMap, vendor, manifestExists })
+  const details = deriveHookStatus({ hooksMap, vendor, manifestExists, vendorState })
 
   process.stdout.write(`\n[${vendor}] hooks status (${filePath})\n`)
   process.stdout.write(`${'─'.repeat(80)}\n`)
@@ -168,9 +163,14 @@ function printVendorStatus(
 export async function statusCommand(argv: readonly string[]): Promise<void> {
   const vendors = parseVendorFlag(argv)
   const repoRoot = resolveRepoRoot()
-  const manifestExists = existsSync(resolveManifestPath(repoRoot))
+  const manifest = readHooksManifest(repoRoot)
+  const manifestExists = manifest !== null
+
+  if (!manifestExists) {
+    process.stdout.write('No hooks manifest found. Run `wp setup` to regenerate managed hook state.\n')
+  }
 
   for (const vendor of vendors) {
-    printVendorStatus(vendor, repoRoot, manifestExists)
+    printVendorStatus(vendor, repoRoot, manifestExists, manifest?.vendorState[vendor] ?? 'enabled')
   }
 }

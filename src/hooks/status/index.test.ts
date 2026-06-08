@@ -35,14 +35,18 @@ function buildEmptyHooksMap(): HooksMap {
 
 describe('WP_HOOK_SPECS', () => {
   it('has one entry per canonical wp-* hook', () => {
-    expect(WP_HOOK_SPECS.length).toBeGreaterThan(0)
+    expect(WP_HOOK_SPECS.length).toStrictEqual(6)
   })
 
   it('all specs have non-empty hook and event fields', () => {
-    for (const spec of WP_HOOK_SPECS) {
-      expect(spec.hook.length).toBeGreaterThan(0)
-      expect(spec.event.length).toBeGreaterThan(0)
-    }
+    expect(WP_HOOK_SPECS.map((s) => ({ hook: s.hook, event: s.event }))).toStrictEqual([
+      { hook: 'wp-sessionstart-routing', event: 'SessionStart' },
+      { hook: 'wp-check-dev-link', event: 'SessionStart' },
+      { hook: 'wp-pretool-guard', event: 'PreToolUse' },
+      { hook: 'wp-post-tool', event: 'PostToolUse' },
+      { hook: 'wp-guard-switch', event: 'UserPromptSubmit' },
+      { hook: 'wp-stop-qa', event: 'Stop' },
+    ])
   })
 })
 
@@ -74,7 +78,6 @@ describe('deriveHookStatus', () => {
       manifestExists: true,
     })
     const guard = result.find((d) => d.hook === 'wp-pretool-guard')
-    expect(guard).toBeDefined()
     expect(guard?.status).toStrictEqual('enforcing')
   })
 
@@ -101,25 +104,37 @@ describe('deriveHookStatus', () => {
     }
   })
 
-  it('manifestExists=false → all generated-inactive regardless of hooksMap', () => {
+  it('manifestExists=false → all disabled regardless of hooksMap', () => {
     const result = deriveHookStatus({
       hooksMap: buildFullHooksMap(),
       vendor: 'codex',
       manifestExists: false,
     })
     for (const detail of result) {
-      expect(detail.status).toStrictEqual('generated-inactive')
+      expect(detail.status).toStrictEqual('disabled')
     }
   })
 
-  it('manifestExists=false with empty hooksMap → all generated-inactive', () => {
+  it('manifestExists=false with empty hooksMap → all disabled', () => {
     const result = deriveHookStatus({
       hooksMap: buildEmptyHooksMap(),
       vendor: 'codex',
       manifestExists: false,
     })
     for (const detail of result) {
-      expect(detail.status).toStrictEqual('generated-inactive')
+      expect(detail.status).toStrictEqual('disabled')
+    }
+  })
+
+  it('vendorState=disabled forces disabled status even when hooks are present', () => {
+    const result = deriveHookStatus({
+      hooksMap: buildFullHooksMap(),
+      vendor: 'codex',
+      manifestExists: true,
+      vendorState: 'disabled',
+    })
+    for (const detail of result) {
+      expect(detail.status).toStrictEqual('disabled')
     }
   })
 

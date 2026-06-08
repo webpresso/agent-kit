@@ -104,9 +104,6 @@ export function detectDrift(
 // File readers
 // ---------------------------------------------------------------------------
 
-type HookGroup = { matcher?: string; hooks?: readonly unknown[] }
-type HooksMap = Readonly<Record<string, readonly HookGroup[]>>
-
 function readClaudeInstalledEvents(repoRoot: string): ReadonlySet<string> {
   const settingsPath = path.join(repoRoot, '.claude', 'settings.json')
   if (!existsSync(settingsPath)) return new Set<string>()
@@ -133,7 +130,7 @@ function readClaudeInstalledEvents(repoRoot: string): ReadonlySet<string> {
     return new Set<string>()
   }
 
-  return new Set(Object.keys(hooks as HooksMap))
+  return new Set(Object.keys(hooks as Record<string, unknown>))
 }
 
 function readCodexInstalledEvents(repoRoot: string): ReadonlySet<string> {
