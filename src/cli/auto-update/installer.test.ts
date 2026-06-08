@@ -34,6 +34,8 @@ import { getSurfacePath } from '#paths/state-root.js'
 import {
   buildTombstone,
   clearInstallTombstone,
+  isProcessAlive,
+  isTombstoneActive,
   isTombstoneFresh,
   LOCKOUT_MS,
   scheduleDeferredInstall,
@@ -93,6 +95,54 @@ describe('buildTombstone / isTombstoneFresh', () => {
     const now = 1_000_000
     const tombstone = buildTombstone(1, now - (LOCKOUT_MS + 1))
     expect(isTombstoneFresh(tombstone, now)).toStrictEqual(false)
+  })
+})
+
+describe('isProcessAlive', () => {
+  it('reports the current process as alive', () => {
+    expect(isProcessAlive(process.pid)).toStrictEqual(true)
+  })
+
+  it('reports a guaranteed-unused high pid as not alive (ESRCH)', () => {
+    // 0x7fffffff exceeds the kernel pid max on the platforms we target, so the
+    // existence probe returns ESRCH.
+    expect(isProcessAlive(2_147_483_647)).toStrictEqual(false)
+  })
+
+  it('treats a non-positive pid as not alive without probing', () => {
+    expect(isProcessAlive(0)).toStrictEqual(false)
+    expect(isProcessAlive(-1)).toStrictEqual(false)
+  })
+
+  it('treats a non-integer pid as not alive without probing', () => {
+    expect(isProcessAlive(Number.NaN)).toStrictEqual(false)
+    expect(isProcessAlive(1.5)).toStrictEqual(false)
+  })
+})
+
+describe('isTombstoneActive', () => {
+  const now = 1_000_000
+
+  it('is active when the pid is alive AND the tombstone is fresh', () => {
+    const tombstone = buildTombstone(42, now - (LOCKOUT_MS - 1))
+    expect(isTombstoneActive(tombstone, now, () => true)).toStrictEqual(true)
+  })
+
+  it('is NOT active when the pid is dead, even with a fresh timestamp', () => {
+    const tombstone = buildTombstone(42, now - (LOCKOUT_MS - 1))
+    expect(isTombstoneActive(tombstone, now, () => false)).toStrictEqual(false)
+  })
+
+  it('is NOT active when the pid is alive but the tombstone is stale (recycled pid)', () => {
+    const tombstone = buildTombstone(42, now - (LOCKOUT_MS + 1))
+    expect(isTombstoneActive(tombstone, now, () => true)).toStrictEqual(false)
+  })
+
+  it('passes the recorded pid to the liveness probe', () => {
+    const probe = vi.fn(() => false)
+    const tombstone = buildTombstone(777, now)
+    isTombstoneActive(tombstone, now, probe)
+    expect(probe).toHaveBeenCalledWith(777)
   })
 })
 
@@ -161,11 +211,13 @@ describe('scheduleDeferredInstall — happy path', () => {
 })
 
 describe('scheduleDeferredInstall — concurrency lockout', () => {
-  it('skips the spawn when a fresh tombstone exists', () => {
+  it('skips the spawn when a fresh tombstone with a live pid exists', () => {
     const configPath = join(tmpDir, 'update-notifier-cache.json')
+    // Use the current process pid so the liveness probe sees a live owner —
+    // this is a genuine in-progress install, not a stale/crashed one.
     writeFileSync(
       configPath,
-      JSON.stringify({ autoInstallInProgress: { pid: 999, ts: Date.now() } }),
+      JSON.stringify({ autoInstallInProgress: { pid: process.pid, ts: Date.now() } }),
     )
 
     const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', 'webpresso'] })
@@ -173,6 +225,26 @@ describe('scheduleDeferredInstall — concurrency lockout', () => {
     expect(result.spawned).toStrictEqual(false)
     expect(result.reason).toMatch(/recent install in progress/)
     expect(spawnMock).not.toHaveBeenCalled()
+  })
+
+  it('proceeds when a fresh tombstone records a DEAD pid (crashed installer)', () => {
+    const configPath = join(tmpDir, 'update-notifier-cache.json')
+    // A pid that is guaranteed not to be running. POSIX pids never reach the
+    // kernel max here, so 0x7fffffff (2147483647) probes as ESRCH → not alive.
+    const deadPid = 2_147_483_647
+    expect(isProcessAlive(deadPid)).toStrictEqual(false)
+    // Fresh timestamp (< LOCKOUT_MS old): the OLD age-only check would treat
+    // this as a live lockout and skip the spawn. The liveness check must
+    // override that, since no install is actually running.
+    writeFileSync(
+      configPath,
+      JSON.stringify({ autoInstallInProgress: { pid: deadPid, ts: Date.now() } }),
+    )
+
+    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', 'webpresso'] })
+
+    expect(result.spawned).toStrictEqual(true)
+    expect(spawnMock).toHaveBeenCalledOnce()
   })
 
   it('proceeds when the tombstone is older than LOCKOUT_MS', () => {

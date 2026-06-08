@@ -71,7 +71,7 @@ export function scheduleDeferredInstall(plan: InstallPlan): ScheduleResult {
     }
 
     const existing = readTombstone(configPath)
-    if (existing !== null && isTombstoneFresh(existing, Date.now())) {
+    if (existing !== null && isTombstoneActive(existing, Date.now())) {
       return {
         spawned: false,
         reason: `recent install in progress (pid=${existing.autoInstallInProgress.pid})`,
@@ -131,6 +131,69 @@ export function clearInstallTombstone(): void {
  */
 export function isTombstoneFresh(tombstone: Tombstone, now: number): boolean {
   return now - tombstone.autoInstallInProgress.ts < LOCKOUT_MS
+}
+
+/**
+ * Whether a process with the given pid is currently alive on this host.
+ *
+ * `process.kill(pid, 0)` sends no signal but performs the same existence /
+ * permission checks the kernel would for a real signal:
+ *
+ *   - success            → the process exists and we may signal it → alive
+ *   - throws `EPERM`     → the process exists but is owned by another user
+ *                          (we lack permission to signal it) → alive
+ *   - throws `ESRCH`     → no such process → not alive
+ *
+ * Any other error (or a non-positive / non-finite pid) is treated as
+ * "cannot prove dead" → alive, so the time-based guard stays in control and
+ * we never tear down a real in-progress install on an unexpected errno.
+ *
+ * Exported for testability.
+ */
+export function isProcessAlive(pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 0) return false
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error: unknown) {
+    if (error instanceof Error && 'code' in error) {
+      const code = (error as { code?: unknown }).code
+      if (code === 'ESRCH') return false
+      if (code === 'EPERM') return true
+    }
+    // Unknown errno — fail safe to "alive" so the age guard remains in charge.
+    return true
+  }
+}
+
+/**
+ * Whether the given tombstone represents an install that is genuinely still
+ * in progress, and should therefore block a new spawn.
+ *
+ * A tombstone is only an active lockout when BOTH hold:
+ *
+ *   1. its recorded `pid` is still alive on this host, AND
+ *   2. it is within the lockout window (`isTombstoneFresh`).
+ *
+ * The liveness check is the primary guard: if the recorded process is gone
+ * (SIGKILL / crash before `clearInstallTombstone`), the tombstone is treated
+ * as stale regardless of its age, so a dead installer never blocks installs
+ * globally for the full lockout window. The age check remains a secondary
+ * guard for the rare case where the OS recycled the pid onto an unrelated
+ * live process — there, age bounds how long we honour an ambiguous match.
+ *
+ * `isAlive` is injectable for deterministic testing; it defaults to the real
+ * `process.kill(pid, 0)` liveness probe.
+ *
+ * Exported for testability.
+ */
+export function isTombstoneActive(
+  tombstone: Tombstone,
+  now: number,
+  isAlive: (pid: number) => boolean = isProcessAlive,
+): boolean {
+  if (!isAlive(tombstone.autoInstallInProgress.pid)) return false
+  return isTombstoneFresh(tombstone, now)
 }
 
 /**
