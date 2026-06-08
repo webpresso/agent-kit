@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
@@ -17,7 +17,26 @@ describe('open-source-licenses audit', () => {
 
     expect(result.ok).toBe(true)
     expect(result.violations).toEqual([])
-  }, 60_000)
+  })
+
+  test('is hermetic: a leftover prepack backup lock does not poison the audit', () => {
+    // The packed-surface check used to run `npm pack`, whose prepack hook
+    // (`preparePackedManifest`) throws "Packed-manifest backup already exists"
+    // when `.package.json.prepack.backup` is present, then rewrites the live
+    // package.json in place. So a backup left behind by an interrupted/parallel
+    // pack made the audit report `ok: false`. The hermetic computation must
+    // ignore that lock entirely.
+    const backupPath = join(repoRoot, '.package.json.prepack.backup')
+    const preexisting = existsSync(backupPath)
+    if (!preexisting) writeFileSync(backupPath, '{}\n')
+    try {
+      const result = auditOpenSourceLicenses(repoRoot)
+      expect(result.ok).toBe(true)
+      expect(result.violations).toEqual([])
+    } finally {
+      if (!preexisting) rmSync(backupPath, { force: true })
+    }
+  })
 
   test('flags missing root LICENSE and notices files', () => {
     const root = mkdtempSync(join(tmpdir(), 'webpresso-open-source-licenses-'))
