@@ -19,9 +19,12 @@ import {
   restorePackedManifest,
 } from './package-manifest.js'
 
+// Repo root anchored via import.meta.dirname so the test is cwd-independent.
+const repoRoot = join(import.meta.dirname, '..', '..')
+
 describe('createPackedManifest', () => {
   it('keeps transient prepack backup artifacts gitignored', () => {
-    const gitignore = readFileSync(join(process.cwd(), '.gitignore'), 'utf8')
+    const gitignore = readFileSync(join(repoRoot, '.gitignore'), 'utf8')
 
     expect(gitignore).toContain('.package.json.prepack.backup')
     expect(gitignore).toContain('.dist-prepack-backup/')

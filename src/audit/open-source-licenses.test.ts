@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
@@ -9,6 +9,21 @@ const repoRoot = join(import.meta.dirname, '..', '..')
 
 function writeJson(path: string, value: unknown) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`)
+}
+
+/**
+ * Copy the minimal set of files that auditOpenSourceLicenses needs into a
+ * tmpdir so the test never mutates the live working tree.
+ */
+function makeAuditFixture(): string {
+  const root = mkdtempSync(join(tmpdir(), 'webpresso-oss-license-fixture-'))
+  for (const file of ['LICENSE', 'THIRD-PARTY-NOTICES.md', 'package.json', 'pnpm-workspace.yaml']) {
+    cpSync(join(repoRoot, file), join(root, file))
+  }
+  cpSync(join(repoRoot, 'catalog', 'agent', 'skills'), join(root, 'catalog', 'agent', 'skills'), {
+    recursive: true,
+  })
+  return root
 }
 
 describe('open-source-licenses audit', () => {
@@ -26,15 +41,17 @@ describe('open-source-licenses audit', () => {
     // package.json in place. So a backup left behind by an interrupted/parallel
     // pack made the audit report `ok: false`. The hermetic computation must
     // ignore that lock entirely.
-    const backupPath = join(repoRoot, '.package.json.prepack.backup')
-    const preexisting = existsSync(backupPath)
-    if (!preexisting) writeFileSync(backupPath, '{}\n')
+    //
+    // The fixture is a tmpdir copy of the minimal files the audit needs, so
+    // the backup lock is never written into the live repo working tree.
+    const root = makeAuditFixture()
     try {
-      const result = auditOpenSourceLicenses(repoRoot)
+      writeFileSync(join(root, '.package.json.prepack.backup'), '{}\n')
+      const result = auditOpenSourceLicenses(root)
       expect(result.ok).toBe(true)
       expect(result.violations).toEqual([])
     } finally {
-      if (!preexisting) rmSync(backupPath, { force: true })
+      rmSync(root, { force: true, recursive: true })
     }
   })
 
