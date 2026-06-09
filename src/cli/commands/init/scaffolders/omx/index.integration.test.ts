@@ -35,6 +35,17 @@ function makeOmxOnlyMockSpawn(): Parameters<typeof ensureOmx>[0]['spawn'] {
   }) as Parameters<typeof ensureOmx>[0]['spawn']
 }
 
+/**
+ * Create an isolated Codex config in its own tmpdir and return its path, so
+ * ensureOmx reads/writes that instead of the developer's real ~/.codex.
+ */
+function makeIsolatedCodexConfig(): string {
+  const codexHome = mkdtempSync(join(tmpdir(), 'wp-omx-codex-home-'))
+  const configPath = join(codexHome, 'config.toml')
+  writeFileSync(configPath, 'model = "gpt-5"\n', 'utf8')
+  return configPath
+}
+
 describe('ensureOmx project-scope cleanup integration', () => {
   it('removes tracked project-scoped OMX files when migrating project scope to user scope', () => {
     const repoRoot = mkdtempSync(join(tmpdir(), 'wp-omx-project-cleanup-'))
@@ -46,9 +57,16 @@ describe('ensureOmx project-scope cleanup integration', () => {
     git(repoRoot, ['init'])
     git(repoRoot, ['add', '-f', '.codex/config.toml', '.omx/setup-scope.json'])
 
+    // Isolate the Codex config to a dedicated tmpdir; without this, ensureOmx
+    // defaults to the real ~/.codex/config.toml and mutates the developer's
+    // global Codex hooks file, making `codexGlobalHooks.repaired` flip across
+    // runs/parallel workers (a non-hermetic flake).
+    const configPath = makeIsolatedCodexConfig()
+
     const result = ensureOmx({
       repoRoot,
       options: { overwrite: false, dryRun: false },
+      configPath,
       spawn: makeOmxOnlyMockSpawn(),
     })
 
@@ -76,6 +94,7 @@ describe('ensureOmx project-scope cleanup integration', () => {
       repoRoot,
       options: { overwrite: false, dryRun: false },
       scope: 'project',
+      configPath: makeIsolatedCodexConfig(),
       spawn: makeOmxOnlyMockSpawn(),
     })
 
