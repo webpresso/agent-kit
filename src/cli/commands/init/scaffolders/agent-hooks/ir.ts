@@ -82,3 +82,12 @@ export const WP_HOOK_SPECS: readonly HookSpec[] = [
 export const MANAGED_HOOK_EVENT_NAMES = [
   ...new Set(WP_HOOK_SPECS.map((spec) => spec.event)),
 ] as readonly (typeof HOOK_EVENT_NAMES)[number][]
+
+/**
+ * The managed wp-* hook bin names, derived from WP_HOOK_SPECS. Single source of
+ * truth for the installed-launcher, codex-ownership, and claude-emit bin lists:
+ * derive from this, never re-list, so adding a wp-* hook spec cannot silently
+ * drift one consumer (e.g. a hook that emits a launcher but is missed by codex
+ * ownership detection).
+ */
+export const WP_HOOK_BIN_NAMES: readonly string[] = WP_HOOK_SPECS.map((spec) => spec.bin)

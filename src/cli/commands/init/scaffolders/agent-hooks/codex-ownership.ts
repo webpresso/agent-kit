@@ -1,22 +1,16 @@
 import { normalize } from 'node:path'
 
 import type { CommandHookMetadata } from '#codex/app-server/types.js'
+import { WP_HOOK_BIN_NAMES } from './ir.js'
 import {
   DIRECT_NODE_MODULES_BIN_PATTERN,
   GUARDED_NODE_MODULES_BIN_PATTERN,
   stripSingleShellQuotePair,
 } from './shell-identity.js'
 
-export const KNOWN_WEBPRESSO_CODEX_BINS = [
-  'wp-sessionstart-routing',
-  'wp-check-dev-link',
-  'wp-pretool-guard',
-  'wp-post-tool',
-  'wp-guard-switch',
-  'wp-stop-qa',
-] as const
-
-type KnownWebpressoCodexBin = (typeof KNOWN_WEBPRESSO_CODEX_BINS)[number]
+// Derived from the WP_HOOK_BIN_NAMES single source of truth (ir.ts) so codex
+// ownership detection cannot drift from the emitted/installed wp-* hook set.
+export const KNOWN_WEBPRESSO_CODEX_BINS = WP_HOOK_BIN_NAMES
 
 const KNOWN_WEBPRESSO_CODEX_BIN_SET = new Set<string>(KNOWN_WEBPRESSO_CODEX_BINS)
 // `.codex/managed-hooks`-only launcher forms (narrower than the cross-vendor
@@ -64,7 +58,7 @@ function isExpectedSourcePath(sourcePath: string, expectedSourcePaths: readonly 
   )
 }
 
-function isKnownWebpressoCodexBin(binName: string): binName is KnownWebpressoCodexBin {
+function isKnownWebpressoCodexBin(binName: string): boolean {
   return KNOWN_WEBPRESSO_CODEX_BIN_SET.has(binName)
 }
 

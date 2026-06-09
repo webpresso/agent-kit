@@ -54,6 +54,7 @@ import {
   type HooksMap,
   type MatcherSet,
   HOOK_EVENT_NAMES,
+  WP_HOOK_BIN_NAMES,
   WP_HOOK_SPECS,
 } from './ir.js'
 import { ensureGroup, mergeAgentKitGroups } from './merge.js'
@@ -118,22 +119,12 @@ const CODEX_BIN = (repoRoot: string) => (name: string) => {
 // MatcherSet is re-exported from ./ir.js (export type above)
 // ensureGroup, mergeAgentKitGroups are imported from ./merge.js
 
-const WEBPRESSO_HOOK_BIN_NAMES = new Set([
-  'wp-sessionstart-routing',
-  'wp-check-dev-link',
-  'wp-pretool-guard',
-  'wp-post-tool',
-  'wp-guard-switch',
-  'wp-stop-qa',
-])
-const LEGACY_WEBPRESSO_HOOK_BIN_NAMES = new Set([
-  'ak-sessionstart-routing',
-  'ak-check-dev-link',
-  'ak-pretool-guard',
-  'ak-post-tool',
-  'ak-guard-switch',
-  'ak-stop-qa',
-])
+// Derived from the WP_HOOK_BIN_NAMES single source of truth (ir.ts). The legacy
+// set is the same bins under the retired `ak-` prefix, pruned on setup.
+const WEBPRESSO_HOOK_BIN_NAMES = new Set(WP_HOOK_BIN_NAMES)
+const LEGACY_WEBPRESSO_HOOK_BIN_NAMES = new Set(
+  WP_HOOK_BIN_NAMES.map((bin) => bin.replace(/^wp-/u, 'ak-')),
+)
 
 type WebpressoHookBinClassification =
   | { kind: 'canonical'; binName: string }
