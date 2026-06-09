@@ -136,6 +136,21 @@ importers:
       '@stryker-mutator/vitest-runner':
         specifier: ^9.6.1
         version: 9.6.1(@stryker-mutator/core@9.6.1(@types/node@25.9.1))(vitest@4.1.7(@types/node@25.9.1)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(tsx@4.22.4)(yaml@2.9.0)))
+      '@webpresso/agent-kit-runtime-darwin-arm64':
+        specifier: 0.29.3
+        version: 0.29.3
+      '@webpresso/agent-kit-runtime-darwin-x64':
+        specifier: 0.29.3
+        version: 0.29.3
+      '@webpresso/agent-kit-runtime-linux-arm64':
+        specifier: 0.29.3
+        version: 0.29.3
+      '@webpresso/agent-kit-runtime-linux-x64':
+        specifier: 0.29.3
+        version: 0.29.3
+      '@webpresso/agent-kit-runtime-windows-x64':
+        specifier: 0.29.3
+        version: 0.29.3
       wrangler:
         specifier: ^4.50.0
         version: 4.95.0
@@ -2159,6 +2174,36 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
+
+  '@webpresso/agent-kit-runtime-darwin-arm64@0.29.3':
+    resolution: {integrity: sha512-k/K7UVxInM/THHjR0iW3j/wwf16ZC6Pfi5tGqeyDpl8mFgWb+53jBB5kn7O9RCbxnHhPFdAcvda883XTiC947A==}
+    cpu: [arm64]
+    os: [darwin]
+    hasBin: true
+
+  '@webpresso/agent-kit-runtime-darwin-x64@0.29.3':
+    resolution: {integrity: sha512-pbLozdgd232opb4bDsfSFT/FwbL4l15gLVDzJBTJDg9Ze2bwvhI8cNbKAsAfZe7tXTA3PpsrLV5m+FdPTHzRJA==}
+    cpu: [x64]
+    os: [darwin]
+    hasBin: true
+
+  '@webpresso/agent-kit-runtime-linux-arm64@0.29.3':
+    resolution: {integrity: sha512-sUE4PtVIuYTmSTUyor/e57VOpNspqNO5NgaoTDD7Tw3qwJan34PaAkwGrLqLqg41bBfHXvqccIRkSJu6x4O4/g==}
+    cpu: [arm64]
+    os: [linux]
+    hasBin: true
+
+  '@webpresso/agent-kit-runtime-linux-x64@0.29.3':
+    resolution: {integrity: sha512-QdQrZR3JNEsz8YlELf+too14BV1H9n7/JJeZLpaws6DKW04hoq6TFEJQcwlZv1wBU1tW16e6zr0vzgRnwbd8cg==}
+    cpu: [x64]
+    os: [linux]
+    hasBin: true
+
+  '@webpresso/agent-kit-runtime-windows-x64@0.29.3':
+    resolution: {integrity: sha512-6PnJIgGvlzzCWSrL1j3h7obMQ3iPJoGeXiXPXvBZeHBvY5CO5Blu0jf0hdoHSCi7dv6uAvF5MA34kjcuJHTU7Q==}
+    cpu: [x64]
+    os: [win32]
+    hasBin: true
 
   abbrev@2.0.0:
     resolution: {integrity: sha512-6/mh1E2u2YgEsCHdY0Yx5oW+61gZU+1vXaoiHHrpKeuRNNgFvS+/jrwHiQhB5apAf5oB7UB7E19ol2R2LKH8hQ==}
@@ -6548,6 +6593,21 @@ snapshots:
     optional: true
 
   '@voidzero-dev/vite-plus-win32-x64-msvc@0.1.22':
+    optional: true
+
+  '@webpresso/agent-kit-runtime-darwin-arm64@0.29.3':
+    optional: true
+
+  '@webpresso/agent-kit-runtime-darwin-x64@0.29.3':
+    optional: true
+
+  '@webpresso/agent-kit-runtime-linux-arm64@0.29.3':
+    optional: true
+
+  '@webpresso/agent-kit-runtime-linux-x64@0.29.3':
+    optional: true
+
+  '@webpresso/agent-kit-runtime-windows-x64@0.29.3':
     optional: true
 
   abbrev@2.0.0: {}
