@@ -69,6 +69,14 @@ export const COMMAND_LANE_TABLE = {
   },
 }
 
+export function formatCommandLaneSummary(table = COMMAND_LANE_TABLE) {
+  const labels = []
+  if (table.runtimeRequired) labels.push(RUNTIME_LANE)
+  if (table.phase2Runtime) labels.push(PHASE2_RUNTIME_LANE)
+  if (table.jsBunHoldback) labels.push('JS/Bun holdback')
+  return `${labels.slice(0, -1).join(', ')}, and ${labels.at(-1)} lanes`
+}
+
 const HOOKS_OPTIONS_WITH_VALUE = new Set(['--hosts', '--host', '--vendor', '--tool'])
 
 function normalizeCommand(value) {
@@ -110,6 +118,11 @@ export function getDirectBinRuntimeArgs(binName) {
 
 export function isRuntimeRequiredWpInvocation(forwardedArgs = []) {
   return getWpCommandLane(forwardedArgs) === RUNTIME_LANE
+}
+
+export function isMigratedRuntimeWpInvocation(forwardedArgs = []) {
+  const lane = getWpCommandLane(forwardedArgs)
+  return lane === RUNTIME_LANE || lane === PHASE2_RUNTIME_LANE
 }
 
 export function isRuntimeRequiredDirectBin(binName) {

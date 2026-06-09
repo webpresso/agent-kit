@@ -1286,7 +1286,9 @@ describe('hooks/doctor', () => {
       expect(result.ok).toBe(true)
       expect(result.detail).toContain('contract=js-selector-runtime-lane')
       expect(result.detail).toContain('expected=bin/wp')
-      expect(result.detail).toContain('JS selector for runtime-required and JS/Bun holdback lanes')
+      expect(result.detail).toContain(
+        'JS selector for runtime-required, phase2-runtime, and JS/Bun holdback lanes',
+      )
     })
   })
 

@@ -7,8 +7,8 @@ import { fileURLToPath } from 'node:url'
 
 import {
   getDirectBinRuntimeArgs,
+  isMigratedRuntimeWpInvocation,
   isRuntimeRequiredDirectBin,
-  isRuntimeRequiredWpInvocation,
 } from './runtime-lanes.js'
 
 export const BIN_ENTRYPOINTS = {
@@ -223,13 +223,13 @@ function buildRuntimeLaunchPlan({
 }) {
   const selectorArgs =
     binName === 'wp'
-      ? isRuntimeRequiredWpInvocation(forwardedArgs) || forceCompiledRuntime
+      ? isMigratedRuntimeWpInvocation(forwardedArgs) || forceCompiledRuntime
         ? []
         : null
       : getDirectBinRuntimeArgs(binName)
   if (!selectorArgs) return null
   if (binName === 'wp') {
-    if (!isRuntimeRequiredWpInvocation(forwardedArgs) && !forceCompiledRuntime) return null
+    if (!isMigratedRuntimeWpInvocation(forwardedArgs) && !forceCompiledRuntime) return null
   }
 
   const manifest = runtimeManifest ?? readRuntimeManifest(repoRoot)
@@ -316,7 +316,7 @@ export function buildLaunchPlan({
   const hasSource = sourceExists ?? existsSync(sourceEntrypoint)
   const runtimeRequired =
     binName === 'wp'
-      ? isRuntimeRequiredWpInvocation(forwardedArgs)
+      ? isMigratedRuntimeWpInvocation(forwardedArgs)
       : isRuntimeRequiredDirectBin(binName)
   const runtimePlan = buildRuntimeLaunchPlan({
     binName,
