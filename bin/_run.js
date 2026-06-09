@@ -5,6 +5,12 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { basename, dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import {
+  getDirectBinRuntimeArgs,
+  isRuntimeRequiredDirectBin,
+  isRuntimeRequiredWpInvocation,
+} from './runtime-lanes.js'
+
 export const BIN_ENTRYPOINTS = {
   wp: 'src/cli/cli.ts',
   'wp-pretool-guard': 'src/hooks/pretool-guard/index.ts',
@@ -31,17 +37,6 @@ const LATENCY_SENSITIVE_BUILT_BINS = new Set([
   'wp-sessionstart-routing',
   'wp-check-dev-link',
 ])
-
-const RUNTIME_BIN_ARGS = {
-  wp: [],
-  'wp-pretool-guard': ['hook', 'pretool-guard'],
-  'wp-post-tool': ['hook', 'post-tool'],
-  'wp-stop-qa': ['hook', 'stop-qa'],
-  'wp-guard-switch': ['hook', 'guard-switch'],
-  'wp-sessionstart-routing': ['hook', 'sessionstart-routing'],
-}
-
-const RUNTIME_WP_SUBCOMMANDS = new Set(['mcp'])
 
 function resolvePackageRoot() {
   return join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -88,6 +83,19 @@ function runtimePackageDirName(packageName) {
   return String(packageName).split('/').at(-1)
 }
 
+function readPackageOptionalDependencies(repoRoot) {
+  const packageJsonPath = join(repoRoot, 'package.json')
+  if (!existsSync(packageJsonPath)) return {}
+  try {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
+    return packageJson?.optionalDependencies && typeof packageJson.optionalDependencies === 'object'
+      ? packageJson.optionalDependencies
+      : {}
+  } catch {
+    return {}
+  }
+}
+
 function resolveRuntimeBinaryCandidates(repoRoot, manifest, target) {
   const filename = runtimeBinaryFilename(manifest, target)
   const packageDir = runtimePackageDirName(target.packageName)
@@ -97,6 +105,25 @@ function resolveRuntimeBinaryCandidates(repoRoot, manifest, target) {
     join(repoRoot, '..', packageDir, 'bin', filename),
     join(repoRoot, 'node_modules', '@webpresso', packageDir, 'bin', filename),
   ]
+}
+
+function formatMissingRuntimeDiagnostic({ binName, repoRoot, manifest, target, candidates }) {
+  const packageDir = runtimePackageDirName(target.packageName)
+  const packageRoot = join(repoRoot, 'node_modules', '@webpresso', packageDir)
+  const optionalDependencies = readPackageOptionalDependencies(repoRoot)
+  const optionalDependencyValue = optionalDependencies[target.packageName]
+  const optionalDependencyDetail = optionalDependencyValue
+    ? `optional dependency wiring declares ${target.packageName}@${optionalDependencyValue}.`
+    : `optional dependency wiring for ${target.packageName} is missing from package.json.`
+
+  return [
+    `Unable to launch ${binName}: required platform runtime ${target.packageName} (${target.id}) is unavailable.`,
+    `Runtime package absent or omitted: ${packageRoot}.`,
+    `Runtime binary missing or corrupt: expected ${runtimeBinaryFilename(manifest, target)} in one of ${candidates.join(', ')}.`,
+    optionalDependencyDetail,
+    'This install is unsupported for migrated runtime-lane commands if optional dependencies were omitted (for example npm/pnpm --omit=optional).',
+    'Run `wp hooks doctor` to diagnose the install, reinstall without omitting optional dependencies, or use a supported platform/arch target.',
+  ].join(' ')
 }
 
 export function resolvePinnedNodeVersion(repoRoot = resolvePackageRoot()) {
@@ -192,22 +219,38 @@ function buildRuntimeLaunchPlan({
   runtimeBinaryExists,
   runtimeBinaryPath,
   forceCompiledRuntime,
+  allowRuntimeFallback,
 }) {
-  const selectorArgs = RUNTIME_BIN_ARGS[binName]
+  const selectorArgs =
+    binName === 'wp'
+      ? isRuntimeRequiredWpInvocation(forwardedArgs) || forceCompiledRuntime
+        ? []
+        : null
+      : getDirectBinRuntimeArgs(binName)
   if (!selectorArgs) return null
   if (binName === 'wp') {
-    const subcommand = forwardedArgs[0]
-    if (!RUNTIME_WP_SUBCOMMANDS.has(subcommand) && !forceCompiledRuntime) return null
+    if (!isRuntimeRequiredWpInvocation(forwardedArgs) && !forceCompiledRuntime) return null
   }
 
   const manifest = runtimeManifest ?? readRuntimeManifest(repoRoot)
-  if (!manifest) return null
+  if (!manifest) {
+    if (allowRuntimeFallback) return null
+    throw new Error(
+      [
+        `Unable to launch ${binName}: required compiled runtime manifest is missing at bin/runtime-manifest.json.`,
+        'This install is unsupported for migrated runtime-lane commands; reinstall @webpresso/agent-kit without omitting package files.',
+      ].join(' '),
+    )
+  }
 
   const target = resolveRuntimeTarget(manifest, platform, arch)
   if (!target) {
-    if (!forceCompiledRuntime) return null
+    if (allowRuntimeFallback) return null
     throw new Error(
-      `Unable to launch ${binName}: no compiled runtime target for ${platform}/${arch}.`,
+      [
+        `Unable to launch ${binName}: unsupported platform/arch target ${platform}/${arch}.`,
+        'No platform runtime package is declared for this host in bin/runtime-manifest.json.',
+      ].join(' '),
     )
   }
 
@@ -219,14 +262,8 @@ function buildRuntimeLaunchPlan({
   )
 
   if (!binaryPath) {
-    if (!forceCompiledRuntime) return null
-    throw new Error(
-      [
-        `Unable to launch ${binName}: compiled runtime target ${target.id} is missing.`,
-        `Looked for ${candidates.join(', ')}.`,
-        'Run `wp hooks doctor` to diagnose the install, or rebuild/reinstall the runtime package.',
-      ].join(' '),
-    )
+    if (allowRuntimeFallback) return null
+    throw new Error(formatMissingRuntimeDiagnostic({ binName, repoRoot, manifest, target, candidates }))
   }
 
   return {
@@ -275,6 +312,12 @@ export function buildLaunchPlan({
     throw new Error(`Unknown webpresso bin: ${binName}`)
   }
 
+  const sourceEntrypoint = join(repoRoot, sourceRelativePath)
+  const hasSource = sourceExists ?? existsSync(sourceEntrypoint)
+  const runtimeRequired =
+    binName === 'wp'
+      ? isRuntimeRequiredWpInvocation(forwardedArgs)
+      : isRuntimeRequiredDirectBin(binName)
   const runtimePlan = buildRuntimeLaunchPlan({
     binName,
     repoRoot,
@@ -285,15 +328,14 @@ export function buildLaunchPlan({
     runtimeBinaryExists,
     runtimeBinaryPath,
     forceCompiledRuntime,
+    allowRuntimeFallback: !forceCompiledRuntime && hasSource && runtimeRequired,
   })
   if (runtimePlan) return runtimePlan
 
   const builtRelativePath = sourceToBuiltRelativePath(sourceRelativePath)
   const builtEntrypoint = join(repoRoot, builtRelativePath)
-  const sourceEntrypoint = join(repoRoot, sourceRelativePath)
 
   const hasBuilt = builtExists ?? existsSync(builtEntrypoint)
-  const hasSource = sourceExists ?? existsSync(sourceEntrypoint)
   const resolvedBuiltMtimeMs =
     builtMtimeMs ??
     (builtExists === undefined && hasBuilt ? statSync(builtEntrypoint).mtimeMs : null)

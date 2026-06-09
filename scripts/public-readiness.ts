@@ -283,11 +283,11 @@ if (import.meta.main) {
   results.push(
     stagedLauncherStatus.ok
       ? pass(
-          'root-wp-dispatcher',
+          'root-wp-selector',
           `${formatRootLauncherContractSuccess('bin/wp')} (contract=${rootContractMode})`,
         )
       : fail(
-          'root-wp-dispatcher',
+          'root-wp-selector',
           `${formatRootLauncherContractFailure(stagedLauncherStatus, 'bin/wp')} (contract=${rootContractMode})`,
         ),
   )

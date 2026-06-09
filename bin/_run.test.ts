@@ -22,6 +22,39 @@ describe('buildLaunchPlan', () => {
     })
   })
 
+  it('preserves source-checkout fallback for migrated runtime commands when runtime is unstaged', () => {
+    const plan = buildLaunchPlan({
+      binName: 'wp',
+      repoRoot: '/repo',
+      forwardedArgs: ['hooks', 'doctor', '--skip-mcp'],
+      platform: 'linux',
+      arch: 'x64',
+      runtimeManifest: {
+        binaryName: 'wp',
+        targets: [
+          {
+            id: 'linux-x64',
+            os: 'linux',
+            cpu: 'x64',
+            packageName: '@webpresso/agent-kit-runtime-linux-x64',
+          },
+        ],
+      },
+      runtimeBinaryExists: () => false,
+      builtExists: true,
+      sourceExists: true,
+      sourceNeedsSourceLaunch: true,
+      pinnedNodeVersion: null,
+      runtimeManager: null,
+    })
+
+    expect(plan).toMatchObject({
+      mode: 'source',
+      entrypoint: '/repo/src/cli/cli.ts',
+      args: ['/repo/src/cli/cli.ts', 'hooks', 'doctor', '--skip-mcp'],
+    })
+  })
+
   it('prefers wp source when a CLI source file has no built counterpart', () => {
     const plan = buildLaunchPlan({
       binName: 'wp',

@@ -9,6 +9,13 @@ import {
   resolveInvokedBinName,
   resolvePinnedNodeVersion,
 } from '../bin/_run.js'
+import {
+  COMMAND_LANE_TABLE,
+  JS_HOLDBACK_LANE,
+  PHASE2_RUNTIME_LANE,
+  RUNTIME_LANE,
+  getWpCommandLane,
+} from '../bin/runtime-lanes.js'
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -51,6 +58,37 @@ describe('bin launcher', () => {
       args: ['/repo/dist/esm/cli/cli.js', 'mcp'],
       entrypoint: '/repo/dist/esm/cli/cli.js',
     })
+  })
+
+  it('routes phase-1 wp runtime-lane commands through the compiled runtime when present', () => {
+    for (const forwardedArgs of [
+      ['mcp'],
+      ['hook', 'pretool-guard'],
+      ['hooks', 'doctor'],
+      ['hooks', '--skip-mcp'],
+      ['hooks', '--vendor', 'codex', 'status'],
+      ['hooks', 'dispatch', 'Stop', '--vendor', 'codex'],
+    ]) {
+      const plan = buildLaunchPlan({
+        binName: 'wp',
+        repoRoot: '/repo',
+        forwardedArgs,
+        platform: 'linux',
+        arch: 'x64',
+        runtimeManifest: RUNTIME_MANIFEST,
+        runtimeBinaryExists: (path) => path === '/repo/bin/runtime/linux-x64/wp',
+        builtExists: true,
+        sourceExists: true,
+        nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
+      })
+
+      expect(plan.mode).toBe('runtime')
+      expect(plan.runtime).toBe('/repo/bin/runtime/linux-x64/wp')
+      expect(plan.args).toEqual(forwardedArgs)
+    }
   })
 
   it('routes wp mcp through the compiled runtime when the host runtime package is present', () => {
@@ -98,6 +136,11 @@ describe('bin launcher', () => {
       args: ['/repo/dist/esm/cli/cli.js', 'setup', '--yes'],
       entrypoint: '/repo/dist/esm/cli/cli.js',
     })
+  })
+
+  it('keeps hooks holdback subcommands on JS/Bun rather than the runtime lane', () => {
+    expect(getWpCommandLane(['hooks', 'demo', 'PreToolUse'])).toBe(JS_HOLDBACK_LANE)
+    expect(getWpCommandLane(['hooks', 'upgrade', '--workspace'])).toBe(JS_HOLDBACK_LANE)
   })
 
   it('prefers staged compiled runtime artifacts for runtime-owned hook bins', () => {
@@ -191,7 +234,69 @@ describe('bin launcher', () => {
         pinnedNodeVersion: '24.16.0',
         runtimeManager: null,
       }),
-    ).toThrow(/no compiled runtime target for freebsd\/x64/)
+    ).toThrow(/unsupported platform\/arch target freebsd\/x64/)
+  })
+
+  it('hard-fails migrated runtime-lane commands in published installs when optional runtime is omitted', () => {
+    expect(() =>
+      buildLaunchPlan({
+        binName: 'wp',
+        repoRoot: '/repo',
+        forwardedArgs: ['hooks', 'status'],
+        platform: 'linux',
+        arch: 'x64',
+        runtimeManifest: RUNTIME_MANIFEST,
+        runtimeBinaryExists: () => false,
+        builtExists: true,
+        sourceExists: false,
+        nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
+      }),
+    ).toThrow(/--omit=optional/)
+  })
+
+  it('hard-fails runtime-owned direct hook bins in published installs when runtime is missing', () => {
+    expect(() =>
+      buildLaunchPlan({
+        binName: 'wp-pretool-guard',
+        repoRoot: '/repo',
+        forwardedArgs: [],
+        platform: 'linux',
+        arch: 'x64',
+        runtimeManifest: RUNTIME_MANIFEST,
+        runtimeBinaryExists: () => false,
+        builtExists: true,
+        sourceExists: false,
+        nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
+      }),
+    ).toThrow(/required platform runtime @webpresso\/agent-kit-runtime-linux-x64/)
+  })
+
+  it('classifies the canonical command-lane table', () => {
+    expect(COMMAND_LANE_TABLE.runtimeRequired.wpCommands).toContain('mcp')
+    expect(COMMAND_LANE_TABLE.runtimeRequired.wpCommands).toContain('hook')
+    expect(COMMAND_LANE_TABLE.runtimeRequired.hooksSubcommands).toEqual([
+      'doctor',
+      'status',
+      'dispatch',
+    ])
+    expect(COMMAND_LANE_TABLE.runtimeRequired.directBins).toEqual([
+      'wp-pretool-guard',
+      'wp-post-tool',
+      'wp-stop-qa',
+      'wp-guard-switch',
+      'wp-sessionstart-routing',
+      'wp-test-quality-check',
+      'wp-check-dev-link',
+    ])
+    expect(getWpCommandLane(['mcp'])).toBe(RUNTIME_LANE)
+    expect(getWpCommandLane(['test'])).toBe(PHASE2_RUNTIME_LANE)
+    expect(getWpCommandLane(['setup'])).toBe(JS_HOLDBACK_LANE)
   })
 
   it('prefers source for wp when the cli tree requires a source launch', () => {

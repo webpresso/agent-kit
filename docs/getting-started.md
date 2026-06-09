@@ -31,8 +31,11 @@ Your repo now has one shared agent contract across the supported coding-agent
 surfaces.
 
 The root launcher contract is a hard cut: the package `bin` entrypoint is
-`bin/wp`, `wp` resolves through that file, and there is no `bin/wp.js`
-compatibility shim to preserve or repair.
+`bin/wp`, `wp` resolves through that real executable JavaScript selector with a
+Node shebang, and there is no `bin/wp.js` compatibility shim to preserve or
+repair. Migrated runtime-lane commands require the installed platform runtime
+package; installing with optional dependencies omitted is an unsupported state
+for those commands.
 
 No private registry setup is required.
 
