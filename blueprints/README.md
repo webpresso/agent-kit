@@ -14,7 +14,7 @@ Each subdirectory represents a lifecycle state:
 | State | Count | Description |
 | ----- | ----: | ----------- |
 | `draft/` | 0 | early-stage sketches. Expect churn; move to `planned/` once scoped. |
-| `planned/` | 0 | committed-to specs, ready to pick up. |
+| `planned/` | 1 | committed-to specs, ready to pick up. |
 | `in-progress/` | 0 | actively being executed. At most 3 active blueprints per lane. |
 | `completed/` | 54 | execution finished and verified. Kept for reference. |
 | `parked/` | 9 | intentionally paused. Include a reason in the spec's frontmatter. |
@@ -59,6 +59,8 @@ _None currently._
 | Agent-kit single global native binary + MCP `-32000` fix | [`completed/2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md`](./completed/2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md) | Root package plus all five runtime packages are published at `0.29.3`; native launcher, MCP liveness, and `wp_*` tool routing are restored. |
 | Agent-kit thin-root package-surface release unblock | [`completed/2026-06-06-agent-kit-thin-root-package-surface-release-unblock.md`](./completed/2026-06-06-agent-kit-thin-root-package-surface-release-unblock.md) | Thin-root tarball policy is shipped; staged public-readiness passes and hosted publish no longer hits the old root tarball failure. |
 
-## Planned next-up (2026-06-08)
+## Planned next-up (2026-06-09)
 
-_None currently._
+| Blueprint | Path | Purpose |
+| --------- | ---- | ------- |
+| Reusable Cloudflare deploy workflows | [`planned/2026-06-09-reusable-cloudflare-deploy-workflows.md`](./planned/2026-06-09-reusable-cloudflare-deploy-workflows.md) | Shared reusable preview/production workflow shell in `agent-kit`, with downstream adoption in `ozby-dev`, `edge-matte`, and `ingest-lens` while keeping provider-specific deploy logic repo-local. |
