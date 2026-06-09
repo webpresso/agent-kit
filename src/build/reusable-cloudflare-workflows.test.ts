@@ -24,6 +24,8 @@ describe('reusable Cloudflare deploy workflows', () => {
       expect(workflow).toContain('.webpresso/secrets.config.json')
       expect(workflow).toContain('dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534')
       expect(workflow).toContain('infisical export --projectId="${INFISICAL_PROJECT_ID}"')
+      expect(workflow).toContain('npm install --global @infisical/cli@0.43.91')
+      expect(workflow).not.toContain('@infisical/cli@latest')
     }
   })
 

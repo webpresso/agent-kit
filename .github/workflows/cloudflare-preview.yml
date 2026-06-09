@@ -208,7 +208,7 @@ jobs:
             echo "Infisical bootstrap requires workflow_call input secret_env_profile." >&2
             exit 1
           fi
-          npm install --global @infisical/cli@latest
+          npm install --global @infisical/cli@0.43.91
           tmp_json="$(mktemp)"
           infisical export --projectId="${INFISICAL_PROJECT_ID}" --env="${INFISICAL_ENV_SLUG}" --format=json > "${tmp_json}"
           node - "${tmp_json}" <<'NODE' >> "$GITHUB_ENV"
