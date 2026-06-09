@@ -718,6 +718,11 @@
     "@stryker-mutator/vitest-runner": "^9.6.1",
     "@stryker-mutator/typescript-checker": "^9.6.1",
     "@playwright/test": "^1.55.0",
-    "wrangler": "^4.50.0"
+    "wrangler": "^4.50.0",
+    "@webpresso/agent-kit-runtime-darwin-arm64": "0.29.3",
+    "@webpresso/agent-kit-runtime-darwin-x64": "0.29.3",
+    "@webpresso/agent-kit-runtime-linux-x64": "0.29.3",
+    "@webpresso/agent-kit-runtime-linux-arm64": "0.29.3",
+    "@webpresso/agent-kit-runtime-windows-x64": "0.29.3"
   }
 }
