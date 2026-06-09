@@ -304,12 +304,19 @@ describe('package-surface audit', () => {
       private: false,
       files: ['bin/runtime-manifest.json'],
       bin: { wp: 'bin/wp' },
+      optionalDependencies: { '@webpresso/agent-kit-runtime-darwin-arm64': '0.28.0' },
     })
     writeFileSync(
       join(root, 'bin', 'runtime-manifest.json'),
       `${JSON.stringify({
         binaryName: 'wp',
-        targets: [{ id: 'darwin-arm64', os: 'darwin' }],
+        targets: [
+          {
+            id: 'darwin-arm64',
+            os: 'darwin',
+            packageName: '@webpresso/agent-kit-runtime-darwin-arm64',
+          },
+        ],
       })}\n`,
     )
 
@@ -334,12 +341,19 @@ describe('package-surface audit', () => {
       private: false,
       files: ['bin'],
       bin: { wp: 'bin/wp' },
+      optionalDependencies: { '@webpresso/agent-kit-runtime-darwin-arm64': '0.28.0' },
     })
     writeFileSync(
       join(root, 'bin', 'runtime-manifest.json'),
       `${JSON.stringify({
         binaryName: 'wp',
-        targets: [{ id: 'darwin-arm64', os: 'darwin' }],
+        targets: [
+          {
+            id: 'darwin-arm64',
+            os: 'darwin',
+            packageName: '@webpresso/agent-kit-runtime-darwin-arm64',
+          },
+        ],
       })}\n`,
     )
     writeFileSync(join(root, 'bin', 'runtime', 'darwin-arm64', 'wp'), 'native runtime\n')
@@ -371,12 +385,19 @@ describe('package-surface audit', () => {
       private: false,
       files: ['bin/runtime-manifest.json', 'bin/wp', 'dist/runtime-packages'],
       bin: { wp: 'bin/wp' },
+      optionalDependencies: { '@webpresso/agent-kit-runtime-darwin-arm64': '0.28.0' },
     })
     writeFileSync(
       join(root, 'bin', 'runtime-manifest.json'),
       `${JSON.stringify({
         binaryName: 'wp',
-        targets: [{ id: 'darwin-arm64', os: 'darwin' }],
+        targets: [
+          {
+            id: 'darwin-arm64',
+            os: 'darwin',
+            packageName: '@webpresso/agent-kit-runtime-darwin-arm64',
+          },
+        ],
       })}\n`,
     )
     writeFileSync(join(root, 'bin', 'wp'), ROOT_WP_DISPATCHER)
@@ -411,12 +432,19 @@ describe('package-surface audit', () => {
       private: false,
       files: ['bin/runtime-manifest.json', 'bin/wp'],
       bin: { wp: 'bin/wp' },
+      optionalDependencies: { '@webpresso/agent-kit-runtime-darwin-arm64': '0.28.0' },
     })
     writeFileSync(
       join(root, 'bin', 'runtime-manifest.json'),
       `${JSON.stringify({
         binaryName: 'wp',
-        targets: [{ id: 'darwin-arm64', os: 'darwin' }],
+        targets: [
+          {
+            id: 'darwin-arm64',
+            os: 'darwin',
+            packageName: '@webpresso/agent-kit-runtime-darwin-arm64',
+          },
+        ],
       })}\n`,
     )
     writeFileSync(join(root, 'bin', 'wp'), ROOT_WP_DISPATCHER)
@@ -427,7 +455,7 @@ describe('package-surface audit', () => {
     expect(result.ok).toBe(true)
   })
 
-  test('fails when packed @webpresso/agent-kit root bin/wp is a native binary instead of the dispatcher', () => {
+  test('requires runtime-package optional-dependency wiring for manifest targets', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'bin'), { recursive: true })
     writeJson(join(root, 'package.json'), {
@@ -436,12 +464,59 @@ describe('package-surface audit', () => {
       private: false,
       files: ['bin/runtime-manifest.json', 'bin/wp'],
       bin: { wp: 'bin/wp' },
+      optionalDependencies: {},
     })
     writeFileSync(
       join(root, 'bin', 'runtime-manifest.json'),
       `${JSON.stringify({
         binaryName: 'wp',
-        targets: [{ id: 'linux-x64', os: 'linux' }],
+        targets: [
+          {
+            id: 'linux-x64',
+            os: 'linux',
+            packageName: '@webpresso/agent-kit-runtime-linux-x64',
+          },
+        ],
+      })}\n`,
+    )
+    writeFileSync(join(root, 'bin', 'wp'), ROOT_WP_DISPATCHER)
+    chmodSync(join(root, 'bin', 'wp'), 0o755)
+
+    const result = auditPackageSurface(root)
+
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations.some(
+        (violation) =>
+          violation.file === 'package.json' &&
+          violation.message.includes('Runtime optional dependency') &&
+          violation.message.includes('@webpresso/agent-kit-runtime-linux-x64'),
+      ),
+    ).toBe(true)
+  })
+
+  test('fails when packed @webpresso/agent-kit root bin/wp is a native binary instead of the selector', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'bin'), { recursive: true })
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/agent-kit',
+      version: '0.28.0',
+      private: false,
+      files: ['bin/runtime-manifest.json', 'bin/wp'],
+      bin: { wp: 'bin/wp' },
+      optionalDependencies: { '@webpresso/agent-kit-runtime-linux-x64': '0.28.0' },
+    })
+    writeFileSync(
+      join(root, 'bin', 'runtime-manifest.json'),
+      `${JSON.stringify({
+        binaryName: 'wp',
+        targets: [
+          {
+            id: 'linux-x64',
+            os: 'linux',
+            packageName: '@webpresso/agent-kit-runtime-linux-x64',
+          },
+        ],
       })}\n`,
     )
     writeFileSync(join(root, 'bin', 'wp'), Buffer.from([0x7f, 0x45, 0x4c, 0x46, 0]))
@@ -453,7 +528,7 @@ describe('package-surface audit', () => {
     expect(
       result.violations.some(
         (violation) =>
-          violation.file === 'bin/wp' && violation.message.includes('cross-platform JS dispatcher'),
+          violation.file === 'bin/wp' && violation.message.includes('cross-platform JS selector'),
       ),
     ).toBe(true)
   })

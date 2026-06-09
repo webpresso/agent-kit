@@ -1078,7 +1078,7 @@ describe('hooks/doctor', () => {
       expect(result.detail).not.toContain('timeout')
     })
 
-    it('fails when the target runtime binary is missing even if root bin/wp is the JS dispatcher', async () => {
+    it('fails when the target runtime binary is missing even if root bin/wp is the JS selector', async () => {
       const hostTargetId = `linux-${process.arch}`
       const runtimeManifestPath = join(repoRoot, 'bin', 'runtime-manifest.json')
       const stagedBinPath = join(repoRoot, 'bin', 'wp')
@@ -1213,7 +1213,7 @@ describe('hooks/doctor', () => {
       expect(result.detail).toContain('reason=target runtime binary missing')
     })
 
-    it('does not let the root JS dispatcher mask a stale node-launcher plugin manifest', async () => {
+    it('does not let the root JS selector mask a stale node-launcher plugin manifest', async () => {
       const hostTargetId = `linux-${process.arch}`
       const runtimeManifestPath = join(repoRoot, 'bin', 'runtime-manifest.json')
       const stagedBinPath = join(repoRoot, 'bin', 'wp')
@@ -1259,7 +1259,7 @@ describe('hooks/doctor', () => {
   })
 
   describe('checkRootLauncherContract', () => {
-    it('reports the explicit root launcher contract and JS-dispatcher boundary', async () => {
+    it('reports the explicit root launcher contract and JS-selector boundary', async () => {
       const launcherPath = join(repoRoot, 'bin', 'wp')
       const knownPaths = new Set([pkgJson, pluginJson, launcherPath])
 
@@ -1284,9 +1284,9 @@ describe('hooks/doctor', () => {
       const result = checkRootLauncherContract()
 
       expect(result.ok).toBe(true)
-      expect(result.detail).toContain('contract=js-dispatcher-externalized-runtime')
+      expect(result.detail).toContain('contract=js-selector-runtime-lane')
       expect(result.detail).toContain('expected=bin/wp')
-      expect(result.detail).toContain('plugin-owned native launch surfaces stay separate')
+      expect(result.detail).toContain('JS selector for runtime-required and JS/Bun holdback lanes')
     })
   })
 

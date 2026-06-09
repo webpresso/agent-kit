@@ -493,7 +493,7 @@ export function checkRootLauncherContract(): DoctorCheck {
     `contract=${rootContractMode}`,
     `expected=${expectedRootWpBinRelativePath}`,
     status.ok
-      ? 'root bin/wp is the JS dispatcher; plugin-owned native launch surfaces stay separate'
+      ? 'root bin/wp is the JS selector for runtime-required and JS/Bun holdback lanes'
       : `reason=${formatRootLauncherContractFailure(status, expectedRootWpBinRelativePath)}`,
   ].join(', ')
 

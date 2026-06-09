@@ -43,7 +43,7 @@ import {
   formatRootLauncherContractFailure,
   expectedRootWpBinRelativePath,
   rootContractMode,
-  rootWpDispatcherSource,
+  rootWpSelectorSource,
   validateRootLauncherContract,
 } from '#launcher/root-contract.js'
 
@@ -90,7 +90,7 @@ function repairRootWpLauncher(packageRoot: string): string {
   if (destinationStatus.ok) return destination
 
   mkdirSync(dirname(destination), { recursive: true })
-  writeFileSync(destination, rootWpDispatcherSource, 'utf8')
+  writeFileSync(destination, rootWpSelectorSource, 'utf8')
   chmodSync(destination, 0o755)
 
   const repairedStatus = validateRootLauncherContract(destination)
