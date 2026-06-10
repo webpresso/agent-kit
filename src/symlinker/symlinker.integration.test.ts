@@ -2,6 +2,7 @@ import {
   existsSync,
   lstatSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   readlinkSync,
   rmSync,
@@ -38,12 +39,9 @@ import {
 import { assertSymlinkResolves } from './test-utils/assert-symlink-resolves.js'
 
 function makeTempDir(): string {
-  const dir = join(
-    tmpdir(),
-    `workflow-symlinks-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-  )
-  mkdirSync(dir, { recursive: true })
-  return dir
+  // mkdtempSync creates an OS-guaranteed-unique directory atomically — no
+  // Date.now()/Math.random() collision window under parallel test files.
+  return mkdtempSync(join(tmpdir(), 'workflow-symlinks-test-'))
 }
 
 function writeFile(path: string, content = '# placeholder'): void {

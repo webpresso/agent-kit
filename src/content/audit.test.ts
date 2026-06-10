@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { auditContent } from './audit.js'
 
@@ -276,8 +276,9 @@ describe('auditContent', () => {
 
   it('respects custom staleReviewDays', () => {
     // 100 days ago: stale at 30, fresh at 200
-    const today = new Date()
-    const past = new Date(today.getTime() - 100 * 24 * 60 * 60 * 1000)
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'))
+    const past = new Date(new Date('2026-01-01T00:00:00.000Z').getTime() - 100 * 24 * 60 * 60 * 1000)
     const iso = past.toISOString().slice(0, 10)
     writeRule(join(fx.consumer, 'agent-rules'), 'r.md', validRuleFm('r', { last_reviewed: iso }))
     const stale = auditContent({
@@ -294,5 +295,6 @@ describe('auditContent', () => {
       staleReviewDays: 200,
     })
     expect(fresh.findings).toEqual([])
+    vi.useRealTimers()
   })
 })

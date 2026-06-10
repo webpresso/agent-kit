@@ -30,11 +30,11 @@ describe('hooks/doctor', () => {
         return false
       }
     }) as typeof existsSync)
-    mockLstatSync.mockReturnValue(
-      { isSymbolicLink: () => false, isFile: () => true, mode: 0o100755 } as ReturnType<
-        typeof lstatSync
-      >,
-    )
+    mockLstatSync.mockReturnValue({
+      isSymbolicLink: () => false,
+      isFile: () => true,
+      mode: 0o100755,
+    } as ReturnType<typeof lstatSync>)
   })
   afterEach(() => {
     vi.unstubAllEnvs()
@@ -998,7 +998,13 @@ describe('hooks/doctor', () => {
     it('reports native launch mode, target id, manifest path, and staged bin when runtime artifacts are present', async () => {
       const hostTargetId = `linux-${process.arch}`
       const runtimeTargetPath = join(repoRoot, 'bin', 'runtime', hostTargetId, 'wp')
-      const knownPaths = new Set([pkgJson, pluginJson, join(repoRoot, 'bin', 'runtime-manifest.json'), join(repoRoot, 'bin', 'wp'), runtimeTargetPath])
+      const knownPaths = new Set([
+        pkgJson,
+        pluginJson,
+        join(repoRoot, 'bin', 'runtime-manifest.json'),
+        join(repoRoot, 'bin', 'wp'),
+        runtimeTargetPath,
+      ])
 
       mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
         if (knownPaths.has(String(path))) return
@@ -1049,7 +1055,9 @@ describe('hooks/doctor', () => {
         if (String(path) === pluginJson) {
           return JSON.stringify({
             version: '0.28.0',
-            mcpServers: { webpresso: { command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/bin/wp.js', 'mcp'] } },
+            mcpServers: {
+              webpresso: { command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/bin/wp.js', 'mcp'] },
+            },
           })
         }
         if (String(path) === runtimeManifestPath) {
@@ -1070,7 +1078,7 @@ describe('hooks/doctor', () => {
       expect(result.detail).not.toContain('timeout')
     })
 
-    it('fails when the target runtime binary is missing even if root bin/wp is the JS dispatcher', async () => {
+    it('fails when the target runtime binary is missing even if root bin/wp is the JS selector', async () => {
       const hostTargetId = `linux-${process.arch}`
       const runtimeManifestPath = join(repoRoot, 'bin', 'runtime-manifest.json')
       const stagedBinPath = join(repoRoot, 'bin', 'wp')
@@ -1205,7 +1213,7 @@ describe('hooks/doctor', () => {
       expect(result.detail).toContain('reason=target runtime binary missing')
     })
 
-    it('does not let the root JS dispatcher mask a stale node-launcher plugin manifest', async () => {
+    it('does not let the root JS selector mask a stale node-launcher plugin manifest', async () => {
       const hostTargetId = `linux-${process.arch}`
       const runtimeManifestPath = join(repoRoot, 'bin', 'runtime-manifest.json')
       const stagedBinPath = join(repoRoot, 'bin', 'wp')
@@ -1223,7 +1231,9 @@ describe('hooks/doctor', () => {
         if (String(path) === pluginJson) {
           return JSON.stringify({
             version: '0.28.0',
-            mcpServers: { webpresso: { command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/bin/wp.js', 'mcp'] } },
+            mcpServers: {
+              webpresso: { command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/bin/wp.js', 'mcp'] },
+            },
           })
         }
         if (String(path) === runtimeManifestPath) {
@@ -1249,7 +1259,7 @@ describe('hooks/doctor', () => {
   })
 
   describe('checkRootLauncherContract', () => {
-    it('reports the explicit root launcher contract and JS-dispatcher boundary', async () => {
+    it('reports the explicit root launcher contract and JS-selector boundary', async () => {
       const launcherPath = join(repoRoot, 'bin', 'wp')
       const knownPaths = new Set([pkgJson, pluginJson, launcherPath])
 
@@ -1259,21 +1269,26 @@ describe('hooks/doctor', () => {
       }) as typeof accessSync)
       mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
         if (String(path) === pkgJson) return JSON.stringify({ bin: { wp: './bin/wp' } })
-        if (String(path) === pluginJson) return JSON.stringify({ version: '0.28.0', mcpServers: {} })
+        if (String(path) === pluginJson)
+          return JSON.stringify({ version: '0.28.0', mcpServers: {} })
         if (String(path) === launcherPath) {
           return "#!/usr/bin/env node\n\nimport { runNamedBin } from './_run.js'\n\nrunNamedBin('wp')\n"
         }
         throw new Error(`unexpected read: ${String(path)}`)
       }) as typeof readFileSync)
-      mockStatSync.mockReturnValue({ isFile: () => true, mode: 0o100755 } as ReturnType<typeof statSync>)
+      mockStatSync.mockReturnValue({ isFile: () => true, mode: 0o100755 } as ReturnType<
+        typeof statSync
+      >)
 
       const { checkRootLauncherContract } = await import('#hooks/doctor')
       const result = checkRootLauncherContract()
 
       expect(result.ok).toBe(true)
-      expect(result.detail).toContain('contract=js-dispatcher-externalized-runtime')
+      expect(result.detail).toContain('contract=js-selector-runtime-lane')
       expect(result.detail).toContain('expected=bin/wp')
-      expect(result.detail).toContain('plugin-owned native launch surfaces stay separate')
+      expect(result.detail).toContain(
+        'JS selector for runtime-required, phase2-runtime, and JS/Bun holdback lanes',
+      )
     })
   })
 
@@ -1283,7 +1298,9 @@ describe('hooks/doctor', () => {
       const result = checkOmxPluginCacheStaleSurfaceRepair({
         codexHome: '/tmp/.codex',
         nodeBinary: '/abs/node',
-        repair: () => ['/tmp/.codex/plugins/cache/oh-my-codex-local/oh-my-codex/0.18.10/hooks/hooks.json'],
+        repair: () => [
+          '/tmp/.codex/plugins/cache/oh-my-codex-local/oh-my-codex/0.18.10/hooks/hooks.json',
+        ],
       })
 
       expect(result.ok).toBe(true)
@@ -1301,8 +1318,207 @@ describe('hooks/doctor', () => {
       })
 
       expect(result.ok).toBe(true)
-      expect(result.detail).toContain('no positively identified stale OMX plugin-cache hook surfaces')
+      expect(result.detail).toContain(
+        'no positively identified stale OMX plugin-cache hook surfaces',
+      )
       expect(result.detail).toContain('durable ownership belongs to OMX setup/plugin generation')
+    })
+  })
+
+  describe('checkThirdPartyHookCoexistence', () => {
+    it('reports no competing plugins when registry is absent', async () => {
+      mockAccessSync.mockImplementation((() => {
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+
+      const { checkThirdPartyHookCoexistence } = await import('#hooks/doctor')
+      const result = checkThirdPartyHookCoexistence({ claudeConfigDir: '/tmp/.claude' })
+
+      expect(result.ok).toBe(true)
+      expect(result.detail).toContain('no Claude plugin registry found')
+    })
+
+    it('reports no competing plugins when OMC is not in the registry', async () => {
+      const registryPath = '/tmp/.claude/plugins/installed_plugins.json'
+      mockAccessSync.mockImplementation((() => undefined) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === registryPath) {
+          return JSON.stringify({
+            plugins: { 'context-mode@context-mode': [{ version: '1.0.0', scope: 'user' }] },
+          })
+        }
+        return ''
+      }) as typeof readFileSync)
+
+      const { checkThirdPartyHookCoexistence } = await import('#hooks/doctor')
+      const result = checkThirdPartyHookCoexistence({ claudeConfigDir: '/tmp/.claude' })
+
+      expect(result.ok).toBe(true)
+      expect(result.detail).toContain('no competing hook plugins detected')
+    })
+
+    it('reports OMC version and coexistence model when OMC is installed', async () => {
+      const registryPath = '/tmp/.claude/plugins/installed_plugins.json'
+      mockAccessSync.mockImplementation((() => undefined) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === registryPath) {
+          return JSON.stringify({
+            plugins: {
+              'oh-my-claudecode@omc': [
+                {
+                  version: '4.13.7',
+                  scope: 'user',
+                  installPath: '/tmp/.claude/plugins/cache/omc/oh-my-claudecode/4.13.7',
+                },
+              ],
+            },
+          })
+        }
+        return ''
+      }) as typeof readFileSync)
+
+      const { checkThirdPartyHookCoexistence } = await import('#hooks/doctor')
+      const result = checkThirdPartyHookCoexistence({ claudeConfigDir: '/tmp/.claude' })
+
+      expect(result.ok).toBe(true)
+      expect(result.detail).toContain('OMC 4.13.7 detected')
+      expect(result.detail).toContain('double-fire is expected and idempotent')
+      // The key survivability claim: settings.json and OMC plugin cache are separate files
+      expect(result.detail).toContain('survive omc update')
+      expect(result.detail).toContain('separate files')
+    })
+
+    it('prefers user-scope version label when both user and project scopes are installed', async () => {
+      const registryPath = '/tmp/.claude/plugins/installed_plugins.json'
+      mockAccessSync.mockImplementation((() => undefined) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === registryPath) {
+          return JSON.stringify({
+            plugins: {
+              'oh-my-claudecode@omc': [
+                { version: '4.14.0', scope: 'project', installPath: '/tmp/cache/4.14.0' },
+                { version: '4.13.7', scope: 'user', installPath: '/tmp/cache/4.13.7' },
+              ],
+            },
+          })
+        }
+        return ''
+      }) as typeof readFileSync)
+
+      const { checkThirdPartyHookCoexistence } = await import('#hooks/doctor')
+      const result = checkThirdPartyHookCoexistence({ claudeConfigDir: '/tmp/.claude' })
+
+      expect(result.ok).toBe(true)
+      // User-scope entry (4.13.7) is preferred over project-scope (4.14.0)
+      expect(result.detail).toContain('OMC 4.13.7 detected')
+    })
+
+    it('is ok but skipped when registry JSON is unparseable', async () => {
+      const registryPath = '/tmp/.claude/plugins/installed_plugins.json'
+      mockAccessSync.mockImplementation((() => undefined) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === registryPath) return 'not-json{'
+        return ''
+      }) as typeof readFileSync)
+
+      const { checkThirdPartyHookCoexistence } = await import('#hooks/doctor')
+      const result = checkThirdPartyHookCoexistence({ claudeConfigDir: '/tmp/.claude' })
+
+      expect(result.ok).toBe(true)
+      expect(result.detail).toContain('skipped')
+    })
+  })
+
+  describe('buildHooksDoctorFixPlan', () => {
+    it('returns requires-approval when the hooks manifest is missing', async () => {
+      const knownPaths = new Set(['/repo/.claude/settings.json', '/repo/.codex/hooks.json'])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+
+      const { buildHooksDoctorFixPlan } = await import('#hooks/doctor')
+      const result = buildHooksDoctorFixPlan('/repo')
+
+      expect(result.status).toBe('requires-approval')
+      expect(result.nextCommand).toBe('wp setup')
+      expect(result.preservedFiles).toEqual([
+        '/repo/.claude/settings.json',
+        '/repo/.codex/hooks.json',
+      ])
+    })
+
+    it('returns blocked when installed hooks are unknown to the manifest', async () => {
+      const manifestPath = '/repo/.webpresso/hooks-manifest.json'
+      const settingsPath = '/repo/.claude/settings.json'
+      const knownPaths = new Set([manifestPath, settingsPath])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === manifestPath) {
+          return JSON.stringify({
+            version: 1,
+            generatedAt: '2026-06-08T00:00:00.000Z',
+            claude: {},
+            codex: {},
+            vendorState: { claude: 'enabled', codex: 'enabled' },
+          })
+        }
+        if (String(path) === settingsPath) {
+          return JSON.stringify({
+            hooks: {
+              PreToolUse: [{ hooks: [{ type: 'command', command: 'wp-pretool-guard' }] }],
+            },
+          })
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+
+      const { buildHooksDoctorFixPlan } = await import('#hooks/doctor')
+      const result = buildHooksDoctorFixPlan('/repo')
+
+      expect(result.status).toBe('blocked')
+      expect(result.nextCommand).toBe('wp hooks status')
+      expect(result.preservedFiles).toEqual(['/repo/.claude/settings.json'])
+    })
+
+    it('returns prepared when manifest-backed hooks are missing but there are no unknown installed hooks', async () => {
+      const manifestPath = '/repo/.webpresso/hooks-manifest.json'
+      const settingsPath = '/repo/.claude/settings.json'
+      const knownPaths = new Set([manifestPath, settingsPath])
+
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (knownPaths.has(String(path))) return
+        throw new Error('ENOENT')
+      }) as typeof accessSync)
+      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
+        if (String(path) === manifestPath) {
+          return JSON.stringify({
+            version: 1,
+            generatedAt: '2026-06-08T00:00:00.000Z',
+            claude: {
+              PreToolUse: [{ hooks: [{ type: 'command', command: 'wp-pretool-guard' }] }],
+            },
+            codex: {},
+            vendorState: { claude: 'enabled', codex: 'enabled' },
+          })
+        }
+        if (String(path) === settingsPath) {
+          return JSON.stringify({ hooks: {} })
+        }
+        throw new Error(`unexpected read: ${String(path)}`)
+      }) as typeof readFileSync)
+
+      const { buildHooksDoctorFixPlan } = await import('#hooks/doctor')
+      const result = buildHooksDoctorFixPlan('/repo')
+
+      expect(result.status).toBe('prepared')
+      expect(result.nextCommand).toBe('wp setup --restore-hooks')
+      expect(result.preservedFiles).toEqual(['/repo/.claude/settings.json'])
     })
   })
 })

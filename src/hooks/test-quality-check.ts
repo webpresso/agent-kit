@@ -73,8 +73,6 @@ export function runTestQualityCheck(
   }
 }
 
-if (
-  isDirectEntrypoint(import.meta.url)
-) {
+if (isDirectEntrypoint(import.meta.url)) {
   runTestQualityCheck()
 }

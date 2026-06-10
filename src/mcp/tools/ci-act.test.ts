@@ -13,16 +13,14 @@ vi.mock('#secret-gate/runner.js', async (importOriginal) => ({
   runSecretGateCommand: runSecretGateCommandMock,
 }))
 
-const originalEnv = { ...process.env }
-
 afterEach(() => {
   runSecretGateCommandMock.mockReset()
-  process.env = { ...originalEnv }
+  vi.unstubAllEnvs()
 })
 
 describe('wp_ci_act tool', () => {
   it('returns the same canonical with-secrets dry-run command as the CLI', async () => {
-    process.env.GITHUB_PAT = TEST_REDACTABLE_SECRET
+    vi.stubEnv('GITHUB_PAT', TEST_REDACTABLE_SECRET)
     const result = await tool.handler({
       workflowPath: '.github/workflows/ci.yml',
       cwd: '/repo',

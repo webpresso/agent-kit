@@ -1,10 +1,10 @@
 /**
  * Stable subpath export: `webpresso/format`.
  *
- * Wraps the `oxfmt` binary for repo formatting. Mirrors the `runLint` API
- * shape so consumers can compose lint + format in the same pipeline. Unlike
- * `runLint` there is NO fallback — `oxfmt` must be on PATH; if missing we
- * surface a clear error naming the missing binary and the install command.
+ * Wraps the managed formatter backend behind the `wp format` surface. Mirrors
+ * the `runLint` API shape so consumers can compose lint + format in the same
+ * pipeline. Unlike `runLint` there is NO fallback — the formatter backend must
+ * be on PATH; if missing we surface a clear error naming the missing binary.
  */
 
 import { isMissingBinary, isRunFailure, runCommand } from '#mcp/tools/_shared/run-command'
@@ -37,8 +37,8 @@ export interface RunFormatOptions {
 const DEFAULT_FORMAT_TIMEOUT_MS = 5 * 60 * 1_000
 
 /**
- * Run formatter and return a structured result. Throws a clear error when
- * `oxfmt` is not on PATH (no silent fallback).
+ * Run formatter and return a structured result. Throws a clear error when the
+ * formatter backend is not on PATH (no silent fallback).
  */
 export async function runFormat(options: RunFormatOptions = {}): Promise<FormatResult> {
   const cwd = resolveProjectRoot(options.cwd ? { explicitCwd: options.cwd } : {})
@@ -51,38 +51,30 @@ export async function runFormat(options: RunFormatOptions = {}): Promise<FormatR
   const args: string[] = []
   if (options.check) args.push('--check')
   else args.push('--write')
-  // Explicit --ignore-path so oxfmt does not auto-pick `.prettierignore`.
-  // Repos often ship `.prettierignore` with `*` to disable IDE Prettier
-  // extensions (which would fight oxfmt). Without this flag oxfmt sees the
-  // catchall and skips everything. Honor only `.gitignore` plus the patterns
-  // declared in `.oxfmtrc.json#ignorePatterns`.
+  // Explicit --ignore-path so the repo's catch-all `.prettierignore` does not
+  // make file-targeted formatting skip every target.
   args.push('--ignore-path', '.gitignore')
   if (options.files && options.files.length > 0) args.push(...options.files)
 
-  const resolution = getManagedRunner('oxfmt', {
-    outputPolicy: 'structured',
-  })
+  const resolution = getManagedRunner('oxfmt', { outputPolicy: 'structured' })
   const outcome = await runCommand(resolution.command, [...resolution.args, ...args], runOptions)
 
   if (isRunFailure(outcome)) {
     if (isMissingBinary(outcome)) {
-      throw new Error(
-        "oxfmt binary not found on PATH. Install it as a devDependency: 'vp install -D oxfmt'",
-      )
+      throw new Error('formatter backend binary not found on PATH')
     }
     return {
       passed: false,
       exitCode: 1,
       output: '',
-      spawnError: `oxfmt spawn failed: ${outcome.error.code ?? 'unknown'} ${outcome.error.message}`,
+      spawnError: `format backend spawn failed: ${outcome.error.code ?? 'unknown'} ${outcome.error.message}`,
     }
   }
 
-  const output = [outcome.stdout, outcome.stderr].filter(Boolean).join('')
   return {
     passed: outcome.exitCode === 0,
     exitCode: outcome.exitCode,
-    output,
+    output: [outcome.stdout, outcome.stderr].filter(Boolean).join(''),
     fixedFiles: options.check ? undefined : parseFixedFiles(outcome.stdout),
     timedOut: outcome.timedOut || undefined,
     aborted: outcome.aborted || undefined,

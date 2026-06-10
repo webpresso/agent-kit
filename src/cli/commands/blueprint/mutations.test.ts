@@ -409,7 +409,7 @@ describe('advanceTask — platform-first sync', () => {
 
   afterEach(() => {
     _setSyncAdapterForCli(null)
-    delete process.env['WP_BLUEPRINT_PLATFORM_DISABLED']
+    vi.unstubAllEnvs()
   })
 
   it('calls pushEvent with task.status_changed and ensureFresh when adapter is available', async () => {
@@ -447,7 +447,7 @@ describe('advanceTask — platform-first sync', () => {
   })
 
   it('does not call pushEvent when WP_BLUEPRINT_PLATFORM_DISABLED=1', async () => {
-    process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+    vi.stubEnv('WP_BLUEPRINT_PLATFORM_DISABLED', '1')
     const { adapter, pushEvent } = makeMockAdapter()
     _setSyncAdapterForCli(() => adapter)
 
@@ -460,7 +460,7 @@ describe('advanceTask — platform-first sync', () => {
     const before = readOverview(tmpRepoDir, 'my-feature', 'planned')
 
     // With disabled flag, markdown-canonical path runs
-    process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+    vi.stubEnv('WP_BLUEPRINT_PLATFORM_DISABLED', '1')
     await advanceTask(tmpRepoDir, 'my-feature', '1.1', 'in-progress')
 
     const afterDisabled = readOverview(tmpRepoDir, 'my-feature', 'planned')
@@ -468,7 +468,7 @@ describe('advanceTask — platform-first sync', () => {
 
     // Reset and run without adapter at all — same result expected
     const tmpRepoDir2 = makeRepo('my-feature', before, 'planned')
-    delete process.env['WP_BLUEPRINT_PLATFORM_DISABLED']
+    vi.unstubAllEnvs()
     _setSyncAdapterForCli(() => null)
 
     try {
@@ -502,14 +502,14 @@ describe('resolveSyncAdapterForCli — production default path', () => {
 
   afterEach(() => {
     _setSyncAdapterForCli(null) // restore default (null factory = production path)
-    delete process.env['WP_BLUEPRINT_PLATFORM_TOKEN']
-    delete process.env['WP_BLUEPRINT_PLATFORM_DISABLED']
+    vi.unstubAllEnvs()
   })
 
   it('returns null when no factory is injected and WP_BLUEPRINT_PLATFORM_TOKEN is absent', async () => {
     // Do NOT call _setSyncAdapterForCli — let it use the production default
+    // hermetic-env.ts already deletes WP_BLUEPRINT_PLATFORM_DISABLED before each test;
+    // WP_BLUEPRINT_PLATFORM_TOKEN is not in the hermetic set so ensure it's absent here.
     delete process.env['WP_BLUEPRINT_PLATFORM_TOKEN']
-    delete process.env['WP_BLUEPRINT_PLATFORM_DISABLED']
 
     // advanceTask with production path → no token → adapter null → markdown-canonical
     await advanceTask(tmpRepoDir, 'my-feature', '1.1', 'in-progress')
@@ -519,8 +519,8 @@ describe('resolveSyncAdapterForCli — production default path', () => {
   })
 
   it('returns null when WP_BLUEPRINT_PLATFORM_DISABLED=1 even if token is present', async () => {
-    process.env['WP_BLUEPRINT_PLATFORM_TOKEN'] = 'some-token'
-    process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+    vi.stubEnv('WP_BLUEPRINT_PLATFORM_TOKEN', 'some-token')
+    vi.stubEnv('WP_BLUEPRINT_PLATFORM_DISABLED', '1')
 
     await advanceTask(tmpRepoDir, 'my-feature', '1.1', 'blocked')
 
@@ -536,7 +536,7 @@ describe('resolveSyncAdapterForCli — production default path', () => {
 describe('promoteBlueprint — platform-first sync', () => {
   afterEach(() => {
     _setSyncAdapterForCli(null)
-    delete process.env['WP_BLUEPRINT_PLATFORM_DISABLED']
+    vi.unstubAllEnvs()
   })
 
   it('calls pushEvent with blueprint.status_changed and ensureFresh when adapter is available', async () => {
@@ -580,7 +580,7 @@ describe('promoteBlueprint — platform-first sync', () => {
   it('does not call pushEvent when WP_BLUEPRINT_PLATFORM_DISABLED=1', async () => {
     tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
 
-    process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+    vi.stubEnv('WP_BLUEPRINT_PLATFORM_DISABLED', '1')
     const { adapter, pushEvent } = makeMockAdapter()
     _setSyncAdapterForCli(() => adapter)
 
@@ -592,13 +592,13 @@ describe('promoteBlueprint — platform-first sync', () => {
   it('disabled path produces byte-identical frontmatter output', async () => {
     // Run with platform disabled — uses markdown-canonical path
     tmpRepoDir = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
-    process.env['WP_BLUEPRINT_PLATFORM_DISABLED'] = '1'
+    vi.stubEnv('WP_BLUEPRINT_PLATFORM_DISABLED', '1')
 
     const result1 = await promoteBlueprint(tmpRepoDir, 'my-feature', 'in-progress')
     const contentDisabled = readFileSync(result1.newPath, 'utf8')
 
     // Run with null adapter — same path
-    delete process.env['WP_BLUEPRINT_PLATFORM_DISABLED']
+    vi.unstubAllEnvs()
     const tmpRepoDir2 = makeRepo('my-feature', OVERVIEW_WITH_TASKS, 'planned')
     _setSyncAdapterForCli(() => null)
 

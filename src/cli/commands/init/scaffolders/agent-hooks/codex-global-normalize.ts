@@ -3,13 +3,16 @@ import {
   constants,
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   statSync,
   writeFileSync,
 } from 'node:fs'
+import { homedir } from 'node:os'
 import { basename, delimiter, dirname, join } from 'node:path'
 
 import type { MergeOptions, MergeResult } from '#cli/commands/init/merge'
+import { stripSingleShellQuotePair } from './shell-identity.js'
 
 type HookEntry = { type?: string; command?: string; timeout?: number }
 type HookGroup = { matcher?: string; hooks?: HookEntry[] }
@@ -23,6 +26,7 @@ type CodexHooksFile = {
 export interface NormalizeGlobalCodexHooksOptions {
   readonly contextModeBinary?: string | null
   readonly nodeBinary?: string | null
+  readonly omxScriptPath?: string | null
 }
 
 export const MANAGED_GLOBAL_CODEX_HOOK_DIRNAME = 'managed-hooks'
@@ -46,6 +50,8 @@ type LauncherFile = {
   readonly path: string
   readonly content: string
 }
+
+const CODEX_JSON_PASSTHROUGH = `printf '%s\\n' '{}'`
 
 export function resolveBinaryOnPath(
   command: string,
@@ -72,6 +78,63 @@ export function resolveBinaryOnPath(
         continue
       }
     }
+  }
+
+  return null
+}
+
+export function resolveInstalledOmxHookScriptPath(
+  homeDir: string = process.env.HOME || homedir(),
+): string | null {
+  const stableCandidates = [
+    join(
+      homeDir,
+      '.vite-plus',
+      'packages',
+      'oh-my-codex',
+      'lib',
+      'node_modules',
+      'oh-my-codex',
+      'dist',
+      'scripts',
+      'codex-native-hook.js',
+    ),
+    join(
+      homeDir,
+      '.bun',
+      'install',
+      'global',
+      'node_modules',
+      'oh-my-codex',
+      'dist',
+      'scripts',
+      'codex-native-hook.js',
+    ),
+  ]
+  for (const candidate of stableCandidates) {
+    if (existsSync(candidate)) return candidate
+  }
+
+  const legacyRoot = join(homeDir, '.vite-plus', 'js_runtime', 'node')
+  if (!existsSync(legacyRoot)) return null
+
+  const versions = readdirSync(legacyRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort((left, right) => right.localeCompare(left, undefined, { numeric: true }))
+
+  for (const version of versions) {
+    const candidate = join(
+      legacyRoot,
+      version,
+      'lib',
+      'node_modules',
+      'oh-my-codex',
+      'dist',
+      'scripts',
+      'codex-native-hook.js',
+    )
+    if (existsSync(candidate)) return candidate
   }
 
   return null
@@ -266,17 +329,25 @@ function launcherForCommand(
     }
   }
 
+  const managedLauncherBasename = extractManagedLauncherBasename(command)
+  if (
+    managedLauncherBasename === MANAGED_OMX_GLOBAL_HOOK_BASENAME &&
+    options.nodeBinary &&
+    options.omxScriptPath
+  ) {
+    const path = join(managedHooksDir, MANAGED_OMX_GLOBAL_HOOK_BASENAME)
+    return {
+      path,
+      content: renderOmxShellLauncher(options.nodeBinary, options.omxScriptPath, []),
+    }
+  }
+
   const omxSpec = parseOmxHookCommand(command)
   if (omxSpec && options.nodeBinary) {
     const path = join(managedHooksDir, MANAGED_OMX_GLOBAL_HOOK_BASENAME)
     return {
       path,
-      content: renderShellLauncher([
-        quoteShell(options.nodeBinary),
-        quoteShell(omxSpec.scriptPath),
-        ...omxSpec.trailingArgs.map(quoteShell),
-        '"$@"',
-      ]),
+      content: renderOmxShellLauncher(options.nodeBinary, omxSpec.scriptPath, omxSpec.trailingArgs),
     }
   }
 
@@ -285,6 +356,38 @@ function launcherForCommand(
 
 function renderShellLauncher(parts: readonly string[]): string {
   return `#!/bin/sh\nexec ${parts.join(' ')}\n`
+}
+
+function renderOmxShellLauncher(
+  nodeBinary: string,
+  hookScriptPath: string,
+  trailingArgs: readonly string[],
+): string {
+  const trailingArgsText =
+    trailingArgs.length > 0 ? `${trailingArgs.map(quoteShell).join(' ')} "$@"` : '"$@"'
+
+  return `#!/bin/sh
+NODE_BINARY=${quoteShell(nodeBinary)}
+HOOK_SCRIPT=${quoteShell(hookScriptPath)}
+
+if [ ! -x "$NODE_BINARY" ]; then
+  NODE_BINARY="$(command -v node 2>/dev/null || true)"
+fi
+
+if [ -z "$NODE_BINARY" ] || [ ! -x "$NODE_BINARY" ]; then
+  echo "OMX Codex hook skipped: node runtime not found; rerun omx setup or wp setup" >&2
+  ${CODEX_JSON_PASSTHROUGH}
+  exit 0
+fi
+
+if [ ! -f "$HOOK_SCRIPT" ]; then
+  echo "OMX Codex hook skipped: hook script not found; rerun omx setup or wp setup" >&2
+  ${CODEX_JSON_PASSTHROUGH}
+  exit 0
+fi
+
+exec "$NODE_BINARY" "$HOOK_SCRIPT" ${trailingArgsText}
+`
 }
 
 function contextModeManagedLauncherPath(command: string, managedHooksDir: string): string | null {
@@ -317,16 +420,6 @@ function parseOmxHookCommand(
   if (!match?.[1]) return null
   const trailingArgs = match[2]?.trim().length ? match[2].trim().split(/\s+/u) : []
   return { scriptPath: match[1], trailingArgs }
-}
-
-function stripSingleShellQuotePair(value: string): string {
-  if (value.length < 2) return value
-  const first = value[0]
-  const last = value[value.length - 1]
-  if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
-    return value.slice(1, -1)
-  }
-  return value
 }
 
 export function isManagedContextModeGlobalLauncherBasename(basenameValue: string): boolean {

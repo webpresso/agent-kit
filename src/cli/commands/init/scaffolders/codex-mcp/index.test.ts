@@ -196,7 +196,10 @@ describe('ensureClaudePlaywrightMcp', () => {
       repoRoot: dir,
     })
 
-    expect(result).toStrictEqual({ kind: 'claude-playwright-mcp-skipped-dry-run', path: configPath })
+    expect(result).toStrictEqual({
+      kind: 'claude-playwright-mcp-skipped-dry-run',
+      path: configPath,
+    })
     expect(existsSync(configPath)).toBe(false)
   })
 

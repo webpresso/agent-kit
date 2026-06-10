@@ -35,6 +35,7 @@ Tier 1 requirements:
 
 | CLI | Provider model | Tier 2 caveats |
 |---|---|---|
+| **Cursor** (`cursor`) | Anthropic/OpenAI via Cursor IDE | Project hooks emitter is schema-tested, but live hook execution still depends on the IDE’s opt-in third-party compatibility path and has not met Tier 1 promotion gates yet |
 | **OpenCode** (`opencode`) | Provider-agnostic (Anthropic, OpenAI, local, etc.) | Session-level token totals only (`-f json` + `opencode stats`); no per-call granularity; cache isolation depends on dispatched provider |
 
 Tier 2 requirements:
@@ -45,7 +46,7 @@ Tier 2 requirements:
 
 ## Tier 3 — not supported
 
-Any other agent CLI (Aider, Cursor terminal mode, Gemini CLI, custom tools).
+Any other agent CLI (Aider, Gemini CLI, custom tools).
 Plans and docs MUST NOT introduce Tier 3 CLIs without first promoting them via
 this rule. Adding a new tier-3 CLI is a separate decision, not an in-band scope
 expansion.

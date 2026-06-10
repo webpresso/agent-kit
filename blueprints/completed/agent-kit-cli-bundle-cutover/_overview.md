@@ -74,7 +74,9 @@ Future user-facing setup command: `webpresso agent setup`.
 ## Codebase Verification
 
 - Existing target paths for this blueprint are real in `agent-kit`: `src/cli/cli.ts`, `catalog/AGENTS.md.tpl`, `src/cli/commands/init/scaffold-agents-md.test.ts`, `src/cli/commands/audit.ts`, `src/cli/auto-update/detect-pm.ts`, `src/cli/auto-update/detect-pm.test.ts`, `src/cli/commands/init/init.e2e.test.ts`, `test-fixtures/bundle-smoke/package.json`, `package.contract.test.ts`, and `CHANGELOG.md`.
-- Current package scripts include `setup:agent = "wp setup"` and `format = "WP_SKIP_UPDATE_CHECK=1 wp format"`. These are current-state legacy invocations, not future interface commitments.
+- Current package scripts include `setup:agent = "wp setup"` and
+  `format = "wp format"`. These are current-state legacy invocations, not
+  future interface commitments.
 - Current hook helper bins such as `wp-pretool-guard`, `wp-post-tool`, `wp-stop-qa`, `wp-guard-switch`, `wp-sessionstart-routing`, and `wp-check-dev-link` are implementation helpers. This blueprint must not describe them as durable public CLI aliases.
 - No `src/cli/bundle/` entrypoint exists yet. Bundle files in this plan are new implementation surface, not current code.
 

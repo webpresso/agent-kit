@@ -58,10 +58,7 @@ export async function auditCloudflareDeployContract(root: string): Promise<RepoA
   } else {
     try {
       const metadata = readProductionMetadata(metadataPath)
-      if (
-        metadata.durableObjectMigration === 'required' &&
-        metadata.rolloutMode !== 'direct'
-      ) {
+      if (metadata.durableObjectMigration === 'required' && metadata.rolloutMode !== 'direct') {
         violations.push(
           violation(
             cloudflare.production.metadataPath,

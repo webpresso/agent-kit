@@ -1,5 +1,12 @@
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
+
 import type { ResolvedTestTarget } from './target-resolver.js'
-import { type ManagedRunnerOutputPolicy, getManagedRunner } from '#tool-runtime'
+import {
+  type ManagedRunnerOutputPolicy,
+  getManagedRunner,
+  resolveOutputPolicy,
+} from '#tool-runtime'
 import { getPackageScript, isRecursiveWpScript } from '#cli/package-scripts.js'
 
 export interface CommandConfig {
@@ -106,10 +113,29 @@ export function buildVitestCommand(
 }
 
 export function buildStrykerCommand(options: TestCommandOptions = {}): CommandConfig {
-  const resolution = getManagedRunner('stryker', {
-    outputPolicy: resolveOutputPolicy(options.outputPolicy, options.filterOutput),
-  })
-  return { command: resolution.command, args: [...resolution.args, 'run', 'stryker.config.ts'] }
+  const outputPolicy = resolveOutputPolicy(options.outputPolicy, options.filterOutput)
+  const configFile = resolveStrykerConfigFile(options.cwd ?? process.cwd())
+
+  if (isTypeScriptConfigFile(configFile)) {
+    const tsxResolution = getManagedRunner('tsx', { outputPolicy })
+    const strykerResolution = getManagedRunner('stryker', { outputPolicy: 'structured' })
+    return {
+      command: tsxResolution.command,
+      args: [
+        ...tsxResolution.args,
+        strykerResolution.command,
+        ...strykerResolution.args,
+        'run',
+        configFile,
+      ],
+    }
+  }
+
+  const resolution = getManagedRunner('stryker', { outputPolicy })
+  return {
+    command: resolution.command,
+    args: [...resolution.args, 'run', configFile],
+  }
 }
 
 export function getVpTestTask(
@@ -170,15 +196,19 @@ function isVitestConfigFile(file: string): boolean {
   return /^vitest(?:\.[\w-]+)?\.config\.(?:ts|mts|cts|js|mjs|cjs)$/u.test(file)
 }
 
-function resolveOutputPolicy(
-  outputPolicy: ManagedRunnerOutputPolicy | undefined,
-  filterOutput: boolean | undefined,
-): ManagedRunnerOutputPolicy {
-  if (outputPolicy) return outputPolicy
-  return filterOutput === false ? 'structured' : 'rtk-filtered'
-}
-
 function shouldBypassRecursiveWpTest(cwd: string): boolean {
   const testScript = getPackageScript(cwd, 'test')
   return Boolean(testScript && isRecursiveWpScript(testScript, 'test'))
+}
+
+function resolveStrykerConfigFile(cwd: string): string {
+  for (const candidate of ['stryker.config.ts', 'stryker.config.mjs'] as const) {
+    if (existsSync(join(cwd, candidate))) return candidate
+  }
+
+  return 'stryker.config.ts'
+}
+
+function isTypeScriptConfigFile(configFile: string): boolean {
+  return /\.(?:ts|mts|cts)$/u.test(configFile)
 }

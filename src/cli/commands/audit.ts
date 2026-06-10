@@ -119,6 +119,18 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
   'ai-contracts': async (root) => (await import('#audit/ai-contracts')).auditAiContracts(root),
   'hook-surface': async (root) =>
     (await import('#audit/hook-surface')).auditHookSurfaceAsRepoResult(root),
+  'hook-vendor-drift': async (root) => {
+    const { auditHookVendorDrift } = await import('#audit/hook-vendor-drift')
+    const report = await auditHookVendorDrift({ repoRoot: root })
+    return {
+      ok: report.exitCode === 0,
+      title: 'Hook vendor drift audit',
+      checked: report.findings.length === 0 ? 1 : report.findings.length,
+      violations: report.findings.map((f) => ({
+        message: `${f.vendor}/${f.event}: expected=${f.expected} actual=${f.actual} [${f.severity}]`,
+      })),
+    }
+  },
   'open-source-licenses': async (root) =>
     (await import('#audit/open-source-licenses')).auditOpenSourceLicenses(root),
   rules: async (root) => runContentAudit(root, 'rule'),
@@ -259,7 +271,10 @@ export function registerAuditCommand(cli: CAC): void {
       '--lore-warn',
       'Warn about missing Lore trailers but always exit 0 (soft adoption mode)',
     )
-    .option('--omx-plans', 'Also audit .omx/plans derived-handoff governance for blueprint-lifecycle')
+    .option(
+      '--omx-plans',
+      'Also audit .omx/plans derived-handoff governance for blueprint-lifecycle',
+    )
     .option('--html-entry <file>', 'HTML entry relative to dist for bundle-budget')
     .option('--max-js-asset-bytes <bytes>', 'Max size for any generated JS asset')
     .option('--max-html-eager-js-asset-bytes <bytes>', 'Max size for any HTML-eager JS asset')

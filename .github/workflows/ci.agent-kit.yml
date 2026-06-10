@@ -130,6 +130,12 @@ jobs:
           pnpm run build:runtime-binaries
           pnpm run stage:plugin-runtime
       - run: pnpm run test
+      - name: Cursor hook contract slice
+        run: |
+          bun src/cli/cli.ts test \
+            --file src/cli/commands/init/scaffolders/agent-hooks/emitters/cursor.test.ts \
+            --file src/cli/commands/init/scaffolders/agent-hooks/schemas/schemas.test.ts \
+            --file src/cli/commands/init/scaffolders/agent-hooks/capability-matrix.test.ts
       - name: Bench fixture compatibility gate
         if: ${{ github.event_name == 'pull_request' }}
         run: |

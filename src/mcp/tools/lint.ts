@@ -16,6 +16,7 @@
 
 import { z } from 'zod'
 
+import { sharedOxlintConfigArgs } from '#config/oxlint/shared-config-path'
 import type { ToolDescriptor } from '#mcp/auto-discover'
 import { applyOutputTransform } from '#output-transforms/index'
 
@@ -215,6 +216,9 @@ const tool: ToolDescriptor = {
     }
 
     const lintArgs: string[] = ['lint', '--format=json']
+    // Inject agent-kit's shared --config so consumers need no local oxlint
+    // config (Tier-1 DRY). No-op when the consumer ships its own config.
+    lintArgs.push(...sharedOxlintConfigArgs(cwd, lintArgs))
     if (input.fix) lintArgs.push('--fix')
     if (input.files && input.files.length > 0) {
       lintArgs.push(...input.files)

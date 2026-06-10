@@ -122,6 +122,8 @@
     "#tool-runtime": "./src/tool-runtime/index.ts",
     "#tool-runtime/*.js": "./src/tool-runtime/*.ts",
     "#tool-runtime/*": "./src/tool-runtime/*.ts",
+    "#test-helpers/*.js": "./src/test-helpers/*.ts",
+    "#test-helpers/*": "./src/test-helpers/*.ts",
     "#wp-extension": "./src/wp-extension/index.ts",
     "#wp-extension/*.js": "./src/wp-extension/*.ts",
     "#wp-extension/*": "./src/wp-extension/*.ts",
@@ -161,6 +163,7 @@
     "#blueprint/sync/types.js": "./src/blueprint/sync/types.ts",
     "#blueprint/sync/auth.js": "./src/blueprint/sync/auth.ts",
     "#blueprint/sync/client.js": "./src/blueprint/sync/client.ts",
+    "#export/spec-kit/index": "./src/blueprint/export/spec-kit/index.ts",
     "#projects.js": "./src/blueprint/projects.ts",
     "#next-action.js": "./src/blueprint/next-action.ts",
     "#types/execution-backend": "./src/blueprint/types/execution-backend.ts",
@@ -246,33 +249,33 @@
     },
     "./tsconfig/base.json": {
       "import": {
-        "types": "./dist/esm/config/tsconfig/base.json",
         "default": "./dist/esm/config/tsconfig/base.json"
-      }
+      },
+      "default": "./dist/esm/config/tsconfig/base.json"
     },
     "./tsconfig/cloudflare.json": {
       "import": {
-        "types": "./dist/esm/config/tsconfig/cloudflare.json",
         "default": "./dist/esm/config/tsconfig/cloudflare.json"
-      }
+      },
+      "default": "./dist/esm/config/tsconfig/cloudflare.json"
     },
     "./tsconfig/library.json": {
       "import": {
-        "types": "./dist/esm/config/tsconfig/library.json",
         "default": "./dist/esm/config/tsconfig/library.json"
-      }
+      },
+      "default": "./dist/esm/config/tsconfig/library.json"
     },
     "./tsconfig/react-library.json": {
       "import": {
-        "types": "./dist/esm/config/tsconfig/react-library.json",
         "default": "./dist/esm/config/tsconfig/react-library.json"
-      }
+      },
+      "default": "./dist/esm/config/tsconfig/react-library.json"
     },
     "./tsconfig/react-router.json": {
       "import": {
-        "types": "./dist/esm/config/tsconfig/react-router.json",
         "default": "./dist/esm/config/tsconfig/react-router.json"
-      }
+      },
+      "default": "./dist/esm/config/tsconfig/react-router.json"
     },
     "./vitest/node": {
       "import": {
@@ -541,7 +544,7 @@
   },
   "scripts": {
     "setup:agent": "wp setup",
-    "build": "tshy && bun src/build/normalize-tsconfig-json-exports.ts && vp run chmod-bins && vp run link-self-bins",
+    "build": "tshy && bun src/build/generate-oxlintrc.ts && bun src/build/normalize-tsconfig-json-exports.ts && vp run chmod-bins && vp run link-self-bins",
     "build:runtime-binaries": "bun scripts/build-runtime-binaries.ts",
     "stage:plugin-runtime": "bun scripts/stage-plugin-runtime-artifacts.ts",
     "postbuild": "vp run generate-skills && vp run sync-doc-templates",
@@ -616,7 +619,7 @@
     "tsx": "^4.21.0"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.18.2",
+    "@arethetypeswrong/cli": "^0.18.3",
     "@changesets/cli": "^2.31.0",
     "@secretlint/secretlint-rule-preset-recommend": "^13.0.2",
     "@types/better-sqlite3": "^7.6.13",
@@ -715,6 +718,11 @@
     "@stryker-mutator/vitest-runner": "^9.6.1",
     "@stryker-mutator/typescript-checker": "^9.6.1",
     "@playwright/test": "^1.55.0",
-    "wrangler": "^4.50.0"
+    "wrangler": "^4.50.0",
+    "@webpresso/agent-kit-runtime-darwin-arm64": "0.29.3",
+    "@webpresso/agent-kit-runtime-darwin-x64": "0.29.3",
+    "@webpresso/agent-kit-runtime-linux-x64": "0.29.3",
+    "@webpresso/agent-kit-runtime-linux-arm64": "0.29.3",
+    "@webpresso/agent-kit-runtime-windows-x64": "0.29.3"
   }
 }

@@ -64,7 +64,10 @@ export function registerDoctorCommand(cli: CAC): void {
     .option('--root <dir>', 'Repository root to inspect')
     .option('--docs-root <dir>', 'Docs directory for docs-frontmatter')
     .option('--fix', 'Apply supported safe fixes during doctor (currently docs-frontmatter)')
-    .option('--omx-plans', 'Also audit .omx/plans derived-handoff governance for blueprint-lifecycle')
+    .option(
+      '--omx-plans',
+      'Also audit .omx/plans derived-handoff governance for blueprint-lifecycle',
+    )
     .action(async (options: RunDoctorOptions) => {
       const code = await runDoctor(options)
       return code

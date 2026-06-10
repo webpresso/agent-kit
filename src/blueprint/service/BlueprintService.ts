@@ -101,9 +101,7 @@ export class BlueprintService extends TrackedDocumentService<
 
   protected parseSummary(content: string, slug: string): BlueprintSummary {
     const plan = parseBlueprint(content, slug)
-    const doneCount = plan.tasks.filter(
-      (t) => t.status === 'done' || t.status === 'dropped',
-    ).length
+    const doneCount = plan.tasks.filter((t) => t.status === 'done' || t.status === 'dropped').length
     return {
       name: plan.name,
       title: plan.title,

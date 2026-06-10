@@ -247,7 +247,9 @@ function processEntry(
     entry.endsWith('.md') &&
     entry !== 'README.md'
   ) {
-    const relativeParentSegments = relative(baseDir, dir).split('/').filter((s) => s !== '')
+    const relativeParentSegments = relative(baseDir, dir)
+      .split('/')
+      .filter((s) => s !== '')
     if (relativeParentSegments.length === 1 && isStatusFolder(relativeParentSegments[0] ?? '')) {
       const plan = processPlanFile(fullPath, baseDir, includeSpecialFolders, entry)
       if (plan) {

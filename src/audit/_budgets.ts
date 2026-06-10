@@ -9,16 +9,21 @@ import path from 'node:path'
 
 import { z } from 'zod'
 
-const budgetEntrySchema = z.object({
-  max_bytes: z.number().int().positive().optional(),
-  max: z.number().int().positive().optional(),
-  max_days: z.number().int().positive().optional(),
-  suggest_compact_at: z.number().min(0).max(1).optional(),
-  warn_pct: z.number().min(1).optional(),
-})
-  .refine((entry) => entry.max_bytes !== undefined || entry.max !== undefined || entry.max_days !== undefined, {
-    message: 'budget entry must define at least one of max_bytes, max, or max_days',
+const budgetEntrySchema = z
+  .object({
+    max_bytes: z.number().int().positive().optional(),
+    max: z.number().int().positive().optional(),
+    max_days: z.number().int().positive().optional(),
+    suggest_compact_at: z.number().min(0).max(1).optional(),
+    warn_pct: z.number().min(1).optional(),
   })
+  .refine(
+    (entry) =>
+      entry.max_bytes !== undefined || entry.max !== undefined || entry.max_days !== undefined,
+    {
+      message: 'budget entry must define at least one of max_bytes, max, or max_days',
+    },
+  )
 
 const budgetFileSchema = z.object({
   budgets: z.record(z.string(), budgetEntrySchema),

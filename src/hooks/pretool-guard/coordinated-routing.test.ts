@@ -227,7 +227,78 @@ describe('coordinated routing pipeline', () => {
     })
   })
 
-  // Category 7: Repeated dev-workflow commands stay denied
+  // Category 7: Double-fire idempotency (OMC + wp concurrent PreToolUse model)
+  //
+  // Claude Code fires ALL matching PreToolUse hooks from ALL sources concurrently.
+  // When oh-my-claudecode (OMC) and wp-pretool-guard both run for the same event,
+  // the guard must produce identical output regardless of call order. A deny from
+  // either plugin wins; the guard's deny output must be stable across concurrent
+  // executions so Claude's merge is deterministic.
+  //
+  // Spawn latency evidence from the live double-fire log:
+  //   agent-a11ba26adcb5f6f56.pretool-guard.log — identical PASS entries at
+  //   06:33:31.324 and 06:33:31.326 (2 ms gap, effectively simultaneous).
+  //
+  // omc update survivability: wp hooks live in .claude/settings.json (user-owned);
+  // OMC hooks live in ~/.claude/plugins/cache/omc/oh-my-claudecode/<version>/hooks/hooks.json
+  // (plugin-owned). `omc update` replaces the plugin cache directory but never
+  // touches settings.json, so wp hooks survive by design.
+  describe('OMC + wp double-fire coexistence', () => {
+    it('deny output is identical across two rapid calls (concurrent double-fire model)', async () => {
+      const processValidation = await getRunner()
+
+      try {
+        processValidation(makeBashInput('vp exec vitest run'))
+      } catch {
+        // process.exit throws in tests
+      }
+      const firstOutput = getLastOutput()
+      stdoutOutput = []
+
+      try {
+        processValidation(makeBashInput('vp exec vitest run'))
+      } catch {
+        // process.exit throws in tests
+      }
+      const secondOutput = getLastOutput()
+
+      // The decision and reason must be identical across concurrent invocations.
+      type HookOutput = {
+        hookSpecificOutput?: { permissionDecision?: string; permissionDecisionReason?: string }
+      }
+      const first = JSON.parse(firstOutput) as HookOutput
+      const second = JSON.parse(secondOutput) as HookOutput
+      expect(first.hookSpecificOutput?.permissionDecision).toBe('deny')
+      expect(second.hookSpecificOutput?.permissionDecision).toBe('deny')
+      expect(first.hookSpecificOutput?.permissionDecisionReason).toStrictEqual(
+        second.hookSpecificOutput?.permissionDecisionReason,
+      )
+    })
+
+    it('passthrough {} output is identical across two rapid calls', async () => {
+      const processValidation = await getRunner()
+
+      try {
+        processValidation(makeBashInput('git status'))
+      } catch {
+        // process.exit throws in tests
+      }
+      const firstOutput = getLastOutput()
+      stdoutOutput = []
+
+      try {
+        processValidation(makeBashInput('git status'))
+      } catch {
+        // process.exit throws in tests
+      }
+      const secondOutput = getLastOutput()
+
+      expect(firstOutput).toBe('{}')
+      expect(secondOutput).toBe('{}')
+    })
+  })
+
+  // Category 8: Repeated dev-workflow commands stay denied
   describe('dev-workflow denials stay hard-blocked', () => {
     it('vp exec vitest run → denied on repeated invocations', async () => {
       const processValidation = await getRunner()

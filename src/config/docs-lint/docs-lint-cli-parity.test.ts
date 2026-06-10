@@ -1,15 +1,18 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const foldedTemplatesRoot = 'src/config/docs-lint/templates'
-const validateCli = resolve('src/config/docs-lint/cli/validate.ts')
-const migrateCli = resolve('src/config/docs-lint/cli/migrate.ts')
+// Anchor all paths to the repo root via import.meta.dirname so the test is
+// cwd-independent and can run from any working directory (e.g. /tmp).
+const repoRoot = join(import.meta.dirname, '..', '..', '..')
+const foldedTemplatesRoot = join(repoRoot, 'src/config/docs-lint/templates')
+const validateCli = join(repoRoot, 'src/config/docs-lint/cli/validate.ts')
+const migrateCli = join(repoRoot, 'src/config/docs-lint/cli/migrate.ts')
 
 function runNodeHelp(entrypoint: string): string {
   return execFileSync(process.execPath, [entrypoint, '--help'], {
-    cwd: process.cwd(),
+    cwd: repoRoot,
     encoding: 'utf8',
   })
 }

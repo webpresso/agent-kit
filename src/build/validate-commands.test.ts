@@ -3,6 +3,9 @@ import { join, resolve } from 'node:path'
 import matter from 'gray-matter'
 import { describe, expect, it } from 'vitest'
 
+import { SUPPORTED_COMMANDS } from '#cli/cli.js'
+import { COMPILED_TOOL_REGISTRY } from '#mcp/tools/_registry.js'
+
 const PACKAGE_ROOT = resolve(import.meta.dirname, '..', '..')
 const COMMANDS_DIR = join(PACKAGE_ROOT, 'commands')
 const EXPECTED_COMMANDS = ['test', 'qa', 'audit', 'blueprint'] as const
@@ -17,6 +20,15 @@ const BLUEPRINT_TOOL_REFERENCES = [
 ] as const
 
 describe('plugin commands directory', () => {
+  it('keeps overlapping command docs, CLI commands, and MCP tools aligned', () => {
+    expect(SUPPORTED_COMMANDS).toEqual(
+      expect.arrayContaining(EXPECTED_COMMANDS as unknown as readonly string[]),
+    )
+
+    const toolNames = COMPILED_TOOL_REGISTRY.map((tool) => tool.name)
+    expect(toolNames).toEqual(expect.arrayContaining(['wp_test', 'wp_qa', 'wp_audit']))
+  })
+
   it('commands/ directory exists', () => {
     expect(existsSync(COMMANDS_DIR)).toBe(true)
   })

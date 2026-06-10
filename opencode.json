@@ -13,6 +13,15 @@
         "bun",
         "/Users/ozby/.claude/plugins/cache/agent-kit/agent-kit/src/mcp/cli.ts"
       ]
+    },
+    "webpresso": {
+      "type": "local",
+      "command": [
+        "vp",
+        "exec",
+        "wp",
+        "mcp"
+      ]
     }
   },
   "plugin": [

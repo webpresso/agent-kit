@@ -4,10 +4,14 @@ import { join } from 'node:path'
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
+
 import { buildTypecheckCommand, runTypecheckCommand } from './typecheck'
 
 describe('wp typecheck command', () => {
   const tempDirs: string[] = []
+
+  installManagedRunnerHermeticHooks()
 
   afterEach(() => {
     for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true })
@@ -15,15 +19,15 @@ describe('wp typecheck command', () => {
 
   it('builds the default no-emit command with stable non-pretty output', () => {
     expect(buildTypecheckCommand()).toEqual({
-      command: expect.stringContaining('typescript'),
-      args: ['--noEmit', '--pretty', 'false'],
+      command: 'rtk',
+      args: [expect.stringContaining('typescript'), '--noEmit', '--pretty', 'false'],
     })
   })
 
   it('can preserve pretty output when requested', () => {
     expect(buildTypecheckCommand({ pretty: true })).toEqual({
-      command: expect.stringContaining('typescript'),
-      args: ['--noEmit'],
+      command: 'rtk',
+      args: [expect.stringContaining('typescript'), '--noEmit'],
     })
   })
 
@@ -37,8 +41,8 @@ describe('wp typecheck command', () => {
     )
 
     expect(buildTypecheckCommand({ cwd })).toEqual({
-      command: 'vp',
-      args: ['run', 'check-types'],
+      command: 'rtk',
+      args: ['vp', 'run', 'check-types'],
     })
   })
 
@@ -52,8 +56,8 @@ describe('wp typecheck command', () => {
     )
 
     expect(buildTypecheckCommand({ cwd })).toEqual({
-      command: expect.stringContaining('typescript'),
-      args: ['--noEmit', '--pretty', 'false'],
+      command: 'rtk',
+      args: [expect.stringContaining('typescript'), '--noEmit', '--pretty', 'false'],
     })
   })
 
@@ -67,7 +71,8 @@ describe('wp typecheck command', () => {
       stderr: '',
     }))
     expect(runTypecheckCommand({}, { run })).toBe(2)
-    expect(run).toHaveBeenCalledWith(expect.stringContaining('typescript'), [
+    expect(run).toHaveBeenCalledWith('rtk', [
+      expect.stringContaining('typescript'),
       '--noEmit',
       '--pretty',
       'false',

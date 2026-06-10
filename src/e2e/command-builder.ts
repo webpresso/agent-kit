@@ -1,5 +1,5 @@
 import type { CommandConfig, E2eStepCommandOptions } from './types.js'
-import { type ManagedRunnerOutputPolicy, getManagedRunner } from '#tool-runtime'
+import { getManagedRunner, resolveOutputPolicy } from '#tool-runtime'
 
 import path from 'node:path'
 
@@ -182,12 +182,4 @@ function withBaseDir(
   }
 
   return { command: resolution.command, args: [...resolution.args], usesBaseDir: false }
-}
-
-function resolveOutputPolicy(
-  outputPolicy: ManagedRunnerOutputPolicy | undefined,
-  filterOutput: boolean | undefined,
-): ManagedRunnerOutputPolicy {
-  if (outputPolicy) return outputPolicy
-  return filterOutput === false ? 'structured' : 'rtk-filtered'
 }

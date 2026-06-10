@@ -4,9 +4,13 @@ import { dirname, join } from 'node:path'
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { getBenchSessionMemoryHelpText } from '#cli/commands/bench/index.js'
 import {
+  assertBenchSessionMemorySupportedRuntime,
+  assertBenchRuntimeAssets,
   createRunId,
-  getBenchSessionMemoryHelpText,
+  resolveBenchRuntimeRoot,
+  resolveRepoRoot,
   runBenchSessionMemoryCommand,
 } from '#cli/commands/bench/session-memory.js'
 
@@ -146,6 +150,57 @@ describe('wp bench session-memory', () => {
 
   it('creates deterministic run ids from the manifest hash', () => {
     expect(createRunId(TEST_MANIFEST)).toBe(createRunId(TEST_MANIFEST))
+  })
+
+  it('resolves the repo root from Bun single-file executable URLs using the fallback cwd', () => {
+    dir = mkdtempSync(join(tmpdir(), 'bench-runtime-root-'))
+    writeFileSync(join(dir, 'package.json'), '{"name":"runtime-root"}\n', 'utf8')
+
+    expect(resolveRepoRoot('file:///$bunfs/root/wp', dir)).toBe(dir)
+    expect(resolveRepoRoot('file:///__bunfs__/root/wp', dir)).toBe(dir)
+  })
+
+  it('requires bench source assets before loading runtime modules from a resolved root', () => {
+    dir = mkdtempSync(join(tmpdir(), 'bench-runtime-root-missing-assets-'))
+    writeFileSync(join(dir, 'package.json'), '{"name":"@webpresso/agent-kit"}\n', 'utf8')
+
+    expect(() => assertBenchRuntimeAssets(dir)).toThrow(/requires bench source assets/)
+    expect(() => resolveBenchRuntimeRoot('file:///$bunfs/root/wp', dir)).toThrow(
+      /not available from the compiled single-file runtime/,
+    )
+  })
+
+  it('refuses to resolve bench assets from Bun single-file caller cwd even when spoofed', () => {
+    dir = mkdtempSync(join(tmpdir(), 'bench-runtime-root-spoofed-assets-'))
+    writeFileSync(join(dir, 'package.json'), '{"name":"@webpresso/agent-kit"}\n', 'utf8')
+    for (const file of [
+      'scripts/bench/lib/manifest.ts',
+      'scripts/bench/scenarios/_schema.ts',
+      'scripts/bench/lib/cost-aggregator.ts',
+      'scripts/bench/lib/variant-runner.ts',
+      'scripts/bench/lib/report-writer.ts',
+    ]) {
+      const path = join(dir, file)
+      mkdirSync(dirname(path), { recursive: true })
+      writeFileSync(path, 'export {}\n', 'utf8')
+    }
+
+    expect(() => resolveBenchRuntimeRoot('file:///$bunfs/root/wp', dir)).toThrow(
+      /refuses to resolve benchmark assets from the caller cwd/,
+    )
+  })
+
+  it('refuses actual session-memory execution from the compiled runtime lane', async () => {
+    expect(() =>
+      assertBenchSessionMemorySupportedRuntime({ WP_COMPILED_RUNTIME: '1' }),
+    ).toThrow(/not available from the compiled runtime/)
+
+    await expect(
+      runBenchSessionMemoryCommand({
+        dryRun: true,
+        env: { WP_COMPILED_RUNTIME: '1' },
+      }),
+    ).rejects.toThrow(/refuses to execute source-dependent benchmark assets/)
   })
 
   it('succeeds in dry-run mode without API calls', async () => {

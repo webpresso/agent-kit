@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-05-29'
+last_updated: '2026-06-08'
 ---
 
 # Add-ons
@@ -10,6 +10,9 @@ bootstrap.
 
 - **Default repo bootstrap:** `base-kit` creates the starter quality scaffold
   and package scripts when files are absent.
+- **Default shared Webpresso skills:** `fix`, `verify`, `testing-philosophy`,
+  `plan-refine`, `pll`, and `best-practice-research` are projected into
+  supported host-visible surfaces by default.
 - **Default workstation presets:** `omx`, `omc`, `gstack`, `vision`, `rtk`, and
   `context-mode` are requested by default and degrade when the matching host or
   auth is missing.
@@ -27,6 +30,10 @@ wp setup --with <name>
 ```
 
 That is the only setup option most users should ever need to learn.
+
+Use the same `--with` flow for non-default Webpresso skills such as
+`systematic-debugging`, `test-driven-development`, `deep-research`, and
+`monorepo-navigation`.
 
 ## Available integrations
 
@@ -52,6 +59,10 @@ external integration instead.
 templates, local guardrails, and `base-kit` quality files. Those generated
 quality files are absent-only: replace the starter sample with real code/tests,
 and reruns preserve your files.
+
+Fresh repos default to `blueprints/`. Repos that need a different layout can
+override `.webpressorc.json#blueprintsDir` — for example
+`webpresso/blueprints` in a monorepo.
 
 Most users should never need to think about those pieces individually. When a
 row says “in the default preset set,” it means `wp setup` includes that preset

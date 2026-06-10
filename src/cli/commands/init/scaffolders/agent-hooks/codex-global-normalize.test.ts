@@ -1,4 +1,5 @@
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
@@ -8,6 +9,7 @@ import {
   defaultManagedCodexHooksDir,
   normalizeGlobalCodexHooksJson,
   normalizeGlobalCodexHooksFile,
+  resolveInstalledOmxHookScriptPath,
   resolveBinaryOnPath,
 } from './codex-global-normalize.js'
 
@@ -156,8 +158,152 @@ describe('normalizeGlobalCodexHooksJson', () => {
       readFileSync(path.join(managedDir, 'wp-global-codex-context-mode-posttooluse.sh'), 'utf8'),
     ).toBe('#!/bin/sh\nexec "/abs/context-mode" hook codex posttooluse "$@"\n')
     expect(readFileSync(path.join(managedDir, 'wp-global-codex-omx-hook.sh'), 'utf8')).toBe(
-      '#!/bin/sh\nexec "/abs/node" "/tmp/oh-my-codex/dist/scripts/codex-native-hook.js" "$@"\n',
+      '#!/bin/sh\n' +
+        'NODE_BINARY="/abs/node"\n' +
+        'HOOK_SCRIPT="/tmp/oh-my-codex/dist/scripts/codex-native-hook.js"\n' +
+        '\n' +
+        'if [ ! -x "$NODE_BINARY" ]; then\n' +
+        '  NODE_BINARY="$(command -v node 2>/dev/null || true)"\n' +
+        'fi\n' +
+        '\n' +
+        'if [ -z "$NODE_BINARY" ] || [ ! -x "$NODE_BINARY" ]; then\n' +
+        '  echo "OMX Codex hook skipped: node runtime not found; rerun omx setup or wp setup" >&2\n' +
+        "  printf '%s\\n' '{}'\n" +
+        '  exit 0\n' +
+        'fi\n' +
+        '\n' +
+        'if [ ! -f "$HOOK_SCRIPT" ]; then\n' +
+        '  echo "OMX Codex hook skipped: hook script not found; rerun omx setup or wp setup" >&2\n' +
+        "  printf '%s\\n' '{}'\n" +
+        '  exit 0\n' +
+        'fi\n' +
+        '\n' +
+        'exec "$NODE_BINARY" "$HOOK_SCRIPT" "$@"\n',
     )
+  })
+
+  it('shared OMX global launcher emits JSON passthrough when node is missing', () => {
+    const root = mkroot('wp-codex-global-missing-node-')
+    const hooksPath = path.join(root, 'hooks.json')
+    writeFileSync(
+      hooksPath,
+      JSON.stringify({
+        hooks: {
+          Stop: [
+            {
+              hooks: [
+                {
+                  type: 'command',
+                  command: 'node "/tmp/oh-my-codex/dist/scripts/codex-native-hook.js"',
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    )
+
+    normalizeGlobalCodexHooksFile(hooksPath, {
+      nodeBinary: '/missing/nonexistent-node',
+    })
+
+    const launcherPath = path.join(
+      defaultManagedCodexHooksDir(hooksPath),
+      'wp-global-codex-omx-hook.sh',
+    )
+    const result = spawnSync('sh', [launcherPath], {
+      encoding: 'utf8',
+      env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
+    })
+
+    expect(result.status).toBe(0)
+    expect(result.stderr).toContain('node runtime not found')
+    expect(result.stdout).toBe('{}\n')
+    expect(() => JSON.parse(result.stdout)).not.toThrow()
+  })
+
+  it('shared OMX global launcher emits JSON passthrough when the hook script is missing', () => {
+    const root = mkroot('wp-codex-global-missing-script-')
+    const hooksPath = path.join(root, 'hooks.json')
+    writeFileSync(
+      hooksPath,
+      JSON.stringify({
+        hooks: {
+          Stop: [
+            {
+              hooks: [
+                {
+                  type: 'command',
+                  command: 'node "/tmp/oh-my-codex/dist/scripts/codex-native-hook.js"',
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    )
+
+    normalizeGlobalCodexHooksFile(hooksPath, {
+      nodeBinary: process.execPath,
+    })
+
+    const launcherPath = path.join(
+      defaultManagedCodexHooksDir(hooksPath),
+      'wp-global-codex-omx-hook.sh',
+    )
+    const result = spawnSync('sh', [launcherPath], { encoding: 'utf8' })
+
+    expect(result.status).toBe(0)
+    expect(result.stderr).toContain('hook script not found')
+    expect(result.stdout).toBe('{}\n')
+    expect(() => JSON.parse(result.stdout)).not.toThrow()
+  })
+
+  it('refreshes an already-normalized OMX launcher when setup knows the current hook script path', () => {
+    const root = mkroot('wp-codex-global-managed-refresh-')
+    const hooksPath = path.join(root, 'hooks.json')
+    const managedDir = defaultManagedCodexHooksDir(hooksPath)
+    mkdirSync(managedDir, { recursive: true })
+
+    writeFileSync(
+      hooksPath,
+      JSON.stringify(
+        {
+          hooks: {
+            Stop: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command: `"${path.join(managedDir, 'wp-global-codex-omx-hook.sh')}"`,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+    writeFileSync(
+      path.join(managedDir, 'wp-global-codex-omx-hook.sh'),
+      '#!/bin/sh\nexec "/stale/node" "/stale/codex-native-hook.js" "$@"\n',
+      'utf8',
+    )
+
+    const result = normalizeGlobalCodexHooksFile(hooksPath, {
+      nodeBinary: '/abs/node',
+      omxScriptPath: '/stable/oh-my-codex/dist/scripts/codex-native-hook.js',
+    })
+
+    expect(result.action).toBe('overwritten')
+    const rewritten = readFileSync(path.join(managedDir, 'wp-global-codex-omx-hook.sh'), 'utf8')
+    expect(rewritten).toContain('NODE_BINARY="/abs/node"')
+    expect(rewritten).toContain(
+      'HOOK_SCRIPT="/stable/oh-my-codex/dist/scripts/codex-native-hook.js"',
+    )
+    expect(rewritten).toContain('command -v node')
   })
 })
 
@@ -174,5 +320,63 @@ describe('resolveBinaryOnPath', () => {
 
   it('returns null when the binary is absent', () => {
     expect(resolveBinaryOnPath('missing-binary', '/tmp/does-not-exist')).toBeNull()
+  })
+})
+
+describe('resolveInstalledOmxHookScriptPath', () => {
+  it('prefers the stable Vite+ package-store hook path when present', () => {
+    const root = mkroot('wp-omx-script-stable-')
+    const candidate = path.join(
+      root,
+      '.vite-plus',
+      'packages',
+      'oh-my-codex',
+      'lib',
+      'node_modules',
+      'oh-my-codex',
+      'dist',
+      'scripts',
+      'codex-native-hook.js',
+    )
+    mkdirSync(path.dirname(candidate), { recursive: true })
+    writeFileSync(candidate, '// hook\n', 'utf8')
+
+    expect(resolveInstalledOmxHookScriptPath(root)).toBe(candidate)
+  })
+
+  it('falls back to the newest legacy js_runtime install when needed', () => {
+    const root = mkroot('wp-omx-script-legacy-')
+    const legacyA = path.join(
+      root,
+      '.vite-plus',
+      'js_runtime',
+      'node',
+      '24.15.0',
+      'lib',
+      'node_modules',
+      'oh-my-codex',
+      'dist',
+      'scripts',
+      'codex-native-hook.js',
+    )
+    const legacyB = path.join(
+      root,
+      '.vite-plus',
+      'js_runtime',
+      'node',
+      '24.16.0',
+      'lib',
+      'node_modules',
+      'oh-my-codex',
+      'dist',
+      'scripts',
+      'codex-native-hook.js',
+    )
+    mkdirSync(path.dirname(legacyA), { recursive: true })
+    mkdirSync(path.dirname(legacyB), { recursive: true })
+    writeFileSync(legacyA, '// hook a\n', 'utf8')
+    writeFileSync(legacyB, '// hook b\n', 'utf8')
+
+    expect(resolveInstalledOmxHookScriptPath(root)).toBe(legacyB)
   })
 })

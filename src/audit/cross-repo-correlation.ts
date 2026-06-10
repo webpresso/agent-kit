@@ -33,7 +33,8 @@ export async function auditCrossRepoCorrelationAsRepoResult(cwd: string): Promis
       message:
         `LEAK: public blueprint '${leak.blueprintSlug}' has unredacted reference to` +
         ` private slug '${leak.targetSlug}' in repo '${leak.targetRepo}'.` +
-        ` Run 'wp fix cross-repo-leak ${leak.blueprintSlug}' to remediate.`,
+        ' Redact the target slug in the projection DB and source markdown;' +
+        ' see docs/cross-repo-correlation.md for remediation steps.',
     })
   }
 

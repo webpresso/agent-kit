@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-06-07'
+last_updated: '2026-06-08'
 ---
 
 # Getting started
@@ -31,8 +31,11 @@ Your repo now has one shared agent contract across the supported coding-agent
 surfaces.
 
 The root launcher contract is a hard cut: the package `bin` entrypoint is
-`bin/wp`, `wp` resolves through that file, and there is no `bin/wp.js`
-compatibility shim to preserve or repair.
+`bin/wp`, `wp` resolves through that real executable JavaScript selector with a
+Node shebang, and there is no `bin/wp.js` compatibility shim to preserve or
+repair. Migrated runtime-lane commands require the installed platform runtime
+package; installing with optional dependencies omitted is an unsupported state
+for those commands.
 
 No private registry setup is required.
 
@@ -58,16 +61,21 @@ installed, use:
   entirely
 
 `wp setup` writes one gstack session log per run under webpresso's state-root
-storage and prints the log path on failures. On Windows, timeout/interrupt
-cleanup is best-effort direct-child termination only; the wrapper does not
-guarantee grandchild teardown there.
+storage and prints the log path on failures. In quiet mode, the wrapper stays
+concise but now emits periodic "still running" heartbeat lines when an external
+gstack step is alive without fresh output; that keeps long phases like browser
+install/extraction from looking dead without dumping raw child logs by default.
+On Windows, timeout/interrupt cleanup is best-effort direct-child termination
+only; the wrapper does not guarantee grandchild teardown there.
 
 ## What changed
 
 `wp setup` adds the repo bootstrap webpresso owns:
 
 - `AGENTS.md`
-- `.agent/` canonical commands, skills, rules, guides, and workflows
+- `.agent/` canonical commands, workflows, guides, and generated support files
+- repo-owned source skill surfaces (`agent-skills/`, `agent-rules/`) when the
+  catalog or setup path uses them
 - generated agent surfaces
 - blueprint lifecycle folders and docs templates
 - `base-kit` quality scaffold: `tsconfig.json`, `vitest.config.ts`,
@@ -88,6 +96,29 @@ after your real tests and e2e specs are in place.
 Codex and Claude surfaces are conditional on the matching host being installed
 and available. Missing CLIs, skipped presets, or unauthenticated hosts should
 show as skipped or warning lines in setup output, not as silent success.
+
+### Default shared skills vs opt-ins
+
+The default cross-host Webpresso skill contract is intentionally curated.
+
+Guaranteed by default across Codex and Claude host-visible surfaces:
+
+- `fix`
+- `verify`
+- `testing-philosophy`
+- `plan-refine`
+- `pll`
+- `best-practice-research`
+
+Available as explicit opt-ins rather than default prompt baggage:
+
+- `systematic-debugging`
+- `test-driven-development`
+- `deep-research`
+- `monorepo-navigation`
+
+That split keeps the “same useful core skills everywhere” contract while
+avoiding broad projection of the long tail into every host by default.
 
 ### What gets committed vs ignored
 
@@ -122,6 +153,12 @@ vp run public:consumer-smoke -- --setup-only
 
 Start with the default setup. Reach for add-ons only when the repo genuinely
 needs one: [Add-ons](./add-ons.md).
+
+## Blueprint root
+
+Fresh repos default to `blueprints/`, but the blueprint root is configurable.
+Set `.webpressorc.json#blueprintsDir` when a repo needs a different layout,
+such as `webpresso/blueprints` in a monorepo.
 
 ## Package note
 

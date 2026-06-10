@@ -9,24 +9,24 @@ import {
   formatRootLauncherContractFailure,
   formatRootLauncherContractSuccess,
   rootContractMode,
-  rootWpDispatcherSource,
+  rootWpSelectorSource,
   validateRootLauncherContract,
 } from './root-contract.js'
 
 describe('root launcher contract', () => {
   it('exports the shared contract mode and expected root launcher path', () => {
-    expect(rootContractMode).toBe('js-dispatcher-externalized-runtime')
+    expect(rootContractMode).toBe('js-selector-runtime-lane')
     expect(expectedRootWpBinRelativePath).toBe('bin/wp')
     expect(formatRootLauncherContractSuccess()).toContain(rootContractMode)
   })
 
-  it('accepts an executable JavaScript dispatcher with a Node shebang', () => {
+  it('accepts an executable JavaScript selector with a Node shebang', () => {
     const root = mkdtempSync(join(tmpdir(), 'wp-root-contract-valid-'))
     const launcherPath = join(root, 'bin', 'wp')
 
     try {
       mkdirSync(join(root, 'bin'), { recursive: true })
-      writeFileSync(launcherPath, rootWpDispatcherSource, 'utf8')
+      writeFileSync(launcherPath, rootWpSelectorSource, 'utf8')
       chmodSync(launcherPath, 0o755)
 
       expect(validateRootLauncherContract(launcherPath)).toMatchObject({ ok: true, code: 'ok' })
@@ -35,13 +35,13 @@ describe('root launcher contract', () => {
     }
   })
 
-  it('accepts the canonical dispatcher with CRLF line endings', () => {
+  it('accepts the canonical selector with CRLF line endings', () => {
     const root = mkdtempSync(join(tmpdir(), 'wp-root-contract-crlf-'))
     const launcherPath = join(root, 'bin', 'wp')
 
     try {
       mkdirSync(join(root, 'bin'), { recursive: true })
-      writeFileSync(launcherPath, rootWpDispatcherSource.replaceAll('\n', '\r\n'), 'utf8')
+      writeFileSync(launcherPath, rootWpSelectorSource.replaceAll('\n', '\r\n'), 'utf8')
       chmodSync(launcherPath, 0o755)
 
       expect(validateRootLauncherContract(launcherPath)).toMatchObject({ ok: true, code: 'ok' })
@@ -60,14 +60,14 @@ describe('root launcher contract', () => {
       chmodSync(launcherPath, 0o755)
 
       const result = validateRootLauncherContract(launcherPath)
-      expect(result).toMatchObject({ ok: false, code: 'invalid-dispatcher' })
+      expect(result).toMatchObject({ ok: false, code: 'invalid-selector' })
       expect(formatRootLauncherContractFailure(result)).toContain('Node shebang')
     } finally {
       rmSync(root, { force: true, recursive: true })
     }
   })
 
-  it('rejects near-match JavaScript dispatchers so duplicate launcher logic cannot drift', () => {
+  it('rejects near-match JavaScript selectors so duplicate launcher logic cannot drift', () => {
     const root = mkdtempSync(join(tmpdir(), 'wp-root-contract-near-match-'))
     const launcherPath = join(root, 'bin', 'wp')
 
@@ -75,14 +75,14 @@ describe('root launcher contract', () => {
       mkdirSync(join(root, 'bin'), { recursive: true })
       writeFileSync(
         launcherPath,
-        "#!/usr/bin/env node\n\nimport { runNamedBin } from './_run.js'\n\nrunNamedBin(\"wp\")\n",
+        '#!/usr/bin/env node\n\nimport { runNamedBin } from \'./_run.js\'\n\nrunNamedBin("wp")\n',
         'utf8',
       )
       chmodSync(launcherPath, 0o755)
 
       expect(validateRootLauncherContract(launcherPath)).toMatchObject({
         ok: false,
-        code: 'invalid-dispatcher',
+        code: 'invalid-selector',
       })
     } finally {
       rmSync(root, { force: true, recursive: true })
@@ -95,7 +95,7 @@ describe('root launcher contract', () => {
 
     try {
       mkdirSync(join(root, 'bin'), { recursive: true })
-      writeFileSync(join(root, 'bin', 'wp.real'), rootWpDispatcherSource, 'utf8')
+      writeFileSync(join(root, 'bin', 'wp.real'), rootWpSelectorSource, 'utf8')
       chmodSync(join(root, 'bin', 'wp.real'), 0o755)
       symlinkSync('wp.real', launcherPath)
 

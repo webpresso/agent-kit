@@ -43,7 +43,7 @@ import {
   formatRootLauncherContractFailure,
   expectedRootWpBinRelativePath,
   rootContractMode,
-  rootWpDispatcherSource,
+  rootWpSelectorSource,
   validateRootLauncherContract,
 } from '#launcher/root-contract.js'
 
@@ -90,7 +90,7 @@ function repairRootWpLauncher(packageRoot: string): string {
   if (destinationStatus.ok) return destination
 
   mkdirSync(dirname(destination), { recursive: true })
-  writeFileSync(destination, rootWpDispatcherSource, 'utf8')
+  writeFileSync(destination, rootWpSelectorSource, 'utf8')
   chmodSync(destination, 0o755)
 
   const repairedStatus = validateRootLauncherContract(destination)
@@ -105,9 +105,7 @@ function repairRootWpLauncher(packageRoot: string): string {
 /**
  * Refresh the single global `@webpresso/agent-kit` install via `vp install -g`.
  */
-export function ensureAgentKitGlobal(
-  input: EnsureAgentKitGlobalInput,
-): EnsureAgentKitGlobalResult {
+export function ensureAgentKitGlobal(input: EnsureAgentKitGlobalInput): EnsureAgentKitGlobalResult {
   if (input.options.dryRun) return { kind: 'agent-kit-global-skipped-dry-run' }
 
   const env = input.env ?? process.env
@@ -140,8 +138,7 @@ export function ensureAgentKitGlobal(
 
   let repairedLauncher: string | undefined
   const packageRoot =
-    input.packageRoot ??
-    (input.resolvePackageRootForStaging ?? resolvePackageRootForStaging)(argv1)
+    input.packageRoot ?? (input.resolvePackageRootForStaging ?? resolvePackageRootForStaging)(argv1)
   if (!packageRoot) {
     spinner.fail('agent-kit root launcher repair failed')
     return {

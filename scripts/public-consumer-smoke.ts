@@ -1,12 +1,22 @@
 #!/usr/bin/env bun
 
 import { execFileSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { preparePackedManifest, restorePackedManifest } from '../src/build/package-manifest.js'
+import { AGENTS_MD_MAX_BYTES } from '../src/cli/commands/init/scaffold-agents-md.js'
+
+const SHARED_FAVORITES = ['fix', 'verify', 'testing-philosophy', 'plan-refine', 'pll'] as const
+
+const DEFAULT_ABSENT_SKILLS = [
+  'systematic-debugging',
+  'test-driven-development',
+  'deep-research',
+  'monorepo-navigation',
+] as const
 
 interface RunResult {
   readonly command: string
@@ -24,7 +34,6 @@ const skipBuild = process.argv.includes('--skip-build')
 const requiredFiles = [
   'tsconfig.json',
   'vitest.config.ts',
-  'oxlint.config.ts',
   'stryker.config.ts',
   'playwright.config.ts',
   '.github/actions/setup-webpresso/action.yml',
@@ -86,7 +95,10 @@ function packCurrentArtifact(): string {
   let raw: string
   try {
     preparePackedManifest(ROOT)
-    raw = runOrThrow('npm', ['pack', '--ignore-scripts', '--json'], ROOT)
+    // --pack-destination writes the tarball into the temp workspace (removed on
+    // exit) instead of the repo root, so a parallel run can't race on the fixed
+    // root path and a crashed pack can't leave an untracked tarball behind.
+    raw = runOrThrow('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', tempRoot], ROOT)
   } finally {
     restorePackedManifest(ROOT)
   }
@@ -95,11 +107,7 @@ function packCurrentArtifact(): string {
   if (!filename) {
     throw new Error('npm pack did not report a filename')
   }
-  const packedPath = resolve(ROOT, filename)
-  const stagedPath = join(tempRoot, filename)
-  copyFileSync(packedPath, stagedPath)
-  rmSync(packedPath, { force: true })
-  return stagedPath
+  return join(tempRoot, filename)
 }
 
 function assertSetupContract(repo: string): RunResult[] {
@@ -138,6 +146,37 @@ function assertSetupContract(repo: string): RunResult[] {
       detail: pkg.devDependencies?.[dep] ?? 'missing',
     })
   }
+
+  for (const hostRoot of ['.agents/skills', '.claude/skills'] as const) {
+    for (const skill of SHARED_FAVORITES) {
+      const target = join(repo, hostRoot, skill, 'SKILL.md')
+      results.push({
+        command: `assert shared favorite ${hostRoot}/${skill}`,
+        ok: existsSync(target),
+        detail: existsSync(target) ? 'ok' : 'missing',
+      })
+    }
+
+    for (const skill of DEFAULT_ABSENT_SKILLS) {
+      const target = join(repo, hostRoot, skill, 'SKILL.md')
+      results.push({
+        command: `assert default absent ${hostRoot}/${skill}`,
+        ok: !existsSync(target),
+        detail: existsSync(target) ? 'unexpectedly present' : 'ok',
+      })
+    }
+  }
+
+  const agentsPath = join(repo, 'AGENTS.md')
+  const agentsBytes = existsSync(agentsPath)
+    ? Buffer.byteLength(readFileSync(agentsPath), 'utf8')
+    : 0
+  results.push({
+    command: 'assert AGENTS.md prompt budget',
+    ok: agentsBytes <= AGENTS_MD_MAX_BYTES,
+    detail: existsSync(agentsPath) ? `${agentsBytes}/${AGENTS_MD_MAX_BYTES} bytes` : 'missing',
+  })
+
   return results
 }
 

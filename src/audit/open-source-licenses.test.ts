@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
@@ -11,13 +11,49 @@ function writeJson(path: string, value: unknown) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`)
 }
 
+/**
+ * Copy the minimal set of files that auditOpenSourceLicenses needs into a
+ * tmpdir so the test never mutates the live working tree.
+ */
+function makeAuditFixture(): string {
+  const root = mkdtempSync(join(tmpdir(), 'webpresso-oss-license-fixture-'))
+  for (const file of ['LICENSE', 'THIRD-PARTY-NOTICES.md', 'package.json', 'pnpm-workspace.yaml']) {
+    cpSync(join(repoRoot, file), join(root, file))
+  }
+  cpSync(join(repoRoot, 'catalog', 'agent', 'skills'), join(root, 'catalog', 'agent', 'skills'), {
+    recursive: true,
+  })
+  return root
+}
+
 describe('open-source-licenses audit', () => {
   test('passes for the agent-kit repository', () => {
     const result = auditOpenSourceLicenses(repoRoot)
 
     expect(result.ok).toBe(true)
     expect(result.violations).toEqual([])
-  }, 60_000)
+  })
+
+  test('is hermetic: a leftover prepack backup lock does not poison the audit', () => {
+    // The packed-surface check used to run `npm pack`, whose prepack hook
+    // (`preparePackedManifest`) throws "Packed-manifest backup already exists"
+    // when `.package.json.prepack.backup` is present, then rewrites the live
+    // package.json in place. So a backup left behind by an interrupted/parallel
+    // pack made the audit report `ok: false`. The hermetic computation must
+    // ignore that lock entirely.
+    //
+    // The fixture is a tmpdir copy of the minimal files the audit needs, so
+    // the backup lock is never written into the live repo working tree.
+    const root = makeAuditFixture()
+    try {
+      writeFileSync(join(root, '.package.json.prepack.backup'), '{}\n')
+      const result = auditOpenSourceLicenses(root)
+      expect(result.ok).toBe(true)
+      expect(result.violations).toEqual([])
+    } finally {
+      rmSync(root, { force: true, recursive: true })
+    }
+  })
 
   test('flags missing root LICENSE and notices files', () => {
     const root = mkdtempSync(join(tmpdir(), 'webpresso-open-source-licenses-'))

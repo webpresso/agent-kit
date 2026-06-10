@@ -2,10 +2,12 @@ import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, relative } from 'node:path'
 
+import { SHARED_FAVORITE_SKILLS } from './scaffold-agent.js'
+
 export const AGENT_HOSTS = ['codex', 'claude', 'opencode'] as const
 export type AgentHost = (typeof AGENT_HOSTS)[number]
 
-export const REQUIRED_CORE_CAPABILITIES = ['verify', 'plan-refine'] as const
+export const REQUIRED_CORE_CAPABILITIES = SHARED_FAVORITE_SKILLS
 
 export const VISIBILITY_STATUSES = ['visible-now', 'visible-after-restart', 'not-visible'] as const
 export type VisibilityStatus = (typeof VISIBILITY_STATUSES)[number]

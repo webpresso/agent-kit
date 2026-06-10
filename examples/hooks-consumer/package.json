@@ -1,0 +1,14 @@
+{
+  "name": "hooks-consumer-example",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@webpresso/agent-kit": "workspace:*"
+  },
+  "scripts": {
+    "setup:agent": "wp setup",
+    "hooks:status": "wp hooks status",
+    "hooks:demo": "wp hooks demo PreToolUse --tool Bash",
+    "hooks:doctor": "wp hooks doctor"
+  }
+}

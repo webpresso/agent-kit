@@ -4,9 +4,12 @@ import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
 import { createAkTestCommandConfig, TEST_COMMAND_HELP } from './test.js'
 
 const tempDirs: string[] = []
+
+installManagedRunnerHermeticHooks()
 
 afterEach(() => {
   while (tempDirs.length > 0) rmSync(tempDirs.pop()!, { recursive: true, force: true })

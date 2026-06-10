@@ -1,18 +1,12 @@
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ProjectRootNotFoundError, resolveProjectRoot } from './project-root.js'
 
-const originalProjectDir = process.env.CLAUDE_PROJECT_DIR
-
 afterEach(() => {
-  if (originalProjectDir === undefined) {
-    delete process.env.CLAUDE_PROJECT_DIR
-  } else {
-    process.env.CLAUDE_PROJECT_DIR = originalProjectDir
-  }
+  vi.unstubAllEnvs()
 })
 
 describe('resolveProjectRoot', () => {
@@ -87,9 +81,7 @@ describe('resolveProjectRoot', () => {
     writeFileSync(join(cwdRoot, 'pnpm-workspace.yaml'), '')
     const nested = join(cwdRoot, 'apps', 'site')
     mkdirSync(nested, { recursive: true })
-    expect(
-      resolveProjectRoot({ env: { CLAUDE_PROJECT_DIR: envRoot }, cwd: nested }),
-    ).toBe(cwdRoot)
+    expect(resolveProjectRoot({ env: { CLAUDE_PROJECT_DIR: envRoot }, cwd: nested })).toBe(cwdRoot)
   })
 
   // Boundary: an explicit cwd with no marker of its own still defers to

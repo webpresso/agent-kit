@@ -23,6 +23,7 @@ const SUPPORTED_COMMANDS = [
   'roadmap',
   'sync',
   'audit',
+  'qa',
   'compile',
   'rule',
   'skill',
@@ -75,10 +76,11 @@ const ROOT_HELP = [
   '',
   'Quality:',
   '  audit                 Run packaged audits (bundle budgets, repo guardrails, TPH, tech-debt)',
+  '  qa                    Run the repository QA gate through the portable wp surface',
   '  test                  Run tests through the portable webpresso surface',
   '  typecheck             Typecheck the current workspace through the portable wp surface',
   '  lint                  Lint via oxlint (with pnpm fallback)',
-  '  format                Format via oxfmt (--check for CI/husky)',
+  '  format                Format through the portable wp surface (--check for CI/husky)',
   '  e2e                   Build and run E2E commands through the portable webpresso surface',
   '  ci                    Run repository CI helpers through the portable wp surface',
   '',
@@ -187,6 +189,11 @@ export async function main(): Promise<number> {
     case 'audit': {
       const { registerAuditCommand } = await import('./commands/audit.js')
       registerAuditCommand(cli)
+      break
+    }
+    case 'qa': {
+      const { registerQaCommand } = await import('./commands/qa.js')
+      registerQaCommand(cli)
       break
     }
     case 'compile': {

@@ -1,17 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
-import { rootWpDispatcherSource } from '../../../../../launcher/root-contract.js'
+import { rootWpSelectorSource } from '../../../../../launcher/root-contract.js'
 
 import { ensureAgentKitGlobal } from './index.js'
 
@@ -23,9 +16,7 @@ type SpawnReturn = { status: number | null; error?: Error; stdout?: string }
  */
 type ScaffolderSpawn = NonNullable<Parameters<typeof ensureAgentKitGlobal>[0]['spawn']>
 
-function makeSpawn(
-  responses: { probe?: SpawnReturn; install?: SpawnReturn } = {},
-): {
+function makeSpawn(responses: { probe?: SpawnReturn; install?: SpawnReturn } = {}): {
   spawn: ScaffolderSpawn
   calls: Array<{ cmd: string; args: readonly string[] }>
 } {
@@ -119,7 +110,7 @@ describe('ensureAgentKitGlobal', () => {
     ])
   })
 
-  it('repairs a mutated root bin/wp back to the JS dispatcher after refresh', () => {
+  it('repairs a mutated root bin/wp back to the JS selector after refresh', () => {
     const root = mkdtempSync(join(tmpdir(), 'wp-agent-kit-global-'))
     const { spawn } = makeSpawn()
 
@@ -130,7 +121,7 @@ describe('ensureAgentKitGlobal', () => {
         `${JSON.stringify({ name: '@webpresso/agent-kit', bin: { wp: 'bin/wp' } })}\n`,
         'utf8',
       )
-      writeFileSync(join(root, 'bin', 'wp'), '\x7fELFnot-a-dispatcher', 'utf8')
+      writeFileSync(join(root, 'bin', 'wp'), '\x7fELFnot-a-selector', 'utf8')
 
       const result = ensureAgentKitGlobal({
         options: WRITE_OPTIONS,
@@ -147,7 +138,7 @@ describe('ensureAgentKitGlobal', () => {
         repairedLauncher: join(root, 'bin', 'wp'),
       })
       expect(existsSync(join(root, 'bin', 'wp'))).toBe(true)
-      expect(readFileSync(join(root, 'bin', 'wp'), 'utf8')).toBe(rootWpDispatcherSource)
+      expect(readFileSync(join(root, 'bin', 'wp'), 'utf8')).toBe(rootWpSelectorSource)
     } finally {
       rmSync(root, { force: true, recursive: true })
     }
@@ -180,7 +171,7 @@ describe('ensureAgentKitGlobal', () => {
         command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
         repairedLauncher: join(root, 'bin', 'wp'),
       })
-      expect(readFileSync(join(root, 'bin', 'wp'), 'utf8')).toBe(rootWpDispatcherSource)
+      expect(readFileSync(join(root, 'bin', 'wp'), 'utf8')).toBe(rootWpSelectorSource)
     } finally {
       rmSync(root, { force: true, recursive: true })
     }

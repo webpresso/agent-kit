@@ -1,5 +1,7 @@
 import {
   resolveRunner,
+  resolveOutputPolicy,
+  setRtkAvailabilityProbeForTest as _setRtkProbe,
   type ManagedRunnerResolution,
   type ResolveRunnerOptions,
   type ManagedRunnerOutputPolicy,
@@ -8,8 +10,7 @@ import {
 const runtimeCache = new Map<string, ManagedRunnerResolution>()
 
 function cacheKey(tool: string, options: ResolveRunnerOptions): string {
-  const outputPolicy =
-    options.outputPolicy ?? (options.filterOutput === false ? 'structured' : 'rtk-filtered')
+  const outputPolicy = resolveOutputPolicy(options.outputPolicy, options.filterOutput)
   return JSON.stringify({
     tool,
     outputPolicy,
@@ -35,4 +36,10 @@ export function clearManagedRunnerCache(): void {
   runtimeCache.clear()
 }
 
+export function setRtkAvailabilityProbeForTest(value: boolean | null): void {
+  _setRtkProbe(value)
+  runtimeCache.clear()
+}
+
+export { resolveOutputPolicy }
 export type { ManagedRunnerOutputPolicy, ManagedRunnerResolution, ResolveRunnerOptions }

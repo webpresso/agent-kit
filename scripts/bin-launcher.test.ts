@@ -1,3 +1,5 @@
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -9,6 +11,16 @@ import {
   resolveInvokedBinName,
   resolvePinnedNodeVersion,
 } from '../bin/_run.js'
+import {
+  COMMAND_LANE_TABLE,
+  JS_HOLDBACK_LANE,
+  JS_HOLDBACK_WP_COMMANDS,
+  PHASE2_RUNTIME_LANE,
+  PHASE2_RUNTIME_WP_COMMANDS,
+  RUNTIME_LANE,
+  formatCommandLaneSummary,
+  getWpCommandLane,
+} from '../bin/runtime-lanes.js'
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -53,6 +65,37 @@ describe('bin launcher', () => {
     })
   })
 
+  it('routes phase-1 wp runtime-lane commands through the compiled runtime when present', () => {
+    for (const forwardedArgs of [
+      ['mcp'],
+      ['hook', 'pretool-guard'],
+      ['hooks', 'doctor'],
+      ['hooks', '--skip-mcp'],
+      ['hooks', '--vendor', 'codex', 'status'],
+      ['hooks', 'dispatch', 'Stop', '--vendor', 'codex'],
+    ]) {
+      const plan = buildLaunchPlan({
+        binName: 'wp',
+        repoRoot: '/repo',
+        forwardedArgs,
+        platform: 'linux',
+        arch: 'x64',
+        runtimeManifest: RUNTIME_MANIFEST,
+        runtimeBinaryExists: (path) => path === '/repo/bin/runtime/linux-x64/wp',
+        builtExists: true,
+        sourceExists: true,
+        nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
+      })
+
+      expect(plan.mode).toBe('runtime')
+      expect(plan.runtime).toBe('/repo/bin/runtime/linux-x64/wp')
+      expect(plan.args).toEqual(forwardedArgs)
+    }
+  })
+
   it('routes wp mcp through the compiled runtime when the host runtime package is present', () => {
     const plan = buildLaunchPlan({
       binName: 'wp',
@@ -73,6 +116,30 @@ describe('bin launcher', () => {
     expect(plan.mode).toBe('runtime')
     expect(plan.runtime).toBe('/repo/bin/runtime/linux-x64/wp')
     expect(plan.args).toEqual(['mcp'])
+  })
+
+  it('routes every Phase 2 quality command through the compiled runtime when present', () => {
+    for (const command of PHASE2_RUNTIME_WP_COMMANDS) {
+      const plan = buildLaunchPlan({
+        binName: 'wp',
+        repoRoot: '/repo',
+        forwardedArgs: [command, '--help'],
+        platform: 'linux',
+        arch: 'x64',
+        runtimeManifest: RUNTIME_MANIFEST,
+        runtimeBinaryExists: (path) => path === '/repo/bin/runtime/linux-x64/wp',
+        builtExists: true,
+        sourceExists: true,
+        nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
+      })
+
+      expect(plan.mode, command).toBe('runtime')
+      expect(plan.runtime, command).toBe('/repo/bin/runtime/linux-x64/wp')
+      expect(plan.args, command).toEqual([command, '--help'])
+    }
   })
 
   it('keeps wp setup on the built JS launcher even when the host runtime package is present', () => {
@@ -98,6 +165,36 @@ describe('bin launcher', () => {
       args: ['/repo/dist/esm/cli/cli.js', 'setup', '--yes'],
       entrypoint: '/repo/dist/esm/cli/cli.js',
     })
+  })
+
+  it('keeps representative JS/Bun holdback commands on the built launcher when runtime is present', () => {
+    for (const command of JS_HOLDBACK_WP_COMMANDS.filter((value) =>
+      ['setup', 'sync', 'blueprint', 'compile', 'skill', 'install', 'run'].includes(value),
+    )) {
+      const plan = buildLaunchPlan({
+        binName: 'wp',
+        repoRoot: '/repo',
+        forwardedArgs: [command, '--help'],
+        platform: 'linux',
+        arch: 'x64',
+        runtimeManifest: RUNTIME_MANIFEST,
+        runtimeBinaryExists: () => true,
+        builtExists: true,
+        sourceExists: true,
+        nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
+      })
+
+      expect(plan.mode, command).toBe('built')
+      expect(plan.args, command).toEqual(['/repo/dist/esm/cli/cli.js', command, '--help'])
+    }
+  })
+
+  it('keeps hooks holdback subcommands on JS/Bun rather than the runtime lane', () => {
+    expect(getWpCommandLane(['hooks', 'demo', 'PreToolUse'])).toBe(JS_HOLDBACK_LANE)
+    expect(getWpCommandLane(['hooks', 'upgrade', '--workspace'])).toBe(JS_HOLDBACK_LANE)
   })
 
   it('prefers staged compiled runtime artifacts for runtime-owned hook bins', () => {
@@ -139,6 +236,7 @@ describe('bin launcher', () => {
         runtimeBinaryExists: () => true,
         builtExists: true,
         sourceExists: true,
+        sourceNeedsSourceLaunch: false,
         nodeExecPath: '/usr/bin/node',
         currentNodeVersion: 'v24.16.0',
         pinnedNodeVersion: '24.16.0',
@@ -190,10 +288,153 @@ describe('bin launcher', () => {
         pinnedNodeVersion: '24.16.0',
         runtimeManager: null,
       }),
-    ).toThrow(/no compiled runtime target for freebsd\/x64/)
+    ).toThrow(/unsupported platform\/arch target freebsd\/x64/)
   })
 
-  it('prefers source when the source checkout is newer than the built entrypoint', () => {
+  it('hard-fails migrated runtime-lane commands in published installs when optional runtime is omitted', () => {
+    for (const forwardedArgs of [
+      ['hooks', 'status'],
+      ...PHASE2_RUNTIME_WP_COMMANDS.map((command) => [command]),
+    ]) {
+      expect(
+        () =>
+          buildLaunchPlan({
+            binName: 'wp',
+            repoRoot: '/repo',
+            forwardedArgs,
+            platform: 'linux',
+            arch: 'x64',
+            runtimeManifest: RUNTIME_MANIFEST,
+            runtimeBinaryExists: () => false,
+            builtExists: true,
+            sourceExists: false,
+            nodeExecPath: '/usr/bin/node',
+            currentNodeVersion: 'v24.16.0',
+            pinnedNodeVersion: '24.16.0',
+            runtimeManager: null,
+          }),
+        forwardedArgs.join(' '),
+      ).toThrow(/--omit=optional/)
+    }
+  })
+
+  it('fails migrated published commands clearly when the runtime manifest is missing', () => {
+    expect(() =>
+      buildLaunchPlan({
+        binName: 'wp',
+        repoRoot: '/repo',
+        forwardedArgs: ['doctor'],
+        platform: 'linux',
+        arch: 'x64',
+        builtExists: true,
+        sourceExists: false,
+        nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
+      }),
+    ).toThrow(/required compiled runtime manifest is missing/)
+  })
+
+  it('fails migrated published commands clearly on unsupported platform and architecture', () => {
+    expect(() =>
+      buildLaunchPlan({
+        binName: 'wp',
+        repoRoot: '/repo',
+        forwardedArgs: ['qa'],
+        platform: 'freebsd',
+        arch: 'riscv64',
+        runtimeManifest: RUNTIME_MANIFEST,
+        runtimeBinaryExists: () => false,
+        builtExists: true,
+        sourceExists: false,
+        nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
+      }),
+    ).toThrow(/unsupported platform\/arch target freebsd\/riscv64/)
+  })
+
+  it('reports optional dependency wiring when the runtime binary is missing or corrupt', () => {
+    const packageRoot = mkdtempSync(join(tmpdir(), 'wp-launcher-package-'))
+    writeFileSync(
+      join(packageRoot, 'package.json'),
+      JSON.stringify({
+        optionalDependencies: {
+          '@webpresso/agent-kit-runtime-linux-x64': '0.29.3',
+        },
+      }),
+      'utf8',
+    )
+
+    expect(() =>
+      buildLaunchPlan({
+        binName: 'wp',
+        repoRoot: packageRoot,
+        forwardedArgs: ['lint'],
+        platform: 'linux',
+        arch: 'x64',
+        runtimeManifest: RUNTIME_MANIFEST,
+        runtimeBinaryExists: () => false,
+        builtExists: true,
+        sourceExists: false,
+        nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
+      }),
+    ).toThrow(/optional dependency wiring declares @webpresso\/agent-kit-runtime-linux-x64@0\.29\.3/)
+  })
+
+  it('hard-fails runtime-owned direct hook bins in published installs when runtime is missing', () => {
+    expect(() =>
+      buildLaunchPlan({
+        binName: 'wp-pretool-guard',
+        repoRoot: '/repo',
+        forwardedArgs: [],
+        platform: 'linux',
+        arch: 'x64',
+        runtimeManifest: RUNTIME_MANIFEST,
+        runtimeBinaryExists: () => false,
+        builtExists: true,
+        sourceExists: false,
+        nodeExecPath: '/usr/bin/node',
+        currentNodeVersion: 'v24.16.0',
+        pinnedNodeVersion: '24.16.0',
+        runtimeManager: null,
+      }),
+    ).toThrow(/required platform runtime @webpresso\/agent-kit-runtime-linux-x64/)
+  })
+
+  it('classifies the canonical command-lane table', () => {
+    expect(COMMAND_LANE_TABLE.runtimeRequired.wpCommands).toContain('mcp')
+    expect(COMMAND_LANE_TABLE.runtimeRequired.wpCommands).toContain('hook')
+    expect(COMMAND_LANE_TABLE.runtimeRequired.hooksSubcommands).toEqual([
+      'doctor',
+      'status',
+      'dispatch',
+    ])
+    expect(COMMAND_LANE_TABLE.runtimeRequired.directBins).toEqual([
+      'wp-pretool-guard',
+      'wp-post-tool',
+      'wp-stop-qa',
+      'wp-guard-switch',
+      'wp-sessionstart-routing',
+      'wp-test-quality-check',
+      'wp-check-dev-link',
+    ])
+    expect(getWpCommandLane(['mcp'])).toBe(RUNTIME_LANE)
+    for (const command of PHASE2_RUNTIME_WP_COMMANDS) {
+      expect(getWpCommandLane([command]), command).toBe(PHASE2_RUNTIME_LANE)
+    }
+    expect(getWpCommandLane(['setup'])).toBe(JS_HOLDBACK_LANE)
+    expect(formatCommandLaneSummary()).toBe(
+      'runtime-required, phase2-runtime, and JS/Bun holdback lanes',
+    )
+  })
+
+  it('prefers source for wp when the cli tree requires a source launch', () => {
     expect(
       buildLaunchPlan({
         binName: 'wp',
@@ -201,8 +442,7 @@ describe('bin launcher', () => {
         forwardedArgs: ['bench', 'session-memory', '--dry-run'],
         builtExists: true,
         sourceExists: true,
-        builtMtimeMs: 100,
-        sourceMtimeMs: 200,
+        sourceNeedsSourceLaunch: true,
         nodeExecPath: '/usr/bin/node',
         currentNodeVersion: 'v24.16.0',
         pinnedNodeVersion: '24.16.0',

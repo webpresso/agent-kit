@@ -46,6 +46,12 @@ vi.mock('node:child_process', async () => {
 
 import { EXIT_SETUP_FAIL, EXIT_SUCCESS, EXIT_WRITE_FAIL, runInit } from './index.js'
 
+const silentStdout = { write: () => true }
+
+function runInitSilently(flags: Parameters<typeof runInit>[0]): Promise<number> {
+  return runInit(flags, { stdout: silentStdout })
+}
+
 function makeRepo(): string {
   const dir = mkdtempSync(join(tmpdir(), 'wp-init-presets-'))
   mkdirSync(join(dir, '.git'), { recursive: true })
@@ -72,6 +78,9 @@ describe('runInit() — omx + gstack presets (integration)', () => {
   let originalHome: string | undefined
   let originalCi: string | undefined
   let originalPath: string | undefined
+  let consoleLogSpy: ReturnType<typeof vi.spyOn> | undefined
+  let consoleWarnSpy: ReturnType<typeof vi.spyOn> | undefined
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn> | undefined
 
   beforeEach(() => {
     repo = makeRepo()
@@ -100,6 +109,9 @@ describe('runInit() — omx + gstack presets (integration)', () => {
     spawnSyncMock.mockImplementation(() => okSpawnResult)
     spawnMock.mockReset()
     spawnMock.mockImplementation(() => new FakeAsyncChild())
+    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -123,12 +135,53 @@ describe('runInit() — omx + gstack presets (integration)', () => {
     } else {
       process.env.PATH = originalPath
     }
+    consoleLogSpy?.mockRestore()
+    consoleWarnSpy?.mockRestore()
+    consoleErrorSpy?.mockRestore()
     rmSync(repo, { recursive: true, force: true })
   })
 
   describe('--with omx', () => {
+    // runInit() runs the gstack/rtk/claude-plugin orchestration for every preset
+    // (gated only by WP_SKIP_*). These omx tests assert only omx + vp calls, but
+    // that orchestration's awaited (mocked) spawns add enough event-loop latency
+    // to push a test past the 10s timeout under full-suite parallel load — a
+    // probabilistic flake across this block. Skip it (as the sibling --with omc
+    // block does); the omx+gstack interaction has dedicated coverage in the
+    // combined block below.
+    let originalSkipGstack: string | undefined
+    let originalSkipRtk: string | undefined
+    let originalSkipClaudePlugin: string | undefined
+
+    beforeEach(() => {
+      originalSkipGstack = process.env.WP_SKIP_GSTACK
+      originalSkipRtk = process.env.WP_SKIP_RTK
+      originalSkipClaudePlugin = process.env.WP_SKIP_CLAUDE_PLUGIN
+      process.env.WP_SKIP_GSTACK = '1'
+      process.env.WP_SKIP_RTK = '1'
+      process.env.WP_SKIP_CLAUDE_PLUGIN = '1'
+    })
+
+    afterEach(() => {
+      if (originalSkipGstack === undefined) {
+        delete process.env.WP_SKIP_GSTACK
+      } else {
+        process.env.WP_SKIP_GSTACK = originalSkipGstack
+      }
+      if (originalSkipRtk === undefined) {
+        delete process.env.WP_SKIP_RTK
+      } else {
+        process.env.WP_SKIP_RTK = originalSkipRtk
+      }
+      if (originalSkipClaudePlugin === undefined) {
+        delete process.env.WP_SKIP_CLAUDE_PLUGIN
+      } else {
+        process.env.WP_SKIP_CLAUDE_PLUGIN = originalSkipClaudePlugin
+      }
+    })
+
     it('returns SUCCESS and invokes omx --version then user-scoped omx setup', async () => {
-      const code = await runInit({ cwd: repo, yes: true, with: 'omx' })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx' })
       expect(code).toBe(EXIT_SUCCESS)
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
       const vpUpgradeCalls = spawnSyncMock.mock.calls.filter(
@@ -152,8 +205,21 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       )
     })
 
+    it('does not run gstack/rtk/claude orchestration on the omx-only path (hermetic skip)', async () => {
+      // Regression guard for the under-load timeout flake: without the skip
+      // guards, runInit() cloned gstack (git clone garrytan/gstack) and ran
+      // rtk/claude orchestration via awaited spawns. Asserting the clone never
+      // fires fails against that old behavior and proves the latency source is
+      // gone — the omx-only path stays hermetic.
+      await runInitSilently({ cwd: repo, yes: true, with: 'omx' })
+      const gstackCloneCalls = spawnMock.mock.calls.filter(
+        (call) => call[0] === 'git' && JSON.stringify(call[1] ?? '').includes('garrytan/gstack'),
+      )
+      expect(gstackCloneCalls).toStrictEqual([])
+    })
+
     it('passes project scope to omx setup when --project is requested', async () => {
-      const code = await runInit({ cwd: repo, yes: true, with: 'omx', project: true })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx', project: true })
       expect(code).toBe(EXIT_SUCCESS)
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
       expect(omxCalls[1]?.[1]).toEqual(['setup', '--yes', '--scope', 'project'])
@@ -162,7 +228,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
     it('repairs .gitignore so regenerated Codex and OMX surfaces stay ignored', async () => {
       writeFileSync(join(repo, '.gitignore'), ['node_modules/', '!.codex/agents/**', ''].join('\n'))
 
-      const code = await runInit({ cwd: repo, yes: true, with: 'omx' })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx' })
 
       expect(code).toBe(EXIT_SUCCESS)
       const gitignore = readFileSync(join(repo, '.gitignore'), 'utf8')
@@ -203,7 +269,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
         }
         return okSpawnResult
       })
-      const code = await runInit({ cwd: repo, yes: true, with: 'omx' })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx' })
       expect(code).toBe(EXIT_SETUP_FAIL)
     })
 
@@ -214,7 +280,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
         }
         return okSpawnResult
       })
-      const code = await runInit({ cwd: repo, yes: true, with: 'omx' })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx' })
       expect(code).toBe(EXIT_SETUP_FAIL)
     })
 
@@ -224,12 +290,12 @@ describe('runInit() — omx + gstack presets (integration)', () => {
         if (cmd === 'omx' && args[0] === 'setup') return { ...okSpawnResult, status: 5 }
         return okSpawnResult
       })
-      const code = await runInit({ cwd: repo, yes: true, with: 'omx' })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx' })
       expect(code).toBe(EXIT_WRITE_FAIL)
     })
 
     it('--dry-run does not invoke omx at all', async () => {
-      await runInit({ cwd: repo, yes: true, with: 'omx', 'dry-run': true })
+      await runInitSilently({ cwd: repo, yes: true, with: 'omx', 'dry-run': true })
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
       expect(omxCalls).toHaveLength(0)
     })
@@ -268,7 +334,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
     })
 
     it('installs OMC through user-scoped Claude Code plugin commands by default', async () => {
-      const code = await runInit({ cwd: repo, yes: true, with: 'omc' })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omc' })
 
       expect(code).toBe(EXIT_SUCCESS)
       const claudeCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'claude')
@@ -292,7 +358,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
     })
 
     it('uses project scope for OMC when --project is requested', async () => {
-      const code = await runInit({ cwd: repo, yes: true, with: 'omc', project: true })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omc', project: true })
 
       expect(code).toBe(EXIT_SUCCESS)
       const claudeCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'claude')
@@ -311,7 +377,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
     })
 
     it('--dry-run does not invoke Claude Code for OMC', async () => {
-      await runInit({ cwd: repo, yes: true, with: 'omc', 'dry-run': true })
+      await runInitSilently({ cwd: repo, yes: true, with: 'omc', 'dry-run': true })
 
       const omcClaudeCalls = spawnSyncMock.mock.calls.filter(
         (c) =>
@@ -329,7 +395,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       // doesn't contain ~/.claude/skills/gstack/setup unless the host happens
       // to have gstack — which is fine for local sweeps; in CI it's clean).
       // We mock spawn to succeed for both clone and ./setup.
-      const code = await runInit({ cwd: repo, yes: true, with: 'gstack' })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: 'gstack' })
       expect(code).toBe(EXIT_SUCCESS)
       // The exact spawn calls depend on whether the host has gstack installed;
       // we only assert that if a clone happened, it was for the right repo.
@@ -342,17 +408,15 @@ describe('runInit() — omx + gstack presets (integration)', () => {
     })
 
     it('--dry-run does not invoke git or ./setup', async () => {
-      await runInit({ cwd: repo, yes: true, with: 'gstack', 'dry-run': true })
-      const gstackCalls = spawnMock.mock.calls.filter(
-        (c) => c[0] === 'git' || c[0] === './setup',
-      )
+      await runInitSilently({ cwd: repo, yes: true, with: 'gstack', 'dry-run': true })
+      const gstackCalls = spawnMock.mock.calls.filter((c) => c[0] === 'git' || c[0] === './setup')
       expect(gstackCalls).toHaveLength(0)
     })
   })
 
   describe('--with rtk', () => {
     it('returns SUCCESS and invokes rtk --version then rtk init -g --auto-patch', async () => {
-      const code = await runInit({ cwd: repo, yes: true, with: 'rtk' })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: 'rtk' })
       expect(code).toBe(EXIT_SUCCESS)
       const rtkCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'rtk')
       expect(rtkCalls).toHaveLength(2)
@@ -370,7 +434,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
     })
 
     it('--dry-run does not invoke rtk at all', async () => {
-      await runInit({ cwd: repo, yes: true, with: 'rtk', 'dry-run': true })
+      await runInitSilently({ cwd: repo, yes: true, with: 'rtk', 'dry-run': true })
       const rtkCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'rtk')
       expect(rtkCalls).toHaveLength(0)
     })
@@ -378,7 +442,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
 
   describe('--with omx,gstack (combined)', () => {
     it('invokes both presets when separated by comma', async () => {
-      const code = await runInit({ cwd: repo, yes: true, with: 'omx,gstack' })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx,gstack' })
       expect(code).toBe(EXIT_SUCCESS)
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
       expect(omxCalls).toHaveLength(2)
@@ -400,7 +464,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
         }
         return okSpawnResult
       })
-      const code = await runInit({ cwd: repo, yes: true, with: 'omx,gstack' })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx,gstack' })
       expect(code).toBe(EXIT_SETUP_FAIL)
       // gstack still ran; the aggregate exit code reflects the omx failure.
     })
@@ -408,7 +472,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
 
   describe('--with omx,rtk (combined)', () => {
     it('invokes both presets in deterministic order', async () => {
-      const code = await runInit({ cwd: repo, yes: true, with: 'omx,rtk' })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx,rtk' })
       expect(code).toBe(EXIT_SUCCESS)
       const calledTools = spawnSyncMock.mock.calls
         .map((call) => call[0])
@@ -419,7 +483,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
 
   describe('--with omx,omc (combined)', () => {
     it('uses user scope for both OMX and OMC by default', async () => {
-      const code = await runInit({ cwd: repo, yes: true, with: 'omx,omc' })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx,omc' })
 
       expect(code).toBe(EXIT_SUCCESS)
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
@@ -433,7 +497,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
     })
 
     it('passes project scope to both OMX and OMC when --project is requested', async () => {
-      const code = await runInit({ cwd: repo, yes: true, with: 'omx,omc', project: true })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx,omc', project: true })
 
       expect(code).toBe(EXIT_SUCCESS)
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
@@ -449,7 +513,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
 
   describe('runtime check (always-on)', () => {
     it('runs default external presets and probes bun/vp/actionlint without --with flags', async () => {
-      await runInit({ cwd: repo, yes: true })
+      await runInitSilently({ cwd: repo, yes: true })
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
       const gstackCloneCalls = spawnMock.mock.calls.filter(
         (c) => c[0] === 'git' && Array.isArray(c[1]) && c[1][0] === 'clone',
@@ -478,7 +542,8 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(
         vpCalls.some(
           (call) =>
-            JSON.stringify(call[1]) === JSON.stringify(['update', '-g', '--latest', '@openai/codex']),
+            JSON.stringify(call[1]) ===
+            JSON.stringify(['update', '-g', '--latest', '@openai/codex']),
         ),
       ).toBe(true)
       expect(
@@ -493,7 +558,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
     })
 
     it('--dry-run skips runtime probes after preflight', async () => {
-      await runInit({ cwd: repo, yes: true, 'dry-run': true })
+      await runInitSilently({ cwd: repo, yes: true, 'dry-run': true })
       const bunCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'bun')
       const vpCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'vp')
       const actionlintCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'actionlint')
@@ -504,7 +569,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
     })
 
     it('accepts CLI-normalized dryRun and skips external setup work', async () => {
-      await runInit({ cwd: repo, yes: true, dryRun: true })
+      await runInitSilently({ cwd: repo, yes: true, dryRun: true })
       const externalSetupCalls = [...spawnSyncMock.mock.calls, ...spawnMock.mock.calls].filter(
         (c) =>
           ['omx', 'claude', 'git', './setup', 'rtk', 'bun', 'codex', 'actionlint'].includes(
@@ -526,7 +591,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       // resolveTier3Selection rejects it and runInit returns EXIT_SETUP_FAIL.
       // This is intentional defense-in-depth — caught by the existing
       // 'rejects unknown Tier-3 names' test in init.integration.test.ts.
-      const code = await runInit({ cwd: repo, yes: true, with: 'made-up-preset' })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: 'made-up-preset' })
       expect(code).toBe(EXIT_SETUP_FAIL)
       const externalCalls = [...spawnSyncMock.mock.calls, ...spawnMock.mock.calls].filter(
         (c) => c[0] === 'omx' || c[0] === 'git' || c[0] === './setup',
@@ -536,7 +601,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
     })
 
     it('whitespace around comma-separated presets is tolerated', async () => {
-      const code = await runInit({ cwd: repo, yes: true, with: ' omx , gstack ' })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: ' omx , gstack ' })
       expect(code).toBe(EXIT_SUCCESS)
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
       expect(omxCalls).toHaveLength(2)
@@ -546,7 +611,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       // Even though `omx` is a valid preset, the unknown `fake-thing`
       // routes to Tier-3 resolution and aborts the run before any preset
       // executes. Documented here so this contract is intentional.
-      const code = await runInit({ cwd: repo, yes: true, with: 'omx,fake-thing' })
+      const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx,fake-thing' })
       expect(code).toBe(EXIT_SETUP_FAIL)
       const omxCalls = spawnSyncMock.mock.calls.filter((c) => c[0] === 'omx')
       expect(omxCalls).toHaveLength(0)

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   OPENCODE_PLUGIN_CONTENT,
@@ -107,6 +107,18 @@ describe('OPENCODE_PLUGIN_CONTENT', () => {
     expect(OPENCODE_PLUGIN_CONTENT).toContain("event?.type === 'session.created'")
   })
 
+  it('bridges PreToolUse and PostToolUse through OpenCode tool hooks', () => {
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('"tool.execute.before"')
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('"tool.execute.after"')
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('permissionDecision')
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('throw new Error')
+  })
+
+  it('injects CLAUDE_PROJECT_DIR into OpenCode shell execution env', () => {
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('"shell.env"')
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('output.env.CLAUDE_PROJECT_DIR = input.cwd')
+  })
+
   it('uses experimental.session.compacting for context survival across compaction', () => {
     expect(OPENCODE_PLUGIN_CONTENT).toContain("'experimental.session.compacting'")
     expect(OPENCODE_PLUGIN_CONTENT).toContain('output.context.push(message)')
@@ -162,11 +174,84 @@ describe('OPENCODE_PLUGIN_CONTENT', () => {
       }
     }
 
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
     const plugin = await mod.WebpressoDevLinkPlugin({ $, directory: repoRoot })
     await plugin.event({ event: { type: 'session.created' } })
     const output = { context: [] as string[] }
     await plugin['experimental.session.compacting']({}, output)
+    stderrSpy.mockRestore()
 
     expect(output.context).toContain('dev-link-broken')
+  })
+
+  it('translates a deny envelope from wp-pretool-guard into an OpenCode throw', async () => {
+    const repoRoot = createTempRoot()
+    const targetPath = join(repoRoot, OPENCODE_PLUGIN_RELATIVE_PATH)
+    scaffoldOpencodePlugin({ repoRoot, options: {} })
+
+    const mod = (await import(`${pathToFileURL(targetPath).href}?t=${Date.now()}`)) as {
+      WebpressoDevLinkPlugin: (input: {
+        $: (
+          strings: TemplateStringsArray,
+          ...values: string[]
+        ) => {
+          cwd: (directory: string) => {
+            quiet: () => { nothrow: () => Promise<{ exitCode: number; stdout: Buffer }> }
+          }
+        }
+        directory: string
+      }) => Promise<{
+        'tool.execute.before': (
+          input: { tool: string; args: { command?: string } },
+          output: { args: { command?: string } },
+        ) => Promise<void>
+        'shell.env': (
+          input: { cwd: string },
+          output: { env: Record<string, string> },
+        ) => Promise<void>
+      }>
+    }
+
+    const $ = (_strings: TemplateStringsArray, ...values: string[]) => {
+      return {
+        cwd: (_directory: string) => ({
+          quiet: () => ({
+            nothrow: async () => {
+              const bin = values.find((value) => value.includes('wp-')) ?? ''
+              if (bin.includes('wp-pretool-guard')) {
+                return {
+                  exitCode: 0,
+                  stdout: Buffer.from(
+                    JSON.stringify({
+                      hookSpecificOutput: {
+                        hookEventName: 'PreToolUse',
+                        permissionDecision: 'deny',
+                        permissionDecisionReason: 'use wp_test',
+                      },
+                    }),
+                  ),
+                }
+              }
+
+              return { exitCode: 0, stdout: Buffer.from('{}') }
+            },
+          }),
+        }),
+      }
+    }
+
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    const plugin = await mod.WebpressoDevLinkPlugin({ $, directory: repoRoot })
+    await expect(
+      plugin['tool.execute.before'](
+        { tool: 'bash', args: { command: 'npm test' } },
+        { args: { command: 'npm test' } },
+      ),
+    ).rejects.toThrow('use wp_test')
+    stderrSpy.mockRestore()
+
+    const envOutput = { env: {} as Record<string, string> }
+    await plugin['shell.env']({ cwd: repoRoot }, envOutput)
+    expect(envOutput.env.CLAUDE_PROJECT_DIR).toBe(repoRoot)
   })
 })

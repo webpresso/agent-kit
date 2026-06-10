@@ -20,14 +20,7 @@
  * to fail in CI. Postinstall is the only seam that runs deterministically
  * after install, doesn't touch the lockfile, and is observable enough to debug.
  */
-import {
-  lstatSync,
-  mkdirSync,
-  readlinkSync,
-  renameSync,
-  symlinkSync,
-  unlinkSync,
-} from 'node:fs'
+import { lstatSync, mkdirSync, readlinkSync, renameSync, symlinkSync, unlinkSync } from 'node:fs'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
@@ -135,9 +128,7 @@ function timestamp(): string {
   return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`
 }
 
-if (
-  isDirectEntrypoint(import.meta.url)
-) {
+if (isDirectEntrypoint(import.meta.url)) {
   const result = restoreDevLinks()
   process.exit(result.exitCode)
 }

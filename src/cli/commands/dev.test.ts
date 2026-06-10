@@ -1,4 +1,5 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -6,9 +7,15 @@ import { getDevHelpText, runDevCommand } from './dev'
 
 const originalEnv = { ...process.env }
 
+let tmpRoot: string | undefined
+
 afterEach(() => {
   process.env = { ...originalEnv }
   vi.unstubAllEnvs()
+  if (tmpRoot) {
+    rmSync(tmpRoot, { recursive: true, force: true })
+    tmpRoot = undefined
+  }
 })
 
 function writeManifest(dir: string, name: string, body: string): string {
@@ -31,7 +38,8 @@ describe('wp dev command', () => {
   })
 
   it('resolves manifest precedence from --manifest before env and cwd defaults', async () => {
-    const root = join(import.meta.dirname, '__tmp-dev-command-precedence')
+    tmpRoot = mkdtempSync(join(tmpdir(), 'dev-cmd-precedence-'))
+    const root = tmpRoot
     const explicit = writeManifest(
       root,
       'explicit.yaml',
@@ -66,7 +74,8 @@ describe('wp dev command', () => {
   })
 
   it('uses WP_APP_MANIFEST when --manifest is omitted', async () => {
-    const root = join(import.meta.dirname, '__tmp-dev-command-env')
+    tmpRoot = mkdtempSync(join(tmpdir(), 'dev-cmd-env-'))
+    const root = tmpRoot
     const envManifest = writeManifest(
       root,
       'env.yaml',
@@ -85,7 +94,8 @@ describe('wp dev command', () => {
   })
 
   it('falls back to ./app-manifest.yaml when no explicit or env manifest exists', async () => {
-    const root = join(import.meta.dirname, '__tmp-dev-command-default')
+    tmpRoot = mkdtempSync(join(tmpdir(), 'dev-cmd-default-'))
+    const root = tmpRoot
     const fallback = writeManifest(
       root,
       'app-manifest.yaml',
@@ -103,7 +113,8 @@ describe('wp dev command', () => {
   })
 
   it('throws on unknown targets with services and groups in the error', async () => {
-    const root = join(import.meta.dirname, '__tmp-dev-command-unknown')
+    tmpRoot = mkdtempSync(join(tmpdir(), 'dev-cmd-unknown-'))
+    const root = tmpRoot
     const manifestPath = writeManifest(
       root,
       'app-manifest.yaml',

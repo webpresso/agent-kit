@@ -15,6 +15,13 @@ describe('formatStopHookOutput', () => {
     expect(output.systemMessage).toContain('QA gate failed')
     expect(output.hookSpecificOutput).toBeUndefined()
   })
+
+  it('produces valid JSON stdout (Codex mandates JSON-only for Stop — plain text is invalid)', () => {
+    const json = formatStopHookOutput({ systemMessage: 'all checks passed' })
+    expect(() => JSON.parse(json)).not.toThrow()
+    const parsed = JSON.parse(json) as Record<string, unknown>
+    expect(typeof parsed['systemMessage']).toStrictEqual('string')
+  })
 })
 
 describe('buildTestCommand / buildTypecheckCommand', () => {

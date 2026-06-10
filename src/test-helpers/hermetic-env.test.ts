@@ -14,7 +14,15 @@ import { LEAKY_ENV_KEYS, resetLeakyEnv } from './hermetic-env.js'
  */
 describe('hermetic-env', () => {
   it('locks the exact set of agent-session vars that must be reset', () => {
-    expect([...LEAKY_ENV_KEYS]).toStrictEqual(['CLAUDE_PROJECT_DIR', 'WP_SKIP_UPDATE_CHECK'])
+    expect([...LEAKY_ENV_KEYS]).toStrictEqual([
+      'CLAUDE_PROJECT_DIR',
+      'WP_SKIP_UPDATE_CHECK',
+      'WP_BLUEPRINT_ROOTS_TIMEOUT_MS',
+      'WP_BLUEPRINT_PROJECT_DISCOVERY_TIMEOUT_MS',
+      'WP_BLUEPRINT_PLATFORM_DISABLED',
+      'GITHUB_PAT',
+      'QUALITY_ENGINE_COMPACT',
+    ])
   })
 
   it('deletes every leaky var from process.env', () => {

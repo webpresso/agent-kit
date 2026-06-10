@@ -1,8 +1,8 @@
 import { lstatSync, readFileSync, readlinkSync } from 'node:fs'
 
-export const rootContractMode = 'js-dispatcher-externalized-runtime' as const
+export const rootContractMode = 'js-selector-runtime-lane' as const
 export const expectedRootWpBinRelativePath = 'bin/wp' as const
-export const rootWpDispatcherSource =
+export const rootWpSelectorSource =
   "#!/usr/bin/env node\n\nimport { runNamedBin } from './_run.js'\n\nrunNamedBin('wp')\n"
 
 export type RootLauncherValidationCode =
@@ -12,7 +12,7 @@ export type RootLauncherValidationCode =
   | 'symlink-runtime-target'
   | 'not-file'
   | 'not-executable'
-  | 'invalid-dispatcher'
+  | 'invalid-selector'
 
 export interface RootLauncherValidationResult {
   readonly ok: boolean
@@ -36,7 +36,7 @@ function isRuntimeTargetSymlinkTarget(targetPath: string): boolean {
   return /(^|\/)(?:bin\/)?runtime\/[^/]+\/wp(?:\.exe)?$/u.test(normalizePath(targetPath))
 }
 
-function isJavaScriptDispatcher(source: unknown): boolean {
+function isJavaScriptSelector(source: unknown): boolean {
   const buffer =
     typeof source === 'string'
       ? Buffer.from(source, 'utf8')
@@ -45,7 +45,7 @@ function isJavaScriptDispatcher(source: unknown): boolean {
         : null
   if (buffer === null) return false
   if (buffer.includes(0)) return false
-  return normalizeLauncherSource(buffer.toString('utf8')) === rootWpDispatcherSource
+  return normalizeLauncherSource(buffer.toString('utf8')) === rootWpSelectorSource
 }
 
 export function validateRootLauncherContract(path: string): RootLauncherValidationResult {
@@ -80,10 +80,10 @@ export function validateRootLauncherContract(path: string): RootLauncherValidati
   try {
     source = readFileSync(path)
   } catch {
-    return { ok: false, code: 'invalid-dispatcher', path }
+    return { ok: false, code: 'invalid-selector', path }
   }
-  if (!isJavaScriptDispatcher(source)) {
-    return { ok: false, code: 'invalid-dispatcher', path }
+  if (!isJavaScriptSelector(source)) {
+    return { ok: false, code: 'invalid-selector', path }
   }
 
   return { ok: true, code: 'ok', path }
@@ -108,8 +108,8 @@ export function formatRootLauncherContractFailure(
       return `${subject} must be a regular file`
     case 'not-executable':
       return `${subject} must be executable`
-    case 'invalid-dispatcher':
-      return `${subject} must be the cross-platform JS dispatcher with a Node shebang, not a native/runtime payload`
+    case 'invalid-selector':
+      return `${subject} must be the cross-platform JS selector with a Node shebang, not a native/runtime payload`
     case 'ok':
       return formatRootLauncherContractSuccess(subject)
   }

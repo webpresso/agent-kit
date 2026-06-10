@@ -1,23 +1,21 @@
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { checkChangelog, validatePlanLinks } from './links.js'
 
 describe('validatePlanLinks', () => {
-  const testDir = join(process.cwd(), 'test-temp-links')
-  const planPath = join(testDir, 'plan.md')
+  let testDir: string
+  let planPath: string
 
   beforeEach(() => {
-    if (!existsSync(testDir)) {
-      mkdirSync(testDir, { recursive: true })
-    }
+    testDir = mkdtempSync(join(tmpdir(), 'val-links-'))
+    planPath = join(testDir, 'plan.md')
   })
 
   afterEach(() => {
-    if (existsSync(testDir)) {
-      rmSync(testDir, { recursive: true, force: true })
-    }
+    rmSync(testDir, { recursive: true, force: true })
   })
 
   describe('valid links', () => {
@@ -39,15 +37,17 @@ describe('validatePlanLinks', () => {
     })
 
     it('should validate existing parent directory file', () => {
-      const parentFile = join(testDir, '..', 'parent.md')
+      // Use a subdirectory so ../parent.md resolves inside testDir (no stray files in tmpdir)
+      const subDir = join(testDir, 'sub')
+      mkdirSync(subDir, { recursive: true })
+      const subPlanPath = join(subDir, 'plan.md')
+      const parentFile = join(testDir, 'parent.md')
       writeFileSync(parentFile, '# Parent', { flag: 'w' })
 
       const markdown = '[Link](../parent.md)'
-      const result = validatePlanLinks(markdown, planPath)
+      const result = validatePlanLinks(markdown, subPlanPath)
       expect(result.valid).toBe(true)
       expect(result.brokenLinks).toHaveLength(0)
-
-      rmSync(parentFile)
     })
 
     it('should ignore http links', () => {
@@ -223,18 +223,14 @@ describe('validatePlanLinks', () => {
 })
 
 describe('checkChangelog', () => {
-  const testDir = join(process.cwd(), 'test-temp-changelog')
+  let testDir: string
 
   beforeEach(() => {
-    if (!existsSync(testDir)) {
-      mkdirSync(testDir, { recursive: true })
-    }
+    testDir = mkdtempSync(join(tmpdir(), 'chk-changelog-'))
   })
 
   afterEach(() => {
-    if (existsSync(testDir)) {
-      rmSync(testDir, { recursive: true, force: true })
-    }
+    rmSync(testDir, { recursive: true, force: true })
   })
 
   describe('completed plans', () => {

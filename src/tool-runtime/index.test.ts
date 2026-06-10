@@ -1,10 +1,9 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
-import { clearManagedRunnerCache, getManagedRunner } from './index.js'
+import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
+import { getManagedRunner, setRtkAvailabilityProbeForTest } from './index.js'
 
-afterEach(() => {
-  clearManagedRunnerCache()
-})
+installManagedRunnerHermeticHooks()
 
 describe('getManagedRunner', () => {
   it('caches identical resolutions without leaking output mode across cache entries', () => {
@@ -31,6 +30,17 @@ describe('getManagedRunner', () => {
   it('supports legacy filterOutput opt-out callers', () => {
     const legacy = getManagedRunner('vitest', { filterOutput: false })
     expect(legacy).toEqual({
+      tool: 'vitest',
+      command: expect.stringContaining('vitest'),
+      args: [],
+      source: 'managed',
+    })
+  })
+
+  it('degrades filtered output requests when rtk is unavailable', () => {
+    setRtkAvailabilityProbeForTest(false)
+
+    expect(getManagedRunner('vitest')).toEqual({
       tool: 'vitest',
       command: expect.stringContaining('vitest'),
       args: [],

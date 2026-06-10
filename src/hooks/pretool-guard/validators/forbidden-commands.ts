@@ -436,9 +436,9 @@ function unquoteShellArg(arg: string): string {
   return arg.replace(/^['"]|['"]$/g, '')
 }
 
-function extractBlueprintLifecycleStatusFromPathArg(arg: string): ReturnType<
-  typeof parseLifecycleBlueprintStatus
-> {
+function extractBlueprintLifecycleStatusFromPathArg(
+  arg: string,
+): ReturnType<typeof parseLifecycleBlueprintStatus> {
   const normalized = unquoteShellArg(arg).replace(/\\/g, '/')
   const match = normalized.match(
     /(?:^|\/)blueprints\/(draft|planned|in-progress|parked|completed|archived)(?:\/|$)/,

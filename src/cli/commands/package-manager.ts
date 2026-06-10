@@ -38,7 +38,7 @@ export function buildPackageManagerCommand(
   verb: PackageManagerVerb,
   argv: readonly string[] = process.argv,
 ): PackageManagerCommandConfig {
-  const resolution = getManagedRunner('vp', { outputPolicy: 'structured' })
+  const resolution = getManagedRunner('vp')
   return {
     command: resolution.command,
     args: [...resolution.args, verb, ...extractVerbArgs(verb, argv)],

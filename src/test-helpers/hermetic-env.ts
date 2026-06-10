@@ -15,13 +15,32 @@ import { beforeEach } from 'vitest'
  *   init scaffolder tests assert fires; a leaked value (exported by the shell or
  *   left behind by a sibling test file under the shared forks worker) drops the
  *   expected spawn and fails spawn-count assertions.
+ * - `WP_BLUEPRINT_ROOTS_TIMEOUT_MS` — overrides the timeout for MCP roots
+ *   fetches in blueprint discovery; a leaked value degrades all subsequent
+ *   tests to a 1 ms budget, causing spurious timeout warnings.
+ * - `WP_BLUEPRINT_PROJECT_DISCOVERY_TIMEOUT_MS` — overrides the timeout for
+ *   project discovery; same leak vector as the roots timeout above.
+ * - `WP_BLUEPRINT_PLATFORM_DISABLED` — disables platform sync; a leaked '1'
+ *   silently skips pushEvent calls that other tests assert are made.
+ * - `GITHUB_PAT` — secret credential used by ci-act tests; must not persist
+ *   between tests to prevent secret leaks and cross-test contamination.
+ * - `QUALITY_ENGINE_COMPACT` — controls compact QA output mode; a leaked '0'
+ *   forces passthrough mode on tests that expect the compact transform.
  *
  * The fix is isolation, not changing the runtime precedence: reset these before
  * every test so the suite is deterministic regardless of the launching
  * environment. Tests that exercise these variables set them explicitly in their
  * own body (which runs after this hook), so behavior coverage is unaffected.
  */
-export const LEAKY_ENV_KEYS = ['CLAUDE_PROJECT_DIR', 'WP_SKIP_UPDATE_CHECK'] as const
+export const LEAKY_ENV_KEYS = [
+  'CLAUDE_PROJECT_DIR',
+  'WP_SKIP_UPDATE_CHECK',
+  'WP_BLUEPRINT_ROOTS_TIMEOUT_MS',
+  'WP_BLUEPRINT_PROJECT_DISCOVERY_TIMEOUT_MS',
+  'WP_BLUEPRINT_PLATFORM_DISABLED',
+  'GITHUB_PAT',
+  'QUALITY_ENGINE_COMPACT',
+] as const
 
 /** Delete every agent-session-leaked env var so each test starts hermetic. */
 export function resetLeakyEnv(): void {

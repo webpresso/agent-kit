@@ -20,6 +20,7 @@ import { createHash } from 'node:crypto'
 import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
+import { stripVTControlCharacters } from 'node:util'
 
 import type { MergeOptions } from '#cli/commands/init/merge'
 import { getStateRoot, getSurfacePath } from '#paths/state-root.js'
@@ -68,6 +69,8 @@ export interface EnsureGstackInput {
   setTimeoutImpl?: typeof setTimeout
   /** DI seam for timers. */
   clearTimeoutImpl?: typeof clearTimeout
+  /** DI seam for quiet-mode progress heartbeats. */
+  heartbeatIntervalMs?: number
 }
 
 export type GstackCodexResult =
@@ -96,6 +99,7 @@ export type EnsureGstackResult =
 
 const GSTACK_REPO = 'https://github.com/garrytan/gstack.git'
 const DEFAULT_INACTIVITY_MS = 600_000
+const DEFAULT_HEARTBEAT_MS = 30_000
 const FORCE_KILL_GRACE_MS = 5_000
 
 function defaultInstallRoot(): string {
@@ -148,6 +152,21 @@ type GstackCommandOutcome = {
 
 function formatDurationMs(ms: number): string {
   return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`
+}
+
+function stripAnsi(text: string): string {
+  return stripVTControlCharacters(text)
+}
+
+function summarizeChunk(text: string): string | null {
+  const lines = stripAnsi(text)
+    .replaceAll('\r', '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+  const last = lines.at(-1)
+  if (!last) return null
+  return last.length > 140 ? `${last.slice(0, 137)}...` : last
 }
 
 function isVerboseGstack(env: NodeJS.ProcessEnv): boolean {
@@ -348,6 +367,7 @@ async function runLoggedCommand(input: {
   streamOutput: (stream: 'stdout' | 'stderr', chunk: string) => void
   setTimeoutImpl: typeof setTimeout
   clearTimeoutImpl: typeof clearTimeout
+  heartbeatIntervalMs: number
 }): Promise<GstackCommandOutcome> {
   const startedAt = input.now()
   const verbose = isVerboseGstack(input.env)
@@ -381,6 +401,9 @@ async function runLoggedCommand(input: {
     let forwardedSignal: NodeJS.Signals | null = null
     let inactivityTimer: ReturnType<typeof setTimeout> | null = null
     let escalationTimer: ReturnType<typeof setTimeout> | null = null
+    let heartbeatTimer: ReturnType<typeof setTimeout> | null = null
+    let lastOutputAt = startedAt
+    let lastOutputSummary: string | null = null
 
     const clearTimers = (): void => {
       if (inactivityTimer !== null) {
@@ -390,6 +413,10 @@ async function runLoggedCommand(input: {
       if (escalationTimer !== null) {
         input.clearTimeoutImpl(escalationTimer)
         escalationTimer = null
+      }
+      if (heartbeatTimer !== null) {
+        input.clearTimeoutImpl(heartbeatTimer)
+        heartbeatTimer = null
       }
     }
 
@@ -443,6 +470,26 @@ async function runLoggedCommand(input: {
       }, input.inactivityMs)
     }
 
+    const scheduleHeartbeat = (): void => {
+      if (verbose || settled) return
+      heartbeatTimer = input.setTimeoutImpl(() => {
+        if (settled) return
+        const now = input.now()
+        const quietForMs = now - lastOutputAt
+        if (quietForMs >= input.heartbeatIntervalMs) {
+          const message = lastOutputSummary
+            ? `  gstack: still ${input.spec.label} (${formatDurationMs(now - startedAt)} elapsed; last child output ${formatDurationMs(quietForMs)} ago: ${lastOutputSummary})`
+            : `  gstack: still ${input.spec.label} (${formatDurationMs(now - startedAt)} elapsed; no child output yet)`
+          input.log(message)
+          appendSessionLog(
+            input.logPath,
+            `\n[gstack] heartbeat ${input.spec.name}: ${message.trim()}\n`,
+          )
+        }
+        scheduleHeartbeat()
+      }, input.heartbeatIntervalMs)
+    }
+
     const forwardInterrupt = (signal: SignalName): void => {
       if (timedOut || interrupted || settled) return
       interrupted = true
@@ -475,10 +522,13 @@ async function runLoggedCommand(input: {
     input.signalTarget.on('SIGINT', onSigInt)
     input.signalTarget.on('SIGTERM', onSigTerm)
     refreshInactivityTimer()
+    scheduleHeartbeat()
 
     const onChunk = (streamName: 'stdout' | 'stderr', chunk: Buffer | string): void => {
       const text = typeof chunk === 'string' ? chunk : chunk.toString('utf8')
       appendSessionLog(input.logPath, text)
+      lastOutputAt = input.now()
+      lastOutputSummary = summarizeChunk(text) ?? lastOutputSummary
       if (verbose) input.streamOutput(streamName, text)
       refreshInactivityTimer()
     }
@@ -595,9 +645,12 @@ function buildFailureResult(input: {
   stage: 'clone' | 'pull' | 'setup'
   outcome: GstackCommandOutcome
   logPath: string
-}): Extract<EnsureGstackResult, {
-  kind: 'gstack-clone-failed' | 'gstack-pull-failed' | 'gstack-setup-failed'
-}> {
+}): Extract<
+  EnsureGstackResult,
+  {
+    kind: 'gstack-clone-failed' | 'gstack-pull-failed' | 'gstack-setup-failed'
+  }
+> {
   const base = {
     exitCode: input.outcome.exitCode,
     reason: input.outcome.reason ?? 'exit-nonzero',
@@ -652,6 +705,7 @@ export async function ensureGstack(input: EnsureGstackInput): Promise<EnsureGsta
     })
   const setTimeoutImpl = input.setTimeoutImpl ?? setTimeout
   const clearTimeoutImpl = input.clearTimeoutImpl ?? clearTimeout
+  const heartbeatIntervalMs = input.heartbeatIntervalMs ?? DEFAULT_HEARTBEAT_MS
   const inactivityMs = parseInactivityMs(env)
   const logPath = input.sessionLogPath ?? resolveSessionLogPath(input.repoRoot, now)
   initializeSessionLog(logPath, {
@@ -701,6 +755,7 @@ export async function ensureGstack(input: EnsureGstackInput): Promise<EnsureGsta
       streamOutput,
       setTimeoutImpl,
       clearTimeoutImpl,
+      heartbeatIntervalMs,
     })
     if (!pull.ok) {
       spinner.fail('gstack pull failed')
@@ -728,6 +783,7 @@ export async function ensureGstack(input: EnsureGstackInput): Promise<EnsureGsta
       streamOutput,
       setTimeoutImpl,
       clearTimeoutImpl,
+      heartbeatIntervalMs,
     })
     if (!clone.ok) {
       spinner.fail('gstack clone failed')
@@ -756,6 +812,7 @@ export async function ensureGstack(input: EnsureGstackInput): Promise<EnsureGsta
       streamOutput,
       setTimeoutImpl,
       clearTimeoutImpl,
+      heartbeatIntervalMs,
     })
     if (!setup.ok) {
       spinner.fail(step.command === '--team' ? 'gstack setup failed' : 'gstack codex setup failed')
@@ -776,5 +833,7 @@ export async function ensureGstack(input: EnsureGstackInput): Promise<EnsureGsta
   if (isVerboseGstack(env)) {
     log(`  gstack: session log ${logPath}`)
   }
-  return hasSetup ? { kind: 'gstack-updated', root, codex } : { kind: 'gstack-installed', root, codex }
+  return hasSetup
+    ? { kind: 'gstack-updated', root, codex }
+    : { kind: 'gstack-installed', root, codex }
 }

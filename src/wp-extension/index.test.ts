@@ -105,7 +105,10 @@ describe('wp extension runtime helpers', () => {
       hostVersion: '0.1.5',
       readJsonFile: (path) => {
         if (path === '/repo/package.json') {
-          return { webpresso: { wpExtensions: true }, dependencies: { '@webpresso/webpresso': 'workspace:*' } }
+          return {
+            webpresso: { wpExtensions: true },
+            dependencies: { '@webpresso/webpresso': 'workspace:*' },
+          }
         }
         if (path === '/deps/framework/package.json') {
           return { webpresso: { wpExtension: '@webpresso/webpresso/wp-extension' } }
@@ -144,7 +147,8 @@ describe('wp extension runtime helpers', () => {
       cwd: '/repo',
       hostVersion: '0.2.0',
       readJsonFile: (path) => {
-        if (path === '/repo/package.json') return { webpresso: { wpExtensions: true }, dependencies: { framework: '1.0.0' } }
+        if (path === '/repo/package.json')
+          return { webpresso: { wpExtensions: true }, dependencies: { framework: '1.0.0' } }
         if (path === '/deps/framework/package.json') {
           return { webpresso: { wpExtension: 'framework/wp-extension' } }
         }
@@ -171,7 +175,8 @@ describe('wp extension runtime helpers', () => {
       cwd: '/repo',
       hostVersion: '0.1.5',
       readJsonFile: (path) => {
-        if (path === '/repo/package.json') return { webpresso: { wpExtensions: true }, dependencies: { framework: '1.0.0' } }
+        if (path === '/repo/package.json')
+          return { webpresso: { wpExtensions: true }, dependencies: { framework: '1.0.0' } }
         if (path === '/deps/framework/package.json') {
           return { webpresso: { wpExtension: 'framework/wp-extension' } }
         }
@@ -273,7 +278,8 @@ describe('wp extension runtime helpers', () => {
       cwd: '/repo',
       hostVersion: '0.1.5',
       readJsonFile: (path) => {
-        if (path === '/repo/package.json') return { webpresso: { wpExtensions: true }, dependencies: { framework: '1.0.0' } }
+        if (path === '/repo/package.json')
+          return { webpresso: { wpExtensions: true }, dependencies: { framework: '1.0.0' } }
         if (path === '/deps/framework/package.json')
           return { webpresso: { wpExtension: 'framework/wp-extension' } }
         return undefined
@@ -298,7 +304,8 @@ describe('wp extension runtime helpers', () => {
       cwd: '/repo',
       hostVersion: '0.1.5',
       readJsonFile: (path) => {
-        if (path === '/repo/package.json') return { webpresso: { wpExtensions: true }, dependencies: { framework: '1.0.0' } }
+        if (path === '/repo/package.json')
+          return { webpresso: { wpExtensions: true }, dependencies: { framework: '1.0.0' } }
         if (path === '/deps/framework/package.json') {
           return { webpresso: { wpExtension: 'framework/wp-extension' } }
         }

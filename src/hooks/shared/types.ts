@@ -64,3 +64,31 @@ export function getContent(input: ToolInput): string | undefined {
   if (typeof newString === 'string') return newString
   return undefined
 }
+
+// ---------------------------------------------------------------------------
+// Deny envelope — emitted to stdout by pretool-guard
+// ---------------------------------------------------------------------------
+
+/**
+ * The shape of a deny envelope emitted to stdout by pretool-guard.
+ * Must be valid JSON on stdout (Claude Code / Codex PreToolUse requirement).
+ */
+export type DenyEnvelope = {
+  readonly hookSpecificOutput: {
+    readonly hookEventName: 'PreToolUse'
+    readonly permissionDecision: 'deny'
+    /** SHORT user-facing reason (≤80 chars) */
+    readonly permissionDecisionReason: string
+  }
+}
+
+/** Build a policy deny envelope. */
+export function buildDenyEnvelope(options: { readonly reason: string }): DenyEnvelope {
+  return {
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'deny',
+      permissionDecisionReason: options.reason,
+    },
+  }
+}

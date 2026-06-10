@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { createRequire } from 'node:module'
+import { spawnSync } from 'node:child_process'
 
 export interface ManagedRunnerResolution {
   readonly tool: string
@@ -42,11 +43,55 @@ const MANAGED_TOOL_PREFIX: Readonly<Record<string, ManagedToolSpec>> = {
   wrangler: { packageName: 'wrangler', binName: 'wrangler' },
 }
 
+let rtkAvailable: boolean | null = null
+
+// The real token-killer `rtk` exposes a `gain` analytics subcommand (see
+// RTK.md); the unrelated `reachingforthejack/rtk` (Rust Type Kit) collision
+// binary does not. Probe that capability instead of `--version`, which *any*
+// `rtk` on PATH answers with exit 0 — trusting it would route wrapped commands
+// (typecheck/qa/test gates) through a foreign binary that may mangle args or
+// drop the wrapped exit code, masking a failing gate as green.
+const RTK_CAPABILITY_ARGS = ['gain', '--help'] as const
+// Measured cold cost of `rtk gain --help` is ~11ms; 3s is generous headroom.
+// A probe that exceeds it is a broken or wrong binary, so degrade to unfiltered
+// output rather than let a hung `rtk` stall every wrapped command (per
+// no-timeout-as-fix: the bound surfaces the fault, it does not silence it).
+const RTK_PROBE_TIMEOUT_MS = 3000
+
+function probeRtkAvailability(): boolean {
+  if (rtkAvailable !== null) return rtkAvailable
+  try {
+    const result = spawnSync('rtk', RTK_CAPABILITY_ARGS, {
+      encoding: 'utf8',
+      windowsHide: true,
+      timeout: RTK_PROBE_TIMEOUT_MS,
+    })
+    // A timeout yields status === null (+ signal), so the strict === 0 check
+    // already degrades on hang without a separate branch.
+    rtkAvailable = result.status === 0
+  } catch {
+    rtkAvailable = false
+  }
+  return rtkAvailable
+}
+
+export function setRtkAvailabilityProbeForTest(value: boolean | null): void {
+  rtkAvailable = value
+}
+
+export function resolveOutputPolicy(
+  outputPolicy: ManagedRunnerOutputPolicy | undefined,
+  filterOutput: boolean | undefined,
+): ManagedRunnerOutputPolicy {
+  return outputPolicy ?? (filterOutput === false ? 'structured' : 'rtk-filtered')
+}
+
 function withOptionalRtk(
   resolution: ManagedRunnerResolution,
   outputPolicy: ManagedRunnerOutputPolicy,
 ): ManagedRunnerResolution {
   if (outputPolicy !== 'rtk-filtered') return resolution
+  if (!probeRtkAvailability()) return resolution
   return {
     ...resolution,
     command: 'rtk',
@@ -63,8 +108,7 @@ export function resolveRunner(
     throw new Error('tool runtime resolution requires a non-empty tool name')
   }
 
-  const outputPolicy: ManagedRunnerOutputPolicy =
-    options.outputPolicy ?? (options.filterOutput === false ? 'structured' : 'rtk-filtered')
+  const outputPolicy = resolveOutputPolicy(options.outputPolicy, options.filterOutput)
   const managed = MANAGED_TOOL_PREFIX[normalized]
   if (managed) {
     return withOptionalRtk(resolveManagedTool(normalized, managed), outputPolicy)

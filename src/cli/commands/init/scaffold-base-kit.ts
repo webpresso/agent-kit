@@ -64,10 +64,7 @@ const TEMPLATE_MAP: Array<[string, string]> = [
   ],
   ['.husky/pre-commit.tmpl', '.husky/pre-commit'],
   ['.husky/commit-msg.tmpl', '.husky/commit-msg'],
-  [
-    '.github/actions/setup-webpresso/action.yml.tmpl',
-    '.github/actions/setup-webpresso/action.yml',
-  ],
+  ['.github/actions/setup-webpresso/action.yml.tmpl', '.github/actions/setup-webpresso/action.yml'],
   ['.github/workflows/ci.yml.tmpl', '.github/workflows/ci.yml'],
   ['test/.gitkeep.tmpl', 'test/.gitkeep'],
   ['e2e/.gitkeep.tmpl', 'e2e/.gitkeep'],
@@ -77,7 +74,9 @@ const TEMPLATE_MAP: Array<[string, string]> = [
 const QUALITY_BOOTSTRAP_ONLY_MAP: Array<[string, string]> = [
   ['tsconfig.json.tmpl', 'tsconfig.json'],
   ['vitest.config.ts.tmpl', 'vitest.config.ts'],
-  ['oxlint.config.ts.tmpl', 'oxlint.config.ts'],
+  // No oxlint.config.ts: `wp lint` injects agent-kit's shared --config so
+  // consumers need zero local oxlint config (Tier-1 DRY). A consumer may still
+  // commit its own oxlint.config.ts to override — `wp lint` then defers to it.
   ['stryker.config.ts.tmpl', 'stryker.config.ts'],
   ['playwright.config.ts.tmpl', 'playwright.config.ts'],
   ['src/quality-sample.ts.tmpl', 'src/quality-sample.ts'],
@@ -189,6 +188,7 @@ function mergePackageJson(
   const requiredAuthoringDeps: Record<string, string> = {
     '@playwright/test': 'latest',
     '@stryker-mutator/core': 'latest',
+    '@stryker-mutator/typescript-checker': 'latest',
     '@stryker-mutator/vitest-runner': 'latest',
     '@types/node': 'latest',
     typescript: 'latest',

@@ -2,6 +2,10 @@
   "name": "webpresso",
   "version": "0.29.3",
   "description": "Webpresso agent-kit: blueprints, skills, lore commit protocol, tech-debt lifecycle",
+  "author": {
+    "name": "Webpresso",
+    "url": "https://github.com/webpresso"
+  },
   "skills": "./skills",
   "commands": "./commands",
   "mcpServers": {

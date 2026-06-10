@@ -43,7 +43,7 @@ importers:
         version: 0.48.0
       oxlint:
         specifier: ^1.67.0
-        version: 1.67.0(oxlint-tsgolint@0.22.1)(vite-plus@0.1.22(@arethetypeswrong/core@0.18.2)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0))
+        version: 1.67.0(oxlint-tsgolint@0.22.1)(vite-plus@0.1.22(@arethetypeswrong/core@0.18.3)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0))
       proper-lockfile:
         specifier: ^4.1.2
         version: 4.1.2
@@ -73,7 +73,7 @@ importers:
         version: 8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(tsx@4.22.4)(yaml@2.9.0)
       vite-plus:
         specifier: ^0.1.22
-        version: 0.1.22(@arethetypeswrong/core@0.18.2)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
+        version: 0.1.22(@arethetypeswrong/core@0.18.3)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
       vitest:
         specifier: ^4.1.7
         version: 4.1.7(@types/node@25.9.1)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -88,8 +88,8 @@ importers:
         version: 3.25.2(zod@4.4.3)
     devDependencies:
       '@arethetypeswrong/cli':
-        specifier: ^0.18.2
-        version: 0.18.2
+        specifier: ^0.18.3
+        version: 0.18.3
       '@changesets/cli':
         specifier: ^2.31.0
         version: 2.31.0(@types/node@25.9.1)
@@ -136,6 +136,21 @@ importers:
       '@stryker-mutator/vitest-runner':
         specifier: ^9.6.1
         version: 9.6.1(@stryker-mutator/core@9.6.1(@types/node@25.9.1))(vitest@4.1.7(@types/node@25.9.1)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(tsx@4.22.4)(yaml@2.9.0)))
+      '@webpresso/agent-kit-runtime-darwin-arm64':
+        specifier: 0.29.3
+        version: 0.29.3
+      '@webpresso/agent-kit-runtime-darwin-x64':
+        specifier: 0.29.3
+        version: 0.29.3
+      '@webpresso/agent-kit-runtime-linux-arm64':
+        specifier: 0.29.3
+        version: 0.29.3
+      '@webpresso/agent-kit-runtime-linux-x64':
+        specifier: 0.29.3
+        version: 0.29.3
+      '@webpresso/agent-kit-runtime-windows-x64':
+        specifier: 0.29.3
+        version: 0.29.3
       wrangler:
         specifier: ^4.50.0
         version: 4.95.0
@@ -145,13 +160,13 @@ packages:
   '@andrewbranch/untar.js@1.0.3':
     resolution: {integrity: sha512-Jh15/qVmrLGhkKJBdXlK1+9tY4lZruYjsgkDFj08ZmDiWVBLJcqkok7Z0/R0In+i1rScBpJlSvrTS2Lm41Pbnw==}
 
-  '@arethetypeswrong/cli@0.18.2':
-    resolution: {integrity: sha512-PcFM20JNlevEDKBg4Re29Rtv2xvjvQZzg7ENnrWFSS0PHgdP2njibVFw+dRUhNkPgNfac9iUqO0ohAXqQL4hbw==}
+  '@arethetypeswrong/cli@0.18.3':
+    resolution: {integrity: sha512-GeAlc+lUD4gKHD/LDQNvQY30FfQ+xAXg2inbQKUjFZgTOdI5ygEweaOnGHGBPSKXSLGQC7VLhpXu9zMnYk/4sQ==}
     engines: {node: '>=20'}
     hasBin: true
 
-  '@arethetypeswrong/core@0.18.2':
-    resolution: {integrity: sha512-GiwTmBFOU1/+UVNqqCGzFJYfBXEytUkiI+iRZ6Qx7KmUVtLm00sYySkfe203C9QtPG11yOz1ZaMek8dT/xnlgg==}
+  '@arethetypeswrong/core@0.18.3':
+    resolution: {integrity: sha512-sWBB/tdIktaT5xMq0Dz6CJyqcf6oMNdmiKiuPU1lWoJLTL6gjRSsksBuSgqot21hylkklBQY1wiSu+PkZhW7sw==}
     engines: {node: '>=20'}
 
   '@azu/format-text@1.0.2':
@@ -2159,6 +2174,36 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
+
+  '@webpresso/agent-kit-runtime-darwin-arm64@0.29.3':
+    resolution: {integrity: sha512-k/K7UVxInM/THHjR0iW3j/wwf16ZC6Pfi5tGqeyDpl8mFgWb+53jBB5kn7O9RCbxnHhPFdAcvda883XTiC947A==}
+    cpu: [arm64]
+    os: [darwin]
+    hasBin: true
+
+  '@webpresso/agent-kit-runtime-darwin-x64@0.29.3':
+    resolution: {integrity: sha512-pbLozdgd232opb4bDsfSFT/FwbL4l15gLVDzJBTJDg9Ze2bwvhI8cNbKAsAfZe7tXTA3PpsrLV5m+FdPTHzRJA==}
+    cpu: [x64]
+    os: [darwin]
+    hasBin: true
+
+  '@webpresso/agent-kit-runtime-linux-arm64@0.29.3':
+    resolution: {integrity: sha512-sUE4PtVIuYTmSTUyor/e57VOpNspqNO5NgaoTDD7Tw3qwJan34PaAkwGrLqLqg41bBfHXvqccIRkSJu6x4O4/g==}
+    cpu: [arm64]
+    os: [linux]
+    hasBin: true
+
+  '@webpresso/agent-kit-runtime-linux-x64@0.29.3':
+    resolution: {integrity: sha512-QdQrZR3JNEsz8YlELf+too14BV1H9n7/JJeZLpaws6DKW04hoq6TFEJQcwlZv1wBU1tW16e6zr0vzgRnwbd8cg==}
+    cpu: [x64]
+    os: [linux]
+    hasBin: true
+
+  '@webpresso/agent-kit-runtime-windows-x64@0.29.3':
+    resolution: {integrity: sha512-6PnJIgGvlzzCWSrL1j3h7obMQ3iPJoGeXiXPXvBZeHBvY5CO5Blu0jf0hdoHSCi7dv6uAvF5MA34kjcuJHTU7Q==}
+    cpu: [x64]
+    os: [win32]
+    hasBin: true
 
   abbrev@2.0.0:
     resolution: {integrity: sha512-6/mh1E2u2YgEsCHdY0Yx5oW+61gZU+1vXaoiHHrpKeuRNNgFvS+/jrwHiQhB5apAf5oB7UB7E19ol2R2LKH8hQ==}
@@ -4728,9 +4773,9 @@ snapshots:
 
   '@andrewbranch/untar.js@1.0.3': {}
 
-  '@arethetypeswrong/cli@0.18.2':
+  '@arethetypeswrong/cli@0.18.3':
     dependencies:
-      '@arethetypeswrong/core': 0.18.2
+      '@arethetypeswrong/core': 0.18.3
       chalk: 4.1.2
       cli-table3: 0.6.5
       commander: 10.0.1
@@ -4738,7 +4783,7 @@ snapshots:
       marked-terminal: 7.3.0(marked@9.1.6)
       semver: 7.8.1
 
-  '@arethetypeswrong/core@0.18.2':
+  '@arethetypeswrong/core@0.18.3':
     dependencies:
       '@andrewbranch/untar.js': 1.0.3
       '@loaderkit/resolve': 1.0.6
@@ -6470,14 +6515,14 @@ snapshots:
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.0
 
-  '@voidzero-dev/vite-plus-core@0.1.22(@arethetypeswrong/core@0.18.2)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)':
+  '@voidzero-dev/vite-plus-core@0.1.22(@arethetypeswrong/core@0.18.3)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)':
     dependencies:
       '@oxc-project/runtime': 0.129.0
       '@oxc-project/types': 0.129.0
       lightningcss: 1.32.0
       postcss: 8.5.15
     optionalDependencies:
-      '@arethetypeswrong/core': 0.18.2
+      '@arethetypeswrong/core': 0.18.3
       '@types/node': 25.9.1
       esbuild: 0.28.0
       fsevents: 2.3.3
@@ -6504,11 +6549,11 @@ snapshots:
   '@voidzero-dev/vite-plus-linux-x64-musl@0.1.22':
     optional: true
 
-  '@voidzero-dev/vite-plus-test@0.1.22(@arethetypeswrong/core@0.18.2)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)':
+  '@voidzero-dev/vite-plus-test@0.1.22(@arethetypeswrong/core@0.18.3)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)':
     dependencies:
       '@standard-schema/spec': 1.1.0
       '@types/chai': 5.2.3
-      '@voidzero-dev/vite-plus-core': 0.1.22(@arethetypeswrong/core@0.18.2)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)
+      '@voidzero-dev/vite-plus-core': 0.1.22(@arethetypeswrong/core@0.18.3)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)
       es-module-lexer: 1.7.0
       obug: 2.1.1
       pixelmatch: 7.2.0
@@ -6548,6 +6593,21 @@ snapshots:
     optional: true
 
   '@voidzero-dev/vite-plus-win32-x64-msvc@0.1.22':
+    optional: true
+
+  '@webpresso/agent-kit-runtime-darwin-arm64@0.29.3':
+    optional: true
+
+  '@webpresso/agent-kit-runtime-darwin-x64@0.29.3':
+    optional: true
+
+  '@webpresso/agent-kit-runtime-linux-arm64@0.29.3':
+    optional: true
+
+  '@webpresso/agent-kit-runtime-linux-x64@0.29.3':
+    optional: true
+
+  '@webpresso/agent-kit-runtime-windows-x64@0.29.3':
     optional: true
 
   abbrev@2.0.0: {}
@@ -8145,7 +8205,7 @@ snapshots:
       '@oxlint/binding-win32-x64-msvc': 1.63.0
       oxlint-tsgolint: 0.22.1
 
-  oxlint@1.67.0(oxlint-tsgolint@0.22.1)(vite-plus@0.1.22(@arethetypeswrong/core@0.18.2)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)):
+  oxlint@1.67.0(oxlint-tsgolint@0.22.1)(vite-plus@0.1.22(@arethetypeswrong/core@0.18.3)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)):
     optionalDependencies:
       '@oxlint/binding-android-arm-eabi': 1.67.0
       '@oxlint/binding-android-arm64': 1.67.0
@@ -8167,7 +8227,7 @@ snapshots:
       '@oxlint/binding-win32-ia32-msvc': 1.67.0
       '@oxlint/binding-win32-x64-msvc': 1.67.0
       oxlint-tsgolint: 0.22.1
-      vite-plus: 0.1.22(@arethetypeswrong/core@0.18.2)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
+      vite-plus: 0.1.22(@arethetypeswrong/core@0.18.3)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
 
   p-filter@2.1.0:
     dependencies:
@@ -9172,12 +9232,12 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite-plus@0.1.22(@arethetypeswrong/core@0.18.2)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0):
+  vite-plus@0.1.22(@arethetypeswrong/core@0.18.3)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0):
     dependencies:
       '@oxc-project/types': 0.129.0
       '@oxlint/plugins': 1.61.0
-      '@voidzero-dev/vite-plus-core': 0.1.22(@arethetypeswrong/core@0.18.2)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)
-      '@voidzero-dev/vite-plus-test': 0.1.22(@arethetypeswrong/core@0.18.2)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
+      '@voidzero-dev/vite-plus-core': 0.1.22(@arethetypeswrong/core@0.18.3)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)
+      '@voidzero-dev/vite-plus-test': 0.1.22(@arethetypeswrong/core@0.18.3)(@types/node@25.9.1)(esbuild@0.28.0)(publint@0.3.21)(tsx@4.22.4)(typescript@6.0.3)(vite@8.0.14(@types/node@25.9.1)(esbuild@0.28.0)(tsx@4.22.4)(yaml@2.9.0))(yaml@2.9.0)
       oxfmt: 0.48.0
       oxlint: 1.63.0(oxlint-tsgolint@0.22.1)
       oxlint-tsgolint: 0.22.1

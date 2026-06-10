@@ -23,7 +23,14 @@ function makeTmpDir(): string {
 describe('pruneProjectionArtifacts', () => {
   it('removes legacy worktree-scoped projection DBs and sidecars', () => {
     const stateRoot = makeTmpDir()
-    const dbPath = path.join(stateRoot, 'repo-key', 'worktree', 'wt-key', 'blueprints', 'blueprints.db')
+    const dbPath = path.join(
+      stateRoot,
+      'repo-key',
+      'worktree',
+      'wt-key',
+      'blueprints',
+      'blueprints.db',
+    )
     mkdirSync(path.dirname(dbPath), { recursive: true })
     writeFileSync(dbPath, 'db', 'utf8')
     writeFileSync(`${dbPath}.meta.json`, '{}', 'utf8')

@@ -35,6 +35,7 @@ describe('wp root command surface', () => {
     expect(SUPPORTED_COMMANDS).toContain('setup')
     expect(SUPPORTED_COMMANDS).toContain('init')
     expect(SUPPORTED_COMMANDS).toContain('roadmap')
+    expect(SUPPORTED_COMMANDS).toContain('qa')
     expect(SUPPORTED_COMMANDS).toContain('install')
     expect(SUPPORTED_COMMANDS).toContain('run')
   })
@@ -49,6 +50,9 @@ describe('wp root command surface', () => {
     )
     expect(result.stdout.join('\n')).toContain(
       'roadmap               List or show parent roadmaps directly',
+    )
+    expect(result.stdout.join('\n')).toContain(
+      'qa                    Run the repository QA gate through the portable wp surface',
     )
     expect(result.stdout.join('\n')).toContain('doctor                Run repo audit health checks')
     expect(result.stdout.join('\n')).toContain(
@@ -93,6 +97,23 @@ describe('wp root command surface', () => {
     expect(result.stdout.join('\n')).toContain('wp bench session-memory')
     expect(result.stdout.join('\n')).toContain('--output-root <path>')
     expect(result.stdout.join('\n')).toContain('--dry-run')
+  })
+
+  it('executes wp bench session-memory through the bench action instead of silently no-oping', async () => {
+    const previous = process.env.WP_COMPILED_RUNTIME
+    process.env.WP_COMPILED_RUNTIME = '1'
+    try {
+      const result = await runAk(['bench', 'session-memory', '--dry-run'])
+
+      expect(result.code).toBe(1)
+      expect(result.stderr.join('\n')).toContain('not available from the compiled runtime')
+    } finally {
+      if (previous === undefined) {
+        delete process.env.WP_COMPILED_RUNTIME
+      } else {
+        process.env.WP_COMPILED_RUNTIME = previous
+      }
+    }
   })
 
   it("redirects 'wp skills' to 'wp skill' with a helpful rename error", async () => {

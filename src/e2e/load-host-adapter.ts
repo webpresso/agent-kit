@@ -210,9 +210,7 @@ function resolveModuleSpecifier(moduleSpecifier: string, configPath: string): st
 }
 
 function expectedConfigExportName(configPath: string): string {
-  const candidate = WEBPRESSO_CONFIG_CANDIDATES.find((item) =>
-    configPath.endsWith(item.fileName),
-  )
+  const candidate = WEBPRESSO_CONFIG_CANDIDATES.find((item) => configPath.endsWith(item.fileName))
   return candidate?.exportName ?? WEBPRESSO_CONFIG_EXPORT_NAME
 }
 

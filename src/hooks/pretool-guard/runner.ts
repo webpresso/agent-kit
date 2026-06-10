@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 import type { ToolInput, ValidationResult } from '#hooks/shared/types'
 
-
 import { isGuardEnabled } from '#hooks/guard-switch/state'
 import { readStdinJson, suppressStderr } from '#hooks/shared/hook-bootstrap'
-import { getCommand, getFilePath, isBashInput, parseToolInput } from '#hooks/shared/types'
+import {
+  buildDenyEnvelope,
+  getCommand,
+  getFilePath,
+  isBashInput,
+  parseToolInput,
+} from '#hooks/shared/types'
 
 import { logRun } from './logger.js'
 import { extractRoutableCommandsFromToolInput, routeCommand } from './dev-routing.js'
@@ -109,15 +114,7 @@ export function handleParseError(error: unknown, inputJson: string): never {
 }
 
 function writeDenyDecision(permissionDecisionReason: string): void {
-  process.stdout.write(
-    JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: 'PreToolUse',
-        permissionDecision: 'deny',
-        permissionDecisionReason,
-      },
-    }),
-  )
+  process.stdout.write(JSON.stringify(buildDenyEnvelope({ reason: permissionDecisionReason })))
 }
 
 export function processValidation(inputJson: string): void {
@@ -179,8 +176,6 @@ export async function main(): Promise<void> {
   }
 }
 
-if (
-  isDirectEntrypoint(import.meta.url)
-) {
+if (isDirectEntrypoint(import.meta.url)) {
   main()
 }

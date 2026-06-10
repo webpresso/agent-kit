@@ -44,7 +44,9 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'tsconfig.json'))).toBe(true)
     expect(existsSync(join(repoRoot, 'vitest.config.ts'))).toBe(true)
-    expect(existsSync(join(repoRoot, 'oxlint.config.ts'))).toBe(true)
+    // Tier-1 DRY: no oxlint.config.ts is scaffolded — `wp lint` injects the
+    // shared --config instead.
+    expect(existsSync(join(repoRoot, 'oxlint.config.ts'))).toBe(false)
     expect(existsSync(join(repoRoot, 'stryker.config.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'playwright.config.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'src', 'quality-sample.ts'))).toBe(true)
@@ -122,6 +124,9 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['devDependencies'] as Record<string, string>)['@stryker-mutator/core']).toBe(
       'latest',
     )
+    expect(
+      (pkg['devDependencies'] as Record<string, string>)['@stryker-mutator/typescript-checker'],
+    ).toBe('latest')
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
     expect((pkg['scripts'] as Record<string, string>)['lint']).toBe('wp lint src e2e *.config.ts')
     expect((pkg['scripts'] as Record<string, string>)['typecheck']).toBe('wp typecheck')

@@ -189,22 +189,27 @@ At ingest time, `is_redacted=1` is set and `target_slug` is nulled. But if someh
 ```
 LEAK: public blueprint 'acme-feature' has unredacted reference to
 private slug 'internal-migration-plan' in repo 'other-org/private-repo'.
-Run 'wp fix cross-repo-leak acme-feature' to remediate.
+Redact the leaked target slug in the projection DB and source markdown;
+see the remediation steps below.
 ```
 
 ---
 
 ## Remediation
 
-The audit never auto-mutates. To fix a detected leak, run:
+The audit never auto-mutates. To fix a detected leak:
 
 ```bash
-wp fix cross-repo-leak <blueprint-slug>
+# no public CLI exists today; use the internal helper or equivalent DB tooling
 ```
 
-This redacts the target slug in the DB (sets `target_slug=null`, computes the hash, sets `is_redacted=1`). The source markdown also needs manual review to remove or redact the slug reference.
+Redact the target slug in the DB (set `target_slug=null`, compute the hash into
+`target_slug_hash`, set `is_redacted=1`) and then manually remove or redact the
+slug reference in the source markdown.
 
-> Note: the `wp fix cross-repo-leak` verb exists as a placeholder in the CLI. The `fixCrossRepoLeak()` function in `src/blueprint/cross-repo/audit.ts` implements the DB remediation. Full CLI wiring is planned.
+`fixCrossRepoLeak()` in `src/blueprint/cross-repo/audit.ts` implements the DB
+mutation for internal callers, but **no public `wp fix cross-repo-leak` CLI is
+shipped today**.
 
 ---
 

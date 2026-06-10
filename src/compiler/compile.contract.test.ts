@@ -211,7 +211,9 @@ describe('compile contract: flatten → writeFlattenedAssets output shape', () =
 
 describe('compile contract: rulesync version pin', () => {
   it('installed rulesync matches pinned version 8.15.1 (skipped if not installed)', () => {
-    const pkgPath = join(process.cwd(), 'node_modules', 'rulesync', 'package.json')
+    // Anchor to repo root via import.meta.dirname so the test is cwd-independent.
+    const repoRoot = join(import.meta.dirname, '..', '..')
+    const pkgPath = join(repoRoot, 'node_modules', 'rulesync', 'package.json')
     if (!existsSync(pkgPath)) {
       // Skip gracefully when rulesync is not installed in this environment
       return

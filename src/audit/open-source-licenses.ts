@@ -1,10 +1,9 @@
-import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, readFileSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 
 import matter from 'gray-matter'
 
+import { createPackedManifest, readWorkspaceCatalogs } from '#build/package-manifest.js'
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 
 interface ThirdPartySkillManifestEntry {
@@ -126,25 +125,28 @@ function auditPackedSurface(root: string, violations: RepoAuditViolation[]): num
     return checked
   }
 
-  let packedPaths: string[] = []
-  let hasContextModeDependency = false
+  let packedManifest: Record<string, unknown>
   try {
-    const packed = readPackedPackageSurface(root)
-    packedPaths = packed.paths
-    hasContextModeDependency = packed.hasContextModeDependency
+    packedManifest = computePackedManifest(root, packageJsonPath) as Record<string, unknown>
   } catch (error) {
     violations.push({
       file: 'package.json',
-      message: `npm pack failed: ${errorMessage(error)}`,
+      message: `Could not compute packed manifest: ${errorMessage(error)}`,
     })
     return checked
   }
 
-  checked += packedPaths.length
+  const filesField = packedManifest.files
+  const declaredFiles = Array.isArray(filesField)
+    ? filesField.filter((entry): entry is string => typeof entry === 'string')
+    : []
+  checked += declaredFiles.length
 
   for (const required of REQUIRED_PACKED_FILES) {
-    const packed = packedPaths.some((path) => path === required || path.endsWith(`/${required}`))
-    if (!packed) {
+    // LICENSE / THIRD-PARTY-NOTICES.md are explicit literal `files` entries in
+    // the published manifest; on-disk existence is verified separately by the
+    // REQUIRED_ROOT_FILES check above.
+    if (!declaredFiles.includes(required)) {
       violations.push({
         file: required,
         message: `Published npm tarball must include ${required}`,
@@ -153,7 +155,7 @@ function auditPackedSurface(root: string, violations: RepoAuditViolation[]): num
   }
 
   checked += 1
-  if (hasContextModeDependency) {
+  if (packedManifestListsContextMode(packedManifest)) {
     violations.push({
       file: 'package.json',
       message: 'Published npm tarball metadata must not list context-mode as a dependency',
@@ -161,6 +163,47 @@ function auditPackedSurface(root: string, violations: RepoAuditViolation[]): num
   }
 
   return checked
+}
+
+/**
+ * Compute the published package manifest hermetically via the same pure
+ * transform npm pack's prepack hook applies (createPackedManifest), instead of
+ * a real `npm pack` round-trip. The round-trip ran the prepack lifecycle, which
+ * rewrites the live repo's package.json in place behind a fixed-path lock
+ * (`.package.json.prepack.backup`) and writes a tarball into the repo root —
+ * making the audit non-hermetic and racy under parallel test execution or a
+ * leftover backup from an interrupted pack.
+ */
+function computePackedManifest(
+  root: string,
+  packageJsonPath: string,
+): ReturnType<typeof createPackedManifest> {
+  const manifest = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as Parameters<
+    typeof createPackedManifest
+  >[0]
+  const workspacePath = join(root, 'pnpm-workspace.yaml')
+  const workspaceCatalogs: Parameters<typeof createPackedManifest>[1] = existsSync(workspacePath)
+    ? readWorkspaceCatalogs(workspacePath)
+    : { catalog: undefined, catalogs: undefined }
+  return createPackedManifest(manifest, workspaceCatalogs)
+}
+
+const PACKED_DEPENDENCY_SECTIONS = [
+  'dependencies',
+  'optionalDependencies',
+  'peerDependencies',
+  'devDependencies',
+] as const
+
+function packedManifestListsContextMode(packedManifest: Record<string, unknown>): boolean {
+  return PACKED_DEPENDENCY_SECTIONS.some((section) => {
+    const deps = packedManifest[section]
+    return (
+      typeof deps === 'object' &&
+      deps !== null &&
+      Object.prototype.hasOwnProperty.call(deps, 'context-mode')
+    )
+  })
 }
 
 function readManifest(
@@ -200,57 +243,6 @@ function readUpstreamSource(data: Record<string, unknown>): string | undefined {
   if (!upstream || typeof upstream !== 'object') return undefined
   const source = (upstream as { source?: unknown }).source
   return typeof source === 'string' && source.trim().length > 0 ? source.trim() : undefined
-}
-
-function readPackedPackageSurface(root: string): {
-  paths: string[]
-  hasContextModeDependency: boolean
-} {
-  const tempDir = mkdtempSync(join(tmpdir(), 'webpresso-open-source-licenses-'))
-  let tarballPath: string | undefined
-  try {
-    const packJson = execFileSync('npm', ['pack', '--json'], {
-      cwd: root,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-    const record = (
-      JSON.parse(packJson) as Array<{
-        filename: string
-        files?: Array<{ path: string }>
-      }>
-    )[0]
-    if (!record) {
-      return { paths: [], hasContextModeDependency: false }
-    }
-
-    tarballPath = join(root, record.filename)
-    execFileSync('tar', ['-xzf', tarballPath, '-C', tempDir])
-    const packedPackageJson = join(tempDir, 'package', 'package.json')
-    const pkg = JSON.parse(readFileSync(packedPackageJson, 'utf8')) as Record<
-      string,
-      Record<string, string> | undefined
-    >
-    const sections = ['dependencies', 'optionalDependencies', 'peerDependencies', 'devDependencies']
-    let hasContextModeDependency = false
-    for (const section of sections) {
-      const value = pkg[section]
-      if (value && Object.prototype.hasOwnProperty.call(value, 'context-mode')) {
-        hasContextModeDependency = true
-        break
-      }
-    }
-
-    return {
-      paths: (record.files ?? []).map((file) => file.path),
-      hasContextModeDependency,
-    }
-  } finally {
-    rmSync(tempDir, { recursive: true, force: true })
-    if (tarballPath && existsSync(tarballPath)) {
-      rmSync(tarballPath, { force: true })
-    }
-  }
 }
 
 function normalizeUrl(value: string): string {

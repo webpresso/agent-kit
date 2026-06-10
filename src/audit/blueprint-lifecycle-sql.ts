@@ -383,7 +383,9 @@ export async function auditBlueprintLifecycleSql(
     // 7. WIP limit — at most the configured max blueprints in the in-progress lane
     // -----------------------------------------------------------------------
     const inProgressCountRows = db
-      .prepare<[], { n: number }>(`SELECT COUNT(*) AS n FROM blueprints WHERE status = 'in-progress'`)
+      .prepare<[], { n: number }>(
+        `SELECT COUNT(*) AS n FROM blueprints WHERE status = 'in-progress'`,
+      )
       .all()
     const inProgressCount = inProgressCountRows[0]?.n ?? 0
     checked += 1

@@ -10,8 +10,8 @@
  * 2. MISSING ALLOWLISTS — a cross-org dependency exists but at least one side
  *    has not allowlisted the other.
  *
- * The audit only detects and reports. Remediation requires manual intervention
- * via `wp fix cross-repo-leak <slug>` (or `fixCrossRepoLeak()` below).
+ * The audit only detects and reports. Remediation requires explicit
+ * intervention via `fixCrossRepoLeak()` below or equivalent DB tooling.
  */
 
 import { createHash } from 'node:crypto'
@@ -214,7 +214,7 @@ export interface FixResult {
  * `is_redacted=1`.
  *
  * This function is intentionally NOT called by `auditCrossRepoCorrelation`.
- * It must be invoked explicitly via `wp fix cross-repo-leak <slug>`.
+ * It must be invoked explicitly by an internal caller or equivalent DB tooling.
  */
 export async function fixCrossRepoLeak(cwd: string, blueprintSlug: string): Promise<FixResult> {
   const dbFile = resolveBlueprintProjectionDbPath(cwd)

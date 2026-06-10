@@ -50,6 +50,10 @@ describe('claude manifest emitter', () => {
     expect((json['skills'] as unknown[]).length).toBe(2)
     expect(json['_generated']).toMatch(/webpresso/)
     expect(json['description']).toContain('Webpresso')
+    expect(json['author']).toEqual({
+      name: 'Webpresso',
+      url: 'https://github.com/webpresso',
+    })
     expect(json['description']).not.toContain(`Agent${'-'}kit`)
   })
 

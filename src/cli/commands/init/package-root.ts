@@ -60,7 +60,10 @@ function resolveBinOnPath(
   for (const entry of pathEnv.split(pathDelimiterForPlatform(platform))) {
     if (entry.length === 0) continue
     for (const binCandidate of candidates) {
-      for (const candidate of new Set([pathModule.join(entry, binCandidate), join(entry, binCandidate)])) {
+      for (const candidate of new Set([
+        pathModule.join(entry, binCandidate),
+        join(entry, binCandidate),
+      ])) {
         if (existsSync(candidate)) return candidate
       }
     }

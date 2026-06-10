@@ -378,7 +378,13 @@ function auditPackedTarballSurface(
       }
     }
 
-    checked += auditAgentKitNativeRuntimeSurface(root, candidate, packEntry, packedFiles, violations)
+    checked += auditAgentKitNativeRuntimeSurface(
+      root,
+      candidate,
+      packEntry,
+      packedFiles,
+      violations,
+    )
 
     checked += auditPackedTarballContent(
       root,
@@ -423,6 +429,13 @@ function auditAgentKitNativeRuntimeSurface(
     })
     return 1
   }
+  const packageJson = JSON.parse(readFileSync(candidate.packageFile, 'utf8')) as {
+    version?: string
+    optionalDependencies?: Record<string, string>
+  }
+  const runtimeManifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+    targets?: Array<{ packageName?: string }>
+  }
 
   const packedPaths = new Set(packedFiles.map((file) => file.path))
   const requiredPackedPaths = new Set<string>(['bin/runtime-manifest.json', 'bin/wp'])
@@ -442,6 +455,25 @@ function auditAgentKitNativeRuntimeSurface(
       file: relativePath(root, join(candidate.packageRoot, packedPath)),
       message: `Publishable tarball contains denied native runtime payload ${packedPath}`,
     })
+  }
+
+  for (const target of runtimeManifest.targets ?? []) {
+    if (!target.packageName) {
+      violations.push({
+        file: relativePath(root, manifestPath),
+        message: 'Runtime manifest target is missing packageName for optional runtime wiring',
+      })
+      continue
+    }
+    const declaredVersion = packageJson.optionalDependencies?.[target.packageName]
+    if (declaredVersion !== packageJson.version) {
+      violations.push({
+        file: relativePath(root, candidate.packageFile),
+        message:
+          `Runtime optional dependency ${target.packageName} must be wired to root package version ` +
+          `${packageJson.version ?? '<missing>'}; found ${declaredVersion ?? '<missing>'}`,
+      })
+    }
   }
 
   const stagedLauncherPath = join(candidate.packageRoot, 'bin', 'wp')
@@ -466,7 +498,7 @@ function auditAgentKitNativeRuntimeSurface(
     })
   }
 
-  return requiredPackedPaths.size + 2 + packedFiles.length
+  return requiredPackedPaths.size + 3 + packedFiles.length + (runtimeManifest.targets?.length ?? 0)
 }
 
 function auditPackedTarballContent(

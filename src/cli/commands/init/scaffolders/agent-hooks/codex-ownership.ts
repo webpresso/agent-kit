@@ -1,22 +1,20 @@
 import { normalize } from 'node:path'
 
 import type { CommandHookMetadata } from '#codex/app-server/types.js'
+import { WP_HOOK_BIN_NAMES } from './ir.js'
+import {
+  DIRECT_NODE_MODULES_BIN_PATTERN,
+  GUARDED_NODE_MODULES_BIN_PATTERN,
+  stripSingleShellQuotePair,
+} from './shell-identity.js'
 
-export const KNOWN_WEBPRESSO_CODEX_BINS = [
-  'wp-sessionstart-routing',
-  'wp-check-dev-link',
-  'wp-pretool-guard',
-  'wp-post-tool',
-  'wp-guard-switch',
-  'wp-stop-qa',
-] as const
-
-type KnownWebpressoCodexBin = (typeof KNOWN_WEBPRESSO_CODEX_BINS)[number]
+// Derived from the WP_HOOK_BIN_NAMES single source of truth (ir.ts) so codex
+// ownership detection cannot drift from the emitted/installed wp-* hook set.
+export const KNOWN_WEBPRESSO_CODEX_BINS = WP_HOOK_BIN_NAMES
 
 const KNOWN_WEBPRESSO_CODEX_BIN_SET = new Set<string>(KNOWN_WEBPRESSO_CODEX_BINS)
-const NODE_MODULES_BIN_PATTERN = /^(?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+)$/u
-const GUARDED_NODE_MODULES_BIN_PATTERN =
-  /^\[ -x (["']?)((?:\.\/|\/.*\/)?node_modules\/\.bin\/([\w-]+))\1 \] && \1\2\1 \|\| (?:true|printf .+)$/u
+// `.codex/managed-hooks`-only launcher forms (narrower than the cross-vendor
+// DIRECT/GUARDED_MANAGED_HOOK_LAUNCHER patterns in shell-identity.ts).
 const MANAGED_LAUNCHER_PATTERN =
   /^(?:["']?)((?:\.\/|\/.*\/)?\.codex\/managed-hooks\/((?:wp|ak)-[\w-]+)\.sh)(?:["']?)$/u
 const GUARDED_MANAGED_LAUNCHER_PATTERN =
@@ -60,13 +58,13 @@ function isExpectedSourcePath(sourcePath: string, expectedSourcePaths: readonly 
   )
 }
 
-function isKnownWebpressoCodexBin(binName: string): binName is KnownWebpressoCodexBin {
+function isKnownWebpressoCodexBin(binName: string): boolean {
   return KNOWN_WEBPRESSO_CODEX_BIN_SET.has(binName)
 }
 
 function extractDirectNodeModulesBin(command: string): string | null {
   const normalizedCommand = stripSingleShellQuotePair(command.trim())
-  const match = NODE_MODULES_BIN_PATTERN.exec(normalizedCommand)
+  const match = DIRECT_NODE_MODULES_BIN_PATTERN.exec(normalizedCommand)
   if (match?.[1]) return match[1]
   const managedLauncherMatch = MANAGED_LAUNCHER_PATTERN.exec(normalizedCommand)
   if (managedLauncherMatch?.[2]) return managedLauncherMatch[2]
@@ -76,14 +74,4 @@ function extractDirectNodeModulesBin(command: string): string | null {
 
   const guardedManagedLauncherMatch = GUARDED_MANAGED_LAUNCHER_PATTERN.exec(command.trim())
   return guardedManagedLauncherMatch?.[3] ?? null
-}
-
-function stripSingleShellQuotePair(value: string): string {
-  if (value.length < 2) return value
-  const first = value[0]
-  const last = value[value.length - 1]
-  if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
-    return value.slice(1, -1)
-  }
-  return value
 }

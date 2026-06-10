@@ -6,16 +6,20 @@
  * scaffolders + `runUnifiedSync` projection. This module now only handles
  * commands, workflows, guides, and the top-level catalog README.
  *
- * Tier exports remain because the init orchestrator uses them to compute
+ * Skill-set exports remain because the init orchestrator uses them to compute
  * the allowed-skill set passed to the unified sync filter.
  *
- * - Tier-1 (fix, verify, testing-philosophy, plan-refine, pll) — always.
- * - Tier-2 (systematic-debugging, test-driven-development, deep-research) — always.
- * - monorepo-navigation — always (rendered via a separate scaffold step).
+ * - Shared favorites (fix, verify, testing-philosophy, plan-refine, pll,
+ *   best-practice-research) —
+ *   guaranteed across Codex + Claude by default.
+ * - Shared add-ons (systematic-debugging, test-driven-development,
+ *   deep-research) — opt-in.
+ * - monorepo-navigation — rendered as a consumer-owned source skill, but not
+ *   projected into host-visible surfaces unless explicitly opted in.
  * - Tier-3 — only on opt-in via --with / --all / interactive prompt.
  */
 import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import {
   copyDirectoryMerged,
@@ -24,15 +28,69 @@ import {
   type MergeResult,
 } from './merge.js'
 
-export const TIER1_SKILLS = ['fix', 'verify', 'testing-philosophy', 'plan-refine', 'pll'] as const
-export const TIER2_SKILLS = [
+export const SHARED_FAVORITE_SKILLS = [
+  'fix',
+  'verify',
+  'testing-philosophy',
+  'plan-refine',
+  'pll',
+  'best-practice-research',
+] as const
+export const TIER1_SKILLS = SHARED_FAVORITE_SKILLS
+
+export const OPTIONAL_SHARED_SKILLS = [
   'systematic-debugging',
   'test-driven-development',
   'deep-research',
 ] as const
+export const TIER2_SKILLS = OPTIONAL_SHARED_SKILLS
 
-/** Always-installed skill (rendered separately). Excluded from the generic copy. */
+/** Rendered separately into agent-skills/, but projected only on explicit opt-in. */
 export const RENDERED_SKILLS = ['monorepo-navigation'] as const
+
+const NON_PROJECTED_SKILL_SLUGS = new Set<string>(['base-kit'])
+
+export function isProjectedManagedSkillSlug(skillSlug: string): boolean {
+  return !NON_PROJECTED_SKILL_SLUGS.has(skillSlug)
+}
+
+export function resolveManagedSkillSourceRoots(packageRoot: string): readonly string[] {
+  return [join(packageRoot, 'catalog', 'agent', 'skills'), join(packageRoot, 'agent-skills')]
+}
+
+export function findManagedSkillSource(packageRoot: string, skillSlug: string): string | null {
+  for (const root of resolveManagedSkillSourceRoots(packageRoot)) {
+    const skillPath = join(root, skillSlug, 'SKILL.md')
+    if (existsSync(skillPath)) return skillPath
+  }
+  return null
+}
+
+export function findMissingManagedSkillSources(
+  packageRootOrCatalogDir: string,
+  skillSlugs: readonly string[],
+): string[] {
+  const packageRoot = packageRootOrCatalogDir.endsWith('/catalog')
+    ? dirname(packageRootOrCatalogDir)
+    : packageRootOrCatalogDir
+  return [...new Set(skillSlugs)].filter(
+    (skillSlug) => !findManagedSkillSource(packageRoot, skillSlug),
+  )
+}
+
+export function assertManagedSkillSourcesPresent(
+  packageRootOrCatalogDir: string,
+  skillSlugs: readonly string[],
+): void {
+  const missing = findMissingManagedSkillSources(packageRootOrCatalogDir, skillSlugs)
+  if (missing.length === 0) return
+
+  throw new Error(
+    `wp init: missing canonical skill source(s): ${missing.join(', ')}. ` +
+      'Expected each selected/shared skill under catalog/agent/skills/<slug>/SKILL.md ' +
+      'or agent-skills/<slug>/SKILL.md in the agent-kit package root.',
+  )
+}
 
 export interface ScaffoldAgentInput {
   catalogDir: string

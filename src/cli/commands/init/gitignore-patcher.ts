@@ -125,14 +125,10 @@ export function untrackGeneratedGitignoredPaths(
   })
   if (gitProbe.status !== 0) return { kind: 'skipped-not-git', pathspecs }
 
-  const gitRm = spawnSync(
-    'git',
-    ['rm', '--cached', '-r', '--ignore-unmatch', '--', ...pathspecs],
-    {
-      cwd: repoRoot,
-      encoding: 'utf8',
-    },
-  )
+  const gitRm = spawnSync('git', ['rm', '--cached', '-r', '--ignore-unmatch', '--', ...pathspecs], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  })
   if (gitRm.status !== 0) {
     return {
       kind: 'failed',

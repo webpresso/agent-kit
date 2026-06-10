@@ -698,7 +698,9 @@ describe('ensureGstack', () => {
   })
 
   it('installs temporary signal listeners, cleans them up, and returns an interrupt failure', async () => {
-    const signalTarget = new EventEmitter() as unknown as NonNullable<EnsureGstackInput['signalTarget']> &
+    const signalTarget = new EventEmitter() as unknown as NonNullable<
+      EnsureGstackInput['signalTarget']
+    > &
       EventEmitter
     let spawnedChild: FakeChild | null = null
     const spawn = makeSpawn([
@@ -763,6 +765,103 @@ describe('ensureGstack', () => {
     expect(log).toHaveBeenCalledWith(
       '  gstack: quiet mode can take a few minutes on first run (for example while Playwright Chromium installs); set WP_VERBOSE_GSTACK=1 for upstream logs.',
     )
+  })
+
+  it('emits quiet-mode heartbeat lines while a child stays alive without fresh output', async () => {
+    vi.useFakeTimers()
+
+    const spawn = makeSpawn([
+      {
+        autoClose: false,
+        onSpawn: (child) => {
+          setTimeout(
+            () => child.stdout.write('\u001B[2mDownloading Chrome for Testing...\u001B[22m\n'),
+            1_100,
+          )
+          setTimeout(() => {
+            child.stdout.end()
+            child.stderr.end()
+            child.emit('close', 0, null)
+          }, 3_200)
+        },
+      },
+      { code: 0 },
+    ])
+    const exists = vi.fn(() => false)
+    const log = vi.fn()
+
+    const run = ensureGstack(
+      buildInput({
+        spawn,
+        exists,
+        detectCodex: () => false,
+        log,
+        heartbeatIntervalMs: 1_000,
+      }),
+    )
+
+    await vi.advanceTimersByTimeAsync(3_500)
+    await expect(run).resolves.toEqual(
+      expect.objectContaining({
+        kind: 'gstack-installed',
+      }),
+    )
+    expect(log).toHaveBeenCalledWith(
+      '  gstack: still cloning canonical checkout (1.0s elapsed; no child output yet)',
+    )
+    expect(log).toHaveBeenCalledWith(
+      '  gstack: still cloning canonical checkout (3.0s elapsed; last child output 1.9s ago: Downloading Chrome for Testing...)',
+    )
+  })
+
+  it('does not let quiet-mode heartbeats mask inactivity timeouts', async () => {
+    vi.useFakeTimers()
+
+    let spawnedChild: FakeChild | null = null
+    const spawn = makeSpawn([
+      {
+        autoClose: false,
+        onSpawn: (child) => {
+          spawnedChild = child
+        },
+      },
+    ])
+    const exists = vi.fn(() => false)
+    const env = createFakeEnv()
+    env.WP_GSTACK_INACTIVITY_MS = '1000'
+    const log = vi.fn()
+    const processKill = vi.fn((pid: number, signal: NodeJS.Signals) => {
+      if (pid === -1234 && signal === 'SIGKILL' && spawnedChild) {
+        queueMicrotask(() => spawnedChild?.emit('close', null, 'SIGKILL'))
+      }
+    }) as unknown as typeof process.kill
+
+    const run = ensureGstack(
+      buildInput({
+        spawn,
+        exists,
+        env,
+        detectCodex: () => false,
+        log,
+        heartbeatIntervalMs: 300,
+        processKill,
+      }),
+    )
+
+    await vi.advanceTimersByTimeAsync(6_000)
+    await expect(run).resolves.toEqual(
+      expect.objectContaining({
+        kind: 'gstack-clone-failed',
+        reason: 'inactivity-timeout',
+        timedOutCommand: 'git clone',
+      }),
+    )
+    expect(
+      log.mock.calls.some(
+        ([message]) =>
+          typeof message === 'string' && message.includes('still cloning canonical checkout'),
+      ),
+    ).toBe(true)
   })
 
   it('does not print the quiet-mode advisory when WP_VERBOSE_GSTACK=1', async () => {

@@ -16,6 +16,7 @@ interface PluginManifest {
   name: string
   version: string
   description: string
+  author?: { name?: string; url?: string }
   skills: string
   commands: string
   mcpServers: Record<string, { command: string; args: string[] }>
@@ -38,6 +39,10 @@ describe('plugin.json manifest', () => {
     expect(typeof m.name).toBe('string')
     expect(m.version).toBe(packageJson.version)
     expect(typeof m.description).toBe('string')
+    expect(m.author).toEqual({
+      name: 'Webpresso',
+      url: 'https://github.com/webpresso',
+    })
     expect(m.skills).toBe('./skills')
   })
 

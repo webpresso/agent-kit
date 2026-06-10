@@ -288,7 +288,6 @@ function collectEnabledExtensionPackageNames(manifest: PackageJsonLike | undefin
 }
 
 function collectDependencyNames(manifest: PackageJsonLike): string[] {
-
   const packageNames = new Set<string>()
   for (const section of ['dependencies', 'devDependencies', 'optionalDependencies'] as const) {
     const dependencies = manifest[section]

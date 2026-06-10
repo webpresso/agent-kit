@@ -36,13 +36,7 @@ describe('BlueprintCreationService integration', () => {
     expect(created.blueprint.tasks.length).toBeGreaterThan(0)
     expect(await readFile(created.path, 'utf-8')).toContain('# Customer runtime contract')
     expect(created.path).toBe(
-      path.join(
-        projectRoot,
-        'webpresso',
-        'blueprints',
-        'draft',
-        'customer-runtime-contract.md',
-      ),
+      path.join(projectRoot, 'webpresso', 'blueprints', 'draft', 'customer-runtime-contract.md'),
     )
   })
 

@@ -1,9 +1,10 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
-import { existsSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(__dirname, '..', '..')
@@ -130,14 +131,34 @@ describe('mcp server integration', () => {
     expect(caps).toHaveProperty('resources')
   })
 
+  let fixtureFilePath: string | undefined
+  afterEach(() => {
+    if (fixtureFilePath) {
+      rmSync(fixtureFilePath, { force: true })
+      fixtureFilePath = undefined
+    }
+  })
+
   it('passes through tool outputSchema in tools/list and structuredContent in tools/call', async () => {
-    const filePath = resolve(sourceToolsDir, 'zz-structured-content-plumbing-fixture.js')
+    // Use a unique suffix per run so parallel test workers never collide on the
+    // same filename or tool name inside the shared sourceToolsDir.
+    const runId = mkdtempSync(resolve(tmpdir(), 'mcp-fixture-'))
+      .split('/')
+      .pop()
+      ?.replace(/[^a-z0-9]/gi, '')
+      .slice(-8) ?? Date.now().toString(36)
+    rmSync(resolve(tmpdir(), `mcp-fixture-${runId}`), { recursive: true, force: true })
+
+    const toolName = `zz_structured_content_plumbing_${runId}`
+    const fileName = `zz-structured-content-plumbing-fixture-${runId}.js`
+    fixtureFilePath = resolve(sourceToolsDir, fileName)
+
     writeFileSync(
-      filePath,
+      fixtureFilePath,
       [
         'const fakeShape = { _def: { typeName: "ZodObject", shape: () => ({}) }, parse: (x) => x }',
         'export default {',
-        '  name: "zz_structured_content_plumbing",',
+        `  name: "${toolName}",`,
         '  description: "fixture for MCP structured plumbing",',
         '  inputSchema: fakeShape,',
         '  outputSchema: fakeShape,',
@@ -152,33 +173,29 @@ describe('mcp server integration', () => {
       ].join('\n'),
     )
 
-    try {
-      const { tools, callResponse } = await withClient(async (client) => ({
-        tools: (await client.listTools()).tools as Array<{
-          name: string
-          outputSchema?: Record<string, unknown>
-        }>,
-        callResponse: await client.callTool({
-          name: 'zz_structured_content_plumbing',
-          arguments: { value: 'hi' },
-        }),
-      }))
-      const fixture = tools.find((t) => t.name === 'zz_structured_content_plumbing')
-      expect(fixture?.outputSchema).toEqual({ type: 'object', bareShape: true })
+    const { tools, callResponse } = await withClient(async (client) => ({
+      tools: (await client.listTools()).tools as Array<{
+        name: string
+        outputSchema?: Record<string, unknown>
+      }>,
+      callResponse: await client.callTool({
+        name: toolName,
+        arguments: { value: 'hi' },
+      }),
+    }))
+    const fixture = tools.find((t) => t.name === toolName)
+    expect(fixture?.outputSchema).toEqual({ type: 'object', bareShape: true })
 
-      expect(callResponse.structuredContent).toEqual({
-        ok: true,
-        echoed: { value: 'hi' },
-      })
-      expect(callResponse.content).toEqual([
-        {
-          type: 'text',
-          text: '{"ok":true,"echoed":{"value":"hi"}}',
-        },
-      ])
-    } finally {
-      rmSync(filePath, { force: true })
-    }
+    expect(callResponse.structuredContent).toEqual({
+      ok: true,
+      echoed: { value: 'hi' },
+    })
+    expect(callResponse.content).toEqual([
+      {
+        type: 'text',
+        text: '{"ok":true,"echoed":{"value":"hi"}}',
+      },
+    ])
   }, 20_000)
 
   it('returns structuredContent for a real built-in tool with outputSchema', async () => {

@@ -2,7 +2,10 @@ import type { E2eHostAdapter, E2eSuiteDefinition } from './types.js'
 
 import { describe, expect, it } from 'vitest'
 
+import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
 import { groupPlannedE2eRuns, planE2eRun, planGenericE2eRun } from './run-planner.js'
+
+installManagedRunnerHermeticHooks()
 
 const hostSuites: readonly E2eSuiteDefinition[] = [
   {

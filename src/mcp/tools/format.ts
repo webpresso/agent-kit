@@ -1,9 +1,9 @@
 /**
  * `wp_format` MCP tool.
  *
- * Runs `oxfmt` on the resolved project root. By default writes fixes in
- * place; pass `check: true` to verify formatting without writing (useful
- * for CI / pre-commit). Returns the standard summary-first payload:
+ * Runs the repo formatting surface on the resolved project root. By default
+ * writes fixes in place; pass `check: true` to verify formatting without
+ * writing (useful for CI / pre-commit). Returns the standard summary-first payload:
  *
  *   {
  *     passed: boolean,
@@ -12,22 +12,22 @@
  *     details: { spawnError?: string },
  *   }
  *
- * No fallback — `oxfmt` must be on PATH. When missing, the tool returns
- * `isError: true` with a clear install hint.
+ * No fallback — the managed formatter backend must be on PATH. When missing,
+ * the tool returns `isError: true` with a clear install hint.
  */
 
 import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
+import { runFormat } from '#format/index'
 import { applyOutputTransform } from '#output-transforms/index'
 
-import { resolveProjectRoot } from './_shared/project-root.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
-import { isMissingBinary, isRunFailure, runCommand } from './_shared/run-command.js'
 
 const inputSchema = z.object({
   check: z.boolean().optional().default(false),
   cwd: z.string().optional(),
+  files: z.array(z.string()).optional(),
 })
 
 export type AkFormatInput = z.infer<typeof inputSchema>
@@ -38,12 +38,10 @@ const outputSchema = createSummaryOutputSchema({
   }),
 })
 
-const FORMAT_COMMAND_TIMEOUT_MS = 5 * 60 * 1_000
-
 const tool: ToolDescriptor = {
   name: 'wp_format',
   description:
-    'Run formatter via `oxfmt`. By default writes fixes in place; pass `check: true` to verify without writing. No fallback — oxfmt must be on PATH.',
+    'Run formatter via the repo formatting surface. By default writes fixes in place; pass `check: true` to verify without writing.',
   inputSchema,
   outputSchema,
   annotations: {
@@ -55,54 +53,48 @@ const tool: ToolDescriptor = {
   },
   handler: async (raw, extra) => {
     const input = inputSchema.parse(raw ?? {})
-    const cwd = resolveProjectRoot(input.cwd ? { explicitCwd: input.cwd } : {})
-    const runOptions = {
-      timeoutMs: FORMAT_COMMAND_TIMEOUT_MS,
-      signal: extra?.signal,
-      cwd,
+    let formatResult
+    try {
+      formatResult = await runFormat({
+        check: input.check,
+        cwd: input.cwd,
+        files: input.files,
+        signal: extra?.signal,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      return createSummaryResult(
+        {
+          passed: false,
+          summary: /binary not found/u.test(message)
+            ? 'format could not start: formatter backend missing on PATH'
+            : 'format could not start',
+          exitCode: 1,
+          details: { spawnError: message },
+        },
+        { isError: true },
+      )
     }
 
-    const args: string[] = input.check ? ['--check'] : ['--write']
-    // Force --ignore-path to .gitignore so a `*` .prettierignore (used to
-    // disable conflicting IDE Prettier extensions) doesn't make oxfmt skip
-    // every file. .oxfmtrc.json#ignorePatterns still applies on top.
-    args.push('--ignore-path', '.gitignore')
-    const outcome = await runCommand('oxfmt', args, runOptions)
-
-    if (isRunFailure(outcome)) {
-      const message = isMissingBinary(outcome)
-        ? 'oxfmt binary not found on PATH. Install with: vp install -D oxfmt'
-        : `oxfmt spawn failed: ${outcome.error.code ?? 'unknown'} ${outcome.error.message}`
-      const payload = {
-        passed: false,
-        summary: isMissingBinary(outcome)
-          ? 'format could not start: oxfmt binary missing on PATH'
-          : 'format could not start: oxfmt spawn failed',
-        exitCode: 1,
-        details: { spawnError: message },
-      }
-      return createSummaryResult(payload, { isError: true })
-    }
-
-    const combined = [outcome.stdout, outcome.stderr].filter(Boolean).join('')
+    const combined = formatResult.output
     const { transform: _transform, ...compact } = applyOutputTransform(combined, {
       toolName: 'wp_format',
     })
 
     const payload = {
-      passed: outcome.exitCode === 0,
+      passed: formatResult.passed,
       summary: summarizeFormatResult({
-        passed: outcome.exitCode === 0,
+        passed: formatResult.passed,
         check: input.check,
-        exitCode: outcome.exitCode,
-        timedOut: outcome.timedOut,
-        aborted: outcome.aborted,
+        exitCode: formatResult.exitCode,
+        timedOut: formatResult.timedOut,
+        aborted: formatResult.aborted,
       }),
-      exitCode: outcome.exitCode,
-      details: {},
+      exitCode: formatResult.exitCode,
+      details: formatResult.spawnError ? { spawnError: formatResult.spawnError } : {},
       ...compact,
-      timedOut: outcome.timedOut || undefined,
-      aborted: outcome.aborted || undefined,
+      timedOut: formatResult.timedOut || undefined,
+      aborted: formatResult.aborted || undefined,
     }
     return createSummaryResult(payload)
   },

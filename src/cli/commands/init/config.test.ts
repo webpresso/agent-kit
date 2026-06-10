@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { defaultConfig, mergeConfig, readConfig, writeConfig } from './config.js'
+import { REQUIRED_CORE_CAPABILITIES } from './host-visibility.js'
 
 function makeTempDir(): string {
   const dir = join(
@@ -27,6 +28,10 @@ describe('config', () => {
 
   it('readConfig returns null when no file', () => {
     expect(readConfig(dir)).toBeNull()
+  })
+
+  it('defaults host requiredCapabilities to the shared favorites set', () => {
+    expect(defaultConfig().hosts?.requiredCapabilities).toEqual([...REQUIRED_CORE_CAPABILITIES])
   })
 
   it('reads legacy .agent-kitrc.json as a one-way migration source', () => {

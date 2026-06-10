@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -147,9 +147,20 @@ export type RunBenchSessionMemoryDeps = RuntimeModules
 
 const DEFAULT_VARIANTS: readonly BenchVariant[] = ['baseline', 'context-mode', 'v1', 'v2']
 const DEFAULT_MODEL = 'claude-sonnet-4-5'
+const BENCH_RUNTIME_MODULE_PATHS = [
+  ['scripts', 'bench', 'lib', 'manifest.ts'],
+  ['scripts', 'bench', 'scenarios', '_schema.ts'],
+  ['scripts', 'bench', 'lib', 'cost-aggregator.ts'],
+  ['scripts', 'bench', 'lib', 'variant-runner.ts'],
+  ['scripts', 'bench', 'lib', 'report-writer.ts'],
+] as const
 
-function resolveRepoRoot(fromUrl: string): string {
-  let current = dirname(fileURLToPath(fromUrl))
+export function isBunSingleFileUrl(fromUrl: string): boolean {
+  return fromUrl.startsWith('file:///$bunfs/root') || fromUrl.startsWith('file:///__bunfs__/root')
+}
+
+export function resolveRepoRoot(fromUrl: string, fallbackRoot = process.cwd()): string {
+  let current = isBunSingleFileUrl(fromUrl) ? fallbackRoot : dirname(fileURLToPath(fromUrl))
 
   while (true) {
     if (existsSync(resolve(current, 'package.json'))) {
@@ -164,41 +175,70 @@ function resolveRepoRoot(fromUrl: string): string {
   }
 }
 
-const REPO_ROOT = resolveRepoRoot(import.meta.url)
-const DEFAULT_OUTPUT_ROOT = resolve(REPO_ROOT, 'scripts', 'bench', 'runs')
+export function assertBenchRuntimeAssets(repoRoot: string): void {
+  const packageJsonPath = resolve(repoRoot, 'package.json')
+  let packageName: unknown = null
+  try {
+    packageName = JSON.parse(readFileSync(packageJsonPath, 'utf8'))?.name
+  } catch {
+    packageName = null
+  }
 
-export function getBenchSessionMemoryHelpText(): string {
-  return [
-    'Run the session-memory benchmark harness.',
-    '',
-    'Examples:',
-    '  wp bench session-memory --dry-run',
-    '  wp bench session-memory --scenario debug-long-session --variant baseline --trials 1',
-    '  wp bench session-memory --scenario all --all-variants',
-  ].join('\n')
+  if (packageName !== '@webpresso/agent-kit') {
+    throw new Error(
+      [
+        'wp bench session-memory refuses to load benchmark assets from a non-agent-kit package root.',
+        `Resolved package root: ${repoRoot}.`,
+        `Expected package.json#name to be @webpresso/agent-kit, found ${String(packageName)}.`,
+        'Run this benchmark from an @webpresso/agent-kit source checkout or built JS install with bench assets available.',
+      ].join(' '),
+    )
+  }
+
+  const missing = BENCH_RUNTIME_MODULE_PATHS.map((parts) => resolve(repoRoot, ...parts)).filter(
+    (candidate) => !existsSync(candidate),
+  )
+
+  if (missing.length === 0) return
+
+  throw new Error(
+    [
+      'wp bench session-memory requires bench source assets that are not available in this runtime context.',
+      `Resolved package root: ${repoRoot}.`,
+      `Missing required asset: ${missing[0]}.`,
+      'Run this benchmark from an @webpresso/agent-kit source checkout or built JS install with bench assets available; the compiled runtime supports `wp bench --help` but does not silently load benchmark assets from the caller project.',
+    ].join(' '),
+  )
 }
 
-export function getBenchSessionMemoryCommandHelpText(): string {
-  return [
-    'wp bench session-memory',
-    '',
-    'Run the session-memory benchmark harness.',
-    '',
-    'Options:',
-    '  --scenario <id>     Scenario id or "all" (default: all)',
-    '  --variant <id>      Single variant id to run',
-    '  --all-variants      Run baseline, context-mode, v1, and v2',
-    '  --dry-run           Validate manifest, scenarios, and env without API calls',
-    '  --trials <n>        Trials per cell',
-    '  --model <name>      Pricing model alias to use for cost math',
-    '  --output-root <path>  Override the bench output root directory',
-    '  -h, --help          Display this message',
-    '',
-    'Examples:',
-    '  wp bench session-memory --dry-run',
-    '  wp bench session-memory --scenario debug-long-session --variant baseline --trials 1',
-    '  wp bench session-memory --scenario all --all-variants',
-  ].join('\n')
+export function resolveBenchRuntimeRoot(fromUrl = import.meta.url, fallbackRoot = process.cwd()): string {
+  if (isBunSingleFileUrl(fromUrl)) {
+    throw new Error(
+      [
+        'wp bench session-memory is not available from the compiled single-file runtime because benchmark assets are source-only.',
+        'The compiled runtime supports `wp bench --help` and `wp bench session-memory --help`, but refuses to resolve benchmark assets from the caller cwd.',
+        'Run this benchmark from an @webpresso/agent-kit source checkout or built JS install with bench assets available.',
+      ].join(' '),
+    )
+  }
+
+  const repoRoot = resolveRepoRoot(fromUrl, fallbackRoot)
+  assertBenchRuntimeAssets(repoRoot)
+  return repoRoot
+}
+
+export function assertBenchSessionMemorySupportedRuntime(
+  env: NodeJS.ProcessEnv = process.env,
+): void {
+  if (env.WP_COMPILED_RUNTIME !== '1') return
+
+  throw new Error(
+    [
+      'wp bench session-memory is not available from the compiled runtime because benchmark assets are source-only.',
+      'The compiled runtime supports `wp bench --help` and `wp bench session-memory --help`, but refuses to execute source-dependent benchmark assets.',
+      'Run this benchmark from an @webpresso/agent-kit source checkout or built JS install with bench assets available.',
+    ].join(' '),
+  )
 }
 
 function stableStringify(value: unknown): string {
@@ -286,18 +326,18 @@ function apiKeyMapFromEnv(env: NodeJS.ProcessEnv): Record<string, string | undef
   }
 }
 
-async function loadRuntimeModules(): Promise<RuntimeModules> {
+async function loadRuntimeModules(repoRoot = resolveBenchRuntimeRoot()): Promise<RuntimeModules> {
   const [manifestModule, scenarioModule, costModule, runnerModule, reportModule] =
     await Promise.all([
-      import(pathToFileURL(resolve(REPO_ROOT, 'scripts', 'bench', 'lib', 'manifest.ts')).href),
-      import(pathToFileURL(resolve(REPO_ROOT, 'scripts', 'bench', 'scenarios', '_schema.ts')).href),
+      import(pathToFileURL(resolve(repoRoot, 'scripts', 'bench', 'lib', 'manifest.ts')).href),
+      import(pathToFileURL(resolve(repoRoot, 'scripts', 'bench', 'scenarios', '_schema.ts')).href),
       import(
-        pathToFileURL(resolve(REPO_ROOT, 'scripts', 'bench', 'lib', 'cost-aggregator.ts')).href
+        pathToFileURL(resolve(repoRoot, 'scripts', 'bench', 'lib', 'cost-aggregator.ts')).href
       ),
       import(
-        pathToFileURL(resolve(REPO_ROOT, 'scripts', 'bench', 'lib', 'variant-runner.ts')).href
+        pathToFileURL(resolve(repoRoot, 'scripts', 'bench', 'lib', 'variant-runner.ts')).href
       ),
-      import(pathToFileURL(resolve(REPO_ROOT, 'scripts', 'bench', 'lib', 'report-writer.ts')).href),
+      import(pathToFileURL(resolve(repoRoot, 'scripts', 'bench', 'lib', 'report-writer.ts')).href),
     ])
 
   return {
@@ -342,7 +382,15 @@ export async function runBenchSessionMemoryCommand(
   input: RunBenchSessionMemoryInput,
   deps?: RunBenchSessionMemoryDeps,
 ): Promise<RunBenchSessionMemoryResult> {
-  const runtime = deps ?? (await loadRuntimeModules())
+  assertBenchSessionMemorySupportedRuntime(input.env)
+
+  let runtimeRoot: string | undefined
+  const runtime = deps
+    ? deps
+    : await (async () => {
+        runtimeRoot = resolveBenchRuntimeRoot()
+        return loadRuntimeModules(runtimeRoot)
+      })()
   const cwd = input.cwd ?? process.cwd()
   const env = input.env ?? process.env
 
@@ -358,7 +406,7 @@ export async function runBenchSessionMemoryCommand(
   const variants = resolveVariants(input)
   const trials = normalizeTrials(input)
   const runId = createRunId(pinned)
-  const outputRoot = input.outputRoot ?? DEFAULT_OUTPUT_ROOT
+  const outputRoot = input.outputRoot ?? resolve(runtimeRoot ?? process.cwd(), 'scripts', 'bench', 'runs')
 
   if (input.dryRun) {
     return {
