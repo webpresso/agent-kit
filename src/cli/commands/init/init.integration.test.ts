@@ -827,7 +827,7 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
     await runInit({ cwd: repo, yes: true }, { stdout: silentStdout })
     const allOutput = logLines.join('\n')
     expect(allOutput).toContain('claude plugin:')
-    expect(allOutput).toContain('webpresso@webpresso')
+    expect(allOutput).toContain('agent-kit@webpresso')
   })
 
   it('reports OMC setup status through the default setup preset', async () => {

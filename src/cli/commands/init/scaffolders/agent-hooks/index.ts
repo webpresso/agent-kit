@@ -342,7 +342,7 @@ const CLAUDE_MATCHERS: MatcherSet = {
   postToolUse: 'Write|Edit|MultiEdit',
 }
 
-const AGENT_KIT_CLAUDE_PLUGIN_ID = 'webpresso@webpresso'
+const AGENT_KIT_CLAUDE_PLUGIN_ID = 'agent-kit@webpresso'
 
 function defaultClaudeUserSettingsPath(): string {
   return join(process.env.HOME || homedir(), '.claude', 'settings.json')

@@ -10,7 +10,7 @@
   },
   "plugins": [
     {
-      "name": "webpresso",
+      "name": "agent-kit",
       "source": "./",
       "description": "Webpresso agent-kit: blueprints, skills, lore commit protocol, tech-debt lifecycle",
       "category": "development",

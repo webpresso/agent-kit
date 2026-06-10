@@ -193,7 +193,7 @@ describe('scaffoldAgentHooks', () => {
       enabledPlugins: Record<string, boolean>
     }
 
-    expect(settings.enabledPlugins['webpresso@webpresso']).toBe(true)
+    expect(settings.enabledPlugins['agent-kit@webpresso']).toBe(true)
   })
 
   it('re-enables Claude hooks in user settings without dropping unrelated plugin state', async () => {
@@ -206,7 +206,7 @@ describe('scaffoldAgentHooks', () => {
           disableAllHooks: true,
           enabledPlugins: {
             'playwright@claude-plugins-official': false,
-            'webpresso@webpresso': false,
+            'agent-kit@webpresso': false,
           },
         },
         null,
@@ -222,7 +222,7 @@ describe('scaffoldAgentHooks', () => {
     }
 
     expect(settings.disableAllHooks).toBe(false)
-    expect(settings.enabledPlugins['webpresso@webpresso']).toBe(true)
+    expect(settings.enabledPlugins['agent-kit@webpresso']).toBe(true)
     expect(settings.enabledPlugins['playwright@claude-plugins-official']).toBe(false)
   })
 
