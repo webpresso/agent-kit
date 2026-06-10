@@ -74,7 +74,9 @@ const TEMPLATE_MAP: Array<[string, string]> = [
 const QUALITY_BOOTSTRAP_ONLY_MAP: Array<[string, string]> = [
   ['tsconfig.json.tmpl', 'tsconfig.json'],
   ['vitest.config.ts.tmpl', 'vitest.config.ts'],
-  ['oxlint.config.ts.tmpl', 'oxlint.config.ts'],
+  // No oxlint.config.ts: `wp lint` injects agent-kit's shared --config so
+  // consumers need zero local oxlint config (Tier-1 DRY). A consumer may still
+  // commit its own oxlint.config.ts to override — `wp lint` then defers to it.
   ['stryker.config.ts.tmpl', 'stryker.config.ts'],
   ['playwright.config.ts.tmpl', 'playwright.config.ts'],
   ['src/quality-sample.ts.tmpl', 'src/quality-sample.ts'],

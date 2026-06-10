@@ -27,6 +27,9 @@ export default mergeConfig(
         // calls ingestAll (filesystem glob scan + SQLite writes) — heavyweight operation
         // not suitable for Stryker's forks pool unit-test timeout
         'src/mcp/blueprint-workflow.integration.test.ts',
+        // spawns the real oxlint binary against the built dist config; gated on
+        // build artifacts and not meaningful under Stryker's source-only run
+        'src/config/oxlint/oxlintrc.integration.test.ts',
       ],
     },
   }),

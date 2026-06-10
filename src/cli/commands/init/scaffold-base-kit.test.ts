@@ -44,7 +44,9 @@ describe('scaffoldBaseKit', () => {
     expect(existsSync(join(repoRoot, 'scripts', 'audit-secret-provider-quarantine.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'tsconfig.json'))).toBe(true)
     expect(existsSync(join(repoRoot, 'vitest.config.ts'))).toBe(true)
-    expect(existsSync(join(repoRoot, 'oxlint.config.ts'))).toBe(true)
+    // Tier-1 DRY: no oxlint.config.ts is scaffolded — `wp lint` injects the
+    // shared --config instead.
+    expect(existsSync(join(repoRoot, 'oxlint.config.ts'))).toBe(false)
     expect(existsSync(join(repoRoot, 'stryker.config.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'playwright.config.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'src', 'quality-sample.ts'))).toBe(true)

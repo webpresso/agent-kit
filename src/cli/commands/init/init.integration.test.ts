@@ -383,7 +383,9 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     // Default base-kit quality scaffold
     expect(existsSync(join(repo, 'tsconfig.json'))).toBe(true)
     expect(existsSync(join(repo, 'vitest.config.ts'))).toBe(true)
-    expect(existsSync(join(repo, 'oxlint.config.ts'))).toBe(true)
+    // Tier-1 DRY: oxlint.config.ts is intentionally not scaffolded; `wp lint`
+    // injects agent-kit's shared --config.
+    expect(existsSync(join(repo, 'oxlint.config.ts'))).toBe(false)
     expect(existsSync(join(repo, 'stryker.config.ts'))).toBe(true)
     expect(existsSync(join(repo, 'playwright.config.ts'))).toBe(true)
     expect(existsSync(join(repo, 'src', 'quality-sample.ts'))).toBe(true)

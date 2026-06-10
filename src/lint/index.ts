@@ -7,6 +7,7 @@
  * reaching through the MCP transport.
  */
 
+import { sharedOxlintConfigArgs } from '#config/oxlint/shared-config-path'
 import { isRunFailure, runCommand } from '#mcp/tools/_shared/run-command'
 import { resolveProjectRoot } from '#mcp/tools/_shared/project-root'
 import { getManagedRunner } from '#tool-runtime'
@@ -142,6 +143,10 @@ export async function runLint(options: RunLintOptions = {}): Promise<LintResult>
   }
 
   const lintArgs: string[] = ['lint', '--format=json']
+  // Inject agent-kit's shared --config so consumers need no local oxlint config
+  // (Tier-1 DRY). No-op when the consumer ships its own config or passes
+  // --config (see sharedOxlintConfigArgs).
+  lintArgs.push(...sharedOxlintConfigArgs(cwd, lintArgs))
   if (options.fix) lintArgs.push('--fix')
   if (options.files && options.files.length > 0) {
     lintArgs.push(...options.files)
