@@ -211,7 +211,10 @@ export function assertBenchRuntimeAssets(repoRoot: string): void {
   )
 }
 
-export function resolveBenchRuntimeRoot(fromUrl = import.meta.url, fallbackRoot = process.cwd()): string {
+export function resolveBenchRuntimeRoot(
+  fromUrl = import.meta.url,
+  fallbackRoot = process.cwd(),
+): string {
   if (isBunSingleFileUrl(fromUrl)) {
     throw new Error(
       [
@@ -334,9 +337,7 @@ async function loadRuntimeModules(repoRoot = resolveBenchRuntimeRoot()): Promise
       import(
         pathToFileURL(resolve(repoRoot, 'scripts', 'bench', 'lib', 'cost-aggregator.ts')).href
       ),
-      import(
-        pathToFileURL(resolve(repoRoot, 'scripts', 'bench', 'lib', 'variant-runner.ts')).href
-      ),
+      import(pathToFileURL(resolve(repoRoot, 'scripts', 'bench', 'lib', 'variant-runner.ts')).href),
       import(pathToFileURL(resolve(repoRoot, 'scripts', 'bench', 'lib', 'report-writer.ts')).href),
     ])
 
@@ -406,7 +407,8 @@ export async function runBenchSessionMemoryCommand(
   const variants = resolveVariants(input)
   const trials = normalizeTrials(input)
   const runId = createRunId(pinned)
-  const outputRoot = input.outputRoot ?? resolve(runtimeRoot ?? process.cwd(), 'scripts', 'bench', 'runs')
+  const outputRoot =
+    input.outputRoot ?? resolve(runtimeRoot ?? process.cwd(), 'scripts', 'bench', 'runs')
 
   if (input.dryRun) {
     return {

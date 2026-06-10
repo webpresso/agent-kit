@@ -1,9 +1,12 @@
 export {
   buildTestCommand,
   buildVitestCommand,
+  isCommandSequenceConfig,
   buildVpTestCommand,
   getVpTestTask,
   type CommandConfig,
+  type CommandSequenceConfig,
+  type SingleCommandConfig,
   type TestCommandOptions,
   type VpRunLogMode,
 } from './command-builder.js'
@@ -14,3 +17,11 @@ export {
   type TestTargetInput,
   type TestTargetType,
 } from './target-resolver.js'
+export {
+  TEST_SUITE_VALUES,
+  normalizeTestSuiteName,
+  parseTestSuiteName,
+  resolveTestSuiteRuns,
+  type ResolvedTestSuiteRun,
+  type TestSuiteName,
+} from './suite.js'

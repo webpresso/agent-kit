@@ -60,7 +60,9 @@ function normalizeProfileSelector(profile: RuntimeSelector | undefined): string 
   return trimmed && trimmed.length > 0 ? trimmed : undefined
 }
 
-function isCanonicalSecretProfile(profile: string | undefined): profile is Exclude<RuntimeProfile, 'none'> {
+function isCanonicalSecretProfile(
+  profile: string | undefined,
+): profile is Exclude<RuntimeProfile, 'none'> {
   return profile !== undefined && isRuntimeProfile(profile) && profile !== 'none'
 }
 

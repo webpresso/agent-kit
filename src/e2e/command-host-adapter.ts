@@ -102,7 +102,11 @@ function toPlannedRunGroup(
         suiteId: group.run.suiteId ?? request.suite ?? defaultSuiteId,
         batchKey: group.run.batchKey,
         envProfile: group.run.envProfile,
-        runtimeProfile: group.run.runtimeProfile ?? group.run.envProfile ?? group.runtimeProfile ?? group.envProfile,
+        runtimeProfile:
+          group.run.runtimeProfile ??
+          group.run.envProfile ??
+          group.runtimeProfile ??
+          group.envProfile,
         env: cloneEnv(group.run.env),
         runner: 'command',
         logName: group.run.logName,

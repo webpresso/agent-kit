@@ -48,7 +48,7 @@ describe('scaffoldBaseKit', () => {
     // shared --config instead.
     expect(existsSync(join(repoRoot, 'oxlint.config.ts'))).toBe(false)
     expect(existsSync(join(repoRoot, 'stryker.config.ts'))).toBe(true)
-    expect(readFileSync(join(repoRoot, 'stryker.config.ts'), 'utf8')).not.toContain("mutate:")
+    expect(readFileSync(join(repoRoot, 'stryker.config.ts'), 'utf8')).not.toContain('mutate:')
     expect(existsSync(join(repoRoot, 'playwright.config.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'src', 'quality-sample.ts'))).toBe(true)
     expect(existsSync(join(repoRoot, 'src', 'quality-sample.test.ts'))).toBe(true)

@@ -41,7 +41,6 @@ describe('stryker config parity', () => {
     expect(text).toContain('**/*.d.ts')
   })
 
-
   it('covers common consumer source roots without mutating teaching samples by default', () => {
     expect(baseConfig.mutate).toEqual(
       expect.arrayContaining([

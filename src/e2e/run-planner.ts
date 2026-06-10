@@ -124,7 +124,8 @@ function planE2eRunsFromSuites(options: {
         suiteId: suite.id,
         batchKey: step.batchKey ?? suite.batchKey,
         envProfile: step.envProfile ?? suite.envProfile,
-        runtimeProfile: step.runtimeProfile ?? step.envProfile ?? suite.runtimeProfile ?? suite.envProfile,
+        runtimeProfile:
+          step.runtimeProfile ?? step.envProfile ?? suite.runtimeProfile ?? suite.envProfile,
         runner: step.runner,
         logName: step.logName,
         reportDir: step.reportDir,

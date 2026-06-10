@@ -204,9 +204,7 @@ export async function auditHookVendorDrift(options: {
   const claude = readClaudeInstalledEvents(repoRoot)
   const codex = readCodexInstalledEvents(repoRoot)
 
-  const findings: DriftFinding[] = [
-    ...detectDrift({ claude: claude.events, codex: codex.events }),
-  ]
+  const findings: DriftFinding[] = [...detectDrift({ claude: claude.events, codex: codex.events })]
   // A present-but-unparseable config is a hard error, not silent "no drift".
   if (claude.parseError) {
     findings.unshift(configReadFinding('claude', '.claude/settings.json', claude.parseError))

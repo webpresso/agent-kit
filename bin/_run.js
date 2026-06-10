@@ -264,7 +264,9 @@ function buildRuntimeLaunchPlan({
 
   if (!binaryPath) {
     if (allowRuntimeFallback) return null
-    throw new Error(formatMissingRuntimeDiagnostic({ binName, repoRoot, manifest, target, candidates }))
+    throw new Error(
+      formatMissingRuntimeDiagnostic({ binName, repoRoot, manifest, target, candidates }),
+    )
   }
 
   return {

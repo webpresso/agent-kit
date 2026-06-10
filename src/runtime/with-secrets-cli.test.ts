@@ -4,7 +4,9 @@ import { parseWithSecretsArgs } from './with-secrets-cli.js'
 
 describe('parseWithSecretsArgs', () => {
   it('parses canonical runtime profiles', () => {
-    expect(parseWithSecretsArgs(['--env-profile', 'service-runtime', '--', 'pnpm', 'run', 'dev'])).toEqual({
+    expect(
+      parseWithSecretsArgs(['--env-profile', 'service-runtime', '--', 'pnpm', 'run', 'dev']),
+    ).toEqual({
       command: 'pnpm',
       args: ['run', 'dev'],
       profile: 'service-runtime',

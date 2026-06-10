@@ -64,9 +64,7 @@ function parseConfig(raw: string, source: string): SecretsConfig {
     )
   }
   if (typeof obj.projectId !== 'string' || obj.projectId.length === 0) {
-    throw new Error(
-      `Malformed secrets config at ${source}: "projectId" must be a non-empty string`,
-    )
+    throw new Error(`Malformed secrets config at ${source}: "projectId" must be a non-empty string`)
   }
 
   return {

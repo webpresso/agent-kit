@@ -7,7 +7,11 @@ export interface FetchSecretsOptions {
   readonly environment?: string
 }
 
-function formatFailure(provider: string, command: string, result: ReturnType<typeof spawnSync>): never {
+function formatFailure(
+  provider: string,
+  command: string,
+  result: ReturnType<typeof spawnSync>,
+): never {
   const stderr = result.stderr?.toString().trim() ?? ''
   const stdout = result.stdout?.toString().trim() ?? ''
   const detail = [stderr, stdout].filter(Boolean).join('\n')
@@ -43,8 +47,20 @@ function parseJsonSecrets(provider: string, text: string): Record<string, string
   return env
 }
 
-function fetchFromDoppler(config: SecretsConfig, options: FetchSecretsOptions): Record<string, string> {
-  const args = ['secrets', 'download', '--no-file', '--format', 'json', '--silent', '--project', config.projectId]
+function fetchFromDoppler(
+  config: SecretsConfig,
+  options: FetchSecretsOptions,
+): Record<string, string> {
+  const args = [
+    'secrets',
+    'download',
+    '--no-file',
+    '--format',
+    'json',
+    '--silent',
+    '--project',
+    config.projectId,
+  ]
   if (options.environment) args.push('--config', options.environment)
   const result = spawnSync('doppler', args, {
     cwd: options.cwd,
@@ -57,8 +73,20 @@ function fetchFromDoppler(config: SecretsConfig, options: FetchSecretsOptions): 
   return parseJsonSecrets('Doppler', result.stdout ?? '')
 }
 
-function fetchFromInfisical(config: SecretsConfig, options: FetchSecretsOptions): Record<string, string> {
-  const args = ['export', '--format', 'json', '--silent', '--telemetry=false', '--expand=false', '--projectId', config.projectId]
+function fetchFromInfisical(
+  config: SecretsConfig,
+  options: FetchSecretsOptions,
+): Record<string, string> {
+  const args = [
+    'export',
+    '--format',
+    'json',
+    '--silent',
+    '--telemetry=false',
+    '--expand=false',
+    '--projectId',
+    config.projectId,
+  ]
   if (options.environment) args.push(`--env=${options.environment}`)
   const result = spawnSync('infisical', args, {
     cwd: options.cwd,

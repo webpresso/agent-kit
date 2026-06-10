@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
+import { isCommandSequenceConfig } from '#test'
 import { createAkTestCommandConfig, TEST_COMMAND_HELP } from './test.js'
 
 const tempDirs: string[] = []
@@ -17,6 +18,8 @@ afterEach(() => {
 
 describe('wp test command helpers', () => {
   it('documents package and file target flags', () => {
+    expect(TEST_COMMAND_HELP).toContain('wp test --suite unit')
+    expect(TEST_COMMAND_HELP).toContain('wp test --suite integration')
     expect(TEST_COMMAND_HELP).toContain('wp test --package cli2')
     expect(TEST_COMMAND_HELP).toContain('wp test --file apps/cli2/src/commands/target.test.ts')
   })
@@ -42,6 +45,30 @@ describe('wp test command helpers', () => {
       command: 'rtk',
       args: [expect.stringContaining('vitest'), 'run', 'apps/cli2/src/commands/target.test.ts'],
     })
+  })
+
+  it('builds a two-phase command sequence for suite=all', () => {
+    const command = createAkTestCommandConfig({ suite: 'all' })
+    expect(isCommandSequenceConfig(command)).toBe(true)
+    if (!isCommandSequenceConfig(command)) return
+
+    expect(command.sequence).toHaveLength(2)
+    expect(command.sequence[0]?.args).toEqual([
+      expect.stringContaining('vitest'),
+      'run',
+      '--exclude',
+      '**/*.integration.test.ts',
+      '--maxWorkers',
+      '1',
+    ])
+    expect(command.sequence[1]?.args).toEqual([
+      expect.stringContaining('vitest'),
+      'run',
+      '--no-file-parallelism',
+      '.integration.test.ts',
+      '--testTimeout',
+      '30000',
+    ])
   })
 
   it('avoids recursion when the local package script is wp test', () => {

@@ -7,8 +7,9 @@ last_updated: '2026-05-24'
 
 `wp ci act` is the public CLI contract for local GitHub Actions reproduction.
 `wp_ci_act` is the matching MCP tool. Both surfaces use the provider-neutral
-secret gate (`with-secrets --env-profile ...`) and the shared webpresso CI act
-argv builder.
+secret gate (`with-secrets --env-profile ...` or
+`with-secrets --runtime-profile ...`) and the shared webpresso CI act argv
+builder.
 
 ## Allowed public inputs
 
@@ -17,8 +18,11 @@ argv builder.
 - event name (`pull_request`, `push`, or `workflow_dispatch`)
 - event payload path
 - secret-gate env profile
+  (`none`, `secrets-only`, `service-runtime`, `database`, `full`)
 - runner image and container architecture
 - execute vs dry-run
+- `--runtime-profile` passthrough (provider-specific names such as `prd` are
+  accepted and forwarded to the provider adapter)
 
 Bare workflow ids resolve to `.github/workflows/<id>.yml`. Dry-run is the
 default and returns a redacted command preview.

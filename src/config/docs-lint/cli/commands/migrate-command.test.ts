@@ -141,9 +141,7 @@ describe('MigrateCommand backup handling', () => {
     expect(store.get(BACKUP)).toBe(EXISTING_BACKUP)
     expect(fs.copyFile).not.toHaveBeenCalled()
     expect(fs.rename).not.toHaveBeenCalled()
-    expect(deps.logger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('Backup already exists'),
-    )
+    expect(deps.logger.warn).toHaveBeenCalledWith(expect.stringContaining('Backup already exists'))
   })
 
   it('does not create a backup when the --backup option is off', async () => {

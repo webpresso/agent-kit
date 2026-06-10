@@ -124,6 +124,112 @@ describe('test runner', () => {
     }
   })
 
+  it('runs the unit suite directly for concrete vitest-backed package targets', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'wp-vp-vitest-suite-'))
+    try {
+      vi.stubEnv('CLAUDE_PROJECT_DIR', root)
+      writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'workspace-root' }))
+      mkdirSync(join(root, 'packages', 'a'), { recursive: true })
+      writeFileSync(
+        join(root, 'packages', 'a', 'package.json'),
+        JSON.stringify({ devDependencies: { vitest: '^4.0.0' } }),
+      )
+      spawnMock.mockReturnValueOnce(fakeChild({ stdout: '{}\n', exitCode: 0 }))
+
+      await runTests({ packages: ['a'], suite: 'unit' })
+
+      expect(spawnMock.mock.calls[0]![1]).toEqual([
+        'exec',
+        '--filter',
+        'a',
+        '--',
+        'vitest',
+        'run',
+        '--exclude',
+        '**/*.integration.test.ts',
+        '--maxWorkers',
+        '1',
+        '--reporter=json',
+        '--no-color',
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('runs suite=all as unit then integration in order for package targets', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'wp-vp-vitest-suite-all-'))
+    try {
+      vi.stubEnv('CLAUDE_PROJECT_DIR', root)
+      writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'workspace-root' }))
+      mkdirSync(join(root, 'packages', 'a'), { recursive: true })
+      writeFileSync(
+        join(root, 'packages', 'a', 'package.json'),
+        JSON.stringify({ devDependencies: { vitest: '^4.0.0' } }),
+      )
+      spawnMock
+        .mockReturnValueOnce(fakeChild({ stdout: '{}\n', exitCode: 0 }))
+        .mockReturnValueOnce(fakeChild({ stdout: '{}\n', exitCode: 0 }))
+
+      await runTests({ packages: ['a'], suite: 'all' })
+
+      expect(spawnMock).toHaveBeenCalledTimes(2)
+      expect(spawnMock.mock.calls[0]![1]).toEqual([
+        'exec',
+        '--filter',
+        'a',
+        '--',
+        'vitest',
+        'run',
+        '--exclude',
+        '**/*.integration.test.ts',
+        '--maxWorkers',
+        '1',
+        '--reporter=json',
+        '--no-color',
+      ])
+      expect(spawnMock.mock.calls[1]![1]).toEqual([
+        'exec',
+        '--filter',
+        'a',
+        '--',
+        'vitest',
+        'run',
+        '--no-file-parallelism',
+        '.integration.test.ts',
+        '--testTimeout',
+        '30000',
+        '--reporter=json',
+        '--no-color',
+      ])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('fails loudly when suite package targets do not resolve concretely', async () => {
+    writeFileSync(join(defaultRoot!, 'package.json'), JSON.stringify({ name: 'workspace-root' }))
+
+    await expect(runTests({ packages: ['missing'], suite: 'unit' })).rejects.toThrow(
+      /could not resolve package "missing"/i,
+    )
+    expect(spawnMock).not.toHaveBeenCalled()
+  })
+
+  it('fails loudly when suite package targets are not vitest-backed', async () => {
+    writeFileSync(join(defaultRoot!, 'package.json'), JSON.stringify({ name: 'workspace-root' }))
+    mkdirSync(join(defaultRoot!, 'packages', 'a'), { recursive: true })
+    writeFileSync(
+      join(defaultRoot!, 'packages', 'a', 'package.json'),
+      JSON.stringify({ scripts: { test: 'node test.js' } }),
+    )
+
+    await expect(runTests({ packages: ['a'], suite: 'unit' })).rejects.toThrow(
+      /vitest-backed package target/i,
+    )
+    expect(spawnMock).not.toHaveBeenCalled()
+  })
+
   it('preserves file filters when package targets declare vitest', async () => {
     const root = mkdtempSync(join(tmpdir(), 'wp-vp-vitest-files-'))
     try {
@@ -253,6 +359,34 @@ describe('test runner', () => {
     const [cmd, args] = spawnMock.mock.calls[0]!
     expect(cmd).toBe('vp')
     expect(args).toEqual(['exec', '--', 'vitest', 'run', '--reporter=json', '--no-color'])
+  })
+
+  it('runs the selected workspace suite directly through vitest', async () => {
+    spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
+
+    await runTests({ suite: 'integration' })
+
+    const [cmd, args] = spawnMock.mock.calls[0]!
+    expect(cmd).toBe('vp')
+    expect(args).toEqual([
+      'exec',
+      '--',
+      'vitest',
+      'run',
+      '--no-file-parallelism',
+      '.integration.test.ts',
+      '--testTimeout',
+      '30000',
+      '--reporter=json',
+      '--no-color',
+    ])
+  })
+
+  it('rejects combining suite selection with file targets', async () => {
+    await expect(runTests({ suite: 'unit', files: ['a.test.ts'] })).rejects.toThrow(
+      /--suite cannot be combined with file targets/i,
+    )
+    expect(spawnMock).not.toHaveBeenCalled()
   })
 
   it('shards root vitest workspace runs across discovered test files', async () => {

@@ -4,6 +4,7 @@ import { globSync } from 'glob'
 
 import { getPackageScript, isRecursiveWpScript, packageUsesVitest } from '#cli/package-scripts.js'
 import { isRunFailure, runCommand as runSharedCommand } from '#mcp/tools/_shared/run-command'
+import { resolveTestSuiteRuns, type TestSuiteName } from '#test'
 
 // Keep the runner's own deadline comfortably below common MCP client call
 // ceilings so slow suites fail fast with a structured `timedOut` payload
@@ -26,6 +27,7 @@ const VITEST_DEFAULT_IGNORE = [
 export interface TestRunInput {
   /** Working tree to run from. Defaults to `CLAUDE_PROJECT_DIR` or `process.cwd()`. */
   readonly cwd?: string
+  readonly suite?: TestSuiteName
   readonly packages?: readonly string[]
   readonly files?: readonly string[]
   readonly extraArgs?: readonly string[]
@@ -63,8 +65,11 @@ interface ResolvedWorkspaceSharding {
  * Run tests via the `vp` facade over the repo-declared package-manager substrate.
  *
  * Argv shape:
+ *   - `vp exec --filter <p> -- vitest ...` when `suite` is selected for concrete
+ *     Vitest-backed packages.
  *   - `vp run --filter <p> test` once per package when packages are given (results
  *     aggregated; first non-zero exit wins).
+ *   - `vp exec -- vitest ...` when `suite` is selected for the workspace.
  *   - `vp run test -- <file1> <file2>` when files are given (no packages).
  *   - `vp run test` otherwise.
  */
@@ -72,7 +77,13 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
   const cwd = input.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
   const commandTimeoutMs = input.timeoutMs ?? DEFAULT_TEST_TIMEOUT_MS
   const workspaceSharding = resolveWorkspaceSharding(input.workspaceSharding, input.timeoutMs)
+  if (input.suite && input.files && input.files.length > 0) {
+    throw new Error('--suite cannot be combined with file targets.')
+  }
   if (input.packages && input.packages.length > 0) {
+    if (input.suite) {
+      return runPackageSuiteSequence(cwd, input.packages, input, workspaceSharding)
+    }
     return runPackageSequence(cwd, input.packages, input, workspaceSharding)
   }
 
@@ -95,6 +106,10 @@ export async function runTests(input: TestRunInput): Promise<TestResult> {
       timeoutMs: commandTimeoutMs,
     })
     return withFailureScope(result, 'file-filter command')
+  }
+
+  if (input.suite) {
+    return runScopedSequence(cwd, createWorkspaceSuiteRuns(input.suite), input, workspaceSharding)
   }
 
   const workspaceShardRuns = createWorkspaceVitestShardRuns(cwd, workspaceSharding)
@@ -130,6 +145,27 @@ interface ScopedRun {
 
 interface RunBudget {
   readonly deadlineMs: number
+}
+
+async function runPackageSuiteSequence(
+  cwd: string,
+  packages: readonly string[],
+  input: TestRunInput,
+  workspaceSharding: ResolvedWorkspaceSharding,
+): Promise<TestResult> {
+  for (const pkg of packages) {
+    assertVitestBackedPackageTarget(cwd, pkg)
+  }
+
+  const suiteRuns = packages.flatMap((pkg) =>
+    createVitestScopedRuns(
+      input.suite ?? 'all',
+      ['exec', '--filter', pkg, '--', 'vitest'],
+      `package ${pkg}`,
+    ),
+  )
+
+  return runScopedSequence(cwd, suiteRuns, input, workspaceSharding)
 }
 
 async function runPackageSequence(
@@ -287,6 +323,10 @@ function createWorkspaceVitestShardRuns(
   }))
 }
 
+function createWorkspaceSuiteRuns(suite: TestSuiteName): ScopedRun[] {
+  return createVitestScopedRuns(suite, ['exec', '--', 'vitest'], 'workspace')
+}
+
 function createVitestShardRunsFromFiles(
   cwd: string,
   files: readonly string[],
@@ -318,6 +358,17 @@ function shouldBypassWorkspaceTestScript(cwd: string): boolean {
   const testScript = getPackageScript(cwd, 'test')
   if (!testScript || !isRecursiveWpScript(testScript, 'test')) return false
   return packageUsesVitest(cwd)
+}
+
+function createVitestScopedRuns(
+  suite: TestSuiteName,
+  prefixArgs: readonly string[],
+  scopePrefix: string,
+): ScopedRun[] {
+  return resolveTestSuiteRuns(suite, ['--reporter=json', '--no-color']).map((run) => ({
+    scope: `${scopePrefix} (${run.label})`,
+    args: [...prefixArgs, ...run.vitestArgs],
+  }))
 }
 
 function discoverVitestFiles(cwd: string): string[] {
@@ -418,6 +469,36 @@ function findPackageJson(cwd: string, packageName?: string): string | undefined 
         join(cwd, 'package.json'),
       ]
     : [join(cwd, 'package.json')]
+
+  return candidates.find((candidate) => existsSync(candidate))
+}
+
+function assertVitestBackedPackageTarget(cwd: string, packageTarget: string): void {
+  const packageJson = findConcretePackageJson(cwd, packageTarget)
+  if (!packageJson) {
+    throw new Error(
+      `--suite requires a concrete package target. Could not resolve package "${packageTarget}".`,
+    )
+  }
+
+  const packageDir =
+    packageJson === join(cwd, 'package.json') ? cwd : packageJson.slice(0, -'/package.json'.length)
+  if (!packageUsesVitest(packageDir)) {
+    throw new Error(
+      `--suite requires a Vitest-backed package target. Package "${packageTarget}" does not declare vitest.`,
+    )
+  }
+}
+
+function findConcretePackageJson(cwd: string, packageTarget: string): string | undefined {
+  const rootPackage = readPackage(join(cwd, 'package.json'))
+  const rootPackageName = typeof rootPackage.name === 'string' ? rootPackage.name : undefined
+  const candidates = [
+    join(cwd, 'packages', packageTarget, 'package.json'),
+    join(cwd, 'apps', packageTarget, 'package.json'),
+    join(cwd, packageTarget, 'package.json'),
+    ...(rootPackageName === packageTarget ? [join(cwd, 'package.json')] : []),
+  ]
 
   return candidates.find((candidate) => existsSync(candidate))
 }

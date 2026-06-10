@@ -278,7 +278,9 @@ describe('auditContent', () => {
     // 100 days ago: stale at 30, fresh at 200
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'))
-    const past = new Date(new Date('2026-01-01T00:00:00.000Z').getTime() - 100 * 24 * 60 * 60 * 1000)
+    const past = new Date(
+      new Date('2026-01-01T00:00:00.000Z').getTime() - 100 * 24 * 60 * 60 * 1000,
+    )
     const iso = past.toISOString().slice(0, 10)
     writeRule(join(fx.consumer, 'agent-rules'), 'r.md', validRuleFm('r', { last_reviewed: iso }))
     const stale = auditContent({

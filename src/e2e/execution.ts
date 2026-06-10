@@ -94,7 +94,8 @@ export function plannedGroupsToCommandConfigs(
       args: run.args,
       cwd: run.cwd,
       env: normalizeEnv({ ...group.env, ...run.env }),
-      runtimeProfile: run.runtimeProfile ?? run.envProfile ?? group.runtimeProfile ?? group.envProfile,
+      runtimeProfile:
+        run.runtimeProfile ?? run.envProfile ?? group.runtimeProfile ?? group.envProfile,
     })),
   )
 }

@@ -384,7 +384,9 @@ describe('bin launcher', () => {
         pinnedNodeVersion: '24.16.0',
         runtimeManager: null,
       }),
-    ).toThrow(/optional dependency wiring declares @webpresso\/agent-kit-runtime-linux-x64@0\.29\.3/)
+    ).toThrow(
+      /optional dependency wiring declares @webpresso\/agent-kit-runtime-linux-x64@0\.29\.3/,
+    )
   })
 
   it('hard-fails runtime-owned direct hook bins in published installs when runtime is missing', () => {

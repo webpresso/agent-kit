@@ -145,7 +145,9 @@ async function runHttpCheck(
       )
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error)
-      console.error(`[deploy] http-check ${step.id} attempt ${attempt}/${retries} failed: ${detail}`)
+      console.error(
+        `[deploy] http-check ${step.id} attempt ${attempt}/${retries} failed: ${detail}`,
+      )
     } finally {
       clearTimeout(timer)
     }
