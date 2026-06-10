@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process'
 
 const TOOL_SHIM_EXTENSION = /\.(?:cmd|ps1|bat)$/iu
+const SECRET_WRAPPER_BINS = new Set(['with-secrets', 'doppler', 'infisical'])
 const PACKAGE_MANAGER_BINS = new Set([
   'vp',
   'pnpm',
@@ -37,6 +38,8 @@ const PACKAGE_MANAGER_OPTION_VALUE_PREFIXES = [
   '--config=',
 ]
 const PACKAGE_MANAGER_FLAG_ONLY = new Set([
+  '--yes',
+  '-y',
   '--recursive',
   '-r',
   '--workspace-root',
@@ -45,6 +48,9 @@ const PACKAGE_MANAGER_FLAG_ONLY = new Set([
   '--silent',
   '--if-present',
   '--ignore-scripts',
+  '--immutable-cache',
+  '--bun',
+  '--always-auth',
 ])
 const PNPM_BUILTIN_SUBCOMMANDS = new Set([
   'add',
@@ -155,6 +161,26 @@ function normalizeWpArgs(args: string[]): string[] {
   return args[0] === '--' ? args.slice(1) : args
 }
 
+export function stripLeadingSecretWrappers(command: string): string {
+  let next = command.trim()
+
+  while (next) {
+    const tokens = tokenizeCommand(next)
+    const first = tokens[0]
+    if (!first || !SECRET_WRAPPER_BINS.has(first)) return next
+
+    let index = 1
+    if ((first === 'doppler' || first === 'infisical') && tokens[index] === 'run') index += 1
+    if (tokens[index] === '--') index += 1
+
+    const updated = tokens.slice(index).join(' ').trim()
+    if (!updated || updated === next) return next
+    next = updated
+  }
+
+  return next
+}
+
 function stripCorepackPackageManagerProxy(command: string): string {
   const match = COREPACK_PACKAGE_MANAGER_PREFIX.exec(command)
   if (!match?.groups?.manager) return command
@@ -237,7 +263,9 @@ function isWrappedWpShorthand(manager: string, subcommand: string): boolean {
 }
 
 export function detectWrappedWpCommand(command: string): WrappedWpInvocation | null {
-  const trimmed = stripCorepackPackageManagerProxy(stripLeadingEnvironmentAssignments(command))
+  const trimmed = stripLeadingSecretWrappers(
+    stripCorepackPackageManagerProxy(stripLeadingEnvironmentAssignments(command)),
+  )
   const tokens = tokenizeCommand(trimmed)
   const manager = tokens[0] ? normalizedPackageManagerBin(tokens[0]) : null
   if (!manager) return null
@@ -260,14 +288,13 @@ export function detectWrappedWpCommand(command: string): WrappedWpInvocation | n
 }
 
 function detectPackageManagerFromEnv(env: NodeJS.ProcessEnv): string | null {
-  if (env.VP_COMMAND === 'run' || env.VP_CLI_BIN) return 'vp'
-
   const execPath = env.npm_execpath ?? env.npm_config_user_agent ?? ''
   const normalized = execPath.toLowerCase()
   if (normalized.includes('pnpm')) return 'pnpm'
   if (normalized.includes('bun')) return 'bun'
   if (normalized.includes('yarn')) return 'yarn'
   if (normalized.includes('npm')) return 'npm'
+  if (env.VP_COMMAND === 'run' || env.VP_CLI_BIN) return 'vp'
   return null
 }
 

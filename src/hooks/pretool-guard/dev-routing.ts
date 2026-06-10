@@ -1,4 +1,8 @@
-import { detectWrappedWpCommand, wrappedWpGuidanceForArgs } from '#cli/wrapped-wp'
+import {
+  detectWrappedWpCommand,
+  stripLeadingSecretWrappers,
+  wrappedWpGuidanceForArgs,
+} from '#cli/wrapped-wp'
 
 export type GuidanceType = 'test' | 'lint' | 'typecheck' | 'qa' | 'format' | 'e2e'
 
@@ -247,6 +251,8 @@ const PACKAGE_MANAGER_OPTION_VALUE_PREFIXES = [
   '--config=',
 ]
 const PACKAGE_MANAGER_FLAG_ONLY = new Set([
+  '--yes',
+  '-y',
   '--recursive',
   '-r',
   '--workspace-root',
@@ -255,6 +261,9 @@ const PACKAGE_MANAGER_FLAG_ONLY = new Set([
   '--silent',
   '--if-present',
   '--ignore-scripts',
+  '--immutable-cache',
+  '--bun',
+  '--always-auth',
 ])
 const TOOL_PROXY_BINS = new Set(['corepack'])
 const SECRET_WRAPPER_BINS = new Set(['with-secrets', 'doppler', 'infisical'])
@@ -358,6 +367,7 @@ function stripLeadingEnvironmentAssignments(command: string): string {
 }
 
 export function normalizeCommandForRouting(command: string): string {
+  command = stripLeadingSecretWrappers(command)
   const trimmed = stripCorepackPackageManagerProxy(stripLeadingEnvironmentAssignments(command))
   let match = VP_COMMAND_PREFIX.exec(trimmed)
   let next = trimmed
@@ -535,7 +545,8 @@ function packageManagerInvocation(command: string): PackageManagerInvocation | n
   if (!manager) return null
 
   if (manager === 'pnpx' || manager === 'npx' || manager === 'bunx') {
-    return tokens[1] ? { bin: tokens[1], args: tokens.slice(2) } : null
+    const index = skipPackageManagerOptions(tokens, 1)
+    return tokens[index] ? { bin: tokens[index], args: tokens.slice(index + 1) } : null
   }
 
   let index = skipPackageManagerOptions(tokens, 1)

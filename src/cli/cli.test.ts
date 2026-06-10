@@ -172,6 +172,22 @@ describe('wp root command surface', () => {
     expect(result.stderr.join('\n')).toContain('run direct `wp test`')
   })
 
+  it.each([
+    ['/opt/homebrew/Cellar/bun/1.3.13/bin/bun', 'bun'],
+    ['/opt/homebrew/lib/node_modules/pnpm/bin/pnpm.cjs', 'pnpm'],
+    ['/opt/homebrew/lib/node_modules/npm/bin/npm-cli.js', 'npm'],
+    ['/opt/homebrew/lib/node_modules/yarn/bin/yarn.js', 'yarn'],
+  ])('rejects lifecycle-wrapped wp setup for %s', async (execPath, manager) => {
+    vi.stubEnv('npm_lifecycle_event', 'wp')
+    vi.stubEnv('npm_execpath', execPath)
+
+    const result = await runAk(['setup'])
+
+    expect(result.code).toBe(1)
+    expect(result.stderr.join('\n')).toContain(`forbidden (${manager})`)
+    expect(result.stderr.join('\n')).toContain('run direct `wp setup`')
+  })
+
   it('keeps help available even inside a package-script lifecycle env', async () => {
     vi.stubEnv('npm_lifecycle_event', 'wp')
     vi.stubEnv('npm_execpath', '/opt/homebrew/lib/node_modules/pnpm/bin/pnpm.cjs')

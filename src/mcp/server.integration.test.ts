@@ -15,10 +15,16 @@ const cliPath = existsSync(sourceCliPath) ? sourceCliPath : builtCliPath
 const cliRuntime = cliPath.endsWith('.ts') ? 'bun' : 'node'
 
 async function withClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
+  const env = { ...process.env, NODE_ENV: 'test' }
+  if (existsSync(sourceCliPath)) {
+    env.WP_MCP_TOOL_MODE = 'filesystem'
+    env.WP_COMPILED_RUNTIME = '0'
+  }
+
   const transport = new StdioClientTransport({
     command: cliRuntime,
     args: [cliPath],
-    env: { ...process.env, NODE_ENV: 'test' },
+    env,
   })
   const client = new Client({ name: 'webpresso-test', version: '0.0.0' })
 

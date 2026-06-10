@@ -21,6 +21,10 @@ describe('detectWrappedWpCommand', () => {
       manager: 'pnpm',
       wpArgs: ['audit', 'package-surface'],
     })
+    expect(detectWrappedWpCommand('with-secrets -- vp run wp -- test')).toStrictEqual({
+      manager: 'vp',
+      wpArgs: ['test'],
+    })
   })
 
   it('detects shorthand script wrappers around wp', () => {
@@ -39,6 +43,12 @@ describe('detectWrappedWpCommand', () => {
     expect(
       detectWrappedWpCommand('npm exec --yes --package @webpresso/agent-kit@latest -- wp setup'),
     ).toBeNull()
+  })
+
+  it('tolerates option-noise before wrapped commands', () => {
+    expect(detectWrappedWpCommand('npm exec --yes --package foo -- wp test')).toBeNull()
+    expect(detectWrappedWpCommand('yarn exec --immutable-cache wp test')).toBeNull()
+    expect(detectWrappedWpCommand('bunx --bun wp test')).toBeNull()
   })
 })
 
@@ -84,6 +94,23 @@ describe('detectWrappedWpRuntimeInvocation', () => {
       manager: 'vp',
       wpArgs: ['setup'],
     })
+  })
+
+  it('respects maxAncestorDepth and does not loop on cyclic ancestry', () => {
+    const wrapped = detectWrappedWpRuntimeInvocation({
+      argv: ['node', '/repo/bin/wp', 'setup'],
+      env: {},
+      platform: 'linux',
+      ppid: 40,
+      maxAncestorDepth: 2,
+      readProcessInfo: (pid) => {
+        if (pid === 40) return { ppid: 30, command: '/bin/sh -c node ./node_modules/.bin/wp' }
+        if (pid === 30) return { ppid: 40, command: 'node helper.js' }
+        return null
+      },
+    })
+
+    expect(wrapped).toBeNull()
   })
 
   it('formats the corrective runtime error deterministically', () => {
