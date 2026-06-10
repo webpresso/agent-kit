@@ -545,7 +545,7 @@
   },
   "scripts": {
     "setup:agent": "wp setup",
-    "wp": "WP_FORCE_SOURCE=1 bun src/cli/cli.ts",
+    "wp:source": "WP_FORCE_SOURCE=1 bun src/cli/cli.ts",
     "build": "tshy && bun src/build/blueprint-migration-assets.ts && bun src/build/generate-oxlintrc.ts && bun src/build/normalize-tsconfig-json-exports.ts && vp run chmod-bins && vp run link-self-bins",
     "build:runtime-binaries": "bun scripts/build-runtime-binaries.ts",
     "stage:plugin-runtime": "bun scripts/stage-plugin-runtime-artifacts.ts",

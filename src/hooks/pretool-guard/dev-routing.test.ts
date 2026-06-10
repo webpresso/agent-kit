@@ -61,6 +61,79 @@ describe('routeCommand', () => {
     expect(result?.action.action).toBe('deny')
   })
 
+  it('bun run test → deny and route to wp_test', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('bun run test')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.tool).toBe('wp_test')
+  })
+
+  it('bun run test:slice → deny and route to wp_test', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('bun run test:slice')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.tool).toBe('wp_test')
+  })
+
+  it('bun run vitest run → deny and route to wp_test', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('bun run vitest run src/hooks/pretool-guard/dev-routing.test.ts')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.tool).toBe('wp_test')
+  })
+
+  it('bun run lint → deny and route to wp_lint', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('bun run lint')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.tool).toBe('wp_lint')
+  })
+
+  it('bun run typecheck → deny and route to wp_typecheck', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('bun run typecheck')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.tool).toBe('wp_typecheck')
+  })
+
+  it('bun run e2e → deny and route to wp_e2e', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('bun run e2e')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.tool).toBe('wp_e2e')
+  })
+
+  it('bun run qa → deny and route to wp_qa', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('bun run qa')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.tool).toBe('wp_qa')
+  })
+
+  it('denies wrapped wp test invocations and points back to direct wp or MCP', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('vp run wp -- test src/hooks/pretool-guard/dev-routing.test.ts')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') {
+      expect(result.action.tool).toBe('wp_test')
+      expect(result.action.guidance).toContain('Use wp_test MCP tool when available')
+      expect(result.action.guidance).toContain('run direct `wp test')
+      expect(result.action.guidance).toContain('vp run wp')
+    }
+  })
+
+  it('denies wrapped wp setup invocations with direct-wp fallback guidance', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('bun run wp setup')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') {
+      expect(result.action.tool).toBe('wp')
+      expect(result.action.guidance).toContain('matching wp_* MCP tool')
+      expect(result.action.guidance).toContain('run direct `wp setup`')
+      expect(result.action.guidance).toContain('bun run wp')
+    }
+  })
+
   it('direct tool paths → deny and route to the matching MCP tool', async () => {
     const routeCommand = await getRoute()
 
@@ -89,6 +162,13 @@ describe('routeCommand', () => {
   it('pnpm --filter pkg run test → deny and routes to wp_test', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('pnpm --filter @scope/foo run test', 'sess-1')
+    expect(result?.action.action).toBe('deny')
+    if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_test')
+  })
+
+  it('pnpm run test:slice → deny and route to wp_test', async () => {
+    const routeCommand = await getRoute()
+    const result = routeCommand('pnpm run test:slice', 'sess-1')
     expect(result?.action.action).toBe('deny')
     if (result?.action.action === 'deny') expect(result.action.guidance).toContain('wp_test')
   })

@@ -223,6 +223,24 @@ describe('hooks/doctor', () => {
       expect(mcpCheck?.detail).toContain('skipped')
     })
 
+    it('reports the MCP-first operator flow and forbids wrapped wp scripts', async () => {
+      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
+        if (String(path) === rtkMarker) throw new Error('ENOENT')
+        return true
+      }) as typeof accessSync)
+      mockStatSync.mockReturnValue({ mode: 0o755 } as unknown as ReturnType<typeof statSync>)
+
+      vi.stubGlobal('process', fakeProcess())
+
+      const { runHooksDoctor } = await import('#hooks/doctor')
+      const result = await runHooksDoctor({ skipMcp: true })
+      const flowCheck = result.checks.find((c) => c.name === 'operator flow')
+      expect(flowCheck?.ok).toBe(true)
+      expect(flowCheck?.detail).toContain('MCP first')
+      expect(flowCheck?.detail).toContain('direct `wp` only as fallback')
+      expect(flowCheck?.detail).toContain('bun run wp')
+    })
+
     it('skips nested dist manifests and resolves the real package root in built mode', async () => {
       const knownPaths = new Set([
         pkgJson,

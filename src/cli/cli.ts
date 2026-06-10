@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 
 import { bootstrapAk } from './bootstrap.js'
 import { formatUnknownCommandError, normalizeArgv, readPackageVersion } from './utils.js'
+import { detectWrappedWpRuntimeInvocation, formatWrappedWpInvocationError } from './wrapped-wp.js'
 import { registerWpExtensions, resolveWpCommandAlias } from './wp-extensions.js'
 
 const VERSION = readPackageVersion(import.meta.url)
@@ -70,7 +71,7 @@ const ROOT_HELP = [
   '  install               Install dependencies through the managed vp facade',
   '  add                   Add dependencies through the managed vp facade',
   '  remove                Remove dependencies through the managed vp facade',
-  '  update                Update dependencies through the managed vp facade',
+  '  update                Update local dependencies by default; --global refreshes codex, tmux, omx, omc, gstack, and wp',
   '  exec                  Run a binary through the managed vp facade',
   '  run                   Run a package script through the managed vp facade',
   '',
@@ -79,7 +80,7 @@ const ROOT_HELP = [
   '  qa                    Run the repository QA gate through the portable wp surface',
   '  test                  Run tests through the portable webpresso surface',
   '  typecheck             Typecheck the current workspace through the portable wp surface',
-  '  lint                  Lint via oxlint (with pnpm fallback)',
+  '  lint                  Lint via oxlint (via wp/VP; local runtime fallback only)',
   '  format                Format through the portable wp surface (--check for CI/husky)',
   '  e2e                   Build and run E2E commands through the portable webpresso surface',
   '  ci                    Run repository CI helpers through the portable wp surface',
@@ -151,6 +152,14 @@ export async function main(): Promise<number> {
     const { getBenchHelpText } = await import('./commands/bench/index.js')
     console.log(getBenchHelpText())
     return 0
+  }
+
+  if (!wantsHelp && !wantsVersion && command !== 'mcp') {
+    const wrapped = detectWrappedWpRuntimeInvocation({ argv, env: process.env })
+    if (wrapped) {
+      console.error(formatWrappedWpInvocationError(wrapped, argv))
+      return 1
+    }
   }
 
   await bootstrapAk(VERSION, argv)
