@@ -1,13 +1,14 @@
 #!/usr/bin/env bun
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { preparePackedManifest, restorePackedManifest } from '../src/build/package-manifest.js'
 import { AGENTS_MD_MAX_BYTES } from '../src/cli/commands/init/scaffold-agents-md.js'
+import { createInstalledBlueprintMigrationSmokeScript } from './packed-blueprint-migration-smoke.js'
 
 const SHARED_FAVORITES = ['fix', 'verify', 'testing-philosophy', 'plan-refine', 'pll'] as const
 
@@ -42,6 +43,14 @@ const requiredFiles = [
   'e2e/fixtures/smoke.html',
   'e2e/smoke.spec.ts',
 ] as const
+const expectedBlueprintMigrationSqlFiles = readdirSync(
+  join(ROOT, 'src', 'blueprint', 'db', 'migrations'),
+)
+  .filter((file) => file.endsWith('.sql'))
+  .sort()
+const expectedBlueprintSchemaVersions = expectedBlueprintMigrationSqlFiles.map((file) =>
+  Number.parseInt(file.slice(0, file.indexOf('_')), 10),
+)
 
 function run(
   command: string,
@@ -98,7 +107,11 @@ function packCurrentArtifact(): string {
     // --pack-destination writes the tarball into the temp workspace (removed on
     // exit) instead of the repo root, so a parallel run can't race on the fixed
     // root path and a crashed pack can't leave an untracked tarball behind.
-    raw = runOrThrow('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', tempRoot], ROOT)
+    raw = runOrThrow(
+      'npm',
+      ['pack', '--ignore-scripts', '--json', '--pack-destination', tempRoot],
+      ROOT,
+    )
   } finally {
     restorePackedManifest(ROOT)
   }
@@ -243,6 +256,22 @@ try {
       const install = run('npm', ['install'], repo, setupEnv, 10 * 60 * 1000)
       results.push(install)
       if (install.ok) {
+        results.push(
+          run(
+            'node',
+            [
+              '--input-type=module',
+              '--eval',
+              createInstalledBlueprintMigrationSmokeScript({
+                packageRoot: join(repo, 'node_modules', '@webpresso', 'agent-kit'),
+                expectedSqlFiles: expectedBlueprintMigrationSqlFiles,
+                expectedVersions: expectedBlueprintSchemaVersions,
+              }),
+            ],
+            repo,
+            setupEnv,
+          ),
+        )
         results.push(run('npm', ['run', 'lint'], repo, setupEnv))
         results.push(run('npm', ['run', 'typecheck'], repo, setupEnv))
         results.push(run('npm', ['run', 'test'], repo, setupEnv))
