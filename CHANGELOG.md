@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.30.0
+
+### Minor Changes
+
+- bd2aa75: Ship a resolved shared oxlint config so consumers need no `oxlint.config.ts` and no `oxlint` dependency. agent-kit now generates one `oxlintrc.json` at build (next to the compiled plugins) and `wp lint` injects it via `--config` unless the consumer ships a local oxlint config or passes `--config` — the linter version, plugins, rules, and standard ignores are gated to `@webpresso/agent-kit`. `wp setup` no longer scaffolds `oxlint.config.ts` (a consumer may still commit one to override). Also closes a `no-hardcoded-repo-root` matcher gap so `join(x, '..', '..')` (two separate `'..'` args) is flagged in production code.
+
+### Patch Changes
+
+- 8109242: Migrate Phase 2 quality commands through the binary-first runtime selector while preserving JS/Bun holdback lanes and explicit missing-runtime diagnostics.
+
+  Keep compiled runtime benchmark help available, and fail closed for source-dependent `wp bench session-memory` execution from compiled runtime instead of loading caller project assets.
+
+- eb8ea9a: Restore rtk-filtered output policy for `wp typecheck` and package-manager verbs; add graceful rtk availability degrade when rtk is not on PATH; consolidate duplicated resolveOutputPolicy to a single export from tool-runtime.
+- c1ac4d3: Require npm trusted publishing/OIDC for the release workflow and remove the
+  legacy `NPM_TOKEN` fallback from Webpresso publishing policy.
+
 ## 0.29.3
 
 ### Patch Changes

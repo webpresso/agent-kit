@@ -1,6 +1,6 @@
 {
   "name": "webpresso",
-  "version": "0.29.3",
+  "version": "0.30.0",
   "description": "Webpresso agent-kit: blueprints, skills, lore commit protocol, tech-debt lifecycle",
   "author": {
     "name": "Webpresso",
