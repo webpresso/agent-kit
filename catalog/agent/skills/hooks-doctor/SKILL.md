@@ -58,7 +58,7 @@ Each check prints `[x]` (pass) or `[ ]` (fail) with a detail line:
 |-------|-------------|-----|
 | `pretool-guard` / `post-tool` / etc. — not found | `pnpm build` not run after install | `pnpm build` |
 | `pretool-guard` / etc. — not executable | `chmod +x` not persisted | Re-run `pnpm prepare` or `pnpm build` which runs `chmod-bins` |
-| `plugin.json integrity` — missing | `.claude-plugin/plugin.json` absent | Reinstall plugin: `claude plugin install webpresso@webpresso --scope user` |
+| `plugin.json integrity` — missing | `.claude-plugin/plugin.json` absent | Reinstall plugin: `claude plugin install agent-kit@webpresso --scope user` |
 | `MCP server liveness` — timeout | MCP server cold-start too slow | Wait and retry, or run `wp hooks doctor --skip-mcp` |
 | Any check — not found at `dist/esm/...` | Build artifacts missing | Run `pnpm build` in the webpresso repo |
 

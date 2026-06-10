@@ -51,11 +51,11 @@ describe('marketplace.json', () => {
     expect(marketplace.metadata.version).toBe(packageJson.version)
   })
 
-  it('exposes a single self-hosted plugin entry named webpresso at ./', () => {
+  it('exposes a single self-hosted plugin entry named agent-kit at ./', () => {
     expect(Array.isArray(marketplace.plugins)).toBe(true)
     expect(marketplace.plugins.length).toBeGreaterThan(0)
     const [plugin] = marketplace.plugins
-    expect(plugin!.name).toBe('webpresso')
+    expect(plugin!.name).toBe('agent-kit')
     expect(plugin!.source).toBe('./')
   })
 

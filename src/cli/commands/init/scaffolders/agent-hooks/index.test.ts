@@ -14,6 +14,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { resolveRuntimeTarget, runtimePackageDirName } from '#build/runtime-targets.js'
+import { CLAUDE_PLUGIN_ID } from '#cli/commands/init/scaffolders/claude-plugin/index.js'
 
 import {
   buildWebpressoHookGroups,
@@ -193,7 +194,9 @@ describe('scaffoldAgentHooks', () => {
       enabledPlugins: Record<string, boolean>
     }
 
-    expect(settings.enabledPlugins['webpresso@webpresso']).toBe(true)
+    // Couples the auto-enable key to the single source of truth so it cannot
+    // drift from the install/update id used by the claude-plugin scaffolder.
+    expect(settings.enabledPlugins[CLAUDE_PLUGIN_ID]).toBe(true)
   })
 
   it('re-enables Claude hooks in user settings without dropping unrelated plugin state', async () => {
@@ -206,7 +209,7 @@ describe('scaffoldAgentHooks', () => {
           disableAllHooks: true,
           enabledPlugins: {
             'playwright@claude-plugins-official': false,
-            'webpresso@webpresso': false,
+            [CLAUDE_PLUGIN_ID]: false,
           },
         },
         null,
@@ -222,7 +225,7 @@ describe('scaffoldAgentHooks', () => {
     }
 
     expect(settings.disableAllHooks).toBe(false)
-    expect(settings.enabledPlugins['webpresso@webpresso']).toBe(true)
+    expect(settings.enabledPlugins[CLAUDE_PLUGIN_ID]).toBe(true)
     expect(settings.enabledPlugins['playwright@claude-plugins-official']).toBe(false)
   })
 
