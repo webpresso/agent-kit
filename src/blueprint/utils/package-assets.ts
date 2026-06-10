@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -26,6 +27,25 @@ function isUsableStartPath(filePath: string | null | undefined): filePath is str
   return typeof filePath === 'string' && filePath.length > 0 && !isBunVirtualPath(filePath)
 }
 
+/**
+ * Resolve the installed `@webpresso/agent-kit` package root via Node module
+ * resolution anchored on `cwd`. Unlike the module/argv/execPath start paths,
+ * this works even when the CLI runs as a bundled Bun single-file binary — where
+ * `import.meta.url` and `process.argv` are `/$bunfs/root/...` virtual paths and
+ * `process.execPath` is the Bun binary, none of which point at the package on
+ * disk. Returns `null` when the package cannot be resolved (e.g. a consumer cwd
+ * without it installed, or an unbuilt checkout missing the `./package.json`
+ * export), so callers fall through to the other start paths.
+ */
+function agentKitPackageRoot(cwd: string): string | null {
+  try {
+    const requireFromCwd = createRequire(path.join(cwd, 'noop.cjs'))
+    return path.dirname(requireFromCwd.resolve('@webpresso/agent-kit/package.json'))
+  } catch {
+    return null
+  }
+}
+
 function findFromStartPath(startPath: string, relativeFromRoot: string): string | null {
   let dir = path.dirname(startPath)
   for (let i = 0; i < 8; i++) {
@@ -46,8 +66,12 @@ export function findPackageAsset(
   relativeFromRoot: string,
   options: FindPackageAssetOptions = {},
 ): string | null {
+  const packageRoot = agentKitPackageRoot(options.cwd ?? process.cwd())
   const starts = [
     modulePathFromUrl(options.moduleUrl ?? import.meta.url),
+    // Node-resolution anchor: survives bundled-Bun execution where every other
+    // start path is virtual / the Bun binary.
+    packageRoot === null ? null : path.join(packageRoot, 'package.json'),
     options.argv1 ?? process.argv[1],
     options.execPath ?? process.execPath,
     options.argv0 ?? process.argv[0],

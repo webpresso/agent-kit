@@ -180,6 +180,7 @@
         "default": "./dist/esm/index.js"
       }
     },
+    "./package.json": "./package.json",
     "./bundle": {
       "import": {
         "types": "./dist/esm/cli/bundle/index.d.ts",

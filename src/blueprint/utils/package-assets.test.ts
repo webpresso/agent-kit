@@ -49,4 +49,24 @@ describe('resolvePackageAssetPreferred', () => {
 
     expect(resolved).toBe(join(root, 'catalog', 'agent'))
   })
+
+  it('resolves via the installed package root when bundled Bun virtualizes module, argv, and execPath', () => {
+    // The real consumer failure (wp audit blueprint-lifecycle ENOENT): a bundled
+    // Bun CLI where import.meta.url and argv are /$bunfs/root/... and execPath is
+    // the Bun binary — none point at the package on disk, so the previous start
+    // paths all missed and resolution fell back to a non-existent cwd path. Only
+    // Node module resolution from cwd finds the installed @webpresso/agent-kit
+    // (cwd here is the agent-kit repo, which self-resolves via the ./package.json
+    // export).
+    const resolved = findPackageAsset('catalog/agent/rules', {
+      moduleUrl: 'file:///$bunfs/root/blueprint/utils/package-assets.js',
+      argv0: '/$bunfs/root/bun',
+      argv1: '/$bunfs/root/wp',
+      execPath: '/usr/local/bin/bun',
+      cwd: process.cwd(),
+    })
+
+    expect(existsSync(resolved ?? '')).toBe(true)
+    expect(resolved?.endsWith(join('catalog', 'agent', 'rules'))).toBe(true)
+  })
 })
