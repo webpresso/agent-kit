@@ -713,6 +713,11 @@
     "node": ">=24"
   },
   "packageManager": "pnpm@11.1.1",
+  "pnpm": {
+    "overrides": {
+      "qs": "6.15.2"
+    }
+  },
   "optionalDependencies": {
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/vitest-runner": "^9.6.1",
