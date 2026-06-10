@@ -574,3 +574,94 @@ describe('bin launcher', () => {
     expect(resolvePinnedNodeVersion(REPO_ROOT)).toBe('24.16.0')
   })
 })
+
+describe('WP_FORCE_SOURCE sourceOverride', () => {
+  it('routes phase2-runtime wp commands to source when sourceOverride is true', () => {
+    const plan = buildLaunchPlan({
+      binName: 'wp',
+      repoRoot: '/repo',
+      forwardedArgs: ['audit', 'package-surface'],
+      sourceOverride: true,
+      sourceExists: true,
+      builtExists: false,
+      nodeExecPath: '/usr/bin/node',
+      currentNodeVersion: 'v24.16.0',
+      pinnedNodeVersion: '24.16.0',
+      runtimeManager: null,
+      platform: 'linux',
+      arch: 'x64',
+      runtimeManifest: RUNTIME_MANIFEST,
+      runtimeBinaryExists: () => true,
+      runtimeBinaryPath: '/repo/bin/runtime/linux-x64/wp',
+    })
+    expect(plan).toStrictEqual({
+      mode: 'source',
+      runtime: 'bun',
+      entrypoint: '/repo/src/cli/cli.ts',
+      args: ['/repo/src/cli/cli.ts', 'audit', 'package-surface'],
+    })
+  })
+
+  it('does not override the runtime plan when sourceOverride is false', () => {
+    const plan = buildLaunchPlan({
+      binName: 'wp',
+      repoRoot: '/repo',
+      forwardedArgs: ['audit', 'package-surface'],
+      sourceOverride: false,
+      sourceExists: true,
+      builtExists: false,
+      nodeExecPath: '/usr/bin/node',
+      currentNodeVersion: 'v24.16.0',
+      pinnedNodeVersion: '24.16.0',
+      runtimeManager: null,
+      platform: 'linux',
+      arch: 'x64',
+      runtimeManifest: RUNTIME_MANIFEST,
+      runtimeBinaryExists: () => true,
+      runtimeBinaryPath: '/repo/bin/runtime/linux-x64/wp',
+    })
+    expect(plan.mode).toStrictEqual('runtime')
+  })
+
+  it('is a no-op when source does not exist (consumer install without src/)', () => {
+    const plan = buildLaunchPlan({
+      binName: 'wp',
+      repoRoot: '/repo',
+      forwardedArgs: ['audit', 'package-surface'],
+      sourceOverride: true,
+      sourceExists: false,
+      builtExists: false,
+      nodeExecPath: '/usr/bin/node',
+      currentNodeVersion: 'v24.16.0',
+      pinnedNodeVersion: '24.16.0',
+      runtimeManager: null,
+      platform: 'linux',
+      arch: 'x64',
+      runtimeManifest: RUNTIME_MANIFEST,
+      runtimeBinaryExists: () => true,
+      runtimeBinaryPath: '/repo/bin/runtime/linux-x64/wp',
+    })
+    expect(plan.mode).toStrictEqual('runtime')
+  })
+
+  it('keeps latency-sensitive hook bins on compiled binary even with sourceOverride (F1)', () => {
+    const plan = buildLaunchPlan({
+      binName: 'wp-pretool-guard',
+      repoRoot: '/repo',
+      forwardedArgs: [],
+      sourceOverride: true,
+      sourceExists: true,
+      builtExists: false,
+      nodeExecPath: '/usr/bin/node',
+      currentNodeVersion: 'v24.16.0',
+      pinnedNodeVersion: '24.16.0',
+      runtimeManager: null,
+      platform: 'linux',
+      arch: 'x64',
+      runtimeManifest: RUNTIME_MANIFEST,
+      runtimeBinaryExists: () => true,
+      runtimeBinaryPath: '/repo/bin/runtime/linux-x64/wp',
+    })
+    expect(plan.mode).toStrictEqual('runtime')
+  })
+})

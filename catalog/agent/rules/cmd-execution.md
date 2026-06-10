@@ -106,6 +106,12 @@ cd <repo-root> && ./node_modules/.bin/oxfmt --write --ignore-path .gitignore
   `infisical` directly.
 - Use the `WP_` environment variable namespace for webpresso CLI behavior. For
   update checks, the opt-out is `WP_SKIP_UPDATE_CHECK=1`.
+- The compiled `wp` binary is canonical for consumers, CI, and the installed plugin.
+  **`WP_FORCE_SOURCE=1`** forces `wp <cmd>` to run from `src/cli/cli.ts` in the
+  agent-kit dev clone (pairs symmetrically with `WP_FORCE_COMPILED_RUNTIME`). It does
+  **not** affect the latency-sensitive `wp-*` hook bins (`wp-pretool-guard`,
+  `wp-post-tool`, etc.) — those stay on the compiled binary to avoid cold-bun startup
+  on every Edit/Write. Iterate on hook code with `bun src/hooks/…` directly.
 - Audit commands are `wp audit <kind>` or MCP `wp_audit`; do not invent a
   separate generic agent subcommand namespace.
 - Always use the repo-owned command wrappers (`just`, `pnpm`, `turbo`, etc.)

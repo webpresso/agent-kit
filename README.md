@@ -138,6 +138,20 @@ validate` when `claude` is present).
 - Configurable blueprint root: `.webpressorc.json#blueprintsDir` (for example
   `webpresso/blueprints` in monorepo layouts)
 
+## Dev setup (agent-kit contributors)
+
+```bash
+pnpm install
+direnv allow   # exports WP_FORCE_SOURCE=1 — routes wp/audit/test/lint to source
+```
+
+With direnv active, `wp …`, `pnpm lint`, `pnpm typecheck`, and the git hooks all
+run from source. No direnv? Use `pnpm wp …` for ad-hoc source runs.
+
+`WP_FORCE_SOURCE=1` is scoped: it routes dev CLI gates to source but keeps the
+latency-sensitive `wp-pretool-guard` / `wp-post-tool` hook bins on the compiled
+binary (see `bin/_run.js`). Iterate on hook code with `bun src/hooks/…` directly.
+
 ## Contribute / Security / License
 
 - [CONTRIBUTING.md](./CONTRIBUTING.md) — setup, verify commands, Lore Commit

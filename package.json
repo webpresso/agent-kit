@@ -43,7 +43,8 @@
     "docs-check-refs": "bin/docs-check-refs.js",
     "docs-check-stale": "bin/docs-check-stale.js",
     "docs-lint": "bin/docs-lint.js",
-    "docs-migrate": "bin/docs-migrate.js"
+    "docs-migrate": "bin/docs-migrate.js",
+    "with-secrets": "bin/with-secrets"
   },
   "files": [
     "bin/wp",
@@ -180,7 +181,6 @@
         "default": "./dist/esm/index.js"
       }
     },
-    "./package.json": "./package.json",
     "./bundle": {
       "import": {
         "types": "./dist/esm/cli/bundle/index.d.ts",
@@ -545,6 +545,7 @@
   },
   "scripts": {
     "setup:agent": "wp setup",
+    "wp": "WP_FORCE_SOURCE=1 bun src/cli/cli.ts",
     "build": "tshy && bun src/build/generate-oxlintrc.ts && bun src/build/normalize-tsconfig-json-exports.ts && vp run chmod-bins && vp run link-self-bins",
     "build:runtime-binaries": "bun scripts/build-runtime-binaries.ts",
     "stage:plugin-runtime": "bun scripts/stage-plugin-runtime-artifacts.ts",
@@ -719,6 +720,11 @@
     "@stryker-mutator/vitest-runner": "^9.6.1",
     "@stryker-mutator/typescript-checker": "^9.6.1",
     "@playwright/test": "^1.55.0",
-    "wrangler": "^4.50.0"
+    "wrangler": "^4.50.0",
+    "@webpresso/agent-kit-runtime-darwin-arm64": "0.30.3",
+    "@webpresso/agent-kit-runtime-darwin-x64": "0.30.3",
+    "@webpresso/agent-kit-runtime-linux-x64": "0.30.3",
+    "@webpresso/agent-kit-runtime-linux-arm64": "0.30.3",
+    "@webpresso/agent-kit-runtime-windows-x64": "0.30.3"
   }
 }
