@@ -131,6 +131,7 @@ describe('e2e execution helpers', () => {
       {
         batchKey: 'platform',
         envProfile: 'platform',
+        runtimeProfile: 'platform',
         env: {
           DATABASE_URL: 'postgres://suite',
           SHARED: 'group',
@@ -140,6 +141,7 @@ describe('e2e execution helpers', () => {
             suiteId: 'platform-api',
             batchKey: 'platform',
             envProfile: 'platform',
+            runtimeProfile: 'platform',
             runner: 'command',
             logName: 'platform-api',
             command: 'pnpm',
@@ -162,6 +164,7 @@ describe('e2e execution helpers', () => {
           SHARED: 'run',
           E2E_SUITE: 'platform-api',
         },
+        runtimeProfile: 'platform',
       },
     ])
   })

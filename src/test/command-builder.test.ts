@@ -251,6 +251,25 @@ describe('buildTestCommand recursion safety', () => {
     })
   })
 
+
+  it('bypasses vp run when the local mutation script recursively invokes wp test --mutation', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'wp-test-mutation-recursive-'))
+    tempDirs.push(cwd)
+    writeFileSync(
+      join(cwd, 'package.json'),
+      JSON.stringify({
+        scripts: { test: 'vitest run', 'test:mutation': 'wp test --mutation', mutation: 'wp test --mutation' },
+        devDependencies: { vitest: '^4.0.0' },
+      }),
+      'utf8',
+    )
+
+    expect(buildTestCommand({ type: 'all', values: [] }, { cwd, mutation: true })).toEqual({
+      command: 'rtk',
+      args: [expect.stringContaining('tsx'), expect.stringContaining('stryker'), 'run', 'stryker.config.ts'],
+    })
+  })
+
   it('keeps custom non-recursive test scripts on vp run', () => {
     const cwd = mkdtempSync(join(tmpdir(), 'wp-test-custom-'))
     tempDirs.push(cwd)

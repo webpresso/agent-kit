@@ -9,6 +9,21 @@
 
 export type __WebpressoLocalEntrypointReserved = never
 
+export {
+  buildRuntimeProcessEnv,
+  buildRuntimeSpawnOptions,
+  createRuntimeEnvCache,
+  resolveRuntimeEnvironment,
+  spawnRuntimeCommand,
+  spawnRuntimeCommandSync,
+} from './runtime/index.js'
+export type {
+  ResolveRuntimeEnvironmentOptions,
+  RuntimeCommandOptions,
+  RuntimeEnvCache,
+  RuntimeSpawnOptions,
+} from './runtime/index.js'
+
 export { auditAiContracts } from './audit/ai-contracts.js'
 export {
   auditBlueprintLifecycle,

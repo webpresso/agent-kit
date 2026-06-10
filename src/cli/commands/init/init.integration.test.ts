@@ -387,6 +387,7 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     // injects agent-kit's shared --config.
     expect(existsSync(join(repo, 'oxlint.config.ts'))).toBe(false)
     expect(existsSync(join(repo, 'stryker.config.ts'))).toBe(true)
+    expect(readFileSync(join(repo, 'stryker.config.ts'), 'utf8')).not.toContain('mutate:')
     expect(existsSync(join(repo, 'playwright.config.ts'))).toBe(true)
     expect(existsSync(join(repo, 'src', 'quality-sample.ts'))).toBe(true)
     expect(existsSync(join(repo, 'src', 'quality-sample.test.ts'))).toBe(true)

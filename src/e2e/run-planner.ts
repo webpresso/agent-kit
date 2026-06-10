@@ -124,6 +124,7 @@ function planE2eRunsFromSuites(options: {
         suiteId: suite.id,
         batchKey: step.batchKey ?? suite.batchKey,
         envProfile: step.envProfile ?? suite.envProfile,
+        runtimeProfile: step.runtimeProfile ?? step.envProfile ?? suite.runtimeProfile ?? suite.envProfile,
         runner: step.runner,
         logName: step.logName,
         reportDir: step.reportDir,
@@ -230,6 +231,7 @@ export function groupPlannedE2eRuns(runs: readonly PlannedE2eRunStep[]): Planned
     groups.set(key, {
       batchKey: run.batchKey,
       envProfile: run.envProfile,
+      runtimeProfile: run.runtimeProfile ?? run.envProfile,
       env: normalizeEnv(run.env),
       runs: [run],
     })

@@ -38,7 +38,7 @@ export function buildTestCommand(
   target: ResolvedTestTarget,
   options: TestCommandOptions = {},
 ): CommandConfig {
-  if (target.type === 'all' && shouldBypassRecursiveWpTest(options.cwd ?? process.cwd())) {
+  if (target.type === 'all' && shouldBypassRecursiveWpTask(options.cwd ?? process.cwd(), options)) {
     return options.mutation ? buildStrykerCommand(options) : buildVitestCommand([], options)
   }
 
@@ -196,9 +196,19 @@ function isVitestConfigFile(file: string): boolean {
   return /^vitest(?:\.[\w-]+)?\.config\.(?:ts|mts|cts|js|mjs|cjs)$/u.test(file)
 }
 
-function shouldBypassRecursiveWpTest(cwd: string): boolean {
-  const testScript = getPackageScript(cwd, 'test')
-  return Boolean(testScript && isRecursiveWpScript(testScript, 'test'))
+function shouldBypassRecursiveWpTask(cwd: string, options: TestCommandOptions): boolean {
+  const scriptNames = options.mutation
+    ? ['test:mutation', 'mutation']
+    : options.workers
+      ? ['test:workers']
+      : options.watch
+        ? ['test:watch', 'test']
+        : ['test']
+
+  return scriptNames.some((scriptName) => {
+    const script = getPackageScript(cwd, scriptName)
+    return Boolean(script && isRecursiveWpScript(script, 'test'))
+  })
 }
 
 function resolveStrykerConfigFile(cwd: string): string {

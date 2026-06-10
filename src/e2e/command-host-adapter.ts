@@ -14,6 +14,7 @@ export interface CommandHostAdapterRunDefinition {
   args: string[]
   suiteId?: string
   envProfile?: string
+  runtimeProfile?: string
   env?: Record<string, string>
   reportDir?: string
 }
@@ -21,6 +22,7 @@ export interface CommandHostAdapterRunDefinition {
 export interface CommandHostAdapterGroupDefinition {
   batchKey: string
   envProfile?: string
+  runtimeProfile?: string
   env?: Record<string, string>
   run: CommandHostAdapterRunDefinition
 }
@@ -66,6 +68,7 @@ export function cloneE2eStepDefinition(step: E2eStepDefinition): E2eStepDefiniti
     supportsDebug: step.supportsDebug,
     batchKey: step.batchKey,
     envProfile: step.envProfile,
+    runtimeProfile: step.runtimeProfile,
     reportDir: step.reportDir,
     env: cloneEnv(step.env),
   }
@@ -78,6 +81,7 @@ export function cloneE2eSuiteDefinition(suite: E2eSuiteDefinition): E2eSuiteDefi
     fileMatchers: [...suite.fileMatchers],
     batchKey: suite.batchKey,
     envProfile: suite.envProfile,
+    runtimeProfile: suite.runtimeProfile,
     steps: suite.steps.map(cloneE2eStepDefinition),
     env: cloneEnv(suite.env),
   }
@@ -91,12 +95,14 @@ function toPlannedRunGroup(
   return {
     batchKey: group.batchKey,
     envProfile: group.envProfile,
+    runtimeProfile: group.runtimeProfile ?? group.envProfile,
     env: cloneEnv(group.env),
     runs: [
       {
         suiteId: group.run.suiteId ?? request.suite ?? defaultSuiteId,
         batchKey: group.run.batchKey,
         envProfile: group.run.envProfile,
+        runtimeProfile: group.run.runtimeProfile ?? group.run.envProfile ?? group.runtimeProfile ?? group.envProfile,
         env: cloneEnv(group.run.env),
         runner: 'command',
         logName: group.run.logName,
