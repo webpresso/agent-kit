@@ -455,7 +455,7 @@ describe('package-surface audit', () => {
     expect(result.ok).toBe(true)
   })
 
-  test('requires runtime-package optional-dependency wiring for manifest targets', () => {
+  test('wires runtime optionals in the packed surface even when the committed manifest omits them', () => {
     const root = tempRepo()
     mkdirSync(join(root, 'bin'), { recursive: true })
     writeJson(join(root, 'package.json'), {
@@ -464,6 +464,11 @@ describe('package-surface audit', () => {
       private: false,
       files: ['bin/runtime-manifest.json', 'bin/wp'],
       bin: { wp: 'bin/wp' },
+      // The committed manifest intentionally OMITS the runtime optionals:
+      // createPackedManifest adds them to the packed tarball at the package
+      // version at pack time. Committing them would pin the lockfile to a
+      // runtime version that is only published during the same release and
+      // deadlock the publish job's frozen install.
       optionalDependencies: {},
     })
     writeFileSync(
@@ -484,15 +489,14 @@ describe('package-surface audit', () => {
 
     const result = auditPackageSurface(root)
 
-    expect(result.ok).toBe(false)
+    // No runtime-optional violation: the packed manifest wires the target to the
+    // package version (0.28.0) even though the committed manifest declares none.
     expect(
-      result.violations.some(
-        (violation) =>
-          violation.file === 'package.json' &&
-          violation.message.includes('Runtime optional dependency') &&
-          violation.message.includes('@webpresso/agent-kit-runtime-linux-x64'),
+      result.violations.some((violation) =>
+        violation.message.includes('@webpresso/agent-kit-runtime-linux-x64'),
       ),
-    ).toBe(true)
+    ).toBe(false)
+    expect(result.ok).toBe(true)
   })
 
   test('fails when packed @webpresso/agent-kit root bin/wp is a native binary instead of the selector', () => {
