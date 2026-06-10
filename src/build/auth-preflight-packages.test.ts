@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { RUNTIME_TARGETS } from '#build/runtime-targets.js'
 
 const repositoryRoot = resolve(import.meta.dirname, '..', '..')
 const authPreflightWorkflowPaths = [
@@ -80,5 +81,25 @@ describe('release workflow publish path', () => {
       "if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != true }}",
     )
     expect(workflow).toContain('publish: pnpm run release:publish')
+  })
+
+  it('builds every native runtime target and attaches them to a GitHub Release in the publish path', () => {
+    const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
+    const changesetsActionIndex = workflow.indexOf('uses: changesets/action@')
+    const afterChangesetsAction = workflow.slice(changesetsActionIndex)
+    const beforeChangesetsAction = workflow.slice(0, changesetsActionIndex)
+
+    // The full runtime matrix is compiled only AFTER the changesets action, in
+    // the post-publish path — never into the version-PR working tree.
+    expect(afterChangesetsAction).toContain('pnpm run build:runtime-binaries -- --target')
+    expect(beforeChangesetsAction.includes('build:runtime-binaries -- --target')).toBe(false)
+    for (const target of RUNTIME_TARGETS) {
+      expect(afterChangesetsAction).toContain(target.id)
+    }
+
+    // A GitHub Release is created/updated with the compiled binaries attached.
+    expect(afterChangesetsAction).toContain('gh release create')
+    expect(afterChangesetsAction).toContain('gh release upload')
+    expect(afterChangesetsAction).toContain('"$assets"/*')
   })
 })

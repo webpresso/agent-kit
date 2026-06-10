@@ -63,7 +63,14 @@ When a feature branch with a `.changeset/<slug>.md` file merges to `main`,
 4. After publish, CI verifies the `v<version>` tag on the mainline version-bump
    commit and creates `release/v<version>` as the separate dist-carrying
    compatibility branch for marketplace consumers.
-5. GitHub Release objects are disabled in the initial rollout.
+5. After publish, CI compiles the native `wp` runtime binaries for every
+   target in `RUNTIME_TARGETS` (darwin/linux/windows × arm64/x64, cross-built
+   with bun) and creates the `v<version>` **GitHub Release** with those
+   binaries attached as downloadable assets. The `changesets/action` keeps
+   `createGithubReleases: false`; the release object is created in a dedicated
+   post-publish step so the custom binary assets can be attached (the action
+   cannot attach them). This runs only in the real publish path, never in the
+   changesets version-PR working tree.
 
 The workflow supports a manual dry-run trigger:
 ```bash
