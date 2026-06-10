@@ -95,6 +95,10 @@ tmp/
 # Generated reports (mutation, coverage summaries, audit dumps)
 reports/
 
+# npm pack tarballs — transient publish/verification artifacts. Pack scripts
+# write to a temp dir, but a crashed pack can still drop one here; never commit.
+*.tgz
+
 # Prepack backup artifacts — transient publish-time staging/restore state
 .package.json.prepack.backup
 .dist-prepack-backup/
