@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { syncBlueprintMigrationSqlAssets } from '../src/build/blueprint-migration-assets.js'
 import { preparePackedManifest, restorePackedManifest } from '../src/build/package-manifest.js'
 import { AGENTS_MD_MAX_BYTES } from '../src/cli/commands/init/scaffold-agents-md.js'
 import { createInstalledBlueprintMigrationSmokeScript } from './packed-blueprint-migration-smoke.js'
@@ -103,6 +104,7 @@ function ensurePackableNativeRuntime(): RunResult[] {
 function packCurrentArtifact(): string {
   let raw: string
   try {
+    syncBlueprintMigrationSqlAssets(ROOT)
     preparePackedManifest(ROOT)
     // --pack-destination writes the tarball into the temp workspace (removed on
     // exit) instead of the repo root, so a parallel run can't race on the fixed

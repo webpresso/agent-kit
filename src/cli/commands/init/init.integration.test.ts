@@ -817,10 +817,11 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
     expect(allOutput).toContain('gstack')
   })
 
-  it('prints next-steps block (wp blueprint new, wp gain) on non-dry-run', async () => {
+  it('prints the canonical next-steps block on non-dry-run', async () => {
     await runInit({ cwd: repo, yes: true }, { stdout: silentStdout })
     const allOutput = logLines.join('\n')
-    expect(allOutput).toContain('wp blueprint new')
+    expect(allOutput).toContain('wp hooks doctor')
+    expect(allOutput).toContain('wp_audit(kind="docs-frontmatter")')
     expect(allOutput).toContain('wp gain')
   })
 
@@ -845,7 +846,8 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
   it('omits next-steps block in --dry-run mode', async () => {
     await runInit({ cwd: repo, yes: true, 'dry-run': true }, { stdout: silentStdout })
     const allOutput = logLines.join('\n')
-    expect(allOutput).not.toContain('wp blueprint new')
+    expect(allOutput).not.toContain('wp hooks doctor')
+    expect(allOutput).not.toContain('wp_audit(kind="docs-frontmatter")')
     expect(allOutput).not.toContain('wp gain')
   })
 

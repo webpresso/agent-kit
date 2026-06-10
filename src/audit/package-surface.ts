@@ -11,6 +11,7 @@ import {
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, relative, resolve } from 'node:path'
 
+import { syncBlueprintMigrationSqlAssets } from '#build/blueprint-migration-assets.js'
 import { createPackedManifest, readWorkspaceCatalogs } from '#build/package-manifest.js'
 
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
@@ -631,6 +632,7 @@ function discoverPublishablePackages(root: string): PackageCandidate[] {
 }
 
 function readPackedEntry(packageRoot: string): NpmPackDryRunEntry {
+  syncBlueprintMigrationSqlAssets(packageRoot)
   const raw = execFileSync('npm', ['pack', '--dry-run', '--json'], {
     cwd: packageRoot,
     encoding: 'utf8',
