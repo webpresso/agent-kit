@@ -10,6 +10,7 @@ import {
   existsSync,
   lstatSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   readlinkSync,
   rmSync,
@@ -23,12 +24,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runUnifiedSync } from './unified-sync.js'
 
 function makeTempDir(): string {
-  const dir = join(
-    tmpdir(),
-    `unified-sync-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-  )
-  mkdirSync(dir, { recursive: true })
-  return dir
+  // mkdtempSync creates an OS-guaranteed-unique directory atomically — no
+  // Date.now()/Math.random() collision window under parallel test files.
+  return mkdtempSync(join(tmpdir(), 'unified-sync-test-'))
 }
 
 function writeFile(path: string, content: string): void {
