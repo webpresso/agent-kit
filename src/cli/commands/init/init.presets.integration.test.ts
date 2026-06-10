@@ -142,6 +142,44 @@ describe('runInit() — omx + gstack presets (integration)', () => {
   })
 
   describe('--with omx', () => {
+    // runInit() runs the gstack/rtk/claude-plugin orchestration for every preset
+    // (gated only by WP_SKIP_*). These omx tests assert only omx + vp calls, but
+    // that orchestration's awaited (mocked) spawns add enough event-loop latency
+    // to push a test past the 10s timeout under full-suite parallel load — a
+    // probabilistic flake across this block. Skip it (as the sibling --with omc
+    // block does); the omx+gstack interaction has dedicated coverage in the
+    // combined block below.
+    let originalSkipGstack: string | undefined
+    let originalSkipRtk: string | undefined
+    let originalSkipClaudePlugin: string | undefined
+
+    beforeEach(() => {
+      originalSkipGstack = process.env.WP_SKIP_GSTACK
+      originalSkipRtk = process.env.WP_SKIP_RTK
+      originalSkipClaudePlugin = process.env.WP_SKIP_CLAUDE_PLUGIN
+      process.env.WP_SKIP_GSTACK = '1'
+      process.env.WP_SKIP_RTK = '1'
+      process.env.WP_SKIP_CLAUDE_PLUGIN = '1'
+    })
+
+    afterEach(() => {
+      if (originalSkipGstack === undefined) {
+        delete process.env.WP_SKIP_GSTACK
+      } else {
+        process.env.WP_SKIP_GSTACK = originalSkipGstack
+      }
+      if (originalSkipRtk === undefined) {
+        delete process.env.WP_SKIP_RTK
+      } else {
+        process.env.WP_SKIP_RTK = originalSkipRtk
+      }
+      if (originalSkipClaudePlugin === undefined) {
+        delete process.env.WP_SKIP_CLAUDE_PLUGIN
+      } else {
+        process.env.WP_SKIP_CLAUDE_PLUGIN = originalSkipClaudePlugin
+      }
+    })
+
     it('returns SUCCESS and invokes omx --version then user-scoped omx setup', async () => {
       const code = await runInitSilently({ cwd: repo, yes: true, with: 'omx' })
       expect(code).toBe(EXIT_SUCCESS)
@@ -165,6 +203,19 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(readFileSync(join(repo, '.codex-home/config.toml'), 'utf8')).toContain(
         '[mcp_servers.playwright]',
       )
+    })
+
+    it('does not run gstack/rtk/claude orchestration on the omx-only path (hermetic skip)', async () => {
+      // Regression guard for the under-load timeout flake: without the skip
+      // guards, runInit() cloned gstack (git clone garrytan/gstack) and ran
+      // rtk/claude orchestration via awaited spawns. Asserting the clone never
+      // fires fails against that old behavior and proves the latency source is
+      // gone — the omx-only path stays hermetic.
+      await runInitSilently({ cwd: repo, yes: true, with: 'omx' })
+      const gstackCloneCalls = spawnMock.mock.calls.filter(
+        (call) => call[0] === 'git' && JSON.stringify(call[1] ?? '').includes('garrytan/gstack'),
+      )
+      expect(gstackCloneCalls).toStrictEqual([])
     })
 
     it('passes project scope to omx setup when --project is requested', async () => {
