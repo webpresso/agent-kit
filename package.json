@@ -556,8 +556,7 @@
     "generate-skills": "bun src/build/generate-skills-dir.ts",
     "sync-doc-templates": "bun src/build/sync-catalog-doc-templates.ts",
     "sync-marketplace-version": "bun scripts/sync-marketplace-version.ts",
-    "sync-runtime-matrix-version": "bun scripts/sync-runtime-matrix-version.ts",
-    "version": "changeset version && vp run sync-marketplace-version && vp run sync-runtime-matrix-version",
+    "version": "changeset version && vp run sync-marketplace-version",
     "release:publish": "bun scripts/release-publish.ts",
     "typecheck": "wp typecheck",
     "test": "vitest run --exclude '**/*.integration.test.ts' --maxWorkers 1 && vitest run --no-file-parallelism .integration.test.ts --testTimeout 30000",
@@ -719,11 +718,6 @@
     "@stryker-mutator/vitest-runner": "^9.6.1",
     "@stryker-mutator/typescript-checker": "^9.6.1",
     "@playwright/test": "^1.55.0",
-    "wrangler": "^4.50.0",
-    "@webpresso/agent-kit-runtime-darwin-arm64": "0.30.1",
-    "@webpresso/agent-kit-runtime-darwin-x64": "0.30.1",
-    "@webpresso/agent-kit-runtime-linux-x64": "0.30.1",
-    "@webpresso/agent-kit-runtime-linux-arm64": "0.30.1",
-    "@webpresso/agent-kit-runtime-windows-x64": "0.30.1"
+    "wrangler": "^4.50.0"
   }
 }

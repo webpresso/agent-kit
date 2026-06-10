@@ -11,6 +11,8 @@ import {
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, relative, resolve } from 'node:path'
 
+import { createPackedManifest, readWorkspaceCatalogs } from '#build/package-manifest.js'
+
 import type { RepoAuditResult, RepoAuditViolation } from './repo-guardrails.js'
 import {
   AGENT_KIT_TARBALL_SIZE_BUDGET_BYTES,
@@ -412,6 +414,29 @@ function auditPackedTarballSurface(
   return checked
 }
 
+/**
+ * Build the PACKED manifest (what actually ships) for the native-runtime
+ * surface check. `createPackedManifest` wires the
+ * `@webpresso/agent-kit-runtime-*` optionalDependencies to the package version
+ * at pack time, so the committed package.json deliberately omits them —
+ * committing them would pin the lockfile to a runtime version that is only
+ * published during the same release and deadlock the publish job's frozen
+ * install (see scripts/release-publish.ts).
+ */
+function computePackedManifest(
+  packageRoot: string,
+  packageJsonPath: string,
+): ReturnType<typeof createPackedManifest> {
+  const manifest = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as Parameters<
+    typeof createPackedManifest
+  >[0]
+  const workspacePath = join(packageRoot, 'pnpm-workspace.yaml')
+  const workspaceCatalogs: Parameters<typeof createPackedManifest>[1] = existsSync(workspacePath)
+    ? readWorkspaceCatalogs(workspacePath)
+    : { catalog: undefined, catalogs: undefined }
+  return createPackedManifest(manifest, workspaceCatalogs)
+}
+
 function auditAgentKitNativeRuntimeSurface(
   root: string,
   candidate: PackageCandidate,
@@ -429,10 +454,7 @@ function auditAgentKitNativeRuntimeSurface(
     })
     return 1
   }
-  const packageJson = JSON.parse(readFileSync(candidate.packageFile, 'utf8')) as {
-    version?: string
-    optionalDependencies?: Record<string, string>
-  }
+  const packedManifest = computePackedManifest(candidate.packageRoot, candidate.packageFile)
   const runtimeManifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
     targets?: Array<{ packageName?: string }>
   }
@@ -465,13 +487,13 @@ function auditAgentKitNativeRuntimeSurface(
       })
       continue
     }
-    const declaredVersion = packageJson.optionalDependencies?.[target.packageName]
-    if (declaredVersion !== packageJson.version) {
+    const declaredVersion = packedManifest.optionalDependencies?.[target.packageName]
+    if (declaredVersion !== packedManifest.version) {
       violations.push({
         file: relativePath(root, candidate.packageFile),
         message:
-          `Runtime optional dependency ${target.packageName} must be wired to root package version ` +
-          `${packageJson.version ?? '<missing>'}; found ${declaredVersion ?? '<missing>'}`,
+          `Packed runtime optional dependency ${target.packageName} must be wired to package version ` +
+          `${packedManifest.version ?? '<missing>'}; found ${declaredVersion ?? '<missing>'}`,
       })
     }
   }
