@@ -27,6 +27,7 @@ import {
   resolveBinaryOnPath,
 } from '#cli/commands/init/scaffolders/agent-hooks/codex-global-normalize'
 import { isPresetOwnedGlobalCodexHook } from './codex-global-ownership.js'
+import { CLAUDE_PLUGIN_ID } from '#cli/commands/init/scaffolders/claude-plugin/index.js'
 import {
   syncCodexHookTrustWithAppServer,
   type SyncCodexHookTrustResult,
@@ -342,8 +343,6 @@ const CLAUDE_MATCHERS: MatcherSet = {
   postToolUse: 'Write|Edit|MultiEdit',
 }
 
-const AGENT_KIT_CLAUDE_PLUGIN_ID = 'webpresso@webpresso'
-
 function defaultClaudeUserSettingsPath(): string {
   return join(process.env.HOME || homedir(), '.claude', 'settings.json')
 }
@@ -358,7 +357,7 @@ function patchClaudeUserSettings(existing: Record<string, unknown>): Record<stri
       ? { ...(enabledPluginsValue as Record<string, unknown>) }
       : {}
 
-  enabledPlugins[AGENT_KIT_CLAUDE_PLUGIN_ID] = true
+  enabledPlugins[CLAUDE_PLUGIN_ID] = true
   next.enabledPlugins = enabledPlugins
 
   if (next.disableAllHooks === true) {

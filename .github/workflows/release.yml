@@ -6,9 +6,13 @@
 #   3. When the version PR lands on main, the action publishes through
 #      `pnpm run release:publish`.
 #
-# Initial rollout policy:
+# Release policy:
 #   - public npm publish: yes
-#   - auto-created GitHub Releases: no
+#   - GitHub Releases: yes — created in the post-publish path with the compiled
+#     `wp` native runtime binaries (darwin/linux/windows × arm64/x64) attached as
+#     downloadable assets. The changesets/action keeps `createGithubReleases:
+#     false`; the release object is created here so custom binary assets can be
+#     attached (the action cannot attach them).
 #   - compatibility branch/tag behavior: handled separately from the publish path
 #
 # Trusted publishing note:
@@ -189,17 +193,46 @@ jobs:
           HUSKY=0 git commit -m "chore: release v${version} [dist]"
           git push origin "HEAD:refs/heads/${branch}"
 
-      - name: Verify no GitHub Release object exists
+      - name: Build native runtime binaries for the GitHub Release
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_probe.outputs.published == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          assets="$RUNNER_TEMP/release-assets"
+          mkdir -p "$assets"
+          # bun cross-compiles every target from this single Linux runner. Each
+          # target build fails loudly if its toolchain is unavailable — no
+          # silent skip — so a partial matrix never ships.
+          for target in darwin-arm64 darwin-x64 linux-x64 linux-arm64 windows-x64; do
+            pnpm run build:runtime-binaries -- --target "$target"
+          done
+          for target in darwin-arm64 darwin-x64 linux-x64 linux-arm64; do
+            cp "dist/runtime/$target/wp" "$assets/wp-$target"
+          done
+          cp "dist/runtime/windows-x64/wp.exe" "$assets/wp-windows-x64.exe"
+          ls -l "$assets"
+
+      - name: Publish GitHub Release with native runtime binaries
         if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_probe.outputs.published == 'true' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          if gh release view "${{ steps.release_meta.outputs.tag }}" >/dev/null 2>&1; then
-            echo "GitHub Release object exists for ${{ steps.release_meta.outputs.tag }} but createGithubReleases is disabled." >&2
-            exit 1
+          assets="$RUNNER_TEMP/release-assets"
+          tag='${{ steps.release_meta.outputs.tag }}'
+          version='${{ steps.release_meta.outputs.version }}'
+          notes="Native \`wp\` runtime binaries for @webpresso/agent-kit v${version} (darwin / linux / windows × arm64 / x64). Install from npm with \`pnpm add -D @webpresso/agent-kit\`; these standalone binaries are for direct download."
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$assets"/* --clobber
+          else
+            gh release create "$tag" \
+              --verify-tag \
+              --title "v${version}" \
+              --notes "$notes" \
+              "$assets"/*
           fi
+
 
       - name: Release summary
         if: ${{ always() }}
