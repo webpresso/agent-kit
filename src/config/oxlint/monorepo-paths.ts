@@ -33,8 +33,32 @@ function isDunderDirname(node) {
   return node.type === 'Identifier' && node.name === '__dirname'
 }
 
-function hasDoubleParentTraversal(value) {
-  return typeof value === 'string' && /\.\.\/\.\./.test(value)
+// Count parent-directory ('..') segments in a single path-literal value.
+// Handles a combined literal ('../..' → 2) and both path separators.
+function countParentSegments(value) {
+  if (typeof value !== 'string') return 0
+  return value.split(/[/\\]/u).filter((segment) => segment === '..').length
+}
+
+// Total '..' traversal depth across the resolve/join arguments after the
+// anchor. Returns { depth, index } pointing at the first traversal argument
+// when depth >= 2 (the repo-root-climb threshold), else null.
+//
+// Unifying the single-literal ('../..') and multi-argument ('..', '..') forms
+// into one depth count closes a gap: the previous matcher only caught the
+// multi-argument form at 4+ arguments, so `join(import.meta.dirname, '..',
+// '..')` (two separate '..' args, depth 2) silently passed.
+export function hardcodedRepoRootDepth(args) {
+  let depth = 0
+  let index = -1
+  for (let i = 1; i < args.length; i += 1) {
+    const arg = args[i]
+    if (arg.type !== 'Literal') continue
+    const segments = countParentSegments(arg.value)
+    if (segments > 0 && index === -1) index = i
+    depth += segments
+  }
+  return depth >= 2 && index !== -1 ? { depth, index } : null
 }
 
 const noHardcodedRepoRoot = {
@@ -48,40 +72,19 @@ const noHardcodedRepoRoot = {
         const args = node.arguments
         if (args.length < 2) return
 
+        const violation = hardcodedRepoRootDepth(args)
+        if (!violation) return
+
         const first = args[0]
-        const isMetaDir = isMetaDirname(first)
-        const isDunder = isDunderDirname(first)
-
-        // Check any-arg variant: resolve(ANY_VAR, '../../..') or join(X, '../../../..')
-        // This catches patterns like resolve(PACKAGE_ROOT, '..', '..', '..') and join(SCRIPT_DIR, '../../../..')
-        for (let i = 1; i < args.length; i++) {
-          const arg = args[i]
-          if (arg.type === 'Literal' && hasDoubleParentTraversal(arg.value)) {
-            const source = isMetaDir ? 'import.meta.dirname' : isDunder ? '__dirname' : 'variable'
-            context.report({
-              node: arg,
-              message: `Hardcoded repo root via ${source} + relative path. Use findRepoRoot() from @webpresso/cli-utils/find-repo-root instead.`,
-            })
-            return
-          }
-        }
-
-        // Multi-arg variant: join(X, '..', '..', '..') — 3+ parent segments from any starting point
-        if (args.length >= 4) {
-          let parentCount = 0
-          for (let i = 1; i < args.length; i++) {
-            if (args[i].type === 'Literal' && args[i].value === '..') {
-              parentCount++
-            }
-          }
-          if (parentCount >= 2) {
-            const source = isMetaDir ? 'import.meta.dirname' : isDunder ? '__dirname' : 'variable'
-            context.report({
-              node: args[1],
-              message: `Hardcoded repo root via ${source} + multiple '../' segments. Use findRepoRoot() from @webpresso/cli-utils/find-repo-root instead.`,
-            })
-          }
-        }
+        const source = isMetaDirname(first)
+          ? 'import.meta.dirname'
+          : isDunderDirname(first)
+            ? '__dirname'
+            : 'variable'
+        context.report({
+          node: args[violation.index],
+          message: `Hardcoded repo root via ${source} + '..' traversal (depth ${violation.depth}). Derive the repo root dynamically — search upward for a workspace marker such as pnpm-workspace.yaml (e.g. findRepoRoot) — instead of hardcoding the directory depth.`,
+        })
       },
     }
   },
