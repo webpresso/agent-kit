@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
+import { syncBlueprintMigrationSqlAssets } from '../src/build/blueprint-migration-assets.js'
 import {
   AGENT_KIT_TARBALL_SIZE_BUDGET_BYTES,
   AGENT_KIT_TARBALL_UNPACKED_SIZE_BUDGET_BYTES,
@@ -253,6 +254,7 @@ if (import.meta.main) {
 
   let preparedPkg: typeof pkg | null = null
   try {
+    syncBlueprintMigrationSqlAssets(ROOT)
     preparePackedManifest(ROOT)
     preparedPkg = JSON.parse(read('package.json')) as typeof pkg
   } finally {
@@ -312,6 +314,7 @@ if (import.meta.main) {
   // 3) Tarball surface
   let pack: ReturnType<typeof run> = { code: 1, ok: false, stdout: '' }
   try {
+    syncBlueprintMigrationSqlAssets(ROOT)
     preparePackedManifest(ROOT)
     pack = run('npm', ['pack', '--ignore-scripts', '--dry-run', '--json'])
   } finally {

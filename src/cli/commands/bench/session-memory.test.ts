@@ -191,9 +191,9 @@ describe('wp bench session-memory', () => {
   })
 
   it('refuses actual session-memory execution from the compiled runtime lane', async () => {
-    expect(() =>
-      assertBenchSessionMemorySupportedRuntime({ WP_COMPILED_RUNTIME: '1' }),
-    ).toThrow(/not available from the compiled runtime/)
+    expect(() => assertBenchSessionMemorySupportedRuntime({ WP_COMPILED_RUNTIME: '1' })).toThrow(
+      /not available from the compiled runtime/,
+    )
 
     await expect(
       runBenchSessionMemoryCommand({

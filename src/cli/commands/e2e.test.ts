@@ -65,15 +65,16 @@ describe('wp e2e command helpers', () => {
         },
       ]),
     ).toEqual([
-      {
+      expect.objectContaining({
         command: 'pnpm',
         args: ['exec', 'vitest', 'run'],
+        runtimeProfile: 'platform',
         env: {
           DATABASE_URL: 'postgres://suite',
           SHARED: 'run',
           E2E_SUITE: 'platform-api',
         },
-      },
+      }),
     ])
   })
 })

@@ -11,29 +11,53 @@ const deployLaneSchema = z.union([
   z.string().regex(/^preview_pr_\d+$/u, 'preview PR lanes must be preview_pr_<n>'),
 ])
 
+const deployModeSchema = z.enum(['deploy', 'destroy'])
+const deployStageSchema = z.enum([
+  'preview_health',
+  'health',
+  'homepage',
+  'production_smoke',
+  'production_journey',
+])
+
 const envSchema = z.record(z.string(), z.string().optional())
 
-const commandStepSchema = z
+const stepBaseSchema = z
   .object({
-    kind: z.literal('command'),
     id: z.string().min(1),
     label: z.string().min(1).optional(),
-    command: z.string().min(1),
-    args: z.array(z.string()).optional(),
+    stage: deployStageSchema.optional(),
+    runtimeProfile: z.string().min(1).optional(),
     cwd: z.string().min(1).optional(),
     env: envSchema.optional(),
   })
   .strict()
 
-const managedToolStepSchema = z
-  .object({
+const commandStepSchema = stepBaseSchema
+  .extend({
+    kind: z.literal('command'),
+    command: z.string().min(1),
+    args: z.array(z.string()).optional(),
+  })
+  .strict()
+
+const managedToolStepSchema = stepBaseSchema
+  .extend({
     kind: z.literal('managed-tool'),
-    id: z.string().min(1),
-    label: z.string().min(1).optional(),
     tool: z.string().min(1),
     args: z.array(z.string()).optional(),
-    cwd: z.string().min(1).optional(),
-    env: envSchema.optional(),
+  })
+  .strict()
+
+const httpCheckStepSchema = stepBaseSchema
+  .extend({
+    kind: z.literal('http-check'),
+    url: z.string().url(),
+    headers: z.record(z.string(), z.string()).optional(),
+    expectedStatus: z.number().int().min(100).max(599).optional(),
+    retries: z.number().int().min(1).optional(),
+    intervalMs: z.number().int().min(0).optional(),
+    timeoutMs: z.number().int().min(1).optional(),
   })
   .strict()
 
@@ -41,9 +65,11 @@ const deployPlanSchema = z
   .object({
     schemaVersion: z.literal(DEPLOY_PLAN_SCHEMA_VERSION),
     lane: deployLaneSchema,
+    mode: deployModeSchema.optional(),
     provider: z.string().min(1),
     requiredCredentials: z.array(z.string().min(1)),
-    steps: z.array(z.union([commandStepSchema, managedToolStepSchema])),
+    releaseVersion: z.string().min(1).optional(),
+    steps: z.array(z.union([commandStepSchema, managedToolStepSchema, httpCheckStepSchema])),
   })
   .strict()
 

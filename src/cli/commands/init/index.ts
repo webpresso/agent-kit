@@ -1177,7 +1177,8 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
           '',
           '✅ Setup complete for the verified phases above.',
           '',
-          '  Next: wp blueprint new "your first task"',
+          '  Next: wp hooks doctor',
+          '        Then ask Claude or Codex to run `wp_audit(kind="docs-frontmatter")`.',
           '        wp gain          # token savings after your first session',
         ].join('\n'),
       )

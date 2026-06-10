@@ -26,6 +26,9 @@ import { beforeEach } from 'vitest'
  *   between tests to prevent secret leaks and cross-test contamination.
  * - `QUALITY_ENGINE_COMPACT` — controls compact QA output mode; a leaked '0'
  *   forces passthrough mode on tests that expect the compact transform.
+ * - `WP_MCP_TOOL_MODE` / `WP_COMPILED_RUNTIME` — switch MCP discovery to the
+ *   compiled registry path. A leaked runtime-mode flag makes filesystem-backed
+ *   MCP integration tests miss dynamically-written fixture tools.
  *
  * The fix is isolation, not changing the runtime precedence: reset these before
  * every test so the suite is deterministic regardless of the launching
@@ -38,6 +41,8 @@ export const LEAKY_ENV_KEYS = [
   'WP_BLUEPRINT_ROOTS_TIMEOUT_MS',
   'WP_BLUEPRINT_PROJECT_DISCOVERY_TIMEOUT_MS',
   'WP_BLUEPRINT_PLATFORM_DISABLED',
+  'WP_MCP_TOOL_MODE',
+  'WP_COMPILED_RUNTIME',
   'GITHUB_PAT',
   'QUALITY_ENGINE_COMPACT',
 ] as const

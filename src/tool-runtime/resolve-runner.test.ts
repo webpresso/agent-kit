@@ -8,9 +8,10 @@ import { resolveRunner, setRtkAvailabilityProbeForTest } from './resolve-runner.
 // the rtk capability check deterministically. The pinned tests never reach it.
 vi.mock('node:child_process', () => ({ spawnSync: vi.fn() }))
 
-function spawnResult(overrides: { status: number | null; signal?: NodeJS.Signals }): ReturnType<
-  typeof spawnSync
-> {
+function spawnResult(overrides: {
+  status: number | null
+  signal?: NodeJS.Signals
+}): ReturnType<typeof spawnSync> {
   return {
     status: overrides.status,
     signal: overrides.signal ?? null,

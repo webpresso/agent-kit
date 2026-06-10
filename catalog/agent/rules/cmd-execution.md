@@ -16,7 +16,7 @@ paths:
 
 ## BOOKEND Rule: Full QA Runs Exactly Twice
 
-The full QA pipeline (e.g. `webpresso project check`, `pnpm qa`, `turbo run check`) is a
+The full QA pipeline (e.g. `wp qa`, `vp run qa`, `bun run qa`) is a
 **bookend command** — run it once at the START and once at the END. Never in
 between.
 
@@ -96,19 +96,32 @@ cd <repo-root> && ./node_modules/.bin/oxfmt --write --ignore-path .gitignore
   `vp run ...`. The raw TypeScript/Bun CLI entrypoint is an implementation
   detail, not an instruction surface for users or agents.
 - Package-manager/runtime wrapper chains such as Corepack, `vp exec`/`vp dlx`,
-  pnpm `exec`/optional exec, `npm exec`/`npx`, `yarn exec`/`yarn dlx`, `bunx`,
-  and TypeScript runtimes do not make quality tools or repo source entrypoints
-  agent-facing. Use the matching MCP tool such as `wp_test`, `wp_lint`, or
-  `wp_e2e`.
-- Secret-touching source entrypoints such as CI act runners must go through a
-  secret-aware MCP wrapper or be blocked until one exists. They should reuse the
-  repo secret-provider gate and must not ask agents to call `doppler` or
-  `infisical` directly.
+  `npm exec`/`npx`, `yarn exec`/`yarn dlx`, `bun run`, `bunx`, TypeScript
+  runtimes, and `pnpm` (fallback only) do not make quality tools or repo source
+  entrypoints agent-facing. Use the matching MCP tool such as `wp_test`, `wp_lint`,
+  or `wp_e2e`.
+- Prefer native package-manager facades first: `wp`, `vp`, and `bun`; use raw `pnpm`
+  only as a last-resort compatibility fallback.
+- Secret-touching source entrypoints such as CI act runners and local command
+  wrappers must go through a secret-aware MCP wrapper or the repo-provided
+  `with-secrets` launcher. They should reuse the repo secret-provider gate and
+  must not ask agents to call `doppler` or `infisical` directly.
+
+  Use `with-secrets --env-profile <profile> -- <cmd>` for canonical profiles
+  (`secrets-only`, `service-runtime`, `database`, `full`) or
+  `--runtime-profile` when passing provider-specific selectors (for example:
+  `prd`).
 - Use the `WP_` environment variable namespace for webpresso CLI behavior. For
   update checks, the opt-out is `WP_SKIP_UPDATE_CHECK=1`.
+- The compiled `wp` binary is canonical for consumers, CI, and the installed plugin.
+  **`WP_FORCE_SOURCE=1`** forces `wp <cmd>` to run from `src/cli/cli.ts` in the
+  agent-kit dev clone (pairs symmetrically with `WP_FORCE_COMPILED_RUNTIME`). It does
+  **not** affect the latency-sensitive `wp-*` hook bins (`wp-pretool-guard`,
+  `wp-post-tool`, etc.) — those stay on the compiled binary to avoid cold-bun startup
+  on every Edit/Write. Iterate on hook code with `bun src/hooks/…` directly.
 - Audit commands are `wp audit <kind>` or MCP `wp_audit`; do not invent a
   separate generic agent subcommand namespace.
-- Always use the repo-owned command wrappers (`just`, `pnpm`, `turbo`, etc.)
+- Always use the repo-owned command wrappers (`wp`, `vp`, `bun`, `just`, etc.)
   for repo-owned workflows. Do not invoke underlying tools directly when a
   wrapped recipe exists.
 - If you are about to run `vitest`, `test`, `lint`, `typecheck`, `build`,

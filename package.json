@@ -43,7 +43,8 @@
     "docs-check-refs": "bin/docs-check-refs.js",
     "docs-check-stale": "bin/docs-check-stale.js",
     "docs-lint": "bin/docs-lint.js",
-    "docs-migrate": "bin/docs-migrate.js"
+    "docs-migrate": "bin/docs-migrate.js",
+    "with-secrets": "bin/with-secrets"
   },
   "files": [
     "bin/wp",
@@ -180,7 +181,6 @@
         "default": "./dist/esm/index.js"
       }
     },
-    "./package.json": "./package.json",
     "./bundle": {
       "import": {
         "types": "./dist/esm/cli/bundle/index.d.ts",
@@ -545,7 +545,8 @@
   },
   "scripts": {
     "setup:agent": "wp setup",
-    "build": "tshy && bun src/build/generate-oxlintrc.ts && bun src/build/normalize-tsconfig-json-exports.ts && vp run chmod-bins && vp run link-self-bins",
+    "wp:source": "WP_FORCE_SOURCE=1 bun src/cli/cli.ts",
+    "build": "tshy && bun src/build/blueprint-migration-assets.ts && bun src/build/generate-oxlintrc.ts && bun src/build/normalize-tsconfig-json-exports.ts && vp run chmod-bins && vp run link-self-bins",
     "build:runtime-binaries": "bun scripts/build-runtime-binaries.ts",
     "stage:plugin-runtime": "bun scripts/stage-plugin-runtime-artifacts.ts",
     "postbuild": "vp run generate-skills && vp run sync-doc-templates",
@@ -561,8 +562,6 @@
     "release:publish": "bun scripts/release-publish.ts",
     "typecheck": "wp typecheck",
     "test": "vitest run --exclude '**/*.integration.test.ts' --maxWorkers 1 && vitest run --no-file-parallelism .integration.test.ts --testTimeout 30000",
-    "test:unit": "vitest run --exclude '**/*.integration.test.ts' --maxWorkers 1",
-    "test:integration": "vitest run --no-file-parallelism .integration.test.ts --testTimeout 30000",
     "test:mutation": "bun stryker run stryker.config.ts",
     "eval": "bun src/runners/evals/index.ts",
     "lint": "wp lint",
@@ -714,6 +713,11 @@
     "node": ">=24"
   },
   "packageManager": "pnpm@11.1.1",
+  "pnpm": {
+    "overrides": {
+      "qs": "6.15.2"
+    }
+  },
   "optionalDependencies": {
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/vitest-runner": "^9.6.1",

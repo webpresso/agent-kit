@@ -1,11 +1,16 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
-import { buildTestCommand, buildVitestCommand, buildVpTestCommand } from './command-builder.js'
+import {
+  buildTestCommand,
+  buildVitestCommand,
+  buildVpTestCommand,
+  isCommandSequenceConfig,
+} from './command-builder.js'
 
 const tempDirs: string[] = []
 
@@ -251,6 +256,33 @@ describe('buildTestCommand recursion safety', () => {
     })
   })
 
+  it('bypasses vp run when the local mutation script recursively invokes wp test --mutation', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'wp-test-mutation-recursive-'))
+    tempDirs.push(cwd)
+    writeFileSync(
+      join(cwd, 'package.json'),
+      JSON.stringify({
+        scripts: {
+          test: 'vitest run',
+          'test:mutation': 'wp test --mutation',
+          mutation: 'wp test --mutation',
+        },
+        devDependencies: { vitest: '^4.0.0' },
+      }),
+      'utf8',
+    )
+
+    expect(buildTestCommand({ type: 'all', values: [] }, { cwd, mutation: true })).toEqual({
+      command: 'rtk',
+      args: [
+        expect.stringContaining('tsx'),
+        expect.stringContaining('stryker'),
+        'run',
+        'stryker.config.ts',
+      ],
+    })
+  })
+
   it('keeps custom non-recursive test scripts on vp run', () => {
     const cwd = mkdtempSync(join(tmpdir(), 'wp-test-custom-'))
     tempDirs.push(cwd)
@@ -285,5 +317,156 @@ describe('buildTestCommand', () => {
       command: 'rtk',
       args: [expect.stringContaining('vitest'), 'run', 'apps/cli2/src/commands/target.test.ts'],
     })
+  })
+
+  it('builds a direct unit-suite workspace vitest command', () => {
+    expect(buildTestCommand({ type: 'all', values: [] }, { suite: 'unit' })).toEqual({
+      command: 'rtk',
+      args: [
+        expect.stringContaining('vitest'),
+        'run',
+        '--exclude',
+        '**/*.integration.test.ts',
+        '--maxWorkers',
+        '1',
+      ],
+    })
+  })
+
+  it('builds a direct integration-suite workspace vitest command', () => {
+    expect(buildTestCommand({ type: 'all', values: [] }, { suite: 'integration' })).toEqual({
+      command: 'rtk',
+      args: [
+        expect.stringContaining('vitest'),
+        'run',
+        '--no-file-parallelism',
+        '.integration.test.ts',
+        '--testTimeout',
+        '30000',
+      ],
+    })
+  })
+
+  it('builds unit then integration for suite=all', () => {
+    const command = buildTestCommand(
+      { type: 'all', values: [] },
+      { suite: 'all', coverage: true, testNamePattern: 'core' },
+    )
+
+    expect(isCommandSequenceConfig(command)).toBe(true)
+    if (!isCommandSequenceConfig(command)) return
+
+    expect(command.sequence).toEqual([
+      {
+        command: 'rtk',
+        args: [
+          expect.stringContaining('vitest'),
+          'run',
+          '--exclude',
+          '**/*.integration.test.ts',
+          '--maxWorkers',
+          '1',
+          '--coverage',
+          '-t',
+          'core',
+        ],
+      },
+      {
+        command: 'rtk',
+        args: [
+          expect.stringContaining('vitest'),
+          'run',
+          '--no-file-parallelism',
+          '.integration.test.ts',
+          '--testTimeout',
+          '30000',
+          '--coverage',
+          '-t',
+          'core',
+        ],
+      },
+    ])
+  })
+
+  it('builds a direct vitest package suite command for concrete vitest-backed packages', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'wp-test-package-suite-'))
+    tempDirs.push(cwd)
+    writeFileSync(join(cwd, 'package.json'), JSON.stringify({ name: 'workspace-root' }), 'utf8')
+    mkdirSync(join(cwd, 'packages', 'pkg-a'), { recursive: true })
+    writeFileSync(
+      join(cwd, 'packages', 'pkg-a', 'package.json'),
+      JSON.stringify({ devDependencies: { vitest: '^4.0.0' } }),
+      'utf8',
+    )
+
+    expect(
+      buildTestCommand(
+        { type: 'package', values: ['pkg-a'] },
+        { cwd, suite: 'integration', coverage: true },
+      ),
+    ).toEqual({
+      command: 'rtk',
+      args: [
+        'vp',
+        'exec',
+        '--filter',
+        'pkg-a',
+        '--',
+        'vitest',
+        'run',
+        '--no-file-parallelism',
+        '.integration.test.ts',
+        '--testTimeout',
+        '30000',
+        '--coverage',
+      ],
+    })
+  })
+
+  it('rejects suite selection for file targets', () => {
+    expect(() =>
+      buildTestCommand(
+        { type: 'file', values: ['apps/cli2/src/commands/target.test.ts'] },
+        { suite: 'unit' },
+      ),
+    ).toThrow(/--suite cannot be combined with file targets/i)
+  })
+
+  it('rejects suite selection with mutation, workers, or watch mode', () => {
+    expect(() =>
+      buildTestCommand({ type: 'all', values: [] }, { suite: 'unit', mutation: true }),
+    ).toThrow(/--suite cannot be combined with --mutation/i)
+    expect(() =>
+      buildTestCommand({ type: 'all', values: [] }, { suite: 'unit', workers: true }),
+    ).toThrow(/--suite cannot be combined with --workers/i)
+    expect(() =>
+      buildTestCommand({ type: 'all', values: [] }, { suite: 'unit', watch: true }),
+    ).toThrow(/--suite cannot be combined with --watch/i)
+  })
+
+  it('fails loudly when suite targets do not resolve to a concrete package', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'wp-test-package-suite-missing-'))
+    tempDirs.push(cwd)
+    writeFileSync(join(cwd, 'package.json'), JSON.stringify({ name: 'workspace-root' }), 'utf8')
+
+    expect(() =>
+      buildTestCommand({ type: 'package', values: ['missing-pkg'] }, { cwd, suite: 'unit' }),
+    ).toThrow(/could not resolve package "missing-pkg"/i)
+  })
+
+  it('fails loudly when suite targets are not vitest-backed packages', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'wp-test-package-suite-non-vitest-'))
+    tempDirs.push(cwd)
+    writeFileSync(join(cwd, 'package.json'), JSON.stringify({ name: 'workspace-root' }), 'utf8')
+    mkdirSync(join(cwd, 'packages', 'pkg-a'), { recursive: true })
+    writeFileSync(
+      join(cwd, 'packages', 'pkg-a', 'package.json'),
+      JSON.stringify({ scripts: { test: 'node test.js' } }),
+      'utf8',
+    )
+
+    expect(() =>
+      buildTestCommand({ type: 'package', values: ['pkg-a'] }, { cwd, suite: 'unit' }),
+    ).toThrow(/vitest-backed package target/i)
   })
 })

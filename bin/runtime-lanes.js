@@ -103,9 +103,7 @@ export function getWpCommandLane(forwardedArgs = []) {
   if (RUNTIME_REQUIRED_WP_COMMANDS.includes(command)) return RUNTIME_LANE
   if (command === 'hooks') {
     const subcommand = resolveHooksSubcommand(forwardedArgs)
-    return RUNTIME_REQUIRED_HOOKS_SUBCOMMANDS.includes(subcommand)
-      ? RUNTIME_LANE
-      : JS_HOLDBACK_LANE
+    return RUNTIME_REQUIRED_HOOKS_SUBCOMMANDS.includes(subcommand) ? RUNTIME_LANE : JS_HOLDBACK_LANE
   }
   if (PHASE2_RUNTIME_WP_COMMANDS.includes(command)) return PHASE2_RUNTIME_LANE
   if (JS_HOLDBACK_WP_COMMANDS.includes(command)) return JS_HOLDBACK_LANE

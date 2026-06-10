@@ -3,12 +3,19 @@ import type { CAC } from 'cac'
 
 import { spawnSync } from 'node:child_process'
 
-import { buildTestCommand, resolveTestTarget } from '#test'
+import {
+  buildTestCommand,
+  isCommandSequenceConfig,
+  parseTestSuiteName,
+  resolveTestTarget,
+} from '#test'
 
 export const TEST_COMMAND_HELP = [
   'Run tests through the portable webpresso test surface.',
   '',
   'Examples:',
+  '  wp test --suite unit',
+  '  wp test --suite integration',
   '  wp test --package cli2',
   '  wp test --file apps/cli2/src/commands/target.test.ts',
   '  wp test --package cli2 -- --reporter=dot',
@@ -35,6 +42,7 @@ export function createAkTestCommandConfig(input: AkTestCommandInput): CommandCon
 export function registerTestCommand(cli: CAC): void {
   cli
     .command('test [...targets]', TEST_COMMAND_HELP)
+    .option('--suite <name>', 'Run the all, unit, or integration suite')
     .option('--package <name>', 'Run tests for a package target')
     .option('--file <path>', 'Run tests for a file target')
     .option('--watch', 'Run Vitest in watch mode or vp test:watch for package targets')
@@ -56,6 +64,7 @@ export function registerTestCommand(cli: CAC): void {
         file: flags.file as string | string[] | undefined,
         targets: targets ?? [],
         passthrough: getPassthroughArgs(rawArgv),
+        suite: parseTestSuiteName(flags.suite as string | undefined),
         watch: Boolean(flags.watch),
         coverage: Boolean(flags.coverage),
         testNamePattern: flags.testNamePattern as string | undefined,
@@ -78,6 +87,14 @@ export function registerTestCommand(cli: CAC): void {
 }
 
 function runCommand(config: CommandConfig): number {
+  if (isCommandSequenceConfig(config)) {
+    for (const step of config.sequence) {
+      const exitCode = runCommand(step)
+      if (exitCode !== 0) return exitCode
+    }
+    return 0
+  }
+
   const result = spawnSync(config.command, config.args, {
     env: { ...process.env, ...config.env },
     stdio: 'inherit',
@@ -92,6 +109,10 @@ function getPassthroughArgs(argv: readonly string[]): string[] {
 }
 
 function formatShellCommand(config: CommandConfig): string {
+  if (isCommandSequenceConfig(config)) {
+    return config.sequence.map(formatShellCommand).join(' && ')
+  }
+
   return [config.command, ...config.args].map(shellQuote).join(' ')
 }
 

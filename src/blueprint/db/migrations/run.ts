@@ -2,12 +2,19 @@ import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import type { Database } from '#db/sqlite.js'
-import { resolvePackageAssetPreferred } from '#utils/package-assets.js'
+import { findPackageAsset } from '#utils/package-assets.js'
 
-const MIGRATIONS_DIR = resolvePackageAssetPreferred([
-  'src/blueprint/db/migrations',
-  'dist/esm/blueprint/db/migrations',
-])
+const PACKAGED_MIGRATIONS_RELATIVE_DIR = 'dist/esm/blueprint/db/migrations'
+
+function resolvePackagedMigrationsDir(): string {
+  const found = findPackageAsset(PACKAGED_MIGRATIONS_RELATIVE_DIR)
+  if (found) return found
+
+  throw new Error(
+    `Missing packaged blueprint migrations at ${PACKAGED_MIGRATIONS_RELATIVE_DIR}. ` +
+      '@webpresso/agent-kit runtime DB migrations require the published SQL assets under dist/esm.',
+  )
+}
 
 function ensureSchemaVersionTable(db: Database): void {
   db.exec(
@@ -29,8 +36,9 @@ function parseMigrationVersion(filename: string): number | null {
 }
 
 export function runMigrations(db: Database): void {
+  const migrationsDir = resolvePackagedMigrationsDir()
   ensureSchemaVersionTable(db)
-  const files = readdirSync(MIGRATIONS_DIR)
+  const files = readdirSync(migrationsDir)
     .filter((f) => f.endsWith('.sql'))
     .sort()
 
@@ -38,7 +46,7 @@ export function runMigrations(db: Database): void {
     const version = parseMigrationVersion(file)
     if (version === null) continue
 
-    const sql = readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8')
+    const sql = readFileSync(path.join(migrationsDir, file), 'utf8')
     db.exec('BEGIN IMMEDIATE')
     try {
       const applied = getAppliedVersions(db)

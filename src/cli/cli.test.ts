@@ -7,6 +7,7 @@ const originalArgv = [...process.argv]
 afterEach(() => {
   process.argv = [...originalArgv]
   vi.restoreAllMocks()
+  vi.unstubAllEnvs()
 })
 
 async function runAk(
@@ -49,6 +50,9 @@ describe('wp root command surface', () => {
       'install               Install dependencies through the managed vp facade',
     )
     expect(result.stdout.join('\n')).toContain(
+      'Update local dependencies by default; --global refreshes codex, tmux, omx, omc, gstack, and wp',
+    )
+    expect(result.stdout.join('\n')).toContain(
       'roadmap               List or show parent roadmaps directly',
     )
     expect(result.stdout.join('\n')).toContain(
@@ -60,7 +64,7 @@ describe('wp root command surface', () => {
     )
     expect(result.stdout.join('\n')).toContain('skill                 Manage consumer skills')
     expect(result.stdout.join('\n')).toContain('rule                  Manage consumer rules')
-    expect(result.stdout.join('\n')).not.toContain('refresh')
+    expect(result.stdout.join('\n')).not.toContain('refresh                ')
   })
 
   it('routes wp setup to the scaffold command help', async () => {
@@ -70,6 +74,17 @@ describe('wp root command surface', () => {
     expect(result.stdout.join('\n')).toContain('wp setup')
     expect(result.stdout.join('\n')).toContain('--with <skills>')
     expect(result.stdout.join('\n')).toContain('--project')
+  })
+
+  it('routes wp update to command-specific help with the global mode option', async () => {
+    const result = await runAk(['update', '--help'])
+
+    expect(result.code).toBe(0)
+    expect(result.stdout.join('\n')).toContain('wp update')
+    expect(result.stdout.join('\n')).toContain('--global')
+    expect(result.stdout.join('\n')).toContain(
+      'Refresh codex, tmux, omx, omc, gstack, and wp instead of local dependencies',
+    )
   })
 
   it('routes wp roadmap to roadmap help', async () => {
@@ -143,5 +158,44 @@ describe('wp root command surface', () => {
 
     expect(result.code).toBe(0)
     expect(result.stdout.join('\n')).toContain('sync                  Sync agent rules')
+  })
+
+  it('rejects package-manager wrapper invocation for normal commands', async () => {
+    vi.stubEnv('npm_lifecycle_event', 'wp')
+    vi.stubEnv('npm_execpath', '/opt/homebrew/Cellar/bun/1.3.13/bin/bun')
+
+    const result = await runAk(['test'])
+
+    expect(result.code).toBe(1)
+    expect(result.stderr.join('\n')).toContain('wrapper invocation is forbidden')
+    expect(result.stderr.join('\n')).toContain('Use wp_test MCP tool when available')
+    expect(result.stderr.join('\n')).toContain('run direct `wp test`')
+  })
+
+  it.each([
+    ['/opt/homebrew/Cellar/bun/1.3.13/bin/bun', 'bun'],
+    ['/opt/homebrew/lib/node_modules/pnpm/bin/pnpm.cjs', 'pnpm'],
+    ['/opt/homebrew/lib/node_modules/npm/bin/npm-cli.js', 'npm'],
+    ['/opt/homebrew/lib/node_modules/yarn/bin/yarn.js', 'yarn'],
+  ])('rejects lifecycle-wrapped wp setup for %s', async (execPath, manager) => {
+    vi.stubEnv('npm_lifecycle_event', 'wp')
+    vi.stubEnv('npm_execpath', execPath)
+
+    const result = await runAk(['setup'])
+
+    expect(result.code).toBe(1)
+    expect(result.stderr.join('\n')).toContain(`forbidden (${manager})`)
+    expect(result.stderr.join('\n')).toContain('run direct `wp setup`')
+  })
+
+  it('keeps help available even inside a package-script lifecycle env', async () => {
+    vi.stubEnv('npm_lifecycle_event', 'wp')
+    vi.stubEnv('npm_execpath', '/opt/homebrew/lib/node_modules/pnpm/bin/pnpm.cjs')
+
+    const result = await runAk(['setup', '--help'])
+
+    expect(result.code).toBe(0)
+    expect(result.stdout.join('\n')).toContain('wp setup')
+    expect(result.stderr.join('\n')).not.toContain('wrapper invocation is forbidden')
   })
 })

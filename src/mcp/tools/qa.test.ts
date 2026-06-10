@@ -153,6 +153,16 @@ describe('wp_qa tool', () => {
       exitCode: 0,
       failures: [],
     })
+    expect(testHandler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cwd: undefined,
+        files: undefined,
+        packages: undefined,
+        timeoutMs: undefined,
+        workspaceSharding: undefined,
+      }),
+      undefined,
+    )
   })
 
   it('preserves the qa envelope while carrying additive compact-output leaf metadata', async () => {

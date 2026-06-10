@@ -63,9 +63,18 @@ describe('WP_ROUTING_BLOCK', () => {
 
   it('lists forbidden alternatives', () => {
     expect(WP_ROUTING_BLOCK).toContain('just test')
+    expect(WP_ROUTING_BLOCK).toContain('bun run test')
     expect(WP_ROUTING_BLOCK).toContain('pnpm test')
+    expect(WP_ROUTING_BLOCK).toContain('bun run wp')
+    expect(WP_ROUTING_BLOCK).toContain('pnpm run wp')
+    expect(WP_ROUTING_BLOCK).toContain('npm run wp')
+    expect(WP_ROUTING_BLOCK).toContain('yarn wp')
+    expect(WP_ROUTING_BLOCK).toContain('vp run wp')
     expect(WP_ROUTING_BLOCK).toContain('just lint')
+    expect(WP_ROUTING_BLOCK).toContain('bun run lint')
     expect(WP_ROUTING_BLOCK).toContain('just qa')
+    expect(WP_ROUTING_BLOCK).toContain('bun run qa')
+    expect(WP_ROUTING_BLOCK).toContain('bun run lint-md')
     expect(WP_ROUTING_BLOCK).toContain('just lint-md')
     expect(WP_ROUTING_BLOCK).toContain('vitest')
     expect(WP_ROUTING_BLOCK).toContain('npx vitest')
@@ -77,7 +86,9 @@ describe('WP_ROUTING_BLOCK', () => {
     expect(WP_ROUTING_BLOCK).toContain('node ./node_modules/oxlint/bin/oxlint')
     expect(WP_ROUTING_BLOCK).toContain('markdownlint-cli2')
     expect(WP_ROUTING_BLOCK).toContain('tsc')
+    expect(WP_ROUTING_BLOCK).toContain('bun run typecheck')
     expect(WP_ROUTING_BLOCK).toContain('node ./node_modules/typescript/bin/tsc')
+    expect(WP_ROUTING_BLOCK).toContain('bun run e2e')
   })
 
   it('routes markdown lint commands through wp_qa', () => {
@@ -99,13 +110,15 @@ describe('WP_ROUTING_BLOCK', () => {
   })
 
   it('defines wp CLI fallback and hook diagnostic guidance', () => {
-    expect(WP_ROUTING_BLOCK).toContain('matching wp CLI command')
+    expect(WP_ROUTING_BLOCK).toContain('matching direct wp CLI command')
+    expect(WP_ROUTING_BLOCK).toContain('Never invoke wp through package-manager wrappers')
     expect(WP_ROUTING_BLOCK).toContain('Do not fall through to raw tool bins under node_modules')
     expect(WP_ROUTING_BLOCK).toContain('<hook_diagnostics>')
     expect(WP_ROUTING_BLOCK).toContain('Prefer wp hook &lt;name&gt;')
     expect(WP_ROUTING_BLOCK).toContain(
       'Direct wp-* hook bins remain generated-hook runtime internals',
     )
+    expect(WP_ROUTING_BLOCK).toContain('Direct wp is the only public CLI fallback')
     expect(WP_ROUTING_BLOCK).not.toContain('use just recipes directly')
   })
 

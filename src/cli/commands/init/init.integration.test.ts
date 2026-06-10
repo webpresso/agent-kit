@@ -387,6 +387,7 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     // injects agent-kit's shared --config.
     expect(existsSync(join(repo, 'oxlint.config.ts'))).toBe(false)
     expect(existsSync(join(repo, 'stryker.config.ts'))).toBe(true)
+    expect(readFileSync(join(repo, 'stryker.config.ts'), 'utf8')).not.toContain('mutate:')
     expect(existsSync(join(repo, 'playwright.config.ts'))).toBe(true)
     expect(existsSync(join(repo, 'src', 'quality-sample.ts'))).toBe(true)
     expect(existsSync(join(repo, 'src', 'quality-sample.test.ts'))).toBe(true)
@@ -816,10 +817,11 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
     expect(allOutput).toContain('gstack')
   })
 
-  it('prints next-steps block (wp blueprint new, wp gain) on non-dry-run', async () => {
+  it('prints the canonical next-steps block on non-dry-run', async () => {
     await runInit({ cwd: repo, yes: true }, { stdout: silentStdout })
     const allOutput = logLines.join('\n')
-    expect(allOutput).toContain('wp blueprint new')
+    expect(allOutput).toContain('wp hooks doctor')
+    expect(allOutput).toContain('wp_audit(kind="docs-frontmatter")')
     expect(allOutput).toContain('wp gain')
   })
 
@@ -844,7 +846,8 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
   it('omits next-steps block in --dry-run mode', async () => {
     await runInit({ cwd: repo, yes: true, 'dry-run': true }, { stdout: silentStdout })
     const allOutput = logLines.join('\n')
-    expect(allOutput).not.toContain('wp blueprint new')
+    expect(allOutput).not.toContain('wp hooks doctor')
+    expect(allOutput).not.toContain('wp_audit(kind="docs-frontmatter")')
     expect(allOutput).not.toContain('wp gain')
   })
 

@@ -61,6 +61,8 @@ interface NativePluginRuntimeStatus {
 const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested')
 const RTK_INSTALL_HINT = 'rtk requested via --with rtk but not on PATH; brew install rtk'
 const HOST_SMOKE_ENV = 'WP_RUN_HOST_SMOKE'
+const OPERATOR_PRECEDENCE_DETAIL =
+  'MCP first (`wp_*` tools), direct `wp` only as fallback, and never `bun run wp` / `pnpm run wp` / `npm run wp` / `yarn wp` / `vp run wp`'
 
 /** Hook bin definitions */
 const HOOK_BINS: { name: string; binName: string; checkStdin: boolean }[] = [
@@ -132,6 +134,15 @@ function resolveHookBin(binName: string): string | null {
     return resolve(root, binScript)
   } catch {
     return null
+  }
+}
+
+function operatorPrecedenceCheck(): DoctorCheck {
+  return {
+    name: 'operator flow',
+    ok: true,
+    advisory: true,
+    detail: OPERATOR_PRECEDENCE_DETAIL,
   }
 }
 
@@ -1355,6 +1366,7 @@ export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<
   checks.push({ advisory: true, ...checkNativePluginRuntime() })
   checks.push({ advisory: true, ...checkOmxPluginCacheStaleSurfaceRepair() })
   checks.push({ advisory: true, ...checkThirdPartyHookCoexistence() })
+  checks.push(operatorPrecedenceCheck())
   checks.push({
     name: 'managed hooks installed (.claude/settings.json)',
     advisory: true,
@@ -1483,6 +1495,14 @@ export async function printHooksDoctor(opts: RunHooksDoctorOptions = {}): Promis
       console.error(`    next: ${fixResult.nextCommand}`)
     }
   }
+
+  console.error('')
+  console.error('Operator flow:')
+  console.error(`  • ${OPERATOR_PRECEDENCE_DETAIL}`)
+  console.error('  • After `wp setup`, run `wp hooks doctor` as the canonical success check.')
+  console.error(
+    '  • First host success: ask Claude or Codex to run `wp_audit(kind="docs-frontmatter")`.',
+  )
 
   if (!result.ok) {
     console.error('')

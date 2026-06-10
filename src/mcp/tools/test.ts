@@ -10,6 +10,7 @@ import { z } from 'zod'
 import type { ToolDescriptor } from '#mcp/auto-discover'
 import * as testRunner from '#mcp/runners/test'
 import { applyOutputTransform } from '#output-transforms/index'
+import { TEST_SUITE_VALUES, normalizeTestSuiteName } from '#test'
 
 import { resolveProjectRoot } from './_shared/project-root.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
@@ -22,6 +23,7 @@ import {
 const inputSchema = z
   .object({
     cwd: z.string().optional(),
+    suite: z.enum(TEST_SUITE_VALUES).optional(),
     packages: z.array(z.string()).optional(),
     files: z.array(z.string()).optional(),
     timeoutMs: z.number().int().positive().max(MCP_SAFE_TEST_BUDGET_MS).optional(),
@@ -34,6 +36,7 @@ export type AkTestInput = z.infer<typeof inputSchema>
 
 const outputSchema = createSummaryOutputSchema({
   details: z.object({
+    suite: z.enum(TEST_SUITE_VALUES).optional(),
     packages: z.array(z.string()).optional(),
     files: z.array(z.string()).optional(),
     workspaceSharding: z
@@ -93,6 +96,7 @@ const tool: ToolDescriptor = {
     const cwd = resolveProjectRoot(input.cwd ? { cwd: input.cwd } : {})
     const result = await testRunner.runTests({
       cwd,
+      suite: input.suite,
       packages: input.packages,
       files: input.files,
       signal: extra?.signal,
@@ -107,6 +111,7 @@ const tool: ToolDescriptor = {
       summary: summarizeOutcome(input, result),
       exitCode: result.exitCode,
       details: {
+        suite: normalizeTestSuiteName(input.suite),
         packages: input.packages,
         files: input.files,
         workspaceSharding: input.workspaceSharding,

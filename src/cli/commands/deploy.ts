@@ -8,6 +8,7 @@ export const DEPLOY_COMMAND_HELP = [
   'Examples:',
   '  wp deploy --lane prd --dry-run',
   '  wp deploy --lane preview_pr_123 --plan-json',
+  '  wp deploy --lane preview_pr_123 --destroy',
 ].join('\n')
 
 export function registerDeployCommand(cli: CAC): void {
@@ -15,6 +16,8 @@ export function registerDeployCommand(cli: CAC): void {
     .command('deploy', DEPLOY_COMMAND_HELP)
     .option('--lane <lane>', 'Deploy lane: dev, preview_main, preview_pr_<n>, or prd')
     .option('--dry-run', 'Ask the adapter for its dry-run deploy plan')
+    .option('--destroy', 'Request destroy mode from the deploy adapter')
+    .option('--release-version <version>', 'Release version to thread into the deploy request')
     .option('--plan-json', 'Print the validated deploy plan JSON without executing steps')
     .action(async (options: Record<string, unknown>) => {
       const lane = typeof options.lane === 'string' ? options.lane : undefined
@@ -27,6 +30,9 @@ export function registerDeployCommand(cli: CAC): void {
           cwd: process.cwd(),
           lane,
           dryRun: Boolean(options.dryRun),
+          destroy: Boolean(options.destroy),
+          releaseVersion:
+            typeof options.releaseVersion === 'string' ? options.releaseVersion : undefined,
           planJson: Boolean(options.planJson),
         })
       } catch (error) {

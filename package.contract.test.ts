@@ -3,6 +3,7 @@ import {
   chmodSync,
   existsSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -14,12 +15,30 @@ import { tmpdir } from 'node:os'
 
 import { afterAll, describe, expect, it } from 'vitest'
 
+import { createInstalledBlueprintMigrationSmokeScript } from './scripts/packed-blueprint-migration-smoke.js'
+
 const REPO_ROOT = process.cwd()
 const PACKAGE_JSON_PATH = join(REPO_ROOT, 'package.json')
 const DIST_SENTINEL = join(REPO_ROOT, 'dist', 'esm', 'index.js')
+const MIGRATION_SENTINEL = join(
+  REPO_ROOT,
+  'dist',
+  'esm',
+  'blueprint',
+  'db',
+  'migrations',
+  '0001_seed.sql',
+)
 const CHANGESET_CONFIG_PATH = join(REPO_ROOT, '.changeset', 'config.json')
 const NPMRC_PATH = join(REPO_ROOT, '.npmrc')
 const PACKAGE_SURFACE_PATH = join(REPO_ROOT, 'package-surface.json')
+const BLUEPRINT_MIGRATIONS_SOURCE_DIR = join(REPO_ROOT, 'src', 'blueprint', 'db', 'migrations')
+const EXPECTED_BLUEPRINT_MIGRATION_SQL_FILES = readdirSync(BLUEPRINT_MIGRATIONS_SOURCE_DIR)
+  .filter((file) => file.endsWith('.sql'))
+  .sort()
+const EXPECTED_BLUEPRINT_SCHEMA_VERSIONS = EXPECTED_BLUEPRINT_MIGRATION_SQL_FILES.map((file) =>
+  Number.parseInt(file.slice(0, file.indexOf('_')), 10),
+)
 const ORIGINAL_PACKAGE_JSON_TEXT = readFileSync(PACKAGE_JSON_PATH, 'utf8')
 const FORBIDDEN_TARBALL_PATHS = [
   /^dist\/.*\.map$/,
@@ -77,6 +96,16 @@ function ensureBuiltPackedDist() {
       },
     })
     execFileSync('bun', ['src/build/normalize-tsconfig-json-exports.ts'], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        HUSKY: '0',
+      },
+    })
+  }
+  if (!existsSync(MIGRATION_SENTINEL)) {
+    execFileSync('bun', ['src/build/blueprint-migration-assets.ts'], {
       cwd: REPO_ROOT,
       encoding: 'utf8',
       env: {
@@ -280,6 +309,14 @@ describe('tooling umbrella package contract', () => {
     expect(listPackedManifestCatalogSpecifiers(packedManifest)).toEqual([])
   }, 30_000)
 
+  it('packs the built blueprint migration SQL assets under dist/esm', () => {
+    const packedPaths = readPackedTarballArtifact().paths
+
+    for (const file of EXPECTED_BLUEPRINT_MIGRATION_SQL_FILES) {
+      expect(packedPaths).toContain(`dist/esm/blueprint/db/migrations/${file}`)
+    }
+  }, 30_000)
+
   it('packed consumers receive runtime-owned setup guidance without losing authoring deps', () => {
     const { tarballPath, cleanup } = createPackedTarball()
     const tmpRoot = mkdtempSync(join(tmpdir(), 'wp-packed-consumer-'))
@@ -354,6 +391,50 @@ describe('tooling umbrella package contract', () => {
     } finally {
       cleanup()
       rmSync(launcherRoot, { force: true, recursive: true })
+      rmSync(tmpRoot, { force: true, recursive: true })
+    }
+  }, 120_000)
+
+  it('installed packed consumers can execute blueprint DB migrations from the packaged dist asset path', () => {
+    const { tarballPath, cleanup } = createPackedTarball()
+    const tmpRoot = mkdtempSync(join(tmpdir(), 'wp-packed-migration-consumer-'))
+
+    try {
+      writeFileSync(
+        join(tmpRoot, 'package.json'),
+        JSON.stringify({ name: 'packed-migration-smoke', private: true }, null, 2) + '\n',
+      )
+      execFileSync('npm', ['install', tarballPath], {
+        cwd: tmpRoot,
+        encoding: 'utf8',
+        env: { ...process.env, HUSKY: '0' },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+
+      const packageRoot = join(tmpRoot, 'node_modules', '@webpresso', 'agent-kit')
+      const smokeOutput = execFileSync(
+        'node',
+        [
+          '--input-type=module',
+          '--eval',
+          createInstalledBlueprintMigrationSmokeScript({
+            packageRoot,
+            expectedSqlFiles: EXPECTED_BLUEPRINT_MIGRATION_SQL_FILES,
+            expectedVersions: EXPECTED_BLUEPRINT_SCHEMA_VERSIONS,
+          }),
+        ],
+        {
+          cwd: tmpRoot,
+          encoding: 'utf8',
+          env: { ...process.env, HUSKY: '0' },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      )
+
+      expect(smokeOutput).toContain('"versions"')
+      expect(smokeOutput).toContain('"0001_seed.sql"')
+    } finally {
+      cleanup()
       rmSync(tmpRoot, { force: true, recursive: true })
     }
   }, 120_000)

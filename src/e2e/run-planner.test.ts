@@ -170,6 +170,7 @@ describe('planE2eRun', () => {
       {
         batchKey: 'journeys',
         envProfile: 'journeys',
+        runtimeProfile: 'journeys',
         env: {
           E2E_SUITE: 'smoke',
           PLAYWRIGHT_BASE_URL: 'http://127.0.0.1:4173',
@@ -179,6 +180,7 @@ describe('planE2eRun', () => {
             suiteId: 'smoke',
             batchKey: 'journeys',
             envProfile: 'journeys',
+            runtimeProfile: 'journeys',
             runner: 'playwright',
             logName: 'smoke',
             reportDir: undefined,
@@ -209,12 +211,14 @@ describe('planE2eRun', () => {
       {
         batchKey: 'platform-chef-serial',
         envProfile: 'platform-chef-serial',
+        runtimeProfile: 'platform-chef-serial',
         env: undefined,
         runs: [
           {
             suiteId: 'platform-api',
             batchKey: 'platform-chef-serial',
             envProfile: 'platform-chef-serial',
+            runtimeProfile: 'platform-chef-serial',
             runner: 'vitest',
             logName: 'platform-api-serial',
             reportDir: undefined,
@@ -263,6 +267,7 @@ describe('groupPlannedE2eRuns', () => {
       {
         batchKey: 'shared',
         envProfile: 'alpha',
+        runtimeProfile: 'alpha',
         env: { FOO: 'one' },
         runs: [
           {

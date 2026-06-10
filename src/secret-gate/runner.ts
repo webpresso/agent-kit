@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process'
 
+import { buildRuntimeProcessEnv } from '#runtime/index.js'
+
 export interface SecretGateCommand {
   readonly command: string
   readonly args: readonly string[]
@@ -62,7 +64,7 @@ export function runSecretGateCommand(
   return new Promise((resolve) => {
     const child = spawn(command.command, [...command.args], {
       cwd: options.cwd,
-      env: process.env,
+      env: buildRuntimeProcessEnv(options.cwd, process.env),
       detached: process.platform !== 'win32',
     })
 

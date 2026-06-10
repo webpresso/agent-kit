@@ -15,10 +15,16 @@ const cliPath = existsSync(sourceCliPath) ? sourceCliPath : builtCliPath
 const cliRuntime = cliPath.endsWith('.ts') ? 'bun' : 'node'
 
 async function withClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
+  const env = { ...process.env, NODE_ENV: 'test' }
+  if (existsSync(sourceCliPath)) {
+    env.WP_MCP_TOOL_MODE = 'filesystem'
+    env.WP_COMPILED_RUNTIME = '0'
+  }
+
   const transport = new StdioClientTransport({
     command: cliRuntime,
     args: [cliPath],
-    env: { ...process.env, NODE_ENV: 'test' },
+    env,
   })
   const client = new Client({ name: 'webpresso-test', version: '0.0.0' })
 
@@ -53,11 +59,11 @@ describe('mcp server integration', () => {
     expect(wpTest).toBeDefined()
     expect(wpTest?.inputSchema.type).toBe('object')
     expect(wpTest?.inputSchema.properties).toMatchObject({
+      suite: expect.any(Object),
       packages: expect.any(Object),
       files: expect.any(Object),
     })
     expect(wpTest?.inputSchema.properties).not.toHaveProperty('backend')
-    expect(wpTest?.inputSchema.properties).not.toHaveProperty('suite')
     expect(wpTest?.outputSchema?.properties).toMatchObject({
       passed: expect.any(Object),
       summary: expect.any(Object),
@@ -142,11 +148,12 @@ describe('mcp server integration', () => {
   it('passes through tool outputSchema in tools/list and structuredContent in tools/call', async () => {
     // Use a unique suffix per run so parallel test workers never collide on the
     // same filename or tool name inside the shared sourceToolsDir.
-    const runId = mkdtempSync(resolve(tmpdir(), 'mcp-fixture-'))
-      .split('/')
-      .pop()
-      ?.replace(/[^a-z0-9]/gi, '')
-      .slice(-8) ?? Date.now().toString(36)
+    const runId =
+      mkdtempSync(resolve(tmpdir(), 'mcp-fixture-'))
+        .split('/')
+        .pop()
+        ?.replace(/[^a-z0-9]/gi, '')
+        .slice(-8) ?? Date.now().toString(36)
     rmSync(resolve(tmpdir(), `mcp-fixture-${runId}`), { recursive: true, force: true })
 
     const toolName = `zz_structured_content_plumbing_${runId}`

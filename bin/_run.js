@@ -13,6 +13,7 @@ import {
 
 export const BIN_ENTRYPOINTS = {
   wp: 'src/cli/cli.ts',
+  'with-secrets': 'src/runtime/with-secrets-cli.ts',
   'wp-pretool-guard': 'src/hooks/pretool-guard/index.ts',
   'wp-post-tool': 'src/hooks/post-tool/lint-after-edit.ts',
   'wp-stop-qa': 'src/hooks/stop/qa-changed-files.ts',
@@ -263,7 +264,9 @@ function buildRuntimeLaunchPlan({
 
   if (!binaryPath) {
     if (allowRuntimeFallback) return null
-    throw new Error(formatMissingRuntimeDiagnostic({ binName, repoRoot, manifest, target, candidates }))
+    throw new Error(
+      formatMissingRuntimeDiagnostic({ binName, repoRoot, manifest, target, candidates }),
+    )
   }
 
   return {
@@ -299,6 +302,7 @@ export function buildLaunchPlan({
   runtimeBinaryPath,
   runtimeManifest,
   forceCompiledRuntime = process.env.WP_FORCE_COMPILED_RUNTIME === '1',
+  sourceOverride = process.env.WP_FORCE_SOURCE === '1',
   nodeExecPath = process.execPath,
   currentNodeVersion = process.version,
   pinnedNodeVersion = resolvePinnedNodeVersion(repoRoot),
@@ -314,6 +318,17 @@ export function buildLaunchPlan({
 
   const sourceEntrypoint = join(repoRoot, sourceRelativePath)
   const hasSource = sourceExists ?? existsSync(sourceEntrypoint)
+
+  // WP_FORCE_SOURCE=1 forces agent-kit's own dev CLI gates (audit/test/lint/...) to run
+  // from source, so a stale compiled `bin/runtime/<arch>/wp` never gates dev work. It is
+  // the explicit counterpart to WP_FORCE_COMPILED_RUNTIME and wins when both are set.
+  // Excludes the latency-sensitive per-tool-call hook bins (shouldPreferBuiltDist) so a
+  // global `export WP_FORCE_SOURCE=1` doesn't pay cold-bun startup on every Edit/Write;
+  // iterate on hook code via `bun src/hooks/...` instead. No-op without source (consumers).
+  if (sourceOverride && hasSource && !shouldPreferBuiltDist(binName)) {
+    return buildSourceLaunchPlan(sourceEntrypoint, forwardedArgs)
+  }
+
   const runtimeRequired =
     binName === 'wp'
       ? isMigratedRuntimeWpInvocation(forwardedArgs)

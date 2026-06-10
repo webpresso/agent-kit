@@ -9,6 +9,10 @@ cleanup() {
 trap cleanup EXIT
 
 cd "$ROOT_DIR"
+# Pack-like proof on a fresh checkout needs the runtime migration SQL assets
+# materialized into dist/esm first; keep this repo-local audit hermetic by
+# syncing those ignored dist files before npm pack triggers prepack.
+bun src/build/blueprint-migration-assets.ts >/dev/null
 # Pack into the temp dir (removed by the EXIT trap), not the repo root. Without
 # --pack-destination, npm writes the tarball to cwd and this script never
 # removed it, leaving an untracked webpresso-agent-kit-*.tgz in the working

@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 set -eu
+# Route wp commands to source (mirrors pre-commit; .envrc covers the whole clone via direnv).
+export WP_FORCE_SOURCE=1
 # Prefer local node_modules/.bin/wp; fall back to global wp for repos
 # that rely on the global install (no local agent-kit devDep).
 WP="$(git rev-parse --show-toplevel)/node_modules/.bin/wp"

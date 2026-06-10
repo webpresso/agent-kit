@@ -3,6 +3,8 @@ import type { GenericE2ePlanInput } from './run-planner.js'
 
 import { spawn } from 'node:child_process'
 
+import { buildRuntimeProcessEnv, resolveRuntimeEnvironment } from '#runtime/index.js'
+
 import { loadConfiguredHostAdapter } from './load-host-adapter.js'
 import { planE2eRun, planGenericE2eRun } from './run-planner.js'
 
@@ -90,7 +92,10 @@ export function plannedGroupsToCommandConfigs(
     group.runs.map((run) => ({
       command: run.command,
       args: run.args,
+      cwd: run.cwd,
       env: normalizeEnv({ ...group.env, ...run.env }),
+      runtimeProfile:
+        run.runtimeProfile ?? run.envProfile ?? group.runtimeProfile ?? group.envProfile,
     })),
   )
 }
@@ -136,8 +141,15 @@ async function runCommand(
   options: { signal?: AbortSignal },
 ): Promise<{ exitCode: number; output: string }> {
   return new Promise((resolve) => {
-    const child = spawn(command.command, command.args, {
+    const cwd = command.cwd ?? process.cwd()
+    const resolvedEnv = resolveRuntimeEnvironment({
+      cwd,
+      profile: command.runtimeProfile,
       env: { ...process.env, ...command.env },
+    })
+    const child = spawn(command.command, command.args, {
+      cwd,
+      env: buildRuntimeProcessEnv(cwd, { ...process.env, ...command.env }, resolvedEnv),
       signal: options.signal,
     })
     let stdout = ''

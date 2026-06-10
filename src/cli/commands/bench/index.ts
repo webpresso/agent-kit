@@ -66,21 +66,20 @@ export function registerBenchCommand(cli: CAC): void {
       async (
         subcommand: string,
         options: {
-        allVariants?: boolean
-        dryRun?: boolean
-        model?: string
-        outputRoot?: string
-        scenario?: string
-        trials?: string | number
-        variant?: string
+          allVariants?: boolean
+          dryRun?: boolean
+          model?: string
+          outputRoot?: string
+          scenario?: string
+          trials?: string | number
+          variant?: string
         },
       ) => {
         if (subcommand !== 'session-memory') {
           throw new Error(`Unknown bench subcommand: ${subcommand}`)
         }
-        const { runBenchSessionMemoryCommand } = await import(
-          '#cli/commands/bench/session-memory.js'
-        )
+        const { runBenchSessionMemoryCommand } =
+          await import('#cli/commands/bench/session-memory.js')
         const result = await runBenchSessionMemoryCommand({
           allVariants: Boolean(options.allVariants),
           dryRun: Boolean(options.dryRun),

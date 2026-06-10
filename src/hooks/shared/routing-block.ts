@@ -8,7 +8,9 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
   <description>
     Use the wp_* MCP tools for all test, lint, typecheck, qa, audit, local CI act,
     and Cloudflare Worker tail operations.
-    If a wp_* MCP tool is stale or unavailable, use the matching wp CLI command.
+    If a wp_* MCP tool is stale or unavailable, use the matching direct wp CLI command.
+    Never invoke wp through package-manager wrappers such as bun run wp, pnpm run wp,
+    npm run wp, yarn wp, or vp run wp.
     If context-mode plugin routing is present, let it own ctx_* data-processing nudges.
     These tools return structured, summary-first results and keep output concise.
   </description>
@@ -50,13 +52,17 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
       <trigger>e2e testing philosophy audit, tph-e2e</trigger>
       <tool>wp_audit(kind="tph-e2e")</tool>
     </row>
+    <row>
+      <trigger>package-manager wrappers around wp such as bun run wp, pnpm run wp, npm run wp, yarn wp, vp run wp</trigger>
+      <tool>Use the matching wp_* MCP tool first; otherwise run direct wp</tool>
+    </row>
   </decision_table>
 
   <tools>
     <tool name="wp_test">
       <category>dev-workflow</category>
       <trigger>running tests, verifying test suite, check if tests pass</trigger>
-      <forbidden>just test, pnpm test, vitest, npx vitest, npm exec -- vitest, yarn vitest, bunx vitest, node ./node_modules/vitest/vitest.mjs</forbidden>
+      <forbidden>just test, bun run test, pnpm test, vitest, npx vitest, npm exec -- vitest, yarn vitest, bunx vitest, node ./node_modules/vitest/vitest.mjs</forbidden>
     </tool>
     <tool name="wp_e2e">
       <category>dev-workflow</category>
@@ -66,17 +72,17 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
     <tool name="wp_lint">
       <category>dev-workflow</category>
       <trigger>linting, code style checks, lint errors</trigger>
-      <forbidden>just lint, oxlint, node ./node_modules/oxlint/bin/oxlint</forbidden>
+      <forbidden>just lint, bun run lint, oxlint, node ./node_modules/oxlint/bin/oxlint</forbidden>
     </tool>
     <tool name="wp_typecheck">
       <category>dev-workflow</category>
       <trigger>type checking, TypeScript errors, type errors</trigger>
-      <forbidden>tsc, node ./node_modules/typescript/bin/tsc</forbidden>
+      <forbidden>bun run typecheck, tsc, node ./node_modules/typescript/bin/tsc</forbidden>
     </tool>
     <tool name="wp_qa">
       <category>dev-workflow</category>
       <trigger>quality assurance, full QA pass, qa check, markdown lint, lint-md, markdownlint</trigger>
-      <forbidden>just qa, just lint-md, markdownlint-cli2</forbidden>
+      <forbidden>bun run lint-md, bun run qa, just qa, just lint-md, markdownlint-cli2</forbidden>
     </tool>
     <tool name="wp_audit">
       <category>dev-workflow</category>
@@ -106,6 +112,7 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
   <hook_diagnostics>
     <rule>Prefer wp hook &lt;name&gt; over direct wp-&lt;hook-bin&gt; calls when a wp hook command exists.</rule>
     <rule>Direct wp-* hook bins remain generated-hook runtime internals, not recommended agent diagnostics.</rule>
+    <rule>Direct wp is the only public CLI fallback; do not wrap it in package-manager scripts.</rule>
   </hook_diagnostics>
 
   <package_guidance>
@@ -115,9 +122,18 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
 
   <forbidden_alternatives>
     <command>just test</command>
+    <command>bun run test</command>
     <command>pnpm test</command>
+    <command>bun run wp</command>
+    <command>pnpm run wp</command>
+    <command>npm run wp</command>
+    <command>yarn wp</command>
+    <command>vp run wp</command>
     <command>just lint</command>
+    <command>bun run lint</command>
     <command>just qa</command>
+    <command>bun run qa</command>
+    <command>bun run lint-md</command>
     <command>just lint-md</command>
     <command>vitest</command>
     <command>npx vitest</command>
@@ -127,8 +143,10 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
     <command>node ./node_modules/vitest/vitest.mjs</command>
     <command>oxlint</command>
     <command>node ./node_modules/oxlint/bin/oxlint</command>
+    <command>bun run e2e</command>
     <command>markdownlint-cli2</command>
     <command>tsc</command>
+    <command>bun run typecheck</command>
     <command>node ./node_modules/typescript/bin/tsc</command>
     <command>act</command>
     <command>vp exec act</command>

@@ -139,15 +139,53 @@ describe('wp_test tool', () => {
       ])
     })
 
-    it('rejects `suite` as an unknown input key', async () => {
+    it('accepts suite selection and includes it in structured output details', async () => {
+      writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'workspace-root' }))
+      mkdirSync(join(dir, 'packages', 'x'), { recursive: true })
+      writeFileSync(
+        join(dir, 'packages', 'x', 'package.json'),
+        JSON.stringify({ devDependencies: { vitest: '^4.0.0' } }),
+      )
+      spawnMock.mockReturnValue(fakeChild({ stdout: '{}\n', exitCode: 0 }))
+
+      const result = await wpTestTool.handler({ suite: 'unit', packages: ['x'] })
+      const payload = result.structuredContent as {
+        passed: boolean
+        details?: { suite?: string }
+      }
+
+      expect(spawnMock.mock.calls[0]![1]).toEqual([
+        'exec',
+        '--filter',
+        'x',
+        '--',
+        'vitest',
+        'run',
+        '--exclude',
+        '**/*.integration.test.ts',
+        '--maxWorkers',
+        '1',
+        '--reporter=json',
+        '--no-color',
+      ])
+      expect(payload.passed).toBe(true)
+      expect(payload.details?.suite).toBe('unit')
+    })
+
+    it('rejects invalid suite values before spawning', async () => {
       await expect(wpTestTool.handler({ suite: 'e2e', packages: ['x'] })).rejects.toSatisfy(
-        (error: unknown) => {
-          return (
-            error instanceof Error &&
-            /suite/i.test(error.message) &&
-            /unrecognized key/i.test(error.message)
-          )
-        },
+        (error: unknown) => error instanceof Error && /suite/i.test(error.message),
+      )
+      expect(spawnMock).not.toHaveBeenCalled()
+    })
+
+    it('rejects combining suite selection with file targets', async () => {
+      await expect(
+        wpTestTool.handler({ suite: 'unit', files: ['src/example.test.ts'] }),
+      ).rejects.toSatisfy(
+        (error: unknown) =>
+          error instanceof Error &&
+          /--suite cannot be combined with file targets/i.test(error.message),
       )
       expect(spawnMock).not.toHaveBeenCalled()
     })

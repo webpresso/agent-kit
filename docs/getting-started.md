@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-06-08'
+last_updated: '2026-06-10'
 ---
 
 # Getting started
@@ -148,6 +148,28 @@ Public npm rehearsals use the packed artifact, not the local checkout:
 ```bash
 vp run public:consumer-smoke -- --setup-only
 ```
+
+## First success in Claude or Codex
+
+Target: under 2 minutes from install to one real read-only tool call.
+
+The canonical operator path is:
+
+1. `wp setup`
+2. `wp hooks doctor`
+3. In your host, run the same bounded read-only action: `wp_audit(kind="docs-frontmatter")`
+
+### Codex
+
+1. Run `codex mcp list` and confirm `webpresso` is visible.
+2. Ask Codex to run `wp_audit(kind="docs-frontmatter")`.
+
+### Claude
+
+1. Restart/open Claude Code in the repo after `wp setup`.
+2. Ask Claude to run `wp_audit(kind="docs-frontmatter")`.
+
+If the tool is unavailable, fix host visibility with `wp hooks doctor` first.
 
 ## Add-ons
 

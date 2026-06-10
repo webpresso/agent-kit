@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import type { ResolvedTestTarget } from './target-resolver.js'
@@ -7,18 +7,26 @@ import {
   getManagedRunner,
   resolveOutputPolicy,
 } from '#tool-runtime'
-import { getPackageScript, isRecursiveWpScript } from '#cli/package-scripts.js'
+import { getPackageScript, isRecursiveWpScript, packageUsesVitest } from '#cli/package-scripts.js'
+import { normalizeTestSuiteName, resolveTestSuiteRuns, type TestSuiteName } from './suite.js'
 
-export interface CommandConfig {
+export interface SingleCommandConfig {
   command: string
   args: string[]
   env?: Record<string, string>
 }
 
+export interface CommandSequenceConfig {
+  sequence: readonly SingleCommandConfig[]
+}
+
+export type CommandConfig = SingleCommandConfig | CommandSequenceConfig
+
 export type VpRunLogMode = 'interleaved' | 'labeled' | 'grouped'
 
 export interface TestCommandOptions {
   cwd?: string
+  suite?: TestSuiteName
   watch?: boolean
   coverage?: boolean
   testNamePattern?: string
@@ -38,7 +46,24 @@ export function buildTestCommand(
   target: ResolvedTestTarget,
   options: TestCommandOptions = {},
 ): CommandConfig {
-  if (target.type === 'all' && shouldBypassRecursiveWpTest(options.cwd ?? process.cwd())) {
+  const suite = options.suite
+  if (suite) {
+    assertSuiteCompatible(target, options)
+
+    if (target.type === 'package') {
+      return buildPackageSuiteCommand(target.values, {
+        ...options,
+        suite: normalizeTestSuiteName(suite),
+      })
+    }
+
+    return buildWorkspaceSuiteCommand({
+      ...options,
+      suite: normalizeTestSuiteName(suite),
+    })
+  }
+
+  if (target.type === 'all' && shouldBypassRecursiveWpTask(options.cwd ?? process.cwd(), options)) {
     return options.mutation ? buildStrykerCommand(options) : buildVitestCommand([], options)
   }
 
@@ -52,7 +77,7 @@ export function buildTestCommand(
 export function buildVpTestCommand(
   filters: readonly string[],
   options: TestCommandOptions = {},
-): CommandConfig {
+): SingleCommandConfig {
   const task = getVpTestTask(options)
   const resolvedFilters = filters.map((filter) => formatVpRunFilter(filter, task))
   const explicitTargets =
@@ -82,7 +107,7 @@ export function buildVpTestCommand(
 export function buildVitestCommand(
   files: readonly string[],
   options: TestCommandOptions = {},
-): CommandConfig {
+): SingleCommandConfig {
   const args = [options.watch ? '--watch' : 'run']
   const configFiles: string[] = []
   const testFiles: string[] = []
@@ -192,13 +217,129 @@ function buildVitestPassthrough(options: TestCommandOptions): string[] {
   return args
 }
 
+function buildWorkspaceSuiteCommand(
+  options: TestCommandOptions & { suite: TestSuiteName },
+): CommandConfig {
+  const runs = resolveTestSuiteRuns(options.suite, buildVitestPassthrough(options))
+  const resolution = getManagedRunner('vitest', {
+    outputPolicy: resolveOutputPolicy(options.outputPolicy, options.filterOutput),
+  })
+  const commands = runs.map((run) => ({
+    command: resolution.command,
+    args: [...resolution.args, ...run.vitestArgs],
+  }))
+  return commands.length === 1 ? commands[0]! : { sequence: commands }
+}
+
+function buildPackageSuiteCommand(
+  packageTargets: readonly string[],
+  options: TestCommandOptions & { suite: TestSuiteName },
+): CommandConfig {
+  const cwd = options.cwd ?? process.cwd()
+  for (const packageTarget of packageTargets) {
+    assertVitestBackedPackageTarget(cwd, packageTarget)
+  }
+
+  const resolution = getManagedRunner('vp', {
+    outputPolicy: resolveOutputPolicy(options.outputPolicy, options.filterOutput),
+  })
+  const suiteRuns = resolveTestSuiteRuns(options.suite, buildVitestPassthrough(options))
+  const commands = packageTargets.flatMap((packageTarget) =>
+    suiteRuns.map((run) => ({
+      command: resolution.command,
+      args: [
+        ...resolution.args,
+        'exec',
+        '--filter',
+        packageTarget,
+        '--',
+        'vitest',
+        ...run.vitestArgs,
+      ],
+    })),
+  )
+
+  return commands.length === 1 ? commands[0]! : { sequence: commands }
+}
+
+function assertSuiteCompatible(target: ResolvedTestTarget, options: TestCommandOptions): void {
+  if (target.type === 'file') {
+    throw new Error('--suite cannot be combined with file targets.')
+  }
+  if (options.mutation) {
+    throw new Error('--suite cannot be combined with --mutation.')
+  }
+  if (options.workers) {
+    throw new Error('--suite cannot be combined with --workers.')
+  }
+  if (options.watch) {
+    throw new Error('--suite cannot be combined with --watch.')
+  }
+}
+
+function assertVitestBackedPackageTarget(cwd: string, packageTarget: string): void {
+  const packageDir = resolveConcretePackageTarget(cwd, packageTarget)
+  if (!packageDir) {
+    throw new Error(
+      `--suite requires a concrete package target. Could not resolve package "${packageTarget}".`,
+    )
+  }
+
+  if (!packageUsesVitest(packageDir)) {
+    throw new Error(
+      `--suite requires a Vitest-backed package target. Package "${packageTarget}" does not declare vitest.`,
+    )
+  }
+}
+
+function resolveConcretePackageTarget(cwd: string, packageTarget: string): string | undefined {
+  const rootPackageName = readPackageName(cwd)
+  const candidates = [
+    join(cwd, 'packages', packageTarget),
+    join(cwd, 'apps', packageTarget),
+    join(cwd, packageTarget),
+    ...(rootPackageName === packageTarget ? [cwd] : []),
+  ]
+
+  return candidates.find((candidate) => existsSync(join(candidate, 'package.json')))
+}
+
+function readPackageName(cwd: string): string | undefined {
+  try {
+    const parsed = JSON.parse(readPackageJsonText(cwd)) as { name?: unknown }
+    return typeof parsed.name === 'string' ? parsed.name : undefined
+  } catch {
+    return
+  }
+}
+
+function readPackageJsonText(cwd: string): string {
+  const packageJson = join(cwd, 'package.json')
+  if (!existsSync(packageJson)) return '{}'
+  return readFileSync(packageJson, 'utf8')
+}
+
+export function isCommandSequenceConfig(config: CommandConfig): config is CommandSequenceConfig {
+  return 'sequence' in config
+}
+
 function isVitestConfigFile(file: string): boolean {
   return /^vitest(?:\.[\w-]+)?\.config\.(?:ts|mts|cts|js|mjs|cjs)$/u.test(file)
 }
 
-function shouldBypassRecursiveWpTest(cwd: string): boolean {
-  const testScript = getPackageScript(cwd, 'test')
-  return Boolean(testScript && isRecursiveWpScript(testScript, 'test'))
+function shouldBypassRecursiveWpTask(cwd: string, options: TestCommandOptions): boolean {
+  const scriptNames = options.mutation
+    ? ['test:mutation', 'mutation']
+    : options.workers
+      ? ['test:workers']
+      : options.watch
+        ? ['test:watch', 'test']
+        : ['test']
+
+  return scriptNames.some((scriptName) => {
+    const script = getPackageScript(cwd, scriptName)
+    return Boolean(script && isRecursiveWpScript(script, 'test'))
+  })
 }
 
 function resolveStrykerConfigFile(cwd: string): string {

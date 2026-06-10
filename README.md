@@ -37,6 +37,12 @@ Prefer not to install globally? Run it one-shot:
 npm exec --yes --package @webpresso/agent-kit@latest -- wp setup
 ```
 
+Then run the canonical success check:
+
+```bash
+wp hooks doctor
+```
+
 **Success signal:** `wp setup` completes and is idempotent. On a fresh repo it
 scaffolds the `base-kit` quality assets (`tsconfig`, Vitest, Oxlint, Stryker,
 Playwright, unit-test and file-based e2e smoke assets), wires `AGENTS.md` /
@@ -65,6 +71,9 @@ devDependency disappears — keep dependencies your repo imports directly (e.g.
 (e.g. `oxlint`, `oxfmt`) for removal only when nothing imports them. See
 [`docs/getting-started.md`](docs/getting-started.md).
 
+For a first real read-only host action in either Claude or Codex, ask the host
+to run `wp_audit(kind="docs-frontmatter")`.
+
 Verify install claims against the packed artifact:
 
 ```bash
@@ -76,6 +85,7 @@ vp run public:consumer-smoke -- --setup-only
 | Capability | What it does | Proof |
 | --- | --- | --- |
 | **`wp setup` onboarding** | Idempotent scaffolder for the base-kit quality config + `AGENTS.md` / `CLAUDE.md` wiring, with a curated shared-favorites default for host-visible Webpresso skills | [`src/cli/commands/init/`](src/cli/commands/init/), verified by [`scripts/public-consumer-smoke.ts`](scripts/public-consumer-smoke.ts) |
+| **Shared secret-aware command execution** | `with-secrets` injects shared runtime secrets/profile env for command execution, and shared deploy/e2e paths reuse that same runtime selector path | [`src/runtime/`](src/runtime/), [`src/deploy/`](src/deploy/), [`src/e2e/`](src/e2e/) |
 | **Summary-first `wp_*` MCP tools** | `wp_test` / `wp_typecheck` / `wp_lint` / `wp_qa` / `wp_e2e` / `wp_format` / `wp_ci_act` / `wp_audit` return JSON with `bytes` / `tokensSaved` budget metadata | [`src/mcp/tools/`](src/mcp/tools/) (each with co-located `.test.ts`), [`src/mcp/server.integration.test.ts`](src/mcp/server.integration.test.ts) |
 | **MCP server + CLI surface** | Registers the tool set and exposes it to agents | [`src/mcp/server.ts`](src/mcp/server.ts), [`src/mcp/cli.ts`](src/mcp/cli.ts), [`src/mcp/cli.integration.test.ts`](src/mcp/cli.integration.test.ts) |
 | **Blueprint runtime** | Lifecycle states, dependency-aware task graph, structured authoring control plane (`wp_blueprint_depgraph` / `put` / `transition`) | [`src/mcp/blueprint-server.ts`](src/mcp/blueprint-server.ts), [`docs/lifecycle.md`](docs/lifecycle.md), [`docs/blueprint-format.md`](docs/blueprint-format.md) |
@@ -117,6 +127,9 @@ vp run lint        # wp lint (oxlint) — no violations
 vp run test        # unit then integration vitest suites — all green
 ```
 
+When you need a single lane, use `wp test --suite unit` or
+`wp test --suite integration`.
+
 **Full maintainer check** (bookend — run once at start, once at end):
 
 ```bash
@@ -137,6 +150,24 @@ validate` when `claude` is present).
 - Default blueprint root: `blueprints/`
 - Configurable blueprint root: `.webpressorc.json#blueprintsDir` (for example
   `webpresso/blueprints` in monorepo layouts)
+
+## Dev setup (agent-kit contributors)
+
+```bash
+bun install
+direnv allow   # exports WP_FORCE_SOURCE=1 — routes wp/audit/test/lint to source
+```
+
+With direnv active, `wp …`, `vp run lint`, `vp run typecheck`, and the git hooks
+all run from source. No direnv? Set `WP_FORCE_SOURCE=1` manually for ad-hoc
+source runs.
+
+Do not use `vp run wp`, `pnpm run wp`, or `bun run wp`. If you want an explicit
+repo-local source alias, use `vp run wp:source -- <args>`.
+
+`WP_FORCE_SOURCE=1` is scoped: it routes dev CLI gates to source but keeps the
+latency-sensitive `wp-pretool-guard` / `wp-post-tool` hook bins on the compiled
+binary (see `bin/_run.js`). Iterate on hook code with `bun src/hooks/…` directly.
 
 ## Contribute / Security / License
 

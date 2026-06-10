@@ -39,11 +39,27 @@ export const baseConfig = {
   mutate: [
     'src/**/*.ts',
     'src/**/*.tsx',
-    '!src/**/*.test.ts',
-    '!src/**/*.test.tsx',
-    '!src/**/*.spec.ts',
-    '!src/**/*.spec.tsx',
-    '!src/**/*.d.ts',
+    'apps/**/*.ts',
+    'apps/**/*.tsx',
+    'packages/**/*.ts',
+    'packages/**/*.tsx',
+    'infra/**/*.ts',
+    'infra/**/*.tsx',
+    'scripts/**/*.ts',
+    'scripts/**/*.tsx',
+    '!**/*.test.ts',
+    '!**/*.test.tsx',
+    '!**/*.spec.ts',
+    '!**/*.spec.tsx',
+    '!**/*.integration.test.ts',
+    '!**/*.integration.test.tsx',
+    '!**/*.workers.test.ts',
+    '!**/*.e2e.ts',
+    '!**/*.d.ts',
+    '!**/__fixtures__/**',
+    '!**/fixtures/**',
+    '!**/generated/**',
+    '!src/quality-sample.ts',
   ],
 
   // Performance settings.
@@ -53,6 +69,11 @@ export const baseConfig = {
   // Static mutants (module-level constants) can't be activated per-test — they require
   // a fresh process per mutant, which is extremely slow. Ignore them instead.
   ignoreStatic: true,
+
+  // Run the full configured test surface by default. Consumer repos often mutate
+  // files that are not directly imported from tests, so Vitest related-only selection
+  // can yield zero executed tests.
+  vitest: { related: false },
 
   // Quality thresholds.
   thresholds: {

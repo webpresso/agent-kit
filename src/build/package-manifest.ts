@@ -1,17 +1,9 @@
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 import { parse as parseYaml } from 'yaml'
 
+import { assertBuiltBlueprintMigrationSqlAssets } from './blueprint-migration-assets.js'
 import { RUNTIME_TARGETS } from './runtime-targets.js'
 
 type DependencySection =
@@ -39,8 +31,6 @@ const NON_PUBLISHABLE_DEPENDENCY_PROTOCOLS = ['link:', 'workspace:', 'file:'] as
 
 const BACKUP_FILENAME = '.package.json.prepack.backup'
 const DIST_BACKUP_DIRNAME = '.dist-prepack-backup'
-const MIGRATION_SQL_BACKUP_DIRNAME = '.migration-sql-prepack-backup'
-const MIGRATION_SQL_ASSET_DIR = 'blueprint/db/migrations'
 const SOURCEMAP_COMMENT_BACKUP_DIRNAME = '.sourcemap-comments-prepack-backup'
 const SOURCEMAP_COMMENT_PATTERN = /^\s*\/\/# sourceMappingURL=.*(?:\r?\n|$)/gmu
 
@@ -222,55 +212,6 @@ function restorePrunedDistSubtrees(rootDir: string) {
   rmSync(backupRoot, { force: true, recursive: true })
 }
 
-function listSqlFiles(dir: string): string[] {
-  if (!existsSync(dir)) return []
-  return readdirSync(dir)
-    .filter((entry) => entry.endsWith('.sql'))
-    .sort()
-}
-
-function stageMigrationSqlAssets(rootDir: string) {
-  const sourceDir = join(rootDir, 'src', MIGRATION_SQL_ASSET_DIR)
-  if (!existsSync(sourceDir)) return
-
-  const sourceSqlFiles = listSqlFiles(sourceDir)
-  if (sourceSqlFiles.length === 0) return
-
-  const targetDir = join(rootDir, 'dist', 'esm', MIGRATION_SQL_ASSET_DIR)
-  const backupDir = join(rootDir, MIGRATION_SQL_BACKUP_DIRNAME)
-  if (existsSync(backupDir)) {
-    throw new Error(`Migration SQL prepack backup already exists at ${backupDir}`)
-  }
-
-  mkdirSync(targetDir, { recursive: true })
-  mkdirSync(backupDir, { recursive: true })
-
-  for (const file of listSqlFiles(targetDir)) {
-    renameSync(join(targetDir, file), join(backupDir, file))
-  }
-
-  for (const file of sourceSqlFiles) {
-    copyFileSync(join(sourceDir, file), join(targetDir, file))
-  }
-}
-
-function restoreMigrationSqlAssets(rootDir: string) {
-  const backupDir = join(rootDir, MIGRATION_SQL_BACKUP_DIRNAME)
-  if (!existsSync(backupDir)) return
-
-  const targetDir = join(rootDir, 'dist', 'esm', MIGRATION_SQL_ASSET_DIR)
-  for (const file of listSqlFiles(targetDir)) {
-    rmSync(join(targetDir, file), { force: true })
-  }
-
-  mkdirSync(targetDir, { recursive: true })
-  for (const file of listSqlFiles(backupDir)) {
-    renameSync(join(backupDir, file), join(targetDir, file))
-  }
-
-  rmSync(backupDir, { force: true, recursive: true })
-}
-
 function listBuiltTextFiles(rootDir: string): string[] {
   const distRoot = join(rootDir, 'dist', 'esm')
   if (!existsSync(distRoot)) return []
@@ -353,9 +294,9 @@ export function preparePackedManifest(rootDir: string) {
   const manifest = JSON.parse(originalManifestText) as PackageManifest
   const packedManifest = createPackedManifest(manifest, readWorkspaceCatalogs(workspacePath))
 
+  assertBuiltBlueprintMigrationSqlAssets(rootDir)
   writeText(backupPath, originalManifestText)
   pruneOrphanedDistSubtrees(rootDir)
-  stageMigrationSqlAssets(rootDir)
   stripPackedSourcemapComments(rootDir)
   writeJson(packageJsonPath, packedManifest)
 }
@@ -367,7 +308,6 @@ export function restorePackedManifest(rootDir: string) {
   writeText(packageJsonPath, readFileSync(backupPath, 'utf8'))
   rmSync(backupPath, { force: true })
   restorePackedSourcemapComments(rootDir)
-  restoreMigrationSqlAssets(rootDir)
   restorePrunedDistSubtrees(rootDir)
 }
 

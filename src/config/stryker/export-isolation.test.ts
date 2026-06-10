@@ -17,6 +17,7 @@ describe('stryker config parity', () => {
       testRunner: 'vitest',
       ignoreStatic: true,
       thresholds: { high: 85, low: 80, break: 75 },
+      vitest: { related: false },
     })
   })
 
@@ -38,6 +39,19 @@ describe('stryker config parity', () => {
     expect(text).toContain('**/dist/**')
     expect(text).toContain('**/coverage/**')
     expect(text).toContain('**/*.d.ts')
+  })
+
+  it('covers common consumer source roots without mutating teaching samples by default', () => {
+    expect(baseConfig.mutate).toEqual(
+      expect.arrayContaining([
+        'src/**/*.ts',
+        'apps/**/*.ts',
+        'packages/**/*.ts',
+        'infra/**/*.ts',
+        'scripts/**/*.ts',
+        '!src/quality-sample.ts',
+      ]),
+    )
   })
 
   it('does not keep a branded webpresso preset file after the hard cut', () => {

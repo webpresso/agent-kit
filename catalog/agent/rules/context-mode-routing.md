@@ -53,7 +53,12 @@ Never pull raw output into context to reason over it manually.
 
 ## Forbidden alternatives (use wp_* instead)
 
-`webpresso project test`, `pnpm test`, `webpresso project lint`, `webpresso project check`, `vitest`, `oxlint`, `tsc`
+`webpresso project test`, `bun run test`, `webpresso project lint`,
+`webpresso project check`, `bun run lint`, `bun run e2e`, `bun run typecheck`,
+`vitest`, `oxlint`, `tsc`
+
+`pnpm` variants are legacy-fallback equivalents and should be avoided in normal
+agent guidance.
 
 ## Ownership boundary
 

@@ -8,7 +8,7 @@ export default {
     break: 0,
   },
   vitest: {
+    ...(typescriptBaseConfig.vitest ?? {}),
     configFile: 'vitest.config.ts',
   },
-  mutate: ['src/**/*.ts', '!src/**/*.test.ts', '!src/**/*.d.ts'],
 }

@@ -1,14 +1,20 @@
 ---
 type: guide
-last_updated: '2026-06-07'
+last_updated: '2026-06-10'
 ---
 
 # wp hooks doctor
 
-`wp hooks doctor` performs a 3-way comparison:
+`wp hooks doctor` is the canonical post-setup operator success check. It performs a 3-way comparison:
 1. What wp setup wrote (the hooks manifest at `.webpresso/hooks-manifest.json`)
 2. What is actually installed (`.claude/settings.json`, `.codex/hooks.json`)
 3. What wp currently expects (the canonical WP_HOOK_SPECS)
+
+It also reports the public precedence model:
+
+- **MCP first** — use `wp_*` tools when the host can see them
+- **Direct `wp` fallback only** — use `wp ...` when MCP is unavailable
+- **No wrappers** — do not use `bun run wp`, `pnpm run wp`, `npm run wp`, `yarn wp`, or `vp run wp`
 
 ## Verdicts
 
@@ -22,6 +28,18 @@ last_updated: '2026-06-07'
 
 ```bash
 wp hooks doctor
+```
+
+After a fresh `wp setup`, the success path is:
+
+```bash
+wp hooks doctor
+```
+
+Then in Claude or Codex, run the same read-only proof command:
+
+```text
+wp_audit(kind="docs-frontmatter")
 ```
 
 With `--vendor` flag to check one vendor:

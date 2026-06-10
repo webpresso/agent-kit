@@ -5,7 +5,9 @@ export type E2eRunnerKind = 'playwright' | 'vitest' | 'command'
 export interface CommandConfig {
   command: string
   args: string[]
+  cwd?: string
   env?: Record<string, string>
+  runtimeProfile?: string
 }
 
 export interface E2eStepDefinition {
@@ -19,6 +21,7 @@ export interface E2eStepDefinition {
   supportsDebug?: boolean
   batchKey?: string
   envProfile?: string
+  runtimeProfile?: string
   reportDir?: string
   env?: Record<string, string>
 }
@@ -29,6 +32,7 @@ export interface E2eSuiteDefinition {
   fileMatchers: readonly string[]
   batchKey: string
   envProfile?: string
+  runtimeProfile?: string
   steps: readonly E2eStepDefinition[]
   env?: Record<string, string>
 }
@@ -79,9 +83,11 @@ export interface PlannedE2eRunStep {
   suiteId: string
   batchKey: string
   envProfile?: string
+  runtimeProfile?: string
   runner: E2eRunnerKind
   logName: string
   reportDir?: string
+  cwd?: string
   command: string
   args: string[]
   env?: Record<string, string>
@@ -90,6 +96,7 @@ export interface PlannedE2eRunStep {
 export interface PlannedE2eRunGroup {
   batchKey: string
   envProfile?: string
+  runtimeProfile?: string
   runs: PlannedE2eRunStep[]
   env?: Record<string, string>
 }

@@ -1,3 +1,9 @@
+import {
+  detectWrappedWpCommand,
+  stripLeadingSecretWrappers,
+  wrappedWpGuidanceForArgs,
+} from '#cli/wrapped-wp'
+
 export type GuidanceType = 'test' | 'lint' | 'typecheck' | 'qa' | 'format' | 'e2e'
 
 export type RouteAction =
@@ -36,6 +42,7 @@ const ROUTING_RULES: RoutingRule[] = [
       'vitest',
       'vp run test',
       'vp test',
+      'bun run test',
       'pnpm test',
       'pnpm run test',
       'pnpm exec vitest',
@@ -52,6 +59,7 @@ const ROUTING_RULES: RoutingRule[] = [
       'pnpm exec oxlint',
       'vp run lint',
       'vp lint',
+      'bun run lint',
       'pnpm lint',
       'pnpm run lint',
       'just lint',
@@ -61,7 +69,14 @@ const ROUTING_RULES: RoutingRule[] = [
     tool: 'wp_lint',
   },
   {
-    prefixes: ['vp exec tsc', 'tsc', 'pnpm exec tsc', 'vp run typecheck', 'pnpm run typecheck'],
+    prefixes: [
+      'vp exec tsc',
+      'tsc',
+      'pnpm exec tsc',
+      'vp run typecheck',
+      'bun run typecheck',
+      'pnpm run typecheck',
+    ],
     guidanceType: 'typecheck',
     guidance: 'Use wp_typecheck MCP tool instead — returns {passed, errors[]}',
     tool: 'wp_typecheck',
@@ -76,6 +91,7 @@ const ROUTING_RULES: RoutingRule[] = [
     prefixes: [
       'vp run e2e',
       'vp e2e',
+      'bun run e2e',
       'pnpm run e2e',
       'pnpm e2e',
       'pnpm exec playwright',
@@ -119,10 +135,12 @@ const ROUTING_RULES: RoutingRule[] = [
   {
     prefixes: [
       'just qa',
+      'bun run qa',
       'pnpm run qa',
       'vp run qa',
       'pnpm qa',
       'vp run lint-md',
+      'bun run lint-md',
       'pnpm run lint-md',
       'just lint-md',
       'pnpm exec markdownlint-cli2',
@@ -193,7 +211,7 @@ const ENV_COMMAND_ASSIGNMENT_PREFIX = new RegExp(
   `^env\\s+(?:${ENV_ASSIGNMENT_PREFIX_PATTERN})`,
   'u',
 )
-const PACKAGE_MANAGER_PREFIXES = new Set(['vp', 'pnpm', 'just'])
+const PACKAGE_MANAGER_PREFIXES = new Set(['vp', 'pnpm', 'bun', 'just'])
 const TOOL_SHIM_EXTENSION = /\.(?:cmd|ps1|bat)$/iu
 const SOURCE_RUNTIME_BINS = new Set(['tsx', 'ts-node', 'node', 'bun'])
 const PACKAGE_MANAGER_BINS = new Set([
@@ -233,6 +251,8 @@ const PACKAGE_MANAGER_OPTION_VALUE_PREFIXES = [
   '--config=',
 ]
 const PACKAGE_MANAGER_FLAG_ONLY = new Set([
+  '--yes',
+  '-y',
   '--recursive',
   '-r',
   '--workspace-root',
@@ -241,6 +261,9 @@ const PACKAGE_MANAGER_FLAG_ONLY = new Set([
   '--silent',
   '--if-present',
   '--ignore-scripts',
+  '--immutable-cache',
+  '--bun',
+  '--always-auth',
 ])
 const TOOL_PROXY_BINS = new Set(['corepack'])
 const SECRET_WRAPPER_BINS = new Set(['with-secrets', 'doppler', 'infisical'])
@@ -344,6 +367,7 @@ function stripLeadingEnvironmentAssignments(command: string): string {
 }
 
 export function normalizeCommandForRouting(command: string): string {
+  command = stripLeadingSecretWrappers(command)
   const trimmed = stripCorepackPackageManagerProxy(stripLeadingEnvironmentAssignments(command))
   let match = VP_COMMAND_PREFIX.exec(trimmed)
   let next = trimmed
@@ -419,6 +443,43 @@ function getRuleDirectToolBins(prefixes: string[]): Set<string> {
   return bins
 }
 
+function getRuleRunScriptPrefixes(prefixes: string[]): Set<string> {
+  const scripts = new Set<string>()
+
+  for (const prefix of prefixes) {
+    const tokens = tokenizeCommand(prefix)
+    if (tokens[1] === 'run' && tokens[2]) {
+      scripts.add(tokens[2])
+    }
+  }
+
+  return scripts
+}
+
+function matchesRunScript(script: string, expected: string): boolean {
+  if (script === expected) return true
+  return (
+    script.startsWith(`${expected}:`) ||
+    script.startsWith(`${expected}.`) ||
+    script.startsWith(`${expected}-`)
+  )
+}
+
+function matchesPackageManagerRunScriptCommand(script: string, rule: RoutingRule): boolean {
+  const normalizedScript = normalizeScriptToken(script)
+  const prefixes = getRuleRunScriptPrefixes(rule.prefixes)
+
+  for (const expected of prefixes) {
+    if (matchesRunScript(normalizedScript, expected)) {
+      return true
+    }
+  }
+
+  const directBins = getRuleDirectToolBins(rule.prefixes)
+  const bin = directToolBasename(normalizedScript)
+  return bin ? directBins.has(bin) : false
+}
+
 function matchesDirectToolCommand(command: string, rule: RoutingRule): boolean {
   const firstToken = command.split(/\s+/u)[0]
   return firstToken ? getRuleDirectToolBins(rule.prefixes).has(firstToken) : false
@@ -484,7 +545,8 @@ function packageManagerInvocation(command: string): PackageManagerInvocation | n
   if (!manager) return null
 
   if (manager === 'pnpx' || manager === 'npx' || manager === 'bunx') {
-    return tokens[1] ? { bin: tokens[1], args: tokens.slice(2) } : null
+    const index = skipPackageManagerOptions(tokens, 1)
+    return tokens[index] ? { bin: tokens[index], args: tokens.slice(index + 1) } : null
   }
 
   let index = skipPackageManagerOptions(tokens, 1)
@@ -528,6 +590,13 @@ function matchesPackageManagerDirectToolCommand(command: string, rule: RoutingRu
   if (!invocation) return false
 
   const bin = directToolBasename(invocation.bin)
+
+  if (invocation.bin === 'run') {
+    const script = invocation.args[0]
+    if (!script) return false
+    return matchesPackageManagerRunScriptCommand(script, rule)
+  }
+
   return bin ? getRuleDirectToolBins(rule.prefixes).has(bin) : false
 }
 
@@ -703,6 +772,18 @@ export function extractRoutableCommandsFromToolInput(input: {
 export function routeCommand(command: string, _sessionId?: string): RouteDecision | null {
   const trimmed = normalizeCommandForRouting(command)
   if (!trimmed) return null
+
+  const wrappedWp = detectWrappedWpCommand(trimmed)
+  if (wrappedWp) {
+    const { tool, guidance } = wrappedWpGuidanceForArgs(wrappedWp.wpArgs)
+    return {
+      action: {
+        action: 'deny',
+        tool,
+        guidance,
+      },
+    }
+  }
 
   // Explicit passthroughs (audits, safe git/nav commands)
   for (const prefix of PASSTHROUGH_PREFIXES) {
