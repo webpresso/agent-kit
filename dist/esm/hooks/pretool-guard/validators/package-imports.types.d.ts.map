@@ -1,0 +1,1 @@
+{"version":3,"file":"package-imports.types.d.ts","sourceRoot":"","sources":["../../../../../src/hooks/pretool-guard/validators/package-imports.types.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,gBAAgB,EAAE,MAAM,qBAAqB,CAAA;AAE3D,MAAM,WAAW,uBAAwB,SAAQ,gBAAgB;IAC/D,YAAY,EAAE,MAAM,CAAA;IACpB,UAAU,EAAE,MAAM,CAAA;IAClB,OAAO,EAAE,MAAM,CAAA;IACf,MAAM,EAAE,MAAM,CAAA;CACf"}
