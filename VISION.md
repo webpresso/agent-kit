@@ -44,6 +44,9 @@ and make the right thing the easiest thing.
 - **Safe re-runs:** setup is idempotent and preserves consumer-owned work.
 - **Proof over vibes:** tests, lint, typecheck, audits, and blueprint evidence
   are easy for agents to run and cite.
+- **Evidence-gated evolution:** the harness itself improves from recorded
+  failure evidence — mined patterns and measured non-regression — never from
+  vibes. Proof over vibes applies to the kit, not just its consumers.
 
 ## Principles
 
@@ -61,6 +64,9 @@ and make the right thing the easiest thing.
 - Catalog-backed instructions, skills, hooks, docs templates, and blueprint
   scaffolding.
 - Quality commands for tests, lint, typecheck, E2E, and audits.
+- Weakness mining over agent-kit's own hook/QA evidence, and a
+  regression-gated path for harness changes — advisory first, gated
+  automation as the loop matures.
 - A small add-on shelf for teams that need more than the default setup.
 
 **Out of scope**
@@ -68,6 +74,17 @@ and make the right thing the easiest thing.
 - Owning peer tools such as gstack, context-mode, OMX/OMC, or RTK.
 - Replacing application test/build systems.
 - Model selection, prompt marketplaces, or AI-agent hosting.
+
+## Direction: self-improving harness
+
+What agent-kit installs around a coding agent is a **harness** — the industry
+now has a name and a playbook for improving one (see
+`docs/research/2026-06-10-harness-engineering-landscape.md`). The destination
+is a gated loop: mine failure evidence → propose minimal changes → validate
+against held-out consumer suites → promote with lineage. Guard hooks,
+permission policies, and secret handling are locked surfaces, permanently
+excluded from automated edits. The loop earns autonomy in stages; it never
+skips the gate.
 
 ## Design test
 
