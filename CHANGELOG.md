@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.31.1
+
+### Patch Changes
+
+- 963fa58: Fix the release workflow so successful Changesets publishes always finalize the
+  GitHub Release/tag flow from the action's `published` output and upload the full
+  native runtime binary set.
+
 ## 0.31.0
 
 ### Minor Changes
