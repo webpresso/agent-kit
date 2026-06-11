@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: '2026-06-10'
+last_updated: '2026-06-11'
 ---
 
 # Getting started
@@ -46,6 +46,16 @@ cd your-repo
 npm exec --yes --package @webpresso/agent-kit@latest -- wp setup
 ```
 
+For committed/team repos, prefer a repo-local install after bootstrap. Pin
+`@webpresso/agent-kit` in `devDependencies`, then rerun setup through the local
+CLI (`vp run setup:agent`, `vp exec wp setup`, or the package manager's local
+`wp` bin). Setup resolves catalog, subagent, and host-surface assets from the
+scoped package path `node_modules/@webpresso/agent-kit`, while still accepting
+legacy `node_modules/webpresso` dev-link installs for older workspaces. When a
+repo already pins `@webpresso/agent-kit` and setup is launched from a global CLI,
+it warns and points you back to the repo-local command so scaffolding is
+reproducible.
+
 If `wp setup` needs gstack tuning on a workstation with multiple agent CLIs
 installed, use:
 
@@ -79,8 +89,9 @@ only; the wrapper does not guarantee grandchild teardown there.
 - generated agent surfaces
 - blueprint lifecycle folders and docs templates
 - `base-kit` quality scaffold: `tsconfig.json`, `vitest.config.ts`,
-  `oxlint.config.ts`, `stryker.config.ts`, `playwright.config.ts`, starter unit
-  tests, and a file-based Playwright smoke page
+  `stryker.config.ts`, `playwright.config.ts`, starter unit tests, and a
+  file-based Playwright smoke page. Agent Kit provides the shared Oxlint config
+  through `wp lint`; fresh setup does not scaffold an `oxlint.config.ts` file.
 - package scripts for `lint`, `typecheck`, `test`, `mutation`, `e2e`, and `qa`
 - safe hook wiring
 - gitignore protection for regenerated agent files

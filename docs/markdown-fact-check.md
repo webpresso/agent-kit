@@ -1,6 +1,6 @@
 ---
 type: research
-last_updated: '2026-05-28'
+last_updated: '2026-06-11'
 ---
 
 # Markdown fact-check and package references
@@ -15,10 +15,10 @@ If you just want to use the product, read:
 
 ## Current package identity
 
-- Source package in this repo: `@webpresso/agent-kit` `0.21.0`
+- Source package in this repo: `@webpresso/agent-kit` `0.30.3`
 - Canonical release contract for this repo is `@webpresso/agent-kit`
 - Current source/public npm exports use `@webpresso/agent-kit/*`
-- `webpresso` (unscoped) is not this repo's canonical runtime package identity
+- `webpresso` (unscoped) is not this repo's canonical runtime package identity; it remains a legacy/dev-link compatibility name where explicitly supported
 
 ## Current doc truths
 
@@ -26,6 +26,11 @@ If you just want to use the product, read:
 - `context-mode` is in the default `wp setup` preset set, and setup skips it in CI or when `WP_SKIP_CONTEXT_MODE=1`.
 - `rtk` is in the default `wp setup` preset set, and setup skips it in CI or when `WP_SKIP_RTK=1`.
 - The default setup already includes the repo bootstrap.
+- Local setup assets resolve from `node_modules/@webpresso/agent-kit`; legacy
+  `node_modules/webpresso` dev-link installs are compatibility-only.
+- When a repo pins `@webpresso/agent-kit`, setup should be rerun through the
+  repo-local CLI (`vp run setup:agent` or `vp exec wp setup`) rather than a
+  global `wp` binary.
 - Config/library subpaths rely on Node package `exports`.
 - Workspace catalog versions come from pnpm catalogs.
 - Zod is on v4 in this workspace.

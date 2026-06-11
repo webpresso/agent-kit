@@ -37,6 +37,14 @@ Prefer not to install globally? Run it one-shot:
 npm exec --yes --package @webpresso/agent-kit@latest -- wp setup
 ```
 
+For repeatable repo setup, pin `@webpresso/agent-kit` in the repo and run the
+repo-local CLI (`vp run setup:agent`, `vp exec wp setup`, or the package
+manager's local `wp` bin). `wp setup` recognizes the scoped install at
+`node_modules/@webpresso/agent-kit` and keeps legacy `node_modules/webpresso`
+dev-link installs working for older workspaces. If a repo already pins
+`@webpresso/agent-kit` but setup is launched from a global CLI, setup warns so
+operators rerun through the repo-local binary.
+
 Then run the canonical success check:
 
 ```bash
