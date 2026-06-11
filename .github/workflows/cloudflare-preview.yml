@@ -85,67 +85,6 @@ jobs:
           }
           NODE
 
-      - name: Resolve caller pnpm version
-        id: pnpm
-        shell: bash
-        run: |
-          set -euo pipefail
-          node <<'NODE' >> "$GITHUB_OUTPUT"
-          const fs = require("node:fs");
-          const manifest = JSON.parse(fs.readFileSync("package.json", "utf8"));
-          const packageManager = typeof manifest.packageManager === "string" ? manifest.packageManager : "";
-          const match = /^pnpm@(.+)$/u.exec(packageManager);
-          if (!match) {
-            throw new Error('package.json must declare packageManager like "pnpm@<version>" for the shared deploy harness.');
-          }
-          console.log(`version=${match[1]}`);
-          NODE
-
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
-        with:
-          version: ${{ steps.pnpm.outputs.version }}
-          run_install: false
-
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
-        with:
-          node-version: "24.16.0"
-          cache: pnpm
-
-      - name: Enable Corepack + caller pnpm
-        shell: bash
-        run: |
-          set -euo pipefail
-          corepack enable
-          corepack prepare "pnpm@${{ steps.pnpm.outputs.version }}" --activate
-
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: latest
-
-      - name: Read committed secret-manager metadata
-        id: secret_config
-        shell: bash
-        run: |
-          set -euo pipefail
-          node <<'NODE' >> "$GITHUB_OUTPUT"
-          const fs = require("node:fs");
-          const path = ".webpresso/secrets.config.json";
-          if (!fs.existsSync(path)) {
-            throw new Error(`Missing ${path}. Commit repo secret-manager metadata before using the shared deploy harness.`);
-          }
-          const payload = JSON.parse(fs.readFileSync(path, "utf8"));
-          const manager = payload?.manager;
-          const projectId = payload?.projectId;
-          if (manager !== "doppler" && manager !== "infisical") {
-            throw new Error(`Unsupported secret manager "${String(manager)}" in ${path}.`);
-          }
-          if (typeof projectId !== "string" || projectId.length === 0) {
-            throw new Error(`Invalid projectId in ${path}.`);
-          }
-          console.log(`manager=${manager}`);
-          console.log(`project_id=${projectId}`);
-          NODE
-
       - name: Evaluate CI bootstrap secret availability
         id: secret_gate
         shell: bash
@@ -175,6 +114,73 @@ jobs:
             echo "should_fail=true"
             echo "skipped=false"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Resolve caller pnpm version
+        if: ${{ steps.secret_gate.outputs.skipped != 'true' }}
+        id: pnpm
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE' >> "$GITHUB_OUTPUT"
+          const fs = require("node:fs");
+          const manifest = JSON.parse(fs.readFileSync("package.json", "utf8"));
+          const packageManager = typeof manifest.packageManager === "string" ? manifest.packageManager : "";
+          const match = /^pnpm@(.+)$/u.exec(packageManager);
+          if (!match) {
+            throw new Error('package.json must declare packageManager like "pnpm@<version>" for the shared deploy harness.');
+          }
+          console.log(`version=${match[1]}`);
+          NODE
+
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
+        if: ${{ steps.secret_gate.outputs.skipped != 'true' }}
+        with:
+          version: ${{ steps.pnpm.outputs.version }}
+          run_install: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        if: ${{ steps.secret_gate.outputs.skipped != 'true' }}
+        with:
+          node-version: "24.16.0"
+          cache: pnpm
+
+      - name: Enable Corepack + caller pnpm
+        if: ${{ steps.secret_gate.outputs.skipped != 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          corepack prepare "pnpm@${{ steps.pnpm.outputs.version }}" --activate
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        if: ${{ steps.secret_gate.outputs.skipped != 'true' }}
+        with:
+          bun-version: latest
+
+      - name: Read committed secret-manager metadata
+        if: ${{ steps.secret_gate.outputs.skipped != 'true' }}
+        id: secret_config
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE' >> "$GITHUB_OUTPUT"
+          const fs = require("node:fs");
+          const path = ".webpresso/secrets.config.json";
+          if (!fs.existsSync(path)) {
+            throw new Error(`Missing ${path}. Commit repo secret-manager metadata before using the shared deploy harness.`);
+          }
+          const payload = JSON.parse(fs.readFileSync(path, "utf8"));
+          const manager = payload?.manager;
+          const projectId = payload?.projectId;
+          if (manager !== "doppler" && manager !== "infisical") {
+            throw new Error(`Unsupported secret manager "${String(manager)}" in ${path}.`);
+          }
+          if (typeof projectId !== "string" || projectId.length === 0) {
+            throw new Error(`Invalid projectId in ${path}.`);
+          }
+          console.log(`manager=${manager}`);
+          console.log(`project_id=${projectId}`);
+          NODE
 
       - name: Fail when CI bootstrap secret is required but missing
         if: ${{ steps.secret_gate.outputs.should_fail == 'true' }}
