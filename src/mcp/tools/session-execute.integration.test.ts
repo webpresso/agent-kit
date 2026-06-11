@@ -2,7 +2,7 @@
  * Tests for `ak_session_execute` MCP tool.
  *
  * Mocks:
- *   - @webpresso/ctx-rs (executeSandboxed) — controls command output + indexing
+ *   - test seam in session-execute.ts      — controls ctx-rs command output + indexing
  *   - #session-memory/store (getStore)     — controls search
  */
 
@@ -18,10 +18,6 @@ const getStoreMock = vi.hoisted(() =>
     search: searchMock,
   })),
 )
-
-vi.mock('@webpresso/ctx-rs', () => ({
-  executeSandboxed: executeSandboxedMock,
-}))
 
 vi.mock('#session-memory/store', () => ({
   getStore: getStoreMock,
@@ -53,14 +49,22 @@ function parsePayload(result: { content: readonly { type: string; text?: string 
 
 describe('ak_session_execute', () => {
   let tool: Awaited<typeof import('./session-execute.js')>['default']
+  let setCtxRsImporterForTests: Awaited<
+    typeof import('./session-execute.js')
+  >['setCtxRsImporterForTests']
 
   beforeEach(async () => {
     vi.resetModules()
     const mod = await import('./session-execute.js')
     tool = mod.default
+    setCtxRsImporterForTests = mod.setCtxRsImporterForTests
+    setCtxRsImporterForTests(async () => ({
+      executeSandboxed: executeSandboxedMock,
+    }))
   })
 
   afterEach(() => {
+    setCtxRsImporterForTests(null)
     executeSandboxedMock.mockReset()
     searchMock.mockReset()
     getStoreMock.mockReset()
@@ -70,7 +74,7 @@ describe('ak_session_execute', () => {
   it('exposes correct descriptor surface', () => {
     expect(tool.name).toBe('ak_session_execute')
     expect(typeof tool.description).toBe('string')
-    expect(tool.handler).toBeTypeOf('function')
+    expect(typeof tool.handler).toBe('function')
   })
 
   describe('small output (not indexed)', () => {
@@ -91,7 +95,12 @@ describe('ak_session_execute', () => {
 
     it('includes summary preview in details', async () => {
       executeSandboxedMock.mockResolvedValue(
-        fakeExecuteResult({ exitCode: 0, outputBytes: 12, indexed: false, summary: 'hello world\n' }),
+        fakeExecuteResult({
+          exitCode: 0,
+          outputBytes: 12,
+          indexed: false,
+          summary: 'hello world\n',
+        }),
       )
 
       const result = await tool.handler({ command: 'echo hello world' })
@@ -105,7 +114,12 @@ describe('ak_session_execute', () => {
   describe('large output (indexed)', () => {
     it('returns indexed=true when ctx-rs indexed the output', async () => {
       executeSandboxedMock.mockResolvedValue(
-        fakeExecuteResult({ exitCode: 0, outputBytes: 3000, indexed: true, summary: 'x'.repeat(100) }),
+        fakeExecuteResult({
+          exitCode: 0,
+          outputBytes: 3000,
+          indexed: true,
+          summary: 'x'.repeat(100),
+        }),
       )
 
       const result = await tool.handler({ command: 'big-command', label: 'big-label' })
@@ -177,7 +191,7 @@ describe('ak_session_execute', () => {
       const details = payload.details as Record<string, unknown>
 
       expect(searchMock).not.toHaveBeenCalled()
-      expect(details.hits).toBeUndefined()
+      expect(details.hits).toBe(undefined)
     })
   })
 
@@ -207,7 +221,9 @@ describe('ak_session_execute', () => {
 
       expect(result.content).toHaveLength(1)
       expect(result.content[0]).toMatchObject({ type: 'text' })
-      expect(result.structuredContent).toEqual(JSON.parse((result.content[0] as { text: string }).text))
+      expect(result.structuredContent).toEqual(
+        JSON.parse((result.content[0] as { text: string }).text),
+      )
     })
   })
 })

@@ -9,6 +9,7 @@ import type { CAC } from 'cac'
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, relative } from 'node:path'
+import { setTimeout as delay } from 'node:timers/promises'
 import { fileURLToPath } from 'node:url'
 
 import { isTelemetryEnabled, reportTthw } from '#telemetry/setup-tthw'
@@ -647,7 +648,7 @@ export async function runInit(flags: InitFlags): Promise<number> {
         os: process.platform,
         nodeVersion: process.version,
       }
-      await Promise.race([reportTthw(payload), new Promise<void>((r) => setTimeout(r, 100))])
+      await Promise.race([reportTthw(payload), delay(100)])
     }
 
     // Lane-4 framing — printed once on every successful completion so users

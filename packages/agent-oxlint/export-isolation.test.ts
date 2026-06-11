@@ -74,17 +74,17 @@ describe('export-isolation: plugin files must export a valid oxlint plugin shape
       const mod = await import(filePath)
       const plugin = mod.default
 
-      expect(plugin, `${file}: default export must be an object or function`).toBeTruthy()
+      expect(Boolean(plugin, `${file}: default export must be an object or function`)).toBe(true)
       expect(
         typeof plugin === 'object' || typeof plugin === 'function',
         `${file}: default export must be an object or function, got ${typeof plugin}`,
       ).toBe(true)
 
       // Valid oxlint plugin shape: meta.name (string) + rules (object)
-      expect(plugin.meta, `${file}: plugin must have a .meta property`).toBeTruthy()
+      expect(Boolean(plugin.meta, `${file}: plugin must have a .meta property`)).toBe(true)
       expect(typeof plugin.meta.name, `${file}: plugin.meta.name must be a string`).toBe('string')
       expect(plugin.meta.name.length > 0, `${file}: plugin.meta.name must be non-empty`).toBe(true)
-      expect(plugin.rules, `${file}: plugin must have a .rules property`).toBeTruthy()
+      expect(Boolean(plugin.rules, `${file}: plugin must have a .rules property`)).toBe(true)
       expect(typeof plugin.rules, `${file}: plugin.rules must be an object`).toBe('object')
     })
   }

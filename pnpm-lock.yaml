@@ -74,12 +74,6 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.29.0(zod@4.4.3)
-      '@webpresso/ctx-rs':
-        specifier: file:../ctx-rs/npm/@webpresso/ctx-rs
-        version: file:../ctx-rs/npm/@webpresso/ctx-rs
-      '@webpresso/ctx-rs-darwin-arm64':
-        specifier: file:../ctx-rs/npm/@webpresso/ctx-rs-darwin-arm64
-        version: file:../ctx-rs/npm/@webpresso/ctx-rs-darwin-arm64
       '@webpresso/runtime-format':
         specifier: 'catalog:'
         version: 0.1.2
@@ -401,12 +395,6 @@ importers:
         version: 4.1.5(@types/node@25.6.2)(vite@8.0.12(@types/node@25.6.2)(esbuild@0.27.3)(yaml@2.8.4))
 
 packages:
-
-  '@webpresso/ctx-rs-darwin-arm64@file:../ctx-rs/npm/@webpresso/ctx-rs-darwin-arm64':
-    resolution: {directory: ../ctx-rs/npm/@webpresso/ctx-rs-darwin-arm64, type: directory}
-
-  '@webpresso/ctx-rs@file:../ctx-rs/npm/@webpresso/ctx-rs':
-    resolution: {directory: ../ctx-rs/npm/@webpresso/ctx-rs, type: directory}
 
   '@andrewbranch/untar.js@1.0.3':
     resolution: {integrity: sha512-Jh15/qVmrLGhkKJBdXlK1+9tY4lZruYjsgkDFj08ZmDiWVBLJcqkok7Z0/R0In+i1rScBpJlSvrTS2Lm41Pbnw==}
@@ -4864,10 +4852,6 @@ packages:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
 snapshots:
-
-  '@webpresso/ctx-rs-darwin-arm64@file:../ctx-rs/npm/@webpresso/ctx-rs-darwin-arm64': {}
-
-  '@webpresso/ctx-rs@file:../ctx-rs/npm/@webpresso/ctx-rs': {}
 
   '@andrewbranch/untar.js@1.0.3': {}
 

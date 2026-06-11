@@ -37,7 +37,7 @@ describe('auditMutationScore', () => {
     const result = auditMutationScore(report, { minCovered: 85, minRaw: 0 })
     expect(result.ok).toBe(false)
     const violation = result.violations.find((v) => v.message.includes('mutation-score-covered'))
-    expect(violation).toBeDefined()
+    expect(violation).not.toBe(undefined)
     expect(violation?.message).toContain('70.00%')
   })
 
@@ -51,7 +51,9 @@ describe('auditMutationScore', () => {
     })
     const result = auditMutationScore(report, { minCovered: 0, minRaw: 85 })
     expect(result.ok).toBe(false)
-    expect(result.violations.find((v) => v.message.includes('mutation-score-raw'))).toBeDefined()
+    expect(result.violations.find((v) => v.message.includes('mutation-score-raw'))).not.toBe(
+      undefined,
+    )
   })
 
   it('flags individual files below per-file threshold', () => {
@@ -97,7 +99,7 @@ describe('auditMutationScore', () => {
     })
     const result = auditMutationScore(report, { minCovered: 0, minRaw: 0 })
     const warning = result.violations.find((v) => v.message.includes('mutation-score-no-cov'))
-    expect(warning).toBeDefined()
+    expect(warning).not.toBe(undefined)
     expect(warning?.message).toContain('10 mutants')
   })
 

@@ -82,9 +82,7 @@ async function createFixtureDb(
   `)
 
   const insertChunk = db.prepare('INSERT INTO chunks(content, source) VALUES (?, ?)')
-  const insertTrigram = db.prepare(
-    'INSERT INTO chunks_trigram(content, source) VALUES (?, ?)',
-  )
+  const insertTrigram = db.prepare('INSERT INTO chunks_trigram(content, source) VALUES (?, ?)')
   db.transaction(() => {
     for (const c of chunks) {
       insertChunk.run(c.content, c.source)
@@ -119,9 +117,7 @@ function searchWithBetterSqlite(
   try {
     const ftsQuery = `"${query.replace(/"/g, '""')}"`
     const rows = db
-      .prepare(
-        `SELECT content, source FROM chunks WHERE chunks MATCH ? ORDER BY rank LIMIT ?`,
-      )
+      .prepare(`SELECT content, source FROM chunks WHERE chunks MATCH ? ORDER BY rank LIMIT ?`)
       .all(ftsQuery, limit) as Array<{ content: string; source: string }>
     return rows
   } catch {
@@ -210,7 +206,9 @@ describe('v2 reads v1 DB — parity suite', () => {
         totalChecks++
         if (overlapRatio >= 0.8) passed++
         else {
-          console.error(`PARITY FAIL: ${fixture} query="${query}" overlap=${overlapRatio.toFixed(2)}`)
+          console.error(
+            `PARITY FAIL: ${fixture} query="${query}" overlap=${overlapRatio.toFixed(2)}`,
+          )
           console.error('  v1 top-3:', v1Contents.slice(0, 3))
           console.error('  v2 top-3:', v2Contents.slice(0, 3))
         }

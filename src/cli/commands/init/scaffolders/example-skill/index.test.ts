@@ -66,7 +66,7 @@ describe('scaffoldExampleSkill', () => {
       throw new Error('spawn ENOENT')
     }) as unknown as typeof spawnSync
 
-    await expect(scaffoldExampleSkill(tmpDir, { spawn: spawnMock })).resolves.toBeUndefined()
+    await expect(scaffoldExampleSkill(tmpDir, { spawn: spawnMock })).resolves.toBe(undefined)
 
     const skillPath = join(tmpDir, '.agent', 'skills', 'hello-webpresso', 'SKILL.md')
     const content = readFileSync(skillPath, 'utf-8')

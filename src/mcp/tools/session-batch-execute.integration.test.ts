@@ -2,8 +2,8 @@
  * Tests for `ak_session_batch_execute` MCP tool.
  *
  * Mocks:
- *   - @webpresso/ctx-rs (executeSandboxed) — controls per-command execution + indexing
- *   - #session-memory/store (getStore)     — controls search
+ *   - test seam in session-batch-execute.ts — controls per-command execution + indexing
+ *   - #session-memory/store (getStore)      — controls search
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -18,10 +18,6 @@ const getStoreMock = vi.hoisted(() =>
     search: searchMock,
   })),
 )
-
-vi.mock('@webpresso/ctx-rs', () => ({
-  executeSandboxed: executeSandboxedMock,
-}))
 
 vi.mock('#session-memory/store', () => ({
   getStore: getStoreMock,
@@ -53,14 +49,22 @@ function parsePayload(result: { content: readonly { type: string; text?: string 
 
 describe('ak_session_batch_execute', () => {
   let tool: Awaited<typeof import('./session-batch-execute.js')>['default']
+  let setCtxRsImporterForTests: Awaited<
+    typeof import('./session-batch-execute.js')
+  >['setCtxRsImporterForTests']
 
   beforeEach(async () => {
     vi.resetModules()
     const mod = await import('./session-batch-execute.js')
     tool = mod.default
+    setCtxRsImporterForTests = mod.setCtxRsImporterForTests
+    setCtxRsImporterForTests(async () => ({
+      executeSandboxed: executeSandboxedMock,
+    }))
   })
 
   afterEach(() => {
+    setCtxRsImporterForTests(null)
     executeSandboxedMock.mockReset()
     searchMock.mockReset()
     getStoreMock.mockReset()
@@ -70,7 +74,7 @@ describe('ak_session_batch_execute', () => {
   it('exposes correct descriptor surface', () => {
     expect(tool.name).toBe('ak_session_batch_execute')
     expect(typeof tool.description).toBe('string')
-    expect(tool.handler).toBeTypeOf('function')
+    expect(typeof tool.handler).toBe('function')
   })
 
   describe('small output (not indexed)', () => {
@@ -158,12 +162,14 @@ describe('ak_session_batch_execute', () => {
         .mockResolvedValueOnce(fakeExecuteResult({ exitCode: 0, outputBytes: 3000, indexed: true }))
         .mockResolvedValueOnce(fakeExecuteResult({ exitCode: 0, outputBytes: 3000, indexed: true }))
 
-      searchMock.mockImplementation(({ query, source }: { query: string; source?: string }) => [{
-        content: `${query}:${source ?? 'none'}`,
-        source: source ?? 'none',
-        rank: source === 'big-a' ? -2 : -1,
-        tier: 'porter',
-      }])
+      searchMock.mockImplementation(({ query, source }: { query: string; source?: string }) => [
+        {
+          content: `${query}:${source ?? 'none'}`,
+          source: source ?? 'none',
+          rank: source === 'big-a' ? -2 : -1,
+          tier: 'porter',
+        },
+      ])
 
       const result = await tool.handler({
         commands: [
@@ -188,7 +194,7 @@ describe('ak_session_batch_execute', () => {
         limit: 10,
         source: 'big-b',
       })
-      expect(details.queryHits).toBeDefined()
+      expect(details.queryHits).not.toBe(undefined)
       expect(details.queryHits!['x patterns']?.map((hit) => hit.source)).toEqual(['big-a', 'big-b'])
     })
 
@@ -205,7 +211,7 @@ describe('ak_session_batch_execute', () => {
       const details = payload.details as { queryHits?: unknown }
 
       expect(searchMock).not.toHaveBeenCalled()
-      expect(details.queryHits).toBeUndefined()
+      expect(details.queryHits).toBe(undefined)
     })
 
     it('omits queryHits from result when no queries provided', async () => {
@@ -219,7 +225,7 @@ describe('ak_session_batch_execute', () => {
       const payload = parsePayload(result)
       const details = payload.details as { queryHits?: unknown }
 
-      expect(details.queryHits).toBeUndefined()
+      expect(details.queryHits).toBe(undefined)
     })
   })
 

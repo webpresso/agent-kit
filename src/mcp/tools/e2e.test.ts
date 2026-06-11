@@ -8,7 +8,7 @@ vi.mock('#e2e', () => ({
   __esModule: true,
 }))
 
-vi.mock('../../e2e/execution.js', () => ({
+vi.mock('#e2e/execution', () => ({
   createE2eExecutionPlan,
   plannedGroupsToCommandConfigs,
   runCommandConfigs,
@@ -30,7 +30,7 @@ describe('ak_e2e tool', () => {
   it('exposes the expected descriptor surface', () => {
     expect(akE2eTool.name).toBe('ak_e2e')
     expect(typeof akE2eTool.description).toBe('string')
-    expect(akE2eTool.handler).toBeTypeOf('function')
+    expect(typeof akE2eTool.handler).toBe('function')
   })
 
   it('returns structured execution payload for a generic planned run', async () => {

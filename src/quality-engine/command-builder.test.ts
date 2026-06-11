@@ -110,7 +110,7 @@ describe('buildTypecheckCommand', () => {
 
   it('does not set env when concurrencyLimit is not set', () => {
     const cmd = buildTypecheckCommand({ type: 'all', value: [] }, '/repo', {})
-    expect(cmd.env).toBeUndefined()
+    expect(cmd.env).toBe(undefined)
   })
 })
 
@@ -333,7 +333,7 @@ describe('buildVpTestCommand', () => {
 
   it('does not set env when concurrencyLimit is 0', () => {
     const cmd = buildVpTestCommand([], { concurrencyLimit: 0 })
-    expect(cmd.env).toBeUndefined()
+    expect(cmd.env).toBe(undefined)
   })
 })
 

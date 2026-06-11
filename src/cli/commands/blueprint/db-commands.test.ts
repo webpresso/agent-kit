@@ -195,7 +195,7 @@ describe('dbVerify', () => {
 
     expect(result.ok).toBe(false)
     const stale = result.staleEntries.find((e) => e.slug === 'my-planned-feature')
-    expect(stale).toBeDefined()
+    expect(stale).not.toBe(undefined)
     expect(stale?.table).toBe('blueprints')
   })
 
@@ -209,7 +209,7 @@ describe('dbVerify', () => {
 
     expect(result.ok).toBe(false)
     const stale = result.staleEntries.find((e) => e.slug === 'h-001-test')
-    expect(stale).toBeDefined()
+    expect(stale).not.toBe(undefined)
     expect(stale?.table).toBe('tech_debt_items')
   })
 })
@@ -329,7 +329,7 @@ describe('executeBlueprintDbSubcommand', () => {
 
     const result = output[0] as Record<string, unknown>
     expect(typeof result).toBe('object')
-    expect(result['blueprintsCount']).toBeTypeOf('number')
+    expect(typeof result['blueprintsCount']).toBe('number')
   })
 
   it('verify verb reports OK when DB matches', async () => {

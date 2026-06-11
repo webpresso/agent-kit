@@ -11,6 +11,7 @@
 
 import { isMissingBinary, isRunFailure, runCommand } from '#mcp/tools/_shared/run-command'
 import { resolveProjectRoot } from '#mcp/tools/_shared/project-root'
+import { buildOxlintArgs } from './oxlint-command.js'
 
 export interface LintIssue {
   readonly file: string
@@ -146,13 +147,11 @@ export async function runLint(options: RunLintOptions = {}): Promise<LintResult>
     cwd,
   }
 
-  const oxlintArgs: string[] = ['--format=json']
-  if (options.fix) oxlintArgs.push('--fix')
-  if (options.files && options.files.length > 0) {
-    oxlintArgs.push(...options.files)
-  } else {
-    oxlintArgs.push('.')
-  }
+  const oxlintArgs = buildOxlintArgs({
+    cwd,
+    files: options.files,
+    fix: options.fix,
+  })
 
   const oxlintOutcome = await runCommand('oxlint', oxlintArgs, runOptions)
 

@@ -23,35 +23,17 @@ jobs:
           node-version: '24'
           cache: 'pnpm'
 
-      - name: Detect local ctx-rs checkout
-        id: ctx_rs_checkout
-        shell: bash
-        run: |
-          if [ -d ../ctx-rs/npm/@webpresso/ctx-rs ] && [ -d ../ctx-rs/npm/@webpresso/ctx-rs-darwin-arm64 ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Skip when ctx-rs sibling checkout is unavailable
-        if: steps.ctx_rs_checkout.outputs.available != 'true'
-        run: |
-          echo "::notice::Skipping session-perf: this branch pins local file:../ctx-rs packages and the sibling ctx-rs checkout is unavailable on this runner."
-
       - name: Install dependencies
-        if: steps.ctx_rs_checkout.outputs.available == 'true'
         run: pnpm install --frozen-lockfile
         env:
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
       - name: Run session perf bench
-        if: steps.ctx_rs_checkout.outputs.available == 'true'
         run: pnpm exec vitest bench tests/perf/session-capture.bench.ts --reporter=verbose
         env:
           AK_SESSION_ENGINE: ctx-rs
 
       - name: Run with TS fallback (regression comparison)
-        if: steps.ctx_rs_checkout.outputs.available == 'true'
         run: pnpm exec vitest bench tests/perf/session-capture.bench.ts --reporter=verbose
         env:
           AK_SESSION_ENGINE: ts

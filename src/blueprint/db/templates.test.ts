@@ -463,12 +463,12 @@ describe('runTemplate — row cap', () => {
 describe('findTemplate', () => {
   it('returns the template for a known id', () => {
     const t = findTemplate('next-ready-task')
-    expect(t).toBeDefined()
+    expect(t).not.toBe(undefined)
     expect(t?.id).toBe('next-ready-task')
   })
 
   it('returns undefined for unknown id', () => {
-    expect(findTemplate('no-such-template')).toBeUndefined()
+    expect(findTemplate('no-such-template')).toBe(undefined)
   })
 })
 

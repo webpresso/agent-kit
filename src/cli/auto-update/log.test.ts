@@ -64,14 +64,14 @@ describe('buildEntry', () => {
     const err = new Error('no-stack')
     err.stack = undefined
     const entry = buildEntry(err, new Date('2026-05-12T00:00:00.000Z'))
-    expect(entry.stack).toBeUndefined()
+    expect(entry.stack).toBe(undefined)
     expect(entry.message).toStrictEqual('no-stack')
   })
 
   it('treats a string throw as an error message', () => {
     const entry = buildEntry('text-only', new Date('2026-05-12T00:00:00.000Z'))
     expect(entry.message).toStrictEqual('text-only')
-    expect(entry.stack).toBeUndefined()
+    expect(entry.stack).toBe(undefined)
   })
 
   it('serializes non-Error non-string throws as JSON', () => {

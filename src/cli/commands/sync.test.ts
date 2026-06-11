@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { runUnifiedSync } from '../../symlinker/unified-sync.js'
+import { runUnifiedSync } from '#symlinker/unified-sync.js'
 
 function makeTempDir(): string {
   const dir = join(
@@ -97,7 +97,7 @@ describe('runUnifiedSync (sync command core)', () => {
 
     const drift = runUnifiedSync({ catalogDir, consumerRoot, check: true })
     expect(drift.fixCount).toBeGreaterThan(0)
-    expect(drift.mismatches[0]?.targetPath).toBeDefined()
+    expect(drift.mismatches[0]?.targetPath).not.toBe(undefined)
 
     runUnifiedSync({ catalogDir, consumerRoot })
     const clean = runUnifiedSync({ catalogDir, consumerRoot, check: true })
@@ -113,7 +113,7 @@ describe('runUnifiedSync (sync command core)', () => {
     const drift = runUnifiedSync({ catalogDir, consumerRoot, check: true })
     expect(drift.fixCount).toBeGreaterThan(0)
     const tamper = drift.mismatches.find((m) => m.targetPath.endsWith('h.mdc'))
-    expect(tamper).toBeDefined()
+    expect(tamper).not.toBe(undefined)
   })
 
   it('aborts on slug collision before any write', () => {

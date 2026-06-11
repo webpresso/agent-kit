@@ -91,7 +91,7 @@ describe('executeTechDebtSubcommand', () => {
       const { readdir } = await import('node:fs/promises')
       const files = await readdir(acceptedDir)
       const newFile = files.find((f) => f.startsWith('h-003'))
-      expect(newFile).toBeDefined()
+      expect(newFile).not.toBe(undefined)
     })
 
     it('exits non-zero on invalid severity', async () => {

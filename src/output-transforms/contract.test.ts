@@ -32,8 +32,8 @@ function transformFor(toolName: string, rawOutput: string | undefined): Transfor
 }
 
 function expectAbsentRawOutput(result: TransformResult): void {
-  expect(result.rawOutput).toBeUndefined()
-  expect(result.truncated).toBeUndefined()
+  expect(result.rawOutput).toBe(undefined)
+  expect(result.truncated).toBe(undefined)
 }
 
 function expectClippedPassthrough(result: TransformResult, rawBytes: number): void {
@@ -76,7 +76,7 @@ describe('output-transform contract — short output, no error patterns', () => 
       const result = transformFor(toolName, shortHappy)
 
       expect(result.rawOutput).toBe(shortHappy)
-      expect(result.truncated).toBeUndefined()
+      expect(result.truncated).toBe(undefined)
       // rawBytes always equals the original byte count, regardless of the path taken.
       expect(result.transform?.rawBytes).toBe(Buffer.byteLength(shortHappy))
     })

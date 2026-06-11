@@ -17,7 +17,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { runUnifiedSync } from './unified-sync.js'
@@ -82,7 +82,7 @@ describe('runUnifiedSync', () => {
 
   afterEach(() => {
     // Walk up to the temp root and clean it.
-    const tempRoot = join(catalogDir, '..', '..', '..')
+    const tempRoot = dirname(dirname(dirname(catalogDir)))
     rmSync(tempRoot, { recursive: true, force: true })
   })
 
@@ -248,7 +248,7 @@ describe('runUnifiedSync', () => {
     const realCatalog = catalogDir
     writeFile(join(realCatalog, 'rules', 'sym.md'), RULE_FRONTMATTER.replace('SLUG', 'sym'))
 
-    const aliasParent = join(realCatalog, '..', '..', 'alias-pkg')
+    const aliasParent = join(dirname(dirname(realCatalog)), 'alias-pkg')
     mkdirSync(join(aliasParent, '..'), { recursive: true })
     symlinkSync(join(realCatalog, '..'), aliasParent, 'dir')
     const aliasCatalog = join(aliasParent, 'agent')

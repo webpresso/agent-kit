@@ -42,12 +42,12 @@ describe('marketplace.json', () => {
 
   it('has the required top-level identity fields', () => {
     expect(marketplace.name).toBe('agent-kit')
-    expect(marketplace.owner).toBeDefined()
+    expect(marketplace.owner).not.toBe(undefined)
     expect(marketplace.owner.name).toBeTruthy()
   })
 
   it('declares metadata.version that mirrors package.json#version (drift gate)', () => {
-    expect(marketplace.metadata).toBeDefined()
+    expect(marketplace.metadata).not.toBe(undefined)
     expect(marketplace.metadata.version).toBe(packageJson.version)
   })
 

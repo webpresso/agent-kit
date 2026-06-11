@@ -3,7 +3,7 @@ import { mergeConfig } from 'vite-plus/test/config'
 
 // Add CLI shell exclusions to the base exclude list
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const baseExclude = (nodeConfig as any).test?.coverage?.exclude ?? []
+const baseExclude = (nodeConfig as unknown).test?.coverage?.exclude ?? []
 const hasCliShells = baseExclude.some((pattern: string) => pattern.includes('src/cli'))
 
 // @ts-expect-error -- cross-package vitest version mismatch requires type escape

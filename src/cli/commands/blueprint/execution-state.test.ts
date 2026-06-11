@@ -49,7 +49,7 @@ describe('normalizeCompletionEvidence', () => {
       verifications: [],
       logPath: '   ',
     })
-    expect(result.logPath).toBeUndefined()
+    expect(result.logPath).toBe(undefined)
   })
 
   it('preserves non-empty logPath after trim', () => {
@@ -63,7 +63,7 @@ describe('normalizeCompletionEvidence', () => {
 
   it('returns undefined logPath when not provided', () => {
     const result = normalizeCompletionEvidence({ artifacts: [], verifications: [] })
-    expect(result.logPath).toBeUndefined()
+    expect(result.logPath).toBe(undefined)
   })
 })
 

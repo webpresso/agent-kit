@@ -1,4 +1,5 @@
-import { resolve } from 'node:path'
+import { existsSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 // Inlined from agent-kit blueprint schema (not a dependency of this public package).
@@ -14,6 +15,18 @@ const LIFECYCLE_BLUEPRINT_STATUS_OPTIONS = [
 const TASK_STATUS_OPTIONS = ['todo', 'in_progress', 'blocked', 'done'] as const
 
 import { getAvailableTemplates, loadTemplate } from './template-loader'
+
+function findTemplatesRoot(startDir: string): string {
+  let current = resolve(startDir)
+  for (;;) {
+    if (existsSync(join(current, 'templates'))) return current
+    const parent = dirname(current)
+    if (parent === current) {
+      throw new Error(`Could not find agent-docs-lint templates root from: ${startDir}`)
+    }
+    current = parent
+  }
+}
 
 describe('loadTemplate', () => {
   describe('successful loading', () => {
@@ -95,9 +108,7 @@ describe('loadTemplate', () => {
       const templateName = 'invalid'
       const result = loadTemplate(templateName)
       const expectedPath = resolve(
-        import.meta.dirname,
-        '..',
-        '..',
+        findTemplatesRoot(import.meta.dirname),
         'templates',
         `${templateName}.yaml`,
       )

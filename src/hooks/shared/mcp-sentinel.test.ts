@@ -1,9 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, beforeAll } from 'vitest'
 
 vi.mock('node:fs')
 vi.mock('node:os', () => ({ tmpdir: () => '/tmp' }))
 
 import { readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
+
+beforeAll(() => import('#hooks/shared/mcp-sentinel'))
 
 describe('mcp-sentinel', () => {
   beforeEach(() => {

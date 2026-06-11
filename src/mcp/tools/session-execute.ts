@@ -39,9 +39,16 @@ interface CtxRsModule {
   ) => Promise<CtxRsExecuteResult>
 }
 
+type CtxRsImporter = () => Promise<Record<string, unknown>>
+
+let ctxRsImporterForTests: CtxRsImporter | null = null
+
 async function tryLoadCtxRs(): Promise<CtxRsModule | null> {
   try {
-    const mod = await import('@webpresso/ctx-rs')
+    const mod = (await (ctxRsImporterForTests?.() ?? import('@webpresso/ctx-rs'))) as Record<
+      string,
+      unknown
+    >
     const candidate = (() => {
       if ('executeSandboxed' in mod && typeof mod.executeSandboxed === 'function') {
         return mod
@@ -64,6 +71,10 @@ async function tryLoadCtxRs(): Promise<CtxRsModule | null> {
     )
     return null
   }
+}
+
+export function setCtxRsImporterForTests(importer: CtxRsImporter | null): void {
+  ctxRsImporterForTests = importer
 }
 
 // ── Session DB path ───────────────────────────────────────────────────────────

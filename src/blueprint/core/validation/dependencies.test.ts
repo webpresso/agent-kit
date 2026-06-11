@@ -235,8 +235,8 @@ describe('validateTaskDependencies', () => {
 `
       const result = validateTaskDependencies(md)
       expect(result.valid).toBe(false)
-      expect(result.details?.cycles).toBeDefined()
-      expect(result.details?.danglingRefs).toBeDefined()
+      expect(result.details?.cycles).not.toBe(undefined)
+      expect(result.details?.danglingRefs).not.toBe(undefined)
     })
 
     it('passes for tasks with empty Depends block', () => {

@@ -1,5 +1,5 @@
-import type { Checkpoint, SerializedMessage } from '../checkpoint/types.js'
-import type { RetrievedFact } from '../facts/types.js'
+import type { Checkpoint, SerializedMessage } from '#ai-memory/checkpoint/types.js'
+import type { RetrievedFact } from '#ai-memory/facts/types.js'
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 

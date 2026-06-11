@@ -45,7 +45,7 @@ describe('ak_typecheck tool', () => {
   it('exposes the expected descriptor surface', () => {
     expect(akTypecheckTool.name).toBe('ak_typecheck')
     expect(typeof akTypecheckTool.description).toBe('string')
-    expect(akTypecheckTool.handler).toBeTypeOf('function')
+    expect(typeof akTypecheckTool.handler).toBe('function')
   })
 
   describe('argv', () => {

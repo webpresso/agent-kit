@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, beforeAll } from 'vitest'
 import { EventEmitter } from 'node:events'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -14,6 +14,8 @@ const mockSpawn = vi.mocked(spawn)
 const mockAccessSync = vi.mocked(accessSync)
 const mockReadFileSync = vi.mocked(readFileSync)
 const mockStatSync = vi.mocked(statSync)
+
+beforeAll(() => import('#hooks/doctor'))
 
 describe('hooks/doctor', () => {
   beforeEach(() => {
@@ -466,7 +468,7 @@ describe('hooks/doctor', () => {
 
       const { runHooksDoctor } = await import('#hooks/doctor')
       const result = await runHooksDoctor({ skipMcp: true })
-      expect(result.checks.find((c) => c.name === 'rtk on PATH')).toBeUndefined()
+      expect(result.checks.find((c) => c.name === 'rtk on PATH')).toBe(undefined)
     })
 
     it('reports installed Codex/OpenCode/Claude host integrations as healthy when the expected surfaces are visible', async () => {

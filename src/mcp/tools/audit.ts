@@ -6,7 +6,7 @@
  * in MCP `text` content blocks.
  *
  * Most kinds dispatch directly to the library functions exported from
- * `#audit/repo-guardrails`, `#audit/tech-debt`, and `../../vite/local`.
+ * `#audit/repo-guardrails`, `#audit/tech-debt`, and `#vite/local`.
  * The `tph` kind shells out to `bun` because the implementation is a
  * Bun-native script (`src/audit/audit-tph.ts`).
  *
@@ -55,6 +55,14 @@ interface RepoAuditLikeResult {
   checked?: number
   violations?: { message: string; file?: string }[]
 }
+
+interface BundleBudgetModule {
+  runBundleBudgetCli(args: string[]): Promise<number>
+}
+
+type BundleBudgetLoader = () => Promise<BundleBudgetModule>
+
+let bundleBudgetLoaderForTests: BundleBudgetLoader | null = null
 
 type AuditPayload = {
   passed: boolean
@@ -113,6 +121,10 @@ async function runScript(script: string): Promise<{ exitCode: number; output: st
       resolve({ exitCode: code ?? 1, output: [stdout, stderr].filter(Boolean).join('') }),
     )
   })
+}
+
+export function setBundleBudgetLoaderForTests(loader: BundleBudgetLoader | null): void {
+  bundleBudgetLoaderForTests = loader
 }
 
 function wrap(payload: AuditPayload, options: { isError?: boolean } = {}) {
@@ -215,7 +227,8 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
       }
     }
     case 'bundle-budget': {
-      const { runBundleBudgetCli } = await import('../../vite/local.js')
+      const { runBundleBudgetCli } = await (bundleBudgetLoaderForTests?.() ??
+        import('../../vite/local.js'))
       const args = (input.cwd ?? input.directory) ? [input.cwd ?? input.directory!] : []
       const exitCode = await runBundleBudgetCli(args)
       return {
@@ -266,7 +279,9 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
     }
     case 'no-relative-package-scripts': {
       const { auditNoRelativePackageScripts } = await import('#audit/repo-guardrails')
-      const auditResult = auditNoRelativePackageScripts(input.cwd ?? input.directory ?? process.cwd())
+      const auditResult = auditNoRelativePackageScripts(
+        input.cwd ?? input.directory ?? process.cwd(),
+      )
       return {
         passed: auditResult.ok,
         summary: auditResult.ok

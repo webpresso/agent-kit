@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { ParsedBlueprintForDb } from '../../db/parser/blueprint-db-parser.js'
+import type { ParsedBlueprintForDb } from '#db/parser/blueprint-db-parser.js'
 
 import { emitTasks } from './tasks.js'
 
@@ -84,7 +84,7 @@ describe('emitTasks', () => {
     // Wave 2 has 1 task — find the Write tests line
     const lines = output.split('\n')
     const wave2TaskLine = lines.find((l) => l.includes('Write integration tests'))
-    expect(wave2TaskLine).toBeDefined()
+    expect(wave2TaskLine).not.toBe(undefined)
     expect(wave2TaskLine).not.toContain('[P]')
   })
 

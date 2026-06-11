@@ -4,18 +4,19 @@
  */
 
 import { readFileSync } from 'node:fs'
-import path from 'node:path'
+import { dirname } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { parseBlueprintForDb } from '../../db/parser/blueprint-db-parser.js'
+import { parseBlueprintForDb } from '#db/parser/blueprint-db-parser.js'
+import { resolvePackageAsset } from '#utils/package-assets'
 import { blueprintToSpecKit } from './index.js'
 
 // ---------------------------------------------------------------------------
 // Real fixture from blueprints/completed/elegance-pass-2026/_overview.md
 // ---------------------------------------------------------------------------
 
-const REPO_ROOT = path.resolve(import.meta.dirname, '../../../..')
-const FIXTURE_PATH = path.join(REPO_ROOT, 'blueprints/completed/elegance-pass-2026/_overview.md')
+const FIXTURE_PATH = resolvePackageAsset('blueprints/completed/elegance-pass-2026/_overview.md')
+const REPO_ROOT = dirname(resolvePackageAsset('package.json'))
 
 const FIXTURE_CONTENT = readFileSync(FIXTURE_PATH, 'utf-8')
 const FIXTURE_SLUG = 'elegance-pass-2026'

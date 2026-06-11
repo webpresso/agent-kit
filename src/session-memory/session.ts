@@ -59,7 +59,6 @@ function getTsDb(repoHash: string, sessionsDir?: string): TsDb {
   return db
 }
 
-
 function resolveActiveSessionId(): string | null {
   return process.env['CLAUDE_SESSION_ID'] ?? null
 }
@@ -114,11 +113,9 @@ export function captureEvent(input: CaptureEventInput, sessionsDir?: string): bo
 
     // TS engine path
     const db = getTsDb(input.repoHash, sessionsDir)
-    db
-      .prepare(
-        'INSERT INTO session_events(session_id, event_id, ts, tool_name, content) VALUES (?, ?, ?, ?, ?)',
-      )
-      .run(input.event.sessionId, eventId, ts, input.event.toolName, input.event.content)
+    db.prepare(
+      'INSERT INTO session_events(session_id, event_id, ts, tool_name, content) VALUES (?, ?, ?, ?, ?)',
+    ).run(input.event.sessionId, eventId, ts, input.event.toolName, input.event.content)
 
     return true
   } catch (err: unknown) {
@@ -133,7 +130,10 @@ export function captureEvent(input: CaptureEventInput, sessionsDir?: string): bo
  * Consolidate recent session events into a snapshot row.
  * Respects a cap (capMs) — partial snapshots are allowed on timeout.
  */
-export async function snapshot(input: SnapshotInput, sessionsDir?: string): Promise<SnapshotResult> {
+export async function snapshot(
+  input: SnapshotInput,
+  sessionsDir?: string,
+): Promise<SnapshotResult> {
   const snapshotId = randomUUID()
   try {
     const dbPath = resolveDbPath(input.repoHash, sessionsDir)
@@ -173,36 +173,44 @@ async function snapshotTs(
   const db = getTsDb(input.repoHash, sessionsDir)
 
   const sessionId = resolveActiveSessionId()
-  const events = (sessionId !== null
-    ? db
-        .prepare<[string], {
-          session_id: string
-          event_id: string
-          ts: number
-          tool_name: string
-          content: string
-        }>(
-          `SELECT session_id, event_id, ts, tool_name, content
+  const events = (
+    sessionId !== null
+      ? db
+          .prepare<
+            [string],
+            {
+              session_id: string
+              event_id: string
+              ts: number
+              tool_name: string
+              content: string
+            }
+          >(
+            `SELECT session_id, event_id, ts, tool_name, content
            FROM session_events
            WHERE session_id = ?
            ORDER BY ts DESC
            LIMIT 200`,
-        )
-        .all(sessionId)
-    : db
-        .prepare<[], {
-          session_id: string
-          event_id: string
-          ts: number
-          tool_name: string
-          content: string
-        }>(
-          `SELECT session_id, event_id, ts, tool_name, content
+          )
+          .all(sessionId)
+      : db
+          .prepare<
+            [],
+            {
+              session_id: string
+              event_id: string
+              ts: number
+              tool_name: string
+              content: string
+            }
+          >(
+            `SELECT session_id, event_id, ts, tool_name, content
            FROM session_events
            ORDER BY ts DESC
            LIMIT 200`,
-        )
-        .all()) as Array<{
+          )
+          .all()
+  ) as Array<{
     session_id: string
     event_id: string
     ts: number
@@ -226,13 +234,11 @@ async function snapshotTs(
   const contentJson = JSON.stringify(eventsToInclude)
   const agentId = process.env['CLAUDE_SESSION_ID'] ?? 'unknown'
 
-  db
-    .prepare(
-      `INSERT INTO sessions(agent_id, snapshot_id, created_at, status, content_json)
+  db.prepare(
+    `INSERT INTO sessions(agent_id, snapshot_id, created_at, status, content_json)
        VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(agent_id, snapshot_id) DO NOTHING`,
-    )
-    .run(agentId, snapshotId, Date.now(), partial ? 'partial' : 'complete', contentJson)
+  ).run(agentId, snapshotId, Date.now(), partial ? 'partial' : 'complete', contentJson)
 
   return { snapshotId, eventsIncluded: includedCount, partial }
 }
@@ -254,19 +260,22 @@ export function restore(input: RestoreInput, sessionsDir?: string): RestoreResul
         if (isUnavailable(result)) {
           throw new Error('ctx-rs unavailable for restore')
         }
-        const events = result as Array<{
+        void (result as Array<{
           sessionId: string
           eventId: string
           ts: number
           toolName: string
           content: string
-        }>
+        }>)
 
         // Also search the store for related indexed content
         const store = getSessionStore(input.repoHash, sessionsDir)
         const hits = store.search({ query: input.query, limit: input.limit ?? 10 })
 
-        const snapshotId = resolveLatestSnapshotId(getTsDb(input.repoHash, sessionsDir), resolveActiveSessionId())
+        const snapshotId = resolveLatestSnapshotId(
+          getTsDb(input.repoHash, sessionsDir),
+          resolveActiveSessionId(),
+        )
         return {
           hits,
           snapshotId,

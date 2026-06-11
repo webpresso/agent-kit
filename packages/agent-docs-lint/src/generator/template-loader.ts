@@ -1,18 +1,26 @@
 import type { TemplateSchema, ValidationError } from './types.js'
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { dirname, join, resolve } from 'node:path'
 import { parse as parseYaml } from 'yaml'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const packageRootDir = resolve(__dirname, '../..')
 
 /**
  * Resolves the templates directory path
  */
+function findTemplatesRoot(startDir: string): string {
+  let current = resolve(startDir)
+  for (;;) {
+    if (existsSync(join(current, 'templates'))) return current
+    const parent = dirname(current)
+    if (parent === current) {
+      throw new Error(`Could not find agent-docs-lint templates root from: ${startDir}`)
+    }
+    current = parent
+  }
+}
+
 function getTemplatesDir(): string {
-  return resolve(packageRootDir, 'templates')
+  return join(findTemplatesRoot(import.meta.dirname), 'templates')
 }
 
 /**

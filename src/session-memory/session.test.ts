@@ -127,7 +127,7 @@ describe('snapshot', () => {
 
     const result = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, tmpDir)
 
-    expect(result.snapshotId).toBeTruthy()
+    expect(Boolean(result.snapshotId)).toBe(true)
     expect(typeof result.snapshotId).toBe('string')
     // UUID format check
     expect(result.snapshotId).toMatch(
@@ -160,7 +160,7 @@ describe('snapshot', () => {
   it('returns a snapshot even when no events have been captured', async () => {
     const result = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, tmpDir)
 
-    expect(result.snapshotId).toBeTruthy()
+    expect(Boolean(result.snapshotId)).toBe(true)
     expect(result.eventsIncluded).toBe(0)
     expect(typeof result.partial).toBe('boolean')
   })
@@ -177,7 +177,7 @@ describe('snapshot', () => {
     }
 
     const result = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 0 }, tmpDir)
-    expect(result.snapshotId).toBeTruthy()
+    expect(Boolean(result.snapshotId)).toBe(true)
     expect(typeof result.partial).toBe('boolean')
   })
 
@@ -209,14 +209,10 @@ describe('restore', () => {
     )
     await snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, tmpDir)
 
-    const result = restore(
-      { repoHash: TEST_REPO_HASH, query: 'session memory SQLite' },
-      tmpDir,
-    )
-    expect(result.snapshotId).toBeTruthy()
+    const result = restore({ repoHash: TEST_REPO_HASH, query: 'session memory SQLite' }, tmpDir)
+    expect(Boolean(result.snapshotId)).toBe(true)
     expect(Array.isArray(result.hits)).toBe(true)
   })
-
 
   it('restore returns the exact snapshotId created by snapshot', async () => {
     captureEvent(
@@ -330,7 +326,7 @@ describe('snapshot + restore round-trip', () => {
     )
 
     // The snapshot was created, so snapshotId must be non-null
-    expect(restored.snapshotId).toBeTruthy()
+    expect(Boolean(restored.snapshotId)).toBe(true)
     expect(Array.isArray(restored.hits)).toBe(true)
   })
 })

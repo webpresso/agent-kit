@@ -132,8 +132,8 @@ describe('ensureGstack', () => {
       exists,
     })
     expect(result).toEqual({ kind: 'gstack-skipped-dry-run' })
-    expect(spawn).not.toHaveBeenCalled()
-    expect(exists).not.toHaveBeenCalled()
+    expect(spawn).not.toHaveBeenCalledTimes(1)
+    expect(exists).not.toHaveBeenCalledTimes(1)
   })
 
   it('clones and runs setup --team when missing, then skips codex if not detected', () => {
@@ -261,9 +261,9 @@ describe('ensureGstack', () => {
       root: '/fake/gstack',
       codex: { kind: 'gstack-codex-installed', skillsRoot: '/fake-home/.codex/skills' },
     })
-    expect(start).toHaveBeenCalled()
+    expect(start).toHaveBeenCalledTimes(3)
     expect(succeed).toHaveBeenCalledTimes(2)
-    expect(fail).not.toHaveBeenCalled()
+    expect(fail).not.toHaveBeenCalledTimes(1)
   })
 
   it('calls spinner.fail() when codex materialization fails', () => {
@@ -287,7 +287,7 @@ describe('ensureGstack', () => {
       spinnerFactory: factory,
     })
     expect(result).toEqual({ kind: 'gstack-setup-failed', exitCode: 12, command: '--host codex' })
-    expect(start).toHaveBeenCalled()
+    expect(start).toHaveBeenCalledTimes(3)
     expect(succeed).toHaveBeenCalledTimes(1)
     expect(fail).toHaveBeenCalledTimes(1)
   })

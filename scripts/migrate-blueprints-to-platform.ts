@@ -16,9 +16,9 @@ import { createHash } from 'node:crypto'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
-import { loadSyncCredentials } from '../src/blueprint/sync/auth.js'
-import { BlueprintSyncClient } from '../src/blueprint/sync/client.js'
-import type { BlueprintPlatformEvent } from '../src/blueprint/sync/types.js'
+import { loadSyncCredentials } from '#sync/auth.js'
+import { BlueprintSyncClient } from '#sync/client.js'
+import type { BlueprintPlatformEvent } from '#sync/types.js'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -230,16 +230,32 @@ export async function migrate(repoRoot: string, fetchFn?: typeof fetch): Promise
   console.log(`[migrate] Found ${blueprints.length} blueprint(s) to migrate.`)
 
   let pushed = 0
+  const failedSlugs: string[] = []
   for (const blueprint of blueprints) {
     const event = buildEvent(blueprint, creds.repoId)
-    try {
-      await client.pushEvent(event)
-      console.log(`[migrate] ✓ ${blueprint.slug} (eventId: ${event.eventId.slice(0, 8)}...)`)
-      pushed++
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err)
-      console.error(`[migrate] ✗ ${blueprint.slug}: ${message}`)
+    const outcome = await client.pushEvent(event).then(
+      () => ({ ok: true }) as const,
+      (err: unknown) =>
+        ({
+          ok: false,
+          message: err instanceof Error ? err.message : String(err),
+        }) as const,
+    )
+
+    if (!outcome.ok) {
+      console.error(`[migrate] ✗ ${blueprint.slug}: ${outcome.message}`)
+      failedSlugs.push(blueprint.slug)
+      continue
     }
+
+    console.log(`[migrate] ✓ ${blueprint.slug} (eventId: ${event.eventId.slice(0, 8)}...)`)
+    pushed++
+  }
+
+  if (failedSlugs.length > 0) {
+    throw new Error(
+      `Failed to migrate ${failedSlugs.length} blueprint(s): ${failedSlugs.join(', ')}`,
+    )
   }
 
   console.log(`[migrate] Done. Pushed ${pushed}/${blueprints.length} blueprint(s).`)

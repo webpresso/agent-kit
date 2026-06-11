@@ -154,7 +154,7 @@ describe('parseBlueprintForDb', () => {
 
       // The task with gstack skills in acceptance criteria
       const gstackTask = result.tasks.find((t) => t.taskId === '1.3')
-      expect(gstackTask).toBeDefined()
+      expect(gstackTask).not.toBe(undefined)
 
       const criteria = gstackTask?.acceptanceCriteria ?? []
       expect(criteria.some((c) => c.includes('/qa'))).toBe(true)

@@ -14,6 +14,7 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { setTimeout as delay } from 'node:timers/promises'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -47,7 +48,7 @@ async function waitFor(condition: () => boolean, timeoutMs = 3_000): Promise<boo
   const start = Date.now()
   while (Date.now() - start < timeoutMs) {
     if (condition()) return true
-    await new Promise((resolve) => setTimeout(resolve, 50))
+    await delay(50)
   }
   return condition()
 }

@@ -54,10 +54,11 @@ describe('fetchAndIndex', () => {
   })
 
   it('uses the sources cache to avoid refetching within the TTL', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
-      new Response('cached body', {
-        headers: { 'content-type': 'text/plain' },
-      }),
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response('cached body', {
+          headers: { 'content-type': 'text/plain' },
+        }),
     )
 
     const first = await fetchAndIndex({
@@ -74,7 +75,7 @@ describe('fetchAndIndex', () => {
     expect(first.cached).toBe(false)
     expect(second.cached).toBe(true)
     expect(second.chunkCount).toBe(0)
-    expect(second.cachedAt).toBeTypeOf('number')
+    expect(typeof second.cachedAt).toBe('number')
     expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
 })

@@ -1,6 +1,8 @@
 import type { IClock } from './interfaces.js'
 import type { Task } from './types.js'
 
+import { setTimeout as delay } from 'node:timers/promises'
+
 import { realClock } from './interfaces.js'
 import { TaskGraph } from './task-graph.js'
 
@@ -356,9 +358,7 @@ export class ParallelExecutor<T = unknown, R = unknown> {
   }
 
   private createTimeoutPromise(taskId: string): Promise<never> {
-    return new Promise<void>((resolve) => {
-      setTimeout(() => resolve(), this.taskTimeoutMs)
-    }).then(() => {
+    return delay(this.taskTimeoutMs).then(() => {
       throw new Error(`Task "${taskId}" timed out after ${this.taskTimeoutMs}ms`)
     })
   }

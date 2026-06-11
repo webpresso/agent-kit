@@ -9,10 +9,10 @@ import { mkdtempSync, mkdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import type { Database } from '../db/sqlite.js'
+import type { Database } from '#db/sqlite.js'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { openDb } from '../db/connection.js'
+import { openDb } from '#db/connection.js'
 import { auditCrossRepoCorrelation, fixCrossRepoLeak } from './audit.js'
 
 // ---------------------------------------------------------------------------
@@ -286,7 +286,7 @@ describe('fixCrossRepoLeak', () => {
     }
 
     expect(row.target_slug).toBeNull()
-    expect(row.target_slug_hash).toBeTruthy()
+    expect(Boolean(row.target_slug_hash)).toBe(true)
     expect(row.is_redacted).toBe(1)
   })
 

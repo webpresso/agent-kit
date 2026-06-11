@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { RunnerContext, RunnerEvent, RunnerTask } from '../types.js'
-import { ClaudeSubagentRunner } from './index.js'
+import type { RunnerContext, RunnerEvent, RunnerTask } from '#runners/types.js'
+import { ClaudeSubagentRunner } from '#runners/claude-subagent/index.js'
 import type { SubagentFn } from './types.js'
 
 // ---------------------------------------------------------------------------

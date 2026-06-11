@@ -46,7 +46,7 @@ describe('auditBrokenRefs', () => {
     await writeAgentMd('AGENTS.md', '# Agents\n\nSee [missing](./does-not-exist.md).\n')
     const result = auditBrokenRefs(tmpDir)
     const violation = result.violations.find((v) => v.link === './does-not-exist.md')
-    expect(violation).toBeDefined()
+    expect(violation).not.toBe(undefined)
     expect(violation?.file).toBe('AGENTS.md')
   })
 
@@ -88,7 +88,7 @@ describe('auditBrokenRefs', () => {
     await writeAgentMd('.agent/rules/my-rule.md', '# Rule\n\nSee [missing](./nope.md).\n')
     const result = auditBrokenRefs(tmpDir)
     const violation = result.violations.find((v) => v.link === './nope.md')
-    expect(violation).toBeDefined()
+    expect(violation).not.toBe(undefined)
     expect(violation?.file).toContain('.agent/rules/my-rule.md')
   })
 

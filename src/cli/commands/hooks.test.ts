@@ -42,7 +42,7 @@ describe('registerHooksCommand', () => {
     registerHooksCommand(cli as never)
 
     const action = cli.getAction()
-    expect(action).toBeDefined()
+    expect(action).not.toBe(undefined)
     await action!(undefined, {})
 
     expect(printHooksDoctor).toHaveBeenCalledWith({

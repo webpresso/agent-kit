@@ -45,7 +45,7 @@ describe('ak_test tool', () => {
   it('exposes the expected descriptor surface', () => {
     expect(akTestTool.name).toBe('ak_test')
     expect(typeof akTestTool.description).toBe('string')
-    expect(akTestTool.handler).toBeTypeOf('function')
+    expect(typeof akTestTool.handler).toBe('function')
   })
 
   describe('backend routing', () => {

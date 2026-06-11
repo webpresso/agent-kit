@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { openDb } from '../blueprint/db/connection.js'
+import { openDb } from '#db/connection.js'
 import { auditBlueprintLifecycleSql } from './blueprint-lifecycle-sql.js'
 
 // ---------------------------------------------------------------------------

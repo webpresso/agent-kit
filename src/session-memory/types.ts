@@ -97,5 +97,10 @@ export interface UnavailableStatus {
 }
 
 export function isUnavailable(v: unknown): v is UnavailableStatus {
-  return typeof v === 'object' && v !== null && 'status' in v && (v as UnavailableStatus).status === 'unavailable'
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    'status' in v &&
+    (v as UnavailableStatus).status === 'unavailable'
+  )
 }

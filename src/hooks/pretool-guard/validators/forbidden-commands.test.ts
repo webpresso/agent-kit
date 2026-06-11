@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, beforeAll } from 'vitest'
 
 import type { ToolInput } from '#hooks/shared/types'
 
@@ -28,6 +28,8 @@ import {
 // ---------------------------------------------------------------------------
 // Exported constants
 // ---------------------------------------------------------------------------
+beforeAll(() => import('#hooks/shared/mcp-sentinel'))
+
 describe('exported constants', () => {
   it('VALIDATOR_NAME is forbidden-commands', () => {
     expect(VALIDATOR_NAME).toBe('forbidden-commands')
@@ -75,33 +77,33 @@ describe('generateRules', () => {
   it('includes pnpm exec vitest as a blocked rule', () => {
     const rules = generateRules()
     const vitestRule = rules.find((r) => r.pattern.test('pnpm exec vitest'))
-    expect(vitestRule).toBeDefined()
+    expect(vitestRule).not.toBe(undefined)
     expect(vitestRule!.suggestion).toContain('just test')
   })
 
   it('includes pnpm run test as a blocked rule', () => {
     const rules = generateRules()
     const testScriptRule = rules.find((r) => r.pattern.test('pnpm run test'))
-    expect(testScriptRule).toBeDefined()
+    expect(testScriptRule).not.toBe(undefined)
     expect(testScriptRule!.suggestion).toContain('just test')
   })
 
   it('includes doppler run as a blocked rule', () => {
     const rules = generateRules()
     const dopplerRule = rules.find((r) => r.pattern.test('doppler run'))
-    expect(dopplerRule).toBeDefined()
+    expect(dopplerRule).not.toBe(undefined)
   })
 
   it('includes npx as a blocked rule', () => {
     const rules = generateRules()
     const npxRule = rules.find((r) => r.pattern.test('npx something'))
-    expect(npxRule).toBeDefined()
+    expect(npxRule).not.toBe(undefined)
   })
 
   it('includes just lint-md as a blocked rule that points at qa', () => {
     const rules = generateRules()
     const rule = rules.find((r) => r.pattern.test('just lint-md README.md'))
-    expect(rule).toBeDefined()
+    expect(rule).not.toBe(undefined)
     expect(rule!.suggestion).toContain('just qa')
   })
 })
@@ -112,91 +114,91 @@ describe('generateRules', () => {
 describe('findMatchingRule', () => {
   it('matches pnpm vitest and returns the correct rule', () => {
     const rule = findMatchingRule('pnpm vitest')
-    expect(rule).toBeDefined()
+    expect(rule).not.toBe(undefined)
     expect(rule!.suggestion).toContain('just test')
   })
 
   it('matches pnpm run test', () => {
     const rule = findMatchingRule('pnpm run test')
-    expect(rule).toBeDefined()
+    expect(rule).not.toBe(undefined)
     expect(rule!.suggestion).toContain('just test')
   })
 
   it('matches pnpm exec tsc', () => {
     const rule = findMatchingRule('pnpm exec tsc')
-    expect(rule).toBeDefined()
+    expect(rule).not.toBe(undefined)
     expect(rule!.category).toBe('typecheck')
   })
 
   it('matches doppler run command', () => {
     const rule = findMatchingRule('doppler run node script.js')
-    expect(rule).toBeDefined()
+    expect(rule).not.toBe(undefined)
   })
 
   it('matches npx command', () => {
     const rule = findMatchingRule('npx some-tool')
-    expect(rule).toBeDefined()
+    expect(rule).not.toBe(undefined)
     expect(rule!.category).toBe('unknown')
   })
 
   it('matches bunx command', () => {
     const rule = findMatchingRule('bunx drizzle-kit generate')
-    expect(rule).toBeDefined()
+    expect(rule).not.toBe(undefined)
   })
 
   it('matches pnpm exec vitest with arguments', () => {
     const rule = findMatchingRule('pnpm exec vitest --run --reporter verbose')
-    expect(rule).toBeDefined()
+    expect(rule).not.toBe(undefined)
     expect(rule!.suggestion).toContain('just test')
   })
 
   it('returns undefined for an allowed command', () => {
-    expect(findMatchingRule('just test --package mypkg')).toBeUndefined()
+    expect(findMatchingRule('just test --package mypkg')).toBe(undefined)
   })
 
   it('returns undefined for empty command', () => {
-    expect(findMatchingRule('')).toBeUndefined()
+    expect(findMatchingRule('')).toBe(undefined)
   })
 
   it('returns undefined for unrelated shell command', () => {
-    expect(findMatchingRule('echo hello')).toBeUndefined()
+    expect(findMatchingRule('echo hello')).toBe(undefined)
   })
 
   it('matches commands split by &&', () => {
     const rule = findMatchingRule('echo done && pnpm run test')
-    expect(rule).toBeDefined()
+    expect(rule).not.toBe(undefined)
     expect(rule!.suggestion).toContain('just test')
   })
 
   it('matches commands split by ;', () => {
     const rule = findMatchingRule('ls; pnpm vitest')
-    expect(rule).toBeDefined()
+    expect(rule).not.toBe(undefined)
   })
 
   it('matches DATABASE_URL= inline env var', () => {
     const rule = findMatchingRule('DATABASE_URL=postgres://... pnpm exec drizzle-kit push')
-    expect(rule).toBeDefined()
+    expect(rule).not.toBe(undefined)
   })
 
   it('does not match partial commands', () => {
-    expect(findMatchingRule('just lint')).toBeUndefined()
+    expect(findMatchingRule('just lint')).toBe(undefined)
   })
 
   it('matches bun run typecheck', () => {
     const rule = findMatchingRule('bun run typecheck')
-    expect(rule).toBeDefined()
+    expect(rule).not.toBe(undefined)
     expect(rule!.category).toBe('typecheck')
   })
 
   it('matches pnpm exec oxlint', () => {
     const rule = findMatchingRule('pnpm exec oxlint')
-    expect(rule).toBeDefined()
+    expect(rule).not.toBe(undefined)
     expect(rule!.category).toBe('lint')
   })
 
   it('matches just lint-md', () => {
     const rule = findMatchingRule('just lint-md README.md')
-    expect(rule).toBeDefined()
+    expect(rule).not.toBe(undefined)
     expect(rule!.suggestion).toContain('just qa')
   })
 })
@@ -381,8 +383,8 @@ describe('createBlockedResult', () => {
     expect(result.message).toContain('pnpm vitest')
     expect(result.message).toContain('mcp__agent-kit__ak_test(...)')
     expect(result.message).toContain('Fallback if MCP unavailable:')
-    expect(result.docsRef).toBeDefined()
-    expect(result.matchedPattern).toBeDefined()
+    expect(result.docsRef).not.toBe(undefined)
+    expect(result.matchedPattern).not.toBe(undefined)
   })
 
   it('includes suggestion in the message', () => {
@@ -415,7 +417,7 @@ describe('createAuditResult', () => {
     expect(result.message).toContain('[AUDIT] Would block')
     expect(result.command).toBe('pnpm vitest')
     expect(result.message).toContain('mcp__agent-kit__ak_test(...)')
-    expect(result.docsRef).toBeDefined()
+    expect(result.docsRef).not.toBe(undefined)
   })
 })
 
@@ -736,7 +738,7 @@ describe('blueprint lifecycle enforcement', () => {
 
   it('redirect message points to ak_blueprint MCP tool', () => {
     const rule = findMatchingRule('mv blueprints/draft/foo blueprints/planned/')!
-    expect(rule).toBeDefined()
+    expect(rule).not.toBe(undefined)
     const result = createBlockedResult('mv blueprints/draft/foo blueprints/planned/', rule, {
       mcpReady: true,
     })
@@ -914,13 +916,13 @@ describe('splitTopLevelCommands', () => {
 // ---------------------------------------------------------------------------
 describe('forbidden-commands edge cases', () => {
   it('returns undefined for whitespace-only command', () => {
-    expect(findMatchingRule('   ')).toBeUndefined()
+    expect(findMatchingRule('   ')).toBe(undefined)
     expect(getCommandCategory('   ')).toBe('unknown')
   })
 
   it('handles commands with leading/trailing whitespace', () => {
     const rule = findMatchingRule('  pnpm vitest  ')
-    expect(rule).toBeDefined()
+    expect(rule).not.toBe(undefined)
     expect(rule!.suggestion).toContain('just test')
   })
 
@@ -930,7 +932,7 @@ describe('forbidden-commands edge cases', () => {
     // Actually let's check: the pattern for bare vitest is /^vitest(\s|$)/
     // So "just vitest" would NOT match it.
     const rule = findMatchingRule('just vitest')
-    expect(rule).toBeUndefined()
+    expect(rule).toBe(undefined)
     // However "just " prefix itself doesn't bypass all rules
     // The key question: does "vitest" have a bare runner pattern? Yes.
     // But "just vitest" starts with "just " not "vitest", so the bare pattern won't match.
@@ -938,6 +940,6 @@ describe('forbidden-commands edge cases', () => {
 
   it('matches pnpm exec oxlint with --fix flag', () => {
     const rule = findMatchingRule('pnpm exec oxlint --fix')
-    expect(rule).toBeDefined()
+    expect(rule).not.toBe(undefined)
   })
 })

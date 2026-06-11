@@ -85,7 +85,7 @@ describe('detectTphViolations', () => {
     const result = detectTphViolations([OVER_MOCKED_FILE], { maxMocks: 3 })
 
     const overMockViolation = result.violations.find((v: Violation) => v.rule === 'over-mocking')
-    expect(overMockViolation).toBeDefined()
+    expect(overMockViolation).not.toBe(undefined)
     expect(overMockViolation?.severity).toBe('WARNING')
     expect(result.warningCount).toBeGreaterThanOrEqual(1)
   })
@@ -95,7 +95,7 @@ describe('detectTphViolations', () => {
     const result = detectTphViolations([OVER_MOCKED_FILE], { maxMocks: 4 })
 
     const overMockViolation = result.violations.find((v: Violation) => v.rule === 'over-mocking')
-    expect(overMockViolation).toBeUndefined()
+    expect(overMockViolation).toBe(undefined)
   })
 
   it('returns service-mock-in-unit-test ERROR for internal mock in .test.ts', () => {
@@ -104,7 +104,7 @@ describe('detectTphViolations', () => {
     const violation = result.violations.find(
       (v: Violation) => v.rule === 'service-mock-in-unit-test',
     )
-    expect(violation).toBeDefined()
+    expect(violation).not.toBe(undefined)
     expect(violation?.severity).toBe('ERROR')
     expect(result.errorCount).toBeGreaterThanOrEqual(1)
   })
@@ -115,7 +115,7 @@ describe('detectTphViolations', () => {
     const violation = result.violations.find(
       (v: Violation) => v.rule === 'service-mock-in-unit-test',
     )
-    expect(violation).toBeUndefined()
+    expect(violation).toBe(undefined)
     expect(result.errorCount).toBe(0)
   })
 
@@ -125,7 +125,7 @@ describe('detectTphViolations', () => {
     const serviceViolation = result.violations.find(
       (v: Violation) => v.rule === 'service-mock-in-unit-test',
     )
-    expect(serviceViolation).toBeUndefined()
+    expect(serviceViolation).toBe(undefined)
     expect(result.errorCount).toBe(0)
   })
 
@@ -135,14 +135,14 @@ describe('detectTphViolations', () => {
     const serviceViolation = result.violations.find(
       (v: Violation) => v.rule === 'service-mock-in-unit-test',
     )
-    expect(serviceViolation).toBeUndefined()
+    expect(serviceViolation).toBe(undefined)
   })
 
   it('returns inline-yaml ERROR for multiline YAML string in writeFileSync', () => {
     const result = detectTphViolations([INLINE_YAML_FILE])
 
     const violation = result.violations.find((v: Violation) => v.rule === 'inline-yaml')
-    expect(violation).toBeDefined()
+    expect(violation).not.toBe(undefined)
     expect(violation?.severity).toBe('ERROR')
   })
 

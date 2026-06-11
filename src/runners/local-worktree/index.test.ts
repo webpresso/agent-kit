@@ -1,8 +1,8 @@
 import type { SpawnSyncReturns } from 'node:child_process'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { RunnerContext, RunnerTask } from '../types.js'
-import { LocalWorktreeRunner } from './index.js'
+import type { RunnerContext, RunnerTask } from '#runners/types.js'
+import { LocalWorktreeRunner } from '#runners/local-worktree/index.js'
 
 // ---------------------------------------------------------------------------
 // Helpers

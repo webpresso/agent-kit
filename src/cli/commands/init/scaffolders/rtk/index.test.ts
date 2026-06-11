@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { SpinnerFactory } from '../spinner.js'
+import type { SpinnerFactory } from '#cli/commands/init/scaffolders/spinner.js'
 import { ensureRtk } from './index.js'
 
 function makeSpawn(behaviors: Array<{ status: number | null; error?: Error }>) {

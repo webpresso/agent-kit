@@ -47,7 +47,7 @@ describe('ak_format tool', () => {
   it('exposes the expected descriptor surface', () => {
     expect(akFormatTool.name).toBe('ak_format')
     expect(typeof akFormatTool.description).toBe('string')
-    expect(akFormatTool.handler).toBeTypeOf('function')
+    expect(typeof akFormatTool.handler).toBe('function')
   })
 
   it('returns passed=true when oxfmt exits 0 (no check)', async () => {

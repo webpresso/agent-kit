@@ -254,7 +254,7 @@ describe('scheduleDeferredInstall — preserves other configstore keys', () => {
     expect(after.latest).toStrictEqual('1.0.0')
     expect(after.current).toStrictEqual('0.9.0')
     expect(after.lastUpdateCheck).toStrictEqual(1234)
-    expect(after.autoInstallInProgress).toBeDefined()
+    expect(after.autoInstallInProgress).not.toBe(undefined)
   })
 })
 
@@ -306,7 +306,7 @@ describe('clearInstallTombstone', () => {
       autoInstallInProgress?: unknown
     }
     expect(after.latest).toStrictEqual('1.0.0')
-    expect(after.autoInstallInProgress).toBeUndefined()
+    expect(after.autoInstallInProgress).toBe(undefined)
   })
 
   it('is a no-op when no tombstone is present', () => {

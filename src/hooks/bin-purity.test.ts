@@ -13,8 +13,9 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { resolvePackageAsset } from '#utils/package-assets'
 
-const REPO_ROOT = resolve(import.meta.dirname, '../../')
+const REPO_ROOT = dirname(resolvePackageAsset('package.json'))
 
 /** Paths to the 8 hook bin entry-point source files (relative to REPO_ROOT). */
 const HOOK_BIN_SOURCES = [

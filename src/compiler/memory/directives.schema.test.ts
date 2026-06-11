@@ -42,7 +42,7 @@ describe('sectionDirectiveSchema', () => {
       expect(result.data.op).toBe('rotate')
       expect(result.data.rotation_eligible).toBe(true)
       // Optional rotate fields are undefined when not supplied
-      expect(result.data.archive_to).toBeUndefined()
+      expect(result.data.archive_to).toBe(undefined)
     }
   })
 

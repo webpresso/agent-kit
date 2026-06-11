@@ -5,7 +5,7 @@
  * src/blueprint/db/ingester.test.ts.
  */
 
-import { Database } from '../db/sqlite.js'
+import { Database } from '#db/sqlite.js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { BlueprintPlatformClient, BlueprintSnapshot } from './types.js'

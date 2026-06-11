@@ -410,6 +410,6 @@ describe('buildBlueprintExecutionRuntimePaths', () => {
 
   it('logPath is undefined when artifacts has no logPath', () => {
     const paths = buildBlueprintExecutionRuntimePaths('omx-team', 'exec-xyz', null)
-    expect(paths.logPath).toBeUndefined()
+    expect(paths.logPath).toBe(undefined)
   })
 })

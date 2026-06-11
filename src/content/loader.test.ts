@@ -33,7 +33,7 @@ describe('loadContent', () => {
   it('parses frontmatter and body for rules', () => {
     const result = loadContent({ catalogDir: CATALOG, kinds: ['rule'] })
     const alpha = result.records.find((r) => r.slug === 'alpha')
-    expect(alpha).toBeDefined()
+    expect(alpha).not.toBe(undefined)
     expect(alpha?.rawFrontmatter).toMatchObject({
       description: 'Alpha rule',
       priority: 'high',
@@ -45,7 +45,7 @@ describe('loadContent', () => {
   it('collects skill assets recursively, excluding SKILL.md itself', () => {
     const result = loadContent({ catalogDir: CATALOG, kinds: ['skill'] })
     const skill = result.records.find((r) => r.slug === 'skill-with-asset')
-    expect(skill).toBeDefined()
+    expect(skill).not.toBe(undefined)
     expect(skill?.assetPaths).toEqual(['helper.ts', 'nested/note.md'])
   })
 
@@ -82,8 +82,8 @@ describe('loadContent', () => {
     const skillCollision = result.collisions.find(
       (c) => c.kind === 'skill' && c.slug === 'skill-with-asset',
     )
-    expect(ruleCollision).toBeDefined()
-    expect(skillCollision).toBeDefined()
+    expect(ruleCollision).not.toBe(undefined)
+    expect(skillCollision).not.toBe(undefined)
 
     // Both records should still be present — caller decides resolution.
     const alphaRules = result.records.filter((r) => r.kind === 'rule' && r.slug === 'alpha')

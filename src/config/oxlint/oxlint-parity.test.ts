@@ -34,7 +34,7 @@ describe('folded oxlint exports', () => {
 
   it('keeps folded plugin modules importable with valid oxlint plugin shape', async () => {
     for (const name of legacyExportNames()) {
-      expect(name).toBeTruthy()
+      expect(Boolean(name)).toBe(true)
       const plugin = foldedExports[name as keyof typeof foldedExports] as {
         meta?: { name?: unknown }
         rules?: unknown
@@ -50,7 +50,7 @@ describe('folded oxlint exports', () => {
 
     expect(config).toBe(oxlintConfig)
     expect(config).toEqual({
-      plugins: expect.any(Object),
+      jsPlugins: expect.any(Array),
       rules: expect.any(Object),
     })
 
@@ -60,7 +60,9 @@ describe('folded oxlint exports', () => {
         rules: Record<string, unknown>
       }
 
-      expect(config.plugins[plugin.meta.name]).toBe(plugin)
+      expect(config.jsPlugins).toContain(
+        `@webpresso/agent-kit/oxlint/${name.replace('monorepoNpaths', 'monorepo-paths').replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`)}`,
+      )
 
       for (const ruleName of Object.keys(plugin.rules)) {
         expect(config.rules[`${plugin.meta.name}/${ruleName}`]).toBe('error')
@@ -72,6 +74,6 @@ describe('folded oxlint exports', () => {
     const fixtureModuleUrl = pathToFileURL(join(import.meta.dirname, 'oxlint-config.fixture.ts'))
     const fixtureModule = await import(fixtureModuleUrl.href)
 
-    expect(fixtureModule.default).toBe(foldedExports.config)
+    expect(fixtureModule.default).toBe(foldedExports.default)
   })
 })

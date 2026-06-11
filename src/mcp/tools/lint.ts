@@ -21,6 +21,7 @@
 import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
+import { buildOxlintArgs } from '#lint/oxlint-command'
 import { applyOutputTransform } from '#output-transforms/index'
 
 import { resolveProjectRoot } from './_shared/project-root.js'
@@ -220,13 +221,11 @@ const tool: ToolDescriptor = {
       cwd,
     }
 
-    const oxlintArgs: string[] = ['--format=json']
-    if (input.fix) oxlintArgs.push('--fix')
-    if (input.files && input.files.length > 0) {
-      oxlintArgs.push(...input.files)
-    } else {
-      oxlintArgs.push('.')
-    }
+    const oxlintArgs = buildOxlintArgs({
+      cwd,
+      files: input.files,
+      fix: input.fix,
+    })
 
     const oxlintOutcome = await runCommand('oxlint', oxlintArgs, runOptions)
 

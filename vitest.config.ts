@@ -28,6 +28,8 @@ export default defineConfig({
       { find: /^#format\/(.*)/, replacement: resolve(__dirname, 'src/format/$1') },
       { find: /^#symlinker\/(.*)/, replacement: resolve(__dirname, 'src/symlinker/$1') },
       { find: /^#symlinker/, replacement: resolve(__dirname, 'src/symlinker/index.ts') },
+      { find: /^#runners\/(.*)/, replacement: resolve(__dirname, 'src/runners/$1') },
+      { find: /^#vite\/(.*)/, replacement: resolve(__dirname, 'src/vite/$1') },
       { find: /^#compiler\/(.*)/, replacement: resolve(__dirname, 'src/compiler/$1') },
       { find: /^#telemetry\/(.*)/, replacement: resolve(__dirname, 'src/telemetry/$1') },
       { find: /^#quality-engine$/, replacement: resolve(__dirname, 'src/quality-engine/index.ts') },

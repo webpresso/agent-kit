@@ -78,7 +78,7 @@ describe('plugin.json manifest', () => {
 
     it('Stop has no matcher and points at qa-changed-files', () => {
       const [entry] = readManifest().hooks.Stop
-      expect(entry!.matcher).toBeUndefined()
+      expect(entry!.matcher).toBe(undefined)
       const [handler] = entry!.hooks
       expect(handler!.type).toBe('command')
       expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/stop/qa-changed-files.ts`)
@@ -86,7 +86,7 @@ describe('plugin.json manifest', () => {
 
     it('UserPromptSubmit points at guard-switch', () => {
       const [entry] = readManifest().hooks.UserPromptSubmit
-      expect(entry!.matcher).toBeUndefined()
+      expect(entry!.matcher).toBe(undefined)
       const [handler] = entry!.hooks
       expect(handler!.type).toBe('command')
       expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/guard-switch/index.ts`)
@@ -104,7 +104,7 @@ describe('plugin.json manifest', () => {
   describe('mcpServers', () => {
     it('declares the agent-kit stdio server via bun + ${CLAUDE_PLUGIN_ROOT}', () => {
       const server = readManifest().mcpServers['agent-kit']
-      expect(server).toBeDefined()
+      expect(server).not.toBe(undefined)
       expect(server!.command).toBe('bun')
       expect(server!.args).toEqual([`${PLUGIN_ROOT_VAR}/src/mcp/cli.ts`])
     })

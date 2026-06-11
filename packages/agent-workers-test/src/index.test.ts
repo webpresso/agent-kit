@@ -69,7 +69,7 @@ describe('createMockEnv', () => {
 
   it('returns env with a mock HYPERDRIVE', () => {
     const env = createMockEnv()
-    expect(env.HYPERDRIVE).toBeDefined()
+    expect(env.HYPERDRIVE).not.toBe(undefined)
     expect(env.HYPERDRIVE!.host).toBe('localhost')
   })
 
@@ -197,8 +197,8 @@ describe('createCorsRequest', () => {
 describe('setupWorkerTest', () => {
   it('returns mockEnv, mockCtx, and helpers', () => {
     const setup = setupWorkerTest()
-    expect(setup.mockEnv).toBeDefined()
-    expect(setup.mockCtx).toBeDefined()
+    expect(setup.mockEnv).not.toBe(undefined)
+    expect(setup.mockCtx).not.toBe(undefined)
     expect(typeof setup.createAuthenticatedRequest).toBe('function')
     expect(typeof setup.createUnauthenticatedRequest).toBe('function')
     expect(typeof setup.createCorsRequest).toBe('function')

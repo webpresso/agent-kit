@@ -235,7 +235,7 @@ describe('runUpdateFlow — fetch throws', () => {
     const fetchError = new Error('network error')
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(fetchError))
 
-    await expect(runUpdateFlow('1.0.0')).resolves.toBeUndefined()
+    await expect(runUpdateFlow('1.0.0')).resolves.toBe(undefined)
 
     expect(logUpdateErrorMock).toHaveBeenCalledOnce()
     expect(logUpdateErrorMock).toHaveBeenCalledWith(fetchError)

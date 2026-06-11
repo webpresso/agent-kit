@@ -8,7 +8,7 @@
  * `{passed: false, ...}` without crashing the handler.
  */
 
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const repoGuardrailsMock = vi.hoisted(() => ({
   auditCatalogDrift: vi.fn(),
@@ -35,10 +35,13 @@ const spawnMock = vi.hoisted(() => vi.fn())
 vi.mock('#audit/repo-guardrails', () => repoGuardrailsMock)
 vi.mock('#audit/agents', () => agentsAuditMock)
 vi.mock('#audit/tech-debt', () => techDebtMock)
-vi.mock('../../vite/local.js', () => viteLocalMock)
 vi.mock('node:child_process', () => ({ spawn: spawnMock }))
 
 import akAuditTool from './audit.js'
+
+let setBundleBudgetLoaderForTests: Awaited<
+  typeof import('./audit.js')
+>['setBundleBudgetLoaderForTests']
 
 function fakeChild(opts: { stdout?: string; exitCode?: number } = {}): unknown {
   return {
@@ -75,7 +78,7 @@ function parsePayload(result: { content: ReadonlyArray<{ type: string; text?: st
   }
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   for (const fn of Object.values(repoGuardrailsMock)) {
     if (typeof fn === 'function' && 'mockReset' in fn) (fn as { mockReset: () => void }).mockReset()
   }
@@ -84,13 +87,20 @@ beforeEach(() => {
   viteLocalMock.runBundleBudgetCli.mockReset()
   spawnMock.mockReset()
   repoGuardrailsMock.formatRepoAuditReport.mockReturnValue('formatted report')
+  const mod = await import('./audit.js')
+  setBundleBudgetLoaderForTests = mod.setBundleBudgetLoaderForTests
+  setBundleBudgetLoaderForTests(async () => viteLocalMock)
 })
 
 describe('ak_audit tool', () => {
+  afterEach(() => {
+    setBundleBudgetLoaderForTests(null)
+  })
+
   it('exposes the expected descriptor surface', () => {
     expect(akAuditTool.name).toBe('ak_audit')
     expect(typeof akAuditTool.description).toBe('string')
-    expect(akAuditTool.handler).toBeTypeOf('function')
+    expect(typeof akAuditTool.handler).toBe('function')
   })
 
   describe('dispatch by kind (passing audits)', () => {
@@ -183,7 +193,7 @@ describe('ak_audit tool', () => {
       expect(payload.passed).toBe(false)
       expect(payload.summary).toBe('catalog-drift audit failed with 1 violation')
       expect(payload.kind).toBe('catalog-drift')
-      expect(payload.details).toBeDefined()
+      expect(payload.details).not.toBe(undefined)
     })
 
     it('catches thrown audit errors and returns {passed:false} with details message', async () => {

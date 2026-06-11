@@ -34,7 +34,7 @@ describe('@webpresso/agent-kit/lint export surface', () => {
   it('parseOxlintIssues returns an empty issues array on empty input', () => {
     const result = parseOxlintIssues('')
     expect(result.issues).toEqual([])
-    expect(result.parseError).toBeUndefined()
+    expect(result.parseError).toBe(undefined)
   })
 
   it('parseOxlintIssues flattens an oxlint JSON array into structured issues', () => {
@@ -49,7 +49,7 @@ describe('@webpresso/agent-kit/lint export surface', () => {
       { filePath: '/abs/src/bar.ts', messages: [] },
     ])
     const { issues, parseError } = parseOxlintIssues(raw)
-    expect(parseError).toBeUndefined()
+    expect(parseError).toBe(undefined)
     expect(issues).toEqual([
       { file: '/abs/src/foo.ts', line: 12, rule: 'no-debugger', message: 'Unexpected debugger' },
       { file: '/abs/src/foo.ts', line: 13, rule: '', message: 'Missing rule id' },

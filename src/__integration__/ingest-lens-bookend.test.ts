@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
-import akQaTool from '../mcp/tools/qa.js'
+import akQaTool from '#mcp/tools/qa.js'
 import { seededLintErrorSource } from './fixtures/seeded-lint-error.js'
 import { seededTypeErrorSource } from './fixtures/seeded-type-error.js'
 

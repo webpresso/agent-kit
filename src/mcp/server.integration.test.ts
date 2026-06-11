@@ -121,7 +121,7 @@ describe('mcp server integration', () => {
     )
 
     const listResponse = responses.find((r) => r.id === 2)
-    expect(listResponse).toBeDefined()
+    expect(listResponse).not.toBe(undefined)
     const tools = (listResponse?.result?.tools ?? []) as Array<{
       name: string
       description?: string
@@ -129,7 +129,7 @@ describe('mcp server integration', () => {
       outputSchema?: { type: string; properties?: Record<string, unknown> }
     }>
     const akTest = tools.find((t) => t.name === 'ak_test')
-    expect(akTest).toBeDefined()
+    expect(akTest).not.toBe(undefined)
     expect(akTest?.inputSchema.type).toBe('object')
     expect(akTest?.inputSchema.properties).toMatchObject({
       packages: expect.any(Object),
@@ -143,7 +143,7 @@ describe('mcp server integration', () => {
     })
 
     const akE2e = tools.find((t) => t.name === 'ak_e2e')
-    expect(akE2e).toBeDefined()
+    expect(akE2e).not.toBe(undefined)
     expect(akE2e?.inputSchema.properties).toMatchObject({
       suite: expect.any(Object),
       files: expect.any(Object),
@@ -156,7 +156,7 @@ describe('mcp server integration', () => {
     })
 
     const akAudit = tools.find((t) => t.name === 'ak_audit')
-    expect(akAudit).toBeDefined()
+    expect(akAudit).not.toBe(undefined)
     expect(
       (akAudit?.inputSchema.properties?.kind as { enum?: unknown[] } | undefined)?.enum ?? [],
     ).toContain('agents')
@@ -189,8 +189,8 @@ describe('mcp server integration', () => {
 
     for (const id of [2, 3, 4, 5]) {
       const r = responses.find((res) => res.id === id)
-      expect(r, `id=${id} response`).toBeDefined()
-      expect(r?.error, `id=${id} should not error`).toBeUndefined()
+      expect(r, `id=${id} response`).not.toBe(undefined)
+      expect(r?.error, `id=${id} should not error`).toBe(undefined)
     }
     expect(responses.find((r) => r.id === 2)?.result).toEqual({ prompts: [] })
     expect(responses.find((r) => r.id === 3)?.result).toEqual({ resources: [] })
@@ -217,7 +217,7 @@ describe('mcp server integration', () => {
     })
     const init = responses.find((r) => r.id === 1)
     const caps = init?.result?.capabilities as Record<string, unknown> | undefined
-    expect(caps).toBeDefined()
+    expect(caps).not.toBe(undefined)
     expect(caps).toHaveProperty('tools')
     expect(caps).toHaveProperty('prompts')
     expect(caps).toHaveProperty('resources')
@@ -278,7 +278,7 @@ describe('mcp server integration', () => {
       expect(fixture?.outputSchema).toEqual({ type: 'object', bareShape: true })
 
       const callResponse = responses.find((r) => r.id === 3)
-      expect(callResponse?.error).toBeUndefined()
+      expect(callResponse?.error).toBe(undefined)
       expect(callResponse?.result?.structuredContent).toEqual({
         ok: true,
         echoed: { value: 'hi' },
@@ -318,7 +318,7 @@ describe('mcp server integration', () => {
     )
 
     const callResponse = responses.find((r) => r.id === 2)
-    expect(callResponse?.error).toBeUndefined()
+    expect(callResponse?.error).toBe(undefined)
     expect(callResponse?.result?.structuredContent).toMatchObject({
       passed: expect.any(Boolean),
       summary: expect.any(String),

@@ -17,7 +17,9 @@ import { resolveBackend, tryLoadCtxRsSync } from './backend.js'
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 
 interface CacheLookupDb {
-  prepare<Params extends unknown[] = [string], Row = { indexed_at: number }>(sql: string): {
+  prepare<Params extends unknown[] = [string], Row = { indexed_at: number }>(
+    sql: string,
+  ): {
     get(...params: Params): Row | undefined | null
   }
 }
@@ -68,9 +70,9 @@ function getCachedAt(store: ReturnType<typeof getStore>, url: string): number | 
   try {
     const db = (store as { getDb?(): unknown }).getDb?.()
     if (!isCacheLookupDb(db)) return null
-    const row = db
-      .prepare('SELECT indexed_at FROM sources WHERE label = ?')
-      .get(url) as { indexed_at: number } | undefined
+    const row = db.prepare('SELECT indexed_at FROM sources WHERE label = ?').get(url) as
+      | { indexed_at: number }
+      | undefined
     return row?.indexed_at ?? null
   } catch (err: unknown) {
     process.stderr.write(

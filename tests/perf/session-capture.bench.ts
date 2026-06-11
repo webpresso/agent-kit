@@ -15,8 +15,8 @@ import { tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
 
 // Import session-memory engine directly
-import { captureEvent } from '../../src/session-memory/session.js'
-import { getStore } from '../../src/session-memory/store.js'
+import { captureEvent } from '#session-memory/session.js'
+import { getStore } from '#session-memory/store.js'
 
 const tempDir = mkdtempSync(join(tmpdir(), 'ak-session-bench-'))
 const REPO_HASH = 'bench-perf-0001'

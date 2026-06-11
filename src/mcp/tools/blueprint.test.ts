@@ -35,7 +35,7 @@ describe('ak_blueprint tool', () => {
   it('exposes the expected descriptor surface', () => {
     expect(akBlueprintTool.name).toBe('ak_blueprint')
     expect(typeof akBlueprintTool.description).toBe('string')
-    expect(akBlueprintTool.handler).toBeTypeOf('function')
+    expect(typeof akBlueprintTool.handler).toBe('function')
   })
 
   describe('action: new', () => {

@@ -701,10 +701,11 @@ export interface NoLinkProtocolOptions {
 
 /**
  * Fail if any package.json (root, workspaces, or named extras) declares a
- * `link:<filesystem-path>` value in `dependencies`, `devDependencies`,
- * `optionalDependencies`, or `pnpm.overrides`. `link:` filesystem-couples
- * consumer clones to a maintainer's directory layout and hides version-pin
- * drift; use `catalog:` (cross-repo) or `workspace:*` (intra-repo) instead.
+ * `link:<filesystem-path>` or `file:<filesystem-path>` value in
+ * `dependencies`, `devDependencies`, `optionalDependencies`, or
+ * `pnpm.overrides`. These filesystem-couple consumer clones to a maintainer's
+ * directory layout and hide version-pin drift; use `catalog:` (cross-repo),
+ * `workspace:*` (intra-repo), or a published version instead.
  */
 export function auditNoLinkProtocol(
   rootDirectory: string = process.cwd(),
@@ -740,10 +741,10 @@ export function auditNoLinkProtocol(
     const directSections = ['dependencies', 'devDependencies', 'optionalDependencies'] as const
     for (const section of directSections) {
       for (const [name, value] of Object.entries(readStringRecord(pkg[section]))) {
-        if (value.startsWith('link:')) {
+        if (value.startsWith('link:') || value.startsWith('file:')) {
           violations.push({
             file,
-            message: `${section}.${name}: ${JSON.stringify(value)} — replace with "catalog:" (cross-repo) or "workspace:*" (intra-repo)`,
+            message: `${section}.${name}: ${JSON.stringify(value)} — replace with "catalog:" (cross-repo), "workspace:*" (intra-repo), or a published version`,
           })
         }
       }
@@ -753,10 +754,10 @@ export function auditNoLinkProtocol(
     if (pnpm && typeof pnpm === 'object' && !Array.isArray(pnpm)) {
       const overrides = readStringRecord((pnpm as Record<string, unknown>).overrides)
       for (const [name, value] of Object.entries(overrides)) {
-        if (value.startsWith('link:')) {
+        if (value.startsWith('link:') || value.startsWith('file:')) {
           violations.push({
             file,
-            message: `pnpm.overrides.${name}: ${JSON.stringify(value)} — link: in overrides filesystem-couples the consumer; remove the override or pin to a published version`,
+            message: `pnpm.overrides.${name}: ${JSON.stringify(value)} — filesystem paths in overrides couple the consumer to a local checkout; remove the override or pin to a published version`,
           })
         }
       }

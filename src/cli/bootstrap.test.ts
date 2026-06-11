@@ -82,14 +82,14 @@ describe('bootstrapAk', () => {
 
   it('D19: --version short-circuits before getRepoKey', async () => {
     await bootstrapAk('0.16.0', ['node', 'wp', '--version'])
-    expect(getRepoKey).not.toHaveBeenCalled()
-    expect(runUpdateFlow).not.toHaveBeenCalled()
+    expect(getRepoKey).not.toHaveBeenCalledTimes(1)
+    expect(runUpdateFlow).not.toHaveBeenCalledTimes(1)
   })
 
   it('D19: --help short-circuits before getRepoKey', async () => {
     await bootstrapAk('0.16.0', ['node', 'wp', '--help'])
-    expect(getRepoKey).not.toHaveBeenCalled()
-    expect(runUpdateFlow).not.toHaveBeenCalled()
+    expect(getRepoKey).not.toHaveBeenCalledTimes(1)
+    expect(runUpdateFlow).not.toHaveBeenCalledTimes(1)
   })
 
   it('D6: non-informational + not in git repo → throws NotInGitRepoError', async () => {
@@ -99,14 +99,14 @@ describe('bootstrapAk', () => {
     await expect(bootstrapAk('0.16.0', ['node', 'wp', 'blueprint'])).rejects.toBeInstanceOf(
       NotInGitRepoError,
     )
-    expect(runUpdateFlow).not.toHaveBeenCalled()
+    expect(runUpdateFlow).not.toHaveBeenCalledTimes(1)
   })
 
   it('D8: non-informational + in git + CI=true → runUpdateFlow NOT called', async () => {
     vi.mocked(shouldSkipUpdateCheck).mockReturnValueOnce(true)
     await bootstrapAk('0.16.0', ['node', 'wp', 'blueprint'])
-    expect(getRepoKey).toHaveBeenCalled()
-    expect(runUpdateFlow).not.toHaveBeenCalled()
+    expect(getRepoKey).toHaveBeenCalledTimes(1)
+    expect(runUpdateFlow).not.toHaveBeenCalledTimes(1)
   })
 
   it('D8: non-informational + in git + no skip → runUpdateFlow IS called with version', async () => {
@@ -129,9 +129,9 @@ describe('bootstrapAk', () => {
     vi.mocked(shouldSkipUpdateCheck).mockReturnValueOnce(true)
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true)
     await bootstrapAk('0.16.0', ['node', 'wp', 'mcp'])
-    expect(runUpdateFlow).not.toHaveBeenCalled()
+    expect(runUpdateFlow).not.toHaveBeenCalledTimes(1)
     // No stderr writes during bootstrap when mcp
-    expect(stderrSpy).not.toHaveBeenCalled()
+    expect(stderrSpy).not.toHaveBeenCalledTimes(1)
     stderrSpy.mockRestore()
   })
 })

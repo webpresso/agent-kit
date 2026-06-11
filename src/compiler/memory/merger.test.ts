@@ -139,6 +139,6 @@ describe('mergeAgentsMd', () => {
       outPath: join(tmpDir, 'AGENTS.md'),
     })
     expect(result.provenance.sections.length).toBeGreaterThanOrEqual(2)
-    expect(result.provenance.sections[0]?.sectionSlug).toBeDefined()
+    expect(result.provenance.sections[0]?.sectionSlug).not.toBe(undefined)
   })
 })

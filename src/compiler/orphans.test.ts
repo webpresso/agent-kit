@@ -147,6 +147,6 @@ describe('removeOrphanedSkills', () => {
   })
 
   it('no-ops gracefully on empty orphans list', async () => {
-    await expect(removeOrphanedSkills([], false)).resolves.toBeUndefined()
+    await expect(removeOrphanedSkills([], false)).resolves.toBe(undefined)
   })
 })

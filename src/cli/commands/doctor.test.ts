@@ -104,7 +104,7 @@ describe('registerDoctorCommand', () => {
     const cli = buildFakeCli()
     registerDoctorCommand(cli as never)
     const action = cli.getAction()
-    expect(action).toBeDefined()
+    expect(action).not.toBe(undefined)
     const code = await action!({})
     expect([0, 1, 2]).toContain(code)
   })

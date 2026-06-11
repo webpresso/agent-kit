@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import type { RunnerContext, RunnerTask } from '../../types.js'
-import { ClaudeSubagentRunner } from '../../claude-subagent/index.js'
-import type { SubagentFn } from '../../claude-subagent/types.js'
+import type { RunnerContext, RunnerTask } from '#runners/types.js'
+import { ClaudeSubagentRunner } from '#runners/claude-subagent/index.js'
+import type { SubagentFn } from '#runners/claude-subagent/types.js'
 import { assertEval1 } from './assert.js'
 
 // ---------------------------------------------------------------------------

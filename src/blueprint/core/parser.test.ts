@@ -731,7 +731,7 @@ progress: ' '
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.progress).toBeUndefined()
+      expect(result.progress).toBe(undefined)
     })
 
     it('should handle completed_at field', () => {
@@ -969,7 +969,7 @@ created: 2026-01-01
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0]!.targetPackage).toBeUndefined()
+      expect(result.tasks[0]!.targetPackage).toBe(undefined)
     })
 
     it('should not extract targetFile when no file extension matches', () => {
@@ -988,7 +988,7 @@ created: 2026-01-01
 No file path here
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0]!.targetFile).toBeUndefined()
+      expect(result.tasks[0]!.targetFile).toBe(undefined)
     })
 
     it('should extract target file from description', () => {
@@ -1070,7 +1070,7 @@ created: 2026-01-01
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0]!.complexity).toBeUndefined()
+      expect(result.tasks[0]!.complexity).toBe(undefined)
     })
   })
 
@@ -1325,7 +1325,7 @@ created: 2026-01-01
 **Blocked:** NONE
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0]!.blockedReason).toBeUndefined()
+      expect(result.tasks[0]!.blockedReason).toBe(undefined)
     })
 
     it('returns undefined for "none" lowercase', () => {
@@ -1343,7 +1343,7 @@ created: 2026-01-01
 **Blocked:** none
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tasks[0]!.blockedReason).toBeUndefined()
+      expect(result.tasks[0]!.blockedReason).toBe(undefined)
     })
 
     it('returns the blocked reason when it is a real value', () => {
@@ -1533,7 +1533,7 @@ depends_on: []
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.dependsOn).toBeUndefined()
+      expect(result.dependsOn).toBe(undefined)
     })
 
     it('should not include tags when tags is empty array', () => {
@@ -1551,7 +1551,7 @@ tags: []
 **Depends:** None
 `
       const result = parseBlueprint(plan, '@feature')
-      expect(result.tags).toBeUndefined()
+      expect(result.tags).toBe(undefined)
     })
 
     it('should include dependsOn when depends_on has entries', () => {

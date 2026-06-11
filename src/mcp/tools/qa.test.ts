@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { setTimeout as delay } from 'node:timers/promises'
 import { fileURLToPath } from 'node:url'
 
 const lintHandler = vi.hoisted(() => vi.fn())
@@ -54,14 +55,14 @@ function wrapPayload(payload: unknown): {
 }
 
 function delayedResolve<T>(value: T, ms: number): Promise<T> {
-  return new Promise((resolve) => setTimeout(() => resolve(value), ms))
+  return delay(ms, value)
 }
 
 describe('ak_qa tool', () => {
   it('exposes the expected descriptor surface', () => {
     expect(akQaTool.name).toBe('ak_qa')
     expect(typeof akQaTool.description).toBe('string')
-    expect(akQaTool.handler).toBeTypeOf('function')
+    expect(typeof akQaTool.handler).toBe('function')
   })
 
   it('runs all three sub-tools concurrently (Promise.all parallelism)', async () => {
@@ -400,7 +401,7 @@ describe('ak_qa tool', () => {
     )
 
     const result = await akQaTool.handler({})
-    expect(result.isError).toBeUndefined()
+    expect(result.isError).toBe(undefined)
   })
 
   it('appends the UI tail-hint to summary when QA passes and UI files are detected', async () => {

@@ -95,7 +95,7 @@ describe('runFormat', () => {
     const result = await runFormat({ cwd: dir, files: ['b.ts'] })
 
     expect(result.passed).toBe(true)
-    expect(result.fixedFiles).toBeDefined()
+    expect(result.fixedFiles).not.toBe(undefined)
     const [, args] = spawnMock.mock.calls[0]!
     expect(args[0]).toBe('--write')
     expect(args).toContain('--ignore-path')

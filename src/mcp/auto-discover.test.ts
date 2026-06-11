@@ -116,7 +116,7 @@ describe('discoverTools', () => {
     const fake = makeFakeServer()
     await discoverTools(fake.server, dir)
     const call = fake.calls.find((c) => c.name === 'echo')
-    expect(call).toBeDefined()
+    expect(call).not.toBe(undefined)
     const result = await call!.handler({ hi: 'there' })
     expect(result.content[0]).toMatchObject({ type: 'text', text: '{"hi":"there"}' })
   })
@@ -236,6 +236,6 @@ describe('discoverTools', () => {
     }
     await discoverTools(fakeServer, dir)
     const plain = calls.find((c) => c.name === 'plain')
-    expect(plain?.annotations).toBeUndefined()
+    expect(plain?.annotations).toBe(undefined)
   })
 })

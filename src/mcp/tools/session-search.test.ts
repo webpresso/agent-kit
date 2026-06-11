@@ -4,7 +4,12 @@ import { describe, expect, it, vi, afterEach } from 'vitest'
 vi.mock('#session-memory/session', () => ({
   restore: vi.fn(() => ({
     hits: [
-      { content: 'session memory SQLite store', source: 'session:snap1', tier: 'porter', rank: -1.5 },
+      {
+        content: 'session memory SQLite store',
+        source: 'session:snap1',
+        tier: 'porter',
+        rank: -1.5,
+      },
     ],
     snapshotId: 'snap-001',
   })),
@@ -65,7 +70,7 @@ describe('ak_session_search MCP tool', () => {
 
   it('auto-discovered — no manual registration needed (has default export)', async () => {
     const mod = await import('./session-search.js')
-    expect(mod.default).toBeDefined()
+    expect(mod.default).not.toBe(undefined)
     expect(mod.default.name).toBe('ak_session_search')
     expect(typeof mod.default.handler).toBe('function')
   })

@@ -252,10 +252,7 @@ class TsStore {
   }
 
   getDbPath(): string {
-    const row = this.db.prepare('PRAGMA database_list').get() as
-      | { file: string }
-      | null
-      | undefined
+    const row = this.db.prepare('PRAGMA database_list').get() as { file: string } | null | undefined
     return row?.file ?? ''
   }
 }

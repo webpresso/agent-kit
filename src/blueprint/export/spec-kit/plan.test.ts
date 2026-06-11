@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { ParsedBlueprintForDb } from '../../db/parser/blueprint-db-parser.js'
+import type { ParsedBlueprintForDb } from '#db/parser/blueprint-db-parser.js'
 
 import { emitPlan } from './plan.js'
 

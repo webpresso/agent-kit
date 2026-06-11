@@ -141,7 +141,7 @@ describe('readCanonicalPackageJson', () => {
     const pkg = await readCanonicalPackageJson()
     expect(typeof pkg.version).toBe('string')
     expect(pkg.version.length).toBeGreaterThan(0)
-    expect(pkg.bin).toBeTruthy()
+    expect(Boolean(pkg.bin)).toBe(true)
     expect(typeof pkg.bin).toBe('object')
   })
 

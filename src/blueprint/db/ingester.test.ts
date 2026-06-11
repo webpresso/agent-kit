@@ -534,10 +534,12 @@ describe('ingestRunnerEvent', () => {
         )
         .all('h-002') as Array<{ sequence: number | bigint; kind: string }>
       expect(rows).toHaveLength(2)
-      expect(rows.map((row) => ({ sequence: Number(row.sequence), kind: row.kind }))).toStrictEqual([
-        { sequence: 1, kind: 'started' },
-        { sequence: 2, kind: 'stdout' },
-      ])
+      expect(rows.map((row) => ({ sequence: Number(row.sequence), kind: row.kind }))).toStrictEqual(
+        [
+          { sequence: 1, kind: 'started' },
+          { sequence: 2, kind: 'stdout' },
+        ],
+      )
     } finally {
       conn.close()
     }

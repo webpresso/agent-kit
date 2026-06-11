@@ -23,17 +23,13 @@ export function processDispatch(input: ToolInput): null {
   try {
     processPostToolUse(input, projectDir)
   } catch (err) {
-    process.stderr.write(
-      `ak-post-tool: lint-after-edit error: ${(err as Error).message}\n`,
-    )
+    process.stderr.write(`ak-post-tool: lint-after-edit error: ${(err as Error).message}\n`)
   }
 
   try {
     processCapture(input)
   } catch (err) {
-    process.stderr.write(
-      `ak-post-tool: session-capture error: ${(err as Error).message}\n`,
-    )
+    process.stderr.write(`ak-post-tool: session-capture error: ${(err as Error).message}\n`)
   }
 
   return null

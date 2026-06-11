@@ -1475,6 +1475,23 @@ describe('auditNoLinkProtocol', () => {
     expect(result.violations[2]?.message).toContain('optionalDependencies.@scope/c')
   })
 
+  test('flags file: values in dependencies and optionalDependencies', () => {
+    const root = tempRepo()
+    writeJson(join(root, 'package.json'), {
+      name: 'root',
+      dependencies: { '@scope/a': 'file:../a' },
+      optionalDependencies: { '@scope/c': 'file:./local.tgz' },
+    })
+
+    const result = auditNoLinkProtocol(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toHaveLength(2)
+    expect(result.violations[0]?.message).toContain('dependencies.@scope/a')
+    expect(result.violations[1]?.message).toContain('optionalDependencies.@scope/c')
+    expect(result.violations[0]?.message).toContain('published version')
+  })
+
   test('flags link: inside pnpm.overrides', () => {
     const root = tempRepo()
     writeJson(join(root, 'package.json'), {
@@ -1489,14 +1506,27 @@ describe('auditNoLinkProtocol', () => {
     expect(result.violations[0]?.message).toContain('pnpm.overrides.@scope/x')
   })
 
-  test('accepts catalog:, workspace:, file:, and explicit versions', () => {
+  test('flags file: inside pnpm.overrides', () => {
+    const root = tempRepo()
+    writeJson(join(root, 'package.json'), {
+      name: 'root',
+      pnpm: { overrides: { '@scope/x': 'file:../x' } },
+    })
+
+    const result = auditNoLinkProtocol(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toHaveLength(1)
+    expect(result.violations[0]?.message).toContain('pnpm.overrides.@scope/x')
+  })
+
+  test('accepts catalog:, workspace:, and explicit versions', () => {
     const root = tempRepo()
     writeJson(join(root, 'package.json'), {
       name: 'root',
       dependencies: {
         '@scope/a': 'catalog:',
         '@scope/b': 'workspace:*',
-        '@scope/c': 'file:./local-tgz/c.tgz',
         '@scope/d': '^1.2.3',
       },
       pnpm: { overrides: { foo: '8.18.0' } },

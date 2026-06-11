@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { SpinnerFactory } from '../spinner.js'
+import type { SpinnerFactory } from '#cli/commands/init/scaffolders/spinner.js'
 import {
   ensureContextMode,
   patchCodexContextModeHooks,

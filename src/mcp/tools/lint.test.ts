@@ -53,7 +53,7 @@ describe('ak_lint tool', () => {
   it('exposes the expected descriptor surface', () => {
     expect(akLintTool.name).toBe('ak_lint')
     expect(typeof akLintTool.description).toBe('string')
-    expect(akLintTool.handler).toBeTypeOf('function')
+    expect(typeof akLintTool.handler).toBe('function')
   })
 
   it('invokes oxlint with --format=json and the supplied files', async () => {
@@ -64,7 +64,13 @@ describe('ak_lint tool', () => {
     expect(spawnMock).toHaveBeenCalledOnce()
     const [cmd, args] = spawnMock.mock.calls[0]!
     expect(cmd).toBe('oxlint')
-    expect(args).toEqual(['--format=json', 'a.ts', 'b.ts'])
+    expect(args).toEqual([
+      '--config',
+      `${process.cwd()}/oxlint.config.ts`,
+      '--format=json',
+      'a.ts',
+      'b.ts',
+    ])
   })
 
   it('invokes oxlint against `.` when no files supplied', async () => {
@@ -74,7 +80,7 @@ describe('ak_lint tool', () => {
 
     const [cmd, args] = spawnMock.mock.calls[0]!
     expect(cmd).toBe('oxlint')
-    expect(args).toEqual(['--format=json', '.'])
+    expect(args).toEqual(['--config', `${process.cwd()}/oxlint.config.ts`, '--format=json', '.'])
   })
 
   it('adds --fix when requested', async () => {
@@ -83,7 +89,13 @@ describe('ak_lint tool', () => {
     await akLintTool.handler({ files: ['a.ts'], fix: true })
 
     const [, args] = spawnMock.mock.calls[0]!
-    expect(args).toEqual(['--format=json', '--fix', 'a.ts'])
+    expect(args).toEqual([
+      '--config',
+      `${process.cwd()}/oxlint.config.ts`,
+      '--format=json',
+      '--fix',
+      'a.ts',
+    ])
   })
 
   it('returns {passed: true, issues: []} when oxlint exits 0', async () => {
@@ -262,7 +274,7 @@ describe('ak_lint tool', () => {
 
     expect(payload.passed).toBe(false)
     expect(payload.counts?.issueCount).toBe(1)
-    expect(payload.details?.parseError).toBeUndefined()
+    expect(payload.details?.parseError).toBe(undefined)
     expect(payload.details?.issues[0]).toMatchObject({
       file: 'a.ts',
       rule: 'parse',
@@ -327,7 +339,7 @@ describe('ak_lint tool', () => {
     )
 
     const result = await akLintTool.handler({})
-    expect(result.isError).toBeUndefined()
+    expect(result.isError).toBe(undefined)
   })
 
   it('clips long generic fallback error output and marks it truncated', async () => {

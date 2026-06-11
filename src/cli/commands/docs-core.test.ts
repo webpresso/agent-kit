@@ -133,7 +133,7 @@ describe('runDocsLint', () => {
       const taskFormatViolation = result.violations.find(
         (v: { file?: string; message: string; rule: string }) => v.rule === 'blueprint-task-format',
       )
-      expect(taskFormatViolation).toBeDefined()
+      expect(taskFormatViolation).not.toBe(undefined)
       expect(taskFormatViolation?.file).toBe('/tmp/blueprints/bad.md')
       expect(result.exitCode).toBe(1)
     })
@@ -150,7 +150,7 @@ describe('runDocsLint', () => {
       const statusViolation = result.violations.find(
         (v: { file?: string; message: string; rule: string }) => v.rule === 'blueprint-status',
       )
-      expect(statusViolation).toBeDefined()
+      expect(statusViolation).not.toBe(undefined)
       expect(result.exitCode).toBe(1)
     })
   })

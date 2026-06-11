@@ -17,11 +17,9 @@ import { spawnSync } from 'node:child_process'
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { dirname } from 'node:path'
+import { resolvePackageAsset } from '#utils/package-assets'
 
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const BINARY = join(__dirname, '../../../dist/esm/hooks/pretool-guard/index.js')
+const BINARY = resolvePackageAsset('dist/esm/hooks/pretool-guard/index.js')
 const SENTINEL_KEY = `runner-test-${process.pid}`
 
 // Per-test isolated TMPDIR — the binary's sentinel reader scans tmpdir for any
@@ -144,7 +142,7 @@ describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
     const { stdout, status } = runBinary(payload)
     expect(status).toBe(0)
     const parsed = JSON.parse(stdout) as Record<string, unknown>
-    expect(parsed.hookSpecificOutput).toBeUndefined()
+    expect(parsed.hookSpecificOutput).toBe(undefined)
   })
 
   it('echo hello + MCP ready → exit 0, passthrough (no deny)', () => {

@@ -3,7 +3,12 @@ import { describe, expect, it, vi, afterEach } from 'vitest'
 vi.mock('#session-memory/session', () => ({
   restore: vi.fn(() => ({
     hits: [
-      { content: 'session memory implementation', source: 'session:snap1', tier: 'porter', rank: -1 },
+      {
+        content: 'session memory implementation',
+        source: 'session:snap1',
+        tier: 'porter',
+        rank: -1,
+      },
       { content: 'SQLite FTS5 store', source: 'session:snap1', tier: 'porter', rank: -0.8 },
     ],
     snapshotId: 'snap-001',

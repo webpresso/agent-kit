@@ -157,7 +157,7 @@ describe('readPackageJson', () => {
     try {
       writeJson(join(dir, 'package.json'), { name: 'test-pkg', version: 1 })
       const result = readPackageJson(dir)
-      expect(result.info?.version).toBeUndefined()
+      expect(result.info?.version).toBe(undefined)
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }

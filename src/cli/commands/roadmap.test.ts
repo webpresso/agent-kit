@@ -102,7 +102,7 @@ describe('registerRoadmapCommand', () => {
     expect(listBlueprints).toHaveBeenCalledWith(
       expect.objectContaining({ json: true, onlyRoadmaps: true, status: undefined }),
     )
-    expect(logSpy).toHaveBeenCalled()
+    expect(logSpy).toHaveBeenCalledTimes(1)
   })
 
   it('routes roadmap show for parent roadmaps', async () => {
@@ -127,7 +127,7 @@ describe('registerRoadmapCommand', () => {
 
     expect(showBlueprint).toHaveBeenCalledWith('demo', { json: undefined, projectRoot: undefined })
     expect(listBlueprints).toHaveBeenCalledWith({ projectRoot: undefined })
-    expect(logSpy).toHaveBeenCalled()
+    expect(logSpy).toHaveBeenCalledTimes(1)
   })
 
   it('rejects roadmap show for non-roadmap blueprints', async () => {

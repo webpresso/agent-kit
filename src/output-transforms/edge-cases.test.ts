@@ -73,7 +73,7 @@ describe('output-transforms edge cases', () => {
     it('handles mixed success and failure output', () => {
       const raw = `[{"id":"a","status":"passed"},{"id":"b","status":"failed","failureMessages":["boom"]}]`
       const result = vitestTransform(raw, ctx('test'))
-      expect(result).toBeDefined()
+      expect(result).not.toBe(undefined)
     })
   })
 
@@ -105,7 +105,7 @@ describe('output-transforms edge cases', () => {
     it('handles stderr-only output', () => {
       const raw = 'error: oxlint binary crashed'
       const result = oxlintTransform(raw, ctx('lint-oxlint'))
-      expect(result).toBeDefined()
+      expect(result).not.toBe(undefined)
     })
 
     // summary-key-collision: N/A for oxlint (no summary key)
@@ -142,7 +142,7 @@ describe('output-transforms edge cases', () => {
       const raw = 'src/foo.ts(1,1): error TS2345: argu'
       const result = tscTransform(raw, ctx('typecheck'))
       // Incomplete line — may or may not parse; should not throw
-      expect(result).toBeDefined()
+      expect(result).not.toBe(undefined)
     })
 
     it('handles stderr-only (no tsc error format)', () => {
@@ -248,7 +248,7 @@ describe('output-transforms edge cases', () => {
     it('wraps rulesync output with summary-first envelope', () => {
       const raw = edgeFixture('rulesync-success.txt')
       const result = rulesyncTransform(raw, ctx('rulesync'))
-      expect(result.rawOutput).toBeDefined()
+      expect(result.rawOutput).not.toBe(undefined)
       // Summary line must appear first
       const firstLine = (result.rawOutput ?? '').split('\n')[0] ?? ''
       expect(firstLine).toContain('rulesync:')

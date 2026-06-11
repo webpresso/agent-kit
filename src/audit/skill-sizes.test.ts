@@ -53,7 +53,7 @@ describe('auditSkillSizes', () => {
     await createSkillMd('big-desc-skill', overSizeDesc)
     const result = auditSkillSizes(tmpDir)
     const descViolation = result.violations.find((v) => v.kind === 'description-too-large')
-    expect(descViolation).toBeDefined()
+    expect(descViolation).not.toBe(undefined)
     expect(descViolation?.bytes).toBeGreaterThan(800)
   })
 
@@ -63,7 +63,7 @@ describe('auditSkillSizes', () => {
     await createSkillMd('huge-file-skill', 'Short description', bigBody)
     const result = auditSkillSizes(tmpDir)
     const fileViolation = result.violations.find((v) => v.kind === 'file-too-large')
-    expect(fileViolation).toBeDefined()
+    expect(fileViolation).not.toBe(undefined)
     expect(fileViolation?.bytes).toBeGreaterThan(16384)
   })
 
@@ -77,7 +77,7 @@ describe('auditSkillSizes', () => {
     const listingViolation = result.violations.find(
       (v) => v.kind === 'codex-listing-total-too-large',
     )
-    expect(listingViolation).toBeDefined()
+    expect(listingViolation).not.toBe(undefined)
     expect(result.codexListingTotal).toBeGreaterThan(7000)
   })
 

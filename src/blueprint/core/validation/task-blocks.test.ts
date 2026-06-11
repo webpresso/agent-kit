@@ -40,7 +40,7 @@ describe('taskFrontmatterSchema', () => {
       if (!parsed.success) {
         expect(parsed.error.issues.length).toBeGreaterThan(0)
         const message = parsed.error.issues[0]?.message ?? ''
-        expect(message).toBeTruthy()
+        expect(Boolean(message)).toBe(true)
       }
     })
 
@@ -53,12 +53,12 @@ describe('taskFrontmatterSchema', () => {
 
     it('defaults runners to undefined when absent', () => {
       const result = taskFrontmatterSchema.parse({})
-      expect(result.runners).toBeUndefined()
+      expect(result.runners).toBe(undefined)
     })
 
     it('defaults runners to undefined when empty object is passed', () => {
       const result = taskFrontmatterSchema.parse({ permissions: 'read' })
-      expect(result.runners).toBeUndefined()
+      expect(result.runners).toBe(undefined)
     })
   })
 

@@ -43,17 +43,17 @@ describe('reportTthw', () => {
 
   it('does not throw when fetch rejects (network failure)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('ECONNREFUSED')))
-    await expect(reportTthw(BASE_PAYLOAD)).resolves.toBeUndefined()
+    await expect(reportTthw(BASE_PAYLOAD)).resolves.toBe(undefined)
   })
 
   it('does not throw when endpoint is unreachable (fetch throws)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
-    await expect(reportTthw(BASE_PAYLOAD)).resolves.toBeUndefined()
+    await expect(reportTthw(BASE_PAYLOAD)).resolves.toBe(undefined)
   })
 
   it('does not throw when AbortController aborts (timeout simulation)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new DOMException('Aborted', 'AbortError')))
-    await expect(reportTthw(BASE_PAYLOAD)).resolves.toBeUndefined()
+    await expect(reportTthw(BASE_PAYLOAD)).resolves.toBe(undefined)
   })
 
   it('payload contains no PII fields', () => {

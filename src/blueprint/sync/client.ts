@@ -16,6 +16,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
+import { setTimeout as delay } from 'node:timers/promises'
 
 import type { SyncCredentials } from './auth.js'
 import type {
@@ -67,7 +68,7 @@ const DEFAULT_TEMPLATES_URL =
 // ---------------------------------------------------------------------------
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return delay(ms)
 }
 
 function isDisabled(): boolean {

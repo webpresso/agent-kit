@@ -13,7 +13,7 @@ describe('formatStopHookOutput', () => {
     })
     const output = JSON.parse(json)
     expect(output.systemMessage).toContain('QA gate failed')
-    expect(output.hookSpecificOutput).toBeUndefined()
+    expect(output.hookSpecificOutput).toBe(undefined)
   })
 })
 

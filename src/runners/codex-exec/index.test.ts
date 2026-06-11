@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { CodexExecRunner } from './index.js'
+import { CodexExecRunner } from '#runners/codex-exec/index.js'
 
 import type { SpawnSyncReturns } from 'node:child_process'
-import type { RunnerContext, RunnerEvent, RunnerTask } from '../types.js'
+import type { RunnerContext, RunnerEvent, RunnerTask } from '#runners/types.js'
 
 // ---------------------------------------------------------------------------
 // Helpers

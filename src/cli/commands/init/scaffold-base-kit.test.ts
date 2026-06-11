@@ -131,10 +131,10 @@ describe('scaffoldBaseKit', () => {
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
-    expect(
-      (pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit'],
-    ).toBeUndefined()
-    expect(pkg['scripts']).toBeUndefined()
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
+      undefined,
+    )
+    expect(pkg['scripts']).toBe(undefined)
   })
 
   it('identical run produces only identical/skipped results', () => {

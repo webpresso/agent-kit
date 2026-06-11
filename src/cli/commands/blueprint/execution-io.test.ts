@@ -262,7 +262,7 @@ describe('persistBlueprintProgressBridgeState', () => {
     expect(dirMaker).toHaveBeenCalledOnce()
     expect(Object.keys(written)).toHaveLength(1)
     const writtenPath = Object.keys(written)[0]
-    expect(writtenPath).toBeTruthy()
+    expect(Boolean(writtenPath)).toBe(true)
     expect(writtenPath!).toContain('exec-abc')
   })
 

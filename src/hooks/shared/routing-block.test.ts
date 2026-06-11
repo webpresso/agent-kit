@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { resolvePackageAsset } from '#utils/package-assets'
 
 import { AK_ROUTING_BLOCK } from '#hooks/shared/routing-block'
-
-const repoRoot = resolve(import.meta.dirname, '../../..')
 
 describe('AK_ROUTING_BLOCK', () => {
   it('is a non-empty string', () => {
@@ -110,7 +108,7 @@ describe('AK_ROUTING_BLOCK', () => {
     ]
 
     for (const surface of surfaces) {
-      const content = readFileSync(resolve(repoRoot, surface), 'utf8')
+      const content = readFileSync(resolvePackageAsset(surface), 'utf8')
       for (const retiredPackage of retiredPackages) {
         expect(content, `${surface} should not mention ${retiredPackage}`).not.toContain(
           retiredPackage,

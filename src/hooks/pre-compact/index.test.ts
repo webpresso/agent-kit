@@ -54,7 +54,7 @@ describe('runPreCompact', () => {
     // Test the snapshot function directly with the test tmpDir
     const result = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, tmpDir)
 
-    expect(result.snapshotId).toBeTruthy()
+    expect(Boolean(result.snapshotId)).toBe(true)
     expect(result.eventsIncluded).toBeGreaterThanOrEqual(2)
     expect(result.partial).toBe(false)
   })
@@ -65,7 +65,7 @@ describe('runPreCompact', () => {
     const result = await runPreCompact('/tmp')
     // Either null (error) or a valid result — both acceptable
     if (result !== null) {
-      expect(result.snapshotId).toBeTruthy()
+      expect(Boolean(result.snapshotId)).toBe(true)
     } else {
       expect(result).toBeNull()
     }
@@ -85,7 +85,7 @@ describe('runPreCompact', () => {
 
     // With 0ms cap, may be partial
     const result = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 0 }, tmpDir)
-    expect(result.snapshotId).toBeTruthy()
+    expect(Boolean(result.snapshotId)).toBe(true)
     expect(typeof result.partial).toBe('boolean')
   })
 

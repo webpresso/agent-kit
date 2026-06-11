@@ -1,8 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, beforeAll } from 'vitest'
 
 vi.mock('node:fs')
 
 import { closeSync, openSync } from 'node:fs'
+
+beforeAll(() => import('#hooks/shared/hook-bootstrap'))
 
 describe('suppressStderr', () => {
   beforeEach(() => {

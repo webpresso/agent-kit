@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, openSync, closeSync, constants } from 'node:fs'
 import path from 'node:path'
+import { setTimeout as delay } from 'node:timers/promises'
 
 import { getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
 import { openDb } from './connection.js'
@@ -47,7 +48,7 @@ async function acquireLock(lockFile: string): Promise<() => void> {
       fd = openSync(lockFile, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL, 0o600)
       break
     } catch {
-      await new Promise<void>((resolve) => setTimeout(resolve, intervalMs))
+      await delay(intervalMs)
     }
   }
 

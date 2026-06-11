@@ -2,12 +2,10 @@ import { spawnSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { resolvePackageAsset } from '#utils/package-assets'
 
-const HERE = path.dirname(fileURLToPath(import.meta.url))
-const REPO_ROOT = path.resolve(HERE, '..', '..', '..', '..')
+const REPO_ROOT = path.dirname(resolvePackageAsset('package.json'))
 const SOURCE_CLI_PATH = path.join(REPO_ROOT, 'src', 'cli', 'cli.ts')
 const DIST_CLI_PATH = path.join(REPO_ROOT, 'dist', 'esm', 'cli', 'cli.js')
 const CLI_PATH = existsSync(SOURCE_CLI_PATH) ? SOURCE_CLI_PATH : DIST_CLI_PATH
