@@ -252,7 +252,7 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(existsSync(join(repo, 'AGENTS.md'))).toBe(false)
   })
 
-  it('proceeds past the self-repo guard when --allow-self-scaffold is set', async () => {
+  it('proceeds past the self-repo guard when --source-maintenance is set', async () => {
     writeFileSync(
       join(repo, 'package.json'),
       JSON.stringify(
@@ -262,7 +262,7 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
       ),
     )
 
-    const code = await runInit({ cwd: repo, yes: true, allowSelfScaffold: true })
+    const code = await runInit({ cwd: repo, yes: true, sourceMaintenance: true })
 
     expect(code).toBe(0)
     // Proceeding past the guard scaffolds the workspace config marker.

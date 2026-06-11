@@ -102,6 +102,19 @@ Codex and Claude surfaces are conditional on the matching host being installed
 and available. Missing CLIs, skipped presets, or unauthenticated hosts should
 show as skipped or warning lines in setup output, not as silent success.
 
+When `CONTEXT7_API_KEY` is provided by the configured Webpresso secret provider
+(for example Doppler via `wp config secrets`), `wp setup` wires Context7 without
+writing the raw key. Codex uses `env_http_headers` in its global config and
+Claude uses `${CONTEXT7_API_KEY}` in project `.mcp.json`. Launch the host through
+the wrapper so the selected provider injects the secret at runtime:
+`with-secrets -- codex` or `with-secrets -- claude`.
+
+Consecutive setup runs keep heavyweight integrations cheap by default. If the
+canonical gstack checkout and requested host skills already exist, setup reports
+them as already configured instead of pulling and reinstalling. Use
+`WP_GSTACK_REFRESH=1 wp setup` or `WP_GSTACK_MODE=full wp setup` for an explicit
+refresh; `WP_GSTACK_HOSTS=...` only selects hosts and does not force refresh.
+
 ### Default shared skills vs opt-ins
 
 The default cross-host Webpresso skill contract is intentionally curated.

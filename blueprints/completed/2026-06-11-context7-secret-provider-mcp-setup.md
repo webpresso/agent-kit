@@ -4,9 +4,10 @@ title: "Context7 MCP setup through agent-kit secret provider"
 owner: agent-kit
 status: completed
 complexity: S
-created: 2026-06-11
-last_updated: 2026-06-11
+created: '2026-06-11'
+last_updated: '2026-06-11'
 progress: '100% (3 of 3 tasks completed)'
+historical_verification_gap_waiver: true
 tags:
   - setup
   - mcp
@@ -28,7 +29,13 @@ Add a small setup/scaffolder path that registers Context7's remote MCP server in
 
 ## Tasks
 
-### Task 1: Model Context7 Codex MCP block
+#### Task 1.1: Model Context7 Codex MCP block
+
+**Status:** done
+
+**Depends:** None
+
+**Acceptance:**
 
 - [x] Add constants/upsert support for `[mcp_servers.context7]`.
 - [x] Use `url = "https://mcp.context7.com/mcp"` and `env_http_headers = { "CONTEXT7_API_KEY" = "CONTEXT7_API_KEY" }`.
@@ -36,7 +43,13 @@ Add a small setup/scaffolder path that registers Context7's remote MCP server in
 
 **Verification:** `wp test src/cli/commands/init/scaffolders/codex-mcp/index.test.ts src/cli/commands/init/init.presets.integration.test.ts`
 
-### Task 2: Integrate with `wp setup`
+#### Task 1.2: Integrate with `wp setup`
+
+**Status:** done
+
+**Depends:** Task 1.1
+
+**Acceptance:**
 
 - [x] Ensure the Codex MCP setup path writes the Context7 block alongside existing managed MCP blocks.
 - [x] Surface usage guidance that launch must happen through `with-secrets -- codex` when the key comes from the configured secret provider.
@@ -44,7 +57,13 @@ Add a small setup/scaffolder path that registers Context7's remote MCP server in
 
 **Verification:** `wp test src/cli/commands/init/scaffolders/codex-mcp/index.test.ts src/cli/commands/init/init.presets.integration.test.ts`
 
-### Task 3: Verification
+#### Task 1.3: Verification
+
+**Status:** done
+
+**Depends:** Task 1.2
+
+**Acceptance:**
 
 - [x] Add focused unit tests for empty config, replacement/idempotence, and preservation of existing servers.
 - [x] Run focused tests and typecheck or record blockers.

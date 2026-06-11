@@ -1,5 +1,8 @@
 import process from 'node:process'
 
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import { isDirectRuntimeProfile, isRuntimeProfile } from './profiles.js'
 import { spawnRuntimeCommandSync } from './executor.js'
 
@@ -77,4 +80,17 @@ export function runWithSecretsCli(argv: readonly string[] = process.argv.slice(2
     return 1
   }
   return result.status ?? 1
+}
+
+export function isDirectWithSecretsCliEntrypoint(
+  argv: readonly string[] = process.argv,
+  moduleUrl: string = import.meta.url,
+): boolean {
+  const invoked = argv[1]
+  if (!invoked) return false
+  return resolve(invoked) === fileURLToPath(moduleUrl)
+}
+
+if (isDirectWithSecretsCliEntrypoint()) {
+  process.exit(runWithSecretsCli())
 }
