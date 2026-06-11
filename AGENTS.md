@@ -53,16 +53,6 @@ Use blueprints for non-trivial work. Specs live in
 `planned/`, `in-progress/`, and `completed/`. Keep tasks, dependencies,
 verification commands, and acceptance criteria current before execution.
 
-**Blueprint gate (enforced for all agents):** a blueprint must exist before
-implementation begins on any non-trivial change. See
-`.agent/rules/pre-implementation.md` § "Blueprint gate" for the full rule.
-Summary:
-- Claude Code plan mode: create the blueprint **before** `ExitPlanMode` fires.
-  Plans evaporate on `/clear`; blueprints persist.
-- All other CLIs: create before the first `Edit`/`Write` call.
-- Skip only for typos, renames, one-line fixes, doc-only changes, or an
-  already-active blueprint that tracks the same change.
-
 Catalog-owned surfaces:
 - `.agent/commands/` — slash-command sources
 - `.agent/skills/` — generated/projected skills; edit the catalog, not generated copies
