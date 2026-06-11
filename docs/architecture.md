@@ -18,8 +18,7 @@ on the next sync.
 
 Ships with the scoped `@webpresso/agent-kit` package. Curated commands,
 skills, workflows, rules, guides, and doc templates that webpresso maintainers
-consider stable defaults. Legacy dev-link workspaces may still expose
-`node_modules/webpresso/catalog/`, but the scoped package path is canonical.
+consider stable defaults.
 
 - **Owner:** webpresso
 - **Lifecycle:** updated by bumping the package version
@@ -184,8 +183,8 @@ old surface. Both steps matter.
 
 ## Anti-patterns
 
-- **Editing `node_modules/@webpresso/agent-kit/catalog/`** (or legacy
-  `node_modules/webpresso/catalog/`) — gone on next install.
+- **Editing `node_modules/@webpresso/agent-kit/catalog/`** — gone on next
+  install.
 - **Editing `.claude/commands/`** — overwritten on next `wp sync`.
 - **Forgetting to commit `.agent/`** — collaborators get the old
   surface or none at all.

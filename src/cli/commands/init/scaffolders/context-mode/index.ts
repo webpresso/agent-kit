@@ -6,6 +6,7 @@ import { basename, dirname, join } from 'node:path'
 import { patchJsonFile, type MergeOptions, type MergeResult } from '#cli/commands/init/merge'
 import {
   agentKitMcpLaunchCommand,
+  ensureCodexContextModeMcp,
   findWebpressoMcpEntry,
 } from '#cli/commands/init/scaffolders/codex-mcp/index'
 import {
@@ -32,6 +33,7 @@ export interface EnsureContextModeInput {
 
 export type EnsureContextModeResult = {
   codexFeatures: MergeResult
+  codexMcpServer: MergeResult
   codexGlobalHooks: MergeResult
   claudeGlobalHooks: MergeResult
   opencodeConfig: MergeResult
@@ -307,6 +309,7 @@ export function ensureContextMode(input: EnsureContextModeInput): EnsureContextM
   if (input.options.dryRun) {
     return {
       codexFeatures: { targetPath: codexConfigPath, action: 'skipped-dry' },
+      codexMcpServer: { targetPath: codexConfigPath, action: 'skipped-dry' },
       codexGlobalHooks: { targetPath: codexHooksPath, action: 'skipped-dry' },
       claudeGlobalHooks: { targetPath: claudeSettingsPath, action: 'skipped-dry' },
       opencodeConfig: { targetPath: opencodeConfigPath, action: 'skipped-dry' },
@@ -332,6 +335,7 @@ export function ensureContextMode(input: EnsureContextModeInput): EnsureContextM
 
   return {
     codexFeatures: ensureCodexContextModeFeatures(codexConfigPath, input.options),
+    codexMcpServer: ensureCodexContextModeMcp({ configPath: codexConfigPath, options: input.options }),
     codexGlobalHooks: normalizeGlobalCodexHooksFile(
       codexHooksPath,
       { contextModeBinary: binaryPath },

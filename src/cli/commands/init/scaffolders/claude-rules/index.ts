@@ -32,18 +32,25 @@ type ClaudeRulesMode =
 
 function detectMode(repoRoot: string): ClaudeRulesMode {
   const pkg = readPackageJson(repoRoot).info
-  if (pkg?.name === 'webpresso') {
+  if (pkg?.name === '@webpresso/agent-kit') {
     return {
       mode: 'self',
       sourceRoot: join(repoRoot, 'catalog', 'agent', 'rules'),
     }
   }
 
-  const installedPackageJsonPath = join(repoRoot, 'node_modules', 'webpresso', 'package.json')
+  const installedPackageJsonPath = join(
+    repoRoot,
+    'node_modules',
+    '@webpresso',
+    'agent-kit',
+    'package.json',
+  )
   const installedRulesRoot = join(
     repoRoot,
     'node_modules',
-    'webpresso',
+    '@webpresso',
+    'agent-kit',
     'catalog',
     'agent',
     'rules',

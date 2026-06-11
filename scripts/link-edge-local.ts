@@ -5,16 +5,16 @@
  *   ~/.claude/plugins/cache/webpresso/webpresso/edge-local → this repo
  *
  * With --consumer <path> [--consumer <path> ...]:
- *   Also repoints <consumer>/node_modules/webpresso → this repo,
+ *   Also repoints <consumer>/node_modules/@webpresso/agent-kit → this repo,
  *   so project-level hook binaries (wp-pretool-guard, wp-sessionstart-routing,
  *   etc.) run from live source instead of the pnpm-store snapshot.
  *   Writes <consumer>/.webpresso/webpresso-dev-link.json so the consumer's
- *   postinstall can auto-restore the symlink after `pnpm install`.
+ *   postinstall can auto-restore the symlink after `vp install`.
  *   Delete that state file to opt out of auto-restore.
  *
  * Usage:
- *   pnpm dev:link
- *   pnpm dev:link --consumer ~/repos/webpresso/monorepo
+ *   vp run dev:link
+ *   vp run dev:link --consumer ~/repos/webpresso/monorepo
  */
 import {
   existsSync,
@@ -62,16 +62,17 @@ for (let i = 0; i < args.length; i++) {
 }
 
 for (const consumerPath of consumerPaths) {
-  const target = join(consumerPath, 'node_modules', 'webpresso')
+  const target = join(consumerPath, 'node_modules', '@webpresso', 'agent-kit')
   if (!existsSync(join(consumerPath, 'node_modules'))) {
-    console.warn(`skip ${consumerPath} — node_modules not found (run pnpm install first)`)
+    console.warn(`skip ${consumerPath} — node_modules not found (run vp install first)`)
     continue
   }
-  mkdirSync(join(consumerPath, 'node_modules'), { recursive: true })
+  mkdirSync(join(consumerPath, 'node_modules', '@webpresso'), { recursive: true })
   ensureSymlink(target, repoRoot, `consumer ${consumerPath}`)
 
-  // Repoint nested webpresso symlinks created by pnpm for sub-packages
-  // (e.g. <consumer>/packages/foo/node_modules/webpresso). Without this,
+  // Repoint nested @webpresso/agent-kit symlinks created by pnpm for
+  // sub-packages (e.g. <consumer>/packages/foo/node_modules/@webpresso/agent-kit).
+  // Without this,
   // tests run from a sub-package resolve to the pnpm-store snapshot, not live source.
   repointNestedSymlinks(consumerPath, repoRoot)
 
@@ -121,7 +122,7 @@ function writeStateFile(consumerPath: string): void {
     linkedFrom: repoRoot,
     linkedAt: new Date().toISOString(),
     webpressoVersion: pkg.version,
-    note: 'Read by wp-restore-dev-links (consumer postinstall) to re-establish the symlink after pnpm install, and by wp-check-dev-link (SessionStart hook) to warn when the link is broken. Delete this file to disable the dev link.',
+    note: 'Read by wp-restore-dev-links (consumer postinstall) to re-establish the symlink after vp install, and by wp-check-dev-link (SessionStart hook) to warn when the link is broken. Delete this file to disable the dev link.',
   }
   writeFileSync(statePath, `${JSON.stringify(payload, null, 2)}\n`)
   console.log(`consumer ${consumerPath}: wrote ${STATE_FILE_RELATIVE_PATH}`)
@@ -129,7 +130,7 @@ function writeStateFile(consumerPath: string): void {
 
 function repointNestedSymlinks(consumerRoot: string, target: string): void {
   const found: string[] = []
-  walkForWebpresso(consumerRoot, found, 0)
+  walkForAgentKit(consumerRoot, found, 0)
   let repointed = 0
   for (const linkPath of found) {
     try {
@@ -147,7 +148,7 @@ function repointNestedSymlinks(consumerRoot: string, target: string): void {
   }
 }
 
-function walkForWebpresso(dir: string, found: string[], depth: number): void {
+function walkForAgentKit(dir: string, found: string[], depth: number): void {
   if (depth > 10) return
   let entries: ReturnType<typeof readdirSync>
   try {
@@ -157,13 +158,13 @@ function walkForWebpresso(dir: string, found: string[], depth: number): void {
   }
   for (const e of entries) {
     const p = join(dir, e.name)
-    // Skip the consumer's pnpm store (its own webpresso package lives inside .pnpm/)
+    // Skip the consumer's pnpm store (its own package lives inside .pnpm/)
     if (e.name === '.pnpm') continue
-    if (e.isSymbolicLink() && p.endsWith('/node_modules/webpresso')) {
+    if (e.isSymbolicLink() && p.endsWith('/node_modules/@webpresso/agent-kit')) {
       found.push(p)
       continue
     }
-    if (e.isDirectory()) walkForWebpresso(p, found, depth + 1)
+    if (e.isDirectory()) walkForAgentKit(p, found, depth + 1)
   }
 }
 

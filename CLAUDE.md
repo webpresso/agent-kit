@@ -1,3 +1,16 @@
+## Plan mode → blueprint (Claude Code)
+
+When a non-trivial plan is approved in plan mode, create a blueprint
+**before** calling `ExitPlanMode` or making any `Edit`/`Write` call:
+
+```bash
+wp blueprint new "<concise goal>" --complexity <XS|S|M|L|XL>
+```
+
+Plans evaporate on `/clear` or context compaction. Blueprints persist.
+Skip only for typos, renames, one-line fixes, or doc-only changes.
+Full rule: `.agent/rules/pre-implementation.md` § Blueprint gate.
+
 ## Supported agent CLIs
 
 Source of truth: [`catalog/agent/rules/supported-agent-clis.md`](catalog/agent/rules/supported-agent-clis.md).

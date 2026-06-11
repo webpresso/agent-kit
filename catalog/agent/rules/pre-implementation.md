@@ -42,3 +42,37 @@ Acceptable signals:
 For UI changes, the signal is an end-to-end test (Playwright spec or
 equivalent) under the consumer repo's e2e directory, not manual
 click-through.
+
+## Blueprint gate
+
+A blueprint must exist in `blueprints/draft/` or a more advanced lifecycle
+directory before implementation begins on any non-trivial change. Create one
+if none exists:
+
+```bash
+wp blueprint new "<concise goal>" --complexity <XS|S|M|L|XL>
+# refine in blueprints/draft/{slug}/ then promote when ready:
+wp blueprint promote {slug}
+```
+
+**When to create** (same threshold as this rule — "non-trivial"):
+
+- **Claude Code (plan mode):** create the blueprint immediately after the plan
+  is approved and *before* calling `ExitPlanMode` or making the first
+  `Edit`/`Write` call. The blueprint is the handoff record; the plan is
+  ephemeral.
+- **All other CLIs (Codex, Cursor, OpenCode, etc.):** create before the first
+  `Edit`/`Write` tool call for the task.
+
+**When to skip:**
+
+- Typos, renames, or one-line fixes (same skip condition as the rest of this
+  rule).
+- Doc-only changes with no source edits.
+- An in-progress or planned blueprint already tracks this exact change — update
+  it instead of creating a duplicate.
+
+**Why:** Plans disappear when context resets or is compacted. Blueprints
+persist across sessions, accumulate verification evidence, and are auditable
+via `wp blueprint audit`. A plan without a blueprint is institutional knowledge
+that evaporates at the next `/clear`.

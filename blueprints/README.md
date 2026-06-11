@@ -14,7 +14,7 @@ Each subdirectory represents a lifecycle state:
 | State | Count | Description |
 | ----- | ----: | ----------- |
 | `draft/` | 0 | early-stage sketches. Expect churn; move to `planned/` once scoped. |
-| `planned/` | 6 | committed-to specs, ready to pick up. |
+| `planned/` | 7 | committed-to specs, ready to pick up. |
 | `in-progress/` | 0 | actively being executed. At most 3 active blueprints per lane. |
 | `completed/` | 54 | execution finished and verified. Kept for reference. |
 | `parked/` | 9 | intentionally paused. Include a reason in the spec's frontmatter. |

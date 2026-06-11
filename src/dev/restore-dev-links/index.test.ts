@@ -26,7 +26,7 @@ function createSourceRepo(): string {
   const source = createTempRoot()
   writeFileSync(
     join(source, 'package.json'),
-    JSON.stringify({ name: 'webpresso', version: '0.0.0-test' }),
+    JSON.stringify({ name: '@webpresso/agent-kit', version: '0.0.0-test' }),
     'utf8',
   )
   return source
@@ -72,27 +72,27 @@ describe('restoreDevLinks', () => {
   it('creates the symlink when state file is present and source exists', () => {
     const consumer = createTempRoot()
     const source = createSourceRepo()
-    writeStateFile(consumer, { package: 'webpresso', linkedFrom: source })
+    writeStateFile(consumer, { package: '@webpresso/agent-kit', linkedFrom: source })
     const { stdout, output } = captureStdout()
 
     const result = restoreDevLinks({ cwd: consumer, stdout })
 
     expect(result.exitCode).toBe(0)
     expect(result.outcomes[0]?.kind).toBe('relinked')
-    const target = join(consumer, 'node_modules', 'webpresso')
+    const target = join(consumer, 'node_modules', '@webpresso', 'agent-kit')
     expect(lstatSync(target).isSymbolicLink()).toBe(true)
     expect(readlinkSync(target)).toBe(source)
-    expect(output.join('')).toContain('webpresso → ')
+    expect(output.join('')).toContain('@webpresso/agent-kit → ')
   })
 
   it('replaces a stale symlink that points elsewhere', () => {
     const consumer = createTempRoot()
     const source = createSourceRepo()
     const stalePnpmStore = createTempRoot()
-    const target = join(consumer, 'node_modules', 'webpresso')
+    const target = join(consumer, 'node_modules', '@webpresso', 'agent-kit')
     mkdirSync(join(consumer, 'node_modules', '@webpresso'), { recursive: true })
     symlinkSync(stalePnpmStore, target, 'dir')
-    writeStateFile(consumer, { package: 'webpresso', linkedFrom: source })
+    writeStateFile(consumer, { package: '@webpresso/agent-kit', linkedFrom: source })
     const { stdout } = captureStdout()
 
     const result = restoreDevLinks({ cwd: consumer, stdout })
@@ -108,10 +108,10 @@ describe('restoreDevLinks', () => {
   it('reports already-linked when the symlink target already matches', () => {
     const consumer = createTempRoot()
     const source = createSourceRepo()
-    const target = join(consumer, 'node_modules', 'webpresso')
+    const target = join(consumer, 'node_modules', '@webpresso', 'agent-kit')
     mkdirSync(join(consumer, 'node_modules', '@webpresso'), { recursive: true })
     symlinkSync(source, target, 'dir')
-    writeStateFile(consumer, { package: 'webpresso', linkedFrom: source })
+    writeStateFile(consumer, { package: '@webpresso/agent-kit', linkedFrom: source })
     const { stdout, output } = captureStdout()
 
     const result = restoreDevLinks({ cwd: consumer, stdout })
@@ -124,10 +124,11 @@ describe('restoreDevLinks', () => {
   it('backs up a real directory left at the symlink path before linking', () => {
     const consumer = createTempRoot()
     const source = createSourceRepo()
-    const target = join(consumer, 'node_modules', 'webpresso')
+    const target = join(consumer, 'node_modules', '@webpresso', 'agent-kit')
+    mkdirSync(join(consumer, 'node_modules', '@webpresso'), { recursive: true })
     mkdirSync(target, { recursive: true })
     writeFileSync(join(target, 'marker.txt'), 'pnpm-store-snapshot', 'utf8')
-    writeStateFile(consumer, { package: 'webpresso', linkedFrom: source })
+    writeStateFile(consumer, { package: '@webpresso/agent-kit', linkedFrom: source })
     const { stdout } = captureStdout()
 
     const result = restoreDevLinks({ cwd: consumer, stdout })
@@ -144,7 +145,7 @@ describe('restoreDevLinks', () => {
   it('exits 1 loudly when state file points at a missing source', () => {
     const consumer = createTempRoot()
     const missingSource = join(consumer, 'definitely-does-not-exist')
-    writeStateFile(consumer, { package: 'webpresso', linkedFrom: missingSource })
+    writeStateFile(consumer, { package: '@webpresso/agent-kit', linkedFrom: missingSource })
     const errors: string[] = []
     const { stdout } = captureStdout()
 

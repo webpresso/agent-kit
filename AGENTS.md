@@ -53,6 +53,16 @@ Use blueprints for non-trivial work. Specs live in
 `planned/`, `in-progress/`, and `completed/`. Keep tasks, dependencies,
 verification commands, and acceptance criteria current before execution.
 
+**Blueprint gate (enforced for all agents):** a blueprint must exist before
+implementation begins on any non-trivial change. See
+`.agent/rules/pre-implementation.md` § "Blueprint gate" for the full rule.
+Summary:
+- Claude Code plan mode: create the blueprint **before** `ExitPlanMode` fires.
+  Plans evaporate on `/clear`; blueprints persist.
+- All other CLIs: create before the first `Edit`/`Write` call.
+- Skip only for typos, renames, one-line fixes, doc-only changes, or an
+  already-active blueprint that tracks the same change.
+
 Catalog-owned surfaces:
 - `.agent/commands/` — slash-command sources
 - `.agent/skills/` — generated/projected skills; edit the catalog, not generated copies
@@ -100,6 +110,16 @@ Record durable architecture decisions in the repo's ADR/planning surface if one 
   hook or MCP hangs disappear; follow `.agent/rules/no-timeout-as-fix.md`.
 - Keep these repo-local expectations aligned with `.agent/rules/agent-guide.md`
   and the active blueprint tasks before changing hook or MCP runtime behavior.
+- **Agent tool: never use `subagent_type=Explore` for multi-step or synthesis tasks.**
+  Explore reads excerpts only; complex tasks cause it to emit a meta-comment
+  (`"Final summary delivered above."`) as its final text instead of actual content —
+  the parent receives that string as the entire result. This is a known failure mode,
+  not intermittent. Apply these routing rules instead:
+  - Codebase research → `ctx_batch_execute` (auto-indexes, returns inline matches,
+    no subagent overhead, never drops output).
+  - Synthesis tasks or multi-part lookups → `Agent({ subagent_type: "general-purpose" })`.
+  - Explore is acceptable **only** for a single targeted file/symbol lookup; always
+    include search breadth ("quick" | "medium" | "very thorough") in the prompt.
 <!-- <<< user-owned (repo-customizations) -->
 
 <!-- >>> managed by webpresso (planning-and-release) -->

@@ -46,6 +46,16 @@ const MANAGED_CONTEXT_MODE_GLOBAL_HOOK_BASENAME_SET = new Set<string>(
   MANAGED_CONTEXT_MODE_GLOBAL_HOOK_BASENAMES,
 )
 
+const CONTEXT_MODE_CODEX_EVENTS = [
+  { event: 'SessionStart', subcommand: 'sessionstart' },
+  { event: 'PreToolUse', subcommand: 'pretooluse' },
+  { event: 'PostToolUse', subcommand: 'posttooluse' },
+  { event: 'UserPromptSubmit', subcommand: 'userpromptsubmit' },
+  { event: 'Stop', subcommand: 'stop' },
+  { event: 'PreCompact', subcommand: 'precompact' },
+  { event: 'PostCompact', subcommand: 'postcompact' },
+] as const
+
 type LauncherFile = {
   readonly path: string
   readonly content: string
@@ -185,13 +195,42 @@ export function normalizeGlobalCodexHooksJson(
   return { changed: true, value: { ...raw, hooks: nextHooks } }
 }
 
+function seedContextModeHooksFile(hooksPath: string, contextModeBinary: string): void {
+  const managedHooksDir = defaultManagedCodexHooksDir(hooksPath)
+  const hooks: HooksMap = {}
+  const launchers: LauncherFile[] = []
+
+  for (const { event, subcommand } of CONTEXT_MODE_CODEX_EVENTS) {
+    const scriptPath = join(managedHooksDir, contextModeLauncherBasename(subcommand))
+    hooks[event] = [{ hooks: [{ type: 'command', command: quoteShell(scriptPath) }] }]
+    launchers.push({
+      path: scriptPath,
+      content: renderShellLauncher([
+        quoteShell(contextModeBinary),
+        'hook',
+        'codex',
+        subcommand,
+        '"$@"',
+      ]),
+    })
+  }
+
+  writeManagedGlobalCodexLaunchers(launchers)
+  mkdirSync(dirname(hooksPath), { recursive: true })
+  writeFileSync(hooksPath, `${JSON.stringify({ hooks }, null, 2)}\n`, 'utf8')
+}
+
 export function normalizeGlobalCodexHooksFile(
   hooksPath: string,
   options: NormalizeGlobalCodexHooksOptions,
   mergeOptions: MergeOptions = {},
 ): MergeResult {
   if (mergeOptions.dryRun) return { targetPath: hooksPath, action: 'skipped-dry' }
-  if (!existsSync(hooksPath)) return { targetPath: hooksPath, action: 'identical' }
+  if (!existsSync(hooksPath)) {
+    if (!options.contextModeBinary) return { targetPath: hooksPath, action: 'identical' }
+    seedContextModeHooksFile(hooksPath, options.contextModeBinary)
+    return { targetPath: hooksPath, action: 'created' }
+  }
 
   const existing = readFileSync(hooksPath, 'utf8')
   const parsed = JSON.parse(existing) as CodexHooksFile

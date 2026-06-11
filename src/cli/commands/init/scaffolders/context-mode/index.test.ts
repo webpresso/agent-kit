@@ -97,7 +97,10 @@ describe('context-mode preset', () => {
     expect(readFileSync(codexConfigPath, 'utf8')).toContain('[features]')
     expect(readFileSync(codexConfigPath, 'utf8')).toContain('hooks = true')
     expect(readFileSync(codexConfigPath, 'utf8')).toContain('plugin_hooks = true')
-    expect(() => readFileSync(codexHooksPath, 'utf8')).toThrow()
+    expect(result.codexMcpServer.action).toBe('overwritten')
+    expect(result.codexGlobalHooks.action).toBe('created')
+    expect(readFileSync(codexHooksPath, 'utf8')).toContain('context-mode')
+    expect(readFileSync(codexConfigPath, 'utf8')).toContain('[mcp_servers.context-mode]')
     expect(readFileSync(opencodeConfigPath, 'utf8')).toContain('context-mode')
   })
 

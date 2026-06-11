@@ -5,8 +5,11 @@ import path from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { existsSync } from 'node:fs'
+
 import {
   defaultManagedCodexHooksDir,
+  MANAGED_CONTEXT_MODE_GLOBAL_HOOK_BASENAMES,
   normalizeGlobalCodexHooksJson,
   normalizeGlobalCodexHooksFile,
   resolveInstalledOmxHookScriptPath,
@@ -304,6 +307,60 @@ describe('normalizeGlobalCodexHooksJson', () => {
       'HOOK_SCRIPT="/stable/oh-my-codex/dist/scripts/codex-native-hook.js"',
     )
     expect(rewritten).toContain('command -v node')
+  })
+})
+
+describe('normalizeGlobalCodexHooksFile — seeding on fresh install', () => {
+  it('creates hooks.json with all 7 event entries when file is absent and contextModeBinary is set', () => {
+    const root = mkroot('wp-codex-global-seed-')
+    const hooksPath = path.join(root, 'hooks.json')
+    const contextModeBinary = '/abs/context-mode'
+
+    const result = normalizeGlobalCodexHooksFile(hooksPath, { contextModeBinary })
+    const managedDir = defaultManagedCodexHooksDir(hooksPath)
+
+    expect(result.action).toBe('created')
+    const content = JSON.parse(readFileSync(hooksPath, 'utf8')) as {
+      hooks: Record<string, unknown[]>
+    }
+    expect(Object.keys(content.hooks)).toHaveLength(7)
+    for (const event of [
+      'SessionStart',
+      'PreToolUse',
+      'PostToolUse',
+      'UserPromptSubmit',
+      'Stop',
+      'PreCompact',
+      'PostCompact',
+    ]) {
+      expect(content.hooks[event]).toBeDefined()
+    }
+    for (const basename of MANAGED_CONTEXT_MODE_GLOBAL_HOOK_BASENAMES) {
+      expect(
+        readFileSync(path.join(managedDir, basename), 'utf8'),
+      ).toContain('/abs/context-mode')
+    }
+  })
+
+  it('returns identical and does not create the file when contextModeBinary is absent', () => {
+    const root = mkroot('wp-codex-global-no-seed-')
+    const hooksPath = path.join(root, 'hooks.json')
+
+    const result = normalizeGlobalCodexHooksFile(hooksPath, {})
+
+    expect(result.action).toBe('identical')
+    expect(existsSync(hooksPath)).toBe(false)
+  })
+
+  it('is idempotent — re-running on an already-seeded file returns identical', () => {
+    const root = mkroot('wp-codex-global-seed-idempotent-')
+    const hooksPath = path.join(root, 'hooks.json')
+    const contextModeBinary = '/abs/context-mode'
+
+    normalizeGlobalCodexHooksFile(hooksPath, { contextModeBinary })
+    const result = normalizeGlobalCodexHooksFile(hooksPath, { contextModeBinary })
+
+    expect(result.action).toBe('identical')
   })
 })
 

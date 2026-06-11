@@ -84,26 +84,23 @@ describe('scaffoldBaseKit', () => {
   // script lane (proven by "skips self-install fields…") but NOT the starter
   // quality SAMPLES — teaching artifacts for fresh consumer repos that would
   // pollute agent-kit's source tree. Skipped for both self identities.
-  it.each(['@webpresso/agent-kit', 'webpresso'])(
-    'skips starter quality samples on the %s repo while keeping the script lane',
-    (selfName) => {
-      writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: selfName }))
-      const catalogDir = resolveCatalogDir()
+  it('skips starter quality samples on the @webpresso/agent-kit repo while keeping the script lane', () => {
+    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
+    const catalogDir = resolveCatalogDir()
 
-      scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
+    scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
 
-      // Starter samples are NOT scaffolded into the tool's own source tree…
-      expect(existsSync(join(repoRoot, 'src', 'quality-sample.ts'))).toBe(false)
-      expect(existsSync(join(repoRoot, 'src', 'quality-sample.test.ts'))).toBe(false)
-      expect(existsSync(join(repoRoot, 'e2e', 'smoke.spec.ts'))).toBe(false)
-      expect(existsSync(join(repoRoot, 'oxlint.config.ts'))).toBe(false)
-      // …but the dogfooded script lane is still merged.
-      const pkg = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as {
-        scripts?: Record<string, string>
-      }
-      expect(pkg.scripts?.['test']).toBe('wp test --file vitest.config.ts')
-    },
-  )
+    // Starter samples are NOT scaffolded into the tool's own source tree…
+    expect(existsSync(join(repoRoot, 'src', 'quality-sample.ts'))).toBe(false)
+    expect(existsSync(join(repoRoot, 'src', 'quality-sample.test.ts'))).toBe(false)
+    expect(existsSync(join(repoRoot, 'e2e', 'smoke.spec.ts'))).toBe(false)
+    expect(existsSync(join(repoRoot, 'oxlint.config.ts'))).toBe(false)
+    // …but the dogfooded script lane is still merged.
+    const pkg = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as {
+      scripts?: Record<string, string>
+    }
+    expect(pkg.scripts?.['test']).toBe('wp test --file vitest.config.ts')
+  })
 
   it('merges engines and packageManager into package.json', () => {
     const catalogDir = resolveCatalogDir()
@@ -360,9 +357,9 @@ describe('scaffoldBaseKit', () => {
     expect(readFileSync(wsPath, 'utf8')).toBe(consumerOwned)
   })
 
-  it('skips self-install fields in the webpresso repo itself', () => {
+  it('skips self-install fields in the @webpresso/agent-kit repo itself', () => {
     const pkgPath = join(repoRoot, 'package.json')
-    writeFileSync(pkgPath, JSON.stringify({ name: 'webpresso', private: true }, null, 2))
+    writeFileSync(pkgPath, JSON.stringify({ name: '@webpresso/agent-kit', private: true }, null, 2))
 
     const catalogDir = resolveCatalogDir()
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })

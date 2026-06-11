@@ -31,7 +31,7 @@ function seedConsumerRepo(root: string): void {
   writeJson(join(root, 'package.json'), {
     name: 'consumer-app',
     scripts: { 'setup:agent': 'wp setup' },
-    devDependencies: { webpresso: '^0.2.0' },
+    devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
   })
   writeJson(join(root, '.webpressorc.json'), {
     version: '1',
@@ -170,7 +170,7 @@ describe('auditAgents', () => {
     writeJson(join(root, 'package.json'), {
       name: 'consumer-app',
       scripts: { 'setup:agent': 'vp exec wp setup' },
-      devDependencies: { webpresso: '^0.2.0' },
+      devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
     })
 
     const result = auditAgents(root)
@@ -221,7 +221,7 @@ describe('auditAgents', () => {
     })
 
     const result = auditAgents(root)
-    expect(result.violations.some((v) => v.message.includes('webpresso'))).toBe(false)
+    expect(result.violations.some((v) => v.message.includes('@webpresso/agent-kit'))).toBe(false)
   })
 
   it('fails devDep check when globalInstall is absent and devDep is missing', () => {
@@ -233,7 +233,7 @@ describe('auditAgents', () => {
     })
 
     const result = auditAgents(root)
-    expect(result.violations.some((v) => v.message.includes('webpresso'))).toBe(true)
+    expect(result.violations.some((v) => v.message.includes('@webpresso/agent-kit'))).toBe(true)
   })
 
   it('passes for the self-hosting repo shape using catalog sources only', () => {

@@ -19,7 +19,7 @@ your repo root:
 
 ```bash
 cd your-repo
-npm install -g @webpresso/agent-kit
+vp install -g @webpresso/agent-kit
 wp setup
 ```
 
@@ -39,22 +39,16 @@ for those commands.
 
 No private registry setup is required.
 
-If you prefer not to keep a global install around, use the one-shot form:
-
-```bash
-cd your-repo
-npm exec --yes --package @webpresso/agent-kit@latest -- wp setup
-```
+If `vp` is not already on PATH, install Vite+ first (for example
+`npm install -g vite-plus`), then continue.
 
 For committed/team repos, prefer a repo-local install after bootstrap. Pin
 `@webpresso/agent-kit` in `devDependencies`, then rerun setup through the local
-CLI (`vp run setup:agent`, `vp exec wp setup`, or the package manager's local
-`wp` bin). Setup resolves catalog, subagent, and host-surface assets from the
-scoped package path `node_modules/@webpresso/agent-kit`, while still accepting
-legacy `node_modules/webpresso` dev-link installs for older workspaces. When a
-repo already pins `@webpresso/agent-kit` and setup is launched from a global CLI,
-it warns and points you back to the repo-local command so scaffolding is
-reproducible.
+CLI (`vp run setup:agent` or `vp exec wp setup`). Setup resolves catalog,
+subagent, and host-surface assets from the
+scoped package path `node_modules/@webpresso/agent-kit`. When a repo already
+pins `@webpresso/agent-kit` and setup is launched from a global CLI, it warns
+and points you back to the repo-local command so scaffolding is reproducible.
 
 If `wp setup` needs gstack tuning on a workstation with multiple agent CLIs
 installed, use:

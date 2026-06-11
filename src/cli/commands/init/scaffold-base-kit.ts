@@ -182,7 +182,6 @@ function mergePackageJson(
 
   const devDeps = (pkg['devDependencies'] ?? {}) as Record<string, string>
   const hasAgentKitDevDep = typeof devDeps['@webpresso/agent-kit'] === 'string'
-  const hasLegacyAgentKitDevDep = typeof devDeps['webpresso'] === 'string'
   const shouldSkipSelfInstall = isSelfPackageName(packageName)
   const shouldManageAgentKitAsGlobal = globalInstall && !shouldSkipSelfInstall
   const requiredAuthoringDeps: Record<string, string> = {
@@ -198,10 +197,7 @@ function mergePackageJson(
   if (
     alreadyHasEngines &&
     alreadyHasPm &&
-    (shouldSkipSelfInstall ||
-      shouldManageAgentKitAsGlobal ||
-      hasAgentKitDevDep ||
-      hasLegacyAgentKitDevDep) &&
+    (shouldSkipSelfInstall || shouldManageAgentKitAsGlobal || hasAgentKitDevDep) &&
     Object.keys(requiredAuthoringDeps).every((name) => typeof devDeps[name] === 'string') &&
     (shouldSkipSelfInstall || hasSetupAgent) &&
     (shouldSkipSelfInstall || hasVerifyPaths) &&
@@ -230,8 +226,7 @@ function mergePackageJson(
   if (
     !shouldSkipSelfInstall &&
     !shouldManageAgentKitAsGlobal &&
-    !hasAgentKitDevDep &&
-    !hasLegacyAgentKitDevDep
+    !hasAgentKitDevDep
   ) {
     // Keep consumers on the currently published dist-tag rather than a
     // repo-internal path. Do not wire this through `prepare`: `wp` is not
@@ -290,8 +285,8 @@ function mergePackageJson(
   return { targetPath: pkgPath, action: 'overwritten' }
 }
 
-/** agent-kit's own package identities: scoped canonical + legacy unscoped. */
-const SELF_PACKAGE_NAMES: readonly string[] = ['@webpresso/agent-kit', 'webpresso']
+/** agent-kit's own package identity. */
+const SELF_PACKAGE_NAMES: readonly string[] = ['@webpresso/agent-kit']
 
 /** True when `name` is one of agent-kit's own package identities. */
 function isSelfPackageName(name: string | undefined): boolean {

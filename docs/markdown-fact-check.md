@@ -26,8 +26,7 @@ If you just want to use the product, read:
 - `context-mode` is in the default `wp setup` preset set, and setup skips it in CI or when `WP_SKIP_CONTEXT_MODE=1`.
 - `rtk` is in the default `wp setup` preset set, and setup skips it in CI or when `WP_SKIP_RTK=1`.
 - The default setup already includes the repo bootstrap.
-- Local setup assets resolve from `node_modules/@webpresso/agent-kit`; legacy
-  `node_modules/webpresso` dev-link installs are compatibility-only.
+- Local setup assets resolve from `node_modules/@webpresso/agent-kit`.
 - When a repo pins `@webpresso/agent-kit`, setup should be rerun through the
   repo-local CLI (`vp run setup:agent` or `vp exec wp setup`) rather than a
   global `wp` binary.
