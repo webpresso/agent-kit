@@ -185,6 +185,7 @@ jobs:
           exit 1
 
       - name: Install caller dependencies
+        if: ${{ steps.secret_gate.outputs.skipped != 'true' }}
         shell: bash
         env:
           INSTALL_COMMAND: ${{ inputs.install_command }}
@@ -229,6 +230,7 @@ jobs:
           NODE
 
       - name: Run caller verify block
+        if: ${{ steps.secret_gate.outputs.skipped != 'true' }}
         shell: bash
         env:
           VERIFY_COMMAND: ${{ inputs.verify_command }}
