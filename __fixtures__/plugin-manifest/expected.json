@@ -1,6 +1,10 @@
 {
   "name": "webpresso-agent-kit",
   "version": "0.8.1",
+  "author": {
+    "name": "Webpresso",
+    "url": "https://github.com/webpresso"
+  },
   "description": "Webpresso agent-kit: blueprints, skills, lore commit protocol, tech-debt lifecycle",
   "skills": "./skills",
   "commands": "./commands",

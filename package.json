@@ -519,7 +519,7 @@
     }
   },
   "scripts": {
-    "build": "tshy && pnpm run chmod-bins && pnpm run link-self-bins",
+    "build": "tshy && bun scripts/rewrite-dist-imports.ts && bun scripts/sanitize-dist-package-json.ts && pnpm run chmod-bins && pnpm run link-self-bins",
     "postbuild": "pnpm run generate-skills",
     "chmod-bins": "bun scripts/chmod-bins.ts",
     "link-self-bins": "bun scripts/link-self-bins.ts",

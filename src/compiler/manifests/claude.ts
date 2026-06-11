@@ -26,6 +26,10 @@ export async function emitManifest(opts: ManifestEmitOptions): Promise<void> {
     _generated: 'by agent-kit ak compile — do not edit manually',
     name: '@webpresso/agent-kit',
     version: opts.version,
+    author: {
+      name: 'Webpresso',
+      url: 'https://github.com/webpresso',
+    },
     description: 'Agent-kit: blueprint lifecycle, skill compiler, audits for Claude Code',
     skills: opts.skills.map((name) => ({ path: `skills/${name}/SKILL.md` })),
     mcpServers: {},

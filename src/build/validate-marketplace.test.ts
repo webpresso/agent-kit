@@ -24,6 +24,7 @@ interface PackageJson {
 }
 
 interface PluginManifest {
+  author?: { name: string; url?: string }
   description?: string
 }
 
@@ -64,5 +65,12 @@ describe('marketplace.json', () => {
       const [plugin] = marketplace.plugins
       expect(plugin!.description).toBe(pluginManifest.description)
     }
+  })
+
+  it('plugin manifest carries author attribution', () => {
+    expect(pluginManifest.author).toEqual({
+      name: 'Webpresso',
+      url: 'https://github.com/webpresso',
+    })
   })
 })

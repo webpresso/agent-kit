@@ -46,6 +46,10 @@ describe('claude manifest emitter', () => {
     const json = readJson(join(outDir, '.claude-plugin', 'plugin.json'))
     expect(json['name']).toBe('@webpresso/agent-kit')
     expect(json['version']).toBe('1.2.3')
+    expect(json['author']).toStrictEqual({
+      name: 'Webpresso',
+      url: 'https://github.com/webpresso',
+    })
     expect(Array.isArray(json['skills'])).toBe(true)
     expect((json['skills'] as unknown[]).length).toBe(2)
     expect(json['_generated']).toMatch(/agent-kit/)

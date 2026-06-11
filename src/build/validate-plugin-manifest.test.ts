@@ -25,6 +25,7 @@ interface HookEntry {
 interface PluginManifest {
   name: string
   version: string
+  author?: { name: string; url?: string }
   description: string
   skills: string
   commands: string
@@ -51,6 +52,10 @@ describe('plugin.json manifest', () => {
     const m = readManifest()
     expect(typeof m.name).toBe('string')
     expect(typeof m.version).toBe('string')
+    expect(m.author).toEqual({
+      name: 'Webpresso',
+      url: 'https://github.com/webpresso',
+    })
     expect(typeof m.description).toBe('string')
     expect(m.skills).toBe('./skills')
   })
