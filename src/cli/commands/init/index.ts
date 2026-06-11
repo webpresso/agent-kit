@@ -26,6 +26,7 @@ import {
 import {
   detectConsumer,
   isAgentKitTemplateSourceRepo,
+  setupCommandForRepo,
   warnIfNonLocalCli,
 } from './detect-consumer.js'
 import { runPreflight, DOCS_URL } from './preflight.js'
@@ -276,7 +277,9 @@ async function runHooksRecovery(
 
   const manifest = readHooksManifest(repoRoot)
   if (manifest === null) {
-    console.error('wp setup: no .webpresso/hooks-manifest.json found — run `wp setup` first.')
+    console.error(
+      `wp setup: no .webpresso/hooks-manifest.json found — run \`${setupCommandForRepo(repoRoot)}\` first.`,
+    )
     return EXIT_SETUP_FAIL
   }
 

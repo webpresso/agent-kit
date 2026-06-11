@@ -20,10 +20,14 @@ describe('reusable Cloudflare deploy workflows', () => {
       expect(workflow).toMatch(/actions\/setup-node@[0-9a-f]{40}/u)
       expect(workflow).toMatch(/oven-sh\/setup-bun@[0-9a-f]{40}/u)
       expect(workflow).toContain('corepack enable')
-      expect(workflow).toContain('corepack prepare "pnpm@${{ steps.pnpm.outputs.version }}" --activate')
+      expect(workflow).toContain(
+        'corepack prepare "pnpm@${{ steps.pnpm.outputs.version }}" --activate',
+      )
       expect(workflow).not.toContain('secrets: inherit')
       expect(workflow).toContain('.webpresso/secrets.config.json')
-      expect(workflow).toContain('dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534')
+      expect(workflow).toContain(
+        'dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534',
+      )
       expect(workflow).toContain('infisical export --projectId="${INFISICAL_PROJECT_ID}"')
       expect(workflow).toContain('npm install --global @infisical/cli@0.43.91')
       expect(workflow).not.toContain('@infisical/cli@latest')

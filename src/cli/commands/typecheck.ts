@@ -1,9 +1,7 @@
 import type { CAC } from 'cac'
-import type { SpawnSyncReturns } from 'node:child_process'
 import { getManagedRunner } from '#tool-runtime'
 import { getPackageScript, isRecursiveWpScript } from '#cli/package-scripts.js'
-
-import { spawnSync } from 'node:child_process'
+import { emitCliCommandOutput, runCliCommandSequence } from './quality-runner.js'
 
 export const TYPECHECK_COMMAND_HELP = [
   'Typecheck the current workspace through the portable wp surface.',
@@ -21,19 +19,25 @@ export interface TypecheckOptions {
 export interface TypecheckCommandConfig {
   readonly command: string
   readonly args: readonly string[]
-}
-
-export interface TypecheckCommandDeps {
-  readonly run?: (command: string, args: readonly string[]) => SpawnSyncReturns<string>
+  readonly env?: Record<string, string>
 }
 
 export function registerTypecheckCommand(cli: CAC): void {
   cli
     .command('typecheck', TYPECHECK_COMMAND_HELP)
     .option('--pretty', 'Keep TypeScript pretty output enabled')
-    .action((flags: Record<string, unknown>) =>
-      runTypecheckCommand({ pretty: Boolean(flags.pretty) }),
-    )
+    .option('--full', 'Print the full raw output instead of the default summary-first view')
+    .action(async (flags: Record<string, unknown>) => {
+      const result = await runTypecheckCommand({ pretty: Boolean(flags.pretty) })
+      emitCliCommandOutput({
+        entry: result.entry,
+        summary: result.entry.summary ?? '',
+        passed: result.exitCode === 0,
+        full: Boolean(flags.full),
+        toolName: 'wp_typecheck',
+      })
+      return result.exitCode
+    })
 }
 
 export function buildTypecheckCommand(options: TypecheckOptions = {}): TypecheckCommandConfig {
@@ -54,21 +58,20 @@ export function buildTypecheckCommand(options: TypecheckOptions = {}): Typecheck
   }
 }
 
-export function runTypecheckCommand(
+export async function runTypecheckCommand(
   options: TypecheckOptions = {},
-  deps: TypecheckCommandDeps = {},
-): number {
+): Promise<{ exitCode: number; entry: import('./quality-log-store.js').CliLogEntry }> {
   const command = buildTypecheckCommand(options)
-  const result = (deps.run ?? defaultRun)(command.command, command.args)
-  if (typeof result.status === 'number') return result.status
-  return 1
-}
-
-function defaultRun(command: string, args: readonly string[]): SpawnSyncReturns<string> {
-  return spawnSync(command, [...args], {
-    encoding: 'utf8',
-    env: process.env,
-    stdio: 'inherit',
-    windowsHide: true,
+  const result = await runCliCommandSequence({
+    commandName: 'typecheck',
+    commands: [{ command: command.command, args: command.args, env: command.env }],
+    cwd: options.cwd,
+    metadataOptions: { pretty: Boolean(options.pretty) },
+    summary: ({ exitCode, timedOut, aborted }) => {
+      if (timedOut) return 'typecheck timed out'
+      if (aborted) return 'typecheck aborted'
+      return exitCode === 0 ? 'typecheck passed' : `typecheck failed (exit ${exitCode})`
+    },
   })
+  return { exitCode: result.exitCode, entry: result.entry }
 }

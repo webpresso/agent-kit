@@ -18,7 +18,7 @@ If you just want to use the product, read:
 - Source package in this repo: `@webpresso/agent-kit` `0.30.3`
 - Canonical release contract for this repo is `@webpresso/agent-kit`
 - Current source/public npm exports use `@webpresso/agent-kit/*`
-- `webpresso` (unscoped) is not this repo's canonical runtime package identity; it remains a legacy/dev-link compatibility name where explicitly supported
+- `webpresso` (unscoped) is retired for this repo and is not a supported package identity
 
 ## Current doc truths
 

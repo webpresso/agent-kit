@@ -55,7 +55,6 @@ interface PackageRecord {
 const DEFAULT_ALLOWED_PUBLIC_PACKAGES = [
   '@webpresso/webpresso',
   '@webpresso/agent-kit',
-  'webpresso',
 ]
 
 const DEFAULT_COMPATIBILITY_PUBLIC_PACKAGES = [
@@ -88,7 +87,6 @@ const DEFAULT_FORBIDDEN_PUBLIC_NAME_PATTERNS = [
 const DEFAULT_STALE_LINKS: string[] = []
 
 const DEFAULT_REFERENCE_BASELINES: Readonly<Record<string, string>> = {
-  webpresso: '0.18.18',
   '@webpresso/db-branching': '0.2.4',
   '@webpresso/db-branching-neon': '0.2.4',
 }
@@ -216,7 +214,15 @@ export function auditPackageSurface(rootDirectory: string = process.cwd()): Repo
 
   for (const packageFile of walkFiles(root, (file) => basename(file) === 'package.json')) {
     const pkg = readJsonObject<PackageRecord>(packageFile)
-    if (!pkg.name?.startsWith('@webpresso/') && pkg.name !== 'webpresso') continue
+    if (pkg.name === 'webpresso') {
+      checked += 1
+      violations.push({
+        file: relativePath(root, packageFile),
+        message: 'webpresso is retired; use @webpresso/agent-kit for publishable package identity',
+      })
+      continue
+    }
+    if (!pkg.name?.startsWith('@webpresso/')) continue
     checked += 1
     if (pkg.private === true) continue
     if (allowedPackages.has(pkg.name) || compatibilityPackages.has(pkg.name)) continue
@@ -620,7 +626,7 @@ function discoverPublishablePackages(root: string): PackageCandidate[] {
   const packages: PackageCandidate[] = []
   for (const packageFile of walkFiles(root, (file) => basename(file) === 'package.json')) {
     const pkg = readJsonObject<PackageRecord>(packageFile)
-    if (!pkg.name?.startsWith('@webpresso/') && pkg.name !== 'webpresso') continue
+    if (!pkg.name?.startsWith('@webpresso/')) continue
     if (pkg.private === true) continue
     packages.push({
       name: pkg.name,

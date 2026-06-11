@@ -8,14 +8,14 @@
 import type { RepoAuditResult } from '#audit/repo-guardrails'
 import type { CAC } from 'cac'
 
-import { spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { runAuditDispatch } from './audit-core.js'
 import type { AuditActionOptions } from './audit-core.js'
-import { runStryker } from '#audit/run-stryker'
 import { resolveAuditScriptPath } from '#audit/resolve-audit-script'
+import { createCliLogSink } from './quality-log-store.js'
+import { emitCliCommandOutput, runLoggedChildCommand } from './quality-runner.js'
 
 /**
  * Registry of repo-level (RepoAuditResult-shaped) audits — single source of
@@ -201,23 +201,6 @@ function resolveAuditScript(name: 'audit-tph.ts' | 'audit-tph-e2e.ts'): string {
   return resolveAuditScriptPath(name, { moduleUrl: import.meta.url })
 }
 
-async function runAuditScript(script: string, extraArgs: readonly string[]): Promise<number> {
-  const runtime = process.env.BUN_INSTALL ? 'bun' : 'bun'
-  return new Promise<number>((resolve) => {
-    const child = spawn(runtime, [script, ...extraArgs], { stdio: 'inherit' })
-    child.on('error', (error) => {
-      const reason = error instanceof Error ? error.message : String(error)
-      console.error(
-        `Failed to spawn audit runner (${runtime}): ${reason}\nInstall Bun (https://bun.sh) or run the audit script directly.`,
-      )
-      resolve(1)
-    })
-    child.on('exit', (code) => {
-      resolve(code ?? 1)
-    })
-  })
-}
-
 function buildBundleBudgetArgs(target: string | undefined, options: AuditActionOptions): string[] {
   const args: string[] = []
   if (target) args.push(target)
@@ -239,24 +222,12 @@ function buildBundleBudgetArgs(target: string | undefined, options: AuditActionO
   return args
 }
 
-async function printAndExitRepoAudit(
-  auditResult: RepoAuditResult,
-  options: AuditActionOptions,
-): Promise<void> {
-  const { formatRepoAuditReport } = await import('#audit/repo-guardrails')
-  if (options.json) {
-    console.log(JSON.stringify(auditResult, null, 2))
-  } else {
-    console.log(formatRepoAuditReport(auditResult))
-  }
-  process.exit(auditResult.ok ? 0 : 1)
-}
-
 export function registerAuditCommand(cli: CAC): void {
   cli
     .command('audit [kind] [target]', `Run a packaged audit (${AUDIT_KIND_LIST})`)
     .option('--fix', 'Attempt to auto-fix violations (forwarded to supported audits)')
     .option('--json', 'Emit JSON output (forwarded to supported audits)')
+    .option('--full', 'Print the full raw output instead of the default summary-first view')
     .option('--dist <dir>', 'Built Vite dist directory for bundle-budget')
     .option('--root <dir>', 'Repository root for repo guardrail audits')
     .option('--strict', 'Zero-tolerance mode: all violations are errors (bucket-boundary)')
@@ -285,10 +256,29 @@ export function registerAuditCommand(cli: CAC): void {
     .action(
       async (kind: string | undefined, target: string | undefined, options: AuditActionOptions) => {
         const auditRoot = options.root ?? target ?? process.cwd()
+        const sink = createCliLogSink('audit', process.cwd())
+
         const outcome = await runAuditDispatch(kind, target ? [target] : [], options, {
           root: process.cwd(),
-          runStryker: (cwd) => runStryker(cwd),
-          runScript: (script, args) => runAuditScript(script, args),
+          runStryker: async (cwd) => {
+            const result = await runLoggedChildCommand(
+              { command: 'vp', args: ['dlx', 'stryker', 'run'], cwd },
+              { write: (chunk) => sink.write(chunk) },
+            )
+            return result.exitCode
+          },
+          runScript: async (script, args) => {
+            const result = await runLoggedChildCommand(
+              { command: 'bun', args: [script, ...args] },
+              { write: (chunk) => sink.write(chunk) },
+            )
+            if (result.exitCode !== 0 && readTrailingFileIsEmpty(sink.absoluteLogPath)) {
+              sink.write(
+                'Failed to spawn audit runner (bun). Install Bun (https://bun.sh) or run the audit script directly.\n',
+              )
+            }
+            return result.exitCode
+          },
           runRepoAudit: async (name, root, opts) => {
             const runner = REPO_AUDIT_REGISTRY[name]
             if (!runner) throw new Error(`Unknown repo audit kind: ${name}`)
@@ -296,7 +286,7 @@ export function registerAuditCommand(cli: CAC): void {
           },
           runBundleBudget: async (args) => {
             const { runBundleBudgetCli } = await import('../../vite/local.js')
-            return runBundleBudgetCli(args)
+            return captureConsoleToSink(() => runBundleBudgetCli(args), sink.write)
           },
           runCommitMessageAudit: async (messageFile, opts) => {
             const { auditCommitMessageFile } = await import('#audit/repo-guardrails')
@@ -313,52 +303,144 @@ export function registerAuditCommand(cli: CAC): void {
               : REPO_AUDIT_KINDS,
         })
 
+        let exitCode = 1
+        let summary = kind ? `audit ${kind} failed` : 'audit failed'
+
         switch (outcome.kind) {
           case 'invalid-usage': {
-            console.error(
-              kind ? outcome.message : `Usage: wp audit <kind> [target]\nKinds: ${AUDIT_KIND_LIST}`,
+            sink.write(
+              `${kind ? outcome.message : `Usage: wp audit <kind> [target]\nKinds: ${AUDIT_KIND_LIST}`}\n`,
             )
-            process.exit(1)
+            summary = 'audit failed: invalid usage'
+            break
           }
           case 'unknown-kind': {
-            console.error(
-              `Unknown audit kind: ${outcome.auditKind}. Use one of: ${AUDIT_KIND_LIST}.`,
+            sink.write(
+              `Unknown audit kind: ${outcome.auditKind}. Use one of: ${AUDIT_KIND_LIST}.\n`,
             )
-            process.exit(1)
+            summary = `audit ${outcome.auditKind} failed: unknown kind`
+            break
           }
           case 'script-exit': {
-            process.exit(outcome.code)
+            exitCode = outcome.code
+            summary =
+              kind === undefined
+                ? `audit failed (exit ${outcome.code})`
+                : outcome.code === 0
+                  ? `audit ${kind} passed`
+                  : `audit ${kind} failed (exit ${outcome.code})`
+            break
           }
           case 'repo-result': {
-            await printAndExitRepoAudit(outcome.result, options)
+            exitCode = outcome.result.ok ? 0 : 1
+            sink.write(await formatAuditResult(outcome.result, options))
+            summary =
+              kind === undefined
+                ? exitCode === 0
+                  ? 'audit passed'
+                  : 'audit failed'
+                : exitCode === 0
+                  ? `audit ${kind} passed`
+                  : `audit ${kind} failed`
             break
           }
           case 'aggregate-result': {
             const { formatRepoAuditReport } = await import('#audit/repo-guardrails')
             for (const { name, result } of outcome.results) {
               if (result.ok) continue
-              console.log(`\n[${name}]`)
-              console.log(formatRepoAuditReport(result))
+              sink.write(`\n[${name}]\n${formatRepoAuditReport(result)}\n`)
             }
             const failed = outcome.results.filter(({ result }) => !result.ok)
             if (failed.length > 0) {
-              console.error(
+              sink.write(
                 `\nguardrails: ${failed.length}/${outcome.results.length} audits failed: ${failed
                   .map(({ name }) => name)
-                  .join(', ')}`,
+                  .join(', ')}\n`,
               )
             }
-            process.exit(outcome.code)
+            exitCode = outcome.code
+            summary =
+              outcome.code === 0
+                ? 'audit guardrails passed'
+                : `audit guardrails failed (${failed.length}/${outcome.results.length})`
+            break
           }
           case 'quality-exit': {
-            if (outcome.mutationCode !== 0) {
-              console.error('[quality] mutation: FAILED')
+            sink.write(
+              outcome.mutationCode !== 0
+                ? '[quality] mutation: FAILED\n'
+                : '[quality] mutation: OK\n',
+            )
+            if (outcome.guardrailsCode !== 0) {
+              sink.write('[quality] guardrails: FAILED\n')
             } else {
-              console.log('[quality] mutation: OK')
+              sink.write('[quality] guardrails: OK\n')
             }
-            process.exit(outcome.code)
+            exitCode = outcome.code
+            summary =
+              outcome.code === 0
+                ? 'audit quality passed'
+                : `audit quality failed (mutation=${outcome.mutationCode}, guardrails=${outcome.guardrailsCode})`
+            break
           }
         }
+
+        const entry = await sink.finalize({
+          exitCode,
+          summary,
+          options: {
+            kind,
+            target,
+            ...options,
+          },
+        })
+        emitCliCommandOutput({
+          entry,
+          summary,
+          passed: exitCode === 0,
+          full: Boolean((options as AuditActionOptions & { full?: boolean }).full),
+          rawMode: Boolean(options.json),
+          toolName: `wp_audit-${kind ?? 'unknown'}`,
+        })
+        return exitCode
       },
     )
+}
+
+async function formatAuditResult(
+  auditResult: RepoAuditResult,
+  options: AuditActionOptions,
+): Promise<string> {
+  const { formatRepoAuditReport } = await import('#audit/repo-guardrails')
+  return options.json
+    ? `${JSON.stringify(auditResult, null, 2)}\n`
+    : `${formatRepoAuditReport(auditResult)}\n`
+}
+
+async function captureConsoleToSink<T>(
+  run: () => Promise<T> | T,
+  write: (chunk: string) => void,
+): Promise<T> {
+  const originalLog = console.log
+  const originalError = console.error
+  try {
+    console.log = (...args: unknown[]) => {
+      write(`${args.map(String).join(' ')}\n`)
+    }
+    console.error = (...args: unknown[]) => {
+      write(`${args.map(String).join(' ')}\n`)
+    }
+    return await run()
+  } finally {
+    console.log = originalLog
+    console.error = originalError
+  }
+}
+
+function readTrailingFileIsEmpty(pathToFile: string): boolean {
+  try {
+    return readFileSync(pathToFile, 'utf8').trim().length === 0
+  } catch {
+    return true
+  }
 }

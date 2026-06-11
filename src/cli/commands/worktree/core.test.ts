@@ -141,7 +141,7 @@ describe('resolveNewWorktreeTarget', () => {
 
     expect(target).toStrictEqual({
       branch: 'agent/2026-05-13-1427-x9k',
-      path: '/repos/webpresso-agent-2026-05-13-1427-x9k',
+      path: '/repos/webpresso_worktrees/agent-2026-05-13-1427-x9k',
       generated: true,
     })
   })
@@ -158,7 +158,7 @@ describe('resolveNewWorktreeTarget', () => {
 
     expect(target).toStrictEqual({
       branch: 'agent/fix-login-flow',
-      path: '/repos/webpresso-agent-fix-login-flow',
+      path: '/repos/webpresso_worktrees/agent-fix-login-flow',
       generated: true,
     })
   })
@@ -174,7 +174,7 @@ describe('resolveNewWorktreeTarget', () => {
     })
 
     expect(target.branch).toBe('ralph/2026-05-13-1427-q2w')
-    expect(target.path).toBe('/repos/webpresso-ralph-2026-05-13-1427-q2w')
+    expect(target.path).toBe('/repos/webpresso_worktrees/ralph-2026-05-13-1427-q2w')
   })
 
   it('retries generated names when the branch or default path collides', () => {
@@ -185,7 +185,7 @@ describe('resolveNewWorktreeTarget', () => {
       randomSuffix: () => suffixes.shift() ?? 'ccc',
       existingEntries: [
         {
-          path: '/repos/webpresso-agent-2026-05-13-1427-aaa',
+          path: '/repos/webpresso_worktrees/agent-2026-05-13-1427-aaa',
           head: 'abc',
           branch: null,
           bare: false,
@@ -196,7 +196,7 @@ describe('resolveNewWorktreeTarget', () => {
 
     expect(target).toStrictEqual({
       branch: 'agent/2026-05-13-1427-bbb',
-      path: '/repos/webpresso-agent-2026-05-13-1427-bbb',
+      path: '/repos/webpresso_worktrees/agent-2026-05-13-1427-bbb',
       generated: true,
     })
   })
@@ -212,7 +212,7 @@ describe('resolveNewWorktreeTarget', () => {
 
     expect(target).toStrictEqual({
       branch: 'agent/fix-login-flow-r2d',
-      path: '/repos/webpresso-agent-fix-login-flow-r2d',
+      path: '/repos/webpresso_worktrees/agent-fix-login-flow-r2d',
       generated: true,
     })
   })
@@ -252,6 +252,19 @@ describe('resolveNewWorktreeTarget', () => {
     expect(target).toStrictEqual({
       branch: 'feat/auth',
       path: '/tmp/auth-worktree',
+      generated: false,
+    })
+  })
+
+  it('uses the shared sibling worktree root for explicit branch default paths', () => {
+    const target = resolveNewWorktreeTarget({
+      branch: 'feat/auth',
+      repoRoot: '/repos/webpresso',
+    })
+
+    expect(target).toStrictEqual({
+      branch: 'feat/auth',
+      path: '/repos/webpresso_worktrees/feat-auth',
       generated: false,
     })
   })

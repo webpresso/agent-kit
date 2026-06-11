@@ -248,6 +248,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(gitignore).toContain('# >>> managed by webpresso (generated)')
       expect(gitignore).toContain('.codex/')
       expect(gitignore).toContain('.omx/')
+      expect(gitignore).toContain('_worktrees/')
       expect(gitignore.trimEnd()).toMatch(/# <<< managed by webpresso \(generated\)$/)
 
       const gitRmCalls = spawnSyncMock.mock.calls.filter(
@@ -263,6 +264,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
           '--',
           '.codex/',
           '.omx/',
+          '_worktrees/',
           '.claude/settings.local.json',
           '.claude/rules/',
           '.claude/skills/',

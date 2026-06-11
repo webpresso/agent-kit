@@ -28,8 +28,10 @@ describe('auth preflight package probes', () => {
 
     expect(manifest.dependencies?.['@webpresso/runtime']).toBeUndefined()
     expect(manifest.dependencies?.['@webpresso/webpresso']).toBeUndefined()
+    expect(manifest.dependencies?.['webpresso']).toBeUndefined()
     expect(manifest.devDependencies?.['@webpresso/runtime']).toBeUndefined()
     expect(manifest.devDependencies?.['@webpresso/webpresso']).toBeUndefined()
+    expect(manifest.devDependencies?.['webpresso']).toBeUndefined()
 
     for (const workflowPath of authPreflightWorkflowPaths) {
       const workflow = readWorkflow(workflowPath)
@@ -89,7 +91,9 @@ describe('release workflow publish path', () => {
 
     expect(workflow).toContain('RELEASE_PUBLISH_RESULT_FILE')
     expect(afterChangesetsAction).toContain('id: publish_result')
-    expect(afterChangesetsAction).toContain("steps.publish_result.outputs.should_finalize == 'true'")
+    expect(afterChangesetsAction).toContain(
+      "steps.publish_result.outputs.should_finalize == 'true'",
+    )
     expect(afterChangesetsAction).not.toContain("steps.publish_probe.outputs.published == 'true'")
     expect(afterChangesetsAction).toContain('id: registry_visibility')
     expect(afterChangesetsAction).toContain('Assert release finalization contract')
@@ -113,7 +117,7 @@ describe('release workflow publish path', () => {
     // A GitHub Release is created/updated with the compiled binaries attached.
     expect(afterChangesetsAction).toContain('gh release create')
     expect(afterChangesetsAction).toContain('gh release upload')
-    expect(afterChangesetsAction).toContain("echo \"asset_count=$asset_count\" >> \"$GITHUB_OUTPUT\"")
+    expect(afterChangesetsAction).toContain('echo "asset_count=$asset_count" >> "$GITHUB_OUTPUT"')
     expect(afterChangesetsAction).toContain('"$assets"/*')
   })
 })

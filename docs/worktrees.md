@@ -1,6 +1,6 @@
 ---
 type: guide
-last_updated: 2026-05-13
+last_updated: 2026-06-11
 ---
 
 # Worktrees
@@ -14,9 +14,11 @@ for quick agent lanes:
 ```bash
 wp worktree new
 # branch: agent/2026-05-13-1427-x9k
+# path:   ../<repo>_worktrees/agent-2026-05-13-1427-x9k
 
 wp worktree new --name "fix login flow"
 # branch: agent/fix-login-flow
+# path:   ../<repo>_worktrees/agent-fix-login-flow
 
 wp worktree new feat/auth --base main --path ../webpresso-auth
 ```
@@ -24,6 +26,19 @@ wp worktree new feat/auth --base main --path ../webpresso-auth
 Generated branches use the `agent` prefix by default. Override it with
 `--prefix <prefix>`, and use `--dry-run` to preview the resolved branch/path
 without creating anything.
+
+When `--path` is omitted, generated worktrees are placed under a shared sibling
+directory next to the original checkout:
+
+```text
+../<original-folder>_worktrees/<branch-or-task-slug>
+```
+
+For example, a checkout at `/repos/webpresso` uses
+`/repos/webpresso_worktrees/agent-fix-login-flow` for `--name "fix login flow"`.
+An explicit `--path` remains an override for intentionally divergent layouts.
+Internal generated runners, such as `local-worktree`, use the same sibling root
+and append their task-specific id.
 
 ## What inherits
 

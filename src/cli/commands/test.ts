@@ -1,14 +1,17 @@
 import type { CommandConfig, TestCommandOptions } from '#test'
 import type { CAC } from 'cac'
 
-import { spawnSync } from 'node:child_process'
-
 import {
   buildTestCommand,
   isCommandSequenceConfig,
   parseTestSuiteName,
   resolveTestTarget,
 } from '#test'
+import {
+  emitCliCommandOutput,
+  runCliCommandSequence,
+  type CliSpawnCommand,
+} from './quality-runner.js'
 
 export const TEST_COMMAND_HELP = [
   'Run tests through the portable webpresso test surface.',
@@ -55,8 +58,9 @@ export function registerTestCommand(cli: CAC): void {
     .option('--parallel', 'Forward --parallel to vp')
     .option('--concurrency-limit <n>', 'Forward a vp concurrency limit')
     .option('--log <mode>', 'Forward vp log mode')
+    .option('--full', 'Print the full raw output instead of the default summary-first view')
     .option('--print-command', 'Print the resolved command instead of executing it')
-    .action((targets: string[] | string | undefined, flags: Record<string, unknown>) => {
+    .action(async (targets: string[] | string | undefined, flags: Record<string, unknown>) => {
       const rawArgv = process.argv.slice(2)
       const command = createAkTestCommandConfig({
         cwd: process.cwd(),
@@ -82,25 +86,34 @@ export function registerTestCommand(cli: CAC): void {
         return 0
       }
 
-      return runCommand(command)
+      const commands = flattenCommandConfig(command)
+      const result = await runCliCommandSequence({
+        commandName: 'test',
+        commands,
+        cwd: process.cwd(),
+        metadataOptions: {
+          suite: parseTestSuiteName(flags.suite as string | undefined),
+          package: toArray(flags.package as string | string[] | undefined),
+          file: toArray(flags.file as string | string[] | undefined),
+          targets: toArray(targets ?? []),
+        },
+        summary: ({ exitCode, timedOut, aborted }) => {
+          if (timedOut) return 'test timed out'
+          if (aborted) return 'test aborted'
+          return exitCode === 0 ? 'test passed' : `test failed (exit ${exitCode})`
+        },
+      })
+
+      emitCliCommandOutput({
+        entry: result.entry,
+        summary: result.entry.summary ?? '',
+        passed: result.exitCode === 0,
+        full: Boolean(flags.full),
+        toolName: 'wp_test',
+      })
+
+      return result.exitCode
     })
-}
-
-function runCommand(config: CommandConfig): number {
-  if (isCommandSequenceConfig(config)) {
-    for (const step of config.sequence) {
-      const exitCode = runCommand(step)
-      if (exitCode !== 0) return exitCode
-    }
-    return 0
-  }
-
-  const result = spawnSync(config.command, config.args, {
-    env: { ...process.env, ...config.env },
-    stdio: 'inherit',
-  })
-
-  return result.status ?? 1
 }
 
 function getPassthroughArgs(argv: readonly string[]): string[] {
@@ -129,4 +142,15 @@ function toOptionalNumber(value: unknown): number | undefined {
   if (value === undefined) return
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function flattenCommandConfig(config: CommandConfig): CliSpawnCommand[] {
+  if (isCommandSequenceConfig(config)) {
+    return config.sequence.map((step) => ({
+      command: step.command,
+      args: step.args,
+      env: step.env,
+    }))
+  }
+  return [{ command: config.command, args: config.args, env: config.env }]
 }

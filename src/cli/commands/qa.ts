@@ -1,10 +1,9 @@
 import type { CAC } from 'cac'
-import type { SpawnSyncReturns } from 'node:child_process'
-
-import { spawnSync } from 'node:child_process'
 
 import { getPackageScript, isRecursiveWpScript } from '#cli/package-scripts.js'
 import { getManagedRunner } from '#tool-runtime'
+import { createCliLogSink } from './quality-log-store.js'
+import { emitCliCommandOutput, runCliCommandSequence } from './quality-runner.js'
 
 export const QA_COMMAND_HELP = [
   'Run the repository QA gate through the portable wp surface.',
@@ -19,32 +18,35 @@ export interface QaCommandConfig {
   readonly args: readonly string[]
 }
 
-export interface QaCommandDeps {
-  readonly run?: (command: string, args: readonly string[]) => SpawnSyncReturns<string>
-  readonly stderr?: Pick<typeof process.stderr, 'write'>
-}
-
 const RECURSIVE_QA_MESSAGE =
   'Refusing to run a recursive qa script. Point package.json scripts.qa at the real QA pipeline, not `wp qa`.\n'
 
 export function registerQaCommand(cli: CAC): void {
   cli
     .command('qa', QA_COMMAND_HELP)
+    .option('--full', 'Print the full raw output instead of the default summary-first view')
     .option('--print-command', 'Print the resolved command instead of executing it')
-    .action((flags: Record<string, unknown>) => {
+    .action(async (flags: Record<string, unknown>) => {
       const command = buildQaCommand({ cwd: process.cwd() })
 
-      if (!command) {
-        writeStderr(process.stderr, RECURSIVE_QA_MESSAGE)
-        return 1
-      }
-
       if (flags.printCommand) {
+        if (!command) {
+          writeStderr(process.stderr, RECURSIVE_QA_MESSAGE)
+          return 1
+        }
         console.log(formatShellCommand(command))
         return 0
       }
 
-      return runQaCommand({ cwd: process.cwd() })
+      const result = await runQaCommand({ cwd: process.cwd() })
+      emitCliCommandOutput({
+        entry: result.entry,
+        summary: result.entry.summary ?? '',
+        passed: result.exitCode === 0,
+        full: Boolean(flags.full),
+        toolName: 'wp_qa',
+      })
+      return result.exitCode
     })
 }
 
@@ -60,24 +62,34 @@ export function buildQaCommand(options: { cwd?: string } = {}): QaCommandConfig 
   }
 }
 
-export function runQaCommand(options: { cwd?: string } = {}, deps: QaCommandDeps = {}): number {
+export async function runQaCommand(
+  options: { cwd?: string } = {},
+  deps: { stderr?: Pick<typeof process.stderr, 'write'> } = {},
+): Promise<{ exitCode: number; entry: import('./quality-log-store.js').CliLogEntry }> {
   const command = buildQaCommand(options)
   if (!command) {
     writeStderr(deps.stderr ?? process.stderr, RECURSIVE_QA_MESSAGE)
-    return 1
+    const sink = createCliLogSink('qa', options.cwd)
+    sink.write(RECURSIVE_QA_MESSAGE)
+    const entry = await sink.finalize({
+      exitCode: 1,
+      summary: 'qa failed: recursive qa script',
+      options: { recursive: true },
+    })
+    return { exitCode: 1, entry }
   }
 
-  const result = (deps.run ?? defaultRun)(command.command, command.args)
-  return typeof result.status === 'number' ? result.status : 1
-}
-
-function defaultRun(command: string, args: readonly string[]): SpawnSyncReturns<string> {
-  return spawnSync(command, [...args], {
-    encoding: 'utf8',
-    env: process.env,
-    stdio: 'inherit',
-    windowsHide: true,
+  const result = await runCliCommandSequence({
+    commandName: 'qa',
+    commands: [{ command: command.command, args: command.args }],
+    cwd: options.cwd,
+    summary: ({ exitCode, timedOut, aborted }) => {
+      if (timedOut) return 'qa timed out'
+      if (aborted) return 'qa aborted'
+      return exitCode === 0 ? 'qa passed' : `qa failed (exit ${exitCode})`
+    },
   })
+  return { exitCode: result.exitCode, entry: result.entry }
 }
 
 function formatShellCommand(config: QaCommandConfig): string {

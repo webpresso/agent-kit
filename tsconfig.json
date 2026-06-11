@@ -41,6 +41,12 @@
       "#paths/*": [
         "./src/paths/*"
       ],
+      "#worktrees/*.js": [
+        "./src/worktrees/*.ts"
+      ],
+      "#worktrees/*": [
+        "./src/worktrees/*.ts"
+      ],
       "#cli/auto-update/*": [
         "./src/cli/auto-update/*"
       ],

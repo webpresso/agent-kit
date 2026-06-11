@@ -366,7 +366,15 @@ describe('ensureOmx', () => {
         kind: 'omx-ok',
         codexGlobalHooks: { repaired: true, targetPath: hooksPath },
       })
-      const rewritten = readFileSync(join(managedDir, 'wp-global-codex-omx-hook.sh'), 'utf8')
+      const rewrittenHooks = JSON.parse(readFileSync(hooksPath, 'utf8')) as {
+        hooks: { Stop: Array<{ hooks: Array<{ command: string }> }> }
+      }
+      const stopCommands = rewrittenHooks.hooks.Stop.flatMap((group) =>
+        group.hooks.map((hook) => hook.command),
+      )
+      expect(stopCommands).toContain(`"${join(managedDir, 'wp-global-codex-omx-json-hook.sh')}"`)
+
+      const rewritten = readFileSync(join(managedDir, 'wp-global-codex-omx-json-hook.sh'), 'utf8')
       expect(rewritten).toContain('command -v node')
       expect(rewritten).toContain(
         `HOOK_SCRIPT="${join(

@@ -39,6 +39,7 @@ describe('wp root command surface', () => {
     expect(SUPPORTED_COMMANDS).toContain('qa')
     expect(SUPPORTED_COMMANDS).toContain('install')
     expect(SUPPORTED_COMMANDS).toContain('run')
+    expect(SUPPORTED_COMMANDS).toContain('logs')
   })
 
   it('advertises setup without the unavailable skills refresh action', async () => {
@@ -57,6 +58,9 @@ describe('wp root command surface', () => {
     )
     expect(result.stdout.join('\n')).toContain(
       'qa                    Run the repository QA gate through the portable wp surface',
+    )
+    expect(result.stdout.join('\n')).toContain(
+      'logs                  Print persisted raw output from recent quality runs',
     )
     expect(result.stdout.join('\n')).toContain('doctor                Run repo audit health checks')
     expect(result.stdout.join('\n')).toContain(

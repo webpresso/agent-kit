@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { applyOutputTransform } from './index.js'
+import { applyOutputTransform, normalizeToolName } from './index.js'
 import { passthroughTransform } from './passthrough.js'
 
 const fixtureDir = join(dirname(fileURLToPath(import.meta.url)), '__fixtures__')
@@ -28,7 +28,7 @@ describe('compact-QA output escape hatch', () => {
     })
     const expected = passthroughTransform(rawOutput, {
       toolName: 'wp_lint',
-      normalizedToolName: 'lint',
+      normalizedToolName: normalizeToolName('wp_lint'),
       persistOverflow: false,
     })
 

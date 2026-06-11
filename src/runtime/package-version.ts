@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const ACCEPTED_PACKAGE_PREFIXES = ['@webpresso/agent-kit', 'webpresso'] as const
+const ACCEPTED_PACKAGE_PREFIXES = ['@webpresso/agent-kit'] as const
 const MAX_UPWARD_LEVELS = 8
 
 function matchesOwnedPackageName(name: unknown): boolean {

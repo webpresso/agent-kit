@@ -31,6 +31,7 @@ export interface NormalizeGlobalCodexHooksOptions {
 
 export const MANAGED_GLOBAL_CODEX_HOOK_DIRNAME = 'managed-hooks'
 export const MANAGED_OMX_GLOBAL_HOOK_BASENAME = 'wp-global-codex-omx-hook.sh'
+export const MANAGED_OMX_JSON_ONLY_GLOBAL_HOOK_BASENAME = 'wp-global-codex-omx-json-hook.sh'
 
 export const MANAGED_CONTEXT_MODE_GLOBAL_HOOK_BASENAMES = [
   'wp-global-codex-context-mode-sessionstart.sh',
@@ -169,7 +170,12 @@ export function normalizeGlobalCodexHooksJson(
 
     for (const group of groups ?? []) {
       const normalizedHooks = (group.hooks ?? []).map((hook) => {
-        const nextCommand = normalizeGlobalCodexHookCommand(hook.command, options, managedHooksDir)
+        const nextCommand = normalizeGlobalCodexHookCommand(
+          event,
+          hook.command,
+          options,
+          managedHooksDir,
+        )
         if (nextCommand !== hook.command) changed = true
         return nextCommand === hook.command ? hook : { ...hook, command: nextCommand }
       })
@@ -258,6 +264,7 @@ export function normalizeGlobalCodexHooksFile(
 }
 
 function normalizeGlobalCodexHookCommand(
+  event: string,
   command: string | undefined,
   options: NormalizeGlobalCodexHooksOptions,
   managedHooksDir?: string,
@@ -277,7 +284,14 @@ function normalizeGlobalCodexHookCommand(
   }
 
   if (managedHooksDir && options.nodeBinary) {
-    const managedOmxPath = omxManagedLauncherPath(trimmed, managedHooksDir)
+    const existingManagedLauncherBasename = extractManagedLauncherBasename(trimmed)
+    if (
+      existingManagedLauncherBasename !== null &&
+      isManagedOmxGlobalLauncherBasename(existingManagedLauncherBasename)
+    ) {
+      return quoteShell(join(managedHooksDir, omxManagedLauncherBasename(event)))
+    }
+    const managedOmxPath = omxManagedLauncherPath(trimmed, event, managedHooksDir)
     if (managedOmxPath) return quoteShell(managedOmxPath)
   }
   if (
@@ -323,12 +337,12 @@ function collectManagedGlobalCodexLaunchers(
   if (!hooks || typeof hooks !== 'object' || Array.isArray(hooks)) return []
 
   const launchers = new Map<string, LauncherFile>()
-  for (const groups of Object.values(hooks as HooksMap)) {
+  for (const [event, groups] of Object.entries(hooks as HooksMap)) {
     for (const group of groups ?? []) {
       for (const hook of group.hooks ?? []) {
         const command = typeof hook.command === 'string' ? hook.command.trim() : ''
         if (command.length === 0) continue
-        const launcher = launcherForCommand(command, options, managedHooksDir)
+        const launcher = launcherForCommand(event, command, options, managedHooksDir)
         if (launcher) launchers.set(launcher.path, launcher)
       }
     }
@@ -349,6 +363,7 @@ function writeManagedGlobalCodexLaunchers(launchers: readonly LauncherFile[]): b
 }
 
 function launcherForCommand(
+  event: string,
   command: string,
   options: NormalizeGlobalCodexHooksOptions,
   managedHooksDir: string,
@@ -370,23 +385,33 @@ function launcherForCommand(
 
   const managedLauncherBasename = extractManagedLauncherBasename(command)
   if (
-    managedLauncherBasename === MANAGED_OMX_GLOBAL_HOOK_BASENAME &&
+    (managedLauncherBasename === MANAGED_OMX_GLOBAL_HOOK_BASENAME ||
+      managedLauncherBasename === MANAGED_OMX_JSON_ONLY_GLOBAL_HOOK_BASENAME) &&
     options.nodeBinary &&
     options.omxScriptPath
   ) {
-    const path = join(managedHooksDir, MANAGED_OMX_GLOBAL_HOOK_BASENAME)
+    const path = join(managedHooksDir, omxManagedLauncherBasename(event))
     return {
       path,
-      content: renderOmxShellLauncher(options.nodeBinary, options.omxScriptPath, []),
+      content: renderOmxShellLauncher(options.nodeBinary, options.omxScriptPath, [], {
+        jsonOnly: isJsonOnlyCodexEvent(event),
+      }),
     }
   }
 
   const omxSpec = parseOmxHookCommand(command)
   if (omxSpec && options.nodeBinary) {
-    const path = join(managedHooksDir, MANAGED_OMX_GLOBAL_HOOK_BASENAME)
+    const path = join(managedHooksDir, omxManagedLauncherBasename(event))
     return {
       path,
-      content: renderOmxShellLauncher(options.nodeBinary, omxSpec.scriptPath, omxSpec.trailingArgs),
+      content: renderOmxShellLauncher(
+        options.nodeBinary,
+        omxSpec.scriptPath,
+        omxSpec.trailingArgs,
+        {
+          jsonOnly: isJsonOnlyCodexEvent(event),
+        },
+      ),
     }
   }
 
@@ -401,9 +426,20 @@ function renderOmxShellLauncher(
   nodeBinary: string,
   hookScriptPath: string,
   trailingArgs: readonly string[],
+  options: { readonly jsonOnly: boolean },
 ): string {
   const trailingArgsText =
     trailingArgs.length > 0 ? `${trailingArgs.map(quoteShell).join(' ')} "$@"` : '"$@"'
+
+  const execution = options.jsonOnly
+    ? `"$NODE_BINARY" "$HOOK_SCRIPT" ${trailingArgsText} >/dev/null
+status=$?
+if [ "$status" -ne 0 ]; then
+  echo "OMX Codex hook exited with status $status" >&2
+fi
+${CODEX_JSON_PASSTHROUGH}
+exit 0`
+    : `exec "$NODE_BINARY" "$HOOK_SCRIPT" ${trailingArgsText}`
 
   return `#!/bin/sh
 NODE_BINARY=${quoteShell(nodeBinary)}
@@ -425,7 +461,7 @@ if [ ! -f "$HOOK_SCRIPT" ]; then
   exit 0
 fi
 
-exec "$NODE_BINARY" "$HOOK_SCRIPT" ${trailingArgsText}
+${execution}
 `
 }
 
@@ -435,9 +471,13 @@ function contextModeManagedLauncherPath(command: string, managedHooksDir: string
   return join(managedHooksDir, contextModeLauncherBasename(parsed.subcommand))
 }
 
-function omxManagedLauncherPath(command: string, managedHooksDir: string): string | null {
+function omxManagedLauncherPath(
+  command: string,
+  event: string,
+  managedHooksDir: string,
+): string | null {
   if (parseOmxHookCommand(command) === null) return null
-  return join(managedHooksDir, MANAGED_OMX_GLOBAL_HOOK_BASENAME)
+  return join(managedHooksDir, omxManagedLauncherBasename(event))
 }
 
 function contextModeLauncherBasename(subcommand: string): string {
@@ -454,11 +494,54 @@ function parseContextModeHookCommand(command: string): { readonly subcommand: st
 function parseOmxHookCommand(
   command: string,
 ): { readonly scriptPath: string; readonly trailingArgs: readonly string[] } | null {
-  const trimmed = command.trim()
-  const match = /^node\s+"?([^"\s]+codex-native-hook(?:\.js)?)"?\s*(.*)$/u.exec(trimmed)
-  if (!match?.[1]) return null
-  const trailingArgs = match[2]?.trim().length ? match[2].trim().split(/\s+/u) : []
-  return { scriptPath: match[1], trailingArgs }
+  let remainder = command.trim()
+
+  while (true) {
+    const token = takeLeadingShellToken(remainder)
+    if (!token) return null
+    if (!/^[A-Za-z_][A-Za-z0-9_]*=.*/u.test(token.value)) {
+      remainder = `${token.value}${token.rest.length > 0 ? ` ${token.rest}` : ''}`
+      break
+    }
+    remainder = token.rest.trimStart()
+  }
+
+  const nodeToken = takeLeadingShellToken(remainder)
+  if (!nodeToken || basename(nodeToken.value) !== 'node') return null
+
+  const scriptToken = takeLeadingShellToken(nodeToken.rest)
+  if (!scriptToken || !/codex-native-hook(?:\.js)?$/u.test(scriptToken.value)) return null
+
+  const trailingArgs = scriptToken.rest.trim().length ? scriptToken.rest.trim().split(/\s+/u) : []
+
+  return { scriptPath: scriptToken.value, trailingArgs }
+}
+
+function takeLeadingShellToken(
+  input: string,
+): { readonly value: string; readonly rest: string } | null {
+  const trimmed = input.trimStart()
+  if (trimmed.length === 0) return null
+
+  const firstChar = trimmed[0]
+  if (firstChar === '"' || firstChar === "'") {
+    const end = trimmed.indexOf(firstChar, 1)
+    if (end === -1) return null
+    return {
+      value: trimmed.slice(1, end),
+      rest: trimmed.slice(end + 1).trimStart(),
+    }
+  }
+
+  const whitespaceIndex = trimmed.search(/\s/u)
+  if (whitespaceIndex === -1) {
+    return { value: trimmed, rest: '' }
+  }
+
+  return {
+    value: trimmed.slice(0, whitespaceIndex),
+    rest: trimmed.slice(whitespaceIndex).trimStart(),
+  }
 }
 
 export function isManagedContextModeGlobalLauncherBasename(basenameValue: string): boolean {
@@ -466,7 +549,10 @@ export function isManagedContextModeGlobalLauncherBasename(basenameValue: string
 }
 
 export function isManagedOmxGlobalLauncherBasename(basenameValue: string): boolean {
-  return basenameValue === MANAGED_OMX_GLOBAL_HOOK_BASENAME
+  return (
+    basenameValue === MANAGED_OMX_GLOBAL_HOOK_BASENAME ||
+    basenameValue === MANAGED_OMX_JSON_ONLY_GLOBAL_HOOK_BASENAME
+  )
 }
 
 export function extractManagedLauncherBasename(command: string): string | null {
@@ -474,4 +560,14 @@ export function extractManagedLauncherBasename(command: string): string | null {
   const match = /^["']?([^"']+\.sh)["']?$/u.exec(trimmed)
   if (match?.[1]) return basename(match[1])
   return null
+}
+
+function isJsonOnlyCodexEvent(event: string): boolean {
+  return event === 'Stop' || event === 'SubagentStop'
+}
+
+function omxManagedLauncherBasename(event: string): string {
+  return isJsonOnlyCodexEvent(event)
+    ? MANAGED_OMX_JSON_ONLY_GLOBAL_HOOK_BASENAME
+    : MANAGED_OMX_GLOBAL_HOOK_BASENAME
 }

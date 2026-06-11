@@ -6,7 +6,22 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
 import { isCommandSequenceConfig } from '#test'
-import { createAkTestCommandConfig, TEST_COMMAND_HELP } from './test.js'
+import { createAkTestCommandConfig, registerTestCommand, TEST_COMMAND_HELP } from './test.js'
+
+function buildFakeCli() {
+  const options: string[] = []
+  const chain = {
+    option: (name: string) => {
+      options.push(name)
+      return chain
+    },
+    action: (_fn: unknown) => chain,
+  }
+  return {
+    command: () => chain,
+    getOptions: () => options,
+  }
+}
 
 const tempDirs: string[] = []
 
@@ -87,5 +102,11 @@ describe('wp test command helpers', () => {
       command: 'rtk',
       args: [expect.stringContaining('vitest'), 'run'],
     })
+  })
+
+  it('exposes the summary-first --full escape hatch', () => {
+    const cli = buildFakeCli()
+    registerTestCommand(cli as never)
+    expect(cli.getOptions()).toContain('--full')
   })
 })

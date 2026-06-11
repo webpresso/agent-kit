@@ -2,11 +2,31 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
 
-import { buildTypecheckCommand, runTypecheckCommand } from './typecheck'
+import { buildTypecheckCommand, registerTypecheckCommand } from './typecheck'
+
+function buildFakeCli() {
+  let registeredAction: ((flags: Record<string, unknown>) => Promise<number>) | undefined
+  const options: string[] = []
+  const chain = {
+    option: (name: string) => {
+      options.push(name)
+      return chain
+    },
+    action: (fn: typeof registeredAction) => {
+      registeredAction = fn
+      return chain
+    },
+  }
+  return {
+    command: () => chain,
+    getOptions: () => options,
+    getAction: () => registeredAction,
+  }
+}
 
 describe('wp typecheck command', () => {
   const tempDirs: string[] = []
@@ -61,21 +81,9 @@ describe('wp typecheck command', () => {
     })
   })
 
-  it('returns the child process exit status', () => {
-    const run = vi.fn(() => ({
-      status: 2,
-      signal: null,
-      output: [],
-      pid: 1,
-      stdout: '',
-      stderr: '',
-    }))
-    expect(runTypecheckCommand({}, { run })).toBe(2)
-    expect(run).toHaveBeenCalledWith('rtk', [
-      expect.stringContaining('typescript'),
-      '--noEmit',
-      '--pretty',
-      'false',
-    ])
+  it('exposes the summary-first --full escape hatch', () => {
+    const cli = buildFakeCli()
+    registerTypecheckCommand(cli as never)
+    expect(cli.getOptions()).toContain('--full')
   })
 })

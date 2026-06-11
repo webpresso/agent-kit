@@ -6,8 +6,8 @@ import {
   createE2eExecutionPlan,
   formatShellCommand,
   plannedGroupsToCommandConfigs,
-  runCommandConfigs,
 } from '#e2e/execution'
+import { emitCliCommandOutput, runCliCommandSequence } from './quality-runner.js'
 
 export const E2E_COMMAND_HELP = [
   'Build and run a portable E2E command from host-supplied suite metadata.',
@@ -90,6 +90,7 @@ export function registerE2eCommand(cli: CAC): void {
     .option('--no-supervisor', 'Forward host-managed direct startup mode when supported')
     .option('--workers <n>', 'Forward worker count')
     .option('--test-list <path>', 'Forward a Playwright test-list file')
+    .option('--full', 'Print the full raw output instead of the default summary-first view')
     .option('--print-command', 'Print the resolved command instead of executing it')
     .action(async (files: string[] | string | undefined, flags: Record<string, unknown>) => {
       const groups = await createAkE2eExecutionPlan({
@@ -112,16 +113,30 @@ export function registerE2eCommand(cli: CAC): void {
         return 0
       }
 
-      return runCommands(commands)
+      const result = await runCliCommandSequence({
+        commandName: 'e2e',
+        commands,
+        cwd: process.cwd(),
+        metadataOptions: {
+          suite: flags.suite as string | undefined,
+          runner: flags.runner as string | undefined,
+          file: [...toArray(flags.file as string | string[] | undefined), ...toArray(files ?? [])],
+        },
+        summary: ({ exitCode, timedOut, aborted }) => {
+          if (timedOut) return 'e2e timed out'
+          if (aborted) return 'e2e aborted'
+          return exitCode === 0 ? 'e2e passed' : `e2e failed (exit ${exitCode})`
+        },
+      })
+      emitCliCommandOutput({
+        entry: result.entry,
+        summary: result.entry.summary ?? '',
+        passed: result.exitCode === 0,
+        full: Boolean(flags.full),
+        toolName: 'wp_e2e',
+      })
+      return result.exitCode
     })
-}
-
-async function runCommands(commands: readonly CommandConfig[]): Promise<number> {
-  const result = await runCommandConfigs(commands)
-  if (result.output) {
-    process.stdout.write(result.output)
-  }
-  return result.exitCode
 }
 
 export { plannedGroupsToCommandConfigs }

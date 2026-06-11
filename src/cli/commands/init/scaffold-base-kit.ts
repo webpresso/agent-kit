@@ -223,11 +223,7 @@ function mergePackageJson(
   if (!devDeps['husky']) {
     devDeps['husky'] = '^9.0.0'
   }
-  if (
-    !shouldSkipSelfInstall &&
-    !shouldManageAgentKitAsGlobal &&
-    !hasAgentKitDevDep
-  ) {
+  if (!shouldSkipSelfInstall && !shouldManageAgentKitAsGlobal && !hasAgentKitDevDep) {
     // Keep consumers on the currently published dist-tag rather than a
     // repo-internal path. Do not wire this through `prepare`: `wp` is not
     // reliably on PATH during `vp install`, so `setup:agent` stays opt-in.

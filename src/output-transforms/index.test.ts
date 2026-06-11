@@ -56,4 +56,11 @@ describe('output transform dispatcher', () => {
       },
     })
   })
+
+  it('normalizes CLI lint/typecheck/test variants to their intended transforms', () => {
+    expect(normalizeToolName('lint-oxlint')).toBe('lint-oxlint')
+    expect(normalizeToolName('wp_lint-vp')).toBe('lint-oxlint')
+    expect(normalizeToolName('typecheck-cli')).toBe('typecheck')
+    expect(normalizeToolName('wp_test-summary')).toBe('test')
+  })
 })

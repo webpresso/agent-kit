@@ -78,6 +78,8 @@
     "#symlinker": "./src/symlinker/index.ts",
     "#paths/*.js": "./src/paths/*.ts",
     "#paths/*": "./src/paths/*.ts",
+    "#worktrees/*.js": "./src/worktrees/*.ts",
+    "#worktrees/*": "./src/worktrees/*.ts",
     "#cli/auto-update/*.js": "./src/cli/auto-update/*.ts",
     "#cli/auto-update/*": "./src/cli/auto-update/*.ts",
     "#cli/*.js": "./src/cli/*.ts",
@@ -629,8 +631,7 @@
     "husky": "^9.1.7",
     "publint": "^0.3.21",
     "secretlint": "^13.0.2",
-    "tshy": "^4.1.2",
-    "webpresso": "latest"
+    "tshy": "^4.1.2"
   },
   "tshy": {
     "dialects": [
