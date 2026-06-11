@@ -52,7 +52,14 @@ jobs:
         with:
           bun-version: latest
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run e2e
+      - name: Run e2e when Playwright bootstrap is present
+        run: |
+          if [ ! -f playwright.config.ts ]; then
+            echo "Skipping e2e: playwright.config.ts not present."
+            exit 0
+          fi
+
+          pnpm run e2e
 
   architecture-drift:
     runs-on: ubuntu-latest

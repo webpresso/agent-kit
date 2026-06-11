@@ -71,6 +71,7 @@ export const GENERATED_PATHS_BLOCK: GitignoreBlock = {
     '.opencode/',
     '.codex/',
     '_worktrees/',
+    '.webpresso/hooks-manifest.json',
     '.claude/settings.json',
     '.claude/settings.local.json',
     '.claude/agents/',

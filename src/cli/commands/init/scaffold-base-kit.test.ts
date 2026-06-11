@@ -62,6 +62,7 @@ describe('scaffoldBaseKit', () => {
     expect(workflow).toContain('\n  e2e:\n')
     expect(workflow).toContain('\n  architecture-drift:\n')
     expect(workflow).toContain('\n  deploy-verify:\n')
+    expect(workflow).toContain('Skipping e2e: playwright.config.ts not present.')
     expect(workflow).not.toContain('\n  test:\n')
     expect(workflow).not.toContain('\n  wp-audits:\n')
     expect(workflow).not.toContain('\n  deploy-contract:\n')

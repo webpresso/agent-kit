@@ -47,6 +47,7 @@ describe('generated agent-surface gitignore block', () => {
     expect(after).toContain('.codex/')
     expect(after).toContain('.omx/')
     expect(after).toContain('_worktrees/')
+    expect(after).toContain('.webpresso/hooks-manifest.json')
 
     const ignored = spawnSync(
       'git',
@@ -57,6 +58,7 @@ describe('generated agent-surface gitignore block', () => {
         '.codex/skills/verify/SKILL.md',
         '.codex/prompts/planner.md',
         '.omx/setup-scope.json',
+        '.webpresso/hooks-manifest.json',
         '.claude/settings.json',
         '.claude/settings.local.json',
         '.claude/hooks/check-gstack.sh',
@@ -73,6 +75,7 @@ describe('generated agent-surface gitignore block', () => {
       '.codex/prompts/planner.md',
       '.codex/skills/verify/SKILL.md',
       '.omx/setup-scope.json',
+      '.webpresso/hooks-manifest.json',
       '_worktrees/agent-fix-login/.git',
     ])
   })
