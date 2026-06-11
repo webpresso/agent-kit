@@ -153,26 +153,43 @@ describe('ak_session_batch_execute', () => {
   })
 
   describe('query phase', () => {
-    it('searches across indexed content when queries provided', async () => {
-      executeSandboxedMock.mockResolvedValue(
-        fakeExecuteResult({ exitCode: 0, outputBytes: 3000, indexed: true }),
-      )
-      const fakeHits = [{ content: 'x', source: 'big-a', rank: -1, tier: 'porter' }]
-      searchMock.mockReturnValue(fakeHits)
+    it('searches only across newly indexed labels when queries provided', async () => {
+      executeSandboxedMock
+        .mockResolvedValueOnce(fakeExecuteResult({ exitCode: 0, outputBytes: 3000, indexed: true }))
+        .mockResolvedValueOnce(fakeExecuteResult({ exitCode: 0, outputBytes: 3000, indexed: true }))
+
+      searchMock.mockImplementation(({ query, source }: { query: string; source?: string }) => [{
+        content: `${query}:${source ?? 'none'}`,
+        source: source ?? 'none',
+        rank: source === 'big-a' ? -2 : -1,
+        tier: 'porter',
+      }])
 
       const result = await tool.handler({
-        commands: [{ label: 'big-a', command: 'cmd-a' }],
-        queries: ['x patterns', 'y patterns'],
+        commands: [
+          { label: 'big-a', command: 'cmd-a' },
+          { label: 'big-b', command: 'cmd-b' },
+        ],
+        queries: ['x patterns'],
       })
       const payload = parsePayload(result)
       const details = payload.details as {
-        queryHits?: Record<string, unknown[]>
+        queryHits?: Record<string, Array<{ source: string }>>
       }
 
       expect(searchMock).toHaveBeenCalledTimes(2)
+      expect(searchMock).toHaveBeenNthCalledWith(1, {
+        query: 'x patterns',
+        limit: 10,
+        source: 'big-a',
+      })
+      expect(searchMock).toHaveBeenNthCalledWith(2, {
+        query: 'x patterns',
+        limit: 10,
+        source: 'big-b',
+      })
       expect(details.queryHits).toBeDefined()
-      expect(details.queryHits!['x patterns']).toEqual(fakeHits)
-      expect(details.queryHits!['y patterns']).toEqual(fakeHits)
+      expect(details.queryHits!['x patterns']?.map((hit) => hit.source)).toEqual(['big-a', 'big-b'])
     })
 
     it('skips query phase when no commands were indexed', async () => {

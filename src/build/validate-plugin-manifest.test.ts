@@ -68,12 +68,12 @@ describe('plugin.json manifest', () => {
       expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/pretool-guard/index.ts`)
     })
 
-    it('PostToolUse matches Edit|Write and points at lint-after-edit', () => {
+    it('PostToolUse matches the dispatcher surface and points at post-tool/index.ts', () => {
       const [entry] = readManifest().hooks.PostToolUse
-      expect(entry!.matcher).toBe('Edit|Write')
+      expect(entry!.matcher).toBe('Edit|Write|MultiEdit|Bash|Read|Grep|WebFetch|mcp__')
       const [handler] = entry!.hooks
       expect(handler!.type).toBe('command')
-      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/post-tool/lint-after-edit.ts`)
+      expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/post-tool/index.ts`)
     })
 
     it('Stop has no matcher and points at qa-changed-files', () => {

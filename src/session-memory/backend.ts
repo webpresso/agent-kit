@@ -4,7 +4,7 @@
  * v2.0 ships with both backends. The ctx-rs Rust engine is the default.
  * Select via environment variable:
  *   AK_SESSION_ENGINE=ctx-rs  (default)
- *   AK_SESSION_ENGINE=ts      (fallback to better-sqlite3 TS engine)
+ *   AK_SESSION_ENGINE=ts      (fallback to the TypeScript SQLite engine)
  *
  * AK_DISABLE_CTX=1 forces the TS fallback if ctx-rs prebuilt is unavailable.
  */
@@ -12,6 +12,16 @@
 import { createRequire } from 'node:module'
 
 import type { SessionEngineBackend } from './types.js'
+
+type CtxRsModule = typeof import('@webpresso/ctx-rs')
+type CtxRsSyncLoader = () => CtxRsModule
+
+function defaultCtxRsSyncLoader(): CtxRsModule {
+  const requireFn = createRequire(import.meta.url)
+  return requireFn('@webpresso/ctx-rs') as CtxRsModule
+}
+
+let ctxRsSyncLoader: CtxRsSyncLoader = defaultCtxRsSyncLoader
 
 /**
  * Resolve the active engine backend from the environment.
@@ -32,17 +42,15 @@ export function resolveBackend(): SessionEngineBackend {
 }
 
 /**
- * Synchronously load ctx-rs using createRequire.
- * ctx-rs/index.js ships as CommonJS so require() is the correct loader.
+ * Synchronously load ctx-rs using the module's current sync loader.
  * Returns null if unavailable (missing prebuilt, unsupported platform, AK_DISABLE_CTX=1).
  */
-export function tryLoadCtxRsSync(): typeof import('@webpresso/ctx-rs') | null {
+export function tryLoadCtxRsSync(): CtxRsModule | null {
   if (resolveBackend() === 'ts') {
     return null
   }
   try {
-    const requireFn = createRequire(import.meta.url)
-    const mod = requireFn('@webpresso/ctx-rs') as typeof import('@webpresso/ctx-rs')
+    const mod = ctxRsSyncLoader()
     // Verify the native binding is loaded (not just the JS wrapper)
     if (mod.loadNativeBinding() === null) {
       return null
@@ -54,4 +62,12 @@ export function tryLoadCtxRsSync(): typeof import('@webpresso/ctx-rs') | null {
     )
     return null
   }
+}
+
+/**
+ * Test-only seam for deterministic backend loading coverage.
+ * Pass null to restore the production loader.
+ */
+export function setCtxRsSyncLoaderForTests(loader: CtxRsSyncLoader | null): void {
+  ctxRsSyncLoader = loader ?? defaultCtxRsSyncLoader
 }

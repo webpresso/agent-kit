@@ -5,7 +5,7 @@
  * src/blueprint/db/ingester.test.ts.
  */
 
-import Database from 'better-sqlite3'
+import { Database } from '../db/sqlite.js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { BlueprintPlatformClient, BlueprintSnapshot } from './types.js'
@@ -29,9 +29,8 @@ function makeClient(overrides?: Partial<BlueprintPlatformClient>): BlueprintPlat
   }
 }
 
-function makeDb(): Database.Database {
-  const db = new Database(':memory:')
-  return db
+function makeDb(): Database {
+  return new Database(':memory:')
 }
 
 // ---------------------------------------------------------------------------
@@ -39,7 +38,7 @@ function makeDb(): Database.Database {
 // ---------------------------------------------------------------------------
 
 describe('ReplicaManager', () => {
-  let db: Database.Database
+  let db: Database
   let client: BlueprintPlatformClient
 
   beforeEach(() => {

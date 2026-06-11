@@ -1,7 +1,7 @@
 /**
  * Unit tests for v2 session primitives: captureEvent, snapshot, restore.
  *
- * Forces AK_SESSION_ENGINE=ts so tests run against better-sqlite3 and
+ * Forces AK_SESSION_ENGINE=ts so tests run against the TypeScript SQLite engine and
  * never require the ctx-rs native binary.
  */
 import { mkdtempSync, rmSync } from 'node:fs'
@@ -215,6 +215,65 @@ describe('restore', () => {
     )
     expect(result.snapshotId).toBeTruthy()
     expect(Array.isArray(result.hits)).toBe(true)
+  })
+
+
+  it('restore returns the exact snapshotId created by snapshot', async () => {
+    captureEvent(
+      {
+        repoHash: TEST_REPO_HASH,
+        event: {
+          sessionId: 's1',
+          toolName: 'Edit',
+          content: 'snapshot id fidelity query terms',
+        },
+      },
+      tmpDir,
+    )
+
+    const snap = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, tmpDir)
+    const result = restore(
+      { repoHash: TEST_REPO_HASH, query: 'snapshot id fidelity query terms' },
+      tmpDir,
+    )
+
+    expect(result.snapshotId).toBe(snap.snapshotId)
+  })
+
+  it('snapshot scopes to CLAUDE_SESSION_ID when available', async () => {
+    const originalSessionId = process.env['CLAUDE_SESSION_ID']
+    process.env['CLAUDE_SESSION_ID'] = 'session-A'
+
+    try {
+      captureEvent(
+        {
+          repoHash: TEST_REPO_HASH,
+          event: { sessionId: 'session-A', toolName: 'Edit', content: 'belongs to A' },
+        },
+        tmpDir,
+      )
+      captureEvent(
+        {
+          repoHash: TEST_REPO_HASH,
+          event: { sessionId: 'session-B', toolName: 'Edit', content: 'belongs to B' },
+        },
+        tmpDir,
+      )
+
+      const snap = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, tmpDir)
+      expect(snap.eventsIncluded).toBe(1)
+
+      const restoredA = restore({ repoHash: TEST_REPO_HASH, query: 'belongs to A' }, tmpDir)
+
+      expect(restoredA.snapshotId).toBe(snap.snapshotId)
+      expect(snap.eventsIncluded).toBe(1)
+    } finally {
+      if (originalSessionId === undefined) {
+        delete process.env['CLAUDE_SESSION_ID']
+      } else {
+        process.env['CLAUDE_SESSION_ID'] = originalSessionId
+      }
+    }
   })
 
   it('result.hits is always a readonly array', () => {

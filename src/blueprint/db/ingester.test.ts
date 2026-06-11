@@ -532,10 +532,12 @@ describe('ingestRunnerEvent', () => {
         .prepare(
           'SELECT sequence, kind FROM runner_events WHERE execution_handle = ? ORDER BY sequence',
         )
-        .all('h-002') as Array<{ sequence: number; kind: string }>
+        .all('h-002') as Array<{ sequence: number | bigint; kind: string }>
       expect(rows).toHaveLength(2)
-      expect(rows[0]).toStrictEqual({ sequence: 1, kind: 'started' })
-      expect(rows[1]).toStrictEqual({ sequence: 2, kind: 'stdout' })
+      expect(rows.map((row) => ({ sequence: Number(row.sequence), kind: row.kind }))).toStrictEqual([
+        { sequence: 1, kind: 'started' },
+        { sequence: 2, kind: 'stdout' },
+      ])
     } finally {
       conn.close()
     }

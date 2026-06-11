@@ -68,6 +68,22 @@ interface CompactLeafResult {
   readonly unwrapError?: string
 }
 
+function describeThrownToolError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function toolThrowResult(toolName: string, error: unknown): ToolHandlerResult {
+  return createSummaryResult(
+    {
+      passed: false,
+      summary: `${toolName} threw before returning a result`,
+      failures: [{ message: describeThrownToolError(error) }],
+      unwrapError: `${toolName} threw: ${describeThrownToolError(error)}`,
+    },
+    { isError: true },
+  )
+}
+
 /**
  * Sub-tool handlers return MCP `{content: [{type: 'text', text: <json>}]}`.
  * To aggregate into a single structured payload we re-parse the JSON.
@@ -171,9 +187,15 @@ const tool: ToolDescriptor = {
     const input = inputSchema.parse(raw ?? {})
 
     const [lintResult, typecheckResult, testResult] = await Promise.all([
-      lintTool.handler({ cwd: input.cwd, files: input.files }, extra),
-      typecheckTool.handler({ cwd: input.cwd, packages: input.packages }, extra),
-      testTool.handler({ cwd: input.cwd, files: input.files, packages: input.packages }, extra),
+      lintTool
+        .handler({ cwd: input.cwd, files: input.files }, extra)
+        .catch((error: unknown) => toolThrowResult('lint', error)),
+      typecheckTool
+        .handler({ cwd: input.cwd, packages: input.packages }, extra)
+        .catch((error: unknown) => toolThrowResult('typecheck', error)),
+      testTool
+        .handler({ cwd: input.cwd, files: input.files, packages: input.packages }, extra)
+        .catch((error: unknown) => toolThrowResult('test', error)),
     ])
 
     const lint = toCompactLeaf(unwrap(lintResult))

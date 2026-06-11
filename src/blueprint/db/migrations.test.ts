@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3'
+import { Database } from './sqlite.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -27,7 +27,7 @@ const EXPECTED_TABLES = [
   'runner_events',
 ] as const
 
-function getTableNames(db: Database.Database): string[] {
+function getTableNames(db: Database): string[] {
   const rows = db
     .prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
@@ -88,7 +88,7 @@ describe('migrations', () => {
 
   it('runMigrations is idempotent when called directly on an open db', () => {
     const db = new Database(dbPath)
-    db.pragma('foreign_keys = ON')
+    db.exec('PRAGMA foreign_keys = ON')
     runMigrations(db)
     runMigrations(db)
     const rows = db.prepare('SELECT version FROM schema_version').all() as Array<{

@@ -16,6 +16,16 @@ import { resolveBackend, tryLoadCtxRsSync } from './backend.js'
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
 
+interface CacheLookupDb {
+  prepare<Params extends unknown[] = [string], Row = { indexed_at: number }>(sql: string): {
+    get(...params: Params): Row | undefined | null
+  }
+}
+
+function isCacheLookupDb(value: unknown): value is CacheLookupDb {
+  return typeof value === 'object' && value !== null && 'prepare' in value
+}
+
 /**
  * Fetch a URL, convert to Markdown, and index into the session store.
  * Respects 24h cache: if the source was indexed recently, skips re-fetch.
@@ -57,13 +67,15 @@ export async function fetchAndIndex(options: FetchIndexOptions): Promise<FetchIn
 function getCachedAt(store: ReturnType<typeof getStore>, url: string): number | null {
   try {
     const db = (store as { getDb?(): unknown }).getDb?.()
-    if (db === undefined || db === null) return null
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const row = (db as any)
+    if (!isCacheLookupDb(db)) return null
+    const row = db
       .prepare('SELECT indexed_at FROM sources WHERE label = ?')
       .get(url) as { indexed_at: number } | undefined
     return row?.indexed_at ?? null
-  } catch {
+  } catch (err: unknown) {
+    process.stderr.write(
+      `ak-session-memory: getCachedAt failed: ${err instanceof Error ? err.message : String(err)}\n`,
+    )
     return null
   }
 }

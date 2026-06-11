@@ -356,6 +356,31 @@ describe('ak_qa tool', () => {
     expect(result.isError).toBe(true)
   })
 
+  it('marks the result `isError: true` and preserves a failure envelope when a sub-tool throws', async () => {
+    lintHandler.mockReset()
+    typecheckHandler.mockReset()
+    testHandler.mockReset()
+    lintHandler.mockResolvedValue(wrapPayload({ passed: true, summary: 'lint passed', issues: [] }))
+    typecheckHandler.mockRejectedValue(new Error('tsc missing from PATH'))
+    testHandler.mockResolvedValue(
+      wrapPayload({ passed: true, summary: 'tests passed', exitCode: 0, backend: 'pnpm' }),
+    )
+
+    const result = await akQaTool.handler({})
+    const payload = JSON.parse((result.content[0] as { text: string }).text) as {
+      passed: boolean
+      details: {
+        typecheck: { passed: boolean; unwrapError?: string; failures: { message: string }[] }
+      }
+    }
+
+    expect(result.isError).toBe(true)
+    expect(payload.passed).toBe(false)
+    expect(payload.details.typecheck.passed).toBe(false)
+    expect(payload.details.typecheck.unwrapError).toContain('typecheck threw')
+    expect(payload.details.typecheck.failures[0]?.message).toContain('tsc missing from PATH')
+  })
+
   it('does NOT mark `isError: true` when sub-tools simply report passed=false', async () => {
     lintHandler.mockReset()
     typecheckHandler.mockReset()

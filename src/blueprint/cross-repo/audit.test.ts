@@ -9,7 +9,7 @@ import { mkdtempSync, mkdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import Database from 'better-sqlite3'
+import type { Database } from '../db/sqlite.js'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { openDb } from '../db/connection.js'
@@ -19,7 +19,7 @@ import { auditCrossRepoCorrelation, fixCrossRepoLeak } from './audit.js'
 // Helpers
 // ---------------------------------------------------------------------------
 
-type Db = Database.Database
+type Db = Database
 
 function insertBlueprint(
   db: Db,
