@@ -112,11 +112,20 @@ function seedConsumerRepo(root: string): void {
   writeFileSync(join(root, '.claude', 'rules', 'custom-rule.md'), '# override content\n')
 
   for (const agentName of ['code-reviewer', 'security-auditor', 'doc-writer', 'explorer']) {
-    mkdirSync(join(root, 'node_modules', 'webpresso', 'catalog', 'agent', 'agents'), {
+    mkdirSync(join(root, 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'agents'), {
       recursive: true,
     })
     writeFileSync(
-      join(root, 'node_modules', 'webpresso', 'catalog', 'agent', 'agents', `${agentName}.md`),
+      join(
+        root,
+        'node_modules',
+        '@webpresso',
+        'agent-kit',
+        'catalog',
+        'agent',
+        'agents',
+        `${agentName}.md`,
+      ),
       `# ${agentName}\n`,
     )
     symlinkSync(
@@ -124,7 +133,8 @@ function seedConsumerRepo(root: string): void {
         '..',
         '..',
         'node_modules',
-        'webpresso',
+        '@webpresso',
+        'agent-kit',
         'catalog',
         'agent',
         'agents',
@@ -230,7 +240,7 @@ describe('auditAgents', () => {
     mkdirSync(join(root, 'catalog', 'agent', 'agents'), { recursive: true })
     mkdirSync(join(root, 'catalog', 'agent', 'rules'), { recursive: true })
     writeFileSync(join(root, 'AGENTS.md'), '# Root contract\n')
-    writeJson(join(root, 'package.json'), { name: 'webpresso' })
+    writeJson(join(root, 'package.json'), { name: '@webpresso/agent-kit' })
     writeFileSync(join(root, 'catalog', 'agent', 'rules', 'repo-restrictions.md'), '# rule\n')
     for (const agentName of ['code-reviewer', 'security-auditor', 'doc-writer', 'explorer']) {
       writeFileSync(join(root, 'catalog', 'agent', 'agents', `${agentName}.md`), `# ${agentName}\n`)

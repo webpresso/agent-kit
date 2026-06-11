@@ -2,11 +2,11 @@
 type: blueprint
 title: "Harness-surface manifest with editable/locked declaration"
 owner: ozby
-status: draft
+status: planned
 complexity: M
 created: "2026-06-10"
 last_updated: "2026-06-11"
-progress: "0% (draft; fact-check refined, tasks unstarted)"
+progress: "0% (planned; fact-check refined, tasks unstarted)"
 parent_roadmap: 2026-06-10-self-improving-harness-roadmap
 tags:
   - agent-kit

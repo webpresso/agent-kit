@@ -138,9 +138,7 @@ function isWithinPath(target: string, root: string): boolean {
 function discoverInstalledAgentKitRoots(repoRoot: string): string[] {
   const roots = new Set<string>()
 
-  for (const directRoot of [
-    path.join(repoRoot, 'node_modules', '@webpresso', 'agent-kit'),
-  ]) {
+  for (const directRoot of [path.join(repoRoot, 'node_modules', '@webpresso', 'agent-kit')]) {
     if (existsSync(path.join(directRoot, 'package.json'))) {
       roots.add(directRoot)
     }
@@ -266,7 +264,7 @@ export function discoverWorkspacePackages(
  * produces a non-reproducible `.agents/skills/` tree (symlinks point outside
  * the project tree; lockfile irrelevant). Repo-local symlink/dev-link installs
  * still count as local via realpath comparison. Self-mode short-circuits when
- * the consumer IS `webpresso` (running setup from webpresso's own
+ * the consumer is `@webpresso/agent-kit` (running setup from agent-kit's own
  * checkout).
  *
  * Non-blocking: prints to stderr and returns. The bc88-class failure
@@ -304,9 +302,8 @@ export function warnIfNonLocalCli(repoRoot: string, cliUrl: string = import.meta
  * agent-kit's own package name — the source repo for every agent-surface
  * template (`catalog/`, the tracked `.agent/`/`.claude/` surfaces). Scaffolding
  * into this repo overwrites the canonical sources, so `wp setup` refuses it
- * unless explicitly overridden. Distinct from base-kit's broader
- * `SELF_PACKAGE_NAMES` (which also covers the legacy `webpresso` framework
- * identity); only agent-kit hosts the catalog templates.
+ * unless explicitly overridden. Only `@webpresso/agent-kit` hosts the catalog
+ * templates.
  */
 export const AGENT_KIT_PACKAGE_NAME = '@webpresso/agent-kit'
 

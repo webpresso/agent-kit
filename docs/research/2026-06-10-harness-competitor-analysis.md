@@ -78,13 +78,13 @@ Gap rating: ✅ competitive · 🟡 partial · ❌ missing.
 | **Memory & state** — durable cross-session knowledge | Session stores, blueprint/tech-debt lifecycles; KG deferred behind gates (per May 2026 review) | 🟡 deliberate partial |
 | **Task runners & orchestration** — multi-agent execution | pll lanes, worktree isolation docs | 🟡 adapter-level, not owned |
 | **Verification & CI integration** — gates on agent output | 20+ audit kinds, GitHub Action, hooks | ✅ the moat |
-| **Observability & tracing** — mineable execution traces | Hook logs exist but are write-only: nothing reads, aggregates, or reports them | ❌ → [weakness-mining blueprint](../../blueprints/draft/2026-06-10-weakness-mining-audit.md) |
+| **Observability & tracing** — mineable execution traces | Hook logs exist but are write-only: nothing reads, aggregates, or reports them | ❌ → [weakness-mining blueprint](../../blueprints/planned/2026-06-10-weakness-mining-audit.md) |
 | **Debugging & DX** — doctor flows, rollback | `wp doctor`, hooks-doctor skill, hooks-rollback doc | ✅ |
 | **Human-in-the-loop** — review gates on agent-proposed change | PR flow + lore commits (generic git, nothing harness-aware) | 🟡 implicit only |
 | **Security / sandbox** — isolation for agent execution | Worktree isolation; no sandboxed eval runner | 🟡 acceptable until the gate needs one |
-| **Evals & verification of the harness itself** — behavioral regression testing of harness changes | **None.** Token-savings benchmark methodology exists on paper ([2026-05-14](2026-05-14-token-savings-benchmark-methodology.md), [bench methodology](../bench/session-memory-methodology.md)) but no pass-rate suite gates catalog/hook PRs | ❌ → [regression-gate blueprint](../../blueprints/draft/2026-06-10-harness-regression-gate.md) |
-| **Model-specific adaptation** — per-model harness variants (the school's central finding) | One canonical `.agent/` for all CLIs/models | ❌ → [overlays blueprint](../../blueprints/draft/2026-06-10-per-model-harness-overlays.md) |
-| **Editable-surface declaration** — machine-readable edit boundary | Implicit (conventions + guard code), not declared | ❌ → [manifest blueprint](../../blueprints/draft/2026-06-10-harness-surface-manifest.md) |
+| **Evals & verification of the harness itself** — behavioral regression testing of harness changes | **None.** Token-savings benchmark methodology exists on paper ([2026-05-14](2026-05-14-token-savings-benchmark-methodology.md), [bench methodology](../bench/session-memory-methodology.md)) but no pass-rate suite gates catalog/hook PRs | ❌ → [regression-gate blueprint](../../blueprints/planned/2026-06-10-harness-regression-gate.md) |
+| **Model-specific adaptation** — per-model harness variants (the school's central finding) | One canonical `.agent/` for all CLIs/models | ❌ → [overlays blueprint](../../blueprints/planned/2026-06-10-per-model-harness-overlays.md) |
+| **Editable-surface declaration** — machine-readable edit boundary | Implicit (conventions + guard code), not declared | ❌ → [manifest blueprint](../../blueprints/planned/2026-06-10-harness-surface-manifest.md) |
 
 ## Agent-kit better / worse — honest scorecard
 
@@ -105,16 +105,16 @@ Gap rating: ✅ competitive · 🟡 partial · ❌ missing.
 **Where agent-kit is worse (each row names its fix):**
 
 1. **No behavioral feedback loop** — harness changes ship on review rationale
-   alone. Fix: [harness-regression-gate](../../blueprints/draft/2026-06-10-harness-regression-gate.md).
+   alone. Fix: [harness-regression-gate](../../blueprints/planned/2026-06-10-harness-regression-gate.md).
 2. **Write-only observability** — hook logs are never mined; failure
    knowledge stays tribal until a human writes a rule. Fix:
-   [weakness-mining-audit](../../blueprints/draft/2026-06-10-weakness-mining-audit.md).
+   [weakness-mining-audit](../../blueprints/planned/2026-06-10-weakness-mining-audit.md).
 3. **No model-specificity** — one harness for all models contradicts the
    school's central, replicated finding. Fix:
-   [per-model-harness-overlays](../../blueprints/draft/2026-06-10-per-model-harness-overlays.md).
+   [per-model-harness-overlays](../../blueprints/planned/2026-06-10-per-model-harness-overlays.md).
 4. **No declared edit boundary** — "what may an agent change about its own
    harness" is answerable only by reading guard source. Fix:
-   [harness-surface-manifest](../../blueprints/draft/2026-06-10-harness-surface-manifest.md).
+   [harness-surface-manifest](../../blueprints/planned/2026-06-10-harness-surface-manifest.md).
 5. **Hook coverage gaps** — documented-vs-measured support per
    [hook-matrix](../hook-matrix.md) (e.g. Codex MultiEdit parity). Accepted
    gap, tracked there — not part of this roadmap.

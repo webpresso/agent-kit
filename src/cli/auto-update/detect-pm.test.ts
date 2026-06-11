@@ -111,75 +111,83 @@ describe('matchStoreMarker', () => {
   })
 
   it('detects pnpm via .pnpm-store segment', () => {
-    expect(matchStoreMarker('/Users/me/.pnpm-store/v3/foo/webpresso/dist/cli.js')).toStrictEqual(
-      'pnpm',
-    )
+    expect(
+      matchStoreMarker('/Users/me/.pnpm-store/v3/foo/@webpresso/agent-kit/dist/cli.js'),
+    ).toStrictEqual('pnpm')
   })
 
   it('detects pnpm via .pnpm virtual store segment', () => {
     expect(
-      matchStoreMarker('/Users/me/Library/pnpm/global/5/node_modules/.pnpm/webpresso@1.0.0'),
+      matchStoreMarker(
+        '/Users/me/Library/pnpm/global/5/node_modules/.pnpm/@webpresso+agent-kit@1.0.0',
+      ),
     ).toStrictEqual('pnpm')
   })
 
   it('detects pnpm via pnpm-global segment', () => {
-    expect(matchStoreMarker('/Users/me/pnpm-global/5/node_modules/webpresso/cli.js')).toStrictEqual(
-      'pnpm',
-    )
+    expect(
+      matchStoreMarker('/Users/me/pnpm-global/5/node_modules/@webpresso/agent-kit/cli.js'),
+    ).toStrictEqual('pnpm')
   })
 
   it('detects bun via .bun + install', () => {
     expect(
-      matchStoreMarker('/Users/me/.bun/install/global/node_modules/webpresso/cli.js'),
+      matchStoreMarker('/Users/me/.bun/install/global/node_modules/@webpresso/agent-kit/cli.js'),
     ).toStrictEqual('bun')
   })
 
   it('detects yarn classic via .yarn + global', () => {
-    expect(matchStoreMarker('/Users/me/.yarn/global/node_modules/webpresso/cli.js')).toStrictEqual(
-      'yarn',
-    )
+    expect(
+      matchStoreMarker('/Users/me/.yarn/global/node_modules/@webpresso/agent-kit/cli.js'),
+    ).toStrictEqual('yarn')
   })
 
   it('detects yarn berry via .yarn + berry', () => {
-    expect(matchStoreMarker('/Users/me/.yarn/berry/cache/webpresso/cli.js')).toStrictEqual('yarn')
+    expect(
+      matchStoreMarker('/Users/me/.yarn/berry/cache/@webpresso/agent-kit/cli.js'),
+    ).toStrictEqual('yarn')
   })
 
   it('detects npm via Homebrew Cellar', () => {
     expect(
-      matchStoreMarker('/opt/homebrew/Cellar/node/22.0.0/lib/node_modules/webpresso'),
+      matchStoreMarker('/opt/homebrew/Cellar/node/current/lib/node_modules/@webpresso/agent-kit'),
     ).toStrictEqual('npm')
   })
 
   it('detects npm via /usr/local/lib/node_modules', () => {
-    expect(matchStoreMarker('/usr/local/lib/node_modules/webpresso/dist/cli.js')).toStrictEqual(
-      'npm',
-    )
+    expect(
+      matchStoreMarker('/usr/local/lib/node_modules/@webpresso/agent-kit/dist/cli.js'),
+    ).toStrictEqual('npm')
   })
 
   it('detects npm via ~/.npm-global', () => {
     expect(
-      matchStoreMarker('/Users/me/.npm-global/lib/node_modules/webpresso/cli.js'),
+      matchStoreMarker('/Users/me/.npm-global/lib/node_modules/@webpresso/agent-kit/cli.js'),
     ).toStrictEqual('npm')
   })
 
   it('returns null for a path with no store marker', () => {
-    expect(matchStoreMarker('/tmp/foo/bar/webpresso')).toStrictEqual(null)
+    expect(matchStoreMarker('/tmp/foo/bar/@webpresso/agent-kit')).toStrictEqual(null)
   })
 })
 
 describe('detectShim', () => {
   it('detects Volta shims', () => {
-    expect(detectShim('/Users/me/.volta/tools/image/packages/webpresso/bin/cli.js')).toMatch(
-      /Volta/,
-    )
+    expect(
+      detectShim('/Users/me/.volta/tools/image/packages/@webpresso/agent-kit/bin/cli.js'),
+    ).toMatch(/Volta/)
   })
 
   it('detects asdf shims', () => {
-    expect(detectShim('/Users/me/.asdf/installs/nodejs/22.0.0/.npm/bin/webpresso')).toMatch(/asdf/)
+    expect(
+      detectShim('/Users/me/.asdf/installs/nodejs/22.0.0/.npm/bin/@webpresso/agent-kit'),
+    ).toMatch(/asdf/)
   })
 
   it('returns null for plain Homebrew paths', () => {
-    expect(detectShim('/opt/homebrew/Cellar/node/22.0.0/bin/webpresso')).toStrictEqual(null)
+    expect(detectShim('/opt/homebrew/Cellar/node/current/bin/@webpresso/agent-kit')).toStrictEqual(
+      null,
+    )
   })
 })
 
@@ -187,7 +195,7 @@ describe('confirmInstalledGlobally', () => {
   it('accepts a Homebrew Cellar install', () => {
     expect(
       confirmInstalledGlobally(
-        '/opt/homebrew/Cellar/node/22.0.0/lib/node_modules/webpresso/cli.js',
+        '/opt/homebrew/Cellar/node/current/lib/node_modules/@webpresso/agent-kit/cli.js',
         {},
       ),
     ).toStrictEqual(true)
@@ -195,53 +203,59 @@ describe('confirmInstalledGlobally', () => {
 
   it('accepts /usr/local/lib/node_modules', () => {
     expect(
-      confirmInstalledGlobally('/usr/local/lib/node_modules/webpresso/cli.js', {}),
+      confirmInstalledGlobally('/usr/local/lib/node_modules/@webpresso/agent-kit/cli.js', {}),
     ).toStrictEqual(true)
   })
 
   it('accepts .pnpm-store paths', () => {
     expect(
-      confirmInstalledGlobally('/Users/me/.pnpm-store/v3/.../webpresso/cli.js', {}),
+      confirmInstalledGlobally('/Users/me/.pnpm-store/v3/.../@webpresso/agent-kit/cli.js', {}),
     ).toStrictEqual(true)
   })
 
   it('accepts .bun installs', () => {
     expect(
-      confirmInstalledGlobally('/Users/me/.bun/install/global/node_modules/webpresso/cli.js', {}),
+      confirmInstalledGlobally(
+        '/Users/me/.bun/install/global/node_modules/@webpresso/agent-kit/cli.js',
+        {},
+      ),
     ).toStrictEqual(true)
   })
 
   it('rejects a project-local devDep install', () => {
     expect(
-      confirmInstalledGlobally('/Users/me/my-project/node_modules/webpresso/dist/cli.js', {}),
+      confirmInstalledGlobally(
+        '/Users/me/my-project/node_modules/@webpresso/agent-kit/dist/cli.js',
+        {},
+      ),
     ).toStrictEqual(false)
   })
 
   it('accepts a path matching env.npm_config_prefix', () => {
     expect(
-      confirmInstalledGlobally('/custom/prefix/node_modules/webpresso/cli.js', {
+      confirmInstalledGlobally('/custom/prefix/node_modules/@webpresso/agent-kit/cli.js', {
         npm_config_prefix: '/custom/prefix',
       }),
     ).toStrictEqual(true)
   })
 
   it('accepts paths not inside any node_modules tree', () => {
-    expect(confirmInstalledGlobally('/opt/webpresso/bin/cli.js', {})).toStrictEqual(true)
+    expect(confirmInstalledGlobally('/opt/@webpresso/agent-kit/bin/cli.js', {})).toStrictEqual(true)
   })
 })
 
 describe('detectGitInstall', () => {
-  it('returns the repo dir when argv1 resolves into the webpresso/webpresso clone', () => {
-    realpathSyncMock.mockReturnValue('/Users/me/repos/webpresso/webpresso/src/cli/cli.ts')
+  it('returns the repo dir when argv1 resolves into the webpresso/agent-kit clone', () => {
+    realpathSyncMock.mockReturnValue('/Users/me/repos/webpresso/agent-kit/src/cli/cli.ts')
     execFileSyncMock
-      .mockReturnValueOnce('/Users/me/repos/webpresso/webpresso\n')
-      .mockReturnValueOnce('git@github.com:webpresso/webpresso.git\n')
+      .mockReturnValueOnce('/Users/me/repos/webpresso/agent-kit\n')
+      .mockReturnValueOnce('git@github.com:webpresso/agent-kit.git\n')
     expect(detectGitInstall('/Users/me/.local/bin/wp')).toStrictEqual(
-      '/Users/me/repos/webpresso/webpresso',
+      '/Users/me/repos/webpresso/agent-kit',
     )
   })
 
-  it('returns null when the remote is not webpresso/webpresso', () => {
+  it('returns null when the remote is not webpresso/agent-kit', () => {
     realpathSyncMock.mockReturnValue('/Users/me/other-repo/cli.ts')
     execFileSyncMock
       .mockReturnValueOnce('/Users/me/other-repo\n')
@@ -258,15 +272,15 @@ describe('detectGitInstall', () => {
 })
 
 describe('detect — priority 0: git/source install', () => {
-  it('returns git pull command when argv1 is inside the webpresso clone', () => {
-    realpathSyncMock.mockReturnValue('/Users/me/repos/webpresso/webpresso/src/cli/cli.ts')
+  it('returns git pull command when argv1 is inside the agent-kit clone', () => {
+    realpathSyncMock.mockReturnValue('/Users/me/repos/webpresso/agent-kit/src/cli/cli.ts')
     execFileSyncMock
-      .mockReturnValueOnce('/Users/me/repos/webpresso/webpresso\n')
-      .mockReturnValueOnce('git@github.com:webpresso/webpresso.git\n')
+      .mockReturnValueOnce('/Users/me/repos/webpresso/agent-kit\n')
+      .mockReturnValueOnce('git@github.com:webpresso/agent-kit.git\n')
     const result = detect({}, '/Users/me/.local/bin/wp')
     expect(result).toStrictEqual({
       manager: 'git',
-      command: ['git', '-C', '/Users/me/repos/webpresso/webpresso', 'pull'],
+      command: ['git', '-C', '/Users/me/repos/webpresso/agent-kit', 'pull'],
     })
   })
 })
@@ -329,11 +343,10 @@ describe('detect — priority 1: npm_config_user_agent', () => {
   })
 
   it('falls through to argv0 walk when user-agent is unknown', () => {
-    realpathSyncMock.mockReturnValue('/opt/homebrew/Cellar/node/22.0.0/lib/node_modules/webpresso')
-    const result = detect(
-      { npm_config_user_agent: 'rush/5.0 node/v22' },
-      '/opt/homebrew/bin/webpresso',
+    realpathSyncMock.mockReturnValue(
+      '/opt/homebrew/Cellar/node/current/lib/node_modules/@webpresso/agent-kit',
     )
+    const result = detect({ npm_config_user_agent: 'rush/5.0 node/v22' }, '/opt/homebrew/bin/wp')
     expect(result).toStrictEqual({
       manager: 'npm',
       command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
@@ -343,8 +356,8 @@ describe('detect — priority 1: npm_config_user_agent', () => {
 
 describe('detect — priority 2: realpath walk', () => {
   it('detects pnpm from a realpath inside .pnpm-store', () => {
-    realpathSyncMock.mockReturnValue('/Users/me/.pnpm-store/v3/abc/webpresso/cli.js')
-    const result = detect({}, '/Users/me/bin/webpresso')
+    realpathSyncMock.mockReturnValue('/Users/me/.pnpm-store/v3/abc/@webpresso/agent-kit/cli.js')
+    const result = detect({}, '/Users/me/bin/wp')
     expect(result).toStrictEqual({
       manager: 'pnpm',
       command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
@@ -352,8 +365,10 @@ describe('detect — priority 2: realpath walk', () => {
   })
 
   it('detects bun from a realpath inside .bun/install/global', () => {
-    realpathSyncMock.mockReturnValue('/Users/me/.bun/install/global/node_modules/webpresso/cli.js')
-    const result = detect({}, '/Users/me/.bun/bin/webpresso')
+    realpathSyncMock.mockReturnValue(
+      '/Users/me/.bun/install/global/node_modules/@webpresso/agent-kit/cli.js',
+    )
+    const result = detect({}, '/Users/me/.bun/bin/wp')
     expect(result).toStrictEqual({
       manager: 'bun',
       command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
@@ -362,9 +377,9 @@ describe('detect — priority 2: realpath walk', () => {
 
   it('detects npm via Homebrew', () => {
     realpathSyncMock.mockReturnValue(
-      '/opt/homebrew/Cellar/node/22.0.0/lib/node_modules/webpresso/cli.js',
+      '/opt/homebrew/Cellar/node/current/lib/node_modules/@webpresso/agent-kit/cli.js',
     )
-    const result = detect({}, '/opt/homebrew/bin/webpresso')
+    const result = detect({}, '/opt/homebrew/bin/wp')
     expect(result).toStrictEqual({
       manager: 'npm',
       command: ['vp', 'install', '-g', '@webpresso/agent-kit'],
@@ -377,10 +392,12 @@ describe('detect — priority 3: global confirmation', () => {
     // Path matches the npm store marker (lib + node_modules) but the env-provided
     // prefix points elsewhere, AND the path doesn't include a recognised global
     // segment. This is an edge case where confirmInstalledGlobally returns false.
-    realpathSyncMock.mockReturnValue('/Users/me/some-proj/lib/node_modules/webpresso/cli.js')
+    realpathSyncMock.mockReturnValue(
+      '/Users/me/some-proj/lib/node_modules/@webpresso/agent-kit/cli.js',
+    )
     const result = detect(
       { npm_config_prefix: '/usr/local' },
-      '/Users/me/some-proj/lib/node_modules/.bin/webpresso',
+      '/Users/me/some-proj/lib/node_modules/.bin/wp',
     )
     // matchStoreMarker → 'npm'; confirmInstalledGlobally still returns true
     // because `lib + node_modules` is in the global allowlist. Documented:
@@ -391,8 +408,8 @@ describe('detect — priority 3: global confirmation', () => {
   })
 
   it('treats project-local node_modules with no global markers as unknown (abort)', () => {
-    realpathSyncMock.mockReturnValue('/Users/me/proj/node_modules/webpresso/dist/cli.js')
-    const result = detect({}, '/Users/me/proj/node_modules/.bin/webpresso')
+    realpathSyncMock.mockReturnValue('/Users/me/proj/node_modules/@webpresso/agent-kit/dist/cli.js')
+    const result = detect({}, '/Users/me/proj/node_modules/.bin/wp')
     // matchStoreMarker returns null (no .pnpm/.bun/.yarn/.npm-global/Cellar/lib);
     // detect falls through to priority 5 "unknown".
     expect('abort' in result).toStrictEqual(true)
@@ -401,24 +418,30 @@ describe('detect — priority 3: global confirmation', () => {
 
 describe('detect — priority 4: Volta / asdf shims', () => {
   it('aborts on Volta shim path', () => {
-    realpathSyncMock.mockReturnValue('/Users/me/.volta/tools/image/packages/webpresso/bin/cli.js')
-    const result = detect({}, '/Users/me/.volta/bin/webpresso')
+    realpathSyncMock.mockReturnValue(
+      '/Users/me/.volta/tools/image/packages/@webpresso/agent-kit/bin/cli.js',
+    )
+    const result = detect({}, '/Users/me/.volta/bin/wp')
     expect('abort' in result).toStrictEqual(true)
     if ('abort' in result) expect(result.abort).toMatch(/Volta/)
   })
 
   it('aborts on asdf shim path', () => {
-    realpathSyncMock.mockReturnValue('/Users/me/.asdf/installs/nodejs/22.0.0/.npm/bin/webpresso')
-    const result = detect({}, '/Users/me/.asdf/shims/webpresso')
+    realpathSyncMock.mockReturnValue(
+      '/Users/me/.asdf/installs/nodejs/22.0.0/.npm/bin/@webpresso/agent-kit',
+    )
+    const result = detect({}, '/Users/me/.asdf/shims/wp')
     expect('abort' in result).toStrictEqual(true)
     if ('abort' in result) expect(result.abort).toMatch(/asdf/)
   })
 
   it('Volta detection wins even if user-agent declares pnpm (avoid shim mismatch)', () => {
-    realpathSyncMock.mockReturnValue('/Users/me/.volta/tools/image/packages/webpresso/bin/cli.js')
+    realpathSyncMock.mockReturnValue(
+      '/Users/me/.volta/tools/image/packages/@webpresso/agent-kit/bin/cli.js',
+    )
     const result = detect(
       { npm_config_user_agent: 'pnpm/10.33.0 node/v22' },
-      '/Users/me/.volta/bin/webpresso',
+      '/Users/me/.volta/bin/wp',
     )
     // Per priority order, the user-agent is consulted FIRST; pnpm takes the
     // happy path. Documented quirk: when both signals disagree, user-agent
@@ -430,8 +453,8 @@ describe('detect — priority 4: Volta / asdf shims', () => {
 
 describe('detect — priority 5: unknown', () => {
   it('aborts when neither user-agent nor realpath yield a match', () => {
-    realpathSyncMock.mockReturnValue('/tmp/random/webpresso/cli.js')
-    const result = detect({}, '/tmp/random/bin/webpresso')
+    realpathSyncMock.mockReturnValue('/tmp/random/@webpresso/agent-kit/cli.js')
+    const result = detect({}, '/tmp/random/bin/wp')
     expect('abort' in result).toStrictEqual(true)
     if ('abort' in result) expect(result.abort).toMatch(/Unable to detect/)
   })

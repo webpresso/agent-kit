@@ -2,11 +2,11 @@
 type: parent-roadmap
 title: "Self-improving harness — gated loop roadmap"
 owner: ozby
-status: draft
+status: planned
 complexity: XL
 created: "2026-06-10"
 last_updated: "2026-06-11"
-progress: "0% (draft; child blueprints refined, no execution started)"
+progress: "0% (planned; child blueprints refined, ready for execution)"
 depends_on:
   - 2026-06-10-harness-surface-manifest
   - 2026-06-10-weakness-mining-audit
@@ -45,7 +45,7 @@ has no declared editable-surface manifest, only one durable hook log today,
 no behavioral regression gate on harness PRs, and no model-specific overlay
 layer in `wp sync`.
 
-This roadmap keeps every child in `draft/` while the architecture is hardened
+This roadmap keeps every child in `planned/` while the architecture is hardened
 in evidence order:
 
 ```text
@@ -64,9 +64,9 @@ of this roadmap.
 
 | Wave | Blueprints | Dependencies |
 | --- | --- | --- |
-| **Wave 1** | `draft/2026-06-10-harness-surface-manifest.md`, `draft/2026-06-10-weakness-mining-audit.md` | None |
-| **Wave 2** | `draft/2026-06-10-harness-regression-gate.md` | `draft/2026-06-10-harness-surface-manifest.md` |
-| **Wave 3** | `draft/2026-06-10-per-model-harness-overlays.md` | `draft/2026-06-10-weakness-mining-audit.md`, `draft/2026-06-10-harness-regression-gate.md` |
+| **Wave 1** | `planned/2026-06-10-harness-surface-manifest.md`, `planned/2026-06-10-weakness-mining-audit.md` | None |
+| **Wave 2** | `planned/2026-06-10-harness-regression-gate.md` | `planned/2026-06-10-harness-surface-manifest.md` |
+| **Wave 3** | `planned/2026-06-10-per-model-harness-overlays.md` | `planned/2026-06-10-weakness-mining-audit.md`, `planned/2026-06-10-harness-regression-gate.md` |
 
 ## Fact-Check Summary
 
@@ -75,27 +75,27 @@ of this roadmap.
 | Hook logs already provide a broad multi-hook evidence substrate | Only `src/hooks/pretool-guard/logger.ts` writes a durable hook log today; post-tool and stop do not emit comparable records | Mining must start from pretool data and explicitly scope any minimal log-enrichment work |
 | A behavioral benchmark substrate already exists | `scripts/bench/` and the session-memory methodology already provide reproducibility, manifests, transcripts, and CLI-subprocess runner patterns | Regression gate extends the existing bench substrate instead of forking a new one |
 | Symlinker already has an overlay merge phase | `runUnifiedSync` currently loads catalog + consumer content only; `docs/symlinker.md` does not mention overlays | Overlay support is new sync behavior, not documentation of an existing order |
-| Parent task should promote children | Settled decision for this roadmap is the opposite: all five blueprints remain in `draft/` | Parent roadmap must coordinate draft hardening, not promotion |
+| Parent task should promote children | These five blueprints are now promoted together into `planned/` after refinement hardening | Parent roadmap coordinates planned execution order and dependencies |
 
 ## Phases
 
 ### Wave 1 — explicit boundary and mineable evidence
 
-- [`draft/2026-06-10-harness-surface-manifest.md`](./2026-06-10-harness-surface-manifest.md)
+- [`planned/2026-06-10-harness-surface-manifest.md`](./2026-06-10-harness-surface-manifest.md)
   declares the editable/locked boundary and adds the validating audit.
-- [`draft/2026-06-10-weakness-mining-audit.md`](./2026-06-10-weakness-mining-audit.md)
+- [`planned/2026-06-10-weakness-mining-audit.md`](./2026-06-10-weakness-mining-audit.md)
   turns current hook/session evidence into ranked failure clusters and optional
   draft tech-debt outputs.
 
 ### Wave 2 — behavioral promotion gate
 
-- [`draft/2026-06-10-harness-regression-gate.md`](./2026-06-10-harness-regression-gate.md)
+- [`planned/2026-06-10-harness-regression-gate.md`](./2026-06-10-harness-regression-gate.md)
   extends the existing benchmark substrate to score harness changes on the
   reference consumers.
 
 ### Wave 3 — evidence-backed model-specific overlays
 
-- [`draft/2026-06-10-per-model-harness-overlays.md`](./2026-06-10-per-model-harness-overlays.md)
+- [`planned/2026-06-10-per-model-harness-overlays.md`](./2026-06-10-per-model-harness-overlays.md)
   adds minimal, audited overlay deltas only after mining and gate evidence
   exist.
 
@@ -108,7 +108,7 @@ of this roadmap.
 - Adopting Terminal-Bench or Harbor as our benchmark — the reference
   consumers are the benchmark.
 - Editing locked surfaces by any automated path, ever.
-- Promoting any child out of `draft/` as part of this refinement pass.
+- Promoting these blueprints beyond `planned/` before execution evidence exists.
 
 ## Cross-Plan References
 

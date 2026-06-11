@@ -2,18 +2,18 @@
 type: blueprint
 title: "Per-model harness overlays in the symlinker"
 owner: ozby
-status: draft
+status: planned
 complexity: L
 created: "2026-06-10"
 last_updated: "2026-06-11"
-progress: "0% (draft; fact-check refined, tasks unstarted)"
+progress: "0% (planned; fact-check refined, tasks unstarted)"
 parent_roadmap: 2026-06-10-self-improving-harness-roadmap
 depends_on:
   - >-
-    2026-06-10-weakness-mining-audit (draft) — an overlay may only exist when
+    2026-06-10-weakness-mining-audit (planned) — an overlay may only exist when
     it cites a mined, model-attributed failure pattern
   - >-
-    2026-06-10-harness-regression-gate (draft) — every overlay must show a
+    2026-06-10-harness-regression-gate (planned) — every overlay must show a
     measured pass-rate delta before it can ship
 
 tags:

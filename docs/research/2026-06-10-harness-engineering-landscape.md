@@ -27,7 +27,7 @@ product that predates the vocabulary — it ships the surfaces (rules, hooks,
 skills, routing, presets) and the enforcement (audits) but none of the
 optimization loop (mining, gating, adaptation). This doc fixes the
 vocabulary, records the landscape, and anchors the
-[self-improving-harness roadmap](../../blueprints/draft/2026-06-10-self-improving-harness-roadmap.md).
+[self-improving-harness roadmap](../../blueprints/planned/2026-06-10-self-improving-harness-roadmap.md).
 
 ## Definition and mapping to agent-kit
 
