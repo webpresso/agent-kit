@@ -225,7 +225,10 @@ describe('routeCommand', () => {
       ['npx vitest run src/hooks/pretool-guard/dev-routing.test.ts', 'wp_test'],
       ['with-secrets -- npx vitest run src/hooks/pretool-guard/dev-routing.test.ts', 'wp_test'],
       ['yarn vitest run src/hooks/pretool-guard/dev-routing.test.ts', 'wp_test'],
-      ['yarn exec --immutable-cache vitest run src/hooks/pretool-guard/dev-routing.test.ts', 'wp_test'],
+      [
+        'yarn exec --immutable-cache vitest run src/hooks/pretool-guard/dev-routing.test.ts',
+        'wp_test',
+      ],
       ['yarn exec playwright test e2e/smoke.spec.ts', 'wp_e2e'],
       ['bunx oxlint .', 'wp_lint'],
       ['bunx --bun oxlint .', 'wp_lint'],
@@ -238,7 +241,9 @@ describe('routeCommand', () => {
 
   it('denies secret-wrapped wp package-script invocations too', async () => {
     const routeCommand = await getRoute()
-    const result = routeCommand('with-secrets -- vp run wp -- test src/hooks/pretool-guard/dev-routing.test.ts')
+    const result = routeCommand(
+      'with-secrets -- vp run wp -- test src/hooks/pretool-guard/dev-routing.test.ts',
+    )
     expect(result?.action.action).toBe('deny')
     if (result?.action.action === 'deny') {
       expect(result.action.tool).toBe('wp_test')

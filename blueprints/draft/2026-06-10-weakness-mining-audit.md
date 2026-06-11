@@ -5,13 +5,14 @@ owner: ozby
 status: draft
 complexity: L
 created: "2026-06-10"
-last_updated: "2026-06-10"
-progress: "0% (draft)"
+last_updated: "2026-06-11"
+progress: "0% (draft; fact-check refined, tasks unstarted)"
 parent_roadmap: 2026-06-10-self-improving-harness-roadmap
 depends_on:
   - >-
-    2026-06-10-harness-surface-manifest (draft) — patterns are tagged with the
-    harness surface they implicate; tagging vocabulary comes from the manifest
+    2026-06-10-harness-surface-manifest (draft) — mined patterns need the
+    manifest's surface vocabulary
+
 tags:
   - agent-kit
   - harness
@@ -24,112 +25,141 @@ tags:
 ## Product wedge anchor
 
 - **Stage outcome:** the "observability & tracing" ❌ row in
-  `docs/research/2026-06-10-harness-competitor-analysis.md` — hook logs are
-  currently write-only.
-- **Consuming surface:** `wp audit weakness-mining` (new audit kind) emitting
-  a ranked failure-pattern report; `--draft-tech-debt` feeds the existing
-  tech-debt lifecycle a maintainer already reviews via `wp tech-debt list`.
-- **New user-visible capability:** a maintainer reads "your top recurring
-  agent failure this month, with N occurrences and the harness surface it
-  implicates" instead of discovering failure patterns one burned session at a
-  time.
+  `docs/research/2026-06-10-harness-competitor-analysis.md`.
+- **Consuming surface:** `wp audit weakness-mining` plus optional
+  `--draft-tech-debt` output that lands in the existing tech-debt lifecycle.
+- **New user-visible capability:** a maintainer gets ranked recurring agent
+  failure patterns with implicated harness surfaces instead of tribal-memory
+  anecdotes.
 
 ## Planning Summary
 
-Adapts Self-Harness Weakness Mining (see
-`docs/research/papers/2026-self-harness.md`) to agent-kit's evidence:
-hook logs (default `~/.webpresso/cache/agent-kit/hooks/<repo>.*.log`), QA
-outcome summaries, and — where present — session-memory exports. Failures
-cluster by the paper's deterministic three-part signature, adapted as:
-(what gate/verifier rejected, what agent behavior contributed, which reusable
-mechanism — e.g. retry-loop, artifact-deletion, scope-creep). Clusters rank
-by support; each cites its raw evidence lines and the implicated harness
-surface from the manifest.
+This blueprint adapts the Self-Harness weakness-mining stage to agent-kit, but
+it must start from what the repo actually records today.
 
-Advisory by design: output is a report plus optional auto-drafted tech-debt
-items. No harness file is modified by this audit, ever.
+Current-state facts:
+
+- The only durable hook log currently written by default is the pretool log in
+  `src/hooks/pretool-guard/logger.ts`, stored at a state-root path derived from
+  `getSurfacePath('hooks/worktree/pretool-guard.log', 'worktree')` or an
+  explicit `PRETOOL_LOG_DIR` override.
+- Post-tool and stop hooks do **not** emit comparable durable log records yet.
+- `wp tech-debt new --from-audit` already exists, but only for a small allowlist
+  (`skill-sizes`, `broken-refs`, `memory-rotation`) in
+  `src/cli/commands/tech-debt/router-dispatch.ts`.
+
+That means the first job is an honest evidence inventory, not pretending a
+full multi-hook schema already exists.
+
+## Fact-Check Summary
+
+| Claim | Reality | Fix applied to this plan |
+| --- | --- | --- |
+| Hook logs already live at `~/.webpresso/cache/agent-kit/hooks/<repo>.*.log` | Current durable hook log path is state-root/worktree keyed via `getSurfacePath(...)`; only pretool writes one today | Task 1.1 now targets the real pretool log and inventories the gap explicitly |
+| Current hooks already emit the full Self-Harness signature | The pretool log captures status/tool/target/failures only; post-tool/stop do not add equivalent records | Task 1.2 scopes minimal evidence-enrichment as separate work if the reader proves it necessary |
+| `--draft-tech-debt` can simply reuse an existing generic autofile path | The autofile path exists, but the supported-audit allowlist does not include `weakness-mining` yet | Task 3.1 extends or extracts the existing autofile helper instead of inventing a second tech-debt writer |
+
+## Quick Reference (Execution Waves)
+
+| Wave | Tasks | Dependencies | Parallelizable |
+| --- | --- | --- | --- |
+| **Wave 0** | 1.1 | None | 1 agent |
+| **Wave 1** | 1.2 | Task 1.1 | 1 agent |
+| **Wave 2** | 2.1 | Task 1.2 | 1 agent |
+| **Wave 3** | 3.1 | Task 2.1 | 1 agent |
 
 ## Phases
 
-### Phase 1: Evidence readers [Complexity: M]
+### Phase 1: Honest evidence inventory [Complexity: M]
 
-#### [infra] Task 1.1: Hook-log reader with stable record schema
+#### [infra] Task 1.1: Read the current pretool log format and publish the record contract
 
-**Status:** todo
+- [ ] **Status:** todo
+- **Depends on:** —
+- **Files:**
+  - Create: `src/audit/weakness-mining/read-pretool-log.ts`
+  - Create: `src/audit/weakness-mining/read-pretool-log.test.ts`
+  - Create: `src/audit/weakness-mining/__fixtures__/pretool-guard.log`
+- **Change:** parse the actual pretool log lines produced by
+  `src/hooks/pretool-guard/logger.ts`, preserve counts of skipped/unparseable
+  lines, and publish the smallest stable internal record type the mining pass
+  can rely on.
+- **Verify:**
+  - `wp test --file src/audit/weakness-mining/read-pretool-log.test.ts`
+- **Acceptance:** all of the following:
+  - [ ] Reader parses the current PASS/BLOCK/WARN/ERROR pretool format from fixtures
+  - [ ] Unparseable lines are counted and surfaced, never fatal
+  - [ ] The doc comment for the record contract names exactly which Self-Harness signature fields are still missing
 
-**Depends:** —
+#### [infra] Task 1.2: Add only the minimal extra evidence needed for clustering
 
-Inventory what each hook bin actually writes today; define a parsed record
-type; tolerate schema drift across agent-kit versions (skip-and-count
-unparseable lines, never crash).
+- [ ] **Status:** todo
+- **Depends on:** Task 1.1
+- **Files:**
+  - Modify: `src/hooks/pretool-guard/logger.ts` (only if more pretool fields are required)
+  - Modify: `src/hooks/post-tool/**` or `src/hooks/stop/qa-changed-files.ts` (only if Task 1.1 proves a durable gap)
+  - Create: `src/audit/weakness-mining/evidence-gap.test.ts`
+- **Change:** if Task 1.1 proves the current record cannot support a useful
+  three-part failure signature, add the smallest durable evidence enrichment
+  needed. Keep it bounded, append-only, and compatible with old logs; do not
+  invent a full telemetry platform.
+- **Verify:**
+  - `wp test --file src/audit/weakness-mining/evidence-gap.test.ts`
+  - `wp qa`
+- **Acceptance:** all of the following:
+  - [ ] The mining input captures enough structure to label verifier/gate, contributing behavior, and implicated mechanism
+  - [ ] Older logs still parse with degrade-to-warning behavior
+  - [ ] No new timeout/retry behavior is introduced to hook execution
 
-**Files:**
+### Phase 2: Mining report [Complexity: M]
 
-- Create: `src/audits/weakness-mining/` readers + tests with fixture logs
+#### [infra] Task 2.1: Cluster, rank, and expose `wp audit weakness-mining`
 
-**Acceptance:**
+- [ ] **Status:** todo
+- **Depends on:** Task 1.2
+- **Files:**
+  - Create: `src/audit/weakness-mining/index.ts`
+  - Create: `src/audit/weakness-mining/index.test.ts`
+  - Modify: `src/mcp/tools/_shared/audit-kinds.ts`
+  - Modify: `src/cli/commands/audit.ts`
+- **Change:** implement deterministic exact-agreement clustering on the adapted
+  three-part signature, attach manifest-backed surface tags, and render a
+  summary-first report. Exit semantics should stay advisory unless the repo
+  explicitly decides otherwise.
+- **Verify:**
+  - `wp test --file src/audit/weakness-mining/index.test.ts`
+  - `wp audit weakness-mining`
+- **Acceptance:** all of the following:
+  - [ ] Same input yields identical clusters and ordering
+  - [ ] Output includes machine-readable JSON and human-readable summary text
+  - [ ] `wp_audit` exposes `weakness-mining` as a first-class audit kind
 
-- [ ] Parses current pretool-guard/post-tool/stop log formats from fixtures
-- [ ] Unparseable lines are counted and reported, not fatal
-- [ ] If current logs lack fields the signature needs, this task documents
-      the gap and files the minimal log-enrichment change as its own task
+### Phase 3: Optional draft tech-debt output [Complexity: S]
 
-#### [infra] Task 1.2: Clustering + ranking
+#### [infra] Task 3.1: Extend the existing `--from-audit` autofile path for `--draft-tech-debt`
 
-**Status:** todo
-
-**Depends:** Task 1.1
-
-Exact-agreement clustering on the three-part signature; rank by support;
-attach representative evidence and implicated surface tags.
-
-**Acceptance:**
-
-- [ ] Deterministic: same input → same clusters and order (unit-tested)
-- [ ] Output schema versioned (JSON + human-readable rendering)
-
-### Phase 2: Audit surface [Complexity: M]
-
-#### [infra] Task 2.1: `wp audit weakness-mining` kind
-
-**Status:** todo
-
-**Depends:** Task 1.2
-
-Register the audit kind (audit-kinds.ts + CLI dispatch). Summary-first
-output per repo conventions; report-only exit semantics decided in-task
-(likely exit 0 with findings — it's a mining report, not a violation gate).
-
-**Acceptance:**
-
-- [ ] `wp audit weakness-mining` produces the ranked report on a repo with
-      real hook logs
-- [ ] `wp_audit` MCP enum includes the kind
-
-#### [infra] Task 2.2: `--draft-tech-debt` integration
-
-**Status:** todo
-
-**Depends:** Task 2.1
-
-Reuse the `wp tech-debt new` creation path to draft `h-NNN` items from
-top-ranked clusters (threshold-gated; idempotent — re-running must not
-duplicate items for the same cluster signature).
-
-**Acceptance:**
-
-- [ ] Drafted items pass `wp audit tech-debt`
-- [ ] Re-run produces zero duplicates (signature recorded in item
-      frontmatter)
+- [ ] **Status:** todo
+- **Depends on:** Task 2.1
+- **Files:**
+  - Modify: `src/cli/commands/tech-debt/router-dispatch.ts`
+  - Modify: `src/blueprint/tech-debt/schema.ts` (only if extra frontmatter becomes necessary)
+  - Create: `src/cli/commands/tech-debt/router-dispatch.weakness-mining.test.ts`
+- **Change:** reuse the existing content-hash idempotency pattern for
+  auto-filed tech debt, but extend the allowlist to support weakness-mining
+  findings without duplicating the writer logic.
+- **Verify:**
+  - `wp test --file src/cli/commands/tech-debt/router-dispatch.weakness-mining.test.ts`
+  - `wp audit tech-debt`
+- **Acceptance:** all of the following:
+  - [ ] Re-running the autofile path creates zero duplicate items for the same cluster signature
+  - [ ] Drafted items carry a stable idempotency key tied to the mining output
+  - [ ] The autofile path remains compatible with existing `--from-audit` callers
 
 ## Non-goals
 
-- No proposal generation, no harness edits — mining only.
-- No new telemetry collection beyond what hooks already write (log
-  enrichment, if needed, is scoped inside Task 1.1's follow-up).
-- No cross-repo aggregation yet (single-repo reports first; the cross-repo
-  correlation model has its own permission requirements per
-  `docs/cross-repo-correlation.md`).
+- No proposal generation and no harness edits.
+- No assumption that all hooks already emit rich evidence.
+- No cross-repo aggregation yet.
 
 ## Cross-Plan References
 
@@ -138,4 +168,4 @@ duplicate items for the same cluster signature).
 | `2026-06-10-self-improving-harness-roadmap` | Parent roadmap (Wave 1) |
 | `2026-06-10-harness-surface-manifest` | Provides the surface-tag vocabulary |
 | `docs/research/papers/2026-self-harness.md` | Clustering-signature source |
-| `docs/research/papers/2026-meta-harness.md` | Keep evidence uncompressed for mining |
+| `docs/research/papers/2026-meta-harness.md` | Preserve raw evidence instead of over-compressing it |

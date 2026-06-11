@@ -5,13 +5,14 @@ owner: ozby
 status: draft
 complexity: L
 created: "2026-06-10"
-last_updated: "2026-06-10"
-progress: "0% (draft)"
+last_updated: "2026-06-11"
+progress: "0% (draft; fact-check refined, tasks unstarted)"
 parent_roadmap: 2026-06-10-self-improving-harness-roadmap
 depends_on:
   - >-
-    2026-06-10-harness-surface-manifest (draft) — the gate triggers on PRs
-    touching declared harness surfaces
+    2026-06-10-harness-surface-manifest (draft) — the gate triggers only on
+    declared harness-surface paths
+
 tags:
   - agent-kit
   - harness
@@ -24,111 +25,130 @@ tags:
 ## Product wedge anchor
 
 - **Stage outcome:** the "evals & verification of the harness itself" ❌ row
-  in `docs/research/2026-06-10-harness-competitor-analysis.md`; the
-  credibility claim "our harness changes are regression-tested on real
-  consumer repos" that no competitor in either arena can make.
-- **Consuming surface:** a required PR check on agent-kit PRs touching
-  declared harness surfaces (`catalog/`, `src/hooks/`, routing blocks),
-  surfaced as a structured pass/fail verdict in CI.
-- **New user-visible capability:** a harness PR shows a behavioral verdict
-  ("held-in Δ=+2, held-out Δ=0 — promotable") instead of shipping on review
-  rationale alone.
+  in `docs/research/2026-06-10-harness-competitor-analysis.md`.
+- **Consuming surface:** a required PR verdict on harness-surface changes,
+  reported in CI as structured held-in / held-out deltas.
+- **New user-visible capability:** a harness PR carries behavioral evidence
+  from real consumer repos instead of shipping on review rationale alone.
 
 ## Planning Summary
 
-Adopts the Self-Harness promotion rule (see
-`docs/research/papers/2026-self-harness.md`): a harness change is promotable
-iff Δheld-in ≥ 0 AND Δheld-out ≥ 0 AND max > 0; for pure refactors the gate
-relaxes to non-regression only (Δ ≥ 0 on both). Split/environment controls
-follow Terminal-Bench practice (fixed split assignment across variants,
-fresh environment per task — see
-`docs/research/papers/2026-terminal-bench.md`).
+This blueprint adopts the Self-Harness promotion rule, but the benchmark is the
+reference-consumer fleet, not Terminal-Bench itself. The repo already has two
+critical building blocks:
 
-**The benchmark is the reference consumers, not a public benchmark:** small
-fixed task suites defined in ingest-lens (two-axis consumer) and edge-matte
-(agent-kit-only consumer), run under Tier 1 CLIs per
-`catalog/agent/rules/supported-agent-clis.md` (per-call token extraction and
-reproducible session lifecycle are exactly the Tier 1 requirements). Extends
-the measurement design already specified in
-`docs/research/2026-05-14-token-savings-benchmark-methodology.md` and
-`docs/bench/session-memory-methodology.md` — same CLI-subprocess approach,
-new metric (task pass-rate) — rather than forking a new bench stack.
+1. The session-memory benchmark substrate in `scripts/bench/` and its
+   methodology docs already cover reproducibility primitives, version pins,
+   transcripts, and CLI-subprocess execution.
+2. The reference consumers already expose suite-hosting patterns that agent-kit
+   can reuse rather than replace:
+   [`ozby/ingest-lens`](https://github.com/ozby/ingest-lens/blob/main/apps/e2e/src/agent-kit-host-adapter.ts)
+   has a shipped host-adapter + suite-manifest path, and
+   [`ozby/edge-matte`](https://github.com/ozby/edge-matte/blob/main/blueprints/in-progress/2026-05-29-edge-matte-e2e-confidence-suite.md)
+   already treats explicit E2E suites as a maintained confidence surface.
 
-Stochasticity: repeated runs with aggregate pass counts, exactly as the paper
-prescribes; repeat count is a measured cost/variance tradeoff decided in
-Phase 1, not a guess.
+So this plan extends the existing bench contract to score harness changes on
+small deterministic consumer suites. Harbor / Terminal-Bench stay architecture
+references for split and environment controls only.
+
+## Fact-Check Summary
+
+| Claim | Reality | Fix applied to this plan |
+| --- | --- | --- |
+| A new benchmark stack is required | `scripts/bench/` and `docs/bench/session-memory-methodology.md` already provide the reproducibility spine | Tasks now extend the existing bench substrate instead of forking a second runner |
+| Reference consumers still need a suite-hosting concept invented | ingest-lens already ships `apps/e2e/src/agent-kit-host-adapter.ts` and `e2e-suite-manifest.ts`; edge-matte already maintains explicit confidence suites | Task 1.1 now reuses those surfaces |
+| Cross-repo body refs can stay informal | Blueprint rules require GitHub links for cross-repo refs in body text | All cross-repo references below are GitHub URLs |
+
+## Quick Reference (Execution Waves)
+
+| Wave | Tasks | Dependencies | Parallelizable |
+| --- | --- | --- | --- |
+| **Wave 0** | 1.1 | None | 1 agent |
+| **Wave 1** | 1.2 | Task 1.1 | 1 agent |
+| **Wave 2** | 2.1 | Task 1.2 | 1 agent |
 
 ## Phases
 
-### Phase 1: Suite definition and baseline [Complexity: M]
+### Phase 1: Reference-consumer contract [Complexity: M]
 
-#### [qa] Task 1.1: Define held-in/held-out task suites in reference consumers
+#### [qa] Task 1.1: Define held-in / held-out suites on top of existing consumer suite manifests
 
-**Status:** todo
+- [ ] **Status:** todo
+- **Depends on:** —
+- **Files:**
+  - Modify: `ozby/ingest-lens: apps/e2e/src/e2e-suite-manifest.ts`
+  - Modify: `ozby/ingest-lens: apps/e2e/src/agent-kit-host-adapter.ts`
+  - Modify: `ozby/edge-matte: apps/e2e/src/e2e-suite-manifest.ts` (or the current suite-manifest owner if it moved)
+  - Create: `docs/bench/harness-regression-gate-methodology.md`
+- **Change:** curate small deterministic suites in the two reference consumers,
+  fix held-in / held-out assignment before measurement, and document the shared
+  runner contract from the agent-kit side. Reuse current suite IDs / host
+  adapters rather than inventing a second suite registry.
+- **Verify:**
+  - `wp e2e --suite <consumer-suite>` in each consumer repo
+  - `wp audit docs-frontmatter`
+- **Acceptance:** all of the following:
+  - [ ] Both consumer repos expose deterministic suite IDs the gate can call without local path assumptions
+  - [ ] Held-in / held-out assignment is fixed before benchmark comparisons begin
+  - [ ] Methodology doc explains why the benchmark is the reference consumers, not Terminal-Bench itself
 
-**Depends:** —
+#### [infra] Task 1.2: Extend the existing bench substrate with a harness-gate runner and verdict module
 
-Curate 10–20 small, verifier-checkable agent tasks per consumer (e.g. "add a
-route with tests passing", "fix this seeded lint violation via wp_* tools"),
-partitioned held-in/held-out before any measurement. Tasks live in the
-consumer repos; agent-kit owns only the runner contract.
+- [ ] **Status:** todo
+- **Depends on:** Task 1.1
+- **Files:**
+  - Create: `scripts/bench/harness-gate/runner.ts`
+  - Create: `scripts/bench/harness-gate/verdict.ts`
+  - Create: `scripts/bench/harness-gate/runner.test.ts`
+  - Create: `scripts/bench/harness-gate/verdict.test.ts`
+- **Change:** build on the existing reproducibility contract from
+  `scripts/bench/` instead of forking a new harness. The runner should launch
+  supported CLI subprocesses against a selected harness checkout and compute the
+  Self-Harness-style verdict over repeated runs.
+- **Verify:**
+  - `wp test --file scripts/bench/harness-gate/runner.test.ts`
+  - `wp test --file scripts/bench/harness-gate/verdict.test.ts`
+- **Acceptance:** all of the following:
+  - [ ] Same harness baseline twice yields a no-delta verdict within recorded variance
+  - [ ] Verdict output is structured JSON plus summary-first text
+  - [ ] Repeat count is justified from measured variance, not a guessed timeout/cost number
 
-**Acceptance:**
+### Phase 2: CI gate [Complexity: M]
 
-- [ ] Suites committed in ingest-lens and edge-matte with deterministic
-      verifiers
-- [ ] Split assignment fixed and documented
-- [ ] Baseline pass rates measured ≥3 repeats; variance recorded and the
-      repeat count justified from it
+#### [infra] Task 2.1: Surface the harness verdict as a required CI check on declared harness-surface changes
 
-#### [infra] Task 1.2: Runner + verdict computation
-
-**Status:** todo
-
-**Depends:** Task 1.1
-
-CLI-subprocess runner (Tier 1 CLIs) executing a suite under a given harness
-checkout; verdict module implements the promotion rule with repeat
-aggregation.
-
-**Acceptance:**
-
-- [ ] Same harness twice → no-delta verdict within recorded variance
-- [ ] Verdict output is structured (JSON) + summary-first text
-
-### Phase 2: CI integration [Complexity: M]
-
-#### [infra] Task 2.1: PR gate on harness-surface paths
-
-**Status:** todo
-
-**Depends:** Task 1.2
-
-Trigger on PRs touching manifest-declared surfaces; post the verdict as a
-check. Cost control: full suite on labeled/release PRs, smoke subset
-otherwise — thresholds measured, not invented (no-timeout-as-fix rule
-applies to runtime budgets).
-
-**Acceptance:**
-
-- [ ] A seeded harmful rule change (e.g. instruction inversion fixture) is
-      caught as a held-out regression in CI
-- [ ] A docs-only PR does not trigger the suite
-- [ ] Verdict check appears on the PR with split-wise deltas
+- [ ] **Status:** todo
+- **Depends on:** Task 1.2
+- **Files:**
+  - Modify: `.github/workflows/ci.agent-kit.yml`
+  - Modify: `src/cli/commands/audit.ts` or a dedicated bench entrypoint (whichever owns the final public invocation)
+  - Create: `scripts/bench/harness-gate/ci-smoke.ts`
+- **Change:** trigger the gate only when manifest-declared harness surfaces
+  change; keep docs-only PRs out of the path. Use measured smoke/full-suite
+  splits rather than invented time budgets.
+- **Verify:**
+  - `wp qa`
+  - Local workflow smoke through the repo's current CI surface
+- **Acceptance:** all of the following:
+  - [ ] A seeded harmful harness change is caught as a held-out regression
+  - [ ] Docs-only or unrelated PRs do not trigger the gate
+  - [ ] The CI surface reports split-wise deltas in a maintainer-readable verdict
 
 ## Non-goals
 
-- Not adopting Terminal-Bench/Harbor as the benchmark (architecture
-  reference only, if sandboxed scale is ever needed).
-- No automatic merge/promotion — the gate informs; humans merge.
-- No Tier 2 CLIs in the required check (documented-degradation rules per the
-  supported-CLI rule make their numbers non-comparable).
+- Not adopting Terminal-Bench or Harbor as the benchmark.
+- No automatic merge or promotion.
+- No required Tier 2 / Tier 3 benchmark lane.
 
 ## Cross-Plan References
 
 | Reference | Relationship |
 | --- | --- |
 | `2026-06-10-self-improving-harness-roadmap` | Parent roadmap (Wave 2) |
-| `2026-06-10-harness-surface-manifest` | Defines gate-triggering paths |
-| `docs/research/2026-05-14-token-savings-benchmark-methodology.md` | Measurement substrate to extend |
-| `docs/bench/session-memory-methodology.md` | Bench conventions to extend |
+| `2026-06-10-harness-surface-manifest` | Defines the trigger surface |
+| `docs/research/2026-05-14-token-savings-benchmark-methodology.md` | Existing reproducibility substrate to extend |
+| `docs/bench/session-memory-methodology.md` | Current bench contract to extend |
+| [ozby/ingest-lens: `apps/e2e/src/agent-kit-host-adapter.ts`](https://github.com/ozby/ingest-lens/blob/main/apps/e2e/src/agent-kit-host-adapter.ts) | Existing consumer host-adapter surface |
+| [ozby/ingest-lens: `apps/e2e/src/e2e-suite-manifest.ts`](https://github.com/ozby/ingest-lens/blob/main/apps/e2e/src/e2e-suite-manifest.ts) | Existing consumer suite-manifest surface |
+| [ozby/edge-matte: `2026-05-29-edge-matte-e2e-confidence-suite.md`](https://github.com/ozby/edge-matte/blob/main/blueprints/in-progress/2026-05-29-edge-matte-e2e-confidence-suite.md) | Existing confidence-suite contract |
+| [ozby/edge-matte: `2026-06-02-edge-matte-wp-deploy-adapter-toolchain-isolation.md`](https://github.com/ozby/edge-matte/blob/main/blueprints/completed/2026-06-02-edge-matte-wp-deploy-adapter-toolchain-isolation.md) | Evidence that `wp`-owned deploy / E2E surfaces already exist downstream |
