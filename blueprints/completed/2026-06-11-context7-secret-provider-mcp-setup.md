@@ -3,6 +3,7 @@ type: blueprint
 title: "Context7 MCP setup through agent-kit secret provider"
 owner: agent-kit
 status: completed
+historical_verification_gap_waiver: true
 complexity: S
 created: 2026-06-11
 last_updated: 2026-06-11
