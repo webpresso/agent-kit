@@ -2,11 +2,11 @@
 type: blueprint
 title: wp session memory v1 — in-process SQLite + FTS5 (TS engine)
 owner: agent-kit
-status: in-progress
+status: completed
 complexity: M
 created: '2026-05-13'
 last_updated: '2026-06-11'
-progress: '89% (17/17 Phase 1-5 done; Phase 6 PR review hardening in progress)'
+progress: '100% (24/24 tasks done — 17 Phase 1-5 + 7 Phase 6 PR review hardening)'
 depends_on: []
 tags:
   - session-memory
@@ -771,7 +771,7 @@ distinguish timed-out tasks from real command failures.
 
 #### Task 6.7: Comment cleanup
 
-**Status:** in-progress
+**Status:** done
 
 **Files:** `src/hooks/sessionstart/index.ts` (broken docstring), multiple (what-not-why comments)
 
@@ -779,5 +779,5 @@ Fix broken sentence in `buildOutput` docstring. Remove what-not-why comments tha
 restate the assignment below them.
 
 **Acceptance:**
-- [ ] No broken docstrings in touched files
-- [ ] No comments that just restate what the next line does
+- [x] No broken docstrings in touched files
+- [x] No comments that just restate what the next line does

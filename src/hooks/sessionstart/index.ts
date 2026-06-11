@@ -59,11 +59,8 @@ export function buildSessionKnowledgeBlock(
 }
 
 /**
- * Async function: given a parsed input payload, a working directory, and
- * environment variables, produce the JSON string that the hook should write
- * to stdout. Always emits — never returns null. WP_ROUTING_BLOCK is always
- * prepended; `.agent/routing.md` content is appended when present and non-empty.
- *
+ * Always emits — never returns null. WP_ROUTING_BLOCK is always prepended;
+ * `.agent/routing.md` content is appended when present and non-empty.
  * When source=compact, also restores session context and injects <session_knowledge>.
  */
 export async function buildOutput(input: StartInput, cwd: string, env: EnvLike): Promise<string> {
@@ -88,7 +85,6 @@ export async function buildOutput(input: StartInput, cwd: string, env: EnvLike):
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code
     if (code !== 'ENOENT' && code !== 'ENOTDIR') {
-      // Permission or other read errors: surface to stderr but continue.
       process.stderr.write(
         `wp-sessionstart-routing: failed to read ${target}: ${(err as Error).message}\n`,
       )
@@ -122,7 +118,6 @@ export async function buildOutput(input: StartInput, cwd: string, env: EnvLike):
   if (source === 'compact') {
     try {
       const repoHash = computeRepoHash(projectDir)
-      // Use last user prompt as query if available, else generic query
       const lastPrompt =
         typeof input.last_user_prompt === 'string' && input.last_user_prompt.trim().length > 0
           ? input.last_user_prompt.trim()

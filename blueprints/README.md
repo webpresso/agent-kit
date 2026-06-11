@@ -15,8 +15,8 @@ Each subdirectory represents a lifecycle state:
 | ----- | ----: | ----------- |
 | `draft/` | 1 | early-stage sketches. Expect churn; move to `planned/` once scoped. |
 | `planned/` | 7 | committed-to specs, ready to pick up. |
-| `in-progress/` | 1 | actively being executed. At most 3 active blueprints per lane. |
-| `completed/` | 40 | execution finished and verified. Kept for reference. |
+| `in-progress/` | 0 | actively being executed. At most 3 active blueprints per lane. |
+| `completed/` | 41 | execution finished and verified. Kept for reference. |
 | `parked/` | 2 | intentionally paused. Include a reason in the spec's frontmatter. |
 | `archived/` | 2 | superseded or abandoned. Not deleted — the record matters. |
 <!-- END: blueprint-index -->
@@ -56,16 +56,11 @@ Each subdirectory represents a lifecycle state:
 Move files with `git mv` so history follows the spec through its lifecycle.
 
 
-## Active work (2026-06-11)
-
-| Blueprint | Path | Purpose |
-| --------- | ---- | ------- |
-| ak session memory v1 — in-process SQLite + FTS5 (TS engine) | [`in-progress/ak-session-memory-v1-in-process-sqlite-fts5-via-better-sqlite3/_overview.md`](./in-progress/ak-session-memory-v1-in-process-sqlite-fts5-via-better-sqlite3/_overview.md) | PR review hardening (Phase 6) for the TypeScript session-memory benchmark lane. |
-
 ## Recently completed (2026-06-11)
 
 | Blueprint | Path | Purpose |
 | --------- | ---- | ------- |
+| wp session memory v1 — in-process SQLite + FTS5 (TS engine) | [`completed/ak-session-memory-v1-in-process-sqlite-fts5-via-better-sqlite3/_overview.md`](./completed/ak-session-memory-v1-in-process-sqlite-fts5-via-better-sqlite3/_overview.md) | In-process SQLite + FTS5 session memory for Claude Code; three-tier search (porter → trigram → Levenshtein); PostToolUse capture, PreCompact snapshot, SessionStart restore; PR review hardening (Phase 6) complete. |
 | Codex/Claude shared skill contract and context budget | [`completed/2026-06-08-codex-claude-shared-skill-contract-and-context-budget.md`](./completed/2026-06-08-codex-claude-shared-skill-contract-and-context-budget.md) | Default host-visible skills are now the shared favorites only; non-favorites are opt-in; the generated root `AGENTS.md` stays under the 8 KB budget; and packed-consumer smoke is green. |
 | Hooks orchestrator contract series | [`completed/2026-06-08-hooks-orchestrator-contract-series.md`](./completed/2026-06-08-hooks-orchestrator-contract-series.md) | The imported Claude hooks plan is fully closed with restore/disable/status/demo/fix surfaces verified and lifecycle truth recorded in a repo blueprint. |
 | Reusable Cloudflare deploy workflow lineage alignment | [`completed/2026-06-09-reusable-cloudflare-deploy-workflow-lineage-alignment.md`](./completed/2026-06-09-reusable-cloudflare-deploy-workflow-lineage-alignment.md) | Restored the shared preview/production reusable workflow shell, named the authoritative consumer lineage in an ADR, and aligned the docs/tests with the workflow contract consumers actually use. |
