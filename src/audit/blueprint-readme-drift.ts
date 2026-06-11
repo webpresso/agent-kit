@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
@@ -40,11 +41,36 @@ function initialCounts(): Record<BlueprintState, number> {
   }
 }
 
+function listTrackedBlueprintPaths(cwd: string): readonly string[] | null {
+  const result = spawnSync('git', ['ls-files', '--full-name', 'blueprints/'], {
+    cwd,
+    encoding: 'utf8',
+    timeout: 5000,
+  })
+  if (result.status !== 0 || result.error != null) return null
+  return result.stdout.split('\n').filter(Boolean)
+}
+
 function countBlueprintsByState(cwd: string): Record<BlueprintState, number> {
   const counts = initialCounts()
   const blueprintsRoot = path.join(cwd, 'blueprints')
   if (!existsSync(blueprintsRoot)) return counts
 
+  // Prefer git ls-files so counts reflect tracked-only files — prevents
+  // untracked local files from inflating counts and causing --fix to emit
+  // values that differ from a clean CI checkout.
+  const tracked = listTrackedBlueprintPaths(cwd)
+  if (tracked !== null) {
+    for (const filePath of tracked) {
+      const afterBlueprints = filePath.replace(/^blueprints\//, '')
+      const parsed = parseBlueprintDocumentRelativePath(afterBlueprints)
+      if (!parsed) continue
+      counts[parsed.state as BlueprintState] += 1
+    }
+    return counts
+  }
+
+  // Fallback for non-git contexts (e.g. bare extract, temp directory).
   const scanned = scanBlueprintDirectory({
     baseDir: blueprintsRoot,
     includeSpecialFolders: true,
