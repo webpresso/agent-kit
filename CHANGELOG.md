@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.31.0
+
+### Minor Changes
+
+- 654c109: BREAKING (plugin id): rename the Claude Code plugin from `webpresso` to `agent-kit`. It now installs as `agent-kit@webpresso` instead of `webpresso@webpresso` — the marketplace stays `webpresso` and the MCP server stays `webpresso`, so the display is `webpresso/agent-kit`, matching the npm package `@webpresso/agent-kit` and removing both the `webpresso/webpresso` doubling and the name collision with the `@webpresso/webpresso` framework facade.
+
+  Existing installs must re-add the plugin: `claude plugin install agent-kit@webpresso --scope user` (and remove the old `webpresso@webpresso`). `wp setup` installs and auto-enables the new id automatically.
+
+- 49f9949: Add a shared runtime-backed local execution layer and improve no-config mutation testing defaults for consumers.
+
+  Highlights:
+
+  - add a public `with-secrets` bin backed by shared runtime env resolution
+  - export runtime helpers on the local surface for secret-backed child-process execution
+  - extend shared deploy planning/execution with runtime profiles, destroy mode, release-version threading, and HTTP verification steps
+  - route E2E execution through the shared runtime-profile env path
+  - make `wp test --mutation` bypass recursive consumer mutation scripts
+  - broaden shared Stryker mutate defaults to common consumer layouts (`src`, `apps`, `packages`, `infra`, `scripts`) and disable Vitest related-only mutation selection by default
+
+### Patch Changes
+
+- d5d7325: Fix integration test clustering in workspace shard balancer
+
+  `wp_test` (no-suite workspace mode) sharded tests by byte size, causing integration/e2e test files — small in bytes but expensive at runtime — to cluster into a single shard and exhaust its sequential budget (exitCode 143). Integration and e2e test files now receive a fixed high weight so the greedy balancer distributes them evenly across shards.
+
+- f54a416: Refine setup/init package-root detection for the scoped `@webpresso/agent-kit` install path, including subagent scaffolding and package-manifest/runtime wrapper tests, while preserving legacy `webpresso` compatibility.
+- 49f9949: Fix: add `WP_FORCE_SOURCE=1` launcher flag so agent-kit dev commits no longer require `--no-verify`
+
+  The compiled `bin/runtime/<arch>/wp` binary went stale during iteration, causing `wp audit` to
+  fail against unbuilt source and forcing `--no-verify` workarounds. `WP_FORCE_SOURCE=1` short-
+  circuits the runtime-lane dispatch for non-latency-sensitive `wp` commands, routing them to
+  `src/cli/cli.ts` via the existing `buildSourceLaunchPlan` helper.
+
+  F1-scoped: the 7 latency-sensitive hook bins (`wp-pretool-guard`, `wp-post-tool`, etc.) keep
+  using the compiled binary regardless, so a global `export WP_FORCE_SOURCE=1` in `.envrc` does
+  not pay cold-bun startup on every Edit/Write in an agent session.
+
+  Ships with: `.envrc` (direnv, whole-clone coverage), `export WP_FORCE_SOURCE=1` in both husky
+  hooks (belt-and-suspenders), and a `pnpm wp` dev script for contributors without direnv.
+  Symmetric with the existing `WP_FORCE_COMPILED_RUNTIME` flag. Safe no-op for consumer installs
+  (guarded by `hasSource`).
+
 ## 0.30.3
 
 ### Patch Changes
