@@ -2,11 +2,11 @@
 type: blueprint
 title: wp session memory v1 — in-process SQLite + FTS5 (TS engine)
 owner: agent-kit
-status: completed
+status: in-progress
 complexity: M
 created: '2026-05-13'
-last_updated: '2026-05-13'
-progress: '100% (17/17 tasks done — 13 original + 4 Phase 5 output sandboxing)'
+last_updated: '2026-06-11'
+progress: '89% (17/17 Phase 1-5 done; Phase 6 PR review hardening in progress)'
 depends_on: []
 tags:
   - session-memory
@@ -680,3 +680,104 @@ Also update `catalog/agent/rules/gstack-routing.md`'s 4-lane table to reflect th
 **Acceptance:**
 - [x] `AK_ROUTING_BLOCK` includes `ak_session_execute` decision row for large-output Bash commands
 - [x] `catalog/agent/rules/context-mode-routing.md` updated to reference `ak_session_execute`
+
+---
+
+### Phase 6: PR Review Hardening [Complexity: XS]
+
+> Applies to the `feat/ak-session-memory-v1-rebased-onto-main` branch.
+> Source: pr-review-toolkit silent-failure-hunter (11 findings: 6 HIGH + 5 MEDIUM).
+> All Phase 1-5 code is complete; Phase 6 adds quality hardening before merge.
+
+#### Task 6.1: Extract `ISessionStore` interface; remove `BunSqliteStore as any`
+
+**Status:** done
+
+**File:** `src/session-memory/store.ts`
+
+Add `export type ISessionStore` extracted from `SessionStore`'s public surface.
+Change `getStore()` return type from `BunSqliteStore as any` to `ISessionStore`.
+Replace cast with `as unknown as ISessionStore` + comment explaining structural compatibility.
+
+**Acceptance:**
+- [x] `ISessionStore` exported from `store.ts`
+- [x] `registry` typed `Map<string, ISessionStore>`
+- [x] `getStore()` returns `ISessionStore`
+- [x] No `as any` at call site
+
+#### Task 6.2: Replace bare `catch {}` in `searchPorter()` and `searchTrigram()`
+
+**Status:** done
+
+**File:** `src/session-memory/store.ts`
+
+Replace bare `catch {}` with `catch (err: unknown)` + `process.stderr.write` so DB errors
+are observable by operators without breaking the "never throw from search" invariant.
+
+**Acceptance:**
+- [x] Both methods use `catch (err: unknown)`
+- [x] Both write to stderr with safe `err instanceof Error ? err.message : String(err)` narrowing
+
+#### Task 6.3: Replace bare `catch {}` in `updateVocabulary()`
+
+**Status:** done
+
+**File:** `src/session-memory/store.ts`
+
+Same `process.stderr.write` pattern as Task 6.2.
+
+**Acceptance:**
+- [x] `updateVocabulary` catch is `catch (err: unknown)` with stderr write
+
+#### Task 6.4: Add `error?: string` discriminator to `SnapshotResult`
+
+**Status:** done
+
+**File:** `src/session-memory/types.ts`
+
+Add optional `readonly error?: string` field so callers can distinguish timeout
+from write error from clean success.
+
+**Acceptance:**
+- [x] `SnapshotResult.error?` added
+- [x] `session.ts` snapshot catch returns `{ ..., error: msg }`
+
+#### Task 6.5: Safe error narrowing in `session.ts` and `pre-compact/index.ts`
+
+**Status:** done
+
+**Files:** `src/session-memory/session.ts`, `src/hooks/pre-compact/index.ts`
+
+Replace all `(err as Error).message` with safe narrowing `err instanceof Error ? err.message : String(err)`.
+Change all `catch (err)` to `catch (err: unknown)`.
+
+**Acceptance:**
+- [x] All 4 catch sites use `catch (err: unknown)` + safe narrowing
+
+#### Task 6.6: p-queue timeout label + stderr log in `session-batch-execute.ts`
+
+**Status:** done
+
+**File:** `src/mcp/tools/session-batch-execute.ts`
+
+When a task times out (`r == null` from `throwOnTimeout: false`), return summary
+`'[timeout after 60s]'` and emit a `process.stderr.write` line so operators can
+distinguish timed-out tasks from real command failures.
+
+**Acceptance:**
+- [x] Timeout path returns `'[timeout after 60s]'` (not `'timed out'`)
+- [x] `process.stderr.write` line emitted on timeout
+- [x] Explicit type annotation on `.then()` callback to fix TS7006
+
+#### Task 6.7: Comment cleanup
+
+**Status:** in-progress
+
+**Files:** `src/hooks/sessionstart/index.ts` (broken docstring), multiple (what-not-why comments)
+
+Fix broken sentence in `buildOutput` docstring. Remove what-not-why comments that
+restate the assignment below them.
+
+**Acceptance:**
+- [ ] No broken docstrings in touched files
+- [ ] No comments that just restate what the next line does

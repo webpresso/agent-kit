@@ -163,7 +163,11 @@ const tool: ToolDescriptor = {
     const settled = await Promise.all(
       input.commands.map(({ label, command }) =>
         queue.add(() => runSingleCommand(label, command, workDir))
-          .then(r => r ?? { output: '', result: { label, exitCode: -1, outputBytes: 0, indexed: false, summary: 'timed out' } })
+          .then((r: { output: string; result: CommandResult } | undefined) => {
+            if (r != null) return r
+            process.stderr.write(`[ak-session-batch] task "${label}" timed out after ${COMMAND_TIMEOUT_MS / 1000}s\n`)
+            return { output: '', result: { label, exitCode: -1, outputBytes: 0, indexed: false, summary: '[timeout after 60s]' } }
+          })
       )
     )
 

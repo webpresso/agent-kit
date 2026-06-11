@@ -16,6 +16,14 @@ import BetterSqlite3 from 'better-sqlite3'
 import type { ChunkInsertInput, IndexStats, SearchHit, SearchOptions } from './types.js'
 import { BunSqliteStore } from './bun-store.js'
 
+export type ISessionStore = {
+  insertChunks(chunks: readonly ChunkInsertInput[]): void
+  search(options: SearchOptions): readonly SearchHit[]
+  stats(): IndexStats
+  close(): void
+  getDb(): Database.Database
+}
+
 const OPTIMIZE_EVERY = 50
 const DEFAULT_LIMIT = 5
 
@@ -235,8 +243,8 @@ export class SessionStore {
           }>)
 
       return rows.map((r) => ({ ...r, tier: 'porter' as const }))
-    } catch {
-      // FTS5 syntax error or empty result — fall through to trigram
+    } catch (err: unknown) {
+      process.stderr.write(`[ak-session] searchPorter error: ${err instanceof Error ? err.message : String(err)}\n`)
       return []
     }
   }
@@ -260,7 +268,8 @@ export class SessionStore {
           }>)
 
       return rows.map((r) => ({ ...r, tier: 'trigram' as const }))
-    } catch {
+    } catch (err: unknown) {
+      process.stderr.write(`[ak-session] searchTrigram error: ${err instanceof Error ? err.message : String(err)}\n`)
       return []
     }
   }
@@ -342,22 +351,22 @@ export class SessionStore {
         }
       })
       batch()
-    } catch {
-      // Vocabulary update is best-effort; never block on failure
+    } catch (err: unknown) {
+      process.stderr.write(`[ak-session] updateVocabulary error: ${err instanceof Error ? err.message : String(err)}\n`)
     }
   }
 }
 
 // ── Store registry (one instance per db path) ────────────────────────────────
 
-const registry = new Map<string, SessionStore>()
+const registry = new Map<string, ISessionStore>()
 
-export function getStore(dbPath: string): SessionStore {
+export function getStore(dbPath: string): ISessionStore {
   const existing = registry.get(dbPath)
   if (existing) return existing
   const engine = process.env['AK_SESSION_ENGINE']
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const store: SessionStore = engine === 'bun' ? (new BunSqliteStore(dbPath) as any) : new SessionStore(dbPath)
+  // BunSqliteStore is structurally compatible with ISessionStore
+  const store: ISessionStore = engine === 'bun' ? (new BunSqliteStore(dbPath) as unknown as ISessionStore) : new SessionStore(dbPath)
   registry.set(dbPath, store)
   return store
 }

@@ -12,7 +12,7 @@ import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
 import type { CaptureEventInput, RestoreInput, RestoreResult, SnapshotInput, SnapshotResult } from './types.js'
-import { getStore, type SessionStore } from './store.js'
+import { getStore, type ISessionStore } from './store.js'
 
 const SESSIONS_DIR = join(homedir(), '.webpresso', 'sessions')
 
@@ -25,7 +25,7 @@ function ensureSessionsDir(sessionsDir?: string): void {
   mkdirSync(sessionsDir ?? SESSIONS_DIR, { recursive: true })
 }
 
-function getSessionStore(repoHash: string, sessionsDir?: string): SessionStore {
+function getSessionStore(repoHash: string, sessionsDir?: string): ISessionStore {
   ensureSessionsDir(sessionsDir)
   const dbPath = resolveDbPath(repoHash, sessionsDir)
   return getStore(dbPath)
@@ -48,8 +48,8 @@ export function captureEvent(input: CaptureEventInput, sessionsDir?: string): bo
     ).run(input.event.sessionId, eventId, ts, input.event.toolName, input.event.content)
 
     return true
-  } catch (err) {
-    process.stderr.write(`ak-session-memory: captureEvent failed: ${(err as Error).message}\n`)
+  } catch (err: unknown) {
+    process.stderr.write(`ak-session-memory: captureEvent failed: ${err instanceof Error ? err.message : String(err)}\n`)
     return false
   }
 }
@@ -122,9 +122,10 @@ export async function snapshot(input: SnapshotInput, sessionsDir?: string): Prom
     }
 
     return { snapshotId, eventsIncluded: includedCount, partial }
-  } catch (err) {
-    process.stderr.write(`ak-session-memory: snapshot failed: ${(err as Error).message}\n`)
-    return { snapshotId, eventsIncluded: 0, partial: true }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    process.stderr.write(`ak-session-memory: snapshot failed: ${msg}\n`)
+    return { snapshotId, eventsIncluded: 0, partial: true, error: msg }
   }
 }
 
@@ -155,8 +156,8 @@ export function restore(input: RestoreInput, sessionsDir?: string): RestoreResul
       hits,
       snapshotId: latestSnapshot?.snapshot_id ?? null,
     }
-  } catch (err) {
-    process.stderr.write(`ak-session-memory: restore failed: ${(err as Error).message}\n`)
+  } catch (err: unknown) {
+    process.stderr.write(`ak-session-memory: restore failed: ${err instanceof Error ? err.message : String(err)}\n`)
     return { hits: [], snapshotId: null }
   }
 }

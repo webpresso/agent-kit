@@ -55,6 +55,7 @@ export interface SnapshotResult {
   readonly snapshotId: string
   readonly eventsIncluded: number
   readonly partial: boolean
+  readonly error?: string
 }
 
 export interface RestoreInput {

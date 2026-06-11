@@ -34,8 +34,8 @@ export async function runPreCompact(cwd?: string): Promise<PreCompactResult | nu
       `ak-pre-compact: snapshot ${result.snapshotId} (${result.eventsIncluded} events${result.partial ? ', partial' : ''})\n`,
     )
     return result
-  } catch (err) {
-    process.stderr.write(`ak-pre-compact: snapshot failed: ${(err as Error).message}\n`)
+  } catch (err: unknown) {
+    process.stderr.write(`ak-pre-compact: snapshot failed: ${err instanceof Error ? err.message : String(err)}\n`)
     return null
   }
 }
