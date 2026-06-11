@@ -47,7 +47,9 @@ describe('wp package-manager commands', () => {
     const run = vi.fn(() => spawnResult(7))
 
     expect(runPackageManagerCommand('run', { run })).toBe(7)
-    expect(run).toHaveBeenCalledWith('rtk', ['vp', 'run'])
+    expect(run).toHaveBeenCalledWith('rtk', ['vp', 'run'], {
+      cwd: process.cwd(),
+    })
   })
 
   it('keeps update local by default', () => {
@@ -61,7 +63,43 @@ describe('wp package-manager commands', () => {
     ).toBe(0)
 
     expect(run).toHaveBeenCalledTimes(1)
-    expect(run).toHaveBeenCalledWith('rtk', ['vp', 'update'])
+    expect(run).toHaveBeenCalledWith('rtk', ['vp', 'update'], {
+      cwd: process.cwd(),
+    })
+  })
+
+  it('runs local verbs from the nearest package root when invoked in a nested directory', () => {
+    const run = vi.fn(() => spawnResult(0))
+
+    expect(
+      runPackageManagerCommand('run', {
+        argv: ['node', 'wp', 'run', 'test'],
+        cwd: '/repo/packages/agent-kit/src',
+        exists: (target) => String(target) === '/repo/packages/agent-kit/package.json',
+        run,
+      }),
+    ).toBe(0)
+
+    expect(run).toHaveBeenCalledWith('rtk', ['vp', 'run', 'test'], {
+      cwd: '/repo/packages/agent-kit',
+    })
+  })
+
+  it('falls back to the global refresh pipeline when wp update is invoked outside any package root', () => {
+    const run = vi.fn(() => spawnResult(0))
+
+    expect(
+      runPackageManagerCommand('update', {
+        argv: ['node', 'wp', 'update'],
+        cwd: '/umbrella/no-package-here',
+        exists: (target) => String(target) === '/fake-home/.claude/skills/gstack/.git',
+        gstackRoot: '/fake-home/.claude/skills/gstack',
+        run,
+      }),
+    ).toBe(0)
+
+    expect(run).toHaveBeenNthCalledWith(1, 'vp', ['update', '-g', '--latest', '@openai/codex'])
+    expect(run).toHaveBeenNthCalledWith(7, 'vp', ['install', '-g', '@webpresso/agent-kit'])
   })
 
   it('runs the global update refresh pipeline in order', () => {

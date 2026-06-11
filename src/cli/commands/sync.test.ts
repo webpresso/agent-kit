@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { runUnifiedSync } from '../../symlinker/unified-sync.js'
+import { isUnmaterializedAgentKitSourceWorktree } from './sync.js'
 
 function makeTempDir(): string {
   const dir = join(
@@ -167,5 +168,67 @@ describe('runUnifiedSync (sync command core)', () => {
     expect(() => runUnifiedSync({ catalogDir: ghostCatalog, consumerRoot })).toThrow(
       /catalogDir does not exist/,
     )
+  })
+})
+
+describe('isUnmaterializedAgentKitSourceWorktree', () => {
+  let root: string
+
+  beforeEach(() => {
+    root = makeTempDir()
+  })
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('returns true for a fresh agent-kit worktree with no projected surfaces', () => {
+    expect(
+      isUnmaterializedAgentKitSourceWorktree({
+        repoRoot: root,
+        packageJsonPath: join(root, 'package.json'),
+        packageJson: {
+          name: '@webpresso/agent-kit',
+          dependencies: {},
+          devDependencies: {},
+        },
+        hasPnpmWorkspace: false,
+        workspacePackages: [],
+      }),
+    ).toBe(true)
+  })
+
+  it('returns false once any managed projection exists', () => {
+    mkdirSync(join(root, '.agent', 'rules'), { recursive: true })
+
+    expect(
+      isUnmaterializedAgentKitSourceWorktree({
+        repoRoot: root,
+        packageJsonPath: join(root, 'package.json'),
+        packageJson: {
+          name: '@webpresso/agent-kit',
+          dependencies: {},
+          devDependencies: {},
+        },
+        hasPnpmWorkspace: false,
+        workspacePackages: [],
+      }),
+    ).toBe(false)
+  })
+
+  it('returns false for non-agent-kit repos', () => {
+    expect(
+      isUnmaterializedAgentKitSourceWorktree({
+        repoRoot: root,
+        packageJsonPath: join(root, 'package.json'),
+        packageJson: {
+          name: 'not-agent-kit',
+          dependencies: {},
+          devDependencies: {},
+        },
+        hasPnpmWorkspace: false,
+        workspacePackages: [],
+      }),
+    ).toBe(false)
   })
 })

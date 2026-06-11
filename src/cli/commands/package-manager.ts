@@ -23,6 +23,7 @@ export interface PackageManagerRunOptions {
 
 export interface PackageManagerCommandDeps {
   readonly argv?: readonly string[]
+  readonly cwd?: string
   readonly exists?: typeof existsSync
   readonly gstackRoot?: string
   readonly mkdir?: typeof mkdirSync
@@ -126,12 +127,20 @@ export function runPackageManagerCommand(
   deps: PackageManagerCommandDeps = {},
 ): number {
   const argv = deps.argv ?? process.argv
+  const cwd = deps.cwd ?? process.cwd()
   if (verb === 'update' && hasGlobalFlag(extractVerbArgs(verb, argv))) {
     return runGlobalUpdateCommand(deps)
   }
 
+  const packageRoot = resolveNearestPackageRoot(cwd, deps.exists ?? existsSync)
+  if (verb === 'update' && packageRoot === null) {
+    return runGlobalUpdateCommand(deps)
+  }
+
   const command = buildPackageManagerCommand(verb, argv)
-  const result = (deps.run ?? defaultRun)(command.command, command.args)
+  const result = (deps.run ?? defaultRun)(command.command, command.args, {
+    cwd: packageRoot ?? cwd,
+  })
   return typeof result.status === 'number' ? result.status : 1
 }
 
@@ -190,6 +199,20 @@ function refreshGstack(deps: RequiredGlobalUpdateDeps): SpawnSyncReturns<string>
 
 function defaultGstackRoot(): string {
   return path.join(process.env.HOME || homedir(), '.claude', 'skills', 'gstack')
+}
+
+function resolveNearestPackageRoot(
+  startCwd: string,
+  exists: typeof existsSync,
+): string | null {
+  let current = path.resolve(startCwd)
+
+  while (true) {
+    if (exists(path.join(current, 'package.json'))) return current
+    const parent = path.dirname(current)
+    if (parent === current) return null
+    current = parent
+  }
 }
 
 function extractVerbArgs(verb: PackageManagerVerb, argv: readonly string[]): string[] {
