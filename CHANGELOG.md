@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.31.2
+
+### Patch Changes
+
+- 811d217: Fix release finalization after custom Changesets publish so successful npm
+  publishes always create the release tag, compatibility branch, GitHub Release,
+  and runtime binary assets.
+
 ## 0.31.1
 
 ### Patch Changes
