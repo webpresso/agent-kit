@@ -6,7 +6,7 @@
  * the patch tiny and deterministic: per-server upserts, no TOML parser
  * dependency, no edits to unrelated user config.
  *
- * Three managed blocks today:
+ * Four managed blocks today:
  *   1. `[mcp_servers.playwright]` — points at the npm-published Playwright
  *      MCP server through Vite+'s `vp dlx` facade.
  *   2. `[mcp_servers.webpresso]` — points at webpresso's own MCP server.
@@ -20,6 +20,11 @@
  *      which is always on PATH after `wp setup` installs it globally. No
  *      path discovery needed: the block uses a fixed `command = "context-mode"`
  *      and relies on PATH stability, matching OpenCode's own registration.
+ *   4. `[mcp_servers.context7]` plus `.mcp.json#mcpServers.context7` — point at
+ *      Context7's hosted MCP endpoint with an env-backed `CONTEXT7_API_KEY`
+ *      header. The value is supplied by agent-kit's selected secret provider
+ *      through `with-secrets -- <agent>`; setup never reads or persists the raw
+ *      key.
  */
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -442,4 +447,144 @@ export function ensureCodexContextModeMcp(input: EnsureCodexContextModeMcpInput)
   mkdirSync(dirname(configPath), { recursive: true })
   writeFileSync(configPath, next, 'utf8')
   return { targetPath: configPath, action: existed ? 'overwritten' : 'created' }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Context7 hosted MCP server registration
+//
+// Context7's API key belongs to the configured agent-kit secret provider
+// (Doppler, Infisical, etc.). Codex can populate HTTP headers from environment
+// variables, so setup writes only the variable mapping and relies on
+// `with-secrets -- codex` to inject the value at runtime.
+// ────────────────────────────────────────────────────────────────────────────
+
+export const CONTEXT7_MCP_SERVER_NAME = 'context7'
+export const CONTEXT7_API_KEY_ENV = 'CONTEXT7_API_KEY'
+export const CONTEXT7_MCP_URL = 'https://mcp.context7.com/mcp'
+export const CONTEXT7_MCP_HEADER = `[mcp_servers.${CONTEXT7_MCP_SERVER_NAME}]`
+export const CONTEXT7_MCP_BLOCK = `${CONTEXT7_MCP_HEADER}
+url = "${CONTEXT7_MCP_URL}"
+env_http_headers = { "${CONTEXT7_API_KEY_ENV}" = "${CONTEXT7_API_KEY_ENV}" }
+enabled = true
+`
+
+export function upsertContext7McpServer(raw: string): string {
+  const lines = raw.trimEnd().split(/\r?\n/)
+  const hasContent = raw.trim().length > 0
+  const start = lines.findIndex((line) => line.trim() === CONTEXT7_MCP_HEADER)
+
+  if (start === -1) {
+    const prefix = hasContent ? `${raw.trimEnd()}\n\n` : ''
+    return `${prefix}${CONTEXT7_MCP_BLOCK}`
+  }
+
+  let end = lines.length
+  for (let i = start + 1; i < lines.length; i += 1) {
+    if (lines[i]!.trim().startsWith('[')) {
+      end = i
+      break
+    }
+  }
+
+  return (
+    [
+      ...lines.slice(0, start),
+      ...CONTEXT7_MCP_BLOCK.trimEnd().split('\n'),
+      ...lines.slice(end),
+    ].join('\n') + '\n'
+  )
+}
+
+export interface EnsureCodexContext7McpInput {
+  options: MergeOptions
+  /** Test seam. Defaults to `$CODEX_HOME/config.toml` or `~/.codex/config.toml`. */
+  configPath?: string
+}
+
+export function ensureCodexContext7Mcp(input: EnsureCodexContext7McpInput): MergeResult {
+  const configPath = input.configPath ?? defaultConfigPath()
+  if (input.options.dryRun) return { targetPath: configPath, action: 'skipped-dry' }
+
+  const existed = existsSync(configPath)
+  const existing = existed ? readFileSync(configPath, 'utf8') : ''
+  const next = upsertContext7McpServer(existing)
+  if (next === existing) return { targetPath: configPath, action: 'identical' }
+
+  mkdirSync(dirname(configPath), { recursive: true })
+  writeFileSync(configPath, next, 'utf8')
+  return { targetPath: configPath, action: existed ? 'overwritten' : 'created' }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Claude Code `.mcp.json` Context7 registration
+//
+// Claude Code supports environment variable expansion inside `.mcp.json`
+// `headers`, so project config can name `${CONTEXT7_API_KEY}` without embedding
+// the secret. Launch Claude through `with-secrets -- claude` to populate it.
+// ────────────────────────────────────────────────────────────────────────────
+
+export const CLAUDE_CONTEXT7_API_KEY_REF = `\${${CONTEXT7_API_KEY_ENV}}`
+
+function claudeContext7Server(): Record<string, unknown> {
+  return {
+    type: 'http',
+    url: CONTEXT7_MCP_URL,
+    headers: {
+      [CONTEXT7_API_KEY_ENV]: CLAUDE_CONTEXT7_API_KEY_REF,
+    },
+  }
+}
+
+export function upsertClaudeContext7McpServer(raw: string): string {
+  const parsed = raw.trim().length > 0 ? parseJson(raw) : { ok: true as const, value: {} }
+  if (!parsed.ok) {
+    throw new Error('cannot upsert context7 into .mcp.json: existing file is not valid JSON')
+  }
+  const root = isJsonRecord(parsed.value) ? parsed.value : {}
+  const servers = isJsonRecord(root.mcpServers) ? root.mcpServers : {}
+  const next = {
+    ...root,
+    mcpServers: {
+      ...servers,
+      [CONTEXT7_MCP_SERVER_NAME]: claudeContext7Server(),
+    },
+  }
+  return `${JSON.stringify(next, null, 2)}\n`
+}
+
+export interface EnsureClaudeContext7McpInput {
+  options: MergeOptions
+  /** Project root whose `.mcp.json` is managed. */
+  repoRoot: string
+  /** Test seam. Defaults to `<repoRoot>/.mcp.json`. */
+  configPath?: string
+}
+
+export type EnsureClaudeContext7McpResult =
+  | { kind: 'claude-context7-mcp-written'; path: string }
+  | { kind: 'claude-context7-mcp-unchanged'; path: string }
+  | { kind: 'claude-context7-mcp-skipped-dry-run'; path: string }
+  | { kind: 'claude-context7-mcp-invalid-json'; path: string }
+
+export function ensureClaudeContext7Mcp(
+  input: EnsureClaudeContext7McpInput,
+): EnsureClaudeContext7McpResult {
+  const configPath = input.configPath ?? join(input.repoRoot, '.mcp.json')
+  if (input.options.dryRun) {
+    return { kind: 'claude-context7-mcp-skipped-dry-run', path: configPath }
+  }
+
+  const existing = existsSync(configPath) ? readFileSync(configPath, 'utf8') : ''
+  if (existing.trim().length > 0 && !parseJson(existing).ok) {
+    return { kind: 'claude-context7-mcp-invalid-json', path: configPath }
+  }
+
+  const next = upsertClaudeContext7McpServer(existing)
+  if (next === existing) {
+    return { kind: 'claude-context7-mcp-unchanged', path: configPath }
+  }
+
+  mkdirSync(dirname(configPath), { recursive: true })
+  writeFileSync(configPath, next, 'utf8')
+  return { kind: 'claude-context7-mcp-written', path: configPath }
 }

@@ -5,17 +5,23 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
+  CLAUDE_CONTEXT7_API_KEY_REF,
   CONTEXT_MODE_MCP_HEADER,
   CONTEXT_MODE_MCP_SERVER_NAME,
+  CONTEXT7_MCP_URL,
   WEBPRESSO_MCP_HEADER,
   PLAYWRIGHT_MCP_HEADER,
   agentKitMcpBlock,
+  ensureClaudeContext7Mcp,
   ensureClaudePlaywrightMcp,
+  ensureCodexContext7Mcp,
   ensureCodexContextModeMcp,
   ensureCodexWebpressoMcp,
   ensureCodexPlaywrightMcp,
   findWebpressoMcpEntry,
+  upsertClaudeContext7McpServer,
   upsertClaudePlaywrightMcpServer,
+  upsertContext7McpServer,
   upsertContextModeMcpServer,
   upsertWebpressoMcpServer,
   upsertPlaywrightMcpServer,
@@ -45,6 +51,74 @@ command = "wp"
     expect(next).not.toContain('command = "old"')
     expect(next).toContain('[mcp_servers.webpresso]\ncommand = "wp"')
     expect(next.match(/\[mcp_servers\.playwright\]/g)).toHaveLength(1)
+  })
+})
+
+describe('upsertContext7McpServer', () => {
+  it('appends the hosted Context7 server with env-backed headers', () => {
+    const next = upsertContext7McpServer('model = "gpt-5.4"\n')
+
+    expect(next).toContain('model = "gpt-5.4"')
+    expect(next).toContain('[mcp_servers.context7]')
+    expect(next).toContain(`url = "${CONTEXT7_MCP_URL}"`)
+    expect(next).toContain('env_http_headers = { "CONTEXT7_API_KEY" = "CONTEXT7_API_KEY" }')
+    expect(next).not.toContain('\nhttp_headers =')
+  })
+
+  it('replaces raw Context7 http_headers without touching following tables', () => {
+    const next = upsertContext7McpServer(`[mcp_servers.context7]
+url = "https://old.example/mcp"
+http_headers = { "CONTEXT7_API_KEY" = "leaked-secret" }
+
+[mcp_servers.playwright]
+command = "vp"
+`)
+
+    expect(next).toContain(`url = "${CONTEXT7_MCP_URL}"`)
+    expect(next).toContain('env_http_headers = { "CONTEXT7_API_KEY" = "CONTEXT7_API_KEY" }')
+    expect(next).not.toContain('leaked-secret')
+    expect(next).toContain('[mcp_servers.playwright]\ncommand = "vp"')
+    expect(next.match(/\[mcp_servers\.context7\]/g)).toHaveLength(1)
+  })
+
+  it('is idempotent once the desired block exists', () => {
+    const next = upsertContext7McpServer('')
+    expect(upsertContext7McpServer(next)).toBe(next)
+  })
+})
+
+describe('ensureCodexContext7Mcp', () => {
+  let dir: string | null = null
+
+  afterEach(() => {
+    if (dir) rmSync(dir, { recursive: true, force: true })
+    dir = null
+  })
+
+  it('writes a missing config.toml under the supplied config path', () => {
+    dir = mkdtempSync(join(tmpdir(), 'wp-context7-mcp-'))
+    const configPath = join(dir, 'config.toml')
+
+    const result = ensureCodexContext7Mcp({
+      options: { overwrite: false, dryRun: false },
+      configPath,
+    })
+
+    expect(result).toEqual({ targetPath: configPath, action: 'created' })
+    expect(readFileSync(configPath, 'utf8')).toContain('[mcp_servers.context7]')
+  })
+
+  it('is idempotent when the desired server block is already present', () => {
+    dir = mkdtempSync(join(tmpdir(), 'wp-context7-mcp-'))
+    const configPath = join(dir, 'config.toml')
+    ensureCodexContext7Mcp({ options: { overwrite: false, dryRun: false }, configPath })
+
+    const result = ensureCodexContext7Mcp({
+      options: { overwrite: false, dryRun: false },
+      configPath,
+    })
+
+    expect(result).toEqual({ targetPath: configPath, action: 'identical' })
   })
 })
 
@@ -132,6 +206,109 @@ describe('upsertClaudePlaywrightMcpServer', () => {
 
   it('throws on a non-empty file that is not valid JSON', () => {
     expect(() => upsertClaudePlaywrightMcpServer('not json {')).toThrow(/not valid JSON/)
+  })
+})
+
+describe('upsertClaudeContext7McpServer', () => {
+  it('appends the hosted HTTP server with env-expanded headers', () => {
+    const next = JSON.parse(
+      upsertClaudeContext7McpServer(
+        JSON.stringify({ project: 'demo', mcpServers: { playwright: { command: 'vp' } } }),
+      ),
+    ) as {
+      project: string
+      mcpServers: Record<string, unknown>
+    }
+
+    expect(next.project).toBe('demo')
+    expect(next.mcpServers.playwright).toStrictEqual({ command: 'vp' })
+    expect(next.mcpServers.context7).toStrictEqual({
+      type: 'http',
+      url: CONTEXT7_MCP_URL,
+      headers: { CONTEXT7_API_KEY: CLAUDE_CONTEXT7_API_KEY_REF },
+    })
+  })
+
+  it('replaces raw Claude Context7 headers while preserving other servers', () => {
+    const next = JSON.parse(
+      upsertClaudeContext7McpServer(
+        JSON.stringify({
+          mcpServers: {
+            context7: {
+              type: 'http',
+              url: 'https://old.example/mcp',
+              headers: { CONTEXT7_API_KEY: 'leaked-secret' },
+            },
+            exa: { command: 'exa' },
+          },
+        }),
+      ),
+    ) as { mcpServers: Record<string, unknown> }
+
+    expect(JSON.stringify(next)).not.toContain('leaked-secret')
+    expect(next.mcpServers.exa).toStrictEqual({ command: 'exa' })
+    expect(next.mcpServers.context7).toStrictEqual({
+      type: 'http',
+      url: CONTEXT7_MCP_URL,
+      headers: { CONTEXT7_API_KEY: CLAUDE_CONTEXT7_API_KEY_REF },
+    })
+  })
+
+  it('is idempotent once the desired server exists', () => {
+    const next = upsertClaudeContext7McpServer('')
+    expect(upsertClaudeContext7McpServer(next)).toBe(next)
+  })
+})
+
+describe('ensureClaudeContext7Mcp', () => {
+  let dir: string | null = null
+
+  afterEach(() => {
+    if (dir) rmSync(dir, { recursive: true, force: true })
+    dir = null
+  })
+
+  it('writes a missing .mcp.json under the repo root', () => {
+    dir = mkdtempSync(join(tmpdir(), 'wp-claude-context7-mcp-'))
+    const configPath = join(dir, '.mcp.json')
+
+    const result = ensureClaudeContext7Mcp({
+      options: { overwrite: false, dryRun: false },
+      repoRoot: dir,
+    })
+
+    expect(result).toStrictEqual({ kind: 'claude-context7-mcp-written', path: configPath })
+    const written = JSON.parse(readFileSync(configPath, 'utf8')) as {
+      mcpServers: Record<string, { url?: string }>
+    }
+    expect(written.mcpServers.context7.url).toBe(CONTEXT7_MCP_URL)
+  })
+
+  it('is idempotent when the desired server is already present', () => {
+    dir = mkdtempSync(join(tmpdir(), 'wp-claude-context7-mcp-'))
+    const configPath = join(dir, '.mcp.json')
+    ensureClaudeContext7Mcp({ options: { overwrite: false, dryRun: false }, repoRoot: dir })
+
+    const result = ensureClaudeContext7Mcp({
+      options: { overwrite: false, dryRun: false },
+      repoRoot: dir,
+    })
+
+    expect(result).toStrictEqual({ kind: 'claude-context7-mcp-unchanged', path: configPath })
+  })
+
+  it('leaves an invalid-JSON .mcp.json untouched and reports it', () => {
+    dir = mkdtempSync(join(tmpdir(), 'wp-claude-context7-mcp-'))
+    const configPath = join(dir, '.mcp.json')
+    writeFileSync(configPath, 'not json {', 'utf8')
+
+    const result = ensureClaudeContext7Mcp({
+      options: { overwrite: false, dryRun: false },
+      repoRoot: dir,
+    })
+
+    expect(result).toStrictEqual({ kind: 'claude-context7-mcp-invalid-json', path: configPath })
+    expect(readFileSync(configPath, 'utf8')).toBe('not json {')
   })
 })
 
@@ -373,7 +550,9 @@ describe('ensureCodexContextModeMcp', () => {
 
     expect(result.action).toBe('created')
     expect(readFileSync(configPath, 'utf8')).toContain(CONTEXT_MODE_MCP_HEADER)
-    expect(readFileSync(configPath, 'utf8')).toContain(`command = "${CONTEXT_MODE_MCP_SERVER_NAME}"`)
+    expect(readFileSync(configPath, 'utf8')).toContain(
+      `command = "${CONTEXT_MODE_MCP_SERVER_NAME}"`,
+    )
   })
 
   it('is idempotent when the block is already present', () => {

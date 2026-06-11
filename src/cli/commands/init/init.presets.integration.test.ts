@@ -200,9 +200,22 @@ describe('runInit() — omx + gstack presets (integration)', () => {
         cwd: repo,
         stdio: ['ignore', 'inherit', 'inherit'],
       })
-      expect(readFileSync(join(repo, '.codex-home/config.toml'), 'utf8')).toContain(
-        '[mcp_servers.playwright]',
+      const codexConfig = readFileSync(join(repo, '.codex-home/config.toml'), 'utf8')
+      expect(codexConfig).toContain('[mcp_servers.playwright]')
+      expect(codexConfig).toContain('[mcp_servers.context7]')
+      expect(codexConfig).toContain(
+        'env_http_headers = { "CONTEXT7_API_KEY" = "CONTEXT7_API_KEY" }',
       )
+      expect(codexConfig).not.toContain('\nhttp_headers =')
+
+      const claudeMcpConfig = JSON.parse(readFileSync(join(repo, '.mcp.json'), 'utf8')) as {
+        mcpServers: Record<string, unknown>
+      }
+      expect(claudeMcpConfig.mcpServers.context7).toStrictEqual({
+        type: 'http',
+        url: 'https://mcp.context7.com/mcp',
+        headers: { CONTEXT7_API_KEY: '${CONTEXT7_API_KEY}' },
+      })
     })
 
     it('does not run gstack/rtk/claude orchestration on the omx-only path (hermetic skip)', async () => {

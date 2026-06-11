@@ -76,6 +76,7 @@ export interface EnsureGstackInput {
 export type GstackCodexResult =
   | { kind: 'gstack-codex-installed'; skillsRoot: string }
   | { kind: 'gstack-codex-updated'; skillsRoot: string }
+  | { kind: 'gstack-codex-already-configured'; skillsRoot: string }
   | { kind: 'gstack-codex-skipped'; reason: 'not-detected' | 'not-requested'; skillsRoot: string }
 
 export type GstackFailureReason = 'exit-nonzero' | 'inactivity-timeout' | 'signal-interrupted'
@@ -92,6 +93,7 @@ type GstackFailureBase = {
 export type EnsureGstackResult =
   | { kind: 'gstack-installed'; root: string; codex: GstackCodexResult }
   | { kind: 'gstack-updated'; root: string; codex: GstackCodexResult }
+  | { kind: 'gstack-already-configured'; root: string; codex: GstackCodexResult }
   | { kind: 'gstack-skipped-dry-run' }
   | ({ kind: 'gstack-clone-failed' } & GstackFailureBase)
   | ({ kind: 'gstack-pull-failed' } & GstackFailureBase)
@@ -171,6 +173,10 @@ function summarizeChunk(text: string): string | null {
 
 function isVerboseGstack(env: NodeJS.ProcessEnv): boolean {
   return env.WP_VERBOSE_GSTACK === '1'
+}
+
+function isGstackRefreshRequested(env: NodeJS.ProcessEnv): boolean {
+  return env.WP_GSTACK_REFRESH === '1' || env.WP_GSTACK_MODE === 'full'
 }
 
 function maybeLogQuietModeAdvisory(env: NodeJS.ProcessEnv, log: (message: string) => void): void {
@@ -641,6 +647,51 @@ function finalizeCodexResult(input: {
   }
 }
 
+function canUseCachedGstack(input: {
+  hasSetup: boolean
+  hasGitDir: boolean
+  refreshRequested: boolean
+  requestsCodex: boolean
+  usesAutoHosts: boolean
+  codexDetected: boolean
+  hadCodexSkills: boolean
+}): boolean {
+  if (!input.hasSetup || !input.hasGitDir || input.refreshRequested) return false
+  if (!input.requestsCodex && !input.usesAutoHosts) return true
+  if (!input.codexDetected) return true
+  return input.hadCodexSkills
+}
+
+function finalizeCachedCodexResult(input: {
+  requestsCodex: boolean
+  usesAutoHosts: boolean
+  codexDetected: boolean
+  hadCodexSkills: boolean
+  codexSkillsRoot: string
+}): GstackCodexResult {
+  if ((input.requestsCodex || input.usesAutoHosts) && input.codexDetected) {
+    return input.hadCodexSkills
+      ? { kind: 'gstack-codex-already-configured', skillsRoot: input.codexSkillsRoot }
+      : {
+          kind: 'gstack-codex-skipped',
+          reason: 'not-requested',
+          skillsRoot: input.codexSkillsRoot,
+        }
+  }
+  if (!input.codexDetected) {
+    return {
+      kind: 'gstack-codex-skipped',
+      reason: 'not-detected',
+      skillsRoot: input.codexSkillsRoot,
+    }
+  }
+  return {
+    kind: 'gstack-codex-skipped',
+    reason: 'not-requested',
+    skillsRoot: input.codexSkillsRoot,
+  }
+}
+
 function buildFailureResult(input: {
   stage: 'clone' | 'pull' | 'setup'
   outcome: GstackCommandOutcome
@@ -677,7 +728,9 @@ function buildFailureResult(input: {
 /**
  * Ensure gstack is installed and up-to-date.
  * - Not present: clone from main + setup.
- * - Already present: pull latest main + re-run setup.
+ * - Already present and requested host skills exist: return cached unless a
+ *   refresh was explicitly requested.
+ * - Explicit refresh: pull latest main + re-run setup.
  * - If Codex is detected: materialize Codex skills from the canonical checkout.
  */
 export async function ensureGstack(input: EnsureGstackInput): Promise<EnsureGstackResult> {
@@ -707,15 +760,6 @@ export async function ensureGstack(input: EnsureGstackInput): Promise<EnsureGsta
   const clearTimeoutImpl = input.clearTimeoutImpl ?? clearTimeout
   const heartbeatIntervalMs = input.heartbeatIntervalMs ?? DEFAULT_HEARTBEAT_MS
   const inactivityMs = parseInactivityMs(env)
-  const logPath = input.sessionLogPath ?? resolveSessionLogPath(input.repoRoot, now)
-  initializeSessionLog(logPath, {
-    repoRoot: input.repoRoot,
-    installRoot: root,
-    env,
-    platform,
-    inactivityMs,
-    now,
-  })
 
   const hasSetup = exists(path.join(root, 'setup'))
   const hasGitDir = exists(path.join(root, '.git'))
@@ -728,6 +772,42 @@ export async function ensureGstack(input: EnsureGstackInput): Promise<EnsureGsta
   const steps = resolveSetupSteps({ codexDetected, env, log })
   const requestsCodex = steps.some((step) => step.command === '--host codex --team')
   const usesAutoHosts = steps.some((step) => step.command === '--host auto --team')
+  const refreshRequested = isGstackRefreshRequested(env)
+
+  if (
+    canUseCachedGstack({
+      hasSetup,
+      hasGitDir,
+      refreshRequested,
+      requestsCodex,
+      usesAutoHosts,
+      codexDetected,
+      hadCodexSkills,
+    })
+  ) {
+    return {
+      kind: 'gstack-already-configured',
+      root,
+      codex: finalizeCachedCodexResult({
+        requestsCodex,
+        usesAutoHosts,
+        codexDetected,
+        hadCodexSkills,
+        codexSkillsRoot,
+      }),
+    }
+  }
+
+  const logPath = input.sessionLogPath ?? resolveSessionLogPath(input.repoRoot, now)
+  initializeSessionLog(logPath, {
+    repoRoot: input.repoRoot,
+    installRoot: root,
+    env,
+    platform,
+    inactivityMs,
+    now,
+  })
+
   if (steps.length > 0) {
     maybeLogQuietModeAdvisory(env, log)
   }
