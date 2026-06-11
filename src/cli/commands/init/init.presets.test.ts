@@ -220,12 +220,20 @@ describe('runInit() — omx + gstack presets (integration)', () => {
 
   describe('--with omx,rtk (combined)', () => {
     it('invokes both presets in deterministic order', async () => {
-      const code = await runInit({ cwd: repo, yes: true, with: 'omx,rtk' })
-      expect(code).toBe(EXIT_SUCCESS)
-      const calledTools = spawnSyncMock.mock.calls
-        .map((call) => call[0])
-        .filter((name) => name === 'omx' || name === 'rtk')
-      expect(calledTools).toEqual(['omx', 'omx', 'rtk', 'rtk'])
+      const previousSkipGstack = process.env.AK_SKIP_GSTACK
+      process.env.AK_SKIP_GSTACK = '1'
+
+      try {
+        const code = await runInit({ cwd: repo, yes: true, with: 'omx,rtk', host: 'codex' })
+        expect(code).toBe(EXIT_SUCCESS)
+        const calledTools = spawnSyncMock.mock.calls
+          .map((call) => call[0])
+          .filter((name) => name === 'omx' || name === 'rtk')
+        expect(calledTools).toEqual(['omx', 'omx', 'rtk', 'rtk'])
+      } finally {
+        if (previousSkipGstack === undefined) delete process.env.AK_SKIP_GSTACK
+        else process.env.AK_SKIP_GSTACK = previousSkipGstack
+      }
     })
   })
 

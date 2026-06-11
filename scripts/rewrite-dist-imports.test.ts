@@ -8,11 +8,15 @@ import {
 
 describe('toBuiltModulePath', () => {
   it('maps source ts modules to built js modules', () => {
-    expect(toBuiltModulePath('./src/blueprint/core/schema.ts')).toBe('dist/esm/blueprint/core/schema.js')
+    expect(toBuiltModulePath('./src/blueprint/core/schema.ts')).toBe(
+      'dist/esm/blueprint/core/schema.js',
+    )
   })
 
   it('preserves json assets in dist', () => {
-    expect(toBuiltModulePath('./src/config/tsconfig/base.json')).toBe('dist/esm/config/tsconfig/base.json')
+    expect(toBuiltModulePath('./src/config/tsconfig/base.json')).toBe(
+      'dist/esm/config/tsconfig/base.json',
+    )
   })
 })
 

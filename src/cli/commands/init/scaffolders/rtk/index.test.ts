@@ -70,6 +70,45 @@ describe('ensureRtk', () => {
     )
   })
 
+  it('strips host Codex and OMX session env before spawning rtk init', () => {
+    const previousCodexThread = process.env['CODEX_THREAD_ID']
+    const previousOmxSession = process.env['OMX_SESSION_ID']
+    const previousClaudeProjectDir = process.env['CLAUDE_PROJECT_DIR']
+    process.env['CODEX_THREAD_ID'] = 'thread-123'
+    process.env['OMX_SESSION_ID'] = 'omx-123'
+    process.env['CLAUDE_PROJECT_DIR'] = '/tmp/outer-session'
+
+    try {
+      const spawn = makeSpawn([{ status: 0 }, { status: 0 }])
+      const result = ensureRtk({
+        repoRoot: '/tmp/repo',
+        options: { overwrite: false, dryRun: false },
+        spawn,
+      })
+
+      expect(result).toEqual({ kind: 'rtk-ok', installed: false })
+      expect(spawn).toHaveBeenNthCalledWith(
+        2,
+        'rtk',
+        ['init', '-g', '--auto-patch'],
+        expect.objectContaining({
+          env: expect.not.objectContaining({
+            CODEX_THREAD_ID: 'thread-123',
+            OMX_SESSION_ID: 'omx-123',
+            CLAUDE_PROJECT_DIR: '/tmp/outer-session',
+          }),
+        }),
+      )
+    } finally {
+      if (previousCodexThread === undefined) delete process.env['CODEX_THREAD_ID']
+      else process.env['CODEX_THREAD_ID'] = previousCodexThread
+      if (previousOmxSession === undefined) delete process.env['OMX_SESSION_ID']
+      else process.env['OMX_SESSION_ID'] = previousOmxSession
+      if (previousClaudeProjectDir === undefined) delete process.env['CLAUDE_PROJECT_DIR']
+      else process.env['CLAUDE_PROJECT_DIR'] = previousClaudeProjectDir
+    }
+  })
+
   it('installs with brew on macOS when rtk is not on PATH', () => {
     const platform = vi.spyOn(process, 'platform', 'get').mockReturnValue('darwin')
     const spawn = makeSpawn([

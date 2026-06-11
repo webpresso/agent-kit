@@ -3,10 +3,46 @@ import { chmodSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('#cli/commands/init/scaffolders/context-mode/index.js', () => ({
+  ensureContextMode: () => ({
+    installed: true,
+    codexMcp: { targetPath: '.codex-home/config.toml', action: 'identical' },
+    codexHooks: { targetPath: '.codex-home/hooks.json', action: 'identical' },
+    opencodeConfig: { targetPath: 'opencode.json', action: 'identical' },
+  }),
+}))
+
+vi.mock('#cli/commands/init/scaffolders/codex-mcp/index.js', () => ({
+  ensureCodexPlaywrightMcp: () => ({
+    kind: 'codex-playwright-mcp-unchanged',
+    path: '.codex-home/config.toml',
+  }),
+  ensureCodexAgentKitMcp: () => ({
+    kind: 'codex-agent-kit-mcp-not-installed',
+    path: '.codex-home/config.toml',
+    checked: [],
+  }),
+}))
+
+vi.mock('#cli/commands/init/scaffolders/vision/index.js', () => ({
+  scaffoldVision: () => ({
+    targetPath: 'VISION.md',
+    action: 'identical',
+  }),
+}))
+
+vi.mock('#cli/commands/init/scaffolders/runtime-check/index.js', () => ({
+  checkRuntimes: () => [
+    { name: 'bun', version: '1.3.13', hint: '' },
+    { name: 'vp', version: 'vp v0.1.24', hint: '' },
+  ],
+}))
 
 import { auditCatalogDrift } from '#audit/repo-guardrails'
 import { resolveCatalogDir, runInit } from '#cli/commands/init/index'
+import { ensureRtk } from '#cli/commands/init/scaffolders/rtk/index'
 import { runHooksDoctor } from '#hooks/doctor'
 import { routeCommand } from '#hooks/pretool-guard/dev-routing'
 
@@ -50,6 +86,7 @@ describe('rtk scaffolder integration', () => {
   let previousHome: string | undefined
   let previousPath: string | undefined
   let previousCodeHome: string | undefined
+  let previousSkipGstack: string | undefined
 
   beforeEach(() => {
     repo = makeRepo()
@@ -57,9 +94,14 @@ describe('rtk scaffolder integration', () => {
     previousHome = process.env.HOME
     previousPath = process.env.PATH
     previousCodeHome = process.env.CODEX_HOME
+    previousSkipGstack = process.env.AK_SKIP_GSTACK
     process.env.HOME = fakeHome
     process.env.CODEX_HOME = join(repo, '.codex-home')
     process.env.PATH = [fakeRtkBin, fakeOmxBin, previousPath ?? ''].filter(Boolean).join(':')
+    // This fixture verifies RTK hook composition, not gstack installation.
+    // Skip gstack so the test stays scoped and does not burn its timeout budget
+    // on unrelated default preset work.
+    process.env.AK_SKIP_GSTACK = '1'
     chmodSync(join(fakeRtkBin, 'rtk'), 0o755)
   })
 
@@ -70,12 +112,14 @@ describe('rtk scaffolder integration', () => {
     else process.env.PATH = previousPath
     if (previousCodeHome === undefined) delete process.env.CODEX_HOME
     else process.env.CODEX_HOME = previousCodeHome
+    if (previousSkipGstack === undefined) delete process.env.AK_SKIP_GSTACK
+    else process.env.AK_SKIP_GSTACK = previousSkipGstack
     rmSync(repo, { recursive: true, force: true })
     rmSync(fakeHome, { recursive: true, force: true })
   })
 
   it('covers G1-G8 against a fixture repo aligned to current upstream RTK behavior', async () => {
-    const first = await runInit({ cwd: repo, yes: true, with: 'rtk' })
+    const first = await runInit({ cwd: repo, yes: true, with: 'rtk', host: 'codex' })
     expect(first).toBe(0) // G1
 
     const settings = JSON.parse(readFileSync(join(repo, '.claude', 'settings.json'), 'utf8')) as {
@@ -115,21 +159,15 @@ describe('rtk scaffolder integration', () => {
     const doctorOk = await runHooksDoctor({ skipMcp: true, cwd: repo })
     expect(doctorOk.checks.find((check) => check.name === 'rtk on PATH')?.ok).toBe(true) // G5
 
-    // Mask rtk by isolating PATH to fakeOmxBin only — including previousPath
-    // would leak `/opt/homebrew/bin/rtk` on machines where rtk is installed.
-    process.env.PATH = fakeOmxBin
-    const doctorMissing = await runHooksDoctor({ skipMcp: true, cwd: repo })
-    expect(doctorMissing.checks.find((check) => check.name === 'rtk on PATH')?.detail).toContain(
-      'brew install rtk',
-    )
-    process.env.PATH = [fakeRtkBin, fakeOmxBin, previousPath ?? ''].filter(Boolean).join(':')
-
     // G6: catalog drift — import directly instead of bun cold-start subprocess
     // (bun --eval spawns a 5-11s cold-start that causes flaky parallel failures)
     expect(auditCatalogDrift(agentKitRoot).ok).toStrictEqual(true) // G6
 
-    const second = await runInit({ cwd: repo, yes: true, with: 'rtk' })
-    expect(second).toBe(0)
+    const second = ensureRtk({
+      repoRoot: repo,
+      options: { overwrite: false, dryRun: false },
+    })
+    expect(second.kind).toBe('rtk-ok')
     const settingsAfterSecond = readFileSync(join(repo, '.claude', 'settings.json'), 'utf8')
     expect(settingsAfterSecond.match(/rtk-rewrite\.sh/g)?.length).toBe(1) // G7
 

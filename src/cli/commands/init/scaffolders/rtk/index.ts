@@ -23,6 +23,27 @@ export type EnsureRtkResult =
 const NOT_FOUND_HINT =
   'rtk is not on PATH. Install it manually (macOS: `brew install rtk`) and re-run.'
 
+function buildRtkChildEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const next: NodeJS.ProcessEnv = {}
+
+  for (const [key, value] of Object.entries(env)) {
+    if (value === undefined) continue
+    if (
+      key.startsWith('CLAUDE_') ||
+      key.startsWith('CODEX_') ||
+      key.startsWith('OMX_') ||
+      key === 'USE_OMX_EXPLORE_CMD' ||
+      key.startsWith('PRETOOL_')
+    ) {
+      continue
+    }
+    next[key] = value
+  }
+
+  next['RTK_TELEMETRY_DISABLED'] = '1'
+  return next
+}
+
 export function ensureRtk(input: EnsureRtkInput): EnsureRtkResult {
   if (input.options.dryRun) return { kind: 'rtk-skipped-dry-run' }
 
@@ -69,10 +90,7 @@ export function ensureRtk(input: EnsureRtkInput): EnsureRtkResult {
   const result = spawn('rtk', ['init', '-g', '--auto-patch'], {
     cwd: input.repoRoot,
     stdio: 'inherit',
-    env: {
-      ...process.env,
-      RTK_TELEMETRY_DISABLED: '1',
-    },
+    env: buildRtkChildEnv(process.env),
   })
 
   if (result.status !== 0) {

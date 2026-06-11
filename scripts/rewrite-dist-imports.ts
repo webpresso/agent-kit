@@ -33,7 +33,10 @@ export function toBuiltModulePath(sourceTarget: string): string {
 
 function toImportPatterns(importsMap: PackageImportsMap): ImportPattern[] {
   return Object.entries(importsMap)
-    .filter(([key, value]) => key.startsWith('#') && typeof value === 'string' && value.startsWith('./src/'))
+    .filter(
+      ([key, value]) =>
+        key.startsWith('#') && typeof value === 'string' && value.startsWith('./src/'),
+    )
     .map(([key, target]) => ({
       key,
       target,
@@ -82,15 +85,18 @@ export function rewriteBuiltModuleSpecifiers(
   content: string,
   resolveSpecifier: (specifier: string) => string,
 ): string {
-  return content.replace(MODULE_SPECIFIER_PATTERN, (match, prefix: string, quote: string, specifier: string) => {
-    if (!specifier.startsWith('#')) {
-      return match
-    }
+  return content.replace(
+    MODULE_SPECIFIER_PATTERN,
+    (match, prefix: string, quote: string, specifier: string) => {
+      if (!specifier.startsWith('#')) {
+        return match
+      }
 
-    const builtTarget = resolveSpecifier(specifier)
-    const rewrittenSpecifier = toRelativeModuleSpecifier(filePath, builtTarget)
-    return `${prefix}${quote}${rewrittenSpecifier}${quote}`
-  })
+      const builtTarget = resolveSpecifier(specifier)
+      const rewrittenSpecifier = toRelativeModuleSpecifier(filePath, builtTarget)
+      return `${prefix}${quote}${rewrittenSpecifier}${quote}`
+    },
+  )
 }
 
 function visitFiles(rootDir: string, visitor: (filePath: string) => void): void {
@@ -113,7 +119,9 @@ function main(): void {
   const repoRoot = resolve(fileURLToPath(new URL('..', import.meta.url)))
   const packageJsonPath = resolve(repoRoot, 'package.json')
   const distRoot = resolve(repoRoot, 'dist/esm')
-  const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as { imports?: PackageImportsMap }
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as {
+    imports?: PackageImportsMap
+  }
   const resolveSpecifier = buildImportResolver(packageJson.imports ?? {})
 
   if (!existsSync(distRoot)) {
