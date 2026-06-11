@@ -48,7 +48,7 @@ ships an audit family, a blueprint lifecycle, or a tech-debt lifecycle.
 | **AHE** (china-qijizhifeng/agentic-harness-engineering) | Observability-driven automatic harness evolution; 84.7% pass@1 TB-2; frozen harness transfers across benchmarks | Research-grade today; its transfer result legitimizes selling *pre-optimized* harness profiles — which is what our catalog could become |
 | **Meta-Harness / SIA / SICA** | Research systems (see [papers registry](papers/README.md)) | Idea source, not product threat yet; SIA is MIT and pip-installable |
 | **Harbor + Terminal-Bench** (harbor-framework) | Eval/RL-environment framework + the school's standard benchmark | Complementary infra; candidate execution backend if our regression gate ever needs sandboxed scale |
-| **OpenHands benchmarks** | Standardized eval pipelines for OpenHands agents | Prior art for eval-pipeline shape; OpenHands is Tier 2 per the [supported-CLI rule](../../catalog/agent/rules/supported-agent-clis.md) |
+| **OpenHands benchmarks** | Standardized eval pipelines for OpenHands agents | Prior art for eval-pipeline shape only; OpenHands itself is Tier 3 (not supported) per the [supported-CLI rule](../../catalog/agent/rules/supported-agent-clis.md) — not to be confused with OpenCode, the actual Tier 2 CLI |
 
 Verdict for arena 2: nobody here does **fleet governance** (many repos, many
 CLIs, tiers, audits, lifecycles) — they all optimize one agent against one

@@ -94,7 +94,7 @@ This table is the raw inventory.
 | Meta-Harness artifact | github.com/stanford-iris-lab/meta-harness-tbench2-artifact | Optimized-harness artifact (76.4% TB-2, Claude Opus 4.6) | Medium — what an optimized harness for a Tier 1 CLI's model looks like | research artifact |
 | Harbor | github.com/harbor-framework/harbor | Eval/RL-environment framework | Medium — architecture reference if our gate needs sandboxed scale | OSS |
 | Terminal-Bench (+ TB-2) | github.com/harbor-framework/terminal-bench | Benchmark | Medium — split/env controls | OSS |
-| OpenHands benchmarks | github.com/OpenHands/benchmarks | Eval harness for OpenHands V1 | Low–medium — OpenHands is a Tier 2 CLI; their eval shape is prior art | OSS |
+| OpenHands benchmarks | github.com/OpenHands/benchmarks | Eval harness for OpenHands V1 | Low — eval-pipeline prior art only; OpenHands is Tier 3 (not supported) per the supported-CLI rule | OSS |
 | rulesync | github.com/dyoshikawa/rulesync | Config emission substrate (17+ runtimes) | Already integrated — `wp compile` wraps it; see [positioning guide](../positioning-vs-rulesync.md) | MIT |
 
 ## Industry watchlist & cadence
