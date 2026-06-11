@@ -16,6 +16,7 @@ describe('reusable Cloudflare deploy workflows', () => {
     for (const workflow of [preview, production]) {
       expect(workflow).toContain('workflow_call:')
       expect(workflow).toMatch(/actions\/checkout@[0-9a-f]{40}/u)
+      expect(workflow).toMatch(/pnpm\/action-setup@[0-9a-f]{40}/u)
       expect(workflow).toMatch(/actions\/setup-node@[0-9a-f]{40}/u)
       expect(workflow).toMatch(/oven-sh\/setup-bun@[0-9a-f]{40}/u)
       expect(workflow).toContain('corepack enable')
