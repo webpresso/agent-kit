@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { parseWithSecretsArgs } from './with-secrets-cli.js'
+import { isDirectWithSecretsCliEntrypoint, parseWithSecretsArgs } from './with-secrets-cli.js'
 
 describe('parseWithSecretsArgs', () => {
   it('parses canonical runtime profiles', () => {
@@ -27,5 +27,22 @@ describe('parseWithSecretsArgs', () => {
       args: ['run', 'build'],
       profile: undefined,
     })
+  })
+})
+
+describe('isDirectWithSecretsCliEntrypoint', () => {
+  it('detects direct execution by resolved module path', () => {
+    expect(
+      isDirectWithSecretsCliEntrypoint(
+        ['node', '/tmp/with-secrets-cli.js'],
+        'file:///tmp/with-secrets-cli.js',
+      ),
+    ).toBe(true)
+    expect(
+      isDirectWithSecretsCliEntrypoint(
+        ['node', '/tmp/other.js'],
+        'file:///tmp/with-secrets-cli.js',
+      ),
+    ).toBe(false)
   })
 })

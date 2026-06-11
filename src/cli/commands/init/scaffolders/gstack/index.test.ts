@@ -72,7 +72,7 @@ function makeSpinnerFactory() {
 }
 
 function createFakeEnv() {
-  return {} as NodeJS.ProcessEnv
+  return { WP_GSTACK_REFRESH: '1' } as NodeJS.ProcessEnv
 }
 
 const tempDirs: string[] = []
@@ -214,6 +214,60 @@ describe('ensureGstack', () => {
     expect(result).toEqual({ kind: 'gstack-skipped-dry-run' })
     expect(spawn).not.toHaveBeenCalled()
     expect(exists).not.toHaveBeenCalled()
+  })
+
+  it('uses cached gstack when checkout and requested codex skills already exist', async () => {
+    const spawn = makeSpawn([])
+    const exists = vi.fn((target: string | import('node:buffer').Buffer | URL) => {
+      const value = String(target)
+      return (
+        value === '/fake/gstack/setup' ||
+        value === '/fake/gstack/.git' ||
+        value === '/fake-home/.codex/config.toml' ||
+        value === '/fake-home/.codex/skills/gstack'
+      )
+    })
+
+    const result = await ensureGstack(
+      buildInput({
+        env: {} as NodeJS.ProcessEnv,
+        spawn,
+        exists,
+        detectCodex: () => true,
+      }),
+    )
+
+    expect(result).toEqual({
+      kind: 'gstack-already-configured',
+      root: '/fake/gstack',
+      codex: { kind: 'gstack-codex-already-configured', skillsRoot: '/fake-home/.codex/skills' },
+    })
+    expect(spawn).not.toHaveBeenCalled()
+  })
+
+  it('treats WP_GSTACK_HOSTS as host selection without disabling the cache', async () => {
+    const spawn = makeSpawn([])
+    const exists = vi.fn((target: string | import('node:buffer').Buffer | URL) => {
+      const value = String(target)
+      return (
+        value === '/fake/gstack/setup' ||
+        value === '/fake/gstack/.git' ||
+        value === '/fake-home/.codex/config.toml' ||
+        value === '/fake-home/.codex/skills/gstack'
+      )
+    })
+
+    const result = await ensureGstack(
+      buildInput({
+        env: { WP_GSTACK_HOSTS: 'codex' } as NodeJS.ProcessEnv,
+        spawn,
+        exists,
+        detectCodex: () => true,
+      }),
+    )
+
+    expect(result.kind).toBe('gstack-already-configured')
+    expect(spawn).not.toHaveBeenCalled()
   })
 
   it('clones and runs setup --team when missing, then skips codex if not detected', async () => {

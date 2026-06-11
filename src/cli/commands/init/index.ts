@@ -93,9 +93,12 @@ import {
   resolveBinaryOnPath,
 } from './scaffolders/agent-hooks/codex-global-normalize.js'
 import {
+  CONTEXT7_API_KEY_ENV,
+  ensureClaudeContext7Mcp,
+  ensureClaudePlaywrightMcp,
+  ensureCodexContext7Mcp,
   ensureCodexWebpressoMcp,
   ensureCodexPlaywrightMcp,
-  ensureClaudePlaywrightMcp,
 } from './scaffolders/codex-mcp/index.js'
 import { scaffoldExampleSkill } from './scaffolders/example-skill/index.js'
 import { ensureGstack } from './scaffolders/gstack/index.js'
@@ -152,7 +155,7 @@ export interface InitFlags {
   cwd?: string
   strict?: boolean
   project?: boolean
-  allowSelfScaffold?: boolean
+  sourceMaintenance?: boolean
 }
 
 export const EXIT_SUCCESS = 0
@@ -340,16 +343,16 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
   // working tree overwrites those canonical sources — the footgun where a stray
   // `wp setup` reported `overwritten: 2, drifted: 11, git index cleanup: 6
   // untracked` against the live repo. Refuse loudly and write nothing unless the
-  // maintainer explicitly opts in with --allow-self-scaffold.
+  // maintainer explicitly opts in with source-maintenance mode.
   if (
     isAgentKitTemplateSourceRepo(consumer.packageJson?.name) &&
-    flags.allowSelfScaffold !== true
+    flags.sourceMaintenance !== true
   ) {
     console.error(
       `wp setup: refusing to scaffold @webpresso/agent-kit's own repo (${consumer.repoRoot}).\n` +
         `  This repo is the source of the agent-surface templates; running setup here\n` +
         `  overwrites the canonical sources under catalog/ and the tracked .agent/.claude surfaces.\n` +
-        `  To deliberately regenerate agent-kit's own surfaces, re-run with --allow-self-scaffold.`,
+        `  To deliberately maintain agent-kit's own setup surfaces, re-run with --source-maintenance.`,
     )
     return EXIT_SETUP_FAIL
   }
@@ -828,6 +831,56 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         break
     }
 
+    // Context7 auth remains provider-owned: setup writes only the Codex
+    // env-header mapping, while `with-secrets -- codex` injects the actual
+    // CONTEXT7_API_KEY from the selected secret manager at runtime.
+    const context7McpResult = ensureCodexContext7Mcp({ options })
+    switch (context7McpResult.action) {
+      case 'created':
+      case 'overwritten':
+        console.log(
+          `  codex context7 mcp: ✓ ${context7McpResult.targetPath} (uses ${CONTEXT7_API_KEY_ENV} from with-secrets)`,
+        )
+        break
+      case 'identical':
+        console.log(
+          `  codex context7 mcp: already configured at ${context7McpResult.targetPath} (launch Codex with: with-secrets -- codex)`,
+        )
+        break
+      case 'skipped-dry':
+        console.log('  codex context7 mcp: skipped (--dry-run)')
+        break
+    }
+
+    // Claude Code expands `${CONTEXT7_API_KEY}` inside `.mcp.json` headers at
+    // runtime. As with Codex, setup writes only the variable reference and the
+    // selected secret provider injects the value when Claude is launched via
+    // `with-secrets -- claude`.
+    const claudeContext7McpResult = ensureClaudeContext7Mcp({
+      options,
+      repoRoot: consumer.repoRoot,
+    })
+    switch (claudeContext7McpResult.kind) {
+      case 'claude-context7-mcp-written':
+        console.log(
+          `  claude context7 mcp: ✓ ${claudeContext7McpResult.path} (uses ${CONTEXT7_API_KEY_ENV} from with-secrets)`,
+        )
+        break
+      case 'claude-context7-mcp-unchanged':
+        console.log(
+          `  claude context7 mcp: already configured at ${claudeContext7McpResult.path} (launch Claude with: with-secrets -- claude)`,
+        )
+        break
+      case 'claude-context7-mcp-skipped-dry-run':
+        console.log('  claude context7 mcp: skipped (--dry-run)')
+        break
+      case 'claude-context7-mcp-invalid-json':
+        console.warn(
+          `  claude context7 mcp: ⚠ ${claudeContext7McpResult.path} is not valid JSON; left unchanged`,
+        )
+        break
+    }
+
     // Self-update the globally-distributed agent-kit install that backs PATH
     // `wp`, mirroring omx/omc/codex/claude. Non-fatal: a failed refresh never
     // fails consumer setup, and it skips cleanly on a source/git clone, on
@@ -919,6 +972,11 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
             case 'gstack-codex-updated':
               console.log(`  gstack (codex): ✓ updated at ${gstackResult.codex.skillsRoot}`)
               break
+            case 'gstack-codex-already-configured':
+              console.log(
+                `  gstack (codex): already configured at ${gstackResult.codex.skillsRoot}`,
+              )
+              break
             case 'gstack-codex-skipped':
               console.log(`  gstack (codex): - skipped (${gstackResult.codex.reason})`)
               break
@@ -932,6 +990,32 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
               break
             case 'gstack-codex-updated':
               console.log(`  gstack (codex): ✓ updated at ${gstackResult.codex.skillsRoot}`)
+              break
+            case 'gstack-codex-already-configured':
+              console.log(
+                `  gstack (codex): already configured at ${gstackResult.codex.skillsRoot}`,
+              )
+              break
+            case 'gstack-codex-skipped':
+              console.log(`  gstack (codex): - skipped (${gstackResult.codex.reason})`)
+              break
+          }
+          break
+        case 'gstack-already-configured':
+          console.log(
+            `  gstack: already configured at ${gstackResult.root} (set WP_GSTACK_REFRESH=1 to refresh)`,
+          )
+          switch (gstackResult.codex.kind) {
+            case 'gstack-codex-installed':
+              console.log(`  gstack (codex): ✓ installed at ${gstackResult.codex.skillsRoot}`)
+              break
+            case 'gstack-codex-updated':
+              console.log(`  gstack (codex): ✓ updated at ${gstackResult.codex.skillsRoot}`)
+              break
+            case 'gstack-codex-already-configured':
+              console.log(
+                `  gstack (codex): already configured at ${gstackResult.codex.skillsRoot}`,
+              )
               break
             case 'gstack-codex-skipped':
               console.log(`  gstack (codex): - skipped (${gstackResult.codex.reason})`)
@@ -1238,8 +1322,8 @@ export function registerInitCommand(cli: CAC, commandName: InitCommandName = 'in
     .option('--strict', 'Abort if any compatibility check fails (default: warn and continue)')
     .option('--project', 'Configure OMX/OMC in project scope instead of the default user scope')
     .option(
-      '--allow-self-scaffold',
-      "Override the self-repo guard to scaffold @webpresso/agent-kit's own template-source repo (maintainers only)",
+      '--source-maintenance',
+      "Override the self-repo guard for @webpresso/agent-kit's own setup-surface maintenance (maintainers only)",
     )
     .action(async (flags: InitFlags) => {
       const code = await runInit(flags)
