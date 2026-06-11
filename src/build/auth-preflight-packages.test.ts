@@ -82,19 +82,18 @@ describe('release workflow publish path', () => {
     expect(workflow).toContain('publish: pnpm run release:publish')
   })
 
-  it('uses the changesets published output as the post-publish gate instead of a registry probe', () => {
+  it('uses the explicit publish-result handoff for release finalization instead of brittle action outputs', () => {
     const workflow = readWorkflow(join(repositoryRoot, '.github', 'workflows', 'release.yml'))
     const changesetsActionIndex = workflow.indexOf('uses: changesets/action@')
     const afterChangesetsAction = workflow.slice(changesetsActionIndex)
 
-    expect(afterChangesetsAction).toContain("steps.changesets.outputs.published == 'true'")
+    expect(workflow).toContain('RELEASE_PUBLISH_RESULT_FILE')
+    expect(afterChangesetsAction).toContain('id: publish_result')
+    expect(afterChangesetsAction).toContain("steps.publish_result.outputs.should_finalize == 'true'")
     expect(afterChangesetsAction).not.toContain("steps.publish_probe.outputs.published == 'true'")
     expect(afterChangesetsAction).toContain('id: registry_visibility')
-    expect(afterChangesetsAction).toContain(
-      'Publish output reported success, but npm registry visibility probe did not converge',
-    )
-    expect(afterChangesetsAction).toContain('if: ${{ always()')
     expect(afterChangesetsAction).toContain('Assert release finalization contract')
+    expect(afterChangesetsAction).toContain('gh release view "$tag" --json url,assets')
   })
 
   it('builds every native runtime target and attaches them to a GitHub Release in the publish path', () => {
@@ -114,7 +113,6 @@ describe('release workflow publish path', () => {
     // A GitHub Release is created/updated with the compiled binaries attached.
     expect(afterChangesetsAction).toContain('gh release create')
     expect(afterChangesetsAction).toContain('gh release upload')
-    expect(afterChangesetsAction).toContain('gh release view "$tag" --json url,assets')
     expect(afterChangesetsAction).toContain("echo \"asset_count=$asset_count\" >> \"$GITHUB_OUTPUT\"")
     expect(afterChangesetsAction).toContain('"$assets"/*')
   })

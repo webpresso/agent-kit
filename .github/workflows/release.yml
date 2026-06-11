@@ -89,6 +89,11 @@ jobs:
           npm pack --dry-run --json > "$RUNNER_TEMP/npm-pack-dry-run.json"
           node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/npm-pack-dry-run.json','utf8')); const pack=Array.isArray(data)?data[0]:data; console.log(JSON.stringify({filename:pack.filename, unpackedSize:pack.unpackedSize, files:pack.files?.length}, null, 2));"
 
+      - name: Reset publish result handoff
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != true }}
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/release-publish-result.json"
+
       - name: Create Release Pull Request or Publish
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != true }}
         id: changesets
@@ -102,15 +107,52 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HUSKY: '0'
+          RELEASE_PUBLISH_RESULT_FILE: ${{ runner.temp }}/release-publish-result.json
+
+      - name: Read explicit publish result
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run != true }}
+        id: publish_result
+        shell: bash
+        env:
+          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message || '' }}
+        run: |
+          set -euo pipefail
+          result_file="$RUNNER_TEMP/release-publish-result.json"
+          if [ ! -f "$result_file" ]; then
+            {
+              echo "published=false"
+              echo "publish_state=missing"
+              echo "should_finalize=false"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          package_name=$(node -e "const data = require(process.argv[1]); process.stdout.write(data.packageName)" "$result_file")
+          version=$(node -e "const data = require(process.argv[1]); process.stdout.write(data.version)" "$result_file")
+          publish_state=$(node -e "const data = require(process.argv[1]); process.stdout.write(data.publishState)" "$result_file")
+          should_finalize=false
+          if [ "$publish_state" = "published" ]; then
+            should_finalize=true
+          elif [ "$publish_state" = "already-published" ] && [[ "$HEAD_COMMIT_MESSAGE" == Version\ Packages* ]]; then
+            should_finalize=true
+          fi
+
+          {
+            echo "published=true"
+            echo "package_name=$package_name"
+            echo "version=$version"
+            echo "publish_state=$publish_state"
+            echo "should_finalize=$should_finalize"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Probe published package version for artifact follow-up
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.changesets.outputs.published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' }}
         id: registry_visibility
         shell: bash
         run: |
           set -euo pipefail
-          package_name=$(node -p "require('./package.json').name")
-          version=$(node -p "require('./package.json').version")
+          package_name='${{ steps.publish_result.outputs.package_name }}'
+          version='${{ steps.publish_result.outputs.version }}'
           visible=false
           for delay in 0 5 15 30 60; do
             if [ "$delay" -gt 0 ]; then
@@ -123,11 +165,11 @@ jobs:
           done
           echo "visible=$visible" >> "$GITHUB_OUTPUT"
           if [ "$visible" != 'true' ]; then
-            echo "::warning::Publish output reported success, but npm registry visibility probe did not converge for ${package_name}@${version}."
+            echo "::warning::Custom publish reported success, but npm registry visibility did not converge for ${package_name}@${version}."
           fi
 
       - name: Resolve published version for artifacts
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.changesets.outputs.published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' }}
         id: release_meta
         shell: bash
         run: |
@@ -142,7 +184,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Create mainline release tag when missing
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.changesets.outputs.published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' }}
         id: release_tag
         shell: bash
         run: |
@@ -167,7 +209,7 @@ jobs:
           fi
 
       - name: Verify tag points at the published mainline commit
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.changesets.outputs.published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' }}
         id: verify_release_tag
         shell: bash
         run: |
@@ -180,7 +222,7 @@ jobs:
           fi
 
       - name: Create marketplace compatibility branch
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.changesets.outputs.published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' }}
         id: compatibility_branch
         shell: bash
         run: |
@@ -190,10 +232,7 @@ jobs:
           base_commit=$(git rev-parse "${{ steps.release_meta.outputs.tag }}^{commit}")
 
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
-            {
-              echo "status=existing"
-              echo "reason=branch-already-exists"
-            } >> "$GITHUB_OUTPUT"
+            echo "status=existing" >> "$GITHUB_OUTPUT"
             echo "Compatibility branch $branch already exists; skipping creation."
             exit 0
           fi
@@ -202,23 +241,17 @@ jobs:
           git switch -C "$branch" "$base_commit"
           git add -f dist/esm/
           if git diff --staged --quiet; then
-            {
-              echo "status=skipped-no-dist"
-              echo "reason=no-dist-changes"
-            } >> "$GITHUB_OUTPUT"
+            echo "status=skipped-no-dist" >> "$GITHUB_OUTPUT"
             echo "No dist changes to commit for $branch; skipping branch creation."
             exit 0
           fi
 
           HUSKY=0 git commit -m "chore: release v${version} [dist]"
           git push origin "HEAD:refs/heads/${branch}"
-          {
-            echo "status=created"
-            echo "reason=branch-created"
-          } >> "$GITHUB_OUTPUT"
+          echo "status=created" >> "$GITHUB_OUTPUT"
 
       - name: Build native runtime binaries for the GitHub Release
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.changesets.outputs.published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' }}
         id: build_release_assets
         shell: bash
         run: |
@@ -244,7 +277,7 @@ jobs:
           ls -l "$assets"
 
       - name: Publish GitHub Release with native runtime binaries
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.changesets.outputs.published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' }}
         id: publish_github_release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -266,7 +299,7 @@ jobs:
           fi
 
       - name: Verify GitHub Release assets
-        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.changesets.outputs.published == 'true' }}
+        if: ${{ (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' }}
         id: verify_github_release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -284,7 +317,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Assert release finalization contract
-        if: ${{ always() && (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.changesets.outputs.published == 'true' }}
+        if: ${{ always() && (github.event_name != 'workflow_dispatch' || inputs.dry-run != true) && steps.publish_result.outputs.should_finalize == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -317,18 +350,15 @@ jobs:
               ;;
           esac
 
-          built_assets='${{ steps.build_release_assets.outputs.asset_count }}'
-          release_assets='${{ steps.verify_github_release.outputs.asset_count }}'
-          release_url='${{ steps.verify_github_release.outputs.release_url }}'
-          if [ "$built_assets" != '5' ]; then
-            echo "::error::Expected 5 built release assets, got '${built_assets:-missing}'." >&2
+          if [ '${{ steps.build_release_assets.outputs.asset_count }}' != '5' ]; then
+            echo "::error::Expected 5 built release assets." >&2
             failures=1
           fi
-          if [ "$release_assets" != '5' ]; then
-            echo "::error::Expected 5 uploaded release assets, got '${release_assets:-missing}'." >&2
+          if [ '${{ steps.verify_github_release.outputs.asset_count }}' != '5' ]; then
+            echo "::error::Expected 5 uploaded release assets." >&2
             failures=1
           fi
-          if [ -z "$release_url" ]; then
+          if [ -z '${{ steps.verify_github_release.outputs.release_url }}' ]; then
             echo "::error::GitHub Release verification did not report a release URL." >&2
             failures=1
           fi
@@ -336,7 +366,6 @@ jobs:
           if [ "$failures" -ne 0 ]; then
             exit 1
           fi
-
 
       - name: Release summary
         if: ${{ always() }}
@@ -347,7 +376,9 @@ jobs:
             echo ""
             echo "- dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run || false }}"
             echo "- hasChangesets: ${{ steps.changesets.outputs.hasChangesets || 'n/a' }}"
-            echo "- published: ${{ steps.changesets.outputs.published || 'false' }}"
+            echo "- published: ${{ steps.publish_result.outputs.published || steps.changesets.outputs.published || 'false' }}"
+            echo "- publish_state: ${{ steps.publish_result.outputs.publish_state || 'missing' }}"
+            echo "- should_finalize: ${{ steps.publish_result.outputs.should_finalize || 'false' }}"
             echo "- publishedPackages: ${{ steps.changesets.outputs.publishedPackages || '[]' }}"
             echo "- registry_visible: ${{ steps.registry_visibility.outputs.visible || 'n/a' }}"
             echo "- version: ${{ steps.release_meta.outputs.version || 'n/a' }}"

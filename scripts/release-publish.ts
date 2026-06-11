@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -16,6 +17,10 @@ const ALREADY_PUBLISHED_PATTERNS = [
   /you cannot publish over the previously published versions/i,
 ]
 
+const RELEASE_PUBLISH_RESULT_FILE_ENV = 'RELEASE_PUBLISH_RESULT_FILE'
+
+type PublishState = 'published' | 'already-published'
+
 function run(command: string, args: string[], cwd = process.cwd()) {
   const result = spawnSync(command, args, {
     cwd,
@@ -30,6 +35,33 @@ function run(command: string, args: string[], cwd = process.cwd()) {
 
 function exitCode(result: ReturnType<typeof run>): number {
   return result.status ?? 1
+}
+
+function writePublishResultFile(state: PublishState) {
+  const resultPath = process.env[RELEASE_PUBLISH_RESULT_FILE_ENV]
+  if (!resultPath) return
+
+  const packageName = process.env.npm_package_name
+  const version = process.env.npm_package_version
+  if (!packageName || !version) {
+    throw new Error(
+      `${RELEASE_PUBLISH_RESULT_FILE_ENV} is set, but npm_package_name/version are unavailable.`,
+    )
+  }
+
+  writeFileSync(
+    resultPath,
+    JSON.stringify(
+      {
+        packageName,
+        version,
+        publishState: state,
+      },
+      null,
+      2,
+    ),
+    'utf8',
+  )
 }
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
@@ -83,6 +115,7 @@ if (shouldPublishRuntimeMatrix(process.env)) {
 
 let publishExitCode = 1
 let rootManifestPrepared = false
+let rootPublishState: PublishState | null = null
 
 try {
   preparePackedManifest(packageRoot)
@@ -101,12 +134,19 @@ try {
     if (ALREADY_PUBLISHED_PATTERNS.some((pattern) => pattern.test(combinedOutput))) {
       process.stdout.write('[release:publish] version already published; treating as success\n')
       publishExitCode = 0
+      rootPublishState = 'already-published'
     }
+  } else {
+    rootPublishState = 'published'
   }
 } finally {
   if (rootManifestPrepared) {
     restorePackedManifest(packageRoot)
   }
+}
+
+if (publishExitCode === 0 && rootPublishState) {
+  writePublishResultFile(rootPublishState)
 }
 
 process.exit(publishExitCode)
