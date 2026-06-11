@@ -14,15 +14,12 @@ Each subdirectory represents a lifecycle state:
 | State | Count | Description |
 | ----- | ----: | ----------- |
 | `draft/` | 0 | early-stage sketches. Expect churn; move to `planned/` once scoped. |
-| `planned/` | 8 | committed-to specs, ready to pick up. |
+| `planned/` | 7 | committed-to specs, ready to pick up. |
 | `in-progress/` | 0 | actively being executed. At most 3 active blueprints per lane. |
 | `completed/` | 55 | execution finished and verified. Kept for reference. |
 | `parked/` | 9 | intentionally paused. Include a reason in the spec's frontmatter. |
 | `archived/` | 2 | superseded or abandoned. Not deleted — the record matters. |
 <!-- END: blueprint-index -->
-
-
-
 
 
 
@@ -53,21 +50,16 @@ Each subdirectory represents a lifecycle state:
 Move files with `git mv` so history follows the spec through its lifecycle.
 
 
-## Active work (2026-06-08)
+## Active work (2026-06-11)
 
 _None currently._
 
-## Recently completed (2026-06-08)
+## Recently completed (2026-06-11)
 
 | Blueprint | Path | Purpose |
 | --------- | ---- | ------- |
 | Codex/Claude shared skill contract and context budget | [`completed/2026-06-08-codex-claude-shared-skill-contract-and-context-budget.md`](./completed/2026-06-08-codex-claude-shared-skill-contract-and-context-budget.md) | Default host-visible skills are now the shared favorites only; non-favorites are opt-in; the generated root `AGENTS.md` stays under the 8 KB budget; and packed-consumer smoke is green. |
 | Hooks orchestrator contract series | [`completed/2026-06-08-hooks-orchestrator-contract-series.md`](./completed/2026-06-08-hooks-orchestrator-contract-series.md) | The imported Claude hooks plan is fully closed with restore/disable/status/demo/fix surfaces verified and lifecycle truth recorded in a repo blueprint. |
+| Reusable Cloudflare deploy workflow lineage alignment | [`completed/2026-06-09-reusable-cloudflare-deploy-workflow-lineage-alignment.md`](./completed/2026-06-09-reusable-cloudflare-deploy-workflow-lineage-alignment.md) | Restored the shared preview/production reusable workflow shell, named the authoritative consumer lineage in an ADR, and aligned the docs/tests with the workflow contract consumers actually use. |
 | Agent-kit single global native binary + MCP `-32000` fix | [`completed/2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md`](./completed/2026-06-01-agent-kit-global-distribution-mcp-runtime-fix.md) | Root package plus all five runtime packages are published at `0.29.3`; native launcher, MCP liveness, and `wp_*` tool routing are restored. |
 | Agent-kit thin-root package-surface release unblock | [`completed/2026-06-06-agent-kit-thin-root-package-surface-release-unblock.md`](./completed/2026-06-06-agent-kit-thin-root-package-surface-release-unblock.md) | Thin-root tarball policy is shipped; staged public-readiness passes and hosted publish no longer hits the old root tarball failure. |
-
-## Planned next-up (2026-06-09)
-
-| Blueprint | Path | Purpose |
-| --------- | ---- | ------- |
-| Reusable Cloudflare deploy workflows | [`planned/2026-06-09-reusable-cloudflare-deploy-workflows.md`](./planned/2026-06-09-reusable-cloudflare-deploy-workflows.md) | Shared reusable preview/production workflow shell in `agent-kit`, with downstream adoption in `ozby-dev`, `edge-matte`, and `ingest-lens` while keeping provider-specific deploy logic repo-local. |
