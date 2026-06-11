@@ -14,6 +14,10 @@ const DEFAULT_TEST_TOTAL_BUDGET_MS = 90_000
 const WORKSPACE_SHARD_MIN_FILES = 6
 const WORKSPACE_TARGET_FILES_PER_SHARD = 5
 const WORKSPACE_MAX_SHARDS = 8
+// Integration/e2e tests are small in bytes but expensive at runtime; use a
+// fixed high weight so the greedy balancer distributes them evenly.
+const INTEGRATION_E2E_SHARD_WEIGHT = 200_000
+const INTEGRATION_E2E_FILE_PATTERN = /\.(integration|e2e)\.test\.[jt]sx?$/
 const VITEST_DEFAULT_INCLUDE = '**/*.{test,spec}.?(c|m)[jt]s?(x)'
 const VITEST_DEFAULT_IGNORE = [
   '**/node_modules/**',
@@ -410,6 +414,9 @@ function buildBalancedShards(
 }
 
 function estimateFileWeight(cwd: string, file: string): number {
+  if (INTEGRATION_E2E_FILE_PATTERN.test(file)) {
+    return INTEGRATION_E2E_SHARD_WEIGHT
+  }
   try {
     return Math.max(1, statSync(join(cwd, file)).size)
   } catch {
