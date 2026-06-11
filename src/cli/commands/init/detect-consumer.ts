@@ -312,6 +312,16 @@ export function isAgentKitTemplateSourceRepo(packageName: string | undefined): b
   return packageName === AGENT_KIT_PACKAGE_NAME
 }
 
+export function setupCommandForRepo(
+  repoRoot: string,
+  options: { readonly restoreHooks?: boolean } = {},
+): string {
+  const packageName = readPackageJson(repoRoot).info?.name
+  const restoreHooks = options.restoreHooks === true ? ' --restore-hooks' : ''
+  const sourceMaintenance = isAgentKitTemplateSourceRepo(packageName) ? ' --source-maintenance' : ''
+  return `wp setup${restoreHooks}${sourceMaintenance}`
+}
+
 export function detectConsumer(startDir: string = process.cwd()): ConsumerContext | null {
   const repoRoot = findGitRoot(startDir)
   if (!repoRoot) return null

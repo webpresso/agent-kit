@@ -76,6 +76,18 @@ describe('upgradeHooksForRepo', () => {
     expect(report.warnings[0]).toContain('run `wp setup`')
   })
 
+  it('reports source-maintenance setup guidance for the agent-kit source repo when the manifest is missing', async () => {
+    const repoRoot = makeRepo('hooks-upgrade-self-repo')
+    writeFileSync(
+      path.join(repoRoot, 'package.json'),
+      JSON.stringify({ name: '@webpresso/agent-kit' }, null, 2),
+    )
+
+    const report = await upgradeHooksForRepo(repoRoot, { apply: false, trustCodexHooks: false })
+    expect(report.beforeSummary).toBe('manifest-missing')
+    expect(report.warnings[0]).toContain('wp setup --source-maintenance')
+  })
+
   it('keeps disabled vendors disabled in the projected summary', async () => {
     const repoRoot = makeRepo('hooks-upgrade-disabled')
     writeInstalledHooks(repoRoot)

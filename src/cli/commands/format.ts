@@ -1,6 +1,7 @@
 import type { CAC } from 'cac'
 
-import { runFormat } from '#format/index'
+import { getManagedRunner } from '#tool-runtime'
+import { emitCliCommandOutput, runCliCommandSequence } from './quality-runner.js'
 
 export const FORMAT_COMMAND_HELP = [
   'Format the workspace via the portable wp surface. Writes in place by default.',
@@ -14,6 +15,7 @@ export function registerFormatCommand(cli: CAC): void {
   cli
     .command('format [...files]', FORMAT_COMMAND_HELP)
     .option('--check', 'Check formatting without writing changes; exit 1 on drift')
+    .option('--full', 'Print the full raw output instead of the default summary-first view')
     .action(async (files: string[] | undefined, flags: Record<string, unknown>) => {
       const result = await runFormatSafely({
         files: files && files.length > 0 ? files : undefined,
@@ -28,31 +30,58 @@ export function registerFormatCommand(cli: CAC): void {
         return 1
       }
 
-      const formatResult = result.value
-      if (formatResult.spawnError) {
-        console.error(formatResult.spawnError)
-        return formatResult.exitCode || 1
-      }
-
-      if (formatResult.output) {
-        process.stderr.write(formatResult.output)
-      }
-
-      const verb = formatResult.passed ? 'passed' : 'failed'
-      const mode = flags.check ? 'check' : 'write'
-      console.error(`format ${verb} (${mode})`)
-      return formatResult.exitCode
+      emitCliCommandOutput({
+        entry: result.value.entry,
+        summary: result.value.entry.summary ?? '',
+        passed: result.value.exitCode === 0,
+        full: Boolean(flags.full),
+        toolName: 'wp_format',
+      })
+      return result.value.exitCode
     })
 }
 
 type SafeResult<T> = { ok: true; value: T } | { ok: false; message: string }
 
-async function runFormatSafely(
-  options: Parameters<typeof runFormat>[0],
-): Promise<SafeResult<Awaited<ReturnType<typeof runFormat>>>> {
+async function runFormatSafely(options: {
+  readonly files?: readonly string[]
+  readonly check?: boolean
+  readonly cwd?: string
+}): Promise<SafeResult<{ exitCode: number; entry: import('./quality-log-store.js').CliLogEntry }>> {
   try {
-    return { ok: true, value: await runFormat(options) }
+    const command = buildFormatCommand(options)
+    const result = await runCliCommandSequence({
+      commandName: 'format',
+      commands: [command],
+      cwd: options.cwd,
+      metadataOptions: {
+        check: Boolean(options.check),
+        files: options.files,
+      },
+      summary: ({ exitCode, timedOut, aborted }) => {
+        if (timedOut) return 'format timed out'
+        if (aborted) return 'format aborted'
+        if (exitCode === 0) return options.check ? 'format check passed' : 'format applied'
+        return options.check
+          ? `format check failed (exit ${exitCode}) — run \`wp format\` to apply fixes`
+          : `format failed (exit ${exitCode})`
+      },
+    })
+    return { ok: true, value: { exitCode: result.exitCode, entry: result.entry } }
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : String(error) }
+  }
+}
+
+function buildFormatCommand(options: {
+  readonly files?: readonly string[]
+  readonly check?: boolean
+}): { command: string; args: readonly string[] } {
+  const args: string[] = [options.check ? '--check' : '--write', '--ignore-path', '.gitignore']
+  if (options.files && options.files.length > 0) args.push(...options.files)
+  const resolution = getManagedRunner('oxfmt', { outputPolicy: 'structured' })
+  return {
+    command: resolution.command,
+    args: [...resolution.args, ...args],
   }
 }

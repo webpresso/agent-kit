@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+env:
+  # Opt the workflow's JavaScript actions into Node.js 24 ahead of the
+  # 2026-06-02 GitHub default switch (replaces the deprecation warning
+  # surfaced by actions/checkout@v4, actions/setup-node@v4, and
+  # pnpm/action-setup@v4 internally running on Node 20).
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - uses: ./.github/actions/setup-webpresso
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run verify:secrets
+      - run: pnpm run audit:secret-provider-quarantine
+      - name: Run wp audit guardrails
+        run: |
+          WP="$(pwd)/node_modules/.bin/wp"
+          [ -x "$WP" ] || WP=wp
+          "$WP" audit guardrails
+      - run: pnpm run typecheck
+      - run: pnpm run lint
+      - run: pnpm run test
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - uses: ./.github/actions/setup-webpresso
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run e2e
+
+  architecture-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - uses: ./.github/actions/setup-webpresso
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: pnpm install --frozen-lockfile
+      - name: Check architecture drift contract
+        run: |
+          WP="$(pwd)/node_modules/.bin/wp"
+          [ -x "$WP" ] || WP=wp
+          "$WP" audit architecture-drift --root .
+
+  deploy-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - uses: ./.github/actions/setup-webpresso
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: pnpm install --frozen-lockfile
+      - name: Verify deploy-contract gate when production release metadata is present
+        run: |
+          set -euo pipefail
+
+          METADATA_PATH='infra/release-metadata.production.json'
+
+          if [ ! -f "$METADATA_PATH" ]; then
+            echo "No production release metadata present at $METADATA_PATH; skipping deploy-contract gate."
+            exit 0
+          fi
+
+          if ! node -e "const pkg=require('./package.json'); process.exit(pkg.scripts && pkg.scripts['verify:deploy-contract'] ? 0 : 1)"; then
+            echo "::error::Detected $METADATA_PATH but no verify:deploy-contract script."
+            echo "::error::Repos adopting the shared deploy contract must keep agent-kit provider-neutral and supply a repo-owned deploy verifier."
+            echo "::error::That verifier owns provider-specific env-name derivation, Preview-URL prohibitions for DO previews, and must fail closed for migration-bearing Durable Object releases."
+            exit 1
+          fi
+
+          pnpm run verify:deploy-contract

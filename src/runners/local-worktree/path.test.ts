@@ -15,8 +15,8 @@ describe('generateWorktreePath', () => {
     expect(result).toContain(taskId)
   })
 
-  it('places the worktree under a .wp-worktrees subdirectory of baseDir', () => {
+  it('places the worktree under the sibling generated worktree root', () => {
     const result = generateWorktreePath('/repo', 'task-x')
-    expect(result.startsWith('/repo/.wp-worktrees/')).toBe(true)
+    expect(result.startsWith('/repo_worktrees/task-x-')).toBe(true)
   })
 })

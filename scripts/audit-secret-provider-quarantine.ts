@@ -15,6 +15,7 @@ const IGNORED_DIRS = new Set([
   'blueprints',
   'dist',
   'coverage',
+  '_worktrees',
 ])
 
 const TEXT_FILE_PATTERN = /\.(md|ts|tsx|js|json|ya?ml|toml|txt)$/i

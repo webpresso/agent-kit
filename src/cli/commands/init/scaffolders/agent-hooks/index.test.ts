@@ -1564,6 +1564,85 @@ hooks:
     ).toContain('exec ')
   })
 
+  it('rewrites Codex Stop OMX hooks to the JSON-only managed launcher', async () => {
+    const codexPath = join(repoRoot, '.codex', 'hooks.json')
+    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
+    writeFileSync(
+      codexPath,
+      JSON.stringify(
+        {
+          hooks: {
+            Stop: [
+              {
+                hooks: [{ type: 'command', command: 'node /opt/omx/codex-native-hook.js' }],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+
+    await scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const codex = JSON.parse(readFileSync(codexPath, 'utf8')) as {
+      hooks: { Stop: Array<{ hooks: Array<{ command: string }> }> }
+    }
+    const stopCommands = codex.hooks.Stop.flatMap((g) => g.hooks.map((h) => h.command))
+    expect(stopCommands.some((c) => c.includes('codex-native-hook'))).toBe(false)
+    expect(
+      stopCommands.some((c) => c.includes('.codex/managed-hooks/wp-global-codex-omx-json-hook.sh')),
+    ).toBe(true)
+    expect(
+      readFileSync(
+        join(repoRoot, '.codex', 'managed-hooks', 'wp-global-codex-omx-json-hook.sh'),
+        'utf8',
+      ),
+    ).toContain(`printf '%s\\n' '{}'`)
+  })
+
+  it('rewrites live-style Codex Stop OMX hooks with OMX_ROOT and absolute node paths', async () => {
+    const codexPath = join(repoRoot, '.codex', 'hooks.json')
+    mkdirSync(join(repoRoot, '.codex'), { recursive: true })
+    writeFileSync(
+      codexPath,
+      JSON.stringify(
+        {
+          hooks: {
+            Stop: [
+              {
+                hooks: [
+                  {
+                    type: 'command',
+                    command: `OMX_ROOT="${repoRoot}" "${process.execPath}" "/Users/test/.vite-plus/packages/oh-my-codex/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js"`,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        null,
+        2,
+      ),
+    )
+
+    await scaffoldAgentHooks({ repoRoot, options: {} })
+
+    const codex = JSON.parse(readFileSync(codexPath, 'utf8')) as {
+      hooks: { Stop: Array<{ hooks: Array<{ command: string }> }> }
+    }
+    const stopCommands = codex.hooks.Stop.flatMap((group) =>
+      group.hooks.map((hook) => hook.command),
+    )
+    expect(stopCommands.some((command) => command.includes('codex-native-hook'))).toBe(false)
+    expect(
+      stopCommands.some((command) =>
+        command.includes('.codex/managed-hooks/wp-global-codex-omx-json-hook.sh'),
+      ),
+    ).toBe(true)
+  })
+
   it('writes Codex hook commands as managed local launchers', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {} })
 

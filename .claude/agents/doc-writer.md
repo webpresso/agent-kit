@@ -1,1 +1,0 @@
-../../catalog/agent/agents/doc-writer.md

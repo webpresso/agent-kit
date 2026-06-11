@@ -82,6 +82,7 @@ tmp/
 .omc/
 .codex/
 .opencode/
+_worktrees/
 # .claude/ is partially tracked:
 #   settings.json, hooks/, rules/ — committed so worktrees inherit them
 #   worktrees/ and skills/ — gitignored (runtime / user-global)
@@ -181,6 +182,7 @@ agent-rules/ts-coding-conventions.md
 .omc/
 .opencode/
 .codex/
+_worktrees/
 .claude/rules/
 .claude/skills/
 .claude/worktrees/
@@ -272,11 +274,12 @@ agent-rules/ts-coding-conventions.md
 .omc/
 .opencode/
 .codex/
+_worktrees/
 .claude/settings.json
+.claude/settings.local.json
 .claude/agents/
 .claude/hooks/
 .claude/rules/
-.claude/settings.local.json
 .claude/skills/
 .claude/worktrees/
 .claude/scheduled_tasks.lock
@@ -290,7 +293,6 @@ agent-rules/ts-coding-conventions.md
 .agent/.merged.provenance.json
 .agent/.compile-manifest.json
 .agent/.rotation-log.jsonl
-.agent/.blueprints.db
 .agent/.blueprints.lock
 .agent/.blueprints.snapshot.sql
 .agent/.tail-hint-history.jsonl

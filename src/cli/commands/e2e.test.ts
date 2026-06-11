@@ -1,7 +1,27 @@
 import { describe, expect, it } from 'vitest'
 
 import { installManagedRunnerHermeticHooks } from '#test-helpers/managed-runner'
-import { createAkE2eCommandConfig, E2E_COMMAND_HELP, plannedGroupsToCommandConfigs } from './e2e.js'
+import {
+  createAkE2eCommandConfig,
+  E2E_COMMAND_HELP,
+  plannedGroupsToCommandConfigs,
+  registerE2eCommand,
+} from './e2e.js'
+
+function buildFakeCli() {
+  const options: string[] = []
+  const chain = {
+    option: (name: string) => {
+      options.push(name)
+      return chain
+    },
+    action: (_fn: unknown) => chain,
+  }
+  return {
+    command: () => chain,
+    getOptions: () => options,
+  }
+}
 
 installManagedRunnerHermeticHooks()
 
@@ -76,5 +96,11 @@ describe('wp e2e command helpers', () => {
         },
       }),
     ])
+  })
+
+  it('exposes the summary-first --full escape hatch', () => {
+    const cli = buildFakeCli()
+    registerE2eCommand(cli as never)
+    expect(cli.getOptions()).toContain('--full')
   })
 })

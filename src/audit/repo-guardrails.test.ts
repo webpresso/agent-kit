@@ -934,6 +934,28 @@ describe('auditCatalogDrift — branch coverage', () => {
     expect(result.ok).toBe(true)
     expect(result.checked).toBe(1)
   })
+
+  test('does not double-count one workspace when a dependency appears in multiple sections', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'apps', 'one'), { recursive: true })
+    writeFileSync(join(root, 'pnpm-workspace.yaml'), 'packages:\n  - .\n  - apps/*\n')
+    writeJson(join(root, 'package.json'), {
+      name: '@repo/root',
+      dependencies: { vitest: '^4.1.7' },
+      devDependencies: { vitest: 'latest' },
+      optionalDependencies: { vitest: '^4.1.7' },
+    })
+    writeJson(join(root, 'apps', 'one', 'package.json'), {
+      name: '@repo/one',
+      devDependencies: { '@webpresso/agent-kit': 'latest' },
+    })
+
+    const result = auditCatalogDrift(root)
+
+    expect(result.ok).toBe(true)
+    expect(result.checked).toBe(2)
+    expect(result.violations).toHaveLength(0)
+  })
 })
 
 describe('auditDocsFrontmatter — branch coverage', () => {

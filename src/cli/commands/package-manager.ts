@@ -201,10 +201,7 @@ function defaultGstackRoot(): string {
   return path.join(process.env.HOME || homedir(), '.claude', 'skills', 'gstack')
 }
 
-function resolveNearestPackageRoot(
-  startCwd: string,
-  exists: typeof existsSync,
-): string | null {
+function resolveNearestPackageRoot(startCwd: string, exists: typeof existsSync): string | null {
   let current = path.resolve(startCwd)
 
   while (true) {

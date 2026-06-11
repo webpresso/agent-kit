@@ -21,6 +21,7 @@ import {
   diffHooksManifest,
   readHooksManifest,
 } from '#cli/commands/init/scaffolders/agent-hooks/manifest.js'
+import { setupCommandForRepo } from '#cli/commands/init/detect-consumer.js'
 import {
   findAgentKitPackageRoot,
   resolveAgentKitPackageRoot,
@@ -1127,11 +1128,12 @@ function readInstalledCodexHooks(cwd: string): HooksMap {
 export function checkHooksManifest(cwd = process.cwd()): DoctorCheck {
   const manifest = readHooksManifest(cwd)
   if (manifest === null) {
+    const setupCommand = setupCommandForRepo(cwd)
     return {
       name: 'hooks manifest',
       ok: true,
       advisory: true,
-      detail: 'no .webpresso/hooks-manifest.json — run `wp setup` to generate it',
+      detail: `no .webpresso/hooks-manifest.json — run \`${setupCommand}\` to generate it`,
     }
   }
 
@@ -1153,12 +1155,13 @@ export function checkHooksManifest(cwd = process.cwd()): DoctorCheck {
 
   const parts: string[] = []
   if (missing.length > 0) {
+    const restoreCommand = setupCommandForRepo(cwd, { restoreHooks: true })
     const preview = missing
       .slice(0, 2)
       .map((d) => `${d.vendor}/${d.event}`)
       .join(', ')
     parts.push(
-      `${missing.length} missing (${preview}${missing.length > 2 ? ', …' : ''}) — run \`wp setup --restore-hooks\``,
+      `${missing.length} missing (${preview}${missing.length > 2 ? ', …' : ''}) — run \`${restoreCommand}\``,
     )
   }
   if (unknown.length > 0) {
@@ -1201,12 +1204,13 @@ export function buildHooksDoctorFixPlan(cwd = process.cwd()): HookFixResult {
   const preservedFiles = existingHookConfigPaths(cwd)
 
   if (manifest === null) {
+    const setupCommand = setupCommandForRepo(cwd)
     return {
       status: 'requires-approval',
       detail:
         'no hooks manifest exists; doctor will not run full `wp setup` automatically because that can rewrite broader repo-managed surfaces',
       preservedFiles,
-      nextCommand: 'wp setup',
+      nextCommand: setupCommand,
     }
   }
 
@@ -1239,7 +1243,7 @@ export function buildHooksDoctorFixPlan(cwd = process.cwd()): HookFixResult {
     detail:
       'managed hooks are missing but the manifest is present and there are no unknown installed hooks; safe restore path is ready',
     preservedFiles,
-    nextCommand: 'wp setup --restore-hooks',
+    nextCommand: setupCommandForRepo(cwd, { restoreHooks: true }),
   }
 }
 

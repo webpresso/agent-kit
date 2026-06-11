@@ -150,6 +150,22 @@ describe('auditToolchainIsolation', () => {
     expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
   })
 
+  it('skips generated sibling _worktrees scratch during the package walk', () => {
+    writePackage(root, {
+      scripts: { lint: 'wp lint' },
+      devDependencies: { '@webpresso/agent-kit': 'latest' },
+    })
+    mkdirSync(join(root, '_worktrees', 'agent-x', 'packages', 'foo'), {
+      recursive: true,
+    })
+    writePackage(join(root, '_worktrees', 'agent-x', 'packages', 'foo'), {
+      scripts: { build: 'vite build' },
+      devDependencies: { vite: '^8.0.0' },
+    })
+
+    expect(auditToolchainIsolation(root)).toMatchObject({ ok: true, checked: 1 })
+  })
+
   it('honors .webpressorc.json audit.toolchainIsolation.allowDependencies while still flagging unlisted tool deps', () => {
     writeFileSync(
       join(root, '.webpressorc.json'),

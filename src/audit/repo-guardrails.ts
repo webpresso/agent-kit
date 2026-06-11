@@ -154,7 +154,8 @@ export function auditCatalogDrift(
   for (const [dependencyName, uses] of [...dependencyUses.entries()].toSorted(([left], [right]) =>
     left.localeCompare(right),
   )) {
-    if (uses.length < 2) continue
+    const uniquePackageFiles = new Set(uses.map((use) => use.packageFile))
+    if (uniquePackageFiles.size < 2) continue
 
     for (const use of uses) {
       if (isSharedDependencyReference(use.version)) continue
@@ -164,7 +165,7 @@ export function auditCatalogDrift(
         : 'promote it to the pnpm catalog or use workspace:'
       violations.push({
         file: relativePath(root, use.packageFile),
-        message: `${dependencyName} is used in ${uses.length} workspaces but declares ${JSON.stringify(use.version)}; ${catalogHint}`,
+        message: `${dependencyName} is used in ${uniquePackageFiles.size} workspaces but declares ${JSON.stringify(use.version)}; ${catalogHint}`,
       })
     }
   }

@@ -4,7 +4,22 @@ import path from 'node:path'
 
 import { afterEach, describe, expect, test } from 'vitest'
 
-import { resolveGuardrailAuditKinds } from './audit.js'
+import { registerAuditCommand, resolveGuardrailAuditKinds } from './audit.js'
+
+function buildFakeCli() {
+  const options: string[] = []
+  const chain = {
+    option: (name: string) => {
+      options.push(name)
+      return chain
+    },
+    action: (_fn: unknown) => chain,
+  }
+  return {
+    command: () => chain,
+    getOptions: () => options,
+  }
+}
 
 const tempDirs: string[] = []
 
@@ -45,5 +60,11 @@ describe('resolveGuardrailAuditKinds', () => {
     writeFileSync(helper, 'export {}', 'utf8')
 
     expect(resolveGuardrailAuditKinds(root)).toContain('ai-contracts')
+  })
+
+  test('exposes the summary-first --full escape hatch', () => {
+    const cli = buildFakeCli()
+    registerAuditCommand(cli as never)
+    expect(cli.getOptions()).toContain('--full')
   })
 })

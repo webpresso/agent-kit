@@ -42,6 +42,7 @@ const SUPPORTED_COMMANDS = [
   'typecheck',
   'lint',
   'format',
+  'logs',
   'tech-debt',
   'worktree',
   'mcp',
@@ -84,6 +85,7 @@ const ROOT_HELP = [
   '  format                Format through the portable wp surface (--check for CI/husky)',
   '  e2e                   Build and run E2E commands through the portable webpresso surface',
   '  ci                    Run repository CI helpers through the portable wp surface',
+  '  logs                  Print persisted raw output from recent quality runs',
   '',
   'Advanced:',
   '  roadmap               List or show parent roadmaps directly',
@@ -284,6 +286,11 @@ export async function main(): Promise<number> {
     case 'format': {
       const { registerFormatCommand } = await import('./commands/format.js')
       registerFormatCommand(cli)
+      break
+    }
+    case 'logs': {
+      const { registerLogsCommand } = await import('./commands/logs.js')
+      registerLogsCommand(cli)
       break
     }
     case 'tech-debt': {

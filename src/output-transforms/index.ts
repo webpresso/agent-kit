@@ -59,6 +59,9 @@ export function clearTransformsForTest(): void {
 export function normalizeToolName(toolName: string): string {
   const withoutPrefix = toolName.replace(/^wp_/u, '')
   if (withoutPrefix.startsWith('audit-')) return 'audit'
+  if (withoutPrefix === 'lint' || withoutPrefix.startsWith('lint-')) return 'lint-oxlint'
+  if (withoutPrefix === 'typecheck' || withoutPrefix.startsWith('typecheck-')) return 'typecheck'
+  if (withoutPrefix === 'test' || withoutPrefix.startsWith('test-')) return 'test'
   return withoutPrefix
 }
 

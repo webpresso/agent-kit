@@ -35,7 +35,9 @@ describe('release-publish runtime lane', () => {
   it('writes an explicit publish-result handoff file after successful root publish', () => {
     const source = readFileSync(join(import.meta.dirname, 'release-publish.ts'), 'utf8')
 
-    expect(source).toContain("const RELEASE_PUBLISH_RESULT_FILE_ENV = 'RELEASE_PUBLISH_RESULT_FILE'")
+    expect(source).toContain(
+      "const RELEASE_PUBLISH_RESULT_FILE_ENV = 'RELEASE_PUBLISH_RESULT_FILE'",
+    )
     expect(source).toContain('function writePublishResultFile(state: PublishState)')
     expect(source).toContain('publishState: state')
     expect(source).toContain('writePublishResultFile(rootPublishState)')

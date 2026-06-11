@@ -16,6 +16,7 @@ import {
   normalizeGlobalCodexHooksFile,
   resolveBinaryOnPath,
 } from '#cli/commands/init/scaffolders/agent-hooks/codex-global-normalize.js'
+import { setupCommandForRepo } from '#cli/commands/init/detect-consumer.js'
 import { deriveHookStatus } from '#hooks/status/index.js'
 import { readInstalledHooksMap } from '#hooks/shared/installed-hooks.js'
 import type { MergeOptions, MergeResult } from '#cli/commands/init/merge.js'
@@ -106,12 +107,15 @@ export async function upgradeHooksForRepo(
 ): Promise<HooksUpgradeTargetReport> {
   const manifest = readHooksManifest(repoRoot)
   if (manifest === null) {
+    const setupCommand = setupCommandForRepo(repoRoot)
     return {
       repoRoot,
       mode: 'single',
       apply: options.apply,
       results: [],
-      warnings: ['missing .webpresso/hooks-manifest.json — run `wp setup` before hooks upgrades'],
+      warnings: [
+        `missing .webpresso/hooks-manifest.json — run \`${setupCommand}\` before hooks upgrades`,
+      ],
       beforeSummary: 'manifest-missing',
       projectedSummary: 'manifest-missing',
     }

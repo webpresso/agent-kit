@@ -81,9 +81,7 @@ describe('parseUserAgent', () => {
   })
 
   it('detects bun', () => {
-    expect(parseUserAgent('bun/1.1.0 npm/? node/v22.0.0 darwin arm64')).toStrictEqual(
-      'global-node',
-    )
+    expect(parseUserAgent('bun/1.1.0 npm/? node/v22.0.0 darwin arm64')).toStrictEqual('global-node')
   })
 
   it('detects vp', () => {

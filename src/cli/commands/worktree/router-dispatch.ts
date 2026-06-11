@@ -5,12 +5,13 @@
  */
 import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { basename, dirname, join } from 'node:path'
+import { basename } from 'node:path'
 
 import { scaffoldAgent } from '#cli/commands/init/scaffold-agent'
 import { resolveCatalogDir } from '#cli/commands/init/index'
 import { runUnifiedSync } from '#symlinker/unified-sync'
 import { getProjectRoot } from '#cli/utils'
+import { resolveGeneratedWorktreePath, resolveWorktreeRoot } from '#worktrees/location.js'
 
 export interface WorktreeCommandOptions {
   base?: string
@@ -94,7 +95,7 @@ function defaultRandomSuffix(): string {
 
 function defaultWorktreePath(repoRoot: string, branch: string): string {
   const pathSegment = sanitizeWorktreeSegment(branch)
-  return join(dirname(repoRoot), `${basename(repoRoot)}-${pathSegment}`)
+  return resolveGeneratedWorktreePath(resolveWorktreeRoot(repoRoot), pathSegment)
 }
 
 function collides(

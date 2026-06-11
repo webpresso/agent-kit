@@ -335,7 +335,10 @@ export function ensureContextMode(input: EnsureContextModeInput): EnsureContextM
 
   return {
     codexFeatures: ensureCodexContextModeFeatures(codexConfigPath, input.options),
-    codexMcpServer: ensureCodexContextModeMcp({ configPath: codexConfigPath, options: input.options }),
+    codexMcpServer: ensureCodexContextModeMcp({
+      configPath: codexConfigPath,
+      options: input.options,
+    }),
     codexGlobalHooks: normalizeGlobalCodexHooksFile(
       codexHooksPath,
       { contextModeBinary: binaryPath },
