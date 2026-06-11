@@ -6,7 +6,6 @@ import { RUNTIME_TARGETS } from '#build/runtime-targets.js'
 const repositoryRoot = resolve(import.meta.dirname, '..', '..')
 const authPreflightWorkflowPaths = [
   join(repositoryRoot, '.github', 'workflows', 'ci.agent-kit.yml'),
-  join(repositoryRoot, '.github', 'workflows', 'bundle-smoke.yml'),
 ] as const
 
 function readWorkflow(path: string): string {
