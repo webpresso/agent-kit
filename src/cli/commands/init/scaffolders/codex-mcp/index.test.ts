@@ -5,14 +5,18 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
+  CONTEXT_MODE_MCP_HEADER,
+  CONTEXT_MODE_MCP_SERVER_NAME,
   WEBPRESSO_MCP_HEADER,
   PLAYWRIGHT_MCP_HEADER,
   agentKitMcpBlock,
   ensureClaudePlaywrightMcp,
+  ensureCodexContextModeMcp,
   ensureCodexWebpressoMcp,
   ensureCodexPlaywrightMcp,
   findWebpressoMcpEntry,
   upsertClaudePlaywrightMcpServer,
+  upsertContextModeMcpServer,
   upsertWebpressoMcpServer,
   upsertPlaywrightMcpServer,
 } from './index.js'
@@ -311,6 +315,99 @@ command = "vp"
     expect(withBoth).toContain(WEBPRESSO_MCP_HEADER)
     expect(withBoth.match(/\[mcp_servers\.playwright\]/g)).toHaveLength(1)
     expect(withBoth.match(/\[mcp_servers\.webpresso\]/g)).toHaveLength(1)
+  })
+})
+
+describe('upsertContextModeMcpServer', () => {
+  it('appends the context-mode MCP block to an existing config', () => {
+    const next = upsertContextModeMcpServer('model = "gpt-5.4"\n')
+
+    expect(next).toContain('model = "gpt-5.4"')
+    expect(next).toContain(CONTEXT_MODE_MCP_HEADER)
+    expect(next).toContain(`command = "${CONTEXT_MODE_MCP_SERVER_NAME}"`)
+  })
+
+  it('replaces an existing context-mode block without touching following tables', () => {
+    const next = upsertContextModeMcpServer(
+      `[mcp_servers.context-mode]\ncommand = "old"\n\n[mcp_servers.webpresso]\ncommand = "wp"\n`,
+    )
+
+    expect(next).toContain(`command = "${CONTEXT_MODE_MCP_SERVER_NAME}"`)
+    expect(next).not.toContain('command = "old"')
+    expect(next).toContain('[mcp_servers.webpresso]\ncommand = "wp"')
+    expect(next.match(/\[mcp_servers\.context-mode\]/g)).toHaveLength(1)
+  })
+
+  it('is idempotent — a second upsert leaves the output unchanged', () => {
+    const first = upsertContextModeMcpServer('')
+    const second = upsertContextModeMcpServer(first)
+
+    expect(second).toBe(first)
+  })
+
+  it('coexists with the playwright and webpresso blocks in the same config', () => {
+    const withPlaywright = upsertPlaywrightMcpServer('model = "gpt-5.4"\n')
+    const withWebpresso = upsertWebpressoMcpServer(withPlaywright, '/abs/src/mcp/cli.ts')
+    const withAll = upsertContextModeMcpServer(withWebpresso)
+
+    expect(withAll).toContain(PLAYWRIGHT_MCP_HEADER)
+    expect(withAll).toContain(WEBPRESSO_MCP_HEADER)
+    expect(withAll).toContain(CONTEXT_MODE_MCP_HEADER)
+    expect(withAll.match(/\[mcp_servers\./g)).toHaveLength(3)
+  })
+})
+
+describe('ensureCodexContextModeMcp', () => {
+  let dir: string | null = null
+
+  afterEach(() => {
+    if (dir) rmSync(dir, { recursive: true, force: true })
+    dir = null
+  })
+
+  it('creates config.toml with the context-mode MCP block when file is absent', () => {
+    dir = mkdtempSync(join(tmpdir(), 'wp-codex-ctxmcp-'))
+    const configPath = join(dir, 'config.toml')
+
+    const result = ensureCodexContextModeMcp({ options: {}, configPath })
+
+    expect(result.action).toBe('created')
+    expect(readFileSync(configPath, 'utf8')).toContain(CONTEXT_MODE_MCP_HEADER)
+    expect(readFileSync(configPath, 'utf8')).toContain(`command = "${CONTEXT_MODE_MCP_SERVER_NAME}"`)
+  })
+
+  it('is idempotent when the block is already present', () => {
+    dir = mkdtempSync(join(tmpdir(), 'wp-codex-ctxmcp-'))
+    const configPath = join(dir, 'config.toml')
+    ensureCodexContextModeMcp({ options: {}, configPath })
+
+    const result = ensureCodexContextModeMcp({ options: {}, configPath })
+
+    expect(result.action).toBe('identical')
+  })
+
+  it('does not write in dry-run mode', () => {
+    dir = mkdtempSync(join(tmpdir(), 'wp-codex-ctxmcp-'))
+    const configPath = join(dir, 'config.toml')
+
+    const result = ensureCodexContextModeMcp({ options: { dryRun: true }, configPath })
+
+    expect(result.action).toBe('skipped-dry')
+    expect(existsSync(configPath)).toBe(false)
+  })
+
+  it('appends to an existing config and returns overwritten', () => {
+    dir = mkdtempSync(join(tmpdir(), 'wp-codex-ctxmcp-existing-'))
+    const configPath = join(dir, 'config.toml')
+    ensureCodexPlaywrightMcp({ options: {}, configPath })
+
+    const result = ensureCodexContextModeMcp({ options: {}, configPath })
+
+    expect(result.action).toBe('overwritten')
+    const content = readFileSync(configPath, 'utf8')
+    expect(content).toContain(PLAYWRIGHT_MCP_HEADER)
+    expect(content).toContain(CONTEXT_MODE_MCP_HEADER)
+    expect(content.match(/\[mcp_servers\./g)).toHaveLength(2)
   })
 })
 

@@ -62,20 +62,20 @@ export function assertBuiltBlueprintMigrationSqlAssets(rootDir: string): void {
   const unexpectedFiles = targetSqlFiles.filter((file) => !sourceSqlFiles.includes(file))
   const contentMismatches = sourceSqlFiles.filter((file) => {
     if (!targetSqlFiles.includes(file)) return false
-    return readFileSync(join(sourceDir, file), 'utf8') !== readFileSync(join(targetDir, file), 'utf8')
+    return (
+      readFileSync(join(sourceDir, file), 'utf8') !== readFileSync(join(targetDir, file), 'utf8')
+    )
   })
 
-  if (
-    missingFiles.length === 0 &&
-    unexpectedFiles.length === 0 &&
-    contentMismatches.length === 0
-  ) {
+  if (missingFiles.length === 0 && unexpectedFiles.length === 0 && contentMismatches.length === 0) {
     return
   }
 
   const details = [
     missingFiles.length === 0 ? null : `Missing packaged SQL files: ${missingFiles.join(', ')}`,
-    unexpectedFiles.length === 0 ? null : `Unexpected packaged SQL files: ${unexpectedFiles.join(', ')}`,
+    unexpectedFiles.length === 0
+      ? null
+      : `Unexpected packaged SQL files: ${unexpectedFiles.join(', ')}`,
     contentMismatches.length === 0
       ? null
       : `Packaged SQL contents drifted from source: ${contentMismatches.join(', ')}`,

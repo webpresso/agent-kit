@@ -9,7 +9,7 @@
  *
  * Catches the rare path where `vp install --ignore-scripts` skipped the
  * consumer's `wp-restore-dev-links` postinstall, leaving
- * node_modules/webpresso pointed at the pnpm-store snapshot
+ * node_modules/@webpresso/agent-kit pointed at the pnpm-store snapshot
  * instead of the live source declared in `.webpresso/webpresso-dev-link.json`.
  * Always exits 0; never blocks session start.
  */

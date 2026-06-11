@@ -27,15 +27,18 @@ plan, test, and keep a repo correct.
 
 Requires Node.js 24 or newer. No private registry setup is required.
 
-```bash
-npm install -g @webpresso/agent-kit && wp setup
-```
-
-Prefer not to install globally? Run it one-shot:
+First-time machine? Install Vite+ so `vp` is on PATH first (for example
+`npm install -g vite-plus`).
 
 ```bash
-npm exec --yes --package @webpresso/agent-kit@latest -- wp setup
+vp install -g @webpresso/agent-kit && wp setup
 ```
+
+For repeatable repo setup, pin `@webpresso/agent-kit` in the repo and run the
+repo-local CLI (`vp run setup:agent` or `vp exec wp setup`). `wp setup` resolves its local install from
+`node_modules/@webpresso/agent-kit`. If a repo already pins
+`@webpresso/agent-kit` but setup is launched from a global CLI, setup warns so
+operators rerun through the repo-local binary.
 
 Then run the canonical success check:
 

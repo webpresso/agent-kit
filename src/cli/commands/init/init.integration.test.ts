@@ -135,7 +135,7 @@ function makeTempRepo(): string {
     JSON.stringify({ name: '@acme/ui', version: '0.1.0' }),
   )
   mkdirSync(join(dir, 'node_modules', '@webpresso'), { recursive: true })
-  symlinkSync(PACKAGE_ROOT, join(dir, 'node_modules', 'webpresso'))
+  symlinkSync(PACKAGE_ROOT, join(dir, 'node_modules', '@webpresso', 'agent-kit'))
   return dir
 }
 
@@ -546,7 +546,7 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
   })
 
   it('falls back to the currently executing package when the consumer package is not installed yet', async () => {
-    rmSync(join(repo, 'node_modules', 'webpresso'), { force: true })
+    rmSync(join(repo, 'node_modules', '@webpresso', 'agent-kit'), { force: true })
 
     const code = await runInit({ cwd: repo, yes: true })
 
@@ -882,23 +882,26 @@ describe('warnIfNonLocalCli (DX2)', () => {
 
   it('warns when CLI lives outside <repoRoot>/node_modules/', async () => {
     const { warnIfNonLocalCli } = await import('./detect-consumer.js')
-    // Simulate a global CLI: file:// URL pointing at /opt/homebrew/lib/...
-    warnIfNonLocalCli(repo, 'file:///opt/homebrew/lib/webpresso/dist/cli/cli.js')
+    // Simulate a global CLI with a path that is clearly outside the repo.
+    warnIfNonLocalCli(repo, 'file:///tmp/global/node_modules/@webpresso/agent-kit/dist/cli/cli.js')
 
     expect(
       captured.some(
         (line) =>
           line.includes('warning: wp running from a non-local install') &&
-          line.includes('/opt/homebrew/lib/webpresso/dist/cli/cli.js'),
+          line.includes('/tmp/global/node_modules/@webpresso/agent-kit/dist/cli/cli.js'),
       ),
     ).toBe(true)
   })
 
   it('stays silent when CLI lives under <repoRoot>/node_modules/', async () => {
     const { warnIfNonLocalCli } = await import('./detect-consumer.js')
-    const cliFile = join(repo, 'node_modules', 'webpresso', 'dist', 'cli', 'cli.js')
+    const cliFile = join(repo, 'node_modules', '@webpresso', 'agent-kit', 'dist', 'cli', 'cli.js')
     mkdirSync(dirname(cliFile), { recursive: true })
-    writeFileSync(join(repo, 'node_modules', 'webpresso', 'package.json'), '{}')
+    writeFileSync(
+      join(repo, 'node_modules', '@webpresso', 'agent-kit', 'package.json'),
+      JSON.stringify({ name: '@webpresso/agent-kit' }),
+    )
     writeFileSync(cliFile, '// stub')
 
     warnIfNonLocalCli(repo, `file://${cliFile}`)
@@ -912,9 +915,10 @@ describe('warnIfNonLocalCli (DX2)', () => {
       repo,
       'node_modules',
       '.pnpm',
-      'webpresso@1.2.3',
+      '@webpresso+agent-kit@1.2.3',
       'node_modules',
-      'webpresso',
+      '@webpresso',
+      'agent-kit',
       'dist',
       'cli',
       'cli.js',
@@ -925,12 +929,13 @@ describe('warnIfNonLocalCli (DX2)', () => {
         repo,
         'node_modules',
         '.pnpm',
-        'webpresso@1.2.3',
+        '@webpresso+agent-kit@1.2.3',
         'node_modules',
-        'webpresso',
+        '@webpresso',
+        'agent-kit',
         'package.json',
       ),
-      '{}',
+      JSON.stringify({ name: '@webpresso/agent-kit' }),
     )
     writeFileSync(cliFile, '// stub')
 
@@ -943,13 +948,16 @@ describe('warnIfNonLocalCli (DX2)', () => {
     const { warnIfNonLocalCli } = await import('./detect-consumer.js')
     const linkedRoot = join(
       tmpdir(),
-      `wp-linked-root-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      `ak-linked-root-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     )
-    const localRoot = join(repo, 'node_modules', 'webpresso')
+    const localRoot = join(repo, 'node_modules', '@webpresso', 'agent-kit')
     const cliFile = join(linkedRoot, 'dist', 'cli', 'cli.js')
 
     mkdirSync(dirname(cliFile), { recursive: true })
-    writeFileSync(join(linkedRoot, 'package.json'), '{}')
+    writeFileSync(
+      join(linkedRoot, 'package.json'),
+      JSON.stringify({ name: '@webpresso/agent-kit' }),
+    )
     writeFileSync(cliFile, '// stub')
     mkdirSync(dirname(localRoot), { recursive: true })
     symlinkSync(linkedRoot, localRoot, 'dir')
@@ -974,41 +982,44 @@ describe('warnIfNonLocalCli (DX2)', () => {
       }),
     )
 
-    warnIfNonLocalCli(repo, 'file:///opt/homebrew/lib/webpresso/dist/cli/cli.js')
+    warnIfNonLocalCli(repo, 'file:///tmp/global/node_modules/@webpresso/agent-kit/dist/cli/cli.js')
 
     expect(captured).toEqual([])
   })
 
-  it('warns to use the repo-local CLI when the repo already pins webpresso', async () => {
+  it('warns to use the repo-local CLI when the repo already pins @webpresso/agent-kit', async () => {
     const { warnIfNonLocalCli } = await import('./detect-consumer.js')
     writeFileSync(
       join(repo, 'package.json'),
       JSON.stringify({
         name: '@acme/demo',
         private: true,
-        devDependencies: { webpresso: '^1.2.3' },
+        devDependencies: { '@webpresso/agent-kit': '^1.2.3' },
       }),
     )
 
-    warnIfNonLocalCli(repo, 'file:///opt/homebrew/lib/webpresso/dist/cli/cli.js')
+    warnIfNonLocalCli(repo, 'file:///tmp/global/node_modules/@webpresso/agent-kit/dist/cli/cli.js')
 
     expect(
       captured.some(
         (line) =>
           line.includes('warning: wp running from a non-local install') &&
-          line.includes('This repo already pins `webpresso`') &&
+          line.includes('This repo already pins `@webpresso/agent-kit`') &&
           line.includes('vp run setup:agent') &&
           line.includes('vp exec wp setup'),
       ),
     ).toBe(true)
   })
 
-  it('self-mode short-circuits (consumer IS webpresso)', async () => {
-    writeFileSync(join(repo, 'package.json'), JSON.stringify({ name: 'webpresso', private: true }))
+  it('self-mode short-circuits (consumer IS @webpresso/agent-kit)', async () => {
+    writeFileSync(
+      join(repo, 'package.json'),
+      JSON.stringify({ name: '@webpresso/agent-kit', private: true }),
+    )
     const { warnIfNonLocalCli } = await import('./detect-consumer.js')
 
     // Even with a clearly-non-local CLI path, self-mode skips the warning.
-    warnIfNonLocalCli(repo, 'file:///opt/homebrew/lib/webpresso/dist/cli/cli.js')
+    warnIfNonLocalCli(repo, 'file:///tmp/global/node_modules/@webpresso/agent-kit/dist/cli/cli.js')
 
     expect(captured).toEqual([])
   })

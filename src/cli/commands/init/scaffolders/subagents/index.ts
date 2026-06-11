@@ -25,18 +25,25 @@ type SubagentsMode =
 
 function detectMode(repoRoot: string): SubagentsMode {
   const pkg = readPackageJson(repoRoot).info
-  if (pkg?.name === 'webpresso') {
+  if (pkg?.name === '@webpresso/agent-kit') {
     return {
       mode: 'self',
       sourceRoot: join(repoRoot, 'catalog', 'agent', 'agents'),
     }
   }
 
-  const installedPackageJsonPath = join(repoRoot, 'node_modules', 'webpresso', 'package.json')
+  const installedPackageJsonPath = join(
+    repoRoot,
+    'node_modules',
+    '@webpresso',
+    'agent-kit',
+    'package.json',
+  )
   const installedAgentsRoot = join(
     repoRoot,
     'node_modules',
-    'webpresso',
+    '@webpresso',
+    'agent-kit',
     'catalog',
     'agent',
     'agents',

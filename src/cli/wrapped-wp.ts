@@ -136,7 +136,8 @@ const ENV_COMMAND_ASSIGNMENT_PREFIX = new RegExp(
   `^env\\s+(?:${ENV_ASSIGNMENT_PREFIX_PATTERN})`,
   'u',
 )
-const WRAPPED_WP_MANAGER_LIST = '`bun run wp`, `pnpm run wp`, `npm run wp`, `yarn wp`, or `vp run wp`'
+const WRAPPED_WP_MANAGER_LIST =
+  '`bun run wp`, `pnpm run wp`, `npm run wp`, `yarn wp`, or `vp run wp`'
 
 export interface WrappedWpInvocation {
   readonly manager: string

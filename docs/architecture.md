@@ -1,6 +1,6 @@
 ---
 type: system
-last_updated: '2026-05-11'
+last_updated: '2026-06-11'
 ---
 
 # Architecture: the three-layer model
@@ -14,11 +14,11 @@ on the next sync.
 
 ### Layer 1 — Catalog (read-only template)
 
-**Location:** `node_modules/webpresso/catalog/`
+**Location:** `node_modules/@webpresso/agent-kit/catalog/`
 
-Ships with the package. Curated commands, skills, workflows, rules,
-guides, and doc templates that webpresso maintainers consider stable
-defaults.
+Ships with the scoped `@webpresso/agent-kit` package. Curated commands,
+skills, workflows, rules, guides, and doc templates that webpresso maintainers
+consider stable defaults.
 
 - **Owner:** webpresso
 - **Lifecycle:** updated by bumping the package version
@@ -171,10 +171,10 @@ Two alternatives fail for specific reasons:
 
 ```
 webpresso ships an update
-  └─→ pnpm update webpresso                   (catalog refreshed in node_modules/)
-       └─→ vp exec wp setup                 (or: wp skill install <name>)
-            └─→ new catalog content copied into .agent/   — review the diff
-                 └─→ vp exec wp sync       (regenerate .claude/, .gemini/, …)
+  └─→ update @webpresso/agent-kit             (catalog refreshed in node_modules/)
+       └─→ vp exec wp setup                   (or: vp run setup:agent)
+            └─→ managed setup/catalog content refreshed — review the diff
+                 └─→ wp sync --check when changing catalog/templates
 ```
 
 Skip `wp setup` after a package update and you keep running the old
@@ -183,8 +183,8 @@ old surface. Both steps matter.
 
 ## Anti-patterns
 
-- **Editing `node_modules/webpresso/catalog/`** — gone on
-  next install.
+- **Editing `node_modules/@webpresso/agent-kit/catalog/`** — gone on next
+  install.
 - **Editing `.claude/commands/`** — overwritten on next `wp sync`.
 - **Forgetting to commit `.agent/`** — collaborators get the old
   surface or none at all.

@@ -576,4 +576,38 @@ describe('test runner', () => {
       'b.test.ts',
     ])
   })
+
+  it('distributes integration tests evenly across shards rather than clustering them', async () => {
+    writeVitestWorkspace(defaultRoot!)
+    mkdirSync(join(defaultRoot!, 'src'), { recursive: true })
+
+    // 24 unit files at normal byte size fill most shards
+    for (let i = 1; i <= 24; i++) {
+      writeFileSync(
+        join(defaultRoot!, `src/unit-${i}.test.ts`),
+        `import { it, expect } from 'vitest'\nit('unit-${i}', () => expect(1).toBe(1))\n`,
+      )
+    }
+
+    // 8 integration files with tiny byte content (10 bytes each) — reproduces
+    // the clustering bug: without the fix, byte-based weight sorts these last
+    // and the greedy balancer piles all 8 into the lightest bucket
+    for (let i = 1; i <= 8; i++) {
+      writeFileSync(join(defaultRoot!, `src/int-${i}.integration.test.ts`), 'tiny test')
+    }
+
+    spawnMock.mockReturnValue(fakeChild({ stdout: '{}\n', exitCode: 0 }))
+    await runTests({})
+
+    const shardArgs = spawnMock.mock.calls.map((call) => call[1] as string[])
+    const integrationCountPerShard = shardArgs.map(
+      (args) => args.filter((arg) => arg.endsWith('.integration.test.ts')).length,
+    )
+
+    const totalIntegration = integrationCountPerShard.reduce((sum, n) => sum + n, 0)
+    expect(totalIntegration).toStrictEqual(8)
+
+    const maxPerShard = Math.max(...integrationCountPerShard)
+    expect(maxPerShard).toBeLessThanOrEqual(2)
+  })
 })

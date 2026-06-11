@@ -31,7 +31,7 @@ function seedConsumerRepo(root: string): void {
   writeJson(join(root, 'package.json'), {
     name: 'consumer-app',
     scripts: { 'setup:agent': 'wp setup' },
-    devDependencies: { webpresso: '^0.2.0' },
+    devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
   })
   writeJson(join(root, '.webpressorc.json'), {
     version: '1',
@@ -112,11 +112,20 @@ function seedConsumerRepo(root: string): void {
   writeFileSync(join(root, '.claude', 'rules', 'custom-rule.md'), '# override content\n')
 
   for (const agentName of ['code-reviewer', 'security-auditor', 'doc-writer', 'explorer']) {
-    mkdirSync(join(root, 'node_modules', 'webpresso', 'catalog', 'agent', 'agents'), {
+    mkdirSync(join(root, 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'agents'), {
       recursive: true,
     })
     writeFileSync(
-      join(root, 'node_modules', 'webpresso', 'catalog', 'agent', 'agents', `${agentName}.md`),
+      join(
+        root,
+        'node_modules',
+        '@webpresso',
+        'agent-kit',
+        'catalog',
+        'agent',
+        'agents',
+        `${agentName}.md`,
+      ),
       `# ${agentName}\n`,
     )
     symlinkSync(
@@ -124,7 +133,8 @@ function seedConsumerRepo(root: string): void {
         '..',
         '..',
         'node_modules',
-        'webpresso',
+        '@webpresso',
+        'agent-kit',
         'catalog',
         'agent',
         'agents',
@@ -160,7 +170,7 @@ describe('auditAgents', () => {
     writeJson(join(root, 'package.json'), {
       name: 'consumer-app',
       scripts: { 'setup:agent': 'vp exec wp setup' },
-      devDependencies: { webpresso: '^0.2.0' },
+      devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
     })
 
     const result = auditAgents(root)
@@ -211,7 +221,7 @@ describe('auditAgents', () => {
     })
 
     const result = auditAgents(root)
-    expect(result.violations.some((v) => v.message.includes('webpresso'))).toBe(false)
+    expect(result.violations.some((v) => v.message.includes('@webpresso/agent-kit'))).toBe(false)
   })
 
   it('fails devDep check when globalInstall is absent and devDep is missing', () => {
@@ -223,14 +233,14 @@ describe('auditAgents', () => {
     })
 
     const result = auditAgents(root)
-    expect(result.violations.some((v) => v.message.includes('webpresso'))).toBe(true)
+    expect(result.violations.some((v) => v.message.includes('@webpresso/agent-kit'))).toBe(true)
   })
 
   it('passes for the self-hosting repo shape using catalog sources only', () => {
     mkdirSync(join(root, 'catalog', 'agent', 'agents'), { recursive: true })
     mkdirSync(join(root, 'catalog', 'agent', 'rules'), { recursive: true })
     writeFileSync(join(root, 'AGENTS.md'), '# Root contract\n')
-    writeJson(join(root, 'package.json'), { name: 'webpresso' })
+    writeJson(join(root, 'package.json'), { name: '@webpresso/agent-kit' })
     writeFileSync(join(root, 'catalog', 'agent', 'rules', 'repo-restrictions.md'), '# rule\n')
     for (const agentName of ['code-reviewer', 'security-auditor', 'doc-writer', 'explorer']) {
       writeFileSync(join(root, 'catalog', 'agent', 'agents', `${agentName}.md`), `# ${agentName}\n`)

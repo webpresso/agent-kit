@@ -11,6 +11,8 @@ import { fileURLToPath } from 'node:url'
 
 import { readConfig } from './config.js'
 
+const AGENT_KIT_PACKAGE_NAMES = new Set(['@webpresso/agent-kit'])
+
 export interface ConsumerPackageInfo {
   name: string
   version?: string
@@ -133,33 +135,38 @@ function isWithinPath(target: string, root: string): boolean {
   return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
 }
 
-function discoverInstalledWebpressoRoots(repoRoot: string): string[] {
+function discoverInstalledAgentKitRoots(repoRoot: string): string[] {
   const roots = new Set<string>()
 
-  const directRoot = path.join(repoRoot, 'node_modules', 'webpresso')
-  if (existsSync(path.join(directRoot, 'package.json'))) {
-    roots.add(directRoot)
+  for (const directRoot of [path.join(repoRoot, 'node_modules', '@webpresso', 'agent-kit')]) {
+    if (existsSync(path.join(directRoot, 'package.json'))) {
+      roots.add(directRoot)
+    }
   }
 
   const pnpmRoot = path.join(repoRoot, 'node_modules', '.pnpm')
   for (const entry of safeReaddir(pnpmRoot)) {
-    if (!entry.startsWith('webpresso@')) continue
-    const candidate = path.join(pnpmRoot, entry, 'node_modules', 'webpresso')
-    if (existsSync(path.join(candidate, 'package.json'))) {
-      roots.add(candidate)
+    const candidates: string[] = []
+    if (entry.startsWith('@webpresso+agent-kit@')) {
+      candidates.push(path.join(pnpmRoot, entry, 'node_modules', '@webpresso', 'agent-kit'))
+    }
+    for (const candidate of candidates) {
+      if (existsSync(path.join(candidate, 'package.json'))) {
+        roots.add(candidate)
+      }
     }
   }
 
   return [...roots]
 }
 
-function isLocalWebpressoCli(repoRoot: string, cliPath: string): boolean {
+function isLocalAgentKitCli(repoRoot: string, cliPath: string): boolean {
   const cliCandidates = [
     ...new Set([cliPath, safeRealpath(cliPath)].filter((p): p is string => p !== null)),
   ]
   if (cliCandidates.length === 0) return false
 
-  for (const root of discoverInstalledWebpressoRoots(repoRoot)) {
+  for (const root of discoverInstalledAgentKitRoots(repoRoot)) {
     const rootCandidates = [
       ...new Set([root, safeRealpath(root)].filter((p): p is string => p !== null)),
     ]
@@ -257,7 +264,7 @@ export function discoverWorkspacePackages(
  * produces a non-reproducible `.agents/skills/` tree (symlinks point outside
  * the project tree; lockfile irrelevant). Repo-local symlink/dev-link installs
  * still count as local via realpath comparison. Self-mode short-circuits when
- * the consumer IS `webpresso` (running setup from webpresso's own
+ * the consumer is `@webpresso/agent-kit` (running setup from agent-kit's own
  * checkout).
  *
  * Non-blocking: prints to stderr and returns. The bc88-class failure
@@ -267,7 +274,7 @@ export function discoverWorkspacePackages(
  */
 export function warnIfNonLocalCli(repoRoot: string, cliUrl: string = import.meta.url): void {
   const ourPkg = readPackageJson(repoRoot).info
-  if (ourPkg?.name === 'webpresso') return
+  if (ourPkg?.name !== undefined && AGENT_KIT_PACKAGE_NAMES.has(ourPkg.name)) return
   if (readConfig(repoRoot)?.globalInstall === true) return
   let cliPath: string
   try {
@@ -275,16 +282,19 @@ export function warnIfNonLocalCli(repoRoot: string, cliUrl: string = import.meta
   } catch {
     return
   }
-  if (isLocalWebpressoCli(repoRoot, cliPath)) return
+  if (isLocalAgentKitCli(repoRoot, cliPath)) return
 
-  const hasLocalWebpressoDep =
-    ourPkg?.dependencies['webpresso'] ?? ourPkg?.devDependencies['webpresso']
+  const pinnedDepName =
+    (ourPkg?.dependencies['@webpresso/agent-kit'] ??
+      ourPkg?.devDependencies['@webpresso/agent-kit']) !== undefined
+      ? '@webpresso/agent-kit'
+      : null
 
   console.error(
     `warning: wp running from a non-local install (${cliPath}). ` +
-      (hasLocalWebpressoDep
-        ? 'This repo already pins `webpresso`; rerun via the repo-local CLI (`vp run setup:agent` or `vp exec wp setup`).'
-        : 'Pin `webpresso` as a local dep for reproducible setup.'),
+      (pinnedDepName !== null
+        ? `This repo already pins \`${pinnedDepName}\`; rerun via the repo-local CLI (\`vp run setup:agent\` or \`vp exec wp setup\`).`
+        : 'Pin `@webpresso/agent-kit` as a local dep for reproducible setup.'),
   )
 }
 
@@ -292,9 +302,8 @@ export function warnIfNonLocalCli(repoRoot: string, cliUrl: string = import.meta
  * agent-kit's own package name — the source repo for every agent-surface
  * template (`catalog/`, the tracked `.agent/`/`.claude/` surfaces). Scaffolding
  * into this repo overwrites the canonical sources, so `wp setup` refuses it
- * unless explicitly overridden. Distinct from base-kit's broader
- * `SELF_PACKAGE_NAMES` (which also covers the legacy `webpresso` framework
- * identity); only agent-kit hosts the catalog templates.
+ * unless explicitly overridden. Only `@webpresso/agent-kit` hosts the catalog
+ * templates.
  */
 export const AGENT_KIT_PACKAGE_NAME = '@webpresso/agent-kit'
 

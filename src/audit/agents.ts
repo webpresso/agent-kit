@@ -33,7 +33,7 @@ export function auditAgents(rootDirectory: string = process.cwd()): RepoAuditRes
 
   const packageJson = readJsonFile<Record<string, unknown>>(join(root, 'package.json'))
   const packageName = typeof packageJson.name === 'string' ? packageJson.name : undefined
-  const isSelfHost = packageName === 'webpresso' || packageName === '@webpresso/agent-kit'
+  const isSelfHost = packageName === '@webpresso/agent-kit'
   const config = readConfig(root)
 
   checked += 1
@@ -377,7 +377,7 @@ function checkAgentKitDevDependency(
 ): void {
   const devDependencies = (packageJson.devDependencies ?? {}) as Record<string, unknown>
   const packageName = typeof packageJson.name === 'string' ? packageJson.name : ''
-  const version = devDependencies['webpresso'] ?? devDependencies['@webpresso/agent-kit']
+  const version = devDependencies['@webpresso/agent-kit']
   const scripts = (packageJson.scripts ?? {}) as Record<string, unknown>
   const setupAgent = typeof scripts['setup:agent'] === 'string' ? scripts['setup:agent'] : ''
   const postinstall = typeof scripts.postinstall === 'string' ? scripts.postinstall : ''
@@ -397,7 +397,7 @@ function checkAgentKitDevDependency(
     violations.push({
       file: 'package.json',
       message:
-        'Missing devDependency `webpresso` or `@webpresso/agent-kit`. Run `vp install -D <package>` then `vp install`.',
+        'Missing devDependency `@webpresso/agent-kit`. Run `vp install -D @webpresso/agent-kit` then `vp install`.',
     })
   }
 }

@@ -28,7 +28,7 @@ describe('scaffoldClaudeRules', () => {
   })
 
   it('returns no work when the self-host rules source is missing', () => {
-    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: 'webpresso' }))
+    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
     const results = scaffoldClaudeRules({ repoRoot, options: {} })
 
     expect(results).toEqual([])
@@ -36,7 +36,7 @@ describe('scaffoldClaudeRules', () => {
   })
 
   it('creates self-hosting symlinks from catalog/agent/rules when the target is empty', () => {
-    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: 'webpresso' }))
+    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
     mkdirSync(join(repoRoot, 'catalog', 'agent', 'rules'), { recursive: true })
     writeFileSync(join(repoRoot, 'catalog', 'agent', 'rules', 'rule-a.md'), '# Rule A\n')
     writeFileSync(join(repoRoot, 'catalog', 'agent', 'rules', 'README.md'), '# Ignore me\n')
@@ -52,7 +52,7 @@ describe('scaffoldClaudeRules', () => {
   })
 
   it('is idempotent on rerun when the self-host symlink already exists', () => {
-    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: 'webpresso' }))
+    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
     mkdirSync(join(repoRoot, 'catalog', 'agent', 'rules'), { recursive: true })
     writeFileSync(join(repoRoot, 'catalog', 'agent', 'rules', 'rule-a.md'), '# Rule A\n')
 
@@ -68,7 +68,7 @@ describe('scaffoldClaudeRules', () => {
   })
 
   it('preserves a consumer-owned real file instead of replacing it', () => {
-    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: 'webpresso' }))
+    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
     mkdirSync(join(repoRoot, 'catalog', 'agent', 'rules'), { recursive: true })
     mkdirSync(join(repoRoot, '.claude', 'rules'), { recursive: true })
     writeFileSync(join(repoRoot, 'catalog', 'agent', 'rules', 'rule-a.md'), '# Rule A\n')
@@ -84,7 +84,7 @@ describe('scaffoldClaudeRules', () => {
   })
 
   it('reports creates in dry-run mode without touching disk', () => {
-    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: 'webpresso' }))
+    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
     mkdirSync(join(repoRoot, 'catalog', 'agent', 'rules'), { recursive: true })
     writeFileSync(join(repoRoot, 'catalog', 'agent', 'rules', 'rule-a.md'), '# Rule A\n')
 
@@ -97,19 +97,40 @@ describe('scaffoldClaudeRules', () => {
 
   it('creates consumer symlinks against the installed package catalog', () => {
     writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: 'consumer-app' }))
-    mkdirSync(join(repoRoot, 'node_modules', 'webpresso', 'catalog', 'agent', 'rules'), {
-      recursive: true,
-    })
-    writeFileSync(
-      join(repoRoot, 'node_modules', 'webpresso', 'package.json'),
-      JSON.stringify({ name: 'webpresso', exports: { './catalog/*': './catalog/*' } }),
+    mkdirSync(
+      join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'rules'),
+      {
+        recursive: true,
+      },
     )
     writeFileSync(
-      join(repoRoot, 'node_modules', 'webpresso', 'catalog', 'agent', 'rules', 'rule-a.md'),
+      join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'package.json'),
+      JSON.stringify({ name: '@webpresso/agent-kit', exports: { './catalog/*': './catalog/*' } }),
+    )
+    writeFileSync(
+      join(
+        repoRoot,
+        'node_modules',
+        '@webpresso',
+        'agent-kit',
+        'catalog',
+        'agent',
+        'rules',
+        'rule-a.md',
+      ),
       '# Rule A\n',
     )
     writeFileSync(
-      join(repoRoot, 'node_modules', 'webpresso', 'catalog', 'agent', 'rules', 'agent-guide.md'),
+      join(
+        repoRoot,
+        'node_modules',
+        '@webpresso',
+        'agent-kit',
+        'catalog',
+        'agent',
+        'rules',
+        'agent-guide.md',
+      ),
       '# Guide\n',
     )
 
@@ -118,7 +139,17 @@ describe('scaffoldClaudeRules', () => {
 
     expect(results).toContainEqual({ targetPath, action: 'created' })
     expect(readlinkSync(targetPath)).toBe(
-      join('..', '..', 'node_modules', 'webpresso', 'catalog', 'agent', 'rules', 'rule-a.md'),
+      join(
+        '..',
+        '..',
+        'node_modules',
+        '@webpresso',
+        'agent-kit',
+        'catalog',
+        'agent',
+        'rules',
+        'rule-a.md',
+      ),
     )
     expect(readFileSync(targetPath, 'utf8')).toBe('# Rule A\n')
   })
@@ -142,26 +173,37 @@ describe('scaffoldClaudeRules', () => {
       repoRoot,
       'node_modules',
       '.pnpm',
-      'webpresso@1.0.0',
+      '@webpresso+agent-kit@1.0.0',
       'node_modules',
-      'webpresso',
+      '@webpresso',
+      'agent-kit',
     )
     mkdirSync(join(nestedPkg, 'catalog', 'agent', 'rules'), { recursive: true })
     writeFileSync(
       join(nestedPkg, 'package.json'),
-      JSON.stringify({ name: 'webpresso', exports: { './catalog/*': './catalog/*' } }),
+      JSON.stringify({ name: '@webpresso/agent-kit', exports: { './catalog/*': './catalog/*' } }),
     )
     writeFileSync(join(nestedPkg, 'catalog', 'agent', 'rules', 'rule-a.md'), '# Rule A\n')
     writeFileSync(join(nestedPkg, 'catalog', 'agent', 'rules', 'agent-guide.md'), '# Guide\n')
     mkdirSync(join(repoRoot, 'node_modules', '@webpresso'), { recursive: true })
-    symlinkSync(nestedPkg, join(repoRoot, 'node_modules', 'webpresso'))
+    symlinkSync(nestedPkg, join(repoRoot, 'node_modules', '@webpresso', 'agent-kit'))
 
     const results = scaffoldClaudeRules({ repoRoot, options: {} })
     const targetPath = join(repoRoot, '.claude', 'rules', 'rule-a.md')
 
     expect(results).toContainEqual({ targetPath, action: 'created' })
     expect(readlinkSync(targetPath)).toBe(
-      join('..', '..', 'node_modules', 'webpresso', 'catalog', 'agent', 'rules', 'rule-a.md'),
+      join(
+        '..',
+        '..',
+        'node_modules',
+        '@webpresso',
+        'agent-kit',
+        'catalog',
+        'agent',
+        'rules',
+        'rule-a.md',
+      ),
     )
     expect(lstatSync(targetPath).isSymbolicLink()).toBe(true)
     expect(readFileSync(targetPath, 'utf8')).toBe('# Rule A\n')
@@ -183,15 +225,27 @@ describe('scaffoldClaudeRules', () => {
         2,
       ),
     )
-    mkdirSync(join(repoRoot, 'node_modules', 'webpresso', 'catalog', 'agent', 'rules'), {
-      recursive: true,
-    })
-    writeFileSync(
-      join(repoRoot, 'node_modules', 'webpresso', 'package.json'),
-      JSON.stringify({ name: 'webpresso', exports: { './catalog/*': './catalog/*' } }),
+    mkdirSync(
+      join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'rules'),
+      {
+        recursive: true,
+      },
     )
     writeFileSync(
-      join(repoRoot, 'node_modules', 'webpresso', 'catalog', 'agent', 'rules', 'rule-a.md'),
+      join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'package.json'),
+      JSON.stringify({ name: '@webpresso/agent-kit', exports: { './catalog/*': './catalog/*' } }),
+    )
+    writeFileSync(
+      join(
+        repoRoot,
+        'node_modules',
+        '@webpresso',
+        'agent-kit',
+        'catalog',
+        'agent',
+        'rules',
+        'rule-a.md',
+      ),
       '# Rule A\n',
     )
 
@@ -219,20 +273,42 @@ describe('scaffoldClaudeRules', () => {
         2,
       ),
     )
-    mkdirSync(join(repoRoot, 'node_modules', 'webpresso', 'catalog', 'agent', 'rules'), {
-      recursive: true,
-    })
-    writeFileSync(
-      join(repoRoot, 'node_modules', 'webpresso', 'package.json'),
-      JSON.stringify({ name: 'webpresso', exports: { './catalog/*': './catalog/*' } }),
+    mkdirSync(
+      join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'catalog', 'agent', 'rules'),
+      {
+        recursive: true,
+      },
     )
     writeFileSync(
-      join(repoRoot, 'node_modules', 'webpresso', 'catalog', 'agent', 'rules', 'rule-a.md'),
+      join(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'package.json'),
+      JSON.stringify({ name: '@webpresso/agent-kit', exports: { './catalog/*': './catalog/*' } }),
+    )
+    writeFileSync(
+      join(
+        repoRoot,
+        'node_modules',
+        '@webpresso',
+        'agent-kit',
+        'catalog',
+        'agent',
+        'rules',
+        'rule-a.md',
+      ),
       '# Rule A\n',
     )
     mkdirSync(join(repoRoot, '.claude', 'rules'), { recursive: true })
     symlinkSync(
-      join('..', '..', 'node_modules', 'webpresso', 'catalog', 'agent', 'rules', 'rule-a.md'),
+      join(
+        '..',
+        '..',
+        'node_modules',
+        '@webpresso',
+        'agent-kit',
+        'catalog',
+        'agent',
+        'rules',
+        'rule-a.md',
+      ),
       join(repoRoot, '.claude', 'rules', 'rule-a.md'),
     )
 
@@ -245,7 +321,7 @@ describe('scaffoldClaudeRules', () => {
   })
 
   it('reports drift for wrong-target symlinks without overwriting by default', () => {
-    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: 'webpresso' }))
+    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
     mkdirSync(join(repoRoot, 'catalog', 'agent', 'rules'), { recursive: true })
     mkdirSync(join(repoRoot, '.claude', 'rules'), { recursive: true })
     writeFileSync(join(repoRoot, 'catalog', 'agent', 'rules', 'rule-a.md'), '# Rule A\n')
@@ -260,7 +336,7 @@ describe('scaffoldClaudeRules', () => {
   })
 
   it('replaces wrong-target symlinks when overwrite is enabled', () => {
-    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: 'webpresso' }))
+    writeFileSync(join(repoRoot, 'package.json'), JSON.stringify({ name: '@webpresso/agent-kit' }))
     mkdirSync(join(repoRoot, 'catalog', 'agent', 'rules'), { recursive: true })
     mkdirSync(join(repoRoot, '.claude', 'rules'), { recursive: true })
     writeFileSync(join(repoRoot, 'catalog', 'agent', 'rules', 'rule-a.md'), '# Rule A\n')

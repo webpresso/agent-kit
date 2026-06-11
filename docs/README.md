@@ -7,8 +7,10 @@ last_updated: '2026-05-31'
 
 Start here:
 
-- Install from the public npm registry with Node.js 24+:
-  `npm install -g @webpresso/agent-kit && wp setup`
+- First-time machine? Install Vite+ so `vp` is on PATH (for example
+  `npm install -g vite-plus`).
+- Install from the public npm registry with Node.js 24+ via vp:
+  `vp install -g @webpresso/agent-kit && wp setup`
 - [Getting started](./getting-started.md)
 - [Is webpresso for me?](./is-agent-kit-for-me.md)
 - [Add-ons](./add-ons.md)

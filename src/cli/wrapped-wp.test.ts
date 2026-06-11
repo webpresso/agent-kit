@@ -114,10 +114,11 @@ describe('detectWrappedWpRuntimeInvocation', () => {
   })
 
   it('formats the corrective runtime error deterministically', () => {
-    const message = formatWrappedWpInvocationError(
-      { manager: 'bun', wpArgs: ['test'] },
-      ['node', '/repo/bin/wp', 'test'],
-    )
+    const message = formatWrappedWpInvocationError({ manager: 'bun', wpArgs: ['test'] }, [
+      'node',
+      '/repo/bin/wp',
+      'test',
+    ])
 
     expect(message).toContain('webpresso package-manager wrapper invocation is forbidden')
     expect(message).toContain('Use wp_test MCP tool when available')

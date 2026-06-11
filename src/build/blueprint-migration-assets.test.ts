@@ -27,7 +27,9 @@ describe('blueprint migration asset sync', () => {
 
       syncBlueprintMigrationSqlAssets(root)
 
-      expect(readFileSync(join(distDir, '0001_seed.sql'), 'utf8')).toContain('CREATE TABLE blueprints')
+      expect(readFileSync(join(distDir, '0001_seed.sql'), 'utf8')).toContain(
+        'CREATE TABLE blueprints',
+      )
       expect(readFileSync(join(distDir, '0002_request_id_ledger.sql'), 'utf8')).toContain(
         'CREATE TABLE ledger',
       )

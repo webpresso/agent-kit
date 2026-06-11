@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   BIN_ENTRYPOINTS,
@@ -36,6 +36,14 @@ const RUNTIME_MANIFEST = {
     },
   ],
 }
+
+beforeEach(() => {
+  vi.stubEnv('WP_FORCE_SOURCE', '0')
+})
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+})
 
 describe('bin launcher', () => {
   it('maps known public bin names to source entrypoints', () => {

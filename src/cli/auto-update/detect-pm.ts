@@ -1,18 +1,21 @@
 /**
- * Package-manager detection for the auto-update installer.
+ * Install-topology detection for the auto-update installer.
  *
- * Returns the `{manager, command}` tuple that the installer can use to
+ * Returns the `{topology, command}` tuple that the installer can use to
  * re-install `@webpresso/agent-kit` globally, OR returns `{abort: <reason>}`
  * when no safe install command can be inferred (e.g. devDep install, Volta
- * shim, unknown manager). The caller turns `abort` into a notify-only outcome.
+ * shim, unknown topology). The caller turns `abort` into a notify-only outcome.
  *
  * Detection priority:
  *   0. Source/git install — argv1 resolves into the canonical source clone
  *      → `git -C <repo> pull` (works for symlink dev installs).
- *   1. `process.env.npm_config_user_agent` — most reliable; set by the
- *      manager whenever the CLI is launched via the manager's run wrapper.
+ *   1. `process.env.npm_config_user_agent` — most reliable hint when the CLI
+ *      is launched through a wrapper. We collapse it into vp / pnpm / generic
+ *      global-node topologies rather than treating every package manager as a
+ *      product-level lane.
  *   2. Realpath walk of `argv0` looking for store markers (`.pnpm-store`,
- *      `.bun/install`, `.volta/tools`, `.yarn/global`, Homebrew prefix).
+ *      `.bun/install`, `.volta/tools`, `.yarn/global`, generic global-node
+ *      prefixes).
  *   3. Confirm the install is global; abort if it's a devDep consumer.
  *   4. Volta / asdf shim → abort with a manual-command hint.
  *   5. Unknown → abort.
@@ -24,10 +27,10 @@ import { delimiter, dirname, sep } from 'node:path'
 
 import { getLegacyAgentCommandReplacement } from '#cli/bundle/agent-command-inventory.js'
 
-export type ManagerName = 'npm' | 'pnpm' | 'yarn' | 'bun' | 'vp' | 'git'
+export type InstallTopology = 'global-node' | 'pnpm' | 'vp' | 'git'
 
 export interface DetectSuccess {
-  manager: ManagerName
+  topology: InstallTopology
   command: string[]
 }
 
@@ -59,12 +62,13 @@ export function buildVpGlobalInstallCommand(): [string, ...string[]] {
 
 const VP_INSTALL_COMMAND = buildVpGlobalInstallCommand()
 
-const INSTALL_COMMANDS: Record<Exclude<ManagerName, 'git'>, string[]> = {
-  npm: VP_INSTALL_COMMAND,
-  pnpm: VP_INSTALL_COMMAND,
-  yarn: VP_INSTALL_COMMAND,
-  bun: VP_INSTALL_COMMAND,
-  vp: VP_INSTALL_COMMAND,
+function commandForTopology(topology: Exclude<InstallTopology, 'git'>): string[] {
+  switch (topology) {
+    case 'vp':
+    case 'pnpm':
+    case 'global-node':
+      return VP_INSTALL_COMMAND
+  }
 }
 
 export function formatLegacyCommandReplacementMessage(legacyCommand: string): string | null {
@@ -90,7 +94,7 @@ export function detectGitInstall(argv1: string): string | null {
       encoding: 'utf-8',
       stdio: ['ignore', 'pipe', 'ignore'],
     }).trim()
-    if (remote.includes('webpresso/agent-kit') || remote.includes('webpresso/webpresso')) {
+    if (remote.includes('webpresso/agent-kit')) {
       return topLevel
     }
   } catch {
@@ -100,7 +104,7 @@ export function detectGitInstall(argv1: string): string | null {
 }
 
 /**
- * Detect the package manager that owns the running `wp` / agent-kit binary.
+ * Detect the install topology that owns the running `wp` / agent-kit binary.
  * Pure function modulo `realpathSync` and `execFileSync` — call sites mock
  * those for tests.
  */
@@ -108,20 +112,11 @@ export function detect(env: NodeJS.ProcessEnv, argv0: string): DetectResult {
   // Priority 0 — source/git install (symlink → repo clone).
   const gitDir = detectGitInstall(argv0)
   if (gitDir !== null) {
-    return { manager: 'git', command: ['git', '-C', gitDir, 'pull'] }
+    return { topology: 'git', command: ['git', '-C', gitDir, 'pull'] }
   }
 
-  // Priority 1 — user-agent string set by the package manager.
-  const userAgent = env.npm_config_user_agent
-  if (userAgent !== undefined && userAgent !== '') {
-    const fromUa = parseUserAgent(userAgent)
-    if (fromUa !== null) {
-      return { manager: fromUa, command: INSTALL_COMMANDS[fromUa] }
-    }
-  }
-
-  // Priority 2 — realpath walk of argv0 for store markers.
   const realpath = safeRealpath(argv0)
+  let fromPath: Exclude<InstallTopology, 'git'> | null = null
   if (realpath !== null) {
     // Priority 4 (run before 2 success) — Volta / asdf shims.
     const shim = detectShim(realpath)
@@ -129,15 +124,35 @@ export function detect(env: NodeJS.ProcessEnv, argv0: string): DetectResult {
       return { abort: shim }
     }
 
-    const fromPath = matchStoreMarker(realpath)
+    fromPath = matchStoreMarker(realpath)
     if (fromPath !== null) {
       if (!confirmInstalledGlobally(realpath, env)) {
         return {
           abort: `${PUBLIC_PACKAGE_NAME} is not a global install (path ${realpath}); auto-install disabled.`,
         }
       }
-      return { manager: fromPath, command: INSTALL_COMMANDS[fromPath] }
     }
+  }
+
+  // Priority 1 — user-agent string set by the package manager, but only trust
+  // it after the resolved path has already survived shim/locality checks.
+  const userAgent = env.npm_config_user_agent
+  if (userAgent !== undefined && userAgent !== '') {
+    const fromUa = parseUserAgent(userAgent)
+    if (fromUa !== null && fromPath !== null) {
+      if (fromUa === fromPath) {
+        return { topology: fromUa, command: commandForTopology(fromUa) }
+      }
+      if (fromUa === 'global-node' && fromPath === 'global-node') {
+        return { topology: fromUa, command: commandForTopology(fromUa) }
+      }
+    }
+  }
+
+  // Priority 2 — resolved path classification after wrapper hints have had a
+  // chance to confirm the same topology.
+  if (fromPath !== null) {
+    return { topology: fromPath, command: commandForTopology(fromPath) }
   }
 
   // Priority 5 — give up; the caller falls back to notify-only.
@@ -153,29 +168,31 @@ export function detect(env: NodeJS.ProcessEnv, argv0: string): DetectResult {
  *   yarn/1.22.22 npm/? node/v22.0.0 darwin arm64
  *   bun/1.1.0 npm/? node/v22.0.0 darwin arm64
  *
- * Returns the manager name if the leading token matches a known manager.
+ * Returns the install topology implied by the leading token when it maps to a
+ * behaviorally distinct lane. `pnpm` remains explicit because its store/layout
+ * matters; npm/bun/yarn collapse into `global-node`.
  * Exported for testability.
  */
-export function parseUserAgent(userAgent: string): Exclude<ManagerName, 'git'> | null {
+export function parseUserAgent(userAgent: string): Exclude<InstallTopology, 'git'> | null {
   const trimmed = userAgent.trim()
   if (trimmed.length === 0) return null
   const head = trimmed.split(/\s+/, 1)[0]
   if (head === undefined) return null
   const slash = head.indexOf('/')
   const name = (slash === -1 ? head : head.slice(0, slash)).toLowerCase()
-  if (name === 'npm' || name === 'pnpm' || name === 'yarn' || name === 'bun' || name === 'vp') {
-    return name
-  }
+  if (name === 'vp') return 'vp'
+  if (name === 'pnpm') return 'pnpm'
+  if (name === 'npm' || name === 'yarn' || name === 'bun') return 'global-node'
   return null
 }
 
 /**
- * Look for known package-manager store markers in a realpath. The walk is a
+ * Look for known install topology markers in a realpath. The walk is a
  * substring check against path segments to avoid false positives in user
  * directory names.
  * Exported for testability.
  */
-export function matchStoreMarker(realpath: string): Exclude<ManagerName, 'git'> | null {
+export function matchStoreMarker(realpath: string): Exclude<InstallTopology, 'git'> | null {
   const segments = splitPathSegments(realpath)
   // Vite+ global package store: `~/.vite-plus/packages/...`.
   if (segments.includes('.vite-plus')) return 'vp'
@@ -183,21 +200,18 @@ export function matchStoreMarker(realpath: string): Exclude<ManagerName, 'git'> 
   if (segments.some((seg) => seg === '.pnpm' || seg === '.pnpm-store' || seg === 'pnpm-global')) {
     return 'pnpm'
   }
-  // bun: installs under `~/.bun/install/global/...`.
+  // Other global-node style installs: bun global dirs, yarn global dirs,
+  // generic lib/node_modules prefixes, or npm-global prefixes.
   if (segments.includes('.bun') && (segments.includes('install') || segments.includes('global'))) {
-    return 'bun'
+    return 'global-node'
   }
-  // yarn classic global dir is `~/.yarn/global/`.
-  // yarn 2+ uses `.yarn/berry` or `.yarn/cache` for installs.
   if (segments.includes('.yarn') && (segments.includes('global') || segments.includes('berry'))) {
-    return 'yarn'
+    return 'global-node'
   }
-  // Homebrew (`/usr/local/Cellar/node/...`, `/opt/homebrew/Cellar/...`) and
-  // npm prefix (`/usr/local/lib/node_modules`, `~/.npm-global`) → npm.
-  if (segments.includes('Cellar')) return 'npm'
-  if (segments.includes('node_modules') && segments.includes('lib')) return 'npm'
-  if (segments.includes('.npm-global')) return 'npm'
-  if (segments.includes('.npm') && segments.includes('node_modules')) return 'npm'
+  if (segments.includes('Cellar')) return 'global-node'
+  if (segments.includes('node_modules') && segments.includes('lib')) return 'global-node'
+  if (segments.includes('.npm-global')) return 'global-node'
+  if (segments.includes('.npm') && segments.includes('node_modules')) return 'global-node'
   return null
 }
 
@@ -235,7 +249,12 @@ export function confirmInstalledGlobally(realpath: string, env: NodeJS.ProcessEn
   // Global prefixes contain node_modules but are still global.
   if (segments.includes('.vite-plus')) return true
   if (segments.includes('Cellar')) return true
-  if (segments.includes('lib') && segments.includes('node_modules')) return true
+  if (
+    realpath.includes(`${sep}usr${sep}local${sep}lib${sep}node_modules${sep}`) ||
+    realpath.includes(`${sep}opt${sep}homebrew${sep}lib${sep}node_modules${sep}`)
+  ) {
+    return true
+  }
   if (segments.includes('.npm-global')) return true
   if (segments.includes('.pnpm') || segments.includes('.pnpm-store')) return true
   if (segments.includes('.bun')) return true

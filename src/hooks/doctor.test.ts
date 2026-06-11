@@ -882,7 +882,7 @@ describe('hooks/doctor', () => {
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
         join(repoRoot, 'src/hooks/test-quality-check.ts'),
-        join(repoRoot, 'node_modules', 'webpresso'),
+        join(repoRoot, 'node_modules', '@webpresso', 'agent-kit'),
         join('/live/webpresso', 'package.json'),
       ])
 
@@ -909,7 +909,7 @@ describe('hooks/doctor', () => {
           return JSON.stringify({ version: '0.1.0', hooks: {}, mcpServers: {} })
         }
         if (String(path) === devLinkState) {
-          return JSON.stringify({ package: 'webpresso', linkedFrom: '/live/webpresso' })
+          return JSON.stringify({ package: '@webpresso/agent-kit', linkedFrom: '/live/webpresso' })
         }
         throw new Error(`unexpected read: ${String(path)}`)
       }) as typeof readFileSync)
@@ -923,7 +923,7 @@ describe('hooks/doctor', () => {
       expect(result.checks.find((check) => check.name === 'live-source dev-link')).toEqual({
         name: 'live-source dev-link',
         ok: true,
-        detail: 'webpresso → /live/webpresso',
+        detail: '@webpresso/agent-kit → /live/webpresso',
       })
     })
 
@@ -964,7 +964,10 @@ describe('hooks/doctor', () => {
           return JSON.stringify({ version: '0.1.0', hooks: {}, mcpServers: {} })
         }
         if (String(path) === devLinkState) {
-          return JSON.stringify({ package: 'webpresso', linkedFrom: '/missing/webpresso' })
+          return JSON.stringify({
+            package: '@webpresso/agent-kit',
+            linkedFrom: '/missing/webpresso',
+          })
         }
         throw new Error(`unexpected read: ${String(path)}`)
       }) as typeof readFileSync)
