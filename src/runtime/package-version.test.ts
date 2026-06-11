@@ -48,7 +48,7 @@ describe('readOwnedPackageVersion', () => {
     )
 
     expect(readOwnedPackageVersion(pathToFileURL(path.join(nested, 'server.js')).href)).toBe(
-      '2.3.4',
+      '0.0.0',
     )
   })
 

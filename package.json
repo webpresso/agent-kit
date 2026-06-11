@@ -631,14 +631,7 @@
     "husky": "^9.1.7",
     "publint": "^0.3.21",
     "secretlint": "^13.0.2",
-    "tshy": "^4.1.2",
-    "webpresso": "latest",
-    "@playwright/test": "latest",
-    "@stryker-mutator/core": "latest",
-    "@stryker-mutator/typescript-checker": "latest",
-    "@stryker-mutator/vitest-runner": "latest",
-    "typescript": "latest",
-    "vitest": "latest"
+    "tshy": "^4.1.2"
   },
   "tshy": {
     "dialects": [

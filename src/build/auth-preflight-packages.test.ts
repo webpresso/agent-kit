@@ -28,8 +28,10 @@ describe('auth preflight package probes', () => {
 
     expect(manifest.dependencies?.['@webpresso/runtime']).toBeUndefined()
     expect(manifest.dependencies?.['@webpresso/webpresso']).toBeUndefined()
+    expect(manifest.dependencies?.['webpresso']).toBeUndefined()
     expect(manifest.devDependencies?.['@webpresso/runtime']).toBeUndefined()
     expect(manifest.devDependencies?.['@webpresso/webpresso']).toBeUndefined()
+    expect(manifest.devDependencies?.['webpresso']).toBeUndefined()
 
     for (const workflowPath of authPreflightWorkflowPaths) {
       const workflow = readWorkflow(workflowPath)
