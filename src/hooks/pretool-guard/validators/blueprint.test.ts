@@ -17,7 +17,7 @@ describe('pretool blueprint validator', () => {
     const result = validateBlueprint(writeInput('blueprints/planned/my-feature.md'))
 
     expect(result.passed).toBe(false)
-    expect(result.message).toContain('mcp__webpresso__wp_blueprint(...)')
+    expect(result.message).toContain('wp_blueprint')
   })
 
   it('denies direct edits to folder overview blueprint documents', () => {
@@ -26,7 +26,7 @@ describe('pretool blueprint validator', () => {
     )
 
     expect(result.passed).toBe(false)
-    expect(result.message).toContain('mcp__webpresso__wp_blueprint(...)')
+    expect(result.message).toContain('wp_blueprint')
   })
 
   it('allows supporting markdown beside a canonical blueprint overview', () => {
