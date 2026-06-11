@@ -5,12 +5,14 @@
  *
  * Backend selection:
  *   AK_SESSION_ENGINE=ctx-rs (default) → @webpresso/ctx-rs Rust FFI
- *   AK_SESSION_ENGINE=ts               → better-sqlite3 TS engine (v1 fallback)
+ *   AK_SESSION_ENGINE=ts               → TypeScript SQLite engine fallback
  *
  * Schema is identical between v1 and v2 — zero-migration promise.
  */
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
+
+import { Database } from 'bun:sqlite'
 
 import type { ChunkInsertInput, SearchHit, SearchOptions } from './types.js'
 import { isUnavailable } from './types.js'
@@ -65,10 +67,6 @@ class CtxRsStore {
 
 // ── TS backend (v1 fallback) ──────────────────────────────────────────────────
 
-// Lazy import of better-sqlite3 so it's not required when ctx-rs is active.
-type BetterSqlite3Module = typeof import('better-sqlite3')
-type BetterSqlite3Database = InstanceType<BetterSqlite3Module>
-
 const SCHEMA_SQL = `
   CREATE VIRTUAL TABLE IF NOT EXISTS chunks USING fts5(
     content,
@@ -109,42 +107,51 @@ const SCHEMA_SQL = `
 `
 
 class TsStore {
-  private readonly db: BetterSqlite3Database
+  private readonly db: Database
   private insertCount = 0
 
   constructor(dbPath: string) {
     mkdirSync(dirname(dbPath), { recursive: true })
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const BetterSqlite3 = require('better-sqlite3') as BetterSqlite3Module
-    this.db = new BetterSqlite3(dbPath)
-    this.db.pragma('journal_mode=WAL')
-    this.db.pragma('synchronous=NORMAL')
-    this.db.pragma(`mmap_size=${256 * 1024 * 1024}`)
+    this.db = new Database(dbPath)
+    this.db.exec('PRAGMA journal_mode=WAL')
+    this.db.exec('PRAGMA synchronous=NORMAL')
+    this.db.exec(`PRAGMA mmap_size=${256 * 1024 * 1024}`)
     this.db.exec(SCHEMA_SQL)
   }
 
-  getDb(): BetterSqlite3Database {
+  getDb(): Database {
     return this.db
   }
 
   insertChunks(chunks: readonly ChunkInsertInput[]): void {
     const OPTIMIZE_EVERY = 50
-    const insertChunk = this.db.prepare<[string, string]>(
-      'INSERT INTO chunks(content, source) VALUES (?, ?)',
-    )
-    const insertTrigram = this.db.prepare<[string, string]>(
+    const insertChunk = this.db.prepare('INSERT INTO chunks(content, source) VALUES (?, ?)')
+    const insertTrigram = this.db.prepare(
       'INSERT INTO chunks_trigram(content, source) VALUES (?, ?)',
+    )
+    const upsertSource = this.db.prepare(
+      `INSERT INTO sources(label, indexed_at, chunk_count)
+       VALUES (?, ?, ?)
+       ON CONFLICT(label) DO UPDATE SET
+         indexed_at = excluded.indexed_at,
+         chunk_count = sources.chunk_count + excluded.chunk_count`,
     )
 
     const insert = this.db.transaction((items: readonly ChunkInsertInput[]) => {
+      const indexedAt = Date.now()
+      const chunkCounts = new Map<string, number>()
       for (const c of items) {
         insertChunk.run(c.content, c.source)
         insertTrigram.run(c.content, c.source)
+        chunkCounts.set(c.source, (chunkCounts.get(c.source) ?? 0) + 1)
         this.insertCount++
         if (this.insertCount % OPTIMIZE_EVERY === 0) {
           this.db.exec("INSERT INTO chunks(chunks) VALUES('optimize')")
           this.db.exec("INSERT INTO chunks_trigram(chunks_trigram) VALUES('optimize')")
         }
+      }
+      for (const [source, chunkCount] of chunkCounts) {
+        upsertSource.run(source, indexedAt, chunkCount)
       }
     })
     insert(chunks)
@@ -177,7 +184,10 @@ class TsStore {
             rank: number
           }>)
       return rows.map((r) => ({ ...r, tier: 'porter' as const }))
-    } catch {
+    } catch (err: unknown) {
+      process.stderr.write(
+        `ak-session-memory: searchPorter error: ${err instanceof Error ? err.message : String(err)}\n`,
+      )
       return []
     }
   }
@@ -200,7 +210,10 @@ class TsStore {
             rank: number
           }>)
       return rows.map((r) => ({ ...r, tier: 'trigram' as const }))
-    } catch {
+    } catch (err: unknown) {
+      process.stderr.write(
+        `ak-session-memory: searchTrigram error: ${err instanceof Error ? err.message : String(err)}\n`,
+      )
       return []
     }
   }
@@ -239,7 +252,8 @@ class TsStore {
   }
 
   getDbPath(): string {
-    return ''
+    const row = this.db.prepare('PRAGMA database_list').get() as { file: string } | null | undefined
+    return row?.file ?? ''
   }
 }
 

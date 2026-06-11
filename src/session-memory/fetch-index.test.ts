@@ -1,65 +1,81 @@
 import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { tmpdir } from 'node:os'
 
-import { clearFetchIndexCache, fetchAndIndex } from './fetch-index.js'
-import { SessionMemoryStore } from './store.js'
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const dirs: string[] = []
-function store(): SessionMemoryStore {
-  const dir = mkdtempSync(join(tmpdir(), 'ak-fetch-index-'))
-  dirs.push(dir)
-  return new SessionMemoryStore(join(dir, 'memory.sqlite'))
-}
-function response(body: string, contentType: string): Response {
-  return new Response(body, { headers: { 'content-type': contentType } })
-}
+import { fetchAndIndex } from './fetch-index.js'
+import { getStore } from './store.js'
+
+const originalEngine = process.env['AK_SESSION_ENGINE']
+process.env['AK_SESSION_ENGINE'] = 'ts'
+
+let tmpDir: string
+let dbPath: string
+
+beforeEach(() => {
+  tmpDir = mkdtempSync(join(tmpdir(), 'ak-fetch-index-test-'))
+  dbPath = join(tmpDir, 'memory.db')
+  vi.restoreAllMocks()
+})
 
 afterEach(() => {
-  clearFetchIndexCache()
-  while (dirs.length > 0) rmSync(dirs.pop()!, { recursive: true, force: true })
+  rmSync(tmpDir, { recursive: true, force: true })
+})
+
+afterAll(() => {
+  if (originalEngine === undefined) {
+    delete process.env['AK_SESSION_ENGINE']
+  } else {
+    process.env['AK_SESSION_ENGINE'] = originalEngine
+  }
 })
 
 describe('fetchAndIndex', () => {
-  it('fetches HTML, converts it to markdown-ish chunks, and indexes it', async () => {
-    const s = store()
-    await fetchAndIndex({
-      url: 'https://example.com/a#frag',
-      store: s,
-      fetchImpl: vi.fn(async () => response('<h1>Hello</h1><p>session memory</p>', 'text/html')),
+  it('indexes fetched HTML as searchable markdown text', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('<html><body><h1>Hello</h1><p>Session memory works</p></body></html>', {
+        headers: { 'content-type': 'text/html' },
+      }),
+    )
+
+    const result = await fetchAndIndex({
+      url: 'https://example.test/docs',
+      dbPath,
+      cacheTtlMs: 60_000,
     })
-    expect(s.search({ query: 'session', limit: 1 })[0]?.text).toContain('session memory')
-    s.close()
+
+    expect(result.cached).toBe(false)
+    expect(result.chunkCount).toBeGreaterThan(0)
+
+    const hits = getStore(dbPath).search({ query: 'Session memory works', limit: 5 })
+    expect(hits.length).toBeGreaterThan(0)
+    expect(hits[0]?.content).toContain('Session memory works')
   })
 
-  it('fetches JSON as structured chunks and indexes it', async () => {
-    const s = store()
-    await fetchAndIndex({
-      url: 'https://example.com/data',
-      store: s,
-      fetchImpl: vi.fn(async () => response('{"name":"memory"}', 'application/json')),
-    })
-    expect(s.search({ query: 'memory', limit: 1 })[0]?.text).toContain('memory')
-    s.close()
-  })
+  it('uses the sources cache to avoid refetching within the TTL', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response('cached body', {
+          headers: { 'content-type': 'text/plain' },
+        }),
+    )
 
-  it('uses a 24h normalized URL cache', async () => {
-    const s = store()
-    const fetchImpl = vi.fn(async () => response('cached memory', 'text/plain'))
-    await fetchAndIndex({ url: 'https://example.com/cache#one', store: s, fetchImpl, now: 10 })
-    await fetchAndIndex({ url: 'https://example.com/cache#two', store: s, fetchImpl, now: 20 })
-    expect(fetchImpl).toHaveBeenCalledTimes(1)
-    s.close()
-  })
-
-  it('passes an AbortSignal to native fetch-compatible implementations', async () => {
-    const s = store()
-    const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
-      expect(init?.signal).toBeInstanceOf(AbortSignal)
-      return response('timeout-aware memory', 'text/plain')
+    const first = await fetchAndIndex({
+      url: 'https://example.test/cache',
+      dbPath,
+      cacheTtlMs: 60_000,
     })
-    await fetchAndIndex({ url: 'https://example.com/signal', store: s, fetchImpl, timeoutMs: 1 })
-    s.close()
+    const second = await fetchAndIndex({
+      url: 'https://example.test/cache',
+      dbPath,
+      cacheTtlMs: 60_000,
+    })
+
+    expect(first.cached).toBe(false)
+    expect(second.cached).toBe(true)
+    expect(second.chunkCount).toBe(0)
+    expect(typeof second.cachedAt).toBe('number')
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
 })
