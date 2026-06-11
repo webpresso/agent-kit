@@ -1,7 +1,6 @@
-import { getErrorMessage } from '@webpresso/runtime-format/errors'
-
 import type { AgentTool, ChunkMetadata, RAGRetriever, ToolResult } from './types.js'
 
+import { getErrorMessage } from './shared/runtime-format.js'
 import { isValidRelativePath } from './shared/validate-path.js'
 
 async function getSemanticContext(

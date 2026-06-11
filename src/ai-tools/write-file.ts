@@ -1,7 +1,6 @@
-import { getErrorMessage } from '@webpresso/runtime-format/errors'
-
 import type { AgentTool, FileOperation, ToolContext, ToolResult } from './types.js'
 
+import { getErrorMessage } from './shared/runtime-format.js'
 import { isValidRelativePath } from './shared/validate-path.js'
 
 function validatePath(path: string): ToolResult | null {

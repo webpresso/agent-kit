@@ -1,8 +1,6 @@
-import { getErrorMessage } from '@webpresso/runtime-format/errors'
-import { formatBytes } from '@webpresso/runtime-format/format'
-
 import type { AgentTool } from './types.js'
 
+import { formatBytes, getErrorMessage } from './shared/runtime-format.js'
 import { isValidRelativePath } from './shared/validate-path.js'
 
 export const listFilesTool: AgentTool = {

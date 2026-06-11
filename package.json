@@ -552,8 +552,6 @@
   "dependencies": {
     "@manypkg/find-root": "catalog:",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@webpresso/runtime-format": "catalog:",
-    "@webpresso/runtime-storage": "catalog:",
     "better-sqlite3": "^12.9.0",
     "cac": "^7.0.0",
     "env-paths": "^4.0.0",
