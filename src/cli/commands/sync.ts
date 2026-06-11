@@ -11,12 +11,18 @@
  */
 
 import type { CAC } from 'cac'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 
 import { runUnifiedSync, type UnifiedSyncMismatch } from '#symlinker/unified-sync'
 import type { ContentKind } from '#content/loader'
 import { resolvePackageAsset } from '#utils/package-assets'
 import { defaultConfig, readConfig } from './init/config.js'
-import { detectConsumer } from './init/detect-consumer.js'
+import {
+  detectConsumer,
+  isAgentKitTemplateSourceRepo,
+  type ConsumerContext,
+} from './init/detect-consumer.js'
 import { scaffoldAgentsMd } from './init/scaffold-agents-md.js'
 import type { MergeResult } from './init/merge.js'
 
@@ -71,6 +77,22 @@ function agentsResultToMismatch(result: MergeResult): UnifiedSyncMismatch | null
   }
 }
 
+export function isUnmaterializedAgentKitSourceWorktree(consumer: ConsumerContext): boolean {
+  if (!isAgentKitTemplateSourceRepo(consumer.packageJson?.name)) return false
+
+  const requiredPaths = [
+    '.agent/rules',
+    '.agent/skills',
+    '.claude/rules',
+    '.claude/skills',
+    '.agents/skills',
+    '.cursor/rules',
+    '.windsurf/skills',
+  ]
+
+  return requiredPaths.every((relativePath) => !existsSync(join(consumer.repoRoot, relativePath)))
+}
+
 export function registerSyncCommand(cli: CAC): void {
   cli
     .command('sync', 'Sync agent rules + skills across all supported host surfaces')
@@ -94,6 +116,16 @@ export function registerSyncCommand(cli: CAC): void {
         config: readConfig(repoRoot) ?? defaultConfig(),
         options: { dryRun: check, overwrite: false },
       })
+
+      if (check && isUnmaterializedAgentKitSourceWorktree(consumer)) {
+        console.error(
+          `wp sync --check: agent-kit source surfaces are not materialized in this worktree (${consumer.repoRoot}).\n` +
+            `  This repo is the source of the canonical agent templates; a fresh git worktree needs\n` +
+            `  \`wp sync\` (or \`wp setup --source-maintenance\`) before \`wp sync --check\` can pass here.`,
+        )
+        return 1
+      }
+
       try {
         result = runUnifiedSync({
           catalogDir,
