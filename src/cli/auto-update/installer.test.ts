@@ -156,7 +156,7 @@ describe('scheduleDeferredInstall — happy path', () => {
       return fakeSpawnReturn() as unknown as ReturnType<typeof spawn>
     }) as unknown as typeof spawn)
 
-    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', 'webpresso'] })
+    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', '@webpresso/agent-kit'] })
 
     expect(result.spawned).toStrictEqual(true)
     expect(tombstoneAtSpawn).not.toStrictEqual(null)
@@ -169,12 +169,12 @@ describe('scheduleDeferredInstall — happy path', () => {
     const child = fakeSpawnReturn()
     spawnMock.mockReturnValue(child as unknown as ReturnType<typeof spawn>)
 
-    scheduleDeferredInstall({ command: ['pnpm', 'add', '-g', 'webpresso'] })
+    scheduleDeferredInstall({ command: ['pnpm', 'add', '-g', '@webpresso/agent-kit'] })
 
     expect(spawnMock).toHaveBeenCalledOnce()
     const [cmd, args, opts] = spawnMock.mock.calls[0]!
     expect(cmd).toStrictEqual('pnpm')
-    expect(args).toStrictEqual(['add', '-g', 'webpresso'])
+    expect(args).toStrictEqual(['add', '-g', '@webpresso/agent-kit'])
     const spawnOpts = opts as { detached: boolean; windowsHide: boolean }
     expect(spawnOpts.detached).toStrictEqual(true)
     expect(spawnOpts.windowsHide).toStrictEqual(true)
@@ -182,7 +182,7 @@ describe('scheduleDeferredInstall — happy path', () => {
   })
 
   it('attaches the log file descriptor to child stdio for stdout and stderr', () => {
-    scheduleDeferredInstall({ command: ['npm', 'install', '-g', 'webpresso'] })
+    scheduleDeferredInstall({ command: ['npm', 'install', '-g', '@webpresso/agent-kit'] })
 
     const opts = spawnMock.mock.calls[0]?.[2] as { stdio: unknown[] } | undefined
     expect(Array.isArray(opts?.stdio)).toStrictEqual(true)
@@ -198,14 +198,14 @@ describe('scheduleDeferredInstall — happy path', () => {
     const nested = join(tmpDir, 'nested', 'state')
     getSurfacePathMock.mockImplementation((name) => join(nested, name))
 
-    scheduleDeferredInstall({ command: ['npm', 'install', '-g', 'webpresso'] })
+    scheduleDeferredInstall({ command: ['npm', 'install', '-g', '@webpresso/agent-kit'] })
 
     expect(existsSync(join(nested, 'update-notifier-cache.json'))).toStrictEqual(true)
     expect(existsSync(join(nested, 'auto-update.log'))).toStrictEqual(true)
   })
 
   it('returns { spawned: true } on success', () => {
-    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', 'webpresso'] })
+    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', '@webpresso/agent-kit'] })
     expect(result).toStrictEqual({ spawned: true })
   })
 })
@@ -220,7 +220,7 @@ describe('scheduleDeferredInstall — concurrency lockout', () => {
       JSON.stringify({ autoInstallInProgress: { pid: process.pid, ts: Date.now() } }),
     )
 
-    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', 'webpresso'] })
+    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', '@webpresso/agent-kit'] })
 
     expect(result.spawned).toStrictEqual(false)
     expect(result.reason).toMatch(/recent install in progress/)
@@ -241,7 +241,7 @@ describe('scheduleDeferredInstall — concurrency lockout', () => {
       JSON.stringify({ autoInstallInProgress: { pid: deadPid, ts: Date.now() } }),
     )
 
-    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', 'webpresso'] })
+    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', '@webpresso/agent-kit'] })
 
     expect(result.spawned).toStrictEqual(true)
     expect(spawnMock).toHaveBeenCalledOnce()
@@ -256,7 +256,7 @@ describe('scheduleDeferredInstall — concurrency lockout', () => {
       }),
     )
 
-    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', 'webpresso'] })
+    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', '@webpresso/agent-kit'] })
 
     expect(result.spawned).toStrictEqual(true)
     expect(spawnMock).toHaveBeenCalledOnce()
@@ -271,7 +271,7 @@ describe('scheduleDeferredInstall — concurrency lockout', () => {
       }),
     )
 
-    scheduleDeferredInstall({ command: ['npm', 'install', '-g', 'webpresso'] })
+    scheduleDeferredInstall({ command: ['npm', 'install', '-g', '@webpresso/agent-kit'] })
 
     const after = JSON.parse(readFileSync(configPath, 'utf-8')) as {
       autoInstallInProgress: { pid: number }
@@ -280,7 +280,7 @@ describe('scheduleDeferredInstall — concurrency lockout', () => {
   })
 
   it('proceeds when no tombstone exists at all', () => {
-    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', 'webpresso'] })
+    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', '@webpresso/agent-kit'] })
     expect(result.spawned).toStrictEqual(true)
   })
 
@@ -288,7 +288,7 @@ describe('scheduleDeferredInstall — concurrency lockout', () => {
     const configPath = join(tmpDir, 'update-notifier-cache.json')
     writeFileSync(configPath, '{not valid json')
 
-    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', 'webpresso'] })
+    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', '@webpresso/agent-kit'] })
 
     expect(result.spawned).toStrictEqual(true)
   })
@@ -297,7 +297,7 @@ describe('scheduleDeferredInstall — concurrency lockout', () => {
     const configPath = join(tmpDir, 'update-notifier-cache.json')
     writeFileSync(configPath, JSON.stringify({ autoInstallInProgress: 'oops' }))
 
-    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', 'webpresso'] })
+    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', '@webpresso/agent-kit'] })
 
     expect(result.spawned).toStrictEqual(true)
   })
@@ -315,7 +315,7 @@ describe('scheduleDeferredInstall — preserves other configstore keys', () => {
       }),
     )
 
-    scheduleDeferredInstall({ command: ['npm', 'install', '-g', 'webpresso'] })
+    scheduleDeferredInstall({ command: ['npm', 'install', '-g', '@webpresso/agent-kit'] })
 
     const after = JSON.parse(readFileSync(configPath, 'utf-8')) as {
       latest?: string
@@ -342,7 +342,7 @@ describe('scheduleDeferredInstall — error paths', () => {
       throw new Error('no state root')
     })
 
-    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', 'webpresso'] })
+    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', '@webpresso/agent-kit'] })
 
     expect(result.spawned).toStrictEqual(false)
     expect(spawnMock).not.toHaveBeenCalled()
@@ -353,7 +353,7 @@ describe('scheduleDeferredInstall — error paths', () => {
       throw new Error('spawn EACCES')
     })
 
-    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', 'webpresso'] })
+    const result = scheduleDeferredInstall({ command: ['npm', 'install', '-g', '@webpresso/agent-kit'] })
 
     expect(result.spawned).toStrictEqual(false)
     expect(logUpdateErrorMock).toHaveBeenCalledOnce()

@@ -64,6 +64,32 @@ describe('package-surface audit', () => {
     )
   })
 
+  test('flags publishable unscoped webpresso packages outside the contract', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'packages', 'legacy'), { recursive: true })
+    writeJson(join(root, 'package-surface.json'), {
+      allowedPublicPackages: ['@webpresso/agent-kit'],
+      compatibilityPublicPackages: [],
+    })
+    writeJson(join(root, 'packages', 'legacy', 'package.json'), {
+      name: 'webpresso',
+      version: '0.1.0',
+      private: false,
+    })
+
+    const result = auditPackageSurface(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: 'packages/legacy/package.json',
+          message: expect.stringContaining('webpresso'),
+        }),
+      ]),
+    )
+  })
+
   test('flags forbidden vendor package names in public docs', () => {
     const root = tempRepo()
     writeJson(join(root, 'package.json'), {
@@ -125,6 +151,23 @@ describe('package-surface audit', () => {
         expect.objectContaining({
           file: 'pnpm-lock.yaml',
           message: expect.stringContaining('@webpresso/webpresso resolves to 0.1.1'),
+        }),
+      ]),
+    )
+  })
+
+  test('does not carry a default unscoped webpresso reference-consumer baseline', () => {
+    const root = tempRepo()
+    writeJson(join(root, 'package-surface.json'), {})
+    writeFileSync(join(root, 'pnpm-lock.yaml'), "'webpresso@0.18.17':\n")
+
+    const result = auditPackageSurface(root)
+
+    expect(result.violations).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          file: 'pnpm-lock.yaml',
+          message: expect.stringContaining('webpresso resolves to 0.18.17'),
         }),
       ]),
     )

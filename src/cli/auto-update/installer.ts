@@ -4,7 +4,7 @@
  * The auto-update flow calls this synchronously after detecting an
  * available release. We DON'T wait for the install to finish — the parent
  * process exits cleanly and the install completes in a detached child.
- * The next invocation of `webpresso` picks up the new binary.
+ * The next invocation of `wp` picks up the new binary.
  *
  * Invariants (per plan Architecture decision 3 and Implementation surface
  * "Auto-update wiring"):
