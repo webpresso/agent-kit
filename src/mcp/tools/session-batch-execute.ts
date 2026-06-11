@@ -185,16 +185,19 @@ const tool: ToolDescriptor = {
                 summary: execResult.summary,
               } satisfies CommandResult
             })
-            .then(
-              (r) =>
-                r ?? ({
-                  label,
-                  exitCode: -1,
-                  outputBytes: 0,
-                  indexed: false,
-                  summary: 'timed out',
-                } satisfies CommandResult),
-            ),
+            .then((r) => {
+              if (r !== null && r !== undefined) return r
+              process.stderr.write(
+                `ak_session_batch_execute: command "${label}" timed out after ${TASK_TIMEOUT_MS / 1000}s\n`,
+              )
+              return {
+                label,
+                exitCode: -1,
+                outputBytes: 0,
+                indexed: false,
+                summary: '[timeout after 60s]',
+              } satisfies CommandResult
+            }),
         ),
       )
 
@@ -211,9 +214,9 @@ const tool: ToolDescriptor = {
                 queryHits![query] = hits as SearchHit[]
               }),
             )
-          } catch (searchErr) {
+          } catch (searchErr: unknown) {
             process.stderr.write(
-              `ak_session_batch_execute: query search failed: ${(searchErr as Error).message}\n`,
+              `ak_session_batch_execute: query search failed: ${searchErr instanceof Error ? searchErr.message : String(searchErr)}\n`,
             )
           }
         }

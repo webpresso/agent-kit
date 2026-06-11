@@ -86,8 +86,10 @@ export function captureEvent(input: CaptureEventInput, sessionsDir?: string): bo
       .run(input.event.sessionId, eventId, ts, input.event.toolName, input.event.content)
 
     return true
-  } catch (err) {
-    process.stderr.write(`ak-session-memory: captureEvent failed: ${(err as Error).message}\n`)
+  } catch (err: unknown) {
+    process.stderr.write(
+      `ak-session-memory: captureEvent failed: ${err instanceof Error ? err.message : String(err)}\n`,
+    )
     return false
   }
 }
@@ -121,9 +123,10 @@ export async function snapshot(input: SnapshotInput, sessionsDir?: string): Prom
 
     // TS engine fallback
     return await snapshotTs(input, snapshotId, sessionsDir)
-  } catch (err) {
-    process.stderr.write(`ak-session-memory: snapshot failed: ${(err as Error).message}\n`)
-    return { snapshotId, eventsIncluded: 0, partial: true }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err)
+    process.stderr.write(`ak-session-memory: snapshot failed: ${message}\n`)
+    return { snapshotId, eventsIncluded: 0, partial: true, error: message }
   }
 }
 
@@ -232,8 +235,10 @@ export function restore(input: RestoreInput, sessionsDir?: string): RestoreResul
 
     const hits = store.search({ query: input.query, limit: input.limit ?? 10 })
     return { hits, snapshotId: latestSnapshot?.snapshot_id ?? null }
-  } catch (err) {
-    process.stderr.write(`ak-session-memory: restore failed: ${(err as Error).message}\n`)
+  } catch (err: unknown) {
+    process.stderr.write(
+      `ak-session-memory: restore failed: ${err instanceof Error ? err.message : String(err)}\n`,
+    )
     return { hits: [], snapshotId: null }
   }
 }

@@ -177,7 +177,10 @@ class TsStore {
             rank: number
           }>)
       return rows.map((r) => ({ ...r, tier: 'porter' as const }))
-    } catch {
+    } catch (err: unknown) {
+      process.stderr.write(
+        `ak-session-memory: searchPorter error: ${err instanceof Error ? err.message : String(err)}\n`,
+      )
       return []
     }
   }
@@ -200,7 +203,10 @@ class TsStore {
             rank: number
           }>)
       return rows.map((r) => ({ ...r, tier: 'trigram' as const }))
-    } catch {
+    } catch (err: unknown) {
+      process.stderr.write(
+        `ak-session-memory: searchTrigram error: ${err instanceof Error ? err.message : String(err)}\n`,
+      )
       return []
     }
   }

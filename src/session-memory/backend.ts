@@ -48,7 +48,10 @@ export function tryLoadCtxRsSync(): typeof import('@webpresso/ctx-rs') | null {
       return null
     }
     return mod
-  } catch {
+  } catch (err: unknown) {
+    process.stderr.write(
+      `ak-session-memory: ctx-rs load error: ${err instanceof Error ? err.message : String(err)}\n`,
+    )
     return null
   }
 }

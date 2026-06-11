@@ -1,10 +1,10 @@
 ---
 type: blueprint
-status: in-progress
+status: completed
 complexity: L
 created: '2026-05-13'
-last_updated: '2026-05-14'
-progress: '100% (17/17 tasks done — 13 original + 4 Phase 6 output sandboxing)'
+last_updated: '2026-06-11'
+progress: '100% (24/24 tasks done — 17 original + 7 Phase 7 PR review hardening)'
 depends_on:
   - ak-session-memory-v1-in-process-sqlite-fts5-via-better-sqlite3
 tags:
@@ -642,3 +642,87 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 **Acceptance:**
 - [x] `AK_ROUTING_BLOCK` includes `ak_session_execute` decision row
 - [x] `context-mode-routing.md` updated to reference `ak_session_execute`
+
+---
+
+### Phase 7: PR Review Hardening [Complexity: XS]
+
+#### Task 7.1: Fix bare `catch {}` in `TsStore.searchPorter`
+
+**Status:** done
+
+**File:** `src/session-memory/store.ts`
+
+Replace bare `catch {}` with `catch (err: unknown)` + `process.stderr.write` so FTS5 errors are observable instead of silently returning `[]`.
+
+**Acceptance:**
+- [x] `searchPorter` catch logs to stderr with safe narrowing
+
+#### Task 7.2: Fix bare `catch {}` in `TsStore.searchTrigram`
+
+**Status:** done
+
+**File:** `src/session-memory/store.ts`
+
+Same fix as 7.1 for the trigram tier.
+
+**Acceptance:**
+- [x] `searchTrigram` catch logs to stderr with safe narrowing
+
+#### Task 7.3: Fix bare `catch {}` in `tryLoadCtxRsSync`
+
+**Status:** done
+
+**File:** `src/session-memory/backend.ts`
+
+Replace bare `catch {}` with `catch (err: unknown)` + stderr log so unexpected ctx-rs load failures are surfaced. Module-not-found cases remain quiet via the caller's fallback message.
+
+**Acceptance:**
+- [x] `tryLoadCtxRsSync` catch logs error message to stderr
+
+#### Task 7.4: Add `error?: string` discriminator to `SnapshotResult`
+
+**Status:** done
+
+**File:** `src/session-memory/types.ts`
+
+Add `readonly error?: string` to `SnapshotResult` so callers can distinguish a timeout-partial from an error-partial.
+
+**Acceptance:**
+- [x] `SnapshotResult.error` field present and optional
+
+#### Task 7.5: Safe error narrowing in `session.ts`
+
+**Status:** done
+
+**File:** `src/session-memory/session.ts`
+
+Replace all `(err as Error).message` with `err instanceof Error ? err.message : String(err)` in three catch blocks (`captureEvent`, `snapshot`, `restore`). Add `error: message` to the snapshot failure return object.
+
+**Acceptance:**
+- [x] All three catch blocks use safe narrowing
+- [x] Snapshot failure returns `error` field
+
+#### Task 7.6: Safe error narrowing in `pre-compact/index.ts`
+
+**Status:** done
+
+**File:** `src/hooks/pre-compact/index.ts`
+
+Replace `(err as Error).message` with safe narrowing pattern.
+
+**Acceptance:**
+- [x] `runPreCompact` catch uses safe narrowing
+
+#### Task 7.7: Fix p-queue timeout label and safe narrowing in `session-batch-execute.ts`
+
+**Status:** done
+
+**File:** `src/mcp/tools/session-batch-execute.ts`
+
+Change timeout fallback `summary` from `'timed out'` to `'[timeout after 60s]'` and add a `process.stderr.write` line so operators can distinguish timed-out commands from real failures. Also replace `(searchErr as Error).message` with safe narrowing.
+
+**Acceptance:**
+- [x] Timeout result summary is `'[timeout after 60s]'`
+- [x] Stderr log fires on timeout with label and duration
+- [x] `searchErr` catch uses safe narrowing
