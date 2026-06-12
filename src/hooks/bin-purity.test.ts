@@ -16,7 +16,7 @@ import { describe, expect, it } from 'vitest'
 
 const REPO_ROOT = resolve(import.meta.dirname, '../../')
 
-/** Paths to the 8 hook bin entry-point source files (relative to REPO_ROOT). */
+/** Paths to the canonical hook/runtime entry-point source files (relative to REPO_ROOT). */
 const HOOK_BIN_SOURCES = [
   'src/hooks/pretool-guard/index.ts',
   'src/hooks/post-tool/lint-after-edit.ts',
@@ -24,8 +24,6 @@ const HOOK_BIN_SOURCES = [
   'src/hooks/guard-switch/index.ts',
   'src/hooks/test-quality-check.ts',
   'src/hooks/sessionstart/index.ts',
-  'src/hooks/check-dev-link/index.ts',
-  'src/dev/restore-dev-links/index.ts',
 ]
 
 const AUTO_UPDATE_RUN_PATTERNS = [

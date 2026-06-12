@@ -22,7 +22,6 @@ jobs:
         with:
           node-version: '24.16.0'
           cache: pnpm
-      - uses: ./.github/actions/setup-webpresso
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
@@ -44,7 +43,6 @@ jobs:
         with:
           node-version: '24.16.0'
           cache: pnpm
-      - uses: ./.github/actions/setup-webpresso
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
@@ -67,7 +65,6 @@ jobs:
         with:
           node-version: '24.16.0'
           cache: pnpm
-      - uses: ./.github/actions/setup-webpresso
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
@@ -84,7 +81,6 @@ jobs:
         with:
           node-version: '24.16.0'
           cache: pnpm
-      - uses: ./.github/actions/setup-webpresso
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest

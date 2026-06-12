@@ -77,6 +77,7 @@ describe('codex app-server trust integration', () => {
   it('reapplies trust sync through the same app-server-first path after later setup steps', async () => {
     const repoRoot = tempRepo()
     const hooksPath = join(repoRoot, '.codex', 'hooks.json')
+    const managedLauncher = join(repoRoot, '.codex', 'managed-hooks', 'wp-pretool-guard.sh')
     const batchWrites: unknown[] = []
     let listCall = 0
 
@@ -111,7 +112,7 @@ describe('codex app-server trust integration', () => {
                     eventName: 'pre_tool_use',
                     handlerType: 'command',
                     matcher: 'Bash',
-                    command: './node_modules/.bin/wp-pretool-guard',
+                    command: managedLauncher,
                     timeoutSec: 5,
                     statusMessage: null,
                     sourcePath: hooksPath,

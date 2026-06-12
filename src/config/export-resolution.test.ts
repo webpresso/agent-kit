@@ -140,13 +140,12 @@ describe('@webpresso/agent-kit package exports', () => {
     expect(packageJson.exports?.['./bundle']).toBeDefined()
   })
 
-  it('keeps hook bins and wires folded docs-lint bins to local entrypoints', async () => {
+  it('keeps the public wp entrypoints and wires folded docs-lint bins to local entrypoints', async () => {
     const packageJson = await readCanonicalPackageJson()
 
     expect(packageJson.bin).toMatchObject({
       wp: 'bin/wp',
       'with-secrets': 'bin/with-secrets',
-      'wp-pretool-guard': 'bin/wp-pretool-guard.js',
       ...docsLintBins,
     })
   })
