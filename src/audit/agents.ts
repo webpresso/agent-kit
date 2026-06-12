@@ -72,10 +72,8 @@ export function auditAgents(rootDirectory: string = process.cwd()): RepoAuditRes
     checked += 1
     checkSetupAgentScript(root, packageJson, config?.scripts['setup-agent'], violations)
 
-    if (!config?.globalInstall) {
-      checked += 1
-      checkAgentKitDevDependency(root, packageJson, violations)
-    }
+    checked += 1
+    checkAgentKitDevDependency(root, packageJson, violations)
   }
 
   return {

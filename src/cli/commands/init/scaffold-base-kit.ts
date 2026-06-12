@@ -2,12 +2,12 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'n
 import { dirname, join } from 'node:path'
 
 import { type MergeOptions, type MergeResult, writeFileMerged } from './merge.js'
+import { readPackageVersion } from '#cli/utils'
 
 export interface ScaffoldBaseKitInput {
   catalogDir: string
   repoRoot: string
   options: MergeOptions
-  globalInstall?: boolean
 }
 
 export interface RuntimeContractGuidance {
@@ -35,6 +35,8 @@ const EXECUTION_ONLY_REVIEW_DEPENDENCIES = [
   'markdownlint-cli2',
   'stryker',
 ] as const
+
+const DEFAULT_AGENT_KIT_RANGE = `^${readPackageVersion(import.meta.url)}`
 
 export function collectRuntimeContractGuidance(
   packageJson: PackageJsonLike | null | undefined,
@@ -117,7 +119,6 @@ const BOOTSTRAP_ONLY_MAP: Array<[string, string]> = [
 function mergePackageJson(
   repoRoot: string,
   options: MergeOptions,
-  globalInstall = false,
 ): MergeResult {
   const pkgPath = join(repoRoot, 'package.json')
   const engines = { node: '>=24' }
@@ -183,7 +184,6 @@ function mergePackageJson(
   const devDeps = (pkg['devDependencies'] ?? {}) as Record<string, string>
   const hasAgentKitDevDep = typeof devDeps['@webpresso/agent-kit'] === 'string'
   const shouldSkipSelfInstall = isSelfPackageName(packageName)
-  const shouldManageAgentKitAsGlobal = globalInstall && !shouldSkipSelfInstall
   const requiredAuthoringDeps: Record<string, string> = {
     '@playwright/test': 'latest',
     '@stryker-mutator/core': 'latest',
@@ -197,7 +197,7 @@ function mergePackageJson(
   if (
     alreadyHasEngines &&
     alreadyHasPm &&
-    (shouldSkipSelfInstall || shouldManageAgentKitAsGlobal || hasAgentKitDevDep) &&
+    (shouldSkipSelfInstall || hasAgentKitDevDep) &&
     Object.keys(requiredAuthoringDeps).every((name) => typeof devDeps[name] === 'string') &&
     (shouldSkipSelfInstall || hasSetupAgent) &&
     (shouldSkipSelfInstall || hasVerifyPaths) &&
@@ -223,11 +223,11 @@ function mergePackageJson(
   if (!devDeps['husky']) {
     devDeps['husky'] = '^9.0.0'
   }
-  if (!shouldSkipSelfInstall && !shouldManageAgentKitAsGlobal && !hasAgentKitDevDep) {
+  if (!shouldSkipSelfInstall && !hasAgentKitDevDep) {
     // Keep consumers on the currently published dist-tag rather than a
     // repo-internal path. Do not wire this through `prepare`: `wp` is not
     // reliably on PATH during `vp install`, so `setup:agent` stays opt-in.
-    devDeps['@webpresso/agent-kit'] = 'latest'
+    devDeps['@webpresso/agent-kit'] = DEFAULT_AGENT_KIT_RANGE
   }
   for (const [name, version] of Object.entries(requiredAuthoringDeps)) {
     if (!devDeps[name]) {
@@ -308,7 +308,7 @@ function isAgentKitSelfRepo(repoRoot: string): boolean {
 }
 
 export function scaffoldBaseKit(input: ScaffoldBaseKitInput): MergeResult[] {
-  const { catalogDir, repoRoot, options, globalInstall = false } = input
+  const { catalogDir, repoRoot, options } = input
   const baseKitDir = join(catalogDir, 'base-kit')
   const results: MergeResult[] = []
   // Dogfooding boundary: agent-kit gets base-kit's scripts/templates but not the
@@ -380,7 +380,7 @@ export function scaffoldBaseKit(input: ScaffoldBaseKitInput): MergeResult[] {
     }
   }
 
-  results.push(mergePackageJson(repoRoot, options, globalInstall))
+  results.push(mergePackageJson(repoRoot, options))
   return results
 }
 

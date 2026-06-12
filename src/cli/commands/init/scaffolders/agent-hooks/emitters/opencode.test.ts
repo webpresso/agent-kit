@@ -13,12 +13,11 @@ describe('buildOpencodeHookPluginContent', () => {
     expect(content).toContain('CLAUDE_PROJECT_DIR')
   })
 
-  it('contains the canonical wp hook bins for OpenCode bridging', () => {
+  it('contains the canonical wp hook commands for OpenCode bridging', () => {
     const content = buildOpencodeHookPluginContent()
 
-    expect(content).toContain('./node_modules/.bin/wp-sessionstart-routing')
-    expect(content).toContain('./node_modules/.bin/wp-check-dev-link')
-    expect(content).toContain('./node_modules/.bin/wp-pretool-guard')
-    expect(content).toContain('./node_modules/.bin/wp-post-tool')
+    expect(content).toContain('wp hook sessionstart-routing')
+    expect(content).toContain('wp hook pretool-guard')
+    expect(content).toContain('wp hook post-tool')
   })
 })

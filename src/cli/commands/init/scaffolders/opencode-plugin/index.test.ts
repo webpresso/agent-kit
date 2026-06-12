@@ -77,7 +77,7 @@ describe('scaffoldOpencodePlugin', () => {
   })
 })
 
-describe('plugin-native invariants — webpresso-dev-link.js', () => {
+describe('plugin-native invariants — webpresso-hooks.js', () => {
   it('scaffolder produces byte-identical output on first and second run', () => {
     const repoRoot = createTempRoot()
     const targetPath = join(repoRoot, OPENCODE_PLUGIN_RELATIVE_PATH)
@@ -95,12 +95,12 @@ describe('plugin-native invariants — webpresso-dev-link.js', () => {
 
 describe('OPENCODE_PLUGIN_CONTENT', () => {
   it('exports an async plugin function as required by opencode plugin contract', () => {
-    expect(OPENCODE_PLUGIN_CONTENT).toContain('export const WebpressoDevLinkPlugin')
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('export const WebpressoHooksPlugin')
     expect(OPENCODE_PLUGIN_CONTENT).toContain('async ({ $, directory })')
   })
 
-  it('shells out to the webpresso-shipped wp-check-dev-link bin', () => {
-    expect(OPENCODE_PLUGIN_CONTENT).toContain('./node_modules/.bin/wp-check-dev-link')
+  it('shells out to canonical wp hook subcommands', () => {
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('wp hook sessionstart-routing')
   })
 
   it('subscribes to session.created for first-run detection', () => {
@@ -124,8 +124,8 @@ describe('OPENCODE_PLUGIN_CONTENT', () => {
     expect(OPENCODE_PLUGIN_CONTENT).toContain('output.context.push(message)')
   })
 
-  it('routes the warning to stderr (visible in opencode TUI)', () => {
-    expect(OPENCODE_PLUGIN_CONTENT).toContain('process.stderr.write')
+  it('blocks tool execution by throwing when a canonical wp hook denies', () => {
+    expect(OPENCODE_PLUGIN_CONTENT).toContain('throw new Error')
   })
 
   it('executes as a real plugin and propagates breakage context through session and compaction hooks', async () => {
@@ -134,7 +134,7 @@ describe('OPENCODE_PLUGIN_CONTENT', () => {
     scaffoldOpencodePlugin({ repoRoot, options: {} })
 
     const mod = (await import(`${pathToFileURL(targetPath).href}?t=${Date.now()}`)) as {
-      WebpressoDevLinkPlugin: (input: {
+      WebpressoHooksPlugin: (input: {
         $: (
           strings: TemplateStringsArray,
           ...values: string[]
@@ -175,7 +175,7 @@ describe('OPENCODE_PLUGIN_CONTENT', () => {
     }
 
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
-    const plugin = await mod.WebpressoDevLinkPlugin({ $, directory: repoRoot })
+    const plugin = await mod.WebpressoHooksPlugin({ $, directory: repoRoot })
     await plugin.event({ event: { type: 'session.created' } })
     const output = { context: [] as string[] }
     await plugin['experimental.session.compacting']({}, output)
@@ -190,7 +190,7 @@ describe('OPENCODE_PLUGIN_CONTENT', () => {
     scaffoldOpencodePlugin({ repoRoot, options: {} })
 
     const mod = (await import(`${pathToFileURL(targetPath).href}?t=${Date.now()}`)) as {
-      WebpressoDevLinkPlugin: (input: {
+      WebpressoHooksPlugin: (input: {
         $: (
           strings: TemplateStringsArray,
           ...values: string[]
@@ -217,8 +217,8 @@ describe('OPENCODE_PLUGIN_CONTENT', () => {
         cwd: (_directory: string) => ({
           quiet: () => ({
             nothrow: async () => {
-              const bin = values.find((value) => value.includes('wp-')) ?? ''
-              if (bin.includes('wp-pretool-guard')) {
+              const command = values.find((value) => value.includes('wp hook ')) ?? ''
+              if (command.includes('wp hook pretool-guard')) {
                 return {
                   exitCode: 0,
                   stdout: Buffer.from(
@@ -241,7 +241,7 @@ describe('OPENCODE_PLUGIN_CONTENT', () => {
     }
 
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
-    const plugin = await mod.WebpressoDevLinkPlugin({ $, directory: repoRoot })
+    const plugin = await mod.WebpressoHooksPlugin({ $, directory: repoRoot })
     await expect(
       plugin['tool.execute.before'](
         { tool: 'bash', args: { command: 'npm test' } },

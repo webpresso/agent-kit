@@ -9,8 +9,6 @@ import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'n
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { readConfig } from './config.js'
-
 const AGENT_KIT_PACKAGE_NAMES = new Set(['@webpresso/agent-kit'])
 
 export interface ConsumerPackageInfo {
@@ -275,7 +273,6 @@ export function discoverWorkspacePackages(
 export function warnIfNonLocalCli(repoRoot: string, cliUrl: string = import.meta.url): void {
   const ourPkg = readPackageJson(repoRoot).info
   if (ourPkg?.name !== undefined && AGENT_KIT_PACKAGE_NAMES.has(ourPkg.name)) return
-  if (readConfig(repoRoot)?.globalInstall === true) return
   let cliPath: string
   try {
     cliPath = fileURLToPath(cliUrl)
@@ -293,8 +290,8 @@ export function warnIfNonLocalCli(repoRoot: string, cliUrl: string = import.meta
   console.error(
     `warning: wp running from a non-local install (${cliPath}). ` +
       (pinnedDepName !== null
-        ? `This repo already pins \`${pinnedDepName}\`; rerun via the repo-local CLI (\`vp run setup:agent\` or \`vp exec wp setup\`).`
-        : 'Pin `@webpresso/agent-kit` as a local dep for reproducible setup.'),
+        ? `Global \`wp\` must satisfy this repo's pinned \`${pinnedDepName}\` version range before rerunning \`wp setup\`.`
+        : 'Pin `@webpresso/agent-kit` in package.json with a published semver range so global `wp` can be validated against it.'),
   )
 }
 

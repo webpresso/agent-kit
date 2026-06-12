@@ -28,7 +28,6 @@ export interface EnsureContextModeInput {
   nodeBinary?: string
   strict?: boolean
   spinnerFactory?: SpinnerFactory
-  globalInstall?: boolean
 }
 
 export type EnsureContextModeResult = {
@@ -201,7 +200,7 @@ export function upsertCodexContextModeFeatures(raw: string): string {
 
 export function patchOpenCodeContextModeConfig(
   existing: Record<string, unknown>,
-  agentKitCommand: string[] = ['vp', 'exec', 'wp', 'mcp'],
+  agentKitCommand: string[] = ['wp', 'mcp'],
 ): Record<string, unknown> {
   const currentMcp =
     existing.mcp && typeof existing.mcp === 'object' && !Array.isArray(existing.mcp)
@@ -231,11 +230,11 @@ export function patchOpenCodeContextModeConfig(
   }
 }
 
-function resolveOpenCodeWebpressoCommand(repoRoot: string, globalInstall = false): string[] {
+function resolveOpenCodeWebpressoCommand(repoRoot: string): string[] {
   const repoLocalRoot = join(repoRoot, 'node_modules', '@webpresso', 'webpresso')
   const entryPath =
     findWebpressoMcpEntry({ candidates: [repoLocalRoot] }) ?? findWebpressoMcpEntry()
-  if (!entryPath) return globalInstall ? ['wp', 'mcp'] : ['vp', 'exec', 'wp', 'mcp']
+  if (!entryPath) return ['wp', 'mcp']
   const launch = agentKitMcpLaunchCommand(entryPath)
   return [launch.command, ...launch.args]
 }
@@ -354,7 +353,7 @@ export function ensureContextMode(input: EnsureContextModeInput): EnsureContextM
       (existing) =>
         patchOpenCodeContextModeConfig(
           existing,
-          resolveOpenCodeWebpressoCommand(input.repoRoot, input.globalInstall),
+          resolveOpenCodeWebpressoCommand(input.repoRoot),
         ),
       input.options,
     ),

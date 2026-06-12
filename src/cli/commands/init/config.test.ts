@@ -48,7 +48,6 @@ describe('config', () => {
         scripts: { 'setup-agent': 'wp setup' },
         durablePlanningRoot: '.agent/planning/',
         blueprintsDir: 'plans',
-        globalInstall: true,
       }),
     )
 
@@ -63,7 +62,6 @@ describe('config', () => {
       scripts: { 'setup-agent': 'wp setup' },
       durablePlanningRoot: '.agent/planning/',
       blueprintsDir: 'plans',
-      globalInstall: true,
     })
   })
 
@@ -73,7 +71,7 @@ describe('config', () => {
       installed: { tier3Skills: ['tanstack-query'] },
       mcp: { serverName: 'webpresso', toolPrefix: 'wp_' },
       rules: { overrides: ['repo-restrictions'] },
-      scripts: { 'setup-agent': 'vp exec wp setup' },
+      scripts: { 'setup-agent': 'wp setup' },
     }
     writeConfig(dir, cfg)
     expect(existsSync(join(dir, '.webpressorc.json'))).toBe(true)
@@ -81,7 +79,7 @@ describe('config', () => {
     expect(readBack?.installed.tier3Skills).toEqual(['tanstack-query'])
     expect(readBack?.mcp).toEqual({ serverName: 'webpresso', toolPrefix: 'wp_' })
     expect(readBack?.rules.overrides).toEqual(['repo-restrictions'])
-    expect(readBack?.scripts['setup-agent']).toBe('vp exec wp setup')
+    expect(readBack?.scripts['setup-agent']).toBe('wp setup')
   })
 
   it('mergeConfig unions allowlists and tolerates optional legacy lastInit', () => {
@@ -97,14 +95,14 @@ describe('config', () => {
       installed: { tier3Skills: ['tanstack-query'] },
       mcp: { serverName: 'custom-server' },
       rules: { overrides: ['claude-rules'] },
-      scripts: { 'setup-agent': 'vp exec wp setup' },
+      scripts: { 'setup-agent': 'wp setup' },
       lastInit: '2026-04-22T00:00:00Z',
     }
     const merged = mergeConfig(existing, incoming)
     expect(merged.installed.tier3Skills.toSorted()).toEqual(['react-doctor', 'tanstack-query'])
     expect(merged.mcp).toEqual({ serverName: 'custom-server', toolPrefix: 'wp_' })
     expect(merged.rules.overrides).toEqual(['agent-hooks', 'claude-rules'])
-    expect(merged.scripts['setup-agent']).toBe('vp exec wp setup')
+    expect(merged.scripts['setup-agent']).toBe('wp setup')
     expect(merged.lastInit).toBe('2026-04-22T00:00:00Z')
   })
 

@@ -172,7 +172,7 @@ Two alternatives fail for specific reasons:
 ```
 webpresso ships an update
   └─→ update @webpresso/agent-kit             (catalog refreshed in node_modules/)
-       └─→ vp exec wp setup                   (or: vp run setup:agent)
+       └─→ wp setup                   (or: vp run setup:agent)
             └─→ managed setup/catalog content refreshed — review the diff
                  └─→ wp sync --check when changing catalog/templates
 ```

@@ -3,8 +3,6 @@ import { normalize } from 'node:path'
 import type { CommandHookMetadata } from '#codex/app-server/types.js'
 import { WP_HOOK_BIN_NAMES } from './ir.js'
 import {
-  DIRECT_NODE_MODULES_BIN_PATTERN,
-  GUARDED_NODE_MODULES_BIN_PATTERN,
   stripSingleShellQuotePair,
 } from './shell-identity.js'
 
@@ -14,11 +12,11 @@ export const KNOWN_WEBPRESSO_CODEX_BINS = WP_HOOK_BIN_NAMES
 
 const KNOWN_WEBPRESSO_CODEX_BIN_SET = new Set<string>(KNOWN_WEBPRESSO_CODEX_BINS)
 // `.codex/managed-hooks`-only launcher forms (narrower than the cross-vendor
-// DIRECT/GUARDED_MANAGED_HOOK_LAUNCHER patterns in shell-identity.ts).
+// managed-launcher patterns in shell-identity.ts).
 const MANAGED_LAUNCHER_PATTERN =
-  /^(?:["']?)((?:\.\/|\/.*\/)?\.codex\/managed-hooks\/((?:wp|ak)-[\w-]+)\.sh)(?:["']?)$/u
+  /^(?:["']?)((?:\.\/|\/.*\/)?\.codex\/managed-hooks\/(wp-[\w-]+)\.sh)(?:["']?)$/u
 const GUARDED_MANAGED_LAUNCHER_PATTERN =
-  /^\[ -x (["']?)((?:\.\/|\/.*\/)?\.codex\/managed-hooks\/((?:wp|ak)-[\w-]+)\.sh)\1 \] && \1\2\1 \|\| (?:true|printf .+)$/u
+  /^\[ -x (["']?)((?:\.\/|\/.*\/)?\.codex\/managed-hooks\/(wp-[\w-]+)\.sh)\1 \] && \1\2\1 \|\| (?:true|printf .+)$/u
 
 export interface CodexHookOwnershipMetadata {
   readonly isManaged?: unknown
@@ -64,13 +62,8 @@ function isKnownWebpressoCodexBin(binName: string): boolean {
 
 function extractDirectNodeModulesBin(command: string): string | null {
   const normalizedCommand = stripSingleShellQuotePair(command.trim())
-  const match = DIRECT_NODE_MODULES_BIN_PATTERN.exec(normalizedCommand)
-  if (match?.[1]) return match[1]
   const managedLauncherMatch = MANAGED_LAUNCHER_PATTERN.exec(normalizedCommand)
   if (managedLauncherMatch?.[2]) return managedLauncherMatch[2]
-
-  const guardedMatch = GUARDED_NODE_MODULES_BIN_PATTERN.exec(command.trim())
-  if (guardedMatch?.[3]) return guardedMatch[3]
 
   const guardedManagedLauncherMatch = GUARDED_MANAGED_LAUNCHER_PATTERN.exec(command.trim())
   return guardedManagedLauncherMatch?.[3] ?? null

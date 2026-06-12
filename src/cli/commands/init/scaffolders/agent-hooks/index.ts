@@ -193,13 +193,8 @@ function materializeClaudeSkillCommand(skillHook: SkillHook): string {
   if (skillHook.command.startsWith('wp ')) {
     const args = skillHook.command.slice(3)
     const stdoutPolicy = skillHook.event === 'Stop' ? ' >/dev/null' : ''
-    // Resolve `wp` via the project bin first, then the agent-kit package root
-    // (workspace roots without a local install used to silently no-op here —
-    // the Stop `wp audit agents` gate never ran). When neither resolves, warn
-    // on stderr instead of swallowing the skip behind `|| true`.
-    const fallbackWp = quoteShell(join(resolvePackageRootForHookLaunchers(), 'bin', 'wp'))
     const verb = args.split(/\s+/u)[0]?.replaceAll(/[^\w-]/gu, '') || 'hook'
-    return `_WPSKILL="$CLAUDE_PROJECT_DIR/node_modules/.bin/wp"; [ -x "$_WPSKILL" ] || _WPSKILL=${fallbackWp}; if [ -x "$_WPSKILL" ]; then "$_WPSKILL" ${args}${stdoutPolicy}; else echo "webpresso: skill hook (wp ${verb}) skipped: wp not found; run vp install or wp setup" >&2; fi ${tag}`
+    return `if command -v wp >/dev/null 2>&1; then wp ${args}${stdoutPolicy}; else echo "webpresso: skill hook (wp ${verb}) skipped: global wp not found; install @webpresso/agent-kit globally and re-run wp setup" >&2; fi ${tag}`
   }
   return `${skillHook.command} ${tag}`
 }
@@ -815,14 +810,6 @@ function ensureGstackHooks(repoRoot: string, options: MergeOptions = {}): void {
   }
 }
 
-function resolveProjectHookBinPath(repoRoot: string, binName: string): string {
-  return resolve(repoRoot, 'node_modules', '@webpresso', 'agent-kit', 'bin', `${binName}.js`)
-}
-
-function resolvePackageHookBin(binName: string): string {
-  return join(resolvePackageRootForHookLaunchers(), 'bin', `${binName}.js`)
-}
-
 export type ResolvePackageRootForHookLaunchersOptions = ResolveAgentKitPackageRootOptions
 
 export function resolvePackageRootForHookLaunchers(
@@ -857,10 +844,9 @@ function resolveCompiledWpBinary(repoRoot: string): string | undefined {
 }
 
 /**
- * The `wp hook <sub>` subcommand a managed launcher should dispatch to via the
- * compiled binary, or undefined when `binName` is not a dispatchable hook (e.g.
- * `wp-check-dev-link`, which has no `wp hook` handler). The names map 1:1 by
- * stripping the `wp-` prefix; `isHookName` is the single source of truth.
+ * The `wp hook <sub>` subcommand a managed launcher should dispatch to. The
+ * names map 1:1 by stripping the `wp-` prefix; `isHookName` is the single
+ * source of truth.
  */
 export function hookSubcommandFor(binName: string): string | undefined {
   const sub = binName.startsWith('wp-') ? binName.slice(3) : binName
@@ -868,10 +854,7 @@ export function hookSubcommandFor(binName: string): string | undefined {
 }
 
 function renderManagedWebpressoHookLauncher(repoRoot: string, binName: string): string {
-  const nodeBinary = quoteShell(process.execPath)
-  const projectBinPath = quoteShell(resolveProjectHookBinPath(repoRoot, binName))
-  const fallbackBinPath = quoteShell(resolvePackageHookBin(binName))
-  const missingRuntimeWarning = `echo "webpresso hook ${binName} skipped: runtime not found; run vp install or wp setup" >&2`
+  const missingRuntimeWarning = `echo "webpresso hook ${binName} skipped: global wp not found; install @webpresso/agent-kit globally and re-run wp setup" >&2`
   // Guard fails closed (explicit deny JSON); json-only hooks keep Codex stdout
   // parseable; every other hook warns on stderr instead of silently exiting — a
   // silently-disabled hook hid the broken node pin for weeks (2026-06 audit).
@@ -882,10 +865,6 @@ function renderManagedWebpressoHookLauncher(repoRoot: string, binName: string): 
       ? PRETOOL_GUARD_MISSING_DENY
       : missingRuntimeWarning
 
-  // Prefer the self-contained compiled `wp` binary when it resolves: it bundles
-  // its own runtime, so it is immune to the node-path staleness that would break
-  // the absolute `$NODE_BINARY` path below. Only emitted for dispatchable hooks
-  // with an installed compiled runtime; otherwise the node path is unchanged.
   const hookSub = hookSubcommandFor(binName)
   const compiledWp = hookSub ? resolveCompiledWpBinary(repoRoot) : undefined
   const compiledPreamble =
@@ -898,29 +877,9 @@ fi
 `
       : ''
 
-  // Node resolution chain: pinned absolute path (survives sanitized hook
-  // environments) -> `command -v node` (survives runtime version bumps that
-  // stale the pin). Only after both fail does the missing-fallback fire.
   return `#!/bin/sh
-${compiledPreamble}NODE_BINARY=${nodeBinary}
-PROJECT_BIN_PATH=${projectBinPath}
-FALLBACK_BIN_PATH=${fallbackBinPath}
-
-if [ ! -x "$NODE_BINARY" ]; then
-  NODE_BINARY="$(command -v node 2>/dev/null || true)"
-fi
-
-if [ -z "$NODE_BINARY" ] || [ ! -x "$NODE_BINARY" ]; then
-  ${missingFallback}
-  exit 0
-fi
-
-if [ -f "$PROJECT_BIN_PATH" ]; then
-  exec "$NODE_BINARY" "$PROJECT_BIN_PATH" "$@"
-fi
-
-if [ -f "$FALLBACK_BIN_PATH" ]; then
-  exec "$NODE_BINARY" "$FALLBACK_BIN_PATH" "$@"
+${compiledPreamble}if command -v wp >/dev/null 2>&1; then
+  exec wp hook ${hookSub} "$@"
 fi
 
 ${missingFallback}

@@ -56,7 +56,7 @@ fresh installs. Use `wp setup` and follow `getting-started.md`.
 If you happen to have forked or vendored webpresso's blueprint code:
 
 1. `vp install -D @webpresso/agent-kit`.
-2. `vp exec wp setup` (or `wp setup --dry-run` to preview).
+2. `wp setup` (or `wp setup --dry-run` to preview).
 3. Codemod: find/replace your vendored imports with
    `@webpresso/agent-kit/blueprint`.
 4. Delete the vendored code.

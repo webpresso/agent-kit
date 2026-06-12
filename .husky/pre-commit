@@ -2,20 +2,9 @@
 set -eu
 
 ROOT="$(git rev-parse --show-toplevel)"
-
-# Route wp commands to source so a stale compiled binary never gates dev commits.
-# Latency-sensitive hook bins are exempted in the launcher — see bin/_run.js WP_FORCE_SOURCE.
-export WP_FORCE_SOURCE=1
-
-LOCAL_WP="$ROOT/node_modules/.bin/wp"
-if [ ! -x "$LOCAL_WP" ]; then
-  echo "pre-commit: local wp binary not found at $LOCAL_WP — run pnpm install" >&2
-  exit 1
-fi
-
-"$LOCAL_WP" audit guardrails
+"$ROOT/bin/wp" audit guardrails
 # agent-kit audit hooks (staged mode — fast)
 # webpresso audit hooks (staged mode — fast)
 bun "$ROOT/scripts/check-no-dev-vars.ts"
-"$LOCAL_WP" audit absolute-path-policy --root "$ROOT"
+"$ROOT/bin/wp" audit absolute-path-policy --root "$ROOT"
 bun "$ROOT/scripts/audit-secret-provider-quarantine.ts"

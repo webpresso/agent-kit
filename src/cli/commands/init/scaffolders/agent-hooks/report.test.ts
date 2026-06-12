@@ -12,37 +12,32 @@ import {
 const claudeMap: HooksMap = {
   SessionStart: [
     {
-      hooks: [
-        { type: 'command', command: 'node_modules/.bin/wp-sessionstart-routing', timeout: 5 },
-        { type: 'command', command: 'node_modules/.bin/wp-check-dev-link', timeout: 5 },
-      ],
+      hooks: [{ type: 'command', command: 'wp hook sessionstart-routing', timeout: 5 }],
     },
   ],
   PreToolUse: [
     {
       matcher: 'Bash(*)',
-      hooks: [{ type: 'command', command: 'node_modules/.bin/wp-pretool-guard', timeout: 5 }],
+      hooks: [{ type: 'command', command: 'wp hook pretool-guard', timeout: 5 }],
     },
   ],
-  Stop: [{ hooks: [{ type: 'command', command: 'node_modules/.bin/wp-stop-qa', timeout: 10 }] }],
+  Stop: [{ hooks: [{ type: 'command', command: 'wp hook stop-qa', timeout: 10 }] }],
 }
 
 const codexMap: HooksMap = {
   SessionStart: [
     {
-      hooks: [
-        { type: 'command', command: '/repo/node_modules/.bin/wp-sessionstart-routing', timeout: 5 },
-      ],
+      hooks: [{ type: 'command', command: '/repo/.codex/managed-hooks/wp-sessionstart-routing.sh', timeout: 5 }],
     },
   ],
   PreToolUse: [
     {
       matcher: 'Bash|apply_patch',
-      hooks: [{ type: 'command', command: '/repo/node_modules/.bin/wp-pretool-guard', timeout: 5 }],
+      hooks: [{ type: 'command', command: '/repo/.codex/managed-hooks/wp-pretool-guard.sh', timeout: 5 }],
     },
   ],
   Stop: [
-    { hooks: [{ type: 'command', command: '/repo/node_modules/.bin/wp-stop-qa', timeout: 10 }] },
+    { hooks: [{ type: 'command', command: '/repo/.codex/managed-hooks/wp-stop-qa.sh', timeout: 10 }] },
   ],
 }
 
@@ -66,7 +61,6 @@ describe('generateSetupReport', () => {
     expect(report).toContain('Hooks change summary:')
     // All claude hooks are new
     expect(report).toContain('+ wp-sessionstart-routing [SessionStart]')
-    expect(report).toContain('+ wp-check-dev-link [SessionStart]')
     expect(report).toContain('+ wp-pretool-guard [PreToolUse]')
     expect(report).toContain('+ wp-stop-qa [Stop]')
     // Summary line shows added count
@@ -93,8 +87,7 @@ describe('generateSetupReport', () => {
     const after = makeManifest(claudeWithoutSessionStart, codexMap)
     const report = generateSetupReport(before, after)
 
-    expect(report).toContain('- wp-sessionstart-routing [SessionStart]')
-    expect(report).toContain('- wp-check-dev-link [SessionStart]')
+    expect(report).toContain('- sessionstart-routing [SessionStart]')
     expect(report).toContain('removed')
   })
 

@@ -121,13 +121,13 @@ Use in pre-commit / CI to fail loudly on drift:
 
 ```bash
 # .husky/pre-commit
-vp exec wp sync --check
+wp sync --check
 ```
 
 ```yaml
 # .github/workflows/ci.yml
 - name: Agent surface sync check
-  run: vp exec wp sync --check
+  run: wp sync --check
 ```
 
 If the check fails, run `wp sync` locally and commit the output.

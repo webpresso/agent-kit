@@ -3,11 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const pretoolMain = vi.hoisted(() => vi.fn())
 const testQualityCheck = vi.hoisted(() => vi.fn())
-const checkDevLinkMain = vi.hoisted(() => vi.fn())
 
 vi.mock('#hooks/pretool-guard/index', () => ({ main: pretoolMain }))
 vi.mock('#hooks/test-quality-check', () => ({ runTestQualityCheck: testQualityCheck }))
-vi.mock('#hooks/check-dev-link/index', () => ({ main: checkDevLinkMain }))
 
 import { registerHookCommand, runHookCommand } from './hook.js'
 
@@ -35,9 +33,7 @@ describe('hook command', () => {
     expect(testQualityCheck).toHaveBeenCalledWith(['src/example.test.ts'])
   })
 
-  it('exposes check-dev-link through the hook router for direct-bin runtime selection', async () => {
-    await runHookCli(['hook', 'check-dev-link'])
-
-    expect(checkDevLinkMain).toHaveBeenCalledOnce()
+  it('rejects removed legacy hook names', async () => {
+    await expect(runHookCli(['hook', 'check-dev-link'])).rejects.toThrow('Unknown hook "check-dev-link"')
   })
 })

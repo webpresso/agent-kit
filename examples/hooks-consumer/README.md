@@ -21,16 +21,16 @@ vp install
 ## 2. Scaffold the agent surface
 
 ```bash
-vp exec wp setup
+wp setup
 ```
 
 Expected follow-up checks:
 
 ```bash
-vp exec wp hooks status
-vp exec wp hooks demo SessionStart
-vp exec wp hooks demo PreToolUse --tool Bash
-vp exec wp hooks doctor
+wp hooks status
+wp hooks demo SessionStart
+wp hooks demo PreToolUse --tool Bash
+wp hooks doctor
 ```
 
 ## 3. Try the recovery flows
@@ -38,15 +38,15 @@ vp exec wp hooks doctor
 Disable one vendor:
 
 ```bash
-vp exec wp setup --disable-hooks codex
-vp exec wp hooks status --vendor codex
+wp setup --disable-hooks codex
+wp hooks status --vendor codex
 ```
 
 Restore it:
 
 ```bash
-vp exec wp setup --restore-hooks
-vp exec wp hooks status --vendor codex
+wp setup --restore-hooks
+wp hooks status --vendor codex
 ```
 
 ## 4. Workspace upgrade lane
@@ -55,11 +55,11 @@ If this repo is listed in `~/.agent/workspace.yaml`, the workspace refresh
 surface can be previewed without writing:
 
 ```bash
-vp exec wp hooks upgrade --workspace
+wp hooks upgrade --workspace
 ```
 
 Apply only after reviewing the dry-run summary:
 
 ```bash
-vp exec wp hooks upgrade --workspace --apply
+wp hooks upgrade --workspace --apply
 ```
