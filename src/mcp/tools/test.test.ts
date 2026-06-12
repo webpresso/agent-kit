@@ -163,8 +163,6 @@ describe('wp_test tool', () => {
         'run',
         '--exclude',
         '**/*.integration.test.ts',
-        '--maxWorkers',
-        '1',
         '--reporter=json',
         '--no-color',
       ])

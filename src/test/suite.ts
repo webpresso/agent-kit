@@ -11,7 +11,7 @@ export interface ResolvedTestSuiteRun {
 const UNIT_SUITE_RUN: ResolvedTestSuiteRun = {
   suite: 'unit',
   label: 'suite unit',
-  vitestArgs: ['run', '--exclude', '**/*.integration.test.ts', '--maxWorkers', '1'],
+  vitestArgs: ['run', '--exclude', '**/*.integration.test.ts'],
 }
 
 const INTEGRATION_SUITE_RUN: ResolvedTestSuiteRun = {

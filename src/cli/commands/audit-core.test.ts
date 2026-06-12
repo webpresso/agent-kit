@@ -1,9 +1,25 @@
+import type { AuditResult } from '#audit/audit-tph-detect'
 import type { RepoAuditResult } from '#audit/repo-guardrails'
 
-import { describe, expect, test, vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { runAuditDispatch } from './audit-core.js'
 import type { AuditActionOptions, AuditDeps } from './audit-core.js'
+
+const mockRunTphAudit = vi.fn<() => Promise<AuditResult>>()
+const mockRunTphE2eAudit = vi.fn<() => Promise<AuditResult>>()
+
+vi.mock('#audit/audit-tph-runner', () => ({
+  runTphAudit: mockRunTphAudit,
+}))
+
+vi.mock('#audit/audit-tph-e2e-runner', () => ({
+  runTphE2eAudit: mockRunTphE2eAudit,
+}))
+
+function tphResult(errorCount = 0): AuditResult {
+  return { filesChecked: 3, violations: [], errorCount, warningCount: 0, infoCount: 0 }
+}
 
 function okResult(title: string): RepoAuditResult {
   return { ok: true, title, checked: 1, violations: [] }
@@ -17,11 +33,9 @@ function makeDeps(overrides: Partial<AuditDeps> = {}): AuditDeps {
   return {
     root: '/repo',
     runStryker: vi.fn().mockResolvedValue(0),
-    runScript: vi.fn().mockResolvedValue(0),
     runRepoAudit: vi.fn().mockResolvedValue(okResult('test')),
     runBundleBudget: vi.fn().mockResolvedValue(0),
     runCommitMessageAudit: vi.fn().mockReturnValue(okResult('commit-message')),
-    resolveScript: vi.fn().mockReturnValue('/path/to/script.ts'),
     buildBundleBudgetArgs: vi.fn().mockReturnValue([]),
     knownRepoKinds: [
       'catalog-drift',
@@ -35,6 +49,11 @@ function makeDeps(overrides: Partial<AuditDeps> = {}): AuditDeps {
 
 const noOptions: AuditActionOptions = {}
 
+beforeEach(() => {
+  mockRunTphAudit.mockResolvedValue(tphResult(0))
+  mockRunTphE2eAudit.mockResolvedValue(tphResult(0))
+})
+
 describe('runAuditDispatch', () => {
   test('kind undefined → invalid-usage', async () => {
     const result = await runAuditDispatch(undefined, [], noOptions, makeDeps())
@@ -47,29 +66,68 @@ describe('runAuditDispatch', () => {
   })
 
   describe('tph', () => {
-    test('calls resolveScript + runScript, returns script-exit', async () => {
-      const deps = makeDeps()
-      ;(deps.runScript as ReturnType<typeof vi.fn>).mockResolvedValue(0)
-      const result = await runAuditDispatch('tph', [], noOptions, deps)
-      expect(result).toStrictEqual({ kind: 'script-exit', code: 0 })
-      expect(deps.resolveScript).toHaveBeenCalledWith('audit-tph.ts')
-      expect(deps.runScript).toHaveBeenCalledWith('/path/to/script.ts', [])
+    test('passes → repo-result with ok: true', async () => {
+      mockRunTphAudit.mockResolvedValue(tphResult(0))
+      const result = await runAuditDispatch('tph', [], noOptions, makeDeps())
+      expect(result.kind).toBe('repo-result')
+      if (result.kind !== 'repo-result') return
+      expect(result.name).toBe('tph')
+      expect(result.result.ok).toBe(true)
+      expect(result.result.checked).toBe(3)
     })
 
-    test('returns script-exit with failure code', async () => {
-      const deps = makeDeps()
-      ;(deps.runScript as ReturnType<typeof vi.fn>).mockResolvedValue(2)
-      const result = await runAuditDispatch('tph', [], noOptions, deps)
-      expect(result).toStrictEqual({ kind: 'script-exit', code: 2 })
+    test('errors → repo-result with ok: false', async () => {
+      mockRunTphAudit.mockResolvedValue({
+        filesChecked: 3,
+        violations: [{ file: 'a.test.ts', severity: 'ERROR', rule: 'over-mocking', message: 'too many mocks' }],
+        errorCount: 1,
+        warningCount: 0,
+        infoCount: 0,
+      })
+      const result = await runAuditDispatch('tph', [], noOptions, makeDeps())
+      expect(result.kind).toBe('repo-result')
+      if (result.kind !== 'repo-result') return
+      expect(result.result.ok).toBe(false)
+      expect(result.result.violations).toHaveLength(1)
+    })
+
+    test('uses deps.root as the scan root', async () => {
+      await runAuditDispatch('tph', [], noOptions, makeDeps({ root: '/custom' }))
+      expect(mockRunTphAudit).toHaveBeenCalledWith('/custom')
+    })
+
+    test('options.root overrides deps.root', async () => {
+      await runAuditDispatch('tph', [], { root: '/override' }, makeDeps())
+      expect(mockRunTphAudit).toHaveBeenCalledWith('/override')
+    })
+
+    test('target overrides deps.root when no options.root', async () => {
+      await runAuditDispatch('tph', ['/target'], noOptions, makeDeps())
+      expect(mockRunTphAudit).toHaveBeenCalledWith('/target')
     })
   })
 
   describe('tph-e2e', () => {
-    test('calls resolveScript with tph-e2e script', async () => {
-      const deps = makeDeps()
-      const result = await runAuditDispatch('tph-e2e', [], noOptions, deps)
-      expect(result.kind).toBe('script-exit')
-      expect(deps.resolveScript).toHaveBeenCalledWith('audit-tph-e2e.ts')
+    test('passes → repo-result with ok: true', async () => {
+      mockRunTphE2eAudit.mockResolvedValue(tphResult(0))
+      const result = await runAuditDispatch('tph-e2e', [], noOptions, makeDeps())
+      expect(result.kind).toBe('repo-result')
+      if (result.kind !== 'repo-result') return
+      expect(result.name).toBe('tph-e2e')
+      expect(result.result.ok).toBe(true)
+    })
+
+    test('errors → repo-result with ok: false', async () => {
+      mockRunTphE2eAudit.mockResolvedValue(tphResult(1))
+      const result = await runAuditDispatch('tph-e2e', [], noOptions, makeDeps())
+      expect(result.kind).toBe('repo-result')
+      if (result.kind !== 'repo-result') return
+      expect(result.result.ok).toBe(false)
+    })
+
+    test('uses deps.root as the scan root', async () => {
+      await runAuditDispatch('tph-e2e', [], noOptions, makeDeps({ root: '/e2e-root' }))
+      expect(mockRunTphE2eAudit).toHaveBeenCalledWith('/e2e-root')
     })
   })
 
@@ -275,21 +333,6 @@ describe('runAuditDispatch', () => {
       ;(deps.runRepoAudit as ReturnType<typeof vi.fn>).mockResolvedValue(bad)
       const result = await runAuditDispatch('catalog-drift', [], noOptions, deps)
       expect(result).toStrictEqual({ kind: 'repo-result', name: 'catalog-drift', result: bad })
-    })
-  })
-
-  describe('forwarded flags', () => {
-    test('--fix and --json are forwarded to script calls', async () => {
-      const deps = makeDeps()
-      const options: AuditActionOptions = { fix: true, json: true }
-      await runAuditDispatch('tph', [], options, deps)
-      expect(deps.runScript).toHaveBeenCalledWith('/path/to/script.ts', ['--fix', '--json'])
-    })
-
-    test('target forwarded to script as arg', async () => {
-      const deps = makeDeps()
-      await runAuditDispatch('tph', ['some-target'], noOptions, deps)
-      expect(deps.runScript).toHaveBeenCalledWith('/path/to/script.ts', ['some-target'])
     })
   })
 })

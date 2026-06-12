@@ -4,7 +4,7 @@ import {
   wrappedWpGuidanceForArgs,
 } from '#cli/wrapped-wp'
 
-export type GuidanceType = 'test' | 'lint' | 'typecheck' | 'qa' | 'format' | 'e2e'
+export type GuidanceType = 'test' | 'lint' | 'typecheck' | 'qa' | 'format' | 'e2e' | 'worktree'
 
 export type RouteAction =
   | { action: 'deny'; tool: string; guidance: string }
@@ -26,6 +26,19 @@ interface SourceEntrypointRule {
   scriptSuffixes: string[]
   tool: string
   guidance: string
+}
+
+
+const RAW_MUTATING_GIT_WORKTREE_RE = /^git\s+worktree\s+(?:add|remove|move|prune)(?:\s|$)/u
+
+function routeRawMutatingGitWorktree(command: string): RouteAction | null {
+  if (!RAW_MUTATING_GIT_WORKTREE_RE.test(command)) return null
+  return {
+    action: 'deny',
+    tool: 'wp_worktree',
+    guidance:
+      'Use `wp worktree` instead — managed repositories may mutate linked worktrees only through agent-kit so owner bindings and the global registry stay consistent.',
+  }
 }
 
 const ROUTING_RULES: RoutingRule[] = [
@@ -772,6 +785,9 @@ export function extractRoutableCommandsFromToolInput(input: {
 export function routeCommand(command: string, _sessionId?: string): RouteDecision | null {
   const trimmed = normalizeCommandForRouting(command)
   if (!trimmed) return null
+
+  const rawWorktreeRoute = routeRawMutatingGitWorktree(trimmed)
+  if (rawWorktreeRoute) return { action: rawWorktreeRoute }
 
   const wrappedWp = detectWrappedWpCommand(trimmed)
   if (wrappedWp) {

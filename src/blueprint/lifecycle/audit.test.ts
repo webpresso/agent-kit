@@ -4,10 +4,12 @@ import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { runBlueprintAudit } from '#lifecycle/audit'
+import { upsertWorktreeRegistryEntry } from '#worktrees/registry.js'
 
 const tempDirs: string[] = []
 
 afterEach(() => {
+  delete process.env['WP_AGENT_KIT_TEST_WORKTREE_ROOT']
   for (const dir of tempDirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true })
   }
@@ -83,9 +85,62 @@ last_updated: 2026-04-02
     ).toBe(true)
   })
 
+  it('requires in-progress executable blueprints to have owner worktree bindings', async () => {
+    const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-missing-owner-'))
+    tempDirs.push(projectRoot)
+
+    writeOverview(
+      projectRoot,
+      ['in-progress', 'missing-owner', '_overview.md'],
+      `---
+type: blueprint
+status: in-progress
+complexity: S
+created: 2026-04-02
+last_updated: 2026-04-02
+---
+
+# missing-owner
+
+#### Task 1.1: Work
+**Status:** todo
+
+**Depends:** None
+
+- [ ] a
+`,
+    )
+
+    const result = await runBlueprintAudit({ projectRoot, all: true, strict: true })
+    expect(result.ok).toBe(false)
+    expect(result.issues.some((issue) => issue.message.includes('missing worktree_owner_id'))).toBe(
+      true,
+    )
+    expect(
+      result.issues.some((issue) => issue.message.includes('missing worktree_owner_branch')),
+    ).toBe(true)
+  })
+
   it('allows blocked tasks while blueprint status stays in-progress', async () => {
     const projectRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-blocked-'))
     tempDirs.push(projectRoot)
+
+    const registryRoot = mkdtempSync(path.join(os.tmpdir(), 'bp-audit-registry-'))
+    const ownerPath = path.join(registryRoot, 'owner')
+    mkdirSync(ownerPath, { recursive: true })
+    process.env['WP_AGENT_KIT_TEST_WORKTREE_ROOT'] = registryRoot
+    upsertWorktreeRegistryEntry(
+      {
+        id: 'owner-ok',
+        repoNamespace: 'repo',
+        repoRoot: projectRoot,
+        kind: 'owner',
+        path: ownerPath,
+        branch: 'bp/blocked-tasks-ok',
+        blueprintSlug: 'blocked-tasks-ok',
+      },
+      { root: registryRoot },
+    )
 
     writeOverview(
       projectRoot,
@@ -96,6 +151,8 @@ status: in-progress
 complexity: S
 created: 2026-04-02
 last_updated: 2026-04-02
+worktree_owner_id: owner-ok
+worktree_owner_branch: bp/blocked-tasks-ok
 ---
 
 # blocked-tasks-ok

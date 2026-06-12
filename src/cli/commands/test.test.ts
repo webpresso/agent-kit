@@ -73,8 +73,6 @@ describe('wp test command helpers', () => {
       'run',
       '--exclude',
       '**/*.integration.test.ts',
-      '--maxWorkers',
-      '1',
     ])
     expect(command.sequence[1]?.args).toEqual([
       expect.stringContaining('vitest'),

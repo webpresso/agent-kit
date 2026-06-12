@@ -141,7 +141,7 @@ describe('resolveNewWorktreeTarget', () => {
 
     expect(target).toStrictEqual({
       branch: 'agent/2026-05-13-1427-x9k',
-      path: '/repos/webpresso_worktrees/agent-2026-05-13-1427-x9k',
+      path: expect.stringMatching(/^.*\/.agent\/worktrees\/repos\/local-webpresso-[a-f0-9]{10}\/agent-2026-05-13-1427-x9k$/),
       generated: true,
     })
   })
@@ -158,7 +158,7 @@ describe('resolveNewWorktreeTarget', () => {
 
     expect(target).toStrictEqual({
       branch: 'agent/fix-login-flow',
-      path: '/repos/webpresso_worktrees/agent-fix-login-flow',
+      path: expect.stringMatching(/^.*\/.agent\/worktrees\/repos\/local-webpresso-[a-f0-9]{10}\/agent-fix-login-flow$/),
       generated: true,
     })
   })
@@ -174,7 +174,7 @@ describe('resolveNewWorktreeTarget', () => {
     })
 
     expect(target.branch).toBe('ralph/2026-05-13-1427-q2w')
-    expect(target.path).toBe('/repos/webpresso_worktrees/ralph-2026-05-13-1427-q2w')
+    expect(target.path).toMatch(/^.*\/.agent\/worktrees\/repos\/local-webpresso-[a-f0-9]{10}\/ralph-2026-05-13-1427-q2w$/)
   })
 
   it('retries generated names when the branch or default path collides', () => {
@@ -185,7 +185,7 @@ describe('resolveNewWorktreeTarget', () => {
       randomSuffix: () => suffixes.shift() ?? 'ccc',
       existingEntries: [
         {
-          path: '/repos/webpresso_worktrees/agent-2026-05-13-1427-aaa',
+          path: `${process.env.HOME}/.agent/worktrees/repos/local-webpresso-any/agent-2026-05-13-1427-aaa`,
           head: 'abc',
           branch: null,
           bare: false,
@@ -196,7 +196,7 @@ describe('resolveNewWorktreeTarget', () => {
 
     expect(target).toStrictEqual({
       branch: 'agent/2026-05-13-1427-bbb',
-      path: '/repos/webpresso_worktrees/agent-2026-05-13-1427-bbb',
+      path: expect.stringMatching(/^.*\/.agent\/worktrees\/repos\/local-webpresso-[a-f0-9]{10}\/agent-2026-05-13-1427-bbb$/),
       generated: true,
     })
   })
@@ -212,7 +212,7 @@ describe('resolveNewWorktreeTarget', () => {
 
     expect(target).toStrictEqual({
       branch: 'agent/fix-login-flow-r2d',
-      path: '/repos/webpresso_worktrees/agent-fix-login-flow-r2d',
+      path: expect.stringMatching(/^.*\/.agent\/worktrees\/repos\/local-webpresso-[a-f0-9]{10}\/agent-fix-login-flow-r2d$/),
       generated: true,
     })
   })
@@ -238,22 +238,14 @@ describe('resolveNewWorktreeTarget', () => {
     ).toThrow('Could not generate a collision-free worktree branch/path after 20 attempts.')
   })
 
-  it('keeps explicit branch behavior stable', () => {
-    const target = resolveNewWorktreeTarget({
-      branch: 'feat/auth',
-      repoRoot: '/repos/webpresso',
-      explicitPath: '/tmp/auth-worktree',
-      now: new Date('2026-05-13T14:27:00'),
-      randomSuffix: () => 'unused',
-      existingEntries: [],
-      branchExists: () => false,
-    })
-
-    expect(target).toStrictEqual({
-      branch: 'feat/auth',
-      path: '/tmp/auth-worktree',
-      generated: false,
-    })
+  it('rejects custom creation paths in managed repos', () => {
+    expect(() =>
+      resolveNewWorktreeTarget({
+        branch: 'feat/auth',
+        repoRoot: '/repos/webpresso',
+        explicitPath: '/tmp/auth-worktree',
+      }),
+    ).toThrow('Managed worktrees do not support custom creation paths')
   })
 
   it('uses the shared sibling worktree root for explicit branch default paths', () => {
@@ -264,7 +256,7 @@ describe('resolveNewWorktreeTarget', () => {
 
     expect(target).toStrictEqual({
       branch: 'feat/auth',
-      path: '/repos/webpresso_worktrees/feat-auth',
+      path: expect.stringMatching(/^.*\/.agent\/worktrees\/repos\/local-webpresso-[a-f0-9]{10}\/feat-auth$/),
       generated: false,
     })
   })
