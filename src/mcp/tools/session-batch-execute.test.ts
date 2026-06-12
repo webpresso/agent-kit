@@ -5,7 +5,12 @@ vi.mock('#session-memory/store', () => ({
   getStore: vi.fn(() => ({
     insertChunks: vi.fn(),
     search: vi.fn(() => [
-      { content: 'error: test failed on line 42', source: 'test-suite', tier: 'porter', rank: -1.5 },
+      {
+        content: 'error: test failed on line 42',
+        source: 'test-suite',
+        tier: 'porter',
+        rank: -1.5,
+      },
     ]),
   })),
 }))
@@ -57,7 +62,9 @@ function makeExecaResult(output: string, exitCode = 0) {
 }
 
 function makeExecaError(message: string) {
-  return () => { throw new Error(message) }
+  return () => {
+    throw new Error(message)
+  }
 }
 
 beforeEach(() => {

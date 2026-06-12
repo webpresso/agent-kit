@@ -13,46 +13,48 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1_000 // 24 hours
  * No external deps — strips tags, converts common block elements.
  */
 export function htmlToMarkdown(html: string): string {
-  return html
-    // Remove <head>...<head> entirely
-    .replace(/<head[\s\S]*?<\/head>/gi, '')
-    // Remove <script> blocks
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    // Remove <style> blocks
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    // Convert headings
-    .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, '# $1\n\n')
-    .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, '## $1\n\n')
-    .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, '### $1\n\n')
-    .replace(/<h4[^>]*>([\s\S]*?)<\/h4>/gi, '#### $1\n\n')
-    // Convert paragraphs
-    .replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '$1\n\n')
-    // Convert line breaks
-    .replace(/<br\s*\/?>/gi, '\n')
-    // Convert bold
-    .replace(/<(?:strong|b)[^>]*>([\s\S]*?)<\/(?:strong|b)>/gi, '**$1**')
-    // Convert italic
-    .replace(/<(?:em|i)[^>]*>([\s\S]*?)<\/(?:em|i)>/gi, '*$1*')
-    // Convert code
-    .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, '`$1`')
-    // Convert pre blocks
-    .replace(/<pre[^>]*>([\s\S]*?)<\/pre>/gi, '\n```\n$1\n```\n')
-    // Convert list items
-    .replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, '- $1\n')
-    // Convert anchors (keep text)
-    .replace(/<a[^>]*>([\s\S]*?)<\/a>/gi, '$1')
-    // Strip remaining tags
-    .replace(/<[^>]+>/g, '')
-    // Decode HTML entities
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    // Normalize whitespace: collapse 3+ blank lines to 2
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
+  return (
+    html
+      // Remove <head>...<head> entirely
+      .replace(/<head[\s\S]*?<\/head>/gi, '')
+      // Remove <script> blocks
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      // Remove <style> blocks
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      // Convert headings
+      .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, '# $1\n\n')
+      .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, '## $1\n\n')
+      .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, '### $1\n\n')
+      .replace(/<h4[^>]*>([\s\S]*?)<\/h4>/gi, '#### $1\n\n')
+      // Convert paragraphs
+      .replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '$1\n\n')
+      // Convert line breaks
+      .replace(/<br\s*\/?>/gi, '\n')
+      // Convert bold
+      .replace(/<(?:strong|b)[^>]*>([\s\S]*?)<\/(?:strong|b)>/gi, '**$1**')
+      // Convert italic
+      .replace(/<(?:em|i)[^>]*>([\s\S]*?)<\/(?:em|i)>/gi, '*$1*')
+      // Convert code
+      .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, '`$1`')
+      // Convert pre blocks
+      .replace(/<pre[^>]*>([\s\S]*?)<\/pre>/gi, '\n```\n$1\n```\n')
+      // Convert list items
+      .replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, '- $1\n')
+      // Convert anchors (keep text)
+      .replace(/<a[^>]*>([\s\S]*?)<\/a>/gi, '$1')
+      // Strip remaining tags
+      .replace(/<[^>]+>/g, '')
+      // Decode HTML entities
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, ' ')
+      // Normalize whitespace: collapse 3+ blank lines to 2
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  )
 }
 
 /**

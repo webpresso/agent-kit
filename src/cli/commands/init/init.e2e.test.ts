@@ -64,6 +64,7 @@ function installFakeAgentKitBins(repoRoot: string): void {
     'wp-check-dev-link',
     'wp-pretool-guard',
     'wp-post-tool',
+    'wp-pre-compact',
     'wp-guard-switch',
     'wp-stop-qa',
   ]) {

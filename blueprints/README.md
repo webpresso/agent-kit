@@ -14,10 +14,17 @@ Each subdirectory represents a lifecycle state:
 | State | Count | Description |
 | ----- | ----: | ----------- |
 | `draft/` | 1 | early-stage sketches. Expect churn; move to `planned/` once scoped. |
+<<<<<<< HEAD
 | `planned/` | 7 | committed-to specs, ready to pick up. |
 | `in-progress/` | 0 | actively being executed. At most 3 active blueprints per lane. |
 | `completed/` | 41 | execution finished and verified. Kept for reference. |
 | `parked/` | 2 | intentionally paused. Include a reason in the spec's frontmatter. |
+=======
+| `planned/` | 9 | committed-to specs, ready to pick up. |
+| `in-progress/` | 1 | actively being executed. At most 3 active blueprints per lane. |
+| `completed/` | 60 | execution finished and verified. Kept for reference. |
+| `parked/` | 8 | intentionally paused. Include a reason in the spec's frontmatter. |
+>>>>>>> 88f0c834 (feat(session-memory): align v1 independent option)
 | `archived/` | 2 | superseded or abandoned. Not deleted — the record matters. |
 <!-- END: blueprint-index -->
 
@@ -54,6 +61,12 @@ Each subdirectory represents a lifecycle state:
 - Any state → `archived`: when the work is dropped or replaced.
 
 Move files with `git mv` so history follows the spec through its lifecycle.
+
+## In progress (2026-06-12)
+
+| Blueprint | Path | Purpose |
+| --------- | ---- | ------- |
+| session-memory v1 — independent option hardening and truth alignment | [`in-progress/ak-session-memory-v1-independent-option-hardening-and-truth-alignment/_overview.md`](./in-progress/ak-session-memory-v1-independent-option-hardening-and-truth-alignment/_overview.md) | Truth-align PR #94 as a standalone v1 candidate, not a phase on the path to v2. |
 
 
 ## Recently completed (2026-06-11)

@@ -28,7 +28,10 @@ const COMMAND_TIMEOUT_MS = 5 * 60 * 1_000 // 5 minutes
 const inputSchema = z.object({
   command: z.string().min(1).describe('Shell command to execute'),
   label: z.string().optional().describe('Label for indexing (defaults to the command string)'),
-  query: z.string().optional().describe('If provided, search the indexed output for this query and return top hits'),
+  query: z
+    .string()
+    .optional()
+    .describe('If provided, search the indexed output for this query and return top hits'),
   cwd: z.string().optional().describe('Working directory (defaults to CLAUDE_PROJECT_DIR or cwd)'),
 })
 
@@ -112,7 +115,14 @@ const tool: ToolDescriptor = {
     const outputBytes = Buffer.byteLength(fullOutput, 'utf-8')
     const summary = fullOutput.slice(0, SUMMARY_LENGTH)
     let indexed = false
-    let hits: Array<{ content: string; source: string; tier: 'porter' | 'trigram' | 'levenshtein'; rank: number }> | undefined
+    let hits:
+      | Array<{
+          content: string
+          source: string
+          tier: 'porter' | 'trigram' | 'levenshtein'
+          rank: number
+        }>
+      | undefined
 
     if (outputBytes > LARGE_OUTPUT_THRESHOLD) {
       try {
@@ -134,9 +144,7 @@ const tool: ToolDescriptor = {
         }
       } catch (err) {
         // Indexing failure is non-fatal — still return the summary
-        process.stderr.write(
-          `ak_session_execute: index error: ${(err as Error).message}\n`,
-        )
+        process.stderr.write(`ak_session_execute: index error: ${(err as Error).message}\n`)
       }
     }
 

@@ -19,7 +19,8 @@ const REPO_ROOT = resolve(import.meta.dirname, '../../')
 /** Paths to the canonical hook/runtime entry-point source files (relative to REPO_ROOT). */
 const HOOK_BIN_SOURCES = [
   'src/hooks/pretool-guard/index.ts',
-  'src/hooks/post-tool/lint-after-edit.ts',
+  'src/hooks/post-tool/index.ts',
+  'src/hooks/pre-compact/index.ts',
   'src/hooks/stop/qa-changed-files.ts',
   'src/hooks/guard-switch/index.ts',
   'src/hooks/test-quality-check.ts',

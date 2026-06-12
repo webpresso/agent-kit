@@ -50,7 +50,9 @@ function makeExecaResult(output: string, exitCode = 0) {
 }
 
 function makeExecaError(message: string) {
-  return () => { throw new Error(message) }
+  return () => {
+    throw new Error(message)
+  }
 }
 
 beforeEach(() => {
@@ -105,7 +107,9 @@ describe('ak_session_execute MCP tool', () => {
     expect(payload.indexed).toBe(true)
     expect(payload.label).toBe('my-big-cmd')
     expect(mockGetStore).toHaveBeenCalled()
-    const mockStore = mockGetStore.mock.results[0]!.value as { insertChunks: ReturnType<typeof vi.fn> }
+    const mockStore = mockGetStore.mock.results[0]!.value as {
+      insertChunks: ReturnType<typeof vi.fn>
+    }
     expect(mockStore.insertChunks).toHaveBeenCalled()
   })
 
@@ -115,7 +119,9 @@ describe('ak_session_execute MCP tool', () => {
 
     await tool.handler({ command: 'pnpm test', label: 'test-run' })
 
-    const mockStore = mockGetStore.mock.results[0]!.value as { insertChunks: ReturnType<typeof vi.fn> }
+    const mockStore = mockGetStore.mock.results[0]!.value as {
+      insertChunks: ReturnType<typeof vi.fn>
+    }
     const chunks = mockStore.insertChunks.mock.calls[0]![0] as Array<{ source: string }>
     expect(chunks[0]!.source).toBe('test-run')
   })

@@ -1,8 +1,7 @@
 /**
  * Session-memory type definitions.
  *
- * Forward-compatible with v2 ctx-rs (Rust) engine.
- * Migration v1→v2 is "swap engine binary, keep .db file" — invisible to consumers.
+ * Shared public contract for independent v1 and v2 replacement candidates.
  */
 
 // ── Store types ──────────────────────────────────────────────────────────────
@@ -62,6 +61,7 @@ export interface RestoreInput {
   readonly repoHash: string
   readonly query: string
   readonly limit?: number
+  readonly source?: string
 }
 
 export interface RestoreResult {

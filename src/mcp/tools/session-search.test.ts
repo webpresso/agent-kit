@@ -4,7 +4,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 vi.mock('#session-memory/session', () => ({
   restore: vi.fn(() => ({
     hits: [
-      { content: 'session memory SQLite store', source: 'session:snap1', tier: 'porter', rank: -1.5 },
+      {
+        content: 'session memory SQLite store',
+        source: 'session:snap1',
+        tier: 'porter',
+        rank: -1.5,
+      },
     ],
     snapshotId: 'snap-001',
   })),
@@ -57,6 +62,14 @@ describe('ak_session_search MCP tool', () => {
     }
     expect(payload.hitCount).toBe(0)
     expect(payload.snapshotId).toBeNull()
+  })
+
+  it('passes an optional source filter through to restore', async () => {
+    await tool.handler({ query: 'session memory SQLite', source: 'integration-large-output' })
+
+    expect(mockRestore).toHaveBeenCalledWith(
+      expect.objectContaining({ source: 'integration-large-output' }),
+    )
   })
 
   it('rejects empty query string', async () => {

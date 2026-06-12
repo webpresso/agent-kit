@@ -428,6 +428,7 @@ describe('bin launcher', () => {
     expect(COMMAND_LANE_TABLE.runtimeRequired.directBins).toEqual([
       'wp-pretool-guard',
       'wp-post-tool',
+      'wp-pre-compact',
       'wp-stop-qa',
       'wp-guard-switch',
       'wp-sessionstart-routing',

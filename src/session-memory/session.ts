@@ -11,18 +11,26 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 
-import type { CaptureEventInput, RestoreInput, RestoreResult, SnapshotInput, SnapshotResult } from './types.js'
+import type {
+  CaptureEventInput,
+  RestoreInput,
+  RestoreResult,
+  SnapshotInput,
+  SnapshotResult,
+} from './types.js'
 import { getStore, type ISessionStore } from './store.js'
 
-const SESSIONS_DIR = join(homedir(), '.webpresso', 'sessions')
+function defaultSessionsDir(): string {
+  return process.env.AK_SESSION_MEMORY_DIR ?? join(homedir(), '.webpresso', 'sessions')
+}
 
 export function resolveDbPath(repoHash: string, sessionsDir?: string): string {
-  const dir = sessionsDir ?? SESSIONS_DIR
+  const dir = sessionsDir ?? defaultSessionsDir()
   return join(dir, `${repoHash}.db`)
 }
 
 function ensureSessionsDir(sessionsDir?: string): void {
-  mkdirSync(sessionsDir ?? SESSIONS_DIR, { recursive: true })
+  mkdirSync(sessionsDir ?? defaultSessionsDir(), { recursive: true })
 }
 
 function getSessionStore(repoHash: string, sessionsDir?: string): ISessionStore {
@@ -49,7 +57,9 @@ export function captureEvent(input: CaptureEventInput, sessionsDir?: string): bo
 
     return true
   } catch (err: unknown) {
-    process.stderr.write(`ak-session-memory: captureEvent failed: ${err instanceof Error ? err.message : String(err)}\n`)
+    process.stderr.write(
+      `ak-session-memory: captureEvent failed: ${err instanceof Error ? err.message : String(err)}\n`,
+    )
     return false
   }
 }
@@ -59,7 +69,10 @@ export function captureEvent(input: CaptureEventInput, sessionsDir?: string): bo
  * Respects a cap (capMs) — partial snapshots are allowed on timeout.
  * Returns the snapshot result even if partial.
  */
-export async function snapshot(input: SnapshotInput, sessionsDir?: string): Promise<SnapshotResult> {
+export async function snapshot(
+  input: SnapshotInput,
+  sessionsDir?: string,
+): Promise<SnapshotResult> {
   const snapshotId = randomUUID()
   try {
     const store = getSessionStore(input.repoHash, sessionsDir)
@@ -74,12 +87,12 @@ export async function snapshot(input: SnapshotInput, sessionsDir?: string): Prom
          LIMIT 200`,
       )
       .all() as Array<{
-        session_id: string
-        event_id: string
-        ts: number
-        tool_name: string
-        content: string
-      }>
+      session_id: string
+      event_id: string
+      ts: number
+      tool_name: string
+      content: string
+    }>
 
     let partial = false
     let includedCount = events.length
@@ -150,6 +163,7 @@ export function restore(input: RestoreInput, sessionsDir?: string): RestoreResul
     const hits = store.search({
       query: input.query,
       limit: input.limit ?? 10,
+      source: input.source,
     })
 
     return {
@@ -157,7 +171,9 @@ export function restore(input: RestoreInput, sessionsDir?: string): RestoreResul
       snapshotId: latestSnapshot?.snapshot_id ?? null,
     }
   } catch (err: unknown) {
-    process.stderr.write(`ak-session-memory: restore failed: ${err instanceof Error ? err.message : String(err)}\n`)
+    process.stderr.write(
+      `ak-session-memory: restore failed: ${err instanceof Error ? err.message : String(err)}\n`,
+    )
     return { hits: [], snapshotId: null }
   }
 }

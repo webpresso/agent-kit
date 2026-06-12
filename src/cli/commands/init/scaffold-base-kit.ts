@@ -116,10 +116,7 @@ const BOOTSTRAP_ONLY_MAP: Array<[string, string]> = [
 ]
 
 /** Merge `engines` and `packageManager` into the consumer repo's package.json. */
-function mergePackageJson(
-  repoRoot: string,
-  options: MergeOptions,
-): MergeResult {
+function mergePackageJson(repoRoot: string, options: MergeOptions): MergeResult {
   const pkgPath = join(repoRoot, 'package.json')
   const engines = { node: '>=24' }
   const packageManager = 'pnpm@11.1.1'

@@ -1,15 +1,9 @@
 /**
  * SQLite FTS5 store for session memory — bun:sqlite binding.
  *
- * Identical logic to SessionStore in store.ts but uses bun:sqlite instead of
- * better-sqlite3. API differences:
- *   - db.exec(sql)  → db.run(sql)   for DDL
- *   - db.pragma()   → db.exec('PRAGMA ...')
- *
- * Three-tier search fallback (porter → trigram → IDF-weighted Levenshtein).
- * Algorithm credit: context-mode (ELv2) — ported to TypeScript, same logic.
- *
- * Schema is forward-compatible with v2 ctx-rs (Rust) engine.
+ * Mirrors SessionStore while using bun:sqlite instead of better-sqlite3.
+ * Shared schema/search helpers live in store-shared.ts so the two bindings do
+ * not drift while v1 remains an independent replacement candidate.
  */
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
@@ -17,79 +11,16 @@ import { dirname } from 'node:path'
 import { Database } from 'bun:sqlite'
 
 import type { ChunkInsertInput, IndexStats, SearchHit, SearchOptions } from './types.js'
-
-const OPTIMIZE_EVERY = 50
-const DEFAULT_LIMIT = 5
-
-// ── Schema ───────────────────────────────────────────────────────────────────
-
-const SCHEMA_SQL = `
-  CREATE VIRTUAL TABLE IF NOT EXISTS chunks USING fts5(
-    content,
-    source,
-    tokenize='porter unicode61'
-  );
-
-  CREATE VIRTUAL TABLE IF NOT EXISTS chunks_trigram USING fts5(
-    content,
-    source,
-    tokenize='trigram'
-  );
-
-  CREATE TABLE IF NOT EXISTS sources(
-    id       INTEGER PRIMARY KEY,
-    label    TEXT    UNIQUE NOT NULL,
-    indexed_at   INTEGER NOT NULL,
-    chunk_count  INTEGER NOT NULL DEFAULT 0
-  );
-
-  CREATE TABLE IF NOT EXISTS vocabulary(
-    term      TEXT PRIMARY KEY,
-    idf_score REAL NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS sessions(
-    agent_id     TEXT NOT NULL,
-    snapshot_id  TEXT NOT NULL,
-    created_at   INTEGER NOT NULL,
-    status       TEXT NOT NULL,
-    content_json TEXT NOT NULL,
-    PRIMARY KEY (agent_id, snapshot_id)
-  );
-
-  CREATE TABLE IF NOT EXISTS session_events(
-    session_id TEXT    NOT NULL,
-    event_id   TEXT    NOT NULL,
-    ts         INTEGER NOT NULL,
-    tool_name  TEXT    NOT NULL,
-    content    TEXT    NOT NULL,
-    PRIMARY KEY (session_id, event_id)
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_events_session_ts
-    ON session_events(session_id, ts DESC);
-`
-
-// ── Levenshtein distance ─────────────────────────────────────────────────────
-
-function levenshtein(a: string, b: string): number {
-  if (a === b) return 0
-  if (a.length === 0) return b.length
-  if (b.length === 0) return a.length
-
-  const row: number[] = Array.from({ length: b.length + 1 }, (_, i) => i)
-
-  for (let i = 1; i <= a.length; i++) {
-    let prev = i
-    for (let j = 1; j <= b.length; j++) {
-      const val = a[i - 1] === b[j - 1] ? row[j - 1]! : Math.min(row[j - 1]!, row[j]!, prev) + 1
-      row[j - 1] = prev
-      prev = val
-    }
-    row[b.length] = prev
-  }
-  return row[b.length]!
-}
+import {
+  computeIdfScores,
+  DEFAULT_SEARCH_LIMIT,
+  escapeFtsPhrase,
+  groupChunksBySource,
+  levenshtein,
+  OPTIMIZE_EVERY,
+  SCHEMA_SQL,
+  termsForText,
+} from './store-shared.js'
 
 // ── Store class ──────────────────────────────────────────────────────────────
 
@@ -131,15 +62,7 @@ export class BunSqliteStore {
     const deleteTrigram = this.db.prepare('DELETE FROM chunks_trigram WHERE source = ?')
 
     const runBatch = this.db.transaction((chunkBatch: readonly ChunkInsertInput[]) => {
-      // Group by source for idempotent re-index
-      const bySource = new Map<string, ChunkInsertInput[]>()
-      for (const c of chunkBatch) {
-        const existing = bySource.get(c.source) ?? []
-        existing.push(c)
-        bySource.set(c.source, existing)
-      }
-
-      for (const [source, sourceChunks] of bySource) {
+      for (const [source, sourceChunks] of groupChunksBySource(chunkBatch)) {
         // Remove old entries for this source
         deletePorter.run(source)
         deleteTrigram.run(source)
@@ -172,10 +95,10 @@ export class BunSqliteStore {
    *   2. Trigram FTS5 (substring / partial-word match)
    *   3. IDF-weighted Levenshtein (fuzzy fallback for typos)
    *
-   * Algorithm credit: context-mode (ELv2) — same algorithm, ported to TypeScript.
+   * Mirrors the current context tool search behavior for parity evaluation.
    */
   search(options: SearchOptions): readonly SearchHit[] {
-    const limit = options.limit ?? DEFAULT_LIMIT
+    const limit = options.limit ?? DEFAULT_SEARCH_LIMIT
     const { query, source } = options
 
     // Tier 1: Porter FTS5 BM25
@@ -213,8 +136,7 @@ export class BunSqliteStore {
 
   private searchPorter(query: string, limit: number, source?: string): readonly SearchHit[] {
     try {
-      // Escape FTS5 query — wrap in quotes to handle special chars
-      const ftsQuery = `"${query.replace(/"/g, '""')}"`
+      const ftsQuery = escapeFtsPhrase(query)
       const sql = source
         ? 'SELECT content, source, rank FROM chunks WHERE source = ? AND chunks MATCH ? ORDER BY rank LIMIT ?'
         : 'SELECT content, source, rank FROM chunks WHERE chunks MATCH ? ORDER BY rank LIMIT ?'
@@ -239,7 +161,7 @@ export class BunSqliteStore {
 
   private searchTrigram(query: string, limit: number, source?: string): readonly SearchHit[] {
     try {
-      const ftsQuery = `"${query.replace(/"/g, '""')}"`
+      const ftsQuery = escapeFtsPhrase(query)
       const sql = source
         ? 'SELECT content, source, rank FROM chunks_trigram WHERE source = ? AND chunks_trigram MATCH ? ORDER BY rank LIMIT ?'
         : 'SELECT content, source, rank FROM chunks_trigram WHERE chunks_trigram MATCH ? ORDER BY rank LIMIT ?'
@@ -276,17 +198,17 @@ export class BunSqliteStore {
     if (candidates.length === 0) return []
 
     // Fetch IDF scores for query terms
-    const terms = query.toLowerCase().split(/\s+/).filter(Boolean)
+    const terms = [...termsForText(query)]
     const idfMap = new Map<string, number>()
     for (const term of terms) {
-      const row = this.db
-        .prepare('SELECT idf_score FROM vocabulary WHERE term = ?')
-        .get(term) as { idf_score: number } | undefined
+      const row = this.db.prepare('SELECT idf_score FROM vocabulary WHERE term = ?').get(term) as
+        | { idf_score: number }
+        | undefined
       idfMap.set(term, row?.idf_score ?? 1.0)
     }
 
     const scored = candidates.map((c) => {
-      const words = c.content.toLowerCase().split(/\s+/).filter(Boolean)
+      const words = termsForText(c.content)
       // Minimum Levenshtein distance between query and any word in content
       let minDist = Infinity
       let idfWeight = 1.0
@@ -314,26 +236,19 @@ export class BunSqliteStore {
     // Compute IDF scores: log(N / df) where N = total docs, df = docs containing term
     // Simplified: use FTS5 term statistics via content scan (vocabulary is best-effort)
     try {
-      const rows = this.db
-        .prepare('SELECT content FROM chunks LIMIT 2000')
-        .all() as Array<{ content: string }>
+      const rows = this.db.prepare('SELECT content FROM chunks LIMIT 2000').all() as Array<{
+        content: string
+      }>
       const n = rows.length
       if (n === 0) return
 
-      const df = new Map<string, number>()
-      for (const row of rows) {
-        const terms = new Set(row.content.toLowerCase().split(/\s+/).filter(Boolean))
-        for (const term of terms) {
-          df.set(term, (df.get(term) ?? 0) + 1)
-        }
-      }
+      const idfScores = computeIdfScores(rows.map((row) => row.content))
 
       const upsert = this.db.prepare(
         'INSERT INTO vocabulary(term, idf_score) VALUES(?, ?) ON CONFLICT(term) DO UPDATE SET idf_score=excluded.idf_score',
       )
       const batch = this.db.transaction(() => {
-        for (const [term, docFreq] of df) {
-          const idf = Math.log((n + 1) / (docFreq + 1)) + 1
+        for (const [term, idf] of idfScores) {
           upsert.run(term, idf)
         }
       })

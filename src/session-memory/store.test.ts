@@ -108,10 +108,11 @@ describe('SessionStore — stats', () => {
 
 describe('SessionStore — schema', () => {
   it('has covering index on session_events(session_id, ts)', () => {
-    const indices = store.getDb().prepare(
-      "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='session_events'"
-    ).all() as Array<{ name: string }>
-    const names = indices.map(i => i.name)
+    const indices = store
+      .getDb()
+      .prepare("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='session_events'")
+      .all() as Array<{ name: string }>
+    const names = indices.map((i) => i.name)
     expect(names).toContain('idx_events_session_ts')
   })
 })

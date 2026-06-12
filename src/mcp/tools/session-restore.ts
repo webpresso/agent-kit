@@ -15,7 +15,14 @@ import { computeRepoHash } from '#session-memory/repo-hash'
 
 const inputSchema = z.object({
   query: z.string().min(1).describe('What to restore — describes the current working context'),
-  limit: z.number().int().min(1).max(50).optional().default(10).describe('Maximum results to return'),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .optional()
+    .default(10)
+    .describe('Maximum results to return'),
   cwd: z.string().optional().describe('Working directory (defaults to CLAUDE_PROJECT_DIR or cwd)'),
 })
 

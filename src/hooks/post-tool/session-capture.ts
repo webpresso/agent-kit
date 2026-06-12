@@ -91,9 +91,7 @@ export function captureToolEvent(input: ToolInput, sessionId: string): boolean {
       },
     })
   } catch (err) {
-    process.stderr.write(
-      `ak-session-capture: unexpected error: ${(err as Error).message}\n`,
-    )
+    process.stderr.write(`ak-session-capture: unexpected error: ${(err as Error).message}\n`)
     return false
   }
 }

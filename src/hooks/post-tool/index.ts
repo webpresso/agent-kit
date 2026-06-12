@@ -12,10 +12,8 @@
  * Input (stdin): PostToolUse JSON payload from Claude Code
  * Output (stdout): `{}` (passthrough — Claude proceeds normally)
  */
-import { realpathSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
-
 import { runHook } from '#hooks/shared/hook-bootstrap'
+import { isDirectEntrypoint } from '#hooks/shared/direct-entrypoint'
 import type { ToolInput } from '#hooks/shared/types'
 import { processPostToolUse } from './lint-after-edit.js'
 import { captureToolEvent } from './session-capture.js'
@@ -28,30 +26,27 @@ export function processDispatch(input: ToolInput): null {
   try {
     processPostToolUse(input, projectDir)
   } catch (err) {
-    process.stderr.write(
-      `ak-post-tool: lint-after-edit error: ${(err as Error).message}\n`,
-    )
+    process.stderr.write(`ak-post-tool: lint-after-edit error: ${(err as Error).message}\n`)
   }
 
   // 2. Session capture (new — failure must not block lint result)
   try {
     captureToolEvent(input, sessionId)
   } catch (err) {
-    process.stderr.write(
-      `ak-post-tool: session-capture error: ${(err as Error).message}\n`,
-    )
+    process.stderr.write(`ak-post-tool: session-capture error: ${(err as Error).message}\n`)
   }
 
   // Always return null → dispatcher writes '{}'
   return null
 }
 
-if (
-  process.argv[1] &&
-  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
-) {
-  void runHook(
+export async function main(): Promise<void> {
+  await runHook(
     (input) => processDispatch(input as ToolInput),
     () => '{}',
   )
+}
+
+if (isDirectEntrypoint(import.meta.url)) {
+  void main()
 }

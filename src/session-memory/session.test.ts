@@ -147,12 +147,18 @@ describe('restore', () => {
   it('does not bleed events between sessions', () => {
     // Session A — insert one event
     captureEvent(
-      { repoHash: TEST_REPO_HASH, event: { sessionId: 'session-a', toolName: 'Read', content: 'content-a' } },
+      {
+        repoHash: TEST_REPO_HASH,
+        event: { sessionId: 'session-a', toolName: 'Read', content: 'content-a' },
+      },
       tmpDir,
     )
     // Session B — insert a different event (different sessionId)
     captureEvent(
-      { repoHash: TEST_REPO_HASH, event: { sessionId: 'session-b', toolName: 'Bash', content: 'content-b' } },
+      {
+        repoHash: TEST_REPO_HASH,
+        event: { sessionId: 'session-b', toolName: 'Bash', content: 'content-b' },
+      },
       tmpDir,
     )
 

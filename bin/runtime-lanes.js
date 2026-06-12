@@ -48,6 +48,7 @@ export const JS_HOLDBACK_WP_COMMANDS = [
 export const DIRECT_RUNTIME_BIN_ARGS = {
   'wp-pretool-guard': ['hook', 'pretool-guard'],
   'wp-post-tool': ['hook', 'post-tool'],
+  'wp-pre-compact': ['hook', 'pre-compact'],
   'wp-stop-qa': ['hook', 'stop-qa'],
   'wp-guard-switch': ['hook', 'guard-switch'],
   'wp-sessionstart-routing': ['hook', 'sessionstart-routing'],

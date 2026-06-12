@@ -46,13 +46,15 @@ describe('ak_session_snapshot MCP tool', () => {
 
   it('passes capMs to snapshot', async () => {
     await tool.handler({ capMs: 3000 })
-    expect(mockSnapshot).toHaveBeenCalledWith(
-      expect.objectContaining({ capMs: 3000 }),
-    )
+    expect(mockSnapshot).toHaveBeenCalledWith(expect.objectContaining({ capMs: 3000 }))
   })
 
   it('partial snapshot is surfaced correctly', async () => {
-    mockSnapshot.mockResolvedValueOnce({ snapshotId: 'partial-snap', eventsIncluded: 2, partial: true })
+    mockSnapshot.mockResolvedValueOnce({
+      snapshotId: 'partial-snap',
+      eventsIncluded: 2,
+      partial: true,
+    })
     const result = await tool.handler({})
     const payload = JSON.parse(result.content[0]!.text!) as { partial: boolean }
     expect(payload.partial).toBe(true)

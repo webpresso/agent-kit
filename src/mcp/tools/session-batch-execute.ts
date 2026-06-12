@@ -27,7 +27,10 @@ const MAX_CONCURRENCY = 8
 const COMMAND_TIMEOUT_MS = 60_000 // 60s per command in batch
 
 const commandSchema = z.object({
-  label: z.string().min(1).describe('Human-readable label for this command (used as FTS5 source key)'),
+  label: z
+    .string()
+    .min(1)
+    .describe('Human-readable label for this command (used as FTS5 source key)'),
   command: z.string().min(1).describe('Shell command to execute'),
 })
 
@@ -36,7 +39,9 @@ const inputSchema = z.object({
   queries: z
     .array(z.string().min(1))
     .optional()
-    .describe('After all commands complete, run these search queries across all newly indexed output'),
+    .describe(
+      'After all commands complete, run these search queries across all newly indexed output',
+    ),
   concurrency: z
     .number()
     .int()
@@ -45,7 +50,10 @@ const inputSchema = z.object({
     .optional()
     .default(1)
     .describe('Number of commands to run in parallel (max 8; default 1 = sequential)'),
-  cwd: z.string().optional().describe('Working directory for all commands (defaults to CLAUDE_PROJECT_DIR or cwd)'),
+  cwd: z
+    .string()
+    .optional()
+    .describe('Working directory for all commands (defaults to CLAUDE_PROJECT_DIR or cwd)'),
 })
 
 export type AkSessionBatchExecuteInput = z.infer<typeof inputSchema>
@@ -61,12 +69,19 @@ const commandResultSchema = z.object({
 
 const outputSchema = z.object({
   results: z.array(commandResultSchema),
-  queryHits: z.record(z.string(), z.array(z.object({
-    content: z.string(),
-    source: z.string(),
-    tier: z.enum(['porter', 'trigram', 'levenshtein']),
-    rank: z.number(),
-  }))).optional(),
+  queryHits: z
+    .record(
+      z.string(),
+      z.array(
+        z.object({
+          content: z.string(),
+          source: z.string(),
+          tier: z.enum(['porter', 'trigram', 'levenshtein']),
+          rank: z.number(),
+        }),
+      ),
+    )
+    .optional(),
   totalIndexed: z.number(),
   totalCommands: z.number(),
 })
@@ -162,13 +177,25 @@ const tool: ToolDescriptor = {
 
     const settled = await Promise.all(
       input.commands.map(({ label, command }) =>
-        queue.add(() => runSingleCommand(label, command, workDir))
+        queue
+          .add(() => runSingleCommand(label, command, workDir))
           .then((r) => {
             if (r != null) return r
-            process.stderr.write(`[ak-session-batch] task "${label}" timed out after ${COMMAND_TIMEOUT_MS / 1000}s\n`)
-            return { output: '', result: { label, exitCode: -1, outputBytes: 0, indexed: false, summary: '[timeout after 60s]' } }
-          })
-      )
+            process.stderr.write(
+              `[ak-session-batch] task "${label}" timed out after ${COMMAND_TIMEOUT_MS / 1000}s\n`,
+            )
+            return {
+              output: '',
+              result: {
+                label,
+                exitCode: -1,
+                outputBytes: 0,
+                indexed: false,
+                summary: '[timeout after 60s]',
+              },
+            }
+          }),
+      ),
     )
 
     // Index large outputs — sequential to avoid WAL contention
@@ -190,7 +217,17 @@ const tool: ToolDescriptor = {
     }
 
     // Run cross-command queries if requested and any output was indexed
-    let queryHits: Record<string, Array<{ content: string; source: string; tier: 'porter' | 'trigram' | 'levenshtein'; rank: number }>> | undefined
+    let queryHits:
+      | Record<
+          string,
+          Array<{
+            content: string
+            source: string
+            tier: 'porter' | 'trigram' | 'levenshtein'
+            rank: number
+          }>
+        >
+      | undefined
     if (input.queries && input.queries.length > 0 && indexedLabels.length > 0) {
       try {
         const store = getStore(dbPath)
@@ -205,9 +242,7 @@ const tool: ToolDescriptor = {
           }))
         }
       } catch (err) {
-        process.stderr.write(
-          `ak_session_batch_execute: query error: ${(err as Error).message}\n`,
-        )
+        process.stderr.write(`ak_session_batch_execute: query error: ${(err as Error).message}\n`)
       }
     }
 

@@ -667,7 +667,9 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
           `  session-memory: ✓ migrated context-mode → ak_session_* (backup: ${smResult.backupPath ?? 'none'})`,
         )
       } else if (smResult.kind === 'malformed-plugin-json') {
-        console.warn(`  session-memory: ⚠ malformed plugin.json — preserved unchanged: ${smResult.path}`)
+        console.warn(
+          `  session-memory: ⚠ malformed plugin.json — preserved unchanged: ${smResult.path}`,
+        )
       } else if (smResult.kind === 'dry-run') {
         console.log('  session-memory: skipped (--dry-run)')
       }

@@ -209,7 +209,11 @@ describe('sessionstart hook — compact-source restore', () => {
       snapshotId: 'snap1',
     })
 
-    const out = await buildOutput({ source: 'compact', last_user_prompt: 'session memory' }, cwd, {})
+    const out = await buildOutput(
+      { source: 'compact', last_user_prompt: 'session memory' },
+      cwd,
+      {},
+    )
     const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed.hookSpecificOutput.additionalContext).toContain('<session_knowledge')
     expect(parsed.hookSpecificOutput.additionalContext).toContain('session memory store')

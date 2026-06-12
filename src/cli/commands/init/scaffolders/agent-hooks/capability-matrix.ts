@@ -126,12 +126,12 @@ export const CAPABILITY_MATRIX: readonly VendorCapability[] = [
   },
   {
     event: 'PreCompact',
-    claude: 'partial',
-    codex: 'partial',
+    claude: 'full',
+    codex: 'full',
     cursor: 'unsupported',
     opencode: 'partial',
     notes:
-      'Accepted in lifecycle tooling, but the current managed wp-* surface does not install a dedicated pre-compact hook. OpenCode experimental.session.compacting fires before compaction',
+      'Managed wp-pre-compact snapshots session events before compaction. OpenCode experimental.session.compacting fires before compaction',
   },
   {
     event: 'PostCompact',

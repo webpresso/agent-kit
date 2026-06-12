@@ -11,10 +11,8 @@
  * Input (stdin): PreCompact JSON payload from Claude Code (currently unused)
  * Output (stdout): `{}` (passthrough — Claude proceeds normally)
  */
-import { realpathSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
-
 import { suppressStderr } from '#hooks/shared/hook-bootstrap'
+import { isDirectEntrypoint } from '#hooks/shared/direct-entrypoint'
 import { snapshot } from '#session-memory/session'
 import { computeRepoHash } from '#session-memory/repo-hash'
 
@@ -35,12 +33,14 @@ export async function runPreCompact(cwd?: string): Promise<PreCompactResult | nu
     )
     return result
   } catch (err: unknown) {
-    process.stderr.write(`ak-pre-compact: snapshot failed: ${err instanceof Error ? err.message : String(err)}\n`)
+    process.stderr.write(
+      `ak-pre-compact: snapshot failed: ${err instanceof Error ? err.message : String(err)}\n`,
+    )
     return null
   }
 }
 
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
   suppressStderr()
 
   // Read and discard stdin (required even if unused so Claude Code doesn't stall)
@@ -56,9 +56,6 @@ async function main(): Promise<void> {
   process.exit(0)
 }
 
-if (
-  process.argv[1] &&
-  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
-) {
+if (isDirectEntrypoint(import.meta.url)) {
   void main()
 }

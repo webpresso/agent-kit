@@ -3,15 +3,15 @@ import { describe, expect, it } from 'vitest'
 import { HOOK_EVENT_NAMES, WP_HOOK_SPECS } from './ir.js'
 
 describe('WP_HOOK_SPECS', () => {
-  it('has 5 specs (1 SessionStart, 1 PreToolUse, 1 PostToolUse, 1 UserPromptSubmit, 1 Stop)', () => {
-    expect(WP_HOOK_SPECS).toHaveLength(5)
+  it('has 7 specs including dev-link and PreCompact hooks', () => {
+    expect(WP_HOOK_SPECS).toHaveLength(7)
 
     const byEvent = WP_HOOK_SPECS.reduce<Record<string, number>>((acc, spec) => {
       acc[spec.event] = (acc[spec.event] ?? 0) + 1
       return acc
     }, {})
 
-    expect(byEvent['SessionStart']).toStrictEqual(1)
+    expect(byEvent['SessionStart']).toStrictEqual(2)
     expect(byEvent['PreToolUse']).toStrictEqual(1)
     expect(byEvent['PostToolUse']).toStrictEqual(1)
     expect(byEvent['UserPromptSubmit']).toStrictEqual(1)
@@ -52,8 +52,10 @@ describe('WP_HOOK_SPECS', () => {
     const bins = WP_HOOK_SPECS.map((s) => s.bin)
     expect(bins).toStrictEqual([
       'wp-sessionstart-routing',
+      'wp-check-dev-link',
       'wp-pretool-guard',
       'wp-post-tool',
+      'wp-pre-compact',
       'wp-guard-switch',
       'wp-stop-qa',
     ])
@@ -62,8 +64,10 @@ describe('WP_HOOK_SPECS', () => {
   it('contains the canonical wp hook subcommands in the expected order', () => {
     expect(WP_HOOK_SPECS.map((s) => s.hookName)).toStrictEqual([
       'sessionstart-routing',
+      'check-dev-link',
       'pretool-guard',
       'post-tool',
+      'pre-compact',
       'guard-switch',
       'stop-qa',
     ])
