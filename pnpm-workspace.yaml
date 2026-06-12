@@ -16,3 +16,6 @@ allowBuilds:
   sharp: true
   tldjs: true
   workerd: true
+
+overrides:
+  qs: 6.15.2
