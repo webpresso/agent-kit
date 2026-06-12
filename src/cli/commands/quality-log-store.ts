@@ -1,6 +1,7 @@
 import {
   createWriteStream,
   mkdirSync,
+  openSync,
   readdirSync,
   readFileSync,
   rmSync,
@@ -47,7 +48,13 @@ export function createCliLogSink(command: CliLogCommandName, cwd = process.cwd()
   const commandDir = getCommandLogDir(command, cwd)
   mkdirSync(commandDir, { recursive: true })
   const absoluteLogPath = join(commandDir, `${id}.log`)
-  const stream = createWriteStream(absoluteLogPath, { encoding: 'utf8' })
+  const fd = openSync(absoluteLogPath, 'a')
+  const stream = createWriteStream(absoluteLogPath, {
+    encoding: 'utf8',
+    fd,
+    flags: 'a',
+    autoClose: true,
+  })
 
   return {
     command,
