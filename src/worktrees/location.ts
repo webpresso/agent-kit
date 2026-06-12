@@ -13,6 +13,6 @@ export function resolveWorktreeRoot(repoRoot: string): string {
 /**
  * Resolve a generated child worktree path below the shared worktree root.
  */
-export function resolveGeneratedWorktreePath(baseDir: string, slug: string): string {
-  return join(baseDir, slug)
+export function resolveGeneratedWorktreePath(worktreeRoot: string, slug: string): string {
+  return join(worktreeRoot, slug)
 }

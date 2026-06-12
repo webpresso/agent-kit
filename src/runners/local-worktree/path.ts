@@ -8,7 +8,7 @@ import { resolveGeneratedWorktreePath, resolveWorktreeRoot } from '#worktrees/lo
  *
  * @returns `<parent>/<repo>_worktrees/<taskId>-<uuid>`
  */
-export function generateWorktreePath(baseDir: string, taskId: string): string {
+export function generateWorktreePath(repoRoot: string, taskId: string): string {
   const uuid = crypto.randomUUID()
-  return resolveGeneratedWorktreePath(resolveWorktreeRoot(baseDir), `${taskId}-${uuid}`)
+  return resolveGeneratedWorktreePath(resolveWorktreeRoot(repoRoot), `${taskId}-${uuid}`)
 }
