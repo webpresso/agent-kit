@@ -117,6 +117,19 @@ describe('auditSecretsPolicy', () => {
     ])
   })
 
+  test('does not flag test file containing fake secret-like fixtures', () => {
+    const root = tempRepo(true)
+    // Langfuse-style test fixture keys — real format, intentionally fake values
+    const testContent = 'const env = { LANGFUSE_PUBLIC_KEY: "pk-lf-test", LANGFUSE_SECRET_KEY: "sk-lf-test" }'
+    writeFileSync(join(root, 'service.test.ts'), testContent)
+    execFileSync('git', ['add', 'service.test.ts'], { cwd: root, stdio: 'ignore' })
+
+    const result = auditSecretsPolicy(root)
+
+    expect(result.ok).toBe(true)
+    expect(result.violations).toStrictEqual([])
+  })
+
   test('passes for clean git repo', () => {
     const root = tempRepo(true)
     writeFileSync(join(root, 'readme.md'), '# My project')

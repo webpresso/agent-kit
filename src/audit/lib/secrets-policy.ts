@@ -58,6 +58,7 @@ export function isForbiddenGitPath(relativePath: string): boolean {
 }
 
 export function shouldScanGitFileForSecretValues(relativePath: string): boolean {
+  if (/\.(?:test|spec)\.(?:ts|tsx|js|jsx|mjs|cjs)$/iu.test(relativePath)) return false
   return /\.(?:md|ts|tsx|js|mjs|cjs|json|ya?ml|toml|txt|sh)$/iu.test(relativePath)
 }
 
