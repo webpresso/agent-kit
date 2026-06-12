@@ -23,6 +23,12 @@ describe('compiled MCP tool registry', () => {
       expect(registrySource).toContain(`'./${file.replace(/\.ts$/u, '.js')}'`)
     }
     expect(COMPILED_TOOL_REGISTRY.map((tool) => tool.name).sort()).toEqual([
+      'ak_session_batch_execute',
+      'ak_session_capture',
+      'ak_session_execute',
+      'ak_session_restore',
+      'ak_session_search',
+      'ak_session_snapshot',
       'wp_audit',
       'wp_ci_act',
       'wp_e2e',

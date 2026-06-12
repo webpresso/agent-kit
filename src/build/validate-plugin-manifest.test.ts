@@ -67,9 +67,9 @@ describe('plugin.json manifest', () => {
       expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/pretool-guard/index.ts`)
     })
 
-    it('PostToolUse matches Edit|Write|MultiEdit|Bash and points at post-tool/index.ts dispatcher', () => {
+    it('PostToolUse matches Edit|Write|MultiEdit|Bash|Read|Grep|WebFetch|mcp__ and points at post-tool/index.ts dispatcher', () => {
       const [entry] = readManifest().hooks.PostToolUse
-      expect(entry!.matcher).toBe('Edit|Write|MultiEdit|Bash')
+      expect(entry!.matcher).toBe('Edit|Write|MultiEdit|Bash|Read|Grep|WebFetch|mcp__')
       const [handler] = entry!.hooks
       expect(handler!.type).toBe('command')
       expect(handler!.command).toBe(`bun ${PLUGIN_ROOT_VAR}/src/hooks/post-tool/index.ts`)
