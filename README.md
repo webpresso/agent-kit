@@ -20,6 +20,9 @@ plan, test, and keep a repo correct.
   (failures + `bytes` + `tokensSaved`), not thousand-line logs.
 - **Docs, plans, and code can't silently diverge.** Every audit runs as both an
   MCP tool and a pre-commit/CI gate.
+- **Secrets stay out of the repo.** Four dedicated security audits catch secret
+  carriers, dev-var files, provider-credential leakage, and config drift at
+  pre-commit and in CI — before anything reaches a remote.
 - **Zero hand-wiring onboarding.** `wp setup` scaffolds the quality config and
   keeps `AGENTS.md` / `CLAUDE.md` plus per-agent surfaces in sync.
 
@@ -91,12 +94,37 @@ vp run public:consumer-smoke -- --setup-only
 | **Summary-first `wp_*` MCP tools** | `wp_test` / `wp_typecheck` / `wp_lint` / `wp_qa` / `wp_e2e` / `wp_format` / `wp_ci_act` / `wp_audit` return JSON with `bytes` / `tokensSaved` budget metadata | [`src/mcp/tools/`](src/mcp/tools/) (each with co-located `.test.ts`), [`src/mcp/server.integration.test.ts`](src/mcp/server.integration.test.ts) |
 | **MCP server + CLI surface** | Registers the tool set and exposes it to agents | [`src/mcp/server.ts`](src/mcp/server.ts), [`src/mcp/cli.ts`](src/mcp/cli.ts), [`src/mcp/cli.integration.test.ts`](src/mcp/cli.integration.test.ts) |
 | **Blueprint runtime** | Lifecycle states, dependency-aware task graph, structured authoring control plane (`wp_blueprint_depgraph` / `put` / `transition`) | [`src/mcp/blueprint-server.ts`](src/mcp/blueprint-server.ts), [`docs/lifecycle.md`](docs/lifecycle.md), [`docs/blueprint-format.md`](docs/blueprint-format.md) |
-| **Audit contract family** | `blueprint-lifecycle`, `docs-frontmatter`, `catalog-drift`, `vision`, `architecture-drift`, `bundle-budget`, `commit-message` (Lore), `tech-debt`, `absolute-path-policy`, `open-source-licenses`, … — each runs as a `wp_audit` MCP tool **and** a pre-commit/CI gate | [`src/audit/`](src/audit/), [`src/mcp/tools/audit.ts`](src/mcp/tools/audit.ts), [`.github/workflows/ci.agent-kit.yml`](.github/workflows/ci.agent-kit.yml) |
+| **Audit contract family** | `blueprint-lifecycle`, `docs-frontmatter`, `catalog-drift`, `vision`, `architecture-drift`, `bundle-budget`, `commit-message` (Lore), `tech-debt`, `absolute-path-policy`, `open-source-licenses`, **`secrets-policy`**, **`no-dev-vars`**, **`secret-provider-quarantine`**, **`secrets-config`** — each runs as a `wp_audit` MCP tool **and** a pre-commit/CI gate | [`src/audit/`](src/audit/), [`src/mcp/tools/audit.ts`](src/mcp/tools/audit.ts), [`.github/workflows/ci.agent-kit.yml`](.github/workflows/ci.agent-kit.yml) |
 | **Symlinker** | Syncs canonical `.agent/` to per-IDE surfaces (Codex/Amp skills, Gemini TOML commands) via rulesync | [`src/symlinker/index.ts`](src/symlinker/index.ts), [`src/symlinker/symlinker.integration.test.ts`](src/symlinker/symlinker.integration.test.ts), [`docs/symlinker.md`](docs/symlinker.md) |
 | **Mutation testing** | `wp audit mutation` (Stryker) catches tests that pass without asserting | [`src/config/stryker/`](src/config/stryker/), `./stryker` + `./mutation` exports |
 | **Tech-debt lifecycle** | `accepted → needs-remediation → monitoring → resolved`, auto-filed from failing audits | [`src/blueprint/tech-debt/`](src/blueprint/tech-debt/), [`src/cli/commands/tech-debt/`](src/cli/commands/tech-debt/) |
 | **Shared config subpaths** | `tsconfig/*`, `vitest/*`, `oxlint/*`, `workers-test`, `test-preset`, `e2e-preset`, `docs-lint`, `launch` | [`package.json` exports](package.json), [`src/config/`](src/config/) |
 | **Claude Code plugin** | Ships as a plugin; `vp run lint:pkg` runs `claude plugin validate .` | `.claude-plugin/` (in `package.json#files`) |
+
+## Security audits
+
+Four governance audits ship as first-class `wp audit` subcommands and run at
+pre-commit and in CI. Each gates on `.webpresso/secrets.config.json` presence
+— repos that haven't opted in get `ok: true, checked: 0` (no blast radius).
+
+| Command | What it catches |
+| --- | --- |
+| `wp audit secrets-policy` | Forbidden secret carriers (`.env`, `.dev.vars`, credential files) in the working tree **and** git-tracked history |
+| `wp audit no-dev-vars` | `.dev.vars` or `.env` files anywhere in the repo tree |
+| `wp audit secret-provider-quarantine` | Direct secret-provider CLI invocations and provider-specific flags in source — requires the `with-secrets -- <cmd>` abstraction instead |
+| `wp audit secrets-config` | Validates `.webpresso/secrets.config.json` exists, parses as valid JSON, and contains no embedded secret values |
+
+**Wire them in `.husky/pre-commit`:**
+
+```sh
+wp audit secrets-policy
+wp audit no-dev-vars
+wp audit secret-provider-quarantine
+wp audit secrets-config
+```
+
+See [`docs/security-audits.md`](docs/security-audits.md) for full reference,
+gate behaviour, and CI wiring.
 
 ## Architecture
 
