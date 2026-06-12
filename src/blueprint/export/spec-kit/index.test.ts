@@ -1,6 +1,6 @@
 /**
  * Integration test for blueprintToSpecKit.
- * Uses the real elegance-pass-2026 blueprint fixture via parseBlueprintForDb.
+ * Uses a real completed blueprint fixture via parseBlueprintForDb.
  */
 
 import { readFileSync } from 'node:fs'
@@ -11,14 +11,14 @@ import { parseBlueprintForDb } from '../../db/parser/blueprint-db-parser.js'
 import { blueprintToSpecKit } from './index.js'
 
 // ---------------------------------------------------------------------------
-// Real fixture from blueprints/completed/elegance-pass-2026/_overview.md
+// Real fixture from a surviving completed blueprint overview
 // ---------------------------------------------------------------------------
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '../../../..')
-const FIXTURE_PATH = path.join(REPO_ROOT, 'blueprints/completed/elegance-pass-2026/_overview.md')
+const FIXTURE_PATH = path.join(REPO_ROOT, 'blueprints/completed/agent-kit-parity-pass/_overview.md')
 
 const FIXTURE_CONTENT = readFileSync(FIXTURE_PATH, 'utf-8')
-const FIXTURE_SLUG = 'elegance-pass-2026'
+const FIXTURE_SLUG = 'agent-kit-parity-pass'
 const PARSED = parseBlueprintForDb(FIXTURE_CONTENT, FIXTURE_PATH, FIXTURE_SLUG)
 
 // ---------------------------------------------------------------------------
