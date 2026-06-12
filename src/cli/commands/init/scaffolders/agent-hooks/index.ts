@@ -39,7 +39,6 @@ import {
 } from './skill-hooks.js'
 import type { HooksManifest } from './manifest.js'
 import { resolveRuntimeTarget, runtimePackageDirName } from '#build/runtime-targets.js'
-import { buildClaudeHookGroups } from './emitters/claude.js'
 import {
   DIRECT_CLAUDE_NODE_MODULES_BIN_PATTERN,
   DIRECT_MANAGED_HOOK_LAUNCHER_PATTERN,

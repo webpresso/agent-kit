@@ -14,7 +14,6 @@ import type Database from 'better-sqlite3'
 import BetterSqlite3 from 'better-sqlite3'
 
 import type { ChunkInsertInput, IndexStats, SearchHit, SearchOptions } from './types.js'
-import { BunSqliteStore } from './bun-store.js'
 
 export type ISessionStore = {
   insertChunks(chunks: readonly ChunkInsertInput[]): void
@@ -361,12 +360,25 @@ export class SessionStore {
 
 const registry = new Map<string, ISessionStore>()
 
+type BunSqliteStoreConstructor = new (dbPath: string) => ISessionStore
+
+function createBunStore(dbPath: string): ISessionStore {
+  if (!('Bun' in globalThis)) {
+    throw new Error('AK_SESSION_ENGINE=bun requires the Bun runtime')
+  }
+  const load = new Function(
+    'specifier',
+    'return require(specifier)',
+  ) as (specifier: string) => { BunSqliteStore: BunSqliteStoreConstructor }
+  const { BunSqliteStore } = load('./bun-store.js')
+  return new BunSqliteStore(dbPath)
+}
+
 export function getStore(dbPath: string): ISessionStore {
   const existing = registry.get(dbPath)
   if (existing) return existing
   const engine = process.env['AK_SESSION_ENGINE']
-  // BunSqliteStore is structurally compatible with ISessionStore
-  const store: ISessionStore = engine === 'bun' ? (new BunSqliteStore(dbPath) as unknown as ISessionStore) : new SessionStore(dbPath)
+  const store: ISessionStore = engine === 'bun' ? createBunStore(dbPath) : new SessionStore(dbPath)
   registry.set(dbPath, store)
   return store
 }

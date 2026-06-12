@@ -105,7 +105,7 @@ async function runSingleCommand(
     }
 
     const result = await subprocess
-    exitCode = result.exitCode
+    exitCode = result.exitCode ?? -1
   } catch (err) {
     const errorMsg = (err as Error).message
     return {
@@ -163,7 +163,7 @@ const tool: ToolDescriptor = {
     const settled = await Promise.all(
       input.commands.map(({ label, command }) =>
         queue.add(() => runSingleCommand(label, command, workDir))
-          .then((r: { output: string; result: CommandResult } | undefined) => {
+          .then((r) => {
             if (r != null) return r
             process.stderr.write(`[ak-session-batch] task "${label}" timed out after ${COMMAND_TIMEOUT_MS / 1000}s\n`)
             return { output: '', result: { label, exitCode: -1, outputBytes: 0, indexed: false, summary: '[timeout after 60s]' } }

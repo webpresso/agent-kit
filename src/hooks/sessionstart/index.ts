@@ -19,7 +19,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-import { AK_ROUTING_BLOCK } from '#hooks/shared/routing-block'
+import { WP_ROUTING_BLOCK } from '#hooks/shared/routing-block'
 import { restore } from '#session-memory/session'
 import { computeRepoHash } from '#session-memory/repo-hash'
 

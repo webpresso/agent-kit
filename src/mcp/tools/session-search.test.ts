@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 // Mock session-memory modules to avoid SQLite in unit tests
 vi.mock('#session-memory/session', () => ({

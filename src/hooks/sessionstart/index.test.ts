@@ -85,7 +85,7 @@ describe('sessionstart hook buildOutput', () => {
     const out = await buildOutput({}, cwd, {})
     expect(out).not.toBeNull()
     const parsed = JSON.parse(out) as ParsedOutput
-    expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('<wp_routing>')
   })
 
   it('always emits routing block when .agent/routing.md is empty', async () => {
@@ -94,11 +94,11 @@ describe('sessionstart hook buildOutput', () => {
     const out = await buildOutput({}, cwd, {})
     expect(out).not.toBeNull()
     const parsed = JSON.parse(out) as ParsedOutput
-    expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('<wp_routing>')
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain('routing.md')
   })
 
-  it('prepends AK_ROUTING_BLOCK before .agent/routing.md content', async () => {
+  it('prepends WP_ROUTING_BLOCK before .agent/routing.md content', async () => {
     const cwd = tmp()
     const contents = '# Routing\n\nGo to docs.'
     writeRoutingMd(cwd, contents)
@@ -116,7 +116,7 @@ describe('sessionstart hook buildOutput', () => {
     const out = await buildOutput({}, '/definitely/not/a/real/path/xyz', {})
     expect(out).not.toBeNull()
     const parsed = JSON.parse(out) as ParsedOutput
-    expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('<wp_routing>')
   })
 
   it('output is valid JSON with hookSpecificOutput.additionalContext field', async () => {
@@ -250,7 +250,7 @@ describe('sessionstart hook — compact-source restore', () => {
 
     const out = await buildOutput({ source: 'compact' }, cwd, {})
     const parsed = JSON.parse(out) as ParsedOutput
-    expect(parsed.hookSpecificOutput.additionalContext).toContain('<ak_routing>')
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('<wp_routing>')
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain('<session_knowledge')
   })
 })
@@ -297,25 +297,25 @@ describe('sessionstart hook gstack block (opt-in)', () => {
     return d
   }
 
-  it('does NOT append gstack block when AK_GSTACK_ROUTING is unset', async () => {
+  it('does NOT append gstack block when WP_GSTACK_ROUTING is unset', async () => {
     const cwd = tmp()
     const out = await buildOutput({}, cwd, {})
     const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain('Interactive skills (gstack)')
   })
 
-  it('does NOT append gstack block when AK_GSTACK_ROUTING=0', async () => {
+  it('does NOT append gstack block when WP_GSTACK_ROUTING=0', async () => {
     const cwd = tmp()
-    const out = await buildOutput({}, cwd, { AK_GSTACK_ROUTING: '0' })
+    const out = await buildOutput({}, cwd, { WP_GSTACK_ROUTING: '0' })
     const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain('Interactive skills (gstack)')
   })
 
-  it('does NOT append gstack block when AK_GSTACK_ROUTING=1 but gstack dir absent', async () => {
+  it('does NOT append gstack block when WP_GSTACK_ROUTING=1 but gstack dir absent', async () => {
     const cwd = tmp()
     const gstackDir = join(homedir(), '.claude', 'skills', 'gstack')
     const gstackExists = existsSync(gstackDir)
-    const out = await buildOutput({}, cwd, { AK_GSTACK_ROUTING: '1' })
+    const out = await buildOutput({}, cwd, { WP_GSTACK_ROUTING: '1' })
     const parsed = JSON.parse(out) as ParsedOutput
     const ctx = parsed.hookSpecificOutput.additionalContext
     if (gstackExists) {
@@ -327,7 +327,7 @@ describe('sessionstart hook gstack block (opt-in)', () => {
 
   it('always preserves routing block regardless of gstack flag', async () => {
     const cwd = tmp()
-    const out = await buildOutput({}, cwd, { AK_GSTACK_ROUTING: '1' })
+    const out = await buildOutput({}, cwd, { WP_GSTACK_ROUTING: '1' })
     const parsed = JSON.parse(out) as ParsedOutput
     expect(parsed.hookSpecificOutput.additionalContext).toContain('<wp_routing>')
   })

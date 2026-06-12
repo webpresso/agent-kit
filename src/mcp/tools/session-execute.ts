@@ -92,7 +92,7 @@ const tool: ToolDescriptor = {
       }
 
       const result = await subprocess
-      exitCode = result.exitCode
+      exitCode = result.exitCode ?? -1
     } catch (err) {
       const errorMsg = (err as Error).message
       const payload = {
