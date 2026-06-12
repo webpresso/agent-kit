@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.32.0
+
+### Minor Changes
+
+- b0f14f4: Add wp audit governance subcommands: secrets-policy, no-dev-vars, secret-provider-quarantine, secrets-config. Add workspace-aware wp test --affected for mutation CI in both multi-package and single-app repos.
+
+### Patch Changes
+
+- 69976c1: Fix `wp update` outside package roots by falling back to the global refresh path,
+  and make `wp sync --check` report the correct source-repo bootstrap guidance for
+  fresh agent-kit worktrees.
+
 ## 0.31.2
 
 ### Patch Changes
