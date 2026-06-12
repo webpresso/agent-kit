@@ -327,8 +327,6 @@ describe('buildTestCommand', () => {
         'run',
         '--exclude',
         '**/*.integration.test.ts',
-        '--maxWorkers',
-        '1',
       ],
     })
   })
@@ -364,8 +362,6 @@ describe('buildTestCommand', () => {
           'run',
           '--exclude',
           '**/*.integration.test.ts',
-          '--maxWorkers',
-          '1',
           '--coverage',
           '-t',
           'core',
