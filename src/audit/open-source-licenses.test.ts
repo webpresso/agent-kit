@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, test } from 'vitest'
 
 import { auditOpenSourceLicenses } from './open-source-licenses.js'
+import { createPackedManifest, readWorkspaceCatalogs } from '#build/package-manifest.js'
 
 const repoRoot = join(import.meta.dirname, '..', '..')
 
@@ -32,6 +33,23 @@ describe('open-source-licenses audit', () => {
 
     expect(result.ok).toBe(true)
     expect(result.violations).toEqual([])
+  })
+
+  test('keeps the repo and packed manifest on Elastic License 2.0', () => {
+    const packageJson = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as {
+      license?: string
+    }
+    const packedManifest = createPackedManifest(
+      packageJson as Record<string, unknown>,
+      readWorkspaceCatalogs(join(repoRoot, 'pnpm-workspace.yaml')),
+    ) as { license?: string }
+    const licenseText = readFileSync(join(repoRoot, 'LICENSE'), 'utf8')
+    const notices = readFileSync(join(repoRoot, 'THIRD-PARTY-NOTICES.md'), 'utf8')
+
+    expect(packageJson.license).toBe('Elastic-2.0')
+    expect(packedManifest.license).toBe('Elastic-2.0')
+    expect(licenseText).toContain('Elastic License 2.0')
+    expect(notices).toContain('Elastic License 2.0')
   })
 
   test('is hermetic: a leftover prepack backup lock does not poison the audit', () => {

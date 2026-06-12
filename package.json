@@ -27,7 +27,7 @@
     "quality-engine",
     "skills"
   ],
-  "license": "MIT",
+  "license": "Elastic-2.0",
   "preferGlobal": true,
   "bin": {
     "wp": "bin/wp",

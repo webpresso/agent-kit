@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-`@webpresso/agent-kit` is licensed under the [MIT License](./LICENSE).
+`@webpresso/agent-kit` is licensed under the [Elastic License 2.0](./LICENSE).
 
 The catalog includes skills copied or adapted from upstream open-source projects.
 Machine-readable provenance lives in
@@ -20,7 +20,7 @@ CI validates that manifest with `wp audit open-source-licenses`.
 
 Skills such as `tanstack-query`, `lore-protocol`, `pll`, `verify`, `fix`, and
 `better-auth-best-practices` are maintained in this repository and are covered by
-the project MIT license unless noted otherwise in their frontmatter.
+the project Elastic License 2.0 unless noted otherwise in their frontmatter.
 
 ## Integration-only skills (not vendored)
 

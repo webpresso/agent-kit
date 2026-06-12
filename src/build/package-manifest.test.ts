@@ -182,6 +182,21 @@ describe('createPackedManifest', () => {
     }
   })
 
+  it('preserves an Elastic-2.0 license in the packed manifest', () => {
+    const manifest = createPackedManifest(
+      {
+        name: '@webpresso/agent-kit',
+        version: '1.0.0',
+        license: 'Elastic-2.0',
+      },
+      { catalog: {} },
+    ) as {
+      license?: string
+    }
+
+    expect(manifest.license).toBe('Elastic-2.0')
+  })
+
   it('adds platform runtime packages to the packed optional dependency surface', () => {
     const manifest = createPackedManifest(
       {
