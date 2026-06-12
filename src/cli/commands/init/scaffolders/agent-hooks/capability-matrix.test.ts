@@ -33,8 +33,6 @@ describe('CAPABILITY_MATRIX', () => {
   it('richer native events are recorded as partial/unmapped rather than falsely marked full', () => {
     const permissionRequest = CAPABILITY_MATRIX.find((c) => c.event === 'PermissionRequest')
     const sessionEnd = CAPABILITY_MATRIX.find((c) => c.event === 'SessionEnd')
-    const preCompact = CAPABILITY_MATRIX.find((c) => c.event === 'PreCompact')
-
     expect(permissionRequest).toMatchObject({
       claude: 'partial',
       codex: 'partial',
@@ -45,10 +43,15 @@ describe('CAPABILITY_MATRIX', () => {
       codex: 'unsupported',
       cursor: 'unsupported',
     })
+  })
+
+  it('PreCompact is full for Tier 1 CLIs because wp-pre-compact is managed', () => {
+    const preCompact = CAPABILITY_MATRIX.find((c) => c.event === 'PreCompact')
     expect(preCompact).toMatchObject({
-      claude: 'partial',
-      codex: 'partial',
+      claude: 'full',
+      codex: 'full',
       cursor: 'unsupported',
+      opencode: 'partial',
     })
   })
 

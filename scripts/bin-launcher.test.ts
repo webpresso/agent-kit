@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -46,6 +46,17 @@ afterEach(() => {
 })
 
 describe('bin launcher', () => {
+  it('all package.json bin paths exist in the source checkout', () => {
+    const packageJson = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')) as {
+      bin?: Record<string, string>
+    }
+    const missingBins = Object.entries(packageJson.bin ?? {})
+      .map(([name, relativePath]) => ({ name, path: join(REPO_ROOT, relativePath) }))
+      .filter((entry) => !existsSync(entry.path))
+
+    expect(missingBins).toStrictEqual([])
+  })
+
   it('maps known public bin names to source entrypoints', () => {
     expect(BIN_ENTRYPOINTS.wp).toBe('src/cli/cli.ts')
     expect(BIN_ENTRYPOINTS['wp-pretool-guard']).toBe('src/hooks/pretool-guard/index.ts')

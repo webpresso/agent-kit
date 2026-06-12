@@ -35,14 +35,16 @@ function buildEmptyHooksMap(): HooksMap {
 
 describe('WP_HOOK_SPECS', () => {
   it('has one entry per canonical wp-* hook', () => {
-    expect(WP_HOOK_SPECS.length).toStrictEqual(5)
+    expect(WP_HOOK_SPECS.length).toStrictEqual(7)
   })
 
   it('all specs have non-empty hook and event fields', () => {
     expect(WP_HOOK_SPECS.map((s) => ({ hook: s.hook, event: s.event }))).toStrictEqual([
       { hook: 'wp-sessionstart-routing', event: 'SessionStart' },
+      { hook: 'wp-check-dev-link', event: 'SessionStart' },
       { hook: 'wp-pretool-guard', event: 'PreToolUse' },
       { hook: 'wp-post-tool', event: 'PostToolUse' },
+      { hook: 'wp-pre-compact', event: 'PreCompact' },
       { hook: 'wp-guard-switch', event: 'UserPromptSubmit' },
       { hook: 'wp-stop-qa', event: 'Stop' },
     ])
