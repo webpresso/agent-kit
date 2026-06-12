@@ -5,8 +5,8 @@ status: in-progress
 complexity: L
 owner: agent-kit
 created: '2026-05-13'
-last_updated: '2026-05-14'
-progress: '100% (17/17 tasks done — 13 original + 4 Phase 6 output sandboxing)'
+last_updated: '2026-06-11'
+progress: 'Still in progress: PR #95 is the only delivery lane, fallback removal + CI/doc cleanup are underway, and the delivery contract is being moved in-repo via vendored ctx-rs source + host-local native build'
 depends_on:
   - ak-session-memory-v1-in-process-sqlite-fts5-via-better-sqlite3
 tags:
@@ -23,10 +23,16 @@ tags:
 
 # wp session memory v2 — Rust ctx-rs engine swap (same schema)
 
+> **Reality check (2026-06-11):** this blueprint stays `in-progress`. The branch
+> is now ctx-rs-only, legacy fallback knobs are being removed, and merge remains
+> delivered through vendored ctx-rs source inside agent-kit plus host-local
+> native build on first use. Do not mark this lane complete while that delivery contract,
+> the remaining CI failures, or the docs truth gap are still open.
+
 ## Product wedge anchor
 
-- **Stage outcome:** Same Lane 2 stage outcome as v1, **plus** webpresso owns a Rust engine — sub-millisecond hot path with hard SLO, single prebuilt binary swap, no schema change. Roadmap cite: webpresso open-sourcing extraction roadmap, post-v1 perf wave.
-- **Consuming surface:** Same `ak_session_*` MCP tool surface as v1 (`ak_session_capture`, `ak_session_snapshot`, `ak_session_restore`, `ak_session_search`). Same `wp setup`. Same on-disk SQLite file at `~/.webpresso/sessions/<repo-hash>.db`. Behind the scenes: `better-sqlite3` is replaced by `@webpresso/ctx-rs` (Rust crate via napi-rs). Migration is invisible — same schema, same SQLite file format.
+- **Stage outcome:** Same Lane 2 stage outcome as v1, **plus** webpresso owns a Rust engine — sub-millisecond hot path with hard SLO, repo-owned native build, no schema change. Roadmap cite: webpresso open-sourcing extraction roadmap, post-v1 perf wave.
+- **Consuming surface:** Same `ak_session_*` MCP tool surface as v1 (`ak_session_capture`, `ak_session_snapshot`, `ak_session_restore`, `ak_session_search`). Same `wp setup`. Same on-disk SQLite file at `~/.webpresso/sessions/<repo-hash>.db`. Behind the scenes: `better-sqlite3` is replaced by vendored `ctx-rs` source that agent-kit builds for the current host on first use. Migration is invisible — same schema, same SQLite file format.
 - **New user-visible capability:** After this lands, the same consumer using v1 today gets a `pnpm update @webpresso/agent-kit` that drops in the Rust engine. Hot path drops from sub-100ms to sub-2ms p99. `rtk gain`-style telemetry on session-capture overhead becomes negligible. No data migration.
 
 ## Problem Statement
@@ -41,8 +47,8 @@ But three pressures motivate a Rust rewrite:
    (better-sqlite3 + JS heap pressure) starts showing in p99. A Rust engine
    keeps p99 sub-2ms regardless of size.
 2. **Single binary distribution.** Today: `pnpm add @webpresso/agent-kit` pulls
-   better-sqlite3's prebuilt binary. v2: same — but now the entire
-   session-memory engine ships as a single .node file via napi-rs.
+   better-sqlite3's native binary. v2 instead vendors the Rust engine source
+   and builds the host-native binding on first use inside agent-kit.
 3. **Engine ownership flexibility.** A Rust engine in our hands lets us add
    features (richer chunking, cargo-mutants-tested edge cases, custom
    tokenizers via FFI) that the better-sqlite3 SQL surface limits.
@@ -68,7 +74,7 @@ schema is the contract.
 │  PostToolUse:   rtk-posttool ──▶ ak-post-tool/index.ts       │
 │                                       │                       │
 │                                       ▼  napi-rs FFI (sync)   │
-│                                  @webpresso/ctx-rs (Rust)     │
+│                               vendored ctx-rs (Rust)          │
 │                                  ├ index() -> Result          │
 │                                  ├ search() -> Vec<Hit>       │
 │                                  ├ snapshot() -> SnapshotId   │
@@ -100,8 +106,8 @@ CRATE STRUCTURE (webpresso/ctx-rs/ — new repo):
   │   └── ctx-rs-napi/        napi-rs FFI bindings (Apache-2 wrapper, exposes core)
   │       └── src/lib.rs      #[napi] sync exports for hot path
   └── npm/
-      └── @webpresso/ctx-rs/  npm wrapper with prebuilts (linux/darwin/win × x64/arm64)
-                              optionalDependencies pull only the matching triple
+      └── agent-kit vendor/ctx-rs/  vendored Rust workspace compiled on first use
+                              agent-kit builds the matching host binding on first use
 
 DATA FLOW (binary-compatible with v1 — same .db file):
   v1 (TS):  ak-post-tool ──▶ better-sqlite3 ──▶ <repo-hash>.db
@@ -129,7 +135,7 @@ fixes are tagged with `Fx` references to the corresponding finding.)
 | TS shim thickness | Thin (eng-review D9): TS reads stdin, calls ctx-rs FFI, writes stdout | All logic in Rust |
 | Hot path SLO | p99 < 2ms, p50 < 0.5ms (eng-review D12) | Benchmark suite in CI |
 | Migration from v1 | Zero migration step — ctx-rs reads existing v1 SQLite file at the same path | Schema is the contract |
-| napi-rs platform fallback | Graceful disable (eng-review D13): missing prebuilt → ak_session_* returns `unavailable`, agent-kit otherwise works. **All triples now first-class incl. Windows** (refinement F13 v2: Windows is NOT flaky in 2026) | Linux x64+arm64, macOS x64+arm64, Windows x64+arm64 |
+| Vendored host build coverage | No fallback engine; vendored ctx-rs must build on supported hosts. Linux x64+arm64, macOS x64+arm64, and Windows x64+arm64 remain the intended host set. | Linux x64+arm64, macOS x64+arm64, Windows x64+arm64 |
 | Bench / SLO gating | criterion **0.8** (refinement F9 v2: was claimed 0.5+, current is 0.8) + custom JSON-parsing gate script that parses `target/criterion/**/estimates.json` (refinement F9 v2: criterion does NOT natively gate CI on SLOs, returns exit 0 even on regression) | Explicit threshold-checker is required |
 | Mutation testing | cargo-mutants 27.0+ with config at `.cargo/mutants.toml` (refinement F8 v2: was claimed `.cargo-mutants.toml`); 70% threshold via custom parse-and-gate script (refinement F8 v2: no built-in threshold flag) | Reframed parity per outside-voice TP3; no incoherent cross-language Stryker subtraction |
 | License enforcement | cargo-deny 0.19.4+ with allowlist (refinement F7 v2 verified) | Implicit-deny model: anything not in allowlist is denied. Covers GPL/AGPL/BUSL/SSPL/ELv2 by omission |
@@ -310,63 +316,63 @@ napi-rs handles panic→error mapping natively (refinement F15 v2: no manual `ca
 - [x] Manual smoke from Node: import + call each function, results round-trip
 - [x] Rust panics mapped to Node errors automatically (no segfault path)
 
-#### [infra] Task 2.2: Prebuild CI matrix + npm publish (Windows promoted to first-class)
+#### [infra] Task 2.2: Vendored host-build contract (Windows remains first-class)
 
-**Status:** done
+**Status:** blocked
 
 **Depends:** Task 2.1
 
-GitHub Actions workflow scaffolded by `@napi-rs/cli new` (refinement F12 v2: scaffolder produces working matrix, no 1-2 week setup; F13 v2: Windows is NOT flaky in 2026, promote to first-class).
+The old standalone release workflow has been removed. The shipping contract is
+vendored ctx-rs source inside agent-kit, not a separately published package.
 
-Targets:
+Intended host targets:
 - linux-x64-gnu, linux-arm64-gnu
 - darwin-x64, darwin-arm64
 - **windows-x64-msvc, windows-arm64-msvc (FIRST CLASS, no graceful disable)**
 - Optional bonus: linux-x64-musl, linux-arm64-musl (for Alpine/Lambda; cargo-zigbuild)
 
-Wrapper npm package with optionalDependencies for each triple.
+Vendored Rust workspace compiled locally for the current host.
 
 **Files:**
 
-- Create: `webpresso/ctx-rs/.github/workflows/release.yml`
-- Create: `webpresso/ctx-rs/npm/package.json`
-- Create: `webpresso/ctx-rs/npm/index.js` (host-triple detection)
+- Create: `vendor/ctx-rs/**` (vendored Rust workspace)
+- Modify: `src/session-memory/ctx-rs-runtime.ts` (host-target resolution + first-use build)
+- Modify: `.github/workflows/session-perf.yml` (vendored runtime verification)
 
 **Acceptance:**
 
-- [x] Release workflow green on tag push
-- [x] `pnpm add @webpresso/ctx-rs@<version>` installs and imports on linux + darwin + windows
-- [x] Missing-triple path returns a clear error message (graceful disable still exists for FreeBSD/etc.)
+- [ ] vendored ctx-rs source builds and loads on supported host platforms without external npm packages
+- [ ] Unsupported targets fail loudly with a clear error message
 
 ### Phase 3: Backend swap in agent-kit [Complexity: M]
 
 #### [backend] Task 3.1: Swap `src/session-memory/store.ts` to call ctx-rs FFI
 
-**Status:** done
+**Status:** blocked
 
 **Depends:** Task 2.2
 
-Replace the better-sqlite3 calls in v1's `src/session-memory/store.ts` with `@webpresso/ctx-rs` FFI calls. Same function signatures. Behind feature flag `AK_SESSION_ENGINE=ctx-rs|ts` so consumers can roll back. Default to `ctx-rs` once v2 ships.
+Replace the better-sqlite3 calls in v1's `src/session-memory/store.ts` with vendored ctx-rs FFI calls. This lane is now ctx-rs-only: remove the rollback env flag and make missing runtime errors loud instead of silently falling back.
 
 **Files:**
 
 - Modify: `src/session-memory/store.ts` (from v1)
-- Modify: `package.json` — add `@webpresso/ctx-rs` to dependencies
+- Modify: `package.json` — declare the real supported ctx-rs delivery surface once it exists
 - Modify: `src/session-memory/backend.ts` (new abstraction layer)
 
 **Acceptance:**
 
-- [x] Backend selector respects AK_SESSION_ENGINE env var
-- [x] ctx-rs path passes the same hot-path tests as v1's TS path
-- [x] Hot path p99 < 2ms measured (eng-review D12 enforced via the bench gate from Task 1.4)
+- [ ] No `AK_SESSION_ENGINE` or `AK_DISABLE_CTX` fallback remains
+- [ ] ctx-rs path passes the remaining session-memory owner tests on this branch
+- [ ] Hot path gate is still enforced by the promised perf threshold
 
 #### [backend] Task 3.2: Swap session.ts and fetch-index.ts to ctx-rs FFI
 
-**Status:** done
+**Status:** blocked
 
 **Depends:** Task 2.2
 
-Same backend swap pattern for session-event capture and fetch+index. Behind the same env flag.
+Same backend swap pattern for session-event capture and fetch+index, with the same no-fallback rule.
 
 **Files:**
 
@@ -375,9 +381,9 @@ Same backend swap pattern for session-event capture and fetch+index. Behind the 
 
 **Acceptance:**
 
-- [x] Snapshot + restore work end-to-end via ctx-rs
-- [x] 5s cap enforced (parity with v1)
-- [x] Smoke: full compaction → restore cycle in scratch repo
+- [ ] Snapshot + restore work end-to-end via ctx-rs
+- [ ] 5s cap enforced (parity with v1)
+- [ ] Smoke: full compaction → restore cycle in scratch repo
 
 ### Phase 4: Parity gates + read-existing-v1-DB [Complexity: M]
 
@@ -425,25 +431,23 @@ The bench gate from Task 1.4 lives in ctx-rs CI. Add a thin verification in agen
 
 #### [backend] Task 5.1: Remove TS engine from agent-kit (after v2 soak period)
 
-**Status:** done
+**Status:** in-progress
 
 **Depends:** Task 4.1
 
-Two-step:
-1. v2.0 ships — both backends present (TS via better-sqlite3, ctx-rs default), env flag selects
-2. v2.1 ships (one minor release later) — TS engine code + better-sqlite3 dep removed
+This lane no longer dual-ships. Remove the TS fallback now; do not plan a soak period that reintroduces legacy runtime behavior.
 
 **Files:**
 
-- Modify: `package.json` — drop better-sqlite3 dep (in 2.1)
-- Delete: `src/session-memory/store.ts.ts-engine-fallback` etc. (in 2.1)
-- Modify: `src/session-memory/backend.ts` — remove ts branch (in 2.1)
+- Modify: `src/session-memory/backend.ts` — remove the ts branch
+- Modify: `src/session-memory/store.ts` / `session.ts` / `fetch-index.ts` — fail loudly when ctx-rs is unavailable
+- Update docs and tests to remove legacy rollback guidance
 
 **Acceptance:**
 
-- [x] v2.0 ships with both backends + env flag (AK_SESSION_ENGINE=ctx-rs|ts in backend.ts)
-- [x] v2.1 ships with TS engine removed (separate PR)
-- [x] CHANGELOG documents soak period and rollback path during v2.0
+- [ ] No TS fallback runtime remains on the delivery branch
+- [ ] Docs and CHANGELOG no longer describe a rollback env flag
+- [ ] Delivery remains blocked until the vendored ctx-rs build/load contract is fully verified
 
 #### [docs] Task 5.2: Update README + session-memory guide for v2
 
@@ -481,8 +485,8 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 | Mutation score | `cargo mutants --json` + scripts/check-mutation-score.sh | ≥ 70% on core modules |
 | Read-v1-DB parity | tests/v2-reads-v1-db/parity.test.ts | 50/50 fixtures pass identity test |
 | Hot path SLO | `cargo bench` + scripts/check-bench-thresholds.sh | p99 < 2ms, p50 < 0.5ms |
-| Cross-platform build | release workflow | Green on linux x64+arm64, darwin x64+arm64, windows x64+arm64 |
-| npm install smoke | `pnpm add @webpresso/ctx-rs` in temp dir | Pulls correct prebuilt; require works |
+| Cross-platform build | vendored runtime smoke + session-perf lane | Green on supported host targets exercised by agent-kit |
+| vendored runtime smoke | first-use load on a clean machine | builds the host binding and loads it without external npm packages |
 | End-to-end | scratch Claude Code session + simulated compaction | Restore correctness preserved across backends |
 | Full QA | `ak_qa` | All pass |
 | Lifecycle audit | `ak_audit kind=blueprint-lifecycle` | Blueprint passes |
@@ -499,7 +503,7 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 
 | Edge Case | Risk | Solution | Task |
 | --------- | ---- | -------- | ---- |
-| napi-rs prebuilt missing for user's platform | `pnpm add` fails confusingly | Graceful disable (D13 + F13 v2): `AK_DISABLE_CTX=1` env var detected, ak_session_* returns "unavailable" cleanly. README documents | 2.2 |
+| Vendored ctx-rs build fails on user's platform | first-use runtime load breaks loudly | Treat as a blocked delivery error; do not route back to a TS engine. README and the session-memory guide must call this out explicitly. | 2.2 |
 | Rust panic across FFI boundary | Node process crashes | napi-rs handles panic→Node-error natively (F15 v2) | 2.1 |
 | Schema drift between v1 TS and v2 Rust | v1 → v2 migration breaks | Read-v1-DB parity test suite (Task 4.1) is the contract | 4.1 |
 | ctx-rs version mismatch with agent-kit expectations | API drift breaks integration | Strict semver + ABI-version constant in ctx-rs-napi checked at module init | 2.1 |
@@ -547,7 +551,7 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 | HTML→Markdown | htmd | 0.5.4 (refinement F10 v2 verified) | Apache-2, Turndown-compatible |
 | Workspace structure | Cargo workspace with 2 crates | edition 2024 (Rust 1.85+) | Mirrors framework/runtime extraction pattern; MSRV 1.88 from napi |
 | Reference for FTS5 + MCP patterns | `alphaonedev/ai-memory-mcp` (MIT) | n/a | Refinement F14 v2: NOT MemoryPilot (now source-available). Read-only inspiration |
-| Distribution | crates.io (Rust) + npm `@webpresso/ctx-rs` (prebuilt) | n/a | Standard napi-rs pattern |
+| Distribution | vendored ctx-rs Rust source inside agent-kit | n/a | repo-owned host-local build on first use; no standalone package lane |
 
 ## Refinement summary
 
@@ -591,7 +595,7 @@ Update the session-memory guide to describe the engine-swap mechanism, the v1→
 - [x] large output indexed via ctx-rs Rust FTS5 (`execute_and_index` in `ctx-rs-core`)
 - [x] query triggers FTS5 search over indexed content
 - [x] error returns structured envelope
-- [x] graceful disable (`AK_DISABLE_CTX`) — returns `{ error: 'ctx-rs unavailable' }`
+- [x] missing ctx-rs runtime returns a structured error envelope with no fallback engine
 - [x] 5 Rust integration tests pass (small/large/nonzero-exit/summary-truncation/searchable)
 
 #### Task 6.2: `ak_session_batch_execute` — parallel batch with search (ctx-rs backed)

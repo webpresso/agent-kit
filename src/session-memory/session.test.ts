@@ -1,332 +1,142 @@
-/**
- * Unit tests for v2 session primitives: captureEvent, snapshot, restore.
- *
- * Forces AK_SESSION_ENGINE=ts so tests run against the TypeScript SQLite engine and
- * never require the ctx-rs native binary.
- */
-import { mkdtempSync, rmSync } from 'node:fs'
-import { join } from 'node:path'
-import { tmpdir } from 'node:os'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest'
+const loadCtxRsSyncMock = vi.hoisted(() => vi.fn())
+const searchMock = vi.hoisted(() => vi.fn())
+const getStoreMock = vi.hoisted(() => vi.fn(() => ({ search: searchMock })))
 
-import { captureEvent, snapshot, restore, resolveDbPath } from './session.js'
+vi.mock('./backend.js', () => ({
+  loadCtxRsSync: loadCtxRsSyncMock,
+}))
 
-// Force TS engine for all tests in this file
-const originalEngine = process.env['AK_SESSION_ENGINE']
-process.env['AK_SESSION_ENGINE'] = 'ts'
+vi.mock('./store.js', () => ({
+  getStore: getStoreMock,
+}))
 
 const TEST_REPO_HASH = 'abc123def456abc1'
 
-let tmpDir: string
+describe('session-memory primitives', () => {
+  let captureEvent: Awaited<typeof import('./session.js')>['captureEvent']
+  let snapshot: Awaited<typeof import('./session.js')>['snapshot']
+  let restore: Awaited<typeof import('./session.js')>['restore']
+  let resolveDbPath: Awaited<typeof import('./session.js')>['resolveDbPath']
 
-beforeEach(() => {
-  tmpDir = mkdtempSync(join(tmpdir(), 'ak-v2-session-test-'))
-})
+  beforeEach(async () => {
+    vi.resetModules()
+    loadCtxRsSyncMock.mockReset()
+    searchMock.mockReset()
+    getStoreMock.mockReset()
+    getStoreMock.mockReturnValue({ search: searchMock })
+    vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
 
-afterEach(() => {
-  rmSync(tmpDir, { recursive: true, force: true })
-})
+    const fakeCtxRs = {
+      captureEvent: vi.fn(() => undefined),
+      snapshot: vi.fn(() => ({ snapshotId: 'snap-1', eventCount: 2, complete: true })),
+      restore: vi.fn(() => [
+        {
+          sessionId: 'session-001',
+          eventId: 'event-001',
+          ts: 1,
+          toolName: 'Edit',
+          content: 'restored content',
+        },
+      ]),
+    }
+    loadCtxRsSyncMock.mockReturnValue(fakeCtxRs)
+    searchMock.mockReturnValue([
+      { content: 'restored content', source: 'decision', rank: -1, tier: 'porter' },
+    ])
 
-afterAll(() => {
-  if (originalEngine === undefined) {
-    delete process.env['AK_SESSION_ENGINE']
-  } else {
-    process.env['AK_SESSION_ENGINE'] = originalEngine
-  }
-})
-
-describe('resolveDbPath', () => {
-  it('resolves to <sessionsDir>/<repoHash>.db', () => {
-    const dbPath = resolveDbPath(TEST_REPO_HASH, tmpDir)
-    expect(dbPath).toBe(join(tmpDir, `${TEST_REPO_HASH}.db`))
+    const mod = await import('./session.js')
+    captureEvent = mod.captureEvent
+    snapshot = mod.snapshot
+    restore = mod.restore
+    resolveDbPath = mod.resolveDbPath
   })
 
-  it('different repoHashes produce different paths', () => {
-    const path1 = resolveDbPath('hash-aaa', tmpDir)
-    const path2 = resolveDbPath('hash-bbb', tmpDir)
-    expect(path1).not.toBe(path2)
+  it('resolves db paths under the provided session directory', () => {
+    expect(resolveDbPath(TEST_REPO_HASH, '/tmp/sessions')).toBe('/tmp/sessions/abc123def456abc1.db')
   })
-})
 
-describe('captureEvent', () => {
-  it('captures a tool event and returns true', () => {
+  it('captures a tool event through ctx-rs', () => {
     const result = captureEvent(
       {
         repoHash: TEST_REPO_HASH,
         event: {
           sessionId: 'session-001',
           toolName: 'Edit',
-          content: 'Edited file foo.ts to add session memory',
+          content: 'Edited file foo.ts',
         },
       },
-      tmpDir,
+      '/tmp/sessions',
     )
+
     expect(result).toBe(true)
+    const fakeCtxRs = loadCtxRsSyncMock.mock.results[0]!.value as {
+      captureEvent: ReturnType<typeof vi.fn>
+    }
+    expect(fakeCtxRs.captureEvent).toHaveBeenCalledOnce()
+    const [dbPath, sessionId, eventId, toolName, content] = fakeCtxRs.captureEvent.mock.calls[0]!
+    expect(dbPath).toBe('/tmp/sessions/abc123def456abc1.db')
+    expect(sessionId).toBe('session-001')
+    expect(typeof eventId).toBe('string')
+    expect(toolName).toBe('Edit')
+    expect(content).toBe('Edited file foo.ts')
   })
 
-  it('captures multiple events without error', () => {
-    const results = Array.from({ length: 5 }, (_, i) =>
-      captureEvent(
-        {
-          repoHash: TEST_REPO_HASH,
-          event: {
-            sessionId: 'session-001',
-            toolName: i % 2 === 0 ? 'Edit' : 'Bash',
-            content: `event ${i} content`,
-          },
-        },
-        tmpDir,
-      ),
-    )
-    expect(results.every((r) => r === true)).toBe(true)
-  })
+  it('returns false and logs when ctx-rs cannot be loaded for capture', async () => {
+    const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    loadCtxRsSyncMock.mockImplementation(() => {
+      throw new Error('ctx-rs missing')
+    })
+    const mod = await import('./session.js')
 
-  it('events from different sessions are stored independently', () => {
-    const r1 = captureEvent(
-      {
+    expect(
+      mod.captureEvent({
         repoHash: TEST_REPO_HASH,
-        event: { sessionId: 'session-A', toolName: 'Edit', content: 'session A edit' },
-      },
-      tmpDir,
-    )
-    const r2 = captureEvent(
-      {
-        repoHash: TEST_REPO_HASH,
-        event: { sessionId: 'session-B', toolName: 'Read', content: 'session B read' },
-      },
-      tmpDir,
-    )
-    expect(r1).toBe(true)
-    expect(r2).toBe(true)
+        event: { sessionId: 'session-001', toolName: 'Edit', content: 'x' },
+      }),
+    ).toBe(false)
+    expect(stderr).toHaveBeenCalledWith(expect.stringMatching(/ctx-rs missing/))
   })
 
-  it('concurrent captures do not corrupt the WAL', () => {
-    const results = Array.from({ length: 20 }, (_, i) =>
-      captureEvent(
-        {
-          repoHash: TEST_REPO_HASH,
-          event: { sessionId: `session-${i}`, toolName: 'Edit', content: `content ${i}` },
-        },
-        tmpDir,
-      ),
-    )
-    expect(results.every((r) => r === true)).toBe(true)
-  })
-})
+  it('maps snapshot results', async () => {
+    const result = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, '/tmp/sessions')
 
-describe('snapshot', () => {
-  it('creates a snapshot with a UUID snapshotId', async () => {
-    captureEvent(
-      {
-        repoHash: TEST_REPO_HASH,
-        event: { sessionId: 's1', toolName: 'Edit', content: 'edited main.ts' },
-      },
-      tmpDir,
-    )
-
-    const result = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, tmpDir)
-
-    expect(Boolean(result.snapshotId)).toBe(true)
-    expect(typeof result.snapshotId).toBe('string')
-    // UUID format check
-    expect(result.snapshotId).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-    )
+    expect(result).toEqual({ snapshotId: 'snap-1', eventsIncluded: 2, partial: false })
   })
 
-  it('includes captured events in the snapshot', async () => {
-    captureEvent(
-      {
-        repoHash: TEST_REPO_HASH,
-        event: { sessionId: 's1', toolName: 'Edit', content: 'edited main.ts' },
-      },
-      tmpDir,
-    )
-    captureEvent(
-      {
-        repoHash: TEST_REPO_HASH,
-        event: { sessionId: 's1', toolName: 'Bash', content: 'ran tests' },
-      },
-      tmpDir,
-    )
+  it('returns a partial placeholder snapshot on error', async () => {
+    loadCtxRsSyncMock.mockImplementation(() => {
+      throw new Error('ctx-rs missing')
+    })
+    const mod = await import('./session.js')
 
-    const result = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, tmpDir)
+    const result = await mod.snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, '/tmp/sessions')
 
-    expect(result.eventsIncluded).toBeGreaterThanOrEqual(2)
-    expect(result.partial).toBe(false)
-  })
-
-  it('returns a snapshot even when no events have been captured', async () => {
-    const result = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, tmpDir)
-
-    expect(Boolean(result.snapshotId)).toBe(true)
     expect(result.eventsIncluded).toBe(0)
-    expect(typeof result.partial).toBe('boolean')
+    expect(result.partial).toBe(true)
   })
 
-  it('returns a valid result with capMs=0 (may be partial)', async () => {
-    for (let i = 0; i < 10; i++) {
-      captureEvent(
-        {
-          repoHash: TEST_REPO_HASH,
-          event: { sessionId: 's1', toolName: 'Edit', content: `edit ${i}` },
-        },
-        tmpDir,
-      )
-    }
+  it('restores hits and latest session id', () => {
+    const result = restore({ repoHash: TEST_REPO_HASH, query: 'memory', limit: 5 }, '/tmp/sessions')
 
-    const result = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 0 }, tmpDir)
-    expect(Boolean(result.snapshotId)).toBe(true)
-    expect(typeof result.partial).toBe('boolean')
+    expect(getStoreMock).toHaveBeenCalledWith('/tmp/sessions/abc123def456abc1.db')
+    expect(searchMock).toHaveBeenCalledWith({ query: 'memory', limit: 5 })
+    expect(result).toEqual({
+      hits: [{ content: 'restored content', source: 'decision', rank: -1, tier: 'porter' }],
+      snapshotId: 'session-001',
+    })
   })
 
-  it('returns a different snapshotId on each call', async () => {
-    const r1 = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, tmpDir)
-    const r2 = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, tmpDir)
-    expect(r1.snapshotId).not.toBe(r2.snapshotId)
-  })
-})
+  it('returns empty restore results when ctx-rs is unavailable', async () => {
+    loadCtxRsSyncMock.mockImplementation(() => {
+      throw new Error('ctx-rs missing')
+    })
+    const mod = await import('./session.js')
 
-describe('restore', () => {
-  it('returns empty hits and null snapshotId when no events exist', () => {
-    const result = restore({ repoHash: TEST_REPO_HASH, query: 'anything', limit: 5 }, tmpDir)
-    expect(result.hits).toStrictEqual([])
-    expect(result.snapshotId).toBeNull()
-  })
-
-  it('returns a snapshotId after snapshot has been taken', async () => {
-    captureEvent(
-      {
-        repoHash: TEST_REPO_HASH,
-        event: {
-          sessionId: 's1',
-          toolName: 'Edit',
-          content: 'implemented session memory store with SQLite FTS5',
-        },
-      },
-      tmpDir,
-    )
-    await snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, tmpDir)
-
-    const result = restore({ repoHash: TEST_REPO_HASH, query: 'session memory SQLite' }, tmpDir)
-    expect(Boolean(result.snapshotId)).toBe(true)
-    expect(Array.isArray(result.hits)).toBe(true)
-  })
-
-  it('restore returns the exact snapshotId created by snapshot', async () => {
-    captureEvent(
-      {
-        repoHash: TEST_REPO_HASH,
-        event: {
-          sessionId: 's1',
-          toolName: 'Edit',
-          content: 'snapshot id fidelity query terms',
-        },
-      },
-      tmpDir,
-    )
-
-    const snap = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, tmpDir)
-    const result = restore(
-      { repoHash: TEST_REPO_HASH, query: 'snapshot id fidelity query terms' },
-      tmpDir,
-    )
-
-    expect(result.snapshotId).toBe(snap.snapshotId)
-  })
-
-  it('snapshot scopes to CLAUDE_SESSION_ID when available', async () => {
-    const originalSessionId = process.env['CLAUDE_SESSION_ID']
-    process.env['CLAUDE_SESSION_ID'] = 'session-A'
-
-    try {
-      captureEvent(
-        {
-          repoHash: TEST_REPO_HASH,
-          event: { sessionId: 'session-A', toolName: 'Edit', content: 'belongs to A' },
-        },
-        tmpDir,
-      )
-      captureEvent(
-        {
-          repoHash: TEST_REPO_HASH,
-          event: { sessionId: 'session-B', toolName: 'Edit', content: 'belongs to B' },
-        },
-        tmpDir,
-      )
-
-      const snap = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, tmpDir)
-      expect(snap.eventsIncluded).toBe(1)
-
-      const restoredA = restore({ repoHash: TEST_REPO_HASH, query: 'belongs to A' }, tmpDir)
-
-      expect(restoredA.snapshotId).toBe(snap.snapshotId)
-      expect(snap.eventsIncluded).toBe(1)
-    } finally {
-      if (originalSessionId === undefined) {
-        delete process.env['CLAUDE_SESSION_ID']
-      } else {
-        process.env['CLAUDE_SESSION_ID'] = originalSessionId
-      }
-    }
-  })
-
-  it('result.hits is always a readonly array', () => {
-    const result = restore({ repoHash: TEST_REPO_HASH, query: 'test', limit: 5 }, tmpDir)
-    expect(Array.isArray(result.hits)).toBe(true)
-  })
-
-  it('respects limit parameter — returns at most limit hits', async () => {
-    // Insert enough events to generate hits
-    for (let i = 0; i < 10; i++) {
-      captureEvent(
-        {
-          repoHash: TEST_REPO_HASH,
-          event: {
-            sessionId: 's1',
-            toolName: 'Edit',
-            content: `common query phrase document ${i}`,
-          },
-        },
-        tmpDir,
-      )
-    }
-    await snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, tmpDir)
-
-    const result = restore(
-      { repoHash: TEST_REPO_HASH, query: 'common query phrase', limit: 3 },
-      tmpDir,
-    )
-    expect(result.hits.length).toBeLessThanOrEqual(3)
-  })
-})
-
-describe('snapshot + restore round-trip', () => {
-  it('captures events, snapshots, and restore returns the snapshot', async () => {
-    // Capture a distinctive event
-    captureEvent(
-      {
-        repoHash: TEST_REPO_HASH,
-        event: {
-          sessionId: 'roundtrip-session',
-          toolName: 'Edit',
-          content: 'unique phrase zeta omega for round-trip test',
-        },
-      },
-      tmpDir,
-    )
-
-    const snap = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, tmpDir)
-    expect(snap.eventsIncluded).toBeGreaterThanOrEqual(1)
-
-    const restored = restore(
-      { repoHash: TEST_REPO_HASH, query: 'unique phrase zeta omega', limit: 10 },
-      tmpDir,
-    )
-
-    // The snapshot was created, so snapshotId must be non-null
-    expect(Boolean(restored.snapshotId)).toBe(true)
-    expect(Array.isArray(restored.hits)).toBe(true)
+    expect(mod.restore({ repoHash: TEST_REPO_HASH, query: 'memory' })).toEqual({
+      hits: [],
+      snapshotId: null,
+    })
   })
 })

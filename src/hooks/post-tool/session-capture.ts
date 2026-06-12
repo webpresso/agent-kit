@@ -120,7 +120,10 @@ function extractChunk(input: PostToolInput): CaptureChunk | null {
   if (toolName.startsWith('mcp__')) {
     const response = safeStringify(toolResponse)
     if (response.length === 0) return null
-    return { source: `mcp:${toolName.slice(0, 80)}`, content: capBytes(response, MAX_CAPTURE_BYTES) }
+    return {
+      source: `mcp:${toolName.slice(0, 80)}`,
+      content: capBytes(response, MAX_CAPTURE_BYTES),
+    }
   }
 
   return null

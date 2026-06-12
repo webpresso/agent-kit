@@ -14,7 +14,7 @@
  *
  * NOTE: This file is scaffolded and ready for fixtures to be added.
  * The fixtures will be populated when v1 and ctx-rs are both buildable
- * in CI (after Task 2.2 releases the prebuilt).
+ * in CI once the vendored runtime path is exercised in the repo QA surface.
  *
  * Until then, the fixture-generation helper at the bottom of this file
  * can be run manually to seed the fixtures directory.
@@ -24,6 +24,8 @@ import { mkdirSync, readdirSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
+
+import { loadNativeBinding } from '#session-memory/ctx-rs-runtime'
 
 const FIXTURES_DIR = join(import.meta.dirname, 'fixtures')
 
@@ -82,9 +84,7 @@ async function createFixtureDb(
   `)
 
   const insertChunk = db.prepare('INSERT INTO chunks(content, source) VALUES (?, ?)')
-  const insertTrigram = db.prepare(
-    'INSERT INTO chunks_trigram(content, source) VALUES (?, ?)',
-  )
+  const insertTrigram = db.prepare('INSERT INTO chunks_trigram(content, source) VALUES (?, ?)')
   db.transaction(() => {
     for (const c of chunks) {
       insertChunk.run(c.content, c.source)
@@ -119,9 +119,7 @@ function searchWithBetterSqlite(
   try {
     const ftsQuery = `"${query.replace(/"/g, '""')}"`
     const rows = db
-      .prepare(
-        `SELECT content, source FROM chunks WHERE chunks MATCH ? ORDER BY rank LIMIT ?`,
-      )
+      .prepare(`SELECT content, source FROM chunks WHERE chunks MATCH ? ORDER BY rank LIMIT ?`)
       .all(ftsQuery, limit) as Array<{ content: string; source: string }>
     return rows
   } catch {
@@ -137,12 +135,10 @@ function searchWithCtxRs(
   limit: number,
 ): Array<{ content: string; source: string }> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const ctxRs = require('@webpresso/ctx-rs') as typeof import('@webpresso/ctx-rs')
-    if (ctxRs.loadNativeBinding() === null) return []
+    const ctxRs = loadNativeBinding()
+    if (ctxRs === null) return []
     const result = ctxRs.search(dbPath, query, limit, null)
-    if (typeof result === 'object' && result !== null && 'status' in result) return []
-    return (result as Array<{ content: string; source: string; rank: number }>).map((h) => ({
+    return result.map((h) => ({
       content: h.content,
       source: h.source,
     }))
@@ -154,14 +150,12 @@ function searchWithCtxRs(
 // ── Parity test suite ─────────────────────────────────────────────────────────
 
 describe('v2 reads v1 DB — parity suite', () => {
-  // Skip entire suite if ctx-rs is not available (prebuilt not installed yet)
+  // Skip entire suite if the vendored ctx-rs runtime is not available yet on this machine
   let ctxRsAvailable = false
 
   beforeAll(() => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const mod = require('@webpresso/ctx-rs') as typeof import('@webpresso/ctx-rs')
-      ctxRsAvailable = mod.loadNativeBinding() !== null
+      ctxRsAvailable = loadNativeBinding() !== null
     } catch {
       ctxRsAvailable = false
     }
@@ -176,7 +170,7 @@ describe('v2 reads v1 DB — parity suite', () => {
 
   it('all committed fixture DBs pass parity check', async () => {
     if (!ctxRsAvailable) {
-      // Skip cleanly — ctx-rs prebuilt not installed
+      // Skip cleanly — vendored ctx-rs runtime not available on this host yet
       console.warn('ctx-rs not available — skipping parity tests')
       return
     }
@@ -210,7 +204,9 @@ describe('v2 reads v1 DB — parity suite', () => {
         totalChecks++
         if (overlapRatio >= 0.8) passed++
         else {
-          console.error(`PARITY FAIL: ${fixture} query="${query}" overlap=${overlapRatio.toFixed(2)}`)
+          console.error(
+            `PARITY FAIL: ${fixture} query="${query}" overlap=${overlapRatio.toFixed(2)}`,
+          )
           console.error('  v1 top-3:', v1Contents.slice(0, 3))
           console.error('  v2 top-3:', v2Contents.slice(0, 3))
         }
@@ -237,7 +233,7 @@ describe('v2 reads v1 DB — parity suite', () => {
         source: 'doc-4',
       },
       {
-        content: 'napi-rs prebuilt binaries for Node.js native modules',
+        content: 'napi-rs-backed native bindings for Node.js host builds',
         source: 'doc-5',
       },
     ]
@@ -273,14 +269,12 @@ describe('v2 reads v1 DB — parity suite', () => {
 
     // ctx-rs restore should see the same events
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const ctxRs = require('@webpresso/ctx-rs') as typeof import('@webpresso/ctx-rs')
-      if (ctxRs.loadNativeBinding() === null) return
+      const ctxRs = loadNativeBinding()
+      if (ctxRs === null) return
 
       const result = ctxRs.restore(dbPath, sessionId, 'build', 10)
-      if (typeof result === 'object' && result !== null && 'status' in result) return
 
-      const restored = result as Array<{ content: string; toolName: string }>
+      const restored = result as Array<{ content: string; toolName?: string; tool_name?: string }>
       expect(restored.length).toBeGreaterThan(0)
       // Should find the 'pnpm run build' event
       expect(restored.some((e) => e.content.includes('build'))).toBe(true)
@@ -307,7 +301,7 @@ async function generateFixtures() {
     'agent-kit blueprint lifecycle management',
     'session memory capture snapshot restore',
     'ctx-rs rusqlite bundled FTS5',
-    'napi-rs prebuilt node native module',
+    'napi-rs-backed node native binding',
     'better-sqlite3 WAL synchronous mmap',
     'Levenshtein edit distance IDF scoring',
     'three-tier search fallback algorithm',

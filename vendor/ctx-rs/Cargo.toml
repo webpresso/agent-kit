@@ -1,0 +1,41 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/ctx-rs-core",
+    "crates/ctx-rs-napi",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+authors = ["Webpresso <hello@webpresso.dev>"]
+license = "MIT"
+repository = "https://github.com/webpresso/ctx-rs"
+rust-version = "1.88"
+
+[workspace.dependencies]
+# Storage
+rusqlite = { version = "0.39", features = ["bundled"] }
+
+# Text processing
+text-splitter = { version = "0.30", features = ["tiktoken-rs"] }
+htmd = "0.5.4"
+
+# Async + HTTP
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "process", "io-util"] }
+
+# Error handling
+thiserror = "2"
+
+# napi-rs
+napi = { version = "3.8", default-features = false, features = ["napi9", "async"] }
+napi-derive = "3.5"
+
+# Bench
+criterion = { version = "0.8", features = ["html_reports"] }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1

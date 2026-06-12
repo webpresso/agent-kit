@@ -58,14 +58,11 @@ The default cross-host Webpresso skill contract is intentionally curated:
 favorites projected by default, while broader methodology/library skills stay
 opt-in via `wp setup --with ...`.
 
-> **`wp setup` is required for hooks.** The Claude Code hooks (PreToolUse guard,
-> Stop-QA gate, SessionStart routing, …) are installed by `wp setup` into your
-> repo's `.claude/settings.json`. They are intentionally **not** shipped in the
-> plugin manifest — declaring them in both places double-fires every hook (Claude
-> Code does not dedup across sources), and settings.json is the more reliable
-> surface. So enabling the plugin alone does **not** activate hooks; run
-> `wp setup`. Run `wp hooks doctor` to check — it warns if the managed hooks are
-> missing from `.claude/settings.json`.
+> **Plugin installs now ship the hook surface in the plugin manifest,** and
+> `wp setup` still writes the repo-local settings surfaces used by local
+> checkouts and non-Claude hosts. Treat the manifest + setup-written settings as
+> the current truth for this branch. Run `wp hooks doctor` to verify the managed
+> hook surface in your active installation.
 
 `wp` owns **execution** for the generic tool lanes it manages (test / mutation /
 e2e / lint / format / typecheck). That does **not** mean every local
@@ -76,6 +73,15 @@ devDependency disappears — keep dependencies your repo imports directly (e.g.
 
 For a first real read-only host action in either Claude or Codex, ask the host
 to run `wp_audit(kind="docs-frontmatter")`.
+
+## Session memory status
+
+The only active session-memory delivery lane is the Rust `ctx-rs` path used by
+`ak_session_*`, `ak_session_execute`, and `ak_session_batch_execute`. This
+branch does **not** support `AK_SESSION_ENGINE`, `AK_DISABLE_CTX`, or a TS
+fallback runtime. Session memory now uses vendored `ctx-rs` source shipped inside agent-kit. The
+first use builds the native binding for the current host locally; there is no
+TS fallback runtime and no external npm package prerequisite.
 
 Verify install claims against the packed artifact:
 

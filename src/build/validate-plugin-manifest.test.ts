@@ -19,6 +19,10 @@ interface PluginManifest {
   author?: { name?: string; url?: string }
   skills: string
   commands: string
+  hooks?: Record<
+    string,
+    Array<{ matcher?: string; hooks: Array<{ type: string; command: string }> }>
+  >
   mcpServers: Record<string, { command: string; args: string[] }>
 }
 
@@ -50,19 +54,29 @@ describe('plugin.json manifest', () => {
     expect(readManifest().commands).toBe('./commands')
   })
 
-  // Hooks are intentionally NOT declared in the plugin manifest. `wp setup`
-  // single-sources them into the consumer's .claude/settings.json instead.
-  // Declaring them here too would DOUBLE-FIRE: Claude Code does not dedup hooks
-  // across sources unless the command strings are identical, and the manifest's
-  // `node ${CLAUDE_PLUGIN_ROOT}/bin/*.js` command differs from the setup-written
-  // `.sh` launcher — so both run on every tool call (verified via a controlled
-  // `--plugin-dir` repro: a manifest hook and a settings.json hook with
-  // different commands both executed on a single Bash tool call). Plugin
-  // manifest hooks are also the less reliable surface (they fail to load in
-  // several Claude Code contexts), so settings.json is the single source.
-  it('declares NO hooks (single-sourced via wp setup into .claude/settings.json)', () => {
-    const manifest = JSON.parse(readManifestRaw()) as Record<string, unknown>
-    expect(manifest.hooks).toBeUndefined()
+  it('declares the expected hook surface using ${CLAUDE_PLUGIN_ROOT} source paths', () => {
+    const hooks = readManifest().hooks
+    expect(Object.keys(hooks ?? {}).sort()).toEqual([
+      'PostToolUse',
+      'PreCompact',
+      'PreToolUse',
+      'SessionStart',
+      'Stop',
+      'UserPromptSubmit',
+    ])
+
+    const commands = Object.values(hooks ?? {})
+      .flat()
+      .flatMap((entry) => entry.hooks.map((hook) => hook.command))
+
+    expect(commands.every((command) => command.includes(PLUGIN_ROOT_VAR))).toBe(true)
+    expect(commands.some((command) => command.includes('/src/hooks/pretool-guard/index.ts'))).toBe(
+      true,
+    )
+    expect(commands.some((command) => command.includes('/src/hooks/post-tool/index.ts'))).toBe(true)
+    expect(commands.some((command) => command.includes('/src/hooks/pre-compact/index.ts'))).toBe(
+      true,
+    )
   })
 
   describe('mcpServers', () => {
@@ -92,7 +106,6 @@ describe('plugin.json manifest', () => {
   it('contains no literal "./dist" paths (must use ${CLAUDE_PLUGIN_ROOT})', () => {
     const raw = readManifestRaw()
     expect(raw.includes('"./dist')).toBe(false)
-    // also catch unquoted occurrences anywhere in values
     expect(/[^$]\.\/dist/.test(raw)).toBe(false)
   })
 

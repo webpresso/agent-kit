@@ -1,32 +1,30 @@
 /**
- * SQLite FTS5 store for session memory — v2 with ctx-rs backend.
+ * SQLite FTS5 store for session memory — ctx-rs backend only.
  *
- * Three-tier search fallback (porter → trigram → IDF-weighted Levenshtein).
- *
- * Backend selection:
- *   AK_SESSION_ENGINE=ctx-rs (default) → @webpresso/ctx-rs Rust FFI
- *   AK_SESSION_ENGINE=ts               → TypeScript SQLite engine fallback
- *
- * Schema is identical between v1 and v2 — zero-migration promise.
+ * Search remains three-tier at the engine layer (porter → trigram →
+ * IDF-weighted Levenshtein), but this branch does not ship a TS fallback.
  */
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 
-import { Database } from 'bun:sqlite'
-
+import { loadCtxRsSync } from './backend.js'
+import type { CtxRsBinding } from './ctx-rs-runtime.js'
 import type { ChunkInsertInput, SearchHit, SearchOptions } from './types.js'
 import { isUnavailable } from './types.js'
-import { resolveBackend, tryLoadCtxRsSync } from './backend.js'
 
 const DEFAULT_LIMIT = 5
 
-// ── ctx-rs backend (v2 default) ───────────────────────────────────────────────
+export interface SessionStore {
+  insertChunks(chunks: readonly ChunkInsertInput[]): void
+  search(opts: SearchOptions): readonly SearchHit[]
+  getDbPath(): string
+}
 
-class CtxRsStore {
+class CtxRsStore implements SessionStore {
   private readonly dbPath: string
-  private readonly ctxRs: typeof import('@webpresso/ctx-rs')
+  private readonly ctxRs: CtxRsBinding
 
-  constructor(dbPath: string, ctxRs: typeof import('@webpresso/ctx-rs')) {
+  constructor(dbPath: string, ctxRs: CtxRsBinding) {
     mkdirSync(dirname(dbPath), { recursive: true })
     this.dbPath = dbPath
     this.ctxRs = ctxRs
@@ -36,7 +34,7 @@ class CtxRsStore {
     for (const chunk of chunks) {
       const result = this.ctxRs.index(this.dbPath, chunk.source, chunk.content, false)
       if (isUnavailable(result)) {
-        throw new Error('ctx-rs: unavailable during insertChunks')
+        throw new Error(`ctx-rs unavailable while indexing ${chunk.source}`)
       }
     }
   }
@@ -49,14 +47,13 @@ class CtxRsStore {
       opts.source ?? null,
     )
     if (isUnavailable(result)) {
-      return []
+      throw new Error('ctx-rs unavailable during search')
     }
-    // ctx-rs returns Array<{content, source, rank}> — add tier annotation
-    return (result as Array<{ content: string; source: string; rank: number }>).map((h) => ({
-      content: h.content,
-      source: h.source,
-      rank: h.rank,
-      tier: 'porter' as const, // BM25 is porter-primary; ctx-rs doesn't expose tier
+    return (result as Array<{ content: string; source: string; rank: number }>).map((hit) => ({
+      content: hit.content,
+      source: hit.source,
+      rank: hit.rank,
+      tier: 'porter' as const,
     }))
   }
 
@@ -65,249 +62,17 @@ class CtxRsStore {
   }
 }
 
-// ── TS backend (v1 fallback) ──────────────────────────────────────────────────
-
-const SCHEMA_SQL = `
-  CREATE VIRTUAL TABLE IF NOT EXISTS chunks USING fts5(
-    content,
-    source,
-    tokenize='porter unicode61'
-  );
-  CREATE VIRTUAL TABLE IF NOT EXISTS chunks_trigram USING fts5(
-    content,
-    source,
-    tokenize='trigram'
-  );
-  CREATE TABLE IF NOT EXISTS sources(
-    id          INTEGER PRIMARY KEY,
-    label       TEXT    UNIQUE NOT NULL,
-    indexed_at  INTEGER NOT NULL,
-    chunk_count INTEGER NOT NULL DEFAULT 0
-  );
-  CREATE TABLE IF NOT EXISTS vocabulary(
-    term      TEXT PRIMARY KEY,
-    idf_score REAL NOT NULL
-  );
-  CREATE TABLE IF NOT EXISTS sessions(
-    agent_id     TEXT NOT NULL,
-    snapshot_id  TEXT NOT NULL,
-    created_at   INTEGER NOT NULL,
-    status       TEXT NOT NULL,
-    content_json TEXT NOT NULL,
-    PRIMARY KEY (agent_id, snapshot_id)
-  );
-  CREATE TABLE IF NOT EXISTS session_events(
-    session_id TEXT    NOT NULL,
-    event_id   TEXT    NOT NULL,
-    ts         INTEGER NOT NULL,
-    tool_name  TEXT    NOT NULL,
-    content    TEXT    NOT NULL,
-    PRIMARY KEY (session_id, event_id)
-  );
-`
-
-class TsStore {
-  private readonly db: Database
-  private insertCount = 0
-
-  constructor(dbPath: string) {
-    mkdirSync(dirname(dbPath), { recursive: true })
-    this.db = new Database(dbPath)
-    this.db.exec('PRAGMA journal_mode=WAL')
-    this.db.exec('PRAGMA synchronous=NORMAL')
-    this.db.exec(`PRAGMA mmap_size=${256 * 1024 * 1024}`)
-    this.db.exec(SCHEMA_SQL)
-  }
-
-  getDb(): Database {
-    return this.db
-  }
-
-  insertChunks(chunks: readonly ChunkInsertInput[]): void {
-    const OPTIMIZE_EVERY = 50
-    const insertChunk = this.db.prepare('INSERT INTO chunks(content, source) VALUES (?, ?)')
-    const insertTrigram = this.db.prepare(
-      'INSERT INTO chunks_trigram(content, source) VALUES (?, ?)',
-    )
-    const upsertSource = this.db.prepare(
-      `INSERT INTO sources(label, indexed_at, chunk_count)
-       VALUES (?, ?, ?)
-       ON CONFLICT(label) DO UPDATE SET
-         indexed_at = excluded.indexed_at,
-         chunk_count = sources.chunk_count + excluded.chunk_count`,
-    )
-
-    const insert = this.db.transaction((items: readonly ChunkInsertInput[]) => {
-      const indexedAt = Date.now()
-      const chunkCounts = new Map<string, number>()
-      for (const c of items) {
-        insertChunk.run(c.content, c.source)
-        insertTrigram.run(c.content, c.source)
-        chunkCounts.set(c.source, (chunkCounts.get(c.source) ?? 0) + 1)
-        this.insertCount++
-        if (this.insertCount % OPTIMIZE_EVERY === 0) {
-          this.db.exec("INSERT INTO chunks(chunks) VALUES('optimize')")
-          this.db.exec("INSERT INTO chunks_trigram(chunks_trigram) VALUES('optimize')")
-        }
-      }
-      for (const [source, chunkCount] of chunkCounts) {
-        upsertSource.run(source, indexedAt, chunkCount)
-      }
-    })
-    insert(chunks)
-  }
-
-  search(opts: SearchOptions): readonly SearchHit[] {
-    const limit = opts.limit ?? DEFAULT_LIMIT
-    const porter = this.searchPorter(opts.query, limit, opts.source)
-    if (porter.length > 0) return porter
-    const trigram = this.searchTrigram(opts.query, limit, opts.source)
-    if (trigram.length > 0) return trigram
-    return this.searchLevenshtein(opts.query, limit, opts.source)
-  }
-
-  private searchPorter(query: string, limit: number, source?: string): readonly SearchHit[] {
-    try {
-      const ftsQuery = `"${query.replace(/"/g, '""')}"`
-      const sql = source
-        ? 'SELECT content, source, rank FROM chunks WHERE source = ? AND chunks MATCH ? ORDER BY rank LIMIT ?'
-        : 'SELECT content, source, rank FROM chunks WHERE chunks MATCH ? ORDER BY rank LIMIT ?'
-      const rows = source
-        ? (this.db.prepare(sql).all(source, ftsQuery, limit) as Array<{
-            content: string
-            source: string
-            rank: number
-          }>)
-        : (this.db.prepare(sql).all(ftsQuery, limit) as Array<{
-            content: string
-            source: string
-            rank: number
-          }>)
-      return rows.map((r) => ({ ...r, tier: 'porter' as const }))
-    } catch (err: unknown) {
-      process.stderr.write(
-        `ak-session-memory: searchPorter error: ${err instanceof Error ? err.message : String(err)}\n`,
-      )
-      return []
-    }
-  }
-
-  private searchTrigram(query: string, limit: number, source?: string): readonly SearchHit[] {
-    try {
-      const ftsQuery = `"${query.replace(/"/g, '""')}"`
-      const sql = source
-        ? 'SELECT content, source, rank FROM chunks_trigram WHERE source = ? AND chunks_trigram MATCH ? ORDER BY rank LIMIT ?'
-        : 'SELECT content, source, rank FROM chunks_trigram WHERE chunks_trigram MATCH ? ORDER BY rank LIMIT ?'
-      const rows = source
-        ? (this.db.prepare(sql).all(source, ftsQuery, limit) as Array<{
-            content: string
-            source: string
-            rank: number
-          }>)
-        : (this.db.prepare(sql).all(ftsQuery, limit) as Array<{
-            content: string
-            source: string
-            rank: number
-          }>)
-      return rows.map((r) => ({ ...r, tier: 'trigram' as const }))
-    } catch (err: unknown) {
-      process.stderr.write(
-        `ak-session-memory: searchTrigram error: ${err instanceof Error ? err.message : String(err)}\n`,
-      )
-      return []
-    }
-  }
-
-  private searchLevenshtein(query: string, limit: number, source?: string): readonly SearchHit[] {
-    const candidateSql = source
-      ? 'SELECT content, source FROM chunks WHERE source = ? LIMIT 500'
-      : 'SELECT content, source FROM chunks LIMIT 500'
-    const candidates = source
-      ? (this.db.prepare(candidateSql).all(source) as Array<{ content: string; source: string }>)
-      : (this.db.prepare(candidateSql).all() as Array<{ content: string; source: string }>)
-
-    type WithIdf = { content: string; source: string; rank: number; tier: 'levenshtein' }
-    const scored: WithIdf[] = candidates
-      .map((c) => {
-        const words = c.content.toLowerCase().split(/\s+/)
-        const queryWords = query.toLowerCase().split(/\s+/)
-        let score = 0
-        for (const qw of queryWords) {
-          for (const w of words) {
-            const dist = levenshtein(qw, w)
-            const maxLen = Math.max(qw.length, w.length)
-            if (maxLen > 0) {
-              const sim = 1 - dist / maxLen
-              if (sim > 0.6) score += sim
-            }
-          }
-        }
-        return { content: c.content, source: c.source, rank: -score, tier: 'levenshtein' as const }
-      })
-      .filter((r) => r.rank < 0)
-      .sort((a, b) => a.rank - b.rank)
-      .slice(0, limit)
-
-    return scored
-  }
-
-  getDbPath(): string {
-    const row = this.db.prepare('PRAGMA database_list').get() as { file: string } | null | undefined
-    return row?.file ?? ''
-  }
-}
-
-// ── Store union type and factory ──────────────────────────────────────────────
-
-export type SessionStore = CtxRsStore | TsStore
-
 const storeCache = new Map<string, SessionStore>()
 
-/**
- * Get or create a SessionStore for the given dbPath.
- * Backend is determined by AK_SESSION_ENGINE env var (default: ctx-rs).
- */
+export function clearStoreCache(): void {
+  storeCache.clear()
+}
+
 export function getStore(dbPath: string): SessionStore {
   const cached = storeCache.get(dbPath)
   if (cached !== undefined) return cached
 
-  const backend = resolveBackend()
-  let store: SessionStore
-
-  if (backend === 'ctx-rs') {
-    const ctxRs = tryLoadCtxRsSync()
-    if (ctxRs !== null) {
-      store = new CtxRsStore(dbPath, ctxRs)
-    } else {
-      // ctx-rs unavailable — fall back to TS engine silently
-      process.stderr.write(
-        `ak-session-memory: ctx-rs prebuilt not available, falling back to TS engine\n`,
-      )
-      store = new TsStore(dbPath)
-    }
-  } else {
-    store = new TsStore(dbPath)
-  }
-
+  const store = new CtxRsStore(dbPath, loadCtxRsSync())
   storeCache.set(dbPath, store)
   return store
-}
-
-// ── Levenshtein (used by TsStore) ────────────────────────────────────────────
-
-function levenshtein(a: string, b: string): number {
-  if (a === b) return 0
-  if (a.length === 0) return b.length
-  if (b.length === 0) return a.length
-  const row: number[] = Array.from({ length: b.length + 1 }, (_, i) => i)
-  for (let i = 1; i <= a.length; i++) {
-    let prev = i
-    for (let j = 1; j <= b.length; j++) {
-      const val = a[i - 1] === b[j - 1] ? row[j - 1]! : Math.min(row[j - 1]!, row[j]!, prev) + 1
-      row[j - 1] = prev
-      prev = val
-    }
-    row[b.length] = prev
-  }
-  return row[b.length]!
 }

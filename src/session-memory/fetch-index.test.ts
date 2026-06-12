@@ -1,81 +1,54 @@
-import { mkdtempSync, rmSync } from 'node:fs'
-import { join } from 'node:path'
-import { tmpdir } from 'node:os'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+const loadCtxRsSyncMock = vi.hoisted(() => vi.fn())
+const fetchAndIndexMock = vi.hoisted(() => vi.fn())
 
-import { fetchAndIndex } from './fetch-index.js'
-import { getStore } from './store.js'
-
-const originalEngine = process.env['AK_SESSION_ENGINE']
-process.env['AK_SESSION_ENGINE'] = 'ts'
-
-let tmpDir: string
-let dbPath: string
-
-beforeEach(() => {
-  tmpDir = mkdtempSync(join(tmpdir(), 'ak-fetch-index-test-'))
-  dbPath = join(tmpDir, 'memory.db')
-  vi.restoreAllMocks()
-})
-
-afterEach(() => {
-  rmSync(tmpDir, { recursive: true, force: true })
-})
-
-afterAll(() => {
-  if (originalEngine === undefined) {
-    delete process.env['AK_SESSION_ENGINE']
-  } else {
-    process.env['AK_SESSION_ENGINE'] = originalEngine
-  }
-})
+vi.mock('./backend.js', () => ({
+  loadCtxRsSync: loadCtxRsSyncMock,
+}))
 
 describe('fetchAndIndex', () => {
-  it('indexes fetched HTML as searchable markdown text', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response('<html><body><h1>Hello</h1><p>Session memory works</p></body></html>', {
-        headers: { 'content-type': 'text/html' },
-      }),
-    )
+  let fetchAndIndex: Awaited<typeof import('./fetch-index.js')>['fetchAndIndex']
 
-    const result = await fetchAndIndex({
-      url: 'https://example.test/docs',
-      dbPath,
-      cacheTtlMs: 60_000,
-    })
-
-    expect(result.cached).toBe(false)
-    expect(result.chunkCount).toBeGreaterThan(0)
-
-    const hits = getStore(dbPath).search({ query: 'Session memory works', limit: 5 })
-    expect(hits.length).toBeGreaterThan(0)
-    expect(hits[0]?.content).toContain('Session memory works')
+  beforeEach(async () => {
+    vi.resetModules()
+    fetchAndIndexMock.mockReset()
+    loadCtxRsSyncMock.mockReset()
+    loadCtxRsSyncMock.mockReturnValue({ fetchAndIndex: fetchAndIndexMock })
+    const mod = await import('./fetch-index.js')
+    fetchAndIndex = mod.fetchAndIndex
   })
 
-  it('uses the sources cache to avoid refetching within the TTL', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
-      async () =>
-        new Response('cached body', {
-          headers: { 'content-type': 'text/plain' },
-        }),
-    )
+  it('delegates fetch+index work to ctx-rs', async () => {
+    fetchAndIndexMock.mockResolvedValue({ url: 'https://example.com/a', chunkCount: 3 })
 
-    const first = await fetchAndIndex({
-      url: 'https://example.test/cache',
-      dbPath,
-      cacheTtlMs: 60_000,
-    })
-    const second = await fetchAndIndex({
-      url: 'https://example.test/cache',
-      dbPath,
-      cacheTtlMs: 60_000,
+    await expect(
+      fetchAndIndex({ url: 'https://example.com/a', dbPath: '/tmp/session.db' }),
+    ).resolves.toEqual({
+      url: 'https://example.com/a',
+      chunkCount: 3,
+      cached: false,
     })
 
-    expect(first.cached).toBe(false)
-    expect(second.cached).toBe(true)
-    expect(second.chunkCount).toBe(0)
-    expect(typeof second.cachedAt).toBe('number')
-    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    expect(fetchAndIndexMock).toHaveBeenCalledWith('/tmp/session.db', 'https://example.com/a')
+  })
+
+  it('throws loudly when ctx-rs reports unavailable', async () => {
+    fetchAndIndexMock.mockResolvedValue({ status: 'unavailable' })
+
+    await expect(
+      fetchAndIndex({ url: 'https://example.com/a', dbPath: '/tmp/session.db' }),
+    ).rejects.toThrow(/ctx-rs unavailable for fetchAndIndex/i)
+  })
+
+  it('throws when the ctx-rs loader fails', async () => {
+    loadCtxRsSyncMock.mockImplementation(() => {
+      throw new Error('ctx-rs missing')
+    })
+    const mod = await import('./fetch-index.js')
+
+    await expect(
+      mod.fetchAndIndex({ url: 'https://example.com/a', dbPath: '/tmp/session.db' }),
+    ).rejects.toThrow(/ctx-rs missing/i)
   })
 })

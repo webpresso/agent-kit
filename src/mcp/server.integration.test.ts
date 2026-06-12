@@ -96,9 +96,20 @@ describe('mcp server integration', () => {
 
     const names = tools.map((t) => t.name)
     expect(names).toEqual(
-      expect.arrayContaining(['wp_worker_tail', 'wp_ci_act', 'wp_lint', 'wp_qa', 'wp_typecheck']),
+      expect.arrayContaining([
+        'wp_worker_tail',
+        'wp_ci_act',
+        'wp_lint',
+        'wp_qa',
+        'wp_typecheck',
+        'ak_session_capture',
+        'ak_session_snapshot',
+        'ak_session_restore',
+        'ak_session_search',
+        'ak_session_execute',
+        'ak_session_batch_execute',
+      ]),
     )
-    expect(names.filter((name) => name.startsWith('ak_'))).toEqual([])
   }, 20_000)
 
   // Regression: Claude Code 2.1.x and OpenCode call prompts/list and

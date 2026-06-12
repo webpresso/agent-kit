@@ -1,0 +1,22 @@
+[package]
+name = "ctx-rs-napi"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "napi-rs FFI bindings for ctx-rs-core — exposes sync/async Node.js API"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ctx-rs-core = { path = "../ctx-rs-core" }
+napi = { workspace = true }
+napi-derive = { workspace = true }
+tokio = { workspace = true }
+reqwest = { workspace = true }
+
+[build-dependencies]
+napi-build = "2"

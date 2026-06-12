@@ -1,12 +1,9 @@
 /**
- * Session-memory type definitions.
+ * Session-memory type definitions for the ctx-rs delivery branch.
  *
- * Forward-compatible with both v1 (better-sqlite3 TS engine) and
- * v2 (ctx-rs Rust engine via napi-rs FFI).
- * Migration v1→v2 is "swap engine binary, keep .db file" — invisible to consumers.
+ * Local module typings model the real ctx-rs API surface so this repo can
+ * compile before the package's final delivery mechanism is wired up.
  */
-
-// ── Store types ──────────────────────────────────────────────────────────────
 
 export interface ChunkInsertInput {
   readonly content: string
@@ -30,8 +27,6 @@ export interface IndexStats {
   readonly chunkCount: number
   readonly sourceCount: number
 }
-
-// ── Session event types ──────────────────────────────────────────────────────
 
 export interface SessionEvent {
   readonly sessionId: string
@@ -70,12 +65,10 @@ export interface RestoreResult {
   readonly snapshotId: string | null
 }
 
-// ── Fetch-index types ────────────────────────────────────────────────────────
-
 export interface FetchIndexOptions {
   readonly url: string
   readonly dbPath: string
-  /** Override cache TTL in ms (for testing) */
+  /** Reserved for future cache overrides once ctx-rs delivery is finalized. */
   readonly cacheTtlMs?: number
 }
 
@@ -86,12 +79,7 @@ export interface FetchIndexResult {
   readonly cachedAt?: number
 }
 
-// ── Backend selector ─────────────────────────────────────────────────────────
-
-/** Engine backends. ctx-rs is the default in v2. */
-export type SessionEngineBackend = 'ctx-rs' | 'ts'
-
-/** Status returned when ctx-rs prebuilt is missing and AK_DISABLE_CTX=1. */
+/** Status returned by the ctx-rs wrapper when a native binding is unavailable. */
 export interface UnavailableStatus {
   readonly status: 'unavailable'
 }

@@ -2,14 +2,13 @@
  * Tests for `ak_session_execute` MCP tool.
  *
  * Mocks:
- *   - @webpresso/ctx-rs (executeSandboxed) — controls command output + indexing
- *   - #session-memory/store (getStore)     — controls search
+ *   - #session-memory/ctx-rs-runtime (loadNativeBinding) — controls command output + indexing
+ *   - #session-memory/store (getStore)                   — controls search
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-// ── Hoisted mocks ─────────────────────────────────────────────────────────────
-
+const loadNativeBindingMock = vi.hoisted(() => vi.fn())
 const executeSandboxedMock = vi.hoisted(() => vi.fn())
 const searchMock = vi.hoisted(() => vi.fn())
 const getStoreMock = vi.hoisted(() =>
@@ -19,15 +18,13 @@ const getStoreMock = vi.hoisted(() =>
   })),
 )
 
-vi.mock('@webpresso/ctx-rs', () => ({
-  executeSandboxed: executeSandboxedMock,
+vi.mock('#session-memory/ctx-rs-runtime', () => ({
+  loadNativeBinding: loadNativeBindingMock,
 }))
 
 vi.mock('#session-memory/store', () => ({
   getStore: getStoreMock,
 }))
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fakeExecuteResult(opts: {
   exitCode?: number
@@ -43,32 +40,33 @@ function fakeExecuteResult(opts: {
   }
 }
 
-function parsePayload(result: { structuredContent?: unknown }) {
+function payloadOf(result: { structuredContent: unknown }) {
   return result.structuredContent as Record<string, unknown>
 }
-
-// ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('ak_session_execute', () => {
   let tool: Awaited<typeof import('./session-execute.js')>['default']
 
   beforeEach(async () => {
     vi.resetModules()
+    executeSandboxedMock.mockReset()
+    searchMock.mockReset()
+    getStoreMock.mockReset()
+    getStoreMock.mockReturnValue({ insertChunks: vi.fn(), search: searchMock })
+    loadNativeBindingMock.mockReset()
+    loadNativeBindingMock.mockReturnValue({ executeSandboxed: executeSandboxedMock })
     const mod = await import('./session-execute.js')
     tool = mod.default
   })
 
   afterEach(() => {
-    executeSandboxedMock.mockReset()
-    searchMock.mockReset()
-    getStoreMock.mockReset()
-    getStoreMock.mockReturnValue({ insertChunks: vi.fn(), search: searchMock })
+    vi.restoreAllMocks()
   })
 
   it('exposes correct descriptor surface', () => {
     expect(tool.name).toBe('ak_session_execute')
     expect(typeof tool.description).toBe('string')
-    expect(tool.handler).toBeTypeOf('function')
+    expect(typeof tool.handler).toBe('function')
   })
 
   describe('small output (not indexed)', () => {
@@ -78,7 +76,7 @@ describe('ak_session_execute', () => {
       )
 
       const result = await tool.handler({ command: 'echo ok' })
-      const payload = parsePayload(result)
+      const payload = payloadOf(result)
 
       expect(payload.passed).toBe(true)
       expect(payload.summary).toMatch(/command succeeded/)
@@ -89,11 +87,16 @@ describe('ak_session_execute', () => {
 
     it('includes summary preview in details', async () => {
       executeSandboxedMock.mockResolvedValue(
-        fakeExecuteResult({ exitCode: 0, outputBytes: 12, indexed: false, summary: 'hello world\n' }),
+        fakeExecuteResult({
+          exitCode: 0,
+          outputBytes: 12,
+          indexed: false,
+          summary: 'hello world\n',
+        }),
       )
 
       const result = await tool.handler({ command: 'echo hello world' })
-      const payload = parsePayload(result)
+      const payload = payloadOf(result)
       const details = payload.details as Record<string, unknown>
 
       expect(details.summary).toContain('hello world')
@@ -103,11 +106,16 @@ describe('ak_session_execute', () => {
   describe('large output (indexed)', () => {
     it('returns indexed=true when ctx-rs indexed the output', async () => {
       executeSandboxedMock.mockResolvedValue(
-        fakeExecuteResult({ exitCode: 0, outputBytes: 3000, indexed: true, summary: 'x'.repeat(100) }),
+        fakeExecuteResult({
+          exitCode: 0,
+          outputBytes: 3000,
+          indexed: true,
+          summary: 'x'.repeat(100),
+        }),
       )
 
       const result = await tool.handler({ command: 'big-command', label: 'big-label' })
-      const payload = parsePayload(result)
+      const payload = payloadOf(result)
       const details = payload.details as Record<string, unknown>
 
       expect(details.indexed).toBe(true)
@@ -120,7 +128,7 @@ describe('ak_session_execute', () => {
       )
 
       const result = await tool.handler({ command: 'my-command' })
-      const payload = parsePayload(result)
+      const payload = payloadOf(result)
       const details = payload.details as Record<string, unknown>
 
       expect(details.label).toBe('my-command')
@@ -144,7 +152,7 @@ describe('ak_session_execute', () => {
       )
 
       const result = await tool.handler({ command: 'failing-cmd' })
-      const payload = parsePayload(result)
+      const payload = payloadOf(result)
 
       expect(payload.passed).toBe(false)
       expect(payload.summary).toMatch(/exit code 1/)
@@ -158,7 +166,7 @@ describe('ak_session_execute', () => {
       searchMock.mockReturnValue(fakeHits)
 
       const result = await tool.handler({ command: 'cmd', label: 'lbl', query: 'x' })
-      const payload = parsePayload(result)
+      const payload = payloadOf(result)
       const details = payload.details as Record<string, unknown>
 
       expect(searchMock).toHaveBeenCalledOnce()
@@ -171,20 +179,35 @@ describe('ak_session_execute', () => {
       )
 
       const result = await tool.handler({ command: 'cmd', query: 'something' })
-      const payload = parsePayload(result)
+      const payload = payloadOf(result)
       const details = payload.details as Record<string, unknown>
 
       expect(searchMock).not.toHaveBeenCalled()
-      expect(details.hits).toBeUndefined()
+      expect(details.hits).toBe(undefined)
     })
   })
 
   describe('error handling', () => {
+    it('returns unavailable envelope when the runtime cannot load', async () => {
+      loadNativeBindingMock.mockImplementation(() => {
+        throw new Error('ctx-rs runtime unavailable')
+      })
+      const mod = await import('./session-execute.js')
+
+      const result = await mod.default.handler({ command: 'bad-command' })
+      const payload = payloadOf(result)
+
+      expect(payload.passed).toBe(false)
+      expect(payload.summary).toMatch(/ctx-rs unavailable/i)
+      expect(result.isError).toBe(true)
+      expect(executeSandboxedMock).not.toHaveBeenCalled()
+    })
+
     it('returns error envelope when executeSandboxed throws', async () => {
       executeSandboxedMock.mockRejectedValue(new Error('napi panic'))
 
       const result = await tool.handler({ command: 'bad-command' })
-      const payload = parsePayload(result)
+      const payload = payloadOf(result)
 
       expect(payload.passed).toBe(false)
       expect(result.isError).toBe(true)
@@ -196,16 +219,17 @@ describe('ak_session_execute', () => {
   })
 
   describe('output format', () => {
-    it('returns MCP content array with text block', async () => {
+    it('returns a summary text block plus structuredContent payload', async () => {
       executeSandboxedMock.mockResolvedValue(
         fakeExecuteResult({ exitCode: 0, outputBytes: 2, indexed: false, summary: 'ok' }),
       )
 
       const result = await tool.handler({ command: 'echo ok' })
+      const payload = payloadOf(result)
 
       expect(result.content).toHaveLength(1)
       expect(result.content[0]).toMatchObject({ type: 'text' })
-      expect(result.structuredContent).toMatchObject({ passed: true })
+      expect((result.content[0] as { text: string }).text).toBe(payload.summary)
     })
   })
 })

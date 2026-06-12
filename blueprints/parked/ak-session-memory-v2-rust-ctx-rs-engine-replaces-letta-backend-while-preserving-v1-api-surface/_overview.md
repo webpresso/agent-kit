@@ -5,8 +5,8 @@ status: parked
 complexity: L
 owner: agent-kit
 created: '2026-05-13'
-last_updated: '2026-05-29'
-progress: 'Parked on 2026-05-29: depends on the still-parked v1 direction; surviving Rust/napi findings are preserved, but the API-preserving engine swap cannot proceed until v1 is explicitly unparked and re-locked'
+last_updated: '2026-06-11'
+progress: 'Parked and superseded as canonical v2 planning on 2026-06-11: preserve the historical Letta-era findings, but the only surviving delivery lane is PR #95 (`feat/ak-session-memory-v2-rebased-onto-main`)'
 depends_on:
   - ak-session-memory-via-letta-adapter-permissive-replacement-for-context-mode-session-resume-tool-output-indexing
 parked_reason: |
@@ -24,7 +24,9 @@ parked_reason: |
    - Windows is NOT flaky in 2026 — promote to first-class target
    - MemoryPilot is now source-available, NOT permissive — drop reference;
      use alphaonedev/ai-memory-mcp (MIT) as comparable instead
-  PARKED pending v1 redirection.
+  PARKED pending v1 redirection. This blueprint is no longer the canonical
+  delivery record for session-memory v2; PR #95's in-progress ctx-rs-only
+  blueprint owns current branch truth.
 tags:
   - session-memory
   - rust
@@ -38,10 +40,15 @@ tags:
 
 # wp session memory v2 — Rust ctx-rs engine (replaces Letta, preserves v1 API)
 
+> **Historical only:** this parked blueprint describes a now-obsolete standalone
+> `ctx-rs` package + prebuilt publish path. The surviving delivery lane vendors
+> ctx-rs source inside agent-kit and does not depend on a separate npm package
+> or release workflow. Keep this file only as historical planning context.
+
 ## Product wedge anchor
 
 - **Stage outcome:** Same as v1 stage outcome (Lane 2 permissive), **plus** webpresso owns the engine — no upstream coupling to Letta, no docker/postgres dependency for consumers, hot-path latency drops from ~50-100ms (HTTP) to <2ms (FFI). Roadmap cite: webpresso open-sourcing extraction roadmap, Wave 2+ (post-v1 ship).
-- **Consuming surface:** Same MCP tool surface as v1 (`wp_session_capture`, `wp_session_snapshot`, `wp_session_restore`, `wp_session_search`), **same setup command** (`wp setup --with session-memory`). Behind the scenes: Letta backend is swapped for `@webpresso/ctx-rs` Rust crate loaded via napi-rs prebuilt binary. Migration is invisible to the consumer.
+- **Consuming surface:** Same MCP tool surface as v1 (`wp_session_capture`, `wp_session_snapshot`, `wp_session_restore`, `wp_session_search`), **same setup command** (`wp setup --with session-memory`). Historical note: this parked plan assumed a standalone `ctx-rs` package loaded via npm-published prebuilt binaries; the surviving lane vendors ctx-rs source inside agent-kit instead.
 - **New user-visible capability:** After this lands, the same consumer using v1 today removes their Letta docker-compose dependency (one-line note from `wp setup`) and gets sub-millisecond session-capture latency. The interactive feel of "agent uses session memory" goes from "noticeable HTTP hop" to "invisible". `rtk gain`-style telemetry on session-capture overhead becomes observable.
 
 ## Problem Statement
@@ -62,11 +69,7 @@ has three rough edges that v1 cannot fix:
 v2 keeps v1's API surface stable (no consumer code change) and rewrites the
 engine in Rust:
 
-- **`@webpresso/ctx-rs`** — a new Rust crate (own repo under `webpresso/ctx-rs/`)
-  that implements the session-memory primitives natively.
-- **napi-rs prebuilt binaries** — published to npm so `pnpm add -D @webpresso/agent-kit`
-  pulls the native module transparently (no docker, no postgres).
-- **FFI seam** — agent-kit's TS hook bins call `ctx-rs` via sync napi-rs (eng-review D8/D9).
+- **Historical note:** this parked plan assumed a standalone `ctx-rs` repo/package plus npm-published prebuilt binaries. The surviving lane kept the Rust engine but moved the delivery contract in-repo via vendored source inside agent-kit.
 
 The v2 cut is constrained: it MUST keep the `wp_session_*` MCP tool shapes
 identical to v1 so consumers see no behavior change beyond "it got faster
@@ -119,7 +122,7 @@ CRATE STRUCTURE (webpresso/ctx-rs/):
   │   └── ctx-rs-napi/        napi-rs bindings — exposes core to Node
   │       └── src/lib.rs      #[napi] wrappers, sync calls, prebuilt CI
   └── npm/
-      └── @webpresso/ctx-rs/  npm package wrapping the prebuilt .node binaries
+      └── (obsolete) standalone npm wrapper package — superseded by vendored delivery
 
 DATA FLOW (same as v1 from consumer's POV):
   tool result JSON  ──▶  ak-post-tool.ts  ──▶  ctx-rs.index(payload)  [<1ms FFI]
@@ -140,15 +143,15 @@ refinement.)
 | Scope | Core only — FTS5 + session + compression. NO polyglot executor in v2 | Eng-review D2. ctx_execute / ctx_batch_execute deferred to v3 if demand |
 | FTS engine | rusqlite (SQLite + FTS5) | Library survey: simpler than tantivy for our scale; same data model as MemoryPilot's adopt-don't-build pattern |
 | Embedded search ranking | BM25 (FTS5 default) + porter stemming + trigram + Levenshtein fallback | Three-tier fallback per context-mode's original design; behavior parity goal |
-| Node integration | napi-rs prebuilt binaries (sync API for hot path) | Eng-review D4 + D8. Sync FFI ~0.1ms; async only for fetch |
+| Node integration | napi-rs sync FFI (historical plan assumed prebuilt package) | Eng-review D4 + D8. Surviving lane vendors the source instead. |
 | MCP tool surface | `wp_session_capture` / `wp_session_snapshot` / `wp_session_restore` / `wp_session_search` — IDENTICAL to v1 shapes | Migration must be invisible to consumers |
 | TS shim thickness | Thin (eng-review D9): TS reads stdin, calls ctx-rs.index, writes stdout. ~20 LOC per hook | All logic in Rust |
 | Hot path SLO | p99 < 2ms, p50 < 0.5ms (eng-review D12) | Benchmark suite gates CI |
 | Migration from v1 | Background data port: v2 ships a `ctx-rs migrate-from-letta` subcommand that reads Letta's archival memory + reinserts into ctx-rs SQLite | One-time cost; consumer runs it once during `wp setup` upgrade |
-| napi-rs platform fallback | Graceful disable (eng-review D13): missing prebuilt → `wp_session_*` returns `unavailable`, agent-kit otherwise works | Absorbed into scope, not deferred |
+| napi-rs platform fallback | Historical package-era fallback note only | Superseded by vendored delivery |
 | PreCompact timeout cap | 5s (same as v1) with partial snapshot on timeout (eng-review D14) | Carried over; cheaper to enforce in Rust |
 | Mutation score parity | Behavior parity only (TP3 reframed): cargo-mutants ≥ 70% AND fixture-replay tests against v1 Letta outputs | Cross-language mutation subtraction is incoherent (outside voice TP3) |
-| Distribution | crates.io (Rust crate) + npm `@webpresso/ctx-rs` (prebuilt) | Standard napi-rs pattern; ingest-lens picks up via existing pnpm catalog |
+| Distribution | Historical standalone crate/package concept only | Superseded by vendored ctx-rs source inside agent-kit |
 | Letta deprecation | v2 ships, then v2.1 removes Letta adapter code from agent-kit (one minor release later) | Soft transition; consumers can downgrade if needed |
 
 ## Quick Reference (Execution Waves)
@@ -328,7 +331,7 @@ Each function maps Rust errors to typed Node errors (no panics across FFI bounda
 - [ ] Manual smoke from Node: import, call each function, results round-trip
 - [ ] Rust panics caught and converted to Node errors (no segfault path)
 
-#### [infra] Task 2.2: Prebuild CI matrix + npm publish pipeline
+#### [infra] Task 2.2: Historical standalone prebuild/publish pipeline (obsolete)
 
 **Status:** todo
 
@@ -340,9 +343,7 @@ GitHub Actions workflow that builds the .node binary for all supported triples:
 - darwin-x64, darwin-arm64
 - (windows-x64-msvc — best-effort, gracefully-disable if it fails)
 
-On release tag: publishes `@webpresso/ctx-rs` to npm with prebuilt binaries under
-`@webpresso/ctx-rs-linux-x64-gnu` etc. The wrapper npm package detects host
-triple at install time and pulls only the matching binary.
+Historical only: this parked plan described a standalone publish path with per-platform npm packages. That path has been removed from the surviving delivery lane.
 
 **Files:**
 
@@ -353,7 +354,7 @@ triple at install time and pulls only the matching binary.
 **Acceptance:**
 
 - [ ] Release workflow green on tag push
-- [ ] `pnpm add @webpresso/ctx-rs@<version>` installs and imports on linux + macos
+- [ ] (obsolete) standalone package install proof
 - [ ] Missing-triple path returns a clear error message (not a stack trace)
 
 ### Phase 3: Backend swap in agent-kit [Complexity: M]
@@ -364,14 +365,14 @@ triple at install time and pulls only the matching binary.
 
 **Depends:** Task 2.2
 
-Swap the Letta HTTP client used in v1's `ak-post-tool` for `@webpresso/ctx-rs`. The hook stays a thin shim (eng-review D9 reaffirmed).
+Swap the Letta HTTP client used in v1's `ak-post-tool` for ctx-rs. Historical note: this parked plan assumed a standalone package; the surviving lane vendors ctx-rs source instead.
 
 Behind a feature flag `WP_SESSION_BACKEND=ctx-rs|letta` so consumers can roll back if v2 has issues. Default to `ctx-rs` once v2 ships; document the flag in the migration guide.
 
 **Files:**
 
 - Modify: `src/hooks/post-tool/session-capture.ts` (from v1)
-- Modify: `package.json` — add `@webpresso/ctx-rs` to dependencies
+- Modify: `package.json` — (obsolete in this parked plan; surviving lane does not add an external ctx-rs dependency)
 - Modify: `src/session-memory/backend.ts` (new abstraction layer for backend selection)
 
 **Acceptance:**
@@ -494,7 +495,7 @@ Two-step:
 **Depends:** Task 5.1
 
 Update README's "Session memory" section: drop docker prerequisite, drop postgres,
-new install footprint (just npm prebuilt). Update `docs/guides/session-memory.md`:
+new install footprint (historical standalone prebuilt concept). Update `docs/guides/session-memory.md`:
 
 - Why we ship Rust (single binary, sub-ms latency, no docker)
 - How to opt back into Letta if needed (env flag)
@@ -528,8 +529,8 @@ new install footprint (just npm prebuilt). Update `docs/guides/session-memory.md
 | Mutation score | `cargo mutants --in-place` | ≥ 70% on core modules |
 | Behavior parity | parity.test.ts | ≥ 80% top-10 overlap vs v1 |
 | Hot path perf | bench in ctx-rs-core/benches/ | p99 < 2ms, p50 < 0.5ms |
-| Cross-platform build | release workflow | Green on linux-x64, linux-arm64, darwin-x64, darwin-arm64 |
-| npm install smoke | `pnpm add @webpresso/ctx-rs` in temp dir | Pulls correct prebuilt; require works |
+| Cross-platform build | historical standalone release workflow | Superseded by vendored delivery |
+| install smoke | (obsolete standalone package proof) | Superseded by vendored delivery |
 | End-to-end | scratch Claude Code session + simulated compaction | Restore correctness preserved across backends |
 | Full QA | `wp_qa` | All pass |
 | Lifecycle audit | `wp_audit blueprint-lifecycle` | Blueprint passes |
@@ -545,7 +546,7 @@ new install footprint (just npm prebuilt). Update `docs/guides/session-memory.md
 
 | Edge Case | Risk | Solution | Task |
 | --------- | ---- | -------- | ---- |
-| napi-rs prebuilt missing for user's platform | `pnpm add` fails confusingly | Graceful disable: `WP_DISABLE_CTX=1` env var detected, wp_session_* returns "unavailable" cleanly. README documents | 2.2 + D13 |
+| standalone package missing for user's platform | historical package failure mode | Superseded by vendored delivery; kept only as documentary context | 2.2 + D13 |
 | Rust panic across FFI boundary | Node process crashes | All napi functions wrap in `std::panic::catch_unwind`; panics become typed Node errors | 2.1 |
 | ctx-rs version mismatch with agent-kit expectations | API drift breaks integration | Strict semver + ABI-version constant in ctx-rs-napi checked at module init | 2.1 |
 | SQLite file corruption (laptop crash mid-write) | Session data lost | WAL mode enabled; recovery is SQLite's own; documented | 1.2 |
@@ -572,7 +573,7 @@ new install footprint (just npm prebuilt). Update `docs/guides/session-memory.md
 | napi-rs version drift breaks FFI ABI | Hot path regression | Pin napi-rs version; quarterly upgrade with full test pass |
 | Behavior parity is harder than expected (Letta uses semantic search, ctx-rs uses FTS5) | Migration not invisible | Parity test threshold is "top-10 overlap ≥ 80%", not "identical". Documented in 4.2 |
 | Consumer's existing Letta data lost during migration | Trust hit | Migration is idempotent + dry-run flag + Letta data preserved (not deleted) during v2.0 soak |
-| Rust toolchain becomes prereq for non-prebuild contributors | Community contribution friction | Document "use prebuilt" path for non-Rust contributors; Rust skills only needed for engine work |
+| Rust toolchain becomes prereq for contributors | Community contribution friction | Surviving lane accepts this because ctx-rs is vendored source, not a published package |
 | Outside voice was right about effort (8-12 weeks vs 4-6) | v2 ships later than planned | Library survey reduced unknowns; spike B will confirm; if estimate proves wrong, drop Phase 5 cleanup to a follow-up |
 
 ## Technology Choices
@@ -582,7 +583,7 @@ new install footprint (just npm prebuilt). Update `docs/guides/session-memory.md
 | Engine language | Rust | edition 2024 | Eng-review D1; library survey de-risked the build |
 | SQLite + FTS5 | rusqlite | 0.32+ | Library survey winner; FTS5 built-in; sync API matches hot path |
 | Text chunking | text-splitter + tiktoken-rs | 0.29+ / 0.9+ | Semantic chunking, token-aware sizing |
-| Node FFI | napi-rs | 3.8+ | 7.6K stars, official prebuilt CI pattern, sync API support |
+| Node FFI | napi-rs | 3.8+ | Sync API support remains relevant; prebuilt-package framing is historical |
 | MCP SDK (future v3) | rmcp | 0.16+ | Official Anthropic SDK; not used in v2 but reserved for v3 |
 | HTTP client (fetch_and_index) | reqwest + http-cache-reqwest | 0.13+ | Permissive, pluggable cache backends |
 | HTML→Markdown | htmd | 0.5.4 | Apache-2, Turndown-compatible, 16ms/1.4MB |
@@ -590,4 +591,4 @@ new install footprint (just npm prebuilt). Update `docs/guides/session-memory.md
 | Mutation testing | cargo-mutants | latest | Rust-native; threshold 70%; replaces incoherent cross-language Stryker comparison |
 | Bench | criterion | 0.5+ | Standard Rust bench; gates hot-path SLO in CI |
 | Workspace structure | Cargo workspace with 2 crates | — | Mirrors framework/runtime extraction pattern |
-| Prebuild publish | npm + crates.io | — | Dual publish for Rust + Node consumers |
+| Prebuild publish | (obsolete) | — | Removed from the surviving delivery lane |

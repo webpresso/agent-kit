@@ -16,7 +16,9 @@ import PQueue from 'p-queue'
 import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
+import type { CtxRsBinding } from '#session-memory/ctx-rs-runtime'
 import { getStore } from '#session-memory/store'
+import { loadNativeBinding } from '#session-memory/ctx-rs-runtime'
 import type { SearchHit } from '#session-memory/types'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
@@ -26,27 +28,21 @@ const TASK_TIMEOUT_MS = 60_000
 
 // ── ctx-rs napi binding ───────────────────────────────────────────────────────
 
-interface CtxRsExecuteResult {
-  readonly exitCode: number
-  readonly outputBytes: number
-  readonly indexed: boolean
-  readonly summary: string
-}
-
-interface CtxRsModule {
-  readonly executeSandboxed: (
-    dbPath: string,
-    command: string,
-    label: string,
-  ) => Promise<CtxRsExecuteResult>
-}
-
-async function tryLoadCtxRs(): Promise<CtxRsModule | null> {
+function tryLoadCtxRs(): CtxRsBinding | null {
   try {
-    return (await import('@webpresso/ctx-rs')) as CtxRsModule
+    return loadNativeBinding()
   } catch {
     return null
   }
+}
+
+function isUnavailableResult(value: unknown): value is { status: 'unavailable' } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'status' in value &&
+    value.status === 'unavailable'
+  )
 }
 
 // ── Session DB path ───────────────────────────────────────────────────────────
@@ -131,13 +127,14 @@ const tool: ToolDescriptor = {
   handler: async (raw) => {
     const input = inputSchema.parse(raw ?? {})
 
-    const ctxRs = await tryLoadCtxRs()
+    const ctxRs = tryLoadCtxRs()
 
     if (ctxRs === null) {
       return createSummaryResult(
         {
           passed: false,
-          summary: 'ak_session_batch_execute: ctx-rs unavailable — run ak setup to install',
+          summary:
+            'ak_session_batch_execute: ctx-rs unavailable — vendored runtime build/load failed',
           details: { results: [] },
         },
         { isError: true },
@@ -157,10 +154,13 @@ const tool: ToolDescriptor = {
         input.commands.map(({ label, command }) =>
           queue
             .add(async () => {
-              let execResult: CtxRsExecuteResult
+              let execResult: Awaited<ReturnType<CtxRsBinding['executeSandboxed']>>
               let indexed = false
               try {
                 execResult = await ctxRs.executeSandboxed(dbPath, command, label)
+                if (isUnavailableResult(execResult)) {
+                  throw new Error('ctx-rs runtime unavailable')
+                }
                 indexed = execResult.indexed
               } catch (execErr) {
                 const msg = execErr instanceof Error ? execErr.message : String(execErr)
@@ -184,8 +184,9 @@ const tool: ToolDescriptor = {
               } satisfies CommandResult
             })
             .then(
-              (r) =>
-                r ?? ({
+              (r: CommandResult | void) =>
+                r ??
+                ({
                   label,
                   exitCode: -1,
                   outputBytes: 0,

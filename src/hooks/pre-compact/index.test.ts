@@ -1,97 +1,48 @@
-import { mkdtempSync, rmSync } from 'node:fs'
-import { join } from 'node:path'
-import { tmpdir } from 'node:os'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+const snapshotMock = vi.hoisted(() => vi.fn())
+const computeRepoHashMock = vi.hoisted(() => vi.fn(() => 'precompact000abc1'))
 
-import { runPreCompact } from './index.js'
-import { captureEvent, resolveDbPath, snapshot } from '#session-memory/session'
+vi.mock('#session-memory/session', () => ({
+  snapshot: snapshotMock,
+}))
 
-const TEST_REPO_HASH = 'precompact000abc1'
-
-// Force TS engine so tests never depend on the ctx-rs native binary
-const originalEngine = process.env['AK_SESSION_ENGINE']
-process.env['AK_SESSION_ENGINE'] = 'ts'
-
-let tmpDir: string
-
-beforeEach(() => {
-  tmpDir = mkdtempSync(join(tmpdir(), 'ak-pre-compact-test-'))
-  vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
-})
-
-afterEach(() => {
-  rmSync(tmpDir, { recursive: true, force: true })
-  vi.restoreAllMocks()
-})
-
-afterAll(() => {
-  if (originalEngine === undefined) {
-    delete process.env['AK_SESSION_ENGINE']
-  } else {
-    process.env['AK_SESSION_ENGINE'] = originalEngine
-  }
-})
+vi.mock('#session-memory/repo-hash', () => ({
+  computeRepoHash: computeRepoHashMock,
+}))
 
 describe('runPreCompact', () => {
-  it('creates a snapshot and returns snapshotId', async () => {
-    // Capture some events first
-    captureEvent(
-      {
-        repoHash: TEST_REPO_HASH,
-        event: { sessionId: 's1', toolName: 'Edit', content: 'edited main.ts' },
-      },
-      tmpDir,
-    )
-    captureEvent(
-      {
-        repoHash: TEST_REPO_HASH,
-        event: { sessionId: 's1', toolName: 'Bash', content: 'ran tests' },
-      },
-      tmpDir,
-    )
+  let runPreCompact: Awaited<typeof import('./index.js')>['runPreCompact']
 
-    // Test the snapshot function directly with the test tmpDir
-    const result = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 5000 }, tmpDir)
-
-    expect(result.snapshotId).toBeTruthy()
-    expect(result.eventsIncluded).toBeGreaterThanOrEqual(2)
-    expect(result.partial).toBe(false)
+  beforeEach(async () => {
+    vi.resetModules()
+    snapshotMock.mockReset()
+    computeRepoHashMock.mockReset()
+    computeRepoHashMock.mockReturnValue('precompact000abc1')
+    vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    const mod = await import('./index.js')
+    runPreCompact = mod.runPreCompact
   })
 
-  it('runPreCompact returns null when an error occurs', async () => {
-    // Passing a fake cwd that triggers git hash computation
-    // The function should not throw, just return null or a result
-    const result = await runPreCompact('/tmp')
-    // Either null (error) or a valid result — both acceptable
-    if (result !== null) {
-      expect(result.snapshotId).toBeTruthy()
-    } else {
-      expect(result).toBeNull()
-    }
+  it('creates a snapshot and logs the result', async () => {
+    snapshotMock.mockResolvedValue({
+      snapshotId: 'snap-1',
+      eventsIncluded: 2,
+      partial: false,
+    })
+
+    await expect(runPreCompact('/repo')).resolves.toEqual({
+      snapshotId: 'snap-1',
+      eventsIncluded: 2,
+      partial: false,
+    })
+    expect(computeRepoHashMock).toHaveBeenCalledWith('/repo')
+    expect(snapshotMock).toHaveBeenCalledWith({ repoHash: 'precompact000abc1', capMs: 5000 })
   })
 
-  it('returns partial result when timeout is very tight', async () => {
-    // Capture many events
-    for (let i = 0; i < 5; i++) {
-      captureEvent(
-        {
-          repoHash: TEST_REPO_HASH,
-          event: { sessionId: 's1', toolName: 'Edit', content: `edit ${i}` },
-        },
-        tmpDir,
-      )
-    }
+  it('returns null when snapshot fails', async () => {
+    snapshotMock.mockRejectedValue(new Error('ctx-rs missing'))
 
-    // With 0ms cap, may be partial
-    const result = await snapshot({ repoHash: TEST_REPO_HASH, capMs: 0 }, tmpDir)
-    expect(result.snapshotId).toBeTruthy()
-    expect(typeof result.partial).toBe('boolean')
-  })
-
-  it('resolveDbPath returns expected path for known hash', () => {
-    const dbPath = resolveDbPath(TEST_REPO_HASH, tmpDir)
-    expect(dbPath).toContain(TEST_REPO_HASH)
-    expect(dbPath).toContain(tmpDir)
+    await expect(runPreCompact('/repo')).resolves.toBeNull()
   })
 })

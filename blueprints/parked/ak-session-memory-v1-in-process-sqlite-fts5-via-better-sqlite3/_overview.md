@@ -7,8 +7,8 @@ owner: agent-kit
 historical_verification_gap_waiver: true
 historical_verification_gap_rationale: Historical completed/parked record predates the durable per-task verification convention; retain lifecycle truth without fabricating retroactive evidence.
 created: '2026-05-13'
-last_updated: '2026-05-29'
-progress: 'Parked on 2026-05-29: still operator-deferred even though WAL hardening is complete and the token-savings benchmark harness is now active; do not start until explicitly unparked'
+last_updated: '2026-06-11'
+progress: 'Parked and superseded as a shipping lane on 2026-06-11: PR #94 / the TS-engine line is no longer a delivery candidate; PR #95 is the only surviving session-memory branch'
 depends_on: []
 parked_reason: |
   Parked by operator request. The in-process better-sqlite3 + FTS5 v1 path
@@ -19,7 +19,9 @@ parked_reason: |
   operator parking decision. Do not use this parked blueprint to remove
   context-mode from default setup; the old opt-in plan is archived as superseded.
   Supersedes the earlier Letta-based v1 direction (see sibling parked
-  blueprints).
+  blueprints). As of 2026-06-11 this blueprint is also superseded as a shipping
+  lane by PR #95 (`feat/ak-session-memory-v2-rebased-onto-main`), which is the
+  only remaining delivery branch for session memory.
 tags:
   - session-memory
   - sqlite

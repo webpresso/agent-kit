@@ -1,64 +1,55 @@
 ---
 title: Session memory guide
 type: guide
-last_updated: 2026-05-27
+last_updated: 2026-06-11
 ---
 
 # Session memory
 
-Session memory gives webpresso agents a local recall layer backed by SQLite and FTS5. Version 1 is intentionally in-process: it has no daemon, no cloud calls, and no telemetry.
+Session memory is now a **single-path ctx-rs lane**. This branch does not
+support `AK_SESSION_ENGINE`, `AK_DISABLE_CTX`, or any TS runtime fallback.
+Agent-kit ships vendored `ctx-rs` source and builds the native binding for the
+current host on first use. If that build/load step fails, session-memory calls
+fail loudly rather than degrading.
+
+## Delivery status
+
+The merge gate for this branch is a real delivery surface for ctx-rs that is
+owned by this repo. The shipping contract is: vendored Rust source under
+`vendor/ctx-rs/`, host-local native build on first use, and no hidden sibling
+checkout or external npm prerequisite for consumers.
 
 ## Data location
 
-The default data root is `~/.webpresso/sessions/`. Repositories do not own this directory, and the files should never be committed.
+Session-memory data lives under `~/.webpresso/sessions/<repo-hash>.db`.
+Repositories do not own this directory, and the files should never be
+committed.
 
-Set `WEBPRESSO_SESSION_MEMORY=0` to disable capture for a process. Delete the sessions directory to reset local history.
+`repoHash` is the first 16 hex characters of the SHA-256 hash of
+`git rev-parse --show-toplevel`, which scopes memory to the current repo.
 
 ## Event flow
 
-1. A hook or command captures a tool event with `{ repoHash, toolName, content }`.
-2. `repoHash` is the first 16 hex characters of the SHA-256 hash of `git rev-parse --show-toplevel`, which scopes memory to the current repository.
-3. Events are appended to `session_events` with WAL enabled so multiple local handles can write safely.
-4. Snapshot points consolidate events into `sessions` rows. If a cap is reached, the snapshot is marked `partial` instead of blocking the agent.
-5. Restore queries search recent event content with FTS5 and return top-ranked snippets for the active repo.
+1. Hooks or explicit MCP tools call the ctx-rs-backed session primitives.
+2. Events are appended to `session_events` for the active repo hash.
+3. Pre-compact snapshots consolidate recent events into `sessions` rows.
+4. Restore queries combine ctx-rs event restoration with indexed search hits
+   from the same repo-local SQLite file.
 
-## Fetch and index flow
+## MCP surfaces on this branch
 
-`fetch-index` uses native `fetch()` with an `AbortSignal`, normalizes URLs, caches responses for 24 hours in-process, converts HTML to text/Markdown-like chunks, formats JSON, and indexes chunks into the same FTS search store.
+- `ak_session_capture`
+- `ak_session_snapshot`
+- `ak_session_restore`
+- `ak_session_search`
+- `ak_session_execute`
+- `ak_session_batch_execute`
 
-## Schema
+The text body for execute/batch-execute is summary-first; the structured
+payload lives in `structuredContent`.
 
-### `session_memory_chunks`
+## Failure contract
 
-- `id` — deterministic chunk id
-- `source` — URL, file, or logical source
-- `text` — indexed body text
-- `metadata_json` — structured metadata such as URL and chunk index
-- `created_at` — ISO timestamp
-
-FTS tables:
-
-- `session_memory_chunks_fts` — porter tokenizer for normal keyword search
-- `session_memory_chunks_tri` — trigram tokenizer for partial-token fallback
-
-### `session_events`
-
-- `session_id`
-- `event_id`
-- `repo_hash`
-- `ts`
-- `tool_name`
-- `content`
-
-### `sessions`
-
-- `agent_id`
-- `snapshot_id`
-- `repo_hash`
-- `created_at`
-- `status` (`complete` or `partial`)
-- `content_json`
-
-## Search fallback
-
-The store uses a three-tier fallback adapted from context-mode's `searchWithFallback` design: porter FTS first, trigram FTS second, and an IDF-weighted Levenshtein pass last. The implementation is TypeScript and local to agent-kit; the algorithm credit is preserved in source comments.
+- Missing ctx-rs runtime is a **loud failure**.
+- No compatibility env var can switch back to a TS engine.
+- The feature must not silently fall back to a local legacy backend.

@@ -44,7 +44,7 @@ Current fact-check findings that shape this blueprint:
 
 - Docker is reachable locally now, so "Docker unavailable" is **not** a standing blocker.
 - Harbor / Terminal-Bench Python packages are not yet installed locally, so environment readiness must be proven explicitly.
-- v2 already contains `@webpresso/ctx-rs` dependency wiring, backend selection, and core `store.ts` / `session.ts`; the remaining fairness gap is **feature parity + test parity**, not a fresh backend design.
+- v2 already contains vendored ctx-rs delivery inside agent-kit plus the backend wiring in `store.ts` / `session.ts`; the remaining fairness gap is **feature parity + test parity**, not a fresh backend design.
 - The benchmark decision is about **shipping remediated variants**, not about comparing the current raw worktrees without parity fixes.
 
 ## Architecture Overview
@@ -657,7 +657,7 @@ Write the one memo that recommends ship v1, ship v2, or park both. It must inclu
 | `blueprints/parked/ak-session-memory-via-letta-adapter-permissive-replacement-for-context-mode-session-resume-tool-output-indexing/_overview.md` | Strategic neighbor | This benchmark must not claim to solve permissive replacement strategy; it only informs whether v1 or v2 should ship as the next lane-2 candidate. |
 | `agent-kit-v1-session-memory` sibling worktree | Benchmark subject | Decision memo must capture the exact v1 commit SHA used for the run. |
 | `agent-kit-v2-ctx-rs` sibling worktree | Benchmark subject | Decision memo must capture the exact v2 commit SHA and whether parity tasks were included. |
-| `ctx-rs` sibling worktree | Transitive dependency | Any v2 recommendation must cite the exact ctx-rs SHA and artifact provenance used in the run manifest. |
+| `ctx-rs` sibling worktree | Historical adjunct only | The surviving delivery lane vendors ctx-rs source into agent-kit; separate artifact provenance is no longer a ship blocker. |
 
 ## Edge Cases and Error Handling
 

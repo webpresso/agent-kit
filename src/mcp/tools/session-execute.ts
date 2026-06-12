@@ -16,35 +16,29 @@ import { join } from 'node:path'
 import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
+import type { CtxRsBinding } from '#session-memory/ctx-rs-runtime'
 import { getStore } from '#session-memory/store'
+import { loadNativeBinding } from '#session-memory/ctx-rs-runtime'
 import type { SearchHit } from '#session-memory/types'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
 const DEFAULT_SEARCH_LIMIT = 10
 
-// ── ctx-rs napi binding ───────────────────────────────────────────────────────
-
-interface CtxRsExecuteResult {
-  readonly exitCode: number
-  readonly outputBytes: number
-  readonly indexed: boolean
-  readonly summary: string
-}
-
-interface CtxRsModule {
-  readonly executeSandboxed: (
-    dbPath: string,
-    command: string,
-    label: string,
-  ) => Promise<CtxRsExecuteResult>
-}
-
-async function tryLoadCtxRs(): Promise<CtxRsModule | null> {
+function tryLoadCtxRs(): CtxRsBinding | null {
   try {
-    return (await import('@webpresso/ctx-rs')) as CtxRsModule
+    return loadNativeBinding()
   } catch {
     return null
   }
+}
+
+function isUnavailableResult(value: unknown): value is { status: 'unavailable' } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'status' in value &&
+    value.status === 'unavailable'
+  )
 }
 
 // ── Session DB path ───────────────────────────────────────────────────────────
@@ -110,20 +104,20 @@ const tool: ToolDescriptor = {
     const input = inputSchema.parse(raw ?? {})
     const label = input.label ?? input.command
 
-    const ctxRs = await tryLoadCtxRs()
+    const ctxRs = tryLoadCtxRs()
 
     if (ctxRs === null) {
       return createSummaryResult(
         {
           passed: false,
-          summary: 'ak_session_execute: ctx-rs unavailable — run ak setup to install',
+          summary: 'ak_session_execute: ctx-rs unavailable — vendored runtime build/load failed',
           exitCode: -1,
           details: {
             label,
             exitCode: -1,
             outputBytes: 0,
             indexed: false,
-            summary: 'ctx-rs prebuilt not available',
+            summary: 'ctx-rs runtime unavailable',
           },
         },
         { isError: true },
@@ -134,6 +128,9 @@ const tool: ToolDescriptor = {
       const dbPath = resolveSessionDbPath()
 
       const result = await ctxRs.executeSandboxed(dbPath, input.command, label)
+      if (isUnavailableResult(result)) {
+        throw new Error('ctx-rs runtime unavailable')
+      }
 
       let hits: readonly SearchHit[] | undefined
       if (input.query && result.indexed) {

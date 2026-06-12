@@ -1,95 +1,46 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { resolveBackend, setCtxRsSyncLoaderForTests, tryLoadCtxRsSync } from './backend.js'
+const loadNativeBindingMock = vi.hoisted(() => vi.fn())
 
-describe('resolveBackend', () => {
-  afterEach(() => {
-    delete process.env['AK_DISABLE_CTX']
-    delete process.env['AK_SESSION_ENGINE']
+vi.mock('./ctx-rs-runtime.js', () => ({
+  loadNativeBinding: loadNativeBindingMock,
+}))
+
+describe('session-memory backend loader', () => {
+  beforeEach(() => {
+    vi.resetModules()
+    loadNativeBindingMock.mockReset()
   })
 
-  it('defaults to ctx-rs', () => {
-    expect(resolveBackend()).toBe('ctx-rs')
+  it('returns the ctx-rs binding when the native binding loads', async () => {
+    const fakeBinding = { search: vi.fn() }
+    loadNativeBindingMock.mockReturnValue(fakeBinding)
+
+    const mod = await import('./backend.js')
+
+    expect(mod.tryLoadCtxRsSync()).toBe(fakeBinding)
+    expect(mod.loadCtxRsSync()).toBe(fakeBinding)
+    expect(loadNativeBindingMock).toHaveBeenCalledTimes(2)
   })
 
-  it('prefers AK_DISABLE_CTX over AK_SESSION_ENGINE', () => {
-    process.env['AK_DISABLE_CTX'] = '1'
-    process.env['AK_SESSION_ENGINE'] = 'ctx-rs'
-
-    expect(resolveBackend()).toBe('ts')
-  })
-
-  it('accepts explicit engine overrides', () => {
-    process.env['AK_SESSION_ENGINE'] = 'ts'
-    expect(resolveBackend()).toBe('ts')
-
-    process.env['AK_SESSION_ENGINE'] = 'ctx-rs'
-    expect(resolveBackend()).toBe('ctx-rs')
-  })
-})
-
-describe('tryLoadCtxRsSync', () => {
-  afterEach(() => {
-    delete process.env['AK_DISABLE_CTX']
-    delete process.env['AK_SESSION_ENGINE']
-    setCtxRsSyncLoaderForTests(null)
-    vi.restoreAllMocks()
-  })
-
-  it('returns null without touching the loader when TS backend is forced', () => {
-    process.env['AK_SESSION_ENGINE'] = 'ts'
-    const loader = vi.fn(() => {
-      throw new Error('should not load ctx-rs')
-    })
-    setCtxRsSyncLoaderForTests(loader)
-
-    expect(tryLoadCtxRsSync()).toBeNull()
-    expect(loader).not.toHaveBeenCalled()
-  })
-
-  it('returns the module when the native binding is available', () => {
-    const module = {
-      loadNativeBinding: vi.fn(() => ({ loaded: true })),
-      index: vi.fn(),
-      search: vi.fn(),
-      fetchAndIndex: vi.fn(),
-      captureEvent: vi.fn(),
-      snapshot: vi.fn(),
-      restore: vi.fn(),
-      executeSandboxed: vi.fn(),
-    }
-    setCtxRsSyncLoaderForTests(() => module)
-
-    expect(tryLoadCtxRsSync()).toBe(module)
-    expect(module.loadNativeBinding).toHaveBeenCalledTimes(1)
-  })
-
-  it('returns null when the native binding reports unavailable', () => {
-    const module = {
-      loadNativeBinding: vi.fn(() => null),
-      index: vi.fn(),
-      search: vi.fn(),
-      fetchAndIndex: vi.fn(),
-      captureEvent: vi.fn(),
-      snapshot: vi.fn(),
-      restore: vi.fn(),
-      executeSandboxed: vi.fn(),
-    }
-    setCtxRsSyncLoaderForTests(() => module)
-
-    expect(tryLoadCtxRsSync()).toBeNull()
-    expect(module.loadNativeBinding).toHaveBeenCalledTimes(1)
-  })
-
-  it('logs and returns null when loading throws', () => {
-    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
-    setCtxRsSyncLoaderForTests(() => {
-      throw new Error('native module missing')
+  it('returns null and throws loudly when the native binding is unavailable', async () => {
+    loadNativeBindingMock.mockImplementation(() => {
+      throw new Error('ctx-rs runtime unavailable')
     })
 
-    expect(tryLoadCtxRsSync()).toBeNull()
-    expect(stderrSpy).toHaveBeenCalledWith(
-      expect.stringContaining('ak-session-memory: ctx-rs load error: native module missing\n'),
-    )
+    const mod = await import('./backend.js')
+
+    expect(mod.tryLoadCtxRsSync()).toBeNull()
+    expect(() => mod.loadCtxRsSync()).toThrow(/vendored ctx-rs runtime/i)
+  })
+
+  it('returns null when the vendored loader throws', async () => {
+    loadNativeBindingMock.mockImplementation(() => {
+      throw new Error('missing runtime')
+    })
+
+    const mod = await import('./backend.js')
+
+    expect(mod.tryLoadCtxRsSync()).toBeNull()
   })
 })

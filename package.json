@@ -50,6 +50,7 @@
     "bin/wp",
     "bin/runtime-manifest.json",
     "bin/*.js",
+    "vendor/ctx-rs",
     "dist/esm",
     "!dist/**/*.map",
     "!dist/**/__integration__/**",
