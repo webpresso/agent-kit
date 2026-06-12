@@ -132,6 +132,13 @@ const REPO_AUDIT_REGISTRY: Record<string, RepoAuditRunner> = {
   },
   'open-source-licenses': async (root) =>
     (await import('#audit/open-source-licenses')).auditOpenSourceLicenses(root),
+  'secrets-policy': async (root) =>
+    (await import('#audit/secrets-policy')).auditSecretsPolicy(root),
+  'no-dev-vars': async (root) => (await import('#audit/no-dev-vars')).auditNoDevVars(root),
+  'secret-provider-quarantine': async (root) =>
+    (await import('#audit/secret-provider-quarantine')).auditSecretProviderQuarantine(root),
+  'secrets-config': async (root) =>
+    (await import('#audit/secrets-config')).auditSecretsConfig(root),
   rules: async (root) => runContentAudit(root, 'rule'),
   skills: async (root) => runContentAudit(root, 'skill'),
 }
