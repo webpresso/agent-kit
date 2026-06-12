@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.33.0
+
+### Minor Changes
+
+- f577e22: Enforce the new binary execution contract across consumers and the source repo.
+
+  Consumers now use global `wp` only, must pin `@webpresso/agent-kit` with a
+  published semver range in `package.json`, and no longer rely on repo-local
+  execution paths, helper hook bins, or dev-link recovery flows. The source repo
+  now uses `./bin/wp` for scripts, hooks, and CI.
+
+- 6c8a80d: Centralize agent-kit managed git worktrees under `~/.agent/worktrees` and add
+  blueprint owner-worktree bindings. `wp worktree` now owns managed lifecycle
+  operations, blueprint start/park/finalize records path-free owner metadata, and
+  raw mutating `git worktree` commands are routed back to the managed CLI.
+- 6c8a80d: Add four governance `wp audit` subcommands and fix unit test suite timeout.
+
+  **New subcommands:**
+
+  - `wp audit secrets-policy` — scans working tree and git-tracked files for forbidden secret carriers (`.env`, `.dev.vars`, credential files); gates on `.webpresso/secrets.config.json` presence
+  - `wp audit no-dev-vars` — flags `.dev.vars` and `.env` files in the repo tree; gates on `.webpresso/secrets.config.json` presence
+  - `wp audit secret-provider-quarantine` — scans source for direct secret-provider invocations and provider-specific flags; gates on `.webpresso/secrets.config.json` presence
+  - `wp audit secrets-config` — validates `.webpresso/secrets.config.json` exists, is valid JSON, and contains no embedded secret values
+
+  These replace the per-consumer `bun scripts/verify-secrets-policy.ts`, `bun scripts/check-no-dev-vars.ts`, and `bun scripts/audit-secret-provider-quarantine.ts` scripts. Consumer repos now call `wp audit <subcommand>` from pre-commit hooks and CI.
+
+  `secret-provider-quarantine` detects direct provider invocations (e.g. running the secret manager CLI directly or passing provider-specific flags) and requires the `with-secrets -- <cmd>` abstraction instead.
+
+  **Fix:** Removed `--maxWorkers 1` from `UNIT_SUITE_RUN` — this flag forced serial vitest execution across ~440 unit files (~133s wall-clock), exceeding the `wp_test` MCP tool's 110s cap. Parallel execution restores ~50s wall-clock.
+
+- cb49fed: Relicense future `@webpresso/agent-kit` releases under Elastic License 2.0 and
+  add package-surface license-policy checks so consumer repos cannot drift back to
+  missing-license, mismatched-license, or accidentally publishable internal
+  packages.
+
 ## 0.32.0
 
 ### Minor Changes
