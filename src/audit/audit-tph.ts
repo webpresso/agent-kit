@@ -14,7 +14,7 @@
  *   bun apps/scripts/src/audit/audit-tph.ts [--max-mocks N]
  */
 
-import { runTphAudit } from './audit-tph-runner.js'
+import { printResults, runTphAudit } from './audit-tph-runner.js'
 
 function parseArgs(): { maxMocks: number | undefined } {
   const args = process.argv.slice(2)
@@ -35,8 +35,13 @@ function parseArgs(): { maxMocks: number | undefined } {
 if (import.meta.main) {
   const { maxMocks } = parseArgs()
   const root = process.cwd()
-  runTphAudit(root, maxMocks !== undefined ? { maxMocks } : undefined).catch((error: unknown) => {
-    console.error('Fatal error:', error)
-    process.exit(1)
-  })
+  runTphAudit(root, maxMocks !== undefined ? { maxMocks } : undefined)
+    .then((result) => {
+      printResults(result)
+      if (result.errorCount > 0) process.exit(1)
+    })
+    .catch((error: unknown) => {
+      console.error('Fatal error:', error)
+      process.exit(1)
+    })
 }

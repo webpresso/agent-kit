@@ -115,7 +115,7 @@ async function findTestFiles(root: string): Promise<string[]> {
     .filter((f) => f.length > 0)
 }
 
-export async function runTphAudit(root: string, options?: { maxMocks?: number }): Promise<void> {
+export async function runTphAudit(root: string, options?: { maxMocks?: number }): Promise<AuditResult> {
   const relativePaths = await findTestFiles(root)
 
   const files = relativePaths.map((relPath) => ({
@@ -123,10 +123,5 @@ export async function runTphAudit(root: string, options?: { maxMocks?: number })
     contents: readFileSync(join(root, relPath), 'utf-8'),
   }))
 
-  const result = detectTphViolations(files, options)
-  printResults(result)
-
-  if (result.errorCount > 0) {
-    process.exit(1)
-  }
+  return detectTphViolations(files, options)
 }

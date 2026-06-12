@@ -13,7 +13,6 @@ import path from 'node:path'
 
 import { runAuditDispatch } from './audit-core.js'
 import type { AuditActionOptions } from './audit-core.js'
-import { resolveAuditScriptPath } from '#audit/resolve-audit-script'
 import { createCliLogSink } from './quality-log-store.js'
 import { emitCliCommandOutput, runLoggedChildCommand } from './quality-runner.js'
 
@@ -197,10 +196,6 @@ const AUDIT_KINDS = [
 
 const AUDIT_KIND_LIST = AUDIT_KINDS.join(', ')
 
-function resolveAuditScript(name: 'audit-tph.ts' | 'audit-tph-e2e.ts'): string {
-  return resolveAuditScriptPath(name, { moduleUrl: import.meta.url })
-}
-
 function buildBundleBudgetArgs(target: string | undefined, options: AuditActionOptions): string[] {
   const args: string[] = []
   if (target) args.push(target)
@@ -267,18 +262,6 @@ export function registerAuditCommand(cli: CAC): void {
             )
             return result.exitCode
           },
-          runScript: async (script, args) => {
-            const result = await runLoggedChildCommand(
-              { command: 'bun', args: [script, ...args] },
-              { write: (chunk) => sink.write(chunk) },
-            )
-            if (result.exitCode !== 0 && readTrailingFileIsEmpty(sink.absoluteLogPath)) {
-              sink.write(
-                'Failed to spawn audit runner (bun). Install Bun (https://bun.sh) or run the audit script directly.\n',
-              )
-            }
-            return result.exitCode
-          },
           runRepoAudit: async (name, root, opts) => {
             const runner = REPO_AUDIT_REGISTRY[name]
             if (!runner) throw new Error(`Unknown repo audit kind: ${name}`)
@@ -295,7 +278,6 @@ export function registerAuditCommand(cli: CAC): void {
               loreWarn: opts.loreWarn,
             })
           },
-          resolveScript: resolveAuditScript,
           buildBundleBudgetArgs,
           knownRepoKinds:
             kind === 'guardrails' || kind === 'quality'
@@ -434,13 +416,5 @@ async function captureConsoleToSink<T>(
   } finally {
     console.log = originalLog
     console.error = originalError
-  }
-}
-
-function readTrailingFileIsEmpty(pathToFile: string): boolean {
-  try {
-    return readFileSync(pathToFile, 'utf8').trim().length === 0
-  } catch {
-    return true
   }
 }

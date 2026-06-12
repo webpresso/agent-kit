@@ -1,0 +1,79 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, describe, expect, test } from 'vitest'
+
+import { auditSecretProviderQuarantine } from './secret-provider-quarantine.js'
+
+const tempDirs: string[] = []
+
+function tempRepo(): string {
+  const root = mkdtempSync(join(tmpdir(), 'wp-quarantine-'))
+  tempDirs.push(root)
+  mkdirSync(join(root, '.webpresso'), { recursive: true })
+  writeFileSync(
+    join(root, '.webpresso', 'secrets.config.json'),
+    JSON.stringify({ manager: 'doppler', projectId: 'my-project' }),
+  )
+  return root
+}
+
+describe('auditSecretProviderQuarantine', () => {
+  afterEach(() => {
+    for (const dir of tempDirs.splice(0)) {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  test('skips when secrets.config.json is absent (gate)', () => {
+    const root = mkdtempSync(join(tmpdir(), 'wp-quarantine-gate-'))
+    tempDirs.push(root)
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(true)
+    expect(result.checked).toBe(0)
+    expect(result.violations).toStrictEqual([])
+  })
+
+  test('flags direct doppler invocation in source file', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'), { recursive: true })
+    writeFileSync(join(root, 'src', 'deploy.ts'), "exec('doppler" + " run -- node server.js')")
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining('direct doppler invocation'),
+      }),
+    ])
+  })
+
+  test('flags with-secrets provider flag in source file', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'), { recursive: true })
+    writeFileSync(join(root, 'src', 'run.ts'), "exec('with-secrets" + " --doppler -- node server.js')")
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual([
+      expect.objectContaining({
+        message: expect.stringContaining('provider flags'),
+      }),
+    ])
+  })
+
+  test('passes for clean source', () => {
+    const root = tempRepo()
+    mkdirSync(join(root, 'src'), { recursive: true })
+    writeFileSync(join(root, 'src', 'app.ts'), "exec('with-secrets -- node server.js')")
+
+    const result = auditSecretProviderQuarantine(root)
+
+    expect(result.ok).toBe(true)
+    expect(result.violations).toStrictEqual([])
+  })
+})

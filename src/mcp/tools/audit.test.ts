@@ -10,9 +10,12 @@
 
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
-const { spawnMock } = vi.hoisted(() => ({
-  spawnMock: vi.fn(),
-}))
+const tphRunnerMock = {
+  runTphAudit: vi.fn(),
+}
+const tphE2eRunnerMock = {
+  runTphE2eAudit: vi.fn(),
+}
 
 const repoGuardrailsMock = {
   auditCatalogDrift: vi.fn(),
@@ -78,25 +81,10 @@ vi.mock('#audit/absolute-path-policy', () => absolutePathPolicyMock)
 vi.mock('#audit/no-first-party-mjs', () => noFirstPartyMjsMock)
 vi.mock('#audit/toolchain-isolation', () => toolchainIsolationMock)
 vi.mock('../../vite/local.js', () => viteLocalMock)
-vi.mock('node:child_process', () => ({ spawn: spawnMock }))
+vi.mock('#audit/audit-tph-runner', () => tphRunnerMock)
+vi.mock('#audit/audit-tph-e2e-runner', () => tphE2eRunnerMock)
 
 import akAuditTool from './audit.js'
-
-function fakeChild(opts: { stdout?: string; exitCode?: number } = {}): unknown {
-  return {
-    stdout: {
-      on: (event: string, fn: (data: Buffer) => void) => {
-        if (event === 'data' && opts.stdout) fn(Buffer.from(opts.stdout))
-      },
-    },
-    stderr: {
-      on: () => {},
-    },
-    on: (event: string, fn: (code: number) => void) => {
-      if (event === 'close') queueMicrotask(() => fn(opts.exitCode ?? 0))
-    },
-  }
-}
 
 function passingAudit() {
   return { ok: true, title: 't', checked: 1, violations: [] }
@@ -135,7 +123,8 @@ beforeEach(() => {
   blueprintLifecycleSqlMock.auditBlueprintLifecycleSql.mockReset()
   toolchainIsolationMock.auditToolchainIsolation.mockReset()
   viteLocalMock.runBundleBudgetCli.mockReset()
-  spawnMock.mockReset()
+  tphRunnerMock.runTphAudit.mockReset()
+  tphE2eRunnerMock.runTphE2eAudit.mockReset()
   repoGuardrailsMock.formatRepoAuditReport.mockReturnValue('formatted report')
 })
 
@@ -280,26 +269,27 @@ describe('wp_audit tool', () => {
       expect(parsePayload(result).passed).toBe(true)
     })
 
-    it('tph -> spawns bun on the tph script', async () => {
-      spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
+    it('tph -> calls runTphAudit directly', async () => {
+      tphRunnerMock.runTphAudit.mockResolvedValue({
+        errorCount: 0, filesChecked: 5, violations: [], warningCount: 0, infoCount: 0,
+      })
       const result = await akAuditTool.handler({ kind: 'tph' })
-      expect(spawnMock).toHaveBeenCalledTimes(1)
-      const [cmd, args] = spawnMock.mock.calls[0]!
-      expect(cmd).toBe('bun')
-      expect(Array.isArray(args)).toBe(true)
-      expect((args as string[]).some((a) => a.includes('audit-tph'))).toBe(true)
-      expect(parsePayload(result).passed).toBe(true)
+      expect(tphRunnerMock.runTphAudit).toHaveBeenCalledTimes(1)
+      const payload = parsePayload(result)
+      expect(payload.passed).toBe(true)
+      expect(payload.kind).toBe('tph')
+      expect(payload.summary).toBe('tph audit passed (5 checked)')
     })
 
-    it('tph-e2e -> spawns bun on the tph-e2e script', async () => {
-      spawnMock.mockReturnValue(fakeChild({ exitCode: 0 }))
+    it('tph-e2e -> calls runTphE2eAudit directly', async () => {
+      tphE2eRunnerMock.runTphE2eAudit.mockResolvedValue({
+        errorCount: 0, filesChecked: 3, violations: [], warningCount: 0, infoCount: 0,
+      })
       const result = await akAuditTool.handler({ kind: 'tph-e2e' })
-      expect(spawnMock).toHaveBeenCalledTimes(1)
-      const [cmd, args] = spawnMock.mock.calls[0]!
-      expect(cmd).toBe('bun')
-      expect(Array.isArray(args)).toBe(true)
-      expect((args as string[]).some((a) => a.includes('audit-tph-e2e'))).toBe(true)
-      expect(parsePayload(result).passed).toBe(true)
+      expect(tphE2eRunnerMock.runTphE2eAudit).toHaveBeenCalledTimes(1)
+      const payload = parsePayload(result)
+      expect(payload.passed).toBe(true)
+      expect(payload.kind).toBe('tph-e2e')
     })
   })
 
@@ -332,22 +322,37 @@ describe('wp_audit tool', () => {
       expect(parsePayload(result).passed).toBe(false)
     })
 
-    it('tph returns {passed:false} on non-zero exit', async () => {
-      spawnMock.mockReturnValue(fakeChild({ exitCode: 2 }))
+    it('tph returns {passed:false} when violations found', async () => {
+      tphRunnerMock.runTphAudit.mockResolvedValue({
+        errorCount: 1,
+        filesChecked: 5,
+        violations: [{ rule: 'no-skip', message: 'test skipped', file: 'foo.test.ts', severity: 'ERROR' }],
+        warningCount: 0,
+        infoCount: 0,
+      })
       const result = await akAuditTool.handler({ kind: 'tph' })
       const payload = parsePayload(result)
       expect(payload.passed).toBe(false)
       expect(payload.kind).toBe('tph')
-      expect(payload.summary).toBe('tph audit failed (exit 2)')
+      expect(payload.summary).toBe('tph audit failed with 1 violation')
     })
 
-    it('tph-e2e returns {passed:false} on non-zero exit', async () => {
-      spawnMock.mockReturnValue(fakeChild({ exitCode: 2 }))
+    it('tph-e2e returns {passed:false} when violations found', async () => {
+      tphE2eRunnerMock.runTphE2eAudit.mockResolvedValue({
+        errorCount: 2,
+        filesChecked: 3,
+        violations: [
+          { rule: 'no-skip', message: 'test skipped', file: 'a.e2e.test.ts', severity: 'ERROR' },
+          { rule: 'no-only', message: 'test only', file: 'b.e2e.test.ts', severity: 'ERROR' },
+        ],
+        warningCount: 0,
+        infoCount: 0,
+      })
       const result = await akAuditTool.handler({ kind: 'tph-e2e' })
       const payload = parsePayload(result)
       expect(payload.passed).toBe(false)
       expect(payload.kind).toBe('tph-e2e')
-      expect(payload.summary).toBe('tph-e2e audit failed (exit 2)')
+      expect(payload.summary).toBe('tph-e2e audit failed with 2 violations')
     })
   })
 
@@ -360,11 +365,20 @@ describe('wp_audit tool', () => {
     })
   })
 
-  it('clips long script audit output and marks it truncated', async () => {
-    spawnMock.mockReturnValue(fakeChild({ stdout: 'x'.repeat(5_000), exitCode: 1 }))
+  it('tph-e2e includes structured violation details in response', async () => {
+    tphE2eRunnerMock.runTphE2eAudit.mockResolvedValue({
+      errorCount: 1,
+      filesChecked: 2,
+      violations: [{ rule: 'no-skip', message: 'test skipped', file: 'foo.e2e.test.ts', severity: 'ERROR' }],
+      warningCount: 0,
+      infoCount: 0,
+    })
     const result = await akAuditTool.handler({ kind: 'tph-e2e' })
     const payload = parsePayload(result)
-    expect(payload.rawOutput).toHaveLength(4_000)
-    expect(payload.truncated).toBe(true)
+    expect(payload.passed).toBe(false)
+    const details = payload.details as { violations: Array<{ message: string; file: string }> }
+    expect(details.violations).toHaveLength(1)
+    expect(details.violations[0]!.message).toContain('[no-skip]')
+    expect(details.violations[0]!.file).toBe('foo.e2e.test.ts')
   })
 })

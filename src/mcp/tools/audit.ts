@@ -5,22 +5,18 @@
  * `kind` enum. Returns a structured `{passed, kind, details}` payload wrapped
  * in MCP `text` content blocks.
  *
- * Most kinds dispatch directly to the library functions exported from
- * `#audit/repo-guardrails`, `#audit/tech-debt`, and `../../vite/local`.
- * The `tph` kind shells out to `bun` because the implementation is a
- * Bun-native script (`src/audit/audit-tph.ts`).
+ * All kinds dispatch directly to the library functions exported from
+ * `#audit/repo-guardrails`, `#audit/tech-debt`, `#audit/audit-tph-runner`,
+ * `#audit/audit-tph-e2e-runner`, and `../../vite/local`.
  *
  * Audit failures (whether represented as `ok: false` from the library or
  * as a thrown error) are caught and returned as `{passed: false, ...}`
  * — the handler never throws out, so the MCP server stays responsive.
  */
 
-import { spawn } from 'node:child_process'
 import { z } from 'zod'
 
-import { resolveAuditScriptPath } from '#audit/resolve-audit-script'
 import type { ToolDescriptor } from '#mcp/auto-discover'
-import { applyOutputTransform } from '#output-transforms/index'
 import { AUDIT_KINDS } from './_shared/audit-kinds.js'
 import { createSummaryOutputSchema, createSummaryResult } from './_shared/result.js'
 
@@ -72,30 +68,6 @@ const outputSchema = createSummaryOutputSchema({
 }).extend({
   kind: z.enum(KINDS),
 })
-
-function resolveAuditScript(name: string): string {
-  return resolveAuditScriptPath(name, { moduleUrl: import.meta.url })
-}
-
-async function runScript(script: string): Promise<{ exitCode: number; output: string }> {
-  return new Promise<{ exitCode: number; output: string }>((resolve) => {
-    const child = spawn('bun', [script], { stdio: 'pipe' })
-    let stdout = ''
-    let stderr = ''
-    child.stdout?.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString('utf8')
-    })
-    child.stderr?.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString('utf8')
-    })
-    child.on('error', (error) =>
-      resolve({ exitCode: 1, output: [stdout, stderr, error.message].filter(Boolean).join('') }),
-    )
-    child.on('close', (code) =>
-      resolve({ exitCode: code ?? 1, output: [stdout, stderr].filter(Boolean).join('') }),
-    )
-  })
-}
 
 function wrap(payload: AuditPayload, options: { isError?: boolean } = {}) {
   return createSummaryResult(payload, options)
@@ -292,25 +264,67 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
       }
     }
     case 'tph': {
-      const script = resolveAuditScript('audit-tph.ts')
-      const { exitCode, output } = await runScript(script)
+      const { runTphAudit } = await import('#audit/audit-tph-runner')
+      const result = await runTphAudit(input.cwd ?? input.directory ?? process.cwd())
+      const violations = result.violations.map((v) => ({ message: `[${v.rule}] ${v.message}`, file: v.file }))
+      const auditResult = { ok: result.errorCount === 0, checked: result.filesChecked, violations }
       return {
-        passed: exitCode === 0,
-        summary: summarizeExitCode(kind, exitCode),
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
         kind,
-        details: { exitCode },
-        ...applyOutputTransform(output, { toolName: `wp_audit-${kind}` }),
+        details: auditResult,
       }
     }
     case 'tph-e2e': {
-      const script = resolveAuditScript('audit-tph-e2e.ts')
-      const { exitCode, output } = await runScript(script)
+      const { runTphE2eAudit } = await import('#audit/audit-tph-e2e-runner')
+      const result = await runTphE2eAudit(input.cwd ?? input.directory ?? process.cwd())
+      const violations = result.violations.map((v) => ({ message: `[${v.rule}] ${v.message}`, file: v.file }))
+      const auditResult = { ok: result.errorCount === 0, checked: result.filesChecked, violations }
       return {
-        passed: exitCode === 0,
-        summary: summarizeExitCode(kind, exitCode),
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
         kind,
-        details: { exitCode },
-        ...applyOutputTransform(output, { toolName: `wp_audit-${kind}` }),
+        details: auditResult,
+      }
+    }
+    case 'secrets-policy': {
+      const { auditSecretsPolicy } = await import('#audit/secrets-policy')
+      const auditResult = auditSecretsPolicy(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
+    case 'no-dev-vars': {
+      const { auditNoDevVars } = await import('#audit/no-dev-vars')
+      const auditResult = auditNoDevVars(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
+    case 'secret-provider-quarantine': {
+      const { auditSecretProviderQuarantine } = await import('#audit/secret-provider-quarantine')
+      const auditResult = auditSecretProviderQuarantine(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
+      }
+    }
+    case 'secrets-config': {
+      const { auditSecretsConfig } = await import('#audit/secrets-config')
+      const auditResult = auditSecretsConfig(input.cwd ?? input.directory ?? process.cwd())
+      return {
+        passed: auditResult.ok,
+        summary: summarizeRepoAudit(kind, auditResult),
+        kind,
+        details: auditResult,
       }
     }
     case 'hook-surface': {
@@ -363,7 +377,7 @@ async function dispatch(input: AkAuditInput): Promise<AuditPayload> {
 const tool: ToolDescriptor = {
   name: 'wp_audit',
   description:
-    'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-readme-drift, blueprint-lifecycle, architecture-drift, absolute-path-policy, no-first-party-mjs, roadmap-links, bundle-budget, commit-message, tech-debt, hook-surface, package-surface, no-relative-package-scripts). Returns {passed, kind, details}.',
+    'Run a packaged repo audit. `kind` selects the audit (tph, tph-e2e, catalog-drift, docs-frontmatter, blueprint-readme-drift, blueprint-lifecycle, architecture-drift, absolute-path-policy, no-first-party-mjs, roadmap-links, bundle-budget, commit-message, tech-debt, hook-surface, package-surface, no-relative-package-scripts, secrets-policy, no-dev-vars, secret-provider-quarantine, secrets-config). Returns {passed, kind, details}.',
   inputSchema,
   outputSchema,
   annotations: {

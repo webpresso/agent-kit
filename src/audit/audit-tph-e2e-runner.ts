@@ -106,7 +106,7 @@ async function findE2eTestFiles(root: string): Promise<string[]> {
     .filter((f) => f.length > 0)
 }
 
-export async function runTphE2eAudit(root: string): Promise<void> {
+export async function runTphE2eAudit(root: string): Promise<AuditResult> {
   const relativePaths = await findE2eTestFiles(root)
 
   const files = relativePaths.map((relPath) => ({
@@ -114,10 +114,5 @@ export async function runTphE2eAudit(root: string): Promise<void> {
     contents: readFileSync(join(root, relPath), 'utf-8'),
   }))
 
-  const result = detectTphE2eViolations(files)
-  printResults(result)
-
-  if (result.errorCount > 0) {
-    process.exit(1)
-  }
+  return detectTphE2eViolations(files)
 }

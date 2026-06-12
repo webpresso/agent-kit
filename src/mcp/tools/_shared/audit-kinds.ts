@@ -28,6 +28,10 @@ export const AUDIT_KINDS = [
   'ai-contracts',
   'no-relative-package-scripts',
   'toolchain-isolation',
+  'secrets-policy',
+  'no-dev-vars',
+  'secret-provider-quarantine',
+  'secrets-config',
 ] as const
 
 export type AuditKind = (typeof AUDIT_KINDS)[number]

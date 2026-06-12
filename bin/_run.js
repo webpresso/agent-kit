@@ -278,6 +278,7 @@ function buildRuntimeLaunchPlan({
       ...process.env,
       WP_COMPILED_RUNTIME: '1',
       WP_MCP_TOOL_MODE: 'registry',
+      WP_AGENT_KIT_ROOT: repoRoot,
     },
   }
 }

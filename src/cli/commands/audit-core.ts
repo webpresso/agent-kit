@@ -39,6 +39,10 @@ export type AuditKind =
   | 'hook-surface'
   | 'hook-vendor-drift'
   | 'no-relative-package-scripts'
+  | 'secrets-policy'
+  | 'no-dev-vars'
+  | 'secret-provider-quarantine'
+  | 'secrets-config'
 
 export type AuditOutcome =
   | { kind: 'invalid-usage'; message: string }
@@ -76,7 +80,6 @@ export interface AuditActionOptions {
 export interface AuditDeps {
   root: string
   runStryker: (cwd: string) => Promise<number>
-  runScript: (script: string, args: string[]) => Promise<number>
   runRepoAudit: (
     name: string,
     root: string,
@@ -87,7 +90,6 @@ export interface AuditDeps {
     messageFile: string,
     options: AuditActionOptions,
   ) => RepoAuditResult | Promise<RepoAuditResult>
-  resolveScript: (name: 'audit-tph.ts' | 'audit-tph-e2e.ts') => string
   buildBundleBudgetArgs: (target: string | undefined, options: AuditActionOptions) => string[]
   knownRepoKinds: readonly string[]
 }
@@ -118,14 +120,34 @@ export async function runAuditDispatch(
 
   switch (auditKind) {
     case 'tph': {
-      const script = deps.resolveScript('audit-tph.ts')
-      const code = await deps.runScript(script, forwarded)
-      return { kind: 'script-exit', code }
+      const { runTphAudit } = await import('#audit/audit-tph-runner')
+      const root = options.root ?? target ?? deps.root
+      const result = await runTphAudit(root)
+      return {
+        kind: 'repo-result',
+        name: 'tph',
+        result: {
+          ok: result.errorCount === 0,
+          title: 'Testing Philosophy Audit (TPH)',
+          checked: result.filesChecked,
+          violations: result.violations.map((v) => ({ message: `[${v.rule}] ${v.message}`, file: v.file })),
+        },
+      }
     }
     case 'tph-e2e': {
-      const script = deps.resolveScript('audit-tph-e2e.ts')
-      const code = await deps.runScript(script, forwarded)
-      return { kind: 'script-exit', code }
+      const { runTphE2eAudit } = await import('#audit/audit-tph-e2e-runner')
+      const root = options.root ?? target ?? deps.root
+      const result = await runTphE2eAudit(root)
+      return {
+        kind: 'repo-result',
+        name: 'tph-e2e',
+        result: {
+          ok: result.errorCount === 0,
+          title: 'Testing Philosophy Audit (TPH) - E2E',
+          checked: result.filesChecked,
+          violations: result.violations.map((v) => ({ message: `[${v.rule}] ${v.message}`, file: v.file })),
+        },
+      }
     }
     case 'bundle-budget': {
       const args = deps.buildBundleBudgetArgs(target, options)
@@ -178,6 +200,30 @@ export async function runAuditDispatch(
       const code = mutationCode !== 0 ? mutationCode : guardrailsCode
 
       return { kind: 'quality-exit', code, mutationCode, guardrailsCode }
+    }
+    case 'secrets-policy': {
+      const { auditSecretsPolicy } = await import('#audit/secrets-policy')
+      const root = options.root ?? target ?? deps.root
+      const result = auditSecretsPolicy(root)
+      return { kind: 'repo-result', name: 'secrets-policy', result }
+    }
+    case 'no-dev-vars': {
+      const { auditNoDevVars } = await import('#audit/no-dev-vars')
+      const root = options.root ?? target ?? deps.root
+      const result = auditNoDevVars(root)
+      return { kind: 'repo-result', name: 'no-dev-vars', result }
+    }
+    case 'secret-provider-quarantine': {
+      const { auditSecretProviderQuarantine } = await import('#audit/secret-provider-quarantine')
+      const root = options.root ?? target ?? deps.root
+      const result = auditSecretProviderQuarantine(root)
+      return { kind: 'repo-result', name: 'secret-provider-quarantine', result }
+    }
+    case 'secrets-config': {
+      const { auditSecretsConfig } = await import('#audit/secrets-config')
+      const root = options.root ?? target ?? deps.root
+      const result = auditSecretsConfig(root)
+      return { kind: 'repo-result', name: 'secrets-config', result }
     }
     default: {
       return { kind: 'unknown-kind', auditKind }
