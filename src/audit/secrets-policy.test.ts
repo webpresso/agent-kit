@@ -56,6 +56,30 @@ describe('auditSecretsPolicy', () => {
     ])
   })
 
+  test('flags *.key file on disk', () => {
+    const root = tempRepo()
+    writeFileSync(join(root, 'deploy.key'), '-----BEGIN RSA PRIVATE KEY-----')
+
+    const result = auditSecretsPolicy(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual([
+      expect.objectContaining({ file: 'deploy.key', message: expect.stringContaining('forbidden secret carrier') }),
+    ])
+  })
+
+  test('flags service-account*.json file on disk', () => {
+    const root = tempRepo()
+    writeFileSync(join(root, 'google-service-account.json'), '{"type":"service_account"}')
+
+    const result = auditSecretsPolicy(root)
+
+    expect(result.ok).toBe(false)
+    expect(result.violations).toEqual([
+      expect.objectContaining({ file: 'google-service-account.json', message: expect.stringContaining('forbidden secret carrier') }),
+    ])
+  })
+
   test('handles non-git repo gracefully (no git dir)', () => {
     const root = tempRepo(false)
 

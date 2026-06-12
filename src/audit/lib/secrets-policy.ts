@@ -21,7 +21,9 @@ const FORBIDDEN_BASENAME_PATTERNS: readonly RegExp[] = [
   /^\.env(?:\..+)?$/u,
   /^.*\.pem$/u,
   /^.*\.p12$/u,
+  /^.*\.key$/u,
   /^id_rsa(?:\.pub)?$/u,
+  /^.*service-account.*\.json$/u,
 ]
 
 function normalizePath(relativePath: string): string {
