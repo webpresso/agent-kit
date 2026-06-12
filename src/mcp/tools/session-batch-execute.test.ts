@@ -43,10 +43,8 @@ function fakeExecuteResult(opts: {
   }
 }
 
-function parsePayload(result: { content: readonly { type: string; text?: string }[] }) {
-  const block = result.content[0]
-  if (!block || block.type !== 'text' || !block.text) throw new Error('no text block')
-  return JSON.parse(block.text) as Record<string, unknown>
+function parsePayload(result: { structuredContent?: unknown }) {
+  return result.structuredContent as Record<string, unknown>
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -239,10 +237,12 @@ describe('ak_session_batch_execute', () => {
   describe('error handling', () => {
     it('returns non-fatal result with indexed=false when executeSandboxed throws for one command', async () => {
       executeSandboxedMock.mockRejectedValue(new Error('napi panic'))
+      const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
 
       const result = await tool.handler({
         commands: [{ label: 'x', command: 'cmd' }],
       })
+      stderrSpy.mockRestore()
       const payload = parsePayload(result)
       // executeSandboxed failure is caught per-command — command result shows exitCode -1
       const details = payload.details as { results: { indexed: boolean; exitCode: number }[] }
@@ -267,9 +267,7 @@ describe('ak_session_batch_execute', () => {
 
       expect(result.content).toHaveLength(1)
       expect(result.content[0]).toMatchObject({ type: 'text' })
-      expect(result.structuredContent).toEqual(
-        JSON.parse((result.content[0] as { text: string }).text),
-      )
+      expect(result.structuredContent).toMatchObject({ passed: true })
     })
   })
 })

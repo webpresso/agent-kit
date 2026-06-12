@@ -10,7 +10,6 @@
  */
 
 import { mkdirSync } from 'node:fs'
-import { createRequire } from 'node:module'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import PQueue from 'p-queue'
@@ -42,10 +41,9 @@ interface CtxRsModule {
   ) => Promise<CtxRsExecuteResult>
 }
 
-function tryLoadCtxRs(): CtxRsModule | null {
+async function tryLoadCtxRs(): Promise<CtxRsModule | null> {
   try {
-    const requireFn = createRequire(import.meta.url)
-    return requireFn('@webpresso/ctx-rs') as CtxRsModule
+    return (await import('@webpresso/ctx-rs')) as CtxRsModule
   } catch {
     return null
   }
@@ -133,7 +131,7 @@ const tool: ToolDescriptor = {
   handler: async (raw) => {
     const input = inputSchema.parse(raw ?? {})
 
-    const ctxRs = tryLoadCtxRs()
+    const ctxRs = await tryLoadCtxRs()
 
     if (ctxRs === null) {
       return createSummaryResult(
