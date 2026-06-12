@@ -106,7 +106,6 @@ import { ensureGstack } from './scaffolders/gstack/index.js'
 import { scaffoldLoreCommits } from './scaffolders/lore-commits/index.js'
 import { ensureOmx } from './scaffolders/omx/index.js'
 import { ensureOmc, OMC_SETUP_COMMAND } from './scaffolders/omc/index.js'
-import { ensureContextMode } from './scaffolders/context-mode/index.js'
 import { scaffoldOpencodePlugin } from './scaffolders/opencode-plugin/index.js'
 import { ensureRtk } from './scaffolders/rtk/index.js'
 import { checkRuntimes } from './scaffolders/runtime-check/index.js'
@@ -116,7 +115,6 @@ import { scaffoldVision } from './scaffolders/vision/index.js'
 import { scaffoldWorkspaceConfig } from './scaffolders/workspace-config/index.js'
 
 const PRESETS = [
-  'context-mode',
   'example-skill',
   'gstack',
   'lore-commits',
@@ -127,7 +125,7 @@ const PRESETS = [
   'vision',
 ] as const
 type Preset = (typeof PRESETS)[number]
-const DEFAULT_PRESETS: readonly Preset[] = ['omx', 'omc', 'gstack', 'vision', 'rtk', 'context-mode']
+const DEFAULT_PRESETS: readonly Preset[] = ['omx', 'omc', 'gstack', 'vision', 'rtk']
 const RTK_REQUESTED_MARKER = join('.agent', '.rtk-requested')
 
 function parsePresets(withFlag: string | undefined): Preset[] {
@@ -302,7 +300,6 @@ async function runHooksRecovery(
     normalizeGlobalCodexHooksFile(
       codexHooksPath,
       {
-        contextModeBinary: resolveBinaryOnPath('context-mode'),
         nodeBinary: process.execPath,
       },
       options,
@@ -638,35 +635,10 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
     }
 
     // CI runners (GitHub Actions, etc.) set CI=true but don't have optional
-    // developer-workstation tools (omx, gstack, rtk, context-mode) available.
+    // developer-workstation tools (omx, gstack, rtk) available.
     // Failures from these installations must not fail the postinstall in that
     // context.
     const isCiEnvironment = process.env.CI === 'true' || process.env.CI === '1'
-
-    if (process.env.WP_SKIP_CONTEXT_MODE === '1') {
-      console.warn(
-        '  context-mode: ⚠ WP_SKIP_CONTEXT_MODE=1 — skipping. context-mode provides ctx_* context reduction and recall lanes.',
-      )
-    } else if (isCiEnvironment && presets.includes('context-mode')) {
-      console.log('  context-mode: - skipped (CI environment)')
-    } else if (presets.includes('context-mode')) {
-      const contextModeResult = ensureContextMode({
-        repoRoot: consumer.repoRoot,
-        options,
-      })
-      console.log(
-        `  context-mode codex features: ${contextModeResult.codexFeatures.action === 'identical' ? 'already configured' : contextModeResult.codexFeatures.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.codexFeatures.targetPath}`,
-      )
-      console.log(
-        `  context-mode opencode config: ${contextModeResult.opencodeConfig.action === 'identical' ? 'already configured' : contextModeResult.opencodeConfig.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.opencodeConfig.targetPath}`,
-      )
-      console.log(
-        `  context-mode codex hooks: ${contextModeResult.codexGlobalHooks.action === 'identical' ? 'already path-stable' : contextModeResult.codexGlobalHooks.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓ path-stable'} ${contextModeResult.codexGlobalHooks.targetPath}`,
-      )
-      console.log(
-        `  context-mode claude hooks: ${contextModeResult.claudeGlobalHooks.action === 'identical' ? 'already path-stable' : contextModeResult.claudeGlobalHooks.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓ path-stable'} ${contextModeResult.claudeGlobalHooks.targetPath}`,
-      )
-    }
 
     if (isCiEnvironment) {
       console.log('  codex cli: - skipped (CI environment)')
@@ -1249,9 +1221,8 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
         '',
         'Ownership lanes:',
         '  Lane 1 wp_*   blueprint · audit · quality',
-        '  Lane 2 ctx_*  context-mode (context reduction)',
-        '  Lane 3 rtk    shell-tool token filtering',
-        '  Lane 4 gstack interactive workflows',
+        '  Lane 2 rtk    shell-tool token filtering',
+        '  Lane 3 gstack interactive workflows',
       ].join('\n'),
     )
 

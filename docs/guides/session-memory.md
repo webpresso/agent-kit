@@ -61,4 +61,4 @@ FTS tables:
 
 ## Search fallback
 
-The store uses a three-tier fallback adapted from context-mode's `searchWithFallback` design: porter FTS first, trigram FTS second, and an IDF-weighted Levenshtein pass last. The implementation is TypeScript and local to agent-kit; the algorithm credit is preserved in source comments.
+The store uses a three-tier fallback: porter FTS first, trigram FTS second, and an IDF-weighted Levenshtein pass last. The implementation is TypeScript and local to agent-kit.

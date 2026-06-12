@@ -1,8 +1,7 @@
 /**
  * WP_ROUTING_BLOCK — XML routing instruction injected into every session
  * via SessionStart `additionalContext`. Tells Claude to prefer wp_* MCP tools
- * over raw shell commands for dev-workflow operations. Context-mode owns ctx_*
- * nudging when that plugin is installed.
+ * over raw shell commands for dev-workflow operations.
  */
 export const WP_ROUTING_BLOCK: string = `<wp_routing>
   <description>
@@ -11,7 +10,6 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
     If a wp_* MCP tool is stale or unavailable, use the matching direct wp CLI command.
     Never invoke wp through package-manager wrappers such as bun run wp, pnpm run wp,
     npm run wp, yarn wp, or vp run wp.
-    If context-mode plugin routing is present, let it own ctx_* data-processing nudges.
     These tools return structured, summary-first results and keep output concise.
   </description>
 
@@ -106,7 +104,6 @@ export const WP_ROUTING_BLOCK: string = `<wp_routing>
 
   <ownership_boundary>
     <rule>Agent-kit owns wp_* dev-workflow routing here.</rule>
-    <rule>Context-mode owns ctx_* routing when that plugin is installed.</rule>
   </ownership_boundary>
 
   <hook_diagnostics>

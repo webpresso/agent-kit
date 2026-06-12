@@ -181,10 +181,10 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     // assert while restoring the caller's value after each test.
     delete process.env.CI
     const fakeBinDir = join(repo, 'bin')
-    const fakeContextMode = join(fakeBinDir, 'context-mode')
+    const fakeOmx = join(fakeBinDir, 'omx')
     mkdirSync(fakeBinDir, { recursive: true })
-    writeFileSync(fakeContextMode, '#!/usr/bin/env sh\necho 1.2.3\n', 'utf8')
-    chmodSync(fakeContextMode, 0o755)
+    writeFileSync(fakeOmx, '#!/usr/bin/env sh\necho 1.2.3\n', 'utf8')
+    chmodSync(fakeOmx, 0o755)
     process.env.PATH = `${fakeBinDir}:${originalPath ?? ''}`
     spawnSyncMock.mockClear()
     spawnMock.mockClear()
@@ -613,10 +613,6 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(existsSync(join(repo, '.cursor', 'rules'))).toBe(true)
     // .windsurf/skills now hosts copied skills
     expect(existsSync(join(repo, '.windsurf', 'skills'))).toBe(true)
-    // context-mode is part of the default workstation lane, so normal setup
-    // writes the shared OpenCode config without requiring `--with context-mode`.
-    expect(existsSync(join(repo, 'opencode.json'))).toBe(true)
-    expect(readFileSync(join(repo, 'opencode.json'), 'utf8')).toContain('context-mode')
     // agent-hooks scaffolder writes hook config
     expect(existsSync(join(repo, '.claude', 'settings.json'))).toBe(true)
     expect(existsSync(join(repo, '.codex', 'hooks.json'))).toBe(true)
@@ -766,10 +762,10 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
     process.env.CODEX_HOME = join(repo, '.codex-home')
     process.env.HOME = join(repo, '.home')
     const fakeBinDir = join(repo, 'bin')
-    const fakeContextMode = join(fakeBinDir, 'context-mode')
+    const fakeOmx = join(fakeBinDir, 'omx')
     mkdirSync(fakeBinDir, { recursive: true })
-    writeFileSync(fakeContextMode, '#!/usr/bin/env sh\necho 1.2.3\n', 'utf8')
-    chmodSync(fakeContextMode, 0o755)
+    writeFileSync(fakeOmx, '#!/usr/bin/env sh\necho 1.2.3\n', 'utf8')
+    chmodSync(fakeOmx, 0o755)
     process.env.PATH = `${fakeBinDir}:${originalPath ?? ''}`
     spawnSyncMock.mockClear()
     spawnMock.mockClear()
@@ -805,7 +801,6 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
     await runInit({ cwd: repo, yes: true }, { stdout: silentStdout })
     const allOutput = logLines.join('\n')
     expect(allOutput).toContain('wp_*')
-    expect(allOutput).toContain('ctx_*')
     expect(allOutput).toContain('rtk')
     expect(allOutput).toContain('gstack')
   })
@@ -848,7 +843,6 @@ describe('DX output: lane framing and next-steps block', { timeout: 15_000 }, ()
     await runInit({ cwd: repo, yes: true, 'dry-run': true }, { stdout: silentStdout })
     const allOutput = logLines.join('\n')
     expect(allOutput).toContain('wp_*')
-    expect(allOutput).toContain('ctx_*')
   })
 })
 

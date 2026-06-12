@@ -158,7 +158,6 @@ agent-rules/agent-guide.md
 agent-rules/blueprint-scoping.md
 agent-rules/changeset-release.md
 agent-rules/cmd-execution.md
-agent-rules/context-mode-routing.md
 agent-rules/extraction-parity.md
 agent-rules/generated-code-governance.md
 agent-rules/gstack-routing.md
@@ -246,7 +245,6 @@ agent-rules/agent-guide.md
 agent-rules/blueprint-scoping.md
 agent-rules/changeset-release.md
 agent-rules/cmd-execution.md
-agent-rules/context-mode-routing.md
 agent-rules/engineering-principles.md
 agent-rules/extraction-parity.md
 agent-rules/generated-code-governance.md

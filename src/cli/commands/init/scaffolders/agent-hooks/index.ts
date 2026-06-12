@@ -24,7 +24,6 @@ import type { CodexAppServerApi } from '#codex/app-server/types.js'
 import {
   normalizeGlobalCodexHooksFile,
   resolveInstalledOmxHookScriptPath,
-  resolveBinaryOnPath,
 } from '#cli/commands/init/scaffolders/agent-hooks/codex-global-normalize'
 import { isPresetOwnedGlobalCodexHook } from './codex-global-ownership.js'
 import { CLAUDE_PLUGIN_ID } from '#cli/commands/init/scaffolders/claude-plugin/index.js'
@@ -404,7 +403,7 @@ function withClaudeWorktreeSettings(
 // ── Codex CLI (.codex/hooks.json) ────────────────────────────────────────────
 // Schema is wrapped under top-level `hooks` (Codex docs: developers.openai.com/codex/hooks).
 // Codex can run hooks for Bash, apply_patch, and MCP tool calls. Keep MCP
-// routing visible to the guard so ctx/context-mode shells that wrap quality
+// routing visible to the guard so bounded shell wrappers that wrap quality
 // commands are denied before execution instead of silently bypassing wp_* MCPs.
 // File edits go through apply_patch; "Edit"/"Write" are accepted matcher aliases.
 
@@ -943,7 +942,6 @@ export async function scaffoldAgentHooks(
   const codexNormalization = normalizeGlobalCodexHooksFile(
     codexHooksPath,
     {
-      contextModeBinary: resolveBinaryOnPath('context-mode'),
       nodeBinary: process.execPath,
       omxScriptPath: resolveInstalledOmxHookScriptPath(),
     },

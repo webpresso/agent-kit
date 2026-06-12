@@ -407,7 +407,6 @@ if (import.meta.main) {
     /GH_PACKAGES_TOKEN/,
     /\/Users\/ozby/,
     /~\/\.claude/,
-    /ozby\/context-mode/,
   ])
 
   results.push(

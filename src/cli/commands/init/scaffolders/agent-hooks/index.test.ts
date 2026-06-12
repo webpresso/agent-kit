@@ -768,7 +768,7 @@ describe('scaffoldAgentHooks', () => {
                 eventName: 'pre_tool_use',
                 handlerType: 'command',
                 matcher: 'Bash',
-                command: 'context-mode hook codex pretooluse',
+                command: 'node "/tmp/legacy-codex-hook.js"',
                 timeoutSec: 5,
                 statusMessage: null,
                 sourcePath: globalHooksPath,
@@ -813,7 +813,7 @@ describe('scaffoldAgentHooks', () => {
                 eventName: 'pre_tool_use',
                 handlerType: 'command',
                 matcher: 'Bash',
-                command: 'context-mode hook codex pretooluse',
+                command: 'node "/tmp/legacy-codex-hook.js"',
                 timeoutSec: 5,
                 statusMessage: null,
                 sourcePath: globalHooksPath,
@@ -1990,7 +1990,7 @@ describe('plugin-native invariants — .claude/settings.json', () => {
     await import('node:fs/promises').then((fs) => fs.rm(repoRoot, { recursive: true, force: true }))
   })
 
-  it('generated settings.json contains no context-mode hook commands', async () => {
+  it('generated settings.json contains no legacy external hook commands', async () => {
     await scaffoldAgentHooks({ repoRoot, options: {} })
 
     const settings = JSON.parse(
@@ -2002,8 +2002,8 @@ describe('plugin-native invariants — .claude/settings.json', () => {
     )
 
     for (const command of allCommands) {
-      expect(command).not.toContain('context-mode hook')
-      expect(command).not.toContain('npx context-mode')
+      expect(command).not.toContain('pretooluse.mjs')
+      expect(command).not.toContain('.claude/plugins/cache')
     }
   })
 

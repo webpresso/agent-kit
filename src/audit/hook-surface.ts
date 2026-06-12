@@ -16,7 +16,7 @@
  *
  * Known rewriters (hardcoded, expandable):
  *   - `rtk hook claude` → Bash rewriter
- *   - any hook path ending in `pretooluse.mjs` that is NOT a passthrough
+ *   - any hook path ending in `pretooluse.mjs`
  */
 
 import { existsSync, readFileSync } from 'node:fs'
@@ -78,12 +78,11 @@ interface ParsedSettings {
 
 /**
  * Determines the canonical owner of a hook command using priority-ordered
- * pattern matching. Returns one of: 'webpresso', 'context-mode', 'omx',
+ * pattern matching. Returns one of: 'webpresso', 'omx',
  * 'rtk', 'gstack', or 'unknown'.
  */
 export function extractOwner(command: string): string {
   if (/\bwp[-_][a-z]/.test(command)) return 'webpresso'
-  if (command.includes('context-mode')) return 'context-mode'
   if (/omx|oh-my-codex/.test(command)) return 'omx'
   if (/\brtk\b/.test(command)) return 'rtk'
   if (/gstack|check-gstack/.test(command)) return 'gstack'
@@ -141,9 +140,8 @@ function isRewriter(command: string): boolean {
   // RTK rewrites Bash input — canonical rewriter
   if (command.includes('rtk hook claude')) return true
 
-  // context-mode pretooluse hook rewrites input unless explicitly passthrough.
-  // We cannot read the hook's internals, so we flag any pretooluse.mjs
-  // binding conservatively.
+  // PreToolUse script hooks can rewrite input. We cannot read the hook's
+  // internals here, so we flag any pretooluse.mjs binding conservatively.
   if (command.endsWith('pretooluse.mjs')) return true
   if (command.includes('/pretooluse.mjs')) return true
 

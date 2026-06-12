@@ -154,14 +154,6 @@ function auditPackedSurface(root: string, violations: RepoAuditViolation[]): num
     }
   }
 
-  checked += 1
-  if (packedManifestListsContextMode(packedManifest)) {
-    violations.push({
-      file: 'package.json',
-      message: 'Published npm tarball metadata must not list context-mode as a dependency',
-    })
-  }
-
   return checked
 }
 
@@ -186,24 +178,6 @@ function computePackedManifest(
     ? readWorkspaceCatalogs(workspacePath)
     : { catalog: undefined, catalogs: undefined }
   return createPackedManifest(manifest, workspaceCatalogs)
-}
-
-const PACKED_DEPENDENCY_SECTIONS = [
-  'dependencies',
-  'optionalDependencies',
-  'peerDependencies',
-  'devDependencies',
-] as const
-
-function packedManifestListsContextMode(packedManifest: Record<string, unknown>): boolean {
-  return PACKED_DEPENDENCY_SECTIONS.some((section) => {
-    const deps = packedManifest[section]
-    return (
-      typeof deps === 'object' &&
-      deps !== null &&
-      Object.prototype.hasOwnProperty.call(deps, 'context-mode')
-    )
-  })
 }
 
 function readManifest(

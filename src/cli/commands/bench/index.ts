@@ -38,7 +38,7 @@ export function getBenchSessionMemoryCommandHelpText(): string {
     'Options:',
     '  --scenario <id>     Scenario id or "all" (default: all)',
     '  --variant <id>      Single variant id to run',
-    '  --all-variants      Run baseline, context-mode, v1, and v2',
+    '  --all-variants      Run baseline, v1, and v2',
     '  --dry-run           Validate manifest, scenarios, and env without API calls',
     '  --trials <n>        Trials per cell',
     '  --model <name>      Pricing model alias to use for cost math',
@@ -57,7 +57,7 @@ export function registerBenchCommand(cli: CAC): void {
     .command('bench <subcommand>', getBenchSessionMemoryHelpText())
     .option('--scenario <id>', 'Scenario id or "all"', { default: 'all' })
     .option('--variant <id>', 'Single variant id to run')
-    .option('--all-variants', 'Run baseline, context-mode, v1, and v2')
+    .option('--all-variants', 'Run baseline, v1, and v2')
     .option('--dry-run', 'Validate manifest, scenarios, and env without API calls')
     .option('--trials <n>', 'Trials per cell')
     .option('--model <name>', 'Pricing model alias to use for cost math')

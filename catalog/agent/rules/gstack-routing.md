@@ -23,9 +23,8 @@ tooling. It is **lane 4** in the webpresso ownership model:
 | Lane | Owner | Surface |
 | ---- | ----- | ------- |
 | 1 | webpresso | `wp_*` dev-workflow (blueprint execution, audits, quality) |
-| 2 | context-mode | `ctx_*` (context reduction, knowledge-base indexing) |
-| 3 | rtk | shell-tool output filtering for non-quality-engine commands |
-| **4** | **gstack** | **interactive/browser workflows, skill UX, CEO/design reviews** |
+| 2 | rtk | shell-tool output filtering for non-quality-engine commands |
+| **3** | **gstack** | **interactive/browser workflows, skill UX, CEO/design reviews** |
 
 ## When to invoke gstack
 
@@ -46,7 +45,6 @@ Do not invoke gstack for:
 
 - Running tests, lint, typecheck, or audits → use `wp_test`, `wp_lint`,
   `wp_typecheck`, `wp_qa`, `wp_audit`.
-- Searching previously indexed content → use `ctx_search`.
 - Shell output filtering → use `rtk`.
 
 ## How gstack is installed
@@ -68,16 +66,15 @@ and follow the setup instructions.
 - Never import gstack internals from `wp` CLI code.
 - Never wire gstack into webpresso's hook chain as a first-class hook
   (gstack has its own lifecycle; hooks are installed by `./setup --team`).
-- Keep lanes 1-3 (`wp_*`, `ctx_*`, `rtk *`) as independent routing
-  surfaces; lane 4 is advisory, not the primary control surface for
+- Keep lanes 1-2 (`wp_*`, `rtk *`) as independent routing
+  surfaces; lane 3 is advisory, not the primary control surface for
   dev-workflow operations.
 
 ## Ownership boundary
 
 - webpresso owns `wp_*` dev-workflow routing.
-- context-mode owns `ctx_*` nudges when that plugin is installed.
 - rtk owns shell-tool output filtering for the long-tail command surface.
-- **gstack owns lane 4.** webpresso defers to it there; it does not
+- **gstack owns lane 3.** webpresso defers to it there; it does not
   compete, replicate, or absorb it.
 - `.omx` is runtime/state, not a direct hook surface.
 

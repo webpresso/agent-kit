@@ -25,7 +25,7 @@ This command turns "please fix it well" into an enforceable workflow: reproduce,
 
 1. **Root cause, not symptom.** Trace the failure to the invariant that actually broke. Do not patch callers when the owner is fixable.
 2. **Loud failures, no silent fallbacks.** No default shims, sentinel returns, or catch-and-continue behavior that hides missing config, bad state, or broken boundaries.
-3. **Use the repo's real execution surface.** Prefer repo-owned wrappers and injected routing guidance over host-specific tool assumptions. If the repo exposes quality wrappers, use them. If context-mode routing is injected, follow it for large-output inspection.
+3. **Use the repo's real execution surface.** Prefer repo-owned wrappers and injected routing guidance over host-specific tool assumptions. If the repo exposes quality wrappers, use them. Use bounded inspection paths for large-output investigation.
 4. **Regression proof is mandatory.** Add or strengthen a test or other reliable proof that would fail against the old behavior.
 5. **Raising timeouts is not a fix.** If a timeout fires, investigate the bottleneck. Only raise a bound when the repo already documents that workload and you can cite measurement.
 6. **Zero suppressions, zero papering over.** No lint disables, ts-ignore, compat aliases, or "temporary" branches to sneak the fix through.

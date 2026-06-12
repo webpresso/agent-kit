@@ -13,9 +13,9 @@ bootstrap.
 - **Default shared Webpresso skills:** `fix`, `verify`, `testing-philosophy`,
   `plan-refine`, `pll`, and `best-practice-research` are projected into
   supported host-visible surfaces by default.
-- **Default workstation presets:** `omx`, `omc`, `gstack`, `vision`, `rtk`, and
-  `context-mode` are requested by default and degrade when the matching host or
-  auth is missing.
+- **Default workstation presets:** `omx`, `omc`, `gstack`, `vision`, and `rtk`
+  are requested by default and degrade when the matching host or auth is
+  missing.
 
 Most repos should only run:
 
@@ -39,7 +39,6 @@ Use the same `--with` flow for non-default Webpresso skills such as
 
 | Name | Default behavior | Adds | License |
 | --- | --- | --- | --- |
-| [`context-mode`](https://github.com/mksglu/context-mode) | In the default preset set; skipped in CI or when `WP_SKIP_CONTEXT_MODE=1`. | Context/window reduction tools and `ctx_*` recall lanes. | Elastic-2.0 (source-available) |
 | [`playwright-mcp`](https://github.com/microsoft/playwright-mcp) | Opt-in. | Browser automation for agent QA. | Apache-2.0 |
 | `lore-commits` | Opt-in. | Structured commit-message enforcement. | MIT (this repo) |
 | `example-skill` | Opt-in. | A tiny hello-world skill for smoke tests. | MIT (this repo) |
@@ -50,8 +49,7 @@ Use the same `--with` flow for non-default Webpresso skills such as
 | `vision` | In the default preset set. | Starter `VISION.md` and vision audit support. | MIT (this repo) |
 
 See [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) for vendored catalog skills and
-integration license notes. The published npm package does not bundle `context-mode`; setup wires it as an
-external integration instead.
+integration license notes.
 
 ## Default bootstrap
 

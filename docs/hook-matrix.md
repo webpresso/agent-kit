@@ -11,7 +11,6 @@ currently scaffolds and verifies in this repo.
 ## Routing ownership
 
 - Agent-kit owns `wp_*` dev-workflow routing.
-- context-mode owns `ctx_*` routing when that plugin is installed.
 - `.omx/` is runtime/state only. It is not a direct hook surface.
 
 ## Claude Code
@@ -80,16 +79,6 @@ concise warning and leaves the hooks reviewable in Codex with `/hooks`.
   generated `Edit|Write` hook surface
 - webpresso does **not** treat the docs.rs `codex-app-server-protocol` crate as
   an official OpenAI distribution
-
-## context-mode
-
-**Ownership rule**
-
-- If context-mode is installed, it owns `ctx_*` routing nudges.
-- Agent-kit does not duplicate those `ctx_*` instructions in its own routing
-  block.
-- Coexistence is enforced by `wp audit hook-surface`: shared events are normal,
-  but only one rewriter may own a given matcher at a time.
 
 ## MCP redirect guarantee
 

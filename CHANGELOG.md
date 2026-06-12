@@ -335,7 +335,6 @@
 - 31484d9: Add public secret-manager parity commands and enforce local-only parent-roadmap rules with cross-repo blueprint linking via `cross_repo_depends_on` plus GitHub links.
 - 78ab6cb: Stabilize secret-gated CI and Worker MCP tools, decouple `wp config secrets`
   from the framework runtime package, harden pretool routing so env-prefixed
-  context-mode test commands are forced through `wp_test`, and refresh public
   command-boundary docs.
 
 ### Patch Changes
@@ -918,13 +917,11 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
 
 ### Patch Changes
 
-- 35f243d: Teach `wp hooks doctor` to verify installed Codex/OpenCode/Claude host surfaces, add a gated real-host smoke suite for Codex/OpenCode, and include `agent-kit` alongside `context-mode` in generated `opencode.json` MCP config.
 
 ## 0.8.2
 
 ### Patch Changes
 
-- dfae682: Add a `context-mode` setup preset that patches Codex's `config.toml` and `hooks.json` plus project-local `opencode.json`, so `wp setup --with context-mode` wires context-mode for both Codex CLI and OpenCode.
 
 ## 0.8.1
 
@@ -1126,7 +1123,6 @@ dev:link --consumer <your-repo-root>` from this repo creates it.
   `just test`, `oxlint`, `tsc`, and other dev-workflow shell commands and
   redirect them to the corresponding `wp*\*` MCP tools.
 
-  Matches context-mode's own plugin precedent (their `hooks/hooks.json`
   registers PreToolUse for Bash, WebFetch, Read, Grep, Agent, and
   `mcp__*` matchers).
 

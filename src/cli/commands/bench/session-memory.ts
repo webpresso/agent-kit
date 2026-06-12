@@ -93,7 +93,7 @@ type SessionMemoryReport = {
   }>
 }
 
-type BenchVariant = 'baseline' | 'context-mode' | 'v1' | 'v2'
+type BenchVariant = 'baseline' | 'v1' | 'v2'
 
 export type RunBenchSessionMemoryInput = {
   allVariants?: boolean
@@ -145,7 +145,7 @@ type RuntimeModules = {
 
 export type RunBenchSessionMemoryDeps = RuntimeModules
 
-const DEFAULT_VARIANTS: readonly BenchVariant[] = ['baseline', 'context-mode', 'v1', 'v2']
+const DEFAULT_VARIANTS: readonly BenchVariant[] = ['baseline', 'v1', 'v2']
 const DEFAULT_MODEL = 'claude-sonnet-4-5'
 const BENCH_RUNTIME_MODULE_PATHS = [
   ['scripts', 'bench', 'lib', 'manifest.ts'],
@@ -311,8 +311,6 @@ function pluginDirForVariant(cwd: string, variant: BenchVariant, env: NodeJS.Pro
   switch (variant) {
     case 'baseline':
       return env.BENCH_PLUGIN_BASELINE ?? cwd
-    case 'context-mode':
-      return env.BENCH_PLUGIN_CONTEXT_MODE ?? cwd
     case 'v1':
       return env.BENCH_PLUGIN_V1 ?? cwd
     case 'v2':
@@ -323,7 +321,6 @@ function pluginDirForVariant(cwd: string, variant: BenchVariant, env: NodeJS.Pro
 function apiKeyMapFromEnv(env: NodeJS.ProcessEnv): Record<string, string | undefined> {
   return {
     ANTHROPIC_API_KEY_BASELINE: env.ANTHROPIC_API_KEY_BASELINE ?? env.ANTHROPIC_API_KEY,
-    ANTHROPIC_API_KEY_CONTEXT_MODE: env.ANTHROPIC_API_KEY_CONTEXT_MODE ?? env.ANTHROPIC_API_KEY,
     ANTHROPIC_API_KEY_V1: env.ANTHROPIC_API_KEY_V1,
     ANTHROPIC_API_KEY_V2: env.ANTHROPIC_API_KEY_V2,
   }

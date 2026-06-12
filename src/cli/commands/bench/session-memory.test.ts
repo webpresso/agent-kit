@@ -277,13 +277,12 @@ describe('wp bench session-memory', () => {
           ANTHROPIC_API_KEY: 'test-key',
           ANTHROPIC_API_KEY_V1: 'v1-key',
           ANTHROPIC_API_KEY_V2: 'v2-key',
-          ANTHROPIC_API_KEY_CONTEXT_MODE: 'ctx-key',
         },
       },
       deps,
     )
 
-    expect(runCell).toHaveBeenCalledTimes(8)
+    expect(runCell).toHaveBeenCalledTimes(6)
   })
 
   it('aborts cleanly when manifest verification fails', async () => {
@@ -311,7 +310,6 @@ describe('wp bench session-memory', () => {
       cacheDisclaimer: 'operator-asserted workspace isolation',
       keyEnvNames: [
         'ANTHROPIC_API_KEY_BASELINE',
-        'ANTHROPIC_API_KEY_CONTEXT_MODE',
         'ANTHROPIC_API_KEY_V1',
         'ANTHROPIC_API_KEY_V2',
       ],
@@ -328,7 +326,6 @@ describe('wp bench session-memory', () => {
           env: {
             BENCH_WORKSPACE_MODE: 'isolated',
             ANTHROPIC_API_KEY_BASELINE: 'a',
-            ANTHROPIC_API_KEY_CONTEXT_MODE: 'b',
             ANTHROPIC_API_KEY_V1: 'c',
             ANTHROPIC_API_KEY_V2: 'd',
           },
@@ -345,7 +342,6 @@ describe('wp bench session-memory', () => {
       cacheDisclaimer: 'operator-asserted workspace isolation',
       keyEnvNames: [
         'ANTHROPIC_API_KEY_BASELINE',
-        'ANTHROPIC_API_KEY_CONTEXT_MODE',
         'ANTHROPIC_API_KEY_V1',
         'ANTHROPIC_API_KEY_V2',
       ],
@@ -353,7 +349,6 @@ describe('wp bench session-memory', () => {
     }))
     deps.resolveWorkspaceIdentitiesFromEnv = vi.fn(() => [
       { apiKeyEnv: 'ANTHROPIC_API_KEY_BASELINE', workspaceId: 'ws-a' },
-      { apiKeyEnv: 'ANTHROPIC_API_KEY_CONTEXT_MODE', workspaceId: 'ws-b' },
       { apiKeyEnv: 'ANTHROPIC_API_KEY_V1', workspaceId: 'ws-c' },
       { apiKeyEnv: 'ANTHROPIC_API_KEY_V2', workspaceId: 'ws-d' },
     ])
@@ -364,11 +359,9 @@ describe('wp bench session-memory', () => {
         env: {
           BENCH_WORKSPACE_MODE: 'isolated',
           ANTHROPIC_API_KEY_BASELINE: 'a',
-          ANTHROPIC_API_KEY_CONTEXT_MODE: 'b',
           ANTHROPIC_API_KEY_V1: 'c',
           ANTHROPIC_API_KEY_V2: 'd',
           ANTHROPIC_WORKSPACE_ID_BASELINE: 'ws-a',
-          ANTHROPIC_WORKSPACE_ID_CONTEXT_MODE: 'ws-b',
           ANTHROPIC_WORKSPACE_ID_V1: 'ws-c',
           ANTHROPIC_WORKSPACE_ID_V2: 'ws-d',
         },
@@ -386,7 +379,6 @@ describe('wp bench session-memory', () => {
       cacheDisclaimer: null,
       keyEnvNames: [
         'ANTHROPIC_API_KEY_BASELINE',
-        'ANTHROPIC_API_KEY_CONTEXT_MODE',
         'ANTHROPIC_API_KEY_V1',
         'ANTHROPIC_API_KEY_V2',
       ],
@@ -394,7 +386,6 @@ describe('wp bench session-memory', () => {
     }))
     deps.resolveWorkspaceIdentitiesFromEnv = vi.fn(() => [
       { apiKeyEnv: 'ANTHROPIC_API_KEY_BASELINE', workspaceId: 'ws-a' },
-      { apiKeyEnv: 'ANTHROPIC_API_KEY_CONTEXT_MODE', workspaceId: 'ws-b' },
       { apiKeyEnv: 'ANTHROPIC_API_KEY_V1', workspaceId: 'ws-c' },
       { apiKeyEnv: 'ANTHROPIC_API_KEY_V2', workspaceId: 'ws-d' },
     ])
@@ -406,11 +397,9 @@ describe('wp bench session-memory', () => {
           BENCH_WORKSPACE_MODE: 'isolated',
           ANTHROPIC_ADMIN_KEY: 'admin-key',
           ANTHROPIC_API_KEY_BASELINE: 'a',
-          ANTHROPIC_API_KEY_CONTEXT_MODE: 'b',
           ANTHROPIC_API_KEY_V1: 'c',
           ANTHROPIC_API_KEY_V2: 'd',
           ANTHROPIC_WORKSPACE_ID_BASELINE: 'ws-a',
-          ANTHROPIC_WORKSPACE_ID_CONTEXT_MODE: 'ws-b',
           ANTHROPIC_WORKSPACE_ID_V1: 'ws-c',
           ANTHROPIC_WORKSPACE_ID_V2: 'ws-d',
         },
@@ -421,8 +410,7 @@ describe('wp bench session-memory', () => {
     expect(deps.validateKnownAnthropicWorkspaces).toHaveBeenCalledWith(
       [
         { apiKeyEnv: 'ANTHROPIC_API_KEY_BASELINE', workspaceId: 'ws-a' },
-        { apiKeyEnv: 'ANTHROPIC_API_KEY_CONTEXT_MODE', workspaceId: 'ws-b' },
-        { apiKeyEnv: 'ANTHROPIC_API_KEY_V1', workspaceId: 'ws-c' },
+          { apiKeyEnv: 'ANTHROPIC_API_KEY_V1', workspaceId: 'ws-c' },
         { apiKeyEnv: 'ANTHROPIC_API_KEY_V2', workspaceId: 'ws-d' },
       ],
       'admin-key',

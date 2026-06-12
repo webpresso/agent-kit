@@ -922,13 +922,12 @@ async function checkCodexHost(): Promise<DoctorCheck> {
   }
 
   const hasAgentKit = result.stdout.includes('webpresso')
-  const hasContextMode = result.stdout.includes('context-mode')
-  return hasAgentKit && hasContextMode
-    ? { name: 'Codex host integration', ok: true, detail: 'webpresso + context-mode MCP visible' }
+  return hasAgentKit
+    ? { name: 'Codex host integration', ok: true, detail: 'webpresso MCP visible' }
     : {
         name: 'Codex host integration',
         ok: false,
-        detail: `missing MCP entries (webpresso=${hasAgentKit}, context-mode=${hasContextMode})`,
+        detail: `missing MCP entry (webpresso=${hasAgentKit})`,
       }
 }
 
@@ -949,28 +948,26 @@ async function checkOpenCodeHost(cwd = process.cwd()): Promise<DoctorCheck> {
 
   const stdout = stripAnsi(result.stdout)
   const hasAgentKit = stdout.includes('webpresso')
-  const hasContextMode = stdout.includes('context-mode')
   const agentKitConnected = /✓\s+webpresso\b/.test(stdout)
-  const contextModeConnected = /✓\s+context-mode\b/.test(stdout)
 
-  if (!hasAgentKit || !hasContextMode) {
+  if (!hasAgentKit) {
     return {
       name: 'OpenCode host integration',
       ok: false,
-      detail: `missing MCP entries (webpresso=${hasAgentKit}, context-mode=${hasContextMode})`,
+      detail: `missing MCP entry (webpresso=${hasAgentKit})`,
     }
   }
 
-  return agentKitConnected && contextModeConnected
+  return agentKitConnected
     ? {
         name: 'OpenCode host integration',
         ok: true,
-        detail: 'webpresso + context-mode MCP connected',
+        detail: 'webpresso MCP connected',
       }
     : {
         name: 'OpenCode host integration',
         ok: false,
-        detail: `MCP not connected (webpresso=${agentKitConnected}, context-mode=${contextModeConnected})`,
+        detail: `MCP not connected (webpresso=${agentKitConnected})`,
       }
 }
 

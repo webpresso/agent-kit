@@ -1,4 +1,0 @@
----
-vp run: 0/0 cache hit (0%). (Run `vp run --last-details` for full details)
-
----STDERR---

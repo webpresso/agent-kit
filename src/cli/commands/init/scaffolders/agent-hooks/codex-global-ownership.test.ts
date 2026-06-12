@@ -10,21 +10,12 @@ function ownedHook(overrides: Record<string, unknown> = {}): Record<string, unkn
     handlerType: 'command',
     pluginId: null,
     sourcePath: EXPECTED_SOURCE_PATHS[0],
-    command: 'context-mode hook codex pretooluse',
+    command: 'node "/Users/test/.vite-plus/js_runtime/node/24.15.0/lib/node_modules/oh-my-codex/dist/scripts/codex-native-hook.js"',
     ...overrides,
   }
 }
 
 describe('isPresetOwnedGlobalCodexHook', () => {
-  it('rejects legacy context-mode global Codex hooks because the plugin owns them', () => {
-    expect(
-      isPresetOwnedGlobalCodexHook(
-        ownedHook({ command: 'context-mode hook codex sessionstart' }),
-        EXPECTED_SOURCE_PATHS,
-      ),
-    ).toBe(false)
-  })
-
   it('rejects raw OMX global Codex hooks after the hard cut', () => {
     expect(
       isPresetOwnedGlobalCodexHook(

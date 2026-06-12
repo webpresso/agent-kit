@@ -48,14 +48,12 @@ const DEFAULT_MODEL = process.env.BENCH_MODEL ?? 'unknown'
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 const ISOLATED_KEY_ENVS = [
   'ANTHROPIC_API_KEY_BASELINE',
-  'ANTHROPIC_API_KEY_CONTEXT_MODE',
   'ANTHROPIC_API_KEY_V1',
   'ANTHROPIC_API_KEY_V2',
 ] as const
 const SINGLE_WORKSPACE_KEY_ENVS = ['ANTHROPIC_API_KEY'] as const
 const ISOLATED_WORKSPACE_ID_ENVS = [
   'ANTHROPIC_WORKSPACE_ID_BASELINE',
-  'ANTHROPIC_WORKSPACE_ID_CONTEXT_MODE',
   'ANTHROPIC_WORKSPACE_ID_V1',
   'ANTHROPIC_WORKSPACE_ID_V2',
 ] as const
@@ -265,7 +263,7 @@ export function resolveWorkspaceIdentitiesFromEnv(
     const apiKeyEnv = ISOLATED_KEY_ENVS[index]
     if (!workspaceId || !apiKeyEnv) {
       throw new Error(
-        'Isolated mode requires ANTHROPIC_WORKSPACE_ID_BASELINE, ANTHROPIC_WORKSPACE_ID_CONTEXT_MODE, ANTHROPIC_WORKSPACE_ID_V1, and ANTHROPIC_WORKSPACE_ID_V2.',
+        'Isolated mode requires ANTHROPIC_WORKSPACE_ID_BASELINE, ANTHROPIC_WORKSPACE_ID_V1, and ANTHROPIC_WORKSPACE_ID_V2.',
       )
     }
 

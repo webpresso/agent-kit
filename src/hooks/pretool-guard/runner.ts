@@ -141,7 +141,7 @@ export function processValidation(inputJson: string): void {
         writeDenyDecision(decision.action.guidance)
         process.exit(0)
       } else if (decision.action.action === 'sandbox' && !routedCommand.alreadySandboxed) {
-        // Phase 2: Context-mode sandbox routing — fire only for raw tool calls.
+        // Phase 2: ctx sandbox routing — fire only for raw tool calls.
         // Commands already inside ctx_execute/ctx_batch_execute are already in
         // the requested sandbox; re-denying them creates a ctx_execute loop.
         writeDenyDecision(decision.action.guidance)

@@ -6,7 +6,7 @@
  * the patch tiny and deterministic: per-server upserts, no TOML parser
  * dependency, no edits to unrelated user config.
  *
- * Four managed blocks today:
+ * Three managed blocks today:
  *   1. `[mcp_servers.playwright]` — points at the npm-published Playwright
  *      MCP server through Vite+'s `vp dlx` facade.
  *   2. `[mcp_servers.webpresso]` — points at webpresso's own MCP server.
@@ -16,11 +16,7 @@
  *      time; the resolved absolute path is written into the codex config.
  *      When the unified-cli sibling cutover lands (`webpresso mcp serve`
  *      from a path-stable bin), this block collapses to a fixed `command`.
- *   3. `[mcp_servers.context-mode]` — points at the `context-mode` binary
- *      which is always on PATH after `wp setup` installs it globally. No
- *      path discovery needed: the block uses a fixed `command = "context-mode"`
- *      and relies on PATH stability, matching OpenCode's own registration.
- *   4. `[mcp_servers.context7]` plus `.mcp.json#mcpServers.context7` — point at
+ *   3. `[mcp_servers.context7]` plus `.mcp.json#mcpServers.context7` — point at
  *      Context7's hosted MCP endpoint with an env-backed `CONTEXT7_API_KEY`
  *      header. The value is supplied by agent-kit's selected secret provider
  *      through `with-secrets -- <agent>`; setup never reads or persists the raw
@@ -390,63 +386,6 @@ export function ensureCodexWebpressoMcp(
   mkdirSync(dirname(configPath), { recursive: true })
   writeFileSync(configPath, next, 'utf8')
   return { kind: 'codex-webpresso-mcp-written', path: configPath, entryPath }
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// context-mode MCP server registration
-// ────────────────────────────────────────────────────────────────────────────
-
-export const CONTEXT_MODE_MCP_SERVER_NAME = 'context-mode'
-export const CONTEXT_MODE_MCP_HEADER = `[mcp_servers.${CONTEXT_MODE_MCP_SERVER_NAME}]`
-export const CONTEXT_MODE_MCP_BLOCK = `${CONTEXT_MODE_MCP_HEADER}
-command = "${CONTEXT_MODE_MCP_SERVER_NAME}"
-`
-
-export function upsertContextModeMcpServer(raw: string): string {
-  const lines = raw.trimEnd().split(/\r?\n/)
-  const hasContent = raw.trim().length > 0
-  const start = lines.findIndex((line) => line.trim() === CONTEXT_MODE_MCP_HEADER)
-
-  if (start === -1) {
-    const prefix = hasContent ? `${raw.trimEnd()}\n\n` : ''
-    return `${prefix}${CONTEXT_MODE_MCP_BLOCK}`
-  }
-
-  let end = lines.length
-  for (let i = start + 1; i < lines.length; i += 1) {
-    if (lines[i]!.trim().startsWith('[')) {
-      end = i
-      break
-    }
-  }
-
-  return (
-    [
-      ...lines.slice(0, start),
-      ...CONTEXT_MODE_MCP_BLOCK.trimEnd().split('\n'),
-      ...lines.slice(end),
-    ].join('\n') + '\n'
-  )
-}
-
-export interface EnsureCodexContextModeMcpInput {
-  options: MergeOptions
-  /** Test seam. Defaults to `$CODEX_HOME/config.toml` or `~/.codex/config.toml`. */
-  configPath?: string
-}
-
-export function ensureCodexContextModeMcp(input: EnsureCodexContextModeMcpInput): MergeResult {
-  const configPath = input.configPath ?? defaultConfigPath()
-  if (input.options.dryRun) return { targetPath: configPath, action: 'skipped-dry' }
-
-  const existed = existsSync(configPath)
-  const existing = existed ? readFileSync(configPath, 'utf8') : ''
-  const next = upsertContextModeMcpServer(existing)
-  if (next === existing) return { targetPath: configPath, action: 'identical' }
-
-  mkdirSync(dirname(configPath), { recursive: true })
-  writeFileSync(configPath, next, 'utf8')
-  return { targetPath: configPath, action: existed ? 'overwritten' : 'created' }
 }
 
 // ────────────────────────────────────────────────────────────────────────────

@@ -105,7 +105,7 @@ describe('WP_ROUTING_BLOCK', () => {
 
   it('defines a single routing ownership boundary for ctx_* nudges', () => {
     expect(WP_ROUTING_BLOCK).toContain('<ownership_boundary>')
-    expect(WP_ROUTING_BLOCK).toContain('Context-mode owns ctx_* routing')
+    expect(WP_ROUTING_BLOCK).toContain('Agent-kit owns wp_* dev-workflow routing here.')
     expect(WP_ROUTING_BLOCK).not.toContain('<tool name="ctx_execute">')
   })
 
