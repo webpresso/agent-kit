@@ -23,7 +23,6 @@ If you just want to use the product, read:
 ## Current doc truths
 
 - The happy path is `wp setup`.
-- `context-mode` is in the default `wp setup` preset set, and setup skips it in CI or when `WP_SKIP_CONTEXT_MODE=1`.
 - `rtk` is in the default `wp setup` preset set, and setup skips it in CI or when `WP_SKIP_RTK=1`.
 - The default setup already includes the repo bootstrap.
 - Local setup assets resolve from `node_modules/@webpresso/agent-kit`.

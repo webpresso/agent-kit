@@ -24,7 +24,6 @@ type CodexHooksFile = {
 }
 
 export interface NormalizeGlobalCodexHooksOptions {
-  readonly contextModeBinary?: string | null
   readonly nodeBinary?: string | null
   readonly omxScriptPath?: string | null
 }
@@ -32,30 +31,6 @@ export interface NormalizeGlobalCodexHooksOptions {
 export const MANAGED_GLOBAL_CODEX_HOOK_DIRNAME = 'managed-hooks'
 export const MANAGED_OMX_GLOBAL_HOOK_BASENAME = 'wp-global-codex-omx-hook.sh'
 export const MANAGED_OMX_JSON_ONLY_GLOBAL_HOOK_BASENAME = 'wp-global-codex-omx-json-hook.sh'
-
-export const MANAGED_CONTEXT_MODE_GLOBAL_HOOK_BASENAMES = [
-  'wp-global-codex-context-mode-sessionstart.sh',
-  'wp-global-codex-context-mode-pretooluse.sh',
-  'wp-global-codex-context-mode-posttooluse.sh',
-  'wp-global-codex-context-mode-userpromptsubmit.sh',
-  'wp-global-codex-context-mode-stop.sh',
-  'wp-global-codex-context-mode-precompact.sh',
-  'wp-global-codex-context-mode-postcompact.sh',
-] as const
-
-const MANAGED_CONTEXT_MODE_GLOBAL_HOOK_BASENAME_SET = new Set<string>(
-  MANAGED_CONTEXT_MODE_GLOBAL_HOOK_BASENAMES,
-)
-
-const CONTEXT_MODE_CODEX_EVENTS = [
-  { event: 'SessionStart', subcommand: 'sessionstart' },
-  { event: 'PreToolUse', subcommand: 'pretooluse' },
-  { event: 'PostToolUse', subcommand: 'posttooluse' },
-  { event: 'UserPromptSubmit', subcommand: 'userpromptsubmit' },
-  { event: 'Stop', subcommand: 'stop' },
-  { event: 'PreCompact', subcommand: 'precompact' },
-  { event: 'PostCompact', subcommand: 'postcompact' },
-] as const
 
 type LauncherFile = {
   readonly path: string
@@ -201,42 +176,13 @@ export function normalizeGlobalCodexHooksJson(
   return { changed: true, value: { ...raw, hooks: nextHooks } }
 }
 
-function seedContextModeHooksFile(hooksPath: string, contextModeBinary: string): void {
-  const managedHooksDir = defaultManagedCodexHooksDir(hooksPath)
-  const hooks: HooksMap = {}
-  const launchers: LauncherFile[] = []
-
-  for (const { event, subcommand } of CONTEXT_MODE_CODEX_EVENTS) {
-    const scriptPath = join(managedHooksDir, contextModeLauncherBasename(subcommand))
-    hooks[event] = [{ hooks: [{ type: 'command', command: quoteShell(scriptPath) }] }]
-    launchers.push({
-      path: scriptPath,
-      content: renderShellLauncher([
-        quoteShell(contextModeBinary),
-        'hook',
-        'codex',
-        subcommand,
-        '"$@"',
-      ]),
-    })
-  }
-
-  writeManagedGlobalCodexLaunchers(launchers)
-  mkdirSync(dirname(hooksPath), { recursive: true })
-  writeFileSync(hooksPath, `${JSON.stringify({ hooks }, null, 2)}\n`, 'utf8')
-}
-
 export function normalizeGlobalCodexHooksFile(
   hooksPath: string,
   options: NormalizeGlobalCodexHooksOptions,
   mergeOptions: MergeOptions = {},
 ): MergeResult {
   if (mergeOptions.dryRun) return { targetPath: hooksPath, action: 'skipped-dry' }
-  if (!existsSync(hooksPath)) {
-    if (!options.contextModeBinary) return { targetPath: hooksPath, action: 'identical' }
-    seedContextModeHooksFile(hooksPath, options.contextModeBinary)
-    return { targetPath: hooksPath, action: 'created' }
-  }
+  if (!existsSync(hooksPath)) return { targetPath: hooksPath, action: 'identical' }
 
   const existing = readFileSync(hooksPath, 'utf8')
   const parsed = JSON.parse(existing) as CodexHooksFile
@@ -271,17 +217,6 @@ function normalizeGlobalCodexHookCommand(
 ): string | undefined {
   if (typeof command !== 'string') return command
   const trimmed = command.trim()
-
-  const managedContextModePath =
-    managedHooksDir && options.contextModeBinary
-      ? contextModeManagedLauncherPath(trimmed, managedHooksDir)
-      : null
-  if (managedContextModePath) {
-    return quoteShell(managedContextModePath)
-  }
-  if (options.contextModeBinary && /^context-mode\s+hook\s+codex\b/u.test(trimmed)) {
-    return `${quoteShell(options.contextModeBinary)}${trimmed.slice('context-mode'.length)}`
-  }
 
   if (managedHooksDir && options.nodeBinary) {
     const existingManagedLauncherBasename = extractManagedLauncherBasename(trimmed)
@@ -368,21 +303,6 @@ function launcherForCommand(
   options: NormalizeGlobalCodexHooksOptions,
   managedHooksDir: string,
 ): LauncherFile | null {
-  const contextModeSpec = parseContextModeHookCommand(command)
-  if (contextModeSpec && options.contextModeBinary) {
-    const path = join(managedHooksDir, contextModeLauncherBasename(contextModeSpec.subcommand))
-    return {
-      path,
-      content: renderShellLauncher([
-        quoteShell(options.contextModeBinary),
-        'hook',
-        'codex',
-        contextModeSpec.subcommand,
-        '"$@"',
-      ]),
-    }
-  }
-
   const managedLauncherBasename = extractManagedLauncherBasename(command)
   if (
     (managedLauncherBasename === MANAGED_OMX_GLOBAL_HOOK_BASENAME ||
@@ -465,12 +385,6 @@ ${execution}
 `
 }
 
-function contextModeManagedLauncherPath(command: string, managedHooksDir: string): string | null {
-  const parsed = parseContextModeHookCommand(command)
-  if (!parsed) return null
-  return join(managedHooksDir, contextModeLauncherBasename(parsed.subcommand))
-}
-
 function omxManagedLauncherPath(
   command: string,
   event: string,
@@ -478,17 +392,6 @@ function omxManagedLauncherPath(
 ): string | null {
   if (parseOmxHookCommand(command) === null) return null
   return join(managedHooksDir, omxManagedLauncherBasename(event))
-}
-
-function contextModeLauncherBasename(subcommand: string): string {
-  return `wp-global-codex-context-mode-${subcommand}.sh`
-}
-
-function parseContextModeHookCommand(command: string): { readonly subcommand: string } | null {
-  const trimmed = stripSingleShellQuotePair(command.trim())
-  const match = /^context-mode\s+hook\s+codex\s+([\w-]+)$/u.exec(trimmed)
-  if (!match?.[1]) return null
-  return { subcommand: match[1] }
 }
 
 function parseOmxHookCommand(
@@ -542,10 +445,6 @@ function takeLeadingShellToken(
     value: trimmed.slice(0, whitespaceIndex),
     rest: trimmed.slice(whitespaceIndex).trimStart(),
   }
-}
-
-export function isManagedContextModeGlobalLauncherBasename(basenameValue: string): boolean {
-  return MANAGED_CONTEXT_MODE_GLOBAL_HOOK_BASENAME_SET.has(basenameValue)
 }
 
 export function isManagedOmxGlobalLauncherBasename(basenameValue: string): boolean {

@@ -50,7 +50,7 @@ Follow the repo's current routing and command surface:
 
 - use repo-owned quality wrappers first
 - use injected quality-tool routing when present
-- use context-mode / large-output tooling when the repo instructs it
+- use bounded large-output tooling when the repo instructs it
 - reuse fresh logs instead of re-running broad commands just to inspect output
 
 ## Phase 0 — Scope and evidence map

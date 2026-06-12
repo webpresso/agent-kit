@@ -17,7 +17,7 @@ type ChunkRow = {
 
 type SearchTier = SessionMemorySearchResult['tier']
 
-// Search fallback is ported from context-mode's searchWithFallback design:
+// Search fallback uses a three-tier local ranking design:
 // porter FTS, then trigram FTS, then IDF-weighted Levenshtein.
 const OPTIMIZE_INTERVAL = 50
 

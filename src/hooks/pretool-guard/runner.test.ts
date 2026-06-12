@@ -140,7 +140,7 @@ describe.skipIf(!existsSync(BINARY))('pretool-guard binary integration', () => {
   it('ctx_execute build command + MCP ready → exit 0, passthrough without ctx loop', () => {
     writeMcpSentinel()
     const payload = JSON.stringify({
-      toolName: 'mcp__context_mode__ctx_execute',
+      toolName: 'ctx_execute',
       toolInput: {
         language: 'shell',
         code: 'cd /repo && vp run build 2>&1 | tail -160',

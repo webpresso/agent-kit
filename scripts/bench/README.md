@@ -30,7 +30,7 @@ Each run writes `scripts/bench/runs/<run-id>/report.md`.
 | Field | Meaning |
 | ----- | ------- |
 | `scenario` | Versioned scenario id, for example `debug-long-session` |
-| `variant` | `baseline`, `context-mode`, `v1`, or `v2` |
+| `variant` | `baseline`, `v1`, or `v2` |
 | `trials` | Number of executions per cell |
 | `status` | `ok`, `rate_limit`, or `spawn_failed` |
 | `cost_usd` | Aggregated USD cost for the cell |

@@ -195,17 +195,17 @@ const SAFE_PASSTHROUGH_PREFIXES = [
 ]
 
 const SANDBOX_PREFIXES: Array<{ prefix: string; guidance: string }> = [
-  { prefix: 'grep', guidance: 'Use ctx_batch_execute for large outputs' },
-  { prefix: 'find', guidance: 'Use ctx_batch_execute for large outputs' },
-  { prefix: 'cat', guidance: 'Use ctx_execute or ctx_batch_execute for large outputs' },
-  { prefix: 'tail', guidance: 'Use ctx_execute or ctx_batch_execute for large outputs' },
-  { prefix: 'head', guidance: 'Use ctx_execute or ctx_batch_execute for large outputs' },
-  { prefix: 'curl', guidance: 'Use ctx_execute or ctx_fetch_and_index' },
-  { prefix: 'wget', guidance: 'Use ctx_execute or ctx_fetch_and_index' },
-  { prefix: 'git log', guidance: 'Use ctx_execute_file or ctx_execute' },
-  { prefix: 'git diff', guidance: 'Use ctx_execute_file or ctx_execute' },
-  { prefix: 'git show', guidance: 'Use ctx_execute_file or ctx_execute' },
-  { prefix: 'vp run build', guidance: 'Use ctx_execute for build output' },
+  { prefix: 'grep', guidance: 'Use a bounded repo search tool for large outputs' },
+  { prefix: 'find', guidance: 'Use a bounded repo search tool for large outputs' },
+  { prefix: 'cat', guidance: 'Use bounded file reads for large outputs' },
+  { prefix: 'tail', guidance: 'Use bounded file reads for large outputs' },
+  { prefix: 'head', guidance: 'Use bounded file reads for large outputs' },
+  { prefix: 'curl', guidance: 'Use a bounded fetch path' },
+  { prefix: 'wget', guidance: 'Use a bounded fetch path' },
+  { prefix: 'git log', guidance: 'Use a bounded diff/log path' },
+  { prefix: 'git diff', guidance: 'Use a bounded diff/log path' },
+  { prefix: 'git show', guidance: 'Use a bounded diff/log path' },
+  { prefix: 'vp run build', guidance: 'Use a bounded build-output path' },
 ]
 
 const VP_SCOPE_FLAG_PREFIX =
@@ -728,22 +728,16 @@ function extractInlineCommands(code: string): string[] {
   return commands
 }
 
-function isContextModeTool(toolName: unknown): boolean {
+function isCtxTool(toolName: unknown): boolean {
   if (typeof toolName !== 'string') return false
   const names = new Set([
-    'mcp__context_mode__ctx_execute',
-    'mcp__context_mode__ctx_batch_execute',
-    'mcp__context_mode__.ctx_execute',
-    'mcp__context_mode__.ctx_batch_execute',
-    'context-mode.ctx_execute',
-    'context-mode.ctx_batch_execute',
     'ctx_execute',
     'ctx_batch_execute',
   ])
   if (names.has(toolName)) return true
 
   // Codex/App/plugin MCP tool names are host-generated and may include plugin
-  // prefixes, e.g. `mcp__plugin_context-mode_context-mode__ctx_execute`.
+  // prefixes around a stable ctx_* suffix.
   // Match the stable operation suffix instead of enumerating every provider.
   return /(?:^|[._-]|__)ctx_(?:batch_)?execute$/u.test(toolName)
 }
@@ -759,7 +753,7 @@ export function extractRoutableCommandsFromToolInput(input: {
   arguments?: Record<string, unknown>
 }): string[] {
   const toolName = input.tool_name ?? input.toolName ?? input.tool ?? input.name
-  if (!isContextModeTool(toolName)) return []
+  if (!isCtxTool(toolName)) return []
   const toolInput = input.tool_input ?? input.toolInput ?? input.input ?? input.arguments
   if (!toolInput || typeof toolInput !== 'object') return []
 
@@ -837,7 +831,7 @@ export function routeCommand(command: string, _sessionId?: string): RouteDecisio
     }
   }
 
-  // Sandbox rules (data-heavy commands → context-mode)
+  // Sandbox rules (data-heavy commands)
   for (const { prefix, guidance } of SANDBOX_PREFIXES) {
     if (matchesPrefix(trimmed, prefix)) {
       return { action: { action: 'sandbox', guidance } }

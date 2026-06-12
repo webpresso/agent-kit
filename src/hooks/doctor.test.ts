@@ -766,9 +766,9 @@ describe('hooks/doctor', () => {
         const finish = () => {
           queueMicrotask(() => {
             if (command === 'codex' && args?.[0] === 'mcp') {
-              child.stdout.emit('data', Buffer.from('✓ webpresso\n✓ context-mode\n'))
+              child.stdout.emit('data', Buffer.from('✓ webpresso\n'))
             } else if (command === 'opencode' && args?.[0] === 'mcp') {
-              child.stdout.emit('data', Buffer.from('✓ webpresso\n✓ context-mode\n'))
+              child.stdout.emit('data', Buffer.from('✓ webpresso\n'))
             } else if (command === 'claude' && args?.[0] === 'plugin') {
               child.stdout.emit('data', Buffer.from('ok\n'))
             } else {
@@ -844,7 +844,7 @@ describe('hooks/doctor', () => {
         const finish = () => {
           queueMicrotask(() => {
             if (command === 'opencode' && args?.[0] === 'mcp') {
-              child.stdout.emit('data', Buffer.from('✗ webpresso\n✓ context-mode\n'))
+              child.stdout.emit('data', Buffer.from('✗ webpresso\n'))
             } else {
               child.stdout.emit('data', Buffer.from('{}'))
             }
@@ -1299,7 +1299,6 @@ describe('hooks/doctor', () => {
       mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
         if (String(path) === registryPath) {
           return JSON.stringify({
-            plugins: { 'context-mode@context-mode': [{ version: '1.0.0', scope: 'user' }] },
           })
         }
         return ''

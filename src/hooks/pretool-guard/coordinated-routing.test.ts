@@ -25,7 +25,7 @@ function makeEditInput(filePath: string): string {
 
 function makeContextExecuteInput(code: string): string {
   return JSON.stringify({
-    tool_name: 'mcp__context_mode__ctx_execute',
+    tool_name: 'ctx_execute',
     tool_input: { language: 'javascript', code },
   })
 }
@@ -127,7 +127,7 @@ describe('coordinated routing pipeline', () => {
         const reason = (
           parsed.hookSpecificOutput as { permissionDecisionReason?: string } | undefined
         )?.permissionDecisionReason
-        expect(reason).toContain('ctx_')
+        expect(reason).toContain('bounded')
       })
     }
   })
@@ -184,7 +184,7 @@ describe('coordinated routing pipeline', () => {
     })
   })
 
-  describe('Context-mode dev-workflow commands → deny before execution', () => {
+  describe('ctx_execute dev-workflow commands → deny before execution', () => {
     it('ctx_execute wrapping vp test → deny with wp_test guidance', async () => {
       const processValidation = await getRunner()
       try {

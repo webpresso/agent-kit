@@ -29,13 +29,12 @@ Settings → Features → Enable Third-party skills). When this toggle is on:
 
 This behavior is documented in `catalog/agent/rules/supported-agent-clis.md`.
 
-## OMC / context-mode / RTK coordination contract
+## OMC / RTK coordination contract
 
 This repo does **not** invent hook ordering between multiple systems.
 The bounded contract is:
 
 - webpresso owns `wp_*` routing and managed hook launchers
-- context-mode owns `ctx_*` routing and compaction-specific plugin behavior
 - RTK owns shell filtering where it is explicitly installed
 - `wp audit hook-surface` enforces the single-rewriter-per-matcher invariant
 

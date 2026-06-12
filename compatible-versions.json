@@ -4,12 +4,6 @@
   "agent_kit_version": "0.14.0",
   "pinned_at": "2026-05-11",
   "pins": {
-    "context_mode": {
-      "_comment": "Claude Code marketplace plugin name (used by `claude plugin install`). Version range follows the upstream release cadence; PR CI smoke-tests the lower bound of the range on a clean container.",
-      "marketplace": "context-mode",
-      "range": "^0.0.0",
-      "_range_note": "TBD when v1.0 alpha builds out: set to the lowest context-mode version that supports the ctx_batch_execute API contract agent-kit relies on."
-    },
     "rtk": {
       "_comment": "Rust Token Killer (https://github.com/reachingforthejack/rtk-rust). Distributed as a binary; install via `brew install rtk` on macOS or `cargo install rtk` cross-platform.",
       "range": "^0.0.0",
@@ -22,6 +16,6 @@
     }
   },
   "_intentionally_not_pinned": {
-    "gstack": "Lane 4: agent-kit does not redistribute Garry Tan's gstack. The gstack scaffolder clones the upstream main branch and runs `./setup --team`. No version pin because gstack is not a versioned package — it's a skill registry consumed at HEAD. See `catalog/agent/rules/gstack-routing.md` (Blueprint Task 0.4)."
+    "gstack": "Lane 4: agent-kit does not redistribute Garry Tan's gstack. The gstack scaffolder clones the upstream main branch and runs `./setup --team`. No version pin because gstack is not a versioned package \u2014 it's a skill registry consumed at HEAD. See `catalog/agent/rules/gstack-routing.md` (Blueprint Task 0.4)."
   }
 }

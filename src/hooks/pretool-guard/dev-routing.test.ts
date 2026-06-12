@@ -467,7 +467,7 @@ describe('routeCommand', () => {
   it('extracts vp test commands embedded inside ctx_execute code', async () => {
     const { extractRoutableCommandsFromToolInput, routeCommand } = await import('./dev-routing.js')
     const commands = extractRoutableCommandsFromToolInput({
-      tool_name: 'context-mode.ctx_execute',
+      tool_name: 'ctx_execute',
       tool_input: {
         language: 'javascript',
         code: "execFileSync('vp',['run','--filter=webpresso','test','src/audit/gitignore-agent-surfaces.test.ts'])",
@@ -534,7 +534,7 @@ describe('routeCommand', () => {
       ],
     ] as const) {
       const commands = extractRoutableCommandsFromToolInput({
-        tool_name: 'context-mode.ctx_execute',
+        tool_name: 'ctx_execute',
         tool_input: {
           language: 'shell',
           code,
@@ -553,7 +553,7 @@ describe('routeCommand', () => {
   it('extracts direct tool paths embedded inside ctx_execute process calls', async () => {
     const { extractRoutableCommandsFromToolInput, routeCommand } = await import('./dev-routing.js')
     const commands = extractRoutableCommandsFromToolInput({
-      tool_name: 'context-mode.ctx_execute',
+      tool_name: 'ctx_execute',
       tool_input: {
         language: 'javascript',
         code: "execFileSync('../../node_modules/.bin/vitest',['run','src/routes/ci-stack.test.ts'])",
@@ -571,7 +571,7 @@ describe('routeCommand', () => {
   it('extracts routed commands from ctx_batch_execute command entries', async () => {
     const { extractRoutableCommandsFromToolInput, routeCommand } = await import('./dev-routing.js')
     const commands = extractRoutableCommandsFromToolInput({
-      tool_name: 'mcp__context_mode__ctx_batch_execute',
+      tool_name: 'ctx_batch_execute',
       tool_input: {
         commands: [{ label: 'tests', command: 'vp run --filter=webpresso test' }],
       },
@@ -588,7 +588,7 @@ describe('routeCommand', () => {
   it('extracts routed commands from Codex MCP alias payload fields', async () => {
     const { extractRoutableCommandsFromToolInput } = await import('./dev-routing.js')
     const commands = extractRoutableCommandsFromToolInput({
-      toolName: 'mcp__context_mode__ctx_execute',
+      toolName: 'ctx_execute',
       toolInput: {
         language: 'shell',
         code: 'vp run build 2>&1 | tail -160',
@@ -598,10 +598,10 @@ describe('routeCommand', () => {
     expect(commands).toContain('vp run build 2>&1 | tail -160')
   })
 
-  it('extracts routed commands from plugin-prefixed context-mode MCP tool names', async () => {
+  it('extracts routed commands from plugin-prefixed ctx MCP tool names', async () => {
     const { extractRoutableCommandsFromToolInput, routeCommand } = await import('./dev-routing.js')
     const commands = extractRoutableCommandsFromToolInput({
-      tool_name: 'mcp__plugin_context-mode_context-mode__ctx_execute',
+      tool_name: 'mcp__plugin_example__ctx_execute',
       tool_input: {
         language: 'shell',
         code: 'tsc --noEmit --pretty false',

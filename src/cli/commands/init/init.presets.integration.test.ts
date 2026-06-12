@@ -91,10 +91,10 @@ describe('runInit() — omx + gstack presets (integration)', () => {
     process.env.CODEX_HOME = join(repo, '.codex-home')
     process.env.HOME = join(repo, '.home')
     const fakeBinDir = join(repo, 'bin')
-    const fakeContextMode = join(fakeBinDir, 'context-mode')
+    const fakeOmx = join(fakeBinDir, 'omx')
     mkdirSync(fakeBinDir, { recursive: true })
-    writeFileSync(fakeContextMode, '#!/usr/bin/env sh\necho 1.2.3\n', 'utf8')
-    chmodSync(fakeContextMode, 0o755)
+    writeFileSync(fakeOmx, '#!/usr/bin/env sh\necho 1.2.3\n', 'utf8')
+    chmodSync(fakeOmx, 0o755)
     process.env.PATH = `${fakeBinDir}:${originalPath ?? ''}`
     // runInit() short-circuits the omx/gstack/rtk scaffolders when CI=true/1
     // (production guard against postinstall failures on hosted CI runners
@@ -542,7 +542,7 @@ describe('runInit() — omx + gstack presets (integration)', () => {
       expect(codexCalls.length).toBeGreaterThanOrEqual(1)
       expect(bunCalls).toHaveLength(1)
       // vp is used by setup preflight, the always-on runtime check, and managed tool updates.
-      expect(vpCalls).toHaveLength(6)
+      expect(vpCalls).toHaveLength(5)
       expect(actionlintCalls).toHaveLength(1)
       expect(codexCalls[0]?.[1]).toEqual(['--version'])
       expect(bunCalls[0]?.[1]).toEqual(['--version'])
@@ -559,11 +559,6 @@ describe('runInit() — omx + gstack presets (integration)', () => {
           (call) =>
             JSON.stringify(call[1]) ===
             JSON.stringify(['update', '-g', '--latest', '@openai/codex']),
-        ),
-      ).toBe(true)
-      expect(
-        vpCalls.some(
-          (call) => JSON.stringify(call[1]) === JSON.stringify(['update', '-g', 'context-mode']),
         ),
       ).toBe(true)
       expect(

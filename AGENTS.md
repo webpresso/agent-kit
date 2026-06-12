@@ -87,7 +87,7 @@ Record durable architecture decisions in the repo's ADR/planning surface if one 
 ## Repo-specific customizations
 
 - Global Codex hook commands must be **path-stable**: do not rely on bare
-  `context-mode`, `node`, or other PATH-resolved binaries in generated hook
+  `node` or other PATH-resolved binaries in generated hook
   runtime surfaces. Repair this in setup/scaffolders, not by hand-editing
   `~/.codex/hooks.json`.
 - Blueprint/MCP discovery paths must be **bounded and degradable**: roots

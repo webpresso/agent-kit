@@ -1,7 +1,0 @@
-#!/bin/sh
-if [ "$1" = "--help" ] || [ "$1" = "--version" ]; then
-  echo "context-mode fixture"
-  exit 0
-fi
-printf 'context-mode fixture: %s\n' "$*"
-exit 0

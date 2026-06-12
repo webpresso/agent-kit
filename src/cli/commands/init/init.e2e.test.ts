@@ -49,7 +49,6 @@ const FIXTURES = path.join(REPO_ROOT, '__fixtures__')
 const OMX_OK_BIN = path.join(FIXTURES, 'fake-tools', 'omx-ok-bin')
 const OMX_FAIL_BIN = path.join(FIXTURES, 'fake-tools', 'omx-fail-bin')
 const FAKE_HOME = path.join(FIXTURES, 'fake-home')
-const CONTEXT_MODE_BIN = path.join(FIXTURES, 'fake-tools', 'context-mode-bin')
 
 interface RunResult {
   code: number
@@ -125,17 +124,17 @@ function makeIsolatedFakeHome(): string {
 
 /** A PATH that contains only the omx-ok fixture, no real omx. */
 function pathWithFakeOmxOk(): string {
-  return `${CONTEXT_MODE_BIN}:${OMX_OK_BIN}:/usr/bin:/bin`
+  return `${OMX_OK_BIN}:/usr/bin:/bin`
 }
 
 /** A PATH that contains the omx-fail fixture (probe ok, setup fails). */
 function pathWithFakeOmxFail(): string {
-  return `${CONTEXT_MODE_BIN}:${OMX_FAIL_BIN}:/usr/bin:/bin`
+  return `${OMX_FAIL_BIN}:/usr/bin:/bin`
 }
 
 /** A PATH with no omx anywhere. */
 function pathWithoutOmx(): string {
-  return `${CONTEXT_MODE_BIN}:/usr/bin:/bin`
+  return '/usr/bin:/bin'
 }
 
 function makeRewritingOmxPath(repoRoot: string): string {
@@ -175,7 +174,7 @@ esac
     'utf8',
   )
   spawnSync('chmod', ['+x', omxPath])
-  return `${CONTEXT_MODE_BIN}:${dir}:/usr/bin:/bin`
+  return `${dir}:/usr/bin:/bin`
 }
 
 describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
@@ -230,8 +229,6 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       expect(r.stdout).toContain(
         'Do not blanket-remove devDependencies just because wp can execute the tool.',
       )
-      expect(r.stdout).toContain('context-mode codex features')
-      expect(r.stdout).toContain('context-mode opencode config')
     })
 
     it('bootstrap: --with base-kit on an empty repo creates docs/hooks/scripts/act/test/e2e/ci scaffolds', () => {
@@ -265,17 +262,6 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
         existsSync(path.join(repo, '.github', 'actions', 'setup-webpresso', 'action.yml')),
       ).toBe(true)
       expect(existsSync(path.join(repo, '.github', 'workflows', 'ci.yml'))).toBe(true)
-    })
-
-    it('--with context-mode: enables gated Codex plugin hooks when requested', () => {
-      const r = runAk(['setup', '--yes', '--with', 'context-mode', '--cwd', repo], {
-        PATH: pathWithFakeOmxOk(),
-        HOME: fakeHome,
-      })
-      expect(r.code).toBe(0)
-      expect(r.stdout).toContain('context-mode codex features')
-      expect(r.stdout).toContain('context-mode codex hooks')
-      expect(r.stdout).toContain('context-mode opencode config')
     })
 
     it('--with omx + fake omx on PATH: exits 0 and chains omx setup', () => {
@@ -476,7 +462,6 @@ describe.skipIf(!existsSync(DIST_CLI_PATH) && !existsSync(SOURCE_CLI_PATH))(
       // automatically surfaces in --help and docs/code can't drift
       // (the original gap that prompted docs/add-ons.md to exist).
       expect(r.stdout).toContain('Presets:')
-      expect(r.stdout).toContain('context-mode')
       expect(r.stdout).toContain('lore-commits')
       expect(r.stdout).toContain('omc')
       expect(r.stdout).toContain('omx')

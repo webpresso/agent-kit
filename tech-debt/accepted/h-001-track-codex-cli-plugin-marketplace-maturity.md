@@ -14,7 +14,7 @@ affected_modules: []
 
 ## Context
 
-Agent-kit distributes hooks + MCP server + skills + slash commands via two paths (the [context-mode pattern](https://github.com/mksglu/context-mode)):
+Agent-kit distributes hooks + MCP server + skills + slash commands via two paths:
 
 1. **Claude Code → plugin marketplace** (`/plugin marketplace add webpresso/agent-kit && /plugin install agent-kit@webpresso`). Zero-config; the `.claude-plugin/plugin.json` declares everything inline.
 2. **Codex CLI + everything else → npm + scaffolder** (`pnpm add -D @webpresso/agent-kit && npx wp setup`). The `scaffoldAgentHooks` step (`src/cli/commands/init/scaffolders/agent-hooks/`) idempotently patches `.claude/settings.json` AND `.codex/hooks.json` with hook entries.

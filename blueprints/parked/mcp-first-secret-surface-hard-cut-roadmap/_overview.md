@@ -58,7 +58,7 @@ Verified constraints on 2026-05-26:
 
 | Wave | Blueprints | Dependencies |
 | --- | --- | --- |
-| **Wave 0** | `completed/secret-aware-worker-tail-mcp` | Documentary upstream dependency on the framework “public secret surface hard cut” blueprint |
+| **Wave 0** | `archived/secret-surface-roadmap-placeholder` | Historical local placeholder retained so roadmap links stay valid after cleanup |
 
 ## Cross-plan references
 
@@ -71,8 +71,6 @@ Verified constraints on 2026-05-26:
 
 ## Validation notes
 
-- `wp audit roadmap-links` can only validate the local `completed/secret-aware-worker-tail-mcp`
-  backlink in this repo.
 - Cross-repo consistency must be checked by validating each child blueprint and
   keeping the cross-plan reference tables synchronized.
 

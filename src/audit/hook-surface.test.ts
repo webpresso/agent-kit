@@ -101,20 +101,7 @@ describe('auditHookSurface — passing', () => {
     expect(result.details.violations).toHaveLength(0)
   })
 
-  it('passes when RTK is on Bash and context-mode pretooluse.mjs is on a different matcher', () => {
-    const result = auditHookSurface(
-      opts({
-        PreToolUse: [
-          hookGroup('Bash', ['rtk hook claude']),
-          hookGroup('Read', ['/some/path/pretooluse.mjs']),
-        ],
-      }),
-    )
-    expect(result.passed).toBe(true)
-    expect(result.details.violations).toHaveLength(0)
-  })
-
-  it('passes when a validator and a rewriter share the same matcher', () => {
+    it('passes when a validator and a rewriter share the same matcher', () => {
     // Only one rewriter — validator does not count
     const result = auditHookSurface(
       opts({ PreToolUse: [hookGroup('Bash', ['rtk hook claude', 'wp-pretool-guard'])] }),
@@ -137,24 +124,7 @@ describe('auditHookSurface — passing', () => {
 // ---------------------------------------------------------------------------
 
 describe('auditHookSurface — violations', () => {
-  it('fails when RTK and a rewriting context-mode hook are both on the Bash matcher', () => {
-    const result = auditHookSurface(
-      opts({
-        PreToolUse: [
-          hookGroup('Bash', ['rtk hook claude', '/home/user/.claude/plugins/ctx/pretooluse.mjs']),
-        ],
-      }),
-    )
-    expect(result.passed).toBe(false)
-    expect(result.details.violations.length).toBeGreaterThanOrEqual(1)
-    const v = result.details.violations[0]
-    expect(v?.event).toBe('PreToolUse')
-    expect(v?.matcher).toBe('Bash')
-    expect(v?.rewriters).toContain('rtk hook claude')
-    expect(v?.rewriters).toContain('/home/user/.claude/plugins/ctx/pretooluse.mjs')
-  })
-
-  it('fails when RTK appears in two separate hook groups for the same matcher', () => {
+    it('fails when RTK appears in two separate hook groups for the same matcher', () => {
     const result = auditHookSurface(
       opts({
         PreToolUse: [
@@ -262,11 +232,7 @@ describe('extractOwner', () => {
     expect(extractOwner('wp_pretool_guard')).toBe('webpresso')
   })
 
-  it('classifies context-mode hook subcommands', () => {
-    expect(extractOwner('context-mode hook codex sessionstart')).toBe('context-mode')
-    expect(extractOwner('context-mode hook codex pretooluse')).toBe('context-mode')
-  })
-
+  
   it('classifies oh-my-codex / codex-native-hook.js as omx', () => {
     expect(extractOwner('node "/path/oh-my-codex/dist/scripts/codex-native-hook.js"')).toBe('omx')
     expect(extractOwner('node /path/omx/hook.js')).toBe('omx')
@@ -294,40 +260,8 @@ describe('extractOwner', () => {
 
 describe('detectDrift', () => {
   // TC-01: cross-owner same-event → allowed
-  it('TC-01: allows webpresso and context-mode to share the same runtime+event', () => {
-    const hooks: readonly HookEntry[] = [
-      {
-        runtime: 'codex',
-        event: 'SessionStart',
-        command: './node_modules/.bin/wp-sessionstart-routing',
-      },
-      { runtime: 'codex', event: 'SessionStart', command: 'context-mode hook codex sessionstart' },
-    ]
-    expect(detectDrift(hooks)).toHaveLength(0)
-  })
-
-  // TC-02: same-owner + same-command → drift
-  it('TC-02: flags context-mode self-duplication as drift', () => {
-    const hooks: readonly HookEntry[] = [
-      {
-        runtime: 'codex',
-        event: 'PreToolUse',
-        matcher: 'Bash',
-        command: 'context-mode hook codex pretooluse',
-      },
-      {
-        runtime: 'codex',
-        event: 'PreToolUse',
-        matcher: 'Edit',
-        command: 'context-mode hook codex pretooluse',
-      },
-    ]
-    const violations = detectDrift(hooks)
-    expect(violations).toHaveLength(1)
-    expect(violations[0]?.count).toBe(2)
-  })
-
-  // TC-03: same-owner, different-command → allowed
+    // TC-02: same-owner + same-command → drift
+    // TC-03: same-owner, different-command → allowed
   it('TC-03: allows same owner with different commands on the same event', () => {
     const hooks: readonly HookEntry[] = [
       { runtime: 'codex', event: 'Stop', command: './node_modules/.bin/wp-stop-qa' },
@@ -348,61 +282,29 @@ describe('detectDrift', () => {
   })
 
   // TC-06: same command across different matchers → still drift (dedup key ignores matcher)
-  it('TC-06: flags same context-mode command across different matchers as drift', () => {
-    const hooks: readonly HookEntry[] = [
-      {
-        runtime: 'codex',
-        event: 'PreToolUse',
-        matcher: 'Bash',
-        command: 'context-mode hook codex pretooluse',
-      },
-      {
-        runtime: 'codex',
-        event: 'PreToolUse',
-        matcher: 'Write',
-        command: 'context-mode hook codex pretooluse',
-      },
-    ]
-    const violations = detectDrift(hooks)
-    expect(violations).toHaveLength(1)
-  })
-
-  // TC-07/TC-08: empty input → no errors
+    // TC-07/TC-08: empty input → no errors
   it('TC-07/TC-08: returns empty array for empty input', () => {
     expect(detectDrift([])).toHaveLength(0)
   })
 
   // TC-09: three-way cross-owner on same event → allowed
-  it('TC-09: allows webpresso, context-mode, and omx on the same event', () => {
-    const hooks: readonly HookEntry[] = [
-      { runtime: 'codex', event: 'Stop', command: './node_modules/.bin/wp-stop-qa' },
-      { runtime: 'codex', event: 'Stop', command: 'context-mode hook codex stop' },
-      {
-        runtime: 'codex',
-        event: 'Stop',
-        command: 'node /path/oh-my-codex/dist/scripts/codex-native-hook.js',
-      },
-    ]
-    expect(detectDrift(hooks)).toHaveLength(0)
-  })
-
-  // Additional: cross-runtime same command → no drift (different runtime = different key)
+    // Additional: cross-runtime same command → no drift (different runtime = different key)
   it('allows the same command on different runtimes (not drift)', () => {
     const hooks: readonly HookEntry[] = [
-      { runtime: 'codex', event: 'PreToolUse', command: 'context-mode hook codex pretooluse' },
-      { runtime: 'claude', event: 'PreToolUse', command: 'context-mode hook codex pretooluse' },
+      { runtime: 'codex', event: 'PreToolUse', command: 'node "/path/oh-my-codex/dist/scripts/codex-native-hook.js"' },
+      { runtime: 'claude', event: 'PreToolUse', command: 'node "/path/oh-my-codex/dist/scripts/codex-native-hook.js"' },
     ]
     expect(detectDrift(hooks)).toHaveLength(0)
   })
 
   // Violation key format check
   it('violation key encodes runtime:event:owner:command', () => {
-    const cmd = 'context-mode hook codex pretooluse'
+    const cmd = 'node "/path/oh-my-codex/dist/scripts/codex-native-hook.js"'
     const hooks: readonly HookEntry[] = [
       { runtime: 'codex', event: 'PreToolUse', command: cmd },
       { runtime: 'codex', event: 'PreToolUse', command: cmd },
     ]
     const violations = detectDrift(hooks)
-    expect(violations[0]?.key).toBe(`codex:PreToolUse:context-mode:${cmd}`)
+    expect(violations[0]?.key).toBe(`codex:PreToolUse:omx:${cmd}`)
   })
 })

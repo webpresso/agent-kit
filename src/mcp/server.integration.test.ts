@@ -105,7 +105,7 @@ describe('mcp server integration', () => {
   // resources/list during init. If the server returns -32601, the SDK
   // transport gets poisoned and subsequent tools/list calls silently fail
   // (anthropics/claude-code#36914, #42442, #45844). The workaround,
-  // mirrored from context-mode, is to register empty handlers for these
+  // keep parity with the host hook contract by registering empty handlers for these
   // methods. Without this fix, webpresso tools never surface in
   // Claude Code's deferred-tool registry.
   it('responds to prompts/list and resources/list without -32601 (transport-poisoning workaround)', async () => {

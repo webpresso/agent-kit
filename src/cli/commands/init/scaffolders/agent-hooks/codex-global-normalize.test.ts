@@ -9,7 +9,6 @@ import { existsSync } from 'node:fs'
 
 import {
   defaultManagedCodexHooksDir,
-  MANAGED_CONTEXT_MODE_GLOBAL_HOOK_BASENAMES,
   MANAGED_OMX_JSON_ONLY_GLOBAL_HOOK_BASENAME,
   normalizeGlobalCodexHooksJson,
   normalizeGlobalCodexHooksFile,
@@ -33,42 +32,6 @@ function mkroot(prefix: string): string {
 }
 
 describe('normalizeGlobalCodexHooksJson', () => {
-  it('rewrites bare context-mode commands to managed launcher commands and dedupes identical groups', () => {
-    const hooks = {
-      hooks: {
-        PostToolUse: [
-          {
-            matcher: '',
-            hooks: [{ type: 'command', command: 'context-mode hook codex posttooluse' }],
-          },
-          {
-            hooks: [{ type: 'command', command: 'context-mode hook codex posttooluse' }],
-          },
-        ],
-      },
-    }
-
-    const result = normalizeGlobalCodexHooksJson(
-      hooks,
-      {
-        contextModeBinary: '/abs/context-mode',
-      },
-      '/managed',
-    )
-
-    expect(result.changed).toBe(true)
-    expect(result.value.hooks).toStrictEqual({
-      PostToolUse: [
-        {
-          matcher: '',
-          hooks: [
-            { type: 'command', command: '"/managed/wp-global-codex-context-mode-posttooluse.sh"' },
-          ],
-        },
-      ],
-    })
-  })
-
   it('rewrites bare node codex-native-hook commands to managed launcher commands', () => {
     const hooks = {
       hooks: {
@@ -128,7 +91,6 @@ describe('normalizeGlobalCodexHooksJson', () => {
             hooks: [
               {
                 type: 'command',
-                command: '"/managed/wp-global-codex-context-mode-posttooluse.sh"',
               },
             ],
           },
@@ -139,7 +101,6 @@ describe('normalizeGlobalCodexHooksJson', () => {
     const result = normalizeGlobalCodexHooksJson(
       hooks,
       {
-        contextModeBinary: '/abs/context-mode',
         nodeBinary: '/abs/node',
       },
       '/managed',
@@ -157,9 +118,6 @@ describe('normalizeGlobalCodexHooksJson', () => {
       JSON.stringify(
         {
           hooks: {
-            PostToolUse: [
-              { hooks: [{ type: 'command', command: 'context-mode hook codex posttooluse' }] },
-            ],
             Stop: [
               {
                 hooks: [
@@ -178,15 +136,11 @@ describe('normalizeGlobalCodexHooksJson', () => {
     )
 
     const result = normalizeGlobalCodexHooksFile(hooksPath, {
-      contextModeBinary: '/abs/context-mode',
       nodeBinary: '/abs/node',
     })
     const managedDir = defaultManagedCodexHooksDir(hooksPath)
 
     expect(result.action).toBe('overwritten')
-    expect(
-      readFileSync(path.join(managedDir, 'wp-global-codex-context-mode-posttooluse.sh'), 'utf8'),
-    ).toBe('#!/bin/sh\nexec "/abs/context-mode" hook codex posttooluse "$@"\n')
     expect(
       readFileSync(path.join(managedDir, MANAGED_OMX_JSON_ONLY_GLOBAL_HOOK_BASENAME), 'utf8'),
     ).toBe(
@@ -424,37 +378,8 @@ describe('normalizeGlobalCodexHooksJson', () => {
   })
 })
 
-describe('normalizeGlobalCodexHooksFile — seeding on fresh install', () => {
-  it('creates hooks.json with all 7 event entries when file is absent and contextModeBinary is set', () => {
-    const root = mkroot('wp-codex-global-seed-')
-    const hooksPath = path.join(root, 'hooks.json')
-    const contextModeBinary = '/abs/context-mode'
-
-    const result = normalizeGlobalCodexHooksFile(hooksPath, { contextModeBinary })
-    const managedDir = defaultManagedCodexHooksDir(hooksPath)
-
-    expect(result.action).toBe('created')
-    const content = JSON.parse(readFileSync(hooksPath, 'utf8')) as {
-      hooks: Record<string, unknown[]>
-    }
-    expect(Object.keys(content.hooks)).toHaveLength(7)
-    for (const event of [
-      'SessionStart',
-      'PreToolUse',
-      'PostToolUse',
-      'UserPromptSubmit',
-      'Stop',
-      'PreCompact',
-      'PostCompact',
-    ]) {
-      expect(content.hooks[event]).toBeDefined()
-    }
-    for (const basename of MANAGED_CONTEXT_MODE_GLOBAL_HOOK_BASENAMES) {
-      expect(readFileSync(path.join(managedDir, basename), 'utf8')).toContain('/abs/context-mode')
-    }
-  })
-
-  it('returns identical and does not create the file when contextModeBinary is absent', () => {
+describe('normalizeGlobalCodexHooksFile — absent file behavior', () => {
+  it('returns identical and does not create the file when no hook launcher seed is available', () => {
     const root = mkroot('wp-codex-global-no-seed-')
     const hooksPath = path.join(root, 'hooks.json')
 
@@ -463,17 +388,6 @@ describe('normalizeGlobalCodexHooksFile — seeding on fresh install', () => {
     expect(result.action).toBe('identical')
     expect(existsSync(hooksPath)).toBe(false)
   })
-
-  it('is idempotent — re-running on an already-seeded file returns identical', () => {
-    const root = mkroot('wp-codex-global-seed-idempotent-')
-    const hooksPath = path.join(root, 'hooks.json')
-    const contextModeBinary = '/abs/context-mode'
-
-    normalizeGlobalCodexHooksFile(hooksPath, { contextModeBinary })
-    const result = normalizeGlobalCodexHooksFile(hooksPath, { contextModeBinary })
-
-    expect(result.action).toBe('identical')
-  })
 })
 
 describe('resolveBinaryOnPath', () => {
@@ -481,10 +395,10 @@ describe('resolveBinaryOnPath', () => {
     const root = mkroot('wp-codex-global-bin-')
     const binDir = path.join(root, 'bin')
     mkdirSync(binDir, { recursive: true })
-    const candidate = path.join(binDir, 'context-mode')
+    const candidate = path.join(binDir, 'demo-binary')
     writeFileSync(candidate, '#!/bin/sh\nexit 0\n', { mode: 0o755 })
 
-    expect(resolveBinaryOnPath('context-mode', binDir)).toBe(candidate)
+    expect(resolveBinaryOnPath('demo-binary', binDir)).toBe(candidate)
   })
 
   it('returns null when the binary is absent', () => {

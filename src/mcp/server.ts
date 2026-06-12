@@ -149,7 +149,7 @@ export async function createServer(options: CreateServerOptions = {}): Promise<S
   })
 
   // Empty prompts/resources/resource-templates handlers, registered exactly
-  // like context-mode does (build/server.js:50-57). Several MCP clients —
+  // the same way other MCP servers do. Several MCP clients —
   // including Claude Code 2.1.x and OpenCode — call listPrompts() or
   // listResources() during initialization. Without these handlers the SDK
   // returns -32601 Method Not Found, which **poisons the transport layer**

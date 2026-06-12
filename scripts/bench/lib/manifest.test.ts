@@ -219,7 +219,6 @@ describe('manifest capture and validation', () => {
         'operator-asserted workspace isolation: distinct Anthropic workspace IDs supplied, but not admin-verified.',
       keyEnvNames: [
         'ANTHROPIC_API_KEY_BASELINE',
-        'ANTHROPIC_API_KEY_CONTEXT_MODE',
         'ANTHROPIC_API_KEY_V1',
         'ANTHROPIC_API_KEY_V2',
       ],
@@ -238,7 +237,6 @@ describe('manifest capture and validation', () => {
       cacheDisclaimer: null,
       keyEnvNames: [
         'ANTHROPIC_API_KEY_BASELINE',
-        'ANTHROPIC_API_KEY_CONTEXT_MODE',
         'ANTHROPIC_API_KEY_V1',
         'ANTHROPIC_API_KEY_V2',
       ],
@@ -252,7 +250,7 @@ describe('manifest capture and validation', () => {
     })
 
     expect(() => validateWorkspaceKeyPresence(config, {})).toThrowError(
-      'Missing workspace API keys: ANTHROPIC_API_KEY_BASELINE, ANTHROPIC_API_KEY_CONTEXT_MODE, ANTHROPIC_API_KEY_V1, ANTHROPIC_API_KEY_V2',
+      'Missing workspace API keys: ANTHROPIC_API_KEY_BASELINE, ANTHROPIC_API_KEY_V1, ANTHROPIC_API_KEY_V2',
     )
   })
 
@@ -260,7 +258,7 @@ describe('manifest capture and validation', () => {
     expect(() =>
       validateDistinctWorkspaces([
         { apiKeyEnv: 'ANTHROPIC_API_KEY_BASELINE', workspaceId: 'ws-1' },
-        { apiKeyEnv: 'ANTHROPIC_API_KEY_CONTEXT_MODE', workspaceId: 'ws-1' },
+        { apiKeyEnv: 'ANTHROPIC_API_KEY_V1', workspaceId: 'ws-1' },
       ]),
     ).toThrowError('Isolated mode requires distinct Anthropic workspaces for each variant key.')
   })
@@ -269,7 +267,6 @@ describe('manifest capture and validation', () => {
     expect(() =>
       validateDistinctWorkspaces([
         { apiKeyEnv: 'ANTHROPIC_API_KEY_BASELINE', workspaceId: 'ws-1' },
-        { apiKeyEnv: 'ANTHROPIC_API_KEY_CONTEXT_MODE', workspaceId: 'ws-2' },
         { apiKeyEnv: 'ANTHROPIC_API_KEY_V1', workspaceId: 'ws-3' },
         { apiKeyEnv: 'ANTHROPIC_API_KEY_V2', workspaceId: 'ws-4' },
       ]),
@@ -281,13 +278,11 @@ describe('manifest capture and validation', () => {
       resolveWorkspaceIdentitiesFromEnv({
         BENCH_WORKSPACE_MODE: 'isolated',
         ANTHROPIC_WORKSPACE_ID_BASELINE: 'ws-a',
-        ANTHROPIC_WORKSPACE_ID_CONTEXT_MODE: 'ws-b',
         ANTHROPIC_WORKSPACE_ID_V1: 'ws-c',
         ANTHROPIC_WORKSPACE_ID_V2: 'ws-d',
       }),
     ).toStrictEqual([
       { apiKeyEnv: 'ANTHROPIC_API_KEY_BASELINE', workspaceId: 'ws-a' },
-      { apiKeyEnv: 'ANTHROPIC_API_KEY_CONTEXT_MODE', workspaceId: 'ws-b' },
       { apiKeyEnv: 'ANTHROPIC_API_KEY_V1', workspaceId: 'ws-c' },
       { apiKeyEnv: 'ANTHROPIC_API_KEY_V2', workspaceId: 'ws-d' },
     ])
@@ -300,7 +295,7 @@ describe('manifest capture and validation', () => {
         ANTHROPIC_WORKSPACE_ID_BASELINE: 'ws-a',
       }),
     ).toThrowError(
-      'Isolated mode requires ANTHROPIC_WORKSPACE_ID_BASELINE, ANTHROPIC_WORKSPACE_ID_CONTEXT_MODE, ANTHROPIC_WORKSPACE_ID_V1, and ANTHROPIC_WORKSPACE_ID_V2.',
+      'Isolated mode requires ANTHROPIC_WORKSPACE_ID_BASELINE, ANTHROPIC_WORKSPACE_ID_V1, and ANTHROPIC_WORKSPACE_ID_V2.',
     )
   })
 
@@ -309,7 +304,7 @@ describe('manifest capture and validation', () => {
       validateKnownAnthropicWorkspaces(
         [
           { apiKeyEnv: 'ANTHROPIC_API_KEY_BASELINE', workspaceId: 'ws-a' },
-          { apiKeyEnv: 'ANTHROPIC_API_KEY_CONTEXT_MODE', workspaceId: 'ws-b' },
+          { apiKeyEnv: 'ANTHROPIC_API_KEY_V1', workspaceId: 'ws-b' },
         ],
         'admin-key',
         async () => ['ws-a', 'ws-b', 'ws-c'],
@@ -322,7 +317,7 @@ describe('manifest capture and validation', () => {
       validateKnownAnthropicWorkspaces(
         [
           { apiKeyEnv: 'ANTHROPIC_API_KEY_BASELINE', workspaceId: 'ws-a' },
-          { apiKeyEnv: 'ANTHROPIC_API_KEY_CONTEXT_MODE', workspaceId: 'ws-missing' },
+          { apiKeyEnv: 'ANTHROPIC_API_KEY_V1', workspaceId: 'ws-missing' },
         ],
         'admin-key',
         async () => ['ws-a', 'ws-b'],
