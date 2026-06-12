@@ -8,6 +8,7 @@ import matter from 'gray-matter'
 import { parseBlueprint } from '#core/parser'
 import { lifecycleBlueprintStatusSchema } from '#core/schema'
 import { readBlueprintExecutionArtifacts } from '#execution/artifacts'
+import { findResolvableOwnerBinding } from '#worktrees/manager.js'
 import { readBlueprintExecutionMetadata } from '#execution/metadata'
 import { BlueprintService } from '#service/BlueprintService'
 import { scanBlueprintDirectory } from '#service/scanner'
@@ -38,6 +39,9 @@ interface LifecycleAuditFrontmatter {
   historicalZeroTaskRationale?: unknown
   historicalZeroTaskWaiver?: unknown
   status?: unknown
+  type?: unknown
+  worktreeOwnerId?: unknown
+  worktreeOwnerBranch?: unknown
 }
 
 function isBlueprintOverview(file: string): boolean {
@@ -61,6 +65,9 @@ function readLifecycleAuditFrontmatter(raw: string): LifecycleAuditFrontmatter {
     historicalZeroTaskRationale: data.historical_zero_task_rationale,
     historicalZeroTaskWaiver: data.historical_zero_task_waiver,
     status: data.status,
+    type: data.type,
+    worktreeOwnerId: data.worktree_owner_id,
+    worktreeOwnerBranch: data.worktree_owner_branch,
   }
 }
 
@@ -212,6 +219,56 @@ function validateBlueprintEngineSemantics(
           message: `Blueprint status is completed but task ${task.id} is "${task.status}" (expected "done" or "dropped").`,
         })
       }
+    }
+  }
+
+  return issues
+}
+
+
+function validateOwnerBindingTruth(
+  file: string,
+  frontmatter: LifecycleAuditFrontmatter,
+): BlueprintAuditIssue[] {
+  if (frontmatter.type !== 'blueprint' || frontmatter.status !== 'in-progress') return []
+
+  const issues: BlueprintAuditIssue[] = []
+  const ownerId = typeof frontmatter.worktreeOwnerId === 'string' ? frontmatter.worktreeOwnerId.trim() : ''
+  const ownerBranch =
+    typeof frontmatter.worktreeOwnerBranch === 'string' ? frontmatter.worktreeOwnerBranch.trim() : ''
+
+  if (!ownerId) {
+    issues.push({
+      file,
+      level: 'error',
+      message:
+        'In-progress executable blueprint is missing worktree_owner_id; start or repair it with `wp blueprint start` / `wp worktree rebind`.',
+    })
+  }
+
+  if (!ownerBranch) {
+    issues.push({
+      file,
+      level: 'error',
+      message:
+        'In-progress executable blueprint is missing worktree_owner_branch; start or repair it with `wp blueprint start` / `wp worktree rebind`.',
+    })
+  }
+
+  if (ownerId) {
+    const entry = findResolvableOwnerBinding(ownerId)
+    if (!entry) {
+      issues.push({
+        file,
+        level: 'error',
+        message: `In-progress executable blueprint has unresolved owner worktree binding ${ownerId}; run \`wp worktree rebind\` or \`wp worktree adopt\`.`,
+      })
+    } else if (ownerBranch && entry.branch !== ownerBranch) {
+      issues.push({
+        file,
+        level: 'error',
+        message: `Owner worktree binding branch mismatch: frontmatter=${ownerBranch} registry=${entry.branch ?? '(none)'}.`,
+      })
     }
   }
 
@@ -371,6 +428,7 @@ async function auditBlueprintFile(
     ...validateTaskState(blueprint).map((issue) => Object.assign({}, issue, { file })),
     ...validateBlueprintEngineSemantics(file, blueprint),
     ...strictIssues,
+    ...validateOwnerBindingTruth(file, frontmatter),
     ...validateExecutionMetadataTruth(file, blueprint),
   ]
 }

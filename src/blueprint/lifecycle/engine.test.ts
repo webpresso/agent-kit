@@ -66,6 +66,18 @@ describe('applyBlueprintLifecycle', () => {
     expect(result.markdown).toContain('progress:')
   })
 
+  it('records path-free owner binding metadata when starting a blueprint', () => {
+    const result = applyBlueprintLifecycle(BASE_BLUEPRINT, 'planned/sample-blueprint', {
+      type: 'start',
+      worktreeOwnerId: 'owner-123',
+      worktreeOwnerBranch: 'bp/sample-blueprint',
+    })
+
+    expect(result.markdown).toContain('worktree_owner_id: owner-123')
+    expect(result.markdown).toContain('worktree_owner_branch: bp/sample-blueprint')
+    expect(result.markdown).not.toContain('worktree_owner_path')
+  })
+
   it('parks a blueprint and updates frontmatter', () => {
     const result = applyBlueprintLifecycle(BASE_BLUEPRINT, 'planned/sample-blueprint', {
       type: 'park',
@@ -74,6 +86,21 @@ describe('applyBlueprintLifecycle', () => {
     expect(result.targetStatus).toBe('parked')
     expect(result.markdown).toContain('status: parked')
     expect(result.markdown).toContain('progress:')
+  })
+
+  it('clears owner binding metadata when parking a blueprint', () => {
+    const started = applyBlueprintLifecycle(BASE_BLUEPRINT, 'planned/sample-blueprint', {
+      type: 'start',
+      worktreeOwnerId: 'owner-123',
+      worktreeOwnerBranch: 'bp/sample-blueprint',
+    })
+
+    const parked = applyBlueprintLifecycle(started.markdown, 'in-progress/sample-blueprint', {
+      type: 'park',
+    })
+
+    expect(parked.markdown).not.toContain('worktree_owner_id')
+    expect(parked.markdown).not.toContain('worktree_owner_branch')
   })
 
   it('writes explicit task status and block reason', () => {

@@ -1,19 +1,30 @@
 /**
  * `wp worktree` subcommand dispatch.
- *
- * Handles: new, list, remove
  */
 import { execFileSync, spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { basename } from 'node:path'
+import { existsSync, mkdirSync } from 'node:fs'
+import { basename, dirname, join, relative } from 'node:path'
 
 import { scaffoldAgent } from '#cli/commands/init/scaffold-agent'
 import { resolveCatalogDir } from '#cli/commands/init/index'
-import { runUnifiedSync } from '#symlinker/unified-sync'
 import { getProjectRoot } from '#cli/utils'
-import { resolveGeneratedWorktreePath, resolveWorktreeRoot } from '#worktrees/location.js'
+import { runUnifiedSync } from '#symlinker/unified-sync'
+import { deriveRepoNamespace, resolveGeneratedWorktreePath, resolveManagedWorktreeRoot, resolveWorktreeRoot } from '#worktrees/location.js'
+import {
+  adoptBlueprintOwnerWorktree,
+  ensureBlueprintOwnerWorktree,
+  readRepoOriginUrl,
+  repoManagedRoot,
+} from '#worktrees/manager.js'
+import {
+  pruneStaleWorktreeRegistryEntries,
+  readWorktreeRegistry,
+  upsertWorktreeRegistryEntry,
+  type ManagedWorktreeEntry,
+} from '#worktrees/registry.js'
 
 export interface WorktreeCommandOptions {
+  all?: boolean
   base?: string
   path?: string
   name?: string
@@ -21,6 +32,7 @@ export interface WorktreeCommandOptions {
   dryRun?: boolean
   force?: boolean
   cwd?: string
+  repo?: string
 }
 
 export interface WorktreeEntry {
@@ -95,7 +107,8 @@ function defaultRandomSuffix(): string {
 
 function defaultWorktreePath(repoRoot: string, branch: string): string {
   const pathSegment = sanitizeWorktreeSegment(branch)
-  return resolveGeneratedWorktreePath(resolveWorktreeRoot(repoRoot), pathSegment)
+  const originUrl = readRepoOriginUrl(repoRoot)
+  return resolveGeneratedWorktreePath(resolveWorktreeRoot(repoRoot, { originUrl }), pathSegment)
 }
 
 function collides(
@@ -109,6 +122,10 @@ function collides(
 }
 
 export function resolveNewWorktreeTarget(input: NewWorktreeTargetInput): NewWorktreeTarget {
+  if (input.explicitPath) {
+    throw new Error('Managed worktrees do not support custom creation paths; use wp worktree adopt or rebind instead.')
+  }
+
   const branch = input.branch?.trim()
   const name = input.name?.trim()
   if (branch && name) {
@@ -118,7 +135,7 @@ export function resolveNewWorktreeTarget(input: NewWorktreeTargetInput): NewWork
   if (branch) {
     return {
       branch,
-      path: input.explicitPath ?? defaultWorktreePath(input.repoRoot, branch),
+      path: defaultWorktreePath(input.repoRoot, branch),
       generated: false,
     }
   }
@@ -134,7 +151,7 @@ export function resolveNewWorktreeTarget(input: NewWorktreeTargetInput): NewWork
   for (let attempt = 0; attempt < 20; attempt += 1) {
     const suffix = name && attempt === 0 ? '' : `-${sanitizeWorktreeSegment(randomSuffix(), 'x')}`
     const candidateBranch = `${prefix}/${baseSlug}${suffix}`
-    const candidatePath = input.explicitPath ?? defaultWorktreePath(input.repoRoot, candidateBranch)
+    const candidatePath = defaultWorktreePath(input.repoRoot, candidateBranch)
     if (!collides(candidateBranch, candidatePath, entries, branchExists, pathExists)) {
       return { branch: candidateBranch, path: candidatePath, generated: true }
     }
@@ -201,6 +218,22 @@ export function formatWorktreeList(
   return rows
 }
 
+export function formatManagedWorktreeList(entries: readonly ManagedWorktreeEntry[]): string[] {
+  if (entries.length === 0) return ['No managed worktrees registered. Run `wp worktree refresh`.']
+  const pathWidth = Math.max(...entries.map((entry) => entry.path.length), 4)
+  const kindWidth = Math.max(...entries.map((entry) => entry.kind.length), 4)
+  const rows = [
+    `${'KIND'.padEnd(kindWidth)}  ${'BLUEPRINT'.padEnd(18)}  ${'BRANCH'.padEnd(18)}  PATH`,
+    `${'-'.repeat(kindWidth)}  ${'-'.repeat(18)}  ${'-'.repeat(18)}  ${'-'.repeat(pathWidth)}`,
+  ]
+  for (const entry of entries) {
+    rows.push(
+      `${entry.kind.padEnd(kindWidth)}  ${(entry.blueprintSlug ?? '-').padEnd(18)}  ${(entry.branch ?? (entry.detached ? '(detached)' : '-')).padEnd(18)}  ${entry.path}`,
+    )
+  }
+  return rows
+}
+
 async function handleNew(branch: string, opts: WorktreeCommandOptions): Promise<void> {
   const cwd = opts.cwd ?? process.cwd()
   const repoRoot = getProjectRoot({ startDir: cwd })
@@ -217,7 +250,7 @@ async function handleNew(branch: string, opts: WorktreeCommandOptions): Promise<
   })
 
   if (opts.dryRun) {
-    console.log('[dry-run] Would create worktree:')
+    console.log('[dry-run] Would create managed worktree:')
     console.log(`  branch: ${target.branch}`)
     console.log(`  path:   ${target.path}`)
     console.log(`  base:   ${opts.base ?? 'HEAD'}`)
@@ -242,11 +275,124 @@ async function handleNew(branch: string, opts: WorktreeCommandOptions): Promise<
 }
 
 function handleList(opts: WorktreeCommandOptions): void {
+  if (opts.all) {
+    console.log(formatManagedWorktreeList(readWorktreeRegistry().entries).join('\n'))
+    return
+  }
+
   const cwd = opts.cwd ?? process.cwd()
   const repoRoot = getProjectRoot({ startDir: cwd })
 
   const entries = listEntries(repoRoot)
   console.log(formatWorktreeList(entries, repoRoot).join('\n'))
+}
+
+function handleRoot(opts: WorktreeCommandOptions): void {
+  const cwd = opts.repo ?? opts.cwd ?? process.cwd()
+  if (opts.all) console.log(resolveManagedWorktreeRoot())
+  else console.log(repoManagedRoot(getProjectRoot({ startDir: cwd })))
+}
+
+function handleRefresh(opts: WorktreeCommandOptions): void {
+  if (opts.all) {
+    const registry = readWorktreeRegistry()
+    console.log(`Managed registry entries: ${registry.entries.length}`)
+    console.log('Use `wp worktree refresh --repo <path>` to live-probe a specific repository.')
+    return
+  }
+
+  const repoRoot = getProjectRoot({ startDir: opts.repo ?? opts.cwd ?? process.cwd() })
+  const originUrl = readRepoOriginUrl(repoRoot)
+  const repoNamespace = deriveRepoNamespace({ repoRoot, originUrl })
+  const entries = listEntries(repoRoot)
+  const managedRoot = resolveWorktreeRoot(repoRoot, { originUrl })
+  let updated = 0
+  for (const entry of entries) {
+    if (!entry.path.startsWith(`${managedRoot}/`)) continue
+    upsertWorktreeRegistryEntry({
+      id: `git-${repoNamespace}-${basename(entry.path)}`,
+      repoNamespace,
+      repoRoot,
+      ...(originUrl && { repoOriginUrl: originUrl }),
+      kind: entry.path.includes('/.scratch/') ? 'scratch' : 'owner',
+      path: entry.path,
+      ...(entry.branch && { branch: entry.branch.replace('refs/heads/', '') }),
+      detached: entry.branch === null,
+      lastSeenAt: new Date().toISOString(),
+    })
+    updated += 1
+  }
+  console.log(`Refreshed ${updated} managed worktree entr${updated === 1 ? 'y' : 'ies'} for ${repoRoot}.`)
+}
+
+function handlePrune(opts: WorktreeCommandOptions): void {
+  if (!opts.all) throw new Error('Usage: wp worktree prune --all')
+  const result = pruneStaleWorktreeRegistryEntries()
+  console.log(`Pruned ${result.removed.length} stale managed registry entr${result.removed.length === 1 ? 'y' : 'ies'}.`)
+}
+
+function handleMigrate(opts: WorktreeCommandOptions): void {
+  const repoRoot = getProjectRoot({ startDir: opts.repo ?? opts.cwd ?? process.cwd() })
+  const legacyRoot = join(dirname(repoRoot), `${basename(repoRoot)}_worktrees`)
+  if (!existsSync(legacyRoot)) {
+    console.log(`No legacy sibling worktree root found: ${legacyRoot}`)
+    return
+  }
+
+  const targetRoot = repoManagedRoot(repoRoot)
+  const legacyEntries = listEntries(repoRoot).filter((entry) =>
+    entry.path === legacyRoot || entry.path.startsWith(`${legacyRoot}/`),
+  )
+  if (legacyEntries.length === 0) {
+    console.log(`No git-registered worktrees found below ${legacyRoot}; manual migration required.`)
+    return
+  }
+
+  let moved = 0
+  const manual: string[] = []
+  for (const entry of legacyEntries) {
+    const targetPath = join(targetRoot, relative(legacyRoot, entry.path))
+    if (opts.dryRun) {
+      console.log(`[dry-run] Would move ${entry.path} -> ${targetPath}`)
+      continue
+    }
+    mkdirSync(dirname(targetPath), { recursive: true })
+    const result = spawnSync('git', ['worktree', 'move', entry.path, targetPath], {
+      cwd: repoRoot,
+      stdio: 'inherit',
+    })
+    if (result.status === 0) moved += 1
+    else manual.push(entry.path)
+  }
+
+  if (!opts.dryRun) handleRefresh({ ...opts, repo: repoRoot })
+  console.log(`Migrated ${moved} legacy worktree${moved === 1 ? '' : 's'} to ${targetRoot}.`)
+  if (manual.length > 0) {
+    console.log(`Manual follow-up required for locked/unmoved worktrees: ${manual.join(', ')}`)
+  }
+}
+
+function handleAdopt(args: string[], opts: WorktreeCommandOptions): void {
+  const [slug, worktreePath] = args
+  if (!slug || !worktreePath) throw new Error('Usage: wp worktree adopt <blueprint-slug> <path>')
+  const repoRoot = getProjectRoot({ startDir: opts.repo ?? opts.cwd ?? process.cwd() })
+  const binding = adoptBlueprintOwnerWorktree(repoRoot, slug, worktreePath)
+  console.log(`Adopted ${worktreePath} as owner for ${slug}`)
+  console.log(`  worktree_owner_id: ${binding.id}`)
+  console.log(`  worktree_owner_branch: ${binding.branch}`)
+}
+
+function handleRebind(args: string[], opts: WorktreeCommandOptions): void {
+  const slug = args[0]
+  if (!slug) throw new Error('Usage: wp worktree rebind <blueprint-slug> [--path <path>]')
+  const repoRoot = getProjectRoot({ startDir: opts.repo ?? opts.cwd ?? process.cwd() })
+  const binding = opts.path
+    ? adoptBlueprintOwnerWorktree(repoRoot, slug, opts.path)
+    : ensureBlueprintOwnerWorktree(repoRoot, slug, { dryRun: opts.dryRun })
+  console.log(`Rebound owner for ${slug}`)
+  console.log(`  worktree_owner_id: ${binding.id}`)
+  console.log(`  worktree_owner_branch: ${binding.branch}`)
+  console.log(`  path: ${binding.path}`)
 }
 
 function handleRemove(nameOrPath: string, opts: WorktreeCommandOptions): void {
@@ -271,6 +417,9 @@ export async function executeWorktreeSubcommand(
   opts: WorktreeCommandOptions,
 ): Promise<void> {
   switch (subcommand) {
+    case 'root':
+      handleRoot(opts)
+      return
     case 'new': {
       const branch = args[0]
       await handleNew(branch ?? '', opts)
@@ -280,6 +429,21 @@ export async function executeWorktreeSubcommand(
       handleList(opts)
       return
     }
+    case 'refresh':
+      handleRefresh(opts)
+      return
+    case 'prune':
+      handlePrune(opts)
+      return
+    case 'migrate':
+      handleMigrate(opts)
+      return
+    case 'adopt':
+      handleAdopt(args, opts)
+      return
+    case 'rebind':
+      handleRebind(args, opts)
+      return
     case 'remove':
     case 'rm': {
       const nameOrPath = args[0]
@@ -291,7 +455,7 @@ export async function executeWorktreeSubcommand(
     }
     default: {
       throw new Error(
-        `Unknown worktree subcommand: "${subcommand}"\n\nUse one of: new, list, remove`,
+        `Unknown worktree subcommand: "${subcommand}"\n\nUse one of: root, new, list, refresh, prune, migrate, adopt, rebind, remove`,
       )
     }
   }

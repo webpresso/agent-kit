@@ -1,22 +1,18 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { generateWorktreePath } from './path.js'
 
+vi.mock('node:crypto', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:crypto')>()
+  return { ...actual, randomUUID: () => '12345678-1234-4234-9234-123456789abc' }
+})
+
 describe('generateWorktreePath', () => {
-  it('returns distinct paths for two calls with the same taskId', () => {
-    const path1 = generateWorktreePath('/some/base', 'task-abc')
-    const path2 = generateWorktreePath('/some/base', 'task-abc')
-    expect(path1).not.toStrictEqual(path2)
-  })
-
-  it('includes the taskId in the returned path', () => {
-    const taskId = 'my-task-123'
-    const result = generateWorktreePath('/repo', taskId)
-    expect(result).toContain(taskId)
-  })
-
-  it('places the worktree under the sibling generated worktree root', () => {
+  it('places scratch worktrees under the global managed worktree root', () => {
     const result = generateWorktreePath('/repo', 'task-x')
-    expect(result.startsWith('/repo_worktrees/task-x-')).toBe(true)
+
+    expect(result).toMatch(
+      /^.*\/\.agent\/worktrees\/repos\/local-repo-[a-f0-9]{10}\/blueprints\/task-x\/\.scratch\/local-worktree-12345678-1234-4234-9234-123456789abc$/,
+    )
   })
 })

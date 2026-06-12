@@ -22,6 +22,8 @@ interface BlueprintFrontmatter {
   created?: string | Date
   progress?: string
   completed_at?: string | Date
+  worktree_owner_id?: string
+  worktree_owner_branch?: string
   parent_roadmap?: string
   depends_on?: string[]
   cross_repo_depends_on?: Array<{
@@ -70,6 +72,8 @@ export interface Blueprint {
   created?: string
   progress?: string
   completedAt?: string
+  worktreeOwnerId?: string
+  worktreeOwnerBranch?: string
   parentRoadmap?: string
   dependsOn?: string[]
   tags?: string[]
@@ -126,6 +130,8 @@ export function parseBlueprint(markdown: string, name: string): Blueprint {
     ...(created && { created }),
     ...(typeof data.progress === 'string' && data.progress.trim() && { progress: data.progress }),
     ...(completedAt && { completedAt }),
+    ...(data.worktree_owner_id && { worktreeOwnerId: data.worktree_owner_id }),
+    ...(data.worktree_owner_branch && { worktreeOwnerBranch: data.worktree_owner_branch }),
     ...(typeof data.parent_roadmap === 'string' &&
       data.parent_roadmap.trim() && { parentRoadmap: data.parent_roadmap.trim() }),
     ...(data.depends_on && data.depends_on.length > 0 && { dependsOn: data.depends_on }),

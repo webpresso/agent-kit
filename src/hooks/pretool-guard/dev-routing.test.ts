@@ -439,6 +439,17 @@ describe('routeCommand', () => {
     expect(result?.action.action).toBe('passthrough')
   })
 
+  it('raw mutating git worktree commands are denied in favor of wp worktree', async () => {
+    const routeCommand = await getRoute()
+    for (const command of ['git worktree add ../x', 'git worktree remove ../x', 'git worktree move a b', 'git worktree prune']) {
+      const result = routeCommand(command)
+      expect(result?.action.action).toBe('deny')
+      if (result?.action.action === 'deny') {
+        expect(result.action.guidance).toContain('Use `wp worktree` instead')
+      }
+    }
+  })
+
   it('empty string → null', async () => {
     const routeCommand = await getRoute()
     const result = routeCommand('')

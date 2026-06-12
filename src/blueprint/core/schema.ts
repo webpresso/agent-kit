@@ -98,6 +98,8 @@ export const planFrontmatterSchema = z.object({
   execution_verifications: z.array(z.string()).optional(),
   execution_artifacts: z.array(z.string()).optional(),
   execution_log_path: z.string().optional(),
+  worktree_owner_id: z.string().optional(),
+  worktree_owner_branch: z.string().optional(),
   max_parallel_agents: z.number().optional(),
   parent_roadmap: z.string().optional(),
   depends_on: z.array(z.string()).optional(),

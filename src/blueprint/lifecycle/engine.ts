@@ -12,7 +12,7 @@ import { applyVerification, assertAllTasksHaveCanonicalPassingEvidence } from '#
 export type LifecycleTaskStatus = 'todo' | 'in-progress' | 'blocked' | 'done' | 'dropped'
 
 export type BlueprintLifecycleIntent =
-  | { type: 'start' }
+  | { type: 'start'; worktreeOwnerId?: string; worktreeOwnerBranch?: string }
   | { type: 'park' }
   | { type: 'finalize' }
   | { type: 'task_start'; taskId: string }
@@ -178,6 +178,10 @@ export function applyBlueprintLifecycle(
         throw new Error(`Blueprint ${slug} cannot start from ${currentStatus}`)
       }
       targetStatus = 'in-progress'
+      nextMarkdown = setBlueprintFrontmatterFields(nextMarkdown, {
+        worktree_owner_id: intent.worktreeOwnerId,
+        worktree_owner_branch: intent.worktreeOwnerBranch,
+      })
       auditEvents.push(`blueprint.start:${slug}`)
       break
     case 'park':
@@ -185,10 +189,18 @@ export function applyBlueprintLifecycle(
         throw new Error(`Blueprint ${slug} cannot park from ${currentStatus}`)
       }
       targetStatus = 'parked'
+      nextMarkdown = setBlueprintFrontmatterFields(nextMarkdown, {
+        worktree_owner_id: undefined,
+        worktree_owner_branch: undefined,
+      })
       auditEvents.push(`blueprint.park:${slug}`)
       break
     case 'finalize': {
       assertTaskDoneRequirements(markdown, blueprint)
+      nextMarkdown = setBlueprintFrontmatterFields(nextMarkdown, {
+        worktree_owner_id: undefined,
+        worktree_owner_branch: undefined,
+      })
       targetStatus = 'completed'
       auditEvents.push(`blueprint.finalize:${slug}`)
       break

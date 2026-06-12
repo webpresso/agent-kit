@@ -9,6 +9,7 @@ import { parseBlueprintForDb } from '#db/parser/blueprint-db-parser'
 import { blueprintToSpecKit } from '#export/spec-kit/index'
 
 import { getProjectRoot } from '#cli/utils'
+import { clearBlueprintWorktreeOwnership, ensureBlueprintOwnerWorktree } from '#worktrees/manager.js'
 import { resolveBlueprintRoot } from '#utils/blueprint-root'
 import { getBlueprintDocumentPaths } from '#utils/document-paths.js'
 import {
@@ -638,21 +639,41 @@ export async function startBlueprint(
   slug: string,
   options: BlueprintMoveOptions = {},
 ): Promise<BlueprintLifecycleMutationResult> {
-  return applyLifecycleMutation(slug, { type: 'start' }, resolveProjectRoot(options.projectRoot))
+  const projectRoot = resolveProjectRoot(options.projectRoot)
+  const binding = ensureBlueprintOwnerWorktree(projectRoot, relativeBlueprintSlug(slug))
+  const result = await applyLifecycleMutation(
+    slug,
+    {
+      type: 'start',
+      worktreeOwnerId: binding.id,
+      worktreeOwnerBranch: binding.branch,
+    },
+    projectRoot,
+  )
+  return {
+    ...result,
+    message: `${result.message} Owner worktree: ${binding.path}`,
+  }
 }
 
 export async function parkBlueprint(
   slug: string,
   options: BlueprintMoveOptions = {},
 ): Promise<BlueprintLifecycleMutationResult> {
-  return applyLifecycleMutation(slug, { type: 'park' }, resolveProjectRoot(options.projectRoot))
+  const projectRoot = resolveProjectRoot(options.projectRoot)
+  const result = await applyLifecycleMutation(slug, { type: 'park' }, projectRoot)
+  clearBlueprintWorktreeOwnership(projectRoot, relativeBlueprintSlug(slug))
+  return result
 }
 
 export async function finalizeBlueprint(
   slug: string,
   options: BlueprintMoveOptions = {},
 ): Promise<BlueprintLifecycleMutationResult> {
-  return applyLifecycleMutation(slug, { type: 'finalize' }, resolveProjectRoot(options.projectRoot))
+  const projectRoot = resolveProjectRoot(options.projectRoot)
+  const result = await applyLifecycleMutation(slug, { type: 'finalize' }, projectRoot)
+  clearBlueprintWorktreeOwnership(projectRoot, relativeBlueprintSlug(slug))
+  return result
 }
 
 export async function mutateBlueprintTask(
