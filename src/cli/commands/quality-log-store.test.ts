@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -35,6 +35,12 @@ describe('quality log store', () => {
 
     expect(readCliLogEntry('test')?.id).toBe(secondEntry.id)
     expect(readCliLogEntry('test', 2)?.summary).toBe('first run')
+  })
+
+  it('materializes the log file path immediately when the sink is created', () => {
+    const sink = createCliLogSink('audit')
+
+    expect(existsSync(sink.absoluteLogPath)).toBe(true)
   })
 
   it('retains only the latest 10 entries and prunes old log files', async () => {

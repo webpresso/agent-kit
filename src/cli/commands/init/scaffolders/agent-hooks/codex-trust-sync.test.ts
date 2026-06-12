@@ -11,7 +11,7 @@ const ownedHook = {
   eventName: 'pre_tool_use',
   handlerType: 'command',
   matcher: 'Bash',
-  command: './node_modules/.bin/wp-pretool-guard',
+  command: './.codex/managed-hooks/wp-pretool-guard.sh',
   timeoutSec: 5,
   statusMessage: null,
   sourcePath: HOOKS_PATH,

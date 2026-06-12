@@ -42,13 +42,9 @@ No private registry setup is required.
 If `vp` is not already on PATH, install Vite+ first (for example
 `npm install -g vite-plus`), then continue.
 
-For committed/team repos, prefer a repo-local install after bootstrap. Pin
-`@webpresso/agent-kit` in `devDependencies`, then rerun setup through the local
-CLI (`vp run setup:agent` or `vp exec wp setup`). Setup resolves catalog,
-subagent, and host-surface assets from the
-scoped package path `node_modules/@webpresso/agent-kit`. When a repo already
-pins `@webpresso/agent-kit` and setup is launched from a global CLI, it warns
-and points you back to the repo-local command so scaffolding is reproducible.
+For committed/team repos, pin `@webpresso/agent-kit` in `devDependencies` with
+a published semver range, then rerun global `wp setup`. The package pin is for
+version selection only; setup no longer relies on a repo-local CLI path.
 
 If `wp setup` needs gstack tuning on a workstation with multiple agent CLIs
 installed, use:

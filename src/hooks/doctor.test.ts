@@ -8,14 +8,13 @@ vi.mock('node:os', () => ({ platform: () => 'linux' }))
 vi.mock('node:child_process', () => ({ spawn: vi.fn() }))
 
 import { spawn } from 'node:child_process'
-import { accessSync, existsSync, lstatSync, readFileSync, readlinkSync, statSync } from 'node:fs'
+import { accessSync, existsSync, lstatSync, readFileSync, statSync } from 'node:fs'
 
 const mockSpawn = vi.mocked(spawn)
 const mockAccessSync = vi.mocked(accessSync)
 const mockExistsSync = vi.mocked(existsSync)
 const mockLstatSync = vi.mocked(lstatSync)
 const mockReadFileSync = vi.mocked(readFileSync)
-const mockReadlinkSync = vi.mocked(readlinkSync)
 const mockStatSync = vi.mocked(statSync)
 
 describe('hooks/doctor', () => {
@@ -52,9 +51,9 @@ describe('hooks/doctor', () => {
   const pkgJson = join(repoRoot, 'package.json')
   const distPkgJson = join(repoRoot, 'dist/esm', 'package.json')
   const pluginJson = join(repoRoot, '.claude-plugin', 'plugin.json')
+  const wpBin = join(repoRoot, 'bin', 'wp')
   const builtMcpCli = join(repoRoot, 'dist/esm/mcp/cli.js')
   const rtkMarker = join(repoRoot, '.agent', '.rtk-requested')
-  const devLinkState = join(repoRoot, '.webpresso', 'webpresso-dev-link.json')
 
   function mockHealthyHookProbe(): void {
     mockSpawn.mockImplementation(() => {
@@ -187,24 +186,21 @@ describe('hooks/doctor', () => {
       expect(resolved).toBe(repoRoot)
     })
 
-    it('skips executable check on win32', async () => {
-      // `node:os` is mocked at the top level of the file (linux). For this
-      // test the win32 branch is gated by `process.platform`, set via the
-      // stubGlobal call below — no per-test re-mock of `node:os` needed
-      // (and vitest 4 deprecates nested vi.mock anyway, since it gets
-      // hoisted to module top regardless of where it appears).
+    it('does not report an executable error when the repo wp launcher is executable', async () => {
       mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
         if (String(path) === rtkMarker) throw new Error('ENOENT')
         return true
       }) as typeof accessSync)
-      mockStatSync.mockReturnValue({ mode: 0o644 } as unknown as ReturnType<typeof statSync>)
+      mockStatSync.mockReturnValue({ mode: 0o755 } as unknown as ReturnType<typeof statSync>)
+      mockHealthyHookProbe()
 
-      vi.stubGlobal('process', { ...fakeProcess(), platform: 'win32' })
+      vi.stubGlobal('process', fakeProcess())
 
       const { runHooksDoctor } = await import('#hooks/doctor')
       const result = await runHooksDoctor({ skipMcp: true })
       const pretoolCheck = result.checks.find((c) => c.name === 'pretool-guard')
-      expect(pretoolCheck?.detail).not.toContain('not executable')
+      expect(pretoolCheck?.detail).not.toBe('exists but not executable')
+      expect(pretoolCheck?.ok).toBe(true)
     })
 
     it('skips MCP check when skipMcp is true', async () => {
@@ -213,6 +209,7 @@ describe('hooks/doctor', () => {
         return true
       }) as typeof accessSync)
       mockStatSync.mockReturnValue({ mode: 0o755 } as unknown as ReturnType<typeof statSync>)
+      mockHealthyHookProbe()
 
       vi.stubGlobal('process', fakeProcess())
 
@@ -229,6 +226,7 @@ describe('hooks/doctor', () => {
         return true
       }) as typeof accessSync)
       mockStatSync.mockReturnValue({ mode: 0o755 } as unknown as ReturnType<typeof statSync>)
+      mockHealthyHookProbe()
 
       vi.stubGlobal('process', fakeProcess())
 
@@ -246,6 +244,7 @@ describe('hooks/doctor', () => {
         pkgJson,
         distPkgJson,
         pluginJson,
+        wpBin,
         join(repoRoot, 'src/hooks/pretool-guard/index.ts'),
         join(repoRoot, 'src/hooks/post-tool/lint-after-edit.ts'),
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
@@ -294,6 +293,7 @@ describe('hooks/doctor', () => {
       const knownPaths = new Set([
         pkgJson,
         pluginJson,
+        wpBin,
         join(repoRoot, 'src/hooks/pretool-guard/index.ts'),
         join(repoRoot, 'src/hooks/post-tool/lint-after-edit.ts'),
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
@@ -871,19 +871,17 @@ describe('hooks/doctor', () => {
       )
     })
 
-    it('adds a green live-source dev-link row when the consumer link is healthy', async () => {
+    it('omits the removed live-source dev-link row', async () => {
       const knownPaths = new Set([
         pkgJson,
         pluginJson,
-        devLinkState,
+        wpBin,
         join(repoRoot, 'src/hooks/pretool-guard/index.ts'),
         join(repoRoot, 'src/hooks/post-tool/lint-after-edit.ts'),
         join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
         join(repoRoot, 'src/hooks/guard-switch/index.ts'),
         join(repoRoot, 'src/hooks/sessionstart/index.ts'),
         join(repoRoot, 'src/hooks/test-quality-check.ts'),
-        join(repoRoot, 'node_modules', '@webpresso', 'agent-kit'),
-        join('/live/webpresso', 'package.json'),
       ])
 
       mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
@@ -908,67 +906,6 @@ describe('hooks/doctor', () => {
         if (String(path) === pluginJson) {
           return JSON.stringify({ version: '0.1.0', hooks: {}, mcpServers: {} })
         }
-        if (String(path) === devLinkState) {
-          return JSON.stringify({ package: '@webpresso/agent-kit', linkedFrom: '/live/webpresso' })
-        }
-        throw new Error(`unexpected read: ${String(path)}`)
-      }) as typeof readFileSync)
-      mockReadlinkSync.mockReturnValue('/live/webpresso')
-      mockHealthyHookProbe()
-
-      vi.stubGlobal('process', fakeProcess({ cwd: () => repoRoot }))
-
-      const { runHooksDoctor } = await import('#hooks/doctor')
-      const result = await runHooksDoctor({ skipMcp: true, cwd: repoRoot })
-      expect(result.checks.find((check) => check.name === 'live-source dev-link')).toEqual({
-        name: 'live-source dev-link',
-        ok: true,
-        detail: '@webpresso/agent-kit → /live/webpresso',
-      })
-    })
-
-    it('adds a red live-source dev-link row when the linked source checkout is missing', async () => {
-      const knownPaths = new Set([
-        pkgJson,
-        pluginJson,
-        devLinkState,
-        join(repoRoot, 'src/hooks/pretool-guard/index.ts'),
-        join(repoRoot, 'src/hooks/post-tool/lint-after-edit.ts'),
-        join(repoRoot, 'src/hooks/stop/qa-changed-files.ts'),
-        join(repoRoot, 'src/hooks/guard-switch/index.ts'),
-        join(repoRoot, 'src/hooks/sessionstart/index.ts'),
-        join(repoRoot, 'src/hooks/test-quality-check.ts'),
-      ])
-
-      mockAccessSync.mockImplementation(((path: Parameters<typeof accessSync>[0]) => {
-        if (String(path) === rtkMarker) throw new Error('ENOENT')
-        if (knownPaths.has(String(path))) return
-        throw new Error('ENOENT')
-      }) as typeof accessSync)
-      mockExistsSync.mockImplementation((path) => knownPaths.has(String(path)))
-      mockStatSync.mockReturnValue({ mode: 0o755 } as unknown as ReturnType<typeof statSync>)
-      mockReadFileSync.mockImplementation(((path: Parameters<typeof readFileSync>[0]) => {
-        if (String(path) === pkgJson) {
-          return JSON.stringify({
-            bin: {
-              'wp-pretool-guard': './src/hooks/pretool-guard/index.ts',
-              'wp-post-tool': './src/hooks/post-tool/lint-after-edit.ts',
-              'wp-stop-qa': './src/hooks/stop/qa-changed-files.ts',
-              'wp-guard-switch': './src/hooks/guard-switch/index.ts',
-              'wp-sessionstart-routing': './src/hooks/sessionstart/index.ts',
-              'wp-test-quality-check': './src/hooks/test-quality-check.ts',
-            },
-          })
-        }
-        if (String(path) === pluginJson) {
-          return JSON.stringify({ version: '0.1.0', hooks: {}, mcpServers: {} })
-        }
-        if (String(path) === devLinkState) {
-          return JSON.stringify({
-            package: '@webpresso/agent-kit',
-            linkedFrom: '/missing/webpresso',
-          })
-        }
         throw new Error(`unexpected read: ${String(path)}`)
       }) as typeof readFileSync)
       mockHealthyHookProbe()
@@ -977,10 +914,7 @@ describe('hooks/doctor', () => {
 
       const { runHooksDoctor } = await import('#hooks/doctor')
       const result = await runHooksDoctor({ skipMcp: true, cwd: repoRoot })
-      expect(result.ok).toBe(false)
-      expect(
-        result.checks.find((check) => check.name === 'live-source dev-link')?.detail,
-      ).toContain('vp run dev:link --consumer')
+      expect(result.checks.find((check) => check.name === 'live-source dev-link')).toBeUndefined()
     })
   })
 

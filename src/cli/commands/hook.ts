@@ -7,7 +7,6 @@ const HOOK_NAMES = [
   'guard-switch',
   'sessionstart-routing',
   'test-quality-check',
-  'check-dev-link',
 ] as const
 
 export type HookName = (typeof HOOK_NAMES)[number]
@@ -36,10 +35,6 @@ const HOOK_HANDLERS: Readonly<Record<HookName, (args: string[]) => Promise<void>
   'test-quality-check': async (args) => {
     const { runTestQualityCheck } = await import('#hooks/test-quality-check')
     runTestQualityCheck(args)
-  },
-  'check-dev-link': async () => {
-    const { main } = await import('#hooks/check-dev-link/index')
-    await main()
   },
 }
 

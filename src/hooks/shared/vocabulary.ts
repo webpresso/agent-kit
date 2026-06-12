@@ -37,7 +37,7 @@ function padRight(value: string, width: number): string {
  *
  * Example:
  *   PreToolUse           wp-pretool-guard             claude    enforcing
- *   SessionStart         wp-check-dev-link            codex     disabled       → run: wp setup
+ *   SessionStart         wp-sessionstart-routing      codex     disabled       → run: wp setup
  */
 export function formatStatusLine(detail: HookStatusDetail): string {
   const parts = [

@@ -122,14 +122,6 @@ function ensureBuiltPackedDist() {
       HUSKY: '0',
     },
   })
-  execFileSync('bun', ['scripts/link-self-bins.ts'], {
-    cwd: REPO_ROOT,
-    encoding: 'utf8',
-    env: {
-      ...process.env,
-      HUSKY: '0',
-    },
-  })
   packedDistBuilt = true
 }
 

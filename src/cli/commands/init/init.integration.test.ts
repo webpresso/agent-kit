@@ -284,7 +284,6 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
           scripts: {},
           durablePlanningRoot: '.agent/planning/',
           blueprintsDir: 'plans',
-          globalInstall: true,
         },
         null,
         2,
@@ -299,13 +298,11 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
       hosts?: { selected?: string[] }
       rules?: { overrides?: string[] }
       blueprintsDir?: string
-      globalInstall?: boolean
     }
     expect(rc.installed.tier3Skills).toEqual(['base-kit', 'tanstack-query'])
     expect(rc.hosts?.selected).toEqual(['codex'])
     expect(rc.rules?.overrides).toEqual(['repo-restrictions'])
     expect(rc.blueprintsDir).toBe('plans')
-    expect(rc.globalInstall).toBe(true)
   })
 
   it('supports a no-host fresh bootstrap with explicit degraded reporting', async () => {
@@ -406,7 +403,7 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
     expect(packageJson.scripts.test).toBe('wp test --file vitest.config.ts')
     expect(packageJson.scripts.mutation).toBe('wp test --mutation')
     expect(packageJson.scripts.e2e).toBe('wp e2e --config playwright.config.ts')
-    expect(packageJson.devDependencies['@webpresso/agent-kit']).toBe('latest')
+    expect(packageJson.devDependencies['@webpresso/agent-kit']).toMatch(/^\^\d+\.\d+\.\d+/u)
     expect(packageJson.devDependencies['@stryker-mutator/typescript-checker']).toBe('latest')
 
     // Blueprints
@@ -638,13 +635,9 @@ describe('wp init end-to-end', { timeout: 20_000 }, () => {
       group.hooks.map((hook) => hook.command),
     )
     expect(stopCommands.some((command) => command.includes('wp-stop-qa'))).toBe(true)
-    // BP1: skill commands resolve wp via the launcher chain (project bin →
-    // package-root fallback) instead of the bare project bin invocation.
     expect(
       stopCommands.some(
-        (command) =>
-          command.includes('"$CLAUDE_PROJECT_DIR/node_modules/.bin/wp"') &&
-          command.includes('audit agents'),
+        (command) => command.includes('wp audit agents') && command.includes('# from-skill: verify'),
       ),
     ).toBe(true)
     expect(stopCommands.some((command) => command.includes('# from-skill: verify'))).toBe(true)
@@ -968,26 +961,7 @@ describe('warnIfNonLocalCli (DX2)', () => {
     rmSync(linkedRoot, { recursive: true, force: true })
   })
 
-  it('stays silent when .webpressorc.json opts into globalInstall mode', async () => {
-    const { warnIfNonLocalCli } = await import('./detect-consumer.js')
-    writeFileSync(
-      join(repo, '.webpressorc.json'),
-      JSON.stringify({
-        version: '1',
-        installed: { tier3Skills: [] },
-        rules: { overrides: [] },
-        scripts: {},
-        durablePlanningRoot: '.agent/planning/',
-        globalInstall: true,
-      }),
-    )
-
-    warnIfNonLocalCli(repo, 'file:///tmp/global/node_modules/@webpresso/agent-kit/dist/cli/cli.js')
-
-    expect(captured).toEqual([])
-  })
-
-  it('warns to use the repo-local CLI when the repo already pins @webpresso/agent-kit', async () => {
+  it('warns that global wp must satisfy the repo pin when the repo already pins @webpresso/agent-kit', async () => {
     const { warnIfNonLocalCli } = await import('./detect-consumer.js')
     writeFileSync(
       join(repo, 'package.json'),
@@ -1004,9 +978,8 @@ describe('warnIfNonLocalCli (DX2)', () => {
       captured.some(
         (line) =>
           line.includes('warning: wp running from a non-local install') &&
-          line.includes('This repo already pins `@webpresso/agent-kit`') &&
-          line.includes('vp run setup:agent') &&
-          line.includes('vp exec wp setup'),
+          line.includes("Global `wp` must satisfy this repo's pinned `@webpresso/agent-kit` version range") &&
+          line.includes('wp setup'),
       ),
     ).toBe(true)
   })

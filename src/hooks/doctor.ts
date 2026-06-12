@@ -27,8 +27,6 @@ import {
   resolveAgentKitPackageRoot,
   type ResolveAgentKitPackageRootOptions,
 } from '#cli/commands/init/package-root'
-import { STATE_FILE_RELATIVE_PATH, readDevLinkState } from '#dev/dev-link-state'
-import { detectDevLinkBreakage, formatBreakageMessage } from '#hooks/check-dev-link/index'
 import {
   expectedRootWpBinRelativePath,
   formatRootLauncherContractFailure,
@@ -66,13 +64,13 @@ const OPERATOR_PRECEDENCE_DETAIL =
   'MCP first (`wp_*` tools), direct `wp` only as fallback, and never `bun run wp` / `pnpm run wp` / `npm run wp` / `yarn wp` / `vp run wp`'
 
 /** Hook bin definitions */
-const HOOK_BINS: { name: string; binName: string; checkStdin: boolean }[] = [
-  { name: 'pretool-guard', binName: 'wp-pretool-guard', checkStdin: true },
-  { name: 'post-tool (lint-after-edit)', binName: 'wp-post-tool', checkStdin: false },
-  { name: 'stop (qa-changed-files)', binName: 'wp-stop-qa', checkStdin: false },
-  { name: 'guard-switch', binName: 'wp-guard-switch', checkStdin: true },
-  { name: 'sessionstart', binName: 'wp-sessionstart-routing', checkStdin: true },
-  { name: 'test-quality-check', binName: 'wp-test-quality-check', checkStdin: false },
+const HOOK_BINS: { name: string; hookName: string; checkStdin: boolean }[] = [
+  { name: 'pretool-guard', hookName: 'pretool-guard', checkStdin: true },
+  { name: 'post-tool (lint-after-edit)', hookName: 'post-tool', checkStdin: false },
+  { name: 'stop (qa-changed-files)', hookName: 'stop-qa', checkStdin: false },
+  { name: 'guard-switch', hookName: 'guard-switch', checkStdin: true },
+  { name: 'sessionstart', hookName: 'sessionstart-routing', checkStdin: true },
+  { name: 'test-quality-check', hookName: 'test-quality-check', checkStdin: false },
 ]
 
 type HostCheckMode = 'auto' | 'skip' | 'required'
@@ -125,17 +123,19 @@ export function findOwningPackageRoot(startDir: string): string | null {
   return findAgentKitPackageRoot(startDir)
 }
 
-function resolveHookBin(binName: string): string | null {
-  try {
-    const root = resolvePackageRoot()
-    if (!root) return null
-    const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8'))
-    const binScript = pkg.bin?.[binName]
-    if (!binScript) return null
-    return resolve(root, binScript)
-  } catch {
-    return null
-  }
+function resolveWpCliCommand(): { command: string; args: string[] } | null {
+  const root = resolvePackageRoot()
+  if (!root) return null
+  const candidate = join(root, 'bin', process.platform === 'win32' ? 'wp.cmd' : 'wp')
+  if (tryAccess(candidate)) return { command: candidate, args: [] }
+
+  const builtCli = join(root, 'dist', 'esm', 'cli', 'cli.js')
+  if (tryAccess(builtCli)) return { command: 'node', args: [builtCli] }
+
+  const sourceCli = join(root, 'src', 'cli', 'cli.ts')
+  if (tryAccess(sourceCli)) return { command: 'bun', args: [sourceCli] }
+
+  return null
 }
 
 function operatorPrecedenceCheck(): DoctorCheck {
@@ -332,27 +332,40 @@ export function checkRtkOnPath(cwd?: string): Promise<DoctorCheck | null> {
 }
 
 async function probeHookBin(
-  file: string,
+  wpCli: { command: string; args: string[] },
+  hookName: string,
   checkStdin: boolean,
 ): Promise<{ ok: boolean; detail?: string }> {
-  if (!tryAccess(file)) {
+  if (
+    (wpCli.command.includes('/') || wpCli.command.includes('\\')) &&
+    !tryAccess(wpCli.command)
+  ) {
     return { ok: false, detail: 'file not found' }
   }
 
-  if (platform() !== 'win32' && !isExecutable(file)) {
+  if (
+    platform() !== 'win32' &&
+    (wpCli.command.includes('/') || wpCli.command.includes('\\')) &&
+    !isExecutable(wpCli.command)
+  ) {
     return { ok: false, detail: 'not executable' }
   }
 
   if (!checkStdin) {
-    return probeExitZero(file)
+    return probeExitZero(wpCli, hookName)
   }
 
-  return probeJsonStdin(file)
+  return probeJsonStdin(wpCli, hookName)
 }
 
-function probeExitZero(file: string): Promise<{ ok: boolean; detail?: string }> {
+function probeExitZero(
+  wpCli: { command: string; args: string[] },
+  hookName: string,
+): Promise<{ ok: boolean; detail?: string }> {
   return new Promise<{ ok: boolean; detail?: string }>((resolve) => {
-    const child = spawn(file, [], { stdio: ['pipe', 'pipe', 'pipe'] })
+    const child = spawn(wpCli.command, [...wpCli.args, 'hook', hookName], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
     let stderr = ''
     child.stdin.end()
     child.stderr?.on('data', (chunk) => {
@@ -371,9 +384,14 @@ function probeExitZero(file: string): Promise<{ ok: boolean; detail?: string }> 
   })
 }
 
-function probeJsonStdin(file: string): Promise<{ ok: boolean; detail?: string }> {
+function probeJsonStdin(
+  wpCli: { command: string; args: string[] },
+  hookName: string,
+): Promise<{ ok: boolean; detail?: string }> {
   return new Promise<{ ok: boolean; detail?: string }>((resolve) => {
-    const child = spawn(file, [], { stdio: ['pipe', 'pipe', 'pipe'] })
+    const child = spawn(wpCli.command, [...wpCli.args, 'hook', hookName], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
     let stdout = ''
     let stderr = ''
     let settled = false
@@ -981,36 +999,6 @@ async function checkClaudeHost(): Promise<DoctorCheck> {
       }
 }
 
-function checkLiveSourceDevLink(cwd = process.cwd()): DoctorCheck | null {
-  const state = readDevLinkState(cwd)
-  if (!state) return null
-
-  if (!tryAccess(join(state.linkedFrom, 'package.json'))) {
-    return {
-      name: 'live-source dev-link',
-      ok: false,
-      detail:
-        `State file (${STATE_FILE_RELATIVE_PATH}) points at ${state.linkedFrom}, but that checkout is missing. ` +
-        `Fix the source checkout or rerun \`vp run dev:link --consumer ${cwd}\`.`,
-    }
-  }
-
-  const breakage = detectDevLinkBreakage({ cwd })
-  if (breakage) {
-    return {
-      name: 'live-source dev-link',
-      ok: false,
-      detail: formatBreakageMessage(breakage),
-    }
-  }
-
-  return {
-    name: 'live-source dev-link',
-    ok: true,
-    detail: `${state.package} → ${state.linkedFrom}`,
-  }
-}
-
 // Marker for the managed hook launchers `wp setup` writes under
 // `.claude/hooks/managed/` (CLAUDE_MANAGED_HOOK_SUBDIR in the agent-hooks
 // scaffolder). The plugin manifest no longer ships hooks (they double-fired
@@ -1344,22 +1332,24 @@ async function applyHooksDoctorFixPlan(
 export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<DoctorResult> {
   const checks: DoctorCheck[] = []
   const isWin = platform() === 'win32'
+  const wpCli = resolveWpCliCommand()
 
   for (const bin of HOOK_BINS) {
-    const file = resolveHookBin(bin.binName)
-    const exists = file && tryAccess(file)
-
-    if (!exists) {
-      checks.push({ name: bin.name, ok: false, detail: `bin '${bin.binName}' not found in .bin` })
+    if (!wpCli) {
+      checks.push({ name: bin.name, ok: false, detail: "repo 'wp' launcher not found" })
       continue
     }
 
-    if (!isWin && !isExecutable(file!)) {
+    if (
+      !isWin &&
+      (wpCli.command.includes('/') || wpCli.command.includes('\\')) &&
+      !isExecutable(wpCli.command)
+    ) {
       checks.push({ name: bin.name, ok: false, detail: 'exists but not executable' })
       continue
     }
 
-    const probe = await probeHookBin(file!, bin.checkStdin)
+    const probe = await probeHookBin(wpCli, bin.hookName, bin.checkStdin)
     checks.push({ name: bin.name, ok: probe.ok, detail: probe.detail })
   }
 
@@ -1394,9 +1384,6 @@ export async function runHooksDoctor(opts: RunHooksDoctorOptions = {}): Promise<
 
   const rtkCheck = await checkRtkOnPath(opts.cwd)
   if (rtkCheck) checks.push(rtkCheck)
-
-  const liveSourceCheck = checkLiveSourceDevLink(opts.cwd)
-  if (liveSourceCheck) checks.push(liveSourceCheck)
 
   const hostMode = opts.hosts ?? 'auto'
   if (shouldRunHostChecks(hostMode)) {

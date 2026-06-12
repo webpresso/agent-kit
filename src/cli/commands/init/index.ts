@@ -502,7 +502,6 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
           catalogDir,
           repoRoot: consumer.repoRoot,
           options,
-          globalInstall: existingConfig?.globalInstall === true,
         })
       : []
 
@@ -654,7 +653,6 @@ export async function runInit(flags: InitFlags, deps: InitCommandDeps = {}): Pro
       const contextModeResult = ensureContextMode({
         repoRoot: consumer.repoRoot,
         options,
-        globalInstall: config.globalInstall,
       })
       console.log(
         `  context-mode codex features: ${contextModeResult.codexFeatures.action === 'identical' ? 'already configured' : contextModeResult.codexFeatures.action === 'skipped-dry' ? 'skipped (--dry-run)' : '✓'} ${contextModeResult.codexFeatures.targetPath}`,

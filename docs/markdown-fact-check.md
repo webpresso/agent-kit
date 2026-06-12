@@ -28,7 +28,7 @@ If you just want to use the product, read:
 - The default setup already includes the repo bootstrap.
 - Local setup assets resolve from `node_modules/@webpresso/agent-kit`.
 - When a repo pins `@webpresso/agent-kit`, setup should be rerun through the
-  repo-local CLI (`vp run setup:agent` or `vp exec wp setup`) rather than a
+  repo-local CLI (`vp run setup:agent` or `wp setup`) rather than a
   global `wp` binary.
 - Config/library subpaths rely on Node package `exports`.
 - Workspace catalog versions come from pnpm catalogs.

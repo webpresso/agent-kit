@@ -24,9 +24,8 @@ describe('buildClaudeHookGroups (byte-parity)', () => {
 
   it('produces the expected SessionStart structure', () => {
     const result = buildClaudeHookGroups({ resolveBin, matchers })
-    expect(result['SessionStart']).toHaveLength(2)
+    expect(result['SessionStart']).toHaveLength(1)
     expect(result['SessionStart']?.[0]?.hooks[0]?.command).toContain('wp-sessionstart-routing')
-    expect(result['SessionStart']?.[1]?.hooks[0]?.command).toContain('wp-check-dev-link')
   })
 
   it('produces the expected PreToolUse structure with matcher', () => {

@@ -34,11 +34,10 @@ First-time machine? Install Vite+ so `vp` is on PATH first (for example
 vp install -g @webpresso/agent-kit && wp setup
 ```
 
-For repeatable repo setup, pin `@webpresso/agent-kit` in the repo and run the
-repo-local CLI (`vp run setup:agent` or `vp exec wp setup`). `wp setup` resolves its local install from
-`node_modules/@webpresso/agent-kit`. If a repo already pins
-`@webpresso/agent-kit` but setup is launched from a global CLI, setup warns so
-operators rerun through the repo-local binary.
+For repeatable consumer-repo setup, pin `@webpresso/agent-kit` in the repo
+with a published semver range and run global `wp setup`. The package pin is
+used for version selection, not as a local execution path. If setup is launched
+from a global CLI that does not satisfy the repo pin, setup warns.
 
 Then run the canonical success check:
 

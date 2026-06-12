@@ -114,8 +114,8 @@ describe('scaffoldBaseKit', () => {
     expect((pkg['engines'] as Record<string, string>)['node']).toBe('>=24')
     expect(pkg['type']).toBe('module')
     expect(pkg['packageManager']).toBe('pnpm@11.1.1')
-    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toBe(
-      'latest',
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toMatch(
+      /^\^\d+\.\d+\.\d+/u,
     )
     expect((pkg['devDependencies'] as Record<string, string>)['typescript']).toBe('latest')
     expect((pkg['devDependencies'] as Record<string, string>)['vitest']).toBe('latest')
@@ -213,7 +213,7 @@ describe('scaffoldBaseKit', () => {
     mkdirSync(repoRoot, { recursive: true })
     const initial = {
       name: 'consumer-app',
-      scripts: { 'setup:agent': 'vp exec wp setup' },
+      scripts: { 'setup:agent': 'wp setup' },
       devDependencies: { '@webpresso/agent-kit': '^0.2.0' },
     }
     writeFileSync(pkgPath, JSON.stringify(initial, null, 2))
@@ -222,7 +222,7 @@ describe('scaffoldBaseKit', () => {
     scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
-    expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('vp exec wp setup')
+    expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
     expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
       'wp audit absolute-path-policy --root .',
     )
@@ -268,28 +268,17 @@ describe('scaffoldBaseKit', () => {
     )
   })
 
-  it('does not inject a local webpresso devDependency when the repo opts into globalInstall', () => {
+  it('injects the agent-kit package pin for ordinary consumer repos', () => {
     const pkgPath = join(repoRoot, 'package.json')
-    writeFileSync(
-      join(repoRoot, '.webpressorc.json'),
-      JSON.stringify({
-        version: '1',
-        installed: { tier3Skills: [] },
-        rules: { overrides: [] },
-        scripts: {},
-        durablePlanningRoot: '.agent/planning/',
-        globalInstall: true,
-      }),
-    )
     writeFileSync(pkgPath, JSON.stringify({ name: 'consumer-app', private: true }, null, 2))
 
     const catalogDir = resolveCatalogDir()
-    scaffoldBaseKit({ catalogDir, repoRoot, options: {}, globalInstall: true })
+    scaffoldBaseKit({ catalogDir, repoRoot, options: {} })
 
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
-    expect(
-      (pkg['devDependencies'] as Record<string, string> | undefined)?.['@webpresso/agent-kit'],
-    ).toBeUndefined()
+    expect((pkg['devDependencies'] as Record<string, string>)['@webpresso/agent-kit']).toMatch(
+      /^\^\d+\.\d+\.\d+/,
+    )
     expect((pkg['scripts'] as Record<string, string>)['setup:agent']).toBe('wp setup')
     expect((pkg['scripts'] as Record<string, string>)['verify:paths']).toBe(
       'wp audit absolute-path-policy --root .',

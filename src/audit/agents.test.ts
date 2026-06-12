@@ -203,28 +203,7 @@ describe('auditAgents', () => {
     ).toBe(true)
   })
 
-  it('skips devDep check when globalInstall is true in .webpressorc.json', () => {
-    seedConsumerRepo(root)
-    // Remove the devDep — this is what globalInstall repos look like
-    writeJson(join(root, 'package.json'), {
-      name: 'consumer-app',
-      scripts: { 'setup:agent': 'wp setup' },
-      devDependencies: {},
-    })
-    writeJson(join(root, '.webpressorc.json'), {
-      version: '1',
-      installed: { tier3Skills: [] },
-      rules: { overrides: ['custom-rule'] },
-      scripts: {},
-      durablePlanningRoot: '.agent/planning/',
-      globalInstall: true,
-    })
-
-    const result = auditAgents(root)
-    expect(result.violations.some((v) => v.message.includes('@webpresso/agent-kit'))).toBe(false)
-  })
-
-  it('fails devDep check when globalInstall is absent and devDep is missing', () => {
+  it('fails devDep check when the package pin is missing', () => {
     seedConsumerRepo(root)
     writeJson(join(root, 'package.json'), {
       name: 'consumer-app',

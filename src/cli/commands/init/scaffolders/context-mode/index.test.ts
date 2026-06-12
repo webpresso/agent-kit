@@ -215,27 +215,27 @@ describe('context-mode preset', () => {
     expect(result.installed).toBe(false)
   })
 
-  it('opencode.json plugin array never includes local .opencode/plugins paths — webpresso-dev-link.js is auto-loaded, not explicitly registered', () => {
-    const next = patchOpenCodeContextModeConfig({}, ['vp', 'exec', 'wp', 'mcp'])
+  it('opencode.json plugin array never includes local .opencode/plugins paths — generated webpresso hooks are auto-loaded, not explicitly registered', () => {
+    const next = patchOpenCodeContextModeConfig({}, ['wp', 'mcp'])
     const plugins = next.plugin as string[]
 
     for (const entry of plugins) {
       expect(entry).not.toContain('.opencode/plugins')
-      expect(entry).not.toContain('webpresso-dev-link')
+      expect(entry).not.toContain('webpresso-hooks')
       expect(entry).not.toMatch(/\.(js|ts)$/)
     }
   })
 
-  it('patchOpenCodeContextModeConfig uses wp mcp directly when globalInstall command is passed', () => {
+  it('patchOpenCodeContextModeConfig uses wp mcp directly when passed explicitly', () => {
     const next = patchOpenCodeContextModeConfig({}, ['wp', 'mcp'])
     const mcp = next.mcp as Record<string, { command: unknown }>
     expect(mcp['webpresso'].command).toEqual(['wp', 'mcp'])
   })
 
-  it('patchOpenCodeContextModeConfig uses vp exec wp mcp as default fallback command', () => {
-    const next = patchOpenCodeContextModeConfig({}, ['vp', 'exec', 'wp', 'mcp'])
+  it('patchOpenCodeContextModeConfig defaults to wp mcp for webpresso', () => {
+    const next = patchOpenCodeContextModeConfig({})
     const mcp = next.mcp as Record<string, { command: unknown }>
-    expect(mcp['webpresso'].command).toEqual(['vp', 'exec', 'wp', 'mcp'])
+    expect(mcp['webpresso'].command).toEqual(['wp', 'mcp'])
   })
 
   it('normalizes the Claude context-mode cache-heal hook to an absolute node launch', () => {

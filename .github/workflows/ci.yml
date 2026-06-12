@@ -22,7 +22,6 @@ jobs:
         with:
           node-version: '24.16.0'
           cache: pnpm
-      - uses: ./.github/actions/setup-webpresso
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
@@ -30,10 +29,7 @@ jobs:
       - run: pnpm run verify:secrets
       - run: pnpm run audit:secret-provider-quarantine
       - name: Run wp audit guardrails
-        run: |
-          WP="$(pwd)/node_modules/.bin/wp"
-          [ -x "$WP" ] || WP=wp
-          "$WP" audit guardrails
+        run: ./bin/wp audit guardrails
       - run: pnpm run typecheck
       - run: pnpm run lint
       - run: pnpm run test
@@ -47,7 +43,6 @@ jobs:
         with:
           node-version: '24.16.0'
           cache: pnpm
-      - uses: ./.github/actions/setup-webpresso
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
@@ -70,16 +65,12 @@ jobs:
         with:
           node-version: '24.16.0'
           cache: pnpm
-      - uses: ./.github/actions/setup-webpresso
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
       - run: pnpm install --frozen-lockfile
       - name: Check architecture drift contract
-        run: |
-          WP="$(pwd)/node_modules/.bin/wp"
-          [ -x "$WP" ] || WP=wp
-          "$WP" audit architecture-drift --root .
+        run: ./bin/wp audit architecture-drift --root .
 
   deploy-verify:
     runs-on: ubuntu-latest
@@ -90,7 +81,6 @@ jobs:
         with:
           node-version: '24.16.0'
           cache: pnpm
-      - uses: ./.github/actions/setup-webpresso
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest

@@ -226,4 +226,4 @@ The catalog is versioned alongside the package. To add a skill:
 4. Ship with a Changesets entry.
 
 Consumers pick it up on their next `pnpm update webpresso &&
-vp exec wp setup` cycle.
+wp setup` cycle.
