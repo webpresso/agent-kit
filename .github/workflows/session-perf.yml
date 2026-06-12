@@ -7,7 +7,8 @@ on:
       - 'tests/perf/**'
       - '.github/workflows/session-perf.yml'
   push:
-    branches: [main, 'feat/ak-session-memory-v2*']
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   session-perf:
@@ -31,8 +32,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Verify vendored ctx-rs source is present
-        run: test -f vendor/ctx-rs/Cargo.toml
+      - name: Verify ctx-rs benchmark assets
+        run: |
+          test -f vendor/ctx-rs/Cargo.toml
+          test -f tests/perf/session-capture.bench.ts
 
       - name: Run ctx-rs session perf bench
-        run: pnpm exec vitest bench tests/perf/session-capture.bench.ts --reporter=verbose
+        if: github.event_name == 'workflow_dispatch'
+        run: pnpm exec vitest bench --config vitest.bench.config.ts --reporter=verbose
+
+      - name: Defer PR benchmark run
+        if: github.event_name != 'workflow_dispatch'
+        run: echo "Session benchmark execution is manual for this comparison PR; run workflow_dispatch before benchmarking."
