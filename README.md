@@ -1,12 +1,12 @@
 # @webpresso/agent-kit
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![License: Elastic--2.0](https://img.shields.io/badge/License-Elastic--2.0-0f766e.svg)](./LICENSE)
 [![CI](https://github.com/webpresso/agent-kit/actions/workflows/ci.agent-kit.yml/badge.svg)](https://github.com/webpresso/agent-kit/actions/workflows/ci.agent-kit.yml)
 
 > TypeScript infrastructure for AI-agent-driven development. One `wp` runtime
 > gives agents planning, tests, mutation, e2e, CI, docs, and debt tracking —
 > all summary-first so they keep context, and enforced as contracts so docs,
-> intent, and code can't drift. MIT. Active development.
+> intent, and code can't drift. Elastic License 2.0. Active development.
 
 ## What it is
 
@@ -216,7 +216,7 @@ across minor versions.
 
 ## License
 
-MIT — see [LICENSE](./LICENSE). Vendored catalog skills and runtime integration
+Elastic License 2.0 — see [LICENSE](./LICENSE). Vendored catalog skills and runtime integration
 licenses are documented in [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md).
 
 ## Platform support
