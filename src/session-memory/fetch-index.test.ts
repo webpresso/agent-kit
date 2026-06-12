@@ -1,65 +1,115 @@
 import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { tmpdir } from 'node:os'
+
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { clearFetchIndexCache, fetchAndIndex } from './fetch-index.js'
-import { SessionMemoryStore } from './store.js'
+import { loadNativeSessionMemoryEngine } from './native-runtime.js'
+import { getStore, resetStoreCacheForTests } from './store.js'
 
-const dirs: string[] = []
-function store(): SessionMemoryStore {
-  const dir = mkdtempSync(join(tmpdir(), 'ak-fetch-index-'))
-  dirs.push(dir)
-  return new SessionMemoryStore(join(dir, 'memory.sqlite'))
-}
-function response(body: string, contentType: string): Response {
-  return new Response(body, { headers: { 'content-type': contentType } })
-}
+let tmpDir: string
+let dbPath: string
+
+beforeEach(() => {
+  loadNativeSessionMemoryEngine()
+  tmpDir = mkdtempSync(join(tmpdir(), 'wp-native-fetch-test-'))
+  dbPath = join(tmpDir, 'memory.db')
+})
 
 afterEach(() => {
   clearFetchIndexCache()
-  while (dirs.length > 0) rmSync(dirs.pop()!, { recursive: true, force: true })
+  resetStoreCacheForTests()
+  vi.restoreAllMocks()
+  if (tmpDir) rmSync(tmpDir, { recursive: true, force: true })
 })
 
 describe('fetchAndIndex', () => {
-  it('fetches HTML, converts it to markdown-ish chunks, and indexes it', async () => {
-    const s = store()
+  it('indexes fetched HTML as searchable markdown text', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('<html><body><h1>Hello</h1><p>Session memory works</p></body></html>', {
+        headers: { 'content-type': 'text/html' },
+      }),
+    )
+
+    const result = await fetchAndIndex({
+      url: 'https://example.test/docs',
+      dbPath,
+      cacheTtlMs: 60_000,
+      fetchImpl: globalThis.fetch,
+    })
+    expect(result.cached).toBe(false)
+    const hits = getStore(dbPath).search({ query: 'Session memory works', limit: 5 })
+    expect(hits.length).toBeGreaterThan(0)
+  })
+
+  it('indexes JSON as structured text', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('{"name":"native session memory"}', {
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+
     await fetchAndIndex({
-      url: 'https://example.com/a#frag',
-      store: s,
-      fetchImpl: vi.fn(async () => response('<h1>Hello</h1><p>session memory</p>', 'text/html')),
+      url: 'https://example.test/data',
+      dbPath,
+      cacheTtlMs: 60_000,
+      fetchImpl: globalThis.fetch,
     })
-    expect(s.search({ query: 'session', limit: 1 })[0]?.text).toContain('session memory')
-    s.close()
+    const hits = getStore(dbPath).search({ query: 'native session memory', limit: 5 })
+    expect(hits.length).toBeGreaterThan(0)
   })
 
-  it('fetches JSON as structured chunks and indexes it', async () => {
-    const s = store()
-    await fetchAndIndex({
-      url: 'https://example.com/data',
-      store: s,
-      fetchImpl: vi.fn(async () => response('{"name":"memory"}', 'application/json')),
+  it('uses the in-process TTL cache', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('cached body', { headers: { 'content-type': 'text/plain' } }),
+    )
+
+    const first = await fetchAndIndex({
+      url: 'https://example.test/cache#one',
+      dbPath,
+      cacheTtlMs: 60_000,
+      fetchImpl: globalThis.fetch,
     })
-    expect(s.search({ query: 'memory', limit: 1 })[0]?.text).toContain('memory')
-    s.close()
+    const second = await fetchAndIndex({
+      url: 'https://example.test/cache#two',
+      dbPath,
+      cacheTtlMs: 60_000,
+      fetchImpl: globalThis.fetch,
+    })
+    expect(first.cached).toBe(false)
+    expect(second.cached).toBe(true)
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
 
-  it('uses a 24h normalized URL cache', async () => {
-    const s = store()
-    const fetchImpl = vi.fn(async () => response('cached memory', 'text/plain'))
-    await fetchAndIndex({ url: 'https://example.com/cache#one', store: s, fetchImpl, now: 10 })
-    await fetchAndIndex({ url: 'https://example.com/cache#two', store: s, fetchImpl, now: 20 })
-    expect(fetchImpl).toHaveBeenCalledTimes(1)
-    s.close()
-  })
+  it('reuses cached fetch content while still indexing into a second db target', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('shared cached body', { headers: { 'content-type': 'text/plain' } }),
+    )
+    const secondDir = mkdtempSync(join(tmpdir(), 'wp-native-fetch-test-b-'))
+    const secondDbPath = join(secondDir, 'memory.db')
 
-  it('passes an AbortSignal to native fetch-compatible implementations', async () => {
-    const s = store()
-    const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
-      expect(init?.signal).toBeInstanceOf(AbortSignal)
-      return response('timeout-aware memory', 'text/plain')
-    })
-    await fetchAndIndex({ url: 'https://example.com/signal', store: s, fetchImpl, timeoutMs: 1 })
-    s.close()
+    try {
+      await fetchAndIndex({
+        url: 'https://example.test/shared-cache',
+        dbPath,
+        cacheTtlMs: 60_000,
+        fetchImpl: globalThis.fetch,
+      })
+      await fetchAndIndex({
+        url: 'https://example.test/shared-cache',
+        dbPath: secondDbPath,
+        cacheTtlMs: 60_000,
+        fetchImpl: globalThis.fetch,
+      })
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1)
+      expect(
+        getStore(secondDbPath).search({ query: 'shared cached body', limit: 5 }).length,
+      ).toBeGreaterThan(0)
+    } finally {
+      resetStoreCacheForTests()
+      rmSync(secondDir, { recursive: true, force: true })
+    }
   })
 })

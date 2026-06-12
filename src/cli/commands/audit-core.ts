@@ -43,6 +43,7 @@ export type AuditKind =
   | 'no-dev-vars'
   | 'secret-provider-quarantine'
   | 'secrets-config'
+  | 'session-memory-hardcut'
 
 export type AuditOutcome =
   | { kind: 'invalid-usage'; message: string }
