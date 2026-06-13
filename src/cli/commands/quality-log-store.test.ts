@@ -129,6 +129,23 @@ describe('quality log store', () => {
     expect(readFileSync(victimEntry.logPath, 'utf8')).toBe('victim\n')
   })
 
+  it('keeps finalization non-fatal when a live log path is removed before finalize', async () => {
+    const sink = createCliLogSink('test')
+    sink.write('lost backing file\n')
+    rmSync(sink.absoluteLogPath, { force: true })
+
+    const entry = await sink.finalize({ exitCode: 1, summary: 'missing path recovered' })
+
+    expect(entry.logPath).toBe(sink.absoluteLogPath)
+    expect(readCliLogEntry('test')).toEqual(entry)
+    expect(readFileSync(entry.logPath, 'utf8')).toBe('')
+    expect(
+      readdirSync(join(stateRoot.path, 'cli-logs', 'test')).filter((file) =>
+        file.endsWith('.log.active'),
+      ),
+    ).toEqual([])
+  })
+
   it('retains only the latest 10 entries and prunes old log files', async () => {
     let oldestPath = ''
     for (let index = 0; index < 11; index += 1) {

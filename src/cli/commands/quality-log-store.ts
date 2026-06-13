@@ -220,7 +220,14 @@ function pruneInactiveOrphanedLogFiles(
 
 function markLogRecentlyFinalized(logPath: string): void {
   const now = new Date()
-  utimesSync(logPath, now, now)
+  try {
+    utimesSync(logPath, now, now)
+  } catch (error) {
+    if (!isMissingFileError(error)) throw error
+    mkdirSync(dirname(logPath), { recursive: true })
+    writeFileSync(logPath, '', { flag: 'a' })
+    utimesSync(logPath, now, now)
+  }
 }
 
 function canPruneLogPath(logPath: string): boolean {
@@ -251,6 +258,10 @@ function sleepSync(ms: number): void {
 
 function isFileExistsError(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'EEXIST'
+}
+
+function isMissingFileError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT'
 }
 
 function getCommandLogDir(command: CliLogCommandName, cwd: string): string {
