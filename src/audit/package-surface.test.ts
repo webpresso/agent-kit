@@ -313,6 +313,34 @@ describe('package-surface audit', () => {
     ).toBe(true)
   })
 
+  test('regex forbidden-content patterns reject matching packed text', () => {
+    const root = tempRepo()
+    writeJson(join(root, 'package-surface.json'), {
+      allowedPublicPackages: ['@webpresso/webpresso'],
+      compatibilityPublicPackages: [],
+      tarball: { forbiddenContentPatterns: ['/ozby\\/ingest-lens/'] },
+    })
+    writeJson(join(root, 'package.json'), {
+      name: '@webpresso/webpresso',
+      version: '0.1.0',
+      private: false,
+      files: ['README.md'],
+    })
+    writeFileSync(join(root, 'README.md'), 'leaked private reference ozby/ingest-lens\n')
+
+    const result = auditPackageSurface(root, fastFixtureAudit)
+
+    expect(result.ok).toBe(false)
+    expect(
+      result.violations.some(
+        (violation) =>
+          violation.file === 'README.md' &&
+          violation.message.includes('forbidden pattern') &&
+          violation.message.includes('/ozby\\/ingest-lens/'),
+      ),
+    ).toBe(true)
+  })
+
   test('flags secretlint findings in packed files', () => {
     const root = tempRepo()
     writeJson(join(root, 'package.json'), {

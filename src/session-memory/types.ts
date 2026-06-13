@@ -184,23 +184,6 @@ export interface SearchOptions {
   readonly source?: string
 }
 
-export interface SessionEvent {
-  readonly eventId: string
-  readonly ts: number
-  readonly toolName: string
-  readonly content: string
-}
-
-export interface CaptureEventInput {
-  readonly repoHash: string
-  readonly event: Pick<SessionEvent, 'toolName' | 'content'> & { sessionId?: string }
-}
-
-export interface RestoreResult {
-  readonly hits: readonly SearchHit[]
-  readonly snapshotId: string | null
-}
-
 export interface FetchIndexOptions {
   readonly url: string
   readonly dbPath: string

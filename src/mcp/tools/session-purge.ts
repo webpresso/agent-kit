@@ -103,19 +103,21 @@ const tool: ToolDescriptor = {
               confirm: input.confirm,
               allowGlobal: input.allowGlobal,
             })
-      const indexResult =
-        input.target === 'continuity_events'
-          ? {
-              dryRun: input.confirm !== true,
-              matchedCount: 0,
-              deletedCount: 0,
-              warnings: [] as string[],
-            }
-          : indexStore.purge({
-              source: input.source,
-              confirm: input.confirm,
-              allowGlobal: input.allowGlobal,
-            })
+      const shouldPurgeIndex =
+        input.target !== 'continuity_events' &&
+        (Boolean(input.source) || input.allowGlobal || (!input.repoHash && !input.sessionId))
+      const indexResult = shouldPurgeIndex
+        ? indexStore.purge({
+            source: input.source,
+            confirm: input.confirm,
+            allowGlobal: input.allowGlobal,
+          })
+        : {
+            dryRun: input.confirm !== true,
+            matchedCount: 0,
+            deletedCount: 0,
+            warnings: [] as string[],
+          }
       warnings.push(...sessionResult.warnings, ...indexResult.warnings)
       const dryRun = sessionResult.dryRun && indexResult.dryRun
       const deletedTotal =

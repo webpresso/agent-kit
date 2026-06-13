@@ -120,4 +120,36 @@ describe('wp_session_purge tool', () => {
     expect(remainingChunks.search({ query: 'purge', source: 'web:b', limit: 5 })).toHaveLength(1)
     remainingChunks.close()
   })
+
+  it('confirms repo-scoped continuity purge without requiring global chunk purge', async () => {
+    const { sessionDbPath, indexDbPath } = fixture()
+    const sessionStore = new SessionMemorySessionStore(sessionDbPath)
+    sessionStore.captureEvent({
+      repoHash: 'repo123456789abcd',
+      event: { eventType: 'decision', toolName: 'tool', content: 'repo-only purge memory' },
+    })
+    sessionStore.close()
+    const indexStore = new SessionMemoryStore(indexDbPath)
+    indexStore.indexChunk({ id: 'chunk-a', source: 'web:a', text: 'unscoped chunk remains' })
+    indexStore.close()
+
+    const result = payload(
+      await sessionPurgeTool.handler({
+        sessionDbPath,
+        indexDbPath,
+        confirm: true,
+        repoHash: 'repo123456789abcd',
+      }),
+    )
+
+    expect(result).toMatchObject({
+      passed: true,
+      dryRun: false,
+      counts: { deletedEventCount: 1, deletedChunkCount: 0, warningCount: 0 },
+      warnings: [],
+    })
+    const remainingChunks = new SessionMemoryStore(indexDbPath)
+    expect(remainingChunks.search({ query: 'unscoped', limit: 5 })).toHaveLength(1)
+    remainingChunks.close()
+  })
 })

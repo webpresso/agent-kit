@@ -47,7 +47,7 @@ The compiled MCP registry exposes these tested session-memory tools:
 | `wp_session_execute_file` | Run explicit local file `read_text` or `metadata` operations under repo-root validation. | Caps preview and file bytes; overflow content can be indexed instead of returned inline; no shell, write, network path, or repo escape behavior is part of this tool. |
 | `wp_session_restore` | Restore bounded continuity context for the active repo. | Defaults to continuity events, returns preview-only results, and caps result count and preview bytes. |
 | `wp_session_search` | Search indexed chunks plus continuity events with unified provenance. | Prioritizes indexed chunks, dedupes results, caps result count, and returns bounded previews. |
-| `wp_session_snapshot` | Create a native session-memory snapshot before risky operations or branch switches. | Caps snapshot work and reports partial snapshots instead of hanging. |
+| `wp_session_snapshot` | Create a typed session-memory snapshot before risky operations or branch switches. | Caps snapshot work and reports partial snapshots instead of hanging. |
 | `wp_session_stats` | Report local continuity and index counts. | Read-only; returns counts and bounded source lists. |
 | `wp_session_purge` | Dry-run or explicitly confirm scoped local purge operations. | Dry-run by default; scoped deletion requires `confirm: true`; unscoped deletion also requires `allowGlobal: true`. |
 | `wp_session_doctor` | Report bounded local diagnostics for continuity and index stores. | Read-only; corrupt or locked stores become bounded warnings instead of transport hangs. |

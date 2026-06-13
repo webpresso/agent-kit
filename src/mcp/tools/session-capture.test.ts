@@ -1,67 +1,96 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, describe, expect, it } from 'vitest'
 
-const captureEvent = vi.fn(() => true)
-const flushCapturedEvents = vi.fn(() => 1)
-const resolveSessionRepoHash = vi.fn(() => 'repohash12345678')
+import sessionCaptureTool from './session-capture.js'
+import sessionRestoreTool from './session-restore.js'
+import { resolveSessionRepoHash } from '../../session-memory/repo-hash.js'
+import { SessionMemorySessionStore } from '../../session-memory/session.js'
 
-vi.mock('#session-memory/session', () => ({
-  captureEvent,
-  flushCapturedEvents,
-}))
+const dirs: string[] = []
 
-vi.mock('#session-memory/repo-hash', () => ({
-  resolveSessionRepoHash,
-}))
+function fixture() {
+  const dir = mkdtempSync(join(tmpdir(), 'ak-mcp-session-capture-'))
+  dirs.push(dir)
+  return {
+    cwd: dir,
+    sessionDbPath: join(dir, 'sessions.sqlite'),
+    repoHash: resolveSessionRepoHash(dir),
+  }
+}
+
+afterEach(() => {
+  delete process.env.WEBPRESSO_SESSION_MEMORY
+  while (dirs.length > 0) rmSync(dirs.pop()!, { recursive: true, force: true })
+})
 
 describe('wp_session_capture', () => {
-  beforeEach(() => {
-    vi.resetModules()
-    captureEvent.mockClear()
-    flushCapturedEvents.mockClear()
-    resolveSessionRepoHash.mockClear()
-    process.env['CLAUDE_SESSION_ID'] = 'env-session'
-  })
-
-  it('captures using the active CLAUDE_SESSION_ID', async () => {
-    const tool = (await import('./session-capture.js')).default
-    const result = await tool.handler?.({ content: 'important note', toolName: 'manual' })
-
-    expect(captureEvent).toHaveBeenCalledWith({
-      repoHash: 'repohash12345678',
-      event: {
-        sessionId: undefined,
-        toolName: 'manual',
-        content: 'important note',
-      },
-    })
-    expect(flushCapturedEvents).toHaveBeenCalledWith('repohash12345678')
-    expect(result?.structuredContent).toMatchObject({
-      captured: true,
+  it('captures typed continuity content into the restore-visible session store', async () => {
+    const { cwd, sessionDbPath, repoHash } = fixture()
+    const result = await sessionCaptureTool.handler!({
+      cwd,
+      sessionDbPath,
+      content: 'important typed continuity note',
       toolName: 'manual',
-      capturedLength: 'important note'.length,
+      sessionId: 'manual-session',
+    })
+
+    expect(result.structuredContent).toMatchObject({
+      captured: true,
+      capturedEventCount: 1,
+      toolName: 'manual',
+      capturedLength: 'important typed continuity note'.length,
       truncated: false,
     })
-  })
+    expect((result.structuredContent as { eventId?: string }).eventId).toMatch(/^evt_/)
 
-  it('allows an explicit sessionId override for non-Claude callers', async () => {
-    const tool = (await import('./session-capture.js')).default
-    await tool.handler?.({ content: 'x', sessionId: 'manual-session' })
-    expect(captureEvent).toHaveBeenCalledWith({
-      repoHash: 'repohash12345678',
-      event: {
+    const store = new SessionMemorySessionStore(sessionDbPath)
+    try {
+      expect(store.restore({ repoHash, query: 'typed continuity', limit: 5 })[0]).toMatchObject({
         sessionId: 'manual-session',
+        eventType: 'assistant_turn_summary',
         toolName: 'manual',
-        content: 'x',
-      },
-    })
+        content: 'important typed continuity note',
+      })
+    } finally {
+      store.close()
+    }
   })
 
-  it('does not flush buffered events when capture is disabled or rejected', async () => {
-    captureEvent.mockReturnValueOnce(false)
-    const tool = (await import('./session-capture.js')).default
-    const result = await tool.handler?.({ content: 'will not persist' })
+  it('round-trips through the public capture and restore MCP tools', async () => {
+    const { cwd, sessionDbPath } = fixture()
+    await sessionCaptureTool.handler!({
+      cwd,
+      sessionDbPath,
+      content: 'public capture restore bridge proof',
+      toolName: 'manual',
+    })
 
-    expect(flushCapturedEvents).not.toHaveBeenCalled()
-    expect(result?.structuredContent).toMatchObject({ captured: false })
+    const restored = await sessionRestoreTool.handler!({
+      cwd,
+      sessionDbPath,
+      query: 'bridge proof',
+      limit: 5,
+    })
+    expect(restored.isError).not.toBe(true)
+    expect(restored.structuredContent).toMatchObject({
+      passed: true,
+      counts: { continuityEventCount: 1, warningCount: 0 },
+    })
+    expect(JSON.stringify(restored.structuredContent)).toContain(
+      'public capture restore bridge proof',
+    )
+  })
+
+  it('does not open the store when capture is disabled', async () => {
+    process.env.WEBPRESSO_SESSION_MEMORY = '0'
+    const { cwd, sessionDbPath } = fixture()
+    const result = await sessionCaptureTool.handler!({ cwd, sessionDbPath, content: 'disabled' })
+
+    expect(result.structuredContent).toMatchObject({
+      captured: false,
+      capturedEventCount: 0,
+    })
   })
 })

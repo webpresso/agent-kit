@@ -1,12 +1,11 @@
-import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { z } from 'zod'
 
 import type { ToolDescriptor } from '#mcp/auto-discover'
-import { resolveProjectRoot } from '#mcp/tools/_shared/project-root.js'
 import { getSurfacePath, NotInGitRepoError } from '#paths/state-root.js'
+import { resolveSessionRepoHash } from '#session-memory/repo-hash.js'
 
 import { SessionMemorySessionStore } from '#session-memory/session.js'
 import { SessionMemoryStore } from '#session-memory/store.js'
@@ -101,18 +100,31 @@ export interface BuildRecallPayloadInput {
   readonly sourcePriority: readonly SessionMemoryUnifiedSourceType[]
 }
 
+function effectiveCwd(cwd?: string): string {
+  return cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.cwd()
+}
+
+function isNotInGitRepoError(error: unknown): boolean {
+  return (
+    error instanceof NotInGitRepoError || (error as Error | undefined)?.name === 'NotInGitRepoError'
+  )
+}
+
 export function defaultSessionDbPath(cwd?: string): string {
   if (process.env.WP_SESSION_MEMORY_DB) return process.env.WP_SESSION_MEMORY_DB
   if (process.env.WP_SESSION_MEMORY_DIR)
     return join(process.env.WP_SESSION_MEMORY_DIR, 'sessions.sqlite')
+  const startDir = effectiveCwd(cwd)
   try {
-    return getSurfacePath('session-memory/sessions.sqlite', 'worktree', cwd)
+    return getSurfacePath('session-memory/sessions.sqlite', 'worktree', startDir)
   } catch (error) {
-    if (
-      error instanceof NotInGitRepoError ||
-      (error as Error | undefined)?.name === 'NotInGitRepoError'
-    ) {
-      return join(tmpdir(), 'webpresso-session-memory', 'sessions.sqlite')
+    if (isNotInGitRepoError(error)) {
+      return join(
+        tmpdir(),
+        'webpresso-session-memory',
+        resolveSessionRepoHash(startDir),
+        'sessions.sqlite',
+      )
     }
     throw error
   }
@@ -120,27 +132,24 @@ export function defaultSessionDbPath(cwd?: string): string {
 
 export function defaultIndexDbPath(cwd?: string): string {
   if (process.env.WP_SESSION_MEMORY_INDEX_DB) return process.env.WP_SESSION_MEMORY_INDEX_DB
+  const startDir = effectiveCwd(cwd)
   try {
-    return getSurfacePath('session-memory/index.sqlite', 'worktree', cwd)
+    return getSurfacePath('session-memory/index.sqlite', 'worktree', startDir)
   } catch (error) {
-    if (
-      error instanceof NotInGitRepoError ||
-      (error as Error | undefined)?.name === 'NotInGitRepoError'
-    ) {
-      return join(tmpdir(), 'webpresso-session-memory', 'index.sqlite')
+    if (isNotInGitRepoError(error)) {
+      return join(
+        tmpdir(),
+        'webpresso-session-memory',
+        resolveSessionRepoHash(startDir),
+        'index.sqlite',
+      )
     }
     throw error
   }
 }
 
-function repoHashFromRoot(root: string): string {
-  return createHash('sha256').update(root).digest('hex').slice(0, 16)
-}
-
-function resolveRepoHash(input: SessionRecallInput): string | undefined {
-  if (input.repoHash) return input.repoHash
-  if (!input.cwd) return undefined
-  return repoHashFromRoot(resolveProjectRoot({ cwd: input.cwd }))
+function resolveRepoHash(input: SessionRecallInput): string {
+  return input.repoHash ?? resolveSessionRepoHash(effectiveCwd(input.cwd))
 }
 
 function normalizeLimit(value: number | undefined, fallback: number): number {
@@ -188,26 +197,22 @@ export function buildRecallPayload(
   const repoHash = resolveRepoHash(rawInput)
 
   if (sourceTypes.includes('continuity_event')) {
-    if (repoHash) {
-      const sessionStore = new SessionMemorySessionStore(
-        rawInput.sessionDbPath ?? defaultSessionDbPath(rawInput.cwd),
+    const sessionStore = new SessionMemorySessionStore(
+      rawInput.sessionDbPath ?? defaultSessionDbPath(rawInput.cwd),
+    )
+    try {
+      groups.set(
+        'continuity_event',
+        sessionStore.restoreUnified({
+          repoHash,
+          query: rawInput.query,
+          limit: Math.max(limit * 2, limit),
+          maxPreviewBytes: rawInput.maxPreviewBytes,
+          sourceTypes: ['continuity_event'],
+        }),
       )
-      try {
-        groups.set(
-          'continuity_event',
-          sessionStore.restoreUnified({
-            repoHash,
-            query: rawInput.query,
-            limit: Math.max(limit * 2, limit),
-            maxPreviewBytes: rawInput.maxPreviewBytes,
-            sourceTypes: ['continuity_event'],
-          }),
-        )
-      } finally {
-        sessionStore.close()
-      }
-    } else {
-      warnings.push('repoHash is required for continuity event recall')
+    } finally {
+      sessionStore.close()
     }
   }
 

@@ -34,8 +34,6 @@ pub fn open(path: &Path) -> StoreResult<Connection> {
     let conn = Connection::open(path)?;
     apply_pragmas(&conn)?;
     apply_schema(&conn)?;
-    migrate_legacy_time_columns(&conn)?;
-    migrate_legacy_chunk_tables(&conn)?;
     Ok(conn)
 }
 
@@ -90,75 +88,6 @@ fn apply_schema(conn: &Connection) -> SqlResult<()> {
          CREATE INDEX IF NOT EXISTS idx_session_events_repo_ts
              ON session_events(repo_hash, ts DESC);",
     )
-}
-
-fn migrate_legacy_time_columns(conn: &Connection) -> SqlResult<()> {
-    conn.execute_batch(
-        "UPDATE session_events
-            SET ts = CAST(strftime('%s', ts) AS INTEGER)
-          WHERE typeof(ts) = 'text' AND ts GLOB '????-??-??*';
-
-         UPDATE sessions
-            SET created_at = CAST(strftime('%s', created_at) AS INTEGER)
-          WHERE typeof(created_at) = 'text' AND created_at GLOB '????-??-??*';",
-    )
-}
-
-fn migrate_legacy_chunk_tables(conn: &Connection) -> StoreResult<()> {
-    let legacy_exists: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='session_memory_chunks'",
-        [],
-        |row| row.get(0),
-    )?;
-    if legacy_exists == 0 {
-        return Ok(());
-    }
-
-    let new_count: i64 = conn.query_row("SELECT COUNT(*) FROM chunks", [], |row| row.get(0))?;
-    if new_count > 0 {
-        return Ok(());
-    }
-
-    let rows: Vec<(String, String)> = conn
-        .prepare("SELECT source, text FROM session_memory_chunks ORDER BY created_at ASC")?
-        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
-        .collect::<SqlResult<Vec<_>>>()?;
-
-    if rows.is_empty() {
-        return Ok(());
-    }
-
-    let mut source_counts: std::collections::HashMap<String, i64> =
-        std::collections::HashMap::new();
-    let mut texts: Vec<String> = Vec::with_capacity(rows.len());
-
-    for (source, text) in &rows {
-        conn.execute(
-            "INSERT INTO chunks(content, source) VALUES (?1, ?2)",
-            params![text, source],
-        )?;
-        conn.execute(
-            "INSERT INTO chunks_trigram(content, source) VALUES (?1, ?2)",
-            params![text, source],
-        )?;
-        *source_counts.entry(source.clone()).or_insert(0) += 1;
-        texts.push(text.clone());
-    }
-
-    let ts = now_unix();
-    for (source, chunk_count) in source_counts {
-        conn.execute(
-            "INSERT INTO sources(label, indexed_at, chunk_count)
-                 VALUES (?1, ?2, ?3)
-             ON CONFLICT(label) DO UPDATE SET
-                 indexed_at = excluded.indexed_at,
-                 chunk_count = excluded.chunk_count",
-            params![source, ts, chunk_count],
-        )?;
-    }
-
-    update_vocabulary(conn, &texts)?;
-    Ok(())
 }
 
 /// Insert or replace a source record, return its id.
