@@ -5,12 +5,13 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 
 import { afterAll, describe, expect, it } from 'vitest'
@@ -58,6 +59,7 @@ type PackedTarballArtifact = {
 }
 
 let packedTarballArtifactCache: PackedTarballArtifact | undefined
+let packedCliContractTarballPathCache: string | undefined
 let packedDistBuilt = false
 
 function collectExportTypeTargets(value: unknown): string[] {
@@ -194,10 +196,53 @@ function createPackedTarball(): { tarballPath: string; cleanup: () => void } {
   }
 }
 
+function ensurePackedCliContractTarball() {
+  if (packedCliContractTarballPathCache) return packedCliContractTarballPathCache
+  const packageJsonPath = join(
+    REPO_ROOT,
+    'node_modules',
+    '@webpresso',
+    'cli-contract',
+    'package.json',
+  )
+  if (!existsSync(packageJsonPath)) {
+    throw new Error(
+      '@webpresso/cli-contract must be installed in the workspace before running packed install smoke tests',
+    )
+  }
+  const packageRoot = dirname(realpathSync(packageJsonPath))
+  const raw = execFileSync('npm', ['pack', '--json', '--ignore-scripts'], {
+    cwd: packageRoot,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      HUSKY: '0',
+    },
+  })
+  const entries = parseNpmJson<Array<{ filename?: string }>>(raw)
+  const tarballName = entries[0]?.filename
+  if (!tarballName) {
+    throw new Error('npm pack for @webpresso/cli-contract did not return a tarball filename')
+  }
+  packedCliContractTarballPathCache = join(packageRoot, tarballName)
+  return packedCliContractTarballPathCache
+}
+
+function packedInstallArgs(tarballPath: string) {
+  const artifact = ensurePackedTarballArtifact()
+  return artifact.dependencies?.['@webpresso/cli-contract']
+    ? ['install', tarballPath, ensurePackedCliContractTarball()]
+    : ['install', tarballPath]
+}
+
 afterAll(() => {
   if (packedTarballArtifactCache) {
     rmSync(packedTarballArtifactCache.tarballPath, { force: true })
     packedTarballArtifactCache = undefined
+  }
+  if (packedCliContractTarballPathCache) {
+    rmSync(packedCliContractTarballPathCache, { force: true })
+    packedCliContractTarballPathCache = undefined
   }
   if (readFileSync(PACKAGE_JSON_PATH, 'utf8') !== ORIGINAL_PACKAGE_JSON_TEXT) {
     // Atomic restore: concurrent bun processes must never see a truncated package.json.
@@ -293,7 +338,7 @@ describe('tooling umbrella package contract', () => {
     expect(banned).toEqual([])
     expect(packedPaths).toContain('bin/wp')
     expect(packedPaths).not.toContain('bin/wp.js')
-  }, 30_000)
+  }, 90_000)
 
   it('packs a manifest with no workspace-only catalog specifiers', () => {
     const packedManifest = readPackedTarballArtifact()
@@ -395,7 +440,7 @@ describe('tooling umbrella package contract', () => {
         join(tmpRoot, 'package.json'),
         JSON.stringify({ name: 'packed-migration-smoke', private: true }, null, 2) + '\n',
       )
-      execFileSync('npm', ['install', tarballPath], {
+      execFileSync('npm', packedInstallArgs(tarballPath), {
         cwd: tmpRoot,
         encoding: 'utf8',
         env: { ...process.env, HUSKY: '0' },

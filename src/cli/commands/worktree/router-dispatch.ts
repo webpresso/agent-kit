@@ -6,6 +6,7 @@ import { existsSync, mkdirSync } from 'node:fs'
 import { basename, dirname, join, relative } from 'node:path'
 
 import { scaffoldAgent } from '#cli/commands/init/scaffold-agent'
+import { readConfig } from '#cli/commands/init/config'
 import { resolveCatalogDir } from '#cli/commands/init/index'
 import { getProjectRoot } from '#cli/utils'
 import { runUnifiedSync } from '#symlinker/unified-sync'
@@ -274,7 +275,14 @@ async function handleNew(branch: string, opts: WorktreeCommandOptions): Promise<
 
   const catalogDir = resolveCatalogDir()
   scaffoldAgent({ catalogDir, repoRoot: target.path, options: {} })
-  runUnifiedSync({ catalogDir, consumerRoot: target.path })
+  // The worktree inherits the repo's host selection (tracked .webpressorc.json),
+  // so skill-dir projection is gated the same way as in the main checkout.
+  const worktreeHosts = (readConfig(target.path) ?? readConfig(repoRoot))?.hosts?.selected
+  runUnifiedSync({
+    catalogDir,
+    consumerRoot: target.path,
+    ...(worktreeHosts ? { hosts: worktreeHosts } : {}),
+  })
 
   console.log(`\nWorktree ready: ${target.path}`)
   console.log(`  branch: ${target.branch}`)

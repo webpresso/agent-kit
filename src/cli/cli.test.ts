@@ -51,8 +51,9 @@ describe('wp root command surface', () => {
       'install               Install dependencies through the managed vp facade',
     )
     expect(result.stdout.join('\n')).toContain(
-      'Update local dependencies by default; --global refreshes codex, tmux, omx, omc, gstack, and wp',
+      'Refresh codex, tmux, omx, omc, gstack, and wp by default; use --deps for local dependencies',
     )
+    expect(result.stdout.join('\n')).not.toContain('Update local dependencies by default')
     expect(result.stdout.join('\n')).toContain(
       'roadmap               List or show parent roadmaps directly',
     )
@@ -80,14 +81,21 @@ describe('wp root command surface', () => {
     expect(result.stdout.join('\n')).toContain('--project')
   })
 
-  it('routes wp update to command-specific help with the global mode option', async () => {
+  it('routes wp update to command-specific help with deps and global mode options', async () => {
     const result = await runAk(['update', '--help'])
 
     expect(result.code).toBe(0)
     expect(result.stdout.join('\n')).toContain('wp update')
+    expect(result.stdout.join('\n')).toContain('--deps')
     expect(result.stdout.join('\n')).toContain('--global')
     expect(result.stdout.join('\n')).toContain(
-      'Refresh codex, tmux, omx, omc, gstack, and wp instead of local dependencies',
+      'Update local dependencies through managed vp update',
+    )
+    expect(result.stdout.join('\n')).toContain(
+      'Compatibility alias for the default tooling refresh',
+    )
+    expect(result.stdout.join('\n')).not.toContain(
+      'Update local dependencies through the managed vp facade (default)',
     )
   })
 

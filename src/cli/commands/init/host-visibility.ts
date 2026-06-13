@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, relative } from 'node:path'
 
@@ -61,28 +61,71 @@ export function parseAgentHosts(value: string | undefined): AgentHost[] {
   return [...new Set(out)]
 }
 
+/**
+ * Installed-plugin skill cache roots for a plugin host. Skills are delivered to
+ * Claude/Codex by their plugins, which unpack to versioned cache dirs:
+ *   `~/.claude/plugins/cache/<marketplace>/agent-kit/<version>/skills`
+ *   `~/.codex/plugins/cache/<marketplace>/agent-kit/<version>/skills`
+ * We scan every marketplace/version so a capability counts as visible when the
+ * plugin is installed, independent of the (no-longer-projected) skill dirs.
+ */
+function pluginCacheSkillRoots(homeDir: string, vendor: 'claude' | 'codex'): string[] {
+  const base =
+    vendor === 'claude'
+      ? join(homeDir, '.claude', 'plugins', 'cache')
+      : join(homeDir, '.codex', 'plugins', 'cache')
+  const roots: string[] = []
+  try {
+    for (const marketplace of readdirSync(base)) {
+      const pluginDir = join(base, marketplace, 'agent-kit')
+      let versions: string[]
+      try {
+        versions = readdirSync(pluginDir)
+      } catch {
+        continue
+      }
+      for (const version of versions) {
+        const skills = join(pluginDir, version, 'skills')
+        if (existsSync(skills)) roots.push(skills)
+      }
+    }
+  } catch {
+    // Cache dir absent — plugin not installed on this machine.
+  }
+  return roots
+}
+
 export function hostSkillRoots(
   repoRoot: string,
   host: AgentHost,
   homeDir = homedir(),
 ): HostSkillRoots {
+  // The canonical `.agent/skills/` SSOT is always projected by `wp setup`, so a
+  // required capability present there is installed in the repo and reaches a
+  // plugin host through its plugin. Plugin install success/failure is reported
+  // separately by the plugin scaffolder; visibility here confirms the skill is
+  // installed (plugin cache) or at least present in the repo agent surface.
+  const canonical = join(repoRoot, '.agent', 'skills')
   switch (host) {
     case 'codex':
       return {
-        project: [join(repoRoot, '.agents', 'skills')],
-        user: [join(homeDir, '.agents', 'skills')],
+        // `.agents/skills` only exists when the Codex plugin is opted out.
+        project: [canonical, join(repoRoot, '.agents', 'skills')],
+        user: [...pluginCacheSkillRoots(homeDir, 'codex'), join(homeDir, '.agents', 'skills')],
         global: ['/etc/codex/skills'],
       }
     case 'claude':
       return {
-        project: [join(repoRoot, '.claude', 'skills')],
-        user: [join(homeDir, '.claude', 'skills')],
+        // `.claude/skills` only exists when the Claude plugin is opted out.
+        project: [canonical, join(repoRoot, '.claude', 'skills')],
+        user: [...pluginCacheSkillRoots(homeDir, 'claude'), join(homeDir, '.claude', 'skills')],
         global: [],
       }
     case 'opencode':
       return {
         project: [
           join(repoRoot, '.opencode', 'skills'),
+          canonical,
           join(repoRoot, '.claude', 'skills'),
           join(repoRoot, '.agents', 'skills'),
         ],

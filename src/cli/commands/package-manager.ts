@@ -39,7 +39,7 @@ const HELP_BY_VERB: Readonly<Record<PackageManagerVerb, string>> = {
   add: 'Add dependencies through the managed vp facade.',
   remove: 'Remove dependencies through the managed vp facade.',
   update:
-    'Update local dependencies through the managed vp facade (default); use --global to refresh codex, tmux, omx, omc, gstack, and wp.',
+    'Refresh codex, tmux, omx, omc, gstack, and wp by default; use --deps for local dependency updates through the managed vp facade.',
   exec: 'Run a binary through the managed vp facade.',
   run: 'Run a package script through the managed vp facade.',
 }
@@ -102,10 +102,8 @@ interface RequiredGlobalUpdateDeps {
 export function registerPackageManagerCommand(cli: CAC, verb: PackageManagerVerb): void {
   const command = cli.command(`${verb} [...args]`, HELP_BY_VERB[verb])
   if (verb === 'update') {
-    command.option(
-      '-g, --global',
-      'Refresh codex, tmux, omx, omc, gstack, and wp instead of local dependencies.',
-    )
+    command.option('--deps', 'Update local dependencies through managed vp update.')
+    command.option('-g, --global', 'Compatibility alias for the default tooling refresh.')
   }
 
   command.allowUnknownOptions().action(() => runPackageManagerCommand(verb))
@@ -116,9 +114,14 @@ export function buildPackageManagerCommand(
   argv: readonly string[] = process.argv,
 ): PackageManagerCommandConfig {
   const resolution = getManagedRunner('vp')
+  const verbArgs = extractVerbArgs(verb, argv)
   return {
     command: resolution.command,
-    args: [...resolution.args, verb, ...extractVerbArgs(verb, argv)],
+    args: [
+      ...resolution.args,
+      verb,
+      ...(verb === 'update' ? stripWpUpdateControlFlags(verbArgs) : verbArgs),
+    ],
   }
 }
 
@@ -128,15 +131,27 @@ export function runPackageManagerCommand(
 ): number {
   const argv = deps.argv ?? process.argv
   const cwd = deps.cwd ?? process.cwd()
-  if (verb === 'update' && hasGlobalFlag(extractVerbArgs(verb, argv))) {
-    return runGlobalUpdateCommand(deps)
+
+  if (verb === 'update') {
+    const mode = parseUpdateMode(extractVerbArgs(verb, argv))
+    if (mode.kind === 'error') return failUsage(mode.message)
+    if (mode.kind === 'tooling') return runGlobalUpdateCommand(deps)
+
+    const packageRoot = resolveNearestPackageRoot(cwd, deps.exists ?? existsSync)
+    if (packageRoot === null) {
+      return failUsage(
+        `wp update --deps: no package root found from ${cwd}; run inside a package or omit --deps to refresh tooling.`,
+      )
+    }
+
+    const command = buildPackageManagerCommand(verb, argv)
+    const result = (deps.run ?? defaultRun)(command.command, command.args, {
+      cwd: packageRoot,
+    })
+    return typeof result.status === 'number' ? result.status : 1
   }
 
   const packageRoot = resolveNearestPackageRoot(cwd, deps.exists ?? existsSync)
-  if (verb === 'update' && packageRoot === null) {
-    return runGlobalUpdateCommand(deps)
-  }
-
   const command = buildPackageManagerCommand(verb, argv)
   const result = (deps.run ?? defaultRun)(command.command, command.args, {
     cwd: packageRoot ?? cwd,
@@ -217,8 +232,77 @@ function extractVerbArgs(verb: PackageManagerVerb, argv: readonly string[]): str
   return verbIndex === -1 ? [] : argv.slice(verbIndex + 1)
 }
 
+type UpdateMode =
+  | { readonly kind: 'tooling' }
+  | { readonly kind: 'deps' }
+  | { readonly kind: 'error'; readonly message: string }
+
+function parseUpdateMode(args: readonly string[]): UpdateMode {
+  const hasDeps = args.includes('--deps')
+  const hasGlobal = hasGlobalFlag(args)
+  const hasPositional = hasDependencyPositional(args)
+
+  if (hasDeps && hasGlobal) {
+    return {
+      kind: 'error',
+      message:
+        'wp update: --deps cannot be combined with --global; choose dependency updates or tooling refresh.',
+    }
+  }
+
+  if (hasGlobal && hasPositional) {
+    return {
+      kind: 'error',
+      message:
+        'wp update: package arguments imply --deps and cannot be combined with --global; use `wp update --deps ...` for dependency updates.',
+    }
+  }
+
+  if (hasDeps || hasPositional) return { kind: 'deps' }
+
+  const unknownFlags = args.filter((arg) => !isGlobalFlag(arg))
+  if (unknownFlags.length > 0) {
+    return {
+      kind: 'error',
+      message: `wp update: unrecognized tooling option(s): ${unknownFlags.join(
+        ', ',
+      )}. Bare \`wp update\` refreshes tooling; use \`wp update --deps ${unknownFlags.join(
+        ' ',
+      )}\` to pass dependency-update options.`,
+    }
+  }
+
+  return { kind: 'tooling' }
+}
+
+function stripWpUpdateControlFlags(args: readonly string[]): string[] {
+  return args.filter((arg) => arg !== '--deps' && !isGlobalFlag(arg))
+}
+
+function hasDependencyPositional(args: readonly string[]): boolean {
+  let afterTerminator = false
+  for (const arg of args) {
+    if (afterTerminator) return true
+    if (arg === '--') {
+      afterTerminator = true
+      continue
+    }
+    if (!arg.startsWith('-')) return true
+  }
+  return false
+}
+
 function hasGlobalFlag(args: readonly string[]): boolean {
-  return args.includes('--global') || args.includes('-g')
+  return args.some(isGlobalFlag)
+}
+
+function isGlobalFlag(arg: string): boolean {
+  return arg === '--global' || arg === '-g'
+}
+
+function failUsage(message: string): number {
+  console.error(message)
+  return 1
 }
 
 function formatGlobalUpdateFailure(
@@ -226,20 +310,20 @@ function formatGlobalUpdateFailure(
   result: SpawnSyncReturns<string>,
 ): string {
   const error = result.error
-  if (error) return `wp update --global: ${step.id} failed: ${error.message}`
+  if (error) return `wp update: ${step.id} failed: ${error.message}`
 
   if (typeof result.status === 'number') {
-    return `wp update --global: ${step.id} failed: exit ${result.status}`
+    return `wp update: ${step.id} failed: exit ${result.status}`
   }
 
-  if (result.signal) return `wp update --global: ${step.id} failed: signal ${result.signal}`
+  if (result.signal) return `wp update: ${step.id} failed: signal ${result.signal}`
 
-  return `wp update --global: ${step.id} failed: no exit status`
+  return `wp update: ${step.id} failed: no exit status`
 }
 
 function formatGlobalUpdateThrownFailure(step: { readonly id: string }, error: unknown): string {
   const message = error instanceof Error ? error.message : String(error)
-  return `wp update --global: ${step.id} failed: ${message}`
+  return `wp update: ${step.id} failed: ${message}`
 }
 
 function defaultRun(

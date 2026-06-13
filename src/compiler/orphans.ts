@@ -1,7 +1,16 @@
-import { existsSync, readdirSync, rmSync } from 'node:fs'
+import { existsSync, readdirSync, readlinkSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 
 const GENERATED_SKILL_DIRS = ['.claude/skills', '.windsurf/skills', '.agents/skills'] as const
+
+/**
+ * Skill dirs agent-kit projects (by symlink) for specific hosts. When a host
+ * moves to plugin-based delivery (Claude, Codex) or is no longer selected, its
+ * skill dir stops being an active projection target and any leftover symlinks
+ * from a previous `wp setup` must be pruned so skills are not double-shown.
+ * `.windsurf/skills` is excluded — it is a host-agnostic copy, not a symlink.
+ */
+const PRUNABLE_SKILL_DIRS = ['.claude/skills', '.agents/skills', '.opencode/skills'] as const
 
 export interface OrphanedSkill {
   readonly name: string
@@ -52,6 +61,51 @@ export function findOrphanedSkills(cwd: string): OrphanedSkill[] {
   }
 
   return orphans
+}
+
+/**
+ * Prune leftover agent-kit skill symlinks from skill dirs that are no longer
+ * active projection targets for the selected hosts. Only symlinks whose target
+ * resolves into a skills source are removed — real (user-authored) directories,
+ * the canonical `.agent/` SSOT, and non-skill symlinks are never touched.
+ *
+ * Returns the repo-relative-ish absolute paths removed (or that would be removed
+ * in `dryRun`).
+ */
+export function pruneInactiveSkillDirs(
+  cwd: string,
+  activeSkillDirs: ReadonlySet<string>,
+  dryRun: boolean,
+): string[] {
+  const removed: string[] = []
+  for (const rel of PRUNABLE_SKILL_DIRS) {
+    if (activeSkillDirs.has(rel)) continue
+    const absDir = join(cwd, rel)
+    if (!existsSync(absDir)) continue
+    let entries
+    try {
+      entries = readdirSync(absDir, { withFileTypes: true })
+    } catch {
+      continue
+    }
+    for (const entry of entries) {
+      // Only prune symlinks: agent-kit always projects these dirs as symlinks,
+      // so a real directory here is user-authored and must be preserved.
+      if (!entry.isSymbolicLink()) continue
+      const linkPath = join(absDir, entry.name)
+      let target: string
+      try {
+        target = readlinkSync(linkPath, 'utf8')
+      } catch {
+        continue
+      }
+      // Guard: only remove links that point at a skills source.
+      if (!target.includes('skills')) continue
+      if (!dryRun) rmSync(linkPath, { force: true })
+      removed.push(linkPath)
+    }
+  }
+  return removed
 }
 
 export async function removeOrphanedSkills(

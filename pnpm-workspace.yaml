@@ -1,8 +1,18 @@
 packages:
   - .
+  - ../monorepo/packages/cli/contract
   - apps/*
 
+preferWorkspacePackages: true
 cleanupUnusedCatalogs: true
+
+catalog:
+  '@arethetypeswrong/cli': ^0.18.3
+  '@types/node': ^25.9.1
+  publint: ^0.3.21
+  typescript: ^6.0.3
+  vite-plus: ^0.1.22
+  vitest: ^4.1.7
 
 confirmModulesPurge: false
 verifyDepsBeforeRun: warn
@@ -18,5 +28,6 @@ allowBuilds:
   workerd: true
 
 overrides:
+  "@webpresso/cli-contract": link:../monorepo/packages/cli/contract
   qs: 6.15.2
   esbuild: 0.28.1

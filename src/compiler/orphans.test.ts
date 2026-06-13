@@ -1,10 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { findOrphanedSkills, removeOrphanedSkills } from './orphans.js'
+import { findOrphanedSkills, pruneInactiveSkillDirs, removeOrphanedSkills } from './orphans.js'
 
 function makeCanonicalSkill(cwd: string, name: string): void {
   mkdirSync(join(cwd, '.agent', 'skills', name), { recursive: true })
@@ -148,5 +148,89 @@ describe('removeOrphanedSkills', () => {
 
   it('no-ops gracefully on empty orphans list', async () => {
     await expect(removeOrphanedSkills([], false)).resolves.toBeUndefined()
+  })
+})
+
+describe('pruneInactiveSkillDirs', () => {
+  let dirs: string[] = []
+
+  beforeEach(() => {
+    dirs = []
+  })
+  afterEach(() => {
+    for (const d of dirs) rmSync(d, { recursive: true, force: true })
+  })
+
+  function tmp(): string {
+    const d = mkdtempSync(join(tmpdir(), 'wp-prune-skill-dirs-'))
+    dirs.push(d)
+    return d
+  }
+
+  function linkSkill(cwd: string, runtimeDir: string, name: string): string {
+    const source = join(cwd, '.agent', 'skills', name)
+    mkdirSync(source, { recursive: true })
+    const dir = join(cwd, runtimeDir)
+    mkdirSync(dir, { recursive: true })
+    const linkPath = join(dir, name)
+    symlinkSync(source, linkPath, 'dir')
+    return linkPath
+  }
+
+  it('removes a stale skill symlink from a dir that is no longer an active target', () => {
+    const cwd = tmp()
+    const link = linkSkill(cwd, '.claude/skills', 'fix')
+
+    const removed = pruneInactiveSkillDirs(cwd, new Set(['.opencode/skills']), false)
+
+    expect(removed).toContain(link)
+    expect(existsSync(link)).toBe(false)
+  })
+
+  it('keeps symlinks in a dir that IS an active target', () => {
+    const cwd = tmp()
+    const link = linkSkill(cwd, '.opencode/skills', 'fix')
+
+    const removed = pruneInactiveSkillDirs(cwd, new Set(['.opencode/skills']), false)
+
+    expect(removed).toStrictEqual([])
+    expect(existsSync(link)).toBe(true)
+  })
+
+  it('never removes a real (user-authored) directory, only symlinks', () => {
+    const cwd = tmp()
+    const realDir = join(cwd, '.claude', 'skills', 'my-own-skill')
+    mkdirSync(realDir, { recursive: true })
+    writeFileSync(join(realDir, 'SKILL.md'), '---\nname: my-own-skill\n---\n')
+
+    const removed = pruneInactiveSkillDirs(cwd, new Set(), false)
+
+    expect(removed).toStrictEqual([])
+    expect(existsSync(realDir)).toBe(true)
+  })
+
+  it('ignores symlinks whose target is not a skills source', () => {
+    const cwd = tmp()
+    const other = join(cwd, 'elsewhere')
+    mkdirSync(other, { recursive: true })
+    const dir = join(cwd, '.agents', 'skills')
+    mkdirSync(dir, { recursive: true })
+    const link = join(dir, 'weird')
+    symlinkSync(other, link, 'dir')
+
+    const removed = pruneInactiveSkillDirs(cwd, new Set(), false)
+
+    expect(removed).toStrictEqual([])
+    expect(existsSync(link)).toBe(true)
+  })
+
+  it('reports but does not delete in dry-run', () => {
+    const cwd = tmp()
+    const link = linkSkill(cwd, '.agents/skills', 'verify')
+
+    const removed = pruneInactiveSkillDirs(cwd, new Set(), true)
+
+    expect(removed).toContain(link)
+    expect(existsSync(link)).toBe(true)
   })
 })

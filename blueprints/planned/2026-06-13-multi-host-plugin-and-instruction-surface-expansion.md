@@ -116,9 +116,19 @@ included, and existing `.claude-plugin/` behavior remains unchanged. Do not add
 secrets, local machine paths, generated agent state, or private planning notes to
 plugin files. (F2, F5)
 
+> **Alignment (2026-06-13):** `.codex-plugin/plugin.json` (skills + MCP) and its
+> `package.json#files` inclusion are now **owned and shipped by**
+> `blueprints/draft/2026-06-13-single-skill-channel-per-host.md` (Task 1.3),
+> which fixes the skill-channel duplication and adds the Codex install
+> scaffolder + plugin-aware host-visibility. **This task should EXTEND** that
+> manifest (add `.codex-plugin/.mcp.json`/`hooks.json` projection + full
+> package-surface/tarball coverage), not re-create `plugin.json`. Likewise
+> Task 4.1 builds on the plugin-aware `host-visibility.ts` shipped there. Verify
+> the single-skill-channel blueprint has landed before starting this task.
+
 **Files:**
 
-- Create: `.codex-plugin/plugin.json`
+- Extend: `.codex-plugin/plugin.json` (created by single-skill-channel-per-host Task 1.3)
 - Create: `.codex-plugin/mcp.json`
 - Create: `.codex-plugin/hooks.json`
 - Modify: `package.json`
