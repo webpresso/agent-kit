@@ -43,6 +43,22 @@ describe('quality log store', () => {
     expect(existsSync(sink.absoluteLogPath)).toBe(true)
   })
 
+
+  it('does not remove another active sink before it finalizes', async () => {
+    const first = createCliLogSink('audit')
+    const second = createCliLogSink('audit')
+
+    first.write('first\n')
+    second.write('second\n')
+
+    await first.finalize({ exitCode: 0, summary: 'first run' })
+
+    expect(existsSync(second.absoluteLogPath)).toBe(true)
+
+    await second.finalize({ exitCode: 0, summary: 'second run' })
+    expect(existsSync(second.absoluteLogPath)).toBe(true)
+  })
+
   it('retains only the latest 10 entries and prunes old log files', async () => {
     let oldestPath = ''
     for (let index = 0; index < 11; index += 1) {

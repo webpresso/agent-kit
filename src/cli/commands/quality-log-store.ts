@@ -2,7 +2,6 @@ import {
   createWriteStream,
   mkdirSync,
   openSync,
-  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -134,7 +133,6 @@ function writeLogEntry(entry: CliLogEntry, cwd: string): void {
     }
   }
 
-  pruneOrphanedLogFiles(entry.command, retainedLogPaths, cwd)
 
   const index: CliLogIndex = {
     version: 1,
@@ -142,22 +140,6 @@ function writeLogEntry(entry: CliLogEntry, cwd: string): void {
     entries: nextEntries,
   }
   writeFileSync(indexPath, `${JSON.stringify(index, null, 2)}\n`, 'utf8')
-}
-
-function pruneOrphanedLogFiles(
-  command: CliLogCommandName,
-  retainedLogPaths: ReadonlySet<string>,
-  cwd: string,
-): void {
-  const directory = getCommandLogDir(command, cwd)
-  mkdirSync(directory, { recursive: true })
-  for (const file of readdirSync(directory)) {
-    if (!file.endsWith('.log')) continue
-    const absolutePath = join(directory, file)
-    if (!retainedLogPaths.has(absolutePath)) {
-      rmSync(absolutePath, { force: true })
-    }
-  }
 }
 
 function getCommandLogDir(command: CliLogCommandName, cwd: string): string {
