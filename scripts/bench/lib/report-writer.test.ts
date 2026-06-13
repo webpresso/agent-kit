@@ -31,6 +31,7 @@ describe('report-writer', () => {
           status: 'ok',
           cost_usd: 0.1234567,
           recall_at_5: 0,
+          recall_error: 'missing scored response text in transcript',
           wall_sec: 0.5,
         },
         {
@@ -40,6 +41,7 @@ describe('report-writer', () => {
           status: 'rate_limit',
           cost_usd: 0,
           recall_at_5: 0.8,
+          recall_reason: 'matched 4/5 qrels from transcript',
           wall_sec: 1.2345678,
         },
       ],
@@ -54,10 +56,10 @@ describe('report-writer', () => {
         '- dry_run: no',
         '- cache_disclaimer: cache-disabled baseline',
         '',
-        '| scenario | variant | trials | status | cost_usd | recall@5 | wall_sec |',
-        '| --- | --- | ---: | --- | ---: | ---: | ---: |',
-        '| debug-long-session | baseline | 1 | ok | 0.123457 | 0 | 0.5 |',
-        '| resumable-task | v1 | 2 | rate_limit | 0 | 0.8 | 1.234568 |',
+        '| scenario | variant | trials | status | cost_usd | recall@5 | recall | wall_sec |',
+        '| --- | --- | ---: | --- | ---: | ---: | --- | ---: |',
+        '| debug-long-session | baseline | 1 | ok | 0.123457 | 0 | missing scored response text in transcript | 0.5 |',
+        '| resumable-task | v1 | 2 | rate_limit | 0 | 0.8 | matched 4/5 qrels from transcript | 1.234568 |',
         '',
       ].join('\n'),
     )
@@ -87,7 +89,7 @@ describe('report-writer', () => {
 
     expect(readFileSync(outPath, 'utf8')).toContain('- dry_run: yes')
     expect(readFileSync(outPath, 'utf8')).toContain(
-      '| debug-long-session | baseline | 1 | ok | 0 | 0 | 0 |',
+      '| debug-long-session | baseline | 1 | ok | 0 | 0 | n/a | 0 |',
     )
   })
 
@@ -131,5 +133,41 @@ describe('report-writer', () => {
     expect(text).toContain(
       '| search_quality_recall_at_5 | recall_at_5 | 0.8 | n/a | schema-valid |',
     )
+  })
+
+  it('renders recall reason and recall error fields for measured cells', () => {
+    const report: SessionMemoryReport = {
+      run_id: 'abc123',
+      model: 'claude-sonnet-4-5',
+      dry_run: false,
+      cache_disclaimer: null,
+      cells: [
+        {
+          scenario_id: 'debug-long-session',
+          variant: 'baseline',
+          trials: 1,
+          status: 'ok',
+          cost_usd: 0,
+          recall_at_5: 1,
+          recall_reason: 'matched 5/5 qrels from transcript\nwith pipe | marker',
+          wall_sec: 1,
+        },
+        {
+          scenario_id: 'debug-long-session',
+          variant: 'v1',
+          trials: 1,
+          status: 'ok',
+          cost_usd: 0,
+          recall_at_5: 0,
+          recall_error: 'missing scored response text in transcript',
+          wall_sec: 1,
+        },
+      ],
+    }
+
+    const text = renderReport(report)
+
+    expect(text).toContain('matched 5/5 qrels from transcript with pipe \\| marker')
+    expect(text).toContain('missing scored response text in transcript')
   })
 })

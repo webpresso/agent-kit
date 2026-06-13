@@ -136,4 +136,52 @@ describe('variant-runner', () => {
 
     expect(seenEnv?.ANTHROPIC_API_KEY).toBe('secret-main')
   })
+
+  it('uses the logged-in Claude home for explicit claude-login auth mode', async () => {
+    const originalAuthMode = process.env.BENCH_AUTH_MODE
+    const originalBenchClaudeHome = process.env.BENCH_CLAUDE_HOME
+    process.env.BENCH_AUTH_MODE = 'claude-login'
+    process.env.BENCH_CLAUDE_HOME = '/tmp/logged-in-claude-home'
+
+    let seenEnv: Record<string, string> | null = null
+    const spawn: VariantSpawn = async (_cmd, options) => {
+      seenEnv = options.env
+      return {
+        exitCode: 0,
+        stdout: JSON.stringify({
+          type: 'result',
+          duration_ms: 1,
+          usage: {
+            input_tokens: 0,
+            output_tokens: 0,
+            cache_creation_input_tokens: 0,
+            cache_read_input_tokens: 0,
+          },
+        }),
+        stderr: '',
+      }
+    }
+
+    try {
+      await runCell({
+        scenario: 'debug',
+        prompt: 'say hi',
+        variant: 'baseline',
+        trial: 4,
+        pluginDir: '/tmp/plugin-main',
+        outputRoot: dir,
+        authMode: 'claude-login',
+        claudeHome: '/tmp/logged-in-claude-home',
+        spawn,
+      })
+    } finally {
+      if (originalAuthMode === undefined) delete process.env.BENCH_AUTH_MODE
+      else process.env.BENCH_AUTH_MODE = originalAuthMode
+      if (originalBenchClaudeHome === undefined) delete process.env.BENCH_CLAUDE_HOME
+      else process.env.BENCH_CLAUDE_HOME = originalBenchClaudeHome
+    }
+
+    expect(seenEnv?.HOME).toBe('/tmp/logged-in-claude-home')
+    expect(seenEnv?.ANTHROPIC_API_KEY).toBeUndefined()
+  })
 })

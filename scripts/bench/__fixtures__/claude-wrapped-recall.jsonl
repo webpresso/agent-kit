@@ -1,0 +1,2 @@
+{"event_id":"evt-1","scenario_id":"debug-long-session","turn_idx":0,"recorded_at_ms":1,"event":{"type":"assistant","message":{"content":[{"type":"text","text":"working note"}]}}}
+{"event_id":"evt-2","scenario_id":"debug-long-session","turn_idx":1,"recorded_at_ms":2,"event":{"type":"result","result":"Final recall: queue-runner.ts, before the final checkpoint write, sync-state.ts, retry regression test, and queue replay."}}

@@ -16,11 +16,13 @@ export type Manifest = {
 }
 
 export type WorkspaceMode = 'isolated' | 'single-workspace'
+export type BenchAuthMode = 'api-key' | 'claude-login'
 
 export type WorkspaceConfig = {
   mode: WorkspaceMode
   cacheDisclaimer: string | null
   keyEnvNames: string[]
+  authMode: BenchAuthMode
   adminVerification: 'required-for-proof' | 'operator-asserted' | 'not-applicable'
 }
 
@@ -260,7 +262,19 @@ export function resolveWorkspaceConfig(env: NodeJS.ProcessEnv = process.env): Wo
         ? null
         : 'operator-asserted workspace isolation: distinct Anthropic workspace IDs supplied, but not admin-verified.',
       keyEnvNames: [...ISOLATED_KEY_ENVS],
+      authMode: 'api-key',
       adminVerification: hasAdminKey ? 'required-for-proof' : 'operator-asserted',
+    }
+  }
+
+  if (env.BENCH_AUTH_MODE === 'claude-login') {
+    return {
+      mode,
+      cacheDisclaimer:
+        'cache-disabled baseline: single-workspace mode uses local Claude CLI login and cannot claim clean cross-variant cache isolation.',
+      keyEnvNames: [],
+      authMode: 'claude-login',
+      adminVerification: 'not-applicable',
     }
   }
 
@@ -269,6 +283,7 @@ export function resolveWorkspaceConfig(env: NodeJS.ProcessEnv = process.env): Wo
     cacheDisclaimer:
       'cache-disabled baseline: single-workspace mode cannot claim clean cross-variant cache isolation.',
     keyEnvNames: [...SINGLE_WORKSPACE_KEY_ENVS],
+    authMode: 'api-key',
     adminVerification: 'not-applicable',
   }
 }

@@ -96,6 +96,12 @@ function makeDeps(
     }))
 
   const verifyManifest = options.onVerifyManifest ?? vi.fn()
+  const scoreTranscriptRecall = vi.fn(() => ({
+    recall_at_5: 1,
+    matched_qrels: 5,
+    denominator: 5,
+    recall_reason: 'matched 5/5 qrels from /tmp/transcript.jsonl',
+  }))
 
   return {
     aggregateCosts: vi.fn(() => ({ mean: 0.123, std: 0, n: 1, total: 0.123 })),
@@ -111,6 +117,7 @@ function makeDeps(
     })),
     resolveWorkspaceIdentitiesFromEnv: vi.fn(() => []),
     runCell,
+    scoreTranscriptRecall,
     validateKnownAnthropicWorkspaces: vi.fn(async () => {}),
     validateWorkspaceKeyPresence: vi.fn(),
     verifyManifest,
@@ -118,11 +125,11 @@ function makeDeps(
       const text = [
         '# Session-memory benchmark',
         '',
-        '| scenario | variant | trials | status | cost_usd | recall@5 | wall_sec |',
-        '| --- | --- | ---: | --- | ---: | ---: | ---: |',
+        '| scenario | variant | trials | status | cost_usd | recall@5 | recall | wall_sec |',
+        '| --- | --- | ---: | --- | ---: | ---: | --- | ---: |',
         ...report.cells.map(
           (cell) =>
-            `| ${cell.scenario_id} | ${cell.variant} | ${cell.trials} | ${cell.status} | ${cell.cost_usd} | ${cell.recall_at_5} | ${cell.wall_sec} |`,
+            `| ${cell.scenario_id} | ${cell.variant} | ${cell.trials} | ${cell.status} | ${cell.cost_usd} | ${cell.recall_at_5} | ${cell.recall_error ?? cell.recall_reason ?? 'n/a'} | ${cell.wall_sec} |`,
         ),
         '',
         ...(report.threshold_report
@@ -245,6 +252,7 @@ describe('wp bench session-memory', () => {
     expect(result.thresholdReport.mode).toBe('dry-run')
     expect(result.thresholdReport.axes.every((axis) => axis.status === 'schema-valid')).toBe(true)
     expect(runCell).not.toHaveBeenCalled()
+    expect(deps.validateKnownAnthropicWorkspaces).not.toHaveBeenCalled()
     expect(deps.verifyManifest).toHaveBeenCalledWith(TEST_MANIFEST, TEST_MANIFEST, {
       mode: 'dry-run-current-checkout',
     })
@@ -345,6 +353,58 @@ describe('wp bench session-memory', () => {
     })
   })
 
+  it('passes explicit claude-login auth mode to live cells without requiring API keys', async () => {
+    dir = mkdtempSync(join(tmpdir(), 'bench-command-claude-login-'))
+    const runCell = vi.fn(async () => ({
+      ok: true as const,
+      usage: {
+        input_tokens: 10,
+        output_tokens: 2,
+        cache_creation_input_tokens: 0,
+        cache_read_input_tokens: 0,
+        duration_ms: 500,
+      },
+      tools: ['search_files'],
+      transcript_path: '/tmp/transcript.jsonl',
+      home_dir: '/tmp/home',
+    }))
+    const deps = makeDeps({ onRunCell: runCell })
+    deps.resolveWorkspaceConfig = vi.fn(() => ({
+      mode: 'single-workspace',
+      cacheDisclaimer:
+        'cache-disabled baseline: single-workspace mode uses local Claude CLI login and cannot claim clean cross-variant cache isolation.',
+      keyEnvNames: [],
+      authMode: 'claude-login',
+      adminVerification: 'not-applicable',
+    }))
+
+    await runBenchSessionMemoryCommand(
+      {
+        scenario: 'debug-long-session',
+        variant: 'baseline',
+        trials: 1,
+        outputRoot: dir,
+        env: {
+          BENCH_WORKSPACE_MODE: 'single-workspace',
+          BENCH_AUTH_MODE: 'claude-login',
+          BENCH_CLAUDE_HOME: '/tmp/logged-in-claude-home',
+        },
+      },
+      deps,
+    )
+
+    expect(deps.validateWorkspaceKeyPresence).toHaveBeenCalled()
+    expect(runCell).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authMode: 'claude-login',
+        claudeHome: '/tmp/logged-in-claude-home',
+        apiKeys: expect.objectContaining({
+          ANTHROPIC_API_KEY_BASELINE: undefined,
+        }),
+      }),
+    )
+  })
+
   it('writes a report for a single scenario/variant run', async () => {
     dir = mkdtempSync(join(tmpdir(), 'bench-command-'))
     const deps = makeDeps()
@@ -377,6 +437,15 @@ describe('wp bench session-memory', () => {
     expect(report).toContain('cost_usd')
     expect(report).toContain('recall@5')
     expect(report).toContain('wall_sec')
+    expect(report).toContain('matched 5/5 qrels')
+    expect(result.thresholdReport.axes).toContainEqual({
+      id: 'search_quality_recall_at_5',
+      label: 'Search quality recall@5',
+      metric: 'recall_at_5',
+      threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.searchQualityRecallAt5,
+      observed: 1,
+      status: 'passed',
+    })
     expect(report).toContain('Threshold report')
     expect(report).toContain('post_tool_capture_latency_ms')
     expect(report).toContain('| debug-long-session | baseline | 1 | ok |')
@@ -496,7 +565,7 @@ describe('wp bench session-memory', () => {
     expect(deps.validateKnownAnthropicWorkspaces).not.toHaveBeenCalled()
   })
 
-  it('isolated mode with an admin key performs Anthropic admin verification', async () => {
+  it('isolated dry-run with an admin key skips Anthropic admin verification', async () => {
     const deps = makeDeps()
     deps.resolveWorkspaceConfig = vi.fn(() => ({
       mode: 'isolated',
@@ -527,6 +596,44 @@ describe('wp bench session-memory', () => {
       deps,
     )
 
+    expect(deps.validateKnownAnthropicWorkspaces).not.toHaveBeenCalled()
+  })
+
+  it('isolated live runs with an admin key perform Anthropic admin verification', async () => {
+    dir = mkdtempSync(join(tmpdir(), 'bench-command-admin-live-'))
+    const deps = makeDeps()
+    deps.resolveWorkspaceConfig = vi.fn(() => ({
+      mode: 'isolated',
+      cacheDisclaimer: null,
+      keyEnvNames: ['ANTHROPIC_API_KEY_BASELINE', 'ANTHROPIC_API_KEY_V1', 'ANTHROPIC_API_KEY_V2'],
+      adminVerification: 'required-for-proof',
+    }))
+    deps.resolveWorkspaceIdentitiesFromEnv = vi.fn(() => [
+      { apiKeyEnv: 'ANTHROPIC_API_KEY_BASELINE', workspaceId: 'ws-a' },
+      { apiKeyEnv: 'ANTHROPIC_API_KEY_V1', workspaceId: 'ws-c' },
+      { apiKeyEnv: 'ANTHROPIC_API_KEY_V2', workspaceId: 'ws-d' },
+    ])
+
+    await runBenchSessionMemoryCommand(
+      {
+        scenario: 'debug-long-session',
+        variant: 'baseline',
+        trials: 1,
+        outputRoot: dir,
+        env: {
+          BENCH_WORKSPACE_MODE: 'isolated',
+          ANTHROPIC_ADMIN_KEY: 'admin-key',
+          ANTHROPIC_API_KEY_BASELINE: 'a',
+          ANTHROPIC_API_KEY_V1: 'c',
+          ANTHROPIC_API_KEY_V2: 'd',
+          ANTHROPIC_WORKSPACE_ID_BASELINE: 'ws-a',
+          ANTHROPIC_WORKSPACE_ID_V1: 'ws-c',
+          ANTHROPIC_WORKSPACE_ID_V2: 'ws-d',
+        },
+      },
+      deps,
+    )
+
     expect(deps.validateKnownAnthropicWorkspaces).toHaveBeenCalledWith(
       [
         { apiKeyEnv: 'ANTHROPIC_API_KEY_BASELINE', workspaceId: 'ws-a' },
@@ -535,5 +642,122 @@ describe('wp bench session-memory', () => {
       ],
       'admin-key',
     )
+  })
+
+  it('uses unrounded recall values for threshold status', async () => {
+    dir = mkdtempSync(join(tmpdir(), 'bench-command-borderline-recall-'))
+    const deps = makeDeps()
+    deps.scoreTranscriptRecall = vi.fn(() => ({
+      recall_at_5: 0.7999996,
+      matched_qrels: 4,
+      denominator: 5,
+      recall_reason: 'borderline unrounded recall',
+    }))
+
+    const result = await runBenchSessionMemoryCommand(
+      {
+        scenario: 'debug-long-session',
+        variant: 'baseline',
+        trials: 1,
+        outputRoot: dir,
+        env: { BENCH_WORKSPACE_MODE: 'single-workspace', ANTHROPIC_API_KEY: 'test-key' },
+      },
+      deps,
+    )
+
+    expect(result.thresholdReport.axes).toContainEqual({
+      id: 'search_quality_recall_at_5',
+      label: 'Search quality recall@5',
+      metric: 'recall_at_5',
+      threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.searchQualityRecallAt5,
+      observed: 0.8,
+      status: 'failed',
+    })
+  })
+
+  it('fails recall threshold when any attempted cell fails even if another cell has high recall', async () => {
+    dir = mkdtempSync(join(tmpdir(), 'bench-command-mixed-failure-'))
+    const runCell = vi.fn(async (input: { variant: string }) => {
+      if (input.variant === 'baseline') {
+        return {
+          ok: true as const,
+          usage: {
+            input_tokens: 10,
+            output_tokens: 2,
+            cache_creation_input_tokens: 0,
+            cache_read_input_tokens: 0,
+            duration_ms: 500,
+          },
+          tools: ['search_files'],
+          transcript_path: '/tmp/transcript.jsonl',
+          home_dir: '/tmp/home',
+        }
+      }
+
+      return {
+        ok: false as const,
+        error: 'rate_limit' as const,
+        usage: null,
+        tools: [],
+        transcript_path: null,
+        home_dir: '/tmp/home',
+      }
+    })
+    const deps = makeDeps({ onRunCell: runCell })
+
+    const result = await runBenchSessionMemoryCommand(
+      {
+        allVariants: true,
+        scenario: 'debug-long-session',
+        trials: 1,
+        outputRoot: dir,
+        env: { BENCH_WORKSPACE_MODE: 'single-workspace', ANTHROPIC_API_KEY: 'test-key' },
+      },
+      deps,
+    )
+
+    expect(result.thresholdReport.axes).toContainEqual({
+      id: 'search_quality_recall_at_5',
+      label: 'Search quality recall@5',
+      metric: 'recall_at_5',
+      threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.searchQualityRecallAt5,
+      observed: 0.333333,
+      status: 'failed',
+    })
+  })
+
+  it('keeps scorer failures as ok cells with recall_error and failed recall threshold', async () => {
+    dir = mkdtempSync(join(tmpdir(), 'bench-command-scorer-failure-'))
+    const deps = makeDeps()
+    deps.scoreTranscriptRecall = vi.fn(() => ({
+      recall_at_5: 0,
+      matched_qrels: 0,
+      denominator: 5,
+      recall_error: 'missing scored response text in transcript',
+    }))
+
+    const result = await runBenchSessionMemoryCommand(
+      {
+        scenario: 'debug-long-session',
+        variant: 'baseline',
+        trials: 1,
+        outputRoot: dir,
+        env: { BENCH_WORKSPACE_MODE: 'single-workspace', ANTHROPIC_API_KEY: 'test-key' },
+      },
+      deps,
+    )
+
+    const report = readFileSync(result.reportPath ?? '', 'utf8')
+
+    expect(report).toContain('| debug-long-session | baseline | 1 | ok |')
+    expect(report).toContain('missing scored response text in transcript')
+    expect(result.thresholdReport.axes).toContainEqual({
+      id: 'search_quality_recall_at_5',
+      label: 'Search quality recall@5',
+      metric: 'recall_at_5',
+      threshold: DEFAULT_SESSION_MEMORY_THRESHOLDS.searchQualityRecallAt5,
+      observed: 0,
+      status: 'failed',
+    })
   })
 })

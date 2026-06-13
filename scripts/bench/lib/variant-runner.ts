@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url'
 import { extractToolUses, extractUsage, type Usage } from './usage-extractor'
 import { recordStream } from './transcript-recorder'
 
+export type BenchAuthMode = 'api-key' | 'claude-login'
+
 export type VariantSpawn = (
   cmd: string[],
   options: {
@@ -25,6 +27,8 @@ export type RunCellInput = {
   cwd?: string
   outputRoot?: string
   apiKeys?: Record<string, string | undefined>
+  authMode?: BenchAuthMode
+  claudeHome?: string
   spawn?: VariantSpawn
 }
 
@@ -51,6 +55,27 @@ const ZERO_TOOLS: [] = []
 
 function variantEnvKey(variant: string): string {
   return `ANTHROPIC_API_KEY_${variant.replace(/[^a-z0-9]/gi, '_').toUpperCase()}`
+}
+
+function resolveAuth(
+  input: RunCellInput,
+  cellHomeDir: string,
+): {
+  homeDir: string
+  apiKey?: string
+} {
+  if (input.authMode !== 'claude-login') {
+    const envKey = variantEnvKey(input.variant)
+    const apiKey = input.apiKeys?.[envKey] ?? process.env[envKey]
+    return { homeDir: cellHomeDir, ...(apiKey ? { apiKey } : {}) }
+  }
+
+  const loggedInHome = input.claudeHome ?? process.env.BENCH_CLAUDE_HOME ?? process.env.HOME
+  if (!loggedInHome) {
+    throw new Error('BENCH_AUTH_MODE=claude-login requires HOME or BENCH_CLAUDE_HOME')
+  }
+
+  return { homeDir: loggedInHome }
 }
 
 async function spawnWithBun(
@@ -83,16 +108,15 @@ export async function runCell(input: RunCellInput): Promise<RunResult> {
 
   mkdirSync(homeDir, { recursive: true })
 
-  const envKey = variantEnvKey(input.variant)
-  const apiKey = input.apiKeys?.[envKey] ?? process.env[envKey]
+  const auth = resolveAuth(input, homeDir)
   const env = {
     ...Object.fromEntries(
       Object.entries(process.env).filter(
         (entry): entry is [string, string] => typeof entry[1] === 'string',
       ),
     ),
-    HOME: homeDir,
-    ...(apiKey ? { ANTHROPIC_API_KEY: apiKey } : {}),
+    HOME: auth.homeDir,
+    ...(auth.apiKey ? { ANTHROPIC_API_KEY: auth.apiKey } : {}),
   }
 
   const spawn = input.spawn ?? spawnWithBun
